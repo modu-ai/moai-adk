@@ -5,7 +5,7 @@ import (
 )
 
 // newMxCmd creates the 'moai mx' parent command.
-// Includes @MX TAG related subcommands (query, etc.).
+// Includes @MX TAG related subcommands: scan (build the index) and query (read it).
 func newMxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "mx",
@@ -19,6 +19,8 @@ func newMxCmd() *cobra.Command {
 
 	// SPEC-V3R2-SPC-004: Register query subcommand
 	cmd.AddCommand(newMxQueryCmd())
+	// scan builds the sidecar index that query reads.
+	cmd.AddCommand(newMxScanCmd())
 
 	return cmd
 }
