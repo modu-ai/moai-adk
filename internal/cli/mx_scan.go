@@ -91,7 +91,7 @@ Examples:
 			errs := cmd.ErrOrStderr()
 
 			if dryRun {
-				fmt.Fprintf(out, "DRY RUN: %d tags would be written (index not saved)\n", len(tags))
+				_, _ = fmt.Fprintf(out, "DRY RUN: %d tags would be written (index not saved)\n", len(tags))
 				printMxScanSummary(out, counts, rotRisk)
 				return nil
 			}
@@ -107,24 +107,24 @@ Examples:
 				return fmt.Errorf("write sidecar: %w", err)
 			}
 
-			fmt.Fprintf(out, "OK: wrote %d tags to %s\n", len(tags), filepath.Join(stateDir, mx.SidecarFileName))
+			_, _ = fmt.Fprintf(out, "OK: wrote %d tags to %s\n", len(tags), filepath.Join(stateDir, mx.SidecarFileName))
 			if !quiet {
 				printMxScanSummary(out, counts, rotRisk)
 			}
 
 			// Surface scanner-detected issues to stderr (advisory, never blocks).
 			if warns := s.GetWarnings(); len(warns) > 0 && !quiet {
-				fmt.Fprintf(errs, "scanner warnings: %d\n", len(warns))
+				_, _ = fmt.Fprintf(errs, "scanner warnings: %d\n", len(warns))
 				for i, w := range warns {
 					if i >= 20 {
-						fmt.Fprintf(errs, "  ... and %d more\n", len(warns)-20)
+						_, _ = fmt.Fprintf(errs, "  ... and %d more\n", len(warns)-20)
 						break
 					}
-					fmt.Fprintf(errs, "  - %s\n", w)
+					_, _ = fmt.Fprintf(errs, "  - %s\n", w)
 				}
 			}
 			if scanErrs := s.GetErrors(); len(scanErrs) > 0 && !quiet {
-				fmt.Fprintf(errs, "scan errors: %d (non-fatal, tags still written)\n", len(scanErrs))
+				_, _ = fmt.Fprintf(errs, "scan errors: %d (non-fatal, tags still written)\n", len(scanErrs))
 			}
 
 			return nil
@@ -141,13 +141,13 @@ Examples:
 // printMxScanSummary writes a stable per-kind breakdown to the given writer.
 func printMxScanSummary(out io.Writer, counts map[string]int, rotRisk int) {
 	order := []string{"NOTE", "ANCHOR", "WARN", "TODO", "DEBT", "LEGACY"}
-	fmt.Fprintln(out, "by kind:")
+	_, _ = fmt.Fprintln(out, "by kind:")
 	for _, k := range order {
 		if c := counts[k]; c > 0 {
-			fmt.Fprintf(out, "  %s: %d\n", k, c)
+			_, _ = fmt.Fprintf(out, "  %s: %d\n", k, c)
 		}
 	}
 	if rotRisk > 0 {
-		fmt.Fprintf(out, "DEBT rotRisk (missing @MX:UPGRADE): %d\n", rotRisk)
+		_, _ = fmt.Fprintf(out, "DEBT rotRisk (missing @MX:UPGRADE): %d\n", rotRisk)
 	}
 }
