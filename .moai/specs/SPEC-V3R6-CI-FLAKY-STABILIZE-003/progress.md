@@ -65,7 +65,7 @@ Run-phase completed. All acceptance criteria satisfied (AC-CFS3-001..013).
 - Coverage ≥85% threshold met for `internal/session`.
 - `TestWithLockTimeoutContract` green (ErrLockTimeout contract preserved per REQ-CFS3-004).
 - `TestLockRetryDelayBoundsAndJitter` green (jitter backoff preserved per REQ-CFS3-005).
-- 60s per-acquisition override evaluated — decision: MAINTAINED with comment clarification (operational margin, correctness guarantee from mutex).
+- 60s per-acquisition override (`registry_test.go:291`) — decision: **REMOVED**. The structural in-process mutex eliminates same-process NB-flock starvation, so `TestRegisterSessionConcurrent` now runs deterministically green at the production 2s `LockTimeout` default under `-race` (verified, 3 consecutive green runs). The 60s override was a workaround for the starvation this SPEC structurally removed.
 
 ---
 
