@@ -24,7 +24,7 @@ Extend parallel-session detection from the spawn boundary to the direct-edit bou
 
 ### M4 — PreToolUse-on-Edit hook evaluation [REQ-PES-004]
 - Evaluate: a PreToolUse hook on Edit/Write reading `.moai/state/active-sessions.json` + optional fetch. Record the per-edit cost finding (registry-read is cheap ~ms; a per-edit `git fetch` is expensive and would be gated to "first edit of a turn" or omitted).
-- Decision: implement a **read-only advisory** hook (registry-read only, no fetch, no block — surfaces a `systemMessage` when foreign sessions live) OR **defer** the blocking hook to a follow-up SPEC with rationale. Record the decision + rationale in acceptance.md §F.
+- Decision: implement a **read-only advisory** hook (registry-read only, no fetch, no block — surfaces an advisory to **stderr + `.moai/logs/preedit-session-guard.log`** when foreign sessions live, never a blocking decision) OR **defer** the blocking hook to a follow-up SPEC with rationale. Record the decision + rationale in acceptance.md §F.
 
 ### M5 — advisory ambient signal [REQ-PES-005]
 - If M4 does not add a hook, add an ambient signal: the orchestrator's session-start reads `active-sessions.json` and notes foreign-session count (cheap). Document the behavior in doctrine (no code, or minimal statusline note if a statusline segment is cheap to add).

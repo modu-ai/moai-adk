@@ -1,10 +1,18 @@
 ---
-spec_id: SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001
-title: Pre-Edit Parallel-Session Detection & Auto-Isolation
-status: draft
-tier: M
-updated: 2026-07-29
+id: SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001
+title: "Pre-Edit Parallel-Session Detection & Auto-Isolation"
+version: "0.1.0"
+status: in-progress
+created: 2026-07-28
+updated: 2026-07-28
+author: GOOS
+priority: P1
+phase: "v3.0.0"
+module: "internal/hook"
+lifecycle: spec-anchored
+tags: "parallel-session, pre-edit-sync-check, hook, advisory"
 era: V3R6
+tier: M
 ---
 
 # SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001 — Pre-Edit Parallel-Session Detection & Auto-Isolation

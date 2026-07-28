@@ -12,7 +12,7 @@
 | AC-PES-006 | REQ-PES-004 | The PreToolUse-on-Edit hook is evaluated with a recorded cost finding + an explicit defer-or-implement decision. | acceptance.md §F records the finding + decision. |
 | AC-PES-007 | REQ-PES-005 | An ambient foreign-session signal is specified (session-start note OR statusline segment). | grep in doctrine for the ambient-signal behavior. |
 | AC-PES-008 | Template-First | Every `.claude/` rule edit is mirrored to `internal/template/templates/` byte-identical (sanitized-pair rules) and `make build` is clean. | `diff` local↔template per file; `make build` exit 0; `go test ./internal/template/... -run 'Neutrality\|Leak\|Mirror\|Parity'` PASS. |
-| AC-PES-009 | Neutrality | No SPEC-ID / internal-date / commit-SHA leaks into the template mirrors. | `grep -rnoE 'SPEC-[A-Z0-9-]{6,}|REQ-[A-Z0-9-]{6,}|[0-9a-f]{7,40}' internal/template/templates/.claude/rules/moai/{core/agent-common-protocol,workflow/worktree-integration}.md` → 0 (date `updated:` frontmatter excepted per DC-1). |
+| AC-PES-009 | Neutrality | No SPEC-ID / internal-date / commit-SHA leaks into the template mirrors. | Neutrality/leak grep on the two template mirrors returns 0 matches (date `updated:` frontmatter excepted per DC-1); verified by the CI Template Neutrality Audit check. |
 | AC-PES-010 | Build | `go build ./...` exit 0; if a hook was added (M4 implemented), its unit test exists and passes. | `go build ./...` exit 0; `go test ./internal/hook/...` PASS. |
 
 ## B. Baseline (measured at run-phase entry)
