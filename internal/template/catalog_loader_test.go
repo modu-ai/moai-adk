@@ -58,7 +58,9 @@ func TestLoadCatalog(t *testing.T) {
 	// claim-vs-evidence verification workflow, core.skills), net +1 = 39.
 	// moai-domain-svg-infographic added (editable-SVG-infographic authoring
 	// domain skill, core.skills), net +1 = 40.
-	const expectedTotal = 40
+	// moai-ref-ui-polish added (UI polish and interface-completion reference
+	// skill, optional-pack:frontend), net +1 = 41.
+	const expectedTotal = 41
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

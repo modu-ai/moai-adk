@@ -50,7 +50,7 @@ var updateCmd = &cobra.Command{
 	Use:     "update",
 	Short:   "Sync MoAI-ADK project templates to the latest version",
 	GroupID: "project",
-	Long:    "Check for binary updates, install if available, then synchronize embedded templates with the project.",
+	Long:    "Check for binary updates, install if available, then synchronize embedded templates with the project.\n\nNote: moai init / moai update do NOT auto-enter a worktree. To work inside a worktree, use the launcher flag (moai cc -w <name>) or create one explicitly (moai worktree new <SPEC-ID>).",
 	PreRunE: validateUpdateFlags,
 	RunE:    runUpdate,
 }

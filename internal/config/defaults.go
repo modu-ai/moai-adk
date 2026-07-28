@@ -518,9 +518,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Sync: DefaultSyncTokens,
 		},
 		Worktree: WorkflowWorktreeConfig{
-			AutoCleanup:        true,
+			// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
+			// AutoCleanup and AutoMerge mutated true→false (sprawl mitigation,
+			// EnterWorktree-first policy). AutoCreate unchanged (already false).
+			AutoCleanup:        false,
 			AutoCreate:         false,
-			AutoMerge:          true,
+			AutoMerge:          false,
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
 			TmuxPreferred:      true,
 		},

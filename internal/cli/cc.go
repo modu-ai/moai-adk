@@ -75,6 +75,14 @@ func runCC(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
+	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
+	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
+	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
+	// token normalization (AC-WES-010b).
+	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+		return err
+	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return unifiedLaunch(profileName, "claude", filteredArgs)
 }
