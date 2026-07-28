@@ -2,9 +2,9 @@
 id: SPEC-I18N-GOVERNANCE-001
 title: "Web Console i18n Catalogue Governance"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-29
 author: manager-spec
 priority: P2
 phase: "v3.0.2 target"
