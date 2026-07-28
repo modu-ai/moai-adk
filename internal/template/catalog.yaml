@@ -227,6 +227,11 @@ catalog:
                   path: templates/.claude/skills/moai-ref-react-patterns/
                   hash: f603a0f75408a3355ffb65d520b78e07c81f731f9f1de7d3a93e490bc7750e11
                   version: 1.0.0
+                - name: moai-ref-ui-polish
+                  tier: optional-pack:frontend
+                  path: templates/.claude/skills/moai-ref-ui-polish/
+                  hash: a3e8791b83bc2394d180ab619f0471ed525c58c2986651129c551e2f773edeca
+                  version: 1.0.0
             agents: []
         testing:
             description: Comprehensive test automation, E2E testing, and quality assurance workflows

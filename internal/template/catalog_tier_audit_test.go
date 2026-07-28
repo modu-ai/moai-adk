@@ -161,7 +161,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// moai-domain-svg-infographic added as an editable-SVG-infographic authoring
 	// domain skill (layout-before-code + headless-Chromium PNG render; registered
 	// under core.skills), net +1 = 30.
-	const expectedSkillCount = 30
+	// moai-ref-ui-polish added as a UI polish and interface-completion reference
+	// skill (registered under optional-pack:frontend), net +1 = 31.
+	const expectedSkillCount = 31
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}
