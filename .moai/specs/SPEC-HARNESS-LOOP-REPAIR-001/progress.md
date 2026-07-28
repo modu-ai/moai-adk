@@ -346,7 +346,7 @@ run_phase_summary: All 6 milestones (M1-M6) complete. 17/17 AC PASS per acceptan
 
 sync_status: audit-ready
 sync_complete_at: 2026-07-28
-sync_commit_sha: pending-backfill-sync-hlr001
+sync_commit_sha: efdc2ad24
 sync_phase_summary: 3-phase close (plan → run → sync). The single sync commit carries the merged `in-progress → completed` frontmatter transition + this §E.4 signal + the CHANGELOG `[Unreleased]` entry. §G open questions q1-q5 all RESOLVED (q1 M1, q2 M4, q3 M5, q4/q5 Implementation Kickoff gate 2026-07-28) — §J item 6 satisfied; no spec.md body edit was required (the questions were resolved in-place during plan/run phases and recorded in §G + the version-history table). `sync_commit_sha` is backfilled in a follow-up commit after the sync commit lands (D3 self-referential-hazard exemption — a commit cannot reference its own SHA).
 
 ## §F Phase 4 Mode Selection — M2
