@@ -16,9 +16,12 @@ name: Claude Code
 #   was removed so @claude works on PR comments too).
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize]
+  # CodeRabbit adoption (SPEC-V3R6-CODERABBIT-ADOPTION-001): the pull_request
+  # trigger that fed Job A (claude-pr-review) is REMOVED — CodeRabbit
+  # (coderabbitai) is now the PR reviewer, configured via .coderabbit.yaml.
+  # Job B (claude-interactive, @claude troubleshooting on issues AND PR
+  # comments) is retained via issue_comment + issues below (PR comments still
+  # fire issue_comment, so @claude on PR comments is unaffected).
   issue_comment:
     types: [created]
   issues:
