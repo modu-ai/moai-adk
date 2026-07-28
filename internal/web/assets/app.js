@@ -184,9 +184,18 @@
     for (var i = 0; i < nodes.length; i++) {
       var key = nodes[i].getAttribute("data-i18n");
       var str = (key.indexOf(".opt.") >= 0 ? enDict : dict)[key];
-      // Missing key → keep the existing baseline text (do not blank the element).
+      // Missing key → restore the server-side baseline (data-i18n-baseline) so a
+      // locale switch back to en — or any locale whose dictionary lacks this key
+      // — does not leave the previous locale's text stuck on the row. Only
+      // elements that carry a baseline attribute are restored; the rest keep
+      // their existing text (an element is never blanked).
       if (typeof str === "string" && str.length > 0) {
         nodes[i].textContent = str;
+      } else {
+        var baseline = nodes[i].getAttribute("data-i18n-baseline");
+        if (baseline !== null && baseline !== "") {
+          nodes[i].textContent = baseline;
+        }
       }
     }
     // SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-015): resolve data-i18n-title into the

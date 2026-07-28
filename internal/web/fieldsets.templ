@@ -454,11 +454,12 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 				</span>
 				// The English text is the SERVER-SIDE BASELINE, read from the agent
 				// .md frontmatter (the SSOT). agentdesc.<name> carries only the
-				// ko/ja/zh translations — applyI18n leaves a node untouched when the
-				// key is absent from the active locale, so en renders the .md text
-				// verbatim and never a duplicated (and drift-prone) i18n copy.
+				// ko/ja/zh translations; en has no such key. data-i18n-baseline pins
+				// the server text so applyI18n can RESTORE it when the active locale's
+				// dictionary lacks the key — otherwise a KO→EN switch leaves the
+				// previous locale's text stuck on the row.
 				if short := agentDescriptionShort(agent.Description); short != "" {
-					<span class="agentfm-desc" data-i18n={ "agentdesc." + agent.Name }>{ short }</span>
+					<span class="agentfm-desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
 				}
 			</div>
 			<div class="agentfm-row__ctrl">
