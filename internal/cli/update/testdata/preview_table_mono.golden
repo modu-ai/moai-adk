@@ -1,0 +1,27 @@
+╭───────────────────────────────╮
+│                               │
+│  Classification summary       │
+│  add                       1  │
+│  update                    1  │
+│  preserved (user-owned)    1  │
+│  conflict                  1  │
+│                               │
+╰───────────────────────────────╯
+
+ Class                     File                                                 
+────────────────────────────────────────────────────────────────────────────────
+ add                       templates/new_file.yaml                              
+ update                    .claude/settings.json                                
+ preserved (user-owned)    .claude/skills/hns-my/SKILL.md                       
+ conflict                  .moai/config/config.yaml                             
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+enter view diff · y confirm · n/q cancel
