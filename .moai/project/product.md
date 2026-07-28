@@ -8,7 +8,7 @@ MoAI-ADK (Go Edition) -- Agentic Development Kit for Claude Code
 
 ### Description
 
-MoAI-ADK is a high-performance, compiled development toolkit that serves as the runtime backbone for the MoAI framework within Claude Code. This Go edition is a complete rewrite of the existing Python-based MoAI-ADK (~73,000+ lines, 220+ source files), redesigned to leverage Go's strengths: compiled single-binary distribution, native concurrency via goroutines, strong static typing, and minimal runtime dependencies.
+MoAI-ADK is a high-performance, compiled development toolkit that serves as the runtime backbone for the MoAI framework within Claude Code. This Go edition (v3.0) is a complete rewrite of the former Python-based MoAI-ADK (~73,000+ lines, 220+ source files -- now retired), redesigned to leverage Go's strengths: compiled single-binary distribution, native concurrency via goroutines, strong static typing, and minimal runtime dependencies. The v3.0 Go codebase is ~148k non-test LOC across ~730 source files plus ~1000 test files.
 
 The toolkit provides CLI tooling, configuration management, LSP integration, Git operations, quality gates, and autonomous development loop capabilities -- all orchestrated through Claude Code's agent and skill system.
 
@@ -79,9 +79,10 @@ Language Server Protocol client supporting 16+ programming languages.
 
 Comprehensive Git domain powered by system Git via exec for reliable operations.
 
-- **Branch Management**: Create, switch, merge, and delete branches with MoAI naming conventions
+- **Branch Management**: Create, switch, merge, and delete branches with MoAI naming conventions; BODP (Branch Origin Decision Protocol) drives the main / stacked / continue decision from a 3-signal / 8-row matrix
 - **Conflict Detection**: Pre-merge conflict analysis with resolution suggestions
-- **Worktree Management**: Parallel development via Git worktrees with automatic registry tracking
+- **Worktree Management**: Parallel development via Git worktrees with automatic registry tracking; `moai cc -w <name>` / `moai cg -w` / `moai glm -w` enter an isolated worktree before the session starts (EnterWorktree-first policy)
+- **Main-Checkout Branch Guard**: A PreToolUse hook (`internal/hook/branch_guard.go`, SPEC-WORKTREE-BRANCH-GUARD-001) denies `git checkout` / `switch` / `stash` / `reset --hard` / `rebase` on the primary checkout while permitting them in worktrees -- `manager-git` and the `MOAI_BRANCH_GUARD_EXEMPT=1` env sentinel are exempt
 - **Event Detection**: Git hook integration and event-driven automation
 - **Hook Execution Contract**: Formal specification of hook runtime guarantees -- stdin JSON format, exit code semantics, timeout behavior, config access. Explicitly documents what is NOT guaranteed (user's PATH, shell environment, Python availability). Contract tests verify behavior across all 6 platform targets in CI, preventing regression.
 - **Checkpoint System**: Automatic save points before risky operations with rollback capability
@@ -125,14 +126,14 @@ Autonomous feedback loop engine for iterative development cycles.
 - **Convergence Detection**: Automatic detection of diminishing returns to prevent infinite loops
 - **Human-in-the-Loop**: Configurable breakpoints for human review and approval
 
-### 9. Performance Ranking
+### 9. Performance Ranking (RETIRED at v3.0)
 
-Session ranking and community submission system.
+The Python predecessor shipped a session-ranking and community-leaderboard subsystem. This capability is NOT present in the v3.0 Go codebase -- there is no `internal/rank/` package and no `MOAI_RANK_API_URL` env var. Telemetry about token usage is still collected locally (`internal/telemetry/`, `internal/tokenusage/`) but is not submitted to any external leaderboard. The bullet list below is preserved as historical context only:
 
-- **Session Metrics**: Token efficiency, task completion rate, quality scores
-- **Leaderboard Integration**: Anonymous submission to community ranking boards
-- **Authentication**: Secure credential management for ranking API access
-- **Hook Integration**: Automatic metric collection via Git and session hooks
+- **Session Metrics** (historical): Token efficiency, task completion rate, quality scores
+- **Leaderboard Integration** (historical): Anonymous submission to community ranking boards
+- **Authentication** (historical): Secure credential management for ranking API access
+- **Hook Integration** (historical): Automatic metric collection via Git and session hooks
 
 ### 10. AST-Grep Integration
 
@@ -145,23 +146,20 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 
 ### 11. Multi-Model Architecture
 
-Support for multiple LLM providers and hybrid cost-optimization modes with Opus 4.7 integration.
+Support for multiple LLM providers, a 33-cell profile matrix, and hybrid cost-optimization modes.
 
-- **Claude Mode** (`moai cc`): Full Claude model stack including Opus 4.7 with 5-level effort scaling (low/medium/high/xhigh/max) for critical reasoning agents, with automatic fallback to Opus 4.6/Sonnet 4.6/Haiku 4.5 for backward compatibility (Requires Claude Code v2.1.110+)
-- **Opus 4.7 Prompt Philosophy**: Built-in support for Opus 4.7's "one-turn fully-loaded" principle with effort configuration at agent level, enabling xhigh/max effort assignments for critical reasoning workflows (manager-spec, plan-auditor, sync-auditor, manager-strategy, expert-security, expert-refactoring)
-- **GLM Mode** (`moai glm`): Switch all agents to Z.AI's GLM models for cost reduction
-- **Hybrid CG Mode** (`moai cg`): Claude leader with GLM workers via worktree-based environment isolation for 60-70% cost reduction on implementation tasks
-- **Model Policy** (`moai init --model-policy`): Apply high/medium/low/xhigh/max effort distribution across all agent definitions based on role-specific mappings and model capabilities
+- **Claude Mode** (`moai cc`): Full Claude model stack anchored on Opus 5 (1M-context) with a 5-level effort scale (`low` / `medium` / `high` / `xhigh` / `max`). Per-agent effort calibration is driven by the 33-cell profile matrix (11 retained agents x 3 model tiers) materialized by `internal/template/profile_matrix`
+- **GLM Mode** (`moai glm`): Route the session through Z.AI's GLM-5.2 (1M-context, `DefaultGLMHigh = "glm-5.2"` without the `[1m]` suffix -- the `[1m]` is expanded at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested)
+- **Hybrid CG Mode** (`moai cg`): Claude leader with GLM teammates via tmux panes for 60-70% cost reduction on implementation-heavy tasks
+- **Model Profile Matrix** (`.moai/config/sections/llm.yaml`): 3-tier model profiles (`low` / `medium` / `high`) composing the 33-cell agent-by-tier matrix rendered into template deployment
 
-### 12. Agent Teams Integration (Experimental)
+### 12. Goal Engine (Autonomous Continuation)
 
-Support for Claude Code's experimental Agent Teams API for parallel phase execution.
+Condition-declared agentic loop that keeps the session working across turns until a stated end-state holds.
 
-- **Team Orchestration**: Spawn and manage multiple specialized teammates (researcher, analyst, architect, backend-dev, frontend-dev, tester, quality)
-- **Worktree Isolation**: Implementation agents run in isolated git worktrees to prevent file conflicts (`isolation: worktree`)
-- **Background Execution**: Non-blocking parallel execution for implementation teammates (`background: true`)
-- **Hook Integration**: WorktreeCreate/WorktreeRemove lifecycle hooks for worktree tracking
-- **Graceful Fallback**: Automatically falls back to sub-agent mode when Agent Teams prerequisites are not met
+- **`/moai goal "<condition>"`**: Arm a completion condition parsed into `Mechanical` (shell exit code) and `Model` (transcript claim) clauses; state lives at `.moai/state/goal/<session-id>.json`
+- **Stop-hook evaluator** (`moai hook stop-goal`): Blocks turn-end until the condition converges, the turn ceiling (default 30) hits, or stagnation guard fires -- then emits a 5-section Claim/Evidence/Baseline-attribution/Gaps/Residual-risk verdict
+- **Semi-autonomous checkpoints**: Optionally surfaces an `AskUserQuestion` round at each checkpoint instead of running fully unattended
 
 ---
 
@@ -207,17 +205,17 @@ Support for Claude Code's experimental Agent Teams API for parallel phase execut
 
 ### 13. Official Documentation Site
 
-공식 사용자 문서는 `https://adk.mo.ai.kr`에서 서비스되며, moai-adk-go 모노레포의 `docs-site/` 하위에서 관리된다.
+The official user documentation is served at `https://adk.mo.ai.kr` and maintained inside the `docs-site/` subtree of the moai-adk-go monorepo.
 
-**구성**:
-- 4개국어 지원 (한국어, English, 日本語, 简体中文)
-- 버전별 문서 관리 (최신은 unversioned, 과거는 `/v2.X/` 경로)
-- Hugo + Hextra 정적 사이트 생성기 (Go 단일 바이너리 빌드)
-- Vercel 배포 (Edge Function으로 Accept-Language 기반 locale detection)
+**Composition**:
+- 4 locales (Korean, English, Japanese, Simplified Chinese)
+- Versioned docs (latest is unversioned; prior minor/major releases are snapshotted under `/v2.X/` paths)
+- Hugo + Hextra static site generator (Go single-binary build, zero Node runtime dependency)
+- Vercel deployment with an Edge Function performing Accept-Language-based locale detection
 
-**책임**:
-- 기능 추가/변경 시 4개국어 문서 동시 업데이트 (CLAUDE.local.md §17.3)
-- Minor/Major 릴리스 시 이전 버전 스냅샷 자동 생성 (scripts/docs-version-snapshot)
+**Responsibilities**:
+- Any user-facing feature addition or change MUST update all 4 locales in the same PR (CLAUDE.local.md §17.3)
+- Minor / major releases snapshot the prior version via `scripts/docs-version-snapshot`
 
 ---
 
@@ -243,48 +241,63 @@ Support for Claude Code's experimental Agent Teams API for parallel phase execut
 
 ## Implementation Status
 
-All 14 SPEC documents have been fully implemented. The Go codebase contains 40,000+ lines of Go code across 20+ test packages with 85-100% test coverage. Module path: `github.com/modu-ai/moai-adk`.
+The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.4).
 
 ### Feature Completion
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| CLI Tool | Complete | All commands implemented (init, doctor, status, update, hook, rank, worktree) |
-| Configuration Management | Complete | Custom YAML loader with thread-safe access (no Viper dependency) |
-| LSP Integration | Complete | Custom LSP client implementation (no go.lsp.dev dependency) |
-| Git Operations | Complete | Pure Go git operations via exec (no go-git dependency) |
+| CLI Tool | Complete | ~40 root verbs / 152 non-test `.AddCommand()` calls across 109 non-test files in `internal/cli/` |
+| Configuration Management | Complete | 14 `loader_*.go` files composing 32 YAML files; env > yaml > defaults |
+| LSP Integration | Complete | 8 sub-packages under `internal/lsp/` powernap-based, 16-language auto-detection |
+| Git Operations | Complete | System Git via exec; BODP branch-origin decision; main-checkout branch-state guard |
 | Quality Gates (TRUST 5) | Complete | All five principles validated |
-| Statusline | Complete | Real-time project metrics rendering |
-| EARS Methodology | Complete | Requirement templates and validation |
-| Loop Controller (Ralph) | Complete | Autonomous feedback loop engine |
-| Performance Ranking | Complete | Session ranking and submission |
-| AST-Grep Integration | Complete | Structural code analysis |
-| Hook System | Complete | Compiled binary subcommands replacing 46 Python scripts |
-| Manifest System | Complete | File provenance tracking |
-| Merge Engine | Complete | 3-way merge for template updates |
+| Statusline | Complete | Real-time project metrics rendering (15 non-test files) |
+| GEARS / EARS Methodology | Complete | GEARS is the current notation; EARS retained as 6-month backward-compat legacy reference |
+| Loop Controller (Ralph) | Complete | Autonomous feedback loop engine (6 non-test files) |
+| AST-Grep Integration | Complete | Structural code analysis (5 non-test files) |
+| Goal Engine | Complete | `/moai goal` condition-declared agentic loop (11 files under `internal/goal/`) |
+| Hook System | Complete | 30 EventTypes + 35 `handle-*.sh` wrappers; compiled binary subcommands |
+| Manifest System | Complete | File provenance tracking via 3-way hash |
+| Merge Engine | Complete | 3-way merge for template updates (7 non-test files) |
 | Self-Update | Complete | Binary self-replacement with rollback |
+| Worktree-Entry Strategy | Complete | `moai cc/cg/glm -w <name>` EnterWorktree-first + main-checkout branch guard |
+| Multi-Session Registry | Complete | `internal/session/` (12 non-test files) with advisory flock / Windows mutex |
+| Web Console | Complete | `moai web` loopback HTTP on `127.0.0.1:3041` (Templ + HTMX) |
 
-### Runtime Dependencies
+### Runtime Dependencies (v3.0)
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `github.com/charmbracelet/bubbles` | v1.0.0 | TUI components (spinners, progress bars, text input) |
-| `github.com/charmbracelet/bubbletea` | v1.3.10 | Interactive TUI framework |
-| `github.com/charmbracelet/lipgloss` | v1.1.1+ | Terminal layout and styling |
-| `github.com/mattn/go-isatty` | v0.0.20 | TTY detection for headless mode |
 | `github.com/spf13/cobra` | v1.10.2 | CLI framework with subcommands |
-| `golang.org/x/text` | v0.34.0 | Text processing utilities |
-| `gopkg.in/yaml.v3` | v3.0.1 | YAML configuration parsing |
+| `charm.land/bubbletea/v2` | v2.0.8 | Interactive TUI framework (Elm architecture) |
+| `charm.land/bubbles/v2` | v2.1.1 | Reusable TUI components |
+| `charm.land/lipgloss/v2` | v2.0.5 | Terminal layout and styling |
+| `charm.land/huh/v2` | v2.0.3 | Form components (Select, MultiSelect, Input, Confirm) |
+| `charm.land/fang/v2` | v2.0.1 | Cobra wrapper for charm-branded CLI UX |
+| `github.com/charmbracelet/glamour` | v1.0.0 | Terminal markdown rendering |
+| `github.com/a-h/templ` | v0.3.1020 | Type-safe HTML templating for `internal/web` (Templ + HTMX) |
+| `mvdan.cc/sh/v3` | v3.13.1 | POSIX shell parser used by hook/sandbox script analysis |
+| `github.com/smacker/go-tree-sitter` | master | Tree-sitter AST bindings for code analysis |
+| `github.com/charmbracelet/x/powernap` | v0.1.6 | JSON-RPC 2.0 foundation for the multi-language LSP client |
+| `github.com/go-playground/validator/v10` | v10.30.3 | Struct validation for config types |
+| `gopkg.in/yaml.v3` | v3.0.1 | YAML marshaling/unmarshaling |
+| `golang.org/x/text` | v0.40.0 | Unicode / language-tag processing |
+| `golang.org/x/sync` | v0.22.0 | `errgroup` / `semaphore` for parallel quality gates |
+| `github.com/mattn/go-isatty` | v0.0.24 | TTY detection for headless mode |
+| `github.com/stretchr/testify` | v1.11.1 | Test assertions (replaces earlier stdlib-only stance) |
+| `go.uber.org/goleak` | v1.3.0 | Goroutine-leak detection in tests |
+
+> The Python predecessor's "no Viper / no go-git / no go.lsp.dev" decisions still hold. The "no testify" stance was reversed at v3.0 -- testify is now a direct dependency.
 
 ### Design Decisions Made During Implementation
 
 Several planned dependencies were replaced with simpler, purpose-built solutions:
 
 - **No go-git**: Git operations use `exec.Command("git", ...)` for reliability and full feature coverage
-- **No Viper**: Custom YAML loader in `internal/config/loader.go` provides simpler, type-safe configuration
-- **No testify**: Standard `testing` package used throughout, reducing external dependencies
-- **No go.lsp.dev packages**: Custom LSP protocol implementation in `internal/lsp/` for full control
-- **Go 1.26**: Final Go version used is significantly newer than the originally planned Go 1.22+; includes Green Tea GC for 10-40% GC overhead reduction
+- **No Viper**: Custom YAML loader with 14 `loader_*.go` files provides simpler, type-safe configuration
+- **No go.lsp.dev packages**: Multi-language LSP client built on `github.com/charmbracelet/x/powernap` in `internal/lsp/` (8 sub-packages)
+- **Go 1.26.4**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
 
 ---
 
