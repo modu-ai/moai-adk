@@ -136,7 +136,7 @@ func init() {
 	specStatusCmd := &cobra.Command{
 		Use:   "spec-status",
 		Short: "Auto-update SPEC status on git commit",
-		Long:  "Extract SPEC-IDs from git commit messages and update their status to 'implemented'. Called from handle-spec-status.sh.",
+		Long:  "Extract SPEC-IDs from PR titles / commit messages and update their status to 'implemented'. Manual invocation only (moai hook spec-status): no handle-spec-status.sh wrapper exists and there is no settings.json registration — Claude Code exposes no native hook event that delivers a PR title to stdin, so this subcommand has no auto-fire path.",
 		RunE:  runSpecStatus,
 	}
 	hookCmd.AddCommand(specStatusCmd)

@@ -10,8 +10,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
-// specStatusHandler processes PostToolUse events to auto-update SPEC status on git commits.
+// specStatusHandler parses PR-title / commit-message SPEC-IDs to auto-update SPEC status.
 // It implements REQ-3 of SPEC-STATUS-AUTO-001.
+//
+// Manual invocation only (moai hook spec-status): no handle-spec-status.sh wrapper exists
+// and the subcommand is NOT registered in settings.json. Claude Code exposes no native
+// hook event that delivers a PR title to stdin, so there is no auto-fire path. Kept as a
+// manual utility until a CI/PR-context trigger is wired.
 type specStatusHandler struct{}
 
 // NewSpecStatusHandler creates a new spec status hook handler.
