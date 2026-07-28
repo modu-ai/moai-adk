@@ -81,7 +81,7 @@ catalog:
             - name: moai-workflow-tdd
               tier: core
               path: templates/.claude/skills/moai-workflow-tdd/
-              hash: c1972207bcc65cc3b8739a98eceb929d223ee0492c3bb86141e691135f5256e6
+              hash: e3d74303d6d9916c3c633564d874488f4d879f9a14fe767d9ce8e21c7cdf78d9
               version: 1.0.0
             - name: moai-workflow-testing
               tier: core
@@ -112,7 +112,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 2ff233abfb8aa9620907ea93daecf4d4e145eeb92bedee862115ce6e8b2a3c44
+              hash: 3f90e6497c6559ef1883901ff1f28a738cc968772b9684c752c66ec5df06a7e5
               version: 1.0.0
             - name: manager-docs
               tier: core
