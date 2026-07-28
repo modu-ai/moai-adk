@@ -49,19 +49,29 @@ Lineage: supersedes SPEC-CI-FLAKY-STABILIZE-001 defect 2 (REQ-CFS-010/011/014/01
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Path-keyed in-process mutex fix implemented per plan.md OQ-1 RESOLVED (ADOPTED A). 
+- `internal/session/registry.go` — `defaultRegistry()` returns path-keyed `sync.Map[path]*sync.Mutex` per call (A-group design per OQ-1).
+- `TestRegisterSessionConcurrent` now green deterministically under `-race` (2s runtime, 102.01s → 2s fix verified).
+- `registry_lock_unix.go` / `registry_lock_windows.go` — in-process mutex serializes same-process goroutine NB-flock retry loop (REQ-CFS3-001 satisfied).
+- plan-auditor iter2 PASS 0.92 (Tier M threshold 0.80); D1–D5 audit defects cleared with file:line evidence.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Run-phase completed. All acceptance criteria satisfied (AC-CFS3-001..013). 
+- Cross-platform build parity verified (GOOS=windows build green).
+- Subagent boundary grep (C-HRA-008) clean: `grep -rn 'AskUserQuestion' internal/session | grep -v "_test.go" | grep -v "// "` returns 0 matches.
+- Coverage ≥85% threshold met for `internal/session`.
+- `TestWithLockTimeoutContract` green (ErrLockTimeout contract preserved per REQ-CFS3-004).
+- `TestLockRetryDelayBoundsAndJitter` green (jitter backoff preserved per REQ-CFS3-005).
+- 60s per-acquisition override evaluated — decision: MAINTAINED with comment clarification (operational margin, correctness guarantee from mutex).
 
 ---
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: e24067904
 
 ---
 

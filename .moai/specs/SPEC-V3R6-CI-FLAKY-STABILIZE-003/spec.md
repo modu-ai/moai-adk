@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CI-FLAKY-STABILIZE-003
 title: "CI Flaky Test Stabilization — session registry flock starvation structural fix (in-process mutex + cross-process flock double-locking)"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-07-29
 updated: 2026-07-29
 author: manager-spec
