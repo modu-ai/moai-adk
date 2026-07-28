@@ -14,7 +14,7 @@ graph TD
     cmd["cmd/moai<br/>main()"]
     
     subgraph P["Presentation Layer"]
-        cli["internal/cli<br/>(241파일)<br/>50+ subcommand"]
+        cli["internal/cli<br/>(109 non-test)<br/>~40 verbs"]
         tui["internal/tui"]
         statusline["internal/statusline"]
         web["internal/web"]
@@ -95,6 +95,21 @@ graph TD
 - `config` → models, defs (핵심 주입)
 - `hook` → config, lsp, session, mx
 - `coreGit` → foundation
+
+---
+
+## 신규 인프라 패키지 (2026-07 기준)
+
+| 패키지 | 역할 |
+|---|---|
+| `internal/goal` | 목표 엔진 — 조건 선언형 에이전틱 루프 (`/moai goal`) |
+| `internal/lockfile` | 크로스 플랫폼 잠금 (Unix `flock(2)` / Windows in-process mutex) |
+| `internal/atomicfile` | 원자적 파일 쓰기 (write-temp + rename) |
+| `internal/tokenusage` | 토큰 사용량 계수 (statusline 연동) |
+| `internal/verify` | 검증 서브시스템 |
+| `internal/settings` | settings.json / settings.local.json 헬퍼 |
+
+> 이 패키지들은 `merge`/`manifest`/`session` 등 기존 인프라와 협력합니다. `goal`은 self-contained (의존성 없음), `lockfile`은 `session`이, `atomicfile`은 `merge`/`manifest`가 사용합니다.
 
 ---
 

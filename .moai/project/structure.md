@@ -56,214 +56,80 @@ MoAI-ADK follows a **Modular Monolithic** architecture with clear Domain-Driven 
 ```
 moai-adk-go/
 ├── docs-site/                        # Official documentation site (Hugo + Hextra)
-│   ├── content/                      # 4개 locale 콘텐츠 (ko 63, en/ja/zh 각 52 페이지)
-│   │   ├── ko/
-│   │   ├── en/
-│   │   ├── ja/
-│   │   └── zh/
-│   ├── layouts/                      # Hugo partial override
-│   │   ├── _default/baseof.html
-│   │   └── partials/
-│   │       ├── language-switch.html
-│   │       ├── seo-jsonld.html
-│   │       ├── version-banner.html
-│   │       └── custom/head-end.html
-│   ├── i18n/                         # 4개 locale 번역 문자열
-│   ├── config/_default/              # Hugo + Hextra 설정
-│   ├── api/                          # Vercel Edge Function
-│   │   └── i18n-detect.ts
-│   ├── static/                       # 정적 자산 (og.jpg, favicon 등)
+│   ├── content/                      # 4 locales (ko, en, ja, zh)
+│   ├── layouts/                      # Hugo partial overrides (language switch, SEO, version banner)
+│   ├── i18n/                         # 4-locale translation strings
+│   ├── config/_default/              # Hugo + Hextra configuration
+│   ├── api/                          # Vercel Edge Function (Accept-Language locale detection)
+│   ├── static/                       # Static assets (og.jpg, favicon, etc.)
 │   ├── go.mod                        # Hugo module system (Hextra import)
-│   ├── hugo.yaml                     # Hugo 설정
-│   └── vercel.json                   # Vercel 빌드/배포 설정
+│   ├── hugo.toml                     # Hugo configuration
+│   └── vercel.json                   # Vercel build / deploy config
 ├── cmd/
 │   └── moai/
-│       └── main.go
-├── internal/
-│   ├── astgrep/                    # AST-Grep integration
-│   │   ├── analyzer.go
-│   │   ├── models.go
-│   │   └── rules.go
-│   ├── cli/                        # Cobra CLI commands
-│   │   ├── cc.go                   #   Claude Code integration commands
-│   │   ├── deps.go                 #   Dependency injection and wiring
-│   │   ├── doctor.go               #   Diagnostics (MCP scope duplicate detection v2.1.110+)
-│   │   ├── glm.go                  #   GLM (Go Language Model) commands
-│   │   ├── hook.go                 #   Hook dispatcher (moai hook <event>)
-│   │   ├── init.go
-│   │   ├── rank.go
-│   │   ├── root.go
-│   │   ├── status.go
-│   │   ├── statusline.go           #   Statusline rendering command
-│   │   ├── update.go
-│   │   ├── version.go              #   Version display command
-│   │   └── worktree/
-│   │       ├── clean.go
-│   │       ├── list.go
-│   │       ├── new.go
-│   │       ├── remove.go
-│   │       ├── root.go             #   Worktree root command registration
-│   │       ├── switch.go
-│   │       └── sync.go
-│   ├── config/                     # Configuration management (custom YAML loader)
-│   │   ├── defaults.go             #   Compiled default values
-│   │   ├── errors.go               #   Configuration error types
-│   │   ├── loader.go               #   Custom YAML section loader
-│   │   ├── manager.go              #   Central config with sync.RWMutex
-│   │   ├── types.go                #   Config struct definitions with defaults
-│   │   └── validation.go           #   Schema validation
-│   ├── defs/                       # Constant definitions (6 files)
-│   │   └── specid.go               #   SPEC ID parsing and validation
-│   ├── core/                       # Core business logic domains
-│   │   ├── git/                    #   Git domain (system Git via exec)
-│   │   │   ├── branch.go
-│   │   │   ├── conflict.go
-│   │   │   ├── doc.go
-│   │   │   ├── errors.go
-│   │   │   ├── event.go
-│   │   │   ├── manager.go
-│   │   │   ├── types.go
-│   │   │   └── worktree.go
-│   │   ├── project/
-│   │   │   ├── detector.go
-│   │   │   ├── errors.go
-│   │   │   ├── initializer.go
-│   │   │   ├── methodology_detector.go
-│   │   │   ├── phase.go
-│   │   │   └── validator.go
-│   │   └── quality/
-│   │       ├── trust.go
-│   │       └── validators.go
-│   ├── foundation/                 # Foundation methodologies
-│   │   ├── doc.go
-│   │   ├── ears.go                 #   EARS requirement patterns
-│   │   ├── errors.go
-│   │   ├── language.go             #   Language ecosystem definitions (16+ languages)
-│   │   ├── methodology.go          #   Development methodology patterns
-│   │   └── trust5.go               #   TRUST 5 principle definitions and checklists
-│   ├── github/                     # GitHub API integration (20 files)
-│   │   ├── gh.go                   #   GitHub CLI wrapper (gh command)
-│   │   ├── issue_closer.go         #   Automated GitHub issue closing
-│   │   ├── issue_parser.go         #   Issue content parsing
-│   │   ├── pr_merger.go            #   Pull request merge automation
-│   │   ├── pr_reviewer.go          #   PR review automation
-│   │   ├── spec_linker.go          #   Link SPECs to GitHub issues/PRs
-│   │   └── worktree_orchestrator.go#   Worktree-based PR workflows
-│   ├── hook/                       # Hook system (replaces 46 Python scripts)
-│   │   ├── auto_update.go          #   Auto-update hook handler
-│   │   ├── compact.go              #   Context preservation
-│   │   ├── contract.go             #   Hook execution contract
-│   │   ├── doc.go
-│   │   ├── errors.go
-│   │   ├── notification.go         #   Notification hook handler
-│   │   ├── permission_request.go   #   Permission request hook handler (updatedInput deny re-validation v2.1.110+)
-│   │   ├── post_tool.go            #   Linter, formatter, LSP diagnostics
-│   │   ├── post_tool_failure.go    #   Post-tool failure handler
-│   │   ├── pre_tool.go             #   Security guard, validation
-│   │   ├── protocol.go             #   Claude Code JSON stdin/stdout protocol
-│   │   ├── rank_session.go         #   Session ranking hook handler
-│   │   ├── registry.go             #   Hook registration & dispatch
-│   │   ├── session_end.go          #   Cleanup, rank submission
-│   │   ├── session_start.go        #   Project info, config validation, Windows CLAUDE_ENV_FILE injection (v2.1.111+)
-│   │   ├── stop.go                 #   Loop controller
-│   │   ├── subagent_start.go       #   Subagent start hook handler
-│   │   ├── task_completed.go       #   Task completed hook handler
-│   │   ├── teammate_idle.go        #   Teammate idle hook handler
-│   │   ├── types.go                #   Hook type definitions
-│   │   ├── user_prompt_submit.go   #   User prompt submit hook handler
-│   │   ├── worktree_create.go      #   Worktree create lifecycle hook
-│   │   └── worktree_remove.go      #   Worktree remove lifecycle hook
-│   ├── i18n/                       # Internationalization (3 files)
-│   │   └── templates.go            #   Translation templates for supported languages
-│   ├── loop/                       # Ralph feedback loop
-│   │   ├── controller.go
-│   │   ├── feedback.go
-│   │   ├── state.go
-│   │   └── storage.go
-│   ├── lsp/                        # Custom LSP client implementation
-│   │   ├── client.go
-│   │   ├── doc.go
-│   │   ├── models.go
-│   │   ├── protocol.go
-│   │   └── server.go
-│   ├── manifest/                   # File provenance tracking
-│   │   ├── hasher.go               #   SHA-256 file hashing
-│   │   ├── manifest.go             #   Manifest CRUD (.moai/manifest.json)
-│   │   └── types.go                #   FileProvenance enum
-│   ├── merge/                      # Smart merge engine
-│   │   ├── conflict.go             #   Conflict detection & reporting
-│   │   ├── differ.go               #   Diff generation
-│   │   ├── strategies.go           #   Per-filetype merge strategies
-│   │   ├── three_way.go            #   3-way merge algorithm
-│   │   └── types.go                #   Merge type definitions
-│   ├── ralph/
-│   │   └── engine.go               #   Decision engine for loop iterations
-│   ├── rank/                       # Performance ranking
-│   │   ├── auth.go
-│   │   ├── client.go
-│   │   └── config.go
-│   ├── resilience/                 # Retry and error recovery (11 files)
-│   │   ├── circuit.go              #   Circuit breaker pattern
-│   │   ├── health.go               #   Health check monitoring
-│   │   ├── monitor.go              #   Resilience metrics monitoring
-│   │   └── retry.go                #   Retry with exponential backoff
-│   ├── statusline/                 # Statusline rendering
-│   │   ├── builder.go
-│   │   ├── git.go
-│   │   ├── memory.go
-│   │   ├── metrics.go
-│   │   ├── renderer.go
-│   │   ├── types.go                #   Statusline type definitions
-│   │   └── update.go
-│   ├── shell/                      # Shell environment detection (9 files)
-│   │   ├── detect.go               #   Shell type detection (bash, zsh, fish)
-│   │   └── env.go                  #   Shell environment variable management
-│   ├── template/                   # Template deployment
-│   │   ├── deployer.go             #   go:embed extraction with manifest
-│   │   ├── deployer_mode.go        #   Model policy application to agent definitions
-│   │   ├── errors.go               #   Template error types
-│   │   ├── model_policy.go         #   Per-agent model assignment (5-level effort: low/medium/high/xhigh/max; Opus 4.7 support)
-│   │   ├── agent_effort_map.go     #   Effort level mapping for critical reasoning agents (SPEC-OPUS47-COMPAT-001)
-│   │   ├── renderer.go             #   Go text/template strict rendering
-│   │   ├── settings.go             #   Platform-aware settings.json generation (v2.1.110+ disableBypassPermissionsMode)
-│   │   ├── validator.go            #   Post-deployment validation
-│   │   └── templates/              #   go:embed source (bundled into binary)
-│   │       ├── .claude/            #       Agent definitions, skills, commands, rules
-│   │       ├── .moai/              #       Config section templates
-│   │       └── CLAUDE.md           #       CLAUDE.md template
-│   ├── tmux/                       # Tmux split-pane integration (6 files)
-│   │   └── session.go              #   Tmux session management for CG mode
-│   ├── ui/                         # Charmbracelet TUI
-│   │   ├── checkbox.go             #   Multi-select with search
-│   │   ├── headless.go             #   Non-interactive mode support
-│   │   ├── progress.go             #   Progress bars + spinners
-│   │   ├── prompt.go               #   Confirm/input prompts
-│   │   ├── runner.go               #   TUI program runner
-│   │   ├── selector.go             #   Fuzzy single-select
-│   │   ├── theme.go                #   MoAI color theme (lipgloss)
-│   │   ├── ui.go                   #   UI package entry point
-│   │   └── wizard.go               #   Init wizard (bubbletea Elm model)
-│   ├── workflow/                   # Workflow state management (6 files)
-│   │   └── state.go                #   Workflow phase and SPEC state tracking
-│   └── update/                     # Self-update system
-│       ├── checker.go              #   GitHub Releases API version check
-│       ├── orchestrator.go         #   Full update workflow coordinator
-│       ├── rollback.go             #   Atomic rollback on failure
-│       ├── types.go                #   Update type definitions
-│       └── updater.go              #   Binary self-replacement
+│       └── main.go                   # main() → cli.Execute() → cobra rootCmd
+├── internal/                         # 46 top-level packages (318 subpackages)
+│   ├── astgrep/                      # ast-grep CLI wrapper (5 non-test files, SARIF output)
+│   ├── atomicfile/                   # Atomic file writes (write-temp + rename)
+│   ├── bodp/                         # Branch Origin Decision Protocol (3-signal / 8-row matrix)
+│   ├── ciwatch/                      # CI check classification (gh pr checks consumer)
+│   ├── cli/                          # Cobra command tree, composition root (109 non-test files, 152 non-test AddCommand calls)
+│   ├── config/                       # Layered YAML config SSOT (35 non-test files, 14 loader_*.go, 32 YAML files)
+│   ├── constitution/                 # Frozen/Evolvable zone model, 5-stage merge safety (13 non-test files)
+│   ├── core/                         # Core domain packages
+│   │   ├── git/                      #   System Git via exec (Repository / BranchManager / WorktreeManager)
+│   │   ├── project/                  #   FindProjectRoot() ANCHOR (`.moai/` discovery)
+│   │   ├── quality/                  #   TRUST 5 gate enforcement, phase-aware thresholds
+│   │   ├── integration/              #   Integration test domain (legacy stub)
+│   │   └── migration/                #   Version migration domain (legacy stub)
+│   ├── defs/                         # Directory-layout constants (`.moai/`, `.claude/` structure)
+│   ├── evolution/                    # Reflective Write Phase (LearningEntry, 5-layer safety, 15 files)
+│   ├── foundation/                   # Language registry (16 langs), TRUST 5, errors
+│   ├── git/                          # Label → branch-prefix conventions
+│   ├── goal/                         # Goal engine — `/moai goal` condition-declared loop (4 non-test files)
+│   ├── harness/                      # Harness self-learning subsystem (75 non-test files, 4-tier Learner)
+│   ├── hook/                         # Compiled hook system + main-checkout branch-state guard (30 EventTypes, 35 handle-*.sh)
+│   ├── lockfile/                     # Cross-platform locking (Unix flock / Windows in-process mutex)
+│   ├── loop/                         # Ralph feedback loop (6 non-test files)
+│   ├── lsp/                          # Multi-language LSP client (8 sub-packages: aggregator, cache, config, core, gopls, hook, subprocess, transport)
+│   ├── manifest/                     # File provenance tracking (3-way hash)
+│   ├── measure/                      # Zero-dependency leaf parsers (go test JSON, coverage, LOC)
+│   ├── merge/                        # 3-way file merge engine (7 non-test files)
+│   ├── migration/                    # Version-based migration executor (Apply / Status / Rollback)
+│   ├── mx/                           # @MX tag scanner/resolver, FanInCounter (12 non-test files)
+│   ├── permission/                   # 8-tier permission stack (5 modes: default, acceptEdits, bypassPermissions, plan, bubble)
+│   ├── profile/                      # User profile management (3-tier profile matrix)
+│   ├── ralph/                        # Ralph decision engine
+│   ├── resilience/                   # Circuit breaker FSM (closed / open / half-open)
+│   ├── runtime/                      # Token circuit-breaker, budget tracking (soft 75% / hard 90%)
+│   ├── sandbox/                      # OS sandbox (seatbelt / bubblewrap / docker)
+│   ├── session/                      # Multi-session registry (25 files, active-sessions.json, Heartbeat/Purge)
+│   ├── settings/                     # settings.json / settings.local.json helpers (10 non-test files)
+│   ├── shell/                        # Shell detection and config changes
+│   ├── spec/                         # SPEC lifecycle engine (24 non-test / 59 incl. tests, Linter 13+3, ClassifyEra, Audit, DetectDrift)
+│   ├── statusline/                   # Claude Code statusline renderer, 3L/5L layouts (15 non-test files)
+│   ├── telemetry/                    # Async skill-usage metrics (JSONL)
+│   ├── template/                     # go:embed Template-First (`embed.go` directly uses `//go:embed all:templates`), profile_matrix 33-cell
+│   │   ├── embed.go                  #   //go:embed all:templates (NO separate embedded.go)
+│   │   ├── deployer.go               #   Atomic deploy with manifest tracking
+│   │   ├── renderer.go               #   Go text/template strict mode
+│   │   ├── profile_matrix.go         #   11 agents × 3 profiles = 33-cell effort matrix
+│   │   ├── settings.go               #   Platform-aware settings.json generation
+│   │   ├── validator.go              #   Post-deployment validation
+│   │   └── templates/                #   Embedded source (`.claude/`, `.moai/`, `CLAUDE.md`)
+│   ├── tokenusage/                   # Token usage counter (statusline integration)
+│   ├── tmux/                         # tmux detection, CG / GLM mode (4 non-test files)
+│   ├── tui/                          # Charm.land v2 TUI stack (Catppuccin, Box/Pill/Table/Status, 32 files)
+│   ├── update/                       # Self-update (Checker, Updater, Rollback, checksum gate)
+│   ├── verify/                       # Verification subsystem (orchestrator-side verification batches)
+│   ├── web/                          # Loopback HTTP console on 127.0.0.1:3041 (Templ + HTMX)
+│   ├── workflow/                     # Plan-Run-Sync worktree orchestration
+│   ├── worktree/                     # Worktree state guard (Capture / Diff / DivergenceLog)
+│   └── skills/                       # Test-only fixtures (LOC-ceiling / template-mirror-parity tests, NOT in runtime catalog)
 ├── pkg/
-│   ├── models/
-│   │   ├── config.go
-│   │   ├── doc.go                 #   Package documentation
-│   │   ├── lang.go                #   Language support (LangNameMap, GetLanguageName)
-│   │   └── project.go
-│   ├── utils/
-│   │   ├── logger.go
-│   │   └── path.go
-│   └── version/
-│       ├── doc.go                 #   Package documentation
-│       └── version.go
-├── go.mod
+│   ├── models/                       # Shared config types (Very High fan-in, 45+): ProjectType, DevelopmentMode, ProjectConfig
+│   └── version/                      # Build-time version / commit / date (ldflags)
+├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.4
 ├── go.sum
 ├── Makefile
 ├── CHANGELOG.md
@@ -277,7 +143,7 @@ moai-adk-go/
 - Local: `cd docs-site && hugo server`
 - Build: `hugo --minify --gc` → `docs-site/public/`
 - Deploy: Vercel (Framework=Hugo, Root Directory=docs-site)
-- Edge: `docs-site/api/i18n-detect.ts` (Accept-Language + cookie 검출)
+- Edge: `docs-site/api/i18n-detect.ts` (Accept-Language + cookie locale detection)
 
 ---
 
@@ -495,14 +361,16 @@ Defines all CLI commands using the Cobra library. Each file registers one comman
 | File | Purpose | Python Equivalent | Issues Addressed |
 |------|---------|-------------------|------------------|
 | `root.go` | Root command, global flags, version display | `cli/main.py` | -- |
-| `init.go` | Project initialization wizard (bubbletea) | `cli/commands/init_command.py` | #2, #9, #256, #310 |
+| `init.go` | Project initialization wizard (charm.land v2) | `cli/commands/init_command.py` | #2, #9, #256, #310 |
 | `doctor.go` | System diagnostics and health checks | `cli/commands/doctor_command.py` | -- |
-| `status.go` | Project status overview | `cli/spec_status.py` | -- |
 | `update.go` | Self-update with smart merge | `cli/commands/update_command.py` | #246, #187, #318 |
-| `hook.go` | Hook dispatcher (`moai hook <event>`) | -- (NEW) | All 28 hook issues |
-| `switch.go` | Branch switching with context | `cli/commands/switch_command.py` | -- |
-| `rank.go` | Performance ranking commands | `cli/commands/rank_command.py` | -- |
-| `worktree/` | Git worktree management subcommands | `cli/worktree/` | #270 |
+| `hook.go` | Hook dispatcher (`moai hook <event>`) | -- (NEW) | All hook-related Python-era issues |
+| `deps.go` | Composition root -- `InitDependencies()` wires every subsystem | -- (NEW) | -- |
+| `cc.go` / `glm.go` / `cg.go` | Multi-LLM launcher commands (Claude / GLM / Hybrid CG) | -- (NEW) | -- |
+| `web.go` | Loopback HTTP console (`127.0.0.1:3041`, Templ + HTMX) | -- (NEW) | -- |
+| `worktree/` | Git worktree management subcommands (new / list / remove / clean / sync) | `cli/worktree/` | #270 |
+
+> v3.0 dropped the `switch.go` and `rank.go` files that earlier drafts listed -- branch switching is handled inside `worktree/` and the ranking subsystem is retired (see `internal/rank/` note below).
 
 #### `internal/config/` -- Configuration Management (Custom YAML Loader + Typed Structs)
 
@@ -545,33 +413,24 @@ Contains the primary domain packages, each encapsulating a bounded context.
 | `trust.go` | TRUST 5 orchestrator and gate logic | `core/quality/trust_checker.py` |
 | `validators.go` | Individual principle validators | `core/quality/validators/` |
 
-**`internal/core/integration/`** -- Integration Testing Domain
+**`internal/core/integration/`** -- Integration Testing Domain (LEGACY STUB)
 
-| File | Purpose | Python Equivalent |
-|------|---------|-------------------|
-| `engine.go` | Integration test execution engine | `core/integration/engine.py` |
-| `models.go` | Test result models and reporting | `core/integration/models.py` |
+This directory is a `.gitkeep` placeholder only -- no Go source files. It exists as a tombstone for a planned domain that was superseded by `internal/verify/` (orchestrator-side verification batches). Do not add real code here without first consulting the codemaps.
 
-**`internal/core/migration/`** -- Version Migration Domain
+**`internal/core/migration/`** -- Version Migration Domain (LEGACY STUB)
 
-| File | Purpose | Python Equivalent |
-|------|---------|-------------------|
-| `migrator.go` | Version migration orchestrator | `core/migration/version_migrator.py` |
-| `backup.go` | Backup creation and restoration | `core/migration/backup_manager.py` |
+Also a `.gitkeep` placeholder. The actual version-migration executor lives in `internal/migration/` (top-level, not under `core/`) -- see Apply / Status / Rollback with idempotency guarantees.
 
 #### `internal/foundation/` -- Foundation Methodologies
 
-| File | Purpose | Python Equivalent |
-|------|---------|-------------------|
-| `ears.go` | EARS requirement pattern templates | `foundation/ears.py` |
-| `langs.go` | Language ecosystem definitions (16+ languages) | `foundation/langs.py` |
-| `backend.go` | Backend architecture patterns | `foundation/backend.py` |
-| `frontend.go` | Frontend architecture patterns | `foundation/frontend.py` |
-| `database.go` | Database patterns and strategies | `foundation/database.py` |
-| `testing.go` | Testing strategy definitions | `foundation/testing.py` |
-| `devops.go` | DevOps and CI/CD patterns | `foundation/devops.py` |
-| `trust/principles.go` | TRUST 5 principle definitions | `foundation/trust5.py` |
-| `trust/checklist.go` | Quality checklist generation | `foundation/trust5.py` |
+The v3.0 `internal/foundation/` package is much smaller than earlier drafts claimed. It currently holds only: `doc.go`, `errors.go`, `language.go` (the 16-language registry, Very High fan-in), `timeouts.go`, and a `trust/` subdirectory carrying TRUST 5 principle definitions and checklists. The per-domain pattern files once rumored here (`backend.go`, `frontend.go`, `database.go`, `testing.go`, `devops.go`, `ears.go`, `methodology.go`) do NOT exist in v3.0; those concerns live in skills and reference docs, not in this package.
+
+| File / Subdir | Purpose |
+|------|---------|
+| `language.go` | 16-language registry (`LanguageRegistry`, `SupportedLanguages`) |
+| `errors.go` | Foundation error types |
+| `timeouts.go` | Shared timeout defaults |
+| `trust/` | TRUST 5 principle definitions and checklists |
 
 #### `internal/lsp/` -- Language Server Protocol
 
@@ -599,14 +458,9 @@ Custom LSP client supporting 16+ language servers via JSON-RPC 2.0.
 |------|---------|-------------------|
 | `engine.go` | Decision engine for loop iterations | `ralph/engine.py` |
 
-#### `internal/rank/` -- Performance Ranking
+#### `internal/rank/` -- Performance Ranking (RETIRED at v3.0)
 
-| File | Purpose | Python Equivalent |
-|------|---------|-------------------|
-| `client.go` | Ranking API HTTP client | `rank/client.py` |
-| `auth.go` | API authentication and credentials | `rank/auth.py` |
-| `config.go` | Ranking configuration | `rank/config.py` |
-| `hook.go` | Git hook integration for metrics | `rank/hook.py` |
+The `internal/rank/` package existed in the Python predecessor and in earlier Go drafts but is NOT present in the v3.0 codebase. The 46-package `internal/` listing does not include it. Any ranking-API references remaining in hook handlers are historical scaffolding and should not be treated as a current feature.
 
 #### `internal/statusline/` -- Statusline Rendering
 
@@ -627,20 +481,11 @@ Custom LSP client supporting 16+ language servers via JSON-RPC 2.0.
 | `models.go` | AST match result models | `astgrep/models.py` |
 | `rules.go` | Custom rule definitions and loading | `astgrep/rules.py` |
 
-#### `internal/ui/` -- Terminal UI (Charmbracelet Ecosystem)
+#### `internal/tui/` -- Terminal UI (charm.land v2 Ecosystem)
 
-Modern TUI using Charmbracelet's Elm-architecture framework. Replaces Rich + InquirerPy.
+Modern TUI using the charm.land v2 stack (`bubbletea/v2`, `bubbles/v2`, `lipgloss/v2`, `huh/v2`, `fang/v2`). Box / Pill / Table / Status / ProgressLine components, Catppuccin color tokens. 32 files. Replaces the Python Rich + InquirerPy stack.
 
-**Resolves**: #268 (ESC freeze), #249 (encoding), #286 (Windows emoji)
-
-| File | Purpose | Python Equivalent |
-|------|---------|-------------------|
-| `wizard.go` | Init wizard (bubbletea Elm model) | `cli/prompts/init_prompts.py` |
-| `selector.go` | Fuzzy single-select with filtering | InquirerPy `fuzzy_select()` |
-| `checkbox.go` | Multi-select with search | InquirerPy `fuzzy_checkbox()` |
-| `progress.go` | Progress bars + spinners (bubbles) | Rich `Progress()` |
-| `theme.go` | MoAI color theme (lipgloss) | `cli/ui/theme.py` |
-| `prompt.go` | Confirm/input prompts (huh) | `cli/ui/prompts.py` |
+> The legacy path `internal/ui/` referenced in earlier drafts does NOT exist in v3.0; all UI code lives in `internal/tui/`.
 
 ### `pkg/` -- Public Packages
 
@@ -665,15 +510,9 @@ Version constants and build metadata injected at compile time via `-ldflags`. No
 | `project.go` | Project metadata, type enums, configuration models |
 | `spec.go` | SPEC document models, status enums |
 
-#### `pkg/utils/`
+#### `pkg/utils/` -- (RETIRED at v3.0)
 
-| File | Purpose |
-|------|---------|
-| `logger.go` | Structured logging via `log/slog` |
-| `file.go` | File system helpers (safe write, atomic operations) |
-| `path.go` | Path resolution, `.moai/` directory discovery |
-| `timeout.go` | Context-based timeout utilities |
-| `validator.go` | Input validation helpers |
+The `pkg/utils/` package existed in earlier Go drafts but is NOT present in the v3.0 codebase. The v3.0 `pkg/` tree contains only `pkg/models/` and `pkg/version/`. Logging lives in the standard library `log/slog`; path resolution lives in `internal/core/project/` (`FindProjectRoot()`); atomic file writes live in `internal/atomicfile/`; validation lives in `github.com/go-playground/validator/v10` consumed by `internal/config/`.
 
 ### `internal/template/templates/` -- Embedded Templates
 
@@ -730,7 +569,7 @@ internal/lsp/              internal/core/git/
     +---------------------------+
     |
     v
-internal/ui/               -- Render output (bubbletea/lipgloss)
+internal/tui/              -- Render output (charm.land v2: bubbletea/lipgloss/huh/fang)
     |
     v
 Terminal (stdout/stderr)
@@ -812,7 +651,7 @@ internal/update/updater.go     -- Atomic binary replacement
 internal/update/rollback.go    -- On failure: restore previous
     |
     v
-internal/ui/progress.go        -- Show summary (updated/merged/conflicted/skipped)
+internal/tui/                  -- Show summary (updated/merged/conflicted/skipped) via charm.land v2 components
 ```
 
 ### Quality Gate Flow
@@ -873,28 +712,30 @@ Converged? --> Yes: Complete
 | Language Servers | JSON-RPC 2.0 (stdio/TCP) | `internal/lsp/` | Code diagnostics |
 | Git | system Git via `exec.Command` | `internal/core/git/` | Version control |
 | ast-grep | CLI subprocess | `internal/astgrep/` | Structural code analysis |
-| Ranking API | HTTPS REST | `internal/rank/` | Performance metrics |
+| GitHub API | `gh` CLI subprocess | `internal/github/` | Issue/PR automation, spec linking |
 | GitHub Releases | HTTPS REST | `internal/update/` | Self-update |
-| File system | OS syscalls | `pkg/utils/` | Configuration, templates |
+| File system | OS syscalls | `internal/atomicfile/`, `internal/manifest/` | Atomic writes, provenance tracking |
 
 ### Internal Module Dependencies
 
 ```
-cli/ ────────→ config/, core/*, hook/, update/, ui/, github/, tmux/
-hook/ ───────→ config/, core/quality/, lsp/, loop/, resilience/
+cli/ ────────→ config/, core/*, hook/, update/, tui/, github/, tmux/, session/, spec/, loop/, harness/
+hook/ ───────→ config/, core/quality/, lsp/, loop/, resilience/, session/, goal/, mx/
 update/ ─────→ manifest/, merge/, template/
-template/ ───→ manifest/
+template/ ───→ manifest/, atomicfile/
 core/project/ → config/, core/git/, foundation/, defs/
 core/quality/ → lsp/, astgrep/, core/git/
 loop/ ────────→ ralph/, core/quality/, core/git/
-statusline/ ──→ core/git/, config/, pkg/version/
-rank/ ────────→ config/, core/git/
+statusline/ ──→ core/git/, config/, pkg/version/, tokenusage/
 github/ ─────→ shell/, resilience/, workflow/
 shell/ ──────→ (no internal deps)
 resilience/ ─→ (no internal deps)
-workflow/ ───→ config/, defs/
-i18n/ ───────→ (no internal deps)
+workflow/ ───→ config/, defs/, core/git/
+session/ ───→ lockfile/, config/, core/git/
+goal/ ───────→ (self-contained, no internal deps)
 ```
+
+> The phantom `rank/`, `i18n/`, and `ui/` dependencies listed in earlier drafts are NOT present in v3.0. `internal/rank/` was retired; internationalization strings live in the docs-site `i18n/` subtree (not in the Go binary); UI lives in `internal/tui/`.
 
 **Dependency Rule**: Dependencies flow downward and inward. `cli/` depends on everything; `pkg/` depends on nothing internal. Circular dependencies are prohibited.
 
@@ -912,7 +753,7 @@ i18n/ ───────→ (no internal deps)
 
 **Decision**: All domain logic under `internal/` with minimal `pkg/` surface.
 
-**Rationale**: Aggressive API minimization. Only `pkg/version/`, `pkg/models/`, and `pkg/utils/` are public. This allows refactoring internal implementations freely without semver concerns.
+**Rationale**: Aggressive API minimization. Only `pkg/version/` and `pkg/models/` are public (v3.0 dropped the earlier `pkg/utils/` draft). This allows refactoring internal implementations freely without semver concerns.
 
 ### ADR-003: Interface-Based Domain Boundaries
 

@@ -13,22 +13,22 @@
 진입점: `main()` → `cli.Execute()`  
 의존성: `internal/cli`
 
-### internal/cli (241파일)
+### internal/cli (109 non-test 파일)
 **역할**: Cobra 커맨드 트리, composition root  
 **팬-아웃**: ~48개 internal 패키지  
-**핵심**: `Execute()`, `InitDependencies()`, 50+ subcommand 라우팅
+**핵심**: `Execute()`, `InitDependencies()`, ~40 root verbs (152 non-test `.AddCommand()` 호출)
 
-### internal/tui (32파일)
+### internal/tui (19 non-test 파일)
 **역할**: Bubbletea TUI 요소, 28개 색상 토큰  
 **기본**: Box, Pill, Table, Status, ProgressLine  
 **의존성**: lipgloss
 
-### internal/statusline (32파일)
+### internal/statusline (15 non-test 파일)
 **역할**: Claude Code 상태 렌더러, 3/5L 레이아웃  
 **기능**: GitDataProvider, UpdateProvider, UsageProvider  
 **의존성**: internal/core/git, internal/config
 
-### internal/web (37파일)
+### internal/web (18 non-test 파일)
 **역할**: loopback HTTP 콘솔, Templ + HTMX  
 **기능**: host-header validation, graceful shutdown (5s 드레인)  
 **의존성**: internal/profile, internal/config
@@ -51,11 +51,11 @@
 **기능**: `LanguageRegistry`, 16개 언어 지원  
 **팬-인 (High)**: 32+개 패키지
 
-### internal/spec (41파일)
+### internal/spec (24 non-test 파일)
 **역할**: SPEC 라이프사이클 엔진  
 **핵심**: Linter (13+3 규칙), ClassifyEra(), Audit(), DetectDrift(), ClassifyPRTitle()
 
-### internal/constitution (23파일)
+### internal/constitution (13 non-test 파일)
 **역할**: 동결/진화 구역 모델, 5단계 병합 안전  
 **기능**: FrozenGuard, Canary, ContradictionDetector, RateLimiter, HumanOversight
 
@@ -63,7 +63,7 @@
 **역할**: Plan-Run-Sync 워크트리 오케스트레이션  
 **기능**: `WorktreeOrchestrator`, `PhaseExecutor`, 품질 게이트
 
-### internal/loop (18파일)
+### internal/loop (6 non-test 파일)
 **역할**: 진단 피드백 루프 컨트롤러  
 **핵심**: `LoopController`, `DecisionEngine`, `GoFeedbackGenerator`
 
@@ -71,7 +71,7 @@
 **역할**: Ralph 의사결정 엔진  
 **기능**: `Decide()` (max_iter > perfect_gate > stagnation > human_review)
 
-### internal/harness (64파일)
+### internal/harness (75 non-test 파일)
 **역할**: 하네스 학습 서브시스템  
 **기능**: Observer, Learner (4-tier), Applier, 5단계 safety
 
@@ -88,9 +88,7 @@
 **역할**: 3-way 파일 병합 (ADR-008)  
 **전략**: LineMerge, YAMLDeep, JSONMerge, SectionMerge, EvolvableZoneMerge, Overwrite
 
-### internal/design
-**역할**: 디자인 시스템 도구  
-**기능**: DTCG 토큰 검증, Path A/B1/B2 선택, BrandConflictAnalyzer
+> **`internal/design`** — v3.0 코드베이스에 독립 패키지로 존재하지 않음 (이전 문서 드리프트). design 관련 로직은 `internal/harness` 등에 분산.
 
 ### internal/bodp
 **역할**: Branch Origin Decision Protocol  
@@ -121,13 +119,13 @@
 **역할**: 토큰 circuit-breaker, 예산 추적  
 **기능**: soft 75% / hard 90%, stall 감지, progress.md auto-save
 
-### internal/template (75파일)
-**역할**: go:embed Template-First 시스템  
-**소스**: internal/template/templates/ (단일 진실 공급원)  
-**생성**: embedded.go (자동 생성, 편집 금지)  
-**기능**: Deployer (원자적), Renderer (strict mode), Manifest.Track()
+### internal/template
+**역할**: go:embed Template-First 시스템
+**소스**: internal/template/templates/ (단일 진실 공급원)
+**임베드**: `embed.go`가 직접 `//go:embed all:templates` 사용 (별도 `embedded.go` 자동 생성 없음)
+**기능**: Deployer (원자적), Renderer (strict mode), Manifest.Track(), profile_matrix (11 agents × 3 profiles = 33 cells)
 
-### internal/config (61파일)
+### internal/config (35 non-test 파일)
 **역할**: 계층화 YAML config SSOT  
 **우선순위**: env > yaml > defaults  
 **팬-인 (Very High)**: 48+개 패키지
@@ -144,23 +142,22 @@
 **역할**: 버전 기반 마이그레이션 실행기  
 **기능**: Apply, Status, Rollback, 멱등성
 
-### internal/migrate
-**역할**: 마이그레이션 중 hook 정리  
-**기능**: CleanupUserSettings, 아카이브 우선
+> **`internal/migrate`** — v3.0에 없음. 마이그레이션은 `internal/migration` (단수형) 사용.
 
 ### internal/update
 **역할**: self-update  
 **기능**: Checker, Updater, Rollback, 체크섬 gate, 원자적 replace
 
-### internal/i18n
-**역할**: 다국어 GitHub 코멘트  
-**언어**: en, ko, ja, zh
+### internal/goal
+**역할**: 목표 엔진 — 조건 선언형 에이전틱 루프 (`/moai goal`)
+**핵심**: `moai goal arm|status|clear`, Condition {Mechanical,Model}, Stop-hook 평가 계약
+**상태**: `.moai/state/goal/<session-id>.json` (세션별)
 
-### internal/hook (143파일)
-**역할**: 컴파일된 훅 시스템  
-**이벤트**: 28+ (SessionStart, PostToolUse, Stop, etc)  
-**기능**: Registry.Dispatch(), exit 0/2, 순차 + short-circuit  
-**서브**: trace, memo, quality, security, mx, handoff, lifecycle, dbsync
+### internal/hook
+**역할**: 컴파일된 훅 시스템 + main-checkout branch-state guard
+**이벤트**: 30개 EventType (SessionStart, PostToolUse, Stop, etc), 35개 `handle-*.sh` 래퍼
+**기능**: Registry.Dispatch(), Stop은 stdout JSON `decision:"block"` (exit 0), 순차 + short-circuit
+**서브**: trace, memo, quality, security, mx, handoff, lifecycle, dbsync, branch_guard
 
 ### internal/sandbox (19파일)
 **역할**: OS 샌드박스 (seatbelt, bubblewrap, docker)  
@@ -170,15 +167,15 @@
 **역할**: shell 감지 및 config 변경  
 **기능**: Configurator, AddEnvVar, AddPathEntry (멱등성)
 
-### internal/astgrep (14파일)
+### internal/astgrep (5 non-test 파일)
 **역할**: ast-grep CLI 래퍼  
 **기능**: Scanner.Scan(), Finding 타입, SARIF
 
-### internal/lsp (12 sub-packages)
+### internal/lsp (8 sub-packages: aggregator, cache, config, core, gopls, hook, subprocess, transport)
 **역할**: 다중언어 LSP 클라이언트  
 **sub**: core, aggregator, gopls, cache, config, hook, subprocess, transport
 
-### internal/mx (27파일)
+### internal/mx (12 non-test 파일)
 **역할**: @MX 태그 스캐너/리졸버  
 **기능**: Scanner, Resolver, FanInCounter, Sidecar JSON
 
@@ -198,15 +195,13 @@
 **역할**: gh CLI 통합  
 **기능**: GHClient 인터페이스, SpecLinker, SecretManager
 
-### internal/session (25파일)
+### internal/session (12 non-test 파일)
 **역할**: 다중 세션 조율 레지스트리  
 **기능**: Registry, FileSessionStore, PhaseState, advisory lock
 
-### internal/state
-**역할**: prompt-cache 사용량 원격측정  
-**기능**: CacheUsageEntry JSONL, windowed 집계
+> **`internal/state`** — v3.0에 독립 패키지 없음. 세션/상태 관리는 `internal/session` (registry, checkpoint, phase).
 
-### internal/tmux (12파일)
+### internal/tmux (4 non-test 파일)
 **역할**: tmux 감지, CG/GLM 모드  
 **기능**: IsCGMode(), SessionManager
 
@@ -218,9 +213,7 @@
 **역할**: 사용자 프로필 관리  
 **기능**: ProfilePreferences, GetCurrentName(), Sync
 
-### internal/research
-**역할**: 연구/계측 서브시스템  
-**sub**: eval, experiment, safety, observe, dashboard
+> **`internal/research`** — v3.0에 독립 패키지 없음 (이전 문서 드리프트).
 
 ### internal/measure
 **역할**: zero-dependency 리프 파서  
@@ -241,7 +234,7 @@
 ## 검증
 
 **순환 의존성**: 0개 (검증됨)  
-**패키지 수**: 45 internal 디렉터리 = 44 runtime 패키지 + 1 test-only + 2 pkg + 1 cmd = 48개 (runtime만 카탈로그에 포함)
+**패키지 수**: 46 internal 디렉터리 (318 subpackage) + 2 pkg (`models`, `version`) + 1 cmd = 49개 경로
 
 ---
 
