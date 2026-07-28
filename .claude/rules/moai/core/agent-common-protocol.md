@@ -430,10 +430,31 @@ commit in the push range. Lesson (parallel-session race during long agent runs) 
 
 Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
+> **Spawn-gate boundary**: this check fires only at the write-agent spawn boundary. Direct main-session edits (Edit/Write/Bash) bypass this gate; see § Pre-Edit Sync Check (Direct-Edit Race Mitigation) below for the direct-edit counterpart.
+
 Cross-reference: `.moai/docs/generic-patterns-guide.md` § Multi-Session
 Race Mitigation Procedure (defense-in-depth policy at user-facing
 layer); `.claude/rules/moai/workflow/session-handoff.md` § Worktree-Anchored
 Resume Pattern (L2/L3 worktree as race-elimination alternative).
+
+### Pre-Edit Sync Check (Direct-Edit Race Mitigation)
+
+[ZONE:Evolvable] [HARD] The Pre-Spawn Sync Check above binds only the spawn boundary. **Direct main-session edits to shared working-tree paths (Edit/Write/Bash in the orchestrator session — the MoAI-Easy hands-on style and any direct edit) bypass the spawn gate**, so a foreign active session goes undetected and a concurrent `git add -A && commit` can sweep the orchestrator's uncommitted work into another session's commit (observed in a production incident: staged files absorbed into a parallel session's auto-merged commit, landing on `main` entangled). To close that gap, the orchestrator MUST run the same parallel-session detection **before a non-trivial direct edit** to shared paths, not only before a write-agent spawn.
+
+**"Non-trivial direct edit" trigger** — an Edit/Write/Bash mutation touching shared paths another session could also mutate: `.claude/`, `.moai/`, `internal/`, `pkg/`, `cmd/`, or repo-root config. Exempt: edits under an already-isolated worktree, `/tmp`, or a session-private scratch dir.
+
+**Procedure** — before the first such edit of a task (and re-run if the task spans a long wall-clock window where a session may have started):
+```bash
+# 1. active foreign sessions (own session filtered out)
+moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'
+# 2. divergence vs origin/main
+git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
+```
+Interpretation reuses the Pre-Spawn Sync Check matrix: `0 N` / `0 0` → proceed; `N 0` / `N M` → STOP (origin ahead or diverged — parallel session race); ≥1 foreign active session → the orchestrator SHALL isolate to a worktree (`moai cc -w` / `EnterWorktree` / `Agent(isolation: "worktree")`) OR surface via `AskUserQuestion` (isolate / wait / abort) before editing the shared tree. The conservative predicate (ANY foreign entry ⇒ isolate) is reused from the auto-isolation procedure in `.claude/rules/moai/workflow/worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation.
+
+> **Stale-registry caveat**: the active-sessions registry can hold dead-PID entries (the session registry is not a reliable emptiness signal). A foreign entry's liveness MAY be probed with `kill -0 <pid>`; a confirmed-dead entry is ignored. When liveness is indeterminate, the conservative predicate isolates anyway (false positive is cheap; false negative corrupts the tree).
+
+This is **procedural enforcement** (same trust model as the Pre-Spawn Sync Check). A mechanical PreToolUse-on-Edit advisory hook is the companion nudge (evaluated separately); the procedure is the load-bearing rule.
 
 ## Tool Optimization Patterns
 
