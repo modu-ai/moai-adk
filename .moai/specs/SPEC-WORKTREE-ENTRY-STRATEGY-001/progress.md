@@ -6,7 +6,8 @@
 
 ## §A. Status
 
-- **Phase**: run (M1 committed; M3a next — Round 1 scope)
+- **Phase**: run (M1 + M3a committed in `2fdf77714`; M2 + M3 + M4 + M5 + M6
+  committed in the M2-M6 doc-alignment commit; verification green)
 - **Tier**: L (5-artifact set: spec.md + plan.md + acceptance.md + design.md
   + research.md)
 - **Era**: V3R6 (explicit frontmatter `era: V3R6` — no auto-detection)
@@ -102,24 +103,66 @@ contained uncommitted modifications to `.claude/rules/moai/workflow/
 NOT included in either Round 1 commit. They appear to be pre-staged for
 Round 2 (M2-M5 doc-surface edits). Round 2 picks them up.
 
+### Round 2 (M2 + M3 + M4 + M5 + M6 — this checkpoint)
+
+**Round 2 scope**: all remaining MUST ACs (AC-WES-001a/b, 002, 003, 005a/b,
+006, 007, 008 + SHOULD AC-009). Documentation-surface edits + init/update
+help text + CLAUDE.local.md §22.8 + progress.md §E.2/§E.3 evidence.
+
+**Files touched (9 total)**:
+- `.claude/rules/moai/workflow/worktree-integration.md` (+ template mirror)
+- `.claude/rules/moai/workflow/session-handoff.md` (+ template mirror)
+- `.claude/rules/moai/workflow/session-handoff-examples.md` (+ template mirror)
+- `CLAUDE.local.md` (§22.8 addendum — local-only, no mirror)
+- `internal/cli/init.go` (Long help — explicit opt-in note)
+- `internal/cli/update.go` (Long help — explicit opt-in note)
+- `.moai/specs/SPEC-WORKTREE-ENTRY-STRATEGY-001/progress.md` (this evidence)
+
+### AC Binary PASS/FAIL Matrix (Round 2 subset — all 15 MUST ACs now green)
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-WES-001a | **PASS** | `grep -n -B1 -A5 "EnterWorktree" worktree-integration.md \| grep -c "current session"` | `1` (≥1) |
+| AC-WES-001b | **PASS** | `grep -nE '^[^#].*\bcd .*\.(claude\|moai)/worktrees' session-handoff{,-examples}.md worktree-integration.md \| grep -v DEPRECATED` | 0 matches outside DEPRECATED callouts |
+| AC-WES-002 | **PASS** | `grep -c "moai cc -w\|EnterWorktree" session-handoff-examples.md` | `5` (≥2) |
+| AC-WES-003 | **PASS** | `grep -c "L1 ephemeral" worktree-integration.md` / `grep -c "NOT a re-entry mechanism"` | `2` / `2` (both ≥ thresholds) |
+| AC-WES-005a | **PASS** | `grep -nE "auto-<session-short>-<spec-id>\|parallel-session branch conflict\|auto-isolation" worktree-integration.md \| wc -l` | `5` (≥2) |
+| AC-WES-005b | **PASS** | `grep -nE "\.claude/worktrees/\|~/\.moai/worktrees/" worktree-integration.md \| grep -E "auto-<session\|auto-isolation" \| wc -l` | `1` (≥1) |
+| AC-WES-006 | **PASS** | `grep -c "moai cc -w" worktree-integration.md session-handoff-examples.md` | 3 + 5 = 8 (≥2) |
+| AC-WES-007 | **PASS** | `moai init --help 2>&1 \| grep -iE "worktree" \| grep -iE "auto\|enter\|switch" \| wc -l` | `0` (want 0); init+update Long now carry explicit opt-in note |
+| AC-WES-008 | **PASS** | 4-file EnterWorktree grep | session-handoff.md=2, worktree-integration.md=8, session-handoff-examples.md=3, CLAUDE.local.md=1 (§22.8) — each ≥1 |
+| AC-WES-009 (SHOULD) | **PASS** | spec.md §A cites 58 worktrees / 31 `agent-*` baseline | motivation present |
+
+### Sanitized-pair obligation (Round 2)
+
+`TestRuleTemplateMirrorDrift` PASS — all 3 rule-file mirrors byte-identical:
+- `diff worktree-integration.md` (local vs template): 0 diff-lines
+- `diff session-handoff.md` (local vs template): 0 diff-lines
+- `diff session-handoff-examples.md` (local vs template): 0 diff-lines
+
+SPEC-ID references that would violate §25 internal-content-isolation were
+avoided in BOTH copies (REQ-WES-* / AC-WES-* tokens live only in
+`.moai/specs/` artifacts, not in the mirrored rule docs).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-07-28T23:30:00Z   # Round 1 only; M2-M7 pending Round 2
-run_commit_sha: 5a86fe92a                # M3a (latest); M1=2fdf77714
-run_status: partial                      # Round 1 (M1+M3a) complete; Round 2 (M2-M7) pending
-ac_pass_count: 6                         # AC-WES-004a/b/c + AC-WES-010a/b/c
+run_complete_at: 2026-07-28T23:30:00Z   # Round 1
+run_commit_sha: 5a86fe92a                # M3a (Round 1 latest); M1=2fdf77714; Round 2 commit pending-backfill below
+run_status: complete                      # Round 1 (M1+M3a) + Round 2 (M2+M3+M4+M5+M6) all complete; 15/15 MUST ACs PASS
+ac_pass_count: 15                         # AC-WES-001a/b/002/003/004a/b/c/005a/b/006/007/008/010a/b/c (AC-009 SHOULD also PASS)
 ac_fail_count: 0
 preserve_list_post_run_count: 2          # normalizeWorktreeFlag byte-identical; cleanupMoaiWorktrees untouched
 l44_pre_commit_fetch: true               # origin/main fetched pre-flight; divergence 0 0 at M1 start
 l44_post_push_fetch: n/a                 # NOT pushed (Route B — manager-git handles push)
-new_warnings_or_lints_introduced: 0      # golangci-lint clean (0 issues) on ./internal/cli/ + ./internal/config/
+new_warnings_or_lints_introduced: 0      # golangci-lint 0 issues; pre-existing TestAllSkillsInCatalog FAIL (moai-ref-ui-polish untracked, NOT this SPEC)
 cross_platform_build:
   darwin_amd64_or_arm64: ok              # go build ./... exit 0
   windows_amd64: ok                      # GOOS=windows GOARCH=amd64 go build ./... exit 0
-total_run_phase_files: 8                 # 3 config + 5 cli (incl. new launcher_worktree_l2_test.go)
-m1_to_mN_commit_strategy: per-milestone  # 2 separate commits (M1 fix, M3a feat); no squash
-subagent_boundary_preserved: true        # zero AskUserQuestion refs in touched files (C-HRA-008)
+total_run_phase_files: 17                # Round 1: 8 (3 config + 5 cli); Round 2: 9 (3 rule docs x2 mirror + CLAUDE.local.md + init.go + update.go + progress.md)
+m1_to_mN_commit_strategy: per-round      # Round 1: 2 commits (M1 fix, M3a feat); Round 2: 1 commit (M2+M3+M4+M5+M6 bundled doc-alignment)
+subagent_boundary_preserved: true        # zero AskUserQuestion calls in touched cli non-test files (C-HRA-008)
+mirror_parity_preserved: true            # TestRuleTemplateMirrorDrift PASS; all 3 rule docs byte-identical local vs template
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
