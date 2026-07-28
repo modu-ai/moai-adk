@@ -33,6 +33,11 @@
 ## E. Residual risk
 - Procedural enforcement is not mechanical; the ambient signal + failure-mode naming raise compliance but cannot guarantee it. The hook (if implemented in M4) is the only mechanical guarantee — documented as the trade-off.
 
-## F. Hook evaluation (REQ-PES-004) — to be filled at run-phase
-- Cost finding: (registry-read `active-sessions.json` ≈ <1ms; per-edit `git fetch` ≈ 100ms–1s, unacceptable per-edit → gated to turn-first or omitted).
-- Decision: [implement advisory-read-only / defer blocking hook] — recorded here at run-phase.
+## F. Hook evaluation (REQ-PES-004) — recorded at run-phase (commit 87938efa3)
+
+- **Decision: implement the advisory-read-only hook** (M4). A blocking PreToolUse-on-Edit hook is **deferred** to a follow-up SPEC.
+- **Cost finding (measured against the canonical in-process reader):**
+  - Registry read (`session.NewRegistry(path, nil).Query("")`) is an in-process `os.ReadFile` + `json.Unmarshal` of `.moai/state/active-sessions.json`, completing in **<1 ms** per edit. `Query` reaches `readAllUnlocked()` only and does NOT touch the registry `Clock`, so a `nil` clock is safe; no subprocess is spawned.
+  - A per-edit `git fetch` (~100 ms–1 s network round-trip) is **omitted** — unacceptable per-edit latency. The advisory relies on the registry's heartbeat-driven staleness (`session.DefaultStaleMinutes = 30`) instead of a live fetch; a dead-PID entry with a fresh heartbeat is counted as foreign (conservative over-count — the fail-open advisory tolerates it).
+  - Because the advisory never blocks (returns the empty allow), even the <1 ms read is paid for awareness only, never for gating.
+- **REQ-PES-005 (ambient signal) — already satisfied:** `internal/hook/session_start.go` Step 3 already calls `session.QueryActiveWork` → `session.FormatStderrReminder(input.SessionID, entries, now)`, emitting a `<system-reminder>` that lists foreign active sessions to stderr at session start. No additional code is needed for M5; this §F records that REQ-PES-005 is met by the existing SessionStart hook. The blocking hook remains the only deferred mechanical backstop (follow-up SPEC).

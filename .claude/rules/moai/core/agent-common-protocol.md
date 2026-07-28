@@ -456,6 +456,8 @@ Interpretation reuses the Pre-Spawn Sync Check matrix: `0 N` / `0 0` → proceed
 
 This is **procedural enforcement** (same trust model as the Pre-Spawn Sync Check). A mechanical PreToolUse-on-Edit advisory hook is the companion nudge (evaluated separately); the procedure is the load-bearing rule.
 
+**Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is therefore satisfied without additional code; the PreToolUse-on-Edit advisory above adds per-edit awareness on top of that session-start baseline.
+
 ## Tool Optimization Patterns
 
 [ZONE:Evolvable] [HARD] Agents MUST use single-command idioms over multi-step
