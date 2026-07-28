@@ -167,7 +167,12 @@ mirror_parity_preserved: true            # TestRuleTemplateMirrorDrift PASS; all
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-28
+sync_commit_sha: <pending-backfill>   # self-referential — backfilled in the next commit
+sync_status: audit-ready
+3_phase_close: true                    # in-progress → completed rides this sync commit
+```
 
 ## §F. Phase 4 Mode Selection
 
