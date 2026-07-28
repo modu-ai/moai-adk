@@ -232,4 +232,13 @@ pr_opened: false
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-07-29
+sync_commit_sha: f81d9e890   # PR #1214 mergeCommit — reachability verified (git rev-parse origin/main == f81d9e890)
+
+Frontmatter transitions `in-progress → implemented → completed` applied
+atomically across spec.md, plan.md, acceptance.md, progress.md on the single
+sync commit. `sync_commit_sha` above names the PR #1214 squash-merge that
+landed the M1 preview redesign + M2 dead-confirm removal + M3 huh theme
+unification on `origin/main`; it is verifiable as an ancestor of (in fact the
+tip of) origin/main, not a placeholder.

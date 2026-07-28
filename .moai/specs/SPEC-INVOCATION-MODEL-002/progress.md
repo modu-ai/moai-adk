@@ -85,4 +85,12 @@ worktree_isolation_note: "manager-develop ran in isolated L1 worktree; SPEC-002 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+sync_status: complete
+sync_complete_at: 2026-07-29
+sync_commit_sha: 4285803ee   # feat(SPEC-INVOCATION-MODEL-002): M1 Axis-A — reachability verified (1186 commits ancestry-path to origin/main)
+
+Frontmatter transitions `in-progress → implemented → completed` applied
+atomically across spec.md, plan.md, acceptance.md, progress.md on the single
+sync commit. `sync_commit_sha` above names the M1 Axis-A commit (review↔/code-review
+compose alignment + errata + template mirror) that the run phase landed on
+`origin/main`; reachability confirmed via `git rev-list --ancestry-path`.
