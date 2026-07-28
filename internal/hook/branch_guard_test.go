@@ -324,7 +324,12 @@ func TestBranchStatePatterns_StashListAccepted(t *testing.T) {
 // match for a command that otherwise matches. M6's TestBranchGuard_CheckBranchStateOrigin
 // swaps this var to prove a deny comes from checkBranchState.
 func TestBranchStatePatterns_Blankable(t *testing.T) {
-	t.Parallel()
+	// Non-parallel: this test mutates the package-global branchStatePatterns
+	// var (nil + cleanup restore). Running it parallel alongside the
+	// read-only TestBranchStatePatterns_* tests races under -race (DATA RACE
+	// at the cleanup write, observed on CI linux + darwin). The integration
+	// twin TestBranchGuard_CheckBranchStateOrigin mutates the same var but is
+	// already non-parallel — this test was the outlier.
 	orig := branchStatePatterns
 	t.Cleanup(func() { branchStatePatterns = orig })
 
