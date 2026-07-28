@@ -426,3 +426,50 @@ harness_level: thorough
 		t.Errorf("matched_rule: got %q, want %q", matchedRule, "spec_override")
 	}
 }
+
+// verbDocumentedInLong reports whether the given verb (a cobra Use first token)
+// appears as the first token of some line in the Long description. The
+// first-token check avoids substring false positives (e.g. "list" matching
+// "mute-list"): a verb is documented only when it heads its own line.
+func verbDocumentedInLong(long, verb string) bool {
+	for _, line := range strings.Split(long, "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) > 0 && fields[0] == verb {
+			return true
+		}
+	}
+	return false
+}
+
+// TestHarnessRouterHelp_EnumeratesAllVerbs verifies AC-HLR-012: the
+// newHarnessRouterCmd() Long description lists EVERY verb present in the
+// command table. The enumeration derives from the cobra tree (a round trip,
+// not a hand-authored static list) — adding a verb via AddCommand without
+// updating prose MUST still surface it, and removing a verb from the
+// description while it remains registered MUST fail this test.
+//
+// Falsification (acceptance.md §H.2): remove a verb from the Long description
+// while it remains AddCommand'd → the corresponding verbDocumentedInLong check
+// fails. Confirmed RED before the dynamic-Long change landed (6 verbs were
+// omitted: clusters, propose, install, execute, doctor, ledger).
+func TestHarnessRouterHelp_EnumeratesAllVerbs(t *testing.T) {
+	t.Parallel()
+
+	cmd := newHarnessRouterCmd()
+	if cmd.Long == "" {
+		t.Fatal("newHarnessRouterCmd() Long is empty — cannot enumerate verbs")
+	}
+
+	subs := cmd.Commands()
+	if len(subs) == 0 {
+		t.Fatal("newHarnessRouterCmd() has zero registered subcommands")
+	}
+
+	for _, sub := range subs {
+		verb := strings.SplitN(sub.Use, " ", 2)[0]
+		if !verbDocumentedInLong(cmd.Long, verb) {
+			t.Errorf("AC-HLR-012: verb %q is registered (AddCommand) but NOT documented in the harness --help Long description;\n"+
+				"the description must enumerate every shipped verb (round trip from the command table).", verb)
+		}
+	}
+}

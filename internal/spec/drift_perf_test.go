@@ -28,7 +28,7 @@ import (
 //     real (tiny) git repo carrying N SPEC dirs, and assert it completes under
 //     the configured budget. This is a real timed measurement of the actual
 //     algorithm — not a mocked claim — with a generous margin (the in-memory
-//     walk of N SPECs against a small history is milliseconds vs a 2s budget).
+//     walk of N SPECs against a small history is milliseconds vs a 4s budget).
 //
 // Guard-catches-regression proof: reintroducing a per-SPEC `deps.logAll` call
 // inside detectDrift's active-SPEC loop makes the PRIMARY assertion read

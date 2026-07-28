@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
 	harnesscli "github.com/modu-ai/moai-adk/internal/cli/harness"
 	"github.com/modu-ai/moai-adk/internal/harness"
+	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 )
 
 // harnessDefaultLogPath is the default path for usage-log.jsonl (relative to projectRoot).
@@ -37,8 +37,11 @@ const harnessDefaultLogPath = ".moai/harness/usage-log.jsonl"
 // harnessDefaultSnapshotBase is the default snapshot directory (relative to projectRoot).
 const harnessDefaultSnapshotBase = ".moai/harness/learning-history/snapshots"
 
-// harnessDefaultProposalDir is the pending proposals directory (relative to projectRoot).
-const harnessDefaultProposalDir = ".moai/harness/proposals"
+// harnessDefaultProposalDir is the pending proposals directory (relative to
+// projectRoot). It aliases the canonical proposalgen declaration rather than
+// repeating the path literal — the layout is owned by the code that writes it
+// (REQ-HLR-001).
+const harnessDefaultProposalDir = proposalgen.ProposalDirRel
 
 // harnessConfigPath is the path to harness.yaml (relative to projectRoot).
 const harnessConfigPath = ".moai/config/sections/harness.yaml"
@@ -160,7 +163,7 @@ func runHarnessStatus(cmd *cobra.Command, _ []string) error {
 	}
 
 	// calculate pending proposal count
-	proposalDir := filepath.Join(root, harnessDefaultProposalDir)
+	proposalDir := proposalgen.ProposalDir(root)
 	pendingCount := countProposals(proposalDir)
 
 	// output (errcheck: ignoring fmt.Fprintf return value is allowed by convention for CLI output)
@@ -182,19 +185,18 @@ func runHarnessStatus(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// countProposals return the count of .json files in proposalDir.
+// countProposals returns the number of pending drafts in proposalDir.
+//
+// Resolution goes through the shared proposalgen accessor so this consumer
+// cannot drift from the producer's on-disk layout (REQ-HLR-001). A read failure
+// reports zero, preserving the status verb's non-fatal contract — status is a
+// report, not a gate.
 func countProposals(dir string) int {
-	entries, err := os.ReadDir(dir)
+	ids, err := proposalgen.ListDraftIDs(dir)
 	if err != nil {
 		return 0
 	}
-	count := 0
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-			count++
-		}
-	}
-	return count
+	return len(ids)
 }
 
 // ─────────────────────────────────────────────
@@ -258,28 +260,21 @@ func runHarnessApply(cmd *cobra.Command, _ []string, execute bool, id string) er
 		return nil
 	}
 
-	proposalDir := filepath.Join(root, harnessDefaultProposalDir)
-	entries, err := os.ReadDir(proposalDir)
-	if err != nil || len(entries) == 0 {
+	// Draft discovery goes through the shared proposalgen accessor so this
+	// consumer stays aligned with the producer's nested layout (REQ-HLR-001).
+	proposalDir := proposalgen.ProposalDir(root)
+	ids, err := proposalgen.ListDraftIDs(proposalDir)
+	if err != nil || len(ids) == 0 {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No pending proposals.")
 		return nil
 	}
 
-	// select oldest proposal (by filename ordering)
-	var oldest os.DirEntry
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-			oldest = e
-			break
-		}
+	// ListDraftIDs sorts its result, so the first entry is the oldest draft
+	// under the producer's timestamp-prefixed ID scheme.
+	propPath, err := proposalgen.ProposalPath(proposalDir, ids[0])
+	if err != nil {
+		return fmt.Errorf("apply: %w", err)
 	}
-	if oldest == nil {
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No pending proposals.")
-		return nil
-	}
-
-	// Read proposal
-	propPath := filepath.Join(proposalDir, oldest.Name())
 	data, err := os.ReadFile(propPath)
 	if err != nil {
 		return fmt.Errorf("apply: failed to read proposal file: %w", err)

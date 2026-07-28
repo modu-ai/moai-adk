@@ -84,7 +84,14 @@ Use --json for machine-readable output.`,
 			for _, e := range entries {
 				domain := e.Domain
 				if domain == "" {
-					domain = "(manifest missing)"
+					// AC-HLR-013: a command-only thin harness (manifest absent)
+					// is an EXPECTED state, not a defect — doctor classifies the
+					// same state as SeverityInfo ("command-only thin harness ...
+					// Runner/agent axes not applicable"). list MUST use the same
+					// non-defect-suggesting framing so the two commands agree.
+					// (Pre-M6 this read "(manifest missing)", which contradicted
+					// doctor's INFO classification.)
+					domain = "(command-only thin harness)"
 				}
 				entry := e.EntryCommand
 				if entry == "" {

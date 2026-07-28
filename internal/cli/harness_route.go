@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -54,38 +56,23 @@ type harnessRouteJSONOutput struct {
 // After the V3R5 supersedence, TestHarnessRetirement was updated to permit
 // lifecycle verb registration.
 //
+// SPEC-HARNESS-LOOP-REPAIR-001 AC-HLR-012: the Long description is derived from
+// the registered subcommands (cmd.Commands()) AFTER every AddCommand call, so
+// the verb enumeration is a round trip from the command table — adding a verb
+// via AddCommand automatically documents it, and a verb removed from AddCommand
+// automatically disappears from --help. A hand-authored static list that drifts
+// from the AddCommand calls is a token-presence violation (acceptance.md §A
+// rule 2); the dynamic derivation is the load-bearing fix.
+//
 // @MX:ANCHOR: [AUTO] V3R5 harness command factory (route/validate + 8 lifecycle/proposal verbs)
-// @MX:REASON: fan_in >= 4: root.go registration, harness_route_test.go, harness_test.go, harness_mute_test.go, AC-HRA-009 verification
+// @MX:REASON: fan_in >= 4: root.go registration, harness_route_test.go, harness_test.go, harness_mute_test.go, AC-HRA-009 + AC-HLR-012 verification
 func newHarnessRouterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "harness",
 		Short: "Harness routing, validation, and learning subsystem management",
-		Long: `Harness commands for SPEC complexity routing and learning subsystem management.
-
-Routing verbs (SPEC-V3R2-HRN-001):
-  route     Route a SPEC to minimal/standard/thorough harness level
-  validate  Validate harness.yaml against schema and invariants
-
-Lifecycle verbs (SPEC-V3R5-HARNESS-AUTONOMY-001 §6, un-retired):
-  status    Show observation/tier/evolution summary
-  apply     Manually trigger 5-Layer pipeline for queued proposal
-  rollback  Revert applied evolution (snapshot restore)
-  disable   Set learning.enabled: false
-
-Proposal-management verbs (SPEC-V3R5-HARNESS-AUTONOMY-001 §6, new in M4):
-  mute       Mute a proposal category (workflow.yaml)
-  mute-list  Print current muted categories
-  unmute     Remove a category from the mute list
-  verify     Verify harness determinism (W4 placeholder)
-
-Harness-v4 lifecycle verbs (SPEC-V3R6-HARNESS-V4-001 M4):
-  list       List all v4 harnesses (name + domain + entry command)
-  edit       Show paths to edit a v4 harness manifest + specialists
-  remove     Atomically remove a v4 harness (command + workflow + specialists + skills + manifest)
-
-Note: SPEC-V3R5-HARNESS-AUTONOMY-001 supersedes the lifecycle CLI retirement
-that was previously declared by SPEC-V3R4-HARNESS-001. The unified Cobra tree
-satisfies AC-HRA-009 (6+ verb surface).`,
+		// Long is populated AFTER all AddCommand calls below via
+		// buildHarnessRouterLong(cmd), so it enumerates every registered verb
+		// by derivation (AC-HLR-012 round trip).
 	}
 
 	// --project-root flag (shared by all lifecycle/proposal subcommands)
@@ -131,6 +118,13 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// --execute` UX delegates to this same RunExecute (see newHarnessApplyCmd).
 	cmd.AddCommand(harnesscli.NewExecuteCmd())
 
+	// SPEC-HARNESS-LOOP-REPAIR-001 M2-1: `moai harness promote` routes a
+	// proposalgen discovery draft to its designed consumer — manager-spec SPEC
+	// authoring — by materialising a SPEC skeleton carrying the draft ID as
+	// provenance and moving the draft out of the pending queue. The factory lives
+	// in the same boundary-guarded package.
+	cmd.AddCommand(harnesscli.NewPromoteCmd())
+
 	// SPEC-V3R6-HARNESS-V4-001 M4: v4 harness lifecycle verbs (list/edit/remove).
 	// These enumerate / edit / atomically-remove harness-v4 entries under
 	// .claude/commands/harness/. They share the same boundary-guarded package
@@ -149,7 +143,70 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// observation subject from the usage-log observer (REQ-HEV-009).
 	cmd.AddCommand(newHarnessLedgerCmd())
 
+	// AC-HLR-012: derive the Long description from the registered subcommands so
+	// the verb enumeration is a round trip from the command table (no hand-
+	// authored list that can drift from the AddCommand calls).
+	cmd.Long = buildHarnessRouterLong(cmd)
+
 	return cmd
+}
+
+// buildHarnessRouterLong derives the harness parent command's Long description
+// from its registered subcommands (cmd.Commands()). Each registered verb appears
+// as `  <Use>  <Short>` on its own line, so adding/removing a verb via
+// AddCommand automatically updates `moai harness --help` — the enumeration
+// cannot drift from the command table (AC-HLR-012 round trip).
+//
+// The verbs are sorted by Use for deterministic output (independent of cobra's
+// EnableCommandSorting setting). Only the first whitespace-delimited token of
+// each Use is shown, so a Use like "edit <name>" renders as "edit".
+func buildHarnessRouterLong(cmd *cobra.Command) string {
+	subs := cmd.Commands()
+	// Defensive copy + sort by Use for deterministic output.
+	verbs := make([]*cobra.Command, len(subs))
+	copy(verbs, subs)
+	sort.Slice(verbs, func(i, j int) bool {
+		return useFirstToken(verbs[i].Use) < useFirstToken(verbs[j].Use)
+	})
+
+	// Compute the longest Use token for column alignment.
+	maxUse := 0
+	for _, sub := range verbs {
+		if w := len(useFirstToken(sub.Use)); w > maxUse {
+			maxUse = w
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("Harness commands for SPEC complexity routing and learning subsystem management.\n\n")
+	b.WriteString("Registered verbs (auto-derived from the command tree — adding or removing a\n")
+	b.WriteString("verb via AddCommand automatically updates this list; AC-HLR-012 round trip):\n")
+	for _, sub := range verbs {
+		use := useFirstToken(sub.Use)
+		// Pad the Use column so the Short descriptions align.
+		pad := maxUse - len(use)
+		b.WriteString("  ")
+		b.WriteString(use)
+		b.WriteString(strings.Repeat(" ", pad))
+		b.WriteString("  ")
+		b.WriteString(sub.Short)
+		b.WriteString("\n")
+	}
+	b.WriteString("\nNote: SPEC-V3R5-HARNESS-AUTONOMY-001 supersedes the lifecycle CLI retirement\n")
+	b.WriteString("previously declared by SPEC-V3R4-HARNESS-001.")
+	return b.String()
+}
+
+// useFirstToken returns the first whitespace-delimited token of a cobra Use
+// string (the verb name), dropping any argument placeholders (e.g. "edit <name>"
+// → "edit").
+func useFirstToken(use string) string {
+	for i, r := range use {
+		if r == ' ' || r == '\t' {
+			return use[:i]
+		}
+	}
+	return use
 }
 
 // newHarnessRouteCmd is the `moai harness route` subcommand factory.

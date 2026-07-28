@@ -24,9 +24,11 @@ import (
 
 // writeProposalFixture는 t.TempDir() 프로젝트 root에 pending proposal JSON 1건을
 // 작성하고 proposal ID를 반환한다. targetPath는 비-FROZEN 경로여야 L1을 통과한다.
+// The fixture uses the producer's nested layout (proposals/<id>/proposal.json)
+// per REQ-HLR-001 — the retired flat <id>.json form is unreachable.
 func writeProposalFixture(t *testing.T, root, id, targetPath, fieldKey, newValue string) {
 	t.Helper()
-	propDir := filepath.Join(root, ".moai", "harness", "proposals")
+	propDir := filepath.Join(root, ".moai", "harness", "proposals", id)
 	if err := os.MkdirAll(propDir, 0o755); err != nil {
 		t.Fatalf("mkdir proposals: %v", err)
 	}
@@ -41,7 +43,7 @@ func writeProposalFixture(t *testing.T, root, id, targetPath, fieldKey, newValue
 	if err != nil {
 		t.Fatalf("marshal proposal: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(propDir, id+".json"), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(propDir, "proposal.json"), data, 0o644); err != nil {
 		t.Fatalf("write proposal: %v", err)
 	}
 }
@@ -71,7 +73,7 @@ func TestExecute_LoadsProposalByID(t *testing.T) {
 	id := "SPEC-LOAD-TEST-001"
 	writeProposalFixture(t, root, id, "docs/sample.md", "description", "enriched note")
 
-	prop, err := loadProposalByID(filepath.Join(root, ".moai", "harness", "proposals", id+".json"))
+	prop, err := loadProposalByID(filepath.Join(root, ".moai", "harness", "proposals", id, "proposal.json"))
 	if err != nil {
 		t.Fatalf("loadProposalByID error: %v", err)
 	}
@@ -335,11 +337,11 @@ func TestExecute_MalformedProposalJSON_UserError(t *testing.T) {
 
 	root := t.TempDir()
 	id := "SPEC-MALFORMED-001"
-	propDir := filepath.Join(root, ".moai", "harness", "proposals")
+	propDir := filepath.Join(root, ".moai", "harness", "proposals", id)
 	if err := os.MkdirAll(propDir, 0o755); err != nil {
 		t.Fatalf("mkdir proposals: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(propDir, id+".json"), []byte("{ not valid json"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(propDir, "proposal.json"), []byte("{ not valid json"), 0o644); err != nil {
 		t.Fatalf("write malformed proposal: %v", err)
 	}
 
@@ -363,9 +365,9 @@ func TestExecute_ProposalPathIsDirectory_UserError(t *testing.T) {
 	root := t.TempDir()
 	id := "SPEC-ISDIR-001"
 	propDir := filepath.Join(root, ".moai", "harness", "proposals")
-	// proposal 파일 경로 위치에 디렉터리를 만든다 → os.ReadFile은 IsNotExist가 아닌
-	// "is a directory" 에러를 반환한다.
-	if err := os.MkdirAll(filepath.Join(propDir, id+".json"), 0o755); err != nil {
+	// proposal.json 위치에 디렉터리를 만든다 → os.ReadFile은 IsNotExist가 아닌
+	// "is a directory" 에러를 반환한다 (nested 레이아웃 기준 경로).
+	if err := os.MkdirAll(filepath.Join(propDir, id, "proposal.json"), 0o755); err != nil {
 		t.Fatalf("mkdir proposal-as-dir: %v", err)
 	}
 

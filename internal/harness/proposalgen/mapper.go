@@ -8,7 +8,14 @@
 //     <event_type>:<subject>:<context_hash>, where <event_type> is one of
 //     harness.PatternBearingEventTypes() (the EventType enum SSOT, excluding
 //     apply_outcome) and <subject>/<context_hash> MAY be empty. The regex is a
-//     FORMAT gate only — the actual filtering is done by tier + confidence.
+//     FORMAT gate only — the actual filtering is done by event-type exclusion +
+//     tier + confidence.
+//   - Event-type MUST NOT be agent_invocation (REQ-HLR-009 / AC-HLR-008, M4). A
+//     bare tool name carries no learnable decision and is not routable to a
+//     hook/rule/lesson, so agent_invocation promotions are excluded regardless
+//     of tier, confidence, or format. tool_failure / user_prompt /
+//     subagent_stop / session_stop / moai_subcommand / spec_reference /
+//     feedback / test_fail remain promotable.
 //   - Confidence MUST be >= ConfidenceThreshold (0.70)
 //   - ToTier MUST be one of {"rule", "auto_update"} (the two actionable Tier
 //     vocabulary values per Tier.String() SSOT; "observation"/"heuristic" are
@@ -71,6 +78,36 @@ var actionableTiers = map[string]struct{}{
 	harness.TierAutoUpdate.String(): {},
 }
 
+// excludedEventTypes names the pattern_key event-type prefixes whose promotions
+// MUST be excluded from candidates regardless of tier, confidence, or format —
+// the narrowing gate added by REQ-HLR-009 / AC-HLR-008 (M4). Derivation uses the
+// EventType enum SSOT (string(harness.EventTypeAgentInvocation) etc.), never a
+// hand-maintained parallel string.
+//
+// agent_invocation is excluded because its subject is a bare tool name that
+// carries no learnable decision (spec.md §A.5: 94.5% of observations are
+// bare-tool-name agent_invocation) and is not routable to a hook/rule/lesson.
+// The remaining pattern-bearing event types (tool_failure, user_prompt,
+// subagent_stop, session_stop, moai_subcommand, spec_reference, feedback,
+// test_fail) remain promotable subject to the existing format + tier +
+// confidence gates. This is independent of the actionableTiers observation-tier
+// exclusion: an agent_invocation promotion with to_tier=auto_update + high
+// confidence + valid format is rejected here even though it passes every other
+// gate.
+var excludedEventTypes = map[string]struct{}{
+	string(harness.EventTypeAgentInvocation): {},
+}
+
+// hasExcludedEventType reports whether the pattern_key's event-type prefix (the
+// segment before the first ':') is in excludedEventTypes. A malformed key with no
+// colon yields the whole string as the prefix, which is not in the set; such keys
+// are separately rejected by the format gate below.
+func hasExcludedEventType(patternKey string) bool {
+	prefix, _, _ := strings.Cut(patternKey, ":")
+	_, excluded := excludedEventTypes[prefix]
+	return excluded
+}
+
 // MapPromotions reduces a Promotion list to ProposalCandidate values per
 // REQ-PGN-004. The returned slice is deterministically ordered:
 //  1. By Confidence descending (high-confidence first), then
@@ -106,8 +143,16 @@ func MapPromotions(promotions []harness.Promotion) []ProposalCandidate {
 	return out
 }
 
-// isActionable applies the 3-clause filter defined by REQ-PGN-004.
+// isActionable applies the actionability filter. The clauses are checked in
+// narrowing order: event-type exclusion (REQ-HLR-009, the outermost narrowing),
+// then confidence (REQ-PGN-004), then tier (actionableTiers SSOT), then format
+// (actionablePatternRE). A promotion must pass every clause; the event-type
+// exclusion is independent of the tier gate — it rejects agent_invocation
+// promotions even when to_tier=auto_update and confidence is high.
 func isActionable(p harness.Promotion) bool {
+	if hasExcludedEventType(p.PatternKey) {
+		return false
+	}
 	if p.Confidence < ConfidenceThreshold {
 		return false
 	}
@@ -122,16 +167,20 @@ func isActionable(p harness.Promotion) bool {
 
 // buildDraftID computes the canonical draft identifier:
 //
-//	PROPOSAL-<YYYYMMDD>-<sha256(pattern_key)[:8]>
+//	PROPOSAL-<sha256(pattern_key)[:8]>
 //
-// The date segment uses the promotion's Ts (UTC) so identical inputs always
-// produce identical IDs — the scaffolder relies on this for idempotent
+// REQ-HLR-011 / AC-HLR-017 (M4): the date segment was dropped so that one
+// pattern_key yields exactly one draft ID across dates. Previously the ID was
+// PROPOSAL-<YYYYMMDD>-<sha256(pattern_key)[:8]>, taking the date from the
+// promotion's Ts; that meant the same pattern promoted on another day produced
+// a new ID and a duplicate draft directory (spec.md §A.6: 7 duplicate pairs).
+// The 7 existing duplicate pairs are grandfathered (forward-looking only).
+// The hash alone is the idempotent identity the scaffolder relies on for
 // overwrite-safe directory creation.
 func buildDraftID(p harness.Promotion) string {
-	date := p.Ts.UTC().Format("20060102")
 	sum := sha256.Sum256([]byte(p.PatternKey))
 	short := hex.EncodeToString(sum[:])[:8]
-	return "PROPOSAL-" + date + "-" + short
+	return "PROPOSAL-" + short
 }
 
 // SortCandidatesByConfidenceDesc reorders candidates in place by Confidence

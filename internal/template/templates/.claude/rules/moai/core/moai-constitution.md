@@ -142,15 +142,15 @@ Capture and reuse learnings from user corrections and agent failures across sess
 
 Rules:
 - When user corrects agent behavior, capture the pattern in auto-memory
-- Store lessons at auto-memory `lessons.md` (path: `~/.claude/projects/{project-hash}/memory/lessons.md`)
+- Store lessons as topic files in auto-memory — one fact per `feedback_*.md` file under `~/.claude/projects/{project-hash}/memory/`, indexed by `MEMORY.md`. This topic-file convention (`feedback_*.md` topic files + the `MEMORY.md` index) is the single designated lesson store; the legacy `lessons.md` is superseded (kept on disk marked `[SUPERSEDED]`, content not migrated)
 - Each lesson entry: category, incorrect pattern, correct approach, date added
 - Review relevant lessons before starting tasks in the same domain
 - Lesson categories: architecture, testing, naming, workflow, security, performance, hardcoding
-- Maximum 50 active lessons per project; archive older entries to `lessons-archive.md` in the same directory
+- Maximum 50 active topic files per project; archive older or superseded topic files into `memory/_archive/` (never delete — archive preserves the audit trail)
 - Lessons are additive: never overwrite a lesson, append corrections as updates
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
-- Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur. The orchestrator drains these stubs into auto-memory lesson entries as part of the Lessons Protocol, converting each stub's event_key + summary into a candidate lesson before human review. Drained stubs are marked (the drain-marking mechanism is an implementation detail)
+- Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur. **Drain actor: the MoAI orchestrator. Drain trigger: when the inbox backlog grows large enough to obscure recurring patterns (a cluster of same-`event_key` stubs), the orchestrator drains these stubs into topic-file lesson entries as part of the Lessons Protocol — converting each recurring `event_key` cluster into one candidate `feedback_*.md` topic file before human review, and discarding one-off noise (single-occurrence stubs with no recurring pattern). Drained stubs are marked (the drain-marking mechanism is an implementation detail).**
 
 Harness Edit Discipline (decision observability):
 - Harness surface tag: each lesson entry SHOULD carry a `surface:` tag naming the harness component it binds to (rule / agent / skill / hook / config / template / workflow) — enables clustering recurring failures by component
