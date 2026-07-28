@@ -795,13 +795,22 @@ func worktreeFlagValue(args []string) (string, bool) {
 }
 
 // isUnderWorktreePrefix reports whether path is contained within prefix.
-// Both path and prefix are symlink-resolved (matching cleanupMoaiWorktrees)
-// so that macOS /var/folders → /private/var/folders prefix matching works.
+// Both path and prefix are Clean'd, then symlink-resolved (matching
+// cleanupMoaiWorktrees) so that macOS /var/folders → /private/var/folders
+// prefix matching works. The comparison uses filepath.Rel, which is
+// separator-aware on every GOOS (handles Windows `\` natively); no
+// forward-slash string matching is performed.
 // The prefix itself is NOT considered "under" (a prefix path is not a valid
 // worktree path; only a child of the prefix is).
+//
+// @MX:NOTE: [AUTO] cross-platform path containment check (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a)
+// @MX:REASON: Windows compatibility — `~` expands via os.UserHomeDir() (USERPROFILE on Windows,
+// HOME on Unix); filepath.Rel handles `\` and `/` separators via stdlib, so no manual ToSlash needed.
 func isUnderWorktreePrefix(path, prefix string) bool {
-	resolvedPath := resolveSymlinks(path)
-	resolvedPrefix := resolveSymlinks(prefix)
+	cleanedPath := filepath.Clean(path)
+	cleanedPrefix := filepath.Clean(prefix)
+	resolvedPath := resolveSymlinks(cleanedPath)
+	resolvedPrefix := resolveSymlinks(cleanedPrefix)
 	rel, err := filepath.Rel(resolvedPrefix, resolvedPath)
 	if err != nil {
 		return false
