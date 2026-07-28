@@ -491,6 +491,14 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			}
 		}
 
+		// Pre-Edit Sync Check advisory (SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001 M4, REQ-PES-004).
+		// Read-only, fail-open: surfaces foreign active sessions on this checkout
+		// via stderr + .moai/logs/preedit-session-guard.log WITHOUT blocking the
+		// edit. The return is intentionally discarded (advisory only — never Deny).
+		// This is the mechanical companion to the procedural Pre-Edit Sync Check
+		// doctrine (agent-common-protocol.md § Pre-Edit Sync Check).
+		checkForeignSessionAdvisory(input, h.projectDir)
+
 		// AST-based security scanning for Write operations
 		if input.ToolName == "Write" && h.scanner != nil {
 			decision, reason := h.scanWriteContent(ctx, input.ToolInput)
