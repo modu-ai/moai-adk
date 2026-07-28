@@ -62,11 +62,65 @@ plan_auditor_iteration: 1
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Round 1 scope**: M1 (defaults.go mutation) + M3a (launcher.go L2 resolver)
+ONLY. M2-M7 (doc-rule surfaces + CLAUDE.local.md §22.8 + README/help) are
+**deferred to Round 2** per the orchestrator's semi-autonomous checkpoint plan.
+
+### Commit SHAs (Round 1)
+
+| Commit | Subject | Milestone |
+|--------|---------|-----------|
+| `2fdf77714` | `fix(SPEC-WORKTREE-ENTRY-STRATEGY-001): M1 web auto-toggles default OFF (AutoCleanup+AutoMerge true→false)` | M1 |
+| `5a86fe92a` | `feat(SPEC-WORKTREE-ENTRY-STRATEGY-001): M3a launcher L2 absolute-path resolver for -w flag` | M3a |
+
+Both commits are LOCAL on `main`; NOT pushed (Route B — manager-git handles
+push + PR in a later round). Divergence vs origin/main: `0 2` (local ahead by 2).
+
+### AC Binary PASS/FAIL Matrix (Round 1 subset)
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-WES-004a (AutoCleanup==false) | **PASS** | `go test ./internal/config/... -run TestNewDefaultWorkflowConfig -v` | `--- PASS: TestNewDefaultWorkflowConfigNestedDefaults (0.00s)` (assertion `Worktree.AutoCleanup: got false, want false` green) |
+| AC-WES-004b (AutoCreate==false, unchanged) | **PASS** | same | assertion `Worktree.AutoCreate: got false, want false` green |
+| AC-WES-004c (AutoMerge==false) | **PASS** | same | assertion `Worktree.AutoMerge: got false, want false` green |
+| AC-WES-010a (L2 abs path accepted) | **PASS** | `go test ./internal/cli/ -run TestLauncherWorktreeL2AbsPath -v` | 6 subtests PASS (-w / --worktree / = forms, with other flags, before `--`) |
+| AC-WES-010b (short-name normalization preserved) | **PASS** | `go test ./internal/cli/ -run 'TestNormalizeWorktreeFlag|TestLauncherWorktreeShortNamePreserved' -v` | existing TestNormalizeWorktreeFlag (11 subtests) + new ShortNamePreserved (4 subtests) all PASS; normalizeWorktreeFlag byte-identical |
+| AC-WES-010c (out-of-prefix abs path rejected) | **PASS** | `go test ./internal/cli/ -run TestLauncherWorktreeReject -v` | 4 subtests PASS; error names both accepted prefixes |
+
+### Deferred to Round 2 (NOT in this checkpoint)
+
+AC-WES-001a/b, AC-WES-002, AC-WES-003, AC-WES-005a/b, AC-WES-006 (doc side),
+AC-WES-007, AC-WES-008, AC-WES-009 — these are documentation-surface ACs
+requiring edits to `worktree-integration.md`, `session-handoff.md`,
+`session-handoff-examples.md`, `CLAUDE.local.md` §22.8, and README/help text.
+They are M2-M7 scope and will be addressed in Round 2.
+
+**Note on dirty doc-rule files**: at M3a commit time, the working tree
+contained uncommitted modifications to `.claude/rules/moai/workflow/
+{session-handoff.md, session-handoff-examples.md, worktree-integration.md}`
+(+48 / -8 lines across 3 files). These were NOT touched by Round 1 and are
+NOT included in either Round 1 commit. They appear to be pre-staged for
+Round 2 (M2-M5 doc-surface edits). Round 2 picks them up.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-28T23:30:00Z   # Round 1 only; M2-M7 pending Round 2
+run_commit_sha: 5a86fe92a                # M3a (latest); M1=2fdf77714
+run_status: partial                      # Round 1 (M1+M3a) complete; Round 2 (M2-M7) pending
+ac_pass_count: 6                         # AC-WES-004a/b/c + AC-WES-010a/b/c
+ac_fail_count: 0
+preserve_list_post_run_count: 2          # normalizeWorktreeFlag byte-identical; cleanupMoaiWorktrees untouched
+l44_pre_commit_fetch: true               # origin/main fetched pre-flight; divergence 0 0 at M1 start
+l44_post_push_fetch: n/a                 # NOT pushed (Route B — manager-git handles push)
+new_warnings_or_lints_introduced: 0      # golangci-lint clean (0 issues) on ./internal/cli/ + ./internal/config/
+cross_platform_build:
+  darwin_amd64_or_arm64: ok              # go build ./... exit 0
+  windows_amd64: ok                      # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 8                 # 3 config + 5 cli (incl. new launcher_worktree_l2_test.go)
+m1_to_mN_commit_strategy: per-milestone  # 2 separate commits (M1 fix, M3a feat); no squash
+subagent_boundary_preserved: true        # zero AskUserQuestion refs in touched files (C-HRA-008)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
