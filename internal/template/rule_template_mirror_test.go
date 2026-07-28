@@ -49,6 +49,13 @@ var workflowOptMirroredPaths = []string{
 	// internal SPEC-IDs stripped per CLAUDE.local.md §25). Enrolled here so future
 	// single-tree edits on this always-loaded canonical rule are caught at CI.
 	".claude/rules/moai/workflow/session-handoff.md",
+	// SPEC-WORKTREE-ENTRY-STRATEGY-001 — worktree-integration.md + session-handoff-examples.md
+	// mirror parity. Both trees byte-identical post-neutralization (EnterWorktree-first
+	// policy + auto-isolation procedure + Block 0 Form B ported to both; SPEC-IDs/REQ-WES
+	// tokens live only in .moai/specs/, not in these rule files). Enrolled so future
+	// single-tree edits on these canonical worktree/session-handoff rules are caught at CI.
+	".claude/rules/moai/workflow/worktree-integration.md",
+	".claude/rules/moai/workflow/session-handoff-examples.md",
 	// model-policy.md mirror parity. The GLM-mode reconciliation subsection
 	// (availableModels [1m] expansion) is added to BOTH trees byte-identically;
 	// pre-existing internal dates were stripped from both per CLAUDE.local.md §25 so
