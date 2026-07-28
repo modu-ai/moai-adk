@@ -623,31 +623,64 @@ func TestBuildSessionTitle_NoSPEC_TranscriptPolicy(t *testing.T) {
 	}
 }
 
-// TestBuildSessionTitle_SPECTakesPrecedence verifies that an active SPEC yields
-// the SPEC title even when the transcript already contains an ai-title record —
-// case 1 short-circuits before any transcript inspection.
-func TestBuildSessionTitle_SPECTakesPrecedence(t *testing.T) {
+// TestBuildSessionTitle_SPEC_RespectsExistingTitle verifies that an active SPEC
+// yields its title ONLY when the session has no title yet. Once any title is
+// already present — Claude Code's native ai-title, a user /rename, or a
+// custom-title this hook wrote on an earlier prompt — the SPEC title is NOT
+// re-emitted. Re-emitting on every UserPromptSubmit would re-set the title each
+// turn (so every session in a project shows the same title) and silently
+// clobber /rename (issue #1198).
+func TestBuildSessionTitle_SPEC_RespectsExistingTitle(t *testing.T) {
 	t.Parallel()
 
 	cwd := t.TempDir()
-	specDir := filepath.Join(cwd, ".moai", "specs", "SPEC-PREC-001")
+	specDir := filepath.Join(cwd, ".moai", "specs", "SPEC-NE-001")
 	if err := os.MkdirAll(specDir, 0o755); err != nil {
 		t.Fatalf("failed to create spec directory: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# 우선순위 검증 기능\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte("# 재출력 방지 기능\n"), 0o644); err != nil {
 		t.Fatalf("failed to create spec.md: %v", err)
 	}
 
-	path := writeTranscript(t,
-		`{"type":"user","message":{"role":"user","content":"로그인 구현"}}`,
-		`{"type":"ai-title","aiTitle":"로그인 기능 구현","sessionId":"s1"}`,
-	)
+	specTitle := "SPEC-NE-001: 재출력 방지 기능"
+	customRec := `{"type":"custom-title","customTitle":"이전 커스텀 타이틀","sessionId":"s1"}`
+	aiTitleRec := `{"type":"ai-title","aiTitle":"사용자가 정한 제목","sessionId":"s1"}`
 
-	h := newHookHandler("ko")
-	got := h.buildSessionTitle(context.Background(), cwd, path)
-	want := "SPEC-PREC-001: 우선순위 검증 기능"
-	if got != want {
-		t.Errorf("buildSessionTitle() = %q, want %q (SPEC must take precedence over transcript)", got, want)
+	tests := []struct {
+		name  string
+		lines []string // nil -> no transcript (first prompt of the session)
+		want  string
+	}{
+		{
+			name: "no title yet, SPEC active -> SPEC title (set once)",
+			want: specTitle,
+		},
+		{
+			name:  "SPEC active + custom-title -> empty (we already set it; do not re-emit)",
+			lines: []string{customRec},
+			want:  "",
+		},
+		{
+			name:  "SPEC active + ai-title -> empty (respect native / user-renamed title)",
+			lines: []string{aiTitleRec},
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var path string
+			if tt.lines != nil {
+				path = writeTranscript(t, tt.lines...)
+			}
+			h := newHookHandler("ko")
+			got := h.buildSessionTitle(context.Background(), cwd, path)
+			if got != tt.want {
+				t.Errorf("buildSessionTitle() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
