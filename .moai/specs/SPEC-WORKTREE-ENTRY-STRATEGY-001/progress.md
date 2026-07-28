@@ -169,7 +169,7 @@ mirror_parity_preserved: true            # TestRuleTemplateMirrorDrift PASS; all
 
 ```yaml
 sync_complete_at: 2026-07-28
-sync_commit_sha: <pending-backfill>   # self-referential — backfilled in the next commit
+sync_commit_sha: 14027ffec             # backfilled from sync commit (self-referential — could not be known at commit time)
 sync_status: audit-ready
 3_phase_close: true                    # in-progress → completed rides this sync commit
 ```
