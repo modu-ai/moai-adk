@@ -15,6 +15,9 @@ import (
 // The scanner matches these against filepath.Base(path) for directories
 // (scanner.go ScanDir), so these are plain names — no globbing across path
 // separators is needed or supported there.
+// maxScannerWarningsShown bounds the per-run scanner-warning list printed to stderr.
+const maxScannerWarningsShown = 20
+
 var defaultScanIgnore = []string{
 	".git",
 	"node_modules",
@@ -92,7 +95,9 @@ Examples:
 
 			if dryRun {
 				_, _ = fmt.Fprintf(out, "DRY RUN: %d tags would be written (index not saved)\n", len(tags))
-				printMxScanSummary(out, counts, rotRisk)
+				if !quiet {
+					printMxScanSummary(out, counts, rotRisk)
+				}
 				return nil
 			}
 
@@ -116,8 +121,8 @@ Examples:
 			if warns := s.GetWarnings(); len(warns) > 0 && !quiet {
 				_, _ = fmt.Fprintf(errs, "scanner warnings: %d\n", len(warns))
 				for i, w := range warns {
-					if i >= 20 {
-						_, _ = fmt.Fprintf(errs, "  ... and %d more\n", len(warns)-20)
+					if i >= maxScannerWarningsShown {
+						_, _ = fmt.Fprintf(errs, "  ... and %d more\n", len(warns)-maxScannerWarningsShown)
 						break
 					}
 					_, _ = fmt.Fprintf(errs, "  - %s\n", w)

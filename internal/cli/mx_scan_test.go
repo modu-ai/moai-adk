@@ -99,3 +99,81 @@ func TestNewMxScanCmd_DryRunDoesNotWrite(t *testing.T) {
 		t.Fatalf("expected DRY RUN marker, got: %q", out.String())
 	}
 }
+
+// TestNewMxScanCmd_QuietSuppressesSummary confirms --quiet omits the per-kind summary.
+func TestNewMxScanCmd_QuietSuppressesSummary(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "sample.go"),
+		[]byte("package main\n\n// @MX:NOTE: hi\nfunc main() {}\n"), 0644); err != nil {
+		t.Fatalf("write sample: %v", err)
+	}
+
+	orig := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return dir, nil }
+	t.Cleanup(func() { findProjectRootFn = orig })
+
+	cmd := newMxScanCmd()
+	if err := cmd.Flags().Set("quiet", "true"); err != nil {
+		t.Fatalf("set quiet: %v", err)
+	}
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute scan: %v", err)
+	}
+
+	if strings.Contains(out.String(), "by kind") {
+		t.Fatalf("--quiet must suppress the 'by kind' summary, got: %q", out.String())
+	}
+}
+
+// TestNewMxScanCmd_PathScansSubtree confirms --path scopes the scan to one subtree
+// and does not pick up tags outside it.
+func TestNewMxScanCmd_PathScansSubtree(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	if err := os.MkdirAll(sub, 0755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	// tag inside the scoped subtree — must appear in the index.
+	if err := os.WriteFile(filepath.Join(sub, "a.go"),
+		[]byte("package sub\n\n// @MX:NOTE: in-subtree\nfunc A() {}\n"), 0644); err != nil {
+		t.Fatalf("write a.go: %v", err)
+	}
+	// tag OUTSIDE the subtree — must NOT be scanned.
+	if err := os.WriteFile(filepath.Join(dir, "b.go"),
+		[]byte("package main\n\n// @MX:NOTE: outside\nfunc B() {}\n"), 0644); err != nil {
+		t.Fatalf("write b.go: %v", err)
+	}
+
+	orig := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return dir, nil }
+	t.Cleanup(func() { findProjectRootFn = orig })
+
+	cmd := newMxScanCmd()
+	if err := cmd.Flags().Set("path", sub); err != nil {
+		t.Fatalf("set path: %v", err)
+	}
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute scan: %v", err)
+	}
+
+	idx := filepath.Join(dir, ".moai", "state", "mx-index.json")
+	data, err := os.ReadFile(idx)
+	if err != nil {
+		t.Fatalf("index not written: %v", err)
+	}
+	body := string(data)
+	if !strings.Contains(body, "in-subtree") {
+		t.Fatalf("scoped tag missing from index")
+	}
+	if strings.Contains(body, "outside") {
+		t.Fatalf("--path scoped to sub, but outside tag leaked into index")
+	}
+}
