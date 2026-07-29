@@ -99,7 +99,10 @@ func TestConfigManagerLoadDefaults(t *testing.T) {
 	}
 }
 
-func TestConfigManagerLoadValidationError(t *testing.T) {
+// TestConfigManagerLoadEmptyUserNameAllowed asserts that an empty user.name does
+// NOT fail ConfigManager.Load. An unset name is the normal "not yet set" state
+// (wizard/init/update/profile/sync.go all allow it), so the load must succeed.
+func TestConfigManagerLoadEmptyUserNameAllowed(t *testing.T) {
 	t.Parallel()
 
 	root := setupManagerTestDir(t, []string{"user.yaml"})
@@ -113,8 +116,8 @@ func TestConfigManagerLoadValidationError(t *testing.T) {
 
 	m := NewConfigManager()
 	_, err := m.Load(root)
-	if err == nil {
-		t.Fatal("Load() expected validation error for empty user.name")
+	if err != nil {
+		t.Errorf("Load() expected NO error for empty user.name, got: %v", err)
 	}
 }
 

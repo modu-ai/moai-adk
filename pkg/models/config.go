@@ -30,7 +30,10 @@ func (m DevelopmentMode) IsValid() bool {
 
 // UserConfig represents the user configuration section.
 type UserConfig struct {
-	Name string `yaml:"name" validate:"required"`
+	// Name is intentionally optional: the wizard (wizard/types.go, "empty allowed"),
+	// init, update, and profile/sync.go all treat an unset name as the normal
+	// "not yet set" state that may be populated later. Validation must NOT reject it.
+	Name string `yaml:"name"`
 }
 
 // LanguageConfig represents the language configuration section.

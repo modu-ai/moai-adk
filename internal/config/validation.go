@@ -38,9 +38,6 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// or with existing custom checks are skipped inside runStructValidation.
 	errs = append(errs, runStructValidation(cfg, loadedSections)...)
 
-	// Check required fields for loaded sections
-	errs = append(errs, validateRequired(cfg, loadedSections)...)
-
 	// Check development mode
 	errs = append(errs, validateDevelopmentMode(cfg.Quality.DevelopmentMode)...)
 
@@ -101,21 +98,6 @@ func validateGLMBaseURL(baseURL string) []ValidationError {
 		return reject("URL has no host")
 	}
 	return nil
-}
-
-// validateRequired checks that required fields are populated for loaded sections.
-func validateRequired(cfg *Config, loadedSections map[string]bool) []ValidationError {
-	var errs []ValidationError
-
-	if loadedSections["user"] && cfg.User.Name == "" {
-		errs = append(errs, ValidationError{
-			Field:   "user.name",
-			Message: "required field is empty; set the user name in .moai/config/sections/user.yaml (example: name: YourName)",
-			Wrapped: ErrInvalidConfig,
-		})
-	}
-
-	return errs
 }
 
 // validateDevelopmentMode checks that the development mode is a valid value.
@@ -448,12 +430,6 @@ func runStructValidation(cfg *Config, loadedSections map[string]bool) []Validati
 		for _, fe := range ve {
 			ns := fe.Namespace()
 			tag := fe.Tag()
-
-			// User.Name required: skip here — handled by validateRequired which
-			// gates on loadedSections["user"].
-			if ns == "Config.User.Name" && tag == "required" {
-				continue
-			}
 
 			// DevelopmentMode oneof: skip here — handled by validateDevelopmentMode
 			// which wraps ErrInvalidDevelopmentMode expected by existing tests.
