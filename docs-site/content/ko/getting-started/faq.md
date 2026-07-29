@@ -52,20 +52,12 @@ MoAI statusline은 버전 정보와 업데이트 알림을 함께 표시합니�
 
 ## Q: statusline에 표시되는 세그먼트를 커스터마이징하려면?
 
-statusline은 4가지 디스플레이 프리셋과 커스텀 설정을 지원합니다:
-
-| 프리셋 | 설명 |
-|--------|------|
-| **Full** (기본값) | 모든 8개 세그먼트 표시 |
-| **Compact** | Model + Context + Git Status + Branch만 표시 |
-| **Minimal** | Model + Context만 표시 |
-| **Custom** | 개별 세그먼트 선택 |
+statusline은 개별 세그먼트 단위로 켜고 끌 수 있습니다. 각 세그먼트를 독립적으로 토글하여 원하는 정보만 표시하세요 — 별도의 디스플레이 프리셋 없이 세그먼트 자체가 유일한 구성 레버입니다(테마와 함께).
 
 `moai init` 또는 `moai update -c` 마법사에서 설정하거나, `.moai/config/sections/statusline.yaml`을 직접 편집합니다:
 
 ```yaml
 statusline:
-  preset: compact  # 또는 full, minimal, custom
   segments:
     model: true
     context: true
@@ -76,6 +68,8 @@ statusline:
     moai_version: false
     git_branch: true
 ```
+
+`segments:` 블록이 없으면 기본적으로 모든 세그먼트가 활성화됩니다.
 
 {{< callout type="info" >}}
 자세한 내용은 [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md)을 참조하세요.
