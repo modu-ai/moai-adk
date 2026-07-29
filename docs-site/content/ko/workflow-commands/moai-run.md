@@ -14,7 +14,7 @@ SPEC 문서를 바탕으로 코드를 구현하는 Run 단계 명령어입니다
 
 `/moai run`은 MoAI-ADK 워크플로우의 **Phase 2 (Run)** 명령어입니다. Phase 1에서 생성된 SPEC 문서를 읽고, **ANALYZE-PRESERVE-IMPROVE** 사이클을 통해 기존 기능을 망가뜨리지 않으면서 안전하게 코드를 구현합니다. 내부적으로 **manager-develop** 에이전트가 전체 과정을 관리합니다.
 
-구현 단계는 3-Phase 파이프라인에서 토큰이 가장 많이 드는 단계입니다. 그래서 v3 토크노믹스 설계가 이 단계에 집중적으로 들어가 있습니다. SPEC 요약본 (`spec-compact.md`) 자동 로드로 ~30% 토큰을 절약하고, SPEC 복잡도에 따라 검증 깊이를 조절하는 Harness Level Routing이 불필요한 감사 비용을 줄이며, 진행 상황이 파일로 저장되어 세션이 끊겨도 이어서 작업할 수 있습니다.
+구현 단계는 3-Phase 파이프라인에서 토큰이 가장 많이 드는 단계입니다. 그래서 v3의 비용 절감 설계가 이 단계에 집중적으로 들어가 있습니다. SPEC 요약본 (`spec-compact.md`) 자동 로드로 ~30% 토큰을 절약하고, SPEC 복잡도에 따라 검증 깊이를 조절하는 Harness Level Routing이 불필요한 감사 비용을 줄이며, 진행 상황이 파일로 저장되어 세션이 끊겨도 이어서 작업할 수 있습니다.
 
 {{< callout type="info" >}}
 **DDD를 집 리모델링으로 이해하기**
@@ -56,15 +56,15 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 | ------------------- | ----------------------- | ---------------------------------- |
 | `--resume SPEC-XXX` | 중단된 구현 작업 재개   | `/moai run --resume SPEC-AUTH-001` |
 | `--solo`            | 하위 에이전트 모드 강제 | `/moai run SPEC-AUTH-001 --solo`   |
-| `--mode <값>`       | 디스패치 축 지정        | `/moai run SPEC-AUTH-001 --mode loop` |
+| `--mode <값>`       | 디스패치 모드 지정        | `/moai run SPEC-AUTH-001 --mode loop` |
 
 **Resume 기능:**
 
 재실행 시 마지막 성공한 단계 체크포인트부터 이어서 작업합니다.
 
-**`--mode` 디스패치 축:**
+**`--mode` 디스패치 모드:**
 
-`--mode`는 `/moai run` 워크플로우 변형을 선택하는 별도의 축입니다 (Phase 4의 6-모드 실행 카탈로그와는 다른 축):
+`--mode`는 `/moai run` 워크플로우 변형을 선택하는 별도의 차원입니다 (Phase 4의 6-모드 실행 카탈로그와는 다른 차원):
 
 - `autopilot` (기본): Phase 4 규모 기반 선택 후 구현 실행
 - `loop`: Ralph 엔진 진단형 루프에 위임 (`loop.md` 참조)
@@ -188,7 +188,7 @@ flowchart TD
 
 ### Phase 4: Scale-Based Mode Selection (규모 기반 모드 선택)
 
-SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것도 토크노믹스입니다.
+SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것도 비용을 줄이는 원칙입니다.
 
 | 패턴 | 기준 | 실행 모드 |
 |------|------|-----------|
@@ -224,7 +224,7 @@ Plan Audit Gate의 skip 정책(plan-auditor 재실행 생략)은 점수 기반�
 
 ### Implementation Kickoff Approval
 
-Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **인간 게이트** (HUMAN GATE)입니다.
+Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **휴먼 게이트** (HUMAN GATE)입니다.
 
 - plan-auditor 판정 요약 + SPEC 산출물을 사용자에게 제시
 - `AskUserQuestion`으로 "run 진입 / 추가 검토 / 중단" 3가지 옵션 제시
@@ -289,7 +289,7 @@ thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준
 
 **sync-auditor** 하위 에이전트가 TRUST 5 검증을 수행합니다:
 
-| TRUST 5 기둥  | 검증 항목                          |
+| TRUST 5 요소  | 검증 항목                          |
 | ------------- | ---------------------------------- |
 | **Tested**    | 테스트 존재 및 통과, DDD 규율 유지 |
 | **Readable**  | 프로젝트 규칙 준수, 문서 포함      |
@@ -465,11 +465,11 @@ IMPROVE 단계:
 
 #### Phase 13: 품질 검증
 
-TRUST 5 기둥으로 품질을 검증합니다.
+TRUST 5 다섯 가지 요소로 품질을 검증합니다.
 
 ```bash
 Phase 13: 품질 검증
-- TRUST 5 기둥 모두 통과
+- TRUST 5 다섯 가지 요소 모두 통과
 - 테스트 커버리지: 89%
 - LSP 오류: 0개
 - 타입 오류: 0개

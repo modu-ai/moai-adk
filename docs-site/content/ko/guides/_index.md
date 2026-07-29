@@ -5,9 +5,9 @@ weight: 85
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 에이전틱 루프 엔지니어링
 {{< /callout >}}
-<!-- @value: tokenomics, self-learning -->
+<!-- @value: tokenomics, agent-loop -->
 
 MoAI-ADK 운영에 도움이 되는 가이드 문서를 모았습니다. 자율 CI/CD 가이드는
 루프가 품질을 지키는(에이전틱 루프 엔지니어링) 아이디어를 CI 환경으로 확장하고,
