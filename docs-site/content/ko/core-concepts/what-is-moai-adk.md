@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은 품질을 — 모델 선택·추론 깊이·컨텍스트 사용량을 시스템이 관리합니다. 11개의 전문 AI 에이전트와 29개의 스킬이 협력하고, 새 프로젝트에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
+MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은 품질을 — 모델 선택·추론 깊이·컨텍스트 사용량을 시스템이 관리합니다. 11개의 전문 AI 에이전트와 30개의 스킬이 협력하고, 새 프로젝트에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -71,7 +71,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 ### 핵심 수치 (v3.0 기준)
 
 - **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
-- **29개** 스킬 (template-managed)
+- **30개** 스킬 (template-managed)
 - **약 37개** CLI 명령 · **14종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
 - **3단계 하네스** (minimal / standard / thorough) — SPEC 복잡도에 따른 적응형 품질 게이트
@@ -313,7 +313,7 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 29개 스킬 (Progressive Disclosure)
+### 30개 스킬 (Progressive Disclosure)
 
 3레벨 Progressive Disclosure 시스템으로 토큰을 아껴 씁니다. 스킬 설명 (~100 토큰) 만 항시 목록에 노출되고, 본문 (~5K 토큰) 은 실제 호출 시에만 로드됩니다. 컨텍스트 다이어트의 한 축입니다.
 
@@ -613,7 +613,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
 │   ├── agents/moai/           # 10개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
-│   ├── skills/moai-*/         # 29개 스킬 모듈
+│   ├── skills/moai-*/         # 30개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준
 └── .moai/
