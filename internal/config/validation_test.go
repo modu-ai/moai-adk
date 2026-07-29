@@ -33,32 +33,20 @@ func TestValidateDefaultConfigNoLoadedSections(t *testing.T) {
 	}
 }
 
-func TestValidateRequiredUserNameWhenLoaded(t *testing.T) {
+// TestValidateUserNameEmptyAllowedWhenLoaded asserts the design contract that
+// an empty user.name is NOT an error, even when the user section is explicitly
+// loaded. The wizard (wizard/types.go "empty allowed"), init, update, and
+// profile/sync.go all treat an unset name as the normal "not yet set" state.
+func TestValidateUserNameEmptyAllowedWhenLoaded(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultConfig()
-	// User section loaded but name is empty
+	// User section loaded but name is empty — empty is allowed.
 	loaded := map[string]bool{"user": true}
 
 	err := Validate(cfg, loaded)
-	if err == nil {
-		t.Fatal("Validate() expected error for empty user.name when user section loaded")
-	}
-
-	var ve *ValidationErrors
-	if !errors.As(err, &ve) {
-		t.Fatalf("expected *ValidationErrors, got %T", err)
-	}
-
-	found := false
-	for _, e := range ve.Errors {
-		if e.Field == "user.name" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("expected validation error for field user.name")
+	if err != nil {
+		t.Errorf("Validate() expected NO error for empty user.name when user section loaded, got: %v", err)
 	}
 }
 
@@ -227,7 +215,6 @@ func TestValidateMultipleErrors(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultConfig()
-	cfg.User.Name = "" // required when loaded
 	cfg.Quality.DevelopmentMode = "invalid_mode"
 	cfg.Quality.TestCoverageTarget = -1
 	loaded := map[string]bool{"user": true}
@@ -242,9 +229,10 @@ func TestValidateMultipleErrors(t *testing.T) {
 		t.Fatalf("expected *ValidationErrors, got %T", err)
 	}
 
-	// Should have at least 3 errors: user.name, development_mode, test_coverage_target
-	if len(ve.Errors) < 3 {
-		t.Errorf("expected at least 3 validation errors, got %d: %v", len(ve.Errors), ve.Errors)
+	// Should have at least 2 errors: development_mode, test_coverage_target
+	// (user.name is no longer required — empty is allowed).
+	if len(ve.Errors) < 2 {
+		t.Errorf("expected at least 2 validation errors, got %d: %v", len(ve.Errors), ve.Errors)
 	}
 }
 
@@ -647,40 +635,6 @@ func TestDevelopmentModeStrings(t *testing.T) {
 		if !expected[s] {
 			t.Errorf("unexpected mode string: %q", s)
 		}
-	}
-}
-
-// TestValidate_RequiredFieldMissing exercises the validator/v10 required path
-// for User.Name when the user section is explicitly loaded.
-// AC-05 hardening: validator now produces type errors for required-field-missing cases.
-func TestValidate_RequiredFieldMissing(t *testing.T) {
-	t.Parallel()
-
-	cfg := NewDefaultConfig()
-	// User.Name is empty — the validate:"required" tag on UserConfig.Name
-	// triggers the validator/v10 path (skipped by runStructValidation and
-	// delegated to the existing validateRequired custom check).
-	loaded := map[string]bool{"user": true}
-
-	err := Validate(cfg, loaded)
-	if err == nil {
-		t.Fatal("Validate() expected error when User.Name is empty and user section is loaded")
-	}
-
-	var ve *ValidationErrors
-	if !errors.As(err, &ve) {
-		t.Fatalf("expected *ValidationErrors, got %T: %v", err, err)
-	}
-
-	found := false
-	for _, e := range ve.Errors {
-		if e.Field == "user.name" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("expected validation error for field user.name in: %v", ve.Errors)
 	}
 }
 
