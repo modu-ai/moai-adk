@@ -615,6 +615,81 @@ func TestPreToolHandler_AllowedExternalPaths(t *testing.T) {
 	}
 }
 
+// TestPreToolHandler_AdditionalDirectoriesFromSettings verifies the path guard
+// honors permissions.additionalDirectories from .claude/settings.json and
+// .claude/settings.local.json (issue #1162). Claude Code's /add-dir writes
+// there, yet without this the hook denies every Write/Edit into the added
+// directory as "outside project directory" while /add-dir says "already added".
+func TestPreToolHandler_AdditionalDirectoriesFromSettings(t *testing.T) {
+	t.Parallel()
+
+	for _, settingsFile := range []string{"settings.json", "settings.local.json"} {
+		t.Run(settingsFile, func(t *testing.T) {
+			t.Parallel()
+
+			tmpDir := t.TempDir()
+			projectDir := filepath.Join(tmpDir, "project-a")
+			externalDir := filepath.Join(tmpDir, "project-b")
+			for _, d := range []string{projectDir, externalDir, filepath.Join(projectDir, ".claude")} {
+				if err := os.MkdirAll(d, 0o755); err != nil {
+					t.Fatalf("mkdir %s: %v", d, err)
+				}
+			}
+
+			settings := struct {
+				Permissions struct {
+					AdditionalDirectories []string `json:"additionalDirectories"`
+				} `json:"permissions"`
+			}{}
+			settings.Permissions.AdditionalDirectories = []string{externalDir}
+			data, err := json.Marshal(settings)
+			if err != nil {
+				t.Fatalf("marshal settings: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(projectDir, ".claude", settingsFile), data, 0o644); err != nil {
+				t.Fatalf("write %s: %v", settingsFile, err)
+			}
+
+			// Policy carries NO built-in allowed paths — the only way externalDir
+			// can be allowed is via the settings file. Isolates the fix.
+			handler := &preToolHandler{
+				cfg:        &mockConfigProvider{cfg: newTestConfig()},
+				policy:     &SecurityPolicy{},
+				projectDir: projectDir,
+			}
+
+			toolInput, err := json.Marshal(map[string]string{
+				"file_path": filepath.Join(externalDir, "internal", "x.go"),
+			})
+			if err != nil {
+				t.Fatalf("marshal toolInput: %v", err)
+			}
+			input := &HookInput{
+				SessionID:     "sess-add-dir",
+				CWD:           projectDir,
+				HookEventName: "PreToolUse",
+				ToolName:      "Edit",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			got, handleErr := handler.Handle(context.Background(), input)
+			if handleErr != nil {
+				t.Fatalf("unexpected error: %v", handleErr)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("nil output")
+			}
+			if got.HookSpecificOutput.PermissionDecision != DecisionAllow {
+				t.Errorf("PermissionDecision = %q (%s), want %q — %s additionalDirectories must be honored (#1162)",
+					got.HookSpecificOutput.PermissionDecision,
+					got.HookSpecificOutput.PermissionDecisionReason,
+					DecisionAllow,
+					settingsFile)
+			}
+		})
+	}
+}
+
 func TestPreToolHandler_SensitiveContentDetection(t *testing.T) {
 	t.Parallel()
 
