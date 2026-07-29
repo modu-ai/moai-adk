@@ -70,6 +70,61 @@ func agentModelSelect(t *testing.T, body, agent string) string {
 	return body[open : open+close]
 }
 
+// agentDescSpan extracts the markup of one agent's agentfm-desc <span> — the
+// element carrying the data-i18n="agentdesc.<name>" key and the server-side
+// English baseline text — so baseline-attribute assertions cannot be satisfied
+// by an unrelated span elsewhere on the page.
+func agentDescSpan(t *testing.T, body, agent string) string {
+	t.Helper()
+	needle := `data-i18n="agentdesc.` + agent + `"`
+	open := strings.Index(body, needle)
+	if open < 0 {
+		t.Fatalf("no agentfm-desc span rendered for agent %q (does its .md frontmatter carry a description?)", agent)
+	}
+	// Walk back to the <span that opens this attribute.
+	spanStart := strings.LastIndex(body[:open], "<span")
+	if spanStart < 0 {
+		t.Fatalf("agentfm-desc data-i18n attribute for %q has no opening <span", agent)
+	}
+	end := strings.Index(body[open:], "</span>")
+	if end < 0 {
+		t.Fatalf("unterminated agentfm-desc span for agent %q", agent)
+	}
+	return body[spanStart : open+end+len("</span>")]
+}
+
+// TestD3AgentDescBaselineAttr verifies the agentfm-desc span emits a
+// data-i18n-baseline attribute carrying the server-side English description.
+// applyI18n (app.js) restores this baseline when the active locale's dictionary
+// lacks the agentdesc.<name> key — en has none by design (the .md frontmatter is
+// the SSOT) — so a KO→EN locale switch does not leave the previous locale's text
+// stuck on the row.
+func TestD3AgentDescBaselineAttr(t *testing.T) {
+	root := t.TempDir()
+	// seedAgentFMFile writes no description; the agentfm-desc span renders only
+	// when the frontmatter carries one, so seed the file directly here.
+	agentsDir := filepath.Join(root, ".claude", "agents", "moai")
+	if err := os.MkdirAll(agentsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	desc := "SPEC creation specialist — spec/plan/acceptance authoring (plan phase)."
+	fm := "---\nmodel: opus\neffort: high\ndescription: " + desc + "\n---\n# manager-spec\n"
+	if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(fm), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeLLMProfileYAML(t, root, "medium", nil)
+
+	body := renderAgentFMBody(t, root)
+	span := agentDescSpan(t, body, "manager-spec")
+
+	if !strings.Contains(span, `data-i18n="agentdesc.manager-spec"`) {
+		t.Errorf("agentfm-desc span missing data-i18n key:\n%s", span)
+	}
+	if !strings.Contains(span, `data-i18n-baseline=`) {
+		t.Errorf("agentfm-desc span missing data-i18n-baseline attribute — without it applyI18n cannot restore the English text on a KO→EN switch (the previous locale's text stays stuck):\n%s", span)
+	}
+}
+
 // TestD1HaikuOverrideSurvivesValidatedReload is the D1 acceptance bar: a haiku
 // per-agent override submitted through the console save path persists to
 // llm.yaml AND survives the VALIDATED config load (ConfigManager.Load runs

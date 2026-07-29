@@ -376,12 +376,14 @@ window.MOAI_I18N = {
     "fieldDesc.agentfm.effort.xhigh": "Extra-high effort (adaptive thinking).",
     "fieldDesc.agentfm.effort.max": "Maximum effort (override sentinel — no tier color).",
     // NOTE: the agentdesc.* per-agent description keys are deliberately ABSENT
-    // from `en`. English is rendered server-side from each agent's .md
-    // frontmatter `description:` field (the single source of truth), and
-    // applyI18n leaves a node untouched when the key is missing from the active
-    // locale. Adding en copies here would duplicate the .md text into a second
-    // surface that silently goes stale whenever an agent description is edited.
-    // The ko/ja/zh blocks below carry the translations.
+    // from `en`. English is the SERVER-SIDE BASELINE: the row carries the .md
+    // frontmatter `description:` text in a data-i18n-baseline attribute (the
+    // single source of truth), and applyI18n restores that baseline when the
+    // active locale's dictionary lacks the key — so a KO→EN switch returns to
+    // the .md text instead of leaving the previous locale's text stuck. Adding
+    // en copies here would duplicate the .md text into a second surface that
+    // silently goes stale whenever an agent description is edited. The
+    // ko/ja/zh blocks below carry the translations.
   },
 
   ko: {
