@@ -366,6 +366,7 @@ Every English text label inside the templates below — banner names, section he
 - Read `conversation_language` from `.moai/config/sections/language.yaml`
 - If `en`: render the §8 templates verbatim (the documentation skeleton IS the output)
 - If `ko` / `ja` / `zh` / any other ISO-639 code: translate every label listed above into that language naturally — use idiomatic phrasing that a native reader would expect, not literal word-by-word translation
+- Non-English output is native idiom, not English mapped word-for-word — no translation-style calques (figurative heading nouns like "축(axis)" / "기둥(pillar)"); explanations stay in clean native register, and heavy artifacts pass through `moai-domain-humanize`. SSOT + hazard list: `.claude/rules/moai/core/native-idiom-and-register.md`
 - Analogies (Phase 2) MUST be culturally appropriate to the learner's language (per §9), so the analogy CONTENT itself adapts, not just the surrounding labels
 
 **Anti-pattern catalogue (4-locale: en / ko / ja / zh — HARD violations observed in production):**

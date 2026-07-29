@@ -151,9 +151,9 @@ type SidecarUnavailableError struct {
 // Error implements the error interface.
 func (e *SidecarUnavailableError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("SidecarUnavailable: %v -- run '/moai mx --full' to rebuild the index", e.Cause)
+		return fmt.Sprintf("SidecarUnavailable: %v -- run 'moai mx scan' to build the index", e.Cause)
 	}
-	return "SidecarUnavailable: cannot read sidecar index -- run '/moai mx --full' to rebuild the index"
+	return "SidecarUnavailable: cannot read sidecar index -- run 'moai mx scan' to build the index"
 }
 
 // Unwrap returns the underlying error.

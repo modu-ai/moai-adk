@@ -135,7 +135,19 @@ m1_to_mN_commit_strategy: per-milestone commits — M1 2d55ee6f3 (merged), M2 c7
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-07-29
+sync_commit_sha: ea5572edb   # merge(SPEC-WORKFLOW-CACHE-OPT-001): M2-M6 from worktree branch — reachability verified (run_commit_sha 5b7691927 is an ancestor: 2 commits ancestry-path to ea5572edb)
+
+Frontmatter transitions `in-progress → implemented → completed` applied
+atomically across spec.md, plan.md, acceptance.md, progress.md on the single
+sync commit. `sync_commit_sha` above names the merge commit that brought the
+M2-M6 milestone work (snapshot contract + gate merging + delegation relaxation
++ audit defect-lists + bookkeeping batching) onto `origin/main`; it directly
+contains the prior `run_commit_sha` (5b7691927, M6 verification sweep) as an
+ancestor, preserving the run→sync lineage. A subsequent alignment commit
+(`f14effe16`, post-merge vocabulary residue cleanup) is intentionally NOT
+named here — it is a follow-up remediation, not the sync close.
 
 - plan_complete_at: 2026-07-13T05:38:51Z
 - plan_status: audit-ready

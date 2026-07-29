@@ -97,9 +97,10 @@ workflow:
 	if !wf.Worktree.AutoCreate {
 		t.Error("Worktree.AutoCreate: expected partial-yaml override to true")
 	}
-	// worktree.auto_merge was not present in the partial yaml → default true preserved.
-	if !wf.Worktree.AutoMerge {
-		t.Error("Worktree.AutoMerge: expected default true to be preserved")
+	// worktree.auto_merge was not present in the partial yaml → default preserved.
+	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: the construction-time default is now false.
+	if wf.Worktree.AutoMerge {
+		t.Error("Worktree.AutoMerge: expected default false to be preserved")
 	}
 }
 

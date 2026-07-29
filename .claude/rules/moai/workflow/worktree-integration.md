@@ -98,6 +98,14 @@ When NOT to use `isolation: worktree`:
 - Read-only teammates (read-only research/review roles: researcher / analyst / reviewer)
 - `permissionMode: plan` already prevents writes; adding isolation adds overhead without benefit
 
+#### L1 ephemeral vs L2 persistent — `isolation: worktree` is NOT a re-entry mechanism
+
+`Agent(isolation: "worktree")` creates a NEW **L1 ephemeral** worktree scoped to a single subagent invocation under `.claude/worktrees/<auto-name>/`. It is categorically distinct from an **L2 persistent** SPEC worktree created by `moai worktree new <SPEC-ID>` or L3 `--worktree` (which lives under `~/.moai/worktrees/<project>/...`). Conflating the two produces the worktree-masked flaky failure mode documented in `worktree-state-guard.md` — an L1 ephemeral worktree diverges from the L2 base and silently breaks parallel-session coordination.
+
+`Agent(isolation: "worktree")` is NOT a re-entry mechanism for existing L2 persistent worktrees. To re-enter an existing worktree:
+- **Current-session re-entry** (no `/clear`, same session continuing): use the Claude Code runtime tool `EnterWorktree(<path>)` — see `EnterWorktree` / `ExitWorktree` Tools below.
+- **New-session launch** (post-`/clear` or new terminal): use the launcher flag `moai cc -w <name-or-abs-path>` (see the `-w` L2 absolute-path extension below).
+
 ### `background: true` in Agent Frontmatter
 
 Run agent without blocking the main conversation (v2.1.46+):
@@ -147,7 +155,16 @@ Applies to `--worktree`, subagent `isolation: worktree` worktrees, and desktop p
 
 ### `EnterWorktree` / `ExitWorktree` Tools
 
+`EnterWorktree(<path>)` is the canonical mechanism for entering an existing worktree in the current session. The orchestrator's emitted guidance (paste-ready resume messages, Block 0 of the Worktree-Anchored Resume Pattern, in-session instructions) SHALL use `EnterWorktree(<path>)` for current-session worktree re-entry, replacing the shell-`cd`, `git -C <path>`, and subshell-`cd` patterns. A bare `cd` instruction SHALL NOT appear in orchestrator-emitted current-session-entry guidance; it remains valid only for human-typed, manual-shell contexts.
+
 Claude can move the session into a worktree mid-session via the `EnterWorktree` tool (e.g. when the user says "work in a worktree"), creating one under `.claude/worktrees/`. Once inside, Claude can switch directly to another worktree by calling `EnterWorktree` with a target path; the previous worktree stays on disk untouched. `ExitWorktree` returns to the originating checkout. These are Claude Code runtime tools — MoAI does not mandate their use; they are the interactive counterpart to the `--worktree` launch flag and `isolation: worktree` frontmatter.
+
+`EnterWorktree` is complementary to, not replaced by, the launcher flag `moai cc -w <name-or-abs-path>`:
+
+- **`EnterWorktree(<path>)`** — current-session re-entry (no `/clear`, same session continuing). Use this when the orchestrator is mid-turn and needs to move the active session into an existing worktree.
+- **`moai cc -w <name>` (or `moai glm -w` / `moai cg -w`)** — new-session launch (post-`/clear` or new terminal). Use this as the Block 0 new-terminal launcher of the paste-ready resume. The `-w` flag accepts BOTH short names (resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (L2 persistent worktrees — see the `claude --worktree` (`-w`) Flag section above for the L2 absolute-path extension).
+
+The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and the subshell-`cd` form (`(cd <path> && ...)`) are DEPRECATED for orchestrator-emitted current-session worktree entry guidance. They break `Agent(isolation: "worktree")` CWD isolation (the agent's CWD is the worktree root; a `cd /absolute/path` bypasses it) and were the root cause of prior incidents where a sub-agent used `git -C` instead of `EnterWorktree` and was corrected mid-run.
 
 ## Worktree Selection Rules [ZONE:Evolvable] [HARD]
 
@@ -181,6 +198,20 @@ Is this a one-shot sub-agent task?
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
 <!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
 - [ZONE:Evolvable] [HARD] GitHub workflow agents (fixer agents in /moai github issues) MUST use `isolation: "worktree"` for branch isolation
+
+### Parallel-Session Branch Conflict Auto-Isolation
+
+[ZONE:Evolvable] [HARD] **When** the orchestrator detects (via the Pre-Spawn Sync Check active-sessions registry, `.moai/state/active-sessions.json`) that worktree entry is chosen AND ≥1 foreign active session is currently on the same branch, the orchestrator SHALL auto-create one worktree per foreign registry entry to prevent cross-session branch-state interference. This auto-isolation procedure resolves the parallel-session branch conflict mechanically rather than surfacing it as a manual race.
+
+**Conservative predicate** — ANY foreign active-session registry entry triggers auto-isolation. False positives are cheap (an extra worktree is inexpensive and user-deletable); false negatives corrupt the working tree (a genuine conflict goes unresolved and produces cross-session branch-state interference). Stale-registry false positives MAY produce a worktree that the user later deletes.
+
+**Naming scheme** — each auto-created worktree is named `auto-<session-short>-<spec-id>` where `<session-short>` is the first 8 characters of THAT foreign session entry's UUID and `<spec-id>` is the active SPEC identifier. The naming is deterministic so the auto-created worktree is greppable and traceable to the originating foreign session. No "or equivalent" clause — the scheme is fixed.
+
+**Landing paths** — each auto-created worktree SHALL land under `.claude/worktrees/auto-<session-short>-<spec-id>/` (L1 Claude-native) OR `~/.moai/worktrees/<project>/auto-<session-short>-<spec-id>/` (L2 persistent), so the two sessions do NOT share a branch-state mutable surface. The primary-checkout branch guard exempts worktree paths from its deny, so the auto-isolation procedure does NOT trip the branch guard.
+
+**Surface** — the orchestrator surfaces the auto-isolation as an info log (NOT an `AskUserQuestion` round — the procedure auto-resolves the race, it does not ask the user to resolve it). The info log notes the registry entry's age so a stale-registry false positive is visible.
+
+**Multiple foreign sessions (≥2)** — the procedure auto-creates N worktrees, one per foreign registry entry (Edge-3: each session gets its own isolated branch-state surface).
 
 ## Sentinel Key Glossary
 

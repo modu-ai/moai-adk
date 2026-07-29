@@ -4,8 +4,8 @@
 
 **모듈**: `github.com/modu-ai/moai-adk`  
 **Go 버전**: go 1.26.4  
-**코드 규모**: ~645개 Go 소스 파일 (테스트 제외)  
-**패키지 수**: 45 internal 디렉터리 = 44 runtime 패키지 + 1 test-only 패키지 (`internal/skills`, 프로덕션 코드 없음) + 2 pkg + 1 cmd
+**코드 규모**: ~730개 non-test Go 소스 파일 + ~1000개 테스트 파일 (~148k non-test LOC)  
+**패키지 수**: 46 internal 디렉터리 (318 subpackage) + 2 pkg (`models`, `version`) + 1 cmd
 
 ---
 
@@ -17,10 +17,10 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 | 계층 | 책임 | 주요 패키지 |
 |------|------|-----------|
-| **프레젠테이션** | CLI 명령, 터미널 UI, HTTP 인터페이스 | `cmd/moai`, `internal/cli` (241파일), `internal/tui`, `internal/statusline`, `internal/web` |
+| **프레젠테이션** | CLI 명령, 터미널 UI, HTTP 인터페이스 | `cmd/moai`, `internal/cli` (109 non-test), `internal/tui`, `internal/statusline`, `internal/web` |
 | **비즈니스/도메인** | 개발 워크플로우, SPEC 라이프사이클, 정책 | `internal/spec`, `internal/workflow`, `internal/loop`, `internal/harness`, `internal/constitution`, `internal/permission`, `internal/merge` |
 | **인프라** | Git 추상화, 템플릿 배포, 설정, 훅, 세션 | `internal/core/git`, `internal/template`, `internal/config`, `internal/hook`, `internal/session`, `internal/lsp/*`, `internal/mx` |
-| **계측/지원** | 성능 측정, LSP 통합, 다국어 | `internal/measure`, `internal/astgrep`, `internal/i18n`, `internal/shell` |
+| **계측/지원** | 성능 측정, LSP 통합, 셸, 재시도 | `internal/measure`, `internal/astgrep`, `internal/shell`, `internal/resilience` |
 
 ---
 
@@ -28,7 +28,7 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 ### Presentation (프레젠테이션)
 - **cmd/moai**: 바이너리 진입점 → `cli.Execute()`
-- **internal/cli** (241파일): Cobra 커맨드 트리, composition root, ~48개 내부 패키지 가져옴, 50+개 subcommand 라우팅
+- **internal/cli** (109 non-test 파일): Cobra 커맨드 트리, composition root, ~40 root verbs (152 non-test `.AddCommand()` 호출)
 - **internal/tui**: Catppuccin 색상 토큰, Box/Pill/Table/Status 컴포넌트, 테마 선택
 - **internal/statusline**: Claude Code 상태 렌더러, 3L/5L 레이아웃, pluggable 데이터 제공자
 - **internal/web**: loopback HTTP 콘솔, Templ 컴파일 핸들러, 5s 드레인 종료
@@ -36,10 +36,10 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 ### Business/Domain (비즈니스 영역)
 - **pkg/models**: 공유 config 타입 (매우 높은 팬-인) — ProjectType, DevelopmentMode, ProjectConfig
-- **internal/spec** (41파일): SPEC 라이프사이클 — Linter (13+3 규칙), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
+- **internal/spec** (24 non-test 파일): SPEC 라이프사이클 — Linter (13+3 규칙), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
 - **internal/workflow**: Plan-Run-Sync 워크트리 오케스트레이션
 - **internal/loop** (18파일): 진단 피드백 루프 — LoopController, DecisionEngine, RalphEngine
-- **internal/harness** (64파일): 하네스 학습 — Observer, Learner (4-tier), Applier, 5-phase safety
+- **internal/harness** (75 non-test 파일): 하네스 자가학습 — Observer, Learner (4-tier), Applier (45KB), v4manifest, routing, 5-phase safety
 - **internal/permission** (18파일): 8-tier 권한 스택, 5 모드, bubble 모드
 - **internal/merge**: 3-way 파일 병합 (ADR-008), 사용자 커스터마이징 보존
 - **internal/constitution**: 동결/진화 구역 모델, 5단계 병합 안전 파이프라인
@@ -47,11 +47,11 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 ### Infrastructure (인프라)
 - **internal/core/git**: exec 기반 Git 추상화, Repository/BranchManager 인터페이스
 - **internal/core/project**: FindProjectRoot() ANCHOR — `.moai/` 발견
-- **internal/template** (75파일): go:embed Template-First, Deployer, Renderer, TemplateContext
-- **internal/config** (61파일): 계층화 YAML (env > yaml > defaults), 20+ 섹션 구조
-- **internal/hook** (143파일): 컴파일된 훅 시스템, 28+ Claude Code 이벤트, JSON 디스패치, exit 0/2 의미
+- **internal/template**: go:embed Template-First (`embed.go`가 직접 `//go:embed all:templates` — 별도 `embedded.go` 생성 없음), Deployer, Renderer, profile_matrix (33-cell)
+- **internal/config**: 계층화 YAML (env > yaml > defaults), 14개 `loader_*.go`가 32개 YAML 파일을 조합 (section loader chain)
+- **internal/hook**: 컴파일된 훅 시스템, 30개 Claude Code 이벤트 (35개 `handle-*.sh` 래퍼), branch-state guard, JSON 디스패치
 - **internal/session** (25파일): 다중 세션 레지스트리, active-sessions.json, Heartbeat/Purge
-- **internal/lsp** (12 sub-packages): JSON-RPC 클라이언트, Gopls 브리지, 집계기, 캐시, 회로 차단기
+- **internal/lsp** (8 sub-packages): aggregator, cache, config, core, gopls, hook, subprocess, transport — JSON-RPC 클라이언트, 16-언어 자동감지, 회로 차단기
 - **internal/mx**: @MX 태그 스캐너, FanInCounter, 사이드카 JSON 인덱스
 
 ---
@@ -155,7 +155,7 @@ cli.InitDependencies() // 모든 서브시스템 와이어링
 - **SPEC**: `spec` (audit/lint/close)
 - **워크플로우**: `plan`, `run`, `sync`, `loop`, `clean`
 - **인프라**: `hook`, `migration`, `worktree`, `session`
-- **개발**: `mx`, `fix`, `brain`, `research`
+- **개발**: `mx`, `fix`, `research`, `goal`
 
 ### 훅 진입점
 ```bash
@@ -182,7 +182,7 @@ moai hook <event>  # SessionStart, PostToolUse, Stop, etc.
 
 ### 4. 훅 레지스트리 패턴
 - Claude Code JSON 이벤트 → stdin 수신
-- Registry가 28+ 타입 핸들러로 디스패치
+- Registry가 30개 EventType 핸들러로 디스패치
 - 각 핸들러는 `Handler` 인터페이스 준수
 
 ### 5. 멀티 LLM 실행 모드
@@ -197,9 +197,9 @@ moai hook <event>  # SessionStart, PostToolUse, Stop, etc.
 
 이 개요는 빠른 이해를 제공합니다. 더 깊은 분석은 다음을 참고하세요:
 
-- **modules.md**: 44개 runtime 패키지의 함수/타입/역할 상세 설명 + test-only 패키지 목록
+- **modules.md**: 46개 internal 패키지의 함수/타입/역할 상세 설명
 - **dependencies.md**: Mermaid 패키지 의존도 그래프 + 팬-인/팬-아웃 정량화
-- **entry-points.md**: ~50+ CLI 명령 + 훅 진입점 목록
+- **entry-points.md**: ~40 root CLI 명령 + 훅 진입점 목록
 - **data-flow.md**: 5가지 주요 플로우 시각화 (Mermaid)
 - **docs-truth.md**: 문서 검증을 위한 수동 유지보수 사실 체크리스트
 

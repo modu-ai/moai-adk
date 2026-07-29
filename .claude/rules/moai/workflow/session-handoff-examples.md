@@ -54,8 +54,8 @@ source_session_id: <not-available — environment-fallback, next session will ba
 ✂──── 여기부터 복사 ────✂
 
 [New Terminal — START IN WORKTREE]
-$ cd ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-$ moai cc        # 또는 moai glm | claude (3가지 launcher 중 선택; 본 예시는 moai cc)
+$ moai cc -w ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
+   # (launcher -w accepts L2 absolute paths; or moai glm -w ... | moai cg -w ...)
 
 ultrathink. SPEC-MYPROJ-001 Epic N 진입.
 applied lessons: <lesson-id-1>, <lesson-id-2>.
@@ -174,16 +174,25 @@ $ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
 
 `-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`git worktree add -b feat/SPEC-X-001 .claude/worktrees/SPEC-X-001 origin/main`) lets the resume line read `moai cc -w SPEC-X-001`.
 
-**Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (explicit `cd`):**
+**Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (cross-session launch via extended `-w`):**
 
 ```
 [New Terminal — START IN WORKTREE]
-$ cd <worktree-absolute-path>
-$ <launcher>     # Choose one: moai cc | moai glm | claude
-   └─ Claude Code session starts here (cwd = worktree)
+$ moai cc -w <worktree-absolute-path>     # or: moai glm -w <abs-path> | moai cg -w <abs-path>
+   └─ Claude Code session starts here (cwd = the L2 worktree at the given absolute path)
 ```
 
-Form A does **not** cover Form B: `-w` resolves only under `.claude/worktrees/`, so an L2 worktree created by `/moai plan --worktree` (which lives under `~/.moai/worktrees/`) still requires the explicit `cd`. Emitting `moai cc -w <spec>` for an L2 worktree would silently create a **new** `.claude/worktrees/<spec>/` branched from the default remote branch instead of entering the intended tree — precondition `0)` below is what catches that.
+The launcher's `-w` flag accepts BOTH short names (Form A — resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (Form B — L2 persistent worktrees). This makes `moai cc -w <abs-path>` a valid re-entry path for L2 worktrees, replacing the legacy bare-`cd` shell form. An absolute path NOT under `~/.moai/worktrees/` or `.claude/worktrees/` is REJECTED with a clear error so the launcher does not silently create a new worktree under the wrong prefix.
+
+For **current-session re-entry** into an L2 worktree (no `/clear`, same session continuing), prefer the Claude Code runtime tool `EnterWorktree(<worktree-absolute-path>)` over the launcher form — see `.claude/rules/moai/workflow/worktree-integration.md` § `EnterWorktree` / `ExitWorktree` Tools for the EnterWorktree-first policy.
+
+> **DEPRECATED — Legacy shell form (do NOT emit in orchestrator Block 0 guidance):**
+>
+> ```
+> $ cd <worktree-absolute-path> && <launcher>
+> ```
+>
+> The bare-`cd` form breaks `Agent(isolation: "worktree")` CWD isolation and was the root cause of prior incidents where a sub-agent used `git -C` instead of `EnterWorktree`. It remains valid ONLY for human-typed, manual-shell contexts. Orchestrator-emitted Block 0 guidance SHALL use Form A, Form B, or `EnterWorktree(<path>)` — never a bare `cd`.
 
 ### `/cd` cache-preserving alternative (CC 2.1.169+)
 

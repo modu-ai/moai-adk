@@ -341,14 +341,35 @@ func resetTeamModeForCC(projectRoot string) string {
 	return fmt.Sprintf("Team mode disabled (was: %s)", prev)
 }
 
-// resolveSymlinks returns the symlink-resolved form of path, or path itself
-// on error. This ensures prefix matching works correctly on macOS, where
-// os.TempDir() returns /var/folders/... but git reports /private/var/folders/...
+// resolveSymlinks returns the symlink-resolved form of path. For paths that
+// exist on disk it resolves symlinks via filepath.EvalSymlinks (so macOS
+// /var/folders → /private/var/folders prefix matching works); for paths that
+// do NOT exist it falls back to filepath.Clean(path) lexically.
+//
+// The non-existent-path fallback MUST be lexical, NOT EvalSymlinks, because
+// filepath.EvalSymlinks's behavior on a non-existent path diverges across
+// GOOS: on darwin/linux it returns the cleaned path unchanged (no error),
+// while on windows it can partially-resolve the existing prefix (transforming
+// 8.3 short names like RUNNER~1 → runneradmin) and leave the non-existent
+// tail verbatim — yielding a partially-resolved string that no longer matches
+// a prefix built from the same short-name home directory. This divergence
+// breaks the launcher's -w validation for absolute paths to worktrees that
+// do not exist yet (e.g. re-entry into a not-yet-created path). Returning a
+// deterministic lexical Clean on non-existent paths makes prefix-matching
+// GOOS-independent for the launcher's pre-creation validation pass.
+//
+// @MX:NOTE: [AUTO] GOOS-deterministic symlink resolution fallback for non-existent paths (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a windows CI fix)
+// @MX:REASON: Windows filepath.EvalSymlinks on non-existent paths partially-resolves the existing prefix (8.3 short-name → long form), diverging from darwin/linux lexical-clean behavior and breaking prefix-matching for the launcher's pre-worktree-creation -w validation; gating EvalSymlinks behind an existence check restores GOOS-independent determinism while preserving macOS /var → /private/var resolution for paths that do exist.
 func resolveSymlinks(path string) string {
+	if _, err := os.Lstat(path); err != nil {
+		// Path does not exist (or is inaccessible): fall back to lexical Clean
+		// so prefix-matching is deterministic across GOOS. See function doc.
+		return filepath.Clean(path)
+	}
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		return resolved
 	}
-	return path
+	return filepath.Clean(path)
 }
 
 // cleanupMoaiWorktrees removes moai-related git worktrees from both the
@@ -699,6 +720,131 @@ func normalizeWorktreeFlag(args []string) []string {
 	}
 
 	return normalized
+}
+
+// resolveWorktreeL2Path is the MoAI-side pre-resolution step for the
+// -w/--worktree flag value. It runs BEFORE normalizeWorktreeFlag in the cc /
+// cg / glm launch paths.
+//
+// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a (REQ-WES-010). The launcher's -w flag
+// accepts three kinds of values:
+//
+//  1. A short name (e.g. "feat-login"). normalizeWorktreeFlag rewrites it into
+//     the canonical "--worktree <name>" two-token form for claude pass-through;
+//     claude then resolves the name against .claude/worktrees/<name>. This
+//     step MUST NOT interfere with short-name inputs.
+//  2. An absolute path under ~/.moai/worktrees/<project>/... (an L2 persistent
+//     worktree created by `moai worktree new` or the auto-isolation
+//     procedure). claude accepts an absolute --worktree value and uses it
+//     directly, so this step accepts the path and leaves args unchanged.
+//  3. An absolute path under <project>/.claude/worktrees/... (an L1
+//     Claude-native worktree). Treated the same as case 2.
+//
+// An absolute path NOT under either accepted prefix is REJECTED with a clear
+// error so the launcher does not silently fall through to creating a new
+// worktree under either prefix (AC-WES-010c).
+//
+// Tokens after the "--" pass-through marker are not scanned (they are verbatim
+// pass-through to claude). Returns nil when no -w value is present or the
+// value is a short name; returns a non-nil error only for out-of-prefix
+// absolute paths.
+//
+// This function is ADDITIVE: normalizeWorktreeFlag is unchanged and remains
+// the owner of short-name token normalization (AC-WES-010b).
+func resolveWorktreeL2Path(args []string) error {
+	value, ok := worktreeFlagValue(args)
+	if !ok || value == "" {
+		// Bare -w (auto-name) or no -w flag: nothing to validate.
+		return nil
+	}
+	if !filepath.IsAbs(value) {
+		// Short name: defer to normalizeWorktreeFlag + claude resolution.
+		return nil
+	}
+
+	// Absolute path: must be under an accepted worktree prefix.
+	var acceptedPrefixes []string
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(homeDir, ".moai", "worktrees"))
+	}
+	if root, err := findProjectRoot(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))
+	}
+
+	for _, prefix := range acceptedPrefixes {
+		if isUnderWorktreePrefix(value, prefix) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf(
+		"worktree path %q is not under an accepted worktree prefix\n"+
+			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n"+
+			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
+			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
+		value,
+	)
+}
+
+// worktreeFlagValue scans args (stopping at the "--" pass-through marker) for
+// the value of the -w / --worktree flag. Returns the value and whether a
+// value was supplied. Mirrors the token-shape handling of normalizeWorktreeFlag
+// without mutating args.
+func worktreeFlagValue(args []string) (string, bool) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			// Everything after -- is verbatim pass-through — do not scan.
+			return "", false
+		}
+		switch {
+		case arg == "-w" || arg == "--worktree":
+			// Optional value: the next token is the value unless it is another
+			// flag or the pass-through marker.
+			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
+				return args[i+1], true
+			}
+			// Bare -w (claude auto-generates a worktree name): no value.
+			return "", false
+		case strings.HasPrefix(arg, "--worktree="):
+			return strings.TrimPrefix(arg, "--worktree="), true
+		case strings.HasPrefix(arg, "-w="):
+			return strings.TrimPrefix(arg, "-w="), true
+		}
+	}
+	return "", false
+}
+
+// isUnderWorktreePrefix reports whether path is contained within prefix.
+// Both path and prefix are Clean'd, then symlink-resolved (matching
+// cleanupMoaiWorktrees) so that macOS /var/folders → /private/var/folders
+// prefix matching works. The comparison uses filepath.Rel, which is
+// separator-aware on every GOOS (handles Windows `\` natively); no
+// forward-slash string matching is performed.
+// The prefix itself is NOT considered "under" (a prefix path is not a valid
+// worktree path; only a child of the prefix is).
+//
+// @MX:NOTE: [AUTO] cross-platform path containment check (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a)
+// @MX:REASON: Windows compatibility — `~` expands via os.UserHomeDir() (USERPROFILE on Windows,
+// HOME on Unix); filepath.Rel handles `\` and `/` separators via stdlib, so no manual ToSlash needed.
+func isUnderWorktreePrefix(path, prefix string) bool {
+	cleanedPath := filepath.Clean(path)
+	cleanedPrefix := filepath.Clean(prefix)
+	resolvedPath := resolveSymlinks(cleanedPath)
+	resolvedPrefix := resolveSymlinks(cleanedPrefix)
+	rel, err := filepath.Rel(resolvedPrefix, resolvedPath)
+	if err != nil {
+		return false
+	}
+	if rel == "." {
+		// path == prefix exactly; not a valid worktree path.
+		return false
+	}
+	// rel must not escape prefix (no ".." or ".."-prefixed relative path).
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false
+	}
+	return true
 }
 
 // readSettingsLocalForLaunch reads the env map from .claude/settings.local.json

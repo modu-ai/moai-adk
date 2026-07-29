@@ -299,8 +299,13 @@ func TestResolveSymlinks_NonExistentPath(t *testing.T) {
 
 	path := "/nonexistent/path/that/does/not/exist"
 	result := resolveSymlinks(path)
-	if result != path {
-		t.Errorf("resolveSymlinks(%q) = %q, want original path", path, result)
+	// resolveSymlinks returns filepath.Clean(path) for non-existent paths (3dbb679e0).
+	// filepath.Clean is GOOS-specific (normalizes "/" to "\" on Windows), so the
+	// expected value must also go through filepath.Clean — not the raw input — or
+	// the assertion fails on Windows where the separator differs from the input.
+	want := filepath.Clean(path)
+	if result != want {
+		t.Errorf("resolveSymlinks(%q) = %q, want %q", path, result, want)
 	}
 }
 
