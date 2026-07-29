@@ -45,7 +45,7 @@ flowchart TD
 
 | 순서 | 문서 | 핵심 질문 |
 |------|------|----------|
-| 1 | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 세 가지 핵심은 무엇인가? |
+| 1 | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 왜 세 축인가? |
 | 2 | [하네스 엔지니어링](/ko/core-concepts/harness-engineering) | 코드를 직접 쓰는 대신 환경을 설계한다는 것은 무슨 뜻인가? |
 | 3 | [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) | 요구사항을 어떻게 명확하게 정의하고 관리하는가? |
 | 4 | [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) | 기존 코드를 망가뜨리지 않고 어떻게 개선하는가? |

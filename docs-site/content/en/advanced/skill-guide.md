@@ -147,7 +147,7 @@ flowchart TD
 
 ### Token Savings
 
-- **Naive approach**: loading all 27 skills = about 135,000 tokens (infeasible)
+- **Naive approach**: loading all 31 skills = about 135,000 tokens (infeasible)
 - **Progressive disclosure**: metadata only = about 5,200 tokens (97% savings)
 - **Load on demand**: only the 2-3 skills the task needs = about 15,000 additional tokens
 

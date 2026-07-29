@@ -187,7 +187,7 @@ moai harness doctor
 | `primitive` | 执行原语（`sub-agent`、`adversarial-fan-out` 等） |
 | `isolation` | 隔离级别（`none`、`worktree`） |
 | `effort` | 推理强度（`low`、`medium`、`high`、`xhigh`）— 目的驱动 |
-| `model` | 模型档位（`opus`、`sonnet`、`haiku`、`inherit`）— 目的驱动 |
+| `model` | 模型档位（`opus`、`sonnet`、`inherit`）— 目的驱动 |
 
 ### Sprint Contract
 

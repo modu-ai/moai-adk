@@ -4,17 +4,19 @@ weight: 90
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 智能体 Harness
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
 Git Worktree 是 MoAI-ADK 并行开发的基石。它为每个 SPEC 创建完全独立的工作
 空间，让不同的 Git 状态和不同的 LLM 配置可以同时运转。
 
-从 MoAI-ADK v3.0 的核心价值 **托克诺米克斯** (Token Economics) 的角度看，
-Worktree 是把"计划要深、实现要省"真正落地的装置。计划终端使用高推理的
-Claude 模型，实现终端使用低成本的 GLM —— 按工作阶段分配合适的模型这件事，
-没有 Worktree 隔离就无法实现。
+从三根支柱中 **智能体 Harness**（品质把控轴）的角度看，Worktree 是把每个
+SPEC 完全隔离、让智能体并行工作也不会互相踩踏的控制装置 —— 它挡住并行
+开发中的冲突，保证只有完成的 SPEC 才安全合并进 main。副带地，成本轴
+（代币经济学）也带来好处：每个隔离的 worktree 可以指定不同的 LLM 运行模式，
+计划终端用高推理的 Claude 模型、实现终端用低成本的 GLM，按工作阶段分配合适
+的模型。
 
 
 ## 为什么需要 Worktree？
@@ -255,8 +257,7 @@ flowchart TB
 
 ## 并行开发可视化
 
-下面是在多个终端同时工作的样子。按阶段分配不同的模型，正是托克诺米克斯的
-核心：
+下面是在多个终端同时工作的样子。每个 worktree 完全隔离、无冲突地并行推进，这是智能体 Harness 轴的核心；副带地能按阶段分配合适的模型，则是代币经济学的好处：
 
 ```mermaid
 graph TB
