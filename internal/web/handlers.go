@@ -12,6 +12,7 @@ import (
 
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -104,6 +105,15 @@ type pageView struct {
 
 	// FieldErrors maps form field name → per-field validation message.
 	FieldErrors map[string]string
+
+	// GLMKeyConfigured reports whether a GLM API key is currently stored in
+	// ~/.moai/.env.glm (drives the presence indicator in the 3rd Party LLM
+	// section). GLMKeyHint is the bounded trailing-four disclosure (empty when
+	// the stored key is four characters or fewer). The full key NEVER reaches
+	// the view model — computeGLMKeyHint truncates before this struct is built
+	// (SPEC-GLM-KEY-INPUT-001 D-2 / REQ-GKI-004-001..004, plan §G AP-2/AP-2b).
+	GLMKeyConfigured bool
+	GLMKeyHint       string
 }
 
 // newPageView assembles a view-model with the canonical option lists populated.
@@ -117,7 +127,7 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 	sort.SliceStable(profiles, func(i, j int) bool {
 		return profiles[i].Current && !profiles[j].Current
 	})
-	return pageView{
+	view := pageView{
 		Prefs:             prefs,
 		SelectedProfile:   selected,
 		Profiles:          profiles,
@@ -135,6 +145,19 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		ProjectName:       filepath.Base(a.cfg.ProjectRoot),
 		ProjectPath:       a.cfg.ProjectRoot,
 	}
+	// SPEC-GLM-KEY-INPUT-001: populate the GLM API key redacted hint. Computed
+	// outside the struct literal so the full key never becomes a view-model
+	// field — only the bounded trailing-four disclosure crosses in.
+	view.GLMKeyConfigured, view.GLMKeyHint = populateGLMKeyHint()
+	return view
+}
+
+// populateGLMKeyHint reads the stored credential and returns the bounded
+// disclosure pair for the view model. Thin wrapper so the secret never has to
+// be passed through the pageView struct literal.
+func populateGLMKeyHint() (bool, string) {
+	h := computeGLMKeyHint()
+	return h.Configured, h.Hint
 }
 
 // resolveBindAddr returns the loopback-indicator address (REQ-WC4-005). It uses
@@ -344,6 +367,14 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
 	schemaEdits, schemaErrs := parseSchemaForm(r)
 
+	// SPEC-GLM-KEY-INPUT-001 M2: parse the GLM API key submitted value. Parsed
+	// BEFORE the validator merge so a line-break in the key joins the atomic-
+	// reject set (REQ-GKI-002-004: while any field is failing validation, the
+	// credential file is not written). Persisted AFTER the atomic-reject gate
+	// passes, through the single shared credential writer (glmcred.Save).
+	glmKeySubmitted := parseGLMKeyForm(r)
+	glmKeyErrs := validateGLMKey(glmKeySubmitted)
+
 	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
 	// top of the agentfm panel. Parsed BEFORE the agentfm edits because it is the
 	// target tier the per-agent default comparison resolves under (G3-2/G3-4). A
@@ -378,6 +409,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range perfTierErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range glmKeyErrs {
 		fieldErrs[k] = v
 	}
 	if len(fieldErrs) > 0 {
@@ -450,6 +484,20 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"settings saved, but agent override write failed: "+err.Error())
 		return
+	}
+
+	// SPEC-GLM-KEY-INPUT-001 M5: persist the GLM API key through the single
+	// shared credential writer (glmcred.Save). An empty/whitespace-only
+	// submitted value means "preserve" (REQ-GKI-005-001) — no write happens and
+	// the existing credential file is left untouched (REQ-GKI-006-003). A write
+	// failure is surfaced as a failure, never as success (REQ-GKI-002-005), and
+	// the error message carries no key material (REQ-GKI-004-003).
+	if normalized := normalizeGLMKey(glmKeySubmitted); normalized != "" {
+		if err := glmcred.Save(normalized); err != nil {
+			a.renderErrorPage(w, prefs, selected, devMode, convention,
+				"settings saved, but GLM credential write failed: "+err.Error())
+			return
+		}
 	}
 
 	view := a.successProjectView(prefs, selected, devMode, convention)

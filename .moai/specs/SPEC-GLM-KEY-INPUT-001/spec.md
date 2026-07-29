@@ -2,9 +2,9 @@
 id: SPEC-GLM-KEY-INPUT-001
 title: "GLM API Key Input Surface in the moai web Settings Console"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-29
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

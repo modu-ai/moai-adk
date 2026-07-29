@@ -174,6 +174,14 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 						@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
 					}
 				}
+				// SPEC-GLM-KEY-INPUT-001 M3: the GLM API key control is a
+				// hand-built secret-class field rendered inside the 3rd Party
+				// LLM section, adjacent to the GLM model tier fields. It is NOT
+				// a settings.FieldDef — D-2 keeps it out of AllFields() so no
+				// generic schema loop can ever pick it up (R-1 / REQ-GKI-003-003).
+				if glmKeyFieldBelongsToLLMSection(meta.ID) {
+					@fieldsetGLMKey(view)
+				}
 			</div>
 			for _, rb := range settings.RawViewBlocks() {
 				if rb.Section == meta.ID {
@@ -182,6 +190,47 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 			}
 		</div>
 	</fieldset>
+}
+
+// fieldsetGLMKey renders the GLM API key control. It is a secret-class input:
+// type="password" masks typed characters; autocomplete="off" opts out of
+// browser autofill; the value attribute is UNCONDITIONALLY empty so a stored
+// key is never echoed back into the form (REQ-GKI-004-001 / plan §G AP-2).
+// The presence indicator surfaces at most the final four characters of a
+// stored key (REQ-GKI-004-002), and nothing for a key of four characters or
+// fewer (REQ-GKI-004-004 / plan §G AP-2c).
+templ fieldsetGLMKey(view pageView) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, glmAPIKeyFormField)) }>
+		<span class="field__label">
+			<span class="field__title" data-i18n="f.glm_api_key.title">GLM API key</span>
+			<code class="field__key">~/.moai/.env.glm</code>
+		</span>
+		<span class="field__desc" data-i18n="f.glm_api_key.desc">Credential for the GLM backend. Stored at mode 0600 outside the project tree; never echoed back.</span>
+		<input
+			class="input"
+			type="password"
+			id={ glmAPIKeyFormField }
+			name={ glmAPIKeyFormField }
+			autocomplete="off"
+			value=""
+			if hasFieldError(view.FieldErrors, glmAPIKeyFormField) {
+				aria-invalid="true"
+				aria-describedby={ "err_" + glmAPIKeyFormField }
+			}
+		/>
+		if view.GLMKeyConfigured {
+			<span class="field__hint">
+				@icon("check")
+				<span data-i18n="f.glm_api_key.configured">Configured</span>
+				if view.GLMKeyHint != "" {
+					<code class="field__hint-key">…{ view.GLMKeyHint }</code>
+				}
+			</span>
+		}
+		if msg := fieldErrorMsg(view.FieldErrors, glmAPIKeyFormField); msg != "" {
+			<span class="field-error" id={ "err_" + glmAPIKeyFormField }>@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
 }
 
 // schemaFieldWidget은 FieldDef.Type에 따라 위젯을 선택한다.
