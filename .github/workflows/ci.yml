@@ -74,19 +74,25 @@ jobs:
   # Test: Run tests on all platforms with race detector and coverage
   # Gated by detect: only runs when go_code changes are present
   # ---------------------------------------------------------------------------
+  # SPEC-V3R6-CI-PR-SPEEDUP-001 — PR-scope test matrix is ubuntu-only.
+  # GitHub Actions considers a workflow run unfinished until every non-cancelled
+  # job completes, so the macOS/Windows legs ran to completion even though they
+  # were never required checks — each PR's CI wall-time stretched toward an
+  # hour, blocking any caller holding a `gh pr checks --watch`.
+  # Cross-platform runtime coverage (macOS + Windows race + MX validator) moved
+  # to release time via .github/workflows/release-pr-multi-os.yml (full 3-OS
+  # matrix on `release/*` → main PRs). Cross-compilation build coverage stays on
+  # every PR via the `build` job below.
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: detect
     if: needs.detect.outputs.go_code == 'true'
-    # Windows test hardening is tracked as a follow-up SPEC; until it lands,
-    # the windows leg reports but does not block.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
 
     steps:
       - name: Checkout code
@@ -131,7 +137,6 @@ jobs:
         run: go vet ./...
 
       - name: Assert zero exec.Command in MX validator (AC-UTIL-001-04)
-        if: matrix.os == 'ubuntu-latest'
         run: |
           count=$(grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" | wc -l)
           if [ "$count" -ne "0" ]; then
@@ -141,28 +146,15 @@ jobs:
           fi
           echo "PASS: zero exec.Command in internal/hook/mx/ (AC-UTIL-001-04)"
 
-      - name: Run MX validator tests (Windows cross-platform AC-UTIL-001-05)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: go test -race ./internal/hook/mx/...
+      # Windows-specific MX validator race test (AC-UTIL-001-05) was here.
+      # Moved to release-pr-multi-os.yml's windows leg at release time
+      # (SPEC-V3R6-CI-PR-SPEEDUP-001).
 
-      # Linux + macOS: race detector + coverage (codecov upload from ubuntu only)
       - name: Run tests with race detector and coverage
-        if: matrix.os != 'windows-latest'
         shell: bash
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      # Windows: race detector retained for cross-platform concurrency safety,
-      # but coverage profile generation is skipped because codecov upload only
-      # runs on ubuntu-latest (the file would be discarded). This shaves ~30-60s
-      # off Windows test time without losing race detection coverage.
-      - name: Run tests with race detector (Windows, no coverage)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: go test -race ./...
-
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v7
         with:
           files: coverage.out
@@ -174,28 +166,32 @@ jobs:
   # without running the actual Go test suite.
   # SPEC-V3R4-CI-FASTTRACK-001 REQ-CIFT-001 — branch-protection name match
   # Critical: name MUST match exactly "Test (${{ matrix.os }})" for required check compat
+  # SPEC-V3R6-CI-PR-SPEEDUP-001 — matrix narrowed to ubuntu-latest to mirror the
+  # real `test` job's matrix exactly. Required-check parity is name-based: this
+  # job MUST emit the SAME check-name set as `test`, or branch protection waits
+  # forever for a status that will not arrive.
   # ---------------------------------------------------------------------------
   test-skip-marker:
     name: Test (${{ matrix.os }})
     runs-on: ubuntu-latest
     needs: detect
     timeout-minutes: 5
-    # Complement of the real `test` job, so exactly one of the two always runs and
-    # the required contexts Test (ubuntu|macos|windows-latest) are ALWAYS reported.
+    # Complement of the real `test` job, so exactly one of the two always runs
+    # and the required context Test (ubuntu-latest) is ALWAYS reported.
     # EC-1 mutual exclusivity still holds: this is the strict negation of the real
     # job's `go_code == 'true'`, so a mixed PR (docs + Go) runs the real test only.
     #
     # Previously this was gated on `docs_only == 'true'`, which is NARROWER than
     # "not go_code": a PR touching only files in neither filter — .gitignore, a
-    # shell script, e2e/**, any root config — matched neither job, so those four
-    # required contexts were never reported and the PR could never merge (GitHub
-    # waits forever for a status that will not arrive). Gating on the negation
-    # closes that hole for every non-Go change, not just documentation.
+    # shell script, e2e/**, any root config — matched neither job, so the required
+    # context was never reported and the PR could never merge (GitHub waits
+    # forever for a status that will not arrive). Gating on the negation closes
+    # that hole for every non-Go change, not just documentation.
     if: needs.detect.outputs.go_code != 'true'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
     steps:
       - name: Skip (no Go changes)
         run: echo "No Go-code changes per paths-filter — Go test matrix skipped; required check satisfied."
