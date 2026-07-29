@@ -5,7 +5,7 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>토크노믹스를 위해 설계된 에이전틱 개발 키트</strong>
+  <strong>Claude Code를 위한 에이전틱 개발 하네스</strong>
 </p>
 
 <p align="center">
@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <a href="https://book.mo.ai.kr" target="_blank"><strong>공식 도서 『클로드 코드로 시작하는 실전 에이전틱 코딩』</strong></a><br>
-  MoAI-ADK 제작자가 직접 쓴 하네스 엔지니어링 실전 가이드 — <a href="https://book.mo.ai.kr" target="_blank">book.mo.ai.kr</a>
+  <a href="https://book.mo.ai.kr" target="_blank"><strong>공식 도서: 클로드 코드로 시작하는 실전 에이전틱 코딩</strong></a><br>
+  MoAI-ADK 저자가 쓴 실전 하네스 엔지니어링 가이드 — <a href="https://book.mo.ai.kr" target="_blank">book.mo.ai.kr</a>
 </p>
 
 <p align="center">
@@ -32,31 +32,49 @@
 
 <p align="center">
   <a href="https://adk.mo.ai.kr"><strong>공식 문서</strong></a> ·
-  <a href="https://adk.mo.ai.kr/book">도서: Claude Code 실전 에이전틱 코딩</a> ·
+  <a href="https://adk.mo.ai.kr/book">도서: 클로드 코드로 시작하는 실전 에이전틱 코딩</a> ·
   <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
 </p>
 
 ---
 
-> **"토크노믹스는 토큰 소비를 경제적으로 사용을 목표로 하는 하네스이다."**
+> **"코드를 직접 쓰지 말라. 코드를 쓰는 환경을 설계하라."**
 
 ---
 
-## MoAI-ADK는 토크노믹스 하네스다
+## MoAI-ADK란?
 
-MoAI-ADK(Agentic Development Kit)는 Claude Code가 코드를 생산하게 하고, 그 코드가 예측 가능한 비용으로 믿을 수 있게 만든다. 하네스는 모델을 바깥에서 감싸는 시스템이다. 모델은 토큰 단위로 움직이는 확률적 작업자라 예산도 품질 기준도 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, `/clear`를 건너뛰는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니라 시스템이 바깥에서 강제해야 한다.
+MoAI-ADK(Agentic Development Kit)는 Claude Code를 바깥에서 감싸, 모델의 확률적 출력을 믿을 수 있게 만드는 하네스다. 모델은 토큰 단위로 움직이는 작업자라 예산도, 품질 기준도, 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, 자기 개선 루프, `/clear`를 넘어서는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니라 시스템이 바깥에서 강제해야 한다.
 
-모든 설계는 토크노믹스를 향한다. 어떤 모델을 쓸지, 얼마나 깊이 추론할지, 컨텍스트를 어떻게 소비할지는 그때그때 운에 맡기지 않고 시스템이 정한다. Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 부분 — 모델 라우팅, 품질 게이트, 비용 제어, 세션 연속성 — 을 구조로 감쌀 뿐이다. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
+Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 부분 — 모델 라우팅, 품질 게이트, 비용 제어, 학습 루프, 세션 연속성 — 을 구조로 감쌀 뿐이다. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
+
+![MoAI-ADK란 — Claude Code를 감싸는 에이전틱 개발 하네스](./assets/images/why-harness-infographic.png)
 
 ---
 
-## 왜 토크노믹스인가
+## 하네스의 세 가지 기둥
 
-토큰 단가가 계속 내려가는데, 정작 에이전틱 워크플로우의 실제 지출은 오른다. 에이전트는 한 과제를 풀려고 수십에서 수백 스텝을 돌고, 그만큼 토큰을 태운다. 종량제에서는 이게 곧 청구서이고, 구독제에서는 전 모델이 공유하는 주간 쿼터를 갉아먹는다.
+MoAI-ADK의 가치는 세 가지 기둥에 기반한다 — [문서 사이트](https://adk.mo.ai.kr/ko/core-concepts)가 정리의 기준으로 삼는 것과 같은 세 가지다. 각 기둥은 에이전틱 시스템이 어떻게 돌아야 하는지에 대한 질문 하나를 답한다.
 
-### 비용은 모델 단가가 아니라 배정이 결정한다
+![MoAI-ADK 하네스의 세 가지 기둥 — 토크노믹스, 에이전틱 루프 엔지니어링, 에이전틱 하네스](./assets/images/three-axes-infographic.png)
 
-DeepSWE 리더보드(113 tasks, effort 단계별 뷰) 실측이 이 문제를 보여준다. 같은 Claude 계열 안에서도 과제당 비용은 토큰 단가가 아니라 모델이 얼마나 효율적으로 *완주*하느냐를 따라간다.
+| 기둥 | 핵심 질문 |
+|---|---|
+| 🪙 **토크노믹스** | 같은 품질을 더 적은 토큰으로 얻으려면? |
+| 🧠 **에이전틱 루프 엔지니어링** | 루프가 어떻게 스스로 일하고 학습하는가? |
+| 🛡️ **에이전틱 하네스** | 에이전트가 잘 일할 환경을 어떻게 설계하는가? |
+
+### 🪙 토크노믹스 — 같은 품질, 더 적은 토큰으로
+
+토큰 단가는 3년 새 **98% 내렸지만**(리눅스 재단), 기업의 AI 비용은 같은 기간 **320% 올랐다**. 단가 하락을 사용량 폭증이 압도한 결과다. 에이전트는 한 과제를 풀기 위해 수십에서 수백 스텝을 돌며 그만큼 토큰을 태운다. 종량제에서는 곧 청구서로, 구독제에서는 전 모델이 공유하는 주간 쿼터를 갉아먹는 일이다.
+
+우버는 엔지니어 5,000명에 Claude Code를 전면 배포했다가 **1년 치 코딩 예산을 4개월 만에 소진**하고 월간 토큰 한도를 부과했다. 메타·아마존·마이크로소프트도 무제한 AI 정책을 잇달아 철회했다. 작업에 맞는 모델을 배정해 토큰 효율을 높이는 **토크노믹스**가 테크 업계의 새로운 기준이 됐다.
+
+![왜 토크노믹스인가 — 토큰 단가 98% 하락 vs 기업 AI 비용 320% 상승](./assets/images/why-tokenomics-infographic.png)
+
+전통적 비용 관리는 단가가 오를 때를 전제로 세워졌다. 그래서 단가는 내리는데 총비용은 오르는 이 역설 앞에서 무력하다. 병목은 단가가 아니라 사용량, 더 정확히는 에이전트가 과제를 끝내기까지 도는 스텝 수에 있다.
+
+**비용은 단가가 아니라 배정이 결정한다.** DeepSWE 리더보드(113과제, effort 단계별 뷰) 실측이 이를 보여준다. 같은 Claude 계열 안에서도 과제당 비용은 토큰 단가가 아니라, 모델이 얼마나 효율적으로 *완주*하느냐를 따라간다.
 
 | 모델 [effort] | Pass@1 | 과제당 비용 | 출력 토큰 | 스텝 |
 |---|---|---|---|---|
@@ -66,71 +84,71 @@ DeepSWE 리더보드(113 tasks, effort 단계별 뷰) 실측이 이 문제를 �
 | claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
 | claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort보다 점수가 높으면서(58% vs 54%) 과제당 비용은 16분의 1이다($1.66 vs $26.40) — Sonnet의 토큰당 단가가 더 싼데도 그렇다. 원인은 36스텝 대 268스텝이다: 청구서를 쓰는 것은 토큰 요율이 아니라 재시도 루프다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 즉, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
+Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort보다 점수가 높으면서(58% vs 54%) 과제당 비용은 16분의 1이다($1.66 vs $26.40) — Sonnet의 토큰당 단가가 더 싼데도 그렇다. 원인은 36스텝 대 268스텝이다. 청구서를 쓰는 것은 토큰 요율이 아니라 재시도 루프다. 즉, 비용은 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
 
-MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 만든다.
+#### 네 단계: 측정 → 라우팅 → 다이어트 → 방어
 
----
+토크노믹스는 네 단계로 작동한다. 각 단계가 비용의 한 면을 담당하며, 함께 폐쇄 루프를 이룬다. 측정이 선행해야 라우팅과 다이어트의 효과를 검증할 수 있고, 방어가 없으면 한 번의 예산 초과가 세션을 끊어버린다.
 
-## 3축으로 경제화
+![토크노믹스 4층 파이프라인 — 측정·라우팅·다이어트·방어](./assets/images/tokenomics-4layer-infographic.png)
 
-### 라우팅 — 작업마다 맞는 모델과 추론 깊이 배정
+**측정 — per-SPEC 토큰 회계.** 각 SPEC이 소비한 토큰을 투명하게 계량한다. transcript JSONL의 usage를 합산해 `progress.md` 토큰 회계 블록에 기록하고, `moai spec audit` 컬럼으로 조회한다. 이 계층이 나머지 세 단계의 기준선이다.
 
-**Tier×Phase 매트릭스**. 작업 단계(phase: plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 깊이(effort)를 선언적으로 배정한다. 깊은 추론이 필요한 계획 단계에는 고추론 모델을, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 배정하여 비용 대비 품질을 극대화한다.
+**라우팅 — 작업마다 알맞은 모델과 추론 깊이 배정.** 작업 단계(plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 effort(low / medium / high / max)를 선언적으로 배정한다. 깊은 추론이 필요한 계획 단계에는 고추론 모델을, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 배정한다.
 
-**No-Haiku 3-티어 정책**. Haiku를 라우팅 모델 세트에서 배제하고, 작업 성격에 맞춘 3-티어 구조로 작업을 분산한다. Sonnet low effort는 단발·입력 지배 작업(git 기계 작업, 읽기 전용 검색)을 맡아 스텝 수를 최소화하고, 멀티턴 에이전틱 행은 전부 Opus가 담당하되 `max` effort는 호출 빈도가 가장 낮은 두 행에만 남긴다.
+- **No-Haiku 3-티어 정책** — Haiku를 라우팅 세트에서 배제한다. Sonnet low effort가 단발·입력 지배 작업을 맡고, Opus가 모든 멀티턴 에이전틱 행을 담당한다.
+- **프로파일 매트릭스** — 11 에이전트 × 3 프로파일 = 33셀. `moai model profile`이 각 에이전트의 `{model, effort}` 쌍을 해석한다.
+- **CG 모드** — `moai cg`는 Claude 리더(전략·계획·감사)와 GLM 워커(대량 구현)를 결합한다. 구현 중심 작업에서 **60-70% 비용 절감**.
 
-**프로파일 매트릭스** (Profile Matrix). 에이전트별 단일 프로파일 매트릭스가 11개 리테인 에이전트를 각각 `{model, effort}` 쌍에 대응시킨다 — 33셀이다. 하나의 프로파일 축 — `high` / `medium`(기본값) / `low`, `llm.profile`로 선택(`moai init --profile`, `moai update --profile`) — 이 활성 열을 고르고, `moai model profile`이 각 에이전트의 셀을 해석한다. `Explore`를 포함한 모든 리테인 에이전트가 매트릭스에서 모델+effort를 가져오며(어디에도 Haiku 없음), 세션 모델을 상속하는 것은 사용자 정의 에이전트뿐이다.
+![CG 모드 — Claude 리더가 전략·감사를 맡고 GLM 워커가 대량 구현을 담당](./assets/images/cg-mode-infographic.png)
 
-**CG 모드 (Claude + GLM)**. `moai cg`는 Claude 리더와 GLM 워커를 결합한 하이브리드 모드다. 전략, 계획, 감사는 Claude가 담당하고, 대량 구현 작업은 GLM이 담당한다. 구현 중심 작업에서 **60-70% 비용 절감** 효과가 있다.
+![모델 라우팅 — 11개 에이전트를 역할에 따라 Opus/Sonnet에 배정, effort 태그 포함](./assets/images/model-routing-infographic.png)
 
-### 검증경제 — 컨텍스트를 다이어트하고 증거는 디스크에
+**측정으로 검증한 가성비 — Opus 5의 최적점은 medium.** 라우팅의 근거는 DeepSWE v1.1(datacurve.ai, 113과제 · 91리포 · 5언어, 2026-07-25) 실측이다.
 
-**verify-diet**. 검증 명령의 장문 출력을 디스크 파일로 리다이렉트하고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남긴다. 이 파일-리다이렉트 계약은 검증 증거의 무결성을 유지하면서 컨텍스트 소비를 줄인다. 증거는 `.moai/state/verify/<session>/` 하위에 영속화된다.
+| 모델 [effort] | 점수 | 과제당 비용 | 비고 |
+|---|---|---|---|
+| opus-5 [low] | 58%±2 | $1.66 | |
+| opus-5 [medium] | **69%±1** | **$3.29** | **가성비 최적점** |
+| opus-5 [high] | 73%±2 | $6.08 | 점수 +4pt, 비용 1.8배 |
+| opus-5 [xhigh] | 73%±3 | $9.07 | **순손실** — high와 동점, 비용만 +49% |
+| opus-5 [max] | 74%±4 | $11.84 | |
+| glm-5.2 [max] | 44%±2 | $3.92 | API 종량제 열세 · z.ai 정액제에서 가치 |
+| sonnet-5 [max] | 54%±4 | $26.40 | opus-5 [low]에 파레토 지배당함 |
 
-**프롬프트 캐시**. 요청의 앞부분이 직전 요청과 동일할 때, 그 부분을 다시 처리하지 않고 재사용한다. 캐시에서 읽은 토큰은 기본 입력 단가의 0.1배로 청구된다. 항시 로드되는 지침을 최소화하면 이 적중률이 바로 올라간다. 스테이터스라인의 캐시 히트율 세그먼트(`♻️`)로 실시간 확인이 가능하다.
+![DeepSWE 벤치마크 — 모델×effort별 점수와 과제당 비용](./assets/images/deepswe-benchmark-2.png)
 
-**컨텍스트 다이어트**. `/clear` 전략을 적용한다. SPEC phase가 끝나면 `/clear`하고, 진행 상태를 `progress.md`에 저장한 뒤 붙여넣기 가능한 resume 메시지를 발행한다. 컨텍스트 윈도우 임계(1M 모델 50% / 200K 모델 90%)에서 자동으로 권고가 뜬다.
+> 출처: [DeepSWE v1.1 리더보드](https://deepswe.datacurve.ai) (datacurve.ai, 113과제, 2026-07-25)
 
-### 예산방어 — 초과 전에 중단하고 다음 세션으로 이어
+`medium`을 구현 에이전트의 기본 앵커로 삼고, `xhigh`는 매트릭스에서 퇴출했다. `high` 프로파일을 적용하면 **비용 −33%, 품질 +3.3pt**가 같이 잡힌다 — 더 싸면서 더 정확하다.
 
-**Token Circuit Breaker**. 에이전트별 토큰 사용량이 hard-limit(기본 90%)에 도달하면 중단을 수행한다. 진행 상태를 `progress.md`에 저장하고, 붙여넣기 가능한 핸드오프 메시지(paste-ready resume)를 발행하며, 자동 `/clear`는 절대 하지 않는다. 시스템은 사용자가 `/clear`를 실행하도록 권고만 하며, 사용자가 판단하여 실행한다.
+**검증 비용을 줄이는 방식 — 컨텍스트는 가볍게, 증거는 디스크로.** 검증 명령의 장문 출력은 디스크 파일로 리다이렉트하고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남긴다. 프롬프트 캐시 재사용(캐시 적중 시 0.1× 비용)과 컨텍스트 다이어트 `/clear` 전략(1M 50% / 200K 90% 임계에서 자동 권고)이 컨텍스트 윈도우를 가볍게 유지한다.
 
-**스테이터스라인**. 컨텍스트 사용률(CW%), 프롬프트 캐시 적중률, rate limit 소진율을 터미널 하단에 항상 띄워 두면 토큰 운용 상태를 한눈에 읽을 수 있다. CW% 옆 `(⚠️/clear)` 마커는 모델별 임계에서 뜬다.
+**예산 방어 — 초과 전에 중단하고 다음 세션으로 이어.** 토큰 회로 차단기(Token Circuit Breaker)가 hard-limit(기본 90%)에서 중단을 수행하고, 진행 상태를 `progress.md`에 저장하며, 붙여넣기 가능한 resume 메시지를 발행한다. 스테이터스라인이 컨텍스트 사용률·캐시 적중률·rate limit 소진율을 항상 띄워 둔다.
 
----
+### 🧠 에이전틱 루프 엔지니어링 — 스스로 일하고 학습하는 루프
 
-## 인프라가 토크노믹스를 지속시킨다
+하네스는 정적인 구조가 아니다. 루프는 스스로 돌고, 관찰이 그 과정에서 쌓이며, 지침은 사이클마다 진화한다.
 
-### 품질 구조 — 재작업·디버깅 반복(토큰 낭비 최악 case)을 방지
+**선언적 루프.** `/moai goal "<condition>"`은 선언된 완료 조건이 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 알아서 일한다. `/moai loop`는 LSP 진단 · AST-grep · 린터를 병렬로 스캔해 이슈를 수준별로 묶고, 큐가 빌 때까지 돈다. 루프는 매 스텝 프롬프트로 몰아치는 게 아니라, 선언된 끝 상태를 향해 스스로 나아간다.
 
-**SPEC 3-페이즈 라이프사이클**. plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅을 정하고, GEARS 형식 요구사항 + 인수 기준으로 완료를 증거로 판정한다.
+**4-티어 학습 사다리.** 관찰은 사다리를 타고 지침으로 승격된다: 관찰(≥1) → 휴리스틱(≥3) → 규칙(≥5) → 자동 업데이트(≥10, 사용자 승인 필수); 신뢰도 하한 0.70. 라우팅 결정과 게이트 증거는 프라이버시 보존 다이제스트로 기록된다. 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다. 하네스 편집(규칙·에이전트·훅 변경)은 예측–검증 규율을 따른다: 편집마다 반증 가능한 예측을 기록하고, held-in/held-out 이중 검사를 통과해야 채택되며, 기각된 편집도 기록에 남는다.
 
-**TRUST 5 품질 게이트**. Tested(85%+ 커버리지) · Readable · Unified · Secured · Trackable, 모든 변경에 적용한다. 검증을 에이전트가 아닌 게이트가 판정한다.
+**결정 메모리.** 질문은 불확실성이 가장 높은 곳(p ≈ 0.5)에서 나오고, 추천은 시스템 기본값이 아니라 관찰된 통계적 다수를 따른다. 하네스는 사용자가 어떤 결정을 자주 내리는지 학습해서, 일반적인 기본값 대신 알맞은 선택지를 끌어올린다.
 
-**11-에이전트 카탈로그**. MoAI 커스텀 10개 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
+### 🛡️ 에이전틱 하네스 — 에이전트가 일할 환경을 설계한다
 
-### 학습 루프 — 루프가 돌수록 토큰 효율 개선
+코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계한다. 이 기둥이 나머지 두 기둥을 가능하게 하는 구조다.
 
-**`/moai goal`·`/moai loop`**. 완료 조건 하나만 선언하면 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 알아서 일한다. `/moai loop`은 LSP 진단·AST-grep·린터를 병렬로 스캔해, 나온 문제를 큐가 빌 때까지 돈다.
+**SPEC 3-페이즈 라이프사이클.** plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅을 정하고, GEARS 형식 요구사항 + 인수 기준으로 완료를 증거로 판정한다.
 
-**Routing Ledger**. 라우팅 결정과 게이트 증거를 프라이버시 보존 다이제스트로 기록한다. 관찰이 규칙으로 승격된다.
+![SPEC 3-페이즈 라이프사이클 — plan → run → sync](./assets/images/spec-3phase-infographic.png)
 
-**4-티어 학습 사다리**. 관찰 (≥1) → 휴리스틱 (≥3) → 규칙 (≥5) → 자동 업데이트 (≥10, 사용자 승인 필수); 신뢰도 하한 0.70. 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다. 하네스 편집(규칙·에이전트·훅 수정)에는 예측–검증 규율이 적용된다: 편집마다 반증 가능한 예측을 기록하고, held-in/held-out 이중 검사를 통과해야 채택되며, 기각된 편집도 기록으로 남는다.
+**TRUST 5 품질 게이트.** Tested(85%+ 커버리지) · Readable · Unified · Secured · Trackable, 모든 변경에 적용. 검증을 판정하는 것은 에이전트가 아니라 게이트다.
 
-**결정 메모리**. 질문은 불확실성이 가장 높은 곳(p ≈ 0.5)에서 나오고, 추천은 시스템 기본값이 아니라 관찰된 통계적 다수를 따른다.
+**11-에이전트 카탈로그.** MoAI 커스텀 10 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
 
-### 확장 지점 — 동일 패턴을 프로젝트 맞춤으로 복제해 재사용 효율
-
-**Harness v4 Builder**. 자연어 요청 → 도메인·목표·제약 추출 → 승인 게이트 → 프로젝트 전용 에이전트·스킬·커맨드 생성.
-
-**@MX 태그**. AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는 인라인 코드 어노테이션이다.
-
-**worktree 격리**. `/moai plan --worktree`로 SPEC마다 병렬 개발용 격리 worktree를 붙인다.
-
----
-
-![토크노믹스 하네스](./assets/images/readme/tokenomics-harness-ko.png)
+**확장 지점.** Harness v4 Builder가 자연어 요청을 프로젝트 전용 에이전트 · 스킬 · 커맨드 · 훅 스캐폴딩으로 바꾼다. `@MX` 태그는 AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 코드 안에서 주고받게 한다. `worktree` 격리는 `/moai plan --worktree`로 SPEC마다 병렬 개발용 격리 worktree를 붙인다.
 
 ---
 
@@ -163,18 +181,18 @@ cd moai-adk && make build
 moai init my-project
 ```
 
-대화형 마법사가 언어와 프레임워크, 방법론을 자동으로 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
+대화형 마법사가 언어·프레임워크·방법론을 자동 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
 ### 첫 워크플로우
 
 ```bash
-claude        # launch Claude Code inside the project
+claude        # 프로젝트 안에서 Claude Code 실행
 ```
 
 ```text
-/moai plan "Add JWT login"      # author a SPEC
-/moai run SPEC-AUTH-001         # TDD/DDD implementation
-/moai sync SPEC-AUTH-001        # sync docs + create PR
+/moai plan "Add JWT login"      # SPEC 작성
+/moai run SPEC-AUTH-001         # TDD/DDD 구현
+/moai sync SPEC-AUTH-001        # 문서 동기화 + PR 생성
 ```
 
 자연어로 던져도 된다. `/moai "fix the login bug"`처럼 쓰면 의도 분석(Analyze-First 라우팅)이 요청을 읽고 알맞은 워크플로우로 넘긴다.
@@ -185,33 +203,35 @@ claude        # launch Claude Code inside the project
 |----------|----------------------|-------|
 | macOS | Terminal, iTerm2 | 완전 지원 |
 | Linux | Bash, Zsh | 완전 지원 |
-| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe는 미지원 |
+| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe 미지원 |
 
 **사전 요구사항**
 
 - 모든 플랫폼에 **Git** 설치 필수
 - **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스다
-- **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
+- **권장**: `gh` CLI(PR 자동화) · `tmux`(CG 모드) · 사용 언어의 린트/테스트 툴체인(예: `golangci-lint`)
 
 ---
 
 ## 레퍼런스
 
-### /moai 슬래시 서브커맨드 (16개)
+### /moai 슬래시 서브커맨드 (15개)
 
 | 서브커맨드 | 역할 |
 |------------|------|
 | `plan` / `run` / `sync` | SPEC 3-페이즈 파이프라인 |
-| `project` / `harness` / `design` | 프로젝트 문서+하네스 생성 · 하네스 라이프사이클 · Design-phase 협업 |
-| `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단일 패스 수리 |
-| `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
-| `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 문서 · GitHub 이슈 보고 |
-| `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
-| *(자연어)* | 자율 plan → run → sync 파이프라인으로 넘기는 Analyze-First 라우팅 |
+| `project` / `harness` | 프로젝트 문서 · 하네스 라이프사이클 |
+| `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단발 수리 |
+| `review` / `gate` / `clean` | 코드 리뷰(`--deep` 다중 에이전트 적대적 취약점 스캔) · 사전 커밋 품질 게이트 · 데드 코드 제거 |
+| `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 맵 · GitHub 이슈 리포팅 |
+| `e2e` | 멀티플랫폼 E2E 테스트(웹/모바일/데스크톱, CLI 우선) |
+| *(자연어)* | Analyze-First 라우팅 → 자율 plan → run → sync 파이프라인 |
+
+> **퇴역(Retired) 4개 서브커맨드**: `design` · `brain` · `coverage` · `security` (SPEC-SUBCOMMAND-RETIRE-001, status: completed). `security`는 `moai-ref-owasp-checklist` + `moai-ref-llm-security` 스킬로 대체되었고, `e2e`는 E2E-REVIVAL로 부활해 현재 활성이다.
 
 > → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
 
-### CLI 커맨드 (자주 쓰는 12개)
+### CLI 커맨드 (자주 쓰는 13개)
 
 | 커맨드 | 설명 |
 |---------|-------------|
@@ -242,12 +262,12 @@ claude        # launch Claude Code inside the project
 | | manager-design | 🟠 | Design-phase 협업 (Claude Design) |
 | **Evaluator** | plan-auditor | 🔴 | 독립 계획 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | 🟠 | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
+| **Builder** | builder-harness | 🟠 | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |
 | **Advisor** | super-advisor | 🔵 | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
 | **Built-in** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준이다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일(`high`/`low`) 전환 시 배정이 달라진다. 장기 위임의 진행 상태는 Task 채널에 기록되고, 오케스트레이터가 아이콘 Progress Board로 중계한다.
+비용 색은 기본 `medium` 프로파일의 model×effort 셀 기준(`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속(사용자 추가 에이전트). 프로파일(`high`/`low`) 전환 시 배정이 달라진다. 장기 위임의 진행 상태는 Task 채널에 기록되고, 오케스트레이터가 아이콘 Progress Board로 중계한다.
 
 ### TRUST 5 품질 게이트
 
@@ -315,15 +335,15 @@ flowchart TD
 🗿 v3.0.0 ⬆️ v3.0.1
 ```
 
-앞의 값은 지금 설치된 MoAI-ADK 버전이고, 화살표는 받을 수 있는 업데이트가 있다는 표시다.
+앞의 값은 지금 설치된 MoAI-ADK 버전이고, 화살표는 받을 수 있는 업데이트가 있다는 표시다. `moai update`를 실행하면 사라진다.
 
 ### Q: GLM 없이 Claude만으로 쓸 수 있나요?
 
-쓸 수 있다. `moai cc`가 Claude 전용 세션이다. CG 모드(`moai cg`, Claude 리더 + GLM 워커)와 GLM 전용(`moai glm`)은 비용 절감을 위한 선택지일 뿐, 하네스·SPEC 워크플로우·품질 게이트는 세 모드 모두에서 동일하게 돈다.
+그렇다. `moai cc`가 Claude 전용 세션이다. CG 모드(`moai cg`, Claude 리더 + GLM 워커)와 GLM 전용(`moai glm`)은 비용 절감을 위한 선택지일 뿐, 하네스·SPEC 워크플로우·품질 게이트는 세 모드 모두에서 동일하게 돈다.
 
 ### Q: 기존 프로젝트에도 적용되나요?
 
-적용된다. `moai init`이 프로젝트 상태를 감지해 방법론을 정한다 — 커버리지 10% 미만의 기존 코드에는 DDD(특성화 테스트로 동작을 고정한 뒤 점진 개선), 신규/충분히 테스트된 코드에는 TDD가 붙는다.
+그렇다. `moai init`이 프로젝트 상태를 감지해 방법론을 정한다 — 커버리지 10% 미만의 기존 코드에는 DDD(특성화 테스트로 동작을 고정한 뒤 점진 개선), 신규/충분히 테스트된 코드에는 TDD가 붙는다.
 
 ---
 
@@ -336,7 +356,7 @@ flowchart TD
 1. 리포지토리 포크
 2. 기능 브랜치 생성: `git checkout -b feature/my-feature`
 3. 테스트 작성 (신규 코드는 TDD, 기존 코드는 특성화 테스트)
-4. 테스트, 린트, 포맷 통과 확인: `make test` · `make lint` · `make fmt`
+4. 테스트·린트·포맷 통과 확인: `make test` · `make lint` · `make fmt`
 5. Conventional commit 메시지로 커밋하고 풀 리퀘스트 열기
 
 **코드 품질 요구사항**: 85%+ 커버리지 · 린트 오류 0 · 타입 오류 0 · Conventional commits
@@ -372,7 +392,7 @@ flowchart TD
 ### 링크
 
 - [공식 문서](https://adk.mo.ai.kr)
-- [도서: Claude Code 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)
+- [도서: 클로드 코드로 시작하는 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
 - [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)
