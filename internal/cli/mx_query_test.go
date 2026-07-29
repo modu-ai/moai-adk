@@ -466,8 +466,8 @@ func TestSidecarUnavailable_StderrFormat(t *testing.T) {
 		t.Errorf("stderr에 'SidecarUnavailable' 없음\nstderr: %q", stderr)
 	}
 
-	if !strings.Contains(stderr, "/moai mx --full") {
-		t.Errorf("stderr에 '/moai mx --full' 없음\nstderr: %q", stderr)
+	if !strings.Contains(stderr, "moai mx scan") {
+		t.Errorf("stderr에 'moai mx scan' 없음\nstderr: %q", stderr)
 	}
 }
 

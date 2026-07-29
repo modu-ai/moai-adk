@@ -285,10 +285,10 @@ func TestRegisterSessionConcurrent(t *testing.T) {
 		t.Skip("skipping concurrent stress test in -short mode")
 	}
 	r, _ := newTestRegistry(t)
-	// Stress test holds the lock 1000 times in rapid succession; the
-	// production 2s timeout is insufficient for the 10-goroutine pile-up
-	// under -race. Override with 60s for this test only.
-	r = r.WithLockTimeout(60 * time.Second)
+	// The in-process mutex (SPEC-V3R6-CI-FLAKY-STABILIZE-003) serializes
+	// same-process contenders, so the production 2s LockTimeout is now
+	// sufficient. The previous 60s override was a workaround for the NB-flock
+	// starvation this SPEC structurally removed; it is no longer needed.
 
 	const (
 		workers   = 10

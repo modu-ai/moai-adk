@@ -8,19 +8,14 @@ Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 
 
 ## Claude Code Integration
 
-**Minimum Recommended Version: Claude Code v2.1.110** (released April 2026)
+**Minimum Recommended Version: Claude Code v2.1.110+** (April 2026). v3.0 development tracks the v2.1.219+ subagent-nesting defaults and the v2.1.198+ background-subagent defaults.
 
-MoAI-ADK v2.12+ requires Claude Code v2.1.110 or later to support:
-- MCP scope duplicate detection in `moai doctor` (v2.1.110+)
-- Bash tool timeout ceiling enforcement (600,000ms) (v2.1.110+)
-- `disableBypassPermissionsMode` policy for security gates (v2.1.110+)
-
-**Opus 4.7 Support** (v2.12.0+):
-- Model: `claude-opus-4-7`
-- Effort levels: `low`, `medium`, `high`, `xhigh` (default), `max`
-- Recommended for: manager-spec, plan-auditor, sync-auditor, manager-strategy, expert-security, expert-refactoring
-- Backward compatibility: Opus 4.6, Sonnet 4.6, Haiku 4.5 supported with effort field auto-downgrade
-- Windows support: CLAUDE_ENV_FILE injection via SessionStart hook (v2.12.0+)
+**Opus 5 / 4.8 Model Matrix** (v3.0):
+- Anchor model: `claude-opus-5` (1M-context, the default Opus as of Claude Code 2.1.219); `claude-opus-4-8` and `claude-opus-4-7` still supported
+- Effort levels: `low` / `medium` / `high` (default) / `xhigh` / `max`. Opus 5 carries a previously-set effort level across sessions (no hold)
+- Adaptive Thinking: enabled via `thinking: {type: "adaptive"}` -- Opus 4.7+ rejects fixed `budget_tokens` with HTTP 400, so fixed thinking budgets are prohibited
+- 33-cell profile matrix: 11 retained agents x 3 model tiers (`low` / `medium` / `high`) materialized by `internal/template/profile_matrix.go` and rendered into agent frontmatter at deploy time
+- GLM tier-models table (`internal/config/defaults.go`): `DefaultGLMHigh = "glm-5.2"` (NO `[1m]` suffix -- the `[1m]` is added at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested); `DefaultGLMMedium = "glm-4.7"`; `DefaultGLMLow = "glm-4.5-air"`; `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"`
 
 ## Go Module
 
@@ -34,29 +29,41 @@ The module path follows Go conventions with the GitHub organization and reposito
 
 ## Technology Stack
 
-### Core Dependencies
+### Core Dependencies (v3.0)
 
 | Category | Package | Version | Purpose |
 |----------|---------|---------|---------|
 | CLI Framework | `github.com/spf13/cobra` | v1.10.2 | Command-line interface with subcommands, flags, and shell completion |
+| CLI UX Wrapper | `charm.land/fang/v2` | v2.0.1 | Charm-branded Cobra wrapper (help rendering, themes) |
 | YAML Parsing | `gopkg.in/yaml.v3` | v3.0.1 | YAML marshaling/unmarshaling for configuration and SPEC documents |
-| TUI Components | `github.com/charmbracelet/bubbles` | v1.0.0 | Reusable TUI components (spinners, progress bars, viewport, text input) |
-| Terminal UI | `github.com/charmbracelet/bubbletea` | v1.3.10 | Interactive TUI framework with Elm-architecture patterns |
-| Terminal Forms | `github.com/charmbracelet/huh` | v0.8.0 | Modern form components (Select, MultiSelect, Input, Confirm, Form) with themes and accessibility |
-| Terminal Styling | `github.com/charmbracelet/lipgloss` | v1.1.1+ | Terminal layout and styling for statusline and UI components |
-| Markdown Rendering | `github.com/charmbracelet/glamour` | v0.10.0 | Terminal markdown rendering with syntax highlighting and auto dark/light detection |
-| TTY Detection | `github.com/mattn/go-isatty` | v0.0.20 | Terminal detection for headless mode support |
-| Text Processing | `golang.org/x/text` | v0.34.0 | Unicode normalization, language tag processing, and text utilities |
-| Configuration | Custom YAML loader | -- | Custom implementation in `internal/config/loader.go` (Viper was not used) |
+| TUI Components | `charm.land/bubbles/v2` | v2.1.1 | Reusable TUI components (spinners, progress bars, viewport, text input) |
+| Terminal UI | `charm.land/bubbletea/v2` | v2.0.8 | Interactive TUI framework with Elm-architecture patterns |
+| Terminal Forms | `charm.land/huh/v2` | v2.0.3 | Modern form components (Select, MultiSelect, Input, Confirm, Form) |
+| Terminal Styling | `charm.land/lipgloss/v2` | v2.0.5 | Terminal layout and styling for statusline and UI components |
+| Markdown Rendering | `github.com/charmbracelet/glamour` | v1.0.0 | Terminal markdown rendering with syntax highlighting and auto dark/light detection |
+| HTML Templating | `github.com/a-h/templ` | v0.3.1020 | Type-safe HTML templating for `internal/web` (loopback HTTP console, Templ + HTMX) |
+| Shell Parsing | `mvdan.cc/sh/v3` | v3.13.1 | POSIX shell parser used by hook and sandbox script analysis |
+| Tree-sitter | `github.com/smacker/go-tree-sitter` | master | Tree-sitter AST bindings for code analysis |
+| LSP Client | `github.com/charmbracelet/x/powernap` | v0.1.6 | Multi-language LSP client foundation. Wraps `sourcegraph/jsonrpc2` with VSCode-compatible codec. Used by `internal/lsp/core/` and `internal/lsp/transport/` |
+| Struct Validation | `github.com/go-playground/validator/v10` | v10.30.3 | Config struct validation |
+| TTY Detection | `github.com/mattn/go-isatty` | v0.0.24 | Terminal detection for headless mode support |
+| Runewidth | `github.com/mattn/go-runewidth` | v0.0.27 | East-Asian width-aware text rendering |
+| Terminal Env | `github.com/muesli/termenv` | v0.16.0 | Cross-platform terminal environment detection |
+| Color Profile | `github.com/charmbracelet/colorprofile` | v0.4.3 | Correct color rendering across terminal capabilities |
+| Text Processing | `golang.org/x/text` | v0.40.0 | Unicode normalization, language tag processing, and text utilities |
+| Sync Primitives | `golang.org/x/sync` | v0.22.0 | `errgroup` / `semaphore` for parallel quality gates and LSP queries |
+| System Calls | `golang.org/x/sys` | v0.47.0 | Low-level OS primitives (signal, syscall) |
+| Test Assertions | `github.com/stretchr/testify` | v1.11.1 | Replaces the earlier "stdlib-only" stance at v3.0 |
+| Goroutine Leak Detection | `go.uber.org/goleak` | v1.3.0 | Goroutine-leak assertions in tests |
+| Configuration | Custom YAML loader | -- | 14 `loader_*.go` files composing 32 YAML (Viper was not used) |
 | Git Operations | System Git via `exec.Command` | -- | All Git operations use system Git binary (go-git was not used) |
 | Logging | `log/slog` (stdlib) | Go 1.26 | Structured, leveled logging with JSON and text handlers |
-| Testing | `testing` (stdlib) | Go 1.26 | Standard test framework with benchmarks and fuzzing (testify was not used) |
-| HTTP Client | `net/http` (stdlib) | Go 1.26 | HTTP client for ranking API and update checking |
+| Testing | `testing` (stdlib) | Go 1.26 | Standard test framework with benchmarks and fuzzing |
+| HTTP Client | `net/http` (stdlib) | Go 1.26 | HTTP client for update checking and `moai web` loopback console |
 | Concurrency | goroutines + channels (stdlib) | Go 1.26 | Native concurrent execution for LSP, quality gates, and parallel operations |
-| File Embedding | `embed` (stdlib) | Go 1.26 | Compile-time template embedding into the binary |
+| File Embedding | `embed` (stdlib) | Go 1.26 | Compile-time template embedding via `//go:embed all:templates` in `internal/template/embed.go` |
 | Context | `context` (stdlib) | Go 1.26 | Cancellation, timeouts, and request-scoped values |
-| LSP Client | `github.com/charmbracelet/x/powernap` | v0.1.3 | Multi-language LSP client foundation (SPEC-LSP-CORE-002). Wraps `sourcegraph/jsonrpc2` with VSCode-compatible codec. Used by `internal/lsp/core/` and `internal/lsp/transport/` |
-| URI Encoding | `net/url` (stdlib) | Go 1.26 | RFC 3986 file:// URI encoding for LSP (`internal/lsp/gopls/uri.go`). Handles space, unicode, Windows drive paths correctly |
+| URI Encoding | `net/url` (stdlib) | Go 1.26 | RFC 3986 file:// URI encoding for LSP (`internal/lsp/gopls/uri.go`) |
 
 ### Security Patterns (v2.10.4)
 
@@ -105,30 +112,29 @@ MoAI-ADK provides built-in internationalization with 4 supported languages:
 
 Official documentation site running at `https://adk.mo.ai.kr`:
 
-| 항목 | 기술 | 버전 |
-|------|------|------|
-| 정적 사이트 생성기 | Hugo Extended | v0.160.1+ |
-| 테마 | Hextra | v0.12.2+ (Hugo module) |
-| 콘텐츠 포맷 | Hugo Markdown + shortcode | — |
-| 다이어그램 | Mermaid (Hextra 내장, 클라이언트 사이드) | v11+ |
-| 다국어 | Hugo multilingual (파일 기반) | ko/en/ja/zh 4개 |
-| 검색 | FlexSearch | Hextra 내장 |
-| 배포 | Vercel | Framework Preset=Hugo |
-| Edge Runtime | Vercel Edge Function | @runtime: 'edge' |
-| 릴리스 자동화 | Go + git archive | scripts/docs-version-snapshot |
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Static site generator | Hugo Extended | v0.160.1+ |
+| Theme | Hextra | v0.12.2+ (Hugo module) |
+| Content format | Hugo Markdown + shortcodes | -- |
+| Diagrams | Mermaid (Hextra built-in, client-side) | v11+ |
+| Multilingual | Hugo multilingual (file-based) | 4 locales: ko / en / ja / zh |
+| Search | FlexSearch | Hextra built-in |
+| Hosting | Vercel | Framework Preset = Hugo |
+| Edge runtime | Vercel Edge Function | `@runtime: 'edge'` for Accept-Language locale detection |
+| Release automation | Go + git archive | `scripts/docs-version-snapshot` |
 
-**Bun/Node.js 제거**: Phase 2 이전의 Nextra(Next.js + Bun) 스택을 전면 교체하여
-`docs-site/` 빌드에 Node 런타임 의존성이 0건이다. 로컬 개발도 Hugo 단일 바이너리만으로 가능.
+**Bun/Node.js removed**: the Phase-2 Nextra (Next.js + Bun) stack was fully replaced, so `docs-site/` builds with zero Node runtime dependency. Local development requires only the Hugo single binary.
 
 ### LSP Dependencies
 
-| Category | Package | Version | Purpose |
-|----------|---------|---------|---------|
-| JSON-RPC | Custom implementation | -- | Lightweight JSON-RPC 2.0 client over stdio and TCP |
-| LSP Types | Custom implementation | -- | LSP protocol type definitions in `internal/lsp/models.go` |
-| LSP Protocol | Custom implementation | -- | JSON-RPC 2.0 transport in `internal/lsp/protocol.go` |
+| Category | Package | Purpose |
+|----------|---------|---------|
+| JSON-RPC transport | `github.com/charmbracelet/x/powernap` | VSCode-compatible JSON-RPC 2.0 codec |
+| LSP Types | In-tree types under `internal/lsp/` (8 sub-packages) | MoAI-specific abstractions over raw protocol types |
+| Multi-server management | `internal/lsp/core/`, `internal/lsp/aggregator/`, `internal/lsp/gopls/` | Lifecycle, parallel diagnostic collection, gopls bridge |
 
-**Decision**: The `go.lsp.dev` packages were not used. Instead, a fully custom LSP client was implemented in `internal/lsp/` providing MoAI-specific abstractions (multi-server management, diagnostic aggregation) without external dependencies.
+**Decision**: The `go.lsp.dev` packages were not used. The v3.0 LSP client (8 sub-packages) is built on `powernap` and wraps it with MoAI-specific abstractions (multi-server management, diagnostic aggregation, cache, circuit breaker). 16-language auto-detection via project_markers; `lsp.client_impl` feature flag selects `gopls_bridge` (legacy, Go-only) or `powernap_core` (default, 16 languages).
 
 ### Planned Dependencies Not Used
 
@@ -136,20 +142,24 @@ The following dependencies were considered during planning but replaced with sim
 
 | Planned Package | Replacement | Rationale |
 |----------------|-------------|-----------|
-| `github.com/spf13/viper` | Custom YAML loader | Simpler, type-safe configuration without Viper's complexity |
+| `github.com/spf13/viper` | Custom YAML loader (14 `loader_*.go` files) | Simpler, type-safe configuration without Viper's complexity |
 | `github.com/go-git/go-git/v5` | System Git via `exec.Command` | Full Git feature coverage including worktrees without library limitations |
-| `github.com/stretchr/testify` | Standard `testing` package | Reduced external dependencies; standard assertions sufficient |
-| `go.lsp.dev/protocol` | Custom types in `internal/lsp/` | Full control over LSP type definitions without external dependency |
-| `go.lsp.dev/jsonrpc2` | Custom protocol in `internal/lsp/` | Lightweight implementation tailored to MoAI's needs |
+| `go.lsp.dev/protocol` | `github.com/charmbracelet/x/powernap` + in-tree types in `internal/lsp/` | Multi-language LSP client without `go.lsp.dev` coupling |
+| `go.lsp.dev/jsonrpc2` | `powernap` JSON-RPC codec in `internal/lsp/transport/` | Lightweight implementation tailored to MoAI's needs |
+
+> The "no testify" stance was reversed at v3.0 -- `github.com/stretchr/testify v1.11.1` is now a direct dependency. The reversal is recorded to prevent stale "testify was not used" claims from propagating back.
 
 ### Development Dependencies
 
 | Category | Package | Purpose |
 |----------|---------|---------|
 | Linter | `github.com/golangci/golangci-lint` | Comprehensive Go linter aggregator (staticcheck, gosec, ineffassign, etc.) |
+| PR Reviewer | CodeRabbit (`.coderabbit.yaml`) | Automated PR review; the `claude-pr-review` GitHub App was disabled at v3.0 in favor of CodeRabbit |
 | Mock Generation | Manual test doubles | Interface-based test doubles written manually (mockery was not used) |
 | Release | `github.com/goreleaser/goreleaser` | Cross-platform binary builds and release automation |
-| Code Generation | `go generate` (stdlib) | Driving mockery and embed directives |
+| Code Generation | `go generate` (stdlib) | Driving `go:embed` directives and templ source generation |
+| CI Platform | GitHub Actions | Workflow files under `.github/workflows/` |
+| Vulnerability Scan | `govulncheck` (stdlib golang.org/x/vuln) | Known vulnerability detection in dependency tree |
 
 ---
 
@@ -157,12 +167,14 @@ The following dependencies were considered during planning but replaced with sim
 
 ### Primary Build
 
-```makefile
-# Build the binary
-build:
-    go build -ldflags "-X pkg/version.Version=$(VERSION) -X pkg/version.Commit=$(COMMIT)" -o bin/moai ./cmd/moai
+The canonical targets are defined in the project `Makefile` under `##` help banners -- run `make help` to see them. The Template-First cycle is: edit `internal/template/templates/` -> `make build` (recompiles the binary, re-embedding templates via `//go:embed all:templates`) -> run tests -> commit. There is NO separate `embedded.go` generation step.
 
-# Run all tests with coverage
+```makefile
+# Rebuild the binary (re-embeds templates at compile time)
+build:
+    go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Version=$(VERSION) -X github.com/modu-ai/moai-adk/pkg/version.Commit=$(COMMIT)" -o bin/moai ./cmd/moai
+
+# Run all tests with coverage and race detector
 test:
     go test -race -coverprofile=coverage.out ./...
 
@@ -170,11 +182,7 @@ test:
 lint:
     golangci-lint run ./...
 
-# Generate mocks and embedded resources
-generate:
-    go generate ./...
-
-# Cross-compile for all platforms
+# Cross-compile release binaries for all 6 platform targets
 release:
     goreleaser release --clean
 ```
@@ -236,7 +244,13 @@ Recommended gopls settings for the project:
 | `MOAI_LOG_LEVEL` | Log verbosity (debug, info, warn, error) | `info` |
 | `MOAI_LOG_FORMAT` | Log output format (text, json) | `text` |
 | `MOAI_NO_COLOR` | Disable terminal colors | `false` |
-| `MOAI_RANK_API_URL` | Ranking API endpoint | Production URL |
+| `MOAI_DEVELOPMENT_MODE` | Override `quality.yaml` development mode | (unset -- file value wins) |
+| `MOAI_BRANCH_GUARD_EXEMPT` | Exempt a spawn from the main-checkout branch guard (set to `1`) | (unset -- guard active) |
+| `MOAI_SYNC_GATE_BLOCKING` | Make the sync-phase quality gate blocking (set to `1`) | advisory (`systemMessage` only) |
+| `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` | Cap subagent nesting depth (Claude Code runtime) | `3` on v2.1.219+ |
+| `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` | Cap concurrent subagents (Claude Code runtime) | `20` |
+
+> `MOAI_USER_NAME` and `MOAI_CONVERSATION_LANG` are NOT implemented in v3.0 -- user / language come from `.moai/config/sections/user.yaml` and `language.yaml` only. The retired `MOAI_RANK_API_URL` is also gone (ranking subsystem retired).
 
 ---
 
@@ -244,7 +258,7 @@ Recommended gopls settings for the project:
 
 ### Test Framework
 
-**Standard `testing` package** only (testify was not used). All 20 test packages use Go's built-in test assertions.
+**Standard `testing` package** as the foundation, augmented at v3.0 by `github.com/stretchr/testify v1.11.1` for assertions. The test suite spans ~1000 `*_test.go` files (table-driven, `t.Parallel()` where safe, `t.TempDir()` for filesystem isolation, `-race` enforced in CI).
 
 ```
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
@@ -375,9 +389,10 @@ The Go edition introduces formal contract testing for Claude Code hook integrati
 
 | Credential | Storage | Access Method |
 |------------|---------|---------------|
-| Ranking API token | System keyring (macOS Keychain, Linux secret-service) | `internal/rank/auth.go` |
 | Git credentials | System Git credential helper | System Git credential store |
 | LSP server tokens | Environment variables | `os.Getenv()` with validation |
+| GLM API token | `~/.moai/.env.glm` (local file) | `internal/cli/glm.go` `loadGLMKey()` |
+| Hook skip audit trail | `.moai/logs/hook-skip.log` (text log) | `MOAI_BRANCH_GUARD_EXEMPT=1` opt-out writes a record |
 
 ### Supply Chain Security
 
@@ -409,8 +424,9 @@ The Go edition introduces formal contract testing for Claude Code hook integrati
 
 - `pkg/version/`: External tools may query MoAI-ADK version
 - `pkg/models/`: External tools may need to parse MoAI-ADK data structures
-- `pkg/utils/`: General utilities that are stable and useful outside the project
 - Everything else: `internal/` (CLI commands, domain logic, LSP client, etc.)
+
+> v3.0 dropped the earlier `pkg/utils/` draft -- the v3.0 `pkg/` tree contains only `models` and `version`. General utilities (logging, path resolution, atomic file writes, validation) live in `internal/` packages or the standard library.
 
 **Impact**: Aggressive internalization allows breaking changes to implementation details without semver bumps on the module.
 

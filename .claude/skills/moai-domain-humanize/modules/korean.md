@@ -93,6 +93,19 @@ Each pair shows the machine-flavored original, the human-sounding rewrite, and t
 
 1. `**핵심**은 **속도**이며, 이는 **비용**과 직결된다 — 즉, **효율**의 문제다` → `핵심은 속도다. 속도가 곧 비용이고, 결국 효율의 문제다.` (J-1 + J-3: strip keyword-by-keyword bold and the em-dash aside)
 
+### Heading-level structural metaphor calque (Category A extension — technical artifacts)
+
+Category A's translationese rule extends to **headings and structural labels** in technical artifacts (reports, README, docs-site, generated sites), where English figurative stock is transplanted as a section title or framework label. A heading sets the frame for the whole section, so the calque propagates throughout — flag it **S1** in heading position even when a single in-body metaphor would be S2.
+
+| Calque (heading / structural label) | Native idiom |
+|---|---|
+| "토크노믹스 3축" (three axes) | "비용을 줄이는 세 가지 방법" / "3가지 비용 절감 전략" |
+| "차별성 7대 기둥" (seven pillars) | "7가지 핵심 차별점" / "일곱 가지 강점" |
+| "검증경제" (verification economy) | "검증 비용을 줄이는 방식" |
+| "예산방어" (budget defense) | "예산 초과 전에 중단하기" |
+
+Deliberately-coined brand terms (e.g. "토크노믹스") and established loanwords (e.g. "라우팅") are NOT calques; the rule binds only to figurative/structural carry-over. The always-loaded policy referencing this catalogue lives at `.claude/rules/moai/core/native-idiom-and-register.md`.
+
 ---
 
 ## Copy Layer (Korean)

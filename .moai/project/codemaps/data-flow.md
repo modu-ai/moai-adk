@@ -72,7 +72,7 @@ flowchart TD
     A["Claude Code emits event"]
     B["handle-event.sh wrapper"]
     C["moai hook event<br/>(stdin JSON)"]
-    D["Registry.Dispatch<br/>(28+ handlers)"]
+    D["Registry.Dispatch<br/>(30 EventType handlers)"]
     E["Handler chain<br/>(sequential)"]
     F["first 2-error<br/>short-circuit"]
     G["JSON + exit-code<br/>(stdout)"]
@@ -89,7 +89,7 @@ flowchart TD
 1. Claude Code hook event 발생
 2. `.claude/hooks/moai/handle-<event>.sh` 래퍼 실행
 3. `moai hook <event>` stdin 통해 JSON 수신
-4. `Registry.Dispatch()` 중앙 허브가 28+ 타입 핸들러로 라우팅
+4. `Registry.Dispatch()` 중앙 허브가 30개 EventType 핸들러로 라우팅
 5. 핸들러 체인 순차 실행 (각각 exit 0 or 2)
 6. 첫 번째 2-exit (차단) 시 short-circuit
 7. JSON 결과 + exit-code stdout으로 반환

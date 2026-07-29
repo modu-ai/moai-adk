@@ -2,9 +2,9 @@
 id: SPEC-INVOCATION-MODEL-002
 title: "Invocation-model divergence reconciliation + Axis-A alignment (review compose; clean scoped out)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-01
-updated: 2026-07-01
+updated: 2026-07-29
 author: manager-spec
 priority: P2
 phase: "v3.0.0"

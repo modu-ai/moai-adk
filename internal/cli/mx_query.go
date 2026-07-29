@@ -98,7 +98,7 @@ moai mx query --file-prefix internal/auth/ --format table`,
 			sidecarPath := filepath.Join(stateDir, mx.SidecarFileName)
 			if _, err := os.Stat(sidecarPath); os.IsNotExist(err) {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-					"SidecarUnavailable: sidecar index does not exist — run '/moai mx --full' to rebuild index\n")
+					"SidecarUnavailable: sidecar index does not exist — run 'moai mx scan' to build the index\n")
 				return fmt.Errorf("SidecarUnavailable: no sidecar index")
 			}
 

@@ -1,0 +1,16 @@
+moai update — change preview
+
++---------------------------+
+| Classification summary    |
+|---------------------------|
+| add                     1 |
+| update                  1 |
+| preserved (user-owned)  1 |
+| conflict                1 |
++---------------------------+
+
+Files
+  add                     templates/new_file.yaml
+  update                  .claude/settings.json
+  preserved (user-owned)  .claude/skills/hns-my/SKILL.md
+  conflict                .moai/config/config.yaml
