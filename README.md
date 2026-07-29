@@ -5,7 +5,7 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>An Agentic Development Kit designed for Tokenomics</strong>
+  <strong>An Agentic Development Harness for Claude Code</strong>
 </p>
 
 <p align="center">
@@ -38,27 +38,43 @@
 
 ---
 
-> **"Tokenomics is a harness designed to make token consumption economical."**
+> **"Don't write the code. Design the environment that writes the code."**
 
 ---
 
-## MoAI-ADK is a Tokenomics Harness
+## What is MoAI-ADK?
 
-MoAI-ADK (Agentic Development Kit) enables Claude Code to produce code, then makes that code reliable at predictable cost. A harness wraps the model from the outside. The model is a stochastic worker moving token by token — it remembers neither budget, nor quality bar, nor where the last session broke off. Cost ceilings, passing test suites, continuity that survives `/clear` — properties like these cannot be re-seeded by a prompt every turn; the system must enforce them from the outside.
+MoAI-ADK (Agentic Development Kit) is a harness that wraps Claude Code from the outside, making the model's stochastic output reliable. The model is a worker that moves token by token — it remembers neither budget, nor quality bar, nor where the last session broke off. Cost ceilings, passing test suites, self-improving loops, continuity that survives `/clear` — properties like these cannot be re-seeded by a prompt every turn; the system must enforce them from the outside.
 
-Every design decision serves one goal: token economics — the same quality for fewer tokens, higher quality for the same tokens. Which model to use, how deeply to reason, how to spend context — none of this is left to chance turn by turn; the system decides.
+It does not replace Claude Code. It only wraps, in structure, the parts Claude Code leaves to you — model routing, quality gates, cost control, learning loops, and session continuity. A single binary written in Go, it runs on macOS, Linux, and Windows with no extra dependencies.
 
-It does not replace Claude Code. It only wraps, in structure, the parts Claude Code leaves to you — model routing, quality gates, cost control, session continuity. A single binary written in Go, it runs on macOS, Linux, and Windows with no extra dependencies.
+![What is MoAI-ADK — an agentic development harness wrapping Claude Code](./assets/images/why-harness-infographic.png)
 
 ---
 
-## Why Tokenomics
+## The Harness, in Three Axes
 
-Token prices keep falling, but actual agent workflow spend rises. Agents spin through dozens to hundreds of steps to solve a single task, consuming proportionally more tokens. In usage-based pricing, this becomes the invoice; in subscription, it consumes the weekly quota shared by all models.
+MoAI-ADK's value rests on three pillars — the same three the [documentation site](https://adk.mo.ai.kr/en/core-concepts) organizes around. Each pillar answers one question about how an agentic system should work.
 
-### Cost is determined by assignment, not unit price
+![Three axes of the MoAI-ADK harness — Tokenomics, Agentic Loop Engineering, Agentic Harness](./assets/images/three-axes-infographic.png)
 
-The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this problem. Within the same Claude family, per-task cost tracks how efficiently a model *finishes* — not what a token costs.
+| Pillar | Key Question |
+|---|---|
+| 🪙 **Tokenomics** | How do we get the same quality with fewer tokens? |
+| 🧠 **Agentic Loop Engineering** | How does the loop work and learn on its own? |
+| 🛡️ **Agentic Harness** | How do we design an environment where agents work well? |
+
+### 🪙 Tokenomics — same quality, fewer tokens
+
+Token prices fell **98% over three years** (Linux Foundation), yet enterprise AI spend rose **320%** in the same window. Volume growth overwhelmed the price drop. Agents spin through dozens to hundreds of steps to solve a single task, burning tokens proportionally. In usage-based pricing this becomes the invoice; in subscription, it eats the weekly quota shared by every model.
+
+Uber deployed Claude Code to 5,000 engineers and **burned through a year of coding budget in four months**, then imposed monthly token limits. Meta, Amazon, and Microsoft each walked back unlimited-AI policies. **Tokenomics** — matching the model to the task to raise token efficiency — became the tech industry's new baseline.
+
+![Why tokenomics — token price -98% vs enterprise AI cost +320%](./assets/images/why-tokenomics-infographic.png)
+
+Traditional cost control was built for rising unit prices, so it is helpless against this paradox: prices falling while total spend climbs. The bottleneck is not unit price but volume, more precisely the step count an agent spins before finishing.
+
+**Cost is determined by assignment, not unit price.** The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within the same Claude family, per-task cost tracks how efficiently a model *finishes* — not what a token costs.
 
 | Model [effort] | Pass@1 | Per-task cost | Output tokens | Steps |
 |---|---|---|---|---|
@@ -68,71 +84,71 @@ The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this problem. 
 | claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
 | claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. "Use a weaker model harder to save money" does not hold. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
+Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
-MoAI-ADK systematizes this assignment instead of leaving it to chance.
+#### Four stages: measurement → routing → diet → defense
 
----
+Tokenomics operates in four stages. Each stage owns one face of cost, and together they form a closed loop. Measurement must precede so routing and diet effects can be verified; without defense, a single budget overrun cuts the session off.
 
-## Three Axes of Economization
+![Tokenomics 4-layer pipeline — measurement·routing·diet·defense](./assets/images/tokenomics-4layer-infographic.png)
 
-### Routing — Assign the right model and reasoning depth to each task
+**Measurement — per-SPEC token accounting.** Each SPEC's token consumption is accounted for transparently: transcript JSONL usage is summed and recorded in a `progress.md` token-accounting block, queryable via a `moai spec audit` column. This layer is the baseline for the other three.
 
-**Tier×Phase Matrix**. Declaratively assign models and reasoning effort (effort) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition. Maximize quality per cost.
+**Routing — assign the right model and reasoning depth to each task.** Declaratively assign models and reasoning effort (low / medium / high / max) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition.
 
-**No-Haiku 3-Tier Policy**. Exclude Haiku from the routing model set, distributing work across a 3-tier structure keyed to task character. Sonnet at low effort takes single-shot, input-dominated work (git mechanics, read-only search) to minimize step count; Opus carries every multi-turn agentic row, with `max` effort reserved for the two rarest-invocation ones.
+- **No-Haiku 3-Tier Policy** — excludes Haiku from the routing set; Sonnet at low effort takes single-shot, input-dominated work, Opus carries every multi-turn agentic row.
+- **Profile Matrix** — 11 agents × 3 profiles = 33 cells. `moai model profile` resolves each agent's `{model, effort}` pair.
+- **CG Mode** — `moai cg` combines a Claude leader (strategy, planning, audits) with GLM workers (bulk implementation). **60-70% cost savings** on implementation-heavy workloads.
 
-**Profile Matrix**. A single per-agent profile matrix maps each of the 11 retained agents to a `{model, effort}` pair — 33 cells. One profile axis — `high` / `medium` (default) / `low`, selected via `llm.profile` (`moai init --profile`, `moai update --profile`) — picks the active column; `moai model profile` resolves each agent's cell. Every retained agent, `Explore` included, draws model+effort from the matrix (no Haiku anywhere); only user-defined agents inherit the session model.
+![CG mode — Claude leader handles strategy and audits, GLM workers handle bulk implementation](./assets/images/cg-mode-infographic.png)
 
-**CG Mode (Claude + GLM)**. `moai cg` is a hybrid mode combining Claude leader and GLM workers. Strategy, planning, and audits run on Claude; bulk implementation runs on GLM. **60-70% cost savings** on implementation-heavy workloads.
+![Model routing — 11 agents assigned to Opus or Sonnet by role, with effort tags](./assets/images/model-routing-infographic.png)
 
-### Verification Economy — Diet context, persist evidence to disk
+**Measured value-for-money — Opus 5's knee is at medium.** The routing rationale rests on DeepSWE v1.1 (datacurve.ai, 113 tasks · 91 repos · 5 languages, 2026-07-25).
 
-**verify-diet**. Redirect verbose verification output to disk files, leaving only exit code and bounded tail (max 50 lines) in context. This file-redirect contract maintains verification evidence integrity while reducing context consumption. Evidence persists under `.moai/state/verify/<session>/`.
+| Model [effort] | Score | Per-task cost | Note |
+|---|---|---|---|
+| opus-5 [low] | 58%±2 | $1.66 | |
+| opus-5 [medium] | **69%±1** | **$3.29** | **value-for-money knee** |
+| opus-5 [high] | 73%±2 | $6.08 | +4pt score, 1.8× cost |
+| opus-5 [xhigh] | 73%±3 | $9.07 | **net loss** — ties high, +49% cost only |
+| opus-5 [max] | 74%±4 | $11.84 | |
+| glm-5.2 [max] | 44%±2 | $3.92 | API-metered disadvantage · valuable under z.ai flat-fee |
+| sonnet-5 [max] | 54%±4 | $26.40 | Pareto-dominated by opus-5 [low] |
 
-**Prompt Cache**. When a request's prefix matches the previous request, reuse that section instead of reprocessing. Cached reads cost 0.1× the base input price. Minimize always-loaded instructions and the hit rate rises immediately. The statusline cache hit segment (`♻️`) shows real-time monitoring.
+![DeepSWE benchmark — model×effort score and per-task cost](./assets/images/deepswe-benchmark-2.png)
 
-**Context Diet**. Apply `/clear` strategy. When SPEC phase completes, `/clear` and save progress to `progress.md`, then issue a paste-ready resume message. At context window thresholds (1M model 50% / 200K model 90%), automatic recommendations appear.
+> Source: [DeepSWE v1.1 leaderboard](https://deepswe.datacurve.ai) (datacurve.ai, 113 tasks, 2026-07-25)
 
-### Budget Defense — Stop before overage, resume in next session
+`medium` is the default anchor for implementation agents, and `xhigh` was retired from the matrix. Applying the `high` profile captures **cost −33%, quality +3.3pt** together — cheaper and more accurate.
 
-**Token Circuit Breaker**. When agent token usage hits hard-limit (default 90%), execute abort. Save progress to `progress.md`, issue paste-ready resume message, and never auto-`/clear`. The system only recommends `/clear`; the user decides and executes.
+**Verification Economy — diet context, persist evidence to disk.** Redirect verbose verification output to disk files, leaving only exit code and bounded tail (max 50 lines) in context. Prompt-cache reuse (cached reads cost 0.1×) and a context-diet `/clear` strategy (auto-recommendations at 1M 50% / 200K 90% thresholds) keep the window light.
 
-**Statusline**. Keep context usage rate (CW%), prompt cache hit rate, and rate limit depletion visible in terminal at all times. The `(⚠️/clear)` marker next to CW% appears at model-specific thresholds.
+**Budget Defense — stop before overage, resume in the next session.** A Token Circuit Breaker aborts at the hard limit (default 90%), saves progress to `progress.md`, and issues a paste-ready resume message. The statusline keeps context usage, cache hit rate, and rate-limit depletion visible at all times.
 
----
+### 🧠 Agentic Loop Engineering — the loop that works and learns on its own
 
-## Infrastructure Sustains Tokenomics
+A harness is not static structure. The loop runs on its own, observations accumulate along the way, and guidance evolves with each cycle.
 
-### Quality Structure — Prevent rework and debug loops (worst token waste)
+**Declarative loops.** `/moai goal "<condition>"` keeps the session working until a declared completion condition is met or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains. The loop is not driven by a prompt each step — it continues toward the declared end-state on its own.
 
-**SPEC 3-Phase Lifecycle**. plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS format requirements + acceptance criteria judge completion by evidence.
+**4-Tier Learning Ladder.** Observations upgrade into guidance along a ladder: Observation (≥1) → Heuristic (≥3) → Rule (≥5) → Auto-update (≥10, user approval required); trust threshold 0.70. Routing decisions and gate evidence are recorded as privacy-preserving digests. All applications revertible via `moai harness rollback`. Harness edits (rule/agent/hook changes) follow a predict–verify discipline: each edit records a falsifiable prediction, must pass held-in/held-out double checks before acceptance, and rejected edits stay on record.
 
-**TRUST 5 Quality Gates**. Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
+**Decision Memory.** Questions emerge where uncertainty is highest (p ≈ 0.5); recommendations follow observed statistical majority, not system defaults. The harness learns which decisions you tend to make and surfaces the right option rather than a generic default.
 
-**11-Agent Catalog**. MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
+### 🛡️ Agentic Harness — designing the environment agents work in
 
-### Learning Loops — Token efficiency improves as loops run
+Instead of writing code yourself, you design an environment where agents work well. This pillar is the structure that makes the other two possible.
 
-**`/moai goal`·`/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
+**SPEC 3-Phase Lifecycle.** plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS-format requirements + acceptance criteria judge completion by evidence.
 
-**Routing Ledger**. Record routing decisions and gate evidence as privacy-preserving digests. Observations upgrade to rules.
+![SPEC 3-phase lifecycle — plan → run → sync](./assets/images/spec-3phase-infographic.png)
 
-**4-Tier Learning Ladder**. Observation (≥1) → Heuristic (≥3) → Rule (≥5) → Auto-update (≥10, user approval required); trust threshold 0.70. All applications revertible via `moai harness rollback`. Harness edits (rule/agent/hook changes) follow a predict–verify discipline: each edit records a falsifiable prediction, must pass held-in/held-out double checks before acceptance, and rejected edits stay on record.
+**TRUST 5 Quality Gates.** Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
 
-**Decision Memory**. Questions emerge where uncertainty is highest (p ≈ 0.5); recommendations follow observed statistical majority, not system defaults.
+**11-Agent Catalog.** MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
 
-### Extension Points — Duplicate proven patterns for project-specific reuse efficiency
-
-**Harness v4 Builder**. Natural language request → domain·goal·constraint extraction → approval gate → project-specific agents·skills·commands·hooks scaffolding.
-
-**@MX Tags**. Inline code annotations where AI agents exchange context, invariants, and danger zones.
-
-**worktree isolation**. Attach isolated worktrees per SPEC for parallel development via `/moai plan --worktree`.
-
----
-
-![Tokenomics Harness](./assets/images/readme/tokenomics-harness-en.png)
+**Extension Points.** The Harness v4 Builder turns a natural-language request into project-specific agents · skills · commands · hooks scaffolding. `@MX` tags let AI agents exchange context, invariants, and danger zones inline in code. `worktree` isolation attaches an isolated workspace per SPEC for parallel development via `/moai plan --worktree`.
 
 ---
 
@@ -199,21 +215,23 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 ## Reference
 
-### /moai Slash Commands (16)
+### /moai Slash Commands (15)
 
 | Subcommand | Role |
 |------------|------|
 | `plan` / `run` / `sync` | SPEC 3-phase pipeline |
-| `project` / `harness` / `design` | Project docs+harness generation · harness lifecycle · Design-phase collaboration |
+| `project` / `harness` | Project docs+harness generation · harness lifecycle |
 | `goal` / `loop` / `fix` | Declarative goal loops · iterative fixes · single-pass fixes |
 | `review` / `gate` / `clean` | Code review (`--deep` for multi-agent adversarial vulnerability scan) · pre-commit quality gates · dead code removal |
 | `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
 | `e2e` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing: autonomous plan → run → sync pipeline |
 
+> **4 Retired Subcommands**: `design` · `brain` · `coverage` · `security` (SPEC-SUBCOMMAND-RETIRE-001, status: completed). `security` was replaced by the `moai-ref-owasp-checklist` + `moai-ref-llm-security` skills; `e2e` was revived by E2E-REVIVAL and is currently active.
+
 > → Details: [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) · [Utility Commands](https://adk.mo.ai.kr/en/utility-commands)
 
-### CLI Commands (frequently used 12)
+### CLI Commands (13 frequently used)
 
 | Command | Description |
 |---------|-------------|
