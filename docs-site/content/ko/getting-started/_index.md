@@ -5,7 +5,7 @@ weight: 10
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 에이전틱 루프 엔지니어링 · 🛡️ 에이전틱 하네스
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
@@ -42,5 +42,5 @@ flowchart TD
 | 9 | [자주 묻는 질문](/ko/getting-started/faq) | 설치·실행 시 만나는 흔한 이슈와 해결법 |
 
 {{< callout type="info" >}}
-**다음 단계**: 설치를 마쳤다면 [핵심 개념](/ko/core-concepts/)에서 v3.0의 세 기둥(토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스)과 SPEC·DDD·TRUST 5 등 MoAI-ADK의 설계 철학을 학습할 수 있습니다.
+**다음 단계**: 설치를 마쳤다면 [핵심 개념](/ko/core-concepts/)에서 v3.0의 세 가지 핵심(토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스)과 SPEC·DDD·TRUST 5 등 MoAI-ADK의 설계 철학을 학습할 수 있습니다.
 {{< /callout >}}

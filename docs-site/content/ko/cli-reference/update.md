@@ -250,7 +250,7 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 | **사용자 스킬** | `skills/hns-*` (레거시 `harness-*`, `my-*` 포함) | {{< icon check ok >}} 업데이트 영향 없음 (보존) |
 
 {{< callout type="warning" >}}
-**중요:** <code>moai-*</code> 접두사를 가진 스킬은 MoAI-ADK가 관리하며 업데이트 시 덮어 쓰입니다. 직접 만든 스킬은 <code>hns-*</code> 접두사 (사용자 소유 네임스페이스) 를, 에이전트는 <code>.claude/agents/harness/</code> 디렉터리를 사용하세요.
+**중요:** <code>moai-*</code> 접두사 스킬은 MoAI-ADK가 관리하며 업데이트 시 덮어 쓰입니다. 직접 만든 스킬은 <code>hns-*</code> 접두사(사용자 소유 네임스페이스)를, 에이전트는 <code>.claude/agents/harness/</code> 디렉터리를 사용하세요.
 {{< /callout >}}
 
 ## 롤백

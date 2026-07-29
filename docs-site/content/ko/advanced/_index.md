@@ -4,17 +4,17 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>세 가지 핵심</strong>: 🪙 토크노믹스(비용) · 🧠 에이전틱 루프 엔지니어링(자가개선) · 🛡️ 에이전틱 하네스(품질·통제)
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
-![토크노믹스 3축](/images/sections/advanced-ko.png)
+![MoAI-ADK 세 가지 핵심](/images/sections/advanced-ko.png)
 
-MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다。 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
+MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다. 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
 
 
 {{< callout type="info" >}}
-이 섹션의 문서들은 v3.0의 세 기둥 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), **에이전틱 하네스** (Agentic Harness) — 가운데 주로 세 번째 기둥의 구현 세부 사항을 다룹니다. 에이전트가 코드를 잘 쓰게 만드는 비결은 모델이 아니라 모델을 둘러싼 환경 설계에 있습니다.
+이 섹션의 문서들은 v3.0의 세 가지 핵심 — **토크노믹스** (Token Economics, 비용), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering, 자가개선), **에이전틱 하네스** (Agentic Harness, 품질·통제) — 가운데 주로 세 번째 핵심인 하네스의 구현 세부 사항을 다룹니다. 에이전트가 코드를 잘 쓰게 만드는 비결은 모델이 아니라 모델을 둘러싼 환경 설계에 있습니다.
 {{< /callout >}}
 
 ## 하네스는 어떻게 조립되는가

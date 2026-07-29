@@ -14,7 +14,7 @@ draft: false
 
 `/moai project`는 MoAI-ADK 워크플로우의 **프로젝트 문서 생성** 명령어입니다. 프로젝트의 소스 코드, 설정 파일, 디렉토리 구조를 분석하여 AI가 프로젝트를 빠르게 이해할 수 있도록 돕습니다.
 
-에이전틱 하네스 관점에서 보면, 이 명령어는 하네스의 **바닥 공사**입니다. 에이전트가 매 세션 코드베이스를 처음부터 다시 파악하게 두는 대신, 프로젝트 지식을 파일로 고정해 둡니다. 파일 기반 영속 기억이 하네스 설계의 기본 패턴이고, `/moai project`가 그 출발점을 만듭니다. 매 세션 반복될 탐색 비용을 문서 1회 생성으로 대체한다는 점에서 토크노믹스 효과도 있습니다.
+에이전틱 하네스 관점에서 보면, 이 명령어는 하네스의 **바닥 공사**입니다. 에이전트가 매 세션 코드베이스를 처음부터 다시 파악하게 두는 대신, 프로젝트 지식을 파일로 고정해 둡니다. 파일 기반 영속 기억이 하네스 설계의 기본 패턴이고, `/moai project`가 그 출발점을 만듭니다. 매 세션 반복될 탐색 비용을 문서 1회 생성으로 대체한다는 점에서 비용 절감 효과도 있습니다.
 
 {{< callout type="info" >}}
 **왜 프로젝트 문서가 필요한가요?**
@@ -142,7 +142,7 @@ flowchart TD
 
 ### Phase 2: 심층 인터뷰 (신규 프로젝트)
 
-신규 프로젝트를 선택한 경우, 2단계 **심층 인터뷰** (Deep Interview)를 진행합니다 — 명확도 점수 기반 Stage A (Vision-Domain / Technology-Constraints / Scope, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 다음 정보를 수집합니다:
+신규 프로젝트를 선택한 경우, 2단계 **심층 인터뷰** (Deep Interview)를 진행합니다 — 명확도 점수 기반 Stage A (Vision-Domain / Technology-Constraints / Scope, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 라운드. 다음 정보를 수집합니다:
 
 **질문 1 - 프로젝트 목적**:
 
@@ -193,7 +193,7 @@ flowchart TD
 
 ### Phase 4: 심층 인터뷰 (기존 프로젝트)
 
-코드베이스 분석 후, 기존 프로젝트에도 2단계 **심층 인터뷰**가 진행됩니다 — 명확도 점수 기반 Stage A (Ownership-Goal / Constraints / Scope-Priority, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 분석 결과만으로 드러나지 않는 소유권·목표·우선순위를 사용자에게서 끌어냅니다.
+코드베이스 분석 후, 기존 프로젝트에도 2단계 **심층 인터뷰**가 진행됩니다 — 명확도 점수 기반 Stage A (Ownership-Goal / Constraints / Scope-Priority, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 라운드. 분석 결과만으로 드러나지 않는 소유권·목표·우선순위를 사용자에게서 끌어냅니다.
 
 ### Phase 5: 사용자 확인
 
