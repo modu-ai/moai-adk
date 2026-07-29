@@ -1,6 +1,11 @@
 // MoAI Web Console — interface i18n dictionary (en · ko · ja · zh).
 // SPEC-WEB-CONSOLE-005 (web interface i18n + CJK self-host webfont).
 //
+// Untranslated-value governance: the owning surface for intentionally-
+// locale-invariant keys is internal/web/i18n_untranslated_allowlist_test.go
+// (package `web`). Any change to this catalogue MUST be reviewed against that
+// allowlist and the ruling procedure documented on it (SPEC-I18N-GOVERNANCE-001).
+//
 // This is a DERIVATIVE of the Claude Design i18n.js with the design-review
 // preview keys STRIPPED (the design scaffold's "State preview" keys are NOT part
 // of the product) and the key set reconciled to the actual rendered chrome. It
@@ -520,7 +525,7 @@ window.MOAI_I18N = {
     "f.model_policy.title": "모델 정책",
     "f.model_policy.desc": "모델 자동 선택 시 품질과 속도의 균형입니다.",
     "f.model.title": "모델",
-    "f.model.desc": "The specific model to run.",
+    "f.model.desc": "실행할 특정 모델.",
     "f.model.opt.opus": "Opus 5",
     "f.model.opt.opus[1m]": "Opus 5",
     "f.model.opt.sonnet": "Sonnet 5",
@@ -561,7 +566,7 @@ window.MOAI_I18N = {
     "mp.subtitle": "읽기 전용 모델 라우팅 정책 (로컬 머신 · 루프백 전용)",
     "mp.tier.title": "활성 성능 티어",
     "mp.tier.desc": "llm.performance_tier — 라우팅 프로파일 선택자 (max/medium/low). Launch 섹션의 model_policy (init 시점 agent frontmatter 정책, high/medium/low)와 구분됨.",
-    "mp.tier.empty": "(runtime default: medium)",
+    "mp.tier.empty": "(런타임 기본값: medium)",
     "mp.tier.active": "활성 티어",
     "mp.tier.default": "(런타임 기본값: medium — llm.performance_tier 미설정)",
     "mp.tier.select": "성능 티어 전환",
@@ -573,7 +578,7 @@ window.MOAI_I18N = {
     "mp.col.tier": "티어",
     "mp.col.phase": "페이즈",
     "mp.col.model": "모델",
-    "mp.col.effort": "effort",
+    "mp.col.effort": "Effort",
     "mp.fallback": "(폴백)",
     "mp.plan.title": "플랜 타입",
     "mp.plan.desc": "llm.plan_type — 과금 컨텍스트 티어 프로파일 (api = API 종량제, subscription = 주간 쿼터). 전환하면 해당 model/effort 티어 매트릭스가 배포 에이전트에 다시 적용됩니다.",
@@ -884,7 +889,7 @@ window.MOAI_I18N = {
     "f.model_policy.title": "モデルポリシー",
     "f.model_policy.desc": "モデル自動選択時の品質と速度のバランスです。",
     "f.model.title": "モデル",
-    "f.model.desc": "The specific model to run.",
+    "f.model.desc": "実行する特定のモデル。",
     "f.model.opt.opus": "Opus 5",
     "f.model.opt.opus[1m]": "Opus 5",
     "f.model.opt.sonnet": "Sonnet 5",
@@ -925,7 +930,7 @@ window.MOAI_I18N = {
     "mp.subtitle": "読み取り専用のモデルルーティングポリシー（ローカルマシン・ループバック専用）",
     "mp.tier.title": "アクティブなパフォーマンスティア",
     "mp.tier.desc": "llm.performance_tier — ルーティングプロファイルセレクタ（max/medium/low）。Launch セクションの model_policy（init 時の agent frontmatter ポリシー、high/medium/low）とは別物。",
-    "mp.tier.empty": "(runtime default: medium)",
+    "mp.tier.empty": "(ランタイムデフォルト: medium)",
     "mp.tier.active": "アクティブティア",
     "mp.tier.default": "(ランタイムデフォルト: medium — llm.performance_tier 未設定)",
     "mp.tier.select": "パフォーマンスティアを切り替え",
@@ -937,7 +942,7 @@ window.MOAI_I18N = {
     "mp.col.tier": "ティア",
     "mp.col.phase": "フェーズ",
     "mp.col.model": "モデル",
-    "mp.col.effort": "effort",
+    "mp.col.effort": "Effort",
     "mp.fallback": "(フォールバック)",
     "mp.plan.title": "プランタイプ",
     "mp.plan.desc": "llm.plan_type — 課金コンテキストのティアプロファイル (api = API 従量課金、subscription = 週次クォータ)。切り替えると対応する model/effort ティア行列が配布エージェントに再適用されます。",
@@ -1248,7 +1253,7 @@ window.MOAI_I18N = {
     "f.model_policy.title": "模型策略",
     "f.model_policy.desc": "自动选择模型时质量与速度的取向。",
     "f.model.title": "模型",
-    "f.model.desc": "The specific model to run.",
+    "f.model.desc": "要运行的特定模型。",
     "f.model.opt.opus": "Opus 5",
     "f.model.opt.opus[1m]": "Opus 5",
     "f.model.opt.sonnet": "Sonnet 5",
@@ -1289,7 +1294,7 @@ window.MOAI_I18N = {
     "mp.subtitle": "只读的模型路由策略（本地机器 · 仅回环）",
     "mp.tier.title": "当前性能层级",
     "mp.tier.desc": "llm.performance_tier — 路由配置选择器（max/medium/low）。区别于 Launch 部分的 model_policy（init 时的 agent frontmatter 策略，high/medium/low）。",
-    "mp.tier.empty": "(runtime default: medium)",
+    "mp.tier.empty": "(运行时默认: medium)",
     "mp.tier.active": "当前层级",
     "mp.tier.default": "(运行时默认: medium — llm.performance_tier 未设置)",
     "mp.tier.select": "切换性能层级",
@@ -1301,7 +1306,7 @@ window.MOAI_I18N = {
     "mp.col.tier": "层级",
     "mp.col.phase": "阶段",
     "mp.col.model": "模型",
-    "mp.col.effort": "effort",
+    "mp.col.effort": "Effort",
     "mp.fallback": "(回退)",
     "mp.plan.title": "计划类型",
     "mp.plan.desc": "llm.plan_type — 计费上下文的层级配置 (api = API 按量计费，subscription = 每周配额)。切换后会将对应的 model/effort 层级矩阵重新应用到已部署的代理。",
