@@ -70,7 +70,7 @@ moai session doctor
 
 ## 사용 맥락
 
-이 레지스트리는 오케스트레이터가 구현 에이전트를 spawn하기 전 동시 세션 경쟁을 감지하는 데 사용됩니다. `moai session list --json --filter-spec <SPEC-ID>` 가 다른 세션 항목을 반환하면 오케스트레이터는 진행을 멈추고 사용자에게 확인합니다.
+오케스트레이터는 구현 에이전트를 spawn 하기 전 이 레지스트리로 동시 세션 경쟁을 잡아냅니다. `moai session list --json --filter-spec <SPEC-ID>` 가 다른 세션 항목을 반환하면 오케스트레이터는 진행을 멈추고 사용자에게 확인합니다.
 
 ## 관련 문서
 
