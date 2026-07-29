@@ -19,5 +19,10 @@ run_status: audit-ready
 run_commits: 87938efa3, 5fc4b58b8
 ac_summary: AC-PES-001..010 met — doctrine (M1-M3) present + mirrored; M4 advisory hook + test green + builds clean; M5 ambient note grep-passes; template neutrality/mirror parity verified.
 
+## §E.4 Sync-phase Audit-Ready Signal
+sync_status: audit-ready
+sync_commit_sha: 44484e3d7
+sync_note: PR #1213 unified the run-phase code (M4 advisory PreToolUse-on-Edit hook + tests), the doctrine extension (M1-M3 + internal/template mirror), and the SPEC artifacts into a single squash merge (44484e3d7). This sync close carries only the frontmatter `in-progress → implemented → completed` transition + this §E.4 `sync_commit_sha` population + the CHANGELOG entry — no additional code. Because run + sync were one PR, there is no separate run-PR / sync-PR split; `sync_commit_sha` points at the unified merge commit that landed this SPEC's code and artifacts.
+
 ## §F Phase 4 Mode Selection
 Decision: sub-agent (Mode 5, default fallback) — the run-phase was a focused doctrine extension + one advisory hook; no high-volume mechanical fan-out warranted. (The investigation used a parallel read-only Workflow fan-out pre-Implementation-Kickoff, but the implementation itself is sequential orchestrator-direct after the hook-ci-specialist delegation hit a context-size failure.)
