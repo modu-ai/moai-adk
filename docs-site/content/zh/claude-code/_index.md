@@ -5,7 +5,7 @@ draft: false
 description: "从零理解 MoAI-ADK 三大支柱（代币经济学·智能体循环工程·智能体挽具）所依托的平台 Claude Code 的四组学习路径。"
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束 · 🧠 递归式自学习
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束 · 🧠 智能体循环工程
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 

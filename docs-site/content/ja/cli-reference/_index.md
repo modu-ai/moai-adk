@@ -5,7 +5,7 @@ draft: false
 description: "ターミナルで実行する moai CLI コマンドの詳細リファレンス。"
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 再帰的自己学習 · 🛡️ エージェント型ハーネス
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 エージェンティック・ループ・エンジニアリング · 🛡️ エージェント型ハーネス
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

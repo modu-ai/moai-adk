@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Recursive Self-Learning · 🛡️ Agentic Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Agentic Loop Engineering · 🛡️ Agentic Harness
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
@@ -40,7 +40,26 @@ If `CLAUDE.md` is the project's constitution, settings.json is the permission bo
 
 ## Table of Contents
 
-### Components of the Harness
+### Cost — Tokenomics
+
+| Topic | Description |
+|------|------|
+| [Tokenomics Overview](/en/advanced/tokenomics-overview) | The paradox of unit prices falling 98% while costs rise 320%, and the answer |
+| [Token Budget](/en/advanced/token-budget) | Token Circuit Breaker · verify-diet · context diet |
+| [No-Haiku 3-Tier](/en/advanced/no-haiku-3tier) | The DeepSWE-leaderboard rationale and the 3-tier policy |
+| [Profile Matrix](/en/advanced/profile-matrix) | The single profile axis of 11 agents × `{model, effort}` across 33 cells |
+| [statusline](/en/advanced/statusline) | An always-on dashboard for context usage, cache hit rate, and rate limits |
+
+### Self-improvement — Agentic Loop Engineering
+
+| Topic | Description |
+|------|------|
+| [Self-Evolving System](/en/advanced/self-evolving) | The 4-tier learning ladder (observation → heuristic → rule → auto-update) |
+| [Autonomous Loops](/en/advanced/autonomous-loops) | The condition-declared and diagnostic-driven loops of `/moai goal` and `/moai loop` |
+| [Decision Memory](/en/advanced/decision-memory) | The observation system that learns user choices |
+| [ultracode Workflows](/en/advanced/ultracode-workflows) | Dynamic workflow orchestration (multi-agent fan-out) |
+
+### Quality-control — Agentic Harness
 
 | Topic | Description |
 |------|------|
@@ -58,21 +77,10 @@ If `CLAUDE.md` is the project's constitution, settings.json is the permission bo
 | [Hooks Guide](/en/advanced/hooks-guide) | Event-driven automation scripts |
 | [Hooks Reference](/en/advanced/hooks-reference) | The list of hooks MoAI-ADK ships |
 | [settings.json Guide](/en/advanced/settings-json) | Managing Claude Code global settings |
+| [config Sections](/en/advanced/config-sections) | Reference for the `.moai/config/sections/*.yaml` settings |
 | [CLAUDE.md Guide](/en/advanced/claude-md-guide) | The project instruction file system |
+| [@MX Tags](/en/advanced/mx-tags) | Inline annotations between agents for context, invariant contracts, and danger zones |
 | [Security Notes](/en/advanced/security-notes) | The permission stack and sandboxing |
-
-### Loops and Observation
-
-| Topic | Description |
-|------|------|
-| [Decision Memory](/en/advanced/decision-memory) | The observation system that learns user choices |
-| [ultracode Workflows](/en/advanced/ultracode-workflows) | Dynamic workflow orchestration |
-| [statusline](/en/advanced/statusline) | An always-on dashboard for context usage and cache hit rate |
-
-### External Tool Integration
-
-| Topic | Description |
-|------|------|
 
 {{< callout type="info" >}}
 Each document can be read independently. If you want a systematic understanding of the whole architecture, however, we recommend the order **Skill Guide → Agent Guide → Builder Agents** — the flow from knowledge modules to performers, and from performers to generators, mirrors the recursive structure of the harness itself.

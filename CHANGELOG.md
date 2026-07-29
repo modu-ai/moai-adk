@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [3.0.2] - 2026-07-29
+
 ### Added
 
 - **[SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001](.moai/specs/SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001/spec.md)** — sync-phase close (3-phase plan→run→sync). Extended parallel-session detection from the write-agent **spawn** boundary to the **direct-edit** boundary (Edit/Write/Bash in the main session), closing the spawn-gate bypass that left foreign active sessions undetected mid-task. Added a Pre-Edit Sync Check doctrine section (`.claude/rules/moai/core/agent-common-protocol.md` § Pre-Edit Sync Check) mirroring the proven Pre-Spawn Sync Check (`moai session list` + `git fetch` + `git rev-list --left-right` before non-trivial direct edits to shared paths), broadened the `worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation trigger to cover direct-edit work (not only "worktree entry chosen"), named the bypass failure mode inline, and shipped a read-only **advisory** PreToolUse-on-Edit hook (`internal/hook/session_guard.go` `checkForeignSessionAdvisory` — registry-read-only, fail-open, never blocks; surfaces foreign-session awareness to stderr + `.moai/logs/preedit-session-guard.log`). REQ-PES-005 (ambient signal) is satisfied by the existing SessionStart hook. The run-phase code + doctrine + SPEC artifacts landed in PR #1213 (merge commit `44484e3d7`, squash); this sync commit carries only the frontmatter `in-progress → implemented → completed` transition + `progress.md` §E.4 `sync_commit_sha` population + this CHANGELOG entry — no additional code changes. Route B (PR-mandatory, this repo's `enforce_admins: true` branch-protection override). 🗿 MoAI

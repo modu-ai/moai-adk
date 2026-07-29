@@ -288,7 +288,7 @@ The SPEC document is stored in the `.moai/specs/` directory:
 .moai/
 └── specs/
     └── SPEC-AUTH-001/
-        ├── spec.md          # EARS requirements
+        ├── spec.md          # GEARS requirements
         ├── plan.md          # implementation plan
         └── acceptance.md     # acceptance criteria
 ```

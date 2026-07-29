@@ -4,13 +4,13 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an **Agentic Development Kit** that aims for **Tokenomics** (Token Economics). Code of the same quality with fewer tokens, and higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. 11 specialist AI agents and 27 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
+MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three axes — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost axis, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement axis, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality-control axis, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 11 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
 
 {{< callout type="info" >}}
-**One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system also manages token cost**.
+**One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system enforces all three axes from the outside: cost (Tokenomics), self-improvement (Agentic Loop Engineering), and quality control (Agentic Harness)**.
 {{< /callout >}}
 
 ## Introducing MoAI-ADK
@@ -43,7 +43,11 @@ The loop works on its own, and observations accumulate along the way. This pilla
 
 Instead of writing code yourself, you design an environment where agents work well. This pillar is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 
-## Why Tokenomics
+## Why Three Axes
+
+Optimize cost alone and quality collapses, followed by rework and debugging loops — and rework is the most expensive token spend of all. Erect quality gates alone and the same mistakes repeat every session. Run autonomous loops without a cost ceiling and one runaway task eats the quota. The three axes hold each other up — **cost** stays economical because **quality** keeps rework out, **quality** is enforceable because the **loop** remembers the patterns it learned, and the **loop** stops at the right price because the **cost** gate halts it before the budget breaks.
+
+### The Cost Axis — Tokenomics
 
 Token unit prices keep falling, but agentic development's token consumption grows faster. With multiple agents running, longer contexts, and deeper reasoning, what determines cost is not model pricing but **how tokens are operated**.
 
@@ -52,6 +56,14 @@ MoAI-ADK's answer is threefold.
 1. **Assign the right model and reasoning depth per task** — plan deeply, implement cheaply, verify independently.
 2. **Diet the context** — minimize always-loaded guidance and measure prompt-cache hit rates.
 3. **Let the system keep the budget** — track token usage and stop gracefully before crossing the threshold.
+
+### The Self-Improvement Axis — Agentic Loop Engineering
+
+Declare a completion condition and the session works on its own until the condition is met (`/moai goal`); the routing decisions and gate evidence produced along the way accumulate as observations that feed harness learning. Observations are promoted into guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update), and auto-updates are always applied only under the user-approval gate.
+
+### The Quality-Control Axis — Agentic Harness
+
+Instead of writing code yourself, you design an environment where agents work well. The 11-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
 
 ## Why MoAI-ADK?
 
@@ -71,8 +83,8 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 ### Key Numbers (as of v3.0)
 
 - **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
-- **27** skills (template-managed)
-- **~37** CLI commands · **14** `/moai` subcommands
+- **31** skills (template-managed)
+- **36** CLI commands · **16** `/moai` subcommands
 - **16** programming languages supported
 - A codebase developed with a **SPEC-based workflow** (plan → run → sync)
 
@@ -312,7 +324,7 @@ flowchart TD
     MoAI --> Explore
 ```
 
-### 27 Skills (Progressive Disclosure)
+### 31 Skills (Progressive Disclosure)
 
 Managed token-efficiently through a 3-level Progressive Disclosure system. Only the skill descriptions (~100 tokens) are always listed; the body (~5K tokens) loads only when actually invoked — one axis of the context diet.
 
@@ -612,7 +624,7 @@ my-project/
 ├── CLAUDE.md                  # MoAI's execution directive
 ├── .claude/
 │   ├── agents/moai/           # 10 MoAI custom agent definitions (+ the Explore built-in)
-│   ├── skills/moai-*/         # 27 skill modules
+│   ├── skills/moai-*/         # 31 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards
 └── .moai/

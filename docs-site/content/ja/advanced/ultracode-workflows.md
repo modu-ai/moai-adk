@@ -142,7 +142,7 @@ for (const pkg of packages) {
   // 各パッケージごとに独立エージェントを生成
   const result = await agent({
     agentType: "Explore",
-    model: "haiku",
+    model: "sonnet",
     effort: "low",
     prompt: `
       ${pkg} パッケージですべての TODO コメントを見つけて分類してください。
@@ -209,7 +209,7 @@ return summary;
 | リポ全体スキャン | 100+ | 高 |
 
 **コスト調整**:
-- モデル: `haiku` を使用 (read-only 抽出)
+- モデル: `sonnet` low effort を使用 (read-only 抽出)
 - エージェント数: 範囲制限 (`packages.slice(0, 20)`)
 - 並列度: 最大 16 から手動調整
 

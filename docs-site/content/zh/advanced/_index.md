@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 递归式自学习 · 🛡️ 代理型线束
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 智能体循环工程 · 🛡️ 智能体 Harness
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
@@ -40,7 +40,26 @@ flowchart TD
 
 ## 目录
 
-### Harness 的组成部分
+### 成本 —— 代币经济学
+
+| 主题 | 说明 |
+|------|------|
+| [代币经济学概览](/zh/advanced/tokenomics-overview) | 单价下降 98% 而成本上升 320% 的悖论及其解法 |
+| [Token 预算](/zh/advanced/token-budget) | Token Circuit Breaker · verify-diet · 上下文瘦身 |
+| [No-Haiku 三层](/zh/advanced/no-haiku-3tier) | DeepSWE 排行榜依据与三层策略 |
+| [Profile 矩阵](/zh/advanced/profile-matrix) | 11 个智能体 × `{model, effort}` 33 格单一 profile 轴 |
+| [statusline](/zh/advanced/statusline) | 上下文使用率·缓存命中率·rate limit 常驻仪表盘 |
+
+### 自我改进 —— 智能体循环工程
+
+| 主题 | 说明 |
+|------|------|
+| [自进化系统](/zh/advanced/self-evolving) | 4 层学习阶梯（观察 → 启发式 → 规则 → 自动更新） |
+| [自主循环](/zh/advanced/autonomous-loops) | `/moai goal` · `/moai loop` 条件声明型·诊断驱动循环 |
+| [决策记忆](/zh/advanced/decision-memory) | 学习用户选择的观察系统 |
+| [ultracode 工作流](/zh/advanced/ultracode-workflows) | 动态工作流编排（多智能体扇出） |
+
+### 品质把控 —— 智能体 Harness
 
 | 主题 | 说明 |
 |------|------|
@@ -58,21 +77,10 @@ flowchart TD
 | [Hooks 指南](/zh/advanced/hooks-guide) | 基于事件的自动化脚本 |
 | [Hooks 参考](/zh/advanced/hooks-reference) | MoAI-ADK 分发的 Hook 列表 |
 | [settings.json 指南](/zh/advanced/settings-json) | Claude Code 全局设置管理 |
+| [config 章节](/zh/advanced/config-sections) | `.moai/config/sections/*.yaml` 配置项参考 |
 | [CLAUDE.md 指南](/zh/advanced/claude-md-guide) | 项目指令文件体系 |
+| [@MX 标签](/zh/advanced/mx-tags) | 智能体间上下文·不变契约·危险区的内联标注 |
 | [安全说明](/zh/advanced/security-notes) | 权限栈与沙箱 |
-
-### 循环与观察
-
-| 主题 | 说明 |
-|------|------|
-| [决策记忆](/zh/advanced/decision-memory) | 学习用户选择的观察系统 |
-| [ultracode 工作流](/zh/advanced/ultracode-workflows) | 动态工作流编排 |
-| [statusline](/zh/advanced/statusline) | 上下文使用率、缓存命中率常驻仪表盘 |
-
-### 外部工具集成
-
-| 主题 | 说明 |
-|------|------|
 
 {{< callout type="info" >}}
 每篇文档均可独立阅读。不过如果想系统地理解整体架构，推荐按 **技能指南 → 智能体指南 → 构建器智能体** 的顺序阅读 — 从知识模块到执行者、再从执行者到生成器的脉络，正是 Harness 递归结构的直接体现。

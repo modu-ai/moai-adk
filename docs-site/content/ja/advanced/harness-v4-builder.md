@@ -55,7 +55,7 @@ ANALYZE の結果をもとにチーム構成を設計します。チーム規模
 | **チーム規模** | プロジェクト複雑度 × 必要な専門性 | 3〜5 名 |
 | **役割プロファイル** | Anthropic role_profiles (researcher/architect/implementer/tester/designer/reviewer) | architect, implementer, tester |
 | **Worktree 分離** | 並列メンバーの衝突可能性 | L1_optional (選択的分離) |
-| **モデル選択** | 役割別の推論複雑度 | architect: inherit, tester: haiku |
+| **モデル選択** | 役割別の推論複雑度 | architect: inherit, tester: sonnet |
 | **スキル事前ロード** | 役割の専門性に必要なスキル | moai-foundation-core, moai-domain-backend |
 
 役割別のモデル選択がトークノミクスの核心です — 設計は深い推論が必要なモデルに、反復的なテスト作成は安価なモデルに割り当てます。
@@ -70,7 +70,7 @@ ANALYZE の結果をもとにチーム構成を設計します。チーム規模
 - メンバー 3 名:
   ① architect (model: inherit)
   ② implementer (model: inherit)
-  ③ tester (model: haiku)
+  ③ tester (model: sonnet)
 - Worktree 分離: L1_optional
 - Manifest: .moai/harness/manifest.json
 
@@ -197,7 +197,7 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 |------|--------|------|
 | `name` | 必須 | メンバー ID (ハイフン使用、空白なし) |
 | `role` | 必須 | 役割の説明 (自由テキスト) |
-| `model` | `inherit` | `inherit`, `haiku`, `sonnet`, `opus` |
+| `model` | `inherit` | `inherit`, `sonnet`, `opus` |
 | `mode` | `acceptEdits` | 権限モード (`acceptEdits`, `default`, `bypassPermissions`) |
 | `skills` | `[]` | 事前ロードスキルの配列 (例: `["moai-foundation-core"]`) |
 | `isolation` | なし | `worktree_optional` (worktree 分離の条件付き有効化) |
@@ -247,7 +247,7 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
         {
           "name": "test-engineer",
           "role": "単体テストと統合テスト",
-          "model": "haiku",
+          "model": "sonnet",
           "mode": "acceptEdits"
         }
       ]
@@ -290,7 +290,7 @@ Runner の動作は manifest のフィールドで制御されます。
 | `worktree_isolation: "L1_optional"` | 衝突検出時に自動分離を適用 |
 | `worktree_isolation: "none"` | 分離を無効化 |
 | `model: "inherit"` | 親セッションのモデルを継承 |
-| `model: "haiku"` | Haiku モデルを強制 (コスト最適) |
+| `model: "sonnet"` | Sonnet モデルを強制 (コスト最適) |
 | `skills: ["..."]` | 事前ロードスキル |
 
 ## Worktree 分離ルール
