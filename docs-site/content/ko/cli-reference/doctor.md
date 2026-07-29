@@ -28,7 +28,7 @@ moai doctor [OPTIONS]
 | 명령어 | 설명 |
 |--------|------|
 | `moai doctor config` | 설정 진단 — 병합된 설정을 provenance 와 함께 검사 |
-| `moai doctor hook` | 27개 훅 이벤트 커버리지 표 표시 |
+| `moai doctor hook` | 27개 훅 이벤트 커버리지 표시 |
 | `moai doctor permission` | 권한 해석 진단 |
 | `moai doctor sandbox` | 샌드박스 백엔드 가용성 진단 |
 

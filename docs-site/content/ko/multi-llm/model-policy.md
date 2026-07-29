@@ -6,7 +6,7 @@ draft: false
 
 ## 모델 정책이란?
 
-모델 정책은 MoAI-ADK 토크노믹스의 뼈대입니다. "모든 작업에 최고 모델"이
+모델 정책은 MoAI-ADK 토크노믹스의 기본 틀입니다. "모든 작업에 최고 모델"이
 아니라, 에이전트마다 — 계획·감사처럼 추론이 무거운 일과 문서화·Git처럼
 가벼운 일마다 — 알맞은 모델을 선언적으로 배정합니다. Claude Code 구독 플랜에
 맞춰 품질을 극대화하면서 요율 제한 에러를 방지합니다.
@@ -95,10 +95,10 @@ MoAI-ADK v3.0의 에이전트 카탈로그는 **11개** (MoAI 커스텀 10개 + 
 `manager-spec`과 독립된 배정을 유지합니다 — 편향 방지는 셀 값이 아니라 카탈로그
 자체의 구조적 속성입니다.
 
-## v3.0 확장: Tier×Phase 선언 축
+## v3.0 확장: Tier×Phase 선언 매트릭스
 
 v3.0에서는 에이전트 단위 배정 위에 **작업 단계(phase)와 SPEC 크기(Tier)**
-축이 더해졌습니다. `internal/config/model_routing.go`가 Tier×Phase →
+두 차원이 더해졌습니다. `internal/config/model_routing.go`가 Tier×Phase →
 {model, effort} 매트릭스를 선언적으로 관리합니다:
 
 - **model**: inherit / sonnet / opus / glm / fable

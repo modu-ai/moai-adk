@@ -4,7 +4,7 @@ weight: 80
 draft: false
 ---
 
-`moai harness` 는 SPEC 복잡도 라우팅과 하네스 학습 서브시스템을 관리하는 통합 커맨드 트리입니다. 라우팅, 검증, 라이프사이클, 제안 관리, v4 하네스 라이프사이클, 관찰 원장(ledger) 하위 명령어를 제공합니다.
+`moai harness` 는 SPEC 복잡도 라우팅과 하네스 학습 서브시스템을 관리하는 통합 커맨드 트리입니다. 라우팅, 검증, 라이프사이클, 제안 관리, v4 하네스 라이프사이클, 관찰 기록(ledger) 하위 명령어를 제공합니다.
 
 공통 플래그로 `--project-root <path>` (기본: 현재 디렉터리)를 받습니다.
 
@@ -46,9 +46,9 @@ draft: false
 
 `list`, `edit` 는 `--json` 플래그를 받습니다.
 
-## 관찰 원장 (ledger)
+## 관찰 기록 (ledger)
 
-`moai harness ledger` 는 라우팅 관찰 원장을 관리합니다.
+`moai harness ledger` 는 라우팅 관찰 기록을 관리합니다.
 
 | 명령어 | 설명 |
 |--------|------|

@@ -23,7 +23,7 @@ AI 에이전트가 절대 수정할 수 없는 규칙입니다. 인간 개발자
 | 항목 | 설명 | 소스 |
 |------|------|------|
 | TRUST 5 | 5가지 품질 기준 | moai-constitution.md |
-| SPEC + EARS | 명세서 형식 | spec-workflow.md |
+| SPEC + GEARS | 명세서 형식 | spec-workflow.md |
 | AskUserQuestion 독점 | 사용자 질문 채널 | agent-common-protocol.md |
 | 평가 차원 4개 | Functionality/Security/Craft/Consistency | harness/scorer.go |
 | 루브릭 앵커 4단계 | 0.25/0.50/0.75/1.00 | harness/rubric.go |

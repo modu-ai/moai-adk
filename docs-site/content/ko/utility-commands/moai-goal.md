@@ -21,7 +21,7 @@ draft: false
 - **기계적 조건 (mechanical)**: 셸 명령어로 검증되는 조건. 예: `go test ./... exits 0`. 명령을 실행하고 종료 코드를 관찰합니다.
 - **모델 평가 조건 (model-evaluated)**: 트랜스크립트에 대한 판단으로 검증되는 조건. 예: `모든 AC 행이 PASS로 기록됨`. 세션이 지금까지 남긴 내용을 근거로 평가합니다.
 
-이 루프가 v3의 두 번째 기둥, **에이전틱 루프 엔지니어링**의 범용 엔진입니다. goal 상태는 `.moai/state/goal/<session-id>.json`에 세션별로 저장되며 (공유 파일이 아님), **턴 상한 (기본 30)** 이 루프를 유계로 만듭니다. 상한에 도달하면 평가기는 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 내고 블로킹을 멈춥니다.
+이 루프가 v3의 세 가지 핵심 중 하나인 **에이전틱 루프 엔지니어링**의 범용 엔진입니다. goal 상태는 `.moai/state/goal/<session-id>.json`에 세션별로 저장되며 (공유 파일이 아님), **턴 상한 (기본 30)** 이 루프를 유계로 만듭니다. 상한에 도달하면 평가기는 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 내고 블로킹을 멈춥니다.
 
 ## 동사 (verbs)
 
@@ -47,7 +47,7 @@ draft: false
 
 ## 진행 모드 (자율 / 반자율)
 
-오케스트레이터가 구현 착수 승인 (plan→run 경계의 `AskUserQuestion`) 을 실행할 때, 승인/거절 결정과 **구분되는 별도 축**으로 **자율 vs 반자율** 진행 모드를 선택하게 합니다. 선택한 모드는 goal 상태의 `progression_mode` 필드에 저장됩니다 (사용자가 고르지 않으면 기본 `autonomous`).
+오케스트레이터가 구현 착수 승인 (plan→run 경계의 `AskUserQuestion`) 을 실행할 때, 승인/거절 결정과 **구분되는 별도의 차원**으로 **자율 vs 반자율** 진행 모드를 선택하게 합니다. 선택한 모드는 goal 상태의 `progression_mode` 필드에 저장됩니다 (사용자가 고르지 않으면 기본 `autonomous`).
 
 | 모드 | 동작 |
 |------|------|
@@ -55,7 +55,7 @@ draft: false
 | **반자율 (semi-autonomous)** | `stop-goal` 훅이 매 턴 경계에서 **체크포인트 신호** 블록 JSON을 내보내고, 오케스트레이터가 이를 읽어 `AskUserQuestion` 확인 라운드 (계속 / goal 해제 / 자율로 전환) 를 돌립니다. 훅 자체는 절대 `AskUserQuestion`을 호출하지 않습니다 (훅·서브에이전트 경계 — 구조화 JSON만 방출). |
 
 {{< callout type="warning" >}}
-**승인은 두 모드 모두에서 필수입니다.** 진행 모드 축은 게이트가 통과된 **이후** 무엇을 할지 선택할 뿐, 게이트를 우회하지 않고 구현 착수 승인을 완화하지도 않습니다. arm된 goal은 어떤 모드에서도 run-phase 진입을 승인하거나, PR을 만들거나, 파괴적 작업을 수행하지 않습니다.
+**승인은 두 모드 모두에서 필수입니다.** 진행 모드 선택은 게이트가 통과된 **이후** 무엇을 할지 결정할 뿐, 게이트를 우회하지 않고 구현 착수 승인을 완화하지도 않습니다. arm된 goal은 어떤 모드에서도 run-phase 진입을 승인하거나, PR을 만들거나, 파괴적 작업을 수행하지 않습니다.
 {{< /callout >}}
 
 ## 안전 불변식
