@@ -12,11 +12,14 @@ Git Worktree is the foundation of MoAI-ADK parallel development. It gives every
 SPEC a fully independent workspace, so you can run different Git states and
 different LLM configurations at the same time.
 
-Seen through **Tokenomics** (Token Economics) — the core value of MoAI-ADK
-v3.0 — Worktree is the mechanism that actually delivers "plan deep, implement
-cheap". You use a high-reasoning Claude model in the planning terminal and a
-low-cost GLM in the implementation terminals — assigning the right model to
-each work phase is impossible without Worktree isolation.
+Seen through **the Agentic Harness** (the quality-control axis) of v3.0's three
+pillars, Worktree is the control device that fully isolates each SPEC so agents
+working in parallel do not trample each other's work — it prevents
+parallel-development conflicts and guarantees that only completed SPECs merge
+into main. A secondary benefit follows from the cost axis (Tokenomics): each
+isolated worktree can run a different LLM execution mode, so a high-reasoning
+Claude model can be used in the planning terminal while a low-cost GLM runs in
+the implementation terminals, assigning the right model to each work phase.
 
 
 ## Why do you need Worktree?
@@ -259,8 +262,10 @@ flowchart TB
 
 ## Parallel development visualized
 
-This is what working across multiple terminals looks like. Assigning a
-different model to each phase is the heart of Tokenomics:
+This is what working across multiple terminals looks like. Each worktree is
+fully isolated so parallel work proceeds without conflicts — that is the heart
+of the Agentic Harness axis; the ability to assign the right model to each
+phase is the Tokenomics side benefit:
 
 ```mermaid
 graph TB

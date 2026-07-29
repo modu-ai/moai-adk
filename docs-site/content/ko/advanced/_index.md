@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 에이전틱 루프 엔지니어링 · 🛡️ 에이전틱 하네스
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
@@ -40,7 +40,26 @@ flowchart TD
 
 ## 목차
 
-### 하네스의 구성 요소
+### 비용 — 토크노믹스
+
+| 주제 | 설명 |
+|------|------|
+| [토크노믹스 개요](/ko/advanced/tokenomics-overview) | 단가가 98% 내려도 비용이 320% 오르는 역설과 그 해법 |
+| [토큰 예산](/ko/advanced/token-budget) | Token Circuit Breaker·verify-diet·컨텍스트 다이어트 |
+| [No-Haiku 3-티어](/ko/advanced/no-haiku-3tier) | DeepSWE 리더보드 근거와 3-티어 정책 |
+| [프로파일 매트릭스](/ko/advanced/profile-matrix) | 11 에이전트 × `{model, effort}` 33셀 단일 프로파일 축 |
+| [statusline](/ko/advanced/statusline) | 컨텍스트 사용률·캐시 적중률·rate limit 상시 계기판 |
+
+### 자기 개선 — 에이전틱 루프 엔지니어링
+
+| 주제 | 설명 |
+|------|------|
+| [자가 진화 시스템](/ko/advanced/self-evolving) | 4-계층 학습 사다리 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트) |
+| [자율 루프](/ko/advanced/autonomous-loops) | `/moai goal` · `/moai loop` 조건 선언형·진단 기반 루프 |
+| [의사결정 메모리](/ko/advanced/decision-memory) | 사용자 선택을 학습하는 관찰 시스템 |
+| [ultracode 워크플로우](/ko/advanced/ultracode-workflows) | 동적 워크플로우 오케스트레이션 (다수 에이전트 팬아웃) |
+
+### 품질 통제 — 에이전틱 하네스
 
 | 주제 | 설명 |
 |------|------|
@@ -58,21 +77,10 @@ flowchart TD
 | [Hooks 가이드](/ko/advanced/hooks-guide) | 이벤트 기반 자동화 스크립트 |
 | [Hooks 레퍼런스](/ko/advanced/hooks-reference) | MoAI-ADK가 배포하는 훅 목록 |
 | [settings.json 가이드](/ko/advanced/settings-json) | Claude Code 전역 설정 관리 |
+| [config 섹션](/ko/advanced/config-sections) | `.moai/config/sections/*.yaml` 구성 항목 레퍼런스 |
 | [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) | 프로젝트 지침 파일 체계 |
+| [@MX 태그](/ko/advanced/mx-tags) | 에이전트 간 컨텍스트·불변 계약·위험 구역 인라인 어노테이션 |
 | [보안 노트](/ko/advanced/security-notes) | 권한 스택과 샌드박스 |
-
-### 루프와 관찰
-
-| 주제 | 설명 |
-|------|------|
-| [의사결정 메모리](/ko/advanced/decision-memory) | 사용자 선택을 학습하는 관찰 시스템 |
-| [ultracode 워크플로우](/ko/advanced/ultracode-workflows) | 동적 워크플로우 오케스트레이션 |
-| [statusline](/ko/advanced/statusline) | 컨텍스트 사용률·캐시 적중률 상시 계기판 |
-
-### 외부 도구 연동
-
-| 주제 | 설명 |
-|------|------|
 
 {{< callout type="info" >}}
 각 문서는 독립적으로 읽을 수 있습니다. 다만 전체 아키텍처를 체계적으로 이해하고 싶다면 **스킬 가이드 → 에이전트 가이드 → 빌더 에이전트** 순서를 권합니다. 지식 모듈에서 수행자로, 수행자에서 생성기로 이어지는 흐름이 하네스의 재귀 구조를 그대로 보여주기 때문입니다.

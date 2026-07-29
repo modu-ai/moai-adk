@@ -5,7 +5,7 @@ draft: false
 description: "MoAI-ADK의 세 기둥(토크노믹스·에이전틱 루프 엔지니어링·에이전틱 하네스)이 서 있는 플랫폼, Claude Code를 처음부터 이해하는 4그룹 학습 경로."
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🛡️ 에이전틱 하네스 · 🧠 재귀적 자가 학습
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🛡️ 에이전틱 하네스 · 🧠 에이전틱 루프 엔지니어링
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 

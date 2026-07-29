@@ -19,7 +19,7 @@ MoAI-ADK の SPEC ベース開発方法論を詳しく案内します。SPEC は
 {{< /callout >}}
 
 {{< callout type="info" >}}
-  **SPEC は 3 つのファイルで構成されます:** `/moai plan` 実行時に `spec.md` (EARS 要件)、`plan.md` (実装計画)、`acceptance.md` (受け入れ基準) の 3 つのファイルが同時に生成されます。
+  **SPEC は 3 つのファイルで構成されます:** `/moai plan` 実行時に `spec.md` (GEARS 要件)、`plan.md` (実装計画)、`acceptance.md` (受け入れ基準) の 3 つのファイルが同時に生成されます。
 {{< /callout >}}
 
 ## SPEC とは?
@@ -255,11 +255,11 @@ SPEC ドキュメントは **manager-spec エージェント** が自動的に�
 
 | ファイル | 役割 | 内容 |
 | --- | --- | --- |
-| `spec.md` | EARS 要件の定義 | YAML フロントマター、要件 (5 種の EARS タイプ)、制約条件、依存性 |
+| `spec.md` | GEARS 要件の定義 | YAML フロントマター、要件 (5 種の GEARS タイプ)、制約条件、依存性 |
 | `plan.md` | 実装計画 | 作業分解、技術スタック仕様、リスク分析および緩和戦略 |
 | `acceptance.md` | 受け入れ基準 | Given/When/Then シナリオ、エッジケース、性能および品質ゲート |
 
-### spec.md -- EARS 要件
+### spec.md -- GEARS/EARS 要件
 
 ```yaml
 ---
@@ -393,7 +393,7 @@ flowchart TD
 .moai/
 └── specs/
     ├── SPEC-AUTH-001/
-    │   ├── spec.md          # EARS 要件
+    │   ├── spec.md          # GEARS 要件
     │   ├── plan.md          # 実装計画
     │   └── acceptance.md    # 受け入れ基準
     ├── SPEC-PAYMENT-001/
@@ -438,7 +438,7 @@ flowchart TD
 
 下記のように `.moai/specs/SPEC-AUTH-001/` ディレクトリに 3 ファイルが生成されます。
 
-**spec.md -- EARS 要件:**
+**spec.md -- GEARS 要件:**
 
 ```yaml
 ---

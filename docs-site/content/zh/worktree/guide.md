@@ -44,7 +44,7 @@ graph TB
 MoAI-ADK 在这一功能之上叠加了 SPEC 单位的隔离环境。因为每个 SPEC 都拥有完全独立的环境,即使多个智能体并行工作也不会踩到彼此的工作:
 
 - **独立的 Git 状态** —— 每个 Worktree 维护自己的分支和提交历史
-- **分离的 LLM 设置** —— 每个 Worktree 可以使用不同的 LLM 执行模式。给计划分配 Claude、给实现分配 GLM 的托克诺米克斯运用就来源于此
+- **分离的 LLM 设置** —— 每个 Worktree 可以使用不同的 LLM 执行模式。给计划分配 Claude、给实现分配 GLM 的代币经济学运用就来源于此
 - **隔离的工作空间** —— 在文件系统层面完全分离
 
 ---
@@ -540,7 +540,7 @@ flowchart TD
 
 #### 策略 1: 分离 Plan 与 Implement
 
-这是托克诺米克斯的基本策略。计划阶段用高推理模型 (Opus) 集中处理,实现阶段用低成本模型 (GLM) 并行分散:
+这是代币经济学的基本策略。计划阶段用高推理模型 (Opus) 集中处理,实现阶段用低成本模型 (GLM) 并行分散:
 
 ```mermaid
 graph TB
@@ -625,7 +625,7 @@ moai worktree clean --merged-only
 
 ### 3. LLM 选择指南
 
-按工作阶段分别分配模型是 Worktree 托克诺米克斯的核心:
+按工作阶段分别分配模型是 Worktree 代币经济学的核心:
 
 ```mermaid
 graph TD

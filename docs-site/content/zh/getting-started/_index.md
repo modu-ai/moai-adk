@@ -5,7 +5,7 @@ weight: 10
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 递归式自学习 · 🛡️ 代理型线束
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 智能体循环工程 · 🛡️ 代理型线束
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

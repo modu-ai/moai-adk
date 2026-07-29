@@ -19,7 +19,7 @@ MoAI-ADK의 SPEC 기반 개발 방법론을 상세히 안내합니다. SPEC은 �
 {{< /callout >}}
 
 {{< callout type="info" >}}
-  **SPEC은 3개 파일로 구성됩니다:** `/moai plan` 실행 시 `spec.md` (EARS 요구사항), `plan.md` (구현 계획), `acceptance.md` (인수 기준) 3개 파일이 동시에 생성됩니다.
+  **SPEC은 3개 파일로 구성됩니다:** `/moai plan` 실행 시 `spec.md` (GEARS 요구사항), `plan.md` (구현 계획), `acceptance.md` (인수 기준) 3개 파일이 동시에 생성됩니다.
 {{< /callout >}}
 
 ## SPEC이란?
@@ -259,7 +259,7 @@ SPEC 문서는 **manager-spec 에이전트**가 자동으로 생성합니다. �
 
 | 파일 | 역할 | 내용 |
 | --- | --- | --- |
-| `spec.md` | EARS 요구사항 정의 | YAML 프론트매터, 요구사항 (5가지 EARS 유형), 제약 조건, 의존성 |
+| `spec.md` | GEARS 요구사항 정의 | YAML 프론트매터, 요구사항 (5가지 GEARS 유형), 제약 조건, 의존성 |
 | `plan.md` | 구현 계획 | 작업 분해, 기술 스택 명세, 위험 분석 및 완화 전략 |
 | `acceptance.md` | 인수 기준 | Given/When/Then 시나리오, 엣지 케이스, 성능 및 품질 게이트 |
 
@@ -404,7 +404,7 @@ flowchart TD
 .moai/
 └── specs/
     ├── SPEC-AUTH-001/
-    │   ├── spec.md          # EARS 요구사항
+    │   ├── spec.md          # GEARS 요구사항
     │   ├── plan.md          # 구현 계획
     │   └── acceptance.md    # 인수 기준
     ├── SPEC-PAYMENT-001/
@@ -449,7 +449,7 @@ flowchart TD
 
 아래와 같이 `.moai/specs/SPEC-AUTH-001/` 디렉토리에 3개 파일이 생성됩니다.
 
-**spec.md -- EARS 요구사항:**
+**spec.md -- GEARS 요구사항:**
 
 ```yaml
 ---

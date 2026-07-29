@@ -5,7 +5,7 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>An Agentic Development Kit designed for Tokenomics</strong>
+  <strong>An Agentic Development Harness for Claude Code — wrapped along three axes: cost, self-improvement, and quality control</strong>
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.0.1-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.0.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -38,21 +38,41 @@
 
 ---
 
-> **"Tokenomics is a harness designed to make token consumption economical."**
+> **"The model is a stochastic worker moving token by token. It cannot remember, turn to turn, what it should cost, whether the work is good, or where the last session broke off. A harness enforces all three from the outside."**
 
 ---
 
-## MoAI-ADK is a Tokenomics Harness
+## MoAI-ADK: A Three-Axis Agentic Harness
 
-MoAI-ADK (Agentic Development Kit) enables Claude Code to produce code, then makes that code reliable at predictable cost. A harness wraps the model from the outside. The model is a stochastic worker moving token by token — it remembers neither budget, nor quality bar, nor where the last session broke off. Cost ceilings, passing test suites, continuity that survives `/clear` — properties like these cannot be re-seeded by a prompt every turn; the system must enforce them from the outside.
+MoAI-ADK (Agentic Development Kit) enables Claude Code to produce code — and then makes that code reliable at predictable cost, on a path that keeps improving. A harness wraps the model from the outside. The model is a stochastic worker moving token by token: it remembers neither budget, nor quality bar, nor where the last session broke off. Cost ceilings, passing test suites, a learning loop that compounds, and continuity that survives `/clear` — none of these can be re-seeded by a prompt every turn. The system must enforce them from the outside.
 
-Every design decision serves one goal: token economics — the same quality for fewer tokens, higher quality for the same tokens. Which model to use, how deeply to reason, how to spend context — none of this is left to chance turn by turn; the system decides.
+Three properties, three axes. MoAI-ADK wraps Claude Code along all three, not just one:
 
-It does not replace Claude Code. It only wraps, in structure, the parts Claude Code leaves to you — model routing, quality gates, cost control, session continuity. A single binary written in Go, it runs on macOS, Linux, and Windows with no extra dependencies.
+- **🪙 Cost** — Tokenomics: the same quality for fewer tokens, higher quality for the same tokens.
+- **🧠 Self-improvement** — Agentic loop engineering: the harness gets better as it runs, turning observation into rules.
+- **🛡️ Quality control** — Agentic harness: SPEC lifecycle, TRUST 5 gates, and isolation that prevents rework (the single biggest token waste).
+
+It does not replace Claude Code. It wraps, in structure, the parts Claude Code leaves to you — model routing, quality gates, cost control, learning loops, session continuity. A single binary written in Go, it runs on macOS, Linux, and Windows with no extra dependencies.
+
+<p align="center">
+  <img src="./assets/images/why-harness-infographic-en.png" alt="An Agentic Development Harness for Claude Code" width="85%">
+</p>
 
 ---
 
-## Why Tokenomics
+## Why Three Axes
+
+Optimizing only cost is a trap. Push the cost axis alone and quality silently erodes — rework and debug loops follow, and rework is the most expensive token spend of all. Build quality gates with no learning loop and the same mistakes recur every session. Run an autonomous loop with no cost ceiling and a single runaway task drains the quota. The three axes hold each other up: **cost stays economical because quality prevents rework, quality stays enforceable because the loop captures what worked, and the loop stays affordable because cost gates stop it before overage.**
+
+Every design decision in MoAI-ADK serves one of these three axes. Which model to use, how deeply to reason, how to spend context — none of it is left to chance turn by turn; the system decides, and records the decision so the next run is smarter.
+
+<p align="center">
+  <img src="./assets/images/three-axes-infographic-en.png" alt="Three Axes of MoAI-ADK — Tokenomics · Agentic Loop · Agentic Harness" width="90%">
+</p>
+
+---
+
+## 🪙 The Cost Axis — Tokenomics
 
 Token prices keep falling, but actual agent workflow spend rises. Agents spin through dozens to hundreds of steps to solve a single task, consuming proportionally more tokens. In usage-based pricing, this becomes the invoice; in subscription, it consumes the weekly quota shared by all models.
 
@@ -72,11 +92,15 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 
 MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
----
+<p align="center">
+  <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, cost up 320%" width="80%">
+</p>
 
-## Three Axes of Economization
+### Routing — the right model and reasoning depth per task
 
-### Routing — Assign the right model and reasoning depth to each task
+<p align="center">
+  <img src="./assets/images/model-routing-infographic-en.png" alt="Agent Model Routing — 11 agents routed to the right model and effort" width="85%">
+</p>
 
 **Tier×Phase Matrix**. Declaratively assign models and reasoning effort (effort) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition. Maximize quality per cost.
 
@@ -86,7 +110,11 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **CG Mode (Claude + GLM)**. `moai cg` is a hybrid mode combining Claude leader and GLM workers. Strategy, planning, and audits run on Claude; bulk implementation runs on GLM. **60-70% cost savings** on implementation-heavy workloads.
 
-### Verification Economy — Diet context, persist evidence to disk
+<p align="center">
+  <img src="./assets/images/cg-mode-infographic-en.png" alt="CG Mode — Claude leader + GLM worker hybrid" width="85%">
+</p>
+
+### Verification Economy — diet context, persist evidence to disk
 
 **verify-diet**. Redirect verbose verification output to disk files, leaving only exit code and bounded tail (max 50 lines) in context. This file-redirect contract maintains verification evidence integrity while reducing context consumption. Evidence persists under `.moai/state/verify/<session>/`.
 
@@ -94,7 +122,7 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **Context Diet**. Apply `/clear` strategy. When SPEC phase completes, `/clear` and save progress to `progress.md`, then issue a paste-ready resume message. At context window thresholds (1M model 50% / 200K model 90%), automatic recommendations appear.
 
-### Budget Defense — Stop before overage, resume in next session
+### Budget Defense — stop before overage, resume in next session
 
 **Token Circuit Breaker**. When agent token usage hits hard-limit (default 90%), execute abort. Save progress to `progress.md`, issue paste-ready resume message, and never auto-`/clear`. The system only recommends `/clear`; the user decides and executes.
 
@@ -102,19 +130,11 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 ---
 
-## Infrastructure Sustains Tokenomics
+## 🧠 The Self-Improvement Axis — Agentic Loop Engineering
 
-### Quality Structure — Prevent rework and debug loops (worst token waste)
+The cheapest session is the one that does not repeat last session's mistakes. The self-improvement axis turns each run into material for the next: routing decisions and gate evidence are recorded, recurring patterns become rules, and a declared goal keeps the session working until the condition holds.
 
-**SPEC 3-Phase Lifecycle**. plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS format requirements + acceptance criteria judge completion by evidence.
-
-**TRUST 5 Quality Gates**. Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
-
-**11-Agent Catalog**. MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
-
-### Learning Loops — Token efficiency improves as loops run
-
-**`/moai goal`·`/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
+**`/moai goal` · `/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
 
 **Routing Ledger**. Record routing decisions and gate evidence as privacy-preserving digests. Observations upgrade to rules.
 
@@ -122,7 +142,25 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **Decision Memory**. Questions emerge where uncertainty is highest (p ≈ 0.5); recommendations follow observed statistical majority, not system defaults.
 
-### Extension Points — Duplicate proven patterns for project-specific reuse efficiency
+---
+
+## 🛡️ The Quality-Control Axis — Agentic Harness
+
+Rework is the worst token waste — a bug that ships and comes back costs more than every routing optimization combined. The quality-control axis makes "done" mean *verified done*, and isolates work so parallel agents never trample each other.
+
+### SPEC 3-Phase Lifecycle
+
+plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS format requirements + acceptance criteria judge completion by evidence.
+
+<p align="center">
+  <img src="./assets/images/spec-3phase-infographic-en.png" alt="SPEC 3-Phase Workflow — plan → run → sync" width="80%">
+</p>
+
+**TRUST 5 Quality Gates**. Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
+
+**11-Agent Catalog**. MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
+
+### Extension Points — duplicate proven patterns for project-specific reuse
 
 **Harness v4 Builder**. Natural language request → domain·goal·constraint extraction → approval gate → project-specific agents·skills·commands·hooks scaffolding.
 
@@ -132,7 +170,9 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 ---
 
-![Tokenomics Harness](./assets/images/readme/tokenomics-harness-en.png)
+## Infrastructure Sustains All Three Axes
+
+A single Go binary with no extra dependencies, running on macOS, Linux, and Windows, is the substrate beneath all three axes — not beneath tokenomics alone. The hook system enforces gates mechanically, the statusline surfaces cost and context in real time, and the SPEC lifecycle keeps work resumable across `/clear`. Every axis rides on the same binary; none is an afterthought.
 
 ---
 
@@ -282,7 +322,7 @@ flowchart TD
 ## Reading the Statusline
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.1 │ ⏳ 2h 34m │ 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
 ```
@@ -314,7 +354,7 @@ Normal. Tags mark high-fan-in, complex, or dangerous code. Most code in any proj
 ### Q: What does the statusline version display mean?
 
 ```
-🗿 v3.0.0 ⬆️ v3.0.1
+🗿 v3.0.1 ⬆️ v3.0.2
 ```
 
 The first value is the currently installed MoAI-ADK version; the arrow indicates an available update. Disappears after running `moai update`.

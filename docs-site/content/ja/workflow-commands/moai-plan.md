@@ -289,7 +289,7 @@ SPEC ドキュメントは `.moai/specs/` ディレクトリに保存されま�
 .moai/
 └── specs/
     └── SPEC-AUTH-001/
-        ├── spec.md          # EARS 要件
+        ├── spec.md          # GEARS 要件
         ├── plan.md          # 実装計画
         └── acceptance.md     # 受け入れ基準
 ```

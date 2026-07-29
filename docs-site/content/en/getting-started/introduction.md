@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an Agentic Development Kit aimed at **Tokenomics** (Token Economics). The same quality of code with fewer tokens, higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. As a single binary written in Go, it runs immediately with no dependencies.
+MoAI-ADK is an Agentic Development Kit that wraps Claude Code around three axes — **cost** (Tokenomics), **self-improvement** (Agentic Loop Engineering), and **quality control** (Agentic Harness). Same quality of code for fewer tokens, a loop that works on its own once you declare the completion condition and accumulates observations the harness learns from, and SPEC 3-phase + TRUST 5 gates that judge 'done' by evidence — model selection, reasoning depth, and context usage managed by the system. A single Go binary, no dependencies, runs immediately.
 
 
 ## Notation
@@ -147,10 +147,10 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 ### Key numbers (as of v3.0)
 
 - **11** agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`)
-- **27** skills (template-managed)
-- **~37** terminal CLI commands · **14** `/moai` slash subcommands
+- **31** skills (template-managed)
+- **36** terminal CLI commands · **16** `/moai` slash subcommands
 - **16** programming languages supported
-- A codebase developed on the basis of **504** SPEC documents
+- A codebase developed on the basis of **543** SPEC documents
 
 ## System requirements
 
@@ -286,38 +286,22 @@ Ralph-Loop Style LSP integration automates the quality gates of the development 
 
 ## Save tokens with GLM (50–70%) {#save-tokens-with-glm-5070}
 
-GLM is an AI model fully compatible with Claude Code. Combining a Claude leader with GLM teammates in **CG mode** can **save 50–70% of tokens** on implementation work — a representative hands-on tool of the Tokenomics pillar.
-
-### CG mode: the Claude + GLM hybrid
-
-In CG mode, Claude orchestrates the whole workflow while implementation work is handled in parallel by lower-cost GLM teammates.
-
-| Role | Model | Responsibility |
-|------|------|---------|
-| **Leader** | Claude | Orchestration, architecture decisions, code review |
-| **Teammates** | GLM | Code implementation, test writing, documentation |
-
-| Work type | Recommended mode | Savings |
-|----------|----------|---------|
-| Implementation-heavy SPEC (`/moai run`) | CG mode | **50–70% savings** |
-| Code generation, tests, documentation | CG mode | **50–70% savings** |
-| Architecture design, security review | Claude only | Needs deep reasoning |
-
-### GLM switch commands
+{{< callout type="info" >}}
+**A hands-on tool of the cost axis (Tokenomics):** z.ai GLM is an AI backend fully compatible with Claude Code. In **CG mode** (`moai cg`, tmux required), a Claude leader handles orchestration, architecture decisions, and code review, while GLM teammates work in parallel on implementation, tests, and documentation — saving **50–70% of tokens** on implementation-heavy work. For work that needs deep reasoning, like architecture design or security review, use Claude only (`moai cc`).
 
 ```bash
-# Switch to the GLM backend (GLM only)
-moai glm
-
-# CG mode (Claude leader + GLM teammates, tmux required)
-moai cg
-
-# Return to the Claude backend
-moai cc
+moai cc            # Claude only
+moai glm           # GLM only
+moai cg            # CG hybrid (Claude leader + GLM teammates, tmux required)
 ```
 
+If you do not have a GLM account, sign up at [z.ai signup (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards through the signup link are used for **MoAI open-source development**. For the detailed architecture and model policy, see the [Multi-LLM](/en/multi-llm/) section.
+{{< /callout >}}
+
+## The Self-Improvement Axis — loops work on their own, the harness learns
+
 {{< callout type="info" >}}
-If you do not have a GLM account, sign up at [z.ai signup (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards through the signup link are used for **MoAI open-source development**.
+**A hands-on tool of the self-improvement axis (Agentic Loop Engineering):** Declare a completion condition and the session works on its own until it is met. `/moai goal "<condition>"` is a condition-declared autonomous loop, `/moai loop` keeps fixing until the queue of issues found by LSP diagnostics, AST-grep, and linters is drained (up to 10 iterations by default), and `/moai fix` is a single-pass auto-fix. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate into harness guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update, under the user-approval gate), so the next session does not repeat the previous session's mistakes.
 {{< /callout >}}
 
 ## Getting started

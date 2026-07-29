@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🧠 Recursive Self-Learning · 🛡️ Agentic Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🧠 Agentic Loop Engineering · 🛡️ Agentic Harness
 {{< /callout >}}
 <!-- @value: self-learning, agentic-harness -->
 

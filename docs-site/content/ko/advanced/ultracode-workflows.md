@@ -147,7 +147,7 @@ for (const pkg of packages) {
   // 각 패키지마다 독립 에이전트 생성
   const result = await agent({
     agentType: "Explore",
-    model: "haiku",
+    model: "sonnet",
     effort: "low",
     prompt: `
       ${pkg} 패키지에서 모든 TODO 주석을 찾고 분류하세요.
@@ -214,7 +214,7 @@ return summary;
 | 전체 리포 스캔 | 100+ | 높음 |
 
 **비용 조절**:
-- 모델: `haiku` 사용 (read-only 추출)
+- 모델: `sonnet` low effort 사용 (read-only 추출)
 - 에이전트 수: 범위 제한 (`packages.slice(0, 20)`)
 - 병렬도: 최대 16에서 수동 조정
 
