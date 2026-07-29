@@ -48,17 +48,17 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 바깥에서 감싸, 모델�
 
 Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 부분 — 모델 라우팅, 품질 게이트, 비용 제어, 학습 루프, 세션 연속성 — 을 구조로 감쌀 뿐이다. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
 
-![MoAI-ADK란 — Claude Code를 감싸는 에이전틱 개발 하네스](./assets/images/why-harness-infographic.png)
+![MoAI-ADK란 — Claude Code를 감싸는 에이전틱 개발 하네스](./assets/images/why-harness-infographic-ko.png)
 
 ---
 
-## 하네스의 세 가지 기둥
+## 하네스의 세 가지 핵심
 
-MoAI-ADK의 가치는 세 가지 기둥에 기반한다 — [문서 사이트](https://adk.mo.ai.kr/ko/core-concepts)가 정리의 기준으로 삼는 것과 같은 세 가지다. 각 기둥은 에이전틱 시스템이 어떻게 돌아야 하는지에 대한 질문 하나를 답한다.
+MoAI-ADK의 가치는 세 가지 핵심에 기반한다 — [문서 사이트](https://adk.mo.ai.kr/ko/core-concepts)가 정리의 기준으로 삼는 것과 같은 세 가지다. 각 핵심은 에이전틱 시스템이 어떻게 돌아야 하는지에 대한 질문 하나를 답한다.
 
-![MoAI-ADK 하네스의 세 가지 기둥 — 토크노믹스, 에이전틱 루프 엔지니어링, 에이전틱 하네스](./assets/images/three-axes-infographic.png)
+![MoAI-ADK 하네스의 세 가지 핵심 — 토크노믹스, 에이전틱 루프 엔지니어링, 에이전틱 하네스](./assets/images/three-axes-infographic-ko.png)
 
-| 기둥 | 핵심 질문 |
+| 핵심 | 질문 |
 |---|---|
 | 🪙 **토크노믹스** | 같은 품질을 더 적은 토큰으로 얻으려면? |
 | 🧠 **에이전틱 루프 엔지니어링** | 루프가 어떻게 스스로 일하고 학습하는가? |
@@ -138,7 +138,7 @@ Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort
 
 ### 🛡️ 에이전틱 하네스 — 에이전트가 일할 환경을 설계한다
 
-코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계한다. 이 기둥이 나머지 두 기둥을 가능하게 하는 구조다.
+코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계한다. 이 핵심이 나머지 두 가지를 가능하게 하는 구조다.
 
 **SPEC 3-페이즈 라이프사이클.** plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅을 정하고, GEARS 형식 요구사항 + 인수 기준으로 완료를 증거로 판정한다.
 

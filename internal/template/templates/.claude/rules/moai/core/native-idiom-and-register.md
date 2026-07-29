@@ -28,7 +28,7 @@ The authoritative per-locale catalogue is the `moai-domain-humanize` skill, Cate
 
 | Calque (avoid) | Native idiom (prefer) |
 |---|---|
-| 3축 / 세 축 ("three axes") | 세 가지 방식 / 3가지 전략 |
+| 3축 / 세 축 / 세 가지 기둥 / "Three Axes" (docs-site pillar headings, README sections) | 세 가지 핵심 / 세 가지 핵심 가치 |
 | 7대 기둥 ("seven pillars") | 7가지 핵심 차별점 / 일곱 가지 강점 |
 | 검증경제 ("verification economy") | 검증 비용을 줄이는 방식 |
 | 예산방어 ("budget defense") | 예산 초과 전에 중단하기 |
