@@ -97,10 +97,15 @@ func ClaimTask(stateDir, teamID, teammateID, taskID string) error {
 	var targetTaskID string
 
 	if taskID != "" {
-		// Claim specific task
-		targetTaskID = taskID
+		// Claim specific task (SPEC-CLIFIX-LINTER-STALE-001 REQ-LINT-001-006):
+		// validate the task EXISTS and is PENDING before producing a successful
+		// claim. The former code pre-assigned targetTaskID = taskID before the
+		// pending-search loop, so nonexistent / already-completed IDs fell
+		// through the post-loop "" guard and wrote a phantom CLAIMED row.
+		// Now targetTaskID stays empty unless a pending match is found.
 		for _, line := range lines {
 			if strings.Contains(line, taskID) && strings.Contains(line, "Status: pending") {
+				targetTaskID = taskID
 				break
 			}
 		}
