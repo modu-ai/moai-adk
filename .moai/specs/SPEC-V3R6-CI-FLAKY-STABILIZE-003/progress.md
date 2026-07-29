@@ -8,9 +8,9 @@
 
 | Phase | State | Owner |
 |-------|-------|-------|
-| Plan | complete (pending audit + Implementation Kickoff Approval) | manager-spec |
-| Run | not started | manager-develop |
-| Sync | not started | manager-docs |
+| Plan | complete (iter2 PASS 0.92; Implementation Kickoff Approval GRANTED 2026-07-29, OQ-1=A path-keyed) | manager-spec |
+| Run | complete (§E.2/§E.3 — all AC-CFS3-001..013 satisfied; 60s override REMOVED) | manager-develop |
+| Sync | complete (§E.4 — sync_commit_sha: e24067904) | manager-docs |
 
 ---
 
