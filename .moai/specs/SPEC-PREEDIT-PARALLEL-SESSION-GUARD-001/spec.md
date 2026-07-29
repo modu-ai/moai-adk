@@ -2,9 +2,9 @@
 id: SPEC-PREEDIT-PARALLEL-SESSION-GUARD-001
 title: "Pre-Edit Parallel-Session Detection & Auto-Isolation"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-28
-updated: 2026-07-28
+updated: 2026-07-29
 author: GOOS
 priority: P1
 phase: "v3.0.0"
