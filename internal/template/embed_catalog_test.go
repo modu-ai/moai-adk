@@ -49,7 +49,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// claim-vs-evidence verification workflow, core.skills), net +1 = 39.
 	// moai-domain-svg-infographic added (editable-SVG-infographic authoring
 	// domain skill, core.skills), net +1 = 40.
-	const wantTotal = 40
+	// moai-ref-ui-polish added (UI polish and interface-completion reference
+	// skill, optional-pack:frontend), net +1 = 41.
+	const wantTotal = 41
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

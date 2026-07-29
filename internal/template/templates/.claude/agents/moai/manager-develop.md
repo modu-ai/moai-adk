@@ -74,7 +74,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 **Invariants**: Existing test suite never broken during any cycle. Each transformation is atomic and reversible.
 
-**Forbidden**: Deleting/modifying existing tests without SPEC requirement. Introducing global mutable state. Skipping tests. Modifying files outside SPEC scope.
+**Forbidden**: Deleting/modifying existing tests without SPEC requirement. Introducing global mutable state. Skipping tests. Modifying files outside SPEC scope. Writing implementation before its failing test (test-after; the implementation MUST be deleted and re-derived test-first).
 
 ## Scope Boundaries and Delegation
 
@@ -113,6 +113,7 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 
 **`tdd` — RED (write failing tests)**
 For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+- **RED-evidence + delete-pre-test-code invariant**: the verbatim RED failing-test output MUST be captured as completion evidence (it is the proof the test ran before GREEN — the `§E` E8 item requires it), and any implementation code written before its failing test MUST be deleted and re-derived test-first.
 
 ### STEP 2.5 — LSP baseline capture (both)
 

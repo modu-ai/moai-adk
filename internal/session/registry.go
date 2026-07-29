@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
@@ -322,8 +324,17 @@ const (
 // contenders never queue in the kernel and there is no fairness guarantee. With
 // a fixed sleep every contender wakes on the same cadence, and an unlucky
 // goroutine can lose the race repeatedly. Randomizing wake times breaks that
-// synchronization. This is a probabilistic mitigation, NOT structural fairness —
-// under sustained contention a repeated loser remains possible.
+// synchronization. This is a probabilistic mitigation, NOT structural fairness.
+//
+// SPEC-V3R6-CI-FLAKY-STABILIZE-003 added the structural fix: the path-keyed
+// in-process mutex (acquired at the top of withLock) now serializes same-process
+// contenders deterministically, eliminating the same-process starvation scenario
+// this jitter could only probabilistically mitigate. Jitter remains the
+// cross-process retry strategy — distinct moai processes still contend on the
+// NB flock with no kernel fairness, so under cross-process contention a repeated
+// loser remains possible (the registry's original coordination purpose,
+// REQ-COORD-008; production cross-process contention is a handful of sessions,
+// so the probability is low).
 //
 // The clamp keeps one sleep from overshooting the deadline and costing the
 // caller its final retry.
@@ -346,6 +357,95 @@ func lockRetryDelay(attempt int, remaining time.Duration) time.Duration {
 	return delay
 }
 
+// envFalsifiabilityDisableMutex is the env var that disables the in-process
+// mutex for the AC-CFS3-002 falsifiability sub-case (local verification only;
+// CI never sets it). When set to "1", withLock skips the in-process mutex so
+// the structural probe can observe concurrent residency >= 2, proving the AC
+// is not vacuous. SPEC-V3R6-CI-FLAKY-STABILIZE-003.
+const envFalsifiabilityDisableMutex = "MOAI_CFS3_FALSIFIABILITY"
+
+// inProcessMutexDisabled reports whether the in-process mutex is deliberately
+// disabled for the AC-CFS3-002 falsifiability sub-case.
+func inProcessMutexDisabled() bool {
+	return os.Getenv(envFalsifiabilityDisableMutex) == "1"
+}
+
+// inProcessMutexes is the package-level path-keyed map of in-process mutexes
+// (SPEC-V3R6-CI-FLAKY-STABILIZE-003, REQ-CFS3-001/002). Each distinct absolute
+// lock path gets its own *sync.Mutex, so ALL Registry instances sharing a path
+// serialize against each other — including the per-call defaultRegistry()
+// instances the package helpers (RegisterSession, Heartbeat, ...) create, which
+// a per-Registry field would miss. The map is path-keyed (not per-Registry) by
+// design decision OQ-1 (ADOPT A): defaultRegistry() returns a fresh Registry per
+// call, so only a path-keyed map covers every in-process contention shape.
+//
+// Lock ordering: in-process mutex -> registryLock.mu (fd guard) -> flock. No
+// cycle (the in-process mutex is always released before withLock returns, and
+// flock is released within the same withLock call).
+//
+// The map grows monotonically with distinct paths over the process lifetime;
+// for the registry this is effectively bounded (one path per project). Tests
+// use t.TempDir() paths which are process-lifetime, so the growth is bounded
+// by the test run.
+//
+// @MX:NOTE: [AUTO] path-keyed in-process mutex; double-locking with cross-process flock (in-process serialization + cross-process coordination)
+var inProcessMutexes sync.Map // map[string]*sync.Mutex
+
+// acquireInProcessMutex returns the *sync.Mutex for the given absolute lock
+// path, allocating it on first use via LoadOrStore. Callers MUST pair the
+// returned Lock with a defer Unlock.
+func acquireInProcessMutex(absLockPath string) *sync.Mutex {
+	v, _ := inProcessMutexes.LoadOrStore(absLockPath, &sync.Mutex{})
+	return v.(*sync.Mutex)
+}
+
+// withLockProbe is the structural probe for AC-CFS3-002
+// (SPEC-V3R6-CI-FLAKY-STABILIZE-003). It counts how many goroutines are
+// simultaneously resident inside a withLock critical section. The in-process
+// mutex (added by this SPEC) must keep the observed maximum at <= 1; the
+// falsifiability sub-case (MOAI_CFS3_FALSIFIABILITY=1, which disables the
+// mutex) must observe >= 2 under sufficient contention, proving the AC is not
+// vacuous. Pure atomic operations; safe under -race.
+//
+// The inc/dec bracket the ENTIRE withLock body (including the NB-flock retry
+// loop), so the probe measures "goroutines inside withLock" rather than "flock
+// holders" — the latter is <= 1 regardless of the mutex (the OS serializes
+// flock) and would make the AC unfalsifiable (verification-claim-integrity
+// §1.1 surface 3).
+type withLockProbeType struct {
+	inFlight    atomic.Int64
+	maxInFlight atomic.Int64
+}
+
+var withLockProbe = &withLockProbeType{}
+
+// enter increments the in-flight counter and refreshes the observed maximum.
+func (p *withLockProbeType) enter() {
+	n := p.inFlight.Add(1)
+	for {
+		m := p.maxInFlight.Load()
+		if n <= m || p.maxInFlight.CompareAndSwap(m, n) {
+			return
+		}
+	}
+}
+
+// exit decrements the in-flight counter.
+func (p *withLockProbeType) exit() {
+	p.inFlight.Add(-1)
+}
+
+// max returns the highest concurrent in-flight count observed since reset.
+func (p *withLockProbeType) max() int64 {
+	return p.maxInFlight.Load()
+}
+
+// reset clears the probe counters. Test-only; used between sub-cases.
+func (p *withLockProbeType) reset() {
+	p.inFlight.Store(0)
+	p.maxInFlight.Store(0)
+}
+
 // withLock acquires the advisory lock, reads the registry, applies the
 // mutation function, writes back atomically (temp + rename), and releases
 // the lock. The lock is best-effort: on contention, it retries up to
@@ -362,6 +462,33 @@ func (r *Registry) withLock(mutate func([]Entry) ([]Entry, error)) error {
 	if err := os.MkdirAll(filepath.Dir(r.path), 0o755); err != nil {
 		return fmt.Errorf("session registry: mkdir parent: %w", err)
 	}
+
+	// In-process mutex (SPEC-V3R6-CI-FLAKY-STABILIZE-003, REQ-CFS3-001).
+	// NB-flock provides no kernel fairness queue, so without this mutex an
+	// unlucky same-process goroutine can lose the flock race repeatedly and
+	// exceed lockTimeout (starvation -> ErrLockTimeout). The mutex is
+	// path-keyed so every Registry instance sharing a lock path serializes.
+	// It brackets the ENTIRE body (including the NB-flock retry loop below),
+	// which is where the starvation occurs. Cross-process contention still
+	// relies on flock + jittered backoff (REQ-CFS3-005/007/008); the mutex
+	// only removes same-process unfairness.
+	//
+	// Placed at the withLock level (NOT inside registryLock.acquire) so the
+	// TestWithLockTimeoutContract blocker — which calls acquire() directly on
+	// a separate registryLock — does NOT take this mutex and the
+	// ErrLockTimeout contract is preserved (AP-CFS3-004).
+	if !inProcessMutexDisabled() {
+		absLockPath, _ := filepath.Abs(r.path + ".lock")
+		ipm := acquireInProcessMutex(absLockPath)
+		ipm.Lock()
+		defer ipm.Unlock()
+	}
+
+	// Structural probe (AC-CFS3-002): brackets the entire body so the
+	// in-process mutex's serialization effect is observable. See withLockProbe
+	// doc. enter()/exit() are pure atomic ops; negligible hot-path cost.
+	withLockProbe.enter()
+	defer withLockProbe.exit()
 
 	lockPath := r.path + ".lock"
 	lock := newRegistryLock()

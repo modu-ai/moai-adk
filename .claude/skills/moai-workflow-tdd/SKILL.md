@@ -325,7 +325,6 @@ When TDD discipline breaks down:
 
 Version: 1.0.0
 Status: Active
-Last Updated: 2026-02-03
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -370,3 +369,12 @@ Last Updated: 2026-02-03
 - [ ] REFACTOR phase was executed or explicitly justified as unnecessary
 
 <!-- moai:evolvable-end -->
+
+## Test-First Anti-Cheat
+
+[ZONE:Evolvable] [HARD] The Red Flags and Verification checklists above sit in advisory (evolvable) blocks and are consumed by no completion gate. This section promotes them into two enforced invariants that make test-first falsifiable in the completion matrix.
+
+- **Invariant i — RED failure output is mandatory completion evidence.** The verbatim RED failing-test output (the failing-test run captured BEFORE any implementation makes it pass) MUST be observed and shown as part of run-phase completion evidence. A run that cannot produce this output skipped RED and cannot be reported as clean.
+- **Invariant ii — implementation written before its failing test is deleted and re-derived test-first.** Any implementation code written before its failing test exists MUST be deleted and re-derived from a failing test (RED then GREEN). "I already wrote the implementation, so the test passes on first run" is the exact failure mode this invariant forbids — it is test-after, not test-first, and it leaves no RED output (Invariant i) to show as evidence.
+
+These two invariants close the falsifiability gap: before them, a fully-passing self-verification matrix was producible with NO RED evidence, so test-first could not be distinguished from test-after by the completion report. After them, the matrix requires the verbatim pre-GREEN RED output, so a run that skipped RED has no such output to supply and the matrix is structurally incomplete.

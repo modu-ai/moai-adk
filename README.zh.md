@@ -5,7 +5,7 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>为 Tokenomics 而设计的 Agentic 开发套件</strong>
+  <strong>为 Claude Code 打造的 Agentic 开发 Harness</strong>
 </p>
 
 <p align="center">
@@ -38,29 +38,45 @@
 
 ---
 
-> **"Tokenomics 是一个旨在让 Token 消费变得经济的 Harness。"**
+> **"不要写代码。去设计那个会写代码的环境。"**
 
 ---
 
-## MoAI-ADK 是一个 Tokenomics Harness
+## MoAI-ADK 是什么？
 
-MoAI-ADK（Agentic Development Kit）让 Claude Code 生成代码，然后以可预测的成本让这些代码变得可靠。Harness 是从外部包裹模型的系统。模型是按 Token 计费的随机工作者 — 它既不记得预算，也不记得质量标准，更不记得上个会话在哪里中断。成本上限、通过的测试套件、跨越 `/clear` 的连续性 — 这些属性无法靠每回合重新提示来植入，必须由外部系统强制执行。
+MoAI-ADK（Agentic Development Kit）是一个从外部包裹 Claude Code 的 harness，让模型随机性的输出变得可靠。模型是一个逐 token 推进的 worker — 它既不记得预算，也不记得质量标准，更不记得上个会话在哪里中断。成本上限、通过的测试套件、自我改进的循环、跨越 `/clear` 的连续性 — 这类属性无法靠每一回合重新提示来植入，必须由系统从外部强制执行。
 
-所有设计决策服务于一个目标：Tokenomics —— 用更少的 Token 达到同样的质量，用同样的 Token 换取更高的质量。使用哪个模型、推理多深、如何消耗上下文 —— 这些都不再听天由命，而是由系统决定。
+它不取代 Claude Code。它只是把 Claude Code 留给用户自行处理的部分 — 模型路由、质量门、成本控制、学习循环、会话连续性 — 用结构包裹起来。它是用 Go 编写的单一二进制文件，在 macOS、Linux、Windows 上零额外依赖即可运行。
 
-它不取代 Claude Code。它只是把 Claude Code 留给用户自行处理的部分 —— 模型路由、质量门、成本控制、会话连续性 —— 用结构包裹起来。用 Go 编写的单一二进制文件，在 macOS、Linux、Windows 上零依赖即可运行。
+![MoAI-ADK 是什么 — 包裹 Claude Code 的 agentic 开发 harness](./assets/images/why-harness-infographic.png)
 
 ---
 
-## 为什么是 Tokenomics
+## Harness 的三大支柱
 
-Token 单价持续下降，但实际 Agent 工作流的支出却在上升。Agent 为解决单个任务要运行几十到几百步，消耗成比例的 Token。按量计费中这直接变成账单，订阅制中则是消耗所有模型共享的周额度配额。
+MoAI-ADK 的价值建立在三大支柱上 — 这正是[官方文档站](https://adk.mo.ai.kr/zh/core-concepts)所围绕组织的三个。每个支柱回答一个关于智能体系统应当如何运转的问题。
 
-### 成本由配分决定，而非模型单价
+![MoAI-ADK harness 的三个轴 — 代币经济学、智能体循环工程、智能体挽具](./assets/images/three-axes-infographic.png)
 
-DeepSWE 排行榜（113 tasks，按 effort 分级视图）的实测数据展示了这个问题。在同一个 Claude 系列内，单任务成本取决于模型*完成*任务的效率 —— 而非一个 Token 的价格。
+| 支柱 | 核心问题 |
+|---|---|
+| 🪙 **代币经济学** | 如何用更少的 token 拿到同等质量？ |
+| 🧠 **智能体循环工程** | 循环如何自主运转并学习？ |
+| 🛡️ **智能体挽具** | 如何设计让智能体高效工作的环境？ |
 
-| 模型 [effort] | Pass@1 | 单任务成本 | 输出 Token | 步数 |
+### 🪙 代币经济学 — 同等质量，更少 token
+
+Token 单价三年内跌了 **98%**（Linux Foundation），但同期企业 AI 支出反而涨了 **320%**。使用量暴增盖过了单价下降。智能体为解决单个任务要跑几十到几百步，按比例烧掉 token — 按量计费下这直接变成账单，订阅制下则是吃掉所有模型共享的周配额。
+
+Uber 给 5,000 名工程师部署了 Claude Code，**四个月烧完一年的编码预算**，随后被迫施加月度 token 限额。Meta、Amazon、Microsoft 相继收回无限制 AI 政策。**代币经济学** — 把模型匹配到任务以提升 token 效率 — 成为科技行业的新基线。
+
+![为什么是代币经济学 — Token 单价 -98% vs 企业 AI 成本 +320%](./assets/images/why-tokenomics-infographic.png)
+
+传统的成本控制是为单价上涨而设计的，面对"单价在跌但总支出在涨"这个悖论便束手无策。瓶颈不在单价，而在使用量 — 更准确地说，是智能体收尾前要跑多少步。
+
+**成本由分配决定，而非单价。** DeepSWE 排行榜（113 tasks，按 effort 分级视图）的实测数据展示了这一点。在同一个 Claude 系列内，单任务成本取决于模型*完成*任务的效率 — 而非一个 token 的价格。
+
+| 模型 [effort] | Pass@1 | 单任务成本 | 输出 token | 步数 |
 |---|---|---|---|---|
 | claude-opus-5 [low] | 58% | **$1.66** | 20k | 36 |
 | claude-opus-5 [medium] | 69% | $3.29 | 37k | 52 |
@@ -68,71 +84,71 @@ DeepSWE 排行榜（113 tasks，按 effort 分级视图）的实测数据展示�
 | claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
 | claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下的分数（58% vs 54%），而单任务成本只有其十六分之一（$1.66 vs $26.40）—— 尽管 Sonnet 的单 Token 价格更低。原因是 268 步对 36 步：写出这张账单的是重试循环，而不是 Token 费率。"用弱模型跑得更狠就能省钱"的直觉不成立。成本由**为任务分配合适的模型和推理深度**决定，而非单价。
+Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下的分数（58% vs 54%），而单任务成本只有其十六分之一（$1.66 vs $26.40）— 尽管 Sonnet 的单 token 价格更低。原因是 268 步对 36 步：写出账单的是重试循环，而不是 token 费率。成本由**为每个任务分配合适的模型和推理深度**决定，而非由单价决定。
 
-MoAI-ADK 将这种分配系统化，不再听天由命。
+#### 四个阶段：测量 → 路由 → 减脂 → 防御
 
----
+代币经济学分四个阶段运作。每个阶段各自承担成本的一个面，合起来形成一个闭环。测量必须先行，路由和减脂的效果才能被验证；没有防御，一次预算超支就会掐断整个会话。
 
-## 三轴经济化
+![代币经济学四层流水线 — 测量·路由·减脂·防御](./assets/images/tokenomics-4layer-infographic.png)
 
-### 路由 — 为每个任务分配合适的模型和推理深度
+**测量 — SPEC 级 token 核算。** 每个 SPEC 消耗的 token 都被透明记账：transcript JSONL 的 usage 汇总后记录到 `progress.md` 的 token 核算块，通过 `moai spec audit` 的列查询。这一层是另外三层的基线。
 
-**Tier×Phase 矩阵**。根据工作阶段（plan / run / sync）和 SPEC 大小（Tier S / M / L）声明式分配模型和推理深度（effort）。需要深度推理的计划阶段分配高推理模型，机械重复较多的实现阶段分配轻量模型。最大化成本质量比。
+**路由 — 为每个任务分配合适的模型和推理深度。** 按工作阶段（plan / run / sync）和 SPEC 规模（Tier S / M / L）声明式分配模型和推理 effort（low / medium / high / max）。需要深度推理的计划阶段分配高推理模型，机械重复较多的实现阶段分配轻量模型。
 
-**No-Haiku 3 层模型策略**。将 Haiku 从路由模型集中排除，工作分散到贴合任务性质的 3 层结构。Sonnet 以 low effort 承担单次完成、以输入为主的工作（Git 机械操作、只读检索）以最小化步数；Opus 承担所有多轮代理式行，`max` effort 只保留给两个调用频率最低的行。
+- **No-Haiku 3 层策略** — 将 Haiku 从路由模型集中排除；Sonnet 以 low effort 承担单次完成、以输入为主的工作，Opus 承担所有多轮代理式行。
+- **配置矩阵** — 11 个 agent × 3 个 profile = 33 格。`moai model profile` 解析每个 agent 的 `{model, effort}` 对。
+- **CG 模式** — `moai cg` 结合 Claude 领导（战略、规划、审计）与 GLM worker（大批量实现）。实现密集型工作负载节省 **60-70% 成本**。
 
-**配置矩阵**。单一的 per-agent 配置矩阵将 11 个保留 agent 各自映射到一个 `{model, effort}` 对 —— 共 33 格。单一配置文件轴 —— `high` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。包括 `Explore` 在内的每个保留 agent 都从矩阵获取 model+effort（任何位置都没有 Haiku）；只有用户自定义 agent 继承会话模型。
+![CG 模式 — Claude 领导处理战略和审计，GLM worker 处理大批量实现](./assets/images/cg-mode-infographic.png)
 
-**CG 模式（Claude + GLM）**。`moai cg` 是结合 Claude 领导和 GLM Worker 的混合模式。战略、规划、审计在 Claude 上运行；大批量实现在 GLM 上运行。实现密集型工作负载节省 **60-70% 成本**。
+![模型路由 — 11 个 agent 按角色分配到 Opus 或 Sonnet，带 effort 标签](./assets/images/model-routing-infographic.png)
 
-### 验证经济 — 减肥上下文，证据落地磁盘
+**实测性价比 — Opus 5 的拐点在 medium。** 路由的依据是 DeepSWE v1.1（datacurve.ai，113 tasks · 91 repos · 5 languages，2026-07-25）。
 
-**verify-diet**。将冗长验证输出重定向到磁盘文件，上下文中只保留退出码和 bounded tail（最多 50 行）。这个文件重定向契约在保持验证证据完整性的同时减少上下文消耗。证据持久化在 `.moai/state/verify/<session>/` 下。
+| 模型 [effort] | 分数 | 单任务成本 | 备注 |
+|---|---|---|---|
+| opus-5 [low] | 58%±2 | $1.66 | |
+| opus-5 [medium] | **69%±1** | **$3.29** | **性价比拐点** |
+| opus-5 [high] | 73%±2 | $6.08 | 分数 +4pt，成本 1.8 倍 |
+| opus-5 [xhigh] | 73%±3 | $9.07 | **纯损失** — 与 high 同分，成本却 +49% |
+| opus-5 [max] | 74%±4 | $11.84 | |
+| glm-5.2 [max] | 44%±2 | $3.92 | API 按量计费下劣势 · z.ai 定额订阅下有价值 |
+| sonnet-5 [max] | 54%±4 | $26.40 | 被 opus-5 [low] 帕累托支配 |
 
-**Prompt 缓存**。当请求前缀与上次请求相同时，重用该部分而非重新处理。缓存读取的成本是基础输入单价的 0.1 倍。最小化常驻指令，命中率就会直接上升。Statusline 缓存命中率段（`♻️`）提供实时监控。
+![DeepSWE 基准 — 模型×effort 的分数与单任务成本](./assets/images/deepswe-benchmark-2.png)
 
-**上下文减脂**。应用 `/clear` 策略。SPEC 阶段完成后 `/clear`，将进度保存到 `progress.md`，然后发布可粘贴的 resume 消息。上下文窗口阈值（1M 模型 50% / 200K 模型 90%）时自动出现建议。
+> 数据来源：[DeepSWE v1.1 排行榜](https://deepswe.datacurve.ai)（datacurve.ai，113 tasks，2026-07-25）
 
-### 预算防御 — 超支前停止，下个会话继续
+`medium` 是实现 agent 的默认锚点，`xhigh` 已从矩阵中退役。应用 `high` profile 能同时拿下**成本 −33%、质量 +3.3pt** — 更便宜的同时更准确。
 
-**Token Circuit Breaker**。当 Agent Token 使用量达到 hard-limit（默认 90%）时执行安全中断。将进度保存到 `progress.md`，发布可粘贴的 resume 消息，绝不自动 `/clear`。系统只推荐 `/clear`，由用户判断并执行。
+**验证经济 — 上下文减脂，证据落到磁盘。** 把冗长的验证输出重定向到磁盘文件，上下文中只保留退出码和 bounded tail（最多 50 行）。Prompt 缓存复用（缓存读取成本 0.1×）加上上下文减脂的 `/clear` 策略（1M 模型 50% / 200K 模型 90% 阈值时自动推荐）让窗口保持轻盈。
 
-**Statusline**。始终在终端底部显示上下文使用率（CW%）、Prompt 缓存命中率、Rate limit 耗尽率。CW% 旁边的 `(⚠️/clear)` 标记在模型特定阈值出现。
+**预算防御 — 超支前停止，下个会话继续。** Token Circuit Breaker 在硬上限（默认 90%）时中止，把进度保存到 `progress.md`，并发布可粘贴的 resume 消息。Statusline 始终把上下文使用率、缓存命中率、rate limit 耗尽率显示在眼前。
 
----
+### 🧠 智能体循环工程 — 自主运转并学习的循环
 
-## 基础设施支撑 Tokenomics 持续运转
+Harness 不是静态结构。循环自主运转，观察沿途积累，指导随每个周期进化。
 
-### 质量结构 — 防止返工和调试循环（Token 浪费最差情况）
+**声明式循环。** `/moai goal "<condition>"` 让会话持续工作，直到声明的完成条件满足或达到回合限制（默认 30）。`/moai loop` 并行扫描 LSP 诊断 · AST-grep · linter，按问题级别分桶，队列空尽为止。循环不被每一步的提示驱动 — 它自主向声明的终态推进。
 
-**SPEC 3 阶段生命周期**。plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由。GEARS 格式要求 + 验收标准按证据判定完成。
+**4 层学习阶梯。** 观察沿阶梯升级为指导：观察（≥1）→ 启发式（≥3）→ 规则（≥5）→ 自动更新（≥10，需用户批准）；信任度下限 0.70。路由决策和门控证据记录为隐私保护摘要。所有应用可通过 `moai harness rollback` 回滚。Harness 编辑（规则/agent/hook 修改）遵循预测–验证纪律：每次编辑记录一条可证伪预测，须通过 held-in/held-out 双重检查方可采纳，被否决的编辑也会留档。
 
-**TRUST 5 质量门**。Tested（85%+ 覆盖率）·Readable · Unified · Secured · Trackable，应用于所有变更。门控判定验证，而非 Agent 自判。
+**决策记忆。** 问题在不确定性最高处（p ≈ 0.5）出现；推荐跟随观察到的统计多数，而非系统默认。Harness 学习你倾向于做哪些决策，并在合适时机浮出对的选项，而非一个通用默认。
 
-**11-Agent 目录**。MoAI 自定义 10 个 + 内置 Explore。规划和审计从一开始分离，编写方不能给自己的工作打分。
+### 🛡️ 智能体挽具 — 设计智能体工作的环境
 
-### 学习循环 — 循环越跑 Token 效率越高
+与其自己写代码，不如去设计一个让智能体高效工作的环境。这一支柱是让另外两个成为可能的结构。
 
-**`/moai goal`·`/moai loop`**。声明一个完成条件，会话自动运行直到满足或达到回合限制（默认 30）。`/moai loop` 并行扫描 LSP 诊断·AST-grep·linter，按问题分级分桶，队列空尽为止。
+**SPEC 3 阶段生命周期。** plan → run → sync。Tier S/M/L 规模分类决定验证深度和 PR 路由。GEARS 格式要求 + 验收标准按证据判定完成。
 
-**Routing Ledger**。将路由决策和门控证据记录为隐私保护摘要。观察升级为规则。
+![SPEC 3 阶段生命周期 — plan → run → sync](./assets/images/spec-3phase-infographic.png)
 
-**4 层学习阶梯**。观察（≥1）→ 启发式（≥3）→ 规则（≥5）→ 自动更新（≥10，需用户批准）；信任度下限 0.70。所有应用可通过 `moai harness rollback` 回滚。挽具编辑（规则/智能体/钩子修改）遵循预测–验证纪律：每次编辑记录一条可证伪的预测，须通过 held-in/held-out 双重检查方可采纳，被否决的编辑也会留档。
+**TRUST 5 质量门。** Tested（85%+ 覆盖率）· Readable · Unified · Secured · Trackable，应用于所有变更。门控判定的是验证，而非 agent 自判。
 
-**决策记忆**。问题在不确定性最高处（p ≈ 0.5）出现；推荐跟随观察到的统计多数，而非系统默认。
+**11-Agent 目录。** MoAI 自定义 10 个 + 内置 Explore。规划与审计从一开始就分离，编写方无法给自己的工作打分。
 
-### 扩展点 — 复用已验证模式提升项目特定复用效率
-
-**Harness v4 Builder**。自然语言请求 → 领域·目标·约束提取 → 批准门控 → 项目专用 agent·skill·command·hook 脚手架。
-
-**@MX 标签**。AI Agent 之间交换上下文、不变契约、危险区的内联代码注释。
-
-**worktree 隔离**。通过 `/moai plan --worktree` 为每个 SPEC 附加并行开发隔离 worktree。
-
----
-
-![Tokenomics Harness](./assets/images/readme/tokenomics-harness-zh.png)
+**扩展点。** Harness v4 Builder 把自然语言请求变成项目专用的 agent · skill · command · hook 脚手架。`@MX` 标签让 AI agent 在代码中内联交换上下文、不变契约、危险区。`worktree` 隔离通过 `/moai plan --worktree` 为每个 SPEC 附加隔离工作区，支持并行开发。
 
 ---
 
@@ -199,21 +215,23 @@ claude        # launch Claude Code inside the project
 
 ## 参考
 
-### /moai 斜杠命令（16 个）
+### /moai 斜杠命令（15 个）
 
 | 子命令 | 职责 |
 |------------|------|
 | `plan` / `run` / `sync` | SPEC 3 阶段流水线 |
-| `project` / `harness` / `design` | 项目文档+harness 生成 · harness 生命周期 · Design 阶段协作 |
+| `project` / `harness` | 项目文档生成 · Harness 生命周期 |
 | `goal` / `loop` / `fix` | 声明式 goal 循环 · 迭代修复 · 单次修复 |
-| `review` / `gate` / `clean` | 代码审查 · pre-commit 质量门控 · 死代码移除 |
-| `mx` / `codemaps` / `feedback` | @MX 注解 · 架构文档 · GitHub issue 报告 |
+| `review` / `gate` / `clean` | 代码审查（`--deep` 启用多 agent 对抗式漏洞扫描）· 提交前质量门 · 死代码移除 |
+| `mx` / `codemaps` / `feedback` | @MX 注解 · 架构图 · GitHub issue 报告 |
 | `e2e` | 多平台 E2E 测试（Web/移动/桌面，CLI 优先） |
 | *（自然语言）* | Analyze-First 路由：自主 plan → run → sync 流水线 |
 
+> **已退役（Retired）的 4 个子命令**：`design` · `brain` · `coverage` · `security`（SPEC-SUBCOMMAND-RETIRE-001，status: completed）。`security` 由 `moai-ref-owasp-checklist` + `moai-ref-llm-security` 技能替代，`e2e` 经 E2E-REVIVAL 复活为现役。
+
 > → 详情：[Workflow Commands](https://adk.mo.ai.kr/zh/workflow-commands) · [Utility Commands](https://adk.mo.ai.kr/zh/utility-commands)
 
-### CLI 命令（常用 12 个）
+### CLI 命令（常用 13 个）
 
 | 命令 | 说明 |
 |---------|-------------|
@@ -221,7 +239,7 @@ claude        # launch Claude Code inside the project
 | `moai doctor` | 系统状态诊断和环境验证 |
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
 | `moai update` | 更新到最新版本（支持自动回滚） |
-| `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合 Claude 领导 + GLM Worker 会话 |
+| `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合 Claude 领导 + GLM worker 会话 |
 | `moai worktree <new|list|switch|sync|remove|clean|go>` | Git worktree 管理并行 SPEC 开发 |
 | `moai session <list|register|current>` | 多会话协调 |
 | `moai spec <audit|archive|lint|list|new>` | SPEC 生命周期工具 |
@@ -249,9 +267,9 @@ claude        # launch Claude Code inside the project
 | **Specialist** | e2e-tester | 🟠 | Web/移动/桌面 E2E 测试执行（CLI 优先） |
 | **Built-in** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户添加的 agent）。切换配置文件（`high`/`low`）时分配会变化。长期委托的进度记录在 Task 通道，由编排器以图标 Progress Board 转达。
+成本颜色以默认 `medium` profile 的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户添加的 agent）。切换 profile（`high`/`low`）时分配会变化。长期委托的进度记录在 Task 通道，由编排器以图标 Progress Board 转达。
 
-### TRUST 5 质量门控
+### TRUST 5 质量门
 
 | 准则 | 含义 | 验证 |
 |-----------|---------|------------|
@@ -283,7 +301,7 @@ flowchart TD
 
 ```
 🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
-🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
+🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
 ```
 
@@ -292,7 +310,7 @@ flowchart TD
 | 🤖 模型 | 当前激活模型 |
 | 🧠 effort | 推理努力等级 — 扩展思考启用时 `·t` 后缀 |
 | ♻️ 缓存命中率 | Prompt 缓存命中率 |
-| CW: 上下文 | 上下文窗口使用率 + 2 阶段 `/clear` 标记（⚠️ 软度，🛑 硬度） |
+| CW: 上下文 | 上下文窗口使用率 + 2 阶段 `/clear` 标记（⚠️ 软，🛑 硬） |
 | 5H / 7D | 计费方案使用率 + 重置时间 |
 | 📁 目录 | 项目目录名 |
 | 🔀 仓库 | GitHub 仓库 identity `owner/name` |
@@ -321,11 +339,11 @@ flowchart TD
 
 ### Q: 不用 GLM 只用 Claude 可以吗？
 
-可以。`moai cc` 启动 Claude 专用会话。CG 模式（`moai cg`，Claude 领导 + GLM Worker）和 GLM 专用（`moai glm`）是成本节省选项；harness·SPEC 工作流·质量门控在所有三种模式中完全相同。
+可以。`moai cc` 启动 Claude 专用会话。CG 模式（`moai cg`，Claude 领导 + GLM worker）和 GLM 专用（`moai glm`）是成本节省选项；harness · SPEC 工作流 · 质量门在三种模式中完全相同。
 
 ### Q: 适用于现有项目吗？
 
-适用。`moai init` 检测项目状态并选择方法论 —— 对覆盖率 <10% 的现有代码使用 DDD（特性化测试固定行为后渐进改进），对新/充分测试的代码使用 TDD。
+适用。`moai init` 检测项目状态并选择方法论 — 对覆盖率 <10% 的现有代码使用 DDD（特性化测试固定行为后渐进改进），对新/充分测试的代码使用 TDD。
 
 ---
 
@@ -365,10 +383,10 @@ flowchart TD
 | [CLI Reference](https://adk.mo.ai.kr/zh/cli-reference) | `moai` 二进制所有命令 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 等 |
 | [Claude Code Guide](https://adk.mo.ai.kr/zh/claude-code) | Claude Code 集成 — 基础、上下文·记忆、agentic、扩展性（skill·hook·plugin） |
 | [Multi-LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式和模型策略 |
-| [Cost Optimization](https://adk.mo.ai.kr/zh/cost-optimization) | Prompt 缓存策略和 Token 成本降低 |
+| [Cost Optimization](https://adk.mo.ai.kr/zh/cost-optimization) | Prompt 缓存策略和 token 成本降低 |
 | [Guides](https://adk.mo.ai.kr/zh/guides) | CI 自动化、multi-LLM CI 等实战运营配方 |
 | [Git Worktree](https://adk.mo.ai.kr/zh/worktree) | 并行 SPEC 开发用 worktree 指南、示例、FAQ |
-| [Advanced](https://adk.mo.ai.kr/zh/advanced) | Tokenomics 概述、Token 预算、statusline、settings.json、hook、@MX 标签、skill 指南、Harness v4 Builder、自进化、决策记忆、目录系统、安全笔记、CLAUDE.md/agent 指南 |
+| [Advanced](https://adk.mo.ai.kr/zh/advanced) | 代币经济学概述、token 预算、statusline、settings.json、hook、@MX 标签、skill 指南、Harness v4 Builder、自进化、决策记忆、目录系统、安全笔记、CLAUDE.md/agent 指南 |
 | [Contributing](https://adk.mo.ai.kr/zh/contributing) | 开源贡献指南 |
 
 ### 链接

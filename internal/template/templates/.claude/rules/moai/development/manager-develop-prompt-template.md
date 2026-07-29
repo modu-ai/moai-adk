@@ -204,6 +204,13 @@ $ golangci-lint run --timeout=2m
 **E7. Blocker Report (if any)**
 - When the delegation prompt did not specify a needed user decision, report it as a structured blocker (NEVER call AskUserQuestion)
 
+**E8. RED Failure Output (TDD only — verbatim pre-GREEN evidence)**
+```
+$ <test-runner command>   # captured BEFORE the implementation makes the test pass
+# verbatim failing-test output, e.g. "--- FAIL: TestX ... expected Y, got Z"
+```
+The verbatim RED failing-test output captured before GREEN MUST be shown. A run that skipped RED (test-after) has no such output to supply, so without this item the self-verification matrix is structurally incomplete — test-first is falsifiable via this item (a test-after run cannot produce pre-GREEN failing output).
+
 ## 2. Delegation Prompt Authoring Workflow (from the orchestrator's perspective)
 
 ```

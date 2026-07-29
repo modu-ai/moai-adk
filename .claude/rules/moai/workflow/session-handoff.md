@@ -160,7 +160,7 @@ At session end, the orchestrator displays: (1) the main message in a fenced ```t
 
 ## Worktree-Anchored Resume Pattern
 
-> [ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree`, the resume message MUST prepend **Block 0 (cwd anchoring)** — a new-terminal `cd <worktree>` + launcher block — before the standard 6-block structure, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Without `--worktree` (the default) the standard 6-block suffices. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
+> [ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree`, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Block 0 uses the **canonical EnterWorktree-first forms** — `moai cc -w <name>` for L1 (`.claude/worktrees/`), `moai cc -w <abs-path>` for L2 (`~/.moai/worktrees/`), or `EnterWorktree(<path>)` for current-session re-entry — NOT a bare `cd <worktree>` shell instruction. Without `--worktree` (the default) the standard 6-block suffices. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
 
 ## Diet Constraints
 
