@@ -889,13 +889,13 @@ func (h *preToolHandler) checkHarnessFrozenZone(agentID, normalizedPath string) 
 	return "", ""
 }
 
-// isAllowedExternalPath checks whether the given absolute path falls under
-// one of the policy's AllowedExternalPaths directories.
+// isAllowedExternalPath checks whether the given absolute path falls under one
+// of the policy's built-in AllowedExternalPaths directories, OR under a
+// directory the user registered via Claude Code's permissions.additionalDirectories
+// (.claude/settings.json / settings.local.json). The latter is read at call time
+// so /add-dir takes effect without restarting the session (issue #1162).
 func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
-	if h.policy == nil {
-		return false
-	}
-	for _, allowed := range h.policy.AllowedExternalPaths {
+	for _, allowed := range h.allowedExternalPaths() {
 		absAllowed, err := filepath.Abs(allowed)
 		if err != nil {
 			continue
@@ -910,4 +910,58 @@ func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
 		}
 	}
 	return false
+}
+
+// allowedExternalPaths returns the policy's built-in allowlist plus any
+// directories the user registered in Claude Code settings under
+// permissions.additionalDirectories (issue #1162). Both .claude/settings.json
+// and .claude/settings.local.json are consulted, relative to the project dir,
+// so /add-dir (which writes there) is honored by the path guard.
+func (h *preToolHandler) allowedExternalPaths() []string {
+	var paths []string
+	if h.policy != nil {
+		paths = append(paths, h.policy.AllowedExternalPaths...)
+	}
+	paths = append(paths, loadAdditionalDirectories(h.projectDir)...)
+	return paths
+}
+
+// loadAdditionalDirectories reads permissions.additionalDirectories from the
+// project's Claude Code settings (.claude/settings.json and
+// .claude/settings.local.json) and returns the absolute directory paths.
+// Missing files, malformed JSON, or an absent key yield an empty result — the
+// hook never blocks on a settings read failure. Relative entries are resolved
+// against the project directory.
+func loadAdditionalDirectories(projectDir string) []string {
+	if projectDir == "" {
+		return nil
+	}
+	var dirs []string
+	for _, name := range []string{"settings.json", "settings.local.json"} {
+		path := filepath.Join(projectDir, ".claude", name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		var doc struct {
+			Permissions struct {
+				AdditionalDirectories []string `json:"additionalDirectories"`
+			} `json:"permissions"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			continue
+		}
+		for _, d := range doc.Permissions.AdditionalDirectories {
+			if d == "" {
+				continue
+			}
+			if !filepath.IsAbs(d) {
+				d = filepath.Join(projectDir, d)
+			}
+			if abs, err := filepath.Abs(d); err == nil {
+				dirs = append(dirs, abs)
+			}
+		}
+	}
+	return dirs
 }
