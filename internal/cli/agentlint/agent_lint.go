@@ -16,6 +16,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // Local CLI output styles — the agentlint subpackage is imported BY the parent
@@ -92,13 +93,10 @@ type AgentFrontmatter struct {
 	Model          string            `yaml:"model"`
 	Isolation      string            `yaml:"isolation"`
 	PermissionMode string            `yaml:"permissionMode"`
-	// Sandbox fields (SPEC-V3R2-RT-003 REQ-033/043)
-	Sandbox struct {
-		// Backend is the sandbox value — parsed from the top-level `sandbox:` key in frontmatter.
-		Backend string `yaml:"backend"`
-		// Justification is the opt-out reason when sandbox = "none".
-		Justification string `yaml:"justification"`
-	} `yaml:"sandbox"`
+	// Sandbox fields (SPEC-V3R2-RT-003 REQ-033/043). agentSandbox tolerates BOTH
+	// the scalar form (`sandbox: none`) and the mapping form
+	// (`sandbox:\n  backend: none`), so yaml.v3 does not abort on either.
+	Sandbox agentSandbox `yaml:"sandbox"`
 	// SandboxValue is the top-level `sandbox:` string field (e.g., `sandbox: none`).
 	// Distinct from Sandbox.Backend which would require `sandbox:\n  backend: none` nesting.
 	SandboxValue string `yaml:"sandbox_value"`
@@ -770,10 +768,15 @@ func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 		}
 	}
 
-	// Write-heavy standalone agents that require isolation: worktree (SPEC-V3R2-ORC-004)
+	// Write-heavy standalone agents that require isolation: worktree (SPEC-V3R2-ORC-004).
+	// Reconciled to the CLAUDE.md §4 retained-agent catalog by SPEC-CLIFIX-LINTER-STALE-001
+	// (REQ-LINT-001-002): the former slice named four now-archived agents that can
+	// never match a live file, leaving LR-05 unable to fire on the real write-heavy
+	// roster. manager-develop is the canonical retained write-heavy implementation
+	// agent; the drift guard TestWriteHeavyAgents_NoArchivedNames fails if an archived
+	// name returns.
 	writeHeavyAgents := []string{
-		"manager-develop", "expert-backend", "expert-frontend",
-		"expert-refactoring", "researcher",
+		"manager-develop",
 	}
 
 	for _, agentName := range writeHeavyAgents {
@@ -885,8 +888,10 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 	const maxLinesAfterHeader = 30
 
 	type mandateLocation struct {
-		file string
-		line int
+		file     string
+		line     int
+		baseName string // agent filename without extension (e.g. "sync-auditor")
+		mirror   bool   // true when the file lives under the template-mirror tree
 	}
 
 	var mandateBlocks []mandateLocation
@@ -937,8 +942,10 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 				consecutiveCount++
 				if consecutiveCount == 3 && !blockRecordedForSection {
 					mandateBlocks = append(mandateBlocks, mandateLocation{
-						file: file,
-						line: sectionHeaderLine,
+						file:     file,
+						line:     sectionHeaderLine,
+						baseName: agentBaseName(file),
+						mirror:   isTemplateMirrorPath(file),
 					})
 					blockRecordedForSection = true
 				}
@@ -948,9 +955,29 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 		}
 	}
 
+	// LR-07 dedupe (SPEC-CLIFIX-LINTER-STALE-001 REQ-LINT-001-003): a live agent
+	// and its template mirror routinely both carry the Skeptical-Evaluator Mandate
+	// block — that pair is NOT a duplicate finding. Path-mapping is the primary
+	// key (base filename + live/mirror tree membership); genuine same-name
+	// duplicates across two unrelated live paths, and cross-agent duplicates
+	// (two different agent files sharing the block), still produce findings.
+	//
+	// The first block globally is the canonical keep. Each subsequent block is
+	// suppressed ONLY when an earlier block is its live/mirror pair partner
+	// (same base filename, opposite tree); otherwise it fires.
 	if len(mandateBlocks) > 1 {
-		for i, loc := range mandateBlocks {
-			if i == 0 {
+		first := mandateBlocks[0]
+		for i := 1; i < len(mandateBlocks); i++ {
+			loc := mandateBlocks[i]
+			paired := false
+			for j := 0; j < i; j++ {
+				prev := mandateBlocks[j]
+				if loc.baseName == prev.baseName && loc.mirror != prev.mirror {
+					paired = true
+					break
+				}
+			}
+			if paired {
 				continue
 			}
 			violations = append(violations, LintViolation{
@@ -958,12 +985,25 @@ func checkDuplicateMandateBlocks(files []string) []LintViolation {
 				Severity: SeverityError,
 				File:     loc.file,
 				Line:     loc.line,
-				Message:  fmt.Sprintf("Duplicate Skeptical-Evaluator Mandate block (first occurrence at %s:%d)", mandateBlocks[0].file, mandateBlocks[0].line),
+				Message:  fmt.Sprintf("Duplicate Skeptical-Evaluator Mandate block (first occurrence at %s:%d)", first.file, first.line),
 			})
 		}
 	}
 
 	return violations
+}
+
+// isTemplateMirrorPath reports whether a file lives under the template-mirror
+// agent tree (internal/template/templates/.claude/agents/moai/). Used by the
+// LR-07 dedupe to pair a live agent with its mirror copy.
+func isTemplateMirrorPath(file string) bool {
+	return strings.Contains(filepath.ToSlash(file), "internal/template/templates/.claude/agents/")
+}
+
+// agentBaseName returns the agent filename without its .md extension.
+func agentBaseName(file string) string {
+	base := filepath.Base(file)
+	return strings.TrimSuffix(base, filepath.Ext(base))
 }
 
 // checkSandboxJustification implements LR-33: agents declaring `sandbox: none` without
@@ -1179,59 +1219,46 @@ func parseFieldName(frontmatter []byte) string {
 	return ""
 }
 
-// parseYAMLFrontmatter parses YAML frontmatter into a struct.
-func parseYAMLFrontmatter(data []byte, v interface{}) error {
-	// Simple YAML parser for our specific use case
-	// We'll parse key-value pairs line by line
-	lines := strings.Split(string(data), "\n")
+// agentSandbox tolerates both the scalar frontmatter form (`sandbox: none`)
+// and the mapping form (`sandbox:\n  backend: none`). Without this, yaml.v3
+// aborts on the scalar form (cannot unmarshal !!str into struct), which would
+// make the parser non-resilient to agents declaring `sandbox: <scalar>`.
+type agentSandbox struct {
+	Backend      string `yaml:"backend"`
+	Justification string `yaml:"justification"`
+}
 
-	type fieldSetter interface {
-		setField(key, value string)
+// UnmarshalYAML accepts either a scalar (sandbox: none) or a mapping.
+func (s *agentSandbox) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		s.Backend = value.Value
+		return nil
 	}
-
-	if fs, ok := v.(fieldSetter); ok {
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) != 2 {
-				continue
-			}
-
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-
-			fs.setField(key, value)
+	if value.Kind == yaml.MappingNode {
+		type raw struct {
+			Backend       string `yaml:"backend"`
+			Justification string `yaml:"justification"`
 		}
+		var r raw
+		if err := value.Decode(&r); err != nil {
+			return err
+		}
+		s.Backend = r.Backend
+		s.Justification = r.Justification
+		return nil
 	}
-
 	return nil
 }
 
-// setField implements fieldSetter for AgentFrontmatter.
-func (fm *AgentFrontmatter) setField(key, value string) {
-	switch key {
-	case "name":
-		fm.Name = value
-	case "tools":
-		fm.Tools = value
-	case "effort":
-		fm.Effort = value
-	case "model":
-		fm.Model = value
-	case "isolation":
-		fm.Isolation = value
-	case "permissionMode":
-		fm.PermissionMode = value
-	case "skills":
-		// Skills is a list, but in our simple parser we just note its presence
-		// The actual list parsing happens in the main parser
-	case "hooks":
-		// Hooks parsing is complex, we'll handle it separately
-	}
+// parseYAMLFrontmatter parses YAML frontmatter into a struct via yaml.v3
+// (SPEC-CLIFIX-LINTER-STALE-001 REQ-LINT-001-001). Replaces the former
+// hand-rolled line-by-line parser whose `skills`/`hooks` setField cases were
+// TODO stubs that populated nothing — permanently disabling rule LR-04.
+// The full parse-error-resilience (do-not-abort-whole-run) fix is deferred to
+// SPEC-CLIFIX-HYGIENE-001; here a single broken file still aborts the run,
+// matching the prior behavior (regression guard).
+func parseYAMLFrontmatter(data []byte, v interface{}) error {
+	return yaml.Unmarshal(data, v)
 }
 
 // findFrontmatterLine finds the line number of a frontmatter key.

@@ -344,28 +344,28 @@ func TestCheckMissingIsolation(t *testing.T) {
 			wantCount: 0,
 		},
 		{
-			name:      "write-heavy expert-backend without worktree",
+			name:      "archived expert-backend no longer treated as write-heavy (SPEC-CLIFIX-LINTER-STALE-001)",
 			agentName: "expert-backend",
 			isolation: "",
-			wantCount: 1,
-		},
-		{
-			name:      "write-heavy expert-backend with worktree",
-			agentName: "expert-backend",
-			isolation: "worktree",
 			wantCount: 0,
 		},
 		{
-			name:      "write-heavy researcher without worktree",
+			name:      "archived researcher no longer treated as write-heavy (SPEC-CLIFIX-LINTER-STALE-001)",
 			agentName: "researcher",
 			isolation: "",
-			wantCount: 1,
+			wantCount: 0,
 		},
 		{
 			name:      "write-heavy manager-develop without worktree",
 			agentName: "manager-develop",
 			isolation: "",
 			wantCount: 1,
+		},
+		{
+			name:      "write-heavy manager-develop with worktree",
+			agentName: "manager-develop",
+			isolation: "worktree",
+			wantCount: 0,
 		},
 	}
 
@@ -1792,9 +1792,9 @@ func TestAgentLintCmd_RunE_NoFiles(t *testing.T) {
 // contains the ORC_WORKTREE_MISSING sentinel key (AC-06).
 func TestLintLR05_OrcWorktreeMissingSentinel(t *testing.T) {
 	tmpDir := t.TempDir()
-	agentFile := filepath.Join(tmpDir, "expert-backend.md")
+	agentFile := filepath.Join(tmpDir, "manager-develop.md")
 	err := os.WriteFile(agentFile, []byte(`---
-name: expert-backend
+name: manager-develop
 tools: Read, Write, Edit
 permissionMode: bypassPermissions
 effort: high
@@ -1820,7 +1820,7 @@ Body.
 	}
 
 	if found == nil {
-		t.Fatal("expected LR-05 violation for expert-backend without isolation:worktree, got none")
+		t.Fatal("expected LR-05 violation for manager-develop without isolation:worktree, got none")
 	}
 	if found.Severity != SeverityWarning {
 		t.Errorf("LR-05 severity = %s, want warning", found.Severity)

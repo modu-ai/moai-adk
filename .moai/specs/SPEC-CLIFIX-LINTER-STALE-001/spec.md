@@ -2,7 +2,7 @@
 id: SPEC-CLIFIX-LINTER-STALE-001
 title: "CLI Linter/Doctor Staleness Remediation — agentlint yaml.v3, writeHeavyAgents roster, LR-07 dedupe (P3)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-29
 author: manager-spec
