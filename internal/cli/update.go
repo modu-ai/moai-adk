@@ -421,6 +421,14 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// Post-sync follow-up: the "Updated N files" summary has already printed
+	// (inside runTemplateSyncWithProgress). The steps below — legacy-skill
+	// archive, evolution dir scaffold, profile sync — are a DISTINCT follow-up
+	// phase. A section header separates them from the deploy summary so the
+	// archive output does not look like it appended to "Updated N files".
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, tui.Section("Post-sync steps", tui.SectionOpts{Theme: &th}))
+
 	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
 	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
@@ -703,17 +711,23 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
 	deployer := template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 
-	// Analyze merge and get user confirmation
+	// Analyze merge changes. The "Analyzing merge changes" header + the
+	// classification card are shown only when this function owns the
+	// confirmation flow (skipConfirm=false). When skipConfirm=true the caller
+	// (runTemplateSyncWithProgress) already printed both before the user's
+	// y/n confirmation — reprinting them here duplicates the visible output.
 	analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
-	// Card-style classification summary (REQ-TUXIU-010/011): accent box with
-	// up to three count pills; zero-count pills omitted; suppressed entirely
-	// when the run is clean (all counts zero).
-	addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
-	if card := renderClassificationSummary(addCount, updateCount, conflictCount, th); card != "" {
-		_, _ = fmt.Fprintln(out, card)
+	if !skipConfirm {
+		_, _ = fmt.Fprintln(out)
+		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
+		// Card-style classification summary (REQ-TUXIU-010/011): accent box with
+		// up to three count pills; zero-count pills omitted; suppressed entirely
+		// when the run is clean (all counts zero).
+		addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
+		if card := renderClassificationSummary(addCount, updateCount, conflictCount, th); card != "" {
+			_, _ = fmt.Fprintln(out, card)
+		}
 	}
 
 	if reporter != nil {
