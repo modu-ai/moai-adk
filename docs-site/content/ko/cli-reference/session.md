@@ -4,7 +4,7 @@ weight: 65
 draft: false
 ---
 
-`moai session` 은 `.moai/state/active-sessions.json` 의 다중 세션 조율 레지스트리를 관리합니다. 여러 Claude Code 세션이 같은 프로젝트에서 동시에 작업할 때 발생하는 경쟁(race)을 완화하기 위한 도구입니다.
+`moai session` 은 `.moai/state/active-sessions.json` 의 다중 세션 조율 레지스트리를 관리합니다. 여러 Claude Code 세션이 같은 프로젝트를 동시에 건드릴 때 생기는 경쟁(race)을 줄이는 도구입니다.
 
 ## 하위 명령어
 
@@ -70,7 +70,7 @@ moai session doctor
 
 ## 사용 맥락
 
-오케스트레이터는 구현 에이전트를 spawn 하기 전 이 레지스트리로 동시 세션 경쟁을 잡아냅니다. `moai session list --json --filter-spec <SPEC-ID>` 가 다른 세션 항목을 반환하면 오케스트레이터는 진행을 멈추고 사용자에게 확인합니다.
+오케스트레이터는 구현 에이전트를 spawn 하기 전에 이 레지스트리로 동시 세션 경쟁을 잡아냅니다. `moai session list --json --filter-spec <SPEC-ID>` 가 다른 세션 항목을 돌려주면, 오케스트레이터는 진행을 멈추고 사용자에게 확인을 받습니다.
 
 ## 관련 문서
 

@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다. 에이전틱 하네스에서 프롬프트는 "따라야 할 지침"이지만 훅은 "반드시 실행되는 코드"입니다 — 품질 게이트와 보안 방어선을 확률이 아닌 결정론 위에 세우는 계층이 바로 훅입니다.
+Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다. 에이전틱 하네스에서 프롬프트가 "따라야 할 지침"이라면 훅은 "반드시 실행되는 코드"입니다. 품질 게이트와 보안 방어선을 확률이 아니라 결정론 위에 세우는 계층이 바로 이 훅입니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: Hooks는 Claude Code의 **자동 반사 신경**입니다. 파일을 저장하면 자동으로 포맷팅하고, 위험한 명령은 자동으로 차단합니다.
@@ -40,7 +40,7 @@ flowchart TD
 | `Setup` | `--init`, `--init-only`, `--maintenance` 플래그로 시작 시 | 초기 설정, 환경 점검 |
 | `SessionStart` | 세션이 시작될 때 | 프로젝트 정보 표시, 환경 초기화 |
 | `SessionEnd` | 세션이 종료될 때 | 정리 작업, 컨텍스트 저장 |
-| `PostSession` | 세션 종료 후 (self-hosted runner, CC 2.1.169+) | 세션 후 정리/텔레메트리; 세션이 완전히 해제된 후, `SessionEnd`보다 늦게 발화합니다. MoAI-ADK는 현재 이 훅을 wiring하지 않습니다 — self-hosted 배포를 위한 사용 가능한 옵션으로 문서화됩니다. |
+| `PostSession` | 세션 종료 후 (self-hosted runner, CC 2.1.169+) | 세션 뒷정리와 텔레메트리. 세션이 완전히 내려간 다음, `SessionEnd`보다 늦게 발화합니다. MoAI-ADK는 아직 이 훅을 연결하지 않습니다. self-hosted 배포에서 쓸 수 있는 선택지로만 적어 둡니다. |
 | `PreCompact` | 컨텍스트 압축 전 (`/clear` 등) | 중요 컨텍스트 백업 |
 | `PreToolUse` | 도구 사용 전 | 보안 검증, 위험 명령 차단 |
 | **`PermissionRequest`** | 권한 대화상자 표시 시 | 자동 허용/거부 결정 |
@@ -109,7 +109,7 @@ Go 바이너리는 위 13종 외에도 `PostToolUseFailure`, `StopFailure`, `Pos
 
 ### 팀원 협업 이벤트
 
-MoAI의 정적 Agent Teams 오케스트레이션 계층은 RETIRED되었지만, Claude Code의 네이티브 팀원 런타임(tmux pane 기반)은 여전히 지원되며 `TeammateIdle`·`TaskCompleted` 훅 이벤트가 동작합니다.
+MoAI의 정적 Agent Teams 오케스트레이션 계층은 퇴역(RETIRED)했지만, Claude Code의 네이티브 팀원 런타임(tmux pane 기반)은 그대로 쓸 수 있고 `TeammateIdle`·`TaskCompleted` 훅 이벤트도 정상 동작합니다.
 
 #### TeammateIdle 이벤트
 팀원이 작업을 완료하고 idle 상태로 진입할 때 실행됩니다.
@@ -134,10 +134,10 @@ MoAI의 정적 Agent Teams 오케스트레이션 계층은 RETIRED되었지만, 
    - 각 멤버의 `tmuxPaneId` 추출 (예: "%184")
    - `tmux kill-pane -t {paneId}` 실행 (높은 인덱스부터)
 
-팀 디렉토리 정리는 세션 종료 시 자동으로 수행됩니다. 명시적인 teardown 호출은 필요하지 않습니다(명시적 팀 teardown 도구는 Claude Code v2.1.178에서 제거되었습니다 — 모든 세션은 암묵적 팀 하나를 가지며 정리는 자동입니다).
+팀 디렉토리 정리는 세션이 끝날 때 자동으로 이루어지므로 teardown을 따로 호출할 필요가 없습니다(명시적 팀 teardown 도구는 Claude Code v2.1.178에서 제거됐습니다. 세션마다 암묵적 팀이 하나씩 있고 정리는 자동입니다).
 
 {{< callout type="warning" >}}
-**왜 tmux pane 정리가 필수인가?** `shutdown_response`는 팀원을 논리적으로 완료 표시하지만 tmux pane 프로세스를 종료하지 않습니다. 팀 디렉토리 정리는 세션 종료 시 자동으로 이루어지지만, 이는 tmux pane 프로세스를 종료하지 않습니다. 명시적 pane 종료 없이는 pane이 무한히 살아있고 Leader가 "Drain" 상태로 멈춥니다.
+**왜 tmux pane 정리가 필수인가?** `shutdown_response`는 팀원을 논리적으로 완료 처리할 뿐, tmux pane 프로세스까지 끝내지는 않습니다. 세션이 끝날 때 팀 디렉토리는 자동으로 정리되지만 여기서도 pane 프로세스는 그대로 남습니다. pane을 직접 종료하지 않으면 pane이 계속 살아 있고, Leader는 "Drain" 상태에서 멈춥니다.
 {{< /callout >}}
 
 ### 이벤트 실행 순서
@@ -438,7 +438,7 @@ ralph:
 
 ### PreCompact: 컨텍스트 저장
 
-`/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다. 컨텍스트 임계에서 세션을 끊고 이어가는 핸드오프 흐름의 안전망입니다.
+`/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다. 컨텍스트가 한계에 다다랐을 때 세션을 끊고 다음 세션으로 이어 가는 핸드오프의 안전망입니다.
 
 **저장 위치:** `.moai/state/session-memo.md`
 
@@ -532,12 +532,12 @@ constitution:
 MoAI Hooks의 공유 로직은 Python `lib/` 디렉토리가 아닌 **`moai` Go 바이너리 내부**에 컴파일됩니다. 셸 래퍼(`handle-<event>.sh`)는 얇은 전달 계층일 뿐이며, 다음 기능들이 모두 Go 바이너리 안에 구현되어 있습니다:
 
 - **16개 언어 포맷터/린터 레지스트리**: 프로젝트 언어 자동 감지 후 해당 도구 체인 실행 (Go: gofmt/golangci-lint, Python: ruff/black, Rust: cargo fmt/clippy 등)
-- **Git 데이터 수집**: 브랜치·변경 사항·커밋 정보 캐싱으로 반복 쿼리 최적화
-- **통합 타임아웃 관리**: 각 훅 이벤트별 타임아웃과 우아한 저하 처리
+- **Git 데이터 수집**: 브랜치·변경 사항·커밋 정보를 캐싱해 같은 쿼리를 반복하지 않음
+- **통합 타임아웃 관리**: 훅 이벤트마다 타임아웃을 걸고, 실패해도 흐름을 끊지 않고 축소 동작
 - **컨텍스트 스냅샷**: `/clear` 전 컨텍스트 아카이브, 메모리 페이로드 생성
 - **LSP 진단 수집**: 언어 서버 프로토콜 기반 진단 결과 집계
 
-이 아키텍처의 이점: Python 런타임(`uv`, 가상환경) 설치가 불필요하며, 단일 바이너리(`moai`)만 PATH에 있으면 모든 훅이 동작합니다. 바이너리가 없을 경우 래퍼는 안전하게 종료(exit 0)하여 Claude Code 흐름을 차단하지 않습니다.
+이 구조 덕분에 Python 런타임(`uv`, 가상환경)을 설치할 필요가 없고, 단일 바이너리(`moai`)만 PATH에 있으면 모든 훅이 동작합니다. 바이너리가 없으면 래퍼는 그대로 종료(exit 0)하므로 Claude Code 흐름을 막지 않습니다.
 
 ## settings.json에서 Hook 설정
 

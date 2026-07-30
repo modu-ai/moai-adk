@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-SPEC 문서를 바탕으로 코드를 구현하는 Run 단계 명령어입니다. 프로젝트 상태에 따라 TDD (RED-GREEN-REFACTOR) 또는 DDD (ANALYZE-PRESERVE-IMPROVE) 사이클이 적용되며, 이 문서는 기존 코드를 안전하게 개선하는 DDD 사이클을 중심으로 설명합니다.
+SPEC 문서를 보고 코드를 구현하는 Run 단계 명령어입니다. 프로젝트 상태에 따라 TDD (RED-GREEN-REFACTOR)나 DDD (ANALYZE-PRESERVE-IMPROVE) 사이클이 걸리며, 이 문서는 기존 코드를 안전하게 손보는 DDD 사이클을 중심으로 설명합니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:run`을 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -12,9 +12,9 @@ SPEC 문서를 바탕으로 코드를 구현하는 Run 단계 명령어입니다
 
 ## 개요
 
-`/moai run`은 MoAI-ADK 워크플로우의 **Phase 2 (Run)** 명령어입니다. Phase 1에서 생성된 SPEC 문서를 읽고, **ANALYZE-PRESERVE-IMPROVE** 사이클을 통해 기존 기능을 망가뜨리지 않으면서 안전하게 코드를 구현합니다. 내부적으로 **manager-develop** 에이전트가 전체 과정을 관리합니다.
+`/moai run`은 MoAI-ADK 워크플로우의 **Phase 2 (Run)** 명령어입니다. Phase 1에서 만든 SPEC 문서를 읽고 **ANALYZE-PRESERVE-IMPROVE** 사이클로, 이미 돌아가던 기능을 망가뜨리지 않으면서 코드를 구현합니다. 안에서는 **manager-develop** 에이전트가 전 과정을 챙깁니다.
 
-구현 단계는 3-Phase 파이프라인에서 토큰이 가장 많이 드는 단계입니다. 그래서 v3의 비용 절감 설계가 이 단계에 집중적으로 들어가 있습니다. SPEC 요약본 (`spec-compact.md`) 자동 로드로 ~30% 토큰을 절약하고, SPEC 복잡도에 따라 검증 깊이를 조절하는 Harness Level Routing이 불필요한 감사 비용을 줄이며, 진행 상황이 파일로 저장되어 세션이 끊겨도 이어서 작업할 수 있습니다.
+구현 단계는 3-Phase 파이프라인에서 토큰을 가장 많이 먹습니다. 그래서 v3의 비용 절감 설계도 이 단계에 몰려 있습니다. SPEC 요약본 (`spec-compact.md`)을 자동으로 읽어 토큰을 약 30% 아끼고, SPEC 복잡도에 맞춰 검증 깊이를 조절하는 Harness Level Routing이 굳이 안 해도 될 감사 비용을 덜어 냅니다. 진행 상황은 파일로 남으니 세션이 끊겨도 하던 자리에서 이어 갈 수 있습니다.
 
 {{< callout type="info" >}}
 **DDD를 집 리모델링으로 이해하기**
@@ -27,7 +27,7 @@ DDD의 ANALYZE-PRESERVE-IMPROVE 사이클은 **집 리모델링**과 같습니�
 | **PRESERVE** | 현재 상태 사진 찍기 | 특성화 테스트로 기존 동작 기록  |
 | **IMPROVE**  | 방 하나씩 리모델링  | 테스트를 통과하면서 조금씩 개선 |
 
-한 번에 집 전체를 부수면 위험하듯, 코드도 **조금씩 바꾸면서 매번 확인**하는 것이 안전합니다.
+집 전체를 한 번에 뜯어내면 위험하듯, 코드도 **조금씩 바꾸고 그때마다 확인**하는 편이 안전합니다.
 
 {{< /callout >}}
 
@@ -44,9 +44,9 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 ```
 
 {{< callout type="warning" >}}
-  `/moai run` 실행 전에 반드시 `/clear`를 실행하세요. Plan 단계에서 사용한
-  토큰을 정리해야 Run 단계에서 컨텍스트 윈도우를 온전히 활용할 수 있습니다.
-  GLM-5.2 및 Opus 5은 1M 컨텍스트 (권장 사용량 50%), Sonnet/Haiku 계열은
+  `/moai run`을 실행하기 전에 반드시 `/clear`를 먼저 하세요. Plan 단계에서 쓴
+  토큰을 비워야 Run 단계가 컨텍스트 윈도우를 온전히 씁니다.
+  GLM-5.2와 Opus 5는 1M 컨텍스트 (권장 사용량 50%), Sonnet/Haiku 계열은
   200K 컨텍스트 (권장 사용량 90%)입니다.
 {{< /callout >}}
 
@@ -60,24 +60,24 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 **Resume 기능:**
 
-재실행 시 마지막 성공한 단계 체크포인트부터 이어서 작업합니다.
+다시 실행하면 마지막으로 성공한 체크포인트부터 이어 갑니다.
 
 **`--mode` 디스패치 모드:**
 
-`--mode`는 `/moai run` 워크플로우 변형을 선택하는 별도의 차원입니다 (Phase 4의 6-모드 실행 카탈로그와는 다른 차원):
+`--mode`는 `/moai run` 워크플로우를 어느 갈래로 태울지 고르는 옵션입니다 (Phase 4의 6-모드 실행 카탈로그와는 별개로 움직입니다):
 
-- `autopilot` (기본): Phase 4 규모 기반 선택 후 구현 실행
-- `loop`: Ralph 엔진 진단형 루프에 위임 (`loop.md` 참조)
-- `team`: 은퇴 — `MODE_TEAM_UNAVAILABLE`을 발생시키고 `autopilot`으로 폴백 (Agent Teams 정적 계층 은퇴)
-- `pipeline`: 거부 — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환 (pipeline 모드는 유틸리티 서브커맨드 전용)
+- `autopilot` (기본): Phase 4에서 규모를 보고 고른 뒤 구현으로 들어감
+- `loop`: Ralph 엔진의 진단형 루프에 넘김 (`loop.md` 참조)
+- `team`: 폐지 — `MODE_TEAM_UNAVAILABLE`을 띄우고 `autopilot`으로 되돌아감 (Agent Teams 정적 계층 폐지)
+- `pipeline`: 거부 — `MODE_PIPELINE_ONLY_UTILITY` 오류를 냄 (pipeline 모드는 유틸리티 서브커맨드 전용)
 
 ## DDD 사이클
 
-`/moai run`은 **ANALYZE -> PRESERVE -> IMPROVE** 세 단계를 순서대로 실행합니다. 각 단계에서 무슨 일이 일어나는지 자세히 살펴보겠습니다.
+`/moai run`은 **ANALYZE -> PRESERVE -> IMPROVE** 세 단계를 차례로 밟습니다. 각 단계에서 무슨 일이 벌어지는지 하나씩 보겠습니다.
 
 ### 1. ANALYZE (분석)
 
-기존 코드를 읽고, SPEC 요구사항과 비교하여 무엇을 해야 하는지 파악합니다.
+기존 코드를 읽고 SPEC 요구사항과 맞춰 보며 무엇을 해야 하는지 정리합니다.
 
 **분석 항목:**
 
@@ -90,23 +90,23 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 ### 2. PRESERVE (보존)
 
-기존 코드의 현재 동작을 **특성화 테스트**로 기록합니다. 이 테스트는 리팩토링 후에도 기존 기능이 그대로 동작하는지 확인하는 **안전망** 역할을 합니다.
+기존 코드가 지금 어떻게 동작하는지를 **특성화 테스트**로 남겨 둡니다. 리팩토링을 끝낸 뒤에도 기존 기능이 그대로인지 확인해 주는 **안전망**입니다.
 
 {{< callout type="info" >}}
 **특성화 테스트란?**
 
-"이 코드가 맞는지 틀리는지"를 판단하는 것이 아니라, **"현재 이렇게 동작한다"를
-기록**하는 것입니다.
+"이 코드가 맞느냐 틀리느냐"를 따지는 테스트가 아닙니다. **"지금은 이렇게 동작한다"를
+그대로 남기는** 테스트입니다.
 
-예를 들어, 기존 로그인 함수가 성공 시 `{"status": "success"}` 를 반환한다면, 이
-동작을 테스트로 기록합니다. 나중에 코드를 바꿨을 때 이 테스트가 실패하면, "기존
-동작이 바뀌었다"는 것을 바로 알 수 있습니다.
+예를 들어 기존 로그인 함수가 성공했을 때 `{"status": "success"}`를 돌려준다면, 그
+동작을 테스트로 박아 둡니다. 나중에 코드를 바꿨는데 이 테스트가 깨지면, 기존
+동작이 바뀌었다는 신호를 바로 받게 됩니다.
 
 {{< /callout >}}
 
 ### 3. IMPROVE (개선)
 
-SPEC 요구사항에 따라 **작은 단위로** 코드를 변경하고, 매번 테스트를 실행하여 기존 동작이 보존되는지 확인합니다.
+SPEC 요구사항을 따라 **작은 단위로** 코드를 고치고, 고칠 때마다 테스트를 돌려 기존 동작이 그대로인지 확인합니다.
 
 **핵심 원칙: 작은 변경 + 매번 검증**
 
@@ -176,7 +176,7 @@ flowchart TD
 
 ### Phase 3: JIT Language Detection (언어 자동 감지)
 
-프로젝트의 주요 언어를 자동 감지하여 에이전트 스폰 시 적절한 언어 스킬을 주입합니다. 16개 언어를 동등하게 지원합니다.
+프로젝트의 주력 언어를 알아서 감지해, 에이전트를 띄울 때 그 언어에 맞는 스킬을 함께 넣어 줍니다. 16개 언어를 똑같이 지원합니다.
 
 | 감지 파일 | 언어 스킬 |
 |-----------|-----------|
@@ -188,7 +188,7 @@ flowchart TD
 
 ### Phase 4: Scale-Based Mode Selection (규모 기반 모드 선택)
 
-SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것도 비용을 줄이는 원칙입니다.
+SPEC 규모를 보고 가장 잘 맞는 실행 모드를 알아서 고릅니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것 역시 비용을 줄이는 원칙입니다.
 
 | 패턴 | 기준 | 실행 모드 |
 |------|------|-----------|
@@ -199,7 +199,7 @@ SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 
 
 ### Harness Level Routing (품질 깊이 라우팅)
 
-Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 자동 결정합니다.
+Run phase에 들어갈 때 SPEC 복잡도를 보고 품질 파이프라인을 얼마나 깊게 돌릴지 정합니다.
 
 | 레벨 | 대상 | evaluator | 건너뛰는 Phase |
 |------|------|-----------|---------------|
@@ -207,29 +207,29 @@ Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 �
 | **standard** | 일반 기능 개발 (기본값) | final-pass (Phase 16만) | 없음 |
 | **thorough** | 보안/결제 등 중요 기능 | per-sprint (Phase 10 + 2.8a) | 없음 |
 
-실패 시 자동 에스컬레이션: minimal → standard → thorough (최대 2회)
+실패하면 자동으로 한 단계씩 올립니다: minimal → standard → thorough (최대 2회)
 
 ### Plan Audit Gate
 
-`/moai run` 진입 시 가장 먼저 실행되는 필수 게이트입니다. **plan-auditor** 서브에이전트가 plan 단계에서 작성된 SPEC 산출물을 독립적으로 감사합니다.
+`/moai run`에 들어가면 가장 먼저 걸리는 필수 게이트입니다. **plan-auditor** 서브에이전트가 plan 단계에서 나온 SPEC 산출물을 따로 감사합니다.
 
-- plan-auditor는 manager-spec과 독립된 에이전트 — 만든 에이전트가 자신의 결과를 검사하지 않습니다
-- SPEC 산출물 해시가 변경되지 않았고 이전 판정 점수 ≥ 0.90인 경우 skip-eligible (캐시된 판정 재사용)
-- 그렇지 않으면 plan-auditor가 재실행되어 새 판정을 내립니다
-- PASS / PASS-with-debt / FAIL 3가지 판정
+- plan-auditor는 manager-spec과 별개의 에이전트입니다 — 만든 에이전트가 자기 결과를 채점하지 않습니다
+- SPEC 산출물 해시가 그대로이고 직전 판정 점수가 0.90 이상이면 skip-eligible (캐시된 판정을 재사용)
+- 그렇지 않으면 plan-auditor를 다시 돌려 새로 판정합니다
+- 판정은 PASS / PASS-with-debt / FAIL 세 가지
 
 {{< callout type="warning" >}}
-Plan Audit Gate의 skip 정책(plan-auditor 재실행 생략)은 점수 기반입니다. 그러나 아래의 **Implementation Kickoff Approval**은 점수와 무관한 별도의 사용자 승인 게이트이며, 어떤 경우에도 우회할 수 없습니다 (REQ-ATR-015).
+Plan Audit Gate의 skip 정책(plan-auditor 재실행 생략)은 점수를 근거로 삼습니다. 하지만 아래의 **Implementation Kickoff Approval**은 점수와 아무 상관 없는 별개의 사용자 승인 게이트이고, 어떤 경우에도 건너뛸 수 없습니다 (REQ-ATR-015).
 {{< /callout >}}
 
 ### Implementation Kickoff Approval
 
-Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **휴먼 게이트** (HUMAN GATE)입니다.
+Plan Audit Gate를 지난 뒤, 구현에 들어가기 전에 사용자에게 직접 승인을 받는 **휴먼 게이트** (HUMAN GATE)입니다.
 
-- plan-auditor 판정 요약 + SPEC 산출물을 사용자에게 제시
-- `AskUserQuestion`으로 "run 진입 / 추가 검토 / 중단" 3가지 옵션 제시
-- 점수가 0.90 이상이어도, PASS-with-debt여도, 이 승인은 생략되지 않습니다
-- 사용자 승인 후에야 구현 단계가 시작됩니다
+- plan-auditor 판정 요약과 SPEC 산출물을 사용자에게 보여 줍니다
+- `AskUserQuestion`으로 "run 진입 / 추가 검토 / 중단" 세 가지 선택지를 냅니다
+- 점수가 0.90을 넘겨도, PASS-with-debt라도 이 승인은 건너뛰지 않습니다
+- 사용자가 승인해야 비로소 구현 단계가 시작됩니다
 
 ### Phase 1: 분석 및 계획
 
@@ -246,7 +246,7 @@ Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 �
 
 ### Phase 6: 작업 분해
 
-승인된 실행 계획을 원자적이고 검토 가능한 작업으로 분해합니다:
+승인된 실행 계획을 하나씩 검토할 수 있는 최소 단위 작업으로 쪼갭니다:
 
 **작업 구조:**
 
@@ -256,20 +256,20 @@ Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 �
 - **Dependencies**: 선행 작업 목록
 - **Acceptance Criteria**: 완료 검증 방법
 
-**제약조건:** SPEC당 최대 10개 작업. 더 필요하면 SPEC 분할 권장
+**제약조건:** SPEC 하나당 작업은 최대 10개. 더 필요하면 SPEC을 쪼개는 편이 낫습니다
 
-태스크 분해 결과는 `.moai/specs/SPEC-{ID}/tasks.md`에 영속 기록됩니다. Git으로 추적 가능하며 Drift Guard가 참조합니다.
+쪼갠 결과는 `.moai/specs/SPEC-{ID}/tasks.md`에 남습니다. Git으로 추적할 수 있고 Drift Guard가 이 파일을 참조합니다.
 
 ### Phase 10: Sprint Contract (thorough 전용)
 
-thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준을 사전 합의합니다.
+thorough 레벨에서만 돌아갑니다. 구현을 시작하기 전에 sync-auditor와 "무엇을 끝난 것으로 볼지"를 미리 합의합니다.
 
-**계약 내용:**
-- 통과해야 할 구체적 테스트 케이스
-- 식별된 엣지 케이스
-- 하드 임계값 (커버리지 %, 성능 목표, 보안 요구사항)
+**합의 내용:**
+- 반드시 통과해야 할 구체적인 테스트 케이스
+- 미리 짚어 둔 엣지 케이스
+- 물러설 수 없는 임계값 (커버리지 %, 성능 목표, 보안 요구사항)
 
-최대 2라운드 협상 후 evaluator 권고안으로 확정됩니다.
+최대 두 라운드까지 조율한 뒤 evaluator 권고안으로 확정합니다.
 
 ### Phase 2: DDD 구현
 
@@ -308,19 +308,19 @@ thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준
 
 ### Phase 19: sync-auditor 독립 감사
 
-thorough 레벨에서 sync-auditor 서브에이전트가 4차원 (Functionality/Security/Craft/Consistency) 능동 평가와 TRUST 5 정적 검증을 수행합니다. 만든 에이전트가 아닌 독립 감사자가 품질을 판정합니다.
+thorough 레벨에서는 sync-auditor 서브에이전트가 4차원 (Functionality/Security/Craft/Consistency) 능동 평가와 TRUST 5 정적 검증을 함께 돌립니다. 만든 에이전트가 아니라 따로 붙은 감사자가 품질을 판정합니다.
 
 {{< callout type="warning" >}}
-Security FAIL = 전체 FAIL. 최대 3회 수정-평가 사이클 후 사용자에게 보고됩니다.
+Security가 FAIL이면 전체가 FAIL입니다. 수정-평가 사이클을 최대 3회 돈 뒤 사용자에게 보고합니다.
 {{< /callout >}}
 
 ### Drift Guard (범위 이탈 감지)
 
-DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
+DDD/TDD 사이클이 끝나면 계획과 실제 변경을 맞대어 봅니다:
 
-- drift ≤ 20%: 정보 기록만
+- drift ≤ 20%: 기록만 남김
 - 20% < drift ≤ 30%: 경고
-- drift > 30%: Phase 14 재계획 게이트 트리거
+- drift > 30%: Phase 14 재계획 게이트를 띄움
 
 ### Phase 19: Git 작업 (조건부)
 
@@ -345,11 +345,11 @@ DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
 
 ## 토큰 절약 장치 — spec-compact.md
 
-Run phase 진입 시 SPEC 요약본을 자동 로드하여 **~30% 토큰을 절약**합니다. `.moai/specs/SPEC-{ID}/spec-compact.md`가 존재하면 전체 spec.md 대신 사용됩니다.
+Run phase에 들어가면 SPEC 요약본을 알아서 읽어 **토큰을 약 30% 아낍니다**. `.moai/specs/SPEC-{ID}/spec-compact.md`가 있으면 전체 spec.md 대신 이쪽을 씁니다.
 
 ## 품질 게이트
 
-구현이 완료되면 다음 품질 기준을 모두 통과해야 합니다:
+구현이 끝나면 다음 기준을 하나도 빠짐없이 통과해야 합니다:
 
 | 항목            | 기준         | 설명                                 |
 | --------------- | ------------ | ------------------------------------ |
@@ -363,11 +363,11 @@ Run phase 진입 시 SPEC 요약본을 자동 로드하여 **~30% 토큰을 절�
 
 **85% 커버리지는 왜 필요한가요?**
 
-100%가 아닌 85%를 목표로 하는 이유
+100%가 아니라 85%를 목표로 잡는 이유가 있습니다.
 
-**100%는 비현실적**이며, 의미 없는 테스트가 추가될 수 있습니다. **85%면 핵심
-로직**은 대부분 테스트됩니다. 나머지 15%는 설정 파일, 에러 핸들러 등 테스트하기
-어려운 코드입니다.
+**100%는 현실적으로 무리**이고, 채우려다 보면 의미 없는 테스트만 늘어납니다. **85%면 핵심
+로직**은 대부분 덮입니다. 남는 15%는 설정 파일이나 에러 핸들러처럼 테스트로 잡기
+까다로운 코드입니다.
 
 {{< /callout >}}
 
@@ -389,9 +389,9 @@ Run phase 진입 시 SPEC 요약본을 자동 로드하여 **~30% 토큰을 절�
 > /moai run SPEC-AUTH-001
 ```
 
-**3단계: manager-develop가 자동으로 수행하는 작업**
+**3단계: manager-develop이 자동으로 수행하는 작업**
 
-manager-develop 에이전트가 SPEC을 구현하기 위해 수행하는 4개의 Phase입니다.
+manager-develop 에이전트가 SPEC을 구현하면서 밟는 네 개의 Phase입니다.
 
 ---
 
@@ -513,23 +513,23 @@ Phase 20: 완료
 
 ### Q: 새 프로젝트에서 기존 코드가 없으면 PRESERVE 단계는 어떻게 되나요?
 
-기존 코드가 없으면 PRESERVE 단계는 **빠르게 통과**됩니다. 새 코드에 대한 테스트를 IMPROVE 단계에서 함께 작성합니다.
+지킬 기존 코드가 없으면 PRESERVE 단계는 **금방 지나갑니다**. 새로 쓰는 코드의 테스트는 IMPROVE 단계에서 함께 씁니다.
 
 ### Q: TDD와 DDD 중 어떤 사이클이 적용되나요?
 
-`quality.yaml`의 `development_mode` 설정을 따릅니다. 신규 기능 개발은 TDD (RED-GREEN-REFACTOR), 테스트 커버리지가 낮은 기존 프로젝트의 리팩토링은 DDD (ANALYZE-PRESERVE-IMPROVE)가 적합합니다.
+`quality.yaml`의 `development_mode` 설정을 따릅니다. 새 기능을 만들 때는 TDD (RED-GREEN-REFACTOR)가, 테스트 커버리지가 낮은 기존 프로젝트를 리팩토링할 때는 DDD (ANALYZE-PRESERVE-IMPROVE)가 잘 맞습니다.
 
 ### Q: 구현 도중 토큰이 부족하면 어떻게 하나요?
 
-manager-develop 에이전트가 **자동으로 진행 상황을 저장**합니다. `/clear` 후 다시 `/moai run SPEC-XXX`를 실행하면 SPEC 문서를 기반으로 이어서 작업합니다.
+manager-develop 에이전트가 **진행 상황을 알아서 저장해 둡니다**. `/clear` 후 `/moai run SPEC-XXX`를 다시 실행하면 SPEC 문서를 보고 하던 자리에서 이어 갑니다.
 
 ### Q: 테스트 커버리지 85%를 달성하기 어려우면?
 
-`quality.yaml`에서 커버리지 목표를 조정할 수 있지만, **권장하지 않습니다**. 85%는 핵심 로직이 테스트되었음을 보장하는 최소 기준입니다. 커버리지가 부족하면 manager-develop가 누락된 테스트를 자동으로 추가합니다.
+`quality.yaml`에서 커버리지 목표를 낮출 수는 있지만 **권하지 않습니다**. 85%는 핵심 로직이 테스트를 거쳤다고 말할 수 있는 최소선입니다. 커버리지가 모자라면 manager-develop이 빠진 테스트를 알아서 채웁니다.
 
 ### Q: Phase 13에서 CRITICAL 상태가 나오면 어떻게 하나요?
 
-사용자에게 품질 이슈를 보고하고, 수정을 재시도할지 묻습니다. "예"를 선택하면 IMPROVE 단계로 돌아가 수정을 계속합니다.
+품질 이슈를 사용자에게 알리고 다시 고쳐 볼지 물어봅니다. "예"를 고르면 IMPROVE 단계로 돌아가 수정을 이어 갑니다.
 
 ### Q: `/moai run`과 `/moai`의 차이는 무엇인가요?
 

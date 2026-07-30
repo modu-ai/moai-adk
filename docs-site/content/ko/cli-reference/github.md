@@ -4,9 +4,9 @@ weight: 92
 draft: false
 ---
 
-`moai github` 은 GitHub 이슈 파싱, SPEC 링크, 워크플로우 자동화 커맨드를 제공합니다.
+`moai github` 는 GitHub 이슈 파싱, SPEC 링크, 워크플로우 자동화 커맨드를 제공합니다.
 
-공통 플래그로 `--dry-run` (변경 없이 수행 내용만 표시)을 받습니다.
+공통 플래그로 `--dry-run` (아무것도 바꾸지 않고 수행할 내용만 표시)을 받습니다.
 
 ## 하위 명령어
 

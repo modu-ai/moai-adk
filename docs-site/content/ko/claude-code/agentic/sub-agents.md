@@ -19,7 +19,7 @@ Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그 (10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/ko/advanced/agent-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 깊이 다룹니다.
+이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그(10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 짜고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/ko/advanced/agent-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 깊이 다룹니다.
 {{< /callout >}}
 
 ## 서브에이전트란
@@ -60,7 +60,7 @@ Explore와 Plan은 메인 세션의 CLAUDE.md와 git status를 스킵하며, 더
 | 서브에이전트 정의에 `Agent` 포함 (frontmatter `tools:` 목록) | 중첩 허용 | 기본 깊이 3까지 (체인지로그 기준); `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`로 조정, `=1`이면 비활성 |
 | `Agent` 도구 생략 | 중첩 금지 | 평평한 오케스트레이션 — 유일한 평평한-계층 보장 |
 
-이 제약은 MoAI-ADK 오케스트레이션 설계의 근간이기도 합니다. **오케스트레이터(메인 세션)만 서브에이전트를 호출**할 수 있고, 호출된 에이전트는 깊이 제한에 걸리지 않으면 다시 누군가에게 위임할 수 있습니다. 따라서 계층형 에이전트 체인 대신 **오케스트레이터가 직접 각 단계를 호출**하는 평평한 구조를 따릅니다 (MoAI의 기본 원칙).
+이 제약은 MoAI-ADK 오케스트레이션 설계의 근간이기도 합니다. **오케스트레이터(메인 세션)만 서브에이전트를 호출**할 수 있고, 호출된 에이전트는 깊이 제한에 걸리지 않으면 다시 누군가에게 위임할 수 있습니다. 따라서 계층형 에이전트 체인 대신 **오케스트레이터가 각 단계를 직접 호출**하는 평평한 구조를 따릅니다(MoAI의 기본 원칙).
 
 ```mermaid
 flowchart TD
@@ -99,7 +99,7 @@ flowchart TD
 
 ## 정의 방법 개요
 
-서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. Claude에게 생성을 요청하거나 파일을 직접 작성할 수 있습니다. v2.1.198부터 `/agents` 명령은 더 이상 대화형 생성 위저드를 열지 않고, Claude에게 요청하거나 `.claude/agents/` 디렉터리를 직접 편집하라는 안내만 출력합니다 (파일 형식과 저장 위치는 변경 없음).
+서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. Claude에게 생성을 요청하거나 파일을 직접 작성할 수 있습니다. v2.1.198부터 `/agents` 명령은 더 이상 대화형 생성 위저드를 열지 않고, Claude에게 요청하거나 `.claude/agents/` 디렉터리를 직접 편집하라는 안내만 띄웁니다(파일 형식과 저장 위치는 그대로입니다).
 
 ```markdown
 ---
@@ -135,7 +135,7 @@ model: sonnet
 | `effort` | 추론 강도 (low, medium, high, xhigh, max) |
 | `isolation: worktree` | 격리된 저장소 사본에서 작업 |
 | `color` | 에이전트 뷰에 표시할 색상 |
-| `initialPrompt` | 서브에이전트 처음 스폰할 때의 프롬프트 |
+| `initialPrompt` | 서브에이전트를 처음 스폰할 때 건네는 프롬프트 |
 
 저장 위치에 따라 적용 범위가 달라집니다.
 
@@ -157,7 +157,7 @@ model: sonnet
 - 부모의 프롬프트 캐시 활용
 - 새로운 방향으로 탐색
 
-## 깊이는 MoAI 에이전트 가이드로
+## 더 깊은 내용은 MoAI 에이전트 가이드에서
 
 여기까지가 Claude Code 차원의 서브에이전트 개념입니다. MoAI-ADK는 이 메커니즘 위에 **11개 에이전트 카탈로그**를 운영합니다. Manager 계열(manager-spec / manager-develop / manager-docs / manager-git / manager-design)이 plan→run→sync 라이프사이클을, Evaluator 계열(plan-auditor / sync-auditor)이 독립 감사를, builder-harness가 하네스 스캐폴드 생성을, super-advisor가 고추론 자문을, e2e-tester가 웹/모바일/데스크탑 E2E 테스트 실행을, 그리고 Anthropic 내장 `Explore`가 읽기 전용 탐색을 담당합니다. 계획과 감사가 분리되어 있다는 점, 즉 만든 에이전트가 스스로 검사하지 않는다는 것이 이 카탈로그의 핵심 설계입니다. 각 에이전트에 작업 성격에 맞는 모델과 추론 깊이(effort)를 선언적으로 배정하는 것이 토크노믹스의 "계획은 깊게, 구현은 싸게, 검증은 독립적으로" 원칙입니다. 자세한 내용은 아래 심화 가이드에서 다룹니다.
 

@@ -4,7 +4,7 @@ weight: 15
 draft: false
 ---
 
-`moai cc`, `moai cg`, `moai glm` 은 Claude Code를 서로 다른 백엔드 구성으로 실행하는 세 가지 런처입니다. 세 명령 모두 설정을 조정한 뒤 `exec` 로 현재 프로세스를 Claude Code로 대체합니다. 어떤 모델이 어떤 일을 맡느냐가 곧 비용으로 직결되기 때문에, 런처 선택은 비용을 줄이는 첫 출발점입니다.
+`moai cc`, `moai cg`, `moai glm` 은 Claude Code를 서로 다른 백엔드 구성으로 실행하는 세 가지 런처입니다. 세 명령 모두 설정을 조정한 뒤 `exec` 로 현재 프로세스를 Claude Code로 대체합니다. 어떤 모델이 어떤 일을 맡느냐가 곧 비용을 결정하므로, 런처 선택이 비용을 줄이는 첫 단추입니다.
 
 ## 세 런처 비교
 
@@ -32,7 +32,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
 | `--chrome` / `--no-chrome` | Chrome MCP 토글 |
 
-권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드는 백그라운드 분류기가 동작을 검사하며 Team 플랜 + Sonnet/Opus 4.6 이상이 필요합니다.
+권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사하며, Team 플랜과 Sonnet/Opus 4.6 이상이 필요합니다.
 
 ## moai glm — GLM 백엔드
 
@@ -65,7 +65,7 @@ CG는 "Claude + GLM"의 약자로, 비용 최적화 팀 구성입니다.
 - **리더** (현재 tmux pane): Claude 모델 사용 (opus/sonnet)
 - **팀원** (새 tmux pane): Z.AI 프록시 경유 GLM 모델 사용
 
-실행 시 tmux 세션을 검증하고, 리더 pane에서는 GLM 환경을 제거(Claude)하며, tmux 세션에는 GLM 환경을 주입(팀원)하고, `teammateMode=tmux` 와 `team_mode: cg` 를 설정합니다.
+실행하면 먼저 tmux 세션을 검증합니다. 이어서 리더 pane에서는 GLM 환경을 제거해 Claude로 두고, tmux 세션 쪽에는 GLM 환경을 주입해 팀원이 GLM을 쓰게 한 뒤, `teammateMode=tmux` 와 `team_mode: cg` 를 설정합니다.
 
 **전제 조건**:
 
@@ -78,7 +78,7 @@ CG는 "Claude + GLM"의 약자로, 비용 최적화 팀 구성입니다.
 
 ## 격리 worktree (`-w` 플래그)
 
-세 런처 모두 `-w [name]` 으로 격리된 git worktree 안에서 세션을 시작할 수 있습니다. `cd` 로 디렉터리를 옮긴 뒤 실행하는 두 단계를 한 명령으로 줄여 줍니다.
+세 런처 모두 `-w [name]` 으로 격리된 git worktree 안에서 세션을 시작할 수 있습니다. `cd` 로 디렉터리를 옮기고 다시 실행하던 두 단계가 한 명령으로 줄어듭니다.
 
 ```bash
 moai cc -w feat-login    # .claude/worktrees/feat-login/ 에서 시작

@@ -4,17 +4,16 @@ weight: 10
 draft: false
 ---
 
-MoAI-ADK의 자율 CI/CD 시스템은 풀리퀘스트 품질을 자동으로 관리합니다.
-로컬 세션에서 `/moai loop`가 하던 "진단 → 수정 → 검증" 루프를 CI까지
-연장한 것으로, 개발자가 수동으로 품질을 검증하지 않아도 CI가 스스로
-품질을 보장합니다. 에이전틱 루프 엔지니어링을 저장소 수준에 적용한
-사례입니다.
+MoAI-ADK의 자율 CI/CD 시스템은 풀 리퀘스트 품질을 자동으로 관리합니다.
+로컬 세션에서 `/moai loop`가 돌리던 "진단 → 수정 → 검증" 루프를 CI까지
+늘린 것이라, 개발자가 일일이 확인하지 않아도 CI가 알아서 품질을 지킵니다.
+에이전틱 루프 엔지니어링을 저장소 단위로 적용한 사례입니다.
 
 ## 개요
 
-SPEC-V3R3-CI-AUTONOMY-001에서 도입된 자율 CI/CD 시스템은 8개 티어로 구성된
-품질 자동화 인프라입니다. push 전 로컬 검증(pre-push hook)부터 CI 실패 시
-자동 수정(auto-fix loop)까지 하나의 방어선으로 이어집니다.
+SPEC-V3R3-CI-AUTONOMY-001에서 도입한 자율 CI/CD 시스템은 8개 티어짜리
+품질 자동화 인프라입니다. push 전 로컬 검증(pre-push hook)에서 시작해
+CI 실패 시 자동 수정(auto-fix loop)까지 하나의 방어선으로 이어집니다.
 
 ## 8-Tier 아키텍처
 
@@ -31,8 +30,8 @@ SPEC-V3R3-CI-AUTONOMY-001에서 도입된 자율 CI/CD 시스템은 8개 티어�
 
 ## Pre-push Hook (T1)
 
-push 전에 로컬에서 자동으로 품질 검증을 실행합니다. CI까지 갔다가 실패하고
-돌아오는 왕복 비용을 로컬에서 미리 끊는 첫 번째 방어선입니다.
+push 전에 로컬에서 품질 검증을 자동으로 돌립니다. CI까지 갔다가 실패하고
+돌아오는 왕복 비용을 로컬에서 미리 끊어 주는 첫 번째 방어선입니다.
 
 ```bash
 # 자동 설치됨 (moai init / moai update 시)
@@ -47,9 +46,9 @@ push 전에 로컬에서 자동으로 품질 검증을 실행합니다. CI까지
 
 ## Auto-fix Loop (T3)
 
-`/moai sync`가 PR을 생성한 뒤, CI 감시 스크립트와 CI 루프 스킬이 함께
-"진단 → 수정 → 재검증" 루프를 돌립니다. 로컬의 진단형 자가 수정 루프를
-PR 파이프라인 위로 연장한 구조입니다.
+`/moai sync`가 PR을 만든 뒤에는 CI 감시 스크립트와 CI 루프 스킬이 함께
+"진단 → 수정 → 재검증" 루프를 돌립니다. 로컬에서 쓰던 진단형 자가 수정
+루프를 PR 파이프라인까지 늘린 구조입니다.
 
 **CI 감시 스크립트 (`scripts/ci-watch/run.sh`)**
 
@@ -66,13 +65,13 @@ sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 
 **CI 루프 스킬 (`moai-workflow-ci-loop`)**
 
-감시 스크립트가 필수 실패를 핸드오프하면 `moai-workflow-ci-loop` 스킬이
-실패를 분류하고 안전한 자동 패치를 최대 3회까지 시도합니다. 의미 수준의
-실패(자동 수정이 위험한 경우)는 사용자에게 에스컬레이션합니다.
+감시 스크립트가 필수 체크 실패를 넘겨주면 `moai-workflow-ci-loop` 스킬이
+실패 유형을 나누고 안전한 자동 패치를 최대 3회까지 시도합니다. 자동으로
+고치기 위험한 의미 수준의 실패는 사용자에게 에스컬레이션합니다.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 
-새 브랜치/워크트리를 생성할 때 base branch를 자동으로 결정합니다.
+새 브랜치나 워크트리를 만들 때 base branch를 자동으로 골라 줍니다.
 
 ### 3-Signal 평가
 
@@ -93,9 +92,9 @@ sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 
 ### 감사 추적
 
-모든 BODP 결정은 `.moai/branches/decisions/<branch-name>.md`에 기록됩니다.
-결정을 추측이 아닌 기록으로 남깁니다. 증거 기반 완료 판정이라는 MoAI
-원칙이 브랜치 결정에도 적용됩니다.
+모든 BODP 결정은 `.moai/branches/decisions/<branch-name>.md`에 남습니다.
+추측이 아니라 기록으로 남기는 셈이며, 증거로 완료를 판정한다는 MoAI
+원칙이 브랜치를 고를 때도 그대로 적용됩니다.
 
 ## i18n Validator (T6)
 

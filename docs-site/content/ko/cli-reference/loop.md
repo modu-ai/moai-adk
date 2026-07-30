@@ -4,9 +4,9 @@ weight: 76
 draft: false
 ---
 
-`moai loop` 은 SPEC 라이프사이클 Ralph 피드백 루프 컨트롤러를 관리합니다. SPEC 하나에 대해 도구 진단이 감지한 작업을 반복 처리하는 상태 기계를 제어합니다.
+`moai loop` 은 SPEC 라이프사이클 Ralph 피드백 루프 컨트롤러를 관리합니다. SPEC 하나를 대상으로, 도구 진단이 찾아낸 작업을 반복 처리하는 상태 기계를 제어합니다.
 
-> 이 CLI 커맨드는 Claude Code 대화창의 `/moai loop` 스킬과는 별개입니다 — CLI는 루프 컨트롤러 상태를 조작하고, `/moai loop` 스킬은 오케스트레이터가 실제 반복 수정을 수행합니다.
+> 이 CLI 커맨드는 Claude Code 대화창의 `/moai loop` 스킬과 별개입니다. CLI는 루프 컨트롤러의 상태를 조작할 뿐이고, 실제 반복 수정은 `/moai loop` 스킬을 받은 오케스트레이터가 수행합니다.
 
 ## 하위 명령어
 

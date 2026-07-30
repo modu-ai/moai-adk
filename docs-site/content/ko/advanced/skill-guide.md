@@ -18,7 +18,7 @@ MoAI-ADK의 스킬 시스템을 상세히 안내합니다. 스킬은 에이전�
     width="720"
     height="360"
     src="https://www.youtube.com/embed/9Luu4itC-Zs"
-    title="메트릭스 헬기 조종 장면"
+    title="매트릭스 헬기 조종 장면"
     frameBorder="0"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowFullScreen
@@ -246,7 +246,7 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ### 스킬 네임스페이스
 
-스킬 접두사는 **배포 주체**를 구분하며, `moai update` 동작이 다릅니다.
+스킬 접두사는 **배포 주체**를 구분하고, 접두사에 따라 `moai update` 동작이 달라집니다.
 
 | 접두사 | 소유권 | `moai update` 동작 |
 |--------|--------|-------------------|
@@ -349,15 +349,15 @@ flowchart TD
 
 ### 중첩 `.claude/skills` 로딩
 
-Claude Code는 프로젝트 루트뿐만 아니라 중첩된 하위 디렉터리(parent-walk)에서도 `.claude/skills/`를 발견합니다. 따라서 모노레포는 각 패키지 자체의 `.claude/skills/` 디렉터리에 패키지 로컬 스킬을 배치할 수 있습니다. 자체 `.claude/skills/`를 포함하는 중첩 디렉터리 내부에서 작업할 때, 해당 중첩 디렉터리의 스킬은 해당 하위 트리에서 작업하는 동안 루트 수준 스킬과 함께 로드됩니다.
+Claude Code는 프로젝트 루트뿐 아니라 중첩된 하위 디렉터리(parent-walk)에서도 `.claude/skills/`를 찾아냅니다. 그래서 모노레포에서는 패키지마다 자체 `.claude/skills/` 디렉터리를 두고 패키지 전용 스킬을 둘 수 있습니다. `.claude/skills/`를 가진 중첩 디렉터리 안에서 작업하는 동안에는 그 디렉터리의 스킬이 루트 수준 스킬과 함께 로드됩니다.
 
 ### 이름 충돌 시 closest-wins
 
-중첩 체인을 따라 둘 이상의 `.claude/skills/` 디렉터리에 같은 스킬 이름이 나타나면, **closest-directory-wins**(가장 가까운 디렉터리 우선) 규칙이 충돌을 해결합니다: 현재 작업 디렉터리에 가장 가까운 `.claude/skills/`가 더 위쪽 트리의 것을 가립니다(shadow). 이는 중첩 `.claude/` 디렉터리 하위에서 에이전트, 워크플로우, output-styles에 이미 적용되는 선행 규칙과 동일합니다 — 가장 안쪽의 `.claude/`가 이깁니다. 루트 스킬을 의도적으로 재정의하는 패키지 로컬 스킬은 같은 이름을 유지해야 합니다. 이름을 바꾸면 재정의가 아닌 두 번째 스킬이 생성됩니다.
+중첩 체인을 따라 둘 이상의 `.claude/skills/` 디렉터리에 같은 스킬 이름이 나타나면 **closest-directory-wins**(가장 가까운 디렉터리 우선) 규칙으로 충돌을 정리합니다. 현재 작업 디렉터리에서 가장 가까운 `.claude/skills/`가 위쪽 트리의 스킬을 가립니다(shadow). 중첩 `.claude/` 디렉터리 아래에서 에이전트, 워크플로우, output-styles에 이미 적용되던 규칙과 같습니다. 가장 안쪽 `.claude/`가 우선합니다. 루트 스킬을 일부러 재정의하려는 패키지 전용 스킬은 이름을 그대로 맞춰야 합니다. 이름을 바꾸면 재정의가 아니라 별개의 스킬이 하나 더 생깁니다.
 
 ### `disableBundledSkills` 토글
 
-`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우(예: `/deep-research`, 내장 슬래시 명령 skills)를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 만들지 않지만, 사용 가능한 옵션으로 이곳에 문서화해 둡니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
+`disableBundledSkills`(settings.json 불리언, 또는 환경변수 형태)를 켜면 Claude Code 번들 skills와 워크플로우(예: `/deep-research`, 내장 슬래시 명령 skills)가 discovery에서 빠지고 enterprise + personal + project + plugin skills만 남습니다. 번들 스킬 없이 직접 고른 스킬만 노출하고 싶을 때 쓰세요. MoAI-ADK 생성기는 이 토글을 만들지 않지만, 필요하면 쓸 수 있는 선택지라 여기에 적어 둡니다. 함께 쓰는 `--safe-mode` 실행 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 정리돼 있습니다.
 
 ## 관련 문서
 

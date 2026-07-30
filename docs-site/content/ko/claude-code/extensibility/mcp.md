@@ -7,7 +7,7 @@ description: "MCP(Model Context Protocol)로 외부 도구와 데이터를 Claud
 
 # MCP 통합
 
-MCP (Model Context Protocol)는 외부 도구와 데이터 소스를 Claude에 꽂아 쓰기 위한 표준 커넥터입니다. 이 페이지는 그 개념과 등록 방법을 개요 수준에서 정리합니다.
+MCP(Model Context Protocol)는 외부 도구와 데이터 소스를 Claude에 꽂아 쓰기 위한 표준 커넥터입니다. 이 페이지는 그 개념과 등록 방법을 개요 수준에서 정리합니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: MCP는 AI를 위한 **USB 포트**입니다. 데이터베이스, 이슈 트래커, 브라우저처럼 저마다 다른 외부 도구를 하나의 표준 규격으로 Claude에 연결하면 도구마다 별도의 통합 코드를 짜지 않고도 같은 방식으로 꽂아 쓸 수 있습니다.
@@ -31,8 +31,8 @@ MCP는 AI 애플리케이션이 외부 시스템에 연결하는 방식을 표�
 
 MCP 서버는 두 가지 방법으로 등록합니다.
 
-- **CLI**: `claude mcp add <이름> <실행 명령>` 로 서버를 추가합니다.
-- **설정 파일**: 프로젝트 루트의 `.mcp.json` 에 서버 정의를 직접 작성합니다.
+- **CLI**: `claude mcp add <이름> <실행 명령>`으로 서버를 추가합니다.
+- **설정 파일**: 프로젝트 루트의 `.mcp.json`에 서버 정의를 직접 씁니다.
 
 ```json
 {
@@ -76,7 +76,7 @@ MCP 서버를 여러 개 연결하면 도구 정의가 그만큼 늘어납니다
 
 그래서 Claude Code는 도구 정의를 **기본적으로 지연 로드** (deferred load)합니다. 도구의 전체 스키마는 실제로 그 도구가 필요할 때만 불러오고 평소에는 짧은 메타데이터만 컨텍스트에 둡니다. 이 지연 도구를 실제로 호출하려면 먼저 스키마를 활성 컨텍스트로 불러오는 선행 단계가 필요합니다.
 
-MoAI-ADK는 이 메커니즘을 HARD 규율로 끌어올립니다. 지연 도구(예: `AskUserQuestion`)를 호출하기 전에는 반드시 `ToolSearch` 로 스키마를 먼저 로드해야 하며 이 선행 절차를 건너뛰면 도구 호출이 검증 오류로 거부됩니다. 자세한 규칙은 `.claude/rules/moai/core/askuser-protocol.md` 의 ToolSearch Preload 절차에 나와 있습니다.
+MoAI-ADK는 이 메커니즘을 HARD 규율로 끌어올립니다. 지연 도구(예: `AskUserQuestion`)를 호출하기 전에는 반드시 `ToolSearch`로 스키마부터 불러와야 합니다. 이 절차를 건너뛰면 도구 호출이 검증 오류로 거부됩니다. 자세한 규칙은 `.claude/rules/moai/core/askuser-protocol.md`의 ToolSearch Preload 절차에 나와 있습니다.
 
 ```mermaid
 flowchart TD
@@ -92,9 +92,9 @@ MCP 서버를 연결하거나 해제하면 컨텍스트 앞부분(프리픽스)�
 
 ## MoAI-ADK의 MCP 운용
 
-MoAI-ADK는 MCP 서버를 **기본으로 프로비저닝하지 않습니다**. 대신 외부 자료가 필요할 때는 내장 `WebSearch` / `WebFetch` 로 공식 문서와 모범 사례를 조회하는 폴백 전략을 씁니다 (`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy). 아키텍처·분석 품질이 MCP 가용성에 의존하지 않게 하려는 설계입니다.
+MoAI-ADK는 MCP 서버를 **기본으로 프로비저닝하지 않습니다**. 대신 외부 자료가 필요하면 내장 `WebSearch` / `WebFetch`로 공식 문서와 모범 사례를 찾아보는 폴백 전략을 씁니다(`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy). 아키텍처와 분석 품질이 MCP 가용성에 매이지 않게 하려는 설계입니다.
 
-한 가지 예외는 백엔드 라우팅입니다. `moai glm` 또는 `moai cg` 의 GLM 패널에서 실행할 때는 웹 검색과 웹 조회가 내장 도구 대신 z.ai MCP 도구로 라우팅됩니다 (`.claude/rules/moai/core/glm-web-tooling.md`). 어떤 백엔드에서든 검색·조회 능력 자체는 유지되며 경로만 달라집니다.
+한 가지 예외는 백엔드 라우팅입니다. `moai glm`이나 `moai cg`의 GLM 패널에서 실행하면 웹 검색과 웹 조회가 내장 도구 대신 z.ai MCP 도구로 넘어갑니다(`.claude/rules/moai/core/glm-web-tooling.md`). 어느 백엔드든 검색·조회 능력 자체는 그대로이고 경로만 바뀝니다.
 
 ## 관련 문서
 

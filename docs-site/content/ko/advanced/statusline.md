@@ -4,7 +4,7 @@ weight: 78
 draft: false
 ---
 
-Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**입니다. 토크노믹스는 측정에서 시작합니다. 컨텍스트 사용률(CW%), 프롬프트 캐시 적중률, rate limit 소진율을 터미널 하단에 항상 띄워 두면 토큰 운용 상태를 한눈에 읽을 수 있습니다. Claude Code v2.1.139부터 effort/thinking, v2.1.145부터 workspace.repo + pr 필드가 stdin JSON에 추가되어 더 풍부한 컨텍스트를 표시할 수 있습니다.
+Claude Code와 moai-adk-go를 잇는 **커스텀 statusline 시스템**입니다. 토크노믹스는 측정에서 시작합니다. 컨텍스트 사용률(CW%), 프롬프트 캐시 적중률, rate limit 소진율을 터미널 하단에 늘 띄워 두면 지금 토큰을 어떻게 쓰고 있는지 한눈에 보입니다. Claude Code v2.1.139부터 effort/thinking, v2.1.145부터 workspace.repo + pr 필드가 stdin JSON에 추가되어 더 풍부한 컨텍스트를 표시할 수 있습니다.
 
 > MoAI 워크플로우는 PR 중심입니다. 모든 SPEC은 plan-PR → run-PR → sync-PR 사이클을 생성하므로, statusline에 현재 PR 번호 + 리뷰 상태 + 컨텍스트 사용률 + handoff 권고를 즉시 노출하면 개발 효율이 크게 높아집니다.
 
@@ -63,7 +63,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `effort` + `thinking` 모두 부재 (effort.level 빈 문자열 포함)
 - **세그먼트 키**: `effort_thinking`
 
-지금 세션이 어느 추론 깊이로 돌고 있는지 항상 확인할 수 있어, 모델 정책이 실제로 적용되는지 검증하는 창이기도 합니다.
+지금 세션이 어느 추론 깊이로 돌고 있는지 항상 눈으로 확인할 수 있어, 모델 정책이 실제로 먹히고 있는지 점검하는 용도로도 쓸 수 있습니다.
 
 ### 캐시 히트율
 
@@ -75,7 +75,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **세그먼트 키**: `cache_hit`
 - **참고**: 캐시 히트율은 `♻️`, Line 3 Git Status는 `💾`로 이모지가 구분됩니다. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
-캐시 히트율은 컨텍스트 다이어트의 효과를 보여주는 측정기입니다. 항상 로드되는 지침을 줄이면 이 숫자가 바로 올라가는 것을 볼 수 있습니다.
+캐시 히트율은 컨텍스트 다이어트가 실제로 효과를 냈는지 보여주는 지표입니다. 항상 로드되는 지침을 줄이면 이 숫자가 바로 올라갑니다.
 
 ### Claude Code 버전
 
@@ -150,7 +150,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **예시**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
 - **세그먼트 키**: `usage_7d`
 
-구독 요금제 사용자에게 5H/7D bar는 사실상 예산 게이지입니다. rate limit이 소진되기 전에 무거운 작업을 배치할지, CG 모드로 GLM 워커에 넘길지를 이 두 bar를 보고 판단할 수 있습니다.
+구독 요금제 사용자에게 5H/7D bar는 사실상 예산 게이지입니다. rate limit이 바닥나기 전에 무거운 작업을 지금 돌릴지, 아니면 CG 모드로 GLM 워커에 넘길지를 이 두 bar를 보고 판단하면 됩니다.
 
 ## Line 3 — Git / PR (5 segments)
 
@@ -293,7 +293,7 @@ Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInter
 
 ## Handoff Guide — `(⚠️/clear)` 권고 기준
 
-CW bar의 handoff suffix는 컨텍스트 사용량이 모델별 임계값을 넘으면 활성화됩니다. 이는 SSE stall 위험을 사전에 방지하고 paste-ready resume message 활용을 권장하는 시각적 마커이며, **2단계**로 동작합니다.
+CW bar의 handoff suffix는 컨텍스트 사용량이 모델별 임계값을 넘으면 켜집니다. SSE stall을 미리 피하고 paste-ready resume message를 쓰라고 알려 주는 시각적 마커이며, **2단계**로 동작합니다.
 
 - **soft 단계** `(⚠️/clear)`: 밴드의 soft 임계값 도달 시
 - **hard 단계** `(🛑/clear!)`: auto-compact-aware ceiling(`min(cap, auto-compact-threshold + margin)`) 도달 시 (`internal/statusline/renderer.go`). 런타임 auto-compact가 종종 이 ceiling을 선점하므로 hard 단계는 실제로는 드물게 발화되는 상위 신호입니다.
@@ -309,9 +309,9 @@ CW bar의 handoff suffix는 컨텍스트 사용량이 모델별 임계값을 넘
 
 ### GLM 컨텍스트 게이지 보정 (Issue #653)
 
-GLM-5.2는 실제 1M 컨텍스트 모델이지만, Claude Code는 provider와 무관하게 Claude 슬롯 기준으로 `context_window_size`를 보고하므로 GLM 세션에서 raw telemetry(`effectiveWindow`)가 ~180K로 잘못 표시될 수 있습니다. MoAI는 이를 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)로 보정합니다. `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수(명시적 오버라이드) 또는 `llm.yaml`의 `glm.context_windows` 테이블(glm-5.2 → 1,000,000)에서 값을 해석합니다. GLM 세션에서는 raw `effectiveWindow`가 아니라 MoAI statusline의 CW%를 신뢰하세요.
+GLM-5.2는 실제로 1M 컨텍스트 모델입니다. 그런데 Claude Code는 provider와 상관없이 Claude 슬롯 기준으로 `context_window_size`를 보고하기 때문에, GLM 세션에서는 raw telemetry(`effectiveWindow`)가 ~180K로 잘못 나올 수 있습니다. MoAI는 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)로 이 값을 바로잡습니다. `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수(명시적 오버라이드) 또는 `llm.yaml`의 `glm.context_windows` 테이블(glm-5.2 → 1,000,000)에서 값을 해석합니다. GLM 세션에서는 raw `effectiveWindow`가 아니라 MoAI statusline의 CW%를 신뢰하세요.
 
-활성화 시 사용자 흐름은 다음과 같습니다.
+마커가 뜬 뒤에는 다음 순서로 진행하면 됩니다.
 
 1. `(⚠️/clear)` marker 노출
 2. 진행 중인 작업을 `progress.md` 등에 저장
@@ -408,7 +408,7 @@ echo '{"session_id":"test","model":{"display_name":"Opus"},"workspace":{"repo":{
 
 ## `/cd` 캐시 보존 디렉터리 전환 (CC 2.1.169+)
 
-Claude Code 2.1.169+는 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 변경하는 `/cd <path>` 명령을 제공합니다. statusline의 `cwd` 필드가 새 디렉터리를 반영하도록 업데이트되지만, 진행 중인 추론 컨텍스트는 재구축되지 않습니다. 새 터미널 세션을 여는 대신 캐시를 보존하는 방법입니다. `/cd`는 누적된 컨텍스트를 유지하고, 새 터미널은 처음부터 cold-start합니다. 세션 중 컨텍스트 손실 없이 `cwd`를 옮기고 싶을 때(예: 세션 중 L2 worktree로 전환), `/cd`가 마찰이 적은 경로입니다. resume-pattern 통합은 [세션 핸드오프](/ko/workflow-commands/moai-sync)를 참조하세요.
+Claude Code 2.1.169+에는 **프롬프트 캐시를 유지한 채로** 세션의 작업 디렉터리를 바꾸는 `/cd <path>` 명령이 있습니다. statusline의 `cwd` 필드는 새 디렉터리로 갱신되지만, 진행 중이던 추론 컨텍스트는 다시 쌓지 않습니다. 새 터미널 세션을 여는 대신 캐시를 살려 두는 방법이라고 보면 됩니다. `/cd`는 그동안 쌓인 컨텍스트를 그대로 들고 가고, 새 터미널은 처음부터 cold-start합니다. 세션 도중 컨텍스트를 잃지 않고 `cwd`만 옮기고 싶을 때(예: 작업 중에 L2 worktree로 전환) `/cd`가 가장 손이 덜 갑니다. resume 패턴과의 연계는 [세션 핸드오프](/ko/workflow-commands/moai-sync)를 참조하세요.
 
 ## 관련 문서
 

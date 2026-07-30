@@ -65,7 +65,7 @@ moai spec lint [spec.md...]
 moai spec close SPEC-ID
 ```
 
-SPEC을 단일 커밋으로 `status: completed` 로 원자적 전환합니다.
+단일 커밋으로 SPEC을 `status: completed` 까지 원자적으로 전환합니다.
 
 | 플래그 | 설명 |
 |--------|------|
@@ -80,7 +80,7 @@ SPEC을 단일 커밋으로 `status: completed` 로 원자적 전환합니다.
 moai spec audit
 ```
 
-`.moai/specs/SPEC-*/` 를 스캔해 각 SPEC을 era 휴리스틱으로 분류하고 modern-era 상태 드리프트를 감지합니다.
+`.moai/specs/SPEC-*/` 를 훑어 각 SPEC을 era 휴리스틱으로 분류하고, modern-era 상태 드리프트를 찾아냅니다.
 
 | 플래그 | 설명 |
 |--------|------|

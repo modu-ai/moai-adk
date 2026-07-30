@@ -17,7 +17,7 @@ description: "스크립트가 수십~수백 개의 서브에이전트를 오케�
 
 핵심은 단순히 "에이전트를 더 많이 돌리는 것"이 아니라 **계획을 코드로 옮기는 것**입니다. 그 결과 다음이 가능해집니다.
 
-- 독립적인 에이전트들이 서로의 결과를 적대적으로 (adversarial) 교차검증한 뒤 보고
+- 독립적인 에이전트들이 서로의 결과를 적대적으로(adversarial) 교차검증한 뒤 보고
 - 하나의 계획을 여러 각도에서 동시에 초안 작성한 뒤 비교 평가
 - 한 번의 단일 패스보다 신뢰할 수 있는 결과 산출
 
@@ -93,7 +93,7 @@ Run a workflow to audit every API endpoint under src/routes/ for missing auth ch
 - **재개**(resume): 실행을 멈췄다가 재개하면 이미 끝난 에이전트는 캐시된 결과를 반환하고 나머지만 라이브로 돕니다. 단, 같은 Claude Code 세션 안에서만 유효하며 세션을 종료하면 다음 세션에서는 처음부터 다시 시작합니다.
 - **비용**(cost): 한 번의 실행이 같은 작업을 대화로 처리할 때보다 훨씬 많은 토큰을 쓸 수 있으므로, 큰 실행 전에 `/model`을 확인하는 것이 안전합니다.
 
-### /deep-research 와 ultracode
+### /deep-research와 ultracode
 
 | 항목 | 설명 |
 |------|------|
@@ -113,9 +113,9 @@ Run a workflow to audit every API endpoint under src/routes/ for missing auth ch
 - `/config`의 Dynamic workflows 토글을 끄기 (세션 간 유지)
 - `~/.claude/settings.json`에 `"disableWorkflows": true` 설정
 - 환경 변수 `CLAUDE_CODE_DISABLE_WORKFLOWS=1` 설정
-- 조직 전체는 관리 설정 (managed settings)의 `"disableWorkflows": true`로 일괄 적용
+- 조직 전체는 관리 설정(managed settings)의 `"disableWorkflows": true`로 일괄 적용
 
-## MoAI-ADK 와의 관계
+## MoAI-ADK와의 관계
 
 MoAI-ADK는 다이내믹 워크플로우를 SPEC 기반 plan/run/sync 라이프사이클과 구분되는 **세 번째 오케스트레이션 원시**로 인식하고, 실제 파이프라인에도 투입합니다. sync 단계의 4차원 품질 평가(sync-audit-4dim)와 plan 단계의 리서치 병렬 팬아웃(plan-research-fanout)이 워크플로우 스크립트로 구현되어 있습니다. "계획을 스크립트 코드로 옮기고 중간 결과를 스크립트 변수에 가둔다"는 이 원시의 성질은 토크노믹스 관점에서도 매력적입니다. 수십 개 에이전트의 중간 산출물이 오케스트레이터의 컨텍스트를 전혀 차지하지 않기 때문입니다.
 

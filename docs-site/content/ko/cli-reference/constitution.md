@@ -4,7 +4,7 @@ weight: 84
 draft: false
 ---
 
-`moai constitution` 은 zone 레지스트리(FROZEN/EVOLVABLE zone 성문화)를 조회하고 검증합니다. 규칙의 어떤 부분이 동결(FROZEN)되어 함부로 바꿀 수 없고 어떤 부분이 진화 가능(EVOLVABLE)한지를 관리하는 커맨드 트리입니다.
+`moai constitution` 은 zone 레지스트리(FROZEN/EVOLVABLE zone 성문화)를 조회하고 검증합니다. 규칙 가운데 어디가 동결(FROZEN)돼 함부로 바꿀 수 없고 어디가 진화 가능(EVOLVABLE)한지를 관리하는 커맨드 트리입니다.
 
 ## 하위 명령어
 

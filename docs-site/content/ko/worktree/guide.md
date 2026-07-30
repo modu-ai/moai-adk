@@ -4,8 +4,8 @@ weight: 20
 draft: false
 ---
 
-Git Worktree를 사용한 MoAI-ADK 병렬 개발의 모든 것 — 기초 개념부터 명령어
-레퍼런스, 워크플로우, 모범 사례까지 이 문서 한 편으로 정리합니다.
+Git Worktree로 MoAI-ADK 병렬 개발을 하는 방법을 한 편에 모았습니다. 기초
+개념부터 명령어 레퍼런스, 워크플로우, 모범 사례까지 다룹니다.
 
 ## 목차
 
@@ -44,14 +44,14 @@ graph TB
 
 ### MoAI-ADK에서의 Worktree
 
-MoAI-ADK는 이 기능 위에 SPEC 단위의 격리 환경을 얹습니다. 각 SPEC이 완전히
-독립된 환경을 갖기 때문에, 에이전트가 병렬로 일해도 서로의 작업을 밟지
+MoAI-ADK는 이 기능 위에 SPEC 단위의 격리 환경을 얹습니다. SPEC마다 환경이
+완전히 갈라지므로, 에이전트가 병렬로 움직여도 서로의 작업을 덮어쓰지
 않습니다:
 
-- **독립적인 Git 상태** — 각 Worktree는 자체 브랜치와 커밋 이력을 유지합니다
+- **독립적인 Git 상태** — Worktree마다 자체 브랜치와 커밋 이력이 따로 쌓입니다
 - **분리된 LLM 설정** — Worktree마다 다른 LLM 실행 모드를 쓸 수 있습니다.
   계획에는 Claude, 구현에는 GLM을 배정하는 토크노믹스 운용이 여기서 나옵니다
-- **격리된 작업 공간** — 파일 시스템 레벨에서 완전히 분리됩니다
+- **격리된 작업 공간** — 파일 시스템 수준에서 완전히 갈라집니다
 
 ---
 
@@ -119,9 +119,8 @@ sequenceDiagram
 
 ### moai worktree go
 
-Worktree 경로를 출력합니다. 셸에서 이동할 때 쓰도록 경로 문자열만 표준
-출력으로 내보내고, 셸 세션 자체는 띄우지 않습니다. 셸의 `cd`와 함께
-사용합니다.
+Worktree 경로를 출력합니다. 경로 문자열만 표준 출력으로 내보낼 뿐 셸 세션을
+새로 띄우지는 않으므로, `cd`와 묶어서 씁니다.
 
 #### 문법
 
@@ -193,9 +192,8 @@ SPEC-AUTH-003  feature/SPEC-AUTH-003  ~/.moai/worktrees/your-project/SPEC-AUTH-0
 
 ### moai worktree done
 
-Worktree를 제거하고 선택적으로 브랜치를 삭제합니다. **병합·푸시는
-수행하지 않습니다** — base 브랜치로의 병합은 `git merge`나 PR로 별도로
-진행합니다.
+Worktree를 지우고, 원하면 브랜치까지 삭제합니다. 다만 **병합도 푸시도 하지
+않습니다**. base 브랜치에 병합하는 일은 `git merge`나 PR로 따로 진행하세요.
 
 #### 문법
 
@@ -337,8 +335,8 @@ moai worktree clean --merged-only --base develop
 
 ### moai worktree config
 
-Worktree 설정을 표시합니다. 설정 값은 Git 저장소에서 파생되므로 **읽기 전용**
-입니다 (`config set`은 지원되지 않습니다).
+Worktree 설정을 보여 줍니다. 설정 값은 Git 저장소에서 끌어오므로 **읽기
+전용**입니다(`config set`은 지원하지 않습니다).
 
 #### 문법
 
@@ -394,8 +392,8 @@ moai worktree sync SPEC-AUTH-001 --base develop
 moai worktree switch SPEC-AUTH-001
 ```
 
-경로만 출력하는 `go`와 달리 `switch`는 브랜치 이름으로 Worktree를 찾아 이동
-안내를 제공합니다.
+경로만 출력하는 `go`와 달리 `switch`는 브랜치 이름으로 Worktree를 찾아 어디로
+이동하면 되는지 안내합니다.
 
 ---
 
@@ -414,7 +412,7 @@ moai worktree recover
 
 `clean`은 stale 참조를 정리하고, `recover`는 레지스트리를 복구합니다. 아래 세
 명령은 오케스트레이터가 `Agent(isolation: "worktree")` 호출 전후로 작업 트리
-상태를 스냅샷·검증·복원하는 상태 가드 프리미티브입니다.
+상태를 찍고 대조하고 되돌리는 데 쓰는 상태 가드 프리미티브입니다.
 
 #### moai worktree snapshot
 
@@ -427,7 +425,7 @@ moai worktree snapshot --agent-name my-agent --out .moai/state/snap.json
 
 #### moai worktree verify
 
-현재 작업 트리를 스냅샷과 비교합니다. 종료 코드: `0`=clean, `1`=divergence,
+현재 작업 트리를 스냅샷과 견줍니다. 종료 코드: `0`=clean, `1`=divergence,
 `2`=suspect(빈 worktreePath), `3`=둘 다.
 
 ```bash
@@ -437,8 +435,8 @@ moai worktree verify --snapshot .moai/state/snap.json --agent-name my-agent
 #### moai worktree restore
 
 `git restore --source=<snapshot HEAD> --staged --worktree :/`를 실행해 작업
-트리를 스냅샷 HEAD 상태로 복원합니다. Untracked 파일은 git에서 복원되지
-않으므로 경로만 안내하고 수동 재생성이 필요합니다.
+트리를 스냅샷 HEAD 상태로 되돌립니다. Untracked 파일은 git으로 되살릴 수 없어
+경로만 알려 주며, 직접 다시 만들어야 합니다.
 
 ```bash
 moai worktree restore --snapshot .moai/state/snap.json
@@ -553,8 +551,8 @@ flowchart TD
 
 #### 전략 1: Plan과 Implement 분리
 
-토크노믹스의 기본 전략입니다. 계획 단계는 고추론 모델(Opus)로 몰아서 처리하고,
-구현 단계는 저비용 모델(GLM)로 병렬 분산합니다:
+토크노믹스의 기본 전략입니다. 계획 단계는 추론이 강한 모델(Opus)로 몰아서
+끝내고, 구현 단계는 값싼 모델(GLM)로 여러 갈래에 나눠 돌립니다:
 
 ```mermaid
 graph TB
@@ -639,7 +637,7 @@ moai worktree clean --merged-only
 
 ### 3. LLM 선택 가이드
 
-작업 단계별로 모델을 나눠 배정하는 것이 Worktree 토크노믹스의 핵심입니다:
+작업 단계마다 모델을 나눠 배정하는 것이 Worktree 토크노믹스의 핵심입니다:
 
 ```mermaid
 graph TD
@@ -697,7 +695,8 @@ git diff main
 
 ### moai worktree new --tmux 플래그
 
-tmux 세션을 자동으로 만들어 워크트리 안에서 격리된 채로 개발할 수 있게 합니다.
+tmux 세션까지 자동으로 만들어, 워크트리 안에서 격리된 채로 개발할 수 있게 해
+줍니다.
 
 ```bash
 moai worktree new SPEC-AUTH-001 --tmux
@@ -715,12 +714,12 @@ tmux attach-session -t moai-my-project-SPEC-AUTH-001
 ```
 
 {{< callout type="info" >}}
-tmux가 설치되지 않은 경우 graceful degradation: 수동 cd 안내 메시지가 표시됩니다.
+tmux가 없어도 그냥 멈추지는 않습니다. 대신 직접 cd 하라는 안내 메시지가 표시됩니다.
 {{< /callout >}}
 
 ### 실행 모드 선택 게이트 (Decision Point 3.5)
 
-`/moai plan` 완료 후 Run 시작 전, 실행 모드를 자동 감지하고 사용자에게 선택을 요청합니다.
+`/moai plan`이 끝나고 Run을 시작하기 직전에, 실행 모드를 자동으로 감지해 어느 쪽으로 갈지 물어봅니다.
 
 **tmux 사용 가능 시 (2가지 옵션):**
 - Worktree + \{현재 모드\} (Recommended): 워크트리 + tmux 세션 생성 후 실행
@@ -730,14 +729,14 @@ tmux가 설치되지 않은 경우 graceful degradation: 수동 cd 안내 메시
 - Sub-agent Mode (Recommended): 순차 서브에이전트 실행
 
 {{< callout type="info" >}}
-정적 Agent Teams 오케스트레이션 레이어는 폐기되었습니다. 병렬 협업은 Claude
-Code 네이티브 팀메이트 런타임 (`moai cg`의 GLM tmux 페인, CG 모드)으로
-운용합니다 — 자세한 내용은 CG 모드 문서를 참고하세요.
+정적 Agent Teams 오케스트레이션 레이어는 폐기됐습니다. 병렬 협업은 Claude
+Code 네이티브 팀메이트 런타임(`moai cg`의 GLM tmux 페인, CG 모드)으로
+운용합니다. 자세한 내용은 CG 모드 문서를 참고하세요.
 {{< /callout >}}
 
 ### Auto-merge 기본 동작
 
-워크트리 컨텍스트에서 `/moai sync`를 실행하면 auto-merge가 기본 동작입니다.
+워크트리 컨텍스트에서 `/moai sync`를 실행하면 auto-merge가 기본으로 동작합니다.
 
 | 플래그 | 동작 |
 |--------|------|
@@ -747,13 +746,13 @@ Code 네이티브 팀메이트 런타임 (`moai cg`의 GLM tmux 페인, CG 모�
 
 ### 포스트-머지 자동 클린업
 
-PR 머지 성공 시 자동 정리:
+PR 머지가 성공하면 다음을 알아서 정리합니다:
 - 워크트리 디렉토리 제거
 - 피처 브랜치 삭제 (`--delete-branch`)
 - 레지스트리 업데이트
 
 {{< callout type="warning" >}}
-클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시 수동 정리: `moai worktree done SPEC-{ID}`
+클린업이 실패해도 머지 결과에는 영향이 없습니다. 실패했다면 직접 정리하세요: `moai worktree done SPEC-{ID}`
 {{< /callout >}}
 
 ### 에러 핸들링 (errors.go)
