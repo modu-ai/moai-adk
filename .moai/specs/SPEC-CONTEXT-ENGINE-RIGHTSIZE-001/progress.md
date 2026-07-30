@@ -104,7 +104,7 @@ Run-phase completed 2026-07-30 by manager-develop. All 4 milestones applied; 10/
 
 - **run_status**: audit-ready
 - **run_complete_at**: 2026-07-30
-- **run_commit_sha**: (pending-backfill — populated by the M-final commit's SHA; this progress.md commit cannot reference its own hash)
+- **run_commit_sha**: a75d95e76 (M4 regression-verification commit; per the SHA-placeholder backfill exemption D3, a commit cannot reference its own hash, so this is backfilled in a follow-up commit on the same branch)
 - **ac_pass_count**: 10
 - **ac_fail_count**: 0
 - **preserve_list_post_run_count**: 66 ([ZONE:Frozen] preserved; per-file distribution diff-empty vs baseline)
