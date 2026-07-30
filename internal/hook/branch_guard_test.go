@@ -238,6 +238,13 @@ func TestBranchStatePatterns_TruePositives(t *testing.T) {
 		{"git stash pop", true},
 		{"git stash apply", true},
 		{"git stash drop", true},
+		// F1 (sync-audit): bare `git stash` embedded in a compound command
+		// MUST still match — bare stash defaults to `git stash push` (mutating),
+		// and the previous `\bgit\s+stash(...|$)` form let `git stash && ...`
+		// slip through (security bypass when the guard is enabled).
+		{"git stash && git status", true},
+		{"git stash; git status", true},
+		{"git stash || true", true},
 		{"git rebase origin/main", true},
 		{"git merge feat/x", true},
 		// E-1 edge case: piped git invocation must still match.
