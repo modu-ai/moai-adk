@@ -143,14 +143,19 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 		return false, fmt.Errorf("branch_guard: empty projectDir")
 	}
 
-	// Primary path: --path-format=absolute for both rev-parse calls.
-	gitDir, err := runGitRevParse(projectDir, "--path-format=absolute", "--git-dir")
+	// Primary path: a SINGLE rev-parse call emits both absolute paths, halving
+	// the git-spawn cost versus two separate calls. This keeps the per-invocation
+	// latency under the AC-WBG-010 ceiling on Windows, where each git.exe spawn
+	// is expensive (issue #1225 — TestBranchGuard_Latency). `--path-format=absolute`
+	// applies to every following path flag, so --git-dir and --git-common-dir
+	// each print one absolute line, in argument order.
+	out, err := runGitRevParse(projectDir, "--path-format=absolute", "--git-dir", "--git-common-dir")
 	if err == nil {
-		gitCommonDir, errCommon := runGitRevParse(projectDir, "--path-format=absolute", "--git-common-dir")
-		if errCommon == nil {
-			return gitDir == gitCommonDir, nil
+		lines := strings.Split(out, "\n")
+		if len(lines) >= 2 {
+			return strings.TrimSpace(lines[0]) == strings.TrimSpace(lines[1]), nil
 		}
-		// Second primary call failed; fall through to the fallback below.
+		// Unexpected output shape; fall through to the fallback below.
 	}
 
 	// Fallback: --absolute-git-dir + cwd-normalized --git-common-dir. The bare
