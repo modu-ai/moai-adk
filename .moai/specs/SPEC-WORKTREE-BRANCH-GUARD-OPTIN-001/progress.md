@@ -74,4 +74,15 @@ pre_tool_branch_guard_optin_test.go:80: Handle(enabled=false, "git switch -c fea
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_status**: completed
+- **sync_complete_at**: 2026-07-30
+- **sync_commit_sha**: pending-backfill-20260730
+- **changelog_entry_position**: `[Unreleased] → ### Changed` (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 entry, AC-REQ-7 user-facing default-off communication)
+- **frontmatter_status_transitions.spec**: `in-progress → implemented → completed` (single sync commit, merged close per Status Transition Ownership Matrix)
+- **frontmatter_status_transitions.updated_refreshed**: 2026-07-30 (spec.md `updated:` field refreshed to sync commit date)
+- **b12_self_test_a** (pre-emission grep): `grep -c 'SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001' CHANGELOG.md` returned 0 BEFORE emission (no duplicate)
+- **b12_self_test_b** (AC count match): acceptance.md SSOT AC rows = 14 (AC-REQ-1a/1b/2a/2b/2c/2d/2e/3/4/5/6a/6b/6c/7); CHANGELOG entry references the implementation scope covering all 14 (run-phase owned 1a-6c, sync-phase owned AC-REQ-7)
+- **b12_self_test_c** (file path verification): every implementation file path claimed in the CHANGELOG entry (`internal/config/types.go`, `internal/config/defaults.go`, `internal/hook/branch_guard.go`, `internal/hook/pre_tool.go`, `.claude/rules/moai/workflow/main-checkout-branch-guard.md`, `CLAUDE.local.md`) verified to exist via `ls` before committing
+- **canary_compliance_check.template_neutrality**: the sync commit did NOT edit `internal/template/templates/.moai/config/sections/workflow.yaml` to set `enabled: true` — template default remains `enabled: false` (§25)
+- **canary_compliance_check.body_untouched**: spec.md / plan.md / acceptance.md BODY content unchanged on the sync commit (only spec.md frontmatter `status:` + `updated:` modified)
+- **mx_tag_validation**: M5 rule mirror updated on both sides in run-phase (v1.2.0); no new @MX annotations required in sync-phase (the sync commit is doc-only: CHANGELOG + frontmatter + progress.md)

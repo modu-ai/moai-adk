@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
 title: "Main-Checkout Branch-State Guard — Convert to Default-OFF (Opt-In) + Read-Only Pattern Refinement"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-07-30
 updated: 2026-07-30
 author: manager-spec
