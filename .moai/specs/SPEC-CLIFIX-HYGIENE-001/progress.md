@@ -442,7 +442,56 @@ ac_command_defects_found: 3        # AC-001 vacuous selector, AC-003 over-broad 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-31
+sync_commit_sha: pending-backfill-sync-commit   # a commit cannot reference its own SHA;
+                                                # backfilled in a follow-up commit after
+                                                # this sync commit lands (schema §SHA
+                                                # placeholder backfill exemption D3)
+sync_status: complete
+run_phase_pr: 1245
+run_phase_merge_commit: 1d6b33526
+run_phase_merged_at: 2026-07-30T15:00:11Z
+run_phase_ci: 19 SUCCESS / 7 SKIPPED / 0 FAILURE   # gh pr view 1245 --json statusCheckRollup
+                                                   # (26 rollup entries total)
+changelog_entry_position: "[Unreleased] → ### Changed (4th entry, after
+  SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001)"
+b12_self_test_a: PASS   # pre-emission grep -c 'CLIFIX-HYGIENE' CHANGELOG.md → 0 (first writer)
+b12_self_test_b: PASS   # AC count 8 from acceptance.md SSOT
+                        # (grep -cE '^\| AC-HYG' → 8); CHANGELOG cites 8/8
+b12_self_test_c: PASS   # every file path cited in the CHANGELOG entry verified via ls:
+                        # truncate.go, update_template_sync.go, update_wizard.go,
+                        # update_hygiene_characterization_test.go, glm_env_parity_test.go,
+                        # rune_truncate_test.go, wizard/pat_mask_test.go,
+                        # worktree/yaml_quote_test.go, config/defaults_clifix_test.go all
+                        # present; worktree_validation.go +
+                        # launcher_worktree_validation_test.go confirmed absent (deleted)
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  updated_field: "2026-07-30 → 2026-07-31"
+  plan_md: n/a          # no frontmatter status field
+  acceptance_md: n/a    # no frontmatter status field
+  progress_md: n/a      # no frontmatter status field
+docs_sync:
+  readme: not-required  # internal Go refactor; no CLI surface change
+                        # (0 files outside internal/ + .moai/specs/ in the run PR;
+                        # no new/removed cobra command or flag NAME — only two flag
+                        # HELP strings localized ko→en, which no README/docs-site page
+                        # quotes: grep for both strings across README*.md +
+                        # docs-site/content/ → 0 matches)
+  docs_site: not-required   # same rationale (4-locale sync obligation not triggered)
+mx_tag_validation: no-new-tags-required   # M3 added @MX:ANCHOR + @MX:REASON on
+                                          # config.DefaultTierThresholds during run-phase;
+                                          # no untagged high-fan_in additions in the
+                                          # sync diff (docs-only)
+template_neutrality_25: n/a   # no internal/template/templates/** file touched
+route: B                      # PR-mandatory (repo-local enforce_admins: true override)
+known_followups:
+  - ANTHROPIC_* env-var family single-sourcing (incl. missing
+    ANTHROPIC_DEFAULT_FABLE_MODEL constant)
+  - broader i18n sweep (~24 remaining Hangul-bearing production files)
+  - AC-HYG-001-001 vacuous -run selector correction (see §E.2 Gaps 1)
+```
 
 ## §F Phase 4 Mode Selection
 
