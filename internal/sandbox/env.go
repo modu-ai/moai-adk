@@ -3,6 +3,8 @@ package sandbox
 import (
 	"strings"
 	"sync"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // @MX:ANCHOR: [AUTO] ScrubEnv is the single entry point for sandbox environment-variable scrubbing
@@ -29,7 +31,7 @@ func initAWSPrefix() {
 // security.yaml sandbox.env_scrub_extra (additive).
 var defaultDenyList = []string{
 	"GITHUB_TOKEN",
-	"ANTHROPIC_API_KEY",
+	config.EnvAnthropicAPIKey,
 	"OPENAI_API_KEY",
 	"NPM_TOKEN",
 	"GH_TOKEN",

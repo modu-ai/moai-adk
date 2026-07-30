@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -181,10 +182,10 @@ func sessionEnvHasGLM() bool {
 	if err != nil {
 		return false
 	}
-	if env["ANTHROPIC_AUTH_TOKEN"] != "" {
+	if env[config.EnvAnthropicAuthToken] != "" {
 		return true
 	}
-	if strings.Contains(env["ANTHROPIC_BASE_URL"], "z.ai") {
+	if strings.Contains(env[config.EnvAnthropicBaseURL], "z.ai") {
 		return true
 	}
 	return false
@@ -200,10 +201,10 @@ func sessionEnvHasGLM() bool {
 // process env (C-7 + AC-CGH-006 Scenario 6b). The NEW design-clean path above is
 // additive, not a replacement.
 func hasGLMEnv() bool {
-	if os.Getenv("ANTHROPIC_AUTH_TOKEN") != "" {
+	if os.Getenv(config.EnvAnthropicAuthToken) != "" {
 		return true
 	}
-	if strings.Contains(os.Getenv("ANTHROPIC_BASE_URL"), "z.ai") {
+	if strings.Contains(os.Getenv(config.EnvAnthropicBaseURL), "z.ai") {
 		return true
 	}
 	return false

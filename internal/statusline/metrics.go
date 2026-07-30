@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // CollectMetrics extracts session cost and model information from stdin data.
@@ -207,11 +209,11 @@ func resolveGLMModelName(displayName string) string {
 	var envKey string
 	switch {
 	case strings.Contains(lower, "opus"):
-		envKey = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+		envKey = config.EnvAnthropicDefaultOpusModel
 	case strings.Contains(lower, "sonnet"):
-		envKey = "ANTHROPIC_DEFAULT_SONNET_MODEL"
+		envKey = config.EnvAnthropicDefaultSonnetModel
 	case strings.Contains(lower, "haiku"):
-		envKey = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+		envKey = config.EnvAnthropicDefaultHaikuModel
 	default:
 		// Not a known Claude display name — might be GLM model name passed directly.
 		// Strip [1m] for non-Claude models and return.

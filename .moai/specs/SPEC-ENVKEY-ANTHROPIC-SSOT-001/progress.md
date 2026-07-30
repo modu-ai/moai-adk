@@ -54,7 +54,71 @@ Every remediating code fact was re-verified by executed command in this worktree
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M3-M5 — literal-to-constant transition (AC-EAS-008 / 009 / 010 / 011)
+
+| AC | Milestone | Status | Verification Command | Actual Output |
+|----|-----------|--------|----------------------|---------------|
+| AC-EAS-008 | M3 | PASS | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/cli/ --include='*.go' --exclude='*_test.go' \| wc -l` | `0` |
+| AC-EAS-008 | M3 | PASS | `go test ./internal/cli/... -count=1 2>&1 \| grep -c '^FAIL'` | `0` (test_exit=0) |
+| AC-EAS-009 | M4 | PASS | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/hook/ --include='*.go' --exclude='*_test.go' \| wc -l` | `0` |
+| AC-EAS-009 | M4 | PASS | `go test ./internal/hook/... -count=1 2>&1 \| grep -c '^FAIL'` | `0` (test_exit=0) |
+| AC-EAS-010 | M5 | PASS | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/tmux/ internal/statusline/ internal/sandbox/ --include='*.go' --exclude='*_test.go' \| wc -l` | `0` |
+| AC-EAS-010 | M5 | PASS | `go test ./internal/tmux/... ./internal/statusline/... ./internal/sandbox/... -count=1 2>&1 \| grep -c '^FAIL'` | `0` (`ok` for all three packages) |
+| AC-EAS-011 | M5 | PASS | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/ pkg/ cmd/ --include='*.go' --exclude='*_test.go' \| grep -v '^internal/config/envkeys.go' \| wc -l` | `0` |
+| AC-EAS-011 | M5 | PASS | `go test ./internal/config/ -run 'TestNoBareAnthropicEnvVarLiteralsInProduction' -v -count=1` | `--- PASS: TestNoBareAnthropicEnvVarLiteralsInProduction (0.29s)` / `ok  github.com/modu-ai/moai-adk/internal/config  6.862s` (guard_exit=0) |
+
+### Guard trajectory (the RED-window progress meter)
+
+| Point | Offender count | Guard verdict |
+|-------|----------------|---------------|
+| M2 landed (base of this run) | 83 | `--- FAIL` |
+| after M3 (`internal/cli`, 46 replaced) | 37 | `--- FAIL`, zero `internal/cli/` paths |
+| after M4 (`internal/hook`, 29 replaced) | 8 | `--- FAIL`, zero `internal/hook/` paths |
+| after M5 (remaining 8 replaced) | 0 | `--- PASS` — RED window closed |
+
+Offender count measured as
+`grep -cE '\.go:[0-9]+:[0-9]+: ANTHROPIC_' <guard-log>`.
+
+### Per-file replacement counts (46 + 29 + 8 = 83)
+
+| File | Replaced |
+|------|---------:|
+| `internal/cli/glm.go` | 32 |
+| `internal/cli/launcher.go` | 7 |
+| `internal/cli/settings.go` | 6 |
+| `internal/cli/worktree/tmux_integration.go` | 1 (prefix) |
+| `internal/hook/session_end.go` | 12 |
+| `internal/hook/glm_tmux.go` | 9 |
+| `internal/hook/session_start.go` | 8 |
+| `internal/tmux/cg_detect.go` | 4 |
+| `internal/statusline/metrics.go` | 3 |
+| `internal/sandbox/env.go` | 1 |
+
+`internal/config` imports were added to `glm_tmux.go`, `cg_detect.go`,
+`metrics.go`, and `env.go` (no import cycle: `internal/config` depends only on
+`internal/defs` + `pkg/models`).
+
+### Behaviour-preservation evidence
+
+- Each literal was replaced by the constant whose declared value in
+  `envkeys.go` is byte-identical (all 9 pairs machine-verified).
+- Forward attestation: applying the same value-preserving mapping to the base
+  (`f4055ca36`) source of all 10 files and gofmt-comparing against the working
+  tree reports `IDENTICAL` for all 10 (`FORWARD_ALL_IDENTICAL`) — the tree is
+  exactly the mechanical transform of base, so no wrong-but-compiling constant
+  was substituted.
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- `go vet ./...` no output, exit 0.
+- `golangci-lint run --timeout=3m` → `0 issues.`, exit 0 (identical to the
+  pre-M3 baseline; zero NEW issues).
+
+### Untouched-surface confirmation (AC-EAS-014 / AC-EAS-015 spot-check)
+
+- `_test.go` ANTHROPIC_* occurrences: `291` (unchanged).
+- `internal/template/templates/` ANTHROPIC_ references: `12`; changed-file
+  count vs `f4055ca36`: `0`.
+
+M6 (falsifiability proof + full-suite verification) is NOT part of this run.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
