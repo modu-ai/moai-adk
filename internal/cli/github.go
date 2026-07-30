@@ -121,6 +121,17 @@ moai github parse-issue 123`,
 	}
 }
 
+// truncateIssueBody shortens a GitHub issue body for terminal display.
+// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-006: rune-safe truncation — the previous
+// raw byte-slice on the 200-byte boundary split multi-byte (CJK) runes and
+// produced invalid UTF-8. Bodies of 200 runes or fewer are returned unchanged.
+func truncateIssueBody(body string) string {
+	if len(body) <= 200 {
+		return body
+	}
+	return truncateRunes(body, 200) + "..."
+}
+
 func runParseIssue(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 
@@ -164,10 +175,7 @@ func runParseIssue(cmd *cobra.Command, args []string) error {
 
 	if issue.Body != "" {
 		// Truncate body for display.
-		body := issue.Body
-		if len(body) > 200 {
-			body = body[:200] + "..."
-		}
+		body := truncateIssueBody(issue.Body)
 		details = append(details, "")
 		_, _, _, muted := ghStyles()
 		details = append(details, muted.Render(body))

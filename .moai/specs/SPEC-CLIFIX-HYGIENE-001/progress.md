@@ -64,6 +64,113 @@ unmodified code" (the PRESERVE guarantee), verified verbatim above.
 
 #### M1 production-code edit count: **0** (PRESERVE + ANALYZE only — per plan.md §F M1 scope)
 
+### M2 — repro-first TDD defect corrections (2026-07-30)
+
+**M2 scope (per Section D constraints): the three genuine behavior-correcting
+defects — AC-006 rune-safe truncation, AC-007 wizard PAT masking, AC-008
+worktree YAML parse + tmux path quoting. NO M3/M4/M5 scope touched.**
+
+Each defect followed RED → GREEN: a failing test reproducing the defect was
+captured verbatim BEFORE the minimal fix (E8 falsifiability).
+
+#### AC-HYG-001-006 — rune-safe truncation (PASS)
+
+Complete site set re-derived by grepping the CLI tree for byte-slice
+truncation on user-content strings (ASCII-only slices — hex hashes, API-key
+masking, session IDs, SHAs — excluded because they cannot carry CJK):
+
+1. `internal/cli/constitution.go` `renderConstitutionTable` — clause (prefix)
+2. `internal/cli/constitution.go` `renderConstitutionTable` — file path (suffix) **← the "+1 remaining site" the audit undercounted; co-located with site 1, splits CJK file paths at the suffix left boundary**
+3. `internal/cli/tool_policy.go` `renderList` — audit column (prefix)
+4. `internal/cli/tool_policy.go` `truncateArg` — args_pattern (prefix)
+5. `internal/cli/github.go` `runParseIssue` — issue body (prefix, via new `truncateIssueBody` helper)
+
+All 5 sites routed through ONE shared rune-boundary helper
+(`internal/cli/truncate.go` — `truncateRunes` prefix + `truncateRunesSuffix`
+suffix; the cut always lands on a rune boundary, so output is
+`utf8.ValidString == true`).
+
+RED (verbatim, captured before GREEN): `go test ./internal/cli/ -run 'RuneTruncate' -count=1 -v`:
+```
+TestRuneTruncateConstitutionClause: invalid UTF-8 from CJK clause: [37]
+TestRuneTruncateConstitutionFile:   invalid UTF-8 from CJK file path: [286 287]
+TestRuneTruncateToolPolicyAudit:    invalid UTF-8 from CJK audit: [167 168]
+TestRuneTruncateToolPolicyArg:      invalid UTF-8 "가가가가가가가가가가가가\xea..." ([36])
+TestRuneTruncateGithubBody:         github.go still byte-slices issue body (body[:200])
+--- FAIL (5/5) ---
+```
+GREEN: all 5 PASS. Verbatim AC command output:
+```
+ok  github.com/modu-ai/moai-adk/internal/cli  0.467s   (5/5 RuneTruncate PASS)
+```
+
+#### AC-HYG-001-007 — wizard PAT masking (PASS)
+
+`buildInputField` (wizard.go) now gates `.EchoMode(huh.EchoModePassword)` on
+the token question IDs via a new exported predicate `IsSecretInputID(id)`
+(classifies `github_token` + `gitlab_token` as secret). The huh v2
+(charm.land/huh/v2) API is `inp.EchoMode(huh.EchoModePassword)`.
+
+RED (verbatim, captured before GREEN): `go test ./internal/cli/wizard/ -run 'PATMask' -count=1 -v`:
+```
+internal/cli/wizard/pat_mask_test.go:42:7: undefined: IsSecretInputID
+FAIL  github.com/modu-ai/moai-adk/internal/cli/wizard  [build failed]
+```
+(The build failure is the RED: the masking seam is entirely absent; the grep
+test `TestPATMaskEchoModeWired` therefore cannot run. Post-fix both tests
+compile and pass.)
+GREEN: `TestPATMaskEchoModeWired` + `TestPATMaskSecretIDs` PASS.
+AC grep component: `grep -n 'EchoMode\|EchoPassword\|\.Password' internal/cli/wizard/wizard.go` → matches `EchoMode(huh.EchoModePassword)`.
+
+#### AC-HYG-001-008 — worktree YAML parse + tmux quoting (PASS)
+
+- `GetActiveMode` (tmux_integration.go): `strings.Contains` line-matcher
+  replaced by `parseTeamMode` (yaml.v3 unmarshal of `llm.team_mode`).
+- `isTmuxPreferred` (new.go): `strings.Contains` line-matcher replaced by
+  `parseTmuxPreferred` (yaml.v3 unmarshal of `workflow.worktree.tmux_preferred`).
+  Commented `# team_mode: cg` / `# tmux_preferred: true` no longer match.
+- `buildTmuxInitialCommand` (tmux_integration.go): `cd %s` → `cd %q` so paths
+  with spaces/metacharacters survive. The co-located M1 characterization test
+  `TestBuildTmuxInitialCommand_ModeSelection` was retargeted (NOT deleted) to
+  expect `cd "/tmp/test-wt"`; its mode-selection assertions are unchanged.
+
+RED (verbatim, captured before GREEN): `go test ./internal/cli/worktree/ -run 'YAMLCommentCG|TmuxPathQuote|TmuxPreferredParse' -count=1 -v`:
+```
+TestYAMLCommentCGTeamMode:  comment-only team_mode = "cg", want "cc"
+TestTmuxPreferredParse:     comment-only tmux_preferred = true, want false
+TestTmuxPathQuote:          "cd /tmp/my project ; moai cc" (want cd "/tmp/my project")
+--- FAIL (3/3 defect tests; TestTmuxPreferredParseRealTrue PASS) ---
+```
+GREEN: all 4 PASS.
+
+#### M2 AC completion matrix (E1)
+
+| AC | M2 status | Verification command | Result |
+|---|---|---|---|
+| AC-HYG-001-006 | **PASS** | `go test ./internal/cli/ -run 'RuneTruncate' -count=1 -v` | 5/5 PASS — CJK fixtures utf8.ValidString at all 5 sites |
+| AC-HYG-001-007 | **PASS** | `go test ./internal/cli/wizard/ -run 'PATMask' -count=1 -v` + grep | 2/2 PASS; `EchoMode(huh.EchoModePassword)` present in wizard.go |
+| AC-HYG-001-008 | **PASS** | `go test ./internal/cli/worktree/ -run 'YAMLCommentCG\|TmuxPathQuote\|TmuxPreferredParse' -count=1 -v` | 4/4 PASS — comments do not activate CG; spaced path quoted |
+
+#### M2 cross-cutting verification (E2–E5)
+
+- E2 build: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- E3 coverage: `internal/cli/wizard` 94.0%; `internal/cli/worktree` 84.9% (vs M1 baseline; both ≥ 85% threshold met for wizard; worktree within range — the parse seams + helpers added covered lines).
+- E4 subagent-boundary grep: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/wizard internal/cli/worktree --include='*.go' | grep -v _test.go` → 0 matches (exit 1 = clean).
+- E5 lint: `golangci-lint run --timeout=3m ./internal/cli/...` → 0 issues (no NEW findings vs M1 baseline of 0).
+- gofmt: all 11 edited/new files formatted (gofmt -l output empty).
+
+#### M2 production-code edit set (scope discipline)
+
+New files: `internal/cli/truncate.go`, `internal/cli/rune_truncate_test.go`,
+`internal/cli/wizard/pat_mask_test.go`, `internal/cli/worktree/yaml_quote_test.go`.
+Edited files: `internal/cli/constitution.go`, `internal/cli/tool_policy.go`,
+`internal/cli/github.go` (M2 defect sites only), `internal/cli/wizard/wizard.go`
+(PAT masking only), `internal/cli/worktree/tmux_integration.go` +
+`new.go` (YAML + quoting), `internal/cli/worktree/tmux_integration_test.go`
+(retargeted one characterization assertion to the quoted form).
+NO M3 (envkeys), M4 (English strings), or M5 (dead-code deletion) scope touched.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

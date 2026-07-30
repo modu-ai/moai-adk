@@ -175,8 +175,10 @@ func TestBuildTmuxInitialCommand_ModeSelection(t *testing.T) {
 			if !strings.Contains(cmd, tt.wantCmd) {
 				t.Errorf("buildTmuxInitialCommand(mode=%q) = %q, want containing %q", tt.activeMode, cmd, tt.wantCmd)
 			}
-			if !strings.Contains(cmd, "cd /tmp/test-wt") {
-				t.Errorf("buildTmuxInitialCommand should cd to worktree, got %q", cmd)
+			// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008: the worktree path is now
+			// shell-quoted (%q) so paths with spaces/metacharacters survive.
+			if !strings.Contains(cmd, `cd "/tmp/test-wt"`) {
+				t.Errorf("buildTmuxInitialCommand should cd to quoted worktree, got %q", cmd)
 			}
 		})
 	}

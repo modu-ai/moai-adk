@@ -421,11 +421,15 @@ func renderConstitutionTable(w io.Writer, entries []constitution.Rule) {
 	for _, e := range entries {
 		clause := e.Clause
 		if len(clause) > clauseWidth {
-			clause = clause[:clauseWidth-3] + "..."
+			// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-006: rune-safe truncation.
+			// Byte-slicing clause[:clauseWidth-3] splits multi-byte (CJK) runes.
+			clause = truncateRunes(clause, clauseWidth-3) + "..."
 		}
 		fileStr := e.File
 		if len(fileStr) > fileWidth {
-			fileStr = "..." + fileStr[len(fileStr)-(fileWidth-3):]
+			// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-006: rune-safe suffix truncation.
+			// The suffix slice previously started mid-rune for CJK file paths.
+			fileStr = "..." + truncateRunesSuffix(fileStr, fileWidth-3)
 		}
 
 		line := fmt.Sprintf("%-*s  %-*s  %-*s  %-*s",
