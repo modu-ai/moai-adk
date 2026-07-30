@@ -47,6 +47,16 @@ Milestone evidence (M1–M6). Each AC in `acceptance.md` maps to a test below.
 - total_run_phase_files: 9 (glmcred.go, glmcred_test.go, cli/glm.go, web/glmkey.go, web/glmkey_test.go, web/handlers.go, web/fieldsets.templ, web/fieldsets_templ.go, web/assets/i18n.js)
 - m1_to_mN_commit_strategy: single feat commit
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
+- sync_complete_at: 2026-07-30
+- sync_commit_sha: pending-backfill-SPEC-GLM-KEY-INPUT-001 (SHA cannot be in its own commit; backfilled in the follow-up backfill commit of this batch)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-GLM-KEY-INPUT-001 entry (22 ACs, Tier M, M1–M6 single feat commit)
+- frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
+- run_phase_pr: #1227 (merge commit 5832f0671 — GLM API key field in web console + shared credential writer)
+- note: §25 template neutrality N/A — this SPEC touched `internal/glmcred` (new stdlib-only leaf pkg), `internal/cli`, `internal/web` Go code + templ; no template mirror edits. This sync commit carries only frontmatter + CHANGELOG + this §E.4 block (no template edits, no code changes)
+
 ## §F Phase 4 Mode Selection
 
 - tier: M
