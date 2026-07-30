@@ -23,7 +23,7 @@ depends_on: [SPEC-CONFIG-TIER-PERSIST-001]
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 4 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F7 each re-verified against HEAD `1d4e4f7da` (branch `main`) while authoring; F3 independently re-derived; one drift recorded (§A.8). |
+| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 4 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F7 each re-verified against baseline HEAD `d5336214e` (branch `plan/epic-update-config-audit`, merged with `origin/main`) while authoring; F3 independently re-derived; one drift recorded (§A.8). |
 
 ## §A Problem / Motivation
 
@@ -54,7 +54,7 @@ type FullQualityConfig struct {
 }
 ```
 
-It is never instantiated. Verified against HEAD `1d4e4f7da`:
+It is never instantiated. Verified against HEAD `d5336214e`:
 
 ```
 $ grep -rn 'FullQualityConfig' --include='*.go' internal pkg cmd | grep -v '_test.go'
@@ -115,7 +115,7 @@ Only `hook` overlaps, and even that is not bound through the struct, because `Lo
 reads this file at all. `cfg.System` is populated solely from `internal/config/defaults.go` plus
 the env overrides in `internal/config/manager.go`. The file *is* read — by ad-hoc parsers that
 bypass the struct entirely: `internal/cli/hook.go:508` (`isHookOptInEnabled`, an inline anonymous
-struct) and `internal/cli/update.go:989`.
+struct) and `internal/cli/update.go:1011`.
 
 Roughly 25 keys under `github.*` and `document_management.*` therefore have no implementation.
 `document_management` is the sharpest case: it states a retention policy, which is a promise about
@@ -129,7 +129,7 @@ catch this class of defect is the mechanism concealing it.
 
 An audit lens parsed the `yaml:`-tagged fields of `internal/config/types.go` and searched every
 production `.go` file for each. This SPEC re-derived the measurement independently at HEAD
-`1d4e4f7da`, deduplicating by Go field name (371 `yaml:` tags collapse to 287 distinct field
+`d5336214e`, deduplicating by Go field name (371 `yaml:` tags collapse to 287 distinct field
 names) and searching for `\.<FieldName>\b` across all non-test `.go` files under
 `internal pkg cmd`, excluding `main-fork/`:
 
@@ -171,7 +171,7 @@ Go code touches the key. The audit lens attempted a word-match over the shipped 
 discarded the result, because bare leaf keys like `search`, `performance`, `evolution`, and
 `escalation` have unusable signal-to-noise.
 
-Probing at HEAD `1d4e4f7da` shows the discarded method failed for a fixable reason — it matched the
+Probing at HEAD `d5336214e` shows the discarded method failed for a fixable reason — it matched the
 wrong token. Fixed-string search for the **fully-qualified dotted key path** across
 `.claude/agents`, `.claude/skills`, `.claude/rules`:
 

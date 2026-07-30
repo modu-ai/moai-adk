@@ -6,11 +6,11 @@ mechanical edits that consume them come last.
 
 ## §A Context
 
-Baseline tree: HEAD `1d4e4f7da`, branch `main`. All `file:line` references in `spec.md` §A were
+Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`). All `file:line` references in `spec.md` §A were
 re-verified against this tree while authoring; one drift was found and recorded (spec.md §A.8 — the
 shipped `workflow.yaml` worktree toggles contradict `internal/config/defaults.go`).
 
-Two measurements this plan depends on, both re-derived at HEAD `1d4e4f7da`:
+Two measurements this plan depends on, both re-derived at HEAD `d5336214e`:
 
 - 287 distinct `yaml:`-tagged Go field names in `internal/config/types.go` (from 371 tags);
   122 with zero production `.Field` reads; 121 of those shipped in a template section YAML.
@@ -30,7 +30,7 @@ Two measurements this plan depends on, both re-derived at HEAD `1d4e4f7da`:
 ## §C Pre-flight
 
 ```bash
-git rev-parse --short HEAD                       # expect 1d4e4f7da or a recorded successor
+git rev-parse --short HEAD                       # expect d5336214e or a recorded successor
 go build ./... && go vet ./internal/config/...
 go test -count=1 ./internal/config/... ./internal/template/... ./internal/lsp/...
 ```
@@ -74,7 +74,7 @@ shipped, so it may cite SPEC IDs):
 — `.claude/agents`, `.claude/skills`, `.claude/rules`, `.claude/commands`, plus their
 `internal/template/templates/` mirrors — with `grep -rF` for the **dotted key path**
 (`<section>.<parent>.<leaf>`). A bare leaf-key match is a **homonym and is not evidence**: measured
-at HEAD `1d4e4f7da`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
+at HEAD `d5336214e`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
 A second filter requires the matching file to also contain the literal `.moai/config`, so a passing
 mention of the concept does not qualify as an instruction to read the key.
 
@@ -132,7 +132,7 @@ The registry must stop asserting a binding that does not exist. Chosen decision,
 recorded here for review:
 
 - **Move `"system"` from `yamlToStructRegistry` to `yamlAuditExceptions`**, with a reason naming the
-  two real readers (`internal/cli/hook.go:508` `isHookOptInEnabled`, `internal/cli/update.go:989`)
+  two real readers (`internal/cli/hook.go:508` `isHookOptInEnabled`, `internal/cli/update.go:1011`)
   and stating that `Loader.Load()` does not read the file. This is the honest description of today's
   code and immediately unblinds the parity guard.
 - **Add a narrow `loadSystemSection`** binding the one block with a genuine consumer (`hook.*`), and

@@ -21,8 +21,12 @@
    a behavioural criterion, and each behavioural criterion states its **falsification**: what would
    have to be broken for it to fail, and confirmation that it would in fact fail then.
 4. **Baselines were observed in this tree while authoring** — worktree `9426bf49b` on
-   `plan/epic-update-config-audit`, whose `main` base is `1d4e4f7da`. Each AC carries its observed
-   pre-change baseline so a reviewer can distinguish a real change from a no-op.
+   `plan/epic-update-config-audit`. That branch's merge-base with `origin/main` was `76d9a8f3b`; the
+   local branch `main` at `1d4e4f7da` was a stale divergent branch, not this branch's base, and the
+   original wording naming it as such was factually wrong. The branch has since been merged with
+   `origin/main`, so the baseline for every criterion below is **`d5336214e`**, and each figure was
+   re-observed against that tree. Each AC carries its observed pre-change baseline so a reviewer can
+   distinguish a real change from a no-op.
 5. **`git stash` is prohibited.** This checkout is shared with concurrent sessions and `git stash` is
    repository-global. Falsification uses `go test -overlay` or a scratch `git worktree` driven by
    `go -C`.
@@ -94,14 +98,14 @@ Expected: a `--- PASS: TestCoverageBaselineDebtDeclared` line. For every entry w
 below its `policy_target`, the test asserts `accepted_debt: true` is set (REQ-UCG-010), so a
 sub-policy figure cannot be recorded as if it were compliant.
 
-Falsification: flip `internal/cli`'s `accepted_debt` to `false` while leaving `baseline: 75.6` and
+Falsification: flip `internal/cli`'s `accepted_debt` to `false` while leaving `baseline: 75.7` and
 `policy_target: 90` — the test MUST FAIL naming `internal/cli`.
 
 Baseline observed while authoring, establishing that this criterion has real subjects —
 `go test -cover ./internal/cli/... ./internal/config/...`:
 
 ```
-internal/cli                     75.6%   (policy 90)  -> debt
+internal/cli                     75.7%   (policy 90)  -> debt
 internal/config                  80.5%   (policy 85)  -> debt
 internal/cli/specid              58.3%   (policy 85)  -> debt
 internal/cli/update              88.9%   (policy 85)  -> compliant
@@ -121,7 +125,7 @@ grep -n 'TestCoverageBaselineNoRegression\|coverage-baselines' .github/workflows
 Expected: at least one line, positioned after the existing `Run tests with race detector and
 coverage` step, so the gate consumes the `coverage.out` that step already produces.
 
-Baseline at `main` `1d4e4f7da` — the profile is produced and uploaded, and nothing gates on it:
+Baseline at `d5336214e` — the profile is produced and uploaded, and nothing gates on it:
 
 ```
 $ grep -n 'coverprofile\|codecov' .github/workflows/ci.yml
@@ -146,7 +150,7 @@ Expected: three matches — `runs-on: windows-latest`, a run step naming
 `./internal/cli/update/...`, and an `if:` gating the job on a path-filter output. A job that runs
 `./...` on Windows at PR time fails this criterion (REQ-UCG-005).
 
-Baseline at `main` `1d4e4f7da` — no such job. The PR-scope test matrix is ubuntu-only
+Baseline at `d5336214e` — no such job. The PR-scope test matrix is ubuntu-only
 (`ci.yml:95: os: [ubuntu-latest]`), and the only Windows runner at PR time is `test-integration`
 (`ci.yml:214`, matrix at `:222`) whose single run step is
 `go test -tags=integration -race -timeout 180s ./test/integration/harness/...` — no update package.
@@ -215,7 +219,7 @@ sed -n '/^            behavioral:/,/^            [a-z_]*:/p' .github/workflows/c
 Expected: a count `>= 2` — the filter that gates the test job lists both
 `internal/template/templates/**` and `.moai/config/**` (REQ-UCG-001).
 
-Baseline at `main` `1d4e4f7da` — the `go_code` filter (`ci.yml:65-71`) is six entries and contains
+Baseline at `d5336214e` — the `go_code` filter (`ci.yml:65-71`) is six entries and contains
 neither:
 
 ```
@@ -354,7 +358,7 @@ plan.md §D D6                     (internal artifact citation)
 Falsification: revert any one pattern extension and the corresponding subtest MUST FAIL naming the
 undetected shape. A PASS under the revert means the subtest asserts nothing about the pattern set.
 
-Baseline at `main` `1d4e4f7da` — each shape escapes for a distinct structural reason, verified
+Baseline at `d5336214e` — each shape escapes for a distinct structural reason, verified
 against the implementation:
 
 ```
@@ -490,7 +494,7 @@ prohibited (§A clause 5).
 
 ```bash
 mkdir -p /tmp/ucg-falsify
-sed 's/baseline: 75.6/baseline: 76.6/' .moai/config/coverage-baselines.yaml \
+sed 's/baseline: 75.7/baseline: 76.7/' .moai/config/coverage-baselines.yaml \
   > /tmp/ucg-falsify/coverage-baselines.yaml
 printf '{"Replace":{".moai/config/coverage-baselines.yaml":"/tmp/ucg-falsify/coverage-baselines.yaml"}}' \
   > /tmp/ucg-falsify/overlay.json
@@ -498,7 +502,7 @@ go test -overlay=/tmp/ucg-falsify/overlay.json -run 'TestCoverageBaselineNoRegre
   -count=1 -v ./internal/quality/
 ```
 
-Expected: **FAIL**, naming `internal/cli` with `baseline 76.6%, measured 75.6%`. A PASS means the
+Expected: **FAIL**, naming `internal/cli` with `baseline 76.7%, measured 75.7%`. A PASS means the
 per-package comparison is not load-bearing and the gate would not catch real erosion either.
 
 ### C-2 — the semantic merge guard actually catches a broken merge

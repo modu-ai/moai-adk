@@ -5,7 +5,7 @@ Version: 0.1.0 · Status: draft
 ## §A Verification discipline
 
 1. **No vacuous `-run`.** `go test -run <pattern>` exits 0 when the pattern matches zero tests. Every AC below that uses `-run` also asserts a literal `--- PASS: <exact test name>` line. An AC that would pass with the test deleted is a defect.
-2. **Baselines are observed, not assumed.** Every "current baseline" line in §B was produced by running the stated command against the tree at `1d4e4f7da` on 2026-07-31.
+2. **Baselines are observed, not assumed.** Every "current baseline" line in §B was produced by running the stated command against the tree at `d5336214e` on 2026-07-31.
 3. **Falsification is required per new guard.** §C gives the runnable procedure that makes each new guard FAIL against unfixed code.
 4. **`git stash` is prohibited.** The checkout is shared with concurrent sessions; `git stash` is repository-global and `git stash push` without `-u` refuses untracked files. Falsification uses a scratch `git worktree`.
 
@@ -149,7 +149,7 @@ go test ./internal/cli/ -run 'TestUpdateDryRun_EmitsCleanReinstallPlan' -v 2>&1 
 
 Expected: `--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan`. The captured output contains the literal substrings `DRY-RUN` and `Would remove` with a non-zero count.
 
-**Current baseline (observed):** `internal/cli/update.go:294-304` returns from the dry-run branch before the v2-detection block at `:306`, so `runCleanReinstall`'s dry-run branch at `update_clean_install.go:186-198` is unreachable from the CLI and neither substring can be produced.
+**Current baseline (observed):** `internal/cli/update.go:294-304` returns from the dry-run branch before the v2-detection block at `:328`, so `runCleanReinstall`'s dry-run branch at `update_clean_install.go:186-198` is unreachable from the CLI and neither substring can be produced.
 
 ### AC-RIL2-014 — `--dry-run` mutates nothing (REQ-RIL2-026)
 

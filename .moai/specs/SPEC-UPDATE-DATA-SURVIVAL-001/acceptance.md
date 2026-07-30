@@ -7,7 +7,7 @@
 2. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore also requires a
    verbatim `--- PASS: <exact test name>` line in the output. A `-run` AC whose only assertion is
    `exit 0` is vacuous and is rejected.
-3. **Baselines were recorded from this tree while authoring** (HEAD `1d4e4f7da`). Each AC below
+3. **Baselines were recorded from this tree while authoring** (HEAD `d5336214e`). Each AC below
    carries its observed pre-change baseline so a reviewer can tell a real change from a no-op.
 4. **Every new guard needs a falsification** proving it FAILS against unfixed code. §C gives the
    runnable procedure.
@@ -87,7 +87,7 @@ registry's row count equals the number of destructive sites the guard enumerates
 
 Baseline: `grep -c 'RemoveAll\|os.Rename' internal/cli/update/deploy/deploy.go` → `5`
 (`deploy.go:83`, `:105`, `:121`, `:169`, `:176`). Plus `update_clean_install.go:271` and
-`update.go:744`. No registry exists; nothing fails when a new site is added unprotected.
+`update.go:766`. No registry exists; nothing fails when a new site is added unprotected.
 
 #### AC-UDS-006 — `.moai/memory/` is backed up before the both-exist removal
 
@@ -171,7 +171,7 @@ home lookup to a `t.TempDir()`, creates both `~/.claude/hooks/moai/` and a sibli
 `moai` subdirectory is gone.
 
 Baseline: `grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go' | wc -l` → `0`. The symbol
-appears only at `internal/cli/update.go:742-744`; no test observes it. Falsification is
+appears only at `internal/cli/update.go:764-766`; no test observes it. Falsification is
 AC-UDS-012.
 
 #### AC-UDS-012 — the radius guard fails against a widened radius
@@ -192,9 +192,9 @@ ls ~/.claude/hooks 2>/dev/null | head
 
 Expected: the test exits 0 and the operator's `~/.claude/hooks` listing is unchanged before and
 after. The test redirects through the existing `userHomeDir` indirection
-(`internal/cli/update.go:734`) rather than `t.Setenv("HOME", …)`, per `CLAUDE.local.md` §13.
+(`internal/cli/update.go:756`) rather than `t.Setenv("HOME", …)`, per `CLAUDE.local.md` §13.
 
-Baseline: `ensureGlobalSettingsEnv` resolves HOME via `userHomeDir()` at `update.go:734`, so the
+Baseline: `ensureGlobalSettingsEnv` resolves HOME via `userHomeDir()` at `update.go:756`, so the
 indirection already exists.
 
 ### M5 — Non-vacuous user-area safety guard

@@ -6,18 +6,19 @@ and the mechanical edits land last.
 
 ## §A Context
 
-Baseline tree: `main` HEAD `1d4e4f7da`. This worktree is `plan/epic-update-config-audit` at
-`9426bf49b`, which carries the Epic's plan-phase artefacts plus two sibling files not on main
-(`internal/cli/update_clean_install.go`, `internal/cli/update_clean_install_merge_notice_test.go`).
-All `file:line` references in `spec.md` §A were re-verified while authoring; four drifts were found
-and recorded (spec.md §A.6).
+Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit`, merged with `origin/main`
+(`git rev-list --count HEAD..origin/main` → 0). Authored at `9426bf49b` on the same branch, before
+the merge; the local branch `main` at `1d4e4f7da` was a stale divergent branch and is not an
+ancestor of this baseline. All `file:line` references in `spec.md` §A were re-verified while
+authoring; four drifts were found and recorded (spec.md §A.6), of which drift 2 is now resolved by
+the merge.
 
 Three measurements this plan depends on, all observed while authoring:
 
 - The `go_code` paths-filter is six entries (`ci.yml:65-71`) and contains neither
   `internal/template/templates/**` nor `.moai/config/**`. The test job is gated on it (`ci.yml:90`);
   its complement `test-skip-marker` (`ci.yml:200`) satisfies the same required check name.
-- Per-package coverage: `internal/cli` 75.6%, `internal/config` 80.5%, `internal/cli/specid` 58.3%,
+- Per-package coverage: `internal/cli` 75.7%, `internal/config` 80.5%, `internal/cli/specid` 58.3%,
   `internal/cli/update` 88.9%, `.../backup` 88.6%, `.../deploy` 97.5%, `.../merge` 90.3%,
   `.../plan` 95.0%, `.../report` 92.9%.
 - `go tool cover -func` over `internal/cli/update/backup/`: all five `merge.go` functions at 100.0%,
@@ -41,8 +42,7 @@ Three measurements this plan depends on, all observed while authoring:
 ## §C Pre-flight
 
 ```bash
-git rev-parse --short HEAD                       # expect 9426bf49b or a recorded successor
-git rev-parse --short main                       # expect 1d4e4f7da or a recorded successor
+git rev-parse --short HEAD                       # expect d5336214e or a recorded successor
 go build ./... && go vet ./...
 go test -count=1 ./internal/template/... ./internal/cli/update/...
 gh workflow list                                  # confirm the workflow set is as recorded
@@ -83,7 +83,7 @@ does to every subsequent pull request in the repository.
 ```yaml
 packages:
   github.com/modu-ai/moai-adk/internal/cli:
-    baseline: 75.6
+    baseline: 75.7
     policy_target: 90        # CLAUDE.local.md §6 critical-package target
     accepted_debt: true      # REQ-UCG-010 — below policy, recorded explicitly
   github.com/modu-ai/moai-adk/internal/cli/update/backup:

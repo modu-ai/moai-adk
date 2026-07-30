@@ -7,7 +7,7 @@
 2. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore also requires a
    verbatim `--- PASS: <exact test name>` line in the output. A `-run` AC whose only assertion is
    `exit 0` is vacuous and is rejected.
-3. **Baselines were recorded from this tree while authoring** (HEAD `1d4e4f7da`, branch `main`).
+3. **Baselines were recorded from this tree while authoring** (HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`)).
    Each AC carries its observed pre-change baseline so a reviewer can tell a real change from a
    no-op.
 4. **Every new guard needs a falsification** proving it FAILS against unfixed code. §C gives the
@@ -100,7 +100,7 @@ Expected: a `--- PASS: TestSourceOrdering_LocalOutranksProject` line, asserting
 `SrcProject{"k":"from-project"}` and `SrcLocal{"k":"from-local"}` yields `from-local` with
 `Provenance.Source == SrcLocal`.
 
-Baseline: the probe against `1d4e4f7da` observed
+Baseline: the probe against `d5336214e` observed
 `k => from-project (source=project) [project=2 local=3]`.
 
 #### AC-CTP-006 — the full tier ordering is pinned as an explicit sequence
@@ -360,7 +360,7 @@ Expected: a `--- PASS: TestNoBareWriteFileIntoMoaiConfig` line. The guard walks 
 sources under `internal/config/`, `internal/cli/update/`, and `internal/core/project/` and asserts
 no `os.WriteFile` call site targets a `.moai/config` path.
 
-Baseline: the guard does not exist. The current offenders, all confirmed against `1d4e4f7da`:
+Baseline: the guard does not exist. The current offenders, all confirmed against `d5336214e`:
 
 ```
 internal/cli/update/backup/restore.go:105,128,142,145
@@ -393,7 +393,7 @@ is the F7 probe: template v1 contains `DS_Store`, the user adds `mysecret.env` a
 template v2 drops `DS_Store`, and the test asserts `DS_Store` does not appear below the
 `# User Custom Patterns` header after the second merge.
 
-Baseline: the probe against `1d4e4f7da` produced, after the second merge:
+Baseline: the probe against `d5336214e` produced, after the second merge:
 
 ```
 node_modules/
@@ -454,7 +454,7 @@ Expected: no `FAIL` line, and the `--- PASS:` lines from
 pre-fix behaviour this SPEC deliberately changes, it is updated in the same commit with a comment
 naming this SPEC — never deleted.
 
-Baseline: `go test -count=1 ./internal/cli/update/merge/` → `ok` at `1d4e4f7da`; record the exact
+Baseline: `go test -count=1 ./internal/cli/update/merge/` → `ok` at `d5336214e`; record the exact
 `--- PASS:` set before M5.
 
 ### M6 — Fallback visibility
@@ -468,7 +468,7 @@ go test -run 'TestRestore_ThreeWayFailureAdvisesOnFirstOccurrence' -count=1 -v .
 Expected: a `--- PASS: TestRestore_ThreeWayFailureAdvisesOnFirstOccurrence` line, asserting that a
 single 3-way merge failure writes an advisory naming the file to the captured stderr writer.
 
-Baseline: the test does not exist. At `1d4e4f7da`, `internal/cli/update/backup/restore.go:131-134`
+Baseline: the test does not exist. At `d5336214e`, `internal/cli/update/backup/restore.go:131-134`
 calls `recordFallback(projectRoot, relPath, false, os.Stderr)` and falls through silently; the
 noise-suppression ledger stays quiet until three consecutive failures, while the 2-way path at
 `:139-141` prints `Warning: merge failed for %s, restoring backup` immediately.
@@ -510,7 +510,7 @@ golangci-lint run --timeout=2m; echo "lint exit=$?"
 Expected: `0` failing packages, and `lint exit=0`.
 
 Baseline: record both before M1. `go test ./internal/config/... ./internal/cli/update/... -count=1`
-was green at `1d4e4f7da`.
+was green at `d5336214e`.
 
 #### AC-CTP-035 — no template tree was touched
 

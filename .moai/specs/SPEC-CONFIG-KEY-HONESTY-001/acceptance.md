@@ -5,7 +5,7 @@
 1. **Every AC states a command and its expected observable output.** A criterion phrased as a
    property with no command is not an AC.
 2. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore also requires a
-   verbatim `--- PASS: <exact test name>` line. Recorded vacuity baseline at HEAD `1d4e4f7da`:
+   verbatim `--- PASS: <exact test name>` line. Recorded vacuity baseline at HEAD `d5336214e`:
    ```
    $ go test -run 'TestShippedConfigKeysHaveReaders' ./internal/config/ ; echo "exit=$?"
    ok  	github.com/modu-ai/moai-adk/internal/config	0.443s [no tests to run]
@@ -13,7 +13,7 @@
    ```
    An AC whose only assertion is `exit 0` would pass against a tree with no test at all, and is
    rejected.
-3. **Baselines were recorded from this tree while authoring** — HEAD `1d4e4f7da`, branch `main`.
+3. **Baselines were recorded from this tree while authoring** — HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`).
    Each AC carries its observed pre-change baseline so a reviewer can distinguish a real change from
    a no-op.
 4. **Every new guard needs a falsification** proving it FAILS against unfixed code (§C).
@@ -68,7 +68,7 @@ dead key measured in the `design`, `harness`, `research`, `git-strategy`, `const
 and `workflow` sections carries an inventory entry whose `evidence` field is populated (not the
 literal `unclassified`).
 
-Baseline recorded at HEAD `1d4e4f7da` — the dead-key counts these families must cover, derived by
+Baseline recorded at HEAD `d5336214e` — the dead-key counts these families must cover, derived by
 matching each zero-production-read field's YAML key against the shipped section files:
 
 ```
@@ -91,7 +91,7 @@ Expected: a `--- PASS: TestTriageRuleProseProbeBeforeDelete` line. For every inv
 asserts zero matches — i.e. it re-proves the **P**-before-**D** ordering rather than trusting the
 recorded class.
 
-Baseline (the probe's precision, measured at HEAD `1d4e4f7da` over `.claude/agents`,
+Baseline (the probe's precision, measured at HEAD `d5336214e` over `.claude/agents`,
 `.claude/skills`, `.claude/rules`):
 
 ```
@@ -124,7 +124,7 @@ Expected: a `--- PASS: TestShippedConfigKeysHaveReaders/non_vacuous_inventory` l
 asserts the shipped-key inventory has `>= 200` entries and the reflective walk of `Config` yields
 `>= 200` struct fields (NFR-CKH-002), so a guard that inventories zero fails instead of passing.
 
-Baseline for plausibility: at HEAD `1d4e4f7da`, `grep -c 'yaml:"' internal/config/types.go` prints
+Baseline for plausibility: at HEAD `d5336214e`, `grep -c 'yaml:"' internal/config/types.go` prints
 `371`, and the field-name-deduped walk yields `287` distinct names — both comfortably above the
 floor, so the floor cannot be met by an accidentally-truncated walk.
 
@@ -171,7 +171,7 @@ unmarshals into `models.FullQualityConfig` — i.e. `FullQualityConfig` appears 
 `internal/lsp/hook/gate.go`, not only in `pkg/models/config.go`. A tree where the name says "Full"
 while the body says `qualityFileWrapper` fails.
 
-Baseline at HEAD `1d4e4f7da` (the failing state):
+Baseline at HEAD `d5336214e` (the failing state):
 
 ```
 internal/lsp/hook/gate.go:125:// parseFullQualityConfig parses the full quality config ...
@@ -221,7 +221,7 @@ Expected: a `--- PASS: TestAuditParity` line, and the `"system"` key appearing i
 `yamlAuditExceptions` with a reason naming the real readers — **or** appearing in
 `yamlToStructRegistry` alongside a `loadSystemSection` function that `Loader.Load` calls.
 
-Baseline at HEAD `1d4e4f7da` (the concealed state): the entry claims a binding,
+Baseline at HEAD `d5336214e` (the concealed state): the entry claims a binding,
 
 ```
 $ grep -n 'system' internal/config/audit_registry.go
@@ -271,7 +271,7 @@ Expected: both sites carry a comment naming the actual enforcement constants
 (`internal/evolution/types.go` and `internal/constitution/rate_limiter.go`), so a reader of the
 config cannot mistake the key for the lever.
 
-Baseline at HEAD `1d4e4f7da` — declared and defaulted with no such note, while enforcement sits in
+Baseline at HEAD `d5336214e` — declared and defaulted with no such note, while enforcement sits in
 two unrelated packages:
 
 ```
@@ -343,7 +343,7 @@ Expected: all three greps produce no output (each exits 1). Generic placeholders
 `<SPEC-ID>`, and `SPEC-XXX` remain and are unaffected, because none matches the 3-digit-suffixed
 pattern above.
 
-Baseline at HEAD `1d4e4f7da` — the three genuine leaks:
+Baseline at HEAD `d5336214e` — the three genuine leaks:
 
 ```
 .../sections/workflow.yaml:65:  # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
@@ -389,7 +389,7 @@ go build ./... && go vet ./... && go test -count=1 ./...
 
 Expected: exit 0 from all three.
 
-Baseline: green at HEAD `1d4e4f7da` (pre-flight, plan.md §C).
+Baseline: green at HEAD `d5336214e` (pre-flight, plan.md §C).
 
 #### AC-CKH-022 — no test writes outside `t.TempDir()`
 

@@ -23,7 +23,7 @@ depends_on: []
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 5 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F5 each re-verified while authoring against `main` HEAD `1d4e4f7da`; F3 coverage independently re-measured; F4 per-function coverage independently re-measured; four drifts recorded (§A.6). |
+| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 5 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F5 each re-verified while authoring against baseline HEAD `d5336214e`; F3 coverage independently re-measured; F4 per-function coverage independently re-measured; four drifts recorded (§A.6). |
 
 ## §A Problem / Motivation
 
@@ -45,7 +45,7 @@ gate's ability to see; it does not own any of the defects the gate would have ca
 ### A.1 A config-only or template-only PR merges having run zero Go tests (F1)
 
 `.github/workflows/ci.yml:39-70` defines the `dorny/paths-filter` filter set. Verified at HEAD
-`1d4e4f7da`:
+`d5336214e`:
 
 ```
 $ grep -n 'go_code:' .github/workflows/ci.yml
@@ -151,7 +151,7 @@ Freshly measured while authoring (`go test -cover ./internal/cli/... ./internal/
 
 | package | coverage |
 |---|---:|
-| `internal/cli` | **75.6%** |
+| `internal/cli` | **75.7%** |
 | `internal/config` | 80.5% |
 | `internal/cli/update` | 88.9% |
 | `internal/cli/update/backup` | 88.6% |
@@ -162,7 +162,7 @@ Freshly measured while authoring (`go test -cover ./internal/cli/... ./internal/
 | `internal/cli/specid` | 58.3% |
 
 Project policy (`CLAUDE.local.md` §6) sets an 85% package minimum and 90% for the critical
-`cli` / `template` / `hook` packages. `internal/cli` at 75.6% is below both; `internal/cli/specid`
+`cli` / `template` / `hook` packages. `internal/cli` at 75.7% is below both; `internal/cli/specid`
 at 58.3% is below the minimum; `internal/config` at 80.5% is below the minimum. Nothing enforces any
 of it.
 
@@ -276,14 +276,18 @@ F2's substance is unchanged — that job runs only
 executes on Windows — but the finding is restated in §A.2 as "no Windows leg *exercises the update
 path*" rather than "no Windows leg".
 
-**Drift 2 — `internal/cli` coverage 75.6% vs 75.7%.** The orchestrator recorded 75.7% measured on
-`main` HEAD `1d4e4f7da`. Re-measured in this worktree: **75.6%**. The worktree carries two files not
-present on main (`git diff --stat main -- internal/cli` reports
-`internal/cli/update_clean_install.go | 11 ++-` and a new
-`internal/cli/update_clean_install_merge_notice_test.go`, +93/-3), which accounts for the 0.1pp
-delta. Both figures are below the 85% minimum and the 90% critical-package target, so the finding's
-direction and consequence are unchanged. §B.3's baseline is therefore specified as *recorded at gate
-introduction time*, not as a literal constant, so the drift cannot invalidate the requirement.
+**Drift 2 — RESOLVED: `internal/cli` coverage is 75.7% on the single baseline.** At authoring time
+two figures existed for the same package: 75.7% recorded against the divergent local branch `main`
+(`1d4e4f7da`) and 75.6% re-measured in the worktree, the 0.1pp delta accounted for by two files the
+worktree carried and that branch did not (`internal/cli/update_clean_install.go` plus a new
+`internal/cli/update_clean_install_merge_notice_test.go`). The two-tree framing is now obsolete: the
+Epic branch has been merged with `origin/main` and there is one baseline, `d5336214e`. Re-measured
+there (`go test -cover ./internal/cli/... ./internal/config/...`): **`internal/cli` 75.7%**. The
+merge brought in `internal/cli/update_deny_migration_test.go` (+149 lines), which restores the 0.1pp.
+The figure remains below both the 85% minimum and the 90% critical-package target, so the finding's
+direction and consequence are unchanged. §B.3's baseline is nonetheless specified as *recorded at
+gate introduction time*, not as a literal constant, so a future drift cannot invalidate the
+requirement.
 
 **Drift 3 — the neutrality workflow runs three test targets, not one.** The audit described it as
 running "only `-run TestTemplateNeutralityAudit` in isolation". Measured
@@ -358,7 +362,7 @@ record that gap explicitly as accepted debt with the package named, so the delta
 silently normalise a sub-policy figure as if it were compliant.
 
 > Rejected alternative, recorded so it is not silently re-proposed: an **absolute floor** gate at the
-> §6 policy values. Rejected because `internal/cli` (75.6%), `internal/config` (80.5%), and
+> §6 policy values. Rejected because `internal/cli` (75.7%), `internal/config` (80.5%), and
 > `internal/cli/specid` (58.3%) are all below policy today (§A.3), so an absolute floor would fail
 > the very pull request that introduces the gate and every unrelated pull request thereafter until
 > three packages were separately remediated. The delta gate blocks the actual hazard — silent

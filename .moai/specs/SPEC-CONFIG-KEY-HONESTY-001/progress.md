@@ -3,7 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - Artifacts authored: `spec.md`, `plan.md`, `acceptance.md`, `progress.md` (Tier M set).
-- Baseline tree: HEAD `1d4e4f7da`, branch `main`.
+- Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`).
 - Findings F1-F7 each re-verified against this tree while authoring; one drift recorded
   (spec.md §A.8 — shipped `workflow.yaml` worktree toggles contradict `internal/config/defaults.go`).
 - F3 independently re-derived: 287 distinct `yaml:`-tagged field names, 122 with zero production

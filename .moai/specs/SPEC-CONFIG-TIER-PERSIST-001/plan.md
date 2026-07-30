@@ -6,7 +6,7 @@ Epic SPEC 3 of 6 from a four-lens audit of `moai update` and `.moai/config`. Thi
 **config resolution and persistence layer**: which tier wins, which writers preserve what, and
 whether a write is atomic. It does not own the YAML merge engine internals.
 
-Baseline tree: HEAD `1d4e4f7da`, branch `main`. Every `file:line` in `spec.md` was re-verified
+Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`). Every `file:line` in `spec.md` was re-verified
 against this tree; drift is recorded in §B.
 
 Two adjacent packages are in scope:
@@ -75,7 +75,7 @@ directory, not by writer.
 
 ### Reproduction probes
 
-All three probes below were run against `1d4e4f7da` and are the regression fixtures for §F.
+All three probes below were run against `d5336214e` and are the regression fixtures for §F.
 
 - **F2/F3** — a temporary `internal/config/zzz_probe_test.go` calling `MergeAll` directly produced
   the `source=builtin` and `from-project` outputs quoted in `spec.md` §A. Removed after running.

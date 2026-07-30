@@ -6,7 +6,7 @@
 
 ## §A Context
 
-- **Repository**: `/Users/goos/MoAI/moai-adk-go`, branch `main`, HEAD `1d4e4f7da` at authoring time.
+- **Repository**: `/Users/goos/MoAI/moai-adk-go`, branch `plan/epic-update-config-audit`, HEAD `d5336214e` (merged with `origin/main`).
 - **Tier**: M — 300-1000 LOC across 5-15 files. Justification in §H.
 - **Depends on**: `SPEC-UPDATE-REINSTALL-LOOP-002` (E1). Only REQ-RIL2-015/016
   (backup-before-delete for `defs.DeprecatedPaths`) is inherited; every milestone below is
@@ -101,7 +101,7 @@ the enumeration derived from this tree; the implementation encodes it and guards
 | 10 | `.moai/config` (wholesale) | `deploy.go:121` | `BackupMoaiConfig` (`backup.go:27`) | covered |
 | 11 | `.moai/memory/` | `deploy.go:176` | **none** | M2 adds backup (REQ-UDS-008) |
 | 12 | `defs.DeprecatedPaths` incl. `.moai/db` | `update_clean_install.go:271` | **none today** | inherited from E1 REQ-RIL2-015; registry records the cross-SPEC assignment |
-| 13 | `~/.claude/hooks/moai` | `update.go:744` | **none**, outside project | M4 pins the radius; backup out of scope (outside project root) |
+| 13 | `~/.claude/hooks/moai` | `update.go:766` | **none**, outside project | M4 pins the radius; backup out of scope (outside project root) |
 
 Rows 1-3, 11, 12, 13 are the complete set of destructive targets in **no** protection set. Of those,
 row 12 is E1's; rows 1-3 are M3; row 11 is M2; row 13 is M4 (radius pinning rather than backup,
@@ -125,7 +125,7 @@ uncovered blocks are the failure returns at `update_preserve_inventory.go:346`, 
 ## §D Constraints
 
 - `t.TempDir()` only; no test writes to the operator's real `~/.claude`.
-- HOME redirection goes through the existing `userHomeDir` indirection (`update.go:734`), not
+- HOME redirection goes through the existing `userHomeDir` indirection (`update.go:756`), not
   `t.Setenv("HOME", …)` — per `CLAUDE.local.md` §13, a process-wide HOME mutation pollutes parallel
   tests.
 - No `internal/template/templates/**` edit.

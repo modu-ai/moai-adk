@@ -33,7 +33,7 @@ The override keeps its current effect on `IsV2` — a v3-confirmed project must 
 
 **Why not defer.** Deferring is only defensible while the override is rare. It is rare today *because of Defect 1* — released users never reach it. M1 makes `V3VersionConfirmed` true for the entire released population, so the unconditional short-circuit stops being an edge case and becomes the default. Shipping M1 without D2 would convert issue #1243's "loops forever" into "residue is never cleaned", including the half-migrated freeze described in spec.md §A Defect 3. The two changes are coupled and belong in one SPEC.
 
-**Why this is a small change, not a new subsystem.** Half of it already exists: `internal/cli/update.go:384-390` already fires `runAgencyMigrationAdapter` independently when `fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd)`. That block is precisely the "v3 project with residue" branch. D2 extends it with the deprecated-path half, reusing `scanDeprecatedPaths` and `backupDeprecatedPaths`, both of which already exist in `internal/cli/update_cleanup.go`.
+**Why this is a small change, not a new subsystem.** Half of it already exists: `internal/cli/update.go:406-412` already fires `runAgencyMigrationAdapter` independently when `fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd)`. That block is precisely the "v3 project with residue" branch. D2 extends it with the deprecated-path half, reusing `scanDeprecatedPaths` and `backupDeprecatedPaths`, both of which already exist in `internal/cli/update_cleanup.go`.
 
 **Reversibility.** The alternative — leaving the override unconditional and documenting the freeze as accepted debt — remains available and is a one-block revert. It is rejected here because the freeze is unrecoverable by any user-facing command.
 
@@ -51,8 +51,8 @@ Today the 9 intersecting paths are incidentally protected by the resurrection bu
 | Preserve roots = 3 entries | `internal/cli/update_preserve_inventory.go:66-70` | yes |
 | `DeprecatedPaths` ∩ preserve roots = 9 | probe over `defs.DeprecatedPaths` (40 entries) | yes |
 | Post-REMOVE re-scan precedes merge-back | `update_clean_install.go:278` vs Step 6 | yes |
-| Dry-run returns before v2 detection | `update.go:294-304` vs `:306` | yes |
-| `DryRun:` passed at `update.go:338` is always false | consequence of the above | yes |
+| Dry-run returns before v2 detection | `update.go:294-304` vs `:328` | yes |
+| `DryRun:` passed at `update.go:360` is always false | consequence of the above | yes |
 | Step 4 never calls `backupDeprecatedPaths` | `update_clean_install.go:250-276`, grep count 0 | yes |
 | GoReleaser injects bare version | `.goreleaser.yml:22` | yes |
 | `GetFullVersion` applies no normalization | `pkg/version/version.go:29-30` | yes |

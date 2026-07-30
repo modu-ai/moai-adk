@@ -6,10 +6,11 @@ mechanical text corrections that carry no open decision come last.
 
 ## §A Context
 
-Baseline tree: HEAD `7225a8b7a`, branch `plan/epic-update-config-audit`, in the worktree
-`.claude/worktrees/epic-update-config`. This differs from the five sibling SPECs' recorded baseline
-(`main` HEAD `1d4e4f7da`) — see spec.md §A.6 drift 1 for the three-file delta and why §A.1's
-conclusions hold on both trees.
+Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit`, in the worktree
+`.claude/worktrees/epic-update-config`, merged with `origin/main`. This SPEC was authored at
+`7225a8b7a` on the same branch and the five sibling SPECs recorded the divergent local branch `main`
+(`1d4e4f7da`); that divergence is now resolved and all six share `d5336214e` — see spec.md §A.6
+drift 1.
 
 Every `file:line` reference in spec.md §A was verified against this tree while authoring. Three
 drifts were found and recorded rather than silently folded in (spec.md §A.6): the baseline-HEAD
@@ -42,7 +43,7 @@ Two properties this plan depends on:
 ## §C Pre-flight
 
 ```bash
-git rev-parse --short HEAD                       # expect 7225a8b7a or a recorded successor
+git rev-parse --short HEAD                       # expect d5336214e or a recorded successor
 git branch --show-current                        # expect plan/epic-update-config-audit
 go build ./... && go vet ./internal/config/... ./internal/hook/... ./internal/cli/...
 go test -count=1 ./internal/config/... ./internal/hook/... ./internal/cli/...

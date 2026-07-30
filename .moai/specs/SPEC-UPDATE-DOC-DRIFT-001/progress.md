@@ -6,7 +6,7 @@ plan_status: audit-ready
 plan_complete_at: 2026-07-31
 tier: M
 artifacts: spec.md, plan.md, acceptance.md, progress.md
-baseline_head: 7225a8b7a (branch plan/epic-update-config-audit, worktree .claude/worktrees/epic-update-config)
+baseline_head: d5336214e (branch plan/epic-update-config-audit, worktree .claude/worktrees/epic-update-config)
 findings: 5 (§A.1 - §A.5)
 requirements: 17 (REQ-UDD-001..013, NFR-UDD-001..004)
 acceptance_criteria: 23 (AC-UDD-001..023), 14 of which form 7 documentation/code-fact pairs

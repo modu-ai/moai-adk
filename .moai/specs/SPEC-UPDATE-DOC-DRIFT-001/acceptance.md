@@ -15,7 +15,7 @@
 
 3. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore additionally
    requires the verbatim `--- PASS: <exact test name>` line. Vacuity baseline recorded at HEAD
-   `7225a8b7a`:
+   `d5336214e`:
 
    ```
    $ go test -run 'TestUpdateDryRunHelpTextMatchesBehavior' ./internal/cli/ ; echo "exit=$?"
@@ -26,10 +26,12 @@
    An AC whose only assertion is `exit 0` would pass against a tree with no test at all, and is
    rejected.
 
-4. **Baselines were recorded from this tree while authoring** — HEAD `7225a8b7a`, branch
-   `plan/epic-update-config-audit`, in the worktree `.claude/worktrees/epic-update-config`. This
-   differs from the sibling SPECs' `main` HEAD `1d4e4f7da`; see spec.md §A.6 drift 1. Each AC carries
-   its observed pre-change baseline so a reviewer can distinguish a real change from a no-op.
+4. **Baselines were recorded from this tree while authoring** and re-observed after the merge with
+   `origin/main` — HEAD `d5336214e`, branch `plan/epic-update-config-audit`, in the worktree
+   `.claude/worktrees/epic-update-config`. Authoring happened at `7225a8b7a` on the same branch; the
+   sibling SPECs' recorded `main` HEAD `1d4e4f7da` was a stale divergent branch. All six SPECs now
+   share `d5336214e` — see spec.md §A.6 drift 1. Each AC carries its observed pre-change baseline so
+   a reviewer can distinguish a real change from a no-op.
 
 5. **`git stash` is prohibited.** This checkout is shared with concurrent sessions and `git stash` is
    repository-global. Falsification uses a scratch copy under `/tmp` or `t.TempDir()`, never a tree
@@ -53,7 +55,7 @@ AC-UDD-002 shows the clean-reinstall plan is rendered from the dry-run branch (o
 where the text says "archive and install" while `dryRunArchiveLegacySkills` remains the sole dry-run
 action fails.
 
-Baseline at HEAD `7225a8b7a` (the failing state):
+Baseline at HEAD `d5336214e` (the failing state):
 
 ```
 69:	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
@@ -111,7 +113,7 @@ Expected: the first count `>= 2` (unchanged — the toggles are still named), an
 reader and that `auto_create` is read only at `internal/cli/worktree_advisory.go` to select advisory
 wording.
 
-Baseline at HEAD `7225a8b7a`: the first count is `2`; the second is `0`. The section describes all
+Baseline at HEAD `d5336214e`: the first count is `2`; the second is `0`. The section describes all
 three as governing web-console worktree automation and gives no reader status.
 
 **Falsification**: fails if §22.8 still asserts that setting any of the three to `true` enables
@@ -131,7 +133,7 @@ Expected: exactly the declaration sites (`internal/config/types.go:485-487`), th
 (`worktree/done.go` `AutoCleanupFlag`, `worktree/new.go` `ShouldAutoMerge`, `internal/github/*`
 `AutoMerge`, `pkg/models/config.go:172`). No production read of `AutoCleanup` or `AutoMerge` appears.
 
-Baseline: this is the verbatim measured state at HEAD `7225a8b7a` — the criterion asserts the
+Baseline: this is the verbatim measured state at HEAD `d5336214e` — the criterion asserts the
 documentation now matches it.
 
 **Falsification**: fails if a production reader for `AutoCleanup` or `AutoMerge` has appeared (which
@@ -162,7 +164,7 @@ Expected: the first count is `0` (the two unimplemented names are gone), and the
 (the implemented set is named in their place). A tree where both counts are `0` fails — that is
 deletion, not correction.
 
-Baseline at HEAD `7225a8b7a`: first count `2`, second count `0`.
+Baseline at HEAD `d5336214e`: first count `2`, second count `0`.
 
 **Falsification**: fails if the two names are removed without the implemented set replacing them, or
 if the file still asserts a priority order the code does not implement.
@@ -178,7 +180,7 @@ Expected: `applyEnvOverrides` reads exactly `EnvDevelopmentMode`, `EnvLogLevel`,
 `EnvNoColor` — four overrides, no more — and the `grep -c` over `envkeys.go` prints `0` (exit 1),
 confirming neither name is declared.
 
-Baseline (verbatim, HEAD `7225a8b7a`):
+Baseline (verbatim, HEAD `d5336214e`):
 
 ```
 393:func applyEnvOverrides(cfg *Config) {
@@ -239,14 +241,20 @@ grep -nE 'config\.yaml \(main\)|Main .config\.yaml' internal/config/CLAUDE.md
 Expected: both produce no output (each exits 1). `CLAUDE.local.md` §9 describes the actual
 `sections/*.yaml` layout, and `internal/config/CLAUDE.md` no longer asserts an aggregating main file.
 
-Baseline at HEAD `7225a8b7a`:
+Baseline at HEAD `d5336214e`:
 
 ```
 $ grep -c 'config/config.yaml' CLAUDE.local.md
 2                    # :250 (§5 release checklist), :415 (§9 "Main configuration file")
 $ grep -cE 'config\.yaml \(main\)|Main .config\.yaml' internal/config/CLAUDE.md
-2                    # :5 and :11
+1                    # :11 only
 ```
+
+The second figure was mis-recorded as `2` ("`:5` and `:11`") at authoring time. Re-run at
+`d5336214e` it prints `1`, and the same command against the authoring tree `7225a8b7a` also prints
+`1` — the file is unmodified between the two, so the original `2` was never observed. The single
+match is `internal/config/CLAUDE.md:11` ("Main `config.yaml` aggregates references"), which remains
+the assertion this criterion is about.
 
 #### AC-UDD-012 (code fact) — the path is absent at both the local and the template location
 
@@ -259,7 +267,7 @@ ls .moai/config/
 Expected: both `ls` commands print `No such file or directory` and exit non-zero, and
 `ls .moai/config/` lists exactly `astgrep-rules`, `evaluator-profiles`, `sections`.
 
-Baseline (verbatim, HEAD `7225a8b7a`) — this is the measured fact the corrected prose must agree with,
+Baseline (verbatim, HEAD `d5336214e`) — this is the measured fact the corrected prose must agree with,
 and the template-path half is spec.md §A.6 drift 3:
 
 ```
@@ -303,7 +311,7 @@ Expected: the first two counts are `0` (the two false mechanism claims are gone)
 `>= 1` (the corrected text states the gate is on by default in advisory mode). A tree where all three
 are `0` fails — that is deletion, not correction.
 
-Baseline at HEAD `7225a8b7a`: `1`, `1`, `0` respectively.
+Baseline at HEAD `d5336214e`: `1`, `1`, `0` respectively.
 
 **Falsification**: fails if the false mechanism parenthetical is removed while the section still
 concludes the gate is off by default, or if the whole gate discussion is deleted from §2.2 (the
@@ -320,7 +328,7 @@ grep -n -A5 'AstGrepGate: AstGrepGateConfig' internal/config/defaults.go
 Expected: all three of §2.2's false claims are contradicted by the tree — `loadGateSection` is
 declared and called; both `gate.yaml` files exist; the compiled default is `Enabled: true`.
 
-Baseline (verbatim, HEAD `7225a8b7a`):
+Baseline (verbatim, HEAD `d5336214e`):
 
 ```
 internal/config/loader_gate.go:20:func (l *Loader) loadGateSection(dir string, cfg *Config) {
@@ -365,7 +373,7 @@ grep -n -B2 -A2 'IsGitCommit' internal/hook/pre_tool.go
 Expected: the quality gate is constructed inside an `if quality.IsGitCommit(command)` branch, so the
 scope the corrected §2.2 asserts is the scope the code implements.
 
-Baseline (HEAD `7225a8b7a`):
+Baseline (HEAD `d5336214e`):
 
 ```
 430:		if quality.IsGitCommit(command) {
@@ -398,7 +406,7 @@ Expected: step 1 (`checkSuppressionPairing` over `walkSourceFiles`) executes bef
 invocation and contains a `return false, ...` path; step 2 (`scanner.Scan`) returns `true` on
 `ErrScannerUnavailable`.
 
-Baseline (HEAD `7225a8b7a`) — the two comment banners are the content anchors:
+Baseline (HEAD `d5336214e`) — the two comment banners are the content anchors:
 
 ```
 	// ── 1. Suppression policy check (sg-independent, pure-Go) ─────────────────
@@ -422,7 +430,7 @@ Expected: count `>= 2` — the dogfood-experimental rationale for not mirroring 
 subdirectory tree, the `sgconfig.yml` `utils` ruleDir issue, and the deferral of the 16-language
 ruleset survive the rewrite. None of the five findings touches them.
 
-Baseline: count `>= 2` at HEAD `7225a8b7a` (present today). This criterion guards against the M5
+Baseline: count `>= 2` at HEAD `d5336214e` (present today). This criterion guards against the M5
 rewrite discarding correct content along with the incorrect.
 
 ### Cross-cutting
@@ -436,7 +444,7 @@ git diff --stat -- internal/template/templates/
 Expected: **no output** — `internal/template/templates/**` is untouched (NFR-UDD-002). Both target
 files are repo-local maintainer documentation and are never mirrored.
 
-Baseline: verified at HEAD `7225a8b7a` that the template tree contains exactly one `CLAUDE.md`
+Baseline: verified at HEAD `d5336214e` that the template tree contains exactly one `CLAUDE.md`
 (`internal/template/templates/CLAUDE.md`) and no `internal/template/templates/internal/` directory,
 so neither target file ships:
 
@@ -455,7 +463,7 @@ go build ./... && go vet ./... && go test -count=1 ./...
 
 Expected: exit 0 from all three.
 
-Baseline: green at HEAD `7225a8b7a` (plan.md §C pre-flight).
+Baseline: green at HEAD `d5336214e` (plan.md §C pre-flight).
 
 #### AC-UDD-023 — no test writes outside `t.TempDir()`
 

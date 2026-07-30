@@ -3,7 +3,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - Artifacts authored: `spec.md`, `plan.md`, `acceptance.md`, `progress.md`.
-- Status: `draft`. Tier M. Baseline tree: HEAD `1d4e4f7da`, branch `main`.
+- Status: `draft`. Tier M. Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`).
 - Findings F1-F8 each re-verified against this tree; drift recorded in `plan.md` §B.
 - F2, F3, and F7 reproduced by runnable probes; probe files removed after running.
 - The `report.yaml` open question is resolved in `plan.md` §B.

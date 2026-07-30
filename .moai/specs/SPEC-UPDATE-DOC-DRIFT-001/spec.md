@@ -310,23 +310,31 @@ Three discrepancies between the findings as supplied and the tree measured while
 reverses a finding; each strengthens or narrows one, and each is recorded rather than silently folded
 in.
 
-**Drift 1 — baseline HEAD is `7225a8b7a`, not `1d4e4f7da`.** The five sibling SPECs record
-verification against `main` HEAD `1d4e4f7da`. This SPEC was authored in the worktree
-`.claude/worktrees/epic-update-config` on branch `plan/epic-update-config-audit`, whose HEAD is
-`7225a8b7a`. The code delta between the two is three files:
+**Drift 1 — RESOLVED: all six SPECs now share baseline `d5336214e`.** As recorded at authoring time,
+this SPEC was written in the worktree `.claude/worktrees/epic-update-config` on branch
+`plan/epic-update-config-audit` at HEAD `7225a8b7a`, while the five sibling SPECs recorded
+verification against the divergent local branch `main` at `1d4e4f7da`. The two trees differed by
+three files:
 
 ```
-$ git diff --stat main -- internal/ .github/
  internal/cli/update_clean_install.go               | 11 ++-
  .../cli/update_clean_install_merge_notice_test.go  | 85 ++++++++++++++++++++++
  internal/hook/pre_tool.go                          | 53 ++++++++------
 ```
 
-`pre_tool.go` is the only one touching a file this SPEC cites. Its delta is a refactor — lazy
-project-root resolution via a `projectRootResolver` embed — and the `AstGrepGate` config mapping
-(`:661-672`) plus the `IsGitCommit` gating (`:430-431`) are unchanged by it. §A.1's conclusions
-therefore hold on `main` as well as in this worktree; every acceptance criterion in acceptance.md
-records the tree it was measured against.
+`pre_tool.go` was the only one touching a file this SPEC cites, and its delta was a refactor — lazy
+project-root resolution via a `projectRootResolver` embed — leaving the `AstGrepGate` config mapping
+(`:661-672`) and the `IsGitCommit` gating (`:430-431`) unchanged, so §A.1's conclusions held on both
+trees.
+
+The divergence no longer exists. The Epic branch has since been merged with `origin/main`, producing
+**baseline HEAD `d5336214e`** (`git rev-list --count HEAD..origin/main` → 0). `1d4e4f7da` is not an
+ancestor of that merge — it was a stale divergent local branch, never the trunk — while both
+`7225a8b7a` and `9426bf49b` are ancestors of `d5336214e`. All six Epic SPECs are therefore
+re-attributed to the single baseline `d5336214e`, and every acceptance criterion below records that
+tree. Every baseline figure in this SPEC was re-observed at `d5336214e`; the only change is
+AC-UDD-011's `internal/config/CLAUDE.md` count, corrected from a mis-recorded `2` to the measured
+`1` (see that criterion).
 
 **Drift 2 — F1 is false in three ways, not two.** The finding as supplied named two false halves
 (loader absent; compiled default false). Measured, `gate.yaml` **is shipped** in both the template

@@ -23,7 +23,7 @@ depends_on: [SPEC-UPDATE-DATA-SURVIVAL-001]
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 3 of 6. Findings F1-F8 each reproduced by a runnable probe against HEAD `1d4e4f7da`. |
+| 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 3 of 6. Findings F1-F8 each reproduced by a runnable probe against HEAD `d5336214e`. |
 
 ## §A Problem / Motivation
 
@@ -38,7 +38,7 @@ unable to express the thing a configuration system exists to express.
 (`internal/config/merge.go:149-152`, `if isZero(value) { continue }`). The consequence is that
 nothing can ever be turned **off** by a higher tier: an explicit `false`, `0`, `""`, or empty list
 loses to whatever the next tier down says, and ultimately to `SrcBuiltin`. Reproduced against HEAD
-`1d4e4f7da` with `SrcProject{enabled:false, count:0, name:""}` layered over
+`d5336214e` with `SrcProject{enabled:false, count:0, name:""}` layered over
 `SrcBuiltin{enabled:true, count:42, name:"default"}`:
 
 ```

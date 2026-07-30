@@ -83,7 +83,7 @@ This defect **worsens** once Defect 1 is fixed: normalization makes `V3VersionCo
 
 ### Defect 4 — `--dry-run` cannot preview any of this
 
-`internal/cli/update.go:294-304` returns from the `--dry-run` branch **before** the v2-detection block at `:306-391`. The dry-run early return inside `runCleanReinstall` (`update_clean_install.go:186-198`) is therefore unreachable from the CLI, and the `DryRun:` field passed at `update.go:338` always arrives false. A user running `moai update --dry-run` on a v2 tree sees only the legacy-skill archive summary.
+`internal/cli/update.go:294-304` returns from the `--dry-run` branch **before** the v2-detection block at `:328-413`. The dry-run early return inside `runCleanReinstall` (`update_clean_install.go:186-198`) is therefore unreachable from the CLI, and the `DryRun:` field passed at `update.go:360` always arrives false. A user running `moai update --dry-run` on a v2 tree sees only the legacy-skill archive summary.
 
 ### Defect 5 — clean-reinstall Step 4 removes without its own backup (discovered during verification)
 

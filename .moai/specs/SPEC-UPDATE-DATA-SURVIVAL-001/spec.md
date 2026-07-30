@@ -93,13 +93,13 @@ coverage is pointed at the wrong path.
 
 ### Defect 3 — the deletion radius of `~/.claude/hooks/moai` is unpinned
 
-`ensureGlobalSettingsEnv` (`internal/cli/update.go:733`) removes a directory inside the user's real
+`ensureGlobalSettingsEnv` (`internal/cli/update.go:755`) removes a directory inside the user's real
 HOME:
 
 ```go
-globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")   // update.go:742
+globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")   // update.go:764
 if _, err := os.Stat(globalHooksDir); err == nil {
-    _ = os.RemoveAll(globalHooksDir)                                        // update.go:744
+    _ = os.RemoveAll(globalHooksDir)                                        // update.go:766
 }
 ```
 
@@ -112,7 +112,7 @@ ok  github.com/modu-ai/moai-adk/internal/cli  18.305s
 ```
 
 Everything passed. Re-verified on this tree: `grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go'`
-returns **0** lines — the identifier appears only at `update.go:742-744`. This deletion is outside
+returns **0** lines — the identifier appears only at `update.go:764-766`. This deletion is outside
 the project root, unbacked, and unrecoverable, and nothing detects a widening of its radius.
 
 ### Defect 4 — `TestMoaiUpdate_PreservesUserArea` executes zero production code
