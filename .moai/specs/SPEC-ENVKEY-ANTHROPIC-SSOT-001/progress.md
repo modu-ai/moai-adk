@@ -1,6 +1,6 @@
 ---
 spec: SPEC-ENVKEY-ANTHROPIC-SSOT-001
-phase: plan
+phase: run
 ---
 
 # Progress - SPEC-ENVKEY-ANTHROPIC-SSOT-001
