@@ -75,7 +75,7 @@ All code changes must pass TRUST 5 validation.
 
 Rules:
 - Tested: 85%+ coverage, characterization tests for existing code
-- Readable: Clear naming, English comments
+- Readable: Clear naming; comments match the surrounding code's language and density (per `code_comments` setting in `.moai/config/sections/language.yaml`, default English)
 - Unified: Consistent style via the project language's formatter (gofmt, ruff/black, prettier, rustfmt, ...)
 - Secured: OWASP compliance, input validation
 - Trackable: Conventional commits, issue references
@@ -108,14 +108,7 @@ Rules:
 
 ## Tool Selection Priority
 
-Use specialized tools over general alternatives.
-
-Rules:
-- Use Read instead of cat/head/tail
-- Use Edit instead of sed/awk
-- Use Write instead of echo redirection
-- Use Grep instead of grep/rg commands
-- Use Glob instead of find/ls
+Prefer the dedicated tool over a general alternative when one is fit for purpose — it improves accuracy and reduces round-trip latency. The canonical tool-by-task table lives in `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (that table is the single source of truth; this section intentionally carries no duplicate list).
 
 ## Error Handling Protocol
 
