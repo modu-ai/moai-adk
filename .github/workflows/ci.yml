@@ -143,13 +143,18 @@ jobs:
       # which parses `if [ ... ]; then` as a syntax error and fails the job before
       # any test runs. Every step in this job that uses POSIX shell syntax must
       # declare it explicitly (issue #1225).
+      #
+      # `shell: bash` also turns on `-o pipefail`, which the previous form of this
+      # check could not survive: grep exits 1 when it matches nothing, and matching
+      # nothing is exactly the passing state here. Capturing the matches once and
+      # testing for emptiness keeps the check independent of grep's exit code.
       - name: Assert zero exec.Command in MX validator (AC-UTIL-001-04)
         shell: bash
         run: |
-          count=$(grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" | wc -l)
-          if [ "$count" -ne "0" ]; then
+          matches=$(grep -rn "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" || true)
+          if [ -n "$matches" ]; then
             echo "FAIL: exec.Command found in internal/hook/mx/ (AC-UTIL-001-04):"
-            grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/"
+            echo "$matches"
             exit 1
           fi
           echo "PASS: zero exec.Command in internal/hook/mx/ (AC-UTIL-001-04)"
