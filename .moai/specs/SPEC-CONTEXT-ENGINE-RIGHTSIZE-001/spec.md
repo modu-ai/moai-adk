@@ -2,9 +2,9 @@
 id: SPEC-CONTEXT-ENGINE-RIGHTSIZE-001
 title: "Context Engine Rightsizing — Anthropic 6-Principle Alignment (Conservative B-Group Only)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-28
-updated: 2026-07-28
+updated: 2026-07-30
 author: manager-spec
 priority: P2
 phase: "v3.x"
