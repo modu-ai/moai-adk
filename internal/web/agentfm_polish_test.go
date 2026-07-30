@@ -139,34 +139,34 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 // (post-close polish round 3).
 func TestAgentFMTierSortOrder(t *testing.T) {
 	root := t.TempDir()
-	// Seed one agent from each tier present in .claude/agents/moai/.
-	// 🔴 manager-spec, 🔴 plan-auditor, 🟠 manager-develop, 🔵 manager-docs.
-	seedAgentFMFile(t, root, "moai", "manager-spec", "", "")
-	seedAgentFMFile(t, root, "moai", "plan-auditor", "", "")
-	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
-	seedAgentFMFile(t, root, "moai", "manager-docs", "", "")
+	// Seed agents with distinct models so the model-derived sort order applies:
+	// opus (manager-spec, plan-auditor) before sonnet (manager-git) before
+	// inherit (manager-docs).
+	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "")
+	seedAgentFMFile(t, root, "moai", "plan-auditor", "opus", "")
+	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "")
+	seedAgentFMFile(t, root, "moai", "manager-docs", "inherit", "")
 	body := renderAgentFMBody(t, root)
 
-	// Red agents before orange before blue.
-	// Use the form field name anchor (agentfm.<name>.model) to find document positions.
+	// opus before sonnet before inherit.
 	specPos := strings.Index(body, `agentfm.manager-spec.model`)
 	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
-	devPos := strings.Index(body, `agentfm.manager-develop.model`)
+	gitPos := strings.Index(body, `agentfm.manager-git.model`)
 	docsPos := strings.Index(body, `agentfm.manager-docs.model`)
-	if specPos < 0 || auditorPos < 0 || devPos < 0 || docsPos < 0 {
-		t.Fatalf(`agent row anchors not found in render (spec=%d auditor=%d dev=%d docs=%d)`, specPos, auditorPos, devPos, docsPos)
+	if specPos < 0 || auditorPos < 0 || gitPos < 0 || docsPos < 0 {
+		t.Fatalf(`agent row anchors not found in render (spec=%d auditor=%d git=%d docs=%d)`, specPos, auditorPos, gitPos, docsPos)
 	}
-	// Red (manager-spec, plan-auditor) must come before orange (manager-develop).
-	if devPos < specPos || devPos < auditorPos {
-		t.Errorf(`orange agent (manager-develop pos=%d) must come AFTER red agents (manager-spec pos=%d, plan-auditor pos=%d)`, devPos, specPos, auditorPos)
+	// opus (manager-spec, plan-auditor) must come before sonnet (manager-git).
+	if gitPos < specPos || gitPos < auditorPos {
+		t.Errorf(`sonnet agent (manager-git pos=%d) must come AFTER opus agents (manager-spec pos=%d, plan-auditor pos=%d)`, gitPos, specPos, auditorPos)
 	}
-	// Orange (manager-develop) must come before blue (manager-docs).
-	if docsPos < devPos {
-		t.Errorf(`blue agent (manager-docs pos=%d) must come AFTER orange agent (manager-develop pos=%d)`, docsPos, devPos)
+	// sonnet (manager-git) must come before inherit (manager-docs).
+	if docsPos < gitPos {
+		t.Errorf(`inherit agent (manager-docs pos=%d) must come AFTER sonnet agent (manager-git pos=%d)`, docsPos, gitPos)
 	}
-	// Alphabetical within same tier (red): manager-spec before plan-auditor.
+	// Alphabetical within same model (opus): manager-spec before plan-auditor.
 	if auditorPos < specPos {
-		t.Errorf(`within red tier, manager-spec (pos=%d) should come before plan-auditor (pos=%d) alphabetically`, specPos, auditorPos)
+		t.Errorf(`within opus model, manager-spec (pos=%d) should come before plan-auditor (pos=%d) alphabetically`, specPos, auditorPos)
 	}
 }
 

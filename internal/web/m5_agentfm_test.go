@@ -17,30 +17,30 @@ import (
 // agent's effort file). M1 supplied TierForAgent/TierColor/TierSuggestedModelEffort;
 // M5 wires them into the agentFMRow render.
 
-// TestM5AgentTierBadgeAll20Agents verifies AC-WC-005: every catalog agent gets a
-// non-custom tier badge from the name-keyed lookup table, with the distribution
-// 🔴×4 / 🟠×4 / 🔵×5 / 🩵×7 (design.md §C).
-func TestM5AgentTierBadgeAll20Agents(t *testing.T) {
-	counts := map[string]int{}
-	total := 0
-	for name := range v4manifest.AllAgentTiers() {
-		total++
-		b := agentTierBadge(name, "", "") // empty model/effort = no override sentinel
+// TestM5AgentTierBadgeModelGlyphMap verifies the badge is model-derived: each
+// model tier maps to its glyph (opus → 🔴, sonnet → 🟠, haiku → 🔵, inherit → 🩵)
+// and every model yields a non-custom badge.
+func TestM5AgentTierBadgeModelGlyphMap(t *testing.T) {
+	cases := []struct {
+		model string
+		glyph string
+	}{
+		{v4manifest.ModelOpus, "🔴"},
+		{v4manifest.ModelSonnet, "🟠"},
+		{v4manifest.ModelHaiku, "🔵"},
+		{v4manifest.ModelInherit, "🩵"},
+	}
+	for _, tc := range cases {
+		b := agentTierBadge("any-agent", tc.model, "")
 		if !b.HasBadge {
-			t.Errorf("agent %q: expected a tier badge, got none (EC-6 unmapped?)", name)
+			t.Errorf("model=%s: expected a badge, got none", tc.model)
 			continue
 		}
 		if b.IsCustom {
-			t.Errorf("agent %q: unexpected custom badge (no max/inherit override set)", name)
+			t.Errorf("model=%s: unexpected custom badge (no max effort set)", tc.model)
 		}
-		counts[b.Glyph]++
-	}
-	if total != 20 {
-		t.Errorf("catalog agent count = %d, want 20", total)
-	}
-	for glyph, want := range map[string]int{"🔴": 4, "🟠": 4, "🔵": 5, "🩵": 7} {
-		if got := counts[glyph]; got != want {
-			t.Errorf("tier glyph %q: %d agents, want %d", glyph, got, want)
+		if b.Glyph != tc.glyph {
+			t.Errorf("model=%s: glyph = %q, want %q", tc.model, b.Glyph, tc.glyph)
 		}
 	}
 }
