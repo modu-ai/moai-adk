@@ -175,7 +175,13 @@ func InitDependencies() {
 	// @MX:NOTE: [AUTO] goplsBridge (loop layer) and lsphook LSP client (hook layer) are
 	// separate paths. The former populates Feedback.Diagnostics; the latter handles the PostTool hook.
 	fallbackDiags := lsphook.NewFallbackDiagnosticsWithCircuitBreaker(lspCircuitBreaker)
-	if goplsBridge == nil {
+	// Report a missing bridge only when it is a degradation. lsp.gopls_bridge.enabled
+	// defaults to false (gopls/config.go DefaultConfig), so a project without that
+	// block is in its intended state, not a failed one — warning there put an
+	// unactionable line on every operator-facing command. A load error or a failed
+	// initialization is a real degradation and already warned above; the branch
+	// below covers an enabled-but-nil bridge, which nothing else reports.
+	if goplsBridge == nil && cfgErr == nil && goplsCfg.Enabled {
 		slog.Warn("gopls bridge disabled — quality gates fall back to CLI tools only",
 			"impact", "gopls-backed diagnostics are disabled; phase-aware LSP gates bypassed",
 			"fallback", "go vet, go test, golangci-lint, ast-grep",
