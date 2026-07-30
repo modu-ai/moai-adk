@@ -272,13 +272,13 @@ claude        # launch Claude Code inside the project
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
 | `moai update` | 更新到最新版本（支持自动回滚） |
 | `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合 Claude 领导 + GLM worker 会话 |
-| `moai worktree <new|list|switch|sync|remove|clean|go>` | Git worktree 管理并行 SPEC 开发 |
-| `moai session <list|register|current>` | 多会话协调 |
-| `moai spec <audit|archive|lint|list|new>` | SPEC 生命周期工具 |
-| `moai goal <arm|status|clear>` | Goal 引擎 CLI |
-| `moai harness <status|apply|rollback|disable>` | Harness 学习生命周期 |
-| `moai handoff <save|list>` | 会话交接记录 |
-| `moai preference <list|decay-scan|toggle>` | 决策记忆管理 |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | Git worktree 管理并行 SPEC 开发 |
+| `moai session <list\|register\|current>` | 多会话协调 |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
+| `moai goal <arm\|status\|clear>` | Goal 引擎 CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | Harness 学习生命周期 |
+| `moai handoff <save\|list>` | 会话交接记录 |
+| `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai web` | Web Console — 6 标签设置控制台 |
 
 > 全部 36 个命令：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)

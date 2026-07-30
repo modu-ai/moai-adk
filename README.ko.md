@@ -266,13 +266,13 @@ claude        # 프로젝트 안에서 Claude Code 실행
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
 | `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
 | `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 Claude 리더 + GLM 워커 세션 |
-| `moai worktree <new|list|switch|sync|remove|clean|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
-| `moai session <list|register|current>` | 멀티 세션 조율 |
-| `moai spec <audit|archive|lint|list|new>` | SPEC 라이프사이클 도구 |
-| `moai goal <arm|status|clear>` | Goal 엔진 CLI |
-| `moai harness <status|apply|rollback|disable>` | 하네스 학습 라이프사이클 |
-| `moai handoff <save|list>` | 세션 핸드오프 기록 |
-| `moai preference <list|decay-scan|toggle>` | 결정 메모리 관리 |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
+| `moai session <list\|register\|current>` | 멀티 세션 조율 |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
+| `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
+| `moai handoff <save\|list>` | 세션 핸드오프 기록 |
+| `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
 | `moai web` | Web Console — 6탭 설정 콘솔 |
 
 > 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)

@@ -270,13 +270,13 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai status` | Project status summary (Git branch, quality metrics) |
 | `moai update` | Update to latest version (auto-rollback supported) |
 | `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid Claude leader + GLM worker sessions |
-| `moai worktree <new|list|switch|sync|remove|clean|go>` | Git worktree management for parallel SPEC development |
-| `moai session <list|register|current>` | Multi-session coordination |
-| `moai spec <audit|archive|lint|list|new>` | SPEC lifecycle tools |
-| `moai goal <arm|status|clear>` | Goal engine CLI |
-| `moai harness <status|apply|rollback|disable>` | Harness learning lifecycle |
-| `moai handoff <save|list>` | Session handoff records |
-| `moai preference <list|decay-scan|toggle>` | Decision memory management |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | Git worktree management for parallel SPEC development |
+| `moai session <list\|register\|current>` | Multi-session coordination |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
+| `moai goal <arm\|status\|clear>` | Goal engine CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
+| `moai handoff <save\|list>` | Session handoff records |
+| `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai web` | Web Console — 6-tab settings console |
 
 > Full 36 commands: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
