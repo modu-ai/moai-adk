@@ -1,6 +1,6 @@
 # SPEC-UPDATE-REINSTALL-LOOP-002 — Implementation Plan
 
-Version: 0.1.0 · Status: draft · Tier: M
+Version: 0.2.0 · Status: draft · Tier: M
 
 > Sections are ordered by decision-reversibility. §A carries the two decisions most likely to change under review; §B..§D are the mechanical consequences; milestones (§E) follow execution order.
 
@@ -13,13 +13,19 @@ Version: 0.1.0 · Status: draft · Tier: M
 1. `strings.TrimSpace`
 2. strip at most one leading `v` or `V`
 3. parse the leading run of digits as the major version
-4. classify: `major >= 3` → v3-confirmed · `major == 2` → Signal 1 positive · any other parseable major → negative, no override · unparseable / empty / absent → Signal 1 positive, no override
+4. classify, in this order:
+   - `major >= 3` → v3-confirmed (prefix irrelevant — `v3.0.1`, `3.0.1`, `V3.0.1`, `v4.0.0`, `4.0.0` all qualify)
+   - `major == 2` **and the original string carried a leading `v` or `V`** → Signal 1 positive, no override
+   - `system.yaml` absent, unreadable, or unparseable **as YAML**, or `moai.version` empty → Signal 1 positive, no override
+   - everything else in a well-formed file — a parseable major that is neither 2 nor ≥3, a **bare** (unprefixed) major-2 string, or a string with no leading numeric run at all — → Signal 1 negative, no override
 
 **Why `>= 3` and not `== 3`.** A `v4.0.0` project is not a v2 project. Pinning equality reproduces the identical bug one major version later — the matrix in spec.md §A shows `v4.0.0` and `4.0.0` both classifying `IsV2=true` today. `>= 3` is the forward-safe form.
 
 **Why major-only, ignoring prerelease and build metadata.** The signal being answered is "is this project on the v3 template era", which is a major-version question. `3.0.0-rc13` is a v3 project. Full semver comparison would add ordering semantics no caller needs.
 
-**Why an unparseable version stays Signal-1 positive.** This preserves the existing broader-detection posture (an absent or drifted `system.yaml` is evidence of a partial migration). Flipping it to negative would be a silent behaviour widening in the false-negative direction, which NFR-RIL2-001 forbids.
+**Why the bare `2.x` form is excluded from the Signal-1-positive branch.** This is the one asymmetry in the rule and it is deliberate. On a residue-free project, `2.5.0` and `V2.5.0` are `IsV2=false` today (observed — spec.md §A, residue-free table); admitting them on major alone flips them to `true` and routes a project with no legacy residue into the destructive full reinstall. NFR-RIL2-001 forbids exactly that movement and takes no exception. The v3 side has no such constraint, which is why REQ-RIL2-007 *does* accept bare `3.0.1`: widening v3-confirmed narrows the destructive path. The practical cost is nil — a genuine v2 project carries v2 residue by definition, so Signals 2/3 catch it whatever its version string says.
+
+**Why "unparseable" means the file, not the major digits.** An absent, unreadable, or YAML-invalid `system.yaml` stays Signal-1 positive: that preserves the existing broader-detection posture, since a drifted config file is itself evidence of a partial migration. A *well-formed* file carrying an unrecognized string (`abc`, `3`, `1.9.0`) is a different case and stays **negative**, exactly as the current `default:` branch does. Conflating the two would make `abc` Signal-1 positive and widen a residue-free project from `IsV2=false` to `true` — the same NFR-RIL2-001 violation as the bare-`2.x` case, arriving through a wording ambiguity rather than a design choice. AC-RIL2-003 carries `abc` in its input set for this reason.
 
 **Why a parseable non-2, non-3+ major is negative-with-no-override.** It reproduces today's `default:` branch exactly, and it leaves a version string available for tests that need Signal 1 neutral so they can isolate Signals 2/3 — which REQ-RIL2-009 depends on.
 
@@ -43,7 +49,9 @@ Excluding deprecated paths from the PRESERVE inventory (REQ-RIL2-010) removes th
 
 Today the 9 intersecting paths are incidentally protected by the resurrection bug itself. Removing the resurrection without adding the backup would turn a no-op into unbacked-up deletion of user-authored `.claude/commands/agency/*.md`. The two halves ship together in M2.
 
-## §C Known issues in the current tree (verified 2026-07-31)
+## §C Known issues in the current tree
+
+Verified 2026-07-31. **Baseline**: code baseline `d5336214e`; worktree HEAD `5468a4afc` (branch `plan/epic-update-config-audit`), a descendant of `d5336214e` that changes SPEC documents only — `git merge-base --is-ancestor d5336214e HEAD` exits 0, and `git rev-list --count HEAD..origin/main` is `0`. Every row below was re-run against `5468a4afc`.
 
 | Claim | Location | Verified |
 |---|---|---|
@@ -57,8 +65,14 @@ Today the 9 intersecting paths are incidentally protected by the resurrection bu
 | GoReleaser injects bare version | `.goreleaser.yml:22` | yes |
 | `GetFullVersion` applies no normalization | `pkg/version/version.go:29-30` | yes |
 | Banner always renders a `v` | `internal/cli/uikit/banner.go:100` | yes |
+| Agency-migration pre-step block sits at `:406-412` (not `:384-390`) | `grep -n 'fpErr == nil && !fingerprint.IsV2 && isMoAIProject' internal/cli/update.go` → `406:` | yes |
+| Deny-rule migration (`stripRetiredV2DenyEntries`) sits between the dry-run return and the v2 block | `update.go:306-326`, call at `:323`; dry-run return `:293-304`; v2 block `{`…`}` at `:334-413` | yes |
+| Residue-free `2.5.0` / `V2.5.0` classify `IsV2=false` today | probe over `probeVersionSignal` + `detectV2Fingerprint` | yes |
+| Residue-free `abc` classifies Signal 1 **negative** today | same probe | yes |
+| Residue-carrying fixture yields `IsV2=true` for every non-v3-confirmed row | same probe, `residue=true` arm | yes |
+| `moai spec lint` reports 0 findings for this SPEC | `moai spec lint` → `0 error(s), 62 warning(s)`, none naming `SPEC-UPDATE-REINSTALL-LOOP-002` | yes |
 
-No claimed file:line failed to match.
+No claimed file:line failed to match. The single misattribution found by plan-audit (M3's `:384-390`) is corrected in §E M3.
 
 ## §D Constraints
 
@@ -75,9 +89,9 @@ No claimed file:line failed to match.
 Touches `internal/cli/v2_detection.go` (`probeVersionSignal`), plus a new table-driven test file.
 
 - Implement the D1 rule. Keep the returned diagnostic strings informative — they surface in telemetry and `--dry-run`.
-- Add the seven-row table-driven test (REQ-RIL2-008) asserting both `IsV2` and `V3VersionConfirmed` per row.
+- Add the nine-row table-driven test (REQ-RIL2-008) asserting `Signal 1`, `IsV2`, and `V3VersionConfirmed` per row. The `Signal 1` column is load-bearing: on the residue-carrying fixture the `IsV2` column is `true` for every non-v3-confirmed row, so `IsV2` alone cannot detect a Signal-1 regression.
 - Migrate the `TestUpdate_ZeroNetChange_DesignDirNoLongerTriggersLoop` fixture (REQ-RIL2-009): its current `3.0.0-rc13` string becomes v3-confirmed under D1, so the test would pass through the override instead of isolating Signal 3. Replace with a version whose major is neither 2 nor ≥3.
-- Add the monotonicity assertion for NFR-RIL2-001.
+- Add the monotonicity assertion for NFR-RIL2-001, on a **residue-free** fixture and over an input set that includes `2.5.0`, `V2.5.0`, and `abc`. Built on the residue-carrying fixture the assertion is vacuous; without those three inputs it cannot observe the two ways the rule can widen (bare major-2, and "unparseable" read as "major digits unparseable").
 
 Priority: High. Blocks M3.
 
@@ -95,7 +109,9 @@ Priority: High. The two halves must land in one commit — see §B.
 
 ### M3 — Residue cleanup for v3-confirmed projects
 
-Touches `internal/cli/update.go` (the `fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd)` block at `:384-390`).
+Touches `internal/cli/update.go` (the `fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd)` block at `:406-412`).
+
+> Locate the block by its condition token `fpErr == nil && !fingerprint.IsV2 && isMoAIProject`, not by line number — the line number is a convenience, the token is the anchor. Confirmed at `:406` on the current tree (`grep -n 'fpErr == nil && !fingerprint.IsV2 && isMoAIProject' internal/cli/update.go` → `406:`).
 
 - Extend that block with a deprecated-path sweep: `scanDeprecatedPaths` → `backupDeprecatedPaths` → remove (REQ-RIL2-019).
 - Do not add snapshot, wipe, or redeploy (REQ-RIL2-020); leave the agency migration pre-step in place (REQ-RIL2-021).
@@ -107,9 +123,14 @@ Priority: High. Depends on M1 (the override population widens) and on M2 (reuses
 
 Touches `internal/cli/update.go` (dry-run branch ordering).
 
-- Move the dry-run early return to after the v2-detection block, or hoist detection above it, so `runCleanReinstall`'s dry-run branch and the residue-cleanup plan are both reachable (REQ-RIL2-024, REQ-RIL2-025).
+**`--dry-run` must never mutate the filesystem. The reachability fix works by making the already-implemented non-mutating renderer reachable — never by relocating the early return.**
+
+- **Hoist the detection above the dry-run branch.** Compute the v2 fingerprint (and the residue-cleanup decision) *before* the `--dry-run` early return at `:293-304`, then have that branch render the resulting plan and return. `runCleanReinstall` already contains the non-mutating renderer — `if opts.DryRun { … return result, nil }` at `update_clean_install.go:186-198`, which prints the plan (`scanDeprecatedPaths` at `:189`) and performs no mutation — and `update.go:360` already wires `DryRun: getBoolFlag(cmd, "dry-run")` into it. The renderer is unreachable today only because the CLI returns first. Nothing new needs to be written to satisfy REQ-RIL2-024 / REQ-RIL2-025; the plumbing has to reach the code that exists.
+- **Rejected option — moving the dry-run early return to after the v2-detection block.** This was listed as an equal alternative in v0.1.0 and is now dropped as a confirmed defect. `update.go:306-326` sits between the dry-run early return and the v2-detection block, and calls `stripRetiredV2DenyEntries(cwd, out)`, which rewrites `settings.json`. Relocating the return past that block would make `moai update --dry-run` write to disk, violating REQ-RIL2-026 and AC-RIL2-014. The code's own comment at `:312-313` states the placement is deliberate — *"after the --binary / --dry-run early-returns (so a dry run never mutates)"* — so the rejected option reverses an invariant the source explicitly asserts. Any implementation that moves that return is wrong regardless of whether a test happens to catch it.
 - Assert zero mutation via a tree-hash comparison (REQ-RIL2-026).
-- Keep the legacy-skill archive summary and worktree advisory (REQ-RIL2-027).
+- Keep the legacy-skill archive summary and worktree advisory (REQ-RIL2-027). Both are emitted from the dry-run branch today — `emitWorktreeAdvisory(out, cwd)` at `update.go:302` and `dryRunArchiveLegacySkills(cwd, out)` at `:303` — so hoisting detection above the branch must not displace either call.
+
+> Consistency note: the sibling `SPEC-UPDATE-DOC-DRIFT-001` settles its own `--dry-run` handling the same way (make the existing non-mutating renderer reachable). Neither SPEC may propose a `--dry-run` path that writes.
 
 Priority: Medium. Depends on M2 and M3 for the plan lines it must print.
 

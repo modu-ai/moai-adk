@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-REINSTALL-LOOP-002
 title: "moai update — end the release-user clean-reinstall loop (semver-normalized v2/v3 detection, deprecated-path exclusion from PRESERVE, residue cleanup, dry-run reachability)"
-version: 0.1.0
+version: 0.2.0
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -24,6 +24,7 @@ related_specs: [SPEC-UPDATE-REINSTALL-LOOP-001, SPEC-V3R6-V2-V3-CLEAN-REINSTALL-
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 1 of 6. |
+| 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D5). REQ-RIL2-003 narrowed to prefixed forms so it no longer conflicts with NFR-RIL2-001; §A Defect 1 gains the residue-free widening table and the `2.5.0` / `V2.5.0` rows; §G risk row 2 rewritten; REQ-RIL2-021 and NFR-RIL2-004 gain binding AC coverage. |
 
 ## §A Problem / Motivation
 
@@ -39,17 +40,34 @@ The loop nevertheless persists for **released** users, driven by two further cau
 case strings.HasPrefix(v, "v3."):
 ```
 
-Observed matrix (probe run against a tree carrying one `.agency/` directory, varying only the version string; `dep=true` is the pre-existing residue, not a new signal):
+Observed matrix (probe run against a tree carrying one `.agency/` directory, varying only the version string; `dep=true` is the pre-existing residue, not a new signal). `Signal 1` is `probeVersionSignal`'s first return value; `IsV2` is the composed fingerprint verdict:
 
-| `moai.version` | `IsV2` | `V3VersionConfirmed` |
-|---|---|---|
-| `v3.0.1` | false | true |
-| `3.0.1` | **true** | false |
-| `V3.0.1` | **true** | false |
-| `v4.0.0` | **true** | false |
-| `4.0.0` | **true** | false |
-| `""` | true | false |
-| `v2.5.0` | true | false |
+| `moai.version` | `Signal 1` | `IsV2` | `V3VersionConfirmed` |
+|---|---|---|---|
+| `v3.0.1` | false | false | true |
+| `3.0.1` | false | **true** | false |
+| `V3.0.1` | false | **true** | false |
+| `v4.0.0` | false | **true** | false |
+| `4.0.0` | false | **true** | false |
+| `""` | true | true | false |
+| `v2.5.0` | true | true | false |
+| `2.5.0` | false | true | false |
+| `V2.5.0` | false | true | false |
+
+#### The residue-free tree is where the widening hazard is visible
+
+On the residue-carrying fixture above, `IsV2` is `true` for every non-v3-confirmed row, because Signals 2/3 dominate. That column therefore **cannot** discriminate a Signal-1 change, and a monotonicity guard built on that fixture is vacuous. The same probe run against an otherwise-empty project (no `.agency/`, no deprecated paths — only `system.yaml`) isolates Signal 1:
+
+| `moai.version` | `Signal 1` | `IsV2` (today) | `IsV2` if `major == 2` alone made Signal 1 positive |
+|---|---|---|---|
+| `v2.5.0` | true | true | true (unchanged) |
+| `2.5.0` | **false** | **false** | **true — widened** |
+| `V2.5.0` | **false** | **false** | **true — widened** |
+| `abc` | false | false | **true — widened**, if "unparseable" is read as "major digits unparseable" |
+| `1.9.0` | false | false | false |
+| `3` | false | false | false |
+
+The last two columns are why REQ-RIL2-003 is scoped to `v`/`V`-prefixed forms (see §D.1). A bare `2.5.0` on a residue-free tree is `IsV2=false` today; making the bare form Signal-1 positive would flip it to `true` and send a project with no legacy residue into the destructive full reinstall — precisely what NFR-RIL2-001 forbids.
 
 Release binaries record the **no-`v`** form. `.goreleaser.yml:22` injects `-X …/pkg/version.Version={{.Version}}`; GoReleaser's `.Version` is the git tag with the leading `v` stripped. Issue #1243's reporter pasted `moai-adk: 3.0.1 (b7a98fb88, built …)` — the raw `GetFullVersion()` output (`pkg/version/version.go:29-30`), which applies no normalization. Local `make build` derives the version from `git describe`, which **keeps** the `v`, so maintainers never reproduce it.
 
@@ -130,12 +148,15 @@ Today the 9 intersecting paths are incidentally protected by the PRESERVE snapsh
 
 - **REQ-RIL2-001** — The version probe shall normalize `moai.version` before comparison by trimming surrounding whitespace, removing at most one leading `v` or `V`, and parsing the leading numeric component as the major version.
 - **REQ-RIL2-002** — **Where** the normalized major version is 3 or greater, the version probe shall report the project as v3-confirmed.
-- **REQ-RIL2-003** — **Where** the normalized major version is exactly 2, the version probe shall report Signal 1 positive and shall not report v3-confirmed.
-- **REQ-RIL2-004** — **When** `system.yaml` is absent, unreadable, unparseable, or carries an empty `moai.version`, the version probe shall report Signal 1 positive and shall not report v3-confirmed, preserving the existing broader-detection behaviour.
+- **REQ-RIL2-003** — **Where** the normalized major version is exactly 2 **and** the original string carried a leading `v` or `V`, the version probe shall report Signal 1 positive and shall not report v3-confirmed.
+  - **Prefix scope is deliberate, not an oversight.** A bare `2.x` (no prefix) is Signal-1 **negative** today and stays negative — see REQ-RIL2-006. Making the bare form positive would flip a residue-free project from `IsV2=false` to `IsV2=true`, which NFR-RIL2-001 forbids (§A, residue-free table). The asymmetry against REQ-RIL2-007 (which does accept the bare `3.0.1`) is intentional: widening *v3-confirmed* narrows the destructive path, whereas widening *Signal 1* broadens it. Only the second direction is constrained.
+  - **Cost of the narrowing is nil in practice.** A genuine v2 project is v2 precisely because it carries v2 residue, so Signals 2/3 detect it regardless of the version string. The narrowing removes only the case "bare `2.x` version with no residue whatsoever", which is not a v2 project in any observable sense.
+  - **Rejected alternative:** granting NFR-RIL2-001 an explicit exception for `major == 2` and letting the bare form be Signal-1 positive. Rejected because it converts a monotonicity invariant into a case-by-case judgement, and because the input it admits (residue-free bare `2.x`) is the exact shape of the false positive that triggers a destructive reinstall.
+- **REQ-RIL2-004** — **When** `system.yaml` is absent, unreadable, or unparseable as YAML, or carries an empty `moai.version`, the version probe shall report Signal 1 positive and shall not report v3-confirmed, preserving the existing broader-detection behaviour. "Unparseable" here means the *file* fails to parse; a well-formed file carrying an unrecognized version string is governed by REQ-RIL2-006, not by this requirement.
 - **REQ-RIL2-005** — **Where** the version string carries a prerelease or build suffix (`3.0.1-rc13`, `3.0.0+build.5`), the version probe shall classify it by its major component alone.
-- **REQ-RIL2-006** — **When** the normalized major version is parseable and neither 2 nor 3-or-greater, the version probe shall report Signal 1 negative and shall not report v3-confirmed, so that Signals 2 and 3 decide.
+- **REQ-RIL2-006** — **When** a well-formed `system.yaml` carries a non-empty `moai.version` that REQ-RIL2-002 and REQ-RIL2-003 do not claim — a parseable major that is neither 2 nor 3-or-greater, a bare (unprefixed) major-2 string, or a string whose leading component is not numeric at all — the version probe shall report Signal 1 negative and shall not report v3-confirmed, so that Signals 2 and 3 decide. This reproduces the current `default:` branch of `probeVersionSignal` (`internal/cli/v2_detection.go:205-207`, inside the `switch` at `:192-208`) exactly, and is the clause that keeps NFR-RIL2-001 satisfiable without exception.
 - **REQ-RIL2-007** — The version probe shall treat `v3.0.1`, `3.0.1`, `V3.0.1`, `v4.0.0`, and `4.0.0` as equivalent v3-confirmed inputs.
-- **REQ-RIL2-008** — The regression suite shall exercise the classification as a table-driven test over at least the seven version strings enumerated in §A Defect 1, asserting both `IsV2` and `V3VersionConfirmed` per row.
+- **REQ-RIL2-008** — The regression suite shall exercise the classification as a table-driven test over at least the nine version strings enumerated in the §A Defect 1 residue-carrying matrix, asserting `Signal 1`, `IsV2`, and `V3VersionConfirmed` per row.
 - **REQ-RIL2-009** — The fixture of `TestUpdate_ZeroNetChange_DesignDirNoLongerTriggersLoop` shall be migrated to a version string that still yields a negative Signal 1 without a v3 override, so the test continues to isolate Signal 3 rather than passing through the widened override.
 
 ### D.2 Deprecated-path exclusion from PRESERVE
@@ -170,7 +191,8 @@ Today the 9 intersecting paths are incidentally protected by the PRESERVE snapsh
 
 ## §E Non-Functional Constraints
 
-- **NFR-RIL2-001** — Classification changes shall not widen the destructive path: no input that classifies as non-v2 today shall classify as v2 after the change.
+- **NFR-RIL2-001** — Classification changes shall not widen the destructive path: no input that classifies as non-v2 today shall classify as v2 after the change. **This constraint admits no exception**; where it collided with REQ-RIL2-003, the requirement was narrowed rather than the constraint relaxed (§D.1). The comparison shall be evaluated on a **residue-free** project fixture, because a fixture carrying `.agency/` or deprecated paths yields `IsV2=true` under both the old and the new rule for every non-v3-confirmed input, making the comparison vacuous (§A, residue-free table).
+  - **One-directional by design.** The reverse movement is permitted and is the point of REQ-RIL2-002 / REQ-RIL2-007: an input that classifies as v2 today MAY classify as non-v2 after the change.
 - **NFR-RIL2-002** — All new tests shall use `t.TempDir()` and shall not write into the project root.
 - **NFR-RIL2-003** — No file under `internal/template/templates/**` shall be added or modified.
 - **NFR-RIL2-004** — Go conventions: `snake_case.go` filenames, `fmt.Errorf("…: %w", err)` wrapping, English comments and godoc.
@@ -178,7 +200,7 @@ Today the 9 intersecting paths are incidentally protected by the PRESERVE snapsh
 
 ## §F Success Criteria
 
-- The seven-row version matrix classifies as specified, verified by an executed table-driven test.
+- The nine-row version matrix classifies as specified, verified by an executed table-driven test, and the residue-free monotonicity comparison reports no widened input.
 - A clean-reinstall on a tree containing `.claude/commands/agency/brief.md` leaves that path absent after the cycle completes, with a backup copy on disk.
 - Two consecutive `moai update` runs on a residue-carrying v3 project report zero removals on the second.
 - `moai update --dry-run` prints a removal-count line and leaves the tree hash unchanged.
@@ -188,8 +210,8 @@ Today the 9 intersecting paths are incidentally protected by the PRESERVE snapsh
 
 | Risk | Direction | Bound |
 |---|---|---|
-| Normalization misclassifies a genuine v2 project as v3 | False negative — needed migration skipped | REQ-RIL2-003 pins major 2; the table-driven test asserts the `v2.5.0` row |
-| Normalization misclassifies a v3 project as v2 | False positive — destructive reinstall | NFR-RIL2-001 monotonicity assertion; every matrix row asserts `IsV2` explicitly |
+| Normalization misclassifies a genuine v2 project as v3 | False negative — needed migration skipped | REQ-RIL2-003 pins prefixed major 2; the table-driven test asserts the `v2.5.0` row. A bare `2.x` deliberately falls to REQ-RIL2-006 (Signal 1 negative), where Signals 2/3 still detect the residue every genuine v2 project carries |
+| Normalization misclassifies a v3 project as v2 | False positive — destructive reinstall | NFR-RIL2-001 monotonicity assertion, evaluated on a **residue-free** fixture (AC-RIL2-003). The residue-carrying matrix rows do NOT bound this risk — every non-v3-confirmed row is `IsV2=true` there under both rules, so the assertion would be vacuous. The input set explicitly includes `2.5.0`, `V2.5.0`, and `abc`, the three shapes that a careless `major == 2` or "unparseable ⇒ positive" reading would widen |
 | Exclusion opens unbacked-up deletion of user commands | Data loss | REQ-RIL2-015/016 make backup a precondition of deletion in the same change set |
 | Residue cleanup becomes a second destructive path | Data loss | REQ-RIL2-020 forbids snapshot/wipe/redeploy; REQ-RIL2-019 mandates backup |
 | Widened override silently voids an existing test's intent | Undetected regression | REQ-RIL2-009 migrates the fixture explicitly |
