@@ -266,13 +266,13 @@ claude        # launch Claude Code inside the project
 | `moai status` | プロジェクト状態要約（Git ブランチ、品質指標） |
 | `moai update` | 最新版へアップデート（自動ロールバック対応） |
 | `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッド Claude リーダー + GLM ワーカーセッション |
-| `moai worktree <new|list|switch|sync|remove|clean|go>` | 並列 SPEC 開発用 Git worktree 管理 |
-| `moai session <list|register|current>` | マルチセッション調整 |
-| `moai spec <audit|archive|lint|list|new>` | SPEC ライフサイクルツール |
-| `moai goal <arm|status|clear>` | Goal エンジン CLI |
-| `moai harness <status|apply|rollback|disable>` | harness 学習ライフサイクル |
-| `moai handoff <save|list>` | セッションハンドオフ記録 |
-| `moai preference <list|decay-scan|toggle>` | 決定メモリ管理 |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 並列 SPEC 開発用 Git worktree 管理 |
+| `moai session <list\|register\|current>` | マルチセッション調整 |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクルツール |
+| `moai goal <arm\|status\|clear>` | Goal エンジン CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | harness 学習ライフサイクル |
+| `moai handoff <save\|list>` | セッションハンドオフ記録 |
+| `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai web` | Web Console — 6 タブ設定コンソール |
 
 > 全 36 コマンド: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
