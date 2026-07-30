@@ -214,7 +214,7 @@ return summary;
 | 전체 리포 스캔 | 100+ | 높음 |
 
 **비용 조절**:
-- 모델: `sonnet` 사용 (read-only 추출, Explore 매트릭스 기준)
+- 모델: `sonnet` low effort 사용 (read-only 추출)
 - 에이전트 수: 범위 제한 (`packages.slice(0, 20)`)
 - 병렬도: 최대 16에서 수동 조정
 

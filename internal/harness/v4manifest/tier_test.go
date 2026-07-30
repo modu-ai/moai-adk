@@ -209,6 +209,55 @@ func TestTierColor_UnknownTierReturnsEmpty(t *testing.T) {
 	}
 }
 
+// TestModelColor verifies each model tier maps to its render glyph, mirroring
+// the LLM profile matrix (opus → 🔴, sonnet → 🟠, haiku → 🔵, inherit → 🩵).
+func TestModelColor(t *testing.T) {
+	cases := []struct {
+		model string
+		glyph string
+	}{
+		{ModelOpus, "🔴"},
+		{ModelSonnet, "🟠"},
+		{ModelHaiku, "🔵"},
+		{ModelInherit, "🩵"},
+	}
+	for _, tc := range cases {
+		if got := ModelColor(tc.model); got != tc.glyph {
+			t.Errorf("ModelColor(%q) = %q, want %q", tc.model, got, tc.glyph)
+		}
+	}
+}
+
+// TestModelColor_UnknownReturnsDefault asserts an empty or unmapped model falls
+// back to the light/default glyph (🩵), not "".
+func TestModelColor_UnknownReturnsDefault(t *testing.T) {
+	for _, m := range []string{"", "not-a-real-model"} {
+		if got := ModelColor(m); got != "🩵" {
+			t.Errorf("ModelColor(%q) = %q, want %q (default)", m, got, "🩵")
+		}
+	}
+}
+
+// TestModelColorRank verifies the model-derived sort rank used by the agentfm
+// row ordering: opus=0, sonnet=1, haiku=2, inherit/unknown=3.
+func TestModelColorRank(t *testing.T) {
+	cases := []struct {
+		model string
+		rank  int
+	}{
+		{ModelOpus, 0},
+		{ModelSonnet, 1},
+		{ModelHaiku, 2},
+		{ModelInherit, 3},
+		{"", 3},
+	}
+	for _, tc := range cases {
+		if got := ModelColorRank(tc.model); got != tc.rank {
+			t.Errorf("ModelColorRank(%q) = %d, want %d", tc.model, got, tc.rank)
+		}
+	}
+}
+
 // catalogAgentStems reads the agent catalog from disk (.claude/agents/{moai,
 // harness}/*.md) and returns the file stems (without extension), sorted. The
 // stems are the lookup keys into the name→tier table and match agentfm.

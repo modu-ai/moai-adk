@@ -287,7 +287,7 @@ SPEC 文档保存在 `.moai/specs/` 目录中:
 .moai/
 └── specs/
     └── SPEC-AUTH-001/
-        ├── spec.md          # EARS 需求
+        ├── spec.md          # GEARS 需求
         ├── plan.md          # 实现计划
         └── acceptance.md     # 验收标准
 ```

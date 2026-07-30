@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK 是以 **代币经济学**(Token Economics)为目标的 Agentic Development Kit。用更少的 token 产出同等质量的代码,用同样的 token 获得更高的质量 —— 模型选择、推理深度、上下文用量都由系统管理。它是用 Go 编写的单一二进制,无需依赖即可直接运行。
+MoAI-ADK 是用 **成本**（代币经济学）· **自我改进**（智能体循环工程）· **品质把控**（智能体 Harness）三个轴把 Claude Code 包起来的 Agentic Development Kit。同等质量的代码用更少的 token 产出，声明完成条件后循环自行工作并把积累的观察上提为 harness 学习的原料，SPEC 3-phase 与 TRUST 5 门禁用证据判定「完成」—— 模型选择、推理深度、上下文用量都由系统管理。它是用 Go 编写的单一二进制，无需依赖即可运行。
 
 
 ## 表记法说明
@@ -147,10 +147,10 @@ MoAI-ADK 将 Python Edition 完全用 Go 重写,以最大化性能与效率。
 ### 核心数字(以 v3.0 为准)
 
 - **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
-- **27 个** 技能(template-managed)
-- **36 个** CLI 命令 · **15 种** `/moai` 子命令
+- **31 个** 技能(template-managed)
+- **36 个** CLI 命令 · **16 种** `/moai` 子命令
 - **16 种** 编程语言支持
-- 基于 **504 个** SPEC 文档开发的代码库
+- 基于 **543 个** SPEC 文档开发的代码库
 
 ## 系统要求
 
@@ -284,40 +284,24 @@ MoAI-ADK 通过 Ralph-Loop Style LSP 集成提供自主工作流:
 Ralph-Loop Style LSP 集成使开发工作流的质量门禁自动化,让你无需手动介入也能保持高代码质量。
 {{< /callout >}}
 
-## 用 GLM 节省 token(50~70%)
-
-GLM 是与 Claude Code 完全兼容的 AI 模型。在 **CG 模式** 下组合 Claude 领导与 GLM 队友,可在实现作业中 **节省 50~70% token** —— 是代币经济学支柱的代表性实战工具。
-
-### CG 模式:Claude + GLM 混合
-
-CG 模式是 Claude 编排整个工作流、实现作业由成本更低的 GLM 队友并行处理的方式。
-
-| 角色 | 模型 | 负责作业 |
-|------|------|---------|
-| **领导** | Claude | 编排、架构决策、代码评审 |
-| **队友** | GLM | 代码实现、编写测试、文档化 |
-
-| 作业类型 | 推荐模式 | 节省效果 |
-|----------|----------|---------|
-| 实现为主的 SPEC(`/moai run`) | CG 模式 | **节省 50~70%** |
-| 代码生成、测试、文档化 | CG 模式 | **节省 50~70%** |
-| 架构设计、安全评审 | Claude 专用 | 需要深度推理 |
-
-### GLM 切换命令
-
-```bash
-# 切换到 GLM 后端(GLM 单独)
-moai glm
-
-# CG 模式(Claude 领导 + GLM 队友,需要 tmux)
-moai cg
-
-# 回到 Claude 后端
-moai cc
-```
+## CG 模式节省 token(50~70%)
 
 {{< callout type="info" >}}
-若没有 GLM 账户,请在 [z.ai 注册(额外 10% 折扣)](https://z.ai/subscribe?ic=1NDV03BGWU)注册。通过注册链接获得的奖励将用于 **MoAI 开源开发**。
+**成本轴（代币经济学）的实战工具:** z.ai GLM 是与 Claude Code 完全兼容的 AI 后端。在 **CG 模式**（`moai cg`,需 tmux）下,Claude 领导承担编排·架构决策·代码评审,GLM 队友并行处理实现·测试·文档化,实现为主的作业可 **节省 50~70% token**。架构设计或安全评审这类需要深度推理的场合则使用 Claude 专用（`moai cc`）。
+
+```bash
+moai cc            # Claude 专用
+moai glm           # GLM 专用
+moai cg            # CG 混合(Claude 领导 + GLM 队友,需 tmux)
+```
+
+若没有 GLM 账户,请前往 [z.ai 注册(额外 10% 折扣)](https://z.ai/subscribe?ic=1NDV03BGWU)注册。通过注册链接获得的奖励将用于 **MoAI 开源开发**。详细架构与模型策略请参阅[多 LLM](/zh/multi-llm/)一节。
+{{< /callout >}}
+
+## 自我改进轴 —— 循环自行工作,harness 从中学习
+
+{{< callout type="info" >}}
+**自我改进轴（智能体循环工程）的实战工具:** 声明完成条件后,会话会自行工作直到条件满足。`/moai goal "<条件>"` 是条件声明型自主循环;`/moai loop` 反复修改直到清空 LSP 诊断·AST-grep·linter 找到的问题队列（默认最多 10 次）;`/moai fix` 是单次 pass 自动修复。循环留下的观察（用户纠正、失败模式、路由决策）沿 4 层学习阶梯（观察 → 启发式 → 规则 → 自动更新,在用户批准门禁之下）沉淀为 harness 指令 —— 下一轮会话不会重复上一轮的失误。
 {{< /callout >}}
 
 ## 开始

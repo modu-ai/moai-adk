@@ -290,7 +290,7 @@ SPEC 문서는 `.moai/specs/` 디렉토리에 저장됩니다:
 .moai/
 └── specs/
     └── SPEC-AUTH-001/
-        ├── spec.md          # EARS 요구사항
+        ├── spec.md          # GEARS 요구사항
         ├── plan.md          # 구현 계획
         └── acceptance.md     # 인수 기준
 ```
@@ -533,7 +533,7 @@ WHEN input is null is detected, the system shall return an error.
 
 ## 적응형 추천 배치 (Adaptive Recommendation Placement)
 
-MoAI-ADK v0.1.0부터 **AskUserQuestion 추천**이 사용자 결정 패턴에 맞춰 개인화됩니다. 시스템은 선택을 캡처하고, 시스템 기본값이 아닌 관측된 통계적 다수에 기반해 미래 질문 옵션을 개인화합니다. 루프가 관찰을 축적하고 시스템이 그 관찰로부터 배운다는 점에서, v3의 **에이전틱 루프 엔지니어링** 원칙이 질문·추천 영역에 적용된 사례입니다.
+MoAI-ADK v0.1.0부터 **AskUserQuestion 추천**이 사용자 결정 패턴에 맞춰 개인화됩니다. 시스템은 선택을 캡처하고, 시스템 기본값이 아닌 관측된 통계적 다수에 기반해 미래 질문 옵션을 개인화합니다. 루프가 관찰을 축적하고 시스템이 그 관찰로부터 배운다는 점에서, v3의 **에이전틱 루프 엔지니어링** (재귀적 자가 학습) 원칙이 질문·추천 영역에 적용된 사례입니다.
 
 ### 작동 원리
 

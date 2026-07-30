@@ -142,7 +142,7 @@ for (const pkg of packages) {
   // 为每个包生成独立智能体
   const result = await agent({
     agentType: "Explore",
-    model: "haiku",
+    model: "sonnet",
     effort: "low",
     prompt: `
       在 ${pkg} 包中找出所有 TODO 注释并分类。
@@ -209,7 +209,7 @@ return summary;
 | 全仓库扫描 | 100+ | 高 |
 
 **成本调控**：
-- 模型：使用 `haiku`（只读提取）
+- 模型：使用 `sonnet` low effort（只读提取）
 - 智能体数：限制范围（`packages.slice(0, 20)`）
 - 并行度：在最多 16 的基础上手动调整
 

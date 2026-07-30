@@ -145,7 +145,7 @@ for (const pkg of packages) {
   // Create an independent agent for each package
   const result = await agent({
     agentType: "Explore",
-    model: "haiku",
+    model: "sonnet",
     effort: "low",
     prompt: `
       Find and classify all TODO comments in the ${pkg} package.
@@ -212,7 +212,7 @@ Dynamic workflows save context, but **total token consumption can be large**. Th
 | Full repo scan | 100+ | High |
 
 **Cost controls**:
-- Model: use `haiku` (read-only extraction)
+- Model: use `sonnet` low effort (read-only extraction)
 - Agent count: limit scope (`packages.slice(0, 20)`)
 - Parallelism: manually tune down from the max of 16
 

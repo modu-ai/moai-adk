@@ -188,7 +188,7 @@ moai harness doctor
 | `primitive` | 실행 원시 (`sub-agent`, `adversarial-fan-out` 등) |
 | `isolation` | 격리 수준 (`none`, `worktree`) |
 | `effort` | 추론 강도 (`low`, `medium`, `high`, `xhigh`) — 목적 기반 |
-| `model` | 모델 티어 (`opus`, `sonnet`, `haiku`, `inherit`) — 목적 기반 |
+| `model` | 모델 티어 (`opus`, `sonnet`, `inherit`) — 목적 기반 |
 
 ### Sprint Contract
 

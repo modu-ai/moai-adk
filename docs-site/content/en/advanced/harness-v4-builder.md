@@ -187,7 +187,7 @@ moai harness doctor
 | `primitive` | Execution primitive (`sub-agent`, `adversarial-fan-out`, etc.) |
 | `isolation` | Isolation level (`none`, `worktree`) |
 | `effort` | Reasoning intensity (`low`, `medium`, `high`, `xhigh`) — purpose-based |
-| `model` | Model tier (`opus`, `sonnet`, `haiku`, `inherit`) — purpose-based |
+| `model` | Model tier (`opus`, `sonnet`, `inherit`) — purpose-based |
 
 ### Sprint Contract
 

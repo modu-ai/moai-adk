@@ -16,7 +16,7 @@ draft: false
 {{< /callout >}}
 
 {{< callout type="info" >}}
-  **SPEC 由 3 个文件构成：** 执行 `/moai plan` 时会同时生成 `spec.md`（EARS 需求）、`plan.md`（实现计划）、`acceptance.md`（验收标准）3 个文件。
+  **SPEC 由 3 个文件构成：** 执行 `/moai plan` 时会同时生成 `spec.md`（GEARS 需求）、`plan.md`（实现计划）、`acceptance.md`（验收标准）3 个文件。
 {{< /callout >}}
 
 ## 什么是 SPEC？
@@ -238,7 +238,7 @@ SPEC 文档由 **manager-spec 智能体**自动生成。开发者无需背 EARS 
 
 | 文件 | 角色 | 内容 |
 | --- | --- | --- |
-| `spec.md` | EARS 需求定义 | YAML frontmatter、需求（5 种 EARS 类型）、约束条件、依赖 |
+| `spec.md` | GEARS 需求定义 | YAML frontmatter、需求（5 种 GEARS 类型）、约束条件、依赖 |
 | `plan.md` | 实现计划 | 任务分解、技术栈说明、风险分析与缓解策略 |
 | `acceptance.md` | 验收标准 | Given/When/Then 场景、边界情况、性能与质量门禁 |
 
@@ -375,7 +375,7 @@ flowchart TD
 .moai/
 └── specs/
     ├── SPEC-AUTH-001/
-    │   ├── spec.md          # EARS 需求
+    │   ├── spec.md          # GEARS 需求
     │   ├── plan.md          # 实现计划
     │   └── acceptance.md    # 验收标准
     ├── SPEC-PAYMENT-001/
@@ -420,7 +420,7 @@ flowchart TD
 
 如下，在 `.moai/specs/SPEC-AUTH-001/` 目录中生成 3 个文件。
 
-**spec.md -- EARS 需求：**
+**spec.md -- GEARS 需求：**
 
 ```yaml
 ---
