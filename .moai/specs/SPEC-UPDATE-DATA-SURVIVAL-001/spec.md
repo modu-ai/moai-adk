@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-DATA-SURVIVAL-001
 title: "moai update — user-data survival: on-disk backup before every destructive step, a failure contract with an escape from the marker-gate lockout, and non-vacuous safety guards"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -24,6 +24,7 @@ depends_on: [SPEC-UPDATE-REINSTALL-LOOP-002]
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 2 of 6. |
+| 0.2.0 | 2026-07-31 | plan-audit iteration 1 (FAIL, 0.71) delta revision, D1-D7. D2: REQ-UDS-007 rewritten to require independent static-scan enumeration (the prior wording permitted a `count == count` self-comparison). D3: REQ-UDS-013 gains the `userHomeDirFn` seam requirement; NFR-UDS-002's "`userHomeDir` indirection already exists" claim corrected — no seam existed. D4: Defect 2's Category D misattribution retracted; REQ-UDS-009 / AC-UDS-007 restated against the real gap. D1: §H `update.go` coordinates corrected to the post-merge values (`:755`, `:764-766`). D5/D6: AC-UDS-019 / AC-UDS-014 de-vacuified. D7: AC-UDS-020 added for the previously uncovered REQ-UDS-003; every AC now cites its REQ. D8/D9/D10 deferred to the next audit round. |
 
 ## §A Problem / Motivation
 
@@ -85,11 +86,23 @@ protection sets — but its backup is already required by `SPEC-UPDATE-REINSTALL
 REQ-RIL2-015 (backup before every deprecated-path deletion), so this SPEC depends on that
 requirement rather than restating it.
 
-Separately, the `defs.DeprecatedPaths` Category D comment (`dirs.go:344-351`) states that
-"the `.moai/project/db/` docs (a preserve root, manual deletion per CHANGELOG)" are excluded from
-active removal. No `.moai/project/db` entry is registered; the registered directory entry is
-`.moai/db` (`dirs.go:313`). Comment and code name different paths, so a reader auditing db-removal
-coverage is pointed at the wrong path.
+Separately, `.moai/db` sits under the bare group comment `// brand + db directories`
+(`dirs.go:305`), which names neither the SPEC that authorises its removal nor its protection status.
+Its sibling groupings carry full explanatory banners — Category C (`dirs.go:318-324`) and Category D
+(`dirs.go:344-351`) each state what the group covers, which SPEC deprecated it, and why. A reader
+auditing db-removal coverage therefore finds the least explanation at the one entry that is
+genuinely unprotected.
+
+> **Retracted finding.** An earlier draft of this SPEC asserted that the Category D comment
+> (`dirs.go:344-351`) misnames its registered path — describing `.moai/project/db/` while the
+> registered entry is `.moai/db` (`dirs.go:313`). Re-reading `dirs.go:305-358` refutes this.
+> `.moai/db` belongs to the `// brand + db directories` group, **not** Category D. Category D's
+> sole registered entry is `.moai/config/sections/db.yaml`, which the comment names exactly; its
+> `.moai/project/db/` mention is a deliberate contrast clause ("Unlike the `.moai/project/db/`
+> docs (a preserve root, manual deletion per CHANGELOG), db.yaml is NOT under a preserve root")
+> stating what is **not** removed. Comment and code agree. The retracted claim would have required
+> deleting an accurate explanatory sentence; REQ-UDS-009 and AC-UDS-007 are restated below against
+> the real, much weaker gap.
 
 ### Defect 3 — the deletion radius of `~/.claude/hooks/moai` is unpinned
 
@@ -114,6 +127,17 @@ ok  github.com/modu-ai/moai-adk/internal/cli  18.305s
 Everything passed. Re-verified on this tree: `grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go'`
 returns **0** lines — the identifier appears only at `update.go:764-766`. This deletion is outside
 the project root, unbacked, and unrecoverable, and nothing detects a widening of its radius.
+
+Worse, a guard cannot currently be written at all. `ensureGlobalSettingsEnv` resolves HOME by
+calling `userHomeDir()` (`update.go:756`), which is a plain function (`homedir.go:14`) with no
+injection point. The package does own an injectable seam — `var userHomeDirFn = userHomeDir`
+(`glm_tools.go:123`), overridden by tests at `glm_tools_test.go:34-36` — but
+`ensureGlobalSettingsEnv` does not use it. `userHomeDir` does read `$HOME` first
+(`homedir.go:15`), so `t.Setenv("HOME", …)` would technically redirect it — but NFR-UDS-002 forbids
+that, because a process-wide HOME mutation is visible to every parallel test in the package. Under
+that constraint the radius guard has no redirection point and is unimplementable until the call is
+routed through the seam (REQ-UDS-013). The prohibition is a deliberate isolation policy, not a
+technical impossibility, and REQ-UDS-013 is what makes the policy satisfiable.
 
 ### Defect 4 — `TestMoaiUpdate_PreservesUserArea` executes zero production code
 
@@ -199,8 +223,10 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 ### Out of Scope — DeprecatedPaths catalogue membership
 
 - Adding, removing, or re-categorising entries in `defs.DeprecatedPaths`. This SPEC amends only the
-  Category D **comment prose** so it names the registered path; the 40-entry slice is untouched and
-  its count invariant (`internal/defs/dirs_test.go`) is preserved.
+  `// brand + db directories` **group comment prose** so it names its authorising SPEC and
+  protection status (REQ-UDS-009); the slice body is untouched and its count invariant
+  (`internal/defs/dirs_test.go`) is preserved. The Category D comment is **not** amended — it is
+  accurate, and AC-UDS-007 guards it against deletion.
 
 ### Out of Scope — template content
 
@@ -234,13 +260,22 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 - **REQ-UDS-006** — Every destructive filesystem operation in the update subsystem shall be
   enumerated in a single in-repo registry naming, per target, the protection set that covers it or
   the recorded reason it is exempt.
-- **REQ-UDS-007** — A regression guard shall assert that every destructive target in the registry
-  carries either a protection-set assignment or an explicit exemption, and shall fail when a target
-  carries neither.
+- **REQ-UDS-007** — A regression guard shall enumerate destructive call sites **independently of
+  the registry**, by statically scanning the update subsystem's Go sources
+  (`internal/cli/update/**` and `internal/cli/update*.go`, excluding `_test.go`) for `os.RemoveAll(`
+  and `os.Rename(` call sites, and shall fail when the scanned multiset of
+  (file, enclosing function, occurrence count) does not equal the registry's recorded multiset.
+  The registry shall NOT be the guard's enumeration source: a guard that counts registry rows
+  against registry rows is a `count == count` self-comparison that can never fail, and is rejected.
+  Each registry row shall additionally carry either a protection-set assignment or a recorded
+  exemption reason; a row carrying neither shall fail the guard.
 - **REQ-UDS-008** — **When** `MigrateLegacyMemoryDir` removes `.moai/memory/` because both the
   legacy and the new directory exist, it shall back up `.moai/memory/` before removal.
-- **REQ-UDS-009** — The `defs.DeprecatedPaths` Category D comment shall name the path that is
-  actually registered, so that comment and code agree.
+- **REQ-UDS-009** — The `defs.DeprecatedPaths` group comment covering `.moai/db` shall name the
+  SPEC that authorises the group's removal and the group's protection status, matching the
+  explanatory form the sibling Category C and Category D banners already use. The Category D
+  comment's existing `.moai/project/db/` contrast clause is accurate and shall be preserved
+  verbatim — see the retracted finding in §A Defect 2.
 - **REQ-UDS-010** — The registry shall record `defs.DeprecatedPaths` deletion as covered by
   `SPEC-UPDATE-REINSTALL-LOOP-002` REQ-RIL2-015 rather than duplicating that coverage.
 
@@ -251,7 +286,13 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 - **REQ-UDS-012** — **While** that test runs, it shall not read from or write to the operator's real
   home directory.
 - **REQ-UDS-013** — The removal target shall be derived from a single named symbol so the guard has
-  one thing to assert against, rather than re-deriving the path independently.
+  one thing to assert against, rather than re-deriving the path independently. **Additionally**,
+  `ensureGlobalSettingsEnv` shall resolve HOME through the package's existing injectable seam
+  `userHomeDirFn` (`internal/cli/glm_tools.go:123`) rather than calling the plain function
+  `userHomeDir` (`internal/cli/homedir.go:14`) directly as it does today at `update.go:756`. Without
+  this substitution the function has **no** seam a test can redirect, and since NFR-UDS-002 forbids
+  `t.Setenv("HOME", …)`, REQ-UDS-011 and REQ-UDS-012 would be unimplementable. The existing
+  override precedent is `glm_tools_test.go:34-36`.
 - **REQ-UDS-014** — The guard shall be shown to FAIL against a deliberately widened radius before it
   is accepted.
 
@@ -301,8 +342,10 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
   separate calls and asserting on the filesystem between them, or by injecting a failing step —
   never by racing a real crash.
 - **NFR-UDS-002** — All tests shall use `t.TempDir()`. A test exercising HOME-scoped behaviour shall
-  redirect the home lookup through the existing `userHomeDir` indirection rather than mutating the
-  process environment, so parallel tests cannot observe each other's HOME.
+  redirect the home lookup through the injectable `userHomeDirFn` seam (per REQ-UDS-013) rather than
+  mutating the process environment, so parallel tests cannot observe each other's HOME. Note that
+  `userHomeDir` itself is a plain function and is **not** redirectable; the seam is the package-level
+  variable `userHomeDirFn`.
 - **NFR-UDS-003** — No file under `internal/template/templates/**` shall be added or modified.
 - **NFR-UDS-004** — Go conventions: `snake_case.go` filenames, `fmt.Errorf("…: %w", err)` wrapping,
   English comments and godoc.
@@ -317,7 +360,10 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
   `.moai/status_line.sh`, and `.gitignore` each exist under the run-scoped backup directory —
   verified by an executed test that inspects the filesystem between the two calls.
 - The destructive-target registry lists every `RemoveAll` / `Rename` site in the update subsystem,
-  and its guard fails when a new site is added without a protection assignment.
+  and its guard — enumerating those sites by static source scan, independently of the registry —
+  fails when a new site is added without a registry row.
+- A backup write that fails aborts the run before the first destructive step, surfacing a grep-able
+  sentinel that names the un-backed-up file, and `CleanMoaiManagedPaths` is never reached.
 - Widening the HOME-scoped removal to `~/.claude/hooks` makes the suite fail.
 - The replacement user-area guard fails when production code is mutated to touch
   `.claude/agents/harness/`.
@@ -335,7 +381,9 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 | Marker-gate exemption widens into a general bypass | Safety regression | REQ-UDS-025 scopes the exemption to the restore entry point alone, asserted by an AC |
 | Replacement safety guard is itself vacuous | Undetected regression | REQ-UDS-017 requires a demonstrated mutation failure via `go test -overlay` |
 | Deletion-radius guard passes for the wrong reason | False confidence | REQ-UDS-014 requires a demonstrated failure against a widened radius |
-| Registry drifts as new destructive sites are added | Silent coverage gap | REQ-UDS-007 makes the guard fail on an unassigned target |
+| Registry drifts as new destructive sites are added | Silent coverage gap | REQ-UDS-007 makes the guard enumerate sites by static source scan, independently of the registry, so a new unregistered site fails the multiset comparison |
+| The drift guard is itself tautological (`count == count`) | False confidence | REQ-UDS-007 names the independent enumeration source explicitly and rejects registry-sourced counting; AC-UDS-005's falsification (§C.4) injects a dummy destructive site and requires an observed `--- FAIL` |
+| Backup-failure abort path is never exercised | Data loss on the one path this SPEC exists to protect | REQ-UDS-003 is covered by AC-UDS-020, which forces the backup write to fail and asserts `CleanMoaiManagedPaths` was not called |
 | Depending on E1 blocks this SPEC | Schedule coupling | Only the deprecated-path backup is inherited; every other milestone here is independent of E1's merge |
 
 ## §H Cross-References
@@ -353,8 +401,11 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 - `internal/cli/update_namespace_protect.go` — `userOwnedScanRoots` (`:39-43`),
   `backupUserOwnedNamespace` (`:196`), `verifyNamespaceBackupCoverage` (`:293`)
 - `internal/cli/update/backup/backup.go` — `BackupMoaiConfig` (`:27`), `CleanupOldBackups` (`:206`)
-- `internal/cli/update.go` — project-marker gate (`:236`), `ensureGlobalSettingsEnv` (`:733`),
-  `globalHooksDir` (`:742-744`)
+- `internal/cli/update.go` — project-marker gate (`:236`), `ensureGlobalSettingsEnv` (`:755`),
+  `userHomeDir()` call (`:756`), `globalHooksDir` (`:764-766`)
+- `internal/cli/homedir.go` — `userHomeDir` (`:14`), a plain function with no injection seam
+- `internal/cli/glm_tools.go` — `userHomeDirFn` (`:123`), the package's existing injectable
+  home-lookup variable (test override precedent at `glm_tools_test.go:34-36`)
 - `internal/cli/update_safety_test.go` — `simulateMoaiUpdate` (`:43-57`),
   `TestMoaiUpdate_PreservesUserArea` (`:59`), tautological assertions (`:95-102`)
 - `internal/defs/dirs.go` — `.moai/db` entry (`:313`), Category D comment (`:344-351`)

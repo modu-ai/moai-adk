@@ -6,7 +6,11 @@
 
 ## §A Context
 
-- **Repository**: `/Users/goos/MoAI/moai-adk-go`, branch `plan/epic-update-config-audit`, HEAD `d5336214e` (merged with `origin/main`).
+- **Repository**: `/Users/goos/MoAI/moai-adk-go`, branch `plan/epic-update-config-audit`, worktree
+  HEAD `a8b42e112`, whose **code baseline is `d5336214e`** (the `origin/main` merge). Every commit
+  between the two changes `.moai/specs/**` documents only —
+  `git diff --name-only d5336214e..HEAD | grep -v '^\.moai/'` returns nothing — so no Go source
+  differs and every code baseline recorded in `acceptance.md` reproduces at either commit.
 - **Tier**: M — 300-1000 LOC across 5-15 files. Justification in §H.
 - **Depends on**: `SPEC-UPDATE-REINSTALL-LOOP-002` (E1). Only REQ-RIL2-015/016
   (backup-before-delete for `defs.DeprecatedPaths`) is inherited; every milestone below is
@@ -87,6 +91,45 @@ The registry is the new shared artifact M2 introduces: a single in-repo table na
 destructive filesystem operation in the update subsystem and its protection assignment. Below is
 the enumeration derived from this tree; the implementation encodes it and guards it.
 
+### C.0 Scan scope — what the guard enumerates, and why it is wider than §C.1's target list
+
+REQ-UDS-007 requires the drift guard to enumerate destructive **call sites** by static source scan,
+independently of the registry. That scan is mechanical, so its scope is fixed by grep semantics
+rather than by judgement, and it finds materially more than the user-data targets §C.1 tabulates:
+
+```
+$ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
+    --include='*.go' | grep -v '_test.go' | wc -l
+      17
+```
+
+**17 call sites across 11 (file, function) pairs.** An earlier draft of this plan implied the scan
+scope was 7 sites (`deploy.go`'s five plus `update_clean_install.go:271` and `update.go:766`); that
+figure omitted `update_archive.go`, `update/backup/backup.go`, `update_cleanup.go`, and
+`update_namespace_protect.go` entirely. The registry must therefore carry a row per scanned site,
+not per user-data target, or the multiset comparison fails on first run.
+
+| # | File | Function | Sites | Class |
+|---|---|---|---|---|
+| 1 | `update/deploy/deploy.go` | `CleanMoaiManagedPaths` | 3 (`:83`, `:105`, `:121`) | user data — §C.1 rows 1-10 |
+| 2 | `update/deploy/deploy.go` | `MigrateLegacyMemoryDir` | 2 (`:169`, `:176`) | user data — §C.1 row 11 |
+| 3 | `update_archive.go` | `archiveSkill` | 1 (`:92`) | user data — removes the archive destination before re-archiving |
+| 4 | `update_archive.go` | `archiveLegacySkills` | 1 (`:304`) | user data — renames a skill dir into a backup location |
+| 5 | `update/backup/backup.go` | `BackupMoaiConfig` | 3 (`:107`, `:135`, `:140`) | **exempt** — unwinds the backup dir this call just created, on its own error paths |
+| 6 | `update/backup/backup.go` | `CleanupOldBackups` | 1 (`:259`) | **exempt** — retention pruning of moai-authored backup dirs |
+| 7 | `update_clean_install.go` | `runCleanReinstall` | 1 (`:271`) | user data — §C.1 row 12 (E1-owned) |
+| 8 | `update_cleanup.go` | `removeDeprecatedFile` | 1 (`:324`) | user data — deprecated-path removal |
+| 9 | `update.go` | `ensureGlobalSettingsEnv` | 1 (`:766`) | user data, outside project root — §C.1 row 13 |
+| 10 | `update_namespace_protect.go` | `backupUserOwnedNamespace` | 3 (`:225`, `:233`, `:243`) | **exempt** — defensive cleanup of the namespace backup dir this call created (`EC-UNP-007`) |
+
+The three exempt rows (5, 6, 10) remove only directories the same run authored; no user data
+predating the run is at risk. Each records that reason in the registry per REQ-UDS-007 rather than
+carrying a protection-set assignment. Rows 3, 4, and 8 are destructive sites the original §C.1
+enumeration missed; M2 assigns them protection or exemption during implementation, and §C.1 below
+is the user-data target view that remains the design rationale.
+
+### C.1 Destructive targets (user-data view)
+
 | # | Target | Site | Protection today | Action |
 |---|---|---|---|---|
 | 1 | `.claude/settings.json` | `deploy.go:40-42` → `:105` | **in-memory only** (`update_template_sync.go:384-390`) | M3 adds disk backup |
@@ -94,7 +137,7 @@ the enumeration derived from this tree; the implementation encodes it and guards
 | 3 | `.gitignore` | `update_template_sync.go:379-383` | **in-memory only** | M3 adds disk backup |
 | 4 | `.claude/commands/moai` | `deploy.go:44-46` → `:105` | template-managed, regenerated | exempt (recorded) |
 | 5 | `.claude/agents/moai` | `deploy.go:48-50` → `:105` | template-managed, regenerated | exempt (recorded) |
-| 6 | `.claude/skills/moai*` (glob) | `deploy.go:52-55` → `:83` | template-managed | exempt, **with a noted hazard** — see §C.1 |
+| 6 | `.claude/skills/moai*` (glob) | `deploy.go:52-55` → `:83` | template-managed | exempt, **with a noted hazard** — see §C.1a |
 | 7 | `.claude/rules/moai` | `deploy.go:57-59` → `:105` | template-managed | exempt (recorded) |
 | 8 | `.claude/output-styles/moai` | `deploy.go:61-63` → `:105` | template-managed | exempt (recorded) |
 | 9 | `.claude/hooks/moai` | `deploy.go:65-67` → `:105` | template-managed | exempt (recorded) |
@@ -107,7 +150,7 @@ Rows 1-3, 11, 12, 13 are the complete set of destructive targets in **no** prote
 row 12 is E1's; rows 1-3 are M3; row 11 is M2; row 13 is M4 (radius pinning rather than backup,
 because a HOME-scoped backup would itself write outside the project).
 
-### C.1 Noted hazard, not a deliverable
+### C.1a Noted hazard, not a deliverable
 
 Row 6's glob `.claude/skills/moai*` also matches a user-authored `moai-my-notes` skill — precisely
 the ambiguous case `collectUserOwnedFilesConservative`
@@ -115,19 +158,25 @@ the ambiguous case `collectUserOwnedFilesConservative`
 therefore already covers it, so this SPEC records the interaction in the registry and does **not**
 narrow the glob. Narrowing it is a behaviour change belonging to a namespace SPEC.
 
-### C.2 Measured baseline for M7
+### C.2 Measured baseline for M6
 
 `mergeBackPreserveInventory` statement coverage was measured on this tree with
-`go test -covermode=set -coverprofile=... ./internal/cli/` followed by `go tool cover -func`. The
-observed figure is recorded verbatim in `acceptance.md` AC-UDS-013 as that AC's baseline; the three
-uncovered blocks are the failure returns at `update_preserve_inventory.go:346`, `:350`, and `:354`.
+`go test -covermode=set -coverprofile=... ./internal/cli/` followed by `go tool cover -func`,
+yielding `64.3%` (package total `75.7%`). The figure is recorded verbatim in `acceptance.md`
+**AC-UDS-016** as that AC's baseline; the three uncovered blocks are the failure returns at
+`update_preserve_inventory.go:346`, `:350`, and `:354`. (Two stale cross-references corrected here:
+the milestone is M6, not M7 — §F defines M1-M6 only — and the coverage baseline lives in
+AC-UDS-016, not AC-UDS-013, which covers HOME-test isolation.)
 
 ## §D Constraints
 
 - `t.TempDir()` only; no test writes to the operator's real `~/.claude`.
-- HOME redirection goes through the existing `userHomeDir` indirection (`update.go:756`), not
+- HOME redirection goes through the injectable seam `userHomeDirFn` (`glm_tools.go:123`), not
   `t.Setenv("HOME", …)` — per `CLAUDE.local.md` §13, a process-wide HOME mutation pollutes parallel
-  tests.
+  tests. **M4 must first route `ensureGlobalSettingsEnv` through that seam** (REQ-UDS-013): it
+  currently calls the plain function `userHomeDir()` at `update.go:756`, which is not reassignable,
+  so no redirection point exists today. An earlier draft of this constraint asserted the
+  indirection already existed; it does not — see `spec.md` §A Defect 3.
 - No `internal/template/templates/**` edit.
 - Falsification uses a scratch `git worktree` regenerated from a pre-fix ref and driven with
   `go -C`, or `go test -overlay`. **`git stash` is prohibited** — it refuses untracked files without
@@ -157,9 +206,16 @@ before anything depends on them.
 
 ### M2 — Destructive-target registry + `.moai/memory/` backup + comment reconciliation
 
-Introduces the registry table of §C as code, its drift guard, the missing `.moai/memory/` backup,
-and the `dirs.go` Category D comment fix.
+Introduces the registry of §C.0 as code (11 rows / 17 sites, not the 7 an earlier draft assumed),
+its drift guard, the missing `.moai/memory/` backup, and the `dirs.go` brand+db group comment fix.
 
+- The guard enumerates sites by static source scan, independently of the registry (REQ-UDS-007).
+  Its independence is proven by the §C.4 falsification in `acceptance.md`, which injects an
+  unregistered destructive site and requires an observed `--- FAIL`. A guard that passes that
+  procedure is enumerating from the registry and must be rewritten.
+- The `dirs.go` change is confined to the `// brand + db directories` group comment. Category D's
+  comment is **accurate** and is not touched — AC-UDS-007 guards its `.moai/project/db/` contrast
+  clause against deletion. See `spec.md` §A Defect 2's retracted finding.
 - Covers REQ-UDS-006 through REQ-UDS-010.
 
 ### M3 — On-disk backup for the three in-memory-only files
@@ -167,13 +223,22 @@ and the `dirs.go` Category D comment fix.
 Writes `.claude/settings.json`, `.moai/status_line.sh`, and `.gitignore` to the run-scoped backup
 directory before the first destructive step, on both paths, retaining the in-memory merge-back.
 
+- Includes the **failure path**: a backup write that fails aborts before the first destructive step
+  and surfaces the `backup-write-failed:` sentinel naming the file (REQ-UDS-003, AC-UDS-020). This
+  path had no AC before the iteration-1 revision; it is the one branch where the SPEC's central
+  promise is actually load-bearing, so the abort must be verified by a call-recording spy proving
+  `CleanMoaiManagedPaths` was never invoked — not inferred from an unchanged tree.
 - Covers REQ-UDS-001 through REQ-UDS-005.
 
 ### M4 — HOME deletion-radius pinning
 
-Extracts the removal target to a named symbol, adds the radius guard, and demonstrates its failure
-against a widened radius via `go test -overlay`.
+Routes `ensureGlobalSettingsEnv`'s HOME lookup through the injectable `userHomeDirFn` seam, extracts
+the removal target to a named symbol, adds the radius guard, and demonstrates its failure against a
+widened radius via `go test -overlay`.
 
+- **The seam substitution is a precondition, not a nicety.** `update.go:756` calls the plain
+  `userHomeDir()`; with no injection point and `t.Setenv("HOME", …)` forbidden (NFR-UDS-002), the
+  radius guard cannot be written at all. Do this first, then the guard.
 - Covers REQ-UDS-011 through REQ-UDS-014.
 
 ### M5 — Non-vacuous user-area safety guard
@@ -201,6 +266,12 @@ branch deterministically.
 - Asserting the new guards pass without first observing them fail against unfixed code.
 - Narrowing the `moai*` glob as a side effect of M2. It is a recorded hazard, not a deliverable.
 - Changing the `defs.DeprecatedPaths` entry count while fixing its comment.
+- Building the drift guard so it enumerates from the registry. That yields `count == count`, passes
+  forever, and reproduces in M2 exactly the vacuous-guard defect §A Defect 3/4 exist to remove.
+- Deleting the Category D `.moai/project/db/` contrast prose. It is accurate; the retracted
+  iteration-1 finding that called it a mismatch is refuted in `spec.md` §A Defect 2.
+- Satisfying AC-UDS-014 by renaming `simulateMoaiUpdate` instead of deleting it and driving real
+  production code.
 
 ## §H Tier Justification
 
