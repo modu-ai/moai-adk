@@ -391,9 +391,14 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// scoped to what actually ran, instead of one unconditional
 	// "merge-preserved" claim emitted even when nothing was backed up.
 	if configBackupPath != "" {
-		// nil recorder: the noise-suppression merge-history ledger stays in the
-		// normal update flow; the clean-reinstall path does not need it.
-		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, nil); restoreErr != nil {
+		// Bridge to the same noise-suppression ledger the normal path uses
+		// (update.go "Restore Settings"). Passing nil here made the documented
+		// `--verbose` "3-way merge fallback notices" structurally unreachable on
+		// the clean-reinstall path: a 3-way merge could fall back to the 2-way
+		// merge and the user was never told, on any verbosity level.
+		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+			recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
+		}); restoreErr != nil {
 			return result, fmt.Errorf("step 5.5: restore .moai/config sections: %w", restoreErr)
 		}
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
