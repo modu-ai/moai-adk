@@ -444,10 +444,13 @@ ac_command_defects_found: 3        # AC-001 vacuous selector, AC-003 over-broad 
 
 ```yaml
 sync_complete_at: 2026-07-31
-sync_commit_sha: pending-backfill-sync-commit   # a commit cannot reference its own SHA;
-                                                # backfilled in a follow-up commit after
-                                                # this sync commit lands (schema §SHA
-                                                # placeholder backfill exemption D3)
+sync_commit_sha: 316fe3e84   # squash merge of sync PR #1248 onto main.
+                             # Written as a placeholder in the sync commit itself
+                             # (a commit cannot reference its own SHA) and backfilled
+                             # here per the schema §SHA placeholder backfill exemption.
+sync_pr: 1248
+sync_merged_at: 2026-07-30T15:38:29Z
+sync_ci: 15 SUCCESS / 8 SKIPPED / 0 FAILURE
 sync_status: complete
 run_phase_pr: 1245
 run_phase_merge_commit: 1d6b33526
