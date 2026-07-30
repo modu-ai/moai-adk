@@ -913,27 +913,6 @@ func getGLMAPIKey(envVar string) string {
 	return os.Getenv(envVar)
 }
 
-// buildGLMEnvVars constructs the environment variable map for GLM mode.
-func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
-	vars := map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           apiKey,
-		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
-		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
-		// Z.AI proxy compatibility
-		config.EnvClaudeCodeDisableExperimentalBetas: "1",
-		"API_TIMEOUT_MS": "3000000",
-	}
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		vars[config.EnvClaudeCodeAutoCompactWindow] = window
-	}
-	return vars
-}
-
 // injectGLMEnv adds GLM environment variables to settings.local.json.
 //
 // API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
