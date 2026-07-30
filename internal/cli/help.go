@@ -54,7 +54,6 @@ func rootHelpGroups() []helpGroup {
 				{"moai loop", "Spec→Plan→Impl→Sync loop"},
 				{"moai spec", "Manage spec cards"},
 				{"moai worktree", "Isolated worktree work"},
-				{"moai brain", "Ideation workflow"},
 			},
 		},
 		{
@@ -68,8 +67,27 @@ func rootHelpGroups() []helpGroup {
 	}
 }
 
-// renderRootHelp is the cobra SetHelpFunc handler for rootCmd.
-// It renders the help output using tui.Section (4 groups) + tui.HelpBar
+// registeredRootSubcommands returns the set of "moai <name>" strings that
+// resolve to an actually-registered cobra subcommand of cmd. Used by
+// renderRootHelpTUI to gate help-row inclusion on the command tree so phantom
+// commands cannot be advertised (SPEC-CLIFIX-LINTER-STALE-001 REQ-LINT-001-005).
+func registeredRootSubcommands(cmd *cobra.Command) map[string]bool {
+	out := make(map[string]bool)
+	for _, c := range cmd.Commands() {
+		// "moai <name>" — match the help-row format. Skip the cobra-generated
+		// "help" / "completion" pseudo-commands only if they carry no Use name;
+		// otherwise their Name() is a valid registered entry.
+		name := c.Name()
+		if name == "" {
+			continue
+		}
+		out["moai "+name] = true
+	}
+	// "moai" itself (the no-subcommand banner) is never a help row; omit.
+	return out
+}
+
+// renderRootHelp is the cobra SetHelpFunc handler for rootCmd.// It renders the help output using tui.Section (4 groups) + tui.HelpBar
 // only when cmd is rootCmd (Use == "moai"). For subcommands, it falls back
 // to cobra's default help template so "moai doctor --help" remains standard.
 //
@@ -109,11 +127,22 @@ func renderRootHelpTUI(cmd *cobra.Command) {
 	_, _ = fmt.Fprintln(out, accentStyle.Render("moai-adk")+" "+descStyle.Render("· Modu-AI's Agentic Development Kit · modular command collection"))
 	_, _ = fmt.Fprintln(out)
 
-	// Determine max command column width for alignment.
+	// SPEC-CLIFIX-LINTER-STALE-001 REQ-LINT-001-005: gate help-row inclusion on
+	// actually-registered cobra commands (data-driven from the command tree, not
+	// a hand-list). A row advertises "moai <name>"; the first token after "moai"
+	// must resolve to a registered subcommand's Name(), or the row is suppressed.
+	// This prevents phantom commands (e.g. the removed "moai brain") from
+	// reappearing in --help.
+	registered := registeredRootSubcommands(cmd)
+
+	// Determine max command column width for alignment, over REGISTERED rows only.
 	groups := rootHelpGroups()
 	maxCmdWidth := 0
 	for _, g := range groups {
 		for _, row := range g.rows {
+			if !registered[row[0]] {
+				continue
+			}
 			if len(row[0]) > maxCmdWidth {
 				maxCmdWidth = len(row[0])
 			}
@@ -124,8 +153,23 @@ func renderRootHelpTUI(cmd *cobra.Command) {
 	descRowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Body))
 
 	for _, g := range groups {
+		// Render the group header only when at least one registered row survives;
+		// an all-phantom group would otherwise print an empty titled section.
+		hasRegistered := false
+		for _, row := range g.rows {
+			if registered[row[0]] {
+				hasRegistered = true
+				break
+			}
+		}
+		if !hasRegistered {
+			continue
+		}
 		_, _ = fmt.Fprintln(out, tui.Section(g.title, tui.SectionOpts{Theme: &th}))
 		for _, row := range g.rows {
+			if !registered[row[0]] {
+				continue
+			}
 			padded := row[0] + strings.Repeat(" ", maxCmdWidth-len(row[0]))
 			line := "  " + cmdStyle.Render(padded) + "  " + descRowStyle.Render(row[1])
 			_, _ = fmt.Fprintln(out, line)
