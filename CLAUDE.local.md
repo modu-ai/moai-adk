@@ -742,7 +742,7 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
   이 파일은 메인테이너 머신 로컬 전용이다 (아래 BLOCKER 참고).
 - **제품(템플릿) 기본값과 동일**: 템플릿 `defaults.go` + `internal/template/templates/.moai/config/sections/workflow.yaml` 모두 `enabled: false` (또는 키 부재 → Go zero-value `false`). §2 [HARD] Template-First Rule 정합.
 - **면제 로직 보존**: `MOAI_BRANCH_GUARD_EXEMPT=1` env + `AgentType == "manager-git"` 신원 검사는 변경 없이 enabled 경로에서만 참조된다 (REQ-6 backward compat).
-- **BLOCKER (gitignore)**: `.moai/config/local/` 디렉터리는 현재 `.gitignore`에 등록되어 있지 않다. 따라서 위 opt-in 파일을 생성하면 공개 저장소에 커밋되어 분산 기본값이 `true`로 뒤집힌다 (§25 위반). 메인테이너 opt-in을 진정 로컬 전용으로 만들려면 `.gitignore`에 `.moai/config/local/` (또는 `.moai/config/local/workflow.yaml`) 추가가 필요하다 — 이는 본 SPEC 범위 밖이므로 별도 chore 커밋으로 처리한다. 그 전까지는 메인테이너가 파일을 머신 로컬에만 수동 생성하고 커밋하지 않는다.
+- **gitignore (해결됨)**: `.moai/config/local/` 디렉터리는 이제 `.gitignore`에 등록되었다 (chore 커밋). 따라서 메인테이너 opt-in 파일(`.moai/config/local/workflow.yaml`)을 생성해도 공개 저장소에 커밋되지 않는다. 종전 이 경로가 gitignore에 없어 분산 기본값이 `true`로 뒤집힐 위험이 있었으나 해결됨 (§25 정합).
 - [HARD] `defaults.go`의 `BranchGuard.Enabled` 기본 `false`는 **의도된 정책**. 감사/동기화 시 "결함"으로 되돌리지 말 것. 템플릿 기본값 변경은 별도 SPEC 통해서만.
 
 ---
