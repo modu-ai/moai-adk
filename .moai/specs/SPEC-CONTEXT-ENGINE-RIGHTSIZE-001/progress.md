@@ -139,6 +139,13 @@ $ grep -rc '\[ZONE:Evolvable\]' .claude/rules/moai/ | awk -F: '{s+=$2} END{print
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates>_
+- sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
+- sync_complete_at: 2026-07-30
+- sync_commit_sha: pending-backfill-SPEC-CONTEXT-ENGINE-RIGHTSIZE-001 (SHA cannot be in its own commit; backfilled in the follow-up backfill commit of this batch)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed` — SPEC-CONTEXT-ENGINE-RIGHTSIZE-001 entry (10/10 ACs PASS, Tier M, conservative B-group-only scope)
+- frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
+- run_phase_pr: #1238 (merge commit 752dc6794 — Context Engine rightsizing, Anthropic 6-principle alignment, B-group only)
+- b12_canary_compliance_check: template mirror synced in the run-phase commit (M3), `TestTemplateNoInternalContentLeak` clean per run-phase §E.2 — no template edits in this sync commit
+- note: §25 template neutrality — the run-phase already synced the `internal/template/templates/.claude/rules/moai/core/moai-constitution.md` mirror with §25 neutralization verified (0 SPEC IDs / 0 REQ tokens leaked); this sync commit carries only frontmatter + CHANGELOG + this §E.4 block (no template edits, no rule edits)
 
 ---
