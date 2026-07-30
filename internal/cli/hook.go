@@ -234,7 +234,7 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(cmd.Context(), config.DefaultHookDispatcherTimeout)
 	defer cancel()
 
 	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
@@ -358,7 +358,7 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 		event = hook.EventPreToolUse
 	}
 
-	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(cmd.Context(), config.DefaultHookDispatcherTimeout)
 	defer cancel()
 
 	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
@@ -1009,8 +1009,10 @@ func runHarnessObserveUserPromptSubmit(cmd *cobra.Command, _ []string) error {
 // defaultTierThresholds are the canonical 4-tier cutoffs per V3R4-HARNESS-003
 // (count >= 1 → observation, >= 3 → heuristic, >= 5 → rule, >= 10 → auto_update).
 // Mirrors the fallback in internal/cli/harness.go runHarnessStatus when
-// learning.tier_thresholds is absent from harness.yaml.
-var defaultTierThresholds = []int{1, 3, 5, 10}
+// learning.tier_thresholds is absent from harness.yaml. The literal lives once
+// in config.DefaultTierThresholds (SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004);
+// this local var is a read-only alias so the three former sites share one SSOT.
+var defaultTierThresholds = config.DefaultTierThresholds
 
 // readTierThresholds reads learning.tier_thresholds from
 // .moai/config/sections/harness.yaml. Returns defaultTierThresholds when the

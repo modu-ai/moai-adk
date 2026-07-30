@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
@@ -188,11 +189,11 @@ func stripGLMCredsAndSetTeammateMode(m map[string]any) {
 		delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
 		delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
 		delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
-		delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+		delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
 		delete(env, "API_TIMEOUT_MS")
-		delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
-		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-		delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
+		delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)
+		delete(env, config.EnvClaudeCodeTeammateDisplay)
+		delete(env, config.EnvStatuslineContextSize)
 
 		if len(env) == 0 {
 			delete(m, "env")

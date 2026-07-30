@@ -52,6 +52,13 @@ const (
 	// no hardcoding).
 	DefaultSecurityMaxScanBytes = 1048576
 
+	// DefaultHookDispatcherTimeout is the per-dispatch timeout for the moai hook
+	// subcommand's HookRegistry.Dispatch calls (SPEC-CLIFIX-HYGIENE-001
+	// REQ-HYG-001-004). Formerly duplicated as an inline `30 * time.Second`
+	// literal at two dispatcher call sites in internal/cli/hook.go; this is the
+	// single source of truth.
+	DefaultHookDispatcherTimeout = 30 * time.Second
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
@@ -187,6 +194,20 @@ const (
 // M3 handoffInjectHandler; not a compile-time const because time.Duration
 // multiplication is not a constant expression.
 var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
+
+// DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
+// per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
+// >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
+// formerly duplicated as an inline `[]int{1, 3, 5, 10}` literal at THREE sites
+// (internal/cli/harness.go runHarnessStatus fallback, harness.go
+// defaultLearningConfig struct initializer, and internal/cli/hook.go
+// defaultTierThresholds). This var is the single source of truth; all three
+// sites reference it. A `var` (not `const`) because composite literals are not
+// constant expressions. Callers treat the value as read-only.
+//
+// @MX:ANCHOR: [AUTO] harness tier-threshold SSOT — single source for the 4-tier vector
+// @MX:REASON: REQ-HYG-001-004; diverging defaults across the 3 former sites silently changed tier classification
+var DefaultTierThresholds = []int{1, 3, 5, 10}
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
 func NewDefaultConfig() *Config {

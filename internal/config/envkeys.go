@@ -90,6 +90,43 @@ const (
 	EnvSecurityBlocking = "MOAI_SECURITY_BLOCKING"
 )
 
+// GLM inject/clear env-var names (set onto the process env when entering
+// GLM / CG mode, and deleted when leaving it). These three keys are the
+// canonical GLM env-var set per SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-003 —
+// every inject site AND every clear site references these constants (or the
+// GLMEnvVarSet helper below) so the inject↔clear sets cannot drift apart.
+//
+// @MX:ANCHOR: [AUTO] GLM env-var name SSOT — single source for the 3 keys
+// @MX:REASON: REQ-HYG-001-003 inject↔clear parity invariant; renaming one site without the others silently breaks GLM mode activation/deactivation
+const (
+	// EnvClaudeCodeDisableExperimentalBetas strips Anthropic beta headers for
+	// Z.AI proxy compatibility. Injected at every GLM env build; cleared on exit.
+	EnvClaudeCodeDisableExperimentalBetas = "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"
+
+	// EnvClaudeCodeDisableNonessentialTraffic disables Anthropic non-essential
+	// (telemetry) traffic while in GLM mode. Cleared on exit.
+	EnvClaudeCodeDisableNonessentialTraffic = "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"
+
+	// EnvClaudeCodeTeammateDisplay is the legacy GLM activation indicator env
+	// var (superseded by the native settings.local.json teammateMode key but
+	// still cleared to deactivate legacy GLM mode).
+	EnvClaudeCodeTeammateDisplay = "CLAUDE_CODE_TEAMMATE_DISPLAY"
+)
+
+// GLMEnvVarSet returns the canonical GLM inject/clear env-var name set. It is
+// the single enumeration consumed by both inject and clear paths, so the two
+// are structurally identical by construction (SPEC-CLIFIX-HYGIENE-001
+// REQ-HYG-001-003). Callers that clear the whole set may iterate this slice;
+// callers that clear or inject a subset reference the individual constants
+// above. The returned slice MUST NOT be mutated by callers.
+func GLMEnvVarSet() []string {
+	return []string{
+		EnvClaudeCodeDisableExperimentalBetas,
+		EnvClaudeCodeDisableNonessentialTraffic,
+		EnvClaudeCodeTeammateDisplay,
+	}
+}
+
 // MoAI test-only environment variables.
 const (
 	// EnvTestMode enables test mode behavior when set to "1".

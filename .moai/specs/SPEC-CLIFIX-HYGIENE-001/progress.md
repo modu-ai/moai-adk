@@ -170,6 +170,86 @@ Edited files: `internal/cli/constitution.go`, `internal/cli/tool_policy.go`,
 (retargeted one characterization assertion to the quoted form).
 NO M3 (envkeys), M4 (English strings), or M5 (dead-code deletion) scope touched.
 
+### M3 — hardcoding single-source (AC-HYG-001-003 + AC-HYG-001-004) — PASS
+
+Behavior-preserving relocation of GLM env-var NAME literals and tier/timeout
+threshold literals to a single source. No value changed; only the redundant
+inline copies now reference one SSOT.
+
+**AC-HYG-001-003 (GLM env names) — PASS.**
+- `internal/config/envkeys.go`: added 3 constants
+  (`EnvClaudeCodeDisableExperimentalBetas`,
+  `EnvClaudeCodeDisableNonessentialTraffic`,
+  `EnvClaudeCodeTeammateDisplay`) + `GLMEnvVarSet()` helper returning the
+  canonical 3-key set (REQ-HYG-001-003 inject↔clear parity).
+- Each name appears exactly once in envkeys.go (grep -c = 1 each).
+- Zero bare `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` /
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` / `CLAUDE_CODE_TEAMMATE_DISPLAY`
+  literals in cli production source (AST-based
+  `TestNoBareGLMEnvVarLiteralsInCLIProduction` PASS; grep -c = 0 each).
+- Inject sites (glm.go: 484, 682, 926, 970, +224) reference
+  `config.EnvClaudeCodeDisableExperimentalBetas`; clear sites (glm.go: 569,
+  571, 616, 711; launcher.go: 305, 307, 309; settings.go: 191, 193, 194)
+  reference the respective constant; the read site `glm_tools.go:805`
+  references `config.EnvGLMNoAutoTools`.
+- `TestGLMEnvSetParity` asserts the helper returns exactly the canonical
+  3-key set — inject and clear derive from one enumeration.
+- Scope addition (transparent): `internal/cli/settings.go:191-194`
+  (`stripGLMCredsAndSetTeammateMode`) carried the same 3 bare literals as
+  `launcher.go`'s clear path but was not enumerated in
+  `glm-env-sites.snapshot.md`. It was included here because leaving it bare
+  would re-introduce exactly the inject↔clear drift REQ-HYG-001-003 closes;
+  the relocation is behavior-identical (same keys deleted). Also relocated
+  the adjacent `MOAI_STATUSLINE_CONTEXT_SIZE` literal in that same clear
+  block to its existing `config.EnvStatuslineContextSize` constant (free win,
+  same block).
+
+**AC-HYG-001-004 (threshold literals) — PASS.**
+- `internal/config/defaults.go`: added
+  `var DefaultTierThresholds = []int{1, 3, 5, 10}` (var, not const —
+  composite literal) and `DefaultHookDispatcherTimeout = 30 * time.Second`
+  (const).
+- The THREE former `[]int{1, 3, 5, 10}` sites
+  (`harness.go:150` runHarnessStatus fallback, `harness.go:480`
+  defaultLearningConfig struct initializer, `hook.go:1013`
+  defaultTierThresholds) now all reference `config.DefaultTierThresholds`;
+  zero inline copies survive in cli production source (grep = 0).
+- The TWO former `30 * time.Second` dispatcher-timeout sites
+  (`hook.go:237`, `hook.go:361`) now reference
+  `config.DefaultHookDispatcherTimeout`; zero inline copies survive in
+  hook.go (grep = 0).
+- `TestDefaultTierThresholdsCanonical` /
+  `TestDefaultHookDispatcherTimeoutCanonical` /
+  `TestGLMEnvConstantsCanonical` (new in
+  `internal/config/defaults_clifix_test.go`) assert the SSOT values equal
+  the pre-M3 baselines, proving behavior preservation.
+
+**Inventory "size caps / retry / circuit" deferral — verified NO-OP.** The
+threshold inventory deferred those literals "without anchoring them with
+stable line numbers" and instructed M3 to re-derive via grep. A targeted
+grep of `internal/cli/hook.go` and `internal/cli/harness.go` for size / retry
+/ circuit / breaker / max-bytes patterns surfaced ZERO duplicated literals in
+those files. The 5 anchored sites above are therefore the complete duplicate
+set; no further literals needed extraction (extracting a literal that appears
+only once is over-abstraction, violating Enforce Simplicity).
+
+**Build / test / lint (M3).**
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- `go test ./internal/cli/ ./internal/cli/wizard/ ./internal/cli/worktree/
+  ./internal/config/` — all PASS (cli 187.9s, wizard 7.0s, worktree 9.2s,
+  config 3.9s). M1 characterization net + M2 defect fixes remain green.
+- `internal/harness` `TestRecordEvent100Sequential` flagged 108ms > 100ms
+  once under parallel-batch machine load, then passed 3/3 in isolation
+  (0.48s avg) — confirmed pre-existing perf-flake, unrelated to M3
+  (internal/harness not in M3 scope; its `learner_test.go:143/178/198`
+  literal lives in the _test.go hardcoding-allowed zone and was untouched).
+- `golangci-lint run ./internal/config/... ./internal/cli/...` — 0 issues
+  (matches M2 baseline of 0).
+- `gofmt -l` over the 8 edited files — clean.
+
+NO M4 (English strings) or M5 (dead-code) scope touched. P0 lock path,
+concurrency behavior, and the M2 rune/PAT/YAML fixes preserved verbatim.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 

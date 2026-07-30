@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
@@ -802,7 +803,7 @@ func enableMCPServerIdempotentForTool(configPath, toolName, token string) (bool,
 // Non-blocking: warns on stderr but never returns error.
 // Skips if MOAI_GLM_NO_AUTO_TOOLS=1, no token, or already enabled with same token.
 func autoEnableMCPServer() {
-	if os.Getenv("MOAI_GLM_NO_AUTO_TOOLS") == "1" {
+	if os.Getenv(config.EnvGLMNoAutoTools) == "1" {
 		return
 	}
 
