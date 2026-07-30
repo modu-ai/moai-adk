@@ -89,4 +89,10 @@ m1_to_mN_commit_strategy: per-milestone commits on feat/SPEC-CLIFIX-LINTER-STALE
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
+- sync_complete_at: 2026-07-30
+- sync_commit_sha: 97db5e7b6 (docs commit `docs(SPEC-CLIFIX-LINTER-STALE-001): sync-phase artifacts — 3-phase close`; backfilled in this follow-up backfill commit — SHA cannot be in its own commit, per the self-referential-hazard workaround of spec-frontmatter-schema.md § Forbidden ownership crossings / SHA placeholder backfill exemption D3)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — SPEC-CLIFIX-LINTER-STALE-001 entry (6 ACs, Tier M, M1–M4 single fix commit)
+- frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
+- run_phase_pr: #1232 (merge commit 0fe62d544 — CLI linter staleness remediation M1–M4)
+- note: §25 template neutrality N/A — this SPEC touched `internal/cli/agentlint`, `internal/cli/help.go`, `internal/cli/taskledger` Go code; no template mirror edits. This sync commit carries only frontmatter + CHANGELOG + this §E.4 block (no template edits, no code changes)

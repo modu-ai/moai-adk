@@ -2,9 +2,9 @@
 id: SPEC-TDD-ANTICHEAT-001
 title: "TDD Test-First Anti-Cheat Enforcement"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-24
-updated: 2026-07-29
+updated: 2026-07-30
 author: manager-spec
 priority: P1
 phase: "v3.0.2 target"
