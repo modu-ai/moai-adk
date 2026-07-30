@@ -139,7 +139,12 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      # `shell: bash` is load-bearing: the windows runner defaults to PowerShell,
+      # which parses `if [ ... ]; then` as a syntax error and fails the job before
+      # any test runs. Every step in this job that uses POSIX shell syntax must
+      # declare it explicitly (issue #1225).
       - name: Assert zero exec.Command in MX validator (AC-UTIL-001-04)
+        shell: bash
         run: |
           count=$(grep -r "exec\.Command\|\"os/exec\"" internal/hook/mx/ --include="*.go" | grep -v "_test\.go" | grep -v "complexity/" | wc -l)
           if [ "$count" -ne "0" ]; then
