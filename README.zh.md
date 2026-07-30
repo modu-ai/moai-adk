@@ -74,19 +74,9 @@ MoAI-ADK 的每一个设计决策都服务于这三个轴中的一个。用哪�
 
 ## 🪙 成本轴 —— 代币经济学
 
-Token 单价持续下降，但实际的智能体工作流支出却在上升。智能体为解决单个任务要运行几十到几百步，消耗成比例的 Token。按量计费中这直接变成账单，订阅制中则是消耗所有模型共享的周额度。
-
-### 成本由分配决定，而非单价
-
-DeepSWE 排行榜（113 任务，按 effort 分级视图）的实测数据展示了这个问题。在同一个 Claude 系列内，单任务成本取决于模型*完成*任务的效率 —— 而非 Token 单价。
-
-### 🪙 代币经济学 — 同等质量，更少 token
-
 Token 单价三年内跌了 **98%**（Linux Foundation），但同期企业 AI 支出反而涨了 **320%**。使用量暴增盖过了单价下降。智能体为解决单个任务要跑几十到几百步，按比例烧掉 token — 按量计费下这直接变成账单，订阅制下则是吃掉所有模型共享的周配额。
 
 Uber 给 5,000 名工程师部署了 Claude Code，**四个月烧完一年的编码预算**，随后被迫施加月度 token 限额。Meta、Amazon、Microsoft 相继收回无限制 AI 政策。**代币经济学** — 把模型匹配到任务以提升 token 效率 — 成为科技行业的新基线。
-
-![为什么是代币经济学 — Token 单价 -98% vs 企业 AI 成本 +320%](./assets/images/why-tokenomics-infographic.png)
 
 传统的成本控制是为单价上涨而设计的，面对"单价在跌但总支出在涨"这个悖论便束手无策。瓶颈不在单价，而在使用量 — 更准确地说，是智能体收尾前要跑多少步。
 
@@ -120,13 +110,11 @@ Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下
 
 **配置矩阵**。单一的 per-agent 配置矩阵将 11 个保留 agent 各自映射到一个 `{model, effort}` 对 —— 共 33 格。单一配置轴 —— `high` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。包括 `Explore` 在内的每个保留 agent 都从矩阵获取 model+effort（任何位置都没有 Haiku）；只有用户自定义 agent 继承会话模型。
 
-![模型路由 — 11 个 agent 按角色分配到 Opus 或 Sonnet，带 effort 标签](./assets/images/model-routing-infographic.png)
-
 <p align="center">
   <img src="./assets/images/cg-mode-infographic-zh.png" alt="CG 模式 — Claude 领队 + GLM 执行者混合" width="85%">
 </p>
 
-### 验证经济 —— 给上下文减脂，证据落到磁盘
+### DeepSWE 基准测试 —— 性价比拐点在哪里
 
 | 模型 [effort] | 分数 | 单任务成本 | 备注 |
 |---|---|---|---|
@@ -142,13 +130,13 @@ Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下
 
 > 数据来源：[DeepSWE v1.1 排行榜](https://deepswe.datacurve.ai)（datacurve.ai，113 tasks，2026-07-25）
 
-### 预算防御 —— 超支前停止，下个会话继续
+### 验证经济 · 预算防御 —— 给上下文减脂，超支前停止
 
 **验证经济 — 上下文减脂，证据落到磁盘。** 把冗长的验证输出重定向到磁盘文件，上下文中只保留退出码和 bounded tail（最多 50 行）。Prompt 缓存复用（缓存读取成本 0.1×）加上上下文减脂的 `/clear` 策略（1M 模型 50% / 200K 模型 90% 阈值时自动推荐）让窗口保持轻盈。
 
 **预算防御 — 超支前停止，下个会话继续。** Token Circuit Breaker 在硬上限（默认 90%）时中止，把进度保存到 `progress.md`，并发布可粘贴的 resume 消息。Statusline 始终把上下文使用率、缓存命中率、rate limit 耗尽率显示在眼前。
 
-### 🧠 智能体循环工程 — 自主运转并学习的循环
+---
 
 ## 🧠 自我改进轴 —— 智能体循环工程
 
@@ -367,6 +355,48 @@ flowchart TD
 
 ---
 
+## Claude × GLM 多模型协同
+
+MoAI-ADK 支持把 **z.ai GLM** 作为 Claude Code 的替代后端。切换只需改环境变量，不必改动任何代码；框架、SPEC 工作流和质量门在每一种后端上的行为完全一致。
+
+| 项目 | 说明 |
+|---|---|
+| GLM Coding Plan | 每月 **$10** 起（[订阅](https://z.ai/subscribe?ic=1NDV03BGWU)） |
+| 兼容性 | 与 Claude Code 直接对接 —— 无需改代码 |
+| 模型 | glm-5.2、glm-4.7、glm-4.5-air，另有免费模型 |
+
+### 三种执行模式
+
+| 命令 | 领队 | 执行者 | tmux | 成本节省 | 适用场景 |
+|---|---|---|---|---|---|
+| `moai cc` | Claude | Claude | 不需要 | — | 追求最高质量的复杂工作 |
+| `moai glm` | GLM | GLM | 建议 | 约 70% | 成本优化 |
+| `moai cg` | Claude | GLM | **必需** | 约 60% | 质量与成本兼顾 |
+
+**CG 模式**是两者的混合：Claude 领队负责策略、规划和审计，GLM 执行者承担大量实现工作，二者通过 tmux 会话级的环境隔离衔接。
+
+```bash
+moai glm sk-your-glm-api-key   # 保存密钥，一次即可
+moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行者）
+```
+
+### 默认模型映射
+
+每个 Claude 层级通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到对应的 GLM 模型：
+
+| Claude 层级 | GLM 模型 | 上下文 |
+|---|---|---|
+| Opus | glm-5.2 | 1M |
+| Sonnet | glm-4.7 | 202K |
+| Haiku | glm-4.5-air | 128K |
+| Fable | glm-5.2 | 1M |
+
+> 另有免费模型可用（GLM-4.7-Flash、GLM-4.5-Flash）。完整列表见 [z.ai 定价](https://docs.z.ai/guides/overview/pricing)。
+>
+> → 详情：[Multi-LLM 指南](https://adk.mo.ai.kr/zh/multi-llm)
+
+---
+
 ## FAQ
 
 ### Q: 为什么不是每个函数都有 @MX 标签？
@@ -440,3 +470,13 @@ flowchart TD
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
 - [Discord 社区](https://discord.gg/Z7E7Mdc5aN)
+
+---
+
+## Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+<p align="center">
+  <sub>由 MoAI-ADK 团队打造 · <a href="https://adk.mo.ai.kr">adk.mo.ai.kr</a></sub>
+</p>

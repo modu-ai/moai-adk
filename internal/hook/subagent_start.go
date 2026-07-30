@@ -16,8 +16,12 @@ import (
 // subagentStartHandler processes SubagentStart events.
 // It logs subagent startup for session tracking and optionally injects project context.
 type subagentStartHandler struct {
-	cfg        ConfigProvider
+	cfg ConfigProvider
+	// projectDir is the resolved project root, used only as a fallback when the
+	// hook input carries no CWD. Tests may set it directly; the production
+	// constructor leaves it empty and lets projectRoot resolve it.
 	projectDir string
+	projectRootResolver
 }
 
 // NewSubagentStartHandler creates a new SubagentStart event handler without config.
@@ -28,12 +32,19 @@ func NewSubagentStartHandler() Handler {
 
 // NewSubagentStartHandlerWithConfig creates a new SubagentStart event handler with
 // config access for project context injection.
-// projectDir is resolved via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
-// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
-// (REQ-HCWA-003, REQ-HCWA-008).
+// projectDir is resolved on first use via resolveProjectRootFromEnv:
+// CLAUDE_PROJECT_DIR env var first, then os.Getwd() fallback with slog.Warn
+// cwd_fallback:true marker (REQ-HCWA-003, REQ-HCWA-008).
 func NewSubagentStartHandlerWithConfig(cfg ConfigProvider) Handler {
-	dir := resolveProjectRootFromEnv("NewSubagentStartHandlerWithConfig")
-	return &subagentStartHandler{cfg: cfg, projectDir: dir}
+	return &subagentStartHandler{
+		cfg:                 cfg,
+		projectRootResolver: projectRootResolver{caller: "NewSubagentStartHandlerWithConfig"},
+	}
+}
+
+// projectRoot returns the project root, resolving it on first use.
+func (h *subagentStartHandler) projectRoot() string {
+	return h.resolve(&h.projectDir)
 }
 
 // EventType returns EventSubagentStart.
@@ -91,7 +102,7 @@ func (h *subagentStartHandler) buildContext(input *HookInput) string {
 	// Resolve project directory from input CWD, handler field, or env
 	dir := input.CWD
 	if dir == "" {
-		dir = h.projectDir
+		dir = h.projectRoot()
 	}
 
 	if spec := h.detectActiveSpec(dir); spec != "" {
