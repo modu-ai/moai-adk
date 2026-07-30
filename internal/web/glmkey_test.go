@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -383,6 +384,9 @@ func TestGLMKeySave_FailureSurfaced(t *testing.T) {
 // ---- AC-GKI-006-02: pre-existing 0644 file is tightened to 0600 via console ----
 
 func TestGLMKeySave_NarrowsExistingWideMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce POSIX permission bits: the pre-existing 0644 file cannot be created with a wide mode there, so the narrowing cannot be observed; the behavior stays covered on unix")
+	}
 	dir := withSandboxedGLMHome(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
