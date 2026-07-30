@@ -207,10 +207,14 @@ Cross-platform: `go build ./...` → 0; `GOOS=windows GOARCH=amd64 go build ./..
 
 ```yaml
 sync_complete_at: 2026-07-31
-sync_commit_sha: <pending>   # placeholder written in the sync commit itself (a commit
-                             # cannot reference its own SHA); backfilled after the sync
-                             # PR merges, per the schema SHA placeholder backfill exemption.
-sync_pr: <pending>
+sync_commit_sha: 4d0df6563   # squash merge of sync PR #1256 onto main. Written as a
+                             # placeholder in the sync commit itself (a commit cannot
+                             # reference its own SHA) and backfilled here per the schema
+                             # SHA placeholder backfill exemption.
+sync_pr: 1256
+sync_merged_at: 2026-07-30T22:38:24Z
+sync_ci: 16 SUCCESS / 7 SKIPPED / 0 FAILURE   # gh pr view 1256 --json statusCheckRollup
+                                              # (23 rollup entries total)
 sync_status: complete
 run_phase_pr: 1254
 run_phase_merge_commit: a89e875e2
@@ -272,8 +276,8 @@ discrepancy was investigated rather than assumed away.
   value-identity attestation (all 10 files `IDENTICAL`) plus the per-package suites.
 - **Coverage not measured** at sync-phase. This refactor adds no production branches, so
   coverage is expected unchanged, but that expectation was not verified by command.
-- **`sync_commit_sha` / `sync_pr` are placeholders** at write time and are backfilled after
-  the sync PR merges.
+- ~~**`sync_commit_sha` / `sync_pr` are placeholders**~~ — RESOLVED: backfilled to `4d0df6563` /
+  PR #1256 after the sync PR merged (this commit).
 
 ### Residual risk
 
