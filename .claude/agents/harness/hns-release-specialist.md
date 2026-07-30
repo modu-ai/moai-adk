@@ -98,6 +98,28 @@ Changes / Added / Changed / Fixed / Installation & Update), then `---`, then
 수정됨 / 설치 및 업데이트), then previous entry. Commit:
 `docs: update CHANGELOG for vX.Y.Z`.
 
+[HARD] Docs-site release-notes page, same commit. `CHANGELOG.md` stays the
+source of truth; the four `docs-site/content/{en,ko,ja,zh}/changelog/_index.md`
+pages mirror its most recent entries so the release history is readable at
+`adk.mo.ai.kr/<locale>/changelog/`. For each release:
+
+1. Insert the new version at the TOP of the `## Releases` section (locale
+   headings: `## Releases` / `## 릴리스 내역` / `## リリース履歴` / `## 发布记录`),
+   under a `### [X.Y.Z] - YYYY-MM-DD` subheading.
+2. `en` and `ko` reuse the CHANGELOG bodies verbatim (English section → `en`,
+   the `(한국어)` section → `ko`). `ja` and `zh` are translated from the English
+   section — CHANGELOG.md carries no ja/zh, so this is the only place they are
+   authored.
+3. Keep at most **5** versions per page. Drop the oldest entry when the sixth
+   arrives; the GitHub `CHANGELOG.md` link already at the bottom of each page
+   remains the complete history, so nothing is lost.
+4. All four locales move in the same commit — a partial update breaks the
+   4-locale parity obligation (CLAUDE.local.md §17.3).
+
+Where a release ships no user-visible change (a docs-only or CI-only release
+per the content filter above), skip the docs-site page rather than adding an
+empty entry.
+
 ### Phase 5 — Final Approval (human gate — specialist-held)
 
 [HARD] Return a blocker report with the release summary (version change, commits,
