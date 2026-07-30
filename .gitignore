@@ -180,6 +180,7 @@ secret-*.*
 .claude/settings.local.*.json
 .claude/.env.local*
 .claude/local/
+.moai/config/local/
 .claude/plans/
 .claude/agent-memory/
 .claude/worktrees/

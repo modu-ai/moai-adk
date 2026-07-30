@@ -221,8 +221,8 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 		_ = os.Setenv(config.EnvClaudeCodeAutoCompactWindow, window) //nolint:errcheck
 	}
 	// Z.AI proxy compatibility: strip Anthropic beta headers
-	_ = os.Setenv("CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "1") //nolint:errcheck
-	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                   //nolint:errcheck
+	_ = os.Setenv(config.EnvClaudeCodeDisableExperimentalBetas, "1") //nolint:errcheck
+	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                       //nolint:errcheck
 	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
 	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
 	// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject the
@@ -481,8 +481,8 @@ func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
 		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-		"API_TIMEOUT_MS":                         "3000000",
+		config.EnvClaudeCodeDisableExperimentalBetas: "1",
+		"API_TIMEOUT_MS": "3000000",
 	}
 
 	// Issue #742: Map the High slot model to its real context window so
@@ -566,9 +566,9 @@ func buildTmuxClearVars() []string {
 		config.EnvAnthropicReasoningEffort,
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+		config.EnvClaudeCodeDisableExperimentalBetas,
 		"API_TIMEOUT_MS",
-		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+		config.EnvClaudeCodeDisableNonessentialTraffic,
 		// Legacy cleanup: DISABLE_PROMPT_CACHING was removed from GLM env injection.
 		// Kept here only to clean up residual values from older sessions.
 		"DISABLE_PROMPT_CACHING",
@@ -613,7 +613,7 @@ func ensureSettingsLocalJSON(settingsPath string) error {
 		// Single source of truth: teammateMode native settings key in settings.local.json.
 		m["teammateMode"] = "tmux"
 		// Clean up legacy env var if present (superseded by native key).
-		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		delete(env, config.EnvClaudeCodeTeammateDisplay)
 
 		if len(env) == 0 {
 			delete(m, "env")
@@ -679,7 +679,7 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
 		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 		// Z.AI proxy compatibility: strip Anthropic beta headers
-		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
 		env["API_TIMEOUT_MS"] = "3000000"
 		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject
 		// the session-global GLM reasoning-control derived from the effort overlay
@@ -708,7 +708,7 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 		// Single source of truth: teammateMode native settings key in settings.local.json.
 		m["teammateMode"] = "tmux"
 		// Clean up legacy env var if present (superseded by native key).
-		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		delete(env, config.EnvClaudeCodeTeammateDisplay)
 		if len(env) == 0 {
 			delete(m, "env")
 		}
@@ -902,7 +902,7 @@ func loadGLMKey() string {
 // coverage_improvement_test, target_coverage_test, glm_test) calls them
 // directly; repointing every call site would be a no-op change that risks
 // breaking test compilation.
-func escapeDotenvValue(value string) string { return glmcred.EscapeValue(value) }
+func escapeDotenvValue(value string) string   { return glmcred.EscapeValue(value) }
 func unescapeDotenvValue(value string) string { return glmcred.UnescapeValue(value) }
 
 // getGLMAPIKey returns the GLM API key from multiple sources.
@@ -911,27 +911,6 @@ func getGLMAPIKey(envVar string) string {
 		return key
 	}
 	return os.Getenv(envVar)
-}
-
-// buildGLMEnvVars constructs the environment variable map for GLM mode.
-func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
-	vars := map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           apiKey,
-		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
-		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
-		// Z.AI proxy compatibility
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
-		"API_TIMEOUT_MS":                         "3000000",
-	}
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		vars[config.EnvClaudeCodeAutoCompactWindow] = window
-	}
-	return vars
 }
 
 // injectGLMEnv adds GLM environment variables to settings.local.json.
@@ -967,7 +946,7 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
 		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
 		// Z.AI proxy compatibility: strip Anthropic beta headers
-		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
 		env["API_TIMEOUT_MS"] = "3000000"
 		// 1M context activation: scale auto-compact window when the High slot model
 		// resolves to the 1M context tier; otherwise clean up any stale value.

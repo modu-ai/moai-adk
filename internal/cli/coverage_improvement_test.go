@@ -1300,12 +1300,6 @@ func TestClearTmuxSessionEnv_TestEnvironment(t *testing.T) {
 }
 
 // =============================================================================
-// buildGLMEnvVars — glm.go:591
-// =============================================================================
-
-// TestBuildGLMEnvVars removed - exists in glm_team_test.go
-
-// =============================================================================
 // escapeDotenvValue / unescapeDotenvValue — glm.go:564/572
 // =============================================================================
 
@@ -5834,33 +5828,6 @@ func TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2(t *testing.T) {
 
 	if !shouldSkipBinaryUpdate(cmd) {
 		t.Error("expected shouldSkipBinaryUpdate to return true for dev build")
-	}
-}
-
-// --- buildGLMEnvVars: comprehensive ---
-
-func TestBuildGLMEnvVars_AllFields(t *testing.T) {
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.test.com",
-	}
-	glmConfig.Models.High = "opus-model"
-	glmConfig.Models.Medium = "sonnet-model"
-	glmConfig.Models.Low = "haiku-model"
-
-	envVars := buildGLMEnvVars(glmConfig, "test-key")
-
-	expected := map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           "test-key",
-		"ANTHROPIC_BASE_URL":             "https://api.test.com",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   "opus-model",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": "sonnet-model",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  "haiku-model",
-	}
-
-	for k, v := range expected {
-		if envVars[k] != v {
-			t.Errorf("expected %s=%s, got %s=%s", k, v, k, envVars[k])
-		}
 	}
 }
 

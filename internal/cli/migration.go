@@ -42,23 +42,23 @@ Migrations also run automatically via the session-start hook; this command lets 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("현재 작업 디렉터리를 가져올 수 없습니다: %w", err)
+			return fmt.Errorf("failed to get current working directory: %w", err)
 		}
 
 		runner := migration.NewRunner(cwd)
 		ctx := context.Background()
 		applied, err := runner.Apply(ctx)
 		if err != nil {
-			return fmt.Errorf("마이그레이션 실행 실패: %w", err)
+			return fmt.Errorf("migration run failed: %w", err)
 		}
 
 		p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
 		if len(applied) == 0 {
-			p.Info("실행할 pending 마이그레이션이 없습니다.")
+			p.Info("No pending migrations to apply.")
 			return nil
 		}
 
-		p.Success("성공: %d개 마이그레이션 적용됨 (버전: %v)", len(applied), applied)
+		p.Success("Applied %d migration(s) (versions: %v)", len(applied), applied)
 		return nil
 	},
 }
@@ -80,13 +80,13 @@ Output fields:
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("현재 작업 디렉터리를 가져올 수 없습니다: %w", err)
+			return fmt.Errorf("failed to get current working directory: %w", err)
 		}
 
 		runner := migration.NewRunner(cwd)
 		current, pending, lastApplied, err := runner.Status()
 		if err != nil {
-			return fmt.Errorf("마이그레이션 상태 조회 실패: %w", err)
+			return fmt.Errorf("failed to retrieve migration status: %w", err)
 		}
 
 		if jsonFlag {
@@ -98,7 +98,7 @@ Output fields:
 			}
 			data, err := json.MarshalIndent(output, "", "  ")
 			if err != nil {
-				return fmt.Errorf("JSON 마샬링 실패: %w", err)
+				return fmt.Errorf("failed to marshal JSON: %w", err)
 			}
 			_ = p.Data(string(data))
 			return nil
@@ -107,14 +107,14 @@ Output fields:
 		// Human-readable output — composed into a single multi-line string so
 		// p.Data writes the block to stdout byte-identical to the prior
 		// sequential stdout writes (DECISION 2026-07-14).
-		lines := []string{fmt.Sprintf("현재 버전: %d", current)}
+		lines := []string{fmt.Sprintf("Current version: %d", current)}
 		if len(pending) > 0 {
-			lines = append(lines, fmt.Sprintf("Pending 마이그레이션 (%d개): %v", len(pending), pending))
+			lines = append(lines, fmt.Sprintf("Pending migrations (%d): %v", len(pending), pending))
 		} else {
-			lines = append(lines, "Pending 마이그레이션 없음 (최신 상태)")
+			lines = append(lines, "No pending migrations (up to date)")
 		}
 		if lastApplied != nil {
-			lines = append(lines, fmt.Sprintf("최근 적용: %s (버전 %d)", lastApplied.Name, lastApplied.Version))
+			lines = append(lines, fmt.Sprintf("Last applied: %s (version %d)", lastApplied.Name, lastApplied.Version))
 		}
 		_ = p.Data(strings.Join(lines, "\n"))
 
@@ -140,21 +140,21 @@ Example:
 		var targetVersion int
 		_, err := fmt.Sscanf(args[0], "%d", &targetVersion)
 		if err != nil {
-			return fmt.Errorf("잘못된 버전 번호: %s: %w", args[0], err)
+			return fmt.Errorf("invalid version number: %s: %w", args[0], err)
 		}
 
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("현재 작업 디렉터리를 가져올 수 없습니다: %w", err)
+			return fmt.Errorf("failed to get current working directory: %w", err)
 		}
 
 		runner := migration.NewRunner(cwd)
 		if err := runner.Rollback(targetVersion); err != nil {
-			return fmt.Errorf("롤백 실패: %w", err)
+			return fmt.Errorf("rollback failed: %w", err)
 		}
 
 		p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
-		p.Success("성공: 버전 %d로 롤백됨", targetVersion)
+		p.Success("Rolled back to version %d", targetVersion)
 		return nil
 	},
 }
@@ -166,7 +166,7 @@ func init() {
 	migrationCmd.AddCommand(migrationRollbackCmd)
 
 	// Add the --json flag to the status command
-	migrationStatusCmd.Flags().Bool("json", false, "JSON 형식으로 출력")
+	migrationStatusCmd.Flags().Bool("json", false, "Output in JSON format")
 
 	// Registration of the migration group on rootCmd is performed by root.go
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tmux"
+	"gopkg.in/yaml.v3"
 )
 
 // TmuxIntegration implements SPEC-WORKTREE-002 R5: Tmux Integration requirements.
@@ -126,7 +127,9 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 // In CG mode the main session is already the Claude leader;
 // the worktree pane runs as a GLM worker.
 func buildTmuxInitialCommand(cfg *TmuxSessionConfig) string {
-	cdCmd := fmt.Sprintf("cd %s", cfg.WorktreePath)
+	// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008: quote the worktree path so paths
+	// containing spaces (and shell-significant characters) survive the cd.
+	cdCmd := fmt.Sprintf("cd %q", cfg.WorktreePath)
 
 	var moaiCmd string
 	switch cfg.ActiveMode {
@@ -149,6 +152,31 @@ func IsTmuxAvailable() bool {
 	return os.Getenv("TMUX") != ""
 }
 
+// llmTeamModeConfig is the subset of .moai/config/sections/llm.yaml consumed by
+// the active-mode detection. Only the documented llm.team_mode path is read.
+type llmTeamModeConfig struct {
+	LLM struct {
+		TeamMode string `yaml:"team_mode"`
+	} `yaml:"llm"`
+}
+
+// parseTeamMode extracts the llm.team_mode value from a llm.yaml document via a
+// real yaml.v3 unmarshal so commented-out lines (e.g. `# team_mode: cg`) cannot
+// activate CG mode. SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008.
+// Returns "cc" when the field is absent, empty, "cc", or the document fails to
+// parse — matching the prior fallback semantics.
+func parseTeamMode(data []byte) string {
+	var cfg llmTeamModeConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return "cc"
+	}
+	v := strings.TrimSpace(cfg.LLM.TeamMode)
+	if v == "" || v == "cc" {
+		return "cc"
+	}
+	return v
+}
+
 // GetActiveMode reads the current active mode from .moai/config/sections/llm.yaml.
 // R1.1: active mode detection.
 //
@@ -167,28 +195,9 @@ func GetActiveMode(projectRoot string) (string, error) {
 		return "cc", fmt.Errorf("read llm.yaml: %w", err)
 	}
 
-	// Simple YAML parsing for llm.team_mode field
-	// Look for any line containing "team_mode:" regardless of indentation
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "team_mode:") {
-			// Extract value after "team_mode:"
-			parts := strings.SplitN(trimmed, "team_mode:", 2)
-			if len(parts) == 2 {
-				value := strings.TrimSpace(parts[1])
-				// Remove quotes if present
-				value = strings.Trim(value, "\"")
-				value = strings.Trim(value, "'")
-				if value == "" || value == "cc" {
-					return "cc", nil
-				}
-				return value, nil
-			}
-		}
-	}
-
-	return "cc", nil
+	// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008: yaml.v3 unmarshal reads only the
+	// documented llm.team_mode path; commented-out lines no longer match.
+	return parseTeamMode(data), nil
 }
 
 // BuildTmuxSessionConfig builds a tmux session configuration from worktree information.
