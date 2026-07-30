@@ -527,6 +527,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
 			TmuxPreferred:      true,
 		},
+		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
+		// default-OFF (opt-in). Distributed users get an inert guard; the
+		// maintainer of a shared multi-session checkout opts in via local
+		// config. Template neutrality (CLAUDE.local.md §25): no `enabled: true`
+		// anywhere under internal/template/templates/.
+		BranchGuard: BranchGuardConfig{
+			Enabled: false,
+		},
 	}
 }
 

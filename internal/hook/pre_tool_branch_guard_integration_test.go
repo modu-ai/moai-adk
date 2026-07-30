@@ -193,7 +193,11 @@ func TestBranchGuard_CheckBranchStateOrigin(t *testing.T) {
 	t.Setenv(branchGuardExemptEnv, "")
 
 	handler := &preToolHandler{
-		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001: the guard is now default-OFF;
+		// opt this deny-origin test in so the deny path is reachable (the
+		// checkBranchState signature is unchanged — only the config setup
+		// changes, no signature cascade per plan.md D1).
+		cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 		policy:     DefaultSecurityPolicy(),
 		projectDir: repo,
 	}

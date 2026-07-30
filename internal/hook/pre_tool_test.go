@@ -1495,7 +1495,10 @@ func TestBranchGuard_DeniesGitSwitchInPrimary(t *testing.T) {
 	t.Run("Deny_primary", func(t *testing.T) {
 		t.Setenv(branchGuardExemptEnv, "")
 		handler := &preToolHandler{
-			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001: guard is now opt-in; enable
+			// it here so the deny path is exercised (checkBranchState signature
+			// unchanged — config setup update only).
+			cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 			policy:     DefaultSecurityPolicy(),
 			projectDir: repo,
 		}
@@ -1524,7 +1527,7 @@ func TestBranchGuard_DeniesGitSwitchInPrimary(t *testing.T) {
 	t.Run("Allow_exempt_env", func(t *testing.T) {
 		t.Setenv(branchGuardExemptEnv, "1")
 		handler := &preToolHandler{
-			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 			policy:     DefaultSecurityPolicy(),
 			projectDir: repo,
 		}
@@ -1561,7 +1564,7 @@ func TestBranchGuard_AllowsInWorktree(t *testing.T) {
 	// worktree context (proves the discriminant is the deciding factor).
 	t.Setenv(branchGuardExemptEnv, "")
 	handler := &preToolHandler{
-		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 		policy:     DefaultSecurityPolicy(),
 		projectDir: wt,
 	}
@@ -1635,7 +1638,7 @@ func TestBranchGuard_ExemptAllow(t *testing.T) {
 		t.Setenv(branchGuardExemptEnv, "")
 		repo := newBranchGuardRepoFixture(t)
 		handler := &preToolHandler{
-			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 			policy:     DefaultSecurityPolicy(),
 			projectDir: repo,
 		}
@@ -1668,7 +1671,11 @@ func TestBranchGuard_FailOpenOnGitError(t *testing.T) {
 	nonGit := t.TempDir() // no git init
 
 	handler := &preToolHandler{
-		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001: guard is opt-in; enable it here
+		// so the fail-open path (audit-log append) is exercised. The deny
+		// requires positive evidence of a primary checkout; a non-git dir yields
+		// uncertainty → allow + audit (AC-WBG-012 / REQ-6c).
+		cfg:        &mockConfigProvider{cfg: cfgWithBranchGuard(true)},
 		policy:     DefaultSecurityPolicy(),
 		projectDir: nonGit,
 	}

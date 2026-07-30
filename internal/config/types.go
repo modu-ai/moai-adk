@@ -363,6 +363,12 @@ type WorkflowConfig struct {
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
+	// BranchGuard gates the Main-Checkout Branch-State Guard hook
+	// (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001). Default false: the guard ships
+	// through the template to all users INERT; maintainers of shared
+	// multi-session checkouts opt in via local config. Additive BELOW the
+	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
+	BranchGuard    BranchGuardConfig      `yaml:"branch_guard"`
 
 	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
 	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
@@ -481,6 +487,17 @@ type WorkflowWorktreeConfig struct {
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
 	TmuxPreferred      bool   `yaml:"tmux_preferred"`
+}
+
+// BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
+// Branch-State Guard opt-in gate (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3).
+// When Enabled is false (the distributed default), the hook returns the allow
+// fall-through WITHOUT evaluating patterns, primary-checkout state, or exemption
+// logic. The maintainer of a shared multi-session checkout opts in via local
+// config; the exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity)
+// remains unchanged and is consulted only on the enabled path (REQ-6).
+type BranchGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // RoleProfile represents an agent role profile configuration.
