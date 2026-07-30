@@ -1,7 +1,7 @@
 ---
 id: SPEC-CONFIG-TIER-PERSIST-001
 title: "config resolution and persistence: explicit falsey values must win their tier, the local tier must be reachable, every config write must be atomic and mode-preserving, and a malformed section must never be silently written back as defaults"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 era: V3R6
 tier: M
 tags: "config, merge-tier, priority, atomic-write, file-mode, loader, gitignore, update, data-integrity"
-related_specs: [SPEC-UPDATE-YAML-PRESERVE-001, SPEC-UPDATE-DATA-SURVIVAL-001, SPEC-UPDATE-REINSTALL-LOOP-002, SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001, SPEC-V3R2-RT-005, SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001]
+related_specs: [SPEC-UPDATE-YAML-PRESERVE-001, SPEC-UPDATE-DATA-SURVIVAL-001, SPEC-UPDATE-REINSTALL-LOOP-002, SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001, SPEC-V3R2-RT-005, SPEC-V3R6-UPDATE-NOISE-001, SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001]
 depends_on: [SPEC-UPDATE-DATA-SURVIVAL-001]
 ---
 
@@ -24,6 +24,7 @@ depends_on: [SPEC-UPDATE-DATA-SURVIVAL-001]
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 3 of 6. Findings F1-F8 each reproduced by a runnable probe against HEAD `d5336214e`. |
+| 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D10 + D15). REQ-CTP-006 re-scoped from an `iota`-only reorder to a three-site reorder after `Priority()` was measured to have zero non-test consumers. REQ-CTP-033's reversal of `SPEC-V3R6-UPDATE-NOISE-001` `REQ-UN-007` declared explicitly in the new §K. REQ-CTP-013/014 marked already-landed at `b9fc75016`. REQ-CTP-005 split into two non-contradictory clauses. F1's file-mode evidence re-attributed to the primary checkout. |
 
 ## §A Problem / Motivation
 
@@ -55,13 +56,29 @@ likely to be restrictive.
 
 The second resolution defect is an ordering contradiction. `internal/config/source.go:26-28`
 documents `SrcLocal` as "local overrides (not committed to git)" pointing at
-`.claude/settings.local.json` and `.moai/config/local/*.yaml`, but the enum places `SrcLocal`
-*after* `SrcProject`, and `Priority()` (`internal/config/source.go:73`) is simply the enum integer.
-An override that cannot override is not an override. Reproduced:
+`.claude/settings.local.json` and `.moai/config/local/*.yaml`, but every one of the three places
+that expresses tier order puts `SrcLocal` *after* `SrcProject`. An override that cannot override is
+not an override. Reproduced:
 
 ```
 k => from-project (source=project) [project=2 local=3]
 ```
+
+Which of the three places actually *decides* the outcome is not obvious, and the first draft of this
+SPEC got it wrong. `Priority()` (`internal/config/source.go:73`) returns `int(s)`, the enum integer —
+but it is read by nothing outside tests. Measured on the baseline tree:
+
+```
+$ grep -rn '\.Priority()' --include='*.go' internal/ | grep -v '_test.go'
+(no output, exit 1)
+```
+
+Resolution order is decided instead by two independent hand-written literal slices:
+`AllSources()` (`internal/config/source.go:103-114`), which `MergeAll` walks at
+`internal/config/merge.go:137`, and a second `tiers` slice inside
+`internal/permission/resolver.go:225-234`. Both list `SrcProject` before `SrcLocal`. Correcting the
+`iota` block alone would therefore change no resolution anywhere while breaking
+`TestAllSources`; REQ-CTP-006 is scoped to all three sites accordingly.
 
 Compounding it, the local tier is unreachable from the typed configuration path entirely.
 `CLAUDE.local.md` §22.9 instructs maintainers to opt into the branch guard by creating
@@ -78,15 +95,35 @@ The 8-tier `resolver` (`internal/config/resolver.go:386-390`, `loadLocalTier`) a
 `os.CreateTemp`, which uses mode 0600, and then `os.Rename`s it over the target. `os.Rename` does
 not inherit the destination's mode, so every `Save()` permanently narrows the file from 0644 to
 0600. `defs.FilePerm` (`internal/defs/perms.go:11`) is never applied on this path. The narrowing is
-observable in this very repository — four files sit at `-rw-------` while the git index records
-`100644` for all of them, and all four are exactly `Save()`'s `saveSection` targets:
+observable in the **primary checkout** at `/Users/goos/MoAI/moai-adk-go` — four files sit at
+`-rw-------` while the git index records `100644` for all of them, and all four are exactly
+`Save()`'s `saveSection` targets:
 
 ```
--rw------- .moai/config/sections/git-convention.yaml
--rw------- .moai/config/sections/git-strategy.yaml
--rw------- .moai/config/sections/language.yaml
--rw------- .moai/config/sections/user.yaml
+$ ls -la /Users/goos/MoAI/moai-adk-go/.moai/config/sections/*.yaml | awk '{print $1, $NF}'
+...
+-rw-------@ .../sections/git-convention.yaml
+-rw-------@ .../sections/git-strategy.yaml
+-rw-------@ .../sections/language.yaml
+-rw-------@ .../sections/user.yaml
 ```
+
+**Where this evidence does and does not reproduce.** The four narrowed files are visible only in the
+primary checkout. In the plan-authoring worktree
+(`.claude/worktrees/epic-update-config`, branch `plan/epic-update-config-audit`) the same command
+reports **all 32 section files at `-rw-r--r--`**, with zero narrowed. That is expected rather than
+contradictory: git records only the executable bit, so a `git worktree add` materialises every file
+at the checkout umask and cannot carry a working-tree `chmod` across. The narrowing is a property of
+the tree in which `Save()` actually ran, not of the commit.
+
+Two consequences bind the rest of this SPEC. First, the file-mode observation is attributed to the
+primary checkout and **not** to the baseline tree, so `acceptance.md` §A clause 3's "recorded from
+this tree" does not cover it. Second, any acceptance criterion phrased as "the four narrowed files in
+this repository read `-rw-r--r--`" is trivially true in a worktree and has no discriminating power;
+AC-CTP-022 therefore asserts the migration against a `t.TempDir()` fixture, and the primary-checkout
+widening is recorded as a manual follow-up rather than an AC. The *mechanism* is independently
+confirmed and is not affected: a direct probe observed a pre-existing `-rw-r--r--` target become
+`-rw-------` after one `atomicWrite` round trip.
 
 The correct pattern already exists in-repo: `internal/settings/yamlpatch/yamlpatch.go:202` calls
 `os.Chmod(tmpName, info.Mode().Perm())` before renaming. `manager.go:161` carries an `@MX:REASON`
@@ -215,24 +252,51 @@ receiving 2-way merges while believing they receive 3-way.
 - **REQ-CTP-004** — `MergeAll` shall continue to omit from its output any key that is absent from
   every tier; absence and falsey-presence shall remain distinguishable in the merged result.
 
-- **REQ-CTP-005** — The `isZero` helper shall not be deleted; **where** it retains a caller after
-  this change, that caller shall be one whose semantics genuinely require zero-detection, and
-  **where** it retains none, it shall be removed rather than left unreferenced.
+- **REQ-CTP-005a** — **Where** `isZero` retains at least one caller after this change whose semantics
+  genuinely require zero-detection, the helper shall be retained together with that caller.
+
+- **REQ-CTP-005b** — **Where** `isZero` retains no caller after this change, the helper shall be
+  removed rather than left unreferenced.
+
+  > REQ-CTP-005a/b replace the single REQ-CTP-005 of v0.1.0, whose text simultaneously forbade and
+  > mandated deletion ("shall not be deleted … it shall be removed"). The intent was always a
+  > disposition decision conditioned on caller survival; the two clauses state that without
+  > self-contradiction. Covered by AC-CTP-037.
 
 ### D.2 Tier ordering and local-tier reachability
 
-- **REQ-CTP-006** — The `Source` enum shall order `SrcLocal` above `SrcProject`, so that
-  `SrcLocal.Priority() < SrcProject.Priority()`, matching the documented intent at
-  `internal/config/source.go:26-28`.
+- **REQ-CTP-006** — Tier order shall place `SrcLocal` above `SrcProject` at **all three** sites that
+  express it, in a single commit: the `iota` block in `internal/config/source.go` (so that
+  `SrcLocal.Priority() < SrcProject.Priority()`), the `AllSources()` literal slice
+  (`internal/config/source.go:103-114`, which `internal/config/merge.go:137` walks), and the `tiers`
+  literal slice in `internal/permission/resolver.go:225-234`. Reordering fewer than all three shall
+  be treated as an incomplete change.
+
+  > The `iota` block alone does not decide resolution. `Priority()` (`source.go:73`) returns
+  > `int(s)` and has zero non-test consumers on the baseline tree, so an `iota`-only reorder leaves
+  > both literal slices — and therefore both `MergeAll` and the permission resolver — resolving in
+  > the old order, while breaking `TestAllSources`'s `AllSources()[i].Priority() == i` invariant.
+  > Reordering the `iota` block and `AllSources()` **together** restores that invariant, so
+  > `TestAllSources` needs no edit; `TestSourceOrdering`'s `expectedOrder` literal does (REQ-CTP-008).
 
 - **REQ-CTP-007** — The relative order of every other pair of tiers shall be unchanged, and
   `SrcPolicy` shall remain the numerically highest-priority tier.
 
-- **REQ-CTP-008** — A guard shall pin the complete tier ordering as an explicit, human-readable
-  sequence, so that any future reordering fails a test rather than silently changing resolution.
+- **REQ-CTP-008** — The existing `TestSourceOrdering` guard (`internal/config/source_test.go:104-119`)
+  already pins the complete tier ordering against a literal, hand-written sequence. Its
+  `expectedOrder` literal shall be updated to the new order **in the same commit** as REQ-CTP-006 and
+  shall be retained; it shall not be deleted, weakened, or replaced by an enum-derived comparison.
+
+  > v0.1.0 recorded this as "add a guard". The guard already exists and is green — the observed
+  > `expectedOrder` literal is `[SrcPolicy, SrcUser, SrcProject, SrcLocal, SrcPlugin, SrcSkill,
+  > SrcSession, SrcBuiltin]`. The real obligation is to update its literal rather than to author a
+  > duplicate. `TestAllSources` (`:89-102`) is a separate, complementary invariant
+  > (`AllSources()[i].Priority() == i`) and needs no edit under REQ-CTP-006's three-site reorder.
 
 - **REQ-CTP-009** — `internal/permission/resolver.go` shall be shown to resolve permissions
-  correctly under the new ordering, since it consumes the same enum.
+  correctly under the new ordering. It does **not** iterate the `Source` enum: it carries its own
+  literal `tiers` slice at `:225-234`, so REQ-CTP-006's reorder reaches it only because that slice is
+  one of the three named sites, and the assertion is therefore load-bearing rather than confirmatory.
 
 - **REQ-CTP-010** — The typed `Loader` shall read `.moai/config/local/*.yaml` and apply it above
   `.moai/config/sections/*.yaml`, so that a value set in the local directory overrides the same
@@ -245,12 +309,23 @@ receiving 2-way merges while believing they receive 3-way.
   force, so that the local directory can both enable and disable a setting. A local tier that can
   only turn things on is a new asymmetry and shall not be shipped.
 
-- **REQ-CTP-013** — `.moai/config/local/` shall be added to the repository `.gitignore`, so that a
-  maintainer-local opt-in cannot be committed and thereby flip a distributed default.
+- **REQ-CTP-013** — **ALREADY SATISFIED at `b9fc75016`; retained as a regression guard only.**
+  `.moai/config/local/` shall remain present in the repository `.gitignore`, so that a
+  maintainer-local opt-in cannot be committed and thereby flip a distributed default. No M2 work item
+  follows from this requirement; AC-CTP-012 asserts the entry has not been removed.
 
-- **REQ-CTP-014** — `CLAUDE.local.md` §22.9 shall be amended to remove the `BLOCKER` note about the
-  missing gitignore entry once REQ-CTP-013 lands, and to state that the documented opt-in is
-  effective.
+  > Measured: `git check-ignore -v .moai/config/local/workflow.yaml` exits 0 and prints
+  > `.gitignore:183:.moai/config/local/`. The commit that added it, `b9fc75016`, is an ancestor of the
+  > `d5336214e` baseline (`git merge-base --is-ancestor b9fc75016 d5336214e` → exit 0), so the work
+  > was already complete when this SPEC was drafted.
+
+- **REQ-CTP-014** — **ALREADY SATISFIED; retained as a regression guard only.** `CLAUDE.local.md`
+  §22.9 shall continue to carry no `BLOCKER (gitignore)` note and shall continue to state that the
+  documented opt-in is effective. No M2 work item follows from this requirement; AC-CTP-013 asserts
+  the note has not been reintroduced.
+
+  > Measured: `grep -c 'BLOCKER (gitignore)' CLAUDE.local.md` → `0`. §22.9 already reads
+  > "**gitignore (해결됨)**: `.moai/config/local/` 디렉터리는 이제 `.gitignore`에 등록되었다".
 
 ### D.3 Malformed-configuration contract
 
@@ -327,7 +402,10 @@ receiving 2-way merges while believing they receive 3-way.
 
 - **REQ-CTP-033** — **When** a 3-way merge fails and the restore path falls back to 2-way, the
   operator shall receive a stderr advisory naming the file, on the first occurrence rather than
-  after three.
+  after three. **This supersedes the silent-first-occurrence clause of
+  `SPEC-V3R6-UPDATE-NOISE-001` `REQ-UN-007`, which is `status: implemented`.** The reversal, the
+  alternative that was rejected, and the parts of `REQ-UN-007` that survive are declared in §K.
+  Landing REQ-CTP-033 without the §K reconciliation is prohibited.
 
 - **REQ-CTP-034** — **When** the 3-way base file is absent and control falls through to 2-way
   without a merge attempt, the operator shall receive an advisory distinguishable from the
@@ -359,8 +437,10 @@ receiving 2-way merges while believing they receive 3-way.
 - `SrcLocal.Priority() < SrcProject.Priority()`, and `.moai/config/local/workflow.yaml` setting
   `branch_guard.enabled: true` is observed through `Loader.Load` when
   `sections/workflow.yaml` says `false` — and the reverse also holds.
-- The four narrowed files in this repository read `-rw-r--r--` after the migration, and a
-  `Save()`-then-`stat` round trip preserves 0644.
+- A `Save()`-then-`stat` round trip in a `t.TempDir()` fixture preserves 0644, and the migration
+  widens a `0600` fixture file to `0644`. (The four narrowed files in the primary checkout are a
+  manual follow-up, not a criterion — see §A on why that observation does not reproduce in a
+  worktree.)
 - A truncated section file causes a CLI error and a hook advisory, and a subsequent `Save()`
   refuses to overwrite that section.
 - The §A `.gitignore` probe, re-run after the fix, shows `DS_Store` absent from the user section
@@ -374,13 +454,13 @@ receiving 2-way merges while believing they receive 3-way.
 |---|------|-----------:|--------|------------|
 | R1 | A previously-ignored `false` starts winning and disables a feature that users depend on being on | High | High | Enumerate every falsey value present in any shipped `sections/*.yaml` and in `defaults.go` before landing REQ-CTP-001; the enumeration is a milestone deliverable, not a footnote. Ship the merge-semantics change alone in one revertable commit. |
 | R2 | A previously-ignored `""` starts winning and blanks a string that had a working default | Medium | High | Same enumeration as R1; empty strings are the subtlest case because a blank name or path often fails far from the config layer. |
-| R3 | Reordering the `Source` enum ripples through `fan_in ≈ 71`, including `internal/permission/resolver.go:230` | Medium | High | REQ-CTP-008 pins the full ordering in a guard; REQ-CTP-009 requires an explicit permission-resolution assertion; NFR-CTP-005 keeps the change independently revertable. |
+| R3 | The reorder **fails to reach** the production path: `Priority()` has zero non-test consumers, so an `iota`-only edit changes no resolution while breaking `TestAllSources` | High | High | REQ-CTP-006 names all three ordering sites explicitly (`iota`, `AllSources()`, `resolver.go` `tiers`); AC-CTP-005 asserts the merge outcome rather than the ordinal alone; AC-CTP-007 asserts permission resolution directly. The v0.1.0 framing of this risk — ripple through `fan_in ≈ 71` — had the direction backwards; the measured hazard is under-reach, not over-reach. |
 | R4 | Wiring the local tier while zero-values are still skipped produces an opt-in that cannot opt out | Medium | Medium | REQ-CTP-012 orders the milestones so this cannot happen. |
-| R5 | `.moai/config/local/` reaches a public commit and flips a distributed default | Low | High | REQ-CTP-013 adds the gitignore entry in the same milestone that makes the directory load-bearing. |
+| R5 | `.moai/config/local/` reaches a public commit and flips a distributed default | Low | High | Already mitigated before this SPEC: the `.gitignore` entry landed at `b9fc75016`, an ancestor of the baseline. REQ-CTP-013 degenerates to a regression guard (AC-CTP-012) that fails if the entry is removed. |
 | R6 | Turning a malformed config into a CLI error breaks a workflow that currently limps along on defaults | Medium | Medium | REQ-CTP-015 keeps *absent* silent; only *malformed* is loud. Hooks stay fail-open per REQ-CTP-018. |
 | R7 | The mode-widening migration widens a file an operator deliberately restricted | Low | Medium | REQ-CTP-026 scopes it to `.moai/config/` and to widening-toward-`defs.FilePerm` only; the migration is announced in its output. |
 | R8 | Header-based `.gitignore` parsing discards patterns from a pre-header backup | Medium | High | REQ-CTP-032 requires the heuristic fallback when no header is present. |
-| R9 | Making the 3-way fallback loud produces noise on every update while `quality.yaml` still fails 3-way | High | Low | Accepted and intentional: the noise is the signal. `SPEC-UPDATE-YAML-PRESERVE-001` removes the cause; until then operators should see it. REQ-CTP-035 keeps the ledger governing repetition. |
+| R9 | Making the 3-way fallback loud produces noise on every update while `quality.yaml` still fails 3-way — **and reverses `REQ-UN-007` of the implemented `SPEC-V3R6-UPDATE-NOISE-001`, whose whole purpose was to suppress exactly this output** | High | Medium | Accepted and intentional, but only as a declared supersession: §K states the reversal, records the rejected `--verbose` alternative, and preserves the counter and 3-strike advisory that `REQ-UN-007`/`REQ-UN-008` also own. `SPEC-UPDATE-YAML-PRESERVE-001` removes the underlying cause; until then operators should see it. REQ-CTP-035 keeps the ledger governing repetition. |
 
 ## §I Amendment Requests to `SPEC-UPDATE-YAML-PRESERVE-001`
 
@@ -441,6 +521,58 @@ are both booleans whose stuck value is `false`, which is also the value REQ-CTP-
 — the two SPECs touch the same keys from opposite directions and their fixtures should not be
 assumed independent.
 
+## §K Reconciliation with `SPEC-V3R6-UPDATE-NOISE-001` (declared reversal)
+
+`SPEC-V3R6-UPDATE-NOISE-001` is `status: implemented`. Its `REQ-UN-007` reads, verbatim:
+
+> `mergeYAML3Way` 가 실패하여 2-way fallback 으로 전환할 때, 시스템은 merge-history ledger 의
+> `fallback_count` 를 1 증가시켜야 한다. `fallback_count` 가 3 미만이면 stderr 로 어떤 출력도
+> emit 하지 않는다 (silent fallback).
+
+REQ-CTP-033 commands the opposite of that second sentence. The implementation carries the constant
+(`internal/cli/update_noise.go:37`, `const fallbackAdvisoryThreshold = 3`) and the call site cites the
+requirement by name (`internal/cli/update/backup/restore.go`, the comment
+`// REQ-UN-007/008/010: emit advisory or legacy warning per noise-suppression policy.` immediately
+above the `recordFallback(projectRoot, relPath, false, os.Stderr)` call). v0.1.0 of this SPEC named
+neither the sibling SPEC nor the requirement anywhere — `grep -rn 'UPDATE-NOISE\|REQ-UN-'` over this
+SPEC directory returned no matches. Reversing an implemented sibling requirement in silence is the
+defect this section exists to close.
+
+### K.1 — the alternative that was rejected
+
+`REQ-UN-010` already provides a diagnostic escape hatch: `--verbose` bypasses the silent branch and
+restores the per-occurrence `Warning: 3-way merge failed for <relPath>, falling back to 2-way`
+message. Satisfying this SPEC's F8 concern through `--verbose` alone would require no reversal at all.
+
+It is rejected because the two requirements answer different questions. `--verbose` serves an operator
+who **already suspects** something is wrong and is opting into detail. F8's finding is that the
+operator does not suspect anything: `quality.yaml` takes the 3-way-fails path on *every* update, and
+the operator's belief that they are receiving a 3-way merge is never contradicted. A flag that must be
+passed by someone who already knows to pass it cannot correct a belief held by someone who does not.
+The information has to arrive unasked at least once.
+
+### K.2 — what is superseded, and what survives
+
+| `REQ-UN-*` clause | Disposition under REQ-CTP-033 |
+|---|---|
+| `REQ-UN-007` — increment `fallback_count` on every 3-way failure | **Survives unchanged.** The counter is not the noise. |
+| `REQ-UN-007` — emit nothing to stderr while `fallback_count < 3` | **Superseded.** The first occurrence becomes visible. |
+| `REQ-UN-008` — advisory at the 3-strike threshold | **Survives.** REQ-CTP-035 keeps the ledger governing repetition; the threshold advisory still marks sustained failure. |
+| `REQ-UN-009` — reset the counter on 3-way success | **Survives unchanged.** |
+| `REQ-UN-010` — `--verbose` restores the legacy per-occurrence warning | **Survives.** It becomes redundant with the new first-occurrence advisory for the *first* failure and remains the only source of per-occurrence output for failures 2 and beyond. |
+
+### K.3 — obligations this places on the run phase
+
+1. The commit implementing REQ-CTP-033 shall state in its body that it supersedes `REQ-UN-007`'s
+   silent-first-occurrence clause and shall reference this section.
+2. `SPEC-V3R6-UPDATE-NOISE-001`'s own artifacts are **not** edited by this SPEC. Recording the
+   supersession in that SPEC is a sync-phase concern for its owner, surfaced here as a cross-SPEC
+   note rather than performed unilaterally.
+3. If the reversal is rejected during Implementation Kickoff Approval, REQ-CTP-033 and AC-CTP-031
+   are withdrawn together and M6 reduces to REQ-CTP-034 (the absent-base advisory), which conflicts
+   with nothing — the absent-base path today emits neither a `recordFallback` call nor a warning, so
+   making it visible adds a signal rather than reversing a suppression.
+
 ## §H Cross-References
 
 - `.moai/specs/SPEC-UPDATE-YAML-PRESERVE-001/` — YAML merge engine internals; §I amendment requests.
@@ -450,8 +582,12 @@ assumed independent.
 - `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001` — deferred; §J evidence.
 - `SPEC-V3R2-RT-005` — the 8-tier system this SPEC corrects; `source.go:5` `@MX:ANCHOR` records
   `fan_in=71`.
+- `.moai/specs/SPEC-V3R6-UPDATE-NOISE-001/` — `status: implemented`. Its `REQ-UN-007`
+  silent-first-occurrence clause is superseded by REQ-CTP-033; see §K for the declared reversal,
+  the rejected `--verbose` alternative, and the clauses that survive.
 - `SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001` — the branch-guard opt-in whose documented mechanism
   REQ-CTP-010 makes functional.
-- `CLAUDE.local.md` §22.9 — the maintainer opt-in doctrine and its `BLOCKER` note.
+- `CLAUDE.local.md` §22.9 — the maintainer opt-in doctrine. Its former `BLOCKER (gitignore)` note is
+  already cleared (REQ-CTP-014 is a regression guard, not a work item).
 - `.claude/rules/moai/workflow/main-checkout-branch-guard.md` — the hook fail-open norm that
   REQ-CTP-018 preserves.

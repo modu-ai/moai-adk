@@ -7,9 +7,25 @@
 2. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore also requires a
    verbatim `--- PASS: <exact test name>` line in the output. A `-run` AC whose only assertion is
    `exit 0` is vacuous and is rejected.
-3. **Baselines were recorded from this tree while authoring** (HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`)).
-   Each AC carries its observed pre-change baseline so a reviewer can tell a real change from a
-   no-op.
+3. **Baselines were recorded from this tree** (code baseline `d5336214e`, branch
+   `plan/epic-update-config-audit`, worktree `.claude/worktrees/epic-update-config`) and re-measured
+   during the plan-audit revision. Each AC carries its observed pre-change baseline so a reviewer can
+   tell a real change from a no-op.
+
+   **One documented exception.** F1's *field* evidence — four `.moai/config/sections/*.yaml` files at
+   `-rw-------` — was observed in the **primary checkout** (`/Users/goos/MoAI/moai-adk-go`), not in
+   this tree. Re-measured in this worktree, all 32 section files read `-rw-r--r--` and none is
+   narrowed, because git records only the executable bit and a `git worktree add` materialises files
+   at the checkout umask. The observation is real but does not belong to this tree's baseline. F1's
+   *mechanism* is unaffected and reproduces anywhere: a probe observed a pre-existing `-rw-r--r--`
+   target become `-rw-------` after one `atomicWrite` round trip. Consequently no AC asserts on this
+   repository's own section-file modes — AC-CTP-020/022/023 use `t.TempDir()` fixtures, and widening
+   the primary checkout's four files is a manual follow-up recorded in §D, not a criterion.
+
+3b. **An already-green criterion is labelled as such.** Where the plan-audit found an AC whose
+   expected output was already produced before any implementation work, the AC is retained as a
+   **regression guard** with its true measured baseline and an explicit `Class:` line. A regression
+   guard is not evidence of progress; §D counts it separately.
 4. **Every new guard needs a falsification** proving it FAILS against unfixed code. §C gives the
    runnable procedures.
 5. **`git stash` is prohibited.** This checkout is shared with concurrent sessions — during the
@@ -85,7 +101,35 @@ Expected: exit 0 and a count greater than 1 (a header row plus at least one key 
 tables every key in `internal/config/defaults.go` and the shipped `sections/*.yaml` whose effective
 value changes once falsey values win. R1 and R2 are mitigated by this table or not at all.
 
-Baseline: `test -s .../falsey-key-inventory.md` exits 1 — the file does not exist.
+Baseline: re-measured during the plan-audit revision —
+`test -s .moai/specs/SPEC-CONFIG-TIER-PERSIST-001/falsey-key-inventory.md` exits **1**; the file does
+not exist. Fails today; passes only once M1 step 1 produces the table.
+
+#### AC-CTP-037 — `isZero`'s disposition is consistent with its caller count
+
+> Numbering is append-only: this AC covers REQ-CTP-005a/b, which replaced the self-contradictory
+> REQ-CTP-005 of v0.1.0, and is appended rather than inserted so no existing AC-CTP-0NN is renumbered.
+
+```bash
+CALLERS=$(grep -c 'isZero(' internal/config/merge.go)
+DEFN=$(grep -c '^func isZero(' internal/config/merge.go)
+echo "callers_incl_defn=$CALLERS defn=$DEFN"
+test "$CALLERS" -ne 1 -o "$DEFN" -eq 0; echo "consistent=$?"
+```
+
+Expected: `consistent=0`. The assertion is that `isZero` is never left defined-but-unreferenced. A
+match count of exactly 1 means the only occurrence is the definition itself — an orphan — and the
+definition must therefore be absent (`DEFN=0`). Either outcome of REQ-CTP-005a/b satisfies it: keep
+the helper **with** a caller (`CALLERS >= 2`), or remove both (`CALLERS = 0`, `DEFN = 0`).
+
+Why it can fail: leaving `func isZero` in place after M1 removes its only call site at `:149-152`
+yields `CALLERS=1, DEFN=1` → `consistent=1`. That is exactly the REQ-CTP-005b violation.
+
+Baseline: measured on the baseline tree — `grep -n 'func isZero' internal/config/merge.go` →
+`200:func isZero(v any) bool {`, and the call site is `merge.go:149` (`if isZero(value) {`), so
+`CALLERS=2, DEFN=1` → `consistent=0`. The AC passes today and passes after a correct M1; it fails
+only on the specific orphan state REQ-CTP-005b forbids. Class: **decision guard** — it constrains the
+outcome of a choice rather than proving a behaviour change.
 
 ### M2 — Tier ordering and local-tier reachability
 
@@ -95,27 +139,57 @@ Baseline: `test -s .../falsey-key-inventory.md` exits 1 — the file does not ex
 go test -run 'TestSourceOrdering_LocalOutranksProject' -count=1 -v ./internal/config/
 ```
 
-Expected: a `--- PASS: TestSourceOrdering_LocalOutranksProject` line, asserting
-`SrcLocal.Priority() < SrcProject.Priority()` and that `MergeAll` with
-`SrcProject{"k":"from-project"}` and `SrcLocal{"k":"from-local"}` yields `from-local` with
-`Provenance.Source == SrcLocal`.
+Expected: a `--- PASS: TestSourceOrdering_LocalOutranksProject` line, asserting **both** of the
+following, in this order of importance:
+
+1. `MergeAll` with `SrcProject{"k":"from-project"}` and `SrcLocal{"k":"from-local"}` yields
+   `from-local` with `Provenance.Source == SrcLocal`. **This is the load-bearing half** — it observes
+   the `AllSources()` literal that actually decides resolution.
+2. `SrcLocal.Priority() < SrcProject.Priority()`. This observes only the `iota` block, which no
+   production code reads; it is asserted so a partial reorder is caught, not because it proves the
+   fix reached anything.
+
+Ordering the assertions this way is deliberate: an AC that asserted only (2) would pass against an
+`iota`-only reorder that changes no merge outcome — the exact under-reach failure REQ-CTP-006 exists
+to prevent.
 
 Baseline: the probe against `d5336214e` observed
-`k => from-project (source=project) [project=2 local=3]`.
+`k => from-project (source=project) [project=2 local=3]` — both halves fail today.
 
-#### AC-CTP-006 — the full tier ordering is pinned as an explicit sequence
+#### AC-CTP-006 — the existing ordering guard is updated, not duplicated or weakened
 
 ```bash
-go test -run 'TestSourceOrdering_FullSequencePinned' -count=1 -v ./internal/config/
+go test -run 'TestSourceOrdering$|TestAllSources$' -count=1 -v ./internal/config/
+grep -n 'SrcPolicy, SrcUser, SrcLocal, SrcProject' internal/config/source_test.go
 ```
 
-Expected: a `--- PASS: TestSourceOrdering_FullSequencePinned` line. The test compares
-`AllSources()` against a literal, hand-written slice in priority order, so any future reorder fails
-here rather than silently changing resolution. A test that derives the expected order from the enum
-itself is tautological and does not satisfy this AC.
+Expected: `--- PASS: TestSourceOrdering` **and** `--- PASS: TestAllSources`, plus a grep match
+showing `expectedOrder` now lists `SrcLocal` before `SrcProject`. A test that derives the expected
+order from the enum itself is tautological and does not satisfy this AC; neither does a newly
+authored second guard that leaves the existing literal stale.
 
-Baseline: `grep -rn "AllSources()" internal/config/source_test.go` — no test asserts the complete
-sequence against a literal today.
+Why it can fail: after REQ-CTP-006's three-site reorder, `TestSourceOrdering` fails until its
+`expectedOrder` literal is updated (it compares symbolic constants, so the reorder moves
+`AllSources()` out from under it). If a run-phase agent "fixes" that by deleting the test or by
+replacing the literal with `AllSources()` itself, the grep half of this AC fails.
+
+Baseline: **the guard already exists and is green — the v0.1.0 baseline for this AC was false.**
+Re-measured:
+
+```
+$ grep -rn 'AllSources()' internal/config/source_test.go
+90:	sources := AllSources()
+93:		t.Errorf("AllSources() returned %d sources, want 8", len(sources))
+99:			t.Errorf("AllSources()[%d].Priority() = %d, want %d", i, sources[i].Priority(), i)
+107:	sources := AllSources()
+116:			t.Errorf("AllSources()[%d] = %v, want %v", i, sources[i], expected)
+```
+
+`source_test.go:104-119 TestSourceOrdering` already compares `AllSources()` element-by-element
+against the literal `[]Source{SrcPolicy, SrcUser, SrcProject, SrcLocal, SrcPlugin, SrcSkill,
+SrcSession, SrcBuiltin}` — precisely the "literal, hand-written slice" v0.1.0 asked someone to
+author. `source_test.go:89-102 TestAllSources` separately pins `AllSources()[i].Priority() == i`.
+Both pass today; the grep half fails today (the literal still reads `SrcProject, SrcLocal`).
 
 #### AC-CTP-007 — permission resolution is correct under the new ordering
 
@@ -123,25 +197,84 @@ sequence against a literal today.
 go test -run 'TestPermissionResolver' -count=1 -v ./internal/permission/
 ```
 
-Expected: every `--- PASS:` line that the baseline produced, plus a
+Expected: every `--- PASS:` line in the baseline set below, plus a
 `--- PASS: TestPermissionResolver_LocalOutranksProject` line asserting a local-tier permission rule
-wins over a project-tier rule. `internal/permission/resolver.go:230` iterates the same enum, so the
-reorder reaches it.
+wins over a project-tier rule.
 
-Baseline: run `go test -run 'TestPermissionResolver' -count=1 -v ./internal/permission/` before M2
-and record the exact set of `--- PASS:` lines. Every one must still appear afterwards.
+**Mechanism (corrected).** `internal/permission/resolver.go` does **not** iterate the `Source` enum.
+It builds its own literal slice at `:225-234`:
 
-#### AC-CTP-008 — no `Source` ordinal is persisted anywhere
-
-```bash
-grep -rn 'int(Src\|Source(.*[0-9]\|json:"source"' --include='*.go' internal/ | grep -v '_test.go'
+```go
+tiers := []config.Source{
+    config.SrcPolicy, config.SrcUser, config.SrcProject, config.SrcLocal,
+    config.SrcPlugin, config.SrcSkill, config.SrcSession, config.SrcBuiltin,
+}
 ```
 
-Expected: every surviving match is a within-process comparison, not a serialisation. Any match that
-writes a `Source` ordinal to disk or JSON is a blocker for M2 and must be converted to the string
-form via `Source.String()` / `ParseSource` before the reorder lands.
+The reorder reaches permission resolution only because that slice is named as one of REQ-CTP-006's
+three edit sites. `resolver.go:201` — the `config.Source(999)` hook sentinel that v0.1.0 cited as
+`:230` "iterating the enum" — is unrelated to tier order. This AC is therefore load-bearing: it fails
+if step 2 of M2 reorders `source.go` but leaves `resolver.go` alone.
 
-Baseline: record the verbatim match set before M2 so the reviewer can compare.
+Baseline: re-measured on the baseline tree —
+`go test -run 'TestPermissionResolver' -count=1 -v ./internal/permission/` → `ok … 1.607s` with 14
+`--- PASS:` lines:
+
+```
+TestPermissionResolver_Resolve_PreAllowlist
+TestPermissionResolver_Resolve_ProjectDeny
+TestPermissionResolver_Resolve_PolicyDenyWins
+TestPermissionResolver_Resolve_PlanModeDeniesWrites
+TestPermissionResolver_Resolve_BypassPermissions
+TestPermissionResolver_Resolve_BypassPermissionsInFork
+TestPermissionResolver_Resolve_BubbleMode
+TestPermissionResolver_Resolve_BubbleModeParentUnavailable
+TestPermissionResolver_Resolve_NonInteractive
+TestPermissionResolver_Resolve_HookOverride
+TestPermissionResolver_Resolve_HookUpdatedInput
+TestPermissionResolver_Resolve_ForkDepthExceedsLimit
+TestPermissionResolver_ValidateMode
+TestPermissionResolver_Resolve_TraceGeneration
+```
+
+All 14 must still appear afterwards; `TestPermissionResolver_LocalOutranksProject` does not exist
+today and is the new assertion.
+
+#### AC-CTP-008 — no `Source` ordinal is cast to an integer outside tests
+
+```bash
+grep -rnE 'int\(Src[A-Za-z]+\)' --include='*.go' internal/ | grep -v '_test.go'; echo "exit=$?"
+```
+
+Expected: `exit=1` (zero matches). An ordinal cast of a named `Source` constant is the one shape that
+would let REQ-CTP-006's reorder change the meaning of already-written data; the binary assertion is
+that no such cast exists in non-test code.
+
+Why it can fail: adding `int(SrcProject)` anywhere under `internal/` outside a `_test.go` file
+flips the grep to exit 0. The falsification in §C.4 does exactly that.
+
+Baseline: **`exit=1` — the AC passes today.** Class: **regression guard** (per §A clause 3b), not a
+progress criterion.
+
+The broader discovery scan that v0.1.0 conflated with this AC is retained as an M2 step-1 task rather
+than an AC, because its output requires human classification and cannot be made binary. Its verbatim
+baseline, re-measured on the baseline tree:
+
+```
+$ grep -rn 'int(Src\|Source(.*[0-9]\|json:"source"' --include='*.go' internal/ | grep -v '_test.go'
+internal/config/merge.go:321:		Source     string `json:"source"`
+internal/config/provenance.go:81:	Source        string   `json:"source"`
+internal/cli/doctor_permission.go:122:		// T-RT002-28: handle the hook tier sentinel (config.Source(999)) emitted by result.ExportTrace().
+internal/permission/resolver.go:201:			Tier:    config.Source(999), // Hook tier is above SrcPolicy
+internal/hook/failure_observer.go:121:	Source    string `json:"source"`
+internal/session/state.go:22:	Source string    `json:"source"` // "user", "project", "local", "session", "hook"
+```
+
+Six matches, all safe: four are `string`-typed serialisation fields (the wire format is already the
+name, not the ordinal), one is a comment, and one is the in-memory `config.Source(999)` hook
+sentinel, which is above every real tier and unaffected by a swap within the tier range. M2 step 1
+re-runs this scan and confirms the set has not grown; a **new** match outside these six is the
+blocker.
 
 #### AC-CTP-009 — the typed `Loader` reads `.moai/config/local/` and it overrides `sections/`
 
@@ -184,18 +317,32 @@ directory.
 Baseline: the test does not exist; today the directory is never consulted, so the behaviour is
 trivially satisfied and must remain so after M2.
 
-#### AC-CTP-012 — `.moai/config/local/` is gitignored
+#### AC-CTP-012 — `.moai/config/local/` remains gitignored
 
 ```bash
-git check-ignore -v .moai/config/local/workflow.yaml
+git check-ignore -v .moai/config/local/workflow.yaml; echo "exit=$?"
 ```
 
-Expected: exit 0 and a line naming `.gitignore` and the matching pattern.
+Expected: `exit=0` and a line naming `.gitignore` and the matching pattern.
 
-Baseline: `git check-ignore -v .moai/config/local/workflow.yaml` exits 1 with no output — the path
-is not ignored, which is the `BLOCKER` recorded in `CLAUDE.local.md` §22.9.
+Why it can fail: deleting the `.moai/config/local/` line from `.gitignore` flips it to `exit=1` with
+no output. §C.4 runs that mutation.
 
-#### AC-CTP-013 — the `CLAUDE.local.md` §22.9 BLOCKER note is cleared
+Baseline: **already satisfied — the v0.1.0 baseline for this AC was false.** Re-measured:
+
+```
+$ git check-ignore -v .moai/config/local/workflow.yaml
+.gitignore:183:.moai/config/local/	.moai/config/local/workflow.yaml      (exit 0)
+
+$ git merge-base --is-ancestor b9fc75016 d5336214e; echo $?
+0
+```
+
+The entry landed at `b9fc75016`, an ancestor of the code baseline, so the work REQ-CTP-013 described
+was complete before this SPEC was drafted. Class: **regression guard** (§A clause 3b). It is not
+evidence of M2 progress and §D counts it separately.
+
+#### AC-CTP-013 — the `CLAUDE.local.md` §22.9 BLOCKER note stays cleared
 
 ```bash
 grep -c 'BLOCKER (gitignore)' CLAUDE.local.md
@@ -203,7 +350,13 @@ grep -c 'BLOCKER (gitignore)' CLAUDE.local.md
 
 Expected: `0`.
 
-Baseline: `grep -c 'BLOCKER (gitignore)' CLAUDE.local.md` → `1`.
+Why it can fail: reintroducing the note anywhere in `CLAUDE.local.md` yields `1`. §C.4 runs that
+mutation.
+
+Baseline: **already satisfied — the v0.1.0 baseline for this AC was false.** Re-measured:
+`grep -c 'BLOCKER (gitignore)' CLAUDE.local.md` → **`0`**, not `1`. §22.9 already reads
+"**gitignore (해결됨)**: `.moai/config/local/` 디렉터리는 이제 `.gitignore`에 등록되었다". Class:
+**regression guard** (§A clause 3b).
 
 ### M3 — Malformed-configuration contract
 
@@ -297,21 +450,24 @@ go test -run 'TestAtomicWrite_PreservesExistingMode' -count=1 -v ./internal/conf
 Expected: a `--- PASS: TestAtomicWrite_PreservesExistingMode` line. The fixture creates a target at
 `0644`, runs the shared helper, and asserts `os.Stat(...).Mode().Perm() == 0o644`.
 
-Baseline: the test does not exist. The audit probe observed
-`os.CreateTemp mode = -rw-------`, `pre-existing target = -rw-r--r--`, `after rename = -rw-------`.
-The repository itself carries four surviving witnesses:
+Baseline: the test does not exist. The mechanism is confirmed by probe against the code baseline —
+`os.CreateTemp mode = -rw-------`, `pre-existing target = -rw-r--r--`, `after rename = -rw-------` —
+and this probe reproduces in any tree, so it is the fixture this AC promotes.
+
+The field witnesses (four `Save()` `saveSection` targets at `-rw-------`, against a git index
+recording `100644`) exist in the **primary checkout only** and are *not* part of this AC's baseline;
+§A clause 3 records why they cannot reproduce in a worktree. Re-measured here:
 
 ```
-$ ls -la .moai/config/sections/ | awk '$1 !~ /rw-r--r--/'
--rw-------@ 1 goos staff  248 .moai/config/sections/git-convention.yaml
--rw-------@ 1 goos staff 2491 .moai/config/sections/git-strategy.yaml
--rw-------@ 1 goos staff  200 .moai/config/sections/language.yaml
--rw-------@ 1 goos staff   35 .moai/config/sections/user.yaml
-$ git ls-files -s .moai/config/sections/user.yaml
-100644 0bb3f84df5a69061a68e6c1f3bb2f5a2730edc2d 0	.moai/config/sections/user.yaml
-```
+$ ls -la .moai/config/sections/*.yaml | awk '$1 !~ /^-rw-r--r--/' | wc -l
+0        # this worktree — no narrowed file exists to observe
 
-All four are `Save()`'s `saveSection` targets.
+$ ls -la /Users/goos/MoAI/moai-adk-go/.moai/config/sections/*.yaml | awk '$1 !~ /^-rw-r--r--/'
+-rw-------@ .../git-convention.yaml
+-rw-------@ .../git-strategy.yaml
+-rw-------@ .../language.yaml
+-rw-------@ .../user.yaml
+```
 
 #### AC-CTP-021 — a newly created file gets `defs.FilePerm`, not 0600
 
@@ -335,8 +491,11 @@ Expected: a `--- PASS: TestConfigModeMigration_WidensNarrowedFiles` line, assert
 `sections/` containing files at `0600` reads `0644` afterwards, and that a file already at `0644` is
 untouched.
 
-Baseline: the test does not exist. On the real tree the four files above remain at `-rw-------`
-after any number of `Save()` calls, because a `Stat`-based preservation fix preserves what it finds.
+Baseline: the test does not exist. The fixture is `t.TempDir()`-scoped by construction (NFR-CTP-001)
+and does not read this repository's own files — §A clause 3 records why an assertion against them
+would be vacuous in a worktree. The motivating observation stands in the primary checkout: the four
+files there remain at `-rw-------` after any number of `Save()` calls, because a `Stat`-based
+preservation fix preserves what it finds.
 
 #### AC-CTP-023 — the migration never narrows and never leaves `.moai/config/`
 
@@ -377,8 +536,8 @@ grep -n '0o644' internal/cli/harness.go
 
 Expected: no output, exit 1.
 
-Baseline: `grep -n '0o644' internal/cli/harness.go` →
-`390:	if err := os.WriteFile(configPath, newData, 0o644); err != nil {`.
+Baseline: re-measured — `grep -n '0o644' internal/cli/harness.go` →
+`390:	if err := os.WriteFile(configPath, newData, 0o644); err != nil {` (exit 0). Fails today.
 
 ### M5 — `.gitignore` merge correctness
 
@@ -426,9 +585,26 @@ go test -run 'TestMergeGitignoreFile_IsIdempotent' -count=1 -v ./internal/cli/up
 ```
 
 Expected: a `--- PASS: TestMergeGitignoreFile_IsIdempotent` line, asserting that merging a file
-with its own previous output produces byte-identical content.
+with its own previous output produces byte-identical content **after the M5 header-parse and dedupe
+changes**.
 
-Baseline: the test does not exist.
+Baseline: the named test does not exist, but **the property is already guarded and green** — a
+finding the plan-audit did not surface. Re-measured:
+
+```
+$ go test -count=1 -v ./internal/cli/update/merge/ 2>&1 | grep -i idempot
+--- PASS: TestMergeGitignore_DoubleReMerge_Idempotent (0.01s)
+```
+
+`TestMergeGitignore_DoubleReMerge_Idempotent` (in
+`internal/cli/update/merge/gitignore_merge_characterization_test.go`) already asserts double-re-merge
+idempotence and passes on the baseline tree. AC-CTP-028 is therefore **not** a new-behaviour
+criterion: its value is that M5's header parse and dedupe must not *break* an invariant that already
+holds. Two consequences follow. First, the new test must exercise a case the existing one does not —
+specifically a backup carrying a `# User Custom Patterns` header **and** duplicate user lines, so
+that dedupe and re-merge interact. Second, the pre-existing test must still pass afterwards
+(AC-CTP-030 covers that). Class: **regression guard extended into a new case**, not a fresh
+behavioural assertion.
 
 #### AC-CTP-029 — a pre-header backup keeps its user patterns
 
@@ -454,8 +630,24 @@ Expected: no `FAIL` line, and the `--- PASS:` lines from
 pre-fix behaviour this SPEC deliberately changes, it is updated in the same commit with a comment
 naming this SPEC — never deleted.
 
-Baseline: `go test -count=1 ./internal/cli/update/merge/` → `ok` at `d5336214e`; record the exact
-`--- PASS:` set before M5.
+Baseline: re-measured — `go test -count=1 -v ./internal/cli/update/merge/` → `ok … 1.262s`, **35
+`--- PASS:` lines, zero `FAIL`**. The eight characterization tests that M5 most directly risks are:
+
+```
+--- PASS: TestMergeGitignoreFile_NoUserAdditions
+--- PASS: TestMergeGitignoreFile_WithUserAdditions
+--- PASS: TestMergeGitignore_UserLineCollidingWithTemplate_Deduplicated
+--- PASS: TestMergeGitignore_CRLFBackup_PatternsSurvive
+--- PASS: TestMergeGitignore_UserCommentAnnotationsNotCarried
+--- PASS: TestMergeGitignore_ReMergeWithExistingHeader_PatternsSurvive
+--- PASS: TestMergeGitignore_NegationLinesPreserved
+--- PASS: TestMergeGitignore_DoubleReMerge_Idempotent
+```
+
+`TestMergeGitignore_ReMergeWithExistingHeader_PatternsSurvive` is the one M5 must read before
+editing: it already asserts that pattern lines under a *previous* run's header are re-collected under
+the new header. M5's header parse changes the classification path those lines take, so this test is
+the most likely to need a same-commit update with a comment naming this SPEC — never a deletion.
 
 ### M6 — Fallback visibility
 
@@ -520,7 +712,9 @@ git diff --stat origin/main -- internal/template/templates/ | wc -l
 
 Expected: `0`. NFR-CTP-004.
 
-Baseline: `0` at branch point.
+Baseline: re-measured — `0`. Class: **regression guard** (§A clause 3b). It already holds and its
+purpose is to fail if a run-phase commit touches the template tree; its falsification is in §C.4, not
+in the baseline.
 
 #### AC-CTP-036 — no test sets an OTEL environment variable
 
@@ -530,7 +724,8 @@ grep -rn 't.Setenv("OTEL' --include='*_test.go' internal/ | wc -l
 
 Expected: `0`. NFR-CTP-002.
 
-Baseline: record before M1.
+Baseline: re-measured — `grep -rn 't.Setenv("OTEL' --include='*_test.go' internal/ | wc -l` → `0`.
+Class: **regression guard** (§A clause 3b); falsification in §C.4.
 
 ## §C Falsification procedures
 
@@ -562,8 +757,13 @@ rm -rf "$SCRATCH"
 Expected: a `--- FAIL: TestMergeAll_ExplicitFalseWins` line. A `--- PASS` here means the guard does
 not actually observe the fix and is non-falsifiable.
 
-Applies to: AC-CTP-001, AC-CTP-002, AC-CTP-003 (re-insert the zero-skip); AC-CTP-005, AC-CTP-006
-(swap `SrcLocal` and `SrcProject` back in `source.go`); AC-CTP-018 (remove the `Save` refusal);
+Applies to: AC-CTP-001, AC-CTP-002, AC-CTP-003 (re-insert the zero-skip); AC-CTP-037 (delete the
+zero-skip but keep `func isZero`); AC-CTP-005, AC-CTP-006 (swap `SrcLocal` and `SrcProject` back in
+**both** the `iota` block and the `AllSources()` literal — reverting only one leaves the enum and the
+slice inconsistent and fails `TestAllSources` for the wrong reason, which is not a valid
+falsification); AC-CTP-007 (swap them back in `internal/permission/resolver.go`'s `tiers` slice
+**only**, leaving `source.go` fixed — this is the falsification that proves the permission assertion
+is load-bearing rather than confirmatory); AC-CTP-018 (remove the `Save` refusal);
 AC-CTP-020, AC-CTP-021 (remove the `os.Chmod` from the shared helper); AC-CTP-026, AC-CTP-027
 (restore the not-in-template heuristic as the only path); AC-CTP-031, AC-CTP-032 (remove the
 advisory emissions).
@@ -582,25 +782,115 @@ Applies to: AC-CTP-009, AC-CTP-010 (remove the local-tier read from `loader.go`)
 AC-CTP-023 (remove the migration); AC-CTP-024 (re-introduce a bare `os.WriteFile` into
 `.moai/config` and confirm the guard fails).
 
-### C.3 — non-Go ACs
+### C.3 — non-Go ACs whose falsification IS the baseline
 
-AC-CTP-004, AC-CTP-012, AC-CTP-013, AC-CTP-025, AC-CTP-035, AC-CTP-036 are file-state or grep
-assertions whose baselines are already recorded above as failing. Their falsification is the
-baseline itself: each currently produces the opposite of its expected output on this tree, verbatim.
+Two ACs currently produce the opposite of their expected output on this tree, so their baseline is
+their falsification, verbatim:
 
-AC-CTP-008 has no falsification because it is a discovery step, not a guard — its purpose is to
-surface a blocker before M2's reorder, and its output is compared by a human.
+| AC | Command | Observed now | Expected after |
+|---|---|---|---|
+| AC-CTP-004 | `test -s .../falsey-key-inventory.md` | exit **1** | exit 0 + row count > 1 |
+| AC-CTP-025 | `grep -n '0o644' internal/cli/harness.go` | exit **0**, one match at `:390` | exit 1, no output |
+
+**v0.1.0 listed four more ACs here and was wrong about all four.** AC-CTP-012 (exit 0), AC-CTP-013
+(`0`), AC-CTP-035 (`0`), and AC-CTP-036 (`0`) each produce **exactly their expected output** on this
+tree, so the "baseline is the falsification" claim does not hold for them — passing proves nothing
+about the implementation. They are reclassified as regression guards and given real, runnable
+falsifications in §C.4.
+
+### C.4 — falsification for already-satisfied regression guards
+
+A regression guard cannot be falsified by its baseline. Each is falsified by mutating the state it
+protects and confirming the command flips. All four mutations are reverted immediately; none uses
+`git stash` (§A clause 5), and each is confined to a scratch copy or an immediately-undone edit.
+
+**AC-CTP-012** — remove the ignore entry in a scratch clone of `.gitignore` and re-run the check
+against it:
+
+```bash
+SCRATCH=$(mktemp -d); trap 'rm -rf "$SCRATCH"' EXIT
+grep -v '^\.moai/config/local/$' .gitignore > "$SCRATCH/gitignore.mutated"
+git -c core.excludesFile="$SCRATCH/gitignore.mutated" check-ignore -v \
+  --no-index .moai/config/local/workflow.yaml 2>/dev/null; echo "exit=$?"
+```
+
+Expected: `exit=1`. If it still exits 0, another pattern is matching and AC-CTP-012 is not observing
+the entry it claims to observe.
+
+**AC-CTP-013** — append the note to a scratch copy and grep that copy:
+
+```bash
+SCRATCH=$(mktemp -d); trap 'rm -rf "$SCRATCH"' EXIT
+{ cat CLAUDE.local.md; echo '- **BLOCKER (gitignore)**: mutation probe'; } > "$SCRATCH/CLAUDE.local.md"
+grep -c 'BLOCKER (gitignore)' "$SCRATCH/CLAUDE.local.md"
+```
+
+Expected: `1`.
+
+**AC-CTP-035** — touch one byte in the template tree, observe, revert:
+
+```bash
+F=$(git ls-files internal/template/templates/ | head -1)
+printf '\n' >> "$F"
+git diff --stat origin/main -- internal/template/templates/ | wc -l   # expect: non-zero
+git checkout -- "$F"
+git diff --stat origin/main -- internal/template/templates/ | wc -l   # expect: 0
+```
+
+Expected: a non-zero count while mutated, `0` after revert. A count that stays `0` while mutated
+means the AC's `git diff --stat origin/main` comparison is not observing the working tree, and the
+guard is inert.
+
+**AC-CTP-036** — add the forbidden call to a scratch file inside the scanned tree, observe, remove:
+
+```bash
+P=internal/config/zzz_otel_probe_test.go
+printf 'package config\n\nimport "testing"\n\nfunc TestZZZOtelProbe(t *testing.T) { t.Setenv("OTEL_SERVICE_NAME", "x") }\n' > "$P"
+grep -rn 't.Setenv("OTEL' --include='*_test.go' internal/ | wc -l   # expect: 1
+rm -f "$P"
+grep -rn 't.Setenv("OTEL' --include='*_test.go' internal/ | wc -l   # expect: 0
+```
+
+Expected: `1` while the probe file exists, `0` after removal. **Remove the probe file before
+committing** — it is a falsification artifact, not a fixture.
+
+**AC-CTP-008** — same shape, using an ordinal cast:
+
+```bash
+P=internal/config/zzz_ordinal_probe.go
+printf 'package config\n\nvar zzzProbe = int(SrcProject)\n' > "$P"
+grep -rnE 'int\(Src[A-Za-z]+\)' --include='*.go' internal/ | grep -v '_test.go'; echo "exit=$?"  # expect: exit=0
+rm -f "$P"
+grep -rnE 'int\(Src[A-Za-z]+\)' --include='*.go' internal/ | grep -v '_test.go'; echo "exit=$?"  # expect: exit=1
+```
+
+**AC-CTP-037** is falsified by the §C.1 overlay: delete the `if isZero(value) { continue }` block
+from the mutated `merge.go` while leaving `func isZero` in place, then run the AC's shell snippet
+against `$SCRATCH/merge_mutated.go`. Expected: `consistent=1`.
 
 ## §D Definition of Done
 
 - Every AC in §B ran, and every `-run` AC's output carried its `--- PASS: <exact name>` line.
-- Every falsification in §C ran and produced its expected `--- FAIL`.
+- Every falsification in §C.1 and §C.2 ran and produced its expected `--- FAIL`; every falsification
+  in §C.4 ran and produced its expected flip, with the mutation reverted afterwards.
+- **The five regression guards (AC-CTP-008, AC-CTP-012, AC-CTP-013, AC-CTP-035, AC-CTP-036) are
+  counted separately from the behavioural criteria and are not reported as evidence of progress.**
+  They were already green before any work started; their §C.4 falsification is what makes them
+  meaningful. Reporting "36 of 37 AC pass" without this split overstates completion by five.
 - The falsey-key inventory (AC-CTP-004) exists and its table was reviewed before M1 landed.
-- The persisted-ordinal grep (AC-CTP-008) was run and its result recorded before M2 landed.
-- M1 landed before M2 (REQ-CTP-012); M2's gitignore entry landed in the same commit as its loader
-  wiring (REQ-CTP-013).
+- The ordinal scan (AC-CTP-008 + its M2 step-1 discovery scan) was run and its result compared
+  against the recorded six-match baseline before M2 landed.
+- `isZero`'s disposition was decided and recorded (REQ-CTP-005a/b, AC-CTP-037).
+- M1 landed before M2 (REQ-CTP-012). REQ-CTP-006's three ordering sites were reordered in **one**
+  commit together with `TestSourceOrdering`'s literal update.
+- `spec.md` §K is present and the REQ-CTP-033 reversal was accepted at Implementation Kickoff
+  Approval, **or** REQ-CTP-033/AC-CTP-031 were withdrawn together and M6 landed steps 2-3 only.
 - `go test ./... -count=1` green; `golangci-lint run` clean.
 - No diff under `internal/template/templates/`.
-- The four narrowed files in this repository read `-rw-r--r--`.
+- No falsification probe file (`zzz_*_probe*.go`) remains in the tree.
+- **Manual follow-up, not a criterion:** the four narrowed files in the primary checkout
+  (`git-convention.yaml`, `git-strategy.yaml`, `language.yaml`, `user.yaml`) are widened to `0644` by
+  running the REQ-CTP-025 migration there. This is not an AC because the files read `0644` in every
+  worktree and an assertion on them passes vacuously (§A clause 3).
 - `progress.md` §E.2 and §E.3 populated by `manager-develop` with commit SHAs and verbatim command
   output.
