@@ -76,7 +76,7 @@ pre_tool_branch_guard_optin_test.go:80: Handle(enabled=false, "git switch -c fea
 
 - **sync_status**: completed
 - **sync_complete_at**: 2026-07-30
-- **sync_commit_sha**: pending-backfill-20260730
+- **sync_commit_sha**: 9eca6cadc
 - **changelog_entry_position**: `[Unreleased] → ### Changed` (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 entry, AC-REQ-7 user-facing default-off communication)
 - **frontmatter_status_transitions.spec**: `in-progress → implemented → completed` (single sync commit, merged close per Status Transition Ownership Matrix)
 - **frontmatter_status_transitions.updated_refreshed**: 2026-07-30 (spec.md `updated:` field refreshed to sync commit date)
