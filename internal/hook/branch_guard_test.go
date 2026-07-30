@@ -238,6 +238,13 @@ func TestBranchStatePatterns_TruePositives(t *testing.T) {
 		{"git stash pop", true},
 		{"git stash apply", true},
 		{"git stash drop", true},
+		// F1 (sync-audit): bare `git stash` embedded in a compound command
+		// MUST still match — bare stash defaults to `git stash push` (mutating),
+		// and the previous `\bgit\s+stash(...|$)` form let `git stash && ...`
+		// slip through (security bypass when the guard is enabled).
+		{"git stash && git status", true},
+		{"git stash; git status", true},
+		{"git stash || true", true},
 		{"git rebase origin/main", true},
 		{"git merge feat/x", true},
 		// E-1 edge case: piped git invocation must still match.
@@ -259,13 +266,17 @@ func TestBranchStatePatterns_TruePositives(t *testing.T) {
 }
 
 // TestBranchStatePatterns_TrueNegatives verifies the regex set does NOT match
-// list-only / path-restore / unrelated commands. This is the falsification arm
-// for REQ-WBG-001: a regex that matches everything would be a vacuous pass.
+// list-only / path-restore / unrelated commands, AND (SPEC-WORKTREE-BRANCH-
+// GUARD-OPTIN-001 REQ-2 / AC-REQ-2a..2c) the read-only git forms
+// `git stash list`, `git stash show`, and `git merge-base` that were previously
+// over-matched are now excluded by the tightened regexes.
 //
 // Per the "non-flag token after subcommand" rule ([^\s-]):
 //   - `git checkout -- <path>` → no match (path restore, E-5)
 //   - `git branch -v` / `-a`     → no match (list-only)
 //   - `git status` / `git log`   → no match (read-only)
+//   - `git stash list` / `show`  → no match (read-only, REQ-2 AC-REQ-2a/2b)
+//   - `git merge-base ...`       → no match (read-only, REQ-2 AC-REQ-2c)
 //
 // KNOWN ACCEPTED FALSE-POSITIVE (lexical ambiguity): `git checkout <file>`
 // (single-file restore, bare name) still matches because it is lexically
@@ -286,6 +297,13 @@ func TestBranchStatePatterns_TrueNegatives(t *testing.T) {
 		{"git branch -v"},             // list-only
 		{"git branch -a"},             // list-only
 		{"git branch --list"},         // list-only
+		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-2 read-only exclusions:
+		{"git stash list"},                   // AC-REQ-2a — read-only
+		{"git stash show"},                   // AC-REQ-2a/2b — read-only
+		{"git stash show -p"},                // AC-REQ-2b — read-only
+		{"git stash show -p stash@{0}"},      // AC-REQ-2b — read-only
+		{"git merge-base HEAD origin/main"},  // AC-REQ-2c — read-only
+		{"git merge-base --is-ancestor A B"}, // AC-REQ-2c — read-only
 		{"ls -la"},
 		{"echo hello"},
 		{"make build"},
@@ -302,20 +320,40 @@ func TestBranchStatePatterns_TrueNegatives(t *testing.T) {
 	}
 }
 
-// TestBranchStatePatterns_StashListAccepted documents the accepted
-// false-positive for `git stash list`: the regex `\bgit\s+stash(...) ?` matches
-// the `git stash` prefix regardless of the trailing subcommand. `git stash
-// list` is read-only, but the regex conservatively denies it because the
-// optional group is not anchored to end-of-input. This matches the delegation's
-// EXACT regex (unchanged) and is safer to over-deny (stash is repo-global).
-// The case is removed from TestBranchStatePatterns_TrueNegatives above and
-// asserted here so the behavior is explicit, not silent.
-func TestBranchStatePatterns_StashListAccepted(t *testing.T) {
+// TestBranchStatePatterns_DangerousFormsPreserved is the REQ-2 falsification
+// arm for the dangerous forms: even after the read-only refinement, the
+// genuinely dangerous stash/merge forms MUST still match (AC-REQ-2d/2e).
+// A regex that matched nothing would vacuously pass the TrueNegatives table;
+// this test pins the deny side.
+//
+// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-2.
+func TestBranchStatePatterns_DangerousFormsPreserved(t *testing.T) {
 	t.Parallel()
-	_, matched := matchBranchStateCommand("git stash list")
-	// Accepted: matches the base `git stash` prefix. Conservative over-deny.
-	if !matched {
-		t.Fatalf("matchBranchStateCommand('git stash list') = false; this is an accepted over-deny per branch_guard.go comment — if this assertion flips, update the TrueNegatives table instead")
+	cases := []struct {
+		command string
+	}{
+		// AC-REQ-2d — bare + mutating stash forms MUST still deny:
+		{"git stash"},
+		{"git stash push"},
+		{"git stash pop"},
+		{"git stash apply"},
+		{"git stash drop"},
+		// AC-REQ-2e — actual merge MUST still deny:
+		{"git merge feature/x"},
+		{"git merge --no-ff main"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.command, func(t *testing.T) {
+			t.Parallel()
+			suffix, matched := matchBranchStateCommand(tc.command)
+			if !matched {
+				t.Fatalf("matchBranchStateCommand(%q) = false, want true (dangerous form preserved, REQ-2)", tc.command)
+			}
+			if suffix == "" {
+				t.Fatalf("matched but suffix empty for %q", tc.command)
+			}
+		})
 	}
 }
 

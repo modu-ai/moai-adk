@@ -26,6 +26,13 @@ func TestNewDefaultConfigContainsAllSections(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
+	// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the branch-state guard
+	// ships default-OFF. Distributed users get an inert guard; the template
+	// default MUST stay false (CLAUDE.local.md §25 template neutrality).
+	if cfg.Workflow.BranchGuard.Enabled {
+		t.Errorf("Workflow.BranchGuard.Enabled: got true, want false (REQ-1 default-off / REQ-4 template neutrality)")
+	}
+
 	// User section should have empty name (populated from file)
 	if cfg.User.Name != "" {
 		t.Errorf("User.Name: got %q, want empty", cfg.User.Name)
