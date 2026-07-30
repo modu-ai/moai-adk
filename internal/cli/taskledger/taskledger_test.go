@@ -230,3 +230,87 @@ func TestAppendTaskMissingLedger(t *testing.T) {
 		t.Errorf("error = %v, want 'open tasklist' wrap", err)
 	}
 }
+
+// TestClaimTaskValidate_NonexistentAndCompleted proves REQ-LINT-001-006:
+// ClaimTask reports a failure (not success) for a nonexistent task ID and for
+// an already-completed task ID, and the ledger gains no CLAIMED row in either
+// case. A pending task ID still succeeds.
+func TestClaimTaskValidate_NonexistentAndCompleted(t *testing.T) {
+	tempDir := t.TempDir()
+	stateDir := filepath.Join(tempDir, ".moai", "state")
+	teamID := "team-validate"
+	tasklistPath := initTasklist(t, stateDir, teamID)
+
+	// One pending task and one completed task.
+	if err := AppendTask(stateDir, teamID, TeamTaskEntry{
+		TaskID: "SPEC-PEND", Subject: "pending one", Status: "pending",
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := AppendTask(stateDir, teamID, TeamTaskEntry{
+		TaskID: "SPEC-DONE", Subject: "completed one", Status: "completed",
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	preBytes := mustReadSize(t, tasklistPath)
+
+	// Nonexistent ID → error, ledger unchanged.
+	err := ClaimTask(stateDir, teamID, "tm-1", "SPEC-NOPE")
+	if err == nil {
+		t.Fatal("nonexistent task ID must return a claim failure, got nil")
+	}
+	if got := mustReadSize(t, tasklistPath); got != preBytes {
+		t.Errorf("nonexistent claim must not append to ledger: pre=%d post=%d", preBytes, got)
+	}
+
+	// Completed ID → error, ledger unchanged.
+	err = ClaimTask(stateDir, teamID, "tm-1", "SPEC-DONE")
+	if err == nil {
+		t.Fatal("completed task ID must return a claim failure, got nil")
+	}
+	if got := mustReadSize(t, tasklistPath); got != preBytes {
+		t.Errorf("completed claim must not append to ledger: pre=%d post=%d", preBytes, got)
+	}
+}
+
+// TestClaimTaskValidate_PendingSucceeds proves REQ-LINT-001-006 positive case:
+// a pending task ID returns success and appends a CLAIMED row.
+func TestClaimTaskValidate_PendingSucceeds(t *testing.T) {
+	tempDir := t.TempDir()
+	stateDir := filepath.Join(tempDir, ".moai", "state")
+	teamID := "team-pending"
+	tasklistPath := initTasklist(t, stateDir, teamID)
+
+	if err := AppendTask(stateDir, teamID, TeamTaskEntry{
+		TaskID: "SPEC-PEND", Subject: "pending one", Status: "pending",
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	preBytes := mustReadSize(t, tasklistPath)
+
+	if err := ClaimTask(stateDir, teamID, "tm-1", "SPEC-PEND"); err != nil {
+		t.Fatalf("pending task ID must succeed: %v", err)
+	}
+	postBytes := mustReadSize(t, tasklistPath)
+	if postBytes <= preBytes {
+		t.Errorf("pending claim must append a CLAIMED row: pre=%d post=%d", preBytes, postBytes)
+	}
+	got, _ := os.ReadFile(tasklistPath)
+	if !strings.Contains(string(got), "CLAIMED") {
+		t.Errorf("pending claim must write a CLAIMED row")
+	}
+}
+
+func mustReadSize(t *testing.T, path string) int64 {
+	t.Helper()
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fi.Size()
+}
