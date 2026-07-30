@@ -235,7 +235,7 @@ func BuildTmuxSessionConfig(projectName, specID, worktreePath, projectRoot strin
 					key := strings.TrimSpace(parts[0])
 					value := strings.TrimSpace(parts[1])
 					// Only include ANTHROPIC_* vars
-					if strings.HasPrefix(key, "ANTHROPIC_") {
+					if strings.HasPrefix(key, config.EnvAnthropicPrefix) {
 						cfg.GLMEnvVars[key] = value
 					}
 				}

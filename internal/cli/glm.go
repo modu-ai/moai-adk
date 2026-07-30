@@ -209,12 +209,12 @@ func glmAutoCompactWindow(highModel string) (string, bool) {
 // @MX:WARN: [AUTO] Global environment variable mutation without rollback mechanism
 // @MX:REASON: Process-level state mutation affects all subsequent goroutines; no cleanup on error
 func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
-	_ = os.Setenv("ANTHROPIC_AUTH_TOKEN", apiKey)                            //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_BASE_URL", glmConfig.BaseURL)                   //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
-	_ = os.Setenv("ANTHROPIC_DEFAULT_FABLE_MODEL", glmConfig.Models.Fable)   //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicAuthToken, apiKey)                           //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicBaseURL, glmConfig.BaseURL)                  //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicDefaultOpusModel, glmConfig.Models.High)     //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicDefaultSonnetModel, glmConfig.Models.Medium) //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicDefaultHaikuModel, glmConfig.Models.Low)     //nolint:errcheck
+	_ = os.Setenv(config.EnvAnthropicDefaultFableModel, glmConfig.Models.Fable)   //nolint:errcheck
 	// 1M context activation: when the High slot model resolves to the 1M context
 	// tier, scale the auto-compact window to the full 1M context.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
@@ -474,12 +474,12 @@ func injectTmuxSessionEnv(glmConfig *GLMConfigFromYAML, apiKey string) error {
 // injectTmuxSessionEnvVia.
 func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]string {
 	vars := map[string]string{
-		"ANTHROPIC_AUTH_TOKEN":           apiKey,
-		"ANTHROPIC_BASE_URL":             glmConfig.BaseURL,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
-		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
+		config.EnvAnthropicAuthToken:          apiKey,
+		config.EnvAnthropicBaseURL:            glmConfig.BaseURL,
+		config.EnvAnthropicDefaultOpusModel:   glmConfig.Models.High,
+		config.EnvAnthropicDefaultSonnetModel: glmConfig.Models.Medium,
+		config.EnvAnthropicDefaultHaikuModel:  glmConfig.Models.Low,
+		config.EnvAnthropicDefaultFableModel:  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		config.EnvClaudeCodeDisableExperimentalBetas: "1",
 		"API_TIMEOUT_MS": "3000000",
@@ -513,7 +513,7 @@ func injectTmuxSessionEnvVia(mgr tmux.SessionManager, glmConfig *GLMConfigFromYA
 	// failure we MUST NOT fall back to argv (would re-leak the token).
 	ctx := context.Background()
 
-	const sensitiveKey = "ANTHROPIC_AUTH_TOKEN"
+	const sensitiveKey = config.EnvAnthropicAuthToken
 	if token := vars[sensitiveKey]; token != "" {
 		if err := mgr.InjectSensitiveEnv(ctx, sensitiveKey, token); err != nil {
 			return fmt.Errorf("inject sensitive tmux env: %w", err)
@@ -555,11 +555,11 @@ func clearTmuxSessionEnv() error {
 // GLM activation indicator — removing it is sufficient to deactivate GLM mode.
 func buildTmuxClearVars() []string {
 	return []string{
-		"ANTHROPIC_BASE_URL",
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
-		"ANTHROPIC_DEFAULT_FABLE_MODEL",
+		config.EnvAnthropicBaseURL,
+		config.EnvAnthropicDefaultOpusModel,
+		config.EnvAnthropicDefaultSonnetModel,
+		config.EnvAnthropicDefaultHaikuModel,
+		config.EnvAnthropicDefaultFableModel,
 		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030 Branch-B
 		// inject↔clear parity, REQ-CGH-009): clear the reasoning-control env when
 		// leaving GLM mode so it does not leak into a subsequent `moai cc` session.
@@ -667,17 +667,17 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 
 		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
 		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+		if existing, ok := env[config.EnvAnthropicAuthToken].(string); ok && existing != "" && existing != apiKey {
 			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 		}
 
 		// Inject GLM environment variables for teammates
-		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		env[config.EnvAnthropicAuthToken] = apiKey
+		env[config.EnvAnthropicBaseURL] = glmConfig.BaseURL
+		env[config.EnvAnthropicDefaultOpusModel] = glmConfig.Models.High
+		env[config.EnvAnthropicDefaultSonnetModel] = glmConfig.Models.Medium
+		env[config.EnvAnthropicDefaultHaikuModel] = glmConfig.Models.Low
+		env[config.EnvAnthropicDefaultFableModel] = glmConfig.Models.Fable
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
 		env["API_TIMEOUT_MS"] = "3000000"
@@ -934,17 +934,17 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 
 		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
 		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+		if existing, ok := env[config.EnvAnthropicAuthToken].(string); ok && existing != "" && existing != apiKey {
 			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 		}
 
 		// Inject GLM environment variables with actual API key value
-		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		env[config.EnvAnthropicAuthToken] = apiKey
+		env[config.EnvAnthropicBaseURL] = glmConfig.BaseURL
+		env[config.EnvAnthropicDefaultOpusModel] = glmConfig.Models.High
+		env[config.EnvAnthropicDefaultSonnetModel] = glmConfig.Models.Medium
+		env[config.EnvAnthropicDefaultHaikuModel] = glmConfig.Models.Low
+		env[config.EnvAnthropicDefaultFableModel] = glmConfig.Models.Fable
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
 		env["API_TIMEOUT_MS"] = "3000000"

@@ -2,9 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -227,5 +230,151 @@ func TestStripRetiredV2DenyEntries_NoPermissionsKeyNoop(t *testing.T) {
 	}
 	if string(got) != noPerms {
 		t.Errorf("no-permissions settings.json was rewritten:\n%s", got)
+	}
+}
+
+// runUpdateInFixture chdirs into root, runs the real `moai update` command with
+// a mocked update checker, and returns the combined output. Mirrors the
+// TestRunUpdate_ThreeRunIdempotency_V3Project harness: updateCmd is a
+// package-level cobra command, so callers must not run in parallel.
+func runUpdateInFixture(t *testing.T, root string) string {
+	t.Helper()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir fixture: %v", err)
+	}
+
+	origDeps := deps
+	defer func() { deps = origDeps }()
+	deps = &Dependencies{UpdateChecker: &mockUpdateChecker{}}
+
+	var buf bytes.Buffer
+	updateCmd.SetOut(&buf)
+	updateCmd.SetErr(&buf)
+	updateCmd.SetContext(context.Background())
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatalf("set check flag: %v", err)
+	}
+	if err := updateCmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes flag: %v", err)
+	}
+
+	if runErr := updateCmd.RunE(updateCmd, []string{}); runErr != nil {
+		// Template sync on a minimal fixture may warn; the filesystem
+		// assertions in the caller are the load-bearing invariants.
+		t.Logf("runUpdate returned (non-fatal): %v", runErr)
+	}
+	return buf.String()
+}
+
+// writeV3ProjectFixture lays down the minimum markers that make detectV2Fingerprint
+// return IsV2:false — a v3 system.yaml, no .agency/, no deprecated paths — so
+// `moai update` routes to the plain v3 file-level sync rather than to
+// runCleanReinstall. This is the exact shape that previously never received the
+// deny-rule migration.
+func writeV3ProjectFixture(t *testing.T, root string) {
+	t.Helper()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.1\n")
+	writeTestFile(t, root, ".moai/config/sections/language.yaml",
+		"language:\n    conversation_language: ko\n")
+}
+
+// TestRunUpdate_V3Path_StripsRetiredDenyEntries pins the reachability of
+// stripRetiredV2DenyEntries from the plain v3 update path (issue #1101
+// follow-up). Before the fix the call site existed ONLY inside
+// runCleanReinstall, which opens on a v2 fingerprint — so a project already on
+// v3 kept the retired Write/Grep/Glob entries through every `moai update` and
+// Claude Code warned about them on every session start.
+//
+// Falsifiability: disabling the runUpdate call site makes this test fail
+// (verified by running it with the call stubbed out).
+//
+// Coverage note — what this fixture does and does NOT exercise: under the test
+// binary's version the fixture takes the full file-level sync branch, so the
+// version-match short-circuit (`syncSkipped` early return) is NOT covered here.
+// That branch is why the call site sits BEFORE the short-circuit rather than in
+// the post-sync section; the placement is asserted by the call site's own
+// comment in update.go, not by this test.
+func TestRunUpdate_V3Path_StripsRetiredDenyEntries(t *testing.T) {
+	root := t.TempDir()
+	writeV3ProjectFixture(t, root)
+	settingsPath := writeSettingsFixture(t, root, v2SettingsFixture)
+
+	out := runUpdateInFixture(t, root)
+
+	deny, m := readDenyList(t, settingsPath)
+
+	for _, retired := range retiredV2DenyEntries {
+		if slices.Contains(deny, retired) {
+			t.Errorf("retired deny entry %q survived the v3 update path; deny=%v\n--- output ---\n%s",
+				retired, deny, out)
+		}
+	}
+
+	// The surviving rules must be untouched: the 8 template Read/Edit entries
+	// plus the user's own custom entry (exact-match strip only).
+	mustKeep := []string{
+		"Read(./secrets/**)", "Read(~/.ssh/**)", "Read(~/.aws/**)", "Read(~/.config/gcloud/**)",
+		"Edit(./secrets/**)", "Edit(~/.ssh/**)", "Edit(~/.aws/**)", "Edit(~/.config/gcloud/**)",
+		"Write(./my-custom-protected/**)",
+	}
+	for _, want := range mustKeep {
+		if !slices.Contains(deny, want) {
+			t.Errorf("deny entry %q was removed but must be preserved; deny=%v", want, deny)
+		}
+	}
+
+	// Unknown top-level keys round-trip (SPEC-CLIFIX-CRITICAL-001 precedent).
+	if m["outputStyle"] != "MoAI-Easy" {
+		t.Errorf("outputStyle not preserved through the v3 update path: %v", m["outputStyle"])
+	}
+
+	// The migration must not claim a clean reinstall happened on the v3 path,
+	// and must not collide with the AC-CRR-009(c) "[clean-reinstall] Removed"
+	// assertion in update_clean_install_test.go.
+	if !strings.Contains(out, "[settings] Removed") {
+		t.Errorf("expected the neutral-prefix migration log on the v3 path; output:\n%s", out)
+	}
+	if strings.Contains(out, "[clean-reinstall] Removed") {
+		t.Errorf("deny migration emitted a clean-reinstall label on the v3 path; output:\n%s", out)
+	}
+}
+
+// TestRunUpdate_V3Path_CleanSettingsUntouched pins the no-op half of the
+// contract: a v3 project whose settings.json carries no retired entries must
+// come out byte-identical, so adding the call site to the always-run path
+// cannot churn an already-clean file.
+func TestRunUpdate_V3Path_CleanSettingsUntouched(t *testing.T) {
+	const v3Clean = `{
+  "outputStyle": "MoAI-Easy",
+  "permissions": {
+    "deny": [
+      "Read(./secrets/**)",
+      "Edit(./secrets/**)"
+    ]
+  }
+}`
+	root := t.TempDir()
+	writeV3ProjectFixture(t, root)
+	settingsPath := writeSettingsFixture(t, root, v3Clean)
+
+	out := runUpdateInFixture(t, root)
+
+	got, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != v3Clean {
+		t.Errorf("clean v3 settings.json was rewritten by the update path:\n--- got ---\n%s\n--- want ---\n%s",
+			got, v3Clean)
+	}
+	if strings.Contains(out, "[settings] Removed") {
+		t.Errorf("migration logged a removal on a clean file; output:\n%s", out)
 	}
 }

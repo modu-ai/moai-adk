@@ -100,6 +100,11 @@ func stripRetiredV2DenyEntries(projectRoot string, out io.Writer) error {
 	if err := os.WriteFile(path, outData, mode); err != nil {
 		return fmt.Errorf("write settings.json: %w", err)
 	}
-	_, _ = fmt.Fprintf(out, "[clean-reinstall] Removed %d retired v2 permission deny entries from settings.json\n", removed)
+	// Prefix is deliberately NOT "[clean-reinstall]": this migration now also
+	// runs on the plain v3 update path, where a clean-reinstall label would be
+	// false. It also keeps the message clear of the AC-CRR-009(c) assertion,
+	// which greps "[clean-reinstall] Removed" to prove the REMOVE phase did not
+	// re-activate on a v3 project.
+	_, _ = fmt.Fprintf(out, "[settings] Removed %d retired permission deny entries from settings.json\n", removed)
 	return nil
 }
