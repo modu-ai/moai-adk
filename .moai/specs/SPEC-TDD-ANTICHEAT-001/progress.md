@@ -59,4 +59,10 @@ m1_to_mN_commit_strategy: single M1 commit covers all 3 logical changes (Tier S)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
+- sync_complete_at: 2026-07-30
+- sync_commit_sha: pending-backfill-SPEC-TDD-ANTICHEAT-001 (SHA cannot be in its own commit; backfilled in the follow-up backfill commit of this batch)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-TDD-ANTICHEAT-001 entry (8 ACs, Tier S, M1 single commit)
+- frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
+- run_phase_pr: #1216 (merge commit 5704e3c91 — M1 test-first anti-cheat enforcement)
+- note: §25 template-neutrality verified — the run-phase already synced the 3 mirror pairs via `make build`; this sync commit carries only frontmatter + CHANGELOG + this §E.4 block (no template edits)

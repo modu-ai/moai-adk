@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **[SPEC-TDD-ANTICHEAT-001](.moai/specs/SPEC-TDD-ANTICHEAT-001/spec.md)** — sync-phase close (3-phase plan→run→sync). Promoted the TDD skill's advisory Red Flags / Verification content into enforced invariants so **test-first becomes falsifiable in the completion matrix** — a test-after run can no longer produce an identical clean self-verification matrix. Added a new HARD **Test-First Anti-Cheat** section to `moai-workflow-tdd/SKILL.md` (verbatim RED failure output is mandatory completion evidence; implementation written before its failing test is deleted and re-derived test-first), added `manager-develop-prompt-template.md` §E **E8. RED Failure Output** item (E1-E7 byte-preserved, additive-only), updated the `manager-develop` agent (`Forbidden` += "Writing implementation before its failing test"; STEP 2 RED phase += RED-evidence + delete-pre-test-code invariant), and regenerated `internal/template/catalog.yaml`. The run-phase code + mirror sync landed in PR #1216 (merge commit `5704e3c91`, M1 single commit, 8/8 ACs GREEN); this sync commit carries only the frontmatter `in-progress → completed` transition + `progress.md` §E.4 `sync_commit_sha` population + this CHANGELOG entry — no additional code changes. §25 template neutrality verified (3 mirror pairs byte-identical; `TestTemplateNoInternalContentLeak` PASS). Route B (PR-mandatory). 🗿 MoAI
 
 ## [3.0.2] - 2026-07-29
 
