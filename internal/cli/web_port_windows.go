@@ -1,11 +1,12 @@
 //go:build windows
 
-// web_port_windows.go — Windows 포트 홀더 조회 + 프로세스 종료 스텁.
+// web_port_windows.go — Windows port-holder lookup + process termination stubs.
 //
-// lsof/ps는 POSIX 전용이고 syscall.Kill(SIGTERM)은 Windows에서 컴파일되지 않는다.
-// 두 함수 모두 "미지원" 에러를 돌려주고, ensurePortFree는 finder 에러를 하드 실패가
-// 아니라 "회수 불가 → 진행"으로 처리한다. 따라서 GOOS=windows에서도 빌드되고
-// 오늘과 동일하게 web.Run이 정상 바인드 에러를 표면화한다.
+// lsof/ps are POSIX-only and syscall.Kill (SIGTERM) does not compile on Windows.
+// Both functions return an "unsupported" error, and ensurePortFree treats a
+// finder error not as a hard failure but as "cannot reclaim → proceed". So the
+// build still succeeds under GOOS=windows and web.Run surfaces the normal bind
+// error exactly as it does today.
 
 package cli
 
@@ -15,15 +16,15 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// findPortHolderImpl은 Windows에서 지원되지 않는다. 에러를 돌려 ensurePortFree가
-// 회수를 건너뛰고 web.Run에 위임하게 한다.
+// findPortHolderImpl is unsupported on Windows. It returns an error so
+// ensurePortFree skips reclamation and delegates to web.Run.
 func findPortHolderImpl(_ int) (int, bool, error) {
 	return 0, false, errors.New("port holder lookup not supported on windows")
 }
 
-// killProcessImpl은 Windows에서 지원되지 않는다. ensurePortFree는 moai 홀더를
-// 특정하지 못하므로(findPortHolderImpl 에러) 이 경로에 도달하지 않지만,
-// 인터페이스 완결성을 위해 명시적 미지원 에러를 돌려준다.
+// killProcessImpl is unsupported on Windows. ensurePortFree cannot identify a
+// moai holder (findPortHolderImpl error), so this path is never reached; an
+// explicit unsupported error is returned for interface completeness.
 func killProcessImpl(_ int) error {
 	return errors.New("process termination not supported on windows")
 }

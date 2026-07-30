@@ -31,24 +31,6 @@ type GhClient interface {
 	RunWithStdin(ctx context.Context, stdin string, args ...string) ([]byte, error)
 }
 
-// ttyConfirmer reads a y/n answer from the user's terminal.
-// @MX:NOTE: [AUTO] retained for interactive branch-protection prompt path.
-// Currently unwired (CLI path uses yesConfirmer + --yes-branch-protection flag);
-// kept for follow-up interactive prompt SPEC.
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (interactive prompt path)
-type ttyConfirmer struct{}
-
-// Confirm prompts the user on stderr and reads a single line from stdin.
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (paired with ttyConfirmer)
-func (t *ttyConfirmer) Confirm(prompt string) (bool, error) {
-	fmt.Printf("%s [y/N]: ", prompt)
-	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil {
-		return false, nil
-	}
-	return strings.EqualFold(strings.TrimSpace(answer), "y"), nil
-}
-
 // yesConfirmer always returns true — used with --yes-branch-protection flag.
 type yesConfirmer struct{}
 

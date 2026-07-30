@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/bodp"
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
@@ -461,6 +462,30 @@ func ShouldAutoMerge(noMergeFlag bool) bool {
 	return !noMergeFlag
 }
 
+// workflowTmuxConfig is the subset of .moai/config/sections/workflow.yaml
+// consumed by the launcher-selection parse. Only the documented
+// workflow.worktree.tmux_preferred path is read.
+type workflowTmuxConfig struct {
+	Workflow struct {
+		Worktree struct {
+			TmuxPreferred bool `yaml:"tmux_preferred"`
+		} `yaml:"worktree"`
+	} `yaml:"workflow"`
+}
+
+// parseTmuxPreferred extracts workflow.worktree.tmux_preferred from a
+// workflow.yaml document via a real yaml.v3 unmarshal so commented-out lines
+// (e.g. `# tmux_preferred: true`) cannot flip the launcher-selection parse.
+// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008. Returns false on parse failure or
+// absent field, matching the prior fallback semantics.
+func parseTmuxPreferred(data []byte) bool {
+	var cfg workflowTmuxConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return false
+	}
+	return cfg.Workflow.Worktree.TmuxPreferred
+}
+
 // isTmuxPreferred checks if tmux session creation is preferred in workflow config.
 // Reads worktree.tmux_preferred from .moai/config/sections/workflow.yaml.
 //
@@ -476,15 +501,7 @@ func isTmuxPreferred() bool {
 	if err != nil {
 		return false
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "tmux_preferred:") {
-			parts := strings.SplitN(trimmed, "tmux_preferred:", 2)
-			if len(parts) == 2 {
-				value := strings.TrimSpace(parts[1])
-				return value == "true"
-			}
-		}
-	}
-	return false
+	// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-008: yaml.v3 unmarshal reads only the
+	// documented path; commented-out lines no longer match.
+	return parseTmuxPreferred(data)
 }

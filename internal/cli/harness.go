@@ -27,6 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	harnesscli "github.com/modu-ai/moai-adk/internal/cli/harness"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 )
@@ -147,7 +148,7 @@ func runHarnessStatus(cmd *cobra.Command, _ []string) error {
 
 	thresholds := cfg.TierThresholds
 	if len(thresholds) == 0 {
-		thresholds = []int{1, 3, 5, 10}
+		thresholds = config.DefaultTierThresholds
 	}
 
 	// calculate tier distribution
@@ -477,7 +478,7 @@ func defaultLearningConfig() learningConfig {
 	return learningConfig{
 		Enabled:          true,
 		AutoApply:        false,
-		TierThresholds:   []int{1, 3, 5, 10},
+		TierThresholds:   config.DefaultTierThresholds,
 		RateLimit:        rateLimitCfg{MaxPerWeek: 3, CooldownHours: 24},
 		LogRetentionDays: 90,
 	}

@@ -314,7 +314,8 @@ func renderList(w io.Writer, entries []toolpolicy.PolicyEntry, format string) er
 		for _, e := range entries {
 			audit := e.Audit
 			if len(audit) > 80 {
-				audit = audit[:77] + "..."
+				// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-006: rune-safe truncation.
+				audit = truncateRunes(audit, 77) + "..."
 			}
 			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 				e.Tool, truncateArg(e.ArgsPattern), e.RiskTier, e.Decision, e.OwnerAgent, audit)
@@ -335,7 +336,8 @@ func truncateArg(a string) string {
 		return "(tool-level)"
 	}
 	if len(a) > 40 {
-		return a[:37] + "..."
+		// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-006: rune-safe truncation.
+		return truncateRunes(a, 37) + "..."
 	}
 	return a
 }

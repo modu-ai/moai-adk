@@ -35,7 +35,7 @@ retention_days is read from .moai/config/sections/state.yaml.`,
 		},
 	}
 
-	cmd.Flags().BoolVar(&force, "force", false, "실제로 파일을 삭제합니다 (기본값: dry-run)")
+	cmd.Flags().BoolVar(&force, "force", false, "Actually delete files (default: dry-run)")
 
 	return cmd
 }

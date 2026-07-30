@@ -319,6 +319,22 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 	return sel
 }
 
+// secretInputIDs lists wizard question IDs whose entered value is a secret
+// (Personal Access Token / credential) and MUST be masked on screen.
+// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-007: token questions render with password
+// echo mode so the typed PAT is not displayed in cleartext.
+var secretInputIDs = map[string]bool{
+	"github_token": true,
+	"gitlab_token": true,
+}
+
+// IsSecretInputID reports whether the given wizard question ID collects a
+// secret value that must be echo-masked during entry. Exported so tests in
+// the wizard package can lock in the secret-ID classification.
+func IsSecretInputID(id string) bool {
+	return secretInputIDs[id]
+}
+
 // buildInputField creates a huh.Input field for an input-type question.
 func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Input {
 	var value string
@@ -336,6 +352,11 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 			return lq.Description
 		}, locale).
 		Value(&value)
+
+	// SPEC-CLIFIX-HYGIENE-001 AC-HYG-001-007: mask PAT entry.
+	if IsSecretInputID(q.ID) {
+		inp = inp.EchoMode(huh.EchoModePassword)
+	}
 
 	if q.Default != "" {
 		inp = inp.Placeholder(q.Default)

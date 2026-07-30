@@ -302,11 +302,11 @@ func removeGLMEnv(settingsPath string) error {
 			delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
 			delete(env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
 			// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
-			delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+			delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
 			delete(env, "API_TIMEOUT_MS")
-			delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+			delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)
 			// Remove teammate display env var override (CG/GLM set this)
-			delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+			delete(env, config.EnvClaudeCodeTeammateDisplay)
 			// Issue #742: drop GLM context-size hint when leaving GLM mode so the
 			// statusline reverts to the Claude slot's nominal size.
 			delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
