@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
@@ -18,11 +19,11 @@ import (
 // statusline reflects the real GLM model context window (128K/200K/etc.)
 // instead of the Claude slot's nominal size (1M for the Opus slot).
 var glmTmuxKeys = []string{
-	"ANTHROPIC_AUTH_TOKEN",
-	"ANTHROPIC_BASE_URL",
-	"ANTHROPIC_DEFAULT_OPUS_MODEL",
-	"ANTHROPIC_DEFAULT_SONNET_MODEL",
-	"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	config.EnvAnthropicAuthToken,
+	config.EnvAnthropicBaseURL,
+	config.EnvAnthropicDefaultOpusModel,
+	config.EnvAnthropicDefaultSonnetModel,
+	config.EnvAnthropicDefaultHaikuModel,
 	"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 	"API_TIMEOUT_MS",
 	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
@@ -36,7 +37,7 @@ var glmTmuxKeys = []string{
 //   - Only keys listed in glmTmuxKeys are included in the result
 //   - Keys absent from settings are not included in the result
 func buildGLMTmuxEnvVars(env map[string]string) map[string]string {
-	if env["ANTHROPIC_AUTH_TOKEN"] == "" {
+	if env[config.EnvAnthropicAuthToken] == "" {
 		return nil
 	}
 
@@ -48,8 +49,8 @@ func buildGLMTmuxEnvVars(env map[string]string) map[string]string {
 	}
 
 	// Always include ANTHROPIC_AUTH_TOKEN if present
-	if token := env["ANTHROPIC_AUTH_TOKEN"]; token != "" {
-		result["ANTHROPIC_AUTH_TOKEN"] = token
+	if token := env[config.EnvAnthropicAuthToken]; token != "" {
+		result[config.EnvAnthropicAuthToken] = token
 	}
 
 	return result
@@ -126,7 +127,7 @@ func ensureTmuxGLMEnv(projectDir string) string {
 
 	// Pull out the credential, inject via source-file, and feed the
 	// remainder through the bulk argv path.
-	sensitiveKey := "ANTHROPIC_AUTH_TOKEN"
+	sensitiveKey := config.EnvAnthropicAuthToken
 	if token, ok := vars[sensitiveKey]; ok && token != "" {
 		if err := mgr.InjectSensitiveEnv(ctx, sensitiveKey, token); err != nil {
 			slog.Warn("ensureTmuxGLMEnv: sensitive token injection failed; aborting (no argv fallback)",

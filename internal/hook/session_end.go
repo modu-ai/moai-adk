@@ -611,11 +611,11 @@ func cleanupOrphanedTmuxSessions(ctx context.Context) {
 // unsetting the tmux var is always safe — it either removes a GLM key (correct)
 // or is a no-op when it was never set.
 var glmEnvVarsToClean = []string{
-	"ANTHROPIC_AUTH_TOKEN",
-	"ANTHROPIC_BASE_URL",
-	"ANTHROPIC_DEFAULT_OPUS_MODEL",
-	"ANTHROPIC_DEFAULT_SONNET_MODEL",
-	"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+	config.EnvAnthropicAuthToken,
+	config.EnvAnthropicBaseURL,
+	config.EnvAnthropicDefaultOpusModel,
+	config.EnvAnthropicDefaultSonnetModel,
+	config.EnvAnthropicDefaultHaikuModel,
 }
 
 // clearTmuxSessionEnv removes GLM environment variables from tmux session.
@@ -704,23 +704,23 @@ func cleanupGLMSettingsLocal(projectDir string) {
 
 	// ANTHROPIC_BASE_URL is the GLM-active indicator.
 	// Claude Code's own OAuth flow never sets this variable.
-	if _, glmActive := env["ANTHROPIC_BASE_URL"]; !glmActive {
+	if _, glmActive := env[config.EnvAnthropicBaseURL]; !glmActive {
 		// Not in GLM mode — nothing to clean.
 		return
 	}
 
 	// Restore backed-up OAuth token if present; otherwise remove the GLM key.
 	if backup, ok := env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
-		env["ANTHROPIC_AUTH_TOKEN"] = backup
+		env[config.EnvAnthropicAuthToken] = backup
 	} else {
-		delete(env, "ANTHROPIC_AUTH_TOKEN")
+		delete(env, config.EnvAnthropicAuthToken)
 	}
 
 	delete(env, "MOAI_BACKUP_AUTH_TOKEN")
-	delete(env, "ANTHROPIC_BASE_URL")
-	delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-	delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
-	delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+	delete(env, config.EnvAnthropicBaseURL)
+	delete(env, config.EnvAnthropicDefaultHaikuModel)
+	delete(env, config.EnvAnthropicDefaultSonnetModel)
+	delete(env, config.EnvAnthropicDefaultOpusModel)
 
 	// Re-encode the cleaned env map back into the raw JSON document.
 	if len(env) == 0 {

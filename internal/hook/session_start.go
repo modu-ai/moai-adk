@@ -347,9 +347,9 @@ func ensureGLMCredentials(projectDir string) string {
 	// Check if GLM model overrides exist
 	hasGLMModel := false
 	for _, key := range []string{
-		"ANTHROPIC_DEFAULT_OPUS_MODEL",
-		"ANTHROPIC_DEFAULT_SONNET_MODEL",
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+		config.EnvAnthropicDefaultOpusModel,
+		config.EnvAnthropicDefaultSonnetModel,
+		config.EnvAnthropicDefaultHaikuModel,
 	} {
 		if val, ok := settings.Env[key]; ok && strings.Contains(strings.ToLower(val), "glm") {
 			hasGLMModel = true
@@ -362,7 +362,7 @@ func ensureGLMCredentials(projectDir string) string {
 	}
 
 	// GLM models configured — check if AUTH_TOKEN exists
-	if token := settings.Env["ANTHROPIC_AUTH_TOKEN"]; token != "" {
+	if token := settings.Env[config.EnvAnthropicAuthToken]; token != "" {
 		return "" // Already has credentials
 	}
 
@@ -377,9 +377,9 @@ func ensureGLMCredentials(projectDir string) string {
 	}
 
 	// Inject credentials
-	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	if settings.Env["ANTHROPIC_BASE_URL"] == "" {
-		settings.Env["ANTHROPIC_BASE_URL"] = config.DefaultGLMBaseURL
+	settings.Env[config.EnvAnthropicAuthToken] = apiKey
+	if settings.Env[config.EnvAnthropicBaseURL] == "" {
+		settings.Env[config.EnvAnthropicBaseURL] = config.DefaultGLMBaseURL
 	}
 	// Ensure compatibility flags are set
 	if settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "" {
@@ -432,7 +432,7 @@ func maybeSet1MAutoCompactWindow(env map[string]string) {
 	if env[config.EnvClaudeCodeAutoCompactWindow] != "" {
 		return
 	}
-	if statusline.ResolveGLMContextWindow(env["ANTHROPIC_DEFAULT_OPUS_MODEL"]) >= config.Default1MContextTokens {
+	if statusline.ResolveGLMContextWindow(env[config.EnvAnthropicDefaultOpusModel]) >= config.Default1MContextTokens {
 		env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
 	}
 }
