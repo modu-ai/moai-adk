@@ -2,7 +2,7 @@
 id: SPEC-CLIFIX-HYGIENE-001
 title: "CLI Structure and Hygiene Remediation — update.go decomposition, dead code, hardcoding sweep, i18n policy, rune safety (P4)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-10
 updated: 2026-07-30
 author: manager-spec
