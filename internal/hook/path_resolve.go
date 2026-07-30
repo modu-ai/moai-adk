@@ -31,9 +31,36 @@ package hook
 import (
 	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// projectRootResolver defers registration-time project-root resolution to first
+// use. Handlers embed it and expose a projectRoot() accessor.
+//
+// Why deferred: InitDependencies (internal/cli/deps.go) constructs every handler
+// for every non-trivial subcommand, long before — and usually without — a hook
+// event ever being dispatched. Resolving in the constructor therefore emitted a
+// cwd_fallback warning on operator-facing commands, where CLAUDE_PROJECT_DIR is
+// legitimately unset and cwd is the right answer rather than a degraded one.
+// Resolution semantics are unchanged: CLAUDE_PROJECT_DIR, then os.Getwd()
+// (REQ-HCWA-005, REQ-HCWA-008).
+type projectRootResolver struct {
+	caller string
+	once   sync.Once
+}
+
+// resolve fills *dir on first call and returns it. A dir already set by the
+// caller (tests construct handlers with an explicit project root) is preserved.
+func (r *projectRootResolver) resolve(dir *string) string {
+	r.once.Do(func() {
+		if *dir == "" && r.caller != "" {
+			*dir = resolveProjectRootFromEnv(r.caller)
+		}
+	})
+	return *dir
+}
 
 // resolveProjectRootFromEnv returns CLAUDE_PROJECT_DIR or os.Getwd() fallback
 // without the .moai/ existence guard. Emits slog.Warn with key

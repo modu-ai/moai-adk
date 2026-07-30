@@ -38,6 +38,11 @@ Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 //
 // R3 nil-access mitigation: only commands verified to NOT touch `deps` are listed
 // here. Adding a command that accesses deps without InitDependencies would panic.
+// The launch group (cc/cg/glm) is listed for a second reason: those commands
+// end in syscall.Exec, replacing this process with the claude binary, so the
+// whole graph would be assembled and immediately discarded. The only deps read
+// on that path is loadGLMConfig's nil-safe branch (glm.go), which falls back to
+// reading llm.yaml from disk — its documented live runtime path.
 var trivialCommands = map[string]bool{
 	"--version":  true,
 	"version":    true,
@@ -46,6 +51,9 @@ var trivialCommands = map[string]bool{
 	"--help":     true,
 	"-h":         true,
 	"completion": true, // cobra built-in
+	"cc":         true, // launcher: exec's claude, discards the graph
+	"cg":         true, // launcher: exec's claude, discards the graph
+	"glm":        true, // launcher: exec's claude, discards the graph
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
