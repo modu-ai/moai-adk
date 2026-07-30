@@ -74,23 +74,9 @@ Every design decision in MoAI-ADK serves one of these three axes. Which model to
 
 ## 🪙 The Cost Axis — Tokenomics
 
-MoAI-ADK's value rests on three pillars — the same three the [documentation site](https://adk.mo.ai.kr/en/core-concepts) organizes around. Each pillar answers one question about how an agentic system should work.
-
-![Three axes of the MoAI-ADK harness — Tokenomics, Agentic Loop Engineering, Agentic Harness](./assets/images/three-axes-infographic.png)
-
-| Pillar | Key Question |
-|---|---|
-| 🪙 **Tokenomics** | How do we get the same quality with fewer tokens? |
-| 🧠 **Agentic Loop Engineering** | How does the loop work and learn on its own? |
-| 🛡️ **Agentic Harness** | How do we design an environment where agents work well? |
-
-### 🪙 Tokenomics — same quality, fewer tokens
-
 Token prices fell **98% over three years** (Linux Foundation), yet enterprise AI spend rose **320%** in the same window. Volume growth overwhelmed the price drop. Agents spin through dozens to hundreds of steps to solve a single task, burning tokens proportionally. In usage-based pricing this becomes the invoice; in subscription, it eats the weekly quota shared by every model.
 
 Uber deployed Claude Code to 5,000 engineers and **burned through a year of coding budget in four months**, then imposed monthly token limits. Meta, Amazon, and Microsoft each walked back unlimited-AI policies. **Tokenomics** — matching the model to the task to raise token efficiency — became the tech industry's new baseline.
-
-![Why tokenomics — token price -98% vs enterprise AI cost +320%](./assets/images/why-tokenomics-infographic.png)
 
 Traditional cost control was built for rising unit prices, so it is helpless against this paradox: prices falling while total spend climbs. The bottleneck is not unit price but volume, more precisely the step count an agent spins before finishing.
 
@@ -124,15 +110,11 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 - **Profile Matrix** — 11 agents × 3 profiles = 33 cells. `moai model profile` resolves each agent's `{model, effort}` pair.
 - **CG Mode** — `moai cg` combines a Claude leader (strategy, planning, audits) with GLM workers (bulk implementation). **60-70% cost savings** on implementation-heavy workloads.
 
-![CG mode — Claude leader handles strategy and audits, GLM workers handle bulk implementation](./assets/images/cg-mode-infographic.png)
-
-![Model routing — 11 agents assigned to Opus or Sonnet by role, with effort tags](./assets/images/model-routing-infographic.png)
-
 <p align="center">
   <img src="./assets/images/cg-mode-infographic-en.png" alt="CG Mode — Claude leader + GLM worker hybrid" width="85%">
 </p>
 
-### Verification Economy — diet context, persist evidence to disk
+### DeepSWE Benchmark — where the value-for-money knee sits
 
 | Model [effort] | Score | Per-task cost | Note |
 |---|---|---|---|
@@ -148,13 +130,13 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 
 > Source: [DeepSWE v1.1 leaderboard](https://deepswe.datacurve.ai) (datacurve.ai, 113 tasks, 2026-07-25)
 
-### Budget Defense — stop before overage, resume in next session
+### Verification Economy · Budget Defense — diet context, stop before overage
 
 **Verification Economy — diet context, persist evidence to disk.** Redirect verbose verification output to disk files, leaving only exit code and bounded tail (max 50 lines) in context. Prompt-cache reuse (cached reads cost 0.1×) and a context-diet `/clear` strategy (auto-recommendations at 1M 50% / 200K 90% thresholds) keep the window light.
 
 **Budget Defense — stop before overage, resume in the next session.** A Token Circuit Breaker aborts at the hard limit (default 90%), saves progress to `progress.md`, and issues a paste-ready resume message. The statusline keeps context usage, cache hit rate, and rate-limit depletion visible at all times.
 
-### 🧠 Agentic Loop Engineering — the loop that works and learns on its own
+---
 
 ## 🧠 The Self-Improvement Axis — Agentic Loop Engineering
 
@@ -162,11 +144,9 @@ The cheapest session is the one that does not repeat last session's mistakes. Th
 
 **`/moai goal` · `/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
 
-![SPEC 3-phase lifecycle — plan → run → sync](./assets/images/spec-3phase-infographic.png)
+**Decision memory.** Routing decisions, gate evidence, and recurring corrections are recorded so the next session starts from what the last one learned — not from zero.
 
-**TRUST 5 Quality Gates.** Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
-
-**11-Agent Catalog.** MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
+**Harness self-evolution.** Observed failure patterns become proposed rule changes, surfaced for approval rather than applied silently.
 
 ---
 
@@ -373,6 +353,48 @@ flowchart TD
 
 ---
 
+## Claude × GLM Multi-LLM
+
+MoAI-ADK supports **z.ai GLM** as an alternative backend for Claude Code. Switching is environment-variable only — no code changes, and the harness, SPEC workflow, and quality gates behave identically on every backend.
+
+| Item | Details |
+|---|---|
+| GLM Coding Plan | From **$10**/month ([sign-up](https://z.ai/subscribe?ic=1NDV03BGWU)) |
+| Compatibility | Drop-in with Claude Code — no code changes |
+| Models | glm-5.2, glm-4.7, glm-4.5-air, plus free models |
+
+### Three execution modes
+
+| Command | Leader | Workers | tmux | Cost saving | Use for |
+|---|---|---|---|---|---|
+| `moai cc` | Claude | Claude | not required | — | Highest quality, complex work |
+| `moai glm` | GLM | GLM | recommended | ~70% | Cost optimization |
+| `moai cg` | Claude | GLM | **required** | ~60% | Quality + cost balance |
+
+**CG mode** is the hybrid: a Claude leader owns strategy, planning, and audits while GLM workers carry bulk implementation, wired through tmux session-level environment isolation.
+
+```bash
+moai glm sk-your-glm-api-key   # save the key once
+moai cg                        # enter CG mode (Claude leader + GLM workers)
+```
+
+### Default model mapping
+
+Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
+
+| Claude tier | GLM model | Context |
+|---|---|---|
+| Opus | glm-5.2 | 1M |
+| Sonnet | glm-4.7 | 202K |
+| Haiku | glm-4.5-air | 128K |
+| Fable | glm-5.2 | 1M |
+
+> Free models are also available (GLM-4.7-Flash, GLM-4.5-Flash). See [z.ai pricing](https://docs.z.ai/guides/overview/pricing) for the full table.
+>
+> → Details: [Multi-LLM guide](https://adk.mo.ai.kr/en/multi-llm)
+
+---
+
 ## FAQ
 
 ### Q: Why doesn't every function have an @MX tag?
@@ -446,3 +468,13 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed p
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
 - [Discord Community](https://discord.gg/Z7E7Mdc5aN)
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+<p align="center">
+  <sub>Built by the MoAI-ADK team · <a href="https://adk.mo.ai.kr">adk.mo.ai.kr</a></sub>
+</p>

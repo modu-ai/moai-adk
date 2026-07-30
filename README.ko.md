@@ -108,15 +108,11 @@ Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort
 - **프로파일 매트릭스** — 11 에이전트 × 3 프로파일 = 33셀. `moai model profile`이 각 에이전트의 `{model, effort}` 쌍을 해석한다.
 - **CG 모드** — `moai cg`는 Claude 리더(전략·계획·감사)와 GLM 워커(대량 구현)를 결합한다. 구현 중심 작업에서 **60-70% 비용 절감**.
 
-![CG 모드 — Claude 리더가 전략·감사를 맡고 GLM 워커가 대량 구현을 담당](./assets/images/cg-mode-infographic.png)
-
-![모델 라우팅 — 11개 에이전트를 역할에 따라 Opus/Sonnet에 배정, effort 태그 포함](./assets/images/model-routing-infographic.png)
-
 <p align="center">
   <img src="./assets/images/cg-mode-infographic-ko.png" alt="CG 모드 — Claude 리더 + GLM 워커 하이브리드" width="85%">
 </p>
 
-### 검증 경제 — 컨텍스트는 다이어트하고 증거는 디스크로
+### DeepSWE 벤치마크 — 가성비 최적점은 어디인가
 
 | 모델 [effort] | 점수 | 과제당 비용 | 비고 |
 |---|---|---|---|
@@ -132,13 +128,13 @@ Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort
 
 > 출처: [DeepSWE v1.1 리더보드](https://deepswe.datacurve.ai) (datacurve.ai, 113과제, 2026-07-25)
 
-### 예산 방어 — 초과 전에 멈추고 다음 세션으로 이어
+### 검증 비용과 예산 관리 — 컨텍스트는 가볍게, 초과 전에 멈추기
 
 **검증 비용을 줄이는 방식 — 컨텍스트는 가볍게, 증거는 디스크로.** 검증 명령의 장문 출력은 디스크 파일로 리다이렉트하고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남긴다. 프롬프트 캐시 재사용(캐시 적중 시 0.1× 비용)과 컨텍스트 다이어트 `/clear` 전략(1M 50% / 200K 90% 임계에서 자동 권고)이 컨텍스트 윈도우를 가볍게 유지한다.
 
 **예산 방어 — 초과 전에 중단하고 다음 세션으로 이어.** 토큰 회로 차단기(Token Circuit Breaker)가 hard-limit(기본 90%)에서 중단을 수행하고, 진행 상태를 `progress.md`에 저장하며, 붙여넣기 가능한 resume 메시지를 발행한다. 스테이터스라인이 컨텍스트 사용률·캐시 적중률·rate limit 소진율을 항상 띄워 둔다.
 
-### 🧠 에이전틱 루프 엔지니어링 — 스스로 일하고 학습하는 루프
+---
 
 ## 🧠 자기 개선 축 — 에이전틱 루프 엔지니어링
 
@@ -146,11 +142,9 @@ Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort
 
 **`/moai goal` · `/moai loop`**. 완료 조건 하나만 선언하면 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 알아서 일한다. `/moai loop`는 LSP 진단·AST-grep·린터를 병렬로 스캔해, 나온 문제를 레벨로 묶어 큐가 빌 때까지 돈다.
 
-![SPEC 3-페이즈 라이프사이클 — plan → run → sync](./assets/images/spec-3phase-infographic.png)
+**결정 메모리.** 라우팅 결정과 게이트 증거, 되풀이되는 교정 내용을 기록해 둔다. 그래서 다음 세션은 지난 세션이 배운 지점에서 출발한다 — 맨땅에서 다시 시작하지 않는다.
 
-**TRUST 5 품질 게이트.** Tested(85%+ 커버리지) · Readable · Unified · Secured · Trackable, 모든 변경에 적용. 검증을 판정하는 것은 에이전트가 아니라 게이트다.
-
-**11-에이전트 카탈로그.** MoAI 커스텀 10 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
+**하네스 자가 진화.** 관측된 실패 패턴은 규칙 변경 제안으로 올라온다. 몰래 적용되는 것이 아니라 승인을 거쳐 반영된다.
 
 ---
 
@@ -355,6 +349,48 @@ flowchart TD
 
 ---
 
+## Claude × GLM 멀티 LLM
+
+MoAI-ADK는 Claude Code의 대체 백엔드로 **z.ai GLM**을 지원한다. 전환은 환경변수만 바꾸면 되고 코드는 그대로다. 하네스와 SPEC 워크플로우, 품질 게이트는 어느 백엔드에서든 똑같이 돈다.
+
+| 항목 | 내용 |
+|---|---|
+| GLM Coding Plan | 월 **$10**부터 ([가입](https://z.ai/subscribe?ic=1NDV03BGWU)) |
+| 호환성 | Claude Code에 그대로 붙는다 — 코드 수정 없음 |
+| 모델 | glm-5.2, glm-4.7, glm-4.5-air, 그리고 무료 모델 |
+
+### 세 가지 실행 모드
+
+| 커맨드 | 리더 | 워커 | tmux | 비용 절감 | 쓰는 상황 |
+|---|---|---|---|---|---|
+| `moai cc` | Claude | Claude | 필요 없음 | — | 최고 품질, 복잡한 작업 |
+| `moai glm` | GLM | GLM | 권장 | 약 70% | 비용 최적화 |
+| `moai cg` | Claude | GLM | **필수** | 약 60% | 품질과 비용의 균형 |
+
+**CG 모드**가 하이브리드다. Claude 리더가 전략·계획·감사를 맡고 GLM 워커가 대량 구현을 담당하며, tmux 세션 단위 환경 격리로 둘을 잇는다.
+
+```bash
+moai glm sk-your-glm-api-key   # save the key once
+moai cg                        # enter CG mode (Claude leader + GLM workers)
+```
+
+### 기본 모델 매핑
+
+Claude 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM 모델로 매핑된다.
+
+| Claude 티어 | GLM 모델 | 컨텍스트 |
+|---|---|---|
+| Opus | glm-5.2 | 1M |
+| Sonnet | glm-4.7 | 202K |
+| Haiku | glm-4.5-air | 128K |
+| Fable | glm-5.2 | 1M |
+
+> 무료 모델도 쓸 수 있다(GLM-4.7-Flash, GLM-4.5-Flash). 전체 표는 [z.ai 요금 안내](https://docs.z.ai/guides/overview/pricing)를 참조한다.
+>
+> → 자세히: [Multi-LLM 가이드](https://adk.mo.ai.kr/ko/multi-llm)
+
+---
+
 ## FAQ
 
 ### Q: 왜 모든 함수에 @MX 태그가 없나요?
@@ -428,3 +464,13 @@ flowchart TD
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
 - [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)
+
+---
+
+## 스타 히스토리
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+<p align="center">
+  <sub>MoAI-ADK 팀이 만들었습니다 · <a href="https://adk.mo.ai.kr">adk.mo.ai.kr</a></sub>
+</p>

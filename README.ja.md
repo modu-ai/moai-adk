@@ -130,6 +130,8 @@ MoAI-ADKはこの割り当てをその場の運任せにせず、システム化
 
 トークノミクスは 4 つの段階で動く。各段階がコストの一面を担い、ともに閉じたループを形成する。測定が先行してこそルーティングとダイエットの効果を検証でき、防御がなければ一度の予算超過がセッションを切断する。
 
+---
+
 ## 🧠 自己改善の軸 — エージェンティック・ループ・エンジニアリング
 
 前回のセッションの失敗を繰り返さないセッションが最も安い。自己改善の軸は、毎回の実行を次の実行の材料に変える: ルーティング決定とゲート証拠が記録され、繰り返されるパターンはルールに昇格し、宣言されたgoalが条件を満たすまでセッションを働かせ続ける。
@@ -142,7 +144,7 @@ MoAI-ADKはこの割り当てをその場の運任せにせず、システム化
 
 **決定メモリ**. 質問は不確実性が最も高い箇所（p ≈ 0.5）から出て、推奨はシステムデフォルトではなく観測された統計的多数に従う。
 
-### 🧠 エージェンティックループエンジニアリング — 自ら働き、学ぶループ
+---
 
 ## 🛡️ 品質管理の軸 — エージェンティック・ハーネス
 
@@ -347,6 +349,48 @@ flowchart TD
 
 ---
 
+## Claude × GLM マルチ LLM
+
+MoAI-ADK は Claude Code のバックエンドとして **z.ai GLM** も使える。切り替えは環境変数だけで済み、コードの変更は不要である。ハーネス・SPEC ワークフロー・品質ゲートは、どのバックエンドでも同じように動く。
+
+| 項目 | 内容 |
+|---|---|
+| GLM Coding Plan | 月額 **$10** から（[申し込み](https://z.ai/subscribe?ic=1NDV03BGWU)） |
+| 互換性 | Claude Code にそのまま差し替えられる — コード変更なし |
+| モデル | glm-5.2、glm-4.7、glm-4.5-air、および無料モデル |
+
+### 3 つの実行モード
+
+| コマンド | リーダー | ワーカー | tmux | コスト削減 | 用途 |
+|---|---|---|---|---|---|
+| `moai cc` | Claude | Claude | 不要 | — | 品質最優先、複雑な作業 |
+| `moai glm` | GLM | GLM | 推奨 | 約 70% | コスト最適化 |
+| `moai cg` | Claude | GLM | **必須** | 約 60% | 品質とコストの両立 |
+
+**CG モード**はハイブリッドである。戦略・計画・監査は Claude リーダーが担い、大量の実装は GLM ワーカーが担う。両者は tmux のセッション単位の環境分離でつながっている。
+
+```bash
+moai glm sk-your-glm-api-key   # キーを一度だけ保存する
+moai cg                        # CG モードに入る（Claude リーダー + GLM ワーカー）
+```
+
+### デフォルトのモデル対応
+
+Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して GLM モデルに対応づけられる。
+
+| Claude ティア | GLM モデル | コンテキスト |
+|---|---|---|
+| Opus | glm-5.2 | 1M |
+| Sonnet | glm-4.7 | 202K |
+| Haiku | glm-4.5-air | 128K |
+| Fable | glm-5.2 | 1M |
+
+> 無料モデル（GLM-4.7-Flash、GLM-4.5-Flash）も使える。一覧は [z.ai の料金表](https://docs.z.ai/guides/overview/pricing) を参照。
+>
+> → 詳細: [Multi-LLM ガイド](https://adk.mo.ai.kr/ja/multi-llm)
+
+---
+
 ## FAQ
 
 ### Q: すべての関数に @MX タグがないのはなぜですか？
@@ -420,3 +464,13 @@ flowchart TD
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
 - [Discord コミュニティ](https://discord.gg/Z7E7Mdc5aN)
+
+---
+
+## スター履歴
+
+[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=Date)](https://www.star-history.com/#modu-ai/moai-adk&Date)
+
+<p align="center">
+  <sub>MoAI-ADK チーム制作 · <a href="https://adk.mo.ai.kr">adk.mo.ai.kr</a></sub>
+</p>
