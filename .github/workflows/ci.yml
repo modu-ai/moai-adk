@@ -92,7 +92,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        # TEMP (issue #1225 verification): windows re-added to confirm the
+        # branch-guard latency fix on the OS that regressed. Revert to
+        # [ubuntu-latest] (SPEC-V3R6-CI-PR-SPEEDUP-001) once green.
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout code
