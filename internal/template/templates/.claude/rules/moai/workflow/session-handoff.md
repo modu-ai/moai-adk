@@ -152,7 +152,17 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 
 ## Output Surface (User-Facing)
 
-At session end, the orchestrator displays: (1) the main message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
+[ZONE:Evolvable] [HARD] Emitting a resume message means **rendering it in the response body of the turn that generates it** — not storing it. At session end the orchestrator displays all three of: (1) the main message in a fenced ```text``` block **bounded by cut-line markers** (per § Cut-line Marker Specification — marker text translated per `conversation_language`, `✂`/`─` symbols preserved verbatim) for verbatim paste, (2) the memory file path, (3) a one-sentence summary of what next session continues.
+
+**reference-instead-of-render (named anti-pattern).** Writing the resume into the memory topic file (§ Auto-Memory Integration) and then merely *citing* that file path in the completion report is NOT emission. The memory write and the `moai handoff save` record are both persistence steps; neither reaches the user, so a report stating the resume "is saved in memory" while rendering no block leaves the user with nothing to paste. The hazard is structural rather than a lapse of attention: § Auto-Memory Integration is discharged by concrete tool calls whose results are visible, so the turn feels complete once they succeed — while the render, being ordinary response text, is the one step with no tool call to confirm it happened. Persistence without rendering is an unobserved completion claim under `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1.
+
+**Render-surface dependency.** The per-persona banner template for this render lives in the active output style, and not every persona defines one. Where the active style carries no handoff banner, this obligation still binds unchanged — render the cut-line-bounded block from the § Canonical Format skeleton directly, styled to match that persona's other banners. A missing banner template is never a reason to skip the render.
+
+### Pre-emit self-check (emission surface) — 3 items
+
+- [ ] Is the cut-line-bounded block rendered in THIS response body — not only written to memory or persisted via the CLI?
+- [ ] Are all three surface items present: the block, the memory file path, and the one-sentence continuation summary?
+- [ ] Does the completion report avoid claiming the handoff was delivered when only the persistence steps ran?
 
 ## Anti-Patterns
 
