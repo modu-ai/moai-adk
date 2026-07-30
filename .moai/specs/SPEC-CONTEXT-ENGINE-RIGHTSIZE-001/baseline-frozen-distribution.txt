@@ -1,0 +1,13 @@
+.claude/rules/moai/core/agent-common-protocol.md:1
+.claude/rules/moai/core/askuser-protocol.md:3
+.claude/rules/moai/core/moai-constitution.md:1
+.claude/rules/moai/design/constitution.md:19
+.claude/rules/moai/development/agent-authoring.md:1
+.claude/rules/moai/development/branch-origin-protocol.md:7
+.claude/rules/moai/development/sprint-round-naming.md:1
+.claude/rules/moai/workflow/ci-autofix-protocol.md:10
+.claude/rules/moai/workflow/ci-watch-protocol.md:8
+.claude/rules/moai/workflow/orchestration-mode-selection.md:3
+.claude/rules/moai/workflow/spec-workflow.md:3
+.claude/rules/moai/workflow/worktree-integration.md:8
+.claude/rules/moai/workflow/worktree-state-guard.md:1
