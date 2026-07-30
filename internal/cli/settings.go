@@ -180,15 +180,15 @@ func stripGLMCredsAndSetTeammateMode(m map[string]any) {
 	if env, ok := m["env"].(map[string]any); ok {
 		// Restore backed-up OAuth token before removing GLM vars.
 		if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
-			env["ANTHROPIC_AUTH_TOKEN"] = backup
+			env[config.EnvAnthropicAuthToken] = backup
 			delete(env, "MOAI_BACKUP_AUTH_TOKEN")
 		} else {
-			delete(env, "ANTHROPIC_AUTH_TOKEN")
+			delete(env, config.EnvAnthropicAuthToken)
 		}
-		delete(env, "ANTHROPIC_BASE_URL")
-		delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-		delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
-		delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+		delete(env, config.EnvAnthropicBaseURL)
+		delete(env, config.EnvAnthropicDefaultHaikuModel)
+		delete(env, config.EnvAnthropicDefaultSonnetModel)
+		delete(env, config.EnvAnthropicDefaultOpusModel)
 		delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
 		delete(env, "API_TIMEOUT_MS")
 		delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)

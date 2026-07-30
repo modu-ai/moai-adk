@@ -171,8 +171,16 @@ const (
 	// EnvAnthropicAuthToken provides the Anthropic API authentication token.
 	EnvAnthropicAuthToken = "ANTHROPIC_AUTH_TOKEN"
 
+	// EnvAnthropicAPIKey provides the Anthropic API key. It is the API-key
+	// counterpart of EnvAnthropicAuthToken: both authenticate against the same
+	// API, but they are distinct variables with distinct client precedence.
+	EnvAnthropicAPIKey = "ANTHROPIC_API_KEY"
+
 	// EnvAnthropicDefaultHaikuModel overrides the default Haiku model ID.
 	EnvAnthropicDefaultHaikuModel = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
+
+	// EnvAnthropicDefaultFableModel overrides the default Fable model ID.
+	EnvAnthropicDefaultFableModel = "ANTHROPIC_DEFAULT_FABLE_MODEL"
 
 	// EnvAnthropicDefaultSonnetModel overrides the default Sonnet model ID.
 	EnvAnthropicDefaultSonnetModel = "ANTHROPIC_DEFAULT_SONNET_MODEL"
@@ -188,4 +196,10 @@ const (
 	// requires the reasoning_effort field in the request body (making this env
 	// inert) is a run-phase empirical determination (AC-MTP-032b).
 	EnvAnthropicReasoningEffort = "ANTHROPIC_REASONING_EFFORT"
+
+	// EnvAnthropicPrefix is the namespace prefix shared by every ANTHROPIC_*
+	// environment variable. It is a prefix, NOT a variable name: it is intended
+	// for prefix matching (strings.HasPrefix) when filtering an environment map
+	// down to the Anthropic namespace, and must never be read with os.Getenv.
+	EnvAnthropicPrefix = "ANTHROPIC_"
 )
