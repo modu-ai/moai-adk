@@ -34,3 +34,6 @@ advanced:
 contributing:
   title: "Contributing"
   weight: 110
+changelog:
+  title: "リリースノート"
+  weight: 120

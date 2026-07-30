@@ -634,3 +634,13 @@ main:
     icon: handshake
     defaultOpen: true
     sub:
+
+  - name:
+      ko: 릴리스 노트
+      en: Release Notes
+      ja: リリースノート
+      zh: 发布说明
+    ref: /changelog
+    icon: tag
+    defaultOpen: true
+    sub:
