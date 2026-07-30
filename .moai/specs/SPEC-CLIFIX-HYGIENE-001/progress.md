@@ -250,6 +250,75 @@ only once is over-abstraction, violating Enforce Simplicity).
 NO M4 (English strings) or M5 (dead-code) scope touched. P0 lock path,
 concurrency behavior, and the M2 rune/PAT/YAML fixes preserved verbatim.
 
+### M4 — English UI strings (AC-HYG-001-005) — PASS
+
+Localized Korean user-facing strings + comments in the 6 in-scope files to
+English literals per the `error_messages: en` / `code_comments: en` policy
+(language.yaml). No behavior change; pure string + comment localization.
+Each message reviewed individually so diagnostic accuracy (PIDs, ports,
+counts, version numbers, `%w` wrapping) survives the rewrite — NO blind sed
+(plan.md §G anti-pattern).
+
+**AC-HYG-001-005 — PASS.** Zero Hangul remaining across the 6 in-scope files:
+- `grep -rlP '[\x{AC00}-\x{D7A3}]' internal/cli/doctor.go internal/cli/migration.go internal/cli/clean.go internal/cli/web_port.go internal/cli/web_port_posix.go internal/cli/web_port_windows.go` → exit 1 (no matches = PASS).
+- `doctor.go`: confirmed already-clean (0 Hangul) — matches the M1 inventory drift finding; no M4 work needed, skipped per B2.
+
+**Per-file Hangul before → after:**
+
+| File | Before (M1 inventory) | After (M4) |
+|---|---:|---:|
+| `internal/cli/doctor.go` | 0 (drift — already clean) | 0 (skipped, confirmed clean) |
+| `internal/cli/migration.go` | 16 | 0 |
+| `internal/cli/clean.go` | 1 | 0 |
+| `internal/cli/web_port.go` | 29 | 0 |
+| `internal/cli/web_port_posix.go` | 17 | 0 |
+| `internal/cli/web_port_windows.go` | 10 | 0 |
+| **Total** | **73** | **0** |
+
+**Golden regeneration (deliberate, with rationale).**
+`internal/cli/migration_m3_test.go` carries M3 characterization goldens that
+pinned the exact stdout/stderr bytes of the migration CLI commands. The
+`want :=` values and the `TestM3_PrinterFormats_UnreachableBranches` byte-pins
+asserted the pre-M4 Korean source strings. Per plan.md §G ("where a golden
+captures a defect/diagnostic fixed in M4, regenerate in the fixing commit with
+rationale"), these goldens were regenerated to the new English text in this
+M4 commit. The goldens capture INTENTIONAL diagnostic text being localized
+(ko→en per `error_messages: en`), NOT a defect — regenerated, not deleted.
+A rationale comment was added at each regenerated golden site.
+The `web_port_test.go` `wantStderr` assertion is a PID substring (`"4242"`),
+not a Korean source string, so no regeneration was needed there; its Korean
+comments / `t.Fatalf` failure messages are test-file Korean outside the M4
+6-file scope (deferred to the broader i18n sweep follow-up SPEC) and were left
+untouched.
+
+**M4 production+test edit set (scope discipline):**
+- Edited source (5 files, the 5 with Hangul): `internal/cli/migration.go`,
+  `internal/cli/clean.go`, `internal/cli/web_port.go`,
+  `internal/cli/web_port_posix.go`, `internal/cli/web_port_windows.go`.
+- Edited test (1 file, golden regeneration): `internal/cli/migration_m3_test.go`.
+- `doctor.go`: NOT edited (confirmed clean).
+- NO M5 (dead-code) scope, NO deferred ~24 Hangul files, NO P0 lock path touched.
+
+**M4 cross-cutting verification (E2–E5):**
+- E2 build: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- E3 coverage: `go test -cover ./internal/cli/` → `coverage: 75.6% of statements` (measured this run; localization is string-only so coverage is structurally identical to pre-M4 — no branch changes).
+- E4 subagent-boundary grep: N/A — M4 touched no harness/hook code; the 6 in-scope files are CLI source, none reference AskUserQuestion/mcp__askuser (the M3-existing `TestWebPort_NoAskUserQuestion` static guard still PASSes, re-verified in the targeted run).
+- E5 lint: `golangci-lint run --timeout=2m` → `0 issues` (no NEW findings vs M3 baseline of 0).
+- gofmt: all 6 edited files formatted (gofmt -l output empty).
+- Full cli suite: `go test ./internal/cli/ -count=1` → `ok ... 201.553s` exit 0; targeted M3+web_port+clean+migration run → all PASS.
+
+**M4 AC completion matrix (E1):**
+
+| AC | M4 status | Verification command | Result |
+|---|---|---|---|
+| AC-HYG-001-005 | **PASS** | `grep -rlP '[\x{AC00}-\x{D7A3}]' <6 in-scope files>` | exit 1 (0 Hangul remaining) |
+
+**M5 readiness + flagged blockers (NOT resolved in M4):**
+M4 leaves M5 (structure / dead-code deletion) ready to enter, with two
+blockers flagged for the orchestrator per the M4 task brief:
+1. `ttyConfirmer` (branch_protection.go:39-55) — paired with `SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1`; M5 must resolve the pairing first (per M1 inventory DEFERRED verdict).
+2. `worktree_validation.go` — exported-but-unwired; M5 must surface the wire-up decision to the orchestrator before deleting (per M1 inventory DEFERRED verdict).
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 

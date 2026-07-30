@@ -1,11 +1,13 @@
 //go:build !windows
 
-// web_port_posix.go — POSIX(linux/darwin/...) 포트 홀더 조회 + 프로세스 종료 구현.
+// web_port_posix.go — POSIX (linux/darwin/...) port-holder lookup + process
+// termination implementation.
 //
-// findPortHolderImpl은 lsof로 LISTEN 소켓의 PID를 얻고 ps로 커맨드 이름을 조회해
-// 그 프로세스가 moai인지 판별한다. killProcessImpl은 SIGTERM을 보낸다.
-// syscall.Kill은 Windows에서 컴파일되지 않으므로 build tag로 분리한다
-// (update_cleanup_unix.go와 동일한 분리 사유).
+// findPortHolderImpl obtains the PID of the LISTEN socket via lsof and looks up
+// the command name via ps to decide whether that process is moai.
+// killProcessImpl sends SIGTERM. syscall.Kill does not compile on Windows, so
+// it is split out via a build tag (same separation reason as
+// update_cleanup_unix.go).
 
 package cli
 
@@ -18,36 +20,39 @@ import (
 	"syscall"
 )
 
-// findPortHolderImpl은 port를 LISTEN 중인 프로세스의 PID와 그것이 moai인지를 돌려준다.
-// lsof -nP -iTCP:<port> -sTCP:LISTEN -t → PID(줄당 하나) → 첫 PID의 ps -o comm=로
-// 커맨드 이름을 얻어 moai 토큰 포함 여부를 검사한다. 아무도 점유하지 않거나 조회에
-// 실패하면 에러를 돌려 호출부(ensurePortFree)가 회수를 건너뛰고 진행하게 한다.
+// findPortHolderImpl returns the PID of the process LISTENing on port and
+// whether it is moai. lsof -nP -iTCP:<port> -sTCP:LISTEN -t → PIDs (one per
+// line) → ps -o comm= on the first PID yields the command name, which is
+// checked for the moai token. If nobody is holding it or the lookup fails, an
+// error is returned so the caller (ensurePortFree) skips reclamation and
+// proceeds.
 func findPortHolderImpl(port int) (int, bool, error) {
 	out, err := exec.Command("lsof", "-nP", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN", "-t").Output()
 	if err != nil {
-		// lsof는 매치가 없으면 exit 1 → 여기로 온다.
-		return 0, false, fmt.Errorf("포트 %d 홀더 조회 실패(lsof): %w", port, err)
+		// lsof exits 1 on no match → lands here.
+		return 0, false, fmt.Errorf("failed to look up holder for port %d (lsof): %w", port, err)
 	}
 	fields := strings.Fields(string(out))
 	if len(fields) == 0 {
-		return 0, false, fmt.Errorf("포트 %d를 LISTEN 중인 프로세스 없음", port)
+		return 0, false, fmt.Errorf("no process listening on port %d", port)
 	}
 	pid, err := strconv.Atoi(fields[0])
 	if err != nil {
-		return 0, false, fmt.Errorf("lsof PID 파싱 실패 %q: %w", fields[0], err)
+		return 0, false, fmt.Errorf("failed to parse lsof PID %q: %w", fields[0], err)
 	}
 
 	comm, err := exec.Command("ps", "-o", "comm=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil {
-		return pid, false, fmt.Errorf("PID %d 커맨드 이름 조회 실패(ps): %w", pid, err)
+		return pid, false, fmt.Errorf("failed to look up command name for PID %d (ps): %w", pid, err)
 	}
 	isMoai := strings.Contains(string(comm), moaiProcessName)
 	return pid, isMoai, nil
 }
 
-// @MX:WARN: [AUTO] killProcessImpl은 다른 프로세스에 SIGTERM을 보내 종료시킨다.
-// @MX:REASON: [AUTO] 이 함수는 ensurePortFree가 findPortHolder로 대상이 moai임을
-// 검증한 뒤에만 호출된다 — 외부 프로세스에는 절대 도달하지 않는 것이 안전 계약이다.
+// @MX:WARN: [AUTO] killProcessImpl sends SIGTERM to another process, terminating it.
+// @MX:REASON: [AUTO] This function is only called after ensurePortFree has verified
+// via findPortHolder that the target is moai — never reaching an external process
+// is the safety contract.
 func killProcessImpl(pid int) error {
 	return syscall.Kill(pid, syscall.SIGTERM)
 }
