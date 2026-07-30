@@ -312,27 +312,31 @@ func (p *SecurityPolicy) MergeExtraPatterns(extra *security.ExtraSecurityConfig)
 // and scanning tool input for dangerous patterns (REQ-HOOK-031, REQ-HOOK-032).
 // Optionally integrates with SecurityScanner for AST-based security scanning.
 type preToolHandler struct {
-	cfg        ConfigProvider
-	policy     *SecurityPolicy
-	scanner    *security.SecurityScanner
+	cfg     ConfigProvider
+	policy  *SecurityPolicy
+	scanner *security.SecurityScanner
+	// projectDir is the resolved project root. Tests may set it directly; the
+	// production constructors leave it empty and let projectRoot resolve it.
 	projectDir string
+	projectRootResolver
 }
 
 // NewPreToolHandler creates a new PreToolUse event handler with the given security policy.
-// projectDir is resolved via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
-// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
+// projectDir is resolved on first use via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR
+// env var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
 // (REQ-HCWA-005, REQ-HCWA-008).
 func NewPreToolHandler(cfg ConfigProvider, policy *SecurityPolicy) Handler {
-	projectDir := resolveProjectRootFromEnv("NewPreToolHandler")
-	return &preToolHandler{cfg: cfg, policy: policy, projectDir: projectDir}
+	return &preToolHandler{
+		cfg:                 cfg,
+		policy:              policy,
+		projectRootResolver: projectRootResolver{caller: "NewPreToolHandler"},
+	}
 }
 
 // NewPreToolHandlerWithScanner creates a PreToolUse handler with AST-based security scanning.
 // If scanner is nil or unavailable, falls back to pattern-based security only.
-// projectDir is resolved via resolveProjectRootFromEnv (REQ-HCWA-005, REQ-HCWA-008).
+// projectDir is resolved on first use via resolveProjectRootFromEnv (REQ-HCWA-005, REQ-HCWA-008).
 func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, scanner *security.SecurityScanner) Handler {
-	projectDir := resolveProjectRootFromEnv("NewPreToolHandlerWithScanner")
-
 	// Validate scanner availability
 	if scanner != nil && !scanner.IsAvailable() {
 		slog.Info("ast-grep not available, security scanning disabled")
@@ -340,11 +344,16 @@ func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, sc
 	}
 
 	return &preToolHandler{
-		cfg:        cfg,
-		policy:     policy,
-		scanner:    scanner,
-		projectDir: projectDir,
+		cfg:                 cfg,
+		policy:              policy,
+		scanner:             scanner,
+		projectRootResolver: projectRootResolver{caller: "NewPreToolHandlerWithScanner"},
 	}
+}
+
+// projectRoot returns the project root, resolving it on first use.
+func (h *preToolHandler) projectRoot() string {
+	return h.resolve(&h.projectDir)
 }
 
 // EventType returns EventPreToolUse.
@@ -452,7 +461,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// git commands ONLY in the primary checkout when the invoking agent is not
 	// exempt; fails OPEN on any git-context uncertainty (REQ-WBG-012).
 	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
-		if decision, reason := checkBranchState(input, h.projectDir); decision == DecisionDeny {
+		if decision, reason := checkBranchState(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("branch guard denied",
 				"tool_name", input.ToolName,
 				"session_id", input.SessionID,
@@ -560,7 +569,7 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 	_ = tmpFile.Close() // Close before scanning
 
 	// Scan the temporary file
-	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectDir)
+	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectRoot())
 	if err != nil {
 		slog.Warn("security scan failed", "error", err)
 		return "", ""
@@ -643,8 +652,8 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 	// (including the DefaultGateConfig fallback when no config provider is
 	// loaded), so a project requiring non-default build tags (e.g. goolm) is
 	// vetted/linted/tested under them regardless of config availability.
-	qcfg.ProjectDir = h.projectDir
-	qcfg.GoBuildTags = readGoBuildTags(h.projectDir)
+	qcfg.ProjectDir = h.projectRoot()
+	qcfg.GoBuildTags = readGoBuildTags(qcfg.ProjectDir)
 	return qcfg
 }
 
@@ -750,8 +759,8 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	}
 
 	// Check if path is within project directory
-	if h.projectDir != "" {
-		projectAbs, absErr := filepath.Abs(h.projectDir)
+	if projectDir := h.projectRoot(); projectDir != "" {
+		projectAbs, absErr := filepath.Abs(projectDir)
 		if absErr != nil {
 			// Cannot resolve project directory, skip boundary check
 			slog.Debug("cannot resolve project directory", "error", absErr)
