@@ -73,6 +73,46 @@ var validModels = map[string]bool{
 	ModelOpus:    true,
 }
 
+// modelColors maps each model tier to its render glyph, mirroring the LLM
+// profile matrix (llm.yaml profiles). The agentfm badge derives its color from
+// the agent's resolved model (the llm matrix SSOT) rather than the manual
+// name→tier table: opus (deep reasoning) → 🔴, sonnet → 🟠, haiku → 🔵,
+// inherit/unknown → 🩵 (light/default).
+var modelColors = map[string]string{
+	ModelOpus:    "🔴",
+	ModelSonnet:  "🟠",
+	ModelHaiku:   "🔵",
+	ModelInherit: "🩵",
+}
+
+// ModelColor returns the render glyph (emoji) for the model tier. An empty or
+// unmapped model falls back to "🩵" (the light/default glyph) so an agent with
+// an unresolved model still renders a neutral badge. The UI layer (moai-web
+// agentfm) renders the glyph as the color badge.
+func ModelColor(model string) string {
+	if g, ok := modelColors[model]; ok {
+		return g
+	}
+	return "🩵"
+}
+
+// ModelColorRank returns a sort rank for a model tier (lower = more expensive =
+// renders first within each sub-tab). Mirrors the tier-based agentTierSortRank
+// ordering so the model-derived badge sorts the same way: opus=0, sonnet=1,
+// haiku=2, inherit/unknown=3.
+func ModelColorRank(model string) int {
+	switch model {
+	case ModelOpus:
+		return 0
+	case ModelSonnet:
+		return 1
+	case ModelHaiku:
+		return 2
+	default:
+		return 3
+	}
+}
+
 // Schedule mechanisms. "loop" is the native /loop scheduler (session-scoped);
 // "cron" is the Cron tools registration (persistent across sessions).
 const (
@@ -173,8 +213,9 @@ var tierSuggestions = map[Tier]struct {
 
 // agentTiers is the name-keyed lookup table: agent file stem (the base name
 // of the .md under .claude/agents/{moai,harness}/, matching agentfm.
-// AgentInfo.Name's contract) → Tier. This is the SSOT for badge color
-// (plan.md §F M1.2 + design.md §C). Distribution: 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 = 20.
+// AgentInfo.Name's contract) → Tier. The agentfm badge color is now model-derived
+// (ModelColor / modelColors); this table remains the reasoning-role classification
+// that powers tier click-to-suggest (tierSuggestions). Distribution: 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 = 20.
 //
 // @MX:ANCHOR: [AUTO] sub-agent tier SSOT — name-keyed lookup table (Option A)
 // @MX:REASON: display-only tier invariant; 3+ consumers (AgentTier accessor, moai-web agentfm render, tests). Mutating this map changes badge colors project-wide.

@@ -106,63 +106,45 @@ func applyPerfTierEdits(projectRoot, perfTier string) error {
 	return nil
 }
 
-// agentBadgeInfo carries the M5 tier-badge display data for one agent row
+// agentBadgeInfo carries the M5 model-badge display data for one agent row
 // (SPEC-WEBCONF-SIMPLIFY-001 M5, REQ-WC-006/007/008, design.md §E).
 type agentBadgeInfo struct {
-	Glyph      string // emoji glyph (🔴🟠🔵🩵) or "custom" for the override-sentinel badge
-	TooltipKey string // fieldDesc.agentfm.<tier|custom> i18n key (M4 description mechanism)
-	HasBadge   bool   // false for unmapped agents (EC-6 — no badge rendered)
-	IsCustom   bool   // true when model=inherit or effort=max (EC-2 / AC-WC-018 neutral badge)
+	Glyph      string // emoji glyph (🔴🟠🔵🩵) derived from the model, or "custom"
+	TooltipKey string // fieldDesc.agentfm.model.<model> / fieldDesc.agentfm.custom i18n key
+	HasBadge   bool   // false only when the row carries no usable model state
+	IsCustom   bool   // true when effort=max (AC-WC-018 neutral "custom" badge)
 }
 
-// agentTierBadge computes the display-only tier badge for an agent row. The badge
-// comes from the name-keyed lookup table (design.md §C — Option A, NOT from the
-// agent's effort file). When the agent's current effort is the override sentinel
-// `max`, the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+// agentTierBadge computes the display-only badge for an agent row. The badge
+// color is derived from the agent's resolved model (the llm.yaml profile-matrix
+// SSOT via agentResolvedModel) — NOT the manual name→tier table — so the badge
+// tracks the model the matrix actually assigns: opus → 🔴, sonnet → 🟠,
+// haiku → 🔵, inherit/unknown → 🩵. When the agent's current effort is the
+// override sentinel `max`, the badge is a neutral "custom" marker (AC-WC-018).
 //
-// `model: inherit` is NOT an override signal: SPEC-MODEL-PROFILE-MATRIX-001
-// REQ-MPM-040 stopped mutating agent frontmatter (see applyPerfTierEdits above),
-// so `inherit` is the SHIPPED default for the core agents. Treating it as a
-// manual override mislabeled those defaults CUSTOM and produced the inconsistent
-// mix of CUSTOM pills and tier glyphs across the agent rows. The model parameter
-// is retained (unused) so the call sites keep passing the row's full state.
+// The tooltip key reuses the existing model-selector i18n entries
+// (fieldDesc.agentfm.model.<model>). The name parameter is retained so call
+// sites keep passing the row's full state; it is not used now that the badge is
+// model-derived.
 func agentTierBadge(name, model, effort string) agentBadgeInfo {
 	if effort == v4manifest.EffortMax {
 		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
 	}
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return agentBadgeInfo{} // unmapped agent — no badge (EC-6)
-	}
 	return agentBadgeInfo{
-		Glyph:      v4manifest.TierColor(tier),
-		TooltipKey: "fieldDesc.agentfm." + string(tier),
+		Glyph:      v4manifest.ModelColor(model),
+		TooltipKey: "fieldDesc.agentfm.model." + model,
 		HasBadge:   true,
 	}
 }
 
-// agentTierSortRank returns a sort rank for the agent's display-only tier
+// agentTierSortRank returns a sort rank for the agent's model-derived badge
 // (lower = more expensive = renders first within each sub-tab). Used to order
-// the agentfm rows red-first (post-close polish round 3,
-// SPEC-WEBCONF-SIMPLIFY-001). red=0, orange=1, blue=2, lightblue=3,
-// unmapped=4 (agents without a tier table entry sort last).
-func agentTierSortRank(name string) int {
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return 4
-	}
-	switch tier {
-	case v4manifest.TierRed:
-		return 0
-	case v4manifest.TierOrange:
-		return 1
-	case v4manifest.TierBlue:
-		return 2
-	case v4manifest.TierLightBlue:
-		return 3
-	default:
-		return 4
-	}
+// the agentfm rows opus-first (post-close polish round 3,
+// SPEC-WEBCONF-SIMPLIFY-001). Delegates to v4manifest.ModelColorRank so the
+// sort order matches the model-derived badge color: opus=0, sonnet=1, haiku=2,
+// inherit/unknown=3.
+func agentTierSortRank(model string) int {
+	return v4manifest.ModelColorRank(model)
 }
 
 // agentIsMoaiCore reports whether the agent lives in .claude/agents/moai/ (the 10
@@ -298,7 +280,7 @@ func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
 		all = append(all, agents...)
 	}
 	sort.Slice(all, func(i, j int) bool {
-		ri, rj := agentTierSortRank(all[i].Name), agentTierSortRank(all[j].Name)
+		ri, rj := agentTierSortRank(all[i].Model), agentTierSortRank(all[j].Model)
 		if ri != rj {
 			return ri < rj
 		}

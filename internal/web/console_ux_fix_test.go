@@ -295,18 +295,17 @@ func agentFMSectionCount(t *testing.T, body string) int {
 // frontmatter), so it must NOT be treated as a manual override. Only `effort: max`
 // still marks a row CUSTOM.
 func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
-	// inherit alone → the agent's tier glyph, not the CUSTOM pill.
+	// inherit → the inherit glyph (🩵), the default model badge — NOT the CUSTOM pill.
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs"} {
 		b := agentTierBadge(name, v4manifest.ModelInherit, v4manifest.EffortXhigh)
 		if b.IsCustom {
-			t.Errorf("%s (model=inherit): CUSTOM badge rendered for the SHIPPED default (G2-3)", name)
+			t.Errorf("%s (model=inherit): CUSTOM badge rendered (effort=xhigh is not max)", name)
 		}
 		if !b.HasBadge {
-			t.Errorf("%s (model=inherit): expected a tier badge", name)
+			t.Errorf("%s (model=inherit): expected a badge", name)
 		}
-		tier, _ := v4manifest.AgentTier(name)
-		if want := v4manifest.TierColor(tier); b.Glyph != want {
-			t.Errorf("%s (model=inherit): glyph = %q, want the tier glyph %q", name, b.Glyph, want)
+		if want := v4manifest.ModelColor(v4manifest.ModelInherit); b.Glyph != want {
+			t.Errorf("%s (model=inherit): glyph = %q, want the inherit glyph %q", name, b.Glyph, want)
 		}
 	}
 
@@ -319,9 +318,9 @@ func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
 	}
 }
 
-// TestAgentTierBadgeGlyphConsistency verifies the G2-3 user-visible symptom is
-// gone: with the shipped `model: inherit` frontmatter, EVERY tier-mapped core
-// agent renders a tier glyph — no mixed CUSTOM/glyph rows.
+// TestAgentTierBadgeGlyphConsistency verifies the badge is model-derived and
+// consistent: with the shipped `model: inherit` frontmatter, EVERY seeded core
+// agent renders the inherit glyph (🩵) — no mixed CUSTOM/glyph rows.
 func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs", "manager-git"} {
@@ -330,11 +329,10 @@ func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	body := renderAgentFMBody(t, root)
 
 	if strings.Contains(body, "agentfm-badge--custom") {
-		t.Error("a CUSTOM badge renders for shipped `model: inherit` agents (G2-3 — inconsistent glyph/label)")
+		t.Error("a CUSTOM badge renders for shipped `model: inherit` agents")
 	}
-	for _, glyph := range []string{"🔴", "🟠", "🔵"} {
-		if !strings.Contains(body, glyph) {
-			t.Errorf("tier glyph %q missing from the render — inherit agents must show their tier color", glyph)
-		}
+	want := v4manifest.ModelColor(v4manifest.ModelInherit)
+	if !strings.Contains(body, want) {
+		t.Errorf("inherit glyph %q missing from the render — all seeded agents share model=inherit", want)
 	}
 }
