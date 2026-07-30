@@ -68,6 +68,18 @@ type branchStatePattern struct {
 // form to restore files in the primary checkout (documented limitation,
 // §E Residual-risk).
 //
+// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-2 read-only refinement:
+//   - `git merge` now anchors on trailing whitespace `\bgit\s+merge\s` so the
+//     read-only `git merge-base ...` (whitespace-free `-base` suffix) does NOT
+//     match. Actual `git merge <branch>` still matches. A bare `git merge`
+//     (no operand) is treated as mutating and still denies — operators rarely
+//     invoke it read-only.
+//   - `git stash` now requires EITHER bare end-of-input OR one of the mutating
+//     subcommands (push/pop/apply/drop) as the trailing token. The read-only
+//     `git stash list` / `git stash show` forms are excluded because their
+//     trailing token is not in the mutating set and the bare-prefix branch is
+//     anchored to end-of-string. AC-REQ-2a/2b/2d.
+//
 // Patterns are case-insensitive (compiled with the (?i) prefix, matching the
 // existing compilePatterns convention in pre_tool.go).
 //
@@ -82,9 +94,12 @@ var branchStatePatterns = func() []branchStatePattern {
 		{`\bgit\s+checkout\s+(-b\s+)?[^\s-]`, "git checkout <branch/-b>"},
 		{`\bgit\s+branch\s+(-[dDmM]\s+)?[^\s-]`, "git branch"},
 		{`\bgit\s+reset\s+--hard\b`, "git reset --hard"},
-		{`\bgit\s+stash(\s+(push|pop|apply|drop)\b)?`, "git stash"},
+		// Bare `git stash` (end of input) OR a mutating subcommand. Excludes
+		// `git stash list` / `git stash show` (read-only). REQ-2 AC-REQ-2a/2b/2d.
+		{`\bgit\s+stash(\s+(push|pop|apply|drop)\b|$)`, "git stash"},
 		{`\bgit\s+rebase\b`, "git rebase"},
-		{`\bgit\s+merge\b`, "git merge"},
+		// Trailing whitespace after `merge` excludes `git merge-base`. REQ-2 AC-REQ-2c/2e.
+		{`\bgit\s+merge\s`, "git merge"},
 	}
 	out := make([]branchStatePattern, 0, len(specs))
 	for _, s := range specs {

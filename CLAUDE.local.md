@@ -728,6 +728,23 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
 - **`TmuxPreferred: true`는 본 절 범위 밖**: `defaults.go`의 `TmuxPreferred: true`는 SPEC-WORKTREE-ENTRY-STRATEGY-001 OQ-4 결정에 따라 명시적으로 OUT OF SCOPE — 변경 없음 (§22 운영 원칙 §22.5 참조).
 - [HARD] `defaults.go`의 세 토글 기본 `false`는 **의도된 정책**. 감사/동기화 시 "결함"으로 되돌리지 말 것. 기본값 토글은 별도 SPEC 통해서만.
 
+### §22.9 branch_guard.enabled — 메인테이너 로컬 opt-in (기본 OFF, 2026-07-30)
+
+- **목적 (intent)**: `internal/config/defaults.go`의 `BranchGuardConfig.Enabled`는 **기본 `false`**. Main-Checkout Branch-State Guard (`internal/hook/branch_guard.go`)는 분산 기본값으로 INERT하게 배포된다 — 단일 개발자 저장소에는 공유 체크아웃 위험이 없으므로 가드가 간섭하지 않는다. 다중 세션 공유 체크아웃을 운영하는 메인테이너만 로컬에서 opt-in한다.
+- **Why**: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001. 종전 가드는 템플릿을 통해 모든 사용자에게 default-on으로 배포되었고, 읽기 전용 명령(`git stash list`, `git merge-base`)까지 과잉 차단했다. v1.2.0에서 (a) 기본 OFF 전환 + (b) 읽기 전용 패턴 정제로 수정. 템플릿 중립성 (§25) 준수를 위해 `internal/template/templates/` 어디에도 `enabled: true` 가 없다.
+- **메인테이너 opt-in 경로**: 로컬 config local 티어 (`.moai/config/local/*.yaml`, resolver.go `loadLocalTier`가 읽는 유일한 로컬 오버라이드 티어)에 다음 파일을 둔다:
+  ```yaml
+  # .moai/config/local/workflow.yaml
+  workflow:
+    branch_guard:
+      enabled: true
+  ```
+  이 파일은 메인테이너 머신 로컬 전용이다 (아래 BLOCKER 참고).
+- **제품(템플릿) 기본값과 동일**: 템플릿 `defaults.go` + `internal/template/templates/.moai/config/sections/workflow.yaml` 모두 `enabled: false` (또는 키 부재 → Go zero-value `false`). §2 [HARD] Template-First Rule 정합.
+- **면제 로직 보존**: `MOAI_BRANCH_GUARD_EXEMPT=1` env + `AgentType == "manager-git"` 신원 검사는 변경 없이 enabled 경로에서만 참조된다 (REQ-6 backward compat).
+- **BLOCKER (gitignore)**: `.moai/config/local/` 디렉터리는 현재 `.gitignore`에 등록되어 있지 않다. 따라서 위 opt-in 파일을 생성하면 공개 저장소에 커밋되어 분산 기본값이 `true`로 뒤집힌다 (§25 위반). 메인테이너 opt-in을 진정 로컬 전용으로 만들려면 `.gitignore`에 `.moai/config/local/` (또는 `.moai/config/local/workflow.yaml`) 추가가 필요하다 — 이는 본 SPEC 범위 밖이므로 별도 chore 커밋으로 처리한다. 그 전까지는 메인테이너가 파일을 머신 로컬에만 수동 생성하고 커밋하지 않는다.
+- [HARD] `defaults.go`의 `BranchGuard.Enabled` 기본 `false`는 **의도된 정책**. 감사/동기화 시 "결함"으로 되돌리지 말 것. 템플릿 기본값 변경은 별도 SPEC 통해서만.
+
 ---
 
 ## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)

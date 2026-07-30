@@ -81,7 +81,7 @@ git -C <worktree-path> branch --show-current
 git rev-list --count --left-right origin/<branch>...HEAD
 ```
 
-## Mechanical Enforcement (v1.1.0)
+## Mechanical Enforcement (v1.2.0)
 
 The doctrine above is mechanically enforced by a PreToolUse hook. The
 enforcer is NOT a static `settings.json` deny entry — a static deny cannot
@@ -91,6 +91,25 @@ flows. The hook applies the doctrine conditionally.
 - **Handler**: `internal/hook/pre_tool.go` `preToolHandler.Handle` calls
   `checkBranchState` (in `internal/hook/branch_guard.go`) after the existing
   dangerous-pattern check and before the default-allow fall-through.
+- **Opt-in gate (v1.2.0, SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3)**:
+  the call to `checkBranchState` is gated at the call site by
+  `Workflow.BranchGuard.Enabled` (read via the handler's ConfigProvider). The
+  distributed default is **false** — the guard ships INERT to all users,
+  because the shared-checkout hazard it addresses does not apply to
+  single-developer repos. Maintainers of shared multi-session checkouts opt in
+  via local config. When disabled, NO `git rev-parse` subprocess runs (the
+  primary-checkout discriminant cost is avoided entirely) and the guard
+  returns the allow fall-through without evaluating patterns, checkout state,
+  or exemption logic. The exemption logic (`MOAI_BRANCH_GUARD_EXEMPT` +
+  `manager-git` identity) is unchanged and is consulted only on the enabled
+  path (REQ-6 backward compat).
+- **Pattern refinement (v1.2.0, REQ-2)**: the regex set no longer matches the
+  read-only forms `git stash list`, `git stash show`, and `git merge-base`.
+  `git merge` anchors on trailing whitespace so `merge-base` is excluded;
+  `git stash` requires either bare end-of-input or one of the mutating
+  subcommands (push/pop/apply/drop). The genuinely dangerous forms
+  (switch/checkout/branch/reset --hard/rebase/bare+mutating stash/actual
+  merge) remain matched.
 - **Deny reason sentinel**: every deny emitted by this path carries the
   prefix `BRANCH_GUARD_VIOLATION:` so the orchestrator can pattern-match the
   source without parsing the full reason string.
@@ -111,9 +130,13 @@ flows. The hook applies the doctrine conditionally.
   rev-parse` exiting non-zero, or indeterminate agent identity — falls
   through to allow, writes an advisory to stderr, and appends a structured
   entry to `.moai/logs/branch-guard-audit.log`. Aligns with the Bash
-  Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN).
+  Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN). This norm is unchanged by
+  the opt-in gate: when disabled the guard returns allow BEFORE reaching any
+  uncertainty path, so fail-open is trivially preserved.
 
 Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
+Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
+(REQ-1 through REQ-6).
 
 ## Cross-references
 
