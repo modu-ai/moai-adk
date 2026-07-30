@@ -303,6 +303,28 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return dryRunArchiveLegacySkills(cwd, out)
 	}
 
+	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
+	// same one-shot strip runs inside runCleanReinstall, but that path opens
+	// only on a v2 fingerprint — a project already on v3 keeps the retired
+	// Write/Grep/Glob entries forever, because every v3 update merge-preserves
+	// the user's settings.json. Running it here covers the v3-to-v3 case.
+	//
+	// Placement is deliberate: after the --binary / --dry-run early-returns (so
+	// a dry run never mutates) but BEFORE the version-match short-circuit
+	// further below, since a same-version `moai update` is exactly the case
+	// that leaves the stale entries in place. stripRetiredV2DenyEntries is a
+	// no-op when nothing matches, so a clean v3 file is never rewritten and the
+	// second call inside runCleanReinstall stays idempotent.
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for deny-rule migration: %w", err)
+		}
+		if stripErr := stripRetiredV2DenyEntries(cwd, out); stripErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Deny-rule migration", "failed", stripErr.Error(), &th))
+		}
+	}
+
 	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 REQ-VVCR-002: detect v2 fingerprint
 	// and short-circuit to the clean-reinstall code path when the project is
 	// v2 (or partial-v2). The detector inspects three signals (system.yaml
