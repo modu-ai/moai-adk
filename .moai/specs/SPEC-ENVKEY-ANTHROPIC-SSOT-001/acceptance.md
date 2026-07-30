@@ -294,8 +294,9 @@ go test ./internal/config/ -run 'TestAnthropicBannedSetCoversAllNames' \
 
 ## AC-EAS-007 - SSOT exclusion is present AND narrow (M2, re-checked M6)
 
-**Given** a repo-root walk reaches `internal/config/envkeys.go` (6 bare literals
-by design) and 291 `_test.go` occurrences, and an *over-broad* exclusion
+**Given** a repo-root walk reaches `internal/config/envkeys.go` (bare literals by
+design -- `6` at base `76d9a8f3b`, `9` from M1 onward, since M1 adds three
+constants to that same file) and 291 `_test.go` occurrences, and an *over-broad* exclusion
 (`strings.Contains(path, "internal/config")` or `"envkeys"`) would exempt the
 entire SSOT package while looking identical from the outside,
 **When** the guard runs on a clean tree and then on a tree with a literal planted
@@ -333,13 +334,18 @@ go test ./internal/config/ -run 'TestNoBareAnthropicEnvVarLiteralsInProduction' 
 ```
 
 - **Baseline (the runnable legs, observed at base):** `envkeys.go` holds `6`
-  literals; `_test.go` files hold `291`.
+  literals; `_test.go` files hold `291`. **M1 raises the `envkeys.go` count to
+  `9`** by adding the three missing constants to that file, so the M6 expectation
+  below is `9`, NOT the base `6`. The leg's intent is "the excluded surface is
+  still populated" -- a non-zero count that matches the post-M1 constant count --
+  not a fixed number carried over from the base tree.
 - **Baseline (the guard legs): not runnable at base** - the guard does not exist
   at `76d9a8f3b`; a `-run` against it yields `[no tests to run]` (verbatim output
   recorded under AC-EAS-006), which is a vacuous pass, not a baseline.
 - **Expected at M6:**
-  - (a) `--- PASS: TestNoBareAnthropicEnvVarLiteralsInProduction`; counts still
-    `6` and `291`
+  - (a) `--- PASS: TestNoBareAnthropicEnvVarLiteralsInProduction`; `envkeys.go`
+    count is `9` (base `6` + the three M1 constants) and `_test.go` count is
+    still `291` (unchanged -- test files are never transitioned)
   - (b) `--- FAIL: ...` **and** an offender line containing `internal/config/log.go`
   - (c) `git status --porcelain` empty; `--- PASS: ...` again
 - **Fails the AC if:** step (b) passes. A guard that ignores a bare literal in
