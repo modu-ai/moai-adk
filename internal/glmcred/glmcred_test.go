@@ -3,6 +3,7 @@ package glmcred
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -39,6 +40,9 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 }
 
 func TestSave_FileMode0600(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce POSIX permission bits: os.Stat reports a synthesized mode, so the 0600 assertion cannot hold there; the credential-file tightening stays covered on unix")
+	}
 	withTempHome(t)
 	if err := Save("mode-test-key"); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -58,6 +62,9 @@ func TestSave_NarrowsExisting0644to0600(t *testing.T) {
 	// interactive save path (D-3 — they share this one writer).
 	// os.WriteFile's perm argument applies at creation only, so a naive Save
 	// leaves a pre-existing 0644 file at 0644. This is the §A.3 latent defect.
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not enforce POSIX permission bits: the pre-existing 0644 file cannot be created with a wide mode there, so the narrowing cannot be observed; the behavior stays covered on unix")
+	}
 	dir := withTempHome(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
