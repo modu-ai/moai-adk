@@ -122,7 +122,86 @@ M6 (falsifiability proof + full-suite verification) is NOT part of this run.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-07-31
+milestones_complete: M1, M2, M3, M4, M5, M6
+
+### M6 — falsifiability proof + full-suite verification (executed by the orchestrator)
+
+Precondition verified before any probe: `git status --porcelain` on the four probe
+targets was empty, i.e. every M1-M5 transition was already committed, so
+`git checkout --` could not discard uncommitted work.
+
+**AC-EAS-007 — SSOT exclusion is present AND narrow — PASS**
+
+| Step | Observed |
+|------|----------|
+| (a) clean tree | `--- PASS: TestNoBareAnthropicEnvVarLiteralsInProduction (0.28s)` |
+| (b) plant in sibling `internal/config/log.go` | `exit=1`; `--- FAIL:` line count `1`; offender naming `config/log.go` count `1`; guard-ran evidence `anthropic_env_ssot_test.go` count `1` |
+| (c) revert | `git status --porcelain internal/config/log.go` → 0 lines; `--- PASS:` again |
+
+The sibling plant being detected is the positive proof that the `envkeys.go`
+exclusion is an exact-path match and not a package-wide exemption.
+
+**AC-EAS-012 — guard falsifiable in all three enumerated roots — PASS**
+
+| Leg | Root | Observed |
+|-----|------|----------|
+| (b) | `internal/` — `internal/sandbox/env.go` | `exit=1`, `--- FAIL` ×1, file named ×1, revert residue 0 |
+| (d) | `cmd/` — `cmd/moai/main.go` | `exit=1`, `--- FAIL` ×1, file named ×1, revert residue 0 |
+| (f) | `pkg/` — `pkg/version/version.go` | `exit=1`, `--- FAIL` ×1, file named ×1, revert residue 0 |
+| (a)/(post) | clean tree before and after | `--- PASS:` both times |
+
+(e) per-name falsification, all 9 banned names planted in turn into
+`internal/sandbox/env.go` and reverted: **9/9 produced a non-zero guard exit**,
+including the three names with zero natural offenders (`ANTHROPIC_`,
+`ANTHROPIC_DEFAULT_FABLE_MODEL`, `ANTHROPIC_REASONING_EFFORT`) that no other AC
+exercises. Total residual diff after the loop: `git status --porcelain` → 0 lines.
+
+**AC-EAS-013 — behaviour preservation — PASS, with a disclosed flaky observation**
+
+| Leg | Observed |
+|-----|----------|
+| `go vet ./...` | no output, `vet_exit=0` |
+| `golangci-lint run --timeout=3m` | `0 issues.`, `lint_exit=0` (exit captured directly, not after a pipe) |
+| `go test ./...` run 1 | `exit=1`; 2 failing packages: `internal/lsp/subprocess` (`TestSupervisor_MultipleWatchers`), `internal/web`; 104 `ok` |
+| `go test -count=1 ./...` run 2 | `exit=0`, 0 `^FAIL`, 106 `ok` |
+| `go test -count=1 ./...` run 3 | `exit=0`, 0 `^FAIL`, 106 `ok` |
+
+Run 1's failure was investigated rather than assumed away, and is attributed to
+pre-existing load-sensitive flakiness, not to this refactor. Evidence for that
+attribution:
+
+- Both packages pass **in isolation** on this tree (`go test ./internal/lsp/subprocess/... ./internal/web/...` → `exit=0`, both `ok`).
+- Both packages contain **zero** `ANTHROPIC` references (`grep -rn 'ANTHROPIC'` → 0 each).
+- **Zero** files changed by M1-M5 live in either package (`git diff --name-only 76d9a8f3b..HEAD -- internal/lsp internal/web` → 0).
+- Two subsequent cache-disabled full-suite runs were clean.
+- `TestSupervisor_MultipleWatchers` is a ~10 s multi-watcher timing test — the shape that degrades under a 106-package parallel run.
+
+Counter-evidence recorded for honesty: a single full-suite run at base
+`76d9a8f3b` (in a temporary probe worktree, since removed) was clean (0 `^FAIL`,
+106 `ok`). That is one sample against this tree's three, so it does not establish
+that base is immune; it is disclosed rather than omitted.
+
+**Stability ACs re-confirmed at M6**
+
+| AC | Command | Observed | Required |
+|----|---------|----------|----------|
+| AC-EAS-011 | production bare literals, `envkeys.go` excluded | `0` | `0` |
+| AC-EAS-014 | `git diff --name-only 76d9a8f3b -- internal/template/templates/ \| wc -l` | `0` | `0` |
+| AC-EAS-015 | `_test.go` ANTHROPIC occurrences | `291` | `291` (unchanged) |
+| AC-EAS-001 | `envkeys.go` ANTHROPIC literals | `9` | `9` (6 base + 3 from M1) |
+
+Cross-platform: `go build ./...` → 0; `GOOS=windows GOARCH=amd64 go build ./...` → 0.
+
+**Gaps at run-phase close**
+
+- No Windows test *run* (cross-compile only); `internal/hook` and `internal/tmux` carry platform-conditional code.
+- No end-to-end runtime exercise of the GLM/tmux/hook paths against a live tmux
+  session or a real endpoint. Behaviour preservation rests on the value-identity
+  attestation (forward round-trip from base, all 10 files `IDENTICAL`) plus the
+  per-package suites.
+- Coverage was not measured; this refactor adds no production branches.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
