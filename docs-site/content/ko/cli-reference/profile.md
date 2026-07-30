@@ -8,7 +8,7 @@ MoAI-ADK의 프로필 시스템은 여러 Claude Code 설정을 격리해 관리
 
 ## 프로필이란?
 
-프로필은 **격리된 Claude Code 설정 디렉토리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필별로 독립적인 설정, 모델 선택, 언어 환경을 유지할 수 있습니다.
+프로필은 **격리된 Claude Code 설정 디렉터리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필마다 설정, 모델 선택, 언어 환경을 따로 유지할 수 있습니다.
 
 ```
 ~/.moai/claude-profiles/
@@ -34,14 +34,14 @@ moai profile list
 
 ### moai profile setup [name]
 
-인터랙티브 설정 위자드를 실행합니다.
+대화형 설정 마법사를 실행합니다.
 
 ```bash
 moai profile setup          # 기본 프로필 설정
 moai profile setup work     # "work" 프로필 설정
 ```
 
-**위자드 설정 항목:**
+**마법사가 묻는 항목:**
 - **Identity**: 사용자 이름, 역할
 - **Languages**: 대화 언어, 코드 주석 언어
 - **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
@@ -74,7 +74,7 @@ moai cg -p team          # team 프로필로 CG 모드 실행
 ```
 
 {{< callout type="info" >}}
-프로필 미지정 시 기본 프로필이 사용됩니다. 첫 실행 시 자동으로 설정 위자드가 시작됩니다.
+프로필을 지정하지 않으면 기본 프로필을 사용합니다. 처음 실행할 때는 설정 마법사가 자동으로 시작됩니다.
 {{< /callout >}}
 
 ## 1M 컨텍스트 모델 선택
@@ -86,7 +86,7 @@ moai cg -p team          # team 프로필로 CG 모드 실행
 - `sonnet` / `sonnet[1m]`
 - `fable` / `fable[1m]`
 
-설정 위자드의 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다. 1M 컨텍스트 모델은 대용량 코드베이스 분석이나 긴 문서 작업에 적합합니다.
+설정 마법사의 "Model Settings" 단계에서 고르거나, 프로필 설정 파일을 직접 고쳐도 됩니다. 1M 컨텍스트 모델은 코드베이스를 통째로 분석하거나 긴 문서를 다룰 때 유리합니다.
 
 ## 프로필 전환 시 동작
 

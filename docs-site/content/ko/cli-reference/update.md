@@ -83,7 +83,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 
 ### Stage 2: 설정 버전 비교
 
-설정 파일의 형식과 호환성을 검사합니다. 형식이 변경된 경우 자동으로 백업 후 마이그레이션합니다.
+설정 파일의 형식과 호환성을 검사합니다. 형식이 바뀌었으면 자동으로 백업한 뒤 마이그레이션합니다.
 
 **검사 파일:**
 
@@ -95,7 +95,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 
 ### Stage 3: 템플릿 동기화
 
-프로젝트 템플릿과 기본 파일을 최신 버전으로 동기화합니다. 사용자가 수정한 파일은 보존되며, 새 버전과의 충돌 시 백업 후 병합됩니다.
+프로젝트 템플릿과 기본 파일을 최신 버전으로 동기화합니다. 사용자가 손댄 파일은 그대로 보존하고, 새 버전과 충돌하면 백업한 뒤 병합합니다.
 
 ```mermaid
 graph TD
@@ -159,7 +159,7 @@ moai update --templates-only
 
 ### 설정 마법사 재실행
 
-설정 마법사를 다시 실행하여 프로젝트 구성을 변경합니다 (템플릿 동기화는 수행하지 않습니다):
+설정 마법사를 다시 띄워 프로젝트 구성을 바꿉니다(템플릿 동기화는 하지 않습니다):
 
 ```bash
 moai update -c
@@ -293,7 +293,7 @@ moai doctor
 
 ### 템플릿 충돌
 
-사용자가 수정한 템플릿 파일은 자동으로 백업 후 3-way 병합됩니다. 충돌이 발생하면 `--verbose` 로 상세 경고를 확인하세요:
+사용자가 수정한 템플릿 파일은 자동으로 백업한 뒤 3-way 병합합니다. 충돌이 나면 `--verbose` 로 상세 경고를 확인하세요:
 
 ```bash
 moai update --verbose
@@ -307,6 +307,6 @@ moai update --force
 
 ## 다음 단계
 
-1. **[변경 로그 확인](https://github.com/modu-ai/moai-adk/releases)** — 새로운 기능 학습
-2. **[핵심 개념](/ko/core-concepts/what-is-moai-adk)** — 새로운 에이전트 및 기능 숙달
-3. **[빠른 시작](./quickstart)** — 프로젝트에 새로운 기능 적용
+1. **[변경 로그 확인](https://github.com/modu-ai/moai-adk/releases)** — 새 기능 살펴보기
+2. **[핵심 개념](/ko/core-concepts/what-is-moai-adk)** — 새 에이전트와 기능 익히기
+3. **[빠른 시작](./quickstart)** — 새 기능을 프로젝트에 적용하기

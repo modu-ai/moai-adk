@@ -42,7 +42,7 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 
 ## 주요 이벤트
 
-훅이 반응할 수 있는 이벤트는 30개 이상이며, 그중 가장 자주 쓰이는 이벤트는 다음과 같습니다.
+훅이 반응할 수 있는 이벤트는 30가지가 넘습니다. 그중 자주 쓰이는 것만 추리면 다음과 같습니다.
 
 | 이벤트 | 발동 시점 |
 | :--- | :--- |
@@ -99,7 +99,7 @@ flowchart TD
 - **알림** (notification): `Notification` 이벤트로 Claude가 입력을 기다릴 때 데스크톱 알림 전송
 - **컨텍스트 주입** (context injection): `SessionStart` 또는 압축 후 프로젝트 규칙·최근 작업을 다시 주입
 
-훅 등록 위치(`~/.claude/settings.json` 전역, `.claude/settings.json` 프로젝트, 플러그인·스킬 프런트매터)에 따라 적용 범위가 달라집니다. 결정적 규칙이 아니라 판단이 필요한 경우에는 모델로 평가하는 프롬프트 기반(`type: "prompt"`) 또는 에이전트 기반(`type: "agent"`) hook을 쓸 수도 있습니다.
+훅을 어디에 등록하느냐(`~/.claude/settings.json` 전역, `.claude/settings.json` 프로젝트, 플러그인·스킬 프런트매터)에 따라 적용 범위가 달라집니다. 딱 떨어지는 규칙이 아니라 판단이 필요한 일이라면, 모델이 평가하는 프롬프트 기반(`type: "prompt"`)이나 에이전트 기반(`type: "agent"`) hook을 쓸 수도 있습니다.
 
 ## MoAI-ADK와 훅
 

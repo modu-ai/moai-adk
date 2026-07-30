@@ -5,7 +5,7 @@ draft: false
 description: "Claude Code가 CLAUDE.md와 자동 메모리로 세션을 넘어 프로젝트 지식을 기억하는 방법을 설명합니다."
 ---
 
-Claude Code가 매 세션마다 새로운 컨텍스트 윈도우 (context window)로 시작하면서도 프로젝트 지식을 잃지 않도록 도와주는 두 가지 메모리 메커니즘을 살펴봅니다.
+Claude Code는 매 세션 새 컨텍스트 윈도우(context window)로 시작하면서도 프로젝트 지식을 잃지 않습니다. 그것을 가능하게 하는 두 가지 메모리 메커니즘을 살펴봅니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: CLAUDE.md는 사람이 적어두는 영구 지침이고, 자동 메모리는 Claude가 작업하며 스스로 적어 모으는 학습 노트로, 둘 다 매 세션 시작에 컨텍스트로 로드됩니다.
@@ -15,9 +15,9 @@ Claude Code가 매 세션마다 새로운 컨텍스트 윈도우 (context window
 
 Claude Code의 모든 세션은 빈 컨텍스트 윈도우로 시작합니다. 세션을 넘어 지식을 전달하는 방법은 두 가지입니다. 둘은 서로를 보완하며, 매 대화 시작에 함께 로드됩니다.
 
-| 구분 | CLAUDE.md 파일 | 자동 메모리 (auto memory) |
+| 구분 | CLAUDE.md 파일 | 자동 메모리(auto memory) |
 | :--- | :--- | :--- |
-| **작성 주체** | 사람 (직접 작성) | Claude (스스로 작성) |
+| **작성 주체** | 사람이 직접 작성 | Claude가 스스로 작성 |
 | **담는 내용** | 지침과 규칙 | 학습과 패턴 |
 | **범위** | 프로젝트 / 사용자 / 조직 | 저장소 단위, 워크트리 공유 |
 | **로드 시점** | 매 세션 (전체) | 매 세션 (앞 200줄 또는 25KB) |
@@ -42,11 +42,11 @@ CLAUDE.md는 프로젝트, 개인 워크플로우, 조직 전체를 위한 영�
 
 ### 메모리 계층
 
-CLAUDE.md는 여러 위치에 둘 수 있으며 위치마다 범위가 다릅니다. 아래 표는 로드 순서 (넓은 범위에서 좁은 범위)대로 나열한 것으로, 더 구체적인 지침이 나중에 컨텍스트에 들어갑니다.
+CLAUDE.md는 여러 위치에 둘 수 있으며 위치마다 범위가 다릅니다. 아래 표는 로드 순서(넓은 범위에서 좁은 범위)대로 나열한 것으로, 더 구체적인 지침이 나중에 컨텍스트에 들어갑니다.
 
 | 범위 | 위치 | 용도 | 공유 대상 |
 | :--- | :--- | :--- | :--- |
-| **관리형 정책** (managed policy) | macOS: `/Library/Application Support/ClaudeCode/CLAUDE.md`<br>Linux/WSL: `/etc/claude-code/CLAUDE.md`<br>Windows: `C:\Program Files\ClaudeCode\CLAUDE.md` | 조직 전체 지침 (IT/DevOps 관리) | 조직 내 전체 사용자 |
+| **관리형 정책** (managed policy) | macOS: `/Library/Application Support/ClaudeCode/CLAUDE.md`<br>Linux/WSL: `/etc/claude-code/CLAUDE.md`<br>Windows: `C:\Program Files\ClaudeCode\CLAUDE.md` | 조직 전체 지침(IT/DevOps가 관리) | 조직 내 전체 사용자 |
 | **사용자 지침** (user) | `~/.claude/CLAUDE.md` | 모든 프로젝트 공통 개인 선호 | 본인 (전체 프로젝트) |
 | **프로젝트 지침** (project) | `./CLAUDE.md` 또는 `./.claude/CLAUDE.md` | 팀 공유 프로젝트 지침 | 소스 컨트롤로 팀원 공유 |
 | **로컬 지침** (local) | `./CLAUDE.local.md` | 개인용 프로젝트별 선호 (`.gitignore` 대상) | 본인 (현재 프로젝트) |
@@ -55,7 +55,7 @@ CLAUDE.md는 여러 위치에 둘 수 있으며 위치마다 범위가 다릅니
 
 ### CLAUDE.md 로드 순서
 
-Claude Code는 현재 작업 디렉터리에서 위로 디렉터리 트리를 거슬러 올라가며 각 디렉터리의 `CLAUDE.md`와 `CLAUDE.local.md`를 찾습니다. 발견한 파일은 서로 덮어쓰지 않고 모두 이어 붙여 (concatenate) 컨텍스트에 넣습니다. 파일시스템 루트에서 작업 디렉터리 쪽으로 내려가는 순서이므로, 실행 위치에 가까운 지침이 가장 나중에 읽힙니다.
+Claude Code는 현재 작업 디렉터리에서 위로 디렉터리 트리를 거슬러 올라가며 각 디렉터리의 `CLAUDE.md`와 `CLAUDE.local.md`를 찾습니다. 발견한 파일은 서로 덮어쓰지 않고 전부 이어 붙여(concatenate) 컨텍스트에 넣습니다. 파일시스템 루트에서 작업 디렉터리 쪽으로 내려가는 순서이므로, 실행 위치에 가까운 지침이 가장 나중에 읽힙니다.
 
 ```mermaid
 flowchart TD
@@ -84,7 +84,7 @@ See @README for project overview and @package.json for available npm commands.
 - import한 파일이 다시 다른 파일을 import할 수 있고, 최대 깊이는 **4 hop**입니다.
 - 처음 외부 import를 만나면 승인 대화상자가 뜹니다. 거부하면 import는 비활성 상태로 남습니다.
 
-여러 워크트리 (worktree)에 걸쳐 개인 지침을 공유하려면 홈 디렉터리의 파일을 import하는 방식이 유용합니다.
+여러 워크트리(worktree)에서 개인 지침을 함께 쓰려면 홈 디렉터리의 파일을 import하는 방식이 유용합니다.
 
 ```text
 # Individual Preferences
@@ -167,13 +167,13 @@ flowchart TD
 
 - **간결하게**: `MEMORY.md`는 인덱스로 유지하고 상세는 주제 파일로 분리합니다. CLAUDE.md는 파일당 200줄 이하를 목표로 합니다.
 - **한 파일에 한 사실**: 한 주제는 한 파일에 모읍니다. `testing.md`, `api-design.md`처럼 서술적인 파일명을 씁니다.
-- **구체적으로**: 모호한 표현 대신 검증 가능한 문장을 씁니다. ("커밋 전 `npm test` 실행" 처럼)
+- **구체적으로**: 모호한 표현 대신 확인할 수 있는 문장을 씁니다("커밋 전 `npm test` 실행"처럼).
 - **모순 정리**: 서로 충돌하는 지침은 주기적으로 제거합니다. 충돌이 남으면 Claude가 어느 쪽을 따를지 임의로 결정합니다.
 - **강제가 필요하면 hook으로**: 매 커밋 전처럼 특정 시점에 반드시 실행해야 하는 일은 메모리가 아니라 hook으로 작성합니다.
 
 ## MoAI-ADK 메모리 시스템과의 관계
 
-MoAI-ADK는 위의 Claude Code 메모리 기반 위에서 동작합니다. 프로젝트 루트의 CLAUDE.md를 오케스트레이터 실행 지침으로 사용하고, 자동 메모리의 `MEMORY.md` 인덱스와 주제 파일을 SPEC 작업의 세션 핸드오프 및 교훈 (lessons) 누적에 활용합니다.
+MoAI-ADK는 위의 Claude Code 메모리 기반 위에서 동작합니다. 프로젝트 루트의 CLAUDE.md를 오케스트레이터 실행 지침으로 사용하고, 자동 메모리의 `MEMORY.md` 인덱스와 주제 파일을 SPEC 작업의 세션 핸드오프와 교훈(lessons) 누적에 활용합니다.
 
 파일 기반 영속 메모리는 MoAI-ADK **에이전틱 루프 엔지니어링**의 원료이기도 합니다. 루프가 돌며 남긴 관찰(사용자 교정, 실패 패턴, 라우팅 결정)이 메모리 파일에 쌓이고, 하네스가 그 축적을 바탕으로 스킬과 에이전트 지침을 개선합니다. "루프가 관찰을 축적하고, 하네스가 학습하여 지침이 진화한다"는 문장의 첫 번째 고리가 바로 이 페이지의 메모리 메커니즘입니다. MoAI 고유의 메모리 운영 규칙과 인덱스 관리 방식은 별도 문서에서 자세히 다룹니다.
 

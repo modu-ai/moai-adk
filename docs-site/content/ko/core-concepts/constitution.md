@@ -10,7 +10,7 @@ MoAI-ADK의 불변 규칙 (FROZEN) 과 진화 가능한 규칙 (Evolvable) 을 �
 
 [하네스 엔지니어링](/ko/core-concepts/harness-engineering)에서 보았듯, MoAI-ADK의 하네스는 루프가 축적한 관찰로 스스로 지침을 진화시킵니다. 그렇다면 무엇이 그 진화를 통제할까요? 답이 **Constitution (헌법)** 시스템입니다.
 
-Constitution은 AI 에이전트가 임의로 변경할 수 없는 불변 제약 (FROZEN Zone) 과 학습을 통해 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 구분합니다. 평가 기준과 안전 규칙을 진화 루프의 **밖**에 둡니다. 그래야 자가 진화 하네스가 폭주하지 않으며, 이것이 하네스 엔지니어링의 핵심 안전 장치입니다.
+Constitution은 AI 에이전트가 임의로 바꿀 수 없는 불변 제약 (FROZEN Zone) 과 학습으로 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 갈라 놓습니다. 평가 기준과 안전 규칙은 진화 루프의 **밖**에 둡니다. 그래야 자가 진화 하네스가 폭주하지 않습니다. 하네스 엔지니어링의 핵심 안전장치가 바로 이 구분입니다.
 
 ## FROZEN vs Evolvable
 
@@ -32,7 +32,7 @@ AI 에이전트가 절대 수정할 수 없는 규칙입니다. 인간 개발자
 
 ### Evolvable Zone (진화 가능)
 
-학습(lessons)과 연구(research)를 통해 개선 제안이 가능한 규칙입니다.
+학습(lessons)과 연구(research)를 근거로 개선을 제안할 수 있는 규칙입니다.
 
 **대표 항목**:
 
@@ -58,14 +58,14 @@ CONST-V3R2-NNN (3자리 이상 zero-padding)
 150+: 신규 추가
 ```
 
-> **ID 접두사는 시대(era)에 따라 다릅니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
-> 접두사는 조항이 도입된 시대를 반영합니다 (`CONST-V3R2-NNN`,
-> `CONST-V3R5-NNN`, `CONST-V3R6-NNN` 등). V3R2로 고정된 것이 아니라, 이후
-> 시대에 추가된 조항은 해당 시대 접두사를 사용합니다.
+> **ID 접두사는 시대(era)마다 다릅니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
+> 접두사에는 조항이 도입된 시대가 그대로 드러납니다 (`CONST-V3R2-NNN`,
+> `CONST-V3R5-NNN`, `CONST-V3R6-NNN` 등). V3R2로 고정된 값이 아니며, 이후
+> 시대에 추가된 조항은 그 시대의 접두사를 씁니다.
 
 ### Canary Gate
 
-FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증이 필수입니다.
+FROZEN 조항에는 `canary_gate: true`가 붙습니다. 바꾸기 전에 canary 검증을 반드시 거쳐야 합니다.
 
 ```yaml
 # Zone Registry 엔트리 예시
@@ -79,22 +79,22 @@ FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증�
 
 ## 안전 아키텍처 (5계층)
 
-Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다. 하네스가 아무리 학습을 쌓아도, 변경은 아래 다섯 관문을 차례로 통과해야 합니다:
+Constitution 시스템은 5계층 안전 아키텍처가 지킵니다. 하네스가 아무리 학습을 쌓아도 변경은 아래 다섯 관문을 차례로 통과해야 합니다:
 
 ### Layer 1: Frozen Guard
 
-쓰기 작업 전 대상 파일이 FROZEN zone이 아닌지 확인합니다. 위반 시 쓰기 차단 + 로깅 +
-사용자 알림.
+쓰기 작업에 들어가기 전에 대상 파일이 FROZEN zone인지 확인합니다. 위반하면 쓰기를
+막고, 로그를 남기고, 사용자에게 알립니다.
 
 ### Layer 2: Canary Check
 
-제안된 변경을 메모리에 적용하고 최근 3개 프로젝트를 재평가합니다. 점수 하락이
-0.10 초과하면 변경을 거부합니다.
+제안된 변경을 메모리에만 적용해 보고 최근 프로젝트 3개를 다시 평가합니다. 점수가
+0.10 넘게 떨어지면 그 변경을 물립니다.
 
 ### Layer 3: Contradiction Detector
 
-새 학습이 기존 규칙과 충돌하면 양쪽을 모두 사용자에게 제시합니다. 자동 덮어쓰기는
-절대 발생하지 않습니다.
+새 학습이 기존 규칙과 부딪히면 양쪽을 모두 사용자에게 보여 줍니다. 한쪽을 자동으로
+덮어쓰는 일은 절대 없습니다.
 
 ### Layer 4: Rate Limiter
 
@@ -111,7 +111,7 @@ Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다. 하네
 
 ### Layer 5: Human Oversight
 
-`require_approval: true`인 경우 모든 진화 제안은 사용자 승인이 필요합니다.
+`require_approval: true`이면 모든 진화 제안에 사용자 승인이 필요합니다.
 
 ## CLI에서 활용
 

@@ -8,7 +8,7 @@ description: ".moai/config/sections/ 의 주요 설정 파일(handoff/delegation
 MoAI-ADK의 프로젝트 설정은 `.moai/config/sections/` 아래 여러 YAML 파일로 나뉘어 있습니다. [settings.json 가이드](/ko/advanced/settings-json)가 Claude Code 런타임 설정을 다룬다면, 이 페이지는 MoAI-ADK 자체 동작을 제어하는 주요 섹션 파일의 키를 정리합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: `settings.json` 은 Claude Code에게 무엇을 허용할지 정하고, `.moai/config/sections/*.yaml` 은 MoAI-ADK가 어떻게 오케스트레이션할지 정합니다.
+**한 줄 요약**: `settings.json`은 Claude Code에게 무엇을 허용할지 정하고, `.moai/config/sections/*.yaml`은 MoAI-ADK가 어떻게 오케스트레이션할지 정합니다.
 {{< /callout >}}
 
 ## handoff.yaml — auto-resume 핸드오프
@@ -25,13 +25,13 @@ handoff:
 |----|-----|------|
 | `mode` | `manual` (기본) | 저장된 핸드오프를 자동 주입하지 않음 (opt-in 베이스라인 UX) |
 | `mode` | `auto` | `/clear` 시 저장된 핸드오프를 세션 컨텍스트로 주입한 뒤 audit-trail 복사본으로 이동 |
-| `guide` | `false` (기본) | `true` 시 non-`/clear` 세션 시작(startup/resume/compact)에서 대기 중 핸드오프가 있다는 best-effort stderr 힌트 방출. 정보성일 뿐 세션을 막지 않음 |
+| `guide` | `false` (기본) | `true`면 `/clear`가 아닌 세션 시작(startup/resume/compact)에서 대기 중인 핸드오프가 있다는 best-effort stderr 힌트를 띄움. 알림일 뿐 세션을 막지는 않음 |
 
 관련: [자율 연속 루프](/ko/advanced/autonomous-loops), [moai handoff](/ko/cli-reference/handoff).
 
 ## delegation.yaml — 에이전트 라우팅 SSOT
 
-`/moai` 서브커맨드별 기본 스킬/에이전트 배정 맵입니다. 오케스트레이터가 실행 계획을 구성할 때(Analyze-First) 이 맵을 읽어 어떤 에이전트를 spawn하고 어떤 스킬을 주입할지 결정합니다.
+`/moai` 서브커맨드마다 기본으로 쓸 스킬과 에이전트를 배정한 맵입니다. 오케스트레이터는 실행 계획을 짤 때(Analyze-First) 이 맵을 읽고 어떤 에이전트를 spawn할지, 어떤 스킬을 주입할지 정합니다.
 
 ```yaml
 delegation:
@@ -54,10 +54,10 @@ delegation:
 
 | 블록 | 설명 |
 |------|------|
-| `learning` | 라우팅 사용을 append-only 원장(`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)으로 관찰하고, 하네스 학습 서브시스템이 4-tier 제안 사다리로 갱신 제안. `auto_apply: false` — Tier-4 변경은 `AskUserQuestion` 사용자 승인 필요 |
-| `subcommands` | 서브커맨드별 `agents` (spawn할 11개 retained 에이전트) + `skills` (spawn 시 주입할 workflow 스킬). 0개 배정도 유효 (오케스트레이터 직접 실행) |
-| `domain_skills` | 미션 도메인별 주입 스킬 (spawn당 0-3개). 도메인 신호와 매칭 |
-| `agents` | 에이전트별 conditional 스킬 (트리거 발생 시 on-demand 로드) |
+| `learning` | 라우팅 사용 내역을 append-only 원장(`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)에 남기고, 하네스 학습 서브시스템이 4-tier 제안 사다리로 갱신을 제안. `auto_apply: false` — Tier-4 변경은 `AskUserQuestion` 사용자 승인 필요 |
+| `subcommands` | 서브커맨드마다 `agents`(spawn할 11개 retained 에이전트) + `skills`(spawn 시 주입할 workflow 스킬). 하나도 배정하지 않아도 유효 (오케스트레이터가 직접 실행) |
+| `domain_skills` | 미션 도메인에 맞춰 주입할 스킬 (spawn당 0-3개). 도메인 신호와 매칭 |
+| `agents` | 에이전트마다 두는 conditional 스킬 (트리거가 발생하면 on-demand 로드) |
 
 관련: [에이전트 가이드](/ko/advanced/agent-guide), [스킬 가이드](/ko/advanced/skill-guide).
 
@@ -85,10 +85,10 @@ llm:
 
 | 키 | 설명 |
 |----|------|
-| `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 소스 |
-| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 공유하므로 정규화 단계가 필요 없음 |
-| `profiles` | 프로필 열별 에이전트 → `{model, effort}` 매트릭스 (에이전트 11개 × 열 3개 = 33셀). Go 기본값(`template.DefaultProfileMatrix`)이 누락 셀의 권위 있는 fallback |
-| `agent_overrides` | 정규 에이전트 이름별 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
+| `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 출처 |
+| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 그대로 쓰므로 별도 정규화가 필요 없음 |
+| `profiles` | 프로필 열마다 에이전트 → `{model, effort}`를 적은 매트릭스 (에이전트 11개 × 열 3개 = 33셀). 빠진 셀은 Go 기본값(`template.DefaultProfileMatrix`)이 최종 fallback |
+| `agent_overrides` | 정규 에이전트 이름을 키로 하는 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
 | `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
 
@@ -111,16 +111,16 @@ statusline:
 
 | 키 | 설명 |
 |----|------|
-| `theme` | 정확히 2개 테마 존재: `catppuccin-mocha` (기본) 또는 `catppuccin-latte` |
-| `segments` | 16개 세그먼트 개별 토글 (유일한 런타임 레버). 모두 기본 on이며, 비활성 상태는 graceful no-output으로 처리 |
+| `theme` | 테마는 딱 두 개: `catppuccin-mocha`(기본) 또는 `catppuccin-latte` |
+| `segments` | 16개 세그먼트를 하나씩 켜고 끄는 토글 (런타임에 조절할 수 있는 유일한 값). 모두 기본 on이며, 꺼진 세그먼트는 아무것도 출력하지 않고 조용히 빠짐 |
 
-세그먼트는 3개 라인에 배치됩니다 — 라인 1(모델·버전·세션 메타), 라인 2(컨텍스트 윈도우·API 사용량 바), 라인 3(디렉터리·git·워크플로우·PR).
+세그먼트는 세 줄에 나눠 배치합니다 — 1행(모델·버전·세션 메타), 2행(컨텍스트 윈도우·API 사용량 바), 3행(디렉터리·git·워크플로우·PR).
 
 관련: [Statusline 시스템 및 PR 세그먼트](/ko/advanced/statusline).
 
 ## security.yaml — 보안 강화
 
-내장 `DefaultSecurityPolicy` 패턴을 **확장**(교체 아님)하는 추가 보안 설정입니다. SOLID의 개방-폐쇄 원칙을 따라 core 수정 없이 config로 확장합니다.
+내장 `DefaultSecurityPolicy` 패턴을 **덧붙이는**(교체가 아닌) 추가 보안 설정입니다. SOLID의 개방-폐쇄 원칙에 따라 core를 건드리지 않고 config만으로 확장합니다.
 
 ```yaml
 security:
@@ -141,12 +141,12 @@ security:
 
 | 키 | 설명 |
 |----|------|
-| `extra_dangerous_bash_patterns` | 내장 deny 패턴에 **추가**되는 위험 Bash 커맨드 정규식 (대소문자 무시) |
-| `extra_deny_patterns` / `extra_ask_patterns` | 추가 파일 deny/ask 패턴 |
-| `permission.strict_mode` | `true` 시 bypassPermissions 모드의 에이전트 spawn 거부 |
-| `sandbox.required` | `true` 시 `sandbox: none` 에이전트를 `sandbox.justification` 없이는 거부 (기본 false) |
-| `sandbox.network_allowlist` | 기본 8개 호스트에 **추가**되는 허용 네트워크 호스트 |
-| `sandbox.env_scrub_extra` | 기본 scrub 목록에 **추가**되는 env 변수명 (AWS_*, GITHUB_TOKEN 등) |
+| `extra_dangerous_bash_patterns` | 내장 deny 패턴에 **덧붙일** 위험 Bash 커맨드 정규식 (대소문자 무시) |
+| `extra_deny_patterns` / `extra_ask_patterns` | 추가로 둘 파일 deny/ask 패턴 |
+| `permission.strict_mode` | `true`면 bypassPermissions 모드의 에이전트 spawn을 거부 |
+| `sandbox.required` | `true`면 `sandbox: none` 에이전트를 `sandbox.justification` 없이 거부 (기본 false) |
+| `sandbox.network_allowlist` | 기본 8개 호스트에 **덧붙일** 허용 네트워크 호스트 |
+| `sandbox.env_scrub_extra` | 기본 scrub 목록에 **덧붙일** env 변수명 (AWS_*, GITHUB_TOKEN 등) |
 | `sandbox.docker_image` | docker 백엔드 기본 이미지 |
 
 관련: [보안 노트](/ko/advanced/security-notes), [settings.json 가이드](/ko/advanced/settings-json).
@@ -155,4 +155,4 @@ security:
 
 - [settings.json 가이드](/ko/advanced/settings-json) — Claude Code 런타임 설정
 - [하네스 프로필과 평가](/ko/advanced/harness-profiles) — harness.yaml / evaluator-profiles
-- [moai doctor](/ko/cli-reference/doctor) — `moai doctor config` 로 병합 설정 검사
+- [moai doctor](/ko/cli-reference/doctor) — `moai doctor config`로 병합 설정 검사

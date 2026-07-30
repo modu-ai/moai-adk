@@ -20,8 +20,8 @@ Git Worktree를 쓰다 보면 마주치는 질문과 문제를 한곳에 정리�
 
 ### Q: Git Worktree와 일반 브랜치의 차이점은 무엇인가요?
 
-**A**: Git Worktree는 **물리적으로 분리된 디렉토리**에서 작업할 수 있게
-해줍니다:
+**A**: Git Worktree를 쓰면 **물리적으로 분리된 디렉토리**에서 작업할 수
+있습니다:
 
 ```mermaid
 graph TB
@@ -55,7 +55,7 @@ graph TB
 
 ### Q: 왜 Worktree를 사용해야 하나요?
 
-**A**: 병렬 개발과 토크노믹스, 두 가지 이유가 핵심입니다:
+**A**: 이유는 크게 병렬 개발과 토크노믹스 두 갈래입니다:
 
 1. **LLM 설정 독립성** — SPEC마다 다른 LLM을 배정할 수 있습니다
    - Plan 단계: Opus (고품질 추론)
@@ -63,8 +63,8 @@ graph TB
    - Document 단계: Sonnet (중간)
 
 2. **병렬 개발** — 여러 SPEC을 동시에 진행할 수 있습니다
-3. **충돌 방지** — 독립된 작업 공간이 충돌을 최소화합니다
-4. **비용 절감** — 구현 단계에 GLM을 쓰면 약 70% 비용이 줄어듭니다
+3. **충돌 방지** — 작업 공간이 따로 놀아 충돌이 거의 나지 않습니다
+4. **비용 절감** — 구현 단계에 GLM을 쓰면 비용이 약 70% 줄어듭니다
 
 ```mermaid
 graph TB
@@ -120,8 +120,8 @@ moai worktree new SPEC-AUTH-001 --base main
 
 ### Q: Worktree로 어떻게 진입하나요?
 
-**A**: `moai worktree go`는 Worktree 경로를 출력합니다. 셸의 `cd`와
-조합해 이동합니다 (셸 세션을 직접 시작하지는 않습니다):
+**A**: `moai worktree go`는 Worktree 경로를 출력할 뿐 셸 세션을 새로 띄우지는
+않습니다. `cd`와 묶어서 씁니다:
 
 ```bash
 # 경로 출력 후 이동
@@ -204,9 +204,9 @@ graph TB
 
 ### Q: Worktree를 완료하는 방법은?
 
-**A**: `moai worktree done`은 Worktree를 제거하고 선택적으로 브랜치를
-삭제합니다. **병합·푸시는 하지 않습니다** — base 병합은 `git merge`나
-PR로 먼저 처리하세요:
+**A**: `moai worktree done`은 Worktree를 지우고, 원하면 브랜치까지 삭제합니다.
+다만 **병합도 푸시도 하지 않습니다**. base 병합은 `git merge`나 PR로 먼저
+끝내세요:
 
 ```bash
 # Worktree 제거만
@@ -238,10 +238,8 @@ flowchart TD
 
 ### Q: Worktree 충돌이 발생했어요
 
-**A**: 다음 단계로 해결하세요:
-
-병합 충돌은 `git merge`나 PR 단계에서 발생합니다. Worktree CLI는 병합에
-관여하지 않습니다.
+**A**: 병합 충돌은 `git merge`나 PR 단계에서 납니다. Worktree CLI는 병합에
+관여하지 않으니, 다음 순서로 풀면 됩니다:
 
 ```mermaid
 flowchart TD
@@ -292,7 +290,7 @@ moai worktree done SPEC-AUTH-001 --delete-branch
 
 ### Q: Worktree가 손상되었어요
 
-**A**: 다음 단계로 복구하세요:
+**A**: 다음 순서로 복구하세요:
 
 ```bash
 # 1. 진단 (손상된 레지스트리 복구)
@@ -318,7 +316,7 @@ moai worktree new SPEC-AUTH-001
 
 ### Q: 디스크 공간이 부족해요
 
-**A**: 병합이 끝난 Worktree를 정리하세요:
+**A**: 병합이 끝난 Worktree부터 정리하세요:
 
 ```bash
 # 1. 디스크 사용량 확인
@@ -353,7 +351,7 @@ graph TD
 
 ### Q: LLM이 예상대로 작동하지 않아요
 
-**A**: Worktree별 LLM 설정을 확인하세요:
+**A**: Worktree마다 LLM 설정이 어떻게 잡혀 있는지 확인하세요:
 
 ```bash
 # 현재 LLM 백엔드 확인 (Worktree별 설정은 .moai/config/sections/llm.yaml에 기록됨)
@@ -397,18 +395,18 @@ git rebase origin/feature/SPEC-AUTH-001
 
 ### Q: Worktree가 성능에 영향을 주나요?
 
-**A**: 미미한 영향만 있습니다:
+**A**: 영향은 크지 않습니다:
 
 **장점**:
 
-- 각 Worktree가 독립적이어서 캐시 효율적
+- Worktree가 서로 독립적이라 캐시가 잘 먹음
 - Git 작업이 빠름 (로컬 브랜치)
 - 파일 시스템 캐시 활용
 
 **단점**:
 
-- 디스크 공간 사용 (각 Worktree마다 중복)
-- 초기 Worktree 생성 시 시간 소요
+- 디스크 공간 소모 (Worktree마다 중복)
+- 처음 Worktree를 만들 때 시간이 좀 걸림
 
 **최적화 팁**:
 
@@ -427,7 +425,7 @@ git worktree prune
 
 ### Q: 몇 개의 Worktree를 생성할 수 있나요?
 
-**A**: 이론적으로는 무제한이지만, 실제로는 다음 요인이 개수를 제한합니다:
+**A**: 이론적으로는 제한이 없지만, 실제로는 다음 요인이 개수를 좌우합니다:
 
 **제한 요인**:
 
@@ -457,7 +455,7 @@ graph TD
 
 ### Q: Worktree를 자동으로 정리할 수 있나요?
 
-**A**: 네, 정기적인 정리 스크립트를 사용할 수 있습니다:
+**A**: 네, 정리 스크립트를 만들어 주기적으로 돌리면 됩니다:
 
 ```bash
 #!/bin/bash
@@ -486,7 +484,7 @@ echo "Worktree 정리 완료"
 
 ### Q: 팀에서 Worktree를 어떻게 사용하나요?
 
-**A**: 다음과 같은 워크플로우를 권장합니다:
+**A**: 다음 워크플로우를 권장합니다:
 
 ```mermaid
 graph TB
@@ -521,8 +519,8 @@ graph TB
 
 ### Q: Worktree를 base 브랜치와 동기화하는 방법은?
 
-**A**: `moai worktree sync`가 base 브랜치의 변경 사항을 Worktree로 가져옵니다.
-`--strategy` 로 merge (기본) 또는 rebase 를 선택합니다:
+**A**: `moai worktree sync`가 base 브랜치의 변경 사항을 Worktree로 끌어옵니다.
+`--strategy`로 merge(기본)와 rebase 중 하나를 고릅니다:
 
 ```bash
 # 현재 디렉토리의 Worktree를 base(main)와 동기화 — merge 전략
@@ -539,7 +537,7 @@ moai worktree sync SPEC-AUTH-001 --base develop
 
 ### Q: PR 리뷰 중 Worktree를 어떻게 관리하나요?
 
-**A**: 다음 전략을 사용하세요:
+**A**: 다음 전략을 쓰세요:
 
 ```bash
 # PR 생성 전
@@ -566,7 +564,7 @@ cd "$(moai worktree go SPEC-AUTH-001)"
 
 ### Q: Worktree를 사용하지 않고 MoAI-ADK를 사용할 수 있나요?
 
-**A**: 네, 가능하지만 권장하지 않습니다:
+**A**: 쓸 수는 있지만 권하지 않습니다:
 
 ```bash
 # Worktree 없이 사용
@@ -583,7 +581,7 @@ cd "$(moai worktree go SPEC-AUTH-001)"
 
 ### Q: Worktree를 백업해야 하나요?
 
-**A**: Worktree는 Git으로 관리되므로 별도 백업이 필요 없습니다:
+**A**: Worktree는 Git이 관리하므로 따로 백업할 필요가 없습니다:
 
 ```bash
 # Worktree는 Git의 일부

@@ -8,33 +8,32 @@ draft: false
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
-Git Worktree는 MoAI-ADK 병렬 개발의 기반입니다. SPEC마다 완전히 독립된 작업
-공간을 만들어, 서로 다른 Git 상태와 서로 다른 LLM 설정을 동시에 굴릴 수 있게
-합니다.
+Git Worktree는 MoAI-ADK 병렬 개발의 바탕입니다. SPEC마다 완전히 독립된 작업
+공간을 만들어, 서로 다른 Git 상태와 서로 다른 LLM 설정을 동시에 유지할 수 있게
+해 줍니다.
 
 
-세 기둥 중 **에이전틱 하네스** (품질 통제 축) 관점에서 보면, Worktree는 각
-SPEC을 완전히 격리해 에이전트가 병렬로 일해도 서로의 작업을 밟지 않게 하는
-통제 장치입니다 — 병렬 개발의 충돌을 막고, 완료된 SPEC만 안전하게 main에
-병합되도록 보증합니다. 부수적으로 비용 축 (토크노믹스) 의 혜택도 따라옵니다:
-격리된 worktree마다 서로 다른 LLM 실행 모드를 지정할 수 있어, 계획 터미널에서는
-고추론 Claude 모델을 쓰고 구현 터미널에서는 저비용 GLM을 쓰는 식으로 작업
-단계마다 알맞은 모델을 배정할 수 있습니다.
+세 가지 핵심 가운데 **에이전틱 하네스**(품질 통제) 쪽에서 보면, Worktree는
+SPEC마다 작업 공간을 완전히 갈라 놓는 통제 장치입니다. 에이전트가 병렬로
+움직여도 서로의 작업을 덮어쓰지 않고, 완료된 SPEC만 main에 병합되도록
+보장합니다. 비용(토크노믹스) 쪽 이득도 따라옵니다. worktree마다 LLM 실행 모드를
+따로 지정할 수 있으니, 계획 터미널에서는 추론이 강한 Claude 모델을, 구현
+터미널에서는 저비용 GLM을 쓰는 식으로 단계마다 모델을 나눠 배정할 수 있습니다.
 
 ## 왜 Worktree가 필요한가요?
 
 ### 문제: LLM 설정이 세션 간에 공유된다
 
-Worktree 없이 `moai glm`이나 `moai cc`로 LLM 백엔드를 바꾸면, 같은 프로젝트의
-**모든 열린 세션에 동일한 설정이 적용**됩니다. 그 결과:
+Worktree 없이 `moai glm`이나 `moai cc`로 LLM 백엔드를 바꾸면, 같은 프로젝트에서
+**열려 있는 모든 세션에 같은 설정이 걸립니다**. 그 결과:
 
-- **SPEC 간 간섭** — 한 SPEC에서 바꾼 LLM 설정이 다른 SPEC 작업에 영향을 줍니다
-- **병렬 개발 불가** — 여러 SPEC을 동시에 서로 다른 조건으로 진행할 수 없습니다
-- **토큰 낭비** — 단순 구현 작업까지 전부 고비용 모델로 돌아갑니다
+- **SPEC 간 간섭** — 한 SPEC에서 바꾼 LLM 설정이 다른 SPEC 작업까지 흔듭니다
+- **병렬 개발 불가** — 여러 SPEC을 서로 다른 조건으로 동시에 진행할 수 없습니다
+- **토큰 낭비** — 단순 구현 작업까지 전부 비싼 모델로 돌아갑니다
 
 ### 해결: 완전한 격리
 
-Git Worktree를 쓰면 각 SPEC이 **독립적인 Git 상태와 LLM 설정**을 갖습니다:
+Git Worktree를 쓰면 SPEC마다 **Git 상태와 LLM 설정이 서로 독립적으로 움직입니다**:
 
 ```mermaid
 graph TB
@@ -51,7 +50,7 @@ graph TB
 
 ### 3단계 개발 프로세스
 
-Worktree를 활용한 MoAI-ADK 개발은 세 단계로 흘러갑니다:
+Worktree를 쓰는 MoAI-ADK 개발은 세 단계로 흘러갑니다:
 
 ```mermaid
 flowchart TD
@@ -82,8 +81,8 @@ flowchart TD
 
 #### 1단계: Plan (Terminal 1)
 
-계획 단계는 추론 품질이 결과를 좌우하므로 Claude(Opus급) 모델로 SPEC 문서를
-작성합니다:
+계획 단계는 추론 품질이 결과를 가르므로 Claude(Opus급) 모델로 SPEC 문서를
+씁니다:
 
 ```bash
 > /moai plan "인증 시스템 추가" --worktree
@@ -103,8 +102,8 @@ flowchart TD
 
 #### 2단계: Implement (Terminals 2, 3, 4...)
 
-구현 단계는 물량이 많은 대신 SPEC이 이미 방향을 잡아둔 상태라, GLM 같은 비용
-효율적인 모델이 제 몫을 합니다:
+구현 단계는 물량은 많지만 SPEC이 이미 방향을 잡아 둔 상태라, GLM처럼 값싼
+모델로도 충분히 제 몫을 합니다:
 
 ```bash
 # Worktree 진입 (새 터미널)
@@ -150,7 +149,7 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 
 
 ### 1. 완전한 격리 (Complete Isolation)
 
-각 SPEC은 독립적인 Git 상태를 유지합니다:
+SPEC마다 Git 상태가 따로 관리됩니다:
 
 ```mermaid
 graph TB
@@ -183,7 +182,7 @@ graph TB
 
 ### 2. LLM 독립성 (LLM Independence)
 
-각 Worktree는 별도의 LLM 실행 모드를 유지합니다. 아래처럼 세 터미널이 각각
+Worktree마다 LLM 실행 모드를 따로 잡을 수 있습니다. 아래처럼 세 터미널이 각각
 `moai cc`(Claude 전용), `moai glm`(GLM 전용), `moai cg`(Claude 리더 + GLM 워커
 하이브리드)로 다르게 돌아가도 서로 간섭하지 않습니다:
 
@@ -260,9 +259,9 @@ flowchart TB
 
 ## 병렬 개발 시각화
 
-여러 터미널에서 동시에 작업하는 모습입니다. 각 worktree가 완전히 격리되어
-충돌 없이 병렬로 진행되는 것이 에이전틱 하네스 축의 핵심이며, 부수적으로
-단계마다 알맞은 모델을 배정할 수 있는 것은 토크노믹스 혜택입니다:
+여러 터미널에서 동시에 작업하는 모습입니다. worktree가 완전히 격리된 덕분에
+충돌 없이 병렬로 진행되는데, 이것이 에이전틱 하네스의 핵심입니다. 단계마다
+알맞은 모델을 배정할 수 있는 것은 여기에 따라오는 토크노믹스 이득입니다:
 
 ```mermaid
 graph TB
@@ -298,7 +297,7 @@ graph TB
 ## 다음 단계
 
 - **[완벽 가이드](/ko/worktree/guide)** — 모든 Worktree 명령어와 상세 사용법
-- **[실제 사용 예시](/ko/worktree/examples)** — 실제 프로젝트에서의 사용 사례
+- **[실제 사용 예시](/ko/worktree/examples)** — 실제 프로젝트에 적용한 사례
 - **[자주 묻는 질문](/ko/worktree/faq)** — FAQ 및 문제 해결
 
 ## 관련 문서

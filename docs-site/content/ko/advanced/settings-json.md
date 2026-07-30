@@ -42,25 +42,25 @@ flowchart TD
 
 ### 각 범위의 사용처
 
-**Managed 범위** - 다음에 사용:
-- 조직 전체 적용 보안 정책
-- 재정의 불가능한 준수 요구사항
-- IT/DevOps에서 배포하는 표준화된 구성
+**Managed 범위** — 이럴 때 씁니다.
+- 조직 전체에 적용하는 보안 정책
+- 개별 재정의를 막아야 하는 준수 요구사항
+- IT/DevOps가 배포하는 표준 구성
 
-**User 범위** - 다음에 사용:
-- 모든 프로젝트에서 원하는 개인 설정 (테마, 에디터 설정)
-- 모든 프로젝트에서 사용하는 도구 및 플러그인
-- API 키 및 인증 (안전하게 저장)
+**User 범위** — 이럴 때 씁니다.
+- 모든 프로젝트에 공통으로 적용할 개인 설정 (테마, 에디터 설정)
+- 어느 프로젝트에서나 쓰는 도구와 플러그인
+- API 키와 인증 정보 (안전하게 저장)
 
-**Project 범위** - 다음에 사용:
-- 팀 공유 설정 (권한, Hook)
-- 팀이 가져야 할 플러그인
-- 협업자 간 도구 표준화
+**Project 범위** — 이럴 때 씁니다.
+- 팀이 함께 쓰는 설정 (권한, Hook)
+- 팀 전체에 필요한 플러그인
+- 협업자 사이의 도구 표준화
 
-**Local 범위** - 다음에 사용:
-- 특정 프로젝트의 개인 오버라이드
-- 팀과 공유하기 전 설정 테스트
-- 다른 사용자에게 작동하지 않는 머신별 설정
+**Local 범위** — 이럴 때 씁니다.
+- 특정 프로젝트에만 적용할 개인 오버라이드
+- 팀에 공유하기 전 설정 시험
+- 내 머신에서만 통하는 설정
 
 ## 파일 위치
 
@@ -138,7 +138,7 @@ Claude의 기본 응답 언어를 설정합니다.
 
 ### cleanupPeriodDays
 
-이 기간보다 오래된 비활성 세션을 시작 시 삭제합니다. `0`으로 설정하면 모든 세션을 즉시 삭제합니다. (기본값: 30일)
+시작할 때 이 기간보다 오래된 비활성 세션을 삭제합니다. `0`으로 설정하면 모든 세션을 곧바로 삭제합니다. (기본값: 30일)
 
 ```json
 {
@@ -161,7 +161,7 @@ Claude의 기본 응답 언어를 설정합니다.
 
 ### spinnerTipsEnabled
 
-Claude가 작업하는 동안 스피너에 팁을 표시할지 여부입니다. `false`로 설정하면 팁을 비활성화합니다. (기본값: `true`)
+Claude가 작업하는 동안 스피너에 팁을 띄울지 정합니다. `false`로 설정하면 팁을 끕니다. (기본값: `true`)
 
 ```json
 {
@@ -171,7 +171,7 @@ Claude가 작업하는 동안 스피너에 팁을 표시할지 여부입니다. 
 
 ### terminalProgressBarEnabled
 
-Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 표시하는 터미널 진행률 표시줄을 활성화합니다. (기본값: `true`)
+Windows Terminal, iTerm2처럼 지원되는 터미널에서 진행률 표시줄을 켭니다. (기본값: `true`)
 
 ```json
 {
@@ -191,7 +191,7 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ### respectGitignore
 
-`@` 파일 선택기가 `.gitignore` 패턴을 준수할지 여부를 제어합니다. `true`(기본값)이면 `.gitignore` 패턴과 일치하는 파일이 제안에서 제외됩니다.
+`@` 파일 선택기가 `.gitignore` 패턴을 따를지 정합니다. `true`(기본값)이면 `.gitignore` 패턴에 걸리는 파일은 제안 목록에서 빠집니다.
 
 ```json
 {
@@ -201,7 +201,7 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ### plansDirectory
 
-플랜 파일을 저장할 위치를 사용자 정의합니다. 경로는 프로젝트 루트에 상대적입니다. 기본값: `~/.claude/plans`
+플랜 파일을 저장할 위치를 지정합니다. 경로는 프로젝트 루트 기준 상대 경로입니다. 기본값: `~/.claude/plans`
 
 ```json
 {
@@ -211,7 +211,7 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ## 권한 설정
 
-Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 분명합니다. 안전한 명령은 확인 없이 흘려 에이전틱 루프를 끊지 않고, 위험한 명령은 어떤 경우에도 통과시키지 않는 것.
+Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 분명합니다. 안전한 명령은 확인 없이 흘려보내 에이전틱 루프를 끊지 않고, 위험한 명령은 어떤 경우에도 통과시키지 않습니다.
 
 ### 권한 구조
 
@@ -240,7 +240,7 @@ Claude Code를 열 때의 기본 권한 모드입니다. 유효한 값은 다음
 | `"bypassPermissions"` | 모든 권한 자동 허용 (위험, `disableBypassPermissionsMode`로 차단 가능) |
 
 {{< callout type="info" >}}
-**기본값**: MoAI-ADK 템플릿은 `"defaultMode": "acceptEdits"`를 사용합니다. 이는 개발 흐름에서 파일 편집 프롬프트를 줄이면서 위험 명령은 여전히 확인하도록 균형을 맞춥니다.
+**기본값**: MoAI-ADK 템플릿은 `"defaultMode": "acceptEdits"`를 사용합니다. 파일 편집 확인창은 줄이면서 위험한 명령은 그대로 확인받는 절충안입니다.
 {{< /callout >}}
 
 ### allow (자동 허용)
@@ -362,11 +362,11 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 }
 ```
 
-`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용해, 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션입니다.
+`--safe-mode` CLI 플래그는 설정 파일이 아니라 실행 시점에 같은 효과를 냅니다. 환경이 잠겨 있거나, 특정 동작이 번들 skill에서 온 것인지 확인할 때 편합니다. MoAI-ADK는 `disableBundledSkills`를 만들지도, `--safe-mode`를 자동으로 붙이지도 않습니다. 둘 다 필요하면 직접 쓰는 선택지입니다.
 
 ## 권한 규칙 구문 (Permission Rule Syntax)
 
-권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다. 예를 들어 `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용하고, `Bash(cmd:git status)`는 `git status` 명령에 매칭되며, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK의 설정 생성기는 현재 이 형식을 만들지 않지만, 매개변수 수준의 권한 제어가 필요한 프로젝트에서 쓸 수 있는 옵션입니다.
+권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 쓸 수 있습니다. 예를 들어 `WebFetch(domain:example.com)`은 그 도메인으로 가는 WebFetch만 허용하고, `Bash(cmd:git status)`는 `git status` 명령에 매칭되며, 값 안에 `*` 와일드카드를 넣어 매칭 범위를 넓힐 수도 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식을 쓰면 일반 `Tool(specifier)` 형식보다 더 세밀하게 제어할 수 있습니다. MoAI-ADK 설정 생성기는 아직 이 형식을 만들지 않지만, 매개변수 단위 권한 제어가 필요한 프로젝트라면 직접 써도 됩니다.
 
 ### 규칙 평가 순서
 
@@ -380,7 +380,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 도구의 모든 사용 일치시키기
 
-도구의 모든 사용을 일치시키려면 괄호 없이 도구 이름만 사용하세요.
+도구의 모든 사용에 규칙을 걸려면 괄호 없이 도구 이름만 씁니다.
 
 | 규칙 | 효과 |
 |------|------|
@@ -388,11 +388,11 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 | `WebFetch` | **모든** 웹 가져오기 요청 일치 |
 | `Read` | **모든** 파일 읽기 일치 |
 
-`Bash(*)`는 `Bash`와 동일하며 모든 Bash 명령과 일치합니다. 두 구문을 상호 교환적으로 사용할 수 있습니다.
+`Bash(*)`는 `Bash`와 같고, 모든 Bash 명령과 일치합니다. 두 구문은 바꿔 써도 됩니다.
 
 ### 세부 제어를 위한 지정자 사용
 
-괄호 안에 지정자를 추가하여 특정 도구 사용을 일치시킵니다.
+괄호 안에 지정자를 넣으면 특정 도구 사용만 골라서 매칭할 수 있습니다.
 
 | 규칙 | 효과 |
 |------|------|
@@ -425,7 +425,7 @@ Bash 규칙은 `*`와 함께 glob 패턴을 지원합니다. 와일드카드는 
 - `Bash(ls *)`는 `ls -la`와 일치하지만 `lsof`는 일치하지 않음
 - `Bash(ls*)`는 둘 다와 일치
 
-**레거시 구문:** `:*` 접미사 구문 (예: `Bash(npm run:*)`)은 `*`와 동일하지만 사용되지 않습니다.
+**레거시 구문:** `:*` 접미사 구문 (예: `Bash(npm run:*)`)은 `*`와 효과가 같지만 더 이상 권장하지 않습니다.
 
 ### 도메인별 패턴
 
@@ -471,7 +471,7 @@ flowchart TD
 고급 샌드박싱 동작을 구성합니다. 샌드박싱은 파일시스템과 네트워크에서 bash 명령을 격리합니다 — 권한 규칙이 논리적 방어선이라면, OS 샌드박스는 물리적 방어선입니다.
 
 {{< callout type="warning" >}}
-**중요:** 파일시스템 및 네트워크 제한은 Read, Edit, WebFetch 권한 규칙을 통해 구성되며, 샌드박스 설정을 통해서가 아닙니다.
+**중요:** 파일시스템과 네트워크 제한은 Read, Edit, WebFetch 권한 규칙으로 설정합니다. 샌드박스 설정으로는 다루지 않습니다.
 {{< /callout >}}
 
 ```json
@@ -501,16 +501,16 @@ flowchart TD
 | `enabled` | bash 샌드박싱 활성화 (macOS, Linux, WSL2). 기본값: false | `true` |
 | `autoAllowBashIfSandboxed` | 샌드박싱된 bash 명령 자동 승인. 기본값: true | `true` |
 | `excludedCommands` | 샌드박스 외부에서 실행해야 할 명령어 | `["docker", "git"]` |
-| `allowUnsandboxedCommands` | `dangerouslyDisableSandbox` 매개변수를 통해 명령이 샌드박스 외부에서 실행되도록 허용. 기본값: true | `false` |
-| `network.allowUnixSockets` | 샌드박스에서 액세스할 수 있는 Unix 소켓 경로 (SSH 에이전트 등) | `["~/.ssh/agent-socket"]` |
-| `network.allowLocalBinding` | localhost 포트에 바인딩 허용 (macOS만). 기본값: false | `true` |
-| `network.httpProxyPort` | 자체 프록시를 가져오려는 경우 HTTP 프록시 포트 | `8080` |
-| `network.socksProxyPort` | 자체 프록시를 가져오려는 경우 SOCKS5 프록시 포트 | `8081` |
-| `enableWeakerNestedSandbox` | 권한 없는 Docker 환경을 위한 약한 샌드박스 활성화 (Linux, WSL2만). **보안 감소**. 기본값: false | `true` |
+| `allowUnsandboxedCommands` | `dangerouslyDisableSandbox` 매개변수로 명령을 샌드박스 밖에서 실행하도록 허용. 기본값: true | `false` |
+| `network.allowUnixSockets` | 샌드박스에서 접근할 수 있는 Unix 소켓 경로 (SSH 에이전트 등) | `["~/.ssh/agent-socket"]` |
+| `network.allowLocalBinding` | localhost 포트 바인딩 허용 (macOS만). 기본값: false | `true` |
+| `network.httpProxyPort` | 직접 준비한 프록시를 쓸 때 지정하는 HTTP 프록시 포트 | `8080` |
+| `network.socksProxyPort` | 직접 준비한 프록시를 쓸 때 지정하는 SOCKS5 프록시 포트 | `8081` |
+| `enableWeakerNestedSandbox` | 비특권(unprivileged) Docker 환경용 약한 샌드박스 활성화 (Linux, WSL2만). **보안 수준이 낮아집니다**. 기본값: false | `true` |
 
 ## 귀속 설정 (Attribution Settings)
 
-Claude Code는 git 커밋과 풀 리퀘스트에 귀속을 추가합니다. 이들은 별도로 구성됩니다.
+Claude Code는 git 커밋과 풀 리퀘스트에 귀속 문구를 넣습니다. 두 가지는 각각 따로 설정합니다.
 
 ```json
 {
@@ -525,8 +525,8 @@ Claude Code는 git 커밋과 풀 리퀘스트에 귀속을 추가합니다. 이�
 
 | 키 | 설명 |
 |-----|------|
-| `commit` | git 커밋을 위한 귀속 (트레일러 포함). 빈 문자열은 커밋 귀속 숨김 |
-| `pr` | 풀 리퀘스트 설명을 위한 귀속. 빈 문자열은 PR 귀속 숨김 |
+| `commit` | git 커밋에 붙는 귀속 문구 (트레일러 포함). 빈 문자열이면 커밋 귀속을 숨김 |
+| `pr` | 풀 리퀘스트 설명에 붙는 귀속 문구. 빈 문자열이면 PR 귀속을 숨김 |
 
 ### 기본 커밋 귀속
 
@@ -640,7 +640,7 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)�
 
 ### extraKnownMarketplaces
 
-저장소에서 사용 가능하게 만들 추가 마켓플레이스를 정의합니다. 일반적으로 저장소 수준 설정에서 사용하여 팀 구성원이 필요한 플러그인 소스에 접근할 수 있도록 합니다.
+저장소에서 쓸 수 있게 열어 둘 추가 마켓플레이스를 정의합니다. 보통 저장소 수준 설정에 두어 팀원이 필요한 플러그인 소스에 접근할 수 있게 합니다.
 
 ## 파일 제안 설정 (File Suggestion Settings)
 
@@ -655,11 +655,11 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)�
 }
 ```
 
-내장된 파일 제안은 빠른 파일시스템 순회를 사용하지만, 큰 모노레포는 프로젝트별 인덱싱(예: 사전 빌드된 파일 인덱스나 사용자 정의 도구)의 이점을 볼 수 있습니다.
+기본 파일 제안은 파일시스템을 빠르게 훑는 방식입니다. 다만 규모가 큰 모노레포에서는 프로젝트에 맞춘 인덱싱(미리 만들어 둔 파일 인덱스, 자체 도구 등)이 더 유리합니다.
 
 ## 확장 사고 설정 (Extended Thinking Settings)
 
-확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 토큰이라 항상 켜두면 편하지만, 예산과 함께 조율하는 쪽이 토크노믹스에 맞습니다.
+확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 결국 토큰이라, 항상 켜 두면 편하지만 예산을 함께 보면서 조절하는 편이 낫습니다.
 
 ```json
 {
@@ -672,12 +672,12 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)�
 
 | 키 | 설명 | 예시 |
 |-----|------|------|
-| `alwaysThinkingEnabled` | 모든 세션에서 기본적으로 확장 사고 활성화 | `true` |
-| `maxThinkingTokens` | 사고 토큰 예산 재정의 (기본값: 31999, 0 = 비활성화) | `10000` |
+| `alwaysThinkingEnabled` | 모든 세션에서 확장 사고를 기본으로 켬 | `true` |
+| `maxThinkingTokens` | 사고 토큰 예산을 재정의 (기본값: 31999, 0이면 끔) | `10000` |
 
 ## 회사 공지사항 (Company Announcements)
 
-시작 시 사용자에게 표시할 공지사항입니다. 여러 공지사항을 제공하면 무작위로 순환됩니다.
+시작할 때 사용자에게 보여줄 공지사항입니다. 여러 개를 넣으면 무작위로 돌아가며 표시됩니다.
 
 ```json
 {
@@ -811,7 +811,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ### settings.local.json 권한 강화 (0o600) {#settings-local-json-permission}
 
-v3.0.0 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
+v3.0.0부터 `settings.local.json`은 만들거나 갱신할 때 **`0o600`**(소유자만 읽고 쓰기) 권한이 강제됩니다. 이전 `0o644`는 여러 사용자가 쓰는 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 같은 민감한 자격증명이 다른 로컬 사용자에게 노출될 수 있었습니다 (CWE-732 / CWE-552).
 
 **자체 점검**:
 
@@ -825,9 +825,9 @@ stat -f '%A' .claude/settings.local.json
 # 기대값: 600
 ```
 
-권한이 `600` 이 아니면 MoAI-ADK 가 다음 세션 시작 시 자동으로 정정합니다. 즉시 정정하려면 `chmod 0600 .claude/settings.local.json` 을 실행하세요.
+권한이 `600`이 아니면 MoAI-ADK가 다음 세션을 시작할 때 자동으로 바로잡습니다. 지금 바로 고치려면 `chmod 0600 .claude/settings.local.json`을 실행하세요.
 
-자세한 보안 모델, 위협 분석, 추가 점검 절차는 [보안 노트 — CWE-732](/ko/advanced/security-notes/#cwe-732) 를 참조하세요.
+보안 모델과 위협 분석, 추가 점검 절차는 [보안 노트 — CWE-732](/ko/advanced/security-notes/#cwe-732)를 참조하세요.
 
 ## MoAI 전용 설정
 
@@ -856,7 +856,7 @@ MoAI-ADK statusline에는 다음이 포함됩니다.
 
 - **그라디언트 색상**: 컨텍스트 사용률에 따른 동적 색상 그라디언트
 - **5H/7D 사용량 모니터링**: 5시간 및 7일 API 사용량 바 표시
-- **세그먼트 기반 레이아웃**: 활성화된 세그먼트 수에 따라 자동으로 라인 수가 결정되며, 별도의 디스플레이 프리셋(full/compact/minimal)은 퇴역했습니다 — `segments:` 토글이 유일한 구성 레버입니다
+- **세그먼트 기반 레이아웃**: 켜 둔 세그먼트 수에 따라 라인 수가 자동으로 정해집니다. 별도의 디스플레이 프리셋(full/compact/minimal)은 퇴역했고, 이제 `segments:` 토글만으로 구성합니다
 - **테마** (`internal/statusline/theme.go` 정의):
   - **catppuccin-mocha** (기본값): 다크 팔레트
   - **catppuccin-latte**: 밝은 환경을 위한 라이트 팔레트
@@ -1042,7 +1042,7 @@ moai hook session-start
 
 ### Harness 설정 (harness.yaml)
 
-품질 파이프라인 깊이 수준과 자동 감지 임계값을 정의합니다. 변경의 크기에 맞춰 검증 비용을 조절하는 적응형 품질의 설정 표면입니다.
+품질 파이프라인의 깊이 수준과 자동 감지 임계값을 정의합니다. 변경 규모에 맞춰 검증 비용을 조절하는 적응형 품질을 여기서 설정합니다.
 
 **3단계 깊이 수준:**
 
@@ -1099,7 +1099,7 @@ constitution:
 
 ### Evaluator Profiles (evaluator-profiles/)
 
-4종 평가자 프로필이 제공됩니다.
+평가자 프로필은 네 가지입니다.
 
 | 프로필 | 설명 | Coverage | Security |
 |--------|------|----------|----------|

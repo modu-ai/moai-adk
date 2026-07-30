@@ -12,9 +12,9 @@ draft: false
 
 ## Harness v4 Builder란?
 
-Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
+Harness v4 Builder는 `/moai:harness <자연어 요청>` 한 줄로 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
 
-범용 에이전트 카탈로그 (11개)가 모든 프로젝트에 공통이라면 Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
+범용 에이전트 카탈로그(11개)가 모든 프로젝트에 공통으로 깔리는 팀이라면, Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
 
 ### 이전 버전과의 차이
 
@@ -65,7 +65,7 @@ Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝�
 
 ## Manifest 기반 Runner
 
-Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist가, 어떤 실행 원시(primitive)·격리·effort·모델로 투입되는지를 manifest 한 파일에 선언합니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
+Harness v4는 **Manifest 기반 Runner**로 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist를 어떤 실행 원시(primitive)·격리·effort·모델로 투입할지를 manifest 한 파일에 선언합니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 그대로 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
 
 ### manifest.json 구조
 
@@ -106,16 +106,16 @@ Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist �
 ```
 
 - `primitive`: 실행 원시 (`sub-agent`, `adversarial-fan-out` 등)
-- `isolation` / `effort` / `model`: specialist별 격리 수준, 추론 강도, 모델 티어를 목적에 맞게 배정
+- `isolation` / `effort` / `model`: specialist마다 격리 수준, 추론 강도, 모델 티어를 목적에 맞게 배정
 - `sprint_contract`: Sprint Contract — 품질 차원과 must_pass 게이트
-- `schedule` (선택): 반복 실행이 필요한 하네스는 `mode: discovery-only` 스케줄 객체를 둘 수 있음
+- `schedule`(선택): 반복 실행이 필요한 하네스는 `mode: discovery-only` 스케줄 객체를 둘 수 있음
 
 ### Runner 동작
 
-1. **Specialist 위임**: manifest의 specialist 시퀀스를 patterns에 따라 진행
-2. **Fan-out Spawn**: 병렬 원시(adversarial-fan-out 등)는 동시 spawn
-3. **Isolation 적용**: specialist별 격리 설정 적용
-4. **Result Aggregation**: 각 specialist의 결과를 Sprint Contract로 검증·통합
+1. **Specialist 위임**: manifest의 specialist 순서를 patterns에 따라 진행
+2. **Fan-out Spawn**: 병렬 원시(adversarial-fan-out 등)는 한꺼번에 spawn
+3. **Isolation 적용**: specialist마다 지정된 격리 설정을 적용
+4. **Result Aggregation**: 각 specialist의 결과를 Sprint Contract로 검증하고 통합
 
 ## Harness Lifecycle Commands
 
@@ -140,7 +140,7 @@ moai harness doctor
 /moai:harness <자연어 요청>
 ```
 
-학습 서브시스템 관리 동사도 `moai harness`에 있습니다: `moai harness status`(관찰/티어/진화 요약), `moai harness apply`(대기 중 제안 적용), `moai harness rollback <date>`(적용된 진화 되돌리기), `moai harness disable`(학습 비활성화).
+학습 서브시스템을 다루는 동사도 `moai harness` 아래에 있습니다. `moai harness status`(관찰·티어·진화 요약), `moai harness apply`(대기 중인 제안 적용), `moai harness rollback <date>`(적용한 진화 되돌리기), `moai harness disable`(학습 끄기)입니다.
 
 ## 자연어 요청으로 하네스 생성
 
@@ -162,7 +162,7 @@ moai harness doctor
 
 - 에이전트 정의: `.claude/agents/harness/api-designer.md`, `db-specialist.md`, ...
 - Manifest: `.moai/harness/manifest.json`
-- 선택적 워크트리: `~/.moai/worktrees/<project>/` (사용자 opt-in 시)
+- 선택적 워크트리: `~/.moai/worktrees/<project>/` (사용자가 opt-in 했을 때)
 
 ## Worktree 격리 (선택적)
 
@@ -170,15 +170,15 @@ Harness v4는 조건부 worktree 격리를 지원합니다.
 
 ### L1 격리 (Optional)
 
-Claude Code 런타임이 에이전트당 L1 워크트리를 생성합니다.
+Claude Code 런타임이 에이전트마다 L1 워크트리를 만듭니다.
 
 - **사용 시점**: 병렬 팀원이 같은 파일을 편집할 때
-- **격리 범위**: 각 팀원의 파일 쓰기가 독립적인 워크트리에서 발생
-- **비용**: 추가 메모리 + 병렬 이점 상쇄
+- **격리 범위**: 팀원별 파일 쓰기가 각자의 워크트리 안에서만 일어남
+- **비용**: 메모리를 더 쓰고 병렬 이점을 일부 깎아먹음
 
 ### 비활성화
 
-manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 생략합니다.
+manifest에서 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 건너뜁니다.
 
 ## 관련 문서
 
@@ -187,5 +187,5 @@ manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 생�
 - [동적 워크플로우](/ko/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
 
 {{< callout type="info" >}}
-**팁**: Harness v4 Builder로 프로젝트마다 **커스텀 팀을 한 번만 생성**하면, 이후 모든 작업에서 자동으로 해당 팀이 위임됩니다. 처음 생성 후엔 `/harness:team-name`으로 언제든 재활용할 수 있습니다.
+**팁**: Harness v4 Builder로 프로젝트마다 **커스텀 팀을 한 번만 만들어 두면**, 이후 작업은 자동으로 그 팀에 위임됩니다. 한 번 만든 뒤에는 `/harness:team-name`으로 언제든 다시 불러 쓸 수 있습니다.
 {{< /callout >}}

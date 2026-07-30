@@ -9,7 +9,7 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
-MoAI-ADK를 처음 만나는 분을 위한 온보딩 경로입니다. **소개 → 설치 → 빠른 시작** 순서로 읽으면 30분 안에 첫 MoAI-ADK 프로젝트를 실행할 수 있습니다. 설치는 단일 바이너리 하나를 받는 것으로 끝나고, 첫 SPEC 실행까지 별도 런타임이나 의존성은 필요 없습니다.
+MoAI-ADK를 처음 만나는 분을 위한 온보딩 경로입니다. **소개 → 설치 → 빠른 시작** 순서로 읽으면 30분 안에 첫 MoAI-ADK 프로젝트를 실행할 수 있습니다. 설치는 단일 바이너리 하나만 내려받으면 끝나고, 첫 SPEC을 실행할 때까지 별도 런타임이나 의존성은 필요 없습니다.
 
 
 {{< callout type="info" >}}
@@ -32,15 +32,15 @@ flowchart TD
 | 순서 | 문서 | 핵심 내용 |
 |------|------|----------|
 | 1 | [소개](/ko/getting-started/introduction) | MoAI-ADK란 무엇이고 어떤 문제를 해결하는가 |
-| 2 | [설치](/ko/getting-started/installation) | macOS/Linux에서의 설치 및 전제 조건 |
-| 3 | [Windows 사용 가이드](/ko/getting-started/windows-guide) | Windows 환경의 특수 고려사항 |
+| 2 | [설치](/ko/getting-started/installation) | macOS·Linux 설치 방법과 전제 조건 |
+| 3 | [Windows 사용 가이드](/ko/getting-started/windows-guide) | Windows에서 따로 챙겨야 할 점 |
 | 4 | [초기 설정](/ko/getting-started/init-wizard) | `moai init` 인터랙티브 마법사로 프로젝트 구성 |
 | 5 | [빠른 시작](/ko/getting-started/quickstart) | 첫 SPEC을 만들고 `/moai plan → run → sync` 실행 |
-| 6 | [업데이트](/ko/cli-reference/update) | 최신 버전으로 템플릿 유지 |
+| 6 | [업데이트](/ko/cli-reference/update) | 템플릿을 최신 버전으로 유지하기 |
 | 7 | [프로필 관리](/ko/cli-reference/profile) | 사용자 프로필·환경 변수·설정 동기화 |
 | 8 | [CLI 레퍼런스](/ko/cli-reference) | `moai` 바이너리 전체 서브커맨드 색인 |
 | 9 | [자주 묻는 질문](/ko/getting-started/faq) | 설치·실행 시 만나는 흔한 이슈와 해결법 |
 
 {{< callout type="info" >}}
-**다음 단계**: 설치를 마쳤다면 [핵심 개념](/ko/core-concepts/)에서 v3.0의 세 가지 핵심(토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스)과 SPEC·DDD·TRUST 5 등 MoAI-ADK의 설계 철학을 학습할 수 있습니다.
+**다음 단계**: 설치를 마쳤다면 [핵심 개념](/ko/core-concepts/)에서 v3.0의 세 가지 핵심(토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스)과 SPEC·DDD·TRUST 5 등 MoAI-ADK의 설계 철학을 익힐 수 있습니다.
 {{< /callout >}}

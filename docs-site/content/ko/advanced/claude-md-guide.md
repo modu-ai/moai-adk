@@ -100,7 +100,7 @@ MoAI는 Claude Code의 전략적 오케스트레이터입니다.
 
 ### 4. 에이전트 카탈로그
 
-MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic built-in)로 구성됩니다. 아키텍처 단순화로 manager-strategy, manager-quality, manager-brain, manager-project 등 12개 archived 에이전트는 특정 도메인에 대한 per-spawn `Agent(general-purpose)` delegation으로 대체되었습니다.
+MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic built-in)로 구성됩니다. 아키텍처를 단순화하면서 manager-strategy, manager-quality, manager-brain, manager-project 등 12개 에이전트는 archived 되었고, 그 자리는 도메인별 per-spawn `Agent(general-purpose)` 위임이 대신합니다.
 
 | 분류 | 에이전트 | 역할 |
 |------|----------|------|
@@ -226,7 +226,7 @@ language:
 
 ### 조건부 로딩 (paths frontmatter)
 
-규칙 파일은 `paths` 프론트매터를 통해 **특정 파일 작업 시에만 로드**됩니다.
+규칙 파일은 `paths` 프론트매터를 걸어 두면 **해당 파일을 다룰 때만 로드**됩니다.
 
 ```yaml
 ---

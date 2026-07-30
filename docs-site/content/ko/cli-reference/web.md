@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-`moai web` 는 브라우저 기반 설정 편집기인 **MoAI Web Console** 를 실행합니다. 터미널 프로필 마법사(`moai profile`)와 같은 검증·저장 로직을 그대로 쓰며, 프로필 선호도와 프로젝트의 user / language / statusline 섹션을 웹 UI에서 편집합니다.
+`moai web` 은 브라우저 기반 설정 편집기인 **MoAI Web Console** 을 실행합니다. 터미널 프로필 마법사(`moai profile`)와 같은 검증·저장 로직을 그대로 쓰며, 프로필 선호도와 프로젝트의 user / language / statusline 섹션을 웹 UI에서 편집합니다.
 
 ## 개요
 
@@ -38,7 +38,7 @@ moai web --no-reuse      # 포트가 사용 중이면 회수 대신 실패
 - **프로필 선호도** — 모델·언어·표시 설정 등 프로필별 설정
 - **프로젝트 설정** — `.moai/config/sections/` 의 user / language / statusline 섹션
 
-저장 시 터미널 마법사와 동일한 유효성 검사를 거치므로, 두 경로 중 어느 쪽을 써도 결과는 같습니다.
+저장할 때 터미널 마법사와 똑같은 유효성 검사를 거치므로, 둘 중 어느 쪽으로 고쳐도 결과는 같습니다.
 
 ---
 

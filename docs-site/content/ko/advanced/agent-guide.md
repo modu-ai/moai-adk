@@ -15,11 +15,11 @@ MoAI-ADK v3.0의 11개 핵심 에이전트 카탈로그를 상세히 안내합�
 
 에이전트는 특정 분야에 전문화된 **AI 작업 수행자**입니다.
 
-Claude Code의 **Sub-agent (하위 에이전트)** 시스템을 기반으로 작동하며 각 에이전트는 독립적인 컨텍스트 창, 사용자 정의 시스템 프롬프트, 특정 도구 액세스, 독립적인 권한을 갖춥니다.
+Claude Code의 **Sub-agent(하위 에이전트)** 시스템 위에서 동작합니다. 에이전트마다 독립적인 컨텍스트 창, 사용자 정의 시스템 프롬프트, 선별된 도구 접근 권한, 별도의 권한 설정을 갖습니다.
 
 회사 조직에 비유하면 MoAI는 CEO, Manager 에이전트는 부서장, Evaluator 에이전트는 품질 감시관, Builder 에이전트는 신규 팀 생성 담당자, Advisor 에이전트는 외부 자문역입니다.
 
-에이전트 수는 v3 기간 동안 22 → 17 → 8 → 10 → **11**로 정련되었습니다. 에이전트가 많다고 좋은 게 아닙니다 — 위임 한 번마다 컨텍스트 비용이 들기 때문에 카탈로그를 줄이는 것 자체가 토크노믹스의 일부입니다.
+에이전트 수는 v3 기간 동안 22 → 17 → 8 → 10 → **11**로 다듬어졌습니다. 에이전트가 많다고 좋은 게 아닙니다 — 위임 한 번마다 컨텍스트 비용이 들기 때문에 카탈로그를 줄이는 일 자체가 토크노믹스의 일부입니다.
 
 ## MoAI 오케스트레이터
 
@@ -84,7 +84,7 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 {{< callout type="info" >}}
 **4단계 토큰 비용 티어** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit`은 부모 세션 모델을 상속하며, effort가 추론 토큰 예산을 결정합니다.
 
-위 값은 **배포되는 frontmatter**이며, 갓 배포한 상태가 기본 프로필과 일치하도록 [프로필 매트릭스](/ko/advanced/profile-matrix/)의 `medium` 열에 고정돼 있습니다. 프로필을 전환하면 이 값들이 다시 쓰입니다 — `high`에서는 `manager-develop`과 `super-advisor`가 `max`로 올라가고(`max`를 쓰는 유일한 두 셀), `low`에서는 에이전틱 행이 `low`로 내려가며 `manager-docs`와 `e2e-tester`는 Sonnet으로 폴백합니다. 활성 프로필에서 리졸브된 값은 `moai model profile`로 확인하세요.
+위 값은 **배포되는 frontmatter**이며, 갓 배포한 상태가 기본 프로필과 일치하도록 [프로필 매트릭스](/ko/advanced/profile-matrix/)의 `medium` 열에 고정돼 있습니다. 프로필을 바꾸면 이 값들도 함께 바뀝니다 — `high`에서는 `manager-develop`과 `super-advisor`가 `max`로 올라가고(`max`를 쓰는 유일한 두 셀), `low`에서는 에이전틱 행이 `low`로 내려가며 `manager-docs`와 `e2e-tester`는 Sonnet으로 폴백합니다. 활성 프로필에서 리졸브된 값은 `moai model profile`로 확인하세요.
 {{< /callout >}}
 
 ## Manager-Develop 도메인 컨텍스트 주입
@@ -121,7 +121,7 @@ flowchart TD
 
 ## 에이전트 정의 파일
 
-10개 MoAI 사용자 정의 에이전트는 `.claude/agents/moai/` 디렉토리에 마크다운 파일로 정의됩니다.
+10개 MoAI 사용자 정의 에이전트는 `.claude/agents/moai/` 디렉터리에 마크다운 파일로 정의합니다.
 
 ### 파일 구조
 
@@ -169,7 +169,7 @@ model: inherit
 
 ### Plan-Run-Sync 순차 워크플로우
 
-가장 기본이 되는 협업 흐름입니다. 각 단계 사이에 독립 감사가 끼어듭니다.
+가장 기본이 되는 협업 흐름입니다. 단계와 단계 사이에 독립 감사가 끼어듭니다.
 
 ```bash
 # 1. manager-spec이 SPEC 생성
@@ -208,7 +208,7 @@ Claude Code의 공식 Sub-agent 시스템은 MoAI-ADK 에이전트 구조의 기
 | 서브 에이전트 생성 제한 | 하위 에이전트의 중첩 생성은 `Agent` 도구 허용 여부로 통제 — MoAI 에이전트는 중첩하지 않음 |
 | AskUserQuestion 제한 | 하위 에이전트는 사용자와 직접 상호작용할 수 없음 (blocker 보고서로 반환) |
 | 스킬 비상속 | 부모 대화의 스킬을 상속하지 않음 |
-| 독립 컨텍스트 | 각 에이전트는 모델에 따른 독립적인 컨텍스트 창을 가짐 (모델 의존) |
+| 독립 컨텍스트 | 에이전트마다 별도의 컨텍스트 창에서 실행 (크기는 모델에 따라 다름) |
 
 ## Agent Teams 정적 계층 — v3.0에서 은퇴
 
@@ -216,7 +216,7 @@ Claude Code의 공식 Sub-agent 시스템은 MoAI-ADK 에이전트 구조의 기
 
 - `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리고 sub-agent 모드로 자동 폴백합니다.
 - 병렬성이 필요한 조사·리뷰 작업은 병렬 sub-agent 팬아웃으로, 순차 코딩 작업은 sub-agent 체인으로 처리합니다.
-- 네이티브 Claude Code teammate 런타임 (`moai cg`의 GLM pane, `moai worktree --team`)은 이와 별개로 계속 동작합니다 — 토크노믹스 관점에서 CG 모드의 Claude 리더 + GLM 워커 분업이 이 역할을 대신합니다.
+- 네이티브 Claude Code teammate 런타임(`moai cg`의 GLM pane, `moai worktree --team`)은 이와 별개로 계속 동작합니다 — 토크노믹스 관점에서는 CG 모드의 Claude 리더 + GLM 워커 분업이 이 역할을 대신합니다.
 
 ## 관련 문서
 

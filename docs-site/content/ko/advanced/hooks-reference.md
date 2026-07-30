@@ -4,7 +4,7 @@ weight: 60
 draft: false
 ---
 
-Claude Code의 훅 시스템은 **30개 이벤트 타입**, **5가지 훅 타입**, **이벤트별 매처**, **스마트 동작**을 지원합니다. 훅은 에이전틱 하네스에서 유일하게 "반드시 실행됨"이 보장되는 결정적(deterministic) 제어 지점입니다. 프롬프트는 무시될 수 있지만 훅은 무시되지 않습니다.
+Claude Code의 훅 시스템은 **30개 이벤트 타입**, **5가지 훅 타입**, **이벤트별 매처**, **스마트 동작**을 지원합니다. 훅은 에이전틱 하네스에서 실행이 확실하게 보장되는 유일한 결정적(deterministic) 제어 지점입니다. 프롬프트는 무시될 수 있어도 훅은 무시되지 않습니다.
 
 > 훅의 기본 개념과 설정 방법은 [Hooks 가이드](/ko/advanced/hooks-guide)를 참조하세요. 이 페이지는 이벤트 전체 레퍼런스입니다.
 
@@ -99,27 +99,27 @@ Claude Code의 훅 시스템은 **30개 이벤트 타입**, **5가지 훅 타입
 
 ## 스마트 동작 (Smart Behaviors)
 
-MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행합니다.
+MoAI-ADK 훅은 단순한 이벤트 처리에 그치지 않고 상황에 맞게 판단해 움직입니다.
 
 ### PermissionDenied 자동 재시도
 
-읽기 전용 도구(Read, Grep, Glob)의 권한이 거부되면 훅이 자동으로 재시도를 트리거합니다. 이는 백그라운드 에이전트에서 권한 프롬프트가 표시되지 않는 문제를 완화합니다.
+읽기 전용 도구(Read, Grep, Glob)의 권한이 거부되면 훅이 알아서 재시도를 겁니다. 백그라운드 에이전트에서 권한 프롬프트가 뜨지 않는 문제를 덜어주는 장치입니다.
 
 ### StopFailure 에러 타입 응답
 
-에이전트 정지 실패 시 에러 타입에 따라 다르게 응답합니다. 장시간 실행되는 세션의 안정성을 보장합니다.
+에이전트 정지가 실패하면 에러 타입에 따라 다르게 대응합니다. 덕분에 오래 이어지는 세션도 안정적으로 유지됩니다.
 
 ### PostCompact 세션 메모 복원
 
-컨텍스트 압축 후 중요한 세션 메모(진행 상태, SPEC 참조)를 자동으로 복원합니다. 컨텍스트 압축은 토큰을 아끼는 대신 정보를 잃을 수 있는 작업인데, 이 훅이 핵심 정보는 지켜냅니다.
+컨텍스트 압축이 끝나면 중요한 세션 메모(진행 상태, SPEC 참조)를 자동으로 되살립니다. 압축은 토큰을 아끼는 대신 정보를 잃을 수 있는 작업인데, 이 훅이 핵심 정보만큼은 지켜냅니다.
 
 ### SubagentStart 컨텍스트 주입
 
-서브에이전트 시작 시 필요한 컨텍스트(프로젝트 규칙, MX 태그, 진행 상태)를 자동 주입합니다.
+서브에이전트가 시작할 때 필요한 컨텍스트(프로젝트 규칙, MX 태그, 진행 상태)를 자동으로 넣어줍니다.
 
 ## 매처 (Matchers)
 
-매처를 사용하면 특정 조건에서만 훅이 실행되도록 필터링할 수 있습니다. 모든 이벤트에 훅을 걸면 그만큼 실행 비용이 늘어나므로 매처로 범위를 좁히는 것이 기본입니다.
+매처를 쓰면 특정 조건에서만 훅이 실행되도록 걸러낼 수 있습니다. 모든 이벤트에 훅을 걸면 그만큼 실행 비용이 늘어나므로, 매처로 범위를 좁히는 것이 기본입니다.
 
 ```json
 {
@@ -146,7 +146,7 @@ MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행�
 
 ## CLAUDE_ENV_FILE
 
-`CwdChanged`와 `FileChanged` 훅으로 환경 변수를 지속적으로 관리할 수 있습니다.
+`CwdChanged`와 `FileChanged` 훅으로 환경 변수를 계속 관리할 수 있습니다.
 
 ```bash
 # .claude/hooks/moai/handle-cwd-changed.sh
@@ -154,7 +154,7 @@ MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행�
 echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 ```
 
-이렇게 하면 세션 간 환경 변수를 유지하고 디렉터리 변경 시 자동으로 환경을 재설정할 수 있습니다.
+이렇게 해두면 세션이 바뀌어도 환경 변수가 유지되고, 디렉터리를 옮길 때마다 환경이 자동으로 다시 잡힙니다.
 
 ## MoAI-ADK가 사용하는 주요 훅
 
@@ -164,8 +164,8 @@ echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 | `PostToolUse` | `handle-post-tool.sh` | Task 메트릭 로깅 |
 | `TeammateIdle` | `handle-teammate-idle.sh` | LSP 품질 게이트 검증 |
 | `TaskCompleted` | `handle-task-completed.sh` | SPEC 문서 존재 확인 |
-| `WorktreeCreate` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 동작 사용 (`isolation: worktree` agent용). 등록 시 active creator 컨트랙트 (디렉터리 생성 + path stdout echo) 의무. |
-| `WorktreeRemove` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 정리 동작 사용. 등록 시 observer-only 컨트랙트 (출력 불필요). |
+| `WorktreeCreate` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 동작 사용 (`isolation: worktree` agent용). 등록한다면 active creator 컨트랙트(디렉터리 생성 + path stdout echo)를 지켜야 함. |
+| `WorktreeRemove` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 정리 동작 사용. 등록한다면 observer-only 컨트랙트(출력 불필요). |
 | `UserPromptSubmit` | `handle-user-prompt-submit.sh` | 프롬프트 전처리 (사용자 입력 전달) |
 | `Stop` | `handle-stop-goal.sh` | goal 엔진 — `/goal`/`/moai goal` 자율 지속 조건 평가 |
 | `Stop` | `sync-phase-quality-gate.sh` | sync-phase 품질 게이트 (lint + test + coverage delta) |

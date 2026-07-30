@@ -5,7 +5,7 @@ draft: false
 description: "Harness v4 Builder의 4-phase 워크플로우(ANALYZE/PLAN/GENERATE/ACTIVATE), Manifest 스키마, Runner 프리미티브 동작 규칙."
 ---
 
-[빌더 에이전트 가이드](/ko/advanced/builder-agents)가 Harness v4 Builder의 개요였다면, 이 문서는 설계도입니다 — 4-phase 워크플로우의 각 단계 산출물, Manifest 스키마 전체, Runner 프리미티브의 동작 규칙을 다룹니다.
+[빌더 에이전트 가이드](/ko/advanced/builder-agents)가 Harness v4 Builder의 개요였다면, 이 문서는 설계도에 해당합니다. 4-phase 워크플로우의 단계별 산출물, Manifest 스키마 전체, Runner 프리미티브의 동작 규칙을 다룹니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: Harness v4 Builder는 Socratic 인터뷰로 필요한 전문성을 파악하고, manifest 기반 Runner로 동적 팀을 운영합니다. 어떤 팀원이 어떤 모델로 일할지는 코드가 아니라 manifest 선언으로 결정됩니다.
@@ -58,7 +58,7 @@ ANALYZE 결과를 바탕으로 팀 구성을 설계합니다. 팀 규모부터 �
 | **모델·effort 배정** | specialist별 추론 복잡도 (목적 기반) | content-author: opus/high, translator: sonnet/medium |
 | **companion 스킬** | specialist 전문성 필요 스킬 | hns-oss-docs-i18n-rules |
 
-specialist별 모델·effort 선택이 토크노믹스의 핵심입니다 — 깊은 추론이 필요한 저작은 상위 모델·high effort에, 반복적인 파생 작업은 저렴한 모델·medium effort에 배정합니다. 사용자 승인 게이트는 PLAN→GENERATE 경계에서 `AskUserQuestion`으로 거칩니다.
+specialist별 모델·effort 선택이 토크노믹스의 핵심입니다. 깊은 추론이 필요한 저작에는 상위 모델과 high effort를, 반복적인 파생 작업에는 저렴한 모델과 medium effort를 배정합니다. 사용자 승인은 PLAN→GENERATE 경계에서 `AskUserQuestion`으로 받습니다.
 
 #### 계획 검증
 

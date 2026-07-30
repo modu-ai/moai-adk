@@ -91,7 +91,7 @@ Claude가 `packages/api/`에서 시작하면 루트와 `packages/api/`의 CLAUDE
 }
 ```
 
-## 코드 인텔리전스 (LSP) 플러그인
+## 코드 인텔리전스(LSP) 플러그인
 
 심볼 정의를 찾겠다고 파일을 한 줄씩 읽는 것은 토큰 관점에서 가장 비싼 탐색입니다. 언어 서버 플러그인을 설치하면 정의로 이동, 참조 찾기, 타입 오류 직접 조회가 가능해져 파일 읽기 자체를 크게 줄일 수 있습니다.
 
@@ -100,7 +100,7 @@ Claude가 `packages/api/`에서 시작하면 루트와 `packages/api/`의 CLAUDE
 ```
 
 - TypeScript, Python, Go, Rust 등 주요 언어를 지원합니다
-- 해당 언어의 LSP 바이너리가 시스템에 설치되어 있어야 합니다 ([플러그인 문서](/ko/claude-code/extensibility/plugins) 참고)
+- 해당 언어의 LSP 바이너리가 시스템에 깔려 있어야 합니다([플러그인 문서](/ko/claude-code/extensibility/plugins) 참고)
 
 ## 워크트리로 필요한 디렉터리만 체크아웃
 

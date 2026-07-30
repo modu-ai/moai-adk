@@ -4,9 +4,9 @@ weight: 61
 draft: false
 ---
 
-@MX TAG는 코드 레벨 주석으로, AI 에이전트가 개발 세션 사이에 **컨텍스트·불변량·위험 구역**을 전달하는 표준 수단입니다. 프롬프트는 무시될 수 있지만 코드에 새겨진 주석은 코드와 함께 살아남아, 다음 에이전트가 코드를 처음 읽는 순간 의도와 제약을 즉시 파악할 수 있습니다.
+@MX TAG는 코드에 직접 다는 주석으로, AI 에이전트가 개발 세션과 세션 사이에 **컨텍스트·불변량·위험 구역**을 넘겨주는 표준 수단입니다. 프롬프트는 무시될 수 있어도 코드에 새겨둔 주석은 코드와 함께 살아남습니다. 덕분에 다음 에이전트는 코드를 처음 읽는 순간 의도와 제약을 곧바로 파악합니다.
 
-> @MX TAG의 운영(스캔·추가·질의)은 `/moai mx` 명령어로 수행합니다. 이 페이지는 태그 시스템 자체의 프로토콜과 라이프사이클을 다룹니다.
+> @MX TAG를 실제로 다루는 일(스캔·추가·질의)은 `/moai mx` 명령어가 맡습니다. 이 페이지는 태그 시스템 자체의 프로토콜과 라이프사이클을 다룹니다.
 
 ## 태그 문법
 
@@ -15,7 +15,7 @@ draft: false
 // @MX:SUB_KEY: [하위 값]
 ```
 
-태그는 인라인 소스 주석이지 별도의 JSON 원장이 아닙니다. `grep` 또는 `moai mx query`로 수집됩니다.
+태그는 소스에 인라인으로 붙는 주석이지 별도의 JSON 원장이 아닙니다. `grep`이나 `moai mx query`로 모아 봅니다.
 
 ## 태그 타입
 
@@ -48,7 +48,7 @@ draft: false
 
 ## DEBT — 작동하는 단순화의 명시적 한계
 
-`@MX:DEBT`는 미완성 작업 표시가 아닙니다. 코드는 **이미 완성되어 정확히 동작**하지만, 명시된 한계 내에서의 의도적 단순화임을 기록합니다. 두 하위 라인이 따릅니다.
+`@MX:DEBT`는 미완성 작업 표시가 아닙니다. 코드는 **이미 완성돼 정확히 동작**하며, 다만 명시한 한계 안에서 일부러 단순하게 짰다는 사실을 기록합니다. 하위 라인 두 개가 따라붙습니다.
 
 ```go
 // @MX:DEBT: in-memory map cache, no eviction
@@ -56,17 +56,17 @@ draft: false
 // @MX:UPGRADE: switch to LRU when entry count exceeds 10k
 ```
 
-`@MX:UPGRADE`이 없는 DEBT는 종료 조건이 없어 **조용히 부패(rot)** 합니다. `moai mx query --kind DEBT --json`은 이를 `"rotRisk": "no-trigger"`로 표시합니다. 부패 신호는 `@MX:UPGRADE` 부재이며, `@MX:CEILING` 부재는 품질 메모일 뿐 부패의 기준이 아닙니다.
+`@MX:UPGRADE`가 없는 DEBT는 끝날 조건이 없어 **조용히 부패(rot)** 합니다. `moai mx query --kind DEBT --json`은 이런 항목을 `"rotRisk": "no-trigger"`로 표시합니다. 부패의 신호는 `@MX:UPGRADE`가 없다는 점이며, `@MX:CEILING`이 없는 것은 품질 메모일 뿐 부패 판정 기준이 아닙니다.
 
-> `@MX:TODO`는 GREEN 단계에서 해결되는 미완성 작업(코드가 아직 완성되지 않음)을, `@MX:DEBT`는 완성되어 정확히 동작하지만 명시적 한계를 가진 단순화(코드는 완성됨)를 표시합니다. DEBT는 여러 GREEN 단계에 걸쳐 정상적으로 유지될 수 있으며 TODO의 "3회 미해결 시 WARN 승격" 규칙이 적용되지 않습니다.
+> `@MX:TODO`는 GREEN 단계에서 마무리할 미완성 작업(코드가 아직 완성되지 않음)을, `@MX:DEBT`는 완성돼 정확히 동작하지만 한계를 명시해 둔 단순화(코드는 완성됨)를 가리킵니다. DEBT는 여러 GREEN 단계를 넘어 그대로 남아 있어도 정상이며, TODO의 "3회 미해결 시 WARN 승격" 규칙도 적용되지 않습니다.
 
 ## 업데이트·제거 시점
 
-- **ANCHOR** — fan_in 변화 또는 SPEC 업데이트 시 갱신. 자동 삭제 금지, 리포트로 NOTE 강등.
-- **NOTE** — 함수 시그니처 변경 시 재검토.
-- **WARN** — 위험 구조 개선 시 제거.
-- **TODO** — 해결 시(테스트 통과 또는 구현 완료) 제거. 3회 반복 미해결 시 WARN으로 승격.
-- **DEBT** — 한계 또는 트리거 변화 시 갱신. `@MX:UPGRADE` 트리거 발화로 단순화가 교체될 때 제거하며, 다른 작업 완료와 무관합니다. 자동 승격 없음.
+- **ANCHOR** — fan_in이 바뀌거나 SPEC이 갱신되면 함께 갱신. 자동 삭제는 금지하고, 리포트를 거쳐 NOTE로 강등.
+- **NOTE** — 함수 시그니처가 바뀌면 다시 검토.
+- **WARN** — 위험한 구조를 개선했으면 제거.
+- **TODO** — 해결되면(테스트 통과 또는 구현 완료) 제거. 세 번 반복해도 남아 있으면 WARN으로 승격.
+- **DEBT** — 한계나 트리거가 바뀌면 갱신. `@MX:UPGRADE` 트리거가 발화해 단순화를 교체할 때 제거하며, 다른 작업이 끝났는지와는 무관합니다. 자동 승격은 없습니다.
 
 ## 라이프사이클 요약
 
@@ -89,13 +89,13 @@ DEBT     의도적 단순화 시 생성 → UPGRADE 트리거 발화 시 해결(
 ## 설정 (`.moai/config/sections/mx.yaml`)
 
 - **thresholds** — `fan_in_anchor`, `complexity_warn`, `branch_warn`
-- **limits** — `anchor_per_file` (기본 3), `warn_per_file` (기본 5). 초과 시 ANCHOR는 최저 fan_in부터 강등, WARN은 P1–P5 우선만 유지.
-- **exclude** — `**/*_generated.go`, `**/vendor/**`, `**/mock_*.go` 등 태깅 제외 패턴
-- **require_reason_for** — REASON이 필수인 태그 타입
+- **limits** — `anchor_per_file`(기본 3), `warn_per_file`(기본 5). 한도를 넘으면 ANCHOR는 fan_in이 낮은 것부터 강등하고, WARN은 P1–P5 우선순위만 남깁니다.
+- **exclude** — `**/*_generated.go`, `**/vendor/**`, `**/mock_*.go` 등 태깅에서 빼는 패턴
+- **require_reason_for** — REASON을 반드시 달아야 하는 태그 타입
 
 ## 태그 언어
 
-태그 설명과 `@MX:REASON`은 `.moai/config/sections/language.yaml`의 `code_comments` 설정을 따릅니다 (기본 `en`). 한국어 프로젝트라면 `code_comments: ko`로 설정하면 태그가 한국어로 작성됩니다.
+태그 설명과 `@MX:REASON`은 `.moai/config/sections/language.yaml`의 `code_comments` 설정을 따릅니다(기본 `en`). 한국어 프로젝트라면 `code_comments: ko`로 설정해 태그를 한국어로 작성할 수 있습니다.
 
 ## 다음 단계
 

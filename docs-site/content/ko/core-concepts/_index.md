@@ -10,11 +10,11 @@ draft: false
 
 ![핵심 개념: 하네스 구조](/images/sections/core-concepts-ko.png)
 
-MoAI-ADK v3.0을 이해하는 데 필요한 핵심 개념을 소개합니다. v3.0의 가치는 세 가지 핵심으로 요약됩니다 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), **에이전틱 하네스** (Agentic Harness). 이 섹션의 문서들은 그 세 가지 핵심이 실제 개발 흐름에서 어떻게 작동하는지 하나씩 풀어냅니다.
+MoAI-ADK v3.0을 이해하는 데 필요한 핵심 개념을 소개합니다. v3.0의 가치는 세 가지 핵심으로 요약됩니다 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), **에이전틱 하네스** (Agentic Harness). 이 섹션에서는 그 세 가지가 실제 개발 흐름에서 어떻게 맞물려 돌아가는지 하나씩 풀어봅니다.
 
 
 {{< callout type="info" >}}
-처음이신가요? 위에서 아래로 순서대로 읽으면 MoAI-ADK의 전체 그림이 자연스럽게 그려집니다. 각 문서는 독립적으로 읽어도 무방합니다.
+처음이신가요? 위에서 아래로 순서대로 읽으면 MoAI-ADK의 전체 그림이 자연스럽게 잡힙니다. 필요한 문서만 골라 읽어도 괜찮습니다.
 {{< /callout >}}
 
 ## 세 가지 핵심
@@ -45,7 +45,7 @@ flowchart TD
 
 | 순서 | 문서 | 핵심 질문 |
 |------|------|----------|
-| 1 | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 왜 세 축인가? |
+| 1 | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 왜 이 세 가지인가? |
 | 2 | [하네스 엔지니어링](/ko/core-concepts/harness-engineering) | 코드를 직접 쓰는 대신 환경을 설계한다는 것은 무슨 뜻인가? |
 | 3 | [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) | 요구사항을 어떻게 명확하게 정의하고 관리하는가? |
 | 4 | [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) | 기존 코드를 망가뜨리지 않고 어떻게 개선하는가? |
@@ -53,5 +53,5 @@ flowchart TD
 | 6 | [Constitution 시스템](/ko/core-concepts/constitution) | 하네스가 스스로 진화할 때 무엇이 그 진화를 통제하는가? |
 
 {{< callout type="info" >}}
-흐름으로 요약하면 이렇습니다. **SPEC** 으로 무엇을 만들지 정하고, **DDD/TDD** 로 안전하게 만들고, **TRUST 5** 로 품질을 검증합니다. 이 전체 루프를 감싸는 것이 **하네스**이고, 루프가 돌수록 하네스가 학습해 지침이 진화합니다 — 그 진화의 안전장치가 **Constitution**입니다.
+흐름으로 요약하면 이렇습니다. **SPEC** 으로 무엇을 만들지 정하고, **DDD/TDD** 로 안전하게 만들고, **TRUST 5** 로 품질을 확인합니다. 이 루프 전체를 감싸는 것이 **하네스**이고, 루프가 돌수록 하네스가 학습해 지침이 진화합니다 — 그 진화를 붙잡아 두는 안전장치가 **Constitution**입니다.
 {{< /callout >}}

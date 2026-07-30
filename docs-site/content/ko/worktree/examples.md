@@ -4,9 +4,9 @@ weight: 30
 draft: false
 ---
 
-실제 프로젝트에서 Git Worktree를 어떻게 굴리는지, 단일 SPEC 개발부터 병렬
-개발·팀 협업·문제 해결까지 구체적인 시나리오로 살펴봅니다. 각 시나리오에는
-"어느 단계에 어떤 모델을 쓰는가"라는 비용 판단이 함께 들어 있습니다.
+실제 프로젝트에서 Git Worktree를 어떻게 쓰는지, 단일 SPEC 개발부터 병렬
+개발·팀 협업·문제 해결까지 구체적인 시나리오로 살펴봅니다. 시나리오마다 어느
+단계에 어떤 모델을 쓸지에 대한 비용 판단도 함께 담았습니다.
 
 ## 목차
 
@@ -52,7 +52,7 @@ Worktree 생성:
 
 #### 2단계: Worktree 진입 및 구현 (Terminal 2)
 
-계획이 끝났으니 구현은 저비용 모델로 전환합니다:
+계획이 끝났으니 구현 단계에서는 값싼 모델로 갈아탑니다:
 
 ```bash
 # 새 터미널에서 Worktree로 이동 (moai worktree go는 경로를 출력)
@@ -106,8 +106,8 @@ Phase 3: IMPROVE
 
 #### 4단계: base 병합과 정리 (Terminal 1)
 
-`moai worktree done`은 병합·푸시를 하지 않습니다. base 브랜치로의 병합은
-`git merge`나 PR로 먼저 처리한 뒤, Worktree만 정리합니다.
+`moai worktree done`은 병합도 푸시도 하지 않습니다. base 브랜치에 병합하는 일은
+`git merge`나 PR로 먼저 끝낸 뒤, Worktree만 정리하면 됩니다.
 
 ```bash
 # 프로젝트 루트로 돌아와서
@@ -134,8 +134,8 @@ $ moai worktree done SPEC-AUTH-001 --delete-branch
 
 ### 시나리오: 3개 SPEC 동시 개발
 
-계획은 한 터미널에서 고추론 모델(Opus)로 몰아서 처리하고, 구현은 GLM으로
-바꿔 세 터미널에 분산합니다:
+계획은 한 터미널에서 추론이 강한 모델(Opus)로 몰아서 끝내고, 구현은 GLM으로
+바꿔 세 터미널에 나눠 돌립니다:
 
 ```mermaid
 graph TB
@@ -336,8 +336,8 @@ git pull origin main
 
 ### 사례 1: 병합 충돌 해결
 
-병합은 `git merge`나 PR에서 일어나므로 충돌도 그 단계에서 발생합니다.
-Worktree CLI는 병합에 관여하지 않습니다.
+병합은 `git merge`나 PR에서 일어나므로 충돌도 그 단계에서 납니다. Worktree
+CLI는 병합에 관여하지 않습니다.
 
 ```bash
 $ git checkout main
@@ -455,7 +455,7 @@ sequenceDiagram
 
 ## 성공 사례
 
-### 사례: 스타트업에서의 적용
+### 사례: 스타트업 적용
 
 ```bash
 # 상황: 3개의 기능을 동시에 개발해야 함

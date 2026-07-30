@@ -4,17 +4,17 @@ weight: 30
 draft: false
 ---
 
-MoAI-ADK를 시스템에 설치하는 방법을 안내합니다. 설치물은 Go로 빌드된 단일 바이너리 하나입니다 — Python도, 가상환경도, 패키지 매니저도 필요 없습니다.
+MoAI-ADK를 시스템에 설치하는 방법을 안내합니다. 설치되는 것은 Go로 빌드한 단일 바이너리 하나뿐입니다. Python도, 가상환경도, 패키지 매니저도 필요 없습니다.
 
 
 ## 라이선스
 
-MoAI-ADK {{< version >}} 이상은 **Apache-2.0 라이선스** 하에 배포됩니다.
+MoAI-ADK {{< version >}} 이상은 **Apache-2.0 라이선스**로 배포됩니다.
 
 상업적 사용, 수정, 배포가 자유로우며, 소스 코드 공개 의무가 없습니다. 자세한 내용은 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)을 참조하세요.
 
 {{< callout type="info" >}}
-**참고**: MoAI-ADK 1.x (Python 버전)은 GPL-3.0 라이선스였습니다. v2.0.0부터 Go 언어로 재작성되며 Apache-2.0으로 변경되었습니다.
+**참고**: MoAI-ADK 1.x (Python 버전)은 GPL-3.0 라이선스였습니다. v2.0.0에서 Go로 재작성하면서 Apache-2.0으로 바꿨습니다.
 {{< /callout >}}
 
 ## 사전 요구사항
@@ -105,7 +105,7 @@ cd moai-adk
 make build
 ```
 
-빌드된 바이너리는 `./bin/moai`에 생성됩니다. PATH가 지정된 위치로 복사하세요:
+빌드한 바이너리는 `./bin/moai`에 생깁니다. PATH에 잡혀 있는 위치로 복사하세요:
 
 ```bash
 cp ./bin/moai ~/.local/bin/
@@ -125,7 +125,7 @@ cp ./bin/moai ~/.local/bin/
 {{< callout type="error" >}}
 **MoAI-ADK 1.x (Python 버전) 사용자는 반드시 먼저 기존 버전을 제거하세요.**
 
-1.x와 2.x는 동일한 `moai` 명령어를 사용하므로 기존 버전이 남아있으면 충돌이 발생합니다.
+1.x와 2.x는 같은 `moai` 명령어를 쓰기 때문에, 기존 버전이 남아 있으면 서로 충돌합니다.
 {{< /callout >}}
 
 ### 1단계: 기존 1.x 제거
@@ -168,7 +168,7 @@ moai version
 ```
 
 {{< callout type="info" >}}
-Go 에디션 (v2.0+) 은 단일 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
+Go 에디션 (v2.0+) 은 단일 바이너리라 Python 런타임도, 가상환경도 필요하지 않습니다. 시작 시간은 약 800ms에서 5ms로 줄었습니다.
 {{< /callout >}}
 
 ## WSL 지원
@@ -203,14 +203,14 @@ WSL에서는 Windows 경로와 WSL 경로를 구분해야 합니다:
 | `D:\Projects\myapp` | `/mnt/d/Projects/myapp` |
 
 {{< callout type="info" >}}
-**권장**: WSL의 Linux 파일시스템 (`~/projects/`)에 프로젝트를 생성하면 I/O 성능이 2-5배 향상됩니다. Windows 파일시스템 (`/mnt/c/`)에 접근하면 성능이 저하될 수 있습니다.
+**권장**: WSL의 Linux 파일시스템 (`~/projects/`)에 프로젝트를 만들면 I/O 성능이 2-5배 빨라집니다. Windows 파일시스템 (`/mnt/c/`)을 오가면 오히려 느려질 수 있습니다.
 {{< /callout >}}
 
 ### WSL 모범 사례
 
-1. **Linux 파일시스템 사용**: 프로젝트는 `~/projects/` 디렉터리에 생성
-2. **Git 자격증명 설정**: Windows와 별도로 WSL에서 Git 자격증명 구성
-3. **터미널 권장**: Windows Terminal을 사용하여 여러 WSL 배포판 관리
+1. **Linux 파일시스템 사용**: 프로젝트는 `~/projects/` 디렉터리에 만들기
+2. **Git 자격증명 설정**: Windows와는 별도로 WSL에서 Git 자격증명 구성하기
+3. **터미널 권장**: Windows Terminal로 여러 WSL 배포판 관리하기
 
 ### WSL 문제 해결
 
@@ -241,11 +241,11 @@ cd ~/projects/project
 
 ## pip와 uv 도구 충돌
 
-MoAI-ADK 1.x (Python 버전) 사용자가 겪을 수 있는 일반적인 문제입니다.
+MoAI-ADK 1.x (Python 버전) 사용자가 자주 겪는 문제입니다.
 
 ### 문제 설명
 
-pip와 uv는 서로 다른 위치에 패키지를 설치합니다. 두 도구를 혼용하면 `moai` 명령어가 예상치 못한 버전을 실행할 수 있습니다.
+pip와 uv는 패키지를 서로 다른 위치에 설치합니다. 두 도구를 섞어 쓰면 `moai` 명령어가 엉뚱한 버전을 실행할 수 있습니다.
 
 ### 증상
 
@@ -407,7 +407,7 @@ moai update --yes
 
 ## 제거
 
-MoAI-ADK를 완전히 제거하려면 바이너리와 설정 디렉토리를 삭제하세요:
+MoAI-ADK를 완전히 지우려면 바이너리와 설정 디렉터리를 삭제하세요:
 
 ```bash
 # 바이너리 삭제 (which moai 결과로 삭제)

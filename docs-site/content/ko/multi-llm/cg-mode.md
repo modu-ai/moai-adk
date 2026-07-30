@@ -6,10 +6,10 @@ draft: false
 
 ## CG 모드란?
 
-CG(Claude + GLM) 모드는 리더가 **Claude API**를, 워커가 **GLM API**를 사용하는
-하이브리드 모드입니다. tmux 세션 수준의 환경 변수 격리로 구현되며, "계획은
-Claude가 깊게, 구현은 GLM이 싸게"라는 비용 분배를 한 세션 안에서 실행합니다.
-구현 중심 작업 기준 약 60-70% 비용이 절감됩니다.
+CG(Claude + GLM) 모드는 리더가 **Claude API**를, 워커가 **GLM API**를 쓰는
+하이브리드 모드입니다. tmux 세션 단위로 환경 변수를 갈라 놓아, "계획은 Claude가
+깊게, 구현은 GLM이 싸게"라는 비용 배분을 한 세션 안에서 그대로 실행합니다. 구현
+중심 작업이라면 비용을 약 60-70% 줄일 수 있습니다.
 
 ## 아키텍처
 
@@ -57,14 +57,14 @@ moai glm setup sk-your-glm-api-key
 
 ### 2단계: tmux 환경 확인
 
-이미 tmux를 사용 중이라면 새 세션을 만들 필요가 없습니다.
+이미 tmux를 쓰고 있다면 새 세션을 만들 필요가 없습니다.
 
 ```bash
 # tmux를 사용 중이 아니라면:
 tmux new -s moai
 ```
 
-> **팁**: VS Code 터미널 기본값을 tmux로 설정하면 이 단계를 완전히 건너뛸 수 있습니다.
+> **팁**: VS Code 터미널 기본 셸을 tmux로 잡아 두면 이 단계는 아예 건너뛸 수 있습니다.
 
 ### 3단계: CG 모드 실행
 
@@ -72,7 +72,7 @@ tmux new -s moai
 moai cg
 ```
 
-`moai cg`는 현재 pane에서 자동으로 Claude Code를 실행합니다. 별도로 `claude`를 실행할 필요가 없습니다.
+`moai cg`가 현재 pane에서 Claude Code를 알아서 띄웁니다. 따로 `claude`를 칠 필요가 없습니다.
 
 ### 4단계: 워크플로우 실행
 
@@ -81,43 +81,43 @@ moai cg
 ```
 
 이후는 평소와 같습니다. 오케스트레이터(리더, Claude)가 계획·품질·동기화를
-맡고, 구현 물량이 큰 작업은 새 tmux pane의 GLM 팀원에게 위임됩니다.
+맡고, 구현 물량이 큰 작업은 새 tmux pane의 GLM 팀원에게 넘깁니다.
 
-> **참고**: 과거의 `--team` 플래그(Agent Teams 정적 오케스트레이션 계층)는
-> v3.0에서 은퇴했습니다. 강제로 지정해도 sub-agent 모드로 폴백됩니다. CG
-> 모드의 리더/워커 분리는 Claude Code 내장 teammate 런타임(tmux pane)으로
-> 동작하며, 이 런타임은 그대로 유지됩니다.
+> **참고**: 예전 `--team` 플래그(Agent Teams 정적 오케스트레이션 계층)는
+> v3.0에서 물러났습니다. 강제로 지정해도 sub-agent 모드로 돌아갑니다. CG
+> 모드의 리더/워커 분리는 Claude Code 내장 teammate 런타임(tmux pane)이
+> 담당하며, 이 런타임은 그대로 남아 있습니다.
 
 ## 중요 사항
 
 | 항목 | 설명 |
 |------|------|
-| **tmux 환경** | 이미 tmux를 사용 중이면 새 세션 불필요. VS Code 터미널 기본값을 tmux로 설정하면 편리 |
-| **자동 실행** | `moai cg`가 현재 pane에서 Claude Code를 자동 실행. 별도 `claude` 명령 불필요 |
-| **세션 종료** | session_end 훅이 자동으로 tmux 세션 환경변수 정리 → 다음 세션은 Claude 사용 |
+| **tmux 환경** | 이미 tmux를 쓰고 있으면 새 세션 불필요. VS Code 터미널 기본 셸을 tmux로 잡아 두면 편리 |
+| **자동 실행** | `moai cg`가 현재 pane에서 Claude Code를 알아서 띄움. 별도 `claude` 명령 불필요 |
+| **세션 종료** | session_end 훅이 tmux 세션 환경변수를 알아서 치움 → 다음 세션은 Claude 사용 |
 | **팀 통신** | SendMessage 도구로 리더↔워커 간 통신 |
-| **모드 전환** | `moai glm`에서 전환 시 `moai cg`가 GLM 설정을 자동 초기화 — 중간에 `moai cc` 불필요 |
+| **모드 전환** | `moai glm`에서 넘어올 때 `moai cg`가 GLM 설정을 알아서 초기화. 중간에 `moai cc`를 거칠 필요 없음 |
 
 ## tmux 환경 변수 주입 보안 모델 {#tmux-env-security}
 
-v3.0.0 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
+v3.0.0부터 `moai cg`는 GLM token(`ANTHROPIC_AUTH_TOKEN`)을 tmux 세션 환경 변수에 주입할 때 **argv 채널**(`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널**(`tmux source-file <tmp>`)을 씁니다. 덕분에 token이 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 드러나지 않습니다(CWE-214).
 
 ### 주입 흐름
 
-1. `~/.moai/run/` 아래 임시 파일을 `mkstemp` 로 생성 (mode `0o600` 강제)
+1. `~/.moai/run/` 아래 임시 파일을 `mkstemp`로 생성(mode `0o600` 강제)
 2. `set-environment -t <session> <KEY> <VALUE>` 한 줄을 기록
-3. `tmux source-file <tmp>` 로 tmux 가 그 파일을 읽어 환경에 주입
-4. 주입 직후 `os.Remove` 로 unlink
+3. `tmux source-file <tmp>`로 tmux가 그 파일을 읽어 환경에 주입
+4. 주입 직후 `os.Remove`로 unlink
 
-argv 에는 임시 파일 경로만 노출되며 token 자체는 노출되지 않습니다.
+argv에 남는 것은 임시 파일 경로뿐이고, token 자체는 드러나지 않습니다.
 
 ### Non-sensitive 값은 argv 유지
 
-`CLAUDE_CONFIG_DIR`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_*_MODEL` 등 token 이 아닌 값은 기존 argv 경로를 유지합니다 (보안 위협 없음).
+`CLAUDE_CONFIG_DIR`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_*_MODEL`처럼 token이 아닌 값은 기존 argv 경로를 그대로 씁니다(보안 위협 없음).
 
 ### 사용자 책임
 
-`~/.moai/.env.glm` source 파일은 사용자 환경에서 `0o600` 권한을 유지해야 합니다. 이는 `moai glm` 명령이 자동으로 설정합니다:
+`~/.moai/.env.glm` source 파일은 사용자 환경에서 `0o600` 권한을 유지해야 합니다. 권한은 `moai glm` 명령이 알아서 잡아 줍니다:
 
 ```bash
 stat -c '%a' ~/.moai/.env.glm    # Linux: 600
@@ -126,7 +126,7 @@ stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 
 ### 자체 점검
 
-CG 모드 실행 중 token 이 argv 에 노출되는지 확인:
+CG 모드가 도는 중에 token이 argv에 드러나는지 확인해 봅니다:
 
 ```bash
 # moai cg 실행 후 새 tmux 세션 내에서
@@ -134,14 +134,14 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 기대값: 0 matches (token 이 argv 에 없음)
 ```
 
-자세한 위협 모델, 실패 시 동작 (`ErrTmuxSensitiveInjectFailed` sentinel), 추가 점검 절차는 [보안 노트 — CWE-214](/ko/advanced/security-notes/#cwe-214) 를 참조하세요.
+자세한 위협 모델과 실패 시 동작(`ErrTmuxSensitiveInjectFailed` sentinel), 추가 점검 절차는 [보안 노트 — CWE-214](/ko/advanced/security-notes/#cwe-214)를 참고하세요.
 
 ## 디스플레이 모드 (teammateMode)
 
 `teammateMode`는 Claude Code 내장 디스플레이 설정으로, `settings.local.json`에
-저장됩니다. MoAI의 team-mode(과거 `--team` 플래그, v3.0 은퇴)와는 다른
-개념입니다 — teammate 런타임 자체는 Claude Code가 제공하며, `teammateMode`는
-그 표시 방식만 제어합니다.
+저장됩니다. MoAI의 team-mode(예전 `--team` 플래그, v3.0에서 물러남)와는 다른
+개념입니다. teammate 런타임 자체는 Claude Code가 제공하고, `teammateMode`는
+화면에 어떻게 띄울지만 정합니다.
 
 | 값 | 설명 | 리더/워커 분리 | CG 모드 |
 |------|------|--------------|---------|
@@ -151,8 +151,8 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 | `iterm2` | iTerm2 분할 화면 | 미지원 | 미사용 |
 
 `moai cg`와 `moai glm`은 `settings.local.json`의 `teammateMode`를 `"tmux"`로
-설정하고, `moai cc`는 빈 값으로 해제합니다. 과거의 `CLAUDE_CODE_TEAMMATE_DISPLAY`
-환경변수는 `teammateMode` 설정이 우선합니다.
+설정하고, `moai cc`는 빈 값으로 되돌립니다. 예전 `CLAUDE_CODE_TEAMMATE_DISPLAY`
+환경변수보다 `teammateMode` 설정이 우선합니다.
 
 > **CG 모드는 `tmux` 디스플레이 모드에서만 리더/워커 API 분리가 가능합니다.**
 
@@ -181,9 +181,9 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 
 | 문제 | 원인 | 해결 |
 |------|------|------|
-| 워커가 Claude API 사용 | tmux 세션 환경변수 미설정 | tmux 내에서 `moai cg` 재실행 |
-| `moai cg` 후 Claude Code 미실행 | tmux 외부에서 실행 | `tmux new -s moai` 후 재실행 |
-| 세션 종료 후 GLM 환경변수 잔류 | session_end 훅 실패 | `moai cc`로 수동 정리 |
+| 워커가 Claude API를 씀 | tmux 세션 환경변수가 설정되지 않음 | tmux 안에서 `moai cg` 다시 실행 |
+| `moai cg`를 쳐도 Claude Code가 안 뜸 | tmux 밖에서 실행함 | `tmux new -s moai` 후 다시 실행 |
+| 세션을 닫아도 GLM 환경변수가 남음 | session_end 훅 실패 | `moai cc`로 직접 정리 |
 
 ## 다음 단계
 

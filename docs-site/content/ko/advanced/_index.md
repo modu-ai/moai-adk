@@ -10,16 +10,16 @@ draft: false
 
 ![MoAI-ADK 세 가지 핵심](/images/sections/advanced-ko.png)
 
-MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다. 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
+MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다. 기본 워크플로우(plan → run → sync)가 손에 익었다면, 여기서 하네스가 실제로 어떻게 조립돼 있는지 들여다볼 수 있습니다.
 
 
 {{< callout type="info" >}}
-이 섹션의 문서들은 v3.0의 세 가지 핵심 — **토크노믹스** (Token Economics, 비용), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering, 자가개선), **에이전틱 하네스** (Agentic Harness, 품질·통제) — 가운데 주로 세 번째 핵심인 하네스의 구현 세부 사항을 다룹니다. 에이전트가 코드를 잘 쓰게 만드는 비결은 모델이 아니라 모델을 둘러싼 환경 설계에 있습니다.
+이 섹션의 문서들은 v3.0의 세 가지 핵심 — **토크노믹스**(Token Economics, 비용), **에이전틱 루프 엔지니어링**(Agentic Loop Engineering, 자가개선), **에이전틱 하네스**(Agentic Harness, 품질·통제) — 가운데 주로 세 번째인 하네스의 구현 세부를 다룹니다. 에이전트가 코드를 잘 쓰게 만드는 열쇠는 모델이 아니라 모델을 둘러싼 환경 설계에 있습니다.
 {{< /callout >}}
 
 ## 하네스는 어떻게 조립되는가
 
-MoAI-ADK 하네스는 7가지 구성 요소가 층을 이루며 동작합니다. 위에서 아래로 갈수록 더 동적인 계층입니다.
+MoAI-ADK 하네스는 일곱 가지 구성 요소가 층을 이루며 맞물려 돌아갑니다. 아래로 내려갈수록 더 동적인 계층입니다.
 
 ```mermaid
 flowchart TD
@@ -36,7 +36,7 @@ flowchart TD
 
 ```
 
-`CLAUDE.md`가 프로젝트의 헌법이라면 settings.json은 권한의 경계선이고 훅은 결정적(deterministic) 제어 지점이며 스킬과 에이전트는 실제로 일하는 손입니다. Builder Agents가 이 구조 전체를 다시 생성할 수 있습니다. 하네스가 하네스를 만드는 재귀 구조입니다.
+`CLAUDE.md`가 프로젝트의 헌법이라면 settings.json은 권한의 경계선입니다. 훅은 반드시 실행되는 결정적(deterministic) 제어 지점이고, 스킬과 에이전트는 실제로 일하는 손입니다. 그리고 Builder Agents는 이 구조 전체를 다시 만들어냅니다. 하네스가 하네스를 만드는 재귀 구조입니다.
 
 ## 목차
 
@@ -47,7 +47,7 @@ flowchart TD
 | [토크노믹스 개요](/ko/advanced/tokenomics-overview) | 단가가 98% 내려도 비용이 320% 오르는 역설과 그 해법 |
 | [토큰 예산](/ko/advanced/token-budget) | Token Circuit Breaker·verify-diet·컨텍스트 다이어트 |
 | [No-Haiku 3-티어](/ko/advanced/no-haiku-3tier) | DeepSWE 리더보드 근거와 3-티어 정책 |
-| [프로파일 매트릭스](/ko/advanced/profile-matrix) | 11 에이전트 × `{model, effort}` 33셀 단일 프로파일 축 |
+| [프로필 매트릭스](/ko/advanced/profile-matrix) | 11 에이전트 × `{model, effort}` 33셀 단일 프로필 축 |
 | [statusline](/ko/advanced/statusline) | 컨텍스트 사용률·캐시 적중률·rate limit 상시 계기판 |
 
 ### 자기 개선 — 에이전틱 루프 엔지니어링
@@ -83,5 +83,5 @@ flowchart TD
 | [보안 노트](/ko/advanced/security-notes) | 권한 스택과 샌드박스 |
 
 {{< callout type="info" >}}
-각 문서는 독립적으로 읽을 수 있습니다. 다만 전체 아키텍처를 체계적으로 이해하고 싶다면 **스킬 가이드 → 에이전트 가이드 → 빌더 에이전트** 순서를 권합니다. 지식 모듈에서 수행자로, 수행자에서 생성기로 이어지는 흐름이 하네스의 재귀 구조를 그대로 보여주기 때문입니다.
+각 문서는 따로 읽어도 됩니다. 다만 전체 아키텍처를 차근차근 이해하고 싶다면 **스킬 가이드 → 에이전트 가이드 → 빌더 에이전트** 순서를 권합니다. 지식 모듈에서 수행자로, 수행자에서 생성기로 이어지는 흐름이 하네스의 재귀 구조를 그대로 보여주기 때문입니다.
 {{< /callout >}}

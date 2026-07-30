@@ -10,15 +10,16 @@ draft: false
 
 ![CG 모드 구조](/images/sections/multi-llm-ko.png)
 
-MoAI-ADK는 Claude API 외에 **z.ai GLM**을 대안 AI 백엔드로 지원합니다. 이는
-편의 기능이 아니라 v3.0의 세 기둥 중 비용 축인 **토크노믹스**(Token Economics)를
-실현하는 축입니다. 같은 품질의 코드를 더 적은 비용으로 얻으려면 작업마다
-알맞은 모델을 배정할 수 있어야 하기 때문입니다.
+MoAI-ADK는 Claude API 외에 **z.ai GLM**도 대안 AI 백엔드로 지원합니다. 단순한
+편의 기능이 아니라, v3.0의 세 가지 핵심 가운데 비용에 해당하는
+**토크노믹스**(Token Economics)를 실제로 구현하는 수단입니다. 같은 품질의
+코드를 더 싸게 얻으려면 작업마다 알맞은 모델을 배정할 수 있어야 하기
+때문입니다.
 
 
 ## z.ai GLM이란?
 
-GLM(Generative Language Model)은 z.ai에서 제공하는 AI 모델 서비스로 Claude Code와 호환됩니다. 코드 변경 없이 환경 변수만으로 전환이 가능합니다.
+GLM(Generative Language Model)은 z.ai가 제공하는 AI 모델 서비스이며 Claude Code와 호환됩니다. 코드를 고칠 필요 없이 환경 변수만 바꾸면 전환됩니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -28,8 +29,8 @@ GLM(Generative Language Model)은 z.ai에서 제공하는 AI 모델 서비스로
 
 ## 기본 모델 매핑
 
-MoAI-ADK는 Claude 티어별로 서로 다른 GLM 모델을 배정합니다. 4개의 Claude Code
-`ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 구현됩니다:
+MoAI-ADK는 Claude 티어마다 서로 다른 GLM 모델을 배정합니다. 배정은 Claude Code의
+`ANTHROPIC_DEFAULT_*_MODEL` 환경변수 4개로 이뤄집니다:
 
 | Claude 티어 | 환경변수 | GLM 모델 | 컨텍스트 |
 |-------------|----------|----------|----------|
@@ -39,16 +40,16 @@ MoAI-ADK는 Claude 티어별로 서로 다른 GLM 모델을 배정합니다. 4�
 | Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.2 | 1M |
 
 > Opus 슬롯(메인 세션 + 상속 에이전트)과 Fable 슬롯은 1M 컨텍스트의 `glm-5.2`를,
-> Sonnet 슬롯은 202K의 `glm-4.7`을, Haiku 슬롯은 128K의 `glm-4.5-air`를 사용합니다.
-> 이 티어별 차등 매핑은 `llm.yaml`의 `glm.models` (high/medium/low/fable)로
-> 설정하며, 각각 위 환경변수로 주입됩니다. Fable 환경변수는 Claude Code
+> Sonnet 슬롯은 202K의 `glm-4.7`을, Haiku 슬롯은 128K의 `glm-4.5-air`를 씁니다.
+> 이렇게 티어별로 갈라 놓은 매핑은 `llm.yaml`의 `glm.models`(high/medium/low/fable)에서
+> 설정하고, 값은 각각 위 환경변수로 주입됩니다. Fable 환경변수는 Claude Code
 > v2.1.202부터 공식 지원됩니다.
 
-> 무료 모델도 제공됩니다: GLM-4.7-Flash, GLM-4.5-Flash. 전체 가격은 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)을 참조하세요.
+> 무료 모델도 있습니다. GLM-4.7-Flash와 GLM-4.5-Flash입니다. 전체 가격은 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)에서 확인하세요.
 
 ## 3가지 실행 모드
 
-MoAI-ADK는 3가지 LLM 실행 모드를 제공합니다. "무엇을 최적화할 것인가"에 따라
+MoAI-ADK는 LLM 실행 모드를 세 가지로 제공합니다. 무엇을 우선할지에 따라
 고르면 됩니다:
 
 | 명령어 | 리더 | 워커 | tmux 필요 | 비용 절감 | 용도 |
@@ -74,8 +75,8 @@ graph TD
 ```
 
 CG 모드가 토크노믹스의 대표 사례입니다. 전략·계획·감사처럼 추론 품질이
-중요한 일은 Claude 리더가, 대량 구현처럼 물량이 중요한 일은 GLM 워커가
-맡습니다. 구현 중심 작업 기준 약 60-70%의 비용이 절감됩니다.
+중요한 일은 Claude 리더가 맡고, 대량 구현처럼 물량이 중요한 일은 GLM 워커가
+맡습니다. 구현 중심 작업이라면 비용을 약 60-70% 줄일 수 있습니다.
 
 ### 빠른 시작
 

@@ -18,27 +18,27 @@ moai status
 
 ### 초기화된 프로젝트
 
-`.moai/` 디렉토리가 존재하는 프로젝트에서 실행하면 다음 정보가 표시됩니다.
+`.moai/` 디렉터리가 있는 프로젝트에서 실행하면 다음 정보를 보여 줍니다.
 
 | 항목 | 설명 |
 |------|------|
-| **Project** | 프로젝트 이름 (현재 디렉토리명) |
+| **Project** | 프로젝트 이름 (현재 디렉터리명) |
 | **ADK** | 설치된 MoAI-ADK 버전 |
 | **Config** | 설정 파일 경로 (`.moai/config/sections`) |
-| **SPECs** | `.moai/specs/` 하위의 SPEC 디렉토리 개수 |
+| **SPECs** | `.moai/specs/` 하위의 SPEC 디렉터리 개수 |
 | **Configs** | `.moai/config/sections/` 의 YAML 파일 개수 |
 
 하단에 초기화 상태와 SPEC 개수를 나타내는 상태 표시가 함께 출력됩니다.
 
 ### 미초기화 프로젝트
 
-`.moai/` 디렉토리가 없는 경우, "Not initialized" 상태 표시와 함께 `moai init` 실행을 안내합니다.
+`.moai/` 디렉터리가 없는 경우, "Not initialized" 상태 표시와 함께 `moai init` 실행을 안내합니다.
 
 ## BODP 브랜치 알림
 
-프로젝트가 Git 저장소인 경우, 현재 브랜치가 BODP (Branch-Oriented Development Practice) 규약을 벗어나면 stderr에 알림이 출력됩니다. 이 알림은 분산된 1인 OSS 워크플로우에서 브랜치 네이밍 규칙을 상기시키는 장치입니다.
+Git 저장소에서 실행할 때 현재 브랜치가 BODP (Branch-Oriented Development Practice) 규약을 벗어나면 stderr로 알림을 내보냅니다. 분산된 1인 OSS 워크플로우에서 브랜치 네이밍 규칙을 잊지 않도록 붙여 둔 장치입니다.
 
-알림은 자동으로 출력되며, Git이 설치되지 않았거나 현재 디렉토리가 Git 저장소가 아닌 경우 조용히 생략됩니다.
+알림은 따로 켜지 않아도 나오며, Git이 설치돼 있지 않거나 현재 디렉터리가 Git 저장소가 아니면 조용히 넘어갑니다.
 
 ## 관련 명령어
 

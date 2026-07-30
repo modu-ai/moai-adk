@@ -33,9 +33,9 @@ moai inventory [OPTIONS]
 | 플래그 | 설명 |
 |------|------|
 | `--json` | 구조화된 JSON 출력 (머신 리더블) |
-| `--project-root <path>` | 프로젝트 루트 경로 (기본값: 현재 디렉토리) |
+| `--project-root <path>` | 프로젝트 루트 경로 (기본값: 현재 디렉터리) |
 
-이 명령어는 위 두 플래그만 지원합니다. 필터링이나 상세 모드 플래그는 없습니다 — 필요한 가공은 `--json` 출력을 `jq` 등으로 처리합니다.
+이 명령어가 지원하는 플래그는 위 두 개뿐입니다. 필터링이나 상세 모드 플래그는 따로 없으니, 원하는 형태로 걸러내려면 `--json` 출력을 `jq` 같은 도구에 넘기세요.
 
 ## 기본 사용
 
@@ -65,7 +65,7 @@ moai inventory --json
 }
 ```
 
-각 섹션은 `count`, `entries`, 그리고 선택적 `error` 필드를 가집니다.
+각 섹션에는 `count` 와 `entries` 필드가 있고, 상황에 따라 `error` 필드가 붙습니다.
 
 ### Session 항목
 
@@ -159,7 +159,7 @@ moai inventory --json | jq -r '.worktrees.entries[].branch'
 
 ### 3. 매니페스트 누락 하네스 찾기
 
-`manifest_missing: true` 인 하네스는 설정이 불완전한 상태입니다.
+`manifest_missing: true` 인 하네스는 설정이 덜 끝난 상태입니다.
 
 ```bash
 moai inventory --json | jq '.harnesses.entries[] | select(.manifest_missing)'
@@ -178,5 +178,5 @@ moai inventory --json | jq '[.sessions.entries[].phase] | group_by(.) | map({pha
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) — SPEC 생명 주기
 
 {{< callout type="info" >}}
-**팁**: `moai inventory --json` 은 모니터링 대시보드와 CI 스크립트에 활용할 수 있습니다. 읽기 전용 명령어이므로 안전하게 자동화할 수 있습니다.
+**팁**: `moai inventory --json` 출력은 모니터링 대시보드나 CI 스크립트에 그대로 쓸 수 있습니다. 읽기 전용 명령어라 자동화에 걸어 두어도 안전합니다.
 {{< /callout >}}

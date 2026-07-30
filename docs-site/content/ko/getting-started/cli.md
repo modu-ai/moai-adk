@@ -4,7 +4,7 @@ weight: 90
 draft: false
 ---
 
-터미널에서 실행하는 `moai` (Go 바이너리) 의 모든 명령어와 플래그를 한눈에 개괄합니다. Claude Code 대화창에서 입력하는 `/moai` (슬래시 서브커맨드) 와는 완전히 다른 도구입니다 — 이 페이지는 터미널 CLI만 다룹니다.
+터미널에서 실행하는 `moai` (Go 바이너리) 의 명령어와 플래그를 한눈에 정리했습니다. Claude Code 대화창에서 입력하는 `/moai` (슬래시 서브커맨드) 와는 완전히 다른 도구이며, 이 페이지는 터미널 CLI만 다룹니다.
 
 > 커맨드별 상세 레퍼런스(플래그·하위 명령어·예시)는 [CLI 레퍼런스](/cli-reference) 섹션을 참조하세요.
 
@@ -39,7 +39,7 @@ moai version
  v3.0.0   none   built unknown
 ```
 
-박스 배너 아래 줄은 `<버전>   <커밋 해시>   built <빌드 시각>` 순서로 표시됩니다. `go install` 등 ldflags 없이 빌드한 경우 커밋은 `none`, 빌드 시각은 `unknown` 으로 나옵니다.
+박스 배너 아래 줄은 `<버전>   <커밋 해시>   built <빌드 시각>` 순서로 표시됩니다. `go install` 처럼 ldflags 없이 빌드했다면 커밋은 `none`, 빌드 시각은 `unknown` 으로 나옵니다.
 
 ---
 
@@ -62,8 +62,8 @@ moai init [project-name] [OPTIONS]
 | `--mode <ddd\|tdd>` | 개발 방법론 (기본값: tdd) |
 | `--language <lang>` | 주 프로그래밍 언어 |
 | `--framework <name>` | 프레임워크 이름 (기본값: 자동 감지 또는 "none") |
-| `--name <name>` | 프로젝트 이름 (기본값: 디렉토리 이름) |
-| `--root <path>` | 프로젝트 루트 디렉토리 (기본값: 현재 디렉토리) |
+| `--name <name>` | 프로젝트 이름 (기본값: 디렉터리 이름) |
+| `--root <path>` | 프로젝트 루트 디렉터리 (기본값: 현재 디렉터리) |
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
 | `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
@@ -95,7 +95,7 @@ moai init --non-interactive --project-mode personal --model-policy medium
 
 ## moai update
 
-MoAI-ADK를 최신 버전으로 업데이트합니다. 플래그 없이 실행하면 바이너리와 템플릿을 함께 갱신하며, 사용자 커스텀 자산은 자동 보존됩니다.
+MoAI-ADK를 최신 버전으로 업데이트합니다. 플래그 없이 실행하면 바이너리와 템플릿을 함께 갱신하고, 사용자가 직접 만든 자산은 알아서 보존합니다.
 
 ```bash
 moai update [OPTIONS]
@@ -204,7 +204,7 @@ moai inventory [OPTIONS]
 | 플래그 | 설명 |
 |--------|------|
 | `--json` | 구조화된 JSON 출력 |
-| `--project-root <path>` | 프로젝트 루트 경로 (기본값: 현재 디렉토리) |
+| `--project-root <path>` | 프로젝트 루트 경로 (기본값: 현재 디렉터리) |
 
 자세한 JSON 스키마와 활용 예시는 [moai inventory](/ko/cli-reference/inventory) 페이지를 참조하세요.
 
@@ -212,7 +212,7 @@ moai inventory [OPTIONS]
 
 ## moai profile
 
-Claude Code 설정 프로필을 관리합니다. 프로필별로 독립적인 모델, 언어, 표시 설정을 유지할 수 있습니다.
+Claude Code 설정 프로필을 관리합니다. 프로필마다 모델·언어·표시 설정을 따로 둘 수 있습니다.
 
 ```bash
 moai profile [COMMAND]
@@ -249,7 +249,7 @@ moai hook <event>
 
 ### 지원 서브커맨드 (약 38개)
 
-`moai hook` 디스패처는 표준 Claude Code 훅 이벤트와 MoAI 전용 내부 액션을 합쳐 약 38개의 서브커맨드를 제공합니다. 모든 이름은 kebab-case 입니다. 아래는 대표적인 이벤트입니다.
+`moai hook` 디스패처에는 표준 Claude Code 훅 이벤트와 MoAI 전용 내부 액션을 합쳐 약 38개의 서브커맨드가 있습니다. 이름은 모두 kebab-case 입니다. 아래는 대표적인 이벤트입니다.
 
 | 이벤트 | 설명 |
 |-------|------|
@@ -296,7 +296,7 @@ MoAI 전용 서브커맨드도 포함됩니다.
 
 ## moai worktree
 
-Git worktree를 관리하여 병렬 SPEC 개발을 수행합니다.
+Git worktree를 관리해 여러 SPEC을 병렬로 개발합니다.
 
 ```bash
 moai worktree <COMMAND> [ARGS]...
@@ -321,7 +321,7 @@ moai worktree <COMMAND> [ARGS]...
 | `moai worktree restore` | 스냅샷 HEAD 상태로 작업 트리 복원 |
 | `moai worktree verify` | 작업 트리 상태를 스냅샷과 대조 검증 |
 
-`moai worktree go` 는 디렉토리를 바꾸지 않고 경로만 출력합니다. 실제 이동은 셸에서 다음과 같이 감싸 사용합니다.
+`moai worktree go` 는 디렉터리를 옮기지 않고 경로만 출력합니다. 실제로 이동하려면 셸에서 다음처럼 감싸 씁니다.
 
 ```bash
 cd "$(moai worktree go my-branch)"
@@ -345,7 +345,7 @@ moai cg [-p profile]
 | `moai glm` | GLM | GLM | 아니오 | 비용 최적화 (GLM 단독) |
 | `moai cg` | Claude | GLM | 필수 | 품질 + 비용 균형 (하이브리드) |
 
-`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. tmux 세션 내에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 사용합니다. `moai cg` 는 설정 후 현재 창에서 곧바로 Claude Code를 실행하므로 별도의 `claude` 실행 단계가 필요 없습니다.
+`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. 반드시 tmux 세션 안에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 씁니다. 설정을 마치면 현재 창에서 곧바로 Claude Code가 뜨므로, `claude` 를 따로 실행할 필요가 없습니다.
 
 ```bash
 # 1. GLM API 키 저장 (최초 1회)
@@ -355,7 +355,7 @@ moai glm setup sk-your-glm-api-key
 moai cg
 ```
 
-자세한 CG 모드 안내는 [소개 — GLM으로 토큰 절약](/ko/getting-started/introduction#glm으로-토큰-절약-5070) 을 참조하세요.
+자세한 CG 모드 안내는 [소개 — CG 모드로 토큰 절약](/ko/getting-started/introduction#cg-모드로-토큰-절약-5070) 을 참조하세요.
 
 ### 런치 플래그
 
@@ -420,7 +420,7 @@ moai handoff <COMMAND>
 
 ## moai session
 
-다중 세션 레이스 완화를 위한 활성 세션 조율 레지스트리를 관리합니다.
+여러 세션이 서로 부딪히지 않도록 활성 세션 조율 레지스트리를 관리합니다.
 
 ```bash
 moai session <COMMAND>
@@ -440,7 +440,7 @@ moai session <COMMAND>
 
 ## moai web
 
-브라우저 기반 설정 편집기인 MoAI Web Console를 실행합니다.
+브라우저에서 쓰는 설정 편집기, MoAI Web Console을 실행합니다.
 
 ```bash
 moai web [OPTIONS]
@@ -467,13 +467,13 @@ moai --version    # 동일
 
 ## 모델 정책 (성능 티어)
 
-MoAI-ADK는 에이전트에 최적의 AI 모델을 할당하는 성능 티어 시스템을 제공합니다 — 토크노믹스의 출발점입니다. `llm.yaml` 의 `performance_tier` 필드로 설정하며, `--model-policy` 플래그 또는 초기화 마법사에서 선택합니다.
+MoAI-ADK에는 에이전트마다 최적의 AI 모델을 배정하는 성능 티어 시스템이 있습니다. 토크노믹스의 출발점입니다. `llm.yaml` 의 `performance_tier` 필드로 설정하며, `--model-policy` 플래그나 초기화 마법사에서 선택합니다.
 
 | 티어 | 특징 |
 |------|------|
 | **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
 | **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발 행에만 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
 
 ```bash
 # 초기화 시 설정
@@ -483,7 +483,7 @@ moai init my-project --model-policy high
 moai update -c
 ```
 
-프로필(`profile`: high/medium/low)은 프로필 매트릭스의 활성 열을 선택하여 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+프로필(`profile`: high/medium/low)은 프로필 매트릭스에서 활성 열을 골라 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 
