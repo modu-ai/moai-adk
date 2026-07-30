@@ -6,7 +6,7 @@
 
 - sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
 - sync_complete_at: 2026-07-30
-- sync_commit_sha: pending-backfill-SPEC-I18N-GOVERNANCE-001 (SHA cannot be in its own commit; backfilled in the follow-up backfill commit of this batch)
+- sync_commit_sha: 3753e202e (docs commit `docs(SPEC-I18N-GOVERNANCE-001): sync-phase artifacts — 3-phase close`; backfilled in this follow-up backfill commit — SHA cannot be in its own commit, per the self-referential-hazard workaround of spec-frontmatter-schema.md § Forbidden ownership Crossings / SHA placeholder backfill exemption D3)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Added` — SPEC-I18N-GOVERNANCE-001 entry (9 governance ACs, Tier M, M1 single feat commit)
 - frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
 - run_phase_pr: #1224 (merge commit 9db42d122 — web console i18n catalogue governance)

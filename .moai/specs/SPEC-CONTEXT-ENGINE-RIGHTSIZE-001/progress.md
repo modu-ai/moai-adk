@@ -141,7 +141,7 @@ $ grep -rc '\[ZONE:Evolvable\]' .claude/rules/moai/ | awk -F: '{s+=$2} END{print
 
 - sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001 / Status Transition Ownership Matrix)
 - sync_complete_at: 2026-07-30
-- sync_commit_sha: pending-backfill-SPEC-CONTEXT-ENGINE-RIGHTSIZE-001 (SHA cannot be in its own commit; backfilled in the follow-up backfill commit of this batch)
+- sync_commit_sha: 6580802a8 (docs commit `docs(SPEC-CONTEXT-ENGINE-RIGHTSIZE-001): sync-phase artifacts — 3-phase close`; backfilled in this follow-up backfill commit — SHA cannot be in its own commit, per the self-referential-hazard workaround of spec-frontmatter-schema.md § Forbidden ownership crossings / SHA placeholder backfill exemption D3)
 - changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Changed` — SPEC-CONTEXT-ENGINE-RIGHTSIZE-001 entry (10/10 ACs PASS, Tier M, conservative B-group-only scope)
 - frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-30` refreshed
 - run_phase_pr: #1238 (merge commit 752dc6794 — Context Engine rightsizing, Anthropic 6-principle alignment, B-group only)
