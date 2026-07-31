@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-REINSTALL-LOOP-002
 title: "moai update — end the release-user clean-reinstall loop (semver-normalized v2/v3 detection, deprecated-path exclusion from PRESERVE, residue cleanup, dry-run reachability)"
 version: 0.3.0
-status: draft
+status: in-progress
 created: 2026-07-31
 updated: 2026-07-31
 author: manager-spec
