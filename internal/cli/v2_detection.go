@@ -18,8 +18,9 @@
 // Signal sources:
 //
 //   - Signal 1 (V2DetectedViaVersion): `.moai/config/sections/system.yaml`
-//     `moai.version` field. Positive when the version string starts with
-//     "v2.", OR is empty, OR the system.yaml file is missing entirely.
+//     `moai.version` field. Positive when the normalized major version is 2
+//     and the string carried a leading "v", OR the version is empty, OR the
+//     system.yaml file is missing/unparseable entirely.
 //     Empty / missing branches reflect Option α (broader detection): v3
 //     projects always carry system.yaml with populated moai.version, so
 //     drift / absence is a positive v2 signal.
@@ -41,6 +42,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -155,20 +157,26 @@ type systemYAMLMoaiBlock struct {
 
 // probeVersionSignal returns (positive, v3Confirmed, detail).
 //
-// Per AC-VVCR-001 Option α:
-//   - file missing       → positive, v3Confirmed=false, detail "system.yaml missing"
-//   - empty version      → positive, v3Confirmed=false, detail "moai.version empty"
-//   - v2.* prefix        → positive, v3Confirmed=false, detail "moai.version starts with v2."
-//   - v3.* prefix        → negative, v3Confirmed=true,  detail names the override (REQ-CRR-001)
-//   - other              → negative, v3Confirmed=false, detail empty
+// The version string is normalized before comparison (REQ-RIL2-001): trim
+// surrounding whitespace, strip at most one leading "v"/"V", parse the leading
+// digit run as the major version. Classification then follows:
+//   - file missing        → positive, v3Confirmed=false, detail "system.yaml missing"
+//   - empty version       → positive, v3Confirmed=false, detail "moai.version empty"
+//   - major >= 3          → negative, v3Confirmed=true,  detail names the override (REQ-RIL2-002)
+//   - major == 2, "v" pfx → positive, v3Confirmed=false, detail names the normalized major (REQ-RIL2-003)
+//   - any other parseable → negative, v3Confirmed=false, detail empty (REQ-RIL2-006)
+//   - non-numeric leading → negative, v3Confirmed=false, detail empty (REQ-RIL2-006)
 //
 // The empty/missing branches (Option α broader detection) are preserved
 // unchanged — the v3 negative-override fires ONLY on a confirmed populated
-// v3.* string, NOT on drift/absence.
+// version whose normalized major is 3 or greater, NOT on drift/absence.
 //
-// Parse errors are treated as positive Signal 1 with a descriptive detail —
-// a malformed system.yaml in a project running `moai update` is more likely
-// to be a partial v2 migration than a deliberately corrupted v3 file.
+// FILE parse errors are treated as positive Signal 1 with a descriptive detail
+// (REQ-RIL2-004) — a malformed system.yaml in a project running `moai update`
+// is more likely to be a partial v2 migration than a deliberately corrupted v3
+// file. A well-formed file carrying an unrecognized version string is a
+// DIFFERENT case, governed by REQ-RIL2-006 (negative), because classifying it
+// positive would widen the destructive path (NFR-RIL2-001).
 func probeVersionSignal(projectRoot string) (bool, bool, string) {
 	sysYAMLPath := filepath.Join(projectRoot,
 		".moai", "config", "sections", "system.yaml")
@@ -189,23 +197,84 @@ func probeVersionSignal(projectRoot string) (bool, bool, string) {
 	}
 
 	v := strings.TrimSpace(block.Moai.Version)
-	switch {
-	case v == "":
+	if v == "" {
 		return true, false, "moai.version empty"
-	case strings.HasPrefix(v, "v2."):
-		return true, false, fmt.Sprintf("moai.version starts with v2. (%s)", v)
-	case strings.HasPrefix(v, "v3."):
-		// REQ-CRR-001 v3-version negative-override: a populated v3.*
-		// version confirms a genuine v3 project. The detail names the
-		// override so callers (telemetry / --dry-run / the reason string
-		// surfaced by runUpdate) can report WHY IsV2 was forced false
-		// despite legacy residue (AC-CRR-001(b)).
+	}
+
+	major, prefix, parsed := normalizeVersionMajor(v)
+	switch {
+	case !parsed:
+		// REQ-RIL2-006: a well-formed system.yaml carrying a version whose
+		// leading component is not numeric ("abc") is Signal 1 NEGATIVE with
+		// no override, so Signals 2/3 decide. "Unparseable" in REQ-RIL2-004
+		// means the FILE failed to parse (handled above), not that the major
+		// digits failed to parse — reading it the other way would flip a
+		// residue-free project to IsV2=true and widen the destructive path
+		// (NFR-RIL2-001).
+		return false, false, ""
+	case major >= 3:
+		// REQ-RIL2-002 v3-version negative-override (widened from the former
+		// literal "v3." prefix test by REQ-RIL2-001 normalization): any
+		// normalized major >= 3 confirms a genuine v3 project. The detail
+		// names the override so callers (telemetry / --dry-run / the reason
+		// string surfaced by runUpdate) can report WHY IsV2 was forced false
+		// despite legacy residue.
 		return false, true, fmt.Sprintf(
-			"v3-version negative-override (REQ-CRR-001): moai.version starts with v3. (%s) — Signal 2/3 short-circuited", v)
+			"v3-version negative-override (REQ-RIL2-002): moai.version normalized major %d >= 3 (%s) — Signal 2/3 short-circuited",
+			major, v)
+	case major == 2 && prefix == 'v':
+		// REQ-RIL2-003: a prefixed major-2 string is Signal 1 positive. The
+		// prefix scope is deliberate and matches the pre-change behaviour
+		// exactly — a bare "2.x" (and an uppercase-prefixed "V2.x", which the
+		// pre-change literal "v2." test also did not match) falls through to
+		// REQ-RIL2-006 below and stays Signal 1 NEGATIVE, because making
+		// either positive would flip a residue-free project from IsV2=false to
+		// IsV2=true (NFR-RIL2-001, which admits no exception).
+		return true, false, fmt.Sprintf("moai.version normalized major 2 with %q prefix (%s)", string(prefix), v)
 	default:
-		// Any other non-v2 non-v3 value → negative, no override.
+		// REQ-RIL2-006: any other parseable major (1, bare/uppercase-prefixed
+		// 2, ...) → negative, no override. Reproduces the pre-change default
+		// branch.
 		return false, false, ""
 	}
+}
+
+// normalizeVersionMajor parses a moai.version string per REQ-RIL2-001:
+// trim surrounding whitespace, strip at most one leading "v" or "V", then read
+// the leading run of decimal digits as the major version.
+//
+// Prerelease and build suffixes ("3.0.1-rc13", "3.0.0+build.5") are classified
+// by the major component alone, since everything after the digit run is ignored
+// (REQ-RIL2-005).
+//
+// Returns the parsed major, the stripped prefix byte (0 when the string carried
+// no "v"/"V"), and parsed=false when the leading component is not numeric or
+// does not fit an int.
+func normalizeVersionMajor(version string) (major int, prefix byte, parsed bool) {
+	s := strings.TrimSpace(version)
+	if s == "" {
+		return 0, 0, false
+	}
+	if s[0] == 'v' || s[0] == 'V' {
+		prefix = s[0]
+		s = s[1:]
+	}
+
+	end := 0
+	for end < len(s) && s[end] >= '0' && s[end] <= '9' {
+		end++
+	}
+	if end == 0 {
+		return 0, prefix, false
+	}
+
+	major, err := strconv.Atoi(s[:end])
+	if err != nil {
+		// Overflow on an absurd digit run. Treat as unparseable → Signal 1
+		// negative, which is the non-widening direction (NFR-RIL2-001).
+		return 0, prefix, false
+	}
+	return major, prefix, true
 }
 
 // probeAgencyDirSignal returns (positive, detail).

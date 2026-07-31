@@ -1,14 +1,14 @@
 # SPEC-UPDATE-REINSTALL-LOOP-002 — Acceptance Criteria
 
-Version: 0.2.0 · Status: draft
+Version: 0.4.0 · Status: draft
 
 ## §A Verification discipline
 
 1. **No vacuous `-run`.** `go test -run <pattern>` exits 0 when the pattern matches zero tests. Every AC below that uses `-run` also asserts a literal `--- PASS: <exact test name>` line. An AC that would pass with the test deleted is a defect.
 2. **Baselines are observed, not assumed.** Every "current baseline" line in §B was produced by running the stated command on 2026-07-31 against worktree HEAD `5468a4afc` (branch `plan/epic-update-config-audit`), whose code baseline is `d5336214e` — `5468a4afc` is a descendant that changes SPEC documents only, so no Go source differs between the two. Where a baseline names a commit, it names `5468a4afc`; `d5336214e` is cited only as the code baseline it inherits.
-5. **A guard must be able to fail on the fixture it runs on.** A fixture where the asserted quantity is constant across the change is vacuous even when the assertion is well formed. This bites specifically on the version matrix: a project carrying `.agency/` yields `IsV2=true` for every non-v3-confirmed input under both the old and the new rule, so any monotonicity claim built on it holds trivially. Monotonicity is therefore asserted on a residue-free fixture (AC-RIL2-003).
 3. **Falsification is required per new guard.** §C gives the runnable procedure that makes each new guard FAIL against unfixed code.
 4. **`git stash` is prohibited.** The checkout is shared with concurrent sessions; `git stash` is repository-global and `git stash push` without `-u` refuses untracked files. Falsification uses a scratch `git worktree`.
+5. **A guard must be able to fail on the fixture it runs on.** A fixture where the asserted quantity is constant across the change is vacuous even when the assertion is well formed. This bites specifically on the version matrix: a project carrying `.agency/` yields `IsV2=true` for every non-v3-confirmed input under both the old and the new rule, so any monotonicity claim built on it holds trivially. Monotonicity is therefore asserted on a residue-free fixture (AC-RIL2-003).
 
 ## §B Acceptance criteria
 
@@ -34,7 +34,7 @@ Expected: a `--- PASS: TestProbeVersionSignal_NormalizedMatrix` line, and each s
 
 Fixture: each row builds a `t.TempDir()` project carrying `.agency/` so Signals 2 and 3 are positive; only the version string varies. This is what makes the override observable.
 
-The `Signal 1` column is mandatory. On this fixture `IsV2` is `true` for all six non-v3-confirmed rows both before and after the change, so an `IsV2`-only table cannot detect a Signal-1 regression. The `2.5.0` and `V2.5.0` rows exist to pin Signal 1 **false** for the bare form per REQ-RIL2-003 / REQ-RIL2-006 — an implementation that keys on major alone flips those two cells to `true` and fails here.
+The `Signal 1` column is mandatory. On this fixture `IsV2` is `true` for all **four** non-v3-confirmed rows of the nine-row table above — `""`, `v2.5.0`, `2.5.0`, `V2.5.0` — both before and after the change, so an `IsV2`-only table cannot detect a Signal-1 regression. (The other five rows are v3-confirmed; four of them — `3.0.1`, `V3.0.1`, `v4.0.0`, `4.0.0` — flip `IsV2` `true → false`, which is exactly why `IsV2` alone looks like it moves while the Signal-1 cells that matter stay put.) The `2.5.0` and `V2.5.0` rows exist to pin Signal 1 **false** for the bare form per REQ-RIL2-003 / REQ-RIL2-006 — an implementation that keys on major alone flips those two cells to `true` and fails here.
 
 **Fails when:** any implementation that (a) keeps the literal `"v3."` prefix test — four rows' `V3VersionConfirmed` stay false; or (b) makes bare `2.x` Signal-1 positive — the `2.5.0` / `V2.5.0` Signal-1 cells flip.
 
@@ -168,6 +168,8 @@ go test ./internal/cli/ -run 'TestResidueCleanup_IdempotentAcrossTwoRuns' -v 2>&
 
 Expected: `--- PASS: TestResidueCleanup_IdempotentAcrossTwoRuns`. The test runs the residue path twice against one tree and asserts run 1 removes ≥ 1 and run 2 removes exactly 0. This is the direct anti-loop assertion for issue #1243.
 
+**Fixture scope — non-`.agency` residue only.** The fixture seeds a deprecated path that the `.agency/` migration pre-step does not create (for example `.claude/commands/agency/brief.md`), so the two-run convergence REQ-RIL2-022 asserts holds exactly. A `.agency/`-carrying fixture converges in **three** runs instead, because the migration copies `.agency/` to `.agency.archived/` — itself a `defs.DeprecatedPaths` entry — during run 1, and that copy is swept by run 2 (see the REQ-RIL2-022 convergence note in spec.md §D.4). Both behaviours are correct and bounded; this AC pins the non-`.agency` case, and the REQ's "present before the first run" qualifier is what makes the two consistent.
+
 ### AC-RIL2-013 — `--dry-run` reaches the clean-reinstall plan (REQ-RIL2-024, REQ-RIL2-025)
 
 ```bash
@@ -181,11 +183,11 @@ Expected: `--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan`. The captured out
 ### AC-RIL2-014 — `--dry-run` mutates nothing (REQ-RIL2-026)
 
 ```bash
-# (a) the fixture seeds at least one retired v2 deny entry — without this the AC cannot fail
+# (a) the fixture seeds at least one retired v2 deny entry OUTSIDE a comment — without this the AC cannot fail
 F=$(grep -rl 'func TestUpdateDryRun_ZeroMutation' --include='*_test.go' internal/cli/ 2>/dev/null)
 test -n "$F" || { echo "VACUOUS: TestUpdateDryRun_ZeroMutation not found"; exit 1; }
-grep -cE 'Write\(\./secrets/\*\*\)|Write\(~/\.ssh/\*\*\)|Write\(~/\.aws/\*\*\)|Write\(~/\.config/gcloud/\*\*\)|Grep\(\./secrets/\*\*\)|Grep\(~/\.ssh/\*\*\)|Grep\(~/\.aws/\*\*\)|Grep\(~/\.config/gcloud/\*\*\)|Glob\(\./secrets/\*\*\)|Glob\(~/\.ssh/\*\*\)|Glob\(~/\.aws/\*\*\)|Glob\(~/\.config/gcloud/\*\*\)' "$F"
-# (b) the guard passes
+grep -v '^[[:space:]]*//' "$F" | grep -cE 'Write\(\./secrets/\*\*\)|Write\(~/\.ssh/\*\*\)|Write\(~/\.aws/\*\*\)|Write\(~/\.config/gcloud/\*\*\)|Grep\(\./secrets/\*\*\)|Grep\(~/\.ssh/\*\*\)|Grep\(~/\.aws/\*\*\)|Grep\(~/\.config/gcloud/\*\*\)|Glob\(\./secrets/\*\*\)|Glob\(~/\.ssh/\*\*\)|Glob\(~/\.aws/\*\*\)|Glob\(~/\.config/gcloud/\*\*\)'
+# (b) the guard passes — and its body asserts at RUNTIME that the seed reached permissions.deny
 go test ./internal/cli/ -run 'TestUpdateDryRun_ZeroMutation' -v 2>&1 | tail -5
 ```
 
@@ -193,7 +195,29 @@ Expected: (a) prints **`≥1`**; (b) `--- PASS: TestUpdateDryRun_ZeroMutation`. 
 
 **Fixture requirement (a) is what makes this AC able to fail.** The fixture's `.claude/settings.json` MUST carry at least one of the twelve `retiredV2DenyEntries` literals (`internal/cli/update_deny_migration.go:20-33`) inside its `permissions.deny` array — for example `Write(~/.ssh/**)`. Without such an entry, `stripRetiredV2DenyEntries` (`internal/cli/update_deny_migration.go:42`) reaches `if removed == 0 { return nil }` and returns **before** its `os.WriteFile`, so an implementation that relocated the dry-run early return past `update.go:306-326` — the option `plan.md` §E M4 rejects — would still leave the tree byte-identical and the hash comparison would pass. The AC would report PASS on precisely the implementation it exists to reject.
 
-Observed early-return structure (four guard returns plus the `removed == 0` return, all ahead of the single write):
+**Command (a) is a text grep, and a text grep alone cannot carry this AC.** A prior draft ran the literal-match grep over the whole file, which a *comment* satisfies — grep cannot distinguish code from prose. Observed against a fixture whose `permissions.deny` array is empty and whose only occurrence of a literal is in a leading comment:
+
+```
+$ printf 'package cli\n// seeds Write(~/.ssh/**) in permissions.deny\nfunc TestUpdateDryRun_ZeroMutation(t *testing.T) {\n\tsettings := `{"permissions":{"deny":[]}}`\n}\n' > /tmp/comment_only_test.go
+$ grep -cE 'Write\(~/\.ssh/\*\*\)|…' /tmp/comment_only_test.go
+1                    exit=0        # the unfiltered form PASSES on a comment
+$ grep -v '^[[:space:]]*//' /tmp/comment_only_test.go | grep -cE 'Write\(~/\.ssh/\*\*\)|…'
+0                    exit=1        # the comment-stripped form correctly FAILS
+```
+
+The `grep -v '^[[:space:]]*//'` filter above is the floor, not the ceiling. It is defeated by a **trailing** comment on a code line, because that line does not begin with `//`. Observed:
+
+```
+$ printf 'package cli\nfunc TestUpdateDryRun_ZeroMutation(t *testing.T) {\n\tsettings := `{"permissions":{"deny":[]}}` // seeds Write(~/.ssh/**)\n}\n' > /tmp/trailing_test.go
+$ grep -v '^[[:space:]]*//' /tmp/trailing_test.go | grep -cE 'Write\(~/\.ssh/\*\*\)|…'
+1                    exit=0        # residual gap: a trailing comment still slips through
+```
+
+**The runtime assertion is the ceiling, and it is a requirement on the M4 implementer.** `TestUpdateDryRun_ZeroMutation` MUST, as part of its own body and before invoking the dry-run, read back the `.claude/settings.json` it just wrote into the `t.TempDir()` project, unmarshal it, and assert that `permissions.deny` is a JSON array containing **at least one** of the twelve `retiredV2DenyEntries` literals — failing the test with an explicit message (e.g. `fixture seeds no retiredV2DenyEntries literal; the zero-mutation assertion would be vacuous`) when it does not. This assertion inspects the parsed fixture at run time, so it cannot be satisfied by a comment in any position — leading or trailing — and it closes the residual gap that command (a) alone leaves open. Command (a) is retained as the cheap static screen that fails fast and is checkable without running the suite; the runtime assertion is what makes the AC unfalsifiable-by-prose.
+
+**Residual gap, stated explicitly.** Until `TestUpdateDryRun_ZeroMutation` exists (M4 creates it), the runtime assertion is a requirement on the implementer rather than an executed check, and (a) is the only mechanical screen in force — so during the M4 window a trailing-comment fixture would satisfy (a). The gap closes when M4 lands the test with the assertion described above; the AC is not considered met by (a) + a bare hash comparison.
+
+Observed early-return structure (four guard returns plus the `removed == 0` return, all ahead of the single write; the trailing `68:` line is the function's terminal success return, after the write):
 
 ```
 $ sed -n '/^func stripRetiredV2DenyEntries/,/^}/p' internal/cli/update_deny_migration.go | grep -n 'return nil\|removed == 0\|WriteFile'
@@ -204,9 +228,10 @@ $ sed -n '/^func stripRetiredV2DenyEntries/,/^}/p' internal/cli/update_deny_migr
 43:	if removed == 0 {
 44:		return nil
 59:	if err := os.WriteFile(path, outData, mode); err != nil {
+68:	return nil
 ```
 
-**Fails when:** the fixture seeds no retired entry (a), or the dry-run mutates the tree (b).
+**Fails when:** the fixture seeds no retired entry outside a comment (a); the test body omits the runtime `permissions.deny` seed assertion, or that assertion finds no literal (b, which then fails rather than reporting a vacuous PASS); or the dry-run mutates the tree (b).
 
 Baseline, measured on this tree — the test does not exist yet (M4 creates it), so both halves fail as expected for a new-guard AC:
 
@@ -221,7 +246,18 @@ PASS
 ok  	github.com/modu-ai/moai-adk/internal/cli	0.491s [no tests to run]
 ```
 
-Note that (b)'s vacuous run prints a bare `PASS` and exits 0 while emitting **no** `--- PASS: TestUpdateDryRun_ZeroMutation` line — which is why §A requires the exact-test-name literal rather than the exit code. Command (a) is verified to discriminate: against a file that both defines the test and seeds `Write(~/.ssh/**)`, the same shape prints `1` and exits 0.
+Note that (b)'s vacuous run prints a bare `PASS` and exits 0 while emitting **no** `--- PASS: TestUpdateDryRun_ZeroMutation` line — which is why §A requires the exact-test-name literal rather than the exit code.
+
+Command (a) is verified to discriminate in both directions, against fixtures built for this purpose:
+
+```
+$ grep -v '^[[:space:]]*//' /tmp/comment_only_test.go | grep -cE '<12 literals>'
+0                    exit=1        # comment-only fixture correctly rejected
+$ grep -v '^[[:space:]]*//' /tmp/seeded_test.go | grep -cE '<12 literals>'
+1                    exit=0        # genuinely-seeded fixture correctly accepted
+```
+
+where `/tmp/seeded_test.go` carries `settings := \`{"permissions":{"deny":["Write(~/.ssh/**)"]}}\`` as code.
 
 ### AC-RIL2-015 — Existing dry-run output preserved (REQ-RIL2-027)
 
@@ -426,4 +462,4 @@ Repeat with a second mutation that makes a well-formed unrecognized string Signa
 - The `<pre-fix-commit>` SHA is recorded in `progress.md` §E.2 and is the SHA used by every §C replay and by AC-RIL2-020.
 - `moai spec lint` reports no findings for this SPEC. **Observed at plan-phase (2026-07-31, HEAD `5468a4afc`):** `0 error(s), 62 warning(s)` catalog-wide, with zero findings naming `SPEC-UPDATE-REINSTALL-LOOP-002` (`moai spec lint | grep -c 'SPEC-UPDATE-REINSTALL-LOOP-002'` → `0`). The 62 warnings all belong to other, grandfathered SPECs.
 - No file under `internal/template/templates/**` modified.
-- `--dry-run` performs no filesystem mutation on any path, and the M4 implementation did not relocate the dry-run early return past `update.go:306-326` (plan.md §E M4, rejected option). **Verified by AC-RIL2-014, both halves**: command (a) proves the fixture seeds at least one `retiredV2DenyEntries` literal, which is what makes command (b)'s hash comparison capable of observing the rejected option; command (b) proves the tree is unchanged. Command (a) is not optional — with an unseeded fixture, `stripRetiredV2DenyEntries` short-circuits at `removed == 0` and (b) passes on the rejected implementation, leaving this DoD clause asserted with no means of verification.
+- `--dry-run` performs no filesystem mutation on any path, and the M4 implementation did not relocate the dry-run early return past `update.go:306-326` (plan.md §E M4, rejected option). **Verified by AC-RIL2-014, all three of its checks**: command (a) — a comment-stripped literal grep — is the static screen proving the fixture seeds at least one `retiredV2DenyEntries` literal as code; the runtime `permissions.deny` seed assertion inside `TestUpdateDryRun_ZeroMutation` proves the seed actually reached the written `.claude/settings.json` (closing the trailing-comment gap that (a) alone leaves); and the hash comparison in (b) proves the tree is unchanged. The seed checks are not optional — with an unseeded fixture, `stripRetiredV2DenyEntries` short-circuits at `removed == 0` and the hash comparison passes on the rejected implementation, leaving this DoD clause asserted with no means of verification. A grep-only seed check is likewise insufficient: it is satisfiable by a comment, and a comment executes nothing.

@@ -93,17 +93,23 @@ func TestDeprecatedPaths_CollisionGuardDetectsReinsertion(t *testing.T) {
 
 // makeV3ProjectWithDesignDir builds a genuine v3 project whose only "legacy
 // residue" is the template-shipped `.claude/rules/moai/design/` directory, and
-// whose system.yaml carries a NON-`v3.`-prefixed version so the REQ-CRR-001
-// v3-version negative-override does NOT fire. Before the collision-entry
+// whose system.yaml carries a version that triggers NEITHER the v3-version
+// negative-override NOR a positive Signal 1. Before the collision-entry
 // removal this fixture drives IsV2=true (Signal 3 fires on the design dir) and
 // the clean-reinstall removes+redeploys the dir on every update (#1084 loop).
 func makeV3ProjectWithDesignDir(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	// Non-"v3." version → probeVersionSignal returns the "other" branch
-	// (negative, no override), isolating Signal 3 as the only loop driver.
+	// REQ-RIL2-009 fixture migration: the previous "3.0.0-rc13" string becomes
+	// v3-confirmed under the REQ-RIL2-001 normalization (major 3 >= 3), which
+	// would force IsV2=false via the override and let this test pass WITHOUT
+	// exercising Signal 3 at all. "1.9.0-legacy" normalizes to major 1 —
+	// neither 2 nor >= 3 — so probeVersionSignal takes the REQ-RIL2-006
+	// negative branch (Signal 1 false, no override), leaving Signal 3 as the
+	// sole driver of the assertions below. Quoted so the YAML scalar decodes
+	// as a string.
 	writeTestFile(t, root, ".moai/config/sections/system.yaml",
-		"moai:\n    version: 3.0.0-rc13\n")
+		"moai:\n    version: \"1.9.0-legacy\"\n")
 	// The template-shipped design rule directory — the collision path.
 	writeTestFile(t, root, ".claude/rules/moai/design/constitution.md",
 		"# design constitution (template-shipped)\n")
