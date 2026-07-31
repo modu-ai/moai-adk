@@ -71,3 +71,57 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**Decision: sub-agent** (Mode 5 — sequential `manager-develop`, one spawn per milestone,
+`cycle_type = tdd`)
+
+### Input parameters
+
+| Parameter | Value |
+|---|---|
+| tier | M (frontmatter `tier: M`) |
+| scope (file count) | 4 production files + 4 new `_test.go` files ≈ 8 |
+| domain count | 1 (Go source under `internal/cli/`) |
+| file language mix | 100% Go |
+| concurrency benefit | LOW — M1 blocks M3; M2 supplies the backup wiring M3 reuses; M4 depends on M2+M3 |
+| Agent Teams prereqs | n/a (Mode 3 RETIRED) |
+
+### Mode evaluation
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| 1 `trivial` | no | Semantic change across 4 production files with a data-loss hazard (Defect 5) |
+| 2 `background` | no | Write work, not read-only analysis |
+| 3 `agent-team` | no | RETIRED tombstone — never selected |
+| 4 `parallel` | no | Single domain (<3) and coding-heavy; Anthropic's coding-task parallelism caveat applies |
+| 5 `sub-agent` | **yes** | Default fallback; sequential per-milestone delegation matches the M1→M2→M3→M4 dependency chain |
+| 6 `workflow` | no | ~8 files (« ~30) and not a uniform mechanical transform |
+
+### Justification
+
+Coding-heavy work in one domain with a hard dependency chain — M1 widens the v3-confirmed
+population that M3's residue path depends on, and M2 supplies the `backupDeprecatedPaths`
+wiring M3 reuses. Anthropic's coding-task parallelism caveat ("most coding tasks involve
+fewer truly parallelizable tasks than research") makes sequential `manager-develop` spawns
+the correct default. M2 additionally must land its two halves in one commit (exclusion +
+backup) because separating them opens an unbacked-up deletion path for user-authored
+`.claude/commands/agency/*.md` — a constraint that a parallel fan-out could not honour.
+
+`cycle_type = tdd` (quality.yaml `development_mode`), one `manager-develop` spawn per
+milestone, Section A-E delegation template (REQUIRED at Tier M).
+
+### Boundary case
+
+Domain count 1 and file count ~8 are both below the Mode 4 auto-select thresholds
+(≥3 domains / ≥10 files), so no tie-breaker was needed. Mode 6's `~30`-file soft boundary
+is not approached.
+
+### Gate record
+
+- Plan Audit Gate: iter3 **PASS 0.88** (Tier M threshold 0.80), Must-Pass 7/7. Skip-eligibility
+  was NOT taken — conditions 2 (score ≥ 0.90) and 3 (artifact-hash unchanged) both failed, so
+  Phase 1 re-executed as iter3.
+- Implementation Kickoff Approval: obtained (user selected iter3 re-audit, then approved
+  proceeding to M1 after the D12/D9/D15 documentation revision landed).
