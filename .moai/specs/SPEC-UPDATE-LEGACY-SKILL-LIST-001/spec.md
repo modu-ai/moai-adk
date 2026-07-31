@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-LEGACY-SKILL-LIST-001
 title: "moai update — legacySkillIDs holds three live template skills, so the v2.16 archive drift-check can never converge (list correction + cross-check guard + wrong-archive removal + non-aborting archive loop)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-31
 updated: 2026-07-31
 author: manager-spec
