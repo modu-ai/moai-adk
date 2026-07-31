@@ -220,6 +220,35 @@ No other production writer or pruner of `.moai/backup/` exists (`grep -rn 'MoAID
 
 - **D16 — REQ-RIL2-003 `or V` wording.** `REQ-RIL2-003` reads "major exactly 2 **and** the original string carried a leading `v` **or `V`**", but `AC-RIL2-001`'s nine-row table and the `spec.md` §A residue-free table both pin `V2.5.0` to `Signal 1 = false`. Accepting `V` would flip a residue-free `V2.5.0` project from `IsV2=false` to `true` — an NFR-RIL2-001 widening. M1's implementation correctly used lowercase `v` only; the **requirement text** is what is wrong. The user has decided to batch this documentation correction after M4. No `spec.md` body edit was made.
 
+### M3 — Residue cleanup for v3-confirmed projects (REQ-RIL2-018..023)
+
+Base for this milestone: `e6fb18b6d` (M2). Files touched: `internal/cli/update.go` (the `fpErr == nil && !fingerprint.IsV2 && isMoAIProject` block), new `internal/cli/update_residue_cleanup.go`, new `internal/cli/update_residue_cleanup_test.go`.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-RIL2-010 | PASS | `go test ./internal/cli/ -run 'TestResidueCleanup_NoDestructiveReinstall' -v` | `--- PASS: TestResidueCleanup_NoDestructiveReinstall (0.02s)` |
+| AC-RIL2-011 | PASS | `go test ./internal/cli/ -run 'TestResidueCleanup_RemovesDeprecatedOnV3Project' -v` | `--- PASS: TestResidueCleanup_RemovesDeprecatedOnV3Project (0.07s)` + `--- PASS: .../v3_project_with_marker`, `--- PASS: .../no_project_marker` |
+| AC-RIL2-012 | PASS | `go test ./internal/cli/ -run 'TestResidueCleanup_IdempotentAcrossTwoRuns' -v` | `--- PASS: TestResidueCleanup_IdempotentAcrossTwoRuns (0.04s)` |
+| AC-RIL2-019 | PASS | `go test ./internal/cli/ -run 'TestResidueCleanup_PreservesAgencyMigrationPreStep' -v` | `--- PASS: TestResidueCleanup_PreservesAgencyMigrationPreStep (0.02s)` |
+
+Implementation notes:
+
+- The `:406` block is **extended**, not replaced. `runV3ResidueCleanup` retains the `.agency/` migration pre-step under its existing conditions (`.agency` present) and adds the deprecated-path sweep after it. The migration is not gated on the sweep's outcome and is not reordered past it (REQ-RIL2-021 / AC-RIL2-019).
+- **The sweep operates on the PRE-migration residue snapshot.** The migration copies `.agency/` to `.agency.archived/` and leaves both in place; `.agency.archived` is itself a `defs.DeprecatedPaths` entry, so a sweep scanning AFTER the migration would delete the archive the migration had just written and fail AC-RIL2-019. Sweeping the pre-migration snapshot keeps the archive intact while still clearing the legacy `.agency/`. The snapshot is re-filtered for existence before backup, because backing up a path the migration consumed would abort the whole sweep.
+- The project-marker gate (`isMoAIProject`) is checked INSIDE `runV3ResidueCleanup`, not only at the `:406` call site, so the gate holds for every caller (REQ-RIL2-023). Falsified: removing the gate makes `TestResidueCleanup_RemovesDeprecatedOnV3Project/no_project_marker` FAIL on all three assertions.
+- `expandDeprecatedBackupTargets` (M2) is reused verbatim — `scanDeprecatedPaths` returns directory entries while `backupDeprecatedPaths` copies files and errors on a directory. The sentinel `DEPRECATED_BACKUP_FAILED` is reused for the abort-before-REMOVE path (REQ-RIL2-019).
+- No PRESERVE snapshot, no tree wipe, no forced redeploy (REQ-RIL2-020). `runV3ResidueCleanup` takes no `template.Deployer` at all. `TestResidueCleanup_NoDestructiveReinstall` asserts this by tree-delta: every pre-existing file except the residue survives, no `.moai/backups/v2-to-v3-*` directory appears, and the only additions live under the residue path's own `.moai/backup/` directory.
+- `Removed` is derived from the filesystem (post-`RemoveAll` `os.Lstat` absence check), never from the planned-list length — the REQ-RIL2-017 discipline carried forward.
+
+Falsification (each new guard proven able to fail):
+
+- Neutering the sweep (early return before backup+remove) → AC-RIL2-010/011/012/019 all FAIL with `residue ... not removed`, `BackupDir empty`, `run 1 removed 0 paths, want >= 1`.
+- Removing the marker gate → `no_project_marker` FAILs: `Skipped = false`, `Removed = [.claude/agents/moai/planner.md]`, and the residue is gone from a non-MoAI directory.
+
+Deferred (recorded, NOT actioned in M3):
+
+- **D17 — `.agency.archived` converges in two runs, not one.** For a tree carrying `.agency/`: run 1 archives `.agency/` → `.agency.archived/` and sweeps `.agency/`; run 2 finds `.agency.archived` in its own pre-migration snapshot and removes it; run 3 removes zero. This is bounded and terminating (unlike the #1243 net-zero remove-then-restore loop), but it is a two-run convergence rather than the one-run convergence REQ-RIL2-022's general wording implies. `TestResidueCleanup_IdempotentAcrossTwoRuns` uses a residue fixture without `.agency/` (a plain deprecated file), where convergence is one run. Resolving the `.agency` case would require either permanently excluding `.agency.archived` from the sweep or accepting the archive's deletion on the second run — both are scope decisions, not implementation details, so neither was taken here.
+
 ### Epic run order (depends_on sequencing)
 
 `SPEC-UPDATE-REINSTALL-LOOP-002` declares `related_specs`, not `depends_on`, so its own run-phase `depends_on` pre-flight is trivially satisfied. The sibling Epic SPECs are all `status: draft`, which is the expected state for an Epic whose members have not yet run — it is a sequencing fact, not a per-SPEC defect.

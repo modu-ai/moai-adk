@@ -403,11 +403,18 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// + .agency/ present. Genuine-v2 projects (IsV2=true) are handled by
 		// the clean-reinstall path above and never reach here, so there is no
 		// double-fire (the adapter need not swallow ErrMigrateArchiveExists).
+		//
+		// SPEC-UPDATE-REINSTALL-LOOP-002 M3 (REQ-RIL2-019..023): this same block
+		// is the "v3 project with residue" branch, so the deprecated-path sweep
+		// is EXTENDED onto it rather than added elsewhere. runV3ResidueCleanup
+		// keeps the agency migration pre-step above as its own step — it is not
+		// gated behind the sweep's outcome — and adds backup-then-remove for the
+		// deprecated residue. It performs no PRESERVE snapshot, no tree wipe and
+		// no forced redeployment (REQ-RIL2-020); the destructive full reinstall
+		// stays reachable only through the IsV2 path above.
 		if fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd) {
-			if _, agencyStatErr := os.Stat(filepath.Join(cwd, ".agency")); agencyStatErr == nil {
-				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), getBoolFlag(cmd, "force"), out); migrateErr != nil {
-					return fmt.Errorf("pre-step agency migration: %w", migrateErr)
-				}
+			if _, cleanupErr := runV3ResidueCleanup(cwd, getBoolFlag(cmd, "dry-run"), getBoolFlag(cmd, "force"), out); cleanupErr != nil {
+				return cleanupErr
 			}
 		}
 	}
