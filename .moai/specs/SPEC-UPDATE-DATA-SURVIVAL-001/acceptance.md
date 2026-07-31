@@ -134,7 +134,7 @@ assignment or a recorded exemption reason.
 sides of the comparison from the registry yields `count == count` and passes forever; the source
 scan is what makes this AC able to fail. §C.4 is its runnable falsification.
 
-**Baseline, measured on this tree.** The scan finds **17 call sites across 11
+**Baseline, measured on this tree.** The scan finds **17 call sites across 10
 (file, function) pairs** — materially more than the 7 an earlier draft of this AC assumed, because
 the earlier figure counted only `deploy.go` plus two hand-picked sites and omitted the archive,
 backup, cleanup, and namespace-protect files entirely. Command and verbatim output:
@@ -143,6 +143,15 @@ backup, cleanup, and namespace-protect files entirely. Command and verbatim outp
 $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
     --include='*.go' | grep -v '_test.go' | wc -l
       17
+```
+
+The pair count and the site total are independently re-derivable from the table below:
+
+```
+$ grep -c '^| [0-9]* | `internal' acceptance.md
+10
+$ grep '^| [0-9]* | `internal' acceptance.md | sed -E 's/.*\| ([0-9]+) \(.*/\1/' | awk '{s+=$1} END {print s}'
+17
 ```
 
 | # | File | Function | Sites |
@@ -158,10 +167,32 @@ $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/updat
 | 9 | `internal/cli/update.go` | `ensureGlobalSettingsEnv` | 1 (`:766`) |
 | 10 | `internal/cli/update_namespace_protect.go` | `backupUserOwnedNamespace` | 3 (`:225`, `:233`, `:243`) |
 
-Rows 5, 6, and 10 remove directories the same run created (backup staging, retention pruning,
-defensive cleanup on a failed namespace backup) and therefore carry an **exemption reason** rather
-than a protection-set assignment; they touch no user data that predates the run. Rows 1-4 and 7-9
-are the genuine user-data destructive sites and carry protection assignments per `plan.md` §C.
+Rows 5, 6, and 10 carry an **exemption reason** rather than a protection-set assignment, but for two
+materially different reasons — an earlier form of this paragraph collapsed them into one ("directories
+the same run created") and was false for row 6:
+
+- **Rows 5 and 10 — same-call rewind.** `BackupMoaiConfig` (`backup.go:107/135/140`) unwinds the
+  `backupDir` this very call created; `backupUserOwnedNamespace`
+  (`update_namespace_protect.go:225/233/243`) is defensive cleanup of the staging directory this
+  very call created on a failed namespace backup. Neither can touch data that predates the run.
+- **Row 6 — retention pruning of moai-authored backup directories.** `CleanupOldBackups`
+  (`backup.go:259`) deletes `backups[:len(backups)-keepCount]` — the **oldest excess backups of
+  previous runs**, not anything this run created. This matches `plan.md` §C.0 row 6
+  ("retention pruning of moai-authored backup dirs"); the two artifacts now agree. Its exemption
+  rests on a different ground: every directory it deletes was authored by `moai` itself under the
+  backup root and matched the `YYYYMMDD_HHMMSS` name filter (`backup.go:228-241`, `len(name) == 15`,
+  8 digits + `_` + 6 digits), so it destroys moai-owned restore points under a declared retention
+  policy — never user-authored data. It is exempt from the *user-data* protection set, NOT harmless
+  to the recovery contract.
+
+**REQ-UDS-002 run-scoped backup directories ARE in this pruning target set** when they are created
+under the same backup root with a `YYYYMMDD_HHMMSS` name, because that is precisely the filter
+`CleanupOldBackups` applies. M3 must therefore state whether its run-scoped directory adopts that
+naming; if it does, a sufficiently old restore point can be pruned by a later run's rotation, and the
+interaction between the retention window and the recovery contract is a follow-up review item.
+
+Rows 1-4 and 7-9 are the genuine user-data destructive sites and carry protection assignments per
+`plan.md` §C.
 
 No registry exists today, so nothing fails when a new site is added unprotected.
 
@@ -398,26 +429,60 @@ unmeasurable until M4 creates it; that is expected for a new-guard AC and is not
 ```bash
 # (a) the fake's DEFINITION is gone, not merely renamed
 grep -cE '^func simulateMoaiUpdate|^func simulate[A-Za-z]*Update' internal/cli/update_safety_test.go
-# (b) a real production entry point is invoked — the load-bearing assertion
-grep -cE 'runUpdate|RunUpdate|CleanMoaiManagedPaths|BackupMoaiConfig|runCleanReinstall|buildPreserveInventory|deploy\.|backup\.' internal/cli/update_safety_test.go
+# (b) a real production entry point is EXECUTED — the load-bearing assertion
+go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -covermode=set \
+  -coverpkg=./internal/cli/...,./internal/cli/update/... \
+  -coverprofile=/tmp/uds-m5.out ./internal/cli/
+go tool cover -func=/tmp/uds-m5.out \
+  | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig' \
+  | grep -vE '[[:space:]]0\.0%$' > /tmp/uds-covered.txt
+test -s /tmp/uds-covered.txt || { echo "VACUOUS: guard executed no registry production function"; exit 1; }
+cat /tmp/uds-covered.txt
 # (c) the guard passes
 go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -v ./internal/cli/
 ```
 
-Expected: (a) prints `0`; (b) prints **`≥1`**; (c) a `--- PASS: TestMoaiUpdate_PreservesUserArea`
-line.
+Expected: (a) prints `0`; (b) the `test -s` guard passes silently and `cat` prints **at least one**
+line naming a registry production function with coverage **strictly above `0.0%`**; (c) a
+`--- PASS: TestMoaiUpdate_PreservesUserArea` line.
 
-**Command (b) is the whole point of this AC.** The earlier draft stated "while the test body
-invokes a real update entry point" as prose with no command behind it, and used the
-production-symbol grep only as a *baseline*. That left the AC satisfiable by renaming the fake:
-`simulateMoaiUpdate` → `simulateUpdate` drives (a) to `0`, the untouched tautological test still
-emits `--- PASS`, and nothing checks that production code runs. Promoting the grep from baseline to
-expected postcondition closes that, and (a)'s `^func` anchor closes the rename escape by asserting
-the *definition* is deleted rather than the identifier merely absent — the defect this AC exists to
-remove is the fake itself (REQ-UDS-018), not its name.
+**Command (b) is the whole point of this AC, and it must be execution evidence — not a grep.** Two
+successive drafts got this wrong in different ways. The first stated "while the test body invokes a
+real update entry point" as prose with no command behind it, which left the AC satisfiable by
+renaming the fake: `simulateMoaiUpdate` → `simulateUpdate` drives (a) to `0`, the untouched
+tautological test still emits `--- PASS`, and nothing checks that production code runs. The second
+promoted a production-symbol **text grep** from baseline to expected postcondition — which is
+satisfiable by a single comment, because grep cannot distinguish code from prose. Observed:
+
+```
+$ printf '// drives deploy.CleanMoaiManagedPaths\n' | grep -cE 'runUpdate|RunUpdate|CleanMoaiManagedPaths|BackupMoaiConfig|runCleanReinstall|buildPreserveInventory|deploy\.|backup\.'
+1
+```
+
+A replacement guard that deletes the fake and leaves behind one comment naming the production
+function would therefore have passed (a), (b), and (c) while executing zero lines of production
+code — the exact defect §A Defect 4 exists to remove, relocated from prose into a grep. Coverage is
+the only form of (b) that cannot be satisfied by text: `> 0.0%` on a named function is evidence the
+test actually entered it.
+
+**`-coverpkg` is required, not optional.** `CleanMoaiManagedPaths` and `BackupMoaiConfig` live in
+`./internal/cli/update/deploy/` and `./internal/cli/update/backup/`, which are **not** the package
+under test. Without `-coverpkg` they are absent from the profile entirely and the assertion silently
+narrows to the one same-package function. Observed on this tree:
+
+```
+$ go test -run 'TestMoaiUpdate_PreservesUserArea' -covermode=set -coverprofile=/tmp/nopkg.out ./internal/cli/
+$ go tool cover -func=/tmp/nopkg.out | grep -E 'CleanMoaiManagedPaths|runCleanReinstall|BackupMoaiConfig'
+.../internal/cli/update_clean_install.go:137:  runCleanReinstall   0.0%        # only 1 of 3 visible
+```
+
+(a)'s `^func` anchor is retained: it closes the rename escape by asserting the fake's *definition*
+is deleted rather than the identifier merely absent — the defect this AC removes is the fake itself
+(REQ-UDS-018), not its name.
 
 **Fails when:** the fake is renamed rather than deleted (a), the replacement still executes no
-production code (b), or the guard does not pass (c).
+production code — including the case where it only *mentions* one in a comment (b) — or the guard
+does not pass (c).
 
 Baseline, measured on this tree:
 
@@ -426,8 +491,17 @@ $ grep -cE '^func simulateMoaiUpdate|^func simulate[A-Za-z]*Update' internal/cli
 1
 $ grep -c 'simulateMoaiUpdate' internal/cli/update_safety_test.go        # unanchored, for context
 4
-$ grep -cE 'runUpdate|RunUpdate|CleanMoaiManagedPaths|BackupMoaiConfig|runCleanReinstall|buildPreserveInventory|deploy\.|backup\.' internal/cli/update_safety_test.go
-0
+$ go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -covermode=set \
+    -coverpkg=./internal/cli/...,./internal/cli/update/... \
+    -coverprofile=/tmp/uds-m5.out ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.537s	coverage: 5.5% of statements in ./internal/cli/..., ./internal/cli/update/...
+$ go tool cover -func=/tmp/uds-m5.out | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig'
+.../update/backup/backup.go:27:      BackupMoaiConfig        0.0%
+.../update/deploy/deploy.go:28:      CleanMoaiManagedPaths   0.0%
+.../update_clean_install.go:137:     runCleanReinstall       0.0%
+$ go tool cover -func=/tmp/uds-m5.out | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig' | grep -vE '[[:space:]]0\.0%$' > /tmp/uds-covered.txt
+$ test -s /tmp/uds-covered.txt || echo "VACUOUS: guard executed no registry production function"
+VACUOUS: guard executed no registry production function
 $ go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -v ./internal/cli/
 === RUN   TestMoaiUpdate_PreservesUserArea
 --- PASS: TestMoaiUpdate_PreservesUserArea (0.00s)
@@ -440,9 +514,25 @@ unanchored form counts every mention (`4` — one definition plus three call sit
 expectation of `0` therefore means the function is deleted, which the unanchored form could also
 reach by renaming.
 
-(b)'s `0` against the final `PASS` is precisely the defect: the test passes today without executing
-a single line of production code. The `ok … 0.710s` duration varies per run; only the `--- PASS:`
-line is asserted.
+(b)'s all-`0.0%` profile against the final `PASS` is precisely the defect: the test passes today
+without executing a single line of production code, and the coverage profile says so mechanically.
+The `ok … 0.710s` duration and the aggregate `5.5%` figure vary per run and are not asserted; the
+assertion is that at least one of the four named functions reports coverage above `0.0%`.
+
+The (b) command discriminates in both directions — verified by a positive control on a test that
+does execute one of these functions:
+
+```
+$ go test -run 'TestCleanMoaiManagedPaths' -count=1 -covermode=set \
+    -coverpkg=./internal/cli/...,./internal/cli/update/... \
+    -coverprofile=/tmp/pos.out ./internal/cli/update/deploy/
+$ go tool cover -func=/tmp/pos.out | grep CleanMoaiManagedPaths | grep -vE '[[:space:]]0\.0%$'
+.../update/deploy/deploy.go:28:      CleanMoaiManagedPaths   94.4%
+```
+
+Zero surviving lines on the current tautological guard; one surviving line at 94.4% on a guard that
+genuinely enters the function. The `test -s` gate therefore fails today and passes after M5 only if
+production code actually runs.
 
 #### AC-UDS-015 — the replacement guard fails when production code touches a user-owned path (REQ-UDS-015, REQ-UDS-017)
 

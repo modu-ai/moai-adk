@@ -452,12 +452,30 @@ alongside the generic placeholders at `workflow.yaml:39`, `statusline.yaml:28`, 
 
 ```bash
 go test -run 'TestTemplateNoInternalContentLeak' -count=1 -v ./internal/template/
-git diff --stat -- internal/template/internal_content_leak_test.go
+git diff --stat d5336214e HEAD -- internal/template/internal_content_leak_test.go
 ```
 
 Expected: a verbatim `--- PASS: TestTemplateNoInternalContentLeak` line (per §A clause 2), and
 `git diff --stat` producing **no output** for that file — REQ-CKH-013 forbids this SPEC from
 touching it.
+
+**Why the diff is ref-anchored.** The earlier form was `git diff --stat -- <file>` with no ref,
+which compares the working tree against the index. A forbidden edit that is **committed** then
+produces empty output and the criterion passes — exactly the violation this half exists to catch.
+Observed at the code baseline, with a file that *did* change between `d5336214e` and `HEAD`
+substituted to make the two forms distinguishable:
+
+```
+$ git diff --stat -- .moai/specs/SPEC-CONFIG-KEY-HONESTY-001/acceptance.md
+(no output)
+$ git diff --stat d5336214e HEAD -- .moai/specs/SPEC-CONFIG-KEY-HONESTY-001/acceptance.md
+ .../SPEC-CONFIG-KEY-HONESTY-001/acceptance.md      | 370 +++++++++++++++++----
+ 1 file changed, 298 insertions(+), 72 deletions(-)
+```
+
+The unanchored form cannot distinguish "unmodified" from "modified and committed"; the anchored
+form can. AC-CKH-021 already uses the same `d5336214e HEAD` anchoring, so the two criteria are now
+consistent. A **committed** edit to the guard file is detected by this form.
 
 Baseline at code baseline `d5336214e` — observed:
 
@@ -591,6 +609,10 @@ mkdir -p /tmp/ckh-falsify
 # copy the real inventory, delete a single R entry (e.g. quality.report_generation.enabled)
 sed '/report_generation\.enabled/,+2d' internal/config/testdata/shipped_key_inventory.yaml \
   > /tmp/ckh-falsify/shipped_key_inventory.yaml
+if diff -q internal/config/testdata/shipped_key_inventory.yaml \
+     /tmp/ckh-falsify/shipped_key_inventory.yaml >/dev/null; then
+  echo "MUTATION NO-OP — sed matched nothing"; exit 1
+fi
 printf '{"Replace":{"internal/config/testdata/shipped_key_inventory.yaml":"/tmp/ckh-falsify/shipped_key_inventory.yaml"}}' \
   > /tmp/ckh-falsify/overlay.json
 go test -overlay=/tmp/ckh-falsify/overlay.json -run 'TestShippedConfigKeysHaveReaders' \
@@ -601,12 +623,38 @@ Expected: **FAIL**, with the failure message naming `report_generation.enabled` 
 no reader, no prose consumer, and no reserved marker. A PASS here means the guard's allowlist lookup
 is not load-bearing and the guard is inert.
 
+The `diff -q` guard is required by §A clause 7 for the same reason it is required in C-3: the
+run-phase inventory's exact formatting is not fixed at plan time, so a `sed` address that matches
+nothing leaves the overlay byte-identical to the original. The procedure would then report PASS
+while having mutated nothing — a falsification that refutes itself rather than the guard. Observed
+on a scratch fixture (three-line file, address deliberately unmatched vs matched):
+
+```
+$ sed '/zzz_nomatch/,+2d' orig.yaml > out.yaml
+$ if diff -q orig.yaml out.yaml >/dev/null; then echo "MUTATION NO-OP — sed matched nothing"; exit 1; fi; echo "mutation confirmed"
+MUTATION NO-OP — sed matched nothing        exit=1
+
+$ sed '/^b$/,+0d' orig.yaml > out2.yaml
+$ if diff -q orig.yaml out2.yaml >/dev/null; then echo "MUTATION NO-OP — sed matched nothing"; exit 1; fi; echo "mutation confirmed"
+mutation confirmed                           exit=0
+```
+
+The `if` form is used here rather than C-3's `diff -q … && { …; exit 1; }` form because the latter
+leaves the *success* path carrying `diff -q`'s own exit 1 (files differ), so its exit code cannot
+distinguish the two outcomes — only its printed message can. The `if` form discriminates by exit
+code as well, as the transcript above shows. C-3 / C-4 / C-5 retain the `&&` form; their guards
+still surface the no-op via the message, which is what §D asserts.
+
 ### C-2 — the non-vacuity floor actually fires
 
 Same overlay mechanism, substituting an inventory truncated to a handful of entries:
 
 ```bash
 head -12 internal/config/testdata/shipped_key_inventory.yaml > /tmp/ckh-falsify/tiny.yaml
+if diff -q internal/config/testdata/shipped_key_inventory.yaml \
+     /tmp/ckh-falsify/tiny.yaml >/dev/null; then
+  echo "MUTATION NO-OP — inventory is already <= 12 lines, nothing was truncated"; exit 1
+fi
 printf '{"Replace":{"internal/config/testdata/shipped_key_inventory.yaml":"/tmp/ckh-falsify/tiny.yaml"}}' \
   > /tmp/ckh-falsify/overlay2.json
 go test -overlay=/tmp/ckh-falsify/overlay2.json \
@@ -615,6 +663,20 @@ go test -overlay=/tmp/ckh-falsify/overlay2.json \
 
 Expected: **FAIL** naming the `>= 200` floor (NFR-CKH-002). A PASS means an empty or truncated
 inventory would sail through, which is the exact vacuity hazard AC-CKH-006 exists to exclude.
+
+The `diff -q` guard catches this procedure's own no-op shape (§A clause 7): if the inventory is
+already 12 lines or fewer, `head -12` copies it verbatim and the overlay substitutes the file with
+itself. The subsequent FAIL would then prove nothing about truncation — it would merely restate that
+the unmutated inventory is below the floor. Observed on a three-line scratch fixture:
+
+```
+$ head -12 orig.yaml > tiny.yaml
+$ if diff -q orig.yaml tiny.yaml >/dev/null; then echo "MUTATION NO-OP — inventory is already <= 12 lines, nothing was truncated"; exit 1; fi
+MUTATION NO-OP — inventory is already <= 12 lines, nothing was truncated        exit=1
+```
+
+At the ≥ 200-entry inventory NFR-CKH-002 requires, the guard is expected to pass silently; it fires
+only if the inventory itself has collapsed, which is the condition worth catching.
 
 ### C-3 — the prose probe genuinely blocks a delete
 

@@ -103,7 +103,7 @@ $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/updat
       17
 ```
 
-**17 call sites across 11 (file, function) pairs.** An earlier draft of this plan implied the scan
+**17 call sites across 10 (file, function) pairs.** An earlier draft of this plan implied the scan
 scope was 7 sites (`deploy.go`'s five plus `update_clean_install.go:271` and `update.go:766`); that
 figure omitted `update_archive.go`, `update/backup/backup.go`, `update_cleanup.go`, and
 `update_namespace_protect.go` entirely. The registry must therefore carry a row per scanned site,
@@ -206,7 +206,7 @@ before anything depends on them.
 
 ### M2 — Destructive-target registry + `.moai/memory/` backup + comment reconciliation
 
-Introduces the registry of §C.0 as code (11 rows / 17 sites, not the 7 an earlier draft assumed),
+Introduces the registry of §C.0 as code (10 rows / 17 sites, not the 7 an earlier draft assumed),
 its drift guard, the missing `.moai/memory/` backup, and the `dirs.go` brand+db group comment fix.
 
 - The guard enumerates sites by static source scan, independently of the registry (REQ-UDS-007).

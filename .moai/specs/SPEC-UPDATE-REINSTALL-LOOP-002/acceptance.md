@@ -181,10 +181,47 @@ Expected: `--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan`. The captured out
 ### AC-RIL2-014 — `--dry-run` mutates nothing (REQ-RIL2-026)
 
 ```bash
+# (a) the fixture seeds at least one retired v2 deny entry — without this the AC cannot fail
+F=$(grep -rl 'func TestUpdateDryRun_ZeroMutation' --include='*_test.go' internal/cli/ 2>/dev/null)
+test -n "$F" || { echo "VACUOUS: TestUpdateDryRun_ZeroMutation not found"; exit 1; }
+grep -cE 'Write\(\./secrets/\*\*\)|Write\(~/\.ssh/\*\*\)|Write\(~/\.aws/\*\*\)|Write\(~/\.config/gcloud/\*\*\)|Grep\(\./secrets/\*\*\)|Grep\(~/\.ssh/\*\*\)|Grep\(~/\.aws/\*\*\)|Grep\(~/\.config/gcloud/\*\*\)|Glob\(\./secrets/\*\*\)|Glob\(~/\.ssh/\*\*\)|Glob\(~/\.aws/\*\*\)|Glob\(~/\.config/gcloud/\*\*\)' "$F"
+# (b) the guard passes
 go test ./internal/cli/ -run 'TestUpdateDryRun_ZeroMutation' -v 2>&1 | tail -5
 ```
 
-Expected: `--- PASS: TestUpdateDryRun_ZeroMutation`. The test hashes every file under the `t.TempDir()` project before and after the dry-run invocation and asserts the two maps are equal, including that no `.moai/backups/` directory was created.
+Expected: (a) prints **`≥1`**; (b) `--- PASS: TestUpdateDryRun_ZeroMutation`. The test hashes every file under the `t.TempDir()` project before and after the dry-run invocation and asserts the two maps are equal, including that no `.moai/backups/` directory was created.
+
+**Fixture requirement (a) is what makes this AC able to fail.** The fixture's `.claude/settings.json` MUST carry at least one of the twelve `retiredV2DenyEntries` literals (`internal/cli/update_deny_migration.go:20-33`) inside its `permissions.deny` array — for example `Write(~/.ssh/**)`. Without such an entry, `stripRetiredV2DenyEntries` (`internal/cli/update_deny_migration.go:42`) reaches `if removed == 0 { return nil }` and returns **before** its `os.WriteFile`, so an implementation that relocated the dry-run early return past `update.go:306-326` — the option `plan.md` §E M4 rejects — would still leave the tree byte-identical and the hash comparison would pass. The AC would report PASS on precisely the implementation it exists to reject.
+
+Observed early-return structure (four guard returns plus the `removed == 0` return, all ahead of the single write):
+
+```
+$ sed -n '/^func stripRetiredV2DenyEntries/,/^}/p' internal/cli/update_deny_migration.go | grep -n 'return nil\|removed == 0\|WriteFile'
+6:			return nil
+15:		return nil
+20:		return nil
+24:		return nil
+43:	if removed == 0 {
+44:		return nil
+59:	if err := os.WriteFile(path, outData, mode); err != nil {
+```
+
+**Fails when:** the fixture seeds no retired entry (a), or the dry-run mutates the tree (b).
+
+Baseline, measured on this tree — the test does not exist yet (M4 creates it), so both halves fail as expected for a new-guard AC:
+
+```
+$ F=$(grep -rl 'func TestUpdateDryRun_ZeroMutation' --include='*_test.go' internal/cli/ 2>/dev/null)
+$ test -n "$F" || { echo "VACUOUS: TestUpdateDryRun_ZeroMutation not found"; exit 1; }
+VACUOUS: TestUpdateDryRun_ZeroMutation not found        exit=1
+
+$ go test ./internal/cli/ -run 'TestUpdateDryRun_ZeroMutation' -v 2>&1 | tail -3
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.491s [no tests to run]
+```
+
+Note that (b)'s vacuous run prints a bare `PASS` and exits 0 while emitting **no** `--- PASS: TestUpdateDryRun_ZeroMutation` line — which is why §A requires the exact-test-name literal rather than the exit code. Command (a) is verified to discriminate: against a file that both defines the test and seeds `Write(~/.ssh/**)`, the same shape prints `1` and exits 0.
 
 ### AC-RIL2-015 — Existing dry-run output preserved (REQ-RIL2-027)
 
@@ -389,4 +426,4 @@ Repeat with a second mutation that makes a well-formed unrecognized string Signa
 - The `<pre-fix-commit>` SHA is recorded in `progress.md` §E.2 and is the SHA used by every §C replay and by AC-RIL2-020.
 - `moai spec lint` reports no findings for this SPEC. **Observed at plan-phase (2026-07-31, HEAD `5468a4afc`):** `0 error(s), 62 warning(s)` catalog-wide, with zero findings naming `SPEC-UPDATE-REINSTALL-LOOP-002` (`moai spec lint | grep -c 'SPEC-UPDATE-REINSTALL-LOOP-002'` → `0`). The 62 warnings all belong to other, grandfathered SPECs.
 - No file under `internal/template/templates/**` modified.
-- `--dry-run` performs no filesystem mutation on any path (AC-RIL2-014), and the M4 implementation did not relocate the dry-run early return past `update.go:306-326` (plan.md §E M4, rejected option).
+- `--dry-run` performs no filesystem mutation on any path, and the M4 implementation did not relocate the dry-run early return past `update.go:306-326` (plan.md §E M4, rejected option). **Verified by AC-RIL2-014, both halves**: command (a) proves the fixture seeds at least one `retiredV2DenyEntries` literal, which is what makes command (b)'s hash comparison capable of observing the rejected option; command (b) proves the tree is unchanged. Command (a) is not optional — with an unseeded fixture, `stripRetiredV2DenyEntries` short-circuits at `removed == 0` and (b) passes on the rejected implementation, leaving this DoD clause asserted with no means of verification.

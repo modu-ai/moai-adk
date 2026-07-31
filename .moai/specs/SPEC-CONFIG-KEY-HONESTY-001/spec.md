@@ -152,7 +152,11 @@ The superseded bare-name figures were 122 and 5. The gap is dominated by field-n
 their only `.F` selectors belong to unrelated structs. `WorkflowWorktreeConfig.AutoMerge` is the
 confirmed instance (its only production selectors resolve to `internal/github.MergeOptions`), which
 is why §A.6 could report `AutoMerge` as unread while the old 121-key set omitted `auto_merge`. Under
-path resolution the two agree. `TmuxPreferred` and `AutoEnabled` flip the same way.
+path resolution the two agree. `TmuxPreferred` and `AutoEnabled` flip the same way — but note that
+this is a statement about the **field name**, not about the shipped key. `TmuxPreferred` is
+field-dead and key-**live**: the key `workflow.worktree.tmux_preferred` is read through an ad-hoc
+inline struct that the analyzer cannot see. See §A.3a; the key is `adhoc-live` per REQ-CKH-008 and
+is not a deletion candidate.
 
 Mapping the 174 back onto the shipped template YAMLs gives **161 dead field names that surface as a
 key in at least one shipped section file**, across **188 (file, key) occurrences**:
@@ -193,6 +197,73 @@ The path-resolved re-derivation was performed with a throwaway `go/packages` pro
 retained in the tree. M2's guard is its durable implementation: AC-CKH-006's non-vacuity floor and
 AC-CKH-007's collision subtest exist so that the guard reproduces this measurement mechanically
 rather than inheriting the numbers from this section.
+
+### A.3a Field-dead is not key-dead — the ad-hoc inline-struct reader
+
+A fourth methodology fact binds the mapping in §A.3, and it is the one that can cause harm: **a dead
+field name does not imply a dead shipped key.** The path-resolved analyzer counts a read only when
+the selector's receiver resolves to a struct declared in `internal/config/types.go`. A key read
+through a *package-local* struct — same `yaml:` tags, declared outside `types.go`, unmarshalled
+directly from the section file — is invisible to it and lands in the 174.
+
+`workflow.worktree.tmux_preferred` is the confirmed instance, and the reason the sentence above
+about `TmuxPreferred` flipping live→dead is a statement about the **field**, not the key:
+
+```
+$ sed -n '468,486p' internal/cli/worktree/new.go
+type workflowTmuxConfig struct {
+    Workflow struct {
+        Worktree struct {
+            TmuxPreferred bool `yaml:"tmux_preferred"`
+        } `yaml:"worktree"`
+    } `yaml:"workflow"`
+}
+...
+func parseTmuxPreferred(data []byte) bool {
+    var cfg workflowTmuxConfig
+    if err := yaml.Unmarshal(data, &cfg); err != nil { return false }
+    return cfg.Workflow.Worktree.TmuxPreferred
+}
+
+$ sed -n '193,194p' internal/cli/worktree/new.go
+    tmuxFlag, _ := cmd.Flags().GetBool("tmux")
+    if tmuxFlag || isTmuxPreferred() {
+
+$ grep -n 'tmux_preferred' internal/template/templates/.moai/config/sections/workflow.yaml
+38:        tmux_preferred: true
+```
+
+`isTmuxPreferred()` reads the shipped key through `parseTmuxPreferred`, and its result decides the
+tmux-session branch at `new.go:194`. Classifying this key **D** and deleting it would silently
+disable tmux preference for every user who has it set — a behavior change with no failing test.
+`CLAUDE.local.md` §22.8 additionally declares `TmuxPreferred: true` explicitly OUT OF SCOPE, so the
+deletion would also contradict a standing decision. Hence the `adhoc-live` class in REQ-CKH-008.
+
+**How widespread is the shape? — bounded above, not counted.** The population at risk is measurable
+today; the defect count is not. Files that declare a package-local `yaml:`-tagged struct, read a
+`.moai/config/sections/*.yaml`, and unmarshal it:
+
+```
+$ for f in $(grep -rln 'yaml:"' --include='*.go' internal/ pkg/ cmd/ \
+      | grep -v '_test.go' | grep -v '^internal/config/'); do
+    grep -qE '"sections"|config/sections/' "$f" && grep -qE 'yaml\.Unmarshal|yaml\.NewDecoder' "$f" && echo "$f"
+  done | wc -l
+20
+```
+
+Two spot-checks confirm the shape is not unique to `tmux_preferred`: `internal/tmux/cg_detect.go:150`
+declares `llmSectionMin` reading `llm.team_mode`, which also resolves to `types.go:250`; and
+`internal/statusline/memory.go:53` declares a local struct reading `llm.glm.context_windows`, which
+also resolves to `types.go:308`. Both are the same shape — a shipped key with both a `types.go` field
+and an ad-hoc reader.
+
+**What this bound does NOT establish.** These 20 files are the *population at risk*, not a defect
+count. A file only produces an `adhoc-live` key when its `types.go` field is **also** read-dead; a
+key whose field has a live struct-based read is simply live and classified correctly by the existing
+partition. Determining which of the 20 yield a field-dead-but-key-live key requires the M1 inventory
+cross-referenced against the M2 analyzer, neither of which exists at plan time. The honest statement
+is: **the shape is general and its population is at most 20 files; the number of keys actually
+misclassified is unmeasured and must be produced by M1.** M1 shall report that count.
 
 ### A.4 "No Go code reads this" is not "dead" (the honesty constraint)
 
@@ -375,8 +446,21 @@ explicit reserved marker. The guard shall:
   the direct-live / accessor-live / unresolved / dead partition above, and would be skipped in
   silence. `unresolved` cannot absorb them: it is already bound to the distinct meaning "an accessor
   exists but has no production caller", which presupposes a resolved field;
+- classify a key whose dotted path **does** resolve to a `types.go` struct field, whose field has no
+  qualifying read, but which is read by an **ad-hoc inline-struct reader** — a package-local struct
+  declared outside `types.go`, carrying the same `yaml:` tags, unmarshalled from the same shipped
+  section file — as `adhoc-live`, and shall **not** treat an `adhoc-live` key as a deletion
+  candidate. The class passes on M1 evidence recording the reader site, exactly as `unbound` does.
+  A key classified `adhoc-live` is live in production regardless of its field-level read count;
+  deleting it silently changes behavior. See §A.3a for the confirmed instance and the survey bound;
 - assert a non-empty, plausible inventory (see NFR-CKH-002) so that an inventory of zero fails
   rather than passes.
+
+`adhoc-live` is distinct from `unbound` and does not overlap it. `unbound` means "the dotted path
+resolves to **no** struct field"; `adhoc-live` means "the path **does** resolve, the resolved field
+is unread, and a non-`types.go` struct reads the same path". The `unbound` allowance therefore
+cannot absorb an `adhoc-live` key: such a key resolves, so it never reaches the `unbound` branch and
+would otherwise fall through to `dead`.
 
 The `moai.*` block (6 keys) is a third shape and is **not** `unbound` in the same sense: it also has
 no `SystemConfig` field, but it is read by three ad-hoc inline structs

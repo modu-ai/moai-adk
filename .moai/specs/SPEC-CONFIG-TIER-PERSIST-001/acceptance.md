@@ -804,18 +804,60 @@ A regression guard cannot be falsified by its baseline. Each is falsified by mut
 protects and confirming the command flips. All four mutations are reverted immediately; none uses
 `git stash` (§A clause 5), and each is confined to a scratch copy or an immediately-undone edit.
 
-**AC-CTP-012** — remove the ignore entry in a scratch clone of `.gitignore` and re-run the check
-against it:
+**AC-CTP-012** — remove the ignore entry from a `.gitignore` placed in a **scratch git repository**,
+and run the check inside that repository:
 
 ```bash
 SCRATCH=$(mktemp -d); trap 'rm -rf "$SCRATCH"' EXIT
-grep -v '^\.moai/config/local/$' .gitignore > "$SCRATCH/gitignore.mutated"
-git -c core.excludesFile="$SCRATCH/gitignore.mutated" check-ignore -v \
-  --no-index .moai/config/local/workflow.yaml 2>/dev/null; echo "exit=$?"
+git init -q "$SCRATCH"
+grep -c '^\.moai/config/local/$' .gitignore                      # mutation precondition: must print 1
+grep -v '^\.moai/config/local/$' .gitignore > "$SCRATCH/.gitignore"
+mkdir -p "$SCRATCH/.moai/config/local"
+git -C "$SCRATCH" check-ignore -v --no-index .moai/config/local/workflow.yaml; echo "exit=$?"
 ```
 
-Expected: `exit=1`. If it still exits 0, another pattern is matching and AC-CTP-012 is not observing
-the entry it claims to observe.
+Expected: the precondition grep prints `1` (the entry exists to be removed — a `0` means the
+mutation is a no-op and the falsification proves nothing), then `exit=1` with no matched-pattern
+line. Observed, executed at authoring time:
+
+```
+$ grep -c '^\.moai/config/local/$' .gitignore
+1
+$ git -C "$SCRATCH" check-ignore -v --no-index .moai/config/local/workflow.yaml; echo "exit=$?"
+exit=1
+```
+
+Control — the same scratch repository with the **unmutated** `.gitignore` copied in, confirming the
+flip is caused by the removed entry and not by the scratch environment:
+
+```
+$ cp .gitignore "$SCRATCH/.gitignore"
+$ git -C "$SCRATCH" check-ignore -v --no-index .moai/config/local/workflow.yaml; echo "exit=$?"
+.gitignore:183:.moai/config/local/	.moai/config/local/workflow.yaml
+exit=0
+```
+
+If the mutated run still exits 0, the scratch repository is picking up a `.gitignore` other than the
+one written into it (for example a parent-directory ignore file or a global excludes file) — inspect
+the matched-pattern line, which names the file and line number of whatever actually matched.
+
+> **Why `core.excludesFile` was abandoned.** An earlier form of this procedure ran
+> `git -c core.excludesFile="$SCRATCH/gitignore.mutated" check-ignore … ` against **this** repository.
+> That is inert: `core.excludesFile` replaces only the *user/global* excludes file and cannot disable
+> a repository-tracked `.gitignore`, so the original `.gitignore:183` kept matching and the procedure
+> returned `exit=0` where it predicted `exit=1`. Observed:
+>
+> ```
+> $ git -c core.excludesFile="$SCRATCH/gitignore.mutated" check-ignore -v --no-index .moai/config/local/workflow.yaml
+> .gitignore:183:.moai/config/local/	.moai/config/local/workflow.yaml
+> exit=0
+> ```
+>
+> Its diagnostic text made this worse rather than surfacing it: it read "another pattern is matching
+> and AC-CTP-012 is not observing the entry it claims to observe", when in fact the **same** pattern
+> matched and the mutation had simply never taken effect. A reader following that text would have
+> hunted for a phantom second pattern instead of the real fault. The mutation must be applied where
+> git will actually read it — hence the scratch repository above.
 
 **AC-CTP-013** — append the note to a scratch copy and grep that copy:
 
