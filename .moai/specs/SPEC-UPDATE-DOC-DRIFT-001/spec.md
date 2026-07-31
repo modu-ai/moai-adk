@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-DOC-DRIFT-001
 title: "always-loaded instruction drift: maintainer documentation that asserts a mechanism the code contradicts is not a stale comment — it is an input that misdirects every agent session"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -24,6 +24,7 @@ depends_on: []
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 6 of 6 — the closing SPEC of the four-lens audit of `moai update` / `.moai/config`. Findings F1-F5 each re-verified while authoring; F1 found false in three independent ways rather than the two supplied; F3 found false at the template path as well as the local path; F1's user-impact claim independently disproved. Three drifts recorded (§A.6). |
+| 0.2.0 | 2026-07-31 | Plan-audit revision (iteration 1 verdict **FAIL, 0.65** against the Tier M threshold 0.80; Must-Pass 7/7 PASS — the failure was entirely in verification design, Testability 0.50). D1-D11 resolved, D12 folded into D1's edit, D16 resolved; D13-D15 and D17 deferred. **§A.5's option-B cost framing was found inverted and is rewritten against measurement**: the non-mutating clean-reinstall renderer already exists (`update_clean_install.go:186-198`) and is already wired (`update.go:360`), so option B is a local re-ordering, not new construction — the `--dry-run` decision is settled as **option B**, preserving non-mutation. §A.5's `:305-325` citation corrected to `:306-326` (deny-rule migration) / `:328` (clean-reinstall detection). §A.2's output block declared abbreviated and its unrelated-symbol enumeration completed. `acceptance.md` gained §A clause 7 (anti-vacuity); ten criteria rewritten under it. |
 
 ## §A Problem / Motivation
 
@@ -143,22 +144,39 @@ cannot fire, and therefore has no reason to investigate a commit that is unexpec
 `[HARD] ... 의도된 정책. 감사/동기화 시 "결함"으로 되돌리지 말 것`. The prose implies all three gate
 behaviour, and that setting one to `true` turns something on.
 
-Measured at HEAD:
+Measured at HEAD. The survey grep returns 33 lines; the block below is an **abbreviated extract**,
+not verbatim output — it collapses contiguous line ranges and omits the unrelated-symbol hits
+enumerated in the paragraph that follows:
 
 ```
 $ grep -rn 'AutoCleanup\|AutoCreate\|AutoMerge' --include='*.go' internal cmd pkg \
-    | grep -v '_test.go' | grep -v main-fork
+    | grep -v '_test.go' | grep -v main-fork          # abbreviated: 33 lines total
 internal/config/types.go:485-487        (declarations)
 internal/config/defaults.go:545-547     (defaults, all three false)
 internal/cli/worktree_advisory.go:29    autoCreate := readWorktreeAutoCreate(projectRoot)
 internal/cli/worktree_advisory.go:60    return cfg.Workflow.Worktree.AutoCreate
 ```
 
+The decisive assertion is not this survey but the **selector-scoped** count, which is exhaustive and
+is what AC-UDD-005 asserts:
+
+```
+$ grep -rn 'Worktree\.AutoCleanup\|Worktree\.AutoMerge' --include='*.go' internal cmd pkg | grep -v '_test.go' | wc -l
+0
+$ grep -rn 'Worktree\.AutoCreate' --include='*.go' internal cmd pkg | grep -v '_test.go'
+internal/cli/worktree_advisory.go:60:	return cfg.Workflow.Worktree.AutoCreate
+```
+
 Only `AutoCreate` is read in production, and per `SPEC-CONFIG-KEY-HONESTY-001` §A.6 that read
 selects between two advisory sentences — it does not gate worktree creation. `AutoCleanup` and
-`AutoMerge` have zero production readers. The remaining grep hits are unrelated symbols:
-`worktree/done.go:31` `AutoCleanupFlag` (a CLI flag name), `worktree/new.go:459` `ShouldAutoMerge`
-(a `--no-merge` flag helper), and the `internal/github/` `AutoMerge` fields (PR-merge options).
+`AutoMerge` have zero production readers. The remaining survey hits are unrelated symbols and
+comments, all of which the `Worktree.`-prefixed selector correctly excludes as homonyms:
+`worktree/done.go:29,31` `AutoCleanupFlag` (a CLI flag name), `worktree/new.go:439,457,458,459`
+`ShouldAutoMerge` (a `--no-merge` flag helper), `worktree/errors.go:56,60`
+`NewAutoMergeBlockedError` (a worktree error constructor), `worktree_advisory.go:48,51` (the
+`readWorktreeAutoCreate` doc comment and signature), `defaults.go:543-544` (the mutation-rationale
+comment), the `internal/github/` `AutoMerge` fields at `pr_merger.go:12,13,54,55,113,116,117,159,164,230`
+and `errors.go:34,35` (PR-merge options), and `pkg/models/config.go:172` (a separate model struct).
 
 Setting `auto_cleanup: true` or `auto_merge: true` in `workflow.yaml` therefore changes nothing —
 while §22.8 tells the reader it is the opt-in switch.
@@ -265,7 +283,8 @@ The flag's registered help text (`internal/cli/update.go:69`):
 updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 ```
 
-The handler (`internal/cli/update.go:293-304`) is an early return placed *before* the install path:
+The handler (`internal/cli/update.go:293-304` — the comment at `:293`, the branch at `:294-304`) is
+an early return placed *before* every mutating step that follows it:
 
 ```go
 // --dry-run: print planned operations without mutating the filesystem
@@ -281,28 +300,93 @@ if getBoolFlag(cmd, "dry-run") {
 prints one `[dry-run] archive: <id>` line per legacy skill present, and returns. It previews the
 **archive** half only.
 
-The clean-reinstall path begins immediately after the early return (`:305-325`), and the comment at
-`:312` records that the placement is deliberate — the dry-run must not reach the mutating path. That
-reasoning is sound. The defect is the **contract**: the help text promises "archive **and install**
-operations", and the install half is unreachable by construction. `moai update --dry-run` on a v2
-project prints legacy-skill archiving and says nothing about the clean reinstall that is about to
-replace the user's tree.
+**What actually sits after the early return, measured.** The early return closes at `:304`. What
+follows is *not* the clean-reinstall path:
+
+```
+$ sed -n '306,313p;328,329p;359,360p' internal/cli/update.go
+306:	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
+...
+312:	// Placement is deliberate: after the --binary / --dry-run early-returns (so
+313:	// a dry run never mutates) but BEFORE the version-match short-circuit
+328:	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 REQ-VVCR-002: detect v2 fingerprint
+329:	// and short-circuit to the clean-reinstall code path when the project is
+359:			result, runErr := runCleanReinstall(ctx, cwd, CleanReinstallOptions{
+360:				DryRun: getBoolFlag(cmd, "dry-run"),
+```
+
+`:306-326` is the **retired-deny-rule migration**, which mutates — it calls
+`stripRetiredV2DenyEntries(cwd, out)`, rewriting `settings.json`. The clean-reinstall *detection*
+begins at `:328` and calls `runCleanReinstall` at `:359`. The comment at `:312` records that the
+early-return placement is deliberate: a dry run must not reach that mutating migration. That
+reasoning is sound and this SPEC preserves it.
+
+The defect is the **contract**: the help text promises "archive **and install** operations", and the
+install half is never previewed. `moai update --dry-run` on a v2 project prints legacy-skill
+archiving and says nothing about the clean reinstall that is about to replace the user's tree.
 
 **This is the one finding with both a documentation face and a behavioural face, and the scope is
 narrow deliberately.** This SPEC owns the **contract mismatch** — the help text and the behaviour
 must agree. It does not own whether clean-reinstall should trigger at all; that is
 `SPEC-UPDATE-REINSTALL-LOOP-002` (§C).
 
-Two ways to make them agree, and the choice is a real decision rather than a formality:
+#### The install half is unreachable by *placement*, not by construction — and the renderer already exists
 
-- **Narrow the text** to what the flag does ("Show planned archive operations..."). Cheap, honest,
-  and leaves the highest-consequence operation unpreviewable.
-- **Extend the flag** to render the clean-reinstall plan. Requires constructing the plan without
-  executing it — the plan-construction path would have to be separable from the mutation path, which
-  is real work and may not belong in this Epic at all.
+An earlier draft of this section stated that "the install half is unreachable by construction" and
+that extending the flag "requires constructing the plan without executing it — the plan-construction
+path would have to be separable from the mutation path, which is real work and may not belong in
+this Epic at all". **Both statements are false, and the second is inverted.** The probe this SPEC's
+own plan recommended was run, and it found the separation already built:
 
-plan.md §F.5 surfaces this as an explicit decision with the trade-off stated rather than picking
-silently.
+```
+$ sed -n '50,53p;184,198p' internal/cli/update_clean_install.go
+ 50:type CleanReinstallOptions struct {
+ 51:	// DryRun: when true, emit planned actions but make no filesystem mutations.
+ 52:	// REQ-VVCR-028.
+ 53:	DryRun bool
+...
+184:	// Dry-run early return — emit planned actions and stop before any
+185:	// filesystem mutation.
+186:	if opts.DryRun {
+187:		… "[clean-reinstall] DRY-RUN — no filesystem mutations performed"
+188:		… "Would back up %d files into .moai/backups/v2-to-v3-<stamp>/"
+190:		… "Would remove %d deprecated paths"
+194:		… "Would auto-invoke `moai migrate agency` for .agency/ contents"
+197:		return result, nil
+198:	}
+```
+
+A non-mutating clean-reinstall plan renderer exists at `update_clean_install.go:186-198`
+(REQ-VVCR-028), and `update.go:360` already wires `DryRun: getBoolFlag(cmd, "dry-run")` into
+`runCleanReinstall`. The renderer is unreachable for one reason only: the CLI's own `--dry-run`
+early return at `:294` fires before the v2-detection block at `:328` is reached. Nothing needs to be
+built; the plumbing has to reach code that is already written and already wired.
+
+The cost comparison the earlier draft rested on was therefore backwards — it charged the option that
+requires a local re-ordering with the cost of an unbuilt subsystem.
+
+#### Decision — option B, settled
+
+| Option | Change | Actual cost | What is lost |
+|---|---|---|---|
+| A — narrow the text | Rewrite the description to "Show planned archive operations…". | One line. | The highest-consequence operation stays unpreviewable — a user running `--dry-run` before a v2 update still learns nothing about the reinstall about to replace their tree. |
+| **B — make the renderer reachable** *(chosen)* | Hoist v2 detection above the `--dry-run` branch and have that branch render the resulting plan and return. | A local re-ordering. The renderer (`update_clean_install.go:186-198`) and its wiring (`update.go:360`) already exist. | Nothing. |
+
+**Option B is the resolution, and it preserves non-mutation rather than trading it away.** The
+implementation constraint is explicit: the `--dry-run` early return is **not** relocated past
+`:306-326`. Moving it there would put `stripRetiredV2DenyEntries` — a `settings.json` rewrite — on
+the dry-run path, contradicting the `:312` rationale that a dry run never mutates. Detection is
+hoisted *above* the branch instead; the branch itself keeps returning before any mutating call.
+
+This matches the sibling `SPEC-UPDATE-REINSTALL-LOOP-002` plan.md §E M4, which reached the same
+resolution independently and records the relocate-the-return variant as a **confirmed defect**. The
+two SPECs must not push this early return in opposite directions.
+
+Residual verification owed to run-phase, not assumed here: that the renderer's prologue —
+`buildPreserveInventory` / `computeInventoryHashes` (`:179`) and `scanDeprecatedPaths` (`:189`) —
+performs no filesystem write. The code path was read, not executed. AC-UDD-002 assertion 2 is the
+criterion that settles it, and REQ-UDD-013 routes the finding to E1 if it turns out the plan cannot
+be rendered without mutation.
 
 ### A.6 Drift recorded while authoring
 
@@ -418,6 +502,12 @@ clean-reinstall plan without mutating the filesystem.
 as an explicit decision with its trade-off, not resolved implicitly during implementation. **Where**
 the extend option is selected, the plan-construction path shall be demonstrated to perform no
 filesystem mutation, preserving the `internal/cli/update.go:312` placement rationale.
+
+*Decision recorded (v0.2.0): **option B** — make the existing non-mutating renderer reachable
+(§A.5). The demonstration obligation this requirement attaches to option B is therefore live, and is
+discharged by AC-UDD-002 assertion 2. The reachability fix hoists v2 detection above the `--dry-run`
+branch; it does **not** relocate the early return past `internal/cli/update.go:306-326`, which would
+place a `settings.json` rewrite on the dry-run path and reverse the `:312` rationale.*
 
 **REQ-UDD-013** — This SPEC shall not change whether clean-reinstall triggers, nor its sequencing.
 **Where** work on REQ-UDD-011 reveals that the plan cannot be constructed without entering the

@@ -6,11 +6,15 @@ mechanical text corrections that carry no open decision come last.
 
 ## §A Context
 
-Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit`, in the worktree
-`.claude/worktrees/epic-update-config`, merged with `origin/main`. This SPEC was authored at
-`7225a8b7a` on the same branch and the five sibling SPECs recorded the divergent local branch `main`
-(`1d4e4f7da`); that divergence is now resolved and all six share `d5336214e` — see spec.md §A.6
-drift 1.
+**Code baseline** `d5336214e`; **worktree HEAD at the plan-audit revision** `145e601c9`, branch
+`plan/epic-update-config-audit`, in the worktree `.claude/worktrees/epic-update-config`, merged with
+`origin/main`. `145e601c9` is a descendant of `d5336214e` that changes SPEC documents only —
+`git merge-base --is-ancestor d5336214e HEAD` exits `0`,
+`git diff --name-only d5336214e HEAD | grep -cv '\.md$'` prints `0`, and
+`git diff --stat d5336214e HEAD -- '*.go'` is empty — so every `file:line` in these artifacts is
+attributable to the code baseline. This SPEC was authored at `7225a8b7a` on the same branch and the
+five sibling SPECs recorded the divergent local branch `main` (`1d4e4f7da`); that divergence is now
+resolved and all six share `d5336214e` — see spec.md §A.6 drift 1.
 
 Every `file:line` reference in spec.md §A was verified against this tree while authoring. Three
 drifts were found and recorded rather than silently folded in (spec.md §A.6): the baseline-HEAD
@@ -31,23 +35,41 @@ Two properties this plan depends on:
 1. **E4 dependency is one-directional and unsequenced.** `SPEC-CONFIG-KEY-HONESTY-001` §A.6 owns the
    worktree-key triage; M2's §22.8 text depends on its outcome. The two SPECs may land in either
    order — M2 records the reconciliation obligation (REQ-UDD-005) rather than blocking on E4.
-2. **The `--dry-run` decision may escalate out of this Epic.** If the clean-reinstall plan cannot be
-   constructed without entering the mutating path, REQ-UDD-013 routes the finding to E1 and M1
-   settles on the narrow-the-text option. This is a plausible outcome, not a failure mode.
+2. **The `--dry-run` escalation path is now unlikely but not closed.** The v0.1.0 draft treated
+   "the plan cannot be constructed without entering the mutating path" as a plausible outcome. The
+   probe recorded in §F M1 shows the non-mutating renderer already exists, so the escalation is now
+   a narrow residual: it fires only if the renderer's prologue turns out to write. REQ-UDD-013 still
+   routes that finding to E1 and collapses M1 to the narrow-the-text option, and AC-UDD-002
+   assertion 2 is what would detect it.
 3. **This checkout is shared with concurrent sessions.** `git stash` is prohibited. Falsification for
    documentation criteria uses a scratch copy under `t.TempDir()` or `/tmp`, never a tree mutation.
 4. **Documentation ACs are vulnerable to vacuous satisfaction.** A criterion phrased as "the file no
    longer contains string X" is satisfiable by deletion without correction. Every documentation AC in
    acceptance.md is therefore paired with a code-fact assertion (acceptance.md §A clause 2).
 
+5. **Pairing is necessary but not sufficient — the command must also be able to observe its own
+   expectation.** The plan-audit found this the dominant defect class here: a `grep -c` over a
+   one-line input asked for `>= 2`; two criteria printed a line and expected a prose judgment about
+   it; one expected a fact at `:79` from a command printing `:41-70`; one guard went inert once its
+   change was committed; one could not separate the test run's writes from the SPEC's own edits.
+   acceptance.md §A clause 7 states the rule and names the criteria rewritten under it.
+
 ## §C Pre-flight
 
 ```bash
-git rev-parse --short HEAD                       # expect d5336214e or a recorded successor
+git rev-parse --short HEAD                       # expect 145e601c9 or a recorded successor
+git merge-base --is-ancestor d5336214e HEAD      # expect exit 0 (code baseline still applies)
+git diff --name-only d5336214e HEAD | grep -cv '\.md$'   # expect 0 (SPEC docs only)
 git branch --show-current                        # expect plan/epic-update-config-audit
-go build ./... && go vet ./internal/config/... ./internal/hook/... ./internal/cli/...
-go test -count=1 ./internal/config/... ./internal/hook/... ./internal/cli/...
+go build ./... && go vet ./...
+go test -count=1 ./internal/cli/ ./internal/config/ ./internal/hook/quality/
 ```
+
+The test scope deliberately excludes `./internal/hook/...`: `TestBranchGuard_Latency` there is a
+load-sensitive performance test that fails under a parallel full-suite run and passes alone (see
+acceptance.md AC-UDD-022). This SPEC edits no Go file in that package, so binding pre-flight to that
+flake would gate a documentation SPEC on an unrelated timing condition. `go build` / `go vet` still
+cover the whole module.
 
 ## §D Constraints
 
@@ -73,31 +95,56 @@ Each milestone closes only when its acceptance.md criteria print the stated obse
 
 ## §F Milestones
 
-### M1 — `--dry-run` contract decision and resolution (REQ-UDD-011, REQ-UDD-012, REQ-UDD-013)
+### M1 — `--dry-run` contract resolution: option B (REQ-UDD-011, REQ-UDD-012, REQ-UDD-013)
 
-The highest-change-likelihood decision in this SPEC, and the only one with a behavioural face.
+The only milestone with a behavioural face. **The decision is settled — option B.**
 
-**The decision, stated for review rather than resolved silently.** The help text
-(`internal/cli/update.go:69`) promises "planned archive **and install** operations"; the handler
-(`:293-304`) early-returns into `dryRunArchiveLegacySkills`, which previews archiving only. Two ways
-to make them agree:
+**The mismatch.** The help text (`internal/cli/update.go:69`) promises "planned archive **and
+install** operations"; the handler (`:294-304`) early-returns into `dryRunArchiveLegacySkills`,
+which previews archiving only.
 
-| Option | Change | Cost | What is lost |
+**The probe this plan previously only recommended has been run, and it reverses the cost table.**
+The v0.1.0 table charged option B with "real implementation work, and its feasibility is unverified"
+— a cost asserted without measurement, which is the shape
+`.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 forbids. Measured:
+
+- `internal/cli/update_clean_install.go:50-53` declares `CleanReinstallOptions.DryRun`
+  ("when true, emit planned actions but make no filesystem mutations", REQ-VVCR-028).
+- `internal/cli/update_clean_install.go:184-198` is a complete non-mutating plan renderer: it prints
+  `[clean-reinstall] DRY-RUN — no filesystem mutations performed`, the would-back-up count, the
+  would-remove count (`scanDeprecatedPaths` at `:189`), and the agency-migration line, then
+  `return result, nil` at `:197` — before any mutation.
+- `internal/cli/update.go:359-360` already wires `DryRun: getBoolFlag(cmd, "dry-run")` into
+  `runCleanReinstall`.
+
+The renderer is unreachable for exactly one reason: the CLI's `--dry-run` early return at `:294`
+fires before the v2-detection block at `:328`.
+
+| Option | Change | Actual cost | What is lost |
 |---|---|---|---|
-| **A — narrow the text** | Rewrite the flag description to "Show planned archive operations without modifying the filesystem". | One line. No behaviour change. Lands entirely within this Epic's no-code-change constraint. | The highest-consequence operation — clean reinstall replacing the user's tree — remains unpreviewable. A user who runs `--dry-run` before a v2 update still learns nothing about it. |
-| **B — extend the flag** | Render the clean-reinstall plan from the dry-run branch. | Requires the plan-construction path to be separable from the mutation path. Real implementation work, and its feasibility is unverified. | Nothing, if feasible. If the plan cannot be constructed without entering the mutating path, the `:312` placement rationale ("so a dry run never mutates") forbids B outright. |
+| A — narrow the text | Rewrite the description to "Show planned archive operations without modifying the filesystem". | One line, no behaviour change. | The highest-consequence operation — clean reinstall replacing the user's tree — stays unpreviewable. |
+| **B — make the renderer reachable** *(chosen)* | Hoist v2 detection above the `--dry-run` branch; that branch renders the resulting plan and returns. | A local re-ordering. The renderer and its wiring already exist — nothing new is written. | Nothing. |
 
-**Recommended sequencing**: establish B's feasibility first with a read-only probe — determine
-whether the clean-reinstall plan can be computed without any filesystem write — then choose. A B
-that turns out infeasible collapses to A with the reason recorded; an A chosen without probing
-forecloses B silently.
+**Implementation constraint (load-bearing).** The `--dry-run` early return is **not** relocated past
+`:306-326`. That block calls `stripRetiredV2DenyEntries`, which rewrites `settings.json`; moving the
+return past it would put a mutation on the dry-run path and reverse the `:312` rationale ("so a dry
+run never mutates"). Detection is hoisted *above* the branch; the branch keeps returning before any
+mutating call. The sibling `SPEC-UPDATE-REINSTALL-LOOP-002` plan.md §E M4 reached the same
+resolution independently and records the relocate-the-return variant as a **confirmed defect** — the
+two SPECs must not push this early return in opposite directions.
 
-**Escalation**: if the probe shows the plan cannot be constructed without mutation, that is a finding
-about clean-reinstall's structure, not about the flag. Report it to
-`SPEC-UPDATE-REINSTALL-LOOP-002` per REQ-UDD-013 and settle on A.
+**What remains verified only by reading, not by running.** The renderer's prologue —
+`buildPreserveInventory` / `computeInventoryHashes` (`:179`) and `scanDeprecatedPaths` (`:189`) — was
+read and contains no write call, but was not executed. AC-UDD-002 assertion 2 (tree-snapshot
+comparison over a `t.TempDir()` fixture) is the criterion that settles it.
 
-**Deliverable either way**: the help text and the behaviour agree, and the decision plus its
-rationale is recorded in `progress.md` §E.2.
+**Escalation, unchanged in substance and now much less likely.** If run-phase finds the plan cannot
+be rendered without mutation, that is a finding about clean-reinstall's structure, not about the
+flag: report it to `SPEC-UPDATE-REINSTALL-LOOP-002` per REQ-UDD-013 and fall back to A with the
+reason recorded.
+
+**Deliverable**: the help text keeps both halves of its promise and the behaviour now meets it; the
+execution evidence is recorded in `progress.md` §E.2 (AC-UDD-003).
 
 ### M2 — §22.8 worktree-toggle reconciliation (REQ-UDD-004, REQ-UDD-005)
 
@@ -207,8 +254,18 @@ to a follow-up SPEC — is unaffected by these findings and is preserved verbati
   the arbiter.
 - **AP-4 — re-specifying the worktree-key triage in M2.** §22.8's correction states reader status.
   Implement / deprecate / mark is E4's decision (spec.md §C).
-- **AP-5 — picking the `--dry-run` option silently.** M1's A-vs-B choice has a real trade-off and a
-  feasibility question; resolving it inside an implementation commit hides the decision.
+- **AP-5 — reopening or silently re-deciding the `--dry-run` option.** The A-vs-B choice is settled
+  as **B** at plan-phase (§F M1, spec.md §A.5), on a probe whose evidence is recorded. Re-deciding it
+  inside an implementation commit — in particular quietly falling back to A by dropping `install`
+  from the help text — hides the reversal; AC-UDD-001 is the guard against exactly that.
+- **AP-9 — implementing option B by relocating the `--dry-run` early return.** The return must not
+  move past `update.go:306-326`, which rewrites `settings.json`. Hoist detection above the branch
+  instead. This is the variant `SPEC-UPDATE-REINSTALL-LOOP-002` plan.md §E M4 records as a confirmed
+  defect; an implementation that moves the return is wrong whether or not a test catches it.
+- **AP-10 — costing an option without probing it.** The v0.1.0 cost table charged option B with
+  "feasibility is unverified" and used that unverified cost as the reason to prefer A, while the
+  probe that would settle it was one `sed` away in a file the SPEC already cited. Asserting a cost is
+  a claim like any other (`verification-claim-integrity.md` §1.1 surface 3).
 - **AP-6 — asserting a replacement path in M4 without checking it.** Replacing one nonexistent path
   with another unverified one reproduces the defect.
 - **AP-7 — mirroring either file into the template tree.** Both are repo-local; a mirror violates the
@@ -225,7 +282,13 @@ to a follow-up SPEC — is unaffected by these findings and is preserved verbati
 - `internal/config/loader_gate.go`, `internal/config/defaults.go:318-322`,
   `internal/hook/pre_tool.go:430-431`, `internal/hook/quality/astgrep_gate.go` — M5 evidence sites.
 - `internal/config/envkeys.go`, `internal/config/manager.go:393-406` — M3 evidence sites.
-- `internal/cli/update.go:69`, `:293-304`, `:312`; `internal/cli/update_archive.go:339-353` — M1
-  evidence sites.
+- `internal/cli/update.go:69` (help text), `:294-304` (dry-run early return), `:306-326`
+  (retired-deny-rule migration — mutates, must stay after the return), `:312-313` (placement
+  rationale), `:328` (v2-detection block start), `:359-360` (`runCleanReinstall` call + `DryRun`
+  wiring); `internal/cli/update_clean_install.go:50-53` (`CleanReinstallOptions.DryRun`),
+  `:179` / `:184-198` (the non-mutating plan renderer and its prologue);
+  `internal/cli/update_archive.go:339-353` — M1 evidence sites.
+- `internal/cli/worktree_advisory.go:29`, `:60` — M2's single production `AutoCreate` read.
 - `SPEC-CONFIG-KEY-HONESTY-001` §A.6 — M2's reconciliation dependency.
-- `SPEC-UPDATE-REINSTALL-LOOP-002` — M1's escalation target (REQ-UDD-013).
+- `SPEC-UPDATE-REINSTALL-LOOP-002` plan.md §E M4 — the sibling's identical `--dry-run` resolution and
+  its recorded rejected alternative; also M1's escalation target (REQ-UDD-013).
