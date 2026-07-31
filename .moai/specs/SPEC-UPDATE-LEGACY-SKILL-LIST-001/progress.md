@@ -240,6 +240,51 @@ Revised claim: this SPEC's *scope* is disjoint from every sibling's (no sibling 
 
 ## §E.2 Run-phase Evidence
 
+Implemented in worktree `.claude/worktrees/legacy-skill-list` on branch `feat/SPEC-UPDATE-LEGACY-SKILL-LIST-001`, cut from `origin/main` at `f5dba46c3`. TDD order: M2's guard test written first and observed RED against the pre-M1 16-entry list, then M1 turned it GREEN.
+
+### AC matrix (every row is a command the implementer ran)
+
+| AC | Result | Observed |
+|----|--------|----------|
+| AC-LSL-001 list entry count | PASS | `13` (was 16) |
+| AC-LSL-002 offenders in slice body | PASS | `0` (was 3) |
+| AC-LSL-003 stale "16 skill IDs" comment | PASS | `0` (was 1) |
+| AC-LSL-004(a) guard test exists | PASS | `1` |
+| AC-LSL-004(b) parent PASS, `^`-anchored | PASS | `1` |
+| AC-LSL-004(c) derives from embedded manifest | PASS | `1`; real-skill literals in the file: `0` |
+| AC-LSL-005 falsification via `-overlay` | PASS | anchored `--- FAIL` `1`; failure names `moai-domain-backend` `1`; injected ID in the real source `0` (tree untouched) |
+| AC-LSL-006(a-i) pre-existing suite parent PASS | **PASS at a corrected EXPECT of 20** — see below | `20` |
+| AC-LSL-006(a-ii) FAIL count | PASS | `0` |
+| AC-LSL-006(b) positional indices in range | PASS | max index `3`, max bound `8`, plus a new `[:3]` — all < 13 |
+| AC-LSL-006(c) `All16` naming consistency | PASS | `2` and `2` (kept, not renamed — consistent) |
+| AC-LSL-007(a)(b) degradation subtests SKIP | PASS | subtests present `2`; indent-anchored `--- SKIP` `2` |
+| AC-LSL-008 wrong archive files untracked | PASS | `0` (was 3) |
+| AC-LSL-009(a)(b)(c)(d) genuine four preserved | PASS | tracked `4`, exactly the four expected dirs, byte-diff `0`, `.gitignore` rule `0` |
+| AC-LSL-010(a)(b) non-aborting loop test | PASS | exists `1`; parent PASS anchored `1` |
+| AC-LSL-011 `total:` emitted on failure | PASS | `--- FAIL` `0`; `total:` literal in test source `3` |
+| AC-LSL-013 output literals preserved | PASS | `"archive: "` `1`; `total: %d skills archived` `2` |
+| AC-LSL-014(a) vet | PASS | `go vet ./internal/cli/` exit `0` |
+| AC-LSL-014(b) suite green, build-failure-aware | PASS | `go test ./internal/cli/ -count=1` exit `0`; `build failed` `0`; `--- FAIL` `0` |
+| AC-LSL-014(c) gofmt | PASS | `gofmt -l` on the three touched files: empty |
+| AC-LSL-015(a)(b) archive scheme untouched | PASS | `archiveVersion = "v2.16"` `1`; archive path joins `6` (unchanged by M4) |
+| AC-LSL-016(a)(b) success-only count | PASS | subtest PASS, indent-anchored `1` |
+
+Cross-platform build: `go build ./...` exit `0` on darwin, `GOOS=windows GOARCH=amd64` exit `0`, `GOOS=linux GOARCH=amd64` exit `0`.
+
+### AC-LSL-006(a-i): EXPECT corrected 19 → 20 against measurement
+
+The AC's stated EXPECT of `19` is defective as written, and the defect is in the AC, not the implementation. Its rationale argued the count is stable because "the top-level test count does NOT vary with list length (only subtest counts do), so this number is stable across M1's 16→13 shrink." That reasoning is correct for M1 but incomplete: **M4 adds `TestArchiveLegacySkills_ContinuesAfterFailure`, whose name matches the AC's own selector prefix `TestArchiveLegacySkills_`**, so the same SPEC that authored the AC also raises the number the AC pins.
+
+Verified as an addition, not a substitution: all 19 pre-existing parent tests are present in the run and the single delta is the M4 test. Enumerated names are in the run log. A rename or a dropped prefix would have shown as a missing name, which the AC's own CONSTRAINT clause anticipates; that failure mode did not occur.
+
+### Regression found and fixed: a 7th consumer the SPEC's inventory missed
+
+`TestDryRunArchive` (`internal/cli/update_dry_run_test.go`) failed after M1 with `output missing skill ID moai-domain-backend … got: [dry-run] total: 0 skills archived`. Its fixture hard-coded the three removed IDs as string literals, so after M1 it seeded skills that `dryRunArchiveLegacySkills` — which walks only `legacySkillIDs` — never considers.
+
+This file was absent from the SPEC's 6-file consumer inventory because that inventory was built by grepping for the identifier `legacySkillIDs`, and this consumer coupled to the list by **duplicating its contents as literals** instead of referencing it. AC-LSL-006's selector likewise does not match `TestDryRunArchive`, so the AC passed while the regression was live. The class is: a text-identifier search cannot find a consumer that copied the values instead of referencing the name.
+
+Fixed by deriving the fixture from `legacySkillIDs[:3]`, which both repairs the regression and removes the duplication that hid it. Six further literal uses of the same IDs remain in `migrate_restore_skill_test.go` and `update_archive_test.go`; those are NOT defects — `archiveSkill(root, id)` and `restoreSkill(root, id, force)` take the ID as a parameter and never consult the list, so the literals are ordinary fixture names. Left untouched per scope discipline.
+
 _<pending run-phase>_
 
 - `pre_fix_commit:` _<pending — capture `git rev-parse HEAD` at run-phase entry, before M1's first implementation commit.>_
