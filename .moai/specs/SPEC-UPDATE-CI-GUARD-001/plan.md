@@ -38,6 +38,24 @@ Three measurements this plan depends on, all observed while authoring:
    (`git ls-files`), not the filesystem, or it will include a local clone.
 4. **This checkout is shared with concurrent sessions.** `git stash` is prohibited; falsification
    uses `go test -overlay` or a scratch worktree driven by `go -C`.
+5. **`go test -overlay` replaces build inputs only — never runtime reads.** Measured directly: a test
+   calling `os.ReadFile` on an overlaid non-Go file still sees the *original* bytes, with both a
+   relative and an absolute overlay key.
+
+   ```
+   $ go test -overlay=overlay.json -run TestRuntimeRead -v .
+       ov_test.go:13: runtime os.ReadFile saw: "baseline: 75.7\n"   # not the overlaid 76.7
+   --- PASS
+   ```
+
+   Consequence for this SPEC: overlay is valid for mutating **`.go` sources** (§C-2 — verified to
+   take effect), and invalid for mutating **`.moai/config/coverage-baselines.yaml`**, `ci.yml`, or
+   any other file a test opens at run time. Those falsifications use a scratch worktree under
+   `.claude/worktrees/` with a real in-place edit, driven by `go -C`.
+6. **A mutation step written as a shell comment mutates nothing.** Every §C procedure carries a
+   `diff -q` no-op guard that aborts when the edit matched zero lines, so an inert falsification
+   reports itself instead of printing a false PASS. Same discipline as
+   `SPEC-CONFIG-KEY-HONESTY-001` acceptance.md §A clause 7.
 
 ## §C Pre-flight
 
@@ -116,6 +134,14 @@ same change) or a small epsilon. Zero tolerance is the proposal, because an epsi
 repeated sub-epsilon erosion — but it makes the baseline file a frequently-edited file, and the
 reviewer should weigh that friction.
 
+The decision stays open, but it is no longer *unverifiable* while open. spec.md §B.3 records, per
+candidate tolerance, the exact assertion AC-UCG-002's falsification must make to distinguish it —
+a 0.1pp bump for zero tolerance, and a bracketing pass/fail pair for each epsilon candidate. The
+original 1.0pp bump could not discriminate any of them, since a 1.0pp drop fails under every
+candidate; that is the hole this table closes. Whichever value the Implementation Kickoff Approval
+gate selects, its bracketing pair is copied into §C-1 and the criterion loses its decision-gated
+marker.
+
 ### M2 — Windows leg for the update path (REQ-UCG-004 … REQ-UCG-006)
 
 The second gate-shape decision, and the one that spends wall-time.
@@ -140,6 +166,15 @@ wall-time on this macOS host (`update` 4.0s, `backup` 6.5s, `deploy` 1.8s, `merg
 into `progress.md` §E.2. If it materially erodes the PR-speedup goal recorded at `ci.yml:77-84`, the
 scope narrows further (e.g. `internal/cli/update/backup` + `.../merge` only — the two packages whose
 defects the siblings actually record) rather than the requirement being dropped.
+
+**The narrowing is a recorded decision, not an implicit escape (D6).** REQ-UCG-004 is written to be
+satisfied by whichever package set this milestone's scope decision names, and AC-UCG-006 matches on
+the `internal/cli/update` path prefix rather than the full `./internal/cli/update/...` spelling, so
+the narrowed form still satisfies the criterion. Before this reconciliation the three surfaces
+disagreed: the REQ fixed the full set, this milestone permitted narrowing, and the AC rejected the
+narrowed spelling — so exercising the escape hatch would have failed the SPEC's own acceptance. When
+the narrowing is taken, record the chosen set and the measurement that motivated it here and in
+`progress.md` §E.2; leaving it unrecorded reopens exactly that three-way disagreement.
 
 **Alternatives considered and rejected:**
 
@@ -193,28 +228,50 @@ change, and re-anchoring it would alter unrelated fast-track behaviour.
 `internal/cli/update/backup/merge_semantics_test.go`, table-driven over a fixture matrix. Each case
 is `(base, user, new) -> expected`, asserted on the whole output map rather than on absence of error.
 
-Minimum matrix (REQ-UCG-012), each case named for the property it pins:
+Minimum matrix (REQ-UCG-012), each case named for the property it pins. The **measured** column was
+produced by calling `DeepMerge3Way` directly on each triple at `d5336214e` (spec.md §A.4 carries the
+raw output) — it is an observation, not a prediction:
 
-| case | base | user | new | property under test |
-|---|---|---|---|---|
-| `three_way_divergence` | `k: 1` | `k: 2` | `k: 3` | user's deliberate change survives a template change |
-| `user_only_key` | absent | `k: v` | absent | a user-added key is not dropped |
-| `template_only_key` | absent | absent | `k: v` | a new template key is introduced |
-| `zero_value_false` | `k: true` | `k: true` | `k: false` | `false` is a value, not an absence |
-| `zero_value_empty_string` | `k: "x"` | `k: "x"` | `k: ""` | `""` is a value, not an absence |
-| `zero_value_int` | `k: 5` | `k: 5` | `k: 0` | `0` is a value, not an absence |
-| `nested_old_only` | `a.b: 1` | `a.b: 1` | `a: {}` | nested user keys survive a template restructure |
+| case | base | user | new | property under test | measured at `d5336214e` |
+|---|---|---|---|---|---|
+| `three_way_divergence` | `k: 1` | `k: 2` | `k: 3` | user's deliberate change survives a template change | `k: 2` — **passes** |
+| `template_only_key` | absent | absent | `k: v` | a new template key is introduced | `k: v` — **passes** |
+| `zero_value_false` | `k: true` | `k: true` | `k: false` | `false` is a value, not an absence | `k: false` — **passes** |
+| `zero_value_empty_string` | `k: "x"` | `k: "x"` | `k: ""` | `""` is a value, not an absence | `k: ""` — **passes** |
+| `zero_value_int` | `k: 5` | `k: 5` | `k: 0` | `0` is a value, not an absence | `k: 0` — **passes** |
+| `user_only_key` | absent | `k: v` | absent | a user-added key is not dropped | `{}` — **FAILS** (key dropped) |
+| `nested_old_only` | `a.b: 1` | `a.b: 1` | `a: {}` | nested user keys survive a template restructure | `a: {}` — **FAILS** (`a.b` dropped) |
 
-**Falsification (REQ-UCG-013, acceptance.md §C).** The guard is demonstrated to FAIL against a
-deliberately broken merge via `go test -overlay`, substituting a `merge.go` whose zero-value branch
-is removed. A guard that passes against the broken implementation is inert and is not accepted.
+**Correction to the audit's own diagnosis.** The plan audit correctly rejected this milestone's
+original premise — which asserted the three zero-value rows fail — but its replacement named
+`nested_old_only` as *the* real failing case. Re-running the matrix shows **two** rows fail, not one:
+`user_only_key` fails for the same reason, because `DeepMerge3Way` iterates only `newMap`
+(`merge.go:53`) and never visits a key absent from the new template. `nested_old_only` is that same
+defect reached one level down through the map-recursion branch. Adopting the audit's single-case fix
+would have left `user_only_key` mis-declared as a passing case and the guard would have failed on it
+unexpectedly at run time.
 
-**Expected-failure handling (REQ-UCG-014, D3).** The zero-value cases are expected to fail against
-the current implementation — that is the defect `SPEC-UPDATE-YAML-PRESERVE-001` owns. Those cases are
-committed as explicitly-expected failures naming that SPEC ID in the skip reason, so the guard is
-green on `main` while the pending defect stays visible and the expectation flips to a hard assertion
-when the sibling lands. **The alternative — withholding the whole guard until the sibling lands — is
-rejected**, because it makes this SPEC's delivery depend on another SPEC's run-phase.
+**Falsification (REQ-UCG-013, acceptance.md §C-2).** Two halves, because the two groups of rows need
+different evidence:
+
+- *The two failing rows need no mutation.* The guard must FAIL against the **current, unmodified**
+  implementation on `user_only_key` and `nested_old_only`. That is directly observable today, so the
+  falsification for these rows is the run itself — nothing has to be broken first.
+- *The five passing rows do need a mutation*, otherwise nothing shows their assertions are
+  load-bearing. §C-2 mutates the one line that decides the zero-value outcome
+  (`merge.go:87 result[k] = newV` → `result[k] = oldV`, indentation-anchored so the two
+  same-text lines at 56 and 65 are untouched) and requires the three zero-value rows to flip to
+  FAIL while `three_way_divergence` — which takes the other branch — stays green. A mutation that
+  fails everything proves nothing about which assertion caught what.
+
+**Expected-failure handling (REQ-UCG-014, D3).** The two genuinely-failing rows (`user_only_key`,
+`nested_old_only`) are committed as explicitly-expected failures naming `SPEC-UPDATE-YAML-PRESERVE-001`
+in the skip reason, so the guard is green on the trunk while the pending defect stays visible, and
+each expectation flips to a hard assertion when the sibling lands. The five passing rows are
+committed as ordinary hard assertions — they are regression protection, not pending work, and
+marking them as expected failures would have inverted their meaning. **The alternative — withholding
+the whole guard until the sibling lands — is rejected**, because it makes this SPEC's delivery depend
+on another SPEC's run-phase.
 
 ### M5 — Neutrality detection-pattern extension (REQ-UCG-015 … REQ-UCG-017)
 
@@ -247,11 +304,34 @@ run-phase; the promotion step is recorded as a one-line follow-up rather than le
 
 ### M6 — Class-naming hygiene (REQ-UCG-018)
 
-Mechanical. Every citation of a detection class in a test comment, a workflow comment, or
-`CLAUDE.local.md` §25 gains its owning filename: `internal_content_leak_test.go C1` versus
-`template_neutrality_audit_test.go C1`. Motivated by spec.md §A.6 drift 4 — the two files number
-their classes independently and both define a `C1` and a `C6` meaning different things, which made
-the audit's own citations ambiguous.
+Mechanical. Every **prose** citation of a detection class — in a test comment, a workflow comment,
+the isolation doctrine, or `CLAUDE.local.md` §25 — gains its owning filename:
+`internal_content_leak_test.go C1` versus `template_neutrality_audit_test.go C1`. Motivated by
+spec.md §A.6 drift 4 — the two files number their classes independently and both define a `C1` and a
+`C6` meaning different things, which made the audit's own citations ambiguous.
+
+**Scope, measured (D11).** A naive `\bC[0-9][a-z]?\b` scan over the two guard files and the
+neutrality workflow returns **103** matches, of which only 2 already carry a filename — a figure
+that makes the milestone look far larger than it is, and that is unsatisfiable as stated. **18 of
+the 103 are class *definition* lines** (`name: "C1-spec-id-prefix",`), and requiring a definition to
+name the file it is literally written in is self-contradictory. The edit surface is therefore the
+prose citations only:
+
+```
+$ grep -E '^[[:space:]]*//' internal_content_leak_test.go   | grep -E '\bC[0-9][a-z]?\b' | grep -vc 'name:.*"C[0-9]'   → 35
+$ grep -E '^[[:space:]]*//' template_neutrality_audit_test.go | grep -E '\bC[0-9][a-z]?\b' | grep -vc 'name:.*"C[0-9]' → 25
+$ grep -E '^[[:space:]]*#'  template-neutrality-check.yaml   | grep -cE '\bC[0-9][a-z]?\b'                             →  9
+$ grep -cE '\bC[0-9][a-z]?\b' .moai/docs/template-internal-isolation-doctrine.md                                       →  8
+```
+
+**77 prose citations across four active files.** Two exclusions are load-bearing and are stated in
+AC-UCG-020 rather than left to the implementer:
+
+- **Class definition lines are out of scope.** They establish the name; they do not cite it.
+- **Historical SPEC and report artifacts are out of scope.** `git ls-files | xargs grep -l` finds
+  class citations across roughly twenty `.moai/specs/**` and `.moai/reports/**` files belonging to
+  completed SPECs. Completed SPEC bodies are immutable, so sweeping them would be both out of scope
+  and unachievable.
 
 ## §G Anti-patterns
 

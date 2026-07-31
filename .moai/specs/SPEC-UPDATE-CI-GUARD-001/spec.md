@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-CI-GUARD-001
 title: "CI guard coverage: the checks that gate a merge must be able to see the failure classes this Epic found — config-only PRs, Windows filesystem behaviour, coverage regression, merge semantics, and unenumerated leaks"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -24,6 +24,7 @@ depends_on: []
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 5 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F5 each re-verified while authoring against baseline HEAD `d5336214e`; F3 coverage independently re-measured; F4 per-function coverage independently re-measured; four drifts recorded (§A.6). |
+| 0.2.0 | 2026-07-31 | Plan-audit revision (FAIL 0.63 → D1-D11 resolved; D12-D16 deferred). Verification design rebuilt: all five falsification procedures were inert and are now executable (D1-D3). §A.4's defect locus re-attributed from `internal/cli/update/backup/merge.go` to `internal/config/merge.go` after direct measurement (D4). The M4 expected-failure set was re-measured and **corrected against the audit itself**: the audit named `nested_old_only` as the single real failure, but `DeepMerge3Way` drops `user_only_key` too — the two share one cause and the three zero-value rows pass (D5). REQ-UCG-004 / plan M2 / AC-006 reconciled (D6); stale `main` diff base replaced with `d5336214e` (D7); AC-010's unbounded `sed` range replaced with a bounded extractor (D8); coverage tolerance made mechanically discriminable (D9); AC-017 branch-conditioned (D10); AC-020 scoped off class-definition lines (D11). |
 
 ## §A Problem / Motivation
 
@@ -185,10 +186,44 @@ merge.go:116:	MergeYAMLDeep		100.0%
 merge.go:134:	DeepMergeMaps		100.0%
 ```
 
-Every function in the file is fully covered. Yet SPEC-CONFIG-TIER-PERSIST-001 and
-SPEC-UPDATE-YAML-PRESERVE-001 record real semantic defects in this same code: a three-way merge that
-degenerates to two-way because the base is drawn from the new template rather than a snapshot of the
-old one, and zero-valued keys skipped so that `false` / `0` / `""` cannot turn anything off.
+Every function in the file is fully covered. Yet the file still produces wrong values. Measured at
+`d5336214e` by calling `DeepMerge3Way` directly on the fixture triples of plan.md §F M4:
+
+```
+zero_value_false        base{k:true}  old{k:true}  new{k:false} -> map[k:false]   correct
+zero_value_empty_string base{k:"x"}   old{k:"x"}   new{k:""}    -> map[k:""]      correct
+zero_value_int          base{k:5}     old{k:5}     new{k:0}     -> map[k:0]       correct
+three_way_divergence    base{k:1}     old{k:2}     new{k:3}     -> map[k:2]       correct
+template_only_key       base{}        old{}        new{k:"v"}   -> map[k:"v"]     correct
+user_only_key           base{}        old{k:"v"}   new{}        -> map[]          DROPPED
+nested_old_only         base{a.b:1}   old{a.b:1}   new{a:{}}    -> map[a:map[]]   DROPPED
+```
+
+Two of the seven produce a wrong result, and both share one cause: `DeepMerge3Way` iterates only
+`newMap` (`merge.go:53`), so a key present in the user's file but absent from the new template is
+never visited. `merge.go:95-97` records this as deliberate ("Keys only in old … are dropped"), but
+the deletion is indiscriminate — it cannot distinguish a key the template retired from a key the
+user added. `nested_old_only` is the same defect one level down, reached through the map-recursion
+branch at `merge.go:73-79`.
+
+**Attribution correction.** An earlier draft of this section attributed a *zero-valued-key skip* to
+this file. That was wrong, and the measurement above is what falsifies it: the three zero-value rows
+are correct here. The zero-value skip is real but lives in a different file —
+`internal/config/merge.go`, where `MergeAll` guards an assignment with `if isZero(value)` at line 149
+and defines the helper at line 200:
+
+```
+$ grep -n 'isZero\|IsZero' internal/cli/update/backup/merge.go
+(no output — zero matches)
+$ grep -n 'isZero' internal/config/merge.go
+149:			if isZero(value) {
+200:func isZero(v any) bool {
+```
+
+Both files are sibling-owned (§C): `internal/cli/update/backup/merge.go`'s old-only key drop and
+three-way base provenance by `SPEC-UPDATE-YAML-PRESERVE-001`, and `internal/config/merge.go`'s
+zero-value skip by `SPEC-CONFIG-TIER-PERSIST-001`. This SPEC changes neither; it owns only the guard
+that makes such outcomes visible.
 
 This is the load-bearing observation of the whole SPEC. **Statement coverage is structurally
 incapable of detecting a merge that executes every line and produces the wrong value.** A test that
@@ -330,8 +365,16 @@ the narrowing passing silently.
 ### B.2 Windows coverage for the filesystem-heavy update path
 
 **REQ-UCG-004** — **Where** a pull request modifies `internal/cli/update/**`, the CI system shall
-execute the `internal/cli/update/**` test packages on a Windows runner before the pull request is
-mergeable.
+execute the update-path test packages **named in the scope decision recorded at plan.md §F M2** on a
+Windows runner before the pull request is mergeable. The default scope is all of
+`internal/cli/update/...`; REQ-UCG-005 permits narrowing it when the measured wall-time requires,
+and the narrowed set is recorded in that decision rather than left implicit. This requirement is
+satisfied by whichever set the decision names — it does not independently mandate the full set.
+
+> **Open decision — Windows-leg scope.** Whether the leg runs all six update subpackages or a
+> narrowed set (`backup` + `merge`, the two whose defects the siblings actually record) is settled at
+> the Implementation Kickoff Approval gate on the measured wall-time (REQ-UCG-005), not here.
+> AC-UCG-006 is written to accept either outcome so the decision is not pre-empted by the criterion.
 
 **REQ-UCG-005** — The mechanism satisfying REQ-UCG-004 shall preserve the PR wall-time goal recorded
 at `ci.yml:77-84`. It shall be scoped to the update subpackages rather than restoring a full 3-OS
@@ -344,8 +387,29 @@ touching `internal/cli/update/**` is not blocked waiting for a status that will 
 ### B.3 Coverage as a gate, not a report
 
 **REQ-UCG-007** — The CI system shall fail a pull request **when** a measured package's statement
-coverage falls below that package's recorded baseline. The gate shall be a **no-regression delta**
-against a recorded per-package baseline, not an absolute floor.
+coverage falls below that package's recorded baseline by more than the configured tolerance. The
+gate shall be a **no-regression delta** against a recorded per-package baseline, not an absolute
+floor.
+
+> **Open decision — gate shape and tolerance.** Two axes remain open and are settled at the
+> Implementation Kickoff Approval gate, not here. (a) *Shape*: delta versus absolute floor — the
+> delta form is this requirement's proposal, with the floor form recorded as the rejected
+> alternative below. (b) *Tolerance*: zero versus a small epsilon — **undecided**.
+>
+> The tolerance decision is mechanically actionable because each candidate has a stated,
+> distinguishing assertion that AC-UCG-002's falsification must make:
+>
+> | Candidate tolerance | What the gate must do | What the AC must assert to discriminate it |
+> |---|---|---|
+> | **zero** (any decrease fails) | a 0.1pp drop fails | falsification raises one baseline by **0.1pp** and the test MUST FAIL; a PASS proves the tolerance is not zero |
+> | **epsilon = 0.5pp** | a 0.4pp drop passes, a 0.6pp drop fails | falsification raises one baseline by **0.4pp** (MUST PASS) *and* by **0.6pp** (MUST FAIL) — the pair brackets the threshold |
+> | **epsilon = 1.0pp** | a 0.9pp drop passes, a 1.1pp drop fails | same bracketing pair at **0.9pp** / **1.1pp** |
+>
+> A falsification that only raises a baseline by 1.0pp cannot discriminate any of the three, because
+> a 1.0pp bump fails under all of them. AC-UCG-002 therefore uses the 0.1pp bump, which fails only
+> under zero tolerance and so tests the decision rather than assuming it. Once the tolerance is
+> chosen, AC-UCG-002's falsification is fixed to that row's bracketing pair; until then the criterion
+> is marked decision-gated in acceptance.md §B.
 
 **REQ-UCG-008** — The per-package baselines shall be recorded in a tracked file at the time the gate
 is introduced, from a measurement observed in that change, so the baseline is attributable rather
@@ -401,6 +465,18 @@ recorded, because the narrow enumeration is a deliberate choice documented at
 `internal/template/internal_content_leak_test.go:271-281` and reversing it trades a false-negative
 class for a false-positive class.
 
+> **Open decision — expansion method.** Whether REQ-UCG-015 is met by a **generic wildcard plus
+> allowlist** or by an **enumeration extension** is settled after the false-positive measurement
+> (AC-UCG-018), not here. New classes start in the advisory-WARN tier and are promoted to binary-FAIL
+> only once the shipped tree is clean (plan.md §F M5 sequencing).
+>
+> The two branches need *different* evidence, and an AC written for one is vacuous under the other.
+> A generic wildcard can over-match, so its risk is false positives and the discriminating assertion
+> is that an allowlist suppresses the pedagogical placeholders. A narrow enumeration cannot match a
+> placeholder it never names, so an allowlist assertion passes there without testing anything; its
+> risk is the opposite — an extension so narrow it misses the shape it was added for. AC-UCG-017 is
+> therefore branch-conditioned rather than written for the wildcard case alone.
+
 **REQ-UCG-017** — Each pattern added under REQ-UCG-015 shall be accompanied by a fixture proving it
 matches the intended shape **and** a fixture proving it does not match the pedagogical placeholder
 shapes named in the existing comment (`SPEC-BUG-042`, `SPEC-X-001`, `SPEC-PAY-001`).
@@ -429,10 +505,17 @@ branch protection waits for a status that will not arrive.
 ### Out of Scope — the merge implementation itself
 
 - Anything inside `internal/cli/update/backup/merge.go` behaviour — merge-sequence atomicity,
-  `ValuesEqual` string comparison, `systemFields` depth, nested old-only key dropping, the
-  zero-value skip. Owned by `SPEC-UPDATE-YAML-PRESERVE-001` (revision requirements recorded in
-  `SPEC-CONFIG-TIER-PERSIST-001` §I). This SPEC may require a guard that **detects** such defects
-  (REQ-UCG-011); it may not restate, redesign, or repair the merge itself (REQ-UCG-014).
+  `ValuesEqual` string comparison, `systemFields` depth, and the old-only key drop measured in §A.4
+  (`merge.go:53` iterating only `newMap`; `merge.go:95-97`). Owned by
+  `SPEC-UPDATE-YAML-PRESERVE-001` (revision requirements recorded in `SPEC-CONFIG-TIER-PERSIST-001`
+  §I). This SPEC may require a guard that **detects** such defects (REQ-UCG-011); it may not
+  restate, redesign, or repair the merge itself (REQ-UCG-014).
+- The **zero-value skip in `internal/config/merge.go`** — `MergeAll`'s `if isZero(value)` guard at
+  line 149 and the `isZero` helper at line 200. Owned by `SPEC-CONFIG-TIER-PERSIST-001`. This is a
+  *different file* from the one above; §A.4 records the measurement that separates them, and
+  REQ-UCG-011's guard is scoped to `internal/cli/update/backup` only. Extending the guard to
+  `internal/config` is deliberately **not** required here — it would place this SPEC's guard on a
+  second sibling's implementation surface.
 - The provenance of the three-way merge base (base drawn from the new template rather than a
   snapshot of the old one). Owned by the unwritten `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`; the
   impact table is preserved in `SPEC-CONFIG-TIER-PERSIST-001` §J.
