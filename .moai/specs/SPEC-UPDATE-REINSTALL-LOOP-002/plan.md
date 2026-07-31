@@ -130,7 +130,9 @@ Touches `internal/cli/update.go` (dry-run branch ordering).
 - Assert zero mutation via a tree-hash comparison (REQ-RIL2-026).
 - Keep the legacy-skill archive summary and worktree advisory (REQ-RIL2-027). Both are emitted from the dry-run branch today — `emitWorktreeAdvisory(out, cwd)` at `update.go:302` and `dryRunArchiveLegacySkills(cwd, out)` at `:303` — so hoisting detection above the branch must not displace either call.
 
-> Consistency note: the sibling `SPEC-UPDATE-DOC-DRIFT-001` settles its own `--dry-run` handling the same way (make the existing non-mutating renderer reachable). Neither SPEC may propose a `--dry-run` path that writes.
+> Consistency note: the sibling `SPEC-UPDATE-DOC-DRIFT-001` settles its own `--dry-run` handling the same way (make the existing non-mutating renderer reachable — `spec.md:373` selects option B; `:376-378` keeps the early return in place). Neither SPEC may propose a `--dry-run` path that writes.
+>
+> **Sibling co-edit constraint (mirrored from `SPEC-UPDATE-DOC-DRIFT-001/progress.md` §E.1, "M1 versus E1").** Both SPECs touch the `--dry-run` branch of `internal/cli/update.go`. **The two MUST NOT edit that branch concurrently on this branch** — they are not a dependency edge in either frontmatter, so the ordering is honoured by sequencing, not by a `depends_on` gate or an `--ignore-deps` override. This SPEC (E1) owns the reachability change as REQ-RIL2-024 / REQ-RIL2-025; the sibling owns only the help-text contract. Either order is correct: if this SPEC runs first, M4 implements the hoist and the sibling's M1 verifies an already-landed fix; **if the sibling lands first, M4 degrades to a no-op verification** — confirm the hoist is present, confirm `--dry-run` still mutates nothing (AC-RIL2-014), and record that no code change was required, rather than authoring a competing hoist. The constraint is recorded here rather than only in the sibling because it changes what M4 does, not merely when it runs.
 
 Priority: Medium. Depends on M2 and M3 for the plan lines it must print.
 

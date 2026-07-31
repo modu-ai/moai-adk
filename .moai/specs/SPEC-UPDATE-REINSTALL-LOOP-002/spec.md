@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-REINSTALL-LOOP-002
 title: "moai update — end the release-user clean-reinstall loop (semver-normalized v2/v3 detection, deprecated-path exclusion from PRESERVE, residue cleanup, dry-run reachability)"
-version: 0.2.0
+version: 0.3.0
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -25,6 +25,7 @@ related_specs: [SPEC-UPDATE-REINSTALL-LOOP-001, SPEC-V3R6-V2-V3-CLEAN-REINSTALL-
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 1 of 6. |
 | 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D5). REQ-RIL2-003 narrowed to prefixed forms so it no longer conflicts with NFR-RIL2-001; §A Defect 1 gains the residue-free widening table and the `2.5.0` / `V2.5.0` rows; §G risk row 2 rewritten; REQ-RIL2-021 and NFR-RIL2-004 gain binding AC coverage. |
+| 0.3.0 | 2026-07-31 | Plan-audit iter3 revision (PASS 0.88), documentation-only — no requirement or code change. **D12 (major)** closed: `AC-RIL2-014` command (a) was satisfiable by a comment alone; it now strips leading-comment lines and the AC additionally requires `TestUpdateDryRun_ZeroMutation` to assert at runtime that the fixture's `permissions.deny` array carries a `retiredV2DenyEntries` literal, with the residual trailing-comment gap stated explicitly. **D9 (minor)** disposition split: `acceptance.md:37` corrected six → four (its referent is the nine-row AC-RIL2-001 table); `progress.md:37` retains "six" as an accurate record of the v0.1.0 seven-row matrix and was only disambiguated — the audit's prescription to change it is rejected and the rejection recorded. **D15 (minor)**: the `SPEC-UPDATE-DOC-DRIFT-001` co-edit constraint (no concurrent edits to the `--dry-run` branch; M4 degrades to no-op verification if the sibling lands first) mirrored into `plan.md` §E M4. |
 
 ## §A Problem / Motivation
 
