@@ -1,14 +1,14 @@
 # SPEC-UPDATE-REINSTALL-LOOP-002 — Acceptance Criteria
 
-Version: 0.3.0 · Status: draft
+Version: 0.4.0 · Status: draft
 
 ## §A Verification discipline
 
 1. **No vacuous `-run`.** `go test -run <pattern>` exits 0 when the pattern matches zero tests. Every AC below that uses `-run` also asserts a literal `--- PASS: <exact test name>` line. An AC that would pass with the test deleted is a defect.
 2. **Baselines are observed, not assumed.** Every "current baseline" line in §B was produced by running the stated command on 2026-07-31 against worktree HEAD `5468a4afc` (branch `plan/epic-update-config-audit`), whose code baseline is `d5336214e` — `5468a4afc` is a descendant that changes SPEC documents only, so no Go source differs between the two. Where a baseline names a commit, it names `5468a4afc`; `d5336214e` is cited only as the code baseline it inherits.
-5. **A guard must be able to fail on the fixture it runs on.** A fixture where the asserted quantity is constant across the change is vacuous even when the assertion is well formed. This bites specifically on the version matrix: a project carrying `.agency/` yields `IsV2=true` for every non-v3-confirmed input under both the old and the new rule, so any monotonicity claim built on it holds trivially. Monotonicity is therefore asserted on a residue-free fixture (AC-RIL2-003).
 3. **Falsification is required per new guard.** §C gives the runnable procedure that makes each new guard FAIL against unfixed code.
 4. **`git stash` is prohibited.** The checkout is shared with concurrent sessions; `git stash` is repository-global and `git stash push` without `-u` refuses untracked files. Falsification uses a scratch `git worktree`.
+5. **A guard must be able to fail on the fixture it runs on.** A fixture where the asserted quantity is constant across the change is vacuous even when the assertion is well formed. This bites specifically on the version matrix: a project carrying `.agency/` yields `IsV2=true` for every non-v3-confirmed input under both the old and the new rule, so any monotonicity claim built on it holds trivially. Monotonicity is therefore asserted on a residue-free fixture (AC-RIL2-003).
 
 ## §B Acceptance criteria
 
@@ -168,6 +168,8 @@ go test ./internal/cli/ -run 'TestResidueCleanup_IdempotentAcrossTwoRuns' -v 2>&
 
 Expected: `--- PASS: TestResidueCleanup_IdempotentAcrossTwoRuns`. The test runs the residue path twice against one tree and asserts run 1 removes ≥ 1 and run 2 removes exactly 0. This is the direct anti-loop assertion for issue #1243.
 
+**Fixture scope — non-`.agency` residue only.** The fixture seeds a deprecated path that the `.agency/` migration pre-step does not create (for example `.claude/commands/agency/brief.md`), so the two-run convergence REQ-RIL2-022 asserts holds exactly. A `.agency/`-carrying fixture converges in **three** runs instead, because the migration copies `.agency/` to `.agency.archived/` — itself a `defs.DeprecatedPaths` entry — during run 1, and that copy is swept by run 2 (see the REQ-RIL2-022 convergence note in spec.md §D.4). Both behaviours are correct and bounded; this AC pins the non-`.agency` case, and the REQ's "present before the first run" qualifier is what makes the two consistent.
+
 ### AC-RIL2-013 — `--dry-run` reaches the clean-reinstall plan (REQ-RIL2-024, REQ-RIL2-025)
 
 ```bash
@@ -215,7 +217,7 @@ $ grep -v '^[[:space:]]*//' /tmp/trailing_test.go | grep -cE 'Write\(~/\.ssh/\*\
 
 **Residual gap, stated explicitly.** Until `TestUpdateDryRun_ZeroMutation` exists (M4 creates it), the runtime assertion is a requirement on the implementer rather than an executed check, and (a) is the only mechanical screen in force — so during the M4 window a trailing-comment fixture would satisfy (a). The gap closes when M4 lands the test with the assertion described above; the AC is not considered met by (a) + a bare hash comparison.
 
-Observed early-return structure (four guard returns plus the `removed == 0` return, all ahead of the single write):
+Observed early-return structure (four guard returns plus the `removed == 0` return, all ahead of the single write; the trailing `68:` line is the function's terminal success return, after the write):
 
 ```
 $ sed -n '/^func stripRetiredV2DenyEntries/,/^}/p' internal/cli/update_deny_migration.go | grep -n 'return nil\|removed == 0\|WriteFile'
@@ -226,6 +228,7 @@ $ sed -n '/^func stripRetiredV2DenyEntries/,/^}/p' internal/cli/update_deny_migr
 43:	if removed == 0 {
 44:		return nil
 59:	if err := os.WriteFile(path, outData, mode); err != nil {
+68:	return nil
 ```
 
 **Fails when:** the fixture seeds no retired entry outside a comment (a); the test body omits the runtime `permissions.deny` seed assertion, or that assertion finds no literal (b, which then fails rather than reporting a vacuous PASS); or the dry-run mutates the tree (b).

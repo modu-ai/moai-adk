@@ -1,6 +1,6 @@
 # SPEC-UPDATE-REINSTALL-LOOP-002 — Implementation Plan
 
-Version: 0.2.0 · Status: draft · Tier: M
+Version: 0.3.0 · Status: draft · Tier: M
 
 > Sections are ordered by decision-reversibility. §A carries the two decisions most likely to change under review; §B..§D are the mechanical consequences; milestones (§E) follow execution order.
 
@@ -15,15 +15,15 @@ Version: 0.2.0 · Status: draft · Tier: M
 3. parse the leading run of digits as the major version
 4. classify, in this order:
    - `major >= 3` → v3-confirmed (prefix irrelevant — `v3.0.1`, `3.0.1`, `V3.0.1`, `v4.0.0`, `4.0.0` all qualify)
-   - `major == 2` **and the original string carried a leading `v` or `V`** → Signal 1 positive, no override
+   - `major == 2` **and the original string carried a leading lowercase `v`** → Signal 1 positive, no override
    - `system.yaml` absent, unreadable, or unparseable **as YAML**, or `moai.version` empty → Signal 1 positive, no override
-   - everything else in a well-formed file — a parseable major that is neither 2 nor ≥3, a **bare** (unprefixed) major-2 string, or a string with no leading numeric run at all — → Signal 1 negative, no override
+   - everything else in a well-formed file — a parseable major that is neither 2 nor ≥3, a **bare** (unprefixed) major-2 string, an **uppercase-`V`-prefixed** major-2 string, or a string with no leading numeric run at all — → Signal 1 negative, no override
 
 **Why `>= 3` and not `== 3`.** A `v4.0.0` project is not a v2 project. Pinning equality reproduces the identical bug one major version later — the matrix in spec.md §A shows `v4.0.0` and `4.0.0` both classifying `IsV2=true` today. `>= 3` is the forward-safe form.
 
 **Why major-only, ignoring prerelease and build metadata.** The signal being answered is "is this project on the v3 template era", which is a major-version question. `3.0.0-rc13` is a v3 project. Full semver comparison would add ordering semantics no caller needs.
 
-**Why the bare `2.x` form is excluded from the Signal-1-positive branch.** This is the one asymmetry in the rule and it is deliberate. On a residue-free project, `2.5.0` and `V2.5.0` are `IsV2=false` today (observed — spec.md §A, residue-free table); admitting them on major alone flips them to `true` and routes a project with no legacy residue into the destructive full reinstall. NFR-RIL2-001 forbids exactly that movement and takes no exception. The v3 side has no such constraint, which is why REQ-RIL2-007 *does* accept bare `3.0.1`: widening v3-confirmed narrows the destructive path. The practical cost is nil — a genuine v2 project carries v2 residue by definition, so Signals 2/3 catch it whatever its version string says.
+**Why the bare `2.x` and uppercase `V2.x` forms are excluded from the Signal-1-positive branch.** This is the one asymmetry in the rule and it is deliberate. On a residue-free project, `2.5.0` and `V2.5.0` are `IsV2=false` today (observed — spec.md §A, residue-free table); admitting them on major alone flips them to `true` and routes a project with no legacy residue into the destructive full reinstall. NFR-RIL2-001 forbids exactly that movement and takes no exception. The v3 side has no such constraint, which is why REQ-RIL2-007 *does* accept bare `3.0.1`: widening v3-confirmed narrows the destructive path. The practical cost is nil — a genuine v2 project carries v2 residue by definition, so Signals 2/3 catch it whatever its version string says.
 
 **Why "unparseable" means the file, not the major digits.** An absent, unreadable, or YAML-invalid `system.yaml` stays Signal-1 positive: that preserves the existing broader-detection posture, since a drifted config file is itself evidence of a partial migration. A *well-formed* file carrying an unrecognized string (`abc`, `3`, `1.9.0`) is a different case and stays **negative**, exactly as the current `default:` branch does. Conflating the two would make `abc` Signal-1 positive and widen a residue-free project from `IsV2=false` to `true` — the same NFR-RIL2-001 violation as the bare-`2.x` case, arriving through a wording ambiguity rather than a design choice. AC-RIL2-003 carries `abc` in its input set for this reason.
 
