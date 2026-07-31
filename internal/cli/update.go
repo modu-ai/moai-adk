@@ -300,7 +300,21 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// advisory on the dry-run path too, so `moai update --dry-run` smoke
 		// runs (AC-WBG-009) observe it without mutating the filesystem.
 		emitWorktreeAdvisory(out, cwd)
-		return dryRunArchiveLegacySkills(cwd, out)
+		if archiveErr := dryRunArchiveLegacySkills(cwd, out); archiveErr != nil {
+			return archiveErr
+		}
+		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2
+		// fingerprint is computed HERE — inside the dry-run branch, above the
+		// deny-rule migration below — so the clean-reinstall and
+		// residue-cleanup plans become reachable from `moai update --dry-run`.
+		// Before M4 this branch returned immediately after the archive
+		// summary, leaving both plan renderers dead from the CLI even though
+		// each already existed and update.go already wired `DryRun:` into
+		// runCleanReinstall.
+		//
+		// The early return itself does NOT move (REQ-RIL2-026): it stays
+		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
+		return emitDryRunReinstallPlan(cmd.Context(), cwd, getBoolFlag(cmd, "force"), out, th)
 	}
 
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
@@ -488,6 +502,62 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	return nil
+}
+
+// emitDryRunReinstallPlan renders, for `moai update --dry-run`, either the
+// v2-to-v3 clean-reinstall plan (REQ-RIL2-024) or the v3 residue-cleanup plan
+// (REQ-RIL2-025) — whichever the project's v2 fingerprint selects. It is the
+// dry-run counterpart of the v2-detection block in runUpdate.
+//
+// It writes nothing (REQ-RIL2-026). detectV2Fingerprint and isMoAIProject only
+// read; runCleanReinstall returns from its own dry-run branch before Step 3's
+// backup; runV3ResidueCleanup returns from its dryRun branch before its
+// backup-then-remove step. Both renderers already existed — M4 makes them
+// reachable rather than adding a parallel implementation.
+//
+// A detection failure degrades to a warning and no plan, matching the
+// non-dry-run block: a dry run must never fail the command.
+func emitDryRunReinstallPlan(ctx context.Context, cwd string, force bool, out io.Writer, th tui.Theme) error {
+	if !isMoAIProject(cwd) {
+		return nil
+	}
+	fingerprint, fpErr := detectV2Fingerprint(cwd)
+	if fpErr != nil {
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "v2 detection", "failed", fpErr.Error(), &th))
+		return nil
+	}
+
+	if !fingerprint.IsV2 {
+		// v3-confirmed project: the residue sweep is the applicable plan.
+		if _, cleanupErr := runV3ResidueCleanup(cwd, true, force, out); cleanupErr != nil {
+			return cleanupErr
+		}
+		return nil
+	}
+
+	_, _ = fmt.Fprintln(out, tui.CheckLine("info", "v2 detected",
+		"clean reinstall planned",
+		fmt.Sprintf("signals: version=%v agency=%v deprecated=%v",
+			fingerprint.V2DetectedViaVersion,
+			fingerprint.V2DetectedViaAgencyDir,
+			fingerprint.V2DetectedViaDeprecatedPath),
+		&th))
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	planCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	if _, runErr := runCleanReinstall(planCtx, cwd, CleanReinstallOptions{
+		DryRun:           true,
+		Force:            force,
+		Out:              out,
+		RunMigrateAgency: runAgencyMigrationAdapter,
+	}); runErr != nil {
+		return fmt.Errorf("dry-run clean reinstall plan: %w", runErr)
+	}
 	return nil
 }
 

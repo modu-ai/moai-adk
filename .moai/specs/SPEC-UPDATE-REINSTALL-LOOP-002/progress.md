@@ -249,6 +249,76 @@ Deferred (recorded, NOT actioned in M3):
 
 - **D17 — `.agency.archived` converges in two runs, not one.** For a tree carrying `.agency/`: run 1 archives `.agency/` → `.agency.archived/` and sweeps `.agency/`; run 2 finds `.agency.archived` in its own pre-migration snapshot and removes it; run 3 removes zero. This is bounded and terminating (unlike the #1243 net-zero remove-then-restore loop), but it is a two-run convergence rather than the one-run convergence REQ-RIL2-022's general wording implies. `TestResidueCleanup_IdempotentAcrossTwoRuns` uses a residue fixture without `.agency/` (a plain deprecated file), where convergence is one run. Resolving the `.agency` case would require either permanently excluding `.agency.archived` from the sweep or accepting the archive's deletion on the second run — both are scope decisions, not implementation details, so neither was taken here.
 
+### M4 — `--dry-run` reachability (REQ-RIL2-024..027)
+
+Base for this milestone: `b8e4bc4f4` (M3). Files touched: `internal/cli/update.go` (dry-run branch + new `emitDryRunReinstallPlan` helper), new `internal/cli/update_dry_run_reach_test.go`. The M4 implementation commit is the commit that carries this section; its SHA is recorded in §E.3 (`run_commit_sha`).
+
+The sibling co-edit constraint (plan.md §E M4) resolved to **this SPEC running first**: `git log origin/main..HEAD` carries no `SPEC-UPDATE-DOC-DRIFT-001` commit, and the pre-M4 dry-run branch was byte-identical to the `plan.md`-quoted `:293-304` baseline. M4 therefore implemented the hoist rather than degrading to a no-op verification.
+
+#### RED evidence (pre-GREEN, captured before the implementation edit)
+
+`go test ./internal/cli/ -run 'TestUpdateDryRun' -v` against the unmodified `runUpdate`:
+
+```
+=== RUN   TestUpdateDryRun_EmitsCleanReinstallPlan
+    update_dry_run_reach_test.go:192: dry-run output lacks the literal "DRY-RUN"; the clean-reinstall plan renderer was not reached.
+        output:
+        Current version   moai-adk dev
+        Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+         [dry-run] total: 0 skills archived, 0 user customizations modified
+--- FAIL: TestUpdateDryRun_EmitsCleanReinstallPlan (0.01s)
+=== RUN   TestUpdateDryRun_EmitsResidueCleanupPlan
+    update_dry_run_reach_test.go:216: dry-run output lacks the residue-cleanup plan line.
+--- FAIL: TestUpdateDryRun_EmitsResidueCleanupPlan (0.07s)
+=== RUN   TestUpdateDryRun_ZeroMutation
+--- PASS: TestUpdateDryRun_ZeroMutation (0.02s)
+=== RUN   TestUpdateDryRun_PreservesExistingOutput
+--- PASS: TestUpdateDryRun_PreservesExistingOutput (0.01s)
+FAIL
+```
+
+Two of the four PASSED in RED, and that is by design rather than a weak test: `TestUpdateDryRun_ZeroMutation` (AC-RIL2-014) and `TestUpdateDryRun_PreservesExistingOutput` (AC-RIL2-015) are **regression guards on invariants M4 must not break**, not drivers of new behaviour. The pre-M4 dry-run branch already mutated nothing and already emitted both literals; the guards exist so that the M4 reordering cannot silently lose either property. Only the two reachability tests (AC-RIL2-013 / REQ-RIL2-025) could fail in RED, and both did.
+
+The captured RED output is also the direct observation of Defect 4: the pre-fix dry-run emits only the worktree advisory and the archive summary — no plan line of any kind.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-RIL2-013 | PASS | `go test ./internal/cli/ -run 'TestUpdateDryRun_EmitsCleanReinstallPlan' -v` | `--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan (0.01s)` |
+| REQ-RIL2-025 | PASS | `go test ./internal/cli/ -run 'TestUpdateDryRun_EmitsResidueCleanupPlan' -v` | `--- PASS: TestUpdateDryRun_EmitsResidueCleanupPlan (0.00s)` |
+| AC-RIL2-014 (a) | PASS | `grep -v '^[[:space:]]*//' internal/cli/update_dry_run_reach_test.go \| grep -cE '<12 literals>'` | `1` |
+| AC-RIL2-014 (b) | PASS | `go test ./internal/cli/ -run 'TestUpdateDryRun_ZeroMutation' -v` | `--- PASS: TestUpdateDryRun_ZeroMutation (0.01s)` + `--- PASS: .../v2.16.0`, `--- PASS: .../3.0.1` |
+| AC-RIL2-015 | PASS | `go test ./internal/cli/ -run 'TestUpdateDryRun_PreservesExistingOutput' -v` | `--- PASS: TestUpdateDryRun_PreservesExistingOutput (0.01s)` |
+| AC-RIL2-016 | PASS | `go build ./...` · `GOOS=windows GOARCH=amd64 go build ./...` · `go test ./internal/cli/...` · `go vet ./internal/cli/...` | `BUILD_OK`, `WINDOWS_BUILD_OK`, `VET_OK`, `ok github.com/modu-ai/moai-adk/internal/cli 248.962s` (no `FAIL`) |
+| AC-RIL2-017 | PASS | `git diff --name-only origin/main...HEAD -- internal/template/templates/ \| wc -l` | `0` |
+| AC-RIL2-018 | PASS | `grep -rn 'os.MkdirTemp\|ioutil.TempDir' internal/cli/*_test.go \| grep -v 't.TempDir' \| wc -l`; `git status --porcelain` after a full package run | `0`; only `M internal/cli/update.go` + `?? internal/cli/update_dry_run_reach_test.go` (both authored by M4 — no test-created path) |
+
+Implementation notes:
+
+- **The `--dry-run` early return did NOT move.** It sits at `internal/cli/update.go:318`, still ABOVE the deny-rule migration block whose `stripRetiredV2DenyEntries(cwd, out)` call is at `:337`. The rejected option in plan.md §E M4 — relocating the return past that block — would have made `moai update --dry-run` rewrite `.claude/settings.json`. The source comment at `:326-327` asserting the deliberate placement is preserved verbatim.
+- **Nothing new renders the plan.** `emitDryRunReinstallPlan` is a routing helper: it calls `detectV2Fingerprint` + `isMoAIProject`, then dispatches to `runCleanReinstall(..., DryRun: true)` (v2) or `runV3ResidueCleanup(cwd, true, force, out)` (v3). Both renderers already existed and both already returned before their first mutation; M4 supplies the reachability the CLI was missing, per REQ-RIL2-024/025.
+- **Both dry-run branches are covered**, not just the v2 one. A v2 fixture (`moai.version: v2.16.0`) exercises the clean-reinstall plan and produces the `DRY-RUN` + `Would remove N deprecated paths` literals AC-RIL2-013 names; a v3 fixture (`3.0.1`) exercises `[residue-cleanup] Would remove N deprecated paths` for REQ-RIL2-025. `TestUpdateDryRun_ZeroMutation` runs as a subtest over both fixtures, so the zero-mutation invariant is asserted on each branch rather than only on whichever one the fixture happened to select.
+- **REQ-RIL2-027 preserved by construction.** `emitWorktreeAdvisory(out, cwd)` and `dryRunArchiveLegacySkills(cwd, out)` remain the first two calls of the branch; the plan render is appended after them. `dryRunArchiveLegacySkills`'s error is now propagated rather than being the branch's `return` expression — behaviourally identical, since it is the last statement's error either way.
+- **Nil-context guard.** `emitDryRunReinstallPlan` falls back to `context.Background()` when `cmd.Context()` is nil. A directly-invoked `cobra.Command` (the pattern every existing `runUpdate` test uses) carries a nil context, and `context.WithTimeout(nil, …)` panics. The non-dry-run block at `:370` has the same latent exposure but is out of M4 scope.
+- **A detection failure does not fail the command.** `detectV2Fingerprint` errors degrade to a `tui.CheckLine("warn", …)` and no plan, mirroring the non-dry-run block's handling. A dry run reports; it does not gate.
+
+Falsification (each new guard proven able to fail):
+
+- **AC-RIL2-014's seed assertion, falsified against a comment-only fixture.** The fixture was temporarily rewritten to `{"permissions":{"deny":[]}}` with the literal `Write(~/.ssh/**)` present only in a **trailing** comment on that code line. Command (a) — the comment-stripped grep — returned `2` and exited 0, i.e. it PASSED on a fixture that seeds nothing: `grep -v '^[[:space:]]*//'` cannot strip a trailing comment. The runtime assertion caught it:
+
+  ```
+  --- FAIL: TestUpdateDryRun_ZeroMutation/v2.16.0 (0.02s)
+      update_dry_run_reach_test.go:231: fixture seeds no retiredV2DenyEntries literal in permissions.deny ([]);
+      the zero-mutation assertion would be vacuous, because stripRetiredV2DenyEntries returns at
+      `removed == 0` before its os.WriteFile
+  ```
+
+  Reverting the fixture restored `1` for command (a) and `--- PASS` for both subtests. This is the concrete demonstration that the AC's runtime `permissions.deny` assertion — not its grep — is what carries AC-RIL2-014.
+- The two reachability tests were observed FAILing against the unmodified `runUpdate` (RED block above), naming the missing literal in each case.
+
+#### Deferred items (recorded, NOT actioned in M4)
+
+- **D16** and **D17** stand unchanged as recorded above; both remain batched into the post-M4 documentation pass. M4 actioned neither.
+
 ### Epic run order (depends_on sequencing)
 
 `SPEC-UPDATE-REINSTALL-LOOP-002` declares `related_specs`, not `depends_on`, so its own run-phase `depends_on` pre-flight is trivially satisfied. The sibling Epic SPECs are all `status: draft`, which is the expected state for an Epic whose members have not yet run — it is a sequencing fact, not a per-SPEC defect.
@@ -263,7 +333,29 @@ Where a sibling later adds a `depends_on:` entry naming this SPEC, that entry is
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-31
+run_commit_sha: "<M4-commit>"   # placeholder — backfilled after the M4 commit lands (--amend prohibited)
+run_status: complete
+ac_pass_count: 19               # AC-RIL2-001..019, all PASS across M1-M4
+ac_fail_count: 0
+preserve_list_post_run_count: 0 # no PRESERVE-list entry collides with defs.DeprecatedPaths (M2, AC-RIL2-007)
+l44_pre_commit_fetch: "git fetch origin main; git rev-list --count --left-right origin/main...HEAD → 0\t7 (local ahead by 7, clean)"
+l44_post_push_fetch: not-performed   # run-phase does not push; PR/push is a later phase (enforce_admins: true, all tiers via PR)
+new_warnings_or_lints_introduced: 0  # golangci-lint run --timeout=3m → "0 issues." (baseline 0 issues.)
+cross_platform_build:
+  darwin_amd64: BUILD_OK          # go build ./...
+  windows_amd64: WINDOWS_BUILD_OK # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 14        # 13 in origin/main...HEAD + internal/cli/update_dry_run_reach_test.go (new, M4)
+m1_to_mN_commit_strategy: >
+  One commit per milestone, no squash, no amend, no force-push.
+  M1 542e9cdcf + f229ddf8d (version-signal normalization),
+  M2 e6fb18b6d (PRESERVE exclusion + backup-before-delete),
+  M3 b8e4bc4f4 (v3 residue cleanup),
+  M4 <M4-commit> (--dry-run reachability, final code milestone).
+```
+
+Coverage: `go test -cover ./internal/cli/` → `coverage: 75.8% of statements`, measured on this tree WITH `update_dry_run_reach_test.go` present (M3 baseline was 75.7%). Package-level 85% is NOT met; that is a pre-existing `internal/cli` figure, unchanged in kind by this SPEC, and no AC of this SPEC sets a coverage target.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
