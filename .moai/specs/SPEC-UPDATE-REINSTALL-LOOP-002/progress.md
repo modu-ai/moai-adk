@@ -359,7 +359,36 @@ Coverage: `go test -cover ./internal/cli/` → `coverage: 75.8% of statements`, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-01
+sync_commit_sha: "171816238"   # backfilled after the sync commit landed (--amend prohibited)
+sync_status: complete
+run_commit_sha_landed: "beeb0ebc2"  # the squash-merge SHA of PR #1261 on origin/main — the run-phase SHA that is an ancestor of main
+b12_self_test_a: "grep -c 'SPEC-UPDATE-REINSTALL-LOOP-002' CHANGELOG.md → 0 before emission (no duplicate), 1 after"
+b12_self_test_b: "acceptance.md §B AC headings → 20 (AC-RIL2-001..020); CHANGELOG entry states 20"
+b12_self_test_c: "every file path named in the CHANGELOG entry verified present via per-path test -f → 12/12 OK"
+changelog_entry_position: "[Unreleased] → ### Fixed (appended after SPEC-CLIFIX-LINTER-STALE-001)"
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (merged into this single sync commit); updated 2026-07-31 → 2026-08-01"
+  plan.md: n/a   # Tier M header-only artifact — no YAML frontmatter block
+  acceptance.md: n/a   # Tier M header-only artifact — no YAML frontmatter block
+  progress.md: n/a   # no frontmatter; §E.4 body populated by this commit
+canary_compliance_check:
+  applicable: false   # this SPEC defines no forward-looking policy that its own sync would test
+  rationale: "Behavioural CLI fix in internal/cli; no policy/doctrine surface introduced."
+cross_platform_build:
+  darwin_amd64: BUILD_OK          # go build ./... → exit 0
+  windows_amd64: WINDOWS_BUILD_OK # GOOS=windows GOARCH=amd64 go build ./... → exit 0
+lint_status: "golangci-lint run --timeout=3m → exit 0, '0 issues.' (identical to the run-phase baseline)"
+test_status: "go test ./internal/cli/... → exit 0, all packages ok"
+template_neutrality: "N/A — git show --name-only beeb0ebc2 | grep -c '^internal/template/templates/' → 0"
+route: "Route B (PR-mandatory; this repo's enforce_admins: true branch protection)"
+known_finding: >
+  §E.3 records run_commit_sha "d68ae92d2" and §E.2 references base "b8e4bc4f4"; both objects still
+  exist but neither is an ancestor of origin/main — the squash merge of PR #1261 orphaned them.
+  §E.3 is manager-develop's section and was deliberately left unmodified by this sync commit;
+  the landed SHA is recorded above as run_commit_sha_landed.
+```
 
 ## §F Phase 4 Mode Selection
 
