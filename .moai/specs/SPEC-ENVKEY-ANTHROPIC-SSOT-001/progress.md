@@ -205,4 +205,98 @@ Cross-platform: `go build ./...` → 0; `GOOS=windows GOARCH=amd64 go build ./..
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-31
+sync_commit_sha: 4d0df6563   # squash merge of sync PR #1256 onto main. Written as a
+                             # placeholder in the sync commit itself (a commit cannot
+                             # reference its own SHA) and backfilled here per the schema
+                             # SHA placeholder backfill exemption.
+sync_pr: 1256
+sync_merged_at: 2026-07-30T22:38:24Z
+sync_ci: 16 SUCCESS / 7 SKIPPED / 0 FAILURE   # gh pr view 1256 --json statusCheckRollup
+                                              # (23 rollup entries total)
+sync_status: complete
+run_phase_pr: 1254
+run_phase_merge_commit: a89e875e2
+run_phase_merged_at: 2026-07-30T19:57:29Z
+run_phase_ci: 20 SUCCESS / 6 SKIPPED / 0 FAILURE   # gh pr view 1254 --json statusCheckRollup
+                                                   # (26 rollup entries total)
+changelog_entry_position: "[Unreleased] -> ### Changed (1st entry, before
+  SPEC-CONTEXT-ENGINE-RIGHTSIZE-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  version_field: "0.2.0 -> 0.2.1"
+  updated_field: "2026-07-31 (unchanged — same calendar day as run-phase)"
+  plan_md: n/a          # no frontmatter status field
+  acceptance_md: n/a    # no frontmatter status field
+  progress_md: n/a      # no frontmatter status field
+docs_sync:
+  readme: not-required   # mechanical name-indirection refactor; no user-visible surface
+                         # change. The run-phase merge commit a89e875e2 touched 16 files,
+                         # all under internal/ + .moai/specs/ — 0 CLI flags, 0 cobra
+                         # commands, 0 template files, 0 docs-site pages.
+  docs_site: not-required   # same rationale
+  template_neutrality: n/a  # git diff --name-only a89e875e2^1 a89e875e2 --
+                            # internal/template/templates/ -> 0
+```
+
+### Independent sync-phase re-verification (orchestrator, against origin/main 82575a94c)
+
+Every row below was produced by a command actually run in this sync worktree against
+the post-merge tree — not carried over from the run-phase report.
+
+| Claim | Command | Observed |
+|-------|---------|----------|
+| AC-EAS-011 — 0 bare production literals | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/ pkg/ cmd/ --include='*.go' --exclude='*_test.go' \| grep -v '^internal/config/envkeys.go' \| wc -l` | `0` |
+| AC-EAS-001 — 9 SSOT constants | `grep -c 'EnvAnthropic[A-Za-z]* = "ANTHROPIC_' internal/config/envkeys.go` | `9` |
+| Guard GREEN | `go test ./internal/config/ -run 'TestNoBareAnthropicEnvVarLiteralsInProduction' -v -count=1` | `--- PASS: TestNoBareAnthropicEnvVarLiteralsInProduction (1.36s)`, `guard_exit=0` |
+| AC-EAS-015 — `_test.go` untouched | `grep -rn '"ANTHROPIC_[A-Z_]*"' internal/ pkg/ cmd/ --include='*_test.go' \| wc -l` | `291` (baseline 291) |
+| AC-EAS-014 — templates untouched | `git diff --name-only a89e875e2^1 a89e875e2 -- internal/template/templates/ \| wc -l` | `0` |
+| Static analysis clean | `go vet ./...` | no output, `vet_exit=0` |
+| Run-phase CI | `gh pr view 1254 --json statusCheckRollup` | 26 entries: 20 SUCCESS / 6 SKIPPED / 0 FAILURE |
+
+Evidence logs: `.moai/state/verify/envkey-sync/{guard,vet,fulltest,isolated}.log`.
+
+**AC-EAS-014 attribution note.** The raw command `git diff --name-only 76d9a8f3b --
+internal/template/templates/` returns `2` against `origin/main` today, which at first
+reading contradicts the AC. It does not: both files
+(`.claude/output-styles/moai/moai-easy.md` and
+`.claude/rules/moai/workflow/session-handoff.md`, under the template tree) were changed by
+an unrelated commit `82575a94c` (PR #1255), not by this SPEC. Scoped to this SPEC's own
+merge commit the count is `0`, which is the figure the AC actually asserts. The
+discrepancy was investigated rather than assumed away.
+
+### Gaps (explicitly NOT observed at sync-phase)
+
+- **No Windows test run.** Cross-compilation only (`GOOS=windows GOARCH=amd64 go build`
+  exit 0 at run-phase); no Windows CI job executed the suite. `internal/hook` and
+  `internal/tmux` carry platform-conditional code.
+- **No end-to-end runtime exercise** of the GLM / tmux / hook paths against a live tmux
+  session or a real endpoint. Behaviour preservation rests on the run-phase forward
+  value-identity attestation (all 10 files `IDENTICAL`) plus the per-package suites.
+- **Coverage not measured** at sync-phase. This refactor adds no production branches, so
+  coverage is expected unchanged, but that expectation was not verified by command.
+- ~~**`sync_commit_sha` / `sync_pr` are placeholders**~~ — RESOLVED: backfilled to `4d0df6563` /
+  PR #1256 after the sync PR merged (this commit).
+
+### Residual risk
+
+- **Full-suite flakiness under parallel load (disclosed, attributed).** A cache-disabled
+  `go test -count=1 ./...` in this sync worktree returned `exit=1` with 2 failing packages
+  — `internal/harness` (`TestRecordEvent100Sequential`, `TestAsyncRecorder_NonBlockingUnderLoad`)
+  and `internal/telemetry` — against 104 `ok`. Both were investigated rather than assumed
+  away, and are attributed to pre-existing load-sensitive timing flakiness, NOT to this
+  refactor. Evidence: (a) both packages pass **in isolation** on this same tree
+  (`go test -count=1 ./internal/harness/... ./internal/telemetry/...` -> `exit=0`, 13 `ok`);
+  (b) both contain **zero** `ANTHROPIC` references (`grep -rn 'ANTHROPIC' internal/harness/
+  internal/telemetry/` -> `0`); (c) **zero** files changed by this SPEC's merge commit live
+  in either package (`git diff --name-only a89e875e2^1 a89e875e2 -- internal/harness
+  internal/telemetry` -> `0`); (d) both failing test names are explicit throughput / non-
+  blocking-under-load timing assertions, the shape that degrades under a 100+-package
+  parallel run. This is the same flakiness class the run-phase report disclosed for
+  `internal/lsp/subprocess` and `internal/web` — a different package pair, same mechanism.
+  The run-phase PR's own CI was green (0 FAILURE across 26 checks).
+- **Guard scope is one env-var family.** The three `CLAUDE_CODE_*` names remain unguarded
+  outside `internal/cli/` (spec.md section D, deliberate). A rename of one of those names
+  can still diverge silently outside `internal/cli/` until a follow-up SPEC widens that
+  guard.

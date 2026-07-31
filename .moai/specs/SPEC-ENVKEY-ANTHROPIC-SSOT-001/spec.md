@@ -1,8 +1,8 @@
 ---
 id: SPEC-ENVKEY-ANTHROPIC-SSOT-001
 title: Single-source the ANTHROPIC_* environment-variable name family through internal/config/envkeys.go
-version: 0.2.0
-status: in-progress
+version: 0.2.1
+status: completed
 created: 2026-07-31
 updated: 2026-07-31
 author: manager-spec
@@ -20,6 +20,7 @@ tier: M
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-31 | Initial plan-phase authoring. Baseline measured at `76d9a8f3b`: 83 bare literals across 10 production files; guard-test scope defect identified. | manager-spec |
 | 0.2.0 | 2026-07-31 | Audit iteration 2 (plan-auditor FAIL 0.72). `lifecycle` corrected to the canonical enum value; REQ-EAS-007 relabelled Event-driven; A.1 extended with the `pkg/`+`cmd/` zero-literal fact; A.5 census re-measurement gate added. Companion fixes in plan.md (M2 guard design, M6 falsification targets, symbol citations) and acceptance.md (runtime banned-set assertion, lint exit-code capture, positive scope assertion, mechanized AC-EAS-004, recorded baselines). | manager-spec |
+| 0.2.1 | 2026-07-31 | Sync-phase close (3-phase plan-run-sync). Frontmatter `in-progress` -> `completed`; `progress.md` section E.4 sync-phase audit-ready signal populated; CHANGELOG `[Unreleased]` -> `### Changed` entry added. No REQ text, no AC row, and no `.go` file changed. | manager-docs |
 
 ---
 
