@@ -299,7 +299,7 @@ _<pending run-phase>_
 
 - sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per Status Transition Ownership Matrix)
 - sync_complete_at: 2026-07-31
-- sync_commit_sha: pending-backfill-SPEC-UPDATE-LEGACY-SKILL-LIST-001 (a commit cannot carry its own hash; the real SHA is backfilled in a follow-up commit on the same `sync/SPEC-UPDATE-LEGACY-SKILL-LIST-001` branch, per the SHA-placeholder backfill exemption of spec-frontmatter-schema.md § Forbidden ownership crossings)
+- sync_commit_sha: f56b8189a (sync commit `docs(SPEC-UPDATE-LEGACY-SKILL-LIST-001): sync-phase artifacts — 3-phase close`; backfilled in this follow-up commit — a commit cannot carry its own hash; the real SHA is backfilled in a follow-up commit on the same `sync/SPEC-UPDATE-LEGACY-SKILL-LIST-001` branch, per the SHA-placeholder backfill exemption of spec-frontmatter-schema.md § Forbidden ownership crossings)
 - b12_self_test_a (pre-emission grep): PASS — `grep -c 'SPEC-UPDATE-LEGACY-SKILL-LIST-001' CHANGELOG.md` → 0 before appending (no duplicate from a parallel BATCH-SYNC session)
 - b12_self_test_b (AC count match): PASS — 16 acceptance criteria, 16/16 PASS, and the CHANGELOG entry states 16/16
 - b12_self_test_c (file path verification): PASS — every path claimed in the CHANGELOG entry verified present in `git show --name-only 005d800af` (12 files, +2884 / −734)
