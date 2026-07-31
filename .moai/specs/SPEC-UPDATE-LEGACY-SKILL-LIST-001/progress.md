@@ -297,4 +297,16 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: sync-complete (manager-docs sync-phase, single sync commit 3-phase close per Status Transition Ownership Matrix)
+- sync_complete_at: 2026-07-31
+- sync_commit_sha: pending-backfill-SPEC-UPDATE-LEGACY-SKILL-LIST-001 (a commit cannot carry its own hash; the real SHA is backfilled in a follow-up commit on the same `sync/SPEC-UPDATE-LEGACY-SKILL-LIST-001` branch, per the SHA-placeholder backfill exemption of spec-frontmatter-schema.md § Forbidden ownership crossings)
+- b12_self_test_a (pre-emission grep): PASS — `grep -c 'SPEC-UPDATE-LEGACY-SKILL-LIST-001' CHANGELOG.md` → 0 before appending (no duplicate from a parallel BATCH-SYNC session)
+- b12_self_test_b (AC count match): PASS — 16 acceptance criteria, 16/16 PASS, and the CHANGELOG entry states 16/16
+- b12_self_test_c (file path verification): PASS — every path claimed in the CHANGELOG entry verified present in `git show --name-only 005d800af` (12 files, +2884 / −734)
+- changelog_entry_position: CHANGELOG.md `## [Unreleased]` > `### Fixed` — SPEC-UPDATE-LEGACY-SKILL-LIST-001 entry, first in section (Tier M, P1, M1–M4)
+- frontmatter_status_transitions: spec.md `in-progress → completed` atomic on this single sync commit; `updated: 2026-07-31` refreshed. plan.md / acceptance.md / audit.md bodies untouched (body edits are manager-spec-owned)
+- run_phase_pr: #1260 (merge commit `005d800af`, auto-merged 2026-07-31 — legacySkillIDs 16 → 13 + embedded-manifest cross-check guard + wrong-archive removal + non-aborting archive loop)
+- ci_rollup: 26 checks — 20 SUCCESS, 6 SKIPPED, 0 FAILURE
+- canary_compliance_check: N/A — this SPEC defines no forward-looking policy that its own sync would test
+- note: §25 template neutrality N/A — `git show --name-only 005d800af | grep -c '^internal/template/templates/'` → 0; the merge touched `internal/cli` Go sources, SPEC artifacts, and `.moai/archive/skills/v2.16/` deletions only, so no neutrality scan applies. This sync commit carries only the frontmatter transition + CHANGELOG entry + this §E.4 block (no code changes, no README, no docs-site — the user-visible effect is a spurious warning ceasing, for which CHANGELOG is the correct surface)
+- known_follow_ups: (a) `moai migrate restore-skill --force` would overwrite a live skill with the stale archive (`migrate_restore_skill.go:68-83`); (b) wrong archives already created in downstream user projects are not cleaned up; (c) `moai-meta-harness` retirement (SKILL.md self-declares DEPRECATED while rules and tests still reference it) — unrelated, surfaced during the same investigation
