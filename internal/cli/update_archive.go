@@ -14,6 +14,7 @@ package cli
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,19 +22,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // archiveVersion is the version tag used for the archive directory.
 const archiveVersion = "v2.16"
 
-// legacySkillIDs lists the 16 skill IDs removed in BC-V3R3-007.
-// When `moai update` runs, these skills are moved to .moai/archive/skills/v2.16/.
+// legacySkillIDs lists the skill IDs removed in BC-V3R3-007 that are still
+// gone from the template tree. When `moai update` runs, these skills are moved
+// to .moai/archive/skills/v2.16/.
+//
+// The original removal covered 16 IDs. Three of them — moai-domain-backend,
+// moai-domain-frontend, moai-domain-database — were revived the next day as
+// consolidation targets and ship in the template tree today, so they are NOT
+// on this list: an entry that every `moai update` redeploys never reaches
+// archiveSkill's source-absent short-circuit, which made the v2.16 drift-check
+// re-fire on every run and never converge. TestLegacySkillIDsNotEmbedded
+// (update_archive_guard_test.go) asserts this list stays disjoint from the
+// embedded template skill set, so a future revival cannot silently recreate
+// the defect. See SPEC-UPDATE-LEGACY-SKILL-LIST-001.
 var legacySkillIDs = []string{
-	"moai-domain-backend",
-	"moai-domain-frontend",
-	"moai-domain-database",
 	"moai-domain-db-docs",
 	"moai-domain-mobile",
 	"moai-framework-electron",
@@ -271,6 +280,10 @@ func copyDirAll(srcDir, dstDir string) error {
 func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, error) {
 	th := resolveTheme()
 	archived := 0
+	// Per-entry failures accumulate here instead of aborting the loop. A single
+	// bad entry previously returned early, which both skipped every remaining
+	// entry and suppressed the "total:" summary emitted after the loop.
+	var failures []error
 	// Generate a single drift backup timestamp per call so that, when multiple
 	// legacy skills drift in one invocation, they all land under the same
 	// backup directory tree for atomic post-hoc recovery.
@@ -299,10 +312,16 @@ func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, er
 					archiveVersion+"-drift-"+driftStamp, id)
 				// Ensure the backup parent directory exists before os.Rename.
 				if err := os.MkdirAll(filepath.Dir(backupDir), 0o755); err != nil {
-					return archived, fmt.Errorf("create drift backup parent for %s: %w", id, err)
+					// `continue` is required, not incidental: this site sits ABOVE
+					// archiveSkill in the loop body, so falling through would run
+					// os.Rename and archiveSkill for an entry whose backup parent
+					// could not be created.
+					failures = append(failures, fmt.Errorf("create drift backup parent for %s: %w", id, err))
+					continue
 				}
 				if err := os.Rename(dstDir, backupDir); err != nil {
-					return archived, fmt.Errorf("backup drift archive for %s: %w", id, err)
+					failures = append(failures, fmt.Errorf("backup drift archive for %s: %w", id, err))
+					continue
 				}
 				// Original archive moved to backupDir; archiveSkill below will
 				// re-create dstDir from the live source.
@@ -317,7 +336,8 @@ func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, er
 		}
 
 		if err := archiveSkill(projectRoot, id); err != nil {
-			return archived, fmt.Errorf("archive %s: %w", id, err)
+			failures = append(failures, fmt.Errorf("archive %s: %w", id, err))
+			continue
 		}
 
 		// Do not count if already existed (idempotent run)
@@ -330,8 +350,12 @@ func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, er
 		archived++
 	}
 
+	// The summary is emitted unconditionally — reaching it no longer depends on
+	// every entry having succeeded. `archived` counts successes only.
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("total: %d skills archived, 0 user customizations modified", archived), Theme: &th}))
-	return archived, nil
+	// errors.Join returns nil for an empty slice, so the success path is
+	// unchanged; otherwise the caller receives one error naming every failed ID.
+	return archived, errors.Join(failures...)
 }
 
 // dryRunArchiveLegacySkills runs in --dry-run mode and prints the planned
