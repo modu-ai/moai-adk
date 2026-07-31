@@ -335,7 +335,7 @@ Where a sibling later adds a `depends_on:` entry naming this SPEC, that entry is
 
 ```yaml
 run_complete_at: 2026-07-31
-run_commit_sha: "<M4-commit>"   # placeholder — backfilled after the M4 commit lands (--amend prohibited)
+run_commit_sha: "d68ae92d2"     # backfilled by the orchestrator after the M4 commit landed (--amend prohibited)
 run_status: complete
 ac_pass_count: 19               # AC-RIL2-001..019, all PASS across M1-M4
 ac_fail_count: 0
@@ -352,7 +352,7 @@ m1_to_mN_commit_strategy: >
   M1 542e9cdcf + f229ddf8d (version-signal normalization),
   M2 e6fb18b6d (PRESERVE exclusion + backup-before-delete),
   M3 b8e4bc4f4 (v3 residue cleanup),
-  M4 <M4-commit> (--dry-run reachability, final code milestone).
+  M4 d68ae92d2 (--dry-run reachability, final code milestone).
 ```
 
 Coverage: `go test -cover ./internal/cli/` → `coverage: 75.8% of statements`, measured on this tree WITH `update_dry_run_reach_test.go` present (M3 baseline was 75.7%). Package-level 85% is NOT met; that is a pre-existing `internal/cli` figure, unchanged in kind by this SPEC, and no AC of this SPEC sets a coverage target.
