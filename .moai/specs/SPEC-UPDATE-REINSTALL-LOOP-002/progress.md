@@ -361,7 +361,7 @@ Coverage: `go test -cover ./internal/cli/` → `coverage: 75.8% of statements`, 
 
 ```yaml
 sync_complete_at: 2026-08-01
-sync_commit_sha: "pending-backfill-sync"   # a commit cannot reference its own hash; backfilled in a follow-up commit (--amend prohibited)
+sync_commit_sha: "171816238"   # backfilled after the sync commit landed (--amend prohibited)
 sync_status: complete
 run_commit_sha_landed: "beeb0ebc2"  # the squash-merge SHA of PR #1261 on origin/main — the run-phase SHA that is an ancestor of main
 b12_self_test_a: "grep -c 'SPEC-UPDATE-REINSTALL-LOOP-002' CHANGELOG.md → 0 before emission (no duplicate), 1 after"
