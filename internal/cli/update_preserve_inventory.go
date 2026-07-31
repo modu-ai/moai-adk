@@ -36,6 +36,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // PreserveInventory enumerates project-root-relative paths that MUST be
@@ -143,7 +145,75 @@ func buildPreserveInventory(projectRoot string) (PreserveInventory, error) {
 	// cheap insurance for future extension.
 	inv.Files = dedupSorted(inv.Files)
 
+	// REQ-RIL2-010: drop every entry that equals, or is nested under, a
+	// defs.DeprecatedPaths entry. The scan roots above legitimately intersect
+	// DeprecatedPaths in 9 entries (8 `.claude/commands/agency/*.md` files plus
+	// `.moai/project/brand`); without this filter those paths are snapshotted in
+	// Step 3, deleted in Step 4, and restored in Step 6, so the removal is
+	// net-zero and the "deprecated path present" v2 signal stays armed for the
+	// next `moai update`. Applied AFTER both sources are merged so the exclusion
+	// covers the user-owned scan as well as the preserve-root walk.
+	if len(inv.Files) > 0 {
+		kept := make([]string, 0, len(inv.Files))
+		for _, rel := range inv.Files {
+			if isUnderDeprecatedPath(rel) {
+				continue
+			}
+			kept = append(kept, rel)
+		}
+		inv.Files = kept
+	}
+
 	return inv, nil
+}
+
+// isUnderDeprecatedPath reports whether the project-root-relative path equals,
+// or is nested under, a defs.DeprecatedPaths entry (REQ-RIL2-010).
+//
+// Matching is performed on slash-normalized paths so the predicate behaves
+// identically on windows (NFR-RIL2-005). Nesting requires an explicit separator
+// boundary: `.moai/project/brandX` is NOT nested under `.moai/project/brand`,
+// which a bare strings.HasPrefix would wrongly report.
+func isUnderDeprecatedPath(rel string) bool {
+	relNorm := strings.TrimSuffix(filepath.ToSlash(rel), "/")
+	if relNorm == "" {
+		return false
+	}
+	for _, entry := range defs.DeprecatedPaths {
+		dep := strings.TrimSuffix(filepath.ToSlash(entry.Path), "/")
+		if dep == "" {
+			continue
+		}
+		if relNorm == dep || strings.HasPrefix(relNorm, dep+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// deprecatedInventoryCollisions returns the subset of the given
+// project-root-relative paths that equal, or are nested under, a
+// defs.DeprecatedPaths entry.
+//
+// This is the comparison the PRESERVE-inventory guard asserts over
+// (REQ-RIL2-012 / REQ-RIL2-013). It operates on a BUILT inventory, never on the
+// static preserveInventoryRoots prefixes — that static intersection is 9 entries
+// by design and is precisely the input the exclusion exists to handle
+// (REQ-RIL2-014).
+//
+// @MX:ANCHOR: [AUTO] PRESERVE-inventory ↔ DeprecatedPaths collision predicate.
+// @MX:REASON: Consumed by buildPreserveInventory (the exclusion) and by the
+// AC-RIL2-005 / AC-RIL2-006 guards. A path that is both preserved and deprecated
+// is removed in Step 4 then restored in Step 6, making the removal net-zero and
+// re-arming the `moai update` clean-reinstall loop.
+func deprecatedInventoryCollisions(files []string) []string {
+	var collisions []string
+	for _, rel := range files {
+		if isUnderDeprecatedPath(rel) {
+			collisions = append(collisions, rel)
+		}
+	}
+	return collisions
 }
 
 // dedupSorted returns a deduplicated copy of the input slice. The output

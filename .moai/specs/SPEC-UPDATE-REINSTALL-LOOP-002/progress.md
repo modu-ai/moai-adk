@@ -154,6 +154,72 @@ REQ-RIL2-003 states the Signal-1-positive condition as major 2 "**and** the orig
 
 The implementation follows the AC + NFR (lowercase `v` only), because NFR-RIL2-001 "admits no exception" and accepting `V` would flip a residue-free `V2.5.0` project from `IsV2=false` to `IsV2=true`. The `or V` clause in the REQ-RIL2-003 prose is the outlier and warrants a wording correction in a later scope-doc pass. No implementation change follows from it — the verification surface is unambiguous.
 
+### M2 — PRESERVE-inventory exclusion + backup-before-delete (complete)
+
+Both halves landed in ONE commit, per plan.md §B: removing the Step 6 resurrection without the Step 4 backup would convert a net-zero no-op into unbacked-up deletion of user-authored `.claude/commands/agency/*.md`.
+
+#### RED evidence (captured before the exclusion and the backup were wired)
+
+`go test ./internal/cli/ -run '<the four M2 tests>' -v` with `deprecatedInventoryCollisions` present as an unwired predicate and production behaviour unchanged:
+
+```
+    preserve_deprecated_exclusion_test.go:90: built PRESERVE inventory ∩ defs.DeprecatedPaths is non-empty: [.moai/project/brand/tokens.md .claude/commands/agency/agency.md .claude/commands/agency/brief.md .claude/commands/agency/build.md .claude/commands/agency/evolve.md .claude/commands/agency/learn.md .claude/commands/agency/profile.md .claude/commands/agency/resume.md .claude/commands/agency/review.md]
+--- FAIL: TestDeprecatedPaths_NoPreserveInventoryCollision (0.01s)
+--- PASS: TestPreserveInventory_GuardDetectsUnexcludedPath (0.00s)
+    preserve_deprecated_exclusion_test.go:191: brief.md still present on disk after the clean-reinstall cycle (stat err=<nil>); Step 6 restored it from the PRESERVE backup
+    preserve_deprecated_exclusion_test.go:206: post-run scanDeprecatedPaths still reports brief.md ([.claude/commands/agency/brief.md]); the deprecated-path v2 signal stays armed and the next `moai update` loops
+--- FAIL: TestCleanReinstall_DeprecatedPathNotResurrected (0.02s)
+    preserve_deprecated_exclusion_test.go:245: walk backup root ".../.moai/backup": no such file or directory — Step 4 wrote no deprecated-path backup at all
+--- FAIL: TestCleanReinstall_BacksUpBeforeDeprecatedRemoval (0.03s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.093s
+```
+
+The RED run reproduces the exact 9-entry intersection, the Step 6 resurrection, and the absent Step 4 backup. `TestPreserveInventory_GuardDetectsUnexcludedPath` passes at RED by construction — it is the falsifier for the AC-RIL2-005 guard (it exercises the predicate against a deliberately poisoned inventory), not a behavioural assertion about production wiring.
+
+#### AC matrix
+
+| AC | Command | Actual output | Status |
+|---|---|---|---|
+| AC-RIL2-005 | `go test ./internal/cli/ -run 'TestDeprecatedPaths_NoPreserveInventoryCollision' -v` | `--- PASS: TestDeprecatedPaths_NoPreserveInventoryCollision (0.01s)` | PASS |
+| AC-RIL2-006 | `go test ./internal/cli/ -run 'TestPreserveInventory_GuardDetectsUnexcludedPath' -v` | `--- PASS: TestPreserveInventory_GuardDetectsUnexcludedPath (0.00s)` | PASS |
+| AC-RIL2-007 | `go test ./internal/cli/ -run 'TestCleanReinstall_DeprecatedPathNotResurrected' -v` | `--- PASS: TestCleanReinstall_DeprecatedPathNotResurrected (0.02s)` | PASS |
+| AC-RIL2-008 | `go test ./internal/cli/ -run 'TestCleanReinstall_BacksUpBeforeDeprecatedRemoval' -v` + `grep -c 'backupDeprecatedPaths' internal/cli/update_clean_install.go` | `--- PASS: TestCleanReinstall_BacksUpBeforeDeprecatedRemoval (0.02s)`; grep count `5` (≥ 2 required; baseline was `1`, the header comment) | PASS |
+| AC-RIL2-009 | `go test ./internal/cli/ -run 'TestCleanReinstall_RemovesOrphanedDBYaml' -v` | `--- PASS: TestCleanReinstall_RemovesOrphanedDBYaml (0.03s)` | PASS |
+
+#### Quality gates
+
+| Check | Observed |
+|---|---|
+| `go build ./...` | `BUILD_OK` (exit 0) |
+| `GOOS=windows GOARCH=amd64 go build ./...` | `windows_exit=0` |
+| `golangci-lint run --timeout=3m` | `0 issues.` — identical to the M2 pre-flight baseline; zero NEW findings |
+| `go test -cover ./internal/cli/` | `coverage: 75.7% of statements` — unchanged from the M1 figure at the reported precision (measured WITH the new M2 test file present) |
+| `go test ./...` | exit 0; zero packages reported `FAIL` |
+
+#### Implementation notes
+
+- The exclusion is applied AFTER both inventory sources are merged and deduped, so it covers the `collectUserOwnedFiles` scan as well as the `preserveInventoryRoots` walk.
+- Nesting requires an explicit `/` boundary, so `.moai/project/brandX` is NOT excluded by the `.moai/project/brand` entry. A control assertion in `TestDeprecatedPaths_NoPreserveInventoryCollision` pins this, alongside `.moai/specs/…`, `.moai/project/product.md`, and `.claude/commands/mine.md` (over-exclusion guard).
+- Comparison is on slash-normalized paths (`filepath.ToSlash`), so the predicate behaves identically on windows (NFR-RIL2-005).
+- The Step 4 backup sentinel is **`DEPRECATED_BACKUP_FAILED`**. The error names the first unprotected path, the count of remaining paths, and wraps the underlying `backupDeprecatedPaths` error (which itself names the failing path). The backup is all-or-nothing, so a failure aborts before ANY path is removed.
+- `backupDeprecatedPaths` copies file contents and errors on a directory, while `scanDeprecatedPaths` legitimately returns directory entries (`.agency`, `.moai/project/brand`). A new `expandDeprecatedBackupTargets` helper expands directory entries into their contained files before the backup call; files and symlinks pass through unchanged. Without it, every clean-reinstall on a tree carrying `.agency/` would abort at the new backup gate.
+- The manifest manager was hoisted from Step 5 to Step 4 (the backup classifies files against the deployed hash). Side effect: a manifest load failure now aborts while the tree is still intact, before the first destructive step.
+- REQ-RIL2-017 untouched: the removal count is still `len(deprecated) - len(remaining)` from the post-REMOVE re-scan, and `TestCleanReinstall_RemovesOrphanedDBYaml` confirms it.
+
+#### `CleanupOldBackups` retention finding (verified, no fix — out of M2 scope)
+
+The hazard does **not** apply to the backups M2 adds. Evidence:
+
+- `backupDeprecatedPaths` writes to `<root>/.moai/backup/agency-<RFC3339-ish stamp>/` (`internal/cli/update_cleanup.go:208`, `BackupDirPrefix = "agency-"` at `:32`).
+- `backup.CleanupOldBackups` scans `defs.BackupsDir` = `.moai-backups` (`internal/defs/dirs.go:12`) — a different directory tree — and deletes only entries whose name is exactly 15 characters matching `########_######` (`internal/cli/update/backup/backup.go:228-241`).
+- `agency-2026-07-31T16-40-00Z` is 27 characters and does not match that pattern, and it does not live under `.moai-backups/`. It is therefore not a deletion candidate in this or any later run.
+
+No other production writer or pruner of `.moai/backup/` exists (`grep -rn 'MoAIDir, "backup"' internal --include='*.go'` → one production hit, `update_cleanup.go:208`, plus three test-file hits). Whether `.moai/backup/` needs its own retention policy is `SPEC-UPDATE-DATA-SURVIVAL-001` scope.
+
+#### Deferred items (recorded, NOT actioned in M2)
+
+- **D16 — REQ-RIL2-003 `or V` wording.** `REQ-RIL2-003` reads "major exactly 2 **and** the original string carried a leading `v` **or `V`**", but `AC-RIL2-001`'s nine-row table and the `spec.md` §A residue-free table both pin `V2.5.0` to `Signal 1 = false`. Accepting `V` would flip a residue-free `V2.5.0` project from `IsV2=false` to `true` — an NFR-RIL2-001 widening. M1's implementation correctly used lowercase `v` only; the **requirement text** is what is wrong. The user has decided to batch this documentation correction after M4. No `spec.md` body edit was made.
+
 ### Epic run order (depends_on sequencing)
 
 `SPEC-UPDATE-REINSTALL-LOOP-002` declares `related_specs`, not `depends_on`, so its own run-phase `depends_on` pre-flight is trivially satisfied. The sibling Epic SPECs are all `status: draft`, which is the expected state for an Epic whose members have not yet run — it is a sequencing fact, not a per-SPEC defect.

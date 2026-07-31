@@ -266,6 +266,42 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if err != nil {
 		return result, fmt.Errorf("step 4: scan deprecated paths: %w", err)
 	}
+
+	// Manifest manager — resolved HERE rather than in Step 5 because the Step 4
+	// backup below classifies each file against the deployed hash. Resolving it
+	// before the first destructive step also means a manifest load failure
+	// aborts while the tree is still intact.
+	mgr := opts.Manifest
+	if mgr == nil {
+		mgr = manifest.NewManager()
+		if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
+			return result, fmt.Errorf("step 4: load manifest: %w", loadErr)
+		}
+	}
+
+	// REQ-RIL2-015 / REQ-RIL2-016: back up every path about to be deleted BEFORE
+	// deleting it. Until the REQ-RIL2-010 exclusion landed, the 9 deprecated
+	// paths under a PRESERVE root were incidentally protected by the Step 6
+	// resurrection bug; removing that resurrection without this backup would turn
+	// a net-zero no-op into unbacked-up deletion of user-authored
+	// `.claude/commands/agency/*.md`. The backup is all-or-nothing, so a failure
+	// aborts before ANY path is removed.
+	if len(deprecated) > 0 {
+		backupTargets, expandErr := expandDeprecatedBackupTargets(projectRoot, deprecated)
+		if expandErr != nil {
+			return result, fmt.Errorf("step 4: DEPRECATED_BACKUP_FAILED: enumerate backup targets: %w", expandErr)
+		}
+		if len(backupTargets) > 0 {
+			backupDir, bkErr := backupDeprecatedPaths(projectRoot, backupTargets, mgr)
+			if bkErr != nil {
+				return result, fmt.Errorf("step 4: DEPRECATED_BACKUP_FAILED: %s (and %d other path(s)) not backed up — aborting before REMOVE: %w",
+					backupTargets[0], len(backupTargets)-1, bkErr)
+			}
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] Deprecated paths backed up at %s (%d files)\n",
+				backupDir, len(backupTargets))
+		}
+	}
+
 	for _, rel := range deprecated {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
 		if rmErr := os.RemoveAll(abs); rmErr != nil {
@@ -344,13 +380,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		deployer = template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 	}
 
-	mgr := opts.Manifest
-	if mgr == nil {
-		mgr = manifest.NewManager()
-		if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
-			return result, fmt.Errorf("step 5: load manifest: %w", loadErr)
-		}
-	}
+	// mgr was resolved in Step 4 (the deprecated-path backup needs it).
 
 	// Build the deploy context with detected paths — identical to the normal
 	// `moai update` "Deploy Templates" step (see runUpdate). A bare context
@@ -482,6 +512,55 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check PASSED (%d PRESERVE-inventory files verified)\n", len(hashesPre))
 
 	return result, nil
+}
+
+// expandDeprecatedBackupTargets expands the scanned deprecated paths into the
+// concrete FILE paths that backupDeprecatedPaths can copy (REQ-RIL2-015).
+//
+// scanDeprecatedPaths returns whatever a defs.DeprecatedPaths entry resolves to,
+// and several entries are directories (`.agency`, `.moai/project/brand`).
+// backupDeprecatedPaths copies file contents, so a directory entry is expanded
+// into its contained files here; files and symlinks pass through unchanged
+// (backupDeprecatedPaths records symlink metadata without following the link).
+// Paths that vanished between the scan and this call are skipped — there is
+// nothing left to protect.
+//
+// Returned paths are project-root-relative and slash-normalized, matching the
+// scanDeprecatedPaths contract (NFR-RIL2-005 cross-platform stability).
+func expandDeprecatedBackupTargets(projectRoot string, rels []string) ([]string, error) {
+	var targets []string
+	for _, rel := range rels {
+		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+		info, statErr := os.Lstat(abs)
+		if statErr != nil {
+			if errors.Is(statErr, os.ErrNotExist) {
+				continue
+			}
+			return nil, fmt.Errorf("stat %s: %w", rel, statErr)
+		}
+		if !info.IsDir() {
+			targets = append(targets, filepath.ToSlash(rel))
+			continue
+		}
+		walkErr := filepath.WalkDir(abs, func(path string, d os.DirEntry, innerErr error) error {
+			if innerErr != nil {
+				return innerErr
+			}
+			if d.IsDir() {
+				return nil
+			}
+			childRel, relErr := filepath.Rel(projectRoot, path)
+			if relErr != nil {
+				return relErr
+			}
+			targets = append(targets, filepath.ToSlash(childRel))
+			return nil
+		})
+		if walkErr != nil {
+			return nil, fmt.Errorf("walk %s: %w", rel, walkErr)
+		}
+	}
+	return targets, nil
 }
 
 // resolveV2BackupDir handles same-second collision avoidance for the
