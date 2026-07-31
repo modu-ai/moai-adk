@@ -1,7 +1,7 @@
 ---
 id: SPEC-CONFIG-KEY-HONESTY-001
 title: "config surface honesty: every key shipped to a user must be parsed, read, and enforced by the thing it claims to control — or be explicitly marked as not"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-31
 updated: 2026-07-31
@@ -23,7 +23,8 @@ depends_on: [SPEC-CONFIG-TIER-PERSIST-001]
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 4 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F7 each re-verified against baseline HEAD `d5336214e` (branch `plan/epic-update-config-audit`, merged with `origin/main`) while authoring; F3 independently re-derived; one drift recorded (§A.8). |
+| 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 4 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F7 each re-verified against code baseline `d5336214e` (branch `plan/epic-update-config-audit`, merged with `origin/main`) while authoring; F3 independently re-derived; one drift recorded (§A.8). |
+| 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D8; D9-D15 deferred and recorded in `progress.md` §E.1). D3: §A.3's headline baseline re-derived **path-resolved** — 122/121 superseded by 174 dead field names, 161 mapping to shipped keys across 188 occurrences, family table replaced; the prior figure had been produced by the bare-field-name method this SPEC forbids as AP-3, which is why §A.3 and §A.6 disagreed about `auto_merge`. They now agree. D4: REQ-CKH-008 gains a fifth `unbound` class so the 25 `github.*` / `document_management.*` keys — the SPEC's own §A.2 headline case — can be classified rather than silently skipped. D1/D2/D7/D8: four ACs rewritten that could not observe their own expectations (a `-run` naming a nonexistent test, a map-membership check blind to which map, a `grep` window excluding its target line, a `grep` with no context flags). D5: falsification C-3/C-4 expressed as runnable `go test -overlay` mutations with no-op guards, replacing the scratch-worktree form whose mutation was a comment and whose cleanup deleted the path C-4 needed. D6: REQ-CKH-011 bound to M6 with AC-CKH-023; NFR-CKH-003 absorbed into AC-CKH-021. |
 
 ## §A Problem / Motivation
 
@@ -54,7 +55,7 @@ type FullQualityConfig struct {
 }
 ```
 
-It is never instantiated. Verified against HEAD `d5336214e`:
+It is never instantiated. Verified against code baseline `d5336214e`:
 
 ```
 $ grep -rn 'FullQualityConfig' --include='*.go' internal pkg cmd | grep -v '_test.go'
@@ -125,43 +126,73 @@ The compounding defect is that `TestAuditParity` reports this mapping GREEN. The
 checks **name registration**, not **binding reachability** — so the one mechanism that exists to
 catch this class of defect is the mechanism concealing it.
 
-### A.3 One hundred twenty-two field names with no production reader (F3)
+### A.3 One hundred seventy-four field names with no production reader (F3)
 
 An audit lens parsed the `yaml:`-tagged fields of `internal/config/types.go` and searched every
-production `.go` file for each. This SPEC re-derived the measurement independently at HEAD
-`d5336214e`, deduplicating by Go field name (371 `yaml:` tags collapse to 287 distinct field
-names) and searching for `\.<FieldName>\b` across all non-test `.go` files under
-`internal pkg cmd`, excluding `main-fork/`:
+production `.go` file for each, using a **bare field-name** search (`\.<FieldName>\b`). That method
+is the one this SPEC itself prohibits — §B.4 REQ-CKH-008, AC-CKH-007, and plan.md §G AP-3 all
+require reader lookup to key on the resolved struct-field path, precisely because two structs
+sharing a field name make one field's liveness leak onto the other. The bare-name figure is
+therefore a **lower bound on deadness**, biased toward calling keys live, and it is superseded here.
+
+The measurement was re-derived at code baseline `d5336214e` by the **path-resolved** method the
+guard is required to use: every `X.F` selector in the production build is resolved to its receiver
+type via `go/types`, and a read is counted only when the receiver is a struct declared in
+`internal/config/types.go`. Test files and `main-fork/` are excluded; the whole module type-checks
+(106 packages, 0 type errors), so no field is marked dead by a resolution failure.
 
 ```
-distinct Go field names: 287
-zero production reads (.Field): 122
-reads only inside types.go: 5
+distinct Go field names (yaml-tagged, types.go):      287
+PATH-RESOLVED zero production reads:                  174
+PATH-RESOLVED reads only inside types.go (accessor):    4
 ```
 
-Mapping those 122 back onto the shipped template YAMLs gives **121 keys that a user can edit today
-with no Go reader**, concentrated in seven families:
+The superseded bare-name figures were 122 and 5. The gap is dominated by field-name collisions:
+**43** names that a bare-name search calls live have **no** read resolving to the config struct —
+their only `.F` selectors belong to unrelated structs. `WorkflowWorktreeConfig.AutoMerge` is the
+confirmed instance (its only production selectors resolve to `internal/github.MergeOptions`), which
+is why §A.6 could report `AutoMerge` as unread while the old 121-key set omitted `auto_merge`. Under
+path resolution the two agree. `TmuxPreferred` and `AutoEnabled` flip the same way.
 
-| shipped section | dead keys |
+Mapping the 174 back onto the shipped template YAMLs gives **161 dead field names that surface as a
+key in at least one shipped section file**, across **188 (file, key) occurrences**:
+
+| shipped section | dead-key occurrences |
 |---|---:|
-| `design.yaml` | 29 |
-| `harness.yaml` | 17 |
-| `research.yaml` | 17 |
-| `git-strategy.yaml.tmpl` | 15 |
-| `constitution.yaml` | 12 |
-| `context.yaml` | 12 |
-| `workflow.yaml` | 10 |
-| `interview.yaml` | 4 |
-| `sunset.yaml` | 2 |
-| `system.yaml.tmpl` / `security.yaml` / `mx.yaml` | 1 each |
+| `design.yaml` | 34 |
+| `harness.yaml` | 25 |
+| `research.yaml` | 21 |
+| `git-strategy.yaml.tmpl` | 20 |
+| `constitution.yaml` | 16 |
+| `workflow.yaml` | 14 |
+| `context.yaml` | 14 |
+| `quality.yaml.tmpl` | 9 |
+| `security.yaml` | 7 |
+| `sunset.yaml` | 6 |
+| `interview.yaml` | 5 |
+| `system.yaml.tmpl` | 4 |
+| `mx.yaml` | 4 |
+| `lsp.yaml.tmpl` / `git-convention.yaml` | 2 each |
+| `state.yaml` / `ralph.yaml` / `project.yaml.tmpl` / `observability.yaml` / `delegation.yaml` | 1 each |
 
-Two methodology facts bind any re-derivation. First, `main-fork/` is a gitignored, untracked local
+Three methodology facts bind any re-derivation. First, `main-fork/` is a gitignored, untracked local
 clone (`git ls-files main-fork` → 0 while the directory exists on disk); including it falsely marks
 dozens of fields live, so the inventory must walk tracked files, not the filesystem. Second, a
-smaller bucket of fields is read only through accessors declared inside `types.go` itself. At least
-one such field is genuinely live — `GateTimeouts.Vet` reaches `internal/hook/pre_tool.go:657` via
-`GateConfig.VetTimeoutDuration()` — so accessor-only fields are **unknown, not dead**, and must be
-resolved by following the accessor rather than by the direct-read count.
+smaller bucket of fields is read only through accessors declared inside `types.go` itself — the
+four are `Lint`, `Test`, `Timeouts`, `Vet`. At least one is genuinely live: `GateTimeouts.Vet`
+reaches `internal/hook/pre_tool.go:657` via `GateConfig.VetTimeoutDuration()`. Accessor-only fields
+are therefore **unknown, not dead**, and must be resolved by following the accessor rather than by
+the direct-read count. Third, the **field-name → shipped-key mapping above is still leaf-name
+based**: a dead field is attributed to every section file declaring a key of that leaf name, which
+is why the occurrence count (188) exceeds the distinct-name count (161). Removing that residual
+imprecision requires walking `Config` reflectively from each section root — which is exactly what
+M2's guard does (plan.md §F M2 step 2). The 174 / 4 figures above are not affected by it; only the
+per-file attribution is.
+
+The path-resolved re-derivation was performed with a throwaway `go/packages` probe and is not
+retained in the tree. M2's guard is its durable implementation: AC-CKH-006's non-vacuity floor and
+AC-CKH-007's collision subtest exist so that the guard reproduces this measurement mechanically
+rather than inheriting the numbers from this section.
 
 ### A.4 "No Go code reads this" is not "dead" (the honesty constraint)
 
@@ -171,7 +202,7 @@ Go code touches the key. The audit lens attempted a word-match over the shipped 
 discarded the result, because bare leaf keys like `search`, `performance`, `evolution`, and
 `escalation` have unusable signal-to-noise.
 
-Probing at HEAD `d5336214e` shows the discarded method failed for a fixable reason — it matched the
+Probing at code baseline `d5336214e` shows the discarded method failed for a fixable reason — it matched the
 wrong token. Fixed-string search for the **fully-qualified dotted key path** across
 `.claude/agents`, `.claude/skills`, `.claude/rules`:
 
@@ -225,6 +256,14 @@ internal/cli/worktree_advisory.go:29    (readWorktreeAutoCreate)
 choose between two advisory sentences (`internal/cli/worktree_advisory.go:29-60`) — it does not
 gate worktree creation. `CLAUDE.local.md` §22.8 describes all three as governing web-console
 worktree automation.
+
+The grep transcript above is filtered: the raw command also prints same-named fields on unrelated
+structs (`internal/github.MergeOptions.AutoMerge`, `internal/cli/worktree/done.go`'s
+`AutoCleanupFlag`, `pkg/models.AutoCreate`). Those extra matches are the collision phenomenon §A.3
+describes, not readers of these keys. Under §A.3's path-resolved measurement `AutoCleanup`,
+`AutoMerge`, and `TmuxPreferred` are all dead and `AutoCreate` is live — so §A.3's family table and
+this section now agree. They did not agree under the superseded bare-name measurement, which
+classified `auto_merge` live on the strength of `MergeOptions.AutoMerge`.
 
 ### A.7 A shipped comment describing unimplemented behaviour (F7)
 
@@ -328,8 +367,22 @@ explicit reserved marker. The guard shall:
   field name, so that a field-name collision across two structs cannot bias a key toward live;
 - follow accessor indirection, treating a field read only by a `types.go` accessor as live **while**
   that accessor itself has a production caller, and as unresolved otherwise;
+- classify a key whose dotted path resolves to **no struct field at all** as `unbound`, and fail on
+  any `unbound` key absent from the **P** or **R** allowlists. Without this class the guard cannot
+  reach its own headline case: the 25 keys under `github.*` (2) and `document_management.*` (23) in
+  the shipped `system.yaml.tmpl` bind to nothing — `grep -rn 'yaml:"github"\|yaml:"document_management"'
+  over `internal pkg cmd` returns no match — so they resolve to no field, are never classified by
+  the direct-live / accessor-live / unresolved / dead partition above, and would be skipped in
+  silence. `unresolved` cannot absorb them: it is already bound to the distinct meaning "an accessor
+  exists but has no production caller", which presupposes a resolved field;
 - assert a non-empty, plausible inventory (see NFR-CKH-002) so that an inventory of zero fails
   rather than passes.
+
+The `moai.*` block (6 keys) is a third shape and is **not** `unbound` in the same sense: it also has
+no `SystemConfig` field, but it is read by three ad-hoc inline structs
+(`internal/statusline/version.go:31`, `internal/cli/v2_detection.go:153`,
+`internal/cli/update/plan/plan.go:313`). The guard classifies it `unbound` on the struct-path test
+and the M1 inventory records those readers as its **P**-equivalent evidence, so it does not fail.
 
 ### B.5 Documented-but-unenforced reconciliation
 

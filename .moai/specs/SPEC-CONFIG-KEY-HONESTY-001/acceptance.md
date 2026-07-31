@@ -5,7 +5,7 @@
 1. **Every AC states a command and its expected observable output.** A criterion phrased as a
    property with no command is not an AC.
 2. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore also requires a
-   verbatim `--- PASS: <exact test name>` line. Recorded vacuity baseline at HEAD `d5336214e`:
+   verbatim `--- PASS: <exact test name>` line. Recorded vacuity baseline at code baseline `d5336214e`:
    ```
    $ go test -run 'TestShippedConfigKeysHaveReaders' ./internal/config/ ; echo "exit=$?"
    ok  	github.com/modu-ai/moai-adk/internal/config	0.443s [no tests to run]
@@ -13,14 +13,29 @@
    ```
    An AC whose only assertion is `exit 0` would pass against a tree with no test at all, and is
    rejected.
-3. **Baselines were recorded from this tree while authoring** — HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`).
-   Each AC carries its observed pre-change baseline so a reviewer can distinguish a real change from
-   a no-op.
+3. **Baselines are observed, and attributed to the code baseline `d5336214e`.** The worktree HEAD at
+   which they were run is a descendant of `d5336214e` on branch `plan/epic-update-config-audit` that
+   changes SPEC documents only — `git diff --name-only d5336214e HEAD | grep -v '\.md$'` returns
+   zero lines and `git diff --stat d5336214e HEAD -- '*.go'` is empty — so no Go source differs
+   between the two and every `file:line` and count below is attributable to `d5336214e`. Each AC
+   carries its observed pre-change baseline so a reviewer can distinguish a real change from a
+   no-op.
 4. **Every new guard needs a falsification** proving it FAILS against unfixed code (§C).
-5. **`git stash` is prohibited.** This checkout is shared with concurrent sessions and `git stash`
-   is repository-global. Falsification uses `go test -overlay` or a scratch `git worktree` driven by
-   `go -C`.
+5. **`git stash` is prohibited, and falsification does not use a worktree either.** This checkout is
+   shared with concurrent sessions: `git stash` is repository-global, and a scratch `git worktree`
+   costs a mutation of shared repository state for no benefit here. All five §C procedures therefore
+   use `go test -overlay`, which substitutes files for one command invocation and leaves no state
+   behind.
 6. **All fixtures use `t.TempDir()`** and touch no path outside it (NFR-CKH-001).
+7. **A command that cannot observe its own expectation is not an AC.** Clause 1 requires a command;
+   this clause requires the command to be capable of seeing what the AC claims. Four criteria were
+   rewritten under it — a `-run` selector naming a test that does not exist (AC-CKH-019), a `grep`
+   that cannot tell which of two maps an entry sits in (AC-CKH-011), a `grep` whose window excludes
+   the line it verifies (AC-CKH-012), and a `grep` with no context flags asserting something about
+   adjacent comments (AC-CKH-014). Each rewrite records the observed before/after in place, so the
+   failure mode stays documented rather than merely removed. The same test applies to a
+   falsification: a mutation step expressed as a comment mutates nothing, which is why every §C
+   procedure now carries a `diff -q` no-op guard.
 
 ## §B Acceptance criteria
 
@@ -68,17 +83,35 @@ dead key measured in the `design`, `harness`, `research`, `git-strategy`, `const
 and `workflow` sections carries an inventory entry whose `evidence` field is populated (not the
 literal `unclassified`).
 
-Baseline recorded at HEAD `d5336214e` — the dead-key counts these families must cover, derived by
-matching each zero-production-read field's YAML key against the shipped section files:
+Baseline recorded at code baseline `d5336214e`, **path-resolved** (spec.md §A.3) — the dead-key
+occurrence counts these families must cover:
 
 ```
-design.yaml             29     harness.yaml            17
-research.yaml           17     git-strategy.yaml.tmpl  15
-constitution.yaml       12     context.yaml            12
-workflow.yaml           10     interview.yaml           4
-sunset.yaml              2     system.yaml.tmpl / security.yaml / mx.yaml  1 each
-shipped dead keys: 121         dead field names total: 122
+design.yaml             34     harness.yaml            25
+research.yaml           21     git-strategy.yaml.tmpl  20
+constitution.yaml       16     workflow.yaml           14
+context.yaml            14     quality.yaml.tmpl        9
+security.yaml            7     sunset.yaml              6
+interview.yaml           5     system.yaml.tmpl         4
+mx.yaml                  4     lsp.yaml.tmpl / git-convention.yaml   2 each
+state.yaml / ralph.yaml / project.yaml.tmpl / observability.yaml / delegation.yaml   1 each
+
+dead field names total: 174     of which mapping to a shipped key: 161
+(file, key) occurrences: 188    accessor-only (types.go): 4
 ```
+
+These figures **replace** the superseded bare-field-name baseline (122 / 121, seven families) that
+earlier drafts of this AC recorded. The replacement is not cosmetic: the bare-name method is the one
+AC-CKH-007 and plan.md §G AP-3 forbid, and under it a correct M2 implementation would have
+contradicted this AC's own baseline — the more precisely the guard resolved paths, the further its
+dead set would drift above 122. Two guards against re-drift:
+
+- The counts above are **occurrences**, not distinct keys, because the field-name → section-file
+  mapping remains leaf-name based (spec.md §A.3, third methodology fact). M2's reflective section
+  walk narrows this; when the guard's per-family output differs from the table, the difference is a
+  finding to record in `progress.md` §E.2, not a licence to edit this baseline to match.
+- The two figures the guard **must** reproduce exactly are `174` dead field names and `4`
+  accessor-only, since both come from the same path-resolved rule M2 step 2-3 implements.
 
 #### AC-CKH-004 — no key is classified D on Go-reader evidence alone
 
@@ -91,7 +124,7 @@ Expected: a `--- PASS: TestTriageRuleProseProbeBeforeDelete` line. For every inv
 asserts zero matches — i.e. it re-proves the **P**-before-**D** ordering rather than trusting the
 recorded class.
 
-Baseline (the probe's precision, measured at HEAD `d5336214e` over `.claude/agents`,
+Baseline (the probe's precision, measured at code baseline `d5336214e` over `.claude/agents`,
 `.claude/skills`, `.claude/rules`):
 
 ```
@@ -124,7 +157,7 @@ Expected: a `--- PASS: TestShippedConfigKeysHaveReaders/non_vacuous_inventory` l
 asserts the shipped-key inventory has `>= 200` entries and the reflective walk of `Config` yields
 `>= 200` struct fields (NFR-CKH-002), so a guard that inventories zero fails instead of passing.
 
-Baseline for plausibility: at HEAD `d5336214e`, `grep -c 'yaml:"' internal/config/types.go` prints
+Baseline for plausibility: at code baseline `d5336214e`, `grep -c 'yaml:"' internal/config/types.go` prints
 `371`, and the field-name-deduped walk yields `287` distinct names — both comfortably above the
 floor, so the floor cannot be met by an accidentally-truncated walk.
 
@@ -171,7 +204,7 @@ unmarshals into `models.FullQualityConfig` — i.e. `FullQualityConfig` appears 
 `internal/lsp/hook/gate.go`, not only in `pkg/models/config.go`. A tree where the name says "Full"
 while the body says `qualityFileWrapper` fails.
 
-Baseline at HEAD `d5336214e` (the failing state):
+Baseline at code baseline `d5336214e` (the failing state):
 
 ```
 internal/lsp/hook/gate.go:125:// parseFullQualityConfig parses the full quality config ...
@@ -213,73 +246,134 @@ $ grep -n 'session_effort_default\|memory_guard\|report_generation\|lsp_state_tr
 #### AC-CKH-011 — the registry stops asserting an absent binding
 
 ```bash
-go test -run 'TestAuditParity' -count=1 -v ./internal/config/ && \
-  grep -n '"system"' internal/config/audit_registry.go
+go test -run 'TestAuditParity' -count=1 -v ./internal/config/
+awk '/^var yamlAuditExceptions/,/^}/'  internal/config/audit_registry.go | grep -c '"system"'
+awk '/^var yamlToStructRegistry/,/^}/' internal/config/audit_registry.go | grep -c '"system"'
+grep -rn 'loadSystemSection' internal/config/
 ```
 
-Expected: a `--- PASS: TestAuditParity` line, and the `"system"` key appearing in
-`yamlAuditExceptions` with a reason naming the real readers — **or** appearing in
-`yamlToStructRegistry` alongside a `loadSystemSection` function that `Loader.Load` calls.
+Expected: a `--- PASS: TestAuditParity` line, then **either**
 
-Baseline at HEAD `d5336214e` (the concealed state): the entry claims a binding,
+- exceptions-block count `1`, registry-block count `0`, and `grep -rn 'loadSystemSection'` printing
+  no output — the entry has moved to `yamlAuditExceptions` with a reason naming the real readers;
+- **or** exceptions `0`, registry `1`, and `grep -rn 'loadSystemSection'` printing a declaration
+  plus a `Loader.Load` call site — a real binding now exists.
+
+Any other combination fails, including the current one.
+
+Baseline at code baseline `d5336214e` (the concealed state) — observed:
 
 ```
-$ grep -n 'system' internal/config/audit_registry.go
-31:	"system":         "SystemConfig",
+$ awk '/^var yamlAuditExceptions/,/^}/'  internal/config/audit_registry.go | grep -c '"system"'
+0
+$ awk '/^var yamlToStructRegistry/,/^}/' internal/config/audit_registry.go | grep -c '"system"'
+1
 $ grep -rn 'loadSystemSection' internal/config/
 (no output)
 ```
 
 and `TestAuditParity` passes anyway.
 
+**Why the commands changed.** The earlier form was `go test … && grep -n '"system"' audit_registry.go`,
+which prints line 31 identically whether the entry sits in `yamlToStructRegistry` or in
+`yamlAuditExceptions` — it cannot see the one fact the AC is about, so the whole chain exited 0 on
+the unmodified tree and the AC proved nothing. The `awk` range restricts each count to one map, so
+the pair `(0, 1)` distinguishes the pre-change state from both accepted post-change states. The
+range anchors on `^var ` because the bare identifier also appears at `audit_registry.go:83-84` and
+`:105`, which would open a second unwanted range.
+
 #### AC-CKH-012 — the `hook.*` block binds through a loader, not an inline struct
 
 ```bash
-go test -run 'TestSystemHookOptInLoadsViaLoader' -count=1 -v ./internal/config/ && \
-  grep -n 'struct {' internal/cli/hook.go | sed -n '1,3p'
+go test -run 'TestSystemHookOptInLoadsViaLoader' -count=1 -v ./internal/config/
+awk '/^func isHookOptInEnabled/,/^}/' internal/cli/hook.go | grep -c 'struct {'
 ```
 
-Expected: a `--- PASS: TestSystemHookOptInLoadsViaLoader` line, and
-`internal/cli/hook.go`'s `isHookOptInEnabled` no longer declaring an inline anonymous struct for
-`system.yaml`.
+Expected: a `--- PASS: TestSystemHookOptInLoadsViaLoader` line, and the `awk`-scoped count printing
+`0` — `isHookOptInEnabled` no longer declares an inline anonymous struct for `system.yaml`.
 
-Baseline: `internal/cli/hook.go:508` reads `system.yaml` with `os.ReadFile` into an inline
-`var doc struct { Hook struct { OptIn struct { ... } } }`, bypassing `SystemConfig` entirely.
+Baseline at code baseline `d5336214e` — observed:
+
+```
+$ awk '/^func isHookOptInEnabled/,/^}/' internal/cli/hook.go | grep -c 'struct {'
+3
+```
+
+`internal/cli/hook.go:507-515` reads `system.yaml` with `os.ReadFile` into an inline
+`var doc struct { Hook struct { OptIn struct { ... } } }` — the three nested struct literals the
+count reports — bypassing `SystemConfig` entirely.
+
+**Why the command changed.** The earlier form was `grep -n 'struct {' internal/cli/hook.go | sed -n '1,3p'`,
+which prints the file's first three matches — lines 41, 475, 476 — while the struct under
+verification is at line 513. Deleting the target struct left that output byte-identical, so the
+second half of the AC could not fail. The `awk` range restricts the scan to the function body; the
+range terminator `/^}/` is column-anchored and the nested braces are indented, so it closes on the
+function's own brace.
 
 #### AC-CKH-013 — `github.*` and `document_management.*` are classified
 
 ```bash
 go test -run 'TestShippedKeyInventoryFamilyCoverage/system' -count=1 -v ./internal/config/
+go test -run 'TestShippedConfigKeysHaveReaders/unbound_classification' -count=1 -v ./internal/config/
 ```
 
 Expected: a `--- PASS: TestShippedKeyInventoryFamilyCoverage/system` line, asserting every key under
 `github:` and `document_management:` in `system.yaml.tmpl` carries an inventory class, and that any
-key stating a retention or deletion promise carries the reserved marker.
+key stating a retention or deletion promise carries the reserved marker. Plus a
+`--- PASS: TestShippedConfigKeysHaveReaders/unbound_classification` line, asserting those same 25
+keys are reported by the guard in the `unbound` class (spec.md §B.4, plan.md §F M2 step 3) rather
+than skipped — and that removing one of them from the **R** allowlist makes the guard fail (C-5).
 
-Baseline: `system.yaml.tmpl` declares `github:` (line 23) and `document_management:` (line 50) with
-no Go binding of any kind.
+Baseline at code baseline `d5336214e` — observed: no Go struct binds either block, so the keys
+resolve to no field and a four-class partition never reaches them.
+
+```
+$ grep -rn 'yaml:"github"\|yaml:"document_management"' --include='*.go' internal pkg cmd
+(no output, exit 1)
+$ github.* subkeys in system.yaml.tmpl:              2
+$ document_management.* subkeys in system.yaml.tmpl: 23
+```
+
+The neighbouring `moai:` block (6 subkeys) is deliberately **not** counted here. It also has no
+`SystemConfig` field, but unlike the other two it has real readers —
+`internal/statusline/version.go:31`, `internal/cli/v2_detection.go:153`, and
+`internal/cli/update/plan/plan.go:313` each parse it through an ad-hoc inline `yaml:"moai"` struct.
+It is therefore `unbound` with allowlist evidence, not an undetected promise, and the count this AC
+governs is 25, not 31.
 
 ### M5 — Documented-but-unenforced reconciliation
 
 #### AC-CKH-014 — no surface claims `max_active_learnings` has effect
 
 ```bash
-grep -n 'max_active_learnings\|MaxActiveLearnings' internal/config/types.go internal/config/defaults.go
+grep -n -B3 -A1 'max_active_learnings\|MaxActiveLearnings' \
+  internal/config/types.go internal/config/defaults.go
 ```
 
-Expected: both sites carry a comment naming the actual enforcement constants
-(`internal/evolution/types.go` and `internal/constitution/rate_limiter.go`), so a reader of the
-config cannot mistake the key for the lever.
+Expected: both sites carry a comment naming the actual enforcement constants, and both literals
+`internal/evolution/types.go` and `internal/constitution/rate_limiter.go` appear **within the
+printed context**, so a reader of the config cannot mistake the key for the lever.
 
-Baseline at HEAD `d5336214e` — declared and defaulted with no such note, while enforcement sits in
-two unrelated packages:
+Baseline at code baseline `d5336214e` — observed with the same context flags:
 
 ```
-internal/config/types.go:1092:	MaxActiveLearnings      int  `yaml:"max_active_learnings"`
+internal/config/types.go-1091-	GraduationCriteria      DesignGraduationCriteria `yaml:"graduation_criteria"`
+internal/config/types.go:1092:	MaxActiveLearnings      int                      `yaml:"max_active_learnings"`
+internal/config/types.go-1093-	MaxEvolutionRatePerWeek int                      `yaml:"max_evolution_rate_per_week"`
+internal/config/defaults.go-752-			},
 internal/config/defaults.go:753:			MaxActiveLearnings:      50,
-internal/evolution/types.go:170:	MaxActiveLearnings = 50
-internal/constitution/rate_limiter.go:14:	rateLimitMaxActiveLearnings = 50
+internal/config/defaults.go-754-			MaxEvolutionRatePerWeek: 3,
 ```
+
+Neither enforcement-site literal appears — the criterion fails today and can only be satisfied by
+adding the comments. Enforcement sits in two unrelated packages
+(`internal/evolution/types.go:170`, `internal/constitution/rate_limiter.go:14`).
+
+**Why the command changed.** The earlier form had no `-B`/`-A`, so it printed only the two
+declaration lines. A maintainer adding the required comment on the line above or below each
+declaration — the natural placement — would leave that output byte-identical, making the stated
+expectation unobservable by its own command. AC-CKH-017 already uses `-A2` for the same purpose;
+this restores the consistency.
 
 #### AC-CKH-015 — the shipped worktree toggles match the Go defaults
 
@@ -343,7 +437,7 @@ Expected: all three greps produce no output (each exits 1). Generic placeholders
 `<SPEC-ID>`, and `SPEC-XXX` remain and are unaffected, because none matches the 3-digit-suffixed
 pattern above.
 
-Baseline at HEAD `d5336214e` — the three genuine leaks:
+Baseline at code baseline `d5336214e` — the three genuine leaks:
 
 ```
 .../sections/workflow.yaml:65:  # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
@@ -357,14 +451,40 @@ alongside the generic placeholders at `workflow.yaml:39`, `statusline.yaml:28`, 
 #### AC-CKH-019 — the existing neutrality guard still passes and was not edited
 
 ```bash
-go test -run 'TestInternalContentLeak' -count=1 ./internal/template/ ; \
+go test -run 'TestTemplateNoInternalContentLeak' -count=1 -v ./internal/template/
 git diff --stat -- internal/template/internal_content_leak_test.go
 ```
 
-Expected: the test package passes, and `git diff --stat` produces **no output** for that file —
-REQ-CKH-013 forbids this SPEC from touching it.
+Expected: a verbatim `--- PASS: TestTemplateNoInternalContentLeak` line (per §A clause 2), and
+`git diff --stat` producing **no output** for that file — REQ-CKH-013 forbids this SPEC from
+touching it.
 
-Baseline: the guard passes today (it cannot see the three leaks), and the file is unmodified.
+Baseline at code baseline `d5336214e` — observed:
+
+```
+$ go test -run 'TestTemplateNoInternalContentLeak' -count=1 -v ./internal/template/
+=== RUN   TestTemplateNoInternalContentLeak
+--- PASS: TestTemplateNoInternalContentLeak (0.76s)
+ok  	github.com/modu-ai/moai-adk/internal/template	2.411s
+```
+
+The guard passes today (it cannot see the three §A.9 leaks), and the file is unmodified.
+
+**Why the test name changed — this AC was inert.** The earlier form named
+`TestInternalContentLeak`, which does not exist in the tree. Go's `-run` takes a regexp matched
+against test names, and no test name contains that substring — the closest is
+`TestTemplateNoInternalContentLeak`, in which `TestInternalContentLeak` is not a substring. Observed:
+
+```
+$ go test -run 'TestInternalContentLeak' -count=1 ./internal/template/ ; echo "exit=$?"
+ok  	github.com/modu-ai/moai-adk/internal/template	0.334s [no tests to run]
+exit=0
+```
+
+Deleting the entire neutrality guard would still have produced `exit=0`, so the AC asserted nothing
+— the exact shape §A clause 2 of this file declares rejected. The corrected form binds the real
+test name and demands the verbatim `--- PASS:` line, so the AC now fails if the guard is removed,
+renamed, or made to fail.
 
 #### AC-CKH-020 — the E5 handoff records the three measured gaps
 
@@ -379,17 +499,73 @@ the dev-facing note produced by M6 (its exact path is fixed during run-phase and
 
 Baseline: no handoff note exists.
 
+### M6 — deprecation posture
+
+#### AC-CKH-023 — a template-removed key survives in the user's file and is reported once (REQ-CKH-011)
+
+```bash
+go test -run 'TestTemplateRemovedKeySurvivesUserConfig' -count=1 -v ./internal/config/
+```
+
+Expected: a `--- PASS: TestTemplateRemovedKeySurvivesUserConfig` line. The test builds a
+`t.TempDir()` project whose `.moai/config/sections/<section>.yaml` carries a user-set key that the
+current template no longer ships, runs the merge, and asserts three things: (a) the key and its
+user-set **value** are still present in the user's file afterwards; (b) the removal is reported
+exactly once — a second merge over the same tree emits no further report; (c) no other user-set key
+is dropped.
+
+Fails when: the removal path deletes from the user file rather than the template only (a), when the
+report is emitted per-merge rather than once (b), or when the merge drops sibling keys (c).
+
+Baseline: the test does not exist, and the `-run` selector matches nothing (§A clause 2). No
+production report-once mechanism is asserted anywhere in the tree today.
+
+Scope note: the merge engine remains owned by `SPEC-UPDATE-YAML-PRESERVE-001` (plan.md §D3). This AC
+does not re-specify merge semantics; it pins the **delete-never, report-once** posture over that
+engine for the keys M1 classifies **D**, which is the only deletion this SPEC performs.
+
 ### Cross-cutting
 
-#### AC-CKH-021 — the full suite is green and the build is clean
+#### AC-CKH-021 — the full suite is green, the build is clean, and new sources meet NFR-CKH-003
 
 ```bash
 go build ./... && go vet ./... && go test -count=1 ./...
+
+git diff --name-only --diff-filter=A d5336214e HEAD -- '*.go' > /tmp/ckh-new-go.txt
+test -s /tmp/ckh-new-go.txt || { echo "VACUOUS: no added .go files"; exit 1; }
+xargs gofmt -l < /tmp/ckh-new-go.txt
+xargs -n1 basename < /tmp/ckh-new-go.txt | grep -vE '^[a-z0-9_]+\.go$'
 ```
 
-Expected: exit 0 from all three.
+Expected: exit 0 from `go build`, `go vet`, and `go test`; the `test -s` non-vacuity guard passing
+silently; `xargs gofmt -l` printing nothing; and the basename filter printing nothing (exit 1) —
+every added source uses a `snake_case.go` filename. Error wrapping (`fmt.Errorf("...: %w", err)`)
+and English comments/godoc are verified by reading the added files, since neither is expressible as
+a single reliable pattern match.
 
-Baseline: green at HEAD `d5336214e` (pre-flight, plan.md §C).
+The file-list indirection is not stylistic: `gofmt -l` with an empty argument list reads **stdin**
+and blocks, so a naive `gofmt -l $NEW` would hang rather than fail on the very tree state — no added
+files — that the non-vacuity guard exists to catch. `test -s` short-circuits before that happens.
+
+The filter is `--diff-filter=A` (added), deliberately not `AM`. M3 and M5 edit pre-existing files
+that are already in the 114-file gofmt-listed set — `internal/config/types.go` is one of them,
+observed directly — so including modified files would fail this AC on the pre-existing alignment
+rather than on anything this SPEC wrote. NFR-CKH-003 governs "Go sources added by this SPEC"; the
+filter matches that wording exactly.
+
+Baseline at code baseline `d5336214e`: `go build` / `go vet` / `go test` green (pre-flight,
+plan.md §C); `git diff --name-only --diff-filter=A d5336214e HEAD -- '*.go'` returns **0 files**, so
+the non-vacuity guard prints `0` and this half of the AC fails until the SPEC adds a source file.
+`git ls-files 'internal/config/*.go' | xargs -n1 basename | grep -vE '^[a-z0-9_]+\.go$'` returns
+**0** across 82 tracked files, so the naming convention already holds and the filter is a regression
+guard rather than a cleanup task.
+
+**Why the check is scoped to added files.** `gofmt -l internal pkg cmd` lists **114** pre-existing
+files at the code baseline — alignment-only diffs from a different toolchain version, e.g.
+`internal/cli/mx_scan.go`'s comment column. A repository-wide `gofmt -l` expectation would therefore
+be unsatisfiable on an unmodified tree: not a gate, just a permanently red criterion. The
+non-vacuity guard is required because the complementary failure is equally real — with no added
+files, `gofmt -l` over an empty argument list prints nothing and would pass while proving nothing.
 
 #### AC-CKH-022 — no test writes outside `t.TempDir()`
 
@@ -442,36 +618,86 @@ inventory would sail through, which is the exact vacuity hazard AC-CKH-006 exist
 
 ### C-3 — the prose probe genuinely blocks a delete
 
-Behavioural check in a scratch worktree, driven by `go -C` (no `cd`, no `git stash`):
+C-1's overlay mechanism, mutating the inventory rather than the source. The mutation is a command,
+not a described intention:
 
 ```bash
-git worktree add /tmp/ckh-wt HEAD
-# in the scratch tree only: reclassify one P key to D without removing its prose consumer
-go -C /tmp/ckh-wt test -run 'TestTriageRuleProseProbeBeforeDelete' -count=1 -v ./internal/config/
-git worktree remove /tmp/ckh-wt
-```
-
-Expected: **FAIL**, naming the reclassified key and the prose file whose dotted-path match
-contradicts the `D` class. A PASS means the probe trusts the recorded class instead of re-proving
-it, and AP-1 (deleting a prose-consumed key) is unguarded.
-
-### C-4 — the collision defence is load-bearing
-
-```bash
-go -C /tmp/ckh-wt test -run 'TestShippedConfigKeysHaveReaders/collision_resolution' \
+mkdir -p /tmp/ckh-falsify
+# reclassify the P key workflow.worktree.auto_cleanup to D, leaving its prose consumer in place
+sed 's/^\(  *\)class: P\( *# workflow\.worktree\.auto_cleanup\)/\1class: D\2/' \
+  internal/config/testdata/shipped_key_inventory.yaml > /tmp/ckh-falsify/reclassified.yaml
+diff -q internal/config/testdata/shipped_key_inventory.yaml /tmp/ckh-falsify/reclassified.yaml \
+  && { echo "MUTATION NO-OP — sed matched nothing"; exit 1; }
+printf '{"Replace":{"internal/config/testdata/shipped_key_inventory.yaml":"/tmp/ckh-falsify/reclassified.yaml"}}' \
+  > /tmp/ckh-falsify/overlay3.json
+go test -overlay=/tmp/ckh-falsify/overlay3.json -run 'TestTriageRuleProseProbeBeforeDelete' \
   -count=1 -v ./internal/config/
 ```
 
-with the guard's path resolution replaced by a bare field-name lookup in the scratch tree.
+Expected: **FAIL**, naming `workflow.worktree.auto_cleanup` and the prose file whose dotted-path
+match contradicts the `D` class — `.claude` prose matched this dotted path once at the code
+baseline (spec.md §A.4), which is why it is the chosen subject. A PASS means the probe trusts the
+recorded class instead of re-proving it, and AP-1 (deleting a prose-consumed key) is unguarded.
 
-Expected: **FAIL** — the bare-name lookup marks a dead key live via the
-`internal/config/types.go:486` / `pkg/models/config.go:172` `AutoCreate` collision that exists in the
-tree today. A PASS means the collision defence is decorative.
+The `diff -q` line is part of the procedure, not decoration: the run-phase inventory's exact
+formatting is not fixed at plan time, so a `sed` that silently matches nothing would leave the
+overlay identical to the original and the procedure would report PASS while having mutated nothing —
+a falsification that falsifies itself. The guard makes that outcome an explicit failure.
+
+**Why the worktree was removed.** The earlier form ran `git worktree add /tmp/ckh-wt HEAD`, stated
+the mutation only as a shell comment ("reclassify one P key to D"), and then executed the test
+against an unmutated tree — which after implementation yields PASS, the opposite of the predicted
+FAIL. It also ran `git worktree remove /tmp/ckh-wt` at its end while C-4 below depended on that same
+path, so C-4 could not run at all. Overlay removes both defects and the shared-checkout hazard
+(§A clause 5) with it.
+
+### C-4 — the collision defence is load-bearing
+
+Overlay-replace the guard source itself with a variant whose step-2 lookup is by bare field name:
+
+```bash
+# run-phase deliverable: a copy of the guard identical except that resolveFieldPath is replaced
+# by a bare field-name lookup over types.go's field set
+cp internal/config/shipped_key_reader_test.go /tmp/ckh-falsify/bare_name_variant.go
+#   ...apply the bare-name substitution to /tmp/ckh-falsify/bare_name_variant.go...
+diff -q internal/config/shipped_key_reader_test.go /tmp/ckh-falsify/bare_name_variant.go \
+  && { echo "MUTATION NO-OP — variant identical to original"; exit 1; }
+printf '{"Replace":{"internal/config/shipped_key_reader_test.go":"/tmp/ckh-falsify/bare_name_variant.go"}}' \
+  > /tmp/ckh-falsify/overlay4.json
+go test -overlay=/tmp/ckh-falsify/overlay4.json \
+  -run 'TestShippedConfigKeysHaveReaders/collision_resolution' -count=1 -v ./internal/config/
+```
+
+Expected: **FAIL** — the bare-name lookup marks a dead key live via a collision that exists in the
+tree today. The collision is real and measured: `WorkflowWorktreeConfig.AutoMerge` has **no**
+production read resolving to it, yet `.AutoMerge` selectors exist on
+`internal/github.MergeOptions`, so a bare-name lookup reports it live (spec.md §A.3, §A.6). The
+`AutoCreate` pair (`internal/config/types.go:486` / `pkg/models/config.go:172`) is the same shape.
+A PASS means the collision defence is decorative.
+
+### C-5 — the `unbound` class actually fires
+
+```bash
+# drop the document_management.* R-allowlist entries from the inventory
+grep -v '^  *path: document_management\.' internal/config/testdata/shipped_key_inventory.yaml \
+  > /tmp/ckh-falsify/no_docmgmt.yaml
+diff -q internal/config/testdata/shipped_key_inventory.yaml /tmp/ckh-falsify/no_docmgmt.yaml \
+  && { echo "MUTATION NO-OP — grep removed nothing"; exit 1; }
+printf '{"Replace":{"internal/config/testdata/shipped_key_inventory.yaml":"/tmp/ckh-falsify/no_docmgmt.yaml"}}' \
+  > /tmp/ckh-falsify/overlay5.json
+go test -overlay=/tmp/ckh-falsify/overlay5.json \
+  -run 'TestShippedConfigKeysHaveReaders' -count=1 -v ./internal/config/
+```
+
+Expected: **FAIL**, naming `document_management.*` keys as `unbound` with no allowlist entry. A PASS
+means the `unbound` class (spec.md §B.4 fifth bullet, plan.md §F M2 step 3) is not reachable — the
+keys are being skipped rather than classified, which is the defect D4 identified.
 
 ## §D Definition of Done
 
-- All of AC-CKH-001 through AC-CKH-022 produce their stated observable output.
-- All four falsification procedures C-1 through C-4 produce **FAIL** against unfixed code.
+- All of AC-CKH-001 through AC-CKH-023 produce their stated observable output.
+- All five falsification procedures C-1 through C-5 produce **FAIL** against unfixed code, and no
+  procedure's `diff -q` mutation guard reports a no-op.
 - `make build` has been run after every `internal/template/templates/**` edit (plan.md §D2).
 - `internal/template/internal_content_leak_test.go` is unmodified (AC-CKH-019).
 - `progress.md` §E.2 cites the observed command output for every claim, per

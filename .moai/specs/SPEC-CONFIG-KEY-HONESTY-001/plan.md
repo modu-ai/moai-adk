@@ -6,16 +6,28 @@ mechanical edits that consume them come last.
 
 ## §A Context
 
-Baseline tree: HEAD `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`). All `file:line` references in `spec.md` §A were
+Code baseline `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`); the
+worktree HEAD is a descendant that changes SPEC documents only. All `file:line` references in `spec.md` §A were
 re-verified against this tree while authoring; one drift was found and recorded (spec.md §A.8 — the
 shipped `workflow.yaml` worktree toggles contradict `internal/config/defaults.go`).
 
-Two measurements this plan depends on, both re-derived at HEAD `d5336214e`:
+Two measurements this plan depends on, both re-derived at code baseline `d5336214e`:
 
-- 287 distinct `yaml:`-tagged Go field names in `internal/config/types.go` (from 371 tags);
-  122 with zero production `.Field` reads; 121 of those shipped in a template section YAML.
+- 287 distinct `yaml:`-tagged Go field names in `internal/config/types.go`; **174** with zero
+  production reads and 4 read only through a `types.go` accessor, measured **path-resolved** (every
+  `X.F` selector resolved to its receiver type; a read counts only when the receiver is a
+  `types.go`-declared struct). 161 of the 174 surface as a key in a shipped section YAML, across 188
+  (file, key) occurrences. The superseded bare-field-name figures were 122 / 5 / 121; 43 names flip
+  live→dead under path resolution, `auto_merge` among them. See spec.md §A.3.
 - Fixed-string dotted-path prose search yields 0-1 hits per key; bare leaf-key search yields up to
   46. This precision gap is the load-bearing mechanism of the M1 triage rule.
+
+Both measurements share one root cause and one consequence. The root cause is that a **bare name**
+— whether a Go field name or a YAML leaf key — is not an identifier; only the fully-qualified path
+is. The consequence is that M2's guard must reproduce the path-resolved number mechanically rather
+than trust the figure recorded above: the guard is the durable implementation of §A.3's probe, so a
+divergence between the guard's output and 174 is a finding about one of the two, not a licence to
+adjust the SPEC to match.
 
 ## §B Known issues carried into this SPEC
 
@@ -53,6 +65,12 @@ go test -count=1 ./internal/config/... ./internal/template/... ./internal/lsp/..
 Each milestone closes only when its acceptance.md criteria print the stated observable output. §E
 of `progress.md` carries the run-phase evidence.
 
+NFR-CKH-003 (snake_case filenames, `%w` error wrapping, English comments) is cross-cutting rather
+than milestone-scoped and is absorbed into AC-CKH-021, which checks it over the set of `.go` files
+this SPEC adds. The check is scoped to added files deliberately: `gofmt -l internal pkg cmd` lists
+114 pre-existing files at the code baseline (alignment-only diffs from a different toolchain
+version), so a repository-wide formatting expectation would be unsatisfiable rather than a gate.
+
 ## §F Milestones
 
 ### M1 — Triage rule and full key inventory (REQ-CKH-005, REQ-CKH-006, REQ-CKH-007)
@@ -74,7 +92,7 @@ shipped, so it may cite SPEC IDs):
 — `.claude/agents`, `.claude/skills`, `.claude/rules`, `.claude/commands`, plus their
 `internal/template/templates/` mirrors — with `grep -rF` for the **dotted key path**
 (`<section>.<parent>.<leaf>`). A bare leaf-key match is a **homonym and is not evidence**: measured
-at HEAD `d5336214e`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
+at code baseline `d5336214e`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
 A second filter requires the matching file to also contain the literal `.moai/config`, so a passing
 mention of the concept does not qualify as an instruction to read the key.
 
@@ -83,8 +101,10 @@ alone; the prose probe must return zero first (REQ-CKH-007).
 
 **Deliverable 2 — the inventory**, `internal/config/testdata/shipped_key_inventory.yaml`: one entry
 per shipped key with `path`, `class`, `evidence` (reader file:line, prose file, or `none`), and for
-**D** entries a `deprecate_after` version. The seven families in spec.md §A.3 are classified
-individually; every remaining shipped key carries at minimum a class so the list cannot rot.
+**D** entries a `deprecate_after` version. The seven highest-impact families named in REQ-CKH-006
+(`design`, `harness`, `research`, `git-strategy`, `constitution`, `context`, `workflow` — still the
+top seven under the path-resolved counts in spec.md §A.3) are classified individually; every
+remaining shipped key carries at minimum a class so the list cannot rot.
 
 **Decision to surface at review**: whether `git-strategy.yaml.tmpl` (15 dead keys) is
 prose-consumed by the git workflow rules or genuinely dead — it is the family most likely to be
@@ -103,12 +123,20 @@ The second contract decision: what the guard treats as evidence of liveness.
    section root, so `Worktree.AutoCreate` and an unrelated `AutoCreate` on a different struct are
    distinct lookups. This is the field-name-collision defence: the guard keys on the path, never on
    the bare name.
-3. Classify each resolved field: **direct-live** (a production `.Field` read outside `types.go`);
+3. Classify each key into one of **five** classes. Four apply once the dotted path resolves to a
+   struct field: **direct-live** (a production read of that field outside `types.go`);
    **accessor-live** (read only by a `types.go` accessor **while** that accessor has a production
    caller — `GateTimeouts.Vet` → `GateConfig.VetTimeoutDuration()` → `internal/hook/pre_tool.go:657`
-   is the reference case); **unresolved** (accessor exists but has no production caller); **dead**.
-4. Fail on any **dead** or **unresolved** key not present in the M1 inventory's **P** or **R**
-   allowlists.
+   is the reference case); **unresolved** (accessor exists but has no production caller); **dead**
+   (no read resolves to the field). The fifth applies when step 2's walk finds **no field at all**
+   for the dotted path: **unbound**. `unbound` is a distinct class, not a synonym for `unresolved`
+   — `unresolved` presupposes a resolved field. Without it, the 25 keys under `github.*` and
+   `document_management.*` never enter the partition and are skipped in silence, so REQ-CKH-008
+   would miss its own headline case (spec.md §A.2). The `moai.*` block resolves to no `SystemConfig`
+   field either, but has three ad-hoc readers recorded as its M1 evidence, so it is `unbound` with
+   an allowlist entry rather than a failure.
+4. Fail on any **dead**, **unresolved**, or **unbound** key not present in the M1 inventory's **P**
+   or **R** allowlists.
 5. **Non-vacuity**: fail if the shipped-key inventory has fewer than 200 entries or the reflective
    struct walk yields fewer than 200 fields (NFR-CKH-002). A guard that inventories zero must fail,
    not pass.
@@ -161,7 +189,15 @@ still no code reads — converting an unbound lie into a bound one, with more co
 - `workflow.worktree.session_name_pattern`: unwired; marked, and the shipped comment corrected so it
   no longer implies session names are built from it.
 
-### M6 — Neutrality leak removal and E5 handoff (REQ-CKH-012, REQ-CKH-013)
+### M6 — Deprecation posture, neutrality leak removal, E5 handoff (REQ-CKH-011, REQ-CKH-012, REQ-CKH-013)
+
+This milestone carries the whole of spec.md §B.6, REQ-CKH-011 included. REQ-CKH-011 is the guard on
+M1's **D** class: template removal is the only deletion this SPEC performs, and REQ-CKH-011 states
+what that removal must not do to an existing user file. It is verified by AC-CKH-023 — a
+`t.TempDir()` project whose config carries a key the template no longer ships must retain the key
+after the merge and be reported exactly once. The merge engine itself stays owned by
+`SPEC-UPDATE-YAML-PRESERVE-001` (§D3); what M6 adds is the **report-once, delete-never** assertion
+over that engine's behaviour for keys this SPEC removes.
 
 - Rewrite `internal/template/templates/.moai/config/sections/workflow.yaml:65` and `:85` to drop
   `SPEC-AGENT-ARCH-V2-001` and `plan.md §D D6`, preserving the mechanism description.
