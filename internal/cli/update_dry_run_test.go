@@ -18,12 +18,15 @@ func TestDryRunArchive(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	// Create only 3 of the 16 skills
-	presentSkills := []string{
-		"moai-domain-backend",
-		"moai-domain-frontend",
-		"moai-domain-database",
-	}
+	// Create only the first 3 legacy skills. Derived from legacySkillIDs rather
+	// than hard-coded: dryRunArchiveLegacySkills only walks that list, so a
+	// literal ID that later leaves the list makes this fixture seed skills the
+	// dry-run never considers, and the assertions below fail against a
+	// "total: 0" output. That is exactly how this test broke when
+	// SPEC-UPDATE-LEGACY-SKILL-LIST-001 removed three revived template skills
+	// from the list — the hard-coded IDs were invisible to every check that
+	// searched for `legacySkillIDs` references.
+	presentSkills := legacySkillIDs[:3]
 	for _, id := range presentSkills {
 		makeSkillDir(t, root, id, "# "+id)
 	}
