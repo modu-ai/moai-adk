@@ -48,9 +48,111 @@ Plan-audit verdict on v0.2.0: **PASS, 0.88** against the Tier M threshold 0.80; 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- `pre_fix_commit:` `3f0849239eedbaa3694a0b5b55821d1a618802c0` — captured with `git rev-parse HEAD` at run-phase entry on branch `feat/SPEC-UPDATE-REINSTALL-LOOP-002`, before M1's first implementation commit. This SHA binds acceptance.md §C.2 Batch A / Batch B and AC-RIL2-020.
 
-- `pre_fix_commit:` _<pending — capture `git rev-parse HEAD` at run-phase entry, before M1's first implementation commit. This SHA binds acceptance.md §C.2 Batch A / Batch B and AC-RIL2-020.>_
+### M1 — Version-signal normalization (complete)
+
+Implementation commit: `542e9cdcf`. Touched `internal/cli/v2_detection.go`, new `internal/cli/v2_detection_matrix_test.go`, fixture migration in `internal/cli/deprecated_paths_collision_test.go`, plus the `draft → in-progress` frontmatter transition on `spec.md`.
+
+#### RED evidence (pre-GREEN, captured before the implementation edit)
+
+`go test ./internal/cli/ -run 'TestProbeVersionSignal_NormalizedMatrix|TestProbeVersionSignal_NoDestructiveWidening' -v` against the unmodified `probeVersionSignal`:
+
+```
+--- FAIL: TestProbeVersionSignal_NormalizedMatrix (0.02s)
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "3.0.1", detail "")
+    v2_detection_matrix_test.go:110: IsV2 = true, want false (version "3.0.1"; version=false agency=true deprecated=true v3=false)
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "V3.0.1", detail "")
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "v4.0.0", detail "")
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "4.0.0", detail "")
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "3.0.1-rc13", detail "")
+    v2_detection_matrix_test.go:101: V3VersionConfirmed = false, want true (version "3.0.0+build.5", detail "")
+--- PASS: TestProbeVersionSignal_NoDestructiveWidening (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.665s
+```
+
+Six of eleven matrix rows failed. `TestProbeVersionSignal_NoDestructiveWidening` reporting `--- PASS` here is the documented acceptance.md §C.2 Batch A exception, not a defect: against pre-fix sources the local reference implementation and the production rule are the same rule, so the implication holds trivially. Its falsification is §C.3 (recorded below).
+
+#### AC matrix (M1 scope)
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-RIL2-001 | PASS | `go test ./internal/cli/ -run 'TestProbeVersionSignal_NormalizedMatrix' -v \| tail -20` | `--- PASS: TestProbeVersionSignal_NormalizedMatrix` + all 11 subtests `--- PASS` |
+| AC-RIL2-002 | PASS | same, `\| grep -E 'rc13\|build'` | `--- PASS: .../3.0.1-rc13`, `--- PASS: .../3.0.0+build.5` |
+| AC-RIL2-003 | PASS | `go test ./internal/cli/ -run 'TestProbeVersionSignal_NoDestructiveWidening' -v \| tail -5` | `--- PASS: TestProbeVersionSignal_NoDestructiveWidening` (12 inputs) |
+| AC-RIL2-004 | PASS | `go test ./internal/cli/ -run 'TestUpdate_ZeroNetChange_DesignDirNoLongerTriggersLoop' -v \| tail -5` | `--- PASS: TestUpdate_ZeroNetChange_DesignDirNoLongerTriggersLoop (0.00s)`; `grep -n 'version:' internal/cli/deprecated_paths_collision_test.go` → `112: "moai:\n    version: \"1.9.0-legacy\"\n"` |
+
+Fixture migration rationale (AC-RIL2-004): `1.9.0-legacy` normalizes to major `1` — neither `2` nor `>= 3` — so `probeVersionSignal` takes the REQ-RIL2-006 negative branch (Signal 1 false, `V3VersionConfirmed` false). Signal 3 therefore remains the sole driver of the test's assertions. The previous `3.0.0-rc13` normalizes to major `3` and would have been v3-confirmed, letting the test pass through the override while silently losing its isolation.
+
+#### §C.2 Batch A replay (pre-fix sources)
+
+Scratch worktree at `pre_fix_commit`, `v2_detection_matrix_test.go` copied in, production sources untouched:
+
+```
+--- FAIL: TestProbeVersionSignal_NormalizedMatrix (0.03s)
+--- PASS: TestProbeVersionSignal_NoDestructiveWidening (0.02s)
+```
+
+No `build failed` line — both M1 tests compile against pre-fix sources, which is the Batch A requirement. Worktree disposed via `git worktree remove --force`.
+
+#### §C.3 reference-rule mutation (falsification for AC-RIL2-003)
+
+Both mutations applied to the new rule, run, and reverted:
+
+1. Dropped the prefix requirement (`case major == 2 && prefix == 'v'` → `case major == 2`):
+
+```
+v2_detection_matrix_test.go:180: NFR-RIL2-001 violated for "2.5.0": reference rule classified IsV2=false, new rule classifies IsV2=true — the destructive path widened
+v2_detection_matrix_test.go:180: NFR-RIL2-001 violated for "V2.5.0": reference rule classified IsV2=false, new rule classifies IsV2=true — the destructive path widened
+--- FAIL: TestProbeVersionSignal_NoDestructiveWidening (0.02s)
+```
+
+2. Made a well-formed unrecognized string Signal-1 positive (`!parsed` branch returning `true`):
+
+```
+v2_detection_matrix_test.go:180: NFR-RIL2-001 violated for "abc": reference rule classified IsV2=false, new rule classifies IsV2=true — the destructive path widened
+--- FAIL: TestProbeVersionSignal_NoDestructiveWidening (0.01s)
+```
+
+Both reverted; `grep -n 'MUTATION\|case major == 2' internal/cli/v2_detection.go` → single match `225: case major == 2 && prefix == 'v':`.
+
+#### AC-RIL2-020 (D11 follow-up — re-run against a non-empty diff)
+
+`B=3f0849239eedbaa3694a0b5b55821d1a618802c0`, run after commit `542e9cdcf`:
+
+```
+=== changed files ===
+internal/cli/deprecated_paths_collision_test.go
+internal/cli/v2_detection.go
+internal/cli/v2_detection_matrix_test.go
+=== (1) gofmt -l ===
+(exit=0)                 # no output — all three files gofmt-clean
+=== (2) non-snake_case count ===
+0
+=== (3) fmt.Errorf without %w ===
+0
+```
+
+The AC is now meaningfully exercised: the diff carries 3 files where the plan-phase measurement had 0, so checks (1) and (2) operate on real input rather than an empty list.
+
+#### Build, lint, coverage, suite
+
+| Check | Observed |
+|---|---|
+| `go build ./...` | `BUILD_OK` (exit 0) |
+| `GOOS=windows GOARCH=amd64 go build ./...` | `WINDOWS_BUILD_OK` (exit 0) |
+| `go vet ./internal/cli/...` | `VET_OK` (exit 0) |
+| `golangci-lint run --timeout=3m` | `0 issues.` — identical to the pre-flight baseline measured before any edit; zero NEW findings |
+| `go test -cover ./internal/cli/` | `coverage: 75.7% of statements` post-change; the same command at `pre_fix_commit` in a clean scratch worktree also reported `75.7%` — unchanged at the reported precision |
+| `go test ./...` | 0 packages reported `FAIL` |
+
+Coverage note: `internal/cli` sits at 75.7%, below the 90% target for critical packages. This is the pre-existing package baseline (identical before and after M1), not a regression introduced here; raising it is outside M1's scope envelope.
+
+#### Observation for manager-spec (documentation-only, no implementation impact)
+
+REQ-RIL2-003 states the Signal-1-positive condition as major 2 "**and** the original string carried a leading `v` **or** `V`". The AC matrix (acceptance.md AC-RIL2-001) and the NFR-RIL2-001 residue-free widening table (AC-RIL2-003) both pin `V2.5.0` to Signal 1 **false**, and AC-RIL2-003 names "a `major == 2` rule that ignores the `v`/`V` prefix" as a widening. The uppercase form was also Signal-1 negative pre-change, since the literal test was the case-sensitive `strings.HasPrefix(v, "v2.")`.
+
+The implementation follows the AC + NFR (lowercase `v` only), because NFR-RIL2-001 "admits no exception" and accepting `V` would flip a residue-free `V2.5.0` project from `IsV2=false` to `IsV2=true`. The `or V` clause in the REQ-RIL2-003 prose is the outlier and warrants a wording correction in a later scope-doc pass. No implementation change follows from it — the verification surface is unambiguous.
 
 ### Epic run order (depends_on sequencing)
 
