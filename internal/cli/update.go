@@ -835,12 +835,20 @@ func updateSettingsLocalEnv(settingsPath, key, value string) error {
 	})
 }
 
+// globalMoaiHooksDir returns the global moai hooks directory under homeDir.
+// It is the single named removal target for ensureGlobalSettingsEnv, so the
+// deletion-radius guard has one symbol to assert against instead of
+// re-deriving the path independently.
+func globalMoaiHooksDir(homeDir string) string {
+	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+}
+
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
 // All settings (env, permissions, teammateMode, hooks) are managed at the project level.
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
 // are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
-	homeDir, err := userHomeDir()
+	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
@@ -848,7 +856,7 @@ func ensureGlobalSettingsEnv() error {
 	// Remove global hooks/moai directory if it exists.
 	// Hooks are project-level only; the global directory causes "No such file or directory"
 	// errors in non-initialized projects that reference $CLAUDE_PROJECT_DIR paths.
-	globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+	globalHooksDir := globalMoaiHooksDir(homeDir)
 	if _, err := os.Stat(globalHooksDir); err == nil {
 		_ = os.RemoveAll(globalHooksDir)
 	}
