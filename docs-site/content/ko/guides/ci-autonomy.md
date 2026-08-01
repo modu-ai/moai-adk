@@ -46,28 +46,24 @@ push 전에 로컬에서 품질 검증을 자동으로 돌립니다. CI까지 �
 
 ## Auto-fix Loop (T3)
 
-`/moai sync`가 PR을 만든 뒤에는 CI 감시 스크립트와 CI 루프 스킬이 함께
-"진단 → 수정 → 재검증" 루프를 돌립니다. 로컬에서 쓰던 진단형 자가 수정
-루프를 PR 파이프라인까지 늘린 구조입니다.
+`/moai sync`가 PR을 만든 뒤, 오케스트레이터가 실패한 필수(required) 체크를
+넘겨주면 `manager-develop`이 `cycle_type=autofix` 사이클로 "진단 → 수정 →
+재검증" 루프를 돌립니다. 로컬에서 쓰던 진단형 자가 수정 루프를 PR
+파이프라인까지 늘린 구조입니다.
 
-**CI 감시 스크립트 (`scripts/ci-watch/run.sh`)**
+- **진입 조건** — 실패한 필수 체크가 하나 이상 있고, 오케스트레이터가 해당
+  PR과 브랜치를 지목해 넘겨줄 때만 루프가 시작됩니다. 오케스트레이터가
+  유일한 진입점입니다
+- **반복 상한** — PR push 한 번당 최대 3회. 4회째로 넘어가면 자동 패치를
+  시도하지 않고 blocking AskUserQuestion으로 사용자에게 넘깁니다
+- **의미 수준 실패** — data race, deadlock, panic, 테스트 단언 실패는 자동으로
+  고치지 않고 사용자 판단으로 넘깁니다
+- **보호 파일** — 비밀·자격 증명 파일과 CI 워크플로 정의는 루프가 절대
+  건드리지 않습니다. 실패를 보고하는 계층을 고치면 진짜 실패가 가짜 green이
+  되기 때문입니다
 
-```bash
-sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
-```
-
-- 30초 간격으로 `gh pr checks`를 폴링하며 필수(required) 체크와
-  보조(auxiliary) 체크를 분류합니다
-- 종료 코드: `0` 전체 통과 · `2` 필수 체크 실패(구조화 JSON 핸드오프를
-  stdout으로 출력) · `3` 30분 하드 타임아웃 · `1` 오류
-- required 체크 목록은 SSoT 파일에서 읽으며, 테스트용 환경변수
-  오버라이드(`MOAI_CIWATCH_GH`, `CIWATCH_TIMEOUT_SECONDS` 등)를 지원합니다
-
-**CI 루프 스킬 (`moai-workflow-ci-loop`)**
-
-감시 스크립트가 필수 체크 실패를 넘겨주면 `moai-workflow-ci-loop` 스킬이
-실패 유형을 나누고 안전한 자동 패치를 최대 3회까지 시도합니다. 자동으로
-고치기 위험한 의미 수준의 실패는 사용자에게 에스컬레이션합니다.
+반복 상한, 에스컬레이션 계약, 의미 수준 실패 처리, 보호 파일 목록의 SSoT는
+`.claude/rules/moai/workflow/ci-autofix-protocol.md`입니다.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 

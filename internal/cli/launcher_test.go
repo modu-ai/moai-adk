@@ -995,3 +995,51 @@ func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 		})
 	}
 }
+
+// TestWarnNoModelResolved covers the 6b diagnostic in launchClaude: when no
+// model is resolved, buildArgs omits --model and Claude Code silently applies
+// the settings.json default. The warning is the only signal that this happened,
+// so it must name the profile that was actually read and point at a next step.
+func TestWarnNoModelResolved(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		profileName string
+		wantSubstrs []string
+	}{
+		{
+			name:        "named profile is quoted verbatim",
+			profileName: "mo.ai.kr",
+			// The profile name must survive into the message — without it the
+			// user cannot tell WHICH profile came back empty.
+			wantSubstrs: []string{`"mo.ai.kr"`, "settings.json", "moai profile current"},
+		},
+		{
+			name:        "empty profile is spelled out, not blank",
+			profileName: "",
+			// A bare `""` here would read as a bug in the warning itself; the
+			// empty case is exactly the stale-ledger degradation, so it needs a
+			// name a user can act on.
+			wantSubstrs: []string{"default (base preferences)", "moai cc -p"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var buf strings.Builder
+			warnNoModelResolved(&buf, tc.profileName)
+			got := buf.String()
+			if got == "" {
+				t.Fatal("warnNoModelResolved wrote nothing; the silent-fallback " +
+					"diagnostic is the entire point of this function")
+			}
+			for _, want := range tc.wantSubstrs {
+				if !strings.Contains(got, want) {
+					t.Errorf("warning missing %q\n--- got ---\n%s", want, got)
+				}
+			}
+		})
+	}
+}

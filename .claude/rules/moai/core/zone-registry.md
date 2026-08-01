@@ -696,7 +696,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#ci-auto-fix-loop-entry-condition"
-  clause: "The CI auto-fix loop MUST be entered ONLY when scripts/ci-watch/run.sh detects a failing required check"
+  clause: "The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off a failing required check"
   canary_gate: true
 
 - id: CONST-V3R5-005
@@ -704,15 +704,15 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#iteration-limit"
-  clause: "The auto-fix loop MUST attempt at most 3 iterations. The iteration counter is per-PR-push, not per-session"
+  clause: "The auto-fix loop MUST attempt at most **3 iterations**. The iteration counter is persisted in `.moai/state/ci-autofix-<PR>.json`"
   canary_gate: true
 
 - id: CONST-V3R5-006
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#escalation-at-iteration-3"
-  clause: "The AskUserQuestion at iteration > 3 MUST be a blocking call with no auto-resume timeout"
+  anchor: "#iteration-limit"
+  clause: "The AskUserQuestion at iteration > 3 MUST be a blocking call with no silent timeout"
   canary_gate: true
 
 - id: CONST-V3R5-007
@@ -720,7 +720,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#commit-strategy"
-  clause: "Every auto-fix patch MUST be applied as a new commit on the PR branch. Force-pushing or amending are prohibited"
+  clause: "Every auto-fix patch MUST be applied as a **new commit** on the PR branch. Do not force-push."
   canary_gate: true
 
 - id: CONST-V3R5-008
@@ -728,7 +728,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#user-interaction-channel"
-  clause: "AskUserQuestion is the exclusive user interaction channel for the auto-fix loop"
+  clause: "AskUserQuestion is the **exclusive user interaction channel** for the auto-fix loop"
   canary_gate: true
 
 - id: CONST-V3R5-009
@@ -736,7 +736,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#user-interaction-channel"
-  clause: "The orchestrator MUST preload AskUserQuestion via ToolSearch before each call in the auto-fix loop"
+  clause: 'The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before every AskUserQuestion call'
   canary_gate: true
 
 - id: CONST-V3R5-010
@@ -744,7 +744,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#semantic-failure-handling"
-  clause: "Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-fixed without human approval"
+  clause: "Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be automatically patched"
   canary_gate: true
 
 - id: CONST-V3R5-011
@@ -752,7 +752,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#protected-files"
-  clause: "The auto-fix loop MUST NOT modify .env, .env.*, credentials files, or secrets"
+  clause: "The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files, API key files, or any file matching common secrets patterns"
   canary_gate: true
 
 - id: CONST-V3R5-012
@@ -760,7 +760,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#audit-log"
-  clause: "Every auto-fix iteration MUST be logged to .moai/logs/ci-autofix/ with timestamp, patch summary, and CI result"
+  clause: "Every auto-fix iteration MUST be logged to"
   canary_gate: true
 
 - id: CONST-V3R5-013
@@ -768,72 +768,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#protected-files"
-  clause: "The auto-fix loop MUST NOT modify scripts/ci-watch/run.sh or any Wave 2 infrastructure scripts"
-  canary_gate: true
-
-# --- ci-watch-protocol.md (8 entries: V3R5-014..021) ---
-- id: CONST-V3R5-014
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#watch-loop-entry"
-  clause: "The orchestrator MUST invoke the CI watch loop after /moai sync Phase 4 completes and a PR is open"
-  canary_gate: true
-
-- id: CONST-V3R5-015
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#poll-interval"
-  clause: "Poll interval MUST be 30 seconds minimum. GitHub Actions API rate limits require respectful polling"
-  canary_gate: true
-
-- id: CONST-V3R5-016
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#timeout"
-  clause: "The watch loop MUST exit with code 3 after 30 minutes wall-clock time if required checks have not completed"
-  canary_gate: true
-
-- id: CONST-V3R5-017
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#required-checks-ssot"
-  clause: "Required checks are defined ONLY in .github/required-checks.yml. Hard-coding check names is prohibited"
-  canary_gate: true
-
-- id: CONST-V3R5-018
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#required-checks-ssot"
-  clause: "Auxiliary checks listed under auxiliary: in .github/required-checks.yml MUST NOT block merge decisions"
-  canary_gate: true
-
-- id: CONST-V3R5-019
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#emit-ready-to-merge-report"
-  clause: "The CLI (moai pr watch, EmitReadyToMergeReport) MUST NOT call AskUserQuestion — it emits a report and exits"
-  canary_gate: true
-
-- id: CONST-V3R5-020
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#failed-checks-reporting"
-  clause: "Only required failures appear in failedChecks. Auxiliary failures are reported separately as warnings"
-  canary_gate: true
-
-- id: CONST-V3R5-021
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/ci-watch-protocol.md
-  anchor: "#protected-files"
-  clause: "Wave 2 watch loop MUST NOT modify .github/required-checks.yml (Wave 1 SSoT)"
+  clause: "The auto-fix loop MUST NOT modify CI watch infrastructure scripts or workflow definitions"
   canary_gate: true
 
 # --- context-window-management.md (5 entries: V3R5-022..026) ---
@@ -903,46 +838,7 @@ moai constitution list --format json
   clause: "AskUserQuestion is invoked by the orchestrator only. The Go CLI returns exit codes and JSON; the orchestrator translates these into user-facing prompts"
   canary_gate: true
 
-# --- branch-origin-protocol.md (7 entries: V3R5-030..036) ---
-- id: CONST-V3R5-030
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "CLI path (moai worktree new) MUST NOT invoke AskUserQuestion — orchestrator-only HARD"
-  canary_gate: true
-
-- id: CONST-V3R5-031
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "Default base for moai worktree new is origin/main (from internal/bodp.DefaultBase)"
-  canary_gate: true
-
-- id: CONST-V3R5-032
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "--base main is the explicit opt-in for solo workflows where the user has committed locally to main without pushing"
-  canary_gate: true
-
-- id: CONST-V3R5-033
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "--base and --from-current are mutually exclusive flags on moai worktree new"
-  canary_gate: true
-
-- id: CONST-V3R5-034
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "Every BODP decision (skill or CLI) MUST be persisted to .moai/branches/decisions/<normalized-branch>.md via bodp.WriteDecision"
-  canary_gate: true
+# --- branch-origin-protocol.md (1 entry: V3R5-035) ---
 
 - id: CONST-V3R5-035
   zone: Frozen
@@ -950,14 +846,6 @@ moai constitution list --format json
   file: .claude/rules/moai/development/branch-origin-protocol.md
   anchor: "#hard-rules"
   clause: "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: (권장) first, ≤4 options, conversation_language match, Other auto-appended"
-  canary_gate: true
-
-- id: CONST-V3R5-036
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "bodp.HasAuditTrail MUST return false when the audit directory itself is absent (fresh project)"
   canary_gate: true
 
 # --- agent-authoring.md (1 entry: V3R5-037) ---
@@ -984,7 +872,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#worktree-anchored-resume-pattern"
-  clause: "When SPEC was initialized via L3 /moai plan --worktree, the resume message MUST include Block 0 (cwd anchoring) prepended before the standard 6-block structure"
+  clause: "When the work happened inside a worktree, the resume message MUST prepend Block 0 (cwd anchoring) before the standard 6-block structure"
   canary_gate: false
 
 # --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---

@@ -60,7 +60,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 **Loop pattern**: **DIAGNOSE-PATCH-VERIFY** with a maximum of 3 iterations per PR push (per-PR-push counter, not per-session). After iteration 3 without success, the orchestrator MUST trigger a blocking user-decision prompt via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`; no auto-resume timeout per CONST-V3R5-006).
 
-**Canonical reference**: `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the autofix loop entry condition, iteration limit, commit strategy (new commit per patch, force-push and `--amend` prohibited), semantic-failure handling (data race / deadlock / panic / test assertion failures require human approval), protected files (`.env`, `.env.*`, credentials, `scripts/ci-watch/run.sh`), and audit log requirements (`.moai/logs/ci-autofix/`).
+**Canonical reference**: `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the autofix loop entry condition, iteration limit, commit strategy (new commit per patch, force-push and `--amend` prohibited), semantic-failure handling (data race / deadlock / panic / test assertion failures require human approval), protected files (`.env`, `.env.*`, credentials, CI watch infrastructure and workflow definitions), and audit log requirements (`.moai/logs/ci-autofix/`).
 
 **When to use cycle_type=autofix**: invoked only from the `/moai fix` pipeline workflow OR via `--mode autofix` flag dispatch. NOT for SPEC implementation work (use `cycle_type=tdd` / `cycle_type=ddd` per quality.yaml `constitution.development_mode` selection).
 

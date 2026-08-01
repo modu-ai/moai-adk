@@ -172,7 +172,7 @@ plan → run → sync. Tier S/M/L size classification determines verification de
 
 **@MX Tags**. Inline code annotations where AI agents exchange context, invariants, and danger zones.
 
-**worktree isolation**. Attach isolated worktrees per SPEC for parallel development via `/moai plan --worktree`.
+**worktree isolation**. Give each SPEC its own working tree. Enter one with `moai cc -w <name>`, or add `--spawn` to open it in a new window while keeping the current session.
 
 ---
 
@@ -270,7 +270,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai status` | Project status summary (Git branch, quality metrics) |
 | `moai update` | Update to latest version (auto-rollback supported) |
 | `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid Claude leader + GLM worker sessions |
-| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | Git worktree management for parallel SPEC development |
+| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
 | `moai goal <arm\|status\|clear>` | Goal engine CLI |

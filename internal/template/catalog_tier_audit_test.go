@@ -165,7 +165,11 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// skill (registered under optional-pack:frontend), net +1 = 31.
 	// moai-ref-seo added as a search-visibility and crawlability reference
 	// skill (registered under optional-pack:frontend), net +1 = 32.
-	const expectedSkillCount = 32
+	// moai-workflow-ci-loop retired from distribution (the CI watch/auto-fix
+	// loop it documents depends on shell scripts that are never shipped to
+	// user projects; the skill remains a development-repo-only asset),
+	// net -1 = 31.
+	const expectedSkillCount = 31
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

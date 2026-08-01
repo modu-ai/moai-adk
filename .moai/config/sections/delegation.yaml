@@ -33,16 +33,16 @@ delegation:
             skills: [moai-workflow-tdd, moai-workflow-ddd]
         sync:
             agents: [manager-docs, sync-auditor]
-            skills: [moai-workflow-project, moai-workflow-ci-loop]
+            skills: [moai-workflow-project]
         project:
             agents: [Explore, manager-docs]
             skills: [moai-workflow-project]
         fix:
             agents: [manager-develop]      # cycle_type autofix
-            skills: [moai-workflow-ddd, moai-workflow-ci-loop]
+            skills: [moai-workflow-ddd]
         loop:
             agents: [manager-develop]      # cycle_type autofix, iterated
-            skills: [moai-workflow-loop, moai-workflow-ci-loop]
+            skills: [moai-workflow-loop]
         mx:
             agents: [Explore]              # annotation via Agent(general-purpose)
             skills: []

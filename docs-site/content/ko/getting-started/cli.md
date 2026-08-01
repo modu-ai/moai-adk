@@ -306,25 +306,21 @@ moai worktree <COMMAND> [ARGS]...
 
 | 명령어 | 설명 |
 |--------|------|
-| `moai worktree new [branch-name]` | 새 worktree 생성 |
-| `moai worktree list` | 활성 worktree 목록 |
-| `moai worktree go [branch-name]` | worktree 경로를 **출력** (셸 이동용) |
-| `moai worktree switch [branch-name]` | worktree 로 전환 |
-| `moai worktree done [branch-name]` | worktree 완료 및 정리 |
 | `moai worktree sync [branch-name]` | base 브랜치와 worktree 동기화 |
-| `moai worktree remove [path]` | worktree 제거 |
-| `moai worktree config [key] [value]` | worktree 설정 조회/변경 |
-| `moai worktree status` | worktree 상태 조회 |
-| `moai worktree clean` | 오래된 worktree 참조 정리 |
+| `moai worktree done <branch-name>` | 브랜치의 worktree 제거, 선택적으로 브랜치 삭제 |
+| `moai worktree remove <path>` | 지정 경로의 worktree 제거 |
+| `moai worktree clean` | stale 참조 정리, 병합된/방치된 worktree 정리 |
 | `moai worktree recover` | worktree 레지스트리 복구 |
 | `moai worktree snapshot` | 작업 트리 상태 스냅샷 캡처 |
-| `moai worktree restore` | 스냅샷 HEAD 상태로 작업 트리 복원 |
 | `moai worktree verify` | 작업 트리 상태를 스냅샷과 대조 검증 |
+| `moai worktree restore` | 스냅샷 HEAD 상태로 작업 트리 복원 |
 
-`moai worktree go` 는 디렉터리를 옮기지 않고 경로만 출력합니다. 실제로 이동하려면 셸에서 다음처럼 감싸 씁니다.
+워크트리 안으로 **들어가는** 일은 런처가 맡습니다. 조회는 git 을 그대로 씁니다.
 
 ```bash
-cd "$(moai worktree go my-branch)"
+moai cc -w feat-login           # 워크트리에서 작업 시작 (없으면 생성)
+moai cc -w feat-login --spawn   # 현재 세션은 두고 새 tmux 창에서 열기
+git worktree list               # 워크트리 목록
 ```
 
 ---

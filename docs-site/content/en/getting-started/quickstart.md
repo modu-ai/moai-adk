@@ -306,7 +306,7 @@ flowchart TB
 | New project | Run `/moai project` first | Foundational docs required |
 | Simple feature | `/moai plan` + `/moai run` | Fast execution |
 | Complex feature | `/moai` | Automatic optimization |
-| Parallel development | Use the `--worktree` flag | Guaranteed independent environments |
+| Parallel development | Enter a worktree with `moai cc -w <name>` | Guaranteed independent environments |
 
 ## Practical Examples
 
@@ -338,8 +338,9 @@ flowchart TB
 ### Example 3: Parallel Development (Using Worktrees)
 
 ```bash
-# Parallel development in an isolated environment
-> /moai plan "Implement a payment system" --worktree
+# Enter the worktree first, then plan inside it
+$ moai cc -w payment
+> /moai plan "Implement a payment system"
 ```
 
 ## Understanding the File Structure

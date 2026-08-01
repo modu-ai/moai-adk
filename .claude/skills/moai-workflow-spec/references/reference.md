@@ -568,7 +568,8 @@ Feature Complete
 ```
 User Request
     ↓
-/moai plan "feature1" "feature2" "feature3" --worktree
+moai cc -w tri-feature
+/moai plan "feature1" "feature2" "feature3"
     ↓
 manager-spec creates SPEC-001, SPEC-002, SPEC-003
     ↓

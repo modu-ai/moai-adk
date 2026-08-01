@@ -43,8 +43,8 @@ The `--mode team` dispatch value is RETIRED: Mode 3 (`agent-team`) of the Phase
 `--mode team` emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
 `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the
 orchestrator falls back to `autopilot` with a `[mode-auto-downgrade]` info log.
-The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`
-launch) is unaffected — only MoAI's static team-orchestration layer is retired.
+The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name>
+--spawn` teammate windows) is unaffected — only MoAI's static team-orchestration layer is retired.
 
 All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All
 Modes)" continue to apply to every execution mode.

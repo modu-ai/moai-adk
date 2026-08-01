@@ -170,7 +170,7 @@ plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅
 
 **@MX 태그**. AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는 인라인 코드 어노테이션이다.
 
-**worktree 격리**. `/moai plan --worktree`로 SPEC마다 병렬 개발용 격리 worktree를 붙인다.
+**worktree 격리**. SPEC마다 독립된 작업 트리를 둔다. `moai cc -w <이름>`으로 진입하고, `--spawn`을 붙이면 현재 세션을 유지한 채 새 창에서 연다.
 
 ---
 
@@ -266,7 +266,7 @@ claude        # 프로젝트 안에서 Claude Code 실행
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
 | `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
 | `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 Claude 리더 + GLM 워커 세션 |
-| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
+| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (진입은 런처가 담당) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
 | `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |

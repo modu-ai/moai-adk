@@ -38,14 +38,6 @@ func wtCardStyle() lipgloss.Style {
 		Padding(0, 2)
 }
 
-// wtCard renders content inside a rounded border box with a styled title.
-func wtCard(title, content string) string {
-	primary, _, _ := wtStyles()
-	titleLine := primary.Bold(true).Render(title)
-	body := titleLine + "\n\n" + content
-	return wtCardStyle().Render(body)
-}
-
 // wtSuccessCard renders a success message inside a rounded border card.
 func wtSuccessCard(title string, details ...string) string {
 	_, _, success := wtStyles()

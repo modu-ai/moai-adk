@@ -32,6 +32,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --spawn                   Run this command in a new tmux window instead of
+                                replacing the current session (requires tmux)
 
 Prerequisites:
   1. A GLM API key configured via 'moai glm setup <api-key>'
@@ -41,6 +43,7 @@ Examples:
   moai glm setup sk-xxx    # First: save API key (one-time)
   moai cg                  # Then: launch hybrid mode
   moai cg -p work          # Use 'work' profile with hybrid mode
+  moai cg -w feat-auth --spawn   # GLM teammate in a new tmux window (session kept)
 
 Use 'moai cc' to switch back to Claude-only mode.
 Use 'moai glm' for all-GLM mode.`,
@@ -64,6 +67,12 @@ func runCG(cmd *cobra.Command, args []string) error {
 		if arg == "--" {
 			break
 		}
+	}
+
+	// --spawn: open a GLM teammate in a new tmux window and keep this session.
+	// See cc.go for the ordering rationale.
+	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		return spawnLaunch(cmd.OutOrStdout(), "cg", spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
