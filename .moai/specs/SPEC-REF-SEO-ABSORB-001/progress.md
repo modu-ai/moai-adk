@@ -228,7 +228,7 @@ milestones: M2-M6 (M1 결정 게이트는 plan-phase 소관)
 ac_pass_count: 24
 ac_fail_count: 0
 preserve_list_post_run_count: 0    # skill-routing.md 무변경(secops 부재 실측), SPEC 본문 3종 무변경
-l44_pre_commit_fetch: run          # origin/main...HEAD = 3 8 (선행 발산, 아래 잔여 위험 참조)
+l44_pre_commit_fetch: run          # origin/main 선행 발산 관측 (수치는 변동 중 — 아래 잔여 위험 참조)
 l44_post_push_fetch: not-run       # push 미수행 — 브랜치 protection(enforce_admins) 및 orchestrator 소관
 new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (baseline도 0 issues)
 cross_platform_build:
@@ -241,7 +241,7 @@ m1_to_mN_commit_strategy: M3 a525a236e / M4 184a325bc(단일 커밋, 마크다�
 
 미해소 위험 2건(차단 요소 아님):
 
-1. **origin/main 선행 발산** — `git rev-list --count --left-right origin/main...HEAD` → `3 8`. origin/main이 `#1268`/`#1269`/`#1270` 3커밋만큼 앞서 있다. M3 커밋 `a525a236e`가 이미 `9ced435e9` 기준이었으므로 본 SPEC이 만든 발산이 아니다. 브랜치+PR 시 rebase/merge 판단이 필요하다.
+1. **origin/main 선행 발산 (진행 중, 수치 고정 불가)** — `git rev-list --count --left-right origin/main...HEAD`가 M4 시점 `3 5`, M6 기록 시점 `5 8`로 관측됐다. **origin 쪽 수치는 본 SPEC 작업 중에도 계속 증가했다** — 처음 관측한 `#1268`/`#1269`/`#1270`에 더해 `#1272`/`#1271`이 추가로 머지됐다. 따라서 이 값은 시점 스냅샷이며 감사 시점에 재측정해야 한다. 본 SPEC이 만든 발산은 아니다(M3 커밋 `a525a236e`가 이미 `9ced435e9` 기준이었다). 브랜치+PR 시 rebase/merge 판단이 필요하다.
 2. **접근성 조작성 항목 공백** — plan.md §F에 열린 채로 기록된 위험. 형제 SPEC이 아직 존재하지 않아 `depends_on:`을 걸 대상이 없으며 본 SPEC에서 완화되지 않는다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
