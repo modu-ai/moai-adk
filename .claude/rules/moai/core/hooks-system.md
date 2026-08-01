@@ -204,9 +204,18 @@ Example configurations:
 
 This field significantly reduces performance overhead by skipping hook evaluation for non-matching operations.
 
-### Stop Hook Block Cap
+### Stop Hook Block Cap and `stop_hook_active`
 
 A Stop hook that keeps blocking (exit 2) would otherwise loop indefinitely. The runtime applies a block cap: after 8 consecutive Stop-hook blocks the cap is reached and the block is overridden so the turn can end. The cap is tunable via the `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` environment variable.
+
+Stop-hook stdin carries a `stop_hook_active` boolean, set `true` when the turn is already continuing because a previous Stop-hook block fired. The general remedy for a hook that would otherwise hit the cap is to read that field and exit 0 early, letting Claude stop.
+
+The two Stop-hook classes in this project treat the field differently, and the difference is deliberate:
+
+- **Guard-style Stop hooks return early.** A hook whose job is to raise a one-shot objection has nothing to add once its objection is already being acted on, so it checks `stop_hook_active` and exits 0. Re-blocking would consume the cap for no additional signal.
+- **The goal evaluator deliberately does not.** A condition-declared loop exists *to* keep blocking until its condition holds; an early return on `stop_hook_active` would end the loop on its second iteration and defeat the mechanism. The evaluator therefore ignores the field and relies on its own bounds instead — a turn ceiling and a stagnation guard. Because the runtime cap also applies, the effective bound is `min(ceiling, cap)`, and an unattended run can end at the cap **without** emitting the ceiling verdict. A missing verdict is therefore not evidence of convergence.
+
+Do not "fix" the evaluator by adding a `stop_hook_active` early return; that reads as a missing guard but would remove the loop.
 
 ## Agent-Specific Hooks
 
@@ -230,23 +239,17 @@ Define hooks in `.claude/settings.json`. Each event key maps to an array of matc
       "matcher": "startup|resume|clear|compact|fork",
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+        "command": "bash",
+        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
         "timeout": 30
-      }]
-    }],
-    "PreCompact": [{
-      "matcher": "manual|auto",
-      "hooks": [{
-        "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-        "timeout": 5
       }]
     }],
     "PreToolUse": [{
       "matcher": "Write|Edit|Bash",
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+        "command": "bash",
+        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-pre-tool.sh"],
         "timeout": 5
       }]
     }],
@@ -254,7 +257,8 @@ Define hooks in `.claude/settings.json`. Each event key maps to an array of matc
       "matcher": "Write|Edit",
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+        "command": "bash",
+        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-tool.sh"],
         "timeout": 10,
         "async": true
       }]
@@ -262,47 +266,53 @@ Define hooks in `.claude/settings.json`. Each event key maps to an array of matc
     "Stop": [{
       "hooks": [{
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
+        "command": "bash",
+        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop.sh"],
         "timeout": 5
       }, {
         "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
+        "command": "bash",
+        "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/sync-phase-quality-gate.sh"],
         "timeout": 60
-      }]
-    }],
-    "TeammateIdle": [{
-      "hooks": [{
-        "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
-        "timeout": 5
-      }]
-    }],
-    "TaskCompleted": [{
-      "hooks": [{
-        "type": "command",
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
-        "timeout": 5
       }]
     }]
   }
 }
 ```
 
-## Path Syntax Rules
+## Path Syntax Rules — Exec Form Is the Shipped Registration Form
 
-Hooks support `$CLAUDE_PROJECT_DIR` and `$HOME` environment variables:
+Every shipped hook registration uses the **exec form**: `"command"` names the interpreter and `"args"` carries the script path. The runtime substitutes `${CLAUDE_PROJECT_DIR}` inside `args` and spawns the program directly, with no shell in between.
 
 ```json
 {
-  "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""
+  "type": "command",
+  "command": "bash",
+  "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/hook.sh"]
 }
 ```
 
-**Important**: Quote the entire path to handle project folders with spaces:
-- Correct: `"\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""`
-- Wrong: `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh"`
+Three properties follow, and each addresses a concrete failure the shell form is exposed to:
 
-For StatusLine path configuration, see @settings-management.md (StatusLine supports the built-in `$CLAUDE_PROJECT_DIR` token, same as hooks).
+- **A shell profile cannot corrupt the hook's stdout.** A shell-form command runs under `sh -c` (or Git Bash on Windows), and some configurations still source the user's profile. A profile that echoes unconditionally prepends its output to the hook's stdout, so a hook returning JSON fails to parse. Exec form has no shell to source a profile. When a hook script genuinely needs an interactive-shell-only branch, guard it with `if [[ $- == *i* ]]; then ... fi`.
+- **No dependency on the script's executable bit.** Naming `bash` explicitly and passing the script as an argument runs it regardless of file mode — which matters on Windows checkouts, where the exec bit is not reliably preserved.
+- **One rendering for every platform.** The interpreter is the same token on macOS, Linux, and Windows, so no per-OS branch is needed in the settings template.
+
+Quoting rules do not apply here: exec form performs no word-splitting, so a project path containing spaces needs no escaping. The legacy shell form — a single `"command"` string carrying a quoted path — remains valid Claude Code schema, and a project that still uses it MUST quote the whole path (`"\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""`) to survive spaces.
+
+For StatusLine path configuration, see @settings-management.md. StatusLine supports the built-in `$CLAUDE_PROJECT_DIR` token but is not part of the hook schema, so it keeps the shell-form command string.
+
+## Multi-Hook Execution Semantics
+
+When several hooks match the same event, the runtime runs them **in parallel** and deduplicates identical hook commands automatically. Every matching hook runs to completion before the results are merged — one hook returning `deny` does NOT prevent a sibling hook from executing, so a hook must never rely on a sibling's denial to suppress its own side effects.
+
+Result merging:
+
+- **PreToolUse permission decisions** resolve to the most restrictive answer, in the order `deny` > `defer` > `ask` > `allow`.
+- **`additionalContext`** is retained from every hook and passed to Claude together.
+- **`updatedInput`** is the exception: when two PreToolUse hooks both rewrite a tool's arguments, the last one to finish wins, and because the hooks run in parallel that order is non-deterministic. Never register two hooks that modify the same tool's input.
+
+This matters most for the Stop and PostToolUse chains, which carry several entries each.
 
 ## Hook Wrappers
 
@@ -354,6 +364,12 @@ MoAI-ADK uses shorter independent timeout policies for operational efficiency. T
 | All other registered events (PreCompact, PreToolUse, PostToolUseFailure, SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, ConfigChange, StopFailure, PostCompact, InstructionsLoaded, CwdChanged, FileChanged, PermissionDenied, PermissionRequest) and the opt-in harness-observe entries | 5s | 600s | Synchronous fast lifecycle hooks (blocking default; PostToolUse harness-observe is `async: true`) |
 | prompt, agent hooks | 30s-60s | 600s | Evaluation/verification hooks |
 
+Two runtime ceilings are lower than the 600s maximum and are not overridable upward by the same rule:
+
+- **`UserPromptSubmit`** lowers `command` / `http` / `mcp_tool` hooks to **30s**, because the hook blocks the user's own input.
+- **`MessageDisplay`** lowers them to **10s**, because it runs while assistant text is being displayed.
+- **`SessionEnd`** hooks of any type share a single **1.5s budget across all of them**, not 1.5s each. When a per-hook `timeout` in settings is longer, the runtime raises the shared budget to match, up to 60s. MoAI registers one SessionEnd hook at 10s, so the effective budget is 10s; adding a second SessionEnd hook would share that same budget rather than getting its own.
+
 The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse, etc.); **SessionStart is 30s** (session bootstrap) and **SessionEnd is 10s**. **PostToolUse (handle-post-tool) is the documented exception at 10s + `async: true`** because its LSP/AST/MX validations run in the background — this matches the JSON example below (`PostToolUse` block with `timeout: 10, async: true`). **The Stop-event sync-phase-quality-gate entry is 60s** so the gate's compile/vet checks are not killed mid-run. These MoAI values (5s, 10s, 30s, 60s) are valid independent policies and do NOT violate the 600s upper bound. Customize the `timeout` field in hook definitions to adjust per-hook timing as needed.
 
 ## Rules
@@ -367,6 +383,25 @@ The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse
 - Async hooks deliver results via `additionalContext` on the next turn (the only async-deliverable field; `systemMessage`, `decision`, and `updatedToolOutput` are NOT delivered for async hooks)
 - Exit code 2 blocks on events marked "Can Block: Yes" (PreToolUse, PermissionRequest, UserPromptSubmit, UserPromptExpansion, Stop, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted, ConfigChange, PostToolBatch, PreCompact, Elicitation, ElicitationResult, WorktreeCreate); events marked "No" ignore it (StopFailure, PostToolUse, PostToolUseFailure, PermissionDenied, Notification, SubagentStart, SessionStart, Setup, SessionEnd, CwdChanged, FileChanged, PostCompact, WorktreeRemove, InstructionsLoaded, MessageDisplay, DirectoryAdded). Some events also support JSON `decision:"block"` (PostToolUse, PostToolBatch, SubagentStop, ConfigChange, PreCompact, UserPromptSubmit, UserPromptExpansion) or `continue:false` (TeammateIdle, TaskCreated, TaskCompleted) as alternative block mechanisms — exit 2 is NOT universal
 - Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
+
+## Diagnosing a Hook
+
+Three surfaces answer the three questions that come up when a hook misbehaves:
+
+| Question | Surface |
+|----------|---------|
+| Is the hook registered at all? | `/hooks` opens a read-only browser listing every event with a count of configured hooks; selecting one shows its event, matcher, type, source file, and command. It cannot edit — change settings JSON directly. |
+| Did it fire, and what did it return? | The debug log. Start with `claude --debug-file /tmp/claude.log` and `tail -f` it, or run `/debug` mid-session to enable logging and learn the path. It records which hooks matched, their exit codes, stdout, and stderr. |
+| What did the user see? | The transcript view (`Ctrl+O`) shows one line per hook that fired: success is silent, a blocking error shows stderr, and a non-blocking error shows a `<hook name> hook error` notice with the first stderr line. |
+
+A hook that is configured but never fires is usually one of: a matcher that does not match (matchers are **case-sensitive**), the wrong event (`PreToolUse` fires before execution, `PostToolUse` after), or — for `PermissionRequest` under `-p` — an absent permission prompt, which means `PreToolUse` is the right event instead.
+
+To test a hook outside a session, pipe sample input to it and inspect the exit code:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | bash .claude/hooks/moai/handle-pre-tool.sh
+echo $?
+```
 
 ## Error Handling
 

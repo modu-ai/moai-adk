@@ -233,26 +233,75 @@ func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 	}
 }
 
-func TestSettingsTemplatePlatformHookCommands(t *testing.T) {
-	t.Run("darwin_uses_direct_command", func(t *testing.T) {
+// TestSettingsTemplateHookExecForm verifies that every hook registration uses
+// the exec form — "command": "bash" plus an "args" array carrying the script
+// path — rather than a shell-form command string.
+//
+// Exec form is chosen for three reasons, all observed rather than assumed:
+//   - it bypasses the shell, so a profile that echoes unconditionally cannot
+//     prepend text to the hook's stdout JSON and break parsing;
+//   - invoking bash explicitly removes any dependency on the script's exec bit;
+//   - it renders identically on every platform, so no per-OS branch is needed.
+//
+// The placeholder ${CLAUDE_PROJECT_DIR} is substituted by the runtime inside
+// args, so the path resolves without a shell.
+func TestSettingsTemplateHookExecForm(t *testing.T) {
+	for _, platform := range []string{"darwin", "linux", "windows"} {
+		t.Run(platform+"_renders_identical_exec_form", func(t *testing.T) {
+			ctx := testContext(platform)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			// No shell-form hook command survives on any platform.
+			if strings.Contains(output, `bash \"$CLAUDE_PROJECT_DIR/.claude/hooks`) {
+				t.Error("hook command still uses the shell-form bash prefix")
+			}
+			if strings.Contains(output, `"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks`) {
+				t.Error("hook command still uses the shell-form quoted path")
+			}
+			// The exec form is present for a representative hook.
+			if !strings.Contains(output, `"args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"]`) {
+				t.Error("session-start hook is missing the exec-form args array")
+			}
+		})
+	}
+
+	t.Run("every_hook_entry_pairs_bash_with_args", func(t *testing.T) {
 		ctx := testContext("darwin")
 		output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-		// Darwin should NOT use bash prefix (check raw JSON with escaped quotes)
-		if strings.Contains(output, `bash \"$CLAUDE_PROJECT_DIR`) {
-			t.Error("darwin should not use bash prefix for hook commands")
+		var settings struct {
+			Hooks map[string][]struct {
+				Hooks []struct {
+					Type    string   `json:"type"`
+					Command string   `json:"command"`
+					Args    []string `json:"args"`
+				} `json:"hooks"`
+			} `json:"hooks"`
 		}
-		if !strings.Contains(output, `\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"`) {
-			t.Error("darwin should have direct path to hook script")
+		if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
 		}
-	})
 
-	t.Run("windows_uses_bash_prefix", func(t *testing.T) {
-		ctx := testContext("windows")
-		output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
-
-		if !strings.Contains(output, `bash \"$CLAUDE_PROJECT_DIR`) {
-			t.Error("windows should use bash prefix for hook commands")
+		count := 0
+		for event, groups := range settings.Hooks {
+			for _, group := range groups {
+				for _, h := range group.Hooks {
+					count++
+					if h.Command != "bash" {
+						t.Errorf("%s: command = %q, want \"bash\" (exec form)", event, h.Command)
+					}
+					if len(h.Args) != 1 {
+						t.Errorf("%s: args = %v, want exactly one script path", event, h.Args)
+						continue
+					}
+					if !strings.HasPrefix(h.Args[0], "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/") {
+						t.Errorf("%s: args[0] = %q, want a ${CLAUDE_PROJECT_DIR}-rooted hook path", event, h.Args[0])
+					}
+				}
+			}
+		}
+		if count == 0 {
+			t.Fatal("no hook entries found — the template render or schema changed")
 		}
 	})
 }
@@ -575,13 +624,20 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 				t.Fatalf("%q: hook entry is not an object, got %T", ne.event, hooksArr[0])
 			}
 
-			// Verify command contains the correct shell script name
+			// Exec form: command is the interpreter, the script path is args[0].
 			command, ok := hookEntry["command"].(string)
 			if !ok {
 				t.Fatalf("%q: missing or non-string 'command' field", ne.event)
 			}
-			if !strings.Contains(command, ne.scriptName) {
-				t.Errorf("%q: command %q does not contain expected script name %q", ne.event, command, ne.scriptName)
+			if command != "bash" {
+				t.Errorf("%q: command = %q, want \"bash\" (exec form)", ne.event, command)
+			}
+			rawArgs, ok := hookEntry["args"].([]any)
+			if !ok || len(rawArgs) != 1 {
+				t.Fatalf("%q: args = %v, want exactly one script path", ne.event, hookEntry["args"])
+			}
+			if arg, _ := rawArgs[0].(string); !strings.Contains(arg, ne.scriptName) {
+				t.Errorf("%q: args[0] %q does not contain expected script name %q", ne.event, arg, ne.scriptName)
 			}
 
 			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
@@ -664,23 +720,20 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 					hookEntry := hooksArr[0].(map[string]any)
 					command := hookEntry["command"].(string)
 
-					switch platform {
-					case "darwin", "linux":
-						expected := `"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/` + ne.scriptName + `"`
-						if !strings.Contains(command, expected) {
-							t.Errorf("%s/%s: command %q does not contain expected path %q", platform, ne.event, command, expected)
-						}
-						// Should NOT have bash prefix
-						if strings.HasPrefix(command, "bash ") {
-							t.Errorf("%s/%s: command should not have bash prefix, got %q", platform, ne.event, command)
-						}
-					case "windows":
-						if !strings.HasPrefix(command, "bash ") {
-							t.Errorf("windows/%s: command should have bash prefix, got %q", ne.event, command)
-						}
-						if !strings.Contains(command, ne.scriptName) {
-							t.Errorf("windows/%s: command %q does not contain script name %q", ne.event, command, ne.scriptName)
-						}
+					// Exec form renders identically on every platform: the
+					// command is the bash interpreter and the script path rides
+					// in args, so there is no per-OS branch to assert.
+					if command != "bash" {
+						t.Errorf("%s/%s: command = %q, want \"bash\" (exec form)", platform, ne.event, command)
+					}
+					rawArgs, ok := hookEntry["args"].([]any)
+					if !ok || len(rawArgs) != 1 {
+						t.Fatalf("%s/%s: args = %v, want exactly one script path", platform, ne.event, hookEntry["args"])
+					}
+					arg := rawArgs[0].(string)
+					expected := "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/" + ne.scriptName
+					if arg != expected {
+						t.Errorf("%s/%s: args[0] = %q, want %q", platform, ne.event, arg, expected)
 					}
 				})
 			}

@@ -6,11 +6,8 @@
         "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
             "timeout": 30,
             "type": "command"
           }
@@ -22,11 +19,8 @@
         "matcher": "manual|auto",
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-compact.sh"],
             "timeout": 30,
             "type": "command"
           }
@@ -37,11 +31,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-end.sh"],
             "timeout": 10,
             "type": "command"
           }
@@ -52,11 +43,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-pre-tool.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -68,30 +56,21 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-tool.sh"],
             "timeout": 10,
             "type": "command",
             "async": true
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/status-transition-ownership.sh"],
             "timeout": 5,
             "type": "command"
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-scan.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-scan.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-scan.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -102,11 +81,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-harness-observe.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -118,56 +94,38 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop.sh"],
             "timeout": 5,
             "type": "command"
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/sync-phase-quality-gate.sh"],
             "timeout": 60,
             "type": "command"
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop-goal.sh"],
             "timeout": 120,
             "type": "command"
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-turn.sh"],
             "timeout": 5,
             "type": "command"
           },
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-commit.sh"],
             "timeout": 5,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-harness-observe-stop.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -179,20 +137,14 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-stop.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-subagent-stop.sh"],
             "timeout": 5,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -204,11 +156,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool-failure.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-tool-failure.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -219,11 +168,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-subagent-start.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-subagent-start.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -234,20 +180,14 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-user-prompt-submit.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-user-prompt-submit.sh"],
             "timeout": 5,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -259,11 +199,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-teammate-idle.sh"],
             "timeout": 60,
             "type": "command"
           }
@@ -274,11 +211,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-task-completed.sh"],
             "timeout": 60,
             "type": "command"
           }
@@ -290,11 +224,8 @@
         "matcher": "project_settings|local_settings|skills",
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-config-change.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-config-change.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-config-change.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -306,11 +237,8 @@
         "matcher": "rate_limit|authentication_failed|billing_error|max_output_tokens",
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-failure.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-failure.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop-failure.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -322,11 +250,8 @@
         "matcher": "manual|auto",
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-compact.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-compact.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-post-compact.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -337,11 +262,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-instructions-loaded.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-instructions-loaded.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-instructions-loaded.sh"],
             "timeout": 5,
             "type": "command",
             "async": true
@@ -353,11 +275,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-cwd-changed.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-cwd-changed.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-cwd-changed.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -368,11 +287,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-file-changed.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-file-changed.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-file-changed.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -384,11 +300,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-denied.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-denied.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-permission-denied.sh"],
             "timeout": 5,
             "type": "command"
           }
@@ -399,11 +312,8 @@
       {
         "hooks": [
           {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-permission-request.sh\"",
-{{- end}}
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-permission-request.sh"],
             "timeout": 5,
             "type": "command"
           }
