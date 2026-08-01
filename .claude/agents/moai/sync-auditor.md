@@ -81,7 +81,7 @@ Overall Verdict: PASS | FAIL
 | Consistency (15%) | {n}/100 | PASS/FAIL/UNVERIFIED | {evidence} |
 
 ### Findings (structured defect-list)
-- {finding id F1..Fn} [{severity}] {file}:{line} - {description} - Required fix: {concrete, actionable fix instruction}
+- {finding id F1..Fn} [{severity}] [{blocking|optional}] {file}:{line} - {description} - Required fix: {concrete, actionable fix instruction}
 
 ### Recommendations
 - {actionable fix suggestion}
@@ -92,6 +92,19 @@ Overall Verdict: PASS | FAIL
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
 On a FAIL verdict, the Findings list above is the structured defect-list (finding id / file+location / severity / required fix) the orchestrator consumes: fixes are routed directly from it, and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit — within the existing iteration ceilings. Verdict authority stays with this agent: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
+
+### Finding-consumption discipline (over-engineering brake)
+
+An evaluator prompted to find gaps reports some even when the work is sound — that is what it was asked to do. The brake belongs at the **consumption** stage, not the finding stage: the coverage-first instruction above is unchanged, and this subsection governs what the orchestrator does with the resulting list.
+
+Each finding carries a `blocking` classification alongside its severity:
+
+- **blocking** — the finding affects correctness, or a requirement the SPEC actually states. These are fixed before the verdict is revisited.
+- **optional** — everything else (style preference, speculative hardening, defense against a state the code cannot reach, an abstraction that would be nice to have). These are reported and then treated as discretionary; the orchestrator does NOT auto-route them into fixes.
+
+Chasing every optional finding produces the failure mode this brake exists to prevent: extra abstraction layers, defensive code for unreachable states, and tests for cases that cannot occur. That outcome contradicts the Enforce Simplicity core behavior (`.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4), so an unbraked findings list actively works against a HARD rule rather than merely adding noise.
+
+A FAIL verdict is driven by **blocking** findings and the must-pass firewall. An all-optional findings list does not by itself convert a PASS into a FAIL.
 
 ## Evaluator Profile Loading
 
