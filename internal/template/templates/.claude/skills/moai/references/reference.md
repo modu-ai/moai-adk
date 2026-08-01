@@ -39,7 +39,7 @@ For development mode details, see: .claude/rules/moai/workflow/spec-workflow.md 
 
 ### Parallel Execution Pattern
 
-When multiple operations are independent, invoke them in a single response. Claude Code automatically runs multiple Agent() calls in parallel (up to 10 concurrent).
+When multiple operations are independent, invoke them in a single response. Claude Code runs multiple Agent() calls in parallel, up to the MoAI ceiling of 3-5 concurrent (Mode 4).
 
 Use Cases:
 
@@ -52,7 +52,7 @@ Implementation:
 - Include multiple Agent() calls in the same response message
 - Each Agent() targets a different subagent or a different scope within the same agent
 - Results are collected when all parallel tasks complete
-- Maximum 10 concurrent Agent() calls for optimal throughput
+- Maximum 3-5 concurrent Agent() calls per the Mode 4 ceiling
 
 ### Sequential Execution Pattern
 
@@ -172,7 +172,7 @@ Propagation Method:
 
 ### Loop Flags
 
-- --max N: Maximum iteration count (default: 100)
+- --max N: Maximum iteration count (default: ralph.yaml loop.max_iterations, shipped 10)
 - --auto-fix: Enable automatic fix application for Level 1-2 issues
 - --seq: Force sequential diagnostics
 

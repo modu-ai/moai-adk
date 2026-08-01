@@ -40,7 +40,7 @@ Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{
 
 ## Purpose
 
-Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per the canonical GEARS migration policy). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for pre-v3 SPECs (see the canonical GEARS migration policy for the backward-compatibility window). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
 
 Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 

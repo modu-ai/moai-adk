@@ -282,8 +282,7 @@ Skills:
 
 Tools:
 - Git worktree - Native Git worktree functionality
-- Rich CLI - Formatted terminal output
-- Click framework - Command-line interface framework
+- Cobra - CLI command framework and formatted output
 
 ---
 
@@ -306,8 +305,8 @@ Module Deep Dives:
 - Integration Patterns: Refer to modules/integration-patterns.md for MoAI-ADK integration
 - Troubleshooting: Refer to modules/troubleshooting.md for problem resolution
 
-Full Examples: Refer to examples.md
-External Resources: Refer to reference.md
+Full Examples: Refer to references/examples.md
+External Resources: Refer to references/reference.md
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -316,7 +315,7 @@ External Resources: Refer to reference.md
 |---|---|
 | "Worktree isolation is overkill for this small change" | Small changes on main cause merge conflicts when parallel work is in progress. Worktrees prevent this. |
 | "I will just work on the main branch, it is faster" | Working on main blocks other agents from writing. Worktrees enable parallelism. |
-| "Read-only agents need worktree isolation too, for safety" | Read-only agents (mode: plan) cannot write. Adding isolation wastes resources with no benefit. |
+| "Read-only agents need worktree isolation too, for safety" | Read-only agents cannot write because their tools list omits Write/Edit (the spawn-time mode parameter is deprecated and ignored). Adding isolation wastes resources with no benefit. |
 | "I can skip worktree cleanup, git handles it" | Stale worktree branches accumulate and confuse git worktree list. Always prune after use. |
 | "Absolute paths in agent prompts are fine since the worktree has the same structure" | Absolute paths to the main repo bypass worktree isolation entirely. Use relative paths. |
 
@@ -337,7 +336,7 @@ External Resources: Refer to reference.md
 ## Verification
 
 - [ ] Implementation teammates use isolation: worktree (check agent spawn parameters)
-- [ ] Read-only teammates do NOT use isolation: worktree (verify mode: plan is sufficient)
+- [ ] Read-only teammates do NOT use isolation: worktree (verify the tools list omits Write/Edit)
 - [ ] Agent prompts reference write-target files by relative paths only
 - [ ] `git worktree list` shows no stale worktrees after session ends
 - [ ] Worktree CWD isolation verified on Claude Code >= 2.1.97 (check version)
