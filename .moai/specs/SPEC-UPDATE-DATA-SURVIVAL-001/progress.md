@@ -995,7 +995,7 @@ branch is unverified on Windows. Each is recorded in its milestone's Gaps sectio
 
 ```yaml
 sync_complete_at: 2026-08-01
-sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up chore commit
+sync_commit_sha: 70b6f31d1
 sync_status: audit-ready
 
 b12_self_test_a: "grep -c 'SPEC-UPDATE-DATA-SURVIVAL-001' CHANGELOG.md -> 0 before emission (no duplicate)"
