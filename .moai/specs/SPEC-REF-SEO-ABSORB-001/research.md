@@ -114,7 +114,9 @@
 - `references/`를 쓰는 ref 스킬은 **없음**. 유일한 하위 디렉터리 선례는 `modules/`(3개 하위 도메인으로 분할한 스킬 1건)
 - 신규 스킬 실무 목표: **~160-200 lines / 7-10 KB, SKILL.md 단일 파일**
 
-참고 실측: `moai-ref-ui-polish/SKILL.md` = 184 lines, H2 11개(Target Agents + 도메인 8 + Review Modes) + 불변 3종.
+참고 실측: `moai-ref-ui-polish/SKILL.md` = 184 lines, 명명 H2 ~~11개~~ **10개**(Target Agents + 도메인 8 + Review Modes) + 불변 3종 = **총 13개**.
+
+> **정정 (실측)**: `grep -c '^## ' internal/template/templates/.claude/skills/moai-ref-ui-polish/SKILL.md` → `13`. 괄호 안 열거(Target Agents 1 + 도메인 8 + Review Modes 1 = 10)는 처음부터 정확했고, 앞의 숫자 `11`만 1건 과다 계상이었다. 이 오기가 `acceptance.md` AC-SEO-002의 "H2 11개 + 불변 3 = 14" 근거 문장으로 그대로 전파되었다가 v0.3.0에서 정정되었다. **H2 상한 14 자체는 무관하다** — 상한은 이 선례가 아니라 `spec.md` REQ-SEO-002의 도메인 H2 4-10 + 불변 3 + 선택 1에서 독립적으로 도출된다. 참고로 ref 스킬 9건 H2 실측 분포: secops 9 / api-patterns 11 / owasp-checklist 11 / react-patterns 11 / testing-pyramid 13 / ui-polish 13 / llm-security 14 / supply-chain 15 / git-workflow 16. 형제 SPEC 2건은 이 분포를 "상한 근거"로 오독하지 말 것 — 각자의 REQ가 도메인 H2 범위를 정한다.
 
 ### B.5 등록 표면 (아무도 참조하지 않는 스킬 파일은 inert)
 

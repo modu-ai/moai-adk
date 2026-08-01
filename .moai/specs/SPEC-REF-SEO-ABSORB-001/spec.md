@@ -1,7 +1,7 @@
 ---
 id: SPEC-REF-SEO-ABSORB-001
 title: "moai-ref-seo 레퍼런스 스킬 클린룸 흡수 + 재사용 가능한 클린룸 프로토콜 확립"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-08-01
 updated: 2026-08-01
@@ -16,6 +16,7 @@ tier: M
 
 ## HISTORY
 
+- v0.3.1 (2026-08-01) — plan-audit iteration-3 **PASS(0.87)** 이후 잔여 SHOULD-FIX 처리. N10 정정: `research.md` §B.4의 `moai-ref-ui-polish` H2 수치 `11개` → `명명 10 + 불변 3 = 13개`(실측 재확인). N4가 이 수치를 물려받은 것이었으므로 발원지를 닫았다 — research.md는 형제 SPEC 2건의 재사용 대상이라 오기가 미착수 작업으로 전파된다. N8(REQ-SEO-020 경로 형태 무판정) / N9(REQ-SEO-004 frontmatter 필드 무판정)는 산출물이 존재해야 수정의 동작을 관측할 수 있으므로 사용자 결정에 따라 run-phase M6로 이연.
 - v0.3.0 (2026-08-01) — plan-audit iteration-2 FAIL(0.79, 통과선 0.80에 0.01 미달) 대응 개정. iteration-1 MUST-FIX 6건은 CLOSED 확정되어 재검증 대상이 아니며, 이번 개정은 **v0.2.0에서 새로 쓴 콘텐츠의 1차 감사 결함**을 닫는다. N1 AC-SEO-015 표 헤더 명령 실행 불가(`grep -- '---' -B1` 옵션 파싱), N2 §D.1 추적성 표의 REQ↔AC 매핑 오기재 및 그에 기댄 §B 번호 관례 근거 문장, N3 AC-SEO-013 이중 임계값. SHOULD-FIX N4-N7 + SF-10 동반 정정.
 - v0.2.0 (2026-08-01) — plan-audit iteration-1 FAIL(0.72) 대응 개정. MUST-FIX 6건 정정(AC-SEO-025 가드 오지정 / AC-SEO-022 표면 집합 역전 / 접근성 결정-요구사항 충돌 / 요구사항 개수 오기재 / 미해소 마커 5건 / REQ 번호 결번), plan.md §B의 열린 결정 5건을 전부 결정 기록으로 치환, 클린룸 프로토콜에 구조 발산 판정과 원문 해시 고정을 추가.
 - v0.1.0 (2026-08-01) — plan-phase 최초 저작. 3-렌즈 조사(research.md) 기반. 미해소 결정 5건은 plan.md §B에 clarification 마커로 보류(v0.2.0에서 전부 결정 기록으로 치환).
