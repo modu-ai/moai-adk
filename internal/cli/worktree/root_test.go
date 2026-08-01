@@ -35,8 +35,8 @@ func TestWorktreeCmd_Short(t *testing.T) {
 
 func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 	expected := []string{
-		"new", "list", "switch", "go", "sync", "remove", "clean", "recover", "done", "config", "status",
-		"snapshot", "verify", "restore", // Wave 5 (T6 worktree state guard)
+		"new", "sync", "remove", "clean", "recover", "done",
+		"snapshot", "verify", "restore", // worktree state guard
 	}
 	for _, name := range expected {
 		found := false
@@ -52,9 +52,24 @@ func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 	}
 }
 
+// TestWorktreeCmd_RetiredSubcommands pins the retirement of the navigation and
+// inspection subcommands. Entering a worktree is `moai cc -w <name>`; git's own
+// `worktree list` covers inspection. A resurrected subcommand here would put a
+// second, diverging entry path back in front of users.
+func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
+	retired := []string{"list", "switch", "go", "config", "status"}
+	for _, name := range retired {
+		for _, cmd := range WorktreeCmd.Commands() {
+			if cmd.Name() == name {
+				t.Errorf("worktree subcommand %q is retired and must not be registered", name)
+			}
+		}
+	}
+}
+
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	const expected = 14 // 11 original + 3 Wave 5 (snapshot, verify, restore)
+	const expected = 9 // new, sync, remove, clean, recover, done + guard snapshot/verify/restore
 	if count != expected {
 		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}
@@ -95,20 +110,6 @@ func TestWorktreeCmd_RemoveRequiresArg(t *testing.T) {
 	t.Error("remove subcommand not found")
 }
 
-func TestWorktreeCmd_ListNoArgs(t *testing.T) {
-	for _, cmd := range WorktreeCmd.Commands() {
-		if cmd.Name() == "list" {
-			// "list" has no WorktreeProvider, should error
-			err := cmd.RunE(cmd, []string{})
-			if err == nil {
-				t.Error("worktree list should error without WorktreeProvider")
-			}
-			return
-		}
-	}
-	t.Error("list subcommand not found")
-}
-
 func TestWorktreeCmd_CleanNoProvider(t *testing.T) {
 	WorktreeProvider = nil
 	for _, cmd := range WorktreeCmd.Commands() {
@@ -137,20 +138,6 @@ func TestWorktreeCmd_SyncNoProvider(t *testing.T) {
 	t.Error("sync subcommand not found")
 }
 
-func TestWorktreeCmd_SwitchNoProvider(t *testing.T) {
-	WorktreeProvider = nil
-	for _, cmd := range WorktreeCmd.Commands() {
-		if cmd.Name() == "switch" {
-			err := cmd.RunE(cmd, []string{"test-branch"})
-			if err == nil {
-				t.Error("worktree switch should error without WorktreeProvider")
-			}
-			return
-		}
-	}
-	t.Error("switch subcommand not found")
-}
-
 func TestWorktreeCmd_NewNoProvider(t *testing.T) {
 	WorktreeProvider = nil
 	for _, cmd := range WorktreeCmd.Commands() {
@@ -177,51 +164,4 @@ func TestWorktreeCmd_RemoveNoProvider(t *testing.T) {
 		}
 	}
 	t.Error("remove subcommand not found")
-}
-
-func TestWorktreeCmd_GoRequiresArg(t *testing.T) {
-	for _, cmd := range WorktreeCmd.Commands() {
-		if cmd.Name() == "go" {
-			err := cmd.Args(cmd, []string{})
-			if err == nil {
-				t.Error("worktree go should require an argument")
-			}
-			return
-		}
-	}
-	t.Error("go subcommand not found")
-}
-
-func TestWorktreeCmd_GoNoProvider(t *testing.T) {
-	origProvider := WorktreeProvider
-	defer func() { WorktreeProvider = origProvider }()
-
-	WorktreeProvider = nil
-	for _, cmd := range WorktreeCmd.Commands() {
-		if cmd.Name() == "go" {
-			err := cmd.RunE(cmd, []string{"test-branch"})
-			if err == nil {
-				t.Error("worktree go should error without WorktreeProvider")
-			}
-			return
-		}
-	}
-	t.Error("go subcommand not found")
-}
-
-func TestMinLen(t *testing.T) {
-	tests := []struct {
-		a, b, want int
-	}{
-		{5, 10, 5},
-		{10, 5, 5},
-		{0, 0, 0},
-		{8, 8, 8},
-	}
-	for _, tt := range tests {
-		got := minLen(tt.a, tt.b)
-		if got != tt.want {
-			t.Errorf("minLen(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.want)
-		}
-	}
 }
