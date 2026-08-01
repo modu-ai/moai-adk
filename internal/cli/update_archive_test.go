@@ -279,3 +279,81 @@ func TestCopyFile_Success(t *testing.T) {
 		t.Errorf("content mismatch: got %q want %q", got, content)
 	}
 }
+
+// TestArchiveSkill_PreservesUserContent asserts that archiveSkill PRESERVES
+// user-authored content rather than deleting it.
+//
+// Three observations distinguish archive-from-delete and copy-from-move:
+//
+//  1. The archive destination exists.
+//  2. Its content is BYTE-IDENTICAL to the source. Existence alone is not
+//     enough — an implementation that merely created an empty directory would
+//     satisfy (1) while having preserved nothing.
+//  3. The original .claude/skills/<id>/ still exists AFTER the call.
+//     archiveSkill copies and does not remove (copyDirAll then return nil; no
+//     os.Remove), so this guards against a copy→os.Rename regression.
+//
+// Deliberately NOT asserted: "the original eventually disappears".
+// Neither archiveSkill nor archiveLegacySkills removes the source. The
+// original's later absence is a downstream consequence of update's
+// clean-reinstall not redeploying a skill that no longer ships in the
+// template — out of scope for this unit.
+func TestArchiveSkill_PreservesUserContent(t *testing.T) {
+	projectRoot := t.TempDir()
+	const skillID = "moai-workflow-ci-loop"
+
+	// Identifiable user-authored content: a top-level SKILL.md plus a nested
+	// file, so the assertion covers recursive copy rather than a single file.
+	srcDir := filepath.Join(projectRoot, ".claude", "skills", skillID)
+	nestedDir := filepath.Join(srcDir, "references")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("mkdir source skill tree: %v", err)
+	}
+	userFiles := map[string]string{
+		filepath.Join(srcDir, "SKILL.md"):            "# user-authored ci-loop skill\nlocal customization marker A\n",
+		filepath.Join(nestedDir, "user-playbook.md"): "user customization marker B\n",
+	}
+	for path, content := range userFiles {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+	}
+
+	if err := archiveSkill(projectRoot, skillID); err != nil {
+		t.Fatalf("archiveSkill(%s) error = %v, want nil", skillID, err)
+	}
+
+	// (3) the original survives the call (copy, not move). Checked first so a
+	// copy→os.Rename regression reports as a clear removal, not as a hashing
+	// failure on a vanished directory.
+	if _, err := os.Stat(srcDir); err != nil {
+		t.Fatalf("original skill directory removed by archiveSkill (copy→move regression): %v", err)
+	}
+	for path := range userFiles {
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("original user file %s removed by archiveSkill: %v", path, err)
+		}
+	}
+
+	// (1)+(2) archive holds byte-identical content.
+	dstDir := filepath.Join(projectRoot, ".moai", "archive", "skills", archiveVersion, skillID)
+	if _, err := os.Stat(dstDir); err != nil {
+		t.Fatalf("archive destination %s not created: %v", dstDir, err)
+	}
+	srcHashes := hashDir(t, srcDir)
+	dstHashes := hashDir(t, dstDir)
+	if len(dstHashes) != len(srcHashes) {
+		t.Fatalf("archive file count = %d, want %d (src=%v dst=%v)",
+			len(dstHashes), len(srcHashes), srcHashes, dstHashes)
+	}
+	for rel, want := range srcHashes {
+		got, ok := dstHashes[rel]
+		if !ok {
+			t.Errorf("archive missing user-authored file %s", rel)
+			continue
+		}
+		if got != want {
+			t.Errorf("archive content for %s = %s, want byte-identical %s", rel, got, want)
+		}
+	}
+}

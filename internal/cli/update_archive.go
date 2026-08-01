@@ -56,6 +56,14 @@ var legacySkillIDs = []string{
 	"moai-workflow-research",
 	"moai-workflow-pencil-integration",
 	"moai-formats-data",
+	// moai-workflow-ci-loop was retired from distribution after this list was
+	// first written: the CI watch/auto-fix loop it documents depends on shell
+	// scripts that are development-repo-only and never shipped. Projects that
+	// received it from an earlier release keep their customizations via the
+	// archive path rather than losing them on the next update. The archive
+	// directory tag stays "v2.16" — the tag is a label on a preservation
+	// location, not a claim about when a given skill was retired.
+	"moai-workflow-ci-loop",
 }
 
 // archiveSkill copies projectRoot/.claude/skills/<skillID>/
