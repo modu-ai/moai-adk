@@ -149,7 +149,7 @@ Review Checklist:
 Review Workflow:
 - Author creates SPEC draft
 - Reviewer validates against checklist
-- Author adddesses review feedback
+- Author addresses review feedback
 - Final approval before implementation
 - Post-implementation verification
 

@@ -68,7 +68,7 @@ progressive_disclosure:
 > active workflow. The revfactory 7-Phase residual grep excludes this body
 > precisely because it IS the redirect source.
 
-<!-- @MX:NOTE: [AUTO] V3R4 contract SUPERSEDED — the original V3R4 contract preserved this skill body unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). That contract is hereby EXPLICITLY SUPERSEDED by the v4 harness redesign: the body is converted to a v4 redirect. Rationale for supersession: (1) the V3R4 contract protected against behavioral change, but v4 IS a deliberate behavioral change — the 7-Phase workflow is retired in favor of the orchestrator-direct Builder + manifest-driven Runner; (2) preserving the body unchanged would leave a dead-path 7-Phase workflow that contradicts the v4 design; (3) the AskUserQuestion-only contract (REQ-HRN-FND-015) is itself preserved verbatim under v4 — any generated subagent under .claude/agents/harness/ still MUST NOT invoke AskUserQuestion (this is reaffirmed, not weakened). The supersession is narrow: the 7-Phase workflow is retired; the AskUserQuestion boundary + namespace separation + Apache-2.0 attribution are all preserved. Cross-reference: the v4 design's Migration Path (revfactory 7-Phase -> v4 mapping) in the companion harness-builder.md workflow. -->
+<!-- @MX:NOTE: [AUTO] prior contract SUPERSEDED — the original contract preserved this skill body unchanged per the harness foundation policy §10 exclusion #10 (text annotation only, no behavioral change). That contract is hereby EXPLICITLY SUPERSEDED by the v4 harness redesign: the body is converted to a v4 redirect. Rationale for supersession: (1) the prior contract protected against behavioral change, but v4 IS a deliberate behavioral change — the 7-Phase workflow is retired in favor of the orchestrator-direct Builder + manifest-driven Runner; (2) preserving the body unchanged would leave a dead-path 7-Phase workflow that contradicts the v4 design; (3) the AskUserQuestion-only contract is itself preserved verbatim under v4 — any generated subagent under .claude/agents/harness/ still MUST NOT invoke AskUserQuestion (this is reaffirmed, not weakened). The supersession is narrow: the 7-Phase workflow is retired; the AskUserQuestion boundary + namespace separation + Apache-2.0 attribution are all preserved. Cross-reference: the v4 design's Migration Path (revfactory 7-Phase -> v4 mapping) in the companion harness-builder.md workflow. -->
 
 <!-- ATTRIBUTION
 Original work: revfactory/harness (https://github.com/revfactory/harness)
@@ -157,7 +157,7 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 | 4. Skeleton | Phase 3 agent definition generation | meta-harness (this skill) | SPEC doc | `.moai/harness/main.md` + extensions |
 | 5. Customization | Phase 4 skill generation | meta-harness (this skill) | Skeleton | `.claude/agents/harness/*.md` + `.claude/skills/harness-*/SKILL.md` |
 | 6. Evaluation | Phase 5 integration + Phase 6 validation | sync-auditor | Generated artifacts | Sprint Contract score |
-| 7. Iteration | Harness Evolution Mechanism + Phase 7-5 ops | LEARNING-001 (separate SPEC) | Scoring deltas | Factory feedback (out of scope) |
+| 7. Iteration | Harness Evolution Mechanism + Phase 7-5 ops | the harness-learning policy (separate SPEC) | Scoring deltas | Factory feedback (out of scope) |
 
 ### Phase Summaries
 
@@ -196,7 +196,7 @@ After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness au
 - FROZEN floor: 0.60 (design constitution §2, immutable)
 - Scoring rubric: sync-auditor rubric anchoring (design constitution §12, Mechanism 1)
 
-For Phase 3b — HRN-003 Hierarchical Scoring (when `harness.yaml` sets `evaluator_mode: hierarchical`), see [HRN-003 hierarchical scoring detail](references/hrn-003-hierarchical-scoring.md).
+For Phase 3b — Hierarchical Scoring (when `harness.yaml` sets `evaluator_mode: hierarchical`), see [hierarchical scoring detail](references/hierarchical-scoring.md).
 
 **Design Target Reference**: The +60% effectiveness figure from Hwang (2026) — 49.5 → 79.3 in a 15-run A/B study (author-measured, third-party replications pending) — is the design intent for this validation hook. The governing requirement explicitly states this does not require runtime measurement.
 
@@ -278,7 +278,7 @@ This skill loads when any of the following match:
 This skill provides the workflow recipe and agent cross-references. It does NOT execute `/moai project` Phase 5+ logic — that invocation is owned by the project-harness generation policy. The separation is intentional:
 
 - This skill = capability (what to do and how)
-- PROJECT-HARNESS-001 = invocation wiring (when to do it)
+- the project-harness generation policy = invocation wiring (when to do it)
 
 ---
 

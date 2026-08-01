@@ -140,8 +140,8 @@ iteration records classification, sub_class, action, patch_sha, escalation_reaso
 - `**/.env`, `**/.env.*`
 - `**/credentials*`, `**/*_key.json`, `**/*secret*`
 - `.claude/settings.json`, `.claude/settings.local.json`
-- `.github/required-checks.yml` (Wave 1 SSoT, read-only for Wave 2/3)
-- `scripts/ci-watch/run.sh` (Wave 2 invariant)
+- `.github/required-checks.yml` (required-checks SSoT; read-only for the watch and auto-fix layers)
+- `scripts/ci-watch/run.sh` (watch-layer entry point)
 
 If the `manager-develop` (cycle_type=autofix) subagent proposes a patch touching any of these, reject and escalate.
 
@@ -163,7 +163,7 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 - `manager-git` — commit/push of auto-fix patches
 - `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD watch invocation contract
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` — HARD autofix invocation contract
-- `.github/required-checks.yml` — Wave 1 SSoT
+- `.github/required-checks.yml` — required-checks SSoT
 
 ## Common Rationalizations
 

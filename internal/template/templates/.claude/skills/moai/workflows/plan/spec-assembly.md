@@ -233,7 +233,7 @@ For `thorough` harness with `cross_validate_with_evaluator_active: true`: after 
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
-[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs (D2 — `issue_number` field-removal prospective only; existing SPECs retain the field per EXCL-LB-008).
+[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs. The removal is prospective only — existing SPECs retain the field.
 
 Execution conditions (ALL must hold):
 - `--issue` flag IS set (explicit opt-in)
@@ -320,7 +320,7 @@ Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pa
 
 #### Phase 13: BODP Gate (공통)
 
-Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: the CI-autonomy policy W7-T02.
+Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation.
 
 Steps:
 
@@ -340,7 +340,7 @@ Steps:
 
 Out of Scope (BODP Gate):
 - "Other" free-form base interpretation: orchestrator parses input as a base branch name; invalid input falls back to `origin/main` with a warning.
-- Concurrent invocation safety: single-session orchestrator assumed (W7-R5 follow-up).
+- Concurrent invocation safety: a single-session orchestrator is assumed.
 
 #### Worktree Path (--worktree flag)
 

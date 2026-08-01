@@ -185,12 +185,3 @@ Version: 2.1.0
 - [ ] Components under 300 lines or decomposed with clear sub-component boundaries
 
 <!-- moai:evolvable-end -->
-
-## Refactor Notes
-
-**Refactor scope** (deferred to future sub-SPEC):
-- Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
-- Extract framework-specific deep-dives into Level-3 modules
-- Remove content that duplicates coverage in library and reference skills
-
-This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

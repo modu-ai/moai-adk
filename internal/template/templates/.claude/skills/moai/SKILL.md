@@ -241,7 +241,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 Skills: moai-harness-learner (Tier-4 surfacing companion). Project-specific harness generation is handled by the v4 Builder (`builder-harness` agent, Branch B).
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
-Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
+Authoritative contract: the harness foundation policy
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove / doctor)

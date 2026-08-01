@@ -273,4 +273,4 @@ Mode selection:
 ---
 
 Version: 3.0.1
-Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
+Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
