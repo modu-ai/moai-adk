@@ -384,7 +384,7 @@ Stagnation detection: If a defect appears in all three iterations unchanged, fla
 
 ### LEAN Workflow Additions
 
-The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20).
+The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment.
 
 **STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; instead, present the user with three options via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`):
 

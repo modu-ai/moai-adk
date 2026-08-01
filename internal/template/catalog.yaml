@@ -132,7 +132,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: c3a338508146fe1bddf566924968404901f8e62ad6b116a4f7bb982aca20a22f
+              hash: da6b31316f96482c2dff9124d98c6c76d1e04ca6fabe17544e81b7bf28d4fd5c
               version: 1.0.0
             - name: super-advisor
               tier: core
