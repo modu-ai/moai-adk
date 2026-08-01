@@ -29,11 +29,20 @@ SPEC-UPDATE-DATA-SURVIVAL-001은 `moai update` 경로의 데이터 유실을 막
 
 부채의 공통 성격은 "가드가 없다"가 아니라 **"가드는 있는데 그 가드가 주장하는 만큼 넓지 않거나, 판정 명령이 코드가 아니라 실행 환경에 의존한다"**는 것이다. 따라서 이 SPEC의 산출물은 대부분 테스트와 판정 명령이며, 프로덕션 코드 변경은 최소 두 곳(주입 가능한 stat 이음매, HOME 해석 이음매 통일)에 한정된다.
 
-### §1.1 베이스라인 주의 — 이 SPEC이 겨냥하는 코드는 아직 `origin/main`에 없다
+### §1.1 베이스라인 — PR #1275는 머지되었고 이 브랜치에 반영되었다
 
-`origin/main`(`a64548a2a`)에는 SPEC-UPDATE-DATA-SURVIVAL-001의 M5·M6가 **아직 없다**. 두 마일스톤은 PR #1275(`feat/SPEC-UPDATE-DATA-SURVIVAL-001`)에 실려 자동 머지를 기다리는 중이다. 이 SPEC이 손대는 `update_safety_test.go`, `update_preserve_partial_test.go`, `update_preserve_inventory.go`의 `restored %d/%d` 보고는 모두 그 PR 위에서만 존재한다.
+이 SPEC이 겨냥하는 코드(SPEC-UPDATE-DATA-SURVIVAL-001의 M5·M6)는 PR #1275로 **이미 `origin/main`에 들어왔다**.
 
-따라서 **run-phase 진입 전에 PR #1275 머지 후의 `origin/main`으로 리베이스하는 것이 선행 조건**이다. 자세한 절차는 plan.md §C를 따른다.
+```
+$ gh pr view 1275 --json state,mergedAt,mergeCommit
+{"mergeCommit":{"oid":"83610e03e…"},"mergedAt":"2026-08-01T15:56:27Z","state":"MERGED"}
+$ git rev-parse --short origin/main
+83610e03e
+```
+
+이 SPEC의 plan 브랜치는 `origin/main`을 머지해 `merge-base`가 `83610e03e`로 올라왔고, 타깃 파일 세 개(`update_safety_test.go`, `update_preserve_partial_test.go`, `update_home_radius_test.go`)와 `restored %d/%d` 보고 3건이 모두 실재함을 확인했다.
+
+> **정정 이력**: 이 절의 최초 판은 "PR #1275가 아직 머지되지 않았다"고 적었다. 저작 시점에 이미 거짓이었다(머지 시각이 저작 시각보다 앞선다). plan.md §C1의 리베이스 절차 자체는 유효하며, run-phase는 진입 시점에 그 절차로 상태를 **재확인**한다 — 이 문장을 근거로 확인을 생략하지 않는다.
 
 ### §1.2 실측 근거
 
@@ -80,12 +89,27 @@ internal/cli/update.go:851:                 homeDir, err := userHomeDirFn()
 - **REQ-UGE-002** — **When** stat 이음매가 `os.ErrNotExist`가 아닌 오류를 반환하면, `mergeBackPreserveInventory`는 멈춘 파일 이름과 이미 복원된 개수를 담은 오류를 반환해야 한다(shall). 이는 기존 동작의 보존이며 변경이 아니다.
 - **REQ-UGE-003** — **Where** 테스트가 stat 이음매를 주입하는 경우, stat 실패 분기를 구동하는 서브테스트는 권한 비트에 의존하지 않아야 하며 어떤 플랫폼에서도 `t.Skip`하지 않아야 한다(shall not skip).
 
-### 부채 D3 — HOME 해석 이음매가 update 서브시스템 전체에 균일하지 않다
+### 부채 D3 — HOME 해석 이음매가 update 서브시스템 전체에 균일하지 않다 (근거 재작성)
 
-`ensureGlobalSettingsEnv`만 `userHomeDirFn` 이음매를 쓰고, update 서브시스템의 다른 세 호출부는 `userHomeDir()`를 직접 부른다. 이 때문에 HOME 반경을 고정하려는 어떤 가드도 그 세 경로에는 닿지 못하며, 향후 그 경로를 검증하려는 테스트는 매번 이음매 작업을 먼저 해야 한다.
+`ensureGlobalSettingsEnv`만 `userHomeDirFn` 이음매를 쓰고, update 서브시스템의 다른 세 호출부는 `userHomeDir()`를 직접 부른다.
 
-- **REQ-UGE-004** — update 서브시스템의 HOME 해석 호출부(`update_clean_install.go`의 deploy 컨텍스트 구성부, `update_template_sync.go`의 Validate Templates 단계와 Deploy Templates 단계)는 `userHomeDirFn` 이음매를 경유해야 한다(shall).
-- **REQ-UGE-005** — 이 변경은 호출부의 관측 가능한 동작을 바꾸지 않아야 한다(shall not) — `userHomeDirFn`의 기본값이 `userHomeDir`이므로 주입이 없을 때의 결과는 동일하다.
+> **정정 — 삭제 반경 누수가 아니라 테스트 격리 누수다.** 이 절의 최초 판은 "HOME 삭제 반경이 이 세 곳으로 새어 나간다"고 적었다. **거짓이다.** 세 호출부를 직접 읽어 확인한 결과, `homeDir`은 오직 두 곳으로만 흐른다.
+>
+> ```
+> internal/cli/update_clean_install.go:410-411   homeDir, _ := userHomeDir()
+>                                                goBinPath := detectGoBinPathForUpdate(homeDir)
+> internal/cli/update_template_sync.go:227-228   (동일)
+> internal/cli/update_template_sync.go:272-273   (동일)
+> ```
+>
+> 둘 다 **렌더링 입력**이다 — `template.WithHomeDir(homeDir)`와 `template.WithGoBinPath(goBinPath)`. 세 호출부 어디에도 `os.RemoveAll`이 없다. (`update_clean_install.go:322`의 `os.RemoveAll(abs)`는 `projectRoot` 기반 `deprecated` 경로 루프이며 `homeDir`과 무관하다.) 따라서 "삭제 반경"을 근거로 세운 최초 REQ는 성립하지 않았고, plan.md의 "M2 없이는 M3 가드가 한 곳만 고정한다"는 주장도 거짓이었다 — M2가 있든 없든 M3는 한 곳을 고정한다.
+
+**실제 위험은 테스트 격리 누수다.** 테스트가 `userHomeDirFn`을 주입해도 이 세 호출부는 여전히 프로세스 `$HOME`을 읽는다. 그 결과 테스트 안의 템플릿 렌더링이 **운영자의 실제 홈 디렉터리에 좌우된다.** 구체적으로 `detectGoBinPathForUpdate` → `gobin.Detect(homeDir)`는 `GOBIN`/`GOPATH`가 비면 `filepath.Join(homeDir, "go", "bin")`로 떨어지므로, 렌더된 `settings.json`의 `PATH`와 `status_line.sh`의 폴백 경로에 운영자의 실제 홈 절대 경로가 박힌다. 이것은 CLAUDE.local.md §22.4가 기록한 "머신 종속 절대 경로가 렌더 산출물에 굳는다"는 위험과 같은 계열이며, 주입한 픽스처가 아니라 실행 머신이 테스트 결과를 결정한다는 뜻이다.
+
+- **REQ-UGE-004** — update 서브시스템의 HOME 해석 호출부(`update_clean_install.go`의 deploy 컨텍스트 구성부, `update_template_sync.go`의 Validate Templates 단계와 Deploy Templates 단계)는 `userHomeDirFn` 이음매를 경유해야 한다(shall). 목적은 **테스트 격리**다 — 주입된 홈이 렌더링 입력까지 일관되게 도달하게 한다.
+- **REQ-UGE-005** — **When** 테스트가 `userHomeDirFn`을 주입하고 이 세 경로 중 하나에 도달하면, 렌더링 결과는 주입된 홈을 따라야 하며(shall) 프로세스 `$HOME`을 따르지 않아야 한다(shall not).
+
+> **의도된 동작 변화임을 명시한다.** REQ-UGE-005는 "동작이 안 바뀐다"가 **아니다**. 이음매를 주입한 테스트에 대해서는 동작이 **바뀐다** — 렌더링이 주입된 홈을 따라간다. 그것이 이 마일스톤의 목적이며 회귀가 아니다. 주입이 없는 프로덕션 실행에서는 `userHomeDirFn`의 기본값이 `userHomeDir`이므로 결과가 동일하다. 따라서 판정은 "전체 스위트가 여전히 green"이 아니라 **주입된 홈을 따라가는지를 직접 관측**하는 것이어야 한다(AC-UGE-006).
 
 ### 부채 D2 — HOME 반경 판정이 운영자 머신 상태에 의존한다
 
@@ -99,11 +123,28 @@ AC-UDS-013의 판정은 실제 `~/.claude/hooks`의 before/after 스냅샷을 `d
 
 `TestMoaiUpdate_PreservesUserArea`는 `deploy.CleanMoaiManagedPaths` 하나를 의도적으로 구동하고, `MigrateLegacyMemoryDir`는 그 꼬리 호출로 조기 반환 분기만 스쳐 지나간다. `runCleanReinstall`(clean-reinstall 오케스트레이션)과 `BackupMoaiConfig`(백업 단계)에는 사용자 소유 디렉터리 보존 어서션이 닿지 않는다(§1.3 정정 참조).
 
-- **REQ-UGE-009** — 사용자 소유 디렉터리(`.moai/harness/`, `.claude/agents/harness/`, `.claude/skills/harness-*`)의 바이트 동일성을 주장하는 가드는 `runCleanReinstall`을 실제로 구동해야 한다(shall).
-- **REQ-UGE-010** — 같은 성격의 가드가 `backup.BackupMoaiConfig`를 실제로 구동해야 한다(shall).
+- **REQ-UGE-009** — 사용자 소유 디렉터리(`.moai/harness/`, `.claude/agents/harness/`, `.claude/skills/harness-*`)의 바이트 동일성을 주장하는 가드는 `runCleanReinstall`을 실제로 구동해야 한다(shall). 그 가드는 `runCleanReinstall`의 파괴적 표면 — `scanDeprecatedPaths`가 만든 목록에 대한 `os.RemoveAll(abs)` 루프 — 을 지나야 한다.
+- **REQ-UGE-010** — 백업 서브시스템의 **파괴적 표면**에 대해 보존 가드가 있어야 한다(shall). 표면은 둘이다.
+  - (a) `BackupMoaiConfig`의 실패 롤백 `os.RemoveAll(backupDir)` — 그 실행이 만든 백업 디렉터리만 지워야 하며 형제 백업이나 사용자 영역을 지워서는 안 된다(shall not).
+  - (b) `CleanupOldBackups`의 회전 삭제 — **가장 최신 `keepCount`개가 살아남아야** 하며 가장 오래된 초과분만 지워져야 한다(shall).
+
+> **REQ-UGE-010 재정박 근거.** 이 REQ의 최초 판은 "`BackupMoaiConfig`를 구동하는 보존 가드"였다. 코드를 읽어 보니 `BackupMoaiConfig`의 주 경로는 **순수 추가(copy)** 라서, 그 위에 세운 "사용자 영역 불변" 가드는 구조적으로 거의 공허하다 — 아무것도 지우지 않는 함수가 아무것도 지우지 않았음을 확인하는 꼴이다. 실제로 파괴적인 것은 위 두 표면이며, 특히 (b)는 **과거에 실제로 뒤집혔던 버그**다(`backup.go`의 주석: "A prior revision deleted `backups[keepCount:]` — the newest — which destroyed the most recent restore points on every rotation"). 그 역사적 반전이 그대로 반증 변형(canary)이 된다. 부채 D1이 지목한 "백업 단계에 보존 어서션이 없다"는 이렇게 해소해야 의미가 있다.
 - **REQ-UGE-011** — `MigrateLegacyMemoryDir`의 파괴적 분기 두 갈래 — `.moai/state/` 부재 시의 rename 분기, 양쪽 존재 시의 backup-then-remove 분기 — 는 각각 결정적으로 도달되어야 하며(shall), 두 경우 모두 사용자 소유 디렉터리가 불변임을 주장해야 한다(shall).
 - **REQ-UGE-012** — **When** `CleanMoaiManagedPaths`의 `.claude/skills/moai*` 글로브가 사용자 소유 스킬을 포함하도록 넓혀지면, 사용자 영역 보존 가드는 실패해야 한다(shall fail). 선행 SPEC은 이 방향을 반증하지 못한 채 글로브 범위를 읽는 것만으로 위험을 주장했다.
-- **REQ-UGE-013** — 각 가드는 변경 전 코드 또는 명시된 변형(mutation)에 대해 **실패하는 것이 관측되어야** 한다(shall be observed failing). 통과만 관측된 가드는 실효성이 증명되지 않은 것으로 본다.
+- **REQ-UGE-013** — 이 SPEC이 **새로 만들거나 고치는 모든 가드**는 변경 전 코드 또는 명시된 변형(mutation)에 대해 **실패하는 것이 관측되어야** 한다(shall be observed failing). 통과만 관측된 가드는 실효성이 증명되지 않은 것으로 본다.
+
+  구속 대상 가드는 **여섯** 개이며, 각각 자기 반증 AC를 가진다. 반증 없는 가드는 하나도 없어야 한다.
+
+  | 가드 | 반증 AC | 변형(canary) |
+  |---|---|---|
+  | M1 stat 이음매 가드 | AC-UGE-003 | 변경 전 `update_preserve_inventory.go` overlay |
+  | M2 렌더링 격리 가드 | AC-UGE-006F | 세 호출부를 `userHomeDir()`로 되돌리는 overlay |
+  | M3 HOME 반경 가드 | AC-UGE-008 | 테스트의 이음매 주입을 `userHomeDir`로 치환 |
+  | M4 `runCleanReinstall` 가드 | AC-UGE-009F | `scanDeprecatedPaths`에 사용자 경로 추가 |
+  | M4 백업 회전 가드 | AC-UGE-010F | 회전 슬라이스를 역사적 버그 형태로 반전 |
+  | M4 `MigrateLegacyMemoryDir` 가드 | AC-UGE-011F | backup-then-remove의 백업 단계 제거 |
+
+> **정정 이력**: 최초 판은 REQ-UGE-013을 "각 가드"라고 썼으나 §D 추적 매트릭스는 세 AC(003/008/012)에만 매핑했고, 그중 AC-UGE-012는 **기존** 가드를 겨냥했다. 결과적으로 M4가 새로 만드는 세 가드에 반증이 하나도 없었다 — 자기 §A.4를 스스로 어긴 상태였다. 위 표가 그 공백을 메운다.
 
 ### 비기능 요구사항
 
@@ -112,6 +153,16 @@ AC-UDS-013의 판정은 실제 `~/.claude/hooks`의 before/after 스냅샷을 `d
 - **NFR-UGE-003** — `GOOS=windows GOARCH=amd64 go build ./...`가 성공해야 한다(shall).
 - **NFR-UGE-004** — 기존 성공 경로에 회귀가 없어야 한다(shall not regress) — `go test ./...` 전체가 통과해야 한다.
 - **NFR-UGE-005** — Go 관례(`snake_case.go` 파일명, `fmt.Errorf("…: %w", err)` 래핑)를 따라야 한다(shall). 이 항목은 프로젝트 툴체인(`gofmt`/`go vet`/`golangci-lint`)이 강제하므로 별도 AC에 매핑하지 않는다.
+
+### 수용된 부채 — 패키지 수준 이음매의 누적
+
+이 SPEC은 `internal/cli`에 **두 번째** 패키지 수준 테스트 이음매(`osStatFn`)를 추가한다. 첫 번째는 기존 `userHomeDirFn`이다. 그 대가는 **영구적 비병렬성**이다 — 두 이음매를 재할당하는 테스트는 영원히 `t.Parallel()`을 쓸 수 없고, 그 제약은 이음매가 존재하는 한 갚아지지 않는다.
+
+AC-UGE-015는 이 비용을 **감시**할 뿐 **상환 계획이 아니다.** 이것을 알려진·수용된 부채로 여기 기록해 둔다.
+
+- **왜 수용하는가**: 대안(구조체 필드, 파라미터 추가)은 `mergeBackPreserveInventory`의 시그니처와 호출부를 모두 바꾸며, 이 SPEC의 목적(분기 도달성)에 필요하지 않다. 이 패키지는 이미 같은 대가를 치르고 있어 *새로운* 종류의 제약이 아니다.
+- **상환은 이 SPEC의 범위가 아니다**: 이음매 두 개를 하나의 주입 가능한 구조체로 묶는 리팩터링은 별도 SPEC 소관이다. 세 번째 패키지 수준 이음매가 필요해지는 시점이 그 리팩터링의 진입 조건으로 적절하다.
+- **재발견 방지**: 이후 감사에서 "왜 이 패키지는 병렬 테스트를 못 쓰는가"가 다시 제기되면 이 절을 근거로 인용한다.
 
 ## §3 범위 밖 (Out of Scope)
 

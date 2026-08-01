@@ -7,7 +7,9 @@
 부채 네 건은 성격이 다르다.
 
 - **D4 (stat 이음매)**는 프로덕션 타입 결정이다. 이음매의 모양(패키지 변수 vs 구조체 필드 vs 함수 파라미터)을 정해야 하고, 그 결정이 이후 테스트 작성 방식을 규정한다. **가장 되돌리기 어렵고, 리뷰에서 바뀔 가능성이 가장 크다.**
-- **D3 (HOME 이음매 균일화)**도 프로덕션 변경이지만 이음매는 이미 존재하며(`userHomeDirFn`) 호출부를 그리로 옮기는 기계적 작업이다. 다만 **D2의 가드 범위를 넓혀 주므로 D2보다 먼저 와야 한다.**
+- **D3 (HOME 이음매 균일화)**도 프로덕션 변경이지만 이음매는 이미 존재하며(`userHomeDirFn`) 호출부를 그리로 옮기는 기계적 작업이다. 목적은 **테스트 격리**이며(spec.md REQ-UGE-004 정정 주석 참조), D2와는 독립이다.
+
+  > **정정**: 이 문단의 최초 판은 "D3가 D2의 가드 범위를 넓혀 주므로 D2보다 먼저 와야 한다"고 적었다. **거짓이다.** M3의 HOME 반경 가드는 `ensureGlobalSettingsEnv` 한 곳을 고정하며, M2가 있든 없든 그 사실은 변하지 않는다 — 세 호출부는 삭제를 하지 않으므로 애초에 "반경"의 일부가 아니다. M2를 M3보다 앞에 두는 이유는 의존이 아니라 **되돌리기 어려운 순서**뿐이다(프로덕션 변경 → 판정 설계).
 - **D2 (판정 기계 독립성)**는 판정 설계 결정이다. 코드보다 AC가 주된 산출물이며, D3가 먼저 끝나면 같은 가드로 네 호출부를 한꺼번에 덮을 수 있다.
 - **D1 (보존 가드 확장)**은 테스트 추가로, 넷 중 가장 기계적이고 되돌리기 쉽다. **맨 뒤로 미룬다.**
 
@@ -28,12 +30,18 @@ spec.md §1.3에 기록한 대로, D1의 "`runCleanReinstall`·`BackupMoaiConfig
 | B3 | AC-UGE-002의 Windows 런타임 통과는 macOS에서 관측 불가 | 판정이 "소스에 스킵 없음 + windows 컴파일 성공"까지만 증명 | CI 잡 결과를 인용하거나 Gaps에 명시 (§E DoD 4항) |
 | B4 | AC-UGE-008의 `sed` 삭제 범위는 run-phase가 쓸 실제 주입 코드 형태에 의존 | 반증 명령이 그대로는 안 먹을 수 있음 | 관측 대상(probe 삭제 여부)은 불변이므로 `sed` 표현만 조정 |
 | B5 | 이 브랜치는 배타적으로 점유되지 않는다 | 검증과 push 사이에 타인의 머지가 낄 수 있음 | 커밋 직전 `git rev-parse --short HEAD` + `git branch --show-current` 재확인 |
+| B6 | 변형(mutation) 반증의 `sed`/`perl` 표현이 코드의 **실제 표현**과 어긋나면 무동작이 된다 | 반증이 아무것도 반증하지 못한 채 통과 | 모든 변형 AC가 `mutation-applied=1`을 함께 요구(§G AP-6). 실제로 AC-UGE-012의 최초 판이 이 함정에 빠져 있었고(`.claude/skills/moai*` 리터럴 부재) `mutation-applied` 확인이 그것을 드러냈다 |
+| B7 | `merge-base`가 M6를 담지 않으면 AC-UGE-003의 overlay 반증이 **교란**된다 | 이음매 부재가 아니라 보고 문구 부재로 FAIL — 두 원인이 구별되지 않음 | AC-UGE-003 (0) base 위생 검사가 `restored %d/%d` 3건을 요구. 미충족 시 AC를 크게 실패 처리 |
+| B8 | `defs` 상수 조합으로 표현된 경로는 리터럴 grep으로 잡히지 않는다 | 리터럴을 겨냥한 판정·변형이 조용히 0매치 | 코드의 실제 표현을 먼저 읽고 판정을 작성. `deploy.go`의 skills 글로브가 그 사례(`filepath.Join(defs.ClaudeDir, defs.SkillsSubdir, "moai*")`) |
+| B9 | GNU `xargs`는 빈 입력에서 인자 없이 명령을 실행한다 | ubuntu CI에서 판정이 stdin 대기로 행(hang) | `xargs` 사용을 제거하고 `while read` 루프로 대체(AC-UGE-015). GNU 환경 재현은 미실시 |
 
 ## §C 선행 조건 (run-phase 진입 전 필수)
 
-### C1 — 리베이스가 선행 조건이다
+### C1 — 베이스 위생 확인 (리베이스는 plan-phase에서 이미 수행함)
 
-`origin/main`(plan-phase 기준 `a64548a2a`)에는 선행 SPEC의 **M5·M6가 아직 없다**. 두 마일스톤은 PR #1275(`feat/SPEC-UPDATE-DATA-SURVIVAL-001`, HEAD `457e1013f`)에 실려 자동 머지를 기다린다. 이 SPEC이 손대는 파일 중 다음 셋은 **그 PR 위에서만 존재하거나 그 PR이 만든 형태**다.
+PR #1275는 **2026-08-01T15:56:27Z에 `83610e03e`로 머지되었고**, 이 plan 브랜치는 `origin/main`을 머지해 `merge-base`가 `83610e03e`로 올라왔다. 아래 확인은 plan-phase에서 이미 통과했으나, **run-phase 진입 시점에 다시 실행한다** — 그 사이 base가 움직일 수 있고, 이 문서의 문장은 관측을 대체하지 않는다.
+
+이 SPEC이 손대는 파일 중 다음 셋은 그 PR이 만들었거나 그 PR이 만든 형태다.
 
 - `internal/cli/update_safety_test.go` (M5가 전면 재작성)
 - `internal/cli/update_preserve_partial_test.go` (M6가 신설)
@@ -42,20 +50,25 @@ spec.md §1.3에 기록한 대로, D1의 "`runCleanReinstall`·`BackupMoaiConfig
 **run-phase 진입 절차**:
 
 ```bash
-# 1) PR #1275 머지 확인
-gh pr view 1275 --json state,mergedAt
-
-# 2) 머지 후 origin/main 을 가져와 이 브랜치에 반영
+# 1) origin/main 최신화 후 base 재계산 (SHA 핀 금지 — §A.3)
 git fetch origin main
-git -C <이 워크트리> merge origin/main     # 또는 rebase — 브랜치 정책에 따름
+BASE=$(git merge-base origin/main HEAD); echo "base=$BASE"
 
-# 3) 세 파일이 실제로 존재하는지 확인 (도달성 확인, 추정 금지)
-test -f internal/cli/update_safety_test.go && echo safety-ok
+# 2) base 위생 — M6 보고 문구가 base 에 있어야 AC-UGE-003 반증이 교란되지 않는다
+git show "$BASE":internal/cli/update_preserve_inventory.go | grep -c 'restored %d/%d'  # 기대: 3
+
+# 3) 타깃 파일 존재 (도달성 확인, 추정 금지)
+test -f internal/cli/update_safety_test.go        && echo safety-ok
 test -f internal/cli/update_preserve_partial_test.go && echo partial-ok
-grep -c 'restored %d/%d before failure' internal/cli/update_preserve_inventory.go   # 기대: 3
+test -f internal/cli/update_home_radius_test.go   && echo radius-ok
+
+# 4) base 가 뒤처졌다면 머지로 따라잡는다 (rebase 는 기록된 SHA 를 고아로 만든다)
+#    git merge origin/main
 ```
 
-세 확인 중 하나라도 실패하면 **run-phase에 진입하지 않는다.** PR #1275가 아직 안 들어온 것이므로 대기한다.
+(2)가 `3`이 아니거나 (3)의 어느 하나라도 실패하면 **run-phase에 진입하지 않고** (4)를 먼저 수행한다.
+
+> **plan-phase 관측**: `base=83610e03e`, (2) → `3`, (3) → `safety-ok` / `partial-ok` / `radius-ok`. 모두 통과.
 
 ### C2 — baseline 재측정
 
@@ -105,17 +118,21 @@ acceptance.md §B의 수치는 plan-phase에서 PR 브랜치 워크트리를 대
 
 ### M2 — HOME 이음매 균일화 (REQ-UGE-004, 005)
 
-**왜 여기인가**: 프로덕션 변경이지만 기계적이다. 그리고 **M3의 가드가 덮을 수 있는 표면을 넓히므로 M3보다 반드시 먼저**여야 한다. M2 없이 M3를 하면 가드는 `ensureGlobalSettingsEnv` 하나만 고정한다.
+**왜 여기인가**: 프로덕션 변경이지만 기계적이다. M3와는 **독립**이며(§A 정정 참조), 앞에 두는 이유는 "프로덕션 변경 → 판정 설계" 순서뿐이다.
+
+**목적은 테스트 격리다.** 세 호출부의 `homeDir`은 `detectGoBinPathForUpdate(homeDir)`와 `template.WithHomeDir(homeDir)` 두 렌더링 입력으로만 흐르며 삭제는 없다. 이음매를 통일하면 테스트가 주입한 홈이 렌더링까지 일관되게 도달하고, 운영자의 실제 홈이 테스트 결과를 좌우하지 않게 된다.
 
 **파일**
 - `internal/cli/update_clean_install.go` — deploy 컨텍스트 구성부의 `userHomeDir()` → `userHomeDirFn()`
 - `internal/cli/update_template_sync.go` — Validate Templates 단계와 Deploy Templates 단계, 두 곳
+- `internal/cli/*_test.go` — 신규 `TestUpdateSubsystem_HomeSeamReach`(호출 계수 스파이)
 
 **설계 노트**
-- 세 곳 모두 `homeDir, _ := userHomeDir()` 형태로 오류를 버린다. 이음매 교체 시 **오류 처리 방식은 바꾸지 않는다** — 동작 보존이 REQ-UGE-005이고, 오류 처리 변경은 별개 결정이다.
+- 세 곳 모두 `homeDir, _ := userHomeDir()` 형태로 오류를 버린다. 이음매 교체 시 **오류 처리 방식은 바꾸지 않는다** — 오류 처리 변경은 별개 결정이다.
+- 가드는 **호출 계수 스파이**를 쓴다. 렌더 산출물(`GoBinPath` 등)을 어서트하지 않는 이유는 `gobin.Detect`가 `GOBIN`/`GOPATH` 설정 시 `homeDir`을 쓰지 않고 조기 반환하기 때문이다 — 그것을 어서트하면 판별력이 운영자 환경 변수에 좌우되어 §A.2를 위반한다.
 - `internal/cli/glm.go:994`는 범위 밖(spec.md §3). 건드리지 않았음을 AC-UGE-005 (d)가 확인한다.
 
-**AC**: AC-UGE-005, 006
+**AC**: AC-UGE-005, 006, 006F, 006R
 
 ### M3 — 기계 독립적 HOME 반경 판정 (REQ-UGE-006, 007, 008)
 
@@ -139,16 +156,25 @@ acceptance.md §B의 수치는 plan-phase에서 PR 브랜치 워크트리를 대
 **파일**
 - `internal/cli/update_safety_test.go` — `snapshotDir`/`writeFixture`/`mapsEqual` 헬퍼 재사용, 신규 가드 3종 추가
   - `TestCleanReinstall_PreservesUserArea` (REQ-UGE-009)
-  - `TestBackupMoaiConfig_PreservesUserArea` (REQ-UGE-010)
+  - `TestBackupSubsystem_DestructiveSurfaces` — 서브테스트 `rollback_removes_only_own_backup_dir` / `rotation_keeps_newest` (REQ-UGE-010)
   - `TestMigrateLegacyMemoryDir_PreservesUserArea` — 서브테스트 `rename_when_state_absent` / `backup_then_remove_when_both_exist` (REQ-UGE-011)
 
-**설계 노트**
-- `runCleanReinstall`은 `CleanReinstallOptions`에 `Deployer`/`EmbeddedFS`/`Manifest` 주입 지점이 있고 기존 테스트 7개 파일이 이미 그 방식으로 구동한다. 새 가드도 같은 패턴을 따른다. 다만 v2 fingerprint가 감지되지 않으면 조기 no-op 반환하므로, **픽스처가 v2 신호를 심어야** 실제 파괴 경로를 지난다(`update_clean_install_merge_notice_test.go`가 같은 주의를 이미 기록해 두었다).
+**설계 노트 — 각 가드가 겨냥할 파괴적 표면 (실측으로 확정)**
+
+| 가드 | 파괴 지점 | 반증 변형 |
+|---|---|---|
+| `TestCleanReinstall_PreservesUserArea` | `scanDeprecatedPaths` 목록에 대한 `os.RemoveAll(abs)` 루프 (`update_clean_install.go`) | 그 목록에 `.moai/harness` 주입 |
+| `TestBackupSubsystem_DestructiveSurfaces` | (a) `BackupMoaiConfig` 실패 롤백 `os.RemoveAll(backupDir)` (b) `CleanupOldBackups`의 `backups[:len-keepCount]` 삭제 | (b)를 `backups[keepCount:]`로 반전 — **과거 실제 버그** |
+| `TestMigrateLegacyMemoryDir_PreservesUserArea` | both-exist 분기의 backup-then-remove | `backupLegacyMemoryDir` 호출 무력화 |
+
+- **`runCleanReinstall`은 `CleanMoaiManagedPaths`를 호출하지 않는다** — 실측 확인(`grep -n 'CleanMoaiManagedPaths\|MigrateLegacyMemoryDir' internal/cli/update_clean_install.go` → 0매치). 따라서 글로브 확장 변형(AC-UGE-012)은 이 가드를 반증하지 못하며, 위 표대로 `scanDeprecatedPaths`를 겨냥해야 한다. 이 사실을 모르고 글로브 변형을 재사용하면 반증이 공허해진다.
+- **`BackupMoaiConfig`의 주 경로는 순수 복사다.** 그 위에 "사용자 영역 불변" 가드를 세우면 거의 공허하므로, 위 표의 두 파괴적 표면으로 재정박했다(spec.md REQ-UGE-010 주석).
+- `runCleanReinstall`은 `CleanReinstallOptions`에 `Deployer`/`EmbeddedFS`/`Manifest` 주입 지점이 있고 기존 테스트 7개 파일이 이미 그 방식으로 구동한다. 다만 v2 fingerprint가 감지되지 않으면 조기 no-op 반환하므로, **픽스처가 v2 신호를 심어야** 실제 파괴 경로를 지난다(`update_clean_install_merge_notice_test.go`가 같은 주의를 이미 기록해 두었다).
 - `MigrateLegacyMemoryDir`의 두 분기는 `.moai/state/` 존재 여부로 갈린다. 픽스처에서 그 디렉터리를 만들거나 안 만들어 결정적으로 분기시킨다.
 - 사용자 소유 경로는 기존 가드와 동일한 셋을 쓴다: `.moai/harness/`, `.claude/agents/harness/`, `.claude/skills/harness-ios-patterns/`.
 - 글로브 확장 반증(AC-UGE-012)은 기존 `TestMoaiUpdate_PreservesUserArea`를 대상으로 하므로 새 테스트가 필요 없다 — 판정 명령만 실행한다.
 
-**AC**: AC-UGE-009, 010, 011, 012, 013, 014, 015
+**AC**: AC-UGE-009, 009F, 010, 010F, 011, 011F, 012, 013, 014, 015
 
 ## §G 안티패턴 (이 SPEC에서 금지)
 
