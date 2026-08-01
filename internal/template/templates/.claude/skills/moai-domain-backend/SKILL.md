@@ -137,10 +137,6 @@ Integration Patterns:
 
 ---
 
-## Resources
-
-For working code examples, see [examples.md](examples.md).
-
 Status: Production Ready
 Maintained by: MoAI-ADK Backend Team
 

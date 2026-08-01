@@ -62,15 +62,27 @@ skill-name/
 
 ### YAML Frontmatter Requirements
 
-Required Fields:
+Every frontmatter field is optional. Only `description` is recommended, so Claude knows when to apply the skill.
 
-- name: Skill identifier (max 64 characters, lowercase letters, numbers, and hyphens only, no XML tags, no reserved words like "anthropic" or "claude")
+- name: Display name shown in skill listings. Defaults to the directory name.
 
-- description: What the Skill does and when to use it (max 1024 characters, non-empty, no XML tags)
+- description: What the Skill does and when to use it. If omitted, the first paragraph of markdown content is used. The combined `description` + `when_to_use` text is truncated at 1,536 characters in the skill listing, so put the key use case first.
 
-Optional Fields:
+- when_to_use: Additional trigger phrases or example requests. Appended to `description` and counted against the same 1,536-character cap.
 
-- allowed-tools: Tool names to restrict access. Supports comma-separated string or YAML list format. If not specified, Claude follows standard permission model.
+- allowed-tools: Tools Claude may use **without a permission prompt** during the turn that invokes this skill; the grant clears on your next message. It is a pre-approval, not a restriction. Accepts a space- or comma-separated string, or a YAML list. If not specified, the standard permission model applies.
+
+- disallowed-tools: Tools removed from Claude's pool while this skill is active — this is the field that restricts. Same accepted formats.
+
+- disable-model-invocation: Set `true` to stop Claude from loading the skill automatically, leaving `/name` as the only entry point. Default `false`.
+
+- effort: Effort level while the skill is active (`low`, `medium`, `high`, `xhigh`, `max`). Inherits from the session by default.
+
+- argument-hint / arguments: Autocomplete hint, and named positional arguments for `$name` substitution.
+
+- paths: Glob patterns limiting when the skill activates automatically.
+
+- background: With `context: fork`, set `false` to wait for the forked subagent's result in the invoking turn. Default `true` (CC v2.1.218+).
 
 - model: Model to use when Skill is active (e.g., `claude-sonnet-5`). Defaults to the current model.
 
