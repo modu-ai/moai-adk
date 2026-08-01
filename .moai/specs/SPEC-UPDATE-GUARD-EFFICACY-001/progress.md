@@ -300,6 +300,66 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.271s
 **Gaps (M1)**
 - AC-UGE-002의 **Windows 런타임** 통과는 이 머신에서 관측 불가. (b)+(d)는 "소스에 스킵 조건이 없고 windows 타깃으로 vet 통과"까지만 증명한다.
 
+### M2 — HOME 이음매 균일화 (REQ-UGE-004, 005)
+
+**Claim**: update 서브시스템의 세 HOME 호출부가 `userHomeDirFn` 이음매를 경유하며, 주입된 홈이 렌더링 입력까지 도달한다.
+
+**RED 관측 (test-first 증거)** — 호출부를 바꾸기 전에 가드를 실행했다. 이 RED는 **부채 자체를 재현**한다.
+
+```
+=== RUN   TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context
+    update_home_seam_test.go:79: userHomeDirFn calls = 0; want >= 1 (the deploy-context site does not route through the seam)
+    update_home_seam_test.go:90: TemplateContext.HomeDir = "/Users/goos"; want the injected sentinel "/var/folders/…/001" — rendering followed the process $HOME instead of the seam
+=== RUN   TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy
+    update_home_seam_test.go:132: userHomeDirFn calls = 1; want >= 2 (Validate Templates + Deploy Templates must both route through the seam)
+--- FAIL: TestUpdateSubsystem_HomeSeamReach (3.43s)
+    --- FAIL: TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context (0.65s)
+    --- FAIL: TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy (2.78s)
+```
+
+`TemplateContext.HomeDir = "/Users/goos"` — 픽스처를 주입했는데도 **운영자의 실제 홈이 렌더링 입력에 박혔다**. REQ-UGE-004가 지목한 테스트 격리 누수의 직접 관측이다.
+
+**GREEN 관측** — 세 호출부를 `userHomeDirFn()`으로 교체 후.
+
+```
+--- PASS: TestUpdateSubsystem_HomeSeamReach (0.33s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context (0.06s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy (0.27s)
+```
+
+**AC 매트릭스**
+
+| AC | 판정 | 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-UGE-005 | PASS | (a) 비이음매 계수 · (b) 이음매 계수 · (c) baseline · (d) 범위 밖 보존 | (a) `clean_install:0` / `template_sync:0` · (b) `clean_install:1` / `template_sync:2` · (c) `1` / `2` · (d) `glm.go:1` |
+| AC-UGE-006 | PASS | (a) 존재 grep · (b) PASS 행 · (c) 계수 어서션 · (d) `.HomeDir` 어서션 | (a) `update_home_seam_test.go:57` · (b) `--- PASS: TestUpdateSubsystem_HomeSeamReach (1.44s)` · (c) `2` · (d) `5` |
+| AC-UGE-006F | PASS | overlay 변형 반증 | `mutation-applied=1` (두 파일) · `compile-exit=0` · `fail-lines=4` · `names-reach-assert=3` · `build-failed=0` |
+| AC-UGE-006R | PASS | `go test -count=1 ./internal/cli/...` · `go vet ./...` | `cli-test-exit=0`, FAIL 계수 `0` · `vet-exit=0` |
+
+**AC-UGE-006F 원인 귀속 + 경쟁 원인 배제 (§A.4)**: 실패 3행이 모두 도달 어서션(`calls` / `HomeDir`)을 지목한다 — 되돌린 코드에서 계수가 `0`/`1`로 떨어지고 `HomeDir`가 다시 `/Users/goos`가 된다. `compile-exit=0` + `build-failed=0`이 "sed가 코드를 깨뜨려서 FAIL"이라는 경쟁 원인을 배제한다.
+
+#### 실행 중 발견 — 렌더된 `settings.json`의 머신 종속성은 이 SPEC의 이음매로 해소되지 않는다
+
+가드 초안은 "렌더된 `settings.json`에 운영자의 실제 `go/bin` 경로가 없어야 한다"를 함께 어서트했다. **세 호출부를 모두 이음매로 바꾼 뒤에도 이 어서션은 실패했다.**
+
+```
+update_home_seam_test.go:145: rendered settings.json embeds the operator's real go/bin path (/Users/goos/go/bin); the seam did not reach the rendering input
+```
+
+원인을 실측했다 — 렌더된 PATH는 세 호출부에서 오지 않는다.
+
+```
+$ grep -n -A3 'func BuildSmartPATH' internal/template/settings.go
+44:func BuildSmartPATH() string {
+45:	homeDir, _ := os.UserHomeDir()
+…
+55:		filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
+```
+
+`template.BuildSmartPATH()`는 `os.UserHomeDir()`을 **직접** 부르는 네 번째 독립 리더이며, `userHomeDirFn` 이음매 밖에 있고 REQ-UGE-004가 지목한 세 호출부에도 속하지 않는다. 따라서 그 어서션은 **이음매가 통제할 수 없는 이유로 실패**하는, REQ가 주장하지 않는 것을 검사하는 과잉 어서션이었다. 가드에서 제거하고 그 자리에 근거를 주석으로 남겼다(테스트 파일 내). 이음매의 도달 증명은 계수 어서션과 site 1의 `TemplateContext.HomeDir` 어서션이 담당한다.
+
+**이월 (§3.5)**: 렌더 산출물 `settings.json`의 PATH는 M2 이후에도 여전히 실행 머신의 홈에 의존한다. 이 SPEC의 범위(세 호출부)를 벗어나므로 고치지 않았고, 별도 SPEC 후보로 남긴다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
