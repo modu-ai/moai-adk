@@ -486,7 +486,7 @@ race-exit=0 · DATA RACE 계수 0 · FAIL 계수 0
 
 ```yaml
 run_complete_at: 2026-08-02
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: acd995378   # sync-phase 백필. `git rev-parse --short acd995378` → `acd995378` (M4, 마지막 run-phase 커밋)
 run_status: PASS          # run 시점 PASS-WITH-DEBT → acceptance.md v0.4.0 정정 후 PASS (아래 정정 기록)
 ac_pass_count: 20         # run 시점 19 → AC-UGE-009F 정정 재실행 PASS 로 20
 ac_fail_count: 0          # run 시점 1 (AC-UGE-009F, 판정 명령 결함 — 가드 결함 아님)
@@ -544,7 +544,58 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+
+b12_self_test_a: "grep -c 'SPEC-UPDATE-GUARD-EFFICACY-001' CHANGELOG.md → 0 (사전 중복 없음, 방출 전 실행)"
+b12_self_test_b: "AC 개수: grep -cE '^#### AC-UGE-' acceptance.md → 20; 토큰 dedup grep -oE 'AC-UGE-[0-9]+[FR]?' | sort -u | wc -l → 20 (두 계수 일치). CHANGELOG 항목은 20/20 PASS 로 서술"
+b12_self_test_c: "CHANGELOG 항목이 지목한 파일 6개 전부 ls 로 실재 확인 (update_preserve_inventory.go / update_clean_install.go / update_template_sync.go / update_preserve_partial_test.go / update_home_seam_test.go / update_preserve_reach_test.go)"
+
+changelog_entry_position: "[Unreleased] > ### Added, SPEC-UPDATE-DATA-SURVIVAL-001 항목 바로 다음"
+
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (단일 sync 커밋에서 병합 전이; updated: 2026-08-02)"
+  plan.md: "n/a — 이 Tier M 아티팩트에 frontmatter/status 마커 없음 (헤더만)"
+  acceptance.md: "n/a — 이 Tier M 아티팩트에 frontmatter/status 마커 없음 (헤더만)"
+  progress.md: "n/a — status 마커 없음"
+
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC은 전방위 정책(canary)을 정의하지 않는다. 시험 대상은 자기 자신의 판정 명령 실효성이며, 그것은 §E.2 의 반증 7건으로 이미 관측했다."
+
+run_commit_sha_backfill:
+  before: "pending-backfill-run-final"
+  after: "acd995378"
+  command: "git rev-parse --short acd995378"
+  observed: "acd995378"
+  rationale: "M4 가 마지막 run-phase 커밋. 그 뒤 9562bcb49 는 manager-spec 의 plan-아티팩트 정정(.go 파일 0건)이므로 run-phase 커밋이 아니다."
+
+user_facing_surface_judgment:
+  readme: "변경 없음"
+  docs_site: "변경 없음"
+  reason: "프로덕션 변경 두 건은 모두 내부 이음매다 — 패키지 변수 osStatFn, 그리고 기존 userHomeDirFn 로 라우팅한 호출부 3곳. CLI 플래그·출력·설정 키·동작이 하나도 바뀌지 않았으므로 사용자가 읽는 문서에 반영할 표면이 없다. 없는 변경을 만들어 적지 않는다."
+```
+
+**회귀 게이트 (이 트리에서 sync 작업 후 재측정)**
+
+| 검사 | 명령 | 관측 |
+|---|---|---|
+| 빌드 | `go build ./...` | `build-exit=0` |
+| 크로스 빌드 | `GOOS=windows GOARCH=amd64 go build ./...` | `win-build-exit=0` |
+| vet | `go vet ./...` | `vet-exit=0` |
+| lint | `golangci-lint run --timeout=3m` | `0 issues.` (exit 0) |
+| 전체 테스트 | `go test ./...` | 1회차 `FAIL-lines=4` → 2회차 `FAIL-lines=0` (exit 0) |
+| 템플릿 중립성 | `git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ \| wc -l` | `0` |
+
+1회차 FAIL 2건은 **이 SPEC 범위 밖의 플레이크**로 판정했고, 근거는 아래 세 가지다. 다만 "플레이크"는 재현 실패에 근거한 추정이며 원인을 코드로 확정하지는 못했다 (§E.4 잔여 위험).
+
+- `internal/cli TestCCCmd_Execution_NoDeps` — `default profile should be empty, got "moai-adk"`. 단독 재실행(`go test -count=1 -run TestCCCmd_Execution_NoDeps ./internal/cli/`) `ok`, 패키지 단독 전체 실행(`go test -count=1 ./internal/cli/`) exit 0. 실제 `~/.moai/claude-profiles` 상태를 읽는 테스트이며 해당 디렉터리 mtime 이 측정 중 갱신되고 있었다(동시 세션). 이 SPEC 이 건드린 `.go` 파일 6개는 전부 `update_*` 이며 프로파일 경로와 무관하다.
+- `internal/web` — `signal: terminated` (부하 중 타임아웃). 어서션 실패가 아니다.
+- 2회차 `go test ./...` 전체 통과(exit 0, FAIL 계수 0).
+
+**이월 항목 4번 해소**: `run_commit_sha` 백필 완료(위 `run_commit_sha_backfill` 블록). §E.3.1 / §E.3 부록의 "미완" 서술은 당시 기록으로 보존한다.
 
 ---
 

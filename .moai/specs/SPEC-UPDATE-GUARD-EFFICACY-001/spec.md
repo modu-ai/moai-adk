@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-GUARD-EFFICACY-001
 title: update 서브시스템 가드 실효성 보강 — 판정 명령의 기계 독립성과 가드 도달 범위
 version: 0.4.0
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
