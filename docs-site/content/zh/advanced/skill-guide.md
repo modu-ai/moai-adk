@@ -101,6 +101,7 @@ MoAI-ADK 模板共包含 **27 个 `moai-*` 技能**，分为 5 个功能类别�
 | `moai-ref-llm-security`    | AI/LLM 防御安全（提示词注入、OWASP LLM Top 10） |
 | `moai-ref-secops`          | DevSecOps/容器/API 运营防御安全             |
 | `moai-ref-supply-chain`    | 软件供应链防御安全（SBOM、SLSA、Sigstore） |
+| `moai-ref-seo`             | 搜索可见性与可抓取性（规范 URL、逐页元数据、JSON-LD） |
 
 ### Meta/Harness（系统扩展）- 2 个
 

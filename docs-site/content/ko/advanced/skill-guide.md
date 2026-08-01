@@ -105,6 +105,7 @@ MoAI-ADK 템플릿에는 총 **30개 `moai-*` 스킬**이 5개 기능 카테고�
 | `moai-ref-secops`          | DevSecOps/컨테이너/API 운영 방어 보안             |
 | `moai-ref-supply-chain`    | 소프트웨어 공급망 방어 보안 (SBOM, SLSA, Sigstore) |
 | `moai-ref-ui-polish`       | UI 디자인 완성도, 인터페이스 폴리시 참조            |
+| `moai-ref-seo`             | 검색 노출과 크롤링 가능성 (정규 URL, 페이지별 메타데이터, JSON-LD) |
 
 ### Meta/Harness (시스템 확장) - 2개
 
