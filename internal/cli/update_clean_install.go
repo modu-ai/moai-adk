@@ -407,7 +407,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// "PATH": "" and the status_line.sh "/moai" fallback, stripping the moai
 	// binary from PATH in every downstream session after a v2→v3 upgrade and
 	// breaking the statusline plus all PATH-resolved MCP servers (moai-lsp, npx).
-	homeDir, _ := userHomeDir()
+	// Routed through the userHomeDirFn seam (REQ-UGE-004) so an injected home
+	// reaches the rendering inputs below instead of the process $HOME. Error
+	// handling is deliberately unchanged.
+	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),

@@ -224,7 +224,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Validate Templates",
 			message: "Validating all templates before deployment",
 			execute: func() error {
-				homeDir, _ := userHomeDir()
+				// Seam-routed per REQ-UGE-004 (test isolation).
+				homeDir, _ := userHomeDirFn()
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
@@ -268,8 +269,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				pl := tui.ProgressLine(out, "Deploying templates...", nil)
 
-				// Build TemplateContext with detected paths for template rendering
-				homeDir, _ := userHomeDir()
+				// Build TemplateContext with detected paths for template rendering.
+				// Seam-routed per REQ-UGE-004 (test isolation).
+				homeDir, _ := userHomeDirFn()
 				goBinPath := detectGoBinPathForUpdate(homeDir)
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
