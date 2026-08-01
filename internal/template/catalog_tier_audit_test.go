@@ -163,7 +163,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// under core.skills), net +1 = 30.
 	// moai-ref-ui-polish added as a UI polish and interface-completion reference
 	// skill (registered under optional-pack:frontend), net +1 = 31.
-	const expectedSkillCount = 31
+	// moai-ref-seo added as a search-visibility and crawlability reference
+	// skill (registered under optional-pack:frontend), net +1 = 32.
+	const expectedSkillCount = 32
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

@@ -70,6 +70,8 @@ Evaluation Dimensions:
 - Craft (20%): Test coverage >= 85%, error handling completeness, naming conventions, algorithmic complexity, concurrency safety
 - Consistency (15%): Codebase pattern adherence, code style consistency
 
+Web-output conditional: when the changed files emit pages a search engine or automated reader will fetch (markup templates, static-site content, server-rendered views), inject `At start, invoke Skill("moai-ref-seo") for the canonical-address, per-page metadata, and structured-data pre-ship baseline.` into the reviewing spawn (per `.moai/config/sections/delegation.yaml` domain_skills.frontend; skill-routing.md §1).
+
 Auto-Fix Behavior:
 - If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C) — inject the cycle_type skill (`moai-workflow-ddd`|`moai-workflow-tdd`) plus 0-3 domain `moai-ref-*` skills per the mission domain (`.moai/config/sections/delegation.yaml`; per skill-routing.md §1)
 - Re-run review after fix to verify resolution

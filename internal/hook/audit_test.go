@@ -102,7 +102,8 @@ func TestAuditRegistrationParity(t *testing.T) {
 	// Expected: 20 settings.json event registrations (22 native − 2 Worktree
 	// events deregistered per a3239d3de) + 4 obs-only retired = 24 Go handlers
 	// that have a registered or observability-only path. The 2 deregistered
-	// Worktree handlers (ResolutionKeep, IsActive: true in CoverageTable) are
+	// Worktree handlers (ResolutionKeep, IsActive: false in CoverageTable —
+	// the handler is kept but the event is deliberately unregistered) are
 	// counted separately as orphan-but-intentional entries.
 	// The autoUpdate composite is registered in Go deps.go under SessionStart,
 	// NOT as a separate settings.json key — so the settings.json count includes
