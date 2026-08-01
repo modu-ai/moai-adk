@@ -48,11 +48,6 @@ catalog:
               path: templates/.claude/skills/moai-ref-testing-pyramid/
               hash: 4e91eee5176af271e253392b2f5d427c328f15be2d417b4acee09990bb105e75
               version: 1.0.0
-            - name: moai-workflow-ci-loop
-              tier: core
-              path: templates/.claude/skills/moai-workflow-ci-loop/
-              hash: 3761e843a3b440e855012799fe04be1c47f130d2697a0bb34e3a1febfc039306
-              version: 0.1.0
             - name: moai-workflow-ddd
               tier: core
               path: templates/.claude/skills/moai-workflow-ddd/

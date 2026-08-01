@@ -120,7 +120,109 @@ GOOS 결정 3건 중 **#3(저비용 판정 승격)** 과 **#2(archiveVersion)** 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 재작성 문구 확정 (완료)
+
+`ci-autofix-protocol.md`의 두 Frozen 절 문구를 확정했다. 트리거는 스크립트도 CLI도
+이름하지 않고 **오케스트레이터 핸드오프**를 지목한다.
+
+| 절 | 확정 문구 | 배포 사용자에게 참인 이유 |
+|---|---|---|
+| `CONST-V3R5-004` | `The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off a failing required check` | 오케스트레이터는 배포되며 실패 정보를 어떤 경로로 얻든 autofix 사이클에 전달할 수 있다. 스크립트는 배포되지 않고 CLI는 watch 루프를 수행하지 않는다(research.md §B) |
+| `CONST-V3R5-013` | `The auto-fix loop MUST NOT modify CI watch infrastructure scripts or workflow definitions` | 종전 문구는 미배포 경로 `scripts/ci-watch/run.sh`를 지목했다. 새 문구는 경로를 이름하지 않고 보호 **대상 범주**를 규정하므로 스크립트 유무와 무관하게 참이다 |
+
+폐기 문구 `moai pr watch reports a required-check failure (exit 2)`는 채택하지 않았다
+(`os.Exit(2)`가 CLI에 존재하지 않음).
+
+### M2 — 헌법 정합화 (완료, 양쪽 레지스트리)
+
+| 분류 | 절 | 처리 | 결과 |
+|---|---|---|---|
+| 삭제 | `CONST-V3R5-014..021` (8) | 레지스트리 항목 제거 | `canary_gate: true` 73 → 65 (양쪽) |
+| 소스+레지스트리 재작성 | `CONST-V3R5-004`, `013` (2) | M1 확정 문구를 저장소 루트 미러 소스와 레지스트리에 동시 기입 | DRIFT 해소 |
+| 텍스트 정합화 | `CONST-V3R5-005..012` (8) | 레지스트리 `clause`를 미러 소스 원문에서 복사 | 기존 드리프트 해소 |
+
+`moai constitution validate`가 `file:` 을 프로젝트 루트 기준으로 해석하므로, 10개 절의
+`clause`는 **저장소 루트 미러** `ci-autofix-protocol.md`에서 발견되어야 한다. 따라서
+004·013의 새 문구를 미러 소스에도 기입했다 — plan.md §B가 허용한 "재작성된 소스 절
+텍스트가 요구하는 경우"에 해당한다. 미러의 dev-repo 사실(스크립트 보유)은 후속 문장으로
+보존했다.
+
+### M3 — 배포 중단 (완료)
+
+| 단계 | 대상 | 조치 |
+|---|---|---|
+| 1 | `templates/.claude/skills/moai-workflow-ci-loop/` | 디렉터리 삭제 |
+| 2 | `templates/.claude/rules/moai/workflow/ci-watch-protocol.md` | 파일 삭제 |
+| 3 | `internal/template/catalog.yaml` | 스킬 항목 5행 삭제 |
+| 4 | `templates/.moai/config/sections/delegation.yaml` | sync·fix·loop 3곳에서 스킬 참조 제거 |
+| 5 | `templates/.claude/skills/moai/workflows/sync/delivery.md` | **3곳** 제거 — Phase 14 단계 6(`Skill()` 실호출, 대체 대상 없음), Related Skills 절 전체, 버전 이력 문구 |
+| 6 | `moai/SKILL.md`(3), `fix.md`(2), `loop.md`(1) | 스킬 서술·형제 프리셋 언급 제거 |
+| 7 | `templates/.../ci-autofix-protocol.md` | M1 문구로 재작성. Frozen 마커 10개 보존, 스크립트 참조 0 |
+| 8 | `manager-develop.md`, `manager-develop-prompt-template.md`(2), `cadence-bridge.md`(2), `run.md` | 스크립트 경로 참조 제거 |
+
+5단계는 plan.md가 기록한 3곳이 맞았다(초판의 1곳 기재가 오류). 8단계에서
+`cadence-bridge.md`는 스크립트 경로 1건 외에 교차참조 절의 `ci-watch-protocol.md` 링크도
+제거했다 — 삭제된 파일을 가리키는 죽은 링크를 남기지 않기 위함이며, 같은 제거 작업의 일부다.
+
+### AC PASS/FAIL 매트릭스 (M1-M3 담당분)
+
+| AC | 상태 | 판정 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-CLD-001 | PASS | `grep -rn 'scripts/ci-watch\|scripts/ci-autofix' internal/template/templates/ \| wc -l` | `0` (baseline 27) |
+| AC-CLD-002 | PASS | `grep -rln 'moai-workflow-ci-loop' … \| wc -l` / `grep -c 'name: moai-workflow-ci-loop' catalog.yaml` | `0` / `0` (baseline 9 / 1) |
+| AC-CLD-005 | PASS | `test ! -e …/ci-watch-protocol.md; echo $?` | `0` |
+| AC-CLD-007 | PASS | `grep -rn 'moai pr watch' internal/template/templates/ \| wc -l` | `0` (baseline 5) |
+| AC-CLD-008 | PASS | `test -e …/ci-autofix-protocol.md` / `grep -c 'ZONE:Frozen'` / `grep -c 'scripts/ci-*'` | `FILE_OK` / `10` / `0` |
+| AC-CLD-009 | PASS | `moai constitution validate` + ci 귀속 grep | `validate-exit=1`, ci-count `0` (baseline exit1 / 18) |
+| AC-CLD-010 | PASS | 동일 명령 + 전체 findings grep | `validate-exit=1`, total `59` (baseline 77) |
+| AC-CLD-011 | PASS | `grep -c 'canary_gate: true' .claude/rules/moai/core/zone-registry.md` | `65` (baseline 73) |
+| AC-CLD-012 | PASS | ci 절 clause diff + 행 수 | `diff-exit=0`, `root-lines=10 tmpl-lines=10` (baseline 18/18) |
+| AC-CLD-013 | PASS | `find scripts/ci-watch scripts/ci-autofix -type f \| wc -l` + 스킬 디렉터리 | `9` / `SKILL_OK` (변화 없음) |
+| AC-CLD-016 | PASS | `grep -rln 'required-checks.yml' internal/template/templates/ \| wc -l` | `0` (baseline 4) |
+
+참고 (M1-M3 담당분 아님, 회귀 확인용): AC-CLD-014 두 테스트 모두 `--- PASS`,
+`grep -rn 'SPEC-CI-LOOP-DEVONLY-001' templates/ catalog.yaml` → `0`.
+
+### 보존 자산 무변화 확인
+
+```
+find scripts/ci-watch scripts/ci-autofix -type f | wc -l   → 9
+.claude/skills/moai-workflow-ci-loop/                       → SKILL_OK
+.claude/rules/moai/workflow/ci-watch-protocol.md            → MIRROR_WATCH_OK
+.claude/rules/moai/workflow/ci-autofix-protocol.md          → MIRROR_AUTOFIX_OK (004·013 문구만 갱신)
+```
+
+### 빌드·회귀
+
+```
+go build ./...                            → exit 0
+GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+```
+
+`go test ./internal/template/... ./internal/spec/...` 는 현재 FAIL한다. 실패는 두 부류다.
+
+| 부류 | 실패 테스트 | 해소 주체 |
+|---|---|---|
+| catalog 해시 신선도 | `TestManifestHashFormat`, `TestCatalogHashParity` | **M4** (`make build` → `gen-catalog-hashes --all`). 예상된 미결 상태 |
+| 테스트 소스의 하드코딩된 기대값 | `TestEmbeddedMoaiSkillNames`, `TestAllSkillsInCatalog`(32→31), `TestLoadCatalog`/`TestLoadEmbeddedCatalog_Success`(42→41), `TestSanitizedPairParity`(`ci-watch-protocol.md` 레지스트리 엔트리) | **미배정 — 봉투 밖 (§E.2 블로커 참조)** |
+
+### 블로커 — EXTEND 봉투 공백 (M1-M3에서 발견)
+
+plan.md §B의 Go 측 봉투(5경로)에 다음 5개 테스트 파일이 없다. 이들은 삭제된 스킬·파일의
+개수와 이름을 **테스트 소스에 하드코딩**하고 있어 `make build`로 해소되지 않는다.
+DoD의 "`go test ./...` 회귀 없음"은 이 파일들을 편집하지 않으면 충족 불가능하다 —
+`CLAUDE.local.md` 편입(감사 N7)·시험 파일 편입(v0.3.0)과 같은 종류의 모순이다.
+
+| 파일 | 필요한 변경 |
+|---|---|
+| `internal/template/skills_manifest_test.go` | 기대 core 스킬 목록에서 `moai-workflow-ci-loop` 제거 |
+| `internal/template/catalog_tier_audit_test.go` | 디스크 스킬 디렉터리 기대값 32 → 31 |
+| `internal/template/embed_catalog_test.go` | 카탈로그 엔트리 기대값 42 → 41 |
+| `internal/template/catalog_loader_test.go` | 동일 (42 → 41) |
+| `internal/template/sanitized_pair_parity_test.go` | `sanitizedPairPaths`에서 `ci-watch-protocol.md` 제거 (템플릿 미러가 의도적으로 삭제됨) |
+
+봉투를 확장하지 않고 범위를 넘지 않았다. 오케스트레이터가 봉투 편입을 승인하면
+M4에서 `make build`와 함께 처리하는 것이 자연스럽다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

@@ -13,8 +13,9 @@ paths: ".claude/skills/moai-workflow-ci-loop/SKILL.md"
 <!-- anchor: #ci-auto-fix-loop-entry-condition -->
 ## Entry Condition
 
-[ZONE:Frozen] [HARD] The CI auto-fix loop MUST be entered ONLY when `scripts/ci-watch/run.sh`
-exits with code 2 and emits a valid JSON handoff to stdout.
+[ZONE:Frozen] [HARD] The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off
+a failing required check. In this development repository the handoff is produced by
+`scripts/ci-watch/run.sh` exiting with code 2 and emitting a valid JSON handoff to stdout.
 
 ```
 ci-watch exit 2 → JSON handoff → ci-autofix loop entry
@@ -162,8 +163,9 @@ The state file `.moai/state/ci-autofix-<PR>.json` tracks loop state:
 
 ## Watch-Layer Contract Preservation
 
-[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `scripts/ci-watch/run.sh` or any watch-layer
-artifacts. The autofix layer is a read-only consumer of watch-layer outputs.
+[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify CI watch infrastructure scripts or
+workflow definitions. In this development repository that includes `scripts/ci-watch/run.sh`
+and every watch-layer artifact. The autofix layer is a read-only consumer of watch-layer outputs.
 
 The handoff schema fields `name`, `runId`, `logUrl` in `failedChecks[]` are
 stable contract fields. Rename or removal requires simultaneous update of both
