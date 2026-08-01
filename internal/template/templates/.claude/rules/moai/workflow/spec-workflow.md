@@ -141,6 +141,16 @@ The SPEC complexity classification taxonomy is referred to interchangeably as "T
 | M (Medium) | 300 - 1000 LOC | 5 - 15 files | **3 files**: spec.md + plan.md + acceptance.md | 0.80 |
 | L (Large) | > 1000 LOC or constitutional | > 15 files | **5 files**: spec.md + plan.md + acceptance.md + design.md + research.md | 0.85 |
 
+REQ/AC budget: the tier also caps how many requirements and acceptance criteria a SPEC may carry.
+
+| Tier | Requirement ceiling | Acceptance-criterion ceiling |
+|------|---------------------|------------------------------|
+| S | 8 | 8 |
+| M | 16 | 16 |
+| L | 25 | 25 |
+
+The ceilings apply **independently** to the requirement count and to the acceptance-criterion count — never to their sum. A Tier M SPEC may therefore carry up to 16 requirements AND up to 16 acceptance criteria. Exceeding either ceiling is a signal to tier up or to split the SPEC, not to relax the budget: an over-budget SPEC is the same over-formalization failure the tier taxonomy exists to prevent, and it lands hardest on the plan-auditor, which must hold every requirement and criterion in view at once.
+
 Tier judgment: performed as a Socratic AskUserQuestion in `spec-assembly.md` (Tier judgment Socratic question). The LOC thresholds are guidance, not enforcement — the implementer's judgment supplements the question.
 
 Tier field in frontmatter: optional. The `tier:` YAML field carries the classification (enum: S | M | L). Documented in `.claude/rules/moai/development/spec-frontmatter-schema.md` as an optional field. Backward compatibility rule: when `tier:` is absent, the SPEC is treated as **Tier L** to preserve existing 5-artifact default behavior for pre-LEAN SPECs.
