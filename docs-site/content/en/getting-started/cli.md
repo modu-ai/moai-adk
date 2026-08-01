@@ -306,25 +306,21 @@ moai worktree <COMMAND> [ARGS]...
 
 | Command | Description |
 |--------|------|
-| `moai worktree new [branch-name]` | Create a new worktree |
-| `moai worktree list` | List active worktrees |
-| `moai worktree go [branch-name]` | **Print** the worktree path (for shell cd) |
-| `moai worktree switch [branch-name]` | Switch to a worktree |
-| `moai worktree done [branch-name]` | Complete and clean up a worktree |
 | `moai worktree sync [branch-name]` | Sync a worktree with the base branch |
-| `moai worktree remove [path]` | Remove a worktree |
-| `moai worktree config [key] [value]` | Query/change worktree config |
-| `moai worktree status` | Query worktree status |
-| `moai worktree clean` | Clean up stale worktree references |
+| `moai worktree done <branch-name>` | Remove a branch's worktree, optionally deleting the branch |
+| `moai worktree remove <path>` | Remove the worktree at the given path |
+| `moai worktree clean` | Prune stale references, clean up merged or abandoned worktrees |
 | `moai worktree recover` | Recover the worktree registry |
 | `moai worktree snapshot` | Capture a working-tree state snapshot |
-| `moai worktree restore` | Restore the working tree to the snapshot HEAD state |
 | `moai worktree verify` | Verify the working-tree state against the snapshot |
+| `moai worktree restore` | Restore the working tree to the snapshot HEAD state |
 
-`moai worktree go` does not change the directory, it only prints the path. To actually move, wrap it in the shell like this:
+**Entering** a worktree is the launcher's job. For listing, use git directly.
 
 ```bash
-cd "$(moai worktree go my-branch)"
+moai cc -w feat-login           # start working in a worktree (created if missing)
+moai cc -w feat-login --spawn   # open it in a new tmux window, keeping the current session
+git worktree list               # list worktrees
 ```
 
 ---

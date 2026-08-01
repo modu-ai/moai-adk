@@ -306,25 +306,21 @@ moai worktree <COMMAND> [ARGS]...
 
 | コマンド | 説明 |
 |--------|------|
-| `moai worktree new [branch-name]` | 新しい worktree の生成 |
-| `moai worktree list` | アクティブな worktree 一覧 |
-| `moai worktree go [branch-name]` | worktree パスを**出力** (シェル移動用) |
-| `moai worktree switch [branch-name]` | worktree へ切替 |
-| `moai worktree done [branch-name]` | worktree の完了と整理 |
 | `moai worktree sync [branch-name]` | base ブランチと worktree を同期 |
-| `moai worktree remove [path]` | worktree の削除 |
-| `moai worktree config [key] [value]` | worktree 設定の照会/変更 |
-| `moai worktree status` | worktree の状態照会 |
-| `moai worktree clean` | 古い worktree 参照の整理 |
+| `moai worktree done <branch-name>` | ブランチの worktree を削除、任意でブランチも削除 |
+| `moai worktree remove <path>` | 指定パスの worktree を削除 |
+| `moai worktree clean` | stale な参照の整理、マージ済み・放置された worktree の整理 |
 | `moai worktree recover` | worktree レジストリの復旧 |
 | `moai worktree snapshot` | 作業ツリー状態のスナップショットを取得 |
-| `moai worktree restore` | スナップショット HEAD 状態へ作業ツリーを復元 |
 | `moai worktree verify` | 作業ツリー状態をスナップショットと照合検証 |
+| `moai worktree restore` | スナップショット HEAD 状態へ作業ツリーを復元 |
 
-`moai worktree go` はディレクトリを変えずにパスだけ出力します。実際の移動はシェルで次のように包んで使います。
+ワークツリーの中へ**入る**のはランチャーの役目です。一覧表示は git をそのまま使います。
 
 ```bash
-cd "$(moai worktree go my-branch)"
+moai cc -w feat-login           # ワークツリーで作業を開始 (なければ生成)
+moai cc -w feat-login --spawn   # 現在のセッションは残して新しい tmux ウィンドウで開く
+git worktree list               # ワークツリーの一覧
 ```
 
 ---
