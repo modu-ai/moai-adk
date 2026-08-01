@@ -546,7 +546,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8aafd894b
 sync_status: audit-ready
 
 b12_self_test_a: "grep -c 'SPEC-UPDATE-GUARD-EFFICACY-001' CHANGELOG.md → 0 (사전 중복 없음, 방출 전 실행)"
