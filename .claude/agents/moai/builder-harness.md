@@ -111,8 +111,8 @@ The checks below are independent and read-only: issue them as ONE single-turn mu
 
 **Agents**:
 - Frontmatter fields per the Dispatch Table row; `description` is required and carries concise semantic scope prose + language-independent trigger intent; `tools` is CSV and follows the least-privilege principle; `skills` is a YAML array
-- Sub-agents cannot spawn other sub-agents unless `Agent` is listed in their `tools` (nested spawning supported as of Claude Code v2.1.172, depth-limited); MoAI agents intentionally omit `Agent`, so they do not nest
-- Background sub-agents surface permission prompts in the main session (as of Claude Code v2.1.186); keep write-capable agents in the foreground as a conservative default
+- Sub-agents cannot spawn other sub-agents unless `Agent` is listed in their `tools`. Nested spawning arrived in Claude Code v2.1.172 and is **enabled by default** as of v2.1.219 (changelog: depth 3; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables), so omitting `Agent` from the `tools` list is now the SOLE flat-hierarchy guarantee — MoAI agents omit it deliberately, and a generated agent should too unless nesting is genuinely required
+- Sub-agents run in the background by default as of Claude Code v2.1.198, and a background sub-agent still surfaces every permission prompt in the main session (naming the asking sub-agent since v2.1.186). Do NOT set the `background:` frontmatter field and do NOT force write-capable agents to the foreground — the runtime chooses. The retained safeguard is concurrency, not backgrounding: never run two write-capable agents at once. See `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution
 
 **Skills**:
 - All frontmatter metadata values must be quoted strings

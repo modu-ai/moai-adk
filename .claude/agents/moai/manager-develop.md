@@ -194,7 +194,8 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 ### Status transitions owned
 
 - `draft → in-progress` on the M1 commit start across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field MUST also be refreshed to the M1 commit date.
-- `in-progress → implemented` (or directly `→ completed` depending on workflow variant) on the M-final commit, but ONLY for `progress.md`. The other 3 artifacts (spec.md / plan.md / acceptance.md) wait for sync-phase per REQ-ARR-003 (manager-docs owns those transitions).
+
+This is the ONLY status transition this agent performs — on ANY artifact, `progress.md` included. The `in-progress → implemented → completed` close belongs entirely to manager-docs and rides the single sync commit, applied atomically to all 4 artifacts; see `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, which records no per-artifact carve-out. Advancing `progress.md` past `in-progress` at the M-final commit contradicts that matrix and trips the `OwnershipTransitionInvalid` lint, which evaluates `in-progress → implemented` by default.
 
 ### Cascade follow-ups within scope
 

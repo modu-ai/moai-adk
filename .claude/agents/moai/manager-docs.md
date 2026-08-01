@@ -2,7 +2,7 @@
 name: manager-docs
 description: |
   Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for all 4 SPEC artifacts, per the 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
-  Absorbs the project initialization and configuration role per the Anthropic catalog consolidation (17→8 agents; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
+  Absorbs the project initialization and configuration role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
@@ -83,7 +83,15 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3 self-tests per `.claude/rules/moai/development/manager-develop-prompt-template.md` § B-relevant.12:
 
 1. **Pre-emission grep**: `grep -c '<SPEC-ID>' CHANGELOG.md` — if count ≥ 1, halt emission and return blocker report (avoids duplicate entries from parallel BATCH-SYNC sessions)
-2. **AC count match**: count `acceptance.md` SSOT AC rows (`grep -cE '^\| \*\*AC-[A-Z]+-[0-9]+\*\*'`) and verify the CHANGELOG entry references the same count
+2. **AC count match**: count the DISTINCT AC identifiers in `acceptance.md` and verify the CHANGELOG entry references the same count:
+
+   ```bash
+   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l
+   ```
+
+   Anchor on the AC-ID token, never on the surrounding markdown. AC entries appear as `### AC-RIL2-001 — …` headings, as `| AC-HYG-001-001 |` table cells, and as `| AC-DFF-01 |` two-digit rows; a pattern keyed to one markup shape silently misses the others. The `([A-Z0-9]+-)*` middle allows digit-bearing domains (`RIL2`, `V3R6`) and four-segment IDs (`AC-HYG-001-001`), and the whole group is optional so domain-less `AC-001` still matches.
+
+   **A count of 0 is a RED flag, not a pass.** `0 == 0` is a vacuous comparison — if the command returns 0, stop and inspect `acceptance.md` by hand rather than reporting the self-test satisfied. Before trusting any replacement pattern, run it against a handful of real `acceptance.md` files and confirm the counts are non-zero and plausible.
 3. **File path verification**: every file path claimed in the CHANGELOG entry MUST exist via `ls <path>` verification before committing
 
 ### Forbidden modifications

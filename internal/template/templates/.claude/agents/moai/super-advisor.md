@@ -102,8 +102,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Cross-References
 
-- Design authority (architecture SSOT): `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01 change ② + §05).
-- Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md` (`NOT for: consultation`).
+- Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
 - Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.
