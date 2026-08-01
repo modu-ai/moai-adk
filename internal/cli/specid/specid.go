@@ -1,7 +1,7 @@
 // Package specid는 CLI SPEC-ID 공유 sanitizer를 제공하는 leaf package다.
 //
 // SPEC-SEC-HARDEN-002 M1/M2a — ValidateSpecID는 모든 CLI SPEC-ID 경계
-// (worktree new, spec view/status/close)에서 사용하는 단일 검증 헬퍼다.
+// (spec view/status/close)에서 사용하는 단일 검증 헬퍼다.
 // leaf package에 두는 이유: internal/cli가 internal/cli/worktree를 import하므로
 // worktree는 cli를 import할 수 없다(import cycle). 본 package는 cli와 worktree
 // 양쪽에서 import 가능하고 둘 중 어느 것도 import하지 않으므로 cycle이 없다.
@@ -35,32 +35,6 @@ func ValidateSpecID(specID string) error {
 	// 경로 구분자("/" 또는 "\") 거부 — 크로스 플랫폼 (validateSkillID와 동일 패턴)
 	if strings.ContainsAny(specID, "/\\") {
 		return fmt.Errorf("SPEC-ID must not contain path separators: %q", specID)
-	}
-	return nil
-}
-
-// ValidateNoTraversal은 SPEC-ID 또는 브랜치명을 모두 받는 polymorphic CLI arg
-// (예: `moai worktree new`의 args[0])를 위한 path-traversal 가드다. 브랜치명은
-// "/"를 정상적으로 포함하므로(예: "fix/something") "/"는 허용하되, 봉쇄
-// 디렉터리(~/.moai/worktrees/<project>/)를 탈출하는 ".." 시퀀스와 절대 경로만
-// 거부한다. 엄격한 flat SPEC-ID 검증이 필요한 경계(spec view/status/close)는
-// ValidateSpecID를 사용한다.
-//
-// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-002 M2a — worktree new args[0]용 traversal 가드. 브랜치명 "/" 허용, ".."/절대경로(봉쇄 탈출)만 거부. strict 검증은 ValidateSpecID.
-func ValidateNoTraversal(arg string) error {
-	// 절대 경로 거부 (봉쇄 디렉터리 밖 지정 방지).
-	//
-	// filepath.IsAbs만으로는 부족하다: Windows에서 IsAbs("/tmp/evil")는 드라이브
-	// 문자가 없으므로 false이지만, 그런 rooted 경로는 현재 드라이브 루트로 해석돼
-	// 봉쇄 디렉터리를 그대로 벗어난다. 선행 구분자("/" 또는 "\")를 플랫폼과 무관하게
-	// 거부해 가드가 모든 OS에서 동일하게 동작하도록 한다. 브랜치명("fix/something")은
-	// 선행 구분자가 없으므로 계속 통과한다.
-	if filepath.IsAbs(arg) || strings.HasPrefix(arg, "/") || strings.HasPrefix(arg, `\`) {
-		return fmt.Errorf("worktree name must not be an absolute path: %q", arg)
-	}
-	// ".." 거부 (path traversal 봉쇄 탈출 방지) — "/"는 브랜치명에 정상이므로 허용
-	if strings.Contains(arg, "..") {
-		return fmt.Errorf("worktree name must not contain '..' (path traversal): %q", arg)
 	}
 	return nil
 }
