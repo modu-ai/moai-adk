@@ -2,7 +2,7 @@
 id: SPEC-REF-SEO-ABSORB-001
 title: "moai-ref-seo 레퍼런스 스킬 클린룸 흡수 + 재사용 가능한 클린룸 프로토콜 확립"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-08-01
 updated: 2026-08-01
 author: manager-spec
