@@ -375,19 +375,11 @@ MoAI-ADK follows the [Conventional Commits](https://www.conventionalcommits.org/
 
 ## Post-PR CI Monitoring
 
-Right after `/moai sync` creates the PR, MoAI-ADK runs two waves of automated monitoring. Wave 1 polls CI results to determine which required checks failed, and Wave 2 enters an auto-fix loop when failures occur. Instead of a human watching the CI screen after PR creation, the loop observes results and responds — agentic loop engineering extended into the CI domain.
+After `/moai sync` creates the PR, the orchestrator observes which required checks failed and hands them off to the auto-fix loop. Instead of a human watching the CI screen after PR creation, the loop receives the result and responds — agentic loop engineering extended into the CI domain.
 
-### Wave 1 — CI Result Polling
+### Auto-Fix Loop (up to 3 iterations)
 
-- Calls `gh pr checks` every 30 seconds (respecting the GitHub API rate limit)
-- 30-minute hard timeout — if required checks do not complete in that time,
-  the watch loop exits with exit code 3
-- Required-check definition SSoT: `.github/required-checks.yml`
-- Auxiliary checks are not merge blockers even if they fail (warning only)
-
-### Wave 2 — Auto-Fix Loop (up to 3 iterations)
-
-When a required check fails, MoAI-ADK enters the auto-fix loop.
+When the orchestrator hands off a failing required check, MoAI-ADK enters the auto-fix loop.
 
 - Each iteration applies the fix as a **new commit** (no force-push / amend)
 - At most 3 iterations per PR push (not per session)
@@ -412,13 +404,11 @@ The auto-fix loop **never modifies** the following files:
 
 - `.env`, `.env.*` (environment variables / secrets)
 - credentials files
-- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
-- `.github/required-checks.yml` (Wave 1 SSoT)
+- CI workflow definitions and required-check configuration — patching the layer that reports a failure can turn a real failure into a false green
 {{< /callout >}}
 
 ### Related Documents
 
-- Polling doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
 - Auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
 
 ## Quality Gates

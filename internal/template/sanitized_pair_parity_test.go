@@ -62,7 +62,10 @@ import (
 // here should coincide with promoting it back into the byte-parity allowlist.
 var sanitizedPairPaths = []string{
 	".claude/rules/moai/development/manager-develop-prompt-template.md",
-	".claude/rules/moai/workflow/ci-watch-protocol.md",
+	// ci-watch-protocol.md was removed from this registry when its template
+	// mirror was intentionally deleted: the file is no longer a sanitized PAIR
+	// (only the development-repo copy survives), so the parity assertion no
+	// longer applies to it.
 	".claude/rules/moai/core/agent-common-protocol.md",
 	".claude/rules/moai/workflow/verification-batch-pattern.md",
 	".claude/agents/moai/plan-auditor.md",

@@ -53,7 +53,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// skill, optional-pack:frontend), net +1 = 41.
 	// moai-ref-seo added (search-visibility and crawlability reference skill,
 	// optional-pack:frontend), net +1 = 42.
-	const wantTotal = 42
+	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
+	// shell scripts are development-repo-only and never shipped), net -1 = 41.
+	const wantTotal = 41
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

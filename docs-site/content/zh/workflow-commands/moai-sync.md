@@ -378,19 +378,11 @@ MoAI-ADK 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 格
 
 ## PR 创建后的 CI 监控
 
-`/moai sync` 创建 PR 之后,MoAI-ADK 会执行两个阶段的自动监控。Wave 1 轮询 CI 结果,判断哪个 required check 失败;Wave 2 在发生失败时进入自动 fix 循环。PR 创建后也无需人工盯着 CI 界面,而是由回路观察结果并做出响应 — 这是智能体回路工程延伸到 CI 领域的结构。
+`/moai sync` 创建 PR 之后,编排器确认哪个 required check 失败,并交接给自动 fix 循环。PR 创建后也无需人工盯着 CI 界面,而是由回路接收结果并做出响应 — 这是智能体回路工程延伸到 CI 领域的结构。
 
-### Wave 1 — 轮询 CI 结果
+### 自动 fix 循环(最多 3 次)
 
-- 以 30 秒间隔调用 `gh pr checks`(尊重 GitHub API rate limit)
-- 30 分钟硬性超时 — 若 required check 在该时间内未完成,
-  watch loop 以 exit code 3 结束
-- required check 定义的 SSoT: `.github/required-checks.yml`
-- auxiliary check 即使失败也不是 merge blocker(仅警告)
-
-### Wave 2 — 自动 fix 循环(最多 3 次)
-
-required check 失败时,MoAI-ADK 进入自动 fix 循环。
+编排器交接失败的 required check 时,MoAI-ADK 进入自动 fix 循环。
 
 - 每次 iteration 都以 **新 commit** 应用 fix(禁止 force-push / amend)
 - 每次 PR push 最多 3 次 iterations(不是 per-session)
@@ -415,13 +407,11 @@ auto-fix 循环 **绝不修改** 以下文件:
 
 - `.env`, `.env.*`(环境变量 / 机密)
 - credentials 文件
-- `scripts/ci-watch/run.sh`(Wave 2 infrastructure)
-- `.github/required-checks.yml`(Wave 1 SSoT)
+- CI 工作流定义与 required check 配置 — 修补报告失败的那一层,会把真实失败变成虚假的 green
 {{< /callout >}}
 
 ### 相关文档
 
-- 轮询 doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
 - auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
 
 ## 质量门禁

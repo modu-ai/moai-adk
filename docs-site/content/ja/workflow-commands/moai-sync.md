@@ -367,19 +367,11 @@ MoAI-ADK は [Conventional Commits](https://www.conventionalcommits.org/) 形式
 
 ## PR マージ後の CI モニタリング
 
-`/moai sync` が PR を生成した直後、MoAI-ADK は 2 段階の自動モニタリングを実行します。Wave 1 は CI 結果をポーリングしてどの required check が失敗したかを判断し、Wave 2 は失敗が発生した場合に自動 fix ループに入ります。PR 生成後にも人が CI 画面を見張る代わりにループが結果を観察して対応する — エージェンティックループエンジニアリングが CI 領域まで続く構造です。
+`/moai sync` が PR を生成した後、オーケストレーターがどの required check が失敗したかを確認し、自動 fix ループにハンドオフします。PR 生成後にも人が CI 画面を見張る代わりに、ループが結果を受け取って対応する — エージェンティックループエンジニアリングが CI 領域まで続く構造です。
 
-### Wave 1 — CI 結果のポーリング
+### 自動 fix ループ (最大 3 回)
 
-- 30 秒間隔で `gh pr checks` を呼び出し (GitHub API rate limit を尊重)
-- 30 分 hard timeout — その時間内に required check が完了しないと
-  watch loop が exit code 3 で終了
-- required check 定義の SSoT: `.github/required-checks.yml`
-- auxiliary check は fail しても merge blocker ではない (warning のみ)
-
-### Wave 2 — 自動 fix ループ (最大 3 回)
-
-required check が fail すると MoAI-ADK は自動 fix ループに入ります。
+オーケストレーターが失敗した required check をハンドオフすると、MoAI-ADK は自動 fix ループに入ります。
 
 - 各 iteration ごとに **新しい commit** で fix を適用 (force-push / amend 禁止)
 - 最大 3 iterations per PR push (per-session ではない)
@@ -404,13 +396,11 @@ auto-fix ループは次のファイルを **絶対に修正しません**:
 
 - `.env`, `.env.*` (環境変数 / 秘密)
 - credentials ファイル
-- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
-- `.github/required-checks.yml` (Wave 1 SSoT)
+- CI ワークフロー定義と required check 設定 — 失敗を報告する層を修正すると、本物の失敗が偽の green に変わってしまうためです
 {{< /callout >}}
 
 ### 関連ドキュメント
 
-- ポーリング doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
 - auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
 
 ## 品質ゲート

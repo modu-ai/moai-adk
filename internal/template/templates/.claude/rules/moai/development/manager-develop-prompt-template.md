@@ -17,14 +17,14 @@ Per the canonical agent catalog policy, the `manager-develop` agent operates in 
 |------------|--------------|-------------|---------------------|---------------------|
 | `ddd` | ANALYZE-PRESERVE-IMPROVE | Existing codebases with minimal test coverage (< 10% per quality.yaml `constitution.development_mode: ddd` selection); characterization-test-first preservation of behavior | No fixed iteration limit; one cycle per logical refactoring chunk | `.claude/rules/moai/workflow/spec-workflow.md` § Run Phase DDD Mode |
 | `tdd` | RED-GREEN-REFACTOR | Default — all new development work, brownfield projects with pre-RED analysis (≥ 10% coverage per quality.yaml `constitution.development_mode: tdd` selection); test-first development | No fixed iteration limit; one cycle per behavior specification | `.claude/rules/moai/workflow/spec-workflow.md` § Run Phase TDD Mode |
-| `autofix` | **DIAGNOSE-PATCH-VERIFY** | CI auto-fix loop after `scripts/ci-watch/run.sh` detects a failing required check; semantic-failure-safe patching of lint / build / type errors | **Maximum 3 iterations** per PR push (per-PR-push counter, not per-session); escalation to `AskUserQuestion` after iteration 3 with no auto-resume timeout | `.claude/rules/moai/workflow/ci-autofix-protocol.md` |
+| `autofix` | **DIAGNOSE-PATCH-VERIFY** | CI auto-fix loop entered when the orchestrator hands off a failing required check; semantic-failure-safe patching of lint / build / type errors | **Maximum 3 iterations** per PR push (per-PR-push counter, not per-session); escalation to `AskUserQuestion` after iteration 3 with no auto-resume timeout | `.claude/rules/moai/workflow/ci-autofix-protocol.md` |
 
 ### cycle_type=autofix DIAGNOSE-PATCH-VERIFY pattern
 
 Each iteration of the autofix loop executes the three-step DIAGNOSE-PATCH-VERIFY pattern:
 
-1. **DIAGNOSE**: Read the failing CI check output (provided by the orchestrator from `scripts/ci-watch/run.sh`). Identify the root cause — lint rule violation, build error, type error, missing dependency, etc.
-2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts.
+1. **DIAGNOSE**: Read the failing CI check output (provided by the orchestrator in its handoff). Identify the root cause — lint rule violation, build error, type error, missing dependency, etc.
+2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or any CI watch infrastructure script or workflow definition.
 3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch. If still failing, increment the iteration counter and repeat from DIAGNOSE.
 
 ### autofix escalation contract

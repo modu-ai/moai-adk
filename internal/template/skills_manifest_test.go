@@ -34,7 +34,7 @@ func TestEmbeddedMoaiSkillNames(t *testing.T) {
 		"moai-domain-backend", "moai-domain-database", "moai-domain-frontend",
 		"moai-domain-html-report", "moai-domain-humanize", "moai-harness-learner",
 		"moai-ref-llm-security", "moai-ref-secops", "moai-ref-supply-chain",
-		"moai-workflow-ci-loop", "moai-ref-seo",
+		"moai-ref-seo",
 	} {
 		if !seen[must] {
 			t.Errorf("embedded manifest missing expected core skill %q", must)

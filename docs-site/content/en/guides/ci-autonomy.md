@@ -49,29 +49,26 @@ Verifications executed:
 
 ## Auto-fix Loop (T3)
 
-After `/moai sync` creates a PR, the CI watch script and the CI loop skill
-together run a "diagnose → fix → re-verify" loop. It is the local diagnostic
-self-fix loop extended on top of the PR pipeline.
+After `/moai sync` creates a PR, the orchestrator hands off a failing required
+check and `manager-develop` runs the "diagnose → fix → re-verify" loop as its
+`cycle_type=autofix` cycle. It is the local diagnostic self-fix loop extended
+on top of the PR pipeline.
 
-**CI watch script (`scripts/ci-watch/run.sh`)**
+- **Entry condition** — the loop starts only when at least one required check
+  is failing AND the orchestrator hands off, naming the pull request and branch
+  under repair. The orchestrator is the sole entry point
+- **Iteration cap** — at most 3 iterations per PR push. On the fourth, the loop
+  attempts no patch and escalates to the user through a blocking
+  AskUserQuestion
+- **Semantic failures** — data race, deadlock, panic, and test assertion
+  failures are never auto-patched; they go to human judgment
+- **Protected files** — secrets, credentials files, and CI workflow definitions
+  are never modified by the loop, because patching the layer that reports a
+  failure can turn a real failure into a false green
 
-```bash
-sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
-```
-
-- Polls `gh pr checks` at 30-second intervals, classifying required checks vs.
-  auxiliary checks
-- Exit codes: `0` all passed · `2` required check failed (emits a structured
-  JSON handoff to stdout) · `3` 30-minute hard timeout · `1` error
-- The required-check list is read from an SSoT file, and it supports
-  environment-variable overrides for testing (`MOAI_CIWATCH_GH`,
-  `CIWATCH_TIMEOUT_SECONDS`, etc.)
-
-**CI loop skill (`moai-workflow-ci-loop`)**
-
-When the watch script hands off a required failure, the `moai-workflow-ci-loop`
-skill classifies the failure and attempts safe automated patches up to 3 times.
-Semantic-level failures (where auto-fixing is risky) are escalated to the user.
+The SSoT for the iteration cap, the escalation contract, semantic-failure
+handling, and the protected-file list is
+`.claude/rules/moai/workflow/ci-autofix-protocol.md`.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 

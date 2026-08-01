@@ -59,7 +59,7 @@ The loop taxonomy is re-expressed as **goal engine + preset**: the four quadrant
 - **How it ends**: success-exit when the goal engine confirms "queue drained + diagnostics clean" via the independent final pass (Step 1/1.5), or a ceiling exit that emits the 5-section verdict and persists residue per § Ceiling-Exit Verdict Contract.
 - **When it fits**: sweeping a project-wide finite issue queue to zero across many iterations — not a one-off turn, not a schedule.
 
-Sibling presets (same **goal engine + preset** framing, different quadrant): **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill. The `goal engine + preset` framing is consistent across the `loop.md`/`fix.md` sibling quadrant notes.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`. The `goal engine + preset` framing is consistent across the `loop.md`/`fix.md` sibling quadrant notes.
 
 ## Goal-Preset Composition — how the sweep is built ON the goal engine
 

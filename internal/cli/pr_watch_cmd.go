@@ -32,14 +32,19 @@ func newPRWatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "watch <PR_NUMBER>",
 		Short: "Watch CI checks for a PR (or --abort an active watch)",
-		Long: `Monitor gh pr checks for the given PR number.
+		Long: `Manage CI-watch state for a pull request.
 
-On all-required-pass: emits a ready-to-merge markdown report to stdout.
-On required-failure:  emits a JSON handoff to stdout (exit 2).
-On 30-min timeout:    exits with code 3.
+This command does NOT poll CI itself. It provides two modes for orchestrator
+consumption:
 
-The CI watch loop is invoked via scripts/ci-watch/run.sh.
-This command handles --abort and --report modes for orchestrator consumption.
+  --report   Emit a ready-to-merge markdown report for PR_NUMBER to stdout.
+             Call this after CI has been confirmed green.
+  --abort    Request that an active watch loop stop, by setting the abort flag
+             in the CI-watch state file. Reports and exits cleanly when no
+             active watch exists.
+
+With neither flag, the command prints a short notice to stderr explaining that
+no watch loop runs here, and exits 0.
 
 HARD: This command MUST NOT call AskUserQuestion.
 The orchestrator presents the emitted report via AskUserQuestion.`,
@@ -68,10 +73,10 @@ The orchestrator presents the emitted report via AskUserQuestion.`,
 				return runPRWatchReport(args[0], flags.branch)
 			}
 
-			// Default: just print usage info directing user to the shell script.
-			fmt.Fprintf(os.Stderr, "[ci-watch] Use scripts/ci-watch/run.sh to start the watch loop.\n")
-			fmt.Fprintf(os.Stderr, "[ci-watch] Example: MOAI_CIWATCH_GH=gh sh scripts/ci-watch/run.sh %s %s\n",
+			// Default: no watch loop runs here — state the available modes.
+			fmt.Fprintf(os.Stderr, "[ci-watch] No watch loop runs in this command; nothing to do for PR %s on %s.\n",
 				args[0], flags.branch)
+			fmt.Fprintf(os.Stderr, "[ci-watch] Use --report once CI is green, or --abort to stop an active watch.\n")
 			return nil
 		},
 	}
@@ -104,7 +109,8 @@ func runPRWatchReport(prNumStr, branch string) error {
 	}
 
 	// Build a minimal all-pass state for report generation.
-	// Caller (scripts/ci-watch/run.sh exit 0) passes PR+branch context.
+	// The caller (the orchestrator, after confirming CI is green) supplies the
+	// PR and branch context.
 	state := ciwatch.CIState{
 		PRNumber: prNum,
 		Branch:   branch,

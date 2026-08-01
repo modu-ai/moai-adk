@@ -236,7 +236,6 @@ Detect current branch:
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
 5. Display PR URL to user
-6. After `gh pr create` success: invoke `Skill("moai-workflow-ci-loop")` to start the CI watch + auto-fix loop (HARD invocation contracts per `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`; the sync delegation skill per `.moai/config/sections/delegation.yaml`).
 
 **Main branch** (direct commit):
 - Push directly: `git push origin {main_branch}`
@@ -451,19 +450,9 @@ All of the following must be verified:
 
 ---
 
-## Related Skills
-
-정적 routing:
-
-- **moai-workflow-ci-loop** — Phase 14 (`gh pr create`) 성공 후 CI watch + auto-fix loop을 자동 호출하는 skill. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 30s polling, 30분 hard timeout, required vs auxiliary check 분류 후 ready-to-merge handoff 또는 max 3-iteration auto-fix 시도, semantic 실패는 즉시 escalation.
-
-이 skill은 `auto` 모드 sync에서 PR 생성 직후 무조건 호출되며, invocation contract에 따라 orchestrator가 다음을 보장한다: gh 인증 확인 → `.github/required-checks.yml` 존재 확인 → 양의 정수 PR 번호 → 90s 이내 활성 watch 부재.
-
----
-
-Version: 3.8.0
+Version: 4.0.0
 Updated: 2026-05-17
-Changes: Added test scenarios (3.7.0) + Related Skills section (3.8.0) + consolidated moai-workflow-ci-watch reference to moai-workflow-ci-loop per the skill consolidation policy (3.9.0).
+Changes: Added test scenarios (3.7.0) + Related Skills section (3.8.0) + removed the Related Skills CI watch/auto-fix routing entry (4.0.0 — the CI watch loop is a dev-repo-local asset, not part of the delegated skill routing).
 
 ---
 
