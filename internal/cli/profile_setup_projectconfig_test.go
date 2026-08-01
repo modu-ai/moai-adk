@@ -134,8 +134,12 @@ func TestPersistProjectConfig_ReadCurrent(t *testing.T) {
 }
 
 // TestProfileSetupConstructsProjectSelects is a construction grep guard
-// (AC-WC3-006a): the wizard source must bind a development_mode and a
-// git_convention huh.Select with the canonical option values.
+// (AC-WC3-006a): the wizard source must bind a development_mode huh.Select
+// offering the canonical option values.
+//
+// The git_convention half of this guard moved to a NEGATIVE assertion in
+// profile_setup_removed_questions_test.go: that Select was removed from the
+// wizard, so binding it again is now the regression, not the requirement.
 func TestProfileSetupConstructsProjectSelects(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("profile_setup.go")
@@ -143,19 +147,22 @@ func TestProfileSetupConstructsProjectSelects(t *testing.T) {
 		t.Fatalf("read profile_setup.go: %v", err)
 	}
 	src := string(data)
-	// The two selects must be bound to the value variables.
-	for _, marker := range []string{"&developmentMode", "&gitConvention"} {
-		if !strings.Contains(src, marker) {
-			t.Errorf("profile_setup.go must bind a select to %s", marker)
-		}
+	if !strings.Contains(src, "&developmentMode") {
+		t.Error("profile_setup.go must bind a select to &developmentMode")
 	}
-	// The canonical convention values must appear as huh.NewOption values.
-	// ("custom" was removed — the custom git-convention engine was retired, and
-	// the "custom" statusline preset option that previously satisfied this grep
-	// was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.)
-	for _, v := range []string{`"ddd"`, `"tdd"`, `"auto"`, `"conventional-commits"`, `"angular"`, `"karma"`} {
-		if !strings.Contains(src, v) {
-			t.Errorf("profile_setup.go missing canonical option value %s", v)
+	// The canonical option values must be OFFERED by the select. The option list is
+	// derived from the shared settings schema (schemaSelectOptions) rather than
+	// written inline, so this is asserted against the built option list instead of
+	// the source text — a stronger check: it fails if the schema stops offering a
+	// value, which a source grep could not see.
+	txt := getProfileText("en")
+	offered := map[string]bool{}
+	for _, o := range schemaSelectOptions(txt, "development_mode", false) {
+		offered[o.Value] = true
+	}
+	for _, v := range []string{"ddd", "tdd"} {
+		if !offered[v] {
+			t.Errorf("development_mode select does not offer canonical option value %q", v)
 		}
 	}
 }

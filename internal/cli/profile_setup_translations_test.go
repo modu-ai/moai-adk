@@ -1,6 +1,11 @@
 package cli
 
-import "testing"
+import (
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/template"
+)
 
 func TestGetProfileText_AllLanguages(t *testing.T) {
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
@@ -37,9 +42,6 @@ func TestGetProfileText_AllLanguages(t *testing.T) {
 			if txt.EffortLevelDesc == "" {
 				t.Errorf("EffortLevelDesc is empty for lang %q", lang)
 			}
-			if txt.EffortLevelDefault == "" {
-				t.Errorf("EffortLevelDefault is empty for lang %q", lang)
-			}
 			if txt.EffortLevelXHigh == "" {
 				t.Errorf("EffortLevelXHigh is empty for lang %q", lang)
 			}
@@ -65,24 +67,41 @@ func TestGetProfileText_AllLanguages(t *testing.T) {
 			if txt.GitConventionDesc == "" {
 				t.Errorf("GitConventionDesc is empty for lang %q", lang)
 			}
-			if txt.ProjectDefaultOption == "" {
-				t.Errorf("ProjectDefaultOption is empty for lang %q", lang)
-			}
+			// NOTE: the former ProjectDefaultOption / EffortLevelDefault /
+			// ModelDefault empty-option labels were removed — the empty option is
+			// single-sourced from settings.EmptyLabelFor, asserted by
+			// TestSchemaSelectOptions_EmptyLabelFromSchema below.
 		})
 	}
 }
 
-// TestGetProfileText_OpusAliasValues verifies the `opus` alias label in every
-// supported language advertises Opus 4.8 (per the simplified wizard UX where
-// explicit claude-opus-4-8 options are removed and `opus`/`opus[1m]` map to 4.8).
+// TestGetProfileText_OpusAliasValues verifies the `opus` alias labels name the
+// model the alias ACTUALLY resolves to. template.ModelAliasCanonicalID("opus") is
+// claude-opus-5, so the labels must say "Opus 5" — the former "Opus 4.8" wording
+// named a model the alias no longer resolves to (claude-opus-4-8 survives only in
+// template.ModelDeprecatedCanonicalIDs, for reading historical prefs). The
+// negative assertion is what makes this falsifiable: re-introducing the stale
+// version string fails the test.
 func TestGetProfileText_OpusAliasValues(t *testing.T) {
+	// The version token is derived from the canonical id the alias resolves to, so
+	// bumping ModelAliasTable without re-labelling the wizard fails here.
+	wantVersion := strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-")
+	if wantVersion != "5" {
+		t.Fatalf("opus alias resolves to %q; update the expected label version token",
+			template.ModelAliasCanonicalID("opus"))
+	}
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
-		if !containsStr(txt.ModelOpus, "4.8") {
-			t.Errorf("lang=%q: ModelOpus %q should reference Opus 4.8", lang, txt.ModelOpus)
-		}
-		if !containsStr(txt.ModelOpus1M, "4.8") {
-			t.Errorf("lang=%q: ModelOpus1M %q should reference Opus 4.8", lang, txt.ModelOpus1M)
+		for name, label := range map[string]string{
+			"ModelOpus":   txt.ModelOpus,
+			"ModelOpus1M": txt.ModelOpus1M,
+		} {
+			if !containsStr(label, "Opus "+wantVersion) {
+				t.Errorf("lang=%q: %s %q should reference Opus %s", lang, name, label, wantVersion)
+			}
+			if containsStr(label, "4.8") {
+				t.Errorf("lang=%q: %s %q still references the superseded Opus 4.8", lang, name, label)
+			}
 		}
 		if !containsStr(txt.ModelOpus1M, "1M") {
 			t.Errorf("lang=%q: ModelOpus1M %q should reference 1M context", lang, txt.ModelOpus1M)
@@ -90,15 +109,28 @@ func TestGetProfileText_OpusAliasValues(t *testing.T) {
 	}
 }
 
-// TestGetProfileText_EffortLevelValues verifies effort level labels contain xhigh/max keywords.
+// TestGetProfileText_EffortLevelValues verifies the effort level labels name their
+// own wire value AND carry no stale model attribution. xhigh/max are still offered
+// (they are valid Claude Code session effort levels and remain in the shared
+// settings schema); what was stale was tying them to "Opus 4.8+", a model the
+// wizard no longer targets.
 func TestGetProfileText_EffortLevelValues(t *testing.T) {
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
-		if !containsStr(txt.EffortLevelXHigh, "xhigh") {
-			t.Errorf("lang=%q: EffortLevelXHigh %q does not contain 'xhigh'", lang, txt.EffortLevelXHigh)
+		if !containsStr(txt.EffortLevelXHigh, template.EffortLevelXHigh) {
+			t.Errorf("lang=%q: EffortLevelXHigh %q does not contain %q", lang, txt.EffortLevelXHigh, template.EffortLevelXHigh)
 		}
-		if !containsStr(txt.EffortLevelMax, "max") {
-			t.Errorf("lang=%q: EffortLevelMax %q does not contain 'max'", lang, txt.EffortLevelMax)
+		if !containsStr(txt.EffortLevelMax, template.EffortLevelMax) {
+			t.Errorf("lang=%q: EffortLevelMax %q does not contain %q", lang, txt.EffortLevelMax, template.EffortLevelMax)
+		}
+		for name, label := range map[string]string{
+			"EffortLevelDesc":  txt.EffortLevelDesc,
+			"EffortLevelXHigh": txt.EffortLevelXHigh,
+			"EffortLevelMax":   txt.EffortLevelMax,
+		} {
+			if containsStr(label, "4.8") {
+				t.Errorf("lang=%q: %s %q still attributes the effort level to Opus 4.8", lang, name, label)
+			}
 		}
 	}
 }
