@@ -435,10 +435,145 @@ this tree before any M2 edit (`0 issues.`), so M2 introduces no new finding. `go
 five M2 files → no output. (`internal/cli/update/deploy/deploy_test.go` is reported by `gofmt -l`
 but is pre-existing and untouched by M2.)
 
+### M3 — On-disk backup for the three in-memory-only files
+
+Landed on `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Files: `internal/cli/update_disk_backup.go` (new),
+`internal/cli/update_disk_backup_test.go` (new), `internal/cli/update_template_sync.go` (edited),
+`internal/cli/update_clean_install.go` (edited).
+
+#### Claim
+
+`.claude/settings.json`, `.moai/status_line.sh`, and `.gitignore` reach the run-scoped backup
+directory on disk before the first destructive step of **both** execution paths, and a backup-write
+failure aborts before that step rather than logging and continuing. The in-memory merge-back is
+retained unchanged (REQ-UDS-004).
+
+#### Evidence — AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-008 | PASS | `go test -run 'TestBackup_OnDiskBeforeFirstDestructiveStep' -count=1 -v ./internal/cli/` | `--- PASS: TestBackup_OnDiskBeforeFirstDestructiveStep (0.00s)` / `ok github.com/modu-ai/moai-adk/internal/cli 0.606s` |
+| AC-UDS-009 | PASS | `go test -run 'TestBackup_OnDiskCoverageParityAcrossPaths' -count=1 -v ./internal/cli/` | `--- PASS: TestBackup_OnDiskCoverageParityAcrossPaths (0.00s)` |
+| AC-UDS-020 | PASS | `go test -run 'TestBackup_AbortsBeforeDestructionOnWriteFailure' -count=1 -v ./internal/cli/` | `--- PASS: TestBackup_AbortsBeforeDestructionOnWriteFailure (0.00s)` |
+| AC-UDS-010 | PASS | `go test -count=1 ./internal/cli/... ./internal/cli/update/...` | exit 0, no `--- FAIL`; `ok .../internal/cli 154.923s` + 16 sibling packages `ok` |
+
+M2 drift guard re-verified after the M3 edits: `go test -run
+TestDestructiveTargetRegistry_CoversAllSites -count=1 -v ./internal/cli/` → `--- PASS:
+TestDestructiveTargetRegistry_CoversAllSites (0.01s)`. The clean-reinstall removal loop moved inside
+a closure, and the registry's (file, enclosing function, count) key still resolves it.
+
+#### Evidence — RED before GREEN (TDD, template §E8)
+
+Captured against a compiling stub, so each RED is a real `--- FAIL`, never a build error or the
+`[no tests to run]` exit-0 vacuity `acceptance.md` §A.2 rejects:
+
+```
+--- FAIL: TestBackup_OnDiskBeforeFirstDestructiveStep (0.00s)
+    update_disk_backup_test.go:95: on-disk backup did not survive the destructive step:
+    stat in-memory-backups/.claude/settings.json: no such file or directory
+
+--- FAIL: TestBackup_OnDiskCoverageParityAcrossPaths (0.00s)
+    update_disk_backup_test.go:128: walk in-memory-backups: lstat in-memory-backups:
+    no such file or directory
+
+--- FAIL: TestBackup_AbortsBeforeDestructionOnWriteFailure (0.00s)
+    update_disk_backup_test.go:199: expected an error when the on-disk backup write fails
+```
+
+#### Baseline-attribution
+
+Measured on branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, HEAD `8f799dcd5`, before any M3 edit:
+
+```
+$ go build ./...                                                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                                → exit 0
+$ golangci-lint run --timeout=3m                                          → 0 issues.
+$ grep -rn 'backup-write-failed' internal/cli/ --include='*.go' | wc -l   → 0
+$ grep -rn 'settings.json' internal/cli/update/backup/ --include='*.go' \
+    | grep -v _test | wc -l                                               → 0
+```
+
+Post-M3 on the same tree: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0;
+`golangci-lint run --timeout=3m` → `0 issues.` (no NEW finding against the 0-issue baseline);
+`grep -rn 'backup-write-failed' internal/cli/ --include='*.go' | grep -v _test | wc -l` → `1`.
+
+Coverage: `go test -cover ./internal/cli/... ./internal/cli/update/...` → `internal/cli` 75.8%
+(package-wide, pre-existing level), `internal/cli/update/backup` 88.9%. Per-function on the new
+file: `inMemoryOnlyBackupTargets` 100.0%, `guardFirstDestructiveStep` 100.0%,
+`backupInMemoryOnlyFiles` 83.3%, `ensureRunBackupDir` 75.0%.
+
+The `settings.json`-in-backup-package baseline stays `0` by design: the mechanism lives in
+`internal/cli/update_disk_backup.go`, not in `internal/cli/update/backup/`, so no second backup root
+is introduced and `merge.go` is untouched.
+
+#### Gaps (not verified in M3)
+
+- **AC-UDS-009's filesystem half is per-fixture, not per-production-path.** Driving `runUpdate`'s
+  template-sync flow and `runCleanReinstall` end-to-end for a set comparison was out of proportion to
+  the milestone, so the test asserts (1) set equality across two independent fixtures through the
+  shared mechanism and (2) a source scan proving BOTH `update_template_sync.go` and
+  `update_clean_install.go` route their first destructive step through `guardFirstDestructiveStep`.
+  Half (2) is what actually catches drift — deleting or bypassing either call site fails the test —
+  but it is a static scan, not an executed path.
+- `ensureRunBackupDir`'s `MkdirAll` failure branches (both arms) are unexercised; a failure there
+  aborts before destruction, which is the safe direction, but the path is reasoned, not executed.
+- The read-error branch of `backupInMemoryOnlyFiles` (a target that exists but cannot be read, e.g.
+  a permission error) is unexercised. Only the write-failure branch is driven, via the
+  `diskBackupWriteFile` seam.
+- The on-disk copies are **written but never read back by production code**. M1's restore entry point
+  applies the `.moai/config` backup; wiring it to also reapply `in-memory-backups/` is not in M3's
+  scope and no AC requires it. A stranded operator currently recovers these three files by copying
+  them out of the backup directory by hand.
+
+#### Residual risk
+
+- `diskBackupWriteFile` is a package-level seam, so `TestBackup_AbortsBeforeDestructionOnWriteFailure`
+  must stay non-parallel. It restores the original through `t.Cleanup`; a future parallel test in
+  `package cli` that also replaces it would race.
+- The backup directory grows by three small files per run. `CleanupOldBackups` retention already
+  applies to the same root, so this is bounded, but the retention count was not re-tuned for the
+  added payload.
+- `guardFirstDestructiveStep` is invoked inside the clean-reinstall path's recovery region: a
+  backup-write failure there is wrapped by `recovery.fail("step 4: remove deprecated paths", …)`, so
+  the recovery manifest names the removal step even though nothing was removed. The sentinel in the
+  wrapped error still identifies the real cause.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M2 of 6 complete; M3-M6 outstanding.
+_<pending run-phase>_ — M3 of 6 complete; M4-M6 outstanding.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters (M3):
+
+- tier: M (3 artifacts; plan.md §H)
+- scope (file count): ~6-8 (`update_template_sync.go`, `update_clean_install.go`, one new
+  `internal/cli/update/backup/*.go` on-disk writer, plus 2-3 new `_test.go` files)
+- domain count: 1 (Go source in the `internal/cli` update subsystem)
+- file language mix: 100% Go
+- concurrency benefit: LOW — coding-heavy, sequential milestone with a shared call path across
+  two files that both mutate the same backup mechanism
+
+Mode evaluation:
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 `trivial` | no | New production code + failure-path contract; not a typo-class change |
+| 2 `background` | no | Write-capable implementation work, not read-only analysis |
+| 3 `agent-team` | no | RETIRED (tombstone) |
+| 4 `parallel` | no | Single domain (<3) and coding-heavy — Anthropic coding-task parallelism caveat |
+| 5 `sub-agent` | **yes** | Default fallback; coding-heavy single-domain milestone |
+| 6 `workflow` | no | Far below the ~30-file mechanical-transform threshold; not a uniform transform |
+
+Decision: sub-agent
+
+Justification: M3 is coding-heavy work in one domain (`internal/cli` update subsystem) touching
+both execution paths through a single shared on-disk backup mechanism. Anthropic's coding-task
+parallelism caveat makes sequential sub-agent delegation the correct default; the milestone's
+failure-path contract (AC-UDS-020 clause 2, the call-recording spy) requires one coherent author
+rather than a fan-out. Mode 6 is excluded on scope (~6-8 files vs the ~30-file threshold) and on
+transformation kind (new behaviour, not a uniform mechanical rewrite).
