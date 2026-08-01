@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-DATA-SURVIVAL-001
 title: "moai update — user-data survival: on-disk backup before every destructive step, a failure contract with an escape from the marker-gate lockout, and non-vacuous safety guards"
 version: "0.5.2"
-status: in-progress
+status: completed
 created: 2026-07-31
 updated: 2026-08-01
 author: manager-spec
