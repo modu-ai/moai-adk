@@ -54,21 +54,19 @@ Worktree를 쓰는 MoAI-ADK 개발은 세 단계로 흘러갑니다:
 
 ```mermaid
 flowchart TD
-    subgraph Phase1["Phase 1: Plan (Terminal 1)"]
-        A1[/moai plan<br/>feature description<br/>--worktree/] --> A2[SPEC 문서 생성]
-        A2 --> A3[Worktree 자동 생성]
-        A3 --> A4[Feature 브랜치 생성]
+    subgraph Phase1["Phase 1: Plan (Terminal 1, 메인 체크아웃)"]
+        A1[/moai plan<br/>기능 설명/] --> A2[SPEC 문서 생성]
+        A2 --> A3[구현 범위 확정]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1["cd $(moai worktree go SPEC-ID)"] --> B2[Worktree 진입]
-        B2 --> B3[moai glm<br/>LLM 변경]
-        B3 --> B4[/moai run SPEC-ID]
-        B4 --> B5[/moai sync SPEC-ID]
+        B1["moai glm -w SPEC-AUTH-001"] --> B2[Worktree 생성 및 진입]
+        B2 --> B3[/moai run SPEC-ID]
+        B3 --> B4[/moai sync SPEC-ID]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
-        C1[git merge 또는 PR로<br/>base 병합] --> C2[moai worktree done SPEC-ID]
+        C1[git merge 또는 PR로<br/>base 병합] --> C2[moai worktree done 브랜치]
         C2 --> C3[Worktree 제거]
         C3 --> C4[선택: 브랜치 삭제]
     end
@@ -82,40 +80,38 @@ flowchart TD
 #### 1단계: Plan (Terminal 1)
 
 계획 단계는 추론 품질이 결과를 가르므로 Claude(Opus급) 모델로 SPEC 문서를
-씁니다:
+씁니다. 이 단계는 메인 체크아웃에서 그대로 진행합니다:
 
 ```bash
-> /moai plan "인증 시스템 추가" --worktree
+> /moai plan "인증 시스템 추가"
 ```
-
-**작업 내용**:
-
-- EARS 형식의 SPEC 문서 자동 생성
-- 해당 SPEC 전용 Worktree 자동 생성
-- Feature 브랜치 자동 생성 및 전환
 
 **결과물**:
 
 - `.moai/specs/SPEC-AUTH-001/spec.md`
-- 새로운 Worktree 디렉토리
-- `feature/SPEC-AUTH-001` 브랜치
+- 구현 단계에서 쓸 SPEC ID
 
 #### 2단계: Implement (Terminals 2, 3, 4...)
 
 구현 단계는 물량은 많지만 SPEC이 이미 방향을 잡아 둔 상태라, GLM처럼 값싼
-모델로도 충분히 제 몫을 합니다:
+모델로도 충분히 제 몫을 합니다. 워크트리 진입은 런처(`moai cc` · `moai glm` ·
+`moai cg`)의 `-w` 플래그가 맡습니다. 지정한 이름의 워크트리가 없으면 그 자리에서
+만들어 줍니다:
 
 ```bash
-# Worktree 진입 (새 터미널)
-$ cd "$(moai worktree go SPEC-AUTH-001)"
+# 새 터미널: 워크트리를 만들면서 GLM 백엔드로 진입
+$ moai glm -w SPEC-AUTH-001
 
-# LLM 변경
-$ moai glm
-
-# 개발 시작
-$ claude
+# 진입한 세션에서 곧바로 개발 시작
 > /moai run SPEC-AUTH-001
 > /moai sync SPEC-AUTH-001
+```
+
+현재 세션을 유지한 채 워크트리를 하나 더 열고 싶다면 `--spawn` 을 붙입니다.
+tmux 새 창에서 뜨고, 원래 창은 그대로 남습니다:
+
+```bash
+$ moai glm -w SPEC-AUTH-002 --spawn
 ```
 
 **장점**:
@@ -127,23 +123,33 @@ $ claude
 #### 3단계: Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001                    # worktree 정리 (병합/푸시는 git으로 별도 수행)
-moai worktree done SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 삭제
+moai worktree done feature/SPEC-AUTH-001                    # worktree 정리 (병합/푸시는 git으로 별도 수행)
+moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 삭제
 ```
 
 ## Worktree 명령어 참조
 
-| 명령어                   | 설명                       | 사용 예시                      |
-| ------------------------ | -------------------------- | ------------------------------ |
-| `moai worktree new SPEC-ID`    | 새 Worktree 생성           | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Worktree 경로 출력 (`cd`용) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
-| `moai worktree switch SPEC-ID` | Worktree 위치 출력 (`cd` 안 함) | `moai worktree switch SPEC-AUTH-001`  |
-| `moai worktree list`           | Worktree 목록 표시         | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | Worktree 정리 (병합은 별도) | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove [path]`  | Worktree 제거 (경로 지정)  | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
-| `moai worktree status`         | Worktree 상태 확인         | `moai worktree status`               |
-| `moai worktree clean`          | 병합된 Worktree 정리       | `moai worktree clean --merged-only`  |
-| `moai worktree config`         | Worktree 설정 확인         | `moai worktree config root`          |
+워크트리에 **들어가는** 일과 **목록을 보는** 일은 `moai worktree` 의 몫이 아닙니다.
+진입은 런처가, 조회는 git 이 맡습니다:
+
+| 하려는 일               | 명령어                          | 사용 예시                              |
+| ----------------------- | ------------------------------- | -------------------------------------- |
+| Worktree 만들고 진입    | `moai cc -w <이름>`             | `moai glm -w SPEC-AUTH-001`            |
+| 세션 유지한 채 새 창에서 열기 | `moai cc -w <이름> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn`     |
+| Worktree 목록 확인      | `git worktree list`             | `git worktree list`                    |
+
+`moai worktree` 는 만들어진 워크트리를 관리합니다:
+
+| 명령어                        | 설명                            | 사용 예시                              |
+| ----------------------------- | ------------------------------- | -------------------------------------- |
+| `moai worktree sync [브랜치]` | base 브랜치 변경을 반영          | `moai worktree sync --strategy rebase` |
+| `moai worktree done <브랜치>` | Worktree 정리 (병합은 별도)      | `moai worktree done feature/SPEC-AUTH-001` |
+| `moai worktree remove <경로>` | 경로를 지정해 Worktree 제거      | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
+| `moai worktree clean`         | 병합된/방치된 Worktree 정리      | `moai worktree clean --merged-only`    |
+| `moai worktree recover`       | Worktree 레지스트리 복구         | `moai worktree recover`                |
+| `moai worktree snapshot`      | 작업 트리 상태 캡처              | `moai worktree snapshot`               |
+| `moai worktree verify`        | 스냅샷과 현재 상태 대조          | `moai worktree verify --snapshot <경로>` |
+| `moai worktree restore`       | 스냅샷 HEAD 상태로 되돌리기      | `moai worktree restore --snapshot <경로>` |
 
 ## Worktree의 핵심 장점
 
@@ -218,21 +224,19 @@ sequenceDiagram
 동시에 여러 SPEC을 진행할 수 있습니다:
 
 ```bash
-# Terminal 1: SPEC-AUTH-001 계획
-> /moai plan "인증 시스템" --worktree
+# Terminal 1: SPEC-AUTH-001 계획 (메인 체크아웃)
+> /moai plan "인증 시스템"
 
 # Terminal 2: SPEC-AUTH-002 구현 (GLM)
-$ cd "$(moai worktree go SPEC-AUTH-002)"
-$ moai glm
+$ moai glm -w SPEC-AUTH-002
 > /moai run SPEC-AUTH-002
 
 # Terminal 3: SPEC-AUTH-003 구현 (GLM)
-$ cd "$(moai worktree go SPEC-AUTH-003)"
-$ moai glm
+$ moai glm -w SPEC-AUTH-003
 > /moai run SPEC-AUTH-003
 
-# Terminal 4: SPEC-AUTH-004 문서화
-$ cd "$(moai worktree go SPEC-AUTH-004)"
+# Terminal 4: SPEC-AUTH-004 문서화 (Claude)
+$ moai cc -w SPEC-AUTH-004
 > /moai sync SPEC-AUTH-004
 ```
 
@@ -266,26 +270,26 @@ flowchart TB
 ```mermaid
 graph TB
     subgraph Terminal1["Terminal 1: Planning"]
-        T1A[/moai plan<br/>--worktree/]
+        T1A[/moai plan/]
         T1B[Claude Opus<br/>고비용/고품질]
         T1C[SPEC 문서 생성]
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
-        T2A["cd $(moai worktree go<br/>SPEC-AUTH-001)"]
-        T2B[moai glm<br/>저비용]
+        T2A["moai glm -w<br/>SPEC-AUTH-001"]
+        T2B[저비용 백엔드]
         T2C[/moai run<br/>DDD 구현]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
-        T3A["cd $(moai worktree go<br/>SPEC-AUTH-002)"]
-        T3B[moai glm<br/>저비용]
+        T3A["moai glm -w<br/>SPEC-AUTH-002"]
+        T3B[저비용 백엔드]
         T3C[/moai run<br/>DDD 구현]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
-        T4A["cd $(moai worktree go<br/>SPEC-AUTH-003)"]
-        T4B[moai cc<br/>Claude]
+        T4A["moai cc -w<br/>SPEC-AUTH-003"]
+        T4B[Claude 백엔드]
         T4C[/moai sync<br/>문서화]
     end
 

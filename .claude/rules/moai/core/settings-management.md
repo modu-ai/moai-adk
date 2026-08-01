@@ -233,7 +233,7 @@ prose-only SSOT in
 `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1.
 
 The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
-`worktree --team` launch) is unaffected — see
+`moai cc -w <name> --spawn` teammate windows) is unaffected — see
 `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 ## Output Style Configuration

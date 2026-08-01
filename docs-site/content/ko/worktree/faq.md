@@ -90,55 +90,70 @@ graph TB
 
 ## 사용 관련
 
-### Q: Worktree를 생성하는 방법은?
-
-**A**: 두 가지 방법이 있습니다:
-
-**방법 1: 자동 생성 (권장)**
-
-```bash
-# SPEC 계획 단계에서 자동 생성
-> /moai plan "기능 설명" --worktree
-
-# 자동으로:
-# 1. SPEC 문서 생성
-# 2. Worktree 생성
-# 3. Feature 브랜치 생성
-```
-
-**방법 2: 수동 생성**
-
-```bash
-# Worktree 수동 생성 (기본: origin/main 기준)
-moai worktree new SPEC-AUTH-001
-
-# 로컬 main 기준으로 생성
-moai worktree new SPEC-AUTH-001 --base main
-```
-
----
-
 ### Q: Worktree로 어떻게 진입하나요?
 
-**A**: `moai worktree go`는 Worktree 경로를 출력할 뿐 셸 세션을 새로 띄우지는
-않습니다. `cd`와 묶어서 씁니다:
+**A**: 런처의 `-w` 플래그를 씁니다. 지정한 이름의 워크트리가 없으면 그 자리에서
+만들어 주므로, 생성과 진입이 한 줄에서 끝납니다:
 
 ```bash
-# 경로 출력 후 이동
-cd "$(moai worktree go SPEC-AUTH-001)"
+# 워크트리를 만들면서 GLM 백엔드로 진입
+moai glm -w SPEC-AUTH-001
+
+# 같은 워크트리를 Claude 백엔드로 진입
+moai cc -w SPEC-AUTH-001
+
+# Claude 리더 + GLM 팀원 하이브리드로 진입
+moai cg -w SPEC-AUTH-001
 ```
+
+짧은 이름은 `.claude/worktrees/<이름>/` 아래에서 해석됩니다. 이미 만들어 둔
+워크트리가 다른 곳에 있다면 절대 경로를 주면 됩니다 — `~/.moai/worktrees/`
+또는 `<프로젝트>/.claude/worktrees/` 아래여야 하고, 그 밖의 경로는 거부됩니다.
 
 **진입 후 작업 흐름**:
 
 ```mermaid
 flowchart TD
-    A[moai worktree go SPEC-ID] --> B[경로를 stdout에 출력]
-    B --> C["cd \"$(...)\"로 이동"]
-    C --> D{LLM 변경?}
-    D -->|예| E[moai glm]
-    D -->|아니오| F[Claude 시작]
-    E --> F
-    F --> G["/moai run SPEC-ID"]
+    A["moai glm -w SPEC-ID"] --> B{워크트리가 있는가?}
+    B -->|아니오| C[.claude/worktrees/SPEC-ID 생성]
+    B -->|예| D[기존 워크트리 사용]
+    C --> E[해당 백엔드로 세션 시작]
+    D --> E
+    E --> F["/moai run SPEC-ID"]
+```
+
+---
+
+### Q: 현재 세션을 유지한 채로 워크트리를 하나 더 열 수 있나요?
+
+**A**: `--spawn` 을 붙이면 됩니다. tmux 새 창에서 같은 명령이 실행되고, 지금
+창은 포커스까지 그대로 유지됩니다:
+
+```bash
+moai glm -w SPEC-AUTH-002 --spawn
+# Spawned pane %7 running `moai glm -w SPEC-AUTH-002` in /path/to/your-project
+# Switch to it with: tmux select-window -t %7
+```
+
+`--spawn` 은 tmux 안에서만 동작합니다. tmux 밖에서 쓰면 아무것도 바꾸지 않고
+오류로 끝나므로, 그때는 플래그를 빼고 현재 터미널에서 실행하세요. `-w` 만 쓰면
+현재 프로세스가 워크트리 세션으로 교체된다는 점이 `--spawn` 과의 차이입니다.
+
+---
+
+### Q: 만들어 둔 Worktree 목록은 어떻게 보나요?
+
+**A**: git 명령을 그대로 씁니다. `moai worktree` 에는 목록 명령이 없습니다:
+
+```bash
+git worktree list
+```
+
+특정 워크트리의 상태나 최근 커밋도 `git -C` 로 확인합니다:
+
+```bash
+git -C .claude/worktrees/SPEC-AUTH-001 status
+git -C .claude/worktrees/SPEC-AUTH-001 log --oneline -5
 ```
 
 ---
@@ -149,18 +164,23 @@ flowchart TD
 
 ```bash
 # Terminal 1
-cd "$(moai worktree go SPEC-AUTH-001)"
-$ moai glm
+moai glm -w SPEC-AUTH-001
 
 # Terminal 2
-cd "$(moai worktree go SPEC-LOG-002)"
-$ moai glm
+moai glm -w SPEC-LOG-002
 
 # Terminal 3
-cd "$(moai worktree go SPEC-API-003)"
-$ moai glm
+moai glm -w SPEC-API-003
 
 # 모두 동시에 작업 가능
+```
+
+tmux를 쓰고 있다면 한 창에서 `--spawn` 으로 전부 띄울 수 있습니다:
+
+```bash
+moai glm -w SPEC-AUTH-001 --spawn
+moai glm -w SPEC-LOG-002 --spawn
+moai glm -w SPEC-API-003 --spawn
 ```
 
 **병렬 작업 시각화**:
@@ -206,24 +226,24 @@ graph TB
 
 **A**: `moai worktree done`은 Worktree를 지우고, 원하면 브랜치까지 삭제합니다.
 다만 **병합도 푸시도 하지 않습니다**. base 병합은 `git merge`나 PR로 먼저
-끝내세요:
+끝내세요. 인자는 경로가 아니라 브랜치 이름입니다:
 
 ```bash
 # Worktree 제거만
-moai worktree done SPEC-AUTH-001
+moai worktree done feature/SPEC-AUTH-001
 
 # Worktree 제거 + 브랜치 삭제
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
 # 자동화용 무출력 모드 (PR 머지 후 정리)
-moai worktree done SPEC-AUTH-001 --auto
+moai worktree done feature/SPEC-AUTH-001 --auto
 ```
 
 **완료 프로세스**:
 
 ```mermaid
 flowchart TD
-    A[git merge 또는 PR로 base 병합] --> B[moai worktree done SPEC-ID]
+    A[git merge 또는 PR로 base 병합] --> B[moai worktree done 브랜치]
     B --> C[Worktree 제거]
     C --> D{--delete-branch?}
     D -->|예| E[브랜치 삭제]
@@ -234,7 +254,56 @@ flowchart TD
 
 ---
 
+### Q: `moai worktree done` 과 `moai worktree remove` 는 뭐가 다른가요?
+
+**A**: 무엇을 인자로 받는지가 다릅니다.
+
+| | `done` | `remove` |
+|---|---|---|
+| 인자 | 브랜치 이름 (`feature/SPEC-AUTH-001`) | 파일 시스템 경로 |
+| 하는 일 | 그 브랜치의 워크트리를 찾아 제거 | 그 경로의 워크트리를 제거 |
+| 브랜치 삭제 | `--delete-branch` 로 선택 가능 | 하지 않음 |
+| 자동화 모드 | `--auto` 지원 | 없음 |
+
+브랜치를 알고 있으면 `done`, 경로만 알거나 브랜치가 깨진 워크트리를 치울
+때는 `remove` 를 쓰면 됩니다.
+
+---
+
 ## 문제 해결
+
+### Q: `moai worktree clean --stale` 은 안전한가요?
+
+**A**: 안전하도록 설계돼 있습니다. 세 겹의 보호가 걸려 있습니다.
+
+1. **기본이 미리보기입니다.** `--stale` 만 주면 제거 예정 목록만 출력하고 실제로
+   지우지 않습니다. `--yes` 를 붙여야 삭제가 일어납니다
+2. **잃을 것이 있으면 지우지 않습니다.** 작업 트리가 깨끗하고(미커밋 변경도,
+   untracked 파일도 없음) 브랜치에 base를 넘어서는 고유 커밋이 없는 워크트리만
+   대상이 됩니다. 하나라도 어긋나면 유지되고 그 이유가 함께 출력됩니다
+3. **브랜치는 절대 삭제하지 않습니다.** 워크트리 디렉터리가 사라져도 커밋은
+   브랜치 이름으로 그대로 남아 언제든 다시 꺼낼 수 있습니다
+
+메인 체크아웃과 지금 명령을 실행 중인 워크트리도 항상 보호 대상에서 빠집니다.
+
+```bash
+# 1) 무엇이 지워질지 먼저 확인
+$ moai worktree clean --stale
+  Keeping .claude/worktrees/SPEC-API-003 [feature/SPEC-API-003]: uncommitted or untracked changes
+
+Would remove 1 stale worktree(s):
+  .claude/worktrees/SPEC-TMP-009 [feature/SPEC-TMP-009]
+
+This was a preview. Re-run with --yes to remove them.
+
+# 2) 확인했으면 실제 제거
+$ moai worktree clean --stale --yes
+```
+
+`--stale` 과 `--merged-only` 는 함께 쓸 수 없습니다. 병합 여부로 정리하려면
+`--merged-only`, 방치 여부로 정리하려면 `--stale` 을 쓰세요.
+
+---
 
 ### Q: Worktree 충돌이 발생했어요
 
@@ -282,34 +351,33 @@ git commit -m "fix: resolve merge conflict"
 git push origin main
 
 # 6. 병합 후 Worktree 정리
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 ✓ 완료!
 ```
 
 ---
 
-### Q: Worktree가 손상되었어요
+### Q: Worktree 레지스트리가 손상되었어요
 
-**A**: 다음 순서로 복구하세요:
+**A**: 디렉터리를 손으로 옮기거나 지우면 git이 워크트리를 못 찾습니다. 다음
+순서로 복구하세요:
 
 ```bash
-# 1. 진단 (손상된 레지스트리 복구)
-moai worktree recover
+# 1. 레지스트리 복구 (git worktree repair + prune + 목록 출력)
+$ moai worktree recover
+Scanning for worktrees in /path/to/your-project...
+Recovered 2 worktree(s):
+  /path/to/your-project/.claude/worktrees/SPEC-AUTH-001  [feature/SPEC-AUTH-001]
+  /path/to/your-project/.claude/worktrees/SPEC-LOG-002   [feature/SPEC-LOG-002]
 
 # 2. 현재 상태 확인
-moai worktree status
-# ╭─ Worktree Status ──────────────────────────────╮
-# │ Repository: /path/to/your-project              │
-# │ Total worktrees: 0                             │
-# │                                                │
-# │ No worktrees found.                            │
-# ╰────────────────────────────────────────────────╯
+$ git worktree list
 
-# 3. 기존 Worktree 제거 (경로 지정)
-moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
+# 3. 그래도 남은 망가진 항목은 경로를 지정해 제거
+$ moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 
-# 4. Worktree 재생성
-moai worktree new SPEC-AUTH-001
+# 4. 다시 만들면서 진입
+$ moai glm -w SPEC-AUTH-001
 ```
 
 ---
@@ -320,16 +388,17 @@ moai worktree new SPEC-AUTH-001
 
 ```bash
 # 1. 디스크 사용량 확인
-$ du -sh ~/.moai/worktrees/your-project/*
-2.5G    ~/.moai/worktrees/your-project/SPEC-AUTH-001
-1.8G    ~/.moai/worktrees/your-project/SPEC-LOG-002
-3.2G    ~/.moai/worktrees/your-project/SPEC-API-003
+$ du -sh .claude/worktrees/*
+2.5G    .claude/worktrees/SPEC-AUTH-001
+1.8G    .claude/worktrees/SPEC-LOG-002
+3.2G    .claude/worktrees/SPEC-API-003
 
-# 2. base에 병합된 Worktree만 정리
+# 2. base에 병합된 Worktree 정리
 $ moai worktree clean --merged-only
 
-✓ 병합된 Worktree 정리 완료
-✓ 디스크 공간 확보
+# 3. 병합은 안 됐지만 아무것도 안 남은 Worktree 확인 후 정리
+$ moai worktree clean --stale
+$ moai worktree clean --stale --yes
 ```
 
 **정리 전략**:
@@ -338,10 +407,10 @@ $ moai worktree clean --merged-only
 graph TD
     A[Worktree 정리 필요] --> B{base에 병합 완료?}
     B -->|예| C[moai worktree clean --merged-only]
-    B -->|아니오| D[작업 상태 확인]
-    D --> E{필요 없음?}
-    E -->|예| F[moai worktree remove PATH]
-    E -->|아니오| G[유지]
+    B -->|아니오| D{남길 작업이 있는가?}
+    D -->|없음| E[moai worktree clean --stale로 확인]
+    E --> F[--yes 로 실제 제거]
+    D -->|있음| G[유지]
     C --> H[정리 완료]
     F --> H
     G --> H
@@ -356,16 +425,12 @@ graph TD
 ```bash
 # 현재 LLM 백엔드 확인 (Worktree별 설정은 .moai/config/sections/llm.yaml에 기록됨)
 cat .moai/config/sections/llm.yaml
-# 또는 프로젝트 상태와 함께 확인
-moai status
 
-# Worktree에서 LLM 변경
-cd "$(moai worktree go SPEC-AUTH-001)"
-$ moai cc   # Claude 백엔드로 전환
+# 백엔드를 바꾸려면 그 워크트리로 다시 진입
+moai cc -w SPEC-AUTH-001   # Claude 백엔드로 전환
 
 # 다른 Worktree는 영향 없음
-$ cd "$(moai worktree go SPEC-LOG-002)"
-$ cat .moai/config/sections/llm.yaml   # 이 Worktree의 설정은 그대로 유지됨
+git -C .claude/worktrees/SPEC-LOG-002 show HEAD:.moai/config/sections/llm.yaml
 ```
 
 ---
@@ -375,14 +440,13 @@ $ cat .moai/config/sections/llm.yaml   # 이 Worktree의 설정은 그대로 유
 **A**: 올바른 디렉토리에 있는지 확인하세요:
 
 ```bash
-# Worktree 디렉토리 확인
-pwd
-/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
+# 현재 워크트리 루트 확인
+git rev-parse --show-toplevel
 
 # Git 상태 확인
 git status
-On branch feature/SPEC-AUTH-001
-nothing to commit, working tree clean
+# On branch feature/SPEC-AUTH-001
+# nothing to commit, working tree clean
 
 # 만약 Git 오류가 발생하면
 git fetch --all
@@ -417,8 +481,8 @@ moai worktree clean --merged-only
 # 2. Git 가비지 컬렉션
 git gc --aggressive --prune=now
 
-# 3. Worktree 압축
-git worktree prune
+# 3. stale 참조 정리
+moai worktree clean
 ```
 
 ---
@@ -455,20 +519,25 @@ graph TD
 
 ### Q: Worktree를 자동으로 정리할 수 있나요?
 
-**A**: 네, 정리 스크립트를 만들어 주기적으로 돌리면 됩니다:
+**A**: 병합된 Worktree 정리는 자동화해도 안전합니다. 다만 `--stale --yes` 는
+무인 실행보다 사람이 목록을 보고 실행하는 쪽을 권합니다:
 
 ```bash
 #!/bin/bash
 # clean-worktrees.sh
 
-# base에 병합된 Worktree 정리
+cd /path/to/project
+
+# base에 병합된 Worktree 정리 (안전)
 moai worktree clean --merged-only
 
+# 방치된 Worktree는 목록만 보고합니다 (지우지 않음)
+moai worktree clean --stale
+
 # Git 가비지 컬렉션
-cd /path/to/project
 git gc --aggressive --prune=now
 
-echo "Worktree 정리 완료"
+echo "Worktree 정리 완료 — --stale 목록은 확인 후 직접 --yes 로 처리하세요"
 ```
 
 **크론 작업 설정**:
@@ -489,13 +558,13 @@ echo "Worktree 정리 완료"
 ```mermaid
 graph TB
     subgraph DevA["개발자 A"]
-        A1[Worktree 생성]
+        A1[Worktree 진입]
         A2[개발]
         A3[완료 및 PR]
     end
 
     subgraph DevB["개발자 B"]
-        B1[Worktree 생성]
+        B1[Worktree 진입]
         B2[개발]
         B3[완료 및 PR]
     end
@@ -511,7 +580,7 @@ graph TB
 **팀 협업 가이드**:
 
 1. **Worktree 명명 규칙**: `SPEC-{카테고리}-{번호}`
-2. **정기적인 동기화**: `git pull origin main`
+2. **정기적인 동기화**: `moai worktree sync`
 3. **PR 리뷰 전에**: 로컬에서 테스트 완료
 4. **충돌 방지**: 자주 `main`과 동기화
 
@@ -527,10 +596,10 @@ graph TB
 moai worktree sync
 
 # 특정 Worktree를 rebase 전략으로 동기화
-moai worktree sync SPEC-AUTH-001 --strategy rebase
+moai worktree sync feature/SPEC-AUTH-001 --strategy rebase
 
 # 다른 base 브랜치를 기준으로 동기화
-moai worktree sync SPEC-AUTH-001 --base develop
+moai worktree sync feature/SPEC-AUTH-001 --base develop
 ```
 
 ---
@@ -540,22 +609,17 @@ moai worktree sync SPEC-AUTH-001 --base develop
 **A**: 다음 전략을 쓰세요:
 
 ```bash
-# PR 생성 전
-moai worktree status
-# 상태 확인
-
+# PR 생성 전 — 상태와 변경 사항 확인
+git worktree list
 git log main..feature/SPEC-AUTH-001
-# 변경 사항 확인
 
-# PR 리뷰 중
-# Worktree 유지 (병합 대기)
+# PR 리뷰 중 — Worktree 유지 (병합 대기)
 
 # PR 승인 및 머지 후 Worktree 정리
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
-# PR 거부 후
-cd "$(moai worktree go SPEC-AUTH-001)"
-# 수정 작업 계속
+# 수정 요청을 받았다면 다시 진입해 작업 계속
+moai glm -w SPEC-AUTH-001
 ```
 
 ---
@@ -564,18 +628,22 @@ cd "$(moai worktree go SPEC-AUTH-001)"
 
 ### Q: Worktree를 사용하지 않고 MoAI-ADK를 사용할 수 있나요?
 
-**A**: 쓸 수는 있지만 권하지 않습니다:
+**A**: 쓸 수는 있습니다. 워크트리는 기본값이 아니라 사용자가 고르는 선택지이고,
+`-w` 없이 실행하면 메인 체크아웃에서 그대로 작업합니다:
 
 ```bash
-# Worktree 없이 사용
+# 워크트리 없이 실행
+moai cc
 > /moai plan "기능 설명"
-# Worktree 생성 단계 건너뜀
+> /moai run SPEC-XXX-001
 
-# 하지만 다음 문제 발생:
-# 1. 모든 세션에 동일 LLM 적용
-# 2. 병렬 개발 불가
-# 3. 컨텍스트 전환 비용
+# 다만 다음은 감수해야 합니다:
+# 1. 모든 세션에 동일 LLM 설정 적용
+# 2. 병렬 개발 시 브랜치 전환 비용
 ```
+
+SPEC을 하나씩 순차로 진행한다면 충분합니다. 여러 SPEC을 동시에 돌리기
+시작하면 워크트리 쪽이 확실히 편합니다.
 
 ---
 
@@ -592,8 +660,11 @@ git push origin feature/SPEC-AUTH-001
 
 # Worktree 손실 시 복구
 git fetch origin
-git worktree add SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
+git worktree add .claude/worktrees/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
 ```
+
+untracked 파일은 git이 관리하지 않으므로 이 방식으로 되살아나지 않습니다.
+`.env` 같은 로컬 파일은 따로 챙겨 두세요.
 
 ---
 

@@ -104,7 +104,7 @@ Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom
 
 ### Dynamic Team Generation (RETIRED)
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name> --spawn`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 For agent creation guidelines, use the `builder-harness` subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
@@ -258,7 +258,7 @@ Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(i
 
 ## 15. Agent Teams (RETIRED) + CG Mode
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The former team role-profile config and env-var gate were removed. The practical multi-agent surface is covered by Mode 4 (parallel fan-out) for research/review and Mode 5 (sequential sub-agent) for coding. See `.claude/rules/moai/workflow/spec-workflow.md` § Agent Teams Variant — RETIRED. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected — the CG Mode subsection below is preserved.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The former team role-profile config and env-var gate were removed. The practical multi-agent surface is covered by Mode 4 (parallel fan-out) for research/review and Mode 5 (sequential sub-agent) for coding. See `.claude/rules/moai/workflow/spec-workflow.md` § Agent Teams Variant — RETIRED. The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name> --spawn`) is unaffected — the CG Mode subsection below is preserved.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 

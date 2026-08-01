@@ -116,7 +116,7 @@ Purpose: Create comprehensive specification documents using GEARS format with Re
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation -> Independent Review (plan-auditor)
 Agents: manager-spec (primary), Explore (research), plan-auditor (quality gate), manager-git (conditional)
 Skills: moai-workflow-spec, moai-foundation-thinking (per delegation.yaml)
-Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
+Flags: --branch, --resume SPEC-XXX, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 
 ### run - DDD/TDD Implementation
@@ -278,22 +278,33 @@ Forbidden flag-subcommand combinations:
 
 | Flag | Allowed subcommands | Forbidden subcommands |
 |------|---------------------|------------------------|
-| `--worktree` | `plan` | `run`, `sync`, default (autonomous) |
 | `--branch` | `plan`, default (autonomous) | `run`, `sync` |
 
-Rationale: `--worktree` provisions an isolated workspace at SPEC initialization; only `/moai plan --worktree` creates one, so `/moai run` and `/moai sync` MUST operate within the worktree already established during `plan` — re-creating during run/sync corrupts the SPEC lifecycle and is rejected at the router level. `--branch` (feature-branch creation) is parsed at both `plan` and the default autonomous pipeline, but remains forbidden for `run`/`sync` for the same re-creation-corruption reason.
+Rationale: `--branch` creates the feature branch at SPEC initialization, so `/moai run` and `/moai sync` MUST operate on the branch `plan` already established — re-creating it mid-lifecycle corrupts the SPEC lifecycle and is rejected at the router level.
+
+The retired `--worktree` flag is handled separately: a request carrying it is not a forbidden-combination error but a retired flag. Tell the user that plan no longer creates a workspace, and that entering one first is the replacement.
 
 Error message template (Korean conversation_language; substitute the actual flag and subcommand):
 ```
-에러: --worktree 플래그는 /moai plan 전용입니다.
-/moai run 과 /moai sync 는 plan 단계에서 생성된 기존 worktree/branch를 재사용합니다.
+에러: --branch 플래그는 /moai plan 전용입니다.
+/moai run 과 /moai sync 는 plan 단계에서 만든 브랜치를 그대로 씁니다.
 
 올바른 사용법:
-  /moai plan SPEC-XXX --worktree    (worktree 생성)
-  /moai run SPEC-XXX                (기존 worktree/branch 재사용)
-  /moai sync SPEC-XXX               (기존 worktree/branch 재사용)
+  /moai plan SPEC-XXX --branch    (브랜치 생성)
+  /moai run SPEC-XXX              (기존 브랜치 재사용)
+  /moai sync SPEC-XXX             (기존 브랜치 재사용)
 
-다시 실행하려면 --worktree 플래그를 제거한 형태로 호출하세요.
+--branch 플래그를 뺀 형태로 다시 실행하세요.
+```
+
+Retired-flag message (`--worktree`):
+```
+안내: --worktree 플래그는 폐기됐습니다. plan 은 더 이상 작업 공간을 만들지 않습니다.
+
+격리된 공간에서 작업하려면 먼저 들어간 뒤 plan 을 실행하세요:
+  moai cc -w <이름>              (그 자리에서 진입)
+  moai cg -w <이름> --spawn      (새 tmux 창, 현재 세션 유지)
+  /moai plan "<설명>"
 ```
 
 For English (`en` conversation_language), translate the message; the structure remains identical.

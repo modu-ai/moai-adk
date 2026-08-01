@@ -56,6 +56,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --spawn                   Run this command in a new tmux window instead of
+                                replacing the current session (requires tmux)
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
@@ -147,6 +149,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			glmToolsCmd.SetArgs(args[1:])
 			return glmToolsCmd.Execute()
 		}
+	}
+
+	// --spawn: open a GLM session in a new tmux window and keep this session.
+	// Placed after subcommand routing so `moai glm setup` is never intercepted.
+	// See cc.go for the ordering rationale.
+	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		return spawnLaunch(cmd.OutOrStdout(), "glm", spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)

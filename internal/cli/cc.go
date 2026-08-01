@@ -34,6 +34,8 @@ Flags:
   -m, --model <model>           Override model selection
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --spawn                   Run this command in a new tmux window instead of
+                                replacing the current session (requires tmux)
   --chrome / --no-chrome        Toggle Chrome MCP
 
 Permission Modes:
@@ -50,7 +52,8 @@ Examples:
   moai cc --permission-mode auto       # Launch with auto mode
   moai cc -p work -- --print           # Profile + pass-through args to Claude
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
-  moai cc -w                           # Launch in auto-named isolated worktree`,
+  moai cc -w                           # Launch in auto-named isolated worktree
+  moai cc -w feat-login --spawn        # Teammate session in a new tmux window`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -69,6 +72,14 @@ func runCC(cmd *cobra.Command, args []string) error {
 		if arg == "--" {
 			break
 		}
+	}
+
+	// --spawn re-issues this same command in a new tmux window instead of
+	// replacing the current process. It runs before any settings mutation so a
+	// failed spawn leaves the environment untouched; the spawned `moai cc`
+	// performs the mutations itself.
+	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		return spawnLaunch(cmd.OutOrStdout(), "cc", spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)

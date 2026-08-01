@@ -218,12 +218,35 @@ func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
 	}
 
 	for line := range strings.SplitSeq(out, "\n") {
-		name := strings.TrimSpace(strings.TrimPrefix(line, "* "))
+		name := strings.TrimSpace(trimBranchListMarker(line))
 		if name == branch {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+// trimBranchListMarker strips the leading status marker `git branch` puts on a
+// listing line: "* " for the branch checked out here, and "+ " for a branch
+// checked out in another worktree.
+//
+// The "+ " case is load-bearing for every worktree-scoped caller: a worktree's
+// branch is by definition checked out somewhere, so it always carries "+ " in
+// `git branch --merged` output. Stripping only "* " made IsBranchMerged report
+// every worktree branch as unmerged, which silently turned worktree cleanup
+// paths into no-ops.
+//
+// @MX:ANCHOR: [AUTO] both "* " and "+ " markers must be stripped
+// @MX:REASON: worktree branches always carry "+ "; dropping that case makes
+// IsBranchMerged return false for every worktree branch, disabling the cleanup
+// commands that gate on it without any error surfacing.
+func trimBranchListMarker(line string) string {
+	for _, marker := range []string{"* ", "+ "} {
+		if after, found := strings.CutPrefix(line, marker); found {
+			return after
+		}
+	}
+	return line
 }
 
 // parsePorcelainWorktreeList parses the output of git worktree list --porcelain.

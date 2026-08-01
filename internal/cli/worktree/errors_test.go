@@ -98,34 +98,6 @@ func TestNewWorktreeCreateError(t *testing.T) {
 }
 
 // TestNewTmuxNotAvailableError tests the tmux not available error constructor
-func TestNewTmuxNotAvailableError(t *testing.T) {
-	specID := "SPEC-TEST-001"
-	worktreePath := "/home/user/.moai/worktrees/project/SPEC-TEST-001"
-
-	err := NewTmuxNotAvailableError(specID, worktreePath)
-
-	// Verify fields
-	if err.SpecID != specID {
-		t.Errorf("SpecID = %v, want %v", err.SpecID, specID)
-	}
-
-	// Verify error message contains manual cd instructions
-	msg := err.Error()
-	if !contains(msg, "tmux not available") {
-		t.Errorf("Error message should contain 'tmux not available', got: %v", msg)
-	}
-	if !contains(msg, "cd") {
-		t.Errorf("Error message should contain 'cd' instruction, got: %v", msg)
-	}
-	if !contains(msg, worktreePath) {
-		t.Errorf("Error message should contain worktree path, got: %v", msg)
-	}
-	if !contains(msg, "/moai run") {
-		t.Errorf("Error message should contain /moai run command, got: %v", msg)
-	}
-}
-
-// TestNewAutoMergeBlockedError tests the auto-merge blocked error constructor
 func TestNewAutoMergeBlockedError(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -204,43 +176,6 @@ func TestNewCleanupFailedError(t *testing.T) {
 }
 
 // TestErrorInterfaceCompliance tests that all error constructors return types that implement error interface
-func TestErrorInterfaceCompliance(t *testing.T) {
-	var _ error = &WorktreeError{}
-
-	tests := []struct {
-		name string
-		err  error
-	}{
-		{
-			name: "NewWorktreeCreateError",
-			err:  NewWorktreeCreateError("SPEC-TEST-001", errors.New("test")),
-		},
-		{
-			name: "NewTmuxNotAvailableError",
-			err:  NewTmuxNotAvailableError("SPEC-TEST-001", "/path/to/worktree"),
-		},
-		{
-			name: "NewAutoMergeBlockedError",
-			err:  NewAutoMergeBlockedError("SPEC-TEST-001", "test reason"),
-		},
-		{
-			name: "NewCleanupFailedError",
-			err:  NewCleanupFailedError("SPEC-TEST-001", errors.New("test")),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.err == nil {
-				t.Error("Constructor returned nil")
-			}
-			// Just calling Error() to verify it implements the interface
-			_ = tt.err.Error()
-		})
-	}
-}
-
-// contains is a helper function to check if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
 		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))

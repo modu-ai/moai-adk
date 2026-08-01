@@ -306,25 +306,21 @@ moai worktree <COMMAND> [ARGS]...
 
 | 命令 | 说明 |
 |--------|------|
-| `moai worktree new [branch-name]` | 创建新 worktree |
-| `moai worktree list` | 活跃 worktree 列表 |
-| `moai worktree go [branch-name]` | **输出** worktree 路径(供 shell 切换用) |
-| `moai worktree switch [branch-name]` | 切换到 worktree |
-| `moai worktree done [branch-name]` | 完成并清理 worktree |
 | `moai worktree sync [branch-name]` | 与 base 分支同步 worktree |
-| `moai worktree remove [path]` | 移除 worktree |
-| `moai worktree config [key] [value]` | 查询/变更 worktree 配置 |
-| `moai worktree status` | 查询 worktree 状态 |
-| `moai worktree clean` | 清理过期的 worktree 引用 |
+| `moai worktree done <branch-name>` | 移除分支的 worktree,可选删除分支 |
+| `moai worktree remove <path>` | 移除指定路径的 worktree |
+| `moai worktree clean` | 清理 stale 引用,收拾已合并/已废弃的 worktree |
 | `moai worktree recover` | 恢复 worktree 注册表 |
 | `moai worktree snapshot` | 捕获工作树状态快照 |
-| `moai worktree restore` | 把工作树恢复到快照 HEAD 状态 |
 | `moai worktree verify` | 对照快照校验工作树状态 |
+| `moai worktree restore` | 把工作树恢复到快照 HEAD 状态 |
 
-`moai worktree go` 不切换目录,只输出路径。实际切换要在 shell 中如下包裹使用。
+**进入**工作树是启动器的职责。列表查询则直接用 git。
 
 ```bash
-cd "$(moai worktree go my-branch)"
+moai cc -w feat-login           # 在工作树中开始工作 (不存在则创建)
+moai cc -w feat-login --spawn   # 保留当前会话,在新 tmux 窗口中打开
+git worktree list               # 工作树列表
 ```
 
 ---

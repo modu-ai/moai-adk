@@ -302,7 +302,6 @@ The SPEC ↔ Issue link enables:
 ### Phase 13: Git Environment Setup (Conditional)
 
 Execution conditions: Phase 10 completed successfully AND one of the following:
-- --worktree flag provided
 - --branch flag provided or user chose branch creation
 - Configuration permits branch creation (git_strategy settings)
 
@@ -320,65 +319,44 @@ Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pa
 
 #### Phase 13: BODP Gate (공통)
 
-Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation.
+The Branch Path executes this gate immediately before delegating branch creation.
 
 Steps:
 
-1. **Relatedness Check** — Orchestrator calls `internal/bodp/Check()` with `CheckInput{CurrentBranch, NewSpecID, RepoRoot, EntryPoint}` (`EntryPlanBranch` for Branch Path; `EntryPlanWorktree` for Worktree Path). Result: `BODPDecision{SignalA, SignalB, SignalC, Recommended, Rationale, BaseBranch}`.
+1. **Relatedness Check** — the orchestrator runs the 3 signal checks itself (see `.claude/rules/moai/development/branch-origin-protocol.md` § Algorithm) and applies the 8-row decision matrix to get a recommended choice, a rationale, and a base branch.
 
 2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.claude/rules/moai/core/askuser-protocol.md`):
    - Preload: `ToolSearch(query: "select:AskUserQuestion")`.
    - Options (max 4, conversation_language=ko):
-     - First option: the recommended Choice with `(권장)` suffix; description = `BODPDecision.Rationale`.
+     - First option: the recommended Choice with `(권장)` suffix; description = the rationale from the matrix.
      - Remaining options: the other Choice values (e.g. when Recommended is `ChoiceMain`, present `ChoiceStacked` and `ChoiceContinue`).
    - The "Other" option is auto-appended by Claude Code.
    - User response yields the chosen Choice + base branch.
 
-3. **Audit Trail Write** — Call `internal/bodp.WriteDecision()` with EntryPoint matching the path (`EntryPlanBranch` or `EntryPlanWorktree`), `UserChoice` from the AskUserQuestion answer, and `ExecutedCmd` describing the upcoming git operation. Failure is non-fatal.
+3. **Delegation** — pass `base=<chosenBase>` to `manager-git`.
 
-4. **Path-Specific Delegation** — Branch Path: pass `base=<chosenBase>` parameter to `manager-git`. Worktree Path: invoke `moai worktree new <SPEC-ID> --base <chosenBase>` (or `--from-current` when chosenBase is `HEAD`).
+(The former audit-trail write is retired with the `internal/bodp` library — see branch-origin-protocol.md § Retired.)
 
 Out of Scope (BODP Gate):
 - "Other" free-form base interpretation: orchestrator parses input as a base branch name; invalid input falls back to `origin/main` with a warning.
 - Concurrent invocation safety: a single-session orchestrator is assumed.
 
-#### Worktree Path (--worktree flag)
+#### Worktree Path — retired
 
-Prerequisite: SPEC files MUST be committed before worktree creation.
-- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
-- Stage SPEC files: git add .moai/specs/SPEC-{ID}/
-- Create commit: feat(spec): Add SPEC-{ID} - {title}
-- Create worktree: `moai worktree new SPEC-{ID} --base <chosenBase>` (or `--from-current` when the user chose to continue on the current HEAD).
-- Display worktree path and navigation instructions
+`/moai plan --worktree` is retired along with `moai worktree new`. Plan no longer
+creates a workspace: entering one is the launcher's job, and doing it first is
+strictly simpler than having plan do it afterwards.
 
-##### Worktree-Anchored Resume Output [HARD]
+To plan inside an isolated workspace, enter it before invoking plan:
 
-When `--worktree` is used, the plan-phase output MUST include a paste-ready resume message with **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. This anchors the user to start the next session inside the worktree, preventing main-cwd drift.
-
-Block 0 format (prepended before Block 1):
-
-```
-[New Terminal — START IN WORKTREE]
-$ moai cc -w <worktree-name-or-absolute-path>
-$ <session-launcher>            # claude | moai cc | moai cg | moai glm
-   └─ Claude Code session starts here (cwd = worktree)
+```bash
+moai cc -w <name>          # or: moai cc -w <name> --spawn  (teammate window)
+/moai plan "<description>"
 ```
 
-Block 4 (preconditions) MUST include `0)` as the first item:
+Plan then runs entirely inside that workspace, so no cwd-anchoring block is
+needed in the handoff — the next session re-enters with the same command.
 
-```
-0) git rev-parse --show-toplevel → <worktree-path> (★ critical pre-check)
-```
-
-Recommended session-launcher per execution mode:
-
-- `--team` → `tmux new-session -s moai-<spec> && moai cg` (teammate spawn via tmux split-window inherits worktree cwd + tmux session env)
-- single-session → `moai cc` (or `claude`) directly inside worktree
-- GLM-only → `moai glm`
-
-[HARD] Single-session corollary: If the user is NOT comfortable with multi-terminal/multi-session workflow, recommend converting to `--branch` next time. `--worktree` only realizes its isolation value when the user actually starts a separate session inside the worktree path. Forcing Block 0 onto a single-session user is friction without benefit.
-
-See `.claude/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume Pattern" for the canonical Block 0 specification and lessons #14 for the failure-mode rationale.
 
 #### Branch Path (--branch flag or user choice)
 
@@ -496,17 +474,15 @@ When tmux is NOT available: AskUserQuestion with 1 option:
 - Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation. (Agent Teams in-process mode retired.)
 
 **Step 4: Execute selected mode**
-- **Worktree mode**: Execute `moai worktree new SPEC-{ID} --tmux` to create worktree with tmux session. The tmux session will:
-  - CC mode: Create session, cd to worktree, run `/moai run SPEC-{ID}`
-  - GLM mode: Create session, inject GLM env, cd to worktree, run `/moai run SPEC-{ID}`
-  - CG mode: Create session, inject GLM env to session, clear GLM from settings.local.json, cd to worktree, run `/moai run SPEC-{ID}`
-  - Display: "Implementation started in tmux session: moai-{ProjectName}-{SPEC-ID}"
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
+- **Isolated-workspace mode**: tell the user to enter a workspace and run there —
+  `moai cc -w <name>` in place, or `moai cg -w <name> --spawn` for a teammate
+  window that leaves this session running. Plan does not create the workspace.
 
 **Step 5: Gate result passing**
 - Pass the selected execution mode to the run workflow
-- If worktree mode: Run workflow executes in the tmux session (no further action needed from plan)
-- If team/sub-agent mode: Continue to run workflow in current session
+- If isolated-workspace mode: the run workflow executes in the session the user opened there
+- If sub-agent mode: continue to the run workflow in the current session
 
 ---
 
@@ -525,7 +501,6 @@ All of the following must be verified:
 - spec-compact.md auto-generated with requirements + acceptance criteria only
 - Phase 12: GitHub Issue created and linked (only when `--issue` opt-in flag is set; default skips Issue creation)
 - Phase 13: Appropriate git action taken based on flags and user choice
-- If --worktree: SPEC committed before worktree creation
 - Next steps presented to user
 - **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
   ```

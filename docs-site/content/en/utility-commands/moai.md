@@ -266,7 +266,7 @@ A core tokenomics device. Based on the llm.yaml setting, Claude and GLM are rout
 ```
 
 {{< callout type="info" >}}
-`--worktree` is a `/moai plan`-only flag. The default pipeline (`/moai`, `run`, `sync`) has the router reject it, so it is not used in the example above. The worktree is created in the `/moai plan --worktree` step, and subsequent steps reuse that worktree.
+The pipeline does not create worktrees. To run this work in an isolated worktree, enter one first with `moai cc -w <name>` and issue the command there.
 {{< /callout >}}
 
 **Step 2: Phase 0 - parallel exploration**

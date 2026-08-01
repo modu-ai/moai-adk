@@ -42,17 +42,6 @@ func NewWorktreeCreateError(specID string, err error) *WorktreeError {
 	}
 }
 
-// NewTmuxNotAvailableError creates an error when tmux is not available.
-// Error template: "tmux not available: {SPEC-ID}. Recovery: `cd {path} && /moai run {SPEC-ID}`"
-func NewTmuxNotAvailableError(specID, worktreePath string) *WorktreeError {
-	return &WorktreeError{
-		prefix:   "tmux not available",
-		SpecID:   specID,
-		Err:      nil,
-		Recovery: fmt.Sprintf("cd %s && /moai run %s", worktreePath, specID),
-	}
-}
-
 // NewAutoMergeBlockedError creates an error when auto-merge is blocked.
 // Error templates:
 // - CI failed: "Auto-merge blocked: {SPEC-ID}. CI checks failed. Recovery: `Fix issues and re-run: /moai sync {SPEC-ID}`"

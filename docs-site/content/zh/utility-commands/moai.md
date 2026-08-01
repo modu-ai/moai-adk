@@ -43,9 +43,6 @@ draft: false
 # 基本用法
 > /moai "想要实现的功能描述"
 
-# 配合 worktree
-> /moai "功能描述" --worktree
-
 # 配合分支
 > /moai "功能描述" --branch
 
@@ -254,7 +251,7 @@ flowchart TD
 **第 1 步: 执行命令**
 
 ```bash
-> /moai "基于 JWT 的用户认证系统: 注册、登录、令牌刷新" --worktree --loop --pr
+> /moai "基于 JWT 的用户认证系统: 注册、登录、令牌刷新" --loop --pr
 ```
 
 **第 2 步: Phase 0 - 并行探索**

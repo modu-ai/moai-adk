@@ -14,9 +14,9 @@ This rule defines **when** and **how** the orchestrator must invoke the
 primitive. The primitive itself lives in `internal/worktree/` and is exposed as
 CLI subcommands by `internal/cli/worktree/guard.go`.
 
-**Operational status**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. The orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred § Non-Goals. L3 `--worktree` is user opt-in only.
+**Operational status**: This primitive is dormant by default. It activates only when Claude Code runtime opts into L1 isolation (via `Agent(isolation: "worktree")`) OR the user manually invokes `moai worktree {snapshot,verify,restore}` from an agent prompt. The orchestrator wiring (auto-invocation around L1 isolation calls) remains out-of-scope — forensic-audit items 1-6 are deferred § Non-Goals. Entering a worktree is user opt-in only.
 
-> Cross-references: `worktree-integration.md` § Terminology Glossary (L1/L2/L3 layer definitions),
+> Cross-references: `worktree-integration.md` § Terminology Glossary (L1/L2 layer definitions),
 > `agent-common-protocol.md` § User Interaction Boundary (AskUserQuestion HARD).
 
 ## When to Snapshot
