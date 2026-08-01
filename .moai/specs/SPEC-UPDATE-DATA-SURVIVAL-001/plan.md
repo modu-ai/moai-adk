@@ -12,10 +12,16 @@
 
 - **Repository**: `/Users/goos/MoAI/moai-adk-go`, worktree
   `.claude/worktrees/e2-data-survival`, branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, HEAD
-  `89b2e4772`, whose **code baseline is `8cc108ddb`** (= `origin/main`, verified an ancestor of
-  HEAD). Only this SPEC's own artifacts differ from that baseline —
+  `89b2e4772`, whose **code baseline is `8cc108ddb`** (verified an ancestor of HEAD; re-verified
+  on HEAD `184a5bd222`). Only this SPEC's own artifacts differ from that baseline —
   `git diff --name-only origin/main HEAD | grep -c '\.go$'` returns `0` — so every code baseline
   recorded in `acceptance.md` reproduces at `8cc108ddb`.
+  **`8cc108ddb` is no longer `origin/main`.** It was when recorded; `origin/main` has since
+  advanced to `9ced435e9` (PR #1266), which entered this branch via merge `2255165f5`. The
+  `= origin/main` parenthetical is therefore removed: `8cc108ddb` remains a valid **measurement
+  anchor** (still an ancestor, so the figures still reproduce) but is NOT a comparison base. See
+  `acceptance.md` §A.4 for the anchor-vs-base distinction and AC-UDS-019 for the merge-base-anchored
+  template-neutrality check that replaced the fixed-SHA pin.
 - **Re-baselined in v0.4.0.** v0.3.0 anchored to HEAD `a8b42e112` / code baseline `d5336214e` and
   claimed "no Go source differs". Both are wrong on this tree: `a8b42e112` is **not** an ancestor of
   HEAD, and `git diff --name-only d5336214e..HEAD | grep -v '^\.moai/' | wc -l` returns `19`. E1

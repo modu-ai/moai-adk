@@ -1,6 +1,6 @@
 # SPEC-UPDATE-DATA-SURVIVAL-001 — Acceptance Criteria
 
-Version: 0.5.1 · Status: in-progress
+Version: 0.5.2 · Status: in-progress
 
 ## §A Discipline
 
@@ -31,7 +31,7 @@ Version: 0.5.1 · Status: in-progress
    | AC-UDS-007 (b) | `2` → `2` | Deleting the Category D `.moai/project/db/` contrast clause (`dirs.go:349`) drives it to `1`; deleting the whole Category D banner (`dirs.go:344-351`) drives it to `0` |
    | AC-UDS-010 | exit 0 → exit 0 | Any success-path regression (NFR-UDS-005) drives it non-zero |
    | AC-UDS-018 | exit 0 → exit 0 | A path-handling change that breaks the windows cross-build drives it non-zero |
-   | AC-UDS-019 | `0` → `0` | Committing or staging any `internal/template/templates/**` edit drives it ≥ 1 |
+   | AC-UDS-019 | `0` → `0` | Committing or staging any `internal/template/templates/**` edit **in this SPEC's own commits** drives it ≥ 1 (a foreign template change arriving via a merge of `origin/main` does not — see AC-UDS-019's merge-base rationale) |
 
    **Relation to §A.2.** §A.2 rejects an AC whose only assertion is `exit 0`; that rejection is
    scoped to `go test -run <pattern>`, where exit 0 is also the outcome when the pattern matches
@@ -41,8 +41,18 @@ Version: 0.5.1 · Status: in-progress
    therefore do not conflict.
 4. **Baselines are observed, not assumed, and are re-baselined when the tree moves.** Every
    "baseline" line in §B was re-measured on 2026-08-01 against the **code baseline `8cc108ddb`**
-   (= `origin/main`, verified an ancestor of this branch's HEAD), on branch
-   `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Where a baseline names a commit, it names `8cc108ddb`.
+   (verified an ancestor of this branch's HEAD), on branch
+   `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Where a baseline names a commit for **measurement
+   provenance** — "this figure was observed against that tree" — it names `8cc108ddb`.
+
+   **`8cc108ddb` is a measurement anchor, NOT a comparison base.** When it was recorded it was
+   also `origin/main`; that parenthetical is now false — `origin/main` has since advanced to
+   `9ced435e9`. The distinction is load-bearing: a *measurement anchor* records where a figure was
+   observed and stays valid as history (it is still an ancestor of HEAD, so the figures still
+   reproduce); a *comparison base* is recomputed at evaluation time and MUST NOT be a literal SHA,
+   because `origin/main` advances and merges into this branch. AC-UDS-019 (a) previously conflated
+   the two and consequently reported a false failure; it now anchors on
+   `$(git merge-base origin/main HEAD)`. No other AC compares against `8cc108ddb`.
 
    **On the HEAD anchor.** The measurements were recorded by artifact commit `89b2e4772`; every
    commit from `89b2e4772` to the current HEAD changes SPEC documents only
@@ -65,6 +75,10 @@ Version: 0.5.1 · Status: in-progress
          19
    ```
 
+   The `8cc108ddb` ancestor check was **re-verified on HEAD `184a5bd222`** and still returns
+   `ANCESTOR: yes`, so it remains a valid measurement anchor. What changed is that it is no longer
+   `origin/main` — see the anchor-vs-base distinction above.
+
    The 19 differing files are E1's (`SPEC-UPDATE-REINSTALL-LOOP-002`) landing — run PR #1261
    (`beeb0ebc2`) and sync PR #1264 (`8cc108ddb`) — which added `internal/cli/update_residue_cleanup.go`
    (a new destructive site, §C.0 row 11) and shifted line coordinates across `update.go`,
@@ -72,9 +86,28 @@ Version: 0.5.1 · Status: in-progress
    `update_cleanup.go`. Every coordinate and count in this file was re-measured against
    `89b2e4772`; nothing is carried over from the retired anchor.
 
-   **Time-of-check-to-time-of-use.** These baselines describe HEAD `89b2e4772`. If another Epic SPEC
-   lands Go changes before run-phase entry, the same drift recurs — so M2's first act is to re-run
-   the §C.0 source scan rather than trust the recorded table (see AC-UDS-005).
+   **Time-of-check-to-time-of-use — the anticipated event OCCURRED (twice).** These baselines
+   describe HEAD `89b2e4772`. This clause warned that if another Epic SPEC landed changes before
+   run-phase entry, the same drift would recur. It did, in two distinct forms, and both are now
+   recorded rather than left as a forward-looking risk:
+
+   1. **Coordinate drift (self-inflicted).** This SPEC's own M1 commit `4ddd35120` shifted line
+      coordinates in `update.go` and `update_clean_install.go`. The M2 Step 0 re-scan on HEAD
+      `2255165f5` caught it: site total (18) and pair count (11) unchanged, coordinates corrected.
+      See AC-UDS-005's drift-history paragraph.
+   2. **Foreign template commit (external).** `9ced435e9` (PR #1266) landed 8
+      `internal/template/templates/` files on `origin/main` and entered this branch via merge
+      `2255165f5`. It broke AC-UDS-019 (a)'s **fixed-SHA pin** — not the SPEC's behaviour. The
+      permanent fix is structural rather than a re-pin: (a) now anchors on
+      `$(git merge-base origin/main HEAD)`, which is invariant under future merges of `origin/main`.
+      Re-pinning to `9ced435e9` would have failed again on the next merge.
+
+   The general lesson: an absolute anchor recorded at one instant and consumed at another is the
+   recurring failure shape (this session hit it three times — coordinates twice, the template pin
+   once). Where a check is *evaluated later*, prefer a base computed at evaluation time. Where a
+   figure merely *records where it was observed*, a literal SHA is correct and stays valid. M2's
+   first act remains re-running the §C.0 source scan rather than trusting the recorded table
+   (see AC-UDS-005).
 5. **Every AC cites the REQ it verifies.** An AC with no REQ citation is untraceable, and a REQ with
    no citing AC is uncovered. §B.0 carries the coverage map.
 6. **Every new guard needs a falsification** proving it FAILS against unfixed code. §C gives the
@@ -832,8 +865,8 @@ Baseline: both exit 0 on this tree.
 #### AC-UDS-019 — template neutrality (NFR-UDS-003)
 
 ```bash
-# (a) committed modifications since the code baseline
-git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ | wc -l
+# (a) committed modifications attributable to THIS SPEC — merge-base anchored
+git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ | wc -l
 # (b) uncommitted modifications in the working tree
 git status --porcelain internal/template/templates/ | wc -l
 ```
@@ -843,22 +876,64 @@ Expected: both print `0` — this SPEC modifies no template file, whether commit
 **Command (a) is the load-bearing one.** The earlier draft ran (b) alone. `git status --porcelain`
 reports only the *working tree*: once run-phase modifies a template and commits it, the working
 tree is clean again and (b) prints `0`, so an NFR-UDS-003 violation passes undetected. Diffing
-against the code baseline catches the committed case, which is the case that actually ships.
-`8cc108ddb` is the code baseline pinned in §A.4 and is verified an ancestor of HEAD; every
-run-phase commit is a descendant of it. (v0.3.0 pinned `d5336214e`, which is a descendant-of-nothing
-here — see §A.4's re-baseline note.)
+against a base catches the committed case, which is the case that actually ships. **This rationale
+is unchanged by the merge-base amendment below** — only the *choice of diff base* changed, never
+the reason (a) exists.
 
-**Fails when:** any file under `internal/template/templates/` is modified — (a) catches it once
-committed, (b) catches it before.
+**Why the base is `$(git merge-base origin/main HEAD)` and NOT a literal SHA.** The earlier draft
+pinned `8cc108ddb`. A fixed SHA pin breaks on every merge of `origin/main` into this branch, because
+foreign template commits that land on `origin/main` after the pin was recorded enter this branch
+through the merge and appear in the `<pin>..HEAD` diff — even though this SPEC never touched them.
+That is exactly what happened: `9ced435e9` (PR #1266, an agent-body fix) touched 8 template files
+and entered this branch via merge `2255165f5`, driving the pinned command to `8` and reading as an
+NFR-UDS-003 failure this SPEC did not cause. The pinned form measures **branch topology**, not this
+SPEC's behaviour.
 
-Baseline, re-measured on HEAD `89b2e4772`:
+The merge-base form measures the right thing — "template files changed in HEAD that are not already
+in `origin/main`". Three topologies were verified empirically before adopting it:
+
+| Case | Topology | merge-base resolves to | Result | Why |
+|---|---|---|---|---|
+| 1 | after a merge of `origin/main` | `origin/main` itself | `0` — foreign changes vanish | they are at-or-below the diff base |
+| 2 | `origin/main` advanced, no merge yet | the older common ancestor (behind `origin/main`) | `0` | the foreign commits are not in HEAD either, so they cannot appear in a `base..HEAD` diff |
+| 3 | this SPEC edits a template | (either topology) | `≥ 1` — **still caught** | a HEAD-side commit is above the base on both sides |
+
+Case 1 was verified on this tree (`8` → `0`); cases 2 and 3 were verified in a disposable synthetic
+repository reproducing the same topology, including case 3 through a *conflicting* merge where the
+SPEC's own edit survived resolution and was still counted. The amendment therefore removes the false
+failure without weakening the guard.
+
+**Known limitation (stated, not hidden).** Once this SPEC's own PR merges into `origin/main`, the
+merge-base advances to include this SPEC's commits and (a) returns to `0` for them. This is correct
+for the AC's purpose — it is evaluated pre-merge, on an open branch, where "not yet in `origin/main`"
+is precisely the set of changes this SPEC is accountable for. The AC is not a post-merge audit.
+
+**Fails when:** any file under `internal/template/templates/` is modified **by this SPEC** — (a)
+catches it once committed, (b) catches it before. A foreign template change arriving via a merge of
+`origin/main` no longer registers, which is the intended behaviour.
+
+Baseline, re-measured on HEAD `2255165f5` (merge-base = `origin/main` = `9ced435e9`):
 
 ```
-$ git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ | wc -l
+$ git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ | wc -l
        0
 $ git status --porcelain internal/template/templates/ | wc -l
        0
 ```
+
+For contrast, the retired pinned form on the same tree — the false failure this amendment removes:
+
+```
+$ git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ | wc -l
+       8
+$ git log --oneline 8cc108ddb..HEAD -- internal/template/templates/
+9ced435e9 fix(agents): resolve GEARS-vs-Given-When-Then layer confusion and 11 audited agent-body defects (#1266)
+$ git diff --name-only origin/main..HEAD -- internal/template/templates/ | wc -l
+       0
+```
+
+All 8 files come from the single foreign commit `9ced435e9`; this SPEC's own commits touch zero
+template files.
 
 ## §C Falsification procedure
 
