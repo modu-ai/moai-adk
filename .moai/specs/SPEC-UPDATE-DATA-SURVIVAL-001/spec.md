@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-DATA-SURVIVAL-001
 title: "moai update — user-data survival: on-disk backup before every destructive step, a failure contract with an escape from the marker-gate lockout, and non-vacuous safety guards"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-07-31
 updated: 2026-08-01
@@ -23,9 +23,10 @@ depends_on: [SPEC-UPDATE-REINSTALL-LOOP-002]
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 2 of 6. |
+| 0.4.0 | 2026-08-01 | plan-audit iteration 3 (FAIL, 0.758) **re-baseline round** — user-approved override of the 3-iteration ceiling. The score regression was external, not a revision failure: E1 (`SPEC-UPDATE-REINSTALL-LOOP-002`) landed its run (`beeb0ebc2`, PR #1261) and sync (`8cc108ddb`, PR #1264) between rounds, so the plan described a tree that no longer existed. D17: the code baseline is re-anchored from the unreachable `a8b42e112`/`d5336214e` to HEAD `89b2e4772` / `8cc108ddb` (verified an ancestor); §A.4's "no Go source differs" premise was measurably false (19 files) and is replaced with the measured re-baseline. The M2 registry grows 17→**18 sites** / 10→**11 pairs** with a new row for `update_residue_cleanup.go:135` (`runV3ResidueCleanup`, classified user-data with E1's REQ-RIL2-019 cross-SPEC backup assignment), and rows 3/4/7/9 take re-measured coordinates. The two "independent re-derivation" commands that grepped `acceptance.md` itself — a §A.3 shape-(a) self-comparison, and the reason the 17→18 drift produced no signal — are replaced with Go-source scans. D18: §H and the §A Defect 3 body re-anchored on `update.go:832`/`:833`/`:841-843` (was `:755`/`:756`/`:764-766`); `mergeBackPreserveInventory` `:330`→`:400` with failure returns `:346`/`:350`/`:354`→`:416`/`:420`/`:424`; `preserveInventoryRoots` `:66-70`→`:68-72`. D19: AC-UDS-001's rollback clause was vacuously satisfiable on an empty removed-set (adding the forbidden rollback could not move it — vacuous by §A.3's own criterion). It is now a four-clause assertion pinned to a literal `plantedMoaiManagedPaths` fixture whose non-emptiness is verified from the test source, never from the checked function's own output; the fixture pin is a `plan.md` M1 obligation. D20: `acceptance.md` version header bumped. D21: AC-UDS-014's coverage transcript restored to its verbatim four lines (`MigrateLegacyMemoryDir` was dropped). D22: the carve-out falsifier corrected `2 → 0` → `2 → 1`, with (b)'s wider binding to the whole Category D banner documented rather than narrowed. D8 remains deferred. |
 | 0.3.0 | 2026-08-01 | plan-audit iteration 2 (PASS, 0.84) delta round, D11-D16 + progress backfill. D13: REQ-UDS-020's coverage made real — AC-UDS-001 gains clause 3 (the destroyed paths are still absent on return), replacing a §B.0 map entry that claimed an assertion the AC body did not make. D14: §A.3 gains a preservation-guard carve-out (vacuity is "no change could move it", not "constant"), classifying AC-UDS-007(b) / 010 / 018 / 019 as preservation guards and reconciling the clause with §A.2's `-run` scoping. D15: AC-UDS-007 (a)'s `sed` range re-anchored on content (`.moai/project/brand`) and REQ-UDS-009 gains a placement requirement pinning the SPEC-ID to that window — the audit's suggested backward-widening was rejected because a lookback captures the unrelated `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention at `dirs.go:302` and would turn the `0` baseline into a false `1`. D11 / D12 / D16 were re-measured and found already applied in v0.2.0 (the report was written against an earlier artifact state); D10 is resolved by fact — E1 reached `status: completed`. D8 / D9 remain deferred. Divergence table in `progress.md` §E.1. |
 | 0.2.0 | 2026-07-31 | plan-audit iteration 1 (FAIL, 0.71) delta revision, D1-D7. D2: REQ-UDS-007 rewritten to require independent static-scan enumeration (the prior wording permitted a `count == count` self-comparison). D3: REQ-UDS-013 gains the `userHomeDirFn` seam requirement; NFR-UDS-002's "`userHomeDir` indirection already exists" claim corrected — no seam existed. D4: Defect 2's Category D misattribution retracted; REQ-UDS-009 / AC-UDS-007 restated against the real gap. D1: §H `update.go` coordinates corrected to the post-merge values (`:755`, `:764-766`). D5/D6: AC-UDS-019 / AC-UDS-014 de-vacuified. D7: AC-UDS-020 added for the previously uncovered REQ-UDS-003; every AC now cites its REQ. D8/D9/D10 deferred to the next audit round. |
+| 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 2 of 6. |
 
 ## §A Problem / Motivation
 
@@ -41,9 +42,9 @@ The normal path's first destructive step is `deploy.CleanMoaiManagedPaths`
 (`internal/cli/update/deploy/deploy.go:28`), whose first `cleanTarget` entry is
 `.claude/settings.json` (`deploy.go:40-42`, removed in the loop at `deploy.go:105`). Its only
 backup is a `[]byte` captured into an `updatemerge.FileBackup` slice at
-`internal/cli/update_template_sync.go:384-390` and re-applied by `MergeUserFiles` at
-`update_template_sync.go:426-430`. The clean-reinstall path builds the identical in-memory slice at
-`internal/cli/update_clean_install.go:312-317`.
+`internal/cli/update_template_sync.go:294`/`:388` and re-applied by `MergeUserFiles` at
+`update_template_sync.go:427`. The clean-reinstall path builds the identical in-memory slice at
+`internal/cli/update_clean_install.go:348`/`:351`.
 
 Observed after running the two backup steps followed by the clean step on a fixture tree:
 
@@ -55,7 +56,7 @@ backup artifact: .moai-backups/<ts>/backup_metadata.json
 ```
 
 `BackupMoaiConfig` (`internal/cli/update/backup/backup.go:27`) walks `.moai/config` only
-(`backup.go:33-34`), so it cannot cover a `.claude/` path by construction. A grep of the backup
+(`backup.go:28`), so it cannot cover a `.claude/` path by construction. A grep of the backup
 package for any disk write of `settings.json` returns nothing.
 
 Between the `RemoveAll` and the merge-back, the user's `permissions.allow`, `env`, and
@@ -64,7 +65,7 @@ that window loses them permanently with no recovery path.
 
 Two further files share the identical defect shape and the identical window:
 `.moai/status_line.sh` (same `mergeableBackups` slice) and `.gitignore` (the `gitignoreBackup`
-`[]byte` at `update_template_sync.go:379-383`).
+`[]byte` at `update_template_sync.go:292`/`:381`).
 
 ### Defect 2 — destructive targets that appear in no protection set
 
@@ -72,8 +73,8 @@ Three protection sets exist:
 
 | Set | Covers | Defined at |
 |---|---|---|
-| PRESERVE inventory | `.moai/specs`, `.moai/project`, `.claude/commands` | `update_preserve_inventory.go:66-70` |
-| `BackupMoaiConfig` | `.moai/config` only | `backup/backup.go:27-34` |
+| PRESERVE inventory | `.moai/specs`, `.moai/project`, `.claude/commands` | `update_preserve_inventory.go:68-72` |
+| `BackupMoaiConfig` | `.moai/config` only | `backup/backup.go:27`/`:28` |
 | Namespace backup | `.claude/skills`, `.claude/agents`, `.moai/harness` | `update_namespace_protect.go:39-43` |
 
 `MigrateLegacyMemoryDir` (`deploy.go:143`) removes `.moai/memory/` outright when both the legacy
@@ -82,7 +83,8 @@ backup of any kind.
 
 `.moai/db` is a **`defs.DeprecatedPaths` entry** (`internal/defs/dirs.go:313`, under the
 `brand + db directories` grouping) rather than a bespoke removal, so it is deleted by the generic
-deprecated-path loop at `update_clean_install.go:271`. It is likewise in none of the three
+deprecated-path loop at `update_clean_install.go:307` (and, since E1, by the residue sweep at
+`update_residue_cleanup.go:135`). It is likewise in none of the three
 protection sets — but its backup is already required by `SPEC-UPDATE-REINSTALL-LOOP-002`
 REQ-RIL2-015 (backup before every deprecated-path deletion), so this SPEC depends on that
 requirement rather than restating it.
@@ -107,13 +109,13 @@ genuinely unprotected.
 
 ### Defect 3 — the deletion radius of `~/.claude/hooks/moai` is unpinned
 
-`ensureGlobalSettingsEnv` (`internal/cli/update.go:755`) removes a directory inside the user's real
+`ensureGlobalSettingsEnv` (`internal/cli/update.go:832`) removes a directory inside the user's real
 HOME:
 
 ```go
-globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")   // update.go:764
-if _, err := os.Stat(globalHooksDir); err == nil {
-    _ = os.RemoveAll(globalHooksDir)                                        // update.go:766
+globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")   // update.go:841
+if _, err := os.Stat(globalHooksDir); err == nil {                          // update.go:842
+    _ = os.RemoveAll(globalHooksDir)                                        // update.go:843
 }
 ```
 
@@ -125,12 +127,12 @@ $ go test -overlay=overlay5.json ./internal/cli/ -run 'GlobalSettings|Update|Hoo
 ok  github.com/modu-ai/moai-adk/internal/cli  18.305s
 ```
 
-Everything passed. Re-verified on this tree: `grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go'`
-returns **0** lines — the identifier appears only at `update.go:764-766`. This deletion is outside
+Everything passed. Re-verified on HEAD `89b2e4772`: `grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go'`
+returns **0** lines — the identifier appears only at `update.go:841-843`. This deletion is outside
 the project root, unbacked, and unrecoverable, and nothing detects a widening of its radius.
 
 Worse, a guard cannot currently be written at all. `ensureGlobalSettingsEnv` resolves HOME by
-calling `userHomeDir()` (`update.go:756`), which is a plain function (`homedir.go:14`) with no
+calling `userHomeDir()` (`update.go:833`), which is a plain function (`homedir.go:14`) with no
 injection point. The package does own an injectable seam — `var userHomeDirFn = userHomeDir`
 (`glm_tools.go:123`), overridden by tests at `glm_tools_test.go:34-36` — but
 `ensureGlobalSettingsEnv` does not use it. `userHomeDir` does read `$HOME` first
@@ -142,10 +144,10 @@ technical impossibility, and REQ-UDS-013 is what makes the policy satisfiable.
 
 ### Defect 4 — `TestMoaiUpdate_PreservesUserArea` executes zero production code
 
-`internal/cli/update_safety_test.go:59` claims to enforce that `moai update` does not touch user
-areas. It calls `simulateMoaiUpdate` (`update_safety_test.go:43-57`), a fake defined in the same
+`internal/cli/update_safety_test.go:60` claims to enforce that `moai update` does not touch user
+areas. It calls `simulateMoaiUpdate` (`update_safety_test.go:49-58`, invoked at `:95`), a fake defined in the same
 test file whose entire body writes one managed file under `.claude/skills/moai/` and comments
-`// Note: we intentionally do NOT touch user areas.` The assertions at `update_safety_test.go:95-102`
+`// Note: we intentionally do NOT touch user areas.` The assertions at `update_safety_test.go:91`/`:99-100`
 compare pre/post hashes of three user directories that the fake never visits, so they hold by
 construction.
 
@@ -178,9 +180,9 @@ The tool that would repair the damage refuses to run on the damaged tree.
 
 ### Defect 6 — `mergeBackPreserveInventory` partial-restore branches are uncovered
 
-`mergeBackPreserveInventory` (`internal/cli/update_preserve_inventory.go:330`) restores the PRESERVE
+`mergeBackPreserveInventory` (`internal/cli/update_preserve_inventory.go:400`) restores the PRESERVE
 inventory file-by-file. Its three failure returns — the non-`ErrNotExist` stat error
-(`:346`), the `MkdirAll` error (`:350`), and the `copyFile` error (`:354`) — each return
+(`:416`), the `MkdirAll` error (`:420`), and the `copyFile` error (`:424`) — each return
 immediately from inside the loop. A failure at file *k* leaves files `0..k-1` restored, files
 `k..n` absent, and no report of where the boundary fell. The measured statement coverage of the
 function is recorded in `plan.md §C`; the three error branches are the uncovered portion.
@@ -296,7 +298,7 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
   one thing to assert against, rather than re-deriving the path independently. **Additionally**,
   `ensureGlobalSettingsEnv` shall resolve HOME through the package's existing injectable seam
   `userHomeDirFn` (`internal/cli/glm_tools.go:123`) rather than calling the plain function
-  `userHomeDir` (`internal/cli/homedir.go:14`) directly as it does today at `update.go:756`. Without
+  `userHomeDir` (`internal/cli/homedir.go:14`) directly as it does today at `update.go:833`. Without
   this substitution the function has **no** seam a test can redirect, and since NFR-UDS-002 forbids
   `t.Setenv("HOME", …)`, REQ-UDS-011 and REQ-UDS-012 would be unimplementable. The existing
   override precedent is `glm_tools_test.go:34-36`.
@@ -395,26 +397,42 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
 
 ## §H Cross-References
 
+> **All coordinates below re-measured on HEAD `89b2e4772` (code baseline `8cc108ddb`) in the v0.4.0
+> re-baseline round.** They drifted twice — once at iteration 1, and again when E1 landed between
+> iterations 2 and 3 — so prefer the named symbol over the line number when navigating; the numbers
+> are a convenience, the symbols are the contract.
+
 - `internal/cli/update/deploy/deploy.go` — `CleanMoaiManagedPaths` (`:28`), the `cleanTarget` list
-  (`:39-73`), the removal loop (`:83`, `:105`), the `.moai/config` wipe (`:121`),
+  (`:38-68`), the removal loop (`:83`, `:105`), the `.moai/config` wipe (`:115`, `:121`),
   `MigrateLegacyMemoryDir` (`:143`, `:169`, `:176`)
-- `internal/cli/update_template_sync.go` — `gitignoreBackup` (`:379-383`), `mergeableBackups`
-  (`:384-390`), `Clean Managed Paths` (`:243-247`), `Restore Settings` (`:391`),
-  `MergeUserFiles` (`:426-430`)
-- `internal/cli/update_clean_install.go` — Step 4 deprecated-path removal (`:265-275`), the
-  in-memory mergeable set (`:312-317`), `BackupMoaiConfig` call (`:304`)
-- `internal/cli/update_preserve_inventory.go` — `preserveInventoryRoots` (`:66-70`),
-  `mergeBackPreserveInventory` (`:330`, failure returns `:346`/`:350`/`:354`)
+- `internal/cli/update_template_sync.go` — `gitignoreBackup` (declared `:292`, populated `:381`),
+  `mergeableBackups` (declared `:294`, populated `:388`), `Clean Managed Paths` (`:243`),
+  `Restore Settings` (`:279`, `:391`), `MergeUserFiles` (`:427`)
+- `internal/cli/update_clean_install.go` — Step 4 deprecated-path removal (`:251`, `:305-311`), the
+  in-memory mergeable set (`:348`, `:351`), `BackupMoaiConfig` call (`:340`)
+- `internal/cli/update_residue_cleanup.go` — `runV3ResidueCleanup` (`:65`), the
+  backup-before-delete step (`:114-131`, `DEPRECATED_BACKUP_FAILED` sentinel at `:116`/`:125`), the
+  removal loop (`:135`). Added by E1's run PR #1261 (`beeb0ebc2`) — §C.0 registry row 11
+- `internal/cli/update_preserve_inventory.go` — `preserveInventoryRoots` (`:68-72`),
+  `mergeBackPreserveInventory` (`:400`, failure returns `:416`/`:420`/`:424`)
 - `internal/cli/update_namespace_protect.go` — `userOwnedScanRoots` (`:39-43`),
   `backupUserOwnedNamespace` (`:196`), `verifyNamespaceBackupCoverage` (`:293`)
-- `internal/cli/update/backup/backup.go` — `BackupMoaiConfig` (`:27`), `CleanupOldBackups` (`:206`)
-- `internal/cli/update.go` — project-marker gate (`:236`), `ensureGlobalSettingsEnv` (`:755`),
-  `userHomeDir()` call (`:756`), `globalHooksDir` (`:764-766`)
+- `internal/cli/update/backup/backup.go` — `BackupMoaiConfig` (`:27`, `.moai/config` walk at `:28`),
+  `CleanupOldBackups` (`:206`)
+- `internal/cli/update_archive.go` — `archiveSkill` (`:66`, removal at `:101`),
+  `archiveLegacySkills` (`:280`, rename at `:322`)
+- `internal/cli/update_cleanup.go` — `removeDeprecatedFile` (`:310`, removal at `:324`)
+- `internal/cli/update.go` — project-marker gate (`:236`, error text `:240`),
+  `ensureGlobalSettingsEnv` (`:832`), `userHomeDir()` call (`:833`), `globalHooksDir` (`:841-843`)
 - `internal/cli/homedir.go` — `userHomeDir` (`:14`), a plain function with no injection seam
 - `internal/cli/glm_tools.go` — `userHomeDirFn` (`:123`), the package's existing injectable
   home-lookup variable (test override precedent at `glm_tools_test.go:34-36`)
-- `internal/cli/update_safety_test.go` — `simulateMoaiUpdate` (`:43-57`),
-  `TestMoaiUpdate_PreservesUserArea` (`:59`), tautological assertions (`:95-102`)
-- `internal/defs/dirs.go` — `.moai/db` entry (`:313`), Category D comment (`:344-351`)
+- `internal/cli/update_safety_test.go` — `simulateMoaiUpdate` (`:49-58`),
+  `TestMoaiUpdate_PreservesUserArea` (`:60`), the fake's invocation (`:95`), tautological
+  assertions (`:91`, `:99-100`)
+- `internal/defs/dirs.go` — `// brand + db directories` group heading (`:305`), `.moai/project/brand`
+  (`:307`), `.moai/db` entry (`:313`), the unrelated `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention
+  the AC-UDS-007 (a) window must not reach (`:302`), Category C banner (`:319`), Category D comment
+  (`:344-351`, `.moai/project/db/` mentions at `:346` and `:349`), `db.yaml` entry (`:354`)
 - `.moai/specs/SPEC-UPDATE-REINSTALL-LOOP-002/spec.md` — REQ-RIL2-015/016 (deprecated-path backup)
 - `CLAUDE.local.md` §24 — the user-owned namespace contract Defect 4 leaves undefended

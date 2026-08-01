@@ -8,8 +8,13 @@ plan_complete_at: 2026-07-31
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 depends_on: [SPEC-UPDATE-REINSTALL-LOOP-002]
-code_baseline: d5336214e
-worktree_head_at_revision: a8b42e112
+code_baseline: 8cc108ddb          # = origin/main; verified ancestor of HEAD
+worktree_head_at_revision: 89b2e4772
+worktree: .claude/worktrees/e2-data-survival
+branch: feat/SPEC-UPDATE-DATA-SURVIVAL-001
+superseded_baselines:              # retired in the v0.4.0 re-baseline (D17)
+  code_baseline: d5336214e         # 19 non-.moai files differ from HEAD
+  worktree_head: a8b42e112         # NOT an ancestor of HEAD
 plan_audit:
   iteration_1:
     verdict: FAIL
@@ -36,6 +41,34 @@ plan_audit:
     already_present: [D11, D12, D16]
     resolved_by_fact: [D10]
     still_deferred: [D8, D9]
+  iteration_3:
+    verdict: FAIL
+    score: 0.758           # harmonic 0.758 / arithmetic 0.760
+    threshold: 0.80
+    dimensions: {clarity: 0.75, completeness: 0.75, testability: 0.72, traceability: 0.82}
+    scope: delta
+    blockers: [D17, D18, D19]
+    advisories: [D20, D21, D22]
+    resolved_this_round: [D11, D12, D13, D14, D15, D16]   # D13 partially → reopened as D19
+    still_deferred: [D8]
+    resolved_by_fact: [D9, D10]                            # D9 escalated into D17; D10 by E1 completion
+    stop_signal: true      # 0.84 → 0.758 regression; see re_baseline below
+    report: .moai/reports/plan-audit/SPEC-UPDATE-DATA-SURVIVAL-001-e2-delta-iter3.md
+  re_baseline:
+    version: 0.4.0
+    ceiling_override: user-approved            # 3-iteration ceiling exceeded by explicit user approval
+    trigger: external-tree-movement            # NOT a revision failure
+    cause: >
+      E1 (SPEC-UPDATE-REINSTALL-LOOP-002) landed run PR #1261 (beeb0ebc2) and sync PR #1264
+      (8cc108ddb) between iteration 2 and iteration 3. The plan-phase artifacts described a tree
+      that no longer existed: a new destructive call site appeared and coordinates shifted across
+      five files. The auditor's own diagnosis and the orchestrator's independent confirmation agree
+      that the iteration-3 regression is external, and that the one iteration-2 departure (D15's
+      rejection of the suggested sed-range remedy) was the correct call.
+    applied: [D17, D18, D19, D20, D21, D22]
+    still_deferred: [D8]
+    registry_delta: {sites: 17 -> 18, pairs: 10 -> 11, added_row: update_residue_cleanup.go:135}
+    go_source_changed: false                   # git diff --name-only origin/main HEAD | grep -c '\.go$' -> 0
 ```
 
 ### Iteration-2 delta round — divergence from the audit report
@@ -57,6 +90,50 @@ report's suggested remedy: a backward-widened window would capture the unrelated
 `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention at `dirs.go:302` and turn AC-UDS-007 (a)'s `0`
 baseline into a false `1`. The applied fix pins the SPEC-ID's placement in REQ-UDS-009 and
 content-anchors the window forward instead. See `acceptance.md` AC-UDS-007 § Range note.
+
+### Iteration-3 re-baseline round — what moved and why
+
+Iteration 3 scored **0.758** (clarity 0.75 / completeness 0.75 / testability 0.72 / traceability
+0.82), down from iteration 2's 0.84 — a STOP-signal regression under the Retry Loop Contract. The
+regression's cause is **external**: the code baseline moved under the plan.
+
+| Measurement | v0.3.0 recorded | Re-measured on HEAD `89b2e4772` |
+|---|---|---|
+| worktree head anchor | `a8b42e112` | **not an ancestor of HEAD** (`git merge-base --is-ancestor` → non-zero) |
+| code baseline anchor | `d5336214e` | superseded by `8cc108ddb` (verified ancestor) |
+| "no Go source differs" premise | asserted | **false** — `git diff --name-only d5336214e..HEAD \| grep -v '^\.moai/' \| wc -l` → `19` |
+| destructive call sites | 17 | **18** |
+| (file, function) pairs | 10 | **11** |
+| new site | — | `update_residue_cleanup.go:135` (`runV3ResidueCleanup`), added by `beeb0ebc2` |
+| `ensureGlobalSettingsEnv` | `update.go:755` | `update.go:832` |
+| `globalHooksDir` removal | `update.go:764-766` | `update.go:841-843` |
+| `mergeBackPreserveInventory` | `:330` (returns `:346`/`:350`/`:354`) | `:400` (returns `:416`/`:420`/`:424`) |
+| `preserveInventoryRoots` | `:66-70` | `:68-72` |
+| AC-UDS-014 coverage transcript | 3 lines | **4 lines** (`MigrateLegacyMemoryDir` was dropped) |
+| AC-UDS-007 (b) falsifier | `2 → 0` | `2 → 1` (contrast clause alone); `2 → 0` only on whole-banner deletion |
+
+**Why the drift went undetected.** The two commands v0.3.0 published beneath the registry as
+"independently re-derivable" grepped `acceptance.md` itself, so they returned `10` / `17` forever
+regardless of the tree — §A.3 shape (a), a self-comparison, applied to the document's own
+consistency check. Both are replaced in v0.4.0 with Go-source scans whose output moves when the
+tree moves.
+
+**D19 is not a regression either — it is D13's fix landing one clause short.** v0.3.0 added the
+"destroyed paths are still absent on return" assertion, but left its quantifier unbounded: on an
+empty removed-set "all of ∅ are absent" holds trivially, and adding the automatic rollback
+REQ-UDS-020 forbids could not move it. v0.4.0 pins the removed set non-empty from a literal
+fixture (`plantedMoaiManagedPaths`) verified at the source level, never from a count the test
+derives by observing the function it is checking.
+
+**Preserved through the re-baseline** (the auditor named these exemplary and asked that they
+survive): AC-UDS-014's coverage construction with its 94.4% positive control, and the AC-UDS-007
+(a) range note rejecting the backward-widened `sed` window. Both are intact; only their embedded
+figures and coordinates were refreshed.
+
+**Ceiling override.** This round consumed iteration 3 of 3. The user explicitly approved one
+override of the plan-auditor ceiling for a bounded re-baseline round, which is the auditor's own
+recommendation (its §10 option 3, reframed as "a bounded re-baseline round, not another
+audit-remedy round"). No requirement's intent changed in this round.
 
 ### Epic run order (dependency sequencing)
 
