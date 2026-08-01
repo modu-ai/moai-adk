@@ -21,7 +21,27 @@
 
 판정에 커밋 SHA를 핀으로 박거나 줄 번호를 앵커로 쓰지 않는다. 비교 기준(base)은 판정 시점에 `git merge-base origin/main HEAD`로 계산하고, 코드 위치는 내용 토큰(함수명, 식별자, 문자열 리터럴)으로 지목한다. 저작 시점 절대 앵커는 검증 시점에 낡는다.
 
-### A.4 반증 의무
+### A.4 반증 의무 — 실패했다는 것만으로는 부족하고, **왜** 실패했는지가 붙어야 한다
+
+[HARD] 모든 반증 AC는 `grep -c '^--- FAIL'` 같은 **FAIL 존재 계수만으로 판정하지 않는다.** 반드시 실패 출력이 **의도한 원인**을 지목함을 함께 확인한다. 구체적으로 둘 중 하나 이상:
+
+1. **원인 지목 문자열** — 실패 메시지에 의도한 대상(사용자 소유 경로명, 잃어버린 백업명, 스냅샷 불일치 등)이 등장한다.
+2. **경쟁 원인 배제** — 같은 `--- FAIL` 모양을 낼 수 있는 **다른** 실패 경로의 표지 문자열이 출력에 **없음**을 확인한다.
+
+**왜 필요한가 (실측으로 확인한 함정)**: `runCleanReinstall`의 Step 4는 삭제 전에 백업을 거친다.
+
+```
+$ grep -n 'DEPRECATED_BACKUP_FAILED\|os.RemoveAll(abs)' internal/cli/update_clean_install.go
+292:  return result, fmt.Errorf("step 4: DEPRECATED_BACKUP_FAILED: enumerate backup targets: %w", expandErr)
+297:  return result, fmt.Errorf("step 4: DEPRECATED_BACKUP_FAILED: %s (and %d other path(s)) not backed up — aborting before REMOVE: %w", ...)
+322:      if rmErr := os.RemoveAll(abs); rmErr != nil {
+```
+
+`scanDeprecatedPaths`에 사용자 경로를 주입하면 그 경로는 `expandDeprecatedBackupTargets`(→292)와 `backupDeprecatedPaths`(→297)를 **먼저** 지난다. 거기서 조기 반환하면 `--- FAIL` 한 줄이 나오는데, 그것은 "가드가 사용자 경로 삭제를 잡아냈다"가 **아니라** "백업 단계가 터졌다"이다. 두 원인이 같은 모양이라 FAIL 계수만으로는 구별되지 않고, 반증이 아무것도 증명하지 못한 채 통과한다.
+
+이는 AC-UGE-003이 base 위생 검사로 막은 것과 **같은 교란 계열**이다. 최초 판은 그 규율을 AC-UGE-003 한 곳에만 적용했다 — 이 조항이 전체로 일반화한다.
+
+### A.4b 반증 의무 (원문)
 
 커버리지·가드 계열 AC는 **변경 전 baseline 수치**와 **가드가 실패하는 것을 관측한 기록**을 함께 요구한다. 통과만 관측된 가드는 실효성이 증명되지 않은 것으로 본다(REQ-UGE-013). 반증 방법은 두 가지 중 하나다.
 
@@ -182,7 +202,23 @@ grep -c 'userHomeDir()' internal/cli/glm.go
 
 이 AC는 **의도된 변화를 직접 관측**한다. "전체 스위트가 여전히 green"은 판정이 아니다 — 이 변경이 아무것도 바꾸지 않았을 때도, 정확히 의도대로 바꿨을 때도 똑같이 green이기 때문에 두 경우를 구별하지 못한다.
 
-관측 방법은 **호출 계수 스파이**다. 렌더 산출물을 어서트하지 않는 이유는 §A.2다 — `gobin.Detect`는 `GOBIN`/`GOPATH`가 설정된 머신에서 `homeDir`을 쓰지 않고 조기 반환하므로, 렌더된 경로를 어서트하면 판별력이 운영자 환경 변수에 좌우된다. 스파이 계수는 그런 의존이 없다.
+관측은 **두 층**이다.
+
+- **도달 증거 (스파이 계수)** — `userHomeDirFn`을 계수하는 스파이로 주입하고, 세 호출부에 도달하는 경로를 구동한 뒤 계수가 기대치 이상임을 어서트한다.
+- **REQ 결속 증거 (`HomeDir` 출력 어서션)** — 구성된 `template.TemplateContext`의 `HomeDir`가 **주입한 sentinel과 같은지** 어서트한다.
+
+**둘 다 필요한 이유**: REQ-UGE-005는 *렌더링*이 주입된 홈을 따른다고 주장하는데, 스파이 계수는 **이음매가 불렸다**까지만 증명한다 — 이 SPEC 자신의 §G AP-4(도달성을 어서션으로 착각)에 해당한다. 최초 판은 스파이만 두어 REQ를 결속하지 못했다.
+
+**`HomeDir`가 기계 독립적인 근거 (실측)**: 최초 판은 "렌더 산출물은 환경 의존"이라며 출력 어서션을 통째로 포기했다. 그 이유는 `GoBinPath`에만 해당한다 — `gobin.Detect`는 `GOBIN`/`GOPATH`가 설정된 머신에서 조기 반환한다. `HomeDir`는 다르다:
+
+```
+$ grep -n 'HomeDir' internal/template/context.go
+239:		c.HomeDir = dir          # WithHomeDir 가 그대로 대입하는 평범한 필드
+$ grep -n 'HomeDir' internal/template/context_test.go
+324:	if ctx.HomeDir != "/home/tester" {    # 기존 테스트가 이미 직접 어서트
+```
+
+분기도 환경 변수도 개입하지 않는 단순 대입이므로 어느 머신에서나 같은 값이 나온다. 더 강한 판정이 있는데 일반화해서 지나쳤던 것이다.
 
 ```bash
 # (a) 존재 grep (§A.1)
@@ -192,14 +228,18 @@ grep -rn 'func TestUpdateSubsystem_HomeSeamReach' internal/cli/
 go test -run 'TestUpdateSubsystem_HomeSeamReach' -count=1 -v ./internal/cli/ 2>&1 \
   | grep -E '^--- (PASS|FAIL): TestUpdateSubsystem_HomeSeamReach'
 
-# (c) 스파이가 실제 계수를 어서트하는가 (단순 non-nil 확인이 아님)
+# (c) 도달 증거 — 스파이가 실제 계수를 어서트하는가 (단순 non-nil 확인이 아님)
 sed -n '/func TestUpdateSubsystem_HomeSeamReach/,/^}/p' internal/cli/*_test.go \
   | grep -cE 'if .*calls|want.*calls|calls !='
+
+# (d) REQ 결속 증거 — 구성된 컨텍스트의 HomeDir 가 주입한 sentinel 과 같은가
+sed -n '/func TestUpdateSubsystem_HomeSeamReach/,/^}/p' internal/cli/*_test.go \
+  | grep -cE '\.HomeDir'
 ```
 
-기대: (a) 한 행. (b) `--- PASS: …`. (c) `≥1`.
+기대: (a) 한 행. (b) `--- PASS: …`. (c) `≥1`. (d) `≥1`.
 
-가드는 `userHomeDirFn`을 **계수하는 스파이**로 주입하고 세 호출부에 도달하는 경로를 구동한 뒤, 스파이 계수가 기대치 이상임을 어서트한다. 계수를 어서트하는 것이 핵심이다 — "주입해도 안 터지더라"는 관측은 도달을 증명하지 않는다.
+(d)의 어서션은 `ctx.HomeDir != <주입한 sentinel>`이면 `t.Errorf` 형태여야 한다 — 존재만 확인하는 것이 아니라 **값이 sentinel과 일치**함을 봐야 REQ-UGE-005를 결속한다.
 
 #### AC-UGE-006F — 세 호출부를 되돌리면 도달 계수가 떨어진다 (§A.4 반증, REQ-UGE-013)
 
@@ -214,14 +254,23 @@ done
 printf '{"Replace":{"%s/internal/cli/update_clean_install.go":"%s/update_clean_install.go","%s/internal/cli/update_template_sync.go":"%s/update_template_sync.go"}}\n' \
   "$(git rev-parse --show-toplevel)" "$D" "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
 
-go test -overlay="$D/overlay.json" -run 'TestUpdateSubsystem_HomeSeamReach' -count=1 -v ./internal/cli/ 2>&1 \
-  | grep -cE '^(--- FAIL|FAIL)'
+go test -overlay="$D/overlay.json" -c -o /tmp/uge-6f.test ./internal/cli/; echo "compile-exit=$?"
+go test -overlay="$D/overlay.json" -run 'TestUpdateSubsystem_HomeSeamReach' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
+echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
+
+# 원인 귀속 (§A.4) — 도달 어서션(계수 또는 HomeDir)이 깨진 것이어야 한다
+echo "names-reach-assert=$(grep -cE 'calls|HomeDir' "$D/out.txt")"
+
+# 경쟁 원인 배제 (§A.4) — 컴파일 실패로 인한 FAIL 이 아니어야 한다
+echo "build-failed=$(grep -cE 'build failed|undefined:|cannot use' "$D/out.txt")"
 rm -rf "$D"
 ```
 
-기대: 두 파일 모두 `mutation-applied=1`, FAIL 계수 `≥1`.
+기대: 두 파일 모두 `mutation-applied=1`, `compile-exit=0`, `fail-lines≥1`, **`names-reach-assert≥1`**, **`build-failed=0`**.
 
-**이 반증이 증명하는 것**: 가드가 M2 변경에 의존한다. 되돌린 코드에서는 세 호출부가 프로세스 `$HOME`을 읽으므로 스파이가 그만큼 덜 불리고 계수 어서션이 깨진다. `mutation-applied=1` 확인이 없으면 sed가 아무것도 못 바꿔도 "FAIL 없음"을 통과로 오독할 수 있다.
+**이 반증이 증명하는 것**: 가드가 M2 변경에 의존한다. 되돌린 코드에서는 세 호출부가 프로세스 `$HOME`을 읽으므로 스파이가 그만큼 덜 불리고 계수·`HomeDir` 어서션이 깨진다.
+
+**경쟁 원인 배제가 필요한 이유 (§A.4)**: overlay가 컴파일에 실패해도 `FAIL` 줄은 나온다. 그 FAIL은 "가드가 변경에 의존한다"를 증명하지 않고 "sed가 코드를 깨뜨렸다"를 증명한다. `compile-exit=0`과 `build-failed=0`이 그 경우를 배제한다.
 
 #### AC-UGE-006R — 주입이 없을 때는 프로덕션 동작이 동일하다 (§A.5 보존 가드)
 
@@ -355,12 +404,32 @@ diff internal/cli/update_cleanup.go "$D/update_cleanup.go" >/dev/null; echo "mut
 printf '{"Replace":{"%s/internal/cli/update_cleanup.go":"%s/update_cleanup.go"}}\n' \
   "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
 
-go test -overlay="$D/overlay.json" -run 'TestCleanReinstall_PreservesUserArea' -count=1 -v ./internal/cli/ 2>&1 \
-  | grep -cE '^(--- FAIL|FAIL)'
+go test -overlay="$D/overlay.json" -run 'TestCleanReinstall_PreservesUserArea' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
+echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
+
+# 원인 귀속 (§A.4) — 실패가 '사용자 영역 변경'을 지목해야 한다
+echo "names-user-area=$(grep -cE 'user area changed|\.moai/harness' "$D/out.txt")"
+
+# 경쟁 원인 배제 (§A.4) — 백업 단계 조기 반환으로 터진 것이 아니어야 한다
+echo "backup-stage-abort=$(grep -c 'DEPRECATED_BACKUP_FAILED' "$D/out.txt")"
 rm -rf "$D"
 ```
 
-기대: `mutation-applied=1`, FAIL 계수 `≥1`.
+기대: `mutation-applied=1`, `fail-lines≥1`, **`names-user-area≥1`**, **`backup-stage-abort=0`**.
+
+**`backup-stage-abort=0`이 핵심이다.** 주입한 `.moai/harness`는 `os.RemoveAll` 루프에 닿기 전에 `expandDeprecatedBackupTargets`(→`update_clean_install.go:292`)와 `backupDeprecatedPaths`(→`:297`)를 먼저 지난다. 거기서 터지면 `DEPRECATED_BACKUP_FAILED`가 찍히고 `--- FAIL`도 한 줄 나오지만, 그것은 가드가 삭제를 잡아낸 것이 **아니다**. 이 값이 `≥1`이면 반증이 교란된 것이므로 **AC를 실패로 판정하고**, 백업 단계를 통과하는 변형(예: 픽스처에 해당 경로를 실재시켜 백업이 성공하도록)으로 바꿔 다시 관측한다.
+
+> **실측 — 교란 경로는 실재하지만 이 변형에서는 발화하지 않았다.** 대상 가드가 아직 없으므로, 같은 변형을 **기존** `TestCleanReinstall*` 테스트군에 걸어 교란 여부만 먼저 관측했다.
+>
+> ```
+> mutation-applied=1
+> fail-lines=0
+> backup-stage-abort=0
+> ```
+>
+> 즉 `.moai/harness` 주입은 이 픽스처들에서 `DEPRECATED_BACKUP_FAILED`를 **일으키지 않았다**(그 경로가 존재하지 않는 항목을 관대하게 처리한다). 기존 테스트가 하나도 실패하지 않은 것은 그것들이 사용자 영역 보존을 어서트하지 않기 때문이며 — 그 공백이 바로 이 SPEC의 존재 이유다.
+>
+> **그래도 이 검사는 남긴다.** (1) 교란 경로 자체는 코드에 실재하고(`:292`/`:297`), (2) 신규 가드는 픽스처에 `.moai/harness`를 **실제로 생성**하므로 백업 단계가 빈 경로가 아닌 실 디렉터리를 다루게 되어 동작이 달라진다 — 위 관측은 그 조건에서의 결과가 아니다. 검사 비용은 `grep` 두 번이고, 놓쳤을 때의 대가는 아무것도 증명하지 못하는 반증이다.
 
 > **이 트리에서 변형 적용까지 실행해 확인함**: `mutation-applied=1`, diff는 정확히 한 줄 삽입이며 위치는 `scanDeprecatedPaths` 본문 끝(`update_cleanup.go:145`, `return found, nil` 직전)이다.
 >
@@ -410,12 +479,20 @@ diff internal/cli/update/backup/backup.go "$D/backup.go" >/dev/null; echo "mutat
 printf '{"Replace":{"%s/internal/cli/update/backup/backup.go":"%s/backup.go"}}\n' \
   "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
 
-go test -overlay="$D/overlay.json" -run 'TestBackupSubsystem_DestructiveSurfaces' -count=1 -v ./internal/cli/ 2>&1 \
-  | grep -cE '^(--- FAIL|FAIL)'
+go test -overlay="$D/overlay.json" -run 'TestBackupSubsystem_DestructiveSurfaces' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
+echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
+
+# 원인 귀속 (§A.4) — 실패한 서브테스트가 회전 쪽이어야 한다
+echo "rotation-subtest-failed=$(grep -cE '^\s+--- FAIL: .*/rotation_keeps_newest' "$D/out.txt")"
+
+# 경쟁 원인 배제 (§A.4) — 롤백 서브테스트가 덩달아 터진 것이 아니어야 한다
+echo "rollback-subtest-failed=$(grep -cE '^\s+--- FAIL: .*/rollback_removes_only_own_backup_dir' "$D/out.txt")"
 rm -rf "$D"
 ```
 
-기대: `mutation-applied=1`, FAIL 계수 `≥1`.
+기대: `mutation-applied=1`, `fail-lines≥1`, **`rotation-subtest-failed=1`**, **`rollback-subtest-failed=0`**.
+
+**원인 귀속 논리**: 이 변형은 회전 슬라이스만 뒤집으므로 **회전 서브테스트만** 실패해야 한다. 롤백 서브테스트까지 실패하면 변형이 의도보다 넓게 퍼졌거나 픽스처가 두 서브테스트에 결합돼 있다는 뜻이고, 그러면 "회전 반전을 잡아냈다"는 결론을 지지하지 못한다.
 
 **이 반증의 가치**: 가상의 변형이 아니라 **이 저장소에서 실제로 발생했던 회귀**를 재현한다. 가드가 이것을 잡지 못하면, 같은 버그가 다시 들어와도 잡지 못한다는 뜻이다.
 
@@ -464,12 +541,21 @@ diff internal/cli/update/deploy/deploy.go "$D/deploy.go" >/dev/null; echo "mutat
 printf '{"Replace":{"%s/internal/cli/update/deploy/deploy.go":"%s/deploy.go"}}\n' \
   "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
 
-go test -overlay="$D/overlay.json" -run 'TestMigrateLegacyMemoryDir_PreservesUserArea' -count=1 -v ./internal/cli/ 2>&1 \
-  | grep -cE '^(--- FAIL|FAIL)'
+go test -overlay="$D/overlay.json" -c -o /tmp/uge-11f.test ./internal/cli/; echo "compile-exit=$?"
+go test -overlay="$D/overlay.json" -run 'TestMigrateLegacyMemoryDir_PreservesUserArea' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
+echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
+
+# 원인 귀속 (§A.4) — 백업본 부재를 지목해야 한다
+echo "names-missing-backup=$(grep -cE 'backup|legacy-memory' "$D/out.txt")"
+
+# 경쟁 원인 배제 (§A.4) — rename 분기가 터진 것이 아니어야 한다
+echo "rename-subtest-failed=$(grep -cE '^\s+--- FAIL: .*/rename_when_state_absent' "$D/out.txt")"
 rm -rf "$D"
 ```
 
-기대: `mutation-applied=1`, FAIL 계수 `≥1`.
+기대: `mutation-applied=1`, `compile-exit=0`, `fail-lines≥1`, **`names-missing-backup≥1`**, **`rename-subtest-failed=0`**.
+
+**원인 귀속 논리**: 이 변형은 both-exist 분기의 백업만 무력화하므로 `backup_then_remove_when_both_exist`만 실패해야 한다. `rename_when_state_absent`까지 실패하면 변형이 의도 밖으로 번진 것이다.
 
 **가드가 무엇을 어서트해야 하는가**: both-exist 분기 실행 후 **백업본이 실재하고 원본과 내용이 같아야** 한다. "레거시 디렉터리가 사라졌다"만 어서트하면 위 변형을 통과시킨다 — 변형도 레거시를 지우기 때문이다.
 
@@ -541,18 +627,23 @@ golangci-lint run --timeout=3m 2>&1 | tail -5
 
 ```bash
 # 패키지 변수를 재할당하는 테스트 파일들에 t.Parallel() '호출'이 없어야 한다.
-# 주석 줄(// ...)은 제외한다 — 아래 오탐 주석 참조.
-grep -vE '^\s*//' internal/cli/glm_tools_test.go | grep -c 't\.Parallel()'
+# sed 로 // 이후를 잘라 줄 주석과 '꼬리 주석'을 함께 제거한다 (아래 오탐 주석 참조).
+sed 's|//.*||' internal/cli/glm_tools_test.go | grep -c 't\.Parallel()'
 
-# xargs 를 쓰지 않는다 (아래 이식성 주석 참조)
-grep -rlE 'userHomeDirFn = |[a-zA-Z]*[Ss]tatFn = ' internal/cli/*_test.go \
-| while IFS= read -r f; do
-    n=$(grep -vE '^\s*//' "$f" | grep -c 't\.Parallel()')
+# 대상 파일 목록을 먼저 확보하고, 비어 있지 않음을 확인한 뒤 순회한다.
+# (xargs 를 쓰지 않는 이유는 아래 이식성 주석 참조)
+FILES=$(grep -rlE 'userHomeDirFn = |[a-zA-Z]*[Ss]tatFn = ' internal/cli/*_test.go)
+echo "target-files=$(printf '%s\n' "$FILES" | grep -c .)"
+printf '%s\n' "$FILES" | while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    n=$(sed 's|//.*||' "$f" | grep -c 't\.Parallel()')
     printf '%s %s\n' "$f" "$n"
   done
 ```
 
-기대: 첫 계수 `0`(현행 baseline 유지), 둘째 — 나열된 **모든** 파일의 계수가 `0`.
+기대: 첫 계수 `0`(현행 baseline 유지), **`target-files≥1`**, 그리고 나열된 **모든** 파일의 계수가 `0`.
+
+**`target-files≥1`이 필요한 이유 (0-매치 공허)**: `while read` 루프는 `-run` 선택자와 **같은 공허 모드**를 가진다 — 패턴이 아무 파일에도 매치하지 않으면 루프 본문이 한 번도 실행되지 않고, 아무것도 출력되지 않으며, 실패 신호도 없다. "위반이 하나도 안 나왔다"와 "검사 대상이 하나도 없었다"가 같은 모양이 된다. `target-files` 계수가 그 둘을 가른다(AC-UGE-007 (a)의 `before-nonempty`와 같은 형태).
 
 **주석 제외가 필요한 이유 — 이 판정을 실행해서 잡은 오탐.** 최초 판은 주석을 세지 않았고, 실행 결과 다음이 나왔다.
 
@@ -569,9 +660,15 @@ internal/cli/update_home_radius_test.go 1     # ← 위반처럼 보임
 
 즉 규율을 지키라고 적어 둔 주석이 규율 위반으로 계수되었다. 주석을 제외하면 두 파일 모두 `0`이다(재실행으로 확인). 이 오탐을 방치했다면 run-phase가 존재하지 않는 위반을 쫓았을 것이다.
 
-**`xargs`를 쓰지 않는 이유 (이식성)**: 최초 판은 `... | xargs grep -c 't\.Parallel()'`였다. 입력이 비었을 때 BSD/macOS `xargs`는 명령을 실행하지 않지만 **GNU `xargs`(ubuntu CI)는 인자 없이 실행**하므로 `grep`이 stdin을 읽으려 멈춘다 — CI에서 판정이 행(hang)한다. `xargs -r`로도 고칠 수 있으나 `-r`은 GNU 확장이라 BSD에서 다시 문제가 되므로, `while read` 루프로 `xargs` 자체를 없앴다. 파일명당 계수를 함께 출력하므로 어느 파일이 위반인지도 드러난다.
+**주석 제거 방식의 잔여 한계 (정직하게 남긴다)**: 최초 수정은 `grep -vE '^\s*//'`로 **줄 전체가 주석인 경우만** 걸렀다. 그러면 꼬리 주석(`foo() // ... t.Parallel() ...`)은 여전히 계수된다. 현재 판은 `sed 's|//.*||'`로 바꿔 줄 주석과 꼬리 주석을 함께 제거한다.
 
-> **미확인**: 이 판정을 GNU `xargs` 환경에서 직접 재현하지는 못했다(이 머신은 BSD `xargs`). 위 재작성은 `xargs`를 제거해 그 차이를 무의미하게 만드는 방식이므로, 재현 없이도 안전하다.
+여전히 못 거르는 것: **블록 주석**(`/* ... t.Parallel() ... */`)과 **문자열 리터럴 안의 `//`**. 정확히 처리하려면 Go 파서가 필요하고, 그것은 이 판정의 비용 대비 과하다. 현 트리에는 두 경우가 모두 없음을 확인했으므로(계수 `0`) 실용적 한계로 수용하고, run-phase가 위반을 만나면 **줄 번호를 직접 확인**해 오탐 여부를 가린다.
+
+**`xargs`를 쓰지 않는 이유 (이식성)**: 최초 판은 `... | xargs grep -c 't\.Parallel()'`였다. 입력이 비었을 때 BSD/macOS `xargs`는 명령을 아예 실행하지 않지만, **GNU `xargs`(ubuntu CI)는 인자 없이 한 번 실행한다.** 그때 GNU `xargs`는 자식의 stdin을 `/dev/null`로 돌리므로 `grep`은 즉시 EOF를 만나 `0`을 출력하고 종료한다 — 즉 **행(hang)이 아니라 가짜 결과 한 줄**이 나온다. 파일명 없는 `0`이 "위반 없음"으로 읽히므로 조용한 오판이 된다. `xargs -r`로도 고칠 수 있으나 `-r`은 GNU 확장이라 BSD에서 다시 문제가 되므로, `while read` 루프로 `xargs` 자체를 없앴다. 파일명당 계수를 함께 출력하므로 어느 파일이 위반인지도 드러난다.
+
+> **정정 이력**: 직전 판은 이 결과를 "`grep`이 stdin을 읽으려 멈춘다(행)"라고 적었다. 실제 GNU 동작은 stdin이 `/dev/null`로 리다이렉트되어 **즉시 `0`을 찍고 끝나는** 것이다. 결론(=`xargs`를 제거한다)은 같지만 근거가 틀렸으므로 바로잡는다. 증상이 "멈춤"이 아니라 "조용한 오판"이라는 점이 오히려 더 위험하다.
+>
+> **미확인 (run-phase로 이월)**: 이 머신은 BSD `xargs`라 GNU 동작을 직접 재현하지 못했다. 위 서술은 지적된 내용을 그대로 반영한 것이며 독립 관측이 아니다. 다만 채택한 수정은 `xargs`를 제거해 두 구현의 차이를 무의미하게 만드는 방식이므로, 어느 서술이 맞든 판정은 안전하다.
 
 **이 값을 움직이는 것**: 이 SPEC이 추가하는 테스트가 `t.Parallel()`을 부르면 즉시 `≥1`이 되어 실패한다. `userHomeDirFn`은 `glm_tools.go:123`의 패키지 변수이고 `setupToolsTestHome`이 47개 호출부에서 같은 변수를 재할당하므로, 어느 한쪽이 병렬화되는 순간 데이터 경쟁이 된다.
 
@@ -597,7 +694,20 @@ NFR 매핑: NFR-UGE-001 → AC-UGE-015, AC-UGE-007 (e) · NFR-UGE-002 → AC-UGE
 
 ## §E Definition of Done
 
-1. §C의 AC 전부(001, 002, 003, 005, 006, 006F, 006R, 007, 008, 009, 009F, 010, 010F, 011, 011F, 012, 013, 014, 015 — 총 19개) PASS이며, 각 판정 명령의 **실제 출력**이 progress.md에 인용되어 있다.
-2. A.4가 요구하는 반증 **7건**(003 / 006F / 008 / 009F / 010F / 011F / 012)이 각각 실패를 관측한 기록과 함께 남아 있다. 변형 반증은 `mutation-applied=1`도 함께 인용한다 — 그것 없이는 변형이 무동작이었는지 알 수 없다(§G AP-6).
+1. §C의 AC 전부 **20개**(001, 002, 003, **004**, 005, 006, 006F, 006R, 007, 008, 009, 009F, 010, 010F, 011, 011F, 012, 013, 014, 015) PASS이며, 각 판정 명령의 **실제 출력**이 progress.md에 인용되어 있다.
+
+   목록의 무결성은 기계적으로 확인한다 — 이 목록이 파일과 어긋나면 빠진 AC가 조용히 검증되지 않는다.
+
+   ```bash
+   grep -cE '^#### AC-UGE-' acceptance.md          # 기대: 20 (위 목록 개수와 일치)
+   grep -oE '^#### AC-UGE-[0-9]+[FR]?' acceptance.md | sed 's|^#### ||'
+   ```
+
+   > **정정 이력**: 직전 판은 "총 19개"라고 적고 목록에서 **AC-UGE-004(커버리지 baseline 유지)를 누락**했다. 파일에는 20개가 있었다. 위 계수 검사가 그 어긋남을 잡는다.
+
+2. A.4가 요구하는 반증 **7건**(003 / 006F / 008 / 009F / 010F / 011F / 012)이 각각 실패를 관측한 기록과 함께 남아 있다. 각 반증은 다음 셋을 모두 인용한다.
+   - `mutation-applied=1` (또는 overlay의 base 위생 결과) — 변형이 무동작이 아니었음(§G AP-6)
+   - FAIL 관측
+   - **원인 귀속 + 경쟁 원인 배제** (§A.4) — 실패가 의도한 원인 때문임
 3. §B의 baseline이 리베이스 후 트리에서 **재측정**되어 있다(plan-phase 수치를 옮겨 적은 것은 baseline이 아니다).
 4. AC-UGE-002의 Windows 런타임 통과가 CI 결과로 인용되어 있거나, 인용 불가 시 Gaps에 명시되어 있다.

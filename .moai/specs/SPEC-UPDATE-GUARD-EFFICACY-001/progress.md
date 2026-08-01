@@ -45,7 +45,32 @@ Plan-phase 산출물 3종(spec.md / plan.md / acceptance.md)이 작성되었다.
 - AC-UGE-015의 GNU `xargs` 재현 — 이 머신은 BSD `xargs`. `xargs` 자체를 제거해 차이를 무의미하게 만드는 방식으로 우회했다.
 - AC-UGE-011F 변형의 컴파일 — 대상 가드가 없어 미실시. AC에 컴파일 실패 시 등가 변형 지침을 명시했다.
 
-**선행 조건 (갱신)**: PR #1275는 머지 완료(`83610e03e`)이고 이 브랜치에 머지 반영했다. run-phase는 plan.md §C1의 base 위생 검사를 **진입 시점에 재실행**한다.
+### 개정 라운드 2 — plan-auditor PASS-WITH-DEBT 0.89 대응 (3차 감사 없이 run-phase 진입)
+
+| 지적 | 조치 | 이 트리에서의 관측 |
+|---|---|---|
+| N1 반증이 원인을 귀속하지 않음 | §A.4에 **원인 귀속 + 경쟁 원인 배제** 의무 신설, 반증 4건(006F/009F/010F/011F)에 적용 | 009F 교란 가설 실측: `backup-stage-abort=0`, `fail-lines=0` — 경로는 실재하나 이 변형에선 미발화 |
+| N2 스파이가 REQ-UGE-005를 측정 못함 | AC-UGE-006에 `TemplateContext.HomeDir` 출력 어서션 `(d)` 추가 (스파이는 도달 증거로 유지) | `context.go:239` 단순 대입, `context_test.go:324` 기존 직접 어서트 확인 |
+| N3 `xargs` 기전 서술 오류 | "행(hang)" → "stdin이 `/dev/null`로 리다이렉트되어 즉시 `0` 출력" 으로 정정 | GNU 재현 불가(BSD 머신) — 미확인 표기 유지 |
+| N4 `while read` 0-매치 공허 | `target-files` 계수 선행 검사 추가 | `target-files=2`. 음성 대조(없는 패턴) → `target-files=0` 으로 공허 탐지 확인 |
+| N5 주석 필터가 줄 앵커 한정 | `sed 's\|//.*\|\|'` 로 꼬리 주석까지 제거 | 두 파일 모두 `0`. 블록 주석·문자열 리터럴은 잔여 한계로 명시 |
+| N6 DoD 목록 19개 vs 파일 20개 | AC-UGE-004 추가 + 계수 검사 명령 추가 | `grep -c` → `20`, DoD 목록과 파일 집합 `diff` 일치 |
+| N7 개정에 버전·HISTORY 없음 | `version: 0.3.0` + HISTORY 2행 추가 | — |
+
+**감사가 대신 해결해 준 것**: AC-UGE-011F 변형의 컴파일 가능성(`go build -overlay` exit 0). 직전 라운드에서 미확인으로 넘겼던 항목이 해소되었다.
+
+### run-phase로 넘기는 미검증 항목 (3차 감사 없음 — 여기가 마지막 plan 기록)
+
+1. **신규·수정 가드 6개 전부의 실제 PASS/FAIL.** 대상 코드가 없어 plan-phase에서 관측 불가. 반증 4건의 FAIL 관측도 마찬가지로 run-phase 몫이다.
+2. **AC-UGE-009F의 교란 여부 (신규 픽스처 조건에서).** 위 실측은 `.moai/harness`가 **없는** 기존 픽스처 기준이다. 신규 가드는 그 경로를 실제로 생성하므로 백업 단계 동작이 달라진다 — `backup-stage-abort=0`을 그 조건에서 다시 확인해야 한다.
+3. **Windows 런타임.** `GOOS=windows go vet`까지만 가능. AC-UGE-002의 Windows 통과는 CI 결과 인용 필요.
+4. **GNU `xargs` 실제 동작.** BSD 머신이라 미재현. 채택한 수정이 `xargs`를 제거하므로 판정은 안전하지만, N3의 기전 서술 자체는 독립 관측이 아니다.
+5. **`go test ./...` 전체와 `-race`.** 이번 라운드에서 실행하지 않았다. AC-UGE-014의 FAIL 계수 항목은 **미측정**이다.
+6. **`TemplateContext.HomeDir`의 기계 독립성이 전체 렌더 파이프라인 끝까지 유지되는지.** 필드 대입(`context.go:239`)과 기존 직접 어서트(`context_test.go:324`)까지만 확인했다. 렌더 산출물에 그 값이 어떻게 나타나는지는 미추적.
+7. **AC-UGE-015의 블록 주석·문자열 리터럴 오탐.** 현 트리에 해당 사례가 없어 계수 `0`이지만, Go 파서 없이는 원리적으로 못 거른다. 위반 발견 시 줄 번호 육안 확인 필요.
+8. **AC-UGE-011F 변형의 원인 귀속 실측.** 컴파일 가능성은 확인됐으나, `names-missing-backup`/`rename-subtest-failed` 값은 가드 부재로 미관측.
+
+**선행 조건**: PR #1275는 머지 완료(`83610e03e`)이고 이 브랜치에 머지 반영했다. run-phase는 plan.md §C1의 base 위생 검사를 **진입 시점에 재실행**한다.
 
 ### plan-auditor 독립 감사 (iteration 1)
 
@@ -88,6 +113,94 @@ Must-pass: MP-1 PASS(REQ-UGE-001~013 연속·중복 0) · MP-2 PASS(13/13 shall 
 - AC 판정 명령 전체의 실제 통과 여부 — M1~M4 구현이 아직 없다.
 - §B의 `66.7%` / `26.9%` / `94.1%` 수치 — 이 워크트리는 #1275 이전 트리라 재현 불가(측정 시 `CleanMoaiManagedPaths 0.0%` / `MigrateLegacyMemoryDir 0.0%`가 나온다). §C2가 재측정을 의무화하므로 결함은 아니다.
 - AC-UGE-002의 Windows 런타임 통과 — 저자가 §E DoD 4항에 정직하게 이월했고, (b)+(d)가 증명 범위를 정확히 한정한다. 은폐 없음.
+
+### plan-auditor 독립 감사 (iteration 2 — 개정본 `0ef5012c4`)
+
+**판정: PASS-WITH-DEBT** — 종합 **0.89** (Tier M 통과선 0.80). iter1 0.71 → iter2 0.89, 점수 회귀 없음(STOP 신호 미발동). 차단급 부채 2건(N1·N2)은 run-phase 진입 전 AC 문구 수정으로 해소 가능.
+
+> 0.89 < 0.90 이므로 Phase 1 Plan Audit Gate **skip-eligible 아님** — run-phase 진입 시 게이트가 재실행된다.
+
+| 차원 | iter1 | iter2 | 근거 |
+|---|---|---|---|
+| Clarity | 0.75 | 0.90 | 거짓이던 전제마다 정정 주석 + 코드 근거. 잔여: REQ-UGE-005와 AC-UGE-006의 의미 불일치(N2) |
+| Completeness | 0.85 | 0.95 | §B에 lint·merge-base·base위생·글로브표현·회전슬라이스 행 추가, 수용 부채 절 신설, B6~B9 추가 |
+| Testability | 0.50 | 0.80 | F1/F3/F4 해소를 실행으로 확인. 잔여: 반증 3건의 실패 귀속 부재(N1) 외 3건 |
+| Traceability | 0.75 | 0.90 | 13/13 매핑 + 6-가드 반증 완전성 표. 잔여: DoD 열거 19 vs 실제 20(N6) |
+
+Must-pass 7/7: MP-1 PASS(REQ-UGE-001~013, 13개 연속·중복 0) · MP-2 PASS(13/13 shall; REQ-UGE-005는 When+shall not 형태로 오히려 개선) · MP-3 PASS(12 canonical 필드, 거부 alias 0) · MP-4 N/A · MP-5 PASS(`SPEC-UPDATE-DATA-SURVIVAL-001` = `completed`, depends_on 충족) · MP-6 N/A · MP-7 PASS. (MP-6/MP-7 grep은 이 progress.md의 감사 기록 자체와 자기 매칭하므로 산출물 4종 본문 기준으로 판정했다.)
+
+#### 저자가 보고한 3건 — 전부 실행으로 확인(내가 iter1에서 놓친 결함)
+
+1. **`runCleanReinstall`은 `CleanMoaiManagedPaths`를 호출하지 않는다 — 확인.** `grep -n 'CleanMoaiManagedPaths\|MigrateLegacyMemoryDir' internal/cli/update_clean_install.go` → **0매치(exit 1)**. 글로브 확장 변형을 이 가드의 반증으로 재사용했다면 **공허**했을 것이다. 재조준한 파괴 표면도 실재: `update_clean_install.go:265` `scanDeprecatedPaths` → `:322` `os.RemoveAll(abs)`. iter1의 F3에서 나는 "`mapsEqual` 실패 경로를 변형으로 관측하라"고만 적고 어느 변형인지 지목하지 않아 이 공허성을 놓쳤다.
+2. **`BackupMoaiConfig` 보존 가드는 구조적으로 준-공허 — 확인.** 본문은 `filepath.Walk` + `ReadFile` + `WriteFile`의 순수 복사이며, 삭제는 오류 롤백 `os.RemoveAll(backupDir)` 3곳뿐이다. 재정박 대상인 `CleanupOldBackups`는 `backups[:len(backups)-keepCount]`를 쓰고, **과거 버그가 주석에 그대로 남아 있다**: `(A prior revision deleted backups[keepCount:] — the newest — which destroyed the most recent restore points on every rotation.)` 역사적 회귀를 재현하는 카나리아로 타당하다.
+3. **AC-UGE-015가 주석을 위반으로 계수 — 확인.** 최초 명령 실행 결과 `update_home_radius_test.go 1`, 그 `1`은 **17행 주석**(`// ... this test MUST NOT call t.Parallel().`). 개정 명령(주석 제외) 실행 결과 두 파일 모두 `0`. iter1에서 나는 이 AC를 `xargs` 이식성만 지적하고 통과시켰다.
+
+#### 저자의 REQ-UGE-004 보강 — 정확함(내 결론을 강화)
+
+`internal/runtime/gobin/` `Detect(homeDir)`를 직접 읽어 확인: ① `GOBIN` ② `GOPATH/bin` ③ **`filepath.Join(homeDir, "go", "bin")`** ④ `""`. 즉 `GOBIN`/`GOPATH`가 비면 운영자 실제 홈이 렌더 산출물에 박힌다. 삭제 반경은 없다는 내 F5 결론은 유지되고, "테스트 격리 누수"라는 재서술이 정확하다.
+
+#### 내 iter1 지적 10건의 처분
+
+| # | 처분 | 근거 |
+|---|---|---|
+| F1 AC-UGE-012 무동작 sed | **해소(실행 확인)** | 재조준 후 `mutation-applied=1`, 변경행 `deploy.go:53-54`, 가드 FAIL 계수 **4** — 내가 직접 재현 |
+| F2 REQ-UGE-013 ↔ §D 모순 | **해소** | 6-가드 반증 표 + §D 완전성 점검("반증 없는 신규 가드 0개") |
+| F3 AC-UGE-009/010 (d) 토큰 계수 | **해소** | 009(d)는 구조 순서 검사로 교체, 010은 두 파괴 표면으로 재정박, 오선택자 (c) 삭제 |
+| F4 AC-UGE-003 base 교란 | **해소(부분 일반화)** | (0) 게이트 추가, 실측 `3`. 단 신규 반증 3건에는 같은 규율 미적용 → **N1** |
+| F5 M2→M3 의존 거짓 | **해소** | spec.md·plan.md §A·§F M2 모두 "거짓이었다" 명시 + 독립성 재서술 |
+| F6 AC-UGE-006 공허 | **부분 해소** | 006/006F/006R 3분할은 실질 개선. 스파이가 REQ가 요구하는 것을 재지 않음 → **N2** |
+| F7 xargs GNU | **해소(내 근거는 부정확)** | `xargs` 제거로 차이 자체를 무의미화. 다만 내 "hang" 메커니즘 주장은 오류 → **N3** |
+| F8 NFR-UGE-002 오표기 | **해소** | (e)가 "NFR-UGE-001 계열"로 정정 + 오표기 이력 명시 |
+| F9 REQ-UGE-007 근거 전치 | **해소** | "sentinel이 비어 있지 않아야 하는 진짜 이유" 문단이 카나리아 역할로 재서술 |
+| F10 §1.1 저작 시점 거짓 | **해소** | 머지 증거 + 정정 이력 기재 |
+
+#### 신규 지적 (iter2)
+
+- **N1 (차단, major) — 신규 반증 3건이 실패를 *귀속*하지 않는다.** AC-UGE-009F/010F/011F는 모두 `grep -cE '^(--- FAIL|FAIL)' ≥1`만 요구한다. 009F를 코드로 추적하면, 주입된 `.moai/harness`는 `os.RemoveAll` 루프 **이전에** `expandDeprecatedBackupTargets`/`backupDeprecatedPaths`를 먼저 지나며, 거기서 `DEPRECATED_BACKUP_FAILED`로 조기 반환해도 똑같이 `--- FAIL`이 찍힌다. 두 원인이 구별되지 않는다 — F4에서 지적한 교란과 같은 계열이다. 저자는 이 규율을 AC-UGE-003에만 적용했다. **수정**: FAIL 출력이 사용자 소유 경로명 또는 스냅샷 불일치를 담는지 함께 어서트.
+- **N2 (차단, major) — AC-UGE-006의 스파이가 REQ-UGE-005를 재지 않는다.** REQ-UGE-005는 "*렌더링 결과*가 주입된 홈을 따라야 한다"인데, 호출 계수 스파이는 "이음매가 불렸다"까지만 증명한다(이 SPEC 자신의 §G AP-4). 저자가 출력 어서션을 피한 근거(`gobin.Detect`의 환경 의존)는 **`GoBinPath`에만** 해당한다 — `TemplateContext.HomeDir`은 평범한 대입 필드(`internal/template/context.go:239`)이고 기존 테스트가 이미 직접 어서트한다(`context_test.go:324` `ctx.HomeDir != "/home/tester"`). 기계 독립적이면서 더 강한 판정이 가능한데 과잉 일반화로 포기했다. **수정**: 구성된 컨텍스트의 `HomeDir`이 주입한 sentinel과 같은지 추가 어서트(스파이는 호출부 커버리지용으로 유지).
+- **N3 (선택, minor) — 내 F7의 메커니즘이 부정확한 채 산출물에 인용됐다.** BSD/GNU `xargs` 차이(빈 입력 시 BSD 미실행 / GNU 1회 실행, `-r`이 존재하는 이유)는 사실이다. 그러나 GNU `xargs`는 자식 stdin을 `/dev/null`로 리다이렉트하므로 `grep`은 즉시 EOF를 만나 **`0`을 출력하고 종료**한다 — "행(hang)"이 아니다. 저자는 plan.md B9와 AC-UGE-015에 "GNU 환경 재현 미실시"를 명시했으므로 미검증 라벨은 붙어 있다. **수정**: 결과 서술을 "인자 없이 1회 실행되어 허위 결과행을 낸다"로 정정. 채택된 수정(제거)은 어느 쪽이든 안전.
+- **N4 (선택, minor) — `while read` 교체가 0매치 공허를 그대로 남긴다.** 무매치 패턴으로 실측: 루프 본문이 한 번도 실행되지 않고 출력이 비며 실패 신호가 없다. §A.1이 `-run`에 대해 금지하는 형태와 동일하고, §A.2는 픽스처의 비어있지 않음 확인을 요구한다. **수정**: 루프 앞에 파일 목록 비어있지 않음 확인(AC-UGE-007 (a) `before-nonempty`의 동형).
+- **N5 (선택, minor) — 주석 필터가 행 앵커 전용.** `grep -vE '^\s*//'`는 전체 주석행만 제거하므로 후행 주석(`foo() // t.Parallel()`)과 블록 주석은 여전히 계수된다. 현 트리에서는 무해.
+- **N6 (선택, minor) — DoD 열거가 19개, 실제 AC는 20개.** `grep -cE '^#### AC-UGE-' acceptance.md` → **20**. §E DoD 1항의 열거에서 **AC-UGE-004**(mergeBackPreserveInventory 커버리지)가 빠져 있다.
+- **N7 (선택, minor) — 개정이 HISTORY·version에 기록되지 않았다.** 3파일 452행 삽입 규모의 개정인데 `version: 0.1.0` 유지, HISTORY 표에 행 추가 없음.
+
+#### `origin/main` 머지(`4ce694296`)의 타당성
+
+**적절하다.** ① 머지 없이는 타깃 파일 3개가 트리에 없어 판정 명령을 실행할 수 없었다(iter1 시점 실측: `update_preserve_partial_test.go` 부재, `restored %d/%d` 0건). ② 이 브랜치는 워크트리이므로 `main-checkout-branch-guard.md`의 주 체크아웃 병합 금지 대상이 아니다. ③ rebase가 아닌 merge를 택한 것이 옳다 — rebase는 기록된 SHA를 고아로 만든다. ④ `merge-base`가 `a64548a2a` → `83610e03e`로 올라가 F4 교란이 해소되었고, 저자는 (0) 게이트를 **남겨** base가 다시 움직이는 경우를 대비했다.
+
+**iter1 측정의 무효화 여부: 없음.** iter1의 F4는 당시 base(`a64548a2a`)에서 `restored %d/%d` = 0이라는 실측에 근거했고 그 관측은 지금도 참이다(재실행 확인). 머지는 그 교란을 제거했을 뿐 측정을 뒤집지 않았다. `origin/main`은 그 후 2커밋 앞서 있으나(`2 3`) merge-base는 `83610e03e`로 고정이라 AC-UGE-013의 타인 변경 배제도 유지된다(실측 `0` / `0`).
+
+#### 이번 패스에서 실행해 관측한 것
+
+| 판정 | 명령 | 관측 |
+|---|---|---|
+| AC-UGE-003 (0) | `git show $BASE:…update_preserve_inventory.go \| grep -c 'restored %d/%d'` | `3` |
+| AC-UGE-005 (c) | 동 baseline | `1` / `2` |
+| AC-UGE-001 (c) | 함수창 `os.Stat(` 계수 | `1` |
+| AC-UGE-007 (a)~(e) | sentinel HOME 전 과정 | `before-nonempty=0`, `compile-exit=0`, `--- PASS: TestEnsureGlobalSettingsEnv_HooksRemovalRadius (0.00s)`, `diff-exit=0`, `t.Setenv=0`, 이음매 `1` |
+| AC-UGE-008 | 이음매 제거 변형 | `mutation-applied=1`, `compile-exit=0`, **`probe-survived=1`** (카나리아 작동) |
+| AC-UGE-012 | 재조준 글로브 변형 | `mutation-applied=1`, `deploy.go:53-54`, FAIL 계수 **4** |
+| AC-UGE-009F | perl 변형 | `mutation-applied=1`, `144a145` 단일 삽입, 파일 내 동일 패턴 **1곳뿐** |
+| AC-UGE-010F | 회전 슬라이스 반전 | `mutation-applied=1`, `backup.go:257` |
+| AC-UGE-011F | **변형 컴파일** | `mutation-applied=1`, **`go build -overlay` exit 0** — 저자가 "확인 불가"로 남긴 잔여 한계를 해소 |
+| AC-UGE-013 | 템플릿 중립성 | `0` / `0` |
+| AC-UGE-014(lint) | `golangci-lint run --timeout=5m` | exit 0, `0 issues.` |
+| AC-UGE-015 | 원본/개정 명령 대조 | 원본 `1`(주석 오탐) → 개정 `0` |
+| depends_on | `grep '^status:'` | `completed` (Pre-flight 통과) |
+
+#### 저자가 선언한 3대 잔여 한계에 대한 판단
+
+1. **9개 AC 미실행(대상 코드 부재)** — **구조적 plan-phase 한계**, 결함 아님. run-phase가 만들 테스트를 plan-phase가 실행할 수는 없다. 감점 사유로 보지 않는다.
+2. **AC-UGE-002 Windows 런타임은 CI 인용만 가능** — **정직한 범위 한정**. (b)+(d)가 "소스에 스킵 없음 + windows 타깃 컴파일"까지로 증명 범위를 명시하고 DoD 4항이 이월을 강제한다. 더 큰 공백을 숨기지 않는다.
+3. **AC-UGE-011F 변형 컴파일 미확인** — **해소됨**. 위 표대로 내가 컴파일을 확인했다(exit 0). AC의 대체 변형 안내 문단은 관측 결과를 기록하는 방향으로 정리하면 된다.
+
+#### 미검증 (이번 패스)
+
+- 신규 가드 6종(`TestUpdateSubsystem_HomeSeamReach`, `TestCleanReinstall_PreservesUserArea`, `TestBackupSubsystem_DestructiveSurfaces`, `TestMigrateLegacyMemoryDir_PreservesUserArea` 및 그 서브테스트)의 **실제 PASS/FAIL** — 코드가 아직 없다. AC-UGE-006/006F/009/009F/010/010F/011/011F의 `--- PASS` / FAIL 관측은 전부 run-phase 몫.
+- **GNU `xargs` 실동작** — 이 머신은 BSD. N3은 문서 근거에 기반한 추론이며 재현하지 못했다.
+- **AC-UGE-002 Windows 런타임** — macOS에서 관측 불가(위 2번과 동일).
+- **`go test ./...` 전체** 및 `-race` — 이번 패스에서 실행하지 않았다(AC-UGE-014의 FAIL 계수 항목 미검증).
+- `TemplateContext.HomeDir` 어서션이 실제 렌더 파이프라인 끝까지 기계 독립인지 — 필드 대입과 기존 테스트의 직접 어서트까지만 확인했고, 렌더 산출물 전체를 추적하지는 않았다(N2 처방의 근거 범위).
 
 ## §E.2 Run-phase Evidence
 
