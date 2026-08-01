@@ -147,9 +147,102 @@ catalog_tier_audit_test.go:168: expected 31 skill directories on disk, found 32
 | `gofmt -l <수정한 4개 test 파일>` | 무출력 |
 | `golangci-lint run` | `0 issues.` (변경 전 baseline도 `0 issues.` — 신규 지적 0건) |
 
+### M5 — docs-site 4-로케일 (커밋 `e01029fc4`)
+
+en·ja·zh·ko `advanced/skill-guide.md` 레퍼런스 표에 `moai-ref-seo` 행을 1개씩 추가. 4파일 4행 삽입, 그 외 무변경.
+
+**산문 카테고리 총계는 손대지 않았다** — plan.md §B.5 결정(표 행만 추가) 준수. 결과적으로 en/ja/zh는 27을, ko는 30을 계속 주장하고 디스크 실측은 32다. 이 드리프트는 본 SPEC이 만든 것이 아니라 선행 부채이며(research.md §D.3), 카테고리 분해 재계산을 동반하므로 본 SPEC 범위 밖이다.
+
+### M6 — 검증 (AC 24건 전수 실행)
+
+판정은 오케스트레이터가 직접 실행해 관측했다. 아래는 그 결과 기록이다.
+
+#### §B 클린룸 프로토콜 (7건)
+
+| AC | 판정 | 실측 출력 |
+|---|---|---|
+| AC-SEO-010 출처 라이선스 부재 | PASS | 배포 디렉터리 `0` / 상위 스킬 루트 `1` — 양성 대조 성립(명령이 무력하지 않음) |
+| AC-SEO-011 8-gram 중첩 | PASS | `shared_8grams=0` |
+| AC-SEO-011b 로컬·템플릿 동일성 | PASS | `IDENTICAL`, 양쪽 sha256 `39d3ad2b348dc0748c7baa5912dba34865d3321b7c5a4b990cc047cb5a131065` |
+| AC-SEO-012 self-trip + 원문 고정 | PASS | `source_pin_match=True`, `selftrip_shared_8grams=4600` — 기대값 정확 일치(검사기 자체가 살아 있음을 증명) |
+| AC-SEO-013 LCS 상한 | PASS | `lcs_chars=27` (상한 40), `lcs_text=' a non empty alt attribute '` |
+| AC-SEO-014 무출처 수치 미재현 | PASS | 산출물 `0` / 원문 `3` |
+| AC-SEO-015 구조 발산 | PASS | 아래 별도 판정 기록 |
+
+#### §C 콘텐츠 (8건)
+
+| AC | 판정 | 실측 출력 |
+|---|---|---|
+| AC-SEO-001 단일 파일 구성 | PASS | `find` 2행 — 양 트리 각 `SKILL.md` 1개 |
+| AC-SEO-002 분량·구조 | PASS (N12 정정 후) | `207` 줄 / H2 `12` / `body_h1=1` — 세 측정 전부 범위 내 |
+| AC-SEO-003 불변 3종 + zone id | PASS | zone id 3행(165·179·195), 헤딩 3행(166 < 180 < 196) 순서 증가 |
+| AC-SEO-004 frontmatter 길이 | PASS | `desc_plus_when_chars=1434` (상한 1536) |
+| AC-SEO-005 description 3악장 | PASS | 5개 토큰 값 전부 `True` |
+| AC-SEO-006 개념 커버리지 12종 | PASS | canonical 9 / robots.txt 6 / sitemap.xml 6 / json-ld 6 / meta-description 4 / title 4 / entity 7 / redirect 10 / heading-structure 4 / image-alt 5 / anchor-text 2 / fragment 5 — 12종 전부 ≥1 |
+| AC-SEO-008 휘발성 수치 미탑재 | PASS | 산출물 `0` / 원문 `7` |
+| AC-SEO-009 플랫폼 종속 흐름 미포함 | PASS | 산출물 `0` / 원문 `7` |
+
+#### §D 배포 가드 (9건)
+
+| AC | 판정 | 실측 출력 |
+|---|---|---|
+| AC-SEO-020 leak 가드 | PASS | `--- PASS: TestTemplateNoInternalContentLeak` |
+| AC-SEO-020b catalog 정합 | PASS | 요구된 7개 테스트 전부 `--- PASS:` |
+| AC-SEO-020c tier 유효성 | PASS | `tier: optional-pack:frontend`, `TestCatalogTierValid`·`TestWorkflowTriggerCoverage` `--- PASS:`, `required-skills` `0` |
+| AC-SEO-021 카운트 상수 | PASS | `32` / `42` / `42` = 디스크 `32` · catalog `42` |
+| AC-SEO-021b go+md 동일 변경 | PASS | `.go`·`.md` 양쪽 변경집합에 존재 |
+| AC-SEO-022 등록 표면 6종 | **PASS (M5로 완성)** | `moai-ref-secops` 15건 = `moai-ref-seo` 15건 — **누락 0**. M4 시점 11/15(docs-site 4건 미충족)였고 M5가 나머지 4건을 채웠다 |
+| AC-SEO-023 docs-site 4로케일 | PASS | en·ja·zh·ko 전부 `1` |
+| AC-SEO-024 템플릿 패키지 회귀 | PASS | `ok github.com/modu-ai/moai-adk/internal/template 8.571s` |
+| AC-SEO-025 언어 중립성 | PASS | `TestLanguageNeutrality`·`TestSkillBodyNoLangReference` 둘 다 `--- PASS:` — 본 SPEC 1순위 위험이 검증됐다는 유일한 증거 |
+
+**집계: 24건 PASS / 0건 FAIL.**
+
+#### AC-SEO-015 구조 발산 판정 기록 (사람 판독)
+
+acceptance.md가 "근거 없는 PASS 한 줄은 판정으로 인정하지 않는다"고 명시하므로 두 질문에 대한 근거를 함께 남긴다.
+
+전제 검사: 원문 `count=7`(H1/H2) · `count=10`(표 헤더) — acceptance.md에 고정된 baseline과 일치. 산출물 `count=12` · `count=8`. 네 count 모두 1 이상이므로 판정 성립.
+
+`structural_divergence: PASS`
+
+**질문 1 — 섹션 순서가 원문과 1:1 대응하는가? 대응하지 않는다.** 원문은 최상위 H2 6개(Meta tags & OG → Technical SEO → Schema markup → Entity SEO → GEO/content → Audit)인데 산출물은 도메인 H2 9개 + 불변 3개로 재분할됐다. 원문 1위 `Meta tags & OG`는 산출물에서 5위 `Per-Page Metadata`로 밀렸고, 원문 2위 `Technical SEO`는 단일 대응 섹션 없이 `Host-Derived Crawl Artifacts`(8위)와 `Delivery Chokepoints`(9위)로 분해됐다. 산출물 앞머리의 `Document Semantics`·`Identity and Canonical Address`는 원문에 대응하는 최상위 섹션이 없다(원문은 canonical을 Technical SEO 하위에 배치). 원문 5위 `GEO / content`는 의도적으로 제외됐다.
+
+**질문 2 — 표 열 구성이 원문 대응 표와 1:1 대응하는가? 대응하지 않는다.** 원문 헤더 10건은 `Field | Value` 반복 6건이 중심인 *값 나열* 구조다. 산출물 8건은 `Decision | Rule`, `Surface | Requirement`, `Artifact | Rule`, `Concern | Rule`, `Rationalization | Reality` 등 *규칙 중심* 구조다. 어휘가 겹치는 `Field`조차 원문은 2열 `Field | Value`, 산출물은 3열 `Field | Rule | Recurring defect`로 열 수와 의미가 다르다.
+
+#### N12 — AC-SEO-002 판정 명령 공허 (산출물 결함 아님)
+
+M3 시점 AC-SEO-002가 H1=2로 PARTIAL이었던 원인은 **산출물이 아니라 판정 명령이었다.** `grep -c '^# '`를 파일 전체에 적용해 frontmatter의 `# MoAI Extension: Progressive Disclosure` 주석 행을 H1로 계수한 것이다.
+
+발견 근거는 선례 전수 실측이다 — 템플릿 트리 `moai-ref-*` **10건 전수가 H1=2**였다. 즉 이 명령은 신규 산출물뿐 아니라 **기존 선례 9건도 9/9 실패시키는 명령**이었고, 임계값 1을 만족할 수 있는 파일이 애초에 존재하지 않았다. frontmatter를 제거하면 10건 전부 H1=1이다.
+
+처리: manager-spec이 커밋 `e3be03011`로 acceptance.md를 정정했다 — frontmatter 제거 후 계수하도록 명령을 바꾸고 **임계값 1은 유지**했다(plan.md §G의 "임계값을 올려 통과시키기" 안티패턴 회피 — 고친 것은 측정 방법이지 기준이 아니다). 정정된 명령을 파일에 적힌 그대로 실행한 결과 `207 / 12 / body_h1=1`로 **AC-SEO-002 PASS**.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-01
+run_commit_sha: pending-backfill   # 이 커밋 자신 — 자기참조 불가, 커밋 후 백필
+run_status: audit-ready
+milestones: M2-M6 (M1 결정 게이트는 plan-phase 소관)
+ac_pass_count: 24
+ac_fail_count: 0
+preserve_list_post_run_count: 0    # skill-routing.md 무변경(secops 부재 실측), SPEC 본문 3종 무변경
+l44_pre_commit_fetch: run          # origin/main...HEAD = 3 8 (선행 발산, 아래 잔여 위험 참조)
+l44_post_push_fetch: not-run       # push 미수행 — 브랜치 protection(enforce_admins) 및 orchestrator 소관
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (baseline도 0 issues)
+cross_platform_build:
+  host: pass                       # go build ./... exit 0
+  windows_amd64: pass              # GOOS=windows GOARCH=amd64 go build ./... exit 0
+full_test_suite: pass              # go test ./internal/template/... ok
+total_run_phase_files: 17          # M3 템플릿 SKILL.md 1 + M4 등록 표면 12 + M5 docs-site 4
+m1_to_mN_commit_strategy: M3 a525a236e / M4 184a325bc(단일 커밋, 마크다운+Go 상수 동시) / M5 e01029fc4 / N12 acceptance 정정 e3be03011(manager-spec 소관) / M6 판정 기록 this commit
+```
+
+미해소 위험 2건(차단 요소 아님):
+
+1. **origin/main 선행 발산** — `git rev-list --count --left-right origin/main...HEAD` → `3 8`. origin/main이 `#1268`/`#1269`/`#1270` 3커밋만큼 앞서 있다. M3 커밋 `a525a236e`가 이미 `9ced435e9` 기준이었으므로 본 SPEC이 만든 발산이 아니다. 브랜치+PR 시 rebase/merge 판단이 필요하다.
+2. **접근성 조작성 항목 공백** — plan.md §F에 열린 채로 기록된 위험. 형제 SPEC이 아직 존재하지 않아 `depends_on:`을 걸 대상이 없으며 본 SPEC에서 완화되지 않는다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
