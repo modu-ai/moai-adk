@@ -95,12 +95,17 @@ func TestBridgeFieldDefResolver(t *testing.T) {
 	}
 }
 
-// TestTUIRendersSchemaFieldSet covers AC-WC10-010 (TUI side): the TUI renders a
-// widget for every schema field. Since the huh form is constructed inline (not
-// programmatically enumerable), this asserts (a) the bridge has an entry for every
-// schema field name (label path exists) AND (b) the wizard source binds value
-// variables for the 7 new nested fields. Together these prove the TUI covers the
-// full 34-field schema set.
+// TestTUIRendersSchemaFieldSet asserts (a) the bridge has a label entry for every
+// non-web-only schema field, and (b) the wizard source binds a value variable for
+// every field the wizard STILL asks about.
+//
+// The original AC-WC10-010 claim — that the TUI renders a widget for the full
+// 34-field schema set — no longer holds and is deliberately not restated here: the
+// wizard now covers a curated SUBSET. The statusline theme + 16 segments, the
+// git_convention select, the 3 nested quality fields and the 4 nested git
+// auto-detection fields were removed from the wizard and are asserted ABSENT by
+// profile_setup_removed_questions_test.go. Part (a) is unaffected — the bridge is a
+// label registry shared with the web console, not a statement about TUI rendering.
 func TestTUIRendersSchemaFieldSet(t *testing.T) {
 	// (a) Every schema field name resolves through the bridge.
 	for _, f := range settings.AllFields() {
@@ -112,8 +117,7 @@ func TestTUIRendersSchemaFieldSet(t *testing.T) {
 		}
 	}
 
-	// (b) The wizard source binds value variables for the 7 nested fields + the
-	// statusline segments + the launch/quality selects.
+	// (b) The wizard source binds value variables for every question it still asks.
 	data, err := os.ReadFile("profile_setup.go")
 	if err != nil {
 		t.Fatalf("read profile_setup.go: %v", err)
@@ -123,16 +127,12 @@ func TestTUIRendersSchemaFieldSet(t *testing.T) {
 		// Identity / Language / Launch
 		"&userName", "&gitCommitLang", "&codeCommentLang", "&docLang",
 		"&model", "&modelPolicy", "&effortLevel", "&permissionMode",
-		// Statusline
-		"&statuslineTheme", "&statuslineSegmentsSelection",
-		// Quality scalar + 3 nested
-		"&developmentMode", "&nestedCoverageTarget", "&nestedEnforceQuality", "&nestedMinCoverage",
-		// Git convention scalar + 4 nested
-		"&gitConvention", "&nestedAutoDetection", "&nestedConfidence", "&nestedSampleSize", "&nestedEnforceOnPush",
+		// Project config
+		"&developmentMode",
 	}
 	for _, b := range bindings {
 		if !strings.Contains(src, b) {
-			t.Errorf("profile_setup.go must bind a widget to %s (AC-WC10-010 TUI field coverage)", b)
+			t.Errorf("profile_setup.go must bind a widget to %s (TUI field coverage)", b)
 		}
 	}
 }
