@@ -1,6 +1,6 @@
 # SPEC-UPDATE-DATA-SURVIVAL-001 — Acceptance Criteria
 
-Version: 0.5.0 · Status: in-progress
+Version: 0.5.1 · Status: in-progress
 
 ## §A Discipline
 
@@ -194,8 +194,14 @@ go test -run 'TestUpdate_RejectsTreeWithoutProjectMarker' -count=1 -v ./internal
 Expected: a `--- PASS: TestUpdate_RejectsTreeWithoutProjectMarker` line, asserting the returned
 error contains `not a moai project`. This pins REQ-UDS-025: the bypass is scoped to restore alone.
 
-Baseline: the gate exists at `internal/cli/update.go:236` and emits
-`not a moai project: .moai/config/sections/system.yaml not found in the current directory`.
+Baseline, re-measured on HEAD `2255165f5`: the gate is the `checkProjectMarker(cwd)` call at
+`internal/cli/update.go:251`; the predicate and its message live in
+`internal/cli/update_restore.go:21`/`:27` and emit
+`not a moai project: %s not found in the current directory` (`%s` =
+`.moai/config/sections/system.yaml`). The pre-M1 citation was `update.go:236`; M1 commit
+`4ddd35120` both moved the call site and extracted the predicate into `update_restore.go`, so that
+coordinate no longer resolves. This AC's verification command is unchanged — it asserts on the
+returned error text, not on a line number.
 
 #### AC-UDS-004 — restore is idempotent and refuses an unrecognised directory (REQ-UDS-023, REQ-UDS-024)
 
@@ -210,8 +216,9 @@ directory lacking the backup marker file and asserts a non-nil error and an unmo
 Baseline: no restore entry point with **marker-gate bypass + idempotency + foreign-directory
 refusal** (REQ-UDS-022/023/024) exists, and none is reachable from the CLI. A restore surface does
 exist and must not be duplicated: `backup.RestoreMoaiConfig` (`backup/restore.go:40`) restores from
-a backup directory but is **mid-run only** — its two live callers are `update_clean_install.go:429`
-and `update_template_sync.go:397` — and `moai migrate restore-skill` is the only user-invocable
+a backup directory but is **mid-run only** — its two live callers are `update_clean_install.go:437`
+and `update_template_sync.go:406` (re-measured on HEAD `2255165f5`; recorded pre-M1 as `:429` and
+`:397`, both shifted by M1 commit `4ddd35120`) — and `moai migrate restore-skill` is the only user-invocable
 restore. **M1 must state explicitly whether the new entry point extends `RestoreMoaiConfig` or is
 separate**, per the two-owners hazard in `plan.md` §H.
 
@@ -234,8 +241,12 @@ assignment or a recorded exemption reason.
 sides of the comparison from the registry yields `count == count` and passes forever; the source
 scan is what makes this AC able to fail. §C.4 is its runnable falsification.
 
-**Baseline, re-measured on HEAD `89b2e4772` (code baseline `8cc108ddb`).** The scan finds
-**18 call sites across 11 (file, function) pairs**. Command and verbatim output:
+**Baseline, re-measured on HEAD `89b2e4772` (code baseline `8cc108ddb`), and re-measured again on
+HEAD `2255165f5` at M2 Step 0.** The scan finds
+**18 call sites across 11 (file, function) pairs** — both figures identical across the two
+measurements, and the (file, function) pair set identical too. The M2 Step 0 re-scan moved **only
+line coordinates**, in rows 7 and 9 (see the row-7/row-9 note below the table). Command and
+verbatim output:
 
 ```
 $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
@@ -280,9 +291,9 @@ produce.
 | 4 | `internal/cli/update_archive.go` | `archiveLegacySkills` | 1 (`:322`) |
 | 5 | `internal/cli/update/backup/backup.go` | `BackupMoaiConfig` | 3 (`:107`, `:135`, `:140`) |
 | 6 | `internal/cli/update/backup/backup.go` | `CleanupOldBackups` | 1 (`:259`) |
-| 7 | `internal/cli/update_clean_install.go` | `runCleanReinstall` | 1 (`:307`) |
+| 7 | `internal/cli/update_clean_install.go` | `runCleanReinstall` | 1 (`:315`) |
 | 8 | `internal/cli/update_cleanup.go` | `removeDeprecatedFile` | 1 (`:324`) |
-| 9 | `internal/cli/update.go` | `ensureGlobalSettingsEnv` | 1 (`:843`) |
+| 9 | `internal/cli/update.go` | `ensureGlobalSettingsEnv` | 1 (`:853`) |
 | 10 | `internal/cli/update_namespace_protect.go` | `backupUserOwnedNamespace` | 3 (`:225`, `:233`, `:243`) |
 | 11 | `internal/cli/update_residue_cleanup.go` | `runV3ResidueCleanup` | 1 (`:135`) |
 
@@ -291,6 +302,18 @@ produce.
 v0.3.0's registry was measured, so it was absent from the 17-site table. Rows 3, 4, 7, and 9 also
 carry re-measured coordinates (`:92`→`:101`, `:304`→`:322`, `:271`→`:307`, `:766`→`:843`); rows 1,
 2, 5, 6, 8, 10 were re-measured and are unchanged.
+
+**Rows 7 and 9 moved a second time at M2 Step 0 — a DIFFERENT, self-inflicted event.** The M2
+Step 0 re-scan on HEAD `2255165f5` shifted row 7 `:307`→`:315` and row 9 `:843`→`:853`. This is
+**not** a second external TOCTOU: the cause is this SPEC's own **M1 commit `4ddd35120`** (recovery
+manifest + restore entry point), which added code above both sites. The two drift events are
+therefore distinguishable and must stay so — the v0.3.0→v0.4.0 shifts recorded in the paragraph
+above were caused by **E1** (`SPEC-UPDATE-REINSTALL-LOOP-002`, a sibling SPEC landing between plan
+rounds), while these two are caused by **M1 of this SPEC**. The full drift chain per row is
+therefore row 7 `:271`→`:307`→`:315` and row 9 `:766`→`:843`→`:853`. Site total (18), pair count
+(11), and the (file, function) pair set were all unchanged by the M1 event — only coordinates
+moved, which is why this AC's guard (keyed on file + enclosing function + occurrence count, never
+on line numbers) required no change and why its verification command is untouched.
 
 Rows 5, 6, and 10 carry an **exemption reason** rather than a protection-set assignment, but for two
 materially different reasons — an earlier form of this paragraph collapsed them into one ("directories
@@ -318,7 +341,7 @@ call authored. It therefore fails the same-call-rewind test that exempts rows 5/
 unprotected either: the function backs up before deleting (`:114-131`, `backupDeprecatedPaths`,
 aborting on failure with the `DEPRECATED_BACKUP_FAILED` sentinel at `:116`/`:125`), which is E1's
 REQ-RIL2-019/015 contract. Its registry assignment is therefore the **cross-SPEC** one — the same
-assignment row 12 of `plan.md` §C.1 records for `update_clean_install.go:307` — and this SPEC does
+assignment row 12 of `plan.md` §C.1 records for `update_clean_install.go:315` — and this SPEC does
 not re-specify it (§C Scope Exclusions, REQ-UDS-010).
 
 **REQ-UDS-002 run-scoped backup directories ARE in this pruning target set** when they are created
@@ -450,7 +473,8 @@ crash window required by NFR-UDS-001 — no crash is raced.
 
 Baseline: `grep -rn 'settings.json' internal/cli/update/backup/ --include='*.go' | grep -v _test |
 wc -l` → `0`. The only backup of that file is the `[]byte` slice `mergeableBackups`
-(declared `update_template_sync.go:294`, populated at `:388`).
+(declared `update_template_sync.go:300`, populated at `:397` — re-measured on HEAD `2255165f5`;
+recorded pre-M1 as `:294`/`:388`).
 
 #### AC-UDS-009 — both paths use the same on-disk backup mechanism (REQ-UDS-005)
 
@@ -462,9 +486,10 @@ Expected: a `--- PASS: TestBackup_OnDiskCoverageParityAcrossPaths` line, asserti
 on-disk backed-up paths produced by the normal path equals the set produced by the clean-reinstall
 path.
 
-Baseline, re-measured on HEAD `89b2e4772`: the two paths build the in-memory slice independently —
-`update_template_sync.go:294`/`:388` versus `update_clean_install.go:348`/`:351` — so parity is
-currently coincidental rather than asserted.
+Baseline, re-measured on HEAD `2255165f5`: the two paths build the in-memory slice independently —
+`update_template_sync.go:300`/`:397` versus `update_clean_install.go:356`/`:359` — so parity is
+currently coincidental rather than asserted. (Recorded pre-M1 as `:294`/`:388` and `:348`/`:351`;
+all four shifted by M1 commit `4ddd35120`.)
 
 #### AC-UDS-010 — the success path is unchanged (REQ-UDS-004, NFR-UDS-005)
 
@@ -542,12 +567,18 @@ $ grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go' | wc -l
        0
 ```
 
-(a) is `0` because `ensureGlobalSettingsEnv` (`update.go:832`) calls the plain `userHomeDir()` at
-`update.go:833`; the injectable variable `userHomeDirFn` exists at `glm_tools.go:123` but is not
+(a) is `0` because `ensureGlobalSettingsEnv` (`update.go:842`) calls the plain `userHomeDir()` at
+`update.go:843`; the injectable variable `userHomeDirFn` exists at `glm_tools.go:123` but is not
 used here. **This AC is blocked on the seam**: with no injection point and `t.Setenv("HOME", …)`
 forbidden by NFR-UDS-002, the guard has no way to redirect HOME, so command (a) is a precondition of
-(b) rather than a decoration. `globalHooksDir` likewise appears only at `update.go:841-843`; no test
+(b) rather than a decoration. `globalHooksDir` likewise appears only at `update.go:851-853`; no test
 observes it. Falsification is AC-UDS-012.
+
+(Coordinates re-measured on HEAD `2255165f5`; recorded pre-M1 as `:832`/`:833`/`:841-843`, all
+shifted by +10 by M1 commit `4ddd35120`. Note that `update.go:843` is the `userHomeDir()` call —
+it is **not** the `os.RemoveAll` site AC-UDS-005 row 9 registers, which moved to `update.go:853`.
+The pre-M1 tables happened to record the `os.RemoveAll` site at `:843`, so the two values can be
+confused when comparing old and new records.)
 
 #### AC-UDS-012 — the radius guard fails against a widened radius (REQ-UDS-011, REQ-UDS-014)
 
@@ -611,7 +642,8 @@ unmeasurable until M4 creates it; that is expected for a new-guard AC and is not
 > a plain function (`homedir.go:14`), not a reassignable variable. The reassignable seam is
 > `userHomeDirFn` (`glm_tools.go:123`), which this call site does not use. No indirection existed.
 > (The coordinate cited there, `update.go:756`, was also correct only against the retired
-> `d5336214e` baseline; the call is at `update.go:833` on HEAD `89b2e4772`.)
+> `d5336214e` baseline; the call was at `update.go:833` on HEAD `89b2e4772`, and is at
+> `update.go:843` on HEAD `2255165f5` after M1 commit `4ddd35120`.)
 
 ### M5 — Non-vacuous user-area safety guard
 

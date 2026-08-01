@@ -81,9 +81,14 @@ On any error after the first destructive step, on either path:
 ### B.3 The lockout escape
 
 The restore entry point must run on a tree whose `system.yaml` is gone — that absence is the damage
-it repairs. So the project-marker gate at `internal/cli/update.go:236` is bypassed **for the restore
+it repairs. So the project-marker gate — the `checkProjectMarker(cwd)` call at
+`internal/cli/update.go:251`, whose implementation and error text M1 extracted into
+`internal/cli/update_restore.go:21`/`:27` — is bypassed **for the restore
 entry point only** (REQ-UDS-022/025). The ordinary update path keeps the gate unchanged, and an AC
 asserts that a bare `moai update` on a marker-less tree still fails with the existing message.
+(Coordinate note: this gate was recorded as `update.go:236` before M1; the M1 commit `4ddd35120`
+both moved the call site and extracted the predicate into `update_restore.go`, so the old
+single-coordinate citation no longer resolves to anything.)
 
 Refusal criterion (REQ-UDS-024): the restore entry point accepts a directory only when it carries
 the backup's own marker file. It never copies from an arbitrary directory.
@@ -114,7 +119,9 @@ $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/updat
       18
 ```
 
-**18 call sites across 11 (file, function) pairs**, re-measured on HEAD `89b2e4772`. Two earlier
+**18 call sites across 11 (file, function) pairs**, re-measured on HEAD `89b2e4772` and confirmed
+unchanged on HEAD `2255165f5` (the M2 Step 0 re-scan — see the M1 coordinate-drift note below).
+Two earlier
 figures are superseded: a first draft implied 7 sites (omitting `update_archive.go`,
 `update/backup/backup.go`, `update_cleanup.go`, `update_namespace_protect.go`), and v0.3.0 recorded
 17 sites / 10 pairs against the retired `d5336214e` baseline, before E1 added
@@ -129,9 +136,9 @@ user-data target, or the multiset comparison fails on first run.
 | 4 | `update_archive.go` | `archiveLegacySkills` | 1 (`:322`) | user data — renames a skill dir into a backup location |
 | 5 | `update/backup/backup.go` | `BackupMoaiConfig` | 3 (`:107`, `:135`, `:140`) | **exempt** — unwinds the backup dir this call just created, on its own error paths |
 | 6 | `update/backup/backup.go` | `CleanupOldBackups` | 1 (`:259`) | **exempt** — retention pruning of moai-authored backup dirs |
-| 7 | `update_clean_install.go` | `runCleanReinstall` | 1 (`:307`) | user data — §C.1 row 12 (E1-owned) |
+| 7 | `update_clean_install.go` | `runCleanReinstall` | 1 (`:315`) | user data — §C.1 row 12 (E1-owned) |
 | 8 | `update_cleanup.go` | `removeDeprecatedFile` | 1 (`:324`) | user data — deprecated-path removal |
-| 9 | `update.go` | `ensureGlobalSettingsEnv` | 1 (`:843`) | user data, outside project root — §C.1 row 13 |
+| 9 | `update.go` | `ensureGlobalSettingsEnv` | 1 (`:853`) | user data, outside project root — §C.1 row 13 |
 | 10 | `update_namespace_protect.go` | `backupUserOwnedNamespace` | 3 (`:225`, `:233`, `:243`) | **exempt** — defensive cleanup of the namespace backup dir this call created (`EC-UNP-007`) |
 | 11 | `update_residue_cleanup.go` | `runV3ResidueCleanup` | 1 (`:135`) | user data — deprecated-path residue sweep; backup is E1's REQ-RIL2-019 (§C.1 row 12's cross-SPEC assignment) |
 
@@ -147,13 +154,26 @@ v0.3.0 and v0.4.0 happened because a sibling Epic SPEC landed Go source between 
 same can recur before run-phase entry. REQ-UDS-007's guard enumerates from source precisely so that
 a stale table fails loudly rather than silently.
 
+**M1 coordinate drift (self-inflicted, NOT a second external TOCTOU).** The M2 Step 0 re-scan was
+executed on HEAD `2255165f5` and reported the divergence rather than silently reconciling it, per
+the Step 0 obligation in §F. The result: **site total (18) and pair count (11) are unchanged, and
+the (file, function) pair set is unchanged** — no site was added or removed. Only line coordinates
+moved, in exactly two rows: row 7 `update_clean_install.go` `:307` → `:315`, and row 9 `update.go`
+`:843` → `:853`. The cause is **this SPEC's own M1 commit `4ddd35120`** (recovery manifest +
+restore entry point), which added code above both sites in `update_clean_install.go` and
+`update.go`. It is *not* a foreign-SPEC TOCTOU like the v0.3.0→v0.4.0 event narrated above — a
+reader must not mistake the two for a repeated external drift. The stale coordinates in this file
+and in `acceptance.md` were corrected in place; the `§C.4` falsification requirement and every AC
+verification command are untouched, because AC-UDS-005's guard keys on (file, enclosing function,
+occurrence count) and never on line numbers.
+
 ### C.1 Destructive targets (user-data view)
 
 | # | Target | Site | Protection today | Action |
 |---|---|---|---|---|
-| 1 | `.claude/settings.json` | `deploy.go:40-42` → `:105` | **in-memory only** (`update_template_sync.go:294`/`:388`) | M3 adds disk backup |
+| 1 | `.claude/settings.json` | `deploy.go:40-42` → `:105` | **in-memory only** (`update_template_sync.go:300`/`:397`) | M3 adds disk backup |
 | 2 | `.moai/status_line.sh` | same mergeable set | **in-memory only** | M3 adds disk backup |
-| 3 | `.gitignore` | `update_template_sync.go:292`/`:381` | **in-memory only** | M3 adds disk backup |
+| 3 | `.gitignore` | `update_template_sync.go:298`/`:388` | **in-memory only** | M3 adds disk backup |
 | 4 | `.claude/commands/moai` | `deploy.go:44-46` → `:105` | template-managed, regenerated | exempt (recorded) |
 | 5 | `.claude/agents/moai` | `deploy.go:48-50` → `:105` | template-managed, regenerated | exempt (recorded) |
 | 6 | `.claude/skills/moai*` (glob) | `deploy.go:52-55` → `:83` | template-managed | exempt, **with a noted hazard** — see §C.1a |
@@ -162,8 +182,8 @@ a stale table fails loudly rather than silently.
 | 9 | `.claude/hooks/moai` | `deploy.go:65-67` → `:105` | template-managed | exempt (recorded) |
 | 10 | `.moai/config` (wholesale) | `deploy.go:121` | `BackupMoaiConfig` (`backup.go:27`) | covered |
 | 11 | `.moai/memory/` | `deploy.go:176` | **none** | M2 adds backup (REQ-UDS-008) |
-| 12 | `defs.DeprecatedPaths` incl. `.moai/db` | `update_clean_install.go:307` **and** `update_residue_cleanup.go:135` | E1 REQ-RIL2-015/019 (both sites back up before deleting) | inherited from E1; registry records the cross-SPEC assignment on both sites |
-| 13 | `~/.claude/hooks/moai` | `update.go:843` | **none**, outside project | M4 pins the radius; backup out of scope (outside project root) |
+| 12 | `defs.DeprecatedPaths` incl. `.moai/db` | `update_clean_install.go:315` **and** `update_residue_cleanup.go:135` | E1 REQ-RIL2-015/019 (both sites back up before deleting) | inherited from E1; registry records the cross-SPEC assignment on both sites |
+| 13 | `~/.claude/hooks/moai` | `update.go:853` | **none**, outside project | M4 pins the radius; backup out of scope (outside project root) |
 
 Rows 1-3, 11, 12, 13 are the complete set of destructive targets in **no** protection set. Of those,
 row 12 is E1's; rows 1-3 are M3; row 11 is M2; row 13 is M4 (radius pinning rather than backup,
@@ -196,9 +216,14 @@ covers HOME-test isolation.)
 - HOME redirection goes through the injectable seam `userHomeDirFn` (`glm_tools.go:123`), not
   `t.Setenv("HOME", …)` — per `CLAUDE.local.md` §13, a process-wide HOME mutation pollutes parallel
   tests. **M4 must first route `ensureGlobalSettingsEnv` through that seam** (REQ-UDS-013): it
-  currently calls the plain function `userHomeDir()` at `update.go:833`, which is not reassignable,
+  currently calls the plain function `userHomeDir()` at `update.go:843`, which is not reassignable,
   so no redirection point exists today. An earlier draft of this constraint asserted the
   indirection already existed; it does not — see `spec.md` §A Defect 3.
+  **Do not conflate `:843` with §C.0 row 9.** `update.go:843` is now the `userHomeDir()` call; the
+  `os.RemoveAll` site that §C.0 row 9 registers moved to `update.go:853`. The two were distinct all
+  along, but the pre-M1 tables recorded the `os.RemoveAll` site at `:843` and the `userHomeDir()`
+  call at `:833`, so a reader comparing the old and new values could mistake them for the same
+  line. Both moved by +10 in M1 commit `4ddd35120`.
 - No `internal/template/templates/**` edit.
 - Falsification uses a scratch `git worktree` regenerated from a pre-fix ref and driven with
   `go -C`, or `go test -overlay`. **`git stash` is prohibited** — it refuses untracked files without
@@ -279,7 +304,7 @@ Routes `ensureGlobalSettingsEnv`'s HOME lookup through the injectable `userHomeD
 the removal target to a named symbol, adds the radius guard, and demonstrates its failure against a
 widened radius via `go test -overlay`.
 
-- **The seam substitution is a precondition, not a nicety.** `update.go:833` calls the plain
+- **The seam substitution is a precondition, not a nicety.** `update.go:843` calls the plain
   `userHomeDir()`; with no injection point and `t.Setenv("HOME", …)` forbidden (NFR-UDS-002), the
   radius guard cannot be written at all. Do this first, then the guard.
 - Covers REQ-UDS-011 through REQ-UDS-014.
