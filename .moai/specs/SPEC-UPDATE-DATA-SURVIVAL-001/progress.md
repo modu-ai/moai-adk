@@ -993,7 +993,39 @@ branch is unverified on Windows. Each is recorded in its milestone's Gaps sectio
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-01
+sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up chore commit
+sync_status: audit-ready
+
+b12_self_test_a: "grep -c 'SPEC-UPDATE-DATA-SURVIVAL-001' CHANGELOG.md -> 0 before emission (no duplicate)"
+b12_self_test_b: "AC count: acceptance.md distinct AC-IDs = 20; CHANGELOG entry states 20/20 ACs PASS (match)"
+b12_self_test_c: "every file path named in the CHANGELOG entry verified present via ls / git show --stat"
+
+changelog_entry_position: "[Unreleased] > ### Added, first bullet"
+
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (frontmatter status:)"
+  acceptance.md: "in-progress -> completed (line-3 status marker; no YAML frontmatter in this artifact)"
+  plan.md: "no status marker present - intentionally none per plan.md header note"
+  progress.md: "no status marker present"
+
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync would test"
+
+cross_cutting_gates_reverified_at_sync:
+  go_build: "exit 0"
+  windows_cross_build: "GOOS=windows GOARCH=amd64 go build ./... exit 0"
+  go_test: "go test ./... exit 0, 0 FAIL lines"
+  golangci_lint: "exit 0, '0 issues.'"
+  go_vet: "exit 0"
+```
+
+MX Tag validation (sync sub-step of the 3-phase close): the SPEC's Go surface carries
+explanatory header comments naming the owning REQ on every new file; no missing
+`@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` was identified that the existing comments do not
+already cover, so no tag was added. This is a validation pass, not a no-op skip.
 
 ## §F Phase 4 Mode Selection
 
