@@ -192,17 +192,21 @@ Execute a hook only once per session, then automatically skip subsequent trigger
 
 ### Conditional Hook Execution (if field)
 
-Filter when hooks run using permission rule syntax (v2.1.85+).
+Filter when a hook runs using permission rule syntax (v2.1.85+). The `matcher` selects by tool name at the group level; `if` narrows further by the tool's *arguments*, so a non-matching call never spawns the hook process. It applies only to tool events: PreToolUse, PostToolUse, PostToolUseFailure, PermissionRequest.
 
-The `if` field accepts permission rule patterns to prevent unnecessary hook execution and reduce process spawning overhead. Use tool patterns like `Bash(git *)` for git commands, `Write|Edit` for write operations, or `Bash(npm *)` for npm commands.
+```json
+{ "type": "command", "command": "bash", "args": ["…/gate.sh"], "if": "Write(**/.moai/specs/**)" }
+```
 
-Example configurations:
-- `"if": "Bash(git *)"` - Only run for git bash commands
-- `"if": "Write|Edit"` - Only run for write/edit operations
-- `"if": "Bash(npm *)"` - Only run for npm commands
-- `"if": "Bash(pytest *)"` - Only run for pytest commands
+Three properties govern how the field is written here. Each was verified by running a probe project against the installed runtime rather than inferred from the syntax:
 
-This field significantly reduces performance overhead by skipping hook evaluation for non-matching operations.
+- **One rule per entry — alternation between parenthesized rules does NOT match.** `Write(specs/**)` fires; `Edit(specs/**)|Write(specs/**)` fires on *nothing at all*. Bare tool-name alternation (`Write|Edit`) is a different construct and remains valid, but the moment a path specifier is attached, `|` stops working. The failure is silent: the hook is registered, never matches, and the gate it enforces goes dark with no error. To cover several tools, register **one entry per tool**, each with its own single-rule `if`.
+- **Identical entries are not deduplicated when their `if` differs.** The runtime deduplicates identical hook commands, but two entries sharing the same `command` and `args` both survive when their `if` conditions differ — which is what makes the one-entry-per-tool pattern viable.
+- **Prefer the any-depth form `**/dir/**`.** As of v2.1.214 a single-segment `dir/**` inside a hook `if` matches only `<cwd>/dir`, no longer that directory at any depth (the narrowing applies to hook `if` conditions and allow-rule auto-approval; deny/ask permission rules still match at any depth). Since an over-narrow pattern silently disables a gate while an over-broad one only spawns a process that exits early, write `**/dir/**` unless the shallow anchor is specifically wanted.
+
+Path specifiers otherwise follow permission-rule semantics: a bare name like `.env` matches at any depth, `/src/**` anchors to the project root, `~/…` to home, `//…` to an absolute path.
+
+**Where a gate must not be scoped.** Do not add an `if` to a hook whose job is to observe *everything* — a security scan over written content, for example. Narrowing such a hook trades a small performance gain for a coverage hole, and the hole is invisible.
 
 ### Stop Hook Block Cap and `stop_hook_active`
 

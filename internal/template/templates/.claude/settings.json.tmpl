@@ -65,6 +65,21 @@
           {
             "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/status-transition-ownership.sh"],
+            "if": "Write(**/.moai/specs/**)",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/status-transition-ownership.sh"],
+            "if": "Edit(**/.moai/specs/**)",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/status-transition-ownership.sh"],
+            "if": "MultiEdit(**/.moai/specs/**)",
             "timeout": 5,
             "type": "command"
           },

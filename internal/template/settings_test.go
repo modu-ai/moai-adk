@@ -741,6 +741,56 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 	}
 }
 
+// TestSettingsTemplateHookIfConditions guards the two properties of the `if`
+// field that were established by probing the runtime, both of which fail
+// silently if violated.
+//
+// Alternation between parenthesized rules does not match anything: a hook
+// carrying "Edit(x)|Write(x)" is registered but never fires, so whatever gate
+// it enforces goes dark with no error. Cover several tools with one entry per
+// tool instead. And since v2.1.214 a single-segment "dir/**" matches only
+// <cwd>/dir, so the any-depth "**/dir/**" form is required for a path that may
+// sit below the working directory.
+func TestSettingsTemplateHookIfConditions(t *testing.T) {
+	t.Parallel()
+
+	ctx := testContext("darwin")
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	var settings struct {
+		Hooks map[string][]struct {
+			Hooks []struct {
+				If   string   `json:"if"`
+				Args []string `json:"args"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+
+	scoped := 0
+	for event, groups := range settings.Hooks {
+		for _, group := range groups {
+			for _, h := range group.Hooks {
+				if h.If == "" {
+					continue
+				}
+				scoped++
+				if strings.Contains(h.If, ")|") {
+					t.Errorf("%s: if = %q joins parenthesized rules with |, which matches nothing; use one entry per tool", event, h.If)
+				}
+				if strings.Contains(h.If, "(") && !strings.Contains(h.If, "(**/") {
+					t.Errorf("%s: if = %q uses a shallow path anchor; use the any-depth (**/dir/**) form", event, h.If)
+				}
+			}
+		}
+	}
+	if scoped == 0 {
+		t.Error("no hook entry carries an if condition — the status-transition scoping was dropped")
+	}
+}
+
 func TestSettingsTemplateHookEventCount(t *testing.T) {
 	t.Parallel()
 
