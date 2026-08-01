@@ -96,7 +96,7 @@ Quick Commands:
 
 ```bash
 /moai plan "user authentication system"                   # Create new SPEC
-/moai plan "login" "signup" --worktree                    # Parallel SPECs
+/moai plan "login" "signup"                              # Parallel SPECs
 /moai plan "payment processing" --branch                  # New branch
 /moai plan SPEC-001 "add OAuth support"                   # Update existing
 ```
@@ -192,7 +192,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 
 ### Plan-Run-Sync Workflow Integration
 
-PLAN (/moai plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch` or `--worktree`.
+PLAN (/moai plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch`.
 
 RUN (/moai run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
 

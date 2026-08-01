@@ -152,13 +152,13 @@ See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Ga
 
 ## Worktree-Anchored Resume Pattern
 
-[ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree` (creating an L2 SPEC worktree at `~/.moai/worktrees/<project>/<spec-or-name>/`), the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in main project cwd by default, breaking L2 SPEC worktree isolation expectations.
+[ZONE:Evolvable] [HARD] When the work happened inside a worktree, the resume message MUST include **Block 0 (cwd anchoring)** prepended before the standard 6-block structure. Without Block 0, the next session starts in the main project cwd by default, breaking the worktree isolation the work relied on.
 
-> L3 `--worktree` is **user opt-in** only. For SPECs initialized without `--worktree` (the default), the standard 6-block structure suffices — Block 0 is NOT required.
+> Working inside a worktree is **user opt-in** only. For work done in the main checkout (the default), the standard 6-block structure suffices — Block 0 is NOT required.
 
-### Why Block 0 (L3 `--worktree` opt-in only)
+### Why Block 0 (worktree work only)
 
-With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence per the worktree isolation guidance, Bash commands targeting main project per the worktree isolation guidance, build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
+When the work lives in a worktree, the SPEC artifacts and the L1 isolation base sit in a different cwd. Pasting resume into a main-cwd session causes: L1 base divergence per the worktree isolation guidance, Bash commands targeting main project per the worktree isolation guidance, build/test from the wrong tree. Block 0 forces a new terminal session **inside** the L2 worktree before any action.
 
 ### Block 0 Format
 
@@ -220,9 +220,9 @@ If verification 0) fails, stop and instruct the user to restart inside the workt
 
 ### Single-Session vs Multi-Session Decision
 
-Block 0 is REQUIRED only with L3 `--worktree`. For `--branch` (or no flag — the opt-in default), standard 6-block suffices because main session cwd already follows the branch.
+Block 0 is REQUIRED only for worktree work. For `--branch` (or no flag — the default), the standard 6-block suffices because the main session cwd already follows the branch.
 
-[ZONE:Evolvable] [HARD] If L3 `--worktree` was used and the user is NOT comfortable with multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
+[ZONE:Evolvable] [HARD] If a worktree was used and the user is NOT comfortable with a multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` in the main checkout for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
 > **Example with Block 0**: see `session-handoff-examples.md` § Example with Block 0 (Illustrative).
 

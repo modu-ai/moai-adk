@@ -937,7 +937,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#worktree-anchored-resume-pattern"
-  clause: "When SPEC was initialized via L3 /moai plan --worktree, the resume message MUST include Block 0 (cwd anchoring) prepended before the standard 6-block structure"
+  clause: "When the work happened inside a worktree, the resume message MUST prepend Block 0 (cwd anchoring) before the standard 6-block structure"
   canary_gate: false
 
 # --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---

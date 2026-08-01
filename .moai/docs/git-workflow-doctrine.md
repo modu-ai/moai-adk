@@ -400,21 +400,11 @@ SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (T8) 도입 — 신규 SPEC plan 또는 worktre
 
 SignalC positive 시 Rationale 에 `parent-merge gotcha 주의: §18.11 Case Study 참조` suffix 자동 추가 (REQ-CIAUT-047b).
 
-#### 3 Invocation Paths (Verbatim)
+#### Invocation Path
 
-1. **`/moai plan --branch`** (skill body) — Phase 3.0 BODP Gate → AskUserQuestion → manager-git delegation with `base=<chosenBase>`. Skill: `.claude/skills/moai/workflows/plan.md` Phase 3.0.
+1. **`/moai plan --branch`** (skill body) — BODP Gate → AskUserQuestion → manager-git delegation with `base=<chosenBase>`. Skill: `.claude/skills/moai/workflows/plan.md`.
 
-2. **`/moai plan --worktree`** (skill body) — Phase 3.0 BODP Gate → AskUserQuestion → `moai worktree new <SPEC-ID> --base <chosenBase>`.
-
-3. **`moai worktree new <SPEC-ID>`** (CLI) — `--base` (default `origin/main`) + `--from-current` (HEAD) flags. **AskUserQuestion 호출 절대 금지** (orchestrator-only HARD per agent-common-protocol). signal collection 만 수행 후 audit trail 기록.
-
-#### Audit Trail
-
-`.moai/branches/decisions/<normalized-branch-name>.md` (slash → dash 정규화). 각 BODP 결정마다 markdown frontmatter + body (Signals/Decision/Executed sections) 기록.
-
-#### Off-Protocol Reminder
-
-`moai status` 끝에서 `internal/cli/status.go` `emitOffProtocolReminder()` 호출. 4-skip-condition: `MOAI_NO_BODP_REMINDER=1` env, main/master branch, audit trail 존재, audit dir 부재 (false-positive 방지).
+**Retired**: `/moai plan --worktree` and the `moai worktree new` CLI path (with its `--base` / `--from-current` flags), the `.moai/branches/decisions/` audit trail, and the `moai status` off-protocol reminder. A worktree is now entered with `moai cc -w <name>` before plan is invoked; the audit trail's only writer was the retired CLI command, so nothing writes new entries. Existing decision files are left in place. See `.claude/rules/moai/development/branch-origin-protocol.md` § Retired.
 
 #### Out of Scope (Wave 7)
 

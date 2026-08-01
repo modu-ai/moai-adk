@@ -170,7 +170,7 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 
 ## Worktree-Anchored Resume Pattern
 
-> [ZONE:Evolvable] [HARD] When the SPEC was initialized via L3 `/moai plan --worktree`, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Block 0 uses the **canonical EnterWorktree-first forms** — `moai cc -w <name>` for L1 (`.claude/worktrees/`), `moai cc -w <abs-path>` for L2 (`~/.moai/worktrees/`), or `EnterWorktree(<path>)` for current-session re-entry — NOT a bare `cd <worktree>` shell instruction. Without `--worktree` (the default) the standard 6-block suffices. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
+> [ZONE:Evolvable] [HARD] When the work happened inside a worktree, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure, and Block 4 gains precondition `0) git rev-parse --show-toplevel → <worktree-path>`. Block 0 uses the **canonical EnterWorktree-first forms** — `moai cc -w <name>` for a worktree under `.claude/worktrees/`, `moai cc -w <abs-path>` for one under `~/.moai/worktrees/`, or `EnterWorktree(<path>)` for current-session re-entry — NOT a bare `cd <worktree>` shell instruction. Work in the main checkout (the default) needs only the standard 6-block. Full: `session-handoff-examples.md` § Worktree-Anchored Resume Pattern.
 
 ## Diet Constraints
 
@@ -250,7 +250,7 @@ This ensures the message survives `/clear` and is discoverable at the start of t
 - `.claude/rules/moai/workflow/goal-directive.md` § Goal-Presentation Timing — the arm-only property and the Kickoff-gate timing that Block 5 implements; § MoAI Integration Notes — the auto-injected resume path
 - CLAUDE.md §11 (Error Handling) — token-limit recovery
 - large-SPEC wave-split rationale
-- `--worktree` Block 0 + single/multi-session decision rationale
+- Block 0 cwd anchoring + the single/multi-session decision rationale
 - worktree isolation + --team base mismatch
 
 ---

@@ -40,7 +40,7 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 | Step | Location | Command | Branch | PR strategy | Lifecycle event (trigger) |
 |------|----------|---------|--------|-------------|---------------------------|
 | 1 (plan) | main checkout | `/moai plan SPEC-XXX` | `plan/SPEC-XXX` | configured* | plan PR merged into main |
-| 2 (run)  | main checkout (default) OR L2 SPEC worktree (opt-in) | (opt-in) `moai worktree new SPEC-XXX --base origin/main` then `/moai run SPEC-XXX`; OR `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout | `feat/SPEC-XXX` | configured* | run PR merged into main |
+| 2 (run)  | main checkout (default) OR L2 SPEC worktree (opt-in) | (opt-in) `moai cc -w SPEC-XXX` then `/moai run SPEC-XXX` inside it; OR `/moai run SPEC-XXX` on `feat/SPEC-XXX` branch in main checkout | `feat/SPEC-XXX` | configured* | run PR merged into main |
 | 3 (sync) | same as Step 2 | `/moai sync SPEC-XXX` (same L2 worktree as Step 2 if L2 was used; otherwise same feature branch) | `sync/SPEC-XXX` (or `chore/SPEC-XXX-sync`) | configured* | sync PR merged into main |
 | 4 (cleanup) | host checkout (only if L2 was created) | `moai worktree done SPEC-XXX` | n/a | n/a | L2 worktree disposed |
 
@@ -179,7 +179,7 @@ Output:
 
 ## Run Phase
 
-[SHOULD] When user has opted into L2/L3 worktree, execute in a fresh L2 SPEC worktree: `moai worktree new SPEC-XXX --base origin/main`; otherwise execute on the `feat/SPEC-XXX` branch in main checkout. See § SPEC Phase Discipline (Step 2). Per the opt-in policy, L2/L3 worktree is opt-in; default is main checkout + feature branch.
+[SHOULD] When the user has opted into a worktree, enter it with `moai cc -w SPEC-XXX` and execute there; otherwise execute on the `feat/SPEC-XXX` branch in the main checkout. See § SPEC Phase Discipline (Step 2). Worktree use is opt-in; the default is main checkout + feature branch.
 
 Implement specification using configured development methodology.
 
@@ -308,7 +308,7 @@ Plan to Run:
 - Trigger (Route A): plan-phase artifacts committed + pushed to `main` AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
 - Trigger (Route B): Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
 - Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
-- Action: Execute /clear, then `/moai run SPEC-XXX`. Route A runs directly on `main` in main checkout. Route B runs on `feat/SPEC-XXX` branch in main checkout (default); OR if the user opted into L2: `moai worktree new SPEC-XXX --base origin/main`, then `/moai run SPEC-XXX` inside the L2 worktree.
+- Action: Execute /clear, then `/moai run SPEC-XXX`. Route A runs directly on `main` in main checkout. Route B runs on `feat/SPEC-XXX` branch in main checkout (default); OR if the user opted into a worktree: `moai cc -w SPEC-XXX`, then `/moai run SPEC-XXX` inside it.
 - Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation.
   See "Phase 1: Plan Audit Gate" section below for details.
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):

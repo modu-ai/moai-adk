@@ -15,7 +15,8 @@ Scenario: Creating a new SPEC with automatic worktree setup
 
 ```bash
 # Plan Phase - Create SPEC with worktree
-/moai plan "User Authentication System" --worktree
+moai cc -w user-auth
+/moai plan "User Authentication System"
 
 # Output:
 # SPEC created: SPEC-AUTH-001
@@ -181,7 +182,7 @@ echo " Starting SPEC development workflow for $SPEC_ID"
 
 # Phase 1: Plan (with worktree)
 echo " Phase 1: Creating SPEC and worktree..."
-/moai plan "$SPEC_DESCRIPTION" --worktree --spec-id "$SPEC_ID"
+/moai plan "$SPEC_DESCRIPTION" --spec-id "$SPEC_ID"
 
 # Check if worktree was created successfully
 if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
