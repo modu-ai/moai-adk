@@ -102,6 +102,16 @@ internal/cli/update_archive_test.go              확장 (AC-CLD-019 가드 — �
 internal/cli/pr_watch_cmd_test.go                신설 (AC-CLD-018 보강 — 선택)
 ```
 
+**시험 기대값 정합 (5) — M3 삭제의 귀결**
+
+```
+internal/template/skills_manifest_test.go        기대 코어 스킬 목록에서 항목 제거
+internal/template/catalog_tier_audit_test.go     expectedSkillCount  32 → 31
+internal/template/embed_catalog_test.go          wantTotal           42 → 41
+internal/template/catalog_loader_test.go         expectedTotal       42 → 41
+internal/template/sanitized_pair_parity_test.go  sanitizedPairPaths에서 ci-watch-protocol.md 행 제거
+```
+
 **시험 파일 봉투 편입 근거 (v0.3.0)**: AC-CLD-018·AC-CLD-019 승격으로 run-phase가
 시험 코드를 작성할 수 있어야 하는데 초판 봉투에는 두 경로가 없었다 — DoD가 "봉투 밖
 파일을 건드리지 않음"을 요구하므로 편입하지 않으면 시험 작성이 곧 DoD 위반이 된다
@@ -116,6 +126,52 @@ internal/cli/pr_watch_cmd_test.go                신설 (AC-CLD-018 보강 — �
   대한 CLI 배치**이므로 Go 시험을 요구하지 않는다. 다만 플래그 집합 단언은
   `newPRWatchCmd()`를 in-process로 호출해 검사할 수 있으므로, run-phase가 이를
   회귀 가드로 남기기로 하면 이 경로에 작성한다. 작성하지 않아도 AC-CLD-018은 통과한다.
+
+**시험 기대값 5개 파일 봉투 편입 근거 (M1-M3 착수 후 해소)**: 이 다섯 파일은 삭제 이전
+상태를 기대값으로 **하드코딩**하고 있어, M3의 삭제가 랜딩한 순간 `go test ./...`가
+깨진다. DoD는 "`go test ./...` 회귀 없음"을 요구하는데 봉투는 이 파일들을 금지했다 —
+고치면 DoD 위반, 두면 DoD 미충족이라는 모순이었다. `CLAUDE.local.md`(감사 N7)와
+시험 파일 2개(v0.3.0)에서 이미 두 번 인정한 것과 **구조적으로 같은 모순**이며,
+결론도 같다: **봉투가 틀렸다.** 편입해 해소한다.
+
+M1-M3 수행 중 `manager-develop`가 이 충돌을 발견하고 자체 판단으로 범위를 넓히는 대신
+블로커로 반환한 것은 올바른 처신이었다 — 봉투 확대는 계획의 결정이지 실행자의 결정이 아니다.
+
+이 다섯은 **독립적 변경이 아니라 M3 삭제의 기계적 귀결**이다. 스킬 1개가 사라졌으므로
+카탈로그 항목 수와 디스크 스킬 수가 각각 1 줄고(42→41, 32→31), 기대 목록에서 그 이름이
+빠지고, 배포에서 사라진 파일이 sanitized-pair 레지스트리에 남을 이유가 없어진다.
+**동작 변경은 없다** — 상수와 목록의 수 맞추기뿐이며, 새 단언·새 판정·새 능력을
+도입하지 않는다. 그래서 신규 AC를 만들지 않고 기존 DoD 줄
+("`go test ./...` 회귀 없음")이 그대로 이들을 덮는다.
+
+**`sanitized_pair_parity_test.go` — 의존 조사 결과 (제거 안전)**
+
+`manager-develop`가 정당한 우려를 제기했다: 이 레지스트리 행은 `ci-watch-protocol.md`가
+**sanitized pair**(양쪽 트리에 존재하되 §25 정화 때문에 바이트가 다른 짝)라고 단언하는데,
+그 단언은 양쪽에 파일이 있을 때만 참이었다. 템플릿 사본이 의도적으로 사라졌으므로
+이 행은 **설계상 낡은(stale by design)** 상태다 — 테스트 자체가 그 상황에 대해
+"짝이 아니면 `sanitizedPairPaths`에서 빼라"고 지시한다.
+
+다른 소비자가 있는지 실측했다 (`grep -rn 'sanitizedPairPaths' --include='*.go' .`):
+
+```
+sanitized_pair_parity_test.go:48   선언부 주석
+sanitized_pair_parity_test.go:63   var 선언
+sanitized_pair_parity_test.go:146  유일한 순회 지점
+sanitized_pair_parity_test.go:164  실패 메시지 문자열
+sanitized_pair_parity_test.go:200  실패 메시지 문자열
+```
+
+**단일 파일 안에서만 쓰인다** — 다른 파일·다른 테스트·다른 패키지의 의존은 0건이다.
+행 제거는 안전하다.
+
+다만 **주석 수준 잔재 2건**이 남는다 (코드 의존 아님, 판단은 run-phase에 맡긴다):
+
+- `sanitized_pair_parity_test.go` 상단 — 정화 방식을 설명하는 **예시**로 이 파일명을 든다
+- `rule_template_mirror_test.go` — 바이트 파리티 허용목록에서 제외된 파일 **내력 주석**에 등재
+
+둘 다 산문이며 어떤 단언도 구동하지 않으므로 `go test`에 영향이 없다. 방치해도 무해하고,
+정리하면 더 정확하다.
 
 `pr_watch_cmd.go` 봉투 편입 근거 (감사 D4 해소): 이 파일은 배포 바이너리에서
 `scripts/ci-watch/run.sh`를 **사용자에게 직접 지시하는 문자열 3개**를 보유한다.
@@ -249,7 +305,21 @@ go test ./internal/template/... -count=1
 > 재빌드 누락 탐지는 catalog 해시 신선도(AC-CLD-004)가 담당하며,
 > 그 게이트는 변이 테스트로 실패 가능성이 실증되었다(research.md §D.2).
 
-**완료 조건**: AC-CLD-003, AC-CLD-004.
+**시험 기대값 정합 5건** (M3 삭제의 귀결 — §B 편입 근거 참조). 이 마일스톤이 소유한다:
+재빌드·가드 신설과 함께 트리를 다시 초록으로 만드는 작업이 M4의 일이기 때문이다.
+
+1. `skills_manifest_test.go` — 기대 코어 스킬 목록에서 `moai-workflow-ci-loop` 제거
+2. `catalog_tier_audit_test.go` — `expectedSkillCount` 32 → 31
+3. `embed_catalog_test.go` — `wantTotal` 42 → 41
+4. `catalog_loader_test.go` — `expectedTotal` 42 → 41
+5. `sanitized_pair_parity_test.go` — `sanitizedPairPaths`에서
+   `.claude/rules/moai/workflow/ci-watch-protocol.md` 행 제거 (다른 소비자 0건 실측 확인)
+
+상수 옆 주석이 누적 산술(`… net +1 = 42`)을 기록하는 형식이므로, 값만 바꾸고 주석을
+그대로 두면 산술이 어긋난다. 값과 함께 해당 주석 줄도 갱신한다.
+
+**완료 조건**: AC-CLD-003, AC-CLD-004, 그리고 `go test ./internal/template/... -count=1` 초록
+(DoD의 "`go test ./...` 회귀 없음"이 최종 판정 — 신규 AC 없음).
 
 **의존**: M3
 
