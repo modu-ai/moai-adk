@@ -57,8 +57,16 @@ var CoverageTable = []EventCoverageEntry{
 	{EventName: "TeammateIdle", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "teammate_idle.go"},
 	{EventName: "TaskCompleted", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "task_completed.go"},
 	{EventName: "TaskCreated", Resolution: ResolutionRetireObsOnly, IsActive: false, HandlerFile: "task_created.go"},
-	{EventName: "WorktreeCreate", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "worktree_create.go"},
-	{EventName: "WorktreeRemove", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "worktree_remove.go"},
+	// Worktree handlers are dormant: the Go handlers exist and carry full logic
+	// (ResolutionKeep), but the events are deliberately NOT registered in
+	// settings.json, so IsActive is false. Registering an observer-style handler
+	// here would REPLACE Claude Code's default git worktree behavior — the
+	// WorktreeCreate contract requires the hook to create the directory and echo
+	// its absolute path to stdout, and an observer returning empty output aborts
+	// creation. See worktree-integration.md § WorktreeCreate and WorktreeRemove
+	// Hooks, and hook-independence.md § 4 (intentionally-dormant surfaces).
+	{EventName: "WorktreeCreate", Resolution: ResolutionKeep, IsActive: false, HandlerFile: "worktree_create.go"},
+	{EventName: "WorktreeRemove", Resolution: ResolutionKeep, IsActive: false, HandlerFile: "worktree_remove.go"},
 	{EventName: "ConfigChange", Resolution: ResolutionUpgrade, IsActive: true, HandlerFile: "config_change.go"},
 	{EventName: "CwdChanged", Resolution: ResolutionKeep, IsActive: true, HandlerFile: "cwd_changed.go"},
 	{EventName: "FileChanged", Resolution: ResolutionUpgrade, IsActive: true, HandlerFile: "file_changed.go"},

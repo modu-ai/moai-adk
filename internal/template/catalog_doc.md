@@ -5,7 +5,6 @@ every skill and agent that ships with or can be installed by `moai init`, togeth
 content hashes for integrity verification.
 
 **SPEC**: SPEC-V3R4-CATALOG-001 T-024 (M5.1)
-**Related proposals**: `.moai/brain/IDEA-003/proposal.md` (catalog slimming proposal)
 
 ---
 

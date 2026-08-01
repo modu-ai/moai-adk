@@ -677,13 +677,355 @@ settings file exists).
   green `./internal/cli/...` run — but the seam does not *remove* the env-based path, so a future
   test could still reach production through `$HOME` and reintroduce the NFR-UDS-002 hazard.
 
+### M5 — Non-vacuous user-area safety guard
+
+Landed on `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Files: `internal/cli/update_safety_test.go` (rewritten).
+No production code changed in this milestone.
+
+#### Claim
+
+`TestMoaiUpdate_PreservesUserArea` now drives the real production entry point
+`deploy.CleanMoaiManagedPaths(projectRoot, io.Discard)` instead of a fake defined in the test file.
+The `simulateMoaiUpdate` fake is deleted (definition, not renamed). The guard asserts in both
+directions — user-owned areas byte-identical before and after, AND at least one managed target
+actually removed — and it FAILS when the production entry point is mutated to touch
+`.claude/agents/harness/`.
+
+#### Evidence — AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-014 (a) | PASS | `grep -cE '^func simulateMoaiUpdate\|^func simulate[A-Za-z]*Update' internal/cli/update_safety_test.go` | `0` (baseline `1`) |
+| AC-UDS-014 (b) | PASS | `go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -covermode=set -coverpkg=./internal/cli/...,./internal/cli/update/... -coverprofile=/tmp/uds-m5.out ./internal/cli/` then `go tool cover -func` filtered to the 4 registry functions, `grep -vE '[[:space:]]0\.0%$'`, `test -s` | `test -s` passed; surviving lines: `.../update/deploy/deploy.go:29: CleanMoaiManagedPaths 66.7%` and `.../update/deploy/deploy.go:144: MigrateLegacyMemoryDir 26.9%` (baseline: all four `0.0%`, `test -s` printed `VACUOUS: guard executed no registry production function`) |
+| AC-UDS-014 (c) | PASS | `go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -v ./internal/cli/` | `--- PASS: TestMoaiUpdate_PreservesUserArea (0.01s)` / `ok github.com/modu-ai/moai-adk/internal/cli 0.838s` |
+| AC-UDS-015 | PASS | `go test -overlay=/tmp/uds-falsify-m5/overlay.json -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -v ./internal/cli/` | `--- FAIL: TestMoaiUpdate_PreservesUserArea (0.00s)` / `FAIL github.com/modu-ai/moai-adk/internal/cli 0.810s` |
+| AC-UDS-018 | PASS | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | both exit 0 |
+| AC-UDS-019 | PASS | `BASE=$(git merge-base origin/main HEAD); git diff --name-only $BASE..HEAD -- internal/template/templates/ \| wc -l` | `0` (merge-base `835ea7b9125bc34770384f626f27026e9eca64f1`) |
+
+#### Evidence — falsification (AC-UDS-015, `acceptance.md` §C.2)
+
+The overlay copy of `internal/cli/update/deploy/deploy.go` adds one `cleanTarget` entry for the
+user-owned path `.claude/agents/harness`, inserted after the `RulesMoaiSubdir` entry:
+
+```go
+// MUTATION (AC-UDS-015 falsification only — never committed).
+{
+    displayPath: filepath.Join(defs.ClaudeDir, "agents", "harness"),
+    fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, "agents", "harness"),
+},
+```
+
+Guard output under that overlay, verbatim:
+
+```
+=== RUN   TestMoaiUpdate_PreservesUserArea
+    update_safety_test.go:137: user area changed: …/001/.claude/agents/harness
+        pre:  map[ios-architect.md:a2cad9d5e0d950aedef6a81f7226d9c186293debdecafe2aff013e57da4c711d]
+        post: map[]
+--- FAIL: TestMoaiUpdate_PreservesUserArea (0.00s)
+```
+
+The overlay `Replace` key is `internal/cli/update/deploy/deploy.go` (module-root-relative) — a
+different file from M4's overlay (`internal/cli/update.go`). The scratch directory
+`/tmp/uds-falsify-m5/` was removed after the run.
+
+The recorded baseline this refutes: `acceptance.md` AC-UDS-015 records that the same class of
+mutation against the pre-M5 test **passed**, because `simulateMoaiUpdate` never called production
+code at all. That baseline was NOT re-measured here — see Gaps.
+
+#### Evidence — RED before GREEN (TDD, template §E8)
+
+**This milestone has no RED step, and the omission is structural rather than skipped.** M5 deletes a
+vacuous guard and replaces it with a non-vacuous one against **unchanged production code**; there is
+no new behaviour to specify, so there is no state in which the replacement guard legitimately fails
+against the real tree. Writing a deliberately-wrong assertion first would manufacture a RED with no
+diagnostic value.
+
+The assertion-level failure evidence RED would normally supply is supplied instead by AC-UDS-015's
+overlay `--- FAIL` above: it demonstrates the same property (this guard fails when production code
+violates the invariant) against real production code. That is the stronger form of the same
+evidence, since it exercises the actual entry point rather than a stub.
+
+#### Which user paths are genuinely at risk vs which survive trivially
+
+Determined empirically by reading the `cleanTarget` list inside `CleanMoaiManagedPaths` (7 entries:
+`.claude/settings.json`, `.claude/commands/moai`, `.claude/agents/moai`, `.claude/skills/moai*` (glob),
+`.claude/rules/moai`, `.claude/output-styles/moai`, `.claude/hooks/moai`) plus the two unconditional
+removals (`.moai/config/` entirely, then `MigrateLegacyMemoryDir` on `.moai/memory/`):
+
+| User-owned fixture path | Risk from THIS entry point | Why |
+|---|---|---|
+| `.claude/skills/harness-ios-patterns/` | **Genuine** | It sits inside the directory the `.claude/skills/moai*` glob enumerates. A widened glob (`moai*` → `*`) or a sibling-prefix change sweeps it. Its survival depends on the glob pattern, not on the directory being out of reach. |
+| `.claude/agents/harness/` | **Moderate** | Not enumerated today (the target is the sibling `.claude/agents/moai`), but it is one `cleanTarget` entry away — which is exactly the AC-UDS-015 mutation. Survival depends on the target list, not on structural distance. |
+| `.moai/harness/run-extension.md`, `.moai/harness/main.md` | **Trivial** | `CleanMoaiManagedPaths` never walks `.moai/harness/` at all — it touches only `.moai/config/` and `.moai/memory/`. Asserting their survival against this entry point is weak evidence; they survive because nothing looks at them. |
+
+The guard keeps all three assertions (preserving the retired test's intent), but only the first two
+carry discriminating power against `CleanMoaiManagedPaths`. The `.moai/harness/` rows would only
+become load-bearing against an entry point that walks `.moai/` more broadly — `runCleanReinstall`,
+which this guard does not drive.
+
+#### Baseline-attribution
+
+Measured on branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, worktree `.claude/worktrees/e2-data-survival`,
+HEAD `e8eeab462`, before any M5 edit (the four registry functions all at `0.0%` while the test
+reported PASS — the defect):
+
+```
+$ grep -cE '^func simulateMoaiUpdate|^func simulate[A-Za-z]*Update' internal/cli/update_safety_test.go
+1
+$ go tool cover -func=/tmp/uds-m5.out | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig'
+.../update/backup/backup.go:27:        BackupMoaiConfig        0.0%
+.../update/deploy/deploy.go:29:        CleanMoaiManagedPaths   0.0%
+.../update/deploy/deploy.go:144:       MigrateLegacyMemoryDir  0.0%
+.../update_clean_install.go:137:       runCleanReinstall       0.0%
+```
+
+Post-M5 on the same tree: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0;
+`go vet ./...` exit 0; `golangci-lint run --timeout=3m` → `0 issues.` (no NEW finding against the
+0-issue baseline); `go test ./internal/cli/...` exit 0 (`ok .../internal/cli` + 16 sibling packages
+`ok`); `go test ./...` exit 0 with `0` lines matching `^FAIL|^--- FAIL`
+(`ok .../internal/cli 262.854s`).
+
+Evidence logs persisted under `.moai/state/verify/m5/` (`ac014b-covered.txt`,
+`ac014c-guard-pass.log`, `ac015-falsification.log`, `g1-build.log`, `g2-cli-test.log`,
+`g3-full-test.log`, `g4-lint.log`, `g5-vet.log`, `g6-winbuild.log`).
+
+**Mid-run tree movement.** Between the gate runs above and the M5 commit, a merge of `origin/main`
+(`68be0a27c`, bringing `origin/main` tip `835ea7b91` in) landed on this branch from another actor.
+It touched **2 files, both under `.github/workflows/`; zero `.go` files**
+(`git show --name-only --format='' 68be0a27c | grep -c '\.go$'` → `0`), so the Go-toolchain gate
+results measured at `e8eeab462` still describe the committed tree. Re-verified after the merge:
+`go build ./...` exit 0, `--- PASS: TestMoaiUpdate_PreservesUserArea (0.02s)`, and AC-UDS-019 still
+`0` against the (unchanged) merge-base `835ea7b9125bc34770384f626f27026e9eca64f1`. The full suite,
+lint, vet, and windows cross-build were NOT re-run post-merge — see Gaps.
+
+#### Gaps (not verified in M5)
+
+- **Only ONE of the four registry functions is driven by intent.** `CleanMoaiManagedPaths` (66.7%)
+  is the entry point; `MigrateLegacyMemoryDir` (26.9%) is covered only incidentally as its tail call,
+  and on the no-op branch (`.moai/memory/` absent in the fixture, so it returns early). The other
+  two — `runCleanReinstall` and `BackupMoaiConfig` — remain at `0.0%` under this guard.
+  AC-UDS-014 (b) requires at least one above `0.0%`, so this satisfies the AC, but the protection is
+  **narrower than "the update subsystem preserves user areas"** would suggest: it covers one
+  destructive step of one path, not the clean-reinstall orchestration or the backup step.
+- **The AC-UDS-015 baseline claim was not re-measured.** `acceptance.md` records that the same
+  mutation passed against the pre-M5 test. Since M5 deletes that test, the baseline could not be
+  re-run on this tree; it is carried from the acceptance record, not observed here. The *forward*
+  direction (the replacement guard FAILS under the mutation) WAS observed directly.
+- **`MigrateLegacyMemoryDir`'s destructive branch is unexercised.** The fixture creates no
+  `.moai/memory/`, so the rename branch and the both-exist backup-then-remove branch (the REQ-UDS-008
+  path M2/M3 addressed) are not touched by this guard.
+- **The glob-widening mutation was not falsified.** The AC-UDS-015 mutation adds a new `cleanTarget`;
+  it does not widen the existing `.claude/skills/moai*` glob. The genuine-risk claim for
+  `.claude/skills/harness-ios-patterns/` above rests on reading the glob's scope, not on an observed
+  failing mutation of the pattern itself.
+- **Four of the seven gates were not re-run after the mid-run `origin/main` merge.** `go test ./...`,
+  `golangci-lint`, `go vet`, and the windows cross-build were measured at `e8eeab462`, before merge
+  commit `68be0a27c`. The merge contains zero `.go` files (measured), so their verdicts are expected
+  to hold — but "expected to hold" is an inference from the merge's file list, not a re-observation.
+  `go build` + the M5 guard WERE re-run post-merge and passed.
+- **`.moai/config/` removal is not asserted.** The fixture creates `.moai/config/config.yaml` and
+  the managed-removal assertion covers it, but no assertion distinguishes "removed by the unconditional
+  `os.RemoveAll(configDir)`" from "removed by a cleanTarget" — the guard asserts absence, not mechanism.
+
+#### Residual risk
+
+- **The managed-removal assertion is satisfied by ANY one target being gone.** It loops over six
+  managed paths and requires `removed > 0` plus per-path absence; a mutation that removed only a
+  subset would be caught by the per-path `t.Errorf`, but a mutation that *reordered* or *renamed*
+  targets while still deleting all six would pass. The assertion pins outcome, not target identity.
+- **`snapshotDir` now treats a missing root as an empty map** (changed from `t.Fatalf`). This makes
+  a deleted user directory surface as a readable snapshot mismatch instead of an unrelated
+  "no such file" fatal — but it also means a fixture bug that silently fails to create a user
+  directory would produce `pre == post == empty` and pass. The fixture writes are `t.Fatal`-guarded,
+  so a creation failure aborts before the comparison; the risk is bounded by that guard, not
+  eliminated by the snapshot function.
+- **The guard runs against `t.TempDir()`, so it never observes the real project tree.** It cannot
+  detect a production path-resolution bug that only manifests against an absolute project root
+  (the `filepath.Join(cwd, absPath)` hazard documented in CLAUDE.local.md §6). That class of defect
+  is out of this guard's reach.
+- **Package-level state: none.** Unlike M4's `userHomeDirFn`, this guard mutates no package-level
+  variable and takes `projectRoot` as a parameter, so it carries no parallel-test hazard. Verified
+  by inspection of the rewritten file: no `t.Setenv`, no package-var assignment.
+
+### M6 — `mergeBackPreserveInventory` partial-restore reporting and coverage
+
+Landed on `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Files: `internal/cli/update_preserve_inventory.go`
+(three failure returns + a `restored` counter), `internal/cli/update_preserve_partial_test.go` (new).
+
+#### Claim
+
+`mergeBackPreserveInventory` now reports the boundary of a partial restore: each of its three
+failure returns names the file it stopped at AND the count of files already restored
+(`restored %d/%d before failure`). The three branches — stat, `MkdirAll`, `copyFile` — are each
+reached deterministically by a subtest asserting a distinct error substring, and the guard fails
+against the pre-M6 production code.
+
+Authoring note: the M6 delegation was interrupted mid-run by a session limit after the code and
+test were written but before commit and before this section was authored. The orchestrator
+verified the surviving working-tree artifacts independently and completed the milestone; every
+row below is an orchestrator-observed measurement, not a carried-over agent claim.
+
+#### Evidence — AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-016 (branches) | PASS | `go test -run 'TestMergeBackPreserveInventory_PartialRestore' -count=1 -v ./internal/cli/` | `--- PASS` for all three subtests: `stat_failure_unreadable_backup_dir`, `mkdirall_failure_parent_is_regular_file`, `reports_restored_count`; `ok github.com/modu-ai/moai-adk/internal/cli 0.805s` |
+| AC-UDS-016 (coverage) | PASS | `go test -covermode=set -coverprofile=/tmp/uds-cov-m6.out ./internal/cli/` then `go tool cover -func` filtered to `mergeBackPreserveInventory` | `update_preserve_inventory.go:400: mergeBackPreserveInventory 94.1%` — strictly greater than the 64.3% baseline |
+| AC-UDS-017 | PASS | `go test -run 'TestMergeBackPreserveInventory_PartialRestore/reports_restored_count' -count=1 -v ./internal/cli/` | `--- PASS: TestMergeBackPreserveInventory_PartialRestore/reports_restored_count (0.18s)` — the subtest-path `--- PASS` line is present, so the `-run` selector matched (a bare `ok` with no matching line would be a vacuous pass) |
+| AC-UDS-018 | PASS | `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | `build-exit=0` / `win-build-exit=0` |
+| AC-UDS-019 | PASS | `BASE=$(git merge-base origin/main HEAD); git diff --name-only $BASE..HEAD -- internal/template/templates/ \| wc -l` | `0` (merge-base `835ea7b9125bc34770384f626f27026e9eca64f1`); uncommitted template edits also `0` |
+
+#### Evidence — falsification
+
+No AC required an overlay falsification for M6, but the guard's non-vacuity was verified anyway,
+because a test that asserts a substring the production code never emitted would be the exact
+failure mode this SPEC exists to remove. The pre-M6 `update_preserve_inventory.go` (from `HEAD`)
+was overlaid under the M6 test:
+
+```
+$ git show HEAD:internal/cli/update_preserve_inventory.go > /tmp/uds-verify-m6/reverted.go
+$ go test -overlay=/tmp/uds-verify-m6/overlay.json \
+    -run 'TestMergeBackPreserveInventory_PartialRestore' -count=1 -v ./internal/cli/
+    update_preserve_partial_test.go:92:  error does not report the already-restored count:
+    update_preserve_partial_test.go:109: error does not report the already-restored count:
+    update_preserve_partial_test.go:129: error does not report the already-restored count:
+--- FAIL: TestMergeBackPreserveInventory_PartialRestore (0.21s)
+    --- FAIL: .../stat_failure_unreadable_backup_dir (0.15s)
+    --- FAIL: .../mkdirall_failure_parent_is_regular_file (0.05s)
+    --- FAIL: .../reports_restored_count (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.847s
+```
+
+All three subtests fail against the pre-M6 code, each for the counter-specific reason. The guard
+depends on the M6 change; it cannot pass without it. `/tmp/uds-verify-m6` was removed after the run.
+
+#### Baseline-attribution
+
+Measured in worktree `.claude/worktrees/e2-data-survival`, branch
+`feat/SPEC-UPDATE-DATA-SURVIVAL-001`, HEAD `6ad2f9fa3`, before any M6 edit:
+
+```
+$ go test -covermode=set -coverprofile=/tmp/uds-cov-base.out ./internal/cli/ && \
+    go tool cover -func=/tmp/uds-cov-base.out | grep mergeBackPreserveInventory
+.../internal/cli/update_preserve_inventory.go:400:	mergeBackPreserveInventory		64.3%
+```
+
+The uncovered blocks were the three failure returns at `:416` (stat), `:420` (`MkdirAll`), and
+`:424` (`copyFile`). No pre-existing test reached any of them — `update_preserve_inventory_test.go`
+covers only the success path (`:211`) and the empty-`backupDir` guard (`:238`).
+
+Regression gates re-measured on the M6 tree: `golangci-lint run --timeout=3m` → `0 issues.`;
+`go vet ./...` → exit 0; `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` →
+exit 0; `go test ./...` → exit 0, `0` lines matching `^FAIL|^--- FAIL`.
+
+#### Counter semantics
+
+`restored` counts entries **actually written to the project**. A `continue`d entry — one missing
+from the backup, which the function skips by design as a defensive race guard — does NOT increment
+the counter, because it was not restored. The reported figure is therefore "files successfully
+restored before the failure", not "inventory entries traversed". `total` is `len(inv.Files)`, the
+full inventory size, so `restored 1/2` reads as "1 of 2 inventory entries restored before stopping".
+
+#### Gaps (not verified in M6)
+
+- **The stat subtest is platform-skipped.** `stat_failure_unreadable_backup_dir` skips on Windows
+  (permission-bit denial is not modelled there) and when running as root (root bypasses permission
+  bits, so the branch would not be reached and the subtest would pass for the wrong reason). On the
+  Windows CI job that branch is therefore **unverified** — only the `MkdirAll` and `copyFile`
+  subtests run on every platform. This is a deliberate trade: the alternative (an injectable
+  `os.Stat` seam) would add a package-level test-only variable the SPEC does not require.
+- **The `continue` branch (backup missing, `os.ErrNotExist`) is not covered by these subtests.**
+  It is the one path through the loop that neither restores nor fails; no AC requires it.
+- **Residual uncovered blocks at 94.1%.** The function is not at 100%; the remaining uncovered
+  statements were not enumerated. The AC requires "strictly greater than 64.3%", which is met.
+- **The error-message wording is not asserted verbatim.** The subtests assert substrings
+  (`"stat backup blocked/second.md"`, `"restored 1/2"`), not the full formatted string, so a
+  reformatting that preserved both substrings would pass.
+
+#### Residual risk
+
+- **`restored++` placement is load-bearing and untested in isolation.** The counter increments only
+  after `copyFile` succeeds. If a future edit moved it above the copy, `restored` would over-count
+  by one and the subtests would fail (they assert `1/2`, not merely a non-zero count) — so the
+  guard does cover that specific regression, but only at the `1/2` fixture size. A larger
+  off-by-one introduced elsewhere in the loop would not necessarily surface.
+- **The stat subtest mutates filesystem permissions.** It `chmod 0o000`s a directory under
+  `t.TempDir()` and restores the mode in `t.Cleanup`. If the test panics between the chmod and the
+  cleanup registration, `t.TempDir()` cleanup would fail to descend into the unreadable directory.
+  The registration is immediately after the chmod, so the window is one statement wide.
+- **Shared-branch concurrency.** A merge from another actor landed on this branch during M5
+  (`68be0a27c`, two `.github/workflows/` YAML files, zero `.go` files). The M6 delegation was
+  itself interrupted mid-run. Both are evidence that this branch is not exclusively held; a merge
+  landing between the final verification and a future push would re-open the same window.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M4 of 6 complete; M5-M6 outstanding.
+run_status: audit-ready
+run_complete_at: 2026-08-01
+
+All six milestones are complete and committed on `feat/SPEC-UPDATE-DATA-SURVIVAL-001`:
+
+| Milestone | Subject | Covers |
+|---|---|---|
+| M1 | Failure contract — recovery manifest + restore entry point | REQ-UDS-019 ~ 025 |
+| M2 | Destructive-target registry + `.moai/memory/` backup + drift guard | REQ-UDS-006 ~ 010 |
+| M3 | On-disk backup for the three in-memory-only files + failure abort | REQ-UDS-001 ~ 005 |
+| M4 | HOME deletion-radius pinning via the `userHomeDirFn` seam | REQ-UDS-011 ~ 014 |
+| M5 | Non-vacuous user-area safety guard (fake deleted, real entry point driven) | REQ-UDS-015 ~ 018 |
+| M6 | Partial-restore reporting + failure-branch coverage | REQ-UDS-026 ~ 028 |
+
+Three of the six milestones (M4, M5, M6) carry a demonstrated falsification — the guard was
+observed FAILING against a mutation or against the pre-change production code — so their
+non-vacuity is evidence, not assertion. M3's abort path is proven by a call-recording spy rather
+than an inferred unchanged tree.
+
+Cross-cutting gates on the final tree: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64
+go build ./...` exit 0 (AC-UDS-018); `go test ./...` exit 0 with zero `FAIL` lines;
+`golangci-lint run` → `0 issues.`; `go vet ./...` exit 0; template neutrality `0`
+against merge-base `835ea7b91` (AC-UDS-019).
+
+Known carried debt, stated for the sync-phase auditor rather than buried: the M5 guard drives one
+of the four registry functions (the other three remain at `0.0%` under it); AC-UDS-013's
+real-HOME diff is trivially satisfied on a machine without `~/.claude/hooks`; three
+`userHomeDir()` call sites outside `ensureGlobalSettingsEnv` remain unrouted; and the M6 stat
+branch is unverified on Windows. Each is recorded in its milestone's Gaps section above.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-01
+sync_commit_sha: 70b6f31d1
+sync_status: audit-ready
+
+b12_self_test_a: "grep -c 'SPEC-UPDATE-DATA-SURVIVAL-001' CHANGELOG.md -> 0 before emission (no duplicate)"
+b12_self_test_b: "AC count: acceptance.md distinct AC-IDs = 20; CHANGELOG entry states 20/20 ACs PASS (match)"
+b12_self_test_c: "every file path named in the CHANGELOG entry verified present via ls / git show --stat"
+
+changelog_entry_position: "[Unreleased] > ### Added, first bullet"
+
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (frontmatter status:)"
+  acceptance.md: "in-progress -> completed (line-3 status marker; no YAML frontmatter in this artifact)"
+  plan.md: "no status marker present - intentionally none per plan.md header note"
+  progress.md: "no status marker present"
+
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync would test"
+
+cross_cutting_gates_reverified_at_sync:
+  go_build: "exit 0"
+  windows_cross_build: "GOOS=windows GOARCH=amd64 go build ./... exit 0"
+  go_test: "go test ./... exit 0, 0 FAIL lines"
+  golangci_lint: "exit 0, '0 issues.'"
+  go_vet: "exit 0"
+```
+
+MX Tag validation (sync sub-step of the 3-phase close): the SPEC's Go surface carries
+explanatory header comments naming the owning REQ on every new file; no missing
+`@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` was identified that the existing comments do not
+already cover, so no tag was added. This is a validation pass, not a no-op skip.
 
 ## §F Phase 4 Mode Selection
 

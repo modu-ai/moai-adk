@@ -594,10 +594,13 @@ func TestMergeYAML3Way(t *testing.T) {
 			baseData: "shared: base_val\n",
 			check: func(t *testing.T, result []byte) {
 				s := string(result)
-				// user_added is only in old, not in new template -> dropped
-				// (keys only in old are dropped per the implementation)
-				if contains(s, "user_added") {
-					t.Errorf("expected user_added to be dropped (not in new template), got %s", s)
+				// user_added is in old but in neither new nor base, so the 3-way
+				// merge classifies it as a USER addition and preserves it. The
+				// previous assertion pinned the opposite and contradicted this
+				// case's own name; it encoded the defect behind issue #1267,
+				// where a user's llm.agent_overrides was silently reset.
+				if !contains(s, "user_added") {
+					t.Errorf("expected user_added preserved (absent from base = user addition), got %s", s)
 				}
 			},
 		},
@@ -725,15 +728,33 @@ func TestDeepMerge3Way(t *testing.T) {
 			},
 		},
 		{
-			name:   "key only in old is dropped",
+			// Absent from base => the user added it => preserved (issue #1267).
+			name:   "key only in old and absent from base is preserved",
 			newMap: map[string]any{},
 			oldMap: map[string]any{
-				"old_only": "removed",
+				"old_only": "kept",
 			},
 			baseMap: map[string]any{},
 			check: func(t *testing.T, result map[string]any) {
-				if _, exists := result["old_only"]; exists {
-					t.Errorf("expected old_only to be dropped, got %v", result["old_only"])
+				if result["old_only"] != "kept" {
+					t.Errorf("expected old_only preserved, got %v", result["old_only"])
+				}
+			},
+		},
+		{
+			// Present in base but not in new => the TEMPLATE retired it => dropped.
+			// This is the half that keeps the fix from resurrecting stale config.
+			name:   "key only in old but present in base is dropped",
+			newMap: map[string]any{},
+			oldMap: map[string]any{
+				"retired": "removed",
+			},
+			baseMap: map[string]any{
+				"retired": "removed",
+			},
+			check: func(t *testing.T, result map[string]any) {
+				if _, exists := result["retired"]; exists {
+					t.Errorf("expected retired to be dropped, got %v", result["retired"])
 				}
 			},
 		},

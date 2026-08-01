@@ -1,6 +1,6 @@
 # Claude Code Sub-agents - Official Documentation Reference
 
-Source: https://code.claude.com/docs/ko/sub-agents
+Source: https://code.claude.com/docs/en/sub-agents
 Updated: 2026-01-06
 
 ## What are Sub-agents?
@@ -239,7 +239,7 @@ Review checklist:
 - No exposed secrets or API keys
 - Input validation implemented
 - Good test coverage
-- Performance considerations adddessed
+- Performance considerations addressed
 ```
 
 ### Debugger

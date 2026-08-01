@@ -38,7 +38,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 
 ## Authoritative Sources
 
-- SPEC (active): `the harness foundation policy` (foundation, supersedes the three V3R3 harness SPECs)
+- SPEC (active): `the harness foundation policy` (foundation policy)
 - Constitution: `.claude/rules/moai/design/constitution.md` §5 (5-Layer Safety) and §2 (Frozen/Evolvable zones)
 - AskUserQuestion contract: `.claude/rules/moai/core/askuser-protocol.md` (canonical reference)
 - Agent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
@@ -151,7 +151,7 @@ Operations:
 6. Render the result as a Markdown table in the user's `conversation_language`:
 
 ```
-Harness Learning Status (V3R4)
+Harness Learning Status
   Enabled:                  <bool from harness.yaml learning.enabled>
   Log entries:              <line count of usage-log.jsonl>
   Unique patterns:          <distinct event_type+subject+context_hash>
@@ -186,10 +186,10 @@ Operations:
    - `.claude/skills/moai-`
    - `.claude/rules/moai/`
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale. Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
-4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion and treats Layer 3 as a no-op pass-through for the foundation release.
+4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the foundation release. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion and treats Layer 3 as a no-op pass-through for the foundation release.
 5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.
 6. **On `Apply` selection**:
-   - **Layer 2 (Canary Check)**: Out of scope for the V3R4 foundation SPEC. Downstream `the harness lifecycle policy` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
+   - **Layer 2 (Canary Check)**: Out of scope for the foundation release. Downstream `the harness lifecycle policy` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
    - **Create snapshot**: Create directory `.moai/harness/learning-history/snapshots/<ISO-DATE>/` (ISO-8601 timestamp). For each file the proposal will touch, Read the current contents, compute a content hash, and Write a byte-identical copy into the snapshot directory. Write `manifest.json` recording absolute target paths and content hashes. The snapshot MUST be complete before any modification of the target file.
    - **Apply the change**: Read the proposal's `new_value`, perform the field replacement on `target_path` (typically a frontmatter `description` or `triggers` edit on a `hns-*` skill body — or a legacy `harness-*` skill body from an earlier generation). Use the `Edit` tool with exact `old_string` / `new_string` match.
    - **Move the proposal**: Move the proposal file from `.moai/harness/proposals/` to `.moai/harness/learning-history/applied/`. Append an `applied_at` ISO-8601 timestamp and the snapshot directory path to the JSON payload.
@@ -198,9 +198,9 @@ Operations:
 8. **On `Defer` selection**: Append `deferred_at` timestamp to the proposal metadata. Stop.
 9. **On `Reject` selection**: Move the proposal to `.moai/harness/learning-history/rejected/`. Stop.
 
-Edge case (EDGE-001): If the snapshot directory cannot be created (disk-full, permission), abort BEFORE any modification. Inform the user via the orchestrator's response. No partial state is left on disk.
+Edge case: If the snapshot directory cannot be created (disk-full, permission), abort BEFORE any modification. Inform the user via the orchestrator's response. No partial state is left on disk.
 
-Edge case (EDGE-006): Concurrent `/moai:harness apply` invocations are out of scope for the foundation SPEC. The orchestrator's AskUserQuestion contract is sequential by design.
+Edge case: Concurrent `/moai:harness apply` invocations are out of scope for the foundation release. The orchestrator's AskUserQuestion contract is sequential by design.
 
 ### 2.3 rollback
 
@@ -223,7 +223,7 @@ Operations:
    - Options:
      - `Disable (권장)` — Set `learning.enabled: false`. Snapshots and proposals are preserved.
      - `Keep enabled` — Stop without changes.
-     - `Disable temporarily (1h)` — Not supported in the V3R4 foundation SPEC; render guidance to re-enable manually via config edit and stop.
+     - `Disable temporarily (1h)` — Not supported in the foundation release; render guidance to re-enable manually via config edit and stop.
 2. On `Disable` selection: Use `Edit` tool on `.moai/config/sections/harness.yaml` to set `learning.enabled: false`. Comments and key ordering MUST be preserved (YAML round-trip discipline).
 3. On `Keep enabled`: stop without changes.
 4. On `Disable temporarily`: render guidance and stop.
@@ -250,18 +250,13 @@ After any successful verb execution, render a one-paragraph summary in the user'
 | `Error: learning.enabled: false` on `apply` | Subsystem disabled by user or admin | Re-enable manually via editing `.moai/config/sections/harness.yaml` (no `enable` verb yet — deferred to a downstream SPEC) |
 | `Error: no snapshot matching <date>` on `rollback` | Snapshot directory absent for requested date | Run `/moai:harness status` to list available snapshot dates under `.moai/harness/learning-history/snapshots/` |
 | AskUserQuestion schema not loaded | Deferred tool preload missed | The workflow body explicitly preloads via `ToolSearch(query: "select:AskUserQuestion")` before each `apply` or `disable` invocation |
-| Frozen-guard violation log permission failure | Disk-full or permission denied on `.moai/harness/learning-history/` | Per EDGE-003, the L1 Frozen Guard MUST still block the modification; log emission is best-effort audit |
+| Frozen-guard violation log permission failure | Disk-full or permission denied on `.moai/harness/learning-history/` | The L1 Frozen Guard MUST still block the modification; log emission is best-effort audit |
 
 ---
 
 ## Cross-references
 
-- SPEC (active): `.moai/specs/the harness foundation policy/spec.md`
-- SPEC (superseded by V3R4-001; preserved as historical reference):
-  - `.moai/specs/the harness-learning policy/spec.md` (the relevant requirements — 4-tier ladder preserved)
-  - `.moai/specs/the harness policy/spec.md` (Meta-harness skill + generated artifacts)
-  - `.moai/specs/the project-harness generation policy/spec.md` (16Q socratic interview + 5-Layer wiring)
-- Skill: `.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion — text-annotated only per the harness foundation policy §10 exclusion #10)
+- Skill: `.claude/skills/moai-harness-learner/SKILL.md` (Tier-4 surfacing companion)
 - Skill: `.claude/skills/moai-meta-harness/SKILL.md` (project-specific harness generation — text-annotated only)
 - README: `.moai/harness/README.md` (subsystem overview)
 - Attribution: `.claude/rules/moai/NOTICE.md` (Apache-2.0 attribution to revfactory/harness)

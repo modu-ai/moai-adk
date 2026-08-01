@@ -120,8 +120,8 @@ Refs: #123, SPEC-AUTH-001
 - SPEC-{ID}: {title}
 
 ## Checklist
-- [ ] Tests pass (`go test ./...`)
-- [ ] Linting pass (`golangci-lint run`)
+- [ ] Tests pass (project test command)
+- [ ] Lint and format pass (project toolchain)
 - [ ] No secrets committed
 - [ ] Documentation updated if needed
 ```
@@ -189,7 +189,7 @@ Refs: SPEC-AUTH-001
 ## Verification
 
 - [ ] All commit messages follow conventional format (show git log --oneline)
-- [ ] Branch name follows convention (feature/, fix/, chore/ prefix)
+- [ ] Branch name follows convention (feat/, fix/, refactor/, docs/, chore/ prefix)
 - [ ] No force pushes to main or protected branches (check reflog or CI)
 - [ ] PR has passing CI checks before merge
 - [ ] No merge conflict markers in committed files (grep for <<<<<<<)

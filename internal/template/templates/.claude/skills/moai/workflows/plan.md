@@ -40,7 +40,7 @@ Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{
 
 ## Purpose
 
-Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per the canonical GEARS migration policy). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for pre-v3 SPECs (see the canonical GEARS migration policy for the backward-compatibility window). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
 
 Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 
@@ -83,7 +83,6 @@ Constraints: 10k concurrent users, 100ms read latency target
 
 | Phase / Section | Sub-skill | Description |
 |---|---|---|
-| Phase 1: Brain Proposal Detection | `plan/context-discovery.md` | Brain IDEA scan and SPEC candidate surfacing |
 | Phase 2: Project Exploration | `plan/context-discovery.md` | Explore subagent codebase analysis |
 | Phase 3: Clarity Evaluation | `plan/context-discovery.md` | Clarity scoring (1-10) and skip conditions |
 | Phase 4: Deep Interview Loop | `plan/clarity-interview.md` | 1-5 round topic-focused interview |
@@ -116,7 +115,6 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 ```
 /moai plan [description] [--branch] [--no-issue]
   └─ context-discovery.md
-       ├─ Phase 1: Brain proposal scan
        ├─ Phase 2: Explore (optional)
        └─ Phase 3: Clarity evaluation (1-10 score)
             └─ clarity-interview.md

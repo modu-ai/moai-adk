@@ -402,6 +402,12 @@ func mergeBackPreserveInventory(projectRoot string, inv PreserveInventory, backu
 		return errors.New("mergeBackPreserveInventory: empty backupDir")
 	}
 
+	// restored counts entries actually written to the project, so a mid-run
+	// failure can report the boundary of the partial restore. A `continue`d
+	// entry (missing from the backup) was NOT restored and does not increment.
+	restored := 0
+	total := len(inv.Files)
+
 	for _, rel := range inv.Files {
 		srcPath := filepath.Join(backupDir, filepath.FromSlash(rel))
 		dstPath := filepath.Join(projectRoot, filepath.FromSlash(rel))
@@ -413,16 +419,18 @@ func mergeBackPreserveInventory(projectRoot string, inv PreserveInventory, backu
 			if errors.Is(statErr, os.ErrNotExist) {
 				continue
 			}
-			return fmt.Errorf("stat backup %s: %w", rel, statErr)
+			return fmt.Errorf("stat backup %s (restored %d/%d before failure): %w", rel, restored, total, statErr)
 		}
 
 		if mkErr := os.MkdirAll(filepath.Dir(dstPath), 0o755); mkErr != nil {
-			return fmt.Errorf("create restore parent for %s: %w", rel, mkErr)
+			return fmt.Errorf("create restore parent for %s (restored %d/%d before failure): %w", rel, restored, total, mkErr)
 		}
 
 		if copyErr := copyFile(srcPath, dstPath); copyErr != nil {
-			return fmt.Errorf("restore %s ← backup: %w", rel, copyErr)
+			return fmt.Errorf("restore %s ← backup (restored %d/%d before failure): %w", rel, restored, total, copyErr)
 		}
+
+		restored++
 	}
 
 	return nil

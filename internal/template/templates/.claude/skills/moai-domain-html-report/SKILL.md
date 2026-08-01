@@ -262,16 +262,24 @@ The `expert` tier's strict zero-JS guarantee is **untouched** — the mermaid ex
 
 #### Per-mode input fields
 
-The main fields each template fills (template-internal variable names):
+**The `.mustache` files are reference skeletons, not a strict renderer.** No mustache
+engine runs them — you author the HTML directly, using the skeleton for the section
+order, class names, and inline-SVG geometry of the mode. That is why the audience-tier
+enrichment (§ Audience Tiers) needs no template slot: the mermaid block, the per-section
+plain-language lead, and the glossary callout are written into the HTML you emit, in the
+positions the tier table calls for. The skeletons carry the `expert` layout; `basic` and
+`learn` add to it.
+
+The main fields each skeleton names (template-internal variable names):
 
 | Mode | Key input fields |
 |------|------------------|
-| `status` | `{{title}}`, `{{#metrics}}`, `{{#highlights}}`, `{{#completed_rows}}`, `{{#chart_bars}}` |
+| `status` | `{{title}}`, `{{date_range}}`, `{{#metrics}}`, `{{#highlights}}`, `{{#shipped_table}}`, `{{#velocity_chart.bars}}`, `{{#carryover.blocked}}`, `{{#carryover.in_review}}`, `{{#carryover.slipped}}` |
 | `incident` | `{{inc_id}}`, `{{severity}}`, `{{title}}`, `{{#tl_entries}}`, `{{#impact_rows}}`, `{{#actions}}` |
-| `plan` | `{{title}}`, `{{#kpis}}`, `{{#milestones}}`, `{{diagram_svg}}`, `{{#slices}}`, `{{#risks}}`, `{{#metrics}}` |
-| `explainer` | `{{title}}`, `{{lead}}`, `{{#steps}}`, `{{#config_tabs}}`, `{{#faq_items}}` |
+| `plan` | `{{title}}`, `{{goal_html}}`, `{{#summary_cells}}`, `{{#milestones}}`, `{{diagram_svg}}`, `{{#risks}}`, `{{#success_metrics}}` |
+| `explainer` | `{{title}}`, `{{tldr_html}}`, `{{#steps}}`, `{{#config_tabs}}`, `{{#faq_items}}` |
 | `financial` | `{{title}}`, `{{period}}`, `{{#kpis}}`, `{{#statement_rows}}`, `{{chart_height}}`, `{{#variance_bars}}` |
-| `pr` | `{{pr_ref}}`, `{{title}}`, `{{author}}`, `{{branch}}`, `{{files_changed}}`, `{{additions}}`, `{{deletions}}`, `{{#focus_items}}`, `{{#test_items}}`, `{{#rollout_steps}}` |
+| `pr` | `{{pr_ref}}`, `{{title}}`, `{{author}}`, `{{branch_from}}`, `{{branch_to}}`, `{{file_count}}`, `{{adds}}`, `{{dels}}`, `{{#focus_items}}`, `{{#tests}}`, `{{#rollout_steps}}` |
 
 ---
 
@@ -291,6 +299,8 @@ System-font-only rendering would fracture consistency across operating systems (
 | `explainer` | Noto Sans KR | Noto Serif KR | JetBrains Mono |
 | `editorial` | Pretendard | Chosunilbo Myungjo | JetBrains Mono |
 | `legal` | KoPubWorld Batang | KoPubWorld Batang Bold | JetBrains Mono |
+
+> The last two rows are **not** bundled modes. `editorial` and `legal` have no template and are documented here for reference and future extension only — the six modes above are the implemented set (§ Six Modes).
 
 CDN URLs and the `preconnect` pattern live in [`references/fonts.md`](references/fonts.md).
 
@@ -326,7 +336,7 @@ Every mode declares the same 8 CSS variables at `:root`.
 
 Greyscale: `--g100: #F0EEE6`, `--g300: #D1CFC5`, `--g500: #87867F`, `--g700: #3D3D3A`
 
-Full contrast verification and print tokens: [`references/design-tokens.md`](references/design-tokens.md)
+The variable block above is the complete contract — every mode declares exactly these variables at `:root`.
 
 ---
 
@@ -396,8 +406,9 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## References
 
 ### Design documents
-- [`references/design-tokens.md`](references/design-tokens.md) — CSS variable contract, palette, accessibility
 - [`references/fonts.md`](references/fonts.md) — font mapping, CDN URLs, preconnect pattern
+
+The CSS variable contract and palette are declared inline in § Design Tokens above.
 
 ### Templates
 - [`references/templates/status.html.mustache`](references/templates/status.html.mustache) — status mode

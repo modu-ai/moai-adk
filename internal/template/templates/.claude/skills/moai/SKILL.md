@@ -51,7 +51,7 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: Force Mode 3 (agent-team) of the Phase 4 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
+- `--team`: RETIRED — emits MODE_TEAM_UNAVAILABLE and falls back to Mode 5 (sub-agent)
 - `--solo`: Force Mode 5 (sub-agent — single sequential agent per phase)
 - No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 4; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
 
@@ -154,7 +154,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 ### goal - Condition-Declared Agentic Loop
 
 Purpose: Arm a completion condition (mechanical commands + model claims); the `stop-goal` Stop-hook evaluator blocks each turn-end until the conditions hold or a turn ceiling (default 30) is reached.
-Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
+Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 
@@ -241,7 +241,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 Skills: moai-harness-learner (Tier-4 surfacing companion). Project-specific harness generation is handled by the v4 Builder (`builder-harness` agent, Branch B).
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
-Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
+Authoritative contract: the harness foundation policy
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove / doctor)

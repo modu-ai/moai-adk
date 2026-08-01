@@ -32,7 +32,7 @@ progressive_disclosure:
 ## Target Agents
 
 - `manager-develop` - Applies checklist during backend API implementation (`cycle_type=tdd` or `cycle_type=ddd` context)
-- `/moai review --security` - Primary security-audit invocation surface (replaces the retired `/moai security` subcommand per SPEC-SUBCOMMAND-RETIRE-001); equivalently available as a per-spawn `Agent(general-purpose)` security specialist per `archived-agent-rejection.md` §C
+- `/moai review` with a security focus - Primary security-audit invocation surface; equivalently available as a per-spawn `Agent(general-purpose)` security specialist per `archived-agent-rejection.md` §C
 
 ## OWASP API Security Top 10
 
@@ -43,10 +43,10 @@ progressive_disclosure:
 | A3 | **Broken Object Property Level Authorization** | Are hidden fields exposed in responses? | Response DTOs, field-level filtering |
 | A4 | **Unrestricted Resource Consumption** | Can mass requests crash the server? | Rate limiting, enforce pagination limits |
 | A5 | **Broken Function Level Authorization** | Can regular users call admin APIs? | RBAC middleware, permission checks |
-| A6 | **SSRF** (Server-Side Request Forgery) | Can URL input access internal resources? | URL whitelist, block internal IPs |
-| A7 | **Security Misconfiguration** | Debug mode, default accounts exposed? | Separate prod config, inspect headers |
-| A8 | **Lack of Automated Threat Protection** | Can APIs be called in abnormal sequences? | State machine validation, business rules |
-| A9 | **Improper Asset Management** | Unused APIs, old versions exposed? | API inventory, version deprecation |
+| A6 | **Unrestricted Access to Sensitive Business Flows** | Can a sensitive flow be automated or abused in bulk? | Flow-level rate limits, anomaly detection, challenge on abuse signals |
+| A7 | **SSRF** (Server-Side Request Forgery) | Can URL input reach internal or metadata endpoints? | Egress allowlist, block internal/metadata ranges, validate fetch targets |
+| A8 | **Security Misconfiguration** | Debug mode, verbose errors, or default accounts exposed? | Production-hardened config, security headers, inspect deployed config |
+| A9 | **Improper Inventory Management** | Undocumented, shadow, or old-version endpoints reachable? | Maintain an API inventory; deprecate and decommission old versions |
 | A10 | **Unsafe API Consumption** | Are external API responses trusted blindly? | Validate external responses, set timeouts |
 
 ## Authentication Checklist

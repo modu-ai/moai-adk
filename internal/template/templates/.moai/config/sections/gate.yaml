@@ -13,6 +13,10 @@
 gate:
   enabled: true
   skip_tests: false
+  # Disable individual steps by step name (e.g. "mypy", "dotnet format",
+  # "pytest"). Note the inverted convention: an entry whose value is FALSE
+  # skips that step. Omit the section entirely to run every detected step.
+  disabled_steps: {}
   timeouts:
     vet: 30
     lint: 60

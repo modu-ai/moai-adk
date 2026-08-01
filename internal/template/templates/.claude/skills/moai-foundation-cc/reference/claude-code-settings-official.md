@@ -31,7 +31,7 @@ Enterprise Policy → User Settings → Project Settings → Local Settings
 Base Settings Framework (valid top-level fields):
 ```json
 {
- "model": "claude-sonnet-4-5-20250929",
+ "model": "claude-sonnet-5",
  "permissions": {},
  "hooks": {},
  "disableAllHooks": false,
@@ -66,7 +66,7 @@ The `model` field sets the default model. Only this single field is valid in set
 
 ```json
 {
- "model": "claude-sonnet-4-5-20250929"
+ "model": "claude-sonnet-5"
 }
 ```
 
@@ -209,7 +209,7 @@ Sub-agent Settings:
 ```json
 {
  "subagents": {
- "defaultModel": "claude-3-5-sonnet-20241022",
+ "defaultModel": "claude-sonnet-5",
  "defaultPermissionMode": "default",
  "maxConcurrentTasks": 5,
  "taskTimeout": 300000,
@@ -224,7 +224,7 @@ Sub-agent Settings:
  "custom-analyzer": {
  "description": "Custom code analysis agent",
  "tools": ["Read", "Grep", "Bash"],
- "model": "claude-3-5-sonnet-20241022"
+ "model": "claude-sonnet-5"
  }
  }
  }
@@ -290,7 +290,7 @@ claude settings show --model
 claude settings show --permissions
 
 # Set individual settings
-claude config set model "claude-3-5-sonnet-20241022"
+claude config set model "claude-sonnet-5"
 claude config set maxTokens 200000
 claude config set permissionMode "default"
 
@@ -312,7 +312,7 @@ claude config validate --strict
 Environment-Specific Settings:
 ```bash
 # Set environment-specific settings
-claude config set --environment development model "claude-3-5-haiku-20241022"
+claude config set --environment development model "claude-haiku-4-5-20251001"
 claude config set --environment production maxTokens 200000
 
 # Switch between environments
@@ -525,7 +525,7 @@ Team Configuration:
 {
  "team": {
  "standards": {
- "model": "claude-3-5-sonnet-20241022",
+ "model": "claude-sonnet-5",
  "testCoverage": 90,
  "codeStyle": "prettier",
  "documentation": "required"
@@ -544,7 +544,7 @@ Enterprise Policies:
 {
  "enterprise": {
  "policies": {
- "allowedModels": ["claude-3-5-sonnet-20241022"],
+ "allowedModels": ["claude-sonnet-5"],
  "maxTokens": 100000,
  "restrictedTools": ["Bash", "WebFetch"],
  "auditRequired": true

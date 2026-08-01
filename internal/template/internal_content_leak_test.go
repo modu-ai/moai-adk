@@ -387,9 +387,12 @@ type pedagogicalAllowlistEntry struct {
 // pedagogicalAllowlist defines the 5 legitimate pedagogical SPEC ID
 // illustrations preserved across the M4 cleanup pass. Two files contribute:
 //
-//   - .claude/rules/moai/core/askuser-protocol.md — Socratic interview
-//     example block demonstrating AskUserQuestion option-label format for
-//     SPEC selection UI (lines 194 / 199 / 204).
+//   - .claude/rules/moai/core/askuser-protocol-reference.md — Socratic
+//     interview example block demonstrating AskUserQuestion option-label
+//     format for SPEC selection UI (lines 137 / 142 / 147). The block moved
+//     here from askuser-protocol.md when the preview/recommendation detail
+//     was split into this path-scoped sidecar to shrink the always-loaded
+//     rule footprint; the illustrations themselves are unchanged.
 //   - .claude/agents/moai/manager-spec.md — SPEC ID regex pre-write
 //     self-check walkthrough demonstrating valid SPEC ID grammar
 //     (lines 146 / 161).
@@ -399,23 +402,23 @@ type pedagogicalAllowlistEntry struct {
 // (AskUserQuestion Q3, 2026-05-25).
 var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 	{
-		File:      ".claude/rules/moai/core/askuser-protocol.md",
-		LineStart: 194,
-		LineEnd:   194,
+		File:      ".claude/rules/moai/core/askuser-protocol-reference.md",
+		LineStart: 137,
+		LineEnd:   137,
 		SpecID:    "SPEC-V3R6-SPEC-ID-VALIDATION-001",
 		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #1)",
 	},
 	{
-		File:      ".claude/rules/moai/core/askuser-protocol.md",
-		LineStart: 199,
-		LineEnd:   199,
+		File:      ".claude/rules/moai/core/askuser-protocol-reference.md",
+		LineStart: 142,
+		LineEnd:   142,
 		SpecID:    "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
 		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #2)",
 	},
 	{
-		File:      ".claude/rules/moai/core/askuser-protocol.md",
-		LineStart: 204,
-		LineEnd:   204,
+		File:      ".claude/rules/moai/core/askuser-protocol-reference.md",
+		LineStart: 147,
+		LineEnd:   147,
 		SpecID:    "SPEC-V3R6-CLI-INTEGRATION-001",
 		Rationale: "Demonstrates AskUserQuestion option-label format for SPEC selection UI (Socratic example block, illustrative #3)",
 	},

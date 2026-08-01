@@ -3,6 +3,7 @@ package quality
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -585,6 +586,18 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	combined := stderr.String() + stdout.String()
 	output := strings.TrimSpace(combined)
 
+	// pytest exits 5 for "no tests collected" (EXIT_NOTESTSCOLLECTED). Nothing is
+	// wrong with the code — the suite is simply empty — so a project that has not
+	// written its first test must not be blocked from committing (issue #1265).
+	// Scoped to the pytest step: exit 5 carries no such meaning for other tools.
+	if stepName == pytestStepName && exitCodeOf(err) == pytestNoTestsCollected {
+		slog.Warn("pytest collected no tests: treating as pass",
+			"step", stepName,
+			"hint", "add tests, or set gate.skip_tests / gate.disabled_steps in .moai/config/sections/gate.yaml",
+		)
+		return true, ""
+	}
+
 	// Distinguish timeout from other failures (REQ-GATE-009).
 	if stepCtx.Err() == context.DeadlineExceeded {
 		msg := fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
@@ -605,6 +618,23 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 		output = err.Error()
 	}
 	return false, fmt.Sprintf("quality gate failed: %s\n\n%s", stepName, output)
+}
+
+// pytestStepName is the gate step name whose exit codes carry pytest semantics.
+const pytestStepName = "pytest"
+
+// pytestNoTestsCollected is pytest's documented EXIT_NOTESTSCOLLECTED status.
+// It means the run found no tests, not that anything failed.
+const pytestNoTestsCollected = 5
+
+// exitCodeOf extracts a process exit status from a command error.
+// Returns -1 when err is not an exit error (timeout, binary not found, ...).
+func exitCodeOf(err error) int {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return -1
 }
 
 // isDotnetRestoreFailure checks whether the stderr/stdout output contains NuGet restore failure markers.
