@@ -68,6 +68,7 @@ func init() {
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
+	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
@@ -228,18 +229,27 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// user to `moai init`. It deliberately does NOT echo the absolute cwd
 	// (acceptance.md §D.7 Secured: the structured error must not leak absolute
 	// paths or environment details).
+	// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-021/022/025: --restore is the
+	// lockout escape (plan.md §B.3). It is handled BEFORE the marker gate
+	// below, because a destroyed system.yaml is exactly the damage the restore
+	// entry point exists to repair — gating it would lock the user out of the
+	// only command that can restore the marker. The exemption is scoped to this
+	// branch alone; every other path still passes through the gate.
+	if restoreDir := getStringFlag(cmd, "restore"); restoreDir != "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for restore: %w", err)
+		}
+		return runUpdateRestore(cwd, restoreDir, out)
+	}
+
 	if !binaryOnly {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("get working directory for project-marker check: %w", err)
 		}
-		if !isMoAIProject(cwd) {
-			marker := filepath.ToSlash(filepath.Join(
-				defs.MoAIDir, "config", "sections", "system.yaml"))
-			return fmt.Errorf(
-				"not a moai project: %s not found in the current directory\n\n"+
-					"Run `moai init` to initialize a project here, or change to an "+
-					"existing project directory and retry", marker)
+		if err := checkProjectMarker(cwd); err != nil {
+			return err
 		}
 	}
 
@@ -825,12 +835,20 @@ func updateSettingsLocalEnv(settingsPath, key, value string) error {
 	})
 }
 
+// globalMoaiHooksDir returns the global moai hooks directory under homeDir.
+// It is the single named removal target for ensureGlobalSettingsEnv, so the
+// deletion-radius guard has one symbol to assert against instead of
+// re-deriving the path independently.
+func globalMoaiHooksDir(homeDir string) string {
+	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+}
+
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
 // All settings (env, permissions, teammateMode, hooks) are managed at the project level.
 // The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
 // are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
-	homeDir, err := userHomeDir()
+	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
@@ -838,7 +856,7 @@ func ensureGlobalSettingsEnv() error {
 	// Remove global hooks/moai directory if it exists.
 	// Hooks are project-level only; the global directory causes "No such file or directory"
 	// errors in non-initialized projects that reference $CLAUDE_PROJECT_DIR paths.
-	globalHooksDir := filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+	globalHooksDir := globalMoaiHooksDir(homeDir)
 	if _, err := os.Stat(globalHooksDir); err == nil {
 		_ = os.RemoveAll(globalHooksDir)
 	}

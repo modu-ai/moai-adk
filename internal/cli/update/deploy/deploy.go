@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/tui"
@@ -173,14 +174,85 @@ func MigrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
 		plLegacy.Done(fmt.Sprintf("Migrated %s → %s", legacyDisplayPath, filepath.Join(defs.MoAIDir, defs.StateSubdir)))
 	} else {
 		// Both exist — state directory takes precedence; remove legacy.
+		//
+		// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-008: the legacy directory holds
+		// user-authored data that nothing else in the update subsystem backs up
+		// (it is in none of preserveInventoryRoots, BackupMoaiConfig's
+		// .moai/config scope, or userOwnedScanRoots), so removing it outright is
+		// unrecoverable. Copy it out first, and abort the removal when the copy
+		// fails — a failed backup must never be followed by the destruction it
+		// was taken to survive.
+		backupDir, err := backupLegacyMemoryDir(projectRoot, legacyDir)
+		if err != nil {
+			plLegacy.Fail(fmt.Sprintf("Failed to back up %s: %v", legacyDisplayPath, err))
+			return fmt.Errorf("back up legacy %s: %w", legacyDisplayPath, err)
+		}
+
 		if err := os.RemoveAll(legacyDir); err != nil {
 			plLegacy.Fail(fmt.Sprintf("Failed to remove %s: %v", legacyDisplayPath, err))
 			return fmt.Errorf("remove legacy %s: %w", legacyDisplayPath, err)
 		}
-		plLegacy.Done(fmt.Sprintf("Removed legacy %s", legacyDisplayPath))
+		plLegacy.Done(fmt.Sprintf("Removed legacy %s (backed up to %s)", legacyDisplayPath, backupDir))
 	}
 
 	return nil
+}
+
+// legacyMemoryBackupSubdir is the name the legacy .moai/memory/ tree takes
+// inside the run-scoped backup directory. It is distinct from the config
+// backup's own layout, so a run whose config backup shares the same timestamp
+// directory cannot collide with it.
+const legacyMemoryBackupSubdir = "legacy-memory"
+
+// backupLegacyMemoryDir copies legacyDir into a run-scoped backup directory
+// under the project's backup root and returns that directory
+// (SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-008).
+//
+// The timestamp format matches backup.BackupMoaiConfig, so a memory backup and
+// a config backup taken in the same run land under one timestamped directory
+// and are restored together.
+func backupLegacyMemoryDir(projectRoot, legacyDir string) (string, error) {
+	timestamp := time.Now().Format(defs.BackupTimestampFormat)
+	dest := filepath.Join(projectRoot, defs.BackupsDir, timestamp, legacyMemoryBackupSubdir)
+
+	if err := copyTree(legacyDir, dest); err != nil {
+		return "", fmt.Errorf("copy %s to %s: %w", legacyDir, dest, err)
+	}
+	return dest, nil
+}
+
+// copyTree recursively copies the regular files under src into dst, recreating
+// the directory structure. Symlinks and other irregular entries are skipped:
+// this is a data-preservation copy, and following a link would write outside
+// the backup directory.
+func copyTree(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(target, defs.DirPerm)
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(target), defs.DirPerm); err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, defs.FilePerm)
+	})
 }
 
 // ScaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.
