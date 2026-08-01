@@ -107,7 +107,9 @@ rename. Schema source: the CI-watch handoff struct.
 **OQ2 cadence matrix** (single source of truth for iteration behavior):
 
 - iter 1, any mechanical sub_class → confirm + apply via AskUserQuestion (1st option =
-  "패치 적용 (권장)").
+  "apply the patch", carrying the recommended-option label). All option text renders in
+  the user's `conversation_language`; the label is its locale rendering — `(Recommended)`
+  in English, `(권장)` in Korean, and so on.
 - iter 1, semantic/unknown → escalate (no patch attempt) via AskUserQuestion with
   diagnosis report.
 - iter 2-3, mechanical + sub_class=trivial → silent apply + log (no AskUserQuestion).
@@ -123,9 +125,12 @@ rename. Schema source: the CI-watch handoff struct.
 `scripts/ci-watch/run.sh` to restart the watch loop.
 
 **Iteration 4+ escalation** (mandatory blocking, no silent timeout):
-1. (권장) 직접 수동 수정 — investigate and fix manually
-2. SPEC 수정 — revise the SPEC and restart implementation
-3. PR 포기 — close the PR and abandon this approach
+1. Fix manually (recommended) — investigate and fix by hand
+2. Revise the SPEC — amend the SPEC and restart implementation
+3. Abandon the PR — close it and drop this approach
+
+Render all three in the user's `conversation_language`, with the recommended-option
+label on the first.
 
 **`manager-develop` (cycle_type=autofix) spawn prompt** injects: handoff JSON, classification + sub_class,
 failed CI log + PR diff, mode directive (mechanical → propose unified-diff patch;
@@ -169,10 +174,10 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 
 - "Skip watch loop for small PRs" — small PRs fail CI too. Loop costs nothing, saves manual polling.
 - "Auxiliary failures should block merge" — advisory by SSoT definition. Edit `required-checks.yml` to change classification.
-- "semantic 실패도 auto-patch 시도해보자" — semantic failures (race, assertion) cannot be auto-patched without context; wrong patch is worse.
-- "force-push로 히스토리 정리하면 깔끔하다" — force-push destroys reviewer diff visibility. Always a new commit.
-- "iter 3 이후 timeout" — silent timeout prohibited; user must decide explicitly.
-- "trivial fix는 confirm 없이 바로 적용하자" — iter 1 always confirms; iter 2+ trivial may silent apply.
+- "Try auto-patching semantic failures too" — semantic failures (race, assertion) cannot be auto-patched without context; a wrong patch is worse.
+- "Force-push to tidy the history" — force-push destroys reviewer diff visibility. Always a new commit.
+- "Time out after iteration 3" — silent timeout prohibited; the user must decide explicitly.
+- "Apply trivial fixes without confirming" — iter 1 always confirms; iter 2+ trivial may apply silently.
 
 ## Red Flags
 
@@ -190,7 +195,7 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 - [ ] `go test ./internal/ciwatch/... ./internal/cli/pr/... -race` passes
 - [ ] `internal/ciwatch/` coverage >= 85%
 - [ ] No ANSI codes in `FormatStatusUpdate()` output
-- [ ] `EmitReadyToMergeReport` first option carries `(권장)`
+- [ ] `EmitReadyToMergeReport` first option carries the recommended-option label in the active `conversation_language`
 - [ ] CLI does NOT call AskUserQuestion
 - [ ] `grep -r 'push -f\|push --force' scripts/ci-autofix/ scripts/ci-watch/` returns no matches
 - [ ] Audit log `.moai/logs/ci-autofix/<PR>-<DATE>.md` contains every iteration
