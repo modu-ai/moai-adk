@@ -64,7 +64,7 @@ Every sync-phase fan-out site, listed here rather than only at the site itself. 
 
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
-**Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it at Phase 7 (Quality Check) to gather the four quality dimensions in one parallel read-only pass. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — Phase 7 proceeds on its existing path with no error, no warning, and no interruption.
+**`FO-SYNC-1`.** **Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator shall launch it at Phase 7 (Quality Check) to gather the four quality dimensions in one parallel read-only pass. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — Phase 7 proceeds on its existing path with no error, no warning, and no interruption.
 
 The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. Every judge is read-only and reports an `evidence_gaps` entry or a structured blocker report rather than prompting the user. The aggregate score is cited as evidence only — the binding sync-phase verdict stays with `sync-auditor`, and neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by a workflow run.
 
