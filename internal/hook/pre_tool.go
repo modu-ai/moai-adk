@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -657,6 +658,13 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 				VetTimeout:  gate.VetTimeoutDuration(),
 				LintTimeout: gate.LintTimeoutDuration(),
 				TestTimeout: gate.TestTimeoutDuration(),
+			}
+			// Map gate.disabled_steps through verbatim (issue #1265): the
+			// runner reads a FALSE value as "skip this step", so normalising
+			// the values here would silently stop the skip from applying.
+			if len(gate.DisabledSteps) > 0 {
+				qcfg.DisabledSteps = make(map[string]bool, len(gate.DisabledSteps))
+				maps.Copy(qcfg.DisabledSteps, gate.DisabledSteps)
 			}
 			// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
 			ag := gate.AstGrepGate

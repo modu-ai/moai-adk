@@ -353,9 +353,9 @@ type RalphConfig struct {
 // compatibility.
 type WorkflowConfig struct {
 	// Nested canonical fields (yaml-aligned with workflow.yaml top-level keys).
-	AutoClear      AutoClearConfig        `yaml:"auto_clear"`
-	DefaultMode    string                 `yaml:"default_mode"`
-	ExecutionMode  string                 `yaml:"execution_mode"`
+	AutoClear     AutoClearConfig `yaml:"auto_clear"`
+	DefaultMode   string          `yaml:"default_mode"`
+	ExecutionMode string          `yaml:"execution_mode"`
 	// AgenticLoop mirrors workflow.agentic_loop.* — the pipeline-level completion-loop
 	// iteration ceiling. DISTINCT from LoopPrevention (per-operation diagnostic fix-loop
 	// bound) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4 — the two MUST NOT be aliased.
@@ -368,7 +368,7 @@ type WorkflowConfig struct {
 	// through the template to all users INERT; maintainers of shared
 	// multi-session checkouts opt in via local config. Additive BELOW the
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
-	BranchGuard    BranchGuardConfig      `yaml:"branch_guard"`
+	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
 	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
 	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
@@ -595,6 +595,13 @@ type GateConfig struct {
 	Timeouts GateTimeouts `yaml:"timeouts"`
 	// AstGrepGate configures the ast-grep domain rule scan step (SPEC-SLQG-001).
 	AstGrepGate AstGrepGateConfig `yaml:"ast_grep_gate"`
+
+	// DisabledSteps disables individual gate steps by step name, mirroring
+	// quality.GateConfig.DisabledSteps. Note the runner's inverted convention:
+	// an entry whose value is FALSE skips that step (issue #667 Fix 3). Before
+	// issue #1265 this field did not exist, so the runner's knob was documented
+	// but unreachable from any config file.
+	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 }
 
 // AstGrepGateConfig holds configuration for ast-grep quality gate scanning.
