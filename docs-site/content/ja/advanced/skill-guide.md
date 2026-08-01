@@ -102,6 +102,7 @@ MoAI-ADK テンプレートには合計 **27 個の `moai-*` スキル** が 5 �
 | `moai-ref-llm-security`    | AI/LLM 防御セキュリティ (プロンプトインジェクション、OWASP LLM Top 10) |
 | `moai-ref-secops`          | DevSecOps/コンテナ/API 運用防御セキュリティ             |
 | `moai-ref-supply-chain`    | ソフトウェアサプライチェーン防御セキュリティ (SBOM, SLSA, Sigstore) |
+| `moai-ref-seo`             | 検索可視性とクロール可能性 (正規 URL、ページ別メタデータ、JSON-LD) |
 
 ### Meta/Harness (システム拡張) - 2 個
 

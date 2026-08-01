@@ -148,6 +148,19 @@ Seven criteria cannot be compensated by high scores in other dimensions. ANY sin
 
 **(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
+### M6: Finding-consumption discipline (over-engineering brake)
+
+M2 instructs you to assume defects exist. That stance is deliberate and stays — but it has a predictable side effect: an auditor told to find gaps reports some even when the SPEC is sound, because reporting is what it was asked to do. M6 is the counterweight, and it binds the **consumption** stage, never the finding stage. Keep reporting everything you find.
+
+Classify every non-must-pass finding as one of:
+
+- **blocking** — the finding affects the SPEC's correctness, its internal consistency, or a criterion this document actually states (M5 must-pass failures are always blocking).
+- **optional** — everything else: a section that could be richer, a requirement that could be split more finely, a hypothetical the SPEC does not claim to cover, a preference about wording or ordering.
+
+Carry the classification in the `## Defects Found` list so the orchestrator can route on it: blocking findings are fixed before the verdict is revisited; optional findings are surfaced and left to the orchestrator's discretion.
+
+The verdict remains anchored to the M5 must-pass firewall and the rubric scores. **A long list of optional findings does not by itself justify a FAIL**, and it must not be used to manufacture one. Routing every optional finding into a revision produces speculative requirements, premature abstraction, and acceptance criteria for cases the SPEC never claimed — the same over-engineering the Enforce Simplicity core behavior forbids (`.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4).
+
 ## Verification Execution Mandate
 
 [ZONE:Evolvable] [HARD] Read-only verification during audit follows the SSOT tool-selection and batching rules: `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (prefer the Grep / Glob / Read tools over their Bash equivalents) and § Parallel Execution (independent read-only verifications MUST be issued as a multi-tool batch within a single response turn; serial across-turns issuance multiplies round-trip latency). Reserve Bash for compound shell pipelines, CLI tools with no native equivalent (`git`, `gh`, `jq`), and cases needing shell variable expansion. Origin: an earlier plan-auditor latency meta-analysis (53 tool calls × ~5s avg = 4m57s wall-time) targeting ~1m30s via native-tool preference + batching.
@@ -216,7 +229,7 @@ For pure markdown audit (spec/plan/acceptance), Grep tool with regex is faster +
 
 ### Cross-References
 
-- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (HARD multi-tool batching obligation + 7-item canonical example)
+- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (HARD multi-tool batching obligation); the 7-item canonical example is in `agent-common-protocol-reference.md`
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` (Verification Class Taxonomy + grouping heuristic)
 - The canonical plan-auditor latency meta-analysis — origin reference
 
@@ -355,8 +368,8 @@ Overall Score: {0.0-1.0}
 | Traceability | {score} | {0.25/0.50/0.75/1.0 band} | {line citations} |
 
 ## Defects Found (structured defect-list)
-D1. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
-D2. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
+D1. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Class: blocking | optional — Required fix: {concrete, actionable fix instruction}
+D2. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Class: blocking | optional — Required fix: {concrete, actionable fix instruction}
 ...
 (If no defects found: "No defects found.")
 (On a FAIL verdict this defect-list is the machine-consumable fix route: the orchestrator routes fixes directly from it, and the confirming re-audit is scoped to this enumerated defect delta rather than a from-scratch full re-audit — within the Retry Loop Contract ceilings. Verdict authority stays with this agent: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.)

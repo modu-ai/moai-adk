@@ -101,6 +101,7 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-ref-llm-security`    | AI/LLM defensive security (prompt injection, OWASP LLM Top 10) |
 | `moai-ref-secops`          | DevSecOps/container/API operational defensive security             |
 | `moai-ref-supply-chain`    | Software supply-chain defensive security (SBOM, SLSA, Sigstore) |
+| `moai-ref-seo`             | Search visibility and crawlability (canonical URLs, per-page metadata, JSON-LD) |
 
 ### Meta/Harness (System Extension) - 2
 
