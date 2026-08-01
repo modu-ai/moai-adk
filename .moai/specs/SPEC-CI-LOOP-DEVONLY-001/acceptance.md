@@ -23,9 +23,10 @@ AC-CLD-010의 선택자는 실행되지 않은 채 존재하지 않는 테스트
 | REQ-CLD-005 | AC-CLD-005 | REQ-CLD-015 | AC-CLD-013 |
 | REQ-CLD-006 | AC-CLD-004 | REQ-CLD-016 | AC-CLD-001, 002, 005, 017 |
 | REQ-CLD-007 | AC-CLD-007 | REQ-CLD-017 | AC-CLD-015 |
-| REQ-CLD-008 | AC-CLD-006 | REQ-CLD-018 | **미커버 — 부채** |
+| REQ-CLD-008 | AC-CLD-006 | REQ-CLD-018 | AC-CLD-019 |
 | REQ-CLD-009 | AC-CLD-008 | REQ-CLD-019 | AC-CLD-014 |
 | REQ-CLD-010 | AC-CLD-008 | (결정 B 검증) | AC-CLD-016 |
+| (§4 범위 제외 가드) | AC-CLD-018 | | |
 
 **정정 2건 (감사 N9 반영)** — 초판 표는 두 곳을 과대 주장했다.
 
@@ -36,14 +37,21 @@ AC-CLD-010의 선택자는 실행되지 않은 채 존재하지 않는 테스트
   **목록 등재 여부**와 **분리 테스트**만 관측한다 — 삭제가 아니라 아카이브로 동작하는지는
   어느 명령도 관측하지 않는다. 초판 주석은 "아카이브 경로를 택했으므로 안전하다"는
   **채택한 메커니즘으로부터의 논증**이었지 시험이 아니다.
-  → **문서화된 부채로 인정한다.** 다만 초판이 적은 이연 사유("통합 시험이 필요하다")는
-  부정확하다 — `archiveSkill(projectRoot, skillID string)`
-  (`internal/cli/update_archive.go:66`)은 평범한 루트 경로를 받으므로 `t.TempDir()`로
-  **단위 시험이 가능하며**, `moai update` 전체 실행 없이 복사-후-제거 동작을 관측할 수 있다.
-  이연 사유는 "시험이 불가능해서"가 아니라 **이 SPEC의 범위를 배포 격리로 한정했기 때문**이다.
-  run-phase에서 저렴하게 추가할 수 있다.
+  → **해소됨 (v0.3.0, AC-CLD-019).** 경위를 기록해 둔다. 초판이 적은 이연 사유
+  ("통합 시험이 필요하다")는 부정확했다 — `archiveSkill(projectRoot, skillID string)`
+  (`internal/cli/update_archive.go`, 내용 앵커 `func archiveSkill`)은 평범한 루트 경로를
+  받으므로 `t.TempDir()`로 **단위 시험이 가능하다**. 실제 이연 사유는 "시험이 불가능해서"가
+  아니라 **이 SPEC의 범위를 배포 격리로 한정했기 때문**이었다. run-phase 진입 시점에
+  GOOS가 승격을 결정해 AC-CLD-019로 채택했다. 부채가 아니라 판정 대상이다.
 
-미커버 REQ: REQ-CLD-018 1건 (위 부채).
+**AC-CLD-018의 REQ 귀속 (해당 없음 — 명시)**: AC-CLD-018은 어떤 REQ도 직접 판정하지
+않는다. 이것은 요구사항 검증이 아니라 **범위 가드**다 — spec.md §4 "Out of Scope —
+CLI 동작 변경"이 선언한 불변 조건(플래그 집합·종료 코드·`--abort`/`--report` 동작)이
+M6의 문자열 편집으로 훼손되지 않았음을 관측한다. REQ-CLD-008(부재 스크립트 안내 제거)의
+**편집 봉투를 지키는** 짝이지만 REQ-CLD-008 자체는 AC-CLD-006이 판정하므로,
+표에 REQ↔AC 행을 만들지 않고 별도 행으로 표기했다. 없는 매핑을 지어내지 않는다.
+
+미커버 REQ: **0건**.
 
 ---
 
@@ -495,6 +503,92 @@ grep -rln 'required-checks.yml' internal/template/templates/ | wc -l
 
 ---
 
+## AC-CLD-018 — `moai pr watch`의 동작·플래그·종료 코드가 M6 편집으로 변하지 않는다
+
+**Given** M6가 `pr_watch_cmd.go`의 사용자 노출 문자열만 편집하고
+**When** 편집 후 바이너리를 재빌드하면
+**Then** 네 가지 관측값이 편집 전과 동일하다.
+
+```bash
+make build >/dev/null 2>&1; echo "build-exit=$?"
+test ! -e .moai/state/ci-watch-active.flag; echo "flag-absent=$?"
+moai pr watch 999 --branch main >/dev/null 2>&1; echo "default-exit=$?"
+echo "flags=$(moai pr watch --help 2>&1 | grep -oE '\-\-(abort|branch|report)' | sort -u | wc -l | tr -d ' ')"
+moai pr watch --abort >/dev/null 2>&1; echo "abort-exit=$?"
+moai pr watch 999 --report >/dev/null 2>&1; echo "report-exit=$?"
+```
+
+- **baseline `[실행됨]`** — 이 판을 쓰면서 네 단언을 재실행해 관측:
+  ```
+  build-exit=0
+  flag-absent=0
+  default-exit=0
+  flags=3
+  abort-exit=1
+  report-exit=0
+  ```
+- **통과 기준**: 위 여섯 값과 **동일** (baseline == 통과값, 설계상 의도)
+- **[HARD] 재빌드 선행**: 판정은 반드시 M6 편집을 반영해 `make build`한 바이너리로
+  수행한다. 낡은 바이너리로 실행하면 이 AC는 편집을 전혀 관측하지 못하는
+  **공허한 통과**가 된다 — 그래서 `make build`를 명령의 첫 줄에 넣었다.
+  같은 이유로 `build-exit=0`이 통과 조건에 포함된다.
+- **`flag-absent=0`이 전제인 이유**: `abort-exit=1`은 `.moai/state/ci-watch-active.flag`가
+  **부재할 때**의 값이다. 상태 파일이 존재하면 `SetAbortFlag`가 성공해 종료 코드가 달라진다.
+  전제를 명령에 넣지 않으면 이 줄은 환경에 따라 흔들린다.
+- **baseline == 통과값인 이유 (판정 규율의 의도적 예외)**:
+  이 문서의 § 판정 규율은 "baseline이 통과값과 같으면 게이트가 아니다"라고 적었다
+  (AC-CLD-012의 교훈). AC-CLD-018은 그 발견적 규칙을 **의도적으로 위반한다** —
+  이것은 **전이(transition) 단언이 아니라 불변(invariance) 단언**이기 때문이다.
+  전이 AC는 "무엇이 바뀌었는가"를 묻고 불변 AC는 "무엇이 바뀌지 않았는가"를 묻는다.
+  후자에서 baseline과 통과값이 같은 것은 결함이 아니라 정의다.
+- **그럼에도 공허하지 않은 이유**: 통과값이 baseline과 같아도 이 AC는 **실패할 수 있다.**
+  M6의 문자열 편집이 `RunE` 분기(`flags.abort`/`flags.report` 조기 반환), 플래그 정의
+  (`cmd.Flags().BoolVar` 3줄), 또는 반환값(`return nil` vs `return fmt.Errorf`)을
+  건드리면 `default-exit`·`flags`·`abort-exit`·`report-exit` 중 하나가 즉시 어긋난다.
+  실제로 문자열 3곳 중 2곳(72·73행)은 `RunE` **본문 안**에 있어 편집 사고 반경 안에 있다.
+  감시 대상이 없는 것이 아니라, 감시 대상이 "변하지 않음"인 것이다.
+- **담당 마일스톤**: M6.
+- **이 AC가 판정하지 않는 것**: 문자열이 실제로 제거되었는지는 AC-CLD-006이 판정한다.
+  둘은 짝이다 — AC-CLD-006은 "바뀌어야 할 것이 바뀌었나", AC-CLD-018은
+  "바뀌지 말아야 할 것이 그대로인가".
+
+---
+
+## AC-CLD-019 — `archiveSkill`이 사용자 저작물을 삭제가 아니라 복사로 보존한다
+
+**Given** 은퇴 스킬 디렉터리에 사용자가 작성한 내용이 들어 있고
+**When** `archiveSkill`이 호출되면
+**Then** 아카이브 대상에 같은 내용이 존재하고, 원본은 이 호출로 사라지지 않는다.
+
+```bash
+go test ./internal/cli/ -run TestArchiveSkill_PreservesUserContent -count=1 -v 2>&1 \
+  | grep -q '^--- PASS: TestArchiveSkill_PreservesUserContent'; echo "exit=$?"
+```
+
+- **baseline `[미존재]`**: 이 가드는 아직 없다. 통과 기준이 "존재 + PASS"이므로
+  공허 통과가 불가능하다 (AC-CLD-003과 같은 계열).
+- **통과 기준**: `exit=0`
+- **테스트가 관측해야 하는 것 (run-phase 구현 계약)**:
+  1. `t.TempDir()` 아래 `.claude/skills/<id>/`에 **식별 가능한 사용자 저작 내용**을 둔다
+  2. `archiveSkill(root, id)` 호출
+  3. `.moai/archive/skills/<archiveVersion>/<id>/` 아래에 **바이트 동일한** 내용이 존재
+  4. 원본 `.claude/skills/<id>/`가 **호출 후에도 그대로 존재**
+- **3번이 아카이브와 삭제를 가르는 관측이다**: 삭제 구현이었다면 아카이브 경로에
+  아무것도 없다. 존재만 확인하고 내용을 대조하지 않으면 빈 디렉터리를 만들어 놓는
+  구현도 통과하므로, **바이트 대조**까지가 판정이다.
+- **4번은 복사→이동 회귀를 막는다**: `archiveSkill`은 복사만 하고 제거하지 않는다
+  (내용 앵커 `func archiveSkill` — `copyDirAll` 후 `return nil`, `os.Remove` 없음).
+  누군가 이를 `os.Rename`(이동)으로 바꾸면 4번이 실패한다.
+- **이 AC가 판정하지 않는 것 (중요)**: "원본이 결국 사라지는가"는 여기서 관측하지
+  **않는다.** `archiveSkill`도 `archiveLegacySkills`도 원본을 제거하지 않기 때문이다 —
+  원본의 소멸은 update의 clean-reinstall이 `.claude/skills/`를 재배포할 때
+  은퇴 스킬이 템플릿에 없어서 다시 깔리지 않는 결과일 뿐이다. 따라서 이 단위 시험에
+  "호출 후 원본 부재"를 단언하면 **코드에 없는 모델을 기입**하게 된다.
+  REQ-CLD-018이 요구하는 것은 "삭제하지 않을 것"이며, 그것은 3+4로 관측된다.
+- **담당 마일스톤**: M5.
+
+---
+
 ## 판정 규율
 
 - **도달성**: AC-CLD-003(임베드 FS), AC-CLD-004(해시 신선도), AC-CLD-006(바이너리 문자열)이
@@ -507,19 +601,25 @@ grep -rln 'required-checks.yml' internal/template/templates/ | wc -l
   fatal abort로 잘린 출력을 개선으로 읽었다(18→11, 77→49). 이제 `validate-exit`을 함께 본다.
 - **baseline이 통과값과 같으면 게이트가 아니다**: AC-CLD-012는 초판에서 `diff-exit=0`
   하나만 요구했고 그것이 현재 값이었다 — 작업 없이 통과했다.
+  **의도적 예외 1건**: AC-CLD-018은 불변(invariance) 단언이라 baseline == 통과값이
+  정의상 성립한다. 대신 재빌드를 명령에 넣어 낡은 바이너리로 인한 공허 통과를 막았다
+  (해당 AC 주석 참조).
 - **명령에 없는 판정은 없다**: 같은 AC의 "각 10행" 조건은 산문에만 있었다. 명령에 넣었다.
 - **변이 검증 완료**: AC-CLD-004, 007, 009, 010, 012 (양쪽 상태 출력을 각 AC에 기록).
-  나머지는 baseline ≠ 통과값이므로(27≠0, 9≠0, 5≠0, 73≠65, 3≠0, 4≠0, 11≠0)
+  나머지 전이 AC는 baseline ≠ 통과값이므로(27≠0, 9≠0, 5≠0, 73≠65, 3≠0, 4≠0, 11≠0)
   수정을 되돌리면 자동 실패한다.
+  AC-CLD-018은 전이가 아니라 불변 단언이라 이 논거가 적용되지 않으며,
+  비공허성은 재빌드 선행 + `RunE` 본문 내 편집 사고 반경으로 확보한다.
 - **비공허성**: 전 선택자가 현재 0이 아닌 매치를 반환함을 확인했다.
-  예외는 AC-CLD-003(미존재 가드, 통과 기준이 "존재 + PASS")뿐이다.
+  예외는 미존재 가드 2건 — AC-CLD-003, AC-CLD-019 — 이며 둘 다 통과 기준이
+  "존재 + PASS"라 공허 통과가 불가능하다.
 - **내용 앵커**: 행 번호·커밋 SHA를 앵커로 쓰지 않는다. AC-CLD-006의 41/72/73은
   baseline 원문 인용일 뿐이고, 선택자 자체는 문자열 토큰에 고정한다.
 
 ## Definition of Done
 
-- AC-CLD-001 ~ AC-CLD-017 전부 통과
+- AC-CLD-001 ~ AC-CLD-019 전부 통과
 - 미해결 명확화 항목 0건 (2건 모두 종결 — plan.md §D)
-- REQ-CLD-018은 문서화된 부채로 이월 (커버리지 표 참조)
+- 미커버 REQ 0건 (REQ-CLD-018은 AC-CLD-019가 판정)
 - `go test ./...` 회귀 없음
 - 커밋이 EXTEND 봉투(plan.md §B) 밖 파일을 건드리지 않음

@@ -94,6 +94,30 @@ iteration-3에서 이미 정정되어 154행이 "한 방향만 막혀 있다"로
 - 실제 `moai init` 배포 산출물을 관측하지 못했다 (임베드 FS + catalog 해시로 대체 판정)
 - `.github/required-checks.yml`의 사용자 측 생성 경로 자체는 미확인 (결정 B로 이연)
 
+**v0.3.0 개정 (run-phase 진입 결정 반영, 범위 한정 amendment)**
+
+GOOS 결정 3건 중 **#3(저비용 판정 승격)** 과 **#2(archiveVersion)** 를 산출물에 반영했다.
+요구사항(GEARS 19건)과 범위 제외는 손대지 않았고 판정 계층만 확장했다.
+
+| 변경 | 내용 |
+|---|---|
+| AC-CLD-018 신설 (M6) | `moai pr watch` 동작·플래그·종료 코드 불변. `make build` 선행 + 상태 파일 부재 전제를 명령에 포함. plan.md §B "판정 공백"은 종결로 재작성(경위 보존) |
+| AC-CLD-019 신설 (M5) | `archiveSkill`이 삭제가 아니라 복사로 보존. `grep -q '^--- PASS: TestArchiveSkill_PreservesUserContent'` 형태 |
+| 커버리지 표 | REQ-CLD-018 부채 → AC-CLD-019. **미커버 REQ 0건**. AC-CLD-018은 REQ가 아니라 spec.md §4 범위 가드임을 명시 |
+| 봉투 (plan.md §B) | Go 측 3 → 5. `update_archive_test.go`(확장·필수), `pr_watch_cmd_test.go`(신설·선택) |
+| M5 미결 결정 | `archiveVersion` "v2.16" 재사용으로 종결 (미결 항목 → 결정) |
+| DoD | `AC-CLD-001 ~ AC-CLD-019`, 부채 이월 줄 제거 |
+
+**AC-CLD-018 baseline 재실행** (이 개정 중 실측):
+`default-exit=0` / `flags=3` / `abort-exit=1` / `report-exit=0` — v0.2.0 plan.md §B가
+기록한 네 값과 일치. `abort-exit=1`은 `.moai/state/ci-watch-active.flag` 부재 조건에서의
+값이므로 전제를 명령에 명시했다.
+
+**AC-CLD-019 관측 범위 조정 (기록)**: "호출 후 원본 부재"는 단언하지 않는다 —
+`archiveSkill`도 `archiveLegacySkills`도 원본을 제거하지 않으므로(복사 전용) 그 단언은
+코드에 없는 모델을 기입하게 된다. 아카이브↔삭제 구분은 **아카이브 측 바이트 대조**가
+담당하고, 복사→이동 회귀는 **원본 잔존 확인**이 막는다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
@@ -105,3 +129,40 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**입력 파라미터**
+
+| 항목 | 값 |
+|---|---|
+| tier | M |
+| scope (파일 수) | 28 (템플릿 14 + 미러 10 + 저장소 루트 1 + Go 3) |
+| domain count | 5 (템플릿 문서 / 규칙·헌법 레지스트리 / 스킬·카탈로그 / Go CLI / 설정 YAML) |
+| file language mix | markdown·YAML 우세 (25/28), Go 3 |
+| concurrency benefit | LOW — M1→M2·M3→M4→M5 의존 사슬이 직렬이고, M4→M5는 `TestLegacySkillIDsNotEmbedded`가 기계적으로 강제 |
+
+**모드 평가**
+
+| 모드 | 선택 | 사유 |
+|---|---|---|
+| 1 trivial | 미선택 | 28파일·문서 재작성 포함, 사소 변경 아님 |
+| 2 background | 미선택 | 쓰기 작업 (읽기 전용 아님) |
+| 3 agent-team | 미선택 | RETIRED (tombstone) |
+| 4 parallel | 미선택 | 도메인 5개이나 research-heavy가 아니라 편집-heavy이며, 마일스톤 간 의존이 직렬이라 병렬 이득 없음 |
+| 5 sub-agent | **선택** | 마일스톤 단위 순차 위임. Tier M이며 Section A-E 위임 템플릿 적용 |
+| 6 workflow | 미선택 | 단일 균일 변환 규칙이 아님 — `ci-autofix-protocol.md` 재작성·레지스트리 절 재작성은 의미 변경이며 파일 간 의존(레지스트리↔소스 동일 커밋)이 존재 |
+
+**Decision: sub-agent**
+
+**정당화**: 편집 대상은 많으나 변환 규칙이 파일마다 다르고(삭제 / 참조 제거 / 본문 재작성 / Go 문자열 교정), M1→M3→M4→M5 의존이 직렬로 강제된다. Anthropic의 coding-task parallelism caveat에 따라 코딩·편집 성격 작업은 순차 서브에이전트가 기본이며, Mode 6는 "단일 균일 기계 변환 + 파일 간 무의존"만 허용하므로 해당하지 않는다.
+
+**Implementation Kickoff Approval**: 통과 (사용자 승인 수신). Phase 0.5 plan-auditor 재실행은 사용자 지시(감사 3회 소진, 0.84 PASS-WITH-FIXES)로 생략 — skip-eligible 0.90 자동 경로가 아니라 **명시적 사용자 오버라이드**로 기록한다.
+
+**착수 시 확정된 사용자 결정 3건**
+
+| # | 결정 | 값 |
+|---|---|---|
+| 1 | run-phase 진입 | 승인 |
+| 2 | M5 `archiveVersion` | (a) 기존 상수 `"v2.16"` 재사용 — 라벨 부정확은 수용, 보존 동작에 무영향 |
+| 3 | 저비용 판정 승격 | 둘 다 채택 — RunE 불변성 4단언(plan.md §B 판정 공백) + `archiveSkill` 단위시험(REQ-CLD-018 부채 해소) |

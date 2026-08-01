@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-LOOP-DEVONLY-001
 title: ci-loop 스크립트 의존성의 배포 트리 격리 및 dev-only 전환
-version: 0.2.0
+version: 0.3.0
 status: draft
 created: 2026-08-01
 updated: 2026-08-02
@@ -20,6 +20,10 @@ tier: M
 - 2026-08-02 — 독립 감사 FAIL(0.56) 반영 재작성 (v0.2.0). `moai pr watch`가 watch 루프를
   수행한다는 v0.1.0의 핵심 근거가 실행 검증으로 반증되어 §1·REQ-CLD-005·§4를 재도출.
   GOOS 결정 A(두 프로토콜 파일 분리 처리)·B(required-checks.yml 이연) 반영.
+- 2026-08-02 — run-phase 진입 시점 GOOS 결정 반영 개정 (v0.3.0). 이연했던 판정 2건을
+  승격: `moai pr watch` 동작 불변(AC-CLD-018, M6)과 `archiveSkill` 보존 동작
+  (AC-CLD-019, M5). 미커버 REQ 0건, `archiveVersion` 미결 결정 종결.
+  요구사항·범위 제외는 불변이며 판정 계층만 확장했다.
 
 ## 1. 배경 (Context)
 
