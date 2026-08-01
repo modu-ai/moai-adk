@@ -224,9 +224,179 @@ DoD의 "`go test ./...` 회귀 없음"은 이 파일들을 편집하지 않으�
 봉투를 확장하지 않고 범위를 넘지 않았다. 오케스트레이터가 봉투 편입을 승인하면
 M4에서 `make build`와 함께 처리하는 것이 자연스럽다.
 
+### M4 — 재빌드 및 도달성 가드 (완료, 커밋 `a21d406bf`)
+
+봉투 확장(커밋 `b2c5fd1a6`)으로 시험 파일 5개가 편입되어 M1-M3의 블로커가 해소되었다.
+
+| 단계 | 대상 | 조치 |
+|---|---|---|
+| 1 | `embed_ci_loop_guard_test.go` | 신설. `EmbeddedTemplates()` FS를 순회해 `.claude/skills/moai-workflow-ci-loop/` 하위 파일 0건 단언 |
+| 2 | `skills_manifest_test.go` | 기대 코어 스킬 목록에서 항목 제거 |
+| 3 | `catalog_tier_audit_test.go` | `expectedSkillCount` 32 → 31 (누적 산술 주석 동반 갱신) |
+| 4 | `embed_catalog_test.go` | `wantTotal` 42 → 41 (동반 갱신) |
+| 5 | `catalog_loader_test.go` | `expectedTotal` 42 → 41 (동반 갱신) |
+| 6 | `sanitized_pair_parity_test.go` | `sanitizedPairPaths`에서 `ci-watch-protocol.md` 행 제거 + 제거 사유 주석 |
+| 7 | `make build` | `catalog.yaml` 해시 2건 재생성 (`moai/SKILL.md`, `manager-develop.md` — M3 편집분) |
+
+**가드의 한계를 코드 주석에 명시**: `go test`가 컴파일하므로 `//go:embed`는 항상 현재
+소스를 반영한다 → **`make build` 누락을 탐지하지 못한다**. 재빌드 누락은 AC-CLD-004
+해시 신선도가 담당한다. 초판이 이 가드에 붙였던 재빌드-탐지 근거는 거짓이며
+변이 테스트로 반증되었다(research.md §D.1).
+
+**주석 수준 잔재 (방치 결정)**: `sanitized_pair_parity_test.go` 상단이 정화 방식의
+**예시**로 `ci-watch-protocol.md`를 계속 언급한다. 어떤 단언도 구동하지 않는 산문이고
+정화 메커니즘 설명으로서는 여전히 유효하므로, 범위 규율에 따라 손대지 않았다.
+`rule_template_mirror_test.go`의 내력 주석도 동일하게 방치했다.
+
+### M5 — 고아 스킬 아카이브 (완료, 커밋 `f7303abbd`)
+
+`legacySkillIDs`에 `"moai-workflow-ci-loop"` 추가. `archiveVersion` 은 `"v2.16"`
+그대로 재사용(GOOS 결정 2) — 태그는 보존 위치의 라벨이지 은퇴 시점의 주장이 아니다.
+목록 항목 옆에 이 근거를 주석으로 남겼다.
+
+`TestArchiveSkill_PreservesUserContent` 신설. 관측 4항목:
+
+1. `t.TempDir()` 아래 `.claude/skills/<id>/`에 식별 가능한 사용자 저작 내용
+   (최상위 `SKILL.md` + 중첩 `references/user-playbook.md` — 재귀 복사를 덮기 위함)
+2. `archiveSkill(root, id)` 호출
+3. 아카이브 대상에 **바이트 동일** 내용 존재 (존재만 확인하면 빈 디렉터리 구현이 통과)
+4. 원본이 호출 후에도 잔존 (복사→`os.Rename` 회귀 차단)
+
+**4번을 먼저 검사하도록 배치**했다 — 원본이 사라진 상태에서 해시부터 돌리면
+`hashDir`의 `t.Fatalf`가 먼저 터져 "제거됨"이라는 진단이 묻힌다.
+
+**의도적 비단언**: "호출 후 원본 부재"는 단언하지 않는다. `archiveSkill`도
+`archiveLegacySkills`도 원본을 제거하지 않으므로(복사 후 `return nil`, `os.Remove` 없음),
+그 단언은 코드에 없는 모델을 기입하게 된다.
+
+### M6 — 바이너리 문자열 교정 (완료, 커밋 `f7303abbd`)
+
+| 위치 | 종전 서술 | 조치 |
+|---|---|---|
+| `Long` 도움말 | `exit 2` JSON 핸드오프 + 30분 타임아웃 + 스크립트 호출 | `RunE`가 실제 제공하는 `--report`/`--abort` 2개 모드와 기본 모드 무동작만 서술 |
+| stderr 안내 2행 | 부재 스크립트 실행 지시 (`sh scripts/ci-watch/run.sh`) | "이 명령에서 watch 루프는 돌지 않는다" + 사용 가능한 두 모드 안내 |
+| 주석 1행 | 부재 스크립트를 **호출자**로 지목 | 오케스트레이터를 호출자로 정정 (AC-006 선택자 밖이나 유지 시 유지보수자를 오도) |
+
+**도움말 산문은 구현의 근거가 아니다** — 종전 `Long`이 서술한 계약을 `RunE`는 구현하지
+않는다. M6은 산문을 구현에 맞췄고, 산문대로 구현하지 **않았다**.
+
+`internal/cli/pr_watch_cmd_test.go` 를 **작성했다**(계획상 선택). 편집된 문자열 3곳 중
+2곳이 `RunE` 본문 안이라 플래그 정의가 편집 사고 반경 안에 있고, AC-CLD-018은 판정
+시점의 수동 CLI 배치라 항구적 가드가 없기 때문이다. 단언 범위는 플래그 3개의 존재·기본값과
+`Args` 계약(`--abort` 유무에 따른 위치 인자 요구)에 한정했다 — 종료 코드는 상태 파일
+존재 여부에 의존하므로 CLI 계층 판정에 남겼고, stderr 문구는 이 편집이 의도적으로 바꾼 값이다.
+
+### AC PASS/FAIL 매트릭스 (M4-M6 담당분)
+
+| AC | 상태 | 판정 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-CLD-003 | PASS | `go test ./internal/template/ -run TestEmbeddedTemplatesExcludeCILoopSkill -count=1 -v \| grep -q '^--- PASS: …'` | `exit=0` (baseline 부재 시 `exit=1`) |
+| AC-CLD-004 | PASS | 생성기 `--all` + `git diff --exit-code -- catalog.yaml` (**M4 커밋 후** 판정) | `gen-exit=0` **그리고** `diff-exit=0` |
+| AC-CLD-006 | PASS | `grep -n 'scripts/ci-watch/run.sh' pr_watch_cmd.go \| grep -vc ':[[:space:]]*//'` | `0` (baseline 3). 원시 매치도 `4 → 0` |
+| AC-CLD-015 | PASS | `grep -c 'moai-workflow-ci-loop' update_archive.go` / `TestLegacySkillIDsNotEmbedded` | `2` (≥1) / `ok` 계속 PASS |
+| AC-CLD-018 | PASS | `make build` 후 6개 관측 | `0 / 0 / 0 / 3 / 1 / 0` — 편집 전 baseline과 **동일** |
+| AC-CLD-019 | PASS | `go test ./internal/cli/ -run TestArchiveSkill_PreservesUserContent -count=1 -v \| grep -q '^--- PASS: …'` | `exit=0` |
+
+### 신규 가드 2건의 RED 증거 (변이 검증)
+
+두 가드 모두 M1-M3 완료 상태에서는 즉시 통과하므로, 실패 가능성을 변이로 실증했다.
+
+**AC-CLD-003 가드** — 2회 변이:
+
+```
+① 단언 반전 (len(found)==0 이면 실패)
+   → FAIL  "INVERTED-RED-PROBE: expected >0 files under
+            .claude/skills/moai-workflow-ci-loop/, found 0"
+   (순회가 실제로 돌고 개수가 진짜 0임을 확인)
+
+② prefix 를 배포 중인 스킬로 교체 (moai-workflow-tdd) — 탐지력 실증
+   → FAIL  "embedded templates still ship 3 file(s) under
+            .claude/skills/moai-workflow-tdd/: [SKILL.md references/examples.md
+            references/reference.md]"
+
+복원 후 → --- PASS
+```
+
+**AC-CLD-019 가드** — 2회 변이:
+
+```
+① copyDirAll 호출 무력화 (아카이브 디렉터리는 생기되 비어 있음)
+   → FAIL  "archive file count = 0, want 2 (src=map[SKILL.md:4a7c673c…
+            references/user-playbook.md:b2eb3521…] dst=map[])"
+   (존재-only 검사였다면 통과했을 상태를 바이트 대조가 잡는다)
+
+② 복사→이동 회귀 주입 (copyDirAll 뒤 os.RemoveAll(srcDir))
+   → FAIL  원본 디렉터리 부재 탐지
+
+복원 후 → --- PASS
+```
+
+### 빌드·회귀 (M4-M6 완료 시점)
+
+```
+go build ./...                            → exit 0
+GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+go vet ./...                              → 출력 없음
+golangci-lint run --timeout=5m            → 0 issues.
+go test ./... -count=1                    → FAIL 0건, ok 105 패키지
+```
+
+M1-M3이 남긴 두 부류 실패는 모두 해소되었다: catalog 해시 신선도는 `make build`가,
+하드코딩 기대값은 봉투 편입 후의 정합화가 처리했다.
+
+**커버리지**
+
+```
+internal/template   85.9%   (85% 기준 충족)
+internal/cli        75.9%   (85% 미달 — 사전 존재 baseline)
+```
+
+`internal/cli` 미달은 이 SPEC이 만든 상태가 아니다 — 이번 변경은 시험 2건을 **추가**
+했을 뿐이므로 커버리지를 낮출 수 없다. 패키지 전반의 기존 부채이며 별도 소관이다.
+
+### 보존 자산 무변화 재확인 (M4-M6 후)
+
+```
+find scripts/ci-watch scripts/ci-autofix -type f | wc -l   → 9
+.claude/skills/moai-workflow-ci-loop/                       → SKILL_OK
+.claude/rules/moai/workflow/ci-watch-protocol.md            → MIRROR_WATCH_OK
+.claude/rules/moai/workflow/ci-autofix-protocol.md          → MIRROR_AUTOFIX_OK
+```
+
+### 미검증 (Gaps) — M4-M6 담당분
+
+- **실배포 산출물 미관측**: 실제 `moai init` 결과물은 이번에도 관측하지 않았다.
+  임베드 FS 순회(AC-CLD-003)와 catalog 해시(AC-CLD-004)가 대체 판정이다.
+- **`internal/cli` 커버리지 85% 미달**: 사전 존재 baseline이며 이 SPEC 범위 밖.
+- **AC-CLD-018의 항구성**: 여섯 관측값은 판정 시점의 수동 CLI 배치다. 신설한
+  `TestPRWatchCmd_FlagSetUnchanged`가 플래그 표면만 항구적으로 고정하며,
+  종료 코드는 여전히 수동 판정에 의존한다.
+- **`AskUserQuestion` 문자열 잔존 (오탐 아님)**: `pr_watch_cmd.go` 의 `Long` 문자열에
+  `AskUserQuestion` 2건이 남아 있으나 **호출이 아니라 금지 규칙을 서술하는 산문**이며,
+  M6 이전부터 존재했고 이번에 보존했다. 서브에이전트 경계 위반이 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-02
+run_commit_sha: pending-backfill-run-M6   # M4 a21d406bf, M5+M6 f7303abbd (미push)
+run_status: complete-M1-M6                # M7(미러 동기화·중립성)은 미착수
+ac_pass_count: 17                         # M1-M3 담당 11 + M4-M6 담당 6
+ac_fail_count: 0
+preserve_list_post_run_count: 9           # scripts/ci-watch + ci-autofix 전수
+l44_pre_commit_fetch: not-performed       # 격리 워크트리, push 없음 — 오케스트레이터 소관
+l44_post_push_fetch: not-performed        # push 미수행 (M7 이후 단일 push)
+new_warnings_or_lints_introduced: 0       # golangci-lint 0 issues, go vet 무출력
+cross_platform_build:
+  darwin_amd64: pass
+  windows_amd64: pass
+total_run_phase_files: 11                 # M4 7 + M5 2 + M6 2
+m1_to_mN_commit_strategy: |
+  M1-M3  81ff67937  (선행 인스턴스)
+  봉투    b2c5fd1a6  (시험 파일 5개 편입)
+  M4      a21d406bf  (AC-CLD-004의 커밋-후 판정 시점을 지키기 위해 단독 커밋)
+  M5+M6   f7303abbd  (상호 독립이나 동일 패키지·단일 검증 배치)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
