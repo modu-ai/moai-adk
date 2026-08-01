@@ -150,6 +150,8 @@ The five development safeguards (HARD Rules) ensure code quality and prevent reg
 
 - **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes.
   - Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end, so review focuses on the highest-change-likelihood decisions.
+  - **Proportionality test — "can the diff be stated in one sentence?"** Planning carries real overhead (a round trip, a gate, a context cost), and that overhead is only repaid when the approach is genuinely uncertain. Planning is most valuable when the approach is unclear, the change spans multiple files, or the code being modified is unfamiliar. When none of those hold and the diff is describable in a single sentence, the exception list above applies and the change proceeds directly. Applying the full gate to an obvious change spends the user's attention where nothing was at stake, which trains them to approve without reading — the gate then stops working on the changes that actually needed it.
+  - **The plan is editable, not just approvable.** In Plan Mode the user presses `Ctrl+G` to open the plan in a text editor and rewrite it directly before execution. When surfacing a plan, treat this as the primary correction channel: a plan the user edits is cheaper and higher-fidelity than an `AskUserQuestion` round trip that re-derives the same change. Route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged); route wording, scope trims, and step reordering to the editor.
 - **Rule 2 — Multi-File Change Decomposition**: When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit.
 - **Rule 3 — Post-Implementation Review**: After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations.
 - **Rule 4 — Reproduction-First Bug Fixing**: Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify the test passes.
@@ -294,6 +296,16 @@ MoAI searches previous Claude Code sessions when context is needed to continue w
 **Process**: (1) check current session first (skip if found); (2) confirm via AskUserQuestion before searching; (3) Grep session index and transcripts in `~/.claude/projects/` (default 30-day window); (4) summarize and present for approval; (5) inject approved context avoiding duplicates. **Token budget**: max 5,000 tokens per injection; skip if current usage exceeds 150,000; summarize lengthy conversations to stay within budget.
 
 **Manual trigger**: user may request context search at any time. Complements @MX TAG system for code context; available in both solo and team modes.
+
+### Compaction Preservation
+
+When compacting, always preserve: the full list of modified and created files; every verification command that was run together with its exit code and evidence path; the active SPEC ID and phase; unresolved blockers and open `[NEEDS CLARIFICATION]` markers; and any armed goal condition.
+
+These items are load-bearing rather than merely useful. A verification claim is valid only while its command and observed output remain attributable (`.claude/rules/moai/core/verification-claim-integrity.md` §2) — once compaction drops the evidence, a claim that survives in summary form is no longer attributable and must be re-verified rather than restated. Preserving the evidence pointer is what keeps the claim alive across a compaction boundary.
+
+The reduction ladder that governs when compaction happens at all is `.claude/rules/moai/workflow/context-window-management.md` § Reduction Ladder.
+
+---
 
 ---
 
