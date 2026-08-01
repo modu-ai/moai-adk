@@ -1,7 +1,7 @@
 // Package worktree provides Git worktree management subcommands.
 // @MX:NOTE: [AUTO] Worktree management for parallel SPEC development with isolated working directories
 // @MX:NOTE: [AUTO] Dependency injection pattern: WorktreeProvider set from parent CLI package
-// @MX:NOTE: [AUTO] Supports create, sync, remove, clean, recover, done, and the guard subcommands
+// @MX:NOTE: [AUTO] Supports sync, remove, clean, recover, done, and the guard subcommands
 
 package worktree
 
@@ -32,7 +32,6 @@ For inspection, use git directly: git worktree list`,
 
 func init() {
 	WorktreeCmd.AddCommand(
-		newNewCmd(),
 		newSyncCmd(),
 		newRemoveCmd(),
 		newCleanCmd(),
