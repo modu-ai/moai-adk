@@ -4,9 +4,9 @@ Doctrine establishing the **"no unobserved-verification-claim" invariant** for a
 
 > The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
 
-## 1. The Invariant — no unobserved-claim (verification OR defect)
+## 1. The Invariant — no unobserved-claim (verification, defect, OR premise)
 
-[ZONE:Evolvable] [HARD] An actor MUST NOT assert a verification, a completion, **OR a defect / debt / drift** it did not actually verify with the domain's mechanical tooling.
+[ZONE:Evolvable] [HARD] An actor MUST NOT assert a verification, a completion, **a defect / debt / drift, OR the premise underlying a recommendation** it did not actually verify with the domain's mechanical tooling.
 
 > **Evidence absent ≠ evidence of success — NOR of failure.**
 
@@ -14,17 +14,23 @@ The absence of a failure signal is not, by itself, evidence that a check passed.
 
 Symmetrically, inferring a defect, a technical-debt item, a drift, or an anomalous state from text patterns, grep matches, or file absence alone — without running the domain's dedicated verification tool — is not evidence that the defect exists. A text-pattern inference is a hypothesis, never a verified defect. The invariant binds both directions: an actor may not claim success it did not observe, and may not claim a defect it did not verify with the appropriate tool.
 
+The binding extends to the premise beneath a recommendation. A recommendation to KEEP, retain, or preserve something rests on a premise — that the thing is still live, still reachable, still depended upon. Observing that an artifact is *referenced* establishes only that a reference exists; it does not establish that the referenced capability is still live. **Reachability is not justification.** Before recommending retention, the actor MUST verify the referenced capability's lifecycle status — whether its producer still exists, and whether a completed retirement already covers it. An unverified premise dressed as a reason is an unobserved claim.
+
+This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
+
 This is a policy-layer norm, not a mechanical guarantee. A complementary mechanical-detection layer may surface one shape of this violation at runtime, but the norm binds every actor independently of that layer.
 
-### 1.1 Binding scope — ALL THREE surfaces
+### 1.1 Binding scope — ALL FOUR surfaces
 
-The invariant binds **all three** of the following surfaces. Each is named explicitly so none can claim exemption:
+The invariant binds **all four** of the following surfaces. Each is named explicitly so none can claim exemption:
 
 1. **Orchestrator self-report** — the orchestrator's own Completion Report and Verification Matrix banners, and its trust-but-verify batches, as defined in `.claude/output-styles/moai/moai.md` (Response Templates). When the orchestrator renders a Verification Matrix or Completion Report banner, every row it marks PASS MUST correspond to an actually-observed command output.
 
 2. **Manager-agent completion report** — the self-verification deliverables of `manager-develop` and `manager-docs`. When a manager agent reports an acceptance-criteria PASS/FAIL matrix, a build result, coverage, a boundary grep, lint status, or push state, each reported result MUST be the verbatim output of a command the agent actually ran — not a summary, not an assumption, not a carry-over from a prior unrelated run.
 
 3. **Defect / debt / drift identification claim** — any actor's assertion that a defect, technical-debt item, drift, or anomalous state EXISTS and warrants action. A claim that "module X is broken", "package Y has a coverage gap", or "N items are stale and need cleanup" is only valid when the actor ran the domain's dedicated verification tool (the project's audit / lint / type-check / coverage command) and observed its output. Inferring a defect from text patterns, grep matches, or file absence alone — without the dedicated tool — is an unobserved defect claim, and acting on it as if it were verified violates §2's attribution requirement. When a dedicated tool exists for a domain, text-only reasoning MUST NOT be the sole basis for a defect claim; the tool's output is the Evidence (§3.2).
+
+4. **Recommendation-premise claim** — any actor's assertion of the REASON a proposed action should, or should NOT, be taken. A recommendation such as "removing this withdraws a live feature", "this is still in use", or "another consumer depends on it" is only valid when the actor verified the named premise — the producer's existence, the consumer's reachability, the owning task's lifecycle status — and observed the result. Two inferences are specifically forbidden as premise evidence: a reference existing is NOT evidence the referent is live (§1), and an originating task still reading as in-service is NOT evidence the feature it delivered survived, because a later task may have retired it. When an actor recommends AGAINST a user's stated instruction, the premise for that objection carries the same evidence burden as a defect claim (surface 3).
 
 ## 2. Baseline-Integrity Attribution / baseline 무결성 귀속
 
@@ -81,7 +87,15 @@ This was an unobserved defect claim: the domain had a dedicated verification too
 
 Lesson codified: **a defect claim is a hypothesis until the domain's tool confirms it.** Whenever a domain verification tool exists (an audit command, a type checker, a linter, a coverage tool), its output MUST precede any defect / debt / drift claim — §1.1 surface 3 + §2 attribution. Text-pattern matching alone produces a candidate defect, never a verified one.
 
+## 6. Worked Example — Retention-Claim Hazard
+
+A user instructed that a directory of retired artifacts be removed. The actor deleted the artifacts but held one item back — a scan in a shipped workflow file that globbed for files under that directory — on the stated premise that removing it "would withdraw a live feature from every distributed user", and recommended a separate retirement task instead.
+
+That premise was never checked. The actor had verified the scan was *reachable* (the workflow's routing table points at it) and had read that the task which originally delivered the feature still carried an in-service status, then treated both facts as evidence the feature was live. Neither establishes that. When the producers were finally enumerated, every one was already gone: the command that invoked the feature, its workflow file, its dedicated agent, its CLI entry point, the flag that consumed its output, the template scaffold that created the directory, and its documentation pages in every locale. A completed retirement task had removed the feature from the template source permanently, for all distributed users, and a later cleanup commit had swept the orphans that retirement left behind. The scan simply survived both passes. With no producer and no scaffold, the glob could only ever return zero on a user's machine.
+
+Lesson codified: **reachability is not justification, and an originating task still reading as in-service is not proof the feature it delivered is still live** — a later task may have retired it. Before recommending retention against an instruction, enumerate the producers of the thing being retained and check for a completed retirement; an objection whose premise was never verified is an unobserved claim — §1.1 surface 4 + §2 attribution.
+
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.

@@ -38,18 +38,26 @@ func TestPrintProfileSummary_Synced(t *testing.T) {
 	if !strings.Contains(output, "Captured values:") {
 		t.Errorf("expected SummaryHeader 'Captured values:', got:\n%s", output)
 	}
-	// Verify 6 setting fields (mode removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)
+	// Verify the 5 surviving setting fields. "Statusline mode" went with
+	// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001; "Statusline theme" followed once the
+	// wizard stopped collecting and writing a theme at all.
 	for _, want := range []string{
 		"User name",
 		"Languages",
 		"Model",
 		"Effort level",
 		"Permission mode",
-		"Statusline theme",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("expected field label %q in output:\n%s", want, output)
 		}
+	}
+	// The summary must not report a statusline theme: the wizard neither collects
+	// nor writes one, so printing a value here would claim an application that
+	// never happened. makeTestPrefs seeds a theme precisely so this can fail.
+	if strings.Contains(output, "Statusline theme") {
+		t.Errorf("summary still reports a statusline theme, which the wizard no "+
+			"longer applies:\n%s", output)
 	}
 	// Verify actual values
 	if !strings.Contains(output, "Alice") {

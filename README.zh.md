@@ -174,7 +174,7 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 
 **@MX 标签**. AI Agent 之间交换上下文、不变契约、危险区的内联代码注释。
 
-**worktree 隔离**. 通过 `/moai plan --worktree` 为每个 SPEC 附加并行开发隔离 worktree。
+**worktree 隔离**. 为每个 SPEC 准备独立的工作树。用 `moai cc -w <名称>` 进入，加上 `--spawn` 则在保留当前会话的同时于新窗口中打开。
 
 ---
 
@@ -272,7 +272,7 @@ claude        # launch Claude Code inside the project
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
 | `moai update` | 更新到最新版本（支持自动回滚） |
 | `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合 Claude 领导 + GLM worker 会话 |
-| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | Git worktree 管理并行 SPEC 开发 |
+| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进入 worktree 由启动器负责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
 | `moai goal <arm\|status\|clear>` | Goal 引擎 CLI |

@@ -168,73 +168,38 @@ Detailed Reference: Refer to Integration Patterns Module at modules/integration-
 
 ---
 
-### 5. --team Flag - Contextual Session Launch
+### 5. `--spawn` — Launch a Teammate Session in a New tmux Window
 
-Purpose: Launch a Claude or GLM session inside a freshly created worktree based on the current environment (no user prompt).
+Purpose: start a Claude or GLM session in a worktree **without giving up the session you are in**.
 
-The `--team` flag on `moai worktree new <SPEC-ID>` decides which launch pattern to apply from observable state only. The decision is fully deterministic per BODP (see the constitutional rule / `.claude/rules/moai/workflow/branch-origin-protocol.md`). The CLI never invokes AskUserQuestion — all four launch patterns are selected from environment signals.
+The launch commands (`moai cc`, `moai glm`, `moai cg`) normally replace the running shell, which is right for "work here now" but cannot express "keep going and start a teammate alongside me". `--spawn` re-issues the same command in a new tmux window instead, then returns so the caller keeps working.
 
-Decision Matrix (4 Canonical Patterns):
-
-| Pattern | tmux session? | CG mode active? | --team flag? | Behavior | LLM |
-|---------|---------------|-----------------|--------------|----------|-----|
-| P1 | yes | yes | yes | New tmux window: `cd <wt> && moai glm` (inherits CG env from session) | GLM |
-| P2 | yes | no | yes | New tmux window: `cd <wt> && moai cc` | Claude |
-| P3 | no | (n/a) | yes | `syscall.Exec` replaces current process; cwd = worktree path | CG-detected (glm) or Claude (cc) |
-| P4 | (n/a) | (n/a) | no | Print paste-ready handoff guidance only; no spawn | (none) |
-
-Detection Logic:
-
-CG mode is true if and only if all three conditions hold:
-- `tmux.NewDetector().InTmuxSession()` returns true (the `$TMUX` env var is set)
-- `.claude/settings.local.json` `teammateMode` equals `"tmux"`
-- The current tmux session env contains either `ANTHROPIC_AUTH_TOKEN` OR `ANTHROPIC_BASE_URL` that includes `z.ai`
-
-If `teammateMode == "tmux"` but no GLM env vars are present (a drift case after credential rotation), the CLI emits a stderr warning per the relevant requirement and falls back to P2 (Claude).
-
-> **Note — two distinct `teammateMode` fields.** The `teammateMode` in this detection logic is MoAI's own `.claude/settings.local.json` launcher-selection field (`"tmux"` / `"glm"` / `"claude"`). It is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. As of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. The CC-runtime setting governs teammate display; MoAI's field selects the `--team` launcher. They share the name `teammateMode` but are different settings.
-
-Example Invocations:
+Combined with `-w <name>`, one command opens a teammate in an isolated worktree:
 
 ```bash
-# Setup: tmux + moai cg session (Claude leader + GLM teammates)
-tmux new-session -s moai-dev
-moai cg                                  # sets teammateMode=tmux + injects GLM env
-moai worktree new SPEC-X-001 --team      # P1: new tmux window with moai glm
-
-# In CC-only mode (tmux but no CG)
-tmux new-session -s plain
-moai worktree new SPEC-Y-001 --team      # P2: new tmux window with moai cc
-
-# Outside tmux
-moai worktree new SPEC-Z-001 --team      # P3: current shell replaced with moai cc (or glm)
-
-# Default (no --team flag)
-moai worktree new SPEC-Q-001             # P4: prints "cd <wt> && moai cc" paste-ready guidance
+moai cg -w feat-auth --spawn    # GLM teammate in .claude/worktrees/feat-auth
+moai cc -w feat-auth --spawn    # Claude teammate, same worktree
+moai glm -w feat-auth --spawn   # all-GLM teammate
 ```
 
-Mutual Exclusion with --tmux:
+Behavior:
 
-`--team` and `--tmux` are mutually exclusive (cobra enforces at flag parsing). The legacy `--tmux` flag (from the earlier worktree session creation contract) creates a detached tmux session for the worktree, while `--team` launches a session in the current pane context with contextual pattern selection. Combining them is rejected.
+- The new window is created detached (`tmux new-window -d`), so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
+- The spawned window starts at the project root, so a short `-w <name>` value resolves against `.claude/worktrees/<name>/`.
+- `--spawn` is consumed by MoAI and never reaches Claude Code. Tokens after the `--` pass-through marker are left untouched.
+- Arguments are shell-quoted, so a worktree name containing spaces or shell metacharacters reaches the spawned process intact.
 
-Swarm Registry:
+Requirements — each is refused with a clear error rather than a silent fallback, because falling back would replace the caller's session, the exact outcome `--spawn` exists to avoid:
 
-After successful P1, P2, or P3 launch, the CLI writes `.moai/state/swarm/<SPEC-ID>.json` (per-user, 0o600) with the following fields:
+| Missing | Message |
+|---------|---------|
+| `$TMUX` (not inside a session) | `tmux session required for --spawn` |
+| `tmux` binary | `--spawn requires the tmux binary` |
+| `moai` binary in `PATH` | `--spawn needs the moai binary in PATH` |
 
-- `spec_id`, `worktree_path`, `branch`, `pane_id` (empty for P3)
-- `mode` — one of `"tmux-glm"`, `"tmux-cc"`, `"in-progress-glm"`, `"in-progress-cc"`
-- `created_at` (RFC3339 timestamp)
-- `created_by_pid`
+No settings are mutated before these checks run, so a refusal leaves the environment untouched. The spawned command performs its own mode setup (`applyCCMode` / `applyCGMode`) inside the new window.
 
-The registry file is the baseline for future `moai swarm status/done/kill-all` commands (out of scope for this SPEC). P4 does not spawn anything and therefore does not write the registry.
-
-Failure Modes:
-
-- Pane spawn failure (P1 or P2) — falls back to P4 paste-ready handoff guidance and emits a stderr error notice. Exit code remains 0 because the worktree itself was created successfully.
-- Worktree creation failure — no launch is attempted and no registry entry is written.
-- Windows — `--team` automatically routes to a stub that notes tmux is unsupported on Windows, then falls back to P4 handoff guidance.
-
-Detailed Reference: the canonical worktree team-launch contract — the team-launch entry point, its POSIX and Windows variants, the swarm-registry writer, and the handoff-guidance generator.
+Relationship to the retired `--team` flag: `moai worktree new --team` previously created a worktree and launched a session in one step, across four patterns. Three of them are now covered by `-w` alone (in-place launch, and its handoff-guidance fallback), and the fourth — the new-tmux-window spawn — is `--spawn`. Its write-only swarm registry was retired with it; nothing ever read `.moai/state/swarm/`.
 
 ---
 

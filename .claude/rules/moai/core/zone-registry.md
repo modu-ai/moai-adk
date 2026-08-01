@@ -838,46 +838,7 @@ moai constitution list --format json
   clause: "AskUserQuestion is invoked by the orchestrator only. The Go CLI returns exit codes and JSON; the orchestrator translates these into user-facing prompts"
   canary_gate: true
 
-# --- branch-origin-protocol.md (7 entries: V3R5-030..036) ---
-- id: CONST-V3R5-030
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "CLI path (moai worktree new) MUST NOT invoke AskUserQuestion — orchestrator-only HARD"
-  canary_gate: true
-
-- id: CONST-V3R5-031
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "Default base for moai worktree new is origin/main (from internal/bodp.DefaultBase)"
-  canary_gate: true
-
-- id: CONST-V3R5-032
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "--base main is the explicit opt-in for solo workflows where the user has committed locally to main without pushing"
-  canary_gate: true
-
-- id: CONST-V3R5-033
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "--base and --from-current are mutually exclusive flags on moai worktree new"
-  canary_gate: true
-
-- id: CONST-V3R5-034
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "Every BODP decision (skill or CLI) MUST be persisted to .moai/branches/decisions/<normalized-branch>.md via bodp.WriteDecision"
-  canary_gate: true
+# --- branch-origin-protocol.md (1 entry: V3R5-035) ---
 
 - id: CONST-V3R5-035
   zone: Frozen
@@ -885,14 +846,6 @@ moai constitution list --format json
   file: .claude/rules/moai/development/branch-origin-protocol.md
   anchor: "#hard-rules"
   clause: "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: (권장) first, ≤4 options, conversation_language match, Other auto-appended"
-  canary_gate: true
-
-- id: CONST-V3R5-036
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/development/branch-origin-protocol.md
-  anchor: "#hard-rules"
-  clause: "bodp.HasAuditTrail MUST return false when the audit directory itself is absent (fresh project)"
   canary_gate: true
 
 # --- agent-authoring.md (1 entry: V3R5-037) ---
@@ -919,7 +872,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#worktree-anchored-resume-pattern"
-  clause: "When SPEC was initialized via L3 /moai plan --worktree, the resume message MUST include Block 0 (cwd anchoring) prepended before the standard 6-block structure"
+  clause: "When the work happened inside a worktree, the resume message MUST prepend Block 0 (cwd anchoring) before the standard 6-block structure"
   canary_gate: false
 
 # --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---

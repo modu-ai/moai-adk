@@ -224,7 +224,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When the SPEC targets TDD-mode implementation (RED-GREEN-REFACTOR), invoke Skill("moai-workflow-tdd") to load it on demand.
 - When authoring test strategy or coverage acceptance criteria, invoke Skill("moai-workflow-testing") to load it on demand.
 - When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
-- When planning a worktree-isolated SPEC flow (`--worktree` / L2 worktree), invoke Skill("moai-workflow-worktree") to load it on demand.
+- When the SPEC will be implemented inside an isolated workspace (`moai cc -w <name>`), invoke Skill("moai-workflow-worktree") to load it on demand.
 
 ## Model/effort escalation
 

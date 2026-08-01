@@ -1,24 +1,40 @@
-// SPEC-V3R3-PROJECT-HARNESS-001 / T-P4-02
-// moai update Safety regression — User Area Preservation (AC-PH-05).
+// moai update Safety regression — User Area Preservation.
+//
+// SPEC-UPDATE-DATA-SURVIVAL-001 M5 (REQ-UDS-015..018): this guard drives the
+// real production entry point deploy.CleanMoaiManagedPaths rather than a fake
+// defined in this file. The predecessor test called a local simulateMoaiUpdate
+// helper whose body only touched a managed path and carried the comment "we
+// intentionally do NOT touch user areas" — it therefore guaranteed its own
+// passing condition and would have stayed green while production code deleted
+// every user-owned path.
 
 package cli
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 )
 
 // snapshotDir computes a stable hash of all files under root, mapping
 // relative path → SHA-256(content). Used to detect any modification.
+//
+// A missing root yields an empty map rather than a fatal error, so a user-area
+// directory deleted by the code under test surfaces as a snapshot mismatch with
+// a readable diff instead of an unrelated "no such file" failure.
 func snapshotDir(t *testing.T, root string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		return out
+	}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -41,27 +57,36 @@ func snapshotDir(t *testing.T, root string) map[string]string {
 	return out
 }
 
-// simulateMoaiUpdate represents the conservative path-prefix exclusion that
-// moai update is expected to honor: it only touches files under
-// .claude/skills/moai/, .claude/agents/{core,expert,meta,harness}/, .claude/rules/moai/. It MUST NOT
-// touch .moai/harness/, .claude/agents/harness/, .claude/skills/harness-*/
-// (REQ-PH-009 enforcement under test).
-func simulateMoaiUpdate(t *testing.T, projectRoot string) {
+// writeFixture creates parent directories and writes content at
+// filepath.Join(root, rel).
+func writeFixture(t *testing.T, root, rel, content string) string {
 	t.Helper()
-	// Touch a managed file (allowed)
-	managed := filepath.Join(projectRoot, ".claude", "skills", "moai", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(managed), 0o755); err != nil {
+	full := filepath.Join(root, rel)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.WriteFile(managed, []byte("# moai-managed updated\n"), 0o644)
-	// Note: we intentionally do NOT touch user areas.
+	if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return full
 }
 
+// TestMoaiUpdate_PreservesUserArea drives deploy.CleanMoaiManagedPaths — the
+// destructive stale-path removal step that runs before template deployment —
+// against a fixture holding both MoAI-managed and user-owned paths, and asserts
+// in both directions: user-owned areas are byte-identical afterwards, and the
+// managed targets were actually removed.
+//
+// The managed fixture is derived from the cleanTarget list inside
+// CleanMoaiManagedPaths, not from what a fake happened to create. The
+// managed-removal assertion is the anti-no-op half: without it, replacing the
+// production function with an empty body would still pass, making the guard
+// vacuous in a new way.
 func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 	root := t.TempDir()
 
-	// Set up user area with custom comment
-	userAreas := []struct {
+	// User-owned paths. These MUST survive (REQ-UDS-016).
+	userFiles := []struct {
 		path    string
 		content string
 	}{
@@ -70,17 +95,26 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 		{".claude/agents/harness/ios-architect.md", "# ios architect agent\n"},
 		{".claude/skills/harness-ios-patterns/SKILL.md", "# user skill\n"},
 	}
-	for _, ua := range userAreas {
-		full := filepath.Join(root, ua.path)
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, []byte(ua.content), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	for _, uf := range userFiles {
+		writeFixture(t, root, uf.path, uf.content)
 	}
 
-	// Snapshot user-area directories before
+	// MoAI-managed paths, drawn from the cleanTarget list in
+	// CleanMoaiManagedPaths. These are expected to be removed.
+	managedFiles := []string{
+		".claude/settings.json",
+		".claude/agents/moai/manager-develop.md",
+		".claude/skills/moai-workflow-tdd/SKILL.md",
+		".claude/rules/moai/core/moai-constitution.md",
+		".claude/hooks/moai/handle-session-start.sh",
+		".moai/config/config.yaml",
+	}
+	managedFull := make([]string, len(managedFiles))
+	for i, mf := range managedFiles {
+		managedFull[i] = writeFixture(t, root, mf, "# moai-managed\n")
+	}
+
+	// Snapshot user-area directories before.
 	userPaths := []string{
 		filepath.Join(root, ".moai", "harness"),
 		filepath.Join(root, ".claude", "agents", "harness"),
@@ -91,10 +125,12 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 		preSnapshots[i] = snapshotDir(t, p)
 	}
 
-	// Run simulated moai update
-	simulateMoaiUpdate(t, root)
+	// Drive the real production entry point (REQ-UDS-015).
+	if err := deploy.CleanMoaiManagedPaths(root, io.Discard); err != nil {
+		t.Fatalf("CleanMoaiManagedPaths: %v", err)
+	}
 
-	// Verify user areas unchanged (REQ-PH-009)
+	// Direction 1: user areas byte-identical before and after (REQ-UDS-016).
 	for i, p := range userPaths {
 		post := snapshotDir(t, p)
 		if !mapsEqual(preSnapshots[i], post) {
@@ -102,16 +138,18 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 		}
 	}
 
-	// Verify managed area was actually updated (sanity)
-	managedData, _ := os.ReadFile(filepath.Join(root, ".claude", "skills", "moai", "SKILL.md"))
-	if !strings.Contains(string(managedData), "moai-managed updated") {
-		t.Errorf("simulateMoaiUpdate did not actually run update")
+	// Direction 2: managed targets were actually removed. Without this the
+	// guard would pass against a no-op implementation.
+	removed := 0
+	for i, full := range managedFull {
+		if _, err := os.Stat(full); os.IsNotExist(err) {
+			removed++
+			continue
+		}
+		t.Errorf("managed path still present after clean: %s", managedFiles[i])
 	}
-
-	// Verify user comment preserved
-	runExt, _ := os.ReadFile(filepath.Join(root, ".moai", "harness", "run-extension.md"))
-	if !strings.Contains(string(runExt), "# user-customized chain") {
-		t.Errorf("user customization comment lost")
+	if removed == 0 {
+		t.Error("no managed path was removed — the entry point did nothing")
 	}
 }
 

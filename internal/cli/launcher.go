@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,6 +51,24 @@ func resolveMode(mode string) string {
 // @MX:ANCHOR: [AUTO] unifiedLaunchDefault centralizes launch logic for all modes
 // @MX:REASON: [AUTO] fan_in=3, called from runCC, runCG, runGLM via unifiedLaunch
 // unifiedLaunchDefault centralizes launch logic for all modes (claude, glm, claude_glm).
+// warnNoModelResolved reports that the launch resolved no model, so Claude Code
+// will apply its own settings.json default rather than a profile value.
+//
+// profileName is the profile the launch actually read — "" means the base
+// preferences.yaml, which is the case a stale launch ledger degrades to.
+// Writing to an injected io.Writer keeps the message assertable in tests.
+func warnNoModelResolved(w io.Writer, profileName string) {
+	read := profileName
+	if read == "" {
+		read = "default (base preferences)"
+	}
+	_, _ = fmt.Fprintf(w,
+		"Warning: no model resolved from profile %q — Claude Code will use the "+
+			"model in .claude/settings.json instead.\n"+
+			"  Check with: moai profile current && moai profile list\n"+
+			"  Select one with: moai cc -p <profile>\n", read)
+}
+
 func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) error {
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
@@ -416,6 +435,7 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	}
 
 	var cleanedWorktrees []string
+	var skippedWorktrees []string
 
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -441,22 +461,46 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 			}
 			// Use the full path so git can locate the worktree regardless
 			// of whether it is under .claude/worktrees/ or ~/.moai/worktrees/.
+			// Non-force removal: git refuses when the worktree still holds
+			// uncommitted or untracked work, so a failure here means "kept",
+			// not "broken". See removeWorktree.
 			if err := removeWorktree(projectRoot, worktreePath); err == nil {
 				cleanedWorktrees = append(cleanedWorktrees, workerName)
+			} else {
+				skippedWorktrees = append(skippedWorktrees, workerName)
 			}
 			break
 		}
 	}
 
+	var msgs []string
 	if len(cleanedWorktrees) > 0 {
-		return fmt.Sprintf("Cleaned up %d worktree(s): %s", len(cleanedWorktrees), strings.Join(cleanedWorktrees, ", "))
+		msgs = append(msgs, fmt.Sprintf("Cleaned up %d worktree(s): %s", len(cleanedWorktrees), strings.Join(cleanedWorktrees, ", ")))
 	}
-	return ""
+	if len(skippedWorktrees) > 0 {
+		msgs = append(msgs, fmt.Sprintf(
+			"Kept %d worktree(s) with local changes: %s (review, then remove explicitly with 'moai worktree clean --stale' or 'git worktree remove --force <path>')",
+			len(skippedWorktrees), strings.Join(skippedWorktrees, ", ")))
+	}
+	return strings.Join(msgs, "\n")
 }
 
-// removeWorktree removes a single git worktree.
+// removeWorktree removes a single git worktree without --force.
+//
+// Omitting --force is deliberate. This runs on every `moai cc` launch via
+// cleanupMoaiWorktrees, so an unconditional --force would let an ordinary
+// launch delete a worktree that still holds uncommitted or untracked work,
+// with no confirmation and no way back. Without --force git refuses on a
+// dirty worktree and exits non-zero, which the caller reports as skipped.
+// Deliberate removal of a dirty worktree stays an explicit user action
+// (`moai worktree remove` / `git worktree remove --force`).
+//
+// @MX:ANCHOR: [AUTO] launch-path worktree removal is non-destructive by contract
+// @MX:REASON: cleanupMoaiWorktrees calls this unconditionally on every `moai cc`
+// launch; re-adding --force here silently destroys uncommitted work across every
+// worker-* worktree without user confirmation.
 func removeWorktree(projectRoot, worktreeName string) error {
-	_, err := runGitCommand(projectRoot, "worktree", "remove", "--force", worktreeName)
+	_, err := runGitCommand(projectRoot, "worktree", "remove", worktreeName)
 	return err
 }
 
@@ -578,6 +622,20 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		glmBackend = resolveGLMBackendForLaunch(root)
 	}
 	model = resolveMainSessionModel(model, glmBackend)
+
+	// 6b. An empty model here is not neutral: buildArgs below omits --model
+	// entirely, so Claude Code falls back to whatever `.claude/settings.json`
+	// pins (the MoAI template ships "sonnet"). That looked identical to "my
+	// profile was ignored", with nothing on stderr to distinguish the two.
+	//
+	// The common cause is a profile that was edited but never selected: the
+	// launch ledger still points elsewhere, or at a profile whose directory is
+	// gone, and profile.ResolveLaunchProfile's stale-record guard degrades to
+	// the empty base preferences. Name the resolved profile so the user can see
+	// which one was actually read.
+	if model == "" {
+		warnNoModelResolved(os.Stderr, profileName)
+	}
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {

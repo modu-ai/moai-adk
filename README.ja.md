@@ -168,7 +168,7 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 
 **@MXタグ**. AIエージェント間でコンテキスト・不変コントラクト・危険ゾーンを受け渡すインラインコードアノテーション。
 
-**worktree隔離**. `/moai plan --worktree`でSPECごとに並列開発用の隔離worktreeを追加する。
+**worktree隔離**. SPEC ごとに独立した作業ツリーを用意する。`moai cc -w <名前>` で入り、`--spawn` を付けると現在のセッションを保ったまま新しいウィンドウで開く。
 
 ---
 
@@ -266,7 +266,7 @@ claude        # launch Claude Code inside the project
 | `moai status` | プロジェクト状態要約（Git ブランチ、品質指標） |
 | `moai update` | 最新版へアップデート（自動ロールバック対応） |
 | `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッド Claude リーダー + GLM ワーカーセッション |
-| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 並列 SPEC 開発用 Git worktree 管理 |
+| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守（worktree への移動はランチャーの役割） |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクルツール |
 | `moai goal <arm\|status\|clear>` | Goal エンジン CLI |

@@ -144,7 +144,7 @@ Propagation Method:
 
 ### Plan Flags
 
-- --worktree: Create an isolated git worktree for the SPEC implementation
+- (retired) --worktree: plan no longer creates a workspace — enter one first with `moai cc -w <name>`
 - --branch: Create a feature branch for the SPEC (default branch naming: feature/SPEC-XXX)
 - --resume SPEC-XXX: Resume an interrupted plan session
 - --team: RETIRED — Agent Teams Mode 3 is a tombstone; a forced --team falls back to sub-agent mode. Use parallel Agent(general-purpose) fan-out for exploration.

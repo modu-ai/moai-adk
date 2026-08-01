@@ -106,7 +106,7 @@ Adding `.claude/worktrees/` to `.gitignore` keeps the worktree directories thems
 
 ## Deeper Use in MoAI-ADK
 
-MoAI-ADK uses this worktree mechanism extensively for SPEC-level parallel development and multi-session isolation (`/moai plan --worktree`, the `moai worktree` CLI). To run several agentic loops at once, each loop's file edits must not contaminate the others — worktrees provide exactly that isolation, making them the physical precondition of loop parallelization. Hands-on content — when to turn worktrees on, how they mesh with session handoff — is compiled in the MoAI-ADK-specific guides below, so this page stops at the concept and links onward for depth.
+MoAI-ADK uses this worktree mechanism extensively for SPEC-level parallel development and multi-session isolation (`moai cc -w <name>` to enter one, the `moai worktree` CLI to maintain them). To run several agentic loops at once, each loop's file edits must not contaminate the others — worktrees provide exactly that isolation, making them the physical precondition of loop parallelization. Hands-on content — when to turn worktrees on, how they mesh with session handoff — is compiled in the MoAI-ADK-specific guides below, so this page stops at the concept and links onward for depth.
 
 ## Related Documents
 

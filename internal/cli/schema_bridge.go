@@ -16,7 +16,10 @@ package cli
 // the RegisterSchemaBridge callback registered in init() below. uikit has zero
 // profileSetupText references (REQ-CUK-007 b-ii, verified by AC-CUK-007).
 
-import "github.com/modu-ai/moai-adk/internal/cli/uikit"
+import (
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/settings"
+)
 
 // schemaFieldBridge는 스키마 필드의 i18n 키(예: "f.model")를 profileSetupText 의
 // 해당 title/desc 접근자로 매핑한다. 키는 settings.FieldDef.I18nKey 와 일치한다.
@@ -96,6 +99,63 @@ var schemaSegmentBridge = map[string]func(t profileSetupText) string{
 	"seg.usage_5h":        func(t profileSetupText) string { return t.SegmentUsage5h },
 	"seg.usage_7d":        func(t profileSetupText) string { return t.SegmentUsage7d },
 	"seg.worktree":        func(t profileSetupText) string { return t.SegmentWorktree },
+}
+
+// schemaOptionBridge maps a schema OptionDef.I18nKey (e.g. "f.model.opt.opus[1m]")
+// to the profileSetupText accessor carrying that option's localized TUI label.
+// It is the option-level counterpart of schemaFieldBridge above: the field bridge
+// resolves widget titles/descriptions, this one resolves the individual option
+// labels, so the TUI can render option lists that are DERIVED from
+// settings.FieldOptionDefs rather than re-declared inline (the drift source that
+// let the wizard keep writing canonical model ids the web console rejects).
+//
+// The key namespace mirrors internal/web/assets/i18n.js, so every f.<field>.opt.*
+// key the web store carries has a TUI counterpart here — including alias values
+// that the current picker does not offer (bare opus/sonnet/fable, opusplan). They
+// stay mapped because ModelAliasTable still accepts them as stored values and
+// template.ModelAliasPickerValues() may re-offer them.
+//
+// git_convention options are deliberately absent: the TUI never had localized
+// labels for them (the wizard rendered the raw wire value), so optionLabelFor
+// falls back to OptionDef.Value and the rendered surface is unchanged.
+var schemaOptionBridge = map[string]func(t profileSetupText) string{
+	// Model (f.model.opt.*)
+	"f.model.opt.opus":       func(t profileSetupText) string { return t.ModelOpus },
+	"f.model.opt.opus[1m]":   func(t profileSetupText) string { return t.ModelOpus1M },
+	"f.model.opt.sonnet":     func(t profileSetupText) string { return t.ModelSonnet },
+	"f.model.opt.sonnet[1m]": func(t profileSetupText) string { return t.ModelSonnet1M },
+	"f.model.opt.fable":      func(t profileSetupText) string { return t.ModelFable },
+	"f.model.opt.fable[1m]":  func(t profileSetupText) string { return t.ModelFable1M },
+	"f.model.opt.haiku":      func(t profileSetupText) string { return t.ModelHaiku },
+	"f.model.opt.opusplan":   func(t profileSetupText) string { return t.ModelOpusPlan },
+	// Effort level (f.effort_level.opt.*)
+	"f.effort_level.opt.low":    func(t profileSetupText) string { return t.EffortLevelLow },
+	"f.effort_level.opt.medium": func(t profileSetupText) string { return t.EffortLevelMedium },
+	"f.effort_level.opt.high":   func(t profileSetupText) string { return t.EffortLevelHigh },
+	"f.effort_level.opt.xhigh":  func(t profileSetupText) string { return t.EffortLevelXHigh },
+	"f.effort_level.opt.max":    func(t profileSetupText) string { return t.EffortLevelMax },
+	// Permission mode (f.permission_mode.opt.*)
+	"f.permission_mode.opt.acceptEdits":       func(t profileSetupText) string { return t.PermAcceptEdits },
+	"f.permission_mode.opt.auto":              func(t profileSetupText) string { return t.PermAuto },
+	"f.permission_mode.opt.default":           func(t profileSetupText) string { return t.PermDefault },
+	"f.permission_mode.opt.plan":              func(t profileSetupText) string { return t.PermPlan },
+	"f.permission_mode.opt.bypassPermissions": func(t profileSetupText) string { return t.PermBypass },
+	"f.permission_mode.opt.dontAsk":           func(t profileSetupText) string { return t.PermDontAsk },
+	// Development mode (f.development_mode.opt.*)
+	"f.development_mode.opt.ddd": func(t profileSetupText) string { return t.DevelopmentModeDDD },
+	"f.development_mode.opt.tdd": func(t profileSetupText) string { return t.DevelopmentModeTDD },
+}
+
+// optionLabelFor resolves one schema option to its localized TUI label. Options
+// with no bridge entry (or an empty translation) fall back to the raw wire value,
+// which is what the wizard already rendered for git_convention.
+func optionLabelFor(t profileSetupText, o settings.OptionDef) string {
+	if fn, ok := schemaOptionBridge[o.I18nKey]; ok {
+		if label := fn(t); label != "" {
+			return label
+		}
+	}
+	return o.Value
 }
 
 // init registers the profileSetupText-aware schema bridge resolver with the

@@ -429,6 +429,19 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		a.renderErrorPage(w, prefs, selected, devMode, convention, "could not save profile preferences: "+err.Error())
 		return
 	}
+	// Saving a NAMED profile also makes it the one a bare `moai cc` launches.
+	// Without this, the console edits <name>/preferences.yaml while the launch
+	// ledger keeps pointing at whatever `moai cc -p ...` recorded last, so the
+	// values the user just saved are never read at launch.
+	//
+	// Advisory, not a gate: RecordLastUsedProfile refuses "" and "default" by
+	// contract (they carry no last-used signal and resolve to the base
+	// preferences), and a ledger write failure must not undo a preferences write
+	// that already succeeded. Both cases fall through silently — the save stands.
+	if selected != "" && selected != "default" && a.recordLastProfile != nil {
+		_ = a.recordLastProfile(selected)
+	}
+
 	if err := a.syncToProject(a.cfg.ProjectRoot, prefs); err != nil {
 		// Advisory D1: a SyncToProjectConfig failure after a successful
 		// WritePreferences surfaces a readable error rather than a silent

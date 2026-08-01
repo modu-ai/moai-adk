@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-使用 Git Worktree 时经常遇到的问题与解答,都汇总在这里。
+用 Git Worktree 时会碰到的问题与解答,都汇总在这里。
 
 ## 目录
 
@@ -54,7 +54,7 @@ graph TB
 
 ### Q: 为什么要使用 Worktree?
 
-**A**: 核心有两个理由 —— 并行开发与代币经济学:
+**A**: 理由大致分成并行开发和代币经济学两条:
 
 1. **LLM 设置独立性** —— 可以为每个 SPEC 分配不同的 LLM
    - Plan 阶段: Opus (高质量推理)
@@ -62,7 +62,7 @@ graph TB
    - Document 阶段: Sonnet (中等)
 
 2. **并行开发** —— 可以同时推进多个 SPEC
-3. **冲突防止** —— 独立的工作空间把冲突降到最低
+3. **冲突防止** —— 工作空间各自独立,几乎不会起冲突
 4. **成本节约** —— 在实现阶段使用 GLM 可减少约 70% 成本
 
 ```mermaid
@@ -89,54 +89,70 @@ graph TB
 
 ## 使用相关
 
-### Q: 如何创建 Worktree?
-
-**A**: 有两种方法:
-
-**方法 1: 自动创建 (推荐)**
-
-```bash
-# 在 SPEC 计划阶段自动创建
-> /moai plan "功能描述" --worktree
-
-# 自动完成:
-# 1. 生成 SPEC 文档
-# 2. 创建 Worktree
-# 3. 创建 Feature 分支
-```
-
-**方法 2: 手动创建**
-
-```bash
-# 手动创建 Worktree (默认: 基于 origin/main)
-moai worktree new SPEC-AUTH-001
-
-# 基于本地 main 创建
-moai worktree new SPEC-AUTH-001 --base main
-```
-
----
-
 ### Q: 如何进入 Worktree?
 
-**A**: `moai worktree go` 会输出 Worktree 路径。与 shell 的 `cd` 组合来移动(它不会直接启动 shell 会话):
+**A**: 用启动器的 `-w` 标志。指定名称的工作树不存在时它会当场创建,所以创建和
+进入在一行里就完成了:
 
 ```bash
-# 输出路径后移动
-cd "$(moai worktree go SPEC-AUTH-001)"
+# 创建工作树并以 GLM 后端进入
+moai glm -w SPEC-AUTH-001
+
+# 以 Claude 后端进入同一个工作树
+moai cc -w SPEC-AUTH-001
+
+# 以 Claude 领导 + GLM 队友的混合模式进入
+moai cg -w SPEC-AUTH-001
 ```
+
+短名称会在 `.claude/worktrees/<名称>/` 下解析。如果已经建好的工作树在别处,给出
+绝对路径即可 —— 它必须位于 `~/.moai/worktrees/` 或
+`<项目>/.claude/worktrees/` 之下,其他路径会被拒绝。
 
 **进入后的工作流程**:
 
 ```mermaid
 flowchart TD
-    A[moai worktree go SPEC-ID] --> B[把路径输出到 stdout]
-    B --> C["用 cd \"$(...)\" 移动"]
-    C --> D{更换 LLM?}
-    D -->|是| E[moai glm]
-    D -->|否| F[启动 Claude]
-    E --> F
-    F --> G["/moai run SPEC-ID"]
+    A["moai glm -w SPEC-ID"] --> B{工作树存在吗?}
+    B -->|否| C[创建 .claude/worktrees/SPEC-ID]
+    B -->|是| D[使用既有工作树]
+    C --> E[以该后端启动会话]
+    D --> E
+    E --> F["/moai run SPEC-ID"]
+```
+
+---
+
+### Q: 能保留当前会话再多开一个工作树吗?
+
+**A**: 加上 `--spawn` 就行。同一条命令会在新的 tmux 窗口中执行,现在这个窗口连
+焦点都原样保留:
+
+```bash
+moai glm -w SPEC-AUTH-002 --spawn
+# Spawned pane %7 running `moai glm -w SPEC-AUTH-002` in /path/to/your-project
+# Switch to it with: tmux select-window -t %7
+```
+
+`--spawn` 只在 tmux 内有效。在 tmux 之外使用时它什么都不改动,直接以错误结束,
+这时请去掉标志在当前终端里运行。只写 `-w` 会把当前进程替换成工作树会话 —— 这
+就是它与 `--spawn` 的区别。
+
+---
+
+### Q: 建好的 Worktree 列表怎么看?
+
+**A**: 直接用 git 命令。`moai worktree` 里没有列表命令:
+
+```bash
+git worktree list
+```
+
+特定工作树的状态或最近提交也用 `git -C` 查看:
+
+```bash
+git -C .claude/worktrees/SPEC-AUTH-001 status
+git -C .claude/worktrees/SPEC-AUTH-001 log --oneline -5
 ```
 
 ---
@@ -147,18 +163,23 @@ flowchart TD
 
 ```bash
 # Terminal 1
-cd "$(moai worktree go SPEC-AUTH-001)"
-$ moai glm
+moai glm -w SPEC-AUTH-001
 
 # Terminal 2
-cd "$(moai worktree go SPEC-LOG-002)"
-$ moai glm
+moai glm -w SPEC-LOG-002
 
 # Terminal 3
-cd "$(moai worktree go SPEC-API-003)"
-$ moai glm
+moai glm -w SPEC-API-003
 
 # 全部可以同时工作
+```
+
+如果你在用 tmux,在一个窗口里用 `--spawn` 就能全部拉起来:
+
+```bash
+moai glm -w SPEC-AUTH-001 --spawn
+moai glm -w SPEC-LOG-002 --spawn
+moai glm -w SPEC-API-003 --spawn
 ```
 
 **并行工作可视化**:
@@ -202,24 +223,26 @@ graph TB
 
 ### Q: 如何完成 Worktree?
 
-**A**: `moai worktree done` 会移除 Worktree 并可选地删除分支。**它不执行合并、推送** —— base 合并请先用 `git merge` 或 PR 处理:
+**A**: `moai worktree done` 会移除 Worktree,需要的话连分支一起删除。不过它
+**既不合并也不推送**。base 合并请先用 `git merge` 或 PR 处理完。它的参数不是
+路径,而是分支名:
 
 ```bash
 # 只移除 Worktree
-moai worktree done SPEC-AUTH-001
+moai worktree done feature/SPEC-AUTH-001
 
 # 移除 Worktree + 删除分支
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
-# 用于自动化的无输出模式 (PR 合并后清理)
-moai worktree done SPEC-AUTH-001 --auto
+# 供自动化使用的静默模式 (PR 合并后清理)
+moai worktree done feature/SPEC-AUTH-001 --auto
 ```
 
 **完成流程**:
 
 ```mermaid
 flowchart TD
-    A[通过 git merge 或 PR 合并到 base] --> B[moai worktree done SPEC-ID]
+    A[通过 git merge 或 PR 合并到 base] --> B[moai worktree done 分支]
     B --> C[移除 Worktree]
     C --> D{--delete-branch?}
     D -->|是| E[删除分支]
@@ -230,13 +253,60 @@ flowchart TD
 
 ---
 
+### Q: `moai worktree done` 和 `moai worktree remove` 有什么不同?
+
+**A**: 区别在于它们接受什么参数。
+
+| | `done` | `remove` |
+|---|---|---|
+| 参数 | 分支名 (`feature/SPEC-AUTH-001`) | 文件系统路径 |
+| 做的事 | 找到该分支的工作树并移除 | 移除该路径上的工作树 |
+| 删除分支 | 可用 `--delete-branch` 选择 | 不做 |
+| 自动化模式 | 支持 `--auto` | 没有 |
+
+知道分支就用 `done`;只知道路径,或者要收拾分支已经坏掉的工作树时,用 `remove`。
+
+---
+
 ## 问题排查
+
+### Q: `moai worktree clean --stale` 安全吗?
+
+**A**: 它就是照着安全来设计的,一共三层保护。
+
+1. **默认只预览。** 只给 `--stale` 时,它只打印待移除清单,并不真的删除。加上
+   `--yes` 才会发生删除
+2. **有东西可失去就不删。** 只有工作树干净(既没有未提交变更,也没有 untracked
+   文件)且分支上没有超出 base 的独有提交时,才会成为对象。只要有一条不满足就
+   会被保留,并一并打印原因
+3. **分支绝不删除。** 即使工作树目录消失了,提交仍然以分支名留在那里,随时可以
+   再取出来
+
+主检出以及正在运行该命令的工作树也始终排除在移除对象之外。
+
+```bash
+# 1) 先确认会删掉什么
+$ moai worktree clean --stale
+  Keeping .claude/worktrees/SPEC-API-003 [feature/SPEC-API-003]: uncommitted or untracked changes
+
+Would remove 1 stale worktree(s):
+  .claude/worktrees/SPEC-TMP-009 [feature/SPEC-TMP-009]
+
+This was a preview. Re-run with --yes to remove them.
+
+# 2) 确认过后再真正移除
+$ moai worktree clean --stale --yes
+```
+
+`--stale` 与 `--merged-only` 不能一起使用。想按合并与否清理就用 `--merged-only`,
+想按废弃与否清理就用 `--stale`。
+
+---
 
 ### Q: 发生了 Worktree 冲突
 
-**A**: 用以下步骤解决:
-
-合并冲突发生在 `git merge` 或 PR 阶段。Worktree CLI 不参与合并。
+**A**: 合并冲突发生在 `git merge` 或 PR 阶段。Worktree CLI 不参与合并,按下面的
+顺序解开就好:
 
 ```mermaid
 flowchart TD
@@ -279,54 +349,53 @@ git commit -m "fix: resolve merge conflict"
 git push origin main
 
 # 6. 合并后清理 Worktree
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 ✓ 完成!
 ```
 
 ---
 
-### Q: Worktree 损坏了
+### Q: Worktree 注册表损坏了
 
-**A**: 用以下步骤恢复:
+**A**: 手动移动或删除目录后,git 就找不到工作树了。按下面的顺序恢复:
 
 ```bash
-# 1. 诊断 (恢复损坏的注册表)
-moai worktree recover
+# 1. 恢复注册表 (git worktree repair + prune + 打印列表)
+$ moai worktree recover
+Scanning for worktrees in /path/to/your-project...
+Recovered 2 worktree(s):
+  /path/to/your-project/.claude/worktrees/SPEC-AUTH-001  [feature/SPEC-AUTH-001]
+  /path/to/your-project/.claude/worktrees/SPEC-LOG-002   [feature/SPEC-LOG-002]
 
 # 2. 确认当前状态
-moai worktree status
-# ╭─ Worktree Status ──────────────────────────────╮
-# │ Repository: /path/to/your-project              │
-# │ Total worktrees: 0                             │
-# │                                                │
-# │ No worktrees found.                            │
-# ╰────────────────────────────────────────────────╯
+$ git worktree list
 
-# 3. 移除现有 Worktree (指定路径)
-moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
+# 3. 仍然残留的损坏条目,指定路径移除
+$ moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 
-# 4. 重新创建 Worktree
-moai worktree new SPEC-AUTH-001
+# 4. 重新创建并进入
+$ moai glm -w SPEC-AUTH-001
 ```
 
 ---
 
 ### Q: 磁盘空间不足
 
-**A**: 清理已完成合并的 Worktree:
+**A**: 从已经合并完的 Worktree 开始清理:
 
 ```bash
 # 1. 确认磁盘使用量
-$ du -sh ~/.moai/worktrees/your-project/*
-2.5G    ~/.moai/worktrees/your-project/SPEC-AUTH-001
-1.8G    ~/.moai/worktrees/your-project/SPEC-LOG-002
-3.2G    ~/.moai/worktrees/your-project/SPEC-API-003
+$ du -sh .claude/worktrees/*
+2.5G    .claude/worktrees/SPEC-AUTH-001
+1.8G    .claude/worktrees/SPEC-LOG-002
+3.2G    .claude/worktrees/SPEC-API-003
 
-# 2. 只清理已合并到 base 的 Worktree
+# 2. 清理已合并进 base 的 Worktree
 $ moai worktree clean --merged-only
 
-✓ 已合并的 Worktree 清理完成
-✓ 释放磁盘空间
+# 3. 确认虽未合并但什么都没剩下的 Worktree 后再清理
+$ moai worktree clean --stale
+$ moai worktree clean --stale --yes
 ```
 
 **清理策略**:
@@ -335,10 +404,10 @@ $ moai worktree clean --merged-only
 graph TD
     A[需要清理 Worktree] --> B{已合并到 base?}
     B -->|是| C[moai worktree clean --merged-only]
-    B -->|否| D[确认工作状态]
-    D --> E{不需要?}
-    E -->|是| F[moai worktree remove PATH]
-    E -->|否| G[保留]
+    B -->|否| D{还有要留下的工作吗?}
+    D -->|没有| E[用 moai worktree clean --stale 确认]
+    E --> F[用 --yes 真正移除]
+    D -->|有| G[保留]
     C --> H[清理完成]
     F --> H
     G --> H
@@ -348,21 +417,17 @@ graph TD
 
 ### Q: LLM 没有按预期工作
 
-**A**: 确认每个 Worktree 的 LLM 设置:
+**A**: 确认每个 Worktree 的 LLM 设置是怎么定的:
 
 ```bash
 # 确认当前 LLM 后端 (每个 Worktree 的设置记录在 .moai/config/sections/llm.yaml)
 cat .moai/config/sections/llm.yaml
-# 或与项目状态一起确认
-moai status
 
-# 在 Worktree 中更换 LLM
-cd "$(moai worktree go SPEC-AUTH-001)"
-$ moai cc   # 切换到 Claude 后端
+# 要换后端就重新进入那个工作树
+moai cc -w SPEC-AUTH-001   # 切换到 Claude 后端
 
 # 其他 Worktree 不受影响
-$ cd "$(moai worktree go SPEC-LOG-002)"
-$ cat .moai/config/sections/llm.yaml   # 这个 Worktree 的设置保持不变
+git -C .claude/worktrees/SPEC-LOG-002 show HEAD:.moai/config/sections/llm.yaml
 ```
 
 ---
@@ -372,14 +437,13 @@ $ cat .moai/config/sections/llm.yaml   # 这个 Worktree 的设置保持不变
 **A**: 确认你是否在正确的目录中:
 
 ```bash
-# 确认 Worktree 目录
-pwd
-/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
+# 确认当前工作树根目录
+git rev-parse --show-toplevel
 
 # 确认 Git 状态
 git status
-On branch feature/SPEC-AUTH-001
-nothing to commit, working tree clean
+# On branch feature/SPEC-AUTH-001
+# nothing to commit, working tree clean
 
 # 如果发生 Git 错误
 git fetch --all
@@ -392,18 +456,18 @@ git rebase origin/feature/SPEC-AUTH-001
 
 ### Q: Worktree 会影响性能吗?
 
-**A**: 只有微乎其微的影响:
+**A**: 影响不大:
 
 **优点**:
 
-- 每个 Worktree 独立,缓存高效
+- 每个 Worktree 相互独立,缓存命中率好
 - Git 操作快 (本地分支)
 - 利用文件系统缓存
 
 **缺点**:
 
 - 占用磁盘空间 (每个 Worktree 都有重复)
-- 初次创建 Worktree 需要时间
+- 第一次创建 Worktree 要花点时间
 
 **优化提示**:
 
@@ -414,15 +478,15 @@ moai worktree clean --merged-only
 # 2. Git 垃圾回收
 git gc --aggressive --prune=now
 
-# 3. Worktree 压缩
-git worktree prune
+# 3. 清理 stale 引用
+moai worktree clean
 ```
 
 ---
 
 ### Q: 可以创建多少个 Worktree?
 
-**A**: 理论上不限,但实际上以下因素会限制数量:
+**A**: 理论上不限,但实际上以下因素会左右数量:
 
 **限制因素**:
 
@@ -452,20 +516,25 @@ graph TD
 
 ### Q: 可以自动清理 Worktree 吗?
 
-**A**: 可以,你可以使用定期清理脚本:
+**A**: 清理已合并的 Worktree 交给自动化是安全的。不过 `--stale --yes` 更推荐由
+人看过清单再执行,而不是无人值守地跑:
 
 ```bash
 #!/bin/bash
 # clean-worktrees.sh
 
-# 清理已合并到 base 的 Worktree
+cd /path/to/project
+
+# 清理已合并进 base 的 Worktree (安全)
 moai worktree clean --merged-only
 
+# 废弃的 Worktree 只报告清单 (不删除)
+moai worktree clean --stale
+
 # Git 垃圾回收
-cd /path/to/project
 git gc --aggressive --prune=now
 
-echo "Worktree 清理完成"
+echo "Worktree 清理完成 —— --stale 的清单请确认后自行用 --yes 处理"
 ```
 
 **Cron 任务设置**:
@@ -486,13 +555,13 @@ echo "Worktree 清理完成"
 ```mermaid
 graph TB
     subgraph DevA["开发者 A"]
-        A1[创建 Worktree]
+        A1[进入 Worktree]
         A2[开发]
         A3[完成并 PR]
     end
 
     subgraph DevB["开发者 B"]
-        B1[创建 Worktree]
+        B1[进入 Worktree]
         B2[开发]
         B3[完成并 PR]
     end
@@ -508,7 +577,7 @@ graph TB
 **团队协作指南**:
 
 1. **Worktree 命名规范**: `SPEC-{类别}-{编号}`
-2. **定期同步**: `git pull origin main`
+2. **定期同步**: `moai worktree sync`
 3. **PR 审查前**: 在本地完成测试
 4. **冲突防止**: 经常与 `main` 同步
 
@@ -516,18 +585,18 @@ graph TB
 
 ### Q: 如何把 Worktree 与 base 分支同步?
 
-**A**: `moai worktree sync` 会把 base 分支的变更拉取到 Worktree。用
-`--strategy` 选择 merge (默认) 或 rebase:
+**A**: `moai worktree sync` 会把 base 分支的变更拉进 Worktree。用 `--strategy`
+在 merge (默认) 与 rebase 之间选一个:
 
 ```bash
 # 把当前目录的 Worktree 与 base(main) 同步 —— merge 策略
 moai worktree sync
 
-# 用 rebase 策略同步特定 Worktree
-moai worktree sync SPEC-AUTH-001 --strategy rebase
+# 用 rebase 策略同步指定的 Worktree
+moai worktree sync feature/SPEC-AUTH-001 --strategy rebase
 
 # 基于其他 base 分支同步
-moai worktree sync SPEC-AUTH-001 --base develop
+moai worktree sync feature/SPEC-AUTH-001 --base develop
 ```
 
 ---
@@ -537,22 +606,17 @@ moai worktree sync SPEC-AUTH-001 --base develop
 **A**: 使用以下策略:
 
 ```bash
-# 创建 PR 前
-moai worktree status
-# 确认状态
-
+# 创建 PR 前 —— 确认状态与变更内容
+git worktree list
 git log main..feature/SPEC-AUTH-001
-# 确认变更
 
-# PR 审查期间
-# 保留 Worktree (等待合并)
+# PR 审查期间 —— 保留 Worktree (等待合并)
 
 # PR 批准并合并后清理 Worktree
-moai worktree done SPEC-AUTH-001 --delete-branch
+moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
-# PR 被拒绝后
-cd "$(moai worktree go SPEC-AUTH-001)"
-# 继续修改工作
+# 收到修改意见时重新进入,继续工作
+moai glm -w SPEC-AUTH-001
 ```
 
 ---
@@ -561,18 +625,22 @@ cd "$(moai worktree go SPEC-AUTH-001)"
 
 ### Q: 可以不使用 Worktree 而使用 MoAI-ADK 吗?
 
-**A**: 可以,但不推荐:
+**A**: 可以。工作树不是默认项,而是由使用者自己选的选项;不带 `-w` 运行时就在
+主检出里照常工作:
 
 ```bash
-# 不使用 Worktree
+# 不使用 Worktree 运行
+moai cc
 > /moai plan "功能描述"
-# 跳过 Worktree 创建步骤
+> /moai run SPEC-XXX-001
 
-# 但会产生以下问题:
-# 1. 所有会话应用同一 LLM
-# 2. 无法并行开发
-# 3. 上下文切换成本
+# 不过要接受以下几点:
+# 1. 所有会话应用同一 LLM 设置
+# 2. 并行开发时的分支切换成本
 ```
+
+如果 SPEC 是一个接一个顺序推进,这样就够了。一旦开始同时跑多个 SPEC,工作树这
+一边明显更省心。
 
 ---
 
@@ -589,8 +657,11 @@ git push origin feature/SPEC-AUTH-001
 
 # Worktree 丢失时恢复
 git fetch origin
-git worktree add SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
+git worktree add .claude/worktrees/SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
 ```
+
+untracked 文件不由 git 管理,所以这种方式救不回来。`.env` 之类的本地文件请另行
+保管。
 
 ---
 

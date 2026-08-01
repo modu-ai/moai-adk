@@ -7,26 +7,12 @@ import "testing"
 // profile_setup.go. Runtime mode was already inert; the wizard no longer
 // prompts for mode.
 
-// TestNormalizeStatuslineTheme verifies that valid themes pass through unchanged
-// and that unknown or legacy "default" values are converted to "catppuccin-mocha".
-func TestNormalizeStatuslineTheme(t *testing.T) {
-	tests := []struct {
-		in, want string
-	}{
-		{"catppuccin-mocha", "catppuccin-mocha"},
-		{"catppuccin-latte", "catppuccin-latte"},
-		{"default", "catppuccin-mocha"},
-		{"", "catppuccin-mocha"},
-		{"custom-theme", "catppuccin-mocha"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			if got := normalizeStatuslineTheme(tt.in); got != tt.want {
-				t.Errorf("normalizeStatuslineTheme(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
+// TestNormalizeStatuslineTheme removed: the theme Select was removed from the
+// wizard and the theme is now fixed to fixedStatuslineTheme, so there is no
+// stored value being normalized back onto a widget and
+// normalizeStatuslineTheme / isCanonicalStatuslineTheme no longer exist. What
+// the wizard writes instead is asserted by
+// profile_setup_removed_questions_test.go.
 
 // TestNormalizeModel_Canonical verifies that picker values pass through unchanged
 // and that bare aliases predating the 1M unification migrate to their [1m] form.

@@ -183,7 +183,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 1. **[HARD] Pre-spawn fetch obligation**: `.claude/rules/moai/core/agent-common-protocol.md` §Pre-Spawn Sync Check (L1) — implementation Agent spawn 전 `git fetch origin && git rev-list --count --left-right origin/main...HEAD` 의무. `N 0` (origin ahead) 감지 시 STOP + AskUserQuestion (rebase / inspect / abort 3 옵션).
 
-2. **[SHOULD] Multi-session 인지 시 L2/L3 worktree opt-in 권장**: 사용자가 동일 cwd에서 2+ 세션 작업 패턴이면 `/moai plan --worktree` 또는 `moai worktree new SPEC-XXX --base origin/main`으로 SPEC별 working tree 분리. Memory는 여전히 공유되나 git working tree는 분리 → race 원천 차단. CLAUDE.md §14 [SHOULD] worktree advisory + session-handoff.md Block 0 패턴 활용.
+2. **[SHOULD] Multi-session 인지 시 worktree opt-in 권장**: 사용자가 동일 cwd에서 2+ 세션 작업 패턴이면 `moai cc -w <이름>`으로 SPEC별 working tree 분리. Memory는 여전히 공유되나 git working tree는 분리 → race 원천 차단. CLAUDE.md §14 [SHOULD] worktree advisory + session-handoff.md Block 0 패턴 활용.
 
 3. **[SHOULD] Paste-ready resume 단일 세션 처리 discipline**: 사용자 수동 규율 — paste-ready resume은 1 세션에서만 paste. 다른 세션에서는 별도 SPEC 작업 OR read-only 활동 (`Agent(Explore)` 또는 `Agent(general-purpose)` diagnostic — 과거 `manager-quality` diagnostic은 archived per SPEC-V3R6-AGENT-TEAM-REBUILD-001). Memory hash 공유로 인한 paste-ready 동시 consume 회피.
 

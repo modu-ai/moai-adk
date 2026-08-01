@@ -83,7 +83,6 @@ Constraints: 10k concurrent users, 100ms read latency target
 
 | Phase / Section | Sub-skill | Description |
 |---|---|---|
-| Phase 1: Brain Proposal Detection | `plan/context-discovery.md` | Brain IDEA scan and SPEC candidate surfacing |
 | Phase 2: Project Exploration | `plan/context-discovery.md` | Explore subagent codebase analysis |
 | Phase 3: Clarity Evaluation | `plan/context-discovery.md` | Clarity scoring (1-10) and skip conditions |
 | Phase 4: Deep Interview Loop | `plan/clarity-interview.md` | 1-5 round topic-focused interview |
@@ -114,9 +113,8 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 ## Invocation Flow
 
 ```
-/moai plan [description] [--worktree|--branch] [--no-issue]
+/moai plan [description] [--branch] [--no-issue]
   └─ context-discovery.md
-       ├─ Phase 1: Brain proposal scan
        ├─ Phase 2: Explore (optional)
        └─ Phase 3: Clarity evaluation (1-10 score)
             └─ clarity-interview.md

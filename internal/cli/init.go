@@ -60,8 +60,7 @@ Examples:
   moai init --all            Deploy all catalog entries (default is core-only slim mode; SPEC-V3R4-CATALOG-002)
 
 Note: moai init / moai update do NOT auto-enter a worktree. To work inside a
-worktree, use the launcher flag (moai cc -w <name>) or create one explicitly
-(moai worktree new <SPEC-ID>).`,
+worktree, enter one with the launcher flag (moai cc -w <name>).`,
 	Args:    cobra.MaximumNArgs(1),
 	PreRunE: validateInitFlags,
 	RunE:    runInit,
