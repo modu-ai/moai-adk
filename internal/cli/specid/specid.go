@@ -1,7 +1,7 @@
 // Package specid는 CLI SPEC-ID 공유 sanitizer를 제공하는 leaf package다.
 //
 // SPEC-SEC-HARDEN-002 M1/M2a — ValidateSpecID는 모든 CLI SPEC-ID 경계
-// (worktree new, spec view/status/close)에서 사용하는 단일 검증 헬퍼다.
+// (spec view/status/close)에서 사용하는 단일 검증 헬퍼다.
 // leaf package에 두는 이유: internal/cli가 internal/cli/worktree를 import하므로
 // worktree는 cli를 import할 수 없다(import cycle). 본 package는 cli와 worktree
 // 양쪽에서 import 가능하고 둘 중 어느 것도 import하지 않으므로 cycle이 없다.

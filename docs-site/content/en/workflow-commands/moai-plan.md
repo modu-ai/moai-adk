@@ -57,7 +57,6 @@ Type the following in the Claude Code chat:
 
 | Flag        | Description                          | Example                           |
 | ------------- | ----------------------------- | ------------------------------ |
-| `--worktree`  | Auto-create a worktree (highest priority)   | `/moai plan "feature" --worktree` |
 | `--branch`    | Create a traditional branch            | `/moai plan "feature" --branch`   |
 | `--resume`    | Resume planning from an existing SPEC   | `/moai plan --resume SPEC-AUTH-001` |
 | `--issue`     | Create a GitHub issue (opt-in)          | `/moai plan "feature" --issue`    |
@@ -66,29 +65,28 @@ Type the following in the Claude Code chat:
 
 When branch-strategy flags are specified, they apply in the following order:
 
-1. **--worktree** (highest priority): create an isolated Git worktree
-2. **--branch** (second): create a traditional feature branch
-3. **No flag** (default): create only the SPEC; the user chooses the branch strategy at the BODP gate
+1. **--branch**: create a traditional feature branch
+2. **No flag** (default): create only the SPEC; the user chooses the branch strategy at the BODP gate
 
 `--issue` is an opt-in option independent of the branch strategy. **By default, GitHub issue creation is skipped** (the late-branch opt-in policy); to create an issue, you must explicitly specify the `--issue` flag.
 
-### The --worktree flag
+### Planning inside a worktree
 
-Creates an **isolated Git worktree** at the same time as the SPEC, preparing a parallel development environment:
+Plan does not create a workspace. To plan in an isolated environment, **enter the worktree first**, then run plan:
 
 ```bash
-> /moai plan "implement the payment system" --worktree
+moai cc -w payment          # enter the worktree in place
+> /moai plan "implement the payment system"
 ```
 
-When you use this option:
+To open it in a new tmux window and keep the current session, add `--spawn`:
 
-1. It generates the SPEC document
-2. It commits the SPEC (a prerequisite for creating a worktree)
-3. It creates a worktree with the `feature/SPEC-{ID}` branch
-4. You can develop independently without affecting the main code
+```bash
+moai cc -w payment --spawn
+```
 
 {{< callout type="info" >}}
-  The `--worktree` option is useful when **developing multiple features simultaneously**. Since each SPEC is worked on in an isolated worktree, they do not conflict with each other.
+  When **developing multiple features simultaneously**, give each feature its own worktree so they do not conflict. Entering is the launcher's job; plan then runs inside it unchanged.
 {{< /callout >}}
 
 ## Requirements notation (EARS / GEARS)
@@ -131,11 +129,9 @@ flowchart TD
     K -->|Request changes| E
     K -->|Cancel| M["Exit"]
     L --> N{"Check flags"}
-    N -->|--worktree| O["Create worktree"]
     N -->|--branch| P["Create branch"]
     N -->|No flag| Q["User choice"]
-    O --> R["Done"]
-    P --> R
+    P --> R["Done"]
     Q --> R
 ```
 
@@ -260,8 +256,7 @@ By default, this step is **skipped** (the late-branch opt-in policy). Only when 
 
 The branch strategy is decided via the **BODP (Branch Origin Decision Protocol) gate**:
 
-- **--worktree** (highest priority): create an isolated Git worktree
-- **--branch** (second): create a traditional feature branch
+- **--branch**: create a traditional feature branch
 - **Keep the current branch**: continue on the current checkout without a flag
 
 ### Phase 14: MX tag planning
@@ -420,14 +415,13 @@ status: draft
 **Step 4: Git environment setup after user approval**
 
 ```bash
-# When using the --worktree flag
-> /moai plan "JWT authentication" --worktree
+# When using the --branch flag
+> /moai plan "JWT authentication" --branch
 
 # Result:
 # 1. SPEC document created (.moai/specs/SPEC-AUTH-001/)
 # 2. SPEC committed (feat(spec): Add SPEC-AUTH-001)
-# 3. Worktree created (.git/worktrees/SPEC-AUTH-001)
-# 4. Worktree path displayed
+# 3. feature/SPEC-AUTH-001 branch created and checked out
 ```
 
 **Step 5: run `/clear`, then move to the implementation phase**
@@ -463,9 +457,9 @@ The domain is decided automatically by manager-spec based on the feature's area.
 
 `/moai plan` handles **SPEC document creation only**. `/moai` performs the **entire workflow** automatically, from SPEC creation to implementation to documentation.
 
-### Q: What is the difference between --worktree and --branch?
+### Q: How do I work inside a worktree?
 
-**--worktree** creates an isolated working directory, providing a fully isolated environment. **--branch** creates a new branch in the current repository. To develop multiple features simultaneously, --worktree is recommended.
+Plan has no flag that creates a worktree. Enter one with the launcher first (`moai cc -w <name>`), then run plan. **--branch** is a separate option that only creates a new branch in the current repository. To develop multiple features simultaneously, entering a worktree keeps them from conflicting.
 
 ## GEARS notation (v3.0.0+) {#gears-notation}
 
