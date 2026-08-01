@@ -733,18 +733,11 @@ func TestNew_NoFetchWhenFromCurrent(t *testing.T) {
 // invoke AskUserQuestion. The orchestrator owns user interaction; the CLI
 // returns exit codes / writes audit trails only (agent-common-protocol).
 //
-// SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001 AC-WTL-006: extended in M2 to scan all
-// new --team-related source files (handoff_guidance.go, team_launch.go,
-// team_launch_posix.go, team_launch_windows.go). M4 extends with
-// swarm_registry.go (REQ-WTL-013 boundary scan).
+// The former --team launch sources are retired; the surviving worktree-creation
+// path is new.go alone.
 func TestNew_NoAskUserQuestion(t *testing.T) {
 	files := []string{
 		"new.go",
-		"team_launch.go",         // M1 — pattern enum + decidePattern
-		"team_launch_posix.go",   // M2 — launchP3 (POSIX syscall.Exec)
-		"team_launch_windows.go", // M2 — launchP3 (Windows fallback stub)
-		"handoff_guidance.go",    // M2 — printHandoff / printHandoffWithError
-		"swarm_registry.go",      // M4 — WriteSwarmEntry / patternToMode
 	}
 	for _, file := range files {
 		src, err := os.ReadFile(file)
@@ -757,16 +750,12 @@ func TestNew_NoAskUserQuestion(t *testing.T) {
 	}
 }
 
-// TestDispatchTeamLaunch_WorktreeCreateFailure_NoRegistry verifies REQ-WTL-010
-// + AC-WTL-010: when WorktreeProvider.Add fails (invalid SPEC ID, path
-// collision, etc.), runNew returns early with the wrapped error BEFORE
-// dispatchTeamLaunch is invoked. As a structural consequence, no swarm
-// registry file exists for the failed SPEC ID.
-//
-// This test injects a failing WorktreeProvider, runs the full newCmd with
-// --team set, asserts the error is propagated unchanged, and verifies that
-// the registry file at the expected location does NOT exist.
-func TestDispatchTeamLaunch_WorktreeCreateFailure_NoRegistry(t *testing.T) {
+// TestNew_WorktreeCreateFailure_PropagatesError verifies that a failing
+// WorktreeProvider.Add aborts runNew with the wrapped error rather than
+// continuing into the post-creation steps (audit trail, tmux, success card).
+// Reporting success for a worktree that was never created is the failure this
+// pins down.
+func TestNew_WorktreeCreateFailure_PropagatesError(t *testing.T) {
 	// Mock the home directory + project name so the worktree path is
 	// deterministic and lives entirely inside t.TempDir().
 	tempDir := t.TempDir()
@@ -788,17 +777,17 @@ func TestDispatchTeamLaunch_WorktreeCreateFailure_NoRegistry(t *testing.T) {
 		return "", nil
 	}
 
-	// Inject a WorktreeProvider whose Add always fails — this simulates
-	// REQ-WTL-010's "invalid SPEC ID" / path collision conditions.
+	// Inject a WorktreeProvider whose Add always fails — simulating an invalid
+	// SPEC ID, a path collision, or a permission error.
 	mockProvider, cleanup := setupMockProvider(t)
 	defer cleanup()
 	mockProvider.addFunc = func(path, branch string) error {
 		return os.ErrPermission
 	}
 
-	specID := "SPEC-WTL-FAIL-001"
+	specID := "SPEC-WT-FAIL-001"
 	cmd := newNewCmd()
-	cmd.SetArgs([]string{"--team", specID})
+	cmd.SetArgs([]string{specID})
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 
@@ -810,34 +799,33 @@ func TestDispatchTeamLaunch_WorktreeCreateFailure_NoRegistry(t *testing.T) {
 		t.Errorf("error must wrap %q; got: %v", "create worktree", err)
 	}
 
-	// Negative assertion: no swarm registry file exists for the failed SPEC.
-	registryPath := filepath.Join(tempDir, ".moai", "state", "swarm", specID+".json")
-	if _, statErr := os.Stat(registryPath); !os.IsNotExist(statErr) {
-		t.Errorf("registry file MUST NOT exist after worktree creation failure; stat err = %v", statErr)
+	// Negative assertion: the aborted run must not have written a BODP audit
+	// trail, which only happens after a successful creation.
+	auditDir := filepath.Join(tempDir, ".moai", "branches", "decisions")
+	if entries, statErr := os.ReadDir(auditDir); statErr == nil && len(entries) > 0 {
+		t.Errorf("audit trail MUST NOT be written after worktree creation failure; found %d entries", len(entries))
 	}
 }
 
-// TestNewTeamTmuxMutex verifies cobra rejects `--team --tmux` combined usage
-// per R9 / OQ-2: the two flags are mutually exclusive because --team subsumes
-// tmux launching (P1/P2 paths) and combining them creates ambiguous intent.
-//
-// AC-WTL-007 extension (edge case from acceptance.md §2): "`--team` with
-// `--tmux` → Cobra reports mutually exclusive flags error; exit non-zero
-// before any worktree creation".
-func TestNewTeamTmuxMutex(t *testing.T) {
+// TestNew_NoTeamFlag pins the retirement of --team: the flag must no longer be
+// accepted by `moai worktree new`. Session launching moved to the launchers
+// (`moai cc -w <name> [--spawn]`), and a silently-ignored --team would leave
+// users believing a session was spawned when none was.
+func TestNew_NoTeamFlag(t *testing.T) {
 	cmd := newNewCmd()
-	cmd.SetArgs([]string{"--team", "--tmux", "SPEC-WTL-MUTEX-001"})
-	// Silence cobra's auto-printed usage to keep test output clean.
+	if cmd.Flags().Lookup("team") != nil {
+		t.Error("`moai worktree new` must not declare a --team flag (retired)")
+	}
+
+	cmd.SetArgs([]string{"--team", "SPEC-WT-NOTEAM-001"})
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true
-
 	err := cmd.Execute()
 	if err == nil {
-		t.Fatalf("expected error from mutually-exclusive --team --tmux; got nil")
+		t.Fatal("expected unknown-flag error for --team; got nil")
 	}
-	msg := err.Error()
-	if !strings.Contains(msg, "team") || !strings.Contains(msg, "tmux") {
-		t.Errorf("error message must reference both `team` and `tmux`; got: %q", msg)
+	if !strings.Contains(err.Error(), "team") {
+		t.Errorf("error should name the unknown flag; got: %v", err)
 	}
 }
 

@@ -357,31 +357,28 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 "Run: go test ./..."
 ```
 
-## Team Launch Patterns
+## Teammate Session Launch (`--spawn`)
 
-The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session inside the new worktree based on the current environment. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag for the full P1-P4 decision matrix, detection logic, and example invocations.
+`moai cc -w <name> --spawn` (likewise `moai glm` / `moai cg`) opens a session in the named worktree in a NEW tmux window and returns, so the caller keeps its own session. Without `--spawn` the same command enters the worktree in place by replacing the current process. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` for requirements, error messages, and example invocations.
 
-> **Two distinct `teammateMode` fields — do not conflate.** The `teammateMode` referenced in the §HARD Rules and P1-P4 detection below is MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`), set by `moai cg` / `moai glm` / `moai cc`. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed; MoAI's launcher-selection `teammateMode` governs which launcher (`moai cg` / `moai glm` / `moai cc`) the `--team` flag invokes. Both fields happen to share the name `teammateMode`.
+> **Two distinct `teammateMode` fields — do not conflate.** MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`) is set by `moai cg` / `moai glm` / `moai cc` and selects which launcher a session runs. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed. Both fields happen to share the name `teammateMode`.
 
 ### HARD Rules
 
-[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. Every launch outcome is decided from observable state (tmux session presence, `teammateMode`, GLM env vars) and reported through exit codes and stderr. This satisfies the Branch Origin Decision Protocol (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
 
-Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
+Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans the worktree-creation source for `AskUserQuestion` / `mcp__askuser` references.
 
-[ZONE:Frozen] [HARD] `--team` and `--tmux` are mutually exclusive at the cobra flag layer. Combining them is rejected before any worktree state is created.
+[ZONE:Evolvable] [HARD] `--spawn` refuses rather than degrades. Outside tmux, or without the `tmux` / `moai` binaries, it returns a non-zero exit instead of falling back to an in-place launch — a silent fallback would replace the caller's session, the outcome the flag exists to avoid. Refusal happens before any settings mutation.
 
-### Swarm Registry Baseline
+### Retired: `moai worktree new --team` and the swarm registry
 
-`.moai/state/swarm/<SPEC-ID>.json` (per-project, 0o600 perms) is written after successful team launch in P1, P2, or P3. The registry is NOT written for P4 (no spawn occurred), and is NOT written if pane spawn fails or worktree creation fails.
-
-The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `created_at`, `created_by_pid`) is the baseline for future `moai swarm status / done / kill-all` commands. Those commands are out of scope for the current worktree team-launch contract — the current contract delivers only the registry write.
+The `--team` flag and its four launch patterns are retired. Entering a worktree is `-w`; spawning a teammate window is `--spawn`. The write-only `.moai/state/swarm/<SPEC-ID>.json` registry was retired with it — no code ever read it, and the `moai swarm status / done / kill-all` commands it was a baseline for were never built.
 
 ### Cross-references
 
-- `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
-- `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
-- The canonical worktree team-launch contract requirements
+- `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` (requirements + examples)
+- `internal/cli/spawn.go`, `internal/cli/spawn_test.go`
 - Branch Origin Decision Protocol (BODP)
 
 ## Minimum Version Requirements

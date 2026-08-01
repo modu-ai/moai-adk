@@ -440,7 +440,7 @@ The practical multi-agent surface is covered without the static team layer:
 - High-volume mechanical transformation → Mode 6 (workflow / dynamic-workflow fan-out).
 
 The native Claude Code teammate runtime is UNAFFECTED: `moai cg` GLM teammate
-panes, `worktree --team` P1-P4 launch, the `~/.claude/teams/` registry, and
+panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and
 `teammateMode` launcher handling remain supported (see
 `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode). Only MoAI's static
 team-orchestration layer built on top of that runtime is retired.

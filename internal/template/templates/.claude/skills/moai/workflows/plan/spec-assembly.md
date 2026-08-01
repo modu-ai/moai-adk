@@ -372,9 +372,9 @@ Block 4 (preconditions) MUST include `0)` as the first item:
 
 Recommended session-launcher per execution mode:
 
-- `--team` → `tmux new-session -s moai-<spec> && moai cg` (teammate spawn via tmux split-window inherits worktree cwd + tmux session env)
-- single-session → `moai cc` (or `claude`) directly inside worktree
-- GLM-only → `moai glm`
+- multi-session → `moai cg -w <name> --spawn` from inside tmux (opens a teammate window in the worktree and keeps the caller's session)
+- single-session → `moai cc -w <name>` (enters the worktree in place)
+- GLM-only → `moai glm -w <name>`
 
 [HARD] Single-session corollary: If the user is NOT comfortable with multi-terminal/multi-session workflow, recommend converting to `--branch` next time. `--worktree` only realizes its isolation value when the user actually starts a separate session inside the worktree path. Forcing Block 0 onto a single-session user is friction without benefit.
 
