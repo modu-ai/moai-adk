@@ -1,6 +1,6 @@
 # SPEC-UPDATE-DATA-SURVIVAL-001 — Acceptance Criteria
 
-Version: 0.2.0 · Status: draft
+Version: 0.5.2 · Status: in-progress
 
 ## §A Discipline
 
@@ -12,18 +12,102 @@ Version: 0.2.0 · Status: draft
    Every AC below that uses `-run` therefore also asserts a literal `--- PASS: <exact test name>`
    line in the output. An AC that would still pass with its test deleted is a defect, and an AC
    whose only assertion is `exit 0` is rejected.
-3. **A guard must be able to fail on the fixture it runs on.** A well-formed assertion over a
-   quantity that is constant across the change is still vacuous. Two shapes of this bite here and
-   are named so they are not re-introduced: (a) a **self-comparison** — a drift guard that both
+3. **A guard must be able to fail on the fixture it runs on.** The test is not "does this quantity
+   change?" but "**could any change move it?**" A constant-valued assertion is vacuous only when no
+   change to the implementation could move it. Two shapes of genuine vacuity bite here and are
+   named so they are not re-introduced: (a) a **self-comparison** — a drift guard that both
    enumerates and validates from the same source yields `count == count` and can never fail
    (AC-UDS-005); (b) a **missing before-snapshot** — an invariance claim ("unchanged before and
    after") asserted from a single post-run observation, which passes whatever it observes
    (AC-UDS-013).
-4. **Baselines are observed, not assumed.** Every "baseline" line in §B was produced by running the
-   stated command on 2026-07-31 against worktree HEAD `a8b42e112` (branch
-   `plan/epic-update-config-audit`), whose code baseline is `d5336214e` — every commit between the
-   two changes SPEC documents only, so no Go source differs. Where a baseline names a commit, it
-   names `a8b42e112`; `d5336214e` is cited only as the code baseline it inherits.
+
+   **Preservation-guard carve-out.** A constant assertion that *would* move in the direction an
+   unwanted change pushes it is a **preservation guard**, not a vacuous one — it is the mechanism
+   by which "this must not change" becomes observable. Four ACs below are preservation guards and
+   are classified as such rather than as violations of this clause:
+
+   | AC | Constant | What moves it (so it can fail) |
+   |---|---|---|
+   | AC-UDS-007 (b) | `2` → `2` | Deleting the Category D `.moai/project/db/` contrast clause (`dirs.go:349`) drives it to `1`; deleting the whole Category D banner (`dirs.go:344-351`) drives it to `0` |
+   | AC-UDS-010 | exit 0 → exit 0 | Any success-path regression (NFR-UDS-005) drives it non-zero |
+   | AC-UDS-018 | exit 0 → exit 0 | A path-handling change that breaks the windows cross-build drives it non-zero |
+   | AC-UDS-019 | `0` → `0` | Committing or staging any `internal/template/templates/**` edit **in this SPEC's own commits** drives it ≥ 1 (a foreign template change arriving via a merge of `origin/main` does not — see AC-UDS-019's merge-base rationale) |
+
+   **Relation to §A.2.** §A.2 rejects an AC whose only assertion is `exit 0`; that rejection is
+   scoped to `go test -run <pattern>`, where exit 0 is also the outcome when the pattern matches
+   **zero** tests — the exit code there carries no information about whether anything ran.
+   AC-UDS-010 (whole-package `go test`, no `-run`) and AC-UDS-018 (`go build`) have no such
+   zero-match mode: their exit 0 means the suite or the build actually completed. The two clauses
+   therefore do not conflict.
+4. **Baselines are observed, not assumed, and are re-baselined when the tree moves.** Every
+   "baseline" line in §B was re-measured on 2026-08-01 against the **code baseline `8cc108ddb`**
+   (verified an ancestor of this branch's HEAD), on branch
+   `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Where a baseline names a commit for **measurement
+   provenance** — "this figure was observed against that tree" — it names `8cc108ddb`.
+
+   **`8cc108ddb` is a measurement anchor, NOT a comparison base.** When it was recorded it was
+   also `origin/main`; that parenthetical is now false — `origin/main` has since advanced to
+   `9ced435e9`. The distinction is load-bearing: a *measurement anchor* records where a figure was
+   observed and stays valid as history (it is still an ancestor of HEAD, so the figures still
+   reproduce); a *comparison base* is recomputed at evaluation time and MUST NOT be a literal SHA,
+   because `origin/main` advances and merges into this branch. AC-UDS-019 (a) previously conflated
+   the two and consequently reported a false failure; it now anchors on
+   `$(git merge-base origin/main HEAD)`. No other AC compares against `8cc108ddb`.
+
+   **On the HEAD anchor.** The measurements were recorded by artifact commit `89b2e4772`; every
+   commit from `89b2e4772` to the current HEAD changes SPEC documents only
+   (`git diff --name-only 89b2e4772 HEAD` returns no `.go` path), so the code baseline these
+   figures describe is unchanged by them. A reader comparing `git rev-parse HEAD` against a
+   recorded SHA will see a mismatch — that is the self-referential-commit hazard (a commit cannot
+   name its own SHA), not a measurement error. The load-bearing anchor is `8cc108ddb`.
+
+   **Why the previous anchor was retired.** v0.3.0 anchored these baselines to worktree HEAD
+   `a8b42e112` / code baseline `d5336214e`, and asserted "every commit between the two changes SPEC
+   documents only, so no Go source differs." That premise is **measurably false on this tree**, and
+   the anchor is unreachable from it:
+
+   ```
+   $ git merge-base --is-ancestor a8b42e112 HEAD && echo "ANCESTOR: yes" || echo "ANCESTOR: NO"
+   ANCESTOR: NO
+   $ git merge-base --is-ancestor 8cc108ddb HEAD && echo "ANCESTOR: yes" || echo "ANCESTOR: NO"
+   ANCESTOR: yes
+   $ git diff --name-only d5336214e..HEAD | grep -v '^\.moai/' | wc -l
+         19
+   ```
+
+   The `8cc108ddb` ancestor check was **re-verified on HEAD `184a5bd222`** and still returns
+   `ANCESTOR: yes`, so it remains a valid measurement anchor. What changed is that it is no longer
+   `origin/main` — see the anchor-vs-base distinction above.
+
+   The 19 differing files are E1's (`SPEC-UPDATE-REINSTALL-LOOP-002`) landing — run PR #1261
+   (`beeb0ebc2`) and sync PR #1264 (`8cc108ddb`) — which added `internal/cli/update_residue_cleanup.go`
+   (a new destructive site, §C.0 row 11) and shifted line coordinates across `update.go`,
+   `update_preserve_inventory.go`, `update_archive.go`, `update_clean_install.go`, and
+   `update_cleanup.go`. Every coordinate and count in this file was re-measured against
+   `89b2e4772`; nothing is carried over from the retired anchor.
+
+   **Time-of-check-to-time-of-use — the anticipated event OCCURRED (twice).** These baselines
+   describe HEAD `89b2e4772`. This clause warned that if another Epic SPEC landed changes before
+   run-phase entry, the same drift would recur. It did, in two distinct forms, and both are now
+   recorded rather than left as a forward-looking risk:
+
+   1. **Coordinate drift (self-inflicted).** This SPEC's own M1 commit `4ddd35120` shifted line
+      coordinates in `update.go` and `update_clean_install.go`. The M2 Step 0 re-scan on HEAD
+      `2255165f5` caught it: site total (18) and pair count (11) unchanged, coordinates corrected.
+      See AC-UDS-005's drift-history paragraph.
+   2. **Foreign template commit (external).** `9ced435e9` (PR #1266) landed 8
+      `internal/template/templates/` files on `origin/main` and entered this branch via merge
+      `2255165f5`. It broke AC-UDS-019 (a)'s **fixed-SHA pin** — not the SPEC's behaviour. The
+      permanent fix is structural rather than a re-pin: (a) now anchors on
+      `$(git merge-base origin/main HEAD)`, which is invariant under future merges of `origin/main`.
+      Re-pinning to `9ced435e9` would have failed again on the next merge.
+
+   The general lesson: an absolute anchor recorded at one instant and consumed at another is the
+   recurring failure shape (this session hit it three times — coordinates twice, the template pin
+   once). Where a check is *evaluated later*, prefer a base computed at evaluation time. Where a
+   figure merely *records where it was observed*, a literal SHA is correct and stays valid. M2's
+   first act remains re-running the §C.0 source scan rather than trusting the recorded table
+   (see AC-UDS-005).
 5. **Every AC cites the REQ it verifies.** An AC with no REQ citation is untraceable, and a REQ with
    no citing AC is uncovered. §B.0 carries the coverage map.
 6. **Every new guard needs a falsification** proving it FAILS against unfixed code. §C gives the
@@ -47,7 +131,7 @@ Every REQ has at least one citing AC; every AC names the REQ it verifies.
 | REQ-UDS-003 | **AC-UDS-020** | REQ-UDS-017 | AC-UDS-015 |
 | REQ-UDS-004 | AC-UDS-010 | REQ-UDS-018 | AC-UDS-014 |
 | REQ-UDS-005 | AC-UDS-009 | REQ-UDS-019 | AC-UDS-001 |
-| REQ-UDS-006 | AC-UDS-005 | REQ-UDS-020 | AC-UDS-001 (no rollback asserted by absence of tree mutation) |
+| REQ-UDS-006 | AC-UDS-005 | REQ-UDS-020 | AC-UDS-001 (clauses 3+4 — a non-empty planted set is destroyed, and stays absent on return) |
 | REQ-UDS-007 | AC-UDS-005, §C.4 | REQ-UDS-021 | AC-UDS-002 |
 | REQ-UDS-008 | AC-UDS-006 | REQ-UDS-022 | AC-UDS-002 |
 | REQ-UDS-009 | AC-UDS-007 | REQ-UDS-023 | AC-UDS-004 |
@@ -60,23 +144,66 @@ Every REQ has at least one citing AC; every AC names the REQ it verifies.
 NFR coverage: NFR-UDS-001 → AC-UDS-008 (separate-call reach into the crash window);
 NFR-UDS-002 → AC-UDS-013; NFR-UDS-003 → AC-UDS-019; NFR-UDS-005 → AC-UDS-010;
 NFR-UDS-006 → AC-UDS-018; NFR-UDS-007 → AC-UDS-007.
+NFR-UDS-004 (Go conventions — `snake_case.go` filenames, `fmt.Errorf("…: %w", err)` wrapping) is
+deliberately **not** mapped to an AC in this SPEC: it is enforced by the project toolchain
+(`gofmt`, `go vet`, `golangci-lint`) on every milestone, not by a test this SPEC authors. The map
+above is complete under that exemption.
 
 ### M1 — Failure contract
 
 #### AC-UDS-001 — a mid-run failure after the first destructive step writes and prints a recovery manifest (REQ-UDS-019, REQ-UDS-020)
 
 ```bash
+# (a) the guard itself
 go test -run 'TestUpdateFailure_WritesRecoveryManifest' -count=1 -v ./internal/cli/
+# (b) the fixture's planted set is a NON-EMPTY literal declared in the test source
+sed -n '/^var plantedMoaiManagedPaths = \[\]string{/,/^}/p' \
+  internal/cli/update_recovery_manifest_test.go | grep -cE '^\s+"'
 ```
 
-Expected: a `--- PASS: TestUpdateFailure_WritesRecoveryManifest` line. The test injects a failing
-step after `CleanMoaiManagedPaths`, then asserts on the fixture tree that a recovery manifest exists
-inside the run-scoped backup directory naming the failed step and the restore command, and that the
-same manifest text appears in the captured writer.
+Expected: (a) a `--- PASS: TestUpdateFailure_WritesRecoveryManifest` line; (b) prints **`≥ 1`**.
+The test plants each path in `plantedMoaiManagedPaths` into a `t.TempDir()` fixture, injects a
+failing step after `CleanMoaiManagedPaths`, then asserts **four** things:
+
+1. a recovery manifest exists inside the run-scoped backup directory naming the failed step and the
+   restore command;
+2. the same manifest text appears in the captured writer;
+3. **every path in `plantedMoaiManagedPaths` existed on disk immediately before
+   `CleanMoaiManagedPaths` ran, and was gone immediately after it returned** — the destruction
+   actually happened, so the removed set is non-empty by construction;
+4. **every path in `plantedMoaiManagedPaths` is still absent when the outer call returns** — the
+   update did not silently restore them (REQ-UDS-020, no automatic rollback).
+
+**Clauses 3+4 are REQ-UDS-020's only mechanical coverage, and clause 3 is what makes clause 4
+non-vacuous.** An earlier draft mapped REQ-UDS-020 to this AC while the AC body asserted nothing
+about rollback (covered on paper only); v0.3.0 added the absence assertion but left its quantifier
+unbounded, so on a fixture containing no moai-managed paths "all of ∅ are still absent" held
+trivially and **adding an automatic rollback could not move it** — vacuous by §A.3's own criterion,
+which is the exact condition the original defect was raised to fix.
+
+**Why the non-emptiness pin is sourced from the fixture, not from the call.** Asserting "≥ 1 path
+was removed" from a count the test computes by observing `CleanMoaiManagedPaths`' own output would
+compare the function against itself — §A.3 shape (a), a self-comparison that can never fail. The
+count therefore comes from **known-planted paths**: a literal `[]string` in the test source, whose
+non-emptiness command (b) verifies by reading that source, and whose actual planting clause 3
+verifies against the filesystem.
+
+**Falsification (why the criterion is unsatisfiable on an empty removed-set).** Three independent
+directions move it:
+
+| Mutation | Which clause fails | Why |
+|---|---|---|
+| Empty `plantedMoaiManagedPaths` | (b) → `0` | the AC requires `≥ 1`; the empty-fixture escape is closed at the source level |
+| Fixture declares paths but does not create them | clause 3 pre-assertion | a planted path that never existed cannot be observed present before the call |
+| An automatic rollback is added | clause 4 | the recorded paths reappear on return |
+
+A rollback added to a tree whose fixture is empty no longer passes silently: (b) fails first.
 
 Baseline: the test does not exist; `go test -run 'TestUpdateFailure_WritesRecoveryManifest'
 ./internal/cli/` currently prints `ok … [no tests to run]` and exits 0 — which is exactly the
-vacuity this AC's `--- PASS` requirement excludes.
+vacuity this AC's `--- PASS` requirement excludes. Command (b) is likewise unmeasurable until M1
+creates `internal/cli/update_recovery_manifest_test.go`; that is expected for a new-guard AC and is
+not a baseline gap (same precedent as AC-UDS-013's `t.Setenv` grep).
 
 #### AC-UDS-002 — the restore entry point runs on a tree whose project marker was destroyed (REQ-UDS-021, REQ-UDS-022)
 
@@ -100,8 +227,14 @@ go test -run 'TestUpdate_RejectsTreeWithoutProjectMarker' -count=1 -v ./internal
 Expected: a `--- PASS: TestUpdate_RejectsTreeWithoutProjectMarker` line, asserting the returned
 error contains `not a moai project`. This pins REQ-UDS-025: the bypass is scoped to restore alone.
 
-Baseline: the gate exists at `internal/cli/update.go:236` and emits
-`not a moai project: .moai/config/sections/system.yaml not found in the current directory`.
+Baseline, re-measured on HEAD `2255165f5`: the gate is the `checkProjectMarker(cwd)` call at
+`internal/cli/update.go:251`; the predicate and its message live in
+`internal/cli/update_restore.go:21`/`:27` and emit
+`not a moai project: %s not found in the current directory` (`%s` =
+`.moai/config/sections/system.yaml`). The pre-M1 citation was `update.go:236`; M1 commit
+`4ddd35120` both moved the call site and extracted the predicate into `update_restore.go`, so that
+coordinate no longer resolves. This AC's verification command is unchanged — it asserts on the
+returned error text, not on a line number.
 
 #### AC-UDS-004 — restore is idempotent and refuses an unrecognised directory (REQ-UDS-023, REQ-UDS-024)
 
@@ -113,7 +246,14 @@ Expected: a `--- PASS: TestRestore_IdempotentAndRefusesForeignDir` line. The tes
 backup twice and asserts the resulting tree hashes are equal, then points the entry point at a
 directory lacking the backup marker file and asserts a non-nil error and an unmodified tree.
 
-Baseline: no restore entry point exists.
+Baseline: no restore entry point with **marker-gate bypass + idempotency + foreign-directory
+refusal** (REQ-UDS-022/023/024) exists, and none is reachable from the CLI. A restore surface does
+exist and must not be duplicated: `backup.RestoreMoaiConfig` (`backup/restore.go:40`) restores from
+a backup directory but is **mid-run only** — its two live callers are `update_clean_install.go:437`
+and `update_template_sync.go:406` (re-measured on HEAD `2255165f5`; recorded pre-M1 as `:429` and
+`:397`, both shifted by M1 commit `4ddd35120`) — and `moai migrate restore-skill` is the only user-invocable
+restore. **M1 must state explicitly whether the new entry point extends `RestoreMoaiConfig` or is
+separate**, per the two-owners hazard in `plan.md` §H.
 
 ### M2 — Destructive-target registry
 
@@ -134,38 +274,79 @@ assignment or a recorded exemption reason.
 sides of the comparison from the registry yields `count == count` and passes forever; the source
 scan is what makes this AC able to fail. §C.4 is its runnable falsification.
 
-**Baseline, measured on this tree.** The scan finds **17 call sites across 10
-(file, function) pairs** — materially more than the 7 an earlier draft of this AC assumed, because
-the earlier figure counted only `deploy.go` plus two hand-picked sites and omitted the archive,
-backup, cleanup, and namespace-protect files entirely. Command and verbatim output:
+**Baseline, re-measured on HEAD `89b2e4772` (code baseline `8cc108ddb`), and re-measured again on
+HEAD `2255165f5` at M2 Step 0.** The scan finds
+**18 call sites across 11 (file, function) pairs** — both figures identical across the two
+measurements, and the (file, function) pair set identical too. The M2 Step 0 re-scan moved **only
+line coordinates**, in rows 7 and 9 (see the row-7/row-9 note below the table). Command and
+verbatim output:
 
 ```
 $ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
     --include='*.go' | grep -v '_test.go' | wc -l
-      17
+      18
 ```
 
-The pair count and the site total are independently re-derivable from the table below:
+**The pair count and the site total are re-derived from the Go source, not from this document.**
+v0.3.0 published two "independent re-derivation" commands that grepped `acceptance.md` itself
+(`grep -c '^| [0-9]* | \`internal' acceptance.md`), so they returned `10` / `17` forever regardless
+of the tree — §A.3 shape (a), a self-comparison, applied to the document's own consistency check.
+That is why a 17→18 drift produced no signal. Both are replaced with source-tree scans:
 
 ```
-$ grep -c '^| [0-9]* | `internal' acceptance.md
-10
-$ grep '^| [0-9]* | `internal' acceptance.md | sed -E 's/.*\| ([0-9]+) \(.*/\1/' | awk '{s+=$1} END {print s}'
-17
+$ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
+    --include='*.go' | grep -v '_test.go' | cut -d: -f1 | sort | uniq -c
+   2 internal/cli/update_archive.go
+   1 internal/cli/update_clean_install.go
+   1 internal/cli/update_cleanup.go
+   3 internal/cli/update_namespace_protect.go
+   1 internal/cli/update_residue_cleanup.go
+   1 internal/cli/update.go
+   4 internal/cli/update/backup/backup.go
+   5 internal/cli/update/deploy/deploy.go
+
+$ grep -rl 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
+    --include='*.go' | grep -v '_test.go' | while read -r f; do
+      awk -v F="$f" '/^func /{fn=$2; sub(/\(.*/,"",fn)} /os\.RemoveAll\(|os\.Rename\(/{print F" "fn}' "$f"
+    done | sort -u | wc -l
+      11
 ```
+
+The table below MUST equal those two figures (18 sites, 11 pairs). A tree that drifts moves the
+commands' output and the equality fails — which is the signal the replaced commands could never
+produce.
 
 | # | File | Function | Sites |
 |---|---|---|---|
 | 1 | `internal/cli/update/deploy/deploy.go` | `CleanMoaiManagedPaths` | 3 (`:83`, `:105`, `:121`) |
 | 2 | `internal/cli/update/deploy/deploy.go` | `MigrateLegacyMemoryDir` | 2 (`:169`, `:176`) |
-| 3 | `internal/cli/update_archive.go` | `archiveSkill` | 1 (`:92`) |
-| 4 | `internal/cli/update_archive.go` | `archiveLegacySkills` | 1 (`:304`) |
+| 3 | `internal/cli/update_archive.go` | `archiveSkill` | 1 (`:101`) |
+| 4 | `internal/cli/update_archive.go` | `archiveLegacySkills` | 1 (`:322`) |
 | 5 | `internal/cli/update/backup/backup.go` | `BackupMoaiConfig` | 3 (`:107`, `:135`, `:140`) |
 | 6 | `internal/cli/update/backup/backup.go` | `CleanupOldBackups` | 1 (`:259`) |
-| 7 | `internal/cli/update_clean_install.go` | `runCleanReinstall` | 1 (`:271`) |
+| 7 | `internal/cli/update_clean_install.go` | `runCleanReinstall` | 1 (`:315`) |
 | 8 | `internal/cli/update_cleanup.go` | `removeDeprecatedFile` | 1 (`:324`) |
-| 9 | `internal/cli/update.go` | `ensureGlobalSettingsEnv` | 1 (`:766`) |
+| 9 | `internal/cli/update.go` | `ensureGlobalSettingsEnv` | 1 (`:853`) |
 | 10 | `internal/cli/update_namespace_protect.go` | `backupUserOwnedNamespace` | 3 (`:225`, `:233`, `:243`) |
+| 11 | `internal/cli/update_residue_cleanup.go` | `runV3ResidueCleanup` | 1 (`:135`) |
+
+**Row 11 is new in v0.4.0.** `internal/cli/update_residue_cleanup.go` was added by E1's run PR #1261
+(`beeb0ebc2`, `git log --oneline --diff-filter=A -- internal/cli/update_residue_cleanup.go`) after
+v0.3.0's registry was measured, so it was absent from the 17-site table. Rows 3, 4, 7, and 9 also
+carry re-measured coordinates (`:92`→`:101`, `:304`→`:322`, `:271`→`:307`, `:766`→`:843`); rows 1,
+2, 5, 6, 8, 10 were re-measured and are unchanged.
+
+**Rows 7 and 9 moved a second time at M2 Step 0 — a DIFFERENT, self-inflicted event.** The M2
+Step 0 re-scan on HEAD `2255165f5` shifted row 7 `:307`→`:315` and row 9 `:843`→`:853`. This is
+**not** a second external TOCTOU: the cause is this SPEC's own **M1 commit `4ddd35120`** (recovery
+manifest + restore entry point), which added code above both sites. The two drift events are
+therefore distinguishable and must stay so — the v0.3.0→v0.4.0 shifts recorded in the paragraph
+above were caused by **E1** (`SPEC-UPDATE-REINSTALL-LOOP-002`, a sibling SPEC landing between plan
+rounds), while these two are caused by **M1 of this SPEC**. The full drift chain per row is
+therefore row 7 `:271`→`:307`→`:315` and row 9 `:766`→`:843`→`:853`. Site total (18), pair count
+(11), and the (file, function) pair set were all unchanged by the M1 event — only coordinates
+moved, which is why this AC's guard (keyed on file + enclosing function + occurrence count, never
+on line numbers) required no change and why its verification command is untouched.
 
 Rows 5, 6, and 10 carry an **exemption reason** rather than a protection-set assignment, but for two
 materially different reasons — an earlier form of this paragraph collapsed them into one ("directories
@@ -185,14 +366,25 @@ the same run created") and was false for row 6:
   policy — never user-authored data. It is exempt from the *user-data* protection set, NOT harmless
   to the recovery contract.
 
+**Row 11 classification — user data, NOT exempt.** `runV3ResidueCleanup`
+(`update_residue_cleanup.go:65`) removes `sweep` — the existence-refiltered subset of
+`scanDeprecatedPaths`' return (`update_residue_cleanup.go:95-100`), i.e. `defs.DeprecatedPaths`
+entries **that predate the run and still exist on disk** — user-tree residue, not directories this
+call authored. It therefore fails the same-call-rewind test that exempts rows 5/6/10. It is not
+unprotected either: the function backs up before deleting (`:114-131`, `backupDeprecatedPaths`,
+aborting on failure with the `DEPRECATED_BACKUP_FAILED` sentinel at `:116`/`:125`), which is E1's
+REQ-RIL2-019/015 contract. Its registry assignment is therefore the **cross-SPEC** one — the same
+assignment row 12 of `plan.md` §C.1 records for `update_clean_install.go:315` — and this SPEC does
+not re-specify it (§C Scope Exclusions, REQ-UDS-010).
+
 **REQ-UDS-002 run-scoped backup directories ARE in this pruning target set** when they are created
 under the same backup root with a `YYYYMMDD_HHMMSS` name, because that is precisely the filter
 `CleanupOldBackups` applies. M3 must therefore state whether its run-scoped directory adopts that
 naming; if it does, a sufficiently old restore point can be pruned by a later run's rotation, and the
 interaction between the retention window and the recovery contract is a follow-up review item.
 
-Rows 1-4 and 7-9 are the genuine user-data destructive sites and carry protection assignments per
-`plan.md` §C.
+Rows 1-4, 7-9, and 11 are the genuine user-data destructive sites and carry protection assignments
+per `plan.md` §C.
 
 No registry exists today, so nothing fails when a new site is added unprotected.
 
@@ -206,16 +398,20 @@ Expected: a `--- PASS: TestMigrateLegacyMemoryDir_BacksUpBeforeRemoval` line. Th
 both `.moai/memory/` (with a sentinel file) and `.moai/state/`, runs the migration, and asserts the
 sentinel's bytes are present under the backup directory after `.moai/memory/` is gone.
 
-Baseline: `internal/cli/update/deploy/deploy.go:176` calls `os.RemoveAll(legacyDir)` with no
-preceding copy; `.moai/memory` appears in none of `preserveInventoryRoots`
-(`update_preserve_inventory.go:66-70`), `BackupMoaiConfig` (`backup/backup.go:33-34`, `.moai/config`
-only), or `userOwnedScanRoots` (`update_namespace_protect.go:39-43`).
+Baseline, re-measured on HEAD `89b2e4772`: `internal/cli/update/deploy/deploy.go:176` calls
+`os.RemoveAll(legacyDir)` with no preceding copy; `.moai/memory` appears in none of
+`preserveInventoryRoots` (`update_preserve_inventory.go:68-72`), `BackupMoaiConfig`
+(`backup/backup.go:28`, `.moai/config` only), or `userOwnedScanRoots`
+(`update_namespace_protect.go:39-43`).
 
 #### AC-UDS-007 — the `.moai/db` group comment names its authorising SPEC, and Category D's accurate prose survives (REQ-UDS-009, NFR-UDS-007)
 
 ```bash
-# (a) the brand+db group banner now names its authorising SPEC
-sed -n '/brand + db directories/,/^\t{/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+# (a) the brand+db group banner now names its authorising SPEC.
+#     Range: the group heading line through the group's first registered path.
+#     Both anchors are content, not indentation or line numbers — see the range note below.
+sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go \
+  | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
 # (b) Category D's contrast clause is PRESERVED, not deleted
 grep -c 'moai/project/db' internal/defs/dirs.go
 # (c) the catalogue is otherwise untouched
@@ -226,15 +422,63 @@ Expected: (a) prints `≥1`; (b) prints **`2`** — unchanged; (c) a `--- PASS: 
 line with the entry-count assertions intact.
 
 **Fails when:** the group banner is left bare (a → `0`), or the Category D contrast clause is
-deleted (b → `0`), or the slice body changes (c fails on the count assertion).
+deleted (b → `1`), or the whole Category D banner is deleted (b → `0`), or the slice body changes
+(c fails on the count assertion).
+
+**What (b) actually guards — the whole Category D banner, not the contrast clause alone.** `grep -c
+'moai/project/db'` matches **two** lines: `dirs.go:349` (the contrast clause REQ-UDS-009 names) and
+`dirs.go:346` (an unrelated descriptive mention of the removed `.moai/project/db/` scaffold in the
+same banner). v0.3.0 stated the falsifier as `2 → 0`; that arithmetic is wrong. Measured:
+
+```
+$ grep -n 'moai/project/db' internal/defs/dirs.go
+346:	// .moai/project/db/ scaffold) was fully removed. db.yaml is no longer
+349:	// .moai/project/db/ docs (a preserve root, manual deletion per CHANGELOG),
+$ sed '349d' internal/defs/dirs.go | grep -c 'moai/project/db'
+1
+$ sed '344,351d' internal/defs/dirs.go | grep -c 'moai/project/db'
+0
+```
+
+The guard still functions — the AC expects exactly `2`, so `1` fails it — but the pattern binds
+`:346` as well, which REQ-UDS-009 does not separately protect. That wider binding is **accepted
+deliberately** rather than narrowed: `:346` is accurate prose in the same banner, deleting it is
+also an unwanted change, and a narrower anchor would couple the AC to one line's exact wording. (b)
+is therefore documented as guarding the Category D banner's `.moai/project/db/` prose as a whole.
 
 Baseline, measured on this tree:
 
 ```
-$ sed -n '/brand + db directories/,/^\t{/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+$ sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
 0
 $ grep -c 'moai/project/db' internal/defs/dirs.go
 2
+```
+
+**Range note — why this window, and why it is not widened backward.** An earlier draft ended the
+range at `/^\t{/`, which captures exactly two lines (the heading and the opening brace) and is
+coupled to both the tab indentation and the assumption that the SPEC-ID sits on or below the
+heading. Two changes fix that. First, the end anchor is now the group's first registered path
+(`.moai/project/brand`), which is content and survives a reindent or an added blank line. Second,
+REQ-UDS-009 pins the SPEC-ID's **placement** to the region this window covers — on the
+`// brand + db directories` line or between it and the group's first entry — so a conforming
+implementation cannot land outside the window.
+
+The window is deliberately **not** extended backward. `dirs.go:302` already contains an unrelated
+`SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention (the note recording that a *different* entry was
+reversed). Measured: a ten-line lookback from the heading captures that line, which would drive
+(a)'s baseline from `0` to `1` and make the AC pass before REQ-UDS-009 is implemented at all — a
+false green. The placement requirement is what makes the forward-only window sufficient.
+
+Falsification of (a), measured on this tree: inserting a conforming SPEC-ID line immediately below
+the heading flips (a) from `0` to `1`, and the range still does not reach the `dirs.go:302` note:
+
+```
+$ sed -e 's|// brand + db directories|// brand + db directories\n\t\t// Deprecated by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001; not under any preserve root.|' internal/defs/dirs.go \
+    | sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+1
+$ sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go | grep -c 'This reverses'
+0
 ```
 
 (a) is `0` because the group carries only the bare comment `// brand + db directories`
@@ -261,7 +505,9 @@ backup directory with bytes identical to the originals. This is the deterministi
 crash window required by NFR-UDS-001 — no crash is raced.
 
 Baseline: `grep -rn 'settings.json' internal/cli/update/backup/ --include='*.go' | grep -v _test |
-wc -l` → `0`. The only backup of that file is the `[]byte` at `update_template_sync.go:384-390`.
+wc -l` → `0`. The only backup of that file is the `[]byte` slice `mergeableBackups`
+(declared `update_template_sync.go:300`, populated at `:397` — re-measured on HEAD `2255165f5`;
+recorded pre-M1 as `:294`/`:388`).
 
 #### AC-UDS-009 — both paths use the same on-disk backup mechanism (REQ-UDS-005)
 
@@ -273,8 +519,10 @@ Expected: a `--- PASS: TestBackup_OnDiskCoverageParityAcrossPaths` line, asserti
 on-disk backed-up paths produced by the normal path equals the set produced by the clean-reinstall
 path.
 
-Baseline: the two paths build the in-memory slice independently — `update_template_sync.go:384-390`
-versus `update_clean_install.go:312-317` — so parity is currently coincidental rather than asserted.
+Baseline, re-measured on HEAD `2255165f5`: the two paths build the in-memory slice independently —
+`update_template_sync.go:300`/`:397` versus `update_clean_install.go:356`/`:359` — so parity is
+currently coincidental rather than asserted. (Recorded pre-M1 as `:294`/`:388` and `:348`/`:351`;
+all four shifted by M1 commit `4ddd35120`.)
 
 #### AC-UDS-010 — the success path is unchanged (REQ-UDS-004, NFR-UDS-005)
 
@@ -352,12 +600,18 @@ $ grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go' | wc -l
        0
 ```
 
-(a) is `0` because `ensureGlobalSettingsEnv` calls the plain `userHomeDir()` at `update.go:756`; the
-injectable variable `userHomeDirFn` exists at `glm_tools.go:123` but is not used here. **This AC is
-blocked on the seam**: with no injection point and `t.Setenv("HOME", …)` forbidden by NFR-UDS-002,
-the guard has no way to redirect HOME, so command (a) is a precondition of (b) rather than a
-decoration. `globalHooksDir` likewise appears only at `update.go:764-766`; no test observes it.
-Falsification is AC-UDS-012.
+(a) is `0` because `ensureGlobalSettingsEnv` (`update.go:842`) calls the plain `userHomeDir()` at
+`update.go:843`; the injectable variable `userHomeDirFn` exists at `glm_tools.go:123` but is not
+used here. **This AC is blocked on the seam**: with no injection point and `t.Setenv("HOME", …)`
+forbidden by NFR-UDS-002, the guard has no way to redirect HOME, so command (a) is a precondition of
+(b) rather than a decoration. `globalHooksDir` likewise appears only at `update.go:851-853`; no test
+observes it. Falsification is AC-UDS-012.
+
+(Coordinates re-measured on HEAD `2255165f5`; recorded pre-M1 as `:832`/`:833`/`:841-843`, all
+shifted by +10 by M1 commit `4ddd35120`. Note that `update.go:843` is the `userHomeDir()` call —
+it is **not** the `os.RemoveAll` site AC-UDS-005 row 9 registers, which moved to `update.go:853`.
+The pre-M1 tables happened to record the `os.RemoveAll` site at `:843`, so the two values can be
+confused when comparing old and new records.)
 
 #### AC-UDS-012 — the radius guard fails against a widened radius (REQ-UDS-011, REQ-UDS-014)
 
@@ -417,10 +671,12 @@ The seam is absent — see AC-UDS-011's baseline. The test file
 unmeasurable until M4 creates it; that is expected for a new-guard AC and is not a baseline gap.
 
 > **Retracted baseline claim.** The earlier draft asserted "`ensureGlobalSettingsEnv` resolves HOME
-> via `userHomeDir()` at `update.go:756`, so the indirection already exists." The coordinate is
-> right and the conclusion is wrong: `userHomeDir` is a plain function (`homedir.go:14`), not a
-> reassignable variable. The reassignable seam is `userHomeDirFn` (`glm_tools.go:123`), which this
-> call site does not use. No indirection existed.
+> via `userHomeDir()`, so the indirection already exists." The conclusion is wrong: `userHomeDir` is
+> a plain function (`homedir.go:14`), not a reassignable variable. The reassignable seam is
+> `userHomeDirFn` (`glm_tools.go:123`), which this call site does not use. No indirection existed.
+> (The coordinate cited there, `update.go:756`, was also correct only against the retired
+> `d5336214e` baseline; the call was at `update.go:833` on HEAD `89b2e4772`, and is at
+> `update.go:843` on HEAD `2255165f5` after M1 commit `4ddd35120`.)
 
 ### M5 — Non-vacuous user-area safety guard
 
@@ -494,11 +750,12 @@ $ grep -c 'simulateMoaiUpdate' internal/cli/update_safety_test.go        # unanc
 $ go test -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -covermode=set \
     -coverpkg=./internal/cli/...,./internal/cli/update/... \
     -coverprofile=/tmp/uds-m5.out ./internal/cli/
-ok  	github.com/modu-ai/moai-adk/internal/cli	1.537s	coverage: 5.5% of statements in ./internal/cli/..., ./internal/cli/update/...
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.038s	coverage: 5.4% of statements in ./internal/cli/..., ./internal/cli/update/...
 $ go tool cover -func=/tmp/uds-m5.out | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig'
-.../update/backup/backup.go:27:      BackupMoaiConfig        0.0%
-.../update/deploy/deploy.go:28:      CleanMoaiManagedPaths   0.0%
-.../update_clean_install.go:137:     runCleanReinstall       0.0%
+github.com/modu-ai/moai-adk/internal/cli/update/backup/backup.go:27:		BackupMoaiConfig			0.0%
+github.com/modu-ai/moai-adk/internal/cli/update/deploy/deploy.go:28:		CleanMoaiManagedPaths			0.0%
+github.com/modu-ai/moai-adk/internal/cli/update/deploy/deploy.go:143:		MigrateLegacyMemoryDir			0.0%
+github.com/modu-ai/moai-adk/internal/cli/update_clean_install.go:137:		runCleanReinstall			0.0%
 $ go tool cover -func=/tmp/uds-m5.out | grep -E 'CleanMoaiManagedPaths|MigrateLegacyMemoryDir|runCleanReinstall|BackupMoaiConfig' | grep -vE '[[:space:]]0\.0%$' > /tmp/uds-covered.txt
 $ test -s /tmp/uds-covered.txt || echo "VACUOUS: guard executed no registry production function"
 VACUOUS: guard executed no registry production function
@@ -516,8 +773,15 @@ reach by renaming.
 
 (b)'s all-`0.0%` profile against the final `PASS` is precisely the defect: the test passes today
 without executing a single line of production code, and the coverage profile says so mechanically.
-The `ok … 0.710s` duration and the aggregate `5.5%` figure vary per run and are not asserted; the
+The `ok … 0.710s` duration and the aggregate `5.4%` figure vary per run and are not asserted; the
 assertion is that at least one of the four named functions reports coverage above `0.0%`.
+
+**All four named symbols appear in the profile — the transcript is complete.** v0.3.0 recorded only
+three lines, silently dropping `MigrateLegacyMemoryDir 0.0%`. Since §A.4 binds this SPEC to verbatim
+observed baselines, that lossy transcription is corrected above: the four-line block is the verbatim
+output of the command on HEAD `89b2e4772`. The verdict is unchanged (all four are `0.0%`), but the
+four-line form is also the evidence that `-coverpkg` genuinely reaches `internal/cli/update/deploy`
+and `internal/cli/update/backup` — packages that are **not** the package under test.
 
 The (b) command discriminates in both directions — verified by a positive control on a test that
 does execute one of these functions:
@@ -557,13 +821,20 @@ Expected: `--- PASS: TestMergeBackPreserveInventory_PartialRestore` subtests for
 `MkdirAll`, and `copyFile` branches, each asserting a distinct error substring; and a coverage line
 for `mergeBackPreserveInventory` strictly greater than the recorded baseline.
 
-Baseline, measured on this tree:
+Baseline, re-measured on HEAD `89b2e4772`:
 
 ```
-github.com/modu-ai/moai-adk/internal/cli/update_preserve_inventory.go:330:	mergeBackPreserveInventory		64.3%
+$ go test -covermode=set -coverprofile=/tmp/uds-cov.out ./internal/cli/ && \
+    go tool cover -func=/tmp/uds-cov.out | grep mergeBackPreserveInventory
+github.com/modu-ai/moai-adk/internal/cli/update_preserve_inventory.go:400:	mergeBackPreserveInventory		64.3%
 ```
 
-The uncovered blocks are the failure returns at `update_preserve_inventory.go:346`, `:350`, `:354`.
+The uncovered blocks are the failure returns at `update_preserve_inventory.go:416` (stat), `:420`
+(`MkdirAll`), and `:424` (`copyFile`). The coverage figure (`64.3%`) is unchanged from v0.3.0, but
+the function's coordinate moved `:330` → `:400` and its three failure returns moved
+`:346`/`:350`/`:354` → `:416`/`:420`/`:424` when E1 landed — this AC's grep is symbol-anchored
+(`grep mergeBackPreserveInventory`), so it survived the drift, but the prose coordinates did not and
+are corrected here.
 
 #### AC-UDS-017 — a partial restore names where it stopped (REQ-UDS-026)
 
@@ -575,8 +846,8 @@ Expected: a `--- PASS: TestMergeBackPreserveInventory_PartialRestore/reports_res
 asserting the error text carries both the failing file's relative path and the count of files
 already restored.
 
-Baseline: the current errors at `:346`/`:350`/`:354` name the file but not the restored count, so
-the boundary of a partial restore is unreported.
+Baseline: the current errors at `update_preserve_inventory.go:416`/`:420`/`:424` name the file but
+not the restored count, so the boundary of a partial restore is unreported.
 
 ### Cross-cutting
 
@@ -594,8 +865,8 @@ Baseline: both exit 0 on this tree.
 #### AC-UDS-019 — template neutrality (NFR-UDS-003)
 
 ```bash
-# (a) committed modifications since the code baseline
-git diff --name-only d5336214e..HEAD -- internal/template/templates/ | wc -l
+# (a) committed modifications attributable to THIS SPEC — merge-base anchored
+git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ | wc -l
 # (b) uncommitted modifications in the working tree
 git status --porcelain internal/template/templates/ | wc -l
 ```
@@ -605,20 +876,64 @@ Expected: both print `0` — this SPEC modifies no template file, whether commit
 **Command (a) is the load-bearing one.** The earlier draft ran (b) alone. `git status --porcelain`
 reports only the *working tree*: once run-phase modifies a template and commits it, the working
 tree is clean again and (b) prints `0`, so an NFR-UDS-003 violation passes undetected. Diffing
-against the code baseline catches the committed case, which is the case that actually ships.
-`d5336214e` is the code baseline pinned in §A.4; every run-phase commit is a descendant of it.
+against a base catches the committed case, which is the case that actually ships. **This rationale
+is unchanged by the merge-base amendment below** — only the *choice of diff base* changed, never
+the reason (a) exists.
 
-**Fails when:** any file under `internal/template/templates/` is modified — (a) catches it once
-committed, (b) catches it before.
+**Why the base is `$(git merge-base origin/main HEAD)` and NOT a literal SHA.** The earlier draft
+pinned `8cc108ddb`. A fixed SHA pin breaks on every merge of `origin/main` into this branch, because
+foreign template commits that land on `origin/main` after the pin was recorded enter this branch
+through the merge and appear in the `<pin>..HEAD` diff — even though this SPEC never touched them.
+That is exactly what happened: `9ced435e9` (PR #1266, an agent-body fix) touched 8 template files
+and entered this branch via merge `2255165f5`, driving the pinned command to `8` and reading as an
+NFR-UDS-003 failure this SPEC did not cause. The pinned form measures **branch topology**, not this
+SPEC's behaviour.
 
-Baseline, measured on this tree:
+The merge-base form measures the right thing — "template files changed in HEAD that are not already
+in `origin/main`". Three topologies were verified empirically before adopting it:
+
+| Case | Topology | merge-base resolves to | Result | Why |
+|---|---|---|---|---|
+| 1 | after a merge of `origin/main` | `origin/main` itself | `0` — foreign changes vanish | they are at-or-below the diff base |
+| 2 | `origin/main` advanced, no merge yet | the older common ancestor (behind `origin/main`) | `0` | the foreign commits are not in HEAD either, so they cannot appear in a `base..HEAD` diff |
+| 3 | this SPEC edits a template | (either topology) | `≥ 1` — **still caught** | a HEAD-side commit is above the base on both sides |
+
+Case 1 was verified on this tree (`8` → `0`); cases 2 and 3 were verified in a disposable synthetic
+repository reproducing the same topology, including case 3 through a *conflicting* merge where the
+SPEC's own edit survived resolution and was still counted. The amendment therefore removes the false
+failure without weakening the guard.
+
+**Known limitation (stated, not hidden).** Once this SPEC's own PR merges into `origin/main`, the
+merge-base advances to include this SPEC's commits and (a) returns to `0` for them. This is correct
+for the AC's purpose — it is evaluated pre-merge, on an open branch, where "not yet in `origin/main`"
+is precisely the set of changes this SPEC is accountable for. The AC is not a post-merge audit.
+
+**Fails when:** any file under `internal/template/templates/` is modified **by this SPEC** — (a)
+catches it once committed, (b) catches it before. A foreign template change arriving via a merge of
+`origin/main` no longer registers, which is the intended behaviour.
+
+Baseline, re-measured on HEAD `2255165f5` (merge-base = `origin/main` = `9ced435e9`):
 
 ```
-$ git diff --name-only d5336214e..HEAD -- internal/template/templates/ | wc -l
+$ git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ | wc -l
        0
 $ git status --porcelain internal/template/templates/ | wc -l
        0
 ```
+
+For contrast, the retired pinned form on the same tree — the false failure this amendment removes:
+
+```
+$ git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ | wc -l
+       8
+$ git log --oneline 8cc108ddb..HEAD -- internal/template/templates/
+9ced435e9 fix(agents): resolve GEARS-vs-Given-When-Then layer confusion and 11 audited agent-body defects (#1266)
+$ git diff --name-only origin/main..HEAD -- internal/template/templates/ | wc -l
+       0
+```
+
+All 8 files come from the single foreign commit `9ced435e9`; this SPEC's own commits touch zero
+template files.
 
 ## §C Falsification procedure
 

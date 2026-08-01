@@ -303,6 +303,11 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 	// the DeprecatedPaths↔template intersection is now empty and guarded by
 	// TestDeprecatedPaths_NoTemplateCollision (internal/cli).
 	// brand + db directories
+	// Both entries below were deprecated by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001,
+	// which is also the DeprecatedBy authority recorded on each. Naming the
+	// authorising SPEC on the group banner keeps the grouping self-describing:
+	// the two entries are a single deprecation decision, not two unrelated ones
+	// that happen to sit next to each other.
 	{
 		Path:            ".moai/project/brand",
 		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
