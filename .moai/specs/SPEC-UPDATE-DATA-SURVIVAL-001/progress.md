@@ -538,9 +538,148 @@ is introduced and `merge.go` is untouched.
   the recovery manifest names the removal step even though nothing was removed. The sentinel in the
   wrapped error still identifies the real cause.
 
+### M4 — HOME deletion-radius pinning
+
+Landed on `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Files: `internal/cli/update.go` (edited),
+`internal/cli/update_home_radius_test.go` (new).
+
+#### Claim
+
+`ensureGlobalSettingsEnv` resolves HOME through the injectable `userHomeDirFn` seam, its removal
+target is the single named symbol `globalMoaiHooksDir(homeDir)`, and a guard pins the deletion
+radius to `<HOME>/.claude/hooks/moai` — a user-owned sibling at `<HOME>/.claude/hooks/user-hook.sh`
+survives. The guard achieves HOME isolation through the seam, not through a process-wide env
+mutation, and does not touch the operator's real home directory.
+
+#### Evidence — AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-011 (a) | PASS | `sed -n '/^func ensureGlobalSettingsEnv/,/^}/p' internal/cli/update.go \| grep -c 'userHomeDirFn()'` | `1` (baseline `0`) |
+| AC-UDS-011 (b) | PASS | `go test -run 'TestEnsureGlobalSettingsEnv_HooksRemovalRadius' -count=1 -v ./internal/cli/` | `--- PASS: TestEnsureGlobalSettingsEnv_HooksRemovalRadius (0.00s)` / `ok github.com/modu-ai/moai-adk/internal/cli 0.969s` |
+| AC-UDS-012 | PASS | `go test -overlay=/tmp/uds-falsify/overlay.json -run 'TestEnsureGlobalSettingsEnv_HooksRemovalRadius' -count=1 -v ./internal/cli/` | `--- FAIL: TestEnsureGlobalSettingsEnv_HooksRemovalRadius (0.00s)` / `FAIL github.com/modu-ai/moai-adk/internal/cli 0.980s` |
+| AC-UDS-013 | PASS | before-snapshot → test → after-snapshot → `diff`; plus the two mechanism greps | `--- PASS:` line; `diff-exit=0` with no diff output; `t.Setenv("HOME"` grep → `0`; `userHomeDirFn()` grep → `1` |
+| AC-UDS-018 | PASS | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | both exit 0 |
+| AC-UDS-019 | PASS | `BASE=$(git merge-base origin/main HEAD); git diff --name-only $BASE..HEAD -- internal/template/templates/ \| wc -l` | `0` (merge-base `9ced435e922934fe68835a6f85943d3f8e330e1d`); working tree also `0` |
+
+#### Evidence — falsification (AC-UDS-012, `acceptance.md` §C.1)
+
+The overlay copy drops the `"moai"` segment from `globalMoaiHooksDir`'s `filepath.Join`, widening the
+radius to `<HOME>/.claude/hooks`. Mutated line, verbatim:
+
+```
+843:	return filepath.Join(homeDir, defs.ClaudeDir, "hooks")
+```
+
+Guard output under that overlay, verbatim:
+
+```
+=== RUN   TestEnsureGlobalSettingsEnv_HooksRemovalRadius
+    update_home_radius_test.go:51: user-owned sibling …/001/.claude/hooks/user-hook.sh must survive,
+    stat err = stat …/001/.claude/hooks/user-hook.sh: no such file or directory
+--- FAIL: TestEnsureGlobalSettingsEnv_HooksRemovalRadius (0.00s)
+```
+
+The recorded baseline this refutes: the audit lens ran the same widening against the pre-M4 suite and
+observed `ok github.com/modu-ai/moai-adk/internal/cli 18.305s` — every test passed with the radius
+widened. The falsification was re-run after the only post-GREEN test edit (a comment rewording) and
+still produced `--- FAIL`.
+
+**Which assertion discriminates.** Because the fixture builds its removal target from the same named
+symbol the production code uses (REQ-UDS-013), the widening mutation moves *both* the create-target
+and the remove-target. The "moai subdirectory is gone" assertion therefore still passes under the
+mutation; the **sibling-survival** assertion is the one that flips. That is the intended coupling —
+asserting against the named symbol is what makes the guard track the production radius rather than a
+re-derived constant — but it means the guard has one load-bearing assertion, not two.
+
+#### Evidence — RED before GREEN (TDD, template §E8)
+
+RED here is a **build failure**, not a `--- FAIL` assertion. Verbatim:
+
+```
+$ go test -run 'TestEnsureGlobalSettingsEnv_HooksRemovalRadius' -count=1 -v ./internal/cli/
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/update_home_radius_test.go:27:18: undefined: globalMoaiHooksDir
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+This is weaker RED evidence than M3's compiling-stub `--- FAIL`, and the weakness was deliberate: the
+alternative — adding `globalMoaiHooksDir` first, then running the guard before the seam substitution
+— would have executed `ensureGlobalSettingsEnv` against `userHomeDir()`, i.e. the operator's **real**
+`$HOME`, and issued `os.RemoveAll` on the real `~/.claude/hooks/moai`. A compiling-stub RED is not
+reachable for this guard without that hazard. The assertion-level failure evidence the compiling-stub
+RED would have supplied is instead supplied by AC-UDS-012's overlay `--- FAIL` above, which
+demonstrates the same property (the guard fails when the radius is wrong) against real production
+code.
+
+#### Baseline-attribution
+
+Measured on branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, worktree
+`.claude/worktrees/e2-data-survival`, HEAD `997679fc4`, before any M4 edit:
+
+```
+$ sed -n '/^func ensureGlobalSettingsEnv/,/^}/p' internal/cli/update.go | grep -c 'userHomeDirFn()'
+0
+$ grep -rn 'globalHooksDir' internal/cli/ --include='*_test.go' | wc -l
+0
+```
+
+Post-M4 on the same tree: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0;
+`go vet ./...` exit 0; `golangci-lint run --timeout=3m` → `0 issues.` (no NEW finding against the
+0-issue baseline); `go test ./internal/cli/...` exit 0 (`ok .../internal/cli 245.946s` + 16 sibling
+packages `ok`); `go test ./...` exit 0 with `0` lines matching `^FAIL`.
+
+Targeted per-function coverage (`go test -run 'TestEnsureGlobalSettingsEnv_HooksRemovalRadius'
+-covermode=set ./internal/cli/`): `globalMoaiHooksDir` 100.0%, `ensureGlobalSettingsEnv` 18.9% (the
+guard exercises only the pre-settings-read prefix — the function returns early when no global
+settings file exists).
+
+#### Gaps (not verified in M4)
+
+- **AC-UDS-013's filesystem diff is non-discriminating on this machine for the deletion direction.**
+  `~/.claude/hooks` does not exist here (`test -d ~/.claude/hooks` → `DIR ABSENT`), so both snapshots
+  are empty (0 lines) and `diff-exit=0` is reached trivially with respect to *deletion*. The check is
+  not fully vacuous — had the test created anything under the real `~/.claude/hooks`, the
+  after-snapshot would be non-empty and the diff would fail — so it still discriminates the
+  *creation* direction. On an operator machine that does have `~/.claude/hooks` populated, the same
+  command discriminates both directions. This is a property of the environment, not of the AC.
+- **Three other `userHomeDir()` call sites remain unrouted through the seam**:
+  `update_clean_install.go:410`, `update_template_sync.go:227`, `update_template_sync.go:272`.
+  REQ-UDS-013 and AC-UDS-011 (a) name only `ensureGlobalSettingsEnv`, and the AC's `sed` window is
+  scoped to that function body, so leaving them is in scope-discipline — but it means the seam
+  substitution is **not uniform** across the update subsystem, and a future guard for any of those
+  three paths will have to do its own seam work first.
+- **The guard covers one radius, not the class.** It pins `ensureGlobalSettingsEnv`'s target only.
+  Registry row 13 (`~/.claude/hooks/moai`) is the sole HOME-scoped destructive site M4 addresses; no
+  guard was added for other outside-project deletions, and none is required by an M4 AC.
+- **The `os.Stat` guard preceding the `os.RemoveAll` is not separately exercised.** The test always
+  creates the directory, so the "target absent → skip" branch is covered only incidentally by
+  pre-existing tests (`update_test.go:2009`), not by this guard.
+
+#### Residual risk
+
+- **`userHomeDirFn` is a package-level var, so this test must stay non-parallel.** It is declared at
+  `glm_tools.go:123` and `glm_tools_test.go`'s `setupToolsTestHome` helper (47 call sites) reassigns
+  the same variable. Confirmed by direct measurement, not assumed: `grep -c "t.Parallel()"
+  internal/cli/glm_tools_test.go` → `0`, so no current caller runs parallel and no race exists today.
+  A future `t.Parallel()` added to any `setupToolsTestHome` caller — or to this test — would race
+  with it. Both sites restore the original via `t.Cleanup`, which orders the restore correctly but
+  does not prevent concurrent reassignment.
+- **The named-symbol coupling is a single point of failure in both directions.** It is what makes the
+  guard track production (the point of REQ-UDS-013), but it also means a mutation that changes the
+  symbol's return value moves the fixture with it — so the guard detects a *wrong radius* only via the
+  sibling assertion. A mutation that instead bypassed `globalMoaiHooksDir` entirely and inlined a
+  different path in `ensureGlobalSettingsEnv` would be caught (the fixture and the production target
+  would diverge), but this direction was not separately falsified.
+- **`userHomeDirFn`'s default still reads `$HOME` first** (`homedir.go:14`). Existing tests that
+  inject HOME via the environment (`update_test.go:1498`/`:1528`,
+  `coverage_improvement_test.go:4719`/`:4755`) therefore keep working unchanged — verified by the
+  green `./internal/cli/...` run — but the seam does not *remove* the env-based path, so a future
+  test could still reach production through `$HOME` and reintroduce the NFR-UDS-002 hazard.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_ — M3 of 6 complete; M4-M6 outstanding.
+_<pending run-phase>_ — M4 of 6 complete; M5-M6 outstanding.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
