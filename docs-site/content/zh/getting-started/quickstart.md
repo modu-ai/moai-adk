@@ -306,7 +306,7 @@ flowchart TB
 | 新项目 | 先执行 `/moai project` | 基础文档必需 |
 | 简单功能 | `/moai plan` + `/moai run` | 快速执行 |
 | 复杂功能 | `/moai` | 自动优化 |
-| 并行开发 | 使用 `--worktree` 标志 | 保证独立环境 |
+| 并行开发 | 用 `moai cc -w <名称>` 进入 worktree | 保证独立环境 |
 
 ## 实战示例
 
@@ -338,8 +338,9 @@ flowchart TB
 ### 示例 3：并行开发（使用 Worktree）
 
 ```bash
-# 在独立环境中并行开发
-> /moai plan "实现支付系统" --worktree
+# 先进入 worktree，再在其中规划
+$ moai cc -w payment
+> /moai plan "实现支付系统"
 ```
 
 ## 理解文件结构
