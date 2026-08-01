@@ -102,6 +102,15 @@ Constraints: 10k concurrent users, 100ms read latency target
 | Completion Criteria | `plan/spec-assembly.md` | All checklist items + audit-ready signal |
 | Test Scenarios | `plan/spec-assembly.md` | Normal/Existing Assets/Error flow examples |
 
+## Fan-Out Index
+
+Every plan-phase fan-out site, listed here rather than only at the site itself. Sub-skills are `Read` on demand, so without this index the orchestrator cannot know a fan-out exists until it has already entered the phase serially.
+
+| Fan-Out ID | Trigger condition | Target file | What is parallelised |
+|---|---|---|---|
+| `FO-PLAN-1` | the research fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/plan.md` (below) | Phase 2 + Phase 6 research — lens explorers plus one synthesizer |
+| `FO-PLAN-2` | harness level is `standard` or `thorough` | `workflows/plan/spec-assembly.md` | Phase 11 review evidence — one read-only lens per review dimension |
+
 ## Parallel Research Fan-Out (capability-gated)
 
 **Where** `.claude/workflows/plan-research-fanout.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it to run Phase 2 (Project Exploration) and Phase 6 (Deep Research) as a single parallel read-only sweep — three-to-four lens explorers plus one synthesizer that returns the `research.md` body as a string. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — research proceeds on the standard single-`Explore` path with no error, no warning, and no change to the produced SPEC artifact set.

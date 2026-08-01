@@ -51,6 +51,17 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 | Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
 | Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
 
+## Fan-Out Index
+
+All four run-phase fan-out sites live in sub-skills that are `Read` on demand, so they are enumerated here — in the file the orchestrator reads at phase entry — rather than only at the site itself.
+
+| Fan-Out ID | Trigger condition | Target file | What is parallelised |
+|---|---|---|---|
+| `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 1.8 MX context-map scan — one read-only shard per package |
+| `FO-RUN-2` | a milestone's RED stage spans several independent test targets | `workflows/run/task-decomposition.md` | RED-stage test drafting — one read-only drafter per target |
+| `FO-RUN-3` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/run/task-decomposition.md` | the Phase 13 / 16 / 17 quality band — one parallel four-dimension evidence pass |
+| `FO-RUN-4` | the modified files span several packages | `workflows/run/task-decomposition.md` | Phase 18 MX tag scan — one read-only shard per package; tag application stays single-writer |
+
 ## Invocation Flow
 
 ```

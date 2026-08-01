@@ -51,6 +51,17 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 | Phase 11~Phase 12: Analysis + Doc Sync | `Read workflows/sync/doc-execution.md` | Phase 11 Analysis, HUMAN GATE 2 Documentation Scope, Phase 12 Execute Doc Synchronization |
 | Phase 13~Phase 14: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 13 Git Operations, Phase 14 Completion, GitStrategy PR-ready transition, Graceful Exit, Test Scenarios |
 
+## Fan-Out Index
+
+Every sync-phase fan-out site, listed here rather than only at the site itself. Three of the four live in sub-skills that are `Read` on demand, so without this index the orchestrator cannot know they exist until it has already entered the phase serially.
+
+| Fan-Out ID | Trigger condition | Target file | What is parallelised |
+|---|---|---|---|
+| `FO-SYNC-1` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/sync.md` (below) | Phase 7 quality check — four quality dimensions in one parallel read-only pass |
+| `FO-SYNC-2` | the modified files span several languages or packages | `workflows/sync/quality-gates-quality.md` | Phase 9 MX tag scan — one read-only shard per language or package |
+| `FO-SYNC-3` | the coverage gaps span several independent packages | `workflows/sync/quality-gates-quality.md` | Phase 10 test drafting — one read-only drafter per package |
+| `FO-SYNC-4` | the sync scope spans several independent document families | `workflows/sync/doc-execution.md` | Phase 12 document drafting — five read-only drafters, one applier |
+
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
 **Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it at Phase 7 (Quality Check) to gather the four quality dimensions in one parallel read-only pass. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — Phase 7 proceeds on its existing path with no error, no warning, and no interruption.
