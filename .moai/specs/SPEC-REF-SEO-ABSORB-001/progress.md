@@ -95,6 +95,58 @@ catalog_tier_audit_test.go:168: expected 31 skill directories on disk, found 32
 
 디스크 스킬 수가 31 → 32로 늘었으나 `expectedSkillCount` 상수는 31 그대로다. catalog 엔트리·`make build` 해시·Go 상수 3개는 M4 단일 변경 소관이므로 **의도된 M3 시점 실패**다. `catalog.yaml`과 상수 파일은 건드리지 않았다. `TestLoadCatalog` / `TestLoadEmbeddedCatalog_Success`는 이 시점에도 PASS다(카운트가 catalog 엔트리 수 기준이라 마크다운 추가만으로는 흔들리지 않는다).
 
+### M4 — 등록 표면 채우기 + 카운트 상수 (단일 변경)
+
+12개 파일 단일 커밋. `catalog.yaml` 엔트리는 placeholder 해시로 먼저 적고 `make build`(`gen-catalog-hashes --all`) 산출물만 커밋했다 — 수기 해시 없음. docs-site 4-로케일은 M5 소관이라 손대지 않았다.
+
+#### 표면 6종 실측 (`grep -c 'moai-ref-seo'`)
+
+| 표면 | 파일 | 카운트 |
+|---|---|---|
+| 1. catalog 엔트리 | `internal/template/catalog.yaml` | 2 (name + path) |
+| 2. Go 상수 3개 | `catalog_tier_audit_test.go` / `catalog_loader_test.go` / `embed_catalog_test.go` | 1 / 1 / 1 |
+| 3. delegation 양 트리 | 로컬 + 템플릿 `delegation.yaml` | 1 / 1 |
+| 4. 워크플로 본문 4건 | `review.md` / `sync/quality-gates-quality.md` + 템플릿 미러 2건 | 1 / 1 / 1 / 1 |
+| 5. 스킬 매니페스트 스팟체크 | `internal/template/skills_manifest_test.go` | 1 |
+| 6. 로컬 미러 | `.claude/skills/moai-ref-seo/SKILL.md` | 1 |
+
+`.claude/rules/moai/workflow/skill-routing.md`는 계획대로 건드리지 않았다(secops 부재 실측 근거).
+
+#### 판정 결과
+
+| AC | 판정 | 명령 | 실측 출력 |
+|---|---|---|---|
+| AC-SEO-001 단일 파일 구성 | **PASS** (M3 PARTIAL 해소) | `find … -type f \| sort` | 2행 — 양 트리 각각 `SKILL.md` 1개뿐 |
+| AC-SEO-011b 로컬·템플릿 동일성 | PASS | `diff` + `shasum -a 256` | `IDENTICAL`, 양쪽 `39d3ad2b348dc0748c7baa5912dba34865d3321b7c5a4b990cc047cb5a131065` |
+| AC-SEO-020b catalog 정합 | PASS | `go test -run '<7개 선택자>' -count=1 -v` | 요구된 7개 테스트 전부 `--- PASS:` 행으로 등장, `ok` 종료 |
+| AC-SEO-020c tier 유효성·워크플로 커버리지 | PASS | tier grep + `TestCatalogTierValid\|TestWorkflowTriggerCoverage` + `required-skills` grep | `tier: optional-pack:frontend` 4건, 신규 엔트리 tier 확인, 두 테스트 `--- PASS:`, `required-skills` `0` (전제 유지) |
+| AC-SEO-021 상수 증가·지상 진실 일치 | PASS | 상수 3 grep + `git ls-files … \| wc -l` + `grep -c '- name: '` | `32` / `42` / `42` / 디스크 `32` / catalog 엔트리 `42` — 기대값 전건 일치 |
+| AC-SEO-024 템플릿 패키지 회귀 | PASS | `go test ./internal/template/...` | `ok … 15.431s` |
+| AC-SEO-025 언어 중립성 | PASS | 4-테스트 선택자 | `TestLanguageNeutrality` 포함 4행 전부 `--- PASS:` |
+| AC-SEO-020 leak 가드 | PASS | `TestTemplateNoInternalContentLeak` | `--- PASS: TestTemplateNoInternalContentLeak (5.83s)` |
+
+#### 선택자 공허 통과 방지 (plan.md §G 안티패턴)
+
+최초 선택자 `-run 'TestCatalog|TestEmbeddedCatalog|TestSkillsManifest'`는 5개 테스트만 매칭했고 **카운트 상수 3개를 보유한 테스트를 하나도 실행하지 않았다** — exit 0이지만 무효. 실제 보유 함수는 `TestAllSkillsInCatalog`(`expectedSkillCount`) / `TestLoadCatalog`(`expectedTotal`) / `TestLoadEmbeddedCatalog_Success`(`wantTotal`)이며, 선택자를 정정한 뒤 세 행이 모두 `--- PASS:`로 등장함을 확인했다.
+
+추가로 **반증 왕복**을 수행했다: `expectedSkillCount`를 32 → 31로 되돌리자
+
+```
+--- FAIL: TestAllSkillsInCatalog (0.00s)
+    catalog_tier_audit_test.go:170: expected 31 skill directories on disk, found 32
+```
+
+가드가 실제로 카운트를 검사함이 확인되었고 상수를 즉시 복원했다. 통과가 도달성 없는 공허 통과가 아님을 증명한 유일한 증거다.
+
+#### 빌드·린트
+
+| 항목 | 결과 |
+|---|---|
+| `go build ./...` | exit 0 |
+| `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| `gofmt -l <수정한 4개 test 파일>` | 무출력 |
+| `golangci-lint run` | `0 issues.` (변경 전 baseline도 `0 issues.` — 신규 지적 0건) |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
