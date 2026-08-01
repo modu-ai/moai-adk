@@ -26,13 +26,15 @@ func TestEmbeddedMoaiSkillNames(t *testing.T) {
 		}
 		seen[n] = true
 	}
-	// Spot-check the 10 skills that were absent from the retired static-22
+	// Spot-check the skills that were absent from the retired static-22
 	// allowlist (issue #1088) — they MUST now be present in the derived set.
+	// Later reference skills registered after that retirement are pinned here
+	// on the same footing.
 	for _, must := range []string{
 		"moai-domain-backend", "moai-domain-database", "moai-domain-frontend",
 		"moai-domain-html-report", "moai-domain-humanize", "moai-harness-learner",
 		"moai-ref-llm-security", "moai-ref-secops", "moai-ref-supply-chain",
-		"moai-workflow-ci-loop",
+		"moai-workflow-ci-loop", "moai-ref-seo",
 	} {
 		if !seen[must] {
 			t.Errorf("embedded manifest missing expected core skill %q", must)

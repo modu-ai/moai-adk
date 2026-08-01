@@ -89,7 +89,7 @@ SPEC/Phase tracking: `SPEC: SPEC-XXX-NNN` and `Phase: [PLAN|RUN-*|SYNC|FIX|LOOP]
 
 [HARD] When `team.branch_creation.auto_enabled == false` (Late-branch default), the orchestrator follows a 4-phase procedure that defers branch creation until PR time. `mode: team` is preserved; branch protection (4 required checks) + PR/CI gates remain unchanged.
 
-Detection cue: after manual `git switch -c feat/SPEC-*`, `manager-git` recognizes Late-branch via `git rev-list main..HEAD --count > 0 && git branch --show-current matches feat/SPEC-*`.
+Detection cue: `manager-git` recognizes Late-branch via `git rev-list main..HEAD --count > 0 && git branch --show-current matches feat/SPEC-* or worktree-*`. The `worktree-*` arm covers work done in a Claude Code worktree, where `moai cc -w <name>` names the branch `worktree-<name>`. The local branch name is not load-bearing either way — Phase C mints the conventional `feat/SPEC-*` name at PR time, so commits accumulated on a `worktree-*` branch flow through the same procedure.
 
 Phase A — SPEC creation on main:
 ```bash
