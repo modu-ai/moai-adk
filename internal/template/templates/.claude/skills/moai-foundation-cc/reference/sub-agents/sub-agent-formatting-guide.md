@@ -11,7 +11,7 @@ Version: 2.0.0
 
 ## Quick Reference (30 seconds)
 
-Core Format: YAML frontmatter + system prompt with clear domain focus. Naming: kebab-case, unique, max 64 chars. Constraints: No sub-agent nesting, Agent() delegation only, isolated context windows. Key Features: Specific domain expertise, clear trigger scenarios, proper tool permissions.
+Core Format: YAML frontmatter + system prompt with clear domain focus. Naming: kebab-case, unique, max 64 chars. Constraints: Agent() delegation only, isolated context windows. Nesting is allowed by default (three layers below the main conversation) — omit `Agent` from `tools` when a given sub-agent must not spawn its own. Key Features: Specific domain expertise, clear trigger scenarios, proper tool permissions.
 
 ---
 
@@ -465,7 +465,7 @@ Workflow Design:
 
 Technical Constraints:
 - Tool permissions and limitations
-- No sub-agent nesting rule
+- Nesting policy (default: allowed to three layers; omit `Agent` from `tools` to opt a sub-agent out)
 - Context window isolation
 - Resource usage boundaries
 
@@ -762,7 +762,7 @@ Technical Validation:
 - [ ] Delegation patterns clearly defined
 - [ ] Error handling strategies documented
 - [ ] Quality standards specified
-- [ ] Performance considerations adddessed
+- [ ] Performance considerations addressed
 ```
 
 ### 2. Runtime Quality Monitoring

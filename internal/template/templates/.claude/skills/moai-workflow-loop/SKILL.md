@@ -136,7 +136,7 @@ Check that ralph.enabled is set to true in configuration. Verify MOAI_DISABLE_LO
 
 ### LSP Diagnostics Missing
 
-Check LSP server configuration in .lsp.json file. Verify the language server is installed for your language. Check that MOAI_DISABLE_LSP_DIAGNOSTIC environment variable is not set.
+Check LSP server configuration in .moai/config/sections/lsp.yaml. Verify the language server is installed for your language. Check that MOAI_DISABLE_LSP_DIAGNOSTIC environment variable is not set.
 
 ### Loop Stuck
 
@@ -160,8 +160,8 @@ Agents:
 
 Commands:
 
-- /moai:2-run: DDD implementation
-- /moai:3-sync: Documentation sync
+- /moai:run: DDD implementation
+- /moai:sync: Documentation sync
 
 ## Reference
 
@@ -183,9 +183,9 @@ Configuration is stored at .moai/config/sections/ralph.yaml.
 
 Loop state is stored at .moai/cache/.moai_loop_state.json.
 
-The LSP hook is located at .claude/hooks/moai/post_tool__lsp_diagnostic.
+The LSP hook is located at .claude/hooks/moai/handle-post-tool.sh.
 
-The loop hook is located at .claude/hooks/moai/stop__loop_controller.
+The loop hook is located at .claude/hooks/moai/handle-stop.sh.
 
 ### Supported Languages
 
