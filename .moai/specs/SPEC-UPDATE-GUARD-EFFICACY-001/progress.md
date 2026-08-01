@@ -360,6 +360,35 @@ $ grep -n -A3 'func BuildSmartPATH' internal/template/settings.go
 
 **이월 (§3.5)**: 렌더 산출물 `settings.json`의 PATH는 M2 이후에도 여전히 실행 머신의 홈에 의존한다. 이 SPEC의 범위(세 호출부)를 벗어나므로 고치지 않았고, 별도 SPEC 후보로 남긴다.
 
+### M3 — 기계 독립적 HOME 반경 판정 (REQ-UGE-006, 007, 008)
+
+**Claim**: HOME 반경 가드의 판정이 판정 자신이 만든 sentinel HOME 픽스처를 대상으로 하며, 판별력이 운영자 머신 상태에 의존하지 않는다.
+
+**코드 변경 없음 — 그리고 그것이 정직한 결과다.** plan.md §F M3은 `update_home_radius_test.go`의 "sentinel HOME 픽스처 기반 재구성"과 "M2가 이음매화한 세 호출부까지 반경 검증 확대"를 예상했다. 실행해 확인한 결과 **둘 다 불필요**하다.
+
+- **재구성 불필요** — M3의 산출물은 *판정 절차*이지 테스트 코드가 아니다. AC-UGE-007의 판정 명령이 sentinel HOME 트리를 직접 만들고, 비어 있지 않음을 확인하고, 컴파일된 바이너리만 그 HOME으로 실행한다. 기존 테스트(`update_home_radius_test.go`, 선행 SPEC이 남긴 것)는 이미 `userHomeDirFn` 주입 + `t.TempDir()`로 격리되어 있어 그 절차를 그대로 만족한다. 통과하는 절차를 바꾸는 것은 근거 없는 코드 변경이다.
+- **"세 호출부까지 반경 확대" 불필요** — spec.md §A 정정이 확정한 대로 그 세 호출부는 **아무것도 삭제하지 않는다**(`os.RemoveAll` 0건). 삭제가 없는 곳에 "삭제 반경"을 확대한다는 것은 성립하지 않는다. 그 세 곳의 이음매 경유는 M2의 `TestUpdateSubsystem_HomeSeamReach`가 이미 덮는다.
+
+**AC 매트릭스**
+
+| AC | 판정 | 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-UGE-007 | PASS | (a) sentinel 비어있지 않음 · (b) 컴파일 · (c) 존재 grep + PASS 행 · (d) sentinel 불변 · (e) 격리 | (a) `before-nonempty=0` · (b) `compile-exit=0` · (c) `1`, `--- PASS: TestEnsureGlobalSettingsEnv_HooksRemovalRadius (0.03s)` · (d) `diff` 무출력, `diff-exit=0` · (e) `0` / `1` |
+| AC-UGE-008 | PASS | 이음매 제거 변형 → probe 생존 여부 | `mutation-applied=1` · `compile-exit=0` · **`probe-survived=1`** (probe 파일이 사라짐 = 카나리아 발화) |
+
+**AC-UGE-008 변형 diff (§G AP-6 — 무동작 아님을 본문으로 인용)**
+
+```
+22c22
+< 	userHomeDirFn = func() (string, error) { return tmp, nil }
+---
+> 	userHomeDirFn = userHomeDir
+```
+
+**원인 귀속 (§A.4)**: 이 반증의 관측 대상은 FAIL 계수가 아니라 **probe 파일의 생사**라 원인이 구조적으로 일의적이다 — 이음매를 뺀 변형이 프로덕션으로 하여금 프로세스 `$HOME`(= sentinel)을 해석하게 만들었고, 그 결과 `.claude/hooks/moai/probe.txt`가 실제로 삭제되었다. 다른 실패 경로가 이 파일을 지울 수 없으므로 경쟁 원인이 없다. `compile-exit=0`이 "컴파일 실패로 아무것도 실행되지 않았다"를 배제한다.
+
+**AC-UDS-013 대비 개선 지점**: 선행 판정은 운영자의 **실제** `~/.claude/hooks`를 스냅샷했고, 그 디렉터리가 없는 머신에서는 before/after 모두 0행이라 삭제 방향에 대해 공허하게 통과했다. 이 판정은 (a)에서 sentinel 트리를 스스로 만들고 비어 있지 않음을 확인하므로 판별력이 코드에만 의존한다(§A.2). 그리고 (a)의 비어있지 않음은 AC-UGE-008의 카나리아가 울릴 대상을 보장하는 조건이기도 하다 — 위 `probe-survived=1`이 그 연결을 실증한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
