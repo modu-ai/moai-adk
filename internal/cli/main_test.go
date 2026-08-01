@@ -50,9 +50,12 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
 // warmUpDone records that warmUpCommandTree actually ran. It is the reachability
@@ -122,12 +125,84 @@ func countCommandTree(c *cobra.Command) int {
 	return n
 }
 
+// sandboxProfileBaseDir points profile.GetBaseDir at a throwaway directory for
+// the whole package run, so no test in internal/cli can reach the developer's
+// real ~/.moai/claude-profiles.
+//
+// WHY THIS IS PACKAGE-WIDE rather than per-test. unifiedLaunch step 5
+// (launcher.go) calls profile.RecordLastUsedProfile whenever it is handed a
+// named profile, which rewrites launch.yaml — the ledger a bare `moai cc` reads
+// to decide which profile to launch. Any test that reaches unifiedLaunch with a
+// name, directly (launcher_test.go TestUnifiedLaunch_Claude) or through a cobra
+// RunE (cc_test.go `-p work`), therefore writes the real ledger unless the base
+// dir is overridden. Observed consequence: `last_profile` was left pointing at
+// the fixture name `myprofile`, no such profile directory existed, the
+// stale-record guard in profile.ResolveLaunchProfile returned "", and every
+// subsequent `moai cc` silently launched with no --model at all.
+//
+// Overriding here rather than in each test is deliberate: the leak is caused by
+// a call several frames below the test body, so a test author has no local
+// signal that their test writes to $HOME. A per-test override only fixes the
+// tests that exist today; this covers the ones added tomorrow.
+//
+// t.TempDir() is unavailable in TestMain (no *testing.T), so the directory is
+// created and removed manually.
+func sandboxProfileBaseDir() func() {
+	dir, err := os.MkdirTemp("", "moai-cli-profiles-")
+	if err != nil {
+		// Fall back to a path under the OS temp dir rather than silently
+		// leaving the real base dir in play.
+		dir = filepath.Join(os.TempDir(), "moai-cli-profiles-fallback")
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	orig := profile.BaseDirOverride
+	profile.BaseDirOverride = dir
+	return func() {
+		profile.BaseDirOverride = orig
+		_ = os.RemoveAll(dir)
+	}
+}
+
 func TestMain(m *testing.M) {
+	restoreProfileBaseDir := sandboxProfileBaseDir()
+
 	warmUpCommandTree(rootCmd)
 	// Serial, single-goroutine, immediately after the warm-up: these Commands()
 	// calls cannot open a race window, and the tree cannot have drifted yet.
 	warmUpTreeSize = countCommandTree(rootCmd)
-	os.Exit(m.Run())
+
+	code := m.Run()
+	restoreProfileBaseDir()
+	os.Exit(code)
+}
+
+// TestProfileBaseDirIsSandboxed is the guard for sandboxProfileBaseDir.
+//
+// It fails deterministically if the TestMain call is removed: with no override,
+// profile.GetBaseDir() resolves to $HOME/.moai/claude-profiles and
+// BaseDirOverride is "". Both assertions below then fire.
+//
+// The second assertion is the load-bearing one. An override set to the real
+// base dir would satisfy a non-emptiness check while still writing $HOME, so
+// the guard compares against the actual home-derived path rather than merely
+// asserting "something was set".
+func TestProfileBaseDirIsSandboxed(t *testing.T) {
+	if profile.BaseDirOverride == "" {
+		t.Fatal("profile.BaseDirOverride is empty: TestMain must call " +
+			"sandboxProfileBaseDir() before m.Run(). Without it, any test " +
+			"reaching unifiedLaunch with a named profile rewrites the " +
+			"developer's real ~/.moai/claude-profiles/launch.yaml.")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot determine home directory; sandbox comparison unavailable")
+	}
+	realBase := filepath.Join(home, ".moai", "claude-profiles")
+	if got := profile.GetBaseDir(); got == realBase {
+		t.Fatalf("profile.GetBaseDir() = %q, which is the real user profile "+
+			"base. Tests in this package must never resolve to it.", got)
+	}
 }
 
 // TestWarmUpReachability is the REQ-CFS-004 guard. It runs serially (no

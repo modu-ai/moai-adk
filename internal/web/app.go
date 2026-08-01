@@ -35,6 +35,17 @@ type app struct {
 	syncToProject    func(projectRoot string, prefs profile.ProfilePreferences) error
 	listProfiles     func() []profile.ProfileEntry
 
+	// recordLastProfile marks a profile as the one a bare `moai cc` will launch.
+	//
+	// Saving in the web console previously wrote <name>/preferences.yaml without
+	// touching the launch ledger, so the ONLY writer was `moai cc -p <name>`
+	// (launcher.go step 5). Editing a profile in the console therefore had no
+	// effect on the next launch: the ledger still pointed elsewhere, and when it
+	// pointed at a profile whose directory was gone, ResolveLaunchProfile's
+	// stale-record guard returned "" and the launch fell back to the empty base
+	// preferences — no --model, so Claude Code used the settings.json default.
+	recordLastProfile func(name string) error
+
 	// Injectable seams over the project-config write path (SPEC-WEB-CONSOLE-003).
 	// development_mode + git_convention.convention live in project config
 	// (quality.yaml / git-convention.yaml), NOT the profile store, so they have
@@ -87,6 +98,7 @@ func newApp(cfg Config) *app {
 		writePreferences:   profile.WritePreferences,
 		syncToProject:      profile.SyncToProjectConfig,
 		listProfiles:       profile.List,
+		recordLastProfile:  profile.RecordLastUsedProfile,
 		readProjectConfig:  readProjectConfig,
 		writeProjectConfig: writeProjectConfig,
 
