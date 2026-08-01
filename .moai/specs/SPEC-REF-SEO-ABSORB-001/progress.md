@@ -248,7 +248,7 @@ m1_to_mN_commit_strategy: M3 a525a236e / M4 184a325bc(단일 커밋, 마크다�
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill   # 이 커밋 자신 — 자기참조 불가, 커밋 직후 백필
+sync_commit_sha: c89ddde55413df8c35dd4d809ea04635c3ca0b05   # 백필 완료 (git rev-parse HEAD 실측)
 sync_status: audit-ready
 run_merge_commit_sha: 1594cf60e     # PR #1274 squash merge — origin/main 에서 실측 확인
 b12_self_test_a: PASS               # grep -c 'SEO-ABSORB' CHANGELOG.md → 0 (중복 없음, emission 전 관측)
