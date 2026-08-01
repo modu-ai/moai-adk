@@ -53,8 +53,6 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 
 ## Fan-Out Index
 
-All four run-phase fan-out sites live in sub-skills that are `Read` on demand, so they are enumerated here — in the file the orchestrator reads at phase entry — rather than only at the site itself.
-
 | Fan-Out ID | Trigger condition | Target file | What is parallelised |
 |---|---|---|---|
 | `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 1.8 MX context-map scan — one read-only shard per package |
@@ -97,12 +95,6 @@ All four run-phase fan-out sites live in sub-skills that are `Read` on demand, s
 **Worktree path rules**: [HARD] 모든 에이전트 프롬프트에 절대 경로 금지. project-root-relative 경로 사용.
 
 **Chaining (single-phase contract)**: an explicit `/moai run` invocation carries a `single-phase` pipeline contract — on run-phase completion, the sync chain is surfaced as the "(Recommended)" first option of the next-step AskUserQuestion; it never fires silently. The `full-pipeline` auto-chain applies only to the default `/moai` route (see `workflows/moai.md` § run→sync chaining policy).
-
-## Phase 4 Operational Entries (Mode 4 / Mode 6)
-
-**Mode 4 (parallel) — research fan-out**: while pre-implementation work is research-heavy and multi-domain, the orchestrator spawns 3-5 concurrent read-only `Agent()` calls in a single turn for analysis fan-out (codebase exploration, external research, quality baseline). Implementation itself remains Mode 5 (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
-
-**Mode 6 (workflow) — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the Mode 6 selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first.
 
 ## On-Demand Sub-skill Loading
 
