@@ -297,9 +297,143 @@ failed with two differing tree hashes. `RestoreFromBackupDir` now runs the merge
 `golangci-lint run --timeout=5m ./internal/cli/...` → `0 issues.`; `gofmt -l` over the eight edited
 files → no output; `go vet ./internal/cli/...` → exit 0.
 
+### M2 — Destructive-target registry + `.moai/memory/` backup + comment reconciliation
+
+Measured on branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, pre-M2 tree `8556bc9e0`, M2 code commit
+`a46652923`. Every row below is the observed output of a command run in this milestone against this
+tree.
+
+#### AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-005 | PASS | `go test -run 'TestDestructiveTargetRegistry_CoversAllSites' -count=1 -v ./internal/cli/` | `--- PASS: TestDestructiveTargetRegistry_CoversAllSites (0.01s)` / `ok github.com/modu-ai/moai-adk/internal/cli 0.744s` |
+| AC-UDS-005 (§C.4 falsification — the gate) | PASS | scratch worktree at `a46652923`, unregistered `udsFalsifyProbe` injected into `update_cleanup.go`, then `go -C /tmp/uds-falsify-c4-wt test -run 'TestDestructiveTargetRegistry_CoversAllSites' -count=1 -v ./internal/cli/` | `--- FAIL: TestDestructiveTargetRegistry_CoversAllSites (0.01s)` naming `unregistered destructive site: internal/cli/update_cleanup.go udsFalsifyProbe has 1 os.RemoveAll/os.Rename call site(s) but no registry row` |
+| AC-UDS-006 | PASS | `go test -run 'TestMigrateLegacyMemoryDir_BacksUpBeforeRemoval' -count=1 -v ./internal/cli/update/deploy/` | `--- PASS: TestMigrateLegacyMemoryDir_BacksUpBeforeRemoval (0.01s)`; sentinel bytes recovered from `…/.moai-backups/20260801_165222/legacy-memory/notes/keep.md` |
+| AC-UDS-007 (a) | PASS | `sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go \| grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'` | `1` (baseline `0`; AC requires ≥ 1) |
+| AC-UDS-007 (b) | PASS | `grep -c 'moai/project/db' internal/defs/dirs.go` | `2` — unchanged |
+| AC-UDS-007 (c) | PASS | `go test -run 'TestDeprecatedPaths' -count=1 -v ./internal/defs/` | 8 `--- PASS` lines incl. `TestDeprecatedPathsTotalCount`, `TestDeprecatedPathsCategorySplit` |
+| AC-UDS-010 (cross-cutting) | PASS | `go test -count=1 ./internal/cli/... ./internal/cli/update/... ./internal/defs/` | exit 0, 18 `ok` lines, 0 `--- FAIL` |
+| AC-UDS-018 (cross-cutting) | PASS | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | both exit 0 |
+| AC-UDS-019 (a) | **PASS-WITH-DEBT** | `git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ \| wc -l` | `8` — attributable in full to a foreign commit; see the finding below |
+| AC-UDS-019 (b) | PASS | `git status --porcelain internal/template/templates/ \| wc -l` | `0` |
+
+#### Step 0 re-scan (plan.md §F M2)
+
+The §C.0 scan was re-run before anything was encoded, rather than trusting the table:
+
+```
+$ grep -rn 'os\.RemoveAll(\|os\.Rename(' internal/cli/update/ internal/cli/update*.go \
+    --include='*.go' | grep -v '_test.go' | wc -l
+      18
+```
+
+**18 sites across 11 (file, function) pairs** — identical to the §C.0 table, and identical again
+after M2 landed (the new `backupLegacyMemoryDir` / `copyTree` helpers use only `MkdirAll` /
+`ReadFile` / `WriteFile`, so they add no destructive site). No divergence to report.
+
+#### RED evidence (captured before GREEN)
+
+The registry file was created with an **empty** slice first, so the guard's RED is a real `--- FAIL`
+enumerated from source rather than a compile error — which also demonstrates, before any row exists,
+that the enumeration cannot be registry-derived:
+
+```
+--- FAIL: TestDestructiveTargetRegistry_CoversAllSites (0.01s)
+    unregistered destructive site: internal/cli/update.go ensureGlobalSettingsEnv has 1 … but no registry row
+    unregistered destructive site: internal/cli/update/backup/backup.go BackupMoaiConfig has 3 … but no registry row
+    unregistered destructive site: internal/cli/update/backup/backup.go CleanupOldBackups has 1 … but no registry row
+    unregistered destructive site: internal/cli/update/deploy/deploy.go CleanMoaiManagedPaths has 3 … but no registry row
+    unregistered destructive site: internal/cli/update/deploy/deploy.go MigrateLegacyMemoryDir has 2 … but no registry row
+    unregistered destructive site: internal/cli/update_archive.go archiveLegacySkills has 1 … but no registry row
+    unregistered destructive site: internal/cli/update_archive.go archiveSkill has 1 … but no registry row
+    unregistered destructive site: internal/cli/update_clean_install.go runCleanReinstall has 1 … but no registry row
+    unregistered destructive site: internal/cli/update_cleanup.go removeDeprecatedFile has 1 … but no registry row
+    unregistered destructive site: internal/cli/update_namespace_protect.go backupUserOwnedNamespace has 3 … but no registry row
+    unregistered destructive site: internal/cli/update_residue_cleanup.go runV3ResidueCleanup has 1 … but no registry row
+    scanned 11 (file, function) pair(s) …; registry has 0 row(s)
+```
+
+`.moai/memory/` backup, against the pre-M2 source (`8556bc9e0`, scratch worktree, `go -C`):
+
+```
+--- FAIL: TestMigrateLegacyMemoryDir_BacksUpBeforeRemoval (0.01s)
+    sentinel bytes not found anywhere under …/.moai-backups — .moai/memory/ was destroyed without a backup (REQ-UDS-008)
+--- FAIL: TestMigrateLegacyMemoryDir_AbortsRemovalOnBackupFailure (0.01s)
+    expected an error when the backup cannot be written, got nil
+```
+
+`dirs.go` group comment — the grep baseline is the RED-equivalent (this deliverable is verified by
+AC-UDS-007's grep, not by a new Go test): (a) `0` before, `1` after; (b) `2` before and after.
+
+#### §C.4 falsification mechanism (and why `-overlay` was not used)
+
+The guard scans the on-disk tree with `go/parser`, so `go test -overlay` is invisible to it and step
+3 would PASS for the wrong reason. Per the §C.4 caveat the injection was therefore applied in a
+**scratch `git worktree`** driven with `go -C` (`git stash` prohibited by plan.md §D). Sequence
+observed: unmutated PASS → inject `udsFalsifyProbe` (scan goes 18 → 19) → `--- FAIL` naming the
+unregistered site → `git checkout --` restore → PASS. The worktree was disposed with
+`git worktree remove`.
+
+#### Coverage
+
+Baseline re-measured in a scratch worktree at `8556bc9e0` (not carried over from M1's record):
+
+| Package | Baseline (`8556bc9e0`) | After M2 | Delta |
+|---|---|---|---|
+| `internal/cli` | `coverage: 75.8% of statements` | `coverage: 75.8% of statements` | 0.0 pp |
+| `internal/cli/update/deploy` | `coverage: 97.5% of statements` | `coverage: 94.3% of statements` | **−3.2 pp** |
+
+The deploy drop is new uncovered code, not lost coverage: `MigrateLegacyMemoryDir` and
+`backupLegacyMemoryDir` are both 100%, while `copyTree` sits at 76.5%. Its four uncovered blocks are
+fault-injection-only error returns (`deploy.go:230` walk error, `:235` `filepath.Rel` error, `:248`
+`os.ReadFile` error, `:251` per-file `MkdirAll` error). The package remains above the 85% threshold.
+
+#### Template neutrality finding (AC-UDS-019 (a))
+
+Command (a) returns `8`, not `0`. **None of it is this SPEC's.** Every SPEC-owned commit
+(`89b2e4772`, `4f3b96fd8`, `a2fc68e73`, `4ddd35120`, `279ae7b97`, `8556bc9e0`, `a46652923`) touches
+`0` files under `internal/template/templates/`. All 8 files come from the foreign commit
+`9ced435e9` (`fix(agents): resolve GEARS-vs-Given-When-Then layer confusion…`, PR #1266), which
+landed on `origin/main` after `8cc108ddb` and entered this branch through merge commit `2255165f5`.
+`origin/main` is now `9ced435e9`, and re-measured against it the count is `0`:
+
+```
+$ git diff --name-only 9ced435e9..HEAD -- internal/template/templates/ | wc -l
+       0
+$ git merge-base origin/main HEAD
+9ced435e922934fe68835a6f85943d3f8e330e1d
+```
+
+This is the same class of TOCTOU drift `acceptance.md` §A.4 anticipates: the `8cc108ddb` baseline
+pin is stale because upstream moved. Re-baselining that pin is an `acceptance.md` body edit, which
+run-phase does not own — carried as a blocker below.
+
+#### Gaps (not verified in M2)
+
+- `copyTree`'s four error returns are unexercised (see Coverage). A failure to read one file
+  mid-copy would abort the backup and therefore the removal — the safe direction — but that path is
+  reasoned, not executed.
+- The registry's protection assignments are **documentation of where protection lives**, not
+  executable assertions. The guard proves every site is registered and assigned; it does not prove
+  the named protection actually runs. M3/M4 supply the executed evidence for rows
+  `CleanMoaiManagedPaths` and `ensureGlobalSettingsEnv`.
+- The scan is keyed on the literal selector `os.RemoveAll` / `os.Rename`. A destructive call reached
+  through an alias (`import osx "os"`) or a wrapper would not be seen. No such call exists in scope
+  today; the file-total-vs-function-total cross-check in the scanner catches only the
+  outside-a-function case, not aliasing.
+- `AC-UDS-019 (a)` is recorded PASS-WITH-DEBT, not PASS.
+
+#### Lint
+
+`golangci-lint run --timeout=2m` → `0 issues.` — identical to the pre-flight baseline measured on
+this tree before any M2 edit (`0 issues.`), so M2 introduces no new finding. `gofmt -l` over the
+five M2 files → no output. (`internal/cli/update/deploy/deploy_test.go` is reported by `gofmt -l`
+but is pre-existing and untouched by M2.)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending run-phase>_ — M2 of 6 complete; M3-M6 outstanding.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
