@@ -26,6 +26,37 @@ MoAI now recognizes three runtime primitives for multi-step work. The difference
 
 Subagents and skills keep the plan in Claude's context (it decides turn by turn). A workflow moves the plan into code: the script holds the loop, the branching, and the intermediate results, so the session context holds only the final answer. This also lets a workflow apply a repeatable quality pattern — e.g. independent agents adversarially reviewing each other's findings before reporting.
 
+All three primitives share one property: they run **inside a session**, so every agent's output lands in some context that a single session ultimately owns. The next section covers the case where that property is the constraint.
+
+## Out-of-Session Fan-Out (`claude -p` batch)
+
+The three primitives above scale the work a session can hold. When the work exceeds what any single session should hold — a mechanical transformation across hundreds or thousands of files — the unit of parallelism moves outside the session entirely: a shell loop invokes non-interactive `claude -p` once per item, and each invocation gets a fresh context that dies with it.
+
+```bash
+# 1. Build the work list (one item per line) — have Claude enumerate it
+#    interactively first, so the list itself is reviewable.
+#
+# 2. Loop, one fresh non-interactive invocation per item:
+for file in $(cat files.txt); do
+  claude -p "Migrate $file from <source pattern> to <target pattern>. Return OK or FAIL." \
+    --allowedTools "Edit,Bash(git commit *)"
+done
+```
+
+Three properties make this the right tool for that shape of work, and the wrong tool for anything else:
+
+- **Per-item context isolation.** Item 900 does not carry item 1's file contents, so context growth is flat rather than cumulative. This is the whole reason to leave the session.
+- **`--allowedTools` is the safety boundary, not a convenience.** The loop runs unattended, so there is no user to decline a prompt. Scope the flag to exactly the tools the transformation needs; anything omitted cannot run. A batch launched without this flag is an unattended agent with unscoped tool access.
+- **The prompt is fixed across all items.** Because no one is watching, the prompt cannot be corrected mid-run.
+
+**Calibrate on 2-3 items before running the full set.** The first few items reveal what the prompt actually does versus what it was meant to do; the remaining N inherit whatever that turns out to be. Fixing a prompt after 2 items is cheap, and after 2,000 it is a revert.
+
+Structured output makes results consumable rather than merely printed: `--output-format json` for a parseable result per item, `--output-format stream-json --verbose` when a long-running item's progress must be observed. Keep `--verbose` for development and drop it in production runs.
+
+Choose between this and a dynamic workflow by **where the results need to meet**. A workflow's script variables collect intermediate results for synthesis, cross-checking, or an adversarial review pass — reach for it when the items inform each other. A `claude -p` batch has no shared state and no synthesis step, which is exactly right when the items are genuinely independent and the only aggregate that matters is a pass/fail tally.
+
+The MoAI-side obligations are unchanged and are not relaxed by the batch form: `AskUserQuestion` is orchestrator-only, so a `-p` invocation cannot prompt the user (§ the subagent boundary in `.claude/rules/moai/core/agent-common-protocol.md`), and the Implementation Kickoff Approval gate governs launching the batch — the batch itself is the implementation, not the approval.
+
 ## When to Use a Dynamic Workflow
 
 Reach for a workflow when a task needs **more agents than one conversation can coordinate**, or when the orchestration should be codified as a script you can read and rerun:
