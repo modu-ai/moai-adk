@@ -139,4 +139,4 @@ The Skill tool is for read-only reference loading only; auditor independence mea
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision. While `sync-auditor` now carries the `Agent` tool for the read-only per-dimension verifier pilot (env-gated), that capability is scoped to read-only verifier children only and does NOT extend to model/effort escalation, which remains the orchestrator's call. See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

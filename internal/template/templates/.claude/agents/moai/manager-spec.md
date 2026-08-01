@@ -2,7 +2,7 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the Anthropic catalog consolidation (which reduced 17 agents to the then-8-agent catalog, since grown to 11; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
@@ -101,6 +101,8 @@ Scope boundaries — what this agent does and does NOT own — are stated once i
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
 
+This file is the **verification layer**, and Given-When-Then is its correct format — write each entry as an `AC-XXX` labeled `Given … When … Then …`, and make it binary-testable. The GEARS obligation belongs to the **requirement layer**: the `REQ-XXX` entries in `spec.md` (and, at Tier S where no `acceptance.md` exists, the requirement entries in `spec.md` — the inline `AC-XXX` block in `spec.md §3` stays Given-When-Then). Do not restate GEARS requirements here, and never present a Given-When-Then scenario as a GEARS requirement — that inversion is the one thing MP-2 fails. Audit contract: `plan-auditor.md` M3 § Scope and MP-2.
+
 **progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
 
 #### [HARD] progress.md §E Skeleton Generation
@@ -112,7 +114,7 @@ Scope boundaries — what this agent does and does NOT own — are stated once i
 3. `## §E.3 Run-phase Audit-Ready Signal`
 4. `## §E.4 Sync-phase Audit-Ready Signal`
 
-Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
+Why these markers: the SPEC era-classification engine greps for the literal `§E.2`/`§E.3`/`§E.4`/`§E.5` substrings — NOT `§E.1` (`§E.5` is the retired Mx-phase marker, still recognized so pre-3-phase SPECs classify correctly; do NOT emit it in new skeletons) — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
 
 Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
 
@@ -127,7 +129,7 @@ ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
 [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
 ```
 
-The pattern mirrors the Go `specIDPattern` in `internal/spec/lint.go` (content-token anchor; line numbers drift): first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
+The pattern mirrors the SPEC-ID pattern the lint engine enforces: first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
 - Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
 - Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
@@ -140,7 +142,7 @@ On `FAIL`, halt the Write and return a structured blocker report naming the offe
 
 [HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields. Missing any one is a schema violation and blocks creation.
 
-The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with `internal/spec/lint.go` `FrontmatterSchemaRule`. Read the schema there; do not work from a copy.
+The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with the lint engine's frontmatter-schema rule. Read the schema there; do not work from a copy.
 
 Optional fields are listed in that same SSOT § Optional Fields (`issue_number`, `depends_on`, `lint.skip`, `bc_id`, `amendment_of`, `tier`). Four further optional fields are used by this agent and are NOT in that table:
 
