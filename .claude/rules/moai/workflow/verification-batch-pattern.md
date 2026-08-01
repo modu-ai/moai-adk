@@ -23,7 +23,7 @@ When `manager-develop` reports completion, the orchestrator independently verifi
 
 All seven canonical batch items in agent-common-protocol §Parallel Execution are read-only batch-safe.
 
-> **Re-sync sentinel**: the verbatim 7-command batch AND the file-redirect contract (redirect + bounded-tail output representation) live in `agent-common-protocol.md` § Parallel Execution / § File-redirect contract (the SSOT). If either the 7-item list OR the file-redirect contract representation changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list or its output representation).
+> **Re-sync sentinel**: the verbatim 7-command batch AND the file-redirect contract (redirect + bounded-tail output representation) live in `agent-common-protocol-reference.md` § Canonical 7-item example / § File-redirect contract (the detail sidecar of `agent-common-protocol.md`, which retains the binding summary). If either the 7-item list OR the file-redirect contract representation changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list or its output representation).
 
 ## When NOT to Batch
 
@@ -57,7 +57,7 @@ The orchestrator's response contains multiple Bash tool calls within a single as
 
 ## Cross-references
 
-- `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation + 7-item canonical example).
+- `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation) + `agent-common-protocol-reference.md` (7-item canonical example).
 - reduces serial CI wait.
 
 ---

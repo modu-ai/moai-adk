@@ -19,6 +19,34 @@ shared file). A turn ceiling (default 30) bounds the loop. At the ceiling, the
 evaluator emits a 5-section verdict (Claim / Evidence / Baseline-attribution /
 Gaps / Residual-risk) and stops blocking.
 
+### The runtime block cap bounds the loop before the turn ceiling does
+
+The turn ceiling is not the only bound, and on an unattended run it is usually
+not the binding one. `stop-goal` is a Stop hook, so it is subject to the runtime's
+**consecutive-block cap** — after that many consecutive Stop-hook blocks the
+runtime overrides the block and ends the turn regardless of what the hook decided.
+The cap defaults to 8 and is tunable via `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`
+(`.claude/rules/moai/core/hooks-system.md` § Stop Hook Block Cap).
+
+Two consequences follow, and both matter when authoring a goal:
+
+- **The effective bound is `min(ceiling, block cap)` for consecutive blocks.** With
+  the defaults (ceiling 30, cap 8), an unattended run that blocks every turn stops
+  at the cap — the remaining ceiling turns are never reached.
+- **The ceiling-exit verdict is not guaranteed to be emitted.** The 5-section
+  verdict is emitted at the *ceiling*, so a run terminated by the cap ends without
+  it. Do not treat "no verdict appeared" as "the goal converged".
+
+The counter is *consecutive*: a turn that ends without a block resets it. An
+interactive session where the user intervenes between turns can therefore reach a
+30-turn ceiling that an unattended `claude -p` run never will.
+
+Choose the bound deliberately rather than inheriting it. For a long unattended
+run that genuinely needs more than the cap's worth of iterations, raise
+`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` to at least the ceiling; otherwise set the
+ceiling at or below the cap so the ceiling is the bound that actually fires and
+the verdict is actually produced.
+
 ## Verbs
 
 ### `/moai goal "<condition>"` — register + arm
