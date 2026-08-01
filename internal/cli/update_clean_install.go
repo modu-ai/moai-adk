@@ -302,18 +302,37 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 	}
 
-	for _, rel := range deprecated {
-		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
-		if rmErr := os.RemoveAll(abs); rmErr != nil {
-			return result, fmt.Errorf("step 4: remove %s: %w", rel, rmErr)
+	// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-019/020: the removal loop below is
+	// this path's first irreversible step. From here on, any error leaves a
+	// partially updated tree, so the guard writes a recovery manifest naming
+	// the Step 3 backup and the restore command. No automatic rollback is
+	// attempted (plan.md §B).
+	recovery := newRecoveryGuard(projectRoot, finalBackupDir, out)
+	recovery.enter()
+
+	// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
+	// in-memory-only files (.claude/settings.json, .moai/status_line.sh,
+	// .gitignore) reach disk before this path's first irreversible step. The
+	// same guard the template-sync path uses is applied here, so neither path
+	// can drift into being the unprotected one. A backup-write failure aborts
+	// before the removal loop runs.
+	if guardErr := guardFirstDestructiveStep(projectRoot, finalBackupDir, func() error {
+		for _, rel := range deprecated {
+			abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+			if rmErr := os.RemoveAll(abs); rmErr != nil {
+				return rmErr
+			}
 		}
+		return nil
+	}); guardErr != nil {
+		return result, recovery.fail("step 4: remove deprecated paths", guardErr)
 	}
 	result.RemovedPaths = deprecated
 
 	// Post-REMOVE re-scan → actual removal count (AC-CRR-006(a)).
 	remaining, err := scanDeprecatedPaths(projectRoot)
 	if err != nil {
-		return result, fmt.Errorf("step 4: re-scan deprecated paths: %w", err)
+		return result, recovery.fail("step 4: re-scan deprecated paths", err)
 	}
 	removedCount := len(deprecated) - len(remaining)
 
@@ -339,7 +358,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// The clean-reinstall must not be a lower-protection bypass of the normal path.
 	configBackupPath, cfgBackupErr := backup.BackupMoaiConfig(projectRoot)
 	if cfgBackupErr != nil {
-		return result, fmt.Errorf("step 4.5: backup .moai/config for merge-preservation: %w", cfgBackupErr)
+		return result, recovery.fail("step 4.5: backup .moai/config for merge-preservation", cfgBackupErr)
 	}
 	// Mergeable root files handled by the normal path's 3-way engine (identical
 	// set to update.go collectMergeableFiles). settings.json base is unavailable
@@ -372,7 +391,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		if embedded == nil {
 			embeddedFS, embErr := template.EmbeddedTemplates()
 			if embErr != nil {
-				return result, fmt.Errorf("step 5: load embedded templates: %w", embErr)
+				return result, recovery.fail("step 5: load embedded templates", embErr)
 			}
 			embedded = embeddedFS
 		}
@@ -401,7 +420,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	)
 
 	if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
-		return result, fmt.Errorf("step 5: reinstall templates: %w", deployErr)
+		return result, recovery.fail("step 5: reinstall templates", deployErr)
 	}
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
@@ -429,7 +448,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 			recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
 		}); restoreErr != nil {
-			return result, fmt.Errorf("step 5.5: restore .moai/config sections: %w", restoreErr)
+			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
 		// Backup-dir accumulation cap — the same pruning the normal path
@@ -476,7 +495,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Step 6 — MERGE-back PRESERVE inventory
 	// ---------------------------------------------------------------
 	if err := mergeBackPreserveInventory(projectRoot, inv, finalBackupDir); err != nil {
-		return result, fmt.Errorf("step 6: merge-back PRESERVE inventory: %w", err)
+		return result, recovery.fail("step 6: merge-back PRESERVE inventory", err)
 	}
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] PRESERVE inventory restored")
 
@@ -485,7 +504,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// ---------------------------------------------------------------
 	hashesPost, err := computeInventoryHashes(projectRoot, inv)
 	if err != nil {
-		return result, fmt.Errorf("step 7: compute post-reinstall hashes: %w", err)
+		return result, recovery.fail("step 7: compute post-reinstall hashes", err)
 	}
 
 	var mismatches []string
@@ -504,7 +523,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 
 	if !result.IntegrityPassed {
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
-		return result, fmt.Errorf("step 7: PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir)
+		return result, recovery.fail("step 7", fmt.Errorf("PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir))
 	}
 	// Log-claim accuracy: the integrity check covers ONLY the PRESERVE
 	// inventory hashes (inv.Files) — not merged config, settings, or

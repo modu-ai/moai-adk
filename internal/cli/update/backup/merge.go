@@ -92,8 +92,27 @@ func DeepMerge3Way(newMap, oldMap, baseMap map[string]any) map[string]any {
 		}
 	}
 
-	// Keys only in old (not in new template) are dropped:
-	// they were removed from the template, so we don't carry them forward.
+	// Keys present only in old are resolved against the base, because the two
+	// cases they cover need opposite answers (issue #1267):
+	//
+	//	absent from base  -> the USER added it       -> preserve
+	//	present in base   -> the TEMPLATE removed it -> drop
+	//
+	// Without this pass, recursing into a template placeholder such as
+	// `agent_overrides: {}` walked an empty new map and silently discarded every
+	// user-authored entry underneath it.
+	for k, oldV := range oldMap {
+		if _, inNew := newMap[k]; inNew {
+			continue // already resolved by the loop above
+		}
+		if systemFields[k] {
+			continue // never carried forward from old
+		}
+		if _, inBase := baseMap[k]; inBase {
+			continue // template removed it deliberately
+		}
+		result[k] = oldV
+	}
 
 	return result
 }
