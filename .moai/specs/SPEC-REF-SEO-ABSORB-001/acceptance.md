@@ -265,11 +265,33 @@ find internal/template/templates/.claude/skills/moai-ref-seo .claude/skills/moai
 
 ```bash
 wc -l internal/template/templates/.claude/skills/moai-ref-seo/SKILL.md
-grep -c '^# '  internal/template/templates/.claude/skills/moai-ref-seo/SKILL.md
 grep -c '^## ' internal/template/templates/.claude/skills/moai-ref-seo/SKILL.md
+python3 - <<'PY'
+import re
+t = open('internal/template/templates/.claude/skills/moai-ref-seo/SKILL.md', encoding='utf-8').read()
+t = re.sub(r'\A---.*?^---\s*$', '', t, flags=re.S | re.M)   # frontmatter 제거
+print("body_h1=%d" % len(re.findall(r'^# ', t, re.M)))
+PY
 ```
 
-기대: 줄 수 150-220, H1 정확히 `1`, H2 개수 **7-14**.
+기대: 줄 수 150-220(파일 전체, frontmatter 포함), H2 개수 **7-14**, `body_h1=1`.
+
+> **v0.3.1 판정 명령 공허 정정 (N12)**: 이 자리의 H1 판정은 `grep -c '^# '`를 파일 전체에 적용했다. frontmatter의 `progressive_disclosure:` 블록에 `# MoAI Extension: Progressive Disclosure` 주석 행이 있어 **그 행이 H1로 계수된다.** 템플릿 트리의 `moai-ref-*` 10건 전수 실측:
+>
+> ```
+> secops H1=2 / ui-polish H1=2 / api-patterns H1=2 / react-patterns H1=2 / owasp-checklist H1=2
+> llm-security H1=2 / supply-chain H1=2 / testing-pyramid H1=2 / git-workflow H1=2 / seo H1=2
+> ```
+>
+> 전 10건이 frontmatter에 `progressive_disclosure:`를 갖는다. 따라서 **어떤 ref 스킬도 "정확히 1"을 만족할 수 없고**, 선례 9건이 9/9 실패한다 — 산출물이 아니라 판정 명령의 결함이다(§A.1이 금지하는 실패 양식이며, REQ-SEO-015가 이 프로토콜을 형제 SPEC 재사용 대상으로 선언하므로 방치하면 결함이 전파된다). frontmatter를 제거하고 세면 10건 전부 `H1=1`이고 H2는 불변이다:
+>
+> ```
+> api-patterns H1=1 H2=11 / git-workflow H1=1 H2=16 / llm-security H1=1 H2=14
+> owasp-checklist H1=1 H2=11 / react-patterns H1=1 H2=11 / secops H1=1 H2=9
+> seo H1=1 H2=12 / supply-chain H1=1 H2=15 / testing-pyramid H1=1 H2=13 / ui-polish H1=1 H2=13
+> ```
+>
+> 정정은 **기준을 완화하지 않는다** — AC가 처음부터 의도한 "본문 H1"을 실제로 재게 만들 뿐이며 임계값 `1`은 그대로다. frontmatter 제거 관용구는 AC-SEO-011/012/013이 이미 쓰는 `re.sub(r'\A---.*?^---\s*$', '', t, flags=re.S | re.M)`를 그대로 재사용해 파일 내 일관성을 유지한다. `wc -l`과 `grep -c '^## '`는 이 결함의 영향을 받지 않으므로 명령·기대 범위 모두 불변이다(산출물 실측: 207줄 / H2 12 — 둘 다 범위 내).
 
 H2 상한 산식: 도메인 4-10 + 불변 3 + 선택적 `## Target Agents` 0-1 = **7-14**. `## Target Agents`는 ref 스킬의 표준 선택 구성요소다(research.md §B.3). v0.1.0의 상한 13은 이 선택 섹션을 셈에 넣지 않아, 선택 섹션을 쓰면서 도메인 H2를 상한까지 채우면 hard-fail하는 값이었다.
 
