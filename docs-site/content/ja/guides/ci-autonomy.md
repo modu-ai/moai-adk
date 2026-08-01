@@ -47,28 +47,24 @@ push 前にローカルで自動的に品質検証を実行します。CI まで
 
 ## Auto-fix Loop (T3)
 
-`/moai sync` が PR を生成した後、CI 監視スクリプトと CI ループスキルが一緒に
+`/moai sync` が PR を生成した後、オーケストレーターが失敗した必須 (required)
+チェックをハンドオフすると、`manager-develop` が `cycle_type=autofix` サイクルで
 「診断 → 修正 → 再検証」ループを回します。ローカルの診断型自己修正ループを
 PR パイプラインの上に延長した構造です。
 
-**CI 監視スクリプト (`scripts/ci-watch/run.sh`)**
+- **進入条件** — 失敗した必須チェックが 1 つ以上あり、オーケストレーターが
+  対象の PR とブランチを指定してハンドオフしたときにのみループが開始します。
+  オーケストレーターが唯一の進入点です
+- **反復上限** — PR push 1 回あたり最大 3 回。4 回目に入るとパッチを試行せず、
+  blocking AskUserQuestion でユーザーにエスカレーションします
+- **意味レベルの失敗** — data race、deadlock、panic、テストアサーション失敗は
+  自動修正せず、人の判断に委ねます
+- **保護ファイル** — 秘密・認証情報ファイルと CI ワークフロー定義にループは
+  一切触れません。失敗を報告する層を修正すると、本物の失敗が偽の green に
+  変わってしまうためです
 
-```bash
-sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
-```
-
-- 30 秒間隔で `gh pr checks` をポーリングし、必須 (required) チェックと
-  補助 (auxiliary) チェックを分類します
-- 終了コード: `0` 全体通過 · `2` 必須チェック失敗 (構造化 JSON ハンドオフを
-  stdout に出力) · `3` 30 分ハードタイムアウト · `1` エラー
-- required チェックリストは SSoT ファイルから読み、テスト用の環境変数
-  オーバーライド (`MOAI_CIWATCH_GH`、`CIWATCH_TIMEOUT_SECONDS` など) をサポートします
-
-**CI ループスキル (`moai-workflow-ci-loop`)**
-
-監視スクリプトが必須の失敗をハンドオフすると、`moai-workflow-ci-loop` スキルが
-失敗を分類し、安全な自動パッチを最大 3 回まで試行します。意味レベルの
-失敗 (自動修正が危険な場合) はユーザーにエスカレーションします。
+反復上限、エスカレーション契約、意味レベルの失敗処理、保護ファイル一覧の
+SSoT は `.claude/rules/moai/workflow/ci-autofix-protocol.md` です。
 
 ## BODP — Branch Origin Decision Protocol (T7)
 

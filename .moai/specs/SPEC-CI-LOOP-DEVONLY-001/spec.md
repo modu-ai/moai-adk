@@ -2,7 +2,7 @@
 id: SPEC-CI-LOOP-DEVONLY-001
 title: ci-loop 스크립트 의존성의 배포 트리 격리 및 dev-only 전환
 version: 0.3.0
-status: in-progress
+status: completed
 created: 2026-08-01
 updated: 2026-08-02
 author: manager-spec

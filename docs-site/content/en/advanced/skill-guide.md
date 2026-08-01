@@ -53,9 +53,9 @@ flowchart TD
 
 ## Skill Categories
 
-The MoAI-ADK template includes a total of **27 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
+The MoAI-ADK template includes a total of **26 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 7 + Domain 5 + Reference 8 + Meta/Harness 2 = 26). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
 
-This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 27 over the v3 period. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
+This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 26 over the v3 period. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
 
 ### Foundation (Core Philosophy) - 4
 
@@ -66,7 +66,7 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-foundation-thinking` | Structured thinking, ideation, first-principles analysis             |
 | `moai-foundation-quality`  | Automatic code-quality verification, TRUST 5 validation             |
 
-### Workflow (Automated Workflows) - 8
+### Workflow (Automated Workflows) - 7
 
 | Skill name                | Description                                          |
 | ------------------------ | --------------------------------------------- |
@@ -77,7 +77,6 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-workflow-testing`  | Test creation, debugging, code-review integration           |
 | `moai-workflow-worktree` | Git-worktree-based parallel development                   |
 | `moai-workflow-loop`     | Ralph Engine autonomous loop, LSP integration              |
-| `moai-workflow-ci-loop`  | CI watch and auto-fix loop workflow          |
 
 ### Domain (Domain Expertise) - 5
 
@@ -110,7 +109,7 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-meta-harness`    | **DEPRECATED** — the legacy 7-Phase meta-harness. Redirects to the v4 Builder (`/moai:harness <natural-language request>`) |
 | `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
 
-> The 27 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
+> The 26 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
 
 ## The Progressive Disclosure System
 

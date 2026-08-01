@@ -517,7 +517,49 @@ m1_to_mN_commit_strategy: |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill-sync     # 본 커밋 — 자기 해시 참조 불가, 후속 커밋에서 백필
+sync_status: complete
+b12_self_test_a: pass                      # grep -c 'SPEC-CI-LOOP-DEVONLY-001' CHANGELOG.md → 0 (중복 없음)
+b12_self_test_b: pass                      # acceptance.md AC 고유 식별자 19건 == CHANGELOG 기재 19건
+b12_self_test_c: pass                      # CHANGELOG가 지목한 모든 경로를 ls/grep으로 실재 확인
+changelog_entry_position: "[Unreleased] → ### Fixed (최상단)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"       # 단일 sync 커밋이 3-phase close 전체를 운반
+  plan_md: n/a                             # frontmatter 없음
+  acceptance_md: n/a                       # frontmatter 없음
+  updated_field: 2026-08-02
+canary_compliance_check: n/a               # 본 SPEC은 자기 sync가 시험하는 전향적 정책을 정의하지 않음
+docs_site_4locale_sync:
+  pages: 3                                 # guides/ci-autonomy, advanced/skill-guide, workflow-commands/moai-sync
+  locales: 4                               # ko(정본) en ja zh
+  section_count_parity: pass               # 3개 문서 전부 4개 로케일 h2/h3 개수 동일
+  hugo_build: "exit 0, warning 0"
+mx_tag_validation: pass                    # sync 하위 단계로 수행 — 신규 @MX 주석 대상 Go 변경 없음(문자열 3건 교정만)
+```
+
+### 동시성 관찰 — 전체 스위트 flakiness (sync-phase 기록)
+
+run-phase 검증 중 전체 스위트 flakiness가 관측되었다. `go test ./...`를 두 번
+독립 실행했을 때 실패 집합이 **서로 겹치지 않았다** — 1회차:
+`TestHookWrapper_LargeStdin_DoesNotExceedTimeout`, `TestSupervisor_MultipleWatchers`;
+2회차: `TestPreCommitRelocation_GoodCommitPasses`, `TestRecordEvent100Sequential`,
+`TestBranchGuard_Latency`, `TestAsyncRecorder_NonBlockingUnderLoad`. 6건 전부 단독
+실행에서는 PASS했다. 6건 모두 타이밍·지연·동시성 단언이다.
+
+본 SPEC의 Go 변경은 `internal/cli`와 `internal/template`에 국한되는데, 6건 중
+4건은 Go 변경이 전혀 없는 `internal/hook`·`internal/harness`·`internal/telemetry`에
+있고, `internal/cli` 건은 pre-commit 훅 재배치를 시험하는 반면 본 SPEC의
+`internal/cli` 변경은 주석 1건 + 슬라이스 내 문자열 리터럴 1건 +
+`pr_watch_cmd.go`의 문자열 리터럴들이다. 부하 의존적 flakiness로 판정하며
+**회귀가 아니다**.
+
+**미증명**: base 커밋(`a0aa9182e~1`)에서 스위트를 돌려 해당 실패가 선재함을
+입증하지는 **않았다**. 지금 진단하지 않고 기록만 남기라는 사용자 결정에 따른다.
+한 회차 중 디스크 고갈 사고(볼륨 100% 도달, 19개 패키지가 `errno=28`로 링크 실패,
+`go clean -cache`로 약 307Gi 회수해 복구)가 있었고, 그 회차의 부하 프로파일에
+기여했을 가능성이 있다.
 
 ## §F Phase 4 Mode Selection
 
