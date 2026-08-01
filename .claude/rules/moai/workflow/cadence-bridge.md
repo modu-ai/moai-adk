@@ -89,7 +89,7 @@ The cadence run SHALL NOT auto-execute any remediation. This is the contract's s
 
 ## When to Schedule vs Event-Driven
 
-Not every discovery pathway belongs on a cadence. A recipe here is appropriate when work needs to be found **without** a triggering event — drift that accumulates silently, over-engineering that creeps in unnoticed, leftovers nobody remembers to re-check. Do NOT cron what should be event-driven: CI failures already have a dedicated event path (`scripts/ci-watch/run.sh` → the CI auto-fix loop; see `.claude/rules/moai/workflow/ci-watch-protocol.md` and `.claude/rules/moai/workflow/ci-autofix-protocol.md`) that activates on the event itself (a failing check), not on a wall-clock interval. Scheduling a cadence recipe to re-poll something that already has an event-driven trigger duplicates effort and adds latency instead of removing it.
+Not every discovery pathway belongs on a cadence. A recipe here is appropriate when work needs to be found **without** a triggering event — drift that accumulates silently, over-engineering that creeps in unnoticed, leftovers nobody remembers to re-check. Do NOT cron what should be event-driven: CI failures already have a dedicated event path (the orchestrator hands a failing required check off to the CI auto-fix loop; see `.claude/rules/moai/workflow/ci-watch-protocol.md` and `.claude/rules/moai/workflow/ci-autofix-protocol.md`) that activates on the event itself (a failing check), not on a wall-clock interval. Scheduling a cadence recipe to re-poll something that already has an event-driven trigger duplicates effort and adds latency instead of removing it.
 
 ## Fallback and Edge Cases
 

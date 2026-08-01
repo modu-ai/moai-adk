@@ -375,27 +375,144 @@ find scripts/ci-watch scripts/ci-autofix -type f | wc -l   → 9
   `AskUserQuestion` 2건이 남아 있으나 **호출이 아니라 금지 규칙을 서술하는 산문**이며,
   M6 이전부터 존재했고 이번에 보존했다. 서브에이전트 경계 위반이 아니다.
 
+### M7 — 미러 동기화 및 중립성 검증
+
+미러 9개 파일에서 ci-loop 참조 19건을 제거했다. **파일 삭제는 없다** — M7이 제거하는 것은
+참조이며, 템플릿 측 삭제는 M3에서 이미 끝났다. 선언된 dev-only 보존 집합 5경로는 무변화다.
+
+**참조 제거 전수 (파일별 건수, 편집 전 실측)**
+
+```
+.claude/agents/moai/manager-develop.md                              1
+.claude/rules/moai/development/manager-develop-prompt-template.md   3
+.claude/rules/moai/workflow/cadence-bridge.md                       1
+.claude/skills/moai/SKILL.md                                        3
+.claude/skills/moai/workflows/fix.md                                3
+.claude/skills/moai/workflows/loop.md                               1
+.claude/skills/moai/workflows/run.md                                1
+.claude/skills/moai/workflows/sync/delivery.md                      3
+.moai/config/sections/delegation.yaml                               3
+                                                            합계   19
+```
+
+계획서 §B는 미러 편집 대상을 10개로 적었으나 **실측은 9개**다. 차이는 오기가 아니라
+M2의 귀결이다 — `.claude/rules/moai/core/zone-registry.md`가 열 번째였고 M2가 이미
+해당 항목을 삭제했다. AC-CLD-017의 baseline `10`은 M2 이전 시점의 값이다.
+
+**산문 복구 (참조 삭제만으로 끝나지 않은 편집)**
+
+세 파일은 참조가 문장·목록·섹션의 구조에 물려 있어 주변 산문까지 함께 고쳤다.
+
+- `sync/delivery.md` — 239행은 대체 대상이 없는 `Skill("moai-workflow-ci-loop")` **실호출**
+  이었다. 6번 항목을 통째로 제거해 목록을 1~5로 닫았다(번호 공백 없음). 말미의
+  단일 항목 `## Related Skills` 섹션도 함께 제거하고 Version 3.8.0 → 4.0.0.
+- `fix.md` — 동일한 단일 항목 `## Related Skills` 제거 + Version 2.4.0 → 3.0.0.
+  `Previous:` 줄이 두 개로 갈라지는 것을 막기 위해 2.3.0 이력(제거된 skill을 서술)을
+  걷어내고 2.2.0을 이어 붙였다.
+- `loop.md` / `fix.md` 형제 서술 — "**proactive** CI-triggered watch is the
+  `moai-workflow-ci-loop` skill" 절만 제거해 3-quadrant 서술을 2-quadrant로 좁혔다.
+
+`delegation.yaml`은 3개 항목 제거 후 YAML 파싱과 맵 정합을 재확인했다(`yaml.safe_load` 통과,
+sync/fix/loop 세 서브커맨드의 `skills:` 배열이 비지 않음).
+
+**미러는 템플릿 복사가 아니다**: 템플릿은 배포 중립화를 거쳤고 미러는 개발 저장소 문서다.
+보호 파일 목록의 `scripts/ci-watch/run.sh`는 템플릿과 동일하게 "CI watch infrastructure
+and workflow definitions"로 일반화했으나, `ci-watch-protocol.md`·`ci-autofix-protocol.md`
+**교차 참조는 미러에 그대로 남겼다** — 이 저장소에는 그 문서가 실재하기 때문이다.
+
+**AC 판정 (M7 담당 3건)**
+
+```
+AC-CLD-013  find scripts/ci-watch scripts/ci-autofix -type f | wc -l   → 9
+            test -d .claude/skills/moai-workflow-ci-loop               → SKILL_OK
+AC-CLD-014  TestTemplateNoInternalContentLeak                          → --- PASS (0.47s)
+            TestSplitHarnessNamespaceNoLeak                            → --- PASS (0.00s)
+            grep -rn 'SPEC-CI-LOOP-DEVONLY-001' templates/ catalog.yaml → 0
+AC-CLD-017  제외 연쇄 선택자                                            → 0  (편집 전 9)
+```
+
+**CLAUDE.local.md 등재 (REQ-CLD-016)**
+
+`### Local-Only Files (Never in Templates)` 블록에 보존 집합 5경로를 기존 항목 양식
+(경로 + 한 줄 사유)으로 추가했다. 파일 크기 53,316 → 53,901 bytes (+585).
+이 파일은 M7 이전부터 40,000자 권고를 초과한 상태이며(§코딩 표준 File Size Limits),
+M7은 그 상태를 만들지 않았고 해소하지도 않는다 — 별도 소관이다.
+
+### 전체 AC 재판정 (M7 시점, 19건 전수)
+
+M7은 마지막 마일스톤이므로 선행 인스턴스가 판정한 항목까지 전부 재실행했다.
+후행 마일스톤이 선행 마일스톤을 조용히 되돌릴 수 있고, 이 SPEC의 § 판정 규율이
+"명령에 없는 판정은 없다"를 요구하기 때문이다. **19/19 PASS, FAIL 0.**
+
+```
+001 →0   002 →0/0   003 exit=0   004 gen=0 diff=0   005 →0
+006 →0   007 →0     008 FILE_OK/10/0                009 exit=1 ci=0
+010 exit=1 total=59  011 →65     012 diff=0 10/10   013 →9/SKILL_OK
+014 PASS/PASS/0      015 →2 +PASS 016 →0            017 →0
+018 build=0 flag=0 default=0 flags=3 abort=1 report=0
+019 exit=0
+```
+
+### 빌드·회귀 (M7 완료 시점)
+
+```
+go build ./...                            → exit 0
+GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+go vet ./...                              → 출력 없음, exit 0
+golangci-lint run --timeout=5m            → 0 issues, exit 0
+go test ./... -count=1                    → ok 104, FAIL 2 (아래 참조)
+```
+
+**시험 2건 실패 — 회귀가 아님.** 전수 실행 중 `TestHookWrapper_LargeStdin_DoesNotExceedTimeout`
+(internal/cli)과 `TestSupervisor_MultipleWatchers`(internal/lsp/subprocess)가 실패했다.
+둘 다 **시간 단언** 시험이고, 격리 재실행에서 모두 통과한다:
+
+```
+go test ./internal/cli/ -run TestHookWrapper_LargeStdin_DoesNotExceedTimeout  → --- PASS (0.20s)
+go test ./internal/lsp/subprocess/ -run TestSupervisor_MultipleWatchers       → --- PASS (2.63s)
+```
+
+원인은 환경이다. 전수 실행 직전 디스크가 가득 차(`errno=28 no space left on device`로
+링커가 19개 패키지에서 실패) 빌드 캐시를 비웠고, 그 결과 전수 실행이 **콜드 전체 재빌드와
+동시에** 진행됐다. 구조적 근거도 있다: M7 diff에 `.go` 파일이 0건이고 `internal/` 경로가
+0건이므로 이 변경이 Go 시험 거동에 영향을 줄 경로 자체가 없다.
+
+### 미검증 (Gaps) — M7 담당분
+
+- **`make build` 미수행**: 위임 제약이 `make build`를 금지했다(신선한 catalog 게이트를
+  다시 여는 위험). AC-CLD-018의 첫 줄이 `make build`이므로 대신
+  `go build -o /tmp/moai-m7 ./cmd/moai`로 임시 바이너리를 만들어 판정했다. 이 치환은
+  catalog 생성기를 돌리지 않으므로 AC-CLD-004를 건드리지 않지만, `make build` 경로
+  자체(설치·해시 재생성 포함)는 이번 실행에서 관측되지 않았다.
+- **실배포 산출물 미관측**: M4-M6과 동일. `moai init` 결과물은 이번에도 보지 않았다.
+- **미러/템플릿 문구 동등성 미판정**: 어떤 AC도 미러 문구가 템플릿 문구와 의미상
+  일치하는지 판정하지 않는다. AC-CLD-017은 토큰 부재만 센다. 산문 복구의 타당성은
+  리뷰어 diff 확인에 의존한다.
+- **`.claude/agent-memory/` 잔존 (설계상 제외)**: gitignored 메모리 파일에 토큰이
+  남아 있으나 AC-CLD-017 선택자가 명시적으로 제외한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-02
-run_commit_sha: pending-backfill-run-M6   # M4 a21d406bf, M5+M6 f7303abbd (미push)
-run_status: complete-M1-M6                # M7(미러 동기화·중립성)은 미착수
-ac_pass_count: 17                         # M1-M3 담당 11 + M4-M6 담당 6
+run_commit_sha: pending-backfill-run-M7   # M4 a21d406bf, M5+M6 f7303abbd, M7 (본 커밋) — 미push
+run_status: complete                      # M1-M7 전부 완료, run-phase audit-ready
+ac_pass_count: 19                         # 19건 전수 재판정 (M7이 마지막 마일스톤)
 ac_fail_count: 0
-preserve_list_post_run_count: 9           # scripts/ci-watch + ci-autofix 전수
+preserve_list_post_run_count: 9           # scripts/ci-watch + ci-autofix 전수, M7 후 무변화
 l44_pre_commit_fetch: not-performed       # 격리 워크트리, push 없음 — 오케스트레이터 소관
-l44_post_push_fetch: not-performed        # push 미수행 (M7 이후 단일 push)
+l44_post_push_fetch: not-performed        # push 미수행 (오케스트레이터가 단일 push)
 new_warnings_or_lints_introduced: 0       # golangci-lint 0 issues, go vet 무출력
 cross_platform_build:
   darwin_amd64: pass
   windows_amd64: pass
-total_run_phase_files: 11                 # M4 7 + M5 2 + M6 2
+total_run_phase_files: 21                 # M4 7 + M5 2 + M6 2 + M7 10
 m1_to_mN_commit_strategy: |
   M1-M3  81ff67937  (선행 인스턴스)
   봉투    b2c5fd1a6  (시험 파일 5개 편입)
   M4      a21d406bf  (AC-CLD-004의 커밋-후 판정 시점을 지키기 위해 단독 커밋)
   M5+M6   f7303abbd  (상호 독립이나 동일 패키지·단일 검증 배치)
+  M7      (본 커밋)   (미러 동기화 + dev-only 등재 + 중립성 검증 — 단일 커밋)
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
