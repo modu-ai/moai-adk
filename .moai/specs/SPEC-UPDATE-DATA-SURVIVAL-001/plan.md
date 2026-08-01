@@ -3,6 +3,10 @@
 > Ordered by decision-reversibility. §B (the failure contract) and §C (the destructive-target
 > registry) are the decisions most likely to change under review and are stated first. The
 > mechanical work — guard rewrites, error-branch coverage — sits at the bottom.
+>
+> **Version header: intentionally none.** This plan carries no `Version:` line; `spec.md`'s
+> frontmatter `version:` and its HISTORY table are the single version record for all four
+> artifacts. (Closes D20's second half — the disposition is "intentionally none", not "missing".)
 
 ## §A Context
 

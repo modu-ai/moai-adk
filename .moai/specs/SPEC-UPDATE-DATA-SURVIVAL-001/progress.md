@@ -69,6 +69,40 @@ plan_audit:
     still_deferred: [D8]
     registry_delta: {sites: 17 -> 18, pairs: 10 -> 11, added_row: update_residue_cleanup.go:135}
     go_source_changed: false                   # git diff --name-only origin/main HEAD | grep -c '\.go$' -> 0
+  iteration_4:
+    verdict: PASS
+    score: 0.892           # harmonic 0.89173 / arithmetic 0.8925
+    threshold: 0.80
+    dimensions: {clarity: 0.90, completeness: 0.92, testability: 0.85, traceability: 0.90}
+    must_pass: 7/7
+    scope: full            # NOT a delta — iteration-2 scores deliberately not carried forward,
+                           # because iteration 3 diagnosed its own regression as external drift,
+                           # so a carried score is not attributable to a measured baseline
+    blockers: []           # all three iteration-3 blockers cleared and independently re-verified
+    resolved_this_round: [D17, D18, D19, D20, D21, D22]
+    opened: [D23, D24, D25, D26]               # all minor; none blocks run-phase entry
+    still_deferred: [D8]                       # M5 must resolve before AC-UDS-015 can be PASS
+    gap_recovery:
+      iter3_gap_1: closed                      # D1-D7 re-measured against the moved tree; none regressed
+      iter3_gap_7: closed                      # every registry row's enclosing function re-derived (awk scan)
+      iter3_gap_8: closed                      # full §B baseline re-run: 0 drift / 19 of 19 reproduce
+    falsification_performed:
+      registry_re_derivation: >
+        The two replacement Go-source scan commands were falsified in a scratch copy by injecting a
+        19th destructive site: both moved (18 -> 19, 11 -> 12), while the retired self-referential
+        form stayed pinned at the table's own row count. Reachability proven, not assumed.
+      ac_uds_001_fixture_pin: >
+        Three independent mutations move the assertion; the count is sourced from the literal
+        plantedMoaiManagedPaths fixture, never from CleanMoaiManagedPaths' own output.
+    report: .moai/reports/plan-audit/SPEC-UPDATE-DATA-SURVIVAL-001-e2-iter4.md
+  iteration_4_delta:
+    version: 0.5.0
+    applied: [D23, D24, D25, D26]
+    also_applied: informational-row-11-sweep   # runV3ResidueCleanup removes `sweep`, the
+                                               # existence-refiltered subset, not the raw
+                                               # scanDeprecatedPaths return
+    re_audit_required: false                   # documentation-precision only; delta-scope contract
+    still_deferred: [D8]
 ```
 
 ### Iteration-2 delta round — divergence from the audit report

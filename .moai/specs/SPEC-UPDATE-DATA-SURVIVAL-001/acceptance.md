@@ -1,6 +1,6 @@
 # SPEC-UPDATE-DATA-SURVIVAL-001 — Acceptance Criteria
 
-Version: 0.4.0 · Status: draft
+Version: 0.5.0 · Status: draft
 
 ## §A Discipline
 
@@ -40,9 +40,16 @@ Version: 0.4.0 · Status: draft
    zero-match mode: their exit 0 means the suite or the build actually completed. The two clauses
    therefore do not conflict.
 4. **Baselines are observed, not assumed, and are re-baselined when the tree moves.** Every
-   "baseline" line in §B was re-measured on 2026-08-01 against worktree HEAD `89b2e4772` (branch
-   `feat/SPEC-UPDATE-DATA-SURVIVAL-001`), whose **code baseline is `8cc108ddb`** (= `origin/main`,
-   verified an ancestor of HEAD). Where a baseline names a commit, it names `8cc108ddb`.
+   "baseline" line in §B was re-measured on 2026-08-01 against the **code baseline `8cc108ddb`**
+   (= `origin/main`, verified an ancestor of this branch's HEAD), on branch
+   `feat/SPEC-UPDATE-DATA-SURVIVAL-001`. Where a baseline names a commit, it names `8cc108ddb`.
+
+   **On the HEAD anchor.** The measurements were recorded by artifact commit `89b2e4772`; every
+   commit from `89b2e4772` to the current HEAD changes SPEC documents only
+   (`git diff --name-only 89b2e4772 HEAD` returns no `.go` path), so the code baseline these
+   figures describe is unchanged by them. A reader comparing `git rev-parse HEAD` against a
+   recorded SHA will see a mismatch — that is the self-referential-commit hazard (a commit cannot
+   name its own SHA), not a measurement error. The load-bearing anchor is `8cc108ddb`.
 
    **Why the previous anchor was retired.** v0.3.0 anchored these baselines to worktree HEAD
    `a8b42e112` / code baseline `d5336214e`, and asserted "every commit between the two changes SPEC
@@ -104,6 +111,10 @@ Every REQ has at least one citing AC; every AC names the REQ it verifies.
 NFR coverage: NFR-UDS-001 → AC-UDS-008 (separate-call reach into the crash window);
 NFR-UDS-002 → AC-UDS-013; NFR-UDS-003 → AC-UDS-019; NFR-UDS-005 → AC-UDS-010;
 NFR-UDS-006 → AC-UDS-018; NFR-UDS-007 → AC-UDS-007.
+NFR-UDS-004 (Go conventions — `snake_case.go` filenames, `fmt.Errorf("…: %w", err)` wrapping) is
+deliberately **not** mapped to an AC in this SPEC: it is enforced by the project toolchain
+(`gofmt`, `go vet`, `golangci-lint`) on every milestone, not by a test this SPEC authors. The map
+above is complete under that exemption.
 
 ### M1 — Failure contract
 
@@ -196,7 +207,13 @@ Expected: a `--- PASS: TestRestore_IdempotentAndRefusesForeignDir` line. The tes
 backup twice and asserts the resulting tree hashes are equal, then points the entry point at a
 directory lacking the backup marker file and asserts a non-nil error and an unmodified tree.
 
-Baseline: no restore entry point exists.
+Baseline: no restore entry point with **marker-gate bypass + idempotency + foreign-directory
+refusal** (REQ-UDS-022/023/024) exists, and none is reachable from the CLI. A restore surface does
+exist and must not be duplicated: `backup.RestoreMoaiConfig` (`backup/restore.go:40`) restores from
+a backup directory but is **mid-run only** — its two live callers are `update_clean_install.go:429`
+and `update_template_sync.go:397` — and `moai migrate restore-skill` is the only user-invocable
+restore. **M1 must state explicitly whether the new entry point extends `RestoreMoaiConfig` or is
+separate**, per the two-owners hazard in `plan.md` §H.
 
 ### M2 — Destructive-target registry
 
@@ -294,8 +311,9 @@ the same run created") and was false for row 6:
   to the recovery contract.
 
 **Row 11 classification — user data, NOT exempt.** `runV3ResidueCleanup`
-(`update_residue_cleanup.go:65`) removes every path returned by `scanDeprecatedPaths`, i.e.
-`defs.DeprecatedPaths` entries **that predate the run** — user-tree residue, not directories this
+(`update_residue_cleanup.go:65`) removes `sweep` — the existence-refiltered subset of
+`scanDeprecatedPaths`' return (`update_residue_cleanup.go:95-100`), i.e. `defs.DeprecatedPaths`
+entries **that predate the run and still exist on disk** — user-tree residue, not directories this
 call authored. It therefore fails the same-call-rewind test that exempts rows 5/6/10. It is not
 unprotected either: the function backs up before deleting (`:114-131`, `backupDeprecatedPaths`,
 aborting on failure with the `DEPRECATED_BACKUP_FAILED` sentinel at `:116`/`:125`), which is E1's
