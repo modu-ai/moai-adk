@@ -41,6 +41,27 @@ $ grep -n 'DEPRECATED_BACKUP_FAILED\|os.RemoveAll(abs)' internal/cli/update_clea
 
 이는 AC-UGE-003이 base 위생 검사로 막은 것과 **같은 교란 계열**이다. 최초 판은 그 규율을 AC-UGE-003 한 곳에만 적용했다 — 이 조항이 전체로 일반화한다.
 
+### A.4c 무력화된 변형 (neutralized mutation) — 세 번째 공허 형태
+
+[HARD] 변형 반증은 변형이 **적용되었는지**에 더해, 그 효과가 **하류에서 되돌려지지 않는지**까지 확인해야 한다.
+
+이 SPEC은 이미 두 가지 공허 형태에 대비하고 있었다.
+
+| 형태 | 증상 | 방어 |
+|---|---|---|
+| **무동작 변형** (§G AP-6) | 변형이 파일을 안 바꿈 | `mutation-applied=1` |
+| **교란된 실패** (§A.4) | FAIL은 나지만 다른 원인 | 원인 귀속 + 경쟁 원인 배제 |
+| **무력화된 변형** (이 절) | 변형은 착지했으나 하류가 효과를 상쇄 → **FAIL 자체가 없음** | 아래 |
+
+세 번째는 앞의 두 방어를 **모두 통과한다**. 변형이 진짜로 적용되었으니 `mutation-applied=1`이 나오고, 실패가 아예 없으니 귀속시킬 대상도 없다. 겉보기에는 "가드가 이 변형을 못 잡는다 = 가드 결함"으로 읽히지만, 실제로는 **변형이 위험을 재현하지 못한 것**이다. 가드에 없는 결함을 쫓게 만든다는 점에서 앞의 둘보다 비싸다.
+
+**AC-UGE-009F에서 실제로 발생했다.** `scanDeprecatedPaths`에 사용자 경로를 주입 → Step 4가 삭제 → **Step 6이 PRESERVE에서 복원** → 순증 0 → 가드가 정확히 "불변"이라 보고. `mutation-applied=1`, `fail-lines=0`.
+
+**방어 두 가지:**
+
+1. **단일 원천을 변형하라.** 하류 소비자가 여럿인 값은, 그 **전부가 읽는 지점**을 바꾼다. 파생 지점 하나만 바꾸면 다른 소비자가 원래 값을 계속 읽어 효과를 상쇄한다. 009F에서 `scanDeprecatedPaths`(파생, 삭제만) 대신 `defs.DeprecatedPaths`(원천, 삭제 + PRESERVE 제외 양쪽)를 겨냥한 것이 이것이다.
+2. **`fail-lines=0`을 곧바로 가드 결함으로 읽지 마라.** 반증이 FAIL을 못 냈을 때 물어야 할 순서는 (a) 변형이 위험을 온전히 재현했는가 → (b) 하류에 상쇄 단계가 있는가 → (c) 그래도 아니면 그때 가드 결함이다. (a)/(b)를 건너뛰고 AC를 고치면, **통과하는 판정을 쫓아 AC를 반복 수정하는** 실패 모드에 빠진다.
+
 ### A.4b 반증 의무 (원문)
 
 커버리지·가드 계열 AC는 **변경 전 baseline 수치**와 **가드가 실패하는 것을 관측한 기록**을 함께 요구한다. 통과만 관측된 가드는 실효성이 증명되지 않은 것으로 본다(REQ-UGE-013). 반증 방법은 두 가지 중 하나다.
@@ -392,16 +413,17 @@ sed -n '/func TestCleanReinstall_PreservesUserArea/,/^}/p' internal/cli/*_test.g
 
 #### AC-UGE-009F — `runCleanReinstall` 가드가 사용자 경로 삭제를 잡아낸다 (§A.4 반증, REQ-UGE-013)
 
-`runCleanReinstall`의 파괴적 표면은 `scanDeprecatedPaths`가 만든 목록에 대한 `os.RemoveAll(abs)` 루프다(`update_clean_install.go`). 그 목록에 사용자 소유 경로를 넣으면 가드가 실패해야 한다.
+`runCleanReinstall`의 파괴적 표면은 Step 4의 `os.RemoveAll(abs)` 루프다. 다만 그 루프에 경로를 넣는 것만으로는 **삭제가 영구적이지 않다** — Step 6이 PRESERVE 인벤토리에서 되돌려 놓기 때문이다(아래 결함 기록 참조). 삭제를 영구적으로 만들려면 **`defs.DeprecatedPaths`** 를 넓혀야 한다. 그 테이블은 삭제 목록(`scanDeprecatedPaths`)과 PRESERVE 제외 술어(`isUnderDeprecatedPath`) **양쪽이 함께 읽는** 단일 원천이므로, 여기에 넣은 경로는 백업 대상에서 빠지고 삭제가 되돌려지지 않는다 — 이것이 실제 글로브 확장이 일으키는 사고와 같은 모양이다.
 
 ```bash
 D=$(mktemp -d /tmp/uge-m4af.XXXXXX)
-# scanDeprecatedPaths 의 반환 직전에 사용자 소유 경로를 주입한다.
-# (루프 밖 append 이므로 Lstat 존재 검사를 거치지 않는다)
-perl -0pe 's/(\treturn found, nil\n\})/\tfound = append(found, ".moai\/harness")\n$1/' \
-  internal/cli/update_cleanup.go > "$D/update_cleanup.go"
-diff internal/cli/update_cleanup.go "$D/update_cleanup.go" >/dev/null; echo "mutation-applied=$?"
-printf '{"Replace":{"%s/internal/cli/update_cleanup.go":"%s/update_cleanup.go"}}\n' \
+# defs.DeprecatedPaths 테이블 선두에 사용자 소유 경로를 주입한다.
+# scanDeprecatedPaths(삭제 목록)와 isUnderDeprecatedPath(PRESERVE 제외)가
+# 같은 테이블을 읽으므로, 삭제되고 복원되지 않는다.
+perl -0pe 's/(var DeprecatedPaths = \[\]DeprecatedPathEntry\{\n)/$1\t{Path: ".moai\/harness", DeprecatedSince: "MUTATION", DeprecatedBy: "MUTATION", RemovalSchedule: "v0.0.0"},\n/' \
+  internal/defs/dirs.go > "$D/dirs.go"
+diff internal/defs/dirs.go "$D/dirs.go" >/dev/null; echo "mutation-applied=$?"
+printf '{"Replace":{"%s/internal/defs/dirs.go":"%s/dirs.go"}}\n' \
   "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -run 'TestCleanReinstall_PreservesUserArea' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
@@ -419,17 +441,34 @@ rm -rf "$D"
 
 **`backup-stage-abort=0`이 핵심이다.** 주입한 `.moai/harness`는 `os.RemoveAll` 루프에 닿기 전에 `expandDeprecatedBackupTargets`(→`update_clean_install.go:292`)와 `backupDeprecatedPaths`(→`:297`)를 먼저 지난다. 거기서 터지면 `DEPRECATED_BACKUP_FAILED`가 찍히고 `--- FAIL`도 한 줄 나오지만, 그것은 가드가 삭제를 잡아낸 것이 **아니다**. 이 값이 `≥1`이면 반증이 교란된 것이므로 **AC를 실패로 판정하고**, 백업 단계를 통과하는 변형(예: 픽스처에 해당 경로를 실재시켜 백업이 성공하도록)으로 바꿔 다시 관측한다.
 
-> **실측 — 교란 경로는 실재하지만 이 변형에서는 발화하지 않았다.** 대상 가드가 아직 없으므로, 같은 변형을 **기존** `TestCleanReinstall*` 테스트군에 걸어 교란 여부만 먼저 관측했다.
->
-> ```
-> mutation-applied=1
-> fail-lines=0
-> backup-stage-abort=0
-> ```
->
-> 즉 `.moai/harness` 주입은 이 픽스처들에서 `DEPRECATED_BACKUP_FAILED`를 **일으키지 않았다**(그 경로가 존재하지 않는 항목을 관대하게 처리한다). 기존 테스트가 하나도 실패하지 않은 것은 그것들이 사용자 영역 보존을 어서트하지 않기 때문이며 — 그 공백이 바로 이 SPEC의 존재 이유다.
->
-> **그래도 이 검사는 남긴다.** (1) 교란 경로 자체는 코드에 실재하고(`:292`/`:297`), (2) 신규 가드는 픽스처에 `.moai/harness`를 **실제로 생성**하므로 백업 단계가 빈 경로가 아닌 실 디렉터리를 다루게 되어 동작이 달라진다 — 위 관측은 그 조건에서의 결과가 아니다. 검사 비용은 `grep` 두 번이고, 놓쳤을 때의 대가는 아무것도 증명하지 못하는 반증이다.
+**관측 (가드 존재 상태에서 실행함 — 더 이상 이월 항목이 아니다)**:
+
+```
+mutation-applied=1
+68a69
+> 	{Path: ".moai/harness", DeprecatedSince: "MUTATION", DeprecatedBy: "MUTATION", RemovalSchedule: "v0.0.0"},
+fail-lines=4
+names-user-area=1
+backup-stage-abort=0
+update_preserve_reach_test.go:109: user area changed: …/001/.moai/harness
+```
+
+가드가 실패하고, 실패가 `.moai/harness`를 지목하며, 백업 단계 조기 반환은 없다. 세 조건이 모두 성립하므로 반증이 성립한다.
+
+#### 결함 기록 — 최초 규정 변형은 **적용되었으나 무력화되었다**
+
+최초 판은 `scanDeprecatedPaths`의 반환에 `.moai/harness`를 주입하도록 규정했다. run-phase에서 실행한 결과:
+
+```
+mutation-applied=1     # 변형은 정상 적용됨 (update_cleanup.go:145)
+fail-lines=0           # 그런데 가드가 실패하지 않음
+```
+
+원인: `.moai/harness`는 `userOwnedScanRoots`의 한 항목이다(`update_namespace_protect.go`, 주석 "all contents user-owned"). 따라서 PRESERVE 인벤토리에 그대로 남고, **Step 3이 백업 → Step 4가 삭제 → Step 6이 복원**한다. 순증 0이므로 가드는 "변하지 않았다"고 **정확하게** 보고했다. 가드는 옳았고 변형이 틀렸다.
+
+그 변형은 실제 글로브 확장의 **절반만** 재현했다. 진짜 확장은 `defs.DeprecatedPaths`를 통과하고, 그 테이블은 `isUnderDeprecatedPath`도 읽어 PRESERVE에서 경로를 **떨어뜨린다** — 그래야 삭제가 영구적이 된다. 정정된 변형이 그 경로를 탄다.
+
+**이 결함은 `mutation-applied=1` 게이트가 잡을 수 없다.** 그 게이트는 "변형이 파일을 바꿨는가"를 묻는데, 여기서는 정말로 바꿨다(`68a69`가 아니라 당시엔 `144a145`). 변형은 착지했고, 하류의 복원 단계가 그 효과를 **되돌렸을** 뿐이다. §A.4c가 이 형태에 이름을 붙인다.
 
 > **이 트리에서 변형 적용까지 실행해 확인함**: `mutation-applied=1`, diff는 정확히 한 줄 삽입이며 위치는 `scanDeprecatedPaths` 본문 끝(`update_cleanup.go:145`, `return found, nil` 직전)이다.
 >

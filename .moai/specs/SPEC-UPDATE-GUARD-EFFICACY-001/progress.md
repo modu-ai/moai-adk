@@ -400,7 +400,7 @@ $ grep -n -A3 'func BuildSmartPATH' internal/template/settings.go
 | AC | 판정 | 관측 출력 |
 |---|---|---|
 | AC-UGE-009 | PASS | (a) `update_preserve_reach_test.go:72` · (b) `--- PASS: TestCleanReinstall_PreservesUserArea (0.13s)` · (c) 순서 충족 — `18 snapshotDir(` → `26 runCleanReinstall(` → `36 snapshotDir(` → `37 mapsEqual(` → `38 t.Errorf` |
-| AC-UGE-009F | **FAIL (판정 명령 결함)** | 규정된 변형: `mutation-applied=1`이나 **`fail-lines=0`**. 아래 진단 참조. REQ-UGE-013은 정정된 변형으로 충족 |
+| AC-UGE-009F | ~~**FAIL (판정 명령 결함)**~~ → **PASS** (acceptance.md v0.4.0 정정 후) | run-phase 시점 규정 변형: `mutation-applied=1`이나 **`fail-lines=0`** — 아래 진단 참조. **정정 후 재실행(manager-spec, acceptance.md v0.4.0)**: `mutation-applied=1` · `fail-lines=4` · `names-user-area=1` · `backup-stage-abort=0` · `update_preserve_reach_test.go:109: user area changed: …/001/.moai/harness` |
 | AC-UGE-010 | PASS | (a) `update_preserve_reach_test.go:124` · (b) `--- PASS:` 2행 (`rollback_removes_only_own_backup_dir`, `rotation_keeps_newest`) · (c) `4` |
 | AC-UGE-010F | PASS | `mutation-applied=1` · `fail-lines=4` · `rotation-subtest-failed=1` · `rollback-subtest-failed=0` |
 | AC-UGE-011 | PASS | (a) `2` · (b) `--- PASS:` 2행 (두 분기) · (c) `MigrateLegacyMemoryDir 73.1%` (baseline `26.9%` 초과) |
@@ -487,9 +487,9 @@ race-exit=0 · DATA RACE 계수 0 · FAIL 계수 0
 ```yaml
 run_complete_at: 2026-08-02
 run_commit_sha: pending-backfill-run-final
-run_status: PASS-WITH-DEBT
-ac_pass_count: 19
-ac_fail_count: 1          # AC-UGE-009F — 판정 명령 결함 (가드 결함 아님). REQ-UGE-013은 정정 변형으로 충족
+run_status: PASS          # run 시점 PASS-WITH-DEBT → acceptance.md v0.4.0 정정 후 PASS (아래 정정 기록)
+ac_pass_count: 20         # run 시점 19 → AC-UGE-009F 정정 재실행 PASS 로 20
+ac_fail_count: 0          # run 시점 1 (AC-UGE-009F, 판정 명령 결함 — 가드 결함 아님)
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: done
 l44_post_push_fetch: n/a   # push 는 orchestrator 소관 (이 run 은 push 하지 않음)
@@ -501,7 +501,21 @@ total_run_phase_files: 6   # 프로덕션 3 + 테스트 2(신규 2, 수정 1 →
 m1_to_mN_commit_strategy: milestone 별 1 커밋 (M1/M2/M3/M4)
 ```
 
-**`run_status: PASS-WITH-DEBT` 근거**: AC 20개 중 19개 PASS. AC-UGE-009F는 **판정 명령 자체의 결함**으로 FAIL이며, 그것이 겨냥한 REQ-UGE-013은 정정된 변형(`defs.DeprecatedPaths` 확장)의 실패 관측으로 충족된다. acceptance.md를 산출물에 맞춰 고치지 않았으므로 AC는 FAIL로 남긴다.
+**`run_status` 근거 (run 시점)**: AC 20개 중 19개 PASS. AC-UGE-009F는 **판정 명령 자체의 결함**으로 FAIL이며, 그것이 겨냥한 REQ-UGE-013은 정정된 변형(`defs.DeprecatedPaths` 확장)의 실패 관측으로 충족된다. acceptance.md를 산출물에 맞춰 고치지 않았으므로 AC는 FAIL로 남긴다.
+
+> **정정 기록 (manager-spec, acceptance.md v0.4.0 — 위 판단을 대체하지 않고 이어 붙인다).**
+>
+> manager-develop의 진단은 옳았고, 그 AC 소유자(manager-spec)가 acceptance.md를 정정했다. **가드는 수정하지 않았다** — 결함은 판정 명령에만 있었다.
+>
+> manager-develop이 "acceptance.md를 고치지 않았으므로 FAIL로 남긴다"고 한 것은 아티팩트 소유권 경계를 지킨 **올바른 판단**이다. 그 경계 덕분에 결함이 조용히 덮이지 않고 소유자에게 도달했다.
+>
+> - 변형 대상: `scanDeprecatedPaths` 반환값 → **`defs.DeprecatedPaths` 테이블**
+> - 근거: 후자는 삭제 목록(`scanDeprecatedPaths`)과 PRESERVE 제외 술어(`isUnderDeprecatedPath`)가 **함께 읽는 단일 원천**이라, 주입된 경로가 백업 대상에서 빠져 삭제가 영구화된다. 전자만 바꾸면 Step 6이 복원해 순증 0이 된다.
+> - manager-spec 독립 재현: `mutation-applied=1` / `fail-lines=4` / `names-user-area=1` / `backup-stage-abort=0` / `update_preserve_reach_test.go:109: user area changed: …/001/.moai/harness`
+> - 전제 독립 검증: `userOwnedScanRoots`에 `filepath.Join(defs.MoAIDir, "harness")`가 실재함을 `update_namespace_protect.go`에서 직접 확인.
+> - 일반화: 이 공허 형태(**무력화된 변형** — 변형은 착지하나 하류가 상쇄)를 acceptance.md **§A.4c**로 명명. `mutation-applied` 게이트와 원인-귀속 게이트 **양쪽을 통과하는** 세 번째 형태다.
+>
+> **AC 매트릭스 최종: 20/20 PASS.**
 
 **반증 7건 (§E DoD 2항) 상태**
 
@@ -510,7 +524,7 @@ m1_to_mN_commit_strategy: milestone 별 1 커밋 (M1/M2/M3/M4)
 | AC-UGE-003 | base `restored %d/%d` = `3` | `fail-lines=2` | `undefined: osStatFn` ×3 (이음매 부재 지목) |
 | AC-UGE-006F | `1` (두 파일) | `fail-lines=4` | `names-reach-assert=3` / `build-failed=0`, `compile-exit=0` |
 | AC-UGE-008 | `1` | probe 삭제 관측 | `probe-survived=1` / `compile-exit=0` (관측 대상이 파일 생사라 원인 일의적) |
-| AC-UGE-009F | `1` (규정) → `fail-lines=0` **결함** · `1` (정정) | `fail-lines=4` (정정) | `names-user-area=1` / `backup-stage-abort=0` |
+| AC-UGE-009F | `1` (구 규정) → `fail-lines=0` **무력화(§A.4c)** · `1` (v0.4.0 규정) | `fail-lines=4` (v0.4.0 규정) | `names-user-area=1` / `backup-stage-abort=0` |
 | AC-UGE-010F | `1` | `fail-lines=4` | `rotation-subtest-failed=1` / `rollback-subtest-failed=0` |
 | AC-UGE-011F | `1` | `fail-lines=4` | `names-missing-backup=3` / `rename-subtest-failed=0` |
 | AC-UGE-012 | `1` | `fail-lines=4` | `user area changed: …/harness-ios-patterns` |
@@ -531,3 +545,48 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §E.3 부록 — manager-spec 아티팩트 정정 (acceptance.md v0.4.0)
+
+run-phase 종료 후 AC 소유자가 수행한 정정. **프로덕션·테스트 코드는 건드리지 않았다** — 변경은 `acceptance.md` / `spec.md` / `plan.md` / 이 파일뿐이다.
+
+### 정정 1 — AC-UGE-009F 변형 대상 (§E.2 정정 기록 참조)
+
+`scanDeprecatedPaths` → `defs.DeprecatedPaths`. 관측 출력은 §E.2에 인용했다. **AC 매트릭스 20/20 PASS.**
+
+### 정정 2 — §A.4c "무력화된 변형" 명명
+
+세 번째 공허 형태를 acceptance.md에 명시했다. 기존 두 방어를 모두 통과하기 때문에 별도 이름이 필요하다.
+
+| 형태 | 증상 | 방어 |
+|---|---|---|
+| 무동작 변형 (§G AP-6) | 변형이 파일을 안 바꿈 | `mutation-applied=1` |
+| 교란된 실패 (§A.4) | FAIL은 나지만 다른 원인 | 원인 귀속 + 경쟁 원인 배제 |
+| **무력화된 변형 (§A.4c)** | 변형은 착지, 하류가 상쇄 → **FAIL 자체 없음** | 단일 원천 변형 + `fail-lines=0`을 즉시 가드 결함으로 읽지 않기 |
+
+핵심 규율: `fail-lines=0`을 만나면 (a) 변형이 위험을 온전히 재현했는가 → (b) 하류에 상쇄 단계가 있는가 → (c) 그래도 아니면 가드 결함. (a)/(b)를 건너뛰고 AC를 고치면 **통과하는 판정을 쫓아 AC를 반복 수정하는** 실패 모드가 된다.
+
+### 정정 3 — plan.md §F M3 사후 정합화
+
+plan.md는 M3에서 (i) 반경 테스트 재구성과 (ii) 세 호출부로의 반경 확대를 예상했으나 **둘 다 불필요**했다. (i) sentinel HOME 절차는 판정 측 셸 명령이지 테스트 소스가 아니며 기존 테스트가 이미 만족한다. (ii) 세 호출부는 삭제를 하지 않으므로 확대할 반경이 없다 — §A에서 정정한 "삭제 반경" 전제를 §F까지 전파하지 않은 누락이었다. M3의 코드 변경은 0건.
+
+### 이월 항목 6번 — **부정으로 해소됨**
+
+plan-phase가 남긴 "`TemplateContext.HomeDir`의 기계 독립성이 전체 렌더 파이프라인 끝까지 유지되는가"의 답은 **아니다**.
+
+`template.BuildSmartPATH()`(`internal/template/settings.go:45`)가 `os.UserHomeDir()`를 직접 부르는 **네 번째 독립 실제-홈 판독자**다. `internal/template` 패키지라 `internal/cli`의 `userHomeDirFn` 이음매를 원리적으로 쓸 수 없다(같은 파일 `grep -c 'userHomeDirFn'` → `0`, manager-spec 독립 확인).
+
+- `HomeDir` **필드** 층은 주입을 따른다 → REQ-UGE-005는 충족.
+- 최종 렌더 **산출물**은 `SmartPATH` 경로로 여전히 실제 홈을 담는다 → 파이프라인 끝단은 기계 독립적이지 않다.
+- M2 가드가 이를 실증했다: 세 호출부를 모두 이음매화한 뒤에도 "렌더된 settings.json에 운영자 홈 없음" 어서션이 실패했고, manager-develop이 과도한 어서션을 제거하며 사유를 기록했다.
+
+**이 SPEC의 결함이 아니라 인접한 미해결 문제**이므로 spec.md §3에 후속 SPEC 후보로 기록했다.
+
+### 남은 미검증 (sync-phase로 이월)
+
+1. **Windows 런타임** — `go build`/`go vet` 크로스 컴파일은 통과(§E.2). AC-UGE-002의 Windows **실행** 통과는 여전히 CI 결과 인용 필요.
+2. **GNU `xargs` 실제 동작** — BSD 머신이라 미재현. 채택한 수정이 `xargs`를 제거하므로 판정은 안전하다.
+3. **AC-UGE-015의 블록 주석·문자열 리터럴 오탐** — 현 트리엔 사례 없음(계수 `0`). Go 파서 없이는 원리적으로 불가.
+4. **`run_commit_sha: pending-backfill-run-final`** — SHA 백필 미완. sync-phase가 실측 SHA로 채워야 한다.

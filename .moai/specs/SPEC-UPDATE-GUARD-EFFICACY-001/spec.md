@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-GUARD-EFFICACY-001
 title: update 서브시스템 가드 실효성 보강 — 판정 명령의 기계 독립성과 가드 도달 범위
-version: 0.3.0
+version: 0.4.0
 status: in-progress
 created: 2026-08-02
 updated: 2026-08-02
@@ -23,6 +23,7 @@ depends_on: [SPEC-UPDATE-DATA-SURVIVAL-001]
 |---|---|---|
 | 2026-08-02 | 0.1.0 | 최초 작성. SPEC-UPDATE-DATA-SURVIVAL-001이 §E.3에 남긴 이월 부채 4건(D1~D4)을 해소 대상으로 삼는다. |
 | 2026-08-02 | 0.2.0 | plan-auditor 1차 FAIL 0.71(Testability 0.50) 대응. REQ-UGE-004/005 근거를 삭제 반경 → **테스트 격리**로 재작성(사용자 결정). REQ-UGE-010을 백업 서브시스템의 **두 파괴적 표면**으로 재정박. REQ-UGE-013 범위를 신규·수정 가드 6개로 명확화하고 반증 매핑표 추가. AC 15개 → 19개(006F/006R/009F/010F/011F 신설). AC-UGE-012의 변형이 무동작이었음을 실행으로 발견해 정정. 수용 부채(패키지 이음매 2개, 영구 비병렬성) 기록. |
+| 2026-08-02 | 0.4.0 | run-phase 완료 후 판정 명령 정정(가드 수정 아님). AC-UGE-009F의 규정 변형이 **무력화된 변형**이었음이 실행으로 드러났다 — `scanDeprecatedPaths`에 주입한 `.moai/harness`는 `userOwnedScanRoots` 소속이라 Step 6이 복원해 순증 0이 되고, 가드는 정확히 "불변"이라 보고했다(`mutation-applied=1`, `fail-lines=0`). 변형 대상을 `defs.DeprecatedPaths`(삭제 목록과 PRESERVE 제외 술어가 함께 읽는 단일 원천)로 정정해 반증 성립을 관측했다. §A.4c에 이 세 번째 공허 형태를 명명. `template.BuildSmartPATH()`가 이음매 밖 네 번째 실제-홈 판독자임을 별도 SPEC 후보로 기록. |
 | 2026-08-02 | 0.3.0 | plan-auditor 2차 PASS-WITH-DEBT 0.89 대응(3차 감사 없이 run-phase 진입). §A.4에 **원인 귀속 + 경쟁 원인 배제** 의무를 신설하고 반증 4건(006F/009F/010F/011F)에 적용 — FAIL 존재 계수만으로는 `DEPRECATED_BACKUP_FAILED` 조기 반환과 구별되지 않았다. AC-UGE-006에 `TemplateContext.HomeDir` 출력 어서션을 추가해 REQ-UGE-005를 결속(스파이 계수만으로는 §G AP-4 위반). AC-UGE-015에 0-매치 공허 방지 계수와 꼬리 주석 제거 추가. DoD의 AC 목록 누락(AC-UGE-004) 정정 및 계수 검사 추가. GNU `xargs` 동작 서술 정정. |
 
 ## §1 배경
@@ -172,6 +173,21 @@ AC-UGE-015는 이 비용을 **감시**할 뿐 **상환 계획이 아니다.** �
 
 - `internal/cli/glm.go:994`의 `userHomeDir()` 직접 호출. 이 호출부는 GLM 경로 정규화 헬퍼 안에 있으며 update 서브시스템이 아니다. REQ-UGE-004의 대상이 아니고, 이 SPEC에서 손대지 않는다.
 - `internal/cli/glm_tools.go:371`의 `userHomeDirFn()` 호출. 이미 이음매를 경유하고 있으며 변경 불필요.
+
+### Out of Scope — `template.BuildSmartPATH()`의 실제-홈 판독 (후속 SPEC 후보)
+
+run-phase M2에서 발견된 **네 번째 독립 실제-홈 판독자**다. `internal/template/settings.go:45`가 `os.UserHomeDir()`를 직접 부르며, 이음매를 경유하지 않는다(같은 파일 `grep -c 'userHomeDirFn'` → `0`).
+
+```go
+func BuildSmartPATH() string {
+	homeDir, _ := os.UserHomeDir()
+	if homeDir == "" { homeDir = os.Getenv("HOME") }
+```
+
+- **왜 이 SPEC의 이음매로 덮이지 않는가**: `userHomeDirFn`은 `internal/cli` 패키지 변수이고 `BuildSmartPATH`는 `internal/template`에 있다. 패키지가 다르므로 REQ-UGE-004의 세 호출부를 모두 이음매화해도 이 경로는 그대로 실제 홈을 읽는다.
+- **어떻게 드러났는가**: M2 가드가 처음에 "렌더된 `settings.json`에 운영자 홈이 없다"를 어서트했는데, 세 호출부를 전부 이음매화한 **뒤에도 실패**했다. 과도한 어서션을 제거하고 사유를 기록했다.
+- **이 SPEC의 결론에 미치는 영향**: plan-phase가 이월 항목 6번으로 남겼던 질문 — "`TemplateContext.HomeDir`의 기계 독립성이 전체 렌더 파이프라인 끝까지 유지되는가" — 의 답은 **아니다**. `HomeDir` 필드 자체는 주입을 따르지만(REQ-UGE-005는 그 층에서 충족), 최종 렌더 산출물은 `SmartPATH` 경로를 통해 여전히 실제 홈을 담는다.
+- **범위 밖인 이유**: 별도 패키지의 이음매 신설이며 REQ-UGE-004의 "update 서브시스템" 범위를 벗어난다. 이 SPEC의 결함이 아니라 **인접한 미해결 문제**다. 후속 SPEC 후보로 기록한다.
 
 ### Out of Scope — 템플릿 배포 자산
 
