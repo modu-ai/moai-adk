@@ -315,7 +315,7 @@ tree.
 | AC-UDS-007 (c) | PASS | `go test -run 'TestDeprecatedPaths' -count=1 -v ./internal/defs/` | 8 `--- PASS` lines incl. `TestDeprecatedPathsTotalCount`, `TestDeprecatedPathsCategorySplit` |
 | AC-UDS-010 (cross-cutting) | PASS | `go test -count=1 ./internal/cli/... ./internal/cli/update/... ./internal/defs/` | exit 0, 18 `ok` lines, 0 `--- FAIL` |
 | AC-UDS-018 (cross-cutting) | PASS | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | both exit 0 |
-| AC-UDS-019 (a) | **PASS-WITH-DEBT** | `git diff --name-only 8cc108ddb..HEAD -- internal/template/templates/ \| wc -l` | `8` — attributable in full to a foreign commit; see the finding below |
+| AC-UDS-019 (a) | PASS | `git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ \| wc -l` | `0` — the debt below was closed by `027e16eb4`, which re-anchored the AC on the merge-base; the retired pinned form returned `8`, attributable in full to foreign commit `9ced435e9` |
 | AC-UDS-019 (b) | PASS | `git status --porcelain internal/template/templates/ \| wc -l` | `0` |
 
 #### Step 0 re-scan (plan.md §F M2)
@@ -422,7 +422,11 @@ run-phase does not own — carried as a blocker below.
   through an alias (`import osx "os"`) or a wrapper would not be seen. No such call exists in scope
   today; the file-total-vs-function-total cross-check in the scanner catches only the
   outside-a-function case, not aliasing.
-- `AC-UDS-019 (a)` is recorded PASS-WITH-DEBT, not PASS.
+- ~~`AC-UDS-019 (a)` is recorded PASS-WITH-DEBT, not PASS.~~ **CLOSED by `027e16eb4`** — the AC was
+  re-anchored on `$(git merge-base origin/main HEAD)` instead of the literal `8cc108ddb` pin, which
+  had gone stale when foreign commit `9ced435e9` (PR #1266) entered this branch through merge
+  `2255165f5`. The AC now reads `0`/`0` on this tree. The merge-base form is invariant under future
+  merges; the pinned form was not.
 
 #### Lint
 
