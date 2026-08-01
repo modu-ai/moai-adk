@@ -519,7 +519,7 @@ m1_to_mN_commit_strategy: |
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-sync     # 본 커밋 — 자기 해시 참조 불가, 후속 커밋에서 백필
+sync_commit_sha: 44d319bb8c4b7fa1f95aeb2d2a21c762fd944b42   # sync 커밋 (백필)
 sync_status: complete
 b12_self_test_a: pass                      # grep -c 'SPEC-CI-LOOP-DEVONLY-001' CHANGELOG.md → 0 (중복 없음)
 b12_self_test_b: pass                      # acceptance.md AC 고유 식별자 19건 == CHANGELOG 기재 19건
