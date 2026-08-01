@@ -310,11 +310,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	recovery := newRecoveryGuard(projectRoot, finalBackupDir, out)
 	recovery.enter()
 
-	for _, rel := range deprecated {
-		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
-		if rmErr := os.RemoveAll(abs); rmErr != nil {
-			return result, recovery.fail("step 4: remove deprecated paths", rmErr)
+	// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
+	// in-memory-only files (.claude/settings.json, .moai/status_line.sh,
+	// .gitignore) reach disk before this path's first irreversible step. The
+	// same guard the template-sync path uses is applied here, so neither path
+	// can drift into being the unprotected one. A backup-write failure aborts
+	// before the removal loop runs.
+	if guardErr := guardFirstDestructiveStep(projectRoot, finalBackupDir, func() error {
+		for _, rel := range deprecated {
+			abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
+			if rmErr := os.RemoveAll(abs); rmErr != nil {
+				return rmErr
+			}
 		}
+		return nil
+	}); guardErr != nil {
+		return result, recovery.fail("step 4: remove deprecated paths", guardErr)
 	}
 	result.RemovedPaths = deprecated
 

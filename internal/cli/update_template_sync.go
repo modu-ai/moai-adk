@@ -184,6 +184,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	_, _ = fmt.Fprintln(out, tui.Section("Proceeding with template deployment", tui.SectionOpts{Theme: &th}))
 	_, _ = fmt.Fprintln(out)
 
+	// Track config backup path for restore step.
+	//
+	// Declared before the step table because the Clean Managed Paths step needs
+	// it: SPEC-UPDATE-DATA-SURVIVAL-001 M3 routes that step through
+	// guardFirstDestructiveStep, which writes the crash-window copies into this
+	// run-scoped directory before anything is removed.
+	var configBackupPath string
+
 	// Define deployment steps
 	steps := []struct {
 		name    string
@@ -243,7 +251,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    cleanManagedPathsStage,
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
-				return deploy.CleanMoaiManagedPaths(projectRoot, out)
+				// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
+				// in-memory-only files reach disk before this step removes
+				// anything. A backup-write failure aborts here, so the removal
+				// never runs while a file's only copy is in the heap.
+				return guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
+					return deploy.CleanMoaiManagedPaths(projectRoot, out)
+				})
 			},
 		},
 		{
@@ -286,8 +300,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		},
 	}
 
-	// Track config backup path for restore step
-	var configBackupPath string
 	// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-019/020: once the Clean Managed
 	// Paths step completes, the tree is irreversibly changed. Every later step
 	// failure is a partial-update failure and must leave the operator a
