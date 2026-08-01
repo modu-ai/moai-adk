@@ -29,17 +29,20 @@ func TestServer_HandlerAccessor(t *testing.T) {
 	}
 }
 
-// TestOpenDefaultBrowser exercises the cross-platform browser opener. The
-// command may not exist in the sandbox; in that case a LookPath error is
-// expected and acceptable (REQ-WC-004 treats it as non-fatal). We only assert
-// it does not panic and returns within the contract.
+// TestOpenDefaultBrowser exercises the cross-platform browser opener without
+// launching a real browser. Emptying PATH makes exec.LookPath fail, so the
+// opener returns its non-fatal error (REQ-WC-004) before it can Start() a
+// process. A non-routable URL alone is not enough: every supported platform
+// ships its opener command (macOS `open`, Windows `rundll32`, Linux
+// `xdg-open`), so LookPath succeeds and the browser really does open on a
+// blank page.
 func TestOpenDefaultBrowser(t *testing.T) {
-	// A clearly non-routable URL — we never want a real browser to launch in CI.
+	t.Setenv("PATH", "")
+
 	err := openDefaultBrowser("http://127.0.0.1:1/")
-	// Either the opener command was missing (LookPath error) or the command
-	// started successfully. Both are valid outcomes; the contract is "do not
-	// panic, return an error or nil". We assert no panic by reaching here.
-	_ = err
+	if err == nil {
+		t.Fatal("expected a LookPath error under an empty PATH; nil means the opener launched a real browser")
+	}
 }
 
 // TestHandleIndex_NotFoundPath verifies a non-root path under "/" returns 404
