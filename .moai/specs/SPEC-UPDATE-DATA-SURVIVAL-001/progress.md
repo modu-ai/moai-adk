@@ -202,7 +202,100 @@ REQ-RIL2-015 assignment against a requirement that has shipped.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Failure contract: recovery manifest + restore entry point
+
+Measured on branch `feat/SPEC-UPDATE-DATA-SURVIVAL-001`, code baseline `a2fc68e73`
+(SPEC-artifact-only ahead of `8cc108ddb` = `origin/main`). Every row below is the observed output
+of a command run in this milestone against this tree.
+
+#### AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-UDS-001 (a) | PASS | `go test -run 'TestUpdateFailure_WritesRecoveryManifest' -count=1 -v ./internal/cli/` | `--- PASS: TestUpdateFailure_WritesRecoveryManifest (0.01s)` / `ok github.com/modu-ai/moai-adk/internal/cli 0.496s` |
+| AC-UDS-001 (b) | PASS | `sed -n '/^var plantedMoaiManagedPaths = \[\]string{/,/^}/p' internal/cli/update_recovery_manifest_test.go \| grep -cE '^\s+"'` | `6` (AC requires ≥ 1) |
+| AC-UDS-002 | PASS | `go test -run 'TestRestore_ProceedsWithoutProjectMarker' -count=1 -v ./internal/cli/` | `--- PASS: TestRestore_ProceedsWithoutProjectMarker (0.01s)` |
+| AC-UDS-003 | PASS | `go test -run 'TestUpdate_RejectsTreeWithoutProjectMarker' -count=1 -v ./internal/cli/` | `--- PASS: TestUpdate_RejectsTreeWithoutProjectMarker (0.01s)` |
+| AC-UDS-004 | PASS | `go test -run 'TestRestore_IdempotentAndRefusesForeignDir' -count=1 -v ./internal/cli/` | `--- PASS: TestRestore_IdempotentAndRefusesForeignDir (0.01s)` |
+| AC-UDS-018 (cross-cutting) | PASS | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+
+#### RED evidence (captured before GREEN)
+
+Build-level RED (symbols absent):
+
+```
+internal/cli/update_recovery_manifest_test.go:81:11: undefined: newRecoveryGuard
+internal/cli/update_restore_test.go:81:5: undefined: checkProjectMarker
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+Runtime RED against no-op stubs:
+
+```
+--- FAIL: TestUpdateFailure_WritesRecoveryManifest (0.01s)
+    clause 1: recovery manifest not found at .../.moai-backups/20260801_151945/recovery-manifest.txt
+--- FAIL: TestRestore_ProceedsWithoutProjectMarker (0.00s)
+--- FAIL: TestUpdate_RejectsTreeWithoutProjectMarker (0.00s)
+--- FAIL: TestRestore_IdempotentAndRefusesForeignDir (0.00s)
+```
+
+#### AC-UDS-001 non-vacuity — four observed mutations (`go test -overlay`, no tree mutation)
+
+| Mutation | Clause that failed | Observed |
+|---|---|---|
+| `plantedMoaiManagedPaths` emptied | (b) + the in-test non-empty guard | command (b) → `0`; `plantedMoaiManagedPaths must be non-empty …` |
+| paths declared but never created | clause 3 pre | `clause 3 pre: planted path .claude/settings.json absent before CleanMoaiManagedPaths` (×6) |
+| automatic rollback injected into the failing stage | clause 4 | `clause 4: .claude/settings.json reappeared after the failing call returned (automatic rollback is prohibited by REQ-UDS-020)` (×6) |
+| production guard stops writing the manifest file | clause 1 | `clause 1: recovery manifest not found at …/recovery-manifest.txt` |
+
+#### Extend-vs-separate decision (plan.md §H two-owners hazard)
+
+The restore entry point **EXTENDS** `backup.RestoreMoaiConfig`; it is not a second restore path.
+`backup.RestoreFromBackupDir` adds only the preconditions the two mid-run callers
+(`update_clean_install.go`, `update_template_sync.go`) do not need — a marker-file check
+(REQ-UDS-024) and an idempotency pass (REQ-UDS-023) — then delegates the copy/merge semantics to
+the single existing owner. The decision is recorded in a code comment at the entry point.
+
+#### Idempotency finding (REQ-UDS-023)
+
+`RestoreMoaiConfig` raw-copies a section whose target is ABSENT but re-serialises a section whose
+target EXISTS through the YAML merge, which canonicalises key order and indentation. Measured on a
+wiped config directory: pass 1 → `moai:\n  version: 3.0.0\n  template_version: 3.0.0\n`;
+pass 2 → `moai:\n    template_version: 3.0.0\n    version: 3.0.0\n`; pass 3 → identical to pass 2.
+A single pass therefore left the tree one step short of the merge fixed point, and AC-UDS-004
+failed with two differing tree hashes. `RestoreFromBackupDir` now runs the merge to its fixed point
+(two passes), scoped to the user-invoked restore; the mid-run callers keep single-pass behaviour
+(NFR-UDS-005).
+
+#### Coverage
+
+| Package | Baseline (`a2fc68e73`, scratch worktree) | After M1 |
+|---|---|---|
+| `internal/cli` | `coverage: 75.8% of statements` | `coverage: 75.8% of statements` |
+| `internal/cli/update/backup` | `coverage: 88.6% of statements` | `coverage: 88.9% of statements` |
+
+#### Production wiring
+
+- `update.go` — `--restore <dir>` branch placed BEFORE the project-marker gate (the scoped
+  exemption, REQ-UDS-022/025); the gate itself extracted to `checkProjectMarker`.
+- `update_template_sync.go` — every step runs under the recovery guard; `Clean Managed Paths` is
+  the destructive stage.
+- `update_clean_install.go` — the guard enters the destructive region at the Step 4 removal loop;
+  the eight post-Step-4 error returns route through it.
+
+#### Gaps (not verified in M1)
+
+- `AC-UDS-003` drives the extracted `checkProjectMarker` predicate, not a full `runUpdate`
+  invocation; that the gate is still *called* by `runUpdate` rests on reading the call site, not on
+  an executed assertion.
+- The `--restore` CLI flag is not exercised end-to-end by a test; the entry point beneath it is.
+- The clean-reinstall path's manifest wiring is not covered by an executed failure test — only the
+  template-sync stage sequencer is.
+
+#### Lint
+
+`golangci-lint run --timeout=5m ./internal/cli/...` → `0 issues.`; `gofmt -l` over the eight edited
+files → no output; `go vet ./internal/cli/...` → exit 0.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

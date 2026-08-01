@@ -1,6 +1,6 @@
 # SPEC-UPDATE-DATA-SURVIVAL-001 — Acceptance Criteria
 
-Version: 0.5.0 · Status: draft
+Version: 0.5.0 · Status: in-progress
 
 ## §A Discipline
 
