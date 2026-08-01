@@ -9,18 +9,17 @@ draft: false
 <!-- @value: agentic-harness -->
 
 Git Worktree is the foundation of MoAI-ADK parallel development. It gives every
-SPEC a fully independent workspace, so you can run different Git states and
-different LLM configurations at the same time.
+SPEC a fully independent workspace, so you can keep different Git states and
+different LLM configurations running at the same time.
 
-Seen through **the Agentic Harness** (the quality-control axis) of v3.0's three
-pillars, Worktree is the control device that fully isolates each SPEC so agents
-working in parallel do not trample each other's work — it prevents
-parallel-development conflicts and guarantees that only completed SPECs merge
-into main. A secondary benefit follows from the cost axis (Tokenomics): each
-isolated worktree can run a different LLM execution mode, so a high-reasoning
-Claude model can be used in the planning terminal while a low-cost GLM runs in
-the implementation terminals, assigning the right model to each work phase.
 
+Looked at through **the Agentic Harness** — the quality-control one of the three
+core values — Worktree is the control device that splits each SPEC's workspace
+completely apart. Agents working in parallel never overwrite each other's work,
+and only completed SPECs get merged into main. A cost benefit (Tokenomics)
+follows from it: each worktree can be given its own LLM execution mode, so a
+high-reasoning Claude model can run in the planning terminal while a low-cost
+GLM runs in the implementation terminal — one model assigned per phase.
 
 ## Why do you need Worktree?
 
@@ -30,13 +29,14 @@ Without Worktree, switching the LLM backend with `moai glm` or `moai cc`
 applies **the same configuration to every open session** of the project. As a
 result:
 
-- **Cross-SPEC interference** — an LLM change made for one SPEC affects work on other SPECs
+- **Cross-SPEC interference** — an LLM change made for one SPEC shakes up work on other SPECs
 - **No parallel development** — you cannot run multiple SPECs under different conditions at the same time
 - **Wasted tokens** — even simple implementation work runs on the expensive model
 
 ### Solution: complete isolation
 
-With Git Worktree, each SPEC gets **its own Git state and LLM configuration**:
+With Git Worktree, each SPEC's **Git state and LLM configuration move
+independently**:
 
 ```mermaid
 graph TB
@@ -57,21 +57,19 @@ MoAI-ADK development with Worktree flows through three phases:
 
 ```mermaid
 flowchart TD
-    subgraph Phase1["Phase 1: Plan (Terminal 1)"]
-        A1[/moai plan<br/>feature description<br/>--worktree/] --> A2[SPEC document created]
-        A2 --> A3[Worktree auto-created]
-        A3 --> A4[Feature branch created]
+    subgraph Phase1["Phase 1: Plan (Terminal 1, main checkout)"]
+        A1[/moai plan<br/>feature description/] --> A2[SPEC document created]
+        A2 --> A3[Implementation scope fixed]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1["cd $(moai worktree go SPEC-ID)"] --> B2[Enter Worktree]
-        B2 --> B3[moai glm<br/>switch LLM]
-        B3 --> B4[/moai run SPEC-ID]
-        B4 --> B5[/moai sync SPEC-ID]
+        B1["moai glm -w SPEC-AUTH-001"] --> B2[Worktree created and entered]
+        B2 --> B3[/moai run SPEC-ID]
+        B3 --> B4[/moai sync SPEC-ID]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
-        C1[merge into base via<br/>git merge or PR] --> C2[moai worktree done SPEC-ID]
+        C1[merge into base via<br/>git merge or PR] --> C2[moai worktree done branch]
         C2 --> C3[Remove worktree]
         C3 --> C4[Optional: delete branch]
     end
@@ -85,40 +83,39 @@ flowchart TD
 #### Phase 1: Plan (Terminal 1)
 
 Reasoning quality decides the outcome of the planning phase, so the SPEC
-document is authored with a Claude (Opus-class) model:
+document is authored with a Claude (Opus-class) model. This phase runs in the
+main checkout as it is:
 
 ```bash
-> /moai plan "Add authentication system" --worktree
+> /moai plan "Add authentication system"
 ```
-
-**What happens**:
-
-- SPEC document auto-generated in EARS format
-- A dedicated Worktree auto-created for the SPEC
-- Feature branch auto-created and checked out
 
 **Outputs**:
 
 - `.moai/specs/SPEC-AUTH-001/spec.md`
-- A new Worktree directory
-- The `feature/SPEC-AUTH-001` branch
+- The SPEC ID to use in the implementation phase
 
 #### Phase 2: Implement (Terminals 2, 3, 4...)
 
 The implementation phase is high-volume, but the SPEC has already set the
-direction — so a cost-efficient model like GLM does the job well:
+direction — so a cheap model like GLM does the job perfectly well. Entering the
+worktree is the launcher's job, via the `-w` flag on `moai cc`, `moai glm`, and
+`moai cg`. If no worktree by that name exists, it is created on the spot:
 
 ```bash
-# Enter the Worktree (new terminal)
-$ cd "$(moai worktree go SPEC-AUTH-001)"
+# New terminal: create the worktree and enter it with the GLM backend
+$ moai glm -w SPEC-AUTH-001
 
-# Switch LLM
-$ moai glm
-
-# Start development
-$ claude
+# Start developing right inside the session you entered
 > /moai run SPEC-AUTH-001
 > /moai sync SPEC-AUTH-001
+```
+
+To open one more worktree while keeping the current session, add `--spawn`. It
+comes up in a new tmux window and the original window stays as it is:
+
+```bash
+$ moai glm -w SPEC-AUTH-002 --spawn
 ```
 
 **Advantages**:
@@ -127,26 +124,36 @@ $ claude
 - GLM cost efficiency (roughly 70% savings versus Opus)
 - Unlimited parallel development without conflicts
 
-#### Phase 3: Merge & Cleanup
+#### Phase 3: Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001                    # worktree cleanup (merge/push done separately via git)
-moai worktree done SPEC-AUTH-001 --delete-branch    # cleanup + delete local branch
+moai worktree done feature/SPEC-AUTH-001                    # worktree cleanup (merge/push done separately via git)
+moai worktree done feature/SPEC-AUTH-001 --delete-branch    # cleanup + delete local branch
 ```
 
 ## Worktree command reference
 
-| Command                  | Description                | Example                        |
-| ------------------------ | -------------------------- | ------------------------------ |
-| `moai worktree new SPEC-ID`    | Create a new Worktree      | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Print the Worktree path (for `cd`) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
-| `moai worktree switch SPEC-ID` | Print the Worktree location (does not `cd`) | `moai worktree switch SPEC-AUTH-001`  |
-| `moai worktree list`           | List Worktrees             | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | Clean up the Worktree (merge is separate) | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove [path]`  | Remove a Worktree (path-specified) | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
-| `moai worktree status`         | Check Worktree status      | `moai worktree status`               |
-| `moai worktree clean`          | Clean up merged Worktrees  | `moai worktree clean --merged-only`  |
-| `moai worktree config`         | Inspect Worktree config    | `moai worktree config root`          |
+**Entering** a worktree and **listing** worktrees are not `moai worktree`'s job.
+The launcher handles entry; git handles listing:
+
+| What you want to do     | Command                         | Example                                |
+| ----------------------- | ------------------------------- | -------------------------------------- |
+| Create a Worktree and enter it | `moai cc -w <name>`      | `moai glm -w SPEC-AUTH-001`            |
+| Open one in a new window, keeping the session | `moai cc -w <name> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn` |
+| List Worktrees          | `git worktree list`             | `git worktree list`                    |
+
+`moai worktree` manages the worktrees once they exist:
+
+| Command                       | Description                     | Example                                |
+| ----------------------------- | ------------------------------- | -------------------------------------- |
+| `moai worktree sync [branch]` | Bring in base-branch changes    | `moai worktree sync --strategy rebase` |
+| `moai worktree done <branch>` | Clean up the Worktree (merge is separate) | `moai worktree done feature/SPEC-AUTH-001` |
+| `moai worktree remove <path>` | Remove a Worktree by path       | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
+| `moai worktree clean`         | Clean up merged or abandoned Worktrees | `moai worktree clean --merged-only`    |
+| `moai worktree recover`       | Recover the Worktree registry   | `moai worktree recover`                |
+| `moai worktree snapshot`      | Capture the working-tree state  | `moai worktree snapshot`               |
+| `moai worktree verify`        | Compare current state against a snapshot | `moai worktree verify --snapshot <path>` |
+| `moai worktree restore`       | Roll back to the snapshot HEAD state | `moai worktree restore --snapshot <path>` |
 
 ## Key advantages of Worktree
 
@@ -185,7 +192,7 @@ graph TB
 
 ### 2. LLM Independence
 
-Each Worktree keeps its own LLM execution mode. Three terminals can run
+Each Worktree gets its own LLM execution mode. Three terminals can run
 differently — `moai cc` (Claude only), `moai glm` (GLM only), and `moai cg`
 (Claude leader + GLM worker hybrid) — without interfering with each other:
 
@@ -221,21 +228,19 @@ sequenceDiagram
 You can run multiple SPECs at the same time:
 
 ```bash
-# Terminal 1: plan SPEC-AUTH-001
-> /moai plan "Authentication system" --worktree
+# Terminal 1: plan SPEC-AUTH-001 (main checkout)
+> /moai plan "Authentication system"
 
 # Terminal 2: implement SPEC-AUTH-002 (GLM)
-$ cd "$(moai worktree go SPEC-AUTH-002)"
-$ moai glm
+$ moai glm -w SPEC-AUTH-002
 > /moai run SPEC-AUTH-002
 
 # Terminal 3: implement SPEC-AUTH-003 (GLM)
-$ cd "$(moai worktree go SPEC-AUTH-003)"
-$ moai glm
+$ moai glm -w SPEC-AUTH-003
 > /moai run SPEC-AUTH-003
 
-# Terminal 4: document SPEC-AUTH-004
-$ cd "$(moai worktree go SPEC-AUTH-004)"
+# Terminal 4: document SPEC-AUTH-004 (Claude)
+$ moai cc -w SPEC-AUTH-004
 > /moai sync SPEC-AUTH-004
 ```
 
@@ -264,32 +269,32 @@ flowchart TB
 
 This is what working across multiple terminals looks like. Each worktree is
 fully isolated so parallel work proceeds without conflicts — that is the heart
-of the Agentic Harness axis; the ability to assign the right model to each
-phase is the Tokenomics side benefit:
+of the Agentic Harness. The ability to assign the right model to each phase is
+the Tokenomics benefit that comes with it:
 
 ```mermaid
 graph TB
     subgraph Terminal1["Terminal 1: Planning"]
-        T1A[/moai plan<br/>--worktree/]
+        T1A[/moai plan/]
         T1B[Claude Opus<br/>high cost / high quality]
         T1C[SPEC document created]
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
-        T2A["cd $(moai worktree go<br/>SPEC-AUTH-001)"]
-        T2B[moai glm<br/>low cost]
+        T2A["moai glm -w<br/>SPEC-AUTH-001"]
+        T2B[low-cost backend]
         T2C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
-        T3A["cd $(moai worktree go<br/>SPEC-AUTH-002)"]
-        T3B[moai glm<br/>low cost]
+        T3A["moai glm -w<br/>SPEC-AUTH-002"]
+        T3B[low-cost backend]
         T3C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
-        T4A["cd $(moai worktree go<br/>SPEC-AUTH-003)"]
-        T4B[moai cc<br/>Claude]
+        T4A["moai cc -w<br/>SPEC-AUTH-003"]
+        T4B[Claude backend]
         T4C[/moai sync<br/>documentation]
     end
 

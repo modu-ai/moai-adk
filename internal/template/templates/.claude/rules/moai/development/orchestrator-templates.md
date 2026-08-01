@@ -200,7 +200,7 @@ Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, 
 
 The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, and agents are not yet reliable at delegating to each other in real time.
 
-**Native runtime unaffected**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `worktree --team` launch, the teammate registry) still works — only MoAI's static team-orchestration layer is retired. Do not read this section as a claim that the runtime primitive was removed.
+**Native runtime unaffected**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `moai cc -w <name> --spawn` teammate windows, the teammate registry) still works — only MoAI's static team-orchestration layer is retired. Do not read this section as a claim that the runtime primitive was removed.
 
 ---
 

@@ -113,7 +113,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 ## Invocation Flow
 
 ```
-/moai plan [description] [--worktree|--branch] [--no-issue]
+/moai plan [description] [--branch] [--no-issue]
   └─ context-discovery.md
        ├─ Phase 2: Explore (optional)
        └─ Phase 3: Clarity evaluation (1-10 score)

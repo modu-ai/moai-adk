@@ -18,8 +18,8 @@ This package is the boundary between the user's terminal and every backing subsy
 
 ## Key Patterns
 
-- **`syscall.Exec` replacement** (`worktree new --team` Pattern P3): Use `syscall.Exec(argv0, argv, env)` to replace the current process rather than spawn-and-wait. The current shell becomes the new process. Windows lacks this primitive — gate behind `team_launch_posix.go` build tag and provide a stub in `team_launch_windows.go`.
-- **tmux pane spawning** (`worktree new --team` Pattern P1/P2): Use `tmux new-window` (within a session) not `tmux new-session` (creates a detached session). Read pane ID from stdout for swarm registry.
+- **`syscall.Exec` replacement** (launcher in-place entry): Use `syscall.Exec(argv0, argv, env)` to replace the current process rather than spawn-and-wait. The current shell becomes the new process. Windows lacks this primitive — gate behind a `_posix.go` build tag and provide a `_windows.go` stub.
+- **tmux window spawning** (`moai cc|glm|cg -w <name> --spawn`, `spawn.go`): Use `tmux new-window` (within a session) not `tmux new-session` (creates a detached session). Read the pane ID from stdout so the caller can report a switch target. Refuse (non-zero) outside tmux — a silent in-place fallback would replace the caller's session.
 - **Settings.json mutation**: All mutations go through `internal/cli/settings.go` helpers — never `json.Marshal` settings directly. The helpers preserve user-only keys like `defaultMode`, `teammateMode`, `env.PATH` per CLAUDE.local.md §22.
 - **Sandbox-safe destructive ops**: `git reset --hard`, `rm -rf` are blocked by claude-code sandbox. Use `git reset --keep` + `git stash push --include-untracked` patterns per CLAUDE.local.md §23.5/§23.6 instead.
 - **Background subagent restriction**: Subcommands that write files MUST NOT be spawned with `run_in_background: true` — background subagents auto-deny Write/Edit per CLAUDE.md §14. Read-only commands (`status`, `list`, `version`) are safe to background.
@@ -30,5 +30,5 @@ This package is the boundary between the user's terminal and every backing subsy
 - CLAUDE.local.md §13 (GLM integration test isolation), §14 (Hardcoding prevention), §22 (settings.local.json separation)
 - `internal/cli/worktree/new_test.go` — `TestNew_NoAskUserQuestion` canonical static guard
 - `internal/cli/harness/route_test.go` — `TestPropose_NoAskUserQuestion` second canonical instance
-- `internal/cli/worktree/team_launch.go` + `team_launch_posix.go` + `team_launch_windows.go` — cross-platform exec/spawn pattern
+- `internal/cli/spawn.go` — `--spawn` flag stripping, shell-quoted command reconstruction, tmux new-window invocation
 - `internal/config/envkeys.go` — canonical env var constants (use these, never inline strings)

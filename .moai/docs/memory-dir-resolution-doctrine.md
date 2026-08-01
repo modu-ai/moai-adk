@@ -29,9 +29,9 @@
 
 이 doctrine은 미래 메인테이너가 "per-cwd divergence는 버그다"라고 오인하여 git-root 정규화를 도입하는 것을 방지한다.
 
-## 3. L3 `--worktree` resume와의 관계
+## 3. worktree resume와의 관계
 
-per-cwd 동작 때문에, L3 `/moai plan --worktree`로 초기화한 SPEC을 이어받을 때는 **반드시 worktree cwd 안에서** 새 세션을 시작해야 메모리 디렉터리가 일관되게 해석된다.
+per-cwd 동작 때문에, worktree 안에서 진행한 SPEC을 이어받을 때는 **반드시 그 worktree cwd 안에서** 새 세션을 시작해야 메모리 디렉터리가 일관되게 해석된다.
 
 - paste-ready resume의 **Block 0 (cwd anchoring)** 가 이 재앵커링을 담당한다.
 - 상세: `.claude/rules/moai/workflow/session-handoff.md` § Worktree-Anchored Resume Pattern.

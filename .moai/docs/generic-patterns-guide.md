@@ -58,7 +58,7 @@ This rule is defined in `.claude/rules/moai/core/agent-common-protocol.md`
 
 **Layer 2 — L2/L3 worktree opt-in (recommended for known multi-session
 patterns)**: If your team works with 2+ sessions on the same project, use
-`/moai plan --worktree` or `moai worktree new SPEC-XXX --base origin/main`
+`moai cc -w <name>` (enter the worktree, then run the phase inside it)
 to materialize a per-SPEC working tree. Memory is still shared, but git
 working trees are separated → race conflict surface drops to zero.
 
