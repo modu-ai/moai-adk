@@ -246,4 +246,32 @@ m1_to_mN_commit_strategy: M3 a525a236e / M4 184a325bc(단일 커밋, 마크다�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: c89ddde55413df8c35dd4d809ea04635c3ca0b05   # 백필 완료 (git rev-parse HEAD 실측)
+sync_status: audit-ready
+run_merge_commit_sha: 1594cf60e     # PR #1274 squash merge — origin/main 에서 실측 확인
+b12_self_test_a: PASS               # grep -c 'SEO-ABSORB' CHANGELOG.md → 0 (중복 없음, emission 전 관측)
+b12_self_test_b: PASS               # acceptance.md AC 제목 24건 (grep -cE '^### AC-SEO') == CHANGELOG 기재 24/24
+b12_self_test_c: PASS               # CHANGELOG 인용 경로 전건 ls 확인 (SKILL.md 2종, catalog.yaml, Go 상수 3파일)
+changelog_entry_position: "[Unreleased] → ### Added 최상단"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # 단일 sync 커밋이 implemented 를 경유해 completed 로 종결
+  updated_field: "2026-08-01 → 2026-08-02"
+  phase_field: "plan → sync"
+  note: "plan.md / acceptance.md / progress.md 는 frontmatter 미보유(본 SPEC 은 spec.md 만 frontmatter 를 가진다) — 실측 확인"
+docs_surface_delta: 0                # M5 가 이미 4-로케일 skill-guide 행을 랜딩 — sync-phase 신규 문서 추가 없음
+readme_delta: 0                      # README 4종은 개별 ref 스킬을 나열하지 않는다(moai-ref-secops 참조 0건 실측) — 동기화 대상 아님
+canary_compliance_check: n/a         # 본 SPEC 은 미래지향 정책을 정의하지 않는다
+sync_phase_verification:
+  go_build: pass                     # go build ./... exit 0
+  template_suite: pass               # go test ./internal/template/... → ok 4.638s
+  mirror_parity: pass                # diff 로컬↔템플릿 SKILL.md → 차이 없음
+  registration_surface_files: 17     # moai-ref-seo 참조 파일(SPEC 산출물·CHANGELOG 제외)
+```
+
+미검증 잔여 (차단 요소 아님):
+
+1. **전체 테스트 스위트 미실행** — `go test ./internal/template/...` 만 실행했다. 본 sync 커밋은 마크다운·frontmatter만 바꾸므로 다른 패키지에 영향이 없다고 판단했으나, `go test ./...` 전량은 관측하지 않았다.
+2. **크로스 플랫폼 빌드 미재실행** — run-phase(§E.3)에서 `GOOS=windows` 빌드 pass 를 기록했다. sync 커밋은 Go 코드를 바꾸지 않아 재실행하지 않았다.
+3. **docs-site 빌드 미실행** — 4-로케일 skill-guide 행은 M5 에서 이미 머지됐고 본 커밋이 손대지 않았으므로 hugo 빌드를 재실행하지 않았다.
