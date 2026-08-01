@@ -359,7 +359,7 @@ Block 0 format (prepended before Block 1):
 
 ```
 [New Terminal — START IN WORKTREE]
-$ cd <worktree-absolute-path>
+$ moai cc -w <worktree-name-or-absolute-path>
 $ <session-launcher>            # claude | moai cc | moai cg | moai glm
    └─ Claude Code session starts here (cwd = worktree)
 ```
@@ -518,7 +518,7 @@ All of the following must be verified:
 - User approval obtained via AskUserQuestion before SPEC creation
 - Phase 10: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
-- YAML frontmatter contains all 8 required fields (including issue_number)
+- YAML frontmatter contains all 12 required fields (issue_number excluded — optional)
 - GEARS structure is complete (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
 - Exclusions section present with at least 1 entry
 - Delta markers applied for brownfield requirements (if applicable)

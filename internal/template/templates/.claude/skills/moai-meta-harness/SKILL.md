@@ -246,7 +246,7 @@ Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`
 |------------------|----------|--------|---------------------|
 | `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | 삭제 후 신규 설치 (overwrite) |
 | **`harness-*` skills** | `.claude/skills/harness-*/` | **user project (this meta-harness emits — intent declaration)** | **절대 삭제/modify 금지 + 백업 보존** |
-| MoAI agents (retained 7, FLAT) | `.claude/agents/moai/` | template | 삭제 후 신규 설치 (overwrite) |
+| MoAI agents (retained catalog, FLAT) | `.claude/agents/moai/` | template | 삭제 후 신규 설치 (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
 | Harness config | `.moai/harness/` | user project | 절대 삭제 금지 + 백업 보존 |
 

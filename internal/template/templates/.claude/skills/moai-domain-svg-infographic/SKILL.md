@@ -101,7 +101,7 @@ written; that ordering is the whole method.
 
 ## The numeric layout pass
 
-Build one table before authoring. Four owned columns per box — `id`, `x`, `y`,
+Build one table before authoring. Five owned columns per box — `id`, `x`, `y`,
 `w`, `h` — and nothing else is typed by hand. Every other number in the file is
 derived from those.
 

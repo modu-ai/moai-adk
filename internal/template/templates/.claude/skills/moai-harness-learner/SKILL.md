@@ -89,7 +89,7 @@ The skill applies the change by invoking the safety pipeline directly. Since the
 For the coordinator skill, the simplest flow is:
 1. User selects "approve"
 2. Write `approved: true` to `.moai/harness/proposals/<id>.decision`
-3. Run `moai harness apply --execute` (if the CLI supports it) or call the harness API directly.
+3. Run `moai harness apply --execute --id <proposal-id>`.
 
 ### Step 5: On Reject
 

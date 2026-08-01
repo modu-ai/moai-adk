@@ -242,7 +242,7 @@ After each transformation:
 
 ### Standard DDD Session
 
-When executing DDD through moai:2-run in DDD mode:
+When executing DDD through moai:run in DDD mode:
 
 Step 1 - Initial Assessment:
 
@@ -311,11 +311,11 @@ Structure Improvement (Goals):
 
 Apply TRUST 5 framework with DDD focus:
 
-- Testability: Characterization test coverage adequate
+- Tested: Characterization test coverage adequate
 - Readability: Naming and structure improvements verified
-- Understandability: Domain boundaries clearer
+- Unified: Style and structure consistent with the surrounding code
 - Security: No new vulnerabilities introduced
-- Transparency: All changes documented and traceable
+- Trackable: All changes documented and traceable
 
 ---
 

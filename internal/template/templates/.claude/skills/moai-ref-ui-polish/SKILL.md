@@ -63,7 +63,7 @@ Before suggesting polish changes, identify the project's existing styling system
 | Pattern | Rule | Common Mistake |
 |---------|------|----------------|
 | Enter animation easing | `ease-out` (decelerate) — element arrives calmly | `ease-in` on enter (element appears to slam into place) |
-| Exit animation easing | `ease-out`, softer than enter (small fixed `translateY`) | Full-height collapse, or harsher-than-enter motion |
+| Exit animation easing | `ease-in` (accelerates away), mirroring the enter curve (small fixed `translateY`) | Full-height collapse, or harsher-than-enter motion |
 | Interruptible state changes | CSS `transition` (can be interrupted mid-animation) | `keyframes` for interactive states (cannot interrupt) |
 | Staged entrances | Stagger semantic chunks ~100ms — only for infrequent staged entrances | Staggering routine, high-frequency interactions (feels sluggish) |
 | Contextual icon animation | `opacity`/`scale`/`blur` cross-fade (scale 0.25→1, opacity 0→1, blur 4px→0) | Toggling `visibility` (jarring, no transition) |

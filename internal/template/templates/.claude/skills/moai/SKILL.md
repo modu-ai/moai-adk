@@ -51,7 +51,7 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: Force Mode 3 (agent-team) of the Phase 4 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
+- `--team`: RETIRED — emits MODE_TEAM_UNAVAILABLE and falls back to Mode 5 (sub-agent)
 - `--solo`: Force Mode 5 (sub-agent — single sequential agent per phase)
 - No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 4; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
 
@@ -154,7 +154,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 ### goal - Condition-Declared Agentic Loop
 
 Purpose: Arm a completion condition (mechanical commands + model claims); the `stop-goal` Stop-hook evaluator blocks each turn-end until the conditions hold or a turn ceiling (default 30) is reached.
-Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
+Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 

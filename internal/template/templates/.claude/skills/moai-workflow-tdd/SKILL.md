@@ -254,11 +254,11 @@ Code Quality (Goals):
 
 Apply TRUST 5 framework with TDD focus:
 
-- Testability: Test-first approach ensures testability
+- Tested: Test-first approach ensures coverage
 - Readability: Tests document expected behavior
-- Understandability: Tests serve as living documentation
+- Unified: Style and structure consistent with the surrounding code
 - Security: Security tests written before implementation
-- Transparency: Test failures provide immediate feedback
+- Trackable: Test failures provide immediate, attributable feedback
 
 ---
 
