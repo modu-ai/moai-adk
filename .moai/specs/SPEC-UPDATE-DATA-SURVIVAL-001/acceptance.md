@@ -12,13 +12,33 @@ Version: 0.2.0 · Status: draft
    Every AC below that uses `-run` therefore also asserts a literal `--- PASS: <exact test name>`
    line in the output. An AC that would still pass with its test deleted is a defect, and an AC
    whose only assertion is `exit 0` is rejected.
-3. **A guard must be able to fail on the fixture it runs on.** A well-formed assertion over a
-   quantity that is constant across the change is still vacuous. Two shapes of this bite here and
-   are named so they are not re-introduced: (a) a **self-comparison** — a drift guard that both
+3. **A guard must be able to fail on the fixture it runs on.** The test is not "does this quantity
+   change?" but "**could any change move it?**" A constant-valued assertion is vacuous only when no
+   change to the implementation could move it. Two shapes of genuine vacuity bite here and are
+   named so they are not re-introduced: (a) a **self-comparison** — a drift guard that both
    enumerates and validates from the same source yields `count == count` and can never fail
    (AC-UDS-005); (b) a **missing before-snapshot** — an invariance claim ("unchanged before and
    after") asserted from a single post-run observation, which passes whatever it observes
    (AC-UDS-013).
+
+   **Preservation-guard carve-out.** A constant assertion that *would* move in the direction an
+   unwanted change pushes it is a **preservation guard**, not a vacuous one — it is the mechanism
+   by which "this must not change" becomes observable. Four ACs below are preservation guards and
+   are classified as such rather than as violations of this clause:
+
+   | AC | Constant | What moves it (so it can fail) |
+   |---|---|---|
+   | AC-UDS-007 (b) | `2` → `2` | Deleting the Category D `.moai/project/db/` contrast clause drives it to `0` |
+   | AC-UDS-010 | exit 0 → exit 0 | Any success-path regression (NFR-UDS-005) drives it non-zero |
+   | AC-UDS-018 | exit 0 → exit 0 | A path-handling change that breaks the windows cross-build drives it non-zero |
+   | AC-UDS-019 | `0` → `0` | Committing or staging any `internal/template/templates/**` edit drives it ≥ 1 |
+
+   **Relation to §A.2.** §A.2 rejects an AC whose only assertion is `exit 0`; that rejection is
+   scoped to `go test -run <pattern>`, where exit 0 is also the outcome when the pattern matches
+   **zero** tests — the exit code there carries no information about whether anything ran.
+   AC-UDS-010 (whole-package `go test`, no `-run`) and AC-UDS-018 (`go build`) have no such
+   zero-match mode: their exit 0 means the suite or the build actually completed. The two clauses
+   therefore do not conflict.
 4. **Baselines are observed, not assumed.** Every "baseline" line in §B was produced by running the
    stated command on 2026-07-31 against worktree HEAD `a8b42e112` (branch
    `plan/epic-update-config-audit`), whose code baseline is `d5336214e` — every commit between the
@@ -47,7 +67,7 @@ Every REQ has at least one citing AC; every AC names the REQ it verifies.
 | REQ-UDS-003 | **AC-UDS-020** | REQ-UDS-017 | AC-UDS-015 |
 | REQ-UDS-004 | AC-UDS-010 | REQ-UDS-018 | AC-UDS-014 |
 | REQ-UDS-005 | AC-UDS-009 | REQ-UDS-019 | AC-UDS-001 |
-| REQ-UDS-006 | AC-UDS-005 | REQ-UDS-020 | AC-UDS-001 (no rollback asserted by absence of tree mutation) |
+| REQ-UDS-006 | AC-UDS-005 | REQ-UDS-020 | AC-UDS-001 (clause 3 — the destroyed paths are still absent on return) |
 | REQ-UDS-007 | AC-UDS-005, §C.4 | REQ-UDS-021 | AC-UDS-002 |
 | REQ-UDS-008 | AC-UDS-006 | REQ-UDS-022 | AC-UDS-002 |
 | REQ-UDS-009 | AC-UDS-007 | REQ-UDS-023 | AC-UDS-004 |
@@ -70,9 +90,20 @@ go test -run 'TestUpdateFailure_WritesRecoveryManifest' -count=1 -v ./internal/c
 ```
 
 Expected: a `--- PASS: TestUpdateFailure_WritesRecoveryManifest` line. The test injects a failing
-step after `CleanMoaiManagedPaths`, then asserts on the fixture tree that a recovery manifest exists
-inside the run-scoped backup directory naming the failed step and the restore command, and that the
-same manifest text appears in the captured writer.
+step after `CleanMoaiManagedPaths`, then asserts **three** things:
+
+1. a recovery manifest exists inside the run-scoped backup directory naming the failed step and the
+   restore command;
+2. the same manifest text appears in the captured writer;
+3. **the paths `CleanMoaiManagedPaths` removed are still absent when the call returns** — the update
+   did not silently restore them (REQ-UDS-020, no automatic rollback).
+
+**Clause 3 is REQ-UDS-020's only mechanical coverage.** An earlier draft mapped REQ-UDS-020 to this
+AC in the §B.0 map while the AC body asserted nothing about rollback, leaving the requirement
+covered on paper only. Clause 3 makes the negative requirement falsifiable in the direction that
+matters: if a future change adds an automatic rollback, the removed paths reappear and clause 3
+fails. It is a preservation guard in the §A.3 sense — constant across a correct implementation,
+moved by exactly the change REQ-UDS-020 forbids.
 
 Baseline: the test does not exist; `go test -run 'TestUpdateFailure_WritesRecoveryManifest'
 ./internal/cli/` currently prints `ok … [no tests to run]` and exits 0 — which is exactly the
@@ -214,8 +245,11 @@ only), or `userOwnedScanRoots` (`update_namespace_protect.go:39-43`).
 #### AC-UDS-007 — the `.moai/db` group comment names its authorising SPEC, and Category D's accurate prose survives (REQ-UDS-009, NFR-UDS-007)
 
 ```bash
-# (a) the brand+db group banner now names its authorising SPEC
-sed -n '/brand + db directories/,/^\t{/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+# (a) the brand+db group banner now names its authorising SPEC.
+#     Range: the group heading line through the group's first registered path.
+#     Both anchors are content, not indentation or line numbers — see the range note below.
+sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go \
+  | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
 # (b) Category D's contrast clause is PRESERVED, not deleted
 grep -c 'moai/project/db' internal/defs/dirs.go
 # (c) the catalogue is otherwise untouched
@@ -231,10 +265,36 @@ deleted (b → `0`), or the slice body changes (c fails on the count assertion).
 Baseline, measured on this tree:
 
 ```
-$ sed -n '/brand + db directories/,/^\t{/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+$ sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
 0
 $ grep -c 'moai/project/db' internal/defs/dirs.go
 2
+```
+
+**Range note — why this window, and why it is not widened backward.** An earlier draft ended the
+range at `/^\t{/`, which captures exactly two lines (the heading and the opening brace) and is
+coupled to both the tab indentation and the assumption that the SPEC-ID sits on or below the
+heading. Two changes fix that. First, the end anchor is now the group's first registered path
+(`.moai/project/brand`), which is content and survives a reindent or an added blank line. Second,
+REQ-UDS-009 pins the SPEC-ID's **placement** to the region this window covers — on the
+`// brand + db directories` line or between it and the group's first entry — so a conforming
+implementation cannot land outside the window.
+
+The window is deliberately **not** extended backward. `dirs.go:302` already contains an unrelated
+`SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention (the note recording that a *different* entry was
+reversed). Measured: a ten-line lookback from the heading captures that line, which would drive
+(a)'s baseline from `0` to `1` and make the AC pass before REQ-UDS-009 is implemented at all — a
+false green. The placement requirement is what makes the forward-only window sufficient.
+
+Falsification of (a), measured on this tree: inserting a conforming SPEC-ID line immediately below
+the heading flips (a) from `0` to `1`, and the range still does not reach the `dirs.go:302` note:
+
+```
+$ sed -e 's|// brand + db directories|// brand + db directories\n\t\t// Deprecated by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001; not under any preserve root.|' internal/defs/dirs.go \
+    | sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' | grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001'
+1
+$ sed -n '/brand + db directories/,/Path: *"\.moai\/project\/brand"/p' internal/defs/dirs.go | grep -c 'This reverses'
+0
 ```
 
 (a) is `0` because the group carries only the bare comment `// brand + db directories`

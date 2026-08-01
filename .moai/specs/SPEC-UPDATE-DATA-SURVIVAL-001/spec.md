@@ -1,10 +1,10 @@
 ---
 id: SPEC-UPDATE-DATA-SURVIVAL-001
 title: "moai update — user-data survival: on-disk backup before every destructive step, a failure contract with an escape from the marker-gate lockout, and non-vacuous safety guards"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-01
 author: manager-spec
 priority: P0
 phase: "v3.0.2"
@@ -24,6 +24,7 @@ depends_on: [SPEC-UPDATE-REINSTALL-LOOP-002]
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 2 of 6. |
+| 0.3.0 | 2026-08-01 | plan-audit iteration 2 (PASS, 0.84) delta round, D11-D16 + progress backfill. D13: REQ-UDS-020's coverage made real — AC-UDS-001 gains clause 3 (the destroyed paths are still absent on return), replacing a §B.0 map entry that claimed an assertion the AC body did not make. D14: §A.3 gains a preservation-guard carve-out (vacuity is "no change could move it", not "constant"), classifying AC-UDS-007(b) / 010 / 018 / 019 as preservation guards and reconciling the clause with §A.2's `-run` scoping. D15: AC-UDS-007 (a)'s `sed` range re-anchored on content (`.moai/project/brand`) and REQ-UDS-009 gains a placement requirement pinning the SPEC-ID to that window — the audit's suggested backward-widening was rejected because a lookback captures the unrelated `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention at `dirs.go:302` and would turn the `0` baseline into a false `1`. D11 / D12 / D16 were re-measured and found already applied in v0.2.0 (the report was written against an earlier artifact state); D10 is resolved by fact — E1 reached `status: completed`. D8 / D9 remain deferred. Divergence table in `progress.md` §E.1. |
 | 0.2.0 | 2026-07-31 | plan-audit iteration 1 (FAIL, 0.71) delta revision, D1-D7. D2: REQ-UDS-007 rewritten to require independent static-scan enumeration (the prior wording permitted a `count == count` self-comparison). D3: REQ-UDS-013 gains the `userHomeDirFn` seam requirement; NFR-UDS-002's "`userHomeDir` indirection already exists" claim corrected — no seam existed. D4: Defect 2's Category D misattribution retracted; REQ-UDS-009 / AC-UDS-007 restated against the real gap. D1: §H `update.go` coordinates corrected to the post-merge values (`:755`, `:764-766`). D5/D6: AC-UDS-019 / AC-UDS-014 de-vacuified. D7: AC-UDS-020 added for the previously uncovered REQ-UDS-003; every AC now cites its REQ. D8/D9/D10 deferred to the next audit round. |
 
 ## §A Problem / Motivation
@@ -273,7 +274,13 @@ function is recorded in `plan.md §C`; the three error branches are the uncovere
   legacy and the new directory exist, it shall back up `.moai/memory/` before removal.
 - **REQ-UDS-009** — The `defs.DeprecatedPaths` group comment covering `.moai/db` shall name the
   SPEC that authorises the group's removal and the group's protection status, matching the
-  explanatory form the sibling Category C and Category D banners already use. The Category D
+  explanatory form the sibling Category C and Category D banners already use. The SPEC-ID shall
+  appear **on the `// brand + db directories` line or between that line and the group's first
+  entry** — not above the heading. This placement is a requirement, not a stylistic note:
+  `dirs.go:302` already carries an unrelated `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001` mention (a note
+  recording that a *different* entry was reversed), so an assertion window wide enough to admit a
+  banner placed above the heading would also admit that pre-existing line and pass before this
+  requirement is implemented. AC-UDS-007 (a) asserts over exactly the pinned region. The Category D
   comment's existing `.moai/project/db/` contrast clause is accurate and shall be preserved
   verbatim — see the retracted finding in §A Defect 2.
 - **REQ-UDS-010** — The registry shall record `defs.DeprecatedPaths` deletion as covered by
