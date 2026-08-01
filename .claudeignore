@@ -47,3 +47,7 @@ logs/
 # Third-party and external
 docs-site/public/
 .moai/archive/
+
+# Worktrees — each is a full checkout of this repo, so leaving them visible
+# multiplies every search hit by the number of live worktrees.
+.claude/worktrees/
