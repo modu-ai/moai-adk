@@ -389,6 +389,141 @@ $ grep -n -A3 'func BuildSmartPATH' internal/template/settings.go
 
 **AC-UDS-013 대비 개선 지점**: 선행 판정은 운영자의 **실제** `~/.claude/hooks`를 스냅샷했고, 그 디렉터리가 없는 머신에서는 before/after 모두 0행이라 삭제 방향에 대해 공허하게 통과했다. 이 판정은 (a)에서 sentinel 트리를 스스로 만들고 비어 있지 않음을 확인하므로 판별력이 코드에만 의존한다(§A.2). 그리고 (a)의 비어있지 않음은 AC-UGE-008의 카나리아가 울릴 대상을 보장하는 조건이기도 하다 — 위 `probe-survived=1`이 그 연결을 실증한다.
 
+### M4 — 사용자 영역 보존 가드 확장 (REQ-UGE-009 ~ 013)
+
+**Claim**: 사용자 소유 디렉터리의 바이트 동일성 어서션이 `runCleanReinstall`·백업 서브시스템의 두 파괴적 표면·`MigrateLegacyMemoryDir`의 두 분기에 도달한다.
+
+신규 파일 `internal/cli/update_preserve_reach_test.go`에 가드 3종(서브테스트 포함 5개)을 추가했다. 기존 `snapshotDir`/`writeFixture`/`mapsEqual` 헬퍼를 재사용한다.
+
+**AC 매트릭스**
+
+| AC | 판정 | 관측 출력 |
+|---|---|---|
+| AC-UGE-009 | PASS | (a) `update_preserve_reach_test.go:72` · (b) `--- PASS: TestCleanReinstall_PreservesUserArea (0.13s)` · (c) 순서 충족 — `18 snapshotDir(` → `26 runCleanReinstall(` → `36 snapshotDir(` → `37 mapsEqual(` → `38 t.Errorf` |
+| AC-UGE-009F | **FAIL (판정 명령 결함)** | 규정된 변형: `mutation-applied=1`이나 **`fail-lines=0`**. 아래 진단 참조. REQ-UGE-013은 정정된 변형으로 충족 |
+| AC-UGE-010 | PASS | (a) `update_preserve_reach_test.go:124` · (b) `--- PASS:` 2행 (`rollback_removes_only_own_backup_dir`, `rotation_keeps_newest`) · (c) `4` |
+| AC-UGE-010F | PASS | `mutation-applied=1` · `fail-lines=4` · `rotation-subtest-failed=1` · `rollback-subtest-failed=0` |
+| AC-UGE-011 | PASS | (a) `2` · (b) `--- PASS:` 2행 (두 분기) · (c) `MigrateLegacyMemoryDir 73.1%` (baseline `26.9%` 초과) |
+| AC-UGE-011F | PASS | `mutation-applied=1` · `compile-exit=0` · `fail-lines=4` · `names-missing-backup=3` · `rename-subtest-failed=0` |
+| AC-UGE-012 | PASS | `mutation-applied=1` · `fail-lines=4` · 원인: `user area changed: …/.claude/skills/harness-ios-patterns` |
+
+#### AC-UGE-009F — 규정된 변형이 가드를 반증하지 못한다 (판정 명령의 결함)
+
+acceptance.md가 규정한 변형은 `scanDeprecatedPaths`의 반환값에 `.moai/harness`를 주입한다. 실행 결과:
+
+```
+mutation-applied=1
+144a145
+> 	found = append(found, ".moai/harness")
+inserted at line 145 inside 126: func scanDeprecatedPaths(projectRoot string) ([]string, error) {
+fail-lines=0
+names-user-area=0
+backup-stage-abort=0
+```
+
+변형은 의도한 함수에 정확히 들어갔는데(§G AP-6 확인 완료) **가드가 실패하지 않았다.** 원인을 코드로 확인했다 — 가드가 무른 것이 아니라 **변형이 위험을 모사하지 못한다.**
+
+`.moai/harness`는 `userOwnedScanRoots`(`update_namespace_protect.go:42`)에 있으므로 Step 2의 PRESERVE 인벤토리에 들어간다. 그래서 Step 3이 백업하고, 변형된 Step 4가 지우고, **Step 6(`mergeBackPreserveInventory`)이 되돌려 놓는다** — 순삭제량 0. 가드가 바이트 동일성을 관측하는 것이 옳다.
+
+이 "net-zero 제거" 현상은 이미 `update_preserve_inventory.go`의 REQ-RIL2-010 주석이 기술해 둔 것이다. 인벤토리에서 그 경로를 빼는 것은 `isUnderDeprecatedPath` 필터인데, 그 필터는 **`defs.DeprecatedPaths`를 읽지 `scanDeprecatedPaths`의 반환값을 읽지 않는다.** 즉 규정된 변형은 삭제 경로만 건드리고 보존 경로는 그대로 두어, 실제 글로브 확장이라면 동시에 일어났을 두 효과 중 하나만 재현한다.
+
+**정정한 변형 — `defs.DeprecatedPaths` 자체를 넓힌다** (양쪽 소비자가 함께 읽는 SSOT):
+
+```
+68a69
+> 	{Path: ".moai/harness", DeprecatedSince: "MUTATION", DeprecatedBy: "MUTATION", RemovalSchedule: "MUTATION"},
+```
+
+```
+mutation-applied=1
+fail-lines=4
+names-user-area=1
+backup-stage-abort=0
+    update_preserve_reach_test.go:109: user area changed: …/.moai/harness
+--- FAIL: TestCleanReinstall_PreservesUserArea (0.03s)
+```
+
+**원인 귀속 + 경쟁 원인 배제 (§A.4)**: 실패가 `user area changed: …/.moai/harness`를 직접 지목하고, `backup-stage-abort=0`이 `DEPRECATED_BACKUP_FAILED` 조기 반환 경로를 배제한다. REQ-UGE-013("가드가 실패하는 것이 관측되어야 한다")은 이 정정된 변형으로 충족된다.
+
+**acceptance.md는 수정하지 않았다.** 판정 명령이 틀렸을 때 산출물에 맞춰 AC를 고치는 것은 판정을 무력화하는 행위다. 결함을 보고하고 정정된 변형의 관측을 함께 남긴다.
+
+**이월 부채 Item 2 — 해소.** plan-phase는 `backup-stage-abort=0`을 **`.moai/harness`가 없는** 픽스처에서 관측했고, 신규 가드가 그 경로를 실재시키면 백업 단계 동작이 달라질 수 있다고 기록했다. 신규 가드는 `seedUserOwnedArea`로 `.moai/harness`를 실제 디렉터리(파일 2개)로 만든다. 그 조건에서 재측정한 결과 규정된 변형·정정된 변형 **양쪽 모두 `backup-stage-abort=0`** 이다 — 교란 경로는 발화하지 않는다.
+
+**이월 부채 Item 8 — 해소.** AC-UGE-011F의 원인 귀속은 가드 부재로 관측 불가였다. 이제 관측했다: `names-missing-backup=3`, `rename-subtest-failed=0` — 백업 무력화 변형이 `backup_then_remove_when_both_exist`만 깨뜨리고 `rename_when_state_absent`는 PASS로 남는다.
+
+**잔여 한계 — `rollback_removes_only_own_backup_dir`의 플랫폼 의존.** 이 서브테스트는 config 트리에 **깨진 심볼릭 링크**를 심어 `BackupMoaiConfig`의 복사 루프를 실패시킨다(내용 기반 트리거라 root가 우회하지 못한다). 다만 Windows는 권한 없이 `os.Symlink`가 실패하므로 그 경우 `t.Skip`한다. 이 복사 루프를 실패시킬 **이식 가능한 내용 기반 트리거를 찾지 못했다** — 권한 비트 방식은 M1이 제거한 바로 그 안티패턴이라 채택하지 않았다. REQ-UGE-003의 무스킵 의무는 M1의 stat 서브테스트에만 구속되므로 위반은 아니지만, 정직하게 한계로 남긴다. 회전 가드(`rotation_keeps_newest`, 과거 실제 버그를 재현하는 쪽)는 완전 이식 가능하다.
+
+### 전역 보존 AC (§A.5) + 최종 회귀 게이트
+
+| AC | 판정 | 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-UGE-013 | PASS | `git diff --name-only "$BASE"..HEAD -- internal/template/templates/ \| wc -l` · `git status --porcelain -- …` | `0` · `0` |
+| AC-UGE-014 | PASS | `go build ./...` · `GOOS=windows … go build ./...` · `go test -count=1 ./...` FAIL 계수 · `golangci-lint run --timeout=5m` | `build-exit=0` · `win-build-exit=0` · FAIL 계수 `0` (`full-suite-exit=0`) · `0 issues.` (exit 0) |
+| AC-UGE-015 | PASS | 주석 제거 후 `t.Parallel()` 계수 | 첫 계수 `0` · `target-files=4` · 4개 파일 전부 `0` |
+
+`target-files`는 §B의 `3`에서 `4`로 늘었다 — M2가 추가한 `update_home_seam_test.go`가 `userHomeDirFn`을 재할당하므로 감시 대상에 새로 들어온 것이며, 기대 동작이다. 네 파일 모두 `t.Parallel()` 계수 `0`.
+
+**DoD 목록 무결성 (§E 1항)**
+
+```
+$ grep -cE '^#### AC-UGE-' acceptance.md
+20
+$ grep -oE '^#### AC-UGE-[0-9]+[FR]?' acceptance.md | sed 's|^#### ||'
+AC-UGE-001 002 003 004 005 006 006F 006R 007 008 009 009F 010 010F 011 011F 012 013 014 015
+```
+
+파일의 20개와 DoD 목록의 20개가 일치한다.
+
+**추가 검증 (AC 미요구 — 자발적)**: 이 SPEC이 패키지 두 번째 이음매(`osStatFn`)를 추가하므로 NFR-UGE-001을 정적 grep(AC-UGE-015)에만 맡기지 않고 `go test -race -count=1 ./internal/cli/...`를 함께 실행했다.
+
+```
+race-exit=0 · DATA RACE 계수 0 · FAIL 계수 0
+```
+
+정적 grep은 "`t.Parallel()` 호출이 소스에 없다"까지만 보증한다. 런타임 경쟁 탐지가 0인 것은 별개의 증거이며, 이음매를 하나 더 추가한 이 SPEC에서는 그 둘을 함께 관측할 가치가 있다.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-08-02
+run_commit_sha: pending-backfill-run-final
+run_status: PASS-WITH-DEBT
+ac_pass_count: 19
+ac_fail_count: 1          # AC-UGE-009F — 판정 명령 결함 (가드 결함 아님). REQ-UGE-013은 정정 변형으로 충족
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: done
+l44_post_push_fetch: n/a   # push 는 orchestrator 소관 (이 run 은 push 하지 않음)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass      # go build + go vet 모두 exit 0
+total_run_phase_files: 6   # 프로덕션 3 + 테스트 2(신규 2, 수정 1 → 실제 파일 6개)
+m1_to_mN_commit_strategy: milestone 별 1 커밋 (M1/M2/M3/M4)
+```
+
+**`run_status: PASS-WITH-DEBT` 근거**: AC 20개 중 19개 PASS. AC-UGE-009F는 **판정 명령 자체의 결함**으로 FAIL이며, 그것이 겨냥한 REQ-UGE-013은 정정된 변형(`defs.DeprecatedPaths` 확장)의 실패 관측으로 충족된다. acceptance.md를 산출물에 맞춰 고치지 않았으므로 AC는 FAIL로 남긴다.
+
+**반증 7건 (§E DoD 2항) 상태**
+
+| 반증 AC | mutation-applied / base 위생 | FAIL 관측 | 원인 귀속 + 경쟁 원인 배제 |
+|---|---|---|---|
+| AC-UGE-003 | base `restored %d/%d` = `3` | `fail-lines=2` | `undefined: osStatFn` ×3 (이음매 부재 지목) |
+| AC-UGE-006F | `1` (두 파일) | `fail-lines=4` | `names-reach-assert=3` / `build-failed=0`, `compile-exit=0` |
+| AC-UGE-008 | `1` | probe 삭제 관측 | `probe-survived=1` / `compile-exit=0` (관측 대상이 파일 생사라 원인 일의적) |
+| AC-UGE-009F | `1` (규정) → `fail-lines=0` **결함** · `1` (정정) | `fail-lines=4` (정정) | `names-user-area=1` / `backup-stage-abort=0` |
+| AC-UGE-010F | `1` | `fail-lines=4` | `rotation-subtest-failed=1` / `rollback-subtest-failed=0` |
+| AC-UGE-011F | `1` | `fail-lines=4` | `names-missing-backup=3` / `rename-subtest-failed=0` |
+| AC-UGE-012 | `1` | `fail-lines=4` | `user area changed: …/harness-ios-patterns` |
+
+## §E.3.1 미검증 항목 (Gaps — 정직하게 남긴다)
+
+1. **AC-UGE-002 Windows 런타임** — macOS에서 관측 불가. 소스에 스킵 조건 없음(`0`) + `GOOS=windows go vet` exit 0 까지만 증명. CI 잡 결과 인용 필요.
+2. **GNU `xargs` 실동작** — 이 머신은 BSD. AC-UGE-015가 `xargs`를 제거해 두 구현 차이를 무의미하게 만들었으므로 판정은 안전하나, GNU 동작 자체는 재현하지 못했다.
+3. **렌더 파이프라인 끝단의 기계 독립성** — `TemplateContext.HomeDir` 필드 대입까지만 확인. 렌더 산출물 전체 추적은 하지 않았고, 실제로 `settings.json`의 PATH는 `BuildSmartPATH` 때문에 여전히 머신 종속임을 관측했다(M2 절 참조).
+4. **블록 주석 / 문자열 리터럴 안의 `t.Parallel()`** — AC-UGE-015의 `sed 's|//.*||'`가 못 거르는 두 경우. 현 트리에 없음을 확인했으나 Go 파서 없이는 일반 보장 불가.
+5. **`rollback_removes_only_own_backup_dir`의 Windows 실행** — `os.Symlink` 불가 시 스킵. 이식 가능한 내용 기반 트리거 미발견.
+6. **`t.TempDir()` 밖의 경로 해석** — 모든 가드가 임시 디렉터리만 상대하므로 절대 프로젝트 루트에서만 드러나는 버그는 잡지 못한다(선행 SPEC의 기존 한계 승계).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
