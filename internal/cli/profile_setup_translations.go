@@ -39,7 +39,6 @@ type profileSetupText struct {
 	ModelPolicyLow     string
 	ModelOverrideTitle string
 	ModelOverrideDesc  string
-	ModelDefault       string
 	ModelOpus          string
 	ModelOpus1M        string
 	ModelSonnet        string
@@ -48,15 +47,17 @@ type profileSetupText struct {
 	ModelFable1M       string
 	ModelHaiku         string
 	ModelOpusPlan      string
-	// Effort level selector
-	EffortLevelTitle   string
-	EffortLevelDesc    string
-	EffortLevelDefault string
-	EffortLevelLow     string
-	EffortLevelMedium  string
-	EffortLevelHigh    string
-	EffortLevelXHigh   string
-	EffortLevelMax     string
+	// Effort level selector. The empty "(runtime default)" option label is NOT a
+	// field here — it is single-sourced from settings.EmptyLabelFor("effort_level")
+	// so the wizard and the web console render the identical label. Same for the
+	// model / development_mode / git_convention empty options.
+	EffortLevelTitle  string
+	EffortLevelDesc   string
+	EffortLevelLow    string
+	EffortLevelMedium string
+	EffortLevelHigh   string
+	EffortLevelXHigh  string
+	EffortLevelMax    string
 	// Permission mode (replaces legacy bypass)
 	PermissionModeTitle string
 	PermissionModeDesc  string
@@ -129,9 +130,6 @@ type profileSetupText struct {
 	DevelopmentModeTDD   string
 	GitConventionTitle   string
 	GitConventionDesc    string
-	// ProjectDefaultOption labels the empty "(project default)" option shared by
-	// both project-config selects.
-	ProjectDefaultOption string
 
 	// SPEC-WEB-CONSOLE-010 (M3): the 7 nested project-config fields the TUI gained
 	// for parity with the web console. These persist to quality.yaml /
@@ -180,9 +178,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyLow:          "Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)",
 		ModelOverrideTitle:      "Default model override",
 		ModelOverrideDesc:       "Override the model when launching with this profile.",
-		ModelDefault:            "Default (no override)",
-		ModelOpus:               "opus (Opus 4.8, adaptive thinking)",
-		ModelOpus1M:             "opus[1m] (Opus 4.8 + 1M context)",
+		ModelOpus:               "opus (Opus 5, adaptive thinking)",
+		ModelOpus1M:             "opus[1m] (Opus 5 + 1M context)",
 		ModelSonnet:             "sonnet (Sonnet 5, balanced)",
 		ModelSonnet1M:           "sonnet[1m] (Sonnet 5 + 1M context)",
 		ModelFable:              "fable (Fable 5, deep reasoning)",
@@ -190,13 +187,12 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelHaiku:              "haiku (Haiku 4.5, fastest)",
 		ModelOpusPlan:           "opusplan (Opus planning, Sonnet coding)",
 		EffortLevelTitle:        "Session effort level",
-		EffortLevelDesc:         "Sets reasoning depth for this profile. xhigh/max require Opus 4.8.",
-		EffortLevelDefault:      "Default (runtime default, xhigh for Opus 4.8)",
+		EffortLevelDesc:         "Reasoning depth for the Claude session launched with this profile. xhigh/max need a model that supports them (Opus 5, Sonnet 5, Opus 4.7+). Per-agent effort comes from the agent model policy instead.",
 		EffortLevelLow:          "low - fastest, least thorough",
 		EffortLevelMedium:       "medium - balanced",
 		EffortLevelHigh:         "high - deep reasoning",
-		EffortLevelXHigh:        "xhigh - extended reasoning (Opus 4.8+)",
-		EffortLevelMax:          "max - maximum effort (Opus 4.8+)",
+		EffortLevelXHigh:        "xhigh - extended reasoning (session only; the agent matrix uses high instead)",
+		EffortLevelMax:          "max - maximum effort",
 		PermissionModeTitle:     "Permission mode",
 		PermissionModeDesc:      "Controls how Claude asks for permission before taking actions.",
 		PermAcceptEdits:         "Auto accept edits - Auto-accept file edits, ask for commands",
@@ -250,7 +246,6 @@ var profileSetupTexts = map[string]profileSetupText{
 		DevelopmentModeTDD:   "tdd - Test-Driven Development (RED-GREEN-REFACTOR)",
 		GitConventionTitle:   "Git commit convention",
 		GitConventionDesc:    "Commit message convention written to git-convention.yaml. Empty keeps the project default.",
-		ProjectDefaultOption: "(project default)",
 
 		QualityCoverageTargetTitle: "Test coverage target",
 		QualityCoverageTargetDesc:  "Minimum overall test coverage percentage (0-100). Empty keeps the project default.",
@@ -290,9 +285,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyLow:          "Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)",
 		ModelOverrideTitle:      "기본 모델 오버라이드",
 		ModelOverrideDesc:       "이 프로필로 실행할 때 모델을 오버라이드합니다.",
-		ModelDefault:            "기본값 (오버라이드 없음)",
-		ModelOpus:               "opus (Opus 4.8, 적응형 사고)",
-		ModelOpus1M:             "opus[1m] (Opus 4.8 + 1M 컨텍스트)",
+		ModelOpus:               "opus (Opus 5, 적응형 사고)",
+		ModelOpus1M:             "opus[1m] (Opus 5 + 1M 컨텍스트)",
 		ModelSonnet:             "sonnet (Sonnet 5, 균형)",
 		ModelSonnet1M:           "sonnet[1m] (Sonnet 5 + 1M 컨텍스트)",
 		ModelFable:              "fable (Fable 5, 심층 추론)",
@@ -300,13 +294,12 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelHaiku:              "haiku (Haiku 4.5, 최고 속도)",
 		ModelOpusPlan:           "opusplan (Opus 기획, Sonnet 코딩)",
 		EffortLevelTitle:        "세션 추론 강도",
-		EffortLevelDesc:         "이 프로필의 추론 깊이를 설정합니다. xhigh/max는 Opus 4.8 필요.",
-		EffortLevelDefault:      "기본값 (런타임 기본값, Opus 4.8은 xhigh)",
+		EffortLevelDesc:         "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는 에이전트 모델 정책에서 정해집니다.",
 		EffortLevelLow:          "low - 가장 빠름, 간략한 추론",
 		EffortLevelMedium:       "medium - 균형",
 		EffortLevelHigh:         "high - 심층 추론",
-		EffortLevelXHigh:        "xhigh - 확장 추론 (Opus 4.8+)",
-		EffortLevelMax:          "max - 최대 추론 (Opus 4.8+)",
+		EffortLevelXHigh:        "xhigh - 확장 추론 (세션 전용, 에이전트 매트릭스는 high 사용)",
+		EffortLevelMax:          "max - 최대 추론",
 		PermissionModeTitle:     "권한 모드",
 		PermissionModeDesc:      "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.",
 		PermAcceptEdits:         "자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인",
@@ -360,7 +353,6 @@ var profileSetupTexts = map[string]profileSetupText{
 		DevelopmentModeTDD:   "tdd - 테스트 주도 개발 (RED-GREEN-REFACTOR)",
 		GitConventionTitle:   "Git 커밋 컨벤션",
 		GitConventionDesc:    "git-convention.yaml에 기록되는 커밋 메시지 컨벤션. 비워두면 프로젝트 기본값을 유지합니다.",
-		ProjectDefaultOption: "(프로젝트 기본값)",
 
 		QualityCoverageTargetTitle: "테스트 커버리지 목표",
 		QualityCoverageTargetDesc:  "전체 테스트 커버리지 최소 비율(0-100)입니다. 비워두면 프로젝트 기본값을 유지합니다.",
@@ -400,9 +392,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyLow:          "Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)",
 		ModelOverrideTitle:      "デフォルトモデルオーバーライド",
 		ModelOverrideDesc:       "このプロファイルで起動する際のモデルをオーバーライドします。",
-		ModelDefault:            "デフォルト (オーバーライドなし)",
-		ModelOpus:               "opus (Opus 4.8、適応型思考)",
-		ModelOpus1M:             "opus[1m] (Opus 4.8 + 1Mコンテキスト)",
+		ModelOpus:               "opus (Opus 5、適応型思考)",
+		ModelOpus1M:             "opus[1m] (Opus 5 + 1Mコンテキスト)",
 		ModelSonnet:             "sonnet (Sonnet 5、バランス)",
 		ModelSonnet1M:           "sonnet[1m] (Sonnet 5 + 1Mコンテキスト)",
 		ModelFable:              "fable (Fable 5、深い推論)",
@@ -410,13 +401,12 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelHaiku:              "haiku (Haiku 4.5、最速)",
 		ModelOpusPlan:           "opusplan (Opus設計、Sonnetコーディング)",
 		EffortLevelTitle:        "セッション推論レベル",
-		EffortLevelDesc:         "このプロファイルの推論深度を設定します。xhigh/maxはOpus 4.8が必要。",
-		EffortLevelDefault:      "デフォルト (ランタイムデフォルト、Opus 4.8はxhigh)",
+		EffortLevelDesc:         "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5、Sonnet 5、Opus 4.7 以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決まります。",
 		EffortLevelLow:          "low - 最速、簡易推論",
 		EffortLevelMedium:       "medium - バランス",
 		EffortLevelHigh:         "high - 深い推論",
-		EffortLevelXHigh:        "xhigh - 拡張推論 (Opus 4.8+)",
-		EffortLevelMax:          "max - 最大推論 (Opus 4.8+)",
+		EffortLevelXHigh:        "xhigh - 拡張推論 (セッション専用、エージェントマトリクスは high を使用)",
+		EffortLevelMax:          "max - 最大推論",
 		PermissionModeTitle:     "権限モード",
 		PermissionModeDesc:      "Claudeがアクション実行前に権限を要求する方法を制御します。",
 		PermAcceptEdits:         "編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認",
@@ -470,7 +460,6 @@ var profileSetupTexts = map[string]profileSetupText{
 		DevelopmentModeTDD:   "tdd - テスト駆動開発 (RED-GREEN-REFACTOR)",
 		GitConventionTitle:   "Git コミット規約",
 		GitConventionDesc:    "git-convention.yaml に記録されるコミットメッセージ規約。空欄の場合はプロジェクトのデフォルトを維持します。",
-		ProjectDefaultOption: "(プロジェクトのデフォルト)",
 
 		QualityCoverageTargetTitle: "テストカバレッジ目標",
 		QualityCoverageTargetDesc:  "全体のテストカバレッジ最小割合（0-100）です。空欄の場合はプロジェクトのデフォルトを維持します。",
@@ -510,9 +499,8 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelPolicyLow:          "Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)",
 		ModelOverrideTitle:      "默认模型覆盖",
 		ModelOverrideDesc:       "使用此配置文件启动时覆盖模型。",
-		ModelDefault:            "默认 (不覆盖)",
-		ModelOpus:               "opus (Opus 4.8，自适应思考)",
-		ModelOpus1M:             "opus[1m] (Opus 4.8 + 1M 上下文)",
+		ModelOpus:               "opus (Opus 5，自适应思考)",
+		ModelOpus1M:             "opus[1m] (Opus 5 + 1M 上下文)",
 		ModelSonnet:             "sonnet (Sonnet 5，均衡)",
 		ModelSonnet1M:           "sonnet[1m] (Sonnet 5 + 1M 上下文)",
 		ModelFable:              "fable (Fable 5，深度推理)",
@@ -520,13 +508,12 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelHaiku:              "haiku (Haiku 4.5，最快)",
 		ModelOpusPlan:           "opusplan (Opus规划，Sonnet编码)",
 		EffortLevelTitle:        "会话推理强度",
-		EffortLevelDesc:         "设置此配置文件的推理深度。xhigh/max需要Opus 4.8。",
-		EffortLevelDefault:      "默认 (运行时默认值，Opus 4.8为xhigh)",
+		EffortLevelDesc:         "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。",
 		EffortLevelLow:          "low - 最快，简略推理",
 		EffortLevelMedium:       "medium - 均衡",
 		EffortLevelHigh:         "high - 深度推理",
-		EffortLevelXHigh:        "xhigh - 扩展推理 (Opus 4.8+)",
-		EffortLevelMax:          "max - 最大推理 (Opus 4.8+)",
+		EffortLevelXHigh:        "xhigh - 扩展推理 (仅会话；代理矩阵改用 high)",
+		EffortLevelMax:          "max - 最大推理",
 		PermissionModeTitle:     "权限模式",
 		PermissionModeDesc:      "控制Claude在执行操作前如何请求权限。",
 		PermAcceptEdits:         "自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令",
@@ -580,7 +567,6 @@ var profileSetupTexts = map[string]profileSetupText{
 		DevelopmentModeTDD:   "tdd - 测试驱动开发 (RED-GREEN-REFACTOR)",
 		GitConventionTitle:   "Git 提交规范",
 		GitConventionDesc:    "写入 git-convention.yaml 的提交信息规范。留空则保留项目默认值。",
-		ProjectDefaultOption: "(项目默认值)",
 
 		QualityCoverageTargetTitle: "测试覆盖率目标",
 		QualityCoverageTargetDesc:  "整体测试覆盖率最低百分比（0-100）。留空则保留项目默认值。",

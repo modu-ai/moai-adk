@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,10 +15,16 @@ import (
 // allowing tests to override the profile seams before serving.
 func newTestApp(t *testing.T) *app {
 	t.Helper()
-	return newApp(Config{
+	a := newApp(Config{
 		ProjectRoot: t.TempDir(),
 		ProfileName: "default",
 	})
+	// newApp wires recordLastProfile to profile.RecordLastUsedProfile, which
+	// writes the developer's real ~/.moai/claude-profiles/launch.yaml — the
+	// ledger a bare `moai cc` reads. Stub it out by default so no web test can
+	// reach $HOME; the tests that assert on it install their own recorder.
+	a.recordLastProfile = func(string) error { return nil }
+	return a
 }
 
 // --- Phase 3: embedded assets (AC-WC-005) ---
@@ -261,6 +268,79 @@ func TestSaveValidRoundTrip(t *testing.T) {
 	// bind statusline form values.
 	if !strings.Contains(rec.Body.String(), "Settings saved") {
 		t.Error("success banner not rendered")
+	}
+}
+
+// TestSaveRecordsLastUsedProfile verifies that saving a NAMED profile in the
+// web console also makes it the profile a bare `moai cc` launches.
+//
+// This closes the gap where the console wrote <name>/preferences.yaml but left
+// the launch ledger untouched, so the saved model/effort/permission values were
+// never read at launch. Deleting the recordLastProfile call in handleSave makes
+// the "named" subtest fail deterministically.
+func TestSaveRecordsLastUsedProfile(t *testing.T) {
+	cases := []struct {
+		name       string
+		profile    string
+		wantRecord string // "" means: must not be recorded at all
+	}{
+		{name: "named profile is recorded", profile: "mo.ai.kr", wantRecord: "mo.ai.kr"},
+		// "default" resolves to the base preferences.yaml and carries no
+		// last-used signal; RecordLastUsedProfile refuses it by contract, so the
+		// handler must not call it either.
+		{name: "default is not recorded", profile: "default", wantRecord: ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := newTestApp(t)
+			var recorded string
+			a.recordLastProfile = func(name string) error {
+				recorded = name
+				return nil
+			}
+			a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
+			a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
+
+			form := url.Values{
+				"__profile":       {tc.profile},
+				"permission_mode": {"acceptEdits"},
+			}
+			rec := servePost(t, a.routes(), "/save", form)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
+			}
+			if recorded != tc.wantRecord {
+				t.Errorf("recorded last-used profile = %q, want %q", recorded, tc.wantRecord)
+			}
+		})
+	}
+}
+
+// TestSaveSurvivesLedgerFailure verifies the ledger write is advisory: when
+// recording the last-used profile fails, the preferences write that already
+// succeeded stands and the user still sees a success response. Turning the
+// advisory call into a gate would make this fail.
+func TestSaveSurvivesLedgerFailure(t *testing.T) {
+	a := newTestApp(t)
+	var wrote bool
+	a.writePreferences = func(string, profile.ProfilePreferences) error {
+		wrote = true
+		return nil
+	}
+	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
+	a.recordLastProfile = func(string) error { return errors.New("ledger is read-only") }
+
+	form := url.Values{
+		"__profile":       {"mo.ai.kr"},
+		"permission_mode": {"acceptEdits"},
+	}
+	rec := servePost(t, a.routes(), "/save", form)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save status = %d, want 200 despite ledger failure; body:\n%s", rec.Code, rec.Body.String())
+	}
+	if !wrote {
+		t.Error("preferences were not written")
 	}
 }
 

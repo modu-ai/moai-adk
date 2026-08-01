@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -18,18 +17,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// statuslineThemeCanonical holds the canonical theme values offered by the
-// wizard — must stay in sync with the huh.NewOption block in the Display group.
-// The statuslineModeCanonical + statuslinePresetCanonical lists and their
-// helpers were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode
-// was inert; named presets were redundant with the segment map).
-// KEEP IN SYNC with huh.NewOption block in the Display group.
-var statuslineThemeCanonical = []string{defaultStatuslineTheme, "catppuccin-latte"}
-
 // Wizard default constants.
 const (
-	defaultStatuslineTheme = "catppuccin-mocha"
-	defaultPermissionMode  = "acceptEdits"
+	defaultPermissionMode = "acceptEdits"
 )
 
 // acceptEditsConfirmationLine is the deterministic confirmation emitted by the
@@ -45,37 +35,6 @@ const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project defaul
 // so the user sees why nothing was persisted to settings.local.json.
 func emitAcceptEditsConfirmation(out io.Writer) {
 	_, _ = fmt.Fprintln(out, acceptEditsConfirmationLine)
-}
-
-// isCanonicalStatuslineTheme reports whether s is a canonical value in the wizard option slice.
-func isCanonicalStatuslineTheme(s string) bool {
-	for _, v := range statuslineThemeCanonical {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
-// normalizeStatuslineTheme returns a theme name compatible with wizard options.
-// Legacy values such as "default" are converted to "catppuccin-mocha" so that the Select
-// widget highlights the correct item.
-func normalizeStatuslineTheme(theme string) string {
-	if isCanonicalStatuslineTheme(theme) {
-		return theme
-	}
-	return defaultStatuslineTheme
-}
-
-// statuslineAllSegments lists the 16 canonical segment keys that the MultiSelect
-// widget offers. Order MUST match statusline.yaml segment definitions and
-// Segment* fields in profileSetupText. The segment step is now unconditional
-// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 retired the preset==custom gate).
-var statuslineAllSegments = []string{
-	"cache_hit", "claude_version", "context", "directory",
-	"effort_thinking", "git_branch", "git_status", "moai_version",
-	"model", "output_style", "pr", "session_time",
-	"task", "usage_5h", "usage_7d", "worktree",
 }
 
 // @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
@@ -146,6 +105,36 @@ func normalizeModelLegacy1M(m string) string {
 	return alias + "[1m]"
 }
 
+// schemaSelectOptions builds a huh option list for a schema select field from
+// settings.FieldOptionDefs — the SHARED option-list SSOT that internal/web already
+// reads — so the TUI wizard and the web console cannot drift apart. Each option's
+// wire value is the schema's canonical value (for "model" that is the short alias
+// form from template.ModelAliasPickerValues, matching what normalizeModel returns
+// and what the web validator accepts); the human label is resolved through
+// schemaOptionBridge, falling back to the wire value when a field has no localized
+// option labels.
+//
+// withEmpty controls whether the field's canonical empty option
+// (settings.EmptyLabelFor) is prepended. It is per-call-site rather than derived
+// from the schema because permission_mode declares an empty label for the web
+// console but the wizard has never offered one (it defaults to acceptEdits and
+// normalizes that back to "" on save).
+//
+// @MX:NOTE: [AUTO] Single derivation site for every wizard select backed by the shared schema.
+func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []huh.Option[string] {
+	defs := settings.FieldOptionDefs(field)
+	opts := make([]huh.Option[string], 0, len(defs)+1)
+	if withEmpty {
+		if empty := settings.EmptyLabelFor(field); empty != "" {
+			opts = append(opts, huh.NewOption(empty, ""))
+		}
+	}
+	for _, d := range defs {
+		opts = append(opts, huh.NewOption(optionLabelFor(t, d), d.Value))
+	}
+	return opts
+}
+
 // readCurrentProjectConfig reads the current development_mode + git_convention
 // values from the project config (quality.yaml / git-convention.yaml) via the
 // config manager. SPEC-WEB-CONSOLE-003 — these are project-config values, NOT
@@ -203,78 +192,12 @@ func persistProjectConfig(projectRoot, devMode, convention string) error {
 	return nil
 }
 
-// nestedTUIInputs는 TUI 위저드가 7개 중첩 프로젝트-설정 필드에 대해 수집한
-// 원시(raw) 문자열/불리언 입력을 운반한다. int/float 필드는 huh.NewInput 로 받은
-// 문자열 그대로 운반되며 빈 문자열은 "미제출 = preserve"(REQ-WC10-012)를 의미한다.
-// 불리언 필드는 huh.NewConfirm 로 받은 값이며, 항상 제출되므로(*Submitted 플래그)
-// preserve 가 아닌 명시적 값으로 기록된다.
-type nestedTUIInputs struct {
-	CoverageTarget string // 빈 문자열 = preserve
-	MinCoverage    string // 빈 문자열 = preserve
-	Confidence     string // 빈 문자열 = preserve
-	SampleSize     string // 빈 문자열 = preserve
-
-	EnforceQuality    bool
-	EnforceQualitySet bool // confirm 위젯이 표시되었으면 true
-	AutoDetectionOn   bool
-	AutoDetectionSet  bool
-	EnforceOnPush     bool
-	EnforceOnPushSet  bool
-}
-
-// toSettingsNestedForm는 TUI raw 입력을 공유 영속화 seam 의 settings.NestedForm 으로
-// 변환한다. 빈 숫자 문자열은 *Set 을 끄고(empty=preserve), 파싱 실패도 *Set 을 끈다
-// (TUI 는 입력 단계에서 huh validation 으로 형식을 강제하므로 여기서는 보수적으로
-// preserve 처리). 불리언은 *Set 플래그가 켜진 경우에만 기록된다.
-func (in nestedTUIInputs) toSettingsNestedForm() settings.NestedForm {
-	var f settings.NestedForm
-	if v := strings.TrimSpace(in.CoverageTarget); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			f.CoverageTarget, f.CoverageTargetSet = n, true
-		}
-	}
-	if v := strings.TrimSpace(in.MinCoverage); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			f.MinCoverage, f.MinCoverageSet = n, true
-		}
-	}
-	if v := strings.TrimSpace(in.Confidence); v != "" {
-		if x, err := strconv.ParseFloat(v, 64); err == nil {
-			f.Confidence, f.ConfidenceSet = x, true
-		}
-	}
-	if v := strings.TrimSpace(in.SampleSize); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			f.SampleSize, f.SampleSizeSet = n, true
-		}
-	}
-	if in.EnforceQualitySet {
-		f.EnforceQuality, f.EnforceQualitySet = in.EnforceQuality, true
-	}
-	if in.AutoDetectionSet {
-		f.AutoEnabled, f.AutoEnabledSet = in.AutoDetectionOn, true
-	}
-	if in.EnforceOnPushSet {
-		f.EnforceOnPush, f.EnforceOnPushSet = in.EnforceOnPush, true
-	}
-	return f
-}
-
-// readCurrentNestedConfig는 TUI 위젯 초기화를 위해 7개 중첩 필드의 디스크 현재값을
-// 읽는다. 공유 read seam(settings.ReadProjectNestedConfig)에 위임하여 웹/TUI 가
-// 동일 경로를 쓴다(AP-2). config 디렉터리 부재 시 LoadRaw 기본값을 반환한다.
-func readCurrentNestedConfig(projectRoot string) (settings.NestedCurrent, error) {
-	return settings.ReadProjectNestedConfig(projectRoot)
-}
-
-// persistProjectNestedConfig는 TUI 의 7개 중첩 필드 저장 경로다. 공유 write seam
-// (settings.WriteProjectNestedConfig)에 위임하여 웹 콘솔과 동일한 nested write 경로를
-// 구동한다(REQ-WC10-011, AP-2 — 병렬 YAML writer 금지). 빈/미제출 필드는
-// empty=preserve(REQ-WC10-012). 이 함수는 form.Run() 밖에서 단위 테스트 가능하도록
-// 분리된 seam 이다(persistProjectConfig 와 동일 패턴).
-func persistProjectNestedConfig(projectRoot string, in nestedTUIInputs) error {
-	return settings.WriteProjectNestedConfig(projectRoot, in.toSettingsNestedForm())
-}
+// The 7 nested project-config fields (quality coverage targets + git-convention
+// auto-detection) are no longer collected by this wizard, so the TUI-side input
+// struct and its read/write wrappers were removed. The underlying shared seam
+// (settings.ReadProjectNestedConfig / settings.WriteProjectNestedConfig) is
+// untouched — the web console still drives it, and internal/settings owns its
+// round-trip and empty=preserve tests.
 
 var profileSetupCmd = &cobra.Command{
 	Use:   "setup [name]",
@@ -339,64 +262,17 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		permissionMode = defaultPermissionMode
 	}
 
-	// W-4: preserve raw theme value for migration banner output. The mode /
-	// preset migration banners were removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
-	// (runtime mode was inert; presets were retired alongside it).
-	rawStatuslineTheme := existingPrefs.StatuslineTheme
-
-	statuslineTheme := normalizeStatuslineTheme(existingPrefs.StatuslineTheme)
-
-	// Extract enabled segment keys for MultiSelect default selection. The segment
-	// step is now unconditional (preset==custom gate removed). When
-	// prefs.StatuslineSegments is nil (new user), default to all 16 segments enabled
-	// (matching .moai/config/sections/statusline.yaml 16-segment baseline; the same
-	// 16-key set that profile.defaultStatuslineSegments() in internal/profile/sync.go
-	// seeds as the yaml fallback when statusline.yaml is absent).
-	statuslineSegmentsSelection := make([]string, 0, len(statuslineAllSegments))
-	if existingPrefs.StatuslineSegments != nil {
-		for _, key := range statuslineAllSegments {
-			if existingPrefs.StatuslineSegments[key] {
-				statuslineSegmentsSelection = append(statuslineSegmentsSelection, key)
-			}
-		}
-	} else {
-		statuslineSegmentsSelection = append(statuslineSegmentsSelection, statuslineAllSegments...)
-	}
-
-	// SPEC-WEB-CONSOLE-003: initialize the two project-config selects from the
-	// CURRENT project config (quality.yaml / git-convention.yaml) — NOT from
-	// existingPrefs, since development_mode/convention are project-config values,
-	// not ProfilePreferences fields. Outside a MoAI project (no .moai dir) the
-	// selects default to empty "(project default)" and the save is a no-op.
-	var developmentMode, gitConvention string
-	// SPEC-WEB-CONSOLE-010 (M3): the 7 nested project-config fields the TUI gained
-	// for parity with the web console. Int/float widgets bind to string vars
-	// (empty = preserve); bool widgets bind to bool vars (always submitted via the
-	// confirm widget → *Set true). Initialized from the shared nested read seam.
-	var (
-		nestedCoverageTarget string
-		nestedMinCoverage    string
-		nestedConfidence     string
-		nestedSampleSize     string
-		nestedEnforceQuality bool
-		nestedAutoDetection  bool
-		nestedEnforceOnPush  bool
-	)
-	insideMoaiProject := false
+	// SPEC-WEB-CONSOLE-003: initialize the development_mode select from the CURRENT
+	// project config (quality.yaml) — NOT from existingPrefs, since development_mode
+	// is a project-config value, not a ProfilePreferences field. Outside a MoAI
+	// project (no .moai dir) the select defaults to empty "(project default)" and
+	// the save is a no-op. The sibling git_convention select was removed from the
+	// wizard, so its persisted value is read by nobody here and left untouched on save.
+	var developmentMode string
 	if cwd, err := os.Getwd(); err == nil {
 		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
-			insideMoaiProject = true
-			if dm, gc, readErr := readCurrentProjectConfig(cwd); readErr == nil {
-				developmentMode, gitConvention = dm, gc
-			}
-			if cur, readErr := readCurrentNestedConfig(cwd); readErr == nil {
-				nestedCoverageTarget = cur.CoverageTarget
-				nestedMinCoverage = cur.MinCoverage
-				nestedConfidence = cur.ConfidenceThreshold
-				nestedSampleSize = cur.SampleSize
-				nestedEnforceQuality = cur.EnforceQuality
-				nestedAutoDetection = cur.AutoDetectionEnabled
-				nestedEnforceOnPush = cur.EnforceOnPush
+			if dm, _, readErr := readCurrentProjectConfig(cwd); readErr == nil {
+				developmentMode = dm
 			}
 		}
 	}
@@ -432,11 +308,9 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.ConfiguringProfile+"\n\n", profileName)
 
-	// W-4: statusline theme migration banner — print before displaying the form.
-	// The mode migration banner was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
-	if rawStatuslineTheme != "" && rawStatuslineTheme != statuslineTheme {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.MigrationNoticeStatuslineTheme+"\n", rawStatuslineTheme, statuslineTheme)
-	}
+	// The statusline-theme migration banner was removed alongside the theme Select:
+	// with the theme fixed to fixedStatuslineTheme there is no stored value being
+	// normalized onto a widget, so there is nothing to notify the user about.
 
 	form := huh.NewForm(
 		// Section 1: User information
@@ -467,28 +341,24 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		).Title(t.LanguagesTitle),
 
 		// Section 3: Model settings (model override + policy + permission mode).
-		// SPEC-WEB-CONSOLE-010 (M3/M5): the empty-option labels are single-sourced
-		// from the settings schema (settings.EmptyLabelFor) so both surfaces render
-		// the IDENTICAL canonical label per field, resolving the 4 documented drifts
-		// (model / effort / language / git_convention). The verbose option labels
-		// (t.ModelOpus, ...) stay localized; only the empty-option label is unified.
+		// The option LISTS (values + order) and the empty-option labels are both
+		// single-sourced from the settings schema via schemaSelectOptions, so the
+		// wizard and the web console render the same canonical value set. Before
+		// this, the wizard re-declared the model list inline and emitted canonical
+		// model ids (claude-opus-5), which the web validator rejects and which
+		// normalizeModel never produces — the two surfaces write the same
+		// preferences.yaml, so the value shape has to match. The verbose option
+		// labels stay localized (resolved through schemaOptionBridge).
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
 				Description(t.ModelOverrideDesc).
-				Options(
-					huh.NewOption(settings.EmptyLabelFor("model"), ""),
-					huh.NewOption(t.ModelOpus, template.ModelAliasCanonicalID("opus")),
-					huh.NewOption(t.ModelOpus1M, template.ModelAliasCanonicalID("opus")+"[1m]"),
-					huh.NewOption(t.ModelSonnet, template.ModelAliasCanonicalID("sonnet")),
-					huh.NewOption(t.ModelSonnet1M, template.ModelAliasCanonicalID("sonnet")+"[1m]"),
-					huh.NewOption(t.ModelHaiku, template.ModelAliasCanonicalID("haiku")),
-					huh.NewOption(t.ModelOpusPlan, template.ModelAliasCanonicalID("opusplan")),
-				).
+				Options(schemaSelectOptions(t, "model", true)...).
 				Value(&model),
-			// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy select — parity with
-			// the web console. Options mirror template.ValidModelPolicies() plus an
-			// empty option whose label is single-sourced from the schema.
+			// model_policy stays a CLI-only field: the web console dropped it (it
+			// duplicates the agentfm performance tier), so it has no schema entry
+			// and its options are declared here against template.ValidModelPolicies().
+			// The empty-option label is still single-sourced from the schema.
 			huh.NewSelect[string]().
 				Title(t.ModelPolicyTitle).
 				Description(t.ModelPolicyDesc).
@@ -502,144 +372,34 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 			huh.NewSelect[string]().
 				Title(t.EffortLevelTitle).
 				Description(t.EffortLevelDesc).
-				Options(
-					huh.NewOption(settings.EmptyLabelFor("effort_level"), ""),
-					huh.NewOption(t.EffortLevelLow, "low"),
-					huh.NewOption(t.EffortLevelMedium, "medium"),
-					huh.NewOption(t.EffortLevelHigh, "high"),
-					huh.NewOption(t.EffortLevelXHigh, "xhigh"),
-					huh.NewOption(t.EffortLevelMax, "max"),
-				).
+				Options(schemaSelectOptions(t, "effort_level", true)...).
 				Value(&effortLevel),
-			// S-4: option order — acceptEdits, auto, default, plan, bypass, dontAsk
+			// S-4: option order — acceptEdits, auto, default, plan, bypass, dontAsk.
+			// The schema's permissionModeOptions() mirrors that exact order, and the
+			// wizard offers no empty option here (acceptEdits is the default and is
+			// normalized back to "" on save).
 			huh.NewSelect[string]().
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
-				Options(
-					huh.NewOption(t.PermAcceptEdits, "acceptEdits"),
-					huh.NewOption(t.PermAuto, "auto"),
-					huh.NewOption(t.PermDefault, "default"),
-					huh.NewOption(t.PermPlan, "plan"),
-					huh.NewOption(t.PermBypass, "bypassPermissions"),
-					huh.NewOption(t.PermDontAsk, "dontAsk"),
-				).
+				Options(schemaSelectOptions(t, "permission_mode", false)...).
 				Value(&permissionMode),
 		).Title(t.ModelSettingsTitle),
 
-		// Section 4: Display — theme only. The mode + preset Selects were removed
-		// by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (runtime mode was inert; named
-		// presets were redundant with the segment map). Segments are configured in
-		// the next unconditional section.
-		// KEEP IN SYNC with statuslineThemeCanonical at top of file.
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.StatuslineThemeTitle).
-				Description(t.StatuslineThemeDesc).
-				Options(
-					huh.NewOption(t.ThemeMoaiDark, "catppuccin-mocha"),
-					huh.NewOption(t.ThemeMoaiLight, "catppuccin-latte"),
-				).
-				Value(&statuslineTheme),
-		).Title(t.DisplayTitle),
-
-		// Section 5: Segments — now unconditional (preset==custom gate removed by
-		// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). 16 segments KEEP IN SYNC with
-		// statuslineAllSegments slice at top of file.
-		huh.NewGroup(
-			huh.NewMultiSelect[string]().
-				Title(t.StatuslineSegmentsTitle).
-				Description(t.StatuslineSegmentsDesc).
-				Options(
-					huh.NewOption(t.SegmentCacheHit, "cache_hit"),
-					huh.NewOption(t.SegmentClaudeVersion, "claude_version"),
-					huh.NewOption(t.SegmentContext, "context"),
-					huh.NewOption(t.SegmentDirectory, "directory"),
-					huh.NewOption(t.SegmentEffortThinking, "effort_thinking"),
-					huh.NewOption(t.SegmentGitBranch, "git_branch"),
-					huh.NewOption(t.SegmentGitStatus, "git_status"),
-					huh.NewOption(t.SegmentMoaiVersion, "moai_version"),
-					huh.NewOption(t.SegmentModel, "model"),
-					huh.NewOption(t.SegmentOutputStyle, "output_style"),
-					huh.NewOption(t.SegmentPR, "pr"),
-					huh.NewOption(t.SegmentSessionTime, "session_time"),
-					huh.NewOption(t.SegmentTask, "task"),
-					huh.NewOption(t.SegmentUsage5h, "usage_5h"),
-					huh.NewOption(t.SegmentUsage7d, "usage_7d"),
-					huh.NewOption(t.SegmentWorktree, "worktree"),
-				).
-				Value(&statuslineSegmentsSelection),
-		).Title(t.StatuslineSegmentsTitle),
-
-		// Section 6: Project config — SPEC-WEB-CONSOLE-003 (2 scalars) +
-		// SPEC-WEB-CONSOLE-010 M3 (7 nested fields). Parity with the web console
-		// "Project" fieldset. Persisted to project config (quality.yaml /
-		// git-convention.yaml) via the SHARED nested write seam, NOT the profile store.
-		// Empty-option labels for the two selects are single-sourced from the schema
-		// (REQ-WC10-013). The 7 nested fields use NewInput (int/float, empty=preserve)
-		// and NewConfirm (bool, always submitted).
+		// Section 4: Project config — development_mode only. Persisted to the project
+		// config (quality.yaml) via the config manager, NOT the profile store. The
+		// empty-option label is single-sourced from the schema (REQ-WC10-013).
+		//
+		// Removed from the wizard (settings now use their stored/default value and are
+		// never written by a wizard run): the statusline theme Select (fixed to
+		// fixedStatuslineTheme), the 16-segment MultiSelect, the git_convention Select,
+		// the 3 nested quality fields, and the 4 nested git auto-detection fields.
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(t.DevelopmentModeTitle).
 				Description(t.DevelopmentModeDesc).
-				Options(
-					huh.NewOption(settings.EmptyLabelFor("development_mode"), ""),
-					huh.NewOption(t.DevelopmentModeDDD, "ddd"),
-					huh.NewOption(t.DevelopmentModeTDD, "tdd"),
-				).
+				Options(schemaSelectOptions(t, "development_mode", true)...).
 				Value(&developmentMode),
-			huh.NewSelect[string]().
-				Title(t.GitConventionTitle).
-				Description(t.GitConventionDesc).
-				Options(
-					huh.NewOption(settings.EmptyLabelFor("git_convention"), ""),
-					huh.NewOption("auto", "auto"),
-					huh.NewOption("conventional-commits", "conventional-commits"),
-					huh.NewOption("angular", "angular"),
-					huh.NewOption("karma", "karma"),
-				).
-				Value(&gitConvention),
 		).Title(t.DevelopmentModeTitle),
-
-		// Section 7: nested quality fields (SPEC-WEB-CONSOLE-010 M3). NewInput for the
-		// two numeric fields (empty = preserve); NewConfirm for the bool gate.
-		huh.NewGroup(
-			huh.NewInput().
-				Title(t.QualityCoverageTargetTitle).
-				Description(t.QualityCoverageTargetDesc).
-				Validate(validateOptionalInt0to100).
-				Value(&nestedCoverageTarget),
-			huh.NewInput().
-				Title(t.QualityMinCoverageTitle).
-				Description(t.QualityMinCoverageDesc).
-				Validate(validateOptionalInt0to100).
-				Value(&nestedMinCoverage),
-			huh.NewConfirm().
-				Title(t.QualityEnforceQualityTitle).
-				Description(t.QualityEnforceQualityDesc).
-				Value(&nestedEnforceQuality),
-		).Title(t.QualityCoverageTargetTitle),
-
-		// Section 8: nested git-convention auto-detection fields (SPEC-WEB-CONSOLE-010 M3).
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title(t.GitAutoEnabledTitle).
-				Description(t.GitAutoEnabledDesc).
-				Value(&nestedAutoDetection),
-			huh.NewInput().
-				Title(t.GitConfidenceTitle).
-				Description(t.GitConfidenceDesc).
-				Validate(validateOptionalFloat0to1).
-				Value(&nestedConfidence),
-			huh.NewInput().
-				Title(t.GitSampleSizeTitle).
-				Description(t.GitSampleSizeDesc).
-				Validate(validateOptionalNonNegativeInt).
-				Value(&nestedSampleSize),
-			huh.NewConfirm().
-				Title(t.GitEnforceOnPushTitle).
-				Description(t.GitEnforceOnPushDesc).
-				Value(&nestedEnforceOnPush),
-		).Title(t.GitAutoEnabledTitle),
 	).WithTheme(moaiHuhTheme())
 
 	if err := form.Run(); err != nil {
@@ -659,18 +419,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		emitAcceptEditsConfirmation(cmd.OutOrStdout())
 	}
 
-	// Build the segments map unconditionally (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001
-	// retired the preset==custom gate). The wizard always emits a full 16-key map.
-	selected := make(map[string]bool, len(statuslineSegmentsSelection))
-	for _, key := range statuslineSegmentsSelection {
-		selected[key] = true
-	}
-	statuslineSegmentsMap := make(map[string]bool, len(statuslineAllSegments))
-	for _, key := range statuslineAllSegments {
-		statuslineSegmentsMap[key] = selected[key]
-	}
-
 	// Save preferences.
+	//
+	// StatuslineSegments carries the profile's STORED map through untouched. The
+	// segment MultiSelect is gone, so the wizard has no opinion about segments — but
+	// WritePreferences marshals the whole struct over the file, so passing nil here
+	// would DELETE statusline_segments from preferences.yaml. Carrying the existing
+	// value through is what makes "removed from the wizard" mean "left alone" rather
+	// than "blanked". A profile that never stored segments keeps its nil.
 	prefs := profile.ProfilePreferences{
 		UserName:           userName,
 		ConversationLang:   convLang,
@@ -681,8 +437,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 		ModelPolicy:        modelPolicy,
 		EffortLevel:        effortLevel,
 		PermissionMode:     permissionMode,
-		StatuslineSegments: statuslineSegmentsMap,
-		StatuslineTheme:    statuslineTheme,
+		StatuslineSegments: existingPrefs.StatuslineSegments,
+		// StatuslineTheme is deliberately left at its zero value. The wizard no
+		// longer manages the statusline theme at all: the terminal's apparent
+		// statusline colour turned out to come from the Claude Code theme, not
+		// from this setting, so the knob was removed rather than fixed to a value.
+		// Empty means `omitempty` drops statusline_theme from preferences.yaml and
+		// syncStatusline leaves .moai/config/sections/statusline.yaml untouched
+		// (internal/profile/sync.go) — removed, not overwritten.
 	}
 
 	if err := profile.WritePreferences(profileName, prefs); err != nil {
@@ -696,37 +458,28 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 	if cwd, err := os.Getwd(); err == nil {
 		moaiDir := filepath.Join(cwd, ".moai")
 		if info, err := os.Stat(moaiDir); err == nil && info.IsDir() {
-			if err := profile.SyncToProjectConfig(cwd, prefs); err != nil {
+			// The project sync gets a nil segment map even when the profile store
+			// carries one: syncStatusline treats nil as "preserve what is on disk"
+			// (internal/profile/sync.go), and with the MultiSelect removed, editing
+			// .moai/config/sections/statusline.yaml by hand is the ONLY way left to
+			// change segments. Pushing the profile's map would silently clobber that
+			// edit on every wizard run. The theme needs no special handling here: it
+			// is already empty in prefs, which syncStatusline also treats as preserve.
+			syncPrefs := prefs
+			syncPrefs.StatuslineSegments = nil
+			if err := profile.SyncToProjectConfig(cwd, syncPrefs); err != nil {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to sync profile to project config: %v\n", err)
 			} else {
 				syncedProjectRoot = cwd
 			}
-			// SPEC-WEB-CONSOLE-003 REQ-WC3-006: persist the two project-config
-			// selects (development_mode + git_convention) to quality.yaml /
-			// git-convention.yaml via the config manager — the SAME write path as
-			// the web console, NOT into ProfilePreferences. Empty values keep the
-			// existing project-config value (EC-1).
-			if err := persistProjectConfig(cwd, developmentMode, gitConvention); err != nil {
+			// SPEC-WEB-CONSOLE-003 REQ-WC3-006: persist development_mode to
+			// quality.yaml via the config manager — the SAME write path as the web
+			// console, NOT into ProfilePreferences. The empty convention argument is
+			// deliberate: the git_convention Select was removed from the wizard, and
+			// persistProjectConfig writes only non-empty values (EC-1), so the stored
+			// git-convention.yaml value is preserved untouched.
+			if err := persistProjectConfig(cwd, developmentMode, ""); err != nil {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to persist project config: %v\n", err)
-			}
-			// SPEC-WEB-CONSOLE-010 M3: persist the 7 nested project-config fields via
-			// the SHARED nested write seam (settings.WriteProjectNestedConfig). The
-			// numeric inputs carry empty=preserve; the bool confirms were displayed in
-			// this run, so their *Set flags are true (explicit value, not preserve).
-			nestedInputs := nestedTUIInputs{
-				CoverageTarget:    nestedCoverageTarget,
-				MinCoverage:       nestedMinCoverage,
-				Confidence:        nestedConfidence,
-				SampleSize:        nestedSampleSize,
-				EnforceQuality:    nestedEnforceQuality,
-				EnforceQualitySet: insideMoaiProject,
-				AutoDetectionOn:   nestedAutoDetection,
-				AutoDetectionSet:  insideMoaiProject,
-				EnforceOnPush:     nestedEnforceOnPush,
-				EnforceOnPushSet:  insideMoaiProject,
-			}
-			if err := persistProjectNestedConfig(cwd, nestedInputs); err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to persist project nested config: %v\n", err)
 			}
 		}
 	}
@@ -744,12 +497,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 // When sync has been performed, the project-level YAML paths holding the values are also printed.
 func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.ProfilePreferences, syncedProjectRoot string) {
 	// S-7: combine fields into a single Fprintf call. The SummaryStatuslineMode
-	// row was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (mode retired).
+	// row was removed by SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 (mode retired);
+	// the statusline THEME row is gone too, because the wizard no longer collects
+	// or writes a theme. Reporting a value the wizard did not apply would be
+	// worse than reporting nothing.
 	_, _ = fmt.Fprintf(out,
 		"%s\n"+
 			"  %s: %s\n"+
 			"  %s: %s / %s / %s / %s\n"+
-			"  %s: %s\n"+
 			"  %s: %s\n"+
 			"  %s: %s\n"+
 			"  %s: %s\n",
@@ -763,7 +518,6 @@ func printProfileSummary(out io.Writer, t *profileSetupText, prefs *profile.Prof
 		t.SummaryModel, valueOrDefault(prefs.Model, t.SummaryDefault),
 		t.SummaryEffort, valueOrDefault(prefs.EffortLevel, t.SummaryDefault),
 		t.SummaryPermission, valueOrDefault(prefs.PermissionMode, defaultPermissionMode),
-		t.SummaryStatuslineTheme, prefs.StatuslineTheme,
 	)
 
 	if syncedProjectRoot != "" {
@@ -794,53 +548,6 @@ func valueOrDefault(v, fallback string) string {
 	return v
 }
 
-// validateOptionalInt0to100는 빈 문자열(=preserve)을 허용하고, 비어있지 않으면
-// 0-100 정수만 통과시킨다(test_coverage_target / min_coverage_per_commit 위젯).
-func validateOptionalInt0to100(s string) error {
-	v := strings.TrimSpace(s)
-	if v == "" {
-		return nil // 빈 값 = preserve (REQ-WC10-012)
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fmt.Errorf("must be an integer between 0 and 100")
-	}
-	if n < 0 || n > 100 {
-		return fmt.Errorf("must be between 0 and 100")
-	}
-	return nil
-}
-
-// validateOptionalNonNegativeInt는 빈 문자열을 허용하고, 비어있지 않으면 0 이상의
-// 정수만 통과시킨다(auto_detection.sample_size 위젯).
-func validateOptionalNonNegativeInt(s string) error {
-	v := strings.TrimSpace(s)
-	if v == "" {
-		return nil
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fmt.Errorf("must be a non-negative integer")
-	}
-	if n < 0 {
-		return fmt.Errorf("must be a non-negative integer")
-	}
-	return nil
-}
-
-// validateOptionalFloat0to1는 빈 문자열을 허용하고, 비어있지 않으면 [0.0, 1.0]
-// 실수만 통과시킨다(auto_detection.confidence_threshold 위젯).
-func validateOptionalFloat0to1(s string) error {
-	v := strings.TrimSpace(s)
-	if v == "" {
-		return nil
-	}
-	x, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return fmt.Errorf("must be a number between 0.0 and 1.0")
-	}
-	if x < 0 || x > 1 {
-		return fmt.Errorf("must be between 0.0 and 1.0")
-	}
-	return nil
-}
+// The validateOptional* helpers were removed with the nested quality /
+// git-auto-detection Inputs they validated. The equivalent validation for the web
+// console lives in internal/settings + internal/web and is untouched.
