@@ -40,6 +40,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
+// osStatFn is the injectable stat seam used by mergeBackPreserveInventory to
+// interrogate backup sources (REQ-UGE-001). The default is os.Stat; tests
+// reassign it to drive the stat failure branch without relying on POSIX
+// permission bits, which Windows does not model and which root bypasses.
+//
+// @MX:WARN: [AUTO] package-level test seam — reassigning tests MUST NOT call
+// t.Parallel().
+// @MX:REASON: This is the package's second package-level seam (after
+// userHomeDirFn in glm_tools.go). Concurrent reassignment from a parallel test
+// is an unsynchronised write to a shared variable, i.e. a data race
+// (NFR-UGE-001).
+var osStatFn = os.Stat
+
 // PreserveInventory enumerates project-root-relative paths that MUST be
 // preserved across the clean-reinstall cycle. Paths use forward-slash
 // separators (NFR-UNP-003 normalization) for cross-platform stability.
@@ -415,7 +428,10 @@ func mergeBackPreserveInventory(projectRoot string, inv PreserveInventory, backu
 		// Skip files missing from the backup (e.g., were not actually
 		// present at snapshot time but listed in inv.Files due to a race —
 		// shouldn't happen but be defensive).
-		if _, statErr := os.Stat(srcPath); statErr != nil {
+		//
+		// Routed through the osStatFn seam (REQ-UGE-001) so the failure branch
+		// below is drivable on every platform, including Windows and as root.
+		if _, statErr := osStatFn(srcPath); statErr != nil {
 			if errors.Is(statErr, os.ErrNotExist) {
 				continue
 			}

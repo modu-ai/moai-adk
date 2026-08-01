@@ -204,7 +204,101 @@ Must-pass 7/7: MP-1 PASS(REQ-UGE-001~013, 13개 연속·중복 0) · MP-2 PASS(1
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### §C 선행 조건 재확인 (run-phase 진입 시점)
+
+plan.md §C1의 절차를 진입 시점에 **다시 실행**했다(문서의 문장이 관측을 대체하지 않는다).
+
+```
+$ git fetch origin main && git merge-base origin/main HEAD
+83610e03eae2f1c9cfb2dc835f995c12de09dfcf
+$ git show "$BASE":internal/cli/update_preserve_inventory.go | grep -c 'restored %d/%d'
+3
+$ test -f … && echo ok  (3종)
+safety-ok / partial-ok / radius-ok
+$ git branch --show-current ; git rev-parse --short HEAD
+feat/SPEC-UPDATE-GUARD-EFFICACY-001 ; 0b31ba8b7
+```
+
+### §C2 baseline 재측정 (plan-phase 수치를 옮겨 적지 않고 이 트리에서 실행)
+
+| 항목 | 재측정값 | §B 기록 | 판정 |
+|---|---|---|---|
+| `userHomeDir()` 비이음매 호출부 | `update_clean_install.go:1` / `update_template_sync.go:2` | 동일 | 일치 |
+| stat 이음매 존재 | 매치 0건 | 동일 | 일치 |
+| `snapshotDir` 사용처 | `update_safety_test.go` 1개 | 동일 | 일치 |
+| `deploy.go` 글로브 | `filepath.Join(defs.ClaudeDir, defs.SkillsSubdir, "moai*")` | 동일 | 일치 |
+| 백업 회전 슬라이스 | `backups[:len(backups)-keepCount]` (`backup.go:257`) | 동일 | 일치 |
+| `glm.go` 범위 밖 호출부 | `1` | 동일 | 일치 |
+| 가드 스코프 커버리지 | `CleanMoaiManagedPaths 66.7%` / `MigrateLegacyMemoryDir 26.9%` / `runCleanReinstall 0.0%` / `BackupMoaiConfig 0.0%` | 동일 | 일치 |
+| `mergeBackPreserveInventory` 커버리지 (merge-base 트리에서 실측) | `94.1%` | `94.1%` | 일치 |
+
+**측정 중 발견한 함정 (기록)**: 최초 재측정 시도에서 `84.2%`가 관측되었다. 그 값은 **편집 도중의 트리**를 잰 것이다 — 이음매 선언은 들어갔으나 프로덕션 라우팅은 아직 안 된 RED 상태여서 stat 분기가 도달 불가였다. 배경 작업이 편집과 경쟁한 결과이며 baseline 이동이 아니다. merge-base 트리를 별도 워크트리로 꺼내 재측정해 `94.1%`를 확인했고, §B 수치가 옳다.
+
+### M1 — stat 이음매 (REQ-UGE-001, 002, 003)
+
+**Claim**: `mergeBackPreserveInventory`의 stat 실패 분기가 주입 가능한 이음매로 구동되며, 어떤 플랫폼에서도 `t.Skip`하지 않는다.
+
+**RED 관측 (test-first 증거)** — 이음매를 *선언만* 하고 프로덕션 라우팅 전에 테스트를 실행했다. 컴파일 오류가 아니라 **실제 동작 공백**으로 실패한다.
+
+```
+=== RUN   TestMergeBackPreserveInventory_PartialRestore/stat_failure_injected_stat_error
+    update_preserve_partial_test.go:97: mergeBackPreserveInventory: expected error, got nil
+--- FAIL: TestMergeBackPreserveInventory_PartialRestore (0.03s)
+    --- FAIL: TestMergeBackPreserveInventory_PartialRestore/stat_failure_injected_stat_error (0.01s)
+    --- PASS: TestMergeBackPreserveInventory_PartialRestore/mkdirall_failure_parent_is_regular_file (0.01s)
+    --- PASS: TestMergeBackPreserveInventory_PartialRestore/reports_restored_count (0.02s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.267s
+```
+
+**GREEN 관측** — `os.Stat(srcPath)` → `osStatFn(srcPath)` 라우팅 후.
+
+```
+--- PASS: TestMergeBackPreserveInventory_PartialRestore (0.01s)
+    --- PASS: TestMergeBackPreserveInventory_PartialRestore/stat_failure_injected_stat_error (0.00s)
+    --- PASS: TestMergeBackPreserveInventory_PartialRestore/mkdirall_failure_parent_is_regular_file (0.00s)
+    --- PASS: TestMergeBackPreserveInventory_PartialRestore/reports_restored_count (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.753s
+```
+
+**AC 매트릭스**
+
+| AC | 판정 | 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-UGE-001 | PASS | (a) `grep -nE '^var [a-zA-Z]*[Ss]tatFn = os\.Stat$'` · (b) 함수 본문 창 `os.Stat(` / `statFn(` 계수 · (c) base 직접 호출 계수 | (a) `54:var osStatFn = os.Stat` · (b) `0` / `1` · (c) `1` |
+| AC-UGE-002 | PASS | (a) 존재 grep · (b) 스킵 가드 계수 · (c) PASS 행 · (d) windows vet | (a) `1` · (b) `0` · (c) `--- PASS: …/stat_failure_injected_stat_error (0.00s)` · (d) `win-vet-exit=0` |
+| AC-UGE-003 | PASS | overlay 반증 (base 위생 + FAIL 계수 + 원인 귀속) | `(0)=3` · `fail-lines=2` · 원인: `internal/cli/update_preserve_partial_test.go:84:15: undefined: osStatFn` (3행) + `FAIL … [build failed]` |
+| AC-UGE-004 | PASS | `go tool cover -func` | `mergeBackPreserveInventory 94.1%` (baseline `94.1%` 이상) |
+
+**AC-UGE-003 원인 귀속 (§A.4)**: 실패 출력이 `undefined: osStatFn`를 3행 지목한다 — 변경 전 코드에 이음매가 없다는 **의도한 원인**을 직접 명명한다. 경쟁 원인(보고 문구 부재)은 (0) 위생 검사 `3`이 배제한다.
+
+**회귀 게이트 (M1)**
+
+```
+$ go build ./...                          → build-exit=0
+$ GOOS=windows GOARCH=amd64 go build ./... → win-build-exit=0
+$ go vet ./...                            → vet-exit=0
+$ go test -count=1 ./internal/cli/...     → exit 1, FAIL 계수 4
+```
+
+**`./internal/cli/...` FAIL 4건의 귀속 — 이 SPEC의 회귀가 아니다.** 실패는 `TestHookWrapper_LargeStdin_DoesNotExceedTimeout` 한 건이며, 벽시계 임계값 어서션이다.
+
+```
+hook_wrapper_load_test.go:55: wrapper execution took 1.086526291s, want < 1s (regression: timeout risk)
+```
+
+단독 재실행 3회 전부 PASS(`77.1ms` / `76.3ms` / `77.4ms` — 임계값의 약 1/13):
+
+```
+--- PASS: TestHookWrapper_LargeStdin_DoesNotExceedTimeout (0.17s)  ×3
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.271s
+```
+
+부하 민감형 flaky이며(측정 시점에 백그라운드 커버리지 작업이 동시 실행 중이었다), 이 SPEC의 변경 범위(`git status --porcelain` → `update_preserve_inventory.go` + `update_preserve_partial_test.go` 2개)와 접점이 없다.
+
+**AC-UGE-013 / 015 (M1 시점)**: 템플릿 diff `0` / porcelain `0`; `target-files=3`, 세 파일 모두 `t.Parallel()` 계수 `0`.
+
+**Gaps (M1)**
+- AC-UGE-002의 **Windows 런타임** 통과는 이 머신에서 관측 불가. (b)+(d)는 "소스에 스킵 조건이 없고 windows 타깃으로 vet 통과"까지만 증명한다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
