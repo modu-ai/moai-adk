@@ -53,11 +53,69 @@ plan-auditor iteration 2 returned PASS 0.97). Progression mode: autonomous.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+All fifteen criteria were evaluated by running each one's judging command from
+`acceptance.md` verbatim against the post-change worktree. The `Actual Output`
+column is that run's output, not a summary.
+
+| AC | Status | Actual Output |
+|----|--------|---------------|
+| AC-PFA-001 | PASS | `plan=1` `run=1` `sync=1` (baseline 0/0/0) |
+| AC-PFA-002 | PASS | `plan=1` `run=1` `sync=1` (baseline 0/0/0) |
+| AC-PFA-003 | PASS | all ten IDs `router>=1 site>=1`; FO-PLAN-1 and FO-SYNC-1 read `2/2` (router and site share a file), the other eight read `1/1` |
+| AC-PFA-004 | PASS | identical to AC-PFA-003 on the template side |
+| AC-PFA-005 | PASS | `plan plan=3 run=0 sync=0` / `run plan=0 run=4 sync=0` / `sync plan=0 run=0 sync=5` — every cross-phase count zero |
+| AC-PFA-006 | PASS | `0` for all seven files except `spec-assembly.md`, which holds at `1` (the out-of-scope tier-judgment clause) |
+| AC-PFA-007 | PASS | identical to AC-PFA-006 on the template side |
+| AC-PFA-008 | PASS | `1/1`, `1/1`, `1/1`, `4/4`, `1/1`, **`2/2`**, `1/1` — every file at or above its baseline, and `sync/quality-gates-quality.md` risen from 1 to 2 as REQ-PFA-004 requires |
+| AC-PFA-009 | PASS | `contradiction=0` `delta=2` |
+| AC-PFA-010 | PASS | `contradiction=0` `delta=2` |
+| AC-PFA-011 | PASS | `local=2` `tmpl=2` (baseline 1/1 — the clause survived and the rewrite restated it) |
+| AC-PFA-012 | PASS | `marker=1` on both sides; the `-A 8` block prints the 8 / 16 / 25 ceilings and the independence statement |
+| AC-PFA-013 | PASS | `1/0` for all four divergences — unchanged, so no blind copy occurred |
+| AC-PFA-014 | PASS | own-token leak `0`; SPEC-ID-shaped tokens `12` (no increase); stale hook description `1`; codemaps `1` |
+| AC-PFA-015 | PASS | `totalObligations=10 unguarded=0` on **both** sides — Part A confirms all ten promotions landed, Part B confirms none is condition-free |
+
+Invariants held:
+
+| Invariant | Status | Evidence |
+|-----------|--------|----------|
+| Fail-open fallback preserved at every site | PASS | AC-PFA-008 — no file fell below its baseline |
+| No unconditional obligation | PASS | AC-PFA-015 Part B, `unguarded=0` both sides |
+| Template neutralization divergences preserved | PASS | AC-PFA-013, four rows `1/0` |
+| Out-of-scope sites untouched | PASS | AC-PFA-014 — stale hook description and codemaps fan-out both unchanged |
+| Verdict authority unchanged | PASS | AC-PFA-011 |
+| Full test suite green | PASS | `go test ./...` — no FAIL lines |
+
+Shell note: the AC census commands were run with an explicit file list, per the
+`acceptance.md` conventions. A first attempt passed the file set through a shell
+variable and returned a single "No such file or directory" warning — zsh does not
+word-split unquoted expansions, exactly the failure the conventions section
+predicted.
+
+Deviation from plan, recorded rather than suppressed: `run.md` carries a hard
+200-LOC entry-router ceiling (`TestEntryRouterLOCCeiling`) and sat at 197, so the
+mandated four-row Fan-Out Index could not fit — the guard failed at 208 after
+M1.1. The plan's risk table did not anticipate this. Resolved by moving the two
+Phase 4 operational-entry paragraphs verbatim into `run/phase-execution.md`
+(ceiling 600, now at 466), the sub-skill that owns Phase 4. Both files were
+already inside the SPEC's declared envelope and no prose was lost.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-02
+run_commit_sha: c859553a8
+run_status: audit-ready
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  status: not-applicable
+  reason: documentation-only change; zero Go source files modified
+total_run_phase_files: 21
+m1_to_mN_commit_strategy: six commits — M1.1 index tables, M1.2 promotions, M1.3 D-1 fix, M1.4 tier budget, M1.5 catalog-hash cascade, M1.5 LOC-ceiling fit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
