@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-VERSION-FLAG-001
 title: "Add --version <tag> flag to moai update for release-tag binary install"
 version: "1.0.0"
-status: draft
+status: in-progress
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec
