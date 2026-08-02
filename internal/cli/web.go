@@ -84,7 +84,11 @@ func runWeb(cmd *cobra.Command, _ []string) error {
 		Port:        webPort,
 		NoOpen:      webNoOpen,
 		ProjectRoot: projectRoot,
-		ProfileName: profile.GetCurrentName(),
+		// Project-scoped read (SPEC-PROFILE-MEMORY-001 REQ-PM-024) to match the
+		// project-scoped write wired in web.newApp. CLAUDE_CONFIG_DIR still wins
+		// when set, so a console launched inside a `moai cc -p X` session is
+		// unaffected; this only decides the bare-launch case.
+		ProfileName: profile.GetCurrentNameForProject(projectRoot),
 	})
 }
 

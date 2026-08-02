@@ -8,6 +8,13 @@ import (
 )
 
 func TestGetBaseDir_Default(t *testing.T) {
+	// Checking the home-derived default requires clearing the override, which
+	// also disables the package sandbox for every test that runs afterwards.
+	// Restoring it is mandatory; TestSandboxSurvivesPackageRun
+	// (zz_sandbox_guard_test.go, which sorts last) fails if this is dropped.
+	orig := BaseDirOverride
+	t.Cleanup(func() { BaseDirOverride = orig })
+
 	BaseDirOverride = ""
 	dir := GetBaseDir()
 	if dir == "" || dir == "." {
@@ -382,6 +389,14 @@ func TestRecordLastUsedProfile_PreservesLegacyKeys(t *testing.T) {
 	// Pre-existing launch.yaml with legacy keys.
 	legacy := "model: claude-opus-4-6\nbypass: true\n"
 	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The recorder refuses names whose directory does not exist
+	// (SPEC-PROFILE-MEMORY-001 REQ-PM-011), so the profile must be staged
+	// before recording. TestRecordForProject_RejectsMissingDirectory owns the
+	// refusal case; this test stays focused on legacy-key preservation.
+	if err := os.MkdirAll(filepath.Join(tmpDir, "work"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
