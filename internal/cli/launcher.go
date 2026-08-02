@@ -28,6 +28,21 @@ var unifiedLaunchFunc = unifiedLaunchDefault
 // IsAvailable()==false). Production code uses the real SystemDetector.
 var newDetectorFn = func() tmux.Detector { return tmux.NewDetector() }
 
+// recordLastProfileFn is the seam unifiedLaunchDefault uses to write the launch
+// ledger. It exists so a ledger-write failure can be injected directly
+// (SPEC-PROFILE-MEMORY-001 REQ-PM-014). The alternative — provoking a real
+// write failure through file permissions — is void when the tests run as root
+// and unjudgeable on Windows CI.
+var recordLastProfileFn = profile.RecordLastUsedProfileForProject
+
+// launcherStderr is the seam the launch path writes user-facing notices and
+// warnings to. warnNoModelResolved takes an io.Writer but its call site
+// hardcodes os.Stderr, so it makes the FUNCTION testable while leaving the
+// LAUNCH PATH's output uncapturable — and the launch path's output is exactly
+// what the fresh-profile notice and the record-failure warning must be judged
+// on (SPEC-PROFILE-MEMORY-001 AC-PM-010c / AC-PM-018).
+var launcherStderr io.Writer = os.Stderr
+
 // injectTmuxSessionEnvFn is the seam applyCGMode uses to inject GLM credentials
 // into the tmux session env. It exists so the REQ-CGH-002 ordering invariant
 // (leader-cred strip BEFORE injection) can be tested by forcing an injection
@@ -48,8 +63,24 @@ func resolveMode(mode string) string {
 	return "claude"
 }
 
-// @MX:ANCHOR: [AUTO] unifiedLaunchDefault centralizes launch logic for all modes
-// @MX:REASON: [AUTO] fan_in=3, called from runCC, runCG, runGLM via unifiedLaunch
+// isNamedProfile reports whether name identifies a named profile directory.
+// "" and "default" both resolve to the base preferences rather than a
+// subdirectory, so they are excluded — this matches the names
+// profile.RecordLastUsedProfile refuses and the names profile.GetProfileDir
+// maps to "". Letting "default" through would make HasClaudeConfig("default")
+// permanently false and emit a bogus notice on every `-p default` launch.
+func isNamedProfile(name string) bool {
+	return name != "" && name != "default"
+}
+
+// @MX:ANCHOR: [AUTO] unifiedLaunchDefault step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
+// @MX:REASON: [AUTO] fan_in=3 (runCC/runCG/runGLM via unifiedLaunch). Two orderings are contracts, not style:
+// (1) root precedes resolution because project-scoped resolution consumes it — reverting leaves the projects
+// map written but never read on the launch path; (2) EnsureDir precedes the ledger write because the recorder
+// refuses names whose directory is absent — reverting makes every first-time `-p <new>` launch silently
+// unrecorded. The record gate reads originalProfile while the EnsureDir gate reads the resolved profileName;
+// they diverge only when originalProfile is "", where no record happens, so the recorded name always matches
+// the created directory.
 // unifiedLaunchDefault centralizes launch logic for all modes (claude, glm, claude_glm).
 // warnNoModelResolved reports that the launch resolved no model, so Claude Code
 // will apply its own settings.json default rather than a profile value.
@@ -73,21 +104,25 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
 
-	// 2. Resolve last-used-profile fallback for bare launches (no -p flag).
-	// When profileName is empty and the default profile is unconfigured, fall
-	// back to the most recently -p-launched named profile recorded in
-	// launch.yaml. Explicit -p always wins; MOAI_NO_PROFILE_FALLBACK=1 opts out.
-	originalProfile := profileName
-	resolved := profile.ResolveLaunchProfile(profileName)
-	if resolved != profileName && resolved != "" {
-		fmt.Fprintf(os.Stderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
-		profileName = resolved
-	}
-
-	// 3. Find project root
+	// 2. Find project root. This precedes resolution because the fallback is
+	// now project-scoped and therefore needs the root. A failure here aborts
+	// the launch exactly as it did before the reorder — mode setup below needs
+	// the root regardless, so there is nothing to continue with.
 	root, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
+	}
+
+	// 3. Resolve last-used-profile fallback for bare launches (no -p flag).
+	// When profileName is empty and the default profile is unconfigured, fall
+	// back to this project's remembered profile, then to the most recently
+	// -p-launched named profile recorded in launch.yaml. Explicit -p always
+	// wins; MOAI_NO_PROFILE_FALLBACK=1 opts out of both lookups.
+	originalProfile := profileName
+	resolved := profile.ResolveLaunchProfileForProject(root, profileName)
+	if resolved != profileName && resolved != "" {
+		fmt.Fprintf(launcherStderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
+		profileName = resolved
 	}
 
 	// 4. Apply mode-specific env setup
@@ -106,15 +141,37 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		}
 	}
 
+	// 4.5. Materialize the profile directory the launch will actually use, and
+	// warn when it carries no Claude Code account state yet.
+	//
+	// The gate is profileName — the RESOLVED name — not originalProfile. A bare
+	// launch that resolves through the projects map is still "targeting a named
+	// profile", and that path is precisely how a console-created profile (which
+	// gets a directory but no .claude.json) reaches its first launch. Gating on
+	// originalProfile would skip this block entirely for that case and leave the
+	// user with the silent login screen this SPEC exists to remove.
+	//
+	// Widening the gate cannot create a directory the user did not ask for: a
+	// resolved name is only returned after the resolver has confirmed its
+	// directory exists, so EnsureDir is a no-op there. Real creation happens
+	// only for an explicit -p <new>, which is the intended behavior.
+	if isNamedProfile(profileName) {
+		if err := profile.EnsureDir(profileName); err != nil {
+			return fmt.Errorf("set profile: %w", err)
+		}
+	}
+
 	// 5. Record the last-used profile. Only NAMED profiles the user explicitly
 	// passed via -p are recorded — this uses originalProfile (what the user
-	// typed), not the resolved value. Best-effort: a write failure is logged
-	// to stderr but never blocks the launch. This runs AFTER mode-specific env
-	// setup succeeds and BEFORE launchClaude (which on POSIX does syscall.Exec
-	// and replaces the process, so no code runs after it).
-	if originalProfile != "" && originalProfile != "default" {
-		if err := profile.RecordLastUsedProfile(originalProfile); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to record last-used profile: %v\n", err)
+	// typed), not the resolved value: writing back a resolved name would
+	// promote the global fallback into a project-scoped entry the user never
+	// chose. Best-effort: a write failure is logged but never blocks the
+	// launch. This runs AFTER the directory exists (step 4.5 — the recorder
+	// refuses names with no directory) and BEFORE launchClaude, which on POSIX
+	// does syscall.Exec and replaces the process, so no code runs after it.
+	if isNamedProfile(originalProfile) {
+		if err := recordLastProfileFn(root, originalProfile); err != nil {
+			_, _ = fmt.Fprintf(launcherStderr, "Warning: failed to record last-used profile: %v\n", err)
 		}
 	}
 
