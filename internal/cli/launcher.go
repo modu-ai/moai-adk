@@ -73,15 +73,6 @@ func isNamedProfile(name string) bool {
 	return name != "" && name != "default"
 }
 
-// @MX:ANCHOR: [AUTO] unifiedLaunchDefault step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
-// @MX:REASON: [AUTO] fan_in=3 (runCC/runCG/runGLM via unifiedLaunch). Two orderings are contracts, not style:
-// (1) root precedes resolution because project-scoped resolution consumes it — reverting leaves the projects
-// map written but never read on the launch path; (2) EnsureDir precedes the ledger write because the recorder
-// refuses names whose directory is absent — reverting makes every first-time `-p <new>` launch silently
-// unrecorded. The record gate reads originalProfile while the EnsureDir gate reads the resolved profileName;
-// they diverge only when originalProfile is "", where no record happens, so the recorded name always matches
-// the created directory.
-// unifiedLaunchDefault centralizes launch logic for all modes (claude, glm, claude_glm).
 // warnNoModelResolved reports that the launch resolved no model, so Claude Code
 // will apply its own settings.json default rather than a profile value.
 //
@@ -100,6 +91,38 @@ func warnNoModelResolved(w io.Writer, profileName string) {
 			"  Select one with: moai cc -p <profile>\n", read)
 }
 
+// warnFreshProfile reports that the target profile carries no Claude Code
+// account state yet, so this launch will land on the login / onboarding screen.
+//
+// The notice is a warning only: nothing is copied, moved, or synthesized
+// between profile directories, and no platform credential store is touched.
+// That is deliberate — the credential carrier differs by platform, so a "helpful"
+// seed would be wrong somewhere. The text names no command this build does not
+// ship.
+//
+// Self-gating: an unnamed profile, or one that already carries state, produces
+// no output at all, so the call site does not repeat the condition.
+func warnFreshProfile(w io.Writer, profileName string) {
+	if !isNamedProfile(profileName) || profile.HasClaudeConfig(profileName) {
+		return
+	}
+	_, _ = fmt.Fprintf(w,
+		"Notice: profile %q has no Claude Code configuration yet.\n"+
+			"  Claude Code will show the login / onboarding screen on this launch.\n"+
+			"  Account state is not inherited between profiles; sign in once and it\n"+
+			"  persists for this profile.\n", profileName)
+}
+
+// unifiedLaunchDefault centralizes launch logic for all modes (claude, glm, claude_glm).
+//
+// @MX:ANCHOR: [AUTO] step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
+// @MX:REASON: [AUTO] fan_in=3 (runCC/runCG/runGLM via unifiedLaunch). Two orderings are contracts, not
+// style: (1) root precedes resolution because project-scoped resolution consumes it — reverting leaves the
+// projects map written but never read on the launch path; (2) EnsureDir precedes the ledger write because
+// the recorder refuses names whose directory is absent — reverting makes every first-time `-p <new>` launch
+// silently unrecorded. The EnsureDir gate reads the resolved profileName while the record gate reads
+// originalProfile; they diverge only when originalProfile is "", where no record happens, so the recorded
+// name always matches the created directory.
 func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) error {
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
@@ -159,6 +182,7 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		if err := profile.EnsureDir(profileName); err != nil {
 			return fmt.Errorf("set profile: %w", err)
 		}
+		warnFreshProfile(launcherStderr, profileName)
 	}
 
 	// 5. Record the last-used profile. Only NAMED profiles the user explicitly
