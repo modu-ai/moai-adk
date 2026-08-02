@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // trailingExitClause matches an optional trailing "exits <N>" / "exit <N>" suffix
@@ -145,6 +146,38 @@ func resolveArmSessionID(sessionFlag string) (id, warn string) {
 		return sessionFlag, ""
 	}
 	if uuid, _, ok := resolveCurrentSessionID(); ok {
+		// Multi-session guard. The side-channel file
+		// (.moai/state/current-session-id.txt) is per-project and unconditionally
+		// overwritten on every SessionStart (internal/hook/session_start.go), so
+		// under >=2 concurrent sessions in the same project dir it holds only the
+		// most-recently-started session's id -- which may belong to a FOREIGN
+		// session. Arming under a foreign id lands the goal under the wrong
+		// session's state file and silently breaks the arm<->eval keying contract
+		// (the authoritative id Claude Code passes to the stop-goal hook via stdin
+		// would differ). Count registry entries whose CWD matches this project dir;
+		// >=2 means the side-channel id is unreliable -- surface a warning so the
+		// orchestrator re-arms with --session <authoritative-id>. Fail-open: a
+		// registry read error degrades to the resolved id with no warning (an
+		// advisory query must not block arming). Single-session (<=1 matching
+		// entry) is the unchanged happy path -- no warning.
+		if projectDir := resolveProjectDir(); projectDir != "" {
+			if entries, qerr := session.QueryActiveWork(""); qerr == nil {
+				matches := 0
+				for _, e := range entries {
+					if e.CWD == projectDir {
+						matches++
+					}
+				}
+				if matches >= 2 {
+					return uuid, fmt.Sprintf(
+						"%d sessions are active in this project directory (%s); the "+
+							"side-channel id %q may belong to a concurrent session rather "+
+							"than this one. Re-run with --session <authoritative-id> (the "+
+							"source_session_id from the SessionStart context) to arm the "+
+							"goal deterministically.", matches, projectDir, uuid)
+				}
+			}
+		}
 		return uuid, ""
 	}
 	pid := goal.WriterPidKey()
