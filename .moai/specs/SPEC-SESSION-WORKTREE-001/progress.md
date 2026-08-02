@@ -315,6 +315,96 @@ Falsification round-trip (profile-dir-NOT-isolated notice is load-bearing): `Tes
 
 **Scope discipline (B8/B10):** touched ONLY `internal/cli/profile.go` (notice helper + `io` import) + `internal/cli/profile_setup.go` (runProfileSetup signature → named return + wiring block) + `internal/cli/profile_worktree_test.go` (NEW, 3 tests) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged. `internal/cli/session_worktree.go` core logic UNCHANGED (reused `enterSessionWorktree`/`cleanupSessionWorktree`/`loadSessionWorktreeConfig` as-is; the unused-cmd debt in `loadSessionWorktreeConfig` was NOT closed — see E10). spec.md status stays `in-progress`.
 
+---
+
+### M7 — Worktree-scoped git config helper (REQ-SW-018/019/020/021)
+
+**Pre-flight findings:**
+- HEAD before M7: `13caf0826` (M6 COMPLETE, independently verified) ✓.
+- M7 call-site hook: `internal/cli/session_worktree.go:163` comment `// M7 (REQ-SW-018/019/021): ApplyGitConfig call site` ✓.
+- M2 direct `init.defaultBranch=main` application: `sessionWorktreeGitConfigSet(wtPath, "init.defaultBranch", "main")` at the materialize step ✓ (kept in place — see consolidation decision below).
+- Profile opt-in fields: `grep -rn "signingkey\|SigningKey\|gpgsign\|GPGSign" internal/profile/ internal/cli/ pkg/models/` → NO schema fields exist. REQ-SW-021 is a **verified no-op for now** (tracked schema debt — E7 blocker).
+- M4 safe.directory-unset: NOT present before M7. Wired in M7 (E9 below).
+- Git version detection helper: none pre-existed; added `gitVersionInfo` + `gitVersionReal` + `parseGitVersion`.
+
+**Empirical grounding (git worktree config scoping):** verified at M7 pre-flight that `git -C <worktree> config user.name X` writes to the SHARED main repo `.git/config` (the linked worktree reads it), NOT a per-worktree config file. `git config --worktree` requires `extensions.worktreeConfig` (git ≥ 2.20) to be enabled first. Conclusion: our helper uses the universal `git -C <wt> config` (local repo config) path which works in all git versions; the `--worktree` flag is never required. This satisfies AC-SW-019's observable invariant — "global `~/.gitconfig` UNCHANGED + worktree commits under the identity" — because writing local repo config leaves the global gitconfig untouched. Cross-worktree identity isolation is OUT OF SCOPE per EC-12 (both worktrees read the same global gitconfig → same identity).
+
+**Design decision (M2 consolidation):** the helper is ADDITIVE — M2's direct `init.defaultBranch=main` call in `materializeSessionWorktree` stays in place; the helper handles tiers 1 (safe.directory), 2 (identity), and 4 (options) only. Rationale: consolidating tier 3 into the helper would change M2's `TestEnterSessionWorktree_SuccessAppliesDefaultBranch` seam expectations and risk test-machine global-gitconfig pollution (the new safe.directory/identity seams default to real git). The additive design preserves every existing M2/M3/M4/M5/M6 test byte-identical and keeps the helper focused on the NEW tiers.
+
+**Implementation (internal/cli/session_worktree.go):**
+- 5 new test-injectable seams: `sessionWorktreeGitSafeDirAdd` / `SafeDirUnset` / `SafeDirGetAll` / `GlobalGet` / `GitVersion`, each with a Real counterpart.
+- `applyWorktreeGitConfig(wtPath string, out io.Writer) worktreeGitConfigResult` — applies tiers 1/2/4 (tier 3 owned by M2), emits the identity notice (REQ-SW-019 / R7) + the git-version fallback notice (EC-9). Fail-open: every tier is best-effort.
+- `worktreeGitConfigResult` struct — per-tier observable fields so tests assert without coupling to notice text.
+- `gitVersionInfo` + `SupportsWorktreeConfig()` — git ≥ 2.20 boundary (BI-6). The helper's local-config path is version-independent; the predicate drives the EC-9 notice only.
+- Wired into `materializeSessionWorktree` (replaced the M7 comment hook with `_ = applyWorktreeGitConfig(wtPath, out)`). `materializeSessionWorktree` now takes `out io.Writer` (threaded from `enterSessionWorktree`).
+- **E9 — safe.directory unset on cleanup:** wired into `cleanupSessionWorktree` immediately after a successful `git worktree remove` (R5 mitigation). Best-effort; an unset of an already-absent entry is a no-op. Gated by the same auto_cleanup + clean-exit + clean-worktree conditions as the removal itself.
+
+**AC matrix (M7-relevant):**
+
+| AC | Status | Verification |
+|----|--------|--------------|
+| AC-SW-018 (safe.directory registered, idempotent, `git -C W status` exits 0) | PASS | `TestApplyGitConfig_SafeDirectoryRegistered` + `TestApplyGitConfig_SafeDirectoryIdempotent` (3 applies → 1 entry) + `TestApplyGitConfig_SafeDirectoryFalsification` (applied toggles with the seam) |
+| AC-SW-019 (worktree commits under global user.name/email; global gitconfig UNCHANGED; no-global-identity no-op; profile NOT consulted) | PASS | `TestApplyGitConfig_IdentityAppliedFromGlobal` (both fields worktree-scoped via `git -C config`) + `TestApplyGitConfig_NoGlobalIdentityIsNoOp` (EC-14 verified no-op + notice) + `TestApplyGitConfig_PartialIdentity` (EC-8) + `TestApplyGitConfig_ProfileNotConsulted` (structural: helper takes no profile arg) + `TestApplyGitConfig_IdentityFalsification` (configSet fires ≥2× for name+email) |
+| AC-SW-020 (init defaultBranch main — helper exposure + M2 wiring) | PASS | M2's direct call preserved in `materializeSessionWorktree` (additive design); `TestEnterSessionWorktree_SuccessAppliesDefaultBranch` (M2) still passes unchanged |
+| AC-SW-021 (opt-in gpgsign/signingkey when present; absent = silent skip; hooksPath NOT set; new-repo sane defaults) | PASS (no-op) | `TestApplyGitConfig_OptionsNoOpNoProfileFields` — verified no-op: no REQ-SW-021 key is set; `core.hooksPath` is NEVER set (v0.2.1 removal). Schema gap recorded as E7 blocker. |
+
+**E8 — RED → GREEN + falsification round-trips:**
+RED (verbatim, before symbols existed):
+```
+$ go test -run 'TestApplyGitConfig|TestGitVersion|...' ./internal/cli/
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/session_worktree_m7_test.go:33:24: undefined: gitVersionInfo
+internal/cli/session_worktree_m7_test.go:42:18: undefined: sessionWorktreeGitSafeDirAdd
+...
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+GREEN: `ok github.com/modu-ai/moai-adk/internal/cli 0.730s`.
+Falsification round-trips:
+- **(a) safe.directory:** `TestApplyGitConfig_SafeDirectoryFalsification` — with `safeDirAdd` present → `safeDirectoryApplied=true`; with `safeDirAdd` erroring → `safeDirectoryApplied=false`. The discrimination proves the tier is load-bearing.
+- **(b) identity:** `TestApplyGitConfig_IdentityFalsification` — globalGet returns the identity AND configSet fires ≥2× (name+email); if the worktree-scoped apply were removed, configSet would fire 0× for user.name/email and the worktree would commit under git's default identity (wrong).
+- **(c) no-global-identity no-op:** `TestApplyGitConfig_NoGlobalIdentityIsNoOp` — empty globalGet → NO user.name/email configSet call + `identityNoop=true` + notice names the no-op.
+- **(d) idempotency:** `TestApplyGitConfig_SafeDirectoryIdempotent` — 3 applies of the same path → `get-all` shows it exactly once.
+
+**E9 — safe.directory unset on cleanup (R5 mitigation):**
+`TestCleanupSessionWorktree_UnsetsSafeDirectoryOnRemoval` — auto_cleanup ON + clean exit + clean worktree → `safeDirUnset` called once for the removed path. `TestCleanupSessionWorktree_DoesNotUnsetWhenPreserved` — negative controls: default-manual / non-clean-exit / dirty → `safeDirUnset` NOT called (the worktree still needs its entry). M8 PR-merge cleanup will unset via the same seam when it lands.
+
+**E10 — git < 2.20 fallback (BI-6 / EC-9):**
+`TestApplyGitConfig_GitUnder220FallbackNotice` — `gitVersion` returns `{2,19}` → `gitVersionFallback=true` + notice names "git" + "2.20". `TestApplyGitConfig_Git220PlusNoFallbackNotice` — `{2,50}` → `gitVersionFallback=false`, no notice. The application path is version-independent (`git -C config` writes local repo config in all git versions); the `--worktree` extension flag is never used, so no separate fallback code path is needed — the notice is the user-facing EC-9 signal. Residual: the real `gitSafeDirAddReal` / `gitGlobalGetReal` / `gitVersionReal` error-path branches (25% uncovered) require a git failure to hit; happy paths covered by `TestGitVersionReal_ParsesModernGit`.
+
+**E2 — Cross-platform build:**
+```
+$ go build ./...                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+**E3 — Coverage (M7 helper + tiers, file-level):**
+```
+$ go test -cover -coverpkg=./internal/cli ./internal/cli/ (session_worktree tests)
+materializeSessionWorktree      100.0%
+applyWorktreeGitConfig           89.5%
+emitWorktreeGitConfigNotice      85.7%
+cleanupSessionWorktree           89.5%   (includes new safe.directory unset)
+parseGitVersion                  86.7%
+gitVersionReal                   75.0%   (error branch needs git failure)
+gitGlobalGetReal                 75.0%
+gitSafeDirAddReal                75.0%
+gitSafeDirUnsetReal              75.0%
+gitSafeDirGetAllReal              0.0%   (test-verification helper; real impl thin wrapper, seam exercised)
+```
+All NEW-logic functions ≥85%; git-exec Real wrappers at 75% (error-path branches need git failures to hit; happy paths covered).
+
+**E4 — Subagent boundary grep (C-HRA-008):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/session_worktree.go internal/cli/session_worktree_m7_test.go` → 0 NEW matches (exit 1). PASS.
+
+**E5 — Lint:** `golangci-lint run --timeout=3m ./internal/cli/...` → 0 issues (one SA9003 empty-branch on the M2 init.defaultBranch call site fixed by switching to `_ =` best-effort).
+
+**E6 — Branch HEAD + push:** M7 commit + push to `feat/SPEC-SESSION-WORKTREE-001` (this commit).
+
+**E7 — Blocker report (REQ-SW-021 schema gap):** `ProfilePreferences` (`internal/profile/preferences.go`) carries NO `signingkey` / `gpgsign` / `gpg` opt-in fields (verified `grep -rn "signingkey\|SigningKey\|gpgsign\|GPGSign" internal/profile/ pkg/models/` → 0 matches outside tests). REQ-SW-021 is therefore a **verified no-op for now**: tier 4 applies nothing. This is NOT a defect — the SPEC (plan.md §F M7) explicitly says "if `signingkey`/gpg fields do not yet exist, this tier is a verified no-op for now (document; do NOT invent a schema)". Tracked as schema debt: when a profile schema change adds the opt-in fields, tier 4 is implemented (apply `commit.gpgsign=true` + `user.signingkey=<key>` worktree-scoped; new-repo defaults `core.autocrlf=input` / `fetch.prune=true` / `push.default=current`; `core.hooksPath` NEVER set per v0.2.1). The helper's `optionsApplied` field is reserved for that future state.
+
+**Global-state minimality (acceptance.md §E):** `grep -n '\-\-global' internal/cli/session_worktree.go` → all `--global` uses are on `safe.directory` (REQ-SW-018 add + R5 unset + get-all verification) and `--get` reads (REQ-SW-019 read-only identity). NO other global mutation. PASS.
+
+**Scope discipline (B8/B10):** touched ONLY `internal/cli/session_worktree.go` (5 new seams + Real impls + `gitVersionInfo` + `applyWorktreeGitConfig` + `emitWorktreeGitConfigNotice` + wiring in `materializeSessionWorktree` + safe.directory unset in `cleanupSessionWorktree` + `materializeSessionWorktree` signature `+out io.Writer`) + `internal/cli/session_worktree_m7_test.go` (NEW, 14 tests) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged. spec.md status stays `in-progress`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
