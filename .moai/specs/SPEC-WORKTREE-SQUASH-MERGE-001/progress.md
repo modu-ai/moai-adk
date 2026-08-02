@@ -275,9 +275,9 @@ run_phase_commits:               # M1..M5 commits on fix/clean-stale-squash-dete
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: audit-ready
+sync_status: COMPLETE
 sync_complete_at: 2026-08-03
-sync_commit_sha: pending-backfill-sync   # a commit cannot reference its own SHA — backfilled in a follow-up commit per the 9ec8d8464 / cdb692135 canonical pattern
+sync_commit_sha: e17653bbf            # backfilled (was pending-backfill-sync placeholder in the sync commit PR #1297 — D3 self-referential-hazard exemption); sync squash-merge subject: docs(SPEC-WORKTREE-SQUASH-MERGE-001): sync-phase close (3-phase plan→run→sync)
 run_commit_sha: 4966e6720                # run-phase terminal commit (M5); origin's squash-merge is d7506e9e4 (PR #1293)
 tier: M
 changelog_entry_position: "### Fixed 최상단 (CHANGELOG.md) — squash-merge detection is a false-negative bug fix, not a new feature"
