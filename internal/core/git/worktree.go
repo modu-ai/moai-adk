@@ -343,7 +343,7 @@ func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
 		return false, fmt.Errorf("resolve branch tree for synthetic commit: %w", err)
 	}
 	tree := strings.TrimSpace(treeOut)
-	synth, err := execGitExit(ctx, w.root, nil,
+	synth, err := execGitExit(ctx, w.root, syntheticCommitEnv(),
 		"commit-tree", tree, "-p", mb, "-m", syntheticCommitMessage)
 	if err != nil {
 		return false, fmt.Errorf("synthetic commit-tree: %w", err)
@@ -369,10 +369,39 @@ func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
 }
 
 // syntheticCommitMessage is the fixed commit message used by the S4
-// synthetic-commit probe. Combined with the pinned identity values (M2,
-// REQ-WSM-008), it makes the object deterministic across repeated evaluations
-// of an unchanged branch, bounding dangling objects to distinct branch states.
+// synthetic-commit probe. Combined with the pinned identity values
+// (syntheticCommitEnv, REQ-WSM-008), it makes the object deterministic across
+// repeated evaluations of an unchanged branch, bounding dangling objects to
+// distinct branch states rather than to the number of sweeps.
 const syntheticCommitMessage = "moai-squash-probe"
+
+// syntheticCommitIdentity pins the author and committer identity so a synthetic
+// commit's object hash depends only on (tree, parent, message), not on
+// wall-clock time or the invoking user. The date is fixed to the epoch; the
+// name/email are fixed arbitrary values. Without this, repeated evaluation of
+// one unchanged branch yields a fresh object each call (measured), and the
+// dangling-commit count grows with the sweep count rather than the distinct
+// branch-state count (REQ-WSM-008; spec.md §5 decision 2).
+const (
+	syntheticAuthorName  = "moai"
+	syntheticAuthorEmail = "moai@localhost"
+	syntheticCommitDate  = "@0 +0000"
+)
+
+// syntheticCommitEnv returns the per-call environment overlay that pins the
+// synthetic commit's identity. It is passed to execGitExit's extraEnv, the
+// mechanism M1 introduced; this function supplies the M2 values. Existing
+// execGit callers are unaffected — they never pass through extraEnv.
+func syntheticCommitEnv() []string {
+	return []string{
+		"GIT_AUTHOR_NAME=" + syntheticAuthorName,
+		"GIT_AUTHOR_EMAIL=" + syntheticAuthorEmail,
+		"GIT_AUTHOR_DATE=" + syntheticCommitDate,
+		"GIT_COMMITTER_NAME=" + syntheticAuthorName,
+		"GIT_COMMITTER_EMAIL=" + syntheticAuthorEmail,
+		"GIT_COMMITTER_DATE=" + syntheticCommitDate,
+	}
+}
 
 // splitNul splits NUL-delimited `git diff -z` output into a []string, dropping
 // the empty trailing element a NUL terminator leaves behind. The result is one

@@ -708,3 +708,48 @@ func TestIsBranchMerged_ProbeExit_Table(t *testing.T) {
 		}
 	})
 }
+
+// TestSyntheticCommit_DeterministicIdentity binds AC-WSM-008: two successive
+// evaluations of one unchanged branch produce the same synthetic-commit object
+// (so the dangling-commit count rises by at most one across both). With the
+// identity pinned (REQ-WSM-008) the second commit-tree writes the same object
+// git already has, so the delta is exactly one. Unpinning GIT_COMMITTER_DATE
+// makes each call write a distinct object → delta 2 → this test FAILs.
+func TestSyntheticCommit_DeterministicIdentity(t *testing.T) {
+	dir := buildSC1Squash(t)
+	wm := NewWorktreeManager(dir)
+
+	baseline := countDanglingCommits(t, dir)
+
+	// Two evaluations of the same unchanged branch.
+	for i := 0; i < 2; i++ {
+		merged, err := wm.IsBranchMerged("feat", "main")
+		if err != nil {
+			t.Fatalf("call %d: IsBranchMerged error: %v", i, err)
+		}
+		if !merged {
+			t.Fatalf("call %d: expected squash-merged branch to report merged", i)
+		}
+	}
+
+	after := countDanglingCommits(t, dir)
+	if delta := after - baseline; delta > 1 {
+		t.Errorf("dangling-commit delta = %d (baseline %d → after %d), want <= 1; "+
+			"the synthetic commit is not deterministic — identity is not pinned", delta, baseline, after)
+	}
+}
+
+// countDanglingCommits counts unreachable commit objects via git fsck. Used by
+// the determinism test to measure whether repeated synthetic-commit creation
+// reuses the same object (delta <= 1) or writes fresh ones each call (delta 2).
+func countDanglingCommits(t *testing.T, dir string) int {
+	t.Helper()
+	out := runGit(t, dir, "fsck", "--dangling", "--no-reflogs")
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "dangling commit ") {
+			n++
+		}
+	}
+	return n
+}
