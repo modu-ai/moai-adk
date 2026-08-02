@@ -37,7 +37,20 @@ _<pending run-phase — owned by manager-develop>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- **sync_complete_at**: 2026-08-03
+- **sync_commit_sha**: "pending-backfill-sync"
+- **sync_status**: completed
+- **b12_self_test_a** (pre-emission duplicate grep): `grep -c 'SPEC-UPDATE-VERSION-FLAG-001' CHANGELOG.md` returned `0` BEFORE this entry was added — no duplicate from any parallel BATCH-SYNC session.
+- **b12_self_test_b** (AC count match): acceptance.md §D defines 16 distinct AC identifiers (`AC-UVF-001`..`AC-UVF-016`, verified via `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 16). The CHANGELOG `[Unreleased]` entry for this SPEC states "16 REQ / 16 AC, all 16 PASS" — count matches.
+- **b12_self_test_c** (file path verification): every path cited in the CHANGELOG entry verified via `ls` — `internal/cli/update.go`, `internal/cli/update_version.go`, `docs-site/content/{en,ko,ja,zh}/cli-reference/update.md`, `docs-site/content/{en,ko,ja,zh}/getting-started/installation.md` all present. `internal/cli/deps.go` correctly NOT cited (it was not modified by this SPEC).
+- **changelog_entry_position**: top of `[Unreleased] → ### Added` block (newest SPEC entry; older entries follow).
+- **frontmatter_status_transitions**:
+  - spec.md: `in-progress → implemented → completed` on this single sync commit (3-phase close). (plan.md / acceptance.md / progress.md use the markdown-header convention without YAML frontmatter — only spec.md carries frontmatter in this SPEC.)
+  - `updated:` refreshed to 2026-08-03 (unchanged — already 2026-08-03 from the run-phase transition).
+- **canary_compliance_check**:
+  - AC-UVF-015 (template-no-touch): `git diff --name-only origin/main...HEAD -- internal/template/templates/` → 0 paths. PASS.
+  - AC-UVF-016 (4-locale docs verify): `hns-oss-docs-verify` exit-gate PASS — `hugo --minify --gc` exit 0 warning-free, sitemap present, URL-blacklist 0 matches, Mermaid LR/RL 0 matches, 4-locale file-existence parity (no MISSING), section-count parity (974 `## ` headings per locale), README 4-file H2 parity (13 per file), body-emoji scan clean on the M7-modified files. PASS.
+  - Full suite: `go test ./...` exit 0, `golangci-lint run` 0 issues, `go build ./...` exit 0 (verified by orchestrator at run-phase boundary; this sync commit carries no code changes).
 
 ## §F Phase 4 Mode Selection
 
