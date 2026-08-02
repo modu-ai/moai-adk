@@ -69,16 +69,16 @@ M1~M5 는 각 마일스톤의 RED 테스트를 먼저 작성한 뒤 구현했다
 | AC-PM-011 | PASS | `go test ./internal/profile/ ./internal/cli/ -run '^(TestHasClaudeConfig_DecidesOnClaudeJSONAlone\|TestFreshProfileNotice_WriterContent)$' -v -count=1` + grep -c | `2` (기대 2) |
 | AC-PM-012 | PASS | `acceptance.md` §C 의 3개 부재-grep 그대로 | `PASS-a`, `PASS-b`, `PASS-c` |
 | AC-PM-013 | PASS | `grep -c 'recordLastProfile func(name string) error' internal/web/app.go` + `go test ./internal/web/` | `1`, `ok ... internal/web 6.230s` |
-| AC-PM-014 | PASS-WITH-DEBT | (1) 두 패키지 가드 grep -c → `2`; (2) 홈 원장 해시 왕복 → `PASS-untouched`; (3) 반증 왕복 **미실행** | (1) `2` (기대 2) / (2) before=after=`0e59ed31…5be7538e` |
+| AC-PM-014 | PASS | (1) 두 패키지 가드 grep -c → `2`; (2) 홈 원장 해시 왕복 → `PASS-untouched`; (3) 반증 왕복 **실행(amendment)** — 양 패키지 `sandboxProfileBaseDir()` 무력화 시 `TestProfileBaseDirIsSandboxed` FAIL → 원복 후 PASS | (1) `2` (기대 2); (2) before=after=`0e59ed31…5be7538e`; (3) RED `main_test.go:72`(profile)/`:68`(web) `BaseDirOverride is empty` → GREEN PASS (amendment 커밋에서 관측) |
 | AC-PM-015 | PASS | 상수 선언 grep + 리터럴 산재 grep | `34: projectsKey = "projects"`, `39: claudeConfigStateFile = ".claude.json"`, 산재 `PASS` |
 | AC-PM-016 | PASS | `go build ./...` / `go vet ./...` / `GOOS=windows GOARCH=amd64 go build ./...` / `golangci-lint run ./internal/profile/... ./internal/cli/... ./internal/web/...` | 모두 exit 0, 린트 `0 issues.` |
 | AC-PM-017 | PASS | `go test ./internal/cli/ -v -count=1 -run '^TestUnifiedLaunch'` | `--- PASS: TestUnifiedLaunch_UsesProjectScopedResolution (0.02s)` |
 | AC-PM-018 | PASS | 같은 실행 | `--- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce (0.09s)` (A/B/C-1/C-2 4케이스 포함) |
 | AC-PM-019 | PASS | 테스트 + 배선 grep 2건 | `--- PASS: TestGetCurrentNameForProject_ProjectScoped (0.02s)`; `GetCurrentNameForProject(projectRoot)` → `1`, 전역 전용 잔존 → `0` (`PASS-wired`) |
 | AC-PM-020 | PASS | (1) 원자 쓰기 프리미티브 grep; (2) `TestRecordForProject_NoPartialStateOnFailure` | (1) 4행 — `436: os.CreateTemp`, `455: os.Rename` (+369/432 주석) → `PASS-primitives`; (2) `--- PASS: TestRecordForProject_NoPartialStateOnFailure (0.02s)` |
-| AC-PM-021 | PASS-WITH-DEBT | (1) 후행 정렬 확인; (2) 패키지 전체 실행; (3) 반증 왕복 **미실행** | (1) `/bin/ls internal/profile/*_test.go \| sort \| tail -1` → `internal/profile/zz_sandbox_guard_test.go`; (2) `--- PASS: TestSandboxSurvivesPackageRun (0.00s)` |
+| AC-PM-021 | PASS | (1) 후행 정렬 확인; (2) 패키지 전체 실행; (3) 반증 왕복 **실행(amendment)** — `TestGetBaseDir_Default` 의 `t.Cleanup` 복원 제거 시 전체 패키지 실행에서 `TestSandboxSurvivesPackageRun` FAIL → 원복 후 PASS | (1) `/bin/ls internal/profile/*_test.go \| sort \| tail -1` → `internal/profile/zz_sandbox_guard_test.go`; (2) `--- PASS: TestSandboxSurvivesPackageRun (0.00s)`; (3) RED `zz_sandbox_guard_test.go:38` `BaseDirOverride was cleared` → GREEN PASS (amendment 커밋에서 관측) |
 
-집계: 21건 평가, FAIL 0건, PASS 19건, PASS-WITH-DEBT 2건(AC-PM-014·021 — 각 (3) 반증 왕복 미실행).
+집계: 21건 평가, FAIL 0건, PASS 21건 (AC-PM-014(3)/021(3) 반증 왕복이 amendment run 에서 실행돼 기존 PASS-WITH-DEBT 2건이 PASS 로 승격).
 
 ### 검증 중 발견해 고친 결함 1건
 
@@ -101,10 +101,19 @@ errcheck 가 `os.Stderr` 에 적용하던 면제가 시임을 거치면서 사�
 가 이 레시피로 통과하므로 macOS 에서는 재현된다. 시임 도입 대안으로 전환할 필요는 없었다.
 Windows 는 미검증 — 아래 잔여 위험 참조.
 
-**AC-PM-021 의 후행 가드.** `TestSandboxSurvivesPackageRun` 은 패키지 전체 실행에서 통과한다.
-다만 AC-PM-021(3) 이 요구하는 반증 왕복(`TestGetBaseDir_Default` 의 `t.Cleanup` 복원을 임시
-제거 → FAIL 관측 → 원복 → PASS 관측)은 **실행하지 않았다.** 통과 사실이 가드의 반증 가능성을
-증명하지는 않으므로, 이 항목은 미검증으로 남긴다. AC-PM-014(3) 도 같은 이유로 미실행이다.
+**AC-PM-021 의 후행 가드 — amendment 로 반증 왕복 완료.** `TestSandboxSurvivesPackageRun`
+은 패키지 전체 실행에서 통과한다. 원본 close 에서는 AC-PM-021(3) 이 요구하는 반증 왕복
+(`TestGetBaseDir_Default` 의 `t.Cleanup` 복원을 임시 제거 → FAIL 관측 → 원복 → PASS 관측)을
+실행하지 않아 PASS-WITH-DEBT 로 남겨뒀다. amendment run(flip 커밋 `e0c61e318` 이후)에서 이
+반증 왕복을 실행했다: `t.Cleanup` 복원 라인을 임시 주석 처리하고 `go test ./internal/profile/`
+전체 실행 돌리면 `TestSandboxSurvivesPackageRun` 이 `zz_sandbox_guard_test.go:38` 에서
+`BaseDirOverride was cleared by an earlier test and never restored` 로 FAIL 한다.
+라인을 원복하면 다시 PASS. AC-PM-014(3) 도 같은 amendment 에서 실행했다 — 양 패키지
+`sandboxProfileBaseDir()` 호출(및 `restore()`)을 임시 주석 처리하면
+`TestProfileBaseDirIsSandboxed` 가 `main_test.go:72`(profile)/`:68`(web) 에서
+`BaseDirOverride is empty` 로 FAIL 하고, 원복 시 PASS 한다. 두 가드 모두 장식이 아니라
+load-bearing 임이 확인됐으므로 두 AC 는 PASS 로 승격했다. 양 왕복 모두 홈 원장 해시가
+불변(`c9de8105…0fc42` == 사전 해시)했음을 관측해 샌드박스가 유지됐음도 확인했다.
 
 ### 증거 수집 중 관측한 판정 명령 취약점 2건
 
@@ -144,10 +153,10 @@ run_complete_at: 2026-08-02
 run_commit_sha: b4ae291e6
 run_status: audit-ready
 ac_total_count: 21
-ac_pass_count: 19
-ac_pass_with_debt_count: 2
+ac_pass_count: 21
+ac_pass_with_debt_count: 0
 ac_fail_count: 0
-ac_pass_with_debt_ids: [AC-PM-014, AC-PM-021]
+ac_pass_with_debt_ids: []
 preserve_list_post_run_count: 0
 new_warnings_or_lints_introduced: 0
 lint_defects_found_and_fixed_in_run: 1
@@ -164,8 +173,6 @@ m1_to_mN_commit_strategy: >-
   검증 중 발견한 errcheck 결함 수정 b4ae291e6.
   M6 은 검증 전용이라 소스 변경이 없고 이 progress.md 커밋이 그 산출물이다.
 unverified:
-  - "AC-PM-014(3) 반증 왕복 미실행 — 가드 제거 시 FAIL 을 관측하지 않았다"
-  - "AC-PM-021(3) 반증 왕복 미실행 — t.Cleanup 제거 시 FAIL 을 관측하지 않았다"
   - "AC-PM-020 rename 레시피의 Windows 재현 여부 미검증 (macOS 에서만 확인)"
   - "internal/cli 커버리지 미측정 (패키지 실행 271초)"
 ```
@@ -174,7 +181,7 @@ unverified:
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: 53756d4f1
+sync_commit_sha: "pending-backfill-sync-amend"
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-PROFILE-MEMORY-001' CHANGELOG.md → 0 (사전 중복 없음, 발행 진행)"
 b12_self_test_b: "acceptance.md 의 고유 AC 식별자 21건 = CHANGELOG 항목이 명시한 21건 (19 PASS / 2 PASS-WITH-DEBT / 0 FAIL)"
@@ -185,7 +192,7 @@ b12_self_test_c: >-
   docs-site/static/images/profile/*.png (3건) 모두 존재.
 changelog_entry_position: "[Unreleased] → Added, 최상단 (SPEC-REF-SEO-ABSORB-001 항목 바로 위)"
 frontmatter_status_transitions:
-  spec_md: "in-progress → implemented → completed (단일 sync 커밋에 병합)"
+  spec_md: "in-progress → implemented → completed (단일 sync 커밋에 병합, amendment 종료)"
   plan_md: "N/A — frontmatter 블록 없음"
   acceptance_md: "N/A — frontmatter 블록 없음"
   design_md: "N/A — frontmatter 블록 없음"
@@ -203,9 +210,32 @@ readme_decision: >-
   (grep 히트는 모두 무관한 llm.profile 모델 프로파일), 동작이 아직 릴리스에 포함되지
   않았다. 없던 절을 새로 만드는 것은 근거 없는 편집이라 건너뛰었다.
 carried_debt:
-  - "AC-PM-014(3) 반증 왕복 미실행 — 가드 제거 시 FAIL 을 관측하지 않았다"
-  - "AC-PM-021(3) 반증 왕복 미실행 — t.Cleanup 제거 시 FAIL 을 관측하지 않았다"
   - "AC-PM-020 rename 레시피 Windows 미검증"
   - "internal/cli 커버리지 미측정"
 push_state: "미푸시 — 사용자가 push 결정을 보류했다"
 ```
+
+---
+
+## §F Phase 4 Mode Selection
+
+amendment run-phase 진입 (flip 커밋 `e0c61e318`, completed → in-progress). 본 amendment는 부채 2건(AC-PM-014(3)/021(3))의 sandbox-guard 반증 왕복(falsification round-trip)을 실행하는 좁은 검증 작업이다.
+
+입력 파라미터:
+- tier: L (원본 분류 유지; 단 amendment scope는 좁음)
+- scope: 2개 가드 파일 임시 무력화/원복 + 타겟 테스트 실행 — production-code 최종 변경 0
+- domain count: 1 (`internal/profile` 샌드박스 가드 중심; `internal/web`은 AC-PM-014(1) grep만)
+- file language mix: Go 테스트 파일
+- concurrency benefit: LOW (단일 milestone 순차 검증)
+
+모드 평가:
+- Mode 1 trivial — 제외: 임시 수정/원복/검증 루프가 존재
+- Mode 2 background — 제외: 결과가 다음 sync에 필요
+- Mode 3 agent-team — RETIRED
+- Mode 4 parallel — 제외: 단일 도메인 순차 검증, 병렬 이익 없음
+- Mode 6 workflow — 제외: 좁은 검증, ≥30파일 기계 변환 아님
+- Mode 5 sub-agent — 선택: 단일 milestone, 순차
+
+Decision: sub-agent
+
+정당화: 반증 왕복은 순차적(가드 무력화 → FAIL 관측 → 원복 → PASS 관측)이고 단일 패키지 범위이며 코드 최종 변경이 없는 검증 작업이다. 병렬화 이익이 없으므로 Anthropic coding-task parallelism caveat와 무관하게 Mode 5가 정합한다. manager-develop(cycle_type=tdd) 1회 위임.

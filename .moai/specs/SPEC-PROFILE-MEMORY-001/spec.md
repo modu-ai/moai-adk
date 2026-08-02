@@ -1,7 +1,7 @@
 ---
 id: SPEC-PROFILE-MEMORY-001
 title: "프로필 기억 3대 결함 — 프로젝트별 기억·디렉터리 검증·최초 전환 고지"
-version: "0.2.2"
+version: "0.3.0"
 status: completed
 created: 2026-08-02
 updated: 2026-08-02
@@ -10,6 +10,7 @@ priority: P1
 phase: "v3.1.0"
 module: "internal/profile"
 lifecycle: spec-anchored
+amendment_of: SPEC-PROFILE-MEMORY-001
 tags: "profile, launcher, ledger, cli, claude-config-dir"
 tier: L
 ---
@@ -24,6 +25,13 @@ tier: L
 | 2026-08-02 | 0.2.0 | plan-audit iter-1 FAIL(0.68) 대응 — Tier M→L 승격(REQ 23 > Tier M 상한 16), D1-D13 12건 반영, REQ-PM-024 추가(웹 읽기 측 project-scoped), 알려진 한계 L-003 추가, design.md·research.md 신규. 재감사 임계 **0.85** |
 | 2026-08-02 | 0.2.2 | plan-audit iter-3 PASS(0.88) 후 잔여 debt 5건 선제 해소 — NEW-1(stderr `io.Writer` 시임 신설) / NEW-2(design §D.3 게이트 변수 정정) / NEW-3(넓힌 게이트 안전성 근거) / NEW-4(AC-PM-018 케이스 C 양 경로 분리) / NEW-5(`named` 술어 정의). REQ 24 / AC 21 유지 |
 | 2026-08-02 | 0.2.1 | plan-audit iter-2 FAIL(0.82) 델타 대응 — N1(고지 게이트를 해석 후 `profileName` 으로, bare 런치 공백 제거) / N2(AC-PM-020 실패 유도 레시피 고정) / N3(REQ-PM-005 매트릭스 복원) / N4(RED-first 명시) / N5(테스트 함수명 명시) / N6(REQ-PM-024 env 우선순위 조건) / N7(프로필 4개 실측 정정). REQ 24 유지 |
+
+## Amendments
+
+- **prior completed version:** `0.2.2`
+- **prior_completed_sha:** `7a4341750` (origin/main PR #1289 squash-merge; 로컬 `progress.md §E.4 sync_commit_sha` 인 `53756d4f1` 은 squash 이전 로컬 히스토리에만 존재하는 사전-squash 동등 커밋이다)
+- **rationale:** falsification 왕복 부채 하위 기준 두 건(`AC-PM-014(3)` 및 `AC-PM-021(3)`) 폐쇄 — 원 종료 시점에 실행되지 않은 두 PASS-WITH-DEBT sandbox-guard AC 의 (3) 하위 기준(guard disabled → FAIL 관측 → restored → PASS 관측)을 실행한다.
+- **scope:** 검증 전용 amendment; production-code 변경 없음 (guard 는 동일 run 안에서 임시 비활성화 후 복원된다; 최종 트리는 guard 파일에 대해 `7a4341750` 와 byte-identical하다).
 
 ---
 
