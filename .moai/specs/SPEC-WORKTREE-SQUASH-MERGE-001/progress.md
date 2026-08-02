@@ -251,7 +251,7 @@ break this anchor exists to flag.
 
 ```yaml
 run_complete_at: 2026-08-02      # M1-M5 complete
-run_commit_sha: pending-backfill # run-phase terminal SHA backfilled after the branch push (self-referential)
+run_commit_sha: 4966e6720        # run-phase terminal commit (M5); backfilled post-push per D3 self-referential exemption
 run_status: run-green            # all five milestones GREEN; 17/17 AC measured PASS
 ac_pass_count: 17                # AC-WSM-001..017 all measured PASS (M1-M5)
 ac_fail_count: 0
@@ -269,7 +269,7 @@ run_phase_commits:               # M1..M5 commits on fix/clean-stale-squash-dete
   m2: b22584c7c
   m3: 50b711eb9
   m4: d107d40db
-  m5: pending-backfill           # self-referential; backfilled post-push
+  m5: 4966e6720                  # run-phase terminal commit (M5)
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
