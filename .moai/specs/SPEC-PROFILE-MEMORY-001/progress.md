@@ -174,7 +174,7 @@ unverified:
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 53756d4f1
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-PROFILE-MEMORY-001' CHANGELOG.md → 0 (사전 중복 없음, 발행 진행)"
 b12_self_test_b: "acceptance.md 의 고유 AC 식별자 21건 = CHANGELOG 항목이 명시한 21건 (19 PASS / 2 PASS-WITH-DEBT / 0 FAIL)"
