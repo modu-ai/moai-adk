@@ -2,7 +2,7 @@
 id: SPEC-PROFILE-MEMORY-001
 title: "프로필 기억 3대 결함 — 프로젝트별 기억·디렉터리 검증·최초 전환 고지"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: GOOS

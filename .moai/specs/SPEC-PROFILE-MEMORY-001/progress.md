@@ -172,4 +172,40 @@ unverified:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-PROFILE-MEMORY-001' CHANGELOG.md → 0 (사전 중복 없음, 발행 진행)"
+b12_self_test_b: "acceptance.md 의 고유 AC 식별자 21건 = CHANGELOG 항목이 명시한 21건 (19 PASS / 2 PASS-WITH-DEBT / 0 FAIL)"
+b12_self_test_c: >-
+  CHANGELOG 가 지목한 모든 경로를 ls 로 확인 —
+  internal/profile/, internal/cli/launcher.go, internal/cli/web.go, internal/web/app.go,
+  docs-site/content/{ko,en,ja,zh}/cli-reference/{profile,web}.md (8건),
+  docs-site/static/images/profile/*.png (3건) 모두 존재.
+changelog_entry_position: "[Unreleased] → Added, 최상단 (SPEC-REF-SEO-ABSORB-001 항목 바로 위)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (단일 sync 커밋에 병합)"
+  plan_md: "N/A — frontmatter 블록 없음"
+  acceptance_md: "N/A — frontmatter 블록 없음"
+  design_md: "N/A — frontmatter 블록 없음"
+  research_md: "N/A — frontmatter 블록 없음"
+  progress_md: "N/A — frontmatter 블록 없음"
+  note: >-
+    이 SPEC 세트에서 frontmatter 를 가진 산출물은 spec.md 하나뿐이다(head -1 로 6종 전수 확인).
+    updated 는 이미 2026-08-02 이고 sync 커밋도 같은 날짜라 값 변화가 없다.
+    phase / version 등 다른 필드는 손대지 않았다.
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC 은 자기 자신이 sync 에서 검증할 전방위 정책을 정의하지 않는다"
+readme_decision: >-
+  README 4종 미수정. Claude 프로필 서브시스템은 어느 README 에도 서술된 적이 없고
+  (grep 히트는 모두 무관한 llm.profile 모델 프로파일), 동작이 아직 릴리스에 포함되지
+  않았다. 없던 절을 새로 만드는 것은 근거 없는 편집이라 건너뛰었다.
+carried_debt:
+  - "AC-PM-014(3) 반증 왕복 미실행 — 가드 제거 시 FAIL 을 관측하지 않았다"
+  - "AC-PM-021(3) 반증 왕복 미실행 — t.Cleanup 제거 시 FAIL 을 관측하지 않았다"
+  - "AC-PM-020 rename 레시피 Windows 미검증"
+  - "internal/cli 커버리지 미측정"
+push_state: "미푸시 — 사용자가 push 결정을 보류했다"
+```
