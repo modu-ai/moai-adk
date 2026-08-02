@@ -342,10 +342,10 @@ func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 // The decision rests solely on the presence of claudeConfigStateFile inside the
 // profile directory; no platform credential store is consulted (REQ-PM-018).
 // That is deliberate: the credential carrier differs by platform (macOS keeps
-// the token in the Keychain, where it survives a CLAUDE_CONFIG_DIR change,
-// while Linux/WSL2 keeps it in a file), but the account state that decides
-// whether Claude Code shows the login/onboarding screen is per-config-dir on
-// every platform.
+// the token in the OS-level credential store, where it survives a
+// CLAUDE_CONFIG_DIR change, while Linux/WSL2 keeps it in a file), but the
+// account state that decides whether Claude Code shows the login/onboarding
+// screen is per-config-dir on every platform.
 //
 // Pure predicate: writes nothing, prints nothing. Unnamed and invalid profiles
 // report false.
