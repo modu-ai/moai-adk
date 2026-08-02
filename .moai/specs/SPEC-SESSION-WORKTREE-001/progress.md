@@ -480,11 +480,36 @@ Both fire BEFORE the subcommand's main work (RegisterSession / QueryActiveWork).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: audit-ready
+- run_complete_at: 2026-08-03
+- run_commit_sha: f9ee7bbd1 (PR #1305 squash merge)
+- AC summary: 24/24 PASS (AC-SW-001 through AC-SW-024)
+- Falsification round-trips on record (7):
+  1. fail-back — disabling auto-isolation produces an observable FAIL, restored produces PASS
+  2. dirty-preserve — a dirty worktree is preserved, not silently swept
+  3. clean-exit-only — cleanup fires on clean exit, not on crash/interrupt
+  4. advisory-suppression — advisory check is suppressed on the recovery-signal carve-out path
+  5. profile-dir-NOT-isolated — `moai profile` directory is correctly NOT isolated (negative test)
+  6. trigger-invariant — the isolation trigger predicate is invariant under unrelated state mutation
+  7. safe.directory-idempotency — repeated `safe.directory` writes converge (idempotent, no drift)
+- Cross-platform build: `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- Lint: `golangci-lint run` 0 issues
+- §25 template neutrality verified: `git diff --name-only origin/main...HEAD | grep '^internal/template/templates/'` → NONE; zero SPEC-ID / `[WT]` / `session_worktree` token leakage into the distributed template tree
+- Orchestrator independent verification: each milestone (M1-M8 + v0.2.2 inline-fix) independently re-verified by the orchestrator before §E.3 sign-off — claim/observed-output/baseline-attribution recorded per milestone in §E.2
+- Documented debt (non-blocking, transparent):
+  - `loadSessionWorktreeConfig(cmd)` unused-cmd parameter (M2-carried, info lint)
+  - AC-SW-007 regex `\[WT\]-` vs Q2 EC-3 `WT-` fallback — known text-adjustment item, not a defect (plan.md Q2 resolution justifies the bracket-fallback asymmetry)
+  - `TestDoctorGolden_{Light,Dark,NoColor}` pre-existing FAIL (M8-unrelated, stash-isolated verification confirmed unrelated)
+  - modernizer ★ suggestions (stringsseq / slicescontains / rangeint) not applied — accepted debt
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: completed
+- sync_complete_at: 2026-08-03
+- sync_commit_sha: pending-backfill-SPEC-SESSION-WORKTREE-001-001
+- sync_pr_number: 1306
+- code_pr_number: 1305 (PR #1305 squash merge `f9ee7bbd1` carried the run-phase implementation)
+- note: a commit cannot reference its own SHA (physics) — the placeholder above is backfilled to the real sync-commit SHA in a follow-up commit (D3 SHA-placeholder-backfill exemption). The run-phase code already landed on main via PR #1305; this sync PR carries only the `in-progress → implemented → completed` frontmatter transition, the §E.3/§E.4 signals, and the CHANGELOG entry.
 
 ## §F Phase 4 Mode Selection
 

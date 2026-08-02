@@ -2,7 +2,7 @@
 id: SPEC-SESSION-WORKTREE-001
 title: "Automatic worktree isolation for moai init / moai profile / moai web, with worktree-scoped git config and PR-merge auto-cleanup"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec
