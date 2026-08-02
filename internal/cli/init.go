@@ -321,6 +321,25 @@ func runInit(cmd *cobra.Command, args []string) error {
 	p := newWarnCollector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
 	defer p.emitSummary(cmd.ErrOrStderr())
 
+	// SPEC-SESSION-WORKTREE-001 M2: session-worktree auto-entry. Runs BEFORE
+	// any shared-state mutation (REQ-SW-002). When the feature is OFF
+	// (default) the wrapper returns "" and the rest of runInit is byte-
+	// identical to the baseline (REQ-SW-001). On success the process chdir's
+	// into the worktree so subsequent os.Getwd() / rootFlag resolution land
+	// inside the worktree (BI-2 / R1 mitigation). On fail-back (REQ-SW-004)
+	// or already-in-worktree skip (REQ-SW-012) the wrapper returns "" and
+	// init continues unchanged in the shared checkout.
+	if wtPath := enterSessionWorktree(loadSessionWorktreeConfig(cmd), "init", cmd.ErrOrStderr()); wtPath != "" {
+		if err := os.Chdir(wtPath); err != nil {
+			// Chdir failure is a fail-back (REQ-SW-004): continue in the
+			// shared checkout. The worktree was materialized but unusable
+			// from this process; the user can enter it manually later.
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"moai: session-worktree chdir into %s failed (%v); continuing in shared checkout for %q\n",
+				wtPath, err, "init")
+		}
+	}
+
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
 		p.Warn("git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s",
