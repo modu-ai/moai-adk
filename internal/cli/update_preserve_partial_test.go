@@ -12,9 +12,9 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -63,33 +63,45 @@ func assertPartialRestoreError(t *testing.T, err error, wantBranch, wantCount st
 // error is (a) attributable to that specific branch and (b) reports how many
 // files had already been restored when it stopped.
 func TestMergeBackPreserveInventory_PartialRestore(t *testing.T) {
-	// Branch 1 — os.Stat on the backup source fails with something other than
+	// Branch 1 — the stat of the backup source fails with something other than
 	// os.ErrNotExist (a missing backup file is a documented `continue`, not a
-	// failure). An unreadable parent directory yields EACCES, which is a
-	// POSIX permission-bit behaviour: Windows does not model it, and root
-	// bypasses permission bits entirely, so the branch would not be reached
-	// and the subtest would pass for the wrong reason.
-	t.Run("stat_failure_unreadable_backup_dir", func(t *testing.T) {
-		if runtime.GOOS == "windows" {
-			t.Skip("permission-bit denial is not modelled on Windows; the stat branch is unreachable here")
-		}
-		if os.Geteuid() == 0 {
-			t.Skip("running as root bypasses permission bits; the stat branch would not be reached")
-		}
-
+	// failure). The failure is delivered through the injectable osStatFn seam
+	// (REQ-UGE-001) rather than by chmod'ing the backup directory to 0o000.
+	//
+	// The permission-bit approach this replaces was unreachable on two real
+	// execution environments: Windows does not model POSIX permission denial,
+	// and root bypasses permission bits entirely, so both were t.Skip'd and the
+	// branch was never exercised in the Windows CI job (REQ-UGE-003). Driving
+	// the seam removes the platform dependency — no t.Skip remains.
+	//
+	// NFR-UGE-001: osStatFn is a package-level variable; this subtest reassigns
+	// it, so neither it nor its parent may call t.Parallel().
+	t.Run("stat_failure_injected_stat_error", func(t *testing.T) {
 		root, backupDir := seedPartialRestoreFixture(t, "ok/first.md", "blocked/second.md")
 
-		blocked := filepath.Join(backupDir, "blocked")
-		if err := os.Chmod(blocked, 0o000); err != nil {
-			t.Fatalf("chmod backup subdir: %v", err)
+		blockedSrc := filepath.Join(backupDir, filepath.FromSlash("blocked/second.md"))
+
+		origStat := osStatFn
+		t.Cleanup(func() { osStatFn = origStat })
+		osStatFn = func(name string) (os.FileInfo, error) {
+			if name == blockedSrc {
+				// Deliberately NOT os.ErrNotExist — that is the `continue` path.
+				return nil, errors.New("injected stat failure")
+			}
+			return origStat(name)
 		}
-		// Restore the mode so t.TempDir()'s cleanup can descend into it.
-		t.Cleanup(func() { _ = os.Chmod(blocked, 0o755) })
 
 		inv := PreserveInventory{Files: []string{"ok/first.md", "blocked/second.md"}}
 		err := mergeBackPreserveInventory(root, inv, backupDir)
 
 		assertPartialRestoreError(t, err, "stat backup blocked/second.md", "restored 1/2")
+
+		// The entry preceding the failure must actually have landed, so the
+		// reported count is a real restore boundary and not a formatting
+		// coincidence.
+		if _, statErr := os.Stat(filepath.Join(root, "ok", "first.md")); statErr != nil {
+			t.Errorf("the entry preceding the injected stat failure was not restored: %v", statErr)
+		}
 	})
 
 	// Branch 2 — os.MkdirAll on the destination's parent fails. A regular file

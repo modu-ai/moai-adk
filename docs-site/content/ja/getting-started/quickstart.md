@@ -306,7 +306,7 @@ flowchart TB
 | 新規プロジェクト | `/moai project` を先に実行 | 基礎文書が必須 |
 | シンプルな機能 | `/moai plan` + `/moai run` | 迅速な実行 |
 | 複雑な機能 | `/moai` | 自動最適化 |
-| 並列開発 | `--worktree` フラグを使用 | 独立環境の保証 |
+| 並列開発 | `moai cc -w <名前>` でワークツリーに入る | 独立環境の保証 |
 
 ## 実践例
 
@@ -338,8 +338,9 @@ flowchart TB
 ### 例 3: 並列開発 (Worktree の使用)
 
 ```bash
-# 独立した環境で並列開発
-> /moai plan "決済システムの実装" --worktree
+# 先にワークツリーへ入ってから計画します
+$ moai cc -w payment
+> /moai plan "決済システムの実装"
 ```
 
 ## ファイル構造を理解する

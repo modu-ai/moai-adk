@@ -46,27 +46,21 @@ MoAI-ADK 的自主 CI/CD 系统自动管理拉取请求质量。它把本地会�
 
 ## Auto-fix Loop (T3)
 
-`/moai sync` 创建 PR 之后，CI 监视脚本与 CI 回路技能一起运行"诊断 → 修复
-→ 重新验证"回路。它把本地的诊断式自我修复回路延伸到了 PR 流水线之上。
+`/moai sync` 创建 PR 之后，编排器交接一个失败的必需 (required) 检查，
+`manager-develop` 便以 `cycle_type=autofix` 周期运行"诊断 → 修复 →
+重新验证"回路。它把本地的诊断式自我修复回路延伸到了 PR 流水线之上。
 
-**CI 监视脚本 (`scripts/ci-watch/run.sh`)**
+- **进入条件** — 只有当至少一个必需检查失败，且编排器指明待修复的 PR 与
+  分支进行交接时，回路才会启动。编排器是唯一的进入点
+- **迭代上限** — 每次 PR push 最多 3 次迭代。进入第 4 次时不再尝试修补，
+  而是通过 blocking AskUserQuestion 上报给用户
+- **语义层级失败** — data race、deadlock、panic 与测试断言失败一律不自动
+  修补，交由人工判断
+- **受保护文件** — 回路绝不修改机密、凭据文件与 CI 工作流定义，因为修补
+  报告失败的那一层，会把真实失败变成虚假的 green
 
-```bash
-sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
-```
-
-- 以 30 秒间隔轮询 `gh pr checks`，区分必需 (required) 检查与
-  辅助 (auxiliary) 检查
-- 退出码：`0` 全部通过 · `2` 必需检查失败（向 stdout 输出结构化
-  JSON 交接）· `3` 30 分钟硬超时 · `1` 错误
-- 必需检查清单从 SSoT 文件读取，并支持用于测试的环境变量
-  覆盖 (`MOAI_CIWATCH_GH`、`CIWATCH_TIMEOUT_SECONDS` 等)
-
-**CI 回路技能 (`moai-workflow-ci-loop`)**
-
-当监视脚本交接一个必需失败时，`moai-workflow-ci-loop` 技能会对失败
-进行分类，并最多尝试 3 次安全的自动修补。语义层级的失败（自动修复有
-风险的情形）会上报给用户。
+迭代上限、上报契约、语义层级失败处理与受保护文件清单的 SSoT 是
+`.claude/rules/moai/workflow/ci-autofix-protocol.md`。
 
 ## BODP — Branch Origin Decision Protocol (T7)
 

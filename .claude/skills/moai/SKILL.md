@@ -131,7 +131,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
-Skills: moai-workflow-project, moai-workflow-ci-loop (per delegation.yaml)
+Skills: moai-workflow-project (per delegation.yaml)
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
 
@@ -162,7 +162,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
-Skills: moai-workflow-ddd, moai-workflow-ci-loop (per delegation.yaml) + domain moai-ref-* injected per mission
+Skills: moai-workflow-ddd (per delegation.yaml) + domain moai-ref-* injected per mission
 Flags: --dry, --sequential, --level N, --resume, --team
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
@@ -170,7 +170,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 Purpose: Repeatedly fix issues until completion conditions are satisfied or max iterations reached.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist
-Skills: moai-workflow-loop, moai-workflow-ci-loop (per delegation.yaml) + domain moai-ref-* injected per mission
+Skills: moai-workflow-loop (per delegation.yaml) + domain moai-ref-* injected per mission
 Flags: --max N, --auto-fix, --seq
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 

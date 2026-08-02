@@ -65,7 +65,7 @@ The loop taxonomy is re-expressed as **goal engine + preset**: the quadrants are
 - **How it ends**: Phase 5 verification completes with claim/evidence rows — success, or residue persisted (§ Phase 8) plus a `/moai loop` recommendation.
 - **When it fits**: a one-off diagnostic sweep or a quick CI-triggered patch, not driving toward a completion condition across many iterations.
 
-Sibling presets (same **goal engine + preset** framing, different quadrant): **goal-based** iteration is `.claude/skills/moai/workflows/loop.md` (the project-wide sweep preset that arms the goal engine); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **goal-based** iteration is `.claude/skills/moai/workflows/loop.md` (the project-wide sweep preset that arms the goal engine); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`.
 
 ## Phase 1: Parallel Scan
 
@@ -322,16 +322,6 @@ Resume commands:
 
 ---
 
-## Related Skills
-
-정적 routing:
-
-- **moai-workflow-ci-loop** — Unified CI watch + auto-fix loop skill. After `/moai sync` PR creation, polls required checks; on failure handoff classifies mechanical vs semantic and attempts up to 3 auto-fix iterations. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 패치 실패 시 AskUserQuestion 경유 escalation.
-
-이 skill은 `/moai fix --ci` 또는 ci-watch failure 알림 수신 시 호출되며, invocation contract에 따라 orchestrator가 다음을 보장한다: failure handoff 데이터 유효성 검증 → mechanical 분류 시 자동 patch → semantic 분류 또는 patch 실패 시 user escalation.
-
----
-
-Version: 2.4.0
-Updated: Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant.
-Previous: 2.3.0 — consolidated CI watch + autofix references to moai-workflow-ci-loop per the skill consolidation policy. 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
+Version: 3.0.0
+Updated: removed the Related Skills CI watch/auto-fix routing entry (3.0.0 — the CI watch loop is a dev-repo-local asset, not part of the delegated skill routing).
+Previous: 2.4.0 — Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant. 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.

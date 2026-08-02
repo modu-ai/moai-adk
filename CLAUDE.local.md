@@ -123,6 +123,11 @@ Never add files directly to the local project directories without also adding th
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
 .claude/agents/harness/hns-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
+scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
+scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
+.claude/skills/moai-workflow-ci-loop/                      # Dev-only: CI watch+autofix skill (removed from template; mirror kept)
+.claude/rules/moai/workflow/ci-watch-protocol.md           # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
+.claude/rules/moai/workflow/ci-autofix-protocol.md         # Dev-only original form: governs scripts/ci-autofix (template rewritten script-free)
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)

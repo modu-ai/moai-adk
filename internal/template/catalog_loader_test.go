@@ -62,7 +62,9 @@ func TestLoadCatalog(t *testing.T) {
 	// skill, optional-pack:frontend), net +1 = 41.
 	// moai-ref-seo added (search-visibility and crawlability reference skill,
 	// optional-pack:frontend), net +1 = 42.
-	const expectedTotal = 42
+	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
+	// shell scripts are development-repo-only and never shipped), net -1 = 41.
+	const expectedTotal = 41
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

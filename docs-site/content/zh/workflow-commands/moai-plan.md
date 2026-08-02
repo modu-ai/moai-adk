@@ -55,7 +55,6 @@ draft: false
 
 | 标志              | 说明                        | 示例                                |
 | ------------------- | --------------------------- | ----------------------------------- |
-| `--worktree`        | 自动创建 worktree(最优先) | `/moai plan "功能" --worktree`      |
 | `--branch`          | 创建传统分支          | `/moai plan "功能" --branch`        |
 | `--resume SPEC-XXX` | 恢复中断的 SPEC 工作       | `/moai plan --resume SPEC-AUTH-001` |
 | `--team`            | 强制智能体团队模式       | `/moai plan "功能" --team`          |
@@ -67,28 +66,27 @@ draft: false
 
 指定多个标志时,按以下顺序应用:
 
-1. **--worktree** (最优先): 创建独立的 Git worktree
-2. **--branch** (次优先): 创建传统 feature 分支
-3. **无标志** (默认): 仅生成 SPEC,由用户选择是否创建分支
+1. **--branch**: 创建传统 feature 分支
+2. **无标志** (默认): 仅生成 SPEC,由用户选择是否创建分支
 
-### --worktree 标志
+### 在 worktree 中规划
 
-在生成 SPEC 的同时创建 **独立的 Git worktree**,准备并行开发环境:
+plan 不再创建工作空间。若要在隔离环境中规划,请**先进入 worktree**,再执行 plan:
 
 ```bash
-> /moai plan "实现支付系统" --worktree
+moai cc -w payment          # 就地进入 worktree
+> /moai plan "实现支付系统"
 ```
 
-使用此选项时:
+若要在新的 tmux 窗口中打开并保留当前会话,加上 `--spawn`:
 
-1. 生成 SPEC 文档
-2. 提交 SPEC(创建 worktree 的必要条件)
-3. 以 `feature/SPEC-{ID}` 分支创建 worktree
-4. 可以在不影响主代码的情况下独立开发
+```bash
+moai cc -w payment --spawn
+```
 
 {{< callout type="info" >}}
-  `--worktree` 选项在 **同时开发多个功能** 时非常有用。每个 SPEC
-  都在独立的 worktree 中工作,互不冲突。
+  **同时开发多个功能** 时,为每个功能分配各自的 worktree 即可互不冲突。进入由启动器
+  负责,plan 在其中照常运行。
 {{< /callout >}}
 
 ## EARS 格式需求
@@ -130,11 +128,9 @@ flowchart TD
     K -->|请求修改| E
     K -->|取消| M["结束"]
     L --> N{"检查标志"}
-    N -->|--worktree| O["创建 worktree"]
     N -->|--branch| P["创建分支"]
     N -->|无标志| Q["用户选择"]
-    O --> R["完成"]
-    P --> R
+    P --> R["完成"]
     Q --> R
 ```
 
@@ -259,8 +255,7 @@ Phase 8 完成后,用户必须明确批准才能进入下一阶段。有 4 个�
 
 通过 **BODP (Branch Origin Decision Protocol) 门禁** 决定分支策略:
 
-- **--worktree**(最高优先):创建独立的 Git 工作树
-- **--branch**(次选):创建传统的 feature 分支
+- **--branch**:创建传统的 feature 分支
 - **保持当前分支**:无标志时在当前 checkout 上继续
 
 ### Phase 14: MX 标签规划
@@ -417,14 +412,13 @@ status: ACTIVE
 **第 4 步: 用户批准后设置 Git 环境**
 
 ```bash
-# 使用 --worktree 标志时
-> /moai plan "JWT 认证" --worktree
+# 使用 --branch 标志时
+> /moai plan "JWT 认证" --branch
 
 # 结果:
 # 1. 生成 SPEC 文档 (.moai/specs/SPEC-AUTH-001/)
 # 2. 提交 SPEC (feat(spec): Add SPEC-AUTH-001)
-# 3. 创建 worktree (.git/worktrees/SPEC-AUTH-001)
-# 4. 显示 worktree 路径
+# 3. 创建并切换到 feature/SPEC-AUTH-001 分支
 ```
 
 **第 5 步: 执行 `/clear` 后进入实现阶段**
@@ -460,9 +454,9 @@ status: ACTIVE
 
 `/moai plan` 只负责 **生成 SPEC 文档**。`/moai` 则从 SPEC 生成到实现、文档化,自动执行 **完整工作流**。
 
-### Q: --worktree 和 --branch 有什么区别?
+### Q: 如何在 worktree 中工作?
 
-**--worktree** 创建独立的工作目录,提供完全隔离的环境。**--branch** 在当前仓库中创建新分支。若要同时开发多个功能,推荐使用 --worktree。
+plan 没有创建 worktree 的标志。请先用启动器进入(`moai cc -w <名称>`),再执行 plan。**--branch** 是另一个选项,只在当前仓库中创建新分支。若要同时开发多个功能,进入 worktree 更能避免互相冲突。
 
 ## GEARS 表示法 (v3.0.0+) {#gears-notation}
 
