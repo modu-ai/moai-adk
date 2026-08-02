@@ -121,7 +121,7 @@ m1_to_mN_commit_strategy: six commits — M1.1 index tables, M1.2 promotions, M1
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-sync-commit
+sync_commit_sha: f0e23dbe2
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-PIPELINE-FANOUT-ACTIVATION-001' CHANGELOG.md -> 0 before append, 1 after"
 b12_self_test_b: "AC census from acceptance.md (SSOT) -> 15 distinct AC-PFA-### ids; CHANGELOG entry cites 15"
