@@ -138,13 +138,15 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 
 	// 3. Resolve last-used-profile fallback for bare launches (no -p flag).
 	// When profileName is empty and the default profile is unconfigured, fall
-	// back to this project's remembered profile, then to the most recently
-	// -p-launched named profile recorded in launch.yaml. Explicit -p always
-	// wins; MOAI_NO_PROFILE_FALLBACK=1 opts out of both lookups.
+	// back to this project's remembered profile (the projects[root] entry in
+	// launch.yaml). Explicit -p always wins; MOAI_NO_PROFILE_FALLBACK=1 opts
+	// out of the lookup. The global last_profile key is no longer read for
+	// resolution (project-scoped only), so a bare launch in a project with no
+	// projects[] entry resolves to default.
 	originalProfile := profileName
 	resolved := profile.ResolveLaunchProfileForProject(root, profileName)
 	if resolved != profileName && resolved != "" {
-		_, _ = fmt.Fprintf(launcherStderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
+		_, _ = fmt.Fprintf(launcherStderr, "Using project profile '%s' (recorded for this project). Use -p default to override.\n", resolved)
 		profileName = resolved
 	}
 
@@ -187,12 +189,12 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 
 	// 5. Record the last-used profile. Only NAMED profiles the user explicitly
 	// passed via -p are recorded — this uses originalProfile (what the user
-	// typed), not the resolved value: writing back a resolved name would
-	// promote the global fallback into a project-scoped entry the user never
-	// chose. Best-effort: a write failure is logged but never blocks the
-	// launch. This runs AFTER the directory exists (step 4.5 — the recorder
-	// refuses names with no directory) and BEFORE launchClaude, which on POSIX
-	// does syscall.Exec and replaces the process, so no code runs after it.
+	// typed), not the resolved value, so a project-scoped resolution is never
+	// promoted back into a projects[] entry the user never chose. Best-effort:
+	// a write failure is logged but never blocks the launch. This runs AFTER
+	// the directory exists (step 4.5 — the recorder refuses names with no
+	// directory) and BEFORE launchClaude, which on POSIX does syscall.Exec and
+	// replaces the process, so no code runs after it.
 	if isNamedProfile(originalProfile) {
 		if err := recordLastProfileFn(root, originalProfile); err != nil {
 			_, _ = fmt.Fprintf(launcherStderr, "Warning: failed to record last-used profile: %v\n", err)
@@ -704,17 +706,16 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
-	// 6b. An empty model here is not neutral: buildArgs below omits --model
-	// entirely, so Claude Code falls back to whatever `.claude/settings.json`
-	// pins (the MoAI template ships "sonnet"). That looked identical to "my
-	// profile was ignored", with nothing on stderr to distinguish the two.
-	//
-	// The common cause is a profile that was edited but never selected: the
-	// launch ledger still points elsewhere, or at a profile whose directory is
-	// gone, and profile.ResolveLaunchProfile's stale-record guard degrades to
-	// the empty base preferences. Name the resolved profile so the user can see
-	// which one was actually read.
-	if model == "" {
+	// 6b. An empty model is only worth surfacing when the user explicitly
+	// targeted a named profile (via -p or a project-scoped binding) that then
+	// yielded no model — that suggests the named profile is empty or
+	// misconfigured. For the default profile (base preferences) an empty model
+	// is the normal, intentional state: many setups deliberately omit a model
+	// pin so Claude Code falls back to the user-scope last-choice (see
+	// CLAUDE.local.md §22.7). Warning there is a false alarm, so the gate is
+	// isNamedProfile. warnNoModelResolved itself stays unconditional (its unit
+	// test calls it directly with any profileName).
+	if model == "" && isNamedProfile(profileName) {
 		warnNoModelResolved(os.Stderr, profileName)
 	}
 

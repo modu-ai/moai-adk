@@ -131,14 +131,15 @@ func countCommandTree(c *cobra.Command) int {
 //
 // WHY THIS IS PACKAGE-WIDE rather than per-test. unifiedLaunch step 5
 // (launcher.go) calls profile.RecordLastUsedProfile whenever it is handed a
-// named profile, which rewrites launch.yaml — the ledger a bare `moai cc` reads
-// to decide which profile to launch. Any test that reaches unifiedLaunch with a
-// name, directly (launcher_test.go TestUnifiedLaunch_Claude) or through a cobra
-// RunE (cc_test.go `-p work`), therefore writes the real ledger unless the base
-// dir is overridden. Observed consequence: `last_profile` was left pointing at
-// the fixture name `myprofile`, no such profile directory existed, the
-// stale-record guard in profile.ResolveLaunchProfile returned "", and every
-// subsequent `moai cc` silently launched with no --model at all.
+// named profile, which rewrites launch.yaml — the ledger that carries both the
+// per-project projects[] map (the live source this binary reads) and the
+// legacy last_profile key. Any test that reaches unifiedLaunch with a name,
+// directly (launcher_test.go TestUnifiedLaunch_Claude) or through a cobra
+// RunE (cc_test.go `-p work`), therefore writes the real ledger unless the
+// base dir is overridden. Observed consequence (historical): a fixture name
+// was left recorded with no matching profile directory, the stale-record
+// guard returned "", and every subsequent `moai cc` silently launched with no
+// --model at all.
 //
 // Overriding here rather than in each test is deliberate: the leak is caused by
 // a call several frames below the test body, so a test author has no local

@@ -105,7 +105,14 @@ func TestRecordForProject_PreservesLegacyKeys(t *testing.T) {
 
 // --- AC-PM-002 (REQ-PM-003, function layer) ---
 
-func TestResolveForProject_ProjectScopeWinsOverGlobal(t *testing.T) {
+// TestResolveForProject_ProjectScopedIsolated pins the project-scoped-only
+// resolution contract: project A resolves via its own projects[] entry, and a
+// DIFFERENT project B (not in the map) resolves to "" (default) — the global
+// last_profile key no longer participates in resolution, so it cannot bleed
+// across projects. (This is the function-layer twin of the user's
+// cross-project-bleed bug; TestResolveLaunchProfile_NoGlobalBleedAcrossProjects
+// is the named regression guard.)
+func TestResolveForProject_ProjectScopedIsolated(t *testing.T) {
 	base := pmSandboxBase(t)
 	projA := t.TempDir()
 	projB := t.TempDir()
@@ -116,13 +123,18 @@ func TestResolveForProject_ProjectScopeWinsOverGlobal(t *testing.T) {
 	if got := ResolveLaunchProfileForProject(projA, ""); got != "proj-one" {
 		t.Errorf("ResolveLaunchProfileForProject(projA, \"\") = %q, want proj-one", got)
 	}
-	if got := ResolveLaunchProfileForProject(projB, ""); got != "global-one" {
-		t.Errorf("ResolveLaunchProfileForProject(projB, \"\") = %q, want global-one", got)
+	if got := ResolveLaunchProfileForProject(projB, ""); got != "" {
+		t.Errorf("ResolveLaunchProfileForProject(projB, \"\") = %q, want \"\" (global last_profile must not bleed into a project with no projects[] entry)", got)
 	}
 }
 
 // --- AC-PM-003 (REQ-PM-004) ---
 
+// TestResolveForProject_LegacyLedgerUnchanged verifies that resolving from a
+// legacy-shape ledger (last_profile only, no projects map) does not mutate the
+// file — the read side is read-only. The resolution itself returns "" now
+// (global last_profile is write-only on this binary; root has no projects[]
+// entry), but the no-mutation contract is the actual point of this test.
 func TestResolveForProject_LegacyLedgerUnchanged(t *testing.T) {
 	base := pmSandboxBase(t)
 	root := t.TempDir()
@@ -135,11 +147,11 @@ func TestResolveForProject_LegacyLedgerUnchanged(t *testing.T) {
 		t.Fatalf("read ledger: %v", err)
 	}
 
-	if got := ResolveLaunchProfileForProject(root, ""); got != "legacy" {
-		t.Errorf("ResolveLaunchProfileForProject = %q, want legacy", got)
+	if got := ResolveLaunchProfileForProject(root, ""); got != "" {
+		t.Errorf("ResolveLaunchProfileForProject = %q, want \"\" (global last_profile no longer read)", got)
 	}
-	if got := ResolveLaunchProfile(""); got != "legacy" {
-		t.Errorf("ResolveLaunchProfile = %q, want legacy", got)
+	if got := ResolveLaunchProfile(""); got != "" {
+		t.Errorf("ResolveLaunchProfile = %q, want \"\" (global last_profile no longer read)", got)
 	}
 
 	after, err := os.ReadFile(ledgerPath)
@@ -172,7 +184,14 @@ func TestResolveForProject_OptOutDisablesBothLookups(t *testing.T) {
 
 // --- AC-PM-005 (REQ-PM-007) ---
 
-func TestForProject_EmptyRootFallsBackToGlobal(t *testing.T) {
+// TestForProject_EmptyRootResolvesDefault verifies that an empty projectRoot
+// skips the project-scoped lookup and resolves to "" (default). The global
+// last_profile key is no longer read, so even when it holds a USABLE named
+// profile ("global-one") an empty root does not bleed it in. The recording
+// half below is unchanged: RecordLastUsedProfileForProject("", ...) still
+// writes last_profile (legacy/downgrade compat) and leaves the projects map
+// untouched.
+func TestForProject_EmptyRootResolvesDefault(t *testing.T) {
 	base := pmSandboxBase(t)
 	projA := t.TempDir()
 	pmMkProfile(t, base, "proj-one")
@@ -180,15 +199,15 @@ func TestForProject_EmptyRootFallsBackToGlobal(t *testing.T) {
 	pmWriteLedger(t, base, "last_profile: global-one\nprojects:\n  "+normalizeProjectKey(projA)+": proj-one\n")
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 
-	if got := ResolveLaunchProfileForProject("", ""); got != "global-one" {
-		t.Errorf("ResolveLaunchProfileForProject(\"\", \"\") = %q, want global-one", got)
+	if got := ResolveLaunchProfileForProject("", ""); got != "" {
+		t.Errorf("ResolveLaunchProfileForProject(\"\", \"\") = %q, want \"\" (empty root + no global read → default)", got)
 	}
-	if got := GetCurrentNameForProject(""); got != "global-one" {
-		t.Errorf("GetCurrentNameForProject(\"\") = %q, want global-one", got)
+	if got := GetCurrentNameForProject(""); got != "default" {
+		t.Errorf("GetCurrentNameForProject(\"\") = %q, want %q", got, "default")
 	}
 
-	// Recording with an empty root writes last_profile only; the projects map
-	// is left untouched.
+	// Recording with an empty root writes last_profile only (legacy compat);
+	// the projects map is left untouched.
 	if err := RecordLastUsedProfileForProject("", "proj-one"); err != nil {
 		t.Fatalf("RecordLastUsedProfileForProject(\"\", ...) = %v, want nil", err)
 	}
@@ -208,14 +227,19 @@ func TestForProject_EmptyRootFallsBackToGlobal(t *testing.T) {
 
 // --- AC-PM-006 (REQ-PM-008) ---
 
+// TestResolveForProject_StaleProjectEntrySkipped verifies that a projects[]
+// entry whose target directory is gone is skipped, and resolution falls
+// through to "" (default). The global last_profile key is no longer read,
+// so the fallthrough lands at default rather than the (formerly global)
+// "alive" entry — the stale-skip behavior itself is unchanged.
 func TestResolveForProject_StaleProjectEntrySkipped(t *testing.T) {
 	base := pmSandboxBase(t)
 	projA := t.TempDir()
 	pmMkProfile(t, base, "alive")
 	pmWriteLedger(t, base, "last_profile: alive\nprojects:\n  "+normalizeProjectKey(projA)+": ghost\n")
 
-	if got := ResolveLaunchProfileForProject(projA, ""); got != "alive" {
-		t.Errorf("ResolveLaunchProfileForProject = %q, want alive (stale project entry must fall through)", got)
+	if got := ResolveLaunchProfileForProject(projA, ""); got != "" {
+		t.Errorf("ResolveLaunchProfileForProject = %q, want \"\" (stale project entry must fall through to default)", got)
 	}
 }
 
@@ -304,6 +328,11 @@ func TestHasClaudeConfig_DecidesOnClaudeJSONAlone(t *testing.T) {
 
 // --- AC-PM-019 (REQ-PM-024) ---
 
+// TestGetCurrentNameForProject_ProjectScoped verifies that the project-scoped
+// read names the project's own recorded profile, while the project-less
+// wrapper (GetCurrentName, empty root) resolves to "default" — the global
+// last_profile key no longer participates, so it cannot supply a value for a
+// caller that passes no project root.
 func TestGetCurrentNameForProject_ProjectScoped(t *testing.T) {
 	base := pmSandboxBase(t)
 	projA := t.TempDir()
@@ -315,8 +344,8 @@ func TestGetCurrentNameForProject_ProjectScoped(t *testing.T) {
 	if got := GetCurrentNameForProject(projA); got != "proj-one" {
 		t.Errorf("GetCurrentNameForProject(projA) = %q, want proj-one", got)
 	}
-	if got := GetCurrentName(); got != "global-one" {
-		t.Errorf("GetCurrentName() = %q, want global-one (the unchanged global wrapper)", got)
+	if got := GetCurrentName(); got != "default" {
+		t.Errorf("GetCurrentName() = %q, want %q (empty-root wrapper no longer reads the global key)", got, "default")
 	}
 }
 

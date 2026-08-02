@@ -24,13 +24,20 @@ const (
 	// lastProfileKey is the YAML key holding the most recently -p-launched
 	// named profile. Only named profiles are recorded; "" and "default" are
 	// refused by RecordLastUsedProfile.
+	//
+	// WRITE-ONLY on this binary: the resolution path no longer reads this key.
+	// The global read was the source of cross-project profile bleed — a project
+	// with no projects[] entry inherited whichever named profile was last
+	// -p-launched in ANY project. The write is retained so an older moai binary
+	// on the same machine (which still reads last_profile for its global
+	// fallback) keeps working; this binary simply no longer reads it.
 	lastProfileKey = "last_profile"
 
 	// projectsKey is the YAML key holding the per-project profile memory: a
 	// mapping from a normalized absolute project path to the named profile
-	// last launched from that project. It sits alongside lastProfileKey, which
-	// remains the global fallback — a ledger written by this version stays
-	// readable by an older binary that knows only lastProfileKey.
+	// last launched from that project. It is the live source this binary reads
+	// at resolution time; lastProfileKey sits alongside it as a write-only
+	// legacy/downgrade-compat key.
 	projectsKey = "projects"
 
 	// claudeConfigStateFile is the Claude Code account-state file inside a
@@ -74,13 +81,15 @@ func GetCurrentName() string {
 //
 // CLAUDE_CONFIG_DIR still wins: when it is set the ledger is not consulted at
 // all, so a `moai web` launched from inside a `moai cc -p X` session keeps
-// reporting X. Only when it is unset does the ledger decide, and there the
-// project-scoped entry for projectRoot is preferred over the global
-// last_profile — so the console's read side names the same profile its write
-// side records (REQ-PM-024).
+// reporting X. Only when it is unset does the ledger decide, and the decision
+// is project-scoped: the projects[projectRoot] entry alone (REQ-PM-024). A
+// project with no projects[] entry resolves to "" → "default". The global
+// last_profile key is write-only on this binary — it no longer participates
+// in resolution, so one project's profile cannot bleed into another.
 //
-// projectRoot == "" skips the project-scoped lookup entirely, which is what
-// makes GetCurrentName a behavior-preserving wrapper.
+// projectRoot == "" skips the project-scoped lookup entirely (so the wrapper
+// resolves "default" when CLAUDE_CONFIG_DIR is unset), which is what makes
+// GetCurrentName the project-less wrapper.
 func GetCurrentNameForProject(projectRoot string) string {
 	configDir := os.Getenv(config.EnvClaudeConfigDir)
 	if configDir == "" {
@@ -228,16 +237,18 @@ func EnsureDir(name string) error {
 //
 // When profileName is non-empty (the user passed -p explicitly), it is returned
 // as-is — explicit user intent always wins. When profileName is empty (bare
-// `moai cc`/`glm`/`cg`), the function consults the last-used-profile ledger
-// (launch.yaml under GetBaseDir()) and returns the recorded named profile if
-// its directory still exists. This lets a bare launch fall back to the most
-// recently -p-launched named profile when the default profile is unconfigured.
+// `moai cc`/`glm`/`cg`), resolution is project-scoped: this wrapper forwards
+// to ResolveLaunchProfileForProject with an empty projectRoot, which skips the
+// project-scoped lookup and returns "" (default semantics). The global
+// last_profile key is write-only on this binary and no longer participates in
+// resolution — one project's profile cannot bleed into another via a shared
+// global default.
 //
 // The fallback is disabled by setting MOAI_NO_PROFILE_FALLBACK=1.
 //
-// A missing or corrupt launch.yaml, a stale last_profile entry (directory
-// absent), or a traversal-shaped name all yield "" (default semantics). The
-// function never errors — callers receive a profile name, possibly "".
+// A missing or corrupt launch.yaml, a stale project entry (directory absent),
+// or a traversal-shaped name all yield "" (default semantics). The function
+// never errors — callers receive a profile name, possibly "".
 //
 // @MX:NOTE: [AUTO] Last-used-profile fallback resolver — read-only, no error return.
 func ResolveLaunchProfile(profileName string) string {
@@ -295,15 +306,20 @@ func launchCandidateIsUsable(baseDir, name string) bool {
 // ResolveLaunchProfile. Resolution order:
 //
 //  1. explicit profileName (the user's -p) — always wins
-//  2. MOAI_NO_PROFILE_FALLBACK=1 — disables BOTH lookups below
+//  2. MOAI_NO_PROFILE_FALLBACK=1 — disables the lookup below
 //  3. projects[normalizeProjectKey(projectRoot)] — this project's memory
-//  4. last_profile — the global fallback
-//  5. "" — default semantics
+//  4. "" — default semantics
 //
-// Steps 3 and 4 each verify the candidate's directory still exists; a stale
-// project entry falls through to the global fallback rather than shadowing it.
-// projectRoot == "" skips step 3, which is what makes ResolveLaunchProfile a
-// behavior-preserving wrapper. The function never errors.
+// Step 3 verifies the candidate's directory still exists; a stale project
+// entry falls through to "" (default) rather than shadowing it. projectRoot
+// == "" skips step 3, which is what makes ResolveLaunchProfile the
+// project-less wrapper. The function never errors.
+//
+// The global last_profile key is WRITE-ONLY on this binary: an older moai
+// binary still reads it for downgrade compat, but this binary's resolution
+// path no longer does — that global read was the source of cross-project
+// profile bleed (one project's profile leaking into another via a shared
+// global default).
 func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 	// Explicit -p wins.
 	if profileName != "" {
@@ -327,10 +343,6 @@ func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 				return name
 			}
 		}
-	}
-
-	if last, ok := ledger[lastProfileKey].(string); ok && launchCandidateIsUsable(baseDir, last) {
-		return last
 	}
 
 	return ""
@@ -379,9 +391,13 @@ func RecordLastUsedProfile(name string) error {
 // RecordLastUsedProfile. It writes the name to BOTH the project-scoped entry
 // under projects: and the global last_profile key.
 //
-// Writing both is what keeps the ledger downgrade-safe: an older binary reads
-// only last_profile, so it still observes "the most recent launch wins" exactly
-// as it did before this key existed.
+// The projects: entry is the live source this binary reads at resolution time
+// (ResolveLaunchProfileForProject step 3). The last_profile write is
+// LEGACY/DOWNGRADE COMPAT only: an older moai binary on the same machine still
+// reads last_profile for its global fallback, so writing it keeps that older
+// binary's "most recent launch wins" behavior intact. This binary never reads
+// last_profile for resolution — keeping the write is pure interop hygiene, not
+// a live signal for this code.
 //
 // Beyond the name-shape checks the original carried, the profile DIRECTORY must
 // already exist (REQ-PM-011). Without that guard a name that never resolves to
