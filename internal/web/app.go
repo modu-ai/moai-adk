@@ -93,11 +93,11 @@ type app struct {
 // template parse), so newApp no longer carries a template-parse step.
 func newApp(cfg Config) *app {
 	return &app{
-		cfg:                cfg,
-		readPreferences:    profile.ReadPreferences,
-		writePreferences:   profile.WritePreferences,
-		syncToProject:      profile.SyncToProjectConfig,
-		listProfiles:       profile.List,
+		cfg:              cfg,
+		readPreferences:  profile.ReadPreferences,
+		writePreferences: profile.WritePreferences,
+		syncToProject:    profile.SyncToProjectConfig,
+		listProfiles:     profile.List,
 		// Project-scoped write (SPEC-PROFILE-MEMORY-001 REQ-PM-010): the seam's
 		// signature is unchanged — the project root rides in via this closure
 		// rather than a new parameter, so handlers and test stubs stay as they
