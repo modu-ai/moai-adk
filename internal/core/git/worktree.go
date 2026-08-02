@@ -205,25 +205,293 @@ func (w *worktreeManager) DeleteBranch(name string) error {
 	return nil
 }
 
-// IsBranchMerged checks whether a branch has been fully merged into base.
+// IsBranchMerged reports whether a branch's changes relative to its merge-base
+// with base are present in base's HEAD tree, irrespective of the merge strategy
+// that placed them there (SPEC-WORKTREE-SQUASH-MERGE-001 REQ-WSM-001).
+//
+// The predicate is an ordered OR over five signals, cheapest first:
+//
+//	S1  reachability     git branch --merged <base> lists <branch>
+//	S2  empty diff       git diff --quiet <merge-base> <branch> reports none
+//	S3  rebase-merge     git cherry <base> <branch>, non-empty & all '-'
+//	S4  squash-merge     synthetic-commit git cherry, non-empty & all '-'
+//	S5  state check      every branch-touched path is identical in base HEAD
+//
+// S1 and S2 are standalone; S3 and S4 are each CONJOINED with S5, because a
+// history signal answers "did an equivalent patch-id ever exist in base" while
+// S5 answers "does the content survive in base HEAD" — a later revert leaves
+// the first true and the second false (SC-8). S5 is a conjunct only: it may
+// withhold a verdict, never grant one (REQ-WSM-014).
+//
+// This is a safety-critical predicate: it gates `moai worktree clean --stale`,
+// and a false positive destroys unmerged user work with no undo. Eight guards
+// carry the no-false-positive argument; see spec.md §2 and plan.md §D. Each
+// guard's removal flips a measured-disjoint scenario row (acceptance.md §C.1).
+//
+// @MX:ANCHOR: [AUTO] reachability (S1) is retained alongside the patch-id probes (S3/S4) and conjoined with the state check (S5)
+// @MX:REASON: S1 is the only signal that recognises a true merge commit and a strictly-behind branch; replacing it with the patch-id probes regresses SC-3 and SC-4. S5 is the only signal that withholds a verdict when a history signal fires on content base later reverted/removed; dropping it regresses SC-8 through SC-15 and P3c/P4c (acceptance.md §C.1 `no-state`). The two are independent invariants a future edit is most likely to break, so they are pinned here.
 func (w *worktreeManager) IsBranchMerged(branch, base string) (bool, error) {
 	w.logger.Debug("checking if branch merged", "branch", branch, "base", base)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	out, err := execGit(ctx, w.root, "branch", "--merged", base)
+	// S1: reachability (retained verbatim, including the marker-stripping
+	// helper). This is the only signal that recognises a true merge commit
+	// (SC-3) and a strictly-behind branch (SC-4); replacing it with the
+	// patch-id probes would regress both.
+	s1ctx, s1cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer s1cancel()
+	out, err := execGit(s1ctx, w.root, "branch", "--merged", base)
 	if err != nil {
 		return false, fmt.Errorf("check merged branches: %w", err)
 	}
-
 	for line := range strings.SplitSeq(out, "\n") {
 		name := strings.TrimSpace(trimBranchListMarker(line))
 		if name == branch {
 			return true, nil
 		}
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// merge-base: computed once, shared by S2..S5. Per REQ-WSM-007, rc 1 with
+	// empty stdout means the two refs share no common ancestor (unrelated
+	// histories): the conservative outcome is (false, nil) — keep the worktree.
+	mbResult, err := execGitExit(ctx, w.root, nil, "merge-base", base, branch)
+	if err != nil {
+		return false, fmt.Errorf("merge-base %s %s: %w", base, branch, err)
+	}
+	switch mbResult.exitCode {
+	case 0:
+		// found; continue
+	case 1:
+		if strings.TrimSpace(mbResult.stdout) == "" {
+			return false, nil
+		}
+		return false, fmt.Errorf("merge-base %s %s: unexpected rc=1 with output", base, branch)
+	default:
+		return false, fmt.Errorf("merge-base %s %s: %s: exit %d",
+			base, branch, strings.TrimSpace(mbResult.stderr), mbResult.exitCode)
+	}
+	mb := strings.TrimSpace(mbResult.stdout)
+
+	// S2: empty diff between merge-base and branch. rc 0 = no difference =
+	// merged; rc 1 = a difference exists = continue. Both rc 0 and rc 1 are
+	// verdicts, NOT failures (REQ-WSM-007) — treating rc 1 as an error would
+	// make every non-merged branch surface as a failure.
+	s2, err := execGitExit(ctx, w.root, nil, "diff", "--quiet", mb, branch)
+	if err != nil {
+		return false, fmt.Errorf("diff --quiet %s %s: %w", mb, branch, err)
+	}
+	switch s2.exitCode {
+	case 0:
+		return true, nil
+	case 1:
+		// difference exists; fall through to history signals
+	default:
+		return false, fmt.Errorf("diff --quiet %s %s: %s: exit %d",
+			mb, branch, strings.TrimSpace(s2.stderr), s2.exitCode)
+	}
+
+	// names: every path the branch changed since its merge-base. Computed once
+	// and reused by S5 for both S3 and S4. Three enumeration guards apply:
+	//   - --no-renames          keeps a renamed source path in the list (SC-10/11)
+	//   - -z + NUL split        keeps the bytes verbatim, not C-quoted (SC-12)
+	//   - --ignore-submodules=none keeps a moved gitlink in the list (SC-15)
+	// --ignore-submodules=none appears here AND on the comparison below; neither
+	// occurrence is redundant (spec.md §2 finding 8; AC-WSM-006 fifth
+	// falsification — removing it from either stage alone reproduces SC-15).
+	namesResult, err := execGitExit(ctx, w.root, nil,
+		"diff", "--ignore-submodules=none", "--no-renames", "--name-only", "-z", mb, branch)
+	if err != nil {
+		return false, fmt.Errorf("enumerate changed paths: %w", err)
+	}
+	if namesResult.exitCode != 0 {
+		return false, fmt.Errorf("enumerate changed paths: %s: exit %d",
+			strings.TrimSpace(namesResult.stderr), namesResult.exitCode)
+	}
+	names := splitNul(namesResult.stdout)
+
+	// S5: state check (conjunct only). Computed once, reused for S3 and S4.
+	// Never a merged verdict on its own — it may withhold, never grant.
+	stateHolds, err := stateCheck(ctx, w.root, names, branch, base)
+	if err != nil {
+		return false, err
+	}
+
+	// S3: rebase-merge history signal. Merged only when cherry output is
+	// non-empty AND every line is prefixed '-' AND S5 holds. Empty cherry
+	// output means "no commits compared" and is never a merged verdict; a
+	// single '+' line means part of the branch's work never landed.
+	s3, err := execGitExit(ctx, w.root, nil, "cherry", base, branch)
+	if err != nil {
+		return false, fmt.Errorf("cherry %s %s: %w", base, branch, err)
+	}
+	if s3.exitCode != 0 {
+		return false, fmt.Errorf("cherry %s %s: %s: exit %d",
+			base, branch, strings.TrimSpace(s3.stderr), s3.exitCode)
+	}
+	if stateHolds && cherryAllDash(s3.stdout) {
+		return true, nil
+	}
+
+	// S4: squash-merge history signal. Collapse the branch's entire
+	// diff-versus-merge-base into one synthetic commit so it has the same shape
+	// as the single squashed commit on base, then ask git cherry whether base
+	// already contains an equivalent patch.
+	treeOut, err := execGit(ctx, w.root, "rev-parse", branch+"^{tree}")
+	if err != nil {
+		return false, fmt.Errorf("resolve branch tree for synthetic commit: %w", err)
+	}
+	tree := strings.TrimSpace(treeOut)
+	synth, err := execGitExit(ctx, w.root, syntheticCommitEnv(),
+		"commit-tree", tree, "-p", mb, "-m", syntheticCommitMessage)
+	if err != nil {
+		return false, fmt.Errorf("synthetic commit-tree: %w", err)
+	}
+	if synth.exitCode != 0 {
+		return false, fmt.Errorf("synthetic commit-tree: %s: exit %d",
+			strings.TrimSpace(synth.stderr), synth.exitCode)
+	}
+	synthCommit := strings.TrimSpace(synth.stdout)
+	s4, err := execGitExit(ctx, w.root, nil, "cherry", base, synthCommit)
+	if err != nil {
+		return false, fmt.Errorf("cherry %s %s: %w", base, synthCommit, err)
+	}
+	if s4.exitCode != 0 {
+		return false, fmt.Errorf("cherry %s %s: %s: exit %d",
+			base, synthCommit, strings.TrimSpace(s4.stderr), s4.exitCode)
+	}
+	if stateHolds && cherryAllDash(s4.stdout) {
+		return true, nil
+	}
+
 	return false, nil
+}
+
+// syntheticCommitMessage is the fixed commit message used by the S4
+// synthetic-commit probe. Combined with the pinned identity values
+// (syntheticCommitEnv, REQ-WSM-008), it makes the object deterministic across
+// repeated evaluations of an unchanged branch, bounding dangling objects to
+// distinct branch states rather than to the number of sweeps.
+const syntheticCommitMessage = "moai-squash-probe"
+
+// syntheticCommitIdentity pins the author and committer identity so a synthetic
+// commit's object hash depends only on (tree, parent, message), not on
+// wall-clock time or the invoking user. The date is fixed to the epoch; the
+// name/email are fixed arbitrary values. Without this, repeated evaluation of
+// one unchanged branch yields a fresh object each call (measured), and the
+// dangling-commit count grows with the sweep count rather than the distinct
+// branch-state count (REQ-WSM-008; spec.md §5 decision 2).
+const (
+	syntheticAuthorName  = "moai"
+	syntheticAuthorEmail = "moai@localhost"
+	syntheticCommitDate  = "@0 +0000"
+)
+
+// syntheticCommitEnv returns the per-call environment overlay that pins the
+// synthetic commit's identity. It is passed to execGitExit's extraEnv, the
+// mechanism M1 introduced; this function supplies the M2 values. Existing
+// execGit callers are unaffected — they never pass through extraEnv.
+func syntheticCommitEnv() []string {
+	return []string{
+		"GIT_AUTHOR_NAME=" + syntheticAuthorName,
+		"GIT_AUTHOR_EMAIL=" + syntheticAuthorEmail,
+		"GIT_AUTHOR_DATE=" + syntheticCommitDate,
+		"GIT_COMMITTER_NAME=" + syntheticAuthorName,
+		"GIT_COMMITTER_EMAIL=" + syntheticAuthorEmail,
+		"GIT_COMMITTER_DATE=" + syntheticCommitDate,
+	}
+}
+
+// splitNul splits NUL-delimited `git diff -z` output into a []string, dropping
+// the empty trailing element a NUL terminator leaves behind. The result is one
+// element per path, suitable for variadic expansion. NEVER split on newline:
+// `git diff --name-only` C-quotes any path containing a backslash, tab, double
+// quote, or control character — and, under git's documented default
+// core.quotePath=true, any non-ASCII byte — and the quoted rendering matches
+// nothing as a pathspec, which by the fail-open property reads as merged
+// (spec.md §2 findings 5-6; SC-12). core.quotePath=false is NOT a substitute:
+// it leaves backslash and control-character paths quoted regardless.
+func splitNul(out string) []string {
+	if out == "" {
+		return nil
+	}
+	parts := strings.Split(out, "\x00")
+	if n := len(parts); n > 0 && parts[n-1] == "" {
+		parts = parts[:n-1]
+	}
+	return parts
+}
+
+// cherryAllDash reports whether git cherry output is non-empty AND every
+// non-blank line is prefixed '-'. Empty output is NEVER a merged verdict (it
+// means "no commits compared"); a single '+' line means part of the branch's
+// work is absent from base. This implements two of the three S3/S4 guards; the
+// third (S5 holds) is applied by the caller as a conjunct.
+func cherryAllDash(cherryOut string) bool {
+	trimmed := strings.TrimSpace(cherryOut)
+	if trimmed == "" {
+		return false
+	}
+	for _, line := range strings.Split(trimmed, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "-") {
+			return false
+		}
+	}
+	return true
+}
+
+// stateCheck evaluates S5: whether every path the branch changed since its
+// merge-base has identical content (and mode) in base HEAD. It is a CONJUNCT
+// ONLY — it may withhold a verdict, never grant one (REQ-WSM-014).
+//
+// When names is empty the branch touched nothing since its merge-base: S5
+// holds trivially, and scoping the later comparison to an empty pathspec would
+// instead compare the whole trees (the wrong question).
+//
+// Five guards govern S5; each has a silent fail-open failure mode when omitted
+// (spec.md §2 findings 5-8; plan.md §D):
+//   - literal matching: --literal-pathspecs is a GIT-LEVEL option and MUST
+//     precede the subcommand. It matches each path's bytes as a literal
+//     filename rather than parsing them as pathspec magic, so a repo-root path
+//     whose first byte is ':' is checked instead of naming no file (SC-13).
+//   - observed comparison: --no-textconv and --ignore-submodules=none are
+//     DIFF-LEVEL options and MUST follow the subcommand. They stop a textconv
+//     diff driver (SC-14) and a submodule ignore directive (SC-15) from
+//     collapsing a real difference.
+//   - mode sensitivity: `git diff` compares modes, so a symlink/file blob-OID
+//     collision (P4c) and a chmod-only divergence (P3c) are detected. A
+//     blob-OID substitute would not detect either.
+//
+// `names` MUST be passed as a []string (variadic to execGitExit), NEVER as a
+// joined shell string: a single pathspec matching nothing exits 0 and reads as
+// "no difference" (spec.md §2 finding 5; plan.md §D).
+func stateCheck(ctx context.Context, root string, names []string, branch, base string) (bool, error) {
+	if len(names) == 0 {
+		return true, nil
+	}
+	args := make([]string, 0, 6+len(names))
+	args = append(args, "--literal-pathspecs") // git-level: precedes subcommand
+	args = append(args, "diff", "--quiet")
+	args = append(args, "--no-textconv", "--ignore-submodules=none") // diff-level: follows subcommand
+	args = append(args, branch, base, "--")
+	args = append(args, names...) // one argument per path; never joined
+	r, err := execGitExit(ctx, root, nil, args...)
+	if err != nil {
+		return false, fmt.Errorf("state check: %w", err)
+	}
+	switch r.exitCode {
+	case 0:
+		return true, nil
+	case 1:
+		return false, nil
+	default:
+		return false, fmt.Errorf("state check: %s: exit %d", strings.TrimSpace(r.stderr), r.exitCode)
+	}
 }
 
 // trimBranchListMarker strips the leading status marker `git branch` puts on a
