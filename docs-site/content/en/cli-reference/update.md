@@ -126,6 +126,7 @@ graph TD
 | `--yes` | Auto-approve all confirmations (CI/CD mode) |
 | `--templates-only` | Skip the binary update and sync templates only |
 | `--binary` | Skip template sync and update the binary only |
+| `--version <tag>` | Install a specific release tag (stable / rc / previous version) instead of the latest |
 | `--dry-run` | Show planned actions only, with no filesystem changes |
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
@@ -148,6 +149,63 @@ Update only the binary without syncing templates:
 ```bash
 moai update --binary
 ```
+
+### Install a specific version (`--version`)
+
+`moai update --version <tag>` installs a specific GitHub release tag — stable,
+release-candidate (rc), or a previous version — through the same
+checksum-verified download path as the default update. It covers three use
+cases in one flag: pin to a known-stable version, switch to an rc for testing,
+or roll back to a previous version after a regression.
+
+```bash
+# Pin to a stable release
+moai update --version v3.0.0
+
+# The leading "v" is optional
+moai update --version 3.0.0
+
+# Try a release candidate
+moai update --version v3.1.0-rc1
+
+# Roll back to a previous version
+moai update --version v2.14.0
+```
+
+{{< callout type="info" >}}
+The flag stays on the `api.github.com` host on `https` and verifies the
+downloaded binary against the release's published checksum — there is no
+`--skip-checksum` / `--insecure` bypass. A tag with no matching binary asset
+for your platform, or a checksum mismatch, exits non-zero and leaves the
+filesystem untouched.
+{{< /callout >}}
+
+#### Flag interaction matrix
+
+`--version` is mutually exclusive with a few flags and permitted with others:
+
+| Other flag | `--version` | Behavior |
+|--------|--------|------|
+| `--check` | {{< icon x >}} | mutually exclusive (usage error before any network call) |
+| `--templates-only` | {{< icon x >}} | mutually exclusive |
+| `--restore` | {{< icon x >}} | mutually exclusive |
+| `--dry-run` | {{< icon x >}} | mutually exclusive |
+| `--binary` | {{< icon check ok >}} | install only the binary of the requested tag, skip template sync |
+| `--force` | {{< icon check ok >}} | force re-install even when the running version already matches |
+| `--yes` | {{< icon check ok >}} | skip the downgrade confirmation (CI/CD mode) |
+
+#### Downgrade confirmation
+
+When the requested tag is older than the running version, `moai update` prompts
+for confirmation on an interactive terminal. Pass `--yes` (or run with a
+non-TTY stdin, e.g. in CI) to skip the prompt and proceed.
+
+#### Stable vs. release-candidate behavior
+
+The default `moai update` (no `--version`) fetches GitHub's `/releases/latest`,
+which automatically excludes pre-releases — so rc and pre-release tags are
+**never** surfaced by the default flow. `--version <tag>` is the only way to
+install an rc or a specific previous tag explicitly.
 
 ### Template-only sync
 
@@ -258,7 +316,10 @@ MoAI-ADK manages files only in the following folders:
 If a problem occurs after an update, you can roll back to a previous version:
 
 ```bash
-# Restore a specific version via manual reinstall
+# Roll back to a specific version in-process (recommended)
+moai update --version <release-tag>
+
+# Bootstrap path (before moai is installed): use the install script
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
 
 # Restore the config from backup

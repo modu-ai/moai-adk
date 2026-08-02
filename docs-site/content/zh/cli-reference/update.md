@@ -126,6 +126,7 @@ graph TD
 | `--yes` | 自动批准所有确认(CI/CD 模式) |
 | `--templates-only` | 跳过二进制更新,仅同步模板 |
 | `--binary` | 跳过模板同步,仅更新二进制 |
+| `--version <tag>` | 安装特定的发布标签(stable / rc / 旧版本)而非最新版 |
 | `--dry-run` | 不改动文件系统,仅显示计划的操作 |
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
@@ -148,6 +149,50 @@ graph TD
 ```bash
 moai update --binary
 ```
+
+### 安装特定版本 (`--version`)
+
+`moai update --version <tag>` 通过与默认更新相同的校验和验证下载路径,安装特定的 GitHub 发布标签(stable、rc 或旧版本)。一个标志覆盖三种用途:固定到稳定的 stable 版本、切换到 rc 进行测试,或在回归后回滚到旧版本。
+
+```bash
+# 固定到 stable 发布
+moai update --version v3.0.0
+
+# 前导 "v" 可省略
+moai update --version 3.0.0
+
+# 试用 rc
+moai update --version v3.1.0-rc1
+
+# 回滚到旧版本
+moai update --version v2.14.0
+```
+
+{{< callout type="info" >}}
+该标志仅使用 `api.github.com` 主机的 `https`,并按发布的公开校验和验证下载的二进制文件 —— 没有 `--skip-checksum` / `--insecure` 旁路。当没有匹配平台的二进制资产或校验和不一致时,以非零退出码结束且不改动文件系统。
+{{< /callout >}}
+
+#### 标志交互矩阵
+
+`--version` 与部分标志互斥,与其余标志可并用:
+
+| 组合标志 | `--version` | 行为 |
+|--------|--------|------|
+| `--check` | {{< icon x >}} | 互斥(任何网络调用前报用法错误) |
+| `--templates-only` | {{< icon x >}} | 互斥 |
+| `--restore` | {{< icon x >}} | 互斥 |
+| `--dry-run` | {{< icon x >}} | 互斥 |
+| `--binary` | {{< icon check ok >}} | 仅安装所请求标签的二进制,跳过模板同步 |
+| `--force` | {{< icon check ok >}} | 即使运行版本已匹配也强制重装 |
+| `--yes` | {{< icon check ok >}} | 跳过降级确认提示(CI/CD 模式) |
+
+#### 降级确认
+
+当所请求标签比运行版本旧时,在交互式终端会弹出确认提示。传入 `--yes`(或使用非 TTY stdin,如 CI 中)可跳过提示直接进行。
+
+#### stable 与 rc 的行为
+
+默认的 `moai update`(不带 --version)获取 GitHub 的 `/releases/latest`,它会自动排除预发布版本 —— 因此 rc 和预发布标签在默认流程中**从不**暴露。`--version <tag>` 是显式安装 rc 或特定旧标签的唯一途径。
 
 ### 仅模板同步
 
@@ -258,7 +303,10 @@ MoAI-ADK 仅在以下文件夹中管理文件:
 更新后出现问题时,可回滚到之前的版本:
 
 ```bash
-# 通过手动重新安装恢复特定版本
+# 进程内回滚到特定版本(推荐)
+moai update --version <release-tag>
+
+# 引导路径(moai 安装前):使用安装脚本
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
 
 # 从备份恢复配置

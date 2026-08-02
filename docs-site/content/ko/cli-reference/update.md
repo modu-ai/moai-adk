@@ -126,6 +126,7 @@ graph TD
 | `--yes` | 모든 확인 자동 승인 (CI/CD 모드) |
 | `--templates-only` | 바이너리 업데이트 건너뛰고 템플릿만 동기화 |
 | `--binary` | 템플릿 동기화 건너뛰고 바이너리만 업데이트 |
+| `--version <tag>` | 최신 대신 특정 릴리스 태그(stable / rc / 이전 버전) 설치 |
 | `--dry-run` | 파일시스템 변경 없이 계획된 작업만 표시 |
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
@@ -148,6 +149,50 @@ graph TD
 ```bash
 moai update --binary
 ```
+
+### 특정 버전 설치 (`--version`)
+
+`moai update --version <tag>`는 특정 GitHub 릴리스 태그(stable, rc, 이전 버전)를 기본 업데이트와 동일한 체크섬 검증 다운로드 경로로 설치합니다. 한 플래그로 세 가지 용도를 모두 covering합니다: 검증된 stable 버전 고정, 테스트용 rc 전환, 회귀 후 이전 버전으로 롤백.
+
+```bash
+# stable 릴리스 고정
+moai update --version v3.0.0
+
+# 앞의 "v"는 생략 가능
+moai update --version 3.0.0
+
+# rc 시도
+moai update --version v3.1.0-rc1
+
+# 이전 버전으로 롤백
+moai update --version v2.14.0
+```
+
+{{< callout type="info" >}}
+이 플래그는 `api.github.com` 호스트의 `https` 만 사용하며, 다운로드한 바이너리를 릴리스의 공개 체크섬으로 검증합니다 — `--skip-checksum` / `--insecure` 우회는 없습니다. 플랫폼에 맞는 바이너리 에셋이 없거나 체크섬이 일치하지 않으면 0이 아닌 종료 코드로 끝나며 파일시스템은 그대로 남습니다.
+{{< /callout >}}
+
+#### 플래그 상호작용 매트릭스
+
+`--version`은 일부 플래그와 배타적이며, 나머지와는 함께 쓸 수 있습니다:
+
+| 함께 쓰는 플래그 | `--version` | 동작 |
+|--------|--------|------|
+| `--check` | {{< icon x >}} | 배타적 (네트워크 호출 전 사용법 에러) |
+| `--templates-only` | {{< icon x >}} | 배타적 |
+| `--restore` | {{< icon x >}} | 배타적 |
+| `--dry-run` | {{< icon x >}} | 배타적 |
+| `--binary` | {{< icon check ok >}} | 요청한 태그의 바이너리만 설치, 템플릿 동기화 건너뜀 |
+| `--force` | {{< icon check ok >}} | 실행 중 버전이 이미 일치해도 강제 재설치 |
+| `--yes` | {{< icon check ok >}} | 다운그레이드 확인 프롬프트 건너뜀 (CI/CD 모드) |
+
+#### 다운그레이드 확인
+
+요청한 태그가 실행 중 버전보다 오래된 경우, 인터랙티브 터미널에서 확인 프롬프트가 나타납니다. `--yes`를 주거나(CI 등) 비-TTY stdin이면 프롬프트 없이 진행합니다.
+
+#### stable vs. rc 동작
+
+기본 `moai update`(--version 없음)는 GitHub의 `/releases/latest`를 가져오며, 이는 사전 릴리스를 자동으로 제외합니다 — 따라서 rc 및 사전 릴리스 태그는 기본 흐름에서 **절대** 노출되지 않습니다. `--version <tag>`만이 rc나 특정 이전 태그를 명시적으로 설치하는 유일한 경로입니다.
 
 ### 템플릿 전용 동기화
 
@@ -258,7 +303,10 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 업데이트 후 문제가 발생하면 이전 버전으로 롤백할 수 있습니다:
 
 ```bash
-# 수동 재설치로 특정 버전 복원
+# 인프로세스로 특정 버전 롤백 (권장)
+moai update --version <릴리스-태그>
+
+# 부트스트랩 경로 (moai 설치 전): 설치 스크립트 사용
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <릴리스-태그>
 
 # 백업에서 설정 복원
