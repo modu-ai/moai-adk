@@ -108,6 +108,82 @@ After restoring `if !wtMaterialized`, all three tests returned GREEN (`ok ... 3.
 
 **Scope discipline (B8/B10):** touched only `internal/cli/web.go` (runWeb + new `webRunFn` seam + `os` import) and `internal/cli/web_session_worktree_test.go` (NEW). Did NOT modify `session_worktree.go` core logic (reused as-is), `ensurePortFree`/port handling (REQ-SW-015), or `emitWorktreeAdvisory` (gated at the call site, not modified). spec.md/plan.md/acceptance.md/design.md/research.md body unchanged.
 
+### M4 — Branch naming verify + session-exit disposal (COMPLETE)
+
+**Branch naming (AC-SW-007 / REQ-SW-006/007):** M2's `sessionWorktreeBranchName` (produces `WT-<session-short>-<subcommand>`) and `resolveSessionShortReal` verified correct — NOT changed. The session-id-available branch of `resolveSessionShortReal` (first-8 chars of the registry session UUID via the `.moai/state/current-session-id.txt` side-channel) was UNTESTED at M2 (coverage 45.5% — only the random-fallback branch was hit). M4 ADDS two tests (`TestResolveSessionShortReal_SideChannelAvailable`, `TestResolveSessionShortReal_ShortSessionID`) plus `TestResolveSessionShortReal_NoSideChannelFallsBack` covering the EC-4 fallback; `resolveSessionShortReal` coverage rose 45.5% → 90.9%.
+
+**Session-exit disposal (AC-SW-008/009/010 / REQ-SW-008/009/010):** NEW `cleanupSessionWorktree(cfg, wtPath, cleanExit, out)` honors the three cases + the dirty guard:
+
+| Case | Trigger | Behavior |
+|---|---|---|
+| Default-manual (REQ-SW-008) | `auto_cleanup == false` (distributed default) | worktree PERSISTS — no-op, no notice |
+| Opt-in clean-exit (REQ-SW-009) | `auto_cleanup == true` AND `cleanExit == true` AND clean worktree | `git worktree remove` + stderr notice `removed by session-exit cleanup: <path>` |
+| Non-clean-exit preserve (REQ-SW-009) | `auto_cleanup == true` AND `cleanExit == false` | PRESERVE for post-mortem + notice |
+| Dirty guard (REQ-SW-010) | `git status --porcelain` non-empty | SKIP removal + notice naming the worktree path (uncommitted changes NEVER deleted); guard is fail-open on status-check error |
+
+The `worktreeIsDirty(wtPath)` helper is the SHARED guard factored for M8 PR-merge reuse (REQ-SW-010 + REQ-SW-024 — one helper, two call sites).
+
+**Notice distinguishability (REQ-SW-009 vs REQ-SW-022 / EC-13):** the session-exit notice prefix constant `SessionExitCleanupNoticePrefix = "removed by session-exit cleanup:"` does NOT contain the substring `PR-merge`, so it is unambiguously distinguishable from the M8 PR-merge notice (`removed by PR-merge cleanup:`). The path in the notice carries the `WT-` branch prefix from M2/Q2 (the worktree dir basename IS the branch name).
+
+**Wiring (init.go + web.go):** `runInit` and `runWeb` converted to named returns `(err error)`; each captures the worktree path at entry and defers `cleanupSessionWorktree(swCfg, wtPath, err == nil, stderr)` — `cleanExit` is derived from the named error return (`err == nil` means exit 0). No new config flag; reuses `workflow.worktree.auto_cleanup` (§22.8, default `false`).
+
+**RED → GREEN proof (E8):** tests written first against a no-op stub `cleanupSessionWorktree`; verbatim RED output (4 FAILs) captured before the real logic landed:
+```
+--- FAIL: TestCleanupSessionWorktree_CleanExitRemoves — clean-exit: expected remove("/repo/.claude/worktrees/WT-abcdef12-web"), got ""
+--- FAIL: TestCleanupSessionWorktree_NonCleanExitPreserves — non-clean-exit: expected preserve notice, got ""
+--- FAIL: TestCleanupSessionWorktree_DirtyPreserves — dirty: notice must name the worktree path "...", got ""
+--- FAIL: TestCleanupSessionWorktree_DirtyCheckErrorPreserves — dirty-check-error: notice must name worktree path, got ""
+```
+GREEN: all 19 session-worktree tests (M2 + M4) PASS.
+
+**Falsification round-trip (a) — dirty guard (REQ-SW-010) load-bearing:** bypassed the dirty-guard block (`dirty, derr := false, error(nil)`) and re-ran `TestCleanupSessionWorktree_DirtyPreserves` → FAIL:
+```
+--- FAIL: TestCleanupSessionWorktree_DirtyPreserves — dirty: remove MUST NOT run (uncommitted changes preserved)
+```
+Restoring the guard → PASS. The guard prevents a dirty worktree from being wrongly removed.
+
+**Falsification round-trip (b) — clean-exit-only (REQ-SW-009) load-bearing:** bypassed the `if !cleanExit` preserve branch (`if !cleanExit && false`) and re-ran `TestCleanupSessionWorktree_NonCleanExitPreserves` → FAIL:
+```
+--- FAIL: TestCleanupSessionWorktree_NonCleanExitPreserves — non-clean-exit: remove MUST NOT run (preserve for post-mortem)
+```
+Restoring the check → PASS. The exit-code gate prevents a worktree from being removed after a non-zero exit.
+
+**E1 — AC matrix (M4-relevant):**
+
+| AC | Status | Command | Output |
+|---|---|---|---|
+| AC-SW-007 | PASS (M2, verified) | `go test -run TestSessionWorktreeBranchName ./internal/cli/` | `--- PASS: TestSessionWorktreeBranchName_Shape` + M4-added `TestResolveSessionShortReal_SideChannelAvailable` |
+| AC-SW-008 | PASS | `go test -run TestCleanupSessionWorktree_DefaultManualPersists ./internal/cli/` | `--- PASS` — auto_cleanup=false → remove NOT called, no removal notice |
+| AC-SW-009 | PASS | `go test -run 'TestCleanupSessionWorktree_CleanExitRemoves\|TestCleanupSessionWorktree_NonCleanExitPreserves\|TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge' ./internal/cli/` | `--- PASS` — clean-exit removes + notice; non-clean preserves; notice prefix lacks "PR-merge" |
+| AC-SW-010 | PASS | `go test -run 'TestCleanupSessionWorktree_DirtyPreserves\|TestCleanupSessionWorktree_DirtyCheckErrorPreserves' ./internal/cli/` | `--- PASS` — dirty porcelain → skip removal + path-naming notice; status-check error → fail-open preserve |
+
+**E2 — Cross-platform build:**
+```
+$ go build ./...                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+**E3 — Coverage (M4 + M2 session-worktree functions):**
+```
+$ go test -run 'TestCleanupSessionWorktree|TestResolveSessionShortReal|TestSessionWorktreeBranchName|TestEnterSessionWorktree' -coverprofile=... ./internal/cli/
+go tool cover -func=... | grep -E 'cleanup|dirty|resolve|branchName|enter':
+  enterSessionWorktree      100.0%
+  sessionWorktreeBranchName 100.0%
+  resolveSessionShortReal    90.9%  (was 45.5% at M2 — session-id-available branch now covered)
+  cleanupSessionWorktree     88.9%  (NEW; uncovered = dirty-check-error notice + remove-failure notice — exceptional paths)
+  worktreeIsDirty           100.0%  (NEW; shared with M8 PR-merge path REQ-SW-024)
+  gitWorktreeRemoveReal       0.0%  (real git subprocess — exercised via the function-variable seam, mirroring M2's gitWorktreeAddReal=0%)
+  gitStatusPorcelainReal      0.0%  (real git subprocess — exercised via the seam)
+```
+
+**E4 — Subagent boundary (C-HRA-008):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/session_worktree.go internal/cli/init.go internal/cli/web.go | grep -v '_test.go' | grep -v '// '` → 0 matches.
+
+**E5 — Lint:** `golangci-lint run --timeout=3m ./internal/cli/...` → 0 issues (NEW vs baseline: 0).
+
+**Full suite:** `go test -count=1 ./internal/cli/` → `ok ... 161.745s` (all existing tests still pass).
+
+**Scope discipline (B8/B10):** touched `internal/cli/session_worktree.go` (NEW `cleanupSessionWorktree` + `worktreeIsDirty` + 2 seams + real impls + notice constant), `internal/cli/session_worktree_test.go` (extended `swSeams` + 10 NEW tests), `internal/cli/init.go` (runInit → named return + defer cleanup), `internal/cli/web.go` (runWeb → named return + defer cleanup). Did NOT implement M8's PR-merge path (M4 owns only session-exit; M8 adds on-touch PR-merge). Did NOT add a new config flag (reuses `workflow.worktree.auto_cleanup`). spec.md/plan.md/acceptance.md/design.md/research.md body unchanged.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -68,40 +68,53 @@ Examples:
 // runWeb resolves the project root and starts the Console server, blocking until
 // SIGINT/SIGTERM. Exit-code discipline: returns a wrapped error (cobra → exit 1)
 // when the project root cannot be found or the server fails to bind.
-func runWeb(cmd *cobra.Command, _ []string) error {
-	// SPEC-SESSION-WORKTREE-001 M3: session-worktree auto-entry. Runs BEFORE
-	// findProjectRootFn / ensurePortFree / emitWorktreeAdvisory so that, on
-	// success, the process chdir's into the worktree and subsequent project-
-	// root resolution lands inside it (BI-2 / R1 mitigation). When the feature
-	// is OFF (default) the wrapper returns "" and runWeb is byte-identical to
-	// the baseline (REQ-SW-001). On fail-back (REQ-SW-004) or already-in-
-	// worktree skip (REQ-SW-012) the wrapper returns "" and web continues in
-	// the shared checkout.
+func runWeb(cmd *cobra.Command, _ []string) (err error) {
+	// SPEC-SESSION-WORKTREE-001 M3/M4: session-worktree auto-entry + exit
+	// disposal. The auto-entry runs BEFORE findProjectRootFn /
+	// ensurePortFree / emitWorktreeAdvisory so that, on success, the process
+	// chdir's into the worktree and subsequent project-root resolution lands
+	// inside it (BI-2 / R1 mitigation). When the feature is OFF (default) the
+	// wrapper returns "" and runWeb is byte-identical to the baseline
+	// (REQ-SW-001). On fail-back (REQ-SW-004) or already-in-worktree skip
+	// (REQ-SW-012) the wrapper returns "" and web continues in the shared
+	// checkout.
 	//
 	// wtMaterialized tracks whether the process actually entered the worktree.
 	// Only then is the shared-checkout collision hazard avoided by construction
 	// (REQ-SW-013). A chdir failure after a successful materialization is a
 	// fail-back: the worktree exists but this process cannot use it, so the
 	// hazard is NOT avoided and wtMaterialized stays false.
+	//
+	// M4 (REQ-SW-008/009/010): the deferred cleanup disposes the materialized
+	// worktree at subcommand exit. It honors three cases (default-manual
+	// persist / clean-exit remove / non-clean preserve) + the dirty guard.
+	// cleanExit is derived from this function's named error return (err ==
+	// nil means exit 0). wtPath == "" makes cleanup a no-op.
+	swCfg := loadSessionWorktreeConfig(cmd)
 	wtMaterialized := false
-	if wtPath := enterSessionWorktree(loadSessionWorktreeConfig(cmd), "web", cmd.ErrOrStderr()); wtPath != "" {
-		if err := os.Chdir(wtPath); err != nil {
+	wtPath := enterSessionWorktree(swCfg, "web", cmd.ErrOrStderr())
+	if wtPath != "" {
+		if cerr := os.Chdir(wtPath); cerr != nil {
 			// Chdir failure is a fail-back (REQ-SW-004): continue in the shared
 			// checkout. The worktree was materialized but unusable from this
 			// process; the user can enter it manually later. The advisory
 			// therefore still fires (hazard not avoided by construction).
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 				"moai: session-worktree chdir into %s failed (%v); continuing in shared checkout for %q\n",
-				wtPath, err, "web")
+				wtPath, cerr, "web")
 		} else {
 			wtMaterialized = true
 		}
 	}
+	defer func() {
+		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+	}()
 
-	projectRoot, err := findProjectRootFn()
-	if err != nil {
-		return fmt.Errorf("moai web must run inside a MoAI project: %w", err)
+	projectRoot, perr := findProjectRootFn()
+	if perr != nil {
+		return fmt.Errorf("moai web must run inside a MoAI project: %w", perr)
 	}
+
 
 	// web.Run 위임 전 대상 포트를 확보한다: stale moai 인스턴스는 회수하고
 	// 외부 프로세스는 보호(에러). --no-reuse면 회수를 건너뛴다.

@@ -67,7 +67,22 @@ var (
 
 	// sessionWorktreeGitConfigSet runs `git -C <dir> config <key> <value>`.
 	sessionWorktreeGitConfigSet = gitConfigSetReal
+
+	// sessionWorktreeGitWorktreeRemove runs `git worktree remove <wtPath>`
+	// (M4 session-exit disposal, REQ-SW-009).
+	sessionWorktreeGitWorktreeRemove = gitWorktreeRemoveReal
+
+	// sessionWorktreeGitStatusPorcelain runs `git -C <wtPath> status
+	// --porcelain` and returns its stdout (M4 dirty guard, REQ-SW-010; shared
+	// with the M8 PR-merge path, REQ-SW-024).
+	sessionWorktreeGitStatusPorcelain = gitStatusPorcelainReal
 )
+
+// SessionExitCleanupNoticePrefix is the literal prefix of the session-exit
+// removal notice. It MUST NOT collide with the M8 PR-merge notice prefix
+// ("removed by PR-merge cleanup:") so the two notices are distinguishable in
+// combined output (REQ-SW-009 / AC-SW-009 / EC-13).
+const SessionExitCleanupNoticePrefix = "removed by session-exit cleanup:"
 
 // enterSessionWorktree is the auto-entry wrapper shared by moai init (M2),
 // moai web (M3), and moai profile (M6). It MUST be called BEFORE any
@@ -231,6 +246,99 @@ func gitCommonDirReal() (string, error) {
 func gitConfigSetReal(dir, key, value string) error {
 	cmd := exec.Command("git", "-C", dir, "config", key, value)
 	return cmd.Run()
+}
+
+// cleanupSessionWorktree performs session-exit disposal of a materialized
+// session worktree (M4, REQ-SW-008/009/010).
+//
+// Three cases:
+//   - Default-manual (REQ-SW-008): auto_cleanup == false (the distributed
+//     default) -> worktree persists. No side effect, no notice.
+//   - Opt-in auto-cleanup, clean exit (REQ-SW-009): git worktree remove +
+//     stderr notice carrying SessionExitCleanupNoticePrefix.
+//   - Opt-in auto-cleanup, non-clean exit: preserve for post-mortem + notice.
+//
+// The dirty guard (REQ-SW-010) runs immediately before any removal: uncommitted
+// changes are NEVER deleted. wtPath == "" is a no-op. Every failure path is a
+// non-blocking notice (REQ-SW-004 fail-open spirit) — the function NEVER returns
+// an error and NEVER aborts the caller.
+//
+// @MX:ANCHOR: [AUTO] session-worktree exit disposal (M4 session-exit cleanup)
+// @MX:REASON: REQ-SW-008/009/010 — auto_cleanup toggle gates removal; clean-exit-only + dirty-guard are non-negotiable safety invariants; notice prefix MUST stay distinct from the M8 PR-merge path
+func cleanupSessionWorktree(cfg *config.Config, wtPath string, cleanExit bool, out io.Writer) {
+	if wtPath == "" {
+		// No worktree was materialized (feature OFF / fail-back / already-in-
+		// worktree). Nothing to dispose.
+		return
+	}
+	if cfg == nil || !cfg.Workflow.Worktree.AutoCleanup {
+		// REQ-SW-008: default-manual — auto_cleanup is OFF (the distributed
+		// default per CLAUDE.local.md §22.8). The worktree PERSISTS after exit;
+		// the user disposes explicitly via `moai worktree done` / `remove`. No
+		// notice (byte-identical to the baseline: nothing happens at exit).
+		return
+	}
+	if !cleanExit {
+		// REQ-SW-009 clean-exit-only: removal happens ONLY on clean exit (exit
+		// 0). A non-zero exit PRESERVES the worktree for post-mortem so the
+		// user can inspect the failure state.
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (non-zero exit): worktree %s preserved for post-mortem\n", wtPath)
+		return
+	}
+	// REQ-SW-010 dirty guard: uncommitted changes are NEVER deleted. The guard
+	// runs immediately before any `git worktree remove`. A status-check error
+	// is fail-open (preserve) — never risk deleting a worktree whose dirtiness
+	// could not be verified.
+	dirty, derr := worktreeIsDirty(wtPath)
+	if derr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (dirty-check failed: %v): worktree %s preserved\n", derr, wtPath)
+		return
+	}
+	if dirty {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", wtPath)
+		return
+	}
+	// Clean worktree + clean exit -> remove. A removal failure is non-blocking
+	// (REQ-SW-004 fail-open spirit): the worktree is left on disk and a notice
+	// names the failure.
+	if rerr := sessionWorktreeGitWorktreeRemove(wtPath); rerr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup failed (%v): worktree %s left on disk\n", rerr, wtPath)
+		return
+	}
+	_, _ = fmt.Fprintf(out, "moai: %s worktree %s\n", SessionExitCleanupNoticePrefix, wtPath)
+}
+
+// worktreeIsDirty reports whether the worktree at wtPath has uncommitted
+// changes (git status --porcelain non-empty). It is the SHARED guard used by
+// both the session-exit cleanup (REQ-SW-010) and the M8 PR-merge cleanup
+// (REQ-SW-024) — one helper, two call sites. An error reading status is
+// returned so the caller can fail-open (preserve rather than risk deletion).
+func worktreeIsDirty(wtPath string) (bool, error) {
+	porcelain, err := sessionWorktreeGitStatusPorcelain(wtPath)
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(porcelain) != "", nil
+}
+
+// gitWorktreeRemoveReal runs `git worktree remove <wtPath>`.
+func gitWorktreeRemoveReal(wtPath string) error {
+	cmd := exec.Command("git", "worktree", "remove", wtPath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+// gitStatusPorcelainReal runs `git -C <wtPath> status --porcelain` and returns
+// its stdout. Empty stdout means a clean worktree; non-empty means dirty
+// (uncommitted changes present).
+func gitStatusPorcelainReal(wtPath string) (string, error) {
+	out, err := exec.Command("git", "-C", wtPath, "status", "--porcelain").Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
 
 // loadSessionWorktreeConfig loads the project config for the session-worktree

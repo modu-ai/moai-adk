@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -24,6 +26,8 @@ type swSeams struct {
 	short      func() string
 	commonDir  func() (string, error)
 	configSet  func(dir, key, value string) error
+	remove     func(wtPath string) error
+	statusPorc func(wtPath string) (string, error)
 }
 
 // swapSessionWorktreeSeams replaces the seams and registers restoration.
@@ -32,7 +36,9 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	orig := swSeams{
 		add: sessionWorktreeGitWorktreeAdd, inWt: sessionWorktreeInGitWorktree,
 		short: sessionWorktreeResolveSessionShort, commonDir: sessionWorktreeGitCommonDir,
-		configSet: sessionWorktreeGitConfigSet,
+		configSet:  sessionWorktreeGitConfigSet,
+		remove:     sessionWorktreeGitWorktreeRemove,
+		statusPorc: sessionWorktreeGitStatusPorcelain,
 	}
 	if s.add != nil {
 		sessionWorktreeGitWorktreeAdd = s.add
@@ -49,12 +55,20 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	if s.configSet != nil {
 		sessionWorktreeGitConfigSet = s.configSet
 	}
+	if s.remove != nil {
+		sessionWorktreeGitWorktreeRemove = s.remove
+	}
+	if s.statusPorc != nil {
+		sessionWorktreeGitStatusPorcelain = s.statusPorc
+	}
 	t.Cleanup(func() {
 		sessionWorktreeGitWorktreeAdd = orig.add
 		sessionWorktreeInGitWorktree = orig.inWt
 		sessionWorktreeResolveSessionShort = orig.short
 		sessionWorktreeGitCommonDir = orig.commonDir
 		sessionWorktreeGitConfigSet = orig.configSet
+		sessionWorktreeGitWorktreeRemove = orig.remove
+		sessionWorktreeGitStatusPorcelain = orig.statusPorc
 	})
 }
 
@@ -262,3 +276,222 @@ func (e fakeErr) Error() string { return string(e) }
 
 const errFakeGitAdd = fakeErr("fake-git-add")
 const errFakeNotGitRepo = fakeErr("fake-not-a-git-repo")
+
+// --- SPEC-SESSION-WORKTREE-001 M4: session-exit disposal (REQ-SW-008/009/010) ---
+
+// worktreeCfg builds a config with the session-worktree feature ON and a
+// controllable auto_cleanup toggle. The feature is forced ON via the env-free
+// Enabled field; cleanup reads AutoCleanup directly.
+func worktreeCfg(autoCleanup bool) *config.Config {
+	return &config.Config{Workflow: config.WorkflowConfig{
+		SessionWorktree: config.SessionWorktreeConfig{Enabled: true},
+		Worktree:        config.WorkflowWorktreeConfig{AutoCleanup: autoCleanup},
+	}}
+}
+
+// TestCleanupSessionWorktree_EmptyPathNoOp is the trivial guard: an empty
+// worktree path (feature OFF / fail-back / already-in-worktree) is a no-op.
+func TestCleanupSessionWorktree_EmptyPathNoOp(t *testing.T) {
+	removeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		remove: func(string) error { removeCalled = true; return nil },
+	})
+	var out bytes.Buffer
+	cleanupSessionWorktree(worktreeCfg(true), "", true, &out)
+	if removeCalled {
+		t.Fatal("empty path: remove MUST NOT run")
+	}
+	if out.Len() != 0 {
+		t.Fatalf("empty path: expected no notice, got %q", out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_DefaultManualPersists is REQ-SW-008: when
+// auto_cleanup is false (the distributed default), the worktree PERSISTS after
+// exit — no removal, no removal notice.
+func TestCleanupSessionWorktree_DefaultManualPersists(t *testing.T) {
+	removeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		remove: func(string) error { removeCalled = true; return nil },
+	})
+	var out bytes.Buffer
+	cleanupSessionWorktree(worktreeCfg(false), "/repo/.claude/worktrees/WT-abcdef12-web", true, &out)
+	if removeCalled {
+		t.Fatal("default-manual: remove MUST NOT run (worktree must persist)")
+	}
+	if strings.Contains(out.String(), SessionExitCleanupNoticePrefix) {
+		t.Fatalf("default-manual: no removal notice expected, got %q", out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_CleanExitRemoves is REQ-SW-009: when auto_cleanup
+// is true AND the subcommand exits cleanly AND the worktree is clean, git
+// worktree remove runs and a stderr notice carrying the session-exit prefix is
+// emitted.
+func TestCleanupSessionWorktree_CleanExitRemoves(t *testing.T) {
+	var removedPath string
+	swapSessionWorktreeSeams(t, swSeams{
+		remove: func(p string) error { removedPath = p; return nil },
+		statusPorc: func(string) (string, error) { return "", nil }, // clean
+	})
+	var out bytes.Buffer
+	wt := "/repo/.claude/worktrees/WT-abcdef12-web"
+	cleanupSessionWorktree(worktreeCfg(true), wt, true, &out)
+	if removedPath != wt {
+		t.Fatalf("clean-exit: expected remove(%q), got %q", wt, removedPath)
+	}
+	if !strings.Contains(out.String(), SessionExitCleanupNoticePrefix) {
+		t.Fatalf("clean-exit: notice must carry %q, got %q", SessionExitCleanupNoticePrefix, out.String())
+	}
+	if !strings.Contains(out.String(), wt) {
+		t.Fatalf("clean-exit: notice must name the worktree path %q, got %q", wt, out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_NonCleanExitPreserves is REQ-SW-009
+// clean-exit-only: a non-zero exit PRESERVES the worktree for post-mortem even
+// when auto_cleanup is ON.
+func TestCleanupSessionWorktree_NonCleanExitPreserves(t *testing.T) {
+	removeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		remove:     func(string) error { removeCalled = true; return nil },
+		statusPorc: func(string) (string, error) { return "", nil },
+	})
+	var out bytes.Buffer
+	wt := "/repo/.claude/worktrees/WT-abcdef12-web"
+	cleanupSessionWorktree(worktreeCfg(true), wt, false, &out) // cleanExit=false
+	if removeCalled {
+		t.Fatal("non-clean-exit: remove MUST NOT run (preserve for post-mortem)")
+	}
+	if strings.Contains(out.String(), SessionExitCleanupNoticePrefix) {
+		t.Fatalf("non-clean-exit: no removal notice expected, got %q", out.String())
+	}
+	if !strings.Contains(out.String(), "preserved") {
+		t.Fatalf("non-clean-exit: expected preserve notice, got %q", out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_DirtyPreserves is REQ-SW-010: even on a clean
+// exit with auto_cleanup ON, uncommitted changes (non-empty porcelain) SKIP
+// removal — the worktree is NEVER deleted with local changes.
+func TestCleanupSessionWorktree_DirtyPreserves(t *testing.T) {
+	removeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		remove: func(string) error { removeCalled = true; return nil },
+		statusPorc: func(string) (string, error) {
+			return " M dirty.go\n?? untracked.txt\n", nil // dirty
+		},
+	})
+	var out bytes.Buffer
+	wt := "/repo/.claude/worktrees/WT-abcdef12-web"
+	cleanupSessionWorktree(worktreeCfg(true), wt, true, &out)
+	if removeCalled {
+		t.Fatal("dirty: remove MUST NOT run (uncommitted changes preserved)")
+	}
+	if strings.Contains(out.String(), SessionExitCleanupNoticePrefix) {
+		t.Fatalf("dirty: no removal notice expected, got %q", out.String())
+	}
+	if !strings.Contains(out.String(), wt) {
+		t.Fatalf("dirty: notice must name the worktree path %q, got %q", wt, out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_DirtyCheckErrorPreserves proves the dirty guard
+// is fail-open: a status-check error preserves the worktree (no risky
+// deletion) and emits a notice naming the failure.
+func TestCleanupSessionWorktree_DirtyCheckErrorPreserves(t *testing.T) {
+	removeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		remove: func(string) error { removeCalled = true; return nil },
+		statusPorc: func(string) (string, error) { return "", errFakeNotGitRepo },
+	})
+	var out bytes.Buffer
+	wt := "/repo/.claude/worktrees/WT-abcdef12-web"
+	cleanupSessionWorktree(worktreeCfg(true), wt, true, &out)
+	if removeCalled {
+		t.Fatal("dirty-check-error: remove MUST NOT run (fail-open preserve)")
+	}
+	if !strings.Contains(out.String(), wt) {
+		t.Fatalf("dirty-check-error: notice must name worktree path, got %q", out.String())
+	}
+}
+
+// TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge is REQ-SW-009 /
+// EC-13: the session-exit notice prefix MUST NOT contain "PR-merge" so it is
+// unambiguously distinguishable from the M8 PR-merge notice (AC-SW-022) in
+// combined output.
+func TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge(t *testing.T) {
+	if strings.Contains(SessionExitCleanupNoticePrefix, "PR-merge") {
+		t.Fatalf("session-exit prefix MUST NOT contain 'PR-merge': %q", SessionExitCleanupNoticePrefix)
+	}
+	if !strings.Contains(SessionExitCleanupNoticePrefix, "session-exit") {
+		t.Fatalf("session-exit prefix MUST contain 'session-exit': %q", SessionExitCleanupNoticePrefix)
+	}
+	// Verify the constant is also distinguishable from the M8 prefix literal.
+	m8Prefix := "removed by PR-merge cleanup:"
+	if SessionExitCleanupNoticePrefix == m8Prefix {
+		t.Fatalf("session-exit prefix collides with M8 PR-merge prefix: both %q", m8Prefix)
+	}
+}
+
+// --- resolveSessionShortReal session-id-available branch (AC-SW-007 / EC-4) ---
+
+// TestResolveSessionShortReal_SideChannelAvailable exercises the
+// session-id-available branch of resolveSessionShortReal that was NOT covered
+// at M2 (coverage 45.5% — only the random-fallback branch was hit). It stages
+// the side-channel file (.moai/state/current-session-id.txt) under a temp
+// project dir pointed at by $CLAUDE_PROJECT_DIR and asserts the first-8 chars
+// of the session UUID are returned.
+func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	sidecarDir := filepath.Join(tmp, ".moai", "state")
+	if err := os.MkdirAll(sidecarDir, 0o755); err != nil {
+		t.Fatalf("mkdir sidecar dir: %v", err)
+	}
+	uuid := "abcdef1234567890deadbeef12345678"
+	sidecar := filepath.Join(sidecarDir, "current-session-id.txt")
+	if err := os.WriteFile(sidecar, []byte(uuid), 0o644); err != nil {
+		t.Fatalf("write sidecar: %v", err)
+	}
+	got := resolveSessionShortReal()
+	if got != "abcdef12" {
+		t.Fatalf("session-id-available: expected first-8 %q of UUID, got %q", "abcdef12", got)
+	}
+}
+
+// TestResolveSessionShortReal_ShortSessionID covers the <8-char branch: a
+// session id shorter than 8 chars is returned verbatim (not truncated).
+func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	sidecarDir := filepath.Join(tmp, ".moai", "state")
+	if err := os.MkdirAll(sidecarDir, 0o755); err != nil {
+		t.Fatalf("mkdir sidecar dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sidecarDir, "current-session-id.txt"), []byte("ab12cd"), 0o644); err != nil {
+		t.Fatalf("write sidecar: %v", err)
+	}
+	if got := resolveSessionShortReal(); got != "ab12cd" {
+		t.Fatalf("short session id: expected %q verbatim, got %q", "ab12cd", got)
+	}
+}
+
+// TestResolveSessionShortReal_NoSideChannelFallsBack confirms the EC-4
+// fallback: when no side-channel file exists, resolveSessionShortReal returns a
+// 12-hex-char (6-byte) random segment.
+func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", tmp) // no sidecar file present
+	got := resolveSessionShortReal()
+	if len(got) != 12 {
+		t.Fatalf("fallback: expected 12 hex chars (6 bytes), got %d (%q)", len(got), got)
+	}
+	for _, r := range got {
+		isHex := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f')
+		if !isHex {
+			t.Fatalf("fallback: must be lowercase hex, got %q in %q", r, got)
+		}
+	}
+}
+
