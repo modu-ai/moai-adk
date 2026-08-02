@@ -88,6 +88,13 @@ const (
 	// decision (SPEC-SEC-GUARDIAN-001). Unset, every guardian layer is advisory.
 	// Aligned with the MOAI_SYNC_GATE_BLOCKING opt-in precedent.
 	EnvSecurityBlocking = "MOAI_SECURITY_BLOCKING"
+
+	// EnvSessionWorktree overrides the session-worktree auto-entry activation
+	// (SPEC-SESSION-WORKTREE-001 REQ-SW-003). "1" forces the feature ON
+	// regardless of the workflow.session_worktree.enabled config flag; "0"
+	// forces it OFF. Any other value (including unset) falls through to the
+	// config flag. Env wins over config.
+	EnvSessionWorktree = "MOAI_SESSION_WORKTREE"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

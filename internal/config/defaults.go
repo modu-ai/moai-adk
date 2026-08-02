@@ -556,6 +556,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
+		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
+		// feature ships default-OFF. When unset, moai init / moai profile /
+		// moai web behave byte-identically to the shared-checkout baseline.
+		// Template neutrality (CLAUDE.local.md §25): the default lives in Go
+		// code, NOT in internal/template/templates/.moai/config/sections/
+		// workflow.yaml — the distributed template MUST NOT leak this sub-key.
+		SessionWorktree: SessionWorktreeConfig{
+			Enabled: false,
+		},
 	}
 }
 

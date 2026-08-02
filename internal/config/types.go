@@ -363,6 +363,13 @@ type WorkflowConfig struct {
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
+	// SessionWorktree gates the automatic worktree isolation for
+	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
+	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
+	// shared-checkout behavior when unset). Activation is read through the
+	// SessionWorktreeEnabled helper, which resolves MOAI_SESSION_WORKTREE first
+	// (REQ-SW-003 env-wins-over-config).
+	SessionWorktree SessionWorktreeConfig `yaml:"session_worktree"`
 	// BranchGuard gates the Main-Checkout Branch-State Guard hook
 	// (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001). Default false: the guard ships
 	// through the template to all users INERT; maintainers of shared
@@ -497,6 +504,16 @@ type WorkflowWorktreeConfig struct {
 // config; the exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity)
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SessionWorktreeConfig mirrors workflow.session_worktree.* — the opt-in
+// automatic worktree-isolation gate for moai init / moai profile / moai web
+// (SPEC-SESSION-WORKTREE-001 REQ-SW-001 / REQ-SW-002). The distributed default
+// is Enabled=false (feature INERT; shared-checkout behavior byte-identical).
+// The single activation decision is owned by SessionWorktreeEnabled, which
+// honors the MOAI_SESSION_WORKTREE env override (REQ-SW-003).
+type SessionWorktreeConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
