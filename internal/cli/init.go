@@ -312,7 +312,7 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 // is check-only (no install, no re-exec), and surfaces as a non-blocking
 // stderr notice with the `moai update` hint at exit
 // (SPEC-CLI-TUX-V3-002 REQ-TUX2-001..004; see init_update_notice.go).
-func runInit(cmd *cobra.Command, args []string) error {
+func runInit(cmd *cobra.Command, args []string) (err error) {
 	// Unified output gateway: warnings and progress go to stderr, data to
 	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016). The warning collector
 	// wraps the printer so every Warn is re-emitted exactly once as a
@@ -320,6 +320,36 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// failure (REQ-TUX2-013).
 	p := newWarnCollector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
 	defer p.emitSummary(cmd.ErrOrStderr())
+
+	// SPEC-SESSION-WORKTREE-001 M2/M4: session-worktree auto-entry + exit
+	// disposal. The auto-entry runs BEFORE any shared-state mutation
+	// (REQ-SW-002). When the feature is OFF (default) the wrapper returns ""
+	// and the rest of runInit is byte-identical to the baseline (REQ-SW-001).
+	// On success the process chdir's into the worktree (BI-2 / R1 mitigation).
+	// On fail-back (REQ-SW-004) or already-in-worktree skip (REQ-SW-012) the
+	// wrapper returns "" and init continues unchanged in the shared checkout.
+	//
+	// M4 (REQ-SW-008/009/010): the deferred cleanup disposes the materialized
+	// worktree at subcommand exit. It honors three cases (default-manual
+	// persist / clean-exit remove / non-clean preserve) + the dirty guard.
+	// cleanExit is derived from this function's named error return (err ==
+	// nil means exit 0). wtPath == "" makes cleanup a no-op.
+	swCfg := loadSessionWorktreeConfig(cmd)
+	wtPath := enterSessionWorktree(swCfg, "init", cmd.ErrOrStderr())
+	if wtPath != "" {
+		if cerr := os.Chdir(wtPath); cerr != nil {
+			// Chdir failure is a fail-back (REQ-SW-004): continue in the
+			// shared checkout. The worktree was materialized but unusable
+			// from this process; the user can enter it manually later.
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"moai: session-worktree chdir into %s failed (%v); continuing in shared checkout for %q\n",
+				wtPath, cerr, "init")
+		}
+	}
+	defer func() {
+		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+	}()
+
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {

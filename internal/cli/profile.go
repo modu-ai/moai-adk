@@ -6,6 +6,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/spf13/cobra"
@@ -61,6 +62,22 @@ func runProfileCmd(cmd *cobra.Command, args []string) error {
 		return runProfileSetup(cmd, args)
 	}
 	return cmd.Help()
+}
+
+// emitProfileScopeNotice emits the REQ-SW-017 honest scope notice for `moai
+// profile` auto-entry. It names BOTH the project-scoped worktree path AND the
+// global profile dir (profile.GetBaseDir()), and states EXPLICITLY that the
+// profile dir is NOT isolated by this entry — so the user is not misled into
+// thinking the per-profile launch-ledger race
+// (~/.moai/claude-profiles/<name>/launch.yaml) is solved. The "NOT isolated"
+// clause is load-bearing (AC-SW-017(c)); see
+// TestEmitProfileScopeNotice_FalsificationRoundTrip.
+func emitProfileScopeNotice(out io.Writer, wtPath string) {
+	_, _ = fmt.Fprintf(out,
+		"moai: profile auto-entry scoped to the PROJECT worktree %s; "+
+			"the global profile dir %s is NOT isolated by this entry "+
+			"(launch.yaml ledger race remains — out of scope, see spec.md §3)\n",
+		wtPath, profile.GetBaseDir())
 }
 
 func runProfileList(cmd *cobra.Command, _ []string) error {
