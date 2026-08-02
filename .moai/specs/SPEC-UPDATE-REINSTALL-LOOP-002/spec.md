@@ -7,7 +7,7 @@ created: 2026-07-31
 updated: 2026-08-01
 author: manager-spec
 priority: high
-phase: plan
+phase: "v3.0.2"
 module: cli
 lifecycle: spec-anchored
 era: V3R6

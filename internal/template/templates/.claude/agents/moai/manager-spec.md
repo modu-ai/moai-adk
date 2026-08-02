@@ -144,6 +144,8 @@ On `FAIL`, halt the Write and return a structured blocker report naming the offe
 
 The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with the lint engine's frontmatter-schema rule. Read the schema there; do not work from a copy.
 
+[HARD] The `phase` field names the **release target** — the version this SPEC is aimed at, quoted, in the shape the schema template shows (`phase: "vX.Y.Z target"`; the SSOT § Canonical 12 Required Fields template line and the § Field Reference row for `phase` are authoritative). It is **not a lifecycle field**: the workflow stage a SPEC currently occupies is carried by `status`, so writing a bare workflow-stage token — `plan`, `run`, `sync`, or `mx` — into `phase` is an authoring error, and the linter rejects it at error severity on every SPEC, grandfather-era ones included. When the target release is undecided, use the next unreleased version rather than a stage name.
+
 Optional fields are listed in that same SSOT § Optional Fields (`issue_number`, `depends_on`, `lint.skip`, `bc_id`, `amendment_of`, `tier`). Four further optional fields are used by this agent and are NOT in that table:
 
 - `related_specs: [SPEC-Z-001]` — non-blocking references.

@@ -7,7 +7,7 @@ created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
 priority: High
-phase: plan
+phase: "v3.0.2"
 module: workflow-harness
 lifecycle: spec-anchored
 tags: "fan-out, pipeline, plan-auditor, tier-budget, template-mirror"

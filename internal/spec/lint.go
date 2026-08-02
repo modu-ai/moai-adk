@@ -716,6 +716,28 @@ var specIDPattern = regexp.MustCompile(`^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`)
 
 var semverPattern = regexp.MustCompile(`^\d+\.\d+\.\d+`)
 
+// phaseWorkflowStageTokens are the workflow-stage tokens that MUST NOT appear as a
+// `phase:` value. The schema defines phase as a release target (e.g. "v3.0.2"), not
+// a lifecycle-stage field, so a bare stage token there is an authoring mistake.
+//
+// Matching is exact equality on the trimmed, case-folded value — deliberately NOT
+// substring containment, which would false-flag legitimate release targets that
+// carry a token inside a longer word ("Run" within "Runtime Hardening"), and
+// deliberately NOT a version-shape allowlist, which would false-flag the many
+// legitimate free-form targets in the existing corpus. "mx" covers the retired
+// fourth stage and adds no false positives.
+//
+// The finding this drives (FrontmatterPhaseInvalid) is deliberately absent from
+// eraDemotableCodes: the guard must fire at authoring time, when the era heuristic
+// classifies almost every in-flight SPEC as grandfathered. Registering it there
+// would demote it to an advisory warning on exactly the SPECs it exists to catch.
+var phaseWorkflowStageTokens = map[string]bool{
+	"plan": true,
+	"run":  true,
+	"sync": true,
+	"mx":   true,
+}
+
 func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	fm := doc.Frontmatter
 	var findings []Finding
@@ -768,6 +790,21 @@ func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Severity: SeverityError,
 			Code:     "FrontmatterInvalid",
 			Message:  fmt.Sprintf("version %q does not match semantic version format (X.Y.Z)", fm.Version),
+		})
+	}
+
+	// phase value shape: a workflow-stage token is not a release target.
+	// Placed after the required-field emptiness loop above so an empty phase yields
+	// only the required-field finding and never a duplicate here.
+	if phase := strings.TrimSpace(fm.Phase); phase != "" && phaseWorkflowStageTokens[strings.ToLower(phase)] {
+		findings = append(findings, Finding{
+			File:     doc.Path,
+			Line:     1,
+			Severity: SeverityError,
+			Code:     "FrontmatterPhaseInvalid",
+			Message: fmt.Sprintf(
+				"phase %q is a workflow-stage token, not a release target; use the target release version (e.g. \"v3.0.2\")",
+				fm.Phase),
 		})
 	}
 

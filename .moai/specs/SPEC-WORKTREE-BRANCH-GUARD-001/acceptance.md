@@ -7,7 +7,7 @@ created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec
 priority: High
-phase: plan
+phase: "v3.0.2"
 module: hook
 lifecycle: spec-anchored
 era: V3R6
