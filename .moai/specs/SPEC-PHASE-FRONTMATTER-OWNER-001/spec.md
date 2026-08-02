@@ -2,7 +2,7 @@
 id: SPEC-PHASE-FRONTMATTER-OWNER-001
 title: "phase 프론트매터 값 계약 확립 — 저작 시점 방지와 사후 정정 소유자"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
