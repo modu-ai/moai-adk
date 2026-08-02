@@ -55,6 +55,8 @@ Displays the name of the currently active profile.
 moai profile current
 ```
 
+This value reflects the global record, so when different projects remember different profiles, read it together with the limitations in [Automatic Profile Selection](#automatic-profile-selection).
+
 ### moai profile delete [name]
 
 Deletes a profile.
@@ -74,8 +76,57 @@ moai cg -p team          # Run CG mode with the team profile
 ```
 
 {{< callout type="info" >}}
-When no profile is specified, the default profile is used. On first run, the setup wizard starts automatically.
+A profile given with `-p` always takes precedence. To see which profile is used when you do not specify one, read [Automatic Profile Selection](#automatic-profile-selection) below. The first time a profile is used, the setup wizard starts automatically.
 {{< /callout >}}
+
+## Automatic Profile Selection
+
+Running `moai cc` without `-p` picks a profile by consulting the record in `~/.moai/claude-profiles/launch.yaml`. That record is updated every time you launch a named profile with `-p`.
+
+{{< callout type="note" >}}
+The per-project memory described below ships in the next release. The currently released version keeps only a single global record (`last_profile`), so specifying a profile with `-p` in project B overwrites the value project A had remembered.
+{{< /callout >}}
+
+Alongside the global record, `launch.yaml` maintains a `projects:` map keyed by the project's absolute path. A launch without `-p` resolves the profile in this order:
+
+1. The profile the current project remembers (a `projects:` entry)
+2. The global record (`last_profile`)
+3. The default profile
+
+If a recorded profile's directory has already been deleted, it is skipped and resolution moves on to the next step. A name given with `-p` takes precedence over this entire order, and `-p default` can name the default profile explicitly.
+
+To turn off both lookups, set the environment variable:
+
+```bash
+MOAI_NO_PROFILE_FALLBACK=1 moai cc    # ignore the record and run the default profile
+```
+
+The per-project record is written when you launch with `-p`, and it is updated as well when you switch profiles in the [Web Console](/en/cli-reference/web). The default profile (`default`) is never recorded.
+
+**Limitations to know**
+
+- Moving or renaming a project directory leaves the existing entry matching no path. The entry is skipped silently, so it does not break launching.
+- The `projects:` map grows as projects accumulate, and there is no command to prune it yet.
+- `moai profile current` reports the global record as-is. So in a project whose remembered profile differs from the global record, the name `moai profile current` gives you can differ from the profile that `moai cc` without `-p` actually launches.
+
+## First Launch of a New Profile
+
+A newly created profile directory does not yet contain `.claude.json`, the file that holds Claude Code's account state. Account state is kept per configuration directory on every platform, so even when your existing session is perfectly healthy, the first launch with a new profile brings up the login / onboarding screen.
+
+{{< callout type="note" >}}
+The notice below ships in the next release. The currently released version moves to the login screen with no warning at all.
+{{< /callout >}}
+
+Before starting Claude Code, the launcher prints the following to standard error:
+
+```
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+```
+
+Nothing is copied or moved into the new profile as credentials. Where account state lives differs by platform, so a copy tailored to one platform would be wrong on another. Once you sign in, that state stays with the profile, so this screen does not appear on later launches.
 
 ## Selecting a 1M Context Model
 
@@ -98,6 +149,7 @@ Select it in the "Model Settings" step of the setup wizard, or edit the profile 
 
 ## Related Documents
 
+- [moai web Console](/en/cli-reference/web) - Switch and edit profiles from the browser
 - [CLI Reference](/en/getting-started/cli) - Full CLI commands
 - [Quick Start](/en/getting-started/quickstart) - Getting started
 - [Initial Setup](/en/getting-started/init-wizard) - Project initialization
