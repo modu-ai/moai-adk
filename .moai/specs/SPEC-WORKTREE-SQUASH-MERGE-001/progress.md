@@ -274,7 +274,62 @@ run_phase_commits:               # M1..M5 commits on fix/clean-stale-squash-dete
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-03
+sync_commit_sha: pending-backfill-sync   # a commit cannot reference its own SHA — backfilled in a follow-up commit per the 9ec8d8464 / cdb692135 canonical pattern
+run_commit_sha: 4966e6720                # run-phase terminal commit (M5); origin's squash-merge is d7506e9e4 (PR #1293)
+tier: M
+changelog_entry_position: "### Fixed 최상단 (CHANGELOG.md) — squash-merge detection is a false-negative bug fix, not a new feature"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (3-phase close merged into this single sync commit; manager-docs owns the transition per Status Transition Ownership Matrix)"
+  plan_md: "n/a — markdown header convention, no YAML frontmatter"
+  acceptance_md: "n/a — markdown header convention, no YAML frontmatter"
+  progress_md: "n/a — markdown header convention, no YAML frontmatter (§E.4 yaml block is a fenced code block, not frontmatter)"
+canary_compliance_check:
+  b12_pre_emission_duplicate: "grep -c 'SPEC-WORKTREE-SQUASH-MERGE-001' CHANGELOG.md → 0 (사전) → 1 (커밋 후)"
+  b12_ac_count_match: "CHANGELOG 엔트리는 user-facing 요약 — AC/REQ 카운트는 명시하지 않는다 (CHANGELOG ≠ spec audit; acceptance.md §A 17 AC SSOT 참조)"
+  b12_file_paths_verified: "ls internal/core/git/worktree.go internal/core/git/manager.go internal/cli/worktree/clean.go → 3 files (M5 help-text no-change confirmed; types.go unchanged confirmed)"
+docs_site_assessment: "no doc-body contradiction found — docs-site content/*/worktree/{guide,faq,examples}.md describe --merged-only generically ('remove only Worktrees whose branch is merged into base') with no claim about squash-merge detection either way; the fix makes behaviour converge to the existing wording. README has no worktree-clean content. No doc edit required."
+```
+
+### Claim (주장)
+
+이 커밋은 SPEC-WORKTREE-SQUASH-MERGE-001의 **3단계 종료(sync-phase close)** 를 수행한다: `spec.md` 의 `status:` 를 `in-progress → implemented → completed` 로 전이시키고 (Status Transition Ownership Matrix가 규정한 대로 단일 sync commit에 3-phase close가 병합 — 별도 Mx chore commit 없음), 본 `progress.md §E.4` 를 채우며, `CHANGELOG.md [Unreleased] → ### Fixed` 최상단에 엔트리를 추가한다. **코드 변경은 없다** — run-phase 코드는 PR #1293 (squash merge `d7506e9e4`) 로 이미 `origin/main` 에 착지했다. 이 커밋은 산출물 전이 + §E.4 시그널 + CHANGELOG 엔트리만 운반한다.
+
+### Evidence (증거)
+
+동기화 커밋이 존재하기 전에는 자기 SHA를 알 수 없으므로 (`git commit` 이 SHA를 할당하는 시점이 커밋 생성 이후), `sync_commit_sha` 필드는 `pending-backfill-sync` 자리표시자로 두고 후속 backfill 커밋에서 채운다 (`9ec8d8464` "docs(SPEC-HOOK-TRACE-FLUSH-001): backfill sync_commit_sha 9d976c95b" 및 직전 `cdb692135` "chore(SPEC-PROFILE-MEMORY-001): backfill sync_commit_sha 24d7d3eb1" 의 정준 패턴 — D3 self-referential-hazard exemption).
+
+frontmatter 전이 (Edit 전/후):
+- `status: in-progress` → `status: completed` (spec.md 유일한 YAML-frontmatter 산출물 — Tier M: spec/plan/acceptance/progress 중 spec.md만 frontmatter 보유)
+- `updated: 2026-08-02` → `updated: 2026-08-03` (오늘 날짜; 본 sync commit이 spec.md에 마지막으로 손대는 시점)
+- 그 외 frontmatter 필드 + 본문(§HISTORY 포함) 전체 = 불변 (Forbidden ownership crossings 준수)
+
+CHANGELOG B12 사전 검증 (커밋 전):
+```
+$ grep -c 'SPEC-WORKTREE-SQUASH-MERGE-001' CHANGELOG.md
+0   # 중복 없음 — parallel BATCH-SYNC 세션 충돌 없음
+```
+
+CHANGELOG 삽입 위치: `### Fixed` 최상단 (squat-merge detection은 false-negative 버그 수정 — "Added" 신규 기능이 아님). 기존 `SPEC-OBS-ENABLED-GATE-001` 엔트리 위에 삽입.
+
+### Baseline-attribution (baseline 귀속)
+
+- **run-phase baseline**: PR #1293 squash-merge `d7506e9e4` (`feat(SPEC-WORKTREE-SQUASH-MERGE-001): squash-merge detection for worktree --stale cleanup (#1293)`). 17/17 AC measured PASS (M1-M5), coverage 85.7%, cross-platform build exit 0, golangci-lint 0 issues — `progress.md §E.2 / §E.3` 에 verbatim 인용.
+- **sync-phase baseline (본 커밋)**: `origin/main d7506e9e4` 위에서 `chore/SPEC-WORKTREE-SQUASH-MERGE-001-sync` 브랜치 생성 → CHANGELOG + spec.md frontmatter + progress.md §E.4 편집 → 단일 sync commit. 측정은 커밋 후 backfill PR에서 수행.
+- **MX tag cross-cutting**: M1에서 `internal/core/git/worktree.go` `IsBranchMerged` 에 `@MX:ANCHOR` + `@MX:REASON` 추가됨 (lines 231-232, §E.2 M5 evidence 인용). 별도 Mx commit 없음 — 3-phase close 계약에 따라 sync sub-step으로 validate 완료.
+
+### Gaps (미검증)
+
+- **sync_commit_sha 본 커밋 미검증**: 위에서 명시한 대로 자기-참조 위험(self-referential hazard) — 후속 backfill PR에서 실제 merge SHA로 교체할 때까지 `pending-backfill-sync` 로 둔다.
+- **CHANGELOG build/lint verification 본 커밋 미검증**: markdown 문서 편집이므로 `go build` / `go test` / `golangci-lint` 는 sync PR의 CI에서 검증 (run-phase에서 이미 exit 0 확인됨 — 코드 변경 없으므로 regression 없음).
+- **docs-site build 본 커밋 미검증**: docs-site 편집이 없으므로 hugo build 영향 없음 — 검증 불필요 (docs_site_assessment 참조).
+
+### Residual-risk (잔여 위험)
+
+- **backfill PR 누락 위험**: `pending-backfill-sync` 가 후속 커밋으로 교체되지 않으면 era classifier (H-4 predicate) 가 `sync_commit_sha` empty 값을 보고 V3R5로 misclassify할 수 있다. 완화: 본 커밋 merge 후 즉시 backfill PR 생성 (task step 7).
+- **auto-merge bot 지연**: repo의 auto-merge bot이 CI green 후에도 merge를 지연시킬 수 있다 — 수동 self-merge fallback 준비.
 
 ## §F Phase 4 Mode Selection
 
