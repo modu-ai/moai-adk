@@ -8,6 +8,13 @@ import (
 )
 
 func TestGetBaseDir_Default(t *testing.T) {
+	// Checking the home-derived default requires clearing the override, which
+	// also disables the package sandbox for every test that runs afterwards.
+	// Restoring it is mandatory; TestSandboxSurvivesPackageRun
+	// (zz_sandbox_guard_test.go, which sorts last) fails if this is dropped.
+	orig := BaseDirOverride
+	t.Cleanup(func() { BaseDirOverride = orig })
+
 	BaseDirOverride = ""
 	dir := GetBaseDir()
 	if dir == "" || dir == "." {
