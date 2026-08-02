@@ -181,7 +181,7 @@ unverified:
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: 53756d4f1
+sync_commit_sha: "pending-backfill-sync-amend"
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-PROFILE-MEMORY-001' CHANGELOG.md → 0 (사전 중복 없음, 발행 진행)"
 b12_self_test_b: "acceptance.md 의 고유 AC 식별자 21건 = CHANGELOG 항목이 명시한 21건 (19 PASS / 2 PASS-WITH-DEBT / 0 FAIL)"
@@ -192,7 +192,7 @@ b12_self_test_c: >-
   docs-site/static/images/profile/*.png (3건) 모두 존재.
 changelog_entry_position: "[Unreleased] → Added, 최상단 (SPEC-REF-SEO-ABSORB-001 항목 바로 위)"
 frontmatter_status_transitions:
-  spec_md: "in-progress → implemented → completed (단일 sync 커밋에 병합)"
+  spec_md: "in-progress → implemented → completed (단일 sync 커밋에 병합, amendment 종료)"
   plan_md: "N/A — frontmatter 블록 없음"
   acceptance_md: "N/A — frontmatter 블록 없음"
   design_md: "N/A — frontmatter 블록 없음"
