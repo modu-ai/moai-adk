@@ -425,4 +425,68 @@ go_code_changed: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: COMPLETE
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill   # self-referential — populated by the follow-up backfill commit
+run_commit_sha: d27a274de           # pre-squash local branch HEAD; origin's merge is 850de684c (PR #1286)
+tier: S                             # M → S 범위 축소 (v0.5.0) — M4·M5는 SPEC-PHASE-FIELD-VALIDATION-001 선착지로 제외
+changelog_entry_position: "### Added 최상단 (CHANGELOG.md)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # 유일한 YAML frontmatter 소유 산출물 (Tier S: spec/plan/progress 중 spec.md만 frontmatter 보유)
+  plan_md: "n/a — markdown header convention, no YAML frontmatter"
+  progress_md: "n/a — markdown header convention, no YAML frontmatter"
+  acceptance_md: "n/a — Tier S 계약: acceptance.md는 존재하지 않음 (AC는 spec.md §3에 인라인)"
+canary_compliance_check:
+  b12_pre_emission_duplicate: "grep -c 'SPEC-PHASE-FRONTMATTER-OWNER-001' CHANGELOG.md → 0 (사전) → 1 (커밋 후)"
+  b12_ac_count_match: "spec.md §3 AC 인라인 = 8 (AC-PFO-001/002/003/004/006/007/014/016); §E.3 `ac_pass_count: 16`은 M4·M5 포함 pre-scope-reduction 작업 카운트 — v0.5.0 SSOT는 8"
+  b12_file_paths_verified: "ls .moai/specs/SPEC-PHASE-FRONTMATTER-OWNER-001/{spec,plan,progress}.md → 3 files (acceptance.md 부재 확인)"
+```
+
+### Claim (주장)
+
+이 커밋은 SPEC-PHASE-FRONTMATTER-OWNER-001의 **3단계 종료(sync-phase close)** 를 수행한다: 유일한 YAML-frontmatter 산출물인 `spec.md`의 `status:` 를 `in-progress → implemented → completed` 로 전이시키고, 본 `progress.md §E.4` 를 채우며, `CHANGELOG.md [Unreleased] → ### Added` 최상단에 엔트리를 추가한다. **코드 변경은 없다** — run-phase 코드는 PR #1286 (squash merge `850de684c`) 로 이미 `origin/main` 에 착지했다. 이 커밋은 산출물 전이 + §E.4 시그널 + CHANGELOG 엔트리만 운반한다.
+
+### Evidence (증거)
+
+동기화 커밋이 존재하기 전에는 자기 SHA를 알 수 없으므로, `sync_commit_sha` 필드는 `pending-backfill` 자리표시자로 두고 후속 커밋에서 채운다 (`9ec8d8464` "docs(SPEC-HOOK-TRACE-FLUSH-001): backfill sync_commit_sha 9d976c95b" 의 정준 패턴).
+
+frontmatter 전이 (Edit 전/후):
+
+```
+$ git -C .claude/worktrees/phase-frontmatter-sync diff -- .moai/specs/SPEC-PHASE-FRONTMATTER-OWNER-001/spec.md
+-status: in-progress
++status: completed
+```
+
+`updated:` 필드는 이미 `2026-08-02` (당일) 이므로 부가적인 갱신이 없다 — `spec.md` 프론트매터의 다른 필드는 manager-docs 금지 영역(본문)이거나 이미 당일 값이다.
+
+검증 명령 (worktree 내):
+
+```
+$ git -C .claude/worktrees/phase-frontmatter-sync status --porcelain
+ M .moai/specs/SPEC-PHASE-FRONTMATTER-OWNER-001/spec.md
+ M .moai/specs/SPEC-PHASE-FRONTMATTER-OWNER-001/progress.md
+ M CHANGELOG.md
+$ git -C .claude/worktrees/phase-frontmatter-sync diff --name-only origin/main HEAD | grep '^internal/template/templates/' || echo NONE
+NONE
+```
+
+### Baseline-attribution (baseline 귀속)
+
+- **측정 기준**: 이 워크트리의 `sync/phase-frontmatter-owner` 브랜치 HEAD `850de684c` (== `origin/main`, divergence `0 0`)에서의 트리 상태.
+- **run-phase 코드 baseline**: PR #1286 squash merge `850de684c`. `progress.md §E.3`의 `run_commit_sha: d27a274de`는 squash 이전 로컬 브랜치 HEAD이며, origin에 착지한 형태는 squash 메인 라인이다 — 이 분기는 `progress.md §E.3` 라인 350의 주석과 §E.4 YAML의 `run_commit_sha` 필드에 이미 기록되어 있어 "정정" 대상이 아니다.
+- **AC 판정 baseline**: spec.md §3에 인라인된 8개 AC (AC-PFO-001/002/003/004/006/007/014/016). §E.3 `ac_pass_count: 16` 은 M4·M5를 포함한 pre-scope-reduction 작업 카운트며 v0.5.0 SSOT(8)와 충돌하므로, 본 §E.4는 **spec.md §3 = 8/8 PASS** 를 권위적 수치로 취급한다 (Gaps 절에 명시).
+
+### Gaps (미검증)
+
+- **acceptance.md 부재**: 이 SPEC은 Tier S 계약(AC를 spec.md §3에 인라인)으로 `acceptance.md` 를 두지 않았다 (`progress.md §E.1` 라인 13 명시). 따라서 매트릭스의 "4-artifact transition"은 이 SPEC에서 **3-artifact transition** (spec/plan/progress) 으로 실제로 축소되며, 이 중 YAML frontmatter를 가진 것은 `spec.md` 뿐이다. plan.md / progress.md는 마크다운 헤더 관례(`# SPEC-... — ...`)를 따르며 YAML frontmatter가 없다 — 전이할 `status:` 필드가 없다.
+- **AC 카운트 분기**: spec.md §3 SSOT = 8개 AC. §E.3 `ac_pass_count: 16`은 v0.4.1 (Tier M) 시점의 작업 카운트가 v0.5.0 (Tier S) 축소 후에 갱신되지 않은 잔재이다. 두 수치가 모두 문서에 존재하며, 본 §E.4는 spec.md §3(8)을 권위로 삼고 §E.3의 16은 시대착오적 잔재로 기록한다 — 이 분기는 sync-phase 범위 밖(spec.md 본문 / §E.3 본문 수정은 manager-docs 금지)이므로, 기록만 하고 고치지 않는다.
+- **M4·M5 증거 보존 경계**: `progress.md §E.2` (M4·M5 증거, 라인 ~269–420) 와 `§E.3` (run_complete_at / run_commit_sha / 차단 사유 / 해소 절)은 본 커밋에서 수정하지 않는다 — 그 영역은 manager-develop 소유이며 본 SPEC의 범위 축소 내역을 서술한다. 증거는 삭제되지 않고 보존되며, "이 PR에는 포함되지 않는다"는 경계가 §E.2 라인 420에 명시되어 있다.
+- **`moai spec audit` / `moai spec lint`**: sync-phase 품질 게이트 검증은 본 §E.4 작성 시점에 실행하지 않았다 — 이 커밋의 diff가 `.moai/specs/` 마크다운과 `CHANGELOG.md` 만을 다루고 Go 코드를 0건 변경하므로, 코드 품질 게이트(`go test`, `golangci-lint`)는 baseline `850de684c` 와 동일하다. spec-lint가 `completed` 전이를 거부하는지 여부는 오케스트레이터 검증 배치에서 확인한다.
+
+### Residual-risk (잔여 위험)
+
+- **CHANGELOG 충돌 (병렬 세션)**: `[Unreleased] → ### Added` 최상단에 삽입한다. 병렬 BATCH-SYNC 세션이 동시에 같은 위치에 엔트리를 삽입하면 충돌이 발생할 수 있다 — pre-emission grep (`grep -c 'SPEC-PHASE-FRONTMATTER-OWNER-001' CHANGELOG.md` → 0) 을 커밋 직전에 수행해 중복을 방지했다. push 전 단계에서 추가 재검증이 필요하다.
+- **§E.3 ↔ §E.4 카운트 분기의 향후 영향**: §E.3의 `16`과 §3의 `8` 분기는 drift detector나 lint가 카운트를 기계적으로 비교하는 경우 오탐을 유발할 수 있다 — 현재 그런 검사기는 없으며, era.go는 SHA 필드 매칭에 그치므로 분기가 era 분류에 미치는 영향은 0이다.
+- **`completed → in-progress (amendment)` 가능성**: 본 SPEC이 `completed` 로 전이된 후, 만약 M4·M5의 영역(`internal/spec/lint_phase.go` 파일 경로 하드 충돌)이 향후 별도 SPEC으로 재추진된다면 이 SPEC 본문이 그 참조 대상이 될 수 있다 — 그 시나리오는 본 커밋 범위 밖이다.
