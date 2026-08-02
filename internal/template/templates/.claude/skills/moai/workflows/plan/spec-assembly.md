@@ -88,7 +88,7 @@ Required 12 fields (canonical order):
 - [ ] `updated: YYYY-MM-DD` — ISO date (NEVER `updated_at`)
 - [ ] `author: <name>` — string, not empty
 - [ ] `priority: P1` — uppercase Pn style (P0|P1|P2|P3) or High|Medium|Low|Critical
-- [ ] `phase: "vX.Y.Z target"` — release phase string
+- [ ] `phase: "vX.Y.Z target"` — release or milestone target label. NEVER a lifecycle stage name (`plan`, `run`, `sync`, `mx`): the value names the release this SPEC is aimed at, not the stage you are standing in while writing it
 - [ ] `module: "path/to/module"` — affected module path
 - [ ] `lifecycle: spec-anchored` — enum: spec-anchored | spec-lite | exploratory
 - [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
@@ -105,7 +105,7 @@ Rejected legacy aliases (fail closed — do NOT accept):
 Pre-write gate behavior:
 1. manager-spec generates frontmatter draft in memory.
 2. manager-spec self-audits against the 12-field checklist above.
-3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
+3. If any required field is missing OR any rejected alias appears OR a field carries a prohibited value — `phase:` holding a lifecycle token (`plan`, `run`, `sync`, `mx`) is the case that occurs in practice: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
 4. Phase 11 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
 
 - .moai/specs/SPEC-{ID}/plan.md
