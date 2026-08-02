@@ -7,7 +7,7 @@ paths: "**/.moai/specs/**,internal/spec/**"
 
 > **Single Source of Truth** for the canonical SPEC frontmatter schema.
 > Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule`.
-> Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist.
+> Cross-referenced by: `.claude/skills/moai/workflows/plan/spec-assembly.md` § Pre-Write Frontmatter Checklist.
 
 ## Canonical 12 Required Fields
 
@@ -43,10 +43,22 @@ tags: "tag1, tag2, tag3"
 | `updated` | date | `YYYY-MM-DD` ISO format | Last update date |
 | `author` | string | non-empty | Author name |
 | `priority` | enum | `P0`\|`P1`\|`P2`\|`P3` or `High`\|`Medium`\|`Low`\|`Critical` | Default `P1` |
-| `phase` | string | non-empty, typically release target | e.g. `"v3.0.0"` |
+| `phase` | string | non-empty; MUST be a release or milestone target label | e.g. `"v3.0.0"` — see § Prohibited phase values |
 | `module` | string | non-empty, path-like | Affected Go module or directory |
 | `lifecycle` | enum | `spec-anchored`\|`spec-lite`\|`exploratory` | Default `spec-anchored` |
 | `tags` | string | comma-separated, non-empty | Searchable labels |
+
+### Prohibited phase values
+
+`phase` names the **release or milestone target** a SPEC is aimed at. It is not a lifecycle field: its value does not change as the SPEC moves through the workflow, and nothing in the lifecycle updates it. A SPEC written for the next patch release carries that release label from the day it is authored until the day it is closed.
+
+The following lifecycle-stage names are prohibited as `phase:` values: `plan`, `run`, `sync`, and `mx`. Writing the stage the author happened to be standing in is the mistake this prohibition exists to stop; the positive instruction ("use a release target") is not enough on its own, because a stage name reads like a plausible phase to anyone who has not been told otherwise. Where the correct label is genuinely unknown, name the nearest release target rather than a stage.
+
+The prohibition binds the whole trimmed value, compared case-insensitively — `PLAN`, `Sync`, and a value padded with surrounding whitespace are rejected exactly as `plan` is. It does NOT bind substrings: a legitimate label that merely contains one of these words inside a longer phrase — `"v3.0.0 — Phase 2 — Runtime Hardening"`, or a milestone label naming a sync layer — is valid and MUST NOT be rejected. Whole-value comparison is what makes case-insensitivity safe here; substring matching would false-flag those labels.
+
+Enforcement lives in `internal/spec/lint.go` `FrontmatterSchemaRule`, which emits finding code `FrontmatterPhaseInvalid` at error severity. That code is deliberately absent from `eraDemotableCodes`, so it is NOT demoted to an advisory warning on grandfather-era SPECs: the guard exists to catch an authoring mistake on an in-flight SPEC, and the era heuristic classifies almost every in-flight SPEC as grandfathered.
+
+**This field is load-bearing.** `internal/spec/era.go` reads `phase` in the H-5 era tie-breaker: `matchesModernPhase` returns true only for a value carrying a modern release prefix, so a lifecycle token there silently disables one of the two signals H-5 depends on and leaves the classification resting on the `created` date alone. A wrong value here does not announce itself — it degrades a two-signal predicate to one.
 
 ## Status Enum (8 values)
 
@@ -77,6 +89,8 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `completed → in-progress (amendment)` | manager-spec (re-delegation per D-NEW-1 inline-fix pattern) | `feat(SPEC-{ID}): in-place amendment <rationale-summary>` — distinct from `(none) → draft` and `* → superseded`; the SPEC's HISTORY `## Amendments` sub-section MUST record the prior completed version + prior_completed_sha + rationale + scope |
 
 > **3-phase close (plan→run→sync)** — the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
+
+> **This matrix does not cover non-transition frontmatter corrections.** Repairing a frontmatter value that was written wrong leaves `status:` unchanged, so no row above applies to it — the absence of a row is not an absence of an owner. See § Non-transition frontmatter corrections for the owner and the procedure.
 
 ## progress.md Section Map (canonical SSOT)
 
@@ -109,6 +123,16 @@ Per the drift-detector close-subject convention, every close commit (the sync co
 - `manager-develop` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `draft → in-progress` transition are allowed; ALL other body modifications are forbidden). When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back.
 
 > **SHA placeholder backfill exemption (D3)** — The forbidden crossings above bind `spec.md` / `plan.md` / `acceptance.md` body content. The `progress.md` §E.3 / §E.4 `sync_commit_sha` / `mx_commit_sha` SHA fields are a DISTINCT surface: a sync-phase (or legacy Mx-phase) commit cannot reference its own SHA — a commit does not know its own hash until after it lands — so the established pattern writes a `pending-backfill-*` placeholder in the phase's own commit and backfills the real SHA in a follow-up commit. This mechanical placeholder completion is NOT an ownership crossing; it is the self-referential-hazard workaround for a field that, by physics, cannot be populated within the same commit it describes. The ownership matrix therefore scopes its forbidden crossings to SPEC body content (spec/plan/acceptance) and does NOT bind `progress.md` SHA-field backfill performed by the phase-owning agent (manager-develop for §E.3, manager-docs for §E.4) in a subsequent commit.
+
+### Non-transition frontmatter corrections
+
+A frontmatter field that was authored with a value the schema does not permit is repaired in place. This is a different act from the Status Transition Ownership Matrix above: that matrix governs `status:` transitions, and a repair of this kind leaves `status:` untouched, so none of its rows apply.
+
+**Owner: `manager-spec`, reached through orchestrator re-delegation.** A `phase:` value correction — and any other non-transition frontmatter correction — is authored by `manager-spec`, the agent that already owns `spec.md` as canonical body content. `manager-docs` and `manager-develop` are both restricted to `status:` + `updated:` (§ Forbidden ownership crossings), so neither may perform it, and widening either restriction would blur a boundary whose whole value is that it admits no exceptions.
+
+**An amendment is not required.** Because the repair does not change `status:`, it does NOT trigger the `completed → in-progress (amendment)` transition: no `amendment_of:` field, no HISTORY `## Amendments` sub-section, and no plan-audit cache invalidation. Imposing the full amendment procedure on a single mis-authored field would cost more than the defect it repairs.
+
+Scope: the correction touches the mis-authored field and `updated:`. Body content, HISTORY, and every other frontmatter field stay untouched.
 
 ### Forward-looking enforcement (optional defense-in-depth)
 
