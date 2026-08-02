@@ -242,10 +242,30 @@ func InitDependencies() {
 
 // enableObservabilityIfConfigured reads observability config and enables
 // trace writing on the registry if configured. Gracefully skips on error.
+//
+// The gate is a two-step check (SPEC-OBS-ENABLED-GATE-001):
+//  1. os.Stat — the file-existence gate. Preserved unchanged so a missing
+//     observability.yaml still short-circuits (REQ-OEG-005) and the heavier
+//     IsObservabilityEnabled parse is skipped when the file is absent.
+//  2. hook.IsObservabilityEnabled() — the canonical observability.enabled
+//     reader (REQ-OEG-007 SSOT reuse). Consulted ONLY when the file exists.
+//     Returns false on absent key (safe-default), so file-present +
+//     enabled:false / key-absent → observability stays off (REQ-OEG-002/004).
+//
+// InitDependencies is the sole production caller and runs once at startup with
+// cwd = project root, matching IsObservabilityEnabled's cwd resolution
+// (CLAUDE_PROJECT_DIR → os.Getwd()) — see plan.md §D for the cache/cwd
+// reconciliation.
 func enableObservabilityIfConfigured(reg hook.Registry, cwd string) {
 	cfgPath := filepath.Join(cwd, ".moai", "config", "sections", "observability.yaml")
 	if _, err := os.Stat(cfgPath); err != nil {
 		return // Config file not found — observability disabled.
+	}
+	// SPEC-OBS-ENABLED-GATE-001 REQ-OEG-007: delegate the enabled-key read to
+	// the single source of truth rather than introducing a 5th yaml-key reader.
+	// Safe-defaults to false on absent/falsey key, absent file, or parse error.
+	if !hook.IsObservabilityEnabled() {
+		return
 	}
 	// Enable observability via type assertion; concrete registry supports it.
 	type observabilityEnabler interface {
