@@ -119,4 +119,41 @@ m1_to_mN_commit_strategy: six commits — M1.1 index tables, M1.2 promotions, M1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill-sync-commit
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-PIPELINE-FANOUT-ACTIVATION-001' CHANGELOG.md -> 0 before append, 1 after"
+b12_self_test_b: "AC census from acceptance.md (SSOT) -> 15 distinct AC-PFA-### ids; CHANGELOG entry cites 15"
+b12_self_test_c: "every path cited in the CHANGELOG entry verified present on disk (11/11 OK)"
+changelog_entry_position: "[Unreleased] -> ### Changed, first bullet"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed
+  plan_md: not-applicable
+  acceptance_md: not-applicable
+  plan_acceptance_note: >-
+    plan.md and acceptance.md in this SPEC carry no YAML frontmatter block, so
+    no status/updated transition applies to them. spec.md is the only artifact
+    with frontmatter; progress.md carries none either.
+  updated_field: 2026-08-02 (unchanged — the run-phase and sync-phase dates coincide)
+canary_compliance_check:
+  applicable: true
+  reason: >-
+    this SPEC defines a forward-looking policy (the per-tier REQ/AC budget,
+    M1.4) that its own artifacts must satisfy.
+  tier: M
+  ceiling_req: 16
+  ceiling_ac: 16
+  observed_req: 10
+  observed_ac: 15
+  verdict: PASS (both counts independently under the Tier M ceiling)
+docs_site_decision:
+  outcome: no-change
+  reason: >-
+    the docs-site documents the S/M/L tier bands only on the moai-sync page, and
+    there only as a PR-routing table; it carries no SPEC-authoring tier taxonomy
+    and no REQ/AC guidance, so the new budget has no existing home. The Fan-Out
+    Index and the plan-auditor retry-contract fix are internal harness doctrine
+    with no user-facing surface. No 4-locale obligation is triggered.
+run_phase_range: bf46ff163..a95369b63
+```

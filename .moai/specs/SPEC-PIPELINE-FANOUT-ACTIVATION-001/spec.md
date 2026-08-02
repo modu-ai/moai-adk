@@ -2,7 +2,7 @@
 id: SPEC-PIPELINE-FANOUT-ACTIVATION-001
 title: Activate the plan/run/sync pipeline fan-out sites and resolve the delta re-audit contradiction
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
