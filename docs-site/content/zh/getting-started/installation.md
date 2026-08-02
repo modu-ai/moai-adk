@@ -95,6 +95,10 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
+{{< callout type="info" >}}
+安装 MoAI-ADK 后,可用 `moai update --version <tag>` 进程内切换到其它发布标签(stable、rc 或旧版本)。详见 [Update — 安装特定版本](/zh/cli-reference/update/#安装特定版本-version)。
+{{< /callout >}}
+
 ### 方法 2:从源码构建
 
 有 Go 开发环境时可直接从源码构建。
