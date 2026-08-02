@@ -201,6 +201,33 @@ $ golangci-lint run ./internal/core/git/  → 0 issues
 Permanent M3 code change: the determinism-test gap + `time` import (9 LOC). All
 mutations were reverted; `worktree.go` matches the M2 baseline byte-for-byte.
 
+### M4 — full-suite + interface-stability verification
+
+```
+$ go test ./... -count=1   → exit 0 (105 packages ok, 0 FAIL/panic)
+$ go vet ./...             → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+```
+
+Interface-stability evidence (the premise of the shared-predicate decision,
+spec.md §5 decision 3 — no test double, no mock, no call site needed editing):
+```
+$ git diff --exit-code 1dbf1f47c -- internal/core/git/types.go   → exit 0 (UNCHANGED)
+$ git diff --stat 1dbf1f47c -- internal/cli/worktree/clean.go    → (empty, unmodified)
+$ grep -cE 'Remove\([A-Za-z_.]+, false\)' internal/cli/worktree/clean.go   → 2 (both call sites)
+```
+The `--stale` and `--merged-only` CLI tests pass unchanged — they stub the
+predicate (`mockIsBranchMergedFunc`) so they cannot exercise the real one, but
+their continued green is the evidence that the interface the predicate satisfies
+did not change shape:
+```
+$ go test ./internal/cli/worktree/ -run 'TestCleanStale_(KeepsDirtyWorktree|PreviewsByDefault|RemovesWithYes)' -count=1 -v
+--- PASS: TestCleanStale_KeepsDirtyWorktree (0.00s)
+--- PASS: TestCleanStale_PreviewsByDefault (0.00s)
+--- PASS: TestCleanStale_RemovesWithYes (0.00s)
+```
+No code change in M4; this milestone is pure verification.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
