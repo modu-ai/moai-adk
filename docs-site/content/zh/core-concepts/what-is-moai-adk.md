@@ -411,7 +411,7 @@ flowchart TD
 
 | 子命令 | 别名 | 用途 | 主要标志 |
 |-----------|------|------|-----------|
-| `plan` | `spec` | 生成 SPEC 文档(GEARS 格式) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | 生成 SPEC 文档(GEARS 格式) | `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC 的 DDD/TDD 实现 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | 文档同步、代码地图、创建 PR | `--merge`, `--skip-mx` |
 
