@@ -44,6 +44,7 @@ func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error
 	// Pre-populate the boolean defaults so Condition funcs and the
 	// non-interactive path see them from the start.
 	result := &WizardResult{
+		LSPEnabled:                true,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
@@ -86,7 +87,17 @@ func prefillIdentityDefaults(questions []Question, userName string) {
 // with a lazily-evaluated hide func. A skip-focus Note at the top of every
 // group renders the tui.Stepper with a dynamic denominator (REQ-TUX2-008).
 func RunWithLocale(questions []Question, styles *Styles, locale string) (*WizardResult, error) {
-	result := &WizardResult{}
+	// Seed the same shipped true defaults as RunWithDefaults so the four
+	// fixed-default booleans (lsp_enabled, enforce_quality, design_enabled,
+	// claude_design_enabled) hold true even on this entry point (used by
+	// update_wizard.go) where their questions are no longer asked.
+	result := &WizardResult{
+		LSPEnabled:                true,
+		EnforceQuality:            true,
+		CoverageExemptionsEnabled: false,
+		DesignEnabled:             true,
+		ClaudeDesignEnabled:       true,
+	}
 	if err := runWithResult(questions, styles, locale, result); err != nil {
 		return nil, err
 	}
@@ -427,20 +438,18 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 }
 
 // saveBoolAnswer stores a boolean answer in the result.
+//
+// The four former page-3 confirm questions (lsp_enabled, enforce_quality,
+// design_enabled, claude_design_enabled) are no longer asked — fixed at their
+// shipped true defaults (removed 2026-08-03). Their capture branches are gone
+// (M3 invariant: a removed question stores nothing). No page-3 boolean
+// question remains interactive, so this is now a no-op for the init/update
+// set; it is still wired through buildConfirmField for any future confirm
+// question and is exercised by the removal tests.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
-	switch id {
-	// The former reveal-more confirm is no longer asked (REQ-WIZ-001/002):
-	// Page 3 is always visible, so no answer can widen the question set
-	// mid-wizard.
-	case "lsp_enabled":
-		result.LSPEnabled = value
-	case "enforce_quality":
-		result.EnforceQuality = value
-	case "design_enabled":
-		result.DesignEnabled = value
-	case "claude_design_enabled":
-		result.ClaudeDesignEnabled = value
-	}
+	_ = id
+	_ = value
+	_ = result
 }
 
 // buildConfirmField creates a huh.Confirm field for a boolean question.

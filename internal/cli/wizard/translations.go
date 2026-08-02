@@ -113,22 +113,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
 			},
 		},
-		"lsp_enabled": {
-			Title:       "LSP 통합을 활성화할까요? (기본값: 예)",
-			Description: "LSP는 run 단계에서 language-server 진단을 제공합니다. 기본값은 켜짐이며, 필요 없으면 끌 수 있습니다.",
-		},
-		"enforce_quality": {
-			Title:       "품질 게이트를 강제할까요? (기본값: 예)",
-			Description: "활성화하면 TRUST 5 품질 게이트가 실패 시 구현 진행을 차단합니다.",
-		},
-		"design_enabled": {
-			Title:       "디자인 워크플로우를 활성화할까요? (기본값: 예)",
-			Description: "MoAI 디자인 파이프라인(GAN 루프, 브랜드 컨텍스트, Claude Design 통합)을 활성화합니다.",
-		},
-		"claude_design_enabled": {
-			Title:       "Claude Design 통합을 활성화할까요? (기본값: 예)",
-			Description: "디자인 파이프라인 내에서 Claude Design 핸드오프 워크플로우를 활성화합니다.",
-		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -213,22 +197,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
 			},
 		},
-		"lsp_enabled": {
-			Title:       "LSP 統合を有効にしますか？（デフォルト: はい）",
-			Description: "LSP は run フェーズで language-server の診断を提供します。デフォルトはオンで、不要な場合はオフにできます。",
-		},
-		"enforce_quality": {
-			Title:       "品質ゲートを強制しますか？（デフォルト: はい）",
-			Description: "有効にすると、TRUST 5 品質ゲートが失敗時に実装の進行をブロックします。",
-		},
-		"design_enabled": {
-			Title:       "デザインワークフローを有効にしますか？（デフォルト: はい）",
-			Description: "MoAI デザインパイプライン（GAN ループ、ブランドコンテキスト、Claude Design 統合）を有効にします。",
-		},
-		"claude_design_enabled": {
-			Title:       "Claude Design 統合を有効にしますか？（デフォルト: はい）",
-			Description: "デザインパイプライン内で Claude Design ハンドオフワークフローを有効にします。",
-		},
 	},
 	"zh": {
 		"conversation_language": {
@@ -312,22 +280,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
 				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
 			},
-		},
-		"lsp_enabled": {
-			Title:       "启用 LSP 集成？（默认：是）",
-			Description: "LSP 在运行阶段提供语言服务器诊断。默认开启，如不需要可以关闭。",
-		},
-		"enforce_quality": {
-			Title:       "强制执行质量门禁？（默认：是）",
-			Description: "启用后，TRUST 5 质量门禁在失败时会阻止实施进度。",
-		},
-		"design_enabled": {
-			Title:       "启用设计工作流？（默认：是）",
-			Description: "启用 MoAI 设计流水线（GAN 循环、品牌上下文、Claude Design 集成）。",
-		},
-		"claude_design_enabled": {
-			Title:       "启用 Claude Design 集成？（默认：是）",
-			Description: "在设计流水线中启用 Claude Design 交接工作流。",
 		},
 	},
 }

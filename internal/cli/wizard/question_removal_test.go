@@ -4,14 +4,18 @@ package wizard
 // (AC-WIZ-007/008/009/013, REQ-WIZ-010/012/013/017).
 
 import (
-	"strings"
 	"testing"
 )
 
 // removedInM3 are the questions fixed at their shipped defaults and therefore
-// no longer asked: harness_profile (fixed at "default") and
-// coverage_exemptions_enabled (fixed at false).
-var removedInM3 = []string{"harness_profile", "coverage_exemptions_enabled"}
+// no longer asked: harness_profile (fixed at "default"),
+// coverage_exemptions_enabled (fixed at false), and — added 2026-08-03 — the
+// four page-3 default-true confirms (lsp_enabled, enforce_quality,
+// design_enabled, claude_design_enabled), all fixed at true.
+var removedInM3 = []string{
+	"harness_profile", "coverage_exemptions_enabled",
+	"lsp_enabled", "enforce_quality", "design_enabled", "claude_design_enabled",
+}
 
 // TestRemovedQuestionsAbsentFromInitSet pins the question-absence half of
 // AC-WIZ-008 and AC-WIZ-009.
@@ -71,66 +75,40 @@ func TestRemovedQuestionsHaveNoCaptureBranch(t *testing.T) {
 	if kept.ProjectMode != "team" {
 		t.Error("project_mode capture branch was removed by mistake")
 	}
-	for _, tc := range []struct {
-		id    string
-		check func(*WizardResult) bool
-	}{
-		{"lsp_enabled", func(r *WizardResult) bool { return r.LSPEnabled }},
-		{"enforce_quality", func(r *WizardResult) bool { return r.EnforceQuality }},
-		{"design_enabled", func(r *WizardResult) bool { return r.DesignEnabled }},
-		{"claude_design_enabled", func(r *WizardResult) bool { return r.ClaudeDesignEnabled }},
-	} {
+	// The four newly-removed page-3 confirms must NOT capture (M3 invariant
+	// extended to lsp_enabled/enforce_quality/design_enabled/claude_design_enabled).
+	for _, id := range []string{"lsp_enabled", "enforce_quality", "design_enabled", "claude_design_enabled"} {
 		r := &WizardResult{}
-		saveBoolAnswer(tc.id, true, r)
-		if !tc.check(r) {
-			t.Errorf("%s capture branch was removed by mistake", tc.id)
+		saveBoolAnswer(id, true, r)
+		if r.LSPEnabled || r.EnforceQuality || r.DesignEnabled || r.ClaudeDesignEnabled {
+			t.Errorf("%s capture branch must be gone (removed 2026-08-03)", id)
 		}
 	}
 }
 
-// lspDefaultWording records, PER LOCALE, the affirmative default token the
-// lsp_enabled title must now carry and the negative token it must no longer
-// carry. Each locale is listed explicitly with its OWN punctuation: ko/ja use a
-// halfwidth colon, zh uses a FULLWIDTH one (：). A single shared halfwidth
-// pattern would be structurally blind to zh (plan.md §G).
-var lspDefaultWording = map[string]struct{ want, gone string }{
-	"ko": {"기본값: 예", "기본값: 아니오"},
-	"ja": {"デフォルト: はい", "デフォルト: いいえ"},
-	"zh": {"默认：是", "默认：否"},
-}
-
-// TestLSPEnabledDefaultsToTrue pins AC-WIZ-007: the default flips to true and
-// the enabled-by-default wording lands in all four locales.
-func TestLSPEnabledDefaultsToTrue(t *testing.T) {
+// TestLSPEnabledFixedAtTrueDefault pins the post-removal invariant (AC-WIZ-007
+// carried forward, 2026-08-03): lsp_enabled is no longer asked, AND its value
+// is seeded true on the result struct (wizard.go RunWithDefaults/RunWithLocale)
+// so interactive `moai init` writes lsp.enabled: true without prompting. The
+// four-locale wording check is moot — the question is gone.
+func TestLSPEnabledFixedAtTrueDefault(t *testing.T) {
 	t.Parallel()
-	q := QuestionByID(InitQuestions(t.TempDir()), "lsp_enabled")
-	if q == nil {
-		t.Fatal("lsp_enabled question not found")
+	if q := QuestionByID(InitQuestions(t.TempDir()), "lsp_enabled"); q != nil {
+		t.Fatalf("lsp_enabled must no longer be asked; got question with Default=%q", q.Default)
 	}
-
-	if q.Default != "true" {
-		t.Errorf("lsp_enabled default = %q, want %q", q.Default, "true")
+	// The seed struct literal must hold the four fixed-default booleans true
+	// (mirrors the RunWithDefaults/RunWithLocale seed in wizard.go).
+	seed := &WizardResult{
+		LSPEnabled:                true,
+		EnforceQuality:            true,
+		CoverageExemptionsEnabled: false,
+		DesignEnabled:             true,
+		ClaudeDesignEnabled:       true,
 	}
-
-	// English wording lives inline on the question.
-	if strings.Contains(q.Title, "default: No") {
-		t.Errorf("lsp_enabled English title still says disabled-by-default: %q", q.Title)
+	if !seed.LSPEnabled || !seed.EnforceQuality || !seed.DesignEnabled || !seed.ClaudeDesignEnabled {
+		t.Errorf("seed WizardResult must set the four default-true booleans: %+v", *seed)
 	}
-	if !strings.Contains(q.Title, "default: Yes") {
-		t.Errorf("lsp_enabled English title must state the Yes default, got %q", q.Title)
-	}
-
-	for locale, w := range lspDefaultWording {
-		localized := GetLocalizedQuestion(q, locale)
-		if !strings.Contains(localized.Title, w.want) {
-			t.Errorf("locale %q: lsp_enabled title %q must contain %q", locale, localized.Title, w.want)
-		}
-		if strings.Contains(localized.Title, w.gone) {
-			t.Errorf("locale %q: lsp_enabled title %q still carries the disabled-by-default wording %q",
-				locale, localized.Title, w.gone)
-		}
-		if localized.Description == "" {
-			t.Errorf("locale %q: lsp_enabled description is empty", locale)
-		}
+	if seed.CoverageExemptionsEnabled {
+		t.Error("seed CoverageExemptionsEnabled must stay false")
 	}
 }
