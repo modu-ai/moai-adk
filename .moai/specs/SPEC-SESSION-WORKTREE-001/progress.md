@@ -69,6 +69,45 @@ After restoring the file, both tests returned GREEN (`ok ... 1.224s`). This prov
 
 **Scope discipline (B10):** touched only init entry (`internal/cli/init.go` runInit top), the new wrapper (`internal/cli/session_worktree.go`), and tests. Did NOT modify web.go (M3), profile.go (M6), or the M7 git-config helper body.
 
+### M3 — `moai web` auto-entry + advisory suppression (COMPLETE)
+
+**Deliverables:**
+- `internal/cli/web.go` (EDIT) — `runWeb` now calls `enterSessionWorktree(..., "web", ...)` at the very top (before `findProjectRootFn` / `ensurePortFree` / `emitWorktreeAdvisory`); on success `os.Chdir(wtPath)` re-resolves cwd into the worktree (BI-2 / R1 mitigation); `emitWorktreeAdvisory` is gated on `!wtMaterialized` (REQ-SW-013). `web.Run` is invoked via a new `webRunFn` test seam (mirrors `findProjectRootFn` / `findPortHolder`).
+- `internal/cli/web_session_worktree_test.go` (NEW) — 3 tests: suppression-on-materialization (REQ-SW-013 positive), advisory-fires-when-off (REQ-SW-001 negative control), advisory-fires-on-failback (REQ-SW-004 negative control).
+
+**Residual from M2 (resolved):** `loadSessionWorktreeConfig(cmd)` now receives runWeb's `*cobra.Command` (the future-proof `cmd` param is used). Evidence: `internal/cli/web.go:87` `enterSessionWorktree(loadSessionWorktreeConfig(cmd), "web", ...)`.
+
+**AC binary PASS/FAIL matrix (M3-relevant):**
+
+| AC | Status | Verification | Actual Output |
+|---|---|---|---|
+| AC-SW-001 (default-off web byte-identical) | PASS | `TestRunWeb_AutoEntryOff_AdvisoryFires` | feature unset → advisory fires (stdout contains `main-checkout-branch-guard.md`) exactly as today |
+| AC-SW-003 (config ON materializes worktree for web) | PASS | `TestRunWeb_AutoEntryOn_SuppressesAdvisory` (materialize seams succeed, chdir lands, `wtMaterialized=true`) | "MoAI Web Console starting" line printed; advisory suppressed |
+| AC-SW-013 (advisory suppressed when materialized; negative controls fire) | PASS | suppression test + 2 negative controls | ON+materialized → no advisory; OFF → advisory; ON+failback → advisory |
+| AC-SW-015 (port collision preserved) | PASS | `ensurePortFree` logic untouched; REQ-SW-015 noted in code comment at web.go:108-110 | `ensurePortFree(cmd.ErrOrStderr(), webPort, !webNoReuse)` runs identically regardless of worktree entry |
+
+**E8 RED → GREEN proof (falsification round-trip):** RED captured first against the unchanged `runWeb` — all three tests failed because runWeb still called the real `web.Run` (port bind error) and no suppression/gating existed. After wiring GREEN (auto-entry + `webRunFn` seam + `!wtMaterialized` gate), a falsification round-trip mutated the gate to `if true || !wtMaterialized` (force advisory always). The suppression test went RED:
+```
+--- FAIL: TestRunWeb_AutoEntryOn_SuppressesAdvisory
+    REQ-SW-013: advisory should be SUPPRESSED on materialization, but stdout contains it:
+        ...Tip: this checkout is shared...main-checkout-branch-guard.md.
+```
+After restoring `if !wtMaterialized`, all three tests returned GREEN (`ok ... 3.893s` under `-race`). This proves the `wtMaterialized` gate is load-bearing.
+
+**E9 negative-control proof:** the two negative-control tests (`TestRunWeb_AutoEntryOff_AdvisoryFires`, `TestRunWeb_AutoEntryOn_FailBack_AdvisoryFires`) both assert the advisory marker IS present — confirming suppression is conditional, not blanket. Both pass.
+
+**Coverage:** `go test -cover ./internal/cli/` → 76.2% of statements (package-level baseline; M3's new runWeb branches are fully covered by the 3 new tests + the existing web flag/help tests).
+
+**Cross-platform build:**
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+
+**Lint:** `golangci-lint run --timeout=3m ./internal/cli/...` → 0 issues.
+
+**Subagent boundary (C-HRA-008 / E4):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/web.go internal/cli/web_session_worktree_test.go | grep -v "_test.go" | grep -v "// "` → 0 NEW matches.
+
+**Scope discipline (B8/B10):** touched only `internal/cli/web.go` (runWeb + new `webRunFn` seam + `os` import) and `internal/cli/web_session_worktree_test.go` (NEW). Did NOT modify `session_worktree.go` core logic (reused as-is), `ensurePortFree`/port handling (REQ-SW-015), or `emitWorktreeAdvisory` (gated at the call site, not modified). spec.md/plan.md/acceptance.md/design.md/research.md body unchanged.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
