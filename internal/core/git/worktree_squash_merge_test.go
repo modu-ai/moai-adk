@@ -422,6 +422,18 @@ func buildSC14Textconv(t *testing.T) string {
 	return dir
 }
 
+// setSubmoduleGitlink stages the submodule gitlink `sub` -> sha into the
+// parent repo's index via `git update-index --cacheinfo`, bypassing git's
+// change-detection entirely. `git add sub` does not reliably stage a
+// pointer-only move under submodule.<name>.ignore=all on some platforms (the
+// gitlink silently never advances, leaving a "nothing to commit" failure or,
+// worse, a silently deformed scenario). Writing the gitlink directly is
+// cross-platform reliable. Mode 160000 is the gitlink mode. (SC-15 fixture only.)
+func setSubmoduleGitlink(t *testing.T, parentDir, sha string) {
+	t.Helper()
+	runGit(t, parentDir, "update-index", "--cacheinfo", "160000,"+sha+",sub")
+}
+
 // SC-15 submodule pointer moved under an ignore directive: a second throwaway
 // repo is built with commits s0/s1/s2; the parent adds it as a submodule at
 // `sub` pinned to s0; feat moves the pointer to s1 and adds plain.txt WITHOUT
@@ -460,6 +472,8 @@ func buildSC15Submodule(t *testing.T) string {
 	// Move the parent's pointer from s2 back to s0 so feat can advance it to s1
 	// and main to s2, modelling the scenario's divergence.
 	runGit(t, filepath.Join(dir, "sub"), "checkout", s0)
+	// Record the s0 gitlink directly; see setSubmoduleGitlink.
+	setSubmoduleGitlink(t, dir, s0)
 	// Commit the ignore directive inside the TRACKED .gitmodules so it ships to
 	// every clone with no operator config.
 	gitmodulesPath := filepath.Join(dir, ".gitmodules")
@@ -473,21 +487,22 @@ func buildSC15Submodule(t *testing.T) string {
 			t.Fatalf("write .gitmodules: %v", err)
 		}
 	}
-	runGit(t, dir, "add", ".gitmodules", "sub")
+	runGit(t, dir, "add", ".gitmodules")
 	c.commit("add submodule at s0 with ignore=all")
 
 	// feat moves the pointer to s1 and adds plain.txt (NO .gitmodules change).
 	runGit(t, dir, "checkout", "-q", "-b", "feat")
 	runGit(t, filepath.Join(dir, "sub"), "checkout", s1)
 	writeTestFile(t, filepath.Join(dir, "plain.txt"), "plain\n")
-	runGit(t, dir, "add", "sub", "plain.txt")
+	runGit(t, dir, "add", "plain.txt")
+	setSubmoduleGitlink(t, dir, s1)
 	c.commit("feat moves submodule to s1 + adds plain")
 	checkout(t, dir, "main")
 	runGit(t, dir, "merge", "--squash", "feat")
 	c.commit("squash feat")
 	// main moves the pointer to s2.
 	runGit(t, filepath.Join(dir, "sub"), "checkout", s2)
-	runGit(t, dir, "add", "sub")
+	setSubmoduleGitlink(t, dir, s2)
 	c.commit("main moves submodule to s2")
 	return dir
 }
