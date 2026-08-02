@@ -92,13 +92,22 @@ A direct GitHub API call (`api.github.com/repos/.../pulls/<branch>`) would remov
 
 Eliminating `gh` here would be a point-solution that doesn't simplify the project's overall `gh` dependency. Deferred to a follow-up SPEC (spec.md §4).
 
-### §C.3 — Trigger shape — RESOLVED (on-touch at v0.2.1, Q3)
+### §C.3 — Trigger shape — RESOLVED (on-touch at v0.2.1, Q3; trigger-point command names corrected at v0.2.2)
 
-The v0.2.0 design carried the PR-merge cleanup trigger as a fork with three options (periodic background tick / on-touch / piggyback session-exit). **Q3 is RESOLVED at v0.2.1: on-touch at `moai worktree list` and `moai session start`.**
+The v0.2.0 design carried the PR-merge cleanup trigger as a fork with three options (periodic background tick / on-touch / piggyback session-exit). **Q3 is RESOLVED at v0.2.1: on-touch.** **At v0.2.2 the trigger-point command names were corrected** — the v0.2.1 names `moai worktree list` and `moai session start` were discovered at M8 pre-flight to be non-existent in the codebase, and were replaced by the verified-existing pair `moai session register` and `moai session list`.
 
 - **(a) Periodic background tick** — REJECTED. Adds background-loop lifecycle complexity (goroutine startup, shutdown, signal handling) this SPEC should not own; the user's intent ("pr 머지 된 워크트리는 자동 정리") does not map cleanly to a periodic sweep cadence.
-- **(b) On-touch at `moai worktree list` / `moai session start`** — ADOPTED. Reuses existing invocation points; fires when the user is present; no new background loop. The "stale until next moai invocation" latency is acceptable for a default-OFF opt-in feature.
+- **(b) On-touch at `moai session register` / `moai session list`** — ADOPTED. Reuses existing invocation points; fires when the user is present; no new background loop. The "stale until next moai invocation" latency is acceptable for a default-OFF opt-in feature. (v0.2.2 correction: the v0.2.1 names `moai worktree list` / `moai session start` were non-existent — `worktree list` is INTENTIONALLY RETIRED, pinned by `internal/cli/worktree/root_test.go:61` `TestWorktreeCmd_RetiredSubcommands` (`retired := []string{"new", "list", "switch", "go", "config", "status"}`; `worktree --help` directs users to `git worktree list`), and `session start` NEVER EXISTED (`internal/cli/session.go:53-59` registers exactly `register, heartbeat, deregister, list, purge, current, doctor` — no `start` command or alias). The replacement pair is verified existing: `session.go:66` registers `register`, `session.go:132` registers `list`. The v0.2.1 claim that the on-touch trigger "reuses existing invocation points" was factually FALSE under the original names and becomes TRUE under the corrected names.)
 - **(c) Piggyback on session-exit cleanup (M4)** — REJECTED. Misses `[WT]` worktrees whose sessions crashed (no clean exit); those would never be cleaned until another session happens to exit with `auto_cleanup` ON.
+
+#### §C.3.1 — Why this pair, and not the originally-named pair or the SessionStart-hook alternative
+
+The corrected pair `moai session register` + `moai session list` was chosen over two alternatives the v0.2.2 inline-fix considered:
+
+1. **The originally-named pair (`moai worktree list` / `moai session start`)** — REJECTED as the v0.2.1 names because neither command exists. The correction is not a preference flip but a defect fix: the v0.2.1 design named trigger points that could not be wired because they do not exist. design.md §C.3's "reuses existing invocation points" claim is only satisfiable by commands the CLI actually registers.
+2. **The SessionStart-hook alternative** (`moai hook session-start`) — REJECTED for separation-of-concerns reasons. The SessionStart hook IS the genuine session-start event, and `moai session register` is its write path (the hook calls `session register` to record the session in the registry). Wiring the cleanup directly into the hook would mix worktree-lifecycle cleanup logic into the SessionStart hook handler, which today carries only registry/credential/env responsibilities. Keeping the trigger at the CLI command layer (`session register` + `session list`) preserves the existing separation: the hook owns session lifecycle recording; the CLI owns worktree cleanup. CLI-level wiring also makes the trigger reachable from `session list` — a user-inspection on-touch the hook cannot provide (the hook fires once at session start, not on every user list).
+
+`session register` is the natural on-touch for "a new session is starting" (the hook-driven write path); `session list` is the natural on-touch for "the user is inspecting sessions". Together they cover both the write-side and read-side natural touch points without introducing a background loop.
 
 The on-touch trigger is pinned in plan.md M8 and verified by AC-SW-022's trigger invariant.
 
@@ -121,7 +130,7 @@ The dirty guard (REQ-SW-010 / REQ-SW-024) is the SAME check on both cleanup path
 7. `internal/cli/worktree/` — `Add` extraction + new cleanup helper (M2/M8)
 8. New `internal/cli/worktree/pr_merge_cleanup.go` (or sibling) — PR-merge cleanup helper (M8)
 9. New `internal/cli/worktree/git_config.go` (or sibling) — `ApplyGitConfig` helper (M7)
-10. `internal/cli/worktree/list.go` + `internal/cli/session/start.go` (or siblings) — on-touch trigger wiring (M8, Q3)
+10. `internal/cli/session/register.go` + `internal/cli/session/list.go` (or siblings — both verified existing at `internal/cli/session.go:66` register and `:132` list; corrected at v0.2.2 from the v0.2.1 names `worktree/list.go` + `session/start.go` which were non-existent) — on-touch trigger wiring (M8, Q3)
 11. Tests across all of the above (multiple `_test.go` files)
 
 File surface remains ≥10; REQ/AC count stays at 24/24 (D1 rewrites REQ-SW-019, Q4 shrinks REQ-SW-021 scope but does not remove the REQ, D5 folds notices into REQ-SW-022/009 bodies — none of these changes the count). **Tier L retained at v0.2.1.**

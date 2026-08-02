@@ -6,13 +6,13 @@
 
 _Populated at plan-phase close._
 
-- plan_status: _pending iter-2 audit (v0.2.1 iter-2 audit-fix; iter-1 verdict FAIL 0.69)_
+- plan_status: _pending iter-2 audit (v0.2.1 iter-2 audit-fix; iter-1 verdict FAIL 0.69); v0.2.2 run-phase inline-fix applied (D-NEW-1 non-transition correction of M8 trigger points — `moai worktree list` / `moai session start` were non-existent; corrected to `moai session register` / `moai session list`)_
 - plan_complete_at: _pending_
-- artifacts: spec.md v0.2.1, plan.md v0.2.1, acceptance.md v0.2.1, design.md v0.2.1, research.md v0.2.1, progress.md (this file)
-- tier: L (retained at v0.2.1 — REQ/AC budget 24/24, file surface ≥10; v0.2.0 escalation M→L stands)
-- version_trace: v0.1.0 (initial Tier M) → v0.2.0 (tier escalated M→L, 3 additions) → v0.2.1 (iter-2 audit-fix: D1 gitconfig source, D2 Q1-Q4 resolved, D3 defaultBranchDetectorFunc documented, D4 on-touch trigger, D5 path-distinguishing notices, D6 REQ-SW-014 Event-driven relabel, D7 REQ-SW-021 SHALL)
+- artifacts: spec.md v0.2.2, plan.md v0.2.2 (§A / §F M8 / §I Q3 corrected), acceptance.md v0.2.2 (AC-SW-022 / EC-13 corrected), design.md v0.2.2 (§C.3 / §D corrected), research.md v0.2.1 (unchanged — carries no trigger-point claims), progress.md (this file)
+- tier: L (retained at v0.2.2 — REQ/AC budget 24/24, file surface ≥10; v0.2.0 escalation M→L stands)
+- version_trace: v0.1.0 (initial Tier M) → v0.2.0 (tier escalated M→L, 3 additions) → v0.2.1 (iter-2 audit-fix: D1 gitconfig source, D2 Q1-Q4 resolved, D3 defaultBranchDetectorFunc documented, D4 on-touch trigger, D5 path-distinguishing notices, D6 REQ-SW-014 Event-driven relabel, D7 REQ-SW-021 SHALL) → v0.2.2 (run-phase inline-fix D-NEW-1: M8 trigger-point command-name correction — v0.2.1 `moai worktree list` retired + `moai session start` non-existent → verified-existing `moai session register` + `moai session list`; REQ/AC count unchanged 24/24, status stays in-progress, NOT an amendment)
 - lint: _pending `moai spec lint`_
-- self_check: SPEC ID regex PASS observed; frontmatter 12-field check pending; GEARS notation verified; Out-of-Scope rule satisfied (11 `### Out of Scope —` H3 sub-headings at v0.2.1 — 9 carried from v0.2.0 + 2 added: Profile-vs-profile git identity + Hook isolation); Tier L artifact set complete (spec + plan + acceptance + design + research + progress); all v0.2.0 `[NEEDS CLARIFICATION]` markers resolved (no more blocker rounds).
+- self_check: SPEC ID regex PASS observed; frontmatter 12-field check pending; GEARS notation verified; Out-of-Scope rule satisfied (11 `### Out of Scope —` H3 sub-headings — 9 carried from v0.2.0 + 2 added at v0.2.1: Profile-vs-profile git identity + Hook isolation); Tier L artifact set complete (spec + plan + acceptance + design + research + progress); all v0.2.0 `[NEEDS CLARIFICATION]` markers resolved (no more blocker rounds); v0.2.2 inline-fix consistency: trigger-point references corrected across all 4 carrying artifacts (spec.md HISTORY + plan.md §A/§F M8/§I Q3 + acceptance.md AC-SW-022/EC-13 + design.md §C.3/§D), research.md carries no trigger-point claims so no edit needed, REQ/AC count preserved at 24/24.
 
 ## §E.2 Run-phase Evidence
 
