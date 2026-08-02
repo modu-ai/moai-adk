@@ -2,9 +2,9 @@
 id: SPEC-WORKTREE-SQUASH-MERGE-001
 title: "worktree clean: detect squash-merged branches so --stale reclaims them"
 version: "0.6.1"
-status: in-progress
+status: completed
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-03
 author: manager-spec
 priority: P1
 phase: "v3.0.x"
