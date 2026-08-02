@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -274,6 +275,75 @@ func execGit(ctx context.Context, dir string, args ...string) (string, error) {
 	}
 
 	return strings.TrimRight(stdout.String(), "\n\r"), nil
+}
+
+// gitResult holds the result of a git subprocess whose exit code is itself a
+// verdict (SPEC-WORKTREE-SQUASH-MERGE-001 REQ-WSM-007). err is non-nil ONLY for
+// infrastructural failures (git binary missing, context cancellation); a
+// non-zero exit code is returned in exitCode for the caller to interpret per
+// the per-probe verdict table. stdout and stderr are untrimmed so the caller
+// can apply the trim policy each probe requires.
+type gitResult struct {
+	stdout   string
+	stderr   string
+	exitCode int
+}
+
+// execGitExit runs git with an optional per-call environment overlay and
+// returns the structured result. It is the per-call environment hook the
+// synthetic-commit probe (REQ-WSM-008) uses to pin author/committer identity
+// for deterministic object creation, and the exit-code-aware path the merge
+// predicate uses for probes whose non-zero exits are verdicts rather than
+// failures (git diff --quiet rc 1; git merge-base rc 1 on unrelated histories).
+//
+// The construction stays exec.CommandContext(ctx, gitPath, args...) — direct
+// argv, no shell — so the no-shell invariant on the git path is preserved
+// (plan.md §D). extraEnv is appended after GIT_TERMINAL_PROMPT=0 / LC_ALL=C;
+// passing nil yields identical behavior to execGit apart from the structured
+// return.
+func execGitExit(ctx context.Context, dir string, extraEnv []string, args ...string) (gitResult, error) {
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		return gitResult{}, fmt.Errorf("system git lookup: %w", ErrSystemGitNotFound)
+	}
+
+	cmd := exec.CommandContext(ctx, gitPath, args...)
+	cmd.Dir = dir
+	env := append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
+	env = append(env, extraEnv...)
+	cmd.Env = env
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if runErr := cmd.Run(); runErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			// Non-zero exit: a verdict for some probes, a failure for others.
+			// Surface it to the caller via exitCode without wrapping as error.
+			return gitResult{
+				stdout:   stdout.String(),
+				stderr:   stderr.String(),
+				exitCode: exitErr.ExitCode(),
+			}, nil
+		}
+		// Infrastructural failure (context cancellation, git binary gone mid-run).
+		return gitResult{}, fmt.Errorf("git %s: %w", firstArg(args), runErr)
+	}
+	return gitResult{
+		stdout:   stdout.String(),
+		stderr:   stderr.String(),
+		exitCode: 0,
+	}, nil
+}
+
+// firstArg returns args[0] or "git" when args is empty, for error messages.
+func firstArg(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	return "git"
 }
 
 // currentBranch is a package-level helper to get the current branch name.
