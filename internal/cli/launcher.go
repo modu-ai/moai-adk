@@ -144,7 +144,7 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	originalProfile := profileName
 	resolved := profile.ResolveLaunchProfileForProject(root, profileName)
 	if resolved != profileName && resolved != "" {
-		fmt.Fprintf(launcherStderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
+		_, _ = fmt.Fprintf(launcherStderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
 		profileName = resolved
 	}
 
