@@ -410,7 +410,7 @@ All subcommands run inside Claude Code as `/moai <subcommand>`.
 
 | Subcommand | Aliases | Purpose | Key flags |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC document creation (GEARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC document creation (GEARS format) | `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | Documentation sync, codemaps, PR creation | `--merge`, `--skip-mx` |
 

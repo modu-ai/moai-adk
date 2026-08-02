@@ -411,7 +411,7 @@ flowchart TD
 
 | 서브커맨드 | 별칭 | 용도 | 주요 플래그 |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC 문서 생성 (GEARS 형식) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC 문서 생성 (GEARS 형식) | `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC의 DDD/TDD 구현 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | 문서 동기화, 코드맵, PR 생성 | `--merge`, `--skip-mx` |
 

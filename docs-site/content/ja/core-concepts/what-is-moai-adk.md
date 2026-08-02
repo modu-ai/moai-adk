@@ -413,7 +413,7 @@ flowchart TD
 
 | サブコマンド | 別名 | 用途 | 主要フラグ |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC ドキュメント生成 (EARS 形式) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC ドキュメント生成 (EARS 形式) | `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC の DDD/TDD 実装 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | ドキュメント同期、コードマップ、PR 生成 | `--merge`, `--skip-mx` |
 
