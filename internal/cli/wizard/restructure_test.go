@@ -75,30 +75,13 @@ func TestInitPages_Membership(t *testing.T) {
 	}{
 		{pageBasic, []string{"conversation_language", "user_name", "project_name"}},
 		{pageModelReport, []string{"model_policy", "report_format"}},
-		{pageQualityWorkflw, []string{
-			"lsp_enabled", "enforce_quality", "project_mode",
-			"design_enabled", "claude_design_enabled",
-		}},
+		{pageQualityWorkflw, []string{"project_mode"}},
 	}
 	for _, tc := range cases {
 		got := questionIDsInGroup(questions, tc.page)
 		if !slices.Equal(got, tc.want) {
 			t.Errorf("page %q membership = %v, want %v", tc.page, got, tc.want)
 		}
-	}
-
-	// design_enabled MUST precede claude_design_enabled so huh has the design
-	// answer before evaluating the nested hide func (plan.md §A.1 D1).
-	idx := func(id string) int {
-		for i := range questions {
-			if questions[i].ID == id {
-				return i
-			}
-		}
-		return -1
-	}
-	if d, c := idx("design_enabled"), idx("claude_design_enabled"); d < 0 || c < 0 || d >= c {
-		t.Errorf("design_enabled (%d) must precede claude_design_enabled (%d)", d, c)
 	}
 }
 
@@ -135,36 +118,19 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 }
 
 // TestPage3_NoModeGate pins AC-WIZ-003 + the C3 half of AC-WIZ-001: the
-// Quality & Workflow questions are visible with NO gate, and the nested design
-// condition survives with the mode term dropped from it.
+// Quality & Workflow questions are visible with NO gate. With the four
+// default-true confirms removed (2026-08-03), only project_mode remains on
+// page 3, and it must be unconditional.
 func TestPage3_NoModeGate(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	for _, id := range []string{"lsp_enabled", "enforce_quality", "project_mode", "design_enabled"} {
-		q := QuestionByID(questions, id)
-		if q == nil {
-			t.Fatalf("%s missing from the init question set", id)
-		}
-		if q.Condition != nil {
-			t.Errorf("%s must be unconditional (no mode gate) so it merges into Page 3", id)
-		}
+	pm := QuestionByID(questions, "project_mode")
+	if pm == nil {
+		t.Fatal("project_mode missing from the init question set")
 	}
-
-	cd := QuestionByID(questions, "claude_design_enabled")
-	if cd == nil {
-		t.Fatal("claude_design_enabled missing from the init question set")
-	}
-	if cd.Condition == nil {
-		t.Fatal("claude_design_enabled must stay conditional (nested on design_enabled)")
-	}
-	// The condition collapses from the two-term (mode && DesignEnabled) form to
-	// DesignEnabled alone: it must now be TRUE with DesignEnabled alone.
-	if !cd.Condition(&WizardResult{DesignEnabled: true}) {
-		t.Error("claude_design_enabled must be visible when DesignEnabled=true")
-	}
-	if cd.Condition(&WizardResult{DesignEnabled: false}) {
-		t.Error("claude_design_enabled must be hidden when DesignEnabled=false")
+	if pm.Condition != nil {
+		t.Error("project_mode must be unconditional (no mode gate) so it stays on Page 3")
 	}
 }
 
@@ -174,12 +140,11 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 	t.Parallel()
 	reconf := ReconfigureQuestions(t.TempDir())
 
-	for _, id := range []string{
-		"lsp_enabled", "enforce_quality", "project_mode",
-		"design_enabled", "claude_design_enabled",
-	} {
-		if QuestionByID(reconf, id) != nil {
-			t.Errorf("Page-3 question %q leaked into ReconfigureQuestions", id)
+	// Every page-3 question (now just project_mode after the 2026-08-03 removal
+	// of the four default-true confirms) must NOT leak into reconfigure.
+	for _, q := range Page3Questions(t.TempDir()) {
+		if QuestionByID(reconf, q.ID) != nil {
+			t.Errorf("Page-3 question %q leaked into ReconfigureQuestions", q.ID)
 		}
 	}
 	// The pre-restructure member set is retained (Basic + Model + Git).

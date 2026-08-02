@@ -95,6 +95,10 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
+{{< callout type="info" >}}
+MoAI-ADK 설치 후에는 `moai update --version <tag>`로 다른 릴리스 태그(stable, rc, 이전 버전)로 인프로세스 전환할 수 있습니다. 자세한 내용은 [Update — 특정 버전 설치](/ko/cli-reference/update/#특정-버전-설치-version)를 참고하세요.
+{{< /callout >}}
+
 ### 방법 2: 소스에서 빌드
 
 Go 개발 환경이 있는 경우 소스에서 직접 빌드할 수 있습니다.

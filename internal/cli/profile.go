@@ -97,7 +97,11 @@ func runProfileList(cmd *cobra.Command, _ []string) error {
 }
 
 func runProfileCurrent(cmd *cobra.Command, _ []string) error {
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), profile.GetCurrentName())
+	name := profile.GetCurrentName()
+	if root, err := findProjectRootFn(); err == nil {
+		name = profile.GetCurrentNameForProject(root)
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), name)
 	return nil
 }
 

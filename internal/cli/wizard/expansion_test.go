@@ -25,11 +25,7 @@ func TestPage3QuestionsStructure(t *testing.T) {
 	}
 
 	want := []entry{
-		{"lsp_enabled", QuestionTypeConfirm, false, false},
-		{"enforce_quality", QuestionTypeConfirm, false, false},
 		{"project_mode", QuestionTypeSelect, true, false},
-		{"design_enabled", QuestionTypeConfirm, false, false},
-		{"claude_design_enabled", QuestionTypeConfirm, false, true},
 	}
 
 	if len(questions) != len(want) {
@@ -67,13 +63,8 @@ func TestPage3VisibleWithoutBridge(t *testing.T) {
 	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
 	visible := FilteredQuestions(all, quick)
 
-	for _, id := range []string{
-		"lsp_enabled", "enforce_quality", "project_mode",
-		"design_enabled", "claude_design_enabled",
-	} {
-		if QuestionByID(visible, id) == nil {
-			t.Errorf("page-3 question %q must be visible with no bridge answered", id)
-		}
+	if QuestionByID(visible, "project_mode") == nil {
+		t.Error(`page-3 question "project_mode" must be visible with no bridge answered`)
 	}
 }
 
@@ -88,46 +79,29 @@ func TestPage3Questions_Ungated(t *testing.T) {
 	tmpDir := t.TempDir()
 	questions := Page3Questions(tmpDir)
 
-	page3 := []string{
-		"lsp_enabled", "enforce_quality", "project_mode",
-		"design_enabled", "claude_design_enabled",
-	}
 	visible := FilteredQuestions(questions, &WizardResult{DesignEnabled: true})
-	for _, id := range page3 {
-		if QuestionByID(visible, id) == nil {
-			t.Errorf("page-3 question %q must be visible", id)
-		}
+	if QuestionByID(visible, "project_mode") == nil {
+		t.Error(`page-3 question "project_mode" must be visible`)
 	}
 
-	// Structural half: nothing on page 3 is gated except the nested design question.
+	// Structural half: nothing on page 3 is gated.
 	for _, q := range questions {
-		if q.ID == "claude_design_enabled" {
-			continue
-		}
 		if q.Condition != nil {
 			t.Errorf("page-3 question %q carries a Condition — page 3 must be ungated", q.ID)
 		}
 	}
 }
 
-// TestPage3Questions_ClaudeDesignConditional verifies claude_design_enabled is hidden
-// when DesignEnabled=false (AC-IWE-005 conditional skip).
-func TestPage3Questions_ClaudeDesignConditional(t *testing.T) {
+// TestPage3Questions_NoConditional verifies page 3 now has NO Condition-gated
+// question: claude_design_enabled (the last conditional) was removed together
+// with the four default-true confirms (2026-08-03).
+func TestPage3Questions_NoConditional(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Page3Questions(tmpDir)
-
-	// Design disabled: claude_design_enabled should be hidden.
-	result := &WizardResult{DesignEnabled: false}
-	visible := FilteredQuestions(questions, result)
-	for _, q := range visible {
-		if q.ID == "claude_design_enabled" {
-			t.Error("claude_design_enabled visible when DesignEnabled=false, want hidden")
+	for _, q := range Page3Questions(tmpDir) {
+		if q.Condition != nil {
+			t.Errorf("page-3 question %q carries a Condition — page 3 must have no conditional questions", q.ID)
 		}
-	}
-	// Expect 4 visible (the 5 page-3 questions minus claude_design_enabled)
-	if len(visible) != 4 {
-		t.Errorf("Expected 4 visible questions when DesignEnabled=false, got %d", len(visible))
 	}
 }
 
@@ -212,27 +186,18 @@ func TestSaveAnswerPhase1(t *testing.T) {
 	}
 }
 
-// TestSaveBoolAnswer verifies saveBoolAnswer stores the page-3 boolean fields.
-// coverage_exemptions_enabled is deliberately absent — its capture branch was
-// removed with the question (REQ-WIZ-013).
+// TestSaveBoolAnswer verifies saveBoolAnswer is now a no-op: the four page-3
+// confirm questions (lsp_enabled, enforce_quality, design_enabled,
+// claude_design_enabled) are no longer asked (removed 2026-08-03), so no
+// boolean answer is captured. A zero result must stay zero.
 func TestSaveBoolAnswer(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		id    string
-		val   bool
-		check func(*WizardResult) bool
-	}{
-		{"lsp_enabled", true, func(r *WizardResult) bool { return r.LSPEnabled }},
-		{"enforce_quality", false, func(r *WizardResult) bool { return !r.EnforceQuality }},
-		{"design_enabled", false, func(r *WizardResult) bool { return !r.DesignEnabled }},
-		{"claude_design_enabled", false, func(r *WizardResult) bool { return !r.ClaudeDesignEnabled }},
+	result := &WizardResult{}
+	for _, id := range []string{"lsp_enabled", "enforce_quality", "design_enabled", "claude_design_enabled"} {
+		saveBoolAnswer(id, true, result)
 	}
-	for _, c := range cases {
-		result := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
-		saveBoolAnswer(c.id, c.val, result)
-		if !c.check(result) {
-			t.Errorf("saveBoolAnswer(%q, %v): check failed", c.id, c.val)
-		}
+	if result.LSPEnabled || result.EnforceQuality || result.DesignEnabled || result.ClaudeDesignEnabled {
+		t.Errorf("saveBoolAnswer must be a no-op for the four removed IDs; result = %+v", *result)
 	}
 }
 
@@ -262,12 +227,16 @@ func TestWizardResultDefaultsPrePopulated(t *testing.T) {
 	t.Parallel()
 	// We test the pre-population logic directly since we can't run interactive wizard in tests.
 	result := &WizardResult{
+		LSPEnabled:                true,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
 		ClaudeDesignEnabled:       true,
 	}
 
+	if !result.LSPEnabled {
+		t.Error("LSPEnabled default should be true")
+	}
 	if !result.EnforceQuality {
 		t.Error("EnforceQuality default should be true")
 	}
@@ -329,18 +298,18 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Page 3 (5) = 10 exactly.
-	if got != 10 {
-		t.Errorf("TotalVisibleQuestions = %d, want 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
+	// Page 1 (3) + Page 2 (2) + Page 3 (1, project_mode only) = 6 exactly.
+	if got != 6 {
+		t.Errorf("TotalVisibleQuestions = %d, want 6 (3 Basic + 2 Model & Report + 1 Quality & Workflow)", got)
 	}
-	// All five page-3 questions are counted with no flag to enable them.
+	// Only project_mode remains on page 3 (the four confirms were removed).
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
 		if q.Group == "Quality & Workflow" {
 			n++
 		}
 	}
-	if n != 5 {
-		t.Errorf("visible page-3 questions = %d, want 5", n)
+	if n != 1 {
+		t.Errorf("visible page-3 questions = %d, want 1", n)
 	}
 }

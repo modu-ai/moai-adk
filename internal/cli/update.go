@@ -48,10 +48,22 @@ var updateCmd = &cobra.Command{
 // validateUpdateFlags validates update flag values before execution.
 // SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
 // exits non-zero with a usage error naming the closed set {max, medium, low}.
+// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-007 / AC-UVF-007): the --version flag's
+// mutual-exclusion matrix is enforced before any network call.
 func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
 	profileFlag := getStringFlag(cmd, "profile")
 	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
 		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+	}
+	// SPEC-UPDATE-VERSION-FLAG-001 REQ-UVF-007: --version mutual-exclusion matrix.
+	if err := validateUpdateVersionConflicts(
+		getStringFlag(cmd, "version"),
+		getBoolFlag(cmd, "check"),
+		getBoolFlag(cmd, "templates-only"),
+		getStringFlag(cmd, "restore") != "",
+		getBoolFlag(cmd, "dry-run"),
+	); err != nil {
+		return err
 	}
 	return nil
 }
@@ -75,6 +87,12 @@ func init() {
 	// provided, persists the value to llm.profile (no agent frontmatter mutation).
 	// The retired --plan-type flag is no longer exposed.
 	updateCmd.Flags().String("profile", "", "Override the model+effort profile: max, medium, or low (persists to llm.yaml profile)")
+
+	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-001): --version <tag> installs a
+	// specific GitHub release tag (stable / rc / previous version) of the moai
+	// binary via the existing checksum-verified download path. Defaults to the
+	// empty string (no-op; default moai update flow is preserved per REQ-UVF-004).
+	updateCmd.Flags().String("version", "", "Install a specific release tag (stable / rc / previous version) instead of the latest")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -116,6 +134,16 @@ func init() {
 //	--templates-only: Skip binary update, sync templates only
 //	--binary: Update binary only, skip template sync
 func runUpdate(cmd *cobra.Command, _ []string) error {
+	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-002/013/014): the --version <tag>
+	// branch. This runs FIRST — before the profile prompt and the project-marker
+	// gate — because --version is a binary-only operation (parity with --binary)
+	// that must not be blocked by a non-project cwd. AC-UVF-004 guarantees this
+	// branch is inert when --version is empty (the M3 anchor), so the default
+	// `moai update` flow is byte-identical to the pre-SPEC baseline.
+	if versionTag := getStringFlag(cmd, "version"); versionTag != "" {
+		return runVersionBranch(cmd, versionTag)
+	}
+
 	checkOnly := getBoolFlag(cmd, "check")
 	shellEnv := getBoolFlag(cmd, "shell-env")
 	editConfig := getBoolFlag(cmd, "config")
