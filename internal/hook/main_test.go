@@ -28,7 +28,18 @@ import (
 
 // TestMain enables goroutine leak detection across all internal/hook tests.
 // AC-HAE-007 verifies zero leaks reported beyond the documented ignore list.
+//
+// It also flips deferredScansAsync to false for the test binary: dozens of
+// Handle-calling tests do not install the deferred-scan join seam, so the
+// async path would leak the advisory goroutine past their test boundary and
+// its slog writes would race unrelated parallel tests that mutate os.Stderr
+// / the slog handler. The inline-sync path eliminates the goroutine entirely.
+// session_start_parallel_test.go opts back into async=true per-test to keep
+// the production async path covered.
 func TestMain(m *testing.M) {
+	deferredScanSeamMu.Lock()
+	deferredScansAsync = false
+	deferredScanSeamMu.Unlock()
 	goleak.VerifyTestMain(m,
 		// Pre-existing background goroutine from observability subsystem.
 		// Out of scope for SPEC-V3R6-HOOK-ASYNC-EXPAND-001.
