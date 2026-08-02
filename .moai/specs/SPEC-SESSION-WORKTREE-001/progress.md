@@ -184,6 +184,53 @@ go tool cover -func=... | grep -E 'cleanup|dirty|resolve|branchName|enter':
 
 **Scope discipline (B8/B10):** touched `internal/cli/session_worktree.go` (NEW `cleanupSessionWorktree` + `worktreeIsDirty` + 2 seams + real impls + notice constant), `internal/cli/session_worktree_test.go` (extended `swSeams` + 10 NEW tests), `internal/cli/init.go` (runInit → named return + defer cleanup), `internal/cli/web.go` (runWeb → named return + defer cleanup). Did NOT implement M8's PR-merge path (M4 owns only session-exit; M8 adds on-touch PR-merge). Did NOT add a new config flag (reuses `workflow.worktree.auto_cleanup`). spec.md/plan.md/acceptance.md/design.md/research.md body unchanged.
 
+---
+
+### M5 — coexistence + anti-regression + coverage (test-focused milestone)
+
+**M5 deliverables — all test-only (production logic unchanged):** 5 NEW tests in `internal/cli/session_worktree_test.go` covering AC-SW-011/012/014 + anti-regression + E8 falsification round-trip. No production code changes (test-focused milestone; no defect surfaced).
+
+**E1 — AC matrix (M5-relevant):**
+
+| AC | Status | Command | Output |
+|----|--------|---------|--------|
+| AC-SW-011 (coexistence no-nest, web path) | PASS | `go test -run TestEnterSessionWorktree_WebCoexistenceNoNested ./internal/cli/` | `--- PASS: TestEnterSessionWorktree_WebCoexistenceNoNested (0.00s)` — inWt=true ⇒ add NOT called, notice names `"web"`, returns `""`. |
+| AC-SW-012 (already-in-worktree skip, web path) | PASS | `go test -run TestEnterSessionWorktree_AlreadyInWorktreeWebNoticeContent ./internal/cli/` | `--- PASS: ...` — materialize seams (commonDir/add/configSet) all dormant; notice contains `"already inside a git worktree"`. |
+| AC-SW-014 (parallel isolation deterministic invariant) | PASS | `go test -run TestSessionWorktreeBranchName_ParallelDistinctSessions ./internal/cli/` | `--- PASS: ...` — distinct session-shorts (aabbcc11 vs aabbcc22) ⇒ distinct branch names `WT-aabbcc11-web` vs `WT-aabbcc22-web` ⇒ distinct landing paths. |
+| Anti-regression (OFF byte-identical, init + web) | PASS | `go test -run TestEnterSessionWorktree_OffByteIdentical_InitAndWeb ./internal/cli/` | `--- PASS: ...` — feature OFF ⇒ `""` + zero output + add NOT called, for BOTH `init` and `web`. |
+
+**E8 — Falsification round-trip (REQ-SW-012, already-in-worktree skip):** `go test -run TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification ./internal/cli/` → `--- PASS: ...`. Same materialize-capable setup run twice; only difference is `inWt`: true ⇒ 0 add calls (skip), false ⇒ 1 add call (proceed). The discrimination is the `sessionWorktreeInGitWorktree()` guard — removing it would make the `inWt=true` case also call add and FAIL this test. (M2's `TestEnterSessionWorktree_FailBackFalsification` covers the fail-back guard; M4's `DirtyPreserves` / `NonCleanExitPreserves` / `DirtyCheckErrorPreserves` cover the dirty + clean-exit-only guards — all still PASS, not duplicated.)
+
+**E9 — Coverage-gap resolution (resolveSessionShortReal):** CLOSED. The orchestrator-flagged 45.5% measurement was STALE (taken before M4's `TestResolveSessionShortReal_SideChannelAvailable`). On current HEAD (`1b806e6ac`, M4 complete) the function measures **90.9%** — verified via TWO independent cover profiles:
+- Focused run (session-worktree tests only): `go test -run 'SessionWorktree|CleanupSessionWorktree|ResolveSessionShortReal' -coverprofile=/tmp/m5_base.out ./internal/cli/` → `resolveSessionShortReal 90.9%`.
+- Full-package run: `go test -count=1 -coverprofile=/tmp/m5_fullpkg.out ./internal/cli/` → `resolveSessionShortReal 90.9%`.
+
+The side-channel mechanism staged by the M4 test IS the one the production code reads: `resolveCurrentSessionID` (session.go:214) reads `<$CLAUDE_PROJECT_DIR>/.moai/state/current-session-id.txt` (constant `session.CurrentSideChannelFile = ".moai/state/current-session-id.txt"`), and `TestResolveSessionShortReal_SideChannelAvailable` stages exactly that file under a `t.TempDir()` pointed at by `t.Setenv("CLAUDE_PROJECT_DIR", tmp)`. The test PASSES (`--- PASS: TestResolveSessionShortReal_SideChannelAvailable (0.00s)`) and returns the first-8 chars `"abcdef12"` of the staged UUID, proving the session-id-available branch executes. The remaining 9.1% gap is the `rand.Read` error branch (line 217-221: `crypto/rand` returning an error — exceptional, cannot be staged without injecting a failing reader; the seam `sessionWorktreeResolveSessionShort` wraps the whole function, not the rand call, so it cannot isolate that branch).
+
+**E2 — Cross-platform build:** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+
+**E3 — Coverage (BEFORE → AFTER on the four key functions, M5 did not change production code so AFTER == M4 baseline):**
+```
+                              BEFORE(M4)  AFTER(M5)
+enterSessionWorktree           100.0%     100.0%
+resolveSessionShortReal         90.9%      90.9%   (gap already closed at M4; orchestrator 45.5% was stale)
+cleanupSessionWorktree          88.9%      88.9%
+worktreeIsDirty                100.0%     100.0%
+```
+Command: `go test -run 'SessionWorktree|CleanupSessionWorktree|ResolveSessionShortReal|EnterSessionWorktree' -count=1 -coverprofile=/tmp/m5_after.out ./internal/cli/` then `go tool cover -func=/tmp/m5_after.out | grep -iE "resolveSessionShortReal|cleanupSessionWorktree|enterSessionWorktree|worktreeIsDirty"`.
+
+**E4 — Subagent boundary grep:** `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/session_worktree_test.go | grep -v '^[0-9]*:[ \t]*//'` → 0 matches (test-only milestone; no production code touched, so the existing M1-M4 production boundary is unchanged and already 0).
+
+**E5 — Lint:** `golangci-lint run --timeout=3m ./internal/cli/` → `0 issues.` (NEW vs baseline: 0). `go vet ./internal/cli/` → exit 0.
+
+**E6 — Branch HEAD + Push:** M5 commit + push to `feat/SPEC-SESSION-WORKTREE-001` (see commit SHAs below).
+
+**Full suite:** `go test -count=1 -timeout=8m ./internal/cli/` → `ok ... 188.964s` (all existing tests still pass; no regressions from the 5 NEW M5 tests).
+
+**Scope discipline (B8/B10 — test-only):** touched ONLY `internal/cli/session_worktree_test.go` (5 NEW tests, no edits to existing tests or production code) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged. `internal/cli/session_worktree.go` production logic unchanged (test-focused milestone — no defect surfaced by the M5 tests, so no blocker report). spec.md status stays `in-progress`.
+
+**Residual risk — AC-SW-014 timing non-determinism:** the "within the same second" concurrency aspect of AC-SW-014 cannot be reliably reproduced in a unit test (inherent to the OS scheduler, not a moai bug). The deterministic invariant — distinct session-shorts ⇒ distinct branch names ⇒ distinct worktree paths ⇒ distinct state trees + settings.local.json surfaces — is proven by `TestSessionWorktreeBranchName_ParallelDistinctSessions`. A collision under real concurrency would require two sessions to resolve the SAME 8-char session-short (the session-id-available branch) or collide on the 6-byte random fallback (≈ 2^48 space) — neither is tested for true concurrency here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

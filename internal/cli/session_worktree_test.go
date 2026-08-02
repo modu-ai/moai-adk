@@ -495,3 +495,174 @@ func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
 	}
 }
 
+// --- SPEC-SESSION-WORKTREE-001 M5: coexistence + anti-regression + parallel isolation ---
+
+// TestEnterSessionWorktree_WebCoexistenceNoNested is AC-SW-011 (REQ-SW-011):
+// a user who manually entered a worktree via `moai cc -w foo` and then invokes
+// `moai web` (feature ON) SHALL NOT trigger a nested session-worktree. The
+// already-in-worktree detection is shared by the wrapper, so this test exercises
+// the web subcommand path specifically — asserting add is NOT invoked and the
+// skip notice names "web".
+func TestEnterSessionWorktree_WebCoexistenceNoNested(t *testing.T) {
+	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	addCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		inWt: func() bool { return true }, // user already inside a worktree
+		add:  func(string, string) (string, error) { addCalled = true; return "", nil },
+	})
+	var out bytes.Buffer
+	got := enterSessionWorktree(nil, "web", &out)
+	if got != "" {
+		t.Fatalf("coexistence: nested entry MUST NOT happen, expected empty path, got %q", got)
+	}
+	if addCalled {
+		t.Fatal("coexistence: git worktree add MUST NOT run (would create a nested worktree)")
+	}
+	notice := out.String()
+	if !strings.Contains(notice, "already inside a git worktree") {
+		t.Fatalf("coexistence: expected skip notice, got %q", notice)
+	}
+	if !strings.Contains(notice, `"web"`) {
+		t.Fatalf("coexistence: notice must name the web subcommand, got %q", notice)
+	}
+}
+
+// TestEnterSessionWorktree_AlreadyInWorktreeWebNoticeContent is AC-SW-012 for
+// the web subcommand path: the skip + info-notice behavior (exercised in M2 for
+// init) holds for web too. The wrapper is shared; this test asserts the notice
+// content is subcommand-specific and that materialize is NOT invoked.
+func TestEnterSessionWorktree_AlreadyInWorktreeWebNoticeContent(t *testing.T) {
+	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	materializeCalled := false
+	swapSessionWorktreeSeams(t, swSeams{
+		inWt: func() bool { return true },
+		// materializeSessionWorktree invokes commonDir + add + configSet; none
+		// of these seams should fire when the skip guard is active.
+		commonDir: func() (string, error) { materializeCalled = true; return "/repo/.git", nil },
+		add:       func(string, string) (string, error) { materializeCalled = true; return "", nil },
+		configSet: func(string, string, string) error { materializeCalled = true; return nil },
+	})
+	var out bytes.Buffer
+	got := enterSessionWorktree(nil, "web", &out)
+	if got != "" {
+		t.Fatalf("already-in-worktree (web): expected empty path, got %q", got)
+	}
+	if materializeCalled {
+		t.Fatal("already-in-worktree (web): materialize MUST NOT be invoked (commonDir/add/configSet all dormant)")
+	}
+	if !strings.Contains(out.String(), "already inside a git worktree") {
+		t.Fatalf("already-in-worktree (web): missing info notice, got %q", out.String())
+	}
+}
+
+// TestSessionWorktreeBranchName_ParallelDistinctSessions is AC-SW-014's
+// deterministic invariant: two invocations with two DIFFERENT session-shorts
+// produce two different branch names AND would land in two different worktree
+// paths. The "within the same second" timing non-determinism is inherent to the
+// OS scheduler and documented as residual risk (AC-SW-014); this test proves
+// the deterministic part — distinct session-shorts ⇒ distinct branch names +
+// distinct landing paths — holds.
+func TestSessionWorktreeBranchName_ParallelDistinctSessions(t *testing.T) {
+	// Session A: session-short aabbcc11
+	swapSessionWorktreeSeams(t, swSeams{
+		short: func() string { return "aabbcc11" },
+	})
+	branchA := sessionWorktreeBranchName("web")
+
+	// Session B: session-short aabbcc22 (distinct)
+	swapSessionWorktreeSeams(t, swSeams{
+		short: func() string { return "aabbcc22" },
+	})
+	branchB := sessionWorktreeBranchName("web")
+
+	if branchA == branchB {
+		t.Fatalf("parallel isolation: distinct session-shorts MUST yield distinct branch names; both = %q", branchA)
+	}
+	if branchA != "WT-aabbcc11-web" {
+		t.Fatalf("branch A shape: got %q, want WT-aabbcc11-web", branchA)
+	}
+	if branchB != "WT-aabbcc22-web" {
+		t.Fatalf("branch B shape: got %q, want WT-aabbcc22-web", branchB)
+	}
+	// Distinct branch names ⇒ distinct landing paths under the conventional
+	// sessionWorktreeSubdir (materialize joins subdir + branch). Two sessions
+	// therefore get two different .moai/state/ trees and two different
+	// settings.local.json write surfaces — the deterministic core of AC-SW-014.
+	if branchA[:len("WT-aabbcc11")] == branchB[:len("WT-aabbcc22")] {
+		t.Fatalf("parallel isolation: branch prefixes must differ")
+	}
+}
+
+// TestEnterSessionWorktree_OffByteIdentical_InitAndWeb consolidates the
+// REQ-SW-001 anti-regression: with the feature OFF, enterSessionWorktree
+// returns "" and produces ZERO output (no notice, no git invocation) for BOTH
+// the init and web subcommands. M2/M3 have partial coverage; this test makes
+// the byte-identical baseline explicit for both paths in one place.
+func TestEnterSessionWorktree_OffByteIdentical_InitAndWeb(t *testing.T) {
+	t.Setenv("MOAI_SESSION_WORKTREE", "") // feature OFF (no env force)
+	for _, sub := range []string{"init", "web"} {
+		addCalled := false
+		swapSessionWorktreeSeams(t, swSeams{
+			add: func(string, string) (string, error) { addCalled = true; return "", nil },
+		})
+		var out bytes.Buffer
+		got := enterSessionWorktree(nil, sub, &out) // nil cfg → OFF
+		if got != "" {
+			t.Fatalf("OFF/%s: expected empty path, got %q", sub, got)
+		}
+		if addCalled {
+			t.Fatalf("OFF/%s: git worktree add MUST NOT be invoked", sub)
+		}
+		if out.Len() != 0 {
+			t.Fatalf("OFF/%s: expected zero output (byte-identical baseline), got %q", sub, out.String())
+		}
+	}
+}
+
+// TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification is the E8
+// falsification round-trip for REQ-SW-012 (already-in-worktree skip). It proves
+// the skip guard is load-bearing by running the SAME materialize-capable setup
+// twice: once with inWt=true (skip ⇒ add NOT called), once with inWt=false
+// (proceed ⇒ add IS called). The discrimination between the two outcomes is the
+// inGitWorktree guard — if a future edit removed that guard, the inWt=true case
+// would also call add and this test would FAIL.
+func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) {
+	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+
+	// Case A: inWt=true → skip. add MUST NOT run.
+	addCallsA := 0
+	swapSessionWorktreeSeams(t, swSeams{
+		inWt:      func() bool { return true },
+		short:     func() string { return "abcdef12" },
+		commonDir: func() (string, error) { return "/repo/.git", nil },
+		add:       func(string, string) (string, error) { addCallsA++; return "/repo/.claude/worktrees/WT-x", nil },
+		configSet: func(string, string, string) error { return nil },
+	})
+	var outA bytes.Buffer
+	if got := enterSessionWorktree(nil, "web", &outA); got != "" {
+		t.Fatalf("falsification A (inWt=true): expected empty (skip), got %q", got)
+	}
+	if addCallsA != 0 {
+		t.Fatalf("falsification A (inWt=true): add MUST NOT be called, got %d calls", addCallsA)
+	}
+
+	// Case B: inWt=false → proceed. add MUST run (the guard is the only
+	// difference between A and B, so B's call proves A's non-call is the guard's
+	// doing, not a stale seam).
+	addCallsB := 0
+	swapSessionWorktreeSeams(t, swSeams{
+		inWt:      func() bool { return false },
+		short:     func() string { return "abcdef12" },
+		commonDir: func() (string, error) { return "/repo/.git", nil },
+		add:       func(string, string) (string, error) { addCallsB++; return "/repo/.claude/worktrees/WT-abcdef12-web", nil },
+		configSet: func(string, string, string) error { return nil },
+	})
+	var outB bytes.Buffer
+	if got := enterSessionWorktree(nil, "web", &outB); got == "" {
+		t.Fatal("falsification B (inWt=false): expected materialized path, got empty")
+	}
+	if addCallsB != 1 {
+		t.Fatalf("falsification B (inWt=false): add MUST be called exactly once, got %d calls", addCallsB)
+	}
+}
+
