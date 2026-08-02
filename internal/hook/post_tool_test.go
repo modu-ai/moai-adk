@@ -1105,7 +1105,15 @@ func TestPostTool_MemoryMissingType(t *testing.T) {
 		t.Skip("Windows에서 stderr pipe 캡처가 누락되어 건너뜁니다")
 	}
 
-	t.Parallel()
+	// NOT parallel: this test reassigns the process-global os.Stderr to capture
+	// the evidence-gate stderr message. Running it under t.Parallel() races
+	// that reassignment against unrelated parallel tests whose handlers read
+	// os.Stderr via fmt.Fprintln(os.Stderr, ...) (e.g. appendBranchGuardAdvisory,
+	// runEvidenceGate). De-parallelizing keeps the global mutation in the
+	// serial phase so it never overlaps a parallel reader. See internal/hook
+	// CLAUDE.md § OpenTelemetry env var safety in tests for the analogous
+	// "process-global under t.Parallel" anti-pattern.
+	// t.Parallel()  // intentionally omitted — see comment above
 
 	// Create a temporary memory file without a `type` field.
 	dir := t.TempDir()
