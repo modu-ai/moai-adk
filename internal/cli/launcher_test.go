@@ -881,10 +881,13 @@ func TestApplyGLMMode_ProcessEnvIsSet(t *testing.T) {
 	}
 }
 
-// TestUnifiedLaunch_FallsBackToLastUsedProfile verifies that bare `moai cc`
-// (profileName=="") resolves to the last-used named profile when the default
-// profile is empty and launch.yaml records a last_profile entry.
-func TestUnifiedLaunch_FallsBackToLastUsedProfile(t *testing.T) {
+// TestUnifiedLaunch_GlobalLedgerDoesNotBleed verifies that bare `moai cc`
+// (profileName=="") does NOT resolve to a global last_profile entry recorded
+// for a DIFFERENT project. This is the launcher-level regression guard for the
+// cross-project bleed bug: launch.yaml has last_profile set but no projects[]
+// entry for THIS project's root, so the launch must use "" (default), not the
+// globally-recorded named profile.
+func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 	tmpDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
@@ -893,15 +896,14 @@ func TestUnifiedLaunch_FallsBackToLastUsedProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Profile base dir tree: empty base prefs, a real named profile, launch.yaml ledger.
+	// Profile base dir tree: a real named profile exists (so it is "usable"),
+	// and launch.yaml records it globally — but NO projects[] entry is seeded
+	// for tmpDir, so project-scoped resolution must NOT find it.
 	profileBase := t.TempDir()
 	origBase := profile.BaseDirOverride
 	defer func() { profile.BaseDirOverride = origBase }()
 	profile.BaseDirOverride = profileBase
 
-	if err := os.WriteFile(filepath.Join(profileBase, "preferences.yaml"), []byte("{}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	namedDir := filepath.Join(profileBase, "moai-adk")
 	if err := os.MkdirAll(namedDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -921,6 +923,10 @@ func TestUnifiedLaunch_FallsBackToLastUsedProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	origRoot := findProjectRootFn
+	defer func() { findProjectRootFn = origRoot }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
 	origLaunch := launchClaudeFunc
 	defer func() { launchClaudeFunc = origLaunch }()
 
@@ -934,8 +940,8 @@ func TestUnifiedLaunch_FallsBackToLastUsedProfile(t *testing.T) {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
 
-	if launchedProfile != "moai-adk" {
-		t.Errorf("launched profile = %q, want %q (last-used fallback)", launchedProfile, "moai-adk")
+	if launchedProfile != "" {
+		t.Errorf("launched profile = %q, want \"\" (global last_profile must not bleed into a project with no projects[] entry)", launchedProfile)
 	}
 }
 
