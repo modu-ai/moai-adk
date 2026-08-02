@@ -385,6 +385,14 @@ func TestRecordLastUsedProfile_PreservesLegacyKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The recorder refuses names whose directory does not exist
+	// (SPEC-PROFILE-MEMORY-001 REQ-PM-011), so the profile must be staged
+	// before recording. TestRecordForProject_RejectsMissingDirectory owns the
+	// refusal case; this test stays focused on legacy-key preservation.
+	if err := os.MkdirAll(filepath.Join(tmpDir, "work"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := RecordLastUsedProfile("work"); err != nil {
 		t.Fatalf("RecordLastUsedProfile('work') error: %v", err)
 	}

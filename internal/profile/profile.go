@@ -25,6 +25,18 @@ const (
 	// named profile. Only named profiles are recorded; "" and "default" are
 	// refused by RecordLastUsedProfile.
 	lastProfileKey = "last_profile"
+
+	// projectsKey is the YAML key holding the per-project profile memory: a
+	// mapping from a normalized absolute project path to the named profile
+	// last launched from that project. It sits alongside lastProfileKey, which
+	// remains the global fallback — a ledger written by this version stays
+	// readable by an older binary that knows only lastProfileKey.
+	projectsKey = "projects"
+
+	// claudeConfigStateFile is the Claude Code account-state file inside a
+	// profile directory. Its presence is the sole signal HasClaudeConfig reads;
+	// no platform credential store is consulted.
+	claudeConfigStateFile = ".claude.json"
 )
 
 // BaseDirOverride allows tests to inject a custom base directory.
@@ -55,13 +67,28 @@ func GetBaseDir() string {
 // MOAI_NO_PROFILE_FALLBACK=1 (disabled) and the stale-record guard (directory
 // absent → "" → "default").
 func GetCurrentName() string {
+	return GetCurrentNameForProject("")
+}
+
+// GetCurrentNameForProject is the project-aware form of GetCurrentName.
+//
+// CLAUDE_CONFIG_DIR still wins: when it is set the ledger is not consulted at
+// all, so a `moai web` launched from inside a `moai cc -p X` session keeps
+// reporting X. Only when it is unset does the ledger decide, and there the
+// project-scoped entry for projectRoot is preferred over the global
+// last_profile — so the console's read side names the same profile its write
+// side records (REQ-PM-024).
+//
+// projectRoot == "" skips the project-scoped lookup entirely, which is what
+// makes GetCurrentName a behavior-preserving wrapper.
+func GetCurrentNameForProject(projectRoot string) string {
 	configDir := os.Getenv(config.EnvClaudeConfigDir)
 	if configDir == "" {
 		// Ledger-aware fallback: a bare `moai web` should reflect the last-used
-		// named profile, not blindly report "default". ResolveLaunchProfile
-		// returns "" when the ledger is absent, stale, opted out, or corrupt —
-		// in all those cases we degrade to "default" (the original behavior).
-		if name := ResolveLaunchProfile(""); name != "" {
+		// named profile, not blindly report "default". Resolution returns ""
+		// when the ledger is absent, stale, opted out, or corrupt — in all
+		// those cases we degrade to "default" (the original behavior).
+		if name := ResolveLaunchProfileForProject(projectRoot, ""); name != "" {
 			return name
 		}
 		return "default"
@@ -214,46 +241,121 @@ func EnsureDir(name string) error {
 //
 // @MX:NOTE: [AUTO] Last-used-profile fallback resolver — read-only, no error return.
 func ResolveLaunchProfile(profileName string) string {
+	return ResolveLaunchProfileForProject("", profileName)
+}
+
+// normalizeProjectKey turns a project root into the canonical ledger key.
+//
+// The same normalization MUST be applied on both the write and the read side:
+// on macOS t.TempDir() and /var paths are symlinks into /private/var, so a key
+// written unresolved would never match a lookup done resolved (and the reverse).
+// EvalSymlinks is best-effort — a path that no longer exists falls back to a
+// lexical Clean. The two branches produce different strings, so a project whose
+// directory disappears and reappears can occupy two keys; that is harmless
+// (both resolve) and is accepted as limitation L-002.
+func normalizeProjectKey(projectRoot string) string {
+	if projectRoot == "" {
+		return ""
+	}
+	cleaned := filepath.Clean(projectRoot)
+	if resolved, err := filepath.EvalSymlinks(cleaned); err == nil {
+		return resolved
+	}
+	return cleaned
+}
+
+// loadLaunchLedger reads and decodes the ledger as a generic map so unknown and
+// legacy keys are tolerated rather than rejected. A missing or corrupt file
+// yields an error the callers translate into "no fallback".
+func loadLaunchLedger(baseDir string) (map[string]any, error) {
+	data, err := os.ReadFile(filepath.Join(baseDir, launchLedgerFile))
+	if err != nil {
+		return nil, err
+	}
+	var ledger map[string]any
+	if err := yaml.Unmarshal(data, &ledger); err != nil {
+		return nil, err
+	}
+	return ledger, nil
+}
+
+// launchCandidateIsUsable reports whether a name recorded in the ledger can be
+// launched: it must be traversal-safe and its directory must still exist. A
+// candidate that fails either check is skipped so resolution can fall through
+// to the next source rather than dead-ending on a stale entry (REQ-PM-008).
+func launchCandidateIsUsable(baseDir, name string) bool {
+	if name == "" || !isValidProfileName(name) {
+		return false
+	}
+	info, err := os.Stat(filepath.Join(baseDir, name))
+	return err == nil && info.IsDir()
+}
+
+// ResolveLaunchProfileForProject is the project-aware form of
+// ResolveLaunchProfile. Resolution order:
+//
+//  1. explicit profileName (the user's -p) — always wins
+//  2. MOAI_NO_PROFILE_FALLBACK=1 — disables BOTH lookups below
+//  3. projects[normalizeProjectKey(projectRoot)] — this project's memory
+//  4. last_profile — the global fallback
+//  5. "" — default semantics
+//
+// Steps 3 and 4 each verify the candidate's directory still exists; a stale
+// project entry falls through to the global fallback rather than shadowing it.
+// projectRoot == "" skips step 3, which is what makes ResolveLaunchProfile a
+// behavior-preserving wrapper. The function never errors.
+func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 	// Explicit -p wins.
 	if profileName != "" {
 		return profileName
 	}
 
-	// Opt-out env disables the fallback entirely.
+	// Opt-out env disables the fallback entirely — project scope included.
 	if os.Getenv(config.EnvNoProfileFallback) == "1" {
 		return ""
 	}
 
 	baseDir := GetBaseDir()
-	data, err := os.ReadFile(filepath.Join(baseDir, launchLedgerFile))
+	ledger, err := loadLaunchLedger(baseDir)
 	if err != nil {
-		return "" // missing ledger — no fallback
+		return "" // missing or corrupt ledger — no fallback
 	}
 
-	// Decode as a generic map so unknown/legacy keys are tolerated, not
-	// rejected. A corrupt file returns "" silently.
-	var ledger map[string]any
-	if err := yaml.Unmarshal(data, &ledger); err != nil {
-		return ""
+	if key := normalizeProjectKey(projectRoot); key != "" {
+		if projects, ok := ledger[projectsKey].(map[string]any); ok {
+			if name, ok := projects[key].(string); ok && launchCandidateIsUsable(baseDir, name) {
+				return name
+			}
+		}
 	}
 
-	last, ok := ledger[lastProfileKey].(string)
-	if !ok || last == "" {
-		return ""
+	if last, ok := ledger[lastProfileKey].(string); ok && launchCandidateIsUsable(baseDir, last) {
+		return last
 	}
 
-	// Traverse guard: reject names that could escape the profile base.
-	if !isValidProfileName(last) {
-		return ""
-	}
+	return ""
+}
 
-	// Verify the named profile directory actually exists (stale-record guard).
-	info, err := os.Stat(filepath.Join(baseDir, last))
-	if err != nil || !info.IsDir() {
-		return ""
+// HasClaudeConfig reports whether the named profile directory already carries
+// Claude Code account state.
+//
+// The decision rests solely on the presence of claudeConfigStateFile inside the
+// profile directory; no platform credential store is consulted (REQ-PM-018).
+// That is deliberate: the credential carrier differs by platform (macOS keeps
+// the token in the Keychain, where it survives a CLAUDE_CONFIG_DIR change,
+// while Linux/WSL2 keeps it in a file), but the account state that decides
+// whether Claude Code shows the login/onboarding screen is per-config-dir on
+// every platform.
+//
+// Pure predicate: writes nothing, prints nothing. Unnamed and invalid profiles
+// report false.
+func HasClaudeConfig(name string) bool {
+	dir := GetProfileDir(name)
+	if dir == "" {
+		return false
 	}
-
-	return last
+	_, err := os.Stat(filepath.Join(dir, claudeConfigStateFile))
+	return err == nil
 }
 
 // RecordLastUsedProfile writes name to launch.yaml as the last_profile entry.
@@ -270,6 +372,26 @@ func ResolveLaunchProfile(profileName string) string {
 //
 // @MX:NOTE: [AUTO] Last-used-profile ledger recorder — atomic read-modify-write.
 func RecordLastUsedProfile(name string) error {
+	return RecordLastUsedProfileForProject("", name)
+}
+
+// RecordLastUsedProfileForProject is the project-aware form of
+// RecordLastUsedProfile. It writes the name to BOTH the project-scoped entry
+// under projects: and the global last_profile key.
+//
+// Writing both is what keeps the ledger downgrade-safe: an older binary reads
+// only last_profile, so it still observes "the most recent launch wins" exactly
+// as it did before this key existed.
+//
+// Beyond the name-shape checks the original carried, the profile DIRECTORY must
+// already exist (REQ-PM-011). Without that guard a name that never resolves to
+// anything persists in the ledger forever with no signal to the user — the read
+// side silently skips it. The launcher therefore records only after it has
+// created the directory (see unifiedLaunchDefault step 4.5 → step 5).
+//
+// projectRoot == "" leaves the projects map untouched and writes last_profile
+// only, which is what makes RecordLastUsedProfile a behavior-preserving wrapper.
+func RecordLastUsedProfileForProject(projectRoot, name string) error {
 	if name == "" || name == "default" {
 		return fmt.Errorf("cannot record %q as last-used profile: only named profiles are recorded", name)
 	}
@@ -280,12 +402,27 @@ func RecordLastUsedProfile(name string) error {
 	baseDir := GetBaseDir()
 	ledgerPath := filepath.Join(baseDir, launchLedgerFile)
 
+	// Directory-existence guard (REQ-PM-011): refuse ghost names outright
+	// rather than letting them accumulate in the ledger.
+	if info, err := os.Stat(filepath.Join(baseDir, name)); err != nil || !info.IsDir() {
+		return fmt.Errorf("cannot record profile %q: its directory does not exist under %s", name, baseDir)
+	}
+
 	// Read-modify-write: preserve legacy/unknown keys.
 	existing := make(map[string]any)
 	if data, err := os.ReadFile(ledgerPath); err == nil {
 		_ = yaml.Unmarshal(data, &existing) // corrupt file → start fresh
 	}
 	existing[lastProfileKey] = name
+
+	if key := normalizeProjectKey(projectRoot); key != "" {
+		projects, ok := existing[projectsKey].(map[string]any)
+		if !ok {
+			projects = make(map[string]any)
+		}
+		projects[key] = name
+		existing[projectsKey] = projects
+	}
 
 	out, err := yaml.Marshal(existing)
 	if err != nil {
