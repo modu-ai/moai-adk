@@ -38,7 +38,7 @@ _<pending run-phase — owned by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_complete_at**: 2026-08-03
-- **sync_commit_sha**: "pending-backfill-sync"
+- **sync_commit_sha**: "6215b7cd33471c6aae59fcf1a9c06876d5307713"
 - **sync_status**: completed
 - **b12_self_test_a** (pre-emission duplicate grep): `grep -c 'SPEC-UPDATE-VERSION-FLAG-001' CHANGELOG.md` returned `0` BEFORE this entry was added — no duplicate from any parallel BATCH-SYNC session.
 - **b12_self_test_b** (AC count match): acceptance.md §D defines 16 distinct AC identifiers (`AC-UVF-001`..`AC-UVF-016`, verified via `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 16). The CHANGELOG `[Unreleased]` entry for this SPEC states "16 REQ / 16 AC, all 16 PASS" — count matches.
