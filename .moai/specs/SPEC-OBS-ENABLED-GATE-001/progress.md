@@ -98,7 +98,7 @@ run_commit_sha: 468eb584a
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-20260802-220412
+sync_commit_sha: b45949419
 ```
 
 - The `sync_commit_sha` placeholder follows the self-referential-hazard workaround
