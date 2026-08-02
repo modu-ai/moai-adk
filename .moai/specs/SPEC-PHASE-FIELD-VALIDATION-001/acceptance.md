@@ -2,7 +2,7 @@
 id: SPEC-PHASE-FIELD-VALIDATION-001
 title: "phase 프론트매터 필드의 값-형태 검증과 오염 코퍼스 교정 — 수용 기준"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: Goos Kim

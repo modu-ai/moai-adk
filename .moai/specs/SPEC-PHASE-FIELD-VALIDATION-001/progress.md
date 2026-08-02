@@ -2,7 +2,7 @@
 id: SPEC-PHASE-FIELD-VALIDATION-001
 title: "phase 프론트매터 필드의 값-형태 검증과 오염 코퍼스 교정 — 진행"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-02
 updated: 2026-08-02
 author: Goos Kim
@@ -68,4 +68,47 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-02
+sync_commit_sha: pending-backfill-sync-close
+sync_status: audit-ready
+
+b12_self_test_a: "grep -c 'SPEC-PHASE-FIELD-VALIDATION-001' CHANGELOG.md → 0 (방출 전 실행, 사전 중복 없음)"
+b12_self_test_b: "AC 개수: grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 16 (AC-PFV-001..016, 0이 아님을 직접 확인). CHANGELOG 항목은 16/16 판정으로 서술"
+b12_self_test_c: "CHANGELOG 항목이 지목한 파일 5개 전부 ls 로 실재 확인 (internal/spec/lint.go / internal/spec/lint_phase_test.go / .claude/agents/moai/manager-spec.md / internal/template/templates/.claude/agents/moai/manager-spec.md / internal/template/catalog.yaml)"
+
+changelog_entry_position: "[Unreleased] > ### Added 의 첫 항목 (SPEC-REF-SEO-ABSORB-001 항목 바로 앞)"
+
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (단일 sync 커밋 병합 전이; updated: 2026-08-02 — 이미 해당 날짜라 값 변화 없음)"
+  plan.md: "in-progress → implemented → completed (동일)"
+  acceptance.md: "in-progress → implemented → completed (동일)"
+  progress.md: "in-progress → implemented → completed (동일)"
+
+canary_compliance_check:
+  applicable: true
+  reason: "이 SPEC은 전방위 정책을 정의한다 — 모든 SPEC 산출물의 `phase:` 값은 릴리스 대상 버전 문자열이어야 하며 워크플로 단계 토큰이 아니다. 그 정책을 자기 자신에게 적용한 결과가 아래 self-check 이다."
+  self_check: "이 SPEC 4개 산출물의 phase 값 = \"v3.0.2\" (4/4). 새 가드가 자기 자신을 통과한다."
+  observed: "moai spec lint --json 에서 FrontmatterPhaseInvalid 0건"
+
+user_facing_surface_judgment:
+  readme: "변경 없음"
+  docs_site: "변경 없음"
+  reason: "변경은 SPEC 저작 파이프라인 내부에 한정된다 — 린트 finding 코드 하나와 저작 에이전트 지시문. 사용자가 쓰는 CLI 플래그·출력·설정 키가 하나도 바뀌지 않았다. 다만 `moai spec lint` 를 돌리는 사용자에게는 새 error 코드가 보일 수 있으며, 그 사실은 위 CHANGELOG 항목이 담당한다."
+
+residual_risk:
+  - "AC-PFV-006 은 저장소가 error 0건 상태인 동안 실패할 수 없다 — 형제 AC 보다 약한 검사다 (run-phase 에서 이미 부채로 기록)."
+  - "판정은 정확 일치 denylist 다. `plan` / `run` / `sync` 이외의 새로운 오염 토큰이 등장하면 잡지 못한다. 허용목록으로 뒤집으면 301건 오탐이 되므로 의도적 선택이다."
+```
+
+**sync 시점 회귀 관측**
+
+| 검사 | 명령 | 관측 |
+|---|---|---|
+| 저장소 spec lint | `./bin/moai spec lint --json` | exit 0, 62건 / error 0건 (`MissingExclusions` 24 / `StatusGitConsistency` 16 / `FrontmatterInvalid` 14 / `LegacyEARSKeyword` 7 / `OwnershipTransitionInvalid` 1) — run-phase 기준선과 동일 |
+| 4개 산출물 status | `grep -n '^status:' {spec,plan,acceptance,progress}.md` | 4/4 `completed` |
+
+**미검증 (Gaps)**
+
+- `§E.2 Run-phase Evidence` / `§E.3 Run-phase Audit-Ready Signal` 은 `_<pending run-phase>_` 로 남아 있다. 두 절의 소유자는 manager-develop 이며 sync-phase 소유 범위 밖이라 채우지 않았다. run-phase 증거는 커밋 `d320795bc` 의 메시지 본문에 있다.
+- `sync_commit_sha` 는 이 커밋 시점에 자기 해시를 참조할 수 없어 placeholder 로 기록하고 후속 커밋에서 백필한다.
