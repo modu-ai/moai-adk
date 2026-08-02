@@ -98,7 +98,15 @@ func newApp(cfg Config) *app {
 		writePreferences:   profile.WritePreferences,
 		syncToProject:      profile.SyncToProjectConfig,
 		listProfiles:       profile.List,
-		recordLastProfile:  profile.RecordLastUsedProfile,
+		// Project-scoped write (SPEC-PROFILE-MEMORY-001 REQ-PM-010): the seam's
+		// signature is unchanged — the project root rides in via this closure
+		// rather than a new parameter, so handlers and test stubs stay as they
+		// are. The console's read side (cli/web.go ProfileName) is scoped to the
+		// same root; scoping only one side would let the console display one
+		// profile while overwriting another project's entry.
+		recordLastProfile: func(name string) error {
+			return profile.RecordLastUsedProfileForProject(cfg.ProjectRoot, name)
+		},
 		readProjectConfig:  readProjectConfig,
 		writeProjectConfig: writeProjectConfig,
 
