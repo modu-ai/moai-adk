@@ -428,7 +428,7 @@ go_code_changed: 0
 ```yaml
 sync_status: COMPLETE
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill   # self-referential — populated by the follow-up backfill commit
+sync_commit_sha: c9efe352d          # backfilled by follow-up commit per the 9ec8d8464 pattern
 run_commit_sha: d27a274de           # pre-squash local branch HEAD; origin's merge is 850de684c (PR #1286)
 tier: S                             # M → S 범위 축소 (v0.5.0) — M4·M5는 SPEC-PHASE-FIELD-VALIDATION-001 선착지로 제외
 changelog_entry_position: "### Added 최상단 (CHANGELOG.md)"
