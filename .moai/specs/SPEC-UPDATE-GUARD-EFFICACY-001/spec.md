@@ -7,7 +7,7 @@ created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
 priority: P2
-phase: plan
+phase: "v3.0.2"
 module: internal/cli
 lifecycle: spec-anchored
 tags: "cli, update, guard-efficacy, test-seam, falsifiability, cross-platform, coverage"

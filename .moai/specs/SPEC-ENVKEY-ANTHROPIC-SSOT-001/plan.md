@@ -1,6 +1,6 @@
 ---
 spec: SPEC-ENVKEY-ANTHROPIC-SSOT-001
-phase: plan
+phase: "v3.0.2"
 tier: M
 ---
 

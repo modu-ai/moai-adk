@@ -7,7 +7,7 @@ created: 2026-07-31
 updated: 2026-07-31
 author: manager-spec
 priority: P2
-phase: plan
+phase: "v3.0.2"
 module: internal/config
 lifecycle: spec-anchored
 tags: "envkeys, hardcoding, refactor, guard-test, ssot"

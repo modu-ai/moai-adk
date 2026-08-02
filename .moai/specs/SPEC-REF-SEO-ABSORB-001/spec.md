@@ -7,7 +7,7 @@ created: 2026-08-01
 updated: 2026-08-02
 author: manager-spec
 priority: Medium
-phase: sync
+phase: "v3.0.2"
 module: template-skills
 lifecycle: spec-anchored
 tags: "skill, seo, reference, clean-room, template, epic-absorb"

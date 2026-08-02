@@ -7,7 +7,7 @@ created: 2026-08-01
 updated: 2026-08-02
 author: manager-spec
 priority: HIGH
-phase: plan
+phase: "v3.0.2"
 module: template
 lifecycle: spec-anchored
 tags: "template, distribution, ci-loop, dev-only, constitution, neutrality"
