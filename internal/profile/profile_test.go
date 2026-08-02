@@ -80,23 +80,26 @@ func TestGetCurrentName_UnrelatedPath(t *testing.T) {
 	}
 }
 
-// TestGetCurrentName_LedgerFallback verifies that when CLAUDE_CONFIG_DIR is
-// unset (the common `moai web` case — the cc/glm/cg launchers only set it when
-// spawning Claude Code), GetCurrentName consults the launch.yaml ledger and
-// returns the last-used named profile if its directory still exists, rather
-// than blindly returning "default". This keeps `moai web`'s displayed profile
-// in sync with the profile a bare `moai cc` would actually launch.
-func TestGetCurrentName_LedgerFallback(t *testing.T) {
+// TestGetCurrentName_GlobalLedgerDoesNotBleed verifies that a global
+// last_profile entry in launch.yaml does NOT leak into the project-less
+// GetCurrentName() wrapper (which forwards an empty projectRoot).
+//
+// The global last_profile key is write-only on this binary: resolution is
+// project-scoped only, so a caller with no project root (the common `moai web`
+// case where CLAUDE_CONFIG_DIR is unset) resolves to "default" regardless of
+// what the global ledger says. This is the console-side half of the
+// cross-project-bleed regression.
+func TestGetCurrentName_GlobalLedgerDoesNotBleed(t *testing.T) {
 	tmpDir := t.TempDir()
 	orig := BaseDirOverride
 	defer func() { BaseDirOverride = orig }()
 	BaseDirOverride = tmpDir
 
-	// Named profile directory must exist (stale-record guard).
+	// Named profile directory exists so the entry is not stale — the point is
+	// that even a USABLE global entry is not read.
 	if err := os.Mkdir(filepath.Join(tmpDir, "moai-adk"), 0o755); err != nil {
 		t.Fatalf("Mkdir(moai-adk): %v", err)
 	}
-	// Ledger pointing at the named profile.
 	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(launch.yaml): %v", err)
 	}
@@ -104,8 +107,8 @@ func TestGetCurrentName_LedgerFallback(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 
 	got := GetCurrentName()
-	if got != "moai-adk" {
-		t.Errorf("GetCurrentName() = %q, want %q (ledger fallback)", got, "moai-adk")
+	if got != "default" {
+		t.Errorf("GetCurrentName() = %q, want %q (global last_profile must not bleed into project-less resolution)", got, "default")
 	}
 }
 
@@ -251,22 +254,20 @@ func TestDelete_Success(t *testing.T) {
 	}
 }
 
-// TestResolveLaunchProfile_EmptyInputReturnsLastUsed verifies that when no -p
-// flag is given (profileName==""), ResolveLaunchProfile falls back to the
-// last_profile recorded in launch.yaml, and that the resolved profile yields
-// real preferences.
-func TestResolveLaunchProfile_EmptyInputReturnsLastUsed(t *testing.T) {
+// TestResolveLaunchProfile_EmptyInputIgnoresGlobalLedger verifies that when
+// no -p flag is given (profileName==""), ResolveLaunchProfile ("") does NOT
+// fall back to the global last_profile recorded in launch.yaml. The global
+// read was removed because it let one project's profile bleed into another;
+// with an empty projectRoot the wrapper has no project-scoped entry to consult
+// either, so it returns "" (default semantics) regardless of the global key.
+func TestResolveLaunchProfile_EmptyInputIgnoresGlobalLedger(t *testing.T) {
 	tmpDir := t.TempDir()
 	orig := BaseDirOverride
 	defer func() { BaseDirOverride = orig }()
 	BaseDirOverride = tmpDir
 
-	// Empty base preferences (the default profile is unconfigured).
-	if err := os.WriteFile(filepath.Join(tmpDir, "preferences.yaml"), []byte("{}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Named profile with real preferences.
+	// Named profile directory exists so the global entry is not stale — the
+	// point is that even a USABLE global entry is no longer read.
 	namedDir := filepath.Join(tmpDir, "moai-adk")
 	if err := os.MkdirAll(namedDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -274,8 +275,6 @@ func TestResolveLaunchProfile_EmptyInputReturnsLastUsed(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(namedDir, "preferences.yaml"), []byte("model: opus[1m]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
-	// launch.yaml ledger pointing to the named profile.
 	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -283,17 +282,8 @@ func TestResolveLaunchProfile_EmptyInputReturnsLastUsed(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 
 	resolved := ResolveLaunchProfile("")
-	if resolved != "moai-adk" {
-		t.Fatalf("ResolveLaunchProfile('') = %q, want %q", resolved, "moai-adk")
-	}
-
-	// The resolved profile must yield real preferences.
-	prefs, err := ReadPreferences(resolved)
-	if err != nil {
-		t.Fatalf("ReadPreferences(%q) error: %v", resolved, err)
-	}
-	if prefs.Model != "opus[1m]" {
-		t.Errorf("ReadPreferences(%q).Model = %q, want %q", resolved, prefs.Model, "opus[1m]")
+	if resolved != "" {
+		t.Fatalf("ResolveLaunchProfile('') = %q, want \"\" (global last_profile must not be read for resolution)", resolved)
 	}
 }
 
@@ -318,8 +308,12 @@ func TestResolveLaunchProfile_ExplicitFlagWins(t *testing.T) {
 	}
 }
 
-// TestResolveLaunchProfile_StaleRecordIgnored verifies that a last_profile entry
-// whose directory does not exist is ignored (returns "" = default semantics).
+// TestResolveLaunchProfile_StaleRecordIgnored verifies that a last_profile
+// entry whose directory does not exist yields "" (default semantics). Since
+// the global last_profile key is no longer read for resolution at all, the
+// stale-skip guard is moot for this key — this test now pins the stronger
+// invariant that the global key simply does not participate in resolution,
+// stale or not.
 func TestResolveLaunchProfile_StaleRecordIgnored(t *testing.T) {
 	tmpDir := t.TempDir()
 	orig := BaseDirOverride
@@ -358,6 +352,70 @@ func TestResolveLaunchProfile_OptOutEnv(t *testing.T) {
 	got := ResolveLaunchProfile("")
 	if got != "" {
 		t.Errorf("ResolveLaunchProfile('') with opt-out = %q, want ''", got)
+	}
+}
+
+// TestResolveLaunchProfile_NoGlobalBleedAcrossProjects pins the user's exact
+// bug: a global last_profile recorded for one project must NOT bleed into a
+// different project that has no projects[] entry of its own. Resolution is
+// project-scoped only after the fix — the global last_profile key is write-only
+// on this binary.
+//
+// Reproduces (and pins the fix for) the on-disk state observed in
+// ~/.moai/claude-profiles/launch.yaml:
+//
+//	last_profile: moai-cowork
+//	projects:
+//	    /Users/goos/MoAI/moai-cowork: moai-cowork   # no entry for moai-adk-go
+//
+// where bare `moai glm` in moai-adk-go used to resolve to moai-cowork.
+func TestResolveLaunchProfile_NoGlobalBleedAcrossProjects(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	t.Cleanup(func() { BaseDirOverride = orig })
+	BaseDirOverride = tmpDir
+
+	// Two real projects, two named profiles. Both profile directories exist so
+	// launchCandidateIsUsable never skips them — the test must fail because the
+	// global read is gone, not because of a stale guard.
+	projA := t.TempDir()
+	projB := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, "prof-x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, "prof-y"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, "prof-z"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// projects[A] = "prof-x", last_profile = "prof-y" (would have bled to B
+	// under the old global fallback).
+	ledger := "last_profile: prof-y\nprojects:\n  " + normalizeProjectKey(projA) + ": prof-x\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte(ledger), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	// (a) The bug: project B is NOT in the projects map → MUST resolve to ""
+	//     (default), NOT "prof-y". Under the old code this returned "prof-y".
+	if got := ResolveLaunchProfileForProject(projB, ""); got != "" {
+		t.Errorf("(a) ResolveLaunchProfileForProject(projB, \"\") = %q, want \"\" (global last_profile must not bleed into a project with no projects[] entry)", got)
+	}
+
+	// (b) Project memory still works: project A IS in the map → "prof-x".
+	if got := ResolveLaunchProfileForProject(projA, ""); got != "prof-x" {
+		t.Errorf("(b) ResolveLaunchProfileForProject(projA, \"\") = %q, want %q (project-scoped memory)", got, "prof-x")
+	}
+
+	// (c) Explicit -p always wins even when projects[A] and last_profile disagree.
+	if got := ResolveLaunchProfileForProject(projA, "prof-z"); got != "prof-z" {
+		t.Errorf("(c) ResolveLaunchProfileForProject(projA, \"prof-z\") = %q, want %q (explicit -p wins)", got, "prof-z")
+	}
+	if got := ResolveLaunchProfileForProject(projB, "prof-z"); got != "prof-z" {
+		t.Errorf("(c') ResolveLaunchProfileForProject(projB, \"prof-z\") = %q, want %q (explicit -p wins)", got, "prof-z")
 	}
 }
 
