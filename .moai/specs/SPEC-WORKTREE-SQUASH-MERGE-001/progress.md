@@ -159,6 +159,48 @@ $ grep -nE 'exec\.Command(Context)?\((ctx, )?"(sh|bash|zsh)"|"-c"' internal/core
 (exit 1, no match)
 ```
 
+### M3 — guard falsifiability verification (acceptance.md §C.1 grid reproduced)
+
+Each guard's removal was applied as a temporary mutation to `worktree.go`,
+run against the targeted scenarios, captured, then reverted via
+`git checkout HEAD --`. Every mutation flipped EXACTLY its §C.1 blast radius
+and nothing else — the measured-disjoint property holds for this implementation.
+
+| Mutation (criterion) | Flipped rows (observed) | Disjoint? |
+|---|---|---|
+| `folded-names` — drop `--no-renames`, keep `-z` (AC-WSM-006.1) | SC-10, SC-11 | yes — SC-12-15 PASS |
+| `newline-split` — drop `-z`, split on `\n` (AC-WSM-006.2) | SC-12 | yes — SC-10/11/13-15 PASS |
+| `no-literal` — drop `--literal-pathspecs` (AC-WSM-006.3) | SC-13 | yes — SC-10-12/14/15 PASS |
+| `no-textconv` — drop `--no-textconv` (AC-WSM-006.4) | SC-14 | yes — SC-10-13/15 PASS |
+| `no-ignoresub-cmp` — drop comparison-side `--ignore-submodules=none` (AC-WSM-006.5) | SC-15 | yes — SC-10-14 PASS |
+| `no-ignoresub-enum` — drop enumeration-side `--ignore-submodules=none` | SC-15 | both stages load-bearing (each alone flips SC-15) |
+| `no-state` — drop S5 conjunct from S3+S4 (AC-WSM-015) | SC-8, SC-10-15, P3c, P4c | wide — FORBIDDEN as sole falsification for AC-WSM-005/006/017 |
+| `both` — drop S5 + accept any non-empty cherry (AC-WSM-005) | SC-6, SC-7 (+ no-state set) | the unique mutation that flips SC-6 AND SC-7 |
+| `oid-only-cmp` — replace comparison with mode-blind `ls-tree` OID maps (AC-WSM-017) | P3c, P4c | yes — SC-6-15 PASS; `git diff` is mode-sensitive |
+| unpin `GIT_COMMITTER_DATE` (AC-WSM-008) | determinism test FAIL (delta 0→2) | yes — pinned stays delta 1 |
+| inject bare `git prune` (AC-WSM-009) | grep judge 0→1 | yes — restored to 0 |
+
+Notable findings during verification:
+- The determinism test was STRENGTHENED with a >1s gap between the two
+  evaluations, because two rapid un-pinned calls land in the same wall-clock
+  second and produce the same object (delta 1) — the test as first written did
+  NOT falsify the unpin. With the gap, un-pinned → delta 2 (FAIL), pinned →
+  delta 1 (PASS). This is the load-bearing fix that makes AC-WSM-008 falsifiable.
+- The `oid-only-cmp` mutation helper initially used `ls-tree` WITHOUT `-z`, which
+  C-quoted the non-ASCII path and incidentally also flipped SC-12 — a quoting
+  artifact of the mutation, not a property of oid-only-cmp. Fixed by adding `-z`
+  to the helper; SC-12 then correctly stays at keep. This is itself evidence of
+  the encoding axis the production `-z` guard exists to close.
+
+Full suite after M3 (determinism test now sleeps 1.1s, total ~79s):
+```
+$ go test ./internal/core/git/ -count=1   → ok (PASS)
+$ go vet ./internal/core/git/             → clean
+$ golangci-lint run ./internal/core/git/  → 0 issues
+```
+Permanent M3 code change: the determinism-test gap + `time` import (9 LOC). All
+mutations were reverted; `worktree.go` matches the M2 baseline byte-for-byte.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

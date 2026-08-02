@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // This file implements the seventeen-scenario oracle for IsBranchMerged
@@ -721,8 +722,15 @@ func TestSyntheticCommit_DeterministicIdentity(t *testing.T) {
 
 	baseline := countDanglingCommits(t, dir)
 
-	// Two evaluations of the same unchanged branch.
+	// Two evaluations of the same unchanged branch, separated by >1s so that an
+	// UN-pinned committer date would land in a different second and produce a
+	// distinct object. With identity pinned (REQ-WSM-008) both calls write the
+	// same object git already has, so the dangling delta stays at 1; un-pinned,
+	// the second writes a fresh object and the delta rises to 2.
 	for i := 0; i < 2; i++ {
+		if i > 0 {
+			time.Sleep(1100 * time.Millisecond)
+		}
 		merged, err := wm.IsBranchMerged("feat", "main")
 		if err != nil {
 			t.Fatalf("call %d: IsBranchMerged error: %v", i, err)
