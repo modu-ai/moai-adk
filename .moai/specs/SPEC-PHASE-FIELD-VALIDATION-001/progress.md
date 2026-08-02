@@ -70,7 +70,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-08-02
-sync_commit_sha: pending-backfill-sync-close
+sync_commit_sha: 460c529b2
 sync_status: audit-ready
 
 b12_self_test_a: "grep -c 'SPEC-PHASE-FIELD-VALIDATION-001' CHANGELOG.md → 0 (방출 전 실행, 사전 중복 없음)"
@@ -111,4 +111,4 @@ residual_risk:
 **미검증 (Gaps)**
 
 - `§E.2 Run-phase Evidence` / `§E.3 Run-phase Audit-Ready Signal` 은 `_<pending run-phase>_` 로 남아 있다. 두 절의 소유자는 manager-develop 이며 sync-phase 소유 범위 밖이라 채우지 않았다. run-phase 증거는 커밋 `d320795bc` 의 메시지 본문에 있다.
-- `sync_commit_sha` 는 이 커밋 시점에 자기 해시를 참조할 수 없어 placeholder 로 기록하고 후속 커밋에서 백필한다.
+- `sync_commit_sha` 는 sync 커밋 시점에 자기 해시를 참조할 수 없어 placeholder 로 기록한 뒤 이 후속 커밋에서 백필했다. 백필 값 `460c529b2` 는 `git rev-parse --short 460c529b2` 로 해소를 확인하고 `git show --stat` 으로 대상 파일 5개(CHANGELOG.md + 산출물 4개)를 관측한 뒤 기록했다.
