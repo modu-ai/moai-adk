@@ -228,23 +228,48 @@ $ go test ./internal/cli/worktree/ -run 'TestCleanStale_(KeepsDirtyWorktree|Prev
 ```
 No code change in M4; this milestone is pure verification.
 
+### M5 — mechanical follow-through
+
+**Help text: NO CHANGE.** The `clean` command's `Long` text and the `--stale` /
+`--merged-only` flag descriptions are stated generally — "worktrees whose
+branches have been merged into the base branch" and "no commits of its own
+beyond the base branch". Read naturally, squash-merged branches were always
+WITHIN that wording; the pre-fix implementation under-delivered against it
+(missed squash merges), and this SPEC makes the behaviour converge with the
+wording rather than diverge. The plan.md §E M5 bar is "update only if the
+observed behaviour no longer matches its wording" — it matches, so no edit.
+
+**`@MX:ANCHOR` on the predicate: present** (added in M1, lines 231-232 of
+`worktree.go`). It records the non-obvious invariant the plan §D anchoring note
+names — why reachability (S1) is retained alongside the patch-id probes (S3/S4)
+and conjoined with the state check (S5) — with a `@MX:REASON` naming the
+specific scenarios each guard protects (SC-3/SC-4 for S1; SC-8..SC-15/P3c/P4c
+for S5 via the `no-state` mutation). A future edit that drops S1 or S5 is the
+break this anchor exists to flag.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-08-02      # M1 complete; M2-M5 pending
-run_commit_sha: pending-backfill # M1 commit SHA backfilled after push (self-referential)
-run_status: m1-green             # M1 GREEN; M2..M5 not yet run
-ac_pass_count: 12                # AC-WSM-001..006, 007, 009, 011, 012, 013, 017 measured PASS at M1
+run_complete_at: 2026-08-02      # M1-M5 complete
+run_commit_sha: pending-backfill # run-phase terminal SHA backfilled after the branch push (self-referential)
+run_status: run-green            # all five milestones GREEN; 17/17 AC measured PASS
+ac_pass_count: 17                # AC-WSM-001..017 all measured PASS (M1-M5)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # types.go unmodified; clean.go call sites untouched
 l44_pre_commit_fetch: n/a        # 1-person OSS, branch-local
-l44_post_push_fetch: pending     # backfilled after M5 push
+l44_post_push_fetch: pending     # backfilled after branch push
 new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues == baseline 0
 cross_platform_build:
   go_build_all: exit_0
   windows_amd64: exit_0
-total_run_phase_files: 3         # worktree.go, manager.go, worktree_squash_merge_test.go
-m1_to_mN_commit_strategy: per-milestone Conventional-Commit + 🗿 MoAI trailer; branch push only (repo-local PR-mandatory)
+total_run_phase_files: 3         # worktree.go, manager.go, worktree_squash_merge_test.go (clean.go help text unchanged, types.go unchanged)
+m1_to_mN_commit_strategy: per-milestone Conventional-Commit + 🗿 MoAI trailer; branch push only (repo-local PR-mandatory, no main direct push)
+run_phase_commits:               # M1..M5 commits on fix/clean-stale-squash-detect
+  m1: 20858cfc6
+  m2: b22584c7c
+  m3: 50b711eb9
+  m4: d107d40db
+  m5: pending-backfill           # self-referential; backfilled post-push
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
