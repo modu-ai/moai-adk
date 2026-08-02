@@ -14,7 +14,7 @@
 │    STATUS  CHECK                  MESSAGE                                                                                                            │
 │    warn    MoAI Config            .moai/ directory not found (run 'moai init')                                                                       │
 │    warn    Claude Config          .claude/ directory not found                                                                                       │
-│    ok      MoAI Version           moai-adk v3.0.0                                                                                                    │
+│    ok      MoAI Version           moai-adk v3.0.1                                                                                                    │
 │    ok      Binary Freshness       development build (no commit metadata)                                                                             │
 │    ok      MCP Scope Duplicates   no MCP configuration found (project or global)                                                                     │
 │    warn    Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │

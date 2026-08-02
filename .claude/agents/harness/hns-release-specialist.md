@@ -78,10 +78,11 @@ PROCEED or REVIEW_NEEDED.
 ### Phase 3 — Version Selection
 
 If VERSION provided: use directly. Else: return a blocker report for the orchestrator
-to surface a user-decision prompt (patch/minor/major). Update ALL version files:
-- [ ] `pkg/version/version.go`: `Version = "vX.Y.Z"`
+to surface a user-decision prompt (patch/minor/major). Update ALL version files (the git tag is the runtime SSOT via build-time ldflags; these files mirror it for tooling/docs):
+- [ ] `pkg/version/version.go`: `Version = "vX.Y.Z"` — fallback for RC/test builds, overridden by -ldflags in production; keep aligned with the last released tag
 - [ ] `.moai/config/sections/system.yaml`: `moai.version` AND `moai.template_version`
 - [ ] `internal/template/templates/.moai/config/sections/system.yaml`: `moai.version`
+- [ ] `README.md` + `README.ko.md` (+ ja/zh if they carry it): the release badge `Release-vX.Y.Z` (~line 29) — keep the README badges in sync with the tag per CLAUDE.local.md §5
 
 Commit: `chore: bump version to vX.Y.Z`.
 
@@ -130,8 +131,16 @@ Abort). On Release approval, proceed to Phase 6.
 
 [HARD] ALL git operations delegated to manager-git. [HARD] Branch protection with
 `enforce_admins: true`; direct push to main is blocked for EVERYONE (admin included).
-The release PR self-merges (0 required approvals) once the 4 required CI checks pass —
-no reviewer wait. Delegate to manager-git (`isolation: "worktree"`):
+The release PR self-merges (0 required approvals) once the 5 required CI checks pass —
+no reviewer wait. The 5 required contexts on main are: Test (ubuntu-latest), Lint,
+Build (linux/amd64), Analyze (Go) (go), and **Release PR Multi-OS Gate**. The gate is
+why the branch is named `release/*`: `release-pr-multi-os.yml` runs a full
+ubuntu/macos/windows `go test -race ./...` matrix plus a Release Range Verify
+(build+test across the whole window since the last tag) ONLY on `release/*` PRs, and
+its summary gate job aggregates those results — blocking the merge on any OS failure.
+On non-release PRs the multi-os jobs are skipped and the gate no-ops to pass, so this
+required check does not block day-to-day PRs. Delegate to manager-git
+(`isolation: "worktree"`):
 1. `git push -u origin release/vX.Y.Z`.
 2. `gh pr create --head release/vX.Y.Z --base main --title "release: vX.Y.Z" --body "..."`.
 3. `gh pr checks --watch`.
