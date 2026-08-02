@@ -67,6 +67,10 @@ func newSessionRegisterCmd() *cobra.Command {
 		Short: "Register a new active session in the registry",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// SPEC-SESSION-WORKTREE-001 M8: on-touch PR-merge cleanup fires
+			// here (REQ-SW-022). Gated by the AutoCleanup toggle inside
+			// prMergeCleanup; fail-open, non-blocking.
+			prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())
 			sessionID, specID, phase := args[0], args[1], args[2]
 			if err := session.RegisterSession(sessionID, specID, phase); err != nil {
 				return fmt.Errorf("register: %w", err)
@@ -133,6 +137,10 @@ func newSessionListCmd() *cobra.Command {
 		Short: "List active sessions (optionally filtered by --filter-spec)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// SPEC-SESSION-WORKTREE-001 M8: on-touch PR-merge cleanup fires
+			// here (REQ-SW-022). Gated by the AutoCleanup toggle inside
+			// prMergeCleanup; fail-open, non-blocking.
+			prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())
 			entries, err := session.QueryActiveWork(filterSpec)
 			if err != nil {
 				return fmt.Errorf("list: %w", err)

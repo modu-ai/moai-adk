@@ -405,6 +405,79 @@ All NEW-logic functions ≥85%; git-exec Real wrappers at 75% (error-path branch
 
 **Scope discipline (B8/B10):** touched ONLY `internal/cli/session_worktree.go` (5 new seams + Real impls + `gitVersionInfo` + `applyWorktreeGitConfig` + `emitWorktreeGitConfigNotice` + wiring in `materializeSessionWorktree` + safe.directory unset in `cleanupSessionWorktree` + `materializeSessionWorktree` signature `+out io.Writer`) + `internal/cli/session_worktree_m7_test.go` (NEW, 14 tests) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged. spec.md status stays `in-progress`.
 
+---
+
+### M8 — PR-merge auto-cleanup (on-touch session register / list) — REQ-SW-022/023/024
+
+**Trigger-point correction (v0.2.2 D-NEW-1 inline-fix):** the v0.2.1 plan named `moai worktree list` / `moai session start` as the on-touch trigger sites. Both were non-existent: `worktree list` is intentionally retired (`internal/cli/worktree/root_test.go:61`) and `session start` never existed (`internal/cli/session.go:53-59` — the session command tree has register/heartbeat/deregister/list/purge/current/doctor, no `start`). Manager-spec corrected the SPEC to v0.2.2 naming the verified-existing pair `moai session register` (`internal/cli/session.go:66` newSessionRegisterCmd) + `moai session list` (`internal/cli/session.go:132` newSessionListCmd). Q3 rationale shape (on-touch, fires when user present, stale-until-next-invocation acceptable) preserved; only the command names changed. This M8 run implements the v0.2.2 trigger points.
+
+**Deliverables:**
+- NEW `internal/cli/session_worktree_prmerge.go`: `prMergeCleanup(cfg, out)` helper + `PRMergeCleanupNoticePrefix` constant + 4 seams (`sessionWorktreeGitWorktreeList`, `sessionWorktreeGhLookPath`, `sessionWorktreeGhPRViewState`, `sessionWorktreeGitBranchMerged`) + Real impls + `parseWorktreeList` porcelain parser + `parseGhPRStateJSON` + `branchMergedForCleanup` decision helper. `@MX:ANCHOR` on `prMergeCleanup` (REQ-SW-022/023/024 — the on-touch sweep; one helper, gh primary + squash-blind fallback, dirty guard re-checked before removal EC-11, notice distinct from session-exit).
+- Wired on-touch invocation at TWO RunE sites in `internal/cli/session.go`: `newSessionRegisterCmd` RunE (line ~70) + `newSessionListCmd` RunE (line ~136). Each calls `prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())` BEFORE the subcommand's main work, gated by the AutoCleanup toggle inside the helper.
+- NEW `internal/cli/session_worktree_prmerge_test.go`: 23 tests (toggle-off, nil-cfg, gh-primary-merged, gh-primary-open, gh-primary-squash-sees-merge, gh-absent-branch-merged, squash-blind-fallback-preserves, gh-absent-blindness-notice-once, dirty-preserve, dirty-check-error-preserve, worktree-list-error-fail-open, only-WT-branches, detached-ignored, removal-failure-fail-open, fallback-branch-merged-error-preserve, notice-distinguishable, on-touch-fires-register, on-touch-fires-list, on-touch-toggle-off-register, trigger-invariant-static, parseWorktreeList ×2, parseGhPRStateJSON ×1) + `chdirTemp` helper + `writeAutoCleanupConfig` helper.
+
+**Reused surface (no duplication):**
+- M4 `worktreeIsDirty` (`session_worktree.go:634`) — the SHARED dirty guard, one helper two call sites (REQ-SW-010 + REQ-SW-024). Re-checked immediately before removal for EC-11 race.
+- M7 `sessionWorktreeGitSafeDirUnset` / `gitSafeDirUnsetReal` (`session_worktree.go:94`/`:301`) — the R5 safe.directory-unset seam, reused on the PR-merge removal path.
+- M4 `sessionWorktreeGitWorktreeRemove` (`session_worktree.go:73`) — the `git worktree remove` seam, reused.
+- `SessionWorktreeBranchPrefix = "WT-"` (`session_worktree.go:39`) — the WT- filter predicate.
+- `cfg.Workflow.Worktree.AutoCleanup` (`types.go:492`, default false) — the SAME toggle as session-exit cleanup (REQ-SW-022); no new flag.
+- `gh` runtime detection via `exec.LookPath("gh")` — pattern already assumed at `doctor.go:326` + `wizard/config_helpers.go:77` (BI-8).
+- `loadSessionWorktreeConfig(cmd)` (`session_worktree.go:670`) — reads config from cwd, returns nil on failure (fail-safe to OFF).
+
+**E1 — AC matrix (M8):**
+
+| AC | Status | Verification Command | Actual Output |
+|---|---|---|---|
+| AC-SW-022 (on-touch at register+list, distinguishable notice, toggle-off negative control, trigger invariant ONLY two subcommands) | PASS | `go test ./internal/cli/ -run 'TestPRMergeCleanup_OnTouchFiresAtSessionRegister\|TestPRMergeCleanup_OnTouchFiresAtSessionList\|TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister\|TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire\|TestPRMergeCleanup_NoticeDistinguishableFromSessionExit' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli` — register RunE invokes prMergeCleanup (git worktree list called); list RunE invokes it; toggle-off register does NOT invoke it; TriggerInvariant asserts session.go `prMergeCleanup(` count == 2 (register+list only); notice prefix `"removed by PR-merge cleanup:"` ≠ `"removed by session-exit cleanup:"` |
+| AC-SW-023 (gh primary MERGED; git branch --merged fallback; squash-blind documented+tested; primary sees squash merges) | PASS | `go test ./internal/cli/ -run 'TestPRMergeCleanup_GhPresentMergedRemoves\|TestPRMergeCleanup_GhPresentSeesSquashMerge\|TestPRMergeCleanup_GhAbsentBranchMergedRemoves\|TestPRMergeCleanup_SquashBlindFallbackPreserves\|TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce' -count=1` | `ok` — gh+MERGED→removed+notice; gh+squash-merge(state==MERGED)→removed (primary sees it); gh-absent+branch-in---merged→removed; gh-absent+squash(branch NOT in --merged)→NOT removed + "squash-merge blind" notice emitted exactly once; blindness notice documents the fallback's limitation |
+| AC-SW-024 (dirty preserved on PR-merge path) | PASS | `go test ./internal/cli/ -run 'TestPRMergeCleanup_DirtyPreserves\|TestPRMergeCleanup_DirtyCheckErrorPreserves' -count=1` | `ok` — merged+dirty→NOT removed + "preserved" notice names path; merged+status-error→NOT removed (fail-open preserve, EC-11) |
+
+**E2 — Cross-platform build:**
+```
+$ go build ./...                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+**E3 — Coverage (M8 logic, `go test -coverprofile`):**
+```
+session_worktree_prmerge.go:
+  parseWorktreeList        100.0%
+  prMergeCleanup           100.0%
+  branchMergedForCleanup   100.0%
+  parseGhPRStateJSON       100.0%
+  gitWorktreeListReal        0.0%   (seam-swapped Real; shells out to git, exercised via seam)
+  ghLookPathReal             0.0%   (seam-swapped Real; shells out to LookPath, exercised via seam)
+  ghPRViewStateReal          0.0%   (seam-swapped Real; shells out to gh, exercised via seam)
+  gitBranchMergedReal        0.0%   (seam-swapped Real; shells out to git, exercised via seam)
+```
+All M8 LOGIC functions at 100%. The four `*Real` shell-out wrappers are 0% by design — they are swapped via function-variable seams in every test (matching the M4 `gitWorktreeAddReal` / M7 `gitSafeDirAddReal` pattern: the real impls are thin `exec.Command` wrappers not unit-tested; the seams carry the behavioral coverage). Package-wide `go test -cover ./internal/cli/` on the M8 run: 7.2% of statements (the M8 subset).
+
+**E4 — Subagent boundary grep (C-HRA-008):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/session_worktree_prmerge.go internal/cli/session.go | grep -v "_test.go" | grep -v "// "` → **0 NEW matches**. PASS. (CLI returns exit codes + notices to stderr only; orchestrator owns user interaction per the session.go header invariant.)
+
+**E5 — Lint:** `golangci-lint run --timeout=3m ./internal/cli/...` → **0 issues**. PASS. `go vet ./internal/cli/...` → exit 0.
+
+**E6 — Branch HEAD + push:** M8 commit + push to `feat/SPEC-SESSION-WORKTREE-001` (this commit).
+
+**E7 — Blocker report:** NONE. The v0.2.2 trigger-point blocker (prior M8 attempt) is RESOLVED — `session register` + `session list` are verified-existing CLI commands. No new blocker raised this run.
+
+**E8 — RED → GREEN + falsification round-trips:**
+- **(a) dirty guard (REQ-SW-024):** RED evidence — the M8 tests were written first referencing `prMergeCleanup` / `PRMergeCleanupNoticePrefix` / the 4 seams before any existed; `go test` failed with `undefined: sessionWorktreeGitWorktreeList ...` (build failed, verbatim RED). Falsification round-trip: `sed`-bypass `worktreeIsDirty` → `dirty=false` → `TestPRMergeCleanup_DirtyPreserves` + `TestPRMergeCleanup_DirtyCheckErrorPreserves` **FAIL** (merged-but-dirty wrongly removed / status-error wrongly removed); restore → **PASS**. Observed exit: FAIL then ok.
+- **(b) trigger invariant (AC-SW-022):** falsification round-trip — `perl` fully removed ONE `prMergeCleanup(...)` call line from session.go (count 2→1) → `TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire` **FAIL** (`expected exactly 2 ... got 1`); restore (count 1→2) → **PASS**. Observed: FAIL then ok. A NON-trigger subcommand cannot fire prMergeCleanup because the call sites exist ONLY in `newSessionRegisterCmd` + `newSessionListCmd` RunE (the static count guard enforces this).
+- **(c) squash-blind fallback (REQ-SW-023):** `TestPRMergeCleanup_SquashBlindFallbackPreserves` — gh absent + squash-merged (branch NOT in `git branch --merged`) → NOT removed + "squash-merge blind" notice. The complementary `TestPRMergeCleanup_GhPresentSeesSquashMerge` proves the primary path catches what the fallback misses.
+- **(d) toggle-off negative control (REQ-SW-022):** `TestPRMergeCleanup_ToggleOffNoOp` (helper-level: AutoCleanup=false → no git worktree list invocation, no notice) + `TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister` (integration-level: register RunE with no config → loadSessionWorktreeConfig returns nil → prMergeCleanup no-op → list seam NOT called).
+
+**E9 — Notice distinguishability (EC-13):** `PRMergeCleanupNoticePrefix = "removed by PR-merge cleanup:"` (verbatim, `session_worktree_prmerge.go:47`). Asserted ≠ `SessionExitCleanupNoticePrefix = "removed by session-exit cleanup:"` via `TestPRMergeCleanup_NoticeDistinguishableFromSessionExit`. EC-13 combined-output attribution: the two notices carry distinct prefixes (`PR-merge` vs `session-exit`) so a user reading combined stderr can attribute each removal. The M8 on-touch path (AC-SW-022) fires at `session register`/`session list` BEFORE session-exit cleanup (AC-SW-009) fires at subcommand exit.
+
+**E10 — on-touch wiring sites:**
+1. `internal/cli/session.go` `newSessionRegisterCmd().RunE` (line ~70): `prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())` — gated by `cfg.Workflow.Worktree.AutoCleanup` inside the helper.
+2. `internal/cli/session.go` `newSessionListCmd().RunE` (line ~136): same call, same gate.
+Both fire BEFORE the subcommand's main work (RegisterSession / QueryActiveWork). Fail-open, non-blocking. Static guard `TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire` asserts `prMergeCleanup(` appears exactly twice in session.go (register + list only).
+
+**Pre-existing baseline note (NOT M8-caused):** `TestDoctorGolden_{Light,Dark,NoColor}` fail at the pre-M8 HEAD (`0350b9c907`) — verified by `git stash`-isolating the M8 changes and re-running: the 3 doctor golden tests FAIL identically without any M8 code present. M8 touches `session.go` (2 lines added) + 2 NEW files (`session_worktree_prmerge.go` + its test); doctor golden is a separate subsystem (golden-file comparison for `moai doctor` rendered output) with no symbol overlap. Running the full cli suite with `-skip 'TestDoctorGolden'` → `ok` (all other tests pass). The doctor golden failures are pre-existing and out of M8 scope.
+
+**Scope discipline (B8/B10):** touched ONLY `internal/cli/session_worktree_prmerge.go` (NEW) + `internal/cli/session_worktree_prmerge_test.go` (NEW) + `internal/cli/session.go` (2 on-touch call lines, 2 comment blocks) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged (manager-spec owns them; v0.2.2 already corrected). spec.md status stays `in-progress`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
