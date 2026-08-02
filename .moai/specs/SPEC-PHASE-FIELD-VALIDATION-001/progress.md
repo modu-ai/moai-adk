@@ -273,5 +273,5 @@ residual_risk:
 
 **미검증 (Gaps)**
 
-- `§E.2 Run-phase Evidence` / `§E.3 Run-phase Audit-Ready Signal` 은 `_<pending run-phase>_` 로 남아 있다. 두 절의 소유자는 manager-develop 이며 sync-phase 소유 범위 밖이라 채우지 않았다. run-phase 증거는 커밋 `d320795bc` 의 메시지 본문에 있다.
+- **(해소됨)** sync 커밋 `460c529b2` 시점에 `§E.2 Run-phase Evidence` / `§E.3 Run-phase Audit-Ready Signal` 은 `_<pending run-phase>_` 로 비어 있었고, 당시 run-phase 증거는 커밋 `d320795bc` 의 메시지 본문에만 존재했다. 두 절의 소유자는 manager-develop 이므로 sync-phase 소유 범위 밖으로 판단해 채우지 않고 이 Gaps 항목으로만 기록했다. 이후 manager-develop 이 후속 커밋 `546f062cf` (`docs(SPEC-PHASE-FIELD-VALIDATION-001): fill progress.md §E.2/§E.3 run-phase evidence`, progress.md 단일 파일 165 insertions) 에서 두 절을 채웠다. 현재 `§E.2` 는 61행, `§E.3` 은 179행에서 시작하며 `_<pending run-phase>_` 마커는 이 파일에 남아 있지 않다. 백필 SHA 는 `git rev-parse 546f062cf` → `546f062cfa8854319de9f9c869bca61212f9416b` 로 해소를 확인하고 `git show --stat` 으로 대상 파일이 progress.md 하나임을 관측한 뒤 인용했다.
 - `sync_commit_sha` 는 sync 커밋 시점에 자기 해시를 참조할 수 없어 placeholder 로 기록한 뒤 이 후속 커밋에서 백필했다. 백필 값 `460c529b2` 는 `git rev-parse --short 460c529b2` 로 해소를 확인하고 `git show --stat` 으로 대상 파일 5개(CHANGELOG.md + 산출물 4개)를 관측한 뒤 기록했다.
