@@ -51,6 +51,15 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 | Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
 | Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
 
+## Fan-Out Index
+
+| Fan-Out ID | Trigger condition | Target file | What is parallelised |
+|---|---|---|---|
+| `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 1.8 MX context-map scan — one read-only shard per package |
+| `FO-RUN-2` | a milestone's RED stage spans several independent test targets | `workflows/run/task-decomposition.md` | RED-stage test drafting — one read-only drafter per target |
+| `FO-RUN-3` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/run/task-decomposition.md` | the Phase 13 / 16 / 17 quality band — one parallel four-dimension evidence pass |
+| `FO-RUN-4` | the modified files span several packages | `workflows/run/task-decomposition.md` | Phase 18 MX tag scan — one read-only shard per package; tag application stays single-writer |
+
 ## Invocation Flow
 
 ```
@@ -86,12 +95,6 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 **Worktree path rules**: [HARD] 모든 에이전트 프롬프트에 절대 경로 금지. project-root-relative 경로 사용.
 
 **Chaining (single-phase contract)**: an explicit `/moai run` invocation carries a `single-phase` pipeline contract — on run-phase completion, the sync chain is surfaced as the "(Recommended)" first option of the next-step AskUserQuestion; it never fires silently. The `full-pipeline` auto-chain applies only to the default `/moai` route (see `workflows/moai.md` § run→sync chaining policy).
-
-## Phase 4 Operational Entries (Mode 4 / Mode 6)
-
-**Mode 4 (parallel) — research fan-out**: while pre-implementation work is research-heavy and multi-domain, the orchestrator spawns 3-5 concurrent read-only `Agent()` calls in a single turn for analysis fan-out (codebase exploration, external research, quality baseline). Implementation itself remains Mode 5 (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
-
-**Mode 6 (workflow) — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the Mode 6 selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first.
 
 ## On-Demand Sub-skill Loading
 

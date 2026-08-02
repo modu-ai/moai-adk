@@ -389,7 +389,7 @@ This agent is invoked by the orchestrator up to 3 times per SPEC (max_iterations
 
 On iteration 1: Full audit against all criteria.
 
-On iteration 2+: Full audit PLUS regression check. For each defect listed in the previous iteration's report, verify whether it was resolved. Unresolved defects from a prior iteration are automatically FAIL regardless of other scores.
+On iteration 2+: the re-audit is scoped to the enumerated defect delta from the previous iteration's report, plus a regression check over those prior-iteration defects — not a from-scratch full re-audit. For each defect listed in the previous iteration's report, verify whether it was resolved. Unresolved defects from a prior iteration are automatically FAIL regardless of other scores. Verdict authority stays with this agent: the delta scope reduces re-audit cost only, and it never permits an orchestrator self-assessment to substitute for an auditor verdict.
 
 If iteration 3 results in FAIL, the agent produces a final escalation report with the full defect history across all iterations and recommends user intervention.
 

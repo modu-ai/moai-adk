@@ -245,6 +245,12 @@ Detection Steps:
 
 This phase auto-selects and does NOT require user approval. The user can override with the --solo flag (a forced --team is retired → emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode).
 
+### Operational Entries (Mode 4 / Mode 6)
+
+**Mode 4 (parallel) — research fan-out**: while pre-implementation work is research-heavy and multi-domain, the orchestrator spawns 3-5 concurrent read-only `Agent()` calls in a single turn for analysis fan-out (codebase exploration, external research, quality baseline). Implementation itself remains Mode 5 (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
+
+**Mode 6 (workflow) — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the Mode 6 selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first.
+
 ## Phase 5: Analysis and Planning
 
 Agent: manager-spec subagent (planning IS strategy per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 1)
@@ -394,7 +400,7 @@ Purpose: Scan files that will be modified during implementation to build an MX c
 
 **Skip Condition:** If target files do not exist (greenfield implementation), skip this phase.
 
-**Sharding (read-only, optional):** **Where** the scan target spans many files across several packages, the orchestrator MAY shard the scan — one read-only `Agent()` per package shard in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each shard returns its slice of the context map as text and writes no file; the orchestrator merges the slices into the single map above. A shard that cannot read a target records the gap and returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the target set is small or sharding is skipped, the scan runs as one pass with identical output.
+**Sharding (`FO-RUN-1`, read-only):** **Where** the scan target spans many files across several packages, the orchestrator shall shard the scan — one read-only `Agent()` per package shard in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each shard returns its slice of the context map as text and writes no file; the orchestrator merges the slices into the single map above. A shard that cannot read a target records the gap and returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the target set is small or sharding is skipped, the scan runs as one pass with identical output.
 
 See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
