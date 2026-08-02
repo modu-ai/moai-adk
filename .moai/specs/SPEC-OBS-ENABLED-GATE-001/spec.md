@@ -2,7 +2,7 @@
 id: SPEC-OBS-ENABLED-GATE-001
 title: "Observability enabled-key gate in deps.go"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-02
 updated: 2026-08-02
 author: manager-spec
