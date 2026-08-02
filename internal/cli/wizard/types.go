@@ -38,16 +38,18 @@ type WizardResult struct {
 	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
 	GitLabToken       string // GitLab personal access token (optional)
 
-	// Page-3 fields ("Quality & Workflow") — asked of every user
-	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002). The two mode-flag
-	// fields that formerly gated them are retired (REQ-WIZ-018).
-	ProjectMode               string // project.mode: personal, team (B1)
-	HarnessProfile            string // harness.default_profile: default, strict, lenient, frontend (B2)
-	LSPEnabled                bool   // lsp.enabled: false (opt-in) (B3)
-	EnforceQuality            bool   // quality.enforce_quality: true (B5)
-	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (B5)
-	DesignEnabled             bool   // design.enabled: true (B8)
-	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (B8)
+	// Page-3 fields ("Quality & Workflow"). Only project_mode is still asked;
+	// the four booleans are fixed at their shipped defaults and no longer
+	// prompted (removed 2026-08-03) — seeded by RunWithDefaults /
+	// RunWithLocale. The two mode-flag fields that formerly gated them are
+	// retired (REQ-WIZ-018).
+	ProjectMode               string // project.mode: personal, team (B1) — asked
+	HarnessProfile            string // harness.default_profile: default, strict, lenient, frontend (B2) — fixed at "default"
+	LSPEnabled                bool   // lsp.enabled: true (fixed default, no longer asked)
+	EnforceQuality            bool   // quality.enforce_quality: true (fixed default, no longer asked)
+	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (fixed default)
+	DesignEnabled             bool   // design.enabled: true (fixed default, no longer asked)
+	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (fixed default, no longer asked)
 }
 
 // QuestionType represents the type of wizard question.

@@ -399,41 +399,19 @@ func harnessProfileOptions(profiles []string) []Option {
 
 // Page3Questions returns page 3 of the `moai init` set, "Quality & Workflow".
 //
-// The questions are UNCONDITIONAL: the former mode gate was removed
-// (REQ-WIZ-001/002), so every user sees them and they merge into one page. The
-// single exception is claude_design_enabled, which stays nested on
-// design_enabled (REQ-WIZ-006) and therefore renders as its own sub-group.
+// The four former confirm questions — lsp_enabled, enforce_quality,
+// design_enabled, claude_design_enabled — are FIXED at their shipped true
+// defaults and no longer asked (removed 2026-08-03). Their values are seeded
+// by RunWithDefaults (see wizard.go), so interactive `moai init` writes the
+// true default for each without prompting. Only project_mode remains
+// interactive on this page.
 //
 // The constructor is named for the page it builds rather than for the retired
 // mode taxonomy (REQ-WIZ-018): no flag selects it any more.
-//
-// Order is load-bearing: design_enabled MUST precede claude_design_enabled so
-// huh has the design answer before evaluating the nested hide func.
 func Page3Questions(projectRoot string) []Question {
 	return []Question{
-		// B3 — lsp.enabled. Enabled by default since
-		// SPEC-CLI-WIZARD-RESTRUCTURE-001 (REQ-WIZ-010): the diagnostics are
-		// worth more than the startup cost, and opting out is one keystroke.
-		{
-			ID:          "lsp_enabled",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable LSP integration? (default: Yes)",
-			Description: "LSP provides language-server diagnostics during the run phase. Enabled by default; answer No to opt out.",
-			Default:     "true",
-			Required:    false,
-		},
-		// B5 — quality.enforce_quality
-		{
-			ID:          "enforce_quality",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enforce quality gates? (default: Yes)",
-			Description: "When enabled, TRUST 5 quality gates block implementation progress on failure.",
-			Default:     "true",
-			Required:    false,
-		},
-		// B1 — project.mode
+		// B1 — project.mode. The only remaining interactive question on
+		// page 3.
 		{
 			ID:          "project_mode",
 			Group:       "Quality & Workflow",
@@ -446,29 +424,6 @@ func Page3Questions(projectRoot string) []Question {
 			},
 			Default:  "personal",
 			Required: true,
-		},
-		// B8 — design.enabled
-		{
-			ID:          "design_enabled",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable design workflow? (default: Yes)",
-			Description: "Enables the MoAI design pipeline (GAN loop, brand context, Claude Design integration).",
-			Default:     "true",
-			Required:    false,
-		},
-		// B8 — design.claude_design.enabled. The ONLY conditional question on
-		// page 3: nested on design_enabled (REQ-WIZ-006). The mode half of the
-		// former two-term predicate is gone — only DesignEnabled remains.
-		{
-			ID:          "claude_design_enabled",
-			Group:       "Quality & Workflow",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable Claude Design integration? (default: Yes)",
-			Description: "Enables the Claude Design handoff workflow within the design pipeline.",
-			Default:     "true",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.DesignEnabled },
 		},
 	}
 }

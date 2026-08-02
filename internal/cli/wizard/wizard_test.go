@@ -652,11 +652,11 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	}
 
 	// Adding page 3 expands the denominator further: 6 unconditional defaults
-	// (git conditionals hidden for manual) + 5 page-3 questions = 11.
+	// (git conditionals hidden for manual) + 1 page-3 question (project_mode) = 7.
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 11 {
-		t.Errorf("page-3 denominator: expected 11 (6 + 5 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 7 {
+		t.Errorf("page-3 denominator: expected 7 (6 + 1 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
