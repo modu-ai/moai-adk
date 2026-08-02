@@ -231,6 +231,90 @@ Command: `go test -run 'SessionWorktree|CleanupSessionWorktree|ResolveSessionSho
 
 **Residual risk — AC-SW-014 timing non-determinism:** the "within the same second" concurrency aspect of AC-SW-014 cannot be reliably reproduced in a unit test (inherent to the OS scheduler, not a moai bug). The deterministic invariant — distinct session-shorts ⇒ distinct branch names ⇒ distinct worktree paths ⇒ distinct state trees + settings.local.json surfaces — is proven by `TestSessionWorktreeBranchName_ParallelDistinctSessions`. A collision under real concurrency would require two sessions to resolve the SAME 8-char session-short (the session-id-available branch) or collide on the 6-byte random fallback (≈ 2^48 space) — neither is tested for true concurrency here.
 
+### M6 — moai profile auto-entry (project-scoped, REQ-SW-016/017, EC-7)
+
+**M6 deliverables:**
+1. **Profile entry function (BI-5):** `runProfileSetup` in `internal/cli/profile_setup.go` — the single handler invoked by BOTH `moai profile setup [name]` (subcommand) and `moai profile --setup/-s` (flag on root, delegated via `runProfileCmd`). Auto-entry wired HERE, before any shared-state mutation (`profile.ReadPreferences`/`WritePreferences`/`persistProjectConfig`), mirroring M2 init / M3 web: `loadSessionWorktreeConfig(cmd)` → `enterSessionWorktree(swCfg, "profile", cmd.ErrOrStderr())` → chdir + `emitProfileScopeNotice` → deferred `cleanupSessionWorktree`. Named return `(err error)` so cleanup derives `cleanExit`.
+2. **REQ-SW-016/017 + branch naming:** `enterSessionWorktree(..., "profile", ...)` reuses the shared wrapper (no forked impl). Branch name `WT-<session-short>-profile` (REQ-SW-007). Worktree scopes to the PROJECT (working tree) — materialize path derives project root from `git rev-parse --git-common-dir` parent, exactly like init/web; NOT `~/.moai/claude-profiles/`.
+3. **EXPLICIT NON-ACTION (load-bearing):** M6 does NOT isolate the profile dir. `~/.moai/claude-profiles/` remains GLOBAL; the launch-ledger race on `launch.yaml` is documented out of scope (§3) and deferred to a follow-up SPEC. `runProfileDelete` (global-dir mutator) is NOT wired to auto-entry.
+4. **Honest stderr notice (REQ-SW-017, AC-SW-017c):** `emitProfileScopeNotice(out, wtPath)` emits a notice naming BOTH the project worktree path AND `profile.GetBaseDir()`, stating EXPLICITLY the profile dir is NOT isolated. The "NOT isolated" clause is load-bearing (falsification round-trip in E8).
+5. **EC-7 read-only gate (subverb enumeration):**
+
+   | Subverb | Handler | Mutates PROJECT tree? | Auto-entry? |
+   |---|---|---|---|
+   | `moai profile` (bare/help) | `runProfileCmd`→`cmd.Help()` | No | NO |
+   | `moai profile --setup`/`-s` + `moai profile setup [name]` | `runProfileSetup` | Yes (`persistProjectConfig` writes `.moai/config/sections/*.yaml`) | **YES** |
+   | `moai profile list`/`ls` | `runProfileList` | No (read-only) | NO |
+   | `moai profile current` | `runProfileCurrent` | No (read-only) | NO |
+   | `moai profile delete`/`rm` | `runProfileDelete` | No (mutates global `~/.moai/claude-profiles/`, NOT project) | NO |
+
+   Wiring auto-entry into `runProfileSetup` (the only project-mutating subverb) naturally excludes all read-only and global-only subverbs.
+
+6. **Unused-cmd debt (E10): CARRIED.** `loadSessionWorktreeConfig(cmd)` accepts `cmd` but profile setup resolves the project root via cwd (`runProfileSetup` uses `os.Getwd()` + `filepath.Join(cwd, ".moai")`); the profile command defines NO `--root`/`--project` flag that resolves the root more precisely than cwd. The deliverable explicitly permits carrying the debt forward when the profile shape offers no such flag. Lint baseline is clean (`golangci-lint run ./internal/cli/...` → 0 issues), so the `cmd` param remains a documented future-proof, not an active defect.
+
+**E1 — AC matrix (M6-relevant):**
+
+| AC | Status | Command | Output |
+|----|--------|---------|--------|
+| AC-SW-016 (profile auto-enters worktree) | PASS | `go test -run TestEnterSessionWorktree_ProfileSubcommand ./internal/cli/` | `ok ... 0.659s` — asserts `enterSessionWorktree(cfg,"profile",out)` materializes branch `WT-abcdef12-profile` + names subcommand `"profile"` |
+| AC-SW-017(a) worktree under PROJECT | PASS (structural) | `enterSessionWorktree` reuses shared `materializeSessionWorktree` (project root = parent of `git rev-parse --git-common-dir`); NOT under `~/.moai/claude-profiles/` | (proven by M2 `TestEnterSessionWorktree_EnvForcesOn` path-prefix assert + reuse; no forked path logic) |
+| AC-SW-017(b) launch.yaml at GLOBAL path | PASS (non-action) | `grep -rn "BaseDirOverride\|GetBaseDir\|launchLedgerFile" internal/cli/profile_setup.go` | launch.yaml write site untouched — `RecordLastUsedProfile` keeps using `GetBaseDir()` (global); M6 does NOT redirect it |
+| AC-SW-017(c) stderr notice states NOT isolated | PASS | `go test -run TestEmitProfileScopeNotice_LoadBearing ./internal/cli/` | `ok ... 0.659s` — asserts notice contains worktree path + `claude-profiles` dir + literal `NOT isolated` |
+| AC-SW-017(d) two parallel profiles → distinct project worktrees, same global launch.yaml | PASS (structural) | distinct-worktree invariant proven by M5 `TestSessionWorktreeBranchName_ParallelDistinctSessions`; same-global-ledger is the EXPLICIT NON-ACTION (#3) + notice (#4) | (compositional: distinct-branches ⇒ distinct-paths; global ledger never redirected) |
+| EC-7 read-only subverbs do NOT auto-enter | PASS | `go test -run TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry ./internal/cli/` | `ok ... 0.659s` — sentinel `sessionWorktreeGitWorktreeAdd` fatals if invoked; list+current leave it dormant |
+
+**E2 — Cross-Platform Build:**
+```
+$ go build ./...                          → exit 0 (no output)
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0 (no output)
+```
+
+**E3 — Coverage (function-level, M6-added code via `-run` M6 filter):**
+```
+$ go test -run '<M6 tests>' -coverprofile=/tmp/m6cov.out ./internal/cli/
+ok  github.com/modu-ai/moai-adk/internal/cli  0.659s  coverage: 6.6% of statements
+$ go tool cover -func=/tmp/m6cov.out | grep -E "emitProfileScopeNotice|enterSessionWorktree"
+profile.go:75:        emitProfileScopeNotice   100.0%
+session_worktree.go:101: enterSessionWorktree   58.3% (profile-suffix branch covered; other branches by M2 suite)
+```
+`emitProfileScopeNotice` (the M6-specific production logic) is **100%** covered. `runProfileSetup`'s wiring block is 0.0% in the headless run — the `huh` interactive wizard requires a TTY and cannot be executed in a unit test (same constraint M2 `runInit` / M3 `runWeb` face; the wrapper is tested directly + EC-7 proves the gating). Full-package coverage: `go test -cover ./internal/cli/` → **76.3%**.
+
+**E4 — Subagent Boundary Grep (C-HRA-008):**
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/profile.go internal/cli/profile_setup.go internal/cli/profile_setup_translations.go | grep -v '_test.go' | grep -v '^[^:]*:[0-9]*:[[:space:]]*//'
+(no output — exit 1 = 0 matches = clean)
+```
+
+**E5 — Lint:**
+```
+$ golangci-lint run --timeout=3m ./internal/cli/...
+0 issues.
+```
+(The `loadSessionWorktreeConfig` unused-`cmd` param is NOT an active finding — debt CARRIED per E10.)
+
+**E6 — Branch HEAD + Push:** see commit SHAs below (M6 commit + push to `feat/SPEC-SESSION-WORKTREE-001`).
+
+**E7 — Blocker Report:** none. The profile subverb mutation/read-only split was clean (no ambiguity): `runProfileSetup` is the only project-mutating subverb. The `delete` subverb mutates only the global profile dir (not the project tree), so per deliverable #5 it is correctly excluded from auto-entry.
+
+**E8 — RED → GREEN proof + falsification round-trip:**
+RED (verbatim, before `emitProfileScopeNotice` existed):
+```
+$ go test -run 'TestEmitProfileScopeNotice|...' ./internal/cli/
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/profile_worktree_test.go:70:2: undefined: emitProfileScopeNotice
+internal/cli/profile_worktree_test.go:109:2: undefined: emitProfileScopeNotice
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+GREEN: `ok github.com/modu-ai/moai-adk/internal/cli 0.659s`.
+Falsification round-trip (profile-dir-NOT-isolated notice is load-bearing): `TestEmitProfileScopeNotice_FalsificationRoundTrip` constructs the FALSE notice (`"... IS isolated by this entry"`), asserts it does NOT contain `NOT isolated`, then asserts the honest `emitProfileScopeNotice` output DOES — proving the clause is load-bearing. If the notice wording were mutated to claim the dir IS isolated, `TestEmitProfileScopeNotice_LoadBearing` would fail on the `strings.Contains(got, "NOT isolated")` assertion.
+
+**E9 — EC-7 read-only gate proof:** `TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry` swaps `sessionWorktreeGitWorktreeAdd` to a sentinel that `t.Fatal`s if invoked, sets the feature ON (`MOAI_SESSION_WORKTREE=1`), and invokes `profileListCmd.RunE` + `profileCurrentCmd.RunE`. The sentinel stays dormant → the materialize seam is not reached by read-only subverbs.
+
+**E10 — unused-cmd debt status: CARRIED.** `loadSessionWorktreeConfig(cmd)`'s `cmd` param remains unused. Reason: the profile command (M6's consumer) defines no `--root`/`--project` flag; profile setup resolves the project root via cwd (`os.Getwd()` + `filepath.Join(cwd, ".moai")`), so no flag improves on cwd. Closing the debt would require touching M2's `init` (which has `--root`) — out of M6 scope (Behavior #5 Scope Discipline). The lint baseline is clean (0 issues), so this is a documented future-proof, not an active defect.
+
+**Scope discipline (B8/B10):** touched ONLY `internal/cli/profile.go` (notice helper + `io` import) + `internal/cli/profile_setup.go` (runProfileSetup signature → named return + wiring block) + `internal/cli/profile_worktree_test.go` (NEW, 3 tests) + this progress.md §E.2 evidence append. spec.md/plan.md/acceptance.md/design.md/research.md body unchanged. `internal/cli/session_worktree.go` core logic UNCHANGED (reused `enterSessionWorktree`/`cleanupSessionWorktree`/`loadSessionWorktreeConfig` as-is; the unused-cmd debt in `loadSessionWorktreeConfig` was NOT closed — see E10). spec.md status stays `in-progress`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

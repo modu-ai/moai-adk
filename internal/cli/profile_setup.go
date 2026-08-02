@@ -220,7 +220,46 @@ func init() {
 
 // runProfileSetup runs the interactive profile configuration wizard.
 // The first question is language selection; all subsequent UI text is displayed in the chosen language.
-func runProfileSetup(cmd *cobra.Command, args []string) error {
+//
+// SPEC-SESSION-WORKTREE-001 M6/M4: session-worktree auto-entry + exit disposal.
+// Auto-entry is wired HERE (not in runProfileCmd / list / current / delete) so
+// it gates to the only profile subverb that mutates the PROJECT tree
+// (persistProjectConfig writes .moai/config/sections/*.yaml). Read-only
+// subverbs (list / current) and global-dir-only mutators (delete) do NOT
+// trigger auto-entry (EC-7). The auto-entry runs BEFORE any shared-state
+// mutation (REQ-SW-002). When the feature is OFF (default) the wrapper returns
+// "" and runProfileSetup is byte-identical to the baseline (REQ-SW-001).
+//
+// REQ-SW-017: the worktree scopes to the PROJECT, NEVER to the global profile
+// dir at ~/.moai/claude-profiles/. emitProfileScopeNotice states this
+// explicitly so the user is not misled into thinking the launch-ledger race is
+// solved. The profile dir remains GLOBAL; isolating it is out of scope (§3).
+//
+// The named return (err error) lets the deferred M4 cleanup derive cleanExit
+// (err == nil means exit 0). wtPath == "" makes cleanup a no-op.
+func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
+	// SPEC-SESSION-WORKTREE-001 M6: session-worktree auto-entry. Runs before
+	// any shared-state mutation (ReadPreferences / WritePreferences /
+	// persistProjectConfig). Mirrors the M2 init / M3 web wiring.
+	swCfg := loadSessionWorktreeConfig(cmd)
+	wtPath := enterSessionWorktree(swCfg, "profile", cmd.ErrOrStderr())
+	if wtPath != "" {
+		// REQ-SW-017: honest scope notice — names BOTH paths and states the
+		// profile dir is NOT isolated.
+		emitProfileScopeNotice(cmd.ErrOrStderr(), wtPath)
+		if cerr := os.Chdir(wtPath); cerr != nil {
+			// Chdir failure is a fail-back (REQ-SW-004): continue in the
+			// shared checkout. The worktree was materialized but unusable
+			// from this process.
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"moai: session-worktree chdir into %s failed (%v); continuing in shared checkout for %q\n",
+				wtPath, cerr, "profile")
+		}
+	}
+	defer func() {
+		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+	}()
+
 	profileName := "default"
 	if len(args) > 0 {
 		profileName = args[0]
