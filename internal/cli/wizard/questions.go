@@ -434,15 +434,14 @@ func harnessProfileOptions(profiles []string) []Option {
 // design_enabled, claude_design_enabled — are FIXED at their shipped true
 // defaults and no longer asked (removed 2026-08-03). Their values are seeded
 // by RunWithDefaults (see wizard.go), so interactive `moai init` writes the
-// true default for each without prompting. Only project_mode remains
-// interactive on this page.
+// true default for each without prompting. project_mode and the worktree
+// auto-create toggle remain interactive on this page.
 //
 // The constructor is named for the page it builds rather than for the retired
 // mode taxonomy (REQ-WIZ-018): no flag selects it any more.
 func Page3Questions(projectRoot string) []Question {
 	return []Question{
-		// B1 — project.mode. The only remaining interactive question on
-		// page 3.
+		// B1 — project.mode.
 		{
 			ID:          "project_mode",
 			Group:       "Quality & Workflow",
@@ -455,6 +454,20 @@ func Page3Questions(projectRoot string) []Question {
 			},
 			Default:  "personal",
 			Required: true,
+		},
+		// Worktree auto-create (Issue 3). Persisted to
+		// workflow.worktree.auto_create via the workflow seam. Default false
+		// matches the config default (internal/config/defaults.go AutoCreate:
+		// false). When enabled, `moai init` patches workflow.yaml so the
+		// orchestrator auto-creates an L1 worktree for run-phase isolation.
+		{
+			ID:          "worktree_auto_create",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable worktree auto-creation?",
+			Description: "When enabled, MoAI automatically creates an isolated git worktree for run-phase work. Default is off (Claude Code runtime handles L1 worktrees autonomously).",
+			Default:     "false",
+			Required:    false,
 		},
 	}
 }

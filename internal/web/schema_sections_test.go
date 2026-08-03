@@ -99,12 +99,13 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// Only llm remains as a schema-rendered section rendering form controls. The
-	// git_strategy section was removed from the web console (tab + panel), leaving
-	// llm as the sole surviving generic schema section; its config keys stay in
-	// git-strategy.yaml (defaults used) but are no longer web-editable.
+	// llm + workflow (restored Issue 3) are the schema-rendered sections
+	// rendering form controls. The git_strategy section was removed from the web
+	// console (tab + panel); its config keys stay in git-strategy.yaml (defaults
+	// used) but are no longer web-editable.
 	for _, name := range []string{
 		"llm.glm.models.high",
+		"workflow.worktree.auto_create",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("rendered page missing form control %q (surviving section)", name)
@@ -112,10 +113,12 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 
 	// 제외군 + removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + reclassified).
+	// workflow restored in Issue 3 — its controls ARE rendered, so it is NOT in
+	// this exclusion-prefix list.
 	for _, prefix := range []string{
 		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections removed from UI.
-		"workflow.", "harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections removed from UI.
+		"harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
 		// git_strategy section removed from the web console (config stays in yaml).
 		"git_strategy.",
 	} {
@@ -156,21 +159,38 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 }
 
-// TestSaveWorkflowRoutesThroughSeam은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 workflow
-// 섹션이 RouteExcluded로 재분류되어 web write path가 제거되었음을 검증한다.
-// POST /save의 workflow 필드 제출은 WriteSectionViaSeam에서 거부되고, 디스크의
-// workflow.yaml이 바이트 단위로 무변경이다 (REQ-WC-003 — config keys persist,
-// web write path removed).
+// TestSaveWorkflowRoutesThroughSeam은 AC-WC11-004의 행동 완결이다 (Issue 3 복구):
+// POST /save의 workflow 스칼라 편집이 yamlpatch seam으로 라우팅되어 대상 라인만
+// 변경되고 나머지 라인/주석이 보존된다 (REQ-WC11-005/017).
 func TestSaveWorkflowRoutesThroughSeam(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 	before := readSectionFile(t, root, "workflow")
 
-	postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
+	rec := postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
+	}
 
 	after := readSectionFile(t, root, "workflow")
-	if after != before {
-		t.Errorf("workflow.yaml mutated by a removed-section POST (M3 RouteExcluded must block the write):\nbefore:\n%s\nafter:\n%s", before, after)
+	if !strings.Contains(after, "plan: 31000") {
+		t.Errorf("workflow.token_budget.plan not persisted:\n%s", after)
 	}
+	// 주석 전량 보존 (AC-WC11-017).
+	if got, want := commentLines(after), commentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Error("workflow.yaml comments not preserved by seam write")
+	}
+}
+
+// commentLines extracts the comment-line sequence from a section file (used by
+// the workflow seam round-trip preservation check).
+func commentLines(s string) []string {
+	var out []string
+	for _, line := range strings.Split(s, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			out = append(out, strings.TrimSpace(line))
+		}
+	}
+	return out
 }
 
 // TestSaveLLMModeReadOnlyIgnored는 AC-WC11-013을 검증한다: mode/team_mode 변경
