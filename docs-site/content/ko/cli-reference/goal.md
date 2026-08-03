@@ -24,6 +24,14 @@ draft: false
 | `--json` | 기계 판독 JSON 출력 |
 | `--all` | (`status` 전용) 활성 세션뿐 아니라 모든 세션의 목표 나열 |
 
+## arm 플래그
+
+| 플래그 | 설명 |
+|--------|------|
+| `--max-turns <N>` | 턴 상한. `0` = 무한 (오토컴팩트 기반); 생략 시 기본 `30` (완전 호환). `0`은 `--max-duration` 또는 `--cost-cap` 중 하나를 필수로 요구 (arm 시점 fail-closed). |
+| `--max-duration <sec>` | 실행 시간 상한 (arm 시점 이후 초 단위). 무한 goal의 1차 실행 상한. |
+| `--cost-cap <value>` | `Ceiling`에 기록되는 비용 상한. 실제 적용은 후속 작업 (현재 호출/토큰 계산이 없음); 무한 goal은 `--max-duration`과 정체 가드로 여전히 묶인다. |
+
 ## 상태와 평가
 
 목표 상태는 `.moai/state/goal/<session-id>.json` (세션당 파일 1개)에 저장됩니다. Stop 훅 `moai hook stop-goal` 이 매 턴 종료마다 목표를 평가합니다.

@@ -24,6 +24,14 @@ draft: false
 | `--json` | 机器可读 JSON 输出 |
 | `--all` | (仅 `status`)不仅列出活动会话,还列出所有会话的目标 |
 
+## arm 旗标
+
+| 旗标 | 说明 |
+|--------|------|
+| `--max-turns <N>` | 回合上限。`0` = 无限(自动压缩驱动);省略时默认 `30`(完全向后兼容)。`0` 必须搭配 `--max-duration` 或 `--cost-cap`(arm 时 fail-closed)。 |
+| `--max-duration <sec>` | 实时上限(arm 时刻起的秒数)。无限 goal 的主要运行上限。 |
+| `--cost-cap <value>` | 记录到 `Ceiling` 的成本上限。强制执行是后续工作(当前无调用/令牌核算);无限 goal 仍由 `--max-duration` 和停滞防护约束。 |
+
 ## 状态与评估
 
 目标状态保存在 `.moai/state/goal/<session-id>.json`(每个会话 1 个文件)。Stop 钩子 `moai hook stop-goal` 在每个回合结束时评估目标。

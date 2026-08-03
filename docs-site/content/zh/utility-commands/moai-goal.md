@@ -21,7 +21,7 @@ draft: false
 - **机械条件(mechanical)**:由 shell 命令验证的条件。例:`go test ./... exits 0`。执行命令并观察退出码。
 - **模型评估条件(model-evaluated)**:由对 transcript 的判断验证的条件。例:`所有 AC 行记录为 PASS`。基于会话至今留下的内容进行评估。
 
-该循环是 v3 的第二根支柱 **智能体循环工程** 的通用引擎。goal 状态按会话保存到 `.moai/state/goal/<session-id>.json`(非共享文件),**回合上限(默认 30)** 使循环有界。达到上限时评估器给出 5 段判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)并停止阻断。
+该循环是 v3 的第二根支柱 **智能体循环工程** 的通用引擎。goal 状态按会话保存到 `.moai/state/goal/<session-id>.json`(非共享文件),**回合上限(默认 30)** 使循环有界。达到上限时评估器给出 5 段判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)并停止阻断。`--max-turns 0` 可启用一种跨越压缩边界持续运行的无限 goal,其实际上限由 `--max-duration`(运行时间)和停滞防护担任,而非回合数。仅 arm `--max-turns 0` 而不带任何实上限会在 arm 时被拒绝(fail-closed)。
 
 ## 动词(verbs)
 

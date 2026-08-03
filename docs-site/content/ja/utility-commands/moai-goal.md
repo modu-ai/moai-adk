@@ -21,7 +21,7 @@ draft: false
 - **機械的条件 (mechanical)**: シェルコマンドで検証される条件。例: `go test ./... exits 0`。コマンドを実行して終了コードを観察します。
 - **モデル評価条件 (model-evaluated)**: トランスクリプトに対する判断で検証される条件。例: `すべての AC 行が PASS として記録される`。セッションがこれまでに残した内容を根拠に評価します。
 
-このループが v3 の 2 つ目の柱、**エージェンティックループエンジニアリング** の汎用エンジンです。goal 状態は `.moai/state/goal/<session-id>.json` にセッションごとに保存され (共有ファイルではない)、**ターン上限 (デフォルト 30)** がループを有界にします。上限に達すると評価器は 5 セクション判定 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) を出し、ブロッキングを止めます。
+このループが v3 の 2 つ目の柱、**エージェンティックループエンジニアリング** の汎用エンジンです。goal 状態は `.moai/state/goal/<session-id>.json` にセッションごとに保存され (共有ファイルではない)、**ターン上限 (デフォルト 30)** がループを有界にします。上限に達すると評価器は 5 セクション判定 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) を出し、ブロッキングを止めます。`--max-turns 0` を指定すると、コンパクション境界を越えて持続する無限 goal が回り、ターン数の代わりに `--max-duration` (実時間) と停滞ガードが実際の上限になる。実上限なしに `--max-turns 0` を arm すると arm 時に拒否される (fail-closed)。
 
 ## 動詞 (verbs)
 
