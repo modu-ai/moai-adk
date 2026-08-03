@@ -56,7 +56,7 @@ draft: false
 // @MX:UPGRADE: switch to LRU when entry count exceeds 10k
 ```
 
-`@MX:UPGRADE` のないDEBTは終了条件がなく、**静かに腐敗** (rot) します。`moai mx query --kind DEBT --json` はこれを `"rotRisk": "no-trigger"` として表示します。腐敗シグナルは `@MX:UPGRADE` の不在であり、`@MX:CEILING` の不在は品質メモに過ぎず腐敗の基準ではありません。
+`@MX:UPGRADE` のないDEBTは終了条件がなく、**静かに腐敗** (rot) します。`moai mx query --kind DEBT --json` はこれを `"rotRisk": "no-trigger"` として表示します。腐敗シグナルは `@MX:UPGRADE` の不在であり、`@MX:CEILING` の不在は品質メモに過ぎず腐敗の基準ではありません。rotRisk フィールドのセマンティクスと、スキャナがこの値をどう埋めるかは [MX スキャナ内部構造 - rotRisk スコア](/ja/advanced/mx-scanner-internals#rotrisk-スコア)で解説します。
 
 > `@MX:TODO` はGREENステップで解決される未完了作業 (コードはまだ未完成) を、`@MX:DEBT` は完成し正確に動作するが明示的限界を持つ単純化 (コードは完成) を標識します。DEBTは複数のGREENステップにわたって正常に維持でき、TODOの「3回未解決でWARN昇格」ルールは適用されません。
 
