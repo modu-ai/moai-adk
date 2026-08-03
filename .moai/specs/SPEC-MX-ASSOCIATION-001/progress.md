@@ -51,11 +51,20 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase)_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-04
+```
+
+Run-phase independently verified by the orchestrator (8/8 verification matrix PASS): `go build ./...` exit 0; `go vet ./internal/mx/...` exit 0; AC test suite (`go test -run TestAC00 -v ./internal/mx/`) all ACs green; coverage 90.9% on `internal/mx`; `golangci-lint run --timeout=2m ./internal/mx/...` 0 issues; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; full `go test ./...` green modulo the known pre-existing `internal/web` flake (signal:terminated — unrelated to this SPEC's scope).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-04
+sync_commit_sha: "pending-backfill"
+```
 
 ## §F Phase 4 Mode Selection
 

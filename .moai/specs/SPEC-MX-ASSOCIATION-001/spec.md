@@ -2,7 +2,7 @@
 id: SPEC-MX-ASSOCIATION-001
 title: "Drive @MX spec_associations from the @MX:SPEC sub-line"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec
