@@ -2,7 +2,7 @@
 id: SPEC-RALPH-CONFIG-REDESIGN-001
 title: "Redesign ralph.yaml so every retained key has a live Go consumer (shrink inert YAML surface, wire the engine)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec

@@ -107,7 +107,25 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1 carries draft�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-08-04
+sync_commit_sha: "pending-backfill"
+changelog_entry_position: CHANGELOG.md `### Changed` (1 entry, single SPEC-ID occurrence)
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed  # 3-phase close merged into this sync commit
+  plan_md: n/a (no status field)
+  acceptance_md: n/a (no status field)
+  progress_md_run_signal: §E.3 already audit-ready from run-phase (unchanged)
+b12_self_test:
+  a_pre_emissiongrep: PASS  # grep -c 'SPEC-RALPH-CONFIG-REDESIGN-001' CHANGELOG.md == 0 before emission
+  b_ac_count_match: PASS  # 9 distinct AC IDs in acceptance.md (AC-RCR-001..009); CHANGELOG entry references "8/9 AC PASS + 1 DEFERRED" matching 8 PASS + 1 DEFERRED = 9
+  c_file_path_verification: PASS  # all 8 cited implementation file paths verified via ls before commit
+canary_compliance_check:
+  template_local_ralph_yaml_byte_identical: PASS  # AC-RCR-009 diff exit 0
+  stale_seconds_pipeline_absent: PASS  # AC-RCR-006 grep zero matches in config/types,loader,defaults
+  cross_platform_build: PASS  # go build ./... exit 0 (default + GOOS=windows GOARCH=amd64)
+
+Note: `sync_commit_sha` is the PLACEHOLDER `"pending-backfill"` — a commit cannot know its own SHA. The real SHA is backfilled in a follow-up commit after this sync PR merges, per the SHA-backfill exemption (same pattern used by SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 / SPEC-INFINITE-GOAL-001).
 
 ## §F Phase 4 Mode Selection
 
