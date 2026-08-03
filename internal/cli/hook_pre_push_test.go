@@ -373,13 +373,14 @@ func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
 	// +1 "stop-goal" (added by SPEC-GOAL-ENGINE-001) = 37.
 	// +3 "security-scan"/"security-turn"/"security-commit" (in-session security guardian) = 40.
 	// -1 the retired DB documentation-subsystem hook subcommand (SPEC-DB-RETIRE-001) = 39.
+	// +1 "session-start-compact" (SPEC-INFINITE-GOAL-001 REQ-5) = 40.
 	count := len(hookCmd.Commands())
-	if count != 39 {
+	if count != 40 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 39 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 40 subcommands, got %d: %v", count, names)
 	}
 }
 

@@ -370,6 +370,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"security-scan":                      true, // in-session security guardian L1: domain hook, not a Claude Code event
 		"security-turn":                      true, // in-session security guardian L2: domain hook, not a Claude Code event
 		"security-commit":                    true, // in-session security guardian L3: domain hook, not a Claude Code event
+		"session-start-compact":              true, // SPEC-INFINITE-GOAL-001 REQ-5: isolated-invocation domain hook (shares EventSessionStart; production firing via deps.go registration)
 	}
 
 	for _, cmd := range hookCmd.Commands() {
