@@ -277,7 +277,7 @@ claude        # launch Claude Code inside the project
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进入 worktree 由启动器负责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
-| `moai goal <arm\|status\|clear>` | Goal 引擎 CLI |
+| `moai goal <arm\|status\|clear\|render>` | Goal 引擎 CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | Harness 学习生命周期 |
 | `moai handoff <save\|list>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |

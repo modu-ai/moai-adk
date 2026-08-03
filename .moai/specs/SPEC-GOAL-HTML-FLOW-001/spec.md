@@ -2,7 +2,7 @@
 id: SPEC-GOAL-HTML-FLOW-001
 title: "HTML-first /moai goal flow — on-demand dashboard, plan-phase HTML report, resume re-arm UI"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec

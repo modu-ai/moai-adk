@@ -271,7 +271,7 @@ claude        # launch Claude Code inside the project
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守（worktree への移動はランチャーの役割） |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクルツール |
-| `moai goal <arm\|status\|clear>` | Goal エンジン CLI |
+| `moai goal <arm\|status\|clear\|render>` | Goal エンジン CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | harness 学習ライフサイクル |
 | `moai handoff <save\|list>` | セッションハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |

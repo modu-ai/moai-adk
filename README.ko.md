@@ -271,7 +271,7 @@ claude        # 프로젝트 안에서 Claude Code 실행
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (진입은 런처가 담당) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
-| `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |
+| `moai goal <arm\|status\|clear\|render>` | Goal 엔진 CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
 | `moai handoff <save\|list>` | 세션 핸드오프 기록 |
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
