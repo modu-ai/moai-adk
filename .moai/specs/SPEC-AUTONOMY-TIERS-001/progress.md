@@ -33,6 +33,32 @@
 | M6 | 11d2337a3 | template neutrality guard + errcheck fixes | AC-006 (no bypass/fully-autonomous default in template) |
 | M7 | 7c70f874a | interactive autonomy-tier wizard page (AutonomyTierQuestion + WizardResult.AutonomyTier + applyAutonomyTierFromWizard reusing EffectiveTierWithGates; ko/ja/zh translations) | AC-001 (interactive selector page + gating reuse) |
 | M8 | 3ab536a48 | moai web console autonomy-tier toggle (GET /autonomy/tiers handler + renderAutonomyToggle fragment, reusing TierToggleOptions) | AC-002 (console toggle surface + gating) |
+| M9 | a713a6894 | init applies tier bundle — gap-1 end-to-end wiring: ApplyAutonomyTierBundle consumes opts.AutonomyTier (EffectiveTierWithGates + TierDefaultMode + RenderTierPermissions reuse); semi-auto zero delta; initializer Step 3e; toolpolicy.WriteUserDefaultMode USER-scope fallback | AC-001/AC-007 (init selection now deploys the bundle — feature end-to-end functional); AC-003/AC-004 (renderer paths exercised via init) |
+| M10 | (this commit) | web toggle reachable from main console — gap-2 console 완성: render() injects an autonomy-toggle link before </main> so GET / reaches /autonomy/tiers (full inline templ embed deferred as UI polish) | AC-002 (toggle discoverable from the main console page) |
+
+### End-to-end wiring note (M9/M10)
+
+The 7 written ACs PASS at M7/M8, but the feature was NOT fully functional
+end-to-end — two wirings were missing within the user's "wizard/console 완성 +
+7/7 full" intent:
+
+- **Gap 1 (M9, ESSENTIAL)**: `applyAutonomyTierFromWizard` captured the effective
+  tier into `opts.AutonomyTier`, but the init deployment path never CONSUMED it
+  → no permission bundle was written → selecting a tier had NO effect on the
+  deployed permissions. M9 closes this: `ApplyAutonomyTierBundle` (new in
+  `internal/core/project/autonomy_bundle.go`) reuses the existing gating +
+  rendering core (no duplication) and is wired as initializer Step 3e. With a
+  project tool-policy.yaml → full `RenderTierPermissions` bundle; without (the
+  distributed default) → USER-scope `defaultMode` via the new
+  `toolpolicy.WriteUserDefaultMode` (same `RenderSettingsJSON` codegen). Semi-auto/
+  unset → zero delta (REQ-007). The feature is now end-to-end functional:
+  `moai init --autonomy-tier=automatic` actually deploys `defaultMode=auto`.
+- **Gap 2 (M10, console 완성)**: the `/autonomy/tiers` endpoint + toggle fragment
+  (M8) existed but were NOT reachable from the main console page — a user on
+  `moai web` never saw the toggle. M10 makes the toggle discoverable: `render()`
+  injects a link section before `</main>` so GET / reaches the toggle. The full
+  inline templ embed into the ~160KB generated `root_templ.go` monolith is
+  deferred as UI polish (the M10 contract is reachability, satisfied by the link).
 
 ### AC PASS/FAIL Matrix (E1)
 
