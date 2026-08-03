@@ -321,7 +321,13 @@ func inspectTranscript(ctx context.Context, path string) transcriptFacts {
 			facts.hasCustomTitle = true
 		case "user":
 			if facts.firstUserText == "" {
-				facts.firstUserText = transcriptContentText(rec.Message.Content)
+				text := transcriptContentText(rec.Message.Content)
+				// A slash-command turn is recorded as a user message wrapped in
+				// <local-command-caveat> tags. It is a command artifact, not a
+				// prompt — skip it so the FIRST real prompt defines the title.
+				if !isLocalCommandArtifact(text) {
+					facts.firstUserText = text
+				}
 			}
 		}
 
@@ -376,6 +382,23 @@ func transcriptContentText(raw json.RawMessage) string {
 // Word boundaries keep it from matching substrings (e.g. "ultrathinking").
 var directiveKeywordRE = regexp.MustCompile(`(?i)\bultrathink\.|\bultrathink\b|\bultracode\b`)
 
+// localCommandArtifactRE matches the tags Claude Code wraps a slash-command turn
+// in: <local-command-caveat>...</local-command-caveat> plus the command metadata
+// tags it carries (<command-name>, <command-message>, <command-args>,
+// <local-command-stdout>, <local-command-stderr>). A user message wrapped in
+// these tags is a command artifact, not a prompt. (?s) lets . span newlines so a
+// multi-line wrapper is consumed whole. Replaced with a space (not empty) so the
+// text on either side of the tags never fuses into one token.
+var localCommandArtifactRE = regexp.MustCompile(`(?s)<(?:local-command-caveat|command-name|command-message|command-args|local-command-stdout|local-command-stderr)>.*?</(?:local-command-caveat|command-name|command-message|command-args|local-command-stdout|local-command-stderr)>`)
+
+// isLocalCommandArtifact reports whether a user-record content string carries a
+// Claude Code slash-command wrapper. It is the cheapest reliable signal that a
+// transcript user record is a command artifact rather than a real prompt, used
+// by inspectTranscript to skip such records when selecting the first prompt.
+func isLocalCommandArtifact(text string) bool {
+	return strings.Contains(text, "<local-command-caveat>")
+}
+
 // segmentTerminators end the first sentence / first line of a prompt. Newline is
 // included so "first line" and "first sentence" collapse to a single earliest cut.
 var segmentTerminators = []rune{'.', '?', '!', '。', '？', '！', '\n'} // . ? ! 。 ？ ！ \n
@@ -391,6 +414,14 @@ var segmentTerminators = []rune{'.', '?', '!', '。', '？', '！', '\n'} // . ?
 // titleMinRunes runes.
 func deriveTitleFromPrompt(prompt string) string {
 	s := strings.TrimSpace(prompt)
+
+	// 0. Strip Claude Code local-command artifact tags (slash-command wrapper).
+	//    A turn recorded as <local-command-caveat>...<command-name>/x</command-name>
+	//    is a command artifact, not a prompt. Without this step the caveat prose
+	//    leaked into the title for every slash-command-started session (e.g.
+	//    /clear produced "Caveat: The messages below are genera…").
+	s = localCommandArtifactRE.ReplaceAllString(s, " ")
+	s = strings.TrimSpace(s)
 
 	// 1a. Strip a leading slash-command token (e.g. "/moai plan ..." -> "plan ...").
 	//     A bare slash command (e.g. "/clear") reduces to "".
