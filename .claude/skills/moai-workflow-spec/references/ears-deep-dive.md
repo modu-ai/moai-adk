@@ -32,17 +32,19 @@ Test strategy: Event simulation with expected response verification. Trigger the
 
 ## State-Driven Requirements — Conditional Behavior
 
-Format: "IF condition is true THEN action executes"
+Format: "**While** <state>, the <subject> shall <behavior>"
 
 Use case: Access control, state machines, conditional business logic.
 
 Examples:
 
-- Account status checks (IF active THEN allow login)
-- Inventory verification (IF stock > 0 THEN allow purchase)
-- Permission checks (IF admin role THEN show admin panel)
+- Account status checks (WHILE the account is active, the system shall allow login)
+- Inventory verification (WHILE stock > 0, the system shall allow purchase)
+- Permission checks (WHILE the user holds the admin role, the system shall show the admin panel)
 
 Test strategy: State setup with conditional behavior verification. Set up each state, verify the conditional branch.
+
+> **IF/THEN deprecated callout**: An earlier version of this guide described state-conditioned behavior as `IF <condition> THEN <action>`. That modality is **deprecated** under GEARS (the canonical SPEC notation as of v3.0.0). State-conditioned behavior is authored with the **While** form above; event-conditioned behavior that used to be written as `IF/THEN` is authored with the `When <event-detected>` form (see the Event-Driven section above). The lint engine emits a `LegacyEARSKeyword` finding on residual `IF/THEN` in new SPECs. See the SKILL.md IF/THEN deprecated callout for the full rationale and the backward-compatibility window.
 
 ## Unwanted Requirements — Prohibited Actions
 

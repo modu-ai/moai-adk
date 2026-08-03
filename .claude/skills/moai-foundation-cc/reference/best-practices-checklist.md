@@ -67,7 +67,7 @@ name Field:
 description Field:
 - [ ] Clearly describes what the skill does
 - [ ] Includes specific trigger scenarios
-- [ ] Maximum 1024 characters in length
+- [ ] Maximum 1,536 characters (combined description + when_to_use)
 - [ ] Avoids vague or generic language
 - [ ] Includes context for when to use the skill
 

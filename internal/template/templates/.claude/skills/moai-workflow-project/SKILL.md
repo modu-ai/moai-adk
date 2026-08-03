@@ -23,7 +23,7 @@ metadata:
   modularized: "true"
   tags: "workflow, project, documentation, initialization, templates, boilerplate, scaffolding, jit-docs, docs-generation"
   aliases: "moai-workflow-project"
-  related-skills: "moai-workflow-templates, moai-docs-generation, moai-workflow-jit-docs"
+  related-skills: "moai-workflow-spec, moai-workflow-docs-claim-check"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -233,7 +233,8 @@ JIT docs (just in time docs) — on-demand documentation discovery and loading b
 
 ### Primary Tools
 
-- WebFetch / WebSearch: Latest online documentation and official library docs
+- WebSearch/WebFetch (``, ``): Official library docs
+- WebFetch / WebSearch: Latest online documentation
 - Read, Grep, Glob: Local project documentation
 
 ### Trigger Patterns
@@ -246,6 +247,7 @@ JIT docs (just in time docs) — on-demand documentation discovery and loading b
 ### Loading Priority
 
 1. Local project docs (`.moai/`, README, SPEC documents)
-2. WebSearch + WebFetch (official documentation and latest online resources)
+2. WebSearch/WebFetch (official, version-matched library docs)
+3. WebSearch + WebFetch (latest online resources)
 
 Token budget: 5000 tokens per JIT load. Summarize if source exceeds budget.

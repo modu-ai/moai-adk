@@ -150,8 +150,8 @@ const skillMoaiPrefix = ".claude/skills/moai/"
 //     series prefixes require explicit extension here + cross-reference to
 //     CLAUDE.local.md §25.1.
 //   - C2 (REQ/AC token prefix-allowlist): only known project-internal REQ/AC
-//     prefixes — `ATR`, `WO`, `COORD`, `UNP`, `LNC`, `TII`. New SPEC families
-//     add their prefix here.
+//     prefixes — `ATR`, `WO`, `COORD`, `UNP`, `LNC`, `TII`, `HRN`, `ORC`. New
+//     SPEC families add their prefix here.
 //   - C3 (Audit citation): `Audit N Finding AX` / `Audit 3` wrappers — same
 //     as AC-TII-001 narrow form.
 //   - C4 (specific date or Finding marker): the spec.md §A.4 narrow grep
@@ -172,7 +172,7 @@ var leakClasses = []leakClass{
 	},
 	{
 		name:    "C2-req-ac-internal-prefix",
-		pattern: regexp.MustCompile(`\b(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}\b`),
+		pattern: regexp.MustCompile(`\b(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII|HRN|ORC)-[0-9]{3}\b`),
 	},
 	{
 		name:    "C3-audit-citation",
@@ -467,23 +467,17 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		SpecID:    "internal/core/handler.go",
 		Rationale: "Illustrative example Go path in mixed-language modified-files list example (EXCL-SBN-003 keep-list)",
 	},
-	// --- C1 whole-tree V3R2-5 expansion: regex-example + mirror-parity-enforced retained tokens ---
+	// --- C1 whole-tree V3R2-5 expansion: mirror-parity-enforced retained tokens ---
 	//
-	// When C1 broadened to SPEC-V3R[2-6]- (whole-tree), two surfaces retain a
+	// When C1 broadened to SPEC-V3R[2-6]- (whole-tree), one surface retains a
 	// legitimate SPEC-V3R5 token that must NOT be flagged:
-	//   1. plan-auditor.md regex-example: SPEC-V3R5-WO-001 is a multi-segment
-	//      SPEC-ID grammar illustration, not an internal-provenance leak.
-	//   2. spec-workflow.md: byte-parity-enforced with its .claude/ source
-	//      (rule_template_mirror_test allowlist). Its internal provenance is
-	//      retained on BOTH trees by design; stripping the template mirror
-	//      alone would break mirror parity, so the tokens are allowlisted here.
-	{
-		File:      ".claude/agents/moai/plan-auditor.md",
-		LineStart: 0,
-		LineEnd:   0,
-		SpecID:    "SPEC-V3R5-WO-001",
-		Rationale: "Multi-segment SPEC-ID grammar illustration in the D7-1 extraction regex example (not internal-provenance leak)",
-	},
+	//   spec-workflow.md: byte-parity-enforced with its .claude/ source
+	//   (rule_template_mirror_test allowlist). Its internal provenance is
+	//   retained on BOTH trees by design; stripping the template mirror
+	//   alone would break mirror parity, so the tokens are allowlisted here.
+	//   (The former plan-auditor.md SPEC-V3R5-WO-001 regex-example illustration
+	//   was genericized to a neutral placeholder; its allowlist entry was
+	//   dropped at that time.)
 	{
 		File:      ".claude/rules/moai/workflow/spec-workflow.md",
 		LineStart: 0,

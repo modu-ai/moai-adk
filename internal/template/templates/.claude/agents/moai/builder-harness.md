@@ -28,7 +28,7 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 <!-- @MX:REASON: Every artifact creation request (agent/skill/plugin/command/hook/mcp-server/lsp-server) resolves to this dispatch table -->
 **artifact_type**: Must be one of: `agent | skill | plugin | command | hook | mcp-server | lsp-server`
 
-<!-- @MX:WARN: [AUTO] trigger-union coverage — REQ-ORC-001-017 forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
+<!-- @MX:WARN: [AUTO] trigger-union coverage — forbids trigger drops from builder-agent + builder-skill + builder-plugin union -->
 <!-- @MX:REASON: a CI test enforces no trigger keyword is dropped vs the three source agents; any rewrite of this description row must preserve all tokens -->
 
 ## Artifact Type Dispatch Table

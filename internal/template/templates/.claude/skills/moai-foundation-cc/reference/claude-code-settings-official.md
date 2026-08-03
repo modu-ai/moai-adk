@@ -1,4 +1,12 @@
-# Claude Code Settings - Official Documentation Reference
+# Claude Code Settings - Reference
+
+> **Illustrative reference, NOT the official Claude Code specification.**
+> This file is an MoAI-authored summary intended for orientation only. The
+> authoritative, up-to-date settings schema lives in the official Claude Code
+> documentation at https://code.claude.com/docs/en/settings — consult that
+> source before relying on any field for a production `settings.json`. Some
+> blocks below are illustrative patterns rather than real `settings.json`
+> keys; the headers flag those.
 
 Source: https://code.claude.com/docs/en/settings
 
@@ -72,7 +80,7 @@ The `model` field sets the default model. Only this single field is valid in set
 
 ### Permission System
 
-Permission Modes: `default`, `plan`, `acceptEdits`, `dontAsk`, `bypassPermissions`.
+Permission Modes: `default`, `plan`, `acceptEdits`, `bypassPermissions`.
 
 Permissions use allow/ask/deny lists with tool-path patterns:
 ```json
@@ -205,31 +213,14 @@ Hooks Setup:
 
 ### Sub-agent Configuration
 
-Sub-agent Settings:
-```json
-{
- "subagents": {
- "defaultModel": "claude-sonnet-5",
- "defaultPermissionMode": "default",
- "maxConcurrentTasks": 5,
- "taskTimeout": 300000,
- "allowedSubagents": [
- "spec-builder",
- "ddd-implementer",
- "security-expert",
- "backend-expert",
- "frontend-expert"
- ],
- "customSubagents": {
- "custom-analyzer": {
- "description": "Custom code analysis agent",
- "tools": ["Read", "Grep", "Bash"],
- "model": "claude-sonnet-5"
- }
- }
- }
-}
-```
+Claude Code does NOT expose a `subagents` block in `settings.json`. Sub-agents
+are configured as individual files under `.claude/agents/*.md` (frontmatter:
+`name`, `description`, `tools`, `model`, etc.) and spawned via the `Agent`
+tool. The earlier `subagents` / `defaultModel` / `allowedSubagents` /
+`customSubagents` schema that appeared here was illustrative-only and did not
+correspond to a real `settings.json` key — it has been removed. See
+`claude-code-sub-agents-official.md` for the authoritative sub-agent
+authoring surface.
 
 ### Plugin System
 
@@ -282,219 +273,59 @@ Standard Locations:
 
 ### Settings Management Commands
 
-Configuration Commands:
+> The commands below are illustrative. Claude Code's real CLI surface is
+> narrower than this list — it exposes `claude config set`/`get`/`list` for
+> a small set of keys plus the interactive `/config` command inside the
+> TUI. The `--environment` flag, `use-environment`, `list-environments`,
+> and any `maxTokens` setter shown below do not exist in the real CLI
+> (there is no `maxTokens` field). Treat this block as a pattern sketch,
+> not a copy-paste source; verify against
+> https://code.claude.com/docs/en/settings.
+
+Configuration Commands (illustrative):
 ```bash
 # View current settings
-claude settings show
-claude settings show --model
-claude settings show --permissions
+claude config list
+claude config get model
 
-# Set individual settings
+# Set individual settings (real keys only — model, permissions, etc.)
 claude config set model "claude-sonnet-5"
-claude config set maxTokens 200000
-claude config set permissionMode "default"
 
-# Edit settings file
-claude config edit
-claude config edit --local
-claude config edit --user
-
-# Reset settings
-claude config reset
-claude config reset --local
-claude config reset --user
-
-# Validate settings
-claude config validate
-claude config validate --strict
+# Edit settings file directly
+$EDITOR .claude/settings.json
 ```
 
-Environment-Specific Settings:
-```bash
-# Set environment-specific settings
-claude config set --environment development model "claude-haiku-4-5-20251001"
-claude config set --environment production maxTokens 200000
-
-# Switch between environments
-claude config use-environment development
-claude config use-environment production
-
-# List available environments
-claude config list-environments
-```
+For interactive configuration, use the `/config` command inside a Claude
+Code session — it writes to the appropriate settings scope (local/project/
+user) automatically.
 
 ## Advanced Configuration
 
-### Context Management
-
-Context Window Settings:
-```json
-{
- "context": {
- "maxTokens": 200000,
- "compressionThreshold": 150000,
- "compressionStrategy": "importance-based",
- "memoryIntegration": true,
- "cacheStrategy": {
- "enabled": true,
- "maxSize": "100MB",
- "ttl": 3600
- }
- }
-}
-```
-
-### Logging and Debugging
-
-Logging Configuration:
-```json
-{
- "logging": {
- "level": "info",
- "file": "~/.claude/logs/claude.log",
- "maxFileSize": "10MB",
- "maxFiles": 5,
- "format": "json",
- "include": [
- "tool_usage",
- "agent_delegation",
- "errors",
- "performance"
- ],
- "exclude": [
- "sensitive_data"
- ]
- }
-}
-```
-
-Debug Settings:
-```json
-{
- "debug": {
- "enabled": false,
- "verboseOutput": false,
- "timingInfo": false,
- "tokenUsage": true,
- "stackTraces": false,
- "apiCalls": false
- }
-}
-```
-
-### Performance Optimization
-
-Performance Settings:
-```json
-{
- "performance": {
- "parallelExecution": true,
- "maxConcurrency": 5,
- "caching": {
- "enabled": true,
- "strategy": "lru",
- "maxSize": "500MB"
- },
- "optimization": {
- "contextCompression": true,
- "responseStreaming": false,
- "batchProcessing": true
- }
- }
-}
-```
+> The blocks that appeared here earlier — `context.maxTokens` /
+> `compressionThreshold` / `cacheStrategy`, `logging`, `debug`, and
+> `performance` top-level settings — were illustrative-only and did not
+> correspond to real `settings.json` keys. Claude Code does not expose a
+> `context`, `logging`, `debug`, or `performance` top-level object. They have
+> been removed. Context-window behavior is governed by the runtime and by
+> `cleanupPeriodDays`; logging is governed by the runtime's debug flags
+> (`claude --debug ...`) rather than a `settings.json` block.
 
 ## Integration Settings
 
-### Git Integration
-
-Git Configuration:
-```json
-{
- "git": {
- "autoCommit": false,
- "autoPush": false,
- "branchStrategy": "feature-branch",
- "commitTemplate": {
- "prefix": "feat:",
- "includeScope": true,
- "includeBody": true
- },
- "hooks": {
- "preCommit": "lint && test",
- "prePush": "security-scan"
- }
- }
-}
-```
-
-### CI/CD Integration
-
-CI/CD Settings:
-```json
-{
- "cicd": {
- "platform": "github-actions",
- "configPath": ".github/workflows/",
- "autoGenerate": false,
- "pipelines": {
- "test": {
- "trigger": ["push", "pull_request"],
- "steps": ["lint", "test", "security-scan"]
- },
- "deploy": {
- "trigger": ["release"],
- "steps": ["build", "deploy"]
- }
- }
- }
-}
-```
+> The `git` and `cicd` top-level settings blocks that appeared here earlier
+> were illustrative-only and did not correspond to real `settings.json` keys.
+> Claude Code does not commit, push, or generate CI pipelines from a
+> `settings.json` block; git/CI behavior is driven by your shell, your
+> repository hooks, and the MoAI orchestrator. They have been removed.
 
 ## Security Configuration
 
-### Security Settings
-
-Security Configuration:
-```json
-{
- "security": {
- "level": "standard",
- "encryption": {
- "enabled": true,
- "algorithm": "AES-256-GCM"
- },
- "accessControl": {
- "authentication": "required",
- "authorization": "role-based"
- },
- "audit": {
- "enabled": true,
- "logLevel": "detailed",
- "retention": "90d"
- }
- }
-}
-```
-
-### Privacy Settings
-
-Privacy Configuration:
-```json
-{
- "privacy": {
- "dataCollection": "minimal",
- "analytics": false,
- "crashReporting": true,
- "usageStatistics": false,
- "dataRetention": {
- "logs": "30d",
- "cache": "7d",
- "temp": "1d"
- }
- }
-}
-```
+> The `security` and `privacy` top-level settings blocks that appeared here
+> earlier were illustrative-only and did not correspond to real
+> `settings.json` keys. Claude Code's security surface is the
+> `permissions` block (allow/ask/deny lists, permission modes), sandboxing
+> (`sandbox`), and `disableBypassPermissionsMode` — not an inline
+> `security`/`privacy` object. They have been removed.
 
 ## Best Practices
 
@@ -520,42 +351,15 @@ Performance Practices:
 
 ### Organization Standards
 
-Team Configuration:
-```json
-{
- "team": {
- "standards": {
- "model": "claude-sonnet-5",
- "testCoverage": 90,
- "codeStyle": "prettier",
- "documentation": "required"
- },
- "workflow": {
- "branching": "gitflow",
- "reviews": "required",
- "ciCd": "automated"
- }
- }
-}
-```
+> The `team` and `enterprise` top-level settings blocks that appeared here
+> earlier were illustrative-only and did not correspond to real
+> `settings.json` keys. Claude Code's enterprise surface uses separate
+> managed-settings files (`/etc/claude/settings.json` /
+> `/Library/Application Support/ClaudeCode/managed-settings.json`) plus
+> `disableBypassPermissionsMode`, not an inline `team`/`enterprise` object
+> with SOC2/ISO27001 compliance fields. They have been removed. See the
+> official IAM documentation at
+> https://code.claude.com/docs/en/iam for the real enterprise/managed
+> settings surface.
 
-Enterprise Policies:
-```json
-{
- "enterprise": {
- "policies": {
- "allowedModels": ["claude-sonnet-5"],
- "maxTokens": 100000,
- "restrictedTools": ["Bash", "WebFetch"],
- "auditRequired": true
- },
- "compliance": {
- "standards": ["SOC2", "ISO27001"],
- "dataResidency": "us-east-1",
- "retentionPolicy": "7y"
- }
- }
-}
-```
-
-This comprehensive reference provides all the information needed to configure Claude Code effectively for any use case, from personal development to enterprise deployment.
+This reference orients you to the categories of Claude Code configuration. For the authoritative and current schema — including fields added after this file was last reviewed — consult the official documentation at https://code.claude.com/docs/en/settings.

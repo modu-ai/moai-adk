@@ -281,11 +281,14 @@ Technical:
 - Examples: "User Authentication System", "Payment Processing API"
 
 **Status Values**:
-- Planned: SPEC created, not yet started
-- In Progress: Implementation in RUN phase
-- Completed: All success criteria met
-- Blocked: Waiting for dependency or decision
-- Deprecated: Replaced by newer SPEC
+
+The `status` field uses the canonical 8-value enum owned by `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum (8 values). The list below is illustrative only; when it diverges from the schema SSOT, the schema wins.
+
+- Canonical enum (8 values): `draft`, `planned` (legacy-optional), `in-progress`, `implemented`, `completed`, `superseded`, `archived`, `rejected`
+- Active V3R6 flow: `draft → in-progress → implemented → completed` (manager-develop performs `draft → in-progress` on the first run-phase commit)
+- Terminal states: `superseded` (replaced by a newer SPEC), `archived`, `rejected`
+
+> The legacy 5-value list that previously appeared here (`Planned / In Progress / Completed / Blocked / Deprecated`) is superseded. `Blocked` and `Deprecated` are NOT members of the canonical enum — a blocked SPEC stays at its current status and surfaces the blocker through other channels, and a replaced SPEC uses `superseded`. See the schema SSOT for the authoritative list and the Status Transition Ownership Matrix.
 
 **Priority Levels**:
 - High: Critical for MVP, blocking dependencies
@@ -628,7 +631,9 @@ Full Stack Feature Complete
 
 ### Token Budget Management
 
-**PLAN Phase Token Usage** (~30% of 200K):
+The per-phase token shares below are fractions of the model's context window. The window is **model-class-dependent** — 200K for Sonnet/Opus-standard and Haiku, 256K for Fable, 1M for Opus 5 / Opus 4.8 / GLM-5.2. Treat "the budget" as the model-class threshold from `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets, NOT a fixed 200K. A 1M-context model tolerates a proportionally larger absolute spend before the `/clear` handoff threshold fires.
+
+**PLAN Phase Token Usage** (~30% of the active window):
 - User input analysis: 5K tokens
 - Requirement clarification dialogue: 15K tokens
 - EARS pattern generation: 10K tokens
@@ -638,7 +643,7 @@ Full Stack Feature Complete
 
 **Strategy**: Execute /clear after SPEC document saved to disk
 
-**RUN Phase Token Usage** (~60% of 200K):
+**RUN Phase Token Usage** (~60% of the active window):
 - SPEC document loading: 5K tokens
 - DDD cycle execution: 100K tokens
 - Code generation: 20K tokens
@@ -646,7 +651,7 @@ Full Stack Feature Complete
 - Quality validation: 10K tokens
 - Buffer: 30K tokens
 
-**SYNC Phase Token Usage** (~10% of 200K):
+**SYNC Phase Token Usage** (~10% of the active window):
 - Documentation generation: 10K tokens
 - API spec updates: 5K tokens
 - Commit message generation: 2K tokens

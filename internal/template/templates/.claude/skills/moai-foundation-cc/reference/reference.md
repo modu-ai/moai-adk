@@ -6,7 +6,7 @@
 
 Frontmatter Fields:
 - `name` (required): Skill identifier in kebab-case, max 64 characters
-- `description` (required): One-line description, max 1024 characters
+- `description` (required): One-line description, max 1,536 characters (combined description + when_to_use)
 - `version`: Semantic version (e.g., "2.0.0")
 - `tools`: Comma-separated list of allowed tools
 - `modularized`: Boolean indicating modular file structure

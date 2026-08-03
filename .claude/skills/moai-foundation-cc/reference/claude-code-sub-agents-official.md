@@ -78,7 +78,7 @@ Optional Fields:
 
 - model: Model alias (sonnet, opus, haiku) or 'inherit' to use same model as main conversation. If omitted, uses configured default (usually sonnet).
 
-- permissionMode: Controls permission handling. Valid values: `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan`, `ignore`.
+- permissionMode: Controls permission handling. Valid values: `default`, `plan`, `acceptEdits`, `bypassPermissions` (these are the only real Claude Code permission modes). The earlier list also named `dontAsk` and `ignore` — those are NOT real Claude Code modes and have been removed. NOTE: the spawn-time `mode` parameter on `Task`/`Agent` is **deprecated and ignored since Claude Code v2.1.213** — subagents inherit the parent session's permission mode, and a parent in `bypassPermissions`/`acceptEdits` takes precedence and cannot be overridden. A spawned child's read-only scoping therefore rests on **tool restriction** (the inherently read-only `Explore`, or a `tools:` list omitting Write/Edit/NotebookEdit), never on the deprecated spawn-time `mode` parameter.
 
 - skills: Comma-separated list of skill names to auto-load when agent is invoked. Skills are NOT inherited from parent.
 

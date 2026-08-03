@@ -1,7 +1,7 @@
-# yoda - Mission & Strategy
+# {{PROJECT_NAME}} - Mission & Strategy
 
 ## What problem do we solve?
-AI-powered content generation platform for educators and authors
+{{PROJECT_DESCRIPTION}}
 
 ## Who are our users?
 - Primary users: {{PRIMARY_USERS}}

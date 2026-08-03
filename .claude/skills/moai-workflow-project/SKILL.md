@@ -23,7 +23,7 @@ metadata:
   modularized: "true"
   tags: "workflow, project, documentation, initialization, templates, boilerplate, scaffolding, jit-docs, docs-generation"
   aliases: "moai-workflow-project"
-  related-skills: "moai-workflow-templates, moai-docs-generation, moai-workflow-jit-docs"
+  related-skills: "moai-workflow-spec, moai-workflow-docs-claim-check"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

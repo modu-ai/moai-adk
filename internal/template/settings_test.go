@@ -398,8 +398,12 @@ func TestSettingsTemplatePermissions(t *testing.T) {
 		t.Fatal("missing permissions section")
 	}
 
-	if perms["defaultMode"] != "acceptEdits" {
-		t.Errorf("permissions.defaultMode = %v, want %q", perms["defaultMode"], "acceptEdits")
+	// CLAUDE.local.md §22.1: the template ships defaultMode UNSPECIFIED so
+	// distributed user projects inherit Claude Code's safe "default"
+	// (prompt-each-time) mode. The maintainer's acceptEdits/bypassPermissions
+	// preference lives in settings.local.json, not the rendered template.
+	if mode, ok := perms["defaultMode"]; ok {
+		t.Errorf("permissions.defaultMode should be absent (template ships unspecified per CLAUDE.local.md §22.1; distributed users get Claude Code's safe default), got %q", mode)
 	}
 
 	allow, ok := perms["allow"].([]any)

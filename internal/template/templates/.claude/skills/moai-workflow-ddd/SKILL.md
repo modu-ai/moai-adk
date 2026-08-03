@@ -55,12 +55,12 @@ When to Use DDD:
 - Technical debt reduction in production systems
 - API migration and deprecation handling
 - Code modernization projects
-- When DDD is not applicable because code already exists
 - Greenfield projects (with adapted cycle - see below)
 
 When NOT to Use DDD:
 
 - When behavior changes are required (modify SPEC first)
+- When the code already exists and the goal is behavior change rather than behavior-preserving refactoring (DDD preserves behavior; for new behavior, modify the SPEC first, or use TDD)
 
 Greenfield Project Adaptation:
 
@@ -242,7 +242,7 @@ After each transformation:
 
 ### Standard DDD Session
 
-When executing DDD through moai:run in DDD mode:
+When executing DDD through moai:2-run in DDD mode:
 
 Step 1 - Initial Assessment:
 
@@ -284,7 +284,7 @@ For complex refactoring requiring multiple iterations:
 
 - Set maximum loop iterations based on scope
 - Each loop focuses on one refactoring target
-- Exit conditions: all targets addressed or iteration limit reached
+- Exit conditions: all targets adddessed or iteration limit reached
 - Progress tracking through TODO list updates
 
 ---
@@ -311,11 +311,11 @@ Structure Improvement (Goals):
 
 Apply TRUST 5 framework with DDD focus:
 
-- Tested: Characterization test coverage adequate
+- Testability: Characterization test coverage adequate
 - Readability: Naming and structure improvements verified
-- Unified: Style and structure consistent with the surrounding code
+- Understandability: Domain boundaries clearer
 - Security: No new vulnerabilities introduced
-- Trackable: All changes documented and traceable
+- Transparency: All changes documented and traceable
 
 ---
 
@@ -389,6 +389,7 @@ When DDD session encounters issues:
 
 Version: 1.0.0
 Status: Active
+Last Updated: 2026-01-16
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

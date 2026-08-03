@@ -20,7 +20,7 @@ Core Format: YAML frontmatter + markdown content with progressive disclosure. Na
 ```yaml
 ---
 name: skill-name # Required: kebab-case, max 64 chars
-description: Specific description of skill purpose and trigger scenarios (max 1024 chars) # Required
+description: Specific description of skill purpose and trigger scenarios (max 1,536 chars combined description + when_to_use) # Required
 allowed-tools: tool1, tool2, tool3 # Optional: comma-separated, minimal set
 version: 1.0.0 # Optional: semantic versioning
 tags: [domain, category, purpose] # Optional: categorization
@@ -117,7 +117,7 @@ Examples:
 
 #### `description` (String)
 Format: Natural language description
-Length: Maximum 1024 characters
+Length: Maximum 1,536 characters (combined description + when_to_use)
 Content: What the skill does + specific trigger scenarios
 Examples:
 - `Extract and structure information from PDF documents for analysis and processing. Use when you need to analyze PDF content, extract tables, or convert PDF text to structured data.`
@@ -137,7 +137,9 @@ allowed-tools: Read, WebFetch
 # CORRECT: Multiple tools for analysis
 allowed-tools: Read, Grep, Glob, WebFetch
 
-# WRONG: YAML array format
+# AVOID in MoAI: YAML array format
+# (CSV is the MoAI convention; YAML arrays are also valid since v2.1.0,
+#  but MoAI standardizes on CSV for tool lists to match agent-authoring.md)
 allowed-tools: [Read, Grep, Glob]
 
 # WRONG: Overly permissive
@@ -408,7 +410,7 @@ examples.md (unlimited):
 
 Frontmatter Validation:
 - [ ] Name uses kebab-case (64 chars max)
-- [ ] Description specific and under 1024 chars
+- [ ] Description specific and under 1,536 chars (combined description + when_to_use)
 - [ ] allowed-tools follows principle of least privilege
 - [ ] YAML syntax valid (no parsing errors)
 - [ ] No deprecated or invalid fields
@@ -461,11 +463,12 @@ User Experience:
 
 Invalid Array Format:
 ```yaml
-# WRONG: YAML array syntax
-allowed-tools: [Read, Write, Bash]
-
-# CORRECT: Comma-separated string
+# MoAI convention: CSV string
 allowed-tools: Read, Write, Bash
+
+# Also valid since v2.1.0 (YAML array), but NOT the MoAI convention
+# for tool lists — agent-authoring.md standardizes on CSV:
+allowed-tools: [Read, Write, Bash]
 ```
 
 Missing Required Fields:

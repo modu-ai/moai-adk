@@ -1,8 +1,26 @@
 # Claude Code Sub-agents Examples Collection
 
+> **IMPORTANT — these are GENERIC Claude-Code-ecosystem illustrations, NOT
+> the MoAI retained agent catalog.** The tiered `{domain}-{role}` naming
+> used throughout this file (`code-backend`, `code-frontend`, `core-quality`,
+> `security-expert`, `workflow-ddd`, etc.) is a generic Claude-Code
+> authoring pattern shown here for teaching purposes. It does NOT describe
+> MoAI's shipped agents, and several of the names here (`security-expert`,
+> `core-quality`, etc.) collide with names that are **archived and MUST NOT
+> be spawned** in MoAI (see `CLAUDE.md §4 Archived Agents`).
+>
+> **For the real MoAI agent surface**, consult the flat 11-agent retained
+> catalog at
+> `../../moai-foundation-core/modules/agents-reference.md`
+> (10 MoAI-custom managers/auditors/builders/advisor/design/e2e + the
+> Anthropic built-in `Explore`). MoAI does NOT use the tiered
+> `{domain}-{role}` scheme; it uses a flat `manager-*` / `*-auditor` /
+> `builder-*` / `super-advisor` / `Explore` catalog with `Agent(general-purpose)`
+> per-spawn specialists carrying domain-specific instructions.
+
 Comprehensive collection of real-world sub-agent examples covering various domains, complexity levels, and specialization patterns, all following official Claude Code standards.
 
-Purpose: Practical examples and templates for sub-agent creation
+Purpose: Practical examples and templates for sub-agent creation (generic Claude-Code patterns — see header disclaimer above)
 Target: Sub-agent developers and Claude Code users
 Last Updated: 2025-11-25
 Version: 2.0.0
@@ -1179,7 +1197,7 @@ TDD Quality Gates:
 - [ ] Implementation passes all quality gates
 - [ ] Code follows established style guidelines
 - [ ] Performance benchmarks meet requirements
-- [ ] Security considerations are adddessed
+- [ ] Security considerations are addressed
 - [ ] Documentation is comprehensive and accurate
 
 ### Coverage Requirements
