@@ -50,6 +50,13 @@ type WizardResult struct {
 	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (fixed default)
 	DesignEnabled             bool   // design.enabled: true (fixed default, no longer asked)
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (fixed default, no longer asked)
+
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): autonomy-tier selection from
+	// the interactive wizard page. semi-auto is the pre-selected default
+	// (REQ-006). The effective tier is resolved at apply time (init.go) through
+	// config.EffectiveTierWithGates so the sandbox-proof + kill-switch gating is
+	// not duplicated here.
+	AutonomyTier string
 }
 
 // QuestionType represents the type of wizard question.

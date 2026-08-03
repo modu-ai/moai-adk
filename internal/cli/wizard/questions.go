@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // The wizard question set is split across these constructors:
@@ -297,10 +299,39 @@ func ReconfigureQuestions(projectRoot string) []Question {
 func InitQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	page3 := Page3Questions(projectRoot)
-	all := make([]Question, 0, len(base)+len(page3))
+	all := make([]Question, 0, len(base)+len(page3)+1)
 	all = append(all, base...)
 	all = append(all, page3...)
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): the interactive autonomy-tier
+	// selector page, appended after the Quality & Workflow page. The flag
+	// (M4) validates the closed set fail-loud; this page PROMPTS the user.
+	all = append(all, AutonomyTierQuestion())
 	return all
+}
+
+// AutonomyTierQuestion returns the interactive autonomy-tier selector question
+// (SPEC-AUTONOMY-TIERS-001 REQ-001 / AC-001). It offers the 3-tier closed set
+// {semi-auto, automatic, fully-autonomous} with semi-auto pre-selected (REQ-006:
+// no fully-autonomous default ships). The fully-autonomous tier is gated at
+// apply time (init.go) via config.EffectiveTierWithGates — the sandbox-proof +
+// kill-switch gating is NOT duplicated in the static option set; instead a
+// fully-autonomous selection made without proof / under the kill-switch is
+// downgraded to automatic with an advisory (AC-005).
+func AutonomyTierQuestion() Question {
+	return Question{
+		ID:          "autonomy_tier",
+		Group:       "Autonomy",
+		Type:        QuestionTypeSelect,
+		Title:       "Select autonomy tier",
+		Description: "Controls how many permission prompts Claude Code shows. 'Semi-auto' is the safe default.",
+		Options: []Option{
+			{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Per-tool prompt — today's behavior"},
+			{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Per-tool auto-approval"},
+			{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "All prompts skipped (bypassPermissions); requires sandbox proof, gated by the kill-switch"},
+		},
+		Default:  config.AutonomyTierSemiAuto,
+		Required: true,
+	}
 }
 
 // FilteredQuestions returns questions filtered by their conditions.

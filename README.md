@@ -213,6 +213,8 @@ moai init my-project
 
 Interactive wizard auto-detects language, framework, and methodology, selects model policy, and generates Claude Code integration files.
 
+New: pick an autonomy tier with `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` (or via the wizard page / `moai web` console toggle). `semi-auto` is the default and changes nothing; `automatic` sets `defaultMode: auto` for daily work; `fully-autonomous` (`bypassPermissions`) is opt-in and requires sandbox proof (env marker or `--sandbox-proof`), downgrading to `automatic` without it. The deny/ask safety rules bind at every tier.
+
 ### First Workflow
 
 ```bash
