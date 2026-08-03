@@ -109,7 +109,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1 carries draftâ†
 
 sync_status: audit-ready
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "b73d13e44870b16c95db830ca705158a69872a4a"
 changelog_entry_position: CHANGELOG.md `### Changed` (1 entry, single SPEC-ID occurrence)
 frontmatter_status_transitions:
   spec_md: in-progress -> implemented -> completed  # 3-phase close merged into this sync commit
