@@ -351,6 +351,13 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 
 // schemaRadioRow — 닫힌 옵션 라디오 버튼 그룹. EmptyLabel이 있으면 빈 옵션을 렌더한다.
 // M5-b D3: field__title + field__desc 추가.
+//
+// Layout opt-in: when ANY option carries a per-option description
+// (OptionDef.OptionDesc), the group renders VERTICAL with the description to
+// the right of each option (radio-group--stacked / radio--withdesc). This is
+// the report.format shape only — every other radio (merge_method etc.) leaves
+// OptionDesc empty and stays on the default horizontal card-style group. The
+// branch is value-driven (no flag field), so unrelated radios are untouched.
 templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
 		<span class="field__label">
@@ -358,30 +365,47 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 			<code class="field__key">{ f.Name }</code>
 		</span>
 		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<div class="radio-group">
-			if f.EmptyLabel != "" {
-				<label class="radio">
-					if value == "" {
-						<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
-					} else {
-						<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
-					}
-					<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-					<span data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</span>
-				</label>
-			}
-			for _, opt := range f.Options {
-				<label class="radio">
-					if opt.Value == value {
-						<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
-					} else {
-						<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
-					}
-					<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-					<span data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</span>
-				</label>
-			}
-		</div>
+		if hasRadioOptionDesc(f.Options) {
+			<div class="radio-group radio-group--stacked">
+				for _, opt := range f.Options {
+					<label class="radio radio--withdesc">
+						if opt.Value == value {
+							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
+						} else {
+							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
+						}
+						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+						<span class="radio__label" data-i18n={ opt.I18nKey }>{ opt.Value }</span>
+						<span class="radio__desc" data-i18n={ opt.OptionDesc }></span>
+					</label>
+				}
+			</div>
+		} else {
+			<div class="radio-group">
+				if f.EmptyLabel != "" {
+					<label class="radio">
+						if value == "" {
+							<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
+						} else {
+							<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
+						}
+						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+						<span data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</span>
+					</label>
+				}
+				for _, opt := range f.Options {
+					<label class="radio">
+						if opt.Value == value {
+							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
+						} else {
+							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
+						}
+						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+						<span data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</span>
+					</label>
+				}
+			</div>
+		}
 		@fieldDescription(f)
 		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
 			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
@@ -479,10 +503,18 @@ templ fieldsetAgentFrontmatter(view pageView) {
 			// dormant `.effort` field branch (source count stays 2).
 			<p class="agentfm-gridnote"><span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span></p>
 			<div class="agentfm-grid">
-				for _, agent := range view.AgentFMs {
-					if agentIsMoaiCore(agent) {
-						@agentFMRow(agent, view.LLM, view.FieldErrors)
+				// Group header rows: emit a small-caps divider when the current
+				// agent's catalog-class group differs from the previous rendered
+				// row's. agentGroupLabel returns "" for the "other" bucket, but
+				// those rows (harness specialists) are filtered by agentIsMoaiCore
+				// and never reach this loop, so every rendered row carries a label.
+				// The render rows (with group-change flags) are precomputed in Go
+				// (agentFMGridRows) so the templ loop stays state-free.
+				for _, r := range agentFMGridRows(view.AgentFMs) {
+					if r.GroupHead != "" {
+						<div class="agentfm-grouphead">{ r.GroupHead }</div>
 					}
+					@agentFMRow(r.Agent, view.LLM, view.FieldErrors)
 				}
 			</div>
 		</div>

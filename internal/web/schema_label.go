@@ -75,6 +75,20 @@ func lastSegment(name string) string {
 	return parts[len(parts)-1]
 }
 
+// hasRadioOptionDesc reports whether ANY option in the set carries a per-option
+// description key (OptionDef.OptionDesc). schemaRadioRow branches on this to
+// pick the vertical-radio-with-right-desc layout vs the default horizontal
+// card-style radio-group. Only report.format populates OptionDesc today; every
+// other radio (merge_method etc.) returns false and stays on the default layout.
+func hasRadioOptionDesc(opts []settings.OptionDef) bool {
+	for _, o := range opts {
+		if o.OptionDesc != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // ─── SPEC-WEB-CONSOLE-014 M2/M4: read-only / raw view note-key 해석 ──────────
 //
 // ReadOnlyField.NoteKey / RawBlockRef.NoteKey 가 비어 있으면 제네릭 라벨 키를,

@@ -137,14 +137,117 @@ func agentTierBadge(name, model, effort string) agentBadgeInfo {
 	}
 }
 
-// agentTierSortRank returns a sort rank for the agent's model-derived badge
-// (lower = more expensive = renders first within each sub-tab). Used to order
-// the agentfm rows opus-first (post-close polish round 3,
-// SPEC-WEBCONF-SIMPLIFY-001). Delegates to v4manifest.ModelColorRank so the
-// sort order matches the model-derived badge color: opus=0, sonnet=1, haiku=2,
-// inherit/unknown=3.
-func agentTierSortRank(model string) int {
-	return v4manifest.ModelColorRank(model)
+// agentGroupRank classifies an agent name into one of 5 display buckets for the
+// agentfm row grouping (lower rank renders first). The 9 named retained agents
+// map to their CLAUDE.md §4 catalog class; every other agent (Explore /
+// Anthropic built-in, harness specialists under .claude/agents/harness/, or
+// anything unclassified) falls into the final "other" bucket. Classification
+// is by name — the closed retained catalog is name-stable, so a path check is
+// unnecessary at this layer (the harness/ directory carries hns-* / harness-*
+// names that are not in the map below and so default to the other bucket).
+func agentGroupRank(name string) int {
+	switch name {
+	// core/manager
+	case "manager-spec", "manager-develop", "manager-docs", "manager-git", "manager-design":
+		return 0
+	// meta/evaluator
+	case "plan-auditor", "sync-auditor", "super-advisor":
+		return 1
+	// builder
+	case "builder-harness":
+		return 2
+	// specialist
+	case "e2e-tester":
+		return 3
+	}
+	return 4 // other (Explore / Anthropic built-in, harness specialists, …)
+}
+
+// agentModelCostRank maps a resolved model to an ascending cost rank for
+// cheap-first ordering within a group (sonnet cheaper than opus). haiku is not
+// in the 10-agent display set but is mapped cheaper-than-sonnet for
+// correctness; fable / inherit / unknown default to a large rank so they sort
+// last within their group.
+func agentModelCostRank(model string) int {
+	switch model {
+	case v4manifest.ModelHaiku:
+		return 0
+	case v4manifest.ModelSonnet:
+		return 1
+	case v4manifest.ModelOpus:
+		return 2
+	}
+	return 3 // fable / inherit / unknown — sort last within group
+}
+
+// agentEffortCostRank maps a resolved effort to an ascending cost rank for
+// cheap-first ordering within a group: low < medium < high < max. An empty
+// effort defaults to medium (the most common resolved value) so unset rows do
+// not float to either extreme.
+func agentEffortCostRank(effort string) int {
+	switch effort {
+	case v4manifest.EffortLow:
+		return 1
+	case v4manifest.EffortMedium:
+		return 2
+	case v4manifest.EffortHigh:
+		return 3
+	case v4manifest.EffortMax:
+		return 4
+	}
+	return 2 // empty / xhigh-default → medium tier
+}
+
+// agentGroupLabel returns the human-facing group header label for the named
+// agent's catalog class (CLAUDE.md §4): rank 0 → "CORE / MANAGER", 1 →
+// "META / EVALUATOR", 2 → "BUILDER", 3 → "SPECIALIST". Returns "" for the
+// "other" bucket — those rows (harness specialists, Explore) are filtered out
+// by agentIsMoaiCore and never reach the grid, so no label is needed there.
+// The label is the server-rendered English baseline (a structural taxonomy
+// heading, like the agent names themselves — not a data-i18n node).
+func agentGroupLabel(name string) string {
+	switch agentGroupRank(name) {
+	case 0:
+		return "CORE / MANAGER"
+	case 1:
+		return "META / EVALUATOR"
+	case 2:
+		return "BUILDER"
+	case 3:
+		return "SPECIALIST"
+	}
+	return ""
+}
+
+// agentFMGridRow is one render entry in the agentfm grid: the agent plus the
+// group header label to emit BEFORE this row ("" = no group header — the row
+// stays in the same group as the previous rendered row). Precomputing the
+// group-change signal in Go keeps the templ grid loop state-free.
+type agentFMGridRow struct {
+	Agent     agentfm.AgentInfo
+	GroupHead string // label to render as a divider above this row; "" = none
+}
+
+// agentFMGridRows walks the (already group-sorted) agent list, filters to the
+// moai-core rows that actually render, and attaches a GroupHead to the first
+// row of each catalog-class group. Only the .claude/agents/moai/ rows render
+// (harness sub-tab removed); unrendered agents simply carry no GroupHead and
+// are skipped by the filter, matching the prior loop's agentIsMoaiCore gate.
+func agentFMGridRows(agents []agentfm.AgentInfo) []agentFMGridRow {
+	out := make([]agentFMGridRow, 0, len(agents))
+	prev := ""
+	for _, a := range agents {
+		if !agentIsMoaiCore(a) {
+			continue
+		}
+		head := ""
+		if g := agentGroupLabel(a.Name); g != prev {
+			head = g
+			prev = g
+		}
+		out = append(out, agentFMGridRow{Agent: a, GroupHead: head})
+	}
+	return out
 }
 
 // agentIsMoaiCore reports whether the agent lives in .claude/agents/moai/ (the 10
@@ -266,11 +369,14 @@ func agentDirsFor(projectRoot string) []string {
 }
 
 // listAllAgentFMs는 모든 편집 대상 디렉터리(moai/ + harness/)의 agent
-// frontmatter를 tier-then-name 순으로 병합한다 (post-close polish round 3 —
-// 비싼 티어가 먼저: 🔴 → 🟠 → 🔵 → 🩵). 개별 디렉터리는 이미 정렬되어 반환되지만
-// 두 디렉터리를 병합한 후 전체를 다시 정렬한다. templ이 moai/harness 파티션을
-// 걸면서 상대 순서를 보존하므로 각 서브탭 내에서도 tier 순이 유지된다.
-func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
+// frontmatter를 group → cheap-first model cost → cheap-first effort cost → name
+// 순으로 병합한다. 정렬은 profile-matrix-resolved model/effort(agentResolvedModel /
+// agentResolvedEffort)를 기준으로 한다 — agent frontmatter는 G3 repoint 이후
+// model: inherit 이라 frontmatter Model 로는 구분이 안 되므로 resolved 값이 SSOT다.
+// 그룹 순위(agentGroupRank): [core/manager][meta/evaluator][builder][specialist][other].
+// 그룹 내에서는 저렴한 모델+effort 조합이 위로 (token-effective first). templ이
+// moai/harness 파티션을 걸면서 상대 순서를 보존하므로 각 서브탭 내에서도 동일 순서.
+func (a *app) listAllAgentFMs(projectRoot string, llm config.LLMConfig) ([]agentfm.AgentInfo, error) {
 	var all []agentfm.AgentInfo
 	for _, dir := range agentDirsFor(projectRoot) {
 		agents, err := a.listAgentFMs(dir)
@@ -280,11 +386,20 @@ func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
 		all = append(all, agents...)
 	}
 	sort.Slice(all, func(i, j int) bool {
-		ri, rj := agentTierSortRank(all[i].Model), agentTierSortRank(all[j].Model)
-		if ri != rj {
-			return ri < rj
+		ai, aj := all[i], all[j]
+		gi, gj := agentGroupRank(ai.Name), agentGroupRank(aj.Name)
+		if gi != gj {
+			return gi < gj
 		}
-		return all[i].Name < all[j].Name
+		mi, mj := agentModelCostRank(agentResolvedModel(llm, ai.Name)), agentModelCostRank(agentResolvedModel(llm, aj.Name))
+		if mi != mj {
+			return mi < mj
+		}
+		ei, ej := agentEffortCostRank(agentResolvedEffort(llm, ai.Name)), agentEffortCostRank(agentResolvedEffort(llm, aj.Name))
+		if ei != ej {
+			return ei < ej
+		}
+		return ai.Name < aj.Name
 	})
 	return all, nil
 }

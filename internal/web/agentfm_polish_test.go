@@ -134,39 +134,44 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 	}
 }
 
-// TestAgentFMTierSortOrder verifies agents render in tier order (most expensive
-// first: 🔴 → 🟠 → 🔵 → 🩵), with alphabetical secondary within the same tier
-// (post-close polish round 3).
+// TestAgentFMTierSortOrder verifies agents render in the group → cheap-first
+// order: group rank (core/manager < meta/evaluator < builder < specialist <
+// other), then within a group ascending model cost (sonnet before opus), then
+// ascending effort cost (low before medium before high), then name. The front-
+// matter model/effort seeded here are IGNORED for sort (frontmatter is
+// model: inherit after the G3 repoint) — the profile-matrix medium-profile
+// defaults drive the resolved model/effort the comparator reads.
+//
+// Under the medium profile: manager-git=sonnet/low, manager-docs=opus/low,
+// manager-spec=opus/medium, plan-auditor=opus/medium. Expected order:
+//   core group: manager-git (sonnet/low) → manager-docs (opus/low) → manager-spec (opus/medium)
+//   meta group: plan-auditor (opus/medium)
 func TestAgentFMTierSortOrder(t *testing.T) {
 	root := t.TempDir()
-	// Seed agents with distinct models so the model-derived sort order applies:
-	// opus (manager-spec, plan-auditor) before sonnet (manager-git) before
-	// inherit (manager-docs).
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "")
 	seedAgentFMFile(t, root, "moai", "plan-auditor", "opus", "")
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "")
 	seedAgentFMFile(t, root, "moai", "manager-docs", "inherit", "")
 	body := renderAgentFMBody(t, root)
 
-	// opus before sonnet before inherit.
-	specPos := strings.Index(body, `agentfm.manager-spec.model`)
-	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
 	gitPos := strings.Index(body, `agentfm.manager-git.model`)
 	docsPos := strings.Index(body, `agentfm.manager-docs.model`)
-	if specPos < 0 || auditorPos < 0 || gitPos < 0 || docsPos < 0 {
-		t.Fatalf(`agent row anchors not found in render (spec=%d auditor=%d git=%d docs=%d)`, specPos, auditorPos, gitPos, docsPos)
+	specPos := strings.Index(body, `agentfm.manager-spec.model`)
+	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
+	if gitPos < 0 || docsPos < 0 || specPos < 0 || auditorPos < 0 {
+		t.Fatalf(`agent row anchors not found (git=%d docs=%d spec=%d auditor=%d)`, gitPos, docsPos, specPos, auditorPos)
 	}
-	// opus (manager-spec, plan-auditor) must come before sonnet (manager-git).
-	if gitPos < specPos || gitPos < auditorPos {
-		t.Errorf(`sonnet agent (manager-git pos=%d) must come AFTER opus agents (manager-spec pos=%d, plan-auditor pos=%d)`, gitPos, specPos, auditorPos)
+	// Core group (manager-git, manager-docs, manager-spec) before meta group (plan-auditor).
+	if auditorPos < gitPos || auditorPos < docsPos || auditorPos < specPos {
+		t.Errorf(`meta agent (plan-auditor pos=%d) must come AFTER the core group (git=%d docs=%d spec=%d)`, auditorPos, gitPos, docsPos, specPos)
 	}
-	// sonnet (manager-git) must come before inherit (manager-docs).
-	if docsPos < gitPos {
-		t.Errorf(`inherit agent (manager-docs pos=%d) must come AFTER sonnet agent (manager-git pos=%d)`, docsPos, gitPos)
+	// Within core: sonnet (manager-git) before opus (manager-docs, manager-spec).
+	if docsPos < gitPos || specPos < gitPos {
+		t.Errorf(`sonnet agent (manager-git pos=%d) must come before opus core agents (docs=%d spec=%d)`, gitPos, docsPos, specPos)
 	}
-	// Alphabetical within same model (opus): manager-spec before plan-auditor.
-	if auditorPos < specPos {
-		t.Errorf(`within opus model, manager-spec (pos=%d) should come before plan-auditor (pos=%d) alphabetically`, specPos, auditorPos)
+	// Within core opus: low effort (manager-docs) before medium (manager-spec).
+	if specPos < docsPos {
+		t.Errorf(`opus/low (manager-docs pos=%d) must come before opus/medium (manager-spec pos=%d)`, docsPos, specPos)
 	}
 }
 
