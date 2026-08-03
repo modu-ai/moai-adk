@@ -148,7 +148,7 @@ m1_to_mN_commit_strategy: "per-milestone commits (M1, M2, M3, M4 + catalog-regen
 
 ```yaml
 sync_complete_at: 2026-08-03
-sync_commit_sha: pending-backfill-<SHA>
+sync_commit_sha: 31b9c3b2c13b416d70c99740926b7e9a42a8b3fc
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress → implemented → completed"
