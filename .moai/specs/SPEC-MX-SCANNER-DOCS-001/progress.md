@@ -102,7 +102,7 @@ internal_touched: false
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill-<sync-commit-sha>"
+sync_commit_sha: "3c65146623235dbb29112c5b6c50f1db6f9687b9"
 changelog_entry: "CHANGELOG.md [Unreleased] ### Added — SPEC-MX-SCANNER-DOCS-001"
 frontmatter_status_transitions:
   spec_md: "draft → in-progress → implemented → completed (3-phase close on the single sync commit per spec-frontmatter-schema.md)"
