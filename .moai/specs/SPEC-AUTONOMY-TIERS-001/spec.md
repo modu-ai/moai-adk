@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-TIERS-001
 title: "Autonomy 3-mode selection + behavior wiring on the MOAI_AUTONOMY_TIER token"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec
