@@ -10,16 +10,16 @@ draft: false
 
 ![Core Concepts: Harness structure](/images/sections/core-concepts-en.png)
 
-This section introduces the core concepts you need to understand MoAI-ADK v3.0. The value of v3.0 comes down to three pillars — **Tokenomics** (Token Economics), **Agentic Loop Engineering**, and the **Agentic Harness**. The documents in this section unpack, one by one, how those three pillars work in a real development flow.
+This section introduces the core concepts you need to understand MoAI-ADK v3.0. The value of v3.0 comes down to three core elements — **Tokenomics** (Token Economics), **Agentic Loop Engineering**, and the **Agentic Harness**. The documents in this section unpack, one by one, how those three core elements work in a real development flow.
 
 
 {{< callout type="info" >}}
 New here? Read top to bottom in order and the full picture of MoAI-ADK falls into place naturally. Each document can also be read on its own.
 {{< /callout >}}
 
-## The Three Pillars
+## Three Core Elements
 
-| Pillar | Key Question | Representative Document |
+| Core Element | Key Question | Representative Document |
 |------|----------|----------|
 | **Tokenomics** | How do we get the same quality with fewer tokens? | [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) |
 | **Agentic Loop Engineering** | How does the loop work and learn on its own? | [Harness Engineering](/en/core-concepts/harness-engineering) |
@@ -33,7 +33,7 @@ flowchart TD
     D --> E["TRUST 5 Quality"]
     E --> F["Constitution System"]
 
-    A -.- A1["Understand the three pillars\nand the overall architecture"]
+    A -.- A1["Understand the three core elements\nand the overall architecture"]
     B -.- B1["The paradigm of designing\nthe environment agents work in"]
     C -.- C1["The Plan phase: defining\nrequirements as documents"]
     D -.- D1["The Run phase: implementing\ncode safely"]

@@ -165,7 +165,7 @@ With the `--record` flag, runs are recorded via the selected toolchain's **nativ
 
 ## When No Target Is Detected
 
-When no e2e-able surface is detected (for example, a pure library with no web/mobile/desktop entry point), it reports **"no e2e target detected"** with the marker evidence consulted, and exits gracefully without creating any `e2e/` artifacts.
+When no e2e-able surface is detected (for example, a pure library with no web/mobile/desktop entry point), it reports **"no e2e target detected"** showing which markers it checked, and exits gracefully without creating any `e2e/` artifacts.
 
 A **native desktop app** that is neither Electron nor Tauri (pure macOS app, WinUI, Qt/GTK, etc.) routes to this same branch — OS-level native-desktop automation is not yet provided; a deferral notice is reported with the classification evidence, followed by a graceful exit.
 

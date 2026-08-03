@@ -16,17 +16,17 @@ Traditional vibe coding lets the AI generate code freely and then reviews the re
 
 So what is a harness? It is the entire system that surrounds the base model and orchestrates execution — the layer that decides how the model thinks and plans, how it calls tools, how it perceives and manages context, where it stores its artifacts, and how its results are evaluated. MoAI-ADK is exactly this harness, layered on top of Claude Code.
 
-## The Three Pillars and the Harness
+## The Three Core Values and the Harness
 
-Harness engineering is where the three pillars of v3.0 meet.
+Harness engineering is where the three core values of v3.0 meet.
 
-| Pillar | Role within the harness |
+| Core Value | Role within the harness |
 |------|------------------|
 | **Tokenomics** | The harness assigns model and reasoning depth per task and keeps the token budget |
 | **Agentic Loop Engineering** | Loops (`/moai loop`, the goal engine) run and accumulate observations, and the harness learns from them |
 | **Agentic Harness** | The 11-agent catalog, the 3-phase workflow, and the TRUST 5 gates form the execution environment |
 
-The second pillar in particular is the key innovation. The realistic near-term path to AI's recursive self-improvement (RSI) is not modifying model weights directly, but **improving the harness around the model**. MoAI-ADK takes exactly this path — it recursively improves the harness (skills and agent guidance), not the model.
+The second core value in particular is the key innovation. The realistic near-term path to AI's recursive self-improvement (RSI) is not modifying model weights directly, but **improving the harness around the model**. MoAI-ADK takes exactly this path — it recursively improves the harness (skills and agent guidance), not the model.
 
 ## The 7 Core Components
 

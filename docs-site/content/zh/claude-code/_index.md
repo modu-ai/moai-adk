@@ -2,7 +2,7 @@
 title: Claude Code 指南
 weight: 55
 draft: false
-description: "从零理解 MoAI-ADK 三大支柱（代币经济学·智能体循环工程·智能体挽具）所依托的平台 Claude Code 的四组学习路径。"
+description: "从零理解 MoAI-ADK 三大核心（代币经济学·智能体循环工程·智能体挽具）所依托的平台 Claude Code 的四组学习路径。"
 ---
 
 {{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束 · 🧠 智能体循环工程
@@ -17,7 +17,7 @@ Claude Code 是在终端中运行的编码智能体，它能读取和修改代�
 
 
 {{< callout type="info" >}}
-**一句话总结**：本节是掌握工具（平台）Claude Code 本身的阶段。MoAI-ADK 如何在这一基础上竖起三大支柱，将在核心概念与深入学习章节中继续展开。
+**一句话总结**：本节是掌握工具（平台）Claude Code 本身的阶段。MoAI-ADK 如何在这一基础上构建三大核心，将在核心概念与深入学习章节中继续展开。
 {{< /callout >}}
 
 ## 学习流程
@@ -31,11 +31,11 @@ flowchart TD
 
 首先在基础组中掌握 Claude Code 的智能体循环如何运转，再通过上下文与记忆管理打好令牌经济的基本功。随后借助扩展备齐挽具的原材料，最后通过智能体与自动化迈向自主执行循环。
 
-## 目录 —— 四组与三大支柱的对应
+## 目录 —— 四组与三大核心的对应
 
-| 文档 | 说明 | 对应的 MoAI 支柱 |
+| 文档 | 说明 | 对应的 MoAI 核心 |
 |------|------|--------------------|
-| [基础](/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大支柱的共同基础 |
+| [基础](/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大核心的共同基础 |
 | [上下文与记忆](/claude-code/context-memory) | 令牌·上下文·记忆·缓存·检查点管理 | 代币经济学 |
 | [扩展](/claude-code/extensibility) | 用技能·钩子·MCP·插件扩展功能 | 智能体挽具 |
 | [智能体与自动化](/claude-code/agentic) | 子智能体·团队·工作流·自主执行 | 智能体循环工程 |

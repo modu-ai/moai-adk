@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an Agentic Development Kit that wraps Claude Code around three axes — **cost** (Tokenomics), **self-improvement** (Agentic Loop Engineering), and **quality control** (Agentic Harness). Same quality of code for fewer tokens, a loop that works on its own once you declare the completion condition and accumulates observations the harness learns from, and SPEC 3-phase + TRUST 5 gates that judge 'done' by evidence — model selection, reasoning depth, and context usage managed by the system. A single Go binary, no dependencies, runs immediately.
+MoAI-ADK is an Agentic Development Kit built around three core values that augment Claude Code: **cost** (Tokenomics), **self-improvement** (Agentic Loop Engineering), and **quality control** (Agentic Harness). It delivers the same code quality for fewer tokens. Declare a completion condition and the loop works on its own, accumulating observations the harness learns from. SPEC 3-phase and TRUST 5 gates judge 'done' by evidence. Model selection, reasoning depth, and context usage are all managed by the system. It ships as a single Go binary with no dependencies, so it runs immediately.
 
 
 ## Notation
@@ -21,17 +21,17 @@ In this documentation, a code block's prefix indicates the execution environment
   moai init my-project
   ```
 
-## Core value — three pillars
+## Three core values
 
-MoAI-ADK v3.0's value is summarized in three pillars.
+MoAI-ADK v3.0's value is summarized in three core values.
 
-| Pillar | One-line description | Representative tools |
+| Core value | One-line description | Representative tools |
 |------|-----------|----------|
 | **Tokenomics** | Intelligent resource allocation that maximizes quality per cost | 3-tier model policy · CG mode · Token Circuit Breaker |
 | **Agentic loop engineering** | Loops work on their own, observations accumulate, the harness learns | `/moai goal` · `/moai loop` · Analyze-First routing |
 | **Agentic harness** | Design an environment for agents to work in, instead of writing code directly | 11 agents · SPEC 3-phase · TRUST 5 |
 
-Each pillar is covered in detail in the [Core Concepts](/en/core-concepts/) section. This document looks at only as much as you need to get started.
+Each core value is covered in detail in the [Core Concepts](/en/core-concepts/) section. This document looks at only as much as you need to get started.
 
 ## Core concepts
 
@@ -287,7 +287,7 @@ Ralph-Loop Style LSP integration automates the quality gates of the development 
 ## Save tokens with GLM (50–70%) {#save-tokens-with-glm-5070}
 
 {{< callout type="info" >}}
-**A hands-on tool of the cost axis (Tokenomics):** z.ai GLM is an AI backend fully compatible with Claude Code. In **CG mode** (`moai cg`, tmux required), a Claude leader handles orchestration, architecture decisions, and code review, while GLM teammates work in parallel on implementation, tests, and documentation — saving **50–70% of tokens** on implementation-heavy work. For work that needs deep reasoning, like architecture design or security review, use Claude only (`moai cc`).
+**A practical tool for cost (Tokenomics):** z.ai GLM is an AI backend fully compatible with Claude Code. In **CG mode** (`moai cg`, tmux required), a Claude leader handles orchestration, architecture decisions, and code review, while GLM teammates work in parallel on implementation, tests, and documentation — saving **50–70% of tokens** on implementation-heavy work. For work that needs deep reasoning, like architecture design or security review, use Claude only (`moai cc`).
 
 ```bash
 moai cc            # Claude only
@@ -298,10 +298,10 @@ moai cg            # CG hybrid (Claude leader + GLM teammates, tmux required)
 If you do not have a GLM account, sign up at [z.ai signup (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards through the signup link are used for **MoAI open-source development**. For the detailed architecture and model policy, see the [Multi-LLM](/en/multi-llm/) section.
 {{< /callout >}}
 
-## The Self-Improvement Axis — loops work on their own, the harness learns
+## Self-improvement — loops work on their own, the harness learns
 
 {{< callout type="info" >}}
-**A hands-on tool of the self-improvement axis (Agentic Loop Engineering):** Declare a completion condition and the session works on its own until it is met. `/moai goal "<condition>"` is a condition-declared autonomous loop, `/moai loop` keeps fixing until the queue of issues found by LSP diagnostics, AST-grep, and linters is drained (up to 10 iterations by default), and `/moai fix` is a single-pass auto-fix. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate into harness guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update, under the user-approval gate), so the next session does not repeat the previous session's mistakes.
+**A practical tool for self-improvement (Agentic Loop Engineering):** Declare a completion condition and the session works on its own until it is met. `/moai goal "<condition>"` is a condition-declared autonomous loop, `/moai loop` keeps fixing until the queue of issues found by LSP diagnostics, AST-grep, and linters is drained (up to 10 iterations by default), and `/moai fix` is a single-pass auto-fix. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate into harness guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update, under the user-approval gate), so the next session does not repeat the previous session's mistakes.
 {{< /callout >}}
 
 ## Getting started

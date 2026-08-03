@@ -146,9 +146,9 @@ export DISABLE_PROMPT_CACHING=1
 export DISABLE_PROMPT_CACHING_OPUS=1
 ```
 
-## 在 MoAI-ADK 中更进一步 —— 代币经济学中可度量的轴
+## 在 MoAI-ADK 中更进一步 —— 代币经济学中最容易度量的要素
 
-提示缓存是 MoAI-ADK **代币经济学**支柱中最容易度量的一条轴。MoAI-ADK 从两个方向运用缓存。
+提示缓存是 MoAI-ADK **代币经济学**各项要素中最容易度量的一项。MoAI-ADK 从两个方向运用缓存。
 
 - **提高命中率的设计**：在 SPEC 驱动工作流中维持稳定的前缀（系统提示、`CLAUDE.md`、规则），并给常驻加载的上下文瘦身，让缓存得以存活的前段尽可能大而稳定。
 - **展示命中率的度量**：在 statusline 上显示缓存命中 (cache hit) 信号，让上下文瘦身的效果在会话中即时可见。在 GLM 后端 (z.ai) 上会自动应用隐式提示缓存。

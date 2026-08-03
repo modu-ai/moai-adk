@@ -349,7 +349,7 @@ Claude Code はプロジェクトルートだけでなくネストした下位�
 
 ### `disableBundledSkills` トグル
 
-`disableBundledSkills` (settings.json のブール値、または環境変数の形) は Claude Code のバンドル skills およびワークフロー — 例: `/deep-research`、内蔵スラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを見せます。選別されたバンドルなしの skill 表面を提供するときに使ってください。MoAI-ADK はこのトグルを自身の生成器で生成しません。利用可能なオプションとしてここに文書化されます。付随する `--safe-mode` ランチフラグは [Settings JSON ガイド](/ja/advanced/settings-json#disablebundledskills) に文書化されています。
+`disableBundledSkills` (settings.json のブール値、または環境変数の形) は Claude Code のバンドル skills およびワークフロー — 例: `/deep-research`、内蔵スラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを見せます。選別されたバンドルなしの skill 表面を提供するときに使ってください。MoAI-ADK はこのトグルを自身の生成器で生成しません。利用可能なオプションとしてここに文書化されます。付随する `--safe-mode` 起動フラグは [Settings JSON ガイド](/ja/advanced/settings-json#disablebundledskills) に文書化されています。
 
 ## 関連ドキュメント
 

@@ -53,7 +53,7 @@ moai github link-spec 123 SPEC-ISSUE-123 --dry-run
 
 ### Label Sync 工作流(`.github/workflows/label-sync.yml`)
 
-以 `.github/labels.yml` 为单一真实来源,同步仓库标签。
+以 `.github/labels.yml` 为唯一事实来源,同步仓库标签。
 
 - **触发**:`workflow_dispatch`(手动,支持 `dry_run` 输入)或
   `.github/labels.yml` / 工作流文件 push 到 `main` 时自动运行

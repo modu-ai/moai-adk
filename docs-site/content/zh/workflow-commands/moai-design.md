@@ -83,7 +83,7 @@ manager-design 在再委派后即返回，不会陪同（co-pilot）实现。实
 - **H8 再委派包** —— 以 Section A-E 委派 manager-develop
 - **H9 隐藏文件夹引导** —— `.moai/design/` dot-folder 可见性
 
-## 工具可用性（优雅降级）
+## 工具可用性（正常降级）
 
 DesignSync 服务器可能未注册到 `.mcp.json`。D1 会确认可用性：
 

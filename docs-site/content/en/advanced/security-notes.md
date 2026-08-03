@@ -6,7 +6,7 @@ draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-An agentic harness is a system that hands execution authority to agents. The more authority a system delegates, the more the security of its credentials and update paths forms the floor of harness trust. This page summarizes the **user-visible security changes** introduced as of MoAI-ADK v3.0.0. Each item includes its CWE mapping, the changed behavior, and self-audit commands.
+An agentic harness is a system that hands execution authority to agents. The more authority a system delegates, the more its harness trust depends on the security of its credentials and update paths. This page summarizes the **user-visible security changes** introduced as of MoAI-ADK v3.0.0. Each item includes its CWE mapping, the changed behavior, and self-audit commands.
 
 ## Why — Why This Page Exists
 
@@ -61,7 +61,7 @@ chmod 0600 .claude/settings.local.json
 
 ### Impact (Trade-off)
 
-Workflows that expect `group-readable` (the very rare scenario of a separate OS user reading the same project directory) may break. This trade-off is intentional; the security recovery is the clear priority.
+Workflows that expect `group-readable` (the very rare scenario of a separate OS user reading the same project directory) may break. This trade-off is intentional; security is the clear priority.
 
 ## CWE-214 — Blocking tmux IPC Token argv Exposure {#cwe-214}
 

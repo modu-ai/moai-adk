@@ -659,7 +659,7 @@ The built-in file suggestion uses fast filesystem traversal, but large monorepos
 
 ## Extended Thinking Settings
 
-Extended Thinking settings. Reasoning tokens are tokens too — leaving them always on is convenient, but coordinating them with a budget is the tokenomics orthodoxy.
+Extended Thinking settings. Reasoning tokens are tokens too — leaving them always on is convenient, but it is better to coordinate them with a budget.
 
 ```json
 {

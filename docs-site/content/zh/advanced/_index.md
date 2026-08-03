@@ -8,13 +8,13 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
-![代币经济学三轴](/images/sections/advanced-zh.png)
+![MoAI-ADK 三大核心](/images/sections/advanced-zh.png)
 
 本节面向想深入拆解 MoAI-ADK 内部结构的开发者。如果你已经熟悉了基本工作流（plan → run → sync），可以在这里看到 Harness 实际是如何组装起来的。
 
 
 {{< callout type="info" >}}
-本节文档主要讲解 v3.0 三大支柱 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)、**智能体 Harness** (Agentic Harness) — 中第三根支柱的实现细节。让智能体写好代码的秘诀不在模型本身，而在于围绕模型的环境设计。
+本节文档主要讲解 v3.0 三大核心 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)、**智能体 Harness** (Agentic Harness) — 中第三大核心的实现细节。让智能体写好代码的秘诀不在模型本身，而在于围绕模型的环境设计。
 {{< /callout >}}
 
 ## Harness 是如何组装的

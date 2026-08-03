@@ -4,7 +4,7 @@ weight: 5
 draft: false
 ---
 
-ハーネス競争力の中核は自己改善の設計にあります。Lilian Wengの「Harness Engineering for Self-Improvement」(2026-07-04)が名付けたように、ハーネスはモデルを取り囲む実行・運用層であり、自己改善の現実の経路は重みではなくこの層の改善です。このページはMoAI-ADKの自己進化ハーネスであるACE 3-Loop構造を公式ドキュメント化します。
+ハーネス競争力の中核は自己改善の設計にあります。Lilian Wengの「Harness Engineering for Self-Improvement」(2026-07-04)が指摘しているように、ハーネスはモデルを取り囲む実行・運用層であり、自己改善の現実の経路は重みではなくこの層の改善です。このページはMoAI-ADKの自己進化ハーネスであるACE 3-Loop構造を公式ドキュメント化します。
 
 ## なぜ自己進化か
 

@@ -4,13 +4,13 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three axes — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost axis, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement axis, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality-control axis, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 11 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
+MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three core concerns — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality control, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 11 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
 
 {{< callout type="info" >}}
-**One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system enforces all three axes from the outside: cost (Tokenomics), self-improvement (Agentic Loop Engineering), and quality control (Agentic Harness)**.
+**One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system enforces all three from the outside: cost (Tokenomics), self-improvement (Agentic Loop Engineering), and quality control (Agentic Harness)**.
 {{< /callout >}}
 
 ## Introducing MoAI-ADK
@@ -27,27 +27,27 @@ MoAI-ADK is **a development kit that has agents collaborate on agentic coding in
 | Developers / Engineers | manager-develop (with domain context injected) | Implements the actual code with DDD/TDD |
 | QA / Code reviewers | plan-auditor · sync-auditor | Independently audit plans and deliverables |
 
-## Core Value — The Three Pillars
+## Core Value — Three Core Concerns
 
-The value of v3.0 comes down to three pillars.
+The value of v3.0 comes down to three core concerns.
 
 ### Tokenomics (Token Economics)
 
-Intelligent resource allocation that maximizes quality per cost. This pillar consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, **CG mode** that combines a Claude leader with GLM workers to cut implementation cost by 60-70%, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
+Intelligent resource allocation that maximizes quality per cost. This core concern consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, **CG mode** that combines a Claude leader with GLM workers to cut implementation cost by 60-70%, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
 
 ### Agentic Loop Engineering
 
-The loop works on its own, and observations accumulate along the way. This pillar includes the **goal engine** that keeps the session working until a declared completion condition is met, the **Ralph Engine** (`/moai loop`) that iterates on fixes until the queue of issues found by diagnostic tools is drained, and **Analyze-First routing** that analyzes the intent of natural-language requests regardless of language. The accumulated observations become the raw material of harness learning, and guidance evolves along the 4-tier learning ladder (observation → heuristic → rule → auto-update) — auto-updates are always applied only under the user-approval gate.
+The loop works on its own, and observations accumulate along the way. This core concern includes the **goal engine** that keeps the session working until a declared completion condition is met, the **Ralph Engine** (`/moai loop`) that iterates on fixes until the queue of issues found by diagnostic tools is drained, and **Analyze-First routing** that analyzes the intent of natural-language requests regardless of language. The accumulated observations become the raw material of harness learning, and guidance evolves along the 4-tier learning ladder (observation → heuristic → rule → auto-update) — auto-updates are always applied only under the user-approval gate.
 
 ### Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. This pillar is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
+Instead of writing code yourself, you design an environment where agents work well. This core concern is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 
-## Why Three Axes
+## Why These Three
 
-Optimize cost alone and quality collapses, followed by rework and debugging loops — and rework is the most expensive token spend of all. Erect quality gates alone and the same mistakes repeat every session. Run autonomous loops without a cost ceiling and one runaway task eats the quota. The three axes hold each other up — **cost** stays economical because **quality** keeps rework out, **quality** is enforceable because the **loop** remembers the patterns it learned, and the **loop** stops at the right price because the **cost** gate halts it before the budget breaks.
+Optimize cost alone and quality collapses, followed by rework and debugging loops — and rework is the most expensive token spend of all. Erect quality gates alone and the same mistakes repeat every session. Run autonomous loops without a cost ceiling and one runaway task eats the quota. The three core concerns hold each other up — **cost** stays economical because **quality** keeps rework out, **quality** is enforceable because the **loop** remembers the patterns it learned, and the **loop** stops at the right price because the **cost** gate halts it before the budget breaks.
 
-### The Cost Axis — Tokenomics
+### Cost — Tokenomics
 
 Token unit prices keep falling, but agentic development's token consumption grows faster. With multiple agents running, longer contexts, and deeper reasoning, what determines cost is not model pricing but **how tokens are operated**.
 
@@ -57,11 +57,11 @@ MoAI-ADK's answer is threefold.
 2. **Diet the context** — minimize always-loaded guidance and measure prompt-cache hit rates.
 3. **Let the system keep the budget** — track token usage and stop gracefully before crossing the threshold.
 
-### The Self-Improvement Axis — Agentic Loop Engineering
+### Self-Improvement — Agentic Loop Engineering
 
 Declare a completion condition and the session works on its own until the condition is met (`/moai goal`); the routing decisions and gate evidence produced along the way accumulate as observations that feed harness learning. Observations are promoted into guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update), and auto-updates are always applied only under the user-approval gate.
 
-### The Quality-Control Axis — Agentic Harness
+### Quality Control — Agentic Harness
 
 Instead of writing code yourself, you design an environment where agents work well. The 11-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
 
@@ -326,7 +326,7 @@ flowchart TD
 
 ### 31 Skills (Progressive Disclosure)
 
-Managed token-efficiently through a 3-level Progressive Disclosure system. Only the skill descriptions (~100 tokens) are always listed; the body (~5K tokens) loads only when actually invoked — one axis of the context diet.
+Managed token-efficiently through a 3-level Progressive Disclosure system. Only the skill descriptions (~100 tokens) are always listed; the body (~5K tokens) loads only when actually invoked — one of the core means of the context diet.
 
 | Category | Examples |
 |----------|------|
@@ -462,7 +462,7 @@ The MoAI orchestrator analyzes task complexity and selects the execution shape.
 
 ### CG Mode (Claude + GLM Hybrid)
 
-The practical tool of the Tokenomics pillar. A hybrid mode where the Leader uses the **Claude API** and the Workers use the **GLM API**, implemented via tmux session-level environment-variable isolation. Claude handles strategy, planning, and audits; GLM handles bulk implementation — cutting costs 60-70% on implementation-heavy work.
+The practical tool of the Tokenomics core concern. A hybrid mode where the Leader uses the **Claude API** and the Workers use the **GLM API**, implemented via tmux session-level environment-variable isolation. Claude handles strategy, planning, and audits; GLM handles bulk implementation — cutting costs 60-70% on implementation-heavy work.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

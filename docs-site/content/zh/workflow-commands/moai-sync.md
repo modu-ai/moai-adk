@@ -378,7 +378,7 @@ MoAI-ADK 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 格
 
 ## PR 创建后的 CI 监控
 
-`/moai sync` 创建 PR 之后,编排器确认哪个 required check 失败,并交接给自动 fix 循环。PR 创建后也无需人工盯着 CI 界面,而是由回路接收结果并做出响应 — 这是智能体回路工程延伸到 CI 领域的结构。
+`/moai sync` 创建 PR 之后,编排器确认哪个 required check 失败,并交接给自动 fix 循环。PR 创建后也无需人工盯着 CI 界面,而是由循环接收结果并做出响应 — 这是智能体循环工程延伸到 CI 领域的结构。
 
 ### 自动 fix 循环(最多 3 次)
 

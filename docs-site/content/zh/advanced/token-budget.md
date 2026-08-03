@@ -1,16 +1,16 @@
 ---
-title: 代币预算管理与优雅停止
+title: 代币预算管理与正常停止
 weight: 2
 draft: false
 ---
 
-深入讨论代币经济学四层结构中的 D 层 — 预算防御(Budget defense)。涵盖当代理到达上下文窗口极限时会话如何无损停止、保存进度使下一个会话可以接续的优雅中止(graceful abort)机制。
+深入讨论代币经济学四层结构中的 D 层 — 预算防御(Budget defense)。涵盖当代理到达上下文窗口极限时会话如何无损停止、保存进度使下一个会话可以接续的正常中止(graceful abort)机制。
 
 ## 预算防御的必要性
 
 Anthropic SSE 流在上下文窗口天花板附近会间歇性停顿(`stream_idle_partial`)。这是概率性的但在阈值以上可预测。停顿发生时代理调用可能在流中途失败，从而丢失进度。
 
-预算防御主动解决这个问题。在上下文使用量到达阈值前，系统执行优雅中止，确保会话无损地转移到下一步。
+预算防御主动解决这个问题。在上下文使用量到达阈值前，系统执行正常中止，确保会话无损地转移到下一步。
 
 ## 各模型的上下文阈值
 
@@ -35,9 +35,9 @@ statusline 分两阶段在上下文栏中追加 `/clear` 提示。
 
 硬天花板设置在 auto-compact 阈值附近，因此运行时 auto-compact 通常先发，硬标记实际上很少触发。这是 auto-compact 感知公式的有意权衡。
 
-## 优雅中止步骤
+## 正常中止步骤
 
-由 SPEC-TOKEN-BUDGET-STOP-001 实现的优雅中止机制按以下步骤工作。
+由 SPEC-TOKEN-BUDGET-STOP-001 实现的正常中止机制按以下步骤工作。
 
 1. **检测** — `Tracker.IsAtHardLimit(agentName)` 返回 true(累计使用量 ≥ hard_clear_threshold，默认 0.90)
 2. **状态保存** — 将进行中的工作状态持久化到 `progress.md`
