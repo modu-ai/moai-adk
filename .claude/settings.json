@@ -88,7 +88,8 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           },
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
@@ -103,12 +104,14 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           },
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           },
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",

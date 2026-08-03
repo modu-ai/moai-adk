@@ -97,7 +97,17 @@ func Save(projectRoot string, s *Snapshot) error {
 // — an entry with the identical command is replaced (fresher result for the
 // same tree), a distinct command is appended — advances the snapshot-level
 // RecordedAt to the entry's capture time, and saves atomically.
+//
+// SPEC-AUDIT-SNAPSHOT-001 (A4, REQ-004 ¶4): the Load-modify-Save critical
+// section is serialized via a per-key claim/lock so that concurrent same-SHA
+// writers recording DIFFERENT command dimensions (e.g. `go test` vs
+// `golangci-lint`) cannot race last-writer-wins and silently drop each other's
+// dimensions. Without the lock, the read-modify-write over the per-key entry
+// would let one writer's Save clobber another's appended dimension.
 func RecordCheck(projectRoot, key string, entry CheckEntry) (*Snapshot, error) {
+	release := acquireKeyLock(projectRoot, key)
+	defer release()
+
 	s, err := Load(projectRoot, key)
 	if err != nil {
 		return nil, err

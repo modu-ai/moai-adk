@@ -2,8 +2,14 @@ package goal
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // CmdRunner abstracts shell-command execution so the evaluator is unit-testable
@@ -57,9 +63,14 @@ type Verdict struct {
 	LastProgress     string          `json:"last_progress,omitempty"`
 	FailedConditions []FailedCond    `json:"failed_conditions,omitempty"`
 	CeilingExit      bool            `json:"ceiling_exit,omitempty"`
-	Stagnation       bool            `json:"stagnation,omitempty"`
-	Verdict          *CeilingVerdict `json:"verdict,omitempty"`
-	Yielded          bool            `json:"yielded,omitempty"`
+	// WallClockExit is set when the wall-clock bound (Ceiling.MaxDuration) fires
+	// (SPEC-INFINITE-GOAL-001 REQ-4 / OQ-2). The emitted 5-section Verdict is
+	// indistinguishable in shape from a MaxTurns-ceiling verdict; this flag lets
+	// callers/tests distinguish the cause.
+	WallClockExit bool            `json:"wall_clock_exit,omitempty"`
+	Stagnation    bool            `json:"stagnation,omitempty"`
+	Verdict       *CeilingVerdict `json:"verdict,omitempty"`
+	Yielded       bool            `json:"yielded,omitempty"`
 	// SnapshotAttribution records, per reused Tier-1 condition, the snapshot
 	// citation (path + key + command + recorded exit) — the evidence-attribution
 	// trail for results served from the shared diagnostic snapshot instead of
@@ -72,6 +83,12 @@ type Eval struct {
 	Runner              CmdRunner
 	StagnationThreshold int  // default DefaultStagnationThreshold when zero
 	NativeGoalActive    bool // set when the runtime signals an active native /goal (REQ-GLE-016)
+	// ProjectRoot, when non-empty, enables the bounded file-set SHA axis of the
+	// strengthened stagnation guard (SPEC-INFINITE-GOAL-001 REQ-4 / D7). Empty
+	// → the file-set axis is best-effort/no-op (constant), and stagnation keys
+	// on per-condition exit + output only. The hook (hook_stop_goal.go) supplies
+	// the real project root; unit tests may leave it empty.
+	ProjectRoot string
 	// Snapshot, when non-nil, is consulted before executing a Tier-1 mechanical
 	// condition: an exact-match fresh entry reuses the recorded exit code
 	// without a CmdRunner call. nil preserves the pre-existing behavior
@@ -102,7 +119,13 @@ func lastProgress(g *Goal) string {
 }
 
 // isStagnant reports whether the goal's progress log shows N consecutive
-// identical notes (N = StagnationThreshold).
+// identical mechanical-condition signatures (N = StagnationThreshold).
+//
+// SPEC-INFINITE-GOAL-001 REQ-4 strengthens the guard: the comparison key is the
+// per-turn Fingerprint (mechanical-condition fingerprint: exit + output-hash +
+// bounded file-set SHA) when present; it falls back to the legacy Note when
+// Fingerprint is empty (backward compat with pre-M4 / ceiling / satisfied
+// entries). N consecutive identical signatures → stagnation.
 func (e *Eval) isStagnant(g *Goal) bool {
 	n := e.StagnationThreshold
 	if n == 0 {
@@ -111,13 +134,142 @@ func (e *Eval) isStagnant(g *Goal) bool {
 	if len(g.Progress) < n {
 		return false
 	}
-	last := g.Progress[len(g.Progress)-1].Note
+	last := stagnationKey(g.Progress[len(g.Progress)-1])
 	for i := len(g.Progress) - 1; i >= len(g.Progress)-n; i-- {
-		if g.Progress[i].Note != last {
+		if stagnationKey(g.Progress[i]) != last {
+			return false
+		}
+		if last == "" {
+			// Empty signature (e.g. all-empty entries) must not collapse into a
+			// vacuous "N identical empties" stagnation.
 			return false
 		}
 	}
 	return true
+}
+
+// stagnationKey returns the per-turn signature used by isStagnant: the
+// Fingerprint when non-empty, else the legacy Note.
+func stagnationKey(p ProgressEntry) string {
+	if p.Fingerprint != "" {
+		return p.Fingerprint
+	}
+	return p.Note
+}
+
+// condResult captures one mechanical condition's evaluation result for the
+// fingerprint computation (SPEC-INFINITE-GOAL-001 REQ-4).
+type condResult struct {
+	cmd  string
+	exit int
+	out  string
+}
+
+// mechanicalFingerprint computes the per-turn mechanical-condition fingerprint
+// (SPEC-INFINITE-GOAL-001 REQ-4 / D7). It keys on per-condition (exit,
+// output-hash) plus a bounded file-set SHA derived from the condition commands'
+// first path-like tokens (D7: "extract the first path-like token from each
+// Condition.Cmd; empty set when none parses"). When no path-like token parses
+// (the common shell-command case), the file-set axis is a constant — the load-
+// bearing signal is (exit, output), which captures test-count + pass/fail
+// tally implicitly (identical output ⟹ identical count/tally).
+func mechanicalFingerprint(results []condResult, projectRoot string) string {
+	var b strings.Builder
+	for _, r := range results {
+		b.WriteString(strconv.Itoa(r.exit))
+		b.WriteByte(':')
+		b.WriteString(shortHash(r.out))
+		b.WriteByte('|')
+	}
+	b.WriteString("fs=")
+	b.WriteString(boundedFileSetSHA(results, projectRoot))
+	return b.String()
+}
+
+// boundedFileSetSHA derives the bounded file-set SHA (D7). For each condition
+// command, extract the first path-like token (a whitespace-delimited token that
+// contains a path separator '/' OR a file extension). Resolve each against
+// projectRoot; hash the contents of the files that exist (sorted by path). When
+// no path-like token resolves to an existing file (the common shell-command
+// case), returns a constant "empty" — the file-set axis is best-effort/no-op.
+//
+// The set is BOUNDED by construction: it is at most one path per condition
+// command (NOT the whole repo — AP-4). Empty when projectRoot is empty.
+func boundedFileSetSHA(results []condResult, projectRoot string) string {
+	if projectRoot == "" {
+		return "empty"
+	}
+	var paths []string
+	seen := map[string]bool{}
+	for _, r := range results {
+		tok := firstPathLikeToken(r.cmd)
+		if tok == "" {
+			continue
+		}
+		full := tok
+		if !filepath.IsAbs(tok) {
+			full = filepath.Join(projectRoot, tok)
+		}
+		if _, err := os.Stat(full); err != nil {
+			continue // not an existing file → skip (best-effort)
+		}
+		if !seen[full] {
+			seen[full] = true
+			paths = append(paths, full)
+		}
+	}
+	if len(paths) == 0 {
+		return "empty"
+	}
+	for i := 1; i < len(paths); i++ {
+		for j := i; j > 0 && paths[j-1] > paths[j]; j-- {
+			paths[j-1], paths[j] = paths[j], paths[j-1]
+		}
+	}
+	h := sha256.New()
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			h.Write([]byte(p + ":unreadable;"))
+			continue
+		}
+		h.Write([]byte(p + ":"))
+		h.Write(data)
+		h.Write([]byte(";"))
+	}
+	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+// firstPathLikeToken extracts the first whitespace-delimited token from cmd
+// that looks like a file path: it contains a '/' separator OR matches a file
+// extension pattern (dot followed by 1-4 alphanumerics at the token's end).
+// Flags (leading '-') and the literal "./..." glob are excluded. Returns "" when
+// no token parses.
+func firstPathLikeToken(cmd string) string {
+	for _, tok := range strings.Fields(cmd) {
+		if tok == "" || strings.HasPrefix(tok, "-") {
+			continue
+		}
+		if tok == "./..." || strings.HasSuffix(tok, "/...") {
+			continue
+		}
+		if strings.Contains(tok, "/") {
+			return tok
+		}
+		// extension pattern: name.ext(1-4)
+		dot := strings.LastIndexByte(tok, '.')
+		if dot > 0 && dot < len(tok)-1 && len(tok)-dot-1 <= 4 {
+			return tok
+		}
+	}
+	return ""
+}
+
+// shortHash returns the first 16 hex chars of the SHA-256 of s (compact,
+// collision-safe for stagnation equality over small output strings).
+func shortHash(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])[:16]
 }
 
 // Evaluate runs the 2-tier evaluation cycle (plan §B.3 steps 1-8). It MUTATES
@@ -149,6 +301,29 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 		return v, false
 	}
 
+	// Step 2b (SPEC-INFINITE-GOAL-001 REQ-4 / OQ-2): wall-clock bound. When
+	// Ceiling.MaxDuration > 0 and the elapsed wall-clock since CreatedAt exceeds
+	// it, fire a 5-section verdict indistinguishable in shape from the MaxTurns
+	// ceiling (WallClockExit flag distinguishes the cause). CreatedAt is RFC3339;
+	// a missing/unparseable CreatedAt → no fire (fail-open, never blocks on a
+	// clock parse error).
+	if g.Ceiling.MaxDuration > 0 {
+		if created, err := time.Parse(time.RFC3339, g.CreatedAt); err == nil {
+			elapsed := int(time.Since(created).Seconds())
+			if elapsed >= g.Ceiling.MaxDuration {
+				g.Status = StatusCeilingExit
+				v := Verdict{
+					WallClockExit: true,
+					Verdict: e.ceilingReport(g, fmt.Sprintf(
+						"wall-clock bound reached: %ds elapsed >= %ds max-duration",
+						elapsed, g.Ceiling.MaxDuration)),
+				}
+				e.appendProgress(g, "wallclock-exit")
+				return v, false
+			}
+		}
+	}
+
 	// Step 3: stagnation → stop + E1/E3 escalation note, no block.
 	if e.isStagnant(g) {
 		g.Status = StatusCeilingExit
@@ -167,6 +342,10 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	var failed []FailedCond
 	var attributions []string
 	hasMechanical := false
+	// SPEC-INFINITE-GOAL-001 REQ-4: collect per-condition (exit, output) so the
+	// mechanical-condition fingerprint can be computed for the strengthened
+	// stagnation guard (D7).
+	var results []condResult
 	for _, c := range g.Conditions {
 		if c.Type != ConditionMechanical {
 			continue
@@ -186,6 +365,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 		if !reused {
 			exit, out, err = e.Runner.Run(ctx, c.Cmd)
 		}
+		results = append(results, condResult{cmd: c.Cmd, exit: exit, out: out})
 		expect := c.ExpectExit
 		condFailed := err != nil || exit != expect
 		if condFailed {
@@ -196,6 +376,14 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 			failed = append(failed, fc)
 		}
 	}
+	// Compute the mechanical-condition fingerprint for this turn (D7). The
+	// fingerprint keys on per-condition (exit, output-hash) + a bounded file-set
+	// SHA derived from the condition commands' first path-like tokens. When no
+	// path-like token parses (the common case for shell commands like `false`),
+	// the file-set axis is a constant (best-effort/no-op per D7) — the load-
+	// bearing signal is (exit, output), which captures test-count + pass/fail
+	// tally implicitly (identical output ⟹ identical count/tally).
+	currentFP := mechanicalFingerprint(results, e.ProjectRoot)
 
 	blockNeeded := len(failed) > 0
 
@@ -210,7 +398,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	if !blockNeeded {
 		// All mechanical conditions passed and no model conditions exist.
 		g.Status = StatusSatisfied
-		e.appendProgress(g, "all conditions satisfied")
+		e.appendProgressFP(g, "all conditions satisfied", currentFP)
 		return Verdict{SnapshotAttribution: attributions}, false
 	}
 
@@ -224,7 +412,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	// so the orchestrator's confirm AskUserQuestion surfaces WHY the goal is not
 	// satisfied without polluting the reason label.
 	if g.ProgressionMode == ProgressionSemiAutonomous {
-		e.appendProgress(g, "semi-autonomous checkpoint")
+		e.appendProgressFP(g, "semi-autonomous checkpoint", currentFP)
 		v := Verdict{
 			Decision:            "block",
 			Reason:              fmt.Sprintf("semi-autonomous checkpoint: orchestrator to confirm continuation (turn %d of %d)", g.TurnsUsed, g.Ceiling.MaxTurns),
@@ -241,7 +429,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	}
 
 	// Autonomous mode: plain block — the detail IS the reason (REQ-GLE-010).
-	e.appendProgress(g, detail)
+	e.appendProgressFP(g, detail, currentFP)
 	return Verdict{Decision: "block", Reason: detail, SnapshotAttribution: attributions}, true
 }
 
@@ -280,4 +468,15 @@ func (e *Eval) ceilingReport(g *Goal, cause string) *CeilingVerdict {
 
 func (e *Eval) appendProgress(g *Goal, note string) {
 	g.Progress = append(g.Progress, ProgressEntry{Turn: g.TurnsUsed, Note: note})
+}
+
+// appendProgressFP appends a Progress entry carrying both a note and the
+// mechanical-condition fingerprint for the strengthened stagnation guard
+// (SPEC-INFINITE-GOAL-001 REQ-4).
+func (e *Eval) appendProgressFP(g *Goal, note, fingerprint string) {
+	g.Progress = append(g.Progress, ProgressEntry{
+		Turn:        g.TurnsUsed,
+		Note:        note,
+		Fingerprint: fingerprint,
+	})
 }

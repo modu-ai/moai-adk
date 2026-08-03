@@ -150,13 +150,13 @@ Every blocking acceptance criterion in
 the conversation (test output, build exit 0, or explicit AC-id: PASS
 line); AND `go test ./...` exit 0 is surfaced; AND no test file outside
 the SPEC scope was modified (surfaced via git status). Stop when all
-hold. Max 20 turns.
+hold.
 On any semantic failure (data race, deadlock, panic, test assertion
 failure), clear this goal and escalate via AskUserQuestion — do NOT
 auto-fix semantic failures.
-[PRECONDITION: Implementation Kickoff Approval user approval already obtained; this goal does
- NOT substitute for or bypass Implementation Kickoff Approval.]
+[PRECONDITION: Implementation Kickoff Approval user approval already obtained; this goal does NOT substitute for or bypass Implementation Kickoff Approval.]
 ```
+> **Actual turn ceiling:** the legacy "Max 20 turns" clause above is NOT parsed — `parseCondition` matches only a trailing `exits <N>`, so a "Max 20 turns" / "stop after N turns" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default 30-turn ceiling and actually runs up to 30 turns (subject to `min(30, block cap)` and the stagnation guard). The literal is retained only as the historical reference for the author's intent. To bound a goal at a specific turn count, use `--max-turns N`; for an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>`.
 
 ### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
 

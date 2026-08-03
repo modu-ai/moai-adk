@@ -13,8 +13,11 @@ import (
 	"time"
 )
 
-// cacheTTL is the validity period for a cached PASS verdict. REQ-WAG-003.
-const cacheTTL = 24 * time.Hour
+// NOTE (SPEC-AUDIT-SNAPSHOT-001, A1): the legacy 24h cache TTL is RETIRED.
+// Cache validity is now hash-only — a cached PASS verdict whose plan-artifact
+// hash is unchanged remains valid regardless of elapsed time. The `now`
+// parameter on Lookup is retained in the interface signature for stability
+// but is no longer consulted; it is documented as vestigial.
 
 // CachedEntry holds a persisted PASS verdict for cache lookup.
 type CachedEntry struct {
@@ -31,12 +34,16 @@ type CachedEntry struct {
 	PlanArtifactHash string
 }
 
-// AuditCache provides plan artifact hashing and 24-hour verdict caching.
+// AuditCache provides plan artifact hashing and sticky (hash-keyed) verdict caching.
 //
 // The cache key is (specID, planArtifactHash). A cached entry is valid when:
-// - verdict == PASS
-// - planArtifactHash matches current hash (change invalidates cache)
-// - entry age < 24h
+//   - verdict == PASS
+//   - planArtifactHash matches current hash (change invalidates cache)
+//
+// SPEC-AUDIT-SNAPSHOT-001 (A1) retired the prior 24h age condition: cache
+// validity is hash-only now. A legitimately-passed SPEC whose plan artifacts
+// are unchanged remains skip-eligible regardless of how long ago the verdict
+// was recorded.
 //
 // @MX:ANCHOR: [AUTO] AuditCache is the primary caching interface for the audit gate
 // @MX:REASON: [AUTO] fan_in >= 3 (GateConfig.Invoke, test mocks, audit_cache_test)
@@ -46,11 +53,19 @@ type AuditCache interface {
 	// Hash algorithm: SHA-256 over whitespace-normalized content of each artifact file,
 	// sorted by filename, concatenated. OPEN QUESTION Q1 resolution: whitespace-insensitive.
 	//
-	// Artifact files considered (in sorted order): spec.md, plan.md, acceptance.md, tasks.md.
+	// Artifact files considered (in sorted order): acceptance.md, design.md,
+	// plan.md, research.md, spec.md, tasks.md. Missing files are silently
+	// skipped, so the subject set is tier-conditional by construction: a Tier S
+	// directory (spec.md, plan.md) hashes only those two; a Tier M directory
+	// adds acceptance.md; a Tier L directory adds design.md + research.md
+	// (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension); a grandfathered V3R4
+	// directory carrying tasks.md retains it as a subject (K-2 backward compat).
 	ComputeHash(specDir string) (string, error)
 
-	// Lookup returns a cached PASS entry if one exists for (specID, hash) within 24h.
-	// Returns (entry, true) on hit, (nil, false) on miss.
+	// Lookup returns a cached PASS entry if one exists for (specID, hash).
+	// Returns (entry, true) on hit, (nil, false) on miss. The `now` parameter
+	// is vestigial (SPEC-AUDIT-SNAPSHOT-001 A1 retired the time-window check);
+	// it is retained in the signature for interface stability and ignored.
 	Lookup(specID, hash string, now time.Time) (*CachedEntry, bool)
 
 	// Store saves a PASS verdict to the cache.
@@ -59,10 +74,15 @@ type AuditCache interface {
 }
 
 // planArtifactNames is the ordered list of plan artifact file names to hash.
-// OPEN QUESTION Q1 resolution: whitespace-insensitive, sorted by filename.
+// The list is the UNION of all tier subject sets; the "skip if missing" rule in
+// ComputeHash makes inclusion tier-conditional by construction. The Tier L
+// extension (design.md, research.md) is SPEC-AUDIT-SNAPSHOT-001 A1; tasks.md is
+// retained for grandfathered V3R4-era SPECs (K-2).
 var planArtifactNames = []string{
 	"acceptance.md",
+	"design.md",
 	"plan.md",
+	"research.md",
 	"spec.md",
 	"tasks.md",
 }
@@ -120,15 +140,13 @@ func cacheKey(specID, hash string) string {
 	return specID + ":" + hash
 }
 
-// Lookup checks the in-memory cache for a valid PASS entry.
+// Lookup checks the in-memory cache for a valid PASS entry. Cache validity is
+// hash-only (SPEC-AUDIT-SNAPSHOT-001 A1 retired the 24h time-window); the `now`
+// parameter is vestigial and intentionally NOT consulted.
 func (c *InMemoryCache) Lookup(specID, hash string, now time.Time) (*CachedEntry, bool) {
+	_ = now // vestigial: the time-window condition is retired (A1); kept for interface stability
 	entry, ok := c.entries[cacheKey(specID, hash)]
 	if !ok {
-		return nil, false
-	}
-	if now.Sub(entry.AuditAt) >= cacheTTL {
-		// TTL expired — invalidate the entry.
-		delete(c.entries, cacheKey(specID, hash))
 		return nil, false
 	}
 	return entry, true

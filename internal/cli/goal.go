@@ -92,6 +92,14 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	}
 	cmd.PersistentFlags().StringVar(&sessionFlag, "session", "", "override the session id (default: resolve via 'moai session current')")
 	cmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "emit machine-readable JSON output")
+	// SPEC-INFINITE-GOAL-001 REQ-1/REQ-4 arm-time bound flags. --max-turns N
+	// (0 = infinite, the C2 finding's entry point); --max-duration <seconds> and
+	// --cost-cap <N> are the REAL bounds required when --max-turns 0 is supplied
+	// (AC-011 fail-closed reject). Sentinel -1 means "omitted" so the default
+	// (30) from NewGoal is preserved when the flag is absent (AC-002).
+	cmd.PersistentFlags().Int("max-turns", -1, "turn ceiling (0 = infinite; default 30 when omitted)")
+	cmd.PersistentFlags().Int("max-duration", 0, "wall-clock bound in seconds since arm time (real bound for --max-turns 0)")
+	cmd.PersistentFlags().Int("cost-cap", 0, "cost bound (max invocations); recorded, enforcement is a follow-up")
 
 	armCmd := &cobra.Command{
 		Use:          "arm <condition>",
@@ -211,6 +219,34 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 		return fmt.Errorf("goal arm: condition must not be empty")
 	}
 
+	// SPEC-INFINITE-GOAL-001 REQ-1/REQ-4: read the arm-time bound flags. The
+	// sentinel -1 (default) means "omitted" → NewGoal's DefaultMaxTurns (30)
+	// is preserved (AC-002 backward compat). 0 is the infinite entry point.
+	maxTurnsFlag := cmd.Flags().Lookup("max-turns")
+	maxDuration, _ := cmd.Flags().GetInt("max-duration")
+	costCap, _ := cmd.Flags().GetInt("cost-cap")
+	maxTurns := -1
+	if maxTurnsFlag != nil {
+		// Changed() distinguishes "user passed --max-turns 0" from "flag absent".
+		if maxTurnsFlag.Changed {
+			v, _ := strconv.Atoi(maxTurnsFlag.Value.String())
+			maxTurns = v
+		}
+	}
+
+	// AC-011 fail-closed: --max-turns 0 (infinite) with NEITHER --max-duration
+	// NOR --cost-cap is rejected at arm time. No goal state file is written.
+	if maxTurns == 0 && maxDuration <= 0 && costCap <= 0 {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+			"goal arm: --max-turns 0 (infinite) requires at least one real bound: "+
+				"--max-duration <seconds> or --cost-cap <N>. An infinite goal "+
+				"without a real bound would run unbounded (the stagnation guard "+
+				"only fires on N consecutive no-change turns; real progress never "+
+				"triggers it). Re-run with --max-duration <seconds> (wall-clock "+
+				"primary, OQ-2) or --cost-cap <N>.")
+		return fmt.Errorf("goal arm: --max-turns 0 requires a real bound (--max-duration or --cost-cap)")
+	}
+
 	sessionID, warn := resolveArmSessionID(sessionFlag)
 	if warn != "" {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s\n", warn)
@@ -218,6 +254,11 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 
 	cond := parseCondition(conditionText)
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
+	if maxTurns >= 0 {
+		g.Ceiling.MaxTurns = maxTurns // 0 = infinite entry point (AC-001)
+	}
+	g.Ceiling.MaxDuration = maxDuration
+	g.Ceiling.CostCap = costCap
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 	if err := goal.SaveGoal(root, g); err != nil {
 		return fmt.Errorf("goal arm: %w", err)
