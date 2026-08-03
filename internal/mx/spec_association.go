@@ -21,6 +21,11 @@ var specIDRegex = regexp.MustCompile(`SPEC-[A-Z0-9][A-Z0-9-]*`)
 type SpecAssociator struct {
 	// specModules is the specID → []modulePath mapping.
 	specModules map[string][]string
+	// subLineDisabled, when true, skips the (c) sub-line source loop so the
+	// associator reproduces the pre-SPEC-MX-ASSOCIATION-001 behavior. It exists
+	// for the AC-002 measurement harness (on vs off delta) and defaults to
+	// false (sub-line source enabled) in production.
+	subLineDisabled bool
 }
 
 // NewSpecAssociator creates a SpecAssociator with SPEC ID → module path mapping.
@@ -28,6 +33,14 @@ func NewSpecAssociator(specModules map[string][]string) *SpecAssociator {
 	return &SpecAssociator{
 		specModules: specModules,
 	}
+}
+
+// SetSubLineSourceEnabled toggles the additive sub-line (@MX:SPEC) association
+// source. It defaults to enabled (false argument). The off state reproduces the
+// pre-SPEC-MX-ASSOCIATION-001 association behavior, used by the AC-002 coverage
+// measurement harness to compute the on-vs-off delta.
+func (a *SpecAssociator) SetSubLineSourceEnabled(enabled bool) {
+	a.subLineDisabled = !enabled
 }
 
 // Associate returns a list of SPEC IDs connected to the tag (REQ-SPC-004-006).
@@ -78,7 +91,8 @@ func (a *SpecAssociator) AssociateWithDiagnostics(tag Tag) ([]string, []string) 
 	// (c) sub-line connection (REQ-MX-ASSOC-002): the captured @MX:SPEC ID.
 	// Additive, de-duped via the existing seen map. Validation is flag-but-keep
 	// (REQ-MX-ASSOC-003): an unresolved ID is kept AND warned, never dropped.
-	if tag.SpecRef != "" {
+	// Skipped entirely when subLineDisabled (AC-002 measurement harness).
+	if !a.subLineDisabled && tag.SpecRef != "" {
 		if !seen[tag.SpecRef] {
 			seen[tag.SpecRef] = true
 			result = append(result, tag.SpecRef)

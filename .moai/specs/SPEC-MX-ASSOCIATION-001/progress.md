@@ -13,7 +13,41 @@
 
 ## §E.2 Run-phase Evidence
 
-_(pending run-phase)_
+### AC PASS/FAIL matrix
+
+| AC | Status | Verification command | Observed output |
+|----|--------|---------------------|-----------------|
+| AC-MX-ASSOC-001 (sub-line drives assoc, no path/body match) | PASS | `go test -run TestAC001 ./internal/mx/` | `ok internal/mx` — SpecRef captured, SPEC-FIXTURE-001 in associations with neither path nor body matching |
+| AC-MX-ASSOC-002 (coverage lift ≥ 10.2 % AND delta ≥ 40) | PASS | `go test -run TestAC002 -v ./internal/mx/` | coverage_on=16.9 % (142/840), coverage_off=9.3 % (78/840), associated_delta=64 |
+| AC-MX-ASSOC-003 (unresolved → flag-but-keep, no panic) | PASS | `go test -run TestAC003 ./internal/mx/` | `ok internal/mx` — UnresolvedSpecRef emitted AND SPEC-DOES-NOT-EXIST-001 kept |
+| AC-MX-ASSOC-004 (path/body unchanged byte-for-byte) | PASS | `go test -run TestAC004 ./internal/mx/` | `ok internal/mx` — 8 characterization fixtures + additivity assertion pass |
+| AC-MX-ASSOC-005 (production validator green) | PASS | `go test -run TestAC005 ./internal/mx/` | `ok internal/mx` — no new error-prefix vocabulary in GetErrors |
+| AC-MX-ASSOC-006 (dangling → DanglingSpecRef, no panic) | PASS | `go test -run TestAC006 ./internal/mx/` | `ok internal/mx` — DanglingSpecRef emitted, no spurious SpecRef |
+| AC-MX-ASSOC-007 (sub-line + body de-dup) | PASS | `go test -run TestAC007 ./internal/mx/` | `ok internal/mx` — SPEC-DUP-001 exactly once |
+
+### Coverage measurement (AC-002 numbers, recorded for audit)
+
+- coverage_on  = **16.9 %** (142 / 840 tags associated)
+- coverage_off = **9.3 %** (78 / 840 tags associated)
+- associated_delta = **64** (on − off; ≥ 40 floor met with 60 % headroom)
+- known-SPEC set size: 569
+- Note: coverage_off 9.3 % is the TRUE off-baseline for the worktree tree (840 tags), which differs from the diagnosis-report 9.7 % / 9,858-tag main-checkout snapshot (different denominator). Per plan.md §G AP-4, the off-baseline guard is asserted self-consistently (coverage_off < 10.2 % AND < coverage_on) rather than against an exact external snapshot.
+
+### Quality gates
+
+- `go test ./internal/mx/` → ok (full suite green)
+- `go test -race ./internal/mx/` → ok (race clean)
+- `go test -cover ./internal/mx/` → coverage: 90.9 % of statements (≥ 85 % target)
+- `golangci-lint run --timeout=2m ./internal/mx/` → 0 issues
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- Subagent boundary: `grep -rn 'AskUserQuestion' internal/mx | grep -v _test.go | grep -v '// '` → 0 matches
+
+### Invariants
+
+- Additive only: existing path/body association outputs unchanged for tags without `@MX:SPEC` (AC-004 characterization).
+- `ExtractSpecIDs` untouched (AP-5 honored) — validation lives at the associator layer.
+- `tag.Body` not mutated (AP-1 honored) — SPEC ID lives in the dedicated `SpecRef` field.
+- No 3-line proximity cutoff for `@MX:SPEC` (AP-3 honored).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
