@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -771,6 +772,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		// Claude backend: honors the 5-step effort vocabulary (CLAUDE_CODE_EFFORT_LEVEL).
 		launchEnv = buildEnvForLaunch(effectiveEffort, os.Environ())
 	}
+	// SPEC-INFINITE-GOAL-001 REQ-2 (OQ-3): when an armed --max-turns 0 goal
+	// exists for the resolving session, raise the runtime Stop-hook block cap so
+	// the infinite loop persists. Best-effort + fail-open (never blocks launch).
+	launchEnv = injectStopHookBlockCapForGoal(context.Background(), launchEnv, launchProjectRoot(), resolveLaunchSessionID(""))
 	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 

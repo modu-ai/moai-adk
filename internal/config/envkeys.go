@@ -179,6 +179,15 @@ const (
 	// "xhigh" and "max" are supported on Opus 4.7+.
 	// When empty, the runtime default applies.
 	EnvClaudeCodeEffortLevel = "CLAUDE_CODE_EFFORT_LEVEL"
+
+	// EnvClaudeCodeStopHookBlockCap is the runtime consecutive-Stop-hook-block
+	// cap (default 8). It is the silent terminator that pre-empts the goal loop
+	// before MaxTurns fires (effective bound min(MaxTurns, cap) today).
+	// SPEC-INFINITE-GOAL-001 REQ-2: when a goal is armed at --max-turns 0
+	// (infinite), the launcher injects a raised value so the infinite loop
+	// actually persists. MoAI does not own this env (it is a Claude Code runtime
+	// env); the const centralizes the name per CLAUDE.local.md §14.
+	EnvClaudeCodeStopHookBlockCap = "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP"
 )
 
 // Anthropic API environment variables.
