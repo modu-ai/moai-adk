@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
 )
 
@@ -338,6 +339,36 @@ func (r *registry) EnableObservability(logDir string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.logDir = logDir
+}
+
+// Shutdown flushes the registry's trace writer and releases its background
+// goroutine. It is the teardown counterpart to the lazy writer creation in
+// Dispatch, and the hook CLI defers it so a one-shot `moai hook <event>`
+// process does not exit while trace entries are still queued
+// (SPEC-HOOK-TRACE-FLUSH-001 REQ-HTF-001, REQ-HTF-002).
+//
+// The wait is bounded by config.DefaultTraceFlushTimeout; exhausting the budget
+// is logged at warn level and never escalated, because losing observability
+// data must not break the user's session (REQ-HTF-003).
+//
+// Shutdown is a no-op when observability is disabled (REQ-HTF-005) and is safe
+// to call repeatedly (REQ-HTF-005).
+func (r *registry) Shutdown() {
+	// Take the writer reference under the mutex, then release it before
+	// waiting: writeTrace takes the same mutex, so holding it across the drain
+	// would risk a deadlock.
+	r.mu.Lock()
+	tw := r.traceWriter
+	r.mu.Unlock()
+	if tw == nil {
+		return
+	}
+
+	if err := tw.CloseWithTimeout(config.DefaultTraceFlushTimeout); err != nil {
+		slog.Warn("trace: teardown flush incomplete",
+			"error", err.Error(),
+		)
+	}
 }
 
 // ensureTraceWriter lazily creates the TraceWriter for the given sessionID if

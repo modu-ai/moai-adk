@@ -59,6 +59,35 @@ const (
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
 
+	// DefaultTraceFlushTimeout bounds how long a hook process waits at teardown
+	// for the async trace writer to drain to disk before abandoning the wait
+	// (SPEC-HOOK-TRACE-FLUSH-001 REQ-HTF-006). It is the single source of truth
+	// for the flush budget — call sites pass it as an argument rather than
+	// inlining a literal (CLAUDE.local.md §14).
+	//
+	// This is a ceiling, not a cost: the drain barrier is signal-confirmed
+	// (CloseWithTimeout blocks on the writer's done channel, not on the timer),
+	// so the normal path returns as soon as the background goroutine finishes
+	// draining. The timer only ever fires on a pathologically slow drain or a
+	// genuine hang (REQ-HTF-004 forbids unbounded waits).
+	//
+	// The budget is provisional and corrected by measurement (SPEC §3.1
+	// REQ-HTF-013). The prior 200ms value was calibrated against a local-SSD
+	// measurement (p99 140µs for the 3-entry dispatch case, p99 3.4ms / max
+	// 5.3ms at the 100-entry channel capacity) and held ~40x headroom there.
+	// It proved insufficient under ubuntu CI's `-race` + coverage
+	// instrumentation, where per-syscall overhead inflates 5-20x and the
+	// writeEntry path (MkdirAll + Stat + OpenFile + Write + Close per entry)
+	// pushed a 3-handler dispatch's drain past 200ms deterministically —
+	// costing the trailing handlers' trace entries (and, in the worst case, all
+	// entries when the background goroutine was starved off the scheduler). 2s
+	// restores ~10x headroom over that CI failure threshold while remaining a
+	// bounded, no-stall cap: only the one-shot hook CLI entrypoints defer
+	// Shutdown (the sole caller), so this only binds how long a `moai hook
+	// <event>` process lingers at exit, and only when the drain is actually
+	// slow — the signal path returns in microseconds on a healthy filesystem.
+	DefaultTraceFlushTimeout = 2 * time.Second
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 

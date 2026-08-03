@@ -2,12 +2,14 @@ package trace
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -17,6 +19,12 @@ const (
 	// channelCapacity is the buffer size for the async write channel.
 	channelCapacity = 100
 )
+
+// ErrFlushTimeout signals that CloseWithTimeout gave up waiting before the
+// background goroutine finished draining. It is distinguishable via errors.Is
+// so callers can degrade it to a warning rather than a fatal error: losing
+// observability data must never break a user's session.
+var ErrFlushTimeout = errors.New("trace: flush budget exhausted before drain completed")
 
 // TraceWriter writes TraceEntry values to JSONL files asynchronously.
 // Writes are non-blocking: entries are enqueued to a buffered channel and
@@ -32,6 +40,11 @@ type TraceWriter struct {
 	done   chan struct{}
 	once   sync.Once
 	closed atomic.Bool
+
+	// beforeDrain, when non-nil, runs once at the top of run() before any
+	// entry is consumed. It is a test seam for exercising the flush-budget
+	// path deterministically and is always nil in production.
+	beforeDrain func()
 }
 
 // @MX:WARN: [AUTO] Starts a background goroutine (go w.run()) whose lifetime is tied to Close(); leaks if Close is never called
@@ -41,12 +54,19 @@ type TraceWriter struct {
 // the filename and each entry. The writer must be closed via Close() to flush
 // all pending entries.
 func NewTraceWriter(logDir, sessionID string) *TraceWriter {
+	return newTraceWriter(logDir, sessionID, nil)
+}
+
+// newTraceWriter is the shared constructor. beforeDrain is nil for every
+// production caller; tests pass a gate to hold the drain goroutine still.
+func newTraceWriter(logDir, sessionID string, beforeDrain func()) *TraceWriter {
 	w := &TraceWriter{
-		logDir:    logDir,
-		sessionID: sessionID,
-		maxSize:   defaultMaxSize,
-		ch:        make(chan TraceEntry, channelCapacity),
-		done:      make(chan struct{}),
+		logDir:      logDir,
+		sessionID:   sessionID,
+		maxSize:     defaultMaxSize,
+		ch:          make(chan TraceEntry, channelCapacity),
+		done:        make(chan struct{}),
+		beforeDrain: beforeDrain,
 	}
 	go w.run()
 	return w
@@ -81,17 +101,54 @@ func (w *TraceWriter) Write(entry TraceEntry) {
 	}
 }
 
-// @MX:ANCHOR: [AUTO] Cleanup entry point for all trace consumers; must be called to drain background goroutine
-// @MX:REASON: fan_in=24, all hook handler teardown paths call Close; omitting this call causes the run() goroutine to leak
+// @MX:NOTE: [AUTO] Close and CloseWithTimeout are the only flush barriers; measured production fan_in is 1 (registry.Shutdown calls CloseWithTimeout), and Close itself has no production caller
 // Close flushes all pending trace entries and stops the background goroutine.
 // It is safe to call Close multiple times; subsequent calls are no-ops.
 func (w *TraceWriter) Close() error {
+	w.stopAccepting()
+	<-w.done
+	return nil
+}
+
+// CloseWithTimeout flushes pending trace entries, waiting at most d for the
+// background goroutine to drain. It is the bounded variant of Close, intended
+// for teardown on a latency budget such as a hook process about to exit.
+//
+// It returns nil when the drain completed. When the budget elapses first it
+// abandons the wait and returns an error matching ErrFlushTimeout, carrying the
+// number of entries left unwritten; the same count is emitted as the structured
+// log field undrained_entries so residual loss is measurable rather than silent.
+// Abandoning the wait does not stop the background goroutine — it keeps draining
+// for as long as the process lives.
+//
+// Calling CloseWithTimeout more than once is safe, as is mixing it with Close.
+func (w *TraceWriter) CloseWithTimeout(d time.Duration) error {
+	w.stopAccepting()
+
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-w.done:
+		return nil
+	case <-timer.C:
+		undrained := len(w.ch)
+		slog.Warn("trace: flush budget exhausted, abandoning drain",
+			"budget", d.String(),
+			"undrained_entries", undrained,
+			"session_id", w.sessionID,
+		)
+		return fmt.Errorf("%w: %d entries undrained", ErrFlushTimeout, undrained)
+	}
+}
+
+// stopAccepting closes the entry channel exactly once, which both rejects
+// further writes and signals the drain goroutine to finish and exit.
+func (w *TraceWriter) stopAccepting() {
 	w.once.Do(func() {
 		w.closed.Store(true)
 		close(w.ch)
 	})
-	<-w.done
-	return nil
 }
 
 // filePath returns the primary trace file path for the session.
@@ -107,6 +164,10 @@ func (w *TraceWriter) rotatedFilePath() string {
 // run is the background goroutine that reads from the channel and writes to disk.
 func (w *TraceWriter) run() {
 	defer close(w.done)
+
+	if w.beforeDrain != nil {
+		w.beforeDrain()
+	}
 
 	for entry := range w.ch {
 		if err := w.writeEntry(entry); err != nil {
