@@ -53,7 +53,6 @@ func TestAuditRegistry_AllRegisteredStructsExist(t *testing.T) {
 		"state",
 		"statusline",
 		"ralph",
-		"research",
 		"workflow",
 	}
 	for _, section := range knownSections {

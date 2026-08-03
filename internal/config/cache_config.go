@@ -1,73 +1,24 @@
 package config
 
-import (
-	"fmt"
-	"log/slog"
-	"os"
-
-	"gopkg.in/yaml.v3"
-)
-
-// cache.yaml config schema.
+// cache.yaml was retired (SPEC-CONFIG-DEAD-SWEEP-001): the cache_control
+// injector, doctor metric, and PostToolUse telemetry it once fed were all
+// already removed as unreachable — prompt caching is performed by Claude Code
+// itself, and the live cache-hit signal is the statusline's segment
+// (internal/statusline.renderCacheHit), which reads context_window.current_usage
+// straight from Claude Code. With the loader gone, cache.yaml round-trips
+// through nothing.
 //
-// CacheConfig is the typed representation of the cacheStrategy section of
-// cache.yaml. It once fed a cache_control injector in internal/runtime; that
-// injector was never reachable from production code — moai does not own the
-// API call path, and .claude/rules/moai/workflow/cache-aware-execution.md
-// states the orchestrator cannot place cache_control markers — so it was
-// removed along with the doctor metric and telemetry that depended on it.
-// Prompt caching is performed by Claude Code itself, and the live cache-hit
-// signal is the statusline's ♻️ segment (internal/statusline.renderCacheHit),
-// which reads context_window.current_usage straight from Claude Code.
-//
-// @MX:DEBT: LoadCacheConfig now has no caller. Only ValidSessionTTLs survives,
-// consumed by the moai web settings seam for the session_ttl select options;
-// cache.yaml itself round-trips through that seam without any code acting on
-// its values.
-// @MX:CEILING: harmless while the file merely round-trips through the settings
-// editor; it misleads as soon as a user expects the values to change behaviour.
-// @MX:UPGRADE: retire cache.yaml (template + settings schema + this loader) in
-// a dedicated SPEC that handles migration for already-deployed projects.
-
-// Default values for the cacheStrategy section.
-const (
-	// DefaultCacheSessionTTL is the session-start breakpoint TTL default.
-	DefaultCacheSessionTTL = "1h"
-	// DefaultCacheSpecTTL is the SPEC-body breakpoint TTL default.
-	DefaultCacheSpecTTL = "5m"
-	// DefaultCacheMinTokens is the conservative model-agnostic threshold
-	// (haiku minimum) the removed injector used as its cacheability floor.
-	DefaultCacheMinTokens = 2048
-)
-
-// CacheConfig holds the parsed cacheStrategy section.
-type CacheConfig struct {
-	// Enabled once toggled cache_control injection; no code reads it now.
-	Enabled bool `yaml:"enabled"`
-	// SessionTTL is the session-start breakpoint TTL: "1h" | "5m" | "off".
-	SessionTTL string `yaml:"session_ttl"`
-	// SpecTTL is the SPEC-body breakpoint TTL: "5m" | "off".
-	SpecTTL string `yaml:"spec_ttl"`
-	// MinCacheableTokens is the R4 self-contained threshold (default 2048).
-	MinCacheableTokens int `yaml:"min_cacheable_tokens"`
-}
-
-// cacheFileWrapper handles the cache.yaml top-level "cacheStrategy:" key.
-type cacheFileWrapper struct {
-	CacheStrategy CacheConfig `yaml:"cacheStrategy"`
-}
+// The single live consumer of the closed-set of accepted session_ttl values
+// is the moai web settings seam (internal/settings/schema_sections.go), which
+// builds the session_ttl select options from ValidSessionTTLs(). That accessor
+// and its backing slice survive here; everything else — LoadCacheConfig,
+// CacheConfig, Validate, DefaultCacheConfig, cacheFileWrapper — was dead and is
+// removed.
 
 // sessionTTLValues is the ordered closed set of accepted session_ttl enum
-// values — the single source for both the map-based validator below and the
-// exported ValidSessionTTLs accessor, so the two cannot drift apart.
+// values — the single source for ValidSessionTTLs, so the web settings select
+// cannot drift from what the cache layer once accepted.
 var sessionTTLValues = []string{"1h", "5m", "off"}
-
-// validSessionTTLs and validSpecTTLs enumerate the accepted enum values.
-// validSessionTTLs is DERIVED from sessionTTLValues (no independent literal).
-var (
-	validSessionTTLs = stringSet(sessionTTLValues)
-	validSpecTTLs    = map[string]bool{"5m": true, "off": true}
-)
 
 // ValidSessionTTLs returns the ordered closed set of accepted cacheStrategy
 // session_ttl values ("1h" | "5m" | "off"). The moai web console cache section
@@ -75,96 +26,4 @@ var (
 // (SPEC-WEB-CONSOLE-013 REQ-WC13-013) — no divergent re-declaration is allowed.
 func ValidSessionTTLs() []string {
 	return append([]string(nil), sessionTTLValues...)
-}
-
-// stringSet builds a membership set from an ordered slice.
-func stringSet(values []string) map[string]bool {
-	m := make(map[string]bool, len(values))
-	for _, v := range values {
-		m[v] = true
-	}
-	return m
-}
-
-// DefaultCacheConfig returns the built-in defaults. Caching ships disabled until
-// the user explicitly opts in, but the TTL and threshold defaults are populated
-// so that enabling only requires flipping `enabled: true`.
-func DefaultCacheConfig() *CacheConfig {
-	return &CacheConfig{
-		Enabled:            false,
-		SessionTTL:         DefaultCacheSessionTTL,
-		SpecTTL:            DefaultCacheSpecTTL,
-		MinCacheableTokens: DefaultCacheMinTokens,
-	}
-}
-
-// Validate enforces the cacheStrategy invariants:
-//   - session_ttl ∈ {"1h", "5m", "off"}
-//   - spec_ttl ∈ {"5m", "off"}
-//   - min_cacheable_tokens >= 0
-//
-// An empty session_ttl/spec_ttl is treated as invalid here; callers that want
-// default-filling should do so before Validate (LoadCacheConfig fills defaults).
-func (c CacheConfig) Validate() error {
-	if !validSessionTTLs[c.SessionTTL] {
-		return fmt.Errorf("cacheStrategy.session_ttl %q invalid: want one of 1h|5m|off", c.SessionTTL)
-	}
-	if !validSpecTTLs[c.SpecTTL] {
-		return fmt.Errorf("cacheStrategy.spec_ttl %q invalid: want one of 5m|off", c.SpecTTL)
-	}
-	if c.MinCacheableTokens < 0 {
-		return fmt.Errorf("cacheStrategy.min_cacheable_tokens %d invalid: must be >= 0", c.MinCacheableTokens)
-	}
-	return nil
-}
-
-// LoadCacheConfig reads cache.yaml from the given path and returns a typed
-// CacheConfig.
-//
-// Return semantics (plan.md M2 "Missing/invalid → log warning, fall back to
-// enabled: false"):
-//   - (cfg, nil) on a successful, valid parse
-//   - (safeDefault, nil) on file-not-found
-//   - (safeDefault, nil) on malformed YAML or invalid enum/threshold values
-//
-// Unlike most loaders, this function NEVER returns an error: any failure mode
-// degrades to the safe default (enabled: false) so a misconfigured cache.yaml
-// can never block the SDK wrapper.
-//
-// @MX:ANCHOR: [AUTO] LoadCacheConfig — sole cache.yaml loader; safe-default-on-any-failure is a contractual invariant
-// @MX:REASON: fan_in >= 3 expected — cc.go SDK wrapper, moai doctor cache metric path, and AC-PC-002 schema test all consume this; the never-error degradation contract prevents a malformed cache.yaml from blocking launch.
-func LoadCacheConfig(path string) (*CacheConfig, error) {
-	defaults := DefaultCacheConfig()
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			slog.Warn("cache.yaml read failed, using safe default (disabled)", "path", path, "error", err)
-		}
-		return defaults, nil
-	}
-
-	cfg := DefaultCacheConfig()
-	wrapper := cacheFileWrapper{CacheStrategy: *cfg}
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		slog.Warn("cache.yaml malformed, using safe default (disabled)", "path", path, "error", err)
-		return DefaultCacheConfig(), nil
-	}
-
-	parsed := wrapper.CacheStrategy
-	// Default-fill any empty enum fields before validation so a partial file
-	// (e.g., only `enabled: true`) still validates against the defaults.
-	if parsed.SessionTTL == "" {
-		parsed.SessionTTL = DefaultCacheSessionTTL
-	}
-	if parsed.SpecTTL == "" {
-		parsed.SpecTTL = DefaultCacheSpecTTL
-	}
-
-	if err := parsed.Validate(); err != nil {
-		slog.Warn("cache.yaml invalid, using safe default (disabled)", "path", path, "error", err)
-		return DefaultCacheConfig(), nil
-	}
-
-	return &parsed, nil
 }

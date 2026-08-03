@@ -96,7 +96,6 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 | state.yaml | `state` | `cfg.State` |
 | workflow.yaml | `workflow` | `cfg.Workflow` |
 | statusline.yaml | `statusline` | `cfg.Statusline` |
-| research.yaml | `research` | `cfg.Research` |
 | constitution.yaml | `constitution` | `cfg.Constitution` |
 | context.yaml | `context_search` | `cfg.ContextSearch` |
 | interview.yaml | `interview` | `cfg.Interview` |
@@ -125,8 +124,7 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 **Acknowledged config orphans** (single documented inventory): the following section
 files currently have no doc cross-references and/or no `Loader.Load()` consumer and are
 acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `sunset.yaml`
-(DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
-`feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
+(DORMANT by design), `archive.yaml`, `feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
 `mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
 threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
 is `internal/config/audit_registry.go` + the loader-completeness allowlist.

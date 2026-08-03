@@ -420,10 +420,7 @@ func TestLoaderLoadStateSection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
-
-	if cfg.State.StateDir != ".moai/custom-state" {
-		t.Errorf("State.StateDir: got %q, want %q", cfg.State.StateDir, ".moai/custom-state")
-	}
+	_ = cfg // state_dir key was removed (SPEC-CONFIG-DEAD-SWEEP-001); StateConfig has no loadable fields now
 
 	sections := loader.LoadedSections()
 	if !sections["state"] {
@@ -443,10 +440,7 @@ func TestLoaderStateDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
-
-	if cfg.State.StateDir != DefaultStateDir {
-		t.Errorf("State.StateDir: got %q, want default %q", cfg.State.StateDir, DefaultStateDir)
-	}
+	_ = cfg // StateConfig has no loadable fields after state_dir removal (SPEC-CONFIG-DEAD-SWEEP-001)
 
 	sections := loader.LoadedSections()
 	if sections["state"] {
