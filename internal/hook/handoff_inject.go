@@ -25,6 +25,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 )
 
@@ -104,14 +105,22 @@ func (h *handoffInjectHandler) Handle(_ context.Context, input *HookInput) (*Hoo
 	}
 
 	// The single INJECT+CONSUME cell: source == clear ∧ mode == auto ∧ live pending.
-	return h.claimAndInject(projectDir, rec), nil
+	newSessionID := ""
+	if input != nil {
+		newSessionID = input.SessionID
+	}
+	return h.claimAndInject(projectDir, newSessionID, rec), nil
 }
 
 // claimAndInject performs the claim-then-inject sequence: atomically rename
 // pending.json → consumed/<ts>-<nonce>.json, then (only on rename success) render
 // and inject the additionalContext (REQ-AUTORESUME-012). Any rename failure skips
 // injection and returns allow (REQ-AUTORESUME-013 fail-open).
-func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.PendingRecord) *HookOutput {
+//
+// newSessionID is the POST-/clear session id under which an embedded goal is
+// re-armed (SPEC-INFINITE-GOAL-001 REQ-6, Option A session-id keying; D8: the
+// embedded Ceiling is re-validated before writing).
+func (h *handoffInjectHandler) claimAndInject(projectDir, newSessionID string, rec *handoff.PendingRecord) *HookOutput {
 	consumedDir := handoff.ConsumedDir(projectDir)
 	if err := os.MkdirAll(consumedDir, 0o700); err != nil {
 		slog.Warn("session_start: handoff: cannot create consumed dir; skipping injection",
@@ -172,11 +181,70 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 	}
 
 	// Rename succeeded → render and inject (claim-then-inject order).
-	return &HookOutput{
+	out := &HookOutput{
 		HookSpecificOutput: &HookSpecificOutput{
 			HookEventName:     string(EventSessionStart),
 			AdditionalContext: renderHandoffContext(rec),
 		},
+	}
+
+	// SPEC-INFINITE-GOAL-001 REQ-6 (Option A session-id keying): when the consumed
+	// record carries an embedded goal, re-arm it under the NEW session-id. This is
+	// a NET-NEW goal-state write surface (distinct from the AdditionalContext write
+	// above — a separate file artifact). Best-effort + fail-open: a write error is
+	// logged and never blocks the session.
+	rearmEmbeddedGoal(projectDir, newSessionID, rec)
+
+	return out
+}
+
+// rearmEmbeddedGoal writes a new goal state file under newSessionID when rec
+// carries an embedded goal. D8 defense-in-depth: an unbounded embedded record
+// (MaxTurns=0 with no real bound) is REJECTED — a corrupt pending.json must not
+// re-open the unbounded hole. The new goal carries the embedded Ceiling and an
+// armed status so the new session's stop-goal evaluator picks it up. Session-id
+// keying (NOT SPEC-id) is preserved per Option A (Option B rejected: multi-
+// session race).
+func rearmEmbeddedGoal(projectDir, newSessionID string, rec *handoff.PendingRecord) {
+	if rec == nil || rec.EmbeddedGoal == nil {
+		return // nothing to re-arm
+	}
+	if newSessionID == "" {
+		slog.Warn("session_start: handoff: embedded goal present but new session-id is empty; skipping rearm")
+		return
+	}
+	eg := rec.EmbeddedGoal
+	// D8 re-validation: reject an unbounded infinite arm.
+	if eg.IsUnbounded() {
+		slog.Warn("session_start: handoff: embedded goal is unbounded (MaxTurns=0 with no real bound); rejecting rearm (D8 defense-in-depth)",
+			"condition", eg.Condition)
+		return
+	}
+	// Reconstruct the goal's condition set from the embedded condition text. The
+	// condition is stored verbatim; the parse (mechanical vs model) is the new
+	// session's evaluator's job, so store a single mechanical condition carrying
+	// the raw text as a best-effort reconstruction. The arm verb's parseCondition
+	// is the canonical parser; here we mirror its mechanical-default shape.
+	g := &goal.Goal{
+		SessionID: newSessionID,
+		Goal:      eg.Condition,
+		Conditions: []goal.Condition{
+			{Type: goal.ConditionMechanical, Cmd: eg.Condition, ExpectExit: 0},
+		},
+		Ceiling: goal.Ceiling{
+			MaxTurns:    eg.MaxTurns,
+			MaxDuration: eg.MaxDuration,
+			CostCap:     eg.CostCap,
+		},
+		TurnsUsed:       0,
+		Progress:        nil,
+		ProgressionMode: goal.DefaultProgressionMode,
+		CreatedAt:       time.Now().UTC().Format("2006-01-02T15:04:05Z07:00"),
+		Status:          goal.StatusArmed,
+	}
+	if err := goal.SaveGoal(projectDir, g); err != nil {
+		slog.Warn("session_start: handoff: embedded goal rearm write failed; skipping (fail-open)",
+			"error", err, "session_id", newSessionID)
 	}
 }
 
