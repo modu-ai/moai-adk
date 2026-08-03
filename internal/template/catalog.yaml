@@ -107,7 +107,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 2b3c7073e0a5c8bc6b4222d762445b0a66dc4f0690cd70c2987886db5c904f8d
+              hash: 395567585afc98a6f54048e9a1be05a9dfa8c979adadaf23557c6dfd76f59ca2
               version: 1.0.0
             - name: manager-docs
               tier: core
