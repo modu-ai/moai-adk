@@ -2,7 +2,7 @@
 id: SPEC-STOPCHAIN-TRIM-001
 title: "Stop-chain shell trim, per-edit hook consolidation, and MOAI_AUTONOMY_TIER mode-aware hooks"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec

@@ -95,6 +95,17 @@ const (
 	// forces it OFF. Any other value (including unset) falls through to the
 	// config flag. Env wins over config.
 	EnvSessionWorktree = "MOAI_SESSION_WORKTREE"
+
+	// EnvAutonomyTier is the MOAI_AUTONOMY_TIER mode token
+	// (SPEC-STOPCHAIN-TRIM-001 REQ-003). The SINGLE canonical source for the
+	// autonomy tier — an env-key (NOT a workflow.yaml key) because pure shell
+	// hooks (handle-stop-goal.sh, sync-phase-quality-gate.sh) MUST be able to
+	// read it via "$MOAI_AUTONOMY_TIER" without invoking the moai binary or
+	// parsing YAML. The Go side reads it via os.Getenv(EnvAutonomyTier); see
+	// AutonomyTier() in autonomy.go. Values: semi-auto | automatic |
+	// fully-autonomous (see defaults.go). Unset/empty/invalid → semi-auto
+	// (REQ-003 backward compat).
+	EnvAutonomyTier = "MOAI_AUTONOMY_TIER"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering
