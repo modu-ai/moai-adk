@@ -175,6 +175,12 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
+
+	// Worktree auto-create is wizard-only (no CLI flag), so it always applies.
+	// Default false matches the config default (internal/config/defaults.go
+	// AutoCreate: false) and the zero value when --non-interactive skips the
+	// wizard entirely.
+	opts.WorktreeAutoCreate = result.WorktreeAutoCreate
 }
 
 // applyAutonomyTierFromWizard applies the interactive autonomy-tier wizard

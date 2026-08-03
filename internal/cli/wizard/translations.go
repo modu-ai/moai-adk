@@ -122,6 +122,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "모든 프롬프트 건너뜀 (bypassPermissions); 샌드박스 증명 필요, 킬스위치로 제어"},
 			},
 		},
+		"worktree_auto_create": {
+			Title:       "워크트리 자동 생성을 활성화할까요?",
+			Description: "활성화하면 MoAI가 run-phase 작업을 위해 격리된 git 워크트리를 자동으로 생성합니다. 기본값은 꺼짐입니다 (L1 워크트리는 Claude Code 런타임이 자체 처리합니다).",
+		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -215,6 +219,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "すべてのプロンプトをスキップ (bypassPermissions); サンドボックス証明が必要、キルスイッチで制御"},
 			},
 		},
+		"worktree_auto_create": {
+			Title:       "ワークツリー自動生成を有効にしますか?",
+			Description: "有効にすると、MoAI が run-phase 作業のために分離された git ワークツリーを自動生成します。デフォルトはオフです (L1 ワークツリーは Claude Code ランタイムが自律的に処理します)。",
+		},
 	},
 	"zh": {
 		"conversation_language": {
@@ -307,6 +315,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Automatic", Desc: "逐工具自动批准"},
 				{Label: "Fully-autonomous", Desc: "跳过所有提示 (bypassPermissions); 需要沙箱证明，受紧急开关控制"},
 			},
+		},
+		"worktree_auto_create": {
+			Title:       "是否启用工作树自动创建?",
+			Description: "启用后,MoAI 会为 run-phase 工作自动创建隔离的 git 工作树。默认关闭(L1 工作树由 Claude Code 运行时自主处理)。",
 		},
 	},
 }
