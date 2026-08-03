@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -82,4 +83,56 @@ func TierDefaultMode(tier string) string {
 		// silently enables bypassPermissions.
 		return "default"
 	}
+}
+
+// --- M2: sandbox-proof gate + manager kill-switch (REQ-002 / REQ-005) ---
+
+// SandboxProofKind reads the MOAI_SANDBOX_PROOF env marker and returns the
+// isolation-tech kind plus ok=true when a sandbox/container proof is present.
+// An empty marker returns ("", false). The proof is the precondition the
+// fully-autonomous tier requires: fully-autonomous MUST be gated off when no
+// proof is present (AC-002). A git worktree is NOT a sandbox — only an
+// OS-level container/VM proof qualifies.
+func SandboxProofKind() (kind string, ok bool) {
+	raw := strings.TrimSpace(os.Getenv(EnvSandboxProof))
+	if raw == "" {
+		return "", false
+	}
+	return raw, true
+}
+
+// IsBypassDisabled reads the MOAI_DISABLE_BYPASS_PERMISSIONS_MODE env seam
+// for the Claude Code documented enterprise kill-switch
+// (disableBypassPermissionsMode, SPEC-AUTONOMY-TIERS-001 REQ-005). Truthy
+// values ("1", "true", "yes") return true. When the kill-switch is engaged,
+// fully-autonomous is unselectable in every surface and an existing bypass
+// session downgrades to automatic (AC-005).
+func IsBypassDisabled() bool {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv(EnvDisableBypassPermissionsMode)))
+	switch raw {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+// EffectiveTierWithGates resolves the effective tier after applying the two
+// gates that bind the fully-autonomous tier:
+//  1. sandbox proof — fully-autonomous requires a present proof (AC-002).
+//  2. kill-switch — disableBypassPermissionsMode forbids fully-autonomous
+//     even when a proof is present (AC-005 trumps AC-002).
+//
+// Returns (effectiveTier, downgraded). downgraded is true ONLY when the input
+// was fully-autonomous and a gate forced a downgrade to automatic. Lower tiers
+// (semi-auto, automatic) are NEVER affected by either gate (REQ-005).
+func EffectiveTierWithGates(tier string, sandboxProofPresent, killSwitchActive bool) (effective string, downgraded bool) {
+	if tier != AutonomyTierFullyAutonomous {
+		return tier, false
+	}
+	// AC-005 trumps AC-002: kill-switch wins over proof.
+	if killSwitchActive || !sandboxProofPresent {
+		return AutonomyTierAutomatic, true
+	}
+	return AutonomyTierFullyAutonomous, false
 }
