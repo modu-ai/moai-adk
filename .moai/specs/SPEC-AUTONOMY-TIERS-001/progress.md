@@ -25,19 +25,22 @@
 
 | Milestone | Commit SHA | Summary | ACs advanced |
 |-----------|------------|---------|--------------|
-| M1 | 50bb732c5 | tier selection core: ValidateAutonomyTierSelection (fail-loud) + ResolveEffectiveTier (unset→semi-auto) + TierDefaultMode mapping | AC-001 (flag validation), AC-007 (resolution) |
-| M2 | 63a13f158 | sandbox-proof gate + manager kill-switch: SandboxProofKind, IsBypassDisabled, EffectiveTierWithGates (kill-switch trumps proof) | AC-002, AC-005 (gating) |
-| M3 | 72a210e30 | tier→permission-bundle renderer: RenderTierPermissions (USER defaultMode / PROJECT deny-ask scope split, reuses codegen) | AC-003, AC-004, AC-007 (byte-identical) |
-| M4 | d7c69d46a | moai init --autonomy-tier flag (fail-loud closed-set validation, InitOptions.AutonomyTier) | AC-001 (selector + flag), AC-006 (flag help offers 3 tiers) |
-| M5 | 2f1ce09db | web toggle availability (TierToggleOptions) + downgrade advisory (AppendDowngradeAdvisory → .moai/logs/autonomy-downgrade.log) | AC-002 (toggle gating), AC-005 (advisory sink) |
-| M6 | 9004ef585 | template neutrality guard + errcheck fixes | AC-006 (no bypass/fully-autonomous default in template) |
+| M1 | c5c7b1a99 | tier selection core: ValidateAutonomyTierSelection (fail-loud) + ResolveEffectiveTier (unset→semi-auto) + TierDefaultMode mapping | AC-001 (flag validation), AC-007 (resolution) |
+| M2 | 524bcae91 | sandbox-proof gate + manager kill-switch: SandboxProofKind, IsBypassDisabled, EffectiveTierWithGates (kill-switch trumps proof) | AC-002, AC-005 (gating) |
+| M3 | e749deea0 | tier→permission-bundle renderer: RenderTierPermissions (USER defaultMode / PROJECT deny-ask scope split, reuses codegen) | AC-003, AC-004, AC-007 (byte-identical) |
+| M4 | a1532f27b | moai init --autonomy-tier flag (fail-loud closed-set validation, InitOptions.AutonomyTier) | AC-001 (flag), AC-006 (flag help offers 3 tiers) |
+| M5 | d01392adf | web toggle availability (TierToggleOptions) + downgrade advisory (AppendDowngradeAdvisory → .moai/logs/autonomy-downgrade.log) | AC-002 (toggle gating core), AC-005 (advisory sink) |
+| M6 | 11d2337a3 | template neutrality guard + errcheck fixes | AC-006 (no bypass/fully-autonomous default in template) |
+| M7 | 7c70f874a | interactive autonomy-tier wizard page (AutonomyTierQuestion + WizardResult.AutonomyTier + applyAutonomyTierFromWizard reusing EffectiveTierWithGates; ko/ja/zh translations) | AC-001 (interactive selector page + gating reuse) |
+| M8 | 3ab536a48 | moai web console autonomy-tier toggle (GET /autonomy/tiers handler + renderAutonomyToggle fragment, reusing TierToggleOptions) | AC-002 (console toggle surface + gating) |
 
 ### AC PASS/FAIL Matrix (E1)
 
 | AC | Status | Verification command | Evidence |
 |----|--------|----------------------|----------|
-| AC-AUTONOMY-TIERS-001 (init selector) | PASS | `go test ./internal/cli/ -run 'TestInitCmd_HasAutonomyTierFlag|TestValidateInitFlags_.*AutonomyTier'` | M1+M4: --autonomy-tier flag registered, closed-set validated fail-loud, help offers 3 tiers |
-| AC-AUTONOMY-TIERS-002 (web toggle) | PASS (core logic) | `go test ./internal/config/ -run TestTierToggleOptions` | M2+M5: fully-autonomous disabled without proof + under kill-switch (trumps proof); lower tiers always enabled |
+| AC-AUTONOMY-TIERS-001 (init selector) | PASS | `go test ./internal/cli/wizard/ -run 'TestInitQuestions_HasAutonomyTierPage|TestAutonomyTierQuestion_FullyAutonomousNotRecommended'` + `go test ./internal/cli/ -run 'TestApplyAutonomyTierFromWizard|TestInitCmd_HasAutonomyTierFlag|TestValidateInitFlags'` | M1+M4+M7: --autonomy-tier flag (fail-loud closed-set) + interactive wizard page offering the 3 tiers with semi-auto pre-selected; apply wiring reuses EffectiveTierWithGates (fully-autonomous downgraded without proof / under kill-switch) |
+| AC-AUTONOMY-TIERS-002 (web toggle) | PASS | `go test ./internal/web/ -run TestHandleAutonomyTiers` + `go test ./internal/config/ -run TestTierToggleOptions` | M2+M5+M8: GET /autonomy/tiers handler renders the 3-tier toggle fragment; fully-autonymous carries `disabled` without sandbox proof AND under kill-switch (trumps proof); lower tiers always enabled. Gating reuses TierToggleOptions |
+
 | AC-AUTONOMY-TIERS-003 (renderer scope) | PASS | `go test ./internal/config/toolpolicy/ -run TestRenderTierPermissions_ScopeSplit` | M3: defaultMode→USER, deny/ask→PROJECT; auto/bypass never in PROJECT (AP-6) |
 | AC-AUTONOMY-TIERS-004 (deny/ask invariance) | PASS | `go test ./internal/config/toolpolicy/ -run TestRenderTierPermissions_DenyAskInvariantAcrossTiers` | M3: deny/ask byte-identical across default/auto/bypassPermissions |
 | AC-AUTONOMY-TIERS-005 (kill-switch) | PASS | `go test ./internal/config/ -run 'TestEffectiveTierWithGates_KillSwitch|TestAppendDowngradeAdvisory'` | M2+M5: kill-switch downgrades fully-autonomous→automatic even with proof; advisory written to autonomy-downgrade.log |
@@ -47,7 +50,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-08-04
-run_commit_sha: 9004ef585
+run_commit_sha: 3ab536a48
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
@@ -57,7 +60,7 @@ l44_post_push_fetch: not pushed (intended — no push, no PR per constraints)
 new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues on changed packages)
 cross_platform_build.linux_amd64: pass
 cross_platform_build.windows_amd64: pass
-total_run_phase_files: 8 (autonomy_tiers.go + test, autonomy_tiers_gates_test.go, autonomy_tiers_toggle_test.go, tier_render.go + test, init_autonomy_test.go, autonomy_tiers_template_test.go) + 2 edits (envkeys.go, initializer.go, init.go)
+total_run_phase_files: 12 (autonomy_tiers.go + test, autonomy_tiers_gates_test.go, autonomy_tiers_toggle_test.go, tier_render.go + test, init_autonomy_test.go, init_autonomy_wizard_test.go, wizard/autonomy_test.go, web/autonomy.go + test, autonomy_tiers_template_test.go) + edits (envkeys.go, initializer.go, init.go, wizard/{questions,translations,types,wizard}.go, wizard/expansion_test.go, web/app.go)
 m1_to_mN_commit_strategy: one commit per milestone, explicit pathspec (no git add -A)
 
 ## §E.4 Sync-phase Audit-Ready Signal
