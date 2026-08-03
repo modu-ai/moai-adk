@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
+	"github.com/modu-ai/moai-adk/internal/mx"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -215,6 +216,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		driftTimeout := sessionStartDriftTimeout
 		projectDir := input.ProjectDir
 
+		// MX sidecar index freshness (SPEC-MX-ACTIVATION P0-1): cheap
+		// synchronous check — does .moai/state/mx-index.json exist AND is its
+		// ScannedAt within mxIndexFreshnessThreshold? The result gates whether
+		// the deferred goroutine runs an expensive full ScanDir. ScanDir itself
+		// NEVER runs on the synchronous path (Advisory-Check Discipline); only
+		// this stat + one-field read does.
+		//
+		// @MX:NOTE: [AUTO] MX index freshness — sync check gates deferred cold-start scan
+		mxScanNeeded := mxIndexNeedsRebuild(projectDir)
+
 		if deferredScansAsyncEnabled() {
 			// Production path: spawn a background goroutine and join with a
 			// short bounded deadline.
@@ -223,7 +234,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed, mxScanNeeded)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -252,6 +263,12 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
+			}
+			// MX cold-start scan runs AFTER the advisory keys are merged so it
+			// never delays them; it is a durable side effect (index write),
+			// not an advisory. Time-boxed and fail-open (see runMXColdStartScan).
+			if mxScanNeeded {
+				runMXColdStartScan(projectDir)
 			}
 		}
 	}
@@ -426,18 +443,32 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 //
 // `completed` is the test-only join seam (nil in production): when non-nil
 // the goroutine closes it on exit so a test can join for goleak hygiene.
+//
+// `mxScanNeeded` (computed synchronously by the caller via mxIndexNeedsRebuild)
+// gates whether the MX cold-start full scan runs after the advisories. The
+// scan is a durable side effect (index write) and is dispatched AFTER the
+// advisory result is sent so it never delays advisory keys landing in the
+// session's Data payload.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
 	driftFn func(context.Context, string) (int, error),
 	driftTimeout time.Duration,
 	completed chan struct{},
+	mxScanNeeded bool,
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
 	go func() {
 		if completed != nil {
 			defer close(completed)
 		}
-		resultCh <- h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+		// Send advisories FIRST (buffered channel → never blocks even after
+		// the join bound elapses), THEN run the MX cold-start scan as a
+		// best-effort durable side effect.
+		resultCh <- advisory
+		if mxScanNeeded {
+			runMXColdStartScan(projectDir)
+		}
 	}()
 	return resultCh
 }
@@ -1289,4 +1320,118 @@ func detectStatusDrift(projectDir string) string {
 	}
 
 	return ""
+}
+
+// mxIndexFreshnessThreshold is how long an MX sidecar index is considered
+// fresh. An index whose ScannedAt is older than this (or absent/corrupt)
+// triggers the deferred cold-start full scan so 'moai mx query' returns fresh
+// results without a manual 'moai mx scan' after checkout/clone/worktree
+// creation. Measured staleness on a fresh worktree (2026-08-04): 764 missing
+// tags (1,567 actual vs 803 indexed). 7 days mirrors the MX ArchiveStale TTL.
+const mxIndexFreshnessThreshold = 7 * 24 * time.Hour
+
+// mxIndexScanTimeoutDefault bounds the deferred cold-start ScanDir so its cost
+// cannot grow unboundedly with repo size. The scan runs in the deferred
+// background goroutine; the deferredScanJoinBound (250ms) further caps added
+// input lag. On a timeout the scan is abandoned for this session (fail-open,
+// non-blocking); the next session re-derives idempotently.
+//
+// @MX:NOTE: [AUTO] cold-start scan timeout — fail-open ceiling, never blocks the 5s hook budget
+const mxIndexScanTimeoutDefault = 2 * time.Second
+
+// mxIndexScanTimeout is the test-overridable seam for the cold-start scan
+// ceiling (mirrors the sessionStartDriftTimeout pattern). Production points at
+// mxIndexScanTimeoutDefault.
+var mxIndexScanTimeout = mxIndexScanTimeoutDefault
+
+// mxIndexNeedsRebuild is the CHEAP synchronous check that gates the deferred
+// cold-start scan. It performs one file stat + one JSON field read of
+// ScannedAt — never ScanDir. Returns true when the index is absent, empty,
+// corrupt, has a zero ScannedAt, or is older than mxIndexFreshnessThreshold.
+func mxIndexNeedsRebuild(projectDir string) bool {
+	if projectDir == "" {
+		return false
+	}
+	idxPath := filepath.Join(projectDir, ".moai", "state", mx.SidecarFileName)
+	info, err := os.Stat(idxPath)
+	if err != nil || info.Size() == 0 {
+		return true // absent or empty
+	}
+	data, err := os.ReadFile(idxPath)
+	if err != nil {
+		return true
+	}
+	var head struct {
+		ScannedAt time.Time `json:"scanned_at"`
+	}
+	if err := json.Unmarshal(data, &head); err != nil {
+		return true // corrupt
+	}
+	if head.ScannedAt.IsZero() {
+		return true
+	}
+	return time.Since(head.ScannedAt) > mxIndexFreshnessThreshold
+}
+
+// runMXColdStartScan performs a full-project ScanDir and writes the sidecar
+// index, time-boxed by mxIndexScanTimeout and fail-open: on timeout or error
+// it logs at warn/info and returns without blocking. ScanDir is not
+// context-aware, so the scan runs in a helper goroutine whose result is
+// selected against the timeout context — when the context fires the result is
+// abandoned. In production the SessionStart process may exit and kill the
+// helper goroutine (safe — idempotent, next session re-derives); the scan
+// only lands if it finishes before the process exits.
+//
+// @MX:WARN @MX:REASON ScanDir walks the whole repo; the time-box + helper
+// goroutine bound cost and guarantee the caller is never blocked past the
+// ceiling (Advisory-Check Discipline).
+func runMXColdStartScan(projectDir string) {
+	if projectDir == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), mxIndexScanTimeout)
+	defer cancel()
+
+	type scanResult struct {
+		tags []mx.Tag
+		err  error
+	}
+	resCh := make(chan scanResult, 1) // buffered → helper goroutine never blocks on send
+	go func() {
+		s := mx.NewScanner()
+		s.SetIgnorePatterns(mx.DefaultScanIgnore)
+		tags, err := s.ScanDir(projectDir)
+		resCh <- scanResult{tags: tags, err: err}
+	}()
+
+	select {
+	case <-ctx.Done():
+		slog.Info("session start (deferred): MX cold-start scan timed out (non-blocking)",
+			"project_dir", projectDir,
+			"timeout", mxIndexScanTimeout.String())
+		return
+	case r := <-resCh:
+		if r.err != nil {
+			slog.Warn("session start (deferred): MX cold-start scan failed (non-blocking)",
+				"project_dir", projectDir,
+				"error", r.err.Error())
+			return
+		}
+		stateDir := filepath.Join(projectDir, ".moai", "state")
+		mgr := mx.NewManager(stateDir)
+		sidecar := &mx.Sidecar{
+			SchemaVersion: mx.SchemaVersion,
+			Tags:          r.tags,
+			ScannedAt:     time.Now(),
+		}
+		if err := mgr.Write(sidecar); err != nil {
+			slog.Warn("session start (deferred): MX cold-start scan write failed (non-blocking)",
+				"project_dir", projectDir,
+				"error", err.Error())
+			return
+		}
+		slog.Info("session start (deferred): MX index built via cold-start scan",
+			"project_dir", projectDir,
+			"tags", len(r.tags))
+	}
 }
