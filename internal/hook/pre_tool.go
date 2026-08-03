@@ -430,6 +430,9 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		// Quality gate for git commit commands (REQ-GATE-001).
 		// Executes before security pattern checks so the gate cannot be bypassed.
 		//
+		// @MX:WARN: [AUTO] tier-aware commit gate — K-6 deny-before-tier ordering invariant
+		// @MX:REASON: [AUTO] SPEC-STOPCHAIN-TRIM-001 REQ-005 + REQ-007; the destructive-pattern denylist (checkBashCommand below) runs UNCONDITIONALLY after this block regardless of tier. Editing this branch to widen the tier predicate OR moving checkBashCommand after a tier-early-return would let an unattended fully-autonomous session bypass a deny — the load-bearing safety invariant of the autonomy tier.
+		//
 		// SPEC-STOPCHAIN-TRIM-001 REQ-005 (A11): the synchronous vet+lint+test
 		// commit gate is tier-aware. At MOAI_AUTONOMY_TIER ∈ {automatic,
 		// fully-autonomous} the gate is OFF — the commit proceeds without the

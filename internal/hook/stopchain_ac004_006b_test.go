@@ -172,7 +172,7 @@ func TestAC004_SyncGateAdvisoryAtFullyAutonomous(t *testing.T) {
 // active (gate would run when Enabled). Verified structurally via the predicate.
 func TestAC007_UnsetTokenKeepsGateActive(t *testing.T) {
 	// Unset → AutonomyTier() returns semi-auto → IsAutonomyTierCommitGateOff=false.
-	os.Unsetenv(config.EnvAutonomyTier)
+	_ = os.Unsetenv(config.EnvAutonomyTier)
 	tier := config.AutonomyTier()
 	if tier != config.AutonomyTierSemiAuto {
 		t.Fatalf("AC-007: unset token resolved to %q, want %q (backward compat)", tier, config.AutonomyTierSemiAuto)
