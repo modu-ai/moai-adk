@@ -413,6 +413,22 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 
 使える。`moai init` がプロジェクト状態を検出して方法論を選ぶ — カバレッジ 10% 未満の既存コードには DDD（特性化テストで動作を固定してから段階的に改善）、新規または十分にテストされたコードには TDD を適用する。
 
+### Q: `moai mx query` の出力で `"rotRisk": "no-trigger"` は何を意味するか？
+
+`@MX:UPGRADE` サブラインを伴わない `@MX:DEBT` タグを示す — 終了条件のない作業の単純化であり、静かに腐敗する。腐敗ゲートは `@MX:UPGRADE` の欠落である。`@MX:CEILING` の欠落は品質上の注記にすぎず、腐敗ゲートではない。`@MX:UPGRADE` を伴う `@MX:DEBT` は空の `rotRisk` を報告する。
+
+### Q: スキャナが `"lsp"` ではなく `fan_in_method: "textual"` を報告するのはなぜか？
+
+スキャナは言語サーバの `textDocument/references` を優先するが、非厳格モード（デフォルト）では LSP が使えないとき暗黙にテキスト grep にフォールバックする。結果の `fan_in_method` フィールドがどのエンジンでカウントしたかを明示する。`MOAI_MX_QUERY_STRICT=1` を設定すると、フォールバックの代わりに `LSPRequiredError` を送出する — graceful degradation より精度が優先される CI で有用である。
+
+### Q: 言語の複雑度メトリクスが表示されないのはなぜか？
+
+複雑度は CGO が必要な tree-sitter で測る。non-CGO ビルドはすべての言語で `Supported: false` を返す硬いスタブであり — フォールバックヒューリスティクスはない。CGO ビルドでも、スキャフォールド済み言語、1 MiB を超えるファイル、パースエラー、クエリコンパイルエラーは `Supported: false` を返す。この値は暗黙のスキップであり、エラーではない。
+
+### Q: MoAI はいつ MX スキャンを自動的に実行するか？
+
+5 つのポイントがある: 明示的な `moai mx scan` CLI。SessionStart での遅延コールドスタートスキャン（タイムボックス、フェイルオープン）。PostToolUse 検証（サイドカーインデックスを読むが再構築はしない）。SessionEnd バッチ検証。そして `/moai sync` ゲート（P1/P2 はブロック、`--skip-mx` で回避可能）。なお `mxIndexScanTimeoutDefault`（コールドスタートスキャン上限）と `DefaultSessionStartDriftTimeout`（ドリフトスキャン上限）は異なる 2 つの 2 秒定数である — 値が同じなのは偶然で、同じゲートではない。
+
 ---
 
 ## コミュニティとドキュメント

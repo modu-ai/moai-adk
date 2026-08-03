@@ -417,6 +417,22 @@ Yes. `moai cc` launches a Claude-only session. CG mode (`moai cg`, Claude leader
 
 Yes. `moai init` detects project state and selects methodology — DDD (characterization tests fix behavior, then incremental improvement) for existing code with <10% coverage, TDD for new/well-tested code.
 
+### Q: What does `"rotRisk": "no-trigger"` mean in `moai mx query` output?
+
+It marks an `@MX:DEBT` tag without a paired `@MX:UPGRADE` sub-line — a working simplification with no end condition, which quietly rots. The rot gate is the missing `@MX:UPGRADE`; a missing `@MX:CEILING` is a quality note only, not the rot gate. An `@MX:DEBT` carrying `@MX:UPGRADE` reports an empty `rotRisk`.
+
+### Q: Why does the scanner report `fan_in_method: "textual"` instead of `"lsp"`?
+
+The scanner prefers `textDocument/references` from a language server, but in non-strict mode (the default) it silently falls back to textual grep when LSP is unavailable. The result's `fan_in_method` field discloses which engine produced the count. Set `MOAI_MX_QUERY_STRICT=1` to raise `LSPRequiredError` instead of falling back — useful in CI where accuracy beats graceful degradation.
+
+### Q: Why are complexity metrics missing for my language?
+
+Complexity is measured via tree-sitter, which requires CGO. A non-CGO build returns `Supported: false` for every language as a hard stub — there is no fallback heuristic. On a CGO build, scaffolded languages, files larger than 1 MiB, parse errors, and query-compile errors also yield `Supported: false`. The value is a silent skip, never an error.
+
+### Q: When does MoAI run MX scans automatically?
+
+Five points: the explicit `moai mx scan` CLI; a SessionStart deferred cold-start scan (time-boxed, fail-open); PostToolUse validation that reads the sidecar index without rebuilding it; SessionEnd batch validation; and the `/moai sync` gate (P1/P2 findings block, `--skip-mx` to escape). Note that `mxIndexScanTimeoutDefault` (the cold-start scan ceiling) and `DefaultSessionStartDriftTimeout` (the drift-scan ceiling) are two distinct 2s constants — same value by coincidence, not the same gate.
+
 ---
 
 ## Community and Documentation

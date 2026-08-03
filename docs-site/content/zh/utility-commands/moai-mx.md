@@ -77,6 +77,8 @@ flowchart TD
     Pass3 --> Report["报告<br/>添加/更新/跳过统计"]
 ```
 
+> 上图是 `/moai mx` 命令自身 3-Pass 的执行流程。扫描器此外还会在 SessionStart 冷启动、PostToolUse 验证、SessionEnd 批量验证、sync 门控等五个触发点自动运行。各触发点的作用以及两个 2 秒上限（`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`）参见 [MX 扫描器内部结构 - 扫描自动化触发点](/zh/advanced/mx-scanner-internals#扫描自动化触发点)。
+
 ### 第 1 步:代码库探索
 
 检测项目语言(16 种语言,标记文件优先级)并确定各语言的注释前缀(`//`、`#` 等)。读取 `.moai/project/tech.md`、`structure.md`、`product.md`、`README.md` 以加载用于标签说明的项目上下文,并计算扫描范围与代币预算。给出 `--no-discovery` 则跳过此步骤。

@@ -56,7 +56,7 @@ draft: false
 // @MX:UPGRADE: switch to LRU when entry count exceeds 10k
 ```
 
-`@MX:UPGRADE`가 없는 DEBT는 끝날 조건이 없어 **조용히 부패(rot)** 합니다. `moai mx query --kind DEBT --json`은 이런 항목을 `"rotRisk": "no-trigger"`로 표시합니다. 부패의 신호는 `@MX:UPGRADE`가 없다는 점이며, `@MX:CEILING`이 없는 것은 품질 메모일 뿐 부패 판정 기준이 아닙니다.
+`@MX:UPGRADE`가 없는 DEBT는 끝날 조건이 없어 **조용히 부패(rot)** 합니다. `moai mx query --kind DEBT --json`은 이런 항목을 `"rotRisk": "no-trigger"`로 표시합니다. 부패의 신호는 `@MX:UPGRADE`가 없다는 점이며, `@MX:CEILING`이 없는 것은 품질 메모일 뿐 부패 판정 기준이 아닙니다. rotRisk 필드 시맨틱과 스캐너가 이 값을 어떻게 채우는지는 [MX 스캐너 내부 구조 - rotRisk 점수](/ko/advanced/mx-scanner-internals#rotrisk-점수)에서 다룹니다.
 
 > `@MX:TODO`는 GREEN 단계에서 마무리할 미완성 작업(코드가 아직 완성되지 않음)을, `@MX:DEBT`는 완성돼 정확히 동작하지만 한계를 명시해 둔 단순화(코드는 완성됨)를 가리킵니다. DEBT는 여러 GREEN 단계를 넘어 그대로 남아 있어도 정상이며, TODO의 "3회 미해결 시 WARN 승격" 규칙도 적용되지 않습니다.
 
