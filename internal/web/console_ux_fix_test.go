@@ -100,6 +100,43 @@ func TestOptionLabelsStayEnglish(t *testing.T) {
 	}
 }
 
+// TestOptionDescriptionsTranslate verifies that option DESCRIPTION keys
+// (".opt.*.desc") are NOT frozen to English — only enum-token LABEL values are
+// (G1-2). The report.format option descriptions are prose and must follow the
+// active locale; the old blanket ".opt." guard froze them to English (the
+// report-format 다국어-안-됨 defect).
+func TestOptionDescriptionsTranslate(t *testing.T) {
+	js := readEmbeddedAsset(t, "app.js")
+
+	start := strings.Index(js, "function applyI18n")
+	if start < 0 {
+		t.Fatal("app.js does not define applyI18n")
+	}
+	searchFrom := start + len("function applyI18n")
+	end := len(js)
+	if next := strings.Index(js[searchFrom:], "\n  function "); next >= 0 {
+		end = searchFrom + next
+	}
+	fn := js[start:end]
+
+	if !strings.Contains(fn, `endsWith(".desc")`) {
+		t.Error(`applyI18n has no ".desc" exemption — option descriptions (report.format) are frozen to English instead of following the active locale`)
+	}
+}
+
+// TestRadioWithdescPointerCursor verifies the html/md radio row (".radio--
+// withdesc") shows a pointer cursor: the whole stacked <label> is the click
+// surface, not just the small circle, so hovering the label/desc text must show
+// the hand cursor.
+func TestRadioWithdescPointerCursor(t *testing.T) {
+	css := readEmbeddedAsset(t, "console.css")
+
+	blk := cssRuleBlock(t, css, ".radio--withdesc")
+	if !strings.Contains(blk, "cursor: pointer") && !strings.Contains(blk, "cursor:pointer") {
+		t.Errorf(".radio--withdesc has no cursor:pointer — the html/md radio row does not show the hand cursor on hover:\n%s", blk)
+	}
+}
+
 // TestEffortGoUnboundWording verifies G3-6: the stale "(declarative — not read by
 // the runtime)" caption is reworded in all 4 locales (post-G3-1 the per-agent
 // model/effort IS runtime-bound via the profile matrix, so the old caption is

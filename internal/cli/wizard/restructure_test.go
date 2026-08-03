@@ -75,7 +75,7 @@ func TestInitPages_Membership(t *testing.T) {
 	}{
 		{pageBasic, []string{"conversation_language", "user_name", "project_name"}},
 		{pageModelReport, []string{"model_policy", "report_format"}},
-		{pageQualityWorkflw, []string{"project_mode"}},
+		{pageQualityWorkflw, []string{"project_mode", "worktree_auto_create"}},
 	}
 	for _, tc := range cases {
 		got := questionIDsInGroup(questions, tc.page)

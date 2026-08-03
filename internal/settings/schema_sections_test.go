@@ -22,11 +22,12 @@ func seedTypedFixtures(t *testing.T, root string, names ...string) {
 }
 
 // m3ReclassifiedSeamSections는 SPEC-WEBCONF-SIMPLIFY-001 M3가 RouteExcluded로
-// 재분류한 8개 전 seam 섹션이다. 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며
-// (config keys persist), WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write
-// path removed). 구조 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
+// 재분류한 7개 전 seam 섹션이다 (workflow는 Issue 3에서 RouteSeam으로 복구됨).
+// 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며 (config keys persist),
+// WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write path removed). 구조
+// 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
 var m3ReclassifiedSeamSections = map[string]bool{
-	"workflow": true, "harness": true, "ralph": true, "feedback": true,
+	"harness": true, "ralph": true, "feedback": true,
 	"observability": true, "security": true, "handoff": true, "cache": true,
 }
 
@@ -83,11 +84,10 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 	}
 }
 
-// TestApplySchemaEditsSeamRoundTrip은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 seam 섹션
-// 편집이 거부됨을 검증한다. M3가 workflow를 RouteExcluded로 재분류하여
-// WriteSectionViaSeam이 오류를 반환하고, ApplySchemaEdits가 이를 전파하며, 디스크의
-// workflow.yaml이 바이트 단위로 무변경임을 확인한다 (REQ-WC-003 — config keys
-// persist, web write path removed).
+// TestApplySchemaEditsSeamRoundTrip은 workflow seam 편집이 다시 성공함을 검증한다
+// (Issue 3 — workflow가 RouteSeam으로 복구됨). ApplySchemaEdits가 workflow scalar
+// 필드를 yamlpatch seam으로 기록하고, 디스크의 workflow.yaml에 값이 반영되며,
+// 주석이 보존됨을 확인한다.
 func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -96,15 +96,15 @@ func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	err := ApplySchemaEdits(root, map[string]string{
 		"workflow.token_budget.plan": "31000",
 	})
-	if err == nil {
-		t.Fatal("ApplySchemaEdits(workflow): want rejection error (M3 RouteExcluded), got nil")
+	if err != nil {
+		t.Fatalf("ApplySchemaEdits(workflow): %v", err)
 	}
 	after := readSection(t, root, "workflow")
-	if strings.Contains(after, "plan: 31000") {
-		t.Errorf("rejected seam edit leaked to disk:\n%s", after)
+	if !strings.Contains(after, "plan: 31000") {
+		t.Errorf("seam edit not persisted:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Error("comments not preserved after rejected seam routing")
+		t.Error("comments not preserved by seam routing")
 	}
 }
 

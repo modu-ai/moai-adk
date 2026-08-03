@@ -46,6 +46,9 @@ func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	if err := writeDesignYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, result); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -232,6 +235,39 @@ func writeDesignYAML(sectionsDir string, opts InitOptions, result *InitResult) e
 	}
 	if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
 		return fmt.Errorf("patch design.yaml: %w", err)
+	}
+	return nil
+}
+
+// writeWorkflowWorktreeYAML persists workflow.worktree.auto_create to
+// workflow.yaml (Issue 3). The deployed workflow.yaml already ships
+// auto_create: false, so this patches the existing file in place at the
+// dotted path workflow.worktree.auto_create only — never replaced
+// (REQ-WIZ-021). When no file exists (no-deployer fallback path) a minimal
+// block is created.
+func writeWorkflowWorktreeYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
+	workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
+	value := fmt.Sprintf("%t", opts.WorktreeAutoCreate)
+
+	existing, readErr := os.ReadFile(workflowPath) //nolint:govet
+	if readErr != nil {
+		content := fmt.Sprintf("workflow:\n  worktree:\n    auto_create: %s\n", value)
+		if err := os.WriteFile(workflowPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write workflow.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML))
+		return nil
+	}
+
+	patched, ok := patchYAMLPathValue(string(existing), "workflow.worktree.auto_create", value)
+	if !ok {
+		// Key absent from an existing document: leave it byte-identical rather
+		// than append a duplicate mapping key.
+		return nil
+	}
+	if err := os.WriteFile(workflowPath, []byte(patched), defs.FilePerm); err != nil {
+		return fmt.Errorf("patch workflow.yaml: %w", err)
 	}
 	return nil
 }

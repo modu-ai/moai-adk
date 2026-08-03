@@ -57,6 +57,11 @@ type WizardResult struct {
 	// config.EffectiveTierWithGates so the sandbox-proof + kill-switch gating is
 	// not duplicated here.
 	AutonomyTier string
+	// WorktreeAutoCreate — workflow.worktree.auto_create (Issue 3). Asked on
+	// page 3 ("Quality & Workflow"). Default false matches the config default
+	// (internal/config/defaults.go AutoCreate: false). When true, `moai init`
+	// patches workflow.yaml so the orchestrator auto-creates an L1 worktree.
+	WorktreeAutoCreate bool // workflow.worktree.auto_create: false (asked, default false)
 }
 
 // QuestionType represents the type of wizard question.

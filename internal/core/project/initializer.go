@@ -58,6 +58,7 @@ type InitOptions struct {
 	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled (B5); default false
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
+	WorktreeAutoCreate        bool   // workflow.worktree.auto_create (Issue 3); default false
 }
 
 // InitResult summarizes the outcome of project initialization.

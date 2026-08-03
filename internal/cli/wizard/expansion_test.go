@@ -26,6 +26,7 @@ func TestPage3QuestionsStructure(t *testing.T) {
 
 	want := []entry{
 		{"project_mode", QuestionTypeSelect, true, false},
+		{"worktree_auto_create", QuestionTypeConfirm, false, false},
 	}
 
 	if len(questions) != len(want) {
@@ -298,19 +299,20 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Page 3 (1, project_mode only)
-	// + Autonomy page (1, autonomy_tier — SPEC-AUTONOMY-TIERS-001 AC-001) = 7.
-	if got != 7 {
-		t.Errorf("TotalVisibleQuestions = %d, want 7 (3 Basic + 2 Model & Report + 1 Quality & Workflow + 1 Autonomy)", got)
+	// Page 1 (3) + Page 2 (2) + Page 3 (2: project_mode + worktree_auto_create
+	// — Issue 3) + Autonomy page (1, autonomy_tier — SPEC-AUTONOMY-TIERS-001
+	// AC-001) = 8.
+	if got != 8 {
+		t.Errorf("TotalVisibleQuestions = %d, want 8 (3 Basic + 2 Model & Report + 2 Quality & Workflow + 1 Autonomy)", got)
 	}
-	// Only project_mode remains on page 3 (the four confirms were removed).
+	// Page 3 now has project_mode + worktree_auto_create (Issue 3).
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
 		if q.Group == "Quality & Workflow" {
 			n++
 		}
 	}
-	if n != 1 {
-		t.Errorf("visible page-3 questions = %d, want 1", n)
+	if n != 2 {
+		t.Errorf("visible page-3 questions = %d, want 2", n)
 	}
 }
