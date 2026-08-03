@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
@@ -28,6 +29,19 @@ func StatePath(projectRoot, sessionID string) string {
 		id = WriterPidKey()
 	}
 	return filepath.Join(projectRoot, StateDir, id+".json")
+}
+
+// HTMLPath returns the per-session goal-dashboard HTML sibling path
+// (.moai/state/goal/<session>.html). It derives the .html path from the StatePath
+// .json path via suffix swap (SPEC-GOAL-HTML-FLOW-001 REQ-GHF-004/005, K-4). The
+// derivation is defensive: if StatePath ever returns a path without the .json
+// suffix, the fallback produces <path>.html (ugly but safe).
+func HTMLPath(projectRoot, sessionID string) string {
+	jsonPath := StatePath(projectRoot, sessionID)
+	if strings.HasSuffix(jsonPath, ".json") {
+		return strings.TrimSuffix(jsonPath, ".json") + ".html"
+	}
+	return jsonPath + ".html"
 }
 
 // WriterPidKey returns the writer_pid-based fallback discriminator used when the
@@ -96,16 +110,23 @@ func SaveGoal(projectRoot string, g *Goal) error {
 	return nil
 }
 
-// ClearGoal marks the goal cleared by deleting its state file (or, if the
-// caller prefers a tombstone, setting StatusCleared). The hook's `clear` verb
-// uses the delete form so a subsequent evaluation sees no armed goal.
+// ClearGoal marks the goal cleared by deleting its state file AND the .html
+// dashboard sibling written by `moai goal render` (REQ-GHF-005 / AC-GHF-003).
+// Both removes use the fs.ErrNotExist-is-idempotent contract: a file already
+// absent is not an error. The hook's `clear` verb uses this so a subsequent
+// evaluation sees no armed goal and no orphan dashboard lingers.
 func ClearGoal(projectRoot, sessionID string) error {
-	path := StatePath(projectRoot, sessionID)
-	if err := os.Remove(path); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil // already absent — idempotent
+	paths := []string{
+		StatePath(projectRoot, sessionID),
+		HTMLPath(projectRoot, sessionID),
+	}
+	for _, p := range paths {
+		if err := os.Remove(p); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue // already absent — idempotent
+			}
+			return fmt.Errorf("goal clear %s: %w", p, err)
 		}
-		return fmt.Errorf("goal clear %s: %w", path, err)
 	}
 	return nil
 }
