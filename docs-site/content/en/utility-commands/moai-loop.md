@@ -70,8 +70,8 @@ Limits the number of iterations:
 ```
 
 {{< callout type="warning" >}}
-  To prevent infinite loops, the default is 10 iterations (`ralph.yaml`'s `loop.max_iterations`).
-  The iteration-ceiling priority is CLI `--max` flag > `ralph.yaml` `loop.max_iterations` >
+  To prevent infinite loops, the default is 5 iterations (`ralph.yaml`'s top-level `max_iterations`).
+  The iteration-ceiling priority is CLI `--max` flag > `ralph.yaml` `max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations`.
 {{< /callout >}}
 

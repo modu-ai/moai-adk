@@ -107,7 +107,26 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1 carries draft�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-08-04
+sync_commit_sha: pending-backfill-after-merge
+ac_pass_count: 8
+ac_deferred_count: 1
+ac_deferred_ids: [AC-RCR-008]
+changelog_entry_position: Unreleased/Changed
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
+  plan_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
+  acceptance_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
+  progress_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
+canary_compliance_check:
+  changelog_single_entry: PASS (grep -c 'SPEC-RALPH-CONFIG-REDESIGN-001' CHANGELOG.md == 1)
+  ac_count_match: PASS (9 distinct AC IDs in acceptance.md; 8 MUST-PASS verified + 1 SHOULD DEFERRED)
+  frontmatter_updated_refreshed: PASS (spec.md updated: 2026-08-04)
+docs_site_sync:
+  en_canonical_updated: true (moai-loop.md max_iterations path/default; hooks-guide.md 5-key surface for PostTool LSP + Stop Loop Controller)
+  locale_derivation_pending: [ko, ja, zh]  # follow-up: 4-locale parity derivation for the same two pages
+sha_backfill_exemption: D3 (self-referential-hazard — a commit cannot reference its own SHA; Route B squash merge means the final SHA is the merged-to-main SHA, known only after PR merge; backfilled in a follow-up commit)
 
 ## §F Phase 4 Mode Selection
 

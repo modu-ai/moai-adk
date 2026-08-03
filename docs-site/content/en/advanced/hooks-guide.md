@@ -425,15 +425,12 @@ When LSP is unavailable, command-line tools are used:
 - Python: `ruff check --output-format=json`
 - TypeScript: `tsc --noEmit`
 
-**Config:** `.moai/config/sections/ralph.yaml`
+**Config:** `.moai/config/sections/ralph.yaml` — this hook reads `lint_as_instruction` and `warn_as_instruction` (whether LSP diagnostics are injected as the AI's next instruction). Severity is not configurable here; the hook always targets error-level diagnostics.
 
 ```yaml
 ralph:
-  enabled: true
-  hooks:
-    post_tool_lsp:
-      enabled: true
-      severity_threshold: error  # error | warning | info
+  lint_as_instruction: true   # inject LSP errors as the AI's next prompt
+  warn_as_instruction: false  # also include warnings when no errors
 ```
 
 ### PreCompact: Save Context
@@ -480,19 +477,12 @@ Controls the Ralph Engine feedback loop. `/moai loop` can "repeat until everythi
 
 **State file:** `.moai/cache/.moai_loop_state.json`
 
-**Config:** `.moai/config/sections/ralph.yaml`
+**Config:** `.moai/config/sections/ralph.yaml` — the loop reads `max_iterations` (iteration ceiling) and `auto_converge` (stagnation-based early exit). The completion thresholds (zero errors / tests pass / coverage) are hardcoded evaluation criteria, not YAML keys.
 
 ```yaml
 ralph:
-  enabled: true
-  loop:
-    max_iterations: 10
-    auto_fix: false
-    completion:
-      zero_errors: true
-      zero_warnings: false
-      tests_pass: true
-      coverage_threshold: 85
+  max_iterations: 5       # iteration ceiling (CLI --max overrides)
+  auto_converge: true     # stop early when the queue stops changing
 ```
 
 ### Quality Gate with LSP
