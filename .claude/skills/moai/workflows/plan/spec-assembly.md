@@ -195,7 +195,7 @@ If verdict is PASS: proceed directly to Phase 12 (GitHub Issue Creation).
 
 Log: "SPEC review passed (iteration 1). Proceeding to Phase 12."
 
-#### Step 2.3.3a: Plan HTML Report Emission (SPEC-GOAL-HTML-FLOW-001 REQ-GHF-007/009)
+#### Step 2.3.3a: Plan HTML Report Emission
 
 **After** the plan-auditor PASS verdict lands and **before** any further plan→run
 boundary work, the orchestrator emits a single self-contained plan HTML report
@@ -206,7 +206,7 @@ that enriches the review surface for the Implementation Kickoff Approval gate.
 3. Surface the resulting HTML path to the orchestrator as additive prose context in the SAME turn the Implementation Kickoff Approval `AskUserQuestion` fires (see `orchestration-mode-selection.md` §E). The path is a pointer, NOT the report content — do NOT inline the HTML into the gate option text.
 
 [HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY
-and score-independent (REQ-GHF-009 / `CLAUDE.local.md` §19.1). The plan HTML report
+and score-independent. The plan HTML report
 ENRICHES the review surface (inline prose → rich HTML); it does NOT replace the
 gate, does NOT auto-bypass it, and does NOT relax its three canonical options
 (run-phase entry / further review / abort) or the `(권장)` first-option label. A
@@ -215,7 +215,7 @@ This emission step is additive only (AP-4).
 
 Fail-open: if the renderer is unavailable or the review file is absent, the
 emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
-plan HTML report is enrichment, not a gate (REQ-GHF-007).
+plan HTML report is enrichment, not a gate.
 
 #### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
 
