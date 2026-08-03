@@ -435,6 +435,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
+				// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision
+				// D4 trigger #2): capture the post-restore on-disk config so the
+				// next update has a rendered BASE. Best-effort non-blocking.
+				writeTemplateSnapshotBestEffort(projectRoot, out)
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {

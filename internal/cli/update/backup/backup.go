@@ -108,11 +108,14 @@ func BackupMoaiConfig(projectRoot string) (string, error) {
 		return "", fmt.Errorf("copy config files: %w", err)
 	}
 
-	// Save template defaults from embedded FS for 3-way merge.
-	// This allows the restore step to distinguish user-modified values
-	// from unchanged template defaults.
+	// Populate the per-backup .template-defaults/ BASE carrier. The read path
+	// (RestoreMoaiConfig reading backupDir/.template-defaults/sections/<name>)
+	// is frozen by the prior SPEC's contract (REQ-TBS-008 + Decision D7); only
+	// the SOURCE of the bytes changes. SaveTemplateBase prefers the rendered
+	// snapshot (provenance fix, REQ-TBS-006) and falls back to SaveTemplateDefaults
+	// (embedded-raw) when the snapshot is absent (REQ-TBS-007 migration).
 	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
-	if err := SaveTemplateDefaults(templateDefaultsDir); err != nil {
+	if err := SaveTemplateBase(templateDefaultsDir, projectRoot); err != nil {
 		// Non-fatal: if template defaults can't be saved, restore falls back to 2-way merge
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: could not save template defaults: %v\n", err)
 	}

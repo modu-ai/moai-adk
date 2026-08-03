@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001
 title: "Rendered template snapshot as the 3-way merge BASE for moai update"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec

@@ -454,6 +454,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
+		// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision D4
+		// trigger #3): capture the post-restore on-disk config so the next
+		// update has a rendered BASE. Best-effort non-blocking (REQ-TBS-014).
+		writeTemplateSnapshotBestEffort(projectRoot, out)
 		// Backup-dir accumulation cap — the same pruning the normal path
 		// performs after its restore step (backup.CleanupOldBackups). Only
 		// timestamped config-backup dirs under .moai-backups/ are candidates;
