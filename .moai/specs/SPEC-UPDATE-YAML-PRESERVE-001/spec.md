@@ -1,13 +1,13 @@
 ---
 id: SPEC-UPDATE-YAML-PRESERVE-001
 title: "moai update — preserve YAML comments, key order, scalar style, and user-added keys across config merge"
-version: 0.1.0
+version: "0.2.0"
 status: draft
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-03
 author: manager-spec
 priority: high
-phase: "v3.0.2"
+phase: "v3.0.2 target"
 module: cli
 lifecycle: spec-anchored
 era: V3R6
@@ -50,7 +50,7 @@ cacheStrategy:                              min_cacheable_tokens: 2048
   min_cacheable_tokens: 2048
 ```
 
-Four distinct losses in one round trip: **all 16 comments dropped**, **keys alphabetized** (`enabled, min_cacheable_tokens, session_ttl, spec_ttl` — source order was `enabled, session_ttl, spec_ttl, min_cacheable_tokens`), **quoting stripped** (`"1h"` → `1h`), **indent widened** (2-space → yaml.v3's default 4-space).
+Four distinct losses in one round trip: **all 16 comments dropped**, **keys alphabetized** (`enabled, min_cacheable_tokens, session_ttl, spec_ttl` — source order was `enabled, session_ttl, spec_ttl, min_cacheable_tokens`), **quoting stripped** (`"1h"` → `1h`), **indent normalized toward yaml.v3's default 4-space** (for 2-space sources like `cache.yaml` this widens; for the 4-space `archive.yaml` source the fix instead **narrows** to the pinned 2-space output — see REQ-UYP-004).
 
 The loss occurs on **every successful merge**, not only on fallback. It is idempotent — a file already stripped stays stripped — which explains why the reported run visibly changed only those files that still carried comments in the user's committed tree.
 
@@ -83,7 +83,9 @@ if contains(s, "user_added") {
 
 ### Blast radius
 
-Both entry points are reached from `restore.go` on the normal `moai update` path: `MergeYAML3Way` at `restore.go:121`, `MergeYAMLDeep` at `restore.go:139` (2-way fallback) and `restore.go:207` (legacy backup format). Every `.moai/config/sections/*.yaml` file in every user project passes through one of them. Across the 31 shipped section templates the comment payload is substantial — `llm.yaml` carries 119 comment lines, `lsp.yaml.tmpl` 88, `quality.yaml.tmpl` 84.
+Both entry points are reached from `restore.go` on the normal `moai update` path: `MergeYAML3Way` at `restore.go:121`, `MergeYAMLDeep` at `restore.go:139` (2-way fallback) and `restore.go:207` (legacy backup format). Every `.moai/config/sections/*.yaml` file in every user project passes through one of them. Across the 30 shipped section templates the comment payload is substantial — `llm.yaml` carries 119 comment lines, `lsp.yaml.tmpl` 88, `quality.yaml.tmpl` 84, `harness.yaml` 65.
+
+**Undiscovered live defect (plan-audit D4)**: `quality.yaml.tmpl` is the sole `.tmpl` that leaves its placeholders **unquoted** — `enforce_quality: {{.EnforceQuality}}` and `test_coverage_target: {{.TestCoverageTarget}}`. YAML reads `{{…}}` as a nested flow mapping, so `MergeYAML3Way`'s `map[string]any` unmarshal fails on this file. The fallback at `restore.go:139` silently catches the error and routes `quality.yaml` through `MergeYAMLDeep` (2-way) on **every single `moai update` today** — the 3-way path never runs for this file. Compounding it, `SaveTemplateDefaults` (`backup.go:184`) writes the raw template as the 3-way BASE after stripping `.tmpl`, so the base for `quality.yaml` is also unparseable; even after the node-tree fix, the wrong-base problem (Decision D5) manifests here in the form of every `{{.Version}}`-style placeholder differing from the user's rendered value. The node-tree decoder parses the file (placeholders land as scalar-nested-flow-mapping text rather than failing), so the fix incidentally promotes `quality.yaml` from always-2-way to real-3-way — a behaviour change this SPEC must name, not a free win. The permanent 2-way fallback for unparseable templates is therefore an explicit part of the contract (REQ-UYP-011, REQ-UYP-017).
 
 ## §B Scope
 
@@ -114,6 +116,9 @@ Both entry points are reached from `restore.go` on the normal `moai update` path
 ### Out of Scope — non-YAML config formats
 - JSON settings files (`settings.json`, `settings.local.json`) merge through `internal/cli/settings.go` helpers and are untouched.
 
+### Out of Scope — blank-line preservation
+- `gopkg.in/yaml.v3 v3.0.1` does not model inter-paragraph blank lines — they are not carried on `yaml.Node` (there is no `HeadComment`/`LineComment`/`FootComment` slot for a bare blank line). The node-tree fix therefore preserves **comment count perfectly** (every DIFFER file shows `comments N→N`) yet still loses bytes via blank-line collapse. Measured deltas on the no-edit round-trip: `workflow.yaml` 6797→6195 (−602 B), `llm.yaml` 9780→9173 (−607 B), `delegation.yaml` 4826→4301 (−525 B). A future SPEC MAY reintroduce blank-line preservation via a post-encode text pass that re-inserts blank lines before top-level keys; this SPEC explicitly declines to, because (a) it is a separate loss class from the four (comments/order/quoting/indent) the contract owns, (b) the fix would require a non-yaml.v3 mechanism (text post-processing), and (c) the visible result still reads correctly — only inter-paragraph spacing is lost. **REQ-UYP-005's property set is silent on blank lines**: a blank-line regression is not a REQ-UYP-005 violation.
+
 ## §C Requirements (GEARS)
 
 ### Preservation
@@ -124,9 +129,9 @@ Both entry points are reached from `restore.go` on the normal `moai update` path
 
 **REQ-UYP-003** — **When** a scalar value is carried through a merge unchanged, the merge function shall preserve that scalar's source quoting style, so that `session_ttl: "1h"` does not become `session_ttl: 1h`.
 
-**REQ-UYP-004** — The merge function shall emit block-mapping output at an indentation width of 2 spaces, by configuring the encoder with `SetIndent(2)`.
+**REQ-UYP-004** — The merge function shall emit block-mapping output at an indentation width of 2 spaces, by configuring the encoder with `SetIndent(2)`. This normalization is **intentional**: sources authored at other indents are reindented to the pinned 2-space width. The known reindent case is `archive.yaml` (shipped at 4-space indent; every line of its body shifts left by 2 columns under the fix), which is acceptable because the 2-space width is the project's canonical block-mapping indent and the reindent preserves the structural meaning.
 
-**REQ-UYP-005** — **While** a merge produces no change to any value, the merge function shall emit output byte-identical to the input template document.
+**REQ-UYP-005** — **While** a merge produces no change to any value, the merge function shall emit output in which (a) every comment present in the source is retained, (b) mapping key order matches the source, (c) scalar quoting style matches the source, and (d) block-mapping indentation is 2 spaces per REQ-UYP-004. Byte-identical round-trip output is the **strongest member** of this property set where it is achievable; it is **not** a standalone requirement, because the chosen mechanism (yaml.Node decode → `SetIndent(2)` encode) reindents and reflows whitespace for 22 of the 30 shipped section templates (the no-edit case yields byte-identical output for only 8 of 30 — every large comment-heavy template, including `llm.yaml`, `workflow.yaml`, `lsp.yaml.tmpl`, and `harness.yaml`, differs). The four properties above are what the contract guarantees; byte-identity is a diagnostic that localizes a failure to one of the four when it does not hold, not the only gate.
 
 ### Key retention
 
@@ -175,7 +180,7 @@ Both entry points are reached from `restore.go` on the normal `moai update` path
 
 ## §E Success Criteria
 
-- A `moai update` over a project whose `.moai/config/sections/*.yaml` files are unmodified template copies produces a byte-identical tree.
+- A `moai update` over a project whose `.moai/config/sections/*.yaml` files are unmodified template copies produces a tree in which every comment, key order, scalar style, and the 2-space indent (REQ-UYP-004) are preserved per REQ-UYP-005's property set. The output is byte-identical only where the source's whitespace shape already matches the encoder's (8 of 30 section templates); the remaining 22 are reindented and reflowed to the canonical shape and pass the property set rather than byte-equality.
 - A `moai update` over a project with user-edited values preserves those values **and** every comment, key order, and quoting style in the file.
 - A user-added key absent from the new template survives the merge and is reported on stderr.
 - The full suite is green: `go test ./internal/cli/... ./internal/template/...`.
