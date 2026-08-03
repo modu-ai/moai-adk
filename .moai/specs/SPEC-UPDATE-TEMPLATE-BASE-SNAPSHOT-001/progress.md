@@ -110,7 +110,7 @@ PASS
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-08-03
-run_commit_sha: "pending-backfill-run"
+run_commit_sha: "64fef3362"
 run_status: green
 ac_pass_count: 23
 ac_fail_count: 0
