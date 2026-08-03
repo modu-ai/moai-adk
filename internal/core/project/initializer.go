@@ -220,6 +220,23 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("page-3 config write failed", "error", err)
 	}
 
+	// Step 3e (SPEC-AUTONOMY-TIERS-001 M9): apply the autonomy-tier permission
+	// bundle. opts.AutonomyTier is captured from the flag/wizard but was never
+	// CONSUMED by the deployment path before M9 — selecting a tier had no
+	// deployed effect. This step wires it: semi-auto/unset → zero delta
+	// (REQ-007); automatic/fully-autonomous → defaultMode in USER scope +
+	// deny/ask regen in PROJECT scope (when a tool-policy.yaml exists). Gating
+	// + rendering are REUSED (EffectiveTierWithGates + RenderTierPermissions /
+	// WriteUserDefaultMode), not duplicated. Non-fatal: a render failure is a
+	// warning, not an init abort (the rest of the project still initializes).
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := i.applyAutonomyTierBundle(opts); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("autonomy tier bundle: %s", err))
+		i.logger.Warn("autonomy tier bundle failed", "error", err)
+	}
+
 	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -577,4 +594,20 @@ func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
 		AddGoBinPath:            true,
 		PreferLoginShell:        true,
 	})
+}
+
+// applyAutonomyTierBundle (SPEC-AUTONOMY-TIERS-001 M9) is the init-path consumer
+// of opts.AutonomyTier — the gap-1 wiring. It resolves the USER-scope settings
+// path (~/.claude/settings.json via UserHomeDir) and the PROJECT-scope settings
+// path (<project>/.claude/settings.json, just deployed by the template
+// deployer), then delegates to ApplyAutonomyTierBundle which REUSES the existing
+// gating + rendering core (no duplication). Semi-auto/unset → zero delta.
+func (i *projectInitializer) applyAutonomyTierBundle(opts InitOptions) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("resolve user home dir: %w", err)
+	}
+	userSettingsPath := filepath.Join(homeDir, ".claude", "settings.json")
+	projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
+	return ApplyAutonomyTierBundle(opts.ProjectRoot, userSettingsPath, projectSettingsPath, opts.AutonomyTier)
 }

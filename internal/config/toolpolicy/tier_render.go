@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // SPEC-AUTONOMY-TIERS-001 M3 — tier → permission-bundle renderer.
@@ -86,6 +87,30 @@ func RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode st
 	return &TierRenderResult{UserPath: userSettingsPath, ProjectPath: projectSettingsPath}, nil
 }
 
+// WriteUserDefaultMode splices ONLY the defaultMode into the USER-scope
+// settings.json at userPath, preserving every other region (PATH, hooks, env,
+// allow, deny, ask). It is the init-time fallback used when no tool-policy.yaml
+// is deployed: the deny/ask arrays already ship in the PROJECT template, so the
+// only missing piece is the USER-scope defaultMode that the selected tier maps
+// to. The codegen reuses extractPermissions + RenderSettingsJSON (the same
+// rendering pipeline RenderTierPermissions uses), so this is NOT a parallel
+// writer — it is a scoped entry point into the same splice logic.
+//
+// If the file does not exist, a minimal permissions skeleton is created so the
+// region matcher has a target (mirrors renderIntoFile's create-on-absent path).
+// The parent directory is created on demand so the init path can write the
+// USER-scope ~/.claude/settings.json even when the directory does not yet exist.
+func WriteUserDefaultMode(userPath, defaultMode string) error {
+	if err := os.MkdirAll(filepath.Dir(userPath), 0o755); err != nil {
+		return fmt.Errorf("create user settings dir: %w", err)
+	}
+	block := &PermissionsBlock{
+		DefaultMode: defaultMode,
+		Raw:         map[string]json.RawMessage{},
+	}
+	return renderIntoFile(userPath, block)
+}
+
 // renderIntoFile reads the target settings file, splices block into its
 // permissions region, and writes it back. It preserves all non-permissions
 // regions (PATH, hooks, env, Go-template directives). If the file does not
@@ -95,6 +120,12 @@ func renderIntoFile(path string, block *PermissionsBlock) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Create a minimal skeleton so the region matcher has a target.
+			// Ensure the parent directory exists so the subsequent WriteFile
+			// succeeds (the USER-scope ~/.claude/ dir may not exist yet at
+			// init time).
+			if mkErr := os.MkdirAll(filepath.Dir(path), 0o755); mkErr != nil {
+				return fmt.Errorf("create dir for %q: %w", path, mkErr)
+			}
 			body = []byte("{\n  \"permissions\": {\n  }\n}")
 		} else {
 			return fmt.Errorf("read %q: %w", path, err)
