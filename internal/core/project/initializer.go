@@ -44,6 +44,11 @@ type InitOptions struct {
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
 	Profile           string   // Per-agent model+effort profile: "max", "medium", "low" (empty → template default medium). Persists to llm.profile.
 	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001): autonomy-tier selection from
+	// `--autonomy-tier`. Empty → semi-auto (zero behavior delta, AC-007).
+	// fully-autonomous is opt-in, gated by sandbox proof + the kill-switch at
+	// render time (AC-005 / AC-006).
+	AutonomyTier string
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	ProjectMode               string // project.mode: personal, team (B1)
