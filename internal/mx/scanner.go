@@ -136,6 +136,27 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 						}
 					}
 				}
+				// @MX:SPEC sub-line capture (REQ-MX-ASSOC-001). Pairs with the
+				// most recent preceding standalone tag in the same file (mirrors
+				// @MX:REASON proximity discipline, but without a 3-line cutoff —
+				// @MX:SPEC is optional metadata, not a mandatory pairing). A
+				// dangling sub-line (no preceding tag) emits DanglingSpecRef.
+				//
+				// @MX:NOTE: [AUTO] @MX:SPEC capture arm — attaches the sub-line SPEC ID to the most recent tag's SpecRef; DanglingSpecRef when no preceding tag exists
+				if strings.Contains(upperLine, "@MX:SPEC") {
+					specRef := extractSpecRef(line)
+					if specRef != "" {
+						if len(tags) > 0 {
+							lastIdx := len(tags) - 1
+							tags[lastIdx].SpecRef = specRef
+						} else {
+							// Dangling @MX:SPEC: no preceding standalone tag in this file.
+							s.warnings = append(s.warnings,
+								fmt.Sprintf("DanglingSpecRef: %s:%d - @MX:SPEC %q without a preceding tag",
+									filePath, lineNum, specRef))
+						}
+					}
+				}
 				continue
 			}
 			s.errors = append(s.errors, fmt.Sprintf("parse error at %s:%d: %v", filePath, lineNum, err))
@@ -358,6 +379,21 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, e
 func extractReason(line string) string {
 	// Find @MX:REASON:
 	re := regexp.MustCompile(`@MX:REASON:\s*(.+)`)
+	matches := re.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(matches[1])
+}
+
+// extractSpecRef extracts the SPEC ID text from a @MX:SPEC line.
+// It narrows to the first SPEC-[A-Z0-9-]+ token so trailing prose is not
+// captured, keeping the SpecRef field a clean identifier usable as an
+// association key (mirrors the body-source regex shape).
+//
+// @MX:NOTE: [AUTO] extractSpecRef — narrows @MX:SPEC text to the SPEC-ID token for association
+func extractSpecRef(line string) string {
+	re := regexp.MustCompile(`@MX:SPEC:\s*(SPEC-[A-Z0-9][A-Z0-9-]*)`)
 	matches := re.FindStringSubmatch(line)
 	if len(matches) < 2 {
 		return ""

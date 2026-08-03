@@ -48,6 +48,17 @@ type Tag struct {
 	// Reason is the @MX:REASON sub-line content (required for WARN and ANCHOR).
 	Reason string `json:"reason,omitempty"`
 
+	// SpecRef is the @MX:SPEC sub-line content (optional, author-intended SPEC
+	// link). It is the exact structural analogue of Reason: a single sub-line
+	// content carrier with omitempty serialization. When non-empty, it drives an
+	// additive third association source in SpecAssociator.Associate, independent
+	// of the path-based and body-based sources. Serialized in the sidecar so the
+	// association is observable to consumers; omitempty means existing sidecar
+	// JSON deserializes unchanged.
+	//
+	// @MX:NOTE: [AUTO] SpecRef — additive sub-line content carrier for @MX:SPEC; parallel to Reason, drives the sub-line association source
+	SpecRef string `json:"specRef,omitempty"`
+
 	// RotRisk flags a DEBT tag whose @MX:UPGRADE trigger is absent.
 	// Value "no-trigger" means the simplification has no exit condition and
 	// silently rots; empty string means a trigger is present (omitted in JSON).
