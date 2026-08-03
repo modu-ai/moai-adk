@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 // SPEC-AUTONOMY-TIERS-001 — autonomy 3-mode selection + behavior wiring.
@@ -135,4 +137,55 @@ func EffectiveTierWithGates(tier string, sandboxProofPresent, killSwitchActive b
 		return AutonomyTierAutomatic, true
 	}
 	return AutonomyTierFullyAutonomous, false
+}
+
+// --- M5: web toggle availability (AC-002) + downgrade advisory (AC-005) ---
+
+// TierToggleOption is one row of the moai web console's tier toggle: a tier
+// value and whether the toggle renders it as selectable. Used by
+// TierToggleOptions to describe the toggle's enablement state.
+type TierToggleOption struct {
+	Tier    string
+	Enabled bool
+}
+
+// TierToggleOptions returns the 3-tier toggle rows for the moai web console,
+// applying the two gates that bind fully-autonomous (AC-002 + AC-005):
+//   - fully-autonomous is ENABLED only when a sandbox proof is present AND the
+//     kill-switch is off. AC-005 trumps AC-002: kill-switch disables it even
+//     with proof.
+//   - semi-auto and automatic are ALWAYS enabled (REQ-005 — the kill-switch
+//     does not affect lower tiers).
+func TierToggleOptions(sandboxProofPresent, killSwitchActive bool) []TierToggleOption {
+	fullyAutonomousEnabled := sandboxProofPresent && !killSwitchActive
+	return []TierToggleOption{
+		{Tier: AutonomyTierSemiAuto, Enabled: true},
+		{Tier: AutonomyTierAutomatic, Enabled: true},
+		{Tier: AutonomyTierFullyAutonomous, Enabled: fullyAutonomousEnabled},
+	}
+}
+
+// AppendDowngradeAdvisory appends a downgrade advisory record to the
+// autonomy-downgrade log (AC-005 sink). Called when a fully-autonomous
+// selection (or an existing bypassPermissions session) is downgraded to
+// automatic by a gate (no sandbox proof, or kill-switch engaged). The log is
+// created (with parent dirs) if absent, and the record is APPENDED (not
+// overwritten) so multiple downgrades accumulate. The record contains the
+// "autonomy-downgrade" marker (the AC-005 grep target), the original + effective
+// tiers, the reason, and an RFC3339 timestamp.
+func AppendDowngradeAdvisory(logPath, originalTier, effectiveTier, reason string) error {
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return fmt.Errorf("create advisory log dir: %w", err)
+	}
+	line := fmt.Sprintf("autonomy-downgrade %s original=%s effective=%s reason=%q\n",
+		time.Now().UTC().Format(time.RFC3339), originalTier, effectiveTier, reason)
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("open advisory log: %w", err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(line); err != nil {
+		return fmt.Errorf("write advisory log: %w", err)
+	}
+	return nil
 }
