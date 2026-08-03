@@ -54,16 +54,45 @@ type conditionModel struct {
 }
 
 
+// ReArmContext carries the already-landed mechanical re-arm pipeline's state
+// for the dashboard's render-only re-arm UI (SPEC-GOAL-HTML-FLOW-001
+// REQ-GHF-010 / AC-GHF-007). It mirrors the handoff.EmbeddedGoal fields WITHOUT
+// importing internal/hook/handoff (the dashboard renderer stays a pure
+// renderer; the CLI/orchestrator layer translates). A nil EmbeddedCondition
+// with EmbeddedMaxTurns==0 AND no NewSessionID means "no re-arm state" — the
+// dashboard renders the base view.
+//
+// The three UI states (AC-GHF-007):
+//   - EmbeddedCondition non-empty + !EmbeddedUnbounded → "re-arm on /clear" indicator
+//   - NewSessionID non-empty → "re-armed under <id>" view (post-/clear)
+//   - EmbeddedUnbounded true → D8-rejection banner
+type ReArmContext struct {
+	EmbeddedCondition   string
+	EmbeddedMaxTurns    int
+	EmbeddedMaxDuration int
+	EmbeddedCostCap     int
+	EmbeddedUnbounded   bool
+	NewSessionID        string // post-/clear session whose goal file exists
+}
+
 // RenderDashboard produces a self-contained HTML document rendering the goal
 // metadata and (when non-nil) the Verdict's failed conditions, turn/ceiling,
 // and the 5-section CeilingVerdict (REQ-GHF-001..003). It is a pure function —
 // no I/O, no subprocess. When v is nil, it renders goal metadata + a "no
 // verdict yet" placeholder and omits the verdict section entirely (AC-GHF-011).
 func RenderDashboard(g *Goal, v *Verdict) ([]byte, error) {
+	return RenderDashboardReArm(g, v, nil)
+}
+
+// RenderDashboardReArm extends RenderDashboard with the render-only re-arm UI
+// (REQ-GHF-010 / AC-GHF-007). A nil reArm produces output byte-identical to
+// RenderDashboard (the re-arm path is purely additive).
+func RenderDashboardReArm(g *Goal, v *Verdict, reArm *ReArmContext) ([]byte, error) {
 	if g == nil {
 		return nil, fmt.Errorf("RenderDashboard: nil goal")
 	}
 	m := buildDashboardModel(g, v)
+	applyReArm(&m, reArm)
 	tmpl, err := template.New("dashboard").Parse(dashboardTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("RenderDashboard parse: %w", err)
@@ -73,6 +102,37 @@ func RenderDashboard(g *Goal, v *Verdict) ([]byte, error) {
 		return nil, fmt.Errorf("RenderDashboard execute: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// applyReArm populates the model's ReArmIndicator / ReArmedView / UnboundedBanner
+// fields from the already-landed mechanical re-arm state. The D8 banner takes
+// precedence (an unbounded embedded goal is rejected at rearm; surfacing the
+// rejection is more important than the indicator).
+func applyReArm(m *dashboardModel, reArm *ReArmContext) {
+	if reArm == nil {
+		return
+	}
+	if reArm.EmbeddedUnbounded {
+		m.UnboundedBanner = fmt.Sprintf(
+			"D8 rejection: the embedded goal %q is unbounded (max_turns=0 with no real bound) "+
+				"and was rejected at /clear re-arm. Re-arm a bounded goal (max_turns>0, or "+
+				"--max-duration / --cost-cap) to resume the loop.",
+			reArm.EmbeddedCondition)
+		return
+	}
+	if reArm.EmbeddedCondition != "" {
+		m.ReArmIndicator = fmt.Sprintf(
+			"This goal will re-arm on /clear — embedded condition: %q (ceiling: max_turns=%d, "+
+				"max_duration=%d, cost_cap=%d).",
+			reArm.EmbeddedCondition, reArm.EmbeddedMaxTurns,
+			reArm.EmbeddedMaxDuration, reArm.EmbeddedCostCap)
+	}
+	if reArm.NewSessionID != "" {
+		m.ReArmedView = fmt.Sprintf(
+			"Re-armed under session %s — the new goal state lives at "+
+				".moai/state/goal/%s.json.",
+			reArm.NewSessionID, reArm.NewSessionID)
+	}
 }
 
 func buildDashboardModel(g *Goal, v *Verdict) dashboardModel {
