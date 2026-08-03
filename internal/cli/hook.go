@@ -192,6 +192,15 @@ fail-open).`,
 	})
 }
 
+// registryShutdowner is the optional teardown capability the concrete hook
+// registry provides. Asserting it here keeps the flush barrier reachable
+// without widening the hook.Registry interface (SPEC-HOOK-TRACE-FLUSH-001
+// REQ-HTF-007), following the same optional-capability pattern
+// enableObservabilityIfConfigured already uses. A registry that does not
+// implement it, or one with observability disabled, is a silent no-op
+// (REQ-HTF-005).
+type registryShutdowner interface{ Shutdown() }
+
 // @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
 // @MX:REASON: [AUTO] fan_in=3, called from hook.go init(), coverage_test.go, hook_e2e_test.go
 // runHookEvent dispatches a hook event by reading JSON from stdin and writing to stdout.
@@ -236,6 +245,14 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), config.DefaultHookDispatcherTimeout)
 	defer cancel()
+
+	// The trace writer is async, so this one-shot process must cross a flush
+	// barrier before it exits or queued entries are lost — the last handler's
+	// entry, the one that carries the blocking decision, loses that race most
+	// often (SPEC-HOOK-TRACE-FLUSH-001 REQ-HTF-002).
+	if rs, ok := deps.HookRegistry.(registryShutdowner); ok {
+		defer rs.Shutdown()
+	}
 
 	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
 	if err != nil {
@@ -360,6 +377,11 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), config.DefaultHookDispatcherTimeout)
 	defer cancel()
+
+	// Same flush barrier as runHookEvent (SPEC-HOOK-TRACE-FLUSH-001 REQ-HTF-002).
+	if rs, ok := deps.HookRegistry.(registryShutdowner); ok {
+		defer rs.Shutdown()
+	}
 
 	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
 	if err != nil {

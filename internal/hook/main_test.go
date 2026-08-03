@@ -10,14 +10,17 @@
 // test binary exits — failure to do so indicates a deadline-enforcement bug
 // per REQ-HAE-005.
 //
-// IgnoreTopFunction entries below cover pre-existing background goroutines
-// that are NOT in scope of this SPEC (REQ-HAE scope is the 4 target hook
-// handlers only). These ignores were verified at M5 baseline capture:
+// There is no ignore list. An IgnoreTopFunction entry for
+// internal/hook/trace.(*TraceWriter).run used to sit here, masking a writer
+// goroutine that outlived its test. That goroutine leaked because nothing
+// crossed the writer's flush barrier — the same missing teardown that lost
+// trace entries in production. SPEC-HOOK-TRACE-FLUSH-001 gave the registry a
+// Shutdown path, the one test that detached a writer without closing it now
+// calls it, and the suppression was removed rather than re-justified.
 //
-//   - internal/hook/trace.(*TraceWriter).run — long-lived background writer
-//     goroutine that exits when its channel is closed. Some tests construct
-//     a TraceWriter without explicitly closing it. Owned by SPEC-V3R2-RT-006
-//     observability subsystem.
+// Restoring a suppression here re-hides that class of defect: a leaked writer
+// goroutine means entries are still queued, so a green package would once
+// again say nothing about whether traces reach disk.
 package hook
 
 import (
@@ -27,7 +30,10 @@ import (
 )
 
 // TestMain enables goroutine leak detection across all internal/hook tests.
-// AC-HAE-007 verifies zero leaks reported beyond the documented ignore list.
+// AC-HAE-007 verifies zero leaks reported; the package runs with no
+// TraceWriter exemptions at all (SPEC-HOOK-TRACE-FLUSH-001 gave the
+// registry a Shutdown path, so a leaked writer goroutine is no longer
+// masked).
 //
 // It also flips deferredScansAsync to false for the test binary: dozens of
 // Handle-calling tests do not install the deferred-scan join seam, so the
@@ -40,9 +46,5 @@ func TestMain(m *testing.M) {
 	deferredScanSeamMu.Lock()
 	deferredScansAsync = false
 	deferredScanSeamMu.Unlock()
-	goleak.VerifyTestMain(m,
-		// Pre-existing background goroutine from observability subsystem.
-		// Out of scope for SPEC-V3R6-HOOK-ASYNC-EXPAND-001.
-		goleak.IgnoreTopFunction("github.com/modu-ai/moai-adk/internal/hook/trace.(*TraceWriter).run"),
-	)
+	goleak.VerifyTestMain(m)
 }
