@@ -110,6 +110,13 @@ func init() {
 	// with the superseded top-column name max accepted as a read-time alias.
 	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
 	initCmd.Flags().String("profile", "", "Model+effort profile: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml profile)")
+
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001): autonomy-tier selection. Closed-set
+	// validated fail-loud (the selector surface, NOT the fail-safe reader).
+	// AC-006: empty (unset) defaults to semi-auto downstream (zero behavior
+	// delta); fully-autonomous is opt-in only and is gated by sandbox proof +
+	// the kill-switch at render time.
+	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto (default, per-tool prompt), automatic (auto-approve), or fully-autonomous (bypassPermissions, sandbox-gated opt-in)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -168,6 +175,31 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
+}
+
+// applyAutonomyTierFromWizard applies the interactive autonomy-tier wizard
+// page selection to opts (SPEC-AUTONOMY-TIERS-001 REQ-001 / AC-001), honouring
+// flag-over-wizard precedence (the --autonomy-tier flag wins when explicitly
+// supplied, mirroring applyWizardPage3ToOpts). The two gates that bind
+// fully-autonomous — sandbox proof + manager kill-switch — are applied via the
+// EXISTING config.EffectiveTierWithGates core (AC-002 / AC-005), so the gating
+// logic is REUSED, not duplicated. An empty wizard selection leaves
+// opts.AutonomyTier empty (semi-auto downstream — AC-007 zero behavior delta).
+func applyAutonomyTierFromWizard(flagChanged bool, flagValue string, result *wizard.WizardResult, opts *project.InitOptions) {
+	if flagChanged && flagValue != "" {
+		opts.AutonomyTier = flagValue
+		return
+	}
+	if result.AutonomyTier == "" {
+		return
+	}
+	_, proofOK := config.SandboxProofKind()
+	effective, _ := config.EffectiveTierWithGates(
+		result.AutonomyTier,
+		proofOK,
+		config.IsBypassDisabled(),
+	)
+	opts.AutonomyTier = effective
 }
 
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
@@ -241,6 +273,18 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		validProjectModes := []string{"personal", "team"}
 		if !slices.Contains(validProjectModes, projectMode) {
 			return fmt.Errorf("invalid --project-mode value %q: must be one of: personal, team", projectMode)
+		}
+	}
+
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001): validate --autonomy-tier closed set
+	// fail-loud (AP-5). The selector is the user-facing surface, so an invalid
+	// value exits non-zero naming the 3 valid values — distinct from the
+	// fail-safe reader (config.AutonomyTier()) which silently falls back to
+	// semi-auto. An empty value is valid (defaults to semi-auto downstream).
+	autonomyTier := getStringFlag(cmd, "autonomy-tier")
+	if autonomyTier != "" {
+		if _, err := config.ValidateAutonomyTierSelection(autonomyTier); err != nil {
+			return fmt.Errorf("invalid --autonomy-tier %q: must be one of: semi-auto, automatic, fully-autonomous", autonomyTier)
 		}
 	}
 
@@ -417,6 +461,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// (validated in validateInitFlags). The wizard fills opts.Profile only when
 		// the flag is absent, so the flag takes precedence over the wizard answer.
 		Profile: getStringFlag(cmd, "profile"),
+		// SPEC-AUTONOMY-TIERS-001 (REQ-001): --autonomy-tier flag (validated
+		// in validateInitFlags). Empty → semi-auto downstream (AC-007).
+		AutonomyTier: getStringFlag(cmd, "autonomy-tier"),
 		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
 		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
@@ -550,6 +597,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
 		// answers always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
+		// SPEC-AUTONOMY-TIERS-001 (AC-001): apply the interactive autonomy-tier
+		// page selection (flag-over-wizard precedence + gating reuse).
+		applyAutonomyTierFromWizard(
+			cmd.Flags().Changed("autonomy-tier"),
+			getStringFlag(cmd, "autonomy-tier"),
+			result,
+			&opts,
+		)
 	}
 
 	// Default git provider to "github" for backward compatibility

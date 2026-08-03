@@ -93,6 +93,8 @@ It closely reads only the P1 · P2 files to analyze function signatures and call
 
 It inserts all of a file's tags at once with a single Edit per file. Existing @MX tags are preserved unless `--force` is given. When there are fewer than 5 insertion targets the orchestrator edits directly (no spawn); with 5 or more it delegates to a batch-edit agent.
 
+> The diagram above shows the 3-Pass execution flow of the `/moai mx` command itself. The scanner also runs automatically at five points in time: SessionStart cold-start, PostToolUse validation, SessionEnd batch validation, and the sync gate. The role of each point and the two 2-second ceilings (`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`) are covered in [MX Scanner Internals - Scan Automation Timing](/en/advanced/mx-scanner-internals#scan-automation-timing).
+
 ## Integration with /moai sync · run
 
 - **`/moai sync`**: MX validation runs automatically during the sync phase — it scans files changed since the last sync to check for missing @MX tags, and unless the `--skip-mx` flag is given, adds the tags and includes the tag changes in the sync report.

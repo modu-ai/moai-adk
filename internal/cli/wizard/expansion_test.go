@@ -298,9 +298,10 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Page 3 (1, project_mode only) = 6 exactly.
-	if got != 6 {
-		t.Errorf("TotalVisibleQuestions = %d, want 6 (3 Basic + 2 Model & Report + 1 Quality & Workflow)", got)
+	// Page 1 (3) + Page 2 (2) + Page 3 (1, project_mode only)
+	// + Autonomy page (1, autonomy_tier — SPEC-AUTONOMY-TIERS-001 AC-001) = 7.
+	if got != 7 {
+		t.Errorf("TotalVisibleQuestions = %d, want 7 (3 Basic + 2 Model & Report + 1 Quality & Workflow + 1 Autonomy)", got)
 	}
 	// Only project_mode remains on page 3 (the four confirms were removed).
 	n := 0

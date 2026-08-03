@@ -93,6 +93,8 @@ P1・P2 ファイルのみ精読して関数シグネチャと呼び出しパタ
 
 ファイルあたり Edit 1 回でそのファイルのすべてのタグを一度に挿入します。既存の @MX タグは `--force` がなければ保存されます。挿入対象が 5 個未満ならオーケストレーターが直接編集し (スポーンなし)、5 個以上ならバッチ編集エージェントに委任します。
 
+> 上のダイアグラムは `/moai mx` コマンド自体の 3-Pass 実行フローです。スキャナはこの他に、SessionStart コールドスタート、PostToolUse 検証、SessionEnd 一括検証、sync ゲートなど 5 つのタイミングで自動実行されます。各タイミングの役割と 2 つの 2 秒上限 (`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`) は [MX スキャナ内部構造 - スキャン自動化タイミング](/ja/advanced/mx-scanner-internals#スキャン自動化タイミング) で解説します。
+
 ## /moai sync・run との統合
 
 - **`/moai sync`**: sync ステップで MX 検証が自動実行されます。最後の sync 以降に変更されたファイルをスキャンして欠落した @MX タグを確認し、`--skip-mx` フラグがなければタグを追加した後、sync 報告書にタグ変更を含めます。
