@@ -720,5 +720,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the init result.
 	flushUpdateNotice(p)
 
+	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-001, Decision D4 trigger
+	// #1): capture the freshly-deployed rendered config as the snapshot baseline
+	// so the NEXT moai update has a rendered BASE for the 3-way merge. Best-effort
+	// non-blocking (REQ-TBS-014): a failure is logged to stderr and swallowed so
+	// init never fails on a snapshot write.
+	writeTemplateSnapshotBestEffort(opts.ProjectRoot, cmd.ErrOrStderr())
+
 	return nil
 }

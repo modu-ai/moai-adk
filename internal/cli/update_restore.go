@@ -57,6 +57,14 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 		return err
 	}
 
+	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision D4 trigger
+	// #4): the lockout-escape path applies a chosen backup to the tree; the
+	// post-restore on-disk config IS the new baseline for the next update, so
+	// the snapshot invariant ("snapshot = what the current install received")
+	// holds uniformly across all three restore-completion sites. Best-effort
+	// non-blocking (REQ-TBS-014).
+	writeTemplateSnapshotBestEffort(projectRoot, out)
+
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
 	return nil
 }
