@@ -283,7 +283,7 @@ Execute each check in order against the full document — every REQ entry and ev
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
-- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-V3R5-WO-001)
+- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-DOMAIN-WO-001)
 - D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
 - D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation
@@ -397,7 +397,7 @@ Stagnation detection: If a defect appears in all three iterations unchanged, fla
 
 ### LEAN Workflow Additions
 
-The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed in LANG-COMPLIANCE-001 plan-phase abandonment (2026-05-20).
+The following three clauses extend the retry loop contract to fix the score-regression pattern (0.78 → 0.81 → 0.77) observed when unconditional iteration continues on a deteriorating SPEC.
 
 **STOP escalation on score regression.** If iter(N+1) aggregate score is **lower** than iter(N) aggregate score, the agent emits a `STOP` signal in the Verdict block of the report and proposes a scope-reduction action to the orchestrator. The orchestrator MUST NOT iterate further unconditionally; instead, present the user with three options via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`):
 

@@ -6,6 +6,8 @@
 > Time: 25+ minutes
 > Dependencies: WebSearch/WebFetch, source parser (AST)
 
+> **TRUST 5 disambiguation** — the five-lens set used in this deep dive (**Truthfulness / Relevance / Usability / Safety / Timeliness**) is a code-review rubric local to the automated-code-review skill and is NOT the project's canonical TRUST 5 framework. The canonical MoAI TRUST 5 is **Tested / Readable / Unified / Secured / Trackable** (see `.claude/rules/moai/core/moai-constitution.md` § Quality Gates and the `moai-foundation-quality` skill). When a MoAI doc says "TRUST 5" without qualification, it means the canonical Tested/Readable/Unified/Secured/Trackable set; the Truthfulness/Relevance/Usability/Safety/Timeliness rubric applies only inside this code-review skill.
+
 ## Quick Reference
 
 ### TRUST 5 Methodology
@@ -217,7 +219,6 @@ TRUST 5 uses weighted scoring with category-specific weights:
 ---
 
 Version: 1.1.0 (Modularized)
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review/trust5-framework.md`
 
 ## Submodules

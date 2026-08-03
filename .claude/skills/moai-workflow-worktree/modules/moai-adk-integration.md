@@ -3,41 +3,39 @@
 Purpose: Detailed integration patterns for moai-worktree with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, DDD integration, and cleanup workflows.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
 ## Quick Reference (30 seconds)
 
-MoAI-ADK Integration Points:
-- /moai plan: Automatic worktree creation after SPEC generation
-- /moai run: DDD execution in isolated worktree environment
-- /moai sync: Worktree sync with documentation updates
-- Cleanup: Automatic removal of merged worktrees
+MoAI-ADK Integration Points (EnterWorktree-first doctrine):
+- Worktree entry: User runs `moai cc -w <name>` to enter a worktree; plan does NOT auto-create one. The legacy `/moai plan --worktree` launch action is retired.
+- /moai plan: Runs in the main checkout (no worktree) on a `plan/SPEC-XXX` branch.
+- /moai run: If the user entered a worktree, DDD execution happens there; otherwise it runs on a feature branch in the main checkout.
+- /moai sync: Reuses the SAME worktree the user entered for run (do NOT recreate).
+- Cleanup: Disposal via `moai worktree done SPEC-XXX` AFTER both run PR AND sync PR merge.
 
 ---
 
 ## Plan Phase Integration (/moai plan)
 
-### Automatic Worktree Creation
+### Worktree Is NOT Auto-Created by Plan
 
-After SPEC creation, the worktree system automatically generates an isolated development environment.
+The plan phase does NOT create a worktree. A worktree is entered by the USER before a phase runs, not provisioned by a workflow step. The EnterWorktree-first doctrine is the SSOT:
 
-Branch Naming Convention:
+- New-session launch (post-`/clear` or new terminal): `moai cc -w <name>` (or `moai glm -w` / `moai cg -w`). The `-w` flag accepts both short names (resolved under `.claude/worktrees/`) and absolute paths under `~/.moai/worktrees/<project>/...`.
+- Current-session re-entry (same session continuing): the runtime tool `EnterWorktree(<path>)`.
+- The retired `/moai plan --worktree` flag and the retired `moai worktree new` command MUST NOT be presented as live entry points.
+
+Branch Naming Convention (informational — the launcher handles this):
 - Pattern: feature/SPEC-{id}-{title-kebab-case}
 - Example: SPEC-001 with title "User Auth" becomes feature/SPEC-001-user-auth
 
 Worktree Path Pattern:
-- Default: {repo}/.moai/worktrees/{project-name}/SPEC-{id}
-- Configurable via worktree_root setting
+- L1 Claude-native (ephemeral): `{repo}/.claude/worktrees/<auto-name>/`
+- L2 MoAI persistent (SPEC-scoped): `~/.moai/worktrees/{project-name}/SPEC-{id}/`
 
-Creation Workflow:
-1. SPEC is created with /moai plan
-2. Worktree new command is invoked automatically if auto_create is enabled
-3. Branch is created from configured base branch (default: main)
-4. Template is applied if specified
-5. Worktree is registered in the central registry
-6. User receives guidance for switching to the new worktree
+Reference: the canonical L1/L2 layering and the EnterWorktree-first policy live in `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary.
 
 ### Template-Based Setup
 
@@ -135,8 +133,8 @@ After worktree sync, documentation updates can be extracted:
 After successful PR merge, worktrees can be automatically cleaned up.
 
 Cleanup Triggers:
-- Manual cleanup with clean command
-- Automated cleanup when cleanup_merged is enabled
+- Manual cleanup with the `moai worktree done SPEC-XXX` command (the canonical disposal path — runs only after BOTH run PR AND sync PR merge)
+- Automated cleanup when `workflow.worktree.auto_cleanup` is opted in (default: off)
 - Scheduled cleanup for stale worktrees
 
 Cleanup Options:
@@ -154,14 +152,14 @@ Registry Maintenance:
 
 ## Team Collaboration Patterns
 
-### Shared Worktree Registry
+### Per-Developer Worktree Conventions
 
-For team environments, configure a shared registry accessible to all developers.
+There is no shared-registry config field on `WorkflowWorktreeConfig` (the legacy `registry_type: "team"` / `shared_registry_path` / `developer_prefix` entries are NOT real keys). Team coordination is convention-based: each developer enters their own L2 worktree (`~/.moai/worktrees/{project}/SPEC-{id}/`) and the team coordinates via the SPEC artifacts and PRs in version control, not via a runtime-shared registry.
 
-Team Registry Configuration:
-- registry_type: Set to "team" for shared mode
-- shared_registry_path: Network-accessible registry location
-- developer_prefix: Automatic prefix for developer-specific worktrees
+Coordination conventions:
+- Each developer uses their own worktree under their own home directory.
+- The SPEC artifact (`.moai/specs/SPEC-XXX/`) is the shared state — it lives in the repo, not a per-worktree registry.
+- PRs are the integration surface — the team merges feature branches rather than maintaining a network-accessible worktree registry.
 
 Synchronization:
 - Local registry syncs with team registry periodically
@@ -189,22 +187,18 @@ Access Levels:
 
 ### MoAI Configuration Integration
 
-Worktree settings live in .moai/config/sections/workflow.yaml (the
-workflow.worktree section); worktree_root is configured in
-.moai/config/sections/git-strategy.yaml:
+Worktree settings live in `.moai/config/sections/workflow.yaml` under the `workflow.worktree` section. The keys below are the REAL Go struct fields (`WorkflowWorktreeConfig` in `internal/config/types.go`, defaults in `internal/config/defaults.go`). All three automation toggles ship `false` by default — worktree automation is explicit user opt-in per the EnterWorktree-first policy.
 
-workflow.worktree section:
-- auto_create: Enable automatic worktree creation (default: false)
-- auto_sync: Enable automatic synchronization (default: true)
-- cleanup_merged: Remove worktrees for merged branches (default: true)
-- worktree_root: Base directory for worktrees (default: {repo}/.moai/worktrees)
-- default_base: Default base branch (default: main)
-- sync_strategy: Sync method - merge, rebase, or squash (default: merge)
-- registry_type: local or team (default: local)
+workflow.worktree section (real keys + real defaults):
+- `auto_cleanup` (bool, default: **false**) — automatically remove worktrees. Opt-in; off by default to avoid unintended sprawl.
+- `auto_create` (bool, default: **false**) — automatically create worktrees. Opt-in; the default flow runs phases on a feature branch in the main checkout.
+- `auto_merge` (bool, default: **false**) — automatically merge worktree branches. Opt-in; off by default.
+- `session_name_pattern` (string, default: `moai-{ProjectName}-{SPEC-ID}`) — naming pattern for sessions spawned inside a worktree.
+- `tmux_preferred` (bool, default: **true**) — prefer tmux for worktree session display.
 
-Template Settings:
-- template_dir: Custom template location
-- default_template: Template applied when none specified
+Notes:
+- The previously-documented fields `auto_sync`, `cleanup_merged`, `worktree_root`, `default_base`, `sync_strategy`, and `registry_type` are NOT fields on the Go struct and MUST NOT be presented as live config keys. (The legacy content that listed them with `true` defaults inverted the real defaults and is corrected here.)
+- Worktree automation defaults to OFF in both the distributed template and the local dev config. Changing a default requires a dedicated SPEC.
 
 ---
 
@@ -243,5 +237,4 @@ For failed synchronization:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: MoAI-ADK workflow integration patterns for Plan-Run-Sync phases

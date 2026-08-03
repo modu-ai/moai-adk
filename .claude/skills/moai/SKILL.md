@@ -93,9 +93,12 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Quality gate language (format, check, pre-commit, quality gate) routes to **gate**
 - E2E and user-journey testing language (e2e, end-to-end test, browser test, mobile app test, desktop app test, user journey) routes to **e2e** — semantic exemplars; any conversation_language expressing e2e-testing intent routes identically
 - Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **review** (with `--security` scope)
+- Code-review language (review my code, code review, check my PR, look at my changes, take a look at my changes) routes to **review**
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
+- Dead-code and cleanup language (dead code, unused code, safely remove, cleanup, orphaned code) routes to **clean**
 - Documentation language (document, sync, docs, readme, changelog, PR) routes to **sync** or **project**
+- Architecture-map language (architecture map, code maps, dependency graph, structure documentation) routes to **codemaps**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
@@ -124,7 +127,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Skills: moai-workflow-tdd, moai-workflow-ddd (per delegation.yaml; cycle_type-selected) + domain moai-ref-* injected per mission
-Flags: --resume SPEC-XXX, --team
+Flags: --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 ### sync - Documentation Sync and PR
@@ -163,7 +166,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Skills: moai-workflow-ddd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --dry, --sequential, --level N, --resume, --team
+Flags: --dry, --sequential, --level N, --resume, --team (RETIRED — see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -178,7 +181,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
-Flags: --all, --dry, --priority P1-P4, --force, --team
+Flags: --all, --dry, --priority P1-P4, --force, --team (RETIRED — see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
@@ -186,7 +189,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
 Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Skills: moai-foundation-quality, moai-ref-owasp-checklist (per delegation.yaml; per-perspective ref skills injected per lens)
-Flags: --staged, --branch, --security, --team
+Flags: --staged, --branch, --security, --team (RETIRED — see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
 
 ### clean - Dead Code Removal
@@ -210,7 +213,7 @@ Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, plan-auditor (quality gate), manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Skills: moai-workflow-spec, moai-workflow-tdd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team, --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
@@ -311,6 +314,15 @@ For English (`en` conversation_language), translate the message; the structure r
 
 Step 2 - Route to Workflow:
 Apply the Intent Router (Priority 1 through Priority 4) to determine the target workflow. If ambiguous, use AskUserQuestion to clarify with the user.
+
+Step 2.2 - Record Routing Decision:
+Immediately after routing resolves (Step 2), record the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) so that auto-invocation is observable. Run:
+
+```
+echo "<raw request text>" | moai harness ledger record --subcommand <matched> --mode <phase-4-mode> --tier <tier> --level <harness-level> --session <session-id>
+```
+
+The request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text (policy source: § Routing Observation Ledger above). This step is opt-in and fail-open: if the `moai` CLI is absent from PATH or the command exits non-zero, log nothing and continue — it NEVER blocks routing, never gates the workflow, and never triggers a retry loop. An un-recorded dispatch is an observation gap, not an error.
 
 Step 2.5 - Project Documentation Check:
 Before executing plan, run, sync, fix, loop, or default workflows, verify project documentation exists by checking for `.moai/project/product.md`. If product.md does NOT exist, use AskUserQuestion to ask the user (in their conversation_language):

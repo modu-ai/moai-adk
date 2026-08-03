@@ -3,7 +3,6 @@
 Purpose: Integration patterns for moai-worktree with development tools, IDEs, terminals, CI/CD pipelines, and monitoring systems.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -60,29 +59,21 @@ For IntelliJ, PyCharm, and WebStorm:
 
 ### Shell Profile Enhancement
 
-Add to .bashrc or .zshrc for improved worktree experience.
+Add to .bashrc or .zshrc for a slightly smoother worktree session.
 
 Completion Support:
-- Tab completion for worktree IDs using registry data
-- Command option completion for all moai-worktree subcommands
+- Tab completion for the live `moai worktree` subcommands (`done`, `clean`, `remove`) using the binary's built-in help
 
 Prompt Customization:
-- Detect if current directory is within a worktree
+- Detect if current directory is within a worktree (`.claude/worktrees/` or `~/.moai/worktrees/`)
 - Display SPEC ID in prompt when in worktree context
 - Color coding for worktree status
 
-Navigation Aliases:
-- mw: Short alias for moai-worktree
-- mwl: List worktrees
-- mws: Switch to worktree
-- mwg: Navigate with eval pattern
-- mwsync: Sync current worktree
-- mwclean: Clean merged worktrees
+Navigation:
+- Enter a worktree with `moai cc -w <name>` (new session) or `EnterWorktree(<path>)` (current session).
+- Dispose with `moai worktree done SPEC-XXX` (after run + sync PRs merge) or `moai worktree clean` / `moai worktree remove`.
 
-Quick Functions:
-- mwnew: Create and switch to new worktree in one command
-- mwdev: Switch to worktree and start development with /moai run
-- mwpush: Sync worktree and push to remote branch
+Note: the legacy shell aliases `mw`/`mwl`/`mws`/`mwg`/`mwsync`/`mwclean`/`mwnew` referenced subcommands (`list`, `switch`, `go`, `sync`, `new`) that the Go binary does NOT expose — only `done`, `clean`, and `remove` are live `moai worktree` subcommands. Those aliases are omitted here to avoid steering users at non-existent commands.
 
 ---
 
@@ -222,7 +213,7 @@ Operation Grouping:
 - Sequential fallback for resource constraints
 
 Execution Strategy:
-- ThreadPoolExecutor for parallel sync
+- Bounded worker pool for parallel sync (language-neutral — use the project language's standard concurrency primitive, e.g. a bounded goroutine worker pool in Go, a `ThreadPoolExecutor` only in Python projects)
 - Configurable worker count
 - Result aggregation with error handling
 
@@ -276,5 +267,4 @@ Monitoring Integration Errors:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: Development tools and external system integration patterns

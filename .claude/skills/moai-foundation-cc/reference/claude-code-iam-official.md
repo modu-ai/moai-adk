@@ -1,4 +1,16 @@
-# Claude Code IAM & Permissions - Official Documentation Reference
+# Claude Code IAM & Permissions - Reference
+
+> **Illustrative reference, NOT the official Claude Code specification.**
+> This file is an MoAI-authored summary intended for orientation only. The
+> authoritative, up-to-date IAM and permissions surface lives in the official
+> Claude Code documentation at
+> https://code.claude.com/docs/en/iam — consult that source before relying
+> on any field for a production deployment. Earlier revisions of this file
+> presented fabricated RBAC roles (`developer` / `securityReviewer` /
+> `devopsEngineer` with `toolRestrictions`), an `enterprise.policies`
+> framework, and SOC2 / ISO27001 compliance JSON as if they were real
+> Claude Code IAM surfaces; they do not exist in the product and have been
+> removed. What remains is the real, currently-shipped permission surface.
 
 Source: https://code.claude.com/docs/en/iam
 
@@ -6,630 +18,137 @@ Source: https://code.claude.com/docs/en/iam
 
 ### What is Claude Code IAM?
 
-Identity and Access Management (IAM) in Claude Code provides a comprehensive permission system that controls access to tools, files, and external services. IAM implements tiered approval levels, role-based access control, and security boundaries to ensure safe and compliant operations.
+Claude Code's Identity and Access Management surface is a **permission
+mode + allow/ask/deny list** model, enforced at four settings scopes
+(enterprise/managed → user → project → local). There is NO role-based
+access control (RBAC), NO predefined `developer`/`reviewer`/`devops` roles,
+and NO `toolRestrictions` sub-object — the earlier sections that described
+those were illustrative-only and have been removed.
 
-### IAM Architecture
+## Permission Modes
 
-Tiered Permission System:
-```
-Level 1: Read-only Access (No Approval)
- Read, Grep, Glob
- Information gathering tools
+The `permissions.defaultMode` field accepts exactly four values:
 
-Level 2: Bash Commands (User Approval Required)
- Bash, WebFetch, WebSearch
- System operations and external access
+| Mode | Behavior |
+|------|----------|
+| `default` | Prompts on every tool call that is not on the allow list |
+| `plan` | Read-only; Claude cannot modify files or run non-read tools |
+| `acceptEdits` | Auto-accepts Write/Edit; still prompts for Bash and other tools |
+| `bypassPermissions` | Skips all prompts (gated by `disableBypassPermissionsMode`) |
 
-Level 3: File Modification (User Approval Required)
- Write, Edit, MultiEdit
- File system modifications
+These are the only valid values. Earlier revisions listed `dontAsk` and
+`ignore` — those are not real Claude Code permission modes.
 
-Level 4: Administrative (Enterprise Approval)
- Settings management
- User administration
- System configuration
-```
-
-## Tool-Specific Permission Rules
-
-### Permission Rule Format
-
-Basic Permission Structure:
 ```json
 {
- "allowedTools": [
- "Read", // Read-only access (no approval)
- "Bash", // Commands with approval
- "Write", // File modification with approval
- "WebFetch(domain:*.example.com)" // Domain-specific web access
- ]
+  "permissions": {
+    "defaultMode": "default"
+  }
 }
 ```
 
-### Permission Levels and Tools
+## Allow / Ask / Deny Lists
 
-Level 1: Read-Only Tools (No Approval Required)
+The `permissions` object carries three ordered lists of tool-path patterns.
+Each entry is a tool name with an optional parenthesized argument pattern:
+
 ```json
 {
- "readLevel": {
- "tools": ["Read", "Grep", "Glob"],
- "approval": "none",
- "description": "Information gathering and file exploration",
- "useCases": [
- "Code analysis and review",
- "File system exploration",
- "Pattern searching and analysis",
- "Documentation reading"
- ]
- }
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git status:*)",
+      "Bash(git log:*)"
+    ],
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(sudo:*)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Bash(rm -rf /:*)"
+    ],
+    "additionalDirectories": [
+      "/path/to/extra/checkout"
+    ]
+  }
 }
 ```
 
-Level 2: System Operations (User Approval Required)
-```json
-{
- "systemLevel": {
- "tools": ["Bash", "WebFetch", "WebSearch"],
- "approval": "user",
- "description": "System operations and external resource access",
- "useCases": [
- "Build and deployment operations",
- "External API integration",
- "System configuration changes",
- "Network operations"
- ]
- }
-}
-```
+- `allow` — auto-approve matching tool calls (no prompt).
+- `ask` — always prompt, even in `acceptEdits` / `bypassPermissions`-leaning flows.
+- `deny` — block unconditionally; never callable.
+- `additionalDirectories` — grant Read access to directories outside the project root.
 
-Level 3: File Modifications (User Approval Required)
-```json
-{
- "modificationLevel": {
- "tools": ["Write", "Edit", "MultiEdit", "NotebookEdit"],
- "approval": "user",
- "description": "File system modifications and content creation",
- "useCases": [
- "Code implementation and changes",
- "Documentation updates",
- "Configuration file modifications",
- "Content generation"
- ]
- }
-}
-```
+### Pattern Grammar (illustrative)
 
-Level 4: Administrative (Enterprise Approval Required)
-```json
-{
- "adminLevel": {
- "tools": ["Settings", "UserManagement", "SystemConfig"],
- "approval": "enterprise",
- "description": "System administration and user management",
- "useCases": [
- "System configuration changes",
- "User permission management",
- "Enterprise policy updates",
- "Security configuration"
- ]
- }
-}
-```
+- `Bash(git status:*)` — the `:` prefix-anchored command form for Bash.
+- `Read(./docs/**)` — glob-restricted Read paths.
+- `WebFetch(domain:example.com)` — domain-scoped WebFetch.
 
-## Role-Based Access Control (RBAC)
+The authoritative pattern grammar (including the `~` home-prefix, the `//`
+glob separator, and MCP-tool naming `mcp__server__tool`) lives at
+https://code.claude.com/docs/en/iam.
 
-### Predefined Roles
+## Settings Scopes (Enterprise / Managed → Local)
 
-Developer Role:
-```json
-{
- "developer": {
- "allowedTools": [
- "Read", "Grep", "Glob",
- "Bash", "Write", "Edit",
- "WebFetch", "WebSearch",
- "AskUserQuestion", "Task", "Skill"
- ],
- "toolRestrictions": {
- "Bash": {
- "allowedCommands": ["git", "npm", "python", "make", "docker"],
- "blockedCommands": ["sudo", "chmod 777", "rm -rf /"],
- "requireConfirmation": true
- },
- "WebFetch": {
- "allowedDomains": ["*.github.com", "*.npmjs.com", "docs.python.org"],
- "blockedDomains": ["*.malicious-site.com"],
- "maxRequestsPerMinute": 60
- },
- "Write": {
- "allowedPaths": ["./src/", "./tests/", "./docs/"],
- "blockedPaths": ["./.env*", "./config/secrets"],
- "maxFileSize": 10000000
- }
- },
- "permissions": {
- "canCreateFiles": true,
- "canModifyFiles": true,
- "canExecuteCommands": true,
- "canAccessExternal": true
- }
- }
-}
-```
+Claude Code resolves settings in a strict precedence order. Higher scopes
+override lower ones, and `deny` entries at any scope are absolute:
 
-Security Reviewer Role:
-```json
-{
- "securityReviewer": {
- "allowedTools": [
- "Read", "Grep", "Glob",
- "Bash", "WebFetch",
- "AskUserQuestion", "Task"
- ],
- "toolRestrictions": {
- "Read": {
- "allowedPaths": ["./"],
- "blockedPatterns": ["*.key", "*.pem", ".env*"]
- },
- "Bash": {
- "allowedCommands": ["git", "grep", "find", "openssl"],
- "requireConfirmation": true
- }
- },
- "specialPermissions": {
- "canAccessSecurityLogs": true,
- "canRunSecurityScans": true,
- "canReviewPermissions": true,
- "cannotModifyProduction": true
- }
- }
-}
-```
+1. **Enterprise / Managed settings** — `/etc/claude/settings.json` (Linux/macOS) or `/Library/Application Support/ClaudeCode/managed-settings.json` (macOS Managed). Organization-wide; users cannot override.
+2. **User settings** — `~/.claude/settings.json`. Personal defaults across all projects.
+3. **Project settings** — `.claude/settings.json`. Team-shared, checked into VCS.
+4. **Local settings** — `.claude/settings.local.json`. Per-developer overrides; gitignored.
 
-DevOps Engineer Role:
-```json
-{
- "devopsEngineer": {
- "allowedTools": [
- "Read", "Grep", "Glob",
- "Bash", "Write", "Edit",
- "WebFetch", "WebSearch",
- "Task", "Skill"
- ],
- "toolRestrictions": {
- "Bash": {
- "allowedCommands": [
- "git", "docker", "kubectl", "helm", "terraform",
- "npm", "pip", "make", "curl", "wget"
- ],
- "blockedCommands": ["sudo", "chmod 777"],
- "requireConfirmation": false
- },
- "WebFetch": {
- "allowedDomains": ["*"],
- "requireConfirmation": false
- }
- },
- "permissions": {
- "canDeployToStaging": true,
- "canManageInfrastructure": true,
- "canAccessProduction": false,
- "canManageCI/CD": true
- }
- }
-}
-```
+There is NO inline `enterprise: { policies: { ... } }` settings.json object
+of the kind earlier revisions showed. Enterprise policy is expressed by
+editing the managed-settings file at one of the paths above, not by an
+in-document `enterprise` block.
 
-### Custom Role Definition
+## Enterprise Levers
 
-Role Template:
-```json
-{
- "customRole": {
- "name": "CustomRoleName",
- "description": "Role description and purpose",
- "allowedTools": ["Read", "Bash", "Write"],
- "toolRestrictions": {
- "Read": {
- "allowedPaths": ["./"],
- "blockedPaths": [".env*", "secrets/"]
- },
- "Bash": {
- "allowedCommands": ["git", "npm"],
- "blockedCommands": ["rm", "sudo"],
- "requireConfirmation": true
- }
- },
- "permissions": {
- "customPermission": "value"
- },
- "inherits": ["developer"]
- }
-}
-```
+The real enterprise-grade settings keys (set in the managed-settings file,
+not in an inline `enterprise` block):
 
-## Enterprise Policy Overrides
+- `disableBypassPermissionsMode: true` — prevents agents from entering `bypassPermissions` (Claude Code v2.1.111+).
+- `permissions.deny` at managed scope — absolute deny that no lower scope can override.
+- `permissions.allow` / `permissions.ask` at managed scope — org-wide defaults.
 
-### Enterprise IAM Structure
+There is no `enterprise.compliance` block with SOC2 / ISO27001 fields.
+Compliance posture for Claude Code itself is documented by Anthropic's
+trust center, not configured in `settings.json`.
 
-Enterprise Policy Framework:
-```json
-{
- "enterprise": {
- "policies": {
- "tools": {
- "Bash": "never",
- "WebFetch": ["domain:*.company.com", "domain:*.partner.com"],
- "Write": ["path:./workspace/", "path:./temp/"]
- },
- "mcpServers": {
- "allowed": ["example-server", "figma", "company-internal-mcp"],
- "blocked": ["custom-unverified-mcp", "external-scanner"]
- },
- "roles": {
- "default": "readonly-developer",
- "overrides": {
- "senior-developer": "developer",
- "devops": "devops-engineer"
- }
- },
- "compliance": {
- "auditRequired": true,
- "dataRetention": "7y",
- "encryptionRequired": true,
- "mfaRequired": true
- }
- }
- }
-}
-```
+## What Was Removed (for readers familiar with older revisions)
 
-Policy Enforcement Mechanisms:
-```json
-{
- "policyEnforcement": {
- "validation": {
- "strict": true,
- "failOnViolation": true,
- "auditFrequency": "daily"
- },
- "overrides": {
- "allowUserOverrides": false,
- "requireManagerApproval": true,
- "emergencyOverrides": {
- "enabled": true,
- "duration": "24h",
- "approvalRequired": ["cto", "security-team"]
- }
- },
- "monitoring": {
- "realTimeAlerts": true,
- "anomalyDetection": true,
- "complianceReporting": true
- }
- }
-}
-```
+For anyone who learned this surface from an earlier draft of this file,
+the following were illustrative-only fabrications and do NOT exist in
+Claude Code:
 
-## MCP Server Permissions
+- The four "Levels" (Read-only / Bash / File-Modification / Administrative) as a tiered approval system — Claude Code uses the four permission modes above, not a 4-tier approval ladder.
+- Predefined RBAC roles: `developer`, `securityReviewer`, `devopsEngineer`.
+- `toolRestrictions` sub-objects (`allowedCommands`, `blockedCommands`, `allowedDomains`, `allowedPaths`, `maxFileSize`, etc.). The real model is the allow/ask/deny list, not a per-tool restrictions object.
+- Custom role definition (`customRole` with `inherits`).
+- `enterprise.policies.tools` / `enterprise.policies.mcpServers` / `enterprise.policies.roles` / `enterprise.policies.compliance`.
+- `policyEnforcement` (validation / overrides / monitoring) blocks.
+- `mcpSecurity` validation / sandbox / monitoring blocks (MCP permissions are governed by the same allow/ask/deny list, scoped with `mcp__server__tool`).
+- `webPermissions` / `fileSystemPermissions` top-level objects (use `WebFetch(domain:...)` and `Read(path:...)` patterns in the standard permissions lists instead).
+- Python `validate_tool_usage()` pseudocode and real-time monitoring JSON.
+- SOC 2 / ISO 27001 compliance JSON blocks.
 
-### MCP Access Control
-
-MCP Server Configuration:
-```json
-{
- "allowedMcpServers": [
- "example-server",
- "figma-dev-mode-mcp-server",
- "playwright",
- "company-internal-mcp"
- ],
- "blockedMcpServers": [
- "custom-unverified-mcp",
- "experimental-ai-mcp",
- "external-scanner-mcp"
- ],
- "mcpServerPermissions": {
- "example-server": {
- "allowed": ["tool-a", "tool-b"],
- "rateLimit": {
- "requestsPerMinute": 60,
- "burstSize": 10
- },
- "dataUsage": {
- "allowedDataTypes": ["documentation", "api-reference"],
- "blockedDataTypes": ["credentials", "private-keys"]
- }
- },
- "figma-dev-mode-mcp-server": {
- "allowed": ["get-design-context", "get-variable-defs", "get-screenshot"],
- "accessControl": {
- "allowedProjects": ["company-design-system"],
- "blockedProjects": ["competitor-designs"]
- }
- }
- }
-}
-```
-
-MCP Security Validation:
-```json
-{
- "mcpSecurity": {
- "validationRules": {
- "requireSignature": true,
- "requireVersionCheck": true,
- "requirePermissionsReview": true
- },
- "sandbox": {
- "enabled": true,
- "isolatedNetwork": true,
- "fileSystemAccess": "restricted"
- },
- "monitoring": {
- "logAllCalls": true,
- "auditSensitiveOperations": true,
- "rateLimitViolations": "block"
- }
- }
-}
-```
-
-## Domain-Specific Permissions
-
-### Web Access Control
-
-Domain-Based Web Permissions:
-```json
-{
- "webPermissions": {
- "allowedDomains": [
- "*.github.com",
- "*.npmjs.com",
- "docs.python.org",
- "*.company.com",
- "*.partner-site.com"
- ],
- "blockedDomains": [
- "*.malicious-site.com",
- "*.competitor.com",
- "*.social-media.com"
- ],
- "domainRestrictions": {
- "github.com": {
- "allowedPaths": ["/api/v3/", "/raw/"],
- "blockedPaths": ["/settings/", "/admin/"]
- },
- "npmjs.com": {
- "allowedPaths": ["/package/"],
- "blockedPaths": ["/settings/", "/account/"]
- }
- }
- }
-}
-```
-
-### File System Access Control
-
-Path-Based Permissions:
-```json
-{
- "fileSystemPermissions": {
- "allowedPaths": [
- "./src/",
- "./tests/",
- "./docs/",
- "./.claude/",
- "./.moai/"
- ],
- "blockedPaths": [
- "./.env*",
- "./secrets/",
- "./.ssh/",
- "./config/private/",
- "./node_modules/.cache/"
- ],
- "pathRestrictions": {
- "./src/": {
- "allowedExtensions": [".py", ".js", ".ts", ".md", ".json"],
- "blockedExtensions": [".exe", ".key", ".pem"]
- },
- "./config/": {
- "readOnly": true,
- "requireApproval": true
- }
- }
- }
-}
-```
-
-## Permission Validation and Enforcement
-
-### Pre-Execution Validation
-
-Permission Check Workflow:
-```python
-def validate_tool_usage(tool_name, parameters, user_role):
- """
- Validate tool usage against IAM policies
- """
- # 1. Check if tool is allowed for user role
- if tool_name not in get_allowed_tools(user_role):
- return {"allowed": False, "reason": "Tool not permitted for role"}
-
- # 2. Check tool-specific restrictions
- restrictions = get_tool_restrictions(tool_name, user_role)
- if not validate_tool_restrictions(tool_name, parameters, restrictions):
- return {"allowed": False, "reason": "Tool restriction violation"}
-
- # 3. Check enterprise policy overrides
- if violates_enterprise_policy(tool_name, parameters):
- return {"allowed": False, "reason": "Enterprise policy violation"}
-
- # 4. Determine approval requirement
- approval_level = get_approval_level(tool_name, user_role)
-
- return {
- "allowed": True,
- "approvalRequired": approval_level != "none",
- "approvalLevel": approval_level
- }
-```
-
-### Real-Time Permission Monitoring
-
-Permission Monitoring System:
-```json
-{
- "monitoring": {
- "realTimeValidation": {
- "enabled": true,
- "checkFrequency": "per-execution",
- "blockOnViolation": true
- },
- "auditLogging": {
- "enabled": true,
- "logLevel": "detailed",
- "retention": "90d",
- "format": "structured-json"
- },
- "alerts": {
- "permissionViolations": {
- "enabled": true,
- "channels": ["email", "slack"],
- "escalation": ["security-team", "management"]
- },
- "suspiciousActivity": {
- "enabled": true,
- "threshold": "5 violations in 1h",
- "action": "temporary-ban"
- }
- }
- }
-}
-```
-
-## Security Compliance
-
-### Compliance Framework Integration
-
-SOC 2 Compliance:
-```json
-{
- "compliance": {
- "SOC2": {
- "security": {
- "accessControl": true,
- "encryptionRequired": true,
- "auditLogging": true,
- "incidentResponse": true
- },
- "availability": {
- "backupRequired": true,
- "disasterRecovery": true,
- "uptimeMonitoring": true
- },
- "processing": {
- "dataIntegrity": true,
- "accuracyValidation": true,
- "errorHandling": true
- },
- "confidentiality": {
- "dataEncryption": true,
- "accessControls": true,
- "dataMinimization": true
- }
- }
- }
-}
-```
-
-ISO 27001 Compliance:
-```json
-{
- "compliance": {
- "ISO27001": {
- "accessControl": {
- "policyDocumented": true,
- "accessReview": "quarterly",
- "leastPrivilege": true,
- "segregationOfDuties": true
- },
- "informationSecurity": {
- "riskAssessment": "annual",
- "securityTraining": "mandatory",
- "incidentManagement": true,
- "businessContinuity": true
- }
- }
- }
-}
-```
+If you need a capability that the real surface above does not list, it is
+almost certainly NOT available — do not assume a hidden field. Check
+https://code.claude.com/docs/en/iam first.
 
 ## Best Practices
 
-### Permission Management
+- **Principle of least privilege**: start with `default` mode and a minimal `allow` list; widen only when a workflow genuinely needs it.
+- **Deny at managed scope for hard boundaries**: put `Read(~/.ssh/**)`, `Bash(rm -rf /:*)`, and similar in the managed-settings `permissions.deny` so no lower scope or errant agent can override them.
+- **Local overrides stay local**: keep machine-specific entries in `.claude/settings.local.json`; never commit them.
+- **`additionalDirectories` is a read grant**, not a write grant — it lets Claude Read outside the project root, it does not auto-approve Write/Edit there.
+- **Audit the allow list**: periodically review `.claude/settings.json` `permissions.allow` for over-broad patterns (`Bash(*)` is a common footgun).
 
-Principle of Least Privilege:
-```json
-{
- "leastPrivilege": {
- "grantOnlyNecessary": true,
- "regularReview": "quarterly",
- "automaticRevocation": {
- "enabled": true,
- "inactivityPeriod": "90d"
- },
- "roleBasedAssignment": true
- }
-}
-```
-
-Security Best Practices:
-- Implement multi-factor authentication for administrative access
-- Regular security audits and permission reviews
-- Encrypted storage of sensitive configuration data
-- Real-time monitoring and alerting for security events
-- Incident response procedures for security violations
-
-Compliance Best Practices:
-- Document all permission policies and procedures
-- Maintain comprehensive audit logs
-- Regular compliance assessments and reporting
-- Employee security training and awareness programs
-- Automated compliance checking and validation
-
-### Implementation Guidelines
-
-Development Environment:
-```json
-{
- "development": {
- "permissionMode": "default",
- "allowedTools": ["Read", "Write", "Edit", "Bash"],
- "toolRestrictions": {
- "Bash": {"allowedCommands": ["git", "npm", "python"]},
- "Write": {"allowedPaths": ["./src/", "./tests/"]}
- }
- }
-}
-```
-
-Production Environment:
-```json
-{
- "production": {
- "permissionMode": "restricted",
- "allowedTools": ["Read", "Grep"],
- "toolRestrictions": {
- "Read": {"allowedPaths": ["./logs/", "./config/readonly/"]}
- },
- "monitoring": {
- "realTimeAlerts": true,
- "auditAllAccess": true
- }
- }
-}
-```
-
-This comprehensive IAM reference provides all the information needed to implement secure, compliant, and effective access control for Claude Code deployments at any scale.
+For the authoritative and current IAM surface — including fields added
+after this file was last reviewed — consult the official documentation at
+https://code.claude.com/docs/en/iam.

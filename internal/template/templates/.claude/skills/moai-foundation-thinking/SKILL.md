@@ -192,7 +192,8 @@ Agent Teams:
 
 Agents:
 - manager-spec: Combined with Philosopher for full decision framework (planning absorbs strategic analysis)
-- manager-spec: Deep Questioning during requirement analysis
+- manager-develop: Deep Questioning + Critical Evaluation during run-phase reasoning (DDD/TDD root-cause analysis, architecture trade-offs)
+- super-advisor: E1-E4 escalation reasoning (bug-deadlock diagnosis, architecture decision points, second-opinion consultation, loop-deadlock verdicts)
 - team-reader (analyst role): Primary consumer for plan phase analysis
 - team-reader (researcher role): Comprehensive research methodology
 

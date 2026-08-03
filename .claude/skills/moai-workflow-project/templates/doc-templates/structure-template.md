@@ -1,4 +1,4 @@
-# yoda - System Architecture
+# {{PROJECT_NAME}} - System Architecture
 
 ## Overall Design Pattern
 {{ARCHITECTURE_PATTERN}}

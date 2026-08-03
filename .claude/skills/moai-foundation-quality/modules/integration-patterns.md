@@ -90,16 +90,24 @@ When the gate or review surfaces a cluster of fixable issues:
 reached without full resolution — surface that verdict rather than
 silently stopping.
 
-## Team Mode Quality
+## Team Mode Quality (native Claude Code teammate runtime — CG Mode)
 
-In Agent Teams mode (experimental), two hooks enforce quality:
+The native Claude Code teammate runtime (the `moai cg` GLM panes + `moai cc -w
+<name> --spawn` surface — see CLAUDE.md §15 CG Mode) binds two hooks that
+enforce per-teammate quality:
 
 - **TeammateIdle hook** — validates a teammate's work before accepting idle
   state. If LSP errors exceed the threshold, the teammate is kept working.
 - **TaskCompleted hook** — validates deliverables before completion.
 
-These are the team-mode equivalents of the gate, applied per-teammate. See
-the spec-workflow rule for the full team-quality contract.
+These are the teammate-runtime equivalents of the gate, applied per-teammate.
+They bind the **native Claude Code teammate runtime**, which is DISTINCT from
+the RETIRED MoAI static Agent Teams layer (Mode 3 `agent-team` — a Phase 0.95
+tombstone since the static layer was retired; `--team` / `--mode team` emits
+`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode). Do not conflate
+the two: the native teammate runtime is live (CG Mode), the static Agent
+Teams layer is retired. See the spec-workflow rule for the full team-quality
+contract.
 
 ## What NOT to Do
 

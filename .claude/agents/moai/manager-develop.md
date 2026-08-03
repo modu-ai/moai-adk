@@ -234,7 +234,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When reading or interpreting SPEC artifacts (spec.md / plan.md / acceptance.md), invoke Skill("moai-workflow-spec") to load it on demand.
 - When weighing architecture trade-offs or deep design decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
 - When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
-- When operating inside an isolated git worktree (L2/L3 worktree flow), invoke Skill("moai-workflow-worktree") to load it on demand.
+- When operating inside an isolated git worktree (L1/L2 worktree flow), invoke Skill("moai-workflow-worktree") to load it on demand.
 
 ## Model/effort escalation
 

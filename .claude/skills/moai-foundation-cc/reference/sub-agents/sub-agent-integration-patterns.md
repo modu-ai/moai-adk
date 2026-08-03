@@ -110,12 +110,17 @@ def parallel_workflow(project_requirements):
  """Execute parallel sub-agent workflow.
 
  Note: In Claude Code, calling multiple Agent() in a single response
- will automatically execute them in parallel (up to 10 concurrent).
+ will automatically execute them in parallel. The runtime concurrency
+ cap is `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20;Claude
+ Code v2.1.217+), NOT 10 — the earlier "up to 10" figure was stale.
+ MoAI's own orchestrator ceiling is 3-5 concurrent `Agent()` calls
+ (Mode 4) regardless of the runtime cap.
  No need for asyncio.gather or Promise.all.
  """
 
  # Call multiple Agent() for automatic parallel execution
- # Claude Code executes up to 10 Tasks concurrently
+ # Runtime cap: CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (default 20);
+ # MoAI orchestrator ceiling: 3-5 concurrent Agent() calls.
  frontend_design = Agent(
  subagent_type="code-frontend",
  prompt="Design frontend architecture",
@@ -285,6 +290,15 @@ tools: Read, Write, Edit, Agent
 model: sonnet
 skills: moai-core-workflow, moai-project-manager, moai-foundation-quality
 ---
+
+# NOTE — this is a GENERIC Claude-Code illustration, NOT a MoAI retained
+# agent. A MoAI retained agent MUST omit `Agent` from its `tools:` list
+# (flat-hierarchy guarantee — subagents cannot spawn other subagents;
+# see CLAUDE.md §4 Watch note). The `Agent` entry in `tools:` above is
+# shown only because this file documents generic Claude-Code ecosystem
+# patterns; do not copy this frontmatter into a real MoAI agent file.
+# Real MoAI orchestration is done by the main-session orchestrator
+# (the `Agent` tool is main-session-only), not by a subagent.
 
 # Development Orchestrator
 

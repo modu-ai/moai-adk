@@ -4,43 +4,45 @@ Progressive Disclosure Level 2: Extended documentation for advanced users and in
 
 ---
 
-## API Reference
+## Design Surface (language-neutral contracts)
 
-### Core Classes
+This skill is delivered as a distributed Go binary plus embedded templates (no Python surface exists in the repository). The capabilities below are described as design contracts — the runtime that exposes them is the Go `moai` CLI, invoked through slash commands and `moai` subcommands. Treat this section as a capability map, not an importable API.
 
-MoaiMenuProject:
-- Purpose: Unified interface for all project management operations
-- Initialization: `MoaiMenuProject(project_path: str)`
-- Primary Methods:
-  - `initialize_complete_project(language, user_name, domains, project_type, optimization_enabled)` - Full project setup
-  - `generate_documentation_from_spec(spec_data)` - SPEC-driven doc generation
-  - `optimize_project_templates(options)` - Template optimization
-  - `get_project_status()` - Comprehensive status report
-  - `update_language_settings(settings)` - Language configuration update
+### Capabilities
 
-DocumentationManager:
+Project lifecycle:
+- Purpose: Unified surface for project management operations
+- Entry: `moai init <project>` / `moai project` (CLI), `/moai project` (slash command)
+- Operations:
+  - Complete project setup — documentation scaffolding, language init, template optimization
+  - SPEC-driven doc generation — produce documentation from a SPEC artifact
+  - Template optimization — analyze and refine embedded templates
+  - Project status report — comprehensive state summary
+  - Language configuration update — conversation / agent-prompt / docs / code-comment language
+
+Documentation generation:
 - Purpose: Template-based documentation generation
-- Key Methods:
-  - `generate_docs(project_type, language)` - Generate documentation set
-  - `update_docs_from_spec(spec_data)` - Update from SPEC data
-  - `export_docs(format, language)` - Multi-format export (md, html, pdf)
-  - `detect_project_type()` - Auto-detect project type
+- Operations:
+  - Generate documentation set for a detected project type and language
+  - Update documentation from SPEC data
+  - Multi-format export (md, html, pdf)
+  - Auto-detect project type from project markers
 
-LanguageInitializer:
+Language initialization:
 - Purpose: Language detection and configuration
-- Key Methods:
-  - `detect_project_language()` - Analyze project for language
-  - `create_multilingual_documentation_structure(language)` - Setup multilingual docs
-  - `localize_agent_prompts(base_prompt, language)` - Prompt localization
-  - `calculate_token_cost_impact(language)` - Token cost analysis
+- Operations:
+  - Detect project language from project markers
+  - Set up multilingual documentation structure
+  - Localize agent prompts for a configured language
+  - Token-cost-impact analysis per language
 
-TemplateOptimizer:
+Template optimization:
 - Purpose: Template analysis and optimization
-- Key Methods:
-  - `analyze_project_templates()` - Comprehensive template analysis
-  - `create_optimized_templates(options)` - Apply optimizations
-  - `create_backup()` - Create template backup
-  - `restore_from_backup(backup_id)` - Restore from backup
+- Operations:
+  - Comprehensive template analysis
+  - Apply optimizations (size / performance / complexity)
+  - Backup templates before mutation
+  - Restore templates from a backup
 
 ---
 
@@ -98,92 +100,40 @@ Supported Languages with Token Impact:
 
 ### Pattern 1: SPEC-Driven Documentation Workflow
 
-```python
-# Integration with /moai plan and /moai sync
-from moai_workflow_project import MoaiMenuProject
+Integration with `/moai plan` and `/moai sync` (language-neutral sequence):
 
-# Initialize project system
-project = MoaiMenuProject("/path/to/project")
+1. `/moai plan "..."` generates a SPEC artifact under `.moai/specs/SPEC-XXX/`.
+2. The orchestrator reads the SPEC and emits the documentation scaffolding via `/moai project`:
+   - Feature documentation with the SPEC's requirements
+   - API documentation with endpoint details (when applicable)
+   - Architecture documentation
+   - Multilingual versions when the project configures multiple documentation languages
+3. `/moai sync SPEC-XXX` refreshes docs and opens the PR.
 
-# After /moai plan generates SPEC
-spec_data = load_spec("SPEC-001")
+### Pattern 2: CI/CD Documentation Gate
 
-# Generate documentation from SPEC
-docs_result = project.generate_documentation_from_spec(spec_data)
+Run a documentation-completeness check in CI as a non-blocking advisory (no Python helper required):
 
-# Automatically creates:
-# - Feature documentation with requirements
-# - API documentation with endpoint details
-# - Architecture documentation
-# - Multilingual versions if configured
-```
-
-### Pattern 2: CI/CD Integration
-
-```python
-# Integration with GitHub Actions or similar
-from moai_workflow_project import MoaiMenuProject
-
-def ci_documentation_check(project_path: str) -> dict:
-    """Run documentation validation in CI pipeline."""
-    project = MoaiMenuProject(project_path)
-
-    # Get current documentation status
-    status = project.get_project_status()
-
-    # Validate completeness
-    validation_result = {
-        "docs_complete": status.documentation_completion >= 0.9,
-        "language_configured": status.language_configured,
-        "templates_optimized": status.templates_optimized,
-        "warnings": status.warnings,
-        "errors": status.errors
-    }
-
-    return validation_result
-```
+- Step 1: `moai project --status` emits a machine-readable status summary (docs completion, language configured, templates optimized, warnings, errors).
+- Step 2: A CI step parses the summary and annotates the run when `docs_completion` is below the project's threshold or any error is present.
+- Step 3: Treat the check as advisory (warn-on-failure) — documentation drift should not gate a build.
 
 ### Pattern 3: Multi-Project Template Sharing
 
-```python
-# Share optimized templates across projects
-from moai_workflow_project import TemplateOptimizer
+Optimized templates live in the distributed binary's embedded FS plus the per-project `.moai/` tree; share them via version control, not a runtime API:
 
-# Optimize master templates
-master_optimizer = TemplateOptimizer("/templates/master")
-optimized = master_optimizer.create_optimized_templates({
-    "backup_first": True,
-    "apply_all_optimizations": True
-})
-
-# Deploy to multiple projects
-for project_path in project_list:
-    project = MoaiMenuProject(project_path)
-    project.import_templates(optimized.templates)
-```
+1. Author canonical templates in the source repo (the SSOT).
+2. Other projects consume them through `moai update` (re-render from the embedded catalog) or by vendoring the relevant `.moai/` files.
+3. Backup-then-mutate: `moai update` preserves user-owned content (`hns-*` skills, project memory, specs) per the namespace separation contract — only template-managed surfaces are re-rendered.
 
 ### Pattern 4: Language-Aware Agent Delegation
 
-```python
-# Integrate with MoAI's delegation patterns
-def delegate_with_language_context(task: str, language: str):
-    """Delegate task with proper language context."""
-    project = MoaiMenuProject(".")
+When delegating to a sub-agent, the orchestrator passes the active `conversation_language` and `agent_prompt_language` (read from `.moai/config/sections/language.yaml`) in the spawn prompt. There is no library call — the delegation surface is the `Agent()` tool:
 
-    # Get localized prompt
-    localized_task = project.language_initializer.localize_agent_prompts(
-        base_prompt=task,
-        language=language
-    )
-
-    # Token cost analysis
-    cost_impact = project.language_initializer.calculate_token_cost_impact(language)
-
-    return {
-        "localized_task": localized_task,
-        "estimated_token_overhead": cost_impact
-    }
-```
+1. Resolve the active language settings from `language.yaml`.
+2. Compose the spawn prompt in `agent_prompt_language` (English by default for cost control).
+3. Inject the user's `conversation_language` so the agent's user-facing output respects it.
+4. The token-cost overhead for non-English `conversation_language` follows the table in § Language Configuration Presets (Korean/Japanese/Chinese carry a measurable overhead; English is the baseline).
 
 ---
 
@@ -193,41 +143,39 @@ def delegate_with_language_context(task: str, language: str):
 
 Issue: Documentation generation fails with template not found:
 - Cause: Template directory missing or corrupted
-- Solution: Run `project.template_optimizer.restore_from_backup()` or reinstall templates
-- Prevention: Always enable `backup_first` option before optimization
+- Solution: Re-run `moai update` to re-render templates from the embedded catalog, or restore the project's `.moai/` files from version control
+- Prevention: Keep `.moai/` under version control so template state is recoverable
 
 Issue: Language detection returns incorrect language:
 - Cause: Insufficient language indicators in project files
-- Solution: Manually set language in configuration: `project.update_language_settings({"language.conversation_language": "ko"})`
-- Prevention: Include language comments in main source files
+- Solution: Manually set the language in `.moai/config/sections/language.yaml` (`conversation_language: ko`)
+- Prevention: Include language-revealing comments / config markers in main source files
 
 Issue: Template optimization causes functionality loss:
 - Cause: Aggressive optimization removed necessary content
-- Solution: Restore from backup: `project.template_optimizer.restore_from_backup(backup_id)`
-- Prevention: Set `preserve_functionality: True` in optimization options
+- Solution: Restore `.moai/` templates from version control (the prior commit)
+- Prevention: Run optimization on a branch and verify behavior before merging
 
 Issue: Multilingual documentation structure incomplete:
 - Cause: Partial initialization or interrupted process
-- Solution: Re-run `project.language_initializer.create_multilingual_documentation_structure(language)`
-- Prevention: Ensure stable connection during initialization
+- Solution: Re-run `/moai project` to complete the documentation scaffolding
+- Prevention: Ensure the process runs to completion; resume from `.moai/specs/<SPEC>/progress.md` after an interrupt
 
 Issue: High token cost for non-English languages:
 - Cause: Localized agent prompts increase token usage
-- Solution: Use `agent_prompt_language: "english"` with `conversation_language: "ko"` for cost optimization
+- Solution: Use `agent_prompt_language: en` with `conversation_language: ko` for cost optimization
 - Prevention: Configure language settings before heavy usage
 
 ### Diagnostic Commands
 
-```python
+The diagnostic surface is the `moai` CLI, not a Python API. Run the status command and read its output:
+
+```bash
 # Full diagnostic report
-status = project.get_project_status()
-print(f"Initialization: {status.initialization_complete}")
-print(f"Language: {status.language_configuration}")
-print(f"Documentation: {status.documentation_completion}%")
-print(f"Templates: {status.template_status}")
-print(f"Errors: {status.errors}")
-print(f"Warnings: {status.warnings}")
+moai project --status
 ```
+
+The report surfaces: initialization state, language configuration, documentation completion %, template status, errors, and warnings.
 
 ### Log Locations
 
@@ -249,9 +197,8 @@ print(f"Warnings: {status.warnings}")
 
 - moai-foundation-core - Core execution patterns and SPEC workflow
 - moai-foundation-cc - Claude Code integration patterns
-- moai-workflow-docs - Unified documentation management
-- moai-workflow-templates - Template optimization strategies
-- moai-library-nextra - Advanced documentation architecture
+- moai-workflow-spec - SPEC workflow orchestration (plan / run / sync)
+- moai-workflow-docs-claim-check - README / public-docs claim validation
 
 ### Template Resources
 
@@ -271,5 +218,4 @@ print(f"Warnings: {status.warnings}")
 ---
 
 Status: Reference Documentation Complete
-Last Updated: 2025-12-06
 Skill Version: 2.0.0

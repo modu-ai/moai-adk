@@ -46,11 +46,11 @@ HARD must-pass firewall (FROZEN — design-constitution §12 Mechanism 3): every
 Both modes score the same 4 canonical dimensions and differ only in scoring granularity and report format, so reports produced under either mode stay consistent and comparable. The dimension enum is FROZEN (design-constitution §12 Mechanism 3) at exactly `Functionality`, `Security`, `Craft`, `Consistency`; a non-canonical dimension name in a profile is loaded best-effort (unknown dims skipped).
 
 - **Flat weighted-percentage (default)**: the weights in the Evaluation Dimensions table above. Applies whenever `harness.yaml` does NOT set `evaluator_mode: hierarchical`.
-- **Hierarchical sub-criteria refinement** (SPEC-V3R2-HRN-003): **Where** `harness.yaml` sets `evaluator_mode: hierarchical`, each dimension decomposes into N sub-criteria that are scored and aggregated per dimension, and the report renders in the hierarchical format (§ Output Format).
+- **Hierarchical sub-criteria refinement**: **Where** `harness.yaml` sets `evaluator_mode: hierarchical`, each dimension decomposes into N sub-criteria that are scored and aggregated per dimension, and the report renders in the hierarchical format (§ Output Format).
 
 ### Sub-Criterion Scoring and Aggregation (hierarchical mode)
 
-Each dimension has N sub-criteria. Scores MUST use the canonical anchors 0.25, 0.50, 0.75, 1.00; intermediate values are rejected (ErrFlatScoreCardProhibited). Every sub-criterion score MUST cite the canonical anchor description from the active profile's Scoring Rubric section — uncited scores are rejected (ErrRubricCitationMissing). Sub-criteria aggregate per dimension by `min` (default, REQ-HRN-003-007), or by `mean` when the active profile sets the field `aggregation: min | mean` (REQ-HRN-003-015).
+Each dimension has N sub-criteria. Scores MUST use the canonical anchors 0.25, 0.50, 0.75, 1.00; intermediate values are rejected (ErrFlatScoreCardProhibited). Every sub-criterion score MUST cite the canonical anchor description from the active profile's Scoring Rubric section — uncited scores are rejected (ErrRubricCitationMissing). Sub-criteria aggregate per dimension by `min` (default), or by `mean` when the active profile sets the field `aggregation: min | mean`.
 
 ## Per-Dimension Mechanical Verification (project-language auto-detection)
 

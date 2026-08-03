@@ -5,6 +5,8 @@
 > Time: 35+ minutes
 > Dependencies: static analyzers for your language, WebSearch/WebFetch (optional)
 
+> **TRUST 5 disambiguation** — the five-lens set used in this module (**Truthfulness / Relevance / Usability / Safety / Timeliness**) is a code-review rubric local to this skill and is NOT the project's canonical TRUST 5 framework. The canonical MoAI TRUST 5 is **Tested / Readable / Unified / Secured / Trackable** (see `.claude/rules/moai/core/moai-constitution.md` § Quality Gates and the `moai-foundation-quality` skill). When a MoAI doc says "TRUST 5" without qualification, it means the canonical Tested/Readable/Unified/Secured/Trackable set; the Truthfulness/Relevance/Usability/Safety/Timeliness rubric applies only inside this code-review module.
+
 ## Quick Reference
 
 ### Core Capabilities
@@ -210,5 +212,4 @@ automated-code-review.md (this file)
 ---
 
 Version: 2.0.0 (Modular Structure)
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review.md`

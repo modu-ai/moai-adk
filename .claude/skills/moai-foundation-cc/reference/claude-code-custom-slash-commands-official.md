@@ -54,7 +54,13 @@ IMPORTANT: Command name is automatically derived from file path structure:
 - `.claude/commands/my-command.md` → `/my-command`
 - Example: `.claude/commands/moai/fix.md` → `/moai:fix`
 
-DO NOT include a `name` field in frontmatter - it is not officially supported.
+DO NOT include a `name` field in frontmatter - it is not officially supported. (Earlier examples in this file showed a `name:` key in command frontmatter; those have been removed to match this rule. The command name is ALWAYS derived from the file path — see the mapping above.)
+
+> **Illustrative-only note**: the command names used in the examples below
+> (`validate-config`, `implement-feature`, `deploy`, etc.) are fictional
+> generic illustrations, not MoAI shipped commands. MoAI's real command
+> surface is the `/moai` skill plus its `/moai:<sub>` thin wrappers
+> (see `CLAUDE.md §3 Command Reference`).
 
 ### Command File Format
 
@@ -361,7 +367,6 @@ Configuration Validator:
 
 ````markdown
 ---
-name: validate-config
 description: Validate configuration files against schema and best practices
 usage: |
  /validate-config <file> [options]
@@ -441,7 +446,6 @@ Agent(
 Feature Implementation Workflow:
 ```markdown
 ---
-name: implement-feature
 description: Complete feature implementation workflow from spec to deployment
 usage: |
  /implement-feature "Feature description" [options]
@@ -572,7 +576,6 @@ echo "Documentation: $(echo $docs_result | jq .generated_files)"
 CI/CD Pipeline Integration:
 ```markdown
 ---
-name: deploy
 description: Deploy application with comprehensive validation and rollback capability
 usage: |
  /deploy [environment] [options]

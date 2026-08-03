@@ -2,6 +2,19 @@
 
 Purpose: Detailed implementation patterns for agent delegation including context optimization and workflow examples.
 
+> **Illustrative pseudocode.** The Python `Agent(subagent_type=...)`
+> literals in this file are pseudocode showing context-passing shape,
+> NOT runnable code. In practice, MoAI invokes retained agents
+> (`manager-spec`, `manager-develop`, `manager-docs`, etc.) through
+> **natural-language delegation** ("Use the {agent} subagent to {task}"),
+> never a `subagent_type` code literal — see
+> [delegation-patterns.md](delegation-patterns.md) § Note + the flat
+> 11-agent catalog in [agents-reference.md](agents-reference.md). Per-spawn
+> `general-purpose` (with domain instructions in the prompt) is the
+> canonical mechanism for cross-cutting domain work; legacy tiered names
+> (`code-backend`, `security-expert`, `core-quality`, etc.) are archived
+> and rejected at spawn.
+
 Version: 1.0.0
 Parent: [delegation-patterns.md](delegation-patterns.md)
 

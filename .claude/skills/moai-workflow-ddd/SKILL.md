@@ -55,12 +55,12 @@ When to Use DDD:
 - Technical debt reduction in production systems
 - API migration and deprecation handling
 - Code modernization projects
-- When DDD is not applicable because code already exists
 - Greenfield projects (with adapted cycle - see below)
 
 When NOT to Use DDD:
 
 - When behavior changes are required (modify SPEC first)
+- When the code already exists and the goal is behavior change rather than behavior-preserving refactoring (DDD preserves behavior; for new behavior, modify the SPEC first, or use TDD)
 
 Greenfield Project Adaptation:
 
@@ -389,7 +389,6 @@ When DDD session encounters issues:
 
 Version: 1.0.0
 Status: Active
-Last Updated: 2026-01-16
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

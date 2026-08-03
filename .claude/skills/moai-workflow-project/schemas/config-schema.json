@@ -144,9 +144,9 @@
         },
         "template_engine": {
           "type": "string",
-          "enum": ["jinja2", "handlebars", "mustache"],
-          "default": "jinja2",
-          "description": "Template engine for documentation generation"
+          "enum": ["gotemplate", "jinja2", "handlebars", "mustache"],
+          "default": "gotemplate",
+          "description": "Template engine for documentation generation (pick whichever the project's implementation language favors; the distributed MoAI runtime uses Go text/template)"
         },
         "output_directory": {
           "type": "string",
@@ -280,23 +280,19 @@
           "default": true,
           "description": "Initialize Git repository"
         },
-        "create_virtual_env": {
-          "type": "boolean",
-          "default": true,
-          "description": "Create Python virtual environment"
-        },
         "license_template": {
           "type": "string",
           "description": "Default license template"
         },
         "package_managers": {
           "type": "object",
+          "description": "Per-language package manager selection. All entries are opt-in (default disabled); MoAI auto-detects the project's language(s) from project markers (go.mod, package.json, pyproject.toml, Cargo.toml, etc.) and only proposes installation when the matching marker is present.",
           "properties": {
             "python": {
               "type": "object",
               "properties": {
-                "enabled": {"type": "boolean", "default": true},
-                "tool": {"type": "string", "enum": ["pip", "poetry", "pipenv"], "default": "pip"}
+                "enabled": {"type": "boolean", "default": false},
+                "tool": {"type": "string", "enum": ["pip", "poetry", "pipenv", "uv"], "default": "pip"}
               }
             },
             "node": {
@@ -304,6 +300,20 @@
               "properties": {
                 "enabled": {"type": "boolean", "default": false},
                 "tool": {"type": "string", "enum": ["npm", "yarn", "pnpm"], "default": "npm"}
+              }
+            },
+            "go": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean", "default": false},
+                "tool": {"type": "string", "enum": ["go"], "default": "go"}
+              }
+            },
+            "rust": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean", "default": false},
+                "tool": {"type": "string", "enum": ["cargo"], "default": "cargo"}
               }
             }
           }

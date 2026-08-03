@@ -3,7 +3,6 @@
 Purpose: Disk space management, memory-efficient operations, performance optimization, and error handling patterns for worktree management.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -91,7 +90,7 @@ Cleanup Priority:
 For large registries, use streaming JSON parsing to avoid loading entire file.
 
 Streaming Pattern:
-- Use incremental JSON parser (ijson)
+- Use a streaming/incremental JSON parser appropriate to the implementation language (e.g. `encoding/json` `Decoder` token streaming in Go, `ijson` in Python) rather than loading the whole document into memory
 - Process worktrees one at a time
 - Apply filters during iteration
 - Yield matching worktrees
@@ -182,25 +181,21 @@ Batch Cleanup:
 
 ## Error Handling
 
-### Error Hierarchy
+### Error Categories
 
-Structured error classes for different failure types:
+Structured error categories for different failure types (design-level — the names below are category labels, not Python class syntax; each implementation language surfaces these as its own error/exception types with equivalent fields):
 
-WorktreeError: Base class for all worktree errors
-- message: Human-readable error description
-- context: Additional debugging information
+WorktreeError — base category for all worktree errors
+- Carries: a human-readable message, plus optional debugging context
 
-WorktreeCreationError: Errors during worktree creation
-- partial_worktree: Path to incomplete worktree for cleanup
-- creation_step: Step at which creation failed
+WorktreeCreationError — failures during worktree creation
+- Carries: the path to a partial worktree (for cleanup), and the creation step at which the failure occurred
 
-SynchronizationError: Errors during sync operations
-- sync_state: State at time of failure
-- backup_ref: Git ref for recovery
+SynchronizationError — failures during sync operations
+- Carries: the sync state at time of failure, and a backup git ref for recovery
 
-RegistryError: Errors related to registry operations
-- registry_path: Path to problematic registry
-- operation: Operation that failed
+RegistryError — failures related to registry operations
+- Carries: the registry path involved, and the operation that failed
 
 ### Recovery Patterns
 
@@ -296,5 +291,4 @@ Based on Performance:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: Resource optimization patterns for disk, memory, performance, and error handling
