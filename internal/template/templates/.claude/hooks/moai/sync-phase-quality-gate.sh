@@ -337,6 +337,31 @@ case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
     *) MODE="blocking" ;;
 esac
 
+# SPEC-STOPCHAIN-TRIM-001 REQ-004 (A11): tier-aware mode override. Read
+# $MOAI_AUTONOMY_TIER at the shell layer (no moai binary — the token is an
+# env-key per OQ-1/REQ-003 so shell can read it directly). The tier relaxes
+# ONLY the advisory-vs-blocking MODE of this gate, never the deny/ask denylist
+# (that lives in pre_tool.go and is tier-invariant per REQ-007).
+#   - fully-autonomous: advisory only (systemMessage, no decision:block).
+#   - automatic:        build-only-block — a C2 (build) failure still blocks,
+#                        but C1 (vet/lint) failures become advisory.
+#   - semi-auto/unset:  current MODE (no change — backward compat, AC-007).
+AUTONOMY_TIER=$(printf '%s' "${MOAI_AUTONOMY_TIER:-}" | tr '[:upper:]' '[:lower:]')
+case "$AUTONOMY_TIER" in
+    fully-autonomous)
+        MODE="advisory"
+        ;;
+    automatic)
+        # Build (C2) failure still blocks; vet/lint (C1) failure → advisory.
+        if [ "$DECISION" = "block" ] && [ "$C1_EXIT" -ne 0 ] && [ "$C2_EXIT" -eq 0 ]; then
+            MODE="advisory"
+        fi
+        ;;
+    *)
+        # semi-auto / unset / unrecognized → MODE unchanged (AC-007 backward compat).
+        ;;
+esac
+
 # Emit a Stop-schema-compliant response.
 #
 # Blocking (DEFAULT): a failing vet/build emits {"hookSpecificOutput":
