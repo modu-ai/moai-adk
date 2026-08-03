@@ -140,6 +140,22 @@ m1_to_mN_commit_strategy: single-PR squash (Route B Tier L per repo-local-pr-pol
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
-
-sync_commit_sha: "pending-backfill-sync"
+sync_complete_at: 2026-08-03
+sync_commit_sha: "pending-backfill-after-merge"
+sync_status: green
+sync_auditor_verdict: PASS
+sync_auditor_harmonic_mean: 0.952
+ac_pass_count: 23
+ac_fail_count: 0
+ac_tbs_010_non_vacuity: independently reproduced (RED leg reverts the snapshot-as-BASE switch and asserts the correctness test FAILS against the wrong-base code, proving the AC is non-vacuous)
+b12_self_test_a_changelog_duplicate: 1 (pre-existing mention is a forward-reference inside the SPEC-UPDATE-YAML-PRESERVE-001 entry naming this SPEC as the deferred follow-up, NOT a dedicated entry — not a duplicate)
+b12_self_test_b_ac_count_match: 23 distinct ACs in acceptance.md (AC-TBS-001..022 with 006 split into 006a/006b) == 23 ac_pass_count
+b12_self_test_c_file_paths_verified: all 8 cited implementation files exist via `ls` (snapshot.go, snapshot_test.go, base_loader.go, base_loader_test.go, snapshot_provenance_test.go, snapshot_survival_test.go, update_snapshot_hook.go, update_snapshot_hook_test.go)
+changelog_entry_position: CHANGELOG.md `[Unreleased]` ### Fixed
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (single sync commit, 3-phase close)"
+  plan_md: "n/a (no YAML frontmatter — body-only artifact)"
+  acceptance_md: "n/a (no YAML frontmatter — body-only artifact)"
+canary_compliance_check: n/a (internal `internal/cli/update/backup` Go sources + SPEC artifacts only; 0 template files touched → §25 template neutrality N/A; gitignored `.moai/cache/template-snapshot/` is a runtime artifact, not a distributed template)
+readme_or_docs_site_change: none (internal `moai update` merge-mechanism correctness fix; docs-site documents no `moai update` merge/preservation behavior — `grep -rln "3-way\|three-way\|MergeYAML\|template-blessed\|base.*merge" docs-site/content/` returns 0; README unchanged — no user-facing feature changed)
+closes_d5_from: SPEC-UPDATE-YAML-PRESERVE-001 (#1243) Decision D5 — the deferred provenance defect. The prior SPEC's CHANGELOG entry explicitly named this SPEC as the D5 owner.
