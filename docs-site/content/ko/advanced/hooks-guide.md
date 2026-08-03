@@ -425,15 +425,12 @@ LSP를 사용할 수 없는 경우 명령행 도구를 사용합니다:
 - Python: `ruff check --output-format=json`
 - TypeScript: `tsc --noEmit`
 
-**설정:** `.moai/config/sections/ralph.yaml`
+**설정:** `.moai/config/sections/ralph.yaml` — 이 훅은 `lint_as_instruction`과 `warn_as_instruction`(LSP 진단을 AI의 다음 지시로 주입할지 결정)을 읽습니다. 이 훅에서 심각도(severity)는 설정하지 않으며, 항상 error 수준 진단만 다룹니다.
 
 ```yaml
 ralph:
-  enabled: true
-  hooks:
-    post_tool_lsp:
-      enabled: true
-      severity_threshold: error  # error | warning | info
+  lint_as_instruction: true   # LSP 오류를 AI의 다음 프롬프트로 주입
+  warn_as_instruction: false  # 오류가 없을 때는 경고도 포함
 ```
 
 ### PreCompact: 컨텍스트 저장
@@ -480,19 +477,12 @@ Ralph Engine 피드백 루프를 제어합니다. `/moai loop`가 "다 고칠 �
 
 **상태 파일:** `.moai/cache/.moai_loop_state.json`
 
-**설정:** `.moai/config/sections/ralph.yaml`
+**설정:** `.moai/config/sections/ralph.yaml` — 루프는 `max_iterations`(반복 상한)과 `auto_converge`(정체 시 조기 종료)를 읽습니다. 완료 임계값(오류 0 / 테스트 통과 / 커버리지)은 YAML 키가 아니라 코드에 정해진 평가 기준입니다.
 
 ```yaml
 ralph:
-  enabled: true
-  loop:
-    max_iterations: 10
-    auto_fix: false
-    completion:
-      zero_errors: true
-      zero_warnings: false
-      tests_pass: true
-      coverage_threshold: 85
+  max_iterations: 5       # 반복 상한 (CLI --max가 우선)
+  auto_converge: true     # 큐 변화가 멈추면 조기 종료
 ```
 
 ### Quality Gate with LSP

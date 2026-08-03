@@ -425,15 +425,12 @@ Python、TypeScript/JavaScript、Go、Rust、Java、Kotlin、Ruby、PHP、C/C++
 - Python：`ruff check --output-format=json`
 - TypeScript：`tsc --noEmit`
 
-**配置：** `.moai/config/sections/ralph.yaml`
+**配置：** `.moai/config/sections/ralph.yaml` — 此钩子读取 `lint_as_instruction` 和 `warn_as_instruction`(用于控制是否把 LSP 诊断作为 AI 的下一轮指令注入)。此处不可配置严重程度(severity),钩子始终只针对 error 级别的诊断。
 
 ```yaml
 ralph:
-  enabled: true
-  hooks:
-    post_tool_lsp:
-      enabled: true
-      severity_threshold: error  # error | warning | info
+  lint_as_instruction: true   # 将 LSP 错误作为 AI 的下一轮提示注入
+  warn_as_instruction: false  # 没有错误时也把警告纳入
 ```
 
 ### PreCompact：保存上下文
@@ -480,19 +477,12 @@ ralph:
 
 **状态文件：** `.moai/cache/.moai_loop_state.json`
 
-**配置：** `.moai/config/sections/ralph.yaml`
+**配置：** `.moai/config/sections/ralph.yaml` — 循环读取 `max_iterations`(迭代上限)和 `auto_converge`(停滞时提前结束)。完成阈值(零错误 / 测试通过 / 覆盖率)并非 YAML 键,而是写死在代码中的评估标准。
 
 ```yaml
 ralph:
-  enabled: true
-  loop:
-    max_iterations: 10
-    auto_fix: false
-    completion:
-      zero_errors: true
-      zero_warnings: false
-      tests_pass: true
-      coverage_threshold: 85
+  max_iterations: 5       # 迭代上限(CLI --max 优先)
+  auto_converge: true     # 队列不再变化时提前结束
 ```
 
 ### Quality Gate with LSP

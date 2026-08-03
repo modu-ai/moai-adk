@@ -70,8 +70,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  무한 루프를 방지하기 위해 기본값은 10회입니다 (`ralph.yaml`의 `loop.max_iterations`).
-  반복 상한 우선순위는 CLI `--max` 플래그 > `ralph.yaml` `loop.max_iterations` >
+  무한 루프를 방지하기 위해 기본값은 5회입니다 (`ralph.yaml`의 최상위 `max_iterations`).
+  반복 상한 우선순위는 CLI `--max` 플래그 > `ralph.yaml` `max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations` 순입니다.
 {{< /callout >}}
 

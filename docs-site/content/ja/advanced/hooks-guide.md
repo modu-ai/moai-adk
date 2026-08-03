@@ -425,15 +425,12 @@ LSP を使用できない場合はコマンドラインツールを使います:
 - Python: `ruff check --output-format=json`
 - TypeScript: `tsc --noEmit`
 
-**設定:** `.moai/config/sections/ralph.yaml`
+**設定:** `.moai/config/sections/ralph.yaml` — このフックは `lint_as_instruction` と `warn_as_instruction`(LSP 診断を AI の次の指示として注入するかを制御)を読み取ります。重大度(severity)はここでは設定できず、フックは常に error レベルの診断だけを扱います。
 
 ```yaml
 ralph:
-  enabled: true
-  hooks:
-    post_tool_lsp:
-      enabled: true
-      severity_threshold: error  # error | warning | info
+  lint_as_instruction: true   # LSP エラーを AI の次のプロンプトとして注入
+  warn_as_instruction: false  # エラーがないときは警告も含める
 ```
 
 ### PreCompact: コンテキスト保存
@@ -480,19 +477,12 @@ Ralph Engine のフィードバックループを制御します。`/moai loop` 
 
 **状態ファイル:** `.moai/cache/.moai_loop_state.json`
 
-**設定:** `.moai/config/sections/ralph.yaml`
+**設定:** `.moai/config/sections/ralph.yaml` — ループは `max_iterations`(反復上限)と `auto_converge`(停滞時の早期終了)を読み取ります。完了のしきい値(エラー 0 / テスト通過 / カバレッジ)は YAML キーではなく、コードに固定された評価基準です。
 
 ```yaml
 ralph:
-  enabled: true
-  loop:
-    max_iterations: 10
-    auto_fix: false
-    completion:
-      zero_errors: true
-      zero_warnings: false
-      tests_pass: true
-      coverage_threshold: 85
+  max_iterations: 5       # 反復上限 (CLI --max が優先)
+  auto_converge: true     # キューの変化が止まったら早期終了
 ```
 
 ### Quality Gate with LSP

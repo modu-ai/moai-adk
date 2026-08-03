@@ -71,8 +71,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  为防止无限循环,默认值为 10 次 (`ralph.yaml` 的 `loop.max_iterations`)。
-  迭代上限优先级依次为 CLI `--max` 标志 > `ralph.yaml` `loop.max_iterations` >
+  为防止无限循环,默认值为 5 次 (`ralph.yaml` 的顶层 `max_iterations`)。
+  迭代上限优先级依次为 CLI `--max` 标志 > `ralph.yaml` `max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations`。
 {{< /callout >}}
 

@@ -70,8 +70,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  無限ループを防ぐためデフォルト値は 10 回です (`ralph.yaml` の `loop.max_iterations`)。
-  反復上限の優先順位は CLI `--max` フラグ > `ralph.yaml` `loop.max_iterations` >
+  無限ループを防ぐためデフォルト値は 5 回です (`ralph.yaml` の最上位 `max_iterations`)。
+  反復上限の優先順位は CLI `--max` フラグ > `ralph.yaml` `max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations` の順です。
 {{< /callout >}}
 
