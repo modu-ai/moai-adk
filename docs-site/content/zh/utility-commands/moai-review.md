@@ -14,7 +14,7 @@ draft: false
 
 `/moai review` 是**多视角代码审查**命令。它以安全（Security）·性能（Performance）·质量（Quality）·UX 四个视角的 read-only 判定者分析变更分，点检 `@MX` 标签遵守情况后，产出一份按严重度整理的综合报告。
 
-`/moai review` 是**只读、仅报告的透镜**——只负责找出并报告缺陷，不修改任何文件。要真正修复所发现的问题，交给 `/moai fix`（或 `/moai loop`）。也就是说，`/moai review` **报告**问题，`/moai loop` **修复**有限的问题集合，二者是层次关系。
+`/moai review` 是**只读、仅报告的工具**——只负责找出并报告缺陷，不修改任何文件。要真正修复所发现的问题，交给 `/moai fix`（或 `/moai loop`）。也就是说，`/moai review` **报告**问题，`/moai loop` **修复**有限的问题集合，二者是层次关系。
 
 ## 支持的标志
 

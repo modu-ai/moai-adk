@@ -24,7 +24,7 @@ MoAI-ADK v3.0 的代理目录共 **11 个**（MoAI 自定义 10 个 + Anthropic 
 | **medium**（默认） | `--model-policy medium` | 11 中的 9 | 11 中的 2 | 质量与成本的平衡；成本/得分曲线的拐点 |
 | **low** | `--model-policy low` | 11 中的 7 | 11 中的 4 | 每任务成本最低；代理式行降到 Opus `low` |
 
-> **名称轴**：`llm.yaml` 的 `profile` 字段、legacy `performance_tier` 别名与
+> **名称对应**：`llm.yaml` 的 `profile` 字段、legacy `performance_tier` 别名与
 > CLI 标志 `--model-policy` 都使用同样的 `high`/`medium`/`low` 三个值并 1:1
 > 对应（无需单独转换）。默认值是 `medium`。旧的顶层名称 `max` 仍会被**读取**
 > 为 `high` 的别名，因此既有配置仍能解析，但保存时始终写入 `high` —— 无需任何
@@ -89,7 +89,7 @@ spawn 时注入的 `{model, effort}` 对。（编排器主会话不是被 spawn 
 为了避免"制定计划的代理自己做审计"，plan-auditor 和 sync-auditor 的分配与
 manager-spec 保持独立 —— 偏差防止是目录的结构性属性，而不是格子取值的属性。
 
-## v3.0 扩展：Tier×Phase 声明轴
+## v3.0 扩展：Tier×Phase 声明矩阵
 
 v3.0 在代理级分配之上，新增了**工作阶段 (phase) 与 SPEC 规模 (Tier)** 轴。
 `internal/config/model_routing.go` 以声明方式管理 Tier×Phase →

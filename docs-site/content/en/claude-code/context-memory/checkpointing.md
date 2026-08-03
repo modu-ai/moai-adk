@@ -96,7 +96,7 @@ Checkpoints are especially useful in situations like these:
 
 For work with uncertain outcomes, like an experimental refactor, an efficient flow is: send a prompt first to create a checkpoint, proceed with peace of mind, and if you dislike the result, press `Esc Esc` to rewind code and conversation together.
 
-From the MoAI-ADK perspective, checkpointing is what allows the agentic loop to run boldly. For the loop to autonomously repeat "act → verify → correct," failed attempts must be cheaply reversible, and checkpoints drive that reversal cost to nearly zero. Use it as the in-session safety net for snapping back to the previous state when the code shakes badly during SPEC-scoped work — but the principle remains that permanent history always lands in Git commits.
+From the MoAI-ADK perspective, checkpointing is what allows the agentic loop to run boldly. For the loop to autonomously repeat "act → verify → correct," failed attempts must be cheaply reversible, and checkpoints drive that reversal cost to nearly zero. Use it as the in-session safety net for snapping back to the previous state when the code has shifted significantly during SPEC-scoped work — but the principle remains that permanent history always lands in Git commits.
 
 ## Limitations and Cautions
 

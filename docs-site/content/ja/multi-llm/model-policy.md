@@ -25,7 +25,7 @@ MoAI-ADK v3.0 のエージェントカタログは **11 個** (MoAI カスタム
 | **medium** (デフォルト) | `--model-policy medium` | 11 中 9 | 11 中 2 | 品質とコストのバランス。コスト/スコア曲線の変曲点 |
 | **low** | `--model-policy low` | 11 中 7 | 11 中 4 | 課題あたりコスト最小。エージェンティック行は Opus `low` に下がる |
 
-> **名前の軸**: `llm.yaml` の `profile` フィールド、legacy の `performance_tier`
+> **名前の対応**: `llm.yaml` の `profile` フィールド、legacy の `performance_tier`
 > エイリアス、CLI フラグ `--model-policy` はすべて同じく `high`/`medium`/`low` の
 > 3 値を使い、1:1 でマッピングされます (別途変換なし)。デフォルト値は `medium` です。
 > 旧最上位ティア名の `max` は既存設定が解決を続けられるよう依然として `high` の
@@ -75,7 +75,7 @@ MoAI-ADK v3.0 のエージェントカタログは **11 個** (MoAI カスタム
 > `Explore` はディスク上にエージェントファイルが無いため frontmatter で effort を
 > 固定できません — マトリクスは呼び出し時のデフォルトとして `sonnet / low` を記録し、
 > spawn プロンプトで指定します。Agent Teams 静的階層 (静的 role profile) は v3.0 で
-> 引退し、並列作業は sub-agent 並列実行と動的ワークフローが
+> 廃止され、並列作業は sub-agent 並列実行と動的ワークフローが
 > 代替します。`moai cg` の teammate ランタイム (tmux pane) はそのまま維持されます。
 
 > **Haiku 除去 (v3.0)**: かつての Haiku スロット (ドキュメント、MX タグ付け、Git
@@ -94,7 +94,7 @@ MoAI-ADK v3.0 のエージェントカタログは **11 個** (MoAI カスタム
 `manager-spec` から独立した割り当てを維持します — バイアス防止はセルの値ではなく
 カタログの構造的性質です。
 
-## v3.0 拡張: Tier×Phase 宣言軸
+## v3.0 拡張: Tier×Phase 宣言マトリクス
 
 v3.0 ではエージェント単位の割り当ての上に **作業ステップ (phase) と SPEC サイズ (Tier)**
 軸が加わりました。`internal/config/model_routing.go` が Tier×Phase →

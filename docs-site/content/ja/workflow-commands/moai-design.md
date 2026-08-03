@@ -83,14 +83,14 @@ D4 ハンドオフを規律する 9 つの条項は manager-design エージェ�
 - **H8 再委任パッケージ** — Section A-E で manager-develop に委任
 - **H9 隠しフォルダ案内** — `.moai/design/` dot-folder の可視性
 
-## ツール可用性 (優雅な性能低下)
+## ツールがないときの挙動
 
 DesignSync サーバーが `.mcp.json` に登録されていない場合があります。D1 が可用性を確認します:
 
 - **ツールあり** → D2-D5 に進行
 - **ツールなし** → エージェントが blocker report を返却 (H1 パス)。ユーザーが DesignSync を別途登録 (Claude Code v2.1.181+ および Pro+ Claude Design アカウントが必要)
 
-デザイン段階の著述自体は失敗せず、ツールを待ちます。
+デザイン段階の作業自体は失敗せず、ツールを待ちます。
 
 ## 関連ドキュメント
 

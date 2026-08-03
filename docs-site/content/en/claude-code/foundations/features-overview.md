@@ -18,7 +18,7 @@ This page is a hub that gives you a bird's-eye view of everything Claude Code of
 
 Claude Code's features split into two branches. One is the **built-in tools** the model always uses to work with code; the other is the **extension layer** users add as needed. This page lays out both branches and, alongside a one-line description of each feature, points the way to the in-depth detail documents.
 
-MoAI-ADK is an agentic development kit that runs on top of this very Claude Code. The features listed here are also the raw materials of MoAI-ADK's three pillars — the context window and caching feed **Tokenomics**, subagents, teams, and worktrees feed **Agentic Loop Engineering**, and skills, hooks, MCP, and plugins feed the **Agentic Harness**. Getting the concepts down here makes it much faster to understand how MoAI-ADK orchestrates them.
+MoAI-ADK is an agentic development kit that runs on top of this very Claude Code. The features listed here are also the raw materials of MoAI-ADK's three core values — the context window and caching feed **Tokenomics**, subagents, teams, and worktrees feed **Agentic Loop Engineering**, and skills, hooks, MCP, and plugins feed the **Agentic Harness**. Getting the concepts down here makes it much faster to understand how MoAI-ADK orchestrates them.
 
 ## Feature Catalog
 

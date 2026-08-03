@@ -8,13 +8,13 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
-![トークノミクス3軸](/images/sections/advanced-ja.png)
+![MoAI-ADKの3つの核心](/images/sections/advanced-ja.png)
 
 MoAI-ADK の内部構造を掘り下げたい開発者のためのセクションです。基本ワークフロー(plan → run → sync)に慣れたら、ここでハーネスが実際にどのように組み立てられているかを確認できます。
 
 
 {{< callout type="info" >}}
-このセクションのドキュメントは、v3.0 の三本柱 — **トークノミクス** (Token Economics)、**エージェンティック・ループ・エンジニアリング** (Agentic Loop Engineering)、**エージェンティック・ハーネス** (Agentic Harness) — のうち、主に第三の柱の実装詳細を扱います。エージェントに良いコードを書かせる秘訣はモデルではなく、モデルを取り巻く環境設計にあります。
+このセクションのドキュメントは、v3.0 の3つの核心 — **トークノミクス** (Token Economics)、**エージェンティック・ループ・エンジニアリング** (Agentic Loop Engineering)、**エージェンティック・ハーネス** (Agentic Harness) — のうち、主に3番目の要素の実装詳細を扱います。エージェントに良いコードを書かせる秘訣はモデルではなく、モデルを取り巻く環境設計にあります。
 {{< /callout >}}
 
 ## ハーネスはどう組み立てられるか

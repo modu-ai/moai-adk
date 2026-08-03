@@ -151,9 +151,9 @@ Claude Code differs from inline code assistants in two ways.
 - **Terminal-native**: it directly handles everything you can do from the command line — builds, tests, git, package managers.
 - **Whole-codebase awareness at scale**: it sees the entire project, not just the current file. Ask it to "fix the auth bug" and it searches for related files, reads several to build context, makes consistent edits across files, verifies with tests, and commits if you ask.
 
-## Connection to MoAI-ADK — Three Pillars Built on the Loop
+## Connection to MoAI-ADK — Three Core Values Built on the Loop
 
-The agentic loop you saw on this page is the shared foundation of MoAI-ADK's three pillars.
+The agentic loop you saw on this page is the shared foundation of MoAI-ADK's three core values.
 
 - **Tokenomics**: every turn of the loop consumes context and tokens. MoAI-ADK assigns the right model and reasoning depth to each work stage, puts context on a diet, and has the system enforce budgets — running the same loop at lower cost.
 - **Agentic Loop Engineering**: instead of a human watching every iteration of "gather context → take action → verify results", completion conditions (`/goal`) and diagnostic loops (`/moai loop`) make the loop itself a design target.

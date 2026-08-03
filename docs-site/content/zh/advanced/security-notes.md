@@ -61,7 +61,7 @@ chmod 0600 .claude/settings.local.json
 
 ### 影响 (Trade-off)
 
-依赖 `group-readable` 的工作流（由不同 OS 用户读取同一项目目录的极罕见场景）可能会被破坏。这一权衡是有意为之的，安全恢复显然优先。
+依赖 `group-readable` 的工作流（由不同 OS 用户读取同一项目目录的极罕见场景）可能会被破坏。这一权衡是有意为之的，安全显然优先。
 
 ## CWE-214 — 阻断 tmux IPC token 的 argv 暴露 {#cwe-214}
 

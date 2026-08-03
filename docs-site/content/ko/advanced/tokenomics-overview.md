@@ -52,11 +52,11 @@ flowchart TD
 
 ### C층 — 검증 다이어트 (Verify-diet)
 
-{{< icon wrench >}} 검증 명령의 긴 출력을 디스크 파일로 흘려보내고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남깁니다. 이 파일-리다이렉트 계약(file-redirect contract) 덕분에 검증 증거는 그대로 지키면서 컨텍스트 소비만 줄일 수 있습니다. 자세한 메커니즘은 [토큰 예산 관리와 우아한 중단](/ko/advanced/token-budget/) 페이지를 보세요.
+{{< icon wrench >}} 검증 명령의 긴 출력을 디스크 파일로 흘려보내고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남깁니다. 이 파일-리다이렉트 계약(file-redirect contract) 덕분에 검증 증거는 그대로 지키면서 컨텍스트 소비만 줄일 수 있습니다. 자세한 메커니즘은 [토큰 예산 관리와 안전한 중단](/ko/advanced/token-budget/) 페이지를 보세요.
 
 ### D층 — 예산 가드 (Budget defense)
 
-{{< icon warning >}} 에이전트별 토큰 사용량이 hard-limit(기본 90%)에 닿으면 우아한 중단(graceful abort)을 수행합니다. 진행 상태를 progress.md에 저장하고 붙여넣기 가능한 핸드오프 메시지(paste-ready resume)를 발행하되, 자동 `/clear`는 절대 하지 않습니다. 자세한 절차는 [토큰 예산 관리와 우아한 중단](/ko/advanced/token-budget/) 페이지를 보세요.
+{{< icon warning >}} 에이전트별 토큰 사용량이 hard-limit(기본 90%)에 닿으면 안전한 중단(graceful abort)을 수행합니다. 진행 상태를 progress.md에 저장하고 붙여넣기 가능한 핸드오프 메시지(paste-ready resume)를 발행하되, 자동 `/clear`는 절대 하지 않습니다. 자세한 절차는 [토큰 예산 관리와 안전한 중단](/ko/advanced/token-budget/) 페이지를 보세요.
 
 ## 모델 티어 라우팅
 
@@ -75,12 +75,12 @@ GLM-5.2는 1M 컨텍스트 단일 모델이고 단가는 1M 토큰당 입력 $2 
 
 이 페이지에 적힌 내용의 구현 상태를 분명히 갈라 둡니다.
 
-{{< icon check ok >}} **구현 완료 (배포 중)** — 4-층 구조(A/B/C/D) 전 층, 3-티어 모델 정책(프로필 매트릭스 리졸버), CG 모드, 검증 다이어트 파일-리다이렉트 계약, 우아한 중단 메커니즘.
+{{< icon check ok >}} **구현 완료 (배포 중)** — 4-층 구조(A/B/C/D) 전 층, 3-티어 모델 정책(프로필 매트릭스 리졸버), CG 모드, 검증 다이어트 파일-리다이렉트 계약, 안전한 중단 메커니즘.
 
 {{< icon clock >}} **설계 단계 (로드맵)** — GLM 백엔드 effort 오버레이의 wire 유효성은 라이브 GLM 세션의 아웃바운드를 직접 관측해야 확인할 수 있는 실증 과제입니다. 프로필 매트릭스 페이지에도 이 구분을 함께 적어두었습니다.
 
 ## 다음 단계
 
-- [토큰 예산 관리와 우아한 중단](/ko/advanced/token-budget/) — D층 심화 (모델별 임계치, paste-ready resume 구조)
+- [토큰 예산 관리와 안전한 중단](/ko/advanced/token-budget/) — D층 심화 (모델별 임계치, paste-ready resume 구조)
 - [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — 하네스 아키텍처 기초
 - [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스

@@ -171,7 +171,7 @@ External imports:
 
 ## Q: What is the difference between the TDD and DDD methodologies?
 
-MoAI-ADK v2.5.0+ uses a **binary methodology choice** (TDD or DDD only). The hybrid mode was removed for clarity and consistency.
+MoAI-ADK v2.5.0+ lets you choose between two methodologies (TDD or DDD only). The hybrid mode was removed for clarity and consistency.
 
 ### Methodology Selection Guide
 
