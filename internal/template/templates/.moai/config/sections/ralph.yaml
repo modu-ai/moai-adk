@@ -1,106 +1,36 @@
 # Ralph Engine Settings
-# Automated feedback loop with LSP diagnostics and AST-grep integration
+# Automated feedback loop with LSP diagnostics and AST-grep integration.
+#
+# Every key below maps to a RalphConfig struct field read by Go code:
+#   - max_iterations  → RalphConfig.MaxIterations     (internal/cli/deps.go, loop.NewLoopController ceiling)
+#   - auto_converge   → RalphConfig.AutoConverge       (internal/ralph/engine.go Decide stagnation detection)
+#   - human_review    → RalphConfig.HumanReview        (internal/ralph/engine.go Decide review breakpoint)
+#   - lint_as_instruction → RalphConfig.LintAsInstruction (internal/hook/post_tool.go, inject errors as instruction)
+#   - warn_as_instruction → RalphConfig.WarnAsInstruction (internal/hook/post_tool.go, inject warnings as instruction)
+#
+# LSP bridge configuration lives in lsp.yaml (gopls); AST-grep gate configuration
+# lives in gate.yaml. The former ralph.lsp.* / ralph.ast_grep.* / ralph.loop.* /
+# ralph.hooks.* / ralph.enabled blocks were inert (the non-strict loader silently
+# ignored them) and have been removed so this file is an honest contract between
+# user intent and engine behavior (SPEC-RALPH-CONFIG-REDESIGN-001).
 
 ralph:
-  # Enable Ralph engine for automated quality improvement
-  enabled: true
+  # Maximum number of feedback loop iterations. Compiled default: 5.
+  # Iteration-ceiling precedence: CLI --max flag > this key > workflow.yaml loop_prevention.max_iterations.
+  max_iterations: 5
 
-  # LSP Diagnostics Configuration
-  lsp:
-    # Automatically start LSP servers when needed
-    auto_start: true
+  # When true, the engine auto-converges on stagnation instead of spinning iterations.
+  # Compiled default: true.
+  auto_converge: true
 
-    # Timeout for LSP operations in seconds (default: 15)
-    timeout_seconds: 15
+  # When true, the engine breaks for human review at the review phase.
+  # Compiled default: true.
+  human_review: true
 
-    # Polling interval for diagnostics in milliseconds (default: 1000)
-    poll_interval_ms: 1000
-
-    # Continue execution if LSP is unavailable
-    graceful_degradation: true
-
-    # Supported languages (auto-detected from file extensions)
-    # LSP server configuration is loaded from .lsp.json if present
-
-  # AST-grep Security Scanning Configuration
-  ast_grep:
-    # Enable AST-grep for code analysis
-    enabled: true
-
-    # Path to AST-grep configuration file
-    config_path: ".moai/config/astgrep-rules/sgconfig.yml"
-
-    # Enable security vulnerability scanning
-    security_scan: true
-
-    # Enable code quality pattern scanning
-    quality_scan: true
-
-    # Automatically apply fixes without confirmation (not recommended)
-    auto_fix: false
-
-  # Loop Controller Configuration
-  # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations >
-  # workflow.yaml loop_prevention.max_iterations. The memory-safe 50-iteration
-  # checkpoint (loop workflow Step 2) is an orthogonal memory-pressure safeguard,
-  # not a fourth ceiling.
-  loop:
-    # Maximum number of feedback loop iterations (default: 10)
-    max_iterations: 10
-
-    # Automatically apply fixes without confirmation (not recommended)
-    auto_fix: false
-
-    # Request user confirmation before applying fixes
-    require_confirmation: true
-
-    # Minimum time between loop iterations in seconds (default: 2)
-    cooldown_seconds: 2
-
-    # Completion Conditions
-    # All conditions must be true for the loop to complete
-    completion:
-      # Require zero LSP errors for completion
-      zero_errors: true
-
-      # Require zero warnings (false = warnings allowed)
-      zero_warnings: false
-
-      # All tests must pass
-      tests_pass: true
-
-      # Minimum test coverage percentage (0-100)
-      coverage_threshold: 85
-
-  # Git Integration
-  # Note: All git automation settings are managed in git-strategy.yaml
-  # Ralph respects the git_strategy.mode configuration for branch/PR creation
-
-  # Lint-as-Instruction Configuration
   # Inject LSP diagnostics as systemMessage so the AI receives errors as its next prompt.
+  # Default: true.
   lint_as_instruction: true
 
-  # Include warnings in systemMessage when there are no errors.
+  # Include warnings in the systemMessage when there are no errors.
   # Default: false (errors only).
   warn_as_instruction: false
-
-  # Hook Behavior Configuration
-  hooks:
-    # LSP diagnostic hook
-    post_tool_lsp:
-      # Enable LSP diagnostic checking after tool use
-      enabled: true
-
-      # Trigger LSP diagnostics after these tools
-      trigger_on: ["Write", "Edit"]
-
-      # Minimum severity level to report (error, warning, info)
-      severity_threshold: "error"
-
-    # Loop controller hook
-    stop_loop_controller:
-      # Enable loop controller completion checking
-      enabled: true
-
-      # Check completion conditions after each response
-      check_completion: true
