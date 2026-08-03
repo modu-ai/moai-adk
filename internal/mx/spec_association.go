@@ -1,6 +1,7 @@
 package mx
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -31,15 +32,32 @@ func NewSpecAssociator(specModules map[string][]string) *SpecAssociator {
 
 // Associate returns a list of SPEC IDs connected to the tag (REQ-SPC-004-006).
 //
-// Source order is deterministic and additive: path → body → sub-line
-// (@MX:SPEC), de-duplicated via the seen map so a SPEC ID named by two sources
-// appears once (REQ-MX-ASSOC-002). The sub-line source is the captured
-// tag.SpecRef field populated by the scanner's @MX:SPEC arm.
-//
-// @MX:NOTE: [AUTO] Associate sub-line source — additive third loop over tag.SpecRef, de-duped via seen map
+// It is the backward-compatible entry point: it delegates to
+// AssociateWithDiagnostics and discards the diagnostics. Callers that need the
+// UnresolvedSpecRef warnings (REQ-MX-ASSOC-003) MUST use
+// AssociateWithDiagnostics instead.
 func (a *SpecAssociator) Associate(tag Tag) []string {
+	associations, _ := a.AssociateWithDiagnostics(tag)
+	return associations
+}
+
+// AssociateWithDiagnostics returns the SPEC IDs connected to the tag plus a
+// slice of diagnostic warning strings. Source order is deterministic and
+// additive: path → body → sub-line (@MX:SPEC), de-duplicated via the seen map
+// so a SPEC ID named by two sources appears once (REQ-MX-ASSOC-002).
+//
+// Validation (REQ-MX-ASSOC-003, flag-but-keep): a captured @MX:SPEC ID that
+// does not resolve to any SPEC in the known-SPEC set (the specModules keys) is
+// kept in the associations slice AND produces an UnresolvedSpecRef warning. The
+// associator never panics on an unresolved ID. The validation binds ONLY the
+// sub-line source (path-based and body-based sources remain unvalidated, per
+// spec.md §G Out of Scope).
+//
+// @MX:NOTE: [AUTO] AssociateWithDiagnostics — additive sub-line source + flag-but-keep validation; de-duped via seen map
+func (a *SpecAssociator) AssociateWithDiagnostics(tag Tag) ([]string, []string) {
 	seen := make(map[string]bool)
 	var result []string
+	var diagnostics []string
 
 	// (a) path-based connection: when the tag's file path is under the SPEC's module paths
 	for specID, modules := range a.specModules {
@@ -58,13 +76,21 @@ func (a *SpecAssociator) Associate(tag Tag) []string {
 	}
 
 	// (c) sub-line connection (REQ-MX-ASSOC-002): the captured @MX:SPEC ID.
-	// Additive, de-duped via the existing seen map.
-	if tag.SpecRef != "" && !seen[tag.SpecRef] {
-		seen[tag.SpecRef] = true
-		result = append(result, tag.SpecRef)
+	// Additive, de-duped via the existing seen map. Validation is flag-but-keep
+	// (REQ-MX-ASSOC-003): an unresolved ID is kept AND warned, never dropped.
+	if tag.SpecRef != "" {
+		if !seen[tag.SpecRef] {
+			seen[tag.SpecRef] = true
+			result = append(result, tag.SpecRef)
+		}
+		if _, resolved := a.specModules[tag.SpecRef]; !resolved {
+			diagnostics = append(diagnostics,
+				fmt.Sprintf("UnresolvedSpecRef: %s:%d - @MX:SPEC %q is not a known SPEC",
+					tag.File, tag.Line, tag.SpecRef))
+		}
 	}
 
-	return result
+	return result, diagnostics
 }
 
 // "ANCHOR for SPEC-AUTH-001 handler" → ["SPEC-AUTH-001"] (REQ-SPC-004-006 (b))

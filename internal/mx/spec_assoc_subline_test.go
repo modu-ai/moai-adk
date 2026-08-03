@@ -1,6 +1,7 @@
 package mx
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -52,6 +53,70 @@ func TestAC007_SubLineAndBodyDeDup(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("de-dup: expected SPEC-DUP-001 exactly once, got %d (%v)", count, specs)
+	}
+}
+
+// TestAC003_UnresolvedSpecRefFlagButKeep verifies that a captured @MX:SPEC ID
+// not present in the known-SPEC set is kept in spec_associations AND produces
+// an UnresolvedSpecRef warning, with no panic (AC-MX-ASSOC-003 /
+// REQ-MX-ASSOC-003, flag-but-keep).
+func TestAC003_UnresolvedSpecRefFlagButKeep(t *testing.T) {
+	tag := Tag{
+		Kind:    MXNote,
+		File:    "internal/nowhere/helper.go",
+		Line:    10,
+		Body:    "context note",
+		SpecRef: "SPEC-DOES-NOT-EXIST-001",
+	}
+
+	// specModules does NOT contain the fixture SPEC → unresolved.
+	associator := NewSpecAssociator(map[string][]string{
+		"SPEC-OTHER-001": {"internal/other/"},
+	})
+	specs, warnings := associator.AssociateWithDiagnostics(tag)
+
+	if !containsStr(specs, "SPEC-DOES-NOT-EXIST-001") {
+		t.Errorf("flag-but-keep: expected SPEC-DOES-NOT-EXIST-001 kept in %v", specs)
+	}
+
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w, "UnresolvedSpecRef") && strings.Contains(w, "SPEC-DOES-NOT-EXIST-001") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected UnresolvedSpecRef warning naming SPEC-DOES-NOT-EXIST-001, got %v", warnings)
+	}
+
+	// Associate (the backward-compatible entry point) must still return the ID
+	// even though it discards diagnostics — the keep half of flag-but-keep.
+	if !containsStr(associator.Associate(tag), "SPEC-DOES-NOT-EXIST-001") {
+		t.Errorf("Associate should still keep the unresolved ID")
+	}
+}
+
+// TestAC003_ResolvedSpecRefNoWarning verifies that a captured @MX:SPEC ID that
+// IS in the known-SPEC set produces NO UnresolvedSpecRef warning (the validation
+// is flag-but-keep, not flag-always).
+func TestAC003_ResolvedSpecRefNoWarning(t *testing.T) {
+	tag := Tag{
+		Kind:    MXNote,
+		File:    "internal/other/helper.go",
+		Line:    10,
+		Body:    "context note",
+		SpecRef: "SPEC-OTHER-001",
+	}
+
+	associator := NewSpecAssociator(map[string][]string{
+		"SPEC-OTHER-001": {"internal/other/"},
+	})
+	_, warnings := associator.AssociateWithDiagnostics(tag)
+
+	for _, w := range warnings {
+		if strings.Contains(w, "UnresolvedSpecRef") {
+			t.Errorf("resolved SPEC should not warn, got %q", w)
+		}
 	}
 }
 
