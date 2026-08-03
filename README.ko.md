@@ -211,6 +211,8 @@ moai init my-project
 
 대화형 마법사가 언어·프레임워크·방법론을 자동 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
+새로 기능: `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` 플래그(또는 마법사 페이지 / `moai web` 콘솔 토글)로 자율성 등급을 고를 수 있다. 기본값 `semi-auto`는 동작 변화가 없고, `automatic`은 일상 작업용으로 `defaultMode: auto`를 적용하며, `fully-autonomous`(`bypassPermissions`)는 옵트인 전용이라 샌드박스 증명(환경변수 마커 또는 `--sandbox-proof`)이 있어야 한다. 증명이 없으면 `automatic`으로 내려간다. 파괴적 동작을 막는 deny/ask 규칙은 모든 등급에서 동일하게 적용된다.
+
 ### 첫 워크플로우
 
 ```bash

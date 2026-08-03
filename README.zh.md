@@ -215,6 +215,8 @@ moai init my-project
 
 交互式向导自动检测语言、框架、方法论，选择模型策略，并生成 Claude Code 集成文件。
 
+新增：通过 `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` 标志（或向导页 / `moai web` 控制台开关）选择自主档位。`semi-auto` 为默认值，不改变任何行为；`automatic` 设为 `defaultMode: auto`，用于日常工作；`fully-autonomous`（`bypassPermissions`）为可选项，需要沙箱证明（环境变量标记或 `--sandbox-proof`），无证明时降级为 `automatic`。拦截破坏性操作的 deny/ask 规则在每一档都同样生效。
+
 ### 第一个工作流
 
 ```bash

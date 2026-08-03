@@ -209,6 +209,8 @@ moai init my-project
 
 対話型ウィザードが言語とフレームワーク、方法論を自動検出し、モデルポリシーを選んだ後、Claude Code統合ファイルまで作成する。
 
+新機能: `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` フラグ（またはウィザードページ／`moai web` コンソールトグル）で自律ティアを選べる。デフォルトの `semi-auto` は挙動を変えず、`automatic` は日常作業向けに `defaultMode: auto` を適用し、`fully-autonomous`（`bypassPermissions`）はオプトイン専用でサンドボックス証明（環境変数マーカーまたは `--sandbox-proof`）を要求する。証明がない場合は `automatic` に落ちる。破壊的操作を防ぐ deny/ask ルールはどのティアでも同じように効く。
+
 ### 最初のワークフロー
 
 ```bash

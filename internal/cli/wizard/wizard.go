@@ -433,6 +433,9 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	// (REQ-WIZ-012), so it has no capture branch.
 	case "project_mode":
 		result.ProjectMode = value
+	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): autonomy-tier wizard page.
+	case "autonomy_tier":
+		result.AutonomyTier = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }

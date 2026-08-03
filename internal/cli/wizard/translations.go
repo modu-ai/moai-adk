@@ -113,6 +113,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
 			},
 		},
+		"autonomy_tier": {
+			Title:       "자율성 등급 선택",
+			Description: "Claude Code가 표시하는 권한 프롬프트 수를 제어합니다. 'Semi-auto'가 안전한 기본값입니다.",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (권장)", Desc: "도구별 프롬프트 — 현재 동작"},
+				{Label: "Automatic", Desc: "도구별 자동 승인"},
+				{Label: "Fully-autonomous", Desc: "모든 프롬프트 건너뜀 (bypassPermissions); 샌드박스 증명 필요, 킬스위치로 제어"},
+			},
+		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -197,6 +206,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
 			},
 		},
+		"autonomy_tier": {
+			Title:       "自律性レベルを選択",
+			Description: "Claude Codeが表示する権限プロンプトの数を制御します。'Semi-auto'が安全なデフォルトです。",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (推奨)", Desc: "ツールごとのプロンプト — 現在の動作"},
+				{Label: "Automatic", Desc: "ツールごとの自動承認"},
+				{Label: "Fully-autonomous", Desc: "すべてのプロンプトをスキップ (bypassPermissions); サンドボックス証明が必要、キルスイッチで制御"},
+			},
+		},
 	},
 	"zh": {
 		"conversation_language": {
@@ -279,6 +297,15 @@ var translations = map[string]map[string]QuestionTranslation{
 			Options: []OptionTranslation{
 				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
 				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
+			},
+		},
+		"autonomy_tier": {
+			Title:       "选择自主性等级",
+			Description: "控制 Claude Code 显示的权限提示数量。'Semi-auto' 是安全的默认值。",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (推荐)", Desc: "逐工具提示 — 当前行为"},
+				{Label: "Automatic", Desc: "逐工具自动批准"},
+				{Label: "Fully-autonomous", Desc: "跳过所有提示 (bypassPermissions); 需要沙箱证明，受紧急开关控制"},
 			},
 		},
 	},
