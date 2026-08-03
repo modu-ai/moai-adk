@@ -29,51 +29,6 @@ func setupSectionsDir(t *testing.T) (root, sectionsDir string) {
 // this SPEC deliberately eliminates and cannot be reconciled. It is named on
 // the plan.md §G carve-out delete-list.
 
-// TestWriteHarnessProfileYAML verifies harness.yaml content.
-func TestWriteHarnessProfileYAML(t *testing.T) {
-	t.Parallel()
-	root, sectionsDir := setupSectionsDir(t)
-
-	opts := InitOptions{
-		ProjectRoot:    root,
-		HarnessProfile: "strict",
-	}
-	result := &InitResult{}
-	if err := writeHarnessProfileYAML(sectionsDir, opts, result); err != nil {
-		t.Fatalf("writeHarnessProfileYAML: %v", err)
-	}
-
-	got, err := os.ReadFile(filepath.Join(sectionsDir, defs.HarnessYAML))
-	if err != nil {
-		t.Fatalf("ReadFile harness.yaml: %v", err)
-	}
-	want := []byte("harness:\n  default_profile: strict\n")
-	if !bytes.Equal(got, want) {
-		t.Errorf("harness.yaml content mismatch:\ngot:  %q\nwant: %q", got, want)
-	}
-}
-
-// TestWriteHarnessProfileYAML_DefaultProfile verifies empty HarnessProfile defaults to "default".
-func TestWriteHarnessProfileYAML_DefaultProfile(t *testing.T) {
-	t.Parallel()
-	root, sectionsDir := setupSectionsDir(t)
-
-	opts := InitOptions{
-		ProjectRoot:    root,
-		HarnessProfile: "", // empty → default
-	}
-	result := &InitResult{}
-	if err := writeHarnessProfileYAML(sectionsDir, opts, result); err != nil {
-		t.Fatalf("writeHarnessProfileYAML: %v", err)
-	}
-
-	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.HarnessYAML))
-	want := []byte("harness:\n  default_profile: default\n")
-	if !bytes.Equal(got, want) {
-		t.Errorf("default profile mismatch:\ngot:  %q\nwant: %q", got, want)
-	}
-}
-
 // TestWriteLSPYAML verifies lsp.yaml content for both enabled and disabled states.
 func TestWriteLSPYAML(t *testing.T) {
 	t.Parallel()
@@ -236,7 +191,6 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	opts := InitOptions{
 		ProjectRoot:               root,
 		ProjectMode:               "team",
-		HarnessProfile:            "lenient",
 		LSPEnabled:                true,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,

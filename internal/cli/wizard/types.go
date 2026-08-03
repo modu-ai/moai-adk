@@ -44,7 +44,6 @@ type WizardResult struct {
 	// RunWithLocale. The two mode-flag fields that formerly gated them are
 	// retired (REQ-WIZ-018).
 	ProjectMode               string // project.mode: personal, team (B1) — asked
-	HarnessProfile            string // harness.default_profile: default, strict, lenient, frontend (B2) — fixed at "default"
 	LSPEnabled                bool   // lsp.enabled: true (fixed default, no longer asked)
 	EnforceQuality            bool   // quality.enforce_quality: true (fixed default, no longer asked)
 	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (fixed default)

@@ -1,8 +1,6 @@
 package wizard
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -125,49 +123,6 @@ func TestProjectModeQuestion(t *testing.T) {
 	}
 	if values[0] != "personal" || values[1] != "team" {
 		t.Errorf("project_mode option values = %v, want [personal, team]", values)
-	}
-}
-
-// TestHarnessProfileFallback verifies loadHarnessProfiles falls back to canonical list
-// when evaluator-profiles directory is absent.
-func TestHarnessProfileFallback(t *testing.T) {
-	t.Parallel()
-	tmpDir := t.TempDir()
-	// tmpDir has no evaluator-profiles dir → fallback expected
-
-	opts := loadHarnessProfiles(tmpDir)
-	if len(opts) != 4 {
-		t.Fatalf("fallback: expected 4 options, got %d", len(opts))
-	}
-	wantValues := []string{"default", "strict", "lenient", "frontend"}
-	for i, o := range opts {
-		if o.Value != wantValues[i] {
-			t.Errorf("opts[%d].Value = %q, want %q", i, o.Value, wantValues[i])
-		}
-	}
-}
-
-// TestHarnessProfileDynamic verifies loadHarnessProfiles reads actual .md files.
-func TestHarnessProfileDynamic(t *testing.T) {
-	t.Parallel()
-	tmpDir := t.TempDir()
-	profileDir := filepath.Join(tmpDir, ".moai", "config", "evaluator-profiles")
-	if err := os.MkdirAll(profileDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"default.md", "custom.md"} {
-		if err := os.WriteFile(filepath.Join(profileDir, name), []byte("# profile"), 0644); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	opts := loadHarnessProfiles(tmpDir)
-	if len(opts) != 2 {
-		t.Fatalf("dynamic: expected 2 options, got %d", len(opts))
-	}
-	// First option should have (Recommended) suffix
-	if opts[0].Value != "default" && opts[0].Value != "custom" {
-		t.Errorf("unexpected first option value: %s", opts[0].Value)
 	}
 }
 

@@ -67,7 +67,6 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
 | `--project-mode <personal\|team>` | Project mode (default: personal) |
-| `--harness-profile <profile>` | Harness evaluator profile (default, strict, lenient, frontend); accepted but currently has no persisted effect |
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |

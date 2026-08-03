@@ -46,7 +46,6 @@ moai init [project-name]
 | 플래그 | 설명 |
 |--------|------|
 | `--project-mode <personal\|team>` | 프로젝트 모드 (기본: personal) |
-| `--harness-profile <name>` | 하네스 평가 프로필: default, strict, lenient, frontend; 값은 받지만 현재 저장되지 않아 반영되지 않음 |
 | `--enable-lsp` | LSP 통합 활성화 (기본: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본: true) |

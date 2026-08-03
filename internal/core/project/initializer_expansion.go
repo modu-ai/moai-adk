@@ -80,29 +80,6 @@ func writeProjectModeYAML(sectionsDir string, opts InitOptions, result *InitResu
 	return nil
 }
 
-// writeHarnessProfileYAML writes harness.default_profile to harness.yaml (B2, REQ-IWE-002).
-//
-// NO LONGER PART OF THE PAGE-3 WRITE SET (C36 / REQ-WIZ-012). Its call was
-// removed from WritePhase1Configs because the harness-profile question is gone
-// and the deployed harness.yaml already carries the correct default; this
-// wholesale writer would destroy that file. The function is retained only
-// because its two dedicated tests are outside the plan.md §G delete-list —
-// removing both is C37's (M7) scope.
-func writeHarnessProfileYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	profile := opts.HarnessProfile
-	if profile == "" {
-		profile = "default"
-	}
-	content := fmt.Sprintf("harness:\n  default_profile: %s\n", profile)
-	harnessPath := filepath.Join(sectionsDir, defs.HarnessYAML)
-	if err := os.WriteFile(harnessPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write harness.yaml: %w", err)
-	}
-	result.CreatedFiles = append(result.CreatedFiles,
-		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.HarnessYAML))
-	return nil
-}
-
 // writeLSPYAML persists lsp.enabled to lsp.yaml (B3, REQ-IWE-003).
 //
 // The deployed lsp.yaml is ~11 KB of 16-language LSP configuration, so an
