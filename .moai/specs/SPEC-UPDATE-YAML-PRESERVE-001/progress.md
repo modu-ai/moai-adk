@@ -145,7 +145,28 @@ Run-phase MUST ACs (001–023) all PASS. Coverage 89.6% ≥ 88.9% baseline. Lint
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-03
+sync_commit_sha: pending-backfill-after-merge   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); Route B squash merge → final SHA is the merged-to-main SHA, known only after PR merge. Backfilled in a follow-up commit.
+sync_status: audit-ready
+run_commit_sha: ddd86602b   # fix(SPEC-UPDATE-YAML-PRESERVE-001): preserve YAML comments/order/quoting via node-tree merge (#1243) — 23/23 ACs PASS, coverage 89.6%, cross-platform build clean, lint 0 issues
+single_sync_commit: true   # this same commit carries the in-progress → implemented → completed transition + CHANGELOG entry + §E.4 population (3-phase close)
+changelog_entry_position: "[Unreleased] / ### Added — appended after SPEC-UPDATE-REINSTALL-LOOP-002 (sibling #1243 defect), distinction stated explicitly"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # single sync-commit merged close (manager-docs owned)
+  updated_field_refreshed: true   # 2026-08-03
+b12_self_test_a: pass   # pre-emission grep: grep -c 'SPEC-UPDATE-YAML-PRESERVE-001' CHANGELOG.md == 0 before this entry (existing #1243 match on line ~47 is a DIFFERENT SPEC — REINSTALL-LOOP-002)
+b12_self_test_b: pass   # AC count match: 23 distinct AC-UYP-NNN in acceptance.md == 23 referenced in run-phase §E.2 matrix; CHANGELOG entry states "23/23 ACs PASS"
+b12_self_test_c: pass   # file path verification: every path claimed (internal/cli/update/backup, node_merge.go, .moai/specs/SPEC-UPDATE-YAML-PRESERVE-001/) verified via ls/grep before commit
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy; no canary tests authored here
+template_neutrality_preserved: true   # grep -rn 'SPEC-UPDATE-YAML-PRESERVE\|REQ-UYP-' internal/template/templates/ → 0 matches; internal/template/templates/ unmodified by run-phase (AC-UYP-019)
+readme_docs_site_changed: false   # internal merge-mechanism correctness fix; no doc was actively wrong — minimal-change principle applied (no README/docs-site edit)
+mx_tag_validation: "no MX-tag AC authored for this SPEC; run-phase introduced exported symbols in node_merge.go (DeepMerge3Way, deepMerge3WayTo, NodeValuesEqual) — @MX:NOTE/@MX:ANCHOR is SHOULD-not-MUST per protocol, not a gate. Residual item, not a failure."
+d5_follow_up: "NOT-yet-filed — Decision D5 (SaveTemplateDefaults base-derivation provenance) deferred to SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 per plan.md §E. The follow-up SPEC directory is not created in this sync (acceptance.md §D.4 forward-looking check marks it NOT-yet-filed as a known gap). It is the next session's plan-phase target per user's stated intent."
+pr_strategy: "Route B single-PR — run+sync+close carried by ONE PR (user-approved). manager-git handles origin synchronization (--force-with-lease at PR time; origin/feat is intentionally stale after rebase). manager-docs commits ONLY — no push."
+```
+
+Sync-phase complete. Single sync commit carries the `completed` transition (3-phase close) + the CHANGELOG `[Unreleased] / ### Added` entry + this §E.4 population. No body-content edits to spec.md/plan.md/acceptance.md (frontmatter `status` + `updated` only, per forbidden ownership crossings). D5 follow-up NOT yet filed — recorded here as a known gap, not a failure.
 
 ## §F Phase 4 Mode Selection
 
