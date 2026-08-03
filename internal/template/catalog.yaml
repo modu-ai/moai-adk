@@ -51,7 +51,7 @@ catalog:
             - name: moai-workflow-ddd
               tier: core
               path: templates/.claude/skills/moai-workflow-ddd/
-              hash: 53cd97bc3c62be82a0971e5096da62e157d80b0d9916fc2cdaeeb715fe772747
+              hash: 321e1ab6d8732377c7c58aeb591020faf07a93f99ad0bba99b5854ab20d19c3c
               version: 1.0.0
             - name: moai-workflow-docs-claim-check
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 4ec49289bc9d9bf998e9ba80d51ec1b72867ea266f0ec398684707de53984902
+              hash: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
               version: 1.0.0
             - name: manager-spec
               tier: core

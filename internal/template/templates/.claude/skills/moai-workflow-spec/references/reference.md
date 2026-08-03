@@ -731,4 +731,3 @@ The per-phase token shares below are fractions of the model's context window. Th
 ---
 
 Version: 1.0.0
-Last Updated: 2025-12-07

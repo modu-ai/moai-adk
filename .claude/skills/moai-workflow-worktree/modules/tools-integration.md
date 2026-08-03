@@ -3,7 +3,6 @@
 Purpose: Integration patterns for moai-worktree with development tools, IDEs, terminals, CI/CD pipelines, and monitoring systems.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -268,5 +267,4 @@ Monitoring Integration Errors:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: Development tools and external system integration patterns

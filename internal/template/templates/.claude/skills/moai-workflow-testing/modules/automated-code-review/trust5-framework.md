@@ -219,7 +219,6 @@ TRUST 5 uses weighted scoring with category-specific weights:
 ---
 
 Version: 1.1.0 (Modularized)
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review/trust5-framework.md`
 
 ## Submodules

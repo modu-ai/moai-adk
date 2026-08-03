@@ -2,7 +2,7 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-  Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true, 2026-07-20). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.
+  Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
@@ -133,10 +133,10 @@ Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Step 1 entry 
 ### Personal Mode
 
 SPEC Git Workflow options (from git-strategy.yaml):
-- **main_direct** [RETIRED 2026-07-20 — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to main, no branches needed
+- **main_direct** [RETIRED — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to main, no branches needed
 - **main_late_branch**: main commit + late `git switch -c feat/SPEC-*` at PR time, PR squash + delete-branch, local main `reset --hard origin/main` cleanup (4-phase procedure — see Late-Branch Invocation Pattern above)
 - **main_feature**: Feature branches from main, optional PR
-- **develop_direct** [RETIRED 2026-07-20 — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to develop
+- **develop_direct** [RETIRED — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to develop
 - **feature_branch** / **per_spec**: Feature branches with PR required
 
 ### Team Mode

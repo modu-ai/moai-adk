@@ -389,7 +389,6 @@ When DDD session encounters issues:
 
 Version: 1.0.0
 Status: Active
-Last Updated: 2026-01-16
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

@@ -218,5 +218,4 @@ The report surfaces: initialization state, language configuration, documentation
 ---
 
 Status: Reference Documentation Complete
-Last Updated: 2025-12-06
 Skill Version: 2.0.0
