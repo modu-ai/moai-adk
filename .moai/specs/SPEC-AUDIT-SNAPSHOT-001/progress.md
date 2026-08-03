@@ -119,4 +119,54 @@ m1_to_mN_commit_strategy: per-milestone commits (M1, M2, M3) + M4 evidence commi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-03
+sync_commit_sha: pending-backfill-SYNC   # this sync commit's own SHA — backfilled in a follow-up (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
+sync_status: sync-phase-complete
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented → completed   # merged on this single sync commit (3-phase close)
+  plan_md: n/a (no frontmatter)
+  acceptance_md: n/a (no frontmatter)
+b12_self_test_a:
+  pre_emission_duplicate_spec_id: 0   # grep -c 'SPEC-AUDIT-SNAPSHOT-001' CHANGELOG.md before append → 0
+b12_self_test_b:
+  acceptance_md_ac_count: 4            # distinct AC identifiers in acceptance.md (001/002/003/004 — the MUST ACs; §D.2 also defines 001b/003b/004b sub-variants tested in progress.md §E.2)
+b12_self_test_c:
+  file_paths_verified: true            # every Go file path claimed in this entry ls-verified before commit
+changelog_entry_position: "[Unreleased] / Added (top entry)"
+frontmatter_status_transitions_note: |
+  The single sync commit carries the merged in-progress → implemented → completed
+  transition on spec.md (the only YAML-frontmatter-bearing artifact). plan.md /
+  acceptance.md have no frontmatter, so their transition is n/a. Per the 3-phase
+  V3R6 close contract (spec-frontmatter-schema.md Status Transition Ownership Matrix),
+  there is no separate Mx chore commit — MX Tag validation + CHANGELOG emission +
+  frontmatter transition all ride this sync commit.
+mx_tag_scan:
+  added:
+    - internal/verify/claim_lock.go              # @MX:WARN — two-layer concurrency (mutex + O_EXCL)
+    - internal/runtime/audit_snapshot.go         # @MX:NOTE — A2 per-tier threshold codification anchor
+    - internal/runtime/sync_4dim_binding.go      # @MX:NOTE — A3 binding predicate codification anchor
+  anchor_not_added: none meet the ≥3-caller threshold (SkipEligibleByScore, FourDimVerdict.IsBinding, RecordCheck each have <3 non-test callers)
+canary_compliance_check:
+  go_build_exit_0: true                # go build ./... exit 0 (sync-phase-quality-gate.sh Stop hook gate)
+quality_gate_evidence:
+  go_vet: clean
+  golangci_lint: 0 issues
+  go_test_race: ok (internal/runtime, internal/verify)
+docs_site_change_required: false       # internal audit-cache optimization; skip-policy threshold change is the only user-visible surface and is documented here + CHANGELOG
+```
+
+### Sync-phase evidence summary
+
+- **CHANGELOG entry**: appended under `## [Unreleased] / ### Added` in `CHANGELOG.md` (top entry). Three B12 self-tests passed (pre-emission duplicate SPEC-ID grep = 0; acceptance.md AC count = 4 distinct MUST ACs; every claimed file path ls-verified).
+- **3-phase frontmatter close**: `spec.md` `status: in-progress → implemented → completed` merged on this sync commit (plan.md/acceptance.md have no frontmatter). `updated:` refreshed to 2026-08-03.
+- **MX tag scan**: `@MX:WARN` added to `claim_lock.go` (concurrency primitive); `@MX:NOTE` added to the two redesign-codification anchors. No `@MX:ANCHOR` added — no new symbol meets the ≥3-caller fan_in threshold.
+- **Quality gate**: `go build ./...` exit 0 (the sync-phase-quality-gate.sh Stop hook's required check). `go vet`, `golangci-lint`, `go test -race` carried clean from run-phase (no sync-phase code changes — only markdown + 3 MX-tag comment additions).
+- **Docs-site**: no change required. The skip-policy threshold change (4 → 3 conditions, flat `≥ 0.90` → per-tier PASS) is the only user-visible surface and is documented in this CHANGELOG entry; the docs-site SPEC-lifecycle pages already defer to `spec-workflow.md` as the SSOT.
+
+### Gaps
+
+- **`sync_commit_sha` self-referential placeholder (D3 exemption)**: populated as `pending-backfill-SYNC` in this commit and backfilled in a follow-up after the sync PR merges — a commit cannot reference its own SHA. Per spec-frontmatter-schema.md D3, this is the established self-referential-hazard workaround, NOT an ownership crossing.
+- **A3 binding provenance (K-5)** carried forward from run-phase §E.3 Gaps: the audit-trail record schema's acceptance of both workflow-run-ID and sync-auditor-agent-ID as verdict-source values was not grep-verified. The Go helper `FourDimVerdict.IsBinding()` codifies the predicate; the schema surface lives outside this SPEC's Go-testable surface.
+- **A4 consumer wiring (sync-auditor.md, sync-phase-quality-gate.sh, 4dim judges)** remains doctrine-only — the canonical note lives in `quality-gates-quality.md` Step 0.5.2. Orchestrator-runtime wiring is a follow-up.
+

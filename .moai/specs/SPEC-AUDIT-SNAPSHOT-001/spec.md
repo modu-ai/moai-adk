@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-SNAPSHOT-001
 title: "Audit fast-wins: sticky artifact-hash cache, per-tier skip alignment, 4-dim binding promotion, shared diagnostic snapshot"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec

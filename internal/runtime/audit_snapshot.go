@@ -23,6 +23,10 @@ const (
 	SkipThresholdTierL = 0.85
 )
 
+// @MX:NOTE: [AUTO] SPEC-AUDIT-SNAPSHOT-001 A2 의 Go 체현. doctrinal SSOT는
+// spec-workflow.md § SPEC Complexity Tier (S 0.75 / M 0.80 / L 0.85); 이 상수들이
+// 폐기된 flat `score >= 0.90` predicate를 대체한다. 임계값을 변경하려면 두 표면을 함께.
+//
 // SkipEligibleByScore evaluates plan-audit skip-policy condition 2 (overall
 // score threshold) per SPEC-AUDIT-SNAPSHOT-001 A2: the threshold equals the
 // SPEC's per-tier PASS threshold (S 0.75 / M 0.80 / L 0.85), NOT the retired

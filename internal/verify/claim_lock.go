@@ -24,6 +24,11 @@ const claimLockRetries = 200
 // holds the lock.
 const claimLockBackoff = 10 * time.Millisecond
 
+// @MX:WARN: [AUTO] 두 겹의 직렬화 — in-process sync.Mutex (goroutine 안전) + O_EXCL 파일 락
+// (크로스 프로세스). RecordCheck의 read-modify-write 경쟁(REQ-004 ¶4)을 막는 핵심 계약.
+// claimLockTTL(5m) 초과 시 다른 대기자가 락을 회수할 수 있으므로, 레코드가 5분을 넘기면
+// 경쟁이 재등장한다. 레코드는 전형적으로 30초 미만이므로 정상 부하에서는 잔여 위험 없음.
+//
 // keyMutexSet provides in-process per-key mutual exclusion. This is the
 // PRIMARY serialization layer: it makes RecordCheck's read-modify-write
 // deterministic within one process (the directly-tested case — see

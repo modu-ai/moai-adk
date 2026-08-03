@@ -15,6 +15,10 @@ import "strings"
 // IsBinding() decision. This is a pure consumer-side codification — the
 // workflow's output schema is unchanged (OQ-1 RESOLVED).
 
+// @MX:NOTE: [AUTO] SPEC-AUDIT-SNAPSHOT-001 A3 의 Go 체현. clean PASS 시 4-dim 워크플로
+// verdict가 BINDING이 되는 기계 평가 가능 계약 (cold sync-auditor spawn 억제). 워크플로
+// 출력 스키마가 바뀌면 IsBinding의 정규화도 함께 점검.
+//
 // FourDimVerdict is the Go-shaped mirror of the sync-audit-4dim.js verdict
 // output, consumed to decide whether the workflow verdict is BINDING on the
 // happy path (no cold sync-auditor spawn) or whether a fallback spawn is
