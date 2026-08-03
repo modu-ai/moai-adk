@@ -25,28 +25,40 @@
 
 | Milestone | Commit SHA | Summary | ACs advanced |
 |-----------|------------|---------|--------------|
-| M1 | _(this commit)_ | tier selection core: ValidateAutonomyTierSelection (fail-loud) + ResolveEffectiveTier (unset→semi-auto) + TierDefaultMode mapping | AC-001 (flag validation), AC-007 (resolution) |
+| M1 | 50bb732c5 | tier selection core: ValidateAutonomyTierSelection (fail-loud) + ResolveEffectiveTier (unset→semi-auto) + TierDefaultMode mapping | AC-001 (flag validation), AC-007 (resolution) |
+| M2 | 63a13f158 | sandbox-proof gate + manager kill-switch: SandboxProofKind, IsBypassDisabled, EffectiveTierWithGates (kill-switch trumps proof) | AC-002, AC-005 (gating) |
+| M3 | 72a210e30 | tier→permission-bundle renderer: RenderTierPermissions (USER defaultMode / PROJECT deny-ask scope split, reuses codegen) | AC-003, AC-004, AC-007 (byte-identical) |
+| M4 | d7c69d46a | moai init --autonomy-tier flag (fail-loud closed-set validation, InitOptions.AutonomyTier) | AC-001 (selector + flag), AC-006 (flag help offers 3 tiers) |
+| M5 | 2f1ce09db | web toggle availability (TierToggleOptions) + downgrade advisory (AppendDowngradeAdvisory → .moai/logs/autonomy-downgrade.log) | AC-002 (toggle gating), AC-005 (advisory sink) |
+| M6 | 9004ef585 | template neutrality guard + errcheck fixes | AC-006 (no bypass/fully-autonomous default in template) |
 
 ### AC PASS/FAIL Matrix (E1)
 
-| AC | Status | Verification | Evidence |
-|----|--------|--------------|----------|
-| AC-AUTONOMY-TIERS-001 (init selector / flag validation) | PASS (partial — validation) | `go test ./internal/config/ -run TestValidateAutonomyTierSelection` | M1: closed-set accepts 3 values case-insensitive; rejects invalid fail-loud |
-| AC-AUTONOMY-TIERS-002 (web toggle) | pending (M5) | — | — |
-| AC-AUTONOMY-TIERS-003 (renderer scope) | pending (M3) | — | — |
-| AC-AUTONOMY-TIERS-004 (deny/ask invariance) | pending (M3) | — | — |
-| AC-AUTONOMY-TIERS-005 (kill-switch) | pending (M2 gating + M5) | — | — |
-| AC-AUTONOMY-TIERS-006 (template opt-in) | pending (M4/M6) | — | — |
-| AC-AUTONOMY-TIERS-007 (backward compat) | PASS (partial — resolution) | `go test ./internal/config/ -run TestResolveEffectiveTier_UnsetSemiAuto` | M1: persisted unset → semi-auto |
+| AC | Status | Verification command | Evidence |
+|----|--------|----------------------|----------|
+| AC-AUTONOMY-TIERS-001 (init selector) | PASS | `go test ./internal/cli/ -run 'TestInitCmd_HasAutonomyTierFlag|TestValidateInitFlags_.*AutonomyTier'` | M1+M4: --autonomy-tier flag registered, closed-set validated fail-loud, help offers 3 tiers |
+| AC-AUTONOMY-TIERS-002 (web toggle) | PASS (core logic) | `go test ./internal/config/ -run TestTierToggleOptions` | M2+M5: fully-autonomous disabled without proof + under kill-switch (trumps proof); lower tiers always enabled |
+| AC-AUTONOMY-TIERS-003 (renderer scope) | PASS | `go test ./internal/config/toolpolicy/ -run TestRenderTierPermissions_ScopeSplit` | M3: defaultMode→USER, deny/ask→PROJECT; auto/bypass never in PROJECT (AP-6) |
+| AC-AUTONOMY-TIERS-004 (deny/ask invariance) | PASS | `go test ./internal/config/toolpolicy/ -run TestRenderTierPermissions_DenyAskInvariantAcrossTiers` | M3: deny/ask byte-identical across default/auto/bypassPermissions |
+| AC-AUTONOMY-TIERS-005 (kill-switch) | PASS | `go test ./internal/config/ -run 'TestEffectiveTierWithGates_KillSwitch|TestAppendDowngradeAdvisory'` | M2+M5: kill-switch downgrades fully-autonomous→automatic even with proof; advisory written to autonomy-downgrade.log |
+| AC-AUTONOMY-TIERS-006 (template opt-in) | PASS | `go test ./internal/template/ -run 'TestTemplate_NoBypassPermissionsDefault|TestTemplate_NoFullyAutonomousPreSelection'` | M6: template ships no bypassPermissions default, no fully-autonomous pre-selection |
+| AC-AUTONOMY-TIERS-007 (backward compat) | PASS | `go test ./internal/config/ -run TestResolveEffectiveTier_UnsetSemiAuto` + `./internal/config/toolpolicy/ -run TestRenderTierPermissions_SemiAutoDefaultMode` | M1+M3: unset→semi-auto; semi-auto→defaultMode=default |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<run-phase in progress — M1 of M6>_
-
-run_status: in-progress
-ac_pass_count: 2 (partial — AC-001 validation, AC-007 resolution)
+run_complete_at: 2026-08-04
+run_commit_sha: 9004ef585
+run_status: complete
+ac_pass_count: 7
 ac_fail_count: 0
 preserve_list_post_run_count: 0
+l44_pre_commit_fetch: clean (worktree branch, no divergence)
+l44_post_push_fetch: not pushed (intended — no push, no PR per constraints)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues on changed packages)
+cross_platform_build.linux_amd64: pass
+cross_platform_build.windows_amd64: pass
+total_run_phase_files: 8 (autonomy_tiers.go + test, autonomy_tiers_gates_test.go, autonomy_tiers_toggle_test.go, tier_render.go + test, init_autonomy_test.go, autonomy_tiers_template_test.go) + 2 edits (envkeys.go, initializer.go, init.go)
+m1_to_mN_commit_strategy: one commit per milestone, explicit pathspec (no git add -A)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
