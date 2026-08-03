@@ -46,12 +46,11 @@ func TestAC009_AcConvergeDocCorrectedToActual30Turns(t *testing.T) {
 // condition block (the fenced ```text block that contains "Max ... turns").
 func extractAcConvergeRegion(content string) string {
 	lines := strings.Split(content, "\n")
-	start, end := -1, -1
+	start := -1
 	for i, l := range lines {
 		if strings.Contains(l, "Max") && strings.Contains(l, "turns") {
-			if start == -1 {
-				start = i
-			}
+			start = i
+			break // first match is the ac_converge block region
 		}
 	}
 	if start == -1 {
@@ -66,6 +65,5 @@ func extractAcConvergeRegion(content string) string {
 	if hi > len(lines) {
 		hi = len(lines)
 	}
-	end = hi
-	return strings.Join(lines[lo:end], "\n")
+	return strings.Join(lines[lo:hi], "\n")
 }

@@ -154,11 +154,9 @@ hold.
 On any semantic failure (data race, deadlock, panic, test assertion
 failure), clear this goal and escalate via AskUserQuestion — do NOT
 auto-fix semantic failures.
-[PRECONDITION: Implementation Kickoff Approval user approval already obtained; this goal does
- NOT substitute for or bypass Implementation Kickoff Approval.]
+[PRECONDITION: Implementation Kickoff Approval user approval already obtained; this goal does NOT substitute for or bypass Implementation Kickoff Approval.]
 ```
-
-> **Actual turn ceiling (SPEC-INFINITE-GOAL-001 REQ-7 correction):** the legacy `ac_converge` block above carried a trailing "Max 20 turns" clause. That clause is NOT parsed by `parseCondition` — the `trailingExitClause` regex at `internal/cli/goal.go` matches ONLY `exits <N>`, so a "Max 20 turns" / "stop after N turns" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default `DefaultMaxTurns = 30` (`internal/goal/schema.go`) and actually runs up to 30 turns (subject to `min(30, CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)` and the stagnation guard). The "Max 20 turns" literal is retained here only as the historical reference that documented the author's intent; it does not change the actual 30-turn execution. To bound a goal at a specific turn count, use the `--max-turns N` arm flag (REQ-1); to arm an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>` (REQ-4).
+> **Actual turn ceiling:** the legacy "Max 20 turns" clause above is NOT parsed — `parseCondition` matches only a trailing `exits <N>`, so a "Max 20 turns" / "stop after N turns" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default 30-turn ceiling and actually runs up to 30 turns (subject to `min(30, block cap)` and the stagnation guard). The literal is retained only as the historical reference for the author's intent. To bound a goal at a specific turn count, use `--max-turns N`; for an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>`.
 
 ### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
 
