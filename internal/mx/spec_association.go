@@ -11,9 +11,12 @@ var specIDRegex = regexp.MustCompile(`SPEC-[A-Z0-9][A-Z0-9-]*`)
 // SpecAssociator connects @MX TAG with SPEC IDs.
 //  1. When the tag's file path is under the module paths listed in SPEC's frontmatter
 //  2. When the tag's Body contains a SPEC ID pattern (body-based association)
+//  3. When the tag carries a captured @MX:SPEC sub-line (sub-line source; additive)
 //
-// @MX:NOTE: [AUTO] SpecAssociator — unifies the two SPEC-association paths: path-based and body-based.
-// Path-based: matches the SPEC frontmatter `module:` field against tag.File prefixes. Body-based: SPEC-[A-Z0-9-]+ regex.
+// @MX:NOTE: [AUTO] SpecAssociator — unifies three SPEC-association sources: path-based, body-based, and sub-line (@MX:SPEC).
+// Path-based: matches the SPEC frontmatter `module:` field against tag.File prefixes.
+// Body-based: SPEC-[A-Z0-9-]+ regex over tag.Body.
+// Sub-line: the captured tag.SpecRef field (additive third source; de-duped via the seen map).
 type SpecAssociator struct {
 	// specModules is the specID → []modulePath mapping.
 	specModules map[string][]string
@@ -27,6 +30,13 @@ func NewSpecAssociator(specModules map[string][]string) *SpecAssociator {
 }
 
 // Associate returns a list of SPEC IDs connected to the tag (REQ-SPC-004-006).
+//
+// Source order is deterministic and additive: path → body → sub-line
+// (@MX:SPEC), de-duplicated via the seen map so a SPEC ID named by two sources
+// appears once (REQ-MX-ASSOC-002). The sub-line source is the captured
+// tag.SpecRef field populated by the scanner's @MX:SPEC arm.
+//
+// @MX:NOTE: [AUTO] Associate sub-line source — additive third loop over tag.SpecRef, de-duped via seen map
 func (a *SpecAssociator) Associate(tag Tag) []string {
 	seen := make(map[string]bool)
 	var result []string
@@ -39,11 +49,19 @@ func (a *SpecAssociator) Associate(tag Tag) []string {
 		}
 	}
 
+	// (b) body-based connection: SPEC ID tokens in the tag Body text.
 	for _, specID := range ExtractSpecIDs(tag.Body) {
 		if !seen[specID] {
 			seen[specID] = true
 			result = append(result, specID)
 		}
+	}
+
+	// (c) sub-line connection (REQ-MX-ASSOC-002): the captured @MX:SPEC ID.
+	// Additive, de-duped via the existing seen map.
+	if tag.SpecRef != "" && !seen[tag.SpecRef] {
+		seen[tag.SpecRef] = true
+		result = append(result, tag.SpecRef)
 	}
 
 	return result
