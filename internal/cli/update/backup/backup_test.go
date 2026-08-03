@@ -355,9 +355,21 @@ func TestMergeYAML3Way(t *testing.T) {
 		if result["key"] != "new-value" {
 			t.Errorf("key = %v, want new-value", result["key"])
 		}
-		// YAML unmarshals "2.0" as int 2, not float64
-		if result["template_version"] != int(2) {
-			t.Errorf("template_version = %v, want 2", result["template_version"])
+		// The node-tree merge preserves the source scalar ("2.0"), so the
+		// re-decoded value is float64(2); the prior map path marshaled it as
+		// "2" and re-decoded int(2). Either is correct — assert the numeric
+		// value rather than the Go type (value semantics are unchanged).
+		switch tv := result["template_version"].(type) {
+		case int:
+			if tv != 2 {
+				t.Errorf("template_version = %v, want 2", tv)
+			}
+		case float64:
+			if tv != 2 {
+				t.Errorf("template_version = %v, want 2", tv)
+			}
+		default:
+			t.Errorf("template_version = %v (%T), want 2", tv, tv)
 		}
 	})
 
@@ -402,49 +414,51 @@ func TestMergeYAML3Way(t *testing.T) {
 	})
 }
 
-// TestDeepMerge3Way tests the recursive 3-way map merge
+// TestDeepMerge3Way tests the recursive 3-way node merge.
+// Converted to node-typed inputs per Decision D2 (DeepMerge3Way now takes and
+// returns *yaml.Node). Inputs are decoded from YAML strings via mustDecodeDoc;
+// assertions traverse the result node via mappingGet.
 func TestDeepMerge3Way(t *testing.T) {
 	t.Run("nested map merge", func(t *testing.T) {
-		newMap := map[string]any{
-			"nested": map[string]any{
-				"key1": "new-template-value",
-				"key2": "updated-template-value",
-			},
-		}
-		oldMap := map[string]any{
-			"nested": map[string]any{
-				"key1": "user-changed",
-				"key2": "base-value",
-			},
-		}
-		baseMap := map[string]any{
-			"nested": map[string]any{
-				"key1": "base-value",
-				"key2": "base-value",
-			},
-		}
+		newN := mustDecodeDoc(t, "nested:\n  key1: new-template-value\n  key2: updated-template-value\n")
+		oldN := mustDecodeDoc(t, "nested:\n  key1: user-changed\n  key2: base-value\n")
+		baseN := mustDecodeDoc(t, "nested:\n  key1: base-value\n  key2: base-value\n")
 
-		result := DeepMerge3Way(newMap, oldMap, baseMap)
-		nested := result["nested"].(map[string]any)
+		result, err := DeepMerge3Way(newN, oldN, baseN)
+		if err != nil {
+			t.Fatalf("DeepMerge3Way: %v", err)
+		}
+		nested, _ := mappingGet(result, "nested")
 
 		// key1: old != base (user changed) → preserve old value
-		if nested["key1"] != "user-changed" {
-			t.Errorf("nested.key1 = %v, want user-changed", nested["key1"])
+		k1, _ := mappingGet(nested, "key1")
+		if k1.Value != "user-changed" {
+			t.Errorf("nested.key1 = %s, want user-changed", k1.Value)
 		}
 		// key2: old == base (user didn't change) → use new template value
-		if nested["key2"] != "updated-template-value" {
-			t.Errorf("nested.key2 = %v, want updated-template-value", nested["key2"])
+		k2, _ := mappingGet(nested, "key2")
+		if k2.Value != "updated-template-value" {
+			t.Errorf("nested.key2 = %s, want updated-template-value", k2.Value)
 		}
 	})
 
 	t.Run("system field always uses new value", func(t *testing.T) {
-		newMap := map[string]any{"template_version": 2.0}
-		oldMap := map[string]any{"template_version": 1.0}
-		baseMap := map[string]any{"template_version": 1.0}
+		newN := mustDecodeDoc(t, "template_version: 2.0\n")
+		oldN := mustDecodeDoc(t, "template_version: 1.0\n")
+		baseN := mustDecodeDoc(t, "template_version: 1.0\n")
 
-		result := DeepMerge3Way(newMap, oldMap, baseMap)
-		if result["template_version"] != float64(2) {
-			t.Errorf("template_version = %v, want 2.0", result["template_version"])
+		result, err := DeepMerge3Way(newN, oldN, baseN)
+		if err != nil {
+			t.Fatalf("DeepMerge3Way: %v", err)
+		}
+		tv, _ := mappingGet(result, "template_version")
+		// nodeValuesEqual/ValuesEqual treats 2.0 == 2; assert the decoded value is 2.
+		var got any
+		if err := tv.Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != float64(2) && got != int(2) {
+			t.Errorf("template_version = %v, want 2.0", got)
 		}
 	})
 }
@@ -518,39 +532,44 @@ func TestMergeYAMLDeep(t *testing.T) {
 	})
 }
 
-// TestDeepMergeMaps tests the recursive 2-way map merge
+// TestDeepMergeMaps tests the recursive 2-way node merge.
+// Converted to node-typed inputs per Decision D2.
 func TestDeepMergeMaps(t *testing.T) {
 	t.Run("nested map merge", func(t *testing.T) {
-		newMap := map[string]any{
-			"nested": map[string]any{
-				"key1": "new-value",
-			},
-		}
-		oldMap := map[string]any{
-			"nested": map[string]any{
-				"key1": "old-value",
-				"key2": "old-only",
-			},
-		}
+		newN := mustDecodeDoc(t, "nested:\n  key1: new-value\n")
+		oldN := mustDecodeDoc(t, "nested:\n  key1: old-value\n  key2: old-only\n")
 
-		result := DeepMergeMaps(newMap, oldMap)
-		nested := result["nested"].(map[string]any)
-
-		if nested["key1"] != "old-value" {
-			t.Errorf("nested.key1 = %v, want old-value (preserved)", nested["key1"])
+		result, err := DeepMergeMaps(newN, oldN)
+		if err != nil {
+			t.Fatalf("DeepMergeMaps: %v", err)
 		}
-		if nested["key2"] != "old-only" {
-			t.Errorf("nested.key2 = %v, want old-only", nested["key2"])
+		nested, _ := mappingGet(result, "nested")
+
+		k1, _ := mappingGet(nested, "key1")
+		if k1.Value != "old-value" {
+			t.Errorf("nested.key1 = %s, want old-value (preserved)", k1.Value)
+		}
+		k2, _ := mappingGet(nested, "key2")
+		if k2.Value != "old-only" {
+			t.Errorf("nested.key2 = %s, want old-only", k2.Value)
 		}
 	})
 
 	t.Run("system field uses new value", func(t *testing.T) {
-		newMap := map[string]any{"template_version": 2.0}
-		oldMap := map[string]any{"template_version": 1.0}
+		newN := mustDecodeDoc(t, "template_version: 2.0\n")
+		oldN := mustDecodeDoc(t, "template_version: 1.0\n")
 
-		result := DeepMergeMaps(newMap, oldMap)
-		if result["template_version"] != float64(2) {
-			t.Errorf("template_version = %v, want 2.0 (new value)", result["template_version"])
+		result, err := DeepMergeMaps(newN, oldN)
+		if err != nil {
+			t.Fatalf("DeepMergeMaps: %v", err)
+		}
+		tv, _ := mappingGet(result, "template_version")
+		var got any
+		if err := tv.Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != float64(2) && got != int(2) {
+			t.Errorf("template_version = %v, want 2.0 (new value)", got)
 		}
 	})
 }

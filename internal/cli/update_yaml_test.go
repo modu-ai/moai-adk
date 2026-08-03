@@ -4,7 +4,50 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"gopkg.in/yaml.v3"
 )
+
+// mapToNode marshals a map literal to YAML and decodes it into a root mapping
+// node, so the DeepMerge3Way / DeepMergeMaps table tests (which carry map
+// literals) can feed node-typed inputs after the Decision D2 signature change.
+func mapToNode(t *testing.T, m map[string]any) *yaml.Node {
+	t.Helper()
+	if m == nil {
+		// yaml.Marshal(nil) yields "null"; produce an explicit empty mapping so
+		// the merge sees an empty mapping rather than a null scalar (matching the
+		// pre-D2 behaviour where nil maps produced an empty result map).
+		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	}
+	b, err := yaml.Marshal(m)
+	if err != nil {
+		t.Fatalf("mapToNode marshal: %v", err)
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal(b, &doc); err != nil {
+		t.Fatalf("mapToNode unmarshal: %v", err)
+	}
+	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
+		return doc.Content[0]
+	}
+	return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+}
+
+// nodeToMap decodes a result node back into a map[string]any so the table
+// checks (which assert on map values) stay unchanged after the D2 conversion.
+func nodeToMap(t *testing.T, n *yaml.Node) map[string]any {
+	t.Helper()
+	if n == nil {
+		return map[string]any{}
+	}
+	var m map[string]any
+	if err := n.Decode(&m); err != nil {
+		t.Fatalf("nodeToMap decode: %v", err)
+	}
+	if m == nil {
+		return map[string]any{}
+	}
+	return m
+}
 
 func TestValuesEqual(t *testing.T) {
 	tests := []struct {
@@ -343,8 +386,11 @@ func TestDeepMergeMaps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := backup.DeepMergeMaps(tt.newMap, tt.oldMap)
-			tt.check(t, result)
+			result, err := backup.DeepMergeMaps(mapToNode(t, tt.newMap), mapToNode(t, tt.oldMap))
+			if err != nil {
+				t.Fatalf("DeepMergeMaps: %v", err)
+			}
+			tt.check(t, nodeToMap(t, result))
 		})
 	}
 }
@@ -514,14 +560,18 @@ func TestMergeYAML3Way(t *testing.T) {
 			},
 		},
 		{
-			name:     "key removed from template is dropped",
+			// REQ-UYP-006 reversal: a key present in old (and base) but absent
+			// from new is now RETAINED (previously dropped). The 3-way path
+			// must not be more destructive than the 2-way fallback. The
+			// retained key is also reported on stderr (REQ-UYP-007).
+			name:     "key removed from template is retained (REQ-UYP-006)",
 			newData:  "kept: val\n",
 			oldData:  "kept: val\nremoved: old\n",
 			baseData: "kept: val\nremoved: old\n",
 			check: func(t *testing.T, result []byte) {
 				s := string(result)
-				if contains(s, "removed") {
-					t.Errorf("expected removed key to be dropped, got %s", s)
+				if !contains(s, "removed: old") {
+					t.Errorf("expected removed key to be retained per REQ-UYP-006, got %s", s)
 				}
 			},
 		},
@@ -588,19 +638,21 @@ func TestMergeYAML3Way(t *testing.T) {
 			},
 		},
 		{
-			name:     "user added key not in base preserved",
+			// REQ-UYP-006: a user-added key absent from the new template is
+			// retained (and reported on stderr per REQ-UYP-007). The subtest
+			// name is pinned by AC-UYP-006.
+			name:     "user added key not in new template is preserved",
 			newData:  "shared: new_val\n",
 			oldData:  "shared: new_val\nuser_added: custom\n",
 			baseData: "shared: base_val\n",
 			check: func(t *testing.T, result []byte) {
 				s := string(result)
-				// user_added is in old but in neither new nor base, so the 3-way
-				// merge classifies it as a USER addition and preserves it. The
-				// previous assertion pinned the opposite and contradicted this
-				// case's own name; it encoded the defect behind issue #1267,
-				// where a user's llm.agent_overrides was silently reset.
+				// user_added is in old but absent from new; per REQ-UYP-006 the
+				// 3-way merge retains it. (The prior #1267 behavior preserved it
+				// only when absent from base; this SPEC reverses that to retain
+				// unconditionally.)
 				if !contains(s, "user_added") {
-					t.Errorf("expected user_added preserved (absent from base = user addition), got %s", s)
+					t.Errorf("expected user_added preserved (REQ-UYP-006), got %s", s)
 				}
 			},
 		},
@@ -742,9 +794,12 @@ func TestDeepMerge3Way(t *testing.T) {
 			},
 		},
 		{
-			// Present in base but not in new => the TEMPLATE retired it => dropped.
-			// This is the half that keeps the fix from resurrecting stale config.
-			name:   "key only in old but present in base is dropped",
+			// REQ-UYP-006 policy reversal: a key present in old and base but
+			// absent from new is NOW retained (previously dropped as "template
+			// removed"). The 3-way path must not be more destructive than the
+			// 2-way fallback, which preserves all old-only keys (REQ-UYP-008).
+			// The retained key is also reported on stderr (REQ-UYP-007).
+			name:   "key only in old but present in base is retained (REQ-UYP-006)",
 			newMap: map[string]any{},
 			oldMap: map[string]any{
 				"retired": "removed",
@@ -753,8 +808,10 @@ func TestDeepMerge3Way(t *testing.T) {
 				"retired": "removed",
 			},
 			check: func(t *testing.T, result map[string]any) {
-				if _, exists := result["retired"]; exists {
-					t.Errorf("expected retired to be dropped, got %v", result["retired"])
+				if v, exists := result["retired"]; !exists {
+					t.Errorf("expected retired to be retained per REQ-UYP-006, got dropped")
+				} else if v != "removed" {
+					t.Errorf("retired = %v, want removed", v)
 				}
 			},
 		},
@@ -907,9 +964,11 @@ func TestDeepMerge3Way(t *testing.T) {
 				if result["new_field"] != "brand_new" {
 					t.Errorf("new_field: expected brand_new, got %v", result["new_field"])
 				}
-				// deprecated only in old -> dropped
-				if _, exists := result["deprecated_field"]; exists {
-					t.Error("deprecated_field should be dropped")
+				// deprecated only in old -> retained per REQ-UYP-006 (policy
+				// reversal: the 3-way path no longer drops template-removed
+				// keys; it preserves them and reports on stderr).
+				if result["deprecated_field"] != "old" {
+					t.Errorf("deprecated_field = %v, want old (retained per REQ-UYP-006)", result["deprecated_field"])
 				}
 				// system fields always new
 				if result["version"] != "2.0" {
@@ -943,8 +1002,11 @@ func TestDeepMerge3Way(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := backup.DeepMerge3Way(tt.newMap, tt.oldMap, tt.baseMap)
-			tt.check(t, result)
+			result, err := backup.DeepMerge3Way(mapToNode(t, tt.newMap), mapToNode(t, tt.oldMap), mapToNode(t, tt.baseMap))
+			if err != nil {
+				t.Fatalf("DeepMerge3Way: %v", err)
+			}
+			tt.check(t, nodeToMap(t, result))
 		})
 	}
 }

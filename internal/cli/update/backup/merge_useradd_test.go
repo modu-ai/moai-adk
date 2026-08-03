@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -33,19 +34,31 @@ func TestDeepMerge3Way_PreservesUserAddedNestedKeys(t *testing.T) {
 	}
 }
 
-// A key the template deliberately retired (present in old AND base, absent from
-// new) must still be dropped — otherwise the fix resurrects deprecated config.
-func TestDeepMerge3Way_StillDropsTemplateRemovedKeys(t *testing.T) {
-	base := []byte("llm:\n  profile: medium\n  retired_key: keep-me-not\n")
-	user := []byte("llm:\n  profile: medium\n  retired_key: keep-me-not\n")
+// A key the template retired (present in old AND base, absent from new) is NOW
+// retained per REQ-UYP-006 (SPEC-UPDATE-YAML-PRESERVE-001 reversed the prior
+// drop). The 3-way path must not be more destructive than the 2-way fallback,
+// which preserves all old-only keys (REQ-UYP-008). The retained key is also
+// reported on stderr (REQ-UYP-007).
+func TestDeepMerge3Way_RetiredKeyRetainedAndReported(t *testing.T) {
+	base := []byte("llm:\n  profile: medium\n  retired_key: keep-me\n")
+	user := []byte("llm:\n  profile: medium\n  retired_key: keep-me\n")
 	tpl := []byte("llm:\n  profile: medium\n")
+
+	// Capture the stderr advisory via the package sink.
+	var advisory bytes.Buffer
+	oldSink := retainedKeySink
+	retainedKeySink = &advisory
+	defer func() { retainedKeySink = oldSink }()
 
 	got, err := MergeYAML3Way(tpl, user, base)
 	if err != nil {
 		t.Fatalf("MergeYAML3Way: %v", err)
 	}
-	if strings.Contains(string(got), "retired_key") {
-		t.Fatalf("template-removed key was resurrected\n--- merged ---\n%s", string(got))
+	if !strings.Contains(string(got), "retired_key") {
+		t.Fatalf("template-removed key was dropped (should be retained per REQ-UYP-006)\n--- merged ---\n%s", string(got))
+	}
+	if !strings.Contains(advisory.String(), "retired_key") {
+		t.Fatalf("retained key was not reported on stderr (REQ-UYP-007)\n--- advisory ---\n%s", advisory.String())
 	}
 }
 

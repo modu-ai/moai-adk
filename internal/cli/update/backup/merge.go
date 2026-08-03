@@ -2,123 +2,70 @@ package backup
 
 import (
 	"fmt"
-	"maps"
 
 	"gopkg.in/yaml.v3"
 )
 
 // MergeYAML3Way performs a 3-way merge of YAML documents.
+//
 // It uses baseData (old template defaults) to detect user changes:
 //   - If user value == base value: user didn't change it → use new template value
 //   - If user value != base value: user customized it → preserve user value
 //
-// System fields (like template_version) always use new values regardless.
+// System fields (version, template_version) always use new values regardless.
 //
-// Moved from internal/cli/update.go during M3d-A decomposition (SPEC-CLI-TUX-V3-003).
-// Behavior is byte-identical to the pre-decomposition implementation; only the
-// package location and export status changed.
+// The merge decodes each document into a *yaml.Node tree so that comments,
+// key order, scalar quoting style, and anchor/alias nodes survive the round
+// trip — the fix for issue #1243, where a map[string]any round trip stripped
+// every comment and alphabetized keys. Old-only keys (absent from the new
+// template) are retained and reported on stderr per REQ-UYP-006/007.
+//
+// The wrapper signature ([]byte, ...) ([]byte, error) is unchanged so the
+// production call site in restore.go needs no edit (Decision D2 mitigation).
 func MergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
-	var newMap, oldMap, baseMap map[string]any
-
-	if err := yaml.Unmarshal(newData, &newMap); err != nil {
-		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
+	newRoot, err := decodeDoc(newData, "new")
+	if err != nil {
+		return nil, err
 	}
-	if err := yaml.Unmarshal(oldData, &oldMap); err != nil {
-		return nil, fmt.Errorf("unmarshal old YAML: %w", err)
+	oldRoot, err := decodeDoc(oldData, "old")
+	if err != nil {
+		return nil, err
 	}
-	if err := yaml.Unmarshal(baseData, &baseMap); err != nil {
-		return nil, fmt.Errorf("unmarshal base YAML: %w", err)
+	baseRoot, err := decodeDoc(baseData, "base")
+	if err != nil {
+		return nil, err
 	}
-
-	merged := DeepMerge3Way(newMap, oldMap, baseMap)
-	return yaml.Marshal(merged)
+	merged, err := DeepMerge3Way(newRoot, oldRoot, baseRoot)
+	if err != nil {
+		return nil, err
+	}
+	return encodeNode(merged)
 }
 
-// DeepMerge3Way recursively performs 3-way merge of maps.
+// DeepMerge3Way recursively performs a 3-way merge of node trees.
+//
 // Decision logic for each key:
 //   - old == base → user didn't change → use new value
 //   - old != base → user changed → preserve old value
 //   - key only in new → new field added by template → use new value
-//   - key only in old → removed from template → drop it
-func DeepMerge3Way(newMap, oldMap, baseMap map[string]any) map[string]any {
-	result := make(map[string]any)
-
-	// System fields that always use new values
-	systemFields := map[string]bool{
-		"template_version": true,
-		"version":          true,
-	}
-
-	// Start with all new values as the base result
-	for k, newV := range newMap {
-		// System fields always use new value
-		if systemFields[k] {
-			result[k] = newV
-			continue
-		}
-
-		oldV, oldExists := oldMap[k]
-		baseV, baseExists := baseMap[k]
-
-		if !oldExists {
-			// Key only in new template → add it (new field)
-			result[k] = newV
-			continue
-		}
-
-		// Both new and old exist
-		newMapVal, newIsMap := newV.(map[string]any)
-		oldMapVal, oldIsMap := oldV.(map[string]any)
-
-		if newIsMap && oldIsMap {
-			// Both are maps → recurse
-			baseMapVal, baseIsMap := baseV.(map[string]any)
-			if !baseIsMap {
-				baseMapVal = make(map[string]any)
-			}
-			result[k] = DeepMerge3Way(newMapVal, oldMapVal, baseMapVal)
-		} else {
-			// Scalar or list values
-			if !baseExists {
-				// No base value → user added this; preserve user value
-				result[k] = oldV
-			} else if ValuesEqual(oldV, baseV) {
-				// User didn't change from template default → use new template value
-				result[k] = newV
-			} else {
-				// User changed from template default → preserve user value
-				result[k] = oldV
-			}
-		}
-	}
-
-	// Keys present only in old are resolved against the base, because the two
-	// cases they cover need opposite answers (issue #1267):
-	//
-	//	absent from base  -> the USER added it       -> preserve
-	//	present in base   -> the TEMPLATE removed it -> drop
-	//
-	// Without this pass, recursing into a template placeholder such as
-	// `agent_overrides: {}` walked an empty new map and silently discarded every
-	// user-authored entry underneath it.
-	for k, oldV := range oldMap {
-		if _, inNew := newMap[k]; inNew {
-			continue // already resolved by the loop above
-		}
-		if systemFields[k] {
-			continue // never carried forward from old
-		}
-		if _, inBase := baseMap[k]; inBase {
-			continue // template removed it deliberately
-		}
-		result[k] = oldV
-	}
-
-	return result
+//   - key only in old → absent from new template → retain + report (REQ-UYP-006/007)
+//
+// The signature is node-typed (Decision D2): the map[string]any representation
+// has nowhere to store comments or key order, so format preservation is only
+// possible when the merge operates on the node tree directly. Retained-key
+// advisories are written to retainedKeySink (os.Stderr in production).
+func DeepMerge3Way(newNode, oldNode, baseNode *yaml.Node) (*yaml.Node, error) {
+	return deepMerge3WayTo(newNode, oldNode, baseNode, retainedKeySink)
 }
 
 // ValuesEqual compares two interface{} values for equality.
 // Handles string, int, float, bool, and nil comparisons.
+//
+// Retained (Decision D10) even though it has no production caller after the
+// node-tree rewrite: it remains the equality primitive over the any (map /
+// scalar) domain and is reused by nodeValuesEqual for node-level comparison.
+// Removing an exported symbol is a separate breaking-API decision this SPEC
+// does not need to make.
 func ValuesEqual(a, b any) bool {
 	if a == nil && b == nil {
 		return true
@@ -130,65 +77,34 @@ func ValuesEqual(a, b any) bool {
 }
 
 // MergeYAMLDeep performs a deep merge of two YAML documents (2-way fallback).
-// The newData takes precedence for structure, but values from oldData are preserved
-// when the key exists in both.
+//
+// The newData takes precedence for structure, but values from oldData are
+// preserved when the key exists in both. System fields always use the new
+// value. The merge decodes into node trees so comments, key order, and scalar
+// quoting survive (same mechanism as MergeYAML3Way). The wrapper signature is
+// unchanged so restore.go needs no edit.
 func MergeYAMLDeep(newData, oldData []byte) ([]byte, error) {
-	var newMap, oldMap map[string]any
-
-	if err := yaml.Unmarshal(newData, &newMap); err != nil {
-		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
+	newRoot, err := decodeDoc(newData, "new")
+	if err != nil {
+		return nil, err
 	}
-	if err := yaml.Unmarshal(oldData, &oldMap); err != nil {
-		return nil, fmt.Errorf("unmarshal old YAML: %w", err)
+	oldRoot, err := decodeDoc(oldData, "old")
+	if err != nil {
+		return nil, err
 	}
-
-	// Deep merge old values into new structure
-	merged := DeepMergeMaps(newMap, oldMap)
-
-	return yaml.Marshal(merged)
+	merged, err := DeepMergeMaps(newRoot, oldRoot)
+	if err != nil {
+		return nil, err
+	}
+	return encodeNode(merged)
 }
 
-// DeepMergeMaps recursively merges oldMap into newMap, preserving old values.
-// System fields (version, template_version) always use new values.
-func DeepMergeMaps(newMap, oldMap map[string]any) map[string]any {
-	result := make(map[string]any)
-
-	// System fields that should always use new values (not preserved from old
-	// config). MUST stay in parity with DeepMerge3Way's systemFields: when the
-	// restore degrades to this 2-way fallback (template defaults unavailable),
-	// a backup carrying an old moai.version must not override the deployed one.
-	systemFields := map[string]bool{
-		"template_version": true,
-		"version":          true,
-	}
-
-	// Copy all new values
-	maps.Copy(result, newMap)
-
-	// Merge old values, preserving when they exist
-	for k, v := range oldMap {
-		// Skip system fields - always use new value
-		if systemFields[k] {
-			continue
-		}
-
-		if newV, exists := newMap[k]; exists {
-			// Both exist, check if they are maps
-			newMapVal, newIsMap := newV.(map[string]any)
-			oldMapVal, oldIsMap := v.(map[string]any)
-
-			if newIsMap && oldIsMap {
-				// Recursively merge nested maps
-				result[k] = DeepMergeMaps(newMapVal, oldMapVal)
-			} else {
-				// Keep old value (preserve user setting)
-				result[k] = v
-			}
-		} else {
-			// Only exists in old, add it
-			result[k] = v
-		}
-	}
-
-	return result
+// DeepMergeMaps recursively merges oldNode into newNode, preserving old values.
+// System fields (version, template_version) always use new values. The
+// signature is node-typed per Decision D2. No advisory is emitted on the 2-way
+// path (REQ-UYP-007 binds only DeepMerge3Way); old-only keys are preserved
+// silently so the 3-way path is never more destructive than this fallback
+// (REQ-UYP-008).
+func DeepMergeMaps(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
+	return deepMergeMapsTo(newNode, oldNode)
 }
