@@ -183,7 +183,7 @@ func AppendDowngradeAdvisory(logPath, originalTier, effectiveTier, reason string
 	if err != nil {
 		return fmt.Errorf("open advisory log: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.WriteString(line); err != nil {
 		return fmt.Errorf("write advisory log: %w", err)
 	}

@@ -30,7 +30,7 @@ func TestValidateInitFlags_ValidAutonomyTier(t *testing.T) {
 			if err := initCmd.Flags().Set("autonomy-tier", tier); err != nil {
 				t.Fatal(err)
 			}
-			defer initCmd.Flags().Set("autonomy-tier", "")
+			defer func() { _ = initCmd.Flags().Set("autonomy-tier", "") }()
 			if err := validateInitFlags(initCmd, []string{}); err != nil {
 				t.Errorf("validateInitFlags with autonomy-tier=%q should pass, got: %v", tier, err)
 			}
@@ -47,7 +47,7 @@ func TestValidateInitFlags_InvalidAutonomyTier(t *testing.T) {
 			if err := initCmd.Flags().Set("autonomy-tier", tier); err != nil {
 				t.Fatal(err)
 			}
-			defer initCmd.Flags().Set("autonomy-tier", "")
+			defer func() { _ = initCmd.Flags().Set("autonomy-tier", "") }()
 			err := validateInitFlags(initCmd, []string{})
 			if err == nil {
 				t.Fatalf("validateInitFlags with autonomy-tier=%q should error, got nil", tier)

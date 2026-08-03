@@ -125,7 +125,9 @@ func TestRenderTierPermissions_DenyAskInvariantAcrossTiers(t *testing.T) {
 				Ask  []string `json:"ask"`
 			} `json:"permissions"`
 		}
-		json.Unmarshal(body, &perms)
+		if err := json.Unmarshal(body, &perms); err != nil {
+			t.Fatalf("unmarshal %q: %v", mode, err)
+		}
 		d, _ := json.Marshal(perms.Permissions.Deny)
 		a, _ := json.Marshal(perms.Permissions.Ask)
 		denyBlobs = append(denyBlobs, d)
@@ -161,7 +163,9 @@ func TestRenderTierPermissions_SemiAutoDefaultMode(t *testing.T) {
 			DefaultMode string `json:"defaultMode"`
 		} `json:"permissions"`
 	}
-	json.Unmarshal(body, &perms)
+	if err := json.Unmarshal(body, &perms); err != nil {
+		t.Fatalf("unmarshal user perms: %v", err)
+	}
 	if perms.Permissions.DefaultMode != "default" {
 		t.Errorf("semi-auto USER defaultMode = %q, want %q", perms.Permissions.DefaultMode, "default")
 	}
