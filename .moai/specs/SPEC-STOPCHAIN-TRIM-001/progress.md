@@ -146,4 +146,35 @@ m1_to_mN_commit_strategy: "per-milestone commits (M1, M2, M3, M4 + catalog-regen
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — orchestrator hands off to manager-docs next>_
+```yaml
+sync_complete_at: 2026-08-03
+sync_commit_sha: pending-backfill-<SHA>
+sync_status: complete
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed"
+  plan.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  acceptance.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  progress.md: "n/a (no YAML frontmatter — markdown-header convention)"
+changelog_entry_position: "[Unreleased] / ### Added (SPEC-STOPCHAIN-TRIM-001 entry)"
+frontmatter_status_transitions_note: "Only spec.md carries YAML frontmatter (Tier M artifact contract). The in-progress → implemented → completed terminal transition rides the single sync commit per spec-frontmatter-schema.md § Status Transition Ownership Matrix."
+mx_tag_additions:
+  - "internal/config/autonomy.go — @MX:ANCHOR [AUTO] AutonomyTier reader (run-phase M1)"
+  - "internal/hook/pre_tool.go — @MX:WARN [AUTO] tier-aware commit-gate branch / K-6 deny-before-tier ordering invariant (sync-phase addition)"
+canary_compliance_check:
+  go_build: "exit 0 (go build ./...)"
+  go_vet: "exit 0 (go vet ./internal/hook/... ./internal/config/...)"
+  ac_pass_count: 8
+  ac_fail_count: 0
+```
+
+### Sync-phase Gaps (explicitly NOT verified this sync)
+
+- **`sync_commit_sha` self-referential placeholder** — populated as `pending-backfill-<SHA>` in this commit (a commit cannot know its own SHA before it lands). Will be backfilled in a follow-up commit per the D3 self-referential-hazard workaround pattern (same as SPEC-AUDIT-SNAPSHOT-001 and other recent sync commits).
+- **Full `go test ./...` re-run** — not executed at sync phase. Run-phase already verified 8/8 ACs PASS; vet + build re-verified at sync. The sync-phase quality gate (`sync-phase-quality-gate.sh` Stop hook) runs vet/build at turn-end on this commit and now does so in `semi-auto` default mode (full blocking) since this SPEC's own `MOAI_AUTONOMY_TIER` mode-aware gate is unset for this session.
+- **Live runtime verification of async Stop hooks under a real Claude Code session** — carried over from §E.3; not the sync phase's job to exercise.
+- **TestTemplateNoInternalContentLeak pre-existing baseline** — flags `quality-gates-quality.md` matching `REQ-004` (2-segment). This is a SPEC-AUDIT-SNAPSHOT-001 A4 wiring-note artifact (that SPEC's plan-phase wiring of the A4 shared-snapshot claim into `quality-gates-quality.md`), pre-existing — NOT introduced by this SPEC. Verified pre-existing: fails identically with this SPEC's commits stashed. Out of scope for this sync; flagged for the orchestrator to triage with the owning template-isolation SPEC (likely SPEC-AUDIT-SNAPSHOT-001 amendment or a follow-up SPEC).
+
+### Sync-phase Residual-risk (carried forward, no new ones introduced)
+
+- **handle-stop.sh async transition (M2)** — making `handle-stop.sh` async means its result is delivered via `additionalContext` on the next turn, NOT as a synchronous decision. **This is a user-visible behavior change**: the main Stop handler (`moai hook stop`) can no longer block synchronously. The SPEC explicitly classifies handle-stop.sh as an observer hook (§1.4 / A10). Deployments that relied on synchronous Stop blocking via handle-stop.sh now get advisory-only behavior from that hook. **Mitigated**: the blocking Stop hooks (`sync-phase-quality-gate.sh`, `handle-stop-goal.sh`) remain synchronous — only the 4 observer/security Stop hooks transitioned to async. Documented prominently in the CHANGELOG entry. Flag for sync-auditor attention.
+- **PreToolUse `--no-verify` over-fire on commit messages** — carried over from §E.3; pre-existing, not a regression.
