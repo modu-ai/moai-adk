@@ -32,9 +32,19 @@ type Condition struct {
 	Claim      string        `json:"claim,omitempty"`
 }
 
-// Ceiling bounds the goal loop. MaxTurns defaults to DefaultMaxTurns (30).
+// Ceiling bounds the goal loop. MaxTurns defaults to DefaultMaxTurns (30);
+// MaxTurns == 0 is the infinite entry point (the evaluate.go `> 0` guard
+// disables the turn ceiling check). MaxDuration (wall-clock seconds since
+// CreatedAt) is the M-default PRIMARY real bound when MaxTurns == 0
+// (SPEC-INFINITE-GOAL-001 REQ-4 / OQ-2). CostCap records a cost bound
+// (max invocations); its enforcement is a documented follow-up because the
+// evaluator carries no invocation/token accounting today — the field is
+// recorded here so the arm-time bound is captured verbatim, per REQ-4
+// ("recorded in Ceiling alongside MaxTurns").
 type Ceiling struct {
-	MaxTurns int `json:"max_turns"`
+	MaxTurns    int `json:"max_turns"`
+	MaxDuration int `json:"max_duration,omitempty"`
+	CostCap     int `json:"cost_cap,omitempty"`
 }
 
 // ProgressEntry is one append-only turn record in the goal's progress log.

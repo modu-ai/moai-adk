@@ -2,7 +2,7 @@
 id: SPEC-INFINITE-GOAL-001
 title: "Remove the /moai goal 1M cap — infinite auto-compact-driven autonomy with real bounds"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-03
 updated: 2026-08-03
 author: manager-spec
