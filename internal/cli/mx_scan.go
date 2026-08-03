@@ -11,31 +11,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
-// defaultScanIgnore are directory base-names excluded from a full project scan.
-// The scanner matches these against filepath.Base(path) for directories
-// (scanner.go ScanDir), so these are plain names — no globbing across path
-// separators is needed or supported there.
 // maxScannerWarningsShown bounds the per-run scanner-warning list printed to stderr.
 const maxScannerWarningsShown = 20
 
-var defaultScanIgnore = []string{
-	".git",
-	"node_modules",
-	"vendor",
-	"worktrees", // harness worktrees (recursive copies of the repo)
-	"main-fork",  // moai-adk local fork (not distributed source)
-	"target",     // rust/cargo build output
-	"build",      // java/gradle/kotlin build output
-	"dist",       // generic build output
-	"out",
-	".next",    // next.js build cache
-	".cache",
-	".turbo",
-	"coverage", // test coverage reports
-	// Harness / state directories hold no user source code.
-	".claude",
-	".moai",
-}
+// defaultScanIgnore was moved to mx.DefaultScanIgnore (internal/mx/scan_ignore.go)
+// so the SessionStart-hook cold-start scan can reuse the exact same ignore set
+// without duplicating it (internal/hook cannot import internal/cli).
 
 // newMxScanCmd 'moai mx scan' scans the project and builds the @MX tag sidecar
 // index in one pass. It is the build entry-point that connects scanner.ScanDir
@@ -73,7 +54,7 @@ Examples:
 			}
 
 			s := mx.NewScanner()
-			s.SetIgnorePatterns(defaultScanIgnore)
+			s.SetIgnorePatterns(mx.DefaultScanIgnore)
 
 			tags, err := s.ScanDir(scanRoot)
 			if err != nil {

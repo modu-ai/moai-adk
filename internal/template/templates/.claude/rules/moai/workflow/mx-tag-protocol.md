@@ -125,6 +125,8 @@ Default exclude patterns:
 Per-file limits from `.moai/config/sections/mx.yaml` (defaults):
 - `anchor_per_file`: 3
 - `warn_per_file`: 5
+- `note_per_file`: 10
+- `todo_per_file`: 5
 
 When limits exceeded:
 - ANCHOR: Demote excess by lowest fan_in
@@ -155,7 +157,7 @@ In Agent Teams mode, @MX tag operations follow file ownership rules:
 
 Project-level settings in `.moai/config/sections/mx.yaml`:
 - thresholds: fan_in_anchor, complexity_warn, branch_warn
-- limits: anchor_per_file, warn_per_file
+- limits: anchor_per_file, warn_per_file, note_per_file, todo_per_file
 - exclude: file patterns to skip
 - auto_tag: enable/disable autonomous tagging
 - require_reason_for: tag types requiring @MX:REASON
