@@ -217,6 +217,15 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Directory = extractProjectDirectory(input)
 	}
 
+	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for
+	// this session so the renderer can suppress the /clear directive markers
+	// while a goal is armed. Best-effort + fail-open + constant-cost (one small
+	// file read); a read error or non-armed status leaves GoalArmed=false
+	// (markers shown, backward compat).
+	if input != nil {
+		data.GoalArmed = resolveGoalArmed(resolveProjectDir(input), input.SessionID)
+	}
+
 	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)
 	if input != nil && input.Workspace != nil {
 		data.Worktree = input.Workspace.GitWorktree
