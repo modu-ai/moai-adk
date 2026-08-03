@@ -15,18 +15,6 @@ memory: project
 skills:
   - moai-foundation-core
 hooks:
-  PreToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"develop-pre-implementation\""
-          timeout: 5
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"develop-post-implementation\""
-          timeout: 10
   Stop:
     - hooks:
         - type: command
