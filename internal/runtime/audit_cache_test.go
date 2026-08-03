@@ -41,8 +41,11 @@ func TestPlanArtifactHashStableAcrossWhitespace(t *testing.T) {
 	}
 }
 
-// TestCacheTTLBoundary24Hours verifies cache expires at exactly 24h. AC-WAG-09
-func TestCacheTTLBoundary24Hours(t *testing.T) {
+// TestCacheStickyAcrossAges verifies the cache is sticky (hash-keyed, not
+// time-bound) across a range of ages. SPEC-AUDIT-SNAPSHOT-001 A1 retired the
+// prior 24h TTL (REQ-WAG-003's time-window condition); the legacy boundary
+// cases that asserted a miss at >=24h are superseded by this sticky assertion.
+func TestCacheStickyAcrossAges(t *testing.T) {
 	t.Parallel()
 
 	specID := "SPEC-CACHE-001"
@@ -56,15 +59,17 @@ func TestCacheTTLBoundary24Hours(t *testing.T) {
 	}{
 		{"T0+1h (hit)", t0.Add(1 * time.Hour), true},
 		{"T0+23h59m (hit)", t0.Add(23*time.Hour + 59*time.Minute), true},
-		{"T0+24h (miss)", t0.Add(24 * time.Hour), false},
-		{"T0+25h (miss)", t0.Add(25 * time.Hour), false},
+		// A1 retirement: the >=24h cases are now hits, not misses.
+		{"T0+24h (hit — 24h TTL retired by A1)", t0.Add(24 * time.Hour), true},
+		{"T0+25h (hit — 24h TTL retired by A1)", t0.Add(25 * time.Hour), true},
+		{"T0+30d (hit — sticky, no time bound)", t0.Add(30 * 24 * time.Hour), true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Each subtest gets its own cache instance to avoid parallel eviction interference.
+			// Each subtest gets its own cache instance to avoid parallel interference.
 			cache := NewInMemoryCache()
 			cache.Store(specID, hash, &AuditResult{
 				Verdict:        VerdictPass,

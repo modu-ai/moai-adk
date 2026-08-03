@@ -323,29 +323,31 @@ Plan to Run:
   See "Phase 1: Plan Audit Gate" section below for details.
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):
   the orchestrator MAY skip Phase 1 re-execution and proceed directly to
-  Phase 1 **IF AND ONLY IF ALL FOUR** of the following hold for the most recent
+  Phase 1 **IF AND ONLY IF ALL THREE** of the following hold for the most recent
   plan-auditor verdict on the SPEC:
     1. **Verdict is `PASS`** (NOT FAIL, NOT INCONCLUSIVE, NOT BYPASSED).
-    2. **Overall score ≥ 0.90.**
+    2. **Overall score ≥ the SPEC's per-tier PASS threshold** — Tier S `0.75`,
+       Tier M `0.80`, Tier L `0.85` (matching § SPEC Complexity Tier). The flat
+       `≥ 0.90` predicate is RETIRED (SPEC-AUDIT-SNAPSHOT-001 A2): a SPEC whose
+       plan-phase audit verdict legitimately PASSED is skip-eligible by default.
+       The Go codification is `internal/runtime.SkipEligibleByScore(tier, score)`.
     3. **Artifact-hash unchanged** since that verdict — no plan-phase artifact
-       (spec.md / plan.md / acceptance.md / research.md / design.md) has been
-       modified since the audit that produced the verdict (equivalently on
-       Route B: no plan-PR commit has landed since that verdict). Note: the
-       mechanical hash subject is the `ComputeHash` 4-file plan-artifact set
-       (spec.md / plan.md / acceptance.md / tasks.md — see § Report
-       Persistence); research.md / design.md changes are a conservative input
-       to the manual skip judgment, not part of the mechanical plan-artifact
-       hash.
-    4. **Within 24h** — the verdict was produced no more than 24 hours ago.
-  If ANY of the four fails, Phase 1 re-executes (the gate is never disabled by
+       has been modified since the audit that produced the verdict (equivalently
+       on Route B: no plan-PR commit has landed since that verdict). The
+       mechanical hash subject is the `ComputeHash` plan-artifact set — see
+       § Report Persistence for the tier-conditional subject list.
+  If ANY of the three fails, Phase 1 re-executes (the gate is never disabled by
   harness level; see Gate Entry Condition below). When the skip is taken, the
-  skip decision AND the four satisfied conditions MUST be recorded in the
+  skip decision AND the three satisfied conditions MUST be recorded in the
   run-phase delegation prompt (Section A: Context) so downstream actors
   (manager-develop, auditors) can verify the skip rationale. This is the ONE
   authoritative skip contract — any other surface (e.g. the skill-layer
   `run/phase-execution.md`) MUST cite this contract rather than restating a
   divergent condition set. Origin: the workflow-optimization layer (redundant
-  audit re-execution removal), tightened to the 4-condition compound predicate.
+  audit re-execution removal). SPEC-AUDIT-SNAPSHOT-001 (A1+A2) retired the
+  prior 4th condition ("Within 24h") and aligned the 2nd condition to per-tier
+  PASS: the cache is now sticky (hash-only validity, no time bound) so a
+  legitimately-passed SPEC with unchanged artifacts stays skip-eligible.
   This skip is distinct from Implementation Kickoff Approval: skip-eligibility
   governs ONLY Phase 1 verdict re-execution — it NEVER auto-bypasses the
   plan-to-implement human gate (the mandatory blocking `AskUserQuestion` gate;
@@ -407,9 +409,9 @@ Two report streams coexist deliberately in `.moai/reports/plan-audit/`; they are
 - **plan-phase review stream** — `{SPEC-ID}-review-{N}.md`, iteration-based. Written by the plan-auditor during plan-phase adversarial review; iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
 - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based. Written by the Phase 1 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
 
-Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (spec.md / plan.md / acceptance.md / tasks.md) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
+Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
 
-**Plan-artifact hash subject list (Go verbatim):** the 4-file hash subject set is `{spec.md, plan.md, acceptance.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The `tasks.md` entry is a V3R4-era plan artifact name retained in the hash subject list for backward compatibility with grandfathered SPECs (V3R6 Tier L replaces it with design.md + research.md, which are NOT hash subjects). `design.md` and `research.md` are **manual-skip judgment inputs** — changes to them do NOT mechanically invalidate a cached skip verdict but MUST be considered by the orchestrator's manual skip decision alongside the 4-file hash.
+**Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension — changes to design.md/research.md NOW mechanically invalidate a cached skip verdict, replacing the former "manual judgment input" treatment); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
 
 **Amendment as cache-invalidating event:** when a SPEC is amended in-place per the `completed → in-progress (amendment)` transition (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 1 plan-audit re-execution on the next `/moai run`. During the amendment transition, the SPEC remains V3R6 modern era (subject to drift detection) because frontmatter status is `in-progress` (not `completed`), so the `internal/spec/audit.go` completed-no-drift predicate does not fire.
 

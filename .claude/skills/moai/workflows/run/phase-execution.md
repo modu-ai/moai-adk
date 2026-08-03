@@ -20,27 +20,36 @@ Source: the plan audit gate contract.
 
 ### Step 1: Compute Plan Artifact Hash (Cache Key)
 
-Compute a combined SHA-256 hash of all plan artifacts present in `.moai/specs/<SPEC-ID>/`:
-- `spec.md` (required)
-- `plan.md` (if present)
-- `acceptance.md` (if present)
-- `tasks.md` (if present)
+Compute a combined SHA-256 hash of all plan artifacts present in `.moai/specs/<SPEC-ID>/`.
+The hash subject set and tier-conditional inclusion are owned by the canonical
+contract in `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence
+("Plan-artifact hash subject list (Go verbatim)"); consult that contract for the
+authoritative subject list rather than restating it here. The Go implementation
+is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the
+whitespace-normalized UTF-8 content of each present subject file (missing files
+are skipped, making inclusion tier-conditional by construction).
 
-Hash algorithm: SHA-256 of the UTF-8 content of each file, sorted by filename, concatenated.
-Whitespace normalization: collapse all runs of whitespace to a single space before hashing (whitespace-insensitive cache).
 Store hash as `plan_artifact_hash` for Step 2 cache lookup.
 
-### Step 2: Check 24-Hour Audit Cache
+### Step 2: Consult the Sticky (Hash-Keyed) Audit Cache
 
-Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date).
+The cache is **sticky (hash-keyed)**: a cached PASS verdict whose
+`plan_artifact_hash` matches the current hash is valid regardless of elapsed
+time. SPEC-AUDIT-SNAPSHOT-001 (A1) retired the prior 24h age condition; the
+single authoritative skip contract (the three conditions: verdict PASS, score
+≥ per-tier threshold, artifact-hash unchanged) lives in
+`.claude/rules/moai/workflow/spec-workflow.md` § Phase Transitions / Plan Audit
+Gate skip policy. This step CITES that contract — it MUST NOT restate a
+divergent condition set.
 
-Cache HIT conditions (all must be true):
-1. File exists and the most recent audit run entry has `verdict: PASS`
-2. `plan_artifact_hash` in the cached entry matches `plan_artifact_hash` from Step 1
-3. `audit_at` timestamp in the cached entry is within 24 hours of now (UTC)
+Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and
+apply the canonical three-condition skip predicate. The Go helper
+`internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2
+(per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`
+predicate is NOT consulted).
 
-If cache HIT:
-- Log: `[plan-audit] cache hit (verdict=PASS, age=<Nh>)`
+If cache HIT (all three canonical conditions hold):
+- Log: `[plan-audit] cache hit (verdict=PASS, sticky)`
 - Append to `.moai/specs/<SPEC-ID>/progress.md`: `- audit_cache_hit: true` and `- cached_audit_at: <T0>`
 - Skip Step 3 and proceed to Phase 1.
 
