@@ -141,7 +141,7 @@ m1_to_mN_commit_strategy: single-PR squash (Route B Tier L per repo-local-pr-pol
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-03
-sync_commit_sha: "pending-backfill-after-merge"
+sync_commit_sha: "12dc0c17b"
 sync_status: green
 sync_auditor_verdict: PASS
 sync_auditor_harmonic_mean: 0.952
