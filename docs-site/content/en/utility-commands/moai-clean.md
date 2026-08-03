@@ -194,7 +194,7 @@ flowchart TD
 
 ### Q: What if dead code is removed by mistake?
 
-You can revert with Git. MoAI removes in reverse dependency order and runs the tests, so on any problem it rolls back automatically.
+You can revert with Git. MoAI removes in reverse dependency order and runs the tests, so if anything goes wrong it rolls back automatically.
 
 ### Q: When should I use `--aggressive`?
 

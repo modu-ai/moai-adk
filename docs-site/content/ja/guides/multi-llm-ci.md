@@ -57,7 +57,7 @@ moai github link-spec 123 SPEC-ISSUE-123 --dry-run
 
 ### Label Sync ワークフロー (`.github/workflows/label-sync.yml`)
 
-`.github/labels.yml` を単一の真実の供給源としてリポジトリのラベルを
+`.github/labels.yml` を単一の情報源としてリポジトリのラベルを
 同期します。
 
 - **トリガー**: `workflow_dispatch` (手動、`dry_run` 入力対応) または

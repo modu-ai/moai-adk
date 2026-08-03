@@ -42,5 +42,5 @@ flowchart TD
 | 9 | [常见问题](./faq) | 安装·运行时常见问题与解决方法 |
 
 {{< callout type="info" >}}
-**下一步**：完成安装后，可以在[核心概念](/zh/core-concepts/)中学习 v3.0 的三大支柱 — **代币经济学** (Tokenomics)、**智能体循环工程** (Agentic Loop Engineering)、**智能体挽具** (Agentic Harness) — 以及 SPEC·DDD·TRUST 5 等 MoAI-ADK 的设计哲学。
+**下一步**：完成安装后，可以在[核心概念](/zh/core-concepts/)中学习 v3.0 的三大核心 — **代币经济学** (Tokenomics)、**智能体循环工程** (Agentic Loop Engineering)、**智能体挽具** (Agentic Harness) — 以及 SPEC·DDD·TRUST 5 等 MoAI-ADK 的设计哲学。
 {{< /callout >}}

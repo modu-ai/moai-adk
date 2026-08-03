@@ -4,7 +4,7 @@ weight: 5
 draft: false
 ---
 
-The core of harness competitiveness is its self-improvement design. As Lilian Weng's "Harness Engineering for Self-Improvement" (2026-07-04) names it, a harness is the execution/operations layer surrounding the model, and the realistic path to self-improvement is not weights but improvements to this layer. This page officially documents MoAI-ADK's self-evolving harness — the ACE 3-Loop architecture.
+The core of harness competitiveness is its self-improvement design. As Lilian Weng's "Harness Engineering for Self-Improvement" (2026-07-04) points out, a harness is the execution/operations layer surrounding the model, and the realistic path to self-improvement is not weights but improvements to this layer. This page officially documents MoAI-ADK's self-evolving harness — the ACE 3-Loop architecture.
 
 ## Why Self-Evolution
 

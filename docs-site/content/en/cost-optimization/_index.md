@@ -8,11 +8,10 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics -->
 
-MoAI-ADK tokenomics reduces inference cost along two axes. If **context dieting**
-is the axis that shrinks the always-loaded context itself, then **prompt caching**
-is the axis that reuses the remaining context at a 90%-discounted cost. This
-section covers the break-even rule for deciding when to enable caching and how to
-configure it.
+MoAI-ADK tokenomics reduces inference cost in two ways. **Context dieting**
+shrinks the always-loaded context itself, while **prompt caching** reuses the
+remaining context at a 90%-discounted cost. This section covers the break-even
+rule for deciding when to enable caching and how to configure it.
 
 
 ## Documents in this section

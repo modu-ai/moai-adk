@@ -14,7 +14,7 @@ draft: false
 
 `/moai review`는 **다관점 코드 리뷰** 명령어입니다. 변경분을 보안(Security)·성능(Performance)·품질(Quality)·UX 네 관점의 read-only 판정자에게 나눠 분석시키고, `@MX` 태그를 잘 지켰는지 점검한 뒤, 심각도별로 정리한 통합 리포트를 내놓습니다.
 
-`/moai review`는 **read-only, 리포트 전용 렌즈**입니다. 결함을 찾아 알려 줄 뿐 어떤 파일에도 손대지 않습니다. 찾아낸 문제를 실제로 고치려면 `/moai fix`(또는 `/moai loop`)로 넘깁니다. 즉 `/moai review`가 문제를 **알리고**, `/moai loop`가 그렇게 추려진 이슈를 **고치는** 관계입니다.
+`/moai review`는 **read-only, 리포트 전용 도구**입니다. 결함을 찾아 알려 줄 뿐 어떤 파일에도 손대지 않습니다. 찾아낸 문제를 실제로 고치려면 `/moai fix`(또는 `/moai loop`)로 넘깁니다. 즉 `/moai review`가 문제를 **알리고**, `/moai loop`가 그렇게 추려진 이슈를 **고치는** 관계입니다.
 
 ## 지원 플래그
 

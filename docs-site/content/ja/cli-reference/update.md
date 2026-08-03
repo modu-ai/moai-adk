@@ -44,7 +44,7 @@ moai update --check
 
 ### checksum 義務検証 (Mandatory Checksum Verification) {#checksum-verification}
 
-`moai update` の binary ダウンロードは **checksum 検証を回避できません**。release の `checksums.txt` ダウンロードが失敗するかパースが失敗するとアップデートフローを **abort** します — binary のダウンロードを試みません。
+`moai update` の binary ダウンロードは **checksum 検証を回避できません**。release の `checksums.txt` ダウンロードが失敗するかパースが失敗するとアップデートフローを **中止(abort)** します — binary のダウンロードを試みません。
 
 #### Retry ポリシー
 

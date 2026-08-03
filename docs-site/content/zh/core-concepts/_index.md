@@ -10,16 +10,16 @@ draft: false
 
 ![核心概念: 工具架结构](/images/sections/core-concepts-zh.png)
 
-本节介绍理解 MoAI-ADK v3.0 所需的核心概念。v3.0 的价值可以概括为三大支柱 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)，以及 **智能体挽具** (Agentic Harness)。本节的文档将逐一展开这三大支柱在实际开发流程中的运作方式。
+本节介绍理解 MoAI-ADK v3.0 所需的核心概念。v3.0 的价值可以概括为三大核心 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)，以及 **智能体挽具** (Agentic Harness)。本节的文档将逐一展开这三大核心在实际开发流程中的运作方式。
 
 
 {{< callout type="info" >}}
 初次接触吗？从上到下按顺序阅读，MoAI-ADK 的全貌会自然浮现。每篇文档也都可以独立阅读。
 {{< /callout >}}
 
-## 三大支柱
+## 三大核心
 
-| 支柱 | 核心问题 | 代表文档 |
+| 核心 | 核心问题 | 代表文档 |
 |------|----------|----------|
 | **代币经济学** | 如何用更少的 token 获得同等质量？ | [什么是 MoAI-ADK？](/zh/core-concepts/what-is-moai-adk) |
 | **智能体循环工程** | 循环如何自主工作并学习？ | [挽具工程](/zh/core-concepts/harness-engineering) |
@@ -33,7 +33,7 @@ flowchart TD
     D --> E["TRUST 5 质量"]
     E --> F["Constitution 系统"]
 
-    A -.- A1["理解三大支柱与\n整体架构"]
+    A -.- A1["理解三大核心与\n整体架构"]
     B -.- B1["设计智能体工作环境的\n范式"]
     C -.- C1["以文档定义需求的\nPlan 阶段"]
     D -.- D1["安全实现代码的\nRun 阶段"]

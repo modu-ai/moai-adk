@@ -42,5 +42,5 @@ flowchart TD
 | 9 | [FAQ](./faq) | Common issues during installation and execution, with solutions |
 
 {{< callout type="info" >}}
-**Next step**: Once installation is done, head to [Core Concepts](/en/core-concepts/) to learn the three pillars of v3.0 — Tokenomics · Agentic Loop Engineering · Agentic Harness — and MoAI-ADK's design philosophy including SPEC, DDD, and TRUST 5.
+**Next step**: Once installation is done, head to [Core Concepts](/en/core-concepts/) to learn the three core ideas behind v3.0 — Tokenomics · Agentic Loop Engineering · Agentic Harness — and MoAI-ADK's design philosophy including SPEC, DDD, and TRUST 5.
 {{< /callout >}}

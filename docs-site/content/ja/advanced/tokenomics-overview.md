@@ -14,7 +14,7 @@ MoAI-ADKの答えは3点です。
 
 1. **タスクごとに適切なモデルと推論深度を割り当てる** — 計画は深く、実装は安く、検証は独立して。
 2. **コンテキストをダイエットする** — 常時ロードされる指示を最小化し、プロンプトキャッシュ命中率を測定する。
-3. **予算をシステムが守る** — トークン使用を追跡し、しきい値超過前に優雅に停止する。
+3. **予算をシステムが守る** — トークン使用を追跡し、しきい値超過前に安全に停止する。
 
 ## 3本柱の物語
 
@@ -52,11 +52,11 @@ flowchart TD
 
 ### Layer C — 検証ダイエット (Verify-diet)
 
-{{< icon wrench >}} 検証コマンドの長文出力をディスクファイルにリダイレクトし、コンテキストにはexit codeとbounded tail(最大50行)のみ残します。このファイルリダイレクト契約(file-redirect contract)は検証証拠の完全性を維持しながらコンテキスト消費を削減します。詳細なメカニズムは[トークン予算管理とgraceful stop](/ja/advanced/token-budget/)ページを参照してください。
+{{< icon wrench >}} 検証コマンドの長文出力をディスクファイルにリダイレクトし、コンテキストにはexit codeとbounded tail(最大50行)のみ残します。このファイルリダイレクト契約(file-redirect contract)は検証証拠の完全性を維持しながらコンテキスト消費を削減します。詳細なメカニズムは[トークン予算管理と安全な中止](/ja/advanced/token-budget/)ページを参照してください。
 
 ### Layer D — 予算防御 (Budget defense)
 
-{{< icon warning >}} エージェントのトークン使用量がhard-limit(デフォルト90%)に達するとgraceful abortを実行します。進行状況をprogress.mdに保存し、ペースト可能なresumeメッセージ(paste-ready resume)を発行し、自動`/clear`は決して行いません。詳細な手順は[トークン予算管理とgraceful stop](/ja/advanced/token-budget/)ページを参照してください。
+{{< icon warning >}} エージェントのトークン使用量がhard-limit(デフォルト90%)に達すると安全な中止(graceful abort)を実行します。進行状況をprogress.mdに保存し、ペースト可能なresumeメッセージ(paste-ready resume)を発行し、自動`/clear`は決して行いません。詳細な手順は[トークン予算管理と安全な中止](/ja/advanced/token-budget/)ページを参照してください。
 
 ## モデルティアルーティング
 
@@ -75,12 +75,12 @@ GLM-5.2は1Mコンテキストの単一モデルで、入力$2 / 出力$8 (1Mト
 
 このページの記載内容のうち、実装状態を明確に区別します。
 
-{{< icon check ok >}} **実装完了 (配信中)** — 4層構造(A/B/C/D)全層、3層モデルポリシー(プロファイルマトリクスリゾルバ)、CGモード、検証ダイエットファイルリダイレクト契約、graceful abortメカニズム。
+{{< icon check ok >}} **実装完了 (配信中)** — 4層構造(A/B/C/D)全層、3層モデルポリシー(プロファイルマトリクスリゾルバ)、CGモード、検証ダイエットファイルリダイレクト契約、安全な中止メカニズム。
 
 {{< icon clock >}} **設計段階 (ロードマップ)** — GLMバックエンドeffortオーバーレイのwire有効性はライブGLMセッションのアウトバウンド観測が必要な実証課題です。プロファイルマトリクスページでこの区別を明示します。
 
 ## 次のステップ
 
-- [トークン予算管理とgraceful stop](/ja/advanced/token-budget/) — Layer Dの深掘り (モデルごとのしきい値、paste-ready resume構造)
+- [トークン予算管理と安全な中止](/ja/advanced/token-budget/) — Layer Dの深掘り (モデルごとのしきい値、paste-ready resume構造)
 - [3層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — ハーネスアーキテクチャの基礎
 - [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス

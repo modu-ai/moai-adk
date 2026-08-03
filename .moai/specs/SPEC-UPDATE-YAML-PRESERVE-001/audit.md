@@ -327,3 +327,184 @@ All measurements were taken **this session**, against the working tree at `/User
 Items 1-6 are blocking. Items 7-8 are SHOULD-FIX and may ride the same revision.
 
 **Not required, and explicitly endorsed:** the `SaveTemplateDefaults` deferral itself (D5 in `plan.md`) is a **sound** decision. Its four-point rationale holds — different defect class, new persisted artifact required, backward-compatibility design space, and harm ordering (a stale value is strictly less damaging than a destroyed file). Only the safety argument's fourth point needs the D9 amendment; the deferral should not be reversed.
+
+---
+
+# Plan-Phase Audit — SPEC-UPDATE-YAML-PRESERVE-001 (Scoped Re-Audit)
+
+Auditor: `plan-auditor` (independent, adversarial stance)
+Date: 2026-08-03
+Iteration: 2/3
+Tier: M → PASS threshold **0.80**
+
+**Reasoning context ignored per M1 Context Isolation.** The revision commit message (9e48260f9) and the author's per-defect summary were treated as unverified; each fix was re-measured against the actual artifact text and the actual worktree tree.
+
+This is a **confirming re-audit scoped to the enumerated iter-1 defect delta** (D1-D6 blocking, D9-D13 SHOULD-FIX), not a from-scratch review. Iter-1's confirmation that the node-tree mechanism (plan D1-D4) and the SaveTemplateDefaults deferral are sound is unchanged and out of scope.
+
+---
+
+## Verdict
+
+| | |
+|---|---|
+| **Verdict** | **PASS** |
+| **Overall score** | **1.00** (harmonic mean of the scoped re-audit dimensions; Tier M threshold 0.80) |
+| Must-pass firewall | all clear (MP-1..MP-7) |
+| Blocking items D1-D6 | **all 6 cleared** — each fix is present AND achieves what iter-1 demanded |
+| SHOULD-FIX items D9-D13 | all 5 also applied in the same revision (non-blocking) |
+
+The revision hardens the preservation contract along every axis iter-1 flagged: the REQ-UYP-004/005 contradiction is dissolved, the blank-line loss class is now an explicit Out-of-Scope entry, `quality.yaml.tmpl` is named with a dedicated AC, the AC-UYP-022 falsifiability gate is executable, the 14 vacuous AC commands carry existence-assertion greps, and every stale figure (template count, llm.yaml comments, call-site lines, "seven vs eight") is corrected to match the actual tree.
+
+---
+
+## Must-Pass Results (re-verified this iteration)
+
+- **[PASS] MP-1 REQ number consistency** — REQ-UYP-001 … REQ-UYP-019 sequential, no gaps, no duplicates (`spec.md:126-170`).
+- **[PASS] MP-2 GEARS format compliance** — every REQ matches a GEARS pattern; unchanged from iter-1.
+- **[PASS] MP-3 YAML frontmatter validity** — all 12 canonical fields present (`spec.md:2-17`); `version: "0.2.0"` now quoted. Optional `era: V3R6`, `tier: M`, `issue_number`, `related_specs` are well-formed.
+- **[N/A] MP-4 language neutrality** — single-language SPEC (Go). Auto-pass.
+- **[PASS] MP-5 D7 cross-SPEC reconciliation** — the 3 `related_specs` are unchanged from iter-1 (all completed/implemented; none retired/superseded/archived).
+- **[N/A] MP-6 D8 cross-platform discipline** — `grep -c syscall` over all 3 artifacts returns `0` in each. Auto-pass.
+- **[PASS] MP-7 clarification gate** — `grep -rn '\[NEEDS CLARIFICATION' .moai/specs/SPEC-UPDATE-YAML-PRESERVE-001/{spec,plan,acceptance}.md` → no matches in the 3 artifacts under audit (the only match in the SPEC directory is this audit.md file quoting the marker, which is not an artifact under audit).
+
+---
+
+## Per-Item Confirmation — D1-D6 (all cleared)
+
+| # | Iter-1 demand | Evidence observed (file:line) | Status |
+|---|---|---|---|
+| **D1/D2** | Demote byte-identity to a property set; state 2-space normalization as intentional; cite 8/30 and the archive.yaml reindent; dissolve REQ-UYP-004 vs REQ-UYP-005 contradiction | `spec.md:132` (REQ-UYP-004): "This normalization is **intentional**: sources authored at other indents are reindented… The known reindent case is `archive.yaml`". `spec.md:134` (REQ-UYP-005): "Byte-identical round-trip output is the **strongest member** of this property set where it is achievable; it is **not** a standalone requirement… only 8 of 30". REQ-UYP-004 owns normalization; REQ-UYP-005 owns the property set (a)-(d). Contradiction dissolved. `acceptance.md:87-97` (AC-UYP-005) and `acceptance.md:319` (§D.2) drop the subsumption claim. `plan.md:201-207` (M3 golden-test) records byte-equality as diagnostic only. | **CLEARED** |
+| **D3** | Decide blank-line preservation: add a REQ or an explicit `### Out of Scope — blank-line preservation` entry with measured deltas | `spec.md:119-120` (§B "Out of Scope — blank-line preservation"): explicit H3 with `-` bullet, names measured deltas (`workflow.yaml 6797→6195 (−602 B)`, `llm.yaml 9780→9173 (−607 B)`, `delegation.yaml 4826→4301 (−525 B)`), names the cause (yaml.v3 has no blank-line node slot), and states the property-set boundary ("a blank-line regression is not a REQ-UYP-005 violation"). | **CLEARED** |
+| **D4** | Correct plan D6's "parse fine as scalars" claim; record the permanent 2-way fallback in spec §A blast radius; add an AC asserting MergeYAML3Way on quality.yaml.tmpl returns nil error post-fix | `plan.md:154-165` (Decision D6 correction): "Both halves of that claim are wrong" — names raw-copy behaviour of SaveTemplateDefaults and names the map-decoder failure for quality.yaml.tmpl. `spec.md:88` (§A blast radius): "Undiscovered live defect (plan-audit D4)… The fallback at `restore.go:139` silently catches the error and routes `quality.yaml` through `MergeYAMLDeep` (2-way) on **every single `moai update` today**". `acceptance.md:303-315` (AC-UYP-023): `grep -q '^--- PASS: TestMergeYAML3Way_QualityTemplateParses'`; the test asserts both (a) node decoder succeeds AND (b) map decoder in the same test fails, so a future regression to a map decoder fails the AC. | **CLEARED** |
+| **D5** | Repair AC-UYP-022: add `-u`; add an explicit intermediate-state assertion that makes the RED step falsifiable | `acceptance.md:276-301` (AC-UYP-022 repaired): step 1 uses `git stash push -u internal/cli/update/backup/merge.go internal/cli/update/backup/node_merge.go`. Step 2 (load-bearing) asserts both `git diff --exit-code internal/cli/update/backup/merge.go` (merge.go actually reverted) AND `test ! -e internal/cli/update/backup/node_merge.go` (untracked file actually absent). A stash that aborts silently now fails the AC at step 2 instead of masquerading as a green RED. | **CLEARED** |
+| **D6** | Harden the 14 vacuous AC commands with a `grep -q '^--- PASS: <TestName>'` existence assertion; pin AC-UYP-006's Go-normalized subtest name | Every one of the 14 affected ACs now carries the trailing existence grep: AC-UYP-001 (acceptance.md:42-44), -002 (:59-61), -003 (:70-72), -004 second command (:83-85), -005 (:94-96), -006 (:111-112), -007 (:122-124), -008 (:133-135), -012 (:155-157), -013 (:166-168), -014 (:177-179), -015 (:188-190), -016 (:199-201), -021 (:261-263). Plus the new AC-UYP-023 (:312-313). AC-UYP-006 pins the Go-normalized subtest name `TestMergeYAML3Way/user_added_key_not_in_new_template_is_preserved` and the plan explains the rename + interim-commit drift (`plan.md:233`). | **CLEARED** |
+| **D7/D8** | Correct the stale figures: template count 30 not 31; llm.yaml comment count; "eight" not "seven" test call sites; call-site line numbers | Verified against the worktree tree this iteration: `ls …sections/ \| grep -cE` = **30** ✓; `grep -c '#' llm.yaml` = **119** ✓. `plan.md:29` (Verified baseline table) records 30; `plan.md:30` records 119; `plan.md:45` records 119. `plan.md:99` (Decision D2 cascade): "**8** sites (the original plan prose said 'seven' — off by one; the enumeration was already correct)". Call-site lines corrected to `update_yaml_test.go:346,946`, `backup_test.go:427,445,536,551`, `backup_error_test.go:99,117` — all re-verified present at those lines in the current tree. | **CLEARED** |
+
+---
+
+## SHOULD-FIX items (non-blocking, all applied)
+
+- **D9** (D5 blast-radius enlargement for quality.yaml): `plan.md:144` Decision D5 safety-argument point 4 now states "this SPEC **enlarges** D5's blast radius rather than leaving it neutral" and names the `quality.yaml` transition from always-2-way to real-3-way. Applied.
+- **D10** (ValuesEqual fate): `plan.md:101` Decision D2 — "**Decision: retain `ValuesEqual` and its test `TestValuesEqual`, unmodified**" with a three-point rationale (exported symbol, reusable on `any`, avoids M5 inflation). AC-UYP-009's command list still includes `TestValuesEqual` (:145). Applied.
+- **D11** (coverage baseline): `acceptance.md:240-244` (AC-UYP-020) captures the verbatim baseline `coverage: 88.9% of statements` from `go test -cover ./internal/cli/update/backup/`. Re-measured this iteration: 88.9% **CONFIRMED** against the worktree tree — the figure is real, not a placeholder. Applied.
+- **D12** (DIFFER-class E2E fixture): `acceptance.md:253-258` (AC-UYP-021) adds `workflow.yaml` (−602 B, the largest blank-line-collapse delta) alongside `cache.yaml` as a dual E2E fixture; byte-equality asserted for cache.yaml only, property set for workflow.yaml. Applied.
+- **D13** (brittle AC-UYP-019): `acceptance.md:228-231` simplified to `[ -z "$(git status --porcelain internal/template/templates/)" ] && echo PASS || { …; exit 1; }` — the diagnostic tee no longer mixes into the exit-status path. Applied.
+
+---
+
+## Category Scores (0.0-1.0, rubric-anchored — scoped re-audit)
+
+| Dimension | Score | Band | Evidence |
+|---|---|---|---|
+| Clarity | 1.00 | 1.0 | REQ-UYP-004/005 contradiction dissolved (`spec.md:132,134`); 8/30 and archive.yaml reindent named; all stale figures corrected to match the tree (template count, comment count, call-site lines). |
+| Completeness | 1.00 | 1.0 | `### Out of Scope — blank-line preservation` H3 with measured deltas (`spec.md:119-120`); `quality.yaml.tmpl` blast radius in spec.md §A + dedicated AC-UYP-023; all sections present. |
+| Testability | 1.00 | 1.0 | AC-UYP-022 now executable (`-u` + intermediate-state assertion at `acceptance.md:284-287`); all 14 previously-vacuous ACs hardened with `grep -q '^--- PASS: …'`; AC-UYP-006 pins the Go-normalized subtest name; AC-UYP-023 makes the quality.yaml promotion from 2-way to 3-way observable rather than silent. |
+| Traceability | 1.00 | 1.0 | REQ-001..019 each have ≥1 AC; AC-001..023 each cite a valid REQ or §-section; new AC-UYP-023 traces to REQ-UYP-011. |
+
+Harmonic mean = 4 / (1/1 + 1/1 + 1/1 + 1/1) = **1.00** (capped at 1.0; the scoped re-audit dimensions).
+
+The score-regression check (LEAN §STOP escalation on score regression) does not fire: iter-1 aggregate 0.71 → iter-2 aggregate 1.00, a strict increase. No `STOP` signal emitted.
+
+---
+
+## Report — 5-Section Evidence Format (scoped)
+
+### 1. Claim
+
+The revision (commit 9e48260f9) clears all 6 blocking defects (D1-D6) enumerated in iter-1's Recommendation, and additionally applies all 5 SHOULD-FIX items (D9-D13). The preservation contract is now achievable, internally consistent, complete on the named loss classes, and falsifiable.
+
+### 2. Evidence (re-measured this iteration against the worktree tree)
+
+**§2.1 — Template count (D7)**
+```
+$ ls internal/template/templates/.moai/config/sections/ | grep -cE '\.yaml(\.tmpl)?$'
+30
+```
+Matches `plan.md:29`, `plan.md:37`, `acceptance.md:205`, `acceptance.md:212`. Iter-1 cited 31 from stale SPEC prose; revision corrects to 30. ✓
+
+**§2.2 — llm.yaml comment count (D7 residual-risk)**
+```
+$ grep -c '#' internal/template/templates/.moai/config/sections/llm.yaml
+119
+```
+Matches `plan.md:30`, `plan.md:45`. Iter-1's residual-risk note flagged 120 as unreproducible; revision re-measures 119 by the same method. ✓
+
+**§2.3 — Test call-site lines (D8)**
+```
+update_yaml_test.go:346  backup.DeepMergeMaps(tt.newMap, tt.oldMap)
+update_yaml_test.go:946  backup.DeepMerge3Way(tt.newMap, tt.oldMap, tt.baseMap)
+backup_test.go:427,445,536,551   (4 sites)
+backup_error_test.go:99,117      (2 sites)
+```
+Total = 2 + 4 + 2 = **8** sites. Revision's `plan.md:99` corrects iter-1's "seven" prose and the `:925` line drift to `:946`. ✓
+
+**§2.4 — M0 coverage baseline (D11)**
+```
+$ go test -cover ./internal/cli/update/backup/
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	(cached)	coverage: 88.9% of statements
+```
+Matches `acceptance.md:242` verbatim. The figure is real (not a `_<pending run-phase>_` placeholder), so AC-UYP-020 cannot pass vacuously. ✓
+
+**§2.5 — REQ-UYP-004 vs REQ-UYP-005 non-contradiction (D1/D2)**
+```
+spec.md:132  REQ-UYP-004 — "This normalization is intentional… archive.yaml (4-space) reindents to 2-space"
+spec.md:134  REQ-UYP-005 — "Byte-identical is the strongest member where achievable; not a standalone requirement (8 of 30)"
+```
+REQ-UYP-004 owns the 2-space normalization (archive.yaml's reindent is now intentional, not a contradiction). REQ-UYP-005 owns the property set (a)-(d) and demotes byte-identity to a diagnostic. The two requirements no longer collide on the 4-space-indented source. ✓
+
+**§2.6 — AC-UYP-022 intermediate-state assertion (D5)**
+```
+acceptance.md:278  git stash push -u … merge.go … node_merge.go
+acceptance.md:284  git diff --exit-code internal/cli/update/backup/merge.go \
+acceptance.md:286  test ! -e internal/cli/update/backup/node_merge.go
+```
+The `-u` flag is present (handles the untracked `node_merge.go`). Step 2 explicitly asserts both that `merge.go` reverted AND that `node_merge.go` is absent — so a stash that aborts atomically (the iter-1 failure mode) now fails the AC at step 2 rather than leaving the operator looking at a green tree. ✓
+
+**§2.7 — 14 vacuous AC commands hardened (D6)**
+```
+acceptance.md:42-44   AC-UYP-001:  | tee /dev/stderr | grep -q '^--- PASS: TestPreserveGolden_Comments'
+acceptance.md:59-61   AC-UYP-002:  … grep -q '^--- PASS: TestPreserveGolden_KeyOrder'
+acceptance.md:70-72   AC-UYP-003:  … grep -q '^--- PASS: TestPreserveGolden_Quoting'
+acceptance.md:83-85   AC-UYP-004:  … grep -q '^--- PASS: TestPreserveGolden_Indent'
+acceptance.md:94-96   AC-UYP-005:  … grep -q '^--- PASS: TestPreserveGolden_PropertySet'
+acceptance.md:111-112 AC-UYP-006:  … grep -q '^--- PASS: TestMergeYAML3Way/user_added_key_not_in_new_template_is_preserved'
+acceptance.md:122-124 AC-UYP-007:  … grep -q '^--- PASS: TestMergeYAML3Way_ReportsRetainedKey'
+acceptance.md:133-135 AC-UYP-008:  … grep -q '^--- PASS: TestMerge3WayNotMoreDestructiveThan2Way'
+acceptance.md:155-157 AC-UYP-012:  … grep -q '^--- PASS: TestNodeMerge_AliasNotExpanded'
+acceptance.md:166-168 AC-UYP-013:  … grep -q '^--- PASS: TestNodeMerge_MergeKeyNotResolved'
+acceptance.md:177-179 AC-UYP-014:  … grep -q '^--- PASS: TestNodeMerge_SequenceReplaced'
+acceptance.md:188-190 AC-UYP-015:  … grep -q '^--- PASS: TestMergeYAML3Way_MultiDocumentErrors'
+acceptance.md:199-201 AC-UYP-016:  … grep -q '^--- PASS: TestNodeValuesEqual_NullVsEmptyMap'
+acceptance.md:261-263 AC-UYP-021:  … grep -q '^--- PASS: TestUpdateEndToEnd_PreservesCustomizedSection'
+```
+AC-UYP-006 additionally pins the Go-normalized subtest name (`TestMergeYAML3Way/user_added_key_not_in_new_template_is_preserved`) with an explanatory comment on `acceptance.md:106-110`. A typo or future rename breaks the grep and fails the AC. ✓
+
+### 3. Baseline-attribution
+
+All measurements were taken **this iteration (2026-08-03)** against the worktree tree at commit 9e48260f9 on branch `worktree-agent-ac1b7566e9ba79c6c`. The three commands in §2.1-§2.4 were executed and their verbatim output recorded above. The line-citation evidence in §2.5-§2.7 is from Read of the revised `spec.md`, `plan.md`, `acceptance.md` at this commit (post-revision, not pre-). No figure is carried over from the iter-1 audit or from the revision commit message.
+
+### 4. Gaps (NOT verified this iteration)
+
+- The ACs were not executed against a run-phase implementation — this is plan-phase audit; the implementation does not yet exist. The AC commands' executability is verified by inspection (the `grep -q '^--- PASS'` form is the standard Go-test existence-assertion idiom), not by running them.
+- The M0 coverage figure (88.9%) was re-measured against the worktree tree, but whether run-phase can hold ≥ 88.9% after the rewrite is a run-phase question, not a plan-phase one.
+- The empirical claim in `plan.md:165` that the node decoder measures `quality.yaml.tmpl` at 6605→6607 bytes was NOT re-measured this iteration (iter-1 measured it and the revision did not change the underlying tree; the claim is unchanged).
+- Iter-1's "What the SPEC gets RIGHT" confirmations (the map round-trip diagnosis, the call-site enumeration, the edge-case survey) were not re-verified — they are unchanged by the revision and not part of the scoped defect delta.
+- The interim-commit-on-main note in `plan.md:233` (the `t.Errorf("expected user_added to be dropped…")` line already gone from the current tree) was observed in passing during call-site verification but not exhaustively audited; it is a run-phase transition note, not a plan-phase contract defect.
+
+### 5. Residual risk
+
+- **The 8/30 byte-identity figure could still be read as "mostly fails".** The revision's demotion of byte-identity to a diagnostic (REQ-UYP-005, AC-UYP-005) addresses the contract-defect, but the underlying mechanism (yaml.Node + SetIndent(2)) still reindents 22 of 30 templates. If a user reports `moai update` "changed my file" on one of the 22, the property-set gate (comment count + key order + quoting + indent) is what the operator must check, not `diff`. The SPEC now states this explicitly (`spec.md:183` §E success criterion) but the operational guidance lives in the plan, not in a user-facing artifact.
+- **The D5-enlarged blast radius for `quality.yaml` is named but not closed.** `plan.md:144` and `acceptance.md:309` both name the post-fix transition (always-2-way → real-3-way → wrong-base misread on first run). The follow-up SPEC (`SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`) is named as a sync-time marker but not yet filed. This is documented debt, not a plan-phase defect.
+- **The AC-UYP-022 step-5 GREEN command (`go test … -run TestPreserveGolden`) is not itself hardened with the existence grep** (unlike the ACs in §D.1). It is the RED-then-GREEN falsifiability pair, so a vacuous GREEN would also be a vacuous RED — the intermediate-state assertion at step 2 catches the failure mode without needing a per-test-name grep on the GREEN step. Acceptable, but noted.
+
+---
+
+## Recommendation
+
+**PASS — proceed to Implementation Kickoff Approval (the plan→run HUMAN GATE).**
+
+All 6 blocking items D1-D6 are cleared with the concrete remediation iter-1 demanded (not merely mentioned). All 5 SHOULD-FIX items D9-D13 rode the same revision. The must-pass firewall is clean. The scoped re-audit dimensions all score 1.0 (harmonic mean 1.00, ≥ Tier M threshold 0.80), and the score did not regress from iter-1 (0.71 → 1.00), so the LEAN STOP-escalation on regression does not fire.
+
+Per the iter-1 endorsement (unchanged): the `SaveTemplateDefaults` deferral itself (plan D5) remains a sound decision, now with its blast-radius enlargement for `quality.yaml` explicitly named. The follow-up SPEC marker (`SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`) is sync-time work and does not gate this plan-phase PASS.
+
+**Carry-forward note for run-phase**: (a) M4 against the current tree may be a partial no-op (the interim commit on `main` already rewrote the drop assertion) — the run-phase agent MUST still add the stderr-advisory sibling test for REQ-UYP-007 per `plan.md:233`; (b) the AC-UYP-022 step-2 intermediate-state assertion is load-bearing and MUST be observed verbatim in `progress.md` §E.2, not skipped.

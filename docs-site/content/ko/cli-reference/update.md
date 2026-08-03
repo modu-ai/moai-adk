@@ -152,7 +152,7 @@ moai update --binary
 
 ### 특정 버전 설치 (`--version`)
 
-`moai update --version <tag>`는 특정 GitHub 릴리스 태그(stable, rc, 이전 버전)를 기본 업데이트와 동일한 체크섬 검증 다운로드 경로로 설치합니다. 한 플래그로 세 가지 용도를 모두 covering합니다: 검증된 stable 버전 고정, 테스트용 rc 전환, 회귀 후 이전 버전으로 롤백.
+`moai update --version <tag>`는 특정 GitHub 릴리스 태그(stable, rc, 이전 버전)를 기본 업데이트와 동일한 체크섬 검증 다운로드 경로로 설치합니다. 한 플래그로 세 가지 용도를 모두 처리합니다: 검증된 stable 버전 고정, 테스트용 rc 전환, 회귀 후 이전 버전으로 롤백.
 
 ```bash
 # stable 릴리스 고정

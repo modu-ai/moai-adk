@@ -629,18 +629,18 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		return fmt.Errorf("claude not found in PATH. Install Claude Code first")
 	}
 
-	// 3. Read profile preferences and sync to project config
+	// 3. Read profile preferences and sync to project config. The
+	// permissions.defaultMode sync to settings.local.json is deferred until the
+	// resume/continue mode is known (step 5b below): a session-resume launch
+	// must not rewrite a defaultMode the user set by hand.
 	prefs, _ := profile.ReadPreferences(profileName)
+	var settingsLocalPath string
 	if root, err := findProjectRoot(); err == nil {
 		moaiDir := filepath.Join(root, ".moai")
 		if info, err := os.Stat(moaiDir); err == nil && info.IsDir() {
 			_ = profile.SyncToProjectConfig(root, prefs)
 		}
-		// Sync permission mode preference to settings.local.json permissions.defaultMode
-		settingsLocalPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, prefs.PermissionMode); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
-		}
+		settingsLocalPath = filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
 	}
 
 	// 4. Read project settings.local.json for DO_CLAUDE_* flags (overrides profile)
@@ -694,6 +694,18 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 			} else {
 				passThrough = append(passThrough, arg)
 			}
+		}
+	}
+
+	// 5b. Sync the profile permission-mode preference to settings.local.json
+	// ONLY on a fresh-session launch. A resume (--continue / DO_CLAUDE_CONTINUE)
+	// launch reopens an existing session rather than applying new settings, so
+	// rewriting permissions.defaultMode there would clobber a value the user
+	// edited by hand. cont is fully resolved by now (settings DO_CLAUDE_CONTINUE
+	// plus the -c/--continue arg parsed in the loop above).
+	if !cont && settingsLocalPath != "" {
+		if err := syncPermissionModeToSettingsLocal(settingsLocalPath, prefs.PermissionMode); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to sync permission mode setting: %v\n", err)
 		}
 	}
 
