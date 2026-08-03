@@ -332,7 +332,7 @@ func agentFMSectionCount(t *testing.T, body string) int {
 // frontmatter), so it must NOT be treated as a manual override. Only `effort: max`
 // still marks a row CUSTOM.
 func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
-	// inherit → the inherit glyph (🩵), the default model badge — NOT the CUSTOM pill.
+	// inherit → the inherit cost color (⚪), the default model badge — NOT the CUSTOM pill.
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs"} {
 		b := agentTierBadge(name, v4manifest.ModelInherit, v4manifest.EffortXhigh)
 		if b.IsCustom {
@@ -341,8 +341,8 @@ func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
 		if !b.HasBadge {
 			t.Errorf("%s (model=inherit): expected a badge", name)
 		}
-		if want := v4manifest.ModelColor(v4manifest.ModelInherit); b.Glyph != want {
-			t.Errorf("%s (model=inherit): glyph = %q, want the inherit glyph %q", name, b.Glyph, want)
+		if want := v4manifest.ModelCellColor(v4manifest.ModelInherit, v4manifest.EffortXhigh); b.Glyph != want {
+			t.Errorf("%s (model=inherit): glyph = %q, want the inherit cost color %q", name, b.Glyph, want)
 		}
 	}
 
@@ -355,9 +355,9 @@ func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
 	}
 }
 
-// TestAgentTierBadgeGlyphConsistency verifies the badge is model-derived and
-// consistent: with the shipped `model: inherit` frontmatter, EVERY seeded core
-// agent renders the inherit glyph (🩵) — no mixed CUSTOM/glyph rows.
+// TestAgentTierBadgeGlyphConsistency verifies the badge is consistent: with the
+// shipped `model: inherit` frontmatter, EVERY seeded core agent renders the
+// inherit cost color (⚪) — no mixed CUSTOM/glyph rows.
 func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs", "manager-git"} {
@@ -368,8 +368,8 @@ func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	if strings.Contains(body, "agentfm-badge--custom") {
 		t.Error("a CUSTOM badge renders for shipped `model: inherit` agents")
 	}
-	want := v4manifest.ModelColor(v4manifest.ModelInherit)
+	want := v4manifest.ModelCellColor(v4manifest.ModelInherit, "")
 	if !strings.Contains(body, want) {
-		t.Errorf("inherit glyph %q missing from the render — all seeded agents share model=inherit", want)
+		t.Errorf("inherit cost color %q missing from the render — all seeded agents share model=inherit", want)
 	}
 }
