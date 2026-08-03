@@ -2,7 +2,7 @@
 id: SPEC-MX-SCANNER-DOCS-001
 title: "Document MX scanner advanced features (rotRisk, LSP fan-in, CGO complexity, scan automation)"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec
