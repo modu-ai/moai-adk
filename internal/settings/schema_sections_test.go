@@ -645,9 +645,12 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 // TestRemovedFieldsLoadWithoutError는 M4 다이어트로 제거된 필드 키가 포함된
 // 기존 yaml 설정이 오류 없이 로드됨을 검증한다 (backward compat — 제거된 키는
 // 조용히 무시되고 KEPT 키의 yaml 경로는 안정적이다). fixture(testdata/sections)
-// 각 파일은 제거된 키(ralph.loop.max_iterations, research.enabled,
-// quality.coverage_threshold, llm.performance_tier, git_strategy 전 profile
-// leaf 등)를 그대로 포함한다.
+// 각 파일은 제거된 키(research.enabled, quality.coverage_threshold,
+// llm.performance_tier, git_strategy 전 profile leaf 등)를 그대로 포함한다.
+// ralph.yaml의 23 inert leaf는 SPEC-RALPH-CONFIG-REDESIGN-001에서 testdata까지
+// 5-key로 축소했으므로 ralph 섹션 fixture는 더 이상 제거 키를 담지 않는다
+// (비-strict 로더가 레거시 사용자 파일의 잔여 키를 조용히 무시하는 동작은
+// internal/config/CLAUDE.md로 문서 보존).
 func TestRemovedFieldsLoadWithoutError(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
