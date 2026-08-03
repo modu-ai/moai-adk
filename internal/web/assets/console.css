@@ -721,6 +721,28 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .radio input:checked + .radio__box + span { color: var(--fg-1); font-weight: 600; }
 .radio input:focus-visible + .radio__box { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
+/* Vertical radio with right-side per-option description — opt-in via
+   .radio-group--stacked. Only report.format sets OptionDef.OptionDesc today
+   (the sole trigger for this layout; see schemaRadioRow / hasRadioOptionDesc).
+   Distinct from the default horizontal card-style radio-group: each option is
+   one row of [circle] [label] [muted description], with descriptions aligned
+   by a fixed label width. The default horizontal layout above is untouched. */
+.radio-group--stacked { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.radio--withdesc { display: flex; align-items: center; gap: var(--space-2); }
+.radio--withdesc .radio__box {
+  display: inline-flex; padding: 0; min-height: 0;
+  border: none; background: transparent;
+}
+.radio--withdesc .radio__box:hover { border: none; }
+.radio--withdesc .radio__label {
+  flex: 0 0 150px; font-size: 14px; font-weight: var(--fw-semibold);
+  color: var(--fg-1); letter-spacing: var(--tracking-body);
+}
+.radio--withdesc .radio__desc {
+  font-size: 12.5px; color: var(--fg-3); line-height: 1.4;
+  letter-spacing: var(--tracking-body); text-wrap: pretty;
+}
+
 /* ============================================================
    Actions
    ============================================================ */
@@ -867,6 +889,19 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   border: 1px solid var(--border-2); border-radius: var(--radius-md);
   background: var(--surface); overflow: clip;
 }
+/* Group header divider — a muted small-caps label that introduces each
+   catalog-class group (CORE / MANAGER, META / EVALUATOR, BUILDER, SPECIALIST).
+   Same token vocabulary as the section__head divider; the first grouphead in
+   the grid has no top border so the grid top edge stays clean. */
+.agentfm-grouphead {
+  padding: 7px var(--space-4);
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border-2);
+  font-size: 11px; font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase; color: var(--fg-3);
+}
+.agentfm-grid > .agentfm-grouphead:first-child { border-top: none; }
 .agentfm-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 200px) minmax(128px, 168px);

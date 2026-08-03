@@ -384,12 +384,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// SPEC-WEB-CONSOLE-011 M3 + G3-2: parse the sub-agent model/effort edits into
 	// the desired llm.agent_overrides state. Resolution is against the loaded
 	// llm.yaml (the read seam SSOT); a load failure degrades to the zero config
-	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다.
-	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
+	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다. 정렬은
+	// resolved model/effort 기반이므로 llm.yaml 을 먼저 로드해 넘긴다.
 	var llmCfg config.LLMConfig
 	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
 		llmCfg = loaded.LLM
 	}
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
 	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)
 
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge

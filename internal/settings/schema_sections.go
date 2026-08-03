@@ -336,12 +336,26 @@ var reportFormatValues = []string{"html+md", "md"}
 // reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 2-옵션
 // 닫힌 집합(html+md / md)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
 // (withRadio). report tab에서 제네릭 schemaFieldWidget(→ schemaRadioRow)로 렌더되며,
-// seam 경로(report.yaml)로 영속화된다. Description은 fieldDesc.report.format i18n
-// 키로 field-level 설명 문단을 방출한다.
+// seam 경로(report.yaml)로 영속화된다.
+//
+// report.format opts into the vertical-radio-with-right-desc layout: each
+// option carries a per-option description (OptionDef.OptionDesc) and the field-
+// level Description is cleared so the per-option descs are the sole explanation
+// (no redundant field-description paragraph below the option list).
 func reportFields() []FieldDef {
 	f := withRadio(seamField(SectionReport, "report", TypeRadio, "report", "format"),
 		"f.report.format.opt.", reportFormatValues, "", "")
-	f.Description = "fieldDesc.report.format"
+	// Attach per-option description keys — the ONLY opt-in for the vertical
+	// stacked radio layout (schemaRadioRow branches on OptionDesc presence).
+	// Underscored slug ("html_md") avoids a literal '+' in the dot-path i18n key.
+	for i, opt := range f.Options {
+		switch opt.Value {
+		case "html+md":
+			f.Options[i].OptionDesc = "f.report.format.opt.html_md.desc"
+		case "md":
+			f.Options[i].OptionDesc = "f.report.format.opt.md.desc"
+		}
+	}
 	return []FieldDef{f}
 }
 

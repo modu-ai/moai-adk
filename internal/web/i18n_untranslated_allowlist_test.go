@@ -178,16 +178,19 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonProperNoun,
 		Justification: "Anthropic Sonnet model name, 1M-context variant selector.",
 	},
-	// report.format config enum literals.
+	// report.format option labels — Markdown / HTML are proper-noun technology
+	// names universally untranslated in CJK technical writing; the label is the
+	// two proper nouns joined, identical across locales by intent (the underlying
+	// config value html+md / md is untouched — only the display label changed).
 	{
 		Key:           "f.report.format.opt.html+md",
-		Reason:        reasonTechnicalIdentifier,
-		Justification: "report.format configuration enum literal emitted by the HTML report skill.",
+		Reason:        reasonProperNoun,
+		Justification: "Markdown and HTML are proper-noun technology names; the joined label is identical across locales in technical writing (config value html+md is unchanged).",
 	},
 	{
 		Key:           "f.report.format.opt.md",
-		Reason:        reasonTechnicalIdentifier,
-		Justification: "report.format configuration enum literal.",
+		Reason:        reasonProperNoun,
+		Justification: "Markdown is a proper-noun technology name, identical across locales in technical writing (config value md is unchanged).",
 	},
 	// Anthropic model family names (v4 surface).
 	{

@@ -135,6 +135,12 @@ type PersistTarget struct {
 type OptionDef struct {
 	Value   string
 	I18nKey string
+	// OptionDesc is an OPTIONAL per-option description i18n key. Populated only
+	// by fields that opt into the vertical-radio-with-right-desc layout
+	// (report.format). Empty = render the default horizontal radio-group; the
+	// schemaRadioRow templ branches on its presence. Not consumed by select
+	// widgets. Adding a value here is the sole opt-in — no flag elsewhere.
+	OptionDesc string
 }
 
 // FieldDef는 정규 필드 한 개를 기술하는 데이터 레코드다. 동작이 아닌 데이터다 —
