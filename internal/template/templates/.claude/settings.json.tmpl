@@ -112,7 +112,8 @@
             "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop.sh"],
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           },
           {
             "command": "bash",
@@ -130,13 +131,15 @@
             "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-turn.sh"],
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           },
           {
             "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-commit.sh"],
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ if .HookOptIn.Enabled }},
           {
             "command": "bash",
