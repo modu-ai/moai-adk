@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-YAML-PRESERVE-001
 title: "moai update — preserve YAML comments, key order, scalar style, and user-added keys across config merge"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-31
 updated: 2026-08-03
 author: manager-spec

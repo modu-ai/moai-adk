@@ -89,34 +89,53 @@ func TestMergeYAML3Way_InvalidBaseData(t *testing.T) {
 }
 
 // TestDeepMerge3Way_BaseNotMap covers the branch where newV and oldV are both
-// maps but baseV is not (deploy.go:76-78). The code substitutes an empty map
-// for the non-map base and recurses.
+// maps but baseV is not. The node merge substitutes an empty base (mappingGet on
+// a non-mapping node returns no keys) and recurses, so new keys are taken.
+//
+// Converted to node-typed inputs per Decision D2.
 func TestDeepMerge3Way_BaseNotMap(t *testing.T) {
-	newMap := map[string]any{"nested": map[string]any{"a": 1}}
-	oldMap := map[string]any{"nested": map[string]any{"b": 2}}
-	baseMap := map[string]any{"nested": "not-a-map"}
+	newN := mustDecodeDoc(t, "nested:\n  a: 1\n")
+	oldN := mustDecodeDoc(t, "nested:\n  b: 2\n")
+	baseN := mustDecodeDoc(t, "nested: not-a-map\n")
 
-	result := DeepMerge3Way(newMap, oldMap, baseMap)
-	nested, ok := result["nested"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected nested map, got %T", result["nested"])
+	result, err := deepMerge3WayTo(newN, oldN, baseN, io.Discard)
+	if err != nil {
+		t.Fatalf("DeepMerge3Way: %v", err)
 	}
-	if nested["a"] != 1 {
-		t.Errorf("expected a=1 from newMap, got %v", nested["a"])
+	nested, ok := mappingGet(result, "nested")
+	if !ok {
+		t.Fatalf("expected nested map, got absent")
+	}
+	a, ok := mappingGet(nested, "a")
+	if !ok {
+		t.Fatalf("expected a from newMap, got absent")
+	}
+	var got any
+	if err := a.Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != 1 {
+		t.Errorf("expected a=1 from newMap, got %v", got)
 	}
 }
 
 // TestDeepMerge3Way_BaseNotExists covers the branch where a key exists in new
-// and old but not in base (deploy.go:82-85). The code preserves the old (user)
-// value since there's no base to compare against.
+// and old but not in base. The merge preserves the old (user) value since
+// there's no base to compare against.
+//
+// Converted to node-typed inputs per Decision D2.
 func TestDeepMerge3Way_BaseNotExists(t *testing.T) {
-	newMap := map[string]any{"key": "new-value"}
-	oldMap := map[string]any{"key": "old-value"}
-	baseMap := map[string]any{} // no "key" in base
+	newN := mustDecodeDoc(t, "key: new-value\n")
+	oldN := mustDecodeDoc(t, "key: old-value\n")
+	baseN := mustDecodeDoc(t, "{}\n") // empty base, no "key"
 
-	result := DeepMerge3Way(newMap, oldMap, baseMap)
-	if result["key"] != "old-value" {
-		t.Errorf("expected old-value preserved (no base), got %v", result["key"])
+	result, err := deepMerge3WayTo(newN, oldN, baseN, io.Discard)
+	if err != nil {
+		t.Fatalf("DeepMerge3Way: %v", err)
+	}
+	k, _ := mappingGet(result, "key")
+	if k.Value != "old-value" {
+		t.Errorf("expected old-value preserved (no base), got %s", k.Value)
 	}
 }
 
