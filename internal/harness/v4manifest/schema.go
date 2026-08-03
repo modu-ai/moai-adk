@@ -73,11 +73,12 @@ var validModels = map[string]bool{
 	ModelOpus:    true,
 }
 
-// modelColors maps each model tier to its render glyph, mirroring the LLM
-// profile matrix (llm.yaml profiles). The agentfm badge derives its color from
-// the agent's resolved model (the llm matrix SSOT) rather than the manual
-// name→tier table: opus (deep reasoning) → 🔴, sonnet → 🟠, haiku → 🔵,
-// inherit/unknown → 🩵 (light/default).
+// modelColors maps each model tier to its base render glyph (a model-tier
+// primitive). NOTE: the moai-web agentfm badge no longer uses this model-only
+// map — it renders ModelCellColor(model, effort), the docs cost-color matrix
+// (docs-site what-is-moai-adk.md: opus+high→🔴, opus+medium→🟠, opus+low→🔵,
+// sonnet→🩵, inherit/haiku→⚪). ModelColor stays as the model-tier fallback
+// primitive (tested; used when effort is not part of the display).
 var modelColors = map[string]string{
 	ModelOpus:    "🔴",
 	ModelSonnet:  "🟠",
@@ -94,6 +95,30 @@ func ModelColor(model string) string {
 		return g
 	}
 	return "🩵"
+}
+
+// ModelCellColor returns the docs cost-color matrix glyph for a (model, effort)
+// cell — source of truth is docs-site what-is-moai-adk.md ("비용 색상"):
+// opus+high/xhigh→🔴, opus+medium→🟠, opus+low→🔵, sonnet→🩵, inherit/haiku/
+// unknown→⚪. The agentfm badge renders this so its colors match the docs cost
+// legend. effort=max is handled by the caller (the agentfm "custom" badge)
+// before this is reached, so max falls to the model's default branch here.
+func ModelCellColor(model, effort string) string {
+	switch model {
+	case ModelOpus:
+		switch effort {
+		case EffortHigh, EffortXhigh:
+			return "🔴"
+		case EffortLow:
+			return "🔵"
+		default: // medium, empty, unknown — the default-profile column
+			return "🟠"
+		}
+	case ModelSonnet:
+		return "🩵"
+	default: // haiku, inherit, unknown — cheapest tier (docs: inherit → ⚪)
+		return "⚪"
+	}
 }
 
 // ModelColorRank returns a sort rank for a model tier (lower = more expensive =

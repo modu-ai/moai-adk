@@ -238,6 +238,30 @@ func TestModelColor_UnknownReturnsDefault(t *testing.T) {
 	}
 }
 
+// TestModelCellColor verifies the docs cost-color matrix (what-is-moai-adk.md
+// "비용 색상") the agentfm badge renders: opus+high→🔴, opus+medium→🟠,
+// opus+low→🔵, sonnet→🩵, inherit/haiku→⚪.
+func TestModelCellColor(t *testing.T) {
+	cases := []struct {
+		model, effort, glyph string
+	}{
+		{ModelOpus, EffortHigh, "🔴"},
+		{ModelOpus, EffortXhigh, "🔴"},
+		{ModelOpus, EffortMedium, "🟠"},
+		{ModelOpus, EffortLow, "🔵"},
+		{ModelSonnet, EffortLow, "🩵"},
+		{ModelSonnet, EffortHigh, "🩵"},
+		{ModelHaiku, EffortLow, "⚪"},
+		{ModelInherit, "", "⚪"},
+		{"", "", "⚪"},
+	}
+	for _, tc := range cases {
+		if got := ModelCellColor(tc.model, tc.effort); got != tc.glyph {
+			t.Errorf("ModelCellColor(%q, %q) = %q, want %q", tc.model, tc.effort, got, tc.glyph)
+		}
+	}
+}
+
 // TestModelColorRank verifies the model-derived sort rank used by the agentfm
 // row ordering: opus=0, sonnet=1, haiku=2, inherit/unknown=3.
 func TestModelColorRank(t *testing.T) {

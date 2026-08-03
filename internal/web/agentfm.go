@@ -109,18 +109,18 @@ func applyPerfTierEdits(projectRoot, perfTier string) error {
 // agentBadgeInfo carries the M5 model-badge display data for one agent row
 // (SPEC-WEBCONF-SIMPLIFY-001 M5, REQ-WC-006/007/008, design.md §E).
 type agentBadgeInfo struct {
-	Glyph      string // emoji glyph (🔴🟠🔵🩵) derived from the model, or "custom"
+	Glyph      string // docs cost-color glyph (🔴🟠🔵🩵⚪) from (model,effort), or "custom"
 	TooltipKey string // fieldDesc.agentfm.model.<model> / fieldDesc.agentfm.custom i18n key
 	HasBadge   bool   // false only when the row carries no usable model state
 	IsCustom   bool   // true when effort=max (AC-WC-018 neutral "custom" badge)
 }
 
 // agentTierBadge computes the display-only badge for an agent row. The badge
-// color is derived from the agent's resolved model (the llm.yaml profile-matrix
-// SSOT via agentResolvedModel) — NOT the manual name→tier table — so the badge
-// tracks the model the matrix actually assigns: opus → 🔴, sonnet → 🟠,
-// haiku → 🔵, inherit/unknown → 🩵. When the agent's current effort is the
-// override sentinel `max`, the badge is a neutral "custom" marker (AC-WC-018).
+// color is the docs cost-color matrix for the agent's (model, effort) cell
+// (ModelCellColor — what-is-moai-adk.md "비용 색상"): opus+high→🔴, opus+medium→
+// 🟠, opus+low→🔵, sonnet→🩵, inherit/haiku→⚪. When the agent's current effort
+// is the override sentinel `max`, the badge is a neutral "custom" marker
+// (AC-WC-018).
 //
 // The tooltip key reuses the existing model-selector i18n entries
 // (fieldDesc.agentfm.model.<model>). The name parameter is retained so call
@@ -131,7 +131,7 @@ func agentTierBadge(name, model, effort string) agentBadgeInfo {
 		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
 	}
 	return agentBadgeInfo{
-		Glyph:      v4manifest.ModelColor(model),
+		Glyph:      v4manifest.ModelCellColor(model, effort),
 		TooltipKey: "fieldDesc.agentfm.model." + model,
 		HasBadge:   true,
 	}
