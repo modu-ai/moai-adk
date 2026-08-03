@@ -95,6 +95,17 @@ const (
 	// forces it OFF. Any other value (including unset) falls through to the
 	// config flag. Env wins over config.
 	EnvSessionWorktree = "MOAI_SESSION_WORKTREE"
+
+	// EnvAutonomyTier is the MOAI_AUTONOMY_TIER mode token
+	// (SPEC-STOPCHAIN-TRIM-001 REQ-003). The SINGLE canonical source for the
+	// autonomy tier — an env-key (NOT a workflow.yaml key) because pure shell
+	// hooks (handle-stop-goal.sh, sync-phase-quality-gate.sh) MUST be able to
+	// read it via "$MOAI_AUTONOMY_TIER" without invoking the moai binary or
+	// parsing YAML. The Go side reads it via os.Getenv(EnvAutonomyTier); see
+	// AutonomyTier() in autonomy.go. Values: semi-auto | automatic |
+	// fully-autonomous (see defaults.go). Unset/empty/invalid → semi-auto
+	// (REQ-003 backward compat).
+	EnvAutonomyTier = "MOAI_AUTONOMY_TIER"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering
@@ -168,6 +179,15 @@ const (
 	// "xhigh" and "max" are supported on Opus 4.7+.
 	// When empty, the runtime default applies.
 	EnvClaudeCodeEffortLevel = "CLAUDE_CODE_EFFORT_LEVEL"
+
+	// EnvClaudeCodeStopHookBlockCap is the runtime consecutive-Stop-hook-block
+	// cap (default 8). It is the silent terminator that pre-empts the goal loop
+	// before MaxTurns fires (effective bound min(MaxTurns, cap) today).
+	// SPEC-INFINITE-GOAL-001 REQ-2: when a goal is armed at --max-turns 0
+	// (infinite), the launcher injects a raised value so the infinite loop
+	// actually persists. MoAI does not own this env (it is a Claude Code runtime
+	// env); the const centralizes the name per CLAUDE.local.md §14.
+	EnvClaudeCodeStopHookBlockCap = "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP"
 )
 
 // Anthropic API environment variables.

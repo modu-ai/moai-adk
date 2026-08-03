@@ -206,6 +206,12 @@ func InitDependencies() {
 	// additionalContext alongside the sessionStartHandler / autoUpdateHandler output.
 	deps.HookRegistry.Register(hook.NewHandoffInjectHandler(deps.Config))
 
+	// Register SessionStart(compact) re-inject handler as the 4th SessionStart
+	// handler (SPEC-INFINITE-GOAL-001 REQ-5). Filters source=="compact"
+	// internally; no-op otherwise. The registry accumulate-all merge keeps its
+	// additionalContext alongside the other SessionStart handlers' output.
+	deps.HookRegistry.Register(hook.NewSessionStartCompactHandler())
+
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
 	secPolicy := hook.DefaultSecurityPolicy()

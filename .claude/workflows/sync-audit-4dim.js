@@ -1,13 +1,16 @@
 // sync-audit-4dim.js — 4-dimension sync-phase quality verdict (Context → Judge → Verdict)
 //
 // VERDICT SCOPING (what this workflow IS and is NOT):
-//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. It is NOT the
-//   binding PASS/FAIL owner — the `sync-auditor` agent remains the authoritative verdict owner.
-//   Where a workflow phase references this script, it does so as an evidence-gathering step only;
-//   the aggregate score below is quoted as evidence and never substituted for the auditor verdict.
-//   Four dimensions are judged in parallel (Functionality / Security / Craft / Consistency); the
-//   verdict is the HARMONIC MEAN of the four scores, chosen deliberately so that ONE low dimension
-//   drags the whole verdict down (the arithmetic mean would let a strong dimension mask a weak one).
+//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. SPEC-AUDIT-SNAPSHOT-001
+//   (A3) PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
+//   four dims above their floor, not INCOMPLETE, and no contested finding, the orchestrator treats
+//   this workflow's harmonic-mean verdict as the binding sync-phase verdict and does NOT spawn the
+//   cold `sync-auditor` subagent. The cold auditor remains the FALLBACK verdict owner for the
+//   failure modes (INCOMPLETE / dim-0 / contested finding) — see sync.md FO-SYNC-1 "Binding
+//   promotion" and internal/runtime.FourDimVerdict.IsBinding() for the mechanical predicate. Four
+//   dimensions are judged in parallel (Functionality / Security / Craft / Consistency); the verdict
+//   is the HARMONIC MEAN of the four scores, chosen deliberately so that ONE low dimension drags
+//   the whole verdict down (the arithmetic mean would let a strong dimension mask a weak one).
 //
 // Gate scope (honored via args.tier): Tier M and Tier L SPECs route through this 4-dimension gate.
 //   Tier S SPECs do NOT — the caller (orchestrator) does not launch this workflow for a Tier S SPEC.

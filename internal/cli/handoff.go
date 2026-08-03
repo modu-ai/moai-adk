@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	goalpkg "github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 )
 
@@ -72,6 +73,23 @@ func newHandoffSaveCmd(projectDir *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// SPEC-INFINITE-GOAL-001 REQ-6: embed any live armed goal so the
+			// /clear handler re-arms it under the new session-id. Reads the SAME
+			// per-session goal file the arm verb wrote. Best-effort: a read error
+			// → no embed (the /clear handler then no-ops the rearm).
+			var embedded *handoff.EmbeddedGoal
+			embedSession := session
+			if embedSession == "" {
+				embedSession = statusSessionID("")
+			}
+			if g, loadErr := goalpkg.LoadGoal(pd, embedSession); loadErr == nil && g != nil && g.Status == goalpkg.StatusArmed {
+				embedded = &handoff.EmbeddedGoal{
+					Condition:   g.Goal,
+					MaxTurns:    g.Ceiling.MaxTurns,
+					MaxDuration: g.Ceiling.MaxDuration,
+					CostCap:     g.Ceiling.CostCap,
+				}
+			}
 			rec := &handoff.PendingRecord{
 				SchemaVersion:        handoff.PendingSchemaVersion,
 				SpecID:               spec,
@@ -83,7 +101,8 @@ func newHandoffSaveCmd(projectDir *string) *cobra.Command {
 					Ultracode:  ultracode,
 					Goal:       goal,
 				},
-				Body: b,
+				EmbeddedGoal: embedded,
+				Body:         b,
 			}
 			path, err := saveHandoff(pd, rec)
 			if err != nil {

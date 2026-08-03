@@ -247,6 +247,15 @@ type StatusData struct {
 	// exceeds_200k_tokens). true → render Layer 1 ⚠️ long marker; pure
 	// visual signal, no handoff semantics (REQ-SSE-003 / REQ-SSE-004).
 	ExceedsLongTokens bool
+
+	// GoalArmed is true when an armed goal exists for this session
+	// (.moai/state/goal/<session-id>.json with Status=="armed"). While a goal is
+	// armed, the /clear directive markers are SUPPRESSED so auto-compact handles
+	// context pressure instead of forcing a /clear (SPEC-INFINITE-GOAL-001
+	// REQ-3). The stage classification may still compute (informational); only
+	// the directive text is omitted. Default false → markers shown (backward
+	// compat). Populated by the builder from the goal state file.
+	GoalArmed bool
 }
 
 // WorkspaceData mirrors the subset of stdin workspace.* fields that the

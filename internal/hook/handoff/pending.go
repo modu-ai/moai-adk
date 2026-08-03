@@ -28,17 +28,41 @@ type Directives struct {
 	Goal       string `json:"goal"`
 }
 
+// EmbeddedGoal carries a live armed goal's verbatim condition + arm-time Ceiling
+// so the SessionStart /clear handler can re-arm it under the NEW session-id
+// (SPEC-INFINITE-GOAL-001 REQ-6, Option A session-id keying). The Ceiling fields
+// mirror goal.Ceiling without importing internal/goal (keeps the handoff package
+// decoupled). nil when no goal was armed at save time → no rearm on /clear.
+type EmbeddedGoal struct {
+	Condition   string `json:"condition"`
+	MaxTurns    int    `json:"max_turns"`
+	MaxDuration int    `json:"max_duration,omitempty"`
+	CostCap     int    `json:"cost_cap,omitempty"`
+}
+
+// IsUnbounded reports whether the embedded goal is an infinite arm (MaxTurns==0)
+// with NO real bound (neither MaxDuration nor CostCap). Used by the D8 defense-
+// in-depth re-validation: an unbounded embedded record is rejected at rearm so a
+// corrupt pending.json cannot re-open the unbounded hole.
+func (e *EmbeddedGoal) IsUnbounded() bool {
+	return e != nil && e.MaxTurns == 0 && e.MaxDuration <= 0 && e.CostCap <= 0
+}
+
 // PendingRecord is the JSON schema of handoff/pending.json (design.md §B.1).
 // REQ-AUTORESUME-006 mandates at least schema_version, body, directives,
 // conversation_language, and saved_at.
 type PendingRecord struct {
-	SchemaVersion        int        `json:"schema_version"`
-	SpecID               string     `json:"spec_id,omitempty"`
-	Phase                string     `json:"phase,omitempty"`
-	SavedAt              time.Time  `json:"saved_at"`
-	SavedBySession       string     `json:"saved_by_session,omitempty"`
-	ConversationLanguage string     `json:"conversation_language,omitempty"`
-	Directives           Directives `json:"directives"`
+	SchemaVersion        int            `json:"schema_version"`
+	SpecID               string         `json:"spec_id,omitempty"`
+	Phase                string         `json:"phase,omitempty"`
+	SavedAt              time.Time      `json:"saved_at"`
+	SavedBySession       string         `json:"saved_by_session,omitempty"`
+	ConversationLanguage string         `json:"conversation_language,omitempty"`
+	Directives           Directives     `json:"directives"`
+	// EmbeddedGoal, when non-nil, carries a live armed goal for /clear re-arm
+	// (SPEC-INFINITE-GOAL-001 REQ-6). Populated by `moai handoff save` when a
+	// goal is armed for the saving session.
+	EmbeddedGoal *EmbeddedGoal `json:"embedded_goal,omitempty"`
 	// Body is the verbatim paste-ready resume (6-block, cut-line markers included).
 	Body string `json:"body"`
 }

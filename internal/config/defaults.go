@@ -91,6 +91,23 @@ const (
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
+	// MOAI_AUTONOMY_TIER 3-value enum (SPEC-STOPCHAIN-TRIM-001 REQ-003 / §3.1).
+	// The canonical values for the autonomy-tier mode token. Shell hooks read
+	// "$MOAI_AUTONOMY_TIER" verbatim and string-compare against these literals;
+	// the Go reader (AutonomyTier() in autonomy.go) normalizes case + whitespace
+	// and falls back to AutonomyTierSemiAuto on unset/empty/invalid (backward
+	// compat). The mode-aware hooks branch on these values:
+	//   - semi-auto        : everything ON (today's behavior — the default)
+	//   - automatic        : commit gate OFF, sync-gate build-only-block,
+	//                        lifecycle hooks still active
+	//   - fully-autonomous : commit gate OFF, sync-gate advisory-only,
+	//                        lifecycle hooks dormant (observe-only)
+	// The deny/ask denylist is tier-INVARIANT (REQ-007) — no value here weakens
+	// a destructive-pattern deny.
+	AutonomyTierSemiAuto        = "semi-auto"
+	AutonomyTierAutomatic       = "automatic"
+	AutonomyTierFullyAutonomous = "fully-autonomous"
+
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
 	// GLM model tiers

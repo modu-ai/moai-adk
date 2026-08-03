@@ -461,7 +461,7 @@ Header translation table:
 Rules:
 - [HARD] Verdict labels (`PASS`, `PASS-WITH-DEBT`, `FAIL`) preserved verbatim — they are protocol tokens, not natural-language labels
 - [HARD] MP-1/2/3/4 row shows MUST-PASS criteria status only; skip auto-pass items
-- [HARD] Skip-eligible verdicts (score ≥ 0.90 per `spec-workflow.md` skip policy) add `⏭️ skip-eligible` annotation on the verdict line
+- [HARD] Skip-eligible verdicts (score ≥ the SPEC's per-tier PASS threshold per `spec-workflow.md` skip policy: S 0.75 / M 0.80 / L 0.85) add `⏭️ skip-eligible` annotation on the verdict line
 - [HARD] Defect IDs (`D1`, `D2`, ...) and severity tokens (`SHOULD-FIX`, `MINOR`, `BLOCKING`) preserved verbatim
 
 ### Discovery Report [HARD]

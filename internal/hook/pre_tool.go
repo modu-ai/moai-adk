@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"golang.org/x/text/unicode/norm"
@@ -428,7 +429,22 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 
 		// Quality gate for git commit commands (REQ-GATE-001).
 		// Executes before security pattern checks so the gate cannot be bypassed.
-		if quality.IsGitCommit(command) {
+		//
+		// @MX:WARN: [AUTO] tier-aware commit gate — K-6 deny-before-tier ordering invariant
+		// @MX:REASON: [AUTO] SPEC-STOPCHAIN-TRIM-001 REQ-005 + REQ-007; the destructive-pattern denylist (checkBashCommand below) runs UNCONDITIONALLY after this block regardless of tier. Editing this branch to widen the tier predicate OR moving checkBashCommand after a tier-early-return would let an unattended fully-autonomous session bypass a deny — the load-bearing safety invariant of the autonomy tier.
+		//
+		// SPEC-STOPCHAIN-TRIM-001 REQ-005 (A11): the synchronous vet+lint+test
+		// commit gate is tier-aware. At MOAI_AUTONOMY_TIER ∈ {automatic,
+		// fully-autonomous} the gate is OFF — the commit proceeds without the
+		// verification tax (the user approved unattended operation at
+		// Implementation Kickoff). At semi-auto (or unset) the gate retains its
+		// full behavior. K-6 / AP-1: the destructive-pattern denylist
+		// (checkBashCommand below) runs UNCONDITIONALLY after this block
+		// regardless of tier — the tier branch relaxes ONLY this verification
+		// gate, never a deny. config.AutonomyTier() fails safe to semi-auto on
+		// unset/empty/invalid (REQ-003 backward compat), so a session that does
+		// not opt in keeps the gate ON.
+		if quality.IsGitCommit(command) && !config.IsAutonomyTierCommitGateOff(config.AutonomyTier()) {
 			gate := quality.NewQualityGate(h.loadGateConfig())
 			passed, output := gate.Run(ctx)
 			if !passed {

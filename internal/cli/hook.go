@@ -141,6 +141,21 @@ func init() {
 	}
 	hookCmd.AddCommand(specStatusCmd)
 
+	// Add "session-start-compact" subcommand (SPEC-INFINITE-GOAL-001 REQ-5).
+	// Isolated-invocation surface for the SessionStart(compact) re-inject handler.
+	// Production firing rides on the deps.go registration via the existing
+	// handle-session-start.sh → moai hook session-start chain (the handler
+	// filters source=="compact" internally); this subcommand + its wrapper expose
+	// a dedicated manual/debug path.
+	sessionStartCompactCmd := &cobra.Command{
+		Use:          "session-start-compact",
+		Short:        "Re-inject goal + SPEC context after auto-compact",
+		Long:         "SessionStart(compact) re-inject: reads the armed goal + active SPEC progress.md tail and emits (goal condition, SPEC-id, last-verified mechanical state, single next action) to stdout. No-op when no goal is armed.",
+		SilenceUsage: true,
+		RunE:         runSessionStartCompact,
+	}
+	hookCmd.AddCommand(sessionStartCompactCmd)
+
 	// Add the in-session security guardian subcommands (SPEC-SEC-GUARDIAN-001).
 	// Three thin RunE wrappers forward stdin/stdout to the compiled Go handlers
 	// in internal/hook/security. Each is advisory-first + fail-open; none blocks
@@ -447,6 +462,37 @@ func runSpecStatus(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Always exit 0 (non-blocking)
+	return nil
+}
+
+// runSessionStartCompact is the SPEC-INFINITE-GOAL-001 REQ-5 isolated-invocation
+// runner. It reads the SessionStart stdin JSON, constructs the compact re-inject
+// handler, and writes its output. Fail-open: any error logs to stderr and exits 0.
+func runSessionStartCompact(cmd *cobra.Command, _ []string) error {
+	if deps == nil || deps.HookProtocol == nil {
+		return fmt.Errorf("hook system not initialized")
+	}
+	input, err := deps.HookProtocol.ReadInput(os.Stdin)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "session-start-compact: invalid stdin JSON (%v); emitting default output\n", err)
+		return nil
+	}
+	if input.HookEventName == "" {
+		input.HookEventName = string(hook.EventSessionStart)
+	}
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	defer cancel()
+	handler := hook.NewSessionStartCompactHandler()
+	output, err := handler.Handle(ctx, input)
+	if err != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "session-start-compact: error:", err)
+		return nil
+	}
+	if output != nil && output.HookSpecificOutput != nil && output.HookSpecificOutput.AdditionalContext != "" {
+		// Emit the re-inject text to stdout (plain text, not JSON) for the
+		// isolated-invocation surface.
+		_, _ = fmt.Fprint(cmd.OutOrStdout(), output.HookSpecificOutput.AdditionalContext)
+	}
 	return nil
 }
 

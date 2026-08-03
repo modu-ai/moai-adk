@@ -16,7 +16,8 @@
 //	of the human gate.
 //
 //	Check B (score-independence): the body states Implementation Kickoff Approval
-//	is emitted regardless of plan-auditor score (incl. >= 0.90 skip-eligible). A
+//	is emitted regardless of plan-auditor score (incl. the per-tier skip-eligible
+//	case S 0.75 / M 0.80 / L 0.85 per SPEC-AUDIT-SNAPSHOT-001 A2). A
 //	doctrine cross-reference token is intentionally NOT required — §19.1 /
 //	REQ-ATR-015 are maintainer-internal identifiers (CLAUDE.local.md section /
 //	internal REQ) whose presence in this distributed skill body would breach the
@@ -121,8 +122,8 @@ func TestImplementationKickoffApprovalPreservedBeforeGoal(t *testing.T) {
 
 	// --- Check B: score-independence statement + doctrine cross-reference ---
 	// Score-independence: the body must state Implementation Kickoff Approval is
-	// emitted regardless of the plan-auditor score (including the >= 0.90
-	// skip-eligible case).
+	// emitted regardless of the plan-auditor score (including the per-tier
+	// skip-eligible case — S 0.75 / M 0.80 / L 0.85 per SPEC-AUDIT-SNAPSHOT-001 A2).
 	hasScoreIndependence := strings.Contains(body, "regardless of") &&
 		strings.Contains(body, "plan-auditor")
 	if !hasScoreIndependence {
@@ -134,7 +135,7 @@ func TestImplementationKickoffApprovalPreservedBeforeGoal(t *testing.T) {
 	}
 	if !hasScoreIndependence {
 		t.Errorf("IMPLEMENTATION_KICKOFF_APPROVAL_PRESERVATION_VIOLATION: run skill body %s lacks a score-independence "+
-			"statement (Implementation Kickoff Approval emitted regardless of plan-auditor score, incl. >= 0.90 "+
+			"statement (Implementation Kickoff Approval emitted regardless of plan-auditor score, incl. per-tier "+
 			"skip-eligible)", runSkillRelPath)
 	}
 

@@ -266,11 +266,17 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 		bar := renderUsageBar("CW:", pct, width, r.noColor)
-		switch handoffGuideStage(data) {
-		case handoffStageHard:
-			bar += " (🛑/clear!)"
-		case handoffStageSoft:
-			bar += " (⚠️/clear)"
+		// SPEC-INFINITE-GOAL-001 REQ-3: when a goal is armed, suppress the /clear
+		// directive markers (the stage still computes for informational use; only
+		// the directive text is omitted). Auto-compact handles context pressure
+		// instead of forcing a /clear. Unarmed = unchanged (backward compat).
+		if !data.GoalArmed {
+			switch handoffGuideStage(data) {
+			case handoffStageHard:
+				bar += " (🛑/clear!)"
+			case handoffStageSoft:
+				bar += " (⚠️/clear)"
+			}
 		}
 		segs = append(segs, bar)
 	}
