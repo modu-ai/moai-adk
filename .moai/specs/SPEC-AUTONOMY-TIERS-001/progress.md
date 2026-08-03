@@ -91,4 +91,38 @@ m1_to_mN_commit_strategy: one commit per milestone, explicit pathspec (no git ad
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-04
+sync_commit_sha: "pending-backfill"   # self-referential; a commit cannot know its own SHA — backfilled in a follow-up commit (D3 pattern, same as SPEC-INFINITE-GOAL-001 / SPEC-STOPCHAIN-TRIM-001)
+sync_status: complete
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed"
+  plan.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  acceptance.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  progress.md: "n/a (no YAML frontmatter — markdown-header convention)"
+changelog_entry_position: "[Unreleased] / ### Added (SPEC-AUTONOMY-TIERS-001 entry, placed after the SPEC-MX-ASSOCIATION-001 entry)"
+frontmatter_status_transitions_note: "Only spec.md carries YAML frontmatter (Tier M artifact contract). The in-progress → implemented → completed terminal transition rides the single sync commit per spec-frontmatter-schema.md § Status Transition Ownership Matrix."
+mx_tag_additions:
+  - "n/a — sync-phase is docs/frontmatter-only; @MX tag additions belong to run-phase (none added at sync)"
+canary_compliance_check:
+  go_build: "exit 0 (go build ./... — verified at run-phase M9; sync-phase is docs/frontmatter-only, no code touched)"
+  spec_lint: "exit 0, ✓ No findings (moai spec lint .moai/specs/SPEC-AUTONOMY-TIERS-001/spec.md)"
+  ac_pass_count: 7
+  ac_fail_count: 0
+```
+
+### Sync-phase close summary
+
+3-phase close (plan→run→sync), 7/7 AC PASS + M9/M10 end-to-end wirings (init applies the tier bundle; web console toggle reachable from the main page). Run-phase shipped M1–M10 on `plan/SPEC-AUTONOMY-TIERS-001` (per-milestone commits `c5c7b1a99` / `524bcae91` / `e749deea0` / `a1532f27b` / `d01392adf` / `11d2337a3` / `7c70f874a` / `3ab536a48` / `a713a6894` / M10). The autonomy 3-mode system — `semi-auto` default / `automatic` / `fully-autonomous` — is reachable via `moai init --autonomy-tier=<tier>`, the interactive wizard page, and the `moai web` console toggle; the tier→permission-bundle renderer reuses existing toolpolicy codegen (USER-scope defaultMode + PROJECT-scope deny/ask); the sandbox-proof gate carries two paths (env marker + CLI flag) and downgrades fully-autonomous to automatic without proof / under the `disableBypassPermissionsMode` kill-switch; deny/ask rules bind even under bypass; `semi-auto`/unset is byte-identical to today's template (zero behavior delta, REQ-007); fully-autonomous is opt-in / local-only (REQ-006). The `status: in-progress → implemented → completed` terminal transition rides THIS sync commit (no separate Mx chore commit); `updated:` refreshed to 2026-08-04 on the sole YAML-frontmatter-bearing artifact (`spec.md`).
+
+### Sync-phase Gaps (explicitly NOT verified this sync)
+
+- **`sync_commit_sha` self-referential placeholder** — populated as `pending-backfill` in this commit (a commit cannot know its own SHA before it lands). Will be backfilled in a follow-up commit per the D3 self-referential-hazard workaround pattern (same as SPEC-INFINITE-GOAL-001, SPEC-STOPCHAIN-TRIM-001, and other recent sync commits).
+- **Full `go test ./...` re-run at sync phase** — not executed. Sync-phase is docs/frontmatter-only (no code touched); run-phase M9 already verified 7/7 ACs PASS with attributed evidence, and `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` + `golangci-lint` on changed packages were green at run-phase. The sync-phase quality gate (`sync-phase-quality-gate.sh` Stop hook) runs vet/build at turn-end on this commit.
+- **docs-site autonomy-tier user guide** — no dedicated init/autonomy-tier/settings page exists in `docs-site/content/` today; the existing `autonomy` string occurrences are generic (the concept), not descriptions of the new 3-mode selector, so no page becomes inaccurate. Authoring a new 4-locale autonomy-tier user guide is a separate docs effort and is FLAGGED for a follow-up docs SPEC (not landed in this sync per scope discipline — this sync adds only a concise README ×4 mention).
+
+### Sync-phase Residual-risk (user-visible, documented in CHANGELOG)
+
+- **New opt-in surface, zero default delta** — `semi-auto` (the default) and unset produce byte-identical settings to today's template, so users who do not opt in pay no behavior change (REQ-007 / AC-007). The new surfaces (flag, wizard page, web toggle) are purely additive selection paths.
+- **`fully-autonomous` downgraded to `automatic` without sandbox proof** — selecting `fully-autonomous` without a `MOAI_SANDBOX_PROOF` env marker or `--sandbox-proof` flag does NOT grant `bypassPermissions`; it silently downgrades to `automatic` and logs an advisory. Users who expected the dangerous tier get the safer one. The web selector is stricter still — it disables `fully-autonomous` entirely without proof. Documented in the CHANGELOG entry.
+- **`disableBypassPermissionsMode` kill-switch trumps proof** — even WITH sandbox proof, an enterprise `disableBypassPermissionsMode: true` config rejects `fully-autonomous` in every surface and downgrades an existing bypass session to `automatic`-equivalent. This is the Claude Code documented enterprise kill-switch wired into the tier system.
