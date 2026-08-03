@@ -177,6 +177,31 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 }
 
+// applyAutonomyTierFromWizard applies the interactive autonomy-tier wizard
+// page selection to opts (SPEC-AUTONOMY-TIERS-001 REQ-001 / AC-001), honouring
+// flag-over-wizard precedence (the --autonomy-tier flag wins when explicitly
+// supplied, mirroring applyWizardPage3ToOpts). The two gates that bind
+// fully-autonomous — sandbox proof + manager kill-switch — are applied via the
+// EXISTING config.EffectiveTierWithGates core (AC-002 / AC-005), so the gating
+// logic is REUSED, not duplicated. An empty wizard selection leaves
+// opts.AutonomyTier empty (semi-auto downstream — AC-007 zero behavior delta).
+func applyAutonomyTierFromWizard(flagChanged bool, flagValue string, result *wizard.WizardResult, opts *project.InitOptions) {
+	if flagChanged && flagValue != "" {
+		opts.AutonomyTier = flagValue
+		return
+	}
+	if result.AutonomyTier == "" {
+		return
+	}
+	_, proofOK := config.SandboxProofKind()
+	effective, _ := config.EffectiveTierWithGates(
+		result.AutonomyTier,
+		proofOK,
+		config.IsBypassDisabled(),
+	)
+	opts.AutonomyTier = effective
+}
+
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
 // the flag is not set or an error occurs.
 func getBoolFlagWithDefault(cmd *cobra.Command, name string, defaultVal bool) bool {
@@ -572,6 +597,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
 		// answers always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
+		// SPEC-AUTONOMY-TIERS-001 (AC-001): apply the interactive autonomy-tier
+		// page selection (flag-over-wizard precedence + gating reuse).
+		applyAutonomyTierFromWizard(
+			cmd.Flags().Changed("autonomy-tier"),
+			getStringFlag(cmd, "autonomy-tier"),
+			result,
+			&opts,
+		)
 	}
 
 	// Default git provider to "github" for backward compatibility
