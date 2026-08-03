@@ -45,11 +45,73 @@ plan_auditor_verdict: pending
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+### AC matrix (11/11 PASS, attributed evidence)
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-GHF-001 | PASS | `go test -run TestRenderDashboard_DOMParseShowsGoalFailedCondAndSections ./internal/goal/` | `ok github.com/modu-ai/moai-adk/internal/goal` — DOM parse via `golang.org/x/net/html` asserts goal text + failed-cond Cmd/Exit/Tail + Turn/Ceiling + 5 verdict section headings verbatim |
+| AC-GHF-002 | PASS | `go test -run TestRenderDashboard_XSSPayloadInert ./internal/goal/` | DOM parse of `<script>` payload in every untrusted field → `len(scriptNodes) == 0` |
+| AC-GHF-003 | PASS | `go test -run TestClearGoalRemovesBothJSONAndHTML ./internal/goal/` | ClearGoal removes both `<session>.json` AND `<session>.html`; idempotent second call nil |
+| AC-GHF-004 | PASS | `go test -run TestOrphanPruneMovesHTMLSibling ./internal/goal/` | PruneOrphans moves `.html` alongside `.json` to consumed/; best-effort variant (json-only) green |
+| AC-GHF-005 | PASS | `go test -run TestRenderPlanHTML_DOMShowsAllFields ./internal/report/planhtml/` | DOM parse shows goal + all 8 contract field labels + verdict score 0.85 + milestones M1/M2/M3 |
+| AC-GHF-006 | PASS | skill-layer inspection of spec-assembly.md Step 2.3.3a | Emission step lands AFTER plan-auditor PASS, BEFORE Phase 12; `[HARD]` clause: gate stays MANDATORY + score-independent; report is additive prose context, NOT a gate substitution (AP-4) |
+| AC-GHF-007 | PASS | `go test -run TestRenderDashboardReArm ./internal/goal/` | Three fixture states: embedded_goal indicator + post-/clear re-armed view + D8 unbounded-rejection banner all render via DOM parse |
+| AC-GHF-008 | PASS | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/goal.go \| grep -v _test.go \| grep -v '^[^:]*:[0-9]*:[[:space:]]*//'` | exit 1 (zero non-comment matches); Go guard test `TestGoalRenderCmd_NoAskUserQuestion` enforces comment-line exclusion |
+| AC-GHF-009 | PASS | `go test -run TestRenderPlanHTML_Determinism ./internal/report/planhtml/` | Two `RenderPlanHTML` runs over the same fixture → byte-identical output |
+| AC-GHF-010 | PASS | `go test -run TestRunGoalRender_NoGoalExitsNonZero ./internal/cli/` | No armed goal → non-zero exit + stderr names session id + NO `.html` written |
+| AC-GHF-011 | PASS | `go test -run TestRenderDashboard_NilVerdictNoPanic ./internal/goal/` | `RenderDashboard(g, nil)` no panic; goal metadata + "no verdict yet" placeholder; 5 section names absent |
+
+### Cross-platform build (AC-E2)
+
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (no syscall use; stdlib html/template + CLI only)
+
+### Lint (AC-E5)
+
+- `golangci-lint run --timeout=2m ./internal/goal/... ./internal/report/... ./internal/cli/...` → 0 issues
+
+### Coverage (AC-E3)
+
+- `internal/goal/` → 78.1% (dashboard.go + new lifecycle code well-covered; package baseline includes large pre-existing evaluate.go)
+- `internal/report/planhtml/` → 87.2% (exceeds 85% target)
+
+### Race (AC-E3 sub)
+
+- `go test -race ./internal/goal/... ./internal/report/...` → ok (no goroutines/channels in new code)
+
+### Milestone commits (M1–M6)
+
+- M1 `feat(SPEC-GOAL-HTML-FLOW-001): M1 dashboard renderer substrate + escaping` (transitions `status: draft → in-progress`)
+- M2 `feat(SPEC-GOAL-HTML-FLOW-001): M2 goal render verb + .html sibling lifecycle`
+- M3 `feat(SPEC-GOAL-HTML-FLOW-001): M3 plan-HTML renderer + 8-field derivation`
+- M4 `feat(SPEC-GOAL-HTML-FLOW-001): M4 plan-HTML emission step (Kickoff gate enriched, not replaced)`
+- M5 `feat(SPEC-GOAL-HTML-FLOW-001): M5 re-arm UI (render-only, consumes landed state)`
+- M6 this commit (verification + §E.2/§E.3 population)
+
+### M3 design decision (plan.md constraint 6a)
+
+- **plan-HTML renderer location**: `internal/report/planhtml/renderer.go` (NEW package) — chosen over extending `internal/goal/dashboard.go` because the plan-HTML renderer parses plan-auditor markdown + derives an 8-field contract from SPEC artifacts, which is a DISTINCT concern from the goal `Verdict` renderer. Cohesion favors the separate package.
+- **design-report citation** (plan.md §H recommendation): NOT committed in this run (the report at `.moai/reports/moai-autonomy-workflow-redesign-20260803.html` is gitignored; the §3.2 contract is already inlined verbatim into spec.md §A, so traceability holds without committing the binary). Judgment call deferred — no functional impact.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```yaml
+run_complete_at: 2026-08-04
+run_commit_sha: "pending-backfill-m6"
+run_status: audit-ready
+ac_pass_count: 11
+ac_fail_count: 0
+preserve_list_post_run_count: 6  # the 6 PRESERVE-list files (plan.md §A.4) untouched
+l44_pre_commit_fetch: n/a        # Route B branch push; pre-push fetch discipline applied
+l44_post_push_fetch: pending     # to be observed after git push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  goos_linux_amd64: pass
+  goos_windows_amd64: pass
+  goos_darwin_arm64: pass         # dev host
+total_run_phase_files: 8          # dashboard.go(+test), html_sibling_test.go, state.go, prune.go, goal.go, goal_render_test.go, renderer.go(+test), plan.html.mustache
+m1_to_mN_commit_strategy: per-milestone conventional commits with 🗿 MoAI trailer
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
