@@ -269,9 +269,16 @@ func seamSectionFields() []FieldDef {
 		// 노출은 오해를 유발한다 (spec.md F3).
 		s(SectionHarness, "harness", TypeInt, "learning", "log_retention_days"),
 
-		// ralph — M4 다이어트: 런타임 reader가 있는 2개만 잔류
-		// (post_tool.go:431/444, engine.go:239). 나머지 17개(enabled/ast_grep/
-		// loop/lsp)는 문서화 전용이고 Go runtime이 binding하지 않는다.
+		// ralph — the 23 inert leaves (enabled/ast_grep/loop/lsp/hooks) were
+		// removed from ralph.yaml in SPEC-RALPH-CONFIG-REDESIGN-001 so the file
+		// is an honest 5-key contract. All 5 RalphConfig fields are now
+		// runtime-live (post_tool.go reads LintAsInstruction/WarnAsInstruction;
+		// M2 wires cfg.Ralph into the engine so MaxIterations/AutoConverge/
+		// HumanReview reach Decide() and the loop controller). The web console
+		// intentionally surfaces only the 2 instruction-injection knobs — the
+		// 3 engine-decision knobs are advanced tuning edited via ralph.yaml
+		// directly, not exposed as console-editable rows (a deliberate UX
+		// choice, not an oversight; SPEC §E scopes schema to row deletion).
 		s(SectionRalph, "ralph", TypeBool, "ralph", "lint_as_instruction"),
 		s(SectionRalph, "ralph", TypeBool, "ralph", "warn_as_instruction"),
 

@@ -149,10 +149,6 @@ const (
 
 	DefaultStateDir = ".moai/state"
 
-	// DefaultStaleSeconds is the threshold (in seconds) at which a session checkpoint is considered stale.
-	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
-	DefaultStaleSeconds = 3600
-
 	// DefaultTraceRetentionDays is the age threshold (in days) past which
 	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
 	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
@@ -622,11 +618,12 @@ func NewDefaultStateConfig() StateConfig {
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
-// SPEC-V3R2-RT-004 REQ-022: default stale_seconds = 3600 (1 hour).
+//
+// The StaleSeconds default was removed in SPEC-RALPH-CONFIG-REDESIGN-001 M3
+// (dead producer-side pipeline, zero runtime consumers). The constructor is
+// retained because NewDefaultConfig wires Config.Session via it.
 func NewDefaultSessionConfig() SessionConfig {
-	return SessionConfig{
-		StaleSeconds: DefaultStaleSeconds,
-	}
+	return SessionConfig{}
 }
 
 // NewDefaultGitConventionConfig returns a GitConventionConfig with default values.

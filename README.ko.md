@@ -415,6 +415,22 @@ Claude 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 GLM 모델에 매�
 
 그렇다. `moai init`이 프로젝트 상태를 감지해 방법론을 정한다 — 커버리지 10% 미만의 기존 코드에는 DDD(특성화 테스트로 동작을 고정한 뒤 점진 개선), 신규/충분히 테스트된 코드에는 TDD가 붙는다.
 
+### Q: `moai mx query` 출력에서 `"rotRisk": "no-trigger"`는 무슨 뜻인가요?
+
+짝이 되는 `@MX:UPGRADE` 보조 줄이 없는 `@MX:DEBT` 태그를 표시한다 — 끝 조건이 없는 작업 단순화라서 조용히 부패한다. 부패 게이트는 `@MX:UPGRADE`의 부재다. `@MX:CEILING`의 부재는 품질 메모일 뿐 부패 게이트가 아니다. `@MX:UPGRADE`를 동반한 `@MX:DEBT`는 빈 `rotRisk`를 보고한다.
+
+### Q: 스캐너가 `"lsp"` 대신 `fan_in_method: "textual"`을 보고하는 이유는?
+
+스캐너는 언어 서버의 `textDocument/references`를 우선하지만, 비엄격 모드(기본값)에서는 LSP를 쓸 수 없을 때 조용히 텍스트 grep으로 폴백한다. 결과의 `fan_in_method` 필드가 어느 엔진이 카운트를 만들었는지 드러낸다. `MOAI_MX_QUERY_STRICT=1`을 설정하면 폴백 대신 `LSPRequiredError`를 올린다 — 우아한 저하보다 정확도가 중요한 CI에서 쓸모 있다.
+
+### Q: 내 언어의 복잡도 메트릭이 없는 이유는?
+
+복잡도는 CGO가 필요한 tree-sitter로 잰다. non-CGO 빌드는 모든 언어에 `Supported: false`를 반환하는 단단한 스텁이다 — 폴백 휴리스틱은 없다. CGO 빌드에서도 스캐폴드된 언어, 1 MiB를 넘는 파일, 파싱 에러, 쿼리 컴파일 에러는 `Supported: false`를 낸다. 이 값은 조용한 건너뜀이지 에러가 아니다.
+
+### Q: MoAI는 언제 MX 스캔을 자동으로 돌리나요?
+
+다섯 지점이다: 명시적 `moai mx scan` CLI; SessionStart의 지연 콜드스타트 스캔(타임박스, 페일오픈); PostToolUse 검증(사이드카 인덱스를 읽되 다시 짓지 않음); SessionEnd 배치 검증; 그리고 `/moai sync` 게이트(P1/P2 발견이 막고, `--skip-mx`로 빠져나간다). 참고로 `mxIndexScanTimeoutDefault`(콜드스타트 스캔 상한)과 `DefaultSessionStartDriftTimeout`(드리프트 스캔 상한)은 서로 다른 두 개의 2초 상수다 — 값이 같은 건 우연이지, 같은 게이트가 아니다.
+
 ---
 
 ## 커뮤니티와 문서

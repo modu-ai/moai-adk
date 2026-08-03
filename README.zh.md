@@ -421,6 +421,22 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 
 适用。`moai init` 检测项目状态并选择方法论 — 对覆盖率 <10% 的现有代码使用 DDD（特性化测试固定行为后渐进改进），对新/充分测试的代码使用 TDD。
 
+### Q: `moai mx query` 输出里的 `"rotRisk": "no-trigger"` 是什么意思？
+
+它标记的是一个没有配对 `@MX:UPGRADE` 子行的 `@MX:DEBT` 标签 —— 一种没有终止条件的工作简化，会悄悄腐化。腐化闸门是缺失 `@MX:UPGRADE`；缺失 `@MX:CEILING` 只是质量备注，不是腐化闸门。带有 `@MX:UPGRADE` 的 `@MX:DEBT` 报告空的 `rotRisk`。
+
+### Q: 扫描器为什么报告 `fan_in_method: "textual"` 而不是 `"lsp"`？
+
+扫描器优先使用语言服务器的 `textDocument/references`，但在非严格模式（默认）下 LSP 不可用时会静默回退到文本 grep。结果的 `fan_in_method` 字段标明了产生计数的引擎。设置 `MOAI_MX_QUERY_STRICT=1` 会改为抛出 `LSPRequiredError` —— 在精度优于优雅降级的 CI 中有用。
+
+### Q: 我的语言为什么没有复杂度指标？
+
+复杂度通过 tree-sitter 测量，需要 CGO。non-CGO 构建对每种语言都返回 `Supported: false` 的硬桩 —— 没有回退启发式。在 CGO 构建上，脚手架语言、超过 1 MiB 的文件、解析错误、查询编译错误也会返回 `Supported: false`。这个值是静默跳过，绝不是错误。
+
+### Q: MoAI 什么时候自动跑 MX 扫描？
+
+五个时机：显式的 `moai mx scan` CLI；SessionStart 的延迟冷启动扫描（有时间盒、失败即放过）；PostToolUse 校验（读侧车索引但不重建）；SessionEnd 批量校验；以及 `/moai sync` 闸门（P1/P2 会阻塞，`--skip-mx` 可绕过）。注意 `mxIndexScanTimeoutDefault`（冷启动扫描上限）和 `DefaultSessionStartDriftTimeout`（漂移扫描上限）是两个不同的 2 秒常量 —— 值相同是巧合，并非同一个闸门。
+
 ---
 
 ## 社区与文档

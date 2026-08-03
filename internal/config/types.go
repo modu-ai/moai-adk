@@ -564,11 +564,12 @@ type StateConfig struct {
 }
 
 // SessionConfig holds session state management configuration.
-// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS setting.
+//
+// The former StaleSeconds field (fed by the ralph.yaml stale_seconds key) was
+// removed in SPEC-RALPH-CONFIG-REDESIGN-001 M3: it had zero runtime consumers
+// (only a producer-side injection pipeline). The struct is retained because
+// Config.Session references it; new session-level fields may be added here.
 type SessionConfig struct {
-	// StaleSeconds is the threshold (in seconds) at which a checkpoint is considered stale.
-	// Default: 3600 (1 hour). Configured via the stale_seconds key in ralph.yaml.
-	StaleSeconds int `yaml:"stale_seconds"`
 }
 
 // LSPQualityGates represents LSP quality gate configuration.
@@ -1266,11 +1267,8 @@ type gateFileWrapper struct {
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.
-// stale_seconds lives under the ralph: key in ralph.yaml and is injected into Config.Session.StaleSeconds.
-// SPEC-V3R2-RT-004 REQ-022: source of the STALE_SECONDS setting.
 type ralphFileWrapper struct {
 	Ralph struct {
-		RalphConfig  `yaml:",inline"`
-		StaleSeconds int `yaml:"stale_seconds"` // → Config.Session.StaleSeconds
+		RalphConfig `yaml:",inline"`
 	} `yaml:"ralph"`
 }

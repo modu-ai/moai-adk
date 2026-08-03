@@ -93,6 +93,8 @@ P1·P2 파일만 꼼꼼히 읽어 함수 시그니처와 호출 패턴을 살피
 
 파일마다 Edit를 한 번씩만 써서 그 파일의 태그를 몰아서 넣습니다. 이미 있는 @MX 태그는 `--force`를 주지 않는 한 그대로 둡니다. 넣을 태그가 5개 미만이면 오케스트레이터가 에이전트를 띄우지 않고 직접 편집하고, 5개 이상이면 배치 편집 에이전트에 맡깁니다.
 
+> 위 다이어그램은 `/moai mx` 명령 자체의 3-Pass 실행 흐름입니다. 스캐너는 이 외에도 SessionStart 콜드스타트, PostToolUse 검증, SessionEnd 일괄 검증, sync 게이트 등 다섯 시점에 걸쳐 자동 실행됩니다. 각 시점의 역할과 두 개의 2초 상한(`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`)은 [MX 스캐너 내부 구조 - 스캔 자동화 시점](/ko/advanced/mx-scanner-internals#스캔-자동화-시점)에서 다룹니다.
+
 ## /moai sync·run과의 통합
 
 - **`/moai sync`**: sync 단계에서 MX 검증이 알아서 돌아갑니다. 마지막 sync 이후 바뀐 파일을 훑어 빠진 @MX 태그를 확인하고, `--skip-mx` 플래그가 없으면 태그를 채워 넣은 뒤 sync 보고서에 태그 변경 내역을 함께 싣습니다.
