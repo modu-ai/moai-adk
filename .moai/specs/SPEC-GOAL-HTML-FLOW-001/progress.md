@@ -115,7 +115,30 @@ m1_to_mN_commit_strategy: per-milestone conventional commits with 🗿 MoAI trai
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_complete_at: 2026-08-04
+sync_commit_sha: "pending-backfill-sync"
+sync_status: audit-ready
+sync_phase_close: "3-phase close (plan→run→sync) — completed transition rides this sync commit"
+changelog_entry_added: true   # CHANGELOG.md [Unreleased] → ### Added
+readme_4_locale_sync: true     # README.md / README.ko.md / README.ja.md / README.zh.md — `render` verb added to `moai goal` row
+spec_md_frontmatter_transition: "in-progress → implemented → completed (single sync commit)"
+spec_md_body_touched: false    # frontmatter status + updated only
+plan_acceptance_body_touched: false   # forbidden ownership crossing respected
+spec_lint_result: "0 errors, 1 warning (StatusGitConsistency — resolved by this sync commit's in-progress→completed transition)"
+b12_changelog_self_test:
+  pre_emission_grep_count: 0       # grep -c 'SPEC-GOAL-HTML-FLOW-001' CHANGELOG.md == 0 before emission (no duplicate)
+  ac_count_acceptance_md: 11       # distinct AC-GHF-* identifiers in acceptance.md
+  ac_count_changelog_entry: 11     # CHANGELOG entry references the same 11 ACs (AC-GHF-001..011)
+  file_paths_verified: true        # ls confirmed: internal/goal/dashboard.go, internal/cli/goal.go, internal/report/planhtml/renderer.go
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close chain in-progress→implemented→completed rides this single sync commit)"
+  plan_md: "n/a (no YAML frontmatter)"
+  acceptance_md: "n/a (no YAML frontmatter)"
+canary_compliance_check:
+  spec_lint_clean: true             # 0 errors on spec.md
+  status_git_consistency: resolved  # the pre-sync warning (in-progress vs git-implied implemented) is resolved by this commit's completed transition
+```
 
 sync_commit_sha: "pending-backfill-sync"
 
@@ -146,4 +169,13 @@ _<pending run-phase>_
 
 ## §I Token Accounting
 
-_<pending sync-close>_
+```yaml
+# Sync-close per-SPEC token spend measurement (best-effort, per progress.md §I convention).
+# Attribution confidence: LOW — this sync-phase was executed inside a worktree branch off
+# the already-merged run-PR squash (d1fcf09b0); the token figures are self-reported by the
+# sync agent (manager-docs) and NOT measured by a mechanical token-accounting mechanism.
+tokens_spent_estimate: "~25K (sync-phase scope only: CHANGELOG + 4×README + spec.md frontmatter + progress.md §E.4/§I)"
+attribution_confidence: "low (self-reported; no mechanical meter — the token-accounting mechanism is documentation-only at this layer)"
+phase: sync
+spec_id: SPEC-GOAL-HTML-FLOW-001
+```
