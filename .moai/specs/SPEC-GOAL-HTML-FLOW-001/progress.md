@@ -117,7 +117,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits with 🗿 MoAI trai
 
 ```yaml
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "535a88710"
 sync_status: audit-ready
 sync_phase_close: "3-phase close (plan→run→sync) — completed transition rides this sync commit"
 changelog_entry_added: true   # CHANGELOG.md [Unreleased] → ### Added
@@ -139,8 +139,6 @@ canary_compliance_check:
   spec_lint_clean: true             # 0 errors on spec.md
   status_git_consistency: resolved  # the pre-sync warning (in-progress vs git-implied implemented) is resolved by this commit's completed transition
 ```
-
-sync_commit_sha: "pending-backfill-sync"
 
 ## §F Phase 4 Mode Selection
 

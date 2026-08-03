@@ -58,7 +58,7 @@ AC-011 (arm-time fail-closed) + AC-005 (wall-clock run-time bound) + AC-006 (sta
 
 ```yaml
 run_complete_at: "2026-08-04"
-run_commit_sha: "pending-backfill-M8"   # self-referential; backfilled post-merge
+run_commit_sha: "adc867545"   # backfilled post-merge (PR #1317 squash)
 run_status: "audit-ready"
 ac_pass_count: 11
 ac_fail_count: 0
@@ -97,7 +97,7 @@ spec_lint_clean: true   # moai spec lint (§6 MP-3 tags comma-quoted-string) —
 
 ```yaml
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill"   # self-referential; a commit cannot know its own SHA — backfilled in a follow-up commit (D3 pattern)
+sync_commit_sha: "80643b61e"   # backfilled post-merge (PR #1320 squash)
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress → implemented → completed"
