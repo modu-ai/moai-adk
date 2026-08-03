@@ -12,7 +12,7 @@
 # lives in gate.yaml. The former ralph.lsp.* / ralph.ast_grep.* / ralph.loop.* /
 # ralph.hooks.* / ralph.enabled blocks were inert (the non-strict loader silently
 # ignored them) and have been removed so this file is an honest contract between
-# user intent and engine behavior (SPEC-RALPH-CONFIG-REDESIGN-001).
+# user intent and engine behavior.
 
 ralph:
   # Maximum number of feedback loop iterations. Compiled default: 5.
