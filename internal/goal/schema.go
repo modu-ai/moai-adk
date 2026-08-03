@@ -51,6 +51,11 @@ type Ceiling struct {
 type ProgressEntry struct {
 	Turn int    `json:"turn"`
 	Note string `json:"note"`
+	// Fingerprint carries the per-turn mechanical-condition fingerprint
+	// (SPEC-INFINITE-GOAL-001 REQ-4 strengthened stagnation guard). Empty for
+	// legacy/ceiling/satisfied entries; the stagnation guard falls back to Note
+	// comparison when Fingerprint is empty (backward compat with pre-M4 entries).
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // Status is the lifecycle state of a goal.
