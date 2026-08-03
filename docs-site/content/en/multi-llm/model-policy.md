@@ -26,7 +26,7 @@ sits on the Opus effort ladder, not which model class it gets.
 | **medium** (default) | `--model-policy medium` | 9 of 11 | 2 of 11 | Balance of quality and cost; the knee of the cost/score curve |
 | **low** | `--model-policy low` | 7 of 11 | 4 of 11 | Lowest cost per task; agentic rows drop to Opus `low` |
 
-> **Name axis**: The `profile` field in `llm.yaml`, the legacy
+> **Name mapping**: The `profile` field in `llm.yaml`, the legacy
 > `performance_tier` alias, and the CLI flag `--model-policy` all use the same
 > three values `high`/`medium`/`low` and map 1:1 (no separate translation). The
 > default is `medium`. The former top-tier name `max` is still **read** as an
@@ -97,7 +97,7 @@ To ensure the agent that authored a plan never audits it, `plan-auditor` and
 `sync-auditor` keep assignments independent of `manager-spec` — bias prevention
 is a structural property of the catalog, not of the cell values.
 
-## v3.0 extension: the Tier×Phase declaration axis
+## v3.0 extension: the Tier×Phase declaration matrix
 
 v3.0 adds a **work phase and SPEC size (Tier)** axis on top of per-agent
 assignment. `internal/config/model_routing.go` declaratively manages the

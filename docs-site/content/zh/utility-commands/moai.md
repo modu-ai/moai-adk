@@ -46,7 +46,7 @@ draft: false
 # 配合分支
 > /moai "功能描述" --branch
 
-# 启用回路模式
+# 启用循环模式
 > /moai "功能描述" --loop
 
 # 恢复既有 SPEC
@@ -77,7 +77,7 @@ draft: false
 
 1. 生成 SPEC
 2. DDD 实现
-3. **自动执行回路**(解决 LSP 错误、测试失败、覆盖率不足)
+3. **自动执行循环**(解决 LSP 错误、测试失败、覆盖率不足)
 4. 文档同步
 5. 创建 PR
 
@@ -141,7 +141,7 @@ flowchart TD
     M -->|否| L
     M -->|是| N{"--loop?"}
 
-    N -->|是| O["执行自动回路"]
+    N -->|是| O["执行自动循环"]
     O --> P["解决所有问题"]
     N -->|否| P
 
@@ -188,7 +188,7 @@ flowchart TD
 - Given-When-Then 验收标准
 - 以 conversation_language 编写的内容
 
-### Phase 2: DDD/TDD 实现回路
+### Phase 2: DDD/TDD 实现循环
 
 **manager-develop** 子智能体基于 SPEC 执行实现:
 
@@ -201,7 +201,7 @@ flowchart TD
 - `development_mode: ddd` → 使用 DDD 循环(改进既有代码)
 - `development_mode: tdd` → 使用 TDD 循环(开发新功能,默认值)
 
-**回路行为(--loop 或 loop.enabled 为 true 时):**
+**循环行为(--loop 或 loop.enabled 为 true 时):**
 
 ```
 问题存在 AND 迭代 < 最大值:
@@ -209,7 +209,7 @@ flowchart TD
   2. 将修复委派给 manager-develop
   3. 验证修复结果
   4. 确认是否满足完成条件
-  5. 检测到完成语句时结束回路
+  5. 检测到完成语句时结束循环
 ```
 
 ### Phase 3: 文档同步
@@ -297,15 +297,15 @@ flowchart TD
   状态: PASS
 ```
 
-**第 5 步: 自动回路 (--loop)**
+**第 5 步: 自动循环 (--loop)**
 
 ```
-[回路开始 - 迭代 1/100]
+[循环开始 - 迭代 1/100]
   诊断: 发现 2 个类型错误
   修复: 委派给 manager-develop 子智能体
   验证: 所有错误已解决
 
-[回路结束 - 1 次迭代]
+[循环结束 - 1 次迭代]
   满足完成条件!
 ```
 
@@ -360,5 +360,5 @@ flowchart TD
 - [/moai plan](/workflow-commands/moai-plan) - SPEC 生成详解
 - [/moai run](/workflow-commands/moai-run) - DDD 实现详解
 - [/moai sync](/workflow-commands/moai-sync) - 文档同步详解
-- [/moai loop](/utility-commands/moai-loop) - 迭代修复回路详解
+- [/moai loop](/utility-commands/moai-loop) - 迭代修复循环详解
 - [/moai fix](/utility-commands/moai-fix) - 一次性自动修复详解

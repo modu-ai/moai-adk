@@ -1,16 +1,16 @@
 ---
-title: 토큰 예산 관리와 우아한 중단
+title: 토큰 예산 관리와 안전한 중단
 weight: 2
 draft: false
 ---
 
-토크노믹스 4-층 구조의 D층인 예산 가드(Budget defense)를 자세히 다룹니다. 에이전트가 컨텍스트 윈도우 한계에 다다랐을 때 세션을 그냥 끊는 대신 진행 상태를 남겨 다음 세션이 이어받게 하는 것이 우아한 중단(graceful abort)입니다. 이 페이지는 그 메커니즘을 설명합니다.
+토크노믹스 4-층 구조의 D층인 예산 가드(Budget defense)를 자세히 다룹니다. 에이전트가 컨텍스트 윈도우 한계에 다다랐을 때 세션을 그냥 끊는 대신 진행 상태를 남겨 다음 세션이 이어받게 하는 것이 안전한 중단(graceful abort)입니다. 이 페이지는 그 메커니즘을 설명합니다.
 
 ## 예산 가드가 필요한 이유
 
 Anthropic SSE 스트림은 컨텍스트 윈도우 천장에 가까워지면 `stream_idle_partial` 상태로 간헐적인 스톨을 일으킵니다. 간헐적이긴 해도 임계값을 넘어서면 충분히 예측할 수 있는 현상입니다. 스톨이 나면 에이전트 호출이 스트림 도중에 실패해 진행 상태를 잃을 수 있습니다.
 
-예산 가드는 이 문제를 미리 막습니다. 컨텍스트 사용량이 임계에 닿기 전에 시스템이 먼저 우아한 중단을 수행하므로, 세션은 아무것도 잃지 않고 다음 단계로 넘어갑니다.
+예산 가드는 이 문제를 미리 막습니다. 컨텍스트 사용량이 임계에 닿기 전에 시스템이 먼저 안전한 중단을 수행하므로, 세션은 아무것도 잃지 않고 다음 단계로 넘어갑니다.
 
 ## 모델별 컨텍스트 임계치
 
@@ -24,7 +24,7 @@ Anthropic SSE 스트림은 컨텍스트 윈도우 천장에 가까워지면 `str
 | Sonnet / Opus 표준 (200K) | 200,000 토큰 | 90% | ~180,000 토큰 |
 | Haiku (200K) | 200,000 토큰 | 90% | ~180,000 토큰 |
 
-GLM-5.2(`moai glm` / `moai cg` GLM 패널)는 1M 컨텍스트 모델이므로 50% 임계로 운영합니다. Claude Code가 보고하는 `context_window_size`는 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)이라, GLM 세션에서 원시 telemetry가 ~180K로 나와도 MoAI가 1M로 바로잡습니다. 믿을 값은 statusline의 CW% 게이지입니다.
+GLM-5.2(`moai glm` / `moai cg` GLM 패널)는 1M 컨텍스트 모델이므로 50% 임계로 운영합니다. Claude Code가 보고하는 `context_window_size`는 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)이라, GLM 세션에서 원시 telemetry가 ~180K로 나와도 MoAI가 1M로 바로잡습니다. statusline의 CW% 게이지를 신뢰하세요.
 
 ## 2-단계 핸드오프 마커
 
@@ -35,9 +35,9 @@ statusline은 컨텍스트 바에 `/clear` 힌트를 2단계로 표시합니다.
 
 하드 천장은 auto-compact 임계값 바로 옆에 잡히므로 런타임 auto-compact가 먼저 발동하는 일이 많고, 그래서 하드 마커는 실제로 드물게 뜹니다. auto-compact 인식 공식이 감수한 트레이드오프입니다.
 
-## 우아한 중단 절차
+## 안전한 중단 절차
 
-SPEC-TOKEN-BUDGET-STOP-001로 구현한 우아한 중단 메커니즘은 다음 순서로 작동합니다.
+SPEC-TOKEN-BUDGET-STOP-001로 구현한 안전한 중단 메커니즘은 다음 순서로 작동합니다.
 
 1. **감지** — `Tracker.IsAtHardLimit(agentName)`이 true를 반환 (누적 사용량 ≥ hard_clear_threshold, 기본 0.90)
 2. **상태 저장** — 진행 중인 작업 상태를 `progress.md`에 영속화

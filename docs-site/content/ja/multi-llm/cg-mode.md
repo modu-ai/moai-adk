@@ -84,7 +84,7 @@ moai cg
 担い、実装の物量が大きい作業は新しい tmux pane の GLM チームメイトに委任されます。
 
 > **参考**: かつての `--team` フラグ (Agent Teams 静的オーケストレーション階層) は
-> v3.0 で引退しました。強制的に指定しても sub-agent モードにフォールバックします。CG
+> v3.0 で廃止されました。強制的に指定しても sub-agent モードにフォールバックします。CG
 > モードのリーダー/ワーカー分離は Claude Code 内蔵の teammate ランタイム (tmux pane) で
 > 動作し、このランタイムはそのまま維持されます。
 
@@ -139,7 +139,7 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 ## ディスプレイモード (teammateMode)
 
 `teammateMode` は Claude Code 内蔵のディスプレイ設定で、`settings.local.json` に
-保存されます。MoAI の team-mode (かつての `--team` フラグ、v3.0 引退) とは異なる
+保存されます。MoAI の team-mode (かつての `--team` フラグ、v3.0 で廃止) とは異なる
 概念です — teammate ランタイム自体は Claude Code が提供し、`teammateMode` は
 その表示方式のみを制御します。
 

@@ -5,8 +5,8 @@ draft: false
 ---
 
 MoAI-ADK 的自主 CI/CD 系统自动管理拉取请求质量。它把本地会话中
-`/moai loop` 执行的"诊断 → 修复 → 验证"回路延伸到了 CI，即使开发者不
-手动验证质量，CI 也能自行保障质量 —— 这是把代理式回路工程应用到仓库
+`/moai loop` 执行的"诊断 → 修复 → 验证"循环延伸到了 CI，即使开发者不
+手动验证质量，CI 也能自行保障质量 —— 这是把代理式循环工程应用到仓库
 层级的案例。
 
 ## 概述
@@ -48,15 +48,15 @@ MoAI-ADK 的自主 CI/CD 系统自动管理拉取请求质量。它把本地会�
 
 `/moai sync` 创建 PR 之后，编排器交接一个失败的必需 (required) 检查，
 `manager-develop` 便以 `cycle_type=autofix` 周期运行"诊断 → 修复 →
-重新验证"回路。它把本地的诊断式自我修复回路延伸到了 PR 流水线之上。
+重新验证"循环。它把本地的诊断式自我修复循环延伸到了 PR 流水线之上。
 
 - **进入条件** — 只有当至少一个必需检查失败，且编排器指明待修复的 PR 与
-  分支进行交接时，回路才会启动。编排器是唯一的进入点
+  分支进行交接时，循环才会启动。编排器是唯一的进入点
 - **迭代上限** — 每次 PR push 最多 3 次迭代。进入第 4 次时不再尝试修补，
   而是通过 blocking AskUserQuestion 上报给用户
 - **语义层级失败** — data race、deadlock、panic 与测试断言失败一律不自动
   修补，交由人工判断
-- **受保护文件** — 回路绝不修改机密、凭据文件与 CI 工作流定义，因为修补
+- **受保护文件** — 循环绝不修改机密、凭据文件与 CI 工作流定义，因为修补
   报告失败的那一层，会把真实失败变成虚假的 green
 
 迭代上限、上报契约、语义层级失败处理与受保护文件清单的 SSoT 是
@@ -115,6 +115,6 @@ scripts/docs-i18n-check.sh
 ## 相关文档
 
 - [工作树指南](/zh/worktree/guide) —— Git Worktree 完整指南
-- [/moai loop](/zh/utility-commands/moai-loop) —— 迭代修复回路
+- [/moai loop](/zh/utility-commands/moai-loop) —— 迭代修复循环
 - [/moai fix](/zh/utility-commands/moai-fix) —— 自动错误修复
 - [多 LLM CI](/zh/guides/multi-llm-ci) —— Multi-LLM CI 集成

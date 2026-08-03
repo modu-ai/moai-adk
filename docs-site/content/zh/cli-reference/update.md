@@ -44,7 +44,7 @@ moai update --check
 
 ### 强制校验和验证(Mandatory Checksum Verification) {#checksum-verification}
 
-`moai update` 的二进制下载 **无法绕过校验和验证**。若 release 的 `checksums.txt` 下载失败或解析失败,则会 **abort** 更新流程 —— 不会尝试下载二进制。
+`moai update` 的二进制下载 **无法绕过校验和验证**。若 release 的 `checksums.txt` 下载失败或解析失败,则会 **中止(abort)** 更新流程 —— 不会尝试下载二进制。
 
 #### Retry 策略
 

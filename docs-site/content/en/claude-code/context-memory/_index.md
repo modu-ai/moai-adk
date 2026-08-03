@@ -11,7 +11,7 @@ This group covers the context window, memory, prompt caching, and checkpointing 
 In agentic development, what determines cost is not the model price sheet but **how you operate tokens**. What and how much you put in context, whether you reuse the unchanging parts via cache, whether you persist knowledge to files across sessions — these four mechanisms are the technical foundation of what MoAI-ADK calls **Tokenomics** (Token Economics).
 
 {{< callout type="info" >}}
-**One-line summary**: Secure both the stability and the economics of long tasks along four axes — managing token usage (context window), persisting information (memory), cutting cost (prompt caching), and rewinding safely (checkpointing).
+**One-line summary**: Secure both the stability and the economics of long tasks through four mechanisms — managing token usage (context window), persisting information (memory), cutting cost (prompt caching), and rewinding safely (checkpointing).
 {{< /callout >}}
 
 ## Learning Flow

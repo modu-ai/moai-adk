@@ -260,7 +260,7 @@ flowchart TD
 
 ### Q: What is the difference between `moai worktree done` and `moai worktree remove`?
 
-**A**: What they take as an argument is what differs.
+**A**: The difference is what they take as an argument.
 
 | | `done` | `remove` |
 |---|---|---|

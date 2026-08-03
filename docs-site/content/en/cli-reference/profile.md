@@ -107,7 +107,7 @@ The per-project record is written when you launch with `-p`, and it is updated a
 
 - Moving or renaming a project directory leaves the existing entry matching no path. The entry is skipped silently, so it does not break launching.
 - The `projects:` map grows as projects accumulate, and there is no command to prune it yet.
-- `moai profile current` reports the global record as-is. So in a project whose remembered profile differs from the global record, the name `moai profile current` gives you can differ from the profile that `moai cc` without `-p` actually launches.
+- `moai profile current` reports the global record as-is. So in a project whose remembered profile differs from the global record, the name reported by `moai profile current` may differ from the profile that `moai cc` without `-p` actually launches.
 
 ## First Launch of a New Profile
 
@@ -126,7 +126,7 @@ Notice: profile "work" has no Claude Code configuration yet.
   persists for this profile.
 ```
 
-Nothing is copied or moved into the new profile as credentials. Where account state lives differs by platform, so a copy tailored to one platform would be wrong on another. Once you sign in, that state stays with the profile, so this screen does not appear on later launches.
+No credentials are copied or moved into the new profile. Where account state lives differs by platform, so a copy tailored to one platform would be wrong on another. Once you sign in, that state stays with the profile, so this screen does not appear on later launches.
 
 ## Selecting a 1M Context Model
 

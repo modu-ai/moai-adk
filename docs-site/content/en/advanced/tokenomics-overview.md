@@ -18,7 +18,7 @@ MoAI-ADK's answer has three parts.
 
 ## The 3-Pillar Narrative
 
-v3.0 product differentiation consists of three pillars. Tokenomics is the first, tightly connected to the other two.
+v3.0 product differentiation consists of three core values. Tokenomics is the first, tightly connected to the other two.
 
 {{< icon target >}} **Tokenomics** (this page) — meter, route, diet, defend.
 

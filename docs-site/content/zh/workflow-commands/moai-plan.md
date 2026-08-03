@@ -14,7 +14,7 @@ draft: false
 
 `/moai plan` 是 MoAI-ADK 工作流的 **Phase 1 (Plan)** 命令。它将自然语言形式的功能请求转换为 **EARS** (Easy Approach to Requirements Syntax) 格式的结构化 SPEC 文档。内部由 **manager-spec** 智能体分析需求,生成没有歧义的规格说明书。
 
-在 v3 令牌经济学设计中,计划阶段是被分配最深推理的阶段 — 需求在这里越清晰,后续实现阶段的返工和令牌浪费就越少。因此 MoAI-ADK 遵循"计划要深,实现要省"的分配原则,并且生成的 SPEC 由 **plan-auditor** 独立审计。创建它的智能体不会自行检查。
+在 v3 令牌经济学设计中,计划阶段是投入推理最多的阶段 — 需求在这里越清晰,后续实现阶段的返工和令牌浪费就越少。因此 MoAI-ADK 遵循"计划要深,实现要省"的分配原则,并且生成的 SPEC 由 **plan-auditor** 独立审计。创建它的智能体不会自行检查。
 
 {{< callout type="info" >}}
 
@@ -522,7 +522,7 @@ WHEN input is null is detected, the system shall return an error.
 
 ## 自适应推荐布局 (Adaptive Recommendation Placement)
 
-从 MoAI-ADK v0.1.0 起,**AskUserQuestion 推荐** 会根据用户的决策模式实现个性化。系统捕获选择,并基于观察到的统计多数(而非系统默认值)对未来的问题选项进行个性化。从回路积累观察、系统从观察中学习这一点来看,这是 v3 **递归式自我学习** 原则应用于提问·推荐领域的实例。
+从 MoAI-ADK v0.1.0 起,**AskUserQuestion 推荐** 会根据用户的决策模式实现个性化。系统捕获选择,并基于观察到的统计多数(而非系统默认值)对未来的问题选项进行个性化。从循环积累观察、系统从观察中学习这一点来看,这是 v3 **递归式自我学习** 原则应用于提问·推荐领域的实例。
 
 ### 工作原理
 

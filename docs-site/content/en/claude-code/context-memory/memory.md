@@ -175,7 +175,7 @@ Good memory is short and verifiable. Following these principles raises complianc
 
 MoAI-ADK operates on top of this Claude Code memory foundation. It uses the project-root CLAUDE.md as orchestrator execution guidance, and uses auto memory's `MEMORY.md` index and topic files for SPEC-work session handoffs and accumulating lessons.
 
-File-based persistent memory is also the raw material of MoAI-ADK's **recursive self-learning** pillar. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate in memory files, and the harness improves skills and agent guidance based on that accumulation. The first link in the sentence "the loop accumulates observations, the harness learns, and the guidance evolves" is precisely the memory mechanism on this page. MoAI's own memory operating rules and index management are covered in detail in separate documents.
+File-based persistent memory is also the raw material for MoAI-ADK's **recursive self-learning**. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate in memory files, and the harness improves skills and agent guidance based on that accumulation. The first link in the sentence "the loop accumulates observations, the harness learns, and the guidance evolves" is precisely the memory mechanism on this page. MoAI's own memory operating rules and index management are covered in detail in separate documents.
 
 ## Related Documents
 

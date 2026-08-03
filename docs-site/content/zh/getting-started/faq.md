@@ -171,7 +171,7 @@ External imports:
 
 ## Q: TDD 与 DDD 方法论有什么区别？
 
-MoAI-ADK v2.5.0+ 采用**二元方法论选择**（仅 TDD 或 DDD）。为了清晰与一致性，hybrid 模式已被移除。
+MoAI-ADK v2.5.0+ 在方法论上**只能二选一**（仅 TDD 或 DDD）。为了清晰与一致性，hybrid 模式已被移除。
 
 ### 方法论选择指南
 

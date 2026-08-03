@@ -4,7 +4,7 @@ weight: 5
 draft: false
 ---
 
-线束竞争力的核心在于自我改善设计。正如 Lilian Weng 的"Harness Engineering for Self-Improvement"(2026-07-04)所命名的，线束是围绕模型的执行/运营层，自我改善的现实路径不是权重而是这一层的改善。本页正式文档化 MoAI-ADK 的自我进化线束 — ACE 3-Loop 架构。
+线束竞争力的核心在于自我改善设计。正如 Lilian Weng 的"Harness Engineering for Self-Improvement"(2026-07-04)所指出的，线束是围绕模型的执行/运营层，自我改善的现实路径不是权重而是这一层的改善。本页正式文档化 MoAI-ADK 的自我进化线束 — ACE 3-Loop 架构。
 
 ## 为何自我进化
 
@@ -89,7 +89,7 @@ SPEC-HARNESS-EVOLVE-003 (CLOSED)生产接线了 7 个核心要素:
 - **EVOLVE-004** — console verbs (`/moai harness evolve/promote/demote/freeze`) — 用户从 CLI 直接控制提升/降级/冻结的动词
 - **EVOLVE-005** — Recall wiring + typed parser — 2 层 Recall(常驻摘要 + 按需搜索账本)的完整接线 + harness-spec.yaml 的 typed Go 解析器
 
-这些表面与 v5.1 MCE(Recall 本身的学习)及 v6 进化探索地平一起记载为路线图项目。以"进行中 / 路线图"而非"已实现"明示。
+这些表面与 v5.1 MCE(Recall 本身的学习)及 v6 进化探索前景一起记载为路线图项目。以"进行中 / 路线图"而非"已实现"明示。
 
 ## 下一步
 

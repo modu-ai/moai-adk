@@ -4,7 +4,7 @@ index:
 "tokenomics-overview":
   title: "トークノミクス概論"
 "token-budget":
-  title: "トークン予算管理と graceful stop"
+  title: "トークン予算管理と安全な中止"
 "no-haiku-3tier":
   title: "3層エージェントアーキテクチャ (No-Haiku)"
 "profile-matrix":

@@ -12,7 +12,7 @@ A worktree separates multiple working trees within one git repository, letting C
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page serves only as a bridge overviewing Claude Code's worktree concept. For how MoAI-ADK actually applies worktrees to SPEC-level parallel development, see the [Git Worktree Overview](/worktree), the [Complete Git Worktree Guide](/worktree/guide), and [Git Worktree Real-World Examples](/worktree/examples).
+This page only introduces the Claude Code worktree concept. For how MoAI-ADK actually applies worktrees to SPEC-level parallel development, see the [Git Worktree Overview](/worktree), the [Complete Git Worktree Guide](/worktree/guide), and [Git Worktree Real-World Examples](/worktree/examples).
 {{< /callout >}}
 
 ## What Is a Worktree

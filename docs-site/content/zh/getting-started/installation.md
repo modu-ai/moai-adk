@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-介绍在系统中安装 MoAI-ADK 的方法。安装物是用 Go 构建的单一二进制 —— 无需 Python、虚拟环境或包管理器。
+介绍在系统中安装 MoAI-ADK 的方法。实际安装的只是用 Go 构建的单一二进制 —— 无需 Python、虚拟环境或包管理器。
 
 
 ## 许可证
@@ -172,7 +172,7 @@ moai version
 ```
 
 {{< callout type="info" >}}
-Go 版(v2.0+)是单一二进制,不需要 Python 运行时或虚拟环境。启动时间从约 800ms 大幅提升到 5ms。
+Go 版(v2.0+)是单一二进制,不需要 Python 运行时或虚拟环境。启动时间从约 800ms 大幅缩短到 5ms。
 {{< /callout >}}
 
 ## WSL 支持
