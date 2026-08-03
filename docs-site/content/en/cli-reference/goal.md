@@ -24,6 +24,14 @@ This is the programmatic MoAI counterpart of the native `/goal` (a user-only TUI
 | `--json` | Machine-readable JSON output |
 | `--all` | (`status` only) List goals across all sessions, not just the active one |
 
+## Arm flags
+
+| Flag | Description |
+|--------|------|
+| `--max-turns <N>` | Turn ceiling. `0` = infinite (auto-compact-driven); default `30` when omitted (full backward compat). `0` requires `--max-duration` or `--cost-cap` (arm-time fail-closed). |
+| `--max-duration <sec>` | Wall-clock bound (seconds since arm time). The primary run-time bound for an infinite goal. |
+| `--cost-cap <value>` | Cost cap recorded in `Ceiling`. Enforcement is a documented follow-up (no invocation/token accounting today); an infinite goal is still bounded by `--max-duration` and the stagnation guard. |
+
 ## State and evaluation
 
 Goal state is stored in `.moai/state/goal/<session-id>.json` (one file per session). The Stop hook `moai hook stop-goal` evaluates the goal at the end of every turn.

@@ -95,7 +95,40 @@ spec_lint_clean: true   # moai spec lint (§6 MP-3 tags comma-quoted-string) —
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-04
+sync_commit_sha: "pending-backfill"   # self-referential; a commit cannot know its own SHA — backfilled in a follow-up commit (D3 pattern)
+sync_status: complete
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed"
+  plan.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  acceptance.md: "n/a (no YAML frontmatter — markdown-header convention)"
+  progress.md: "n/a (no YAML frontmatter — markdown-header convention)"
+changelog_entry_position: "[Unreleased] / ### Added (SPEC-INFINITE-GOAL-001 entry)"
+frontmatter_status_transitions_note: "Only spec.md carries YAML frontmatter (Tier M artifact contract). The in-progress → implemented → completed terminal transition rides the single sync commit per spec-frontmatter-schema.md § Status Transition Ownership Matrix."
+mx_tag_additions:
+  - "n/a — sync-phase is docs/frontmatter-only; @MX tag additions belong to run-phase (none added at sync)"
+canary_compliance_check:
+  go_build: "exit 0 (go build ./... — verified at run-phase M8; sync-phase is docs-only, no code touched)"
+  spec_lint: "exit 0, ✓ No findings (moai spec lint .moai/specs/SPEC-INFINITE-GOAL-001/spec.md)"
+  ac_pass_count: 11
+  ac_fail_count: 0
+```
+
+### Sync-phase close summary
+
+3-phase close (plan→run→sync), 11/11 AC PASS. Run-phase shipped M1–M8 on `worktree-autonomy-epic` (per-milestone commits `b3a30c982` / `47277d1e4` / `85a791efe` / `040749776` / `0407ef019` / `cfa601e2a` / `279831f37`+`1d3bd237e`), merged to `main` via PR #1317 (squash `adc867545`). The `status: in-progress → implemented → completed` terminal transition rides THIS sync commit (no separate Mx chore commit); `updated:` refreshed to 2026-08-04 on the sole YAML-frontmatter-bearing artifact (`spec.md`).
+
+### Sync-phase Gaps (explicitly NOT verified this sync)
+
+- **`sync_commit_sha` self-referential placeholder** — populated as `pending-backfill` in this commit (a commit cannot know its own SHA before it lands). Will be backfilled in a follow-up commit per the D3 self-referential-hazard workaround pattern (same as SPEC-STOPCHAIN-TRIM-001, SPEC-AUDIT-SNAPSHOT-001, and other recent sync commits).
+- **Full `go test ./...` re-run at sync phase** — not executed. Sync-phase is docs/frontmatter-only (no code touched); run-phase M8 already verified 11/11 ACs PASS with attributed evidence, and `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` + `golangci-lint` on changed packages were green at run-phase. The sync-phase quality gate (`sync-phase-quality-gate.sh` Stop hook) runs vet/build at turn-end on this commit.
+- **`TestTemplateNoInternalContentLeak` pre-existing baseline** — flags `quality-gates-quality.md | REQ-004` (2-segment) from `SPEC-AUDIT-SNAPSHOT-001` commit `630f0f44f`. Confirmed present at this branch's base before M1 (the leak predates this SPEC's run-phase). B10 PRESERVE: NOT fixed here (out of scope — another SPEC's template artifact). This SPEC's own template additions (run.md / goal-directive.md / goal.md / handle-session-start-compact.sh wrapper) are §25-neutral.
+
+### Sync-phase Residual-risk (user-visible, documented in CHANGELOG)
+
+- **Statusline `/clear` suppression when goal armed (M3 / AC-004)** — when a goal is armed, the `(⚠️/clear)` / `(🛑/clear!)` statusline markers are suppressed (the runtime's auto-compact handles context pressure instead). Users who relied on the marker to know when to manually `/clear` lose that signal WHILE a goal is active. **Mitigated**: stage classification still computed (informational); goal's own per-turn output is the replacement signal; suppression scoped to GoalArmed==true only (no-goal sessions retain markers unchanged, AC-004 backward-compat cell). Documented prominently in the CHANGELOG entry.
+- **Cost-cap enforcement is a documented follow-up (OQ-2)** — `Ceiling.CostCap` is recorded at arm time but its enforcement is deferred (evaluator carries no invocation/token accounting surface today). An infinite goal is bounded by wall-clock (AC-005) + stagnation (AC-006), sufficient for "arm and walk away" but NOT cost-sensitive deployments.
 
 ## §F Phase 4 Mode Selection
 

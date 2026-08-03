@@ -21,7 +21,7 @@ Use it when you want to tell the agent "keep working on your own until this cond
 - **Mechanical condition**: a condition verified by a shell command. Example: `go test ./... exits 0`. It runs the command and observes the exit code.
 - **Model-evaluated condition**: a condition verified by a judgment over the transcript. Example: `all AC rows recorded as PASS`. It is evaluated against what the session has surfaced so far.
 
-This loop is the general-purpose engine of v3's second pillar, **agentic loop engineering**. Goal state is stored per session in `.moai/state/goal/<session-id>.json` (not a shared file), and a **turn ceiling (default 30)** makes the loop bounded. When the ceiling is reached, the evaluator issues a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) and stops blocking.
+This loop is the general-purpose engine of v3's second pillar, **agentic loop engineering**. Goal state is stored per session in `.moai/state/goal/<session-id>.json` (not a shared file), and a **turn ceiling (default 30)** makes the loop bounded. When the ceiling is reached, the evaluator issues a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) and stops blocking. `--max-turns 0` opts into an infinite (auto-compact-driven) goal that persists across compaction boundaries, bounded by `--max-duration` (wall-clock) and the stagnation guard instead of the turn count; arming `--max-turns 0` without at least one real bound is rejected at arm time (fail-closed).
 
 ## Verbs
 

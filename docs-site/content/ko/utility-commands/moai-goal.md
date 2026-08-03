@@ -21,7 +21,7 @@ draft: false
 - **기계적 조건 (mechanical)**: 셸 명령어로 판정하는 조건. 예를 들어 `go test ./... exits 0`이라면, 명령을 돌려 보고 종료 코드를 확인합니다.
 - **모델 평가 조건 (model-evaluated)**: 트랜스크립트를 읽고 판단하는 조건. 예를 들어 `모든 AC 행이 PASS로 기록됨`이라면, 세션이 지금까지 남긴 내용을 근거로 판정합니다.
 
-이 루프가 v3의 세 가지 핵심 중 하나인 **에이전틱 루프 엔지니어링**의 범용 엔진입니다. goal 상태는 `.moai/state/goal/<session-id>.json`에 세션별로 저장되며 (공유 파일이 아닙니다), **턴 상한 (기본 30)** 이 루프가 무한정 돌지 않게 막습니다. 상한에 닿으면 평가기가 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 내고 블로킹을 멈춥니다.
+이 루프가 v3의 세 가지 핵심 중 하나인 **에이전틱 루프 엔지니어링**의 범용 엔진입니다. goal 상태는 `.moai/state/goal/<session-id>.json`에 세션별로 저장되며 (공유 파일이 아닙니다), **턴 상한 (기본 30)** 이 루프가 무한정 돌지 않게 막습니다. 상한에 닿으면 평가기가 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 내고 블로킹을 멈춥니다. `--max-turns 0`을 주면 오토컴팩트 경계를 넘어 유지되는 무한 goal이 도는데, 턴 수 대신 `--max-duration` (실행 시간) 과 정체 가드가 실제 상한이 된다. 실제 상한 없이 `--max-turns 0`만 arm하면 arm 시점에 거부된다 (fail-closed).
 
 ## 동사 (verbs)
 

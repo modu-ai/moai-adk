@@ -142,7 +142,7 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 
 The cheapest session is the one that does not repeat last session's mistakes. The self-improvement axis turns each run into material for the next: routing decisions and gate evidence are recorded, recurring patterns become rules, and a declared goal keeps the session working until the condition holds.
 
-**`/moai goal` · `/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
+**`/moai goal` · `/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `--max-turns 0` arms an infinite (auto-compact-driven) goal, bounded by `--max-duration` and the stagnation guard. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
 
 **Decision memory.** Routing decisions, gate evidence, and recurring corrections are recorded so the next session starts from what the last one learned — not from zero.
 

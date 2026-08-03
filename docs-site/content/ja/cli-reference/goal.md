@@ -24,6 +24,14 @@ draft: false
 | `--json` | 機械可読 JSON 出力 |
 | `--all` | (`status` 専用) アクティブセッションだけでなく全セッションのゴールを一覧表示 |
 
+## arm フラグ
+
+| フラグ | 説明 |
+|--------|------|
+| `--max-turns <N>` | ターン上限。`0` = 無限 (自動コンパクション駆動); 省略時はデフォルト `30` (完全な後方互換)。`0` は `--max-duration` または `--cost-cap` を必須とする (arm 時の fail-closed)。 |
+| `--max-duration <sec>` | 実時間上限 (arm 時点からの秒数)。無限 goal の一次実行上限。 |
+| `--cost-cap <value>` | `Ceiling` に記録されるコスト上限。実適用は今後の課題 (現在は呼び出し/トークン計測なし); 無限 goal は `--max-duration` と停滞ガードで依然として束ねられる。 |
+
 ## 状態と評価
 
 ゴール状態は `.moai/state/goal/<session-id>.json` (セッションごとに 1 ファイル) に保存されます。Stop フック `moai hook stop-goal` が各ターン終了時にゴールを評価します。
