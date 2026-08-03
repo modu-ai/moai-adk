@@ -95,8 +95,28 @@ func InitDependencies() {
 	// site, which Execute() calls before reaching here.
 	logger := slog.Default()
 
-	// Initialize Ralph engine and loop controller.
+	cwd, _ := os.Getwd()
+
+	// Eagerly load the project config BEFORE constructing the Ralph engine so
+	// the engine is built from the user-resolved ralph.yaml (cfg.Ralph) rather
+	// than compiled defaults. Before SPEC-RALPH-CONFIG-REDESIGN-001 M2 the
+	// engine was built from NewDefaultRalphConfig() and the user-edited
+	// ralph.yaml was silently ignored — a verification-claim hazard. The
+	// config loader reads YAML only (no engine dependency), so this reorder
+	// introduces no cycle. Fail-open: on load error or nil Get(), fall back to
+	// compiled defaults so handlers and glm.go's nil-safe path stay compatible.
+	configMgr := config.NewConfigManager()
 	ralphCfg := config.NewDefaultRalphConfig()
+	if _, err := configMgr.Load(cwd); err != nil {
+		logger.Warn("config load failed; ralph engine uses compiled defaults and config-dependent handlers fall back",
+			"cwd", cwd,
+			"error", err,
+		)
+	} else if loaded := configMgr.Get(); loaded != nil {
+		ralphCfg = loaded.Ralph
+	}
+
+	// Initialize Ralph engine and loop controller from the resolved ralphCfg.
 	ralphEngine := ralph.NewRalphEngine(ralphCfg)
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -105,7 +125,6 @@ func InitDependencies() {
 	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
 	// Use GoFeedbackGenerator for real test/lint feedback collection.
 	// Falls back gracefully: if go test/vet fail or timeout, feedback is partial.
-	cwd, _ := os.Getwd()
 
 	// GOPLS-BRIDGE-001: gopls bridge wiring
 	// Load gopls bridge config from lsp.yaml; create the bridge when enabled.
@@ -135,21 +154,15 @@ func InitDependencies() {
 	loopCtrl := loop.NewLoopController(loopStorage, ralphEngine, feedbackGen, ralphCfg.MaxIterations)
 
 	deps = &Dependencies{
-		Config:         config.NewConfigManager(),
+		Config:         configMgr,
 		HookProtocol:   hook.NewProtocol(),
 		LoopController: loopCtrl,
 		Logger:         logger,
 	}
 
-	// Eagerly load the project config (see InitDependencies godoc). Fail-open:
-	// a load error logs a warning and leaves Get() returning nil, so handlers
-	// fall back to defaults and glm.go's nil-safe path stays compatible.
-	if _, err := deps.Config.Load(cwd); err != nil {
-		logger.Warn("config load failed; config-dependent handlers fall back to defaults",
-			"cwd", cwd,
-			"error", err,
-		)
-	}
+	// Project config was already loaded above before the Ralph engine was
+	// constructed (so the engine could be built from cfg.Ralph). deps.Config
+	// is the already-loaded manager; no second Load is needed here.
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	reg := hook.NewRegistry(deps.Config)
