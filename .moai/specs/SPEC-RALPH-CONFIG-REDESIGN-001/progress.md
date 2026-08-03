@@ -113,7 +113,7 @@ sync_commit_sha: pending-backfill-after-merge
 ac_pass_count: 8
 ac_deferred_count: 1
 ac_deferred_ids: [AC-RCR-008]
-changelog_entry_position: Unreleased/Changed
+changelog_entry_position: Unreleased/Fixed
 frontmatter_status_transitions:
   spec_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
   plan_md: in-progress -> implemented -> completed (3-phase close merged into this sync commit)
