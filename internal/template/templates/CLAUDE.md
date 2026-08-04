@@ -70,7 +70,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 3. SPEC plan-phase authoring? Use the `manager-spec` subagent
 4. Run-phase implementation (DDD/TDD/autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`
 5. Sync-phase documentation? Use the `manager-docs` subagent
-6. PR creation per Tier-based routing (Tier L OR explicit `--pr`)? Use the `manager-git` subagent
+6. PR creation for Tier L OR explicit `--pr` (heavy ceremony: release PRs, multi-step merges, Late-Branch 4-Phase closure)? Use the `manager-git` subagent. Tier S/M push+PR (without `--pr`) is handled orchestrator-direct via Bash (`git switch -c` / `git push -u` / `gh pr create`) with `MOAI_BRANCH_GUARD_EXEMPT=1` + the Pre-Spawn Sync Check — no `manager-git` spawn
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent
 8. Sync-phase quality 4-dimension scoring? Use the `sync-auditor` subagent
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
@@ -85,7 +85,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 | `manager-spec` | core/manager | Plan-phase artifact authoring (spec/plan/acceptance/research/design) | `.claude/agents/moai/manager-spec.md` |
 | `manager-develop` | core/manager | Run-phase implementation (cycle_type ∈ {ddd, tdd, autofix}) | `.claude/agents/moai/manager-develop.md` |
 | `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/moai/manager-docs.md` |
-| `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
+| `manager-git` | core/manager | Tier L / `--pr` PR creation + Late-Branch 4-Phase closure (Tier S/M push+PR is orchestrator-direct) | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
 | `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
