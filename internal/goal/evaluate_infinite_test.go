@@ -54,6 +54,59 @@ func TestAC001_EvaluatorSkipsCeilingAtMaxTurnsZero(t *testing.T) {
 	// If we reached turn 50 still blocked, the ceiling (30) never fired — PASS.
 }
 
+// TestStagnation_SkipsModelOnlyGoal asserts the D2 fix: a model-only goal
+// (no ConditionMechanical) skips the stagnation guard. A model-only goal has
+// no reliable mechanical fingerprint, so identical progress Notes would
+// spuriously trigger stagnation. After D2, isStagnant returns false for a
+// model-only goal even with N (>= DefaultStagnationThreshold) identical
+// progress entries.
+//
+// Model-only goals are bounded by wall-clock max-duration + MaxTurns per
+// REQ-004 (the stagnation guard applies ONLY to goals with >=1 mechanical
+// condition).
+func TestStagnation_SkipsModelOnlyGoal(t *testing.T) {
+	g := NewGoal("s-model-only", "model claim only", []Condition{
+		{Type: ConditionModel, Claim: "all AC rows show PASS in the transcript"},
+	})
+	g.Ceiling.MaxTurns = 100
+	// Pre-populate progress with N identical entries — under the OLD code this
+	// would trigger stagnation; under D2 the model-only gate skips it.
+	for i := 0; i < DefaultStagnationThreshold; i++ {
+		g.Progress = append(g.Progress, ProgressEntry{
+			Turn: i + 1,
+			Note: "identical-model-note",
+		})
+	}
+	e := &Eval{Runner: neverSatisfiedRunner{}}
+	if e.isStagnant(g) {
+		t.Fatal("D2: isStagnant must return FALSE for a model-only goal " +
+			"(stagnation guard applies only to goals with >=1 mechanical condition)")
+	}
+}
+
+// TestStagnation_FiresOnMechanicalGoal confirms the AC-006 positive path is
+// preserved: a goal with >=1 mechanical condition AND N identical mechanical
+// fingerprints still triggers stagnation (D2 does not weaken the mechanical
+// path).
+func TestStagnation_FiresOnMechanicalGoal(t *testing.T) {
+	g := NewGoal("s-mech", "converge", []Condition{
+		{Type: ConditionMechanical, Cmd: "false", ExpectExit: 0},
+	})
+	g.Ceiling.MaxTurns = 100
+	for i := 0; i < DefaultStagnationThreshold; i++ {
+		g.Progress = append(g.Progress, ProgressEntry{
+			Turn:        i + 1,
+			Note:        "same",
+			Fingerprint: "1:abc|fs=empty",
+		})
+	}
+	e := &Eval{Runner: neverSatisfiedRunner{}}
+	if !e.isStagnant(g) {
+		t.Fatal("AC-006: isStagnant must return TRUE for a mechanical goal " +
+			"with N identical fingerprints")
+	}
+}
+
 // TestAC002_EvaluatorFiresCeilingAtDefaultMaxTurns asserts the backward-compat
 // half: with MaxTurns == 30 the ceiling fires at turn 30.
 func TestAC002_EvaluatorFiresCeilingAtDefaultMaxTurns(t *testing.T) {

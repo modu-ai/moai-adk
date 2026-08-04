@@ -109,13 +109,19 @@ func TestAC011_ArmRejectsUnboundedInfinite(t *testing.T) {
 }
 
 // TestAC011_ArmAcceptsBoundedInfinite asserts the positive path: --max-turns 0
-// WITH --max-duration (or --cost-cap) arms successfully (exit 0 + goal written).
-// This is the AC-005 positive companion.
+// WITH --max-duration arms successfully (exit 0 + goal written). This is the
+// AC-005 positive companion.
+//
+// SPEC-INFINITE-GOAL-001 D1 amendment: --cost-cap is NO LONGER a real bound
+// (it is recorded-only, per flag help and SPEC §D.5). The cost-cap-alone
+// positive case that used to live here encoded the OLD defective behavior and
+// has been moved to TestAC011_ArmRejectsCostCapOnlyInfinite (cost-cap-alone is
+// now REJECTED).
 func TestAC011_ArmAcceptsBoundedInfinite(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 
-	// wall-clock bound
+	// wall-clock bound (--max-duration is the REQUIRED real bound per REQ-004)
 	out, exitErr := driveGoalArmExec(t, []string{
 		"--session", "ac011-dur",
 		"--max-turns", "0",
@@ -128,18 +134,38 @@ func TestAC011_ArmAcceptsBoundedInfinite(t *testing.T) {
 	if g := loadArmedGoal(t, tmp, "ac011-dur"); g == nil {
 		t.Fatalf("AC-011 positive (--max-duration): no goal file written (out=%q)", out)
 	}
+}
 
-	// cost-cap bound
-	out2, exitErr2 := driveGoalArmExec(t, []string{
-		"--session", "ac011-cost",
+// TestAC011_ArmRejectsCostCapOnlyInfinite asserts the D1 fail-closed gate:
+// --max-turns 0 with --cost-cap but WITHOUT --max-duration is REJECTED.
+// --cost-cap is recorded-only (SPEC §D.5) and does NOT satisfy the real-bound
+// requirement of REQ-004. AC-011 case (2).
+func TestAC011_ArmRejectsCostCapOnlyInfinite(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+
+	out, exitErr := driveGoalArmExec(t, []string{
+		"--session", "ac011-costcap-only",
 		"--max-turns", "0",
-		"--cost-cap", "1000",
+		"--cost-cap", "100",
 		"echo hi exits 0",
 	})
-	if exitErr2 != nil {
-		t.Fatalf("AC-011 positive (--cost-cap): unexpected error %v (out=%q)", exitErr2, out2)
+	if exitErr == nil {
+		t.Fatalf("AC-011 (2): goal arm --max-turns 0 --cost-cap 100 (no --max-duration): "+
+			"expected non-zero exit, got nil (out=%q)", out)
 	}
-	if g := loadArmedGoal(t, tmp, "ac011-cost"); g == nil {
-		t.Fatalf("AC-011 positive (--cost-cap): no goal file written (out=%q)", out2)
+	// stderr MUST name --max-duration as the REQUIRED real bound. It MUST NOT
+	// accept cost-cap as satisfaction (cost-cap is recorded-only).
+	lower := strings.ToLower(out)
+	if !strings.Contains(lower, "max-duration") {
+		t.Errorf("AC-011 (2): stderr must name --max-duration as the required real bound; got %q", out)
+	}
+	if !strings.Contains(lower, "cost-cap") {
+		t.Errorf("AC-011 (2): stderr must mention --cost-cap (to explain it does not satisfy); got %q", out)
+	}
+
+	// No goal state file may be written on a rejected arm.
+	if g := loadArmedGoal(t, tmp, "ac011-costcap-only"); g != nil {
+		t.Errorf("AC-011 (2): a goal file was written despite the reject (goal=%+v)", g)
 	}
 }
