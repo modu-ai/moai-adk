@@ -2,9 +2,9 @@
 id: SPEC-ORCH-GIT-RELAX-001
 title: "Orchestrator-direct Tier S/M git ops + state-sensitive worktree recovery (manager-git relaxation)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-05
 author: manager-spec (via orchestrator delegation)
 priority: P1
 phase: "v14.4.0 target"
