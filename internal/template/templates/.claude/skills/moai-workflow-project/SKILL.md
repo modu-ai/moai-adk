@@ -79,6 +79,33 @@ Three workflows: project initialization, documentation generation from SPEC, tem
 
 See [core workflow walkthroughs](references/workflows.md) for detailed step-by-step procedures.
 
+### Project Navigator (living navigation layer)
+
+A living project-scoped navigation layer that aggregates the SPEC registry into
+a single reorientable view. Three markdown files under
+`.moai/project/navigator/` (`navigator.md` entry point, `capability-map.md`
+feature inventory, `progress-map.md` per-SPEC rollup) are regenerated on every
+`/moai project` invocation AND chained into `/moai sync` (before the sync
+commit lands), so the Navigator's staleness window never exceeds one sync cycle.
+
+Every row carries `commit-sha` + ISO-8601 `captured-at` provenance (drawn from
+`git log`), so any Navigator claim is attributable to a measured baseline.
+
+**Regeneration mechanism** — the deterministic core is
+`${CLAUDE_SKILL_DIR}/scripts/navigator-regen.sh`, a self-contained bash script
+(no `jq`, no `moai` binary). Invoke it on-demand (`/moai project`) and the sync
+workflow invokes it before the sync commit. See
+[navigator.md reference](references/navigator.md) for the full schema, the
+atomic-rename strategy, the malformed-frontmatter tolerance, and the empty-
+project form.
+
+**`--brief` reorientation mode** — `/moai project --brief` loads the full
+`navigator.md` entry brief PLUS the current-frontier section of
+`progress-map.md` into the active context as a structured reorientation brief.
+Use it for mid-session deep re-orientation. A separate SessionStart hook
+(`handle-session-start-navigator.sh`) emits an ambient auto-brief (≤500 tokens)
+on every new session — the zero-touch path.
+
 ### Language and Localization
 
 Automatic Language Detection: analyzes file content, configuration files, system locale, and directory structure.

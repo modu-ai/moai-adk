@@ -74,6 +74,29 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
       Read workflows/run/mode-orchestration.md → Mode dispatch + completion criteria
 ```
 
+## Project Navigator Consultation (REQ-PN-018)
+
+At run-phase entry, before the first implementation action, the implementing
+agent consults the Project Navigator brief to orient itself to what is already
+done and what is next — avoiding re-derivation of project state from many
+scattered files. This is **opt-in** — fire it only at start-of-run, never on
+every tool call.
+
+Procedure (when `.moai/project/navigator/navigator.md` exists):
+1. Read the Navigator brief: current frontier (which SPECs are active) from
+   `navigator.md`, and the owning SPEC's row in `progress-map.md` (frontier
+   milestone + last-commit provenance).
+2. Proceed with implementation already oriented — the first implementation
+   action should NOT be preceded by re-derivation file reads (re-reading many
+   SPECs, codemaps, progress files to reconstruct project state).
+3. The context-load is logged so "the brief is in the agent's context before
+   the first work-action" is observable.
+
+If the Navigator is absent (fresh project, pre-first-sync), skip silently — it
+is not a gate.
+
+---
+
 ## Quick Reference
 
 **Purpose**: SPEC 요구사항을 DDD 또는 TDD 방법론으로 구현합니다.

@@ -40,7 +40,7 @@ Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{
 
 ## Purpose
 
-Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for the 88 pre-v3 SPECs (legacy window expires 2026-11-22 per the canonical GEARS migration policy). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
+Create comprehensive SPEC documents using **GEARS notation** (Generalized EARS — the canonical SPEC authoring form as of v3.0.0) as the first step of the Plan-Run-Sync workflow. EARS notation is retained as the explicit 6-month backward-compatibility legacy reference for pre-v3 SPECs (see the canonical GEARS migration policy for the backward-compatibility window). Handles project exploration, SPEC file generation, validation, and optional Git environment setup with worktree or branch creation.
 
 Canonical GEARS authoring guide: `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
 
@@ -76,6 +76,27 @@ Constraints: 10k concurrent users, 100ms read latency target
 - `[NEEDS CLARIFICATION: <topic>]` — SPEC artifact blocker (user Q required before run)
 - `TODO` — code-level implementation debt (no user Q needed, inline comment sufficient)
 - `@MX:TODO` — code-level annotation for untested/incomplete code (MX tag system)
+
+---
+
+## Project Navigator Consultation (REQ-PN-017)
+
+At Phase 1 context-load, before drafting a new SPEC, consult the Project
+Navigator (a project-level shared read primitive) to scope the candidate SPEC
+against the current frontier. This is **opt-in** — fire it only at the named
+phase, never on every tool call.
+
+Procedure (when `.moai/project/navigator/navigator.md` exists):
+1. Read `navigator.md` for the current frontier (which SPECs are active).
+2. Read `capability-map.md` for the feature inventory (which capabilities are tracked).
+3. If the candidate feature overlaps an existing capability already tracked in
+   `capability-map.md`, prefer amending the existing SPEC over creating a
+   duplicate — surface the overlap to the user before proceeding.
+4. Draw the new SPEC's boundary against the real project state the Navigator
+   surfaces, not against a re-derived view from scattered files.
+
+If the Navigator is absent (fresh project, pre-first-sync), skip this
+consultation silently — it is not a gate.
 
 ---
 
@@ -171,7 +192,6 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 ---
 
 Version: 2.8.0
-Updated: 2026-05-25
 Changes: Added test scenarios, Phase 3 JIT Language Detection.
 
 ---
