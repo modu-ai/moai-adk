@@ -42,8 +42,12 @@ draft: false
 활성 세션의 goal을 해제합니다 (상태 파일 삭제). Stop 훅은 arm된 goal이 없음을 보고 블로킹을 멈춥니다. 오케스트레이터가 모델 조건을 충족했다고 판정해 루프를 끝낼 때 씁니다.
 
 {{< callout type="info" >}}
-**`resume` 동사는 없습니다.** 한때 이야기되던 `resume` (해제한 goal을 아카이브에서 되살리는 동사) 은 지금 CLI에 들어 있지 않습니다. `moai goal --help`도 `arm` / `status` / `clear`만 보여 줍니다. `clear`가 상태 파일을 아카이브로 남기지 않고 아예 **삭제**하기 때문에, 되살릴 원본 자체가 없습니다.
+**`resume` 동사는 없습니다.** 한때 이야기되던 `resume` (해제한 goal을 아카이브에서 되살리는 동사) 은 지금 CLI에 들어 있지 않습니다. `moai goal --help`에도 `resume`은 빠져 있고 `arm` / `status` / `clear` / `render`만 보입니다. `clear`가 상태 파일을 아카이브로 남기지 않고 아예 **삭제**하기 때문에, 되살릴 원본 자체가 없습니다.
 {{< /callout >}}
+
+### `/moai goal render` — 대시보드 HTML 렌더
+
+활성 세션의 goal 상태를 **자체 완결형 HTML 대시보드**로 렌더해 `.moai/state/goal/<session-id>.html`에 씁니다. 멱등(idempotent)이라 다시 실행하면 같은 경로를 덮어씁니다. 슬래시 커맨드(`/moai goal render`)와 터미널 CLI(`moai goal render`) 양쪽으로 모두 호출할 수 있고, 둘 다 같은 `goal.RenderDashboard`를 호출합니다. arm된 goal이 없으면 0이 아닌 종료 코드와 함께 세션 id를 stderr로 출력하고 HTML을 쓰지 않습니다. `--json` 플래그를 붙이면 `{action, session_id, path, bytes}`를 내보냅니다. 렌더링되는 내용과 보안 속성은 아래 [목표 대시보드](#목표-대시보드) 섹션을 참고하세요.
 
 ## 진행 모드 (자율 / 반자율)
 
@@ -79,6 +83,45 @@ draft: false
 | `/moai loop` | 진단 수정 루프 (프리셋) | 이슈 큐 비움 + 진단 클린 (0 에러 / 테스트 통과 / 커버리지) |
 
 끝 상태를 조건식으로 표현할 수 있다면 `/moai goal`, "도구가 찾는 문제를 전부 없애줘"라면 `/moai loop`가 맞습니다.
+
+## 목표 대시보드
+
+`render` 동사는 현재 세션의 goal 상태를 정적 HTML 대시보드 하나로 렌더해 `.moai/state/goal/<session-id>.html`에 씁니다. 이 파일은 외부 JS·CSS 프레임워크나 CDN에 의존하지 않고 인라인 CSS만 쓰기 때문에 브라우저로 오프라인에서 바로 열리며, 이메일 첨부나 슬랙 드래그앤드롭으로도 깨지지 않습니다.
+
+```mermaid
+flowchart TD
+    A["/moai goal render<br/>또는 moai goal render"] --> B["goal.LoadGoal"]
+    B --> C{"arm된 goal이 있는가?"}
+    C -- "아니오" --> D["exit non-zero<br/>stderr: 세션 id<br/>HTML 미작성"]
+    C -- "예" --> E["goal.RenderDashboard"]
+    E --> F["대시보드 HTML 파일 기록<br/>(덮어쓰기, 멱등)"]
+    F --> G["브라우저로 오프라인 열기"]
+```
+
+{{< callout type="info" >}}
+**자체 완결형 HTML**: 외부 리소스가 없어 네트워크가 끊겨도 열립니다. 렌더 시점의 goal 상태가 파일 안에 완전히 직렬화됩니다.
+{{< /callout >}}
+
+**대시보드에 표시되는 내용**: v3.1 CLI에서 평가기(verdict) 인자는 항상 `nil`로 전달되므로, 대시보드는 "아직 판정 없음" 자리표시자와 함께 다음 항목들을 렌더합니다.
+
+- **머리글** — 세션 id, 라이프사이클 상태 (`armed` / `satisfied` / `ceiling-exit` / `cleared`), 턴 사용량/상한, 진행 모드 (`autonomous` / `semi-autonomous`), 생성 타임스탬프
+- **조건 선언부** — goal 조건 텍스트를 테두리 블록 안에 그대로 표시
+- **선언된 조건 표 (Declared Conditions)** — 각 condition을 표로 나열. 기계적 조건은 `<명령어> (expect exit N)` 형태로, 모델 평가 조건은 주장(claim) 텍스트 그대로 표시
+- **판정 자리표시자** — turn/상한 줄, 실패한 조건 표, 5-섹션 천장 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)이 들어갈 자리에 "아직 판정 없음" 표시
+
+**XSS 자동 이스케이프**: 모든 신뢰할 수 없는 필드는 Go 표준 라이브러리 `html/template`의 `{{.Field}}` 문법으로 렌더되어 자동 이스케이프됩니다. 조건 텍스트나 조건 값에 `<script>` 페이로드가 들어가도 HTML 엔티티로 변환되어 실행되지 않습니다. goal 조건에는 셸 명령 문자열과 자유 텍스트가 섞여 들어갈 수 있으므로, 이 자동 이스케이프는 의미 있는 보안 속성입니다.
+
+**`clear`와 연계된 형제 HTML 정리**: `moai goal clear`는 상태 파일(`<session>.json`)과 함께 형제 `<session>.html` 대시보드 파일도 삭제합니다. 또한 `PruneOrphans`가 고아가 된 `.html`을 `.json`과 함께 `consumed/` 아카이브 디렉터리로 옮깁니다 (best-effort). 덕분에 상태 디렉터리에 오래된 대시보드가 쌓이지 않습니다.
+
+## 로드맵
+
+{{< icon clock muted >}} 렌더러는 준비됐지만 v3.1 CLI에서는 아직 연결되지 않은, v3.2 연결이 예정된 표면들입니다. 지금 `moai goal render`를 실행해도 아래 세 가지는 보이지 않습니다.
+
+- {{< icon clock muted >}} **판정 섹션 활성화** — 턴/상한 줄, 실패한 조건 표, 5-섹션 천장 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk). 렌더러는 평가기가 non-nil verdict를 넘기면 이 섹션들을 채우지만, v3.1 CLI는 항상 `nil`을 넘기므로 "아직 판정 없음" 자리표시자가 보입니다. 이 연결은 v3.2의 턴마다 Stop 훅이 대시보드를 자동 갱신하는 LIVE 보드와 함께 들어올 예정입니다.
+- {{< icon clock muted >}} **계획 HTML 리포트** — plan-phase 산출물 (goal + 8-필드 자율성 계약 + 판정 점수 + 마일스톤)을 `.moai/reports/plan-html/<SPEC-ID>-plan.html`에 쓰는 별도의 렌더러 `RenderPlanHTML`입니다. v3.1에는 CLI 래퍼와 프로덕션 호출자가 없어 이 경로가 채워지지 않습니다.
+- {{< icon clock muted >}} **재무장 (re-arm) UI** — `/clear` 시 재무장 표시, 새 id로 재무장됨 보기, D8 무한 goal 거절 배너 등 세 가지 조건부 대시보드 보기입니다. 렌더러는 있지만 프로덕션에서 이 컨텍스트를 구성하는 호출자가 없어 v3.1 CLI는 `nil`을 넘깁니다.
+
+재무장 메커니즘 자체 (세션 핸드오프 임베드 + `/clear` 시 재무장 + 무한 goal 거절 방어)는 앞선 SPEC에서 이미 출하됐습니다 — 이 로드맵에서 "미연결"인 것은 그 메커니즘 상태를 대시보드 UI에 **표면화**하는 부분만 해당합니다.
 
 ## 관련 문서
 

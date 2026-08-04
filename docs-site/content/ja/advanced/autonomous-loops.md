@@ -58,6 +58,8 @@ moai goal clear                         # 条件削除 (ループ終了)
 
 セッション開始時に`PruneOrphans`が孤立goalをクリーンアップします。このメカニズムはSPEC-GOAL-ENGINE-001 (CLOSED)で実装されました。
 
+現在のループ状態を静的HTMLダッシュボードとしてレンダリングするには `moai goal render` を使います — 詳細は [/moai goal - ゴールダッシュボード](/ja/utility-commands/moai-goal/) を参照してください。
+
 ### `/moai loop` — Ralph Engine (診断駆動プリセット)
 
 {{< icon arrow-right >}} `/moai loop`は診断ツールが見つけたイシューキューをスキャンし、各イシューを修正し、キューが空になるか診断がクリーンになるまで繰り返す決定論的ループです。これはgoalエンジン上のプリセットです。

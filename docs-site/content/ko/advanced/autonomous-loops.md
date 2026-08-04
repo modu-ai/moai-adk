@@ -58,6 +58,8 @@ moai goal clear                         # 조건 제거 (루프 종료)
 
 세션이 시작될 때 `PruneOrphans`가 남겨진 고아 goal을 정리합니다. 이 메커니즘은 SPEC-GOAL-ENGINE-001(CLOSED)에서 구현했습니다.
 
+현재 루프 상태를 정적 HTML 대시보드로 렌더하려면 `moai goal render`를 쓰세요 — 자세한 내용은 [/moai goal - 목표 대시보드](/ko/utility-commands/moai-goal/)를 참고하세요.
+
 ### `/moai loop` — Ralph Engine (진단 기반 프리셋)
 
 {{< icon arrow-right >}} `/moai loop`는 진단 도구가 찾아낸 이슈 큐를 훑어 하나씩 고치고, 큐가 비거나 진단이 깨끗해질 때까지 반복하는 결정론적 루프입니다. goal 엔진 위에 얹힌 프리셋이기도 합니다.
