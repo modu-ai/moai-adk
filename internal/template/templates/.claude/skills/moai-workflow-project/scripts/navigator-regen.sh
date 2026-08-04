@@ -30,7 +30,7 @@
 #   NAVIGATOR_PRE_RENAME_BARRIER  path; when set, the script writes "ready" to
 #       this path after creating each <file>.tmp and blocks (poll loop) until
 #       the file is removed before the mv lands. Test-only synchronized barrier
-#       for the atomic-rename fixture (AC-PN-008).
+#       for the atomic-rename fixture.
 #
 # Exit codes: 0 always (fail-open). Errors are logged, never fatal to the caller.
 set -u
@@ -107,7 +107,7 @@ has_valid_frontmatter() {
     [ "${fmcount:-0}" -ge 2 ]
 }
 
-# barrier_wait — AC-PN-008 test fixture hook. If NAVIGATOR_PRE_RENAME_BARRIER is
+# barrier_wait — atomic-rename test fixture hook. If NAVIGATOR_PRE_RENAME_BARRIER is
 # set AND a companion "<barrier>.armed" sentinel exists, write "ready" to the
 # barrier path, consume the armed sentinel (so the barrier fires EXACTLY ONCE
 # across the four atomic_write calls), and block until the barrier path is

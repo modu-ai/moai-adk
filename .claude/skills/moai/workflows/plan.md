@@ -79,7 +79,7 @@ Constraints: 10k concurrent users, 100ms read latency target
 
 ---
 
-## Project Navigator Consultation (REQ-PN-017)
+## Project Navigator Consultation
 
 At Phase 1 context-load, before drafting a new SPEC, consult the Project
 Navigator (a project-level shared read primitive) to scope the candidate SPEC

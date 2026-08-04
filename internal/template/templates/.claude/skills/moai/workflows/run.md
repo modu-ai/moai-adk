@@ -74,7 +74,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
       Read workflows/run/mode-orchestration.md → Mode dispatch + completion criteria
 ```
 
-## Project Navigator Consultation (REQ-PN-018)
+## Project Navigator Consultation
 
 At run-phase entry, before the first implementation action, the implementing
 agent consults the Project Navigator brief to orient itself to what is already
