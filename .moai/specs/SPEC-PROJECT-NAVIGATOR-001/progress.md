@@ -40,7 +40,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-08-05
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 2c87d195f
 sync_status: completed
 changelog_entry_position: CHANGELOG.md [Unreleased] / Added (top of section)
 frontmatter_status_transitions:
