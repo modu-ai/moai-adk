@@ -58,6 +58,8 @@ moai goal clear                         # 删除条件 (结束循环)
 
 会话开始时 `PruneOrphans` 清理孤立 goal。此机制在 SPEC-GOAL-ENGINE-001 (CLOSED)中实现。
 
+要用静态 HTML 仪表板渲染当前循环状态,可使用 `moai goal render` —— 详见 [/moai goal - 目标看板](/zh/utility-commands/moai-goal/)。
+
 ### `/moai loop` — Ralph Engine (诊断驱动预设)
 
 {{< icon arrow-right >}} `/moai loop` 是扫描诊断工具找到的问题队列、修复每个问题、重复直到队列清空或诊断干净的确定性循环。它是 goal 引擎上的预设。

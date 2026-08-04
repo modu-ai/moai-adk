@@ -42,8 +42,12 @@ draft: false
 解除活跃会话的 goal(删除状态文件)。Stop 钩子见到没有 arm 的 goal 便停止阻断。这是编排器判定模型条件已满足后结束循环的方法。
 
 {{< callout type="info" >}}
-**不提供 `resume` 动词。** 以前讨论过的 `resume`(从归档恢复已解除的 goal)动词目前不在 CLI 中 —— `moai goal --help` 只列出 `arm` / `status` / `clear`。因为 `clear` 会 **删除** 状态文件(而非归档为 tombstone),所以不留下可恢复的原件。
+**不提供 `resume` 动词。** 以前讨论过的 `resume`(从归档恢复已解除的 goal)动词目前不在 CLI 中 —— `moai goal --help` 中也找不到 `resume`,只列出 `arm` / `status` / `clear` / `render`。因为 `clear` 会 **删除** 状态文件(而非归档为 tombstone),所以不留下可恢复的原件。
 {{< /callout >}}
+
+### `/moai goal render` — 仪表板 HTML 渲染
+
+将活跃会话的 goal 状态渲染为 **自包含 HTML 仪表板**,写入 `.moai/state/goal/<session-id>.html`。它是幂等的(idempotent),重复执行会覆盖同一路径。可通过斜杠命令(`/moai goal render`)和终端 CLI(`moai goal render`)两种方式调用,两者都调用相同的 `goal.RenderDashboard`。若没有 arm 的 goal,则以非零退出码将 session id 输出到 stderr,且不写入 HTML。加 `--json` 标志会输出 `{action, session_id, path, bytes}`。关于渲染内容和安全属性,请参见下方 [目标看板](#目标看板) 章节。
 
 ## 进行模式(自主 / 半自主)
 
@@ -79,6 +83,45 @@ draft: false
 | `/moai loop` | 诊断修复循环(预设) | 清空问题队列 + 诊断干净(0 错误 / 测试通过 / 覆盖率) |
 
 若终态能用条件式表达则用 `/moai goal`,若是"把工具找到的问题全部消除"则 `/moai loop` 更合适。
+
+## 目标看板
+
+`render` 动词将当前会话的 goal 状态渲染为一个静态 HTML 仪表板,写入 `.moai/state/goal/<session-id>.html`。该文件不依赖外部 JS·CSS 框架或 CDN,仅使用内联 CSS,因此可在浏览器中离线直接打开;作为邮件附件或 Slack 拖拽分享也不会破损。
+
+```mermaid
+flowchart TD
+    A["/moai goal render<br/>或 moai goal render"] --> B["goal.LoadGoal"]
+    B --> C{"存在 arm 的 goal?"}
+    C -- "否" --> D["exit non-zero<br/>stderr: session id<br/>不写入 HTML"]
+    C -- "是" --> E["goal.RenderDashboard"]
+    E --> F["写入仪表板 HTML 文件<br/>(覆盖,幂等)"]
+    F --> G["浏览器离线打开"]
+```
+
+{{< callout type="info" >}}
+**自包含 HTML**:无外部资源,即使断网也能打开。渲染时刻的 goal 状态被完整序列化进文件。
+{{< /callout >}}
+
+**仪表板显示的内容**:由于 v3.1 CLI 始终向评估器(verdict)传入 `nil` 参数,仪表板在显示"尚无判定"占位符的同时渲染以下内容。
+
+- **页眉** — 会话 id、生命周期状态(`armed` / `satisfied` / `ceiling-exit` / `cleared`)、回合用量/上限、进行模式(`autonomous` / `semi-autonomous`)、生成时间戳
+- **条件声明部** — goal 条件文本原样显示在有边框的块中
+- **已声明条件表** (Declared Conditions) — 各 condition 以表格列出。机械条件以 `<命令> (expect exit N)` 形式显示;模型评估条件以主张(claim)文本原样显示
+- **判定占位符** — 在回合/上限行、失败条件表、5 段上限判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)所在位置显示"尚无判定"
+
+**XSS 自动转义**:所有不可信字段通过 Go 标准库 `html/template` 的 `{{.Field}}` 语法渲染,自动进行 HTML 转义。即便条件文本或条件值中嵌入 `<script>` 载荷,也会被转换为 HTML 实体而不执行。goal 条件中可能混入 shell 命令字符串与自由文本,因此此自动转义是有意义的安全属性。
+
+**`clear` 联动的兄弟 HTML 清理**:`moai goal clear` 在删除状态文件(`<session>.json`)的同时也删除兄弟 `<session>.html` 仪表板文件。此外 `PruneOrphans` 会将孤立的 `.html` 与 `.json` 一并移入 `consumed/` 归档目录(best-effort)。因此状态目录不会堆积过期的仪表板文件。
+
+## 路线图
+
+{{< icon clock muted >}} 渲染器已就绪,但在 v3.1 CLI 中尚未连接,计划于 v3.2 连接的表面。现在运行 `moai goal render` 看不到以下三项。
+
+- {{< icon clock muted >}} **判定段激活** — 回合/上限行、失败条件表、5 段上限判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)。当评估器传入 non-nil verdict 时,渲染器会填充这些段;但 v3.1 CLI 始终传入 `nil`,因此显示"尚无判定"占位符。该连接计划与 v3.2 中 Stop 钩子每回合自动更新仪表板的 LIVE 看板一同落地。
+- {{< icon clock muted >}} **计划 HTML 报告** — 独立渲染器 `RenderPlanHTML`,将 plan 阶段产物(goal + 8 字段自主性契约 + 判定分数 + 里程碑)写入 `.moai/reports/plan-html/<SPEC-ID>-plan.html`。v3.1 中无 CLI 包装器和生产调用者,因此该路径不会被填充。
+- {{< icon clock muted >}} **重新武装 UI** (re-arm) — `/clear` 时显示重新武装、以新 id 重新武装的视图、D8 无限 goal 拒绝横幅等三种条件化的仪表板视图。渲染器已就绪,但生产中没有构造此上下文的调用者,因此 v3.1 CLI 传入 `nil`。
+
+重新武装机制本身(会话交接嵌入 + `/clear` 时重新武装 + 无限 goal 拒绝防护)已在先前 SPEC 中发布 — 本路线图中"未连接"的部分仅指将该机制状态 **表面化** 到仪表板 UI 的部分。
 
 ## 相关文档
 
