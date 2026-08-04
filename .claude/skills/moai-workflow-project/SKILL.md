@@ -106,6 +106,29 @@ Use it for mid-session deep re-orientation. A separate SessionStart hook
 (`handle-session-start-navigator.sh`) emits an ambient auto-brief (≤500 tokens)
 on every new session — the zero-touch path.
 
+**`--audit` drift / completeness mode** — `/moai project --audit` runs the
+audit script (`scripts/navigator-audit.sh`) over the project's design docs
+(`product.md` / `structure.md` / `tech.md`) and the existing capability-map,
+then emits a bidirectional drift report under `.moai/project/navigator/`:
+
+- `audit-report.md` — human-readable, grouped into `## Missing SPECs`,
+  `## Orphan SPECs`, `## Matched` sections.
+- `audit-report.json` — machine-readable, stable schema (`audit_at`,
+  `audit_commit`, `inputs`, `missing`, `orphan`, `matched`).
+
+**Missing SPECs** are design-named features with no matching capability-map
+row; **Orphan SPECs** are capability-map rows with no design-doc anchor. The
+audit is ADVISORY — it surfaces candidates, never auto-creates or auto-retires
+SPECs. It is read-only over its inputs (never triggers regeneration, never
+modifies design docs or the capability-map). Recommended invocation order:
+`/moai project` (regenerates 001's capability-map) → `/moai project --audit`
+(consumes it). An optional user-authored override file
+(`audit-known-matches.yaml`) silences deliberate naming divergence the
+heuristic cannot resolve. See
+[navigator-audit.md reference](references/navigator-audit.md) for the full
+algorithm, the header-driven column resolution, the matching heuristic, and
+the override-file schema.
+
 ### Language and Localization
 
 Automatic Language Detection: analyzes file content, configuration files, system locale, and directory structure.

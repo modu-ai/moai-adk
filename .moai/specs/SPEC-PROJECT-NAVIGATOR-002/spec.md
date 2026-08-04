@@ -1,8 +1,8 @@
 ---
 id: SPEC-PROJECT-NAVIGATOR-002
 title: "Project Navigator — drift / completeness audit (`--audit` mode: design-intent vs implemented feature diff)"
-version: "0.0.0"
-status: draft
+version: "0.1.1"
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec
@@ -10,45 +10,186 @@ priority: P2
 phase: "v3.2 target"
 module: project-navigator
 lifecycle: spec-anchored
+tier: M
+era: V3R6
 tags: "navigator, audit, drift, missing-spec, completeness"
 related_specs: [SPEC-PROJECT-NAVIGATOR-001, SPEC-PROJECT-NAVIGATOR-003]
 ---
 
-# SPEC-PROJECT-NAVIGATOR-002 — Navigator `--audit` drift check (STUB)
+# SPEC-PROJECT-NAVIGATOR-002 — Navigator `--audit` drift check
 
-> **STUB — not authored at plan-phase.** This entry exists to reserve the SPEC ID and record the boundary decision. It will be fully authored (spec.md + plan.md + acceptance.md + research.md + progress.md) after SPEC-PROJECT-NAVIGATOR-001 lands its artifact set, because the audit algorithm depends on what 001's capability-map actually surfaces.
+## HISTORY
 
-## Problem (placeholder)
+- 2026-08-05 (stub) — Reserved SPEC ID + recorded boundary decision. The audit algorithm depends on what 001's capability-map surfaces, so the stub deferred full authoring until 001's artifact set landed.
+- 2026-08-05 (plan-phase expansion, iter-1) — Full plan-phase expansion. SPEC-PROJECT-NAVIGATOR-001 landed its three-file artifact set (status: completed, PR #1354 squash `2c87d195f`). This SPEC layers the audit algorithm on top of 001's `capability-map.md` output and the project's design docs (`product.md` / `structure.md` / `tech.md`). Tier M (audit diff engine + skill mode + output format + tests ≈ 300–700 LOC, ~5–8 affected files). The `--audit` skill mode is a sibling to 001's `--brief` mode; the audit script is a sibling to 001's `navigator-regen.sh`. No new Go CLI subcommand (constraint inherited from 001 §B.1).
+- 2026-08-05 (iter-2 fix) — plan-auditor iter-1 returned FAIL driven by D1 (BLOCKING: capability-map schema mis-statement) + D2 (blocking-minor: REQ-NA-003 self-contradiction). D1 fix: 001's capability-map column order is NOT a stable SSOT — 001's spec.md declares column 1 as `capability` (capability-first) while 001's acceptance.md AC-PN-013 enumerates rows as `spec-id, title, status, implementation-path, ...` (spec-id-first), and 001's plan.md defers the exact schema to 001's own M1 (i.e., unfrozen). 002 therefore parses the capability-map **header-driven** (by column name, not fixed position) and the previous "stable SSOT" assertions are replaced by this header-driven contract (REQ-NA-007, §B.3, §G). The `module` column rename is dropped — 002 references 001's actual column name `implementation-path`; the module-token extraction rule (last path segment) gains a ≥4-character floor so trivially short segments don't match (AC-NA-007). D2 fix: REQ-NA-003's "closest heuristic match (if any)" promise is struck (the audit's match predicate is binary; `closest_match` stays in the JSON schema as a reserved always-null field for forward-compat). 001 is NOT modified — its internal schema inconsistency is out of scope for 002; header-driven is precisely what makes 002 robust to it.
 
-The user-approved Project Navigator scope names a P2 — a drift / completeness audit that diffs design intent (`product.md` / `structure.md` / `tech.md` — the intended features) against the Navigator's capability-map (the implemented features) and flags:
+## §A. User Story
 
-1. **Missing SPECs** — features named in design docs that have no corresponding SPEC in `.moai/specs/` (명세 누락 detection).
-2. **Unimplemented features** — SPECs whose status has stalled (e.g. `draft` for >N sync cycles) or whose owning code path is absent from the capability-map.
-3. **Stale design** — design-doc features that have been retired in implementation but never removed from `product.md` (design rot).
+**As a** MoAI-ADK maintainer returning to a project after a long gap (or onboarding onto a new project) where the design docs (`product.md` / `structure.md` / `tech.md`) name features the project is supposed to have,
+**I want** an on-demand audit that diffs those design-named features against what the Navigator's capability-map actually surfaces, and flags the two directions of drift —
+1. **Missing SPECs** (명세 누락): a design-named feature that has NO corresponding SPEC in `.moai/specs/` (the P2 the user emphasized), and
+2. **Orphan SPECs** (reverse drift): a SPEC in `.moai/specs/` whose subject is not anchored in any design doc,
+**so that** I can tell, in a single read, which intended features never made it to a SPEC and which SPECs have drifted out of the design narrative — without diffing the three design docs against the SPEC registry by hand.
 
-## Mechanism (decided in 001's plan.md §B.1)
+**Outcome hypotheses:**
+- A maintainer running `/moai project --audit` receives a stable, machine + human-readable drift report at `.moai/project/navigator/audit-report.{md,json}` that names each missing SPEC candidate and each orphan SPEC candidate with provenance (the design-doc heading it is / is not anchored to, or the capability-map row it is / is not matched against).
+- The audit is ADVISORY — it surfaces candidates, never auto-creates or auto-retires SPECs. The user is the sole authority on whether a candidate is a genuine gap.
+- The audit is read-only over its inputs: it never writes design docs, never writes SPECs, never writes the capability-map (it consumes 001's output).
 
-- **Skill mode only**: `/moai project --audit` (NOT a hook — audit output can be large and is not latency-sensitive; making it a hook would violate Advisory-Check Discipline).
-- Invoked on-demand OR chained into sync-phase as an optional advisory step.
+## §B. Context and Background
 
-## Boundary vs 001
+### §B.1 What is being diffed
 
-- **001 owns**: the artifact set (capability-map, progress-map, navigator.md) + regeneration + reorientation.
-- **002 owns**: the audit algorithm that READS 001's artifacts + design docs and emits a drift report.
-- **003 owns**: tree-sitter auto-derivation that feeds enriched rows into 001's capability-map.
+Two input surfaces, both already existing in the project — 002 introduces no new inputs:
 
-## Why this is a separate SPEC (not folded into 001)
+| Surface | Source | What it represents |
+|---------|--------|--------------------|
+| **design-intent** | `.moai/project/product.md`, `structure.md`, `tech.md` (the project-context triple that `/moai project` generates + the user edits) | Features the project intends to have — the "plan". |
+| **capability-map** | `.moai/project/navigator/capability-map.md` (generated by SPEC-PROJECT-NAVIGATOR-001's `navigator-regen.sh`) | Features the project actually tracks as SPECs — the "implementation rollup". |
 
-- The audit algorithm is exploratory — its exact shape depends on what 001's capability-map actually contains, which is decided in 001's run-phase.
-- Different changeability profile: 001 ships the artifact set; 002 ships the diff algorithm. Bundling them would force one plan-audit gate over two orthogonal concerns.
-- Tier classification: likely **Tier S or M** (single skill mode + report format; no new infrastructure) — to be confirmed at 002's own plan-phase.
+002's audit computes the bidirectional diff between the two and emits the missing / orphan candidates. It is a READ-ONLY consumer of both surfaces; it never modifies either.
 
-## Out of Scope (for this stub)
+### §B.2 Why a separate SPEC (not folded into 001)
 
-### Out of Scope — artifact generation
+Stated once for traceability — 001's plan §A.4 already records the Epic decomposition decision:
 
-- Generating the Navigator artifact set is owned by SPEC-PROJECT-NAVIGATOR-001.
+- **001 owns**: the artifact set (capability-map, progress-map, navigator.md) + regeneration mechanism + `--brief` reorientation.
+- **002 owns**: the audit algorithm that READS 001's capability-map + the project's design docs and emits a drift report.
+- **003 owns**: tree-sitter auto-derivation that enriches 001's capability-map rows.
 
-### Out of Scope — tree-sitter auto-derivation
+The three have different changeability profiles: 001 is a regeneration substrate; 002 is an analysis layer over 001's output; 003 is an AST-based enrichment of 001's rows. Bundling them would force one plan-audit gate over three orthogonal concerns.
 
-- Auto-deriving capability rows from AST analysis is owned by SPEC-PROJECT-NAVIGATOR-003.
+### §B.3 Mechanism (decided — see plan.md §C for full rationale)
+
+- **Skill mode only**: `/moai project --audit` (a sibling to 001's `--brief`). NOT a hook — audit output can be large and is not latency-sensitive; making it a hook would violate Advisory-Check Discipline (`.claude/rules/moai/development/coding-standards.md` § Advisory-Check Discipline).
+- **Read-only**: audit consumes 001's already-generated `capability-map.md`. Audit does NOT trigger regeneration. The recommended invocation order is `/moai project` (regenerates 001) → `/moai project --audit` (consumes 001's output).
+- **Header-driven column resolution**: 001's capability-map column order is NOT frozen at the SPEC level — 001's spec.md declares column 1 as `capability` (capability-first), 001's acceptance.md AC-PN-013 enumerates rows as `spec-id, title, status, implementation-path, ...` (spec-id-first), and 001's plan defers the exact schema to its own M1. The audit therefore parses the capability-map's **header row** and resolves columns **by name** (recognizing the feature/name column and the spec-id column under any spelling 001 may use). Rows whose header is missing a required column are skipped with a warning. This immunizes 002 against 001's unfrozen/inconsistent schema without 002 redefining it — and is the reason a fixed-position parse is rejected.
+- **Standalone script**: `scripts/navigator-audit.sh` (sibling to `scripts/navigator-regen.sh`) — self-contained bash (`git` + `awk` + `sed` + `grep`; NO `jq`, NO `moai` binary), inheriting 001's portability contract.
+- **Output**: two files under `.moai/project/navigator/` — `audit-report.md` (human-readable) + `audit-report.json` (machine-readable, stable schema). Both atomic-rename, both fail-open, both idempotent.
+- **Override file** (optional, user-authored): `.moai/project/navigator/audit-known-matches.yaml` — a manual allowlist / denylist that records features whose design-doc name deliberately diverges from the SPEC title (e.g. a feature called "Autonomy Loop" in `product.md` but implemented as `SPEC-AUTONOMY-WORKFLOW-001`). The audit honors overrides before applying its heuristic.
+
+## §C. Requirements (GEARS)
+
+### §C.1 Audit mode invocation (P2 core)
+
+#### REQ-NA-001 (Capability-gate — audit skill mode)
+**Where** `/moai project --audit` is invoked AND `.moai/project/navigator/capability-map.md` exists, the `moai-workflow-project` skill SHALL run the audit script (`scripts/navigator-audit.sh`) over the project's design docs and the existing capability-map, and emit a drift report under `.moai/project/navigator/`, so the user receives a single canonical audit surface per invocation.
+
+#### REQ-NA-002 (Event-driven — no regeneration side-effect)
+**When** the audit script runs, it SHALL NOT invoke `navigator-regen.sh` and SHALL NOT modify `.moai/project/navigator/capability-map.md` or `.moai/project/navigator/progress-map.md`, so the audit is a pure read-only consumer of 001's output and the capability-map reflects the last `/moai project` / `/moai sync` regeneration, not an audit-time refresh.
+
+### §C.2 Missing-SPEC detection (명세 누락)
+
+#### REQ-NA-003 (Event-driven — missing-SPEC flag)
+**When** the audit extracts a named feature from a design doc and the matching heuristic (§C.5) finds NO corresponding capability-map row, the audit SHALL emit that feature as a **Missing SPEC** candidate in the report, carrying the design-doc heading path and the source file so the user can adjudicate, so design-intended features that never became SPECs are surfaced in a single read.
+
+### §C.3 Orphan-SPEC detection (reverse drift)
+
+#### REQ-NA-004 (Event-driven — orphan-SPEC flag)
+**When** the audit enumerates a capability-map row and the matching heuristic (§C.5) finds NO corresponding design-doc anchor, the audit SHALL emit that row as an **Orphan SPEC** candidate in the report, carrying the spec-id, title, implementation-path, and a note that no design-doc reference was found, so SPECs whose subject has drifted out of (or was never in) the design narrative are surfaced for design-doc refresh or SPEC retirement.
+
+### §C.4 Output format
+
+#### REQ-NA-005 (Ubiquitous — dual output)
+The audit SHALL emit exactly two output files — `audit-report.md` (human-readable, grouped into `## Missing SPECs`, `## Orphan SPECs`, `## Matched` sections) and `audit-report.json` (machine-readable, stable schema with `missing`, `orphan`, `matched`, `audit_at`, `audit_commit` fields) — and no other top-level audit file, so downstream tooling (and a future LSEL cross-reference) has a deterministic contract.
+
+#### REQ-NA-006 (Ubiquitous — provenance per row)
+Every candidate row in `audit-report.md` and every entry in `audit-report.json` SHALL carry a provenance pointer — for Missing SPECs: the design-doc file path + heading path that named the feature; for Orphan SPECs: the capability-map spec-id + title + implementation-path — so any audit claim is attributable to its source per `.claude/rules/moai/core/verification-claim-integrity.md` §2 (no unobserved claims).
+
+### §C.5 Matching heuristic
+
+#### REQ-NA-007 (Ubiquitous — header-driven token-normalized fuzzy match)
+The matching heuristic SHALL resolve capability-map columns **by header name** (parsed from the capability-map's header row), NOT by fixed column position — recognizing the feature/name column and the spec-id column under any spelling 001 may use, and skipping rows whose header is missing a required column (with a warning). The heuristic SHALL normalize both design-doc feature names and the capability-map title column value to lowercase kebab tokens (strip punctuation, lowercase, collapse whitespace to single hyphens) and consider a match when ANY of: (a) exact normalized-title equality, (b) one normalized string is a substring of the other AND the shorter is ≥4 characters, OR (c) the last path segment of the capability-map row's implementation-path column (the path token) appears as a token in the normalized design-doc feature name AND that path token is ≥4 characters — so the heuristic tolerates reasonable naming divergence without producing false negatives on common phrasings, remains robust to 001's unfrozen column schema (header-driven), and refuses trivially short path segments (`cmd`, `pkg`, `src`, `crm`) that would otherwise produce false positives.
+
+#### REQ-NA-008 (Capability-gate — manual override)
+**Where** a user-authored `.moai/project/navigator/audit-known-matches.yaml` file exists, the audit SHALL load its `match` entries (design-name → spec-id pairs that should be considered matched regardless of the heuristic) and its `ignore` entries (design-names or spec-ids that should be excluded from the missing / orphan candidate lists) BEFORE applying the heuristic, so the user has an authoritative escape hatch for deliberate naming divergence that the heuristic cannot resolve.
+
+### §C.6 Determinism + fail-open
+
+#### REQ-NA-009 (Ubiquitous — idempotence)
+The audit SHALL be idempotent: two runs over the same design docs + same capability-map + same override file (or same absence of one) SHALL produce byte-identical `audit-report.md` and `audit-report.json` output, so a no-op re-audit is a safe operation and the report does not carry wall-clock timestamps (the only time field is `audit_commit`, the HEAD commit SHA's committer date — sourced from `git log`, identical to 001's provenance contract).
+
+#### REQ-NA-010 (Event-driven — fail-open on missing inputs)
+**When** ANY of the audit inputs is missing — no design docs under `.moai/project/`, no `.moai/project/navigator/capability-map.md`, no `.moai/specs/SPEC-*` directories — the audit SHALL exit 0, write a minimal report naming the missing input, and append a warning line to `.moai/logs/navigator-warnings.log`, rather than aborting with a non-zero exit, so the audit degrades gracefully on a freshly-initialized project.
+
+### §C.7 Boundary + template neutrality
+
+#### REQ-NA-011 (Ubiquitous — non-overlap with LSEL + SPEC-003)
+The audit SHALL operate strictly on `.moai/project/{product,structure,tech}.md`, `.moai/project/navigator/capability-map.md`, `.moai/specs/SPEC-*/spec.md` frontmatter, the optional override file, and `git log` — and SHALL NOT read or write any LSEL surface (`.moai/lessons-inbox.jsonl`, `.moai/state/lsel/`, `memory/feedback_*.md`, `hns-lsel-*`) or any SPEC-PROJECT-NAVIGATOR-003 surface (tree-sitter grammars, AST extraction), so the three Navigator SPECs and LSEL keep non-overlapping read/write sets.
+
+#### REQ-NA-012 (Ubiquitous — template-neutrality + 16-language neutrality)
+The template-distributed audit surfaces (the extended `moai-workflow-project` skill body, the new `references/navigator-audit.md` Level-3 reference, and `scripts/navigator-audit.sh` under `internal/template/templates/.claude/skills/moai-workflow-project/`) SHALL be template-neutral (no internal SPEC IDs, REQ tokens, audit citations, internal dates, commit SHAs — the C2/C3/C7 forbidden classes per CLAUDE.local.md §25.1) and SHALL NOT assume a Go codebase, so the audit ships equally to all 16 supported languages (CLAUDE.local.md §15).
+
+## §D. Acceptance Criteria Matrix (summary)
+
+Full Given-When-Then scenarios live in `acceptance.md`. Summary:
+
+| AC | REQ | Check |
+|----|-----|-------|
+| AC-NA-001 | REQ-NA-001 | `/moai project --audit` produces `audit-report.{md,json}` |
+| AC-NA-002 | REQ-NA-002 | Capability-map + progress-map unchanged across audit invocation (read-only) |
+| AC-NA-003 | REQ-NA-003 | Missing-SPEC candidate emitted for design-named feature with no capability-map match |
+| AC-NA-004 | REQ-NA-004 | Orphan-SPEC candidate emitted for capability-map row with no design-doc anchor |
+| AC-NA-005 | REQ-NA-005 | Dual output (markdown + JSON) with stable schema, no extras |
+| AC-NA-006 | REQ-NA-006 | Every candidate row carries provenance pointer |
+| AC-NA-007 | REQ-NA-007 | Token-normalized heuristic tolerates phrasing divergence (fixture) |
+| AC-NA-008 | REQ-NA-008 | Override file `match` + `ignore` entries honored before heuristic |
+| AC-NA-009 | REQ-NA-009 | Two runs over identical inputs → byte-identical output |
+| AC-NA-010 | REQ-NA-010 | Missing-input cases exit 0 + informative report + warning logged |
+| AC-NA-011 | REQ-NA-011 | Audit grep touches no LSEL surface and no SPEC-003 surface |
+| AC-NA-012 | REQ-NA-012 | Template neutrality grep clean (C2/C3/C7 absent) + non-Go fixture audit passes |
+
+## §E. Out of Scope
+
+### Out of Scope — Navigator artifact generation
+
+- Generating or regenerating the capability-map / progress-map / `navigator.md` artifact set is owned by **SPEC-PROJECT-NAVIGATOR-001**. The audit is a pure read-only consumer of `capability-map.md`; it never triggers regeneration and never modifies 001's outputs.
+
+### Out of Scope — tree-sitter AST auto-derivation
+
+- Mechanically extracting file / symbol / status rows from tree-sitter AST analysis (16-language) and feeding enriched rows into `capability-map.md` is owned by **SPEC-PROJECT-NAVIGATOR-003**. This SPEC's matching heuristic operates on the title / implementation-path / spec-id text fields 001 already produces (resolved header-driven per REQ-NA-007); AST-level enrichment is deferred to 003.
+
+### Out of Scope — LSEL-owned harness self-evolution
+
+- Closing the PROPOSE→APPLY seam for harness self-edit (lessons-inbox drain, `feedback_*.md` generation, `hns-*` edits) is owned by **SPEC-LSEL-LOCAL-EVOLUTION-001**. The audit does NOT consume the lessons-inbox and does NOT feed LSEL proposals. A future cross-reference (audit "missing SPEC detected → suggest LSEL propose creating it") is a forward-looking possibility, NOT in scope for this SPEC.
+
+### Out of Scope — auto-creating / auto-retiring SPECs
+
+- The audit ADVISORILY surfaces Missing SPEC and Orphan SPEC candidates. It NEVER auto-creates a SPEC, NEVER auto-retires a SPEC, and NEVER modifies SPEC frontmatter. Adjudication (genuine gap vs deliberate divergence) is the sole prerogative of the user, who reads the report and decides.
+
+### Out of Scope — semantic / RAG matching over source code
+
+- The matching heuristic is text-token-based over design-doc feature names and capability-map titles + implementation-path values (header-driven per REQ-NA-007). Semantic similarity search over source code, embeddings-based feature matching, or RAG over the codebase is out of scope; a future SPEC may address it if the heuristic proves insufficient.
+
+### Out of Scope — hook-based audit gating
+
+- The audit is NOT wired as a SessionStart / Stop / PostToolUse hook. Per Advisory-Check Discipline, the audit is on-demand only (`/moai project --audit`), invoked when the user explicitly requests a drift report. Auto-firing on every session or every commit would be the unbounded-blocking pattern that discipline forbids.
+
+## §F. Constraints (Non-Functional)
+
+- **Read-only**: design docs + capability-map + SPEC frontmatter + override file + `git log` — NEVER written by the audit (REQ-NA-002).
+- **Advisory**: the audit never gates, never commits, never modifies. Exit 0 always (REQ-NA-010 fail-open, REQ-NA-002 non-modification).
+- **Idempotent**: same inputs → byte-identical output (REQ-NA-009). Timestamps sourced from `git log`, not wall-clock, mirroring 001's idempotence contract.
+- **Atomic writes**: `audit-report.{md,json}.tmp` → `mv` into place (inherited from 001 §B.2 atomic-rename strategy).
+- **Self-contained bash**: audit script uses only `git` + `awk` + `sed` + `grep` + standard POSIX utilities — NO `jq`, NO `moai` binary, NO Python (inherited portability contract from 001 § mechanism).
+- **Template-First**: the new script + extended skill body + new reference ship via `internal/template/templates/` + `make build` + §25 neutrality (constraint inherited from 001 / CLAUDE.local.md §2 / §25).
+- **16-language neutrality**: no Go-bias in script or skill body (REQ-NA-012 / CLAUDE.local.md §15).
+- **PR-mandatory**: enforce_admins:true (CLAUDE.local.md §23). Plan-phase artifacts committed via the standard plan→PR flow; run-phase via Route B PR.
+- **No new Go CLI subcommand**: `/moai project --audit` is a skill mode, NOT a `moai navigator-audit` Go subcommand (constraint inherited from 001 §B.1 — `/moai project` stays a skill).
+
+## §G. Dependencies / Related SPECs
+
+- **SPEC-PROJECT-NAVIGATOR-001** (`status: completed`, `tier: M`) — the Navigator substrate. 002 consumes 001's `capability-map.md` output. 001's capability-map column order is NOT a stable contract — 001's spec.md declares column 1 as `capability` (capability-first) while 001's acceptance.md AC-PN-013 enumerates rows spec-id-first, and 001's plan defers the exact schema to its own M1. 002's audit therefore parses the capability-map **header-driven** (by column name, not position) and does NOT rely on any fixed column order; 002 does NOT redefine 001's schema. (001's internal schema inconsistency is out of scope for 002 — the header-driven design is precisely what makes 002 robust to it. A separate follow-up SPEC MAY reconcile 001's spec.md vs acceptance.md if 001's M1 freeze produces a canonical order; until then 002 does not depend on one.)
+- **SPEC-PROJECT-NAVIGATOR-003** (stub, P3, Tier L) — tree-sitter auto-derivation into `/moai codemaps`. SEPARATE SPEC, NOT in scope for 002. When 003 lands, 002's matching heuristic continues to operate on the title / implementation-path / spec-id text fields (resolved header-driven per REQ-NA-007); 003's enriched rows simply give 002 more text to match against (no algorithmic coupling).
+- **SPEC-LSEL-LOCAL-EVOLUTION-001** — non-overlap boundary (REQ-NA-011). The audit does not consume LSEL surfaces.
+- `moai-workflow-project` skill (`.claude/skills/moai-workflow-project/SKILL.md`) — EXTENDED with a `--audit` skill mode (sibling to 001's `--brief`).
+- `scripts/navigator-regen.sh` (`.claude/skills/moai-workflow-project/scripts/navigator-regen.sh`) — 001's regeneration script. 002 adds a sibling `scripts/navigator-audit.sh`; it does NOT modify 001's script.
+
+## §H. Resolved decisions (recorded for traceability)
+
+1. **Standalone script vs extend `navigator-regen.sh`** — CHOSEN: standalone `scripts/navigator-audit.sh`. Rationale: separation of concerns (regeneration vs analysis), different inputs (regen reads SPECs + git log; audit reads design docs + capability-map), and different idempotence contracts (regen is idempotent on commit SHA; audit is idempotent on design-doc + capability-map content). Extending `navigator-regen.sh` with an `--audit` flag would couple two orthogonal algorithms into one script and complicate 001's already-completed surface.
+2. **Skill mode vs hook** — CHOSEN: skill mode (`/moai project --audit`), NOT a hook. Rationale recorded in §B.3 + REQ-NA-001: audit output can be large and is not latency-sensitive; making it a hook would violate Advisory-Check Discipline.
+3. **Output format dual (md + json)** — CHOSEN: dual. Rationale: the markdown is for human reading; the JSON is for downstream tooling (a future LSEL cross-reference, or a CI dashboard). Both must stay byte-identical across idempotent re-runs (REQ-NA-009), so the JSON is the machine contract and the markdown is its human rendering.
+4. **Override file format** — CHOSEN: YAML (`audit-known-matches.yaml`), with `match` (list of `{design_name, spec_id}` pairs) + `ignore` (list of design names or spec-ids). Rationale: YAML is the project's config language (`.moai/config/sections/*.yaml`), keeps the file human-editable, and the schema is small enough not to need JSON-schema machinery.
+5. **Era frontmatter** — `era: V3R6` set explicitly to avoid H-2 misclassification during the early window when progress.md is sparse (per `.claude/rules/moai/workflow/lifecycle-sync-gate.md`).
