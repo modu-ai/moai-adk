@@ -7,6 +7,16 @@
 // function block delimited by sentinel comments, and this test harness loads that block via
 // `new Function` — exercising the verdict logic WITHOUT the workflow runtime.
 //
+// SECURITY RATIONALE (test-only `new Function`, not eval-style dynamic dispatch):
+//   This `new Function` is TEST-ONLY. Its input is NOT untrusted/external input — it is a
+//   sentinel-delimited substring of THIS REPO'S OWN committed workflow source
+//   (sync-audit-4dim.js, between `// === VERDICT PURE FUNCTIONS START/END ===`). The source is
+//   read at test time from the local file and bounds-checked by the assertions above. It exists
+//   because the dynamic-workflows runtime injects globals + the script top-level `return`s,
+//   making a plain Node ESM `import` a SyntaxError (no workflow script under .claude/workflows/
+//   uses import/require). The production sync-audit-4dim.js contains NO eval / new Function /
+//   Math.random / Date.now — the verdict path is deterministic and resume-cache safe.
+//
 // Run: `node --test .claude/workflows/sync-audit-4dim.test.js`
 //
 // DEV-ONLY — not mirrored to internal/template/templates/.claude/workflows/ (tests are not a
@@ -32,6 +42,9 @@ assert.ok(endIdx > startIdx, 'VERDICT markers are out of order')
 
 const pureBlock = workflowSrc.slice(startIdx + START.length, endIdx)
 // Compile the pure block in a sandbox that returns the exported bindings.
+// TEST-ONLY `new Function`: pureBlock is a sentinel-extracted substring of THIS repo's own
+// committed sync-audit-4dim.js (verified above), NOT untrusted input — see file header for
+// the full security rationale. Production sync-audit-4dim.js is eval/free.
 const harness = new Function(pureBlock + '\n; return { DIMENSIONS, scoreOf, detectPhantomMechanisms, computeVerdict }')
 const { DIMENSIONS, scoreOf, detectPhantomMechanisms, computeVerdict } = harness()
 
