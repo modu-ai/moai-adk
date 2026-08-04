@@ -2,7 +2,7 @@
 id: SPEC-INFINITE-GOAL-001
 title: "Remove the /moai goal 1M cap — infinite auto-compact-driven autonomy with real bounds"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-03
 updated: 2026-08-04
 author: manager-spec
@@ -31,6 +31,7 @@ amendment_of: SPEC-INFINITE-GOAL-001
 - **Rationale**: Code-review of the shipped REQ-004 implementation found two defects. The spec's prior REQ-004 / AC-011 / §D constraint #3 wording contradicted (a) the code's own §D.5 admission that `cost-cap` is recorded-only (not enforced), and (b) `.claude/skills/moai/workflows/run.md`'s statement that `ac_converge` retains model-type conditions. The amendment makes spec ↔ code ↔ run.md consistent: wall-clock `max-duration` is the REQUIRED real termination bound; `cost-cap` is RECORDED-ONLY (does not satisfy the bound); the mechanical-fingerprint stagnation guard applies only to goals carrying at least one mechanical condition (model-only goals like `ac_converge` skip stagnation and are bounded by wall-clock + `MaxTurns`).
 - **Scope**: REQ-INFINITE-GOAL-004 (3 clauses — bound definition, arm-time enforcement, stagnation scope), §D constraint #3, AC-INFINITE-GOAL-011 (Given + Then + Test shape), and the AC matrix row for AC-011. The companion code fix (D1: cost-cap-alone reject; D2: model-only stagnation skip) is handled separately by manager-develop — this amendment touches SPEC artifacts ONLY.
 - **Untouched**: REQ-001/002/003/005/006/007, AC-001 through AC-010, §D.1/§D.2/§D.3/§D.4/§D.5/§D.6, §D constraints #1/#2/#4-#7, §A/§B/§E/§F/§G/§H — all unchanged.
+- **Landed (2026-08-04)**: the companion code fix for D1 + D2 landed in PR #1342 (squash merge `e06396158`, 2026-08-04, all CI green) on `main` BEFORE this re-close sync commit. D1 (`internal/cli/goal.go` `runGoalArm`): `--max-turns 0` armed with only `--cost-cap` is now rejected at arm time (cost-cap is recorded-only and does not satisfy the real-bound requirement; `--max-duration` is the required bound). D2 (`internal/goal/evaluate.go` `isStagnant`): the mechanical-fingerprint stagnation guard now applies ONLY to goals carrying at least one mechanical (`cmd`) condition; a model-only goal (all conditions are `ConditionModel`, e.g. `ac_converge`) skips stagnation entirely and is bounded by wall-clock `max-duration` + `MaxTurns` only. This re-close sync commit transitions the spec's frontmatter `status: in-progress → implemented → completed` on the sole YAML-frontmatter-bearing artifact (`spec.md`), per the 3-phase close convention (the `completed` transition rides the sync commit; no separate Mx chore commit).
 
 ## §A. User Story
 
