@@ -97,7 +97,7 @@ plan_auditor_verdict: pending
 
 ```yaml
 run_complete_at: 2026-08-04
-run_commit_sha: "pending-backfill-m6"
+run_commit_sha: "d1fcf09b0"   # backfilled post-merge (PR #1335 squash)
 run_status: audit-ready
 ac_pass_count: 11
 ac_fail_count: 0
