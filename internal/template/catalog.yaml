@@ -137,7 +137,7 @@ catalog:
             - name: manager-design
               tier: core
               path: templates/.claude/agents/moai/manager-design.md
-              hash: c53d9e70e696bf74b1e506b21ec2af21b813c744703583a50c3dbbe0a57bbe65
+              hash: 97e6725f7e67007c314f97a9548e3d9a46cc3051e7937387000e069272f290e1
               version: 1.0.0
             - name: e2e-tester
               tier: core
