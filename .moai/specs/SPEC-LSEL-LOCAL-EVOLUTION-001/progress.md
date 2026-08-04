@@ -51,8 +51,8 @@ _status: plan-phase artifacts authored 2026-08-04; awaiting plan-auditor verdict
 
 ```yaml
 run_complete_at: "2026-08-04T05:21:03Z"
-run_commit_sha: "pending-backfill-m1"
-run_status: "M3-complete"
+run_commit_sha: "9ede1bfad"
+run_status: "M4-complete (terminal run-phase commit; all 16 MUST AC PASS)"
 ac_pass_count: 9
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # zero lines of shipped moai assets touched
@@ -196,7 +196,24 @@ M1 DoD met: AC-LSEL-009 PASS + AC-LSEL-010 PASS; `drain-offset.json` advanced; c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-08-04"
+sync_status: "completed"
+sync_commit_sha: "pending-backfill-<sync-commit>"
+close_subject: "docs(SPEC-LSEL-LOCAL-EVOLUTION-001): sync-phase artifacts (3-phase close)"
+phase_close_kind: "3-phase close (plan→run→sync — MX Tag is a cross-cutting sync concern, not a separate phase)"
+run_phase_terminal_sha: "9ede1bfad"   # M4 terminal run-phase commit (backfilled into §E.3)
+must_ac_pass_count: 16
+must_ac_fail_count: 0
+deferred: "M5 (REQ-LSEL-015 personalization) — no MUST AC; conditional on a named simulation-harness SPEC that does not yet exist (plan.md §B.2)"
+frontmatter_status_transition: "in-progress → implemented → completed (merged into the single sync commit per the 3-phase close)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] — single SPEC-LSEL-LOCAL-EVOLUTION-001 entry (grep count = 1 post-commit)"
+template_leak_guard: "internal/template/internal_content_leak_test.go + .github/workflows/lsel-leak-guard.yaml green — zero hns-lsel-* / .claude/lsel/ / .moai/hooks/lsel-* mirror under internal/template/templates/"
+distributed_doctrine_touched: false   # REQ-LSEL-001/003 invariant — frozen Go applier stays frozen; distributed templates/rules/agents byte-for-byte untouched
+self_test_b12_changelog_count: 1       # pre-emission grep = 0; post-commit grep = 1 (single entry, no duplicate)
+self_test_b12_ac_count_match: true      # acceptance.md §D SSOT = 16 MUST AC; CHANGELOG entry references all 16
+self_test_b12_paths_verified: true      # 19/20 cited impl paths verified via ls in the worktree; the design-report HTML is a gitignored local-only SSOT artifact (untracked per commit f837c3c36) referenced by CLAUDE.local.md §28, absent from this worktree by design
+```
 
 ## §F Phase 4 Mode Selection
 

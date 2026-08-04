@@ -2,7 +2,7 @@
 id: SPEC-LSEL-LOCAL-EVOLUTION-001
 title: "Local Self-Evolution Loop — close the broken PROPOSE→APPLY seam in user-owned surfaces without touching distributed doctrine"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec
