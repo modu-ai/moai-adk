@@ -215,6 +215,51 @@ func TestIsExemptAgent(t *testing.T) {
 	})
 }
 
+// TestIsExemptAgent_OrchestratorDirectEnvPath (SPEC-ORCH-GIT-RELAX-001 M3,
+// REQ-OGR-011 + REQ-OGR-012) is a CHARACTERIZATION test proving that the
+// orchestrator-direct Tier S/M push+PR path is admitted by isExemptAgent via
+// the MOAI_BRANCH_GUARD_EXEMPT=1 env branch (branch_guard.go:145) BEFORE the
+// AgentType == "manager-git" identity branch (line 154) is reached — with NO
+// Go code change required and NO new identity branch for "orchestrator" added.
+//
+// The orchestrator runs on the main thread; it has no AgentType identity (the
+// HookInput arriving at the PreToolUse hook carries AgentType == "" for
+// main-session Bash calls). This test simulates exactly that shape and proves
+// the env sentinel is the SOLE admission mechanism for orchestrator-direct ops.
+//
+// This is a characterization test, not a RED->GREEN TDD cycle: the behavior
+// already exists in the shipped isExemptAgent (the env branch has returned
+// true unconditionally since SPEC-WORKTREE-BRANCH-GUARD-001). The test
+// documents the SPEC-ORCH-GIT-RELAX-001 M3 verification result so a future
+// refactor cannot silently regress the orchestrator-direct admission path.
+func TestIsExemptAgent_OrchestratorDirectEnvPath(t *testing.T) {
+	// Simulate orchestrator-direct: main-thread Bash call carries no agent
+	// identity (AgentType == ""). With the sentinel set per-invocation inline
+	// (MOAI_BRANCH_GUARD_EXEMPT=1 git switch -c ...), isExemptAgent MUST
+	// return true via the env branch at branch_guard.go:145, before the
+	// identity branch at line 154 is evaluated.
+	t.Run("OrchestratorDirect_env_admits", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "1")
+		input := &HookInput{AgentType: ""} // orchestrator-direct: no agent identity
+		if !isExemptAgent(input) {
+			t.Fatalf("isExemptAgent(AgentType=\"\", MOAI_BRANCH_GUARD_EXEMPT=1) = false, want true (orchestrator-direct Tier S/M must be admitted via env branch per REQ-OGR-011)")
+		}
+	})
+
+	// REQ-OGR-012 (no widening): with the env sentinel UNSET, the same
+	// orchestrator-direct HookInput (AgentType == "") MUST be denied. This
+	// proves no identity branch for "orchestrator" was added — the env path
+	// is the sole admission mechanism. A regression that widened the
+	// exemption to admit orchestrator identity would make this subtest fail.
+	t.Run("OrchestratorDirect_noEnv_denies_REQ_OGR_012_no_widening", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "")
+		input := &HookInput{AgentType: ""} // orchestrator-direct: no agent identity, no sentinel
+		if isExemptAgent(input) {
+			t.Fatalf("isExemptAgent(AgentType=\"\", no env) = true, want false (REQ-OGR-012: env path is the sole admission mechanism; no identity branch for orchestrator)")
+		}
+	})
+}
+
 // TestBranchStatePatterns_TruePositives verifies every branch-state pattern
 // matches its intended deny command (REQ-WBG-001 coverage of the regex set).
 func TestBranchStatePatterns_TruePositives(t *testing.T) {
