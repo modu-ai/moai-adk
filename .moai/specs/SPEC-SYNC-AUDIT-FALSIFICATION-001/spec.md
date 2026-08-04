@@ -2,7 +2,7 @@
 id: SPEC-SYNC-AUDIT-FALSIFICATION-001
 title: "sync-auditor falsification obligations — AC-mechanism probes, VCI §1.1 surface-3 binding, AC-class coverage minimums"
 version: 0.1.0
-status: draft
+status: completed
 created: 2026-08-04
 updated: 2026-08-04
 author: manager-spec
