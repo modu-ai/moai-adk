@@ -35,6 +35,12 @@ draft: false
 | P4 | 欠落したテスト | `@MX:TODO` (未完成) |
 | P5 | 意図的な動作の単純化 (`@MX:CEILING` + `@MX:UPGRADE` サブラインを伴う) | `@MX:DEBT` |
 
+### サブライン (sub-lines)
+
+各タグの後には、より細かいメタデータを付与する **サブライン** を続けられます: `@MX:REASON` (WARN の必須事由)、`@MX:CEILING`/`@MX:UPGRADE` (DEBT の限界・再訪条件)、`@MX:TEST`、`@MX:PRIORITY`、`@MX:LEGACY`、そして `@MX:SPEC:<SPEC-ID>` です。
+
+`@MX:SPEC:<SPEC-ID>` はタグの直後に付けて、作者の意図が反映された SPEC 関連付け (SPEC association) を作ります。この関連付けは、パス基準・本文基準の関連付けに加わる 3 つ目のソースであり、ファイル位置や本文テキストとは無関係に、明示的な SPEC リンクが `moai mx query` の結果に反映されます。先行するタグなしにサブラインだけを単独で置くと警告だけ出て関連付けは作られません。
+
 ## 使い方
 
 ```bash

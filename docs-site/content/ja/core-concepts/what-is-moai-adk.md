@@ -84,10 +84,10 @@ Python ベースの MoAI-ADK (~73,000 行) を Go で完全に書き直しまし
 
 - **11 個** のエージェントカタログ (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
 - **31 個** のスキル (template-managed)
-- **36 個** の CLI コマンド · **16 種** の `/moai` サブコマンド
+- **36 個** の CLI コマンド · **15 種** の `/moai` サブコマンド
 - **16 個** のプログラミング言語対応
 - **3 段階ハーネス** (minimal / standard / thorough) — SPEC の複雑度に応じた適応型品質ゲート
-- **543 個** の SPEC ドキュメントを基に開発されたコードベース
+- **SPEC 基盤のワークフロー** (plan → run → sync) で開発されたコードベース
 
 ### バイブコーディングの問題点
 
@@ -332,12 +332,10 @@ flowchart TD
 | カテゴリ | 例 |
 |----------|------|
 | **Foundation** | core, cc, thinking, quality |
-| **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, html-report |
-| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
-| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
-| **Tool** | ast-grep, svg |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree, loop, ci-loop |
+| **Domain** | backend, frontend, database, html-report, humanize |
+| **Reference** | api-patterns, owasp-checklist, git-workflow, react-patterns, testing-pyramid, llm-security, secops, supply-chain |
+| **Harness** | harness-learner, meta-harness |
 
 ## MoAI ワークフロー
 
@@ -351,7 +349,7 @@ flowchart TD
 
     subgraph Plan["1. Plan ステップ"]
         P1["コードベース探索"] --> P2["要件分析"]
-        P2 --> P3["SPEC ドキュメント生成\nEARS 形式"]
+        P2 --> P3["SPEC ドキュメント生成\nGEARS 形式"]
     end
 
     Plan --> Run
@@ -413,7 +411,7 @@ flowchart TD
 
 | サブコマンド | 別名 | 用途 | 主要フラグ |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC ドキュメント生成 (EARS 形式) | `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC ドキュメント生成 (GEARS 形式) | `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC の DDD/TDD 実装 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | ドキュメント同期、コードマップ、PR 生成 | `--merge`, `--skip-mx` |
 
@@ -422,7 +420,7 @@ flowchart TD
 | サブコマンド | 用途 | 主要フラグ |
 |-----------|------|-----------|
 | `goal` | 完了条件宣言型の自律連続ループ (条件充足またはターン上限まで) | `status`, `clear` |
-| `loop` | 診断ベースの反復自動修正 (goal エンジンの上のプリセット、デフォルト最大 10 回) | `--max N`, `--auto-fix`, `--seq` |
+| `loop` | 診断ベースの反復自動修正 (goal エンジンの上のプリセット、デフォルト最大 5 回) | `--max N`, `--auto-fix`, `--seq` |
 | `fix` | LSP エラー、リント、型エラーの自動修正 (単一パス) | `--dry`, `--seq`, `--level N`, `--resume` |
 
 #### 品質およびコードベース
@@ -434,6 +432,7 @@ flowchart TD
 | `clean` | `refactor-clean` | 死んだコードの識別と安全な除去 | `--dry`, `--safe-only`, `--file PATH` |
 | `mx` | -- | コードベーススキャンおよび @MX コードレベル注釈の追加 | `--all`, `--dry`, `--priority P1-P4`, `--force` |
 | `codemaps` | `update-codemaps` | アーキテクチャドキュメント生成 | `--force`, `--area AREA` |
+| `e2e` | -- | ウェブ/モバイル/デスクトップ E2E テストの実行およびアーティファクト管理 | -- |
 
 #### プロジェクトおよびハーネス
 
@@ -486,7 +485,7 @@ MoAI オーケストレーターは作業の複雑度を分析して実行形態
 
 ```bash
 # 1. GLM API キーの保存 (一度だけ)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
 # 2. CG モードの有効化
 moai cg
@@ -510,7 +509,7 @@ LSP 診断と AST-grep を組み合わせた自律エラー修正エンジンで
 
 ```bash
 /moai fix       # 単一パス: スキャン → 分類 → 修正 → 検証
-/moai loop      # 反復修正: 完了条件の充足まで反復 (デフォルト最大 10 回)
+/moai loop      # 反復修正: 完了条件の充足まで反復 (デフォルト最大 5 回)
 ```
 
 **Ralph Engine の動作方式:**

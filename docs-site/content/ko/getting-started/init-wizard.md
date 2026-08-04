@@ -46,7 +46,7 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `moai init`이 저장소에 이미 설정된 Git 원격(remote)을 보고 알아서 판단합니다. 나중에 Git 설정을 바꾸려면 `moai update --reconfigure` 를 실행하세요. Git 관련 질문(자동화 모드, 프로바이더, 인증 정보)은 이 경로에서만 나옵니다.
+Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `moai init`이 저장소에 이미 설정된 Git 원격(remote)을 보고 알아서 판단합니다. 나중에 Git 설정을 바꾸려면 `moai update -c` (또는 `moai update --config`)를 실행해 마법사를 다시 돌리세요. Git 관련 질문(자동화 모드, 프로바이더, 인증 정보)은 이 경로에서만 나옵니다.
 {{< /callout >}}
 
 ## Page 1 — 기본
@@ -102,7 +102,7 @@ Claude가 응답할 언어를 선택합니다. 이후 모든 질문도 이 언�
 | **Medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
 | **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려갑니다 |
 
-이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다 (legacy `max` 도 입력으로 받아 `high` 로 정규화). 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ### 리포트 형식
 

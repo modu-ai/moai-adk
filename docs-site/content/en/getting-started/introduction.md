@@ -148,7 +148,7 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 
 - **11** agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
-- **36** terminal CLI commands · **16** `/moai` slash subcommands
+- **36** terminal CLI commands · **15** `/moai` slash subcommands
 - **16** programming languages supported
 - A codebase developed on the basis of **543** SPEC documents
 

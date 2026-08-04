@@ -35,6 +35,12 @@ draft: false
 | P4 | 缺失的测试 | `@MX:TODO`(未完成) |
 | P5 | 有意的可运行简化(伴随 `@MX:CEILING` + `@MX:UPGRADE` 子行) | `@MX:DEBT` |
 
+### 子行(sub-lines)
+
+每个标签后面可以跟附加更细粒度元数据的 **子行**: `@MX:REASON`(WARN 的必备理由)、`@MX:CEILING`/`@MX:UPGRADE`(DEBT 的极限·再访问条件)、`@MX:TEST`、`@MX:PRIORITY`、`@MX:LEGACY`,以及 `@MX:SPEC:<SPEC-ID>`。
+
+`@MX:SPEC:<SPEC-ID>` 紧贴标签后面书写,可创建反映作者意图的 SPEC 关联(SPEC association)。该关联是路径关联·正文关联之外的第三个来源,与文件位置或正文文本无关,显式的 SPEC 链接会反映在 `moai mx query` 的结果中。若没有前置标签而只有单独的子行,则只发出警告,不会创建关联。
+
 ## 用法
 
 ```bash

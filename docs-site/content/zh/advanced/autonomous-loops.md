@@ -46,17 +46,29 @@ flowchart TD
 
 ### `/moai goal` — MoAI PROGRAMMATIC (Axis B)
 
-{{< icon arrow-right >}} `/moai goal` 是 MoAI 拥有的编程式重新实现。由于原生 `/goal` 是 HUMAN-ONLY，这是编排器在管道内注册和武装自主连续循环的唯一路径。
+{{< icon arrow-right >}} `/moai goal` 是 MoAI 拥有的编程式重新实现。由于原生 `/goal` 是 HUMAN-ONLY，这是编排器在管道内注册和武装(arm)自主连续循环的唯一路径。
 
 提供四个动词:
 
 ```bash
-moai goal arm "<completion-condition>"  # 注册 + 武装条件
+moai goal arm "<completion-condition>"  # 注册条件 + 武装 (arm-only)
 moai goal status                        # 查看当前条件 + 回合/token 消耗
 moai goal clear                         # 删除条件 (结束循环)
+moai goal render                        # 把当前 goal 仪表板渲染为 HTML
 ```
 
-会话开始时 `PruneOrphans` 清理孤立 goal。此机制在 SPEC-GOAL-ENGINE-001 (CLOSED)中实现。
+> **arm-only 属性**:`arm` 只负责注册并激活条件,其自身不启动任何工作。已 arm 的 goal 在每个回合结束时由 `stop-goal` Stop-hook 评估器判定条件是否满足,以此决定是否继续下一回合。必须与真正的工作启动命令(例如 `/moai run SPEC-XXX`)搭配使用 —— 只 arm 而无工作命令,只会白白消耗回合。
+
+### 无限 goal 与 block cap (SPEC-INFINITE-GOAL-001)
+
+传入 `--max-turns 0` 即可得到取消回合上限的 **无限 goal**。无限 goal 必须搭配 `--max-duration <sec>`(墙上时间上限,单位秒),否则在 arm 时会被 fail-closed 拒绝 —— 没有真实 bound 的"无限"无法构成安全护栏。
+
+- `--cost-cap <value>` 是 **仅记录(recorded-only)** —— 它只把调用次数上限写下来,当前没有 enforce 逻辑,无法承担真实 bound 的角色。因此单独靠 cost-cap 无法满足 `--max-turns 0` 对真实 bound 的要求,会被拒绝。
+- **block cap 抢占**:Claude Code 运行时的连续 block 上限 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`(默认 8)会先于回合上限打断循环。要让无限 goal(`--max-turns 0`)真正跑起来,必须把这个上限调高(例如 `200`)。`moai cc` / `moai cg` 启动器在为已 arm 无限 goal 的会话启动时会自动注入这个值。在已经运行的会话中,需要在 arm 之前手动设置该环境变量。
+- **回合上限到达时的判定**:触及回合上限(或 block cap)时,评估器会输出 5-段式判定(verdict) —— `Claim / Evidence / Baseline-attribution / Gaps / Residual-risk`。该判定不是"已收敛"的信号,而是"已达上限、停止"的报告。
+- **Progression Mode**:自主(autonomous)与半自主(semi-autonomous)的选择在 Implementation Kickoff Approval 门禁进行。arm 本身不会跳过这个门禁。
+
+会话启动时 `PruneOrphans` 会清理遗留的孤儿 goal。该机制在 SPEC-GOAL-ENGINE-001(CLOSED)中实现。
 
 要用静态 HTML 仪表板渲染当前循环状态,可使用 `moai goal render` —— 详见 [/moai goal - 目标看板](/zh/utility-commands/moai-goal/)。
 

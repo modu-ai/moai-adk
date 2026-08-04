@@ -35,6 +35,12 @@ draft: false
 | P4 | 누락된 테스트 | `@MX:TODO` (미완성) |
 | P5 | 의도적 작동 단순화 (`@MX:CEILING` + `@MX:UPGRADE` 서브라인 동반) | `@MX:DEBT` |
 
+### 서브라인 (sub-lines)
+
+각 태그 뒤에는 더 세밀한 메타데이터를 붙이는 **서브라인** 이 올 수 있습니다: `@MX:REASON` (WARN 의 필수 사유), `@MX:CEILING`/`@MX:UPGRADE` (DEBT 의 한계·재방문 조건), `@MX:TEST`, `@MX:PRIORITY`, `@MX:LEGACY`, 그리고 `@MX:SPEC:<SPEC-ID>`.
+
+`@MX:SPEC:<SPEC-ID>` 은 태그 바로 뒤에 붙여 저자 의도가 반영된 SPEC 연관(SPEC association) 을 만듭니다. 이 연관은 경로 기반·본문 기반 연관에 더해지는 세 번째 소스로, 파일 위치나 본문 텍스트와 무관하게 명시적인 SPEC 링크가 `moai mx query` 결과에 반영됩니다. 앞선 태그 없이 단독으로 서브라인만 있으면 경고만 나고 연관은 만들어지지 않습니다.
+
 ## 사용법
 
 ```bash
