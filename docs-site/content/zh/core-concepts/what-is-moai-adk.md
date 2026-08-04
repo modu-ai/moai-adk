@@ -84,7 +84,7 @@ token 单价持续下降,但智能体式开发的 token 用量增长得更快。
 
 - **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **31 个** 技能(template-managed)
-- **36 个** CLI 命令 · **16 种** `/moai` 子命令
+- **36 个** CLI 命令 · **15 种** `/moai` 子命令
 - **16 种** 编程语言支持
 - **3 级 harness**(minimal / standard / thorough)—— 依 SPEC 复杂度的自适应质量门禁
 - 以 **SPEC 驱动的工作流**(plan → run → sync)开发的代码库

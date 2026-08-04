@@ -104,7 +104,7 @@ graph TD
     C -->|"Pass"| E["Next item"]
 ```
 
-This loop repeats up to 100 times in `/moai loop` and includes convergence detection (applying an alternative strategy when the same error repeats). If you want to declare the completion condition yourself, use the goal engine (`/moai goal "<condition>"`) — the session keeps working on its own until the condition is met or the turn limit is reached.
+This loop repeats up to a default of 5 times in `/moai loop` (`ralph.max_iterations`) and includes convergence detection (applying an alternative strategy when the same error repeats). If you want to declare the completion condition yourself, use the goal engine (`/moai goal "<condition>"`) — the session keeps working on its own until the condition is met or the turn limit is reached.
 
 ### 4. Context Map
 

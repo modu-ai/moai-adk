@@ -57,9 +57,16 @@ Accepts at most 1 argument.
 |--------|------|
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
+| `--gitlab-instance-url <url>` | GitLab self-hosted instance URL (when `--git-provider gitlab`) |
 | `--github-username <name>` | GitHub username (required for personal/team mode) |
 | `--profile <high\|medium\|low>` | Model+effort profile — stored in `profile` of `llm.yaml` (selects the profile matrix column). The legacy value `max` is accepted as input and normalized to `high` |
 | `--model-policy <high\|medium\|low>` | Legacy performance tier — stored in `performance_tier` of `llm.yaml` (read as an alias when `profile` is absent) |
+
+### Autonomy policy
+
+| Flag | Description |
+|--------|------|
+| `--autonomy-tier <semi-auto\|automatic\|fully-autonomous>` | Claude Code permission mode. `semi-auto` (default, per-tool prompts), `automatic` (auto-approve), `fully-autonomous` (`bypassPermissions` — requires sandbox gate opt-in) |
 
 ## Examples
 

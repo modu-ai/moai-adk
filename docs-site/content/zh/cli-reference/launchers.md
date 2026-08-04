@@ -30,6 +30,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 继续上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
+| `--spawn` | 不替换当前进程,而是在 **新 tmux 窗口** 中打开会话,调用者会话保持不变(详见下方"Team window spawn") |
 | `--chrome` / `--no-chrome` | 切换 Chrome MCP |
 
 权限模式为 `default`、`acceptEdits`(项目默认)、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器检查动作,需要 Team 方案 + Sonnet/Opus 4.6 及以上。
@@ -98,6 +99,24 @@ moai cg -w feat-login    # 混合模式同理
 {{< callout type="info" >}}
 在会话交接中把 worktree 名称取成与 SPEC ID 相同(`moai cc -w SPEC-XXX-001`),下一个会话即可用一行命令回到同一工作树。
 {{< /callout >}}
+
+## Team window spawn(`--spawn` 标志)
+
+三个启动器(`moai cc`、`moai cg`、`moai glm`)都支持 `--spawn` 标志。与 `-w` 搭配使用时,它不会用 Claude Code 替换当前进程,而是在 **新 tmux 窗口** 中打开会话,调用者会话保持不变。用于在 team 模式下打开队友窗口。
+
+```bash
+moai cc -w feat-login --spawn        # Claude 队友窗口(保留当前会话)
+moai cg -w feat-auth --spawn         # GLM 队友窗口(保留当前会话)
+moai glm -w feat-auth --spawn        # GLM 会话(保留当前会话)
+```
+
+行为规则:
+
+- 仅在 tmux 会话内有效。在 tmux 之外调用会被 **无回退地拒绝** —— 因为如果悄悄就地替换,会覆盖调用者会话。
+- 需要 `tmux` 与 `moai` 二者都存在。缺任一个就拒绝。
+- 不带 `--spawn` 而只用 `-w <name>`,就像以往一样替换当前进程。
+
+`--spawn` 遵循"CLI 启动器决策不通过 `AskUserQuestion` 询问"的 HARD 规则 —— 所有结果都由可观测状态(tmux 会话是否存在、二进制是否存在)决定,通过退出码与 stderr 报告。
 
 ## 相关文档
 

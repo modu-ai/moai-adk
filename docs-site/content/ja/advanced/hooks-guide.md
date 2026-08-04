@@ -694,38 +694,46 @@ Hook スクリプトは標準入力 (stdin) で JSON データを受け取りま
 
 ```
 .claude/hooks/moai/
-├── handle-session-start.sh          # SessionStart → moai hook session-start
-├── handle-pre-tool.sh               # PreToolUse → moai hook pre-tool
-├── handle-post-tool.sh              # PostToolUse → moai hook post-tool
-├── handle-compact.sh                # PreCompact → moai hook compact
-├── handle-post-compact.sh           # PostCompact → moai hook post-compact
-├── handle-session-end.sh            # SessionEnd → moai hook session-end
-├── handle-stop.sh                   # Stop → moai hook stop
-├── handle-stop-goal.sh              # Stop (goal エンジン) → moai hook stop-goal
-├── handle-stop-failure.sh           # StopFailure → moai hook stop-failure
-├── handle-subagent-start.sh         # SubagentStart → moai hook subagent-start
-├── handle-subagent-stop.sh          # SubagentStop → moai hook subagent-stop
-├── handle-notification.sh           # Notification → moai hook notification
-├── handle-user-prompt-submit.sh     # UserPromptSubmit → moai hook user-prompt-submit
-├── handle-permission-request.sh     # PermissionRequest → moai hook permission-request
-├── handle-permission-denied.sh      # PermissionDenied → moai hook permission-denied
-├── handle-teammate-idle.sh          # TeammateIdle → moai hook teammate-idle
-├── handle-task-completed.sh         # TaskCompleted → moai hook task-completed
-├── handle-task-created.sh           # TaskCreated → moai hook task-created
-├── handle-config-change.sh          # ConfigChange → moai hook config-change
-├── handle-cwd-changed.sh            # CwdChanged → moai hook cwd-changed
-├── handle-file-changed.sh           # FileChanged → moai hook file-changed
-├── handle-instructions-loaded.sh    # InstructionsLoaded → moai hook instructions-loaded
-├── handle-worktree-create.sh        # WorktreeCreate → moai hook worktree-create
-├── handle-worktree-remove.sh        # WorktreeRemove → moai hook worktree-remove
-├── handle-elicitation.sh            # Elicitation → moai hook elicitation
-├── handle-elicitation-result.sh     # ElicitationResult → moai hook elicitation-result
-├── handle-post-tool-failure.sh      # PostToolUseFailure → moai hook post-tool-failure
-├── handle-agent-hook.sh             # Agent フック汎用ラッパー
-├── status-transition-ownership.sh    # SPEC 状態遷移の監査 (PostToolUse)
-├── handle-harness-observe-stop.sh   # ハーネス観察 (Stop)
-├── handle-harness-observe-subagent-stop.sh  # ハーネス観察 (SubagentStop)
-└── handle-harness-observe-user-prompt-submit.sh  # ハーネス観察 (UserPromptSubmit)
+├── handle-session-start.sh                 # SessionStart → moai hook session-start
+├── handle-session-start-compact.sh         # SessionStart(コンテキスト節約) → セッション開始ハンドラ
+├── handle-session-start-navigator.sh       # SessionStart(Project Navigator) → リビングナビゲータ注入
+├── handle-pre-tool.sh                      # PreToolUse → moai hook pre-tool
+├── handle-post-tool.sh                     # PostToolUse → moai hook post-tool
+├── handle-post-tool-failure.sh             # PostToolUseFailure → moai hook post-tool-failure
+├── handle-compact.sh                       # PreCompact → moai hook compact
+├── handle-post-compact.sh                  # PostCompact → moai hook post-compact
+├── handle-session-end.sh                   # SessionEnd → moai hook session-end
+├── handle-stop.sh                          # Stop → moai hook stop
+├── handle-stop-goal.sh                     # Stop (goal エンジン) → moai hook stop-goal
+├── handle-stop-failure.sh                  # StopFailure → moai hook stop-failure
+├── handle-subagent-start.sh                # SubagentStart → moai hook subagent-start
+├── handle-subagent-stop.sh                 # SubagentStop → moai hook subagent-stop
+├── handle-notification.sh                  # Notification → moai hook notification
+├── handle-user-prompt-submit.sh            # UserPromptSubmit → moai hook user-prompt-submit
+├── handle-permission-request.sh            # PermissionRequest → moai hook permission-request
+├── handle-permission-denied.sh             # PermissionDenied → moai hook permission-denied
+├── handle-teammate-idle.sh                 # TeammateIdle → moai hook teammate-idle
+├── handle-task-completed.sh                # TaskCompleted → moai hook task-completed
+├── handle-task-created.sh                  # TaskCreated → moai hook task-created
+├── handle-config-change.sh                 # ConfigChange → moai hook config-change
+├── handle-cwd-changed.sh                   # CwdChanged → moai hook cwd-changed
+├── handle-file-changed.sh                  # FileChanged → moai hook file-changed
+├── handle-instructions-loaded.sh           # InstructionsLoaded → moai hook instructions-loaded
+├── handle-worktree-create.sh               # WorktreeCreate → moai hook worktree-create
+├── handle-worktree-remove.sh               # WorktreeRemove → moai hook worktree-remove
+├── handle-elicitation.sh                   # Elicitation → moai hook elicitation
+├── handle-elicitation-result.sh            # ElicitationResult → moai hook elicitation-result
+├── handle-security-scan.sh                 # セキュリティスキャンフック
+├── handle-security-turn.sh                 # ターン単位のセキュリティレビューフック
+├── handle-security-commit.sh               # コミット単位のセキュリティレビューフック
+├── handle-agent-hook.sh                    # Agent フック汎用ラッパー
+├── handle-harness-observe.sh               # ハーネス観察(基本)
+├── handle-harness-observe-stop.sh          # ハーネス観察 (Stop)
+├── handle-harness-observe-subagent-stop.sh # ハーネス観察 (SubagentStop)
+├── handle-harness-observe-user-prompt-submit.sh # ハーネス観察 (UserPromptSubmit)
+├── status-transition-ownership.sh          # SPEC 状態遷移の監査 (PostToolUse、所有権マトリクス)
+├── sync-phase-quality-gate.sh              # sync-phase コミット品質ゲート (lint+test+coverage delta)
+└── team-ac-verify.sh                       # team モード TaskCompleted AC 検証
 ```
 
 {{< callout type="warning" >}}

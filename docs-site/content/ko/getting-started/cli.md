@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│    moai-adk v3.0.0     │
+│    moai-adk v3.0.2     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0   none   built unknown
+ v3.0.2   none   built unknown
 ```
 
 박스 배너 아래 줄은 `<버전>   <커밋 해시>   built <빌드 시각>` 순서로 표시됩니다. `go install` 처럼 ldflags 없이 빌드했다면 커밋은 `none`, 빌드 시각은 `unknown` 으로 나옵니다.

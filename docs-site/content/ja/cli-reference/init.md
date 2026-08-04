@@ -57,9 +57,16 @@ moai init [project-name]
 |--------|------|
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダ |
+| `--gitlab-instance-url <url>` | GitLab セルフホスティングインスタンス URL (`--git-provider gitlab` 時) |
 | `--github-username <name>` | GitHub ユーザー名 (personal/team モードで必須) |
 | `--profile <high\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` の `profile` に保存 (プロファイルマトリクス列の選択)。legacy 値 `max` も入力として受け付け `high` に正規化 |
 | `--model-policy <high\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` の `performance_tier` に保存 (`profile` 不在時にエイリアスとして読み込み) |
+
+### 自律性ポリシー
+
+| フラグ | 説明 |
+|--------|------|
+| `--autonomy-tier <semi-auto\|automatic\|fully-autonomous>` | Claude Code 権限モード。`semi-auto` (デフォルト値、ツール別プロンプト)、`automatic` (自動承認)、`fully-autonomous` (`bypassPermissions` — サンドボックスゲート opt-in が必要) |
 
 ## 例
 

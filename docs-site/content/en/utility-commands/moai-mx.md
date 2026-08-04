@@ -35,6 +35,12 @@ It is mainly used in the following situations:
 | P4 | Missing tests | `@MX:TODO` (incomplete) |
 | P5 | Deliberate working simplification (accompanied by `@MX:CEILING` + `@MX:UPGRADE` sub-lines) | `@MX:DEBT` |
 
+### Sub-lines
+
+After each tag, a **sub-line** may carry finer-grained metadata: `@MX:REASON` (the required reason for WARN), `@MX:CEILING` / `@MX:UPGRADE` (the limit and revisit conditions for DEBT), `@MX:TEST`, `@MX:PRIORITY`, `@MX:LEGACY`, and `@MX:SPEC:<SPEC-ID>`.
+
+`@MX:SPEC:<SPEC-ID>` is placed immediately after a tag to create a SPEC association that reflects author intent. This association is a third source added on top of path-based and body-based associations; regardless of file location or body text, the explicit SPEC link is reflected in `moai mx query` results. A sub-line standing alone without a preceding tag produces only a warning and no association is created.
+
 ## Usage
 
 ```bash

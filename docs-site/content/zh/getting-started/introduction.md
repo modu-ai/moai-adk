@@ -148,7 +148,7 @@ MoAI-ADK 将 Python Edition 完全用 Go 重写,以最大化性能与效率。
 
 - **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **31 个** 技能(template-managed)
-- **36 个** CLI 命令 · **16 种** `/moai` 子命令
+- **36 个** CLI 命令 · **15 种** `/moai` 子命令
 - **16 种** 编程语言支持
 - 基于 **543 个** SPEC 文档开发的代码库
 
