@@ -58,9 +58,12 @@ The full D1-D5 prose lives in the workflow skill
   DESIGN_SYSTEM project? absent → `create_project`; `get_project` → verify
   `type=DESIGN_SYSTEM`.
 - **D2 Design-system generation and sync (code → design)** — bundle from the
-  brand tokens directory + `design.yaml` + existing components;
+  brand tokens directory + `design.yaml` + the **full shadcn/ui component
+  catalog** (bundled reference `workflows/references/shadcn-component-catalog.md`),
+  with every component in BOTH a light-theme and a dark-theme token variant;
   `finalize_plan(planId)` (user-approval gate); `write_files(localPath)`
-  component-unit increment (content not passed in context).
+  component-unit increment (content not passed in context). A partial catalog
+  or a single-theme bundle is a D2 defect.
 - **D3 Screen artifact generation (Claude Design canvas)** — generate screens
   from imported components/tokens (drift prevention); user WYSIWYG edit +
   implementation annotation attachment on canvas; `report_validate` → render
