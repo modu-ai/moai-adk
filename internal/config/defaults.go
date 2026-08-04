@@ -232,11 +232,14 @@ const (
 // SandboxProofKinds is the allowlist of recognized sandbox/container isolation
 // kinds for the MOAI_SANDBOX_PROOF env marker (SPEC-AUTONOMY-TIERS-001 REQ-002
 // S3 hardening — sandbox-proof spoofing). A proof whose kind is not in this
-// list is rejected. The slice is a var (composite literals are not const
-// expressions) so it remains config-extendable without code change; callers
-// treat it as read-only.
+// list is rejected. Each kind names one of Claude Code's official full-process
+// isolation options (container, VM, or the sandbox-runtime); the marker is an
+// attestation and the allowlist is the proof — moai-adk does not re-verify the
+// boundary from inside (see autonomy_tiers.go SandboxProofKind). The slice is a
+// var (composite literals are not const expressions) so it remains
+// config-extendable without code change; callers treat it as read-only.
 var SandboxProofKinds = []string{
-	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata",
+	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
 }
 
 // DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
