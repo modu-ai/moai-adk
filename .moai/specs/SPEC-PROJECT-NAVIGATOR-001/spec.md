@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-NAVIGATOR-001
 title: "Project Navigator — living project-scoped navigation layer (capability-map + progress-map + entry point + resume reorientation)"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec

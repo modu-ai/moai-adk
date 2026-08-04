@@ -38,4 +38,23 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-05
+sync_commit_sha: pending-backfill-sync
+sync_status: completed
+changelog_entry_position: CHANGELOG.md [Unreleased] / Added (top of section)
+frontmatter_status_transitions:
+  spec.md: in-progress -> implemented -> completed
+  plan.md: n/a (no frontmatter)
+  acceptance.md: n/a (no frontmatter)
+  progress.md: n/a (no frontmatter)
+canary_compliance_check:
+  ci_guard: pending (PR-stage; repo-local PR-mandatory per §23)
+b12_self_test:
+  a: pre-emission grep -c 'SPEC-PROJECT-NAVIGATOR-001' CHANGELOG.md = 0 (no duplicate)
+  b: AC count in acceptance.md = 18; CHANGELOG entry references "18 ACs (AC-PN-001..018)" — match
+  c: navigator-regen.sh / SKILL.md / handle-session-start-navigator.sh / references/navigator.md paths verified via ls
+```
+
+**Docs-site 4-locale follow-up (deferred — does NOT block this code PR)**: the Navigator is a real user-facing feature and a docs-site guide page on `adk.mo.ai.kr` (ko/en/ja/zh) WOULD be valuable eventually. However authoring it is HEAVY (4-locale × Hugo page × the oss-docs harness structure-curator + content-author + locale-translator + verify recipe) and is out of scope for this sync commit. Filed as a follow-up TODO — a separate SPEC (or a `/moai:harness oss-docs` invocation) should pick this up post-merge. Recorded here (not in the CHANGELOG body) so the next maintainer sees it when reading the SPEC close.
+
