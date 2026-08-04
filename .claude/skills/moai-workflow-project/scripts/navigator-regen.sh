@@ -132,7 +132,8 @@ barrier_wait() {
 # arm the barrier, then mv into place.
 atomic_write() {
     local dest="$1"
-    local tmp="${dest}.tmp"
+    local tmp
+    tmp="$(mktemp "${dest}.XXXXXX" 2>/dev/null)" || tmp="${dest}.tmp"
     cat >"$tmp" || return 1
     barrier_wait
     mv -f "$tmp" "$dest" 2>/dev/null || cp "$tmp" "$dest" 2>/dev/null || true
