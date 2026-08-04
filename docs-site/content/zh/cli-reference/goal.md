@@ -12,9 +12,10 @@ draft: false
 
 | 命令 | 说明 |
 |--------|------|
-| `moai goal arm "<condition>"` | 向活动会话注册 + arm 目标(`moai goal "<condition>"` 也是 arm 的别名) |
-| `moai goal status` | 输出活动会话的目标状态 |
+| `moai goal arm "<condition>"` | 向活动会话注册 + arm 目标(`moai goal "<condition>"` 也是 arm 的别名)。arm-only —— 其自身不会启动任何工作 |
+| `moai goal status` | 输出活动会话的目标状态(用 `--all` 列出所有会话) |
 | `moai goal clear` | 解除活动会话的目标 |
+| `moai goal render` | 将活动会话的目标仪表盘渲染为 self-contained HTML 文件(保存到 `.moai/state/goal/` 旁)。如果没有已 arm 的 goal,以非零退出码结束 |
 
 ## 公共标志
 
@@ -28,9 +29,9 @@ draft: false
 
 | 旗标 | 说明 |
 |--------|------|
-| `--max-turns <N>` | 回合上限。`0` = 无限(自动压缩驱动);省略时默认 `30`(完全向后兼容)。`0` 必须搭配 `--max-duration` 或 `--cost-cap`(arm 时 fail-closed)。 |
-| `--max-duration <sec>` | 实时上限(arm 时刻起的秒数)。无限 goal 的主要运行上限。 |
-| `--cost-cap <value>` | 记录到 `Ceiling` 的成本上限。强制执行是后续工作(当前无调用/令牌核算);无限 goal 仍由 `--max-duration` 和停滞防护约束。 |
+| `--max-turns <N>` | 回合上限。`0` = 无限(SPEC-INFINITE-GOAL-001);省略时默认 `30`(完全向后兼容)。**`0`(无限)必须搭配 `--max-duration <sec>`**(arm 时刻 fail-closed)。 |
+| `--max-duration <sec>` | 实时上限(arm 时刻起的秒数)。**无限 goal(`--max-turns 0`)的实际墙上时间上限** —— 没有 this 标志无法 arm 无限 goal。 |
+| `--cost-cap <value>` | 调用次数上限,**仅记录(recorded-only)** —— 当前没有强制执行逻辑,因此并不是实际 bound。它无法满足 `--max-turns 0` 的实际 bound 要求,因此 cost-cap 单独使用时会被拒绝。 |
 
 ## 状态与评估
 

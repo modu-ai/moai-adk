@@ -46,7 +46,7 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update --reconfigure` —— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
+向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update -c`(或 `moai update --config`) —— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
 {{< /callout >}}
 
 ## Page 1 —— 基本
@@ -102,7 +102,7 @@ moai init my-project
 | **Medium**（默认） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
 | **Low** | 每任务最低成本 —— 智能体类代理降至 Opus `low` effort |
 
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段,并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段(legacy `max` 也接受作为输入,归一化为 `high`)。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ### 报告格式
 

@@ -14,6 +14,7 @@ draft: false
 |--------|------|
 | `moai harness route --spec <id>` | 将 SPEC 路由至 minimal/standard/thorough harness 级别 |
 | `moai harness validate` | 按 schema·不变量验证 harness.yaml |
+| `moai harness clusters` | 从 apply 结局(apply_outcome)读取确定性失败签名簇并展示 (read-only, `.moai/harness/usage-log.jsonl`) |
 
 `route` 接受 `--json`(JSON 输出)、`--path <harness.yaml>`、`--base-dir <dir>` 标志。
 
@@ -23,8 +24,17 @@ draft: false
 |--------|------|
 | `moai harness status` | 显示观测/层级/进化摘要 |
 | `moai harness apply` | 将待处理提案返回给编排器(或用 `--execute` 执行 Go apply 路径) |
+| `moai harness execute` | 将待处理提案以 Go 管道 apply(opt-in —— `Applier.Apply()` 的首个生产调用路径) |
 | `moai harness rollback <date>` | 恢复指定日期的快照 |
 | `moai harness disable` | 停用学习子系统(`learning.enabled: false`) |
+
+## 提案·激活 verb
+
+| 命令 | 说明 |
+|--------|------|
+| `moai harness propose` | 消费 harness 学习历史(`tier-promotions.jsonl`)生成草案 SPEC 提案 |
+| `moai harness install` | 生成 harness 激活 —— 安装 `.moai/harness/main.md` 脚手架 + `CLAUDE.md` 标记 |
+| `moai harness promote` | 把发现草案(discovery draft)提升为 SPEC 骨架(路由至 manager-spec 作者) |
 
 ## 提案管理 verb
 

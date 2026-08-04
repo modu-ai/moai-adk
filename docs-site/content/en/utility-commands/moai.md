@@ -132,8 +132,8 @@ flowchart TD
 
     subgraph D["Phase 0: parallel exploration (15-30 s)"]
         D1["Explore subagent<br/>codebase analysis"]
-        D2["Research subagent<br/>external docs research"]
-        D3["Quality subagent<br/>quality baseline check"]
+        D2["WebSearch / WebFetch / Context7 MCP<br/>external docs research"]
+        D3["LSP / lint / coverage<br/>quality baseline check"]
     end
 
     D --> E{"Single domain?"}
@@ -142,7 +142,7 @@ flowchart TD
 
     C --> G["Phase 1<br/>SPEC creation"]
     G --> H["Invoke manager-spec"]
-    H --> I["Create EARS-format SPEC"]
+    H --> I["Create GEARS-format SPEC"]
     I --> J[".moai/specs/SPEC-XXX/spec.md"]
 
     J --> K["Phase 2<br/>DDD implementation"]
@@ -167,7 +167,7 @@ flowchart TD
 
 **Key points:**
 
-- **Phase 0 (parallel exploration)**: three agents run at the same time for a 2-3x speedup
+- **Phase 0 (parallel exploration)**: the Explore subagent, external search, and quality baseline measurement run at the same time for a 2-3x speedup
 - **Single-domain routing**: simple work is delegated directly to a specialist agent, skipping the SPEC
 - **Completion signal**: on completion, the completion report explicitly states the work is done
 
@@ -175,13 +175,13 @@ flowchart TD
 
 ### Phase 0: Parallel Exploration (optional)
 
-Three agents run **simultaneously** to quickly grasp the project context:
+While the **Explore** subagent (Anthropic built-in, read-only) analyzes the codebase, the orchestrator simultaneously runs external doc research (WebSearch/WebFetch/Context7 MCP) and quality baseline measurement (LSP/lint/coverage) to grasp the project context quickly:
 
-| Agent        | Role                | Work                                          |
+| Party        | Role                | Work                                          |
 | ------------ | ------------------- | --------------------------------------------- |
-| **Explore**  | Codebase analysis   | Discovers relevant files, architecture patterns, existing implementations |
-| **Research** | External docs research | Official docs, API docs, similar implementation examples |
-| **Quality**  | Quality baseline    | Test coverage, lint status, technical debt    |
+| **Explore** (subagent) | Codebase analysis | Discovers relevant files, architecture patterns, existing implementations |
+| **WebSearch / WebFetch / Context7 MCP** | External docs research | Official docs, API docs, similar implementation examples |
+| **Quality baseline measurement** (orchestrator directly) | Quality baseline | Test coverage, lint status, technical debt |
 
 **Speedup:** parallel execution is 2-3x faster than sequential (15-30 s vs 45-90 s)
 
@@ -192,12 +192,16 @@ Three agents run **simultaneously** to quickly grasp the project context:
 
 ### Phase 1: SPEC Creation
 
-The **manager-spec** subagent creates an EARS-format SPEC document:
+The **manager-spec** subagent creates a GEARS-format SPEC document:
 
 - .moai/specs/SPEC-XXX/spec.md
-- EARS-format requirements
+- GEARS-format requirements
 - Given-When-Then acceptance criteria
 - Content written in the conversation_language
+
+{{< callout type="info" >}}
+**GEARS format** is the current official SPEC requirements format. The **EARS** name found in older docs and configs is a legacy name, replaced by GEARS.
+{{< /callout >}}
 
 ### Phase 2: DDD/TDD Implementation Loop
 
@@ -234,11 +238,11 @@ The **manager-docs** subagent synchronizes the implementation and the docs:
 
 ## TODO Management
 
-**[HARD] The TodoWrite tool is mandatory:** TodoWrite must be used for all work tracking
+**[HARD] Task\* tools are mandatory:** all work tracking goes through `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet`. These four tools are **deferred tools** whose schemas are not loaded at session start, so before first use you must pull the schema with a single `ToolSearch(query: "select:TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` (`AskUserQuestion` is the same kind of deferred tool).
 
-- On discovering an issue: TodoWrite (pending state)
-- Before starting work: TodoWrite (in_progress state)
-- After completing work: TodoWrite (completed state)
+- On discovering an issue: `TaskCreate` (pending state)
+- Before starting work: `TaskUpdate` (in_progress state)
+- After completing work: `TaskUpdate` (completed state)
 - Printing the TODO list as plain text is forbidden
 
 ## Completion Signal
@@ -288,7 +292,7 @@ The pipeline does not create worktrees. To run this work in an isolated worktree
 ```
 [Invoking manager-spec]
   SPEC ID: SPEC-AUTH-001
-  Requirements: 5 (EARS format)
+  Requirements: 5 (GEARS format)
   Acceptance criteria: 3 scenarios
 
   User approval: complete
