@@ -21,7 +21,7 @@ _run-phase landed at commit `de672622d` — `.claude/agents/moai/sync-auditor.md
 
 ```yaml
 sync_complete_at: 2026-08-04
-sync_commit_sha: pending-backfill-close
+sync_commit_sha: 1579687e6
 sync_status: completed
 b12_self_test_a: pass   # pre-emission grep: grep -c 'SPEC-SYNC-AUDIT-FALSIFICATION' CHANGELOG.md == 0 pre-emission
 b12_self_test_b: pass   # AC count match: acceptance.md not present (Tier M skeleton carried inline AC summary in spec.md §H); CHANGELOG entry references the 5 AC-SAF IDs verbatim

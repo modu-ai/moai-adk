@@ -129,7 +129,7 @@ m1_to_mN_commit_strategy: single M1 commit (draft → in-progress); SHA backfill
 
 ```yaml
 sync_complete_at: 2026-08-05
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: a098aac98
 sync_status: audit-ready
 spec_status_transition: in-progress → implemented → completed (3-phase close on the single sync commit)
 frontmatter_status_transitions:
