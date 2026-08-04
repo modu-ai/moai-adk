@@ -168,7 +168,7 @@ const skillMoaiPrefix = ".claude/skills/moai/"
 var leakClasses = []leakClass{
 	{
 		name:    "C1-spec-id-prefix",
-		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
+		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE|PROJECT-NAVIGATOR)-[A-Z0-9-]+\b`),
 	},
 	{
 		name:    "C2-req-ac-internal-prefix",

@@ -10,6 +10,12 @@
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
             "timeout": 30,
             "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start-navigator.sh"],
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
