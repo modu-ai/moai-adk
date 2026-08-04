@@ -93,7 +93,7 @@ m1_to_mN_commit_strategy: one commit per milestone, explicit pathspec (no git ad
 
 ```yaml
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill"   # self-referential; a commit cannot know its own SHA — backfilled in a follow-up commit (D3 pattern, same as SPEC-INFINITE-GOAL-001 / SPEC-STOPCHAIN-TRIM-001)
+sync_commit_sha: "4ab512c89"   # backfilled post-merge (Automerge: feat(SPEC-AUTONOMY-TIERS-001))
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress → implemented → completed"
