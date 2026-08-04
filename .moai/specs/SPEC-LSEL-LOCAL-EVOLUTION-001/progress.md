@@ -68,6 +68,42 @@ m1_to_mN_commit_strategy: "single M1 commit carrying plan-phase artifacts (previ
 
 M1 DoD met: AC-LSEL-009 PASS + AC-LSEL-010 PASS; `drain-offset.json` advanced; candidate topics staged under `clusters.json`; ZERO `memory/` writes from M1. The closed surface is DRAIN only (AP-LSEL-006 — M1 is NOT "the loop is closed"; APPLY lands in M3).
 
+### M2 — PROPOSE shadow + INVARANTS kernel (AC-LSEL-005, 006, 007, 011, 012)
+
+**Deliverables (user-owned surfaces + CI-guard extension only — doctrine-zero-touch verified):**
+
+| Path | Surface | Notes |
+|------|---------|-------|
+| `.claude/skills/hns-lsel-curator/SKILL.md` | evolvable #4 | EXTEND: PROPOSE stage + CSA forced-gate (6 categories) + Tier-4 DEAD finding |
+| `.claude/skills/hns-lsel-curator/tier4_firing_test.sh` | evolvable #4 | AC-012 characterization probe (Tier-4 DEAD finding) |
+| `.claude/skills/hns-lsel-curator/propose_test.sh` | evolvable #4 | AC-011 schema-validation test (RED→GREEN) |
+| `.claude/skills/hns-lsel-curator/csa_refusal_test.sh` | evolvable #4 | AC-005 CSA mechanical-refusal fixture (RED→GREEN) |
+| `.claude/skills/hns-lsel-curator/backlog_check.sh` | evolvable #4 | AC-007 SessionStart backlog-check (advisory) |
+| `.claude/skills/hns-lsel-curator/backlog_check_test.sh` | evolvable #4 | AC-007 fixture test (RED→GREEN) |
+| `.moai/state/lsel/proposals/lsel-001/{proposal.md,diff.patch,self-critique.md}` | evolvable #6 | AC-011 sample shadow proposal (8-key schema + retrieval + blocked self-critique) |
+| `CLAUDE.local.md` | evolvable #1 | §0 INVARANTS kernel (top) + §28 LSEL operating instructions |
+| `internal/template/internal_content_leak_test.go` | dev CI guard | AC-006 LSEL leak classes (L1/L2/L3) + positive-control fixture |
+| `.github/workflows/lsel-leak-guard.yaml` | dev CI | AC-006 named CI workflow (report §11 B#7) |
+| `.claude/workflows/lsel-drain-loop.js` | evolvable #4 | AC-007 default `/loop` recipe (read-only drain trigger) |
+
+**AC-LSEL-005 — CSA forced-gate (PASS):** all 6 categories enumerated in curator SKILL.md (INVARANTS kernel, security/validation exception, HIGH-fan-in, Bash risk path, permissions.allow, execution-meta); bother-cost-exemption clause present; `csa_refusal_test.sh` confirms fixture WITHOUT marker REFUSED (+ reject-log row) and fixture WITH marker proceeds.
+
+**AC-LSEL-006 — namespace + leak guard (PASS):** `TestLSELLeakPositiveControl` + `TestTemplateNoInternalContentLeak` + `TestSplitHarnessNamespaceNoLeak` all PASS; zero `lsel`/`hns-lsel`/`SPEC-LSEL`/CLAUDE.local.md-marker content under `internal/template/templates/` (negative control); named CI workflow `.github/workflows/lsel-leak-guard.yaml` added.
+
+**AC-LSEL-007 — mechanical trigger (PASS):** `backlog_check_test.sh` confirms system-reminder emitted on overflow + silent below threshold + silent after drain; default `/loop` recipe registered at `.claude/workflows/lsel-drain-loop.js` (read-only, cadence-bridge compliant).
+
+**AC-LSEL-011 — PROPOSE shadow payload (PASS):** sample proposal at `.moai/state/lsel/proposals/lsel-001/` carries full 8-key schema + retrieval_evidence + diff.patch + self-critique with UNRESOLVED objection → status=blocked (gate fires).
+
+**AC-LSEL-012 — Tier-4 firing verification (PASS-WITH-DOWNGRADE):** `tier4_firing_test.sh` verified the `moai-harness-learner` Tier-4 AskUserQuestion flow is DEAD at the production invocation layer (CuratorDispatch 0 callers; enableTriggerInjectionWrites=false; CLI prints stub string; no mechanical trigger). Per acceptance.md §E edge case, M2 downgrades to "PROPOSE shadow only, APPROVE via fresh path" (M3). M2 wiring does NOT depend on the Tier-4 flow. Blocker reported to orchestrator for acknowledgment.
+
+**TDD RED→GREEN evidence (§E E8):**
+- propose_test RED: `FAIL: .moai/state/lsel/proposals/lsel-001/proposal.md absent` → GREEN: `propose_test: PASS` (8 schema keys + retrieval + blocked self-critique).
+- csa_refusal_test RED: `FAIL: CSA category MISSING` (×6) + over-fire bug → GREEN: `csa_refusal_test: PASS` (6 categories + bother-cost-exemption + marker-keyed refusal).
+- leak-test RED (positive control): planted LSEL fixture → L1/L2/L3 each fire; GREEN: clean templates tree → `TestLSELLeakPositiveControl PASS` + `TestTemplateNoInternalContentLeak PASS`.
+- tier4_firing_test: characterization PASS (finding = Tier-4 DEAD).
+
+**M2 DoD met:** AC-005/006/007/011 PASS + AC-012 PASS-WITH-DOWNGRADE (Tier-4 DEAD, blocker reported); §0 INVARANTS kernel + §28 present in CLAUDE.local.md; mechanical triggers wired; commit stacks on e542fd905.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_

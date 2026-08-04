@@ -23,8 +23,11 @@ metadata:
 > NOT mirrored into `internal/template/templates/` — it lives only in this repo. Graduation
 > to `moai-lsel-*` + 16-language distribution is a separate SPEC (out of scope per spec.md §G).
 >
-> **M1 scope:** drain + cluster + stage candidates. NO PROPOSE (M2), NO APPROVE, NO APPLY (M3),
-> and **NO writes to `memory/`** — candidates wait in `clusters.json` until M2 proposes them.
+> **M1 scope:** drain + cluster + stage candidates. NO APPROVE, NO APPLY (M3).
+> **M2 scope:** drain + cluster + **PROPOSE shadow** (no APPROVE, no APPLY). The PROPOSE stage
+> emits shadow proposals + self-critiques; APPROVE/APPLY land in M3 via the fresh
+> `hns-lsel-applier` path. M2 does NOT write to `memory/` — the first `feedback_*.md` topic
+> file is an M3+ deliverable after APPROVE.
 
 ## What this skill does
 
@@ -116,7 +119,6 @@ curation pass (M2+), your job on top of the mechanical output is:
 
 ## What this skill does NOT do (M1 boundaries)
 
-- **No PROPOSE** — shadow proposals land in M2 (`.moai/state/lsel/proposals/<id>/`).
 - **No APPROVE / APPLY** — the parallel user-owned applier (`hns-lsel-applier`) is M3.
 - **No edits to frozen doctrine** — `.claude/rules/moai/**`, `CLAUDE.md`,
   `internal/template/templates/**`, retained agents, `moai-*` skills, and the frozen Go
@@ -160,3 +162,109 @@ any edit to `drain.sh`.
   `.claude/rules/moai/core/moai-constitution.md:147`.
 - **Namespace guard:** `internal/template/split_namespace_test.go`,
   `internal/template/internal_content_leak_test.go` (extended in M2 — AC-LSEL-006).
+
+---
+
+## PROPOSE stage (M2 — shadow proposals)
+
+The PROPOSE stage consumes the M1 candidate clusters in `.moai/state/lsel/clusters.json` and
+emits **shadow proposals** — one per candidate worth acting on — at
+`.moai/state/lsel/proposals/<proposal-id>/`. M2 proposals are SHADOW only: no APPROVE, no APPLY.
+APPROVE/APPLY land in M3 via the fresh `hns-lsel-applier` path (NOT via the dead
+`moai-harness-learner` Tier-4 flow — see "Tier-4 finding" below).
+
+### Retrieval-before-propose (Reflexion)
+
+BEFORE drafting a proposal, retrieve relevant `feedback_*.md` topic files from
+`~/.claude/projects/<hash>/memory/`. The retrieval grounds the proposal in prior
+lessons (Reflexion-style) and is evidenced in the proposal's `retrieval_evidence`
+block. A proposal without retrieval evidence is malformed and MUST NOT be emitted.
+
+### Proposal payload schema (AC-LSEL-011)
+
+Each proposal lives at `.moai/state/lsel/proposals/<id>/` and contains exactly:
+
+| File | Purpose |
+|------|---------|
+| `proposal.md` | YAML-frontmatter payload + prose body |
+| `diff.patch` | The proposed edit (unified diff; NOT applied in M2) |
+| `self-critique.md` | Model-performed critique against frozen doctrine |
+
+`proposal.md` YAML frontmatter carries the full schema (8 required keys):
+
+```yaml
+---
+proposal_id: lsel-001
+target_surface: <one of the 6 evolvable surfaces, spec.md §B.3>
+rationale: |
+  <what + why>
+WHY-not-just-WHAT: |
+  <the reasoning, not just the change — catches "what" proposals that skip the "why">
+prediction: <a FALSIFIABLE expected effect — the verify_command must be able to falsify it>
+verify_command: <a runnable command that, if green, confirms the prediction>
+blast_radius: <which surfaces the diff touches; used by the CSA forced-gate match>
+memory_type: semantic|procedural|episodic   # CoALA taxonomy
+retrieval_evidence:
+  - <path to a feedback_*.md retrieved before drafting>
+status: blocked   # blocked | ready — blocked if self-critique has an UNRESOLVED objection
+---
+```
+
+### Self-critique gate
+
+`self-critique.md` is model-performed (NOT a mechanical doctrine checker — report §13 caveat 3:
+the model can rationalize; the frozen allowlist + `/moai gate` are the real safety floor). It
+lists objections against frozen doctrine; each objection is marked RESOLVED or UNRESOLVED. A
+proposal with ANY UNRESOLVED objection is `status: blocked` and MUST NOT proceed to APPROVE.
+A proposal that never converges stays blocked; the curator returns a blocker report and the
+orchestrator surfaces it (acceptance.md §E edge case — not a ship-blocker for M2; it proves
+the gate fires).
+
+### Tier-4 finding (AC-LSEL-012 — do NOT wire the dead flow)
+
+**Finding (verified 2026-08-04 via `tier4_firing_test.sh`): the `moai-harness-learner` Tier-4
+AskUserQuestion flow is DEAD at the production invocation layer.** The CLI (`moai harness apply`)
+prints a stub string and never invokes the learner skill; `CuratorDispatch` has 0 production
+callers (the audit's cautionary precedent); `enableTriggerInjectionWrites=false` is the
+apply dead-switch; and NO mechanical trigger causes the orchestrator to surface a Tier-4
+proposal (the audit's exact failure mode, report §11 mustFix B#1).
+
+Per acceptance.md §E edge case, M2 does NOT wire the PROPOSE→APPROVE handoff to depend on the
+Tier-4 flow. APPROVE routes via the M3 fresh path (`hns-lsel-applier` + `decision.json` with a
+synchronous-approval marker). M2 emits shadow proposals only. This finding is recorded in
+`tier4_firing_test.sh` and cited in the M2 wiring commit.
+
+## CSA forced-gate categories (AC-LSEL-005 / REQ-LSEL-005)
+
+The APPROVE stage (M3, `hns-lsel-applier`) forces a synchronous `AskUserQuestion` — regardless
+of proposer confidence — for any proposal whose blast radius touches one of the SIX CSA
+forced-gate categories:
+
+1. **INVARANTS kernel** — the read-only goal kernel block at the top of `CLAUDE.local.md`.
+2. **security/validation exception** bands — input-validation carve-outs, error-handling that
+   prevents data loss, OWASP measures.
+3. **HIGH-fan-in references** — `@MX:ANCHOR` functions with fan_in ≥ 3 callers.
+4. **Bash risk path** — the destructive-primitive set + `BASH_SUBCOMMAND_SOFT_CAP` compound
+   commands (coding-standards.md § Bash Risk-Amplifier Doctrine).
+5. **`permissions.allow`** additions — explicit security-exception band; per-line synchronous
+   approval (every added allow entry is its own forced gate).
+6. **execution-meta files** — the four execution-meta categories named in REQ-LSEL-002/005:
+   (i) the frozen allowlist meta file at `.claude/lsel/frozen-allowlist.json`, (ii) an applier
+   or curator skill body (`hns-lsel-applier/`, `hns-lsel-curator/`), (iii) the apply hook
+   script (`lsel-apply.sh` and wrappers), (iv) the `settings.local.json` hook-registration
+   subblock.
+
+**Bother-cost-exemption:** forced gates are **bother-cost-exempt** — the bother-cost gating
+rule applies ONLY to routine-tier proposals. A forced-gate proposal always triggers a
+synchronous `AskUserQuestion` regardless of bother-cost state.
+
+**Mechanical enforcement (D3):** the applier (`hns-lsel-applier` driving `lsel-apply.sh`,
+M3) intercepts every proposal matching the four execution-meta categories and REFUSES to
+write unless the proposal's `decision.json` carries an explicit synchronous-approval marker
+(an `AskUserQuestion`-produced approval artifact). A match with no marker aborts the apply,
+appends a rejection row to `.moai/logs/lsel-reject.log` naming the matched category, and
+writes nothing. Proposals matching none of the four categories proceed through the routine
+bother-cost path. This mechanical interception is what makes the self-amending-handcuffs
+defense defensible without resting on the regex paradox alone.
+
+`csa_refusal_test.sh` (next to this SKILL.md) is the fixture test for the refusal rule.
