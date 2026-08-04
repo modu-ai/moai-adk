@@ -142,4 +142,4 @@ Edit the live `sync-auditor.md` § Per-Dimension Mechanical Verification area, A
 - acceptance.md §D (AC matrix, GWT).
 - `CLAUDE.local.md` §2 (Template-First), §25 (Template Internal-Content Isolation).
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 + §3.
-- `SPEC-4DIM-PHANTOM-001` (IMP-5 owner — out of scope here).
+- `SPEC-FOURDIM-PHANTOM-001` (IMP-5 owner — out of scope here).

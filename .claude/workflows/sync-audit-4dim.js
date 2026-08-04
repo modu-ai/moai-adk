@@ -12,16 +12,34 @@
 //   is the HARMONIC MEAN of the four scores, chosen deliberately so that ONE low dimension drags
 //   the whole verdict down (the arithmetic mean would let a strong dimension mask a weak one).
 //
+// PHANTOM-MECHANISM GUARD (composes with the existing guards; does NOT replace any of them and
+//   does NOT add a 5th dimension). A SPEC under audit MAY declare defensive / structural mechanisms
+//   it claims to have implemented (an input-validation guard, a migration call-site, an invariant
+//   anchor). Each declared mechanism carries a literal probe_command + expected_match_substring.
+//   The Context agent executes each probe against the ACTUAL write surface (the diff.patch paths
+//   plus the produced files in the working tree — NOT the declared target_surface intent alone,
+//   because a declaration is a claim, not evidence) and returns probe_results. The Verdict phase
+//   then applies a deterministic JS rule: any claimed mechanism whose probe returned
+//   actual_matches == 0 (and did NOT error) is a PHANTOM mechanism — a hard FAIL naming it, never
+//   absorbed into a softer verdict. A probe that errored (no count produced) routes to
+//   evidence_gaps — it is neither a phantom (which requires a zero COUNT) nor a verified mechanism.
+//   The guard has a TIGHTER trust boundary than the harmonic mean: a literal command + a
+//   deterministic integer count, re-runnable by any reviewer against the diff. This closes the
+//   happy-path falsification surface (a PASS bypasses the cold auditor entirely, so a declared-
+//   but-absent mechanism would otherwise ride a falsified PASS through the harmonic mean).
+//
 // Gate scope (honored via args.tier): Tier M and Tier L SPECs route through this 4-dimension gate.
 //   Tier S SPECs do NOT — the caller (orchestrator) does not launch this workflow for a Tier S SPEC.
 //   The gate is caller-side; args.tier is carried into the verdict for auditability.
 //
 // Determinism: spec_id / threshold / tier injected via `args`; no wall-clock read and no
-//   random draw in the script body (resume-cache safe — any timestamp is stamped by the
-//   orchestrator AFTER the run returns, per dynamic-workflows.md § How a Workflow Runs).
+//   random draw in the script body or in the verdict pure functions (resume-cache safe — any
+//   timestamp is stamped by the orchestrator AFTER the run returns, per dynamic-workflows.md
+//   § How a Workflow Runs).
 //
 // Read-only: every agent (Context + all 4 Judges) is agentType 'Explore' — no Write/Edit is
-//   granted. Judges gather evidence (Read/Grep/Glob/Bash read-only) and score; they never mutate.
+//   granted. The Context agent executes probe_commands via read-only Bash (grep / cat / git diff
+//   against the working tree); it never mutates. Judges gather evidence and score; they never mutate.
 //
 // HARD constraints:
 //   - No AskUserQuestion / no interactive surface — workflow agents cannot prompt the user
@@ -29,13 +47,16 @@
 //     evidence_gaps, never a question.
 //   - No meta-judge agent — the aggregate is computed in SCRIPT JS below, never by a 5th LLM call
 //     (a meta-judge would smooth dissent, defeating the harmonic mean's purpose).
-//   - No LLM arithmetic — the harmonic mean is JS, deterministic and auditable.
+//   - No LLM arithmetic — the harmonic mean AND the actual_matches == 0 comparison are JS,
+//     deterministic and auditable.
 //   - Gate on Tier M/L only (Tier S does not launch).
 //
 // Fail-honest semantics: ANY judge that fails to return (null / unparseable score) yields verdict
 //   INCOMPLETE naming the missing dimension(s) — 3/4 is NOT a weaker verdict, it is NO verdict
 //   (evidence absent != evidence of success, verification-claim-integrity.md §1). A score of 0 trips
-//   the zero-score guard (a hard FAIL naming the dimension — never a divide-by-zero).
+//   the zero-score guard (a hard FAIL naming the dimension — never a divide-by-zero). A phantom
+//   mechanism trips the phantom-mechanism guard (a hard FAIL naming the mechanism — never a silent
+//   pass-through to the harmonic mean).
 //
 // Distribution: this is a MoAI-shipped generic fan-out script — it is template-managed, so `moai
 //   update` overwrites the local copy. Edit it in the template source, not in the local project.
@@ -50,11 +71,11 @@
 
 export const meta = {
   name: 'sync-audit-4dim',
-  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; execution vehicle, NOT the binding sync-auditor verdict owner',
+  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict with phantom-mechanism guard; execution vehicle, NOT the binding sync-auditor verdict owner',
   phases: [
-    { title: 'Context', detail: 'one read-only Explore agent extracts the SPEC audit surface (id, acceptance criteria, changed files, test command)' },
+    { title: 'Context', detail: 'one read-only Explore agent extracts the SPEC audit surface (id, acceptance criteria, changed files, test command) AND executes any declared phantom-mechanism probes against the actual write surface' },
     { title: 'Judge', detail: 'four parallel read-only Explore judges, one per dimension, each scoring 0-1 with command+verbatim-output evidence under a skeptical-auditor stance' },
-    { title: 'Verdict', detail: 'in-script harmonic mean of the four scores with a zero-score guard and an INCOMPLETE branch on any missing judge (no agent call)' },
+    { title: 'Verdict', detail: 'in-script deterministic verdict — null-judge guard → zero-score guard → phantom-mechanism guard → harmonic mean (no agent call)' },
   ],
 }
 
@@ -63,8 +84,123 @@ const SPEC_ID = (args && args.spec_id) || 'SPEC-UNKNOWN'
 const THRESHOLD = (args && typeof args.threshold === 'number') ? args.threshold : 0.85
 const TIER = (args && args.tier) || 'M'
 
-// The four audit dimensions. Verdict order below MUST match this array (judges[i] <-> DIMENSIONS[i]).
+// === VERDICT PURE FUNCTIONS START ===
+// Deterministic verdict logic — no runtime globals (agent/parallel/phase/args), no wall-clock,
+// no random draw. Unit-tested directly via node:test (see sync-audit-4dim.test.js). Extracted so
+// the verdict decision is falsifiable without launching the workflow runtime.
+
+// The four audit dimensions. FROZEN — the phantom-mechanism guard adds a VERDICT-PHASE guard,
+// NOT a 5th dimension. Verdict order below MUST match this array (judges[i] <-> DIMENSIONS[i]).
 const DIMENSIONS = ['Functionality', 'Security', 'Craft', 'Consistency']
+
+// A judge is "missing" if it did not return or its score is not a finite number.
+const scoreOf = (j) => (j && typeof j.score === 'number' && Number.isFinite(j.score)) ? j.score : null
+
+// Phantom-mechanism detection. Operates on probe_results returned by the Context agent.
+//
+// Routing rules (deterministic):
+//   - error present (no count produced) → evidence_gap (the mechanism is NEITHER phantom NOR
+//     verified; the missing data is reported, never treated as a pass or a fail on its own).
+//   - actual_matches == 0 (a real zero COUNT, no error) → phantom (hard FAIL).
+//   - actual_matches > 0 → verified (falls through to the harmonic mean).
+//   - absent / empty probe_results → no-op (the guard is inert; verdict falls through).
+function detectPhantomMechanisms(probeResults) {
+  const phantoms = []
+  const errored = []
+  if (!Array.isArray(probeResults) || probeResults.length === 0) {
+    return { phantoms, errored }
+  }
+  for (const r of probeResults) {
+    if (!r || typeof r !== 'object') continue
+    const entry = {
+      name: r.name,
+      probe_command: r.probe_command,
+      expected_match_substring: r.expected_match_substring,
+    }
+    // An errored probe produced NO count — route to evidence_gaps. This MUST NOT trigger a
+    // phantom-FAIL (which requires an observed zero COUNT) and MUST NOT be treated as verified.
+    if (r.error) {
+      errored.push({ ...entry, error: r.error })
+      continue
+    }
+    // A real zero count (no error) is a phantom — a claimed mechanism with zero on-disk evidence.
+    if (typeof r.actual_matches === 'number' && r.actual_matches === 0) {
+      phantoms.push({ ...entry, actual_matches: 0 })
+    }
+  }
+  return { phantoms, errored }
+}
+
+// Pure verdict — total precedence order:
+//   1. null-judge guard   → INCOMPLETE (4 dims are the contract; 3/4 is no verdict)
+//   2. zero-score guard   → FAIL (a 0 dimension makes the harmonic mean undefined — hard FAIL)
+//   3. phantom-mechanism guard → FAIL (any claimed mechanism with actual_matches == 0 — hard FAIL)
+//   4. harmonic mean      → PASS / FAIL
+// opts: { judges, probeResults, dimensions, threshold, tier, specId }
+function computeVerdict(opts) {
+  const judges = opts.judges
+  const probeResults = opts.probeResults || []
+  const DIM = opts.dimensions
+  const threshold = opts.threshold
+  const tier = opts.tier
+  const specId = opts.specId
+
+  // (1) null-judge guard FIRST — before any mean computation or probe inspection.
+  const missing = DIM.filter((dim, i) => scoreOf(judges[i]) === null)
+  if (missing.length > 0) {
+    return { verdict: 'INCOMPLETE', missing, tier, threshold, spec_id: specId }
+  }
+
+  // All four judges returned a finite score. Aggregate findings/gaps for the report.
+  const scores = DIM.map((dim, i) => judges[i].score)
+  const findings = DIM.flatMap((dim, i) => (judges[i].findings || []).filter(Boolean).map((f) => ({ dimension: dim, ...f })))
+  const evidenceGaps = DIM.flatMap((dim, i) => (judges[i].evidence_gaps || []).filter(Boolean).map((g) => ({ dimension: dim, gap: g })))
+
+  // (2) zero-score guard — the harmonic mean divides by each score, so a 0 dimension is a hard FAIL.
+  const zeroScored = DIM.filter((dim, i) => scores[i] <= 0)
+  if (zeroScored.length > 0) {
+    return { verdict: 'FAIL', zero_scored: zeroScored, tier, threshold, spec_id: specId, findings, evidence_gaps: evidenceGaps }
+  }
+
+  // (3) phantom-mechanism guard — AFTER zero-score (structural / cheaper), BEFORE harmonic mean.
+  // The probe_command in each phantom entry IS the verbatim command that was run; actual_matches: 0
+  // IS the observed output — per baseline-integrity attribution, the reviewer can re-run the exact
+  // command against the diff and observe the zero directly.
+  const { phantoms, errored } = detectPhantomMechanisms(probeResults)
+  const aggregatedGaps = errored.length > 0
+    ? evidenceGaps.concat(errored.map((e) => ({ dimension: 'PhantomProbe', gap: `probe for "${e.name}" returned no count (${e.error}); probe_command: ${e.probe_command}` })))
+    : evidenceGaps
+  if (phantoms.length > 0) {
+    return {
+      verdict: 'FAIL',
+      phantom_mechanisms: phantoms,
+      tier,
+      threshold,
+      spec_id: specId,
+      findings,
+      evidence_gaps: aggregatedGaps,
+    }
+  }
+
+  // (4) harmonic mean — n / Σ(1/sᵢ), in-script, deterministic, auditable. One low dimension drags
+  // it down. Reached only when every claimed mechanism was either verified (actual_matches > 0),
+  // errored (routed to evidence_gaps), or absent (no claimed_mechanisms declared — the phantom
+  // guard is a no-op).
+  const reciprocalSum = scores.reduce((acc, s) => acc + 1 / s, 0)
+  const harmonicMean = DIM.length / reciprocalSum
+
+  return {
+    verdict: harmonicMean >= threshold ? 'PASS' : 'FAIL',
+    harmonic_mean: harmonicMean,
+    threshold,
+    tier,
+    spec_id: specId,
+    scores: DIM.map((dim, i) => ({ dimension: dim, score: scores[i] })),
+    findings,
+    evidence_gaps: aggregatedGaps,
+  }
+}
+// === VERDICT PURE FUNCTIONS END ===
 
 // Schema-forced output: the verdict computation consumes typed fields, so the Context + Judge
 // outputs are schema-shaped (arithmetic needs structure). Explorer narrative in the sibling
@@ -74,6 +210,25 @@ const CONTEXT_SCHEMA = {
   acceptance_criteria: ['string — one AC statement per entry'],
   changed_files: ['string — repo-relative path touched by this SPEC'],
   test_command: 'string — the command that runs this SPEC test suite',
+  // Optional: defensive / structural mechanisms the SPEC claims to have implemented. Each entry
+  // carries a literal probe_command + the substring the probe is expected to match on disk. The
+  // Context agent executes each probe_command against the ACTUAL write surface (diff.patch paths +
+  // produced files) and returns probe_results. Absent or empty → the phantom-mechanism guard is
+  // a no-op (verdict falls through to the harmonic mean unchanged).
+  claimed_mechanisms: [{
+    name: 'string — short identifier for the claimed mechanism',
+    probe_command: 'string — literal read-only shell command whose stdout+file corpus is searched',
+    expected_match_substring: 'string — literal substring (NOT regex) the probe counts occurrences of',
+  }],
+  // Probe execution results — one per claimed_mechanism entry, populated by the Context agent.
+  // actual_matches == 0 (no error) → phantom mechanism (hard FAIL). error present → evidence_gap.
+  probe_results: [{
+    name: 'string — matches the claimed_mechanism.name',
+    probe_command: 'string — the verbatim command that was run',
+    expected_match_substring: 'string — the substring that was counted',
+    actual_matches: 'number — observed count of expected_match_substring in the probe corpus',
+    error: 'optional string — present when the probe command could not produce a count (file not found, non-zero exit, timeout); routes to evidence_gaps, NOT phantom-FAIL',
+  }],
 }
 
 const JUDGE_SCHEMA = {
@@ -96,9 +251,37 @@ Return the audit surface as an object with EXACTLY these fields:
 - acceptance_criteria: the list of acceptance-criterion statements (from acceptance.md, the SSOT)
 - changed_files: the list of repo-relative source paths this SPEC touches (from plan.md scope + git)
 - test_command: the single command that runs this SPEC's test suite (e.g. "go test ./internal/foo/...")
+- claimed_mechanisms: the list of defensive / structural mechanisms this SPEC CLAIMS to have
+  implemented, as declared in its plan.md / acceptance.md. Each entry MUST carry:
+    * name           — short identifier for the mechanism
+    * probe_command  — a literal READ-ONLY shell command (grep / cat / git diff — NO Write/Edit,
+                       NO mutation) whose output the audit will search for the expected substring.
+                       The command MUST probe the ACTUAL write surface: the diff.patch paths plus
+                       the produced files in the working tree (e.g. the files changed by this SPEC,
+                       discoverable via \`git diff --name-only\` against the merge-base). Do NOT
+                       point the probe at the declared target_surface intent alone — a declaration
+                       is a claim, not evidence; the probe must hit what was actually written.
+    * expected_match_substring — the literal substring (NOT a regex) the probe counts occurrences
+                       of in the combined stdout + file-contents corpus. Keep it literal so the
+                       count is deterministic and auditable.
+  If the SPEC declares no such mechanisms, return claimed_mechanisms as an empty array [].
+- probe_results: for EACH entry in claimed_mechanisms, execute its probe_command via read-only
+  Bash and report the result. Each entry MUST carry:
+    * name, probe_command, expected_match_substring — copied from the claimed_mechanism entry.
+    * actual_matches — the integer count of expected_match_substring occurrences found in the
+                       combined stdout + walked-file-contents corpus the probe_command produced.
+                       Count literal substring matches (NOT regex). Zero is a real observation
+                       (the mechanism is absent on disk) — report 0, do NOT fudge.
+    * error — present ONLY when the probe could not produce a count (the command exited non-zero
+              for a reason other than grep-no-match, the file was not found, or the probe timed
+              out). When error is present, OMIT actual_matches. An errored probe is reported as
+              an evidence_gap, never as a phantom-FAIL and never as a verified mechanism.
+  If claimed_mechanisms is empty, return probe_results as an empty array [].
 
-Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
-rather than guessing.`
+Report only what you can VERIFY from the artifacts and the working tree. If a field cannot be
+determined, return it empty rather than guessing. The verdict phase will apply the deterministic
+rule (actual_matches == 0 with no error → phantom-FAIL; error → evidence_gap) in JS — your job is
+to execute the probes honestly and return the counts you actually observed.`
 
 const context = await agent(CONTEXT_PROMPT, { label: `context:${SPEC_ID}`, phase: 'Context', agentType: 'Explore', effort: 'medium', schema: CONTEXT_SCHEMA })
 
@@ -142,39 +325,16 @@ const judges = await parallel([
 // ---------------------------------------------------------------------------
 phase('Verdict')
 
-// SCRIPT JS ONLY — no agent call sits between judge collection and the returned verdict.
-// A judge is "missing" if it did not return or its score is not a finite number.
-const scoreOf = (j) => (j && typeof j.score === 'number' && Number.isFinite(j.score)) ? j.score : null
-
-// Null-judge guard FIRST, before any mean computation: 4 dimensions are the contract; 3/4 is no verdict.
-const missing = DIMENSIONS.filter((dim, i) => scoreOf(judges[i]) === null)
-if (missing.length > 0) {
-  return { verdict: 'INCOMPLETE', missing, tier: TIER, threshold: THRESHOLD, spec_id: SPEC_ID }
-}
-
-// All four judges returned a finite score. Aggregate their findings/gaps (null-filtered) for the report.
-const scores = DIMENSIONS.map((dim, i) => judges[i].score)
-const findings = DIMENSIONS.flatMap((dim, i) => (judges[i].findings || []).filter(Boolean).map((f) => ({ dimension: dim, ...f })))
-const evidenceGaps = DIMENSIONS.flatMap((dim, i) => (judges[i].evidence_gaps || []).filter(Boolean).map((g) => ({ dimension: dim, gap: g })))
-
-// Zero-score guard: the harmonic mean divides by each score, so a 0 dimension is a hard FAIL naming
-// the dimension — never a division by zero, never Infinity.
-const zeroScored = DIMENSIONS.filter((dim, i) => scores[i] <= 0)
-if (zeroScored.length > 0) {
-  return { verdict: 'FAIL', zero_scored: zeroScored, tier: TIER, threshold: THRESHOLD, spec_id: SPEC_ID, findings, evidence_gaps: evidenceGaps }
-}
-
-// Harmonic mean n / Σ(1/sᵢ) — in-script, deterministic, auditable. One low dimension drags it down.
-const reciprocalSum = scores.reduce((acc, s) => acc + 1 / s, 0)
-const harmonicMean = DIMENSIONS.length / reciprocalSum
-
-return {
-  verdict: harmonicMean >= THRESHOLD ? 'PASS' : 'FAIL',
-  harmonic_mean: harmonicMean,
+// SCRIPT JS ONLY — no agent call sits between judge collection and the returned verdict. The
+// verdict decision is a PURE function (computeVerdict above): null-judge → zero-score → phantom →
+// harmonic mean. probe_results come from the Context agent (the script body has no shell / fs
+// access per dynamic-workflows.md § How a Workflow Runs); only the verdict DECISION is JS — probe
+// EXECUTION is delegated to the Context agent because the script cannot run shell itself.
+return computeVerdict({
+  judges,
+  probeResults: (context && context.probe_results) || [],
+  dimensions: DIMENSIONS,
   threshold: THRESHOLD,
   tier: TIER,
-  spec_id: SPEC_ID,
-  scores: DIMENSIONS.map((dim, i) => ({ dimension: dim, score: scores[i] })),
-  findings,
-  evidence_gaps: evidenceGaps,
-}
+  specId: SPEC_ID,
+})
