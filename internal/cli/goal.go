@@ -250,17 +250,22 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 		}
 	}
 
-	// AC-011 fail-closed: --max-turns 0 (infinite) with NEITHER --max-duration
-	// NOR --cost-cap is rejected at arm time. No goal state file is written.
-	if maxTurns == 0 && maxDuration <= 0 && costCap <= 0 {
+	// AC-011 fail-closed (SPEC-INFINITE-GOAL-001 REQ-004 / D1): --max-turns 0
+	// (infinite) REQUIRES --max-duration <seconds> as the real wall-clock bound.
+	// --cost-cap is RECORDED-ONLY (enforcement is a follow-up, per flag help and
+	// SPEC §D.5) and does NOT satisfy the real-bound requirement — so
+	// cost-cap-alone is REJECTED. An infinite goal without a real bound would
+	// run unbounded (the stagnation guard only fires on N consecutive no-change
+	// turns with >=1 mechanical condition; real progress never triggers it, and
+	// a model-only goal skips stagnation entirely per D2). No goal state file
+	// is written on reject.
+	if maxTurns == 0 && maxDuration <= 0 {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-			"goal arm: --max-turns 0 (infinite) requires at least one real bound: "+
-				"--max-duration <seconds> or --cost-cap <N>. An infinite goal "+
-				"without a real bound would run unbounded (the stagnation guard "+
-				"only fires on N consecutive no-change turns; real progress never "+
-				"triggers it). Re-run with --max-duration <seconds> (wall-clock "+
-				"primary, OQ-2) or --cost-cap <N>.")
-		return fmt.Errorf("goal arm: --max-turns 0 requires a real bound (--max-duration or --cost-cap)")
+			"goal arm: --max-turns 0 (infinite) requires --max-duration <seconds> "+
+				"as the real wall-clock bound. --cost-cap is recorded-only and does "+
+				"NOT satisfy this requirement (it does not bound the goal). Re-run "+
+				"with --max-duration <seconds>.")
+		return fmt.Errorf("goal arm: --max-turns 0 requires --max-duration <seconds> as the real bound (cost-cap is recorded-only)")
 	}
 
 	sessionID, warn := resolveArmSessionID(sessionFlag)

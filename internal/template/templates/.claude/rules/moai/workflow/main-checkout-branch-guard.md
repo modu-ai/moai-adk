@@ -132,6 +132,21 @@ flows. The hook applies the doctrine conditionally.
   Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN). This norm is unchanged by
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
+- **Orchestrator-direct Tier S/M env path**: when the orchestrator handles a
+  Tier S/M push+PR directly (no `manager-git` spawn), it sets
+  `MOAI_BRANCH_GUARD_EXEMPT=1` per-invocation inline (e.g.
+  `MOAI_BRANCH_GUARD_EXEMPT=1 git switch -c feat/SPEC-XXX`). The env branch
+  of `isExemptAgent` (`internal/hook/branch_guard.go`,
+  `os.Getenv(branchGuardExemptEnv) == "1"`) returns true BEFORE the
+  `AgentType == "manager-git"` identity branch is reached, so
+  orchestrator-direct Tier S/M is admitted with NO Go code change — no new
+  identity branch for "orchestrator" is added (the env path is the sole
+  admission mechanism for orchestrator-direct ops). The orchestrator MUST
+  run the Pre-Spawn/Pre-Edit Sync Check BEFORE setting the sentinel +
+  mutating branch state. Defense-in-depth only on checkouts where
+  `Workflow.BranchGuard.Enabled = true`; where the distributed default is
+  `false`, the env path is dormant and the orchestrator-direct Tier S/M
+  push+PR proceeds via plain `git` (no sentinel needed).
 
 Origin: the run-phase SPEC that landed the v1.1.0 mechanical enforcer. The
 v1.2.0 opt-in gate and pattern refinement landed in a follow-up behavior-tuning

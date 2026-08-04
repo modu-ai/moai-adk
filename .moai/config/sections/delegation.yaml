@@ -71,7 +71,7 @@ delegation:
             agents: []                     # orchestrator + stop-goal Stop hook
             skills: []
         default:                           # natural-language autonomous pipeline
-            agents: [Explore, manager-spec, plan-auditor, manager-develop, manager-docs, manager-git, sync-auditor]  # manager-git is Tier-L / --pr conditional (Late-Branch closure)
+            agents: [Explore, manager-spec, plan-auditor, manager-develop, manager-docs, manager-git, sync-auditor]  # manager-git is Tier-L / --pr only; Tier S/M is orchestrator-direct (SPEC-ORCH-GIT-RELAX-001)
             skills: [moai-workflow-spec, moai-workflow-tdd]
 
     # Domain skills the orchestrator injects per mission domain (0-3 per spawn,

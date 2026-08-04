@@ -1,0 +1,29 @@
+name: lsel-leak-guard
+
+# LSEL namespace + internal-content leak guard (SPEC-LSEL-LOCAL-EVOLUTION-001 M2, AC-LSEL-006).
+# Runs the extended internal_content_leak_test.go + split_namespace_test.go as a NAMED CI
+# check (design report §11 mustFix B#7: must be CI, not a local-only test) so a leak of
+# `lsel` / `hns-lsel` / `SPEC-LSEL` / the CLAUDE.local.md internal marker into the
+# distributed template tree fails CI explicitly.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'internal/template/templates/**'
+      - 'internal/template/internal_content_leak_test.go'
+      - 'internal/template/split_namespace_test.go'
+      - '.github/workflows/lsel-leak-guard.yaml'
+
+jobs:
+  lsel-leak-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Run LSEL leak guard (extended internal_content_leak_test + split_namespace_test)
+        run: |
+          go test ./internal/template/... -run 'TestLSELLeakPositiveControl|TestTemplateNoInternalContentLeak|TestSplitHarnessNamespaceNoLeak' -v
