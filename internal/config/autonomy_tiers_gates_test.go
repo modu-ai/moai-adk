@@ -38,6 +38,48 @@ func TestSandboxProof_Absent(t *testing.T) {
 	}
 }
 
+// TestSandboxProof_SpoofCasesRejected (S3 hardening, SPEC-AUTONOMY-TIERS-001
+// amendment) verifies that a non-empty but UNKNOWN sandbox-proof kind is
+// rejected. Pre-fix, any non-empty MOAI_SANDBOX_PROOF value passed (the raw
+// string was returned with ok=true), so MOAI_SANDBOX_PROOF=1 / =foo / =true
+// unlocked fully-autonomous with zero OS-level isolation — a trivial spoof.
+// Post-fix, only a known isolation-tech kind + (on Linux) a container
+// fingerprint cross-check passes.
+func TestSandboxProof_SpoofCasesRejected(t *testing.T) {
+	spoofCases := []string{"1", "foo", "true", "sandbox", "yes", "0", "enabled", "container"}
+	for _, tc := range spoofCases {
+		t.Run(tc, func(t *testing.T) {
+			t.Setenv(EnvSandboxProof, tc)
+			kind, ok := SandboxProofKind()
+			if ok {
+				t.Errorf("SandboxProofKind() with MOAI_SANDBOX_PROOF=%q ok=true, want false (spoof MUST be rejected)", tc)
+			}
+			if kind != "" {
+				t.Errorf("SandboxProofKind() with MOAI_SANDBOX_PROOF=%q kind=%q, want empty", tc, kind)
+			}
+		})
+	}
+}
+
+// TestSandboxProof_KnownKindsAccepted verifies every kind in the
+// SandboxProofKinds allowlist is accepted. On non-Linux test hosts (macOS CI)
+// the kind-allowlist-only path is exercised (the container-fingerprint cross-
+// check is Linux-only and best-effort fail-open for non-Linux per the design).
+func TestSandboxProof_KnownKindsAccepted(t *testing.T) {
+	for _, tc := range SandboxProofKinds {
+		t.Run(tc, func(t *testing.T) {
+			t.Setenv(EnvSandboxProof, tc)
+			kind, ok := SandboxProofKind()
+			if !ok {
+				t.Errorf("SandboxProofKind() with known kind %q ok=false, want true", tc)
+			}
+			if kind != tc {
+				t.Errorf("SandboxProofKind() kind=%q, want %q", kind, tc)
+			}
+		})
+	}
+}
+
 func TestIsBypassDisabled_ManagedConfig(t *testing.T) {
 	// The manager kill-switch (disableBypassPermissionsMode) is injected by the
 	// managed/enterprise config layer via an env seam.

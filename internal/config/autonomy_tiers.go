@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -95,12 +96,50 @@ func TierDefaultMode(tier string) string {
 // fully-autonomous tier requires: fully-autonomous MUST be gated off when no
 // proof is present (AC-002). A git worktree is NOT a sandbox — only an
 // OS-level container/VM proof qualifies.
+//
+// S3 hardening (SPEC-AUTONOMY-TIERS-001 amendment): the marker MUST match a
+// recognized isolation-tech kind in SandboxProofKinds before ok=true is
+// returned. An unknown kind (e.g. "1", "foo", "true") is rejected — this kills
+// the trivial MOAI_SANDBOX_PROOF=<anything> spoof, which is S3's goal.
+//
+// The marker is an attestation: a launcher/user vouches that the session runs
+// inside an isolation boundary of the named kind (one of Claude Code's official
+// sandbox options — container, VM, or sandbox-runtime). moai-adk does NOT
+// re-verify the boundary from inside: only Docker/Podman leave discoverable
+// fingerprints, so a fingerprint cross-check would be a false gate for the
+// other kinds (gvisor, firecracker, e2b, devcontainer, kata, sandbox-runtime)
+// and would reject legitimate non-container hosts (e.g. CI runners). The
+// allowlist is therefore the proof; the unverified-attestation path is
+// surfaced as a stderr advisory on every platform so the acceptance is visible.
+//
+// Residual spoof surface (intentional, OQ-1/OQ-4 deferred): a user who knows
+// the allowlist can self-attest any listed kind. The bar raised here is "known
+// isolation-tech kind" over "any truthy string"; cryptographic attestation is
+// the follow-up SPEC.
 func SandboxProofKind() (kind string, ok bool) {
 	raw := strings.TrimSpace(os.Getenv(EnvSandboxProof))
 	if raw == "" {
 		return "", false
 	}
+	if !isKnownSandboxKind(raw) {
+		return "", false
+	}
+	// The allowlist above is the proof. moai-adk cannot reliably re-verify the
+	// isolation boundary from inside (only Docker/Podman leave fingerprints),
+	// so a fingerprint gate would false-reject most kinds and non-container
+	// hosts. Surface the unverified attestation on every platform instead.
+	fmt.Fprintf(os.Stderr, "sandbox proof kind %q accepted as attestation (host GOOS=%s); boundary not independently verified\n", raw, runtime.GOOS)
 	return raw, true
+}
+
+// isKnownSandboxKind reports whether kind is in the SandboxProofKinds allowlist.
+func isKnownSandboxKind(kind string) bool {
+	for _, k := range SandboxProofKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
 }
 
 // IsBypassDisabled reads the MOAI_DISABLE_BYPASS_PERMISSIONS_MODE env seam

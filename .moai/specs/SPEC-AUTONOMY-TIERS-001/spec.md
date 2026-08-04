@@ -4,8 +4,8 @@ title: "Autonomy 3-mode selection + behavior wiring on the MOAI_AUTONOMY_TIER to
 version: 0.1.0
 status: completed
 created: 2026-08-04
-updated: 2026-08-04
-sync_commit_sha: pending-backfill
+updated: 2026-08-05
+sync_commit_sha: pending-backfill-sync
 author: manager-spec
 priority: P1
 phase: "v3.x target"
@@ -13,6 +13,7 @@ module: config-autonomy
 lifecycle: spec-anchored
 tags: "autonomy-tiers, autonomy, semi-auto, automatic, fully-autonomous, defaultmode, deny-ask, kill-switch, autonomy-epic"
 tier: M
+amendment_of: SPEC-AUTONOMY-TIERS-001
 related_specs: [SPEC-STOPCHAIN-TRIM-001, SPEC-INFINITE-GOAL-001]
 ---
 
@@ -21,6 +22,18 @@ related_specs: [SPEC-STOPCHAIN-TRIM-001, SPEC-INFINITE-GOAL-001]
 ## HISTORY
 
 - 2026-08-04 — Initial draft. Codifies §3.1 of the autonomy-workflow redesign report (`moai-autonomy-workflow-redesign-20260803.html`): the user-facing 3-mode selection system (`semi-auto` / `automatic` / `fully-autonomous`) and the behavior bundle each tier drives. First P1 of the autonomy-workflow epic. **Builds ON** the `MOAI_AUTONOMY_TIER` mode token that `SPEC-STOPCHAIN-TRIM-001` already landed (token + Go reader `AutonomyTier()` + env-key constant + 3-value enum) — this SPEC delivers the user-facing mode selection (moai init / moai web), the tier→permission-bundle mapping, and the manager kill-switch on top of that token. The token itself is NOT re-scoped.
+
+### Amendments
+
+- 2026-08-04 — In-place amendment (S1).
+  - **Prior status**: completed.
+  - **Prior completed SHA**: `4ab512c89` (Automerge: feat(SPEC-AUTONOMY-TIERS-001)) — resolved from `progress.md` §E.4 `sync_commit_sha` field (the spec.md frontmatter `sync_commit_sha: pending-backfill` was not backfilled, so progress.md was the authoritative source per the amendment task guidance).
+  - **Rationale**: S1 — correct §C deny/ask binding claim. The §C table row + "Key invariant" paragraph claimed the deny/ask rule set is "ALL tiers binding" and the protected ops are "always ask". This is factually wrong under `bypassPermissions` (the fully-autonomous `defaultMode`): `ask` rules are treated as auto-approved under `bypassPermissions` (the prompt is skipped because all prompts are skipped) and bind only at `semi-auto`/`automatic`; only `deny` rules mechanically bind at every tier. The fully-autonomous safety boundary is the **verified sandbox** (S3, REQ-002 / OQ-1 / OQ-4) + the `deny` list, NOT `ask`. Identified by /moai review. Corroborated internally by `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine (3) — the doctrine has to impose an agent-side "explicit confirmation EVEN in `bypassPermissions`" obligation precisely because the runtime does NOT enforce `ask` under bypass.
+  - **Scope**: §C table row + Key invariant wording correction (split into §C row + §C.1 binding-semantics note); matching §A User Story line correction; AC-004 clarification (deny arrays byte-identical / ask arrays byte-identical across the 3 rendered tiers). NO REQ change — REQ-004 protected-set enumeration unchanged (the rule set stays tier-invariant; only the per-tier binding semantics are clarified). Code/YAML implementation fixes (S2 tool-policy.yaml rules + S3 `autonomy_tiers.go` `SandboxProofKind` hardening) are NOT in this amendment's scope — they are delivered alongside in run-phase by manager-develop.
+- 2026-08-05 — In-place amendment (S4).
+  - **Prior status**: completed (post-S1).
+  - **Rationale**: S4 — correct §C.1 ask-under-bypass framing + retire the S3 Linux fingerprint cross-check. Verified against the official Claude Code docs (`code.claude.com/docs/en/permissions` + `/sandbox-environments`, 2026-08-05): content-scoped `ask` rules (e.g. `Bash(git push *)`) **still prompt under `bypassPermissions`** — only the default per-tool prompt and bare-tool ask are skipped. The S1 claim that "`ask` is auto-approved under bypass" was categorical and inaccurate. Separately, the S3 `SandboxProofKind` Linux-only container-fingerprint cross-check was a false gate: it could only validate Docker/Podman, false-rejected the other 6 kinds (gvisor/firecracker/e2b/devcontainer/kata) on non-container hosts (CI runners), and gave weak real security ("any container passes"). The allowlist already achieves S3's spoof-rejection goal (reject `=1`/`=foo`; accept only known isolation kinds), so the fingerprint gate is retired and the marker is treated as the attestation it is, with a stderr advisory on every platform.
+  - **Scope**: §C.1 binding-semantics paragraph refined (deny always binds; content-scoped ask survives bypass; effective safety = sandbox + deny + content-scoped ask). `internal/config/autonomy_tiers.go` `SandboxProofKind` rewritten to allowlist-as-proof (Linux fingerprint branch + `hasContainerFingerprint` removed; advisory emitted on all platforms). `internal/config/defaults.go` `SandboxProofKinds` extended with `sandbox-runtime` (an official Claude Code full-process isolation option). §A line 44 "ask advisory under bypass" softened to match. NO REQ change — REQ-002 (proof required) and REQ-004 (deny/ask enumeration) are unchanged; only the proof *mechanism* and the ask-binding *detail* are corrected.
 
 ## §A. User Story
 
@@ -32,7 +45,7 @@ related_specs: [SPEC-STOPCHAIN-TRIM-001, SPEC-INFINITE-GOAL-001]
 
 - `semi-auto` (default): zero behavior delta vs today. `defaultMode: default` in USER settings, full sync-gate blocking, commit gate ON, allowlist-only Bash = per-tool prompt. Backward-compat invariant: a session that does not opt in pays zero behavior change.
 - `automatic` (general-purpose recommended): `defaultMode: auto`, commit gate OFF (destructive-pattern deny still binds), sync-gate build-only-block, classifier safety net with fallback. The daily Tier S/M work tier.
-- `fully-autonomous` (sandbox-only, opt-in): `defaultMode: bypassPermissions` + sandbox/container proof required, sync-gate advisory-only, commit gate OFF, subagent lifecycle hooks dormant — but the deny/ask rule set (main push, secrets, `rm -rf`, deploy) STAYS binding at every tier per the §3.1 invariant. The unattended-loop tier.
+- `fully-autonomous` (sandbox-only, opt-in): `defaultMode: bypassPermissions` + sandbox/container proof required, sync-gate advisory-only, commit gate OFF, subagent lifecycle hooks dormant — with `deny` rules mechanically binding at every tier (non-bypassable) and content-scoped `ask` rules still prompting under `bypassPermissions` while the default per-tool prompt is skipped (see §C.1 binding note, S4-refined); the fully-autonomous safety boundary is the verified sandbox + the deny list + content-scoped ask. The unattended-loop tier.
 
 The mode-token → knob mapping (§3.1 table) makes each tier a coherent combination of EXISTING knobs — no new mechanism is created; the user-facing selector + the tier→bundle renderer + the kill-switch are the net-new surfaces.
 
@@ -73,9 +86,13 @@ The §3.1 table, restated here as the renderer's contract. Each tier is a cohere
 | sync-gate mode | full-blocking (vet+build+lint) | build-only-block | advisory (`systemMessage` only) |
 | commit gate (`pre_tool.go` IsGitCommit) | ON | OFF | OFF |
 | subagent lifecycle (SubagentStop/TeammateIdle) | blocking | blocking | dormant |
-| deny/ask rules (PROJECT, ALL tiers binding) | identical — main push / force-push / secrets / `rm -rf` / prod deploy / `terraform destroy` / IAM grant = always `ask` | identical | identical |
+| deny/ask rules (PROJECT) — see §C.1 binding note | identical rule set across tiers — main push / force-push / secrets / `rm -rf` / prod deploy / `terraform destroy` / IAM grant | identical | identical |
 
-Key invariant (§3.1): the deny/ask rule set is tier-INVARIANT. No tier weakens a destructive-pattern deny or an ask rule. The tier's effect is limited to `defaultMode`, sync-gate mode, commit gate on/off, and subagent lifecycle dormancy — exactly the four surfaces above. The PermissionRequest handler stays a no-op (it is NOT a lever — `defaultMode` + allowlist + PreToolUse are the real levers, per §3.1).
+Key invariant (§3.1): the deny/ask **rule set** is tier-INVARIANT — no tier weakens a `deny` rule or drops a protected op from the enumerated set (REQ-004 binds this enumeration). The **binding semantics** differ by decision level: `deny` rules bind at every tier (mechanically enforced, including under `bypassPermissions`); `ask` rules bind at `semi-auto`/`automatic` and are **advisory** under `fully-autonomous` (`bypassPermissions` skips ask prompts — the prompt is auto-approved, not blocked). The fully-autonomous safety boundary is the **verified sandbox** (OQ-1 / OQ-4 sandbox proof, REQ-002) + the `deny` list, NOT `ask`. The tier's effect is limited to `defaultMode`, sync-gate mode, commit gate on/off, and subagent lifecycle dormancy — exactly the four surfaces above. The PermissionRequest handler stays a no-op (it is NOT a lever — `defaultMode` + allowlist + PreToolUse are the real levers, per §3.1).
+
+### §C.1 Binding-semantics note (deny vs ask under `bypassPermissions`)
+
+Claude Code permission semantics (verified against the official docs — `code.claude.com/docs/en/permissions` + `/sandbox-environments`, 2026-08-05): rules evaluate in order **deny → ask → allow** in every mode, and the first match decides. `deny` rules are mechanically enforced at every tier (block, non-bypassable — including under `bypassPermissions`; this is the one list that hard-blocks under `fully-autonomous`). `allow` rules are always auto-approved. `ask` splits by scope: a **content-scoped** ask rule like `Bash(git push *)` **still forces a prompt even under `bypassPermissions`** (`--dangerously-skip-permissions` skips only the default per-tool prompt and bare-tool ask, NOT explicit content-scoped ask rules; connector tools set to `ask` and MCP `requiresUserInteraction` tools also still prompt). This refines the prior S1 framing: it is NOT accurate that "`ask` is auto-approved under bypass" categorically — only the default/bare-tool prompt is skipped. This is corroborated internally by `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine (3), which imposes an agent-side "explicit confirmation EVEN in `bypassPermissions`" obligation for destructive primitives — complementary defense for the surface bare-tool/default prompts do NOT cover. Consequence: effective `fully-autonomous` safety = **the verified sandbox + the `deny` list + content-scoped `ask` rules**; the sandbox remains defense-in-depth for what no permission rule gates (prompt-injection, runaway, ungated tools). The rule-set enumeration (REQ-004) is unchanged.
 
 The hook-side branching of sync-gate mode / commit gate / subagent dormancy is OWNED by `SPEC-STOPCHAIN-TRIM-001` (already implemented). This SPEC's contribution is the user-facing SELECTION and the tier→bundle RENDERER that writes the `defaultMode` + deny/ask bundle; the hook behavior is downstream consumption.
 

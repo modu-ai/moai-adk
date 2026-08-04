@@ -9,7 +9,7 @@
 | AC-AUTONOMY-TIERS-001 | REQ-001 (init selector) | `moai init` wizard fixture + `--autonomy-tier` flag unit test | 3-tier wizard page present; flag accepts the closed set, rejects invalid |
 | AC-AUTONOMY-TIERS-002 | REQ-002 (web toggle) | `moai web` console fixture | 3-tier toggle present; fully-autonomous disabled without sandbox proof AND under kill-switch |
 | AC-AUTONOMY-TIERS-003 | REQ-003 (renderer scope) | renderer unit test (path resolution) | `defaultMode` written to USER-scope path; deny/ask written to PROJECT-scope path; per-tier `defaultMode` correct |
-| AC-AUTONOMY-TIERS-004 | REQ-004 (deny/ask invariance) | renderer unit test (byte diff) | deny/ask arrays byte-identical across the 3 rendered tiers |
+| AC-AUTONOMY-TIERS-004 | REQ-004 (deny/ask invariance) | renderer unit test (byte diff) | deny arrays byte-identical across the 3 rendered tiers; ask arrays byte-identical across the 3 rendered tiers (the rule set is tier-invariant; per-tier binding semantics are clarified in spec.md §C.1) |
 | AC-AUTONOMY-TIERS-005 | REQ-005 (kill-switch) | kill-switch unit test | `disableBypassPermissionsMode` rejects fully-autonomous in selector + web + renderer; existing bypass session downgrades to auto + advisory to `.moai/logs/autonomy-downgrade.log` (verified by `grep autonomy-downgrade .moai/logs/autonomy-downgrade.log`) |
 | AC-AUTONOMY-TIERS-006 | REQ-006 (template opt-in) | template fixture + CI neutrality guard | template ships `semi-auto` default; no `fully-autonomous` default; selector copy uses generic prose (no SPEC ID / REQ token leak) |
 | AC-AUTONOMY-TIERS-007 | REQ-007 (backward compat) | regression test (byte diff vs today's template) | unset / `semi-auto` → renderer output byte-identical to today's template output |
@@ -57,8 +57,8 @@ All 7 ACs are MUST-PASS (severity: critical). The deny/ask invariance (AC-004), 
 ### AC-AUTONOMY-TIERS-004 — deny/ask invariance
 
 **Given** the renderer invoked with each of the 3 tiers in turn,
-**When** the deny/ask arrays are diffed across the 3 outputs,
-**Then** the diff is empty (byte-identical) — the deny/ask rule set is tier-invariant.
+**When** the deny arrays are diffed across the 3 outputs AND the ask arrays are diffed across the 3 outputs (separately),
+**Then** both diffs are empty (byte-identical) — the deny rule set and the ask rule set are each tier-invariant (the rule set enumeration does not change across tiers; which decision level mechanically binds at each tier is a separate concern, clarified in spec.md §C.1).
 
 ### AC-AUTONOMY-TIERS-005 — kill-switch
 
