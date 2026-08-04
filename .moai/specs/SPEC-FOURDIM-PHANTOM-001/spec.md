@@ -2,7 +2,7 @@
 id: SPEC-FOURDIM-PHANTOM-001
 title: "sync-audit-4dim workflow phantom-mechanism guard — deterministic probe → FAIL verdict for claimed-but-absent mechanisms"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec
