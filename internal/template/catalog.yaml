@@ -102,7 +102,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 4ed068cea7da1d70849d3a37edd33a93a3524cb7a3a19798267cc77c4b38a733
+              hash: 1341421168238ca8fe68f4f383ded0ee2af853d72d184225e7dcdd11207deede
               version: 1.0.0
             - name: manager-develop
               tier: core
