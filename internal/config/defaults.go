@@ -229,6 +229,16 @@ const (
 	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
 
+// SandboxProofKinds is the allowlist of recognized sandbox/container isolation
+// kinds for the MOAI_SANDBOX_PROOF env marker (SPEC-AUTONOMY-TIERS-001 REQ-002
+// S3 hardening — sandbox-proof spoofing). A proof whose kind is not in this
+// list is rejected. The slice is a var (composite literals are not const
+// expressions) so it remains config-extendable without code change; callers
+// treat it as read-only.
+var SandboxProofKinds = []string{
+	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata",
+}
+
 // DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
 // considered stale and silently removed by the SessionStart handler — auto-mode
 // ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale

@@ -1,9 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -95,12 +97,79 @@ func TierDefaultMode(tier string) string {
 // fully-autonomous tier requires: fully-autonomous MUST be gated off when no
 // proof is present (AC-002). A git worktree is NOT a sandbox — only an
 // OS-level container/VM proof qualifies.
+//
+// S3 hardening (SPEC-AUTONOMY-TIERS-001 amendment): the marker is validated
+// in two layers before ok=true is returned:
+//  1. Kind allowlist — the marker MUST match a recognized isolation-tech kind
+//     in SandboxProofKinds (docker, podman, gvisor, firecracker, e2b,
+//     devcontainer, kata). An unknown kind (e.g. "1", "foo", "true") is
+//     rejected. This kills the trivial MOAI_SANDBOX_PROOF=<anything> spoof.
+//  2. Container fingerprint cross-check (Linux only, best-effort fail-open
+//     for non-Linux) — when the kind claims a container tech AND the host is
+//     Linux, at least one container fingerprint must be present: /.dockerenv
+//     (Docker), /run/.containerenv (Podman), or /proc/1/cgroup containing
+//     docker/containerd/kubepods. On non-Linux the kind allowlist alone is
+//     trusted and a stderr advisory records the unverified path. On Linux
+//     where the kind is known but NO fingerprint matches → reject.
+//
+// Residual spoof surface (intentional, OQ-1/OQ-4 deferred): a user who knows
+// the allowlist and runs inside any container for unrelated reasons can still
+// pass on Linux. Layer 1 + Layer 2 raise the bar from "any string" to "known
+// kind + plausibly-in-container"; cryptographic attestation is the follow-up
+// SPEC.
 func SandboxProofKind() (kind string, ok bool) {
 	raw := strings.TrimSpace(os.Getenv(EnvSandboxProof))
 	if raw == "" {
 		return "", false
 	}
+	if !isKnownSandboxKind(raw) {
+		return "", false
+	}
+	if runtime.GOOS == "linux" {
+		// On Linux, require a container fingerprint cross-check. This is the
+		// real bar-raising step: a bare MOAI_SANDBOX_PROOF=docker on a Linux
+		// host that is NOT inside a container is rejected.
+		if !hasContainerFingerprint() {
+			return "", false
+		}
+	} else {
+		// Non-Linux (macOS/Windows): container fingerprints are Linux-specific.
+		// Fall back to kind-allowlist-only with a stderr advisory so the
+		// unverified acceptance is visible (fail-open for devcontainer users).
+		fmt.Fprintf(os.Stderr, "sandbox proof kind %q accepted on non-Linux (%s) without container fingerprint verification\n", raw, runtime.GOOS)
+	}
 	return raw, true
+}
+
+// isKnownSandboxKind reports whether kind is in the SandboxProofKinds allowlist.
+func isKnownSandboxKind(kind string) bool {
+	for _, k := range SandboxProofKinds {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// hasContainerFingerprint reports whether at least one Linux container
+// fingerprint is present (Docker /.dockerenv, Podman /run/.containerenv, or
+// /proc/1/cgroup naming docker/containerd/kubepods). Best-effort: any read
+// error → false for that signal.
+func hasContainerFingerprint() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	if _, err := os.Stat("/run/.containerenv"); err == nil {
+		return true
+	}
+	if data, err := os.ReadFile("/proc/1/cgroup"); err == nil {
+		if bytes.Contains(data, []byte("docker")) ||
+			bytes.Contains(data, []byte("containerd")) ||
+			bytes.Contains(data, []byte("kubepods")) {
+			return true
+		}
+	}
+	return false
 }
 
 // IsBypassDisabled reads the MOAI_DISABLE_BYPASS_PERMISSIONS_MODE env seam

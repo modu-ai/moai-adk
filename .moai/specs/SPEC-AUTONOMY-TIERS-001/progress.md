@@ -130,3 +130,32 @@ canary_compliance_check:
 - **New opt-in surface, zero default delta** — `semi-auto` (the default) and unset produce byte-identical settings to today's template, so users who do not opt in pay no behavior change (REQ-007 / AC-007). The new surfaces (flag, wizard page, web toggle) are purely additive selection paths.
 - **`fully-autonomous` downgraded to `automatic` without sandbox proof** — selecting `fully-autonomous` without a `MOAI_SANDBOX_PROOF` env marker or `--sandbox-proof` flag does NOT grant `bypassPermissions`; it silently downgrades to `automatic` and logs an advisory. Users who expected the dangerous tier get the safer one. The web selector is stricter still — it disables `fully-autonomous` entirely without proof. Documented in the CHANGELOG entry.
 - **`disableBypassPermissionsMode` kill-switch trumps proof** — even WITH sandbox proof, an enterprise `disableBypassPermissionsMode: true` config rejects `fully-autonomous` in every surface and downgrades an existing bypass session to `automatic`-equivalent. This is the Claude Code documented enterprise kill-switch wired into the tier system.
+
+## §F Phase 4 Mode Selection
+
+### Input parameters
+
+- **tier**: M (SPEC-AUTONOMY-TIERS-001 is Tier M; amendment scope ~7 files, coding-heavy)
+- **scope (file count)**: ~7 files touched (autonomy_tiers.go, autonomy_tiers_gates_test.go, defaults.go, tool-policy.yaml, .claude/settings.json, settings.json.tmpl, progress.md)
+- **domain count**: 2 distinct domains (Go config source + YAML/JSON permission policy data + codegen rebuild)
+- **file language mix**: Go source + test (~3 files), YAML data + generated JSON/JSON.tmpl (~3 files), SPEC markdown (~1 file)
+- **concurrency benefit**: LOW — the work is coding-heavy (Go logic + data edits + codegen round-trip); the Go changes and the YAML changes are NOT independent (the YAML rebuild consumes the Go binary, and the .tmpl mirror depends on the YAML), so there is no parallelizable research fan-out
+- **Agent Teams prereqs**: Mode 3 retired; n/a
+
+### Mode evaluation
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | Multi-file, semantic Go + YAML + codegen changes; not a typo/single-line |
+| 2 background | no | Work is write-capable implementation, not read-only async analysis |
+| 3 agent-team | no (retired) | Mode 3 is a tombstone; never selected |
+| 4 parallel | no | Coding-heavy + <3 domains; Anthropic's coding-task parallelism caveat applies (fewer truly parallelizable tasks than research) |
+| 5 sub-agent | **yes** | Sequential single-agent implementation; correct default for coding-heavy Tier M work |
+| 6 workflow | no | Scope is ~7 files, not ≥30; the transform is not a single uniform mechanical rule (Go logic + YAML data + .tmpl mirror + codegen rebuild are distinct edit shapes) |
+
+Decision: sub-agent
+
+### Justification
+
+Tier M, ~7 files, coding-heavy (Go TDD for S3 + YAML data for S2 + .tmpl mirror + codegen rebuild for S1). Anthropic's coding-task parallelism caveat names this exact profile: "most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at coordinating and delegating to other agents in real time." The Go and YAML changes share a codegen dependency (the rebuild consumes the freshly-built binary), and the .tmpl mirror must reflect the same rule set as the YAML — they are not independent, so parallel fan-out would create merge-ordering risk without latency benefit. Mode 5 (single sequential sub-agent) is the safe default that the decision tree resolves to for coding-heavy Tier M work.
+
