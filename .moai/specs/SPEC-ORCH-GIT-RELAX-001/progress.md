@@ -197,7 +197,7 @@ notes: >
 
 ```yaml
 sync_complete_at: 2026-08-05
-sync_commit_sha: "pending-backfill-sync"   # D3 exemption — orchestrator backfills post-merge (Route B squash: final SHA = merged-to-main SHA)
+sync_commit_sha: "53572e4b6"   # backfilled post-merge — sync PR #1351 squash on main (2026-08-04)
 run_commit_sha: "898d2b854"                # M4 run-phase tip; squash-landed on main as 876e9936142a (PR #1347)
 run_pr: 1347
 sync_status: audit-ready
