@@ -84,4 +84,24 @@ residual_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-05
+sync_commit_sha: pending-backfill-002-sync   # self-referential-hazard placeholder — orchestrator backfills the real SHA in a follow-up commit (spec-frontmatter-schema.md D3 exemption)
+changelog_entry_position: top-of-unreleased   # single entry, above SPEC-PROJECT-NAVIGATOR-001
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"   # 3-phase close merged into the single sync commit per spec-frontmatter-schema.md Status Transition Ownership Matrix
+  plan_md: n/a   # no frontmatter
+  acceptance_md: n/a   # no frontmatter
+  progress_md: n/a   # lettered-section content, not frontmatter
+canary_compliance_check:
+  changelog_dup_count: 0   # grep -c 'SPEC-PROJECT-NAVIGATOR-002' CHANGELOG.md == 0 pre-emit (B12 self-test a)
+  ac_count_changelog: 12   # matches acceptance.md AC-NA-001..012 distinct count
+  ac_count_acceptance: 12   # grep -oE 'AC-NA-[0-9]+' acceptance.md | sort -u | wc -l == 12
+  cited_paths_exist: true   # all file paths cited in the CHANGELOG entry verified via ls
+b12_self_test_a: pass   # pre-emission grep returned 0 (no duplicate); emission proceeded
+b12_self_test_b: pass   # AC count 12 == 12 (non-vacuous — both sides non-zero)
+b12_self_test_c: pass   # every cited path exists (navigator-audit.sh, navigator-audit.md, SKILL.md, navigator_audit_test.go)
+readme_change_warranted: false   # the Navigator is internal workflow tooling (per 001's README-no-change precedent); `--audit` is a sub-mode of `/moai project`, which itself is not a README-documented surface
+mx_tag_substep: noop   # run-phase introduced no new @MX tags in the delivered files (bash script + markdown reference + skill body + Go test driver); nothing to validate or add
+```

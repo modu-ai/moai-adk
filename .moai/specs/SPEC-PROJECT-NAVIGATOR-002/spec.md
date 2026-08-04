@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-NAVIGATOR-002
 title: "Project Navigator — drift / completeness audit (`--audit` mode: design-intent vs implemented feature diff)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec
