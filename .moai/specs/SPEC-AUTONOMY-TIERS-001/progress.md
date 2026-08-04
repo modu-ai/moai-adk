@@ -131,6 +131,25 @@ canary_compliance_check:
 - **`fully-autonomous` downgraded to `automatic` without sandbox proof** — selecting `fully-autonomous` without a `MOAI_SANDBOX_PROOF` env marker or `--sandbox-proof` flag does NOT grant `bypassPermissions`; it silently downgrades to `automatic` and logs an advisory. Users who expected the dangerous tier get the safer one. The web selector is stricter still — it disables `fully-autonomous` entirely without proof. Documented in the CHANGELOG entry.
 - **`disableBypassPermissionsMode` kill-switch trumps proof** — even WITH sandbox proof, an enterprise `disableBypassPermissionsMode: true` config rejects `fully-autonomous` in every surface and downgrades an existing bypass session to `automatic`-equivalent. This is the Claude Code documented enterprise kill-switch wired into the tier system.
 
+### Amendment fix close (2026-08-04, S1/S2/S3)
+
+In-place amendment close cycle: `completed →(amendment 475617eeb)→ in-progress →(code fix afa8728b4)→ completed`. This sync commit carries the amendment-close `in-progress → completed` transition.
+
+```yaml
+amendment_fix:
+  amendment_commit: "475617eeb"   # §C deny/ask binding truth correction (manager-spec)
+  code_fix_commit: "afa8728b4"    # S1 .env→deny + S2 7 rules + S3 SandboxProofKind hardening (manager-develop)
+  sync_commit_sha: "pending-backfill-sync"   # self-referential placeholder (D3 workaround), backfilled post-merge
+  prior_completed_sha: "4ab512c89"           # original close, recorded in HISTORY ### Amendments
+  frontmatter_transition: "in-progress → completed (amendment close)"
+  verification:
+    sandbox_test: "8 spoof cases rejected + 7 known-kind accepted (TDD RED→GREEN)"
+    go_build: "exit 0 (darwin + GOOS=windows GOARCH=amd64)"
+    golangci_lint: "0 issues"
+    template_neutrality: "0 SPEC-ID/REQ-token matches on settings.json + settings.json.tmpl"
+  residual: "S3 cryptographic attestation (Layer 2) deferred to OQ-1/OQ-4 follow-up SPEC"
+```
+
 ## §F Phase 4 Mode Selection
 
 ### Input parameters
