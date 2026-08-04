@@ -150,6 +150,50 @@ M1 DoD met: AC-LSEL-009 PASS + AC-LSEL-010 PASS; `drain-offset.json` advanced; c
 
 **M3 DoD met:** AC-001/002/003/004/008/013/014 all PASS; rollback-rehearsal SHIP GATE clean; REQ-LSEL-003 frozen-flag invariant preserved; subagent boundary honored; full `go test ./...` green.
 
+### M4 — VERIFY + reflection (AC-LSEL-015, AC-LSEL-016)
+
+**Deliverables (user-owned surfaces only — doctrine-zero-touch verified; REQ-LSEL-003 frozen-flag invariant preserved):**
+
+| Path | Surface | Notes |
+|------|---------|-------|
+| `.claude/skills/hns-lsel-applier/verify.sh` | NEW evolvable #4 | REQ-LSEL-013 mechanical VERIFY core: verify_command + timeout-retry-once + auto-`git revert` on 2nd failure + ledger `verified` marker |
+| `.claude/skills/hns-lsel-applier/verify_test.sh` | NEW evolvable #4 | AC-015 characterization (hermetic temp-repo: pass / timeout-retry-pass / fail-twice-revert + `/moai gate` MANDATORY grep) |
+| `.claude/skills/hns-lsel-applier/SKILL.md` | EDIT evolvable #4 | VERIFY stage docs: 2-layer design (mechanical verify_command + MANDATORY `/moai gate` superset); retry/revert policy |
+| `.claude/skills/hns-lsel-curator/reflect.sh` | NEW evolvable #4 | REQ-LSEL-014 mechanical REFLECTION core: ≥3 topics above threshold → synthesize 1 principle; originals → `_archive/`; `memory_type` label |
+| `.claude/skills/hns-lsel-curator/reflect_test.sh` | NEW evolvable #4 | AC-016 characterization (hermetic temp-memory: synthesis + archive-not-delete + memory_type + decay-weighted retrieval probe; below-threshold no-op) |
+| `.claude/skills/hns-lsel-curator/SKILL.md` | EDIT evolvable #4 | REFLECTION stage docs + token-discipline applied to 5 M2-shipped `AskUserQuestion` literals (text-only; E4 broadened to full `hns-lsel-*` glob in M4) |
+
+**AC binary matrix (§E E1):**
+
+| AC | Status | Verification | Observed |
+|----|--------|--------------|----------|
+| AC-LSEL-015 | PASS | `verify_test.sh` 4 fixtures + grep | (a) `/moai gate` + `MANDATORY` named in applier SKILL; (b) passing verify_command → `verified:true`, no revert; (c) timeout-class on run 1 → retries exactly once (attempts=2) → `verified:true`; (d) 2nd non-timeout fail → `git revert` inverse-commit landed + applied content undone + `verified:false` + feedback_*.md marked |
+| AC-LSEL-016 | PASS | `reflect_test.sh` 2 cohorts | (a) ≥3 topics (sum importance 180 ≥ 150) → 1 principle synthesized; (b) 3 originals in `memory/_archive/` (NOT deleted — 3 still on disk); (c) principle carries `memory_type: semantic`; (d) retrieval probe: principle in active set (maxdepth 1), originals NOT; below-threshold cohort → clean no-op (exit 0, no synthesis, originals untouched) |
+
+**REQ-LSEL-003 re-verify (post-M4):** `internal/harness/applier.go:22` = `var enableTriggerInjectionWrites = false` (unchanged); LSEL-surface grep for the literal identifier = 0 matches.
+
+**REQ-LSEL-008 re-verify (post-M4):** `grep -nE 'propose|self-approve|new-proposal' .moai/hooks/lsel-apply.sh` = 0 matches — `lsel-apply.sh` UNCHANGED (playback-only); `verify.sh` runs only AFTER an apply committed, creates no new apply, never self-approves.
+
+**Subagent boundary (§E E4):** `grep -rn 'AskUserQuestion\|mcp__askuser' .claude/skills/hns-lsel-*/ | grep -v '_test.sh' | grep -v '^[^:]*:[0-9]*:[[:space:]]*#'` = 0 matches. (M4 broadened E4 from M3's applier-only scope to the full `hns-lsel-*` glob; surfaced 5 M2-shipped documentation literals in the curator, resolved by applying the applier's established token discipline — text-only, no doctrine change.)
+
+**Cross-platform build (§E E2):** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0. (M4 adds ZERO Go files — no-Go-regression guards.)
+
+**Coverage (§E E3):** N/A for M4 — no new Go code (shell + markdown only).
+
+**Lint (§E E5):** `golangci-lint run --timeout=2m` → 0 issues (no NEW findings; baseline unchanged). `shellcheck` absent on host (noted; shell scripts follow `set -euo pipefail` + quoted-vars + hermetic `mktemp -d`/`trap` discipline).
+
+**Full-suite guard (trust-but-verify):** `go test ./...` exit 0 (0 FAIL lines); `go test ./internal/template/...` exit 0 (namespace + internal-content-leak tests PASS — no `hns-lsel-*` mirror leaked into `internal/template/templates/`).
+
+**TDD RED→GREEN evidence (§E E8):**
+- `verify_test.sh` RED (mechanism absent): `RED: verify.sh absent at .../hns-lsel-applier/verify.sh (mechanism not built yet)` exit 1 → GREEN: `verify_test: PASS`.
+- `reflect_test.sh` RED (mechanism absent): `RED: reflect.sh absent at .../hns-lsel-curator/reflect.sh (mechanism not built yet)` exit 1 → GREEN: `reflect_test: PASS`.
+
+**M3 regression guard (re-run, must stay green):** `apply_test.sh` → `apply_test: PASS`; `rollback_rehearsal_test.sh` → `rollback_rehearsal_test: PASS`.
+
+**Design-report grounding (REQ-LSEL-013/014):** VERIFY two-layer split + `/moai gate` MANDATORY superset grounded in report §10 P3/P4 ("VERIFY 는 /moai gate 의무 상위 집합을 돌려 통과 못 하면 되돌린다. 단 타임아웃 같은 불안정 신호에는 한 번 재시도") + §11 mustFix B#6 (proposer-authored verify alone is circular → AP-LSEL-004). REFLECTION threshold-fired + archive-not-delete grounded in report §10 P4 ("성찰은 시계가 아니라 임계치 발화; 축출 ≠ 보관; MoAI의 '삭제 말고 보관' 규칙이 옳음이 입증된다") + Vectorize 4-lever model.
+
+**M4 DoD met:** AC-015 PASS + AC-016 PASS; `/moai gate` MANDATORY superset documented + grep-proven; reflection threshold-fired synthesis produced ≥1 principle; originals archived (not deleted); REQ-LSEL-003/008 invariants preserved; subagent boundary honored (full `hns-lsel-*` glob = 0); full `go test ./...` green.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
@@ -175,3 +219,5 @@ Mode evaluation:
 
 Decision: sub-agent (Mode 5)
 Justification: M3 is coding-heavy single-domain implementation (APPLY engine + frozen allowlist + playback hook + characterization tests). Per Anthropic's coding-task parallelism caveat, the sequential sub-agent path is the correct default for coding work. One manager-develop delegation, TDD RED→GREEN→REFACTOR, Tier M Section A-E template. Implementation Kickoff Approval was satisfied at run-phase (M1) entry; M3 is a milestone resume within the approved run-phase (per `.claude/rules/moai/workflow/orchestration-mode-selection.md` § Implementation Kickoff Approval mandatory-restoration — the gate binds the plan→run boundary, not milestone→milestone).
+
+**M4 (VERIFY + reflection) — Phase 4 decision (logged before the M4 manager-develop spawn):** same input shape (Tier M; ~5-8 files extending `hns-lsel-curator`/`hns-lsel-applier` + 2 TDD fixtures; single LSEL domain; coding-heavy; concurrency benefit LOW). Mode evaluation: Mode 1/2/3/4/6 all NO (coding-heavy single-domain, not trivial/read-only/parallel/mechanical-uniform). **Decision: sub-agent (Mode 5)** — manager-develop, cycle_type=tdd. M4 extends the M3 mechanism (VERIFY post-apply in the applier flow; REFLECTION periodic in the curator); sequential TDD is the correct default. User authorized in-context continuation (no `/clear`), overriding plan §H's per-milestone `/clear` prescription.

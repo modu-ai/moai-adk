@@ -122,9 +122,67 @@ hook is:
   byte-for-byte untouched. The allowlist hard-rejects them (step 1).
 - **No new-apply / self-approve / allowlist-amend primitive** in `lsel-apply.sh`
   (REQ-LSEL-008). The hook only consumes already-approved decisions; it does not
-  author proposals or bless them.
+  author proposals or bless them. The M4 `verify.sh` runs only AFTER an apply has
+  committed — it does not create a new apply; it never self-approves.
 - **No user-question invocation** — subagent boundary (CLAUDE.md §8). Return a
   blocker report; the orchestrator runs the synchronous gate.
+
+---
+
+## VERIFY stage (M4 — REQ-LSEL-013 / AC-LSEL-015)
+
+After an apply commits a proposal, VERIFY proves the apply was safe. VERIFY has
+**two layers** — both MANDATORY:
+
+### (a) Mechanical layer — `verify.sh` (bash-testable)
+
+`verify.sh --proposal-dir <p> --repo-root <r> [--timeout SECS] [--feedback-file <f>]`
+runs the proposal's frontmatter `verify_command` with a **timeout-retry-once**
+policy and auto-reverts on a second failure:
+
+- **2-attempt policy.** Attempt 1 runs. On SUCCESS → `verified:true`, stop. On
+  TIMEOUT-class failure → attempt 2 (flaky tolerance — report §10 P3: "retry
+  once on timeout so a correct proposal isn't flipped by noise"). On
+  NON-TIMEOUT-FAIL → attempt 2 (allows the "second non-timeout failure" of
+  AC-LSEL-015 clause 3 to materialize before revert fires).
+- Attempt 2: SUCCESS → `verified:true`. Any failure (timeout OR non-timeout) →
+  `verified:false` + **auto `git revert lsel-<proposal-id>`** + the proposal's
+  `feedback_*.md` is marked `verified: false`.
+- The outcome is appended to the apply ledger as a
+  `{"stage":"verify","verified":true|false,...}` row — the load-bearing signal.
+
+### (b) MANDATORY `/moai gate` superset (model-mediated)
+
+**`/moai gate` (lint+format+type+test) is MANDATORY after every apply — it is
+NOT optional.** A bash hook cannot invoke a Claude Code slash command directly,
+so the gate runs MODEL-SIDE: when this skill drives an APPLY pass, the
+orchestrator/model runs `/moai gate` after the mechanical apply + verify. The
+proposer-authored `verify_command` alone is **circular** (report §11 mustFix
+B#6 / AP-LSEL-004): a proposer can author a verify_command that its own change
+satisfies. `/moai gate` is the independent check — lint, format, type-check,
+and the test suite exercise surfaces the proposal never touched. Treat a
+mechanical verify_command PASS without a green `/moai gate` as an unverified
+apply.
+
+### Model-mediated layer (you, when invoked)
+
+- After `lsel-apply.sh` commits and `verify.sh` reports, **run `/moai gate`**
+  (the MANDATORY superset). If the gate fails, the apply is unverified even if
+  `verify.sh` reported `verified:true` — treat it as a VERIFY failure and revert.
+- A revert (whether auto-fired by `verify.sh` or gate-driven) MUST be surfaced
+  to the orchestrator as a blocker report — the orchestrator, not this skill,
+  confirms a revert with the user. Never run `/moai gate`'s user-facing surface
+  from inside this subagent mechanism; return a blocker report.
+
+### Verification (run before declaring an APPLY+VERIFY pass complete)
+
+```bash
+# M4 VERIFY characterization test (AC-LSEL-015) — hermetic temp repo:
+.claude/skills/hns-lsel-applier/verify_test.sh
+
+# the verify ledger row carries the outcome:
+grep '"stage":"verify"' .moai/state/lsel/apply-ledger.jsonl
+```
 
 ## Verification (run before declaring an APPLY pass complete)
 

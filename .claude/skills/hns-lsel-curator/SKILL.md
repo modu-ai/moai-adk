@@ -125,7 +125,8 @@ curation pass (M2+), your job on top of the mechanical output is:
   applier / `curator_dispatch.go` are all byte-for-byte untouched (REQ-LSEL-001 / §B.3).
 - **No new `.moai/config/sections/` file** — loop state lives under `.moai/state/lsel/`
   (a new section file would be wiped on `moai update`; plan.md §B.4 / AP-LSEL-005).
-- **No `AskUserQuestion`** — this is a subagent-owned mechanism skill. On a missing input,
+- **No orchestrator-only synchronous user-question channel** — this is a subagent-owned
+  mechanism skill; it never invokes the orchestrator's user gate. On a missing input,
   return a structured blocker report; the orchestrator runs the user gate (CLAUDE.md §8).
 
 ## Verification (run before declaring a drain complete)
@@ -223,7 +224,7 @@ the gate fires).
 ### Tier-4 finding (AC-LSEL-012 — do NOT wire the dead flow)
 
 **Finding (verified 2026-08-04 via `tier4_firing_test.sh`): the `moai-harness-learner` Tier-4
-AskUserQuestion flow is DEAD at the production invocation layer.** The CLI (`moai harness apply`)
+synchronous-user-question flow is DEAD at the production invocation layer.** The CLI (`moai harness apply`)
 prints a stub string and never invokes the learner skill; `CuratorDispatch` has 0 production
 callers (the audit's cautionary precedent); the frozen applier's write-flag (`false`
 at `internal/harness/applier.go:22`) is the apply dead-switch; and NO mechanical trigger causes the orchestrator to surface a Tier-4
@@ -236,8 +237,9 @@ synchronous-approval marker). M2 emits shadow proposals only. This finding is re
 
 ## CSA forced-gate categories (AC-LSEL-005 / REQ-LSEL-005)
 
-The APPROVE stage (M3, `hns-lsel-applier`) forces a synchronous `AskUserQuestion` — regardless
-of proposer confidence — for any proposal whose blast radius touches one of the SIX CSA
+The APPROVE stage (M3, `hns-lsel-applier`) forces a synchronous user-question gate
+(orchestrator-run) — regardless of proposer confidence — for any proposal whose blast
+radius touches one of the SIX CSA
 forced-gate categories:
 
 1. **INVARANTS kernel** — the read-only goal kernel block at the top of `CLAUDE.local.md`.
@@ -256,15 +258,88 @@ forced-gate categories:
 
 **Bother-cost-exemption:** forced gates are **bother-cost-exempt** — the bother-cost gating
 rule applies ONLY to routine-tier proposals. A forced-gate proposal always triggers a
-synchronous `AskUserQuestion` regardless of bother-cost state.
+synchronous user-question gate (orchestrator-run) regardless of bother-cost state.
 
 **Mechanical enforcement (D3):** the applier (`hns-lsel-applier` driving `lsel-apply.sh`,
 M3) intercepts every proposal matching the four execution-meta categories and REFUSES to
 write unless the proposal's `decision.json` carries an explicit synchronous-approval marker
-(an `AskUserQuestion`-produced approval artifact). A match with no marker aborts the apply,
+(an approval artifact produced by the orchestrator's synchronous user-question gate).
+A match with no marker aborts the apply,
 appends a rejection row to `.moai/logs/lsel-reject.log` naming the matched category, and
 writes nothing. Proposals matching none of the four categories proceed through the routine
 bother-cost path. This mechanical interception is what makes the self-amending-handcuffs
 defense defensible without resting on the regex paradox alone.
 
 `csa_refusal_test.sh` (next to this SKILL.md) is the fixture test for the refusal rule.
+
+---
+
+## REFLECTION stage (M4 — REQ-LSEL-014 / AC-LSEL-016)
+
+The periodic consolidation pass that prevents un-refined accumulation — the
+dominant failure mode the design report §10 P4 names: "no consolidation / decay /
+pruning → wrong-lesson retrieval". Without REFLECTION, concrete topic files pile
+up and retrieval surfaces stale concrete incidents instead of the principle they
+collectively support.
+
+### Threshold-fired, not wall-clock-fired
+
+REFLECTION fires when the **accumulated importance** of concrete `feedback_*.md`
+topic files clears the threshold (default ~150), NOT on a monthly cron. This is
+the Vectorize 4-lever model (importance-gate / merge / decay / evict) the design
+report §10 P4 cites: importance is assigned write-time, and the reflection
+threshold is an accumulation signal, not a calendar one. A single-topic cohort
+below the threshold is a clean no-op (acceptance.md §E edge case).
+
+### The mechanical core — `reflect.sh`
+
+`reflect.sh --memory-dir <m> [--threshold 150] [--min-topics 3]`:
+
+1. Reads the active `feedback_*.md` topic files (maxdepth 1 — never the
+   `_archive/` cold tier).
+2. Sums their frontmatter `importance`. If `count < min-topics` OR `sum <
+   threshold` → clean no-op (exit 0).
+3. Synthesizes ONE `feedback_*_principle_*.md` carrying:
+   - a `memory_type` label (CoALA taxonomy — `semantic` for a feedback principle;
+     `procedural` would route to a `hns-*` skill body instead).
+   - the shared theme drawn from the source descriptions (the retrieval cue).
+   - `source_count` + `synthesized_at` for the audit trail.
+4. **Moves** the originals to `memory/_archive/` (cold tier) — **NEVER deleted**
+   (report §10 P4: "축출 ≠ 보관 — 보관은 성능용, 하드 삭제는 규정 준수용; MoAI의
+   '삭제 말고 보관' 규칙이 옳음이 입증된다" — archive preserves the audit trail).
+
+### Decay-weighted retrieval
+
+The originals relocate to `_archive/`, so the active recall set (the
+`memory/` directory the recall layer scans first) holds the synthesized
+principle, NOT the stale concrete originals. A retrieval probe for a related cue
+returns the principle ranked ABOVE the archived originals — this is the
+decay-weighted retrieval AC-LSEL-016 clause requires. The principle's
+`description` is crafted to match the shared cue; the archived originals stay
+discoverable (cold tier) but no longer dominate the top of the recall set.
+
+### Model-mediated layer (you, when invoked)
+
+`reflect.sh` performs the mechanical synthesis (deterministic). When this skill
+runs a real reflection pass, your job on top is:
+- **Read the synthesized principle** and refine its prose into a genuine
+  abstract statement (the mechanical core aggregates descriptions; you write the
+  actual principle).
+- **Confirm the memory_type** — if the consolidated knowledge is procedural (a
+  how-to that belongs in a `hns-*` skill body), stamp `memory_type: procedural`
+  and route the synthesis to the skill rather than leaving it as a `feedback_*`.
+- **Do NOT delete the archive** — originals in `_archive/` are the audit trail.
+  If the hot tier (active `feedback_*.md`) approaches the 50-file cap, prefer
+  archiving more concrete topics over deleting them (moai-memory.md § Memory
+  Hygiene).
+
+### Verification (run before declaring a reflection pass complete)
+
+```bash
+# M4 REFLECTION characterization test (AC-LSEL-016) — hermetic temp memory dir:
+.claude/skills/hns-lsel-curator/reflect_test.sh
+
+# cold-tier growth vs hot-tier (post-M4 audit, acceptance.md §H):
+ls memory/_archive/ | wc -l   # archived originals
+ls memory/feedback_*.md | wc -l   # active hot tier
+```
