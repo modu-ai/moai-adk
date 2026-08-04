@@ -1,0 +1,30 @@
+{
+  "_comment": "LSEL frozen allowlist — SPEC-LSEL-LOCAL-EVOLUTION-001 M3. Lives OUTSIDE the 6 evolvable surfaces (.claude/lsel/ is not one of them). The LSEL loop loads this read-only; any proposal that amends THIS file is an execution-meta target routed to a synchronous AskUserQuestion forced-gate (REQ-LSEL-002). Edited only via Template-First PR + human approval — never amended by the loop itself.",
+  "version": "1.0.0",
+  "frozen_patterns": [
+    "^internal/template/templates/",
+    "^\\.claude/rules/moai/",
+    "^CLAUDE\\.md$",
+    "^\\.claude/agents/moai/",
+    "^\\.claude/skills/moai[-_]?",
+    "^\\.claude/skills/moai/",
+    "^internal/harness/applier\\.go$",
+    "^internal/harness/curator_dispatch\\.go$",
+    "^\\.moai/config/sections/"
+  ],
+  "evolvable_surfaces": [
+    "CLAUDE.local.md (with the §0 INVARANTS kernel excepted)",
+    ".claude/settings.local.json",
+    "memory/",
+    ".claude/agents/harness/** + hns-* skills",
+    ".moai/lessons-inbox.jsonl",
+    ".moai/state/ (+ .moai/state/lsel/)"
+  ],
+  "execution_meta": [
+    ".claude/lsel/frozen-allowlist.json",
+    ".claude/skills/hns-lsel-applier",
+    ".claude/skills/hns-lsel-curator",
+    ".moai/hooks/lsel-apply.sh",
+    ".claude/settings.local.json"
+  ]
+}

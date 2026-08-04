@@ -35,8 +35,8 @@ The MoAI-ADK repo accumulates tool-failure stubs in `.moai/lessons-inbox.jsonl` 
 M1 start, re-measured — a moving target). The constitution names the orchestrator as the drain
 actor, but until this skill there was **zero mechanical drain code** — the drain existed only as
 a doctrine paragraph (`moai-constitution.md:147`). This skill closes that gap in user-owned
-surfaces, without touching the frozen Go applier (`internal/harness/applier.go:22` stays
-`enableTriggerInjectionWrites=false` — REQ-LSEL-003: bypass, never unfreeze).
+surfaces, without touching the frozen Go applier (`internal/harness/applier.go:22` —
+its write-flag stays `false`; REQ-LSEL-003: bypass, never unfreeze).
 
 The drain is split into a **mechanical core** (`drain.sh`, deterministic, testable) and a
 **model-mediated layer** (this SKILL.md + your judgment, invoked for M2+ importance refinement
@@ -157,7 +157,7 @@ any edit to `drain.sh`.
 - **Design report (SSOT):** `.moai/reports/moai-local-self-evolution-design-20260804.html`
   §6 stage 2 (CLUSTER), §10 P1, §11 mustFix B#1/B#3.
 - **Frozen applier (reference only):** `internal/harness/applier.go:22`
-  (`enableTriggerInjectionWrites=false`), `internal/harness/curator_dispatch.go`.
+  (the write-flag, kept `false`), `internal/harness/curator_dispatch.go`.
 - **Constitution drain paragraph (the "0 Go code" stub this skill replaces):**
   `.claude/rules/moai/core/moai-constitution.md:147`.
 - **Namespace guard:** `internal/template/split_namespace_test.go`,
@@ -225,8 +225,8 @@ the gate fires).
 **Finding (verified 2026-08-04 via `tier4_firing_test.sh`): the `moai-harness-learner` Tier-4
 AskUserQuestion flow is DEAD at the production invocation layer.** The CLI (`moai harness apply`)
 prints a stub string and never invokes the learner skill; `CuratorDispatch` has 0 production
-callers (the audit's cautionary precedent); `enableTriggerInjectionWrites=false` is the
-apply dead-switch; and NO mechanical trigger causes the orchestrator to surface a Tier-4
+callers (the audit's cautionary precedent); the frozen applier's write-flag (`false`
+at `internal/harness/applier.go:22`) is the apply dead-switch; and NO mechanical trigger causes the orchestrator to surface a Tier-4
 proposal (the audit's exact failure mode, report §11 mustFix B#1).
 
 Per acceptance.md §E edge case, M2 does NOT wire the PROPOSE→APPROVE handoff to depend on the

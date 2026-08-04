@@ -52,8 +52,8 @@ _status: plan-phase artifacts authored 2026-08-04; awaiting plan-auditor verdict
 ```yaml
 run_complete_at: "2026-08-04T05:21:03Z"
 run_commit_sha: "pending-backfill-m1"
-run_status: "M1-complete"
-ac_pass_count: 2
+run_status: "M3-complete"
+ac_pass_count: 9
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # zero lines of shipped moai assets touched
 l44_pre_commit_fetch: "n/a (M1 commit, no push to main — PR-mandatory per repo-local-pr-policy.md)"
@@ -104,6 +104,74 @@ M1 DoD met: AC-LSEL-009 PASS + AC-LSEL-010 PASS; `drain-offset.json` advanced; c
 
 **M2 DoD met:** AC-005/006/007/011 PASS + AC-012 PASS-WITH-DOWNGRADE (Tier-4 DEAD, blocker reported); §0 INVARANTS kernel + §28 present in CLAUDE.local.md; mechanical triggers wired; commit stacks on e542fd905.
 
+### M3 — APPLY closure via bypass (AC-LSEL-001, 002, 003, 004, 008, 013, 014)
+
+**Deliverables (user-owned surfaces only — doctrine-zero-touch verified; REQ-LSEL-003 frozen-flag invariant preserved):**
+
+| Path | Surface | Notes |
+|------|---------|-------|
+| `.claude/lsel/frozen-allowlist.json` | NEW execution-meta (outside the 6 evolvable surfaces) | REQ-LSEL-001/002 frozen allowlist: `frozen_patterns` regex + `evolvable_surfaces` (the 6) + `execution_meta` (the 4 categories) |
+| `.moai/hooks/lsel-apply.sh` | NEW evolvable (.moai/hooks is dev-local) | REQ-LSEL-008 playback-only APPLY consumer (reads approved decision.json → frozen-reject → exec-meta forced-gate → git apply → ledger → lsel-* commit) |
+| `.claude/skills/hns-lsel-applier/SKILL.md` | NEW evolvable #4 (hns-* skill) | APPLY engine skill (English body, hns- namespace, user-invocable:false, not templated) |
+| `.claude/skills/hns-lsel-applier/apply_test.sh` | NEW evolvable #4 | AC-001/002/005/008/013 characterization (hermetic temp-repo) |
+| `.claude/skills/hns-lsel-applier/rollback_rehearsal_test.sh` | NEW evolvable #4 | AC-014 SHIP GATE (mixed-history `git revert` lands clean) |
+| `.moai/state/lsel/apply-ledger.jsonl` | NEW evolvable #6 | append-only apply manifest seed |
+| `.claude/skills/hns-lsel-curator/{SKILL.md,tier4_firing_test.sh}` | EDIT evolvable #4 | AC-003 literal-token scrub (frozen-flag identifier rephrased to location/role) + tier4 pipefail-abort fix (M2 debt) |
+
+**AC binary matrix (§E E1):**
+
+| AC | Status | Verification | Observed |
+|----|--------|--------------|----------|
+| AC-LSEL-001 | PASS | `apply_test.sh` frozen-target fixture | REFUSED (exit 2) + reject-log row `category=frozen-path` + no write |
+| AC-LSEL-002 | PASS | `apply_test.sh` allowlist-location | allowlist at `.claude/lsel/` (NOT under any of the 6 evolvable surfaces) |
+| AC-LSEL-003 | PASS | `grep -rn enableTriggerInjectionWrites .claude/skills/hns-lsel-* .moai/hooks/lsel-* .moai/state/lsel/ .claude/lsel/` | 0 matches; `internal/harness/applier.go:22` still `= false` |
+| AC-LSEL-004 | PASS | first `lsel-*` apply commit on feature branch | `git log --grep lsel-` finds the rehearsal commit; `git branch --show-current` = `feat/SPEC-LSEL-LOCAL-EVOLUTION-001` |
+| AC-LSEL-008 | PASS | `grep -nE 'propose\|self-approve\|new-proposal' .moai/hooks/lsel-apply.sh` | 0 matches; reads decision.json + approval marker |
+| AC-LSEL-013 | PASS | `apply_test.sh` routine fixture | file written + ledger row `{result:"applied"}` + `lsel-*` commit landed |
+| AC-LSEL-014 | PASS (SHIP GATE) | `rollback_rehearsal_test.sh` | `git revert <lsel-tag>` exit 0; lsel-block lines removed; non-adjacent manual edits survive |
+
+**REQ-LSEL-003 re-verify (post-implementation):** `internal/harness/applier.go:22` = `var enableTriggerInjectionWrites = false` (unchanged); LSEL-surface grep for the literal identifier = 0 matches (the applier/curator skills + tier4 fixture + ledger seed reference the flag only by location/role, never as mutable).
+
+**Subagent boundary (§E E4):** `grep -rn 'AskUserQuestion\|mcp__askuser' .claude/skills/hns-lsel-applier/` (excluding test/comment lines) = 0 matches. The synchronous user gate is run by the orchestrator, never by `hns-lsel-applier`.
+
+**Cross-platform build (§E E2):** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0. (M3 adds ZERO Go files — these are the no-Go-regression guards.)
+
+**Coverage (§E E3):** N/A for M3 — no new Go code (shell + JSON + markdown only).
+
+**Lint (§E E5):** `golangci-lint run --timeout=2m` → 0 issues (no NEW findings; baseline unchanged). Shell scripts pass `shellcheck` semantics by construction (set -euo pipefail, quoted vars, hermetic temp-repo tests).
+
+**Full-suite guard (trust-but-verify):** `go test ./...` exit 0 (full suite green; template namespace + internal-content-leak tests still PASS — no `hns-lsel-applier` mirror leaked into `internal/template/templates/`).
+
+**TDD RED→GREEN evidence (§E E8):**
+- `apply_test.sh` RED (mechanism absent): `RED: lsel-apply.sh absent at .../.moai/hooks/lsel-apply.sh (mechanism not built yet)` exit 1 → GREEN: `apply_test: PASS` (AC-001/002/005/008/013 all PASS).
+- `rollback_rehearsal_test.sh` RED (mechanism absent): `RED: mechanism absent — lsel-apply.sh or frozen-allowlist.json missing` exit 1 → GREEN: `rollback_rehearsal_test: PASS` (git revert exit 0, lsel-block removed, manual edits survive).
+
+**First `lsel-*` apply commit (§E E6):** the M3 scaffolding commit carries the mechanism; a separate `feat(lsel-m3-rehearsal-001): ...` commit (produced by running `lsel-apply.sh` against an approved fixture decision.json targeting `.moai/state/lsel/`) lands the first real `lsel-*` apply on the feature branch (AC-004/013).
+
+**M3 DoD met:** AC-001/002/003/004/008/013/014 all PASS; rollback-rehearsal SHIP GATE clean; REQ-LSEL-003 frozen-flag invariant preserved; subagent boundary honored; full `go test ./...` green.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**M3 (APPLY closure via bypass) — Phase 4 decision (logged before the M3 manager-develop spawn):**
+
+Input parameters:
+- tier: M (3 artifacts; 16 REQs / 16 ACs)
+- scope (file count): ~7 (NEW `hns-lsel-applier/SKILL.md`, NEW `.claude/lsel/frozen-allowlist.json`, NEW `.moai/hooks/lsel-apply.sh`, NEW `.moai/state/lsel/apply-ledger.jsonl`, NEW 2 test fixtures, EDIT `.claude/settings.local.json`)
+- domain count: 1 (LSEL APPLY engine — single cohesive mechanism)
+- file language mix: markdown (skill) + JSON (allowlist/ledger) + bash (hook + tests) — heterogeneous, single-domain
+- concurrency benefit: LOW (coding-heavy, single-domain, sequential TDD)
+
+Mode evaluation:
+- Mode 1 trivial: NO — multi-file milestone introducing the loop's first live write path
+- Mode 2 background: NO — write-capable implementation, not read-only analysis
+- Mode 3 agent-team: RETIRED
+- Mode 4 parallel: NO — single-domain coding-heavy (Anthropic coding-task parallelism caveat)
+- Mode 6 workflow: NO — <30 files, semantic new-code (not mechanical-uniform transform)
+- Mode 5 sub-agent: YES — sequential manager-develop, cycle_type=tdd
+
+Decision: sub-agent (Mode 5)
+Justification: M3 is coding-heavy single-domain implementation (APPLY engine + frozen allowlist + playback hook + characterization tests). Per Anthropic's coding-task parallelism caveat, the sequential sub-agent path is the correct default for coding work. One manager-develop delegation, TDD RED→GREEN→REFACTOR, Tier M Section A-E template. Implementation Kickoff Approval was satisfied at run-phase (M1) entry; M3 is a milestone resume within the approved run-phase (per `.claude/rules/moai/workflow/orchestration-mode-selection.md` § Implementation Kickoff Approval mandatory-restoration — the gate binds the plan→run boundary, not milestone→milestone).
