@@ -2,6 +2,10 @@
 
 > Plan-phase skeleton. §E.2 / §E.3 / §E.4 are placeholder headings only; they are populated by manager-develop (run-phase, §E.2/§E.3) and manager-docs (sync-phase, §E.4) per the SPEC artifact ownership matrix.
 
+## §J Amendment Note
+
+- 2026-08-04 — In-place amendment S1 landed (manager-spec, `completed → in-progress (amendment)`). The amendment corrects spec.md §C deny/ask binding claim (`ask` does not mechanically bind under `bypassPermissions`; only `deny` binds at every tier — fully-autonomous boundary is the verified sandbox + deny list). See spec.md HISTORY `### Amendments` for the prior_completed_sha (`4ab512c89`), rationale, and scope. Code/YAML fixes (S2 tool-policy rules + S3 `autonomy_tiers.go` `SandboxProofKind` hardening) are delivered by manager-develop in run-phase alongside this amendment. This §J annotation does NOT touch any era.go-parsed `§E.*` heading or `sync_commit_sha`/`mx_commit_sha` field.
+
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - spec.md, plan.md, acceptance.md, progress.md emitted (this commit).
