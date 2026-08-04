@@ -17,7 +17,7 @@
 # depend on the `moai` binary or `jq`, so it does NOT share mode A of the
 # wrapper-layer shared-failure catalogue (hook-independence.md §3).
 #
-# Staleness signal (REQ-PN-012): when the Navigator's last-regen-commit is more
+# Staleness signal: when the Navigator's last-regen-commit is more
 # than 3 commits behind HEAD (hard-coded default N=3; overridable via
 # `navigator.staleness_cycles` in .moai/config/sections/navigator.yaml), the
 # additionalContext carries a staleness advisory naming the gap.
