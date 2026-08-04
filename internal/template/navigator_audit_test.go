@@ -111,9 +111,9 @@ const (
 
 // capRow is a single capability-map data row.
 type capRow struct {
-	SpecID            string
-	Title             string
-	Status            string
+	SpecID             string
+	Title              string
+	Status             string
 	ImplementationPath string
 }
 
@@ -227,10 +227,10 @@ func fixtureAudit(t *testing.T, v capMapVariant, withOverride bool) map[string]a
 	dir := t.TempDir()
 	initFixtureRepo(t, dir)
 	designFeatures := []string{
-		"Project Initialization",   // module-token match via internal/cli/init (last seg "init" ≥4 chars, substring of "project-initialization")
-		"Authentication",           // exact match
-		"Notifications",            // substring match ("notifications" substring of "notifications-subsystem")
-		"Real-time Collaboration",  // Missing SPEC
+		"Project Initialization",  // module-token match via internal/cli/init (last seg "init" ≥4 chars, substring of "project-initialization")
+		"Authentication",          // exact match
+		"Notifications",           // substring match ("notifications" substring of "notifications-subsystem")
+		"Real-time Collaboration", // Missing SPEC
 	}
 	if withOverride {
 		designFeatures = append(designFeatures, "Autonomy Loop")    // override match
@@ -246,7 +246,7 @@ func fixtureAudit(t *testing.T, v capMapVariant, withOverride bool) map[string]a
 		{"SPEC-CLI-001", "CLI Tool — init template selection", "completed", "internal/cli/init"},
 		{"SPEC-AUTH-001", "Authentication", "completed", "internal/auth"},
 		{"SPEC-NOTIFY-001", "Notifications Subsystem", "in-progress", "internal/notify"},
-		{"SPEC-X-999", "Legacy CRM Integration", "in-progress", "internal/crm"},   // orphan, last seg crm < 4
+		{"SPEC-X-999", "Legacy CRM Integration", "in-progress", "internal/crm"}, // orphan, last seg crm < 4
 	}
 	if withOverride {
 		rows = append(rows,
@@ -456,7 +456,7 @@ func TestACNA005_DualOutputStableSchema(t *testing.T) {
 		t.Fatalf("AC-NA-005: markdown missing required section(s); indices missing=%d orphan=%d matched=%d\nbody:\n%s",
 			idxMissing, idxOrphan, idxMatched, body)
 	}
-	if !(idxMissing < idxOrphan && idxOrphan < idxMatched) {
+	if idxMissing >= idxOrphan || idxOrphan >= idxMatched {
 		t.Errorf("AC-NA-005: markdown sections out of order: missing=%d orphan=%d matched=%d", idxMissing, idxOrphan, idxMatched)
 	}
 }
