@@ -81,22 +81,11 @@ Constraints: 10k concurrent users, 100ms read latency target
 
 ## Project Navigator Consultation
 
-At Phase 1 context-load, before drafting a new SPEC, consult the Project
-Navigator (a project-level shared read primitive) to scope the candidate SPEC
-against the current frontier. This is **opt-in** — fire it only at the named
-phase, never on every tool call.
-
-Procedure (when `.moai/project/navigator/navigator.md` exists):
-1. Read `navigator.md` for the current frontier (which SPECs are active).
-2. Read `capability-map.md` for the feature inventory (which capabilities are tracked).
-3. If the candidate feature overlaps an existing capability already tracked in
-   `capability-map.md`, prefer amending the existing SPEC over creating a
-   duplicate — surface the overlap to the user before proceeding.
-4. Draw the new SPEC's boundary against the real project state the Navigator
-   surfaces, not against a re-derived view from scattered files.
-
-If the Navigator is absent (fresh project, pre-first-sync), skip this
-consultation silently — it is not a gate.
+At Phase 1 context-load, consult `.moai/project/navigator/navigator.md` (if
+present) to scope the candidate SPEC against the current frontier — read the
+frontier + `capability-map.md`, and if the candidate overlaps an existing
+tracked capability, prefer amending the existing SPEC over creating a
+duplicate. Opt-in (fire only at the named phase); skip silently if absent.
 
 ---
 
