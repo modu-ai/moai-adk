@@ -195,6 +195,76 @@ else
   fail "execution-meta WITH marker was refused (gate over-fired)"
 fi
 
+log "=== AC-LSEL-001 (F1) divergent-patch hard-reject (frozen path in diff.patch, evolvable target_surface) ==="
+# The sync-auditor F1 bypass: decision.json declares an evolvable target_surface
+# but diff.patch actually writes to a FROZEN path. The pre-apply patch-path gate
+# MUST refuse it (no write to the frozen target + reject-log row + non-zero exit).
+mkdir -p "$REPO/p-bypass"
+mkdir -p "$REPO/.claude/rules/moai"
+echo "# frozen doctrine" > "$REPO/.claude/rules/moai/secret.md"
+cat > "$REPO/p-bypass/decision.json" <<'JSON'
+{"proposal_id":"lsel-bypass","target_surface":"memory/feedback_bypass.md","synchronous_approval":null}
+JSON
+cat > "$REPO/p-bypass/diff.patch" <<'PATCH'
+diff --git a/.claude/rules/moai/secret.md b/.claude/rules/moai/secret.md
+--- a/.claude/rules/moai/secret.md
++++ b/.claude/rules/moai/secret.md
+@@ -1 +1,2 @@
+ # frozen doctrine
++injected-by-lsel-bypass
+PATCH
+if run_applier "$REPO/p-bypass/decision.json" 2>/dev/null; then
+  fail "divergent proposal (frozen patch path) was NOT rejected"
+else
+  pass "divergent proposal (frozen patch path) REFUSED (non-zero exit)"
+fi
+if grep -q "lsel-bypass" "$REPO/.moai/logs/lsel-reject.log" 2>/dev/null && \
+   grep -q "frozen-path" "$REPO/.moai/logs/lsel-reject.log" 2>/dev/null; then
+  pass "reject-log row appended naming the divergent frozen patch path"
+else
+  fail "no reject-log row for divergent frozen patch path"
+fi
+if grep -q "injected-by-lsel-bypass" "$REPO/.claude/rules/moai/secret.md" 2>/dev/null; then
+  fail "frozen target WAS written by divergent patch (allowlist failed to protect)"
+else
+  pass "no write to frozen target from divergent patch"
+fi
+
+log "=== AC-LSEL-001 (F1b) target_surface traversal hard-reject ==="
+# target_surface uses .. to escape an evolvable prefix and reach a frozen path.
+# os.path.normpath collapses memory/../internal/... to internal/... which MUST
+# match the anchored frozen pattern and be refused.
+mkdir -p "$REPO/p-trav"
+mkdir -p "$REPO/internal/template/templates"
+echo "# tmpl" > "$REPO/internal/template/templates/x.md"
+cat > "$REPO/p-trav/decision.json" <<'JSON'
+{"proposal_id":"lsel-trav","target_surface":"memory/../internal/template/templates/x.md","synchronous_approval":null}
+JSON
+cat > "$REPO/p-trav/diff.patch" <<'PATCH'
+diff --git a/memory/feedback_trav.md b/memory/feedback_trav.md
+new file mode 100644
+--- /dev/null
++++ b/memory/feedback_trav.md
+@@ -0,0 +1 @@
++trav-memory-line
+PATCH
+if run_applier "$REPO/p-trav/decision.json" 2>/dev/null; then
+  fail "traversal target_surface was NOT rejected"
+else
+  pass "traversal target_surface REFUSED (non-zero exit)"
+fi
+if grep -q "lsel-trav" "$REPO/.moai/logs/lsel-reject.log" 2>/dev/null; then
+  pass "reject-log row appended naming the traversal target"
+else
+  fail "no reject-log row for traversal target"
+fi
+# The evolvable memory file should NOT have been written either (whole proposal refused pre-apply)
+if [[ -f "$REPO/memory/feedback_trav.md" ]]; then
+  fail "evolvable path WAS written despite traversal refusal (pre-apply gate leaked)"
+else
+  pass "no write occurred (pre-apply gate fired before git apply)"
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then
   log "apply_test: FAILED"
   exit 1

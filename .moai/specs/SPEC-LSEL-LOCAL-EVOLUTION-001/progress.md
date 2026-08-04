@@ -53,7 +53,7 @@ _status: plan-phase artifacts authored 2026-08-04; awaiting plan-auditor verdict
 run_complete_at: "2026-08-04T05:21:03Z"
 run_commit_sha: "9ede1bfad"
 run_status: "M4-complete (terminal run-phase commit; all 16 MUST AC PASS)"
-ac_pass_count: 9
+ac_pass_count: 16
 ac_fail_count: 0
 preserve_list_post_run_count: 0   # zero lines of shipped moai assets touched
 l44_pre_commit_fetch: "n/a (M1 commit, no push to main — PR-mandatory per repo-local-pr-policy.md)"
