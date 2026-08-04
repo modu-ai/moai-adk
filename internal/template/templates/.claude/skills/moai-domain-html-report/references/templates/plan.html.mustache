@@ -528,9 +528,17 @@
     </section>
 
     <!-- ========================================================
+         audit verdict + autonomy contract
+         audit_html: pre-rendered HTML fragment from internal/report/planhtml
+         (the plan-auditor verdict + the 8-field autonomy contract). The slot
+         is the named injection point for the Go renderer's output.
+    ======================================================== -->
+    {{audit_html}}
+
+    <!-- ========================================================
          success metrics
          success_metrics: [{label, target, current, met}]
-    ======================================================== -->
+    ============================================================ -->
     <section aria-label="Success metrics">
       <div class="sec-head"><span class="num">04</span><h2>Success Metrics</h2></div>
       <div class="metrics-list">

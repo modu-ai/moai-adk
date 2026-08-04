@@ -58,6 +58,8 @@ moai goal clear                         # remove the condition (end loop)
 
 At session start, `PruneOrphans` cleans up orphan goals. This mechanism was implemented in SPEC-GOAL-ENGINE-001 (CLOSED).
 
+To render the current loop state as a static HTML dashboard, use `moai goal render` — see [/moai goal - Goal Dashboard](/en/utility-commands/moai-goal/) for details.
+
 ### `/moai loop` — Ralph Engine (diagnostic-driven preset)
 
 {{< icon arrow-right >}} `/moai loop` is a deterministic loop that scans the issue queue found by diagnostic tools, fixes each issue, and repeats until the queue drains or diagnostics are clean. It is a preset on top of the goal engine.

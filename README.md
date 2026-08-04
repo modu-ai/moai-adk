@@ -275,7 +275,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
-| `moai goal <arm\|status\|clear>` | Goal engine CLI |
+| `moai goal <arm\|status\|clear\|render>` | Goal engine CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |

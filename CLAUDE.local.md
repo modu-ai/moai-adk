@@ -720,6 +720,21 @@ See: `.moai/docs/git-local-workflow-doctrine.md`
 
 See: `.moai/docs/harness-namespace-doctrine.md`
 
+### §24.6 Harness Trigger Registry (활성 split-harness 빠른 참조)
+
+`/harness:X` 4종 진입점 단일 표. `.claude/agents/harness/` 내 `hns-*`(split-harness 전문가)와 비-hns(cli-template·hook-ci·quality·workflow, 직접 호출형)는 다른 축이므로 본 표에서 분리.
+
+| 진입점 | 발동 조건 | 소유 specialist | Runner (비대칭) | companion skill |
+|---|---|---|---|---|
+| `/harness:oss-docs` | README 4-locale + docs-site(adk.mo.ai.kr) 갱신·제작 | content-author · locale-translator · structure-curator | `hns-oss-docs-run.js` | hns-oss-docs-{i18n-rules,readme-sync,structure-map,verify} |
+| `/harness:release` | production release (Enhanced GitHub Flow + `scripts/release.sh` + GoReleaser) | hns-release-specialist | 없음 (순수 human-gated) | — |
+| `/harness:release-update` | Claude Code upstream 변경 추적 (release-notes version-delta sweep + docs sync) | hns-release-update-specialist | `hns-release-update-run.js` | — |
+| `/harness:github` | GitHub issue-fix / PR-review (`gh` CLI) | hns-github-specialist | 없음 (순수 human-gated) | — |
+
+- **Runner 비대칭**: oss-docs·release-update만 비-상호작용 fan-out Runner 보유(각 manifest SSOT: `.claude/commands/harness/{oss-docs,release-update}/manifest.json`); github·release는 Runner/manifest 없는 순수 human-gated specialist. 4종 전부 publish·PR·승인 게이트에서 사람 개입.
+- **배포 범위**: oss-docs만 **user-owned**(사용자 프로젝트에 분포, `moai update` 보존). 나머지 3종은 dev-only(moai-adk-go 메인테이너 전용, 미배포).
+- **비-hns 도메인 전문가**(`cli-template`·`hook-ci`·`quality`·`workflow`-specialist)는 `/harness:X` 트리거가 아닌 직접 호출형; `hns-moaiadk-{patterns,dev-reference,best-practices}` reference skill 계열을 공동 로드. 본 레지스트리와 별개 축.
+
 ---
 
 ## 25. Template Internal-Content Isolation

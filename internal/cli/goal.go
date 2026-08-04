@@ -76,6 +76,7 @@ Verbs:
   goal arm "<condition>"   register + arm a goal (bare 'goal "<condition>"' aliases arm)
   goal status              print the active session's goal state
   goal clear               clear the active session's goal
+  goal render              render the live goal's dashboard to a self-contained HTML file
 
 Condition parsing: a runnable shell command (optionally suffixed "exits <N>")
 becomes a mechanical condition; a claim that references the conversation
@@ -131,7 +132,22 @@ transcript becomes a model condition the orchestrator evaluates.`,
 		},
 	}
 
-	cmd.AddCommand(armCmd, statusCmd, clearCmd)
+	// renderCmd (SPEC-GOAL-HTML-FLOW-001 REQ-GHF-004) renders the live goal's
+	// dashboard to a self-contained .html file beside the .json state. It reuses
+	// statusSessionID + goal.LoadGoal (the read path), calls goal.RenderDashboard,
+	// and writes to goal.HTMLPath. With no armed goal it exits non-zero, names the
+	// session id on stderr, and writes NO html (AC-GHF-010).
+	renderCmd := &cobra.Command{
+		Use:          "render",
+		Short:        "Render the active session's goal dashboard to a self-contained HTML file",
+		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		RunE: func(c *cobra.Command, _ []string) error {
+			return runGoalRender(c, sessionFlag, jsonOutput)
+		},
+	}
+
+	cmd.AddCommand(armCmd, statusCmd, clearCmd, renderCmd)
 	return cmd
 }
 
@@ -234,17 +250,22 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 		}
 	}
 
-	// AC-011 fail-closed: --max-turns 0 (infinite) with NEITHER --max-duration
-	// NOR --cost-cap is rejected at arm time. No goal state file is written.
-	if maxTurns == 0 && maxDuration <= 0 && costCap <= 0 {
+	// AC-011 fail-closed (SPEC-INFINITE-GOAL-001 REQ-004 / D1): --max-turns 0
+	// (infinite) REQUIRES --max-duration <seconds> as the real wall-clock bound.
+	// --cost-cap is RECORDED-ONLY (enforcement is a follow-up, per flag help and
+	// SPEC §D.5) and does NOT satisfy the real-bound requirement — so
+	// cost-cap-alone is REJECTED. An infinite goal without a real bound would
+	// run unbounded (the stagnation guard only fires on N consecutive no-change
+	// turns with >=1 mechanical condition; real progress never triggers it, and
+	// a model-only goal skips stagnation entirely per D2). No goal state file
+	// is written on reject.
+	if maxTurns == 0 && maxDuration <= 0 {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
-			"goal arm: --max-turns 0 (infinite) requires at least one real bound: "+
-				"--max-duration <seconds> or --cost-cap <N>. An infinite goal "+
-				"without a real bound would run unbounded (the stagnation guard "+
-				"only fires on N consecutive no-change turns; real progress never "+
-				"triggers it). Re-run with --max-duration <seconds> (wall-clock "+
-				"primary, OQ-2) or --cost-cap <N>.")
-		return fmt.Errorf("goal arm: --max-turns 0 requires a real bound (--max-duration or --cost-cap)")
+			"goal arm: --max-turns 0 (infinite) requires --max-duration <seconds> "+
+				"as the real wall-clock bound. --cost-cap is recorded-only and does "+
+				"NOT satisfy this requirement (it does not bound the goal). Re-run "+
+				"with --max-duration <seconds>.")
+		return fmt.Errorf("goal arm: --max-turns 0 requires --max-duration <seconds> as the real bound (cost-cap is recorded-only)")
 	}
 
 	sessionID, warn := resolveArmSessionID(sessionFlag)
@@ -396,6 +417,53 @@ func printGoalHuman(cmd *cobra.Command, g *goal.Goal) {
 	if len(g.Progress) > 0 {
 		_, _ = fmt.Fprintf(out, "progress:   %d entries (last: %s)\n", len(g.Progress), g.Progress[len(g.Progress)-1].Note)
 	}
+}
+
+// runGoalRender (SPEC-GOAL-HTML-FLOW-001 REQ-GHF-004 / AC-GHF-001 / AC-GHF-010)
+// resolves the live goal, renders the dashboard, and writes a self-contained
+// HTML file to goal.HTMLPath (<root>/.moai/state/goal/<session>.html). It reuses
+// statusSessionID (the read/idempotent resolver) + goal.LoadGoal. With no armed
+// goal it exits non-zero, names the session id on stderr, and writes NO html.
+func runGoalRender(cmd *cobra.Command, sessionFlag string, jsonOutput bool) error {
+	root := goalProjectRoot()
+	if root == "" {
+		return fmt.Errorf("goal render: cannot resolve project root")
+	}
+	sessionID := statusSessionID(sessionFlag)
+	g, err := goal.LoadGoal(root, sessionID)
+	if err != nil {
+		return fmt.Errorf("goal render: %w", err)
+	}
+	if g == nil {
+		// AC-GHF-010: no armed goal → non-zero exit + stderr names session + NO html.
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"goal render: no armed goal for session %s; nothing to render\n", sessionID)
+		return fmt.Errorf("goal render: no armed goal for session %s", sessionID)
+	}
+
+	raw, err := goal.RenderDashboard(g, nil)
+	if err != nil {
+		return fmt.Errorf("goal render: %w", err)
+	}
+	htmlPath := goal.HTMLPath(root, sessionID)
+	if err := os.MkdirAll(filepath.Dir(htmlPath), 0o755); err != nil {
+		return fmt.Errorf("goal render mkdir: %w", err)
+	}
+	if err := os.WriteFile(htmlPath, raw, 0o644); err != nil {
+		return fmt.Errorf("goal render write %s: %w", htmlPath, err)
+	}
+
+	if jsonOutput {
+		return emitOK(cmd, true, map[string]any{
+			"action":     "render",
+			"session_id": sessionID,
+			"path":       htmlPath,
+			"bytes":      len(raw),
+		})
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
+		"rendered goal dashboard for session %s to %s\n", sessionID, htmlPath)
+	return nil
 }
 
 func init() {

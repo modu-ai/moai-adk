@@ -8,7 +8,7 @@ This package is the boundary between the user's terminal and every backing subsy
 
 ## Conventions
 
-- **Subagent boundary (C-HRA-008 / REQ-PGN-012)**: CLI code MUST NOT call `AskUserQuestion` or `mcp__askuser__*`. The CLI runs in subagent context — orchestrator owns user interaction. Replace any interactive prompt with positional arguments + `--flag` defaults + structured stderr errors. Static guard pattern: `TestNew_NoAskUserQuestion` (see `worktree/new_test.go`) — every interactive-shaped subcommand needs the equivalent grep-based test.
+- **Subagent boundary (C-HRA-008 / REQ-PGN-012)**: CLI code MUST NOT call `AskUserQuestion` or `mcp__askuser__*`. The CLI runs in subagent context — orchestrator owns user interaction. Replace any interactive prompt with positional arguments + `--flag` defaults + structured stderr errors. Static guard pattern: `TestWeb_NoAskUserQuestion` (see `web_test.go`) — every interactive-shaped subcommand needs the equivalent grep-based test.
 - **Cobra subcommand registration**: Add new subcommands via `xxxCmd := &cobra.Command{...}` then `rootCmd.AddCommand(xxxCmd)` in the package's `init()` or in `root.go`. Never declare two subcommands with the same `Use:` prefix — cobra panics at runtime. The pattern catches `harness-classify`-style multi-word names colliding with existing `harness` namespace.
 - **Exit code discipline**: `os.Exit(0)` success, `os.Exit(1)` user error, `os.Exit(2)` system error. Never `panic()` — wrap upstream errors and report to stderr.
 - **Output streams**: stdout = structured machine-readable output (JSON when `--json`, plain text otherwise). stderr = human progress messages, warnings, errors. Never mix.
@@ -28,7 +28,7 @@ This package is the boundary between the user's terminal and every backing subsy
 
 - Root CLAUDE.md §4 (Agent Catalog), §14 (Parallel Execution Safeguards § Background Agent Write Restriction)
 - CLAUDE.local.md §13 (GLM integration test isolation), §14 (Hardcoding prevention), §22 (settings.local.json separation)
-- `internal/cli/worktree/new_test.go` — `TestNew_NoAskUserQuestion` canonical static guard
+- `internal/cli/web_test.go` — `TestWeb_NoAskUserQuestion` canonical static guard
 - `internal/cli/harness/route_test.go` — `TestPropose_NoAskUserQuestion` second canonical instance
 - `internal/cli/spawn.go` — `--spawn` flag stripping, shell-quoted command reconstruction, tmux new-window invocation
 - `internal/config/envkeys.go` — canonical env var constants (use these, never inline strings)
