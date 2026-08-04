@@ -5,7 +5,7 @@ version: 0.1.0
 status: completed
 created: 2026-08-04
 updated: 2026-08-05
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 519b848fb
 author: manager-spec
 priority: P1
 phase: "v3.x target"
