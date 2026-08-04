@@ -191,25 +191,57 @@ func loadAuditJSON(t *testing.T, dir string) map[string]any {
 	return m
 }
 
+// writeSPECStub writes a minimal SPEC dir + spec.md frontmatter so the
+// fixture satisfies the audit's spec-registry presence check. The spec-id is
+// used only for presence detection; content is not load-bearing for the audit.
+func writeSPECStub(t *testing.T, dir, id string) {
+	t.Helper()
+	specDir := filepath.Join(dir, ".moai", "specs", id)
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", specDir, err)
+	}
+	body := "---\n" +
+		"id: " + id + "\n" +
+		"title: \"fixture\"\n" +
+		"version: \"0.1.0\"\n" +
+		"status: in-progress\n" +
+		"created: 2026-01-10\n" +
+		"updated: 2026-01-10\n" +
+		"author: Fixture\n" +
+		"priority: P1\n" +
+		"phase: \"v1.0.0\"\n" +
+		"module: internal/fixture\n" +
+		"lifecycle: spec-anchored\n" +
+		"tags: \"fixture\"\n" +
+		"---\n\n# " + id + "\n\nBody.\n"
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write spec.md: %v", err)
+	}
+}
+
 // fixtureAudit sets up a populated fixture (design docs + capability-map +
-// optional SPEC dirs) and runs the audit. Returns the parsed JSON report.
+// SPEC registry stub + optional override) and runs the audit. Returns the
+// parsed JSON report.
 func fixtureAudit(t *testing.T, v capMapVariant, withOverride bool) map[string]any {
 	t.Helper()
 	dir := t.TempDir()
 	initFixtureRepo(t, dir)
 	designFeatures := []string{
-		"Project Initialization",   // module-token match via internal/cli/init
+		"Project Initialization",   // module-token match via internal/cli/init (last seg "init" ≥4 chars, substring of "project-initialization")
 		"Authentication",           // exact match
-		"Notification System",      // substring match
+		"Notifications",            // substring match ("notifications" substring of "notifications-subsystem")
 		"Real-time Collaboration",  // Missing SPEC
 	}
 	if withOverride {
-		designFeatures = append(designFeatures, "Autonomy Loop") // override match
+		designFeatures = append(designFeatures, "Autonomy Loop")    // override match
 		designFeatures = append(designFeatures, "Old Feature Name") // override ignore
 	}
 	writeDesignDoc(t, dir, "product.md", designFeatures)
 	writeDesignDoc(t, dir, "structure.md", nil)
 	writeDesignDoc(t, dir, "tech.md", nil)
+	// SPEC registry stub — at least one SPEC dir so the audit's spec-registry
+	// presence check passes.
+	writeSPECStub(t, dir, "SPEC-FIXTURE-001")
 	rows := []capRow{
 		{"SPEC-CLI-001", "CLI Tool — init template selection", "completed", "internal/cli/init"},
 		{"SPEC-AUTH-001", "Authentication", "completed", "internal/auth"},
@@ -438,7 +470,7 @@ func redoFixtureReadMD(t *testing.T, v capMapVariant, withOverride bool) string 
 	dir := t.TempDir()
 	initFixtureRepo(t, dir)
 	writeDesignDoc(t, dir, "product.md", []string{
-		"Project Initialization", "Authentication", "Notification System", "Real-time Collaboration",
+		"Project Initialization", "Authentication", "Notifications", "Real-time Collaboration",
 	})
 	writeCapabilityMap(t, dir, v, []capRow{
 		{"SPEC-CLI-001", "CLI Tool — init template selection", "completed", "internal/cli/init"},
@@ -446,6 +478,7 @@ func redoFixtureReadMD(t *testing.T, v capMapVariant, withOverride bool) string 
 		{"SPEC-NOTIFY-001", "Notifications Subsystem", "in-progress", "internal/notify"},
 		{"SPEC-X-999", "Legacy CRM Integration", "in-progress", "internal/crm"},
 	})
+	writeSPECStub(t, dir, "SPEC-FIXTURE-001")
 	if withOverride {
 		writeOverride(t, dir, [][2]string{}, []string{})
 	}
