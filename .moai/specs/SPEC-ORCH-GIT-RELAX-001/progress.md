@@ -195,7 +195,29 @@ notes: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates>_
+```yaml
+sync_complete_at: 2026-08-05
+sync_commit_sha: "pending-backfill-sync"   # D3 exemption — orchestrator backfills post-merge (Route B squash: final SHA = merged-to-main SHA)
+run_commit_sha: "898d2b854"                # M4 run-phase tip; squash-landed on main as 876e9936142a (PR #1347)
+run_pr: 1347
+sync_status: audit-ready
+spec_id: SPEC-ORCH-GIT-RELAX-001
+tier: L
+ac_pass_count: 10
+ac_fail_count: 0
+frontmatter_transition: "in-progress → completed (single sync commit, 3-phase close)"
+notes: >
+  Sync-phase closed the 3-phase lifecycle (plan→run→sync). CHANGELOG entry
+  added under [Unreleased] ### Changed. spec.md frontmatter transitioned
+  in-progress → completed (version 0.1.1 → 0.2.0, updated 2026-08-05). §E.4
+  populated. catalog.yaml was regenerated in run-phase (commit 2f54dd58f,
+  included in the PR #1347 squash 876e9936142a) and is unchanged in sync —
+  no template edits, no `make build` in this phase. The run-phase doctrine
+  + Go test edits are already on main via PR #1347; this sync commit
+  carries only frontmatter + progress.md §E.4 + CHANGELOG. Open post-merge
+  item: `sync_commit_sha` backfill (D3 placeholder → real merged SHA) by
+  the orchestrator after the sync PR merges.
+```
 
 ---
 
