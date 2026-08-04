@@ -95,7 +95,7 @@ MAKE-EXIT=0
 
 ```yaml
 run_complete_at: 2026-08-05
-run_commit_sha: pending-backfill-m1
+run_commit_sha: edf80c598
 run_status: audit-ready
 ac_pass_count: 12
 ac_fail_count: 0
@@ -127,4 +127,37 @@ m1_to_mN_commit_strategy: single M1 commit (draft → in-progress); SHA backfill
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-05
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+spec_status_transition: in-progress → implemented → completed (3-phase close on the single sync commit)
+frontmatter_status_transitions:
+  spec.md: in-progress → completed (status + updated only; no body content changed)
+  plan.md: n/a (markdown-header convention, no YAML frontmatter)
+  acceptance.md: n/a (markdown-header convention, no YAML frontmatter)
+changelog_entry_position: CHANGELOG.md [Unreleased] → Added (1 entry, SPEC-FOURDIM-PHANTOM-001)
+ac_pass_count_sync: 12
+ac_fail_count_sync: 0
+b12_self_test_a_pre_emission_duplicate: PASS  # grep -c 'SPEC-FOURDIM-PHANTOM-001' CHANGELOG.md == 0 pre-emit
+b12_self_test_b_ac_count_match: PASS           # 12 distinct AC-FP-* in acceptance.md == "12/12 ACs" claim
+b12_self_test_c_file_paths_exist: PASS         # .claude/workflows/sync-audit-4dim.js + internal/template/templates/.claude/workflows/sync-audit-4dim.js verified via ls
+canary_compliance_check:
+  tier: S
+  plan_audit_verdict: PASS (iter-1, score ≥ 0.75 Tier S threshold)
+  sync_auditor_skipped: true  # Tier S — unit tests + plan-audit suffice; residual-risk noted below
+docs_site_4locale_sync: SKIPPED  # docs-site mentions sync-audit-4dim only at a conceptual level (workflow primitive example); no user-facing claim is contradicted by the phantom-mechanism guard. Tier S skip is proportionate.
+readme_sync: SKIPPED            # no README mention of sync-audit-4dim internals; the distributed JS carries the guard, the README does not describe verdict pipeline internals.
+sync_evidence_summary:
+  - spec.md frontmatter status transitioned in-progress → completed on this commit (manager-docs owns the 3-phase close)
+  - run_commit_sha backfilled from pending-backfill-m1 → edf80c598 in §E.3 (D3 SHA-placeholder backfill exemption)
+  - progress.md §E.4 emitted on this commit; sync_commit_sha is pending-backfill-sync (self-referential-hazard placeholder, same pattern as SPEC-INFINITE-GOAL-001 #1320 / SPEC-SYNC-AUDIT-FALSIFICATION-001 #1344)
+  - CHANGELOG.md [Unreleased] → Added: 1 entry naming the phantom-mechanism guard (deterministic probe → FAIL verdict for claimed-but-absent mechanisms)
+  - MoAI Security Guardian 2026-08-05 findings (2) classified at sync time: (1) test-only `new Function` on own-source committed workflow source with documented rationale, NOT a production code-injection vector — production sync-audit-4dim.js verified eval-free; (2) false positive on assertion-message string literal inside the determinism test. No production security impact.
+  - No spec.md / plan.md / acceptance.md BODY content modified — frontmatter status + updated only (per forbidden ownership crossings).
+sync_run_commit_sha_backfill_command: git log --format='%H' -1 edf80c598  # origin/main..HEAD chain: edf80c598 (run M1) + f8e8758e5 (docs fixup) + this sync commit
+residual_risk:
+  - sync_commit_sha placeholder pattern requires a follow-up backfill commit after the sync PR merges (same D3 pattern used by recent Tier S/L closes).
+  - Tier S sync-auditor was skipped; the run-phase unit tests (15 node:test subtests) and plan-audit iter-1 PASS stand as the quality evidence. No independent skeptical 4-dimension read was performed for the sync phase. Risk: a falsification hazard the cold auditor would have caught may go unobserved — judged proportionate to Tier S scope (JS verdict-guard, 12/12 ACs GREEN, deterministic pure-function verdict path, production eval/random-free).
+  - One pre-existing flaky Go test (`TestHookWrapper_LargeStdin_DoesNotExceedTimeout` in internal/cli) was observed failing under parallel contention and passing in isolation; unrelated to this SPEC's JS-only + catalog regen scope.
+```
