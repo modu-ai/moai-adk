@@ -199,7 +199,7 @@ M1 DoD met: AC-LSEL-009 PASS + AC-LSEL-010 PASS; `drain-offset.json` advanced; c
 ```yaml
 sync_complete_at: "2026-08-04"
 sync_status: "completed"
-sync_commit_sha: "pending-backfill-<sync-commit>"
+sync_commit_sha: "701426ca2"
 close_subject: "docs(SPEC-LSEL-LOCAL-EVOLUTION-001): sync-phase artifacts (3-phase close)"
 phase_close_kind: "3-phase close (plan→run→sync — MX Tag is a cross-cutting sync concern, not a separate phase)"
 run_phase_terminal_sha: "9ede1bfad"   # M4 terminal run-phase commit (backfilled into §E.3)
