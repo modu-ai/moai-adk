@@ -120,5 +120,18 @@ jobs:
 
           # Push changes if any commits were made
           if [ "$(git rev-parse --short HEAD)" != "$(git rev-parse --short origin/main)" ]; then
-            git push origin main
+            # Under PR-mandatory (enforce_admins:true per CLAUDE.local.md §23), a direct
+            # push to main is rejected by branch protection. Treat that rejection as a
+            # graceful no-op (SPEC status remains as-authored) instead of failing the job;
+            # surface any non-protection push error as a real failure.
+            PUSH_OUTPUT=$(git push origin main 2>&1) && PUSH_EXIT=0 || PUSH_EXIT=$?
+            echo "$PUSH_OUTPUT"
+            if [ $PUSH_EXIT -ne 0 ]; then
+              if echo "$PUSH_OUTPUT" | grep -qE "Protected branch update failed|protected branch hook declined|Changes must be made through a pull request"; then
+                echo "::notice::main is protected (PR-mandatory, enforce_admins per CLAUDE.local.md §23). Status sync skipped — SPEC status remains as-authored (non-blocking)."
+              else
+                echo "::error::git push origin main failed for a non-protection reason (see output above)."
+                exit 1
+              fi
+            fi
           fi
