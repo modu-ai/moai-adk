@@ -97,7 +97,7 @@ spec_lint_clean: true   # moai spec lint (§6 MP-3 tags comma-quoted-string) —
 
 ```yaml
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill-reclose"   # self-referential placeholder for the re-close sync commit (D3 workaround) — prior close SHA was 80643b61e (PR #1320 squash, retained in HISTORY ## Amendments prior_completed_sha); this sync commit carries the in-progress → completed re-close for the D1/D2 amendment fix (PR #1342 squash e06396158)
+sync_commit_sha: "a1c86176c"   # self-referential placeholder for the re-close sync commit (D3 workaround) — prior close SHA was 80643b61e (PR #1320 squash, retained in HISTORY ## Amendments prior_completed_sha); this sync commit carries the in-progress → completed re-close for the D1/D2 amendment fix (PR #1342 squash e06396158)
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress → implemented → completed"

@@ -63,7 +63,7 @@ Run-phase independently verified by the orchestrator (8/8 verification matrix PA
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-04
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "1670507f2"
 ```
 
 ## §F Phase 4 Mode Selection

@@ -12,7 +12,7 @@ module: ".claude/agents/moai/sync-auditor.md + internal/template/templates mirro
 lifecycle: spec-anchored
 tags: "sync-auditor, falsification, ac-mechanism, verification-claim-integrity, defect-claim, ac-class-coverage, autonomy-epic, template-mirror"
 tier: M
-related_specs: [SPEC-INFINITE-GOAL-001, SPEC-4DIM-PHANTOM-001, SPEC-AUDIT-GATE-INTEGRITY-001]
+related_specs: [SPEC-INFINITE-GOAL-001, SPEC-FOURDIM-PHANTOM-001, SPEC-AUDIT-GATE-INTEGRITY-001]
 ---
 
 # SPEC-SYNC-AUDIT-FALSIFICATION-001 — sync-auditor falsification obligations
@@ -71,7 +71,7 @@ The change is doc-only (agent definition + template mirror). No Go runtime code 
 
 ### Out of Scope — IMP-5 (sync-audit-4dim.js falsification schema + phantom-mechanism → FAIL verdict)
 
-- The falsification schema for the `sync-audit-4dim` skill and the phantom-mechanism → FAIL verdict rule belong to the SEPARATE SPEC-4DIM-PHANTOM-001. Cross-referenced via `related_specs`; not implemented here. Do not duplicate its requirements in this SPEC.
+- The falsification schema for the `sync-audit-4dim` skill and the phantom-mechanism → FAIL verdict rule belong to the SEPARATE SPEC-FOURDIM-PHANTOM-001. Cross-referenced via `related_specs`; not implemented here. Do not duplicate its requirements in this SPEC.
 
 ### Out of Scope — RC5 (cold sync-auditor mandatory on green test suite)
 
@@ -117,7 +117,7 @@ Each blocking finding SHALL be structured per the VCI §3 5-section Evidence for
 
 - A "high-blast-radius AC" is identifiable from the SPEC's acceptance.md — either via an explicit marker (`high-blast-radius`, `safety-invariant`, `must-pass`, or similar) on the AC, or via the sync-auditor's judgment when the SPEC does not mark one. Where the SPEC marks none and the auditor cannot identify one by judgment, the IMP-1 obligation degrades to "falsify at least one AC's stated mechanism" (still stricter than the status quo of test-exit-only).
 - The domain's dedicated verification tools exist on the host (or the auditor degrades gracefully per REQ-SAF-002 option (b)).
-- IMP-5 (sync-audit-4dim falsification schema) is owned by SPEC-4DIM-PHANTOM-001 and is assumed to land independently; this SPEC's REQs do not depend on IMP-5 being landed first.
+- IMP-5 (sync-audit-4dim falsification schema) is owned by SPEC-FOURDIM-PHANTOM-001 and is assumed to land independently; this SPEC's REQs do not depend on IMP-5 being landed first.
 - RC5 (cold sync-auditor mandatory on green) is assumed to be addressed by a separate orchestrator-side SPEC; this SPEC's IMP-1 obligation binds "While the cold sync-auditor IS spawned" — i.e. it activates only when sync-auditor actually runs, and does not itself mandate the spawn.
 
 ## §F Anti-Patterns (authoring-side, do NOT replicate)
@@ -146,5 +146,5 @@ Each blocking finding SHALL be structured per the VCI §3 5-section Evidence for
 - `.claude/agents/moai/sync-auditor.md` (L55-66 Per-Dimension Mechanical Verification, L85-94 Findings + Output Format) — primary edit surface.
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 3 + §3 (5-section Evidence format) — IMP-3 cross-reference target (SSOT, not duplicated).
 - `CLAUDE.local.md` §2 (Template-First Rule) + §25 (Template Internal-Content Isolation) — template-mirror constraints.
-- `related_specs`: SPEC-INFINITE-GOAL-001 (AC-011 falsification precedent), SPEC-4DIM-PHANTOM-001 (IMP-5 owner, out-of-scope here), SPEC-AUDIT-GATE-INTEGRITY-001 (REQ-AGI-006 language-neutrality precedent).
+- `related_specs`: SPEC-INFINITE-GOAL-001 (AC-011 falsification precedent), SPEC-FOURDIM-PHANTOM-001 (IMP-5 owner, out-of-scope here), SPEC-AUDIT-GATE-INTEGRITY-001 (REQ-AGI-006 language-neutrality precedent).
 - `feedback_ac_stated_mechanism_can_be_false` (memory topic) — IMP-1 root-cause precedent.
