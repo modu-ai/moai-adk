@@ -31,10 +31,14 @@ log "=== AC-LSEL-012 Tier-4 firing probe (project: $PROJECT_ROOT) ==="
 
 # --- Probe 1: CuratorDispatch production callers (the cautionary precedent) ---
 # A live invocation path requires at least one non-test, non-definition caller.
+# NOTE: `|| curator_callers=0` prevents `set -euo pipefail` from aborting the
+# script when the filtering grep chain produces zero lines — which is exactly
+# the expected PASS state (0 external callers = DEAD). Without it the test
+# exits 1 in the state it is supposed to characterize as PASS.
 curator_callers=$(grep -rn "CuratorDispatch" internal/ pkg/ cmd/ 2>/dev/null \
   | grep -v "_test.go" \
   | grep -vE "internal/harness/curator_dispatch\.go:" \
-  | wc -l | tr -d ' ')
+  | wc -l | tr -d ' ') || curator_callers=0
 if [[ "$curator_callers" -eq 0 ]]; then
   pass "CuratorDispatch has 0 production callers outside its own definition file (cautionary precedent confirmed)"
 else
@@ -63,13 +67,14 @@ fi
 # Go code cannot call AskUserQuestion (subagent boundary). The Tier-4 surface
 # requires the orchestrator (main-session Claude) to do it. No mechanical
 # trigger wiring exists.
+# NOTE: `|| askuser_in_harness_go=0` — same pipefail/zero-match guard as probe 1.
 askuser_in_harness_go=$(grep -rn "AskUserQuestion" internal/cli/harness.go internal/cli/harness/ internal/harness/ 2>/dev/null \
   | grep -v "_test.go" \
   | grep -v "^[^:]*:[0-9]*:[[:space:]]*//" \
   | grep -v "does not directly call AskUserQuestion" \
   | grep -v "skill calls AskUserQuestion" \
   | grep -v "orchestrator.*AskUserQuestion" \
-  | wc -l | tr -d ' ')
+  | wc -l | tr -d ' ') || askuser_in_harness_go=0
 if [[ "$askuser_in_harness_go" -eq 0 ]]; then
   pass "zero harness Go code invokes AskUserQuestion (subagent boundary honored; orchestrator-only)"
 else
