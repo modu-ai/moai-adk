@@ -89,6 +89,43 @@ _Plan-phase audit complete: PASS, 0.89 (Tier L threshold 0.85, skip-eligible), 2
 
 _Run-phase NOT complete — M1+M2 are the first two of M1–M4; §E.3 stays pending until all run milestones land._
 
+### M3 — GLM audit backend + 3-way config + auth + fail-open
+
+**Deliverables:** `internal/cli/mcp_glm.go` (NEW — `glm_audit` handler + z.ai direct `/v1/messages` call via reusable `DefaultGLMBaseURL` + `loadGLMKey`, injectable HTTP/key/project seams, `ReviewOutput` parse, full fail-open), `internal/cli/mcp_audit.go` (NEW — 3-way `activeAuditBackend` selection + `multi` token-only flag + `buildAuditEnvBlock` secret-hygiene `${VAR}`-literal builder), `internal/cli/mcp_server.go` (register `glm_audit` + `WithOutputSchema[ReviewOutput]`), `internal/config/types.go` + `internal/config/defaults.go` (NEW `AuditConfig`/`AuditGates` + `audit_model`/`audit_gate` enum constants + locked default profile claude+codex required / glm advisory), `internal/cli/mcp_glm_test.go` + `internal/cli/mcp_audit_test.go` + `internal/config/mcp_audit_config_test.go` (NEW — TDD coverage, NO real GLM key/network — HTTP doer + key loader stubbed).
+
+**GLM backend (design.md §3 M3 / §G.4 / REQ-MCP-009):** `glm_audit` POSTs the audit prompt to the Anthropic-compatible `https://api.z.ai/api/anthropic/v1/messages` endpoint DIRECTLY — reusing the SAME credential (`loadGLMKey` → `~/.moai/.env.glm`) and endpoint (`config.DefaultGLMBaseURL`) the GLM backend uses elsewhere. NOT the z.ai MCP server, NOT any gateway. The audit system prompt constrains the model to emit ONLY a `ReviewOutput` JSON, parsed + schema-validated before use (LLM05 defensive output validation). Output adopts the SHARED `review-output.schema.json` (`ReviewOutput`/`Finding`/`VerdictInconclusive` reused verbatim from mcp_codex.go) so orchestrator translation is uniform (§G.4 / DQ-2). Fail-open mandatory (C2 / REQ-MCP-012): missing/unauthenticated (401)/erroring/malformed GLM ⇒ structured `VerdictInconclusive` ⇒ claude fallback, never a hard error.
+
+**3-way config + secret hygiene (REQ-MCP-010/011/013/014):**
+- `audit_model` ∈ `{claude, codex, glm, multi}`; per-auditor `audit_gate` ∈ `{off, advisory, required}`, default `required`. Default profile: claude + codex required, glm advisory (user-enabled, so a distributed user without a GLM key is never hard-blocked — C2).
+- `multi` is a DECLARED token only (`multiConvergenceImplemented = false`); convergence logic is SPEC-AUDIT-MULTI-MODEL (AP-8). `activeAuditBackend` accepts the token but M3 does NOT orchestrate fan-out/synthesis.
+- Model/effort SSOT (AC-MCP-015): `resolveGLMAuditModel` calls `template.ResolveAgentModelEffort(llm, "sync-auditor")` ONLY (the SSOT) + `template.IsGLMBackend`; NEVER reads agent frontmatter or `llm.agent_overrides` directly (grep-verified: 0 matches).
+- Secret hygiene (AC-MCP-013, load-bearing): `buildAuditEnvBlock` emits ONLY `${GLM_API_KEY}` / `${CODEX_API_KEY}` LITERAL constants — a resolved secret is NEVER serialized. The committed moai entry (`buildMoaiMCPServerEntry`) carries NO env block at all (the local stdio server reads keys via `loadGLMKey` at runtime). Negative test (`TestBuildAuditEnvBlock_SecretHygiene_NegativeTest`) injects a real-looking secret via the key seam and asserts it never appears in the marshaled env/entry.
+
+**AC matrix (M3):**
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-MCP-011 (GLM direct z.ai API call) | PASS | `TestGLMAudit_StubReturnsVerdict` + `TestGLMAudit_HitsZaiEndpointDirectly` (URL prefix `https://api.z.ai/api/anthropic/v1/messages`, NOT `/api/mcp/`), reuses `DefaultGLMBaseURL` + `loadGLMKey` |
+| AC-MCP-012 (audit_model + audit_gate enums + default profile) | PASS | `TestAuditModel_EnumValues` / `TestAuditGate_EnumValues` / `TestAuditConfig_DefaultProfile` (claude+codex required, glm advisory) / `TestAuditConfig_YAMLRoundTrip` (incl. `multi` token) |
+| AC-MCP-013 (secret hygiene — `${VAR}` literal, no serialization) | PASS | `TestBuildAuditEnvBlock_SecretHygiene_NegativeTest` (4 sub-tests: glm literal, committed entry no-env, multi both-literals, claude nil) — resolved key never leaks |
+| AC-MCP-014 (fail-open on missing/unauth) | PASS | `TestGLMAudit_FailOpenOnMissingKey` / `_OnHTTPError` / `_OnMalformedResponse` / `_OnUnauthenticatedStatus` (401 ⇒ VerdictInconclusive) |
+| AC-MCP-015 (model/effort SSOT via ResolveAgentModelEffort) | PASS | `TestResolveGLMAuditModel_SSOT` + grep `AgentOverrides\|agentfm\|Frontmatter` on mcp_glm/mcp_audit/mcp_codex.go = 0 (codex delegates model to the codex binary; glm resolves via the SSOT) |
+| AC-MCP-016 (subagent boundary — structured result, no AskUserQuestion) | PASS | grep `AskUserQuestion\|mcp__askuser` on M3 handler files (excl. tests/comments) = 0; `TestMCPAudit_NoAskUserQuestion` package guard |
+| AC-MCP-017 (3-way selection resolves single backend; `multi` token accepted) | PASS | `TestActiveAuditBackend_SingleBackends` (claude/codex/glm each → self) + `_MultiTokenAccepted` (`multi` stored, `multiConvergenceImplemented=false`) + `_RejectsUnknown` |
+
+**Verification commands + results:**
+
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet ./internal/cli/ ./internal/config/` → exit 0
+- `golangci-lint run --timeout=3m ./internal/cli/ ./internal/config/` → 0 issues (after 2 errcheck fixes: `defer func(){ _ = resp.Body.Close() }()` + `_ = req.Body.Close()`)
+- `go test -count=1 ./internal/cli/ ./internal/config/` → `ok` (full suite, exit 0; M1/M2 suites unaffected)
+- M3 per-file coverage (`go tool cover -func`): `mcp_audit.go` — activeAuditBackend 100% / buildAuditEnvBlock 80%; `mcp_glm.go` — handleGLMAudit 100% / callGLMAudit 85.7% / parseGLMReview 80% / resolveGLMAuditModel 70% / glmAuditSystemPrompt 100% / glmAuditUserPrompt 75% / glmInconclusive 100% / reviewToolResult 75%. Aggregate of both M3 files above the 85% threshold (every function >0%; the lowest functions' uncovered branches are the marshal-can't-fail degrade + the GLM-backend llm.yaml branch).
+- E4 subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_glm.go internal/cli/mcp_audit.go internal/cli/mcp_server.go internal/cli/mcp_codex.go` (excl. tests/comments) → 0 (REQ-MCP-014)
+- E8 RED (verbatim, pre-GREEN): captured to `.moai/state/verify/mcp-m3/red_config.txt` (`undefined: AuditModelClaude / AuditGateOff / Workflow.Audit`) + `.moai/state/verify/mcp-m3/red_glm_audit.txt` (`undefined: glmHTTPDoer / glmKeyLoader / glmHTTPClient / activeAuditBackend / buildAuditEnvBlock / multiConvergenceImplemented`) → `FAIL [build failed]`
+
+**M3-scope decisions (deferred to M4):** (a) the init/web selection UI (`audit_model` + per-auditor `audit_gate` in `Page3Questions` + web console) is M4 (REQ-MCP-015 / AC-MCP-020/021); M3 ships ONLY the typed config + the resolver. (b) The Template-First `.mcp.json` reversal (settings-management.md:33) + the §25 CI guard + `make build` is M4 (REQ-MCP-016/018); M3 ships the secret-hygiene `buildAuditEnvBlock` helper + the unchanged (env-free) `buildMoaiMCPServerEntry` so the committed entry stays secret-free. (c) `multi` convergence (parallel fan-out, disagreement synthesis) is SPEC-AUDIT-MULTI-MODEL (AP-8); M3 accepts the token, does not orchestrate.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

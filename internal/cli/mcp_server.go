@@ -206,6 +206,23 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 		mcp.WithDescription("Probe the local codex installation: exec.LookPath + codex --version + auth-provider classification (ChatGPT / apiKey / provider / unknown) + the current enable_review_gate toggle state. Pure Go — no Node bridge."),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexSetup)
+
+	// --- M3 GLM backend (design.md §3 M3) ---
+
+	// glm_audit → z.ai GLM API direct call (REQ-MCP-009 / AC-MCP-011). Calls
+	// the Anthropic-compatible https://api.z.ai/api/anthropic/v1/messages
+	// endpoint directly — NOT the z.ai MCP server, NOT any gateway. Output
+	// adopts the shared review-output.schema.json (§G.4). Fail-open on a
+	// missing/unauthenticated/erroring/malformed GLM (VerdictInconclusive →
+	// claude fallback, REQ-MCP-012). Model/effort resolved via the SSOT
+	// (ResolveAgentModelEffort, REQ-MCP-013) when no explicit model is given.
+	s.AddTool(mcp.NewTool(
+		"glm_audit",
+		mcp.WithDescription("Run a GLM (z.ai) code review. Calls the z.ai Anthropic-compatible endpoint directly and returns a review-output schema (verdict/summary/findings/next_steps). GLM is OPTIONAL; a missing/unauthenticated/erroring GLM yields verdict 'inconclusive' (fail-open → fall back to the active auditor)."),
+		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
+		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		mcp.WithOutputSchema[ReviewOutput](),
+	), handleGLMAudit)
 }
 
 // ─── thin-wrapper handlers (C1: each calls the SAME internal/ fn the CLI calls) ───

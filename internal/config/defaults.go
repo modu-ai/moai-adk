@@ -628,6 +628,19 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				Enabled: false,
 			},
 		},
+		// SPEC-MOAI-MCP-SERVER-001 M3 (REQ-MCP-010 / AC-MCP-012, progress.md
+		// §G.3 locked default profile): claude + codex required, glm advisory.
+		// glm ships advisory (NOT required) so a distributed user without a GLM
+		// key is never hard-blocked — the fail-open C2 invariant. `multi` is a
+		// declared token only; convergence logic is SPEC-AUDIT-MULTI-MODEL.
+		Audit: AuditConfig{
+			Model: AuditModelClaude,
+			Gates: AuditGates{
+				Claude: AuditGateRequired,
+				Codex:  AuditGateRequired,
+				GLM:    AuditGateAdvisory,
+			},
+		},
 		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
 		// feature ships default-OFF. When unset, moai init / moai profile /
 		// moai web behave byte-identically to the shared-checkout baseline.
