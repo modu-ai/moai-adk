@@ -87,7 +87,7 @@ residual_debt:
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-05
-sync_commit_sha: pending-backfill-002-sync   # self-referential-hazard placeholder — orchestrator backfills the real SHA in a follow-up commit (spec-frontmatter-schema.md D3 exemption)
+sync_commit_sha: 927e268c9   # backfilled from squash-merge of #1361 (spec-frontmatter-schema.md D3 exemption — self-referential-hazard workaround)
 changelog_entry_position: top-of-unreleased   # single entry, above SPEC-PROJECT-NAVIGATOR-001
 frontmatter_status_transitions:
   spec_md: "in-progress → implemented → completed"   # 3-phase close merged into the single sync commit per spec-frontmatter-schema.md Status Transition Ownership Matrix
