@@ -117,6 +117,17 @@ func init() {
 	// delta); fully-autonomous is opt-in only and is gated by sandbox proof +
 	// the kill-switch at render time.
 	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto (default, per-tool prompt), automatic (auto-approve), or fully-autonomous (bypassPermissions, sandbox-gated opt-in)")
+
+	// SPEC-WT-DOC-001 (branch-guard config surface): opt-in flags for the
+	// workflow.branch_guard + workflow.worktree settings that ship default-off
+	// in the distributed template. The flags default false, but only an explicit
+	// --flag=true OR --flag=false triggers persistence — the writer is gated by
+	// cmd.Flags().Changed(...) so an unset flag does not clobber the template
+	// default (CLAUDE.local.md §22.9).
+	initCmd.Flags().Bool("branch-guard", false, "Enable branch guard (blocks branch-state changes in the shared primary checkout)")
+	initCmd.Flags().Bool("worktree-auto-create", false, "Enable workflow.worktree.auto_create (default: false)")
+	initCmd.Flags().Bool("worktree-auto-merge", false, "Toggle workflow.worktree.auto_merge from its template default (true)")
+	initCmd.Flags().Bool("worktree-auto-cleanup", false, "Toggle workflow.worktree.auto_cleanup from its template default (true)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -176,11 +187,14 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 
-	// Worktree auto-create is wizard-only (no CLI flag), so it always applies.
-	// Default false matches the config default (internal/config/defaults.go
+	// Worktree auto-create is also asked on page 3 (Issue 3). The wizard
+	// default false matches the config default (internal/config/defaults.go
 	// AutoCreate: false) and the zero value when --non-interactive skips the
-	// wizard entirely.
+	// wizard entirely. The companion Set tracker is asserted here so the YAML
+	// writer persists the wizard answer; an explicit --worktree-auto-create
+	// flag overrides it below in runInit.
 	opts.WorktreeAutoCreate = result.WorktreeAutoCreate
+	opts.WorktreeAutoCreateSet = true
 }
 
 // applyAutonomyTierFromWizard applies the interactive autonomy-tier wizard
@@ -208,7 +222,33 @@ func applyAutonomyTierFromWizard(flagChanged bool, flagValue string, result *wiz
 	opts.AutonomyTier = effective
 }
 
-// getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
+// applyWorkflowBranchGuardFlags applies the four SPEC-WT-DOC-001 workflow flags
+// (--branch-guard, --worktree-auto-create/merge/cleanup) to opts, honouring
+// flag-over-wizard precedence (a flag wins when explicitly supplied) AND
+// template-default preservation (an unset flag leaves the deployed value
+// untouched). Each key is gated by its Set tracker so the YAML writer persists
+// only explicit answers — a bare `moai init` (or `--non-interactive` without
+// flags) does not clobber the template default (CLAUDE.local.md §22.9).
+func applyWorkflowBranchGuardFlags(cmd *cobra.Command, opts *project.InitOptions) {
+	if cmd.Flags().Changed("branch-guard") {
+		opts.BranchGuardEnabled = getBoolFlag(cmd, "branch-guard")
+		opts.BranchGuardSet = true
+	}
+	if cmd.Flags().Changed("worktree-auto-create") {
+		opts.WorktreeAutoCreate = getBoolFlag(cmd, "worktree-auto-create")
+		opts.WorktreeAutoCreateSet = true
+	}
+	if cmd.Flags().Changed("worktree-auto-merge") {
+		opts.WorktreeAutoMerge = getBoolFlag(cmd, "worktree-auto-merge")
+		opts.WorktreeAutoMergeSet = true
+	}
+	if cmd.Flags().Changed("worktree-auto-cleanup") {
+		opts.WorktreeAutoCleanup = getBoolFlag(cmd, "worktree-auto-cleanup")
+		opts.WorktreeAutoCleanupSet = true
+	}
+}
+
+
 // the flag is not set or an error occurs.
 func getBoolFlagWithDefault(cmd *cobra.Command, name string, defaultVal bool) bool {
 	if !cmd.Flags().Changed(name) {
@@ -612,6 +652,13 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			&opts,
 		)
 	}
+
+	// SPEC-WT-DOC-001 (branch-guard config surface): the four workflow flags
+	// override the wizard-derived AutoCreate value AND the template default
+	// only when explicitly supplied. Changed() distinguishes "flag absent"
+	// from "flag explicitly false", so --branch-guard=false persists the
+	// explicit false while a bare init leaves the template untouched.
+	applyWorkflowBranchGuardFlags(cmd, &opts)
 
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {

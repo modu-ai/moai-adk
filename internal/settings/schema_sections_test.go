@@ -888,3 +888,67 @@ func collectScalarLeaves(node *yaml.Node, prefix string, out *[]string) {
 		}
 	}
 }
+
+// TestBranchGuardFieldDefRegistered (SPEC-WT-DOC-001) verifies the
+// workflow.branch_guard.enabled FieldDef is registered so the web console
+// schemaform can render the toggle. The distributed template ships without a
+// branch_guard block (CLAUDE.local.md §22.9 — default-off opt-in), so the
+// FieldDef is the sole signal to the console that this key exists. Asserts:
+// (i) the field name is present (ii) it targets the seam at
+// workflow.branch_guard.enabled (iii) TypeBool so the form renders a toggle.
+func TestBranchGuardFieldDefRegistered(t *testing.T) {
+	t.Parallel()
+
+	const wantName = "workflow.branch_guard.enabled"
+	var found *FieldDef
+	for i := range AllFields() {
+		f := AllFields()[i]
+		if f.Name == wantName {
+			found = &f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("%q FieldDef not registered — web console cannot render the toggle", wantName)
+	}
+	if found.Type != TypeBool {
+		t.Errorf("%q Type = %v, want TypeBool", wantName, found.Type)
+	}
+	if found.Persist.Kind != PersistSeam {
+		t.Errorf("%q Persist.Kind = %v, want PersistSeam", wantName, found.Persist.Kind)
+	}
+	if got, want := len(found.Persist.Path), 3; got != want {
+		t.Fatalf("%q Persist.Path length = %d, want %d", wantName, got, want)
+	}
+	wantPath := []string{"workflow", "branch_guard", "enabled"}
+	for i, seg := range wantPath {
+		if found.Persist.Path[i] != seg {
+			t.Errorf("%q Persist.Path[%d] = %q, want %q", wantName, i, found.Persist.Path[i], seg)
+		}
+	}
+}
+
+// TestApplySchemaEditsBranchGuardSeamRoundTrip (SPEC-WT-DOC-001) verifies that
+// the branch_guard.enabled key — absent from the distributed template — is
+// upserted cleanly via the yamlpatch seam (the same path the reconfigure
+// wizard's runWorkflowConfigStep uses), and that sibling workflow keys survive.
+func TestApplySchemaEditsBranchGuardSeamRoundTrip(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	before := seedSectionFixture(t, root, "workflow")
+
+	err := ApplySchemaEdits(root, map[string]string{
+		"workflow.branch_guard.enabled": "true",
+	})
+	if err != nil {
+		t.Fatalf("ApplySchemaEdits(branch_guard): %v", err)
+	}
+	after := readSection(t, root, "workflow")
+	if !strings.Contains(after, "branch_guard:") || !strings.Contains(after, "enabled: true") {
+		t.Errorf("branch_guard.enabled upsert missing in:\n%s", after)
+	}
+	// Sibling keys preserved (comment-stability check mirrors TestApplySchemaEditsSeamRoundTrip).
+	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Error("comments not preserved by branch_guard seam edit")
+	}
+}

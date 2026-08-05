@@ -249,6 +249,12 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "tmux_preferred"),
+		// SPEC-WT-DOC-001 (branch-guard config surface): the distributed template
+		// ships without a branch_guard block, so this key is absent until the user
+		// opts in via `moai init --branch-guard` or the reconfigure wizard. The web
+		// console renders it from this FieldDef via schemaform.go; the seam writer
+		// (yamlpatch) upserts the nested mapping on first edit.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "branch_guard", "enabled"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		s(SectionHarness, "harness", TypeText, "harness", "default_profile"),
