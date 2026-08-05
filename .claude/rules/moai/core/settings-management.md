@@ -206,6 +206,17 @@ Example:
 }
 ```
 
+#### File-tool category matching (no Glob/Grep/Write deny rules)
+
+Claude Code's permission check matches file tools by **category**, not by individual tool name. A single rule covers the whole category:
+
+- A **`Read(...)`** rule matches ALL file-reading tools (Read, Glob, Grep). A `Read` deny rule also blocks the Edit tool on the matching paths.
+- An **`Edit(...)`** rule matches ALL file-editing tools (Edit, Write, MultiEdit).
+
+Because the category is the unit of matching, `Glob(...)`, `Grep(...)`, and `Write(...)` deny/ask/allow rules are **no-ops** — they match nothing. Claude Code emits a "not matched by file permission checks" warning on load when such rules are present. Do NOT emit them from settings generators; a single `Read(...)` or `Edit(...)` rule per secret path is sufficient and is the only effective form.
+
+Reference: https://code.claude.com/docs/en/settings ("Permission rules" + "Permission rule syntax").
+
 ## Quality Configuration
 
 Quality gates in quality.yaml:

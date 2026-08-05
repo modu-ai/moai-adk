@@ -59,6 +59,26 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 	WorktreeAutoCreate        bool   // workflow.worktree.auto_create (Issue 3); default false
+	// SPEC-WT-DOC-001 (branch-guard config surface): workflow.branch_guard.enabled
+	// and the three remaining worktree.auto_* keys are opt-in via `moai init`
+	// flags. The distributed template ships default-off (worktree.auto_create:
+	// false; branch_guard absent; worktree.auto_merge/auto_cleanup: true), so
+	// these fields are persisted ONLY when their companion *Set tracker is true
+	// — an unset flag leaves the template default untouched (CLAUDE.local.md
+	// §22.9). BranchGuardEnabled defaults to false; AutoMerge/AutoCleanup carry
+	// the user-supplied value when the flag is supplied (no opinion when unset).
+	BranchGuardEnabled  bool // workflow.branch_guard.enabled (--branch-guard); default false
+	WorktreeAutoMerge   bool // workflow.worktree.auto_merge (--worktree-auto-merge)
+	WorktreeAutoCleanup bool // workflow.worktree.auto_cleanup (--worktree-auto-cleanup)
+
+	// Explicit-set trackers — true when the corresponding value was populated
+	// from an explicit source (CLI flag for the three below; CLI flag OR wizard
+	// answer for AutoCreate). The YAML writer skips keys whose tracker is false
+	// so an unset flag does not clobber the deployed template default.
+	BranchGuardSet        bool
+	WorktreeAutoCreateSet bool // Issue 3 extension: --worktree-auto-create flag OR wizard answer
+	WorktreeAutoMergeSet  bool
+	WorktreeAutoCleanupSet bool
 }
 
 // InitResult summarizes the outcome of project initialization.
