@@ -258,7 +258,7 @@ The list of commands **allowed to run immediately** without user confirmation.
 | Code quality | `ruff`, `black`, `prettier`, `eslint` | 6+ |
 | Exploration tools | `ls`, `find`, `tree`, `cat`, `head` | 10+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 |
-| Other | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 |
+| Other | `AskUserQuestion`, `Task`, `Skill`, `TaskCreate/TaskUpdate/TaskList/TaskGet` | 4 |
 
 **allow format examples:**
 

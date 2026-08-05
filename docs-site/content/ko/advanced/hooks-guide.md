@@ -444,7 +444,7 @@ ralph:
 
 **저장 내용:**
 - 현재 활성 SPEC 상태 (ID, 단계, 진행률)
-- 진행 중인 작업 목록 (TodoWrite)
+- 진행 중인 작업 목록 (TaskCreate/TaskUpdate/TaskList/TaskGet)
 - 완료된 작업 목록
 - 수정된 파일 목록
 - Git 상태 정보 (브랜치, 커밋되지 않은 변경)

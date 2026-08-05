@@ -258,7 +258,7 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 | 代码质量 | `ruff`, `black`, `prettier`, `eslint` | 6 个以上 |
 | 探索工具 | `ls`, `find`, `tree`, `cat`, `head` | 10 个以上 |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 个 |
-| 其他 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 个 |
+| 其他 | `AskUserQuestion`, `Task`, `Skill`, `TaskCreate/TaskUpdate/TaskList/TaskGet` | 4 个 |
 
 **allow 格式示例：**
 

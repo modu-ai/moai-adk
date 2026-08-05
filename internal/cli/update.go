@@ -47,13 +47,13 @@ var updateCmd = &cobra.Command{
 
 // validateUpdateFlags validates update flag values before execution.
 // SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
-// exits non-zero with a usage error naming the closed set {max, medium, low}.
+// exits non-zero with a usage error naming the closed set {high, medium, low}.
 // SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-007 / AC-UVF-007): the --version flag's
 // mutual-exclusion matrix is enforced before any network call.
 func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
 	profileFlag := getStringFlag(cmd, "profile")
 	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
 	}
 	// SPEC-UPDATE-VERSION-FLAG-001 REQ-UVF-007: --version mutual-exclusion matrix.
 	if err := validateUpdateVersionConflicts(
@@ -86,7 +86,7 @@ func init() {
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
 	// provided, persists the value to llm.profile (no agent frontmatter mutation).
 	// The retired --plan-type flag is no longer exposed.
-	updateCmd.Flags().String("profile", "", "Override the model+effort profile: max, medium, or low (persists to llm.yaml profile)")
+	updateCmd.Flags().String("profile", "", "Override the model+effort profile: high, medium, or low (persists to llm.yaml profile)")
 
 	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-001): --version <tag> installs a
 	// specific GitHub release tag (stable / rc / previous version) of the moai
@@ -610,7 +610,7 @@ func applyUpdateProfile(projectRoot, profileFlag string) error {
 		return nil
 	}
 	if !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
 	}
 	if err := template.ApplyProfile(projectRoot, profileFlag); err != nil {
 		return fmt.Errorf("persist profile: %w", err)

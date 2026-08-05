@@ -8,10 +8,10 @@ description: >
   snapshot-based resume. Use when a bounded project-wide fix sweep is needed.
 user-invocable: false
 metadata:
-  version: "2.6.0"
+  version: "2.6.1"
   category: "workflow"
   status: "active"
-  updated: "2026-07-12"
+  updated: "2026-08-05"
   tags: "loop, goal-preset, sweep, scan-lens, diagnostics, testing, coverage"
 
 # MoAI Extension: Progressive Disclosure
@@ -99,7 +99,7 @@ Before arming the goal preset, the scan stage builds a **FINITE** issue queue fr
 
 ## Supported Flags
 
-- --max N (alias --max-iterations): Maximum iteration count. When absent, the effective default is ralph.yaml `loop.max_iterations` (shipped 10) per the Iteration-Ceiling Precedence rule (see § Ceiling-Exit Verdict Contract) — not a freestanding 100 default.
+- --max N (alias --max-iterations): Maximum iteration count. When absent, the effective default is ralph.yaml `loop.max_iterations` (shipped 5) per the Iteration-Ceiling Precedence rule (see § Ceiling-Exit Verdict Contract) — not a freestanding 100 default.
 - --auto-fix: Enable auto-fix (default Level 1)
 - --sequential (alias --seq): Sequential diagnostics instead of parallel
 - --errors (alias --errors-only): Fix errors only, skip warnings
@@ -376,5 +376,5 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 
 ---
 
-Version: 2.6.0
-Changes: Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 replaced sentinel-string success-exit with mechanical predicate; 2.2.0 expanded Language-Specific Commands to 16 languages.
+Version: 2.6.1
+Changes: Corrected the ralph.yaml `loop.max_iterations` shipped default 10→5 to match the code SSOT (`internal/config/defaults.go` `DefaultMaxIterations = 5`); the key-name ralph-plane transition at lines 232/275 was already complete. Previous: 2.6.0 Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 replaced sentinel-string success-exit with mechanical predicate; 2.2.0 expanded Language-Specific Commands to 16 languages.
