@@ -239,19 +239,29 @@ func writeDesignYAML(sectionsDir string, opts InitOptions, result *InitResult) e
 	return nil
 }
 
-// writeWorkflowWorktreeYAML persists workflow.worktree.auto_create to
-// workflow.yaml (Issue 3). The deployed workflow.yaml already ships
-// auto_create: false, so this patches the existing file in place at the
-// dotted path workflow.worktree.auto_create only — never replaced
-// (REQ-WIZ-021). When no file exists (no-deployer fallback path) a minimal
-// block is created.
+// writeWorkflowWorktreeYAML persists workflow.worktree.auto_* and
+// workflow.branch_guard.enabled to workflow.yaml (Issue 3 + SPEC-WT-DOC-001).
+// Each key is written ONLY when its companion *Set tracker is true — an unset
+// CLI flag (and no wizard answer for AutoCreate) leaves the deployed template
+// default in place (CLAUDE.local.md §22.9 — branch_guard + worktree opt-in
+// stays default-off in the distributed template). When the existing file is
+// patched, the line-based patchYAMLPathValue preserves every comment and every
+// other byte. When no file exists (no-deployer fallback path) a minimal block
+// is created carrying only the opted-in keys.
 func writeWorkflowWorktreeYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
 	workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
-	value := fmt.Sprintf("%t", opts.WorktreeAutoCreate)
+
+	// If no key was explicitly set, there is nothing to persist. This guards
+	// the deployed template against a zero-value false clobber when the user
+	// runs `moai init --non-interactive` without any workflow flag.
+	if !opts.WorktreeAutoCreateSet && !opts.WorktreeAutoMergeSet &&
+		!opts.WorktreeAutoCleanupSet && !opts.BranchGuardSet {
+		return nil
+	}
 
 	existing, readErr := os.ReadFile(workflowPath) //nolint:govet
 	if readErr != nil {
-		content := fmt.Sprintf("workflow:\n  worktree:\n    auto_create: %s\n", value)
+		content := buildFreshWorkflowBlock(opts)
 		if err := os.WriteFile(workflowPath, []byte(content), defs.FilePerm); err != nil {
 			return fmt.Errorf("write workflow.yaml: %w", err)
 		}
@@ -260,16 +270,104 @@ func writeWorkflowWorktreeYAML(sectionsDir string, opts InitOptions, result *Ini
 		return nil
 	}
 
-	patched, ok := patchYAMLPathValue(string(existing), "workflow.worktree.auto_create", value)
-	if !ok {
-		// Key absent from an existing document: leave it byte-identical rather
-		// than append a duplicate mapping key.
+	content := string(existing)
+	modified := false
+
+	if opts.WorktreeAutoCreateSet {
+		if patched, ok := patchYAMLPathValue(content, "workflow.worktree.auto_create",
+			fmt.Sprintf("%t", opts.WorktreeAutoCreate)); ok {
+			content = patched
+			modified = true
+		}
+	}
+	if opts.WorktreeAutoMergeSet {
+		if patched, ok := patchYAMLPathValue(content, "workflow.worktree.auto_merge",
+			fmt.Sprintf("%t", opts.WorktreeAutoMerge)); ok {
+			content = patched
+			modified = true
+		}
+	}
+	if opts.WorktreeAutoCleanupSet {
+		if patched, ok := patchYAMLPathValue(content, "workflow.worktree.auto_cleanup",
+			fmt.Sprintf("%t", opts.WorktreeAutoCleanup)); ok {
+			content = patched
+			modified = true
+		}
+	}
+	if opts.BranchGuardSet {
+		// branch_guard is absent from the distributed template, so the first
+		// opt-in inserts a fresh sub-block under the workflow top-level key.
+		v := fmt.Sprintf("%t", opts.BranchGuardEnabled)
+		if patched, ok := patchYAMLPathValue(content, "workflow.branch_guard.enabled", v); ok {
+			content = patched
+			modified = true
+		} else if inserted, didInsert := insertWorkflowSubBlock(content,
+			"branch_guard", fmt.Sprintf("enabled: %s", v)); didInsert {
+			content = inserted
+			modified = true
+		}
+	}
+
+	if !modified {
 		return nil
 	}
-	if err := os.WriteFile(workflowPath, []byte(patched), defs.FilePerm); err != nil {
+	if err := os.WriteFile(workflowPath, []byte(content), defs.FilePerm); err != nil {
 		return fmt.Errorf("patch workflow.yaml: %w", err)
 	}
 	return nil
+}
+
+// buildFreshWorkflowBlock renders a minimal workflow yaml block carrying only
+// the keys the user explicitly opted into. Used by the no-deployer fallback
+// path when no workflow.yaml exists yet. Indentation matches the deployed
+// template (4 spaces under workflow:, 8 under sub-mappings).
+func buildFreshWorkflowBlock(opts InitOptions) string {
+	var b strings.Builder
+	b.WriteString("workflow:\n")
+	if opts.WorktreeAutoCreateSet || opts.WorktreeAutoMergeSet || opts.WorktreeAutoCleanupSet {
+		b.WriteString("    worktree:\n")
+		if opts.WorktreeAutoCreateSet {
+			fmt.Fprintf(&b, "        auto_create: %t\n", opts.WorktreeAutoCreate)
+		}
+		if opts.WorktreeAutoMergeSet {
+			fmt.Fprintf(&b, "        auto_merge: %t\n", opts.WorktreeAutoMerge)
+		}
+		if opts.WorktreeAutoCleanupSet {
+			fmt.Fprintf(&b, "        auto_cleanup: %t\n", opts.WorktreeAutoCleanup)
+		}
+	}
+	if opts.BranchGuardSet {
+		fmt.Fprintf(&b, "    branch_guard:\n        enabled: %t\n", opts.BranchGuardEnabled)
+	}
+	return b.String()
+}
+
+// insertWorkflowSubBlock inserts a new indented sub-block (e.g. "branch_guard:")
+// under the top-level "workflow:" mapping key. subKey is the new mapping key
+// (e.g. "branch_guard"); nestedLine is the first nested scalar line, without a
+// leading indent (e.g. "enabled: true") — the helper applies the proper indent
+// (4 spaces for the sub-block key, 8 for the nested scalar) to match the
+// deployed template. Returns the new content and whether the workflow key was
+// found. Existing comments inside the workflow block are preserved (the new
+// block is inserted at the TOP of the workflow mapping, before any existing
+// comment lines), so the first opt-in does not silently clobber documentation.
+func insertWorkflowSubBlock(content, subKey, nestedLine string) (string, bool) {
+	lines := splitLines(content)
+	workflowLineIdx := -1
+	for i, line := range lines {
+		if trimLeadingSpaces(line) == "workflow:" {
+			workflowLineIdx = i
+			break
+		}
+	}
+	if workflowLineIdx == -1 {
+		return content, false
+	}
+	inserted := append([]string{}, lines[:workflowLineIdx+1]...)
+	inserted = append(inserted, "    "+subKey+":")
+	inserted = append(inserted, "        "+nestedLine)
+	inserted = append(inserted, lines[workflowLineIdx+1:]...)
+	return joinYAMLLines(inserted, strings.HasSuffix(content, "\n")), true
 }
 
 // patchYAMLKey is a simple line-by-line YAML key patcher.
