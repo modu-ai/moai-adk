@@ -77,7 +77,7 @@ _<plan-auditor PASS verdict consumed by orchestrator at Implementation Kickoff A
 
 ```yaml
 run_complete_at: 2026-08-05
-run_commit_sha: pending-backfill-m1
+run_commit_sha: 91bba5ed8
 run_status: pass
 ac_pass_count: 18
 ac_fail_count: 0
