@@ -4,7 +4,7 @@ package config
 // enum, its effective-default resolution (with the legacy performance_tier
 // read-time alias), the {model, effort} pair type, and per-agent-override
 // validation. The profile selects the active per-agent-group model+effort
-// column {max, medium, low}, replacing the retired plan_type × tier axis.
+// column {high, medium, low}, replacing the retired plan_type × tier axis.
 
 import "strings"
 
@@ -155,7 +155,7 @@ var retainedAgentNames = map[string]bool{
 // validateProfile checks the llm.profile value against the closed set
 // (REQ-MPM-008). An empty value is the effective default (medium) and is not an
 // error. A non-empty out-of-set value returns a ValidationError naming the
-// offending value AND the closed set {max, medium, low}.
+// offending value AND the closed set {high, medium, low}.
 func validateProfile(cfg *Config) []ValidationError {
 	p := strings.TrimSpace(cfg.LLM.Profile)
 	if p == "" || IsValidProfile(p) {
