@@ -35,6 +35,8 @@ _<pending sync-phase>_
 
 ## §F Phase 4 Mode Selection
 
+Decision: sub-agent
+
 ```yaml
 # Input parameters
 tier: L
