@@ -9,14 +9,66 @@ import (
 	"os"
 
 	sitter "github.com/smacker/go-tree-sitter"
+	"github.com/smacker/go-tree-sitter/cpp"
+	"github.com/smacker/go-tree-sitter/csharp"
+	"github.com/smacker/go-tree-sitter/elixir"
 	"github.com/smacker/go-tree-sitter/golang"
+	"github.com/smacker/go-tree-sitter/java"
+	"github.com/smacker/go-tree-sitter/javascript"
+	"github.com/smacker/go-tree-sitter/kotlin"
+	"github.com/smacker/go-tree-sitter/php"
+	"github.com/smacker/go-tree-sitter/python"
+	"github.com/smacker/go-tree-sitter/ruby"
+	"github.com/smacker/go-tree-sitter/rust"
+	"github.com/smacker/go-tree-sitter/scala"
+	"github.com/smacker/go-tree-sitter/swift"
+	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
 // Embedded per-language query files. Each capture is named @symbol.<kind>
 // so the extractor can group captures by kind generically.
-//
+
 //go:embed queries/go.scm
 var queryGo []byte
+
+//go:embed queries/python.scm
+var queryPython []byte
+
+//go:embed queries/typescript.scm
+var queryTypeScript []byte
+
+//go:embed queries/javascript.scm
+var queryJavaScript []byte
+
+//go:embed queries/rust.scm
+var queryRust []byte
+
+//go:embed queries/java.scm
+var queryJava []byte
+
+//go:embed queries/kotlin.scm
+var queryKotlin []byte
+
+//go:embed queries/csharp.scm
+var queryCSharp []byte
+
+//go:embed queries/ruby.scm
+var queryRuby []byte
+
+//go:embed queries/php.scm
+var queryPHP []byte
+
+//go:embed queries/elixir.scm
+var queryElixir []byte
+
+//go:embed queries/cpp.scm
+var queryCPP []byte
+
+//go:embed queries/scala.scm
+var queryScala []byte
+
+//go:embed queries/swift.scm
+var querySwift []byte
 
 // seedEntry binds a tree-sitter grammar to its embedded .scm query bytes.
 type seedEntry struct {
@@ -28,10 +80,23 @@ type seedEntry struct {
 // a compiled query is Supported: true; absent or scaffolded entries return
 // Supported: false (see scaffoldedLanguages in astx.go).
 //
-// M1 seeds Go only; M2 adds the remaining 13 working grammars by adding rows
-// here + their .scm query files (no per-language Go logic — REQ-NT-006).
+// Extending to a new language is a row here + a queries/<lang>.scm file — no
+// per-language Go logic (REQ-NT-006 data-file extension property).
 var seededGrammars = map[string]seedEntry{
-	"go": {grammar: golang.GetLanguage(), query: queryGo},
+	"go":         {grammar: golang.GetLanguage(), query: queryGo},
+	"python":     {grammar: python.GetLanguage(), query: queryPython},
+	"typescript": {grammar: typescript.GetLanguage(), query: queryTypeScript},
+	"javascript": {grammar: javascript.GetLanguage(), query: queryJavaScript},
+	"rust":       {grammar: rust.GetLanguage(), query: queryRust},
+	"java":       {grammar: java.GetLanguage(), query: queryJava},
+	"kotlin":     {grammar: kotlin.GetLanguage(), query: queryKotlin},
+	"csharp":     {grammar: csharp.GetLanguage(), query: queryCSharp},
+	"ruby":       {grammar: ruby.GetLanguage(), query: queryRuby},
+	"php":        {grammar: php.GetLanguage(), query: queryPHP},
+	"elixir":     {grammar: elixir.GetLanguage(), query: queryElixir},
+	"cpp":        {grammar: cpp.GetLanguage(), query: queryCPP},
+	"scala":      {grammar: scala.GetLanguage(), query: queryScala},
+	"swift":      {grammar: swift.GetLanguage(), query: querySwift},
 }
 
 // extractImpl is the CGO-enabled tree-sitter implementation of Extract.
