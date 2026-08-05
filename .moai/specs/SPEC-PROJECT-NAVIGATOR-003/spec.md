@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-NAVIGATOR-003
 title: "Project Navigator — tree-sitter auto-derivation into /moai codemaps (16-language AST-based capability rows)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec

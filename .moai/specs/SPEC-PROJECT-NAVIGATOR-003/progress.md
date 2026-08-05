@@ -70,7 +70,7 @@ Plan-phase artifacts committed on `feat/SPEC-PROJECT-NAVIGATOR-003` (NOT pushed 
 
 ```yaml
 run_complete_at: 2026-08-05
-run_commit_sha: pending-backfill-m6   # M6 commit; backfilled in a follow-up (self-referential SHA)
+run_commit_sha: 6b0f124d0   # merged run squash commit (PR #1366); backfilled in sync commit per D3
 run_status: complete
 ac_pass_count: 20
 ac_fail_count: 0
@@ -95,7 +95,28 @@ mx_tags_added:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-05
+sync_commit_sha: pending-backfill-sync   # self-referential — backfilled in a follow-up per D3
+sync_status: complete
+changelog_entry_position: top-of-unreleased-added   # SPEC-PROJECT-NAVIGATOR-003 entry in [Unreleased] ### Added
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"   # single sync-commit merged close (no separate Mx commit)
+  plan_md: n/a                           # no frontmatter
+  acceptance_md: n/a                     # no frontmatter
+  progress_md: n/a                       # progress.md has no status: frontmatter
+b12_self_test_a: pass   # pre-emission grep: 0 prior SPEC-PROJECT-NAVIGATOR-003 CHANGELOG matches before emission
+b12_self_test_b: pass   # AC count match: 20 distinct AC-NT-* IDs in acceptance.md == 20 ACs referenced in CHANGELOG entry
+b12_self_test_c: pass   # file-path verification: all 5 implementation paths ls-verified (astx/, navigator_enrich.go, navigator-enrich.sh, codemaps.md, references/navigator-astx.md)
+canary_compliance_check:
+  spec_id_format: valid                  # SPEC-PROJECT-NAVIGATOR-003 matches ^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$
+  close_subject_infix: "3-phase close"   # drift-detector close-infix matcher
+  close_subject_full_id: true            # full SPEC-ID in scope (not abbreviated prefix)
+mx_tag_validation:
+  extract_annotation: present            # internal/navigator/astx/astx.go:93 @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
+  supportedlanguages_annotation: present # internal/navigator/astx/astx.go:136 @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
+  enrichrows_annotation: present         # internal/navigator/astx/enrich.go:211 @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
+```
 
 ## §F Phase 4 Mode Selection
 
