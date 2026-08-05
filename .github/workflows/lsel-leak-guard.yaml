@@ -16,9 +16,17 @@ on:
       - 'internal/template/split_namespace_test.go'
       - '.github/workflows/lsel-leak-guard.yaml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lsel-leak-guard:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

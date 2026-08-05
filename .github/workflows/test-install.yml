@@ -179,7 +179,10 @@ jobs:
       - name: Test /? flag (help)
         shell: cmd
         run: |
-          install.bat /?
+          # `cmd /c "call install.bat /?"` -- wrapping in `cmd /c "..."` keeps /?
+          # inside the quoted command spec so cmd.exe does not intercept /? as
+          # its own help flag; `call` preserves batch return semantics.
+          cmd /c "call install.bat /?"
           echo Exit code: %ERRORLEVEL%
 
       - name: Test --help flag
