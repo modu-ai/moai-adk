@@ -444,7 +444,7 @@ ralph:
 
 **Saved content:**
 - Current active SPEC state (ID, phase, progress)
-- In-progress task list (TodoWrite)
+- In-progress task list (TaskCreate/TaskUpdate/TaskList/TaskGet)
 - Completed task list
 - Modified file list
 - Git state info (branch, uncommitted changes)
