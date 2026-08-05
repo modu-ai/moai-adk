@@ -110,7 +110,7 @@ coverage_internal_navigator_sync: 86.9%
 
 ```yaml
 sync_complete_at: 2026-08-05
-sync_commit_sha: pending-backfill  # self-referential — orchestrator backfills the real SHA post-commit (mirrors SPEC-PROJECT-NAVIGATOR-003 pattern: run PR + sync PR + backfill PR). manager-docs authors the sync commit but cannot know its own hash until the commit lands.
+sync_commit_sha: d1287d314  # backfilled from pending-backfill; original sync commit SHA (pre-rebase) - the sync commit itself cannot self-reference by physics
 sync_status: pass
 b12_self_test_a: pass  # pre-emission grep — grep -c 'SPEC-NAVIGATOR-SYNC-001' CHANGELOG.md == 0 before emission (no duplicate)
 b12_self_test_b: pass  # AC count match — 18 distinct AC IDs in acceptance.md; CHANGELOG entry references "18 AC PASS"
