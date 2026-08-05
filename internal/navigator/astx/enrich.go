@@ -205,6 +205,10 @@ func normalizeHeader(h string) string {
 // REQ-NT-011), walks each row's implementation-path, extracts symbols, and
 // aggregates them into EnrichedRows. It never aborts on a single row or
 // file failure (fail-open); rows whose path is absent carry OnDiskVerified=false.
+//
+// @MX:ANCHOR: [AUTO] whole-run enrichment entry point; consumed by the navigator-enrich CLI
+// @MX:REASON: public API boundary orchestrating header-driven join + walk + aggregate + provenance
+// @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
 func EnrichRows(opts EnrichOptions) (EnrichResult, error) {
 	if opts.MaxFilesPerPath == 0 {
 		opts.MaxFilesPerPath = defaultMaxFilesPerPath

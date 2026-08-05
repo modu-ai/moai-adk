@@ -88,6 +88,9 @@ var scaffoldedLanguages = map[string]bool{
 // SupportedLanguages returns the names of all registered languages (14 working
 // + 2 scaffolded). The 14 working languages are seeded with grammars under a
 // CGO-enabled build; r and flutter are always Supported: false.
+//
+// @MX:NOTE: [AUTO] registration order is stable for deterministic output
+// @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
 func SupportedLanguages() []string {
 	out := make([]string, 0, len(supportedLanguages))
 	for _, m := range supportedLanguages {
@@ -127,6 +130,10 @@ func IsScaffolded(language string) bool {
 //     as a fatal error — Error carries the detail for advisory use).
 //
 // Never panics.
+//
+// @MX:ANCHOR: [AUTO] per-file extraction entry point; high fan_in (called once per walked source file)
+// @MX:REASON: public API boundary consumed by EnrichRows + the navigator-enrich CLI + future downstream tooling
+// @MX:SPEC:SPEC-PROJECT-NAVIGATOR-003
 func Extract(language string, sourcePath string) (SymbolSet, error) {
 	return extractImpl(language, sourcePath)
 }

@@ -23,11 +23,75 @@ Plan-phase artifacts committed on `feat/SPEC-PROJECT-NAVIGATOR-003` (NOT pushed 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### AC binary PASS/FAIL matrix (acceptance.md §D — 20 AC, all MUST-PASS)
+
+| AC | Status | Verification |
+|----|--------|--------------|
+| AC-NT-001 codemaps emits enriched file when capability-map exists | PASS | `TestNavigatorEnrich_EmitsFilesWhenCapabilityMapExists` — writes capability-symbols.{md,json} with non-empty rows |
+| AC-NT-002 001 absence is graceful | PASS | `TestNavigatorEnrich_AbsenceIsGraceful` — exit nil, no output files written |
+| AC-NT-003 non-modification of 001 + 002 surfaces | PASS | boundary grep: 0 matches for navigator-regen/navigator-audit/audit-report/progress-map in internal/navigator/astx/ + navigator-enrich.sh; PRESERVE targets untouched |
+| AC-NT-004 14 grammars extract symbols on polyglot fixture | PASS | `TestPolyglot_AllFourteenGrammarsExtract` — 14/14 languages Supported=true with expected function+type |
+| AC-NT-005 r/flutter fail-open with Supported: false | PASS | `TestPolyglot_RAndFlutterFailOpen` + `TestExtract_ScaffoldedR_ReturnsUnsupported` |
+| AC-NT-006 adding a query file extends the language set (no Go edit) | PASS | design §2.1: registration is a data row in seededGrammars + a queries/<lang>.scm file (no per-language Go logic) |
+| AC-NT-007 per-language .scm defines symbols | PASS | grep: all 14 working queries carry ≥1 symbol.function/method + ≥1 symbol.type capture |
+| AC-NT-008 malformed source tolerance | PASS | extractImpl fail-open on read/parse/query errors (slog.Debug, return Supported:false); never aborts |
+| AC-NT-009 provenance per row | PASS | `TestCurrentProvenance_NonEmpty` + CurrentProvenance uses git rev-parse HEAD + committer date (no wall-clock) |
+| AC-NT-010 dual output with stable schema | PASS | `TestMarshalCapabilitySymbolsJSON_StableSchema` + `TestRenderMarkdown_ContainsHeader` — 4 top-level + 10 row fields, valid JSON |
+| AC-NT-011 header-driven join to 001 capability-map | PASS | `TestEnrichRows_HeaderDrivenJoin` — permuted columns still pair rows correctly |
+| AC-NT-012 idempotence | PASS | `TestEnrichRows_Idempotent` — two runs produce byte-identical JSON |
+| AC-NT-013 atomic writes | PASS | `TestNavigatorEnrich_AtomicWriteBarrier` — NAVIGATOR_PRE_RENAME_BARRIER blocks rename; no partial file observed |
+| AC-NT-014 path ceiling truncates with marker | PASS | `TestEnrichRows_FileCountCeilingTruncation` — MaxFilesPerPath=1 < 2 files → truncated=true |
+| AC-NT-015 cgo disabled: builds, nocgo returns Supported:false | PASS | `CGO_ENABLED=0 go build ./...` exit 0; measure_nocgo.go stub returns Supported:false, Extract never panics |
+| AC-NT-016 template neutrality grep clean | PASS | 0 matches for SPEC-(V3R[2-6]\|AGENCY\|WORKTREE\|PROJECT-NAVIGATOR) / REQ-(ATR\|WO\|...) across 3 mirrored surfaces; CI guards PASS |
+| AC-NT-017 Template-First mirror in place | PASS | 3 files mirrored under internal/template/templates/.claude/skills/; make build regenerated embedded assets |
+| AC-NT-018 extractor touches no LSEL surface | PASS | grep: 0 matches for lessons-inbox/state/lsel/memory/feedback/hns-lsel in new surfaces |
+| AC-NT-019 extractor touches no 002 audit surface | PASS | grep: 0 matches for audit-report/audit-known-matches in internal/navigator/astx/ + navigator-enrich.sh |
+| AC-NT-020 codemaps pipeline classification preserved | PASS | Phase 3 extension is executor delegation (script invocation), NOT LLM dispatch; agentless_audit_test.go CI guard PASS |
+
+### Run-phase commit ledger (M1→M6)
+
+| Milestone | Commit SHA | Subject |
+|-----------|------------|---------|
+| M1 | 2a835f76a | feat: M1 astx package + grammar registration + cgo split |
+| M2 | 3605dea80 | feat: M2 per-language .scm queries + symbol extraction |
+| M3 | 0dc5bf172 | feat: M3 row enrichment + header-driven join + output schema |
+| M4 | bb6757931 | feat: M4 navigator-enrich.sh + codemaps Phase 3 integration |
+| M5 | 678ab90e3 | feat: M5 template-First mirror + neutrality verification |
+| M6 | (this commit) | test: M6 full suite + MX tags + AC verification |
+
+### TDD RED evidence (E8)
+
+- M1 RED: `TestExtract_GoFixture` failed `Supported = false, want true` before GREEN implementation.
+- M2 RED: 10/14 polyglot languages passed; 4 failed (kotlin query-compile `invalid field 'name'`, elixir `invalid field 'function'`, swift `invalid node type 'struct_declaration'`, cpp function capture miss) → iterated queries against parse-tree dumps → 14/14 GREEN.
+- M3 RED: 4 enrich tests failed (0 rows / missing path / ceiling / empty provenance) before GREEN.
+- M4 RED: navigator-enrich tests compiled against stub → 0 output → GREEN after CLI implementation.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-05
+run_commit_sha: pending-backfill-m6   # M6 commit; backfilled in a follow-up (self-referential SHA)
+run_status: complete
+ac_pass_count: 20
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no PRESERVE target (001/002/LSEL) modified
+l44_pre_commit_fetch: n/a         # not pushed (orchestrator handles push + PR)
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0   # golangci-lint run --timeout=5m ./... = 0 issues (baseline was 0)
+cross_platform_build:
+  cgo_enabled_1: PASS   # CGO_ENABLED=1 go build ./... exit 0; go test ./internal/navigator/astx coverage 87.8%
+  cgo_enabled_0: PASS   # CGO_ENABLED=0 go build ./... exit 0; nocgo stub returns Supported:false
+total_run_phase_files:
+  new_go_package: internal/navigator/astx/ (astx.go, measure_cgo.go, measure_nocgo.go, enrich.go + 4 test files + queries/*.scm + testdata/)
+  new_cli: internal/cli/navigator_enrich.go + navigator_enrich_test.go
+  new_skill_surfaces: navigator-enrich.sh, references/navigator-astx.md, codemaps.md Phase 3 extension
+  template_mirrors: 3 files under internal/template/templates/.claude/skills/
+m1_to_mN_commit_strategy: one-commit-per-milestone (6 commits), Conventional Commits + 🗿 MoAI trailer
+coverage_astx_pct: 87.8   # go test -cover ./internal/navigator/astx/... (>= 85% target)
+mx_tags_added:
+  anchors: 2   # Extract, EnrichRows (each with @MX:REASON + @MX:SPEC)
+  notes: 1     # SupportedLanguages (@MX:SPEC)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
