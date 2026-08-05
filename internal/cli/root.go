@@ -170,6 +170,9 @@ func init() {
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
 
+	// SPEC-PROJECT-NAVIGATOR-003: AST enrichment entry point for /moai codemaps.
+	rootCmd.AddCommand(newNavigatorEnrichCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
