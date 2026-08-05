@@ -444,7 +444,7 @@ ralph:
 
 **保存内容:**
 - 現在のアクティブ SPEC 状態 (ID、ステップ、進行率)
-- 進行中の作業一覧 (TodoWrite)
+- 進行中の作業一覧 (TaskCreate/TaskUpdate/TaskList/TaskGet)
 - 完了した作業一覧
 - 修正されたファイル一覧
 - Git 状態情報 (ブランチ、コミットされていない変更)

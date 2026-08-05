@@ -51,7 +51,7 @@ MoAI-ADK 以 **基于 SPEC 的 TDD/DDD** 方法论为基础,并通过 **TRUST 5*
 
 - 将需求 **保存为文件** 永久保留
 - 即使会话中断,只要读 SPEC 就能 **接着工作**
-- 用 EARS 格式 **无歧义地** 明确定义
+- 用 GEARS 格式 **无歧义地** 明确定义
 - 无需重复相同说明,因此 **也节省 token**
 
 {{< callout type="info" >}}
@@ -212,7 +212,7 @@ MoAI-ADK 遵循 3 阶段开发工作流。Run 阶段的方法论依项目状态�
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"用 EARS 格式定义需求"| B{"方法论选择"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"用 GEARS 格式定义需求"| B{"方法论选择"}
     B -->|"新项目 (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"既有项目 (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]

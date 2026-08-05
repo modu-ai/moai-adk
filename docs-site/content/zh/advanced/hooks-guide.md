@@ -447,7 +447,7 @@ ralph:
 
 **保存内容：**
 - 当前活动 SPEC 状态（ID、阶段、进度）
-- 进行中的任务列表（TodoWrite）
+- 进行中的任务列表（TaskCreate/TaskUpdate/TaskList/TaskGet）
 - 已完成的任务列表
 - 已修改的文件列表
 - Git 状态信息（分支、未提交的变更）
