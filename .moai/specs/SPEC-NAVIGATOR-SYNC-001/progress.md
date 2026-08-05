@@ -108,4 +108,41 @@ coverage_internal_navigator_sync: 86.9%
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-08-05
+sync_commit_sha: pending-backfill  # self-referential — orchestrator backfills the real SHA post-commit (mirrors SPEC-PROJECT-NAVIGATOR-003 pattern: run PR + sync PR + backfill PR). manager-docs authors the sync commit but cannot know its own hash until the commit lands.
+sync_status: pass
+b12_self_test_a: pass  # pre-emission grep — grep -c 'SPEC-NAVIGATOR-SYNC-001' CHANGELOG.md == 0 before emission (no duplicate)
+b12_self_test_b: pass  # AC count match — 18 distinct AC IDs in acceptance.md; CHANGELOG entry references "18 AC PASS"
+b12_self_test_c: pass  # file path verification — every path claimed in the CHANGELOG entry verified via ls / Read
+changelog_entry_position: top-of-Added  # new entry inserted at the top of CHANGELOG.md `### Added` under `## [Unreleased]`
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into the single sync commit per the 3-phase close)"
+  plan_md: "n/a (no status field)"
+  acceptance_md: "n/a (no status field)"
+  progress_md: "n/a (E.4 sync_status field is this block)"
+canary_compliance_check:
+  go_test_internal_navigator_sync: pass  # orchestrator-verified: `go test ./internal/navigator/sync/...` PASS, coverage 86.9%
+  go_test_internal_cli: pass              # orchestrator-verified
+  golangci_lint: pass                     # orchestrator-verified (0 issues)
+  go_vet: pass                            # orchestrator-verified (clean)
+  template_neutrality_leak_guard: pass    # `go test ./internal/template/ -run TestInternalContentLeak` PASS (REQ-NS-018 / AC-018)
+  nav_tokens_byte_parity: pass            # `diff templates/.../nav-tokens.md .claude/rules/.../nav-tokens.md` empty
+nav_tokens_neutrality:
+  template_first: pass       # file exists under internal/template/templates/.claude/rules/moai/workflow/
+  local_mirror_byte_identical: pass
+  no_spec_id_leak: pass      # grep for SPEC-IDs in nav-tokens.md → 0 matches
+  no_req_token_leak: pass    # grep for REQ-NS-* in nav-tokens.md → 0 matches
+  no_internal_date_leak: pass # grep for 2026-08-05 in nav-tokens.md → 0 matches
+sha_backfill_strategy: orchestrator-backfill  # (b) leave pending marker; orchestrator backfills in a follow-up commit (003 pattern)
+readme_change: not-required  # M0 is an internal substrate; conceptual "blueprint-first" docs are a LATER Epic milestone. No user-facing README change in this sync (per sync delegation prompt §5).
+```
+
+### Sync-phase self-verification
+
+- Pre-emission grep: `grep -c 'SPEC-NAVIGATOR-SYNC-001' CHANGELOG.md` → `0` before emission (PASS — no duplicate entry from parallel BATCH-SYNC).
+- AC count match: 18 distinct AC identifiers in `acceptance.md` (`AC-001`..`AC-018`); CHANGELOG entry references "18 AC PASS".
+- File path verification: every path claimed in the CHANGELOG entry verified via `ls` / `Read` (`internal/navigator/sync/`, `internal/cli/navigator_sync.go`, `internal/template/templates/.claude/rules/moai/workflow/nav-tokens.md`).
+- nav-tokens.md neutrality: `grep -nE 'SPEC-[A-Z0-9]+-[0-9]+|REQ-NS-|AC-0[0-9][0-9]|2026-08-05'` on the template file → 0 matches (no internal-content leakage per CLAUDE.local.md §25 / AC-018).
+- nav-tokens.md byte-parity: `diff templates/.../nav-tokens.md .claude/rules/.../nav-tokens.md` → empty.
+- Staging discipline: `git diff --cached --name-only` will show ONLY `.moai/specs/SPEC-NAVIGATOR-SYNC-001/{spec.md,progress.md}`, `CHANGELOG.md` — NOT the unrelated `moai-domain-html-report` skill SKILL.md changes (those belong to PR #1373 and are excluded via explicit-pathspec staging).

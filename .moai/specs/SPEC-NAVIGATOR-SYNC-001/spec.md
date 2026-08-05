@@ -2,7 +2,7 @@
 id: SPEC-NAVIGATOR-SYNC-001
 title: "Navigator Sync (BAS M0) — SSOT binding-token trio + graph-join schema layer uniting the 3 Navigator chains"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec
