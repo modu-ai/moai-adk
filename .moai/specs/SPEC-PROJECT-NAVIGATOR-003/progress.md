@@ -97,7 +97,7 @@ mx_tags_added:
 
 ```yaml
 sync_complete_at: 2026-08-05
-sync_commit_sha: pending-backfill-sync   # self-referential — backfilled in a follow-up per D3
+sync_commit_sha: 223442321   # sync squash commit (PR #1367); backfilled per D3
 sync_status: complete
 changelog_entry_position: top-of-unreleased-added   # SPEC-PROJECT-NAVIGATOR-003 entry in [Unreleased] ### Added
 frontmatter_status_transitions:
