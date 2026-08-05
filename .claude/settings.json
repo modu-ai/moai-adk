@@ -481,24 +481,12 @@
           "Edit(~/.aws/**)",
           "Edit(~/.config/gcloud/**)",
           "Edit(~/.ssh/**)",
-          "Glob(./secrets/**)",
-          "Glob(~/.aws/**)",
-          "Glob(~/.config/gcloud/**)",
-          "Glob(~/.ssh/**)",
-          "Grep(./secrets/**)",
-          "Grep(~/.aws/**)",
-          "Grep(~/.config/gcloud/**)",
-          "Grep(~/.ssh/**)",
           "Read(./.env)",
           "Read(./.env.*)",
           "Read(./secrets/**)",
           "Read(~/.aws/**)",
           "Read(~/.config/gcloud/**)",
-          "Read(~/.ssh/**)",
-          "Write(./secrets/**)",
-          "Write(~/.aws/**)",
-          "Write(~/.config/gcloud/**)",
-          "Write(~/.ssh/**)"
+          "Read(~/.ssh/**)"
     ]
   },
   "attribution": {
