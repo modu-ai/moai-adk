@@ -2,7 +2,7 @@
 id: SPEC-MOAI-MCP-SERVER-001
 title: "moai self-hosted MCP server — thin stdio JSON-RPC wrapper over the internal/ core (3-way audit backends + status/trend tools)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-05
 updated: 2026-08-05
 author: manager-spec

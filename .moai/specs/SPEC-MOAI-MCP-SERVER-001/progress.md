@@ -11,7 +11,52 @@ _Plan-phase audit complete: PASS, 0.89 (Tier L threshold 0.85, skip-eligible), 2
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Server scaffold + core read/status tools + .mcp.json provisioning
+
+**Deliverables:** `internal/cli/mcp_server.go` (NEW — `moai mcp-server` subcommand + 9 thin-wrapper tool handlers + neutral `.mcp.json` entry seam), `internal/cli/mcp_server_test.go` (NEW — TDD coverage incl. in-process + real-stdio subprocess round-trip), `internal/cli/root.go` (AddCommand), `go.mod`/`go.sum` (mark3labs/mcp-go v0.57.0 promoted to direct dep).
+
+**Same-core-two-surfaces (C1/AP-1) — each handler calls the SAME internal/ fn the CLI uses:**
+
+| Tool | Wraps (verified) |
+|---|---|
+| `session_list` | `session.QueryActiveWork` (registry.go:254) |
+| `goal_status` | `goal.LoadGoal` (state.go:57) |
+| `goal_arm` | `goal.NewGoal` (schema.go:115) + `goal.SaveGoal` (state.go:76) — the cli/goal.go arm composition; inherits parseCondition + the infinite-goal fail-closed |
+| `spec_progress` | `spec.ListDocs` (listdocs.go:36) — the SPEC scanner `internal/web` board buildBoardView also calls |
+| `verify_snapshot` | `verify.Load` (store.go:38) + `verify.RecordCheck` (store.go:107) — first CLI/MCP surface for verify |
+| `verify_trend` | `verify.Load` (store.go:38) |
+| `spec_audit` | `spec.Audit` (audit.go:156) |
+| `spec_drift` | `spec.Audit` (audit.go:156), drift subset |
+| `audit_cache` | `runtime.AuditCache` ComputeHash/Lookup (audit_cache.go:50/InMemoryCache) |
+
+**AC matrix (M1):**
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-MCP-001 (subcommand + stdio initialize→tools/list→tools/call) | PASS | `TestNewMCPServerCmd_Registered` + `TestMoaiMCPServer_ToolsListDeclaresSchema` (in-process) + `TestMCPServer_StdioRoundTripSubprocess` (real stdio over pipes); server name = `moai` |
+| AC-MCP-002 (opt-in default-off) | PASS | `TestProvisionMoaiMCPServerEntry_OptInDefaultOff` — fresh project untouched until provision runs; no template provisioning in M1 |
+| AC-MCP-003 (thin-wrapper parity — same internal/ fn as CLI) | PASS | code inspection: every handler cites its verified file:line (table above); `TestMoaiMCPServer_SessionListRoundTrip` proves session_list reaches `session.QueryActiveWork` |
+| AC-MCP-004 (tools/list JSON Schema every core tool) | PASS | `TestMoaiMCPServer_ToolsListDeclaresSchema` asserts every tool carries a non-empty `inputSchema.Type` |
+| AC-MCP-005 (core tools wrap verified integration points) | PASS | `TestMoaiMCPServer_CoreHandlersRoundTrip` exercises all 9 tools via tools/call against representative state |
+| AC-MCP-006 (.mcp.json single neutral entry via atomic-config helpers) | PASS | `TestBuildMoaiMCPServerEntry_Neutral` ({command:"moai",args:["mcp-server"]}, no env/secrets/SHA/date) + `TestProvisionMoaiMCPServerEntryAt_Idempotent` (reuses `mutateClaudeJSONAtomic` + the existing `mcpEntryEqual`) |
+
+**Verification commands + results:**
+
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet ./internal/cli/` → exit 0
+- `golangci-lint run --timeout=3m ./internal/cli/` → 0 issues
+- `go test -count=1 -run '<M1 suite>' ./internal/cli/` → `ok` (all M1 tests PASS)
+- `go test -count=1 ./internal/cli/...` → all subpackages `ok` (cross-cutting gate, trust-but-verify)
+- `go test -cover ./internal/cli/` → `mcp_server.go` 86.2% (100/116 stmts); sole 0% fn = `runMCPServer` (blocking ServeStdio entry — behaviorally covered by `TestMCPServer_StdioRoundTripSubprocess`, not attributable to the parent coverprofile since it runs in a child process)
+- E4 subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_server.go` (excl. tests/comments) → 0 (REQ-MCP-014)
+- E8 RED (verbatim, pre-GREEN): `internal/cli/mcp_server_test.go:34:9: undefined: newMCPServerCmd` (+ `newMoaiMCPServer`, `moaiMCPServerName`, `buildMoaiMCPServerEntry`, `provisionMoaiMCPServerEntryAt`, `moaiMCPServerKey`) → `FAIL [build failed]`
+
+**M1-scope decision (deferred to M4):** the scope-resolving `provisionMoaiMCPServerEntry(scope)` wrapper is intentionally absent from M1 — it belongs with the `moai init` / `moai web` call sites + Template-First reversal (plan.md §F M4, design.md §6.3). M1 ships ONLY the path-explicit seam `provisionMoaiMCPServerEntryAt(configPath)` + the neutral `buildMoaiMCPServerEntry()`, so no dead/uncalled code is carried (scope discipline).
+
+**Multi-session race note:** during M1 a concurrent `manager-develop-mcp-m0` agent was live-editing the same files; ownership was consolidated to `manager-develop-mcp-m1` by the team-lead before the final coherence pass + commit. No double-commit occurred (0 commits since `eb1dd5c9c` prior to this M1 commit).
+
+_Run-phase NOT complete — M1 is the first of M1–M4; §E.3 stays pending until all run milestones land._
 
 ## §E.3 Run-phase Audit-Ready Signal
 
