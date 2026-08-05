@@ -56,7 +56,38 @@ _Plan-phase audit complete: PASS, 0.89 (Tier L threshold 0.85, skip-eligible), 2
 
 **Multi-session race note:** during M1 a concurrent `manager-develop-mcp-m0` agent was live-editing the same files; ownership was consolidated to `manager-develop-mcp-m1` by the team-lead before the final coherence pass + commit. No double-commit occurred (0 commits since `eb1dd5c9c` prior to this M1 commit).
 
-_Run-phase NOT complete — M1 is the first of M1–M4; §E.3 stays pending until all run milestones land._
+### M2 — Codex audit backend (Phase 1 tools) + Stop-hook gate
+
+**Deliverables:** `internal/cli/mcp_codex.go` (NEW — codex_audit + codex_setup handlers + codex JSON-RPC client + review-output.schema.json types + fail-open + readCodexReviewGateEnabled config reader), `internal/cli/codex_review_gate.go` (NEW — Stop-hook gate pure logic: self-gate + ALLOW/BLOCK + working-tree change detector), `internal/cli/mcp_codex_test.go` + `internal/cli/codex_review_gate_test.go` (NEW — TDD coverage, injectable seams, real temp-git-repo + /bin/cat integration paths), `internal/cli/mcp_server.go` (register the 2 new tools in `registerMoaiMCPTools`), `internal/cli/hook.go` (register `codex-review-gate` subcommand + `runCodexReviewGate` RunE), `internal/config/types.go` + `internal/config/defaults.go` (NEW `Codex`/`CodexReviewGateConfig` opt-in gate, default OFF; `DefaultCodexReviewGateTimeout = 900s`), `.claude/hooks/moai/handle-codex-review-gate.sh` (NEW shell wrapper; settings.json TEMPLATE registration deferred to M4), `hook_test.go`/`hook_pre_push_test.go`/`hook_e2e_test.go` (subcommand-count + utility-subcmd ledger updates for the new hook).
+
+**Codex backend (design.md §3 M2 / §G.4):** `codex_audit` shells out to the `codex app-server` JSON-RPC mode — `mode=native` → `review/start`, `mode=adversarial` → `turn/start` + an adversarial-review prompt. Output adopts the locked `review-output.schema.json` (`verdict`/`summary`/`findings[severity,title,body,file,line,confidence,recommendation]`/`next_steps`) via `mcp.NewToolResultJSON[ReviewOutput]` + `mcp.WithOutputSchema[ReviewOutput]()`. The codex binary is OPTIONAL + experimental (R1); every path fails open — missing / erroring / malformed codex ⇒ structured `VerdictInconclusive` (REQ-MCP-012 preview; the full 3-way claude-fallback plumbing is M3, but M2 guarantees no hard crash on missing codex). NO Node bridge of any kind (REQ-MCP-007) — enforced by `TestMCP_Codex_NoNodeBridge`.
+
+**AC matrix (M2):**
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-MCP-007 (codex_audit unified modes + schema output + fail-open on missing codex) | PASS | `TestCodexAudit_NativeDispatchesReviewStart` (review/start), `TestCodexAudit_AdversarialDispatchesTurnStart` (turn/start), `TestReviewOutputSchemaShape` (§G.4), `TestCodexAudit_FailOpenOnMissingCodex` / `_OnCodexError` / `_OnMalformedResponse` (VerdictInconclusive, no panic) |
+| AC-MCP-008 (codex_setup Go probe, no Node bridge) | PASS | `TestCodexSetup_GoProbeNoNodeBridge` (LookPath + `codex --version` + ChatGPT auth classification + `enable_review_gate` toggle), `TestCodexSetup_NotInstalledReportsUnknown`, `TestMCP_Codex_NoNodeBridge`, `TestClassifyCodexAuth_Branches` |
+| AC-MCP-009 (review-gate self-gate prevents false blocks) | PASS | `TestReviewGate_NoEditTurnAllows` (clean tree ⇒ ALLOW, no codex call), `TestReviewGate_LoopPreventionAllows` (stop_hook_active ⇒ ALLOW), `TestReviewGate_DisabledAllows` (opt-in default-off) |
+| AC-MCP-010 (review-gate opt-in via config + 900s timeout) | PASS | `readCodexReviewGateEnabled` (fail-CLOSED default off, `TestReadCodexReviewGateEnabled_ConfigBranches`), `config.DefaultCodexReviewGateTimeout = 900 * time.Second` (defaults.go), ALLOW/BLOCK contract via `TestReviewGate_CodexPassAllows` / `_CodexFailBlocks` |
+
+**Verification commands + results:**
+
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet ./internal/cli/ ./internal/config/` → exit 0
+- `golangci-lint run --timeout=3m ./internal/cli/ ./internal/config/` → 0 issues
+- `go test -count=1 ./internal/config/` → `ok` (config foundation; the new `Codex` field + 900s const do not regress the section loaders)
+- `go test -count=1 ./internal/cli/` → `ok` (full suite; the 3 hook ledger tests updated for the new subcommand: `TestHookCmd_SubcommandCount` 40→41, `TestHookCmd_PrePushSubcommandCount` 40→41, `TestHookValidEventTypes_AllHaveSubcommands` `utilitySubcmds += codex-review-gate`)
+- M2 per-file coverage (`go test -coverprofile`): `codex_review_gate.go` — HandleCodexReviewGate 100% / isBlockVerdict 100% / hasReviewableChanges 100% (real temp git repo) / reviewableFromPorcelain 83.3% / isRuntimeManagedPath 100%; `mcp_codex.go` — handleCodexAudit 100% / handleCodexSetup 100% / runCodexReviewRPC 83.3% / runCodexReview (realCodexRunner via /bin/cat) 100% / classifyCodexAuth 100% / readCodexReviewGateEnabled 90%. Aggregate of the two M2 files well above the 85% threshold.
+- E4 subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex.go internal/cli/codex_review_gate.go` (excl. tests/comments) → 0 (REQ-MCP-014)
+- E8 RED (verbatim, pre-GREEN): captured to `.moai/state/verify/mcp-m2/red_codex_audit.txt` + `red_review_gate.txt` — `undefined: ReviewOutput / codexCommandRunner / codexRunner / codexLookPath` and `undefined: HandleCodexReviewGate / reviewGateChangeDetector` → `FAIL [build failed]`
+
+**Self-gate design (AC-MCP-009, decision recorded):** the review gate ALLOWs immediately when (1) the config toggle is off (opt-in default-off), (2) `stop_hook_active` is true (mandatory loop prevention, mirroring `stopHandler`), or (3) the working tree has NO reviewable uncommitted change (`git status --porcelain` filtered to exclude `.moai/state|cache|reports|logs|harness` + `.claude/agent-memory` runtime paths — without this filter, per-turn hook-written state drift would trip the self-gate on every Stop and defeat AC-MCP-009). Only an uncommitted *source* change proceeds to a codex review; codex pass/inconclusive/missing ⇒ ALLOW, codex FAIL ⇒ the gate's sole BLOCK path. A turn that produced no code edit leaves no new source change ⇒ ALLOW (the AC-MCP-009 named case). Fail-open ALLOW on missing/erroring codex (a missing reviewer must not trap the session).
+
+**M2-scope decision (deferred to M3/M4):** (a) the full 3-way `audit_model` claude-fallback + GLM backend + `${VAR}` secret-hygiene plumbing is M3 (REQ-MCP-009/010/011/012/013/014) — M2 implements ONLY the codex_backend fail-open preview (`VerdictInconclusive` on missing codex). (b) The settings.json TEMPLATE registration of `codex-review-gate` (with the 900s timeout override) + the Template-First `.mcp.json` reversal is M4 (REQ-MCP-016/018); M2 ships the handler + the `handle-codex-review-gate.sh` wrapper + the subcommand, tested via direct `moai hook codex-review-gate` invocation. (c) `codex_setup` is read-only (REPORTS `enable_review_gate`); mutating the toggle is a wizard-owned concern (M4).
+
+_Run-phase NOT complete — M1+M2 are the first two of M1–M4; §E.3 stays pending until all run milestones land._
 
 ## §E.3 Run-phase Audit-Ready Signal
 

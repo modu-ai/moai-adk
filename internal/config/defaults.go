@@ -204,6 +204,14 @@ const (
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
 
+	// DefaultCodexReviewGateTimeout is the per-invocation timeout override for
+	// the `moai hook codex-review-gate` Stop hook (SPEC-MOAI-MCP-SERVER-001
+	// REQ-MCP-008 / AC-MCP-010). The moai-default 5s hook budget does NOT apply
+	// to this hook: a codex review legitimately runs for minutes, so the
+	// manifest pins 900s (15 min) for this hook only. Other hooks keep 5s.
+	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
+	DefaultCodexReviewGateTimeout = 900 * time.Second
+
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -610,6 +618,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// anywhere under internal/template/templates/.
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
+		},
+		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
+		// ships default-OFF. Distributed users get an inert Stop hook; a
+		// maintainer opts in via local config. Template neutrality (§25): no
+		// `enabled: true` under internal/template/templates/.
+		Codex: CodexConfig{
+			ReviewGate: CodexReviewGateConfig{
+				Enabled: false,
+			},
 		},
 		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
 		// feature ships default-OFF. When unset, moai init / moai profile /

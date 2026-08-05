@@ -180,6 +180,32 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup).")),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleAuditCache)
+
+	// --- M2 codex backend (design.md §3 M2) ---
+
+	// codex_audit → codex binary shellout (REQ-MCP-006 / AC-MCP-007). mode=native
+	// dispatches codex review/start; mode=adversarial dispatches turn/start + the
+	// adversarial-review prompt. Output adopts review-output.schema.json (§G.4).
+	// Fail-open on missing codex (VerdictInconclusive). The codex binary is
+	// OPTIONAL + experimental (R1).
+	s.AddTool(mcp.NewTool(
+		"codex_audit",
+		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
+		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'.")),
+		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
+		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
+		mcp.WithOutputSchema[ReviewOutput](),
+	), handleCodexAudit)
+
+	// codex_setup → Go probe (REQ-MCP-007 / AC-MCP-008): exec.LookPath("codex")
+	// + codex --version + auth-provider classification + the enable_review_gate
+	// toggle. NO Node bridge. Read-only.
+	s.AddTool(mcp.NewTool(
+		"codex_setup",
+		mcp.WithDescription("Probe the local codex installation: exec.LookPath + codex --version + auth-provider classification (ChatGPT / apiKey / provider / unknown) + the current enable_review_gate toggle state. Pure Go — no Node bridge."),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleCodexSetup)
 }
 
 // ─── thin-wrapper handlers (C1: each calls the SAME internal/ fn the CLI calls) ───
