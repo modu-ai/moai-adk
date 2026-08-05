@@ -409,14 +409,13 @@ func runWorkflowConfigStep(out io.Writer, projectRoot string) error {
 	if err := yamlpatch.PatchFile(workflowPath, edits); err != nil {
 		return fmt.Errorf("patch workflow.yaml: %w", err)
 	}
-	if _, err := fmt.Fprintln(out, tui.Pill(tui.PillOpts{
+	// Pill write failure is non-fatal — discard the error so it never aborts the wizard.
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{
 		Kind:  tui.PillOk,
 		Solid: false,
 		Label: "Workflow settings updated",
 		Theme: ptrThemeOrDefault(),
-	})); err != nil {
-		// Pill write failure is non-fatal — continue.
-	}
+	}))
 	return nil
 }
 
