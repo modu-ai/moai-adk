@@ -60,3 +60,27 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**Input parameters**
+- tier: L
+- scope (file count est.): ~14 implementation files (`internal/navigator/tiers/` ~9 Go files + `internal/cli/navigator_tiers.go` + 5 template surfaces)
+- domain count: 4 (navigator/tiers Go package, CLI wiring, template-first surfaces, SPEC docs)
+- file language mix: Go source (primary) + markdown templates + JSON/YAML schemas
+- concurrency benefit: LOW (coding-heavy, sequential dependency chain: schema → tier engines → overlay join → close)
+- Agent Teams prereqs: N/A (Mode 3 retired)
+
+**Mode evaluation**
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | substantial new code, 7 milestones |
+| 2 background | no | write-capable, result needed before continuing |
+| 3 agent-team | no | RETIRED |
+| 4 parallel | no | coding-heavy with sequential dependency chain; Anthropic coding-task parallelism caveat |
+| 5 sub-agent | YES | coding-heavy sequential, default for new-code work |
+| 6 workflow | no | new-code + multi-rule, not mechanical-uniform transform; <30 files |
+
+**Decision**: sub-agent (Mode 5), cycle_type=tdd, milestone-coherent chunks with orchestrator trust-but-verify gates between.
+
+**Justification**: This is coding-heavy new-code work (a new `internal/navigator/tiers/` package with a sequential dependency chain: schema → three tier engines → overlay integration → template-first close). Per Anthropic's coding-task parallelism caveat, sequential sub-agent delegation is the correct default for coding work. Semi-autonomous progression: the orchestrator delegates in milestone-coherent chunks (M4.1+M4.2 foundation → M4.3+M4.4+M4.5 engines → M4.6+M4.7 integration+close), running a trust-but-verify batch at each chunk boundary; `/moai goal` is NOT armed (per-session milestone gates instead). Route B (Tier L, feature branch `feat/SPEC-NAVIGATOR-SYNC-003` + PR per repo-local `enforce_admins` policy). Implementation Kickoff Approval PASSED (user-approved). Phase 1 plan-audit re-execution skip-eligible (PASS-WITH-DEBT 0.85 ≥ Tier L 0.85 threshold, artifacts unchanged since merged plan PR #1383).
