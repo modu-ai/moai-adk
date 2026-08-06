@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moai.local/blueprint/module_tree.schema.json",
+  "title": "Blueprint module tree",
+  "description": "Schema for module_tree.json — the registry of modules the blueprint layer composes per-module overviews from. The file is scaffolded once from source layout, then treated as authored content (refined, not auto-replaced). Each entry pins a module's identity, layer, responsibility, and dependency edges; the blueprint layer walks depends_on edges to resolve cross-module orientation questions before descending into source.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "modules"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version of this module_tree.json. Forward-compatible (additive only)."
+    },
+    "provenance": {
+      "$ref": "#/$defs/provenance"
+    },
+    "modules": {
+      "type": "array",
+      "description": "Module registry. Each entry corresponds to one overview.md the blueprint layer composes. Order is not semantically meaningful; consumers SHOULD sort by package_path before rendering.",
+      "items": { "$ref": "#/$defs/module" }
+    }
+  },
+
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "description": "Baseline attribution — both fields trace to a git baseline (NO wall-clock timestamp), so two runs on the same commit produce the same values.",
+      "additionalProperties": false,
+      "required": ["extract_commit_sha", "captured_at"],
+      "properties": {
+        "extract_commit_sha": {
+          "type": "string",
+          "description": "git rev-parse HEAD at scaffold time."
+        },
+        "captured_at": {
+          "type": "string",
+          "description": "Committer date of extract_commit_sha (git log -1 --format=%cI). NOT time.Now()."
+        }
+      }
+    },
+
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_path", "display_name", "layer", "responsibility", "depends_on"],
+      "properties": {
+        "package_path": {
+          "type": "string",
+          "description": "Canonical import path or repository-relative path to the module. Acts as the unique key."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Human-readable name shown as the overview.md H1 and in navigation."
+        },
+        "layer": {
+          "type": "string",
+          "enum": ["presentation", "domain", "infrastructure", "measurement"],
+          "description": "Architectural layer. presentation = user-facing surface (CLI, HTTP, TUI); domain = business logic; infrastructure = cross-cutting platform (config, logging, IO); measurement = observability / metrics / telemetry."
+        },
+        "responsibility": {
+          "type": "string",
+          "description": "One-sentence responsibility statement. Answers 'what does this module do?' without reference to other modules."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "package_path values of modules this module directly depends on. The blueprint layer follows these edges in dependency-order when answering cross-module orientation questions.",
+          "default": []
+        }
+      }
+    }
+  }
+}
