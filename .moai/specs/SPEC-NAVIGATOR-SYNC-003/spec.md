@@ -2,7 +2,7 @@
 id: SPEC-NAVIGATOR-SYNC-003
 title: "Navigator Sync (BAS M4) — 4-tier addressable map (Contract / Blueprint / ADR / Symbol extension over the M0 graph)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-06
 updated: 2026-08-06
 author: manager-spec
