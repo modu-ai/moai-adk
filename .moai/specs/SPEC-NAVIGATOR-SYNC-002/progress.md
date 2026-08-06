@@ -154,29 +154,84 @@ internal/hook/navigator_detect_test.go:390:9: too many errors
 ```
 After implementing `navigator_detect.go` + wiring the dispatcher branch, all 14 navigator-detect tests pass (GREEN).
 
+### M1.3 — Output surfaces (systemMessage + JSONL impact record)
+
+**Scope**: replace the M1.2 metrics-stub output with the two read-only advisory surfaces required by REQ-NS2-003. (a) A `systemMessage` advisory naming the changed path + ≤10 affected rows (overflow → `…and N more` tail; JSONL carries the full set). (b) An append-only machine-readable JSONL impact record at `.moai/state/navigator-detect/<session-id>.jsonl` for M2 Route to consume. NO work-item promotion (REQ-NS2-003c / AC-NS2-003c) — the Detect layer surfaces + records only; promotion is M2's job.
+
+**Files modified**:
+- `internal/hook/navigator_detect.go` (EXTENDED) — added: `emitNavigatorDetectAdvisory(input, result, currentSystemMessage) string` (single dispatcher touch-point), `recordNavigatorDetectImpact(input, result)` (JSONL-write orchestrator, fail-open), `formatNavigatorDetectSystemMessage(changedPath, result) string` (pure formatter, ≤10 rows, `…and N more` overflow tail), `appendNavigatorDetectImpact(projectRoot, sessionID, changedPath, changedAt, result) error` (append-only JSONL write, deterministic via injectable `changedAt`), `changedAtForProject(projectRoot) string` (git committer-date lookup, fail-open to `(no-git)` sentinel), `impactRecord`/`impactNode` JSONL schema types, `navigatorDetectStateDir`/`systemMessageRowLimit`/`changedAtNoGit` named constants.
+- `internal/hook/navigator_detect_test.go` (EXTENDED) — 8 new M1.3 tests: systemMessage format/nil/empty/overflow, JSONL schema + session-scoped appends, changedAt non-git placeholder, no-promotion source-grep (AC-NS2-003c), dispatcher integration (systemMessage + JSONL + no-block).
+- `internal/hook/post_tool.go` (MODIFIED) — the existing M1.2 branch (lines 219-238) now calls `emitNavigatorDetectAdvisory` to append the advisory to the existing `systemMessage` local (built by LSP/AST branches above) and `recordNavigatorDetectImpact` to append the JSONL line. Still gated on `result != nil`; `else` branch keeps the `no_match_or_fail_open` metrics entry.
+
+**JSONL record schema** (one line per detection — the contract M2 Route consumes, per plan.md §C.3):
+```json
+{"changed_path":"/abs/project/internal/auth/login.go","changed_at":"2026-08-06T12:00:00+00:00","affected_nodes":[{"entity_type":"spec","identifier":"SPEC-AUTH-001"}],"affected_edges":[{"edge_type":"spec-edge","source_node":"symbol:auth.ParseBearer","target_node":"spec:SPEC-AUTH-001","source_path":"/abs/project/internal/auth/login.go","line_number":17}]}
+```
+- `changed_at` is the git committer-date of the current HEAD (`git -C <root> log -1 --format=%cI`) — same stamp M0 uses (`internal/navigator/sync/provenance.go`) — so two detections on the same HEAD produce byte-identical `changed_at` values. Fail-open sentinel `(no-git)` when git is unavailable / not a repo / no HEAD.
+- Session-scoped path: `<projectRoot>/.moai/state/navigator-detect/<session-id>.jsonl` (created best-effort; append-only per session).
+- `affected_nodes` elements carry `entity_type` + `identifier` (display_name recoverable at M2 read time — kept the record tight).
+
+**systemMessage shape** (multi-line, advisory, ≤12 lines):
+```
+Navigator Detect: <changed_path> touches <N> graph row(s):
+- <source_node> → <target_node> (<edge_type> @ <source_path>:<line>)
+… (≤10 rows; "…and N more (see .moai/state/navigator-detect/ JSONL for the full set)" tail if overflow)
+```
+The Detect advisory is APPENDED to the existing systemMessage (LSP/AST findings survive — the branch runs after the diagnostic branches per `post_tool.go` dispatch order). The `…and N more` tail names the remainder count and points to the JSONL SSOT.
+
+#### AC-NS2-003 — advisory output (systemMessage + JSONL + no-promotion) — PASS
+
+**(a) systemMessage emitted, advisory** — PASS. `TestFormatNavigatorDetectSystemMessage_NonEmptyResult` + `TestPostToolHandler_NavigatorDetect_AdvisoryOutput`: non-empty Result → non-empty systemMessage starting with `Navigator Detect:`, names the changed path + the affected spec node (`spec:SPEC-AUTH-001` for the `@MX:SPEC` bridge case), and references the `spec-edge` edge_type. `out.Decision != "block"` and `out.HookSpecificOutput.Decision.Behavior != "block"` verified in dispatcher integration test.
+
+**(b) JSONL impact record appended** — PASS. `TestAppendNavigatorDetectImpact_JSONLSchema` + `TestAppendNavigatorDetectImpact_SessionScopedAndAppends`: file `.moai/state/navigator-detect/<session-id>.jsonl` exists after a detection; last line is valid JSON with required top-level keys `changed_path` / `changed_at` / `affected_nodes` / `affected_edges`, and each `affected_edges` element carries `edge_type` / `source_node` / `target_node` / `source_path` / `line_number`. Session-scoped: different `sessionID` → different file; same sessionID appends on new lines.
+
+**(c) no work-item promotion** — PASS. `TestNavigatorDetect_NoWorkItemPromotion` source-greps `navigator_detect.go` for forbidden promotion patterns (`gh issue create`, `.moai/specs/SPEC-`, `Decision: "block"`, `os.Exit(2)`, `"block"`, `TODO file`) → 0 matches. The only writes are the JSONL append under `.moai/state/navigator-detect/` and the `slog.Debug` diagnostic (no `.moai/specs/`, no source mutation, no issue creation).
+
+**Determinism**: `appendNavigatorDetectImpact` takes `changedAt` as an injectable parameter (no wall-clock inside the function). Tests pass `"(test-fixed)"`; production calls `changedAtForProject(projectRoot)` which shells out to git for the HEAD committer-date — same HEAD → same value across runs.
+
+#### RED evidence (TDD — verbatim pre-GREEN failing-test output)
+
+```
+$ go test ./internal/hook/ -run 'TestFormatNavigatorDetect|TestAppendNavigatorDetect|TestChangedAtForProject|TestNavigatorDetect_NoWorkItemPromotion|TestPostToolHandler_NavigatorDetect_AdvisoryOutput' -count=1
+# github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+internal/hook/navigator_detect_test.go:432:9: undefined: formatNavigatorDetectSystemMessage
+internal/hook/navigator_detect_test.go:455:12: undefined: formatNavigatorDetectSystemMessage
+internal/hook/navigator_detect_test.go:463:12: undefined: formatNavigatorDetectSystemMessage
+internal/hook/navigator_detect_test.go:484:9: undefined: formatNavigatorDetectSystemMessage
+internal/hook/navigator_detect_test.go:487:19: undefined: systemMessageRowLimit
+internal/hook/navigator_detect_test.go:510:12: undefined: appendNavigatorDetectImpact
+internal/hook/navigator_detect_test.go:514:37: undefined: navigatorDetectStateDir
+internal/hook/navigator_detect_test.go:563:12: undefined: appendNavigatorDetectImpact
+internal/hook/navigator_detect_test.go:566:12: undefined: appendNavigatorDetectImpact
+internal/hook/navigator_detect_test.go:566:12: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+```
+After implementing the M1.3 surfaces + wiring the dispatcher, all M1.3 + M1.2 + M1.1 navigator-detect tests pass (GREEN).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-06
-run_commit_sha: pending-backfill-M1.2
-run_status: M1.2-GREEN
-ac_pass_count: 5   # AC-NS2-002, AC-NS2-010 (M1.1) + AC-NS2-001a, AC-NS2-001b, AC-NS2-009 (M1.2)
+run_commit_sha: pending-backfill-M1.3
+run_status: M1.3-GREEN
+ac_pass_count: 6   # AC-NS2-002, AC-NS2-010 (M1.1) + AC-NS2-001a, AC-NS2-001b, AC-NS2-009 (M1.2) + AC-NS2-003 (M1.3)
 ac_fail_count: 0
-preserve_list_post_run_count: 2   # internal/navigator/sync/, internal/mx/ byte-unchanged (REQ-NS2-005)
-new_warnings_or_lints_introduced: 0
-total_run_phase_files: 5   # detect/{traverse,traverse_test}.go (M1.1) + hook/{navigator_detect,navigator_detect_test}.go + hook/post_tool.go (M1.2)
-m1_to_mN_commit_strategy: per-milestone (orchestrator gates M1.2→M1.3 in semi-autonomous mode)
+preserve_list_post_run_count: 2   # internal/navigator/sync/, internal/mx/ byte-unchanged (REQ-NS2-005) — verified via `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'` returns 0 matches
+new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/hook/... --timeout=3m → 0 issues; go vet → clean
+total_run_phase_files: 5   # detect/{traverse,traverse_test}.go (M1.1) + hook/{navigator_detect,navigator_detect_test}.go + hook/post_tool.go (M1.2+M1.3)
+m1_to_mN_commit_strategy: per-milestone (orchestrator gates M1.3→M1.4 in semi-autonomous mode)
+navigator_detect_jsonl_path: ".moai/state/navigator-detect/<session-id>.jsonl"   # M1.3 — the contract M2 Route consumes
+navigator_detect_systemmessage_shape: "Navigator Detect: <changed_path> touches <N> graph row(s):\\n- <source_node> → <target_node> (<edge_type> @ <source_path>:<line>) [≤10 rows; '…and N more' overflow tail]"
 ```
 
-**Out-of-scope for M1.2 (deferred to later milestones, NOT failures)**:
-- AC-NS2-003 (systemMessage + JSONL output) — M1.3
+**Out-of-scope for M1.3 (deferred to later milestones, NOT failures)**:
 - AC-NS2-004 (5-mode fail-open table) — M1.4 (M1.2 covers rows 004a absent + 004b unparseable at the integration boundary)
-- AC-NS2-005a/b (consumer-only grep + read-via-public-API) — M1.5 (the byte-unchanged half is already evidenced above for both M1.1 and M1.2)
+- AC-NS2-005a/b (consumer-only grep + read-via-public-API) — M1.5 (the byte-unchanged half is already evidenced above for M1.1/M1.2/M1.3: `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'` returns 0 matches)
 - AC-NS2-006 (atomic-read concurrency) — M1.4
 - AC-NS2-007 (≥80% coverage fixture corpus) — M1.5
-- AC-NS2-008 (non-overlap grep test) — M1.5 (M1.2-light version `TestNavigatorDetect_NoForkedChain` already passes)
-- AC-NS2-011 (template-first) — M1.5 (M1.2 made no template change — the gate is env-var-only, no `internal/template/templates/` edit, no `catalog.yaml` regen required per plan.md §C.4)
-- AC-NS2-012 (never-blocks full table) — M1.4 (M1.2-light grep already passes)
+- AC-NS2-008 (non-overlap grep test) — M1.5 (M1.2-light version `TestNavigatorDetect_NoForkedChain` already passes; M1.3 added `TestNavigatorDetect_NoWorkItemPromotion` covering AC-NS2-003c at source-grep level)
+- AC-NS2-011 (template-first) — M1.5 (M1.2/M1.3 made no template change — the gate is env-var-only, no `internal/template/templates/` edit, no `catalog.yaml` regen required per plan.md §C.4)
+- AC-NS2-012 (never-blocks full table) — M1.4 (M1.2-light grep already passes; M1.3 dispatcher test asserts `out.Decision != "block"` for the success case)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

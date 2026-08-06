@@ -223,10 +223,16 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// alongside runAstScan / runMxValidation / runMemoryAudit — NOT a forked
 	// PostToolUse chain. CONSUMER-ONLY (REQ-NS2-005): reads M0 outputs, never
 	// mutates internal/navigator/sync/ or internal/mx/. Fail-open on every
-	// error mode (REQ-NS2-004); NEVER blocks (REQ-NS2-012). M1.2 scope: trigger
-	// surface + dispatch wiring + Traverse call; the full systemMessage + JSONL
-	// output lands in M1.3.
+	// error mode (REQ-NS2-004); NEVER blocks (REQ-NS2-012).
+	//
+	// M1.3 (REQ-NS2-003): on a non-empty affected-row set, emit (a) the
+	// advisory systemMessage appended to the existing systemMessage built by
+	// the diagnostic branches above (LSP / AST), and (b) the append-only JSONL
+	// impact record at .moai/state/navigator-detect/<session-id>.jsonl for M2
+	// Route to consume. NO work-item promotion (REQ-NS2-003c).
 	if result := runNavigatorDetect(input); result != nil {
+		systemMessage = emitNavigatorDetectAdvisory(input, result, systemMessage)
+		recordNavigatorDetectImpact(input, result)
 		metrics["navigator_detect"] = map[string]any{
 			"affected_nodes": len(result.Nodes),
 			"affected_edges": len(result.Edges),

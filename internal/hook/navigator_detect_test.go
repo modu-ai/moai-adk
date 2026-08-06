@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/navigator/detect"
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
@@ -409,3 +410,266 @@ func TestDetectForChangedPath_GraphAbsent(t *testing.T) {
 // M1.2 wiring to the M1.1 contract — a refactor of Traverse's Result type
 // would break this test file at compile time).
 var _ = (*detect.Result)(nil)
+
+// --- M1.3 tests (AC-NS2-003): systemMessage + JSONL impact record +
+// no-promotion. These cover the output surfaces that replace the M1.2
+// metrics-stub. The Detect layer MUST emit (a) a read-only advisory
+// systemMessage naming the affected rows, (b) an append-only JSONL impact
+// record at .moai/state/navigator-detect/<session-id>.jsonl, and (c) MUST
+// NOT promote findings to any actionable work item (no issue, no SPEC mutation,
+// no TODO file). ---
+
+// AC-NS2-003a — systemMessage emitted, advisory.
+func TestFormatNavigatorDetectSystemMessage_NonEmptyResult(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	_, specPath, _ := writeNavGraphFixture(t, tmpDir)
+	graphPath := filepath.Join(tmpDir, ".moai", "project", "navigator", "nav-graph.json")
+	result := detectForChangedPath(graphPath, specPath)
+	if result == nil {
+		t.Fatal("expected non-nil Result for fixture path")
+	}
+	msg := formatNavigatorDetectSystemMessage(specPath, result)
+	if msg == "" {
+		t.Fatal("expected non-empty systemMessage for non-empty affected-row set")
+	}
+	if !strings.HasPrefix(msg, "Navigator Detect:") {
+		t.Errorf("systemMessage must begin with 'Navigator Detect:'; got %q", msg)
+	}
+	if !strings.Contains(msg, specPath) {
+		t.Errorf("systemMessage must name the changed path %q; got %q", specPath, msg)
+	}
+	// Must surface the @MX:SPEC bridge case (spec:SPEC-AUTH-001) — the
+	// highest-value affected row per plan §C.3 / spec.md HISTORY.
+	if !strings.Contains(msg, "spec:SPEC-AUTH-001") {
+		t.Errorf("systemMessage must name affected node spec:SPEC-AUTH-001; got %q", msg)
+	}
+	// Must reference at least one edge_type + source_path:line location.
+	if !strings.Contains(msg, "spec-edge") {
+		t.Errorf("systemMessage must name the originating edge_type spec-edge; got %q", msg)
+	}
+}
+
+func TestFormatNavigatorDetectSystemMessage_NilResult_NoAdvisory(t *testing.T) {
+	t.Parallel()
+	if got := formatNavigatorDetectSystemMessage("/anything", nil); got != "" {
+		t.Errorf("nil Result MUST emit no advisory; got %q", got)
+	}
+}
+
+func TestFormatNavigatorDetectSystemMessage_EmptyResult_NoAdvisory(t *testing.T) {
+	t.Parallel()
+	empty := &detect.Result{}
+	if got := formatNavigatorDetectSystemMessage("/anything", empty); got != "" {
+		t.Errorf("empty Result MUST emit no advisory; got %q", got)
+	}
+}
+
+// AC-NS2-003a (§F edge case "SystemMessage overflow"): >10 affected rows
+// truncate with a tail line; the JSONL record carries the full set.
+func TestFormatNavigatorDetectSystemMessage_OverflowTruncates(t *testing.T) {
+	t.Parallel()
+	// Build a synthetic Result with 13 affected edges — exceeds the 10-row cap.
+	const n = 13
+	result := &detect.Result{}
+	for i := range n {
+		result.Edges = append(result.Edges, navsync.Edge{
+			EdgeType:   navsync.EdgeSym,
+			SourceNode: "symbol:pkg.Foo",
+			TargetNode: "spec:SPEC-X",
+			SourcePath: "/abs/project/internal/foo.go",
+			LineNumber: i + 1,
+		})
+	}
+	msg := formatNavigatorDetectSystemMessage("/abs/project/internal/foo.go", result)
+	// The 10-row cap means at most 10 detail lines + 1 header + 1 overflow tail.
+	detailLines := strings.Count(msg, "\n- ")
+	if detailLines > systemMessageRowLimit {
+		t.Errorf("detail rows MUST be capped at %d; got %d detail lines:\n%s", systemMessageRowLimit, detailLines, msg)
+	}
+	if !strings.Contains(msg, "and 3 more") {
+		t.Errorf("overflow tail line MUST name the remainder (3); got:\n%s", msg)
+	}
+}
+
+// AC-NS2-003b — JSONL impact record schema. Each appended line MUST be valid
+// JSON with changed_path / changed_at / affected_nodes (array) / affected_edges
+// (array of {edge_type, source_node, target_node, source_path, line_number}).
+func TestAppendNavigatorDetectImpact_JSONLSchema(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	_, specPath, _ := writeNavGraphFixture(t, tmpDir)
+	graphPath := filepath.Join(tmpDir, ".moai", "project", "navigator", "nav-graph.json")
+	result := detectForChangedPath(graphPath, specPath)
+	if result == nil {
+		t.Fatal("expected non-nil Result for fixture path")
+	}
+
+	const sessionID = "test-session-001"
+	const changedAt = "2026-08-06T12:00:00+00:00" // deterministic; no wall-clock in tests
+	if err := appendNavigatorDetectImpact(tmpDir, sessionID, specPath, changedAt, result); err != nil {
+		t.Fatalf("appendNavigatorDetectImpact: %v", err)
+	}
+
+	jsonlPath := filepath.Join(tmpDir, navigatorDetectStateDir, sessionID+".jsonl")
+	raw, err := os.ReadFile(jsonlPath)
+	if err != nil {
+		t.Fatalf("read JSONL impact record: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) == 0 {
+		t.Fatalf("expected at least 1 JSONL line; got empty file at %s", jsonlPath)
+	}
+	last := lines[len(lines)-1]
+
+	var rec map[string]any
+	if err := json.Unmarshal([]byte(last), &rec); err != nil {
+		t.Fatalf("last JSONL line is not valid JSON: %v\nline=%s", err, last)
+	}
+	// Required top-level keys per AC-NS2-003b.
+	for _, key := range []string{"changed_path", "changed_at", "affected_nodes", "affected_edges"} {
+		if _, ok := rec[key]; !ok {
+			t.Errorf("JSONL record missing required key %q; line=%s", key, last)
+		}
+	}
+	if got, _ := rec["changed_path"].(string); got != specPath {
+		t.Errorf("changed_path mismatch; got %q want %q", got, specPath)
+	}
+	if got, _ := rec["changed_at"].(string); got != changedAt {
+		t.Errorf("changed_at mismatch; got %q want %q (deterministic injection)", got, changedAt)
+	}
+	edges, _ := rec["affected_edges"].([]any)
+	if len(edges) == 0 {
+		t.Fatalf("affected_edges MUST be a non-empty array; line=%s", last)
+	}
+	firstEdge, _ := edges[0].(map[string]any)
+	for _, key := range []string{"edge_type", "source_node", "target_node", "source_path", "line_number"} {
+		if _, ok := firstEdge[key]; !ok {
+			t.Errorf("affected_edges element missing required key %q; line=%s", key, last)
+		}
+	}
+}
+
+// AC-NS2-003b — session-scoped JSONL path. Different sessionIDs write to
+// distinct files; repeated edits to the same session append on new lines.
+func TestAppendNavigatorDetectImpact_SessionScopedAndAppends(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	_, specPath, _ := writeNavGraphFixture(t, tmpDir)
+	graphPath := filepath.Join(tmpDir, ".moai", "project", "navigator", "nav-graph.json")
+	result := detectForChangedPath(graphPath, specPath)
+
+	const s1, s2 = "sess-A", "sess-B"
+	if err := appendNavigatorDetectImpact(tmpDir, s1, specPath, "t1", result); err != nil {
+		t.Fatalf("append s1 #1: %v", err)
+	}
+	if err := appendNavigatorDetectImpact(tmpDir, s1, specPath, "t2", result); err != nil {
+		t.Fatalf("append s1 #2: %v", err)
+	}
+	if err := appendNavigatorDetectImpact(tmpDir, s2, specPath, "t3", result); err != nil {
+		t.Fatalf("append s2: %v", err)
+	}
+
+	s1Raw, _ := os.ReadFile(filepath.Join(tmpDir, navigatorDetectStateDir, s1+".jsonl"))
+	s2Raw, _ := os.ReadFile(filepath.Join(tmpDir, navigatorDetectStateDir, s2+".jsonl"))
+	s1Lines := strings.Count(strings.TrimSpace(string(s1Raw)), "\n") + 1
+	s2Lines := strings.Count(strings.TrimSpace(string(s2Raw)), "\n") + 1
+	if s1Lines != 2 {
+		t.Errorf("session %q JSONL MUST have 2 appended lines; got %d", s1, s1Lines)
+	}
+	if s2Lines != 1 {
+		t.Errorf("session %q JSONL MUST have 1 appended line; got %d", s2, s2Lines)
+	}
+}
+
+// changedAtForProject returns "(no-git)" or similar placeholder when git is
+// unavailable (no git binary / not a repo / no HEAD). It MUST NOT panic and
+// MUST NOT return a wall-clock value.
+func TestChangedAtForProject_NonGitRepoReturnsPlaceholder(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	// tmpDir is not a git repo. changedAtForProject MUST fail-open to a
+	// stable placeholder.
+	got := changedAtForProject(tmpDir)
+	if got == "" {
+		t.Errorf("changedAtForProject MUST NOT return empty string on non-git dir")
+	}
+	if strings.Contains(got, time.Now().Format("2006")) && strings.Contains(got, "T") {
+		// Best-effort wall-clock leak check: a wall-clock ISO timestamp would
+		// contain both the current year and a 'T' separator. The placeholder
+		// MUST be a stable sentinel, not a real timestamp.
+		t.Errorf("changedAtForProject returned a wall-clock-looking value for non-git dir: %q", got)
+	}
+}
+
+// AC-NS2-003c — no work-item promotion. The Detect source MUST NOT contain
+// any pattern that creates a GitHub issue, writes to .moai/specs/, creates a
+// TODO file, emits Decision:"block", or calls os.Exit(2).
+func TestNavigatorDetect_NoWorkItemPromotion(t *testing.T) {
+	t.Parallel()
+	raw, err := os.ReadFile("navigator_detect.go")
+	if err != nil {
+		t.Fatalf("read navigator_detect.go: %v", err)
+	}
+	body := string(raw)
+	forbidden := []string{
+		"gh issue create",       // GitHub issue promotion
+		"gh issue",              // any issue-tool invocation
+		`Decision: "block"`,     // REQ-NS2-012 — NEVER blocks
+		"os.Exit(2)",            // exit-2 block
+		`"block"`,               // any literal block decision
+		".moai/specs/SPEC-",     // SPEC mutation
+		"TODO file",             // TODO file creation
+	}
+	for _, pat := range forbidden {
+		if strings.Contains(body, pat) {
+			t.Errorf("forbidden promotion pattern %q found in navigator_detect.go (AC-NS2-003c / REQ-NS2-003 / REQ-NS2-012)", pat)
+		}
+	}
+}
+
+// Dispatcher integration — full Handle() emits the systemMessage AND appends
+// the JSONL impact record AND never returns Decision:"block".
+func TestPostToolHandler_NavigatorDetect_AdvisoryOutput(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	_, specPath, _ := writeNavGraphFixture(t, tmpDir)
+
+	input := &HookInput{
+		CWD:           tmpDir,
+		SessionID:     "sess-nd-advisory-001",
+		HookEventName: "PostToolUse",
+		ToolName:      "Write",
+		ToolInput:     json.RawMessage(`{"file_path": "` + specPath + `"}`),
+	}
+	h := NewPostToolHandler()
+	out, err := h.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle error: %v", err)
+	}
+	if out == nil {
+		t.Fatal("nil HookOutput")
+	}
+	// AC-NS2-003a: systemMessage is advisory (present), and Decision is NOT block.
+	if out.SystemMessage == "" {
+		t.Errorf("expected non-empty SystemMessage for Write on matching path")
+	}
+	if !strings.HasPrefix(out.SystemMessage, "Navigator Detect:") {
+		// The Detect advisory may be appended after LSP/AST text; check it is
+		// present somewhere in the message.
+		if !strings.Contains(out.SystemMessage, "Navigator Detect:") {
+			t.Errorf("SystemMessage missing 'Navigator Detect:' advisory; got %q", out.SystemMessage)
+		}
+	}
+	if out.HookSpecificOutput != nil && out.HookSpecificOutput.Decision != nil && out.HookSpecificOutput.Decision.Behavior == "block" {
+		t.Errorf("Detect MUST NEVER emit Decision 'block' (REQ-NS2-012); got HookSpecificOutput.Decision.Behavior=block")
+	}
+	if out.Decision == "block" {
+		t.Errorf("Detect MUST NEVER emit top-level Decision 'block' (REQ-NS2-012); got out.Decision=block")
+	}
+	// AC-NS2-003b: JSONL impact record was appended.
+	jsonlPath := filepath.Join(tmpDir, navigatorDetectStateDir, "sess-nd-advisory-001.jsonl")
+	if _, err := os.Stat(jsonlPath); err != nil {
+		t.Errorf("expected JSONL impact record at %s; got error: %v", jsonlPath, err)
+	}
+}
