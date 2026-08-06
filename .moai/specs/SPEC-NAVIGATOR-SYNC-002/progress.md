@@ -433,4 +433,21 @@ navigator_detect_template_first_verdict: "env-var-only / no template change / no
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-06
+sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround — backfilled by orchestrator in a follow-up commit after the sync commit lands (same pattern as SPEC-NAVIGATOR-SYNC-001 d1287d314)
+run_commit_sha: f106e078b   # M1.5 — final run-phase commit (last of M1.1..M1.5)
+sync_status: sync-phase-close-in-progress   # draft → implemented transition riding this sync commit; spec-frontmatter-schema.md § 3-phase close
+changelog_entry_position: top-of-Unreleased-Added   # SPEC-NAVIGATOR-SYNC-002 entry appended above SPEC-NAVIGATOR-SYNC-001 (most-recent-first)
+frontmatter_status_transitions:
+  spec_md: "draft → implemented"   # manager-docs owns this transition on the sync commit (in-progress → implemented → completed merged close per § Status Transition Ownership Matrix; this SPEC's run-phase started from draft, so the sync commit carries draft → implemented directly)
+  updated_field: "2026-08-06"   # refreshed to sync commit date
+docs_site_4locale_required: false   # internal PostToolUse hook — no user-visible CLI/command/config-key/API surface; §17.2 oss-docs chaining directive not triggered
+readme_update_required: false   # same rationale
+make_build_required: false   # no internal/template/templates/ path in the diff (AC-NS2-011)
+canary_compliance_check:
+  consumer_only_m0_mx_byte_unchanged: PASS   # git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/' → exit 1 (0 matches); TestConsumerOnly_M0AndMxByteUnchanged
+  posttooluse_never_blocks: PASS   # AC-NS2-012 — no Decision:"block" / os.Exit(2) in navigator_detect.go
+  template_first_no_template_change: PASS   # AC-NS2-011 — env-var-only verdict
+  fail_open_5_modes: PASS   # AC-NS2-004 — 004a..004e all degrade to silent nil
+```
