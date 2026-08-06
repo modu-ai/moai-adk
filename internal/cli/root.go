@@ -173,6 +173,9 @@ func init() {
 	// SPEC-PROJECT-NAVIGATOR-003: AST enrichment entry point for /moai codemaps.
 	rootCmd.AddCommand(newNavigatorEnrichCmd())
 
+	// SPEC-NAVIGATOR-SYNC-001: BAS integration-layer join step for /moai project.
+	rootCmd.AddCommand(newNavigatorSyncCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 

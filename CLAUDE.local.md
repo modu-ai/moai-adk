@@ -638,6 +638,19 @@ docs-site는 Claude Warm Editorial 디자인 시스템(코랄 `#cc785c` · Prete
 - [HARD] **푸터**: geekdoc 기본 `.gdoc-footer` 다크틸 배경을 `.cw-footer` 라이트 캔버스로 오버라이드(`!important`).
 - [HARD] **CSS 캐시 버스팅**: custom.html이 `hash.FNV32a (readFile ...)`로 CSS URL에 `?h=` 해시 부여(프로덕션 full build에서 정확). dev `hugo server`는 template 변경 시에만 해시 갱신되므로 CSS만 수정 후 미반영 시 서버 재시작 또는 하드 리로드.
 
+### §17.2 코드 변경 → 공개 문서 갱신 제안 (oss-docs chaining)
+
+사용자 가시 변화를 동반한 코드 변경이 main에 병합되면(SPEC sync-phase 완료 또는 직접 PR merge), 공개 문서(docs-site `adk.mo.ai.kr` + README 4-locale)에 해당 변화를 반영하도록 orchestrator가 `/harness:oss-docs` 실행을 **제안**한다. 자동 실행이 아닌 제안 기반 — 하네스가 무거워(opus content-author + locale-translator×3 sonnet + structure-curator) 매번 자동으로 돌리지 않고 GOSS 승인으로 실행한다.
+
+- [HARD] **트리거 조건** (아래 중 하나 이상의 사용자 가시 변경이 main에 들어왔을 때 제안):
+  - 신규 기능 · 명령어/서브커맨드/플래그 추가·변경
+  - 설정 키(config keys)·기본값·동작 변경
+  - 공개 API·CLI 동작 변경
+  - 설치 방식·런타임 요구사항 변화
+- [HARD] **제외** (제안 안 함): 내부 리팩터링(사용자 가시 변화 없음) · test-only · docs-only 변경 · 빌드/CI-only · 의존성 bump(가시 영향 없을 때)
+- [HARD] **제안 방식**: 해당 sync/merge 직후 `AskUserQuestion`으로 `/harness:oss-docs` 실행 여부 제안 — 옵션: run-now(지금 실행) / later(나중에) / skip(불필요). 자동 실행 아님.
+- **범위 가이드**: 변경이 특정 docs 페이지에 국한되면 풀 하네스(`/harness:oss-docs`) 대신 manager-docs sync로 가볍게 처리 가능. `/harness:oss-docs`는 README 재설계·신규 페이지·대규모 4-locale 갱신에 적합.
+
 ---
 
 ## 18. Git Workflow — Enhanced GitHub Flow
