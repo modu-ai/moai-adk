@@ -77,8 +77,8 @@ func TestRunGoalRender_ReArmedUnderNewSession(t *testing.T) {
 		Conditions: []goal.Condition{
 			{Type: goal.ConditionMechanical, Cmd: condition, ExpectExit: 0},
 		},
-		Ceiling:   goal.Ceiling{MaxTurns: 20},
-		Status:    goal.StatusArmed,
+		Ceiling: goal.Ceiling{MaxTurns: 20},
+		Status:  goal.StatusArmed,
 	}
 	if err := goal.SaveGoal(root, newG); err != nil {
 		t.Fatalf("SaveGoal new session: %v", err)

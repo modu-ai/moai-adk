@@ -60,7 +60,7 @@ func writeGoalFixture(t *testing.T, root, sessionID string) *goal.Goal {
 func runGoalRenderWithSession(t *testing.T, root, sessionID string, jsonOutput bool) ([]byte, *bytes.Buffer, *bytes.Buffer, error) {
 	t.Helper()
 	cmd := newGoalCmd()
-	cmd.PersistentFlags().Set("session", sessionID) // no-op if already default; sets on persistent flag
+	_ = cmd.PersistentFlags().Set("session", sessionID) // pin session so the test is deterministic
 	out := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
 	cmd.SetOut(out)
@@ -69,7 +69,7 @@ func runGoalRenderWithSession(t *testing.T, root, sessionID string, jsonOutput b
 	// the env-driven resolver: we set CLAUDE_PROJECT_DIR so resolveProjectDir lands on root.
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	if jsonOutput {
-		cmd.PersistentFlags().Set("json", "true")
+		_ = cmd.PersistentFlags().Set("json", "true")
 	}
 	// Dispatch to the render subcommand explicitly so RunE lands on runGoalRender.
 	cmd.SetArgs([]string{"render", "--session", sessionID})
@@ -89,9 +89,9 @@ func TestRunGoalRender_LoadsVerdictAndDOMShowsSections(t *testing.T) {
 	writeGoalFixture(t, root, sid)
 
 	verdict := &goal.Verdict{
-		Turn:         4,
-		Ceiling:      4,
-		CeilingExit:  true,
+		Turn:        4,
+		Ceiling:     4,
+		CeilingExit: true,
 		FailedConditions: []goal.FailedCond{
 			{Cmd: "go test ./...", Exit: 1, Tail: "FAIL: TestX"},
 		},

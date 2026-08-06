@@ -135,7 +135,7 @@ func drivePlanRenderHTML(t *testing.T, root, specID string, jsonOutput bool) (st
 	// newPlanCmd's root Execution needs the parent flags bound; set --json via
 	// PersistentFlags lookup so it lands correctly.
 	if jsonOutput {
-		cmd.PersistentFlags().Set("json", "true")
+		_ = cmd.PersistentFlags().Set("json", "true")
 	}
 	return specID, out, errBuf, cmd.Execute()
 }

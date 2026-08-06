@@ -114,7 +114,7 @@ func mostRecentReview(root, specID string) string {
 		return ""
 	}
 	prefix := specID + "-review-"
-	var best int = -1
+	best := -1
 	var bestName string
 	for _, e := range entries {
 		if e.IsDir() {
