@@ -56,8 +56,8 @@ func TestNonOverlap_Lens1_SourceGrepForbiddenFragments(t *testing.T) {
 	}
 	for _, m := range matches {
 		base := filepath.Base(m)
-		// Skip this test file: it names the fragments as the assertion target.
-		if base == "nonoverlap_test.go" {
+		// Lens 1 applies to PRODUCTION source only (acceptance.md §A.1); test fixtures legitimately name M0 producer paths.
+		if strings.HasSuffix(base, "_test.go") {
 			continue
 		}
 		b, err := os.ReadFile(m)
@@ -92,7 +92,7 @@ func TestNonOverlap_Lens1_ConsumerOnlyOnProducers(t *testing.T) {
 	}
 	for _, m := range matches {
 		base := filepath.Base(m)
-		if base == "nonoverlap_test.go" {
+		if strings.HasSuffix(base, "_test.go") {
 			continue
 		}
 		b, err := os.ReadFile(m)

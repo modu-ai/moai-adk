@@ -169,6 +169,9 @@ func unquoteYAMLScalar(s string) string {
 	return s
 }
 
-// _ = bytes / fmt references kept for future parser-extension hooks without
-// forcing an unused import cycle if the parser shrinks.
-var _ = fmt.Sprintf
+// _ keeps the bytes + fmt imports in scope for future parser-extension hooks
+// without forcing an unused-import cycle if the parser shrinks.
+var (
+	_ = bytes.Equal
+	_ = fmt.Sprintf
+)
