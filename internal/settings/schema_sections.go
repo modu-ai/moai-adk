@@ -255,6 +255,19 @@ func seamSectionFields() []FieldDef {
 		// console renders it from this FieldDef via schemaform.go; the seam writer
 		// (yamlpatch) upserts the nested mapping on first edit.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "branch_guard", "enabled"),
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
+		// selection surfaced in the web console. These are PersistSeam fields
+		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
+		// 5-level path), reading back through the M3 AuditConfig typed config
+		// (the IDENTICAL interpreter the wizard writes + the MCP handlers read —
+		// no fork). audit_model is the active backend; the three gates are the
+		// per-auditor strictness. Typed as text (the enum is validated at the M3
+		// config-read layer, activeAuditBackend); the wizard offers the validated
+		// select for the primary path.
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "model"),
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "claude"),
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "codex"),
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "glm"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		s(SectionHarness, "harness", TypeText, "harness", "default_profile"),

@@ -79,6 +79,21 @@ type InitOptions struct {
 	WorktreeAutoCreateSet bool // Issue 3 extension: --worktree-auto-create flag OR wizard answer
 	WorktreeAutoMergeSet  bool
 	WorktreeAutoCleanupSet bool
+
+	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — the audit + MCP
+	// opt-in selection flowing from the wizard (or flags). The string fields
+	// reuse the M3 typed-config vocabulary (internal/config AuditModel* /
+	// AuditGate*). AuditConfigSet is the companion tracker: true when the
+	// wizard ran (interactive init) so the audit block is persisted; a
+	// `--non-interactive` init with no audit flags leaves the deployed template
+	// default (no audit block) untouched. The two opt-in flags ship false (C6).
+	AuditModel        string // workflow.audit.model ∈ {claude,codex,glm,multi}
+	AuditGateClaude   string // workflow.audit.gates.claude ∈ {off,advisory,required}
+	AuditGateCodex    string // workflow.audit.gates.codex
+	AuditGateGLM      string // workflow.audit.gates.glm
+	CodexAuditEnabled bool   // workflow.codex.review_gate.enabled master toggle
+	MCPToolsOptIn     bool   // provisions the .mcp.json moai entry
+	AuditConfigSet    bool   // true when the audit selection was collected (wizard ran)
 }
 
 // InitResult summarizes the outcome of project initialization.

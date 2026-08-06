@@ -436,6 +436,16 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): autonomy-tier wizard page.
 	case "autonomy_tier":
 		result.AutonomyTier = value
+	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): audit selection.
+	// Values reuse the M3 typed-config enum vocabulary (no fork).
+	case "audit_model":
+		result.AuditModel = value
+	case "audit_gate_claude":
+		result.AuditGateClaude = value
+	case "audit_gate_codex":
+		result.AuditGateCodex = value
+	case "audit_gate_glm":
+		result.AuditGateGLM = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }
@@ -451,6 +461,11 @@ func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
 	case "worktree_auto_create":
 		result.WorktreeAutoCreate = value
+	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): opt-in toggles.
+	case "codex_audit_enabled":
+		result.CodexAuditEnabled = value
+	case "mcp_tools_opt_in":
+		result.MCPToolsOptIn = value
 	}
 }
 

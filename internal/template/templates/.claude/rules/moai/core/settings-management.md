@@ -30,7 +30,7 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 
 ### MCP Configuration
 
-MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`. Users may still configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
+MoAI-ADK provisions exactly one local MCP server — the `moai mcp-server` stdio JSON-RPC process — via an opt-in `.mcp.json` entry shaped `{"mcpServers":{"moai":{"command":"moai","args":["mcp-server"]}}}` (PATH-resolved `command`, no env secrets, no third-party entries). The entry is opt-in: `moai init` and `moai web` offer it, and a fresh project ships it inert. Users may also configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
 > Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5 and 4.8) for deep reasoning.
 
