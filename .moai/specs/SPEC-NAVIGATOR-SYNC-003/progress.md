@@ -51,11 +51,93 @@ era: V3R6                        # explicit override (modern era; subject to dri
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Chunk 1 — M4.1 schema + M4.2 RED non-overlap invariant tests (HEAD `492c0c4ff`)
+
+- `internal/navigator/tiers/schema.go` — TiersOverlay + ContractNode/BlueprintNode/DecisionEnrichment/SymbolEnrichment/TierEdge + Provenance types.
+- `internal/navigator/tiers/overlay.go` — stub `Enrich` (M4.2 RED state intended).
+- `internal/navigator/tiers/nonoverlap_test.go` — Lens 1 (source-grep) + Lens 2 (runtime-fixture) guardrail. Lens 2 captures the intended RED state (tiers.json absent under the no-op stub).
+- Independently verified 9/9 PASS at `492c0c4ff` by the orchestrator before Chunk 2 spawned.
+
+### Chunk 2 — M4.3 + M4.4 + M4.5 (the three tier engines + overlay wiring)
+
+Per-milestone commits on `feat/SPEC-NAVIGATOR-SYNC-003` (NOT pushed; Route B Tier L awaits orchestrator push decision):
+
+| Milestone | Commit | Deliverable |
+|-----------|--------|-------------|
+| M4.3 | `a951d455a` | Tier 0 Contract + Tier 2 ADR engines (contract.go, drift.go, adr.go) + 18 tests |
+| M4.4 | `9529e0242` | Tier 1 Blueprint engine (blueprint.go — scaffold-then-refine + Kiro 7-section overview) + 8 tests |
+| M4.5 | `d99ca4d1e` | Tier 3 Symbol 2-tier (symbol_struct.go + symbol_narrative.go) + overlay.go wiring + nonoverlap Lens 1 fix + 28 tests |
+
+Files added: `contract.go`, `drift.go`, `adr.go`, `blueprint.go`, `symbol_struct.go`, `symbol_narrative.go`, `overlay.go` (rewired), 7 test files (`contract_test.go`, `drift_test.go`, `adr_test.go`, `blueprint_test.go`, `symbol_test.go`, `overlay_test.go`, `coverage_test.go`).
+
+### Commands run + observed output
+
+```
+$ go build ./...                                 → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...        → exit 0
+$ go test ./internal/navigator/tiers/...          → ok 0.6s (all tests PASS, incl. M4.2 Lens 2 RED→GREEN closure)
+$ go test -cover ./internal/navigator/tiers/...   → coverage: 85.0% of statements (≥85% AC target MET)
+$ golangci-lint run --timeout=2m ./internal/navigator/tiers/... → 0 issues
+$ go test ./internal/navigator/{tiers,astx,sync,detect}/...     → all PASS (no cross-cutting regression)
+$ go test ./internal/cli/...                      → all PASS (172s, neighbor-package regression check)
+```
+
+### AC matrix — engine ACs (this chunk's scope)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-NS3-001 (contract node additive) | PASS | `TestContract_RegistryEntries_Emitted` — 3 additive kinds (schema/allowlist/openapi) emitted; raw-string forward-compat for unknown kinds. |
+| AC-NS3-002 (drift build-enforced, graph fail-open) | PASS | `TestDrift_NeverBlocksEmission` — Enrich completes + emits tiers.json with `TIER_CONTRACT_CI=1` + failing validator. `TestDrift_CIMode_Indicator` — driftCIMode flag. |
+| AC-NS3-003 (3 surfaces + empty-registry degrade) | PASS | `TestContract_RegistryEmpty_ZeroNodes` — absent + empty registry → 0 nodes. `TestContract_KindsAreAdditive` — 3 kinds recognized. |
+| AC-NS3-004 (module_tree.json authored scaffold) | PASS | `TestBlueprint_ScaffoldAbsence_CreatesDraft` + `TestBlueprint_PlainRun_DoesNotOverwriteAuthoredTree` (byte-identical on plain run). |
+| AC-NS3-005 (overview Kiro 7 sections + provenance) | PASS | `TestBlueprint_Overview_KiroSevenSections` — all 7 sections present + last_updated_commit git SHA. |
+| AC-NS3-006 (blueprint drift is debt NOT build failure) | PASS | `TestBlueprint_NoDriftFailTest` — negative test asserts no drift-fail pattern exists in test files (REQ-NS3-006 load-bearing). |
+| AC-NS3-007 (blueprint node + module/owns edges) | PASS | `TestBlueprint_Enumerate_EmitsNodesAndModuleEdges` + `TestBuildOwnsEdges_ByPathContainment`. |
+| AC-NS3-008 (ADR 4 fields + missing-ADR degrade) | PASS | `TestADR_ResolvePresent` + `TestADR_ResolveAbsent_DegradesGracefully` + `TestADR_GrandfatheredShape_ParsesBestEffort`. |
+| AC-NS3-009 (supersede immutability) | PASS | `TestADR_Supersede_Immutability` — prior body byte-identical except the single Status line; new ADR carries `supersedes:`. |
+| AC-NS3-010 (decision enrichment in overlay) | PASS | `TestADR_EnumerateDecisions_FromM0Graph` + `TestADR_SupersedeChain_ReflectedInEnrichment`. |
+| AC-NS3-011 (per-symbol signature + decl + refs) | PASS | `TestSymbol_GoStructure_SignatureDeclRefs` — ParseHeader fixture produces signature + decl_path + decl_line + ≥1 reference. |
+| AC-NS3-012 (narrative metadata last_updated_commit gate) | PASS | `TestSymbol_Narrative_LastUpdatedCommitGate` — ShouldRedraft holds on matching hash, fires on changed/absent/malformed. |
+| AC-NS3-013 (Go astx path; SCIP absent → graceful) | PASS | `TestSymbol_Dispatch_NonGoLanguage_FailOpen` — TypeScript → errIndexerNotConfigured, 0 records, no error. |
+| AC-NS3-014 (symbol enrichment in overlay) | PASS | `TestSymbol_ReferencesCap` — references capped at MaxReferences. |
+| AC-NS3-015 (2-tier separable; deterministic without LLM) | PASS | `TestSymbol_TwoTierSeparable_DeterministicWithoutNarrative` — narrative disabled → deterministic fields populated, narrative_path empty, exit 0. |
+| AC-NS3-016 (consumer-only on M0/M1) | PASS | `TestNonOverlap_Lens1_ConsumerOnlyOnProducers` (Lens 1 source-grep) + `TestNonOverlap_Lens2_RuntimeFixtureWriteSurface` (Lens 2 runtime). |
+| AC-NS3-017 (no predecessor + no LSEL surface) | PASS | `TestNonOverlap_Lens1_SourceGrepForbiddenFragments`. |
+| AC-NS3-018 (write-surface isolation; nav-graph never overwritten) | PASS | `TestNonOverlap_Lens2_RuntimeFixtureWriteSurface` (M4.2 RED→GREEN closed by overlay wiring) + `TestEnrich_NavGraphUntouched_M4_2_Lens2`. |
+| AC-NS3-019 (provenance no wall-clock; byte-identical re-run) | PASS | `TestEnrich_ByteIdentical_ReRun` + `currentProvenance` uses `git log -1 --format=%cI`. `grep -rn "time.Now()" internal/navigator/tiers/` excluding narrative → 0 matches in the deterministic path. |
+| AC-NS3-020 (fail-open each error mode) | PASS | `TestEnrich_FailOpen_NavGraphAbsent` + `TestReadM0DecisionIDs_Unparseable` + `TestBlueprint_ScaffoldAbsence_CodemapsAbsent_FailOpen`. |
+| AC-NS3-021 (template-first + neutrality) | DEFERRED | M4.7 (Chunk 3) — the 5 author-facing template surfaces are out of this chunk's scope. |
+| AC-NS3-022 (≥40% reads-reduction via named fixture) | DEFERRED | M4.7 (Chunk 3) — the success-metric fixture procedure is out of this chunk's scope. |
+
+### RED→GREEN evidence (E8)
+
+The Chunk 1 RED state captured by `TestNonOverlap_Lens2_RuntimeFixtureWriteSurface` was the M4.2 intended RED: `Enrich did not emit <tmp>/.moai/project/navigator/tiers.json (M4.2 intended-RED: engine lands in Chunk 2)`. After the Chunk 2 overlay wiring landed (`d99ca4d1e`), the same test now PASSes — tiers.json is emitted by the real engine. This closes the M4.2 Lens 2 RED→GREEN cycle.
+
+For each new tdd cycle in Chunk 2 (contract / drift / ADR / blueprint / symbol), the RED failing-test output was captured BEFORE the implementation made the test pass (`undefined: enumerateContracts`, `undefined: checkContractDrift`, `undefined: resolveADR`, `undefined: ensureModuleTreeScaffold`, `undefined: extractGoStructures` respectively) — each implementation file was authored AFTER its test ran RED, per the test-first invariant.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: partial-complete
+run_complete_at: 2026-08-06
+run_commit_sha: d99ca4d1e  # M4.5 tip; final closeSHA backfilled after PR merge
+ac_pass_count: 20  # AC-NS3-001..020 engine + non-overlap + provenance ACs
+ac_fail_count: 0
+ac_deferred_count: 2  # AC-NS3-021 (template-first) + AC-NS3-022 (metric fixture) → Chunk 3 (M4.7)
+preserve_list_post_run_count: 5  # astx / sync / detect+hook / mx / nonoverlap invariant semantics
+cross_platform_build:
+  darwin_amd64: PASS   # go build ./...
+  windows_amd64: PASS  # GOOS=windows GOARCH=amd64 go build ./...
+coverage_pct: 85.0     # internal/navigator/tiers/... — meets ≥85% AC target
+lint_status: 0 issues  # golangci-lint run --timeout=2m ./internal/navigator/tiers/...
+new_warnings_or_lints_introduced: 0
+total_run_phase_files: 14  # 7 engine .go + 7 _test.go under internal/navigator/tiers/
+m1_to_mN_commit_strategy: per-milestone commits (M4.3 a951d455a / M4.4 9529e0242 / M4.5 d99ca4d1e)
+l44_pre_commit_fetch: PASS  # main checkout on feat/SPEC-NAVIGATOR-SYNC-003, no foreign sessions detected at chunk entry
+l44_post_push_fetch: pending-push  # Chunk 2 NOT pushed; orchestrator owns Route B push decision
+open_blockers: 0
+chunk_status: chunk-2-complete-pending-chunk-3
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
