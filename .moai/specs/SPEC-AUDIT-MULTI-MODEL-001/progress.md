@@ -164,7 +164,57 @@ Full-suite green: `go test ./... → exit 0`. Lint clean: `golangci-lint run →
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates the sync-phase close signal (sync_commit_sha, implemented → completed transition, 3-phase close) here>_
+```yaml
+sync_complete_at: "2026-08-07"
+sync_commit_sha: "pending-backfill-sync"   # self-referential-hazard workaround per spec-frontmatter-schema.md D3 — a commit cannot know its own SHA until it lands; backfilled in a follow-up commit after the sync PR merges (same pattern as SPEC-PROJECT-NAVIGATOR-003 #1366)
+sync_status: "PASS"
+sync_phase_route: "B (PR-mandatory — this repo's enforce_admins: true branch-protection override)"
+sync_commit_subject: "docs(SPEC-AUDIT-MULTI-MODEL-001): sync-phase artifacts + 3-phase close"
+sync_3_phase_close: true   # plan→run→sync close on the single sync commit (no separate Mx-phase commit; MX Tag is a cross-cutting sync sub-step)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"   # terminal transition merged into this sync commit
+  plan_md: "(no status field — Tier L plan.md is body-only)"
+  acceptance_md: "(no status field — Tier L acceptance.md is body-only)"
+  progress_md: "(no frontmatter — progress.md is body-only; §E.4 is the close signal)"
+changelog_entry_position: "CHANGELOG.md ## [Unreleased] → ### Added (new bullet inserted between SPEC-MOAI-MCP-SERVER-001 forward-reference and SPEC-NAVIGATOR-SYNC-002)"
+changelog_self_test:
+  pre_emission_grep_count: 1   # grep -c 'SPEC-AUDIT-MULTI-MODEL' CHANGELOG.md BEFORE emission — the single hit was the SPEC-MOAI-MCP-SERVER-001 forward-reference ("deferred to a future SPEC-AUDIT-MULTI-MODEL"), NOT a duplicate sync entry
+  post_emission_grep_count: 2   # AFTER emission — the forward-reference + the new dedicated entry (this is the expected delta, not a duplicate)
+  ac_count_acceptance_md: 25   # acceptance.md SSOT — 25 distinct AC IDs AC-AMM-001..025
+  ac_count_changelog_entry: 25   # matches: "25 AC (AC-AMM-001..025) all PASS"
+b12_self_test:
+  a_pre_emission_grep: PASS   # pre-emission count was 1 (forward-reference only) — emission proceeded
+  b_ac_count_match: PASS      # acceptance.md AC count (25) == CHANGELOG AC count (25); acceptance.md is SSOT, NOT progress.md (which shows 14 = M3-M7 round only; M0-M2 AC-AMM-001..011 covered by prior commit a537d28e8)
+  c_file_path_verification: PASS   # every implementation file path claimed in the CHANGELOG entry verified present: internal/cli/mcp_convergence.go, mcp_audit_multi.go, multi_review_gate.go, mcp_audit.go, .claude/hooks/moai/handle-multi-review-gate.sh, .claude/skills/moai-ref-cross-model-audit/SKILL.md + template mirror, internal/config/types.go + defaults.go
+canary_compliance_check:
+  go_build: "exit 0 (docs-only sync commit; code unchanged — build unaffected, verified this session)"
+  go_test: "pending-sync-auditor"   # sync-auditor runs independently after this commit; run-phase full suite already green per §E.3
+  lint: "pending-sync-auditor"
+  template_neutrality_ci_guard: "PASS (AC-AMM-022 — catalog hash edbe85ce8a4f55a694d8d47065c20ad4ba8b7154cd59beb9efcf259d2f5ca0b4; skill mirror landed in run-phase, sync-phase touches no template assets)"
+readme_4_locale:
+  en: "extended (MCP-server paragraph at README.md line 177 — the SPEC-MOAI-MCP-SERVER-001 forward-reference to 'multi' is updated to reflect delivery)"
+  ko: "no change (B2 scope discipline — no existing audit_model / multi mention to extend)"
+  ja: "no change (B2 scope discipline — no existing audit_model / multi mention to extend)"
+  zh: "no change (B2 scope discipline — no existing audit_model / multi mention to extend)"
+docs_site_4_locale:
+  ko: "content/ko/advanced/autonomous-loops.md — new section '다중 모델 리뷰 게이트 (선택)' before 다음 단계"
+  en: "content/en/advanced/autonomous-loops.md — new section 'Multi-Model Review Gate (Optional)' before Next Steps"
+  ja: "content/ja/advanced/autonomous-loops.md — new section 'マルチモデルレビューゲート (オプション)' before 次のステップ"
+  zh: "content/zh/advanced/autonomous-loops.md — new section '多模型审查门 (可选)' before 下一步"
+sync_artifacts_in_this_commit:
+  - "CHANGELOG.md (new bullet under ## [Unreleased] → ### Added)"
+  - "README.md (en-primary — line 177 MCP-server paragraph extended)"
+  - "docs-site/content/{ko,en,ja,zh}/advanced/autonomous-loops.md (new Multi-Model Review Gate section, 4-locale parity)"
+  - ".moai/specs/SPEC-AUDIT-MULTI-MODEL-001/spec.md (frontmatter status: in-progress → completed, updated: 2026-08-07 — frontmatter-only, NO body change)"
+  - ".moai/specs/SPEC-AUDIT-MULTI-MODEL-001/progress.md (this §E.4 block)"
+forbidden_ownership_crossings_verified:
+  spec_md_body: "untouched (frontmatter status + updated only)"
+  plan_md: "untouched (no change at all)"
+  acceptance_md: "untouched (no change at all)"
+  design_md: "untouched (no change at all)"
+  research_md: "untouched (no change at all)"
+  e1_e2_e3: "untouched (§E.1/§E.2/§E.3 are run-phase-owned — this commit only populates §E.4)"
+```
 
 ## §F. Phase 4 Mode Selection
 

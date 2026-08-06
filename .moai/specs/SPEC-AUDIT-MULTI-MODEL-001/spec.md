@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-MULTI-MODEL-001
 title: "Multi-model audit convergence — parallel cross-backend fan-out + disagreement synthesis for audit_model: multi (super-review pattern)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-06
 updated: 2026-08-07
 author: manager-spec
