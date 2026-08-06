@@ -232,39 +232,13 @@ func TestBlueprint_Overview_KiroSevenSections(t *testing.T) {
 	}
 }
 
-// TestBlueprint_NoDriftFailTest is the REQ-NS3-006 NEGATIVE test: grep the
-// tiers/ test files for any drift-fail pattern — the drift-fail code path
-// MUST NOT exist. Blueprint drift is documentation debt, never a test/build
-// failure.
-func TestBlueprint_NoDriftFailTest(t *testing.T) {
-	matches, err := filepath.Glob("./*_test.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	patterns := []string{
-		"blueprint drift",
-		"blueprint.*drift.*fail",
-		"drift.*Fail",
-		"t.Fatal.*blueprint",
-	}
-	for _, m := range matches {
-		body, err := os.ReadFile(m)
-		if err != nil {
-			t.Fatal(err)
-		}
-		s := strings.ToLower(string(body))
-		for _, p := range patterns {
-			if strings.Contains(s, strings.ToLower(p)) {
-				// Allow this very file's pattern name (the test name) —
-				// skip self-match on TestBlueprint_NoDriftFailTest.
-				if strings.Contains(s, "testblueprint_nodriftfailtest") {
-					continue
-				}
-				t.Errorf("%s: forbidden drift-fail pattern %q in test (REQ-NS3-006)", filepath.Base(m), p)
-			}
-		}
-	}
-}
+// TestBlueprint_NoDriftFailTest is REMOVED. The REQ-NS3-006 negative-grep AC
+// (acceptance.md §D.AC-NS3-006) is canonically verified by the orchestrator's
+// verification-batch grep over internal/ for the forbidden drift-failure code
+// path. An in-test version of the same grep cannot exist without containing
+// the forbidden patterns as string literals (which then self-trips the AC
+// grep). The orchestrator-owned grep IS the negative test; no in-test mirror
+// needed. See the AC matrix in progress.md §E.2 for the observed-zero output.
 
 // hashBytes returns hex sha256 of b.
 func hashBytes(b []byte) string {
