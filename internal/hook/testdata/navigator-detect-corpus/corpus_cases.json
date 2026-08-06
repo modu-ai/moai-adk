@@ -1,0 +1,37 @@
+{
+  "_doc": "Corpus manifest for TestNavigatorDetectCoverage (AC-NS2-007, REQ-NS2-007). Each case is a changed-path input + its expected mapping class. The pre-built nav-graph.json fixture in this directory indexes every in-scope-mapped path. The coverage ratio is mapped/(mapped+unmapped); out-of-scope cases are excluded from BOTH numerator and denominator (plan.md §E partition).",
+  "_classes": {
+    "in-scope-mapped": "path matches ≥1 graph edge (exact equality or directory-prefix fallback per REQ-NS2-010); Traverse MUST return ≥1 row",
+    "in-scope-unmapped": "path is semantically in-scope (lives under a scan-root directory the graph indexes) but NO edge matches; Traverse returns 0 rows. Exercises the denominator — a real graph never achieves 100% because not every file carries a binding token.",
+    "out-of-scope": "path is outside the M0 scan roots (.moai/project/*.md, .moai/docs/**/*.md, Go *.go source); excluded from numerator AND denominator"
+  },
+  "_expected_ratio": "18 mapped / (18 mapped + 3 unmapped) = 0.857 (≥ 0.80 threshold)",
+  "cases": [
+    {"changed_path": "/abs/project/.moai/project/tech.md", "class": "in-scope-mapped", "note": "dec-edge ×3 (AUTH-STRATEGY, CORS-POLICY, RATE-LIMIT)"},
+    {"changed_path": "/abs/project/.moai/project/structure.md", "class": "in-scope-mapped", "note": "dec-edge (AUTH-STRATEGY)"},
+    {"changed_path": "/abs/project/.moai/docs/arch/rate-limit.md", "class": "in-scope-mapped", "note": "dec-edge (RATE-LIMIT)"},
+    {"changed_path": "/abs/project/.moai/docs/auth/oauth.md", "class": "in-scope-mapped", "note": "sym-edge ×2 (ParseBearer, IssueToken)"},
+    {"changed_path": "/abs/project/internal/auth/login.go", "class": "in-scope-mapped", "note": "spec-edge + sym-edge (highest-value @MX:SPEC bridge case)"},
+    {"changed_path": "/abs/project/internal/auth/logout.go", "class": "in-scope-mapped", "note": "sym-edge (RevokeToken)"},
+    {"changed_path": "/abs/project/internal/auth/token.go", "class": "in-scope-mapped", "note": "sym-edge (RevokeToken)"},
+    {"changed_path": "/abs/project/internal/middleware/cors.go", "class": "in-scope-mapped", "note": "sym-edge (ApplyCORS)"},
+    {"changed_path": "/abs/project/internal/middleware/ratelimit.go", "class": "in-scope-mapped", "note": "sym-edge (ApplyRateLimit)"},
+    {"changed_path": "/abs/project/internal/hook/observer.go", "class": "in-scope-mapped", "note": "sym-edge (ResolveProjectRoot)"},
+    {"changed_path": "/abs/project/internal/hook/post_tool.go", "class": "in-scope-mapped", "note": "sym-edge (DispatchBranch)"},
+    {"changed_path": "/abs/project/internal/config/loader.go", "class": "in-scope-mapped", "note": "sym-edge (cfg.Load)"},
+    {"changed_path": "/abs/project/internal/config/defaults.go", "class": "in-scope-mapped", "note": "sym-edge (cfg.DefaultThresholds)"},
+    {"changed_path": "/abs/project/cmd/server/main.go", "class": "in-scope-mapped", "note": "spec-edge (RunServer)"},
+    {"changed_path": "/abs/project/cmd/cli/root.go", "class": "in-scope-mapped", "note": "sym-edge (ParseRoot)"},
+    {"changed_path": "/abs/project/internal/auth/", "class": "in-scope-mapped", "note": "directory-prefix fallback (REQ-NS2-010) — matches login.go+logout.go+token.go"},
+    {"changed_path": "/abs/project/internal/middleware/", "class": "in-scope-mapped", "note": "directory-prefix fallback — matches cors.go+ratelimit.go"},
+    {"changed_path": "/abs/project/internal/config/", "class": "in-scope-mapped", "note": "directory-prefix fallback — matches loader.go+defaults.go"},
+    {"changed_path": "/abs/project/internal/auth/session.go", "class": "in-scope-unmapped", "note": "sibling in auth/ with no binding token — graph does not index it; exercises denominator"},
+    {"changed_path": "/abs/project/internal/middleware/logger.go", "class": "in-scope-unmapped", "note": "sibling in middleware/ with no binding token"},
+    {"changed_path": "/abs/project/internal/config/env.go", "class": "in-scope-unmapped", "note": "sibling in config/ with no binding token"},
+    {"changed_path": "/abs/project/.moai/specs/SPEC-FOO-001/spec.md", "class": "out-of-scope", "note": ".moai/specs/ is NOT a scan root"},
+    {"changed_path": "/abs/project/.claude/settings.json", "class": "out-of-scope", "note": ".claude/ config is NOT a scan root"},
+    {"changed_path": "/abs/project/README.md", "class": "out-of-scope", "note": "root README is NOT a scan root"},
+    {"changed_path": "/abs/project/go.mod", "class": "out-of-scope", "note": "go.mod is NOT Go source"},
+    {"changed_path": "/abs/project/.gitignore", "class": "out-of-scope", "note": "dotfile is NOT a scan root"}
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "provenance": {
+    "extract_commit_sha": "fixture-corpus-sha",
+    "captured_at": "2026-08-06"
+  },
+  "nodes": [
+    {"entity_type": "decision", "identifier": "AUTH-STRATEGY", "display_name": "OAuth2 client-credentials strategy"},
+    {"entity_type": "decision", "identifier": "CORS-POLICY", "display_name": "CORS allow-list policy"},
+    {"entity_type": "decision", "identifier": "RATE-LIMIT", "display_name": "Rate-limit budget policy"},
+    {"entity_type": "spec", "identifier": "SPEC-AUTH-001", "display_name": "Auth SPEC"},
+    {"entity_type": "spec", "identifier": "SPEC-CORS-001", "display_name": "CORS SPEC"},
+    {"entity_type": "spec", "identifier": "SPEC-HOOK-001", "display_name": "Hook SPEC"},
+    {"entity_type": "symbol", "identifier": "auth.ParseBearer", "display_name": "ParseBearer"},
+    {"entity_type": "symbol", "identifier": "auth.IssueToken", "display_name": "IssueToken"},
+    {"entity_type": "symbol", "identifier": "auth.RevokeToken", "display_name": "RevokeToken"},
+    {"entity_type": "symbol", "identifier": "mw.ApplyCORS", "display_name": "ApplyCORS"},
+    {"entity_type": "symbol", "identifier": "mw.ApplyRateLimit", "display_name": "ApplyRateLimit"},
+    {"entity_type": "symbol", "identifier": "hook.ResolveProjectRoot", "display_name": "ResolveProjectRoot"},
+    {"entity_type": "symbol", "identifier": "hook.DispatchBranch", "display_name": "DispatchBranch"},
+    {"entity_type": "symbol", "identifier": "cfg.Load", "display_name": "Load"},
+    {"entity_type": "symbol", "identifier": "cfg.DefaultThresholds", "display_name": "DefaultThresholds"},
+    {"entity_type": "symbol", "identifier": "cli.RunServer", "display_name": "RunServer"},
+    {"entity_type": "symbol", "identifier": "cli.ParseRoot", "display_name": "ParseRoot"}
+  ],
+  "edges": [
+    {"edge_type": "dec-edge", "source_node": "decision:AUTH-STRATEGY", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/.moai/project/tech.md", "line_number": 42},
+    {"edge_type": "dec-edge", "source_node": "decision:AUTH-STRATEGY", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/.moai/project/structure.md", "line_number": 18},
+    {"edge_type": "dec-edge", "source_node": "decision:CORS-POLICY", "target_node": "spec:SPEC-CORS-001", "source_path": "/abs/project/.moai/project/tech.md", "line_number": 88},
+    {"edge_type": "dec-edge", "source_node": "decision:RATE-LIMIT", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/.moai/project/tech.md", "line_number": 120},
+    {"edge_type": "dec-edge", "source_node": "decision:RATE-LIMIT", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/.moai/docs/arch/rate-limit.md", "line_number": 15},
+    {"edge_type": "sym-edge", "source_node": "symbol:auth.ParseBearer", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/.moai/docs/auth/oauth.md", "line_number": 22},
+    {"edge_type": "sym-edge", "source_node": "symbol:auth.IssueToken", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/.moai/docs/auth/oauth.md", "line_number": 40},
+    {"edge_type": "spec-edge", "source_node": "symbol:auth.ParseBearer", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/internal/auth/login.go", "line_number": 17},
+    {"edge_type": "sym-edge", "source_node": "symbol:auth.IssueToken", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/internal/auth/login.go", "line_number": 30},
+    {"edge_type": "sym-edge", "source_node": "symbol:auth.RevokeToken", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/internal/auth/logout.go", "line_number": 12},
+    {"edge_type": "sym-edge", "source_node": "symbol:auth.RevokeToken", "target_node": "spec:SPEC-AUTH-001", "source_path": "/abs/project/internal/auth/token.go", "line_number": 8},
+    {"edge_type": "sym-edge", "source_node": "symbol:mw.ApplyCORS", "target_node": "spec:SPEC-CORS-001", "source_path": "/abs/project/internal/middleware/cors.go", "line_number": 14},
+    {"edge_type": "sym-edge", "source_node": "symbol:mw.ApplyRateLimit", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/internal/middleware/ratelimit.go", "line_number": 20},
+    {"edge_type": "sym-edge", "source_node": "symbol:hook.ResolveProjectRoot", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/internal/hook/observer.go", "line_number": 55},
+    {"edge_type": "sym-edge", "source_node": "symbol:hook.DispatchBranch", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/internal/hook/post_tool.go", "line_number": 210},
+    {"edge_type": "sym-edge", "source_node": "symbol:cfg.Load", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/internal/config/loader.go", "line_number": 33},
+    {"edge_type": "sym-edge", "source_node": "symbol:cfg.DefaultThresholds", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/internal/config/defaults.go", "line_number": 20},
+    {"edge_type": "spec-edge", "source_node": "symbol:cli.RunServer", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/cmd/server/main.go", "line_number": 25},
+    {"edge_type": "sym-edge", "source_node": "symbol:cli.ParseRoot", "target_node": "spec:SPEC-HOOK-001", "source_path": "/abs/project/cmd/cli/root.go", "line_number": 14}
+  ]
+}
