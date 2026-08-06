@@ -4,7 +4,7 @@ title: "Multi-model audit convergence — parallel cross-backend fan-out + disag
 version: "0.1.0"
 status: in-progress
 created: 2026-08-06
-updated: 2026-08-06
+updated: 2026-08-07
 author: manager-spec
 priority: P1
 phase: "v3.2 target"

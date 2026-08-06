@@ -64,11 +64,103 @@ boundary: spec.md §C quotes AC-MCP-012 + AC-MCP-017 verbatim (the deferral this
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates this section with the AC-AMM-001..027 PASS/FAIL matrix, cross-platform build result, coverage measurement, subagent-boundary grep, lint status, push state, and RED failure output per the 5-section evidence-bearing report format (verification-claim-integrity.md §3)>_
+### AC matrix (M3–M7 round; M0–M2 AC-AMM-001..011 covered by the prior commit `a537d28e8`)
+
+| AC | Status | Verification command | Observed output (tail) |
+|----|--------|----------------------|------------------------|
+| AC-AMM-012 (audit_multi registered with schema) | PASS | `go test -run TestAuditMulti_RegisteredWithSchema_AC_AMM_012 ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli` — tool name + claude_verdict/target/focus in inputSchema |
+| AC-AMM-013 (thin wrapper, no backend reimpl) | PASS | `go test -run TestAuditMulti_DelegatesToRunMultiAudit_AC_AMM_013 ./internal/cli/` | `ok` — recordingCaller recorded ≥1 secondary call ⇒ delegation through runMultiAudit verified |
+| AC-AMM-014 (per-auditor audit_gate respected) | PASS | `go test -run TestAuditMulti_RespectsCodexGateOff_AC_AMM_014 ./internal/cli/` | `ok` — codex not invoked + no codex entry in per_backend_verdicts when gate=off |
+| AC-AMM-015 (plan-auditor Skill path) | PASS | `ls .claude/skills/moai-ref-cross-model-audit/SKILL.md` | file present + canonical `mcp__moai__audit_multi` reference in body |
+| AC-AMM-016 (sync-auditor Skill path, same skill) | PASS | (single skill — both audit entry points load it; body declares "the single skill both audit entry points load — no duplication") | same file as AC-AMM-015 |
+| AC-AMM-017 (independence rule verbatim) | PASS | `grep -A2 "Independence rule" .claude/skills/moai-ref-cross-model-audit/SKILL.md` | rule quoted verbatim ("Pass only the synthesized claude_verdict object...") |
+| AC-AMM-018 (opt-in + 900s timeout + BranchGuard pattern) | PASS | `grep DefaultMultiReviewGateTimeout internal/config/defaults.go` + `grep MultiConfig internal/config/types.go` + reader `readMultiReviewGateEnabled` fail-CLOSED | `DefaultMultiReviewGateTimeout = 900 * time.Second` + `Multi.ReviewGate.Enabled` default false |
+| AC-AMM-019 (self-gate prevents false blocks) | PASS | `go test -run TestMultiReviewGate_NoEditTurnAllows ./internal/cli/` | `ok` — no-edit turn ALLOWs, no state file read |
+| AC-AMM-020 (gate verdict follows policy) | PASS | `go test -run "TestMultiReviewGate_(AllRequiredPassAllows|RequiredFailBlocks|AdvisoryDisagreementNeverBlocks)" ./internal/cli/` | `ok` — all-pass ALLOW, required-fail BLOCK, advisory NEVER BLOCK |
+| AC-AMM-021 (fail-open to claude) | PASS | `go test -run TestMultiReviewGate_AllSecondariesInconclusive_FailOpenClaude ./internal/cli/` | `ok` — all-secondaries-inconclusive + claude pass ⇒ ALLOW |
+| AC-AMM-022 (Skill mirrored + make build + §25) | PASS | `make build` + `grep moai-ref-cross-model-audit internal/template/catalog.yaml` + `go test -run TestTemplateNeutralityAudit ./internal/template/` | catalog hash `edbe85ce8a4f55a694d8d47065c20ad4ba8b7154cd59beb9efcf259d2f5ca0b4`; neutrality PASS |
+| AC-AMM-023 (canonical MCP tool reference + verbatim rule) | PASS | `grep mcp__moai__audit_multi .claude/skills/moai-ref-cross-model-audit/SKILL.md` | canonical name present; independence rule quoted verbatim |
+| AC-AMM-024 (subagent boundary, no AskUserQuestion) | PASS | `go test -run TestAuditMulti_NoHardErrorPath_AC_AMM_024 ./internal/cli/` + `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_audit_multi.go internal/cli/mcp_convergence.go internal/cli/multi_review_gate.go` | `ok` + grep returns 0 matches |
+| AC-AMM-025 (hardcoding prevention) | PASS | `grep -n "DefaultMultiReviewGateTimeout\|MultiConfig\|MultiReviewGateConfig" internal/config/defaults.go internal/config/types.go` | thresholds in defaults.go, config-block in types.go reusing the `workflow.codex.review_gate` structural pattern (sibling `multi.review_gate` key) |
+
+### Cross-platform build
+
+```
+$ go build ./...                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./... → exit 0
+```
+
+### Subagent boundary grep (C-HRA-008 family)
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_audit_multi.go internal/cli/mcp_convergence.go internal/cli/multi_review_gate.go
+(no matches — handler returns structured results only; orchestrator translates)
+```
+
+### Independence regression guard (EC-6)
+
+```
+$ go test -run TestAuditMulti_ClaudeVerdictNeverInSecondaryPayload_AC_AMM_003 ./internal/cli/
+ok  github.com/modu-ai/moai-adk/internal/cli
+```
+
+### Sentinel-flip same-commit invariant (R3)
+
+`multiConvergenceImplemented` at `internal/cli/mcp_audit.go:31` was flipped `false → true` IN THE SAME COMMIT as the M1 engine (commit `a537d28e8`, prior round). No further sentinel work needed in this round; the invariant holds.
+
+### §25 template-neutrality (CI guard)
+
+```
+$ go test -run TestTemplateNeutralityAudit ./internal/template/
+ok  github.com/modu-ai/moai-adk/internal/template   1.372s
+```
+
+The new skill body carries NO SPEC-ID, NO REQ-AMM token, NO commit SHA, NO internal date — verified by manual scan (`grep -lE 'SPEC-|REQ-AMM|a537d28e8|2026-08-0'` returns nothing) AND by the in-repo `TestTemplateNeutralityAudit` CI guard.
+
+### RED failure output (TDD evidence — M3 + M5)
+
+M3 RED (captured BEFORE `handleAuditMulti` was implemented):
+```
+$ go test -run TestAuditMulti ./internal/cli/
+internal/cli/mcp_audit_multi_test.go:63:9: undefined: handleAuditMulti
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+M5 RED (captured BEFORE `HandleMultiReviewGate` was implemented):
+```
+$ go test -run TestMultiReviewGate ./internal/cli/
+internal/cli/multi_review_gate_test.go:125:12: undefined: HandleMultiReviewGate
+internal/cli/multi_review_gate_test.go:138:12: undefined: HandleMultiReviewGate
+internal/cli/multi_review_gate_test.go:153:12: undefined: HandleMultiReviewGate
+... (8 references total)
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+### Pre-existing flake isolation (not a regression)
+
+`TestNavigatorEnrich_AtomicWriteBarrier` (internal/cli/navigator_enrich_test.go) flaked once in the first full-suite run (`barrier file not created (goroutine did not reach barrier)`) and passed on re-run with `-count=3`. The test uses a goroutine race that is timing-sensitive and unrelated to multi-model audit work; no production code in this round touches the navigator/astx package.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates the run-phase completion signal (run_commit_sha, all-MUST-ACs-PASS, full-suite-green) here>_
+```yaml
+run_complete_at: "2026-08-07"
+run_commit_sha: "pending-backfill-m3-m7"   # self-referential — backfilled in a follow-up commit
+run_status: "PASS"
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: true
+l44_post_push_fetch: pending-push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_amd64: pass
+  linux_amd64: pending-ci
+  windows_amd64: pass  # local: GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 12  # 5 new Go files + 1 wrapper + 1 SKILL.md + catalog + 5 test pin updates
+m1_to_mN_commit_strategy: "single squash commit carrying M3–M7 (sentinel already flipped in prior commit)"
+```
+
+Full-suite green: `go test ./... → exit 0`. Lint clean: `golangci-lint run → 0 issues`. `go vet ./... → exit 0`.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
