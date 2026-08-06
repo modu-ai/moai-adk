@@ -441,7 +441,14 @@ func runGoalRender(cmd *cobra.Command, sessionFlag string, jsonOutput bool) erro
 		return fmt.Errorf("goal render: no armed goal for session %s", sessionID)
 	}
 
-	raw, err := goal.RenderDashboard(g, nil)
+	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-001 / AC-WIRE-001: load the last-produced
+	// verdict sidecar (at-ceiling-only write by the stop-goal evaluator) and pass
+	// it to RenderDashboard so the 5 CeilingVerdict sections render instead of
+	// the "no verdict yet" placeholder. Fail-open to nil on missing/corrupt
+	// sidecar (REQ-WIRE-003 / AC-WIRE-002): the placeholder path is preserved
+	// byte-identical.
+	v, _ := goal.LoadVerdict(root, sessionID)
+	raw, err := goal.RenderDashboard(g, v)
 	if err != nil {
 		return fmt.Errorf("goal render: %w", err)
 	}
