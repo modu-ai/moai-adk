@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -260,6 +259,3 @@ type fakeRunner struct {
 func (r fakeRunner) Run(_ context.Context, _ string) (int, string, error) {
 	return r.exit, r.out, nil
 }
-
-// guard: keep the fmt import live even when sub-tests trim their usage.
-var _ = fmt.Sprintf
