@@ -164,7 +164,7 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commit (5 commits + plan-ph
 
 ```yaml
 sync_complete_at: 2026-08-07
-sync_commit_sha: pending-backfill-sync-wiring-001   # self-referential — orchestrator backfills real SHA in a 1-line follow-up commit
+sync_commit_sha: 6622de0f6   # backfilled from sync commit 6622de0f6 (was pending-backfill-sync-wiring-001 placeholder)
 sync_status: audit-ready
 ac_pass_count: 13
 ac_fail_count: 0
