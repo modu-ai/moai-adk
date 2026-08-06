@@ -47,7 +47,7 @@ draft: false
 
 ### `/moai goal render` — 仪表板 HTML 渲染
 
-将活跃会话的 goal 状态渲染为 **自包含 HTML 仪表板**,写入 `.moai/state/goal/<session-id>.html`。它是幂等的(idempotent),重复执行会覆盖同一路径。可通过斜杠命令(`/moai goal render`)和终端 CLI(`moai goal render`)两种方式调用,两者都调用相同的 `goal.RenderDashboard`。若没有 arm 的 goal,则以非零退出码将 session id 输出到 stderr,且不写入 HTML。加 `--json` 标志会输出 `{action, session_id, path, bytes}`。关于渲染内容和安全属性,请参见下方 [目标看板](#目标看板) 章节。
+将活跃会话的 goal 状态渲染为 **自包含 HTML 仪表板**,写入 `.moai/state/goal/<session-id>.html`。它是幂等的(idempotent),重复执行会覆盖同一路径。可通过斜杠命令(`/moai goal render`)和终端 CLI(`moai goal render`)两种方式调用,两者都调用相同的 `goal.RenderDashboardReArm`。若没有 arm 的 goal,则以非零退出码将 session id 输出到 stderr,且不写入 HTML。加 `--json` 标志会输出 `{action, session_id, path, bytes}`。关于渲染内容和安全属性,请参见下方 [目标看板](#目标看板) 章节。
 
 ## 进行模式(自主 / 半自主)
 
@@ -93,7 +93,7 @@ flowchart TD
     A["/moai goal render<br/>或 moai goal render"] --> B["goal.LoadGoal"]
     B --> C{"存在 arm 的 goal?"}
     C -- "否" --> D["exit non-zero<br/>stderr: session id<br/>不写入 HTML"]
-    C -- "是" --> E["goal.RenderDashboard"]
+    C -- "是" --> E["goal.RenderDashboardReArm"]
     E --> F["写入仪表板 HTML 文件<br/>(覆盖,幂等)"]
     F --> G["浏览器离线打开"]
 ```
@@ -102,12 +102,13 @@ flowchart TD
 **自包含 HTML**:无外部资源,即使断网也能打开。渲染时刻的 goal 状态被完整序列化进文件。
 {{< /callout >}}
 
-**仪表板显示的内容**:由于 v3.1 CLI 始终向评估器(verdict)传入 `nil` 参数,仪表板在显示"尚无判定"占位符的同时渲染以下内容。
+**仪表板显示的内容**:从 v3.1(PR #1388)起,渲染器已接入生产,判定与重新武装状态会真正显示在仪表板上。
 
 - **页眉** — 会话 id、生命周期状态(`armed` / `satisfied` / `ceiling-exit` / `cleared`)、回合用量/上限、进行模式(`autonomous` / `semi-autonomous`)、生成时间戳
 - **条件声明部** — goal 条件文本原样显示在有边框的块中
 - **已声明条件表** (Declared Conditions) — 各 condition 以表格列出。机械条件以 `<命令> (expect exit N)` 形式显示;模型评估条件以主张(claim)文本原样显示
-- **判定占位符** — 在回合/上限行、失败条件表、5 段上限判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)所在位置显示"尚无判定"
+- **判定段(天花板 exit 时激活)** — `stop-goal` 评估器仅在到达回合上限/停滞守卫/壁钟上限的 exit 回合向 sidecar `.moai/state/goal/<sid>.verdict.json` 写入 5 段上限判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)。`moai goal render` 在渲染时读取该 sidecar,填入回合/上限行、失败条件表和 5 段判定。若在非 exit 回合之后渲染,则显示"尚无判定"占位符(sidecar 只在 exit 回合写入)。
+- **重新武装 (re-arm) 条件视图** — 渲染时从待办/活动状态自动构造三个条件视图:(1) `/clear` 时将重新武装待办 goal 的指示、(2) 以新 id 重新武装的视图、(3) D8 无限 goal 拒绝横幅。条件不成立时各视图隐藏。
 
 **XSS 自动转义**:所有不可信字段通过 Go 标准库 `html/template` 的 `{{.Field}}` 语法渲染,自动进行 HTML 转义。即便条件文本或条件值中嵌入 `<script>` 载荷,也会被转换为 HTML 实体而不执行。goal 条件中可能混入 shell 命令字符串与自由文本,因此此自动转义是有意义的安全属性。
 
@@ -115,13 +116,13 @@ flowchart TD
 
 ## 路线图
 
-{{< icon clock muted >}} 渲染器已就绪,但在 v3.1 CLI 中尚未连接,计划于 v3.2 连接的表面。现在运行 `moai goal render` 看不到以下三项。
+{{< icon clock muted >}} 渲染器已就绪,但将在后续版本接入。
 
-- {{< icon clock muted >}} **判定段激活** — 回合/上限行、失败条件表、5 段上限判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)。当评估器传入 non-nil verdict 时,渲染器会填充这些段;但 v3.1 CLI 始终传入 `nil`,因此显示"尚无判定"占位符。该连接计划与 v3.2 中 Stop 钩子每回合自动更新仪表板的 LIVE 看板一同落地。
-- {{< icon clock muted >}} **计划 HTML 报告** — 独立渲染器 `RenderPlanHTML`,将 plan 阶段产物(goal + 8 字段自主性契约 + 判定分数 + 里程碑)写入 `.moai/reports/plan-html/<SPEC-ID>-plan.html`。v3.1 中无 CLI 包装器和生产调用者,因此该路径不会被填充。
-- {{< icon clock muted >}} **重新武装 UI** (re-arm) — `/clear` 时显示重新武装、以新 id 重新武装的视图、D8 无限 goal 拒绝横幅等三种条件化的仪表板视图。渲染器已就绪,但生产中没有构造此上下文的调用者,因此 v3.1 CLI 传入 `nil`。
+- {{< icon clock muted >}} **LIVE 仪表板(每回合自动刷新)** — 当前 `moai goal render` 渲染的是调用时刻的静态快照。后续版本中,`stop-goal` Stop 钩子将在每个回合结束时自动重写 `.html` 文件,刷新浏览器即可实时看到进展,变成 LIVE 看板。
 
-重新武装机制本身(会话交接嵌入 + `/clear` 时重新武装 + 无限 goal 拒绝防护)已在先前 SPEC 中发布 — 本路线图中"未连接"的部分仅指将该机制状态 **表面化** 到仪表板 UI 的部分。
+{{< callout type="info" >}}
+**重新武装机制已发布**:重新武装逻辑本身(会话交接嵌入 + `/clear` 时重新武装 + D8 无限 goal 拒绝防护)已在先前的 SPEC-INFINITE-GOAL-001 中发布。v3.1(PR #1388)新增的只是将该机制状态 **表面化** 到仪表板 UI 的部分。
+{{< /callout >}}
 
 ## 相关文档
 
