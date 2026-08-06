@@ -126,9 +126,46 @@ _Run-phase NOT complete — M1+M2 are the first two of M1–M4; §E.3 stays pend
 
 **M3-scope decisions (deferred to M4):** (a) the init/web selection UI (`audit_model` + per-auditor `audit_gate` in `Page3Questions` + web console) is M4 (REQ-MCP-015 / AC-MCP-020/021); M3 ships ONLY the typed config + the resolver. (b) The Template-First `.mcp.json` reversal (settings-management.md:33) + the §25 CI guard + `make build` is M4 (REQ-MCP-016/018); M3 ships the secret-hygiene `buildAuditEnvBlock` helper + the unchanged (env-free) `buildMoaiMCPServerEntry` so the committed entry stays secret-free. (c) `multi` convergence (parallel fan-out, disagreement synthesis) is SPEC-AUDIT-MULTI-MODEL (AP-8); M3 accepts the token, does not orchestrate.
 
+### M4 — init/web selection UI + Template-First reversal + settings.json hook
+
+**Deliverables:** `.claude/rules/moai/core/settings-management.md` + `internal/template/templates/.claude/rules/moai/core/settings-management.md` (line 33 reversal, byte-identical local↔template), `internal/template/templates/.claude/settings.json.tmpl` + `internal/template/templates/.claude/hooks/moai/handle-codex-review-gate.sh` (NEW — §25-neutral codex-review-gate Stop-hook registration, 900 s timeout), `internal/cli/wizard/{questions,types,wizard,translations,expansion_test,wizard_test,mcp_audit_test}.go` + `internal/cli/{init,init_audit_test}.go` (audit selection on page 3 "Audit & MCP" + applyWizardPage3ToOpts mapping + mcp_tools_opt_in → M1 provisioning seam), `internal/core/project/{initializer,initializer_expansion,initializer_audit_test}.go` (InitOptions audit fields + writeWorkflowAuditYAML persistence), `internal/settings/schema_sections.go` + `internal/web/{assets/i18n.js,mcp_audit_surface_test.go}` (web console schema surface + 4-locale i18n + no-fork/SSOT guard).
+
+**AC matrix (M4):**
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-MCP-018 (reversal applied, neutral) | PASS | settings-management.md:33 reversed on BOTH local + template (diff-clean, `grep 'provisions exactly one local MCP server'` =1 each; old phrase =0); prose carries no SPEC-ID/SHA/date/macOS-path |
+| AC-MCP-019 (template source + CI guard + make build in one change) | PASS | `make build` → exit 0 (catalog.yaml regenerated, binary rebuilt); `go test -run TestTemplateNoInternalContentLeak|TestTemplateNeutralityAudit ./internal/template/` → ok (§25 green); single commit `987a2b576` carries template source + CI guard evidence + build |
+| AC-MCP-020 (init wizard selection surface) | PASS | `TestPage3Questions_AuditSelectionSurfaced` + `TestAuditModelQuestion_UsesM3EnumVocabulary` + `TestAuditGateQuestions_{UsesM3EnumVocabulary,DefaultProfile}` + `TestOptInFlags_DefaultOff` + `TestApplyWizardPage3ToOpts_AuditSelection` (wizard→opts flow) |
+| AC-MCP-021 (web console selection surface, identical interpreter) | PASS | `TestSchemaSurfaces_AuditSelection` (4 audit fields in Workflow schema) + `TestWebConsole_AuditNoForkedInterpreter` (0 `activeAuditBackend` in internal/web) + `TestWebConsole_ResolveAgentModelEffortSSOTShared` (0 redefinition — SSOT shared) |
+| AC-MCP-023 (env/threshold constants — hardcoding prevention) | PASS | M4 reuses M3 `AuditModel*`/`AuditGate*` + M2 `DefaultCodexReviewGateTimeout`; 0 new `os.Getenv` literals in new non-test code; `.mcp.json` entry generic (M1 `TestBuildMoaiMCPServerEntry_Neutral`); config hardcoding guards green |
+| AC-MCP-024 (full `go test ./...` + §25 CI guard green) | PASS | `go test ./...` → 0 FAIL (all `ok`/`?`); `go test ./internal/template/` → ok (§25 green) |
+
+**Verification commands + results:**
+
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet ./internal/{cli,cli/wizard,core/project,config,settings,web}/` → exit 0
+- `golangci-lint run --timeout=3m` (6 touched packages) → 0 issues (after 2 errcheck fixes: `_ = fmt.Fprintf`/`Fprintln` in the mcp_tools_opt_in provisioning path)
+- `go test ./...` → 0 FAIL (full suite, exit 0; evidence at `.moai/state/verify/mcp-m4/full_suite.txt`)
+- E4 subagent boundary: `grep -rn 'AskUserQuestion\|mcp__askuser'` on new M4 non-test code → 0 (REQ-MCP-014)
+- E8 RED (verbatim, pre-GREEN): captured to `.moai/state/verify/mcp-m4/red_wizard_audit.txt` (`page-3 question "audit_model" is missing (AC-MCP-020)` × 6 IDs) → `FAIL`
+- M4 per-file coverage (`go tool cover -func`): `writeWorkflowAuditYAML` 89.5% / `auditLeaves` 100% / `auditAnyPatched` 100% / `buildAuditBlockLines` 100% / `buildFreshWorkflowAuditBlock` 75% / `insertWorkflowMultiLineBlock` 92.3% — headline writer above the 85% threshold.
+
+**Opt-in default-off preserved (C6):** the `.mcp.json` provisioning (`mcp_tools_opt_in` default false → no write) + the codex-review-gate (registered-but-dormant; `workflow.codex.review_gate.enabled` default off → M2 handler self-gates ALLOW) both ship INERT to distributed users. The reversal provisions the CAPABILITY; actual `.mcp.json` write per-project is opt-in.
+
+**G-M4 self-check:** settings-management.md:33 reversed + neutral (local == template, diff-clean) · template source + §25 CI guard + `make build` in one change (embedded assets carry the reversal; `go test ./internal/template/` green) · init + web selection surfaces functional · full `go test ./...` + §25 neutrality green · opt-in default-off preserved.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: ready
+- run_complete_at: 2026-08-06T03:55:00Z
+- run_commit_sha: 987a2b576 (M4 — final run-phase milestone; M0-M4 all committed + pushed to feat/spec-moai-mcp-server)
+- ac_pass_count: 24
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0
+- new_warnings_or_lints_introduced: 0
+- total_run_phase_files: 19 (M4) · 5 commits (M0-M4) on the feat branch
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
