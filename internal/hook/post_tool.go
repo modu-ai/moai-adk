@@ -216,6 +216,27 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// SPEC-NAVIGATOR-SYNC-002 M1.2 (REQ-NS2-001/009): BAS Falconer Detect — map
+	// the changed file path to affected navigator-graph rows via reverse edge
+	// traversal of the M0 nav-graph.json. BRANCH-NOT-FORK (REQ-NS2-009): this
+	// is a conditional branch inside postToolHandler.Handle, registered
+	// alongside runAstScan / runMxValidation / runMemoryAudit — NOT a forked
+	// PostToolUse chain. CONSUMER-ONLY (REQ-NS2-005): reads M0 outputs, never
+	// mutates internal/navigator/sync/ or internal/mx/. Fail-open on every
+	// error mode (REQ-NS2-004); NEVER blocks (REQ-NS2-012). M1.2 scope: trigger
+	// surface + dispatch wiring + Traverse call; the full systemMessage + JSONL
+	// output lands in M1.3.
+	if result := runNavigatorDetect(input); result != nil {
+		metrics["navigator_detect"] = map[string]any{
+			"affected_nodes": len(result.Nodes),
+			"affected_edges": len(result.Edges),
+		}
+	} else if navigatorDetectTools[input.ToolName] {
+		// Branch ran but yielded no rows (graph absent / unparseable / no match).
+		// Recorded so dispatcher-integration tests can observe the branch fired.
+		metrics["navigator_detect"] = map[string]any{"status": "no_match_or_fail_open"}
+	}
+
 	// Record evidence-bearing tool events for the Stop evidence gate
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.

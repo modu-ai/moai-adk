@@ -1,0 +1,157 @@
+package hook
+
+// navigator_detect.go — SPEC-NAVIGATOR-SYNC-002 M1.2 (BAS Epic M1 — Falconer
+// Detect: PostToolUse branch integration).
+//
+// This file wires M1.1's reverse-traversal engine
+// (internal/navigator/detect.Traverse) into the existing postToolHandler.Handle
+// dispatcher as a new conditional branch — NOT a forked hook chain
+// (REQ-NS2-009). The Detect layer consumes the M0 nav-graph.json (produced by
+// internal/navigator/sync) read-only (REQ-NS2-005 bridge-not-absorb) and never
+// mutates the M0 producer surface or internal/mx/.
+//
+// M1.2 scope: trigger surface (Write/Edit/NotebookEdit per REQ-NS2-001) +
+// dispatch wiring inside postToolHandler.Handle (REQ-NS2-009) + the Traverse
+// call. The full advisory output surface (systemMessage + JSONL impact record
+// at .moai/state/navigator-detect/) lands in M1.3; this M1.2 implementation
+// returns the affected-row set to the dispatcher, which records a metrics
+// entry only.
+//
+// Fail-open (REQ-NS2-004): every error mode (nil input, non-trigger tool,
+// unparseable ToolInput, unresolvable projectRoot, absent/unparseable graph,
+// traversal error) returns nil and emits at most one slog.Debug diagnostic
+// line. The branch NEVER blocks (REQ-NS2-012) and NEVER cascades into sibling
+// PostToolUse branches.
+
+import (
+	"encoding/json"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/navigator/detect"
+	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
+)
+
+// navigatorDetectTools is the SHALL trigger surface for the Detect branch
+// (REQ-NS2-001). Write/Edit carry a structured `file_path`; NotebookEdit
+// carries a structured `notebook_path`. Bash is EXCLUDED — its file mutations
+// (sed -i / mv / git checkout) have no structured path and path-extraction
+// heuristics are unreliable (REQ-NS2-001 explicit exclusion).
+//
+// D3 NotebookEdit recon verdict (recorded in progress.md §E.2): PostToolUse
+// DOES fire for NotebookEdit — confirmed by settings.json.tmpl line 380
+// listing "NotebookEdit" in the PreToolUse permissions.allow array (a Claude
+// Code tool that triggers hook events), and the NotebookEdit ToolInput carries
+// a parseable `notebook_path` string field (Claude Code NotebookEdit spec).
+// Therefore NotebookEdit stays in REQ-NS2-001's SHALL alongside Write/Edit —
+// NOT downgraded to SHOULD and NOT deferred.
+var navigatorDetectTools = map[string]bool{
+	"Write":        true,
+	"Edit":         true,
+	"NotebookEdit": true,
+}
+
+// navGraphRelPath is the M0 output path relative to projectRoot
+// (internal/navigator/sync/join.go:44 — `<root>/.moai/project/navigator/nav-graph.json`).
+const navGraphRelPath = ".moai/project/navigator/nav-graph.json"
+
+// runNavigatorDetect is the M1.2 PostToolUse branch entry point for the BAS
+// Falconer Detect layer. It is called from exactly ONE site inside
+// postToolHandler.Handle (REQ-NS2-009 branch-not-fork).
+//
+// Returns the affected-row set (detect.Result) when the traversal yields
+// rows, or nil when the branch is not triggered (non-trigger tool, no path,
+// no projectRoot) or fail-opens on any error mode (REQ-NS2-004). The caller
+// records a metrics entry from the returned Result; the full advisory output
+// (systemMessage + JSONL) is M1.3 scope.
+func runNavigatorDetect(input *HookInput) *detect.Result {
+	if input == nil || !navigatorDetectTools[input.ToolName] {
+		// AC-NS2-001b: Bash and other non-trigger tools do not enter the branch.
+		return nil
+	}
+
+	changedPath := extractChangedPath(input.ToolInput)
+	if changedPath == "" {
+		// ToolInput has no file_path/notebook_path, or unparseable JSON. Fail-open.
+		return nil
+	}
+
+	// Project-root resolution reuses the existing helper (plan.md §C.1 / §C.7):
+	// input.CWD → CLAUDE_PROJECT_DIR → os.Getwd() fallback. Never inline a new
+	// resolution path (B7 known-issue discipline).
+	projectRoot := resolveProjectRootFromInputOrEnv(input, "runNavigatorDetect")
+	if projectRoot == "" {
+		return nil
+	}
+
+	graphPath := filepath.Join(projectRoot, navGraphRelPath)
+	return detectForChangedPath(graphPath, changedPath)
+}
+
+// detectForChangedPath loads the M0 nav-graph.json (single os.ReadFile — the
+// atomic-read guarantee per REQ-NS2-006 is provided by M0's atomicWrite
+// `.tmp`+os.Rename pattern at internal/navigator/sync/write.go) and runs the
+// reverse traversal. Separated from runNavigatorDetect so tests can drive it
+// with an explicit graphPath fixture without constructing a HookInput.
+//
+// Fail-open on every error mode (REQ-NS2-004): graph absent / unparseable /
+// schema-invalid / traversal error all return nil with at most one diagnostic
+// log line. The full fail-open error-mode table (AC-NS2-004 rows 004a..004e)
+// is exercised in M1.4; M1.2 covers 004a (absent) and 004b (unparseable) at
+// the integration boundary.
+func detectForChangedPath(graphPath, changedPath string) *detect.Result {
+	raw, err := os.ReadFile(graphPath)
+	if err != nil {
+		// Graph absent (not yet generated by M0). REQ-NS2-004 fail-open, row 004a.
+		slog.Debug("navigator-detect: graph absent (fail-open)",
+			"graph_path", graphPath,
+			"error", err,
+		)
+		return nil
+	}
+
+	var graph navsync.Graph
+	if err := json.Unmarshal(raw, &graph); err != nil {
+		// Unparseable JSON. REQ-NS2-004 fail-open, row 004b.
+		slog.Debug("navigator-detect: graph unparseable (fail-open)",
+			"graph_path", graphPath,
+			"error", err,
+		)
+		return nil
+	}
+
+	result, err := detect.Traverse(&graph, changedPath)
+	if err != nil {
+		// Traversal error (nil graph / empty path / normalization failure).
+		// REQ-NS2-004 fail-open, row 004d.
+		slog.Debug("navigator-detect: traversal error (fail-open)",
+			"changed_path", changedPath,
+			"error", err,
+		)
+		return nil
+	}
+	return result
+}
+
+// extractChangedPath pulls the changed file path from the PostToolUse
+// ToolInput JSON. Write/Edit carry `file_path`; NotebookEdit carries
+// `notebook_path`. Both are normalized to absolute form inside
+// detect.Traverse (filepath.Abs on both sides of the equality), so this
+// helper returns the raw field value without normalization.
+func extractChangedPath(toolInput json.RawMessage) string {
+	if len(toolInput) == 0 {
+		return ""
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(toolInput, &parsed); err != nil {
+		return ""
+	}
+	if fp, ok := parsed["file_path"].(string); ok && fp != "" {
+		return fp
+	}
+	if np, ok := parsed["notebook_path"].(string); ok && np != "" {
+		return np
+	}
+	return ""
+}
