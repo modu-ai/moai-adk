@@ -15,7 +15,7 @@ draft: false
 | `moai goal arm "<condition>"` | 활성 세션에 목표 등록 + arm (`moai goal "<condition>"` 도 arm 별칭). arm-only — 그 자체로는 작업을 시작하지 않는다 |
 | `moai goal status` | 활성 세션의 목표 상태 출력 (`--all` 로 전 세션 나열) |
 | `moai goal clear` | 활성 세션의 목표 해제 |
-| `moai goal render` | 활성 세션의 목표 대시보드를 self-contained HTML 파일로 렌더 (`.moai/state/goal/` 옆에 저장). arm 된 goal이 없으면 0이 아닌 종료 코드로 끝남 |
+| `moai goal render` | 활성 세션의 목표 대시보드를 self-contained HTML 파일로 렌더 (`.moai/state/goal/` 옆에 저장). arm 된 goal이 없으면 0이 아닌 종료 코드로 끝남. v3.1(PR #1388)부터 판정 섹션(천장 exit 시 사이드카에서 로드)과 재무장 조건부 보기가 대시보드에 표시됩니다 — 자세한 내용은 [/moai goal 대시보드 섹션](/utility-commands/moai-goal#목표-대시보드)을 참고하세요 |
 
 ## 공통 플래그
 

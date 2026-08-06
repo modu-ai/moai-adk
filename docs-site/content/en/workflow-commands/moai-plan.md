@@ -558,6 +558,31 @@ When MoAI asks via `AskUserQuestion`, 5 principles guide recommendation placemen
 **Internals**: the 5 principles are specified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles, and rendered in `moai.md`. The capture hook is implemented in `internal/hook/user_decision_capture.go` and supports schema-tolerant parsing and domain classification. The decay policy follows the power-law function `(age+1)^(-0.5)` with α=0.5 fixed (Standard tier). For the full architecture and acceptance criteria, see the project's SPEC documents.
 {{< /callout >}}
 
+## Plan HTML report (v3.1+)
+
+Starting in v3.1 (PR #1388), the terminal CLI `moai plan` gains a `render-html` subcommand. It produces a single plan-phase HTML report from already-authored SPEC artifacts and writes it to `.moai/reports/plan-html/<SPEC-ID>-plan.html`.
+
+```bash
+moai plan render-html SPEC-AUTH-001
+# → .moai/reports/plan-html/SPEC-AUTH-001-plan.html
+```
+
+**Input and output**:
+
+- **Input** — the `.moai/specs/<SPEC-ID>/` directory and, if present, the most recent plan-audit review file (`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`).
+- **Output** — a single self-contained HTML file with no external JS/CSS dependencies. The goal declaration, the 8-field autonomy contract, (when a review exists) the audit verdict score, and the milestones are packed into one file that opens in an offline browser.
+
+**Failure modes**:
+
+- If the SPEC directory is missing, it exits non-zero with the SPEC-ID on stderr and writes no HTML.
+- If the plan-audit review file is missing or unparseable, it renders with an "audit verdict unavailable" placeholder and **exits 0** (fail-open).
+
+{{< callout type="info" >}}
+**Distinct from the `/moai plan` slash command**: the `/moai plan` slash command routes through the Claude Code skill system to author SPEC artifacts, while the `moai plan render-html` CLI is a Go binary subcommand that emits an HTML report from already-authored artifacts.
+{{< /callout >}}
+
+Pass `--json` to emit `{action, spec_id, path, bytes}` JSON.
+
 ## Related documents
 
 - [SPEC-Based Development](/en/core-concepts/spec-based-dev) - detailed EARS format explanation

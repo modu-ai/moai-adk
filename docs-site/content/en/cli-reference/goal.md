@@ -15,7 +15,7 @@ This is the programmatic MoAI counterpart of the native `/goal` (a user-only TUI
 | `moai goal arm "<condition>"` | Register + arm a goal on the active session (`moai goal "<condition>"` is also an arm alias). Arm-only — it starts no work by itself |
 | `moai goal status` | Print the goal status of the active session (use `--all` to list every session) |
 | `moai goal clear` | Clear the goal of the active session |
-| `moai goal render` | Render the active session's goal dashboard as a self-contained HTML file (saved next to `.moai/state/goal/`). Exits non-zero when no goal is armed |
+| `moai goal render` | Render the active session's goal dashboard as a self-contained HTML file (saved next to `.moai/state/goal/`). Exits non-zero when no goal is armed. Starting in v3.1 (PR #1388) the dashboard surfaces the verdict section (loaded from the sidecar at ceiling exit) and the re-arm conditional views — see the [/moai goal dashboard section](/en/utility-commands/moai-goal#goal-dashboard) for detail |
 
 ## Common flags
 
