@@ -162,7 +162,23 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commit (5 commits + plan-ph
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs; carries `sync_commit_sha`>_
+```yaml
+sync_complete_at: 2026-08-07
+sync_commit_sha: pending-backfill-sync-wiring-001   # self-referential — orchestrator backfills real SHA in a 1-line follow-up commit
+sync_status: audit-ready
+ac_pass_count: 13
+ac_fail_count: 0
+changelog_entry_position: 1   # first entry under [Unreleased] ### Added
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"   # single sync-commit terminal transition (3-phase close)
+  plan_md: n/a                          # no frontmatter on plan.md
+  acceptance_md: n/a                    # no frontmatter on acceptance.md
+  progress_md: n/a                      # progress.md carries this signal, not a status field
+canary_compliance_check:
+  grep_changelog_count: 1               # exactly one CHANGELOG entry for this SPEC-ID
+  grep_acceptance_ac_count: 13          # AC-WIRE-001..013 distinct identifiers in acceptance.md
+  readme_edit_required: false           # README (en/ko/ja/zh) has no pre-existing mentions of these commands; out of sync-phase scope
+```
 
 ## §F. Phase 4 Mode Selection
 
