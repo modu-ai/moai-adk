@@ -171,7 +171,7 @@ _Run-phase NOT complete — M1+M2 are the first two of M1–M4; §E.3 stays pend
 
 - sync_status: ready
 - sync_complete_at: 2026-08-06T04:31:33Z
-- sync_commit_sha: _pending-backfill-SPEC-MOAI-MCP-SERVER-001-sync_
+- sync_commit_sha: 93b7adf84 (PR #1378 squash-merge onto main; 3-phase close, merged 2026-08-06 by app/github-actions auto-merge)
 - changelog_entry_position: [Unreleased] / Added (first entry, above SPEC-PROJECT-NAVIGATOR-003)
 - ac_count_at_sync: 24/24 PASS (acceptance.md SSOT)
 - frontmatter_status_transition: spec.md in-progress → completed (2026-08-06)
