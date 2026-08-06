@@ -2,7 +2,7 @@
 id: SPEC-NAVIGATOR-SYNC-002
 title: "Navigator Sync (BAS M1) — Falconer Detect: PostToolUse changed-path → affected-graph-rows mapping"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-08-06
 updated: 2026-08-06
 author: manager-spec
