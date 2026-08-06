@@ -1,0 +1,5 @@
+{
+  "question": "Where is the config loader defined?",
+  "anchor": "ConfigLoader",
+  "start_module": "cmd-app"
+}

@@ -176,6 +176,11 @@ func init() {
 	// SPEC-NAVIGATOR-SYNC-001: BAS integration-layer join step for /moai project.
 	rootCmd.AddCommand(newNavigatorSyncCmd())
 
+	// SPEC-NAVIGATOR-SYNC-003 M4.6: BAS 4-tier overlay step. Sibling of
+	// navigator-sync — invoked AFTER it during /moai project to emit the
+	// additive tiers.json overlay (fail-open, byte-identical re-run).
+	rootCmd.AddCommand(newNavigatorTiersCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
