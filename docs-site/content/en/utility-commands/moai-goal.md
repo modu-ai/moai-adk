@@ -47,7 +47,7 @@ Releases the active session's goal (deletes the state file). The Stop hook sees 
 
 ### `/moai goal render` — dashboard HTML render
 
-Renders the active session's goal state as a **self-contained HTML dashboard** to `.moai/state/goal/<session-id>.html`. It is idempotent — re-running overwrites the same path. It can be invoked both as a slash command (`/moai goal render`) and as a terminal CLI (`moai goal render`); both call the same `goal.RenderDashboard`. If no goal is armed, it exits with a non-zero code and prints the session id to stderr without writing any HTML. Adding the `--json` flag emits `{action, session_id, path, bytes}`. See the [Goal Dashboard](#goal-dashboard) section below for what gets rendered and the security properties.
+Renders the active session's goal state as a **self-contained HTML dashboard** to `.moai/state/goal/<session-id>.html`. It is idempotent — re-running overwrites the same path. It can be invoked both as a slash command (`/moai goal render`) and as a terminal CLI (`moai goal render`); both call the same `goal.RenderDashboardReArm`. If no goal is armed, it exits with a non-zero code and prints the session id to stderr without writing any HTML. Adding the `--json` flag emits `{action, session_id, path, bytes}`. See the [Goal Dashboard](#goal-dashboard) section below for what gets rendered and the security properties.
 
 ## Progression modes (autonomous / semi-autonomous)
 
@@ -93,7 +93,7 @@ flowchart TD
     A["/moai goal render<br/>or moai goal render"] --> B["goal.LoadGoal"]
     B --> C{"armed goal exists?"}
     C -- "no" --> D["exit non-zero<br/>stderr: session id<br/>no HTML written"]
-    C -- "yes" --> E["goal.RenderDashboard"]
+    C -- "yes" --> E["goal.RenderDashboardReArm"]
     E --> F["write dashboard HTML file<br/>(overwrite, idempotent)"]
     F --> G["open offline in a browser"]
 ```
@@ -102,12 +102,13 @@ flowchart TD
 **Self-contained HTML**: there are no external resources, so it opens even when the network is down. The goal state at render time is fully serialized inside the file.
 {{< /callout >}}
 
-**What the dashboard shows**: in the v3.1 CLI the verdict argument is always passed as `nil`, so the dashboard renders the following sections together with a "no verdict yet" placeholder.
+**What the dashboard shows**: starting in v3.1 (PR #1388) the renderer is wired into production, so the verdict and re-arm state are actually surfaced on the dashboard.
 
 - **Header** — session id, lifecycle state (`armed` / `satisfied` / `ceiling-exit` / `cleared`), turns used vs. ceiling, progression mode (`autonomous` / `semi-autonomous`), generation timestamp
 - **Condition declaration** — the goal condition text shown verbatim inside a bordered block
 - **Declared Conditions table** — each condition listed in a table. Mechanical conditions are shown as `<command> (expect exit N)`; model-evaluated conditions are shown as the claim text verbatim
-- **Verdict placeholder** — a "no verdict yet" placeholder in the slots for the turn/ceiling line, the failed-conditions table, and the 5-section ceiling verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)
+- **Verdict section (active at ceiling exit)** — the `stop-goal` evaluator writes the 5-section ceiling verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) to the sidecar `.moai/state/goal/<sid>.verdict.json` ONLY on the exit turn (turn ceiling / stagnation guard / wall-clock ceiling). `moai goal render` loads this sidecar at render time and fills in the turn/ceiling line, the failed-conditions table, and the 5-section verdict. If you render after a non-exit turn, the "no verdict yet" placeholder is shown (the sidecar is written only on exit).
+- **Re-arm conditional views** — at render time the dashboard auto-constructs three conditional views from the pending/active state: (1) a will-rearm indicator on `/clear`, (2) a "re-armed under a new id" view, (3) a D8 infinite-goal rejection banner. Each view is hidden when its condition does not apply.
 
 **XSS auto-escape**: every untrusted field is rendered via the Go standard library `html/template` `{{.Field}}` syntax and auto-escaped. Even if a `<script>` payload is placed inside the condition text or condition values, it is converted to HTML entities and not executed. Goal conditions can mix shell-command strings and free text, so this auto-escape is a meaningful security property.
 
@@ -115,13 +116,13 @@ flowchart TD
 
 ## Roadmap
 
-{{< icon clock muted >}} These are surfaces whose renderer is ready but which are not yet wired into the v3.1 CLI; they are scheduled for v3.2 wiring. Running `moai goal render` today does not show the three below.
+{{< icon clock muted >}} The renderer is ready but will be wired in a later release.
 
-- {{< icon clock muted >}} **Verdict-section population** — the turn/ceiling line, the failed-conditions table, and the 5-section ceiling verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk). The renderer fills these sections when the evaluator passes a non-nil verdict, but the v3.1 CLI always passes `nil`, so the "no verdict yet" placeholder is shown. This wiring is scheduled to arrive in v3.2 together with a LIVE board where the Stop hook refreshes the dashboard every turn.
-- {{< icon clock muted >}} **Plan HTML report** — a separate renderer, `RenderPlanHTML`, that writes plan-phase artifacts (goal + 8-field autonomy contract + verdict score + milestones) to `.moai/reports/plan-html/<SPEC-ID>-plan.html`. v3.1 ships no CLI wrapper and no production caller, so this path is not populated.
-- {{< icon clock muted >}} **Re-arm UI** — three conditional dashboard views: a re-arm indicator on `/clear`, a "re-armed under a new id" view, and a D8 infinite-goal rejection banner. The renderer exists, but no production caller constructs this context, so the v3.1 CLI passes `nil`.
+- {{< icon clock muted >}} **LIVE dashboard (per-turn auto-refresh)** — today `moai goal render` renders a static snapshot of the moment it is invoked. In a later release the `stop-goal` Stop hook will rewrite the `.html` file at the end of every turn, so refreshing the browser shows progress in real time as a LIVE board.
 
-The re-arm mechanics themselves (session-handoff embed + re-arm on `/clear` + infinite-goal rejection defense) already shipped under a prior SPEC — what is "unwired" in this roadmap is ONLY the surfacing of that mechanics state onto the dashboard UI.
+{{< callout type="info" >}}
+**Re-arm mechanism already shipped**: the re-arm logic itself (session-handoff embed + re-arm on `/clear` + D8 infinite-goal rejection defense) already shipped under SPEC-INFINITE-GOAL-001. What is new in v3.1 (PR #1388) is ONLY the surfacing of that mechanism state onto the dashboard UI.
+{{< /callout >}}
 
 ## Related documents
 
