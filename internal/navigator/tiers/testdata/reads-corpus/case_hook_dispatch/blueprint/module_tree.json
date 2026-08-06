@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "modules": [
+    {
+      "package_path": "cmd/app",
+      "display_name": "cmd-app",
+      "layer": "presentation",
+      "responsibility": "Entry point; parses argv and dispatches to the cli layer.",
+      "depends_on": ["internal/config", "internal/hooks"]
+    },
+    {
+      "package_path": "internal/config",
+      "display_name": "internal-config",
+      "layer": "domain",
+      "responsibility": "Loads and validates configuration from disk.",
+      "depends_on": []
+    },
+    {
+      "package_path": "internal/hooks",
+      "display_name": "internal-hooks",
+      "layer": "infrastructure",
+      "responsibility": "Routes hook events to registered handlers.",
+      "depends_on": []
+    }
+  ]
+}

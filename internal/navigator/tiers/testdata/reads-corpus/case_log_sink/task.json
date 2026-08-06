@@ -1,0 +1,5 @@
+{
+  "question": "Where is the log sink defined?",
+  "anchor": "LogSink",
+  "start_module": "cmd-app"
+}
