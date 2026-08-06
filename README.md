@@ -174,6 +174,8 @@ plan → run → sync. Tier S/M/L size classification determines verification de
 
 **worktree isolation**. Give each SPEC its own working tree. Enter one with `moai cc -w <name>`, or add `--spawn` to open it in a new window while keeping the current session.
 
+**self-hosted MCP server**. Run `moai mcp-server` to expose moai's core read/status/audit tools as typed JSON-RPC tools to any MCP-capable host (Cursor, Cline, Zed, another LLM) — a thin wrapper over the same `internal/` core the CLI uses, with 3-way audit backends (Claude / Codex / GLM) behind a uniform per-auditor gate and mandatory fail-open. Provisioning into `.mcp.json` is opt-in (default off).
+
 ---
 
 ## Infrastructure Sustains All Three Axes

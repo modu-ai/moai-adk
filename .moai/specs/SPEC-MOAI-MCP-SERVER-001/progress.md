@@ -169,9 +169,16 @@ _Run-phase NOT complete — M1+M2 are the first two of M1–M4; §E.3 stays pend
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
-
-- sync_commit_sha: _pending-backfill_
+- sync_status: ready
+- sync_complete_at: 2026-08-06T04:31:33Z
+- sync_commit_sha: _pending-backfill-SPEC-MOAI-MCP-SERVER-001-sync_
+- changelog_entry_position: [Unreleased] / Added (first entry, above SPEC-PROJECT-NAVIGATOR-003)
+- ac_count_at_sync: 24/24 PASS (acceptance.md SSOT)
+- frontmatter_status_transition: spec.md in-progress → completed (2026-08-06)
+- canary_compliance_check:
+  - go test ./... exit 0 (run-phase §E.3, pre-sync trust-but-verify)
+  - §25 template neutrality green (M4 AC-MCP-019)
+  - B12 self-test: `grep -c 'SPEC-MOAI-MCP-SERVER' CHANGELOG.md` = 0 pre-emit (no duplicate)
 
 ## §F Phase 4 Mode Selection
 
