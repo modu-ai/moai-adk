@@ -144,7 +144,7 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
 
 ```yaml
 run_complete_at: "2026-08-07"
-run_commit_sha: "pending-backfill-m3-m7"   # self-referential — backfilled in a follow-up commit
+run_commit_sha: "42c7bcfdd"   # backfilled (self-referential-hazard workaround — a commit does not know its own SHA until it lands)
 run_status: "PASS"
 ac_pass_count: 14
 ac_fail_count: 0
