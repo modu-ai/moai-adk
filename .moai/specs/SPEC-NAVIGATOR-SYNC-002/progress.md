@@ -404,7 +404,7 @@ Evidence (plan.md §C.4 anticipated this outcome verbatim: *"Verify first whethe
 
 ```yaml
 run_complete_at: 2026-08-06
-run_commit_sha: pending-backfill-M1.5
+run_commit_sha: cef4ab856
 run_status: M1.5-GREEN-run-phase-complete
 ac_pass_count: 13   # AC-NS2-002, AC-NS2-010 (M1.1) + AC-NS2-001a, AC-NS2-001b, AC-NS2-009 (M1.2) + AC-NS2-003 (M1.3) + AC-NS2-004, AC-NS2-006, AC-NS2-012 (M1.4) + AC-NS2-005a, AC-NS2-005b, AC-NS2-007, AC-NS2-008, AC-NS2-011 (M1.5)
 ac_fail_count: 0
@@ -435,12 +435,12 @@ navigator_detect_template_first_verdict: "env-var-only / no template change / no
 
 ```yaml
 sync_complete_at: 2026-08-06
-sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround — backfilled by orchestrator in a follow-up commit after the sync commit lands (same pattern as SPEC-NAVIGATOR-SYNC-001 d1287d314)
-run_commit_sha: f106e078b   # M1.5 — final run-phase commit (last of M1.1..M1.5)
-sync_status: sync-phase-close-in-progress   # draft → implemented transition riding this sync commit; spec-frontmatter-schema.md § 3-phase close
+sync_commit_sha: 304907b6d   # PR #1379 squash-merge onto main (BAS Epic M1, merged 2026-08-06) — durable main commit representing the merged SPEC work
+run_commit_sha: cef4ab856   # M1.5 — final run-phase commit (post-rebase; pre-rebase orphan f106e078b corrected on backfill)
+sync_status: pass   # 3-phase close complete — implemented → completed transition rides this backfill commit (spec-frontmatter-schema.md § 3-phase close)
 changelog_entry_position: top-of-Unreleased-Added   # SPEC-NAVIGATOR-SYNC-002 entry appended above SPEC-NAVIGATOR-SYNC-001 (most-recent-first)
 frontmatter_status_transitions:
-  spec_md: "draft → implemented"   # manager-docs owns this transition on the sync commit (in-progress → implemented → completed merged close per § Status Transition Ownership Matrix; this SPEC's run-phase started from draft, so the sync commit carries draft → implemented directly)
+  spec_md: "draft → implemented → completed"   # run-phase carried draft → implemented (#1379); this backfill commit carries implemented → completed (spec-frontmatter-schema.md § 3-phase close)
   updated_field: "2026-08-06"   # refreshed to sync commit date
 docs_site_4locale_required: false   # internal PostToolUse hook — no user-visible CLI/command/config-key/API surface; §17.2 oss-docs chaining directive not triggered
 readme_update_required: false   # same rationale
