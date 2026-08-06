@@ -1,10 +1,7 @@
 package tiers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -401,11 +398,3 @@ func enumerateSymbols(projectRoot string, opts SymbolOptions) ([]SymbolEnrichmen
 	}
 	return recs, nil, nil
 }
-
-// _ keeps the stdlib imports in scope for future extension hooks without
-// forcing unused-warning cycles if a helper is removed.
-var (
-	_ = fmt.Sprintf
-	_ = sha256.Sum256
-	_ = hex.EncodeToString
-)

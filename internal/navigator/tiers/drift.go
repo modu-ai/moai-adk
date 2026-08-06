@@ -62,10 +62,15 @@ func checkContractDrift(projectRoot string, c ContractNode) DriftStatus {
 	return DriftAligned
 }
 
-// buildValidatorCommand constructs an *exec.Cmd for the validator. It runs
-// via `sh -c` to allow shell meticolon-free commands (matching the documented
-// validator_command shape). The cwd is set to projectRoot so relative paths
-// in the validator resolve.
+// buildValidatorCommand constructs an *exec.Cmd for the validator. The
+// validator is the user-declared validator_command from
+// .moai/project/blueprint/contracts.yaml (trusted project config, NOT
+// untrusted input); `sh -c` permits shell features in the validator
+// (pipelines, env expansion, redirection), consistent with Makefile-target
+// trust. No untrusted input reaches this exec path — the validator string
+// is authored by the project maintainer alongside contracts.yaml and is
+// read verbatim from that file. The cwd is set to projectRoot so relative
+// paths in the validator resolve.
 func buildValidatorCommand(projectRoot, validator string) *exec.Cmd {
 	cmd := exec.Command("sh", "-c", validator)
 	if projectRoot != "" {
