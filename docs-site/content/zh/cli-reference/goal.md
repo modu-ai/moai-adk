@@ -15,7 +15,7 @@ draft: false
 | `moai goal arm "<condition>"` | 向活动会话注册 + arm 目标(`moai goal "<condition>"` 也是 arm 的别名)。arm-only —— 其自身不会启动任何工作 |
 | `moai goal status` | 输出活动会话的目标状态(用 `--all` 列出所有会话) |
 | `moai goal clear` | 解除活动会话的目标 |
-| `moai goal render` | 将活动会话的目标仪表盘渲染为 self-contained HTML 文件(保存到 `.moai/state/goal/` 旁)。如果没有已 arm 的 goal,以非零退出码结束 |
+| `moai goal render` | 将活动会话的目标仪表盘渲染为 self-contained HTML 文件(保存到 `.moai/state/goal/` 旁)。如果没有已 arm 的 goal,以非零退出码结束。从 v3.1(PR #1388)起,仪表盘会显示判定段(天花板 exit 时从 sidecar 加载)和重新武装条件视图 — 详情参见 [/moai goal 仪表盘章节](/zh/utility-commands/moai-goal#目标看板) |
 
 ## 公共标志
 
