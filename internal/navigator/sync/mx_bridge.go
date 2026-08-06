@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"path/filepath"
 	"sort"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
@@ -31,6 +32,13 @@ func BridgeMxAssociations(projectRoot string) ([]MxBridgeSpec, error) {
 		return nil, err
 	}
 	scanner := mx.NewScanner()
+	// Seed the scanner's ignore list with the shared default so the walk skips
+	// `.git/`, `.claude/`, `.moai/`, `vendor/`, `node_modules/`, and the rest
+	// of DefaultScanIgnore. Without this call, `NewScanner()` leaves
+	// ignorePatterns nil and the walk descends into every directory — the same
+	// ignore set the `moai mx scan` CLI and the SessionStart-hook background
+	// scan use (internal/cli/mx_scan.go, internal/hook/session_start.go).
+	scanner.SetIgnorePatterns(mx.DefaultScanIgnore)
 
 	// Scan the project source tree for @MX tags. The mx-scanner walks
 	// .moai/specs/ for body-based association (already aggregated by the
@@ -45,16 +53,33 @@ func BridgeMxAssociations(projectRoot string) ([]MxBridgeSpec, error) {
 	seen := map[string]bool{}
 	var out []MxBridgeSpec
 	for _, tag := range tags {
-		specIDs, _ := assoc.AssociateWithDiagnostics(tag)
+		// Normalize the tag's file path to project-relative BEFORE association.
+		// `scanner.ScanDir` was called with an ABSOLUTE projectRoot, so tag.File
+		// is absolute; but `mx.LoadSpecModules` returns module paths verbatim
+		// from spec.md frontmatter (project-relative). The associator's
+		// path-based source (a) does a plain `strings.HasPrefix(filePath,
+		// modulePath)` (internal/mx/spec_association.go), so an absolute tag.File
+		// never matches a relative module path and path-based association
+		// silently fails. Relativizing here — on a per-iteration copy, NOT
+		// mutating the shared tag — makes path-based association work and keeps
+		// SourcePath consistent with the rest of the graph (project-relative).
+		// Consumer-only: this bridge does NOT modify internal/mx (REQ-NS-005).
+		assocFile := tag.File
+		if rel, err := filepath.Rel(projectRoot, tag.File); err == nil {
+			assocFile = rel
+		}
+		assocTag := tag
+		assocTag.File = assocFile
+		specIDs, _ := assoc.AssociateWithDiagnostics(assocTag)
 		for _, specID := range specIDs {
-			key := specID + "|" + tag.File + "|" + itoa(tag.Line)
+			key := specID + "|" + assocFile + "|" + itoa(tag.Line)
 			if seen[key] {
 				continue
 			}
 			seen[key] = true
 			out = append(out, MxBridgeSpec{
 				SpecID:     specID,
-				SourcePath: tag.File,
+				SourcePath: assocFile,
 				LineNumber: tag.Line,
 			})
 		}
