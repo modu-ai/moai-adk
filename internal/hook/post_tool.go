@@ -230,7 +230,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// the diagnostic branches above (LSP / AST), and (b) the append-only JSONL
 	// impact record at .moai/state/navigator-detect/<session-id>.jsonl for M2
 	// Route to consume. NO work-item promotion (REQ-NS2-003c).
-	if result := runNavigatorDetect(input); result != nil {
+	if result := runNavigatorDetectSafe(ctx, input); result != nil {
 		systemMessage = emitNavigatorDetectAdvisory(input, result, systemMessage)
 		recordNavigatorDetectImpact(input, result)
 		metrics["navigator_detect"] = map[string]any{

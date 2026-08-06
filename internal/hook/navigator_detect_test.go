@@ -359,8 +359,8 @@ func TestNavigatorDetect_NoForkedChain(t *testing.T) {
 
 // TestNavigatorDetect_BranchRegisteredInDispatcher verifies the branch is
 // wired inside postToolHandler.Handle (AC-NS2-009b). Source-grep proof that
-// runNavigatorDetect is called from exactly one site in post_tool.go, gated
-// on the Write/Edit/NotebookEdit trigger surface.
+// runNavigatorDetectSafe (M1.4 hardened wrapper) is called from exactly one
+// site in post_tool.go, gated on the Write/Edit/NotebookEdit trigger surface.
 func TestNavigatorDetect_BranchRegisteredInDispatcher(t *testing.T) {
 	t.Parallel()
 	raw, err := os.ReadFile("post_tool.go")
@@ -368,15 +368,15 @@ func TestNavigatorDetect_BranchRegisteredInDispatcher(t *testing.T) {
 		t.Fatalf("read post_tool.go: %v", err)
 	}
 	body := string(raw)
-	if !strings.Contains(body, "runNavigatorDetect(input)") {
-		t.Errorf("runNavigatorDetect is not called from post_tool.go; AC-NS2-009b requires the branch to be registered inside postToolHandler.Handle")
+	if !strings.Contains(body, "runNavigatorDetectSafe(ctx, input)") {
+		t.Errorf("runNavigatorDetectSafe is not called from post_tool.go; AC-NS2-009b requires the branch to be registered inside postToolHandler.Handle")
 	}
-	// The call site count for runNavigatorDetect across the whole package MUST
-	// be exactly 1 (the dispatcher) plus test references. Production source
-	// (post_tool.go) MUST contain exactly one call.
-	prodCalls := strings.Count(body, "runNavigatorDetect(input)")
+	// The call site count for the safe wrapper in production source MUST be
+	// exactly 1 (the dispatcher). M1.4 routes the PostToolUse branch through
+	// the fail-open + bounded-deadline wrapper rather than the raw entry point.
+	prodCalls := strings.Count(body, "runNavigatorDetectSafe(ctx, input)")
 	if prodCalls != 1 {
-		t.Errorf("expected exactly 1 runNavigatorDetect(input) call in post_tool.go; got %d", prodCalls)
+		t.Errorf("expected exactly 1 runNavigatorDetectSafe(ctx, input) call in post_tool.go; got %d", prodCalls)
 	}
 }
 

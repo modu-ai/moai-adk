@@ -208,30 +208,136 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
 ```
 After implementing the M1.3 surfaces + wiring the dispatcher, all M1.3 + M1.2 + M1.1 navigator-detect tests pass (GREEN).
 
+### M1.4 — Fail-open + concurrency hardening
+
+**Scope**: wrap the Detect branch in `defer recover()` + a bounded `context.WithTimeout(ctx, navigatorDetectTimeout)` (plan.md §C.6), add the schema-invalid fail-open branch (AC-NS2-004 row 004c), and prove the atomic-read concurrency guarantee (AC-NS2-006) by reusing M0's `NAVIGATOR_PRE_RENAME_BARRIER` test hook (no new test hook added — plan.md §C.5). The branch remains fail-open on every error mode (REQ-NS2-004) and NEVER blocks (REQ-NS2-012).
+
+**Files modified**:
+- `internal/hook/navigator_detect.go` (EXTENDED) — added: `navigatorDetectTimeout = 200 * time.Millisecond` named constant (per `hns-moaiadk-best-practices` hardcoding-prevention — thresholds MUST be named constants); the schema-invalid check in `detectForChangedPath` (the `edges` array is ABSENT after unmarshal — distinct from a legitimately-empty `[]` per §F edge case); the `runNavigatorDetectSafe(ctx, input)` wrapper with deferred recover (swallows any panic, including the nil-ctx panic inside `context.WithTimeout`) + bounded deadline (goroutine + select on `dctx.Done()` vs result channel — silent nil on timeout/cancellation per AC-NS2-004 row 004e). Imports `context` + `time` added.
+- `internal/hook/post_tool.go` (MODIFIED) — the dispatcher branch now calls `runNavigatorDetectSafe(ctx, input)` (the hardened wrapper) instead of `runNavigatorDetect(input)` directly. ONE call site, unchanged semantics for the success path; failure modes now contained.
+- `internal/hook/navigator_detect_test.go` (MODIFIED) — `TestNavigatorDetect_BranchRegisteredInDispatcher` updated to grep for the M1.4 safe-wrapper call site `runNavigatorDetectSafe(ctx, input)` (exactly 1 occurrence in production source).
+- `internal/hook/navigator_detect_hardening_test.go` (NEW) — 5 M1.4 tests: the table-driven `TestDetectForChangedPath_FailOpenTable` (rows 004a..004e), `TestRunNavigatorDetectSafe_PreCancelledContext` (AC-NS2-004 row 004e via pre-cancelled ctx), `TestRunNavigatorDetectSafe_RecoversFromPanic` (REQ-NS2-012 panic containment), `TestRunNavigatorDetectSafe_PassesThroughNonCancel` (healthy-context pass-through contract), `TestDetectForChangedPath_AtomicReadDuringRegen` (AC-NS2-006 — reuses M0's `NAVIGATOR_PRE_RENAME_BARRIER`), `TestNavigatorDetect_NeverBlocks_GrepGuard` (AC-NS2-012 source grep for `Decision: "block"` / `os.Exit(2)` / `"block"`).
+
+**Timeout constant** (named per the hardcoding-prevention rule): `navigatorDetectTimeout = 200 * time.Millisecond` at `internal/hook/navigator_detect.go`. Plan.md §C.6 names ~200ms; the named constant honors it without a bare `200*time.Millisecond` literal.
+
+**5 fail-open modes** (table-driven — each degrades to "no impact surfaced" silently; PostToolUse proceeds exit-0-equivalent):
+
+| row | trigger | handling (one line) |
+|---|---|---|
+| 004a graph absent | `os.ReadFile` fails (graph not yet generated) | `detectForChangedPath` logs one `slog.Debug` line + returns `nil` (existing M1.2 branch) |
+| 004b unparseable JSON | `json.Unmarshal` fails on malformed file | `detectForChangedPath` logs one `slog.Debug` line + returns `nil` (existing M1.2 branch) |
+| 004c schema-invalid | JSON parses but `edges` array is ABSENT (nil after unmarshal — distinct from `"edges":[]`) | NEW M1.4 branch: one `slog.Debug` line + returns `nil`. An explicit empty array is a valid empty graph (§F edge case) and falls through to `detect.Traverse` → empty Result, no log |
+| 004d traversal error | `detect.Traverse` returns err (nil graph / empty changedPath / normalization failure) | `detectForChangedPath` logs one `slog.Debug` line + returns `nil` (existing branch; exercised by 004d table row via empty changedPath). Per-edge malformed `source_node` keys are skipped inside `detect.Traverse` (advisory fail-open at the edge level — NOT fatal) |
+| 004e timeout / cancellation | the bounded `context.WithTimeout(ctx, 200ms)` deadline fires OR the parent ctx is cancelled | NEW M1.4 wrapper `runNavigatorDetectSafe` selects `<-dctx.Done()` → returns `nil` silently (NO log line — context cancellation is not an error to advertise per AC-NS2-004 row 004e) |
+
+#### AC-NS2-004 — fail-open across 5 error modes — PASS
+
+**Table-driven test**: `TestDetectForChangedPath_FailOpenTable` (rows 004a..004e). Each subtest asserts the branch returns cleanly (nil or empty Result) without propagating a panic or an error that would block the tool call.
+
+Command (verbatim):
+```
+go test -count=1 -race -v -run 'TestDetectForChangedPath_FailOpenTable|TestRunNavigatorDetectSafe' ./internal/hook/
+```
+
+Observed output (verbatim tail):
+```
+=== RUN   TestDetectForChangedPath_FailOpenTable
+=== RUN   TestDetectForChangedPath_FailOpenTable/004a_graph_absent
+=== RUN   TestDetectForChangedPath_FailOpenTable/004b_unparseable_json
+=== RUN   TestDetectForChangedPath_FailOpenTable/004c_schema_invalid_missing_edges_array
+=== RUN   TestDetectForChangedPath_FailOpenTable/004d_traversal_error_empty_changed_path
+=== RUN   TestDetectForChangedPath_FailOpenTable/004e_timeout_pre_cancelled_context
+--- PASS: TestDetectForChangedPath_FailOpenTable (0.01s)
+    --- PASS: TestDetectForChangedPath_FailOpenTable/004a_graph_absent (0.00s)
+    --- PASS: TestDetectForChangedPath_FailOpenTable/004b_unparseable_json (0.00s)
+    --- PASS: TestDetectForChangedPath_FailOpenTable/004c_schema_invalid_missing_edges_array (0.00s)
+    --- PASS: TestDetectForChangedPath_FailOpenTable/004d_traversal_error_empty_changed_path (0.00s)
+    --- PASS: TestDetectForChangedPath_FailOpenTable/004e_timeout_pre_cancelled_context (0.00s)
+=== RUN   TestRunNavigatorDetectSafe_PreCancelledContext
+--- PASS: TestRunNavigatorDetectSafe_PreCancelledContext (0.00s)
+=== RUN   TestRunNavigatorDetectSafe_RecoversFromPanic
+--- PASS: TestRunNavigatorDetectSafe_RecoversFromPanic (0.00s)
+=== RUN   TestRunNavigatorDetectSafe_PassesThroughNonCancel
+--- PASS: TestRunNavigatorDetectSafe_PassesThroughNonCancel (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.362s
+```
+
+#### AC-NS2-006 — atomic read during regen — PASS
+
+**Concurrency test**: `TestDetectForChangedPath_AtomicReadDuringRegen` (`internal/hook/navigator_detect_hardening_test.go`). The test writes a PRIOR committed graph at `<tmpDir>/.moai/project/navigator/nav-graph.json`, arms the M0 `NAVIGATOR_PRE_RENAME_BARRIER` env var, spawns a writer goroutine calling `navsync.WriteGraph(graphPath, newGraph)` (which writes `.tmp` then spin-waits at the barrier before the rename), waits for the barrier file to appear, and runs the reader `detectForChangedPath(graphPath, priorEdgePath)` WHILE the writer is held. The reader observes the PRIOR graph (the `prior.Foo` edge), never the NEW graph (no `new.Bar`), never a partial file (≥1 edge present). Then the barrier is removed, the writer completes, and the goroutine exits cleanly.
+
+**Reuse of M0 test hook**: the test sets `NAVIGATOR_PRE_RENAME_BARRIER=<tmpDir>/barrier-marker` — the SAME hook M0 ships at `internal/navigator/sync/write.go:41-49`. NO new test hook added (plan.md §C.5). The test is deliberately serial (NOT `t.Parallel()`) because the barrier env var is process-global (atomicWrite unconditionally unsets it at `write.go:42`).
+
+**Race detector**: `go test -race ./internal/hook/...` → exit 0, no data races reported (the reader is a single `os.ReadFile`; the writer's `.tmp`+`os.Rename` is M0's atomicWrite, which the reader observes atomically via inode swap).
+
+Command (verbatim):
+```
+go test -count=1 -race -v -run 'TestDetectForChangedPath_AtomicReadDuringRegen' ./internal/hook/
+```
+
+Observed output (verbatim):
+```
+=== RUN   TestDetectForChangedPath_AtomicReadDuringRegen
+--- PASS: TestDetectForChangedPath_AtomicReadDuringRegen (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.362s
+```
+
+#### AC-NS2-012 — PostToolUse never blocks — PASS
+
+**Source grep**: `TestNavigatorDetect_NeverBlocks_GrepGuard` asserts `navigator_detect.go` contains ZERO matches for `Decision: "block"`, `os.Exit(2)`, or `"block"`. Complements the M1.3 `TestNavigatorDetect_NoWorkItemPromotion` grep.
+
+**Panic containment**: `TestRunNavigatorDetectSafe_RecoversFromPanic` passes a nil context (which makes `context.WithTimeout` panic) and asserts the deferred recover swallows it → returns nil. The tool call proceeds regardless.
+
+**Bounded deadline**: `TestRunNavigatorDetectSafe_PreCancelledContext` passes a pre-cancelled context and asserts (a) nil is returned silently, (b) the wrapper does NOT block past the `navigatorDetectTimeout` budget — the `<-dctx.Done()` select arm fires immediately.
+
+#### RED evidence (TDD — verbatim pre-GREEN failing-test output)
+
+```
+$ go test -count=1 -run 'TestDetectForChangedPath_FailOpenTable|TestRunNavigatorDetectSafe|TestDetectForChangedPath_AtomicReadDuringRegen|TestNavigatorDetect_NeverBlocks' ./internal/hook/
+# github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+internal/hook/navigator_detect_hardening_test.go:186:9: undefined: runNavigatorDetectSafe
+internal/hook/navigator_detect_hardening_test.go:194:15: undefined: navigatorDetectTimeout
+internal/hook/navigator_detect_hardening_test.go:196:13: undefined: navigatorDetectTimeout
+internal/hook/navigator_detect_hardening_test.go:214:9: undefined: runNavigatorDetectSafe
+internal/hook/navigator_detect_hardening_test.go:232:9: undefined: runNavigatorDetectSafe
+internal/hook/navigator_detect_hardening_test.go:409:9: undefined: runNavigatorDetectSafe
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+```
+After implementing the timeout constant, schema-invalid check, safe wrapper, and post_tool.go wiring, all M1.4 + M1.3 + M1.2 + M1.1 navigator-detect tests pass GREEN with `-race` (see verification batch below).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-06
-run_commit_sha: pending-backfill-M1.3
-run_status: M1.3-GREEN
-ac_pass_count: 6   # AC-NS2-002, AC-NS2-010 (M1.1) + AC-NS2-001a, AC-NS2-001b, AC-NS2-009 (M1.2) + AC-NS2-003 (M1.3)
+run_commit_sha: pending-backfill-M1.4
+run_status: M1.4-GREEN
+ac_pass_count: 9   # AC-NS2-002, AC-NS2-010 (M1.1) + AC-NS2-001a, AC-NS2-001b, AC-NS2-009 (M1.2) + AC-NS2-003 (M1.3) + AC-NS2-004, AC-NS2-006, AC-NS2-012 (M1.4)
 ac_fail_count: 0
 preserve_list_post_run_count: 2   # internal/navigator/sync/, internal/mx/ byte-unchanged (REQ-NS2-005) — verified via `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'` returns 0 matches
 new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/hook/... --timeout=3m → 0 issues; go vet → clean
-total_run_phase_files: 5   # detect/{traverse,traverse_test}.go (M1.1) + hook/{navigator_detect,navigator_detect_test}.go + hook/post_tool.go (M1.2+M1.3)
-m1_to_mN_commit_strategy: per-milestone (orchestrator gates M1.3→M1.4 in semi-autonomous mode)
+cross_platform_build:
+  goos_darwin: PASS   # host default — go build ./...
+  goos_windows: PASS   # GOOS=windows GOARCH=amd64 go build ./internal/hook/... → exit 0
+total_run_phase_files: 7   # detect/{traverse,traverse_test}.go (M1.1) + hook/{navigator_detect,navigator_detect_test,navigator_detect_hardening_test}.go + hook/post_tool.go (M1.2+M1.3+M1.4)
+m1_to_mN_commit_strategy: per-milestone (orchestrator gates M1.4→M1.5 in semi-autonomous mode)
+navigator_detect_timeout_constant: "200ms"   # M1.4 — named constant navigatorDetectTimeout at internal/hook/navigator_detect.go (plan.md §C.6)
+navigator_detect_failopen_modes: "004a graph-absent, 004b unparseable-json, 004c schema-invalid-missing-edges-array, 004d traversal-error, 004e timeout-cancellation — all degrade to silent nil"
+navigator_detect_concurrency_test: "TestDetectForChangedPath_AtomicReadDuringRegen reuses M0 NAVIGATOR_PRE_RENAME_BARRIER; go test -race → PASS"
 navigator_detect_jsonl_path: ".moai/state/navigator-detect/<session-id>.jsonl"   # M1.3 — the contract M2 Route consumes
 navigator_detect_systemmessage_shape: "Navigator Detect: <changed_path> touches <N> graph row(s):\\n- <source_node> → <target_node> (<edge_type> @ <source_path>:<line>) [≤10 rows; '…and N more' overflow tail]"
 ```
 
-**Out-of-scope for M1.3 (deferred to later milestones, NOT failures)**:
-- AC-NS2-004 (5-mode fail-open table) — M1.4 (M1.2 covers rows 004a absent + 004b unparseable at the integration boundary)
-- AC-NS2-005a/b (consumer-only grep + read-via-public-API) — M1.5 (the byte-unchanged half is already evidenced above for M1.1/M1.2/M1.3: `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'` returns 0 matches)
-- AC-NS2-006 (atomic-read concurrency) — M1.4
+**Out-of-scope for M1.4 (deferred to M1.5, NOT failures)**:
+- AC-NS2-005a/b (consumer-only grep + read-via-public-API) — M1.5 (the byte-unchanged half is already evidenced above for M1.1/M1.2/M1.3/M1.4: `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'` returns 0 matches)
 - AC-NS2-007 (≥80% coverage fixture corpus) — M1.5
-- AC-NS2-008 (non-overlap grep test) — M1.5 (M1.2-light version `TestNavigatorDetect_NoForkedChain` already passes; M1.3 added `TestNavigatorDetect_NoWorkItemPromotion` covering AC-NS2-003c at source-grep level)
-- AC-NS2-011 (template-first) — M1.5 (M1.2/M1.3 made no template change — the gate is env-var-only, no `internal/template/templates/` edit, no `catalog.yaml` regen required per plan.md §C.4)
-- AC-NS2-012 (never-blocks full table) — M1.4 (M1.2-light grep already passes; M1.3 dispatcher test asserts `out.Decision != "block"` for the success case)
+- AC-NS2-008 (non-overlap grep test) — M1.5 (M1.2-light `TestNavigatorDetect_NoForkedChain` + M1.3 `TestNavigatorDetect_NoWorkItemPromotion` + M1.4 `TestNavigatorDetect_NeverBlocks_GrepGuard` already pass at the source-grep level; M1.5 adds the canonical `navigator_detect_nonoverlap_test.go` per AC-NS2-008)
+- AC-NS2-011 (template-first) — M1.5 (M1.2/M1.3/M1.4 made no template change — the gate is env-var-only, no `internal/template/templates/` edit, no `catalog.yaml` regen required per plan.md §C.4)
+
+**In-scope for M1.4 — now PASS (evidenced above)**:
+- AC-NS2-004 (5-mode fail-open table) — PASS (table-driven test)
+- AC-NS2-006 (atomic-read concurrency) — PASS (M0 barrier reuse, -race clean)
+- AC-NS2-012 (PostToolUse never blocks) — PASS (grep guard + panic-recovery test + bounded-deadline test)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

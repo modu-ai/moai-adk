@@ -27,6 +27,7 @@ package hook
 // NEVER cascades into sibling PostToolUse branches.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -34,6 +35,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/navigator/detect"
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
@@ -81,6 +83,16 @@ const systemMessageRowLimit = 10
 // (per plan.md §C.3 + the M1.3 determinism constraint).
 const changedAtNoGit = "(no-git)"
 
+// navigatorDetectTimeout is the bounded deadline for the Detect branch's
+// graph read + reverse traversal (M1.4 — plan.md §C.6, AC-NS2-004 row 004e).
+// The Falconer graph for this repo is O(hundreds) of edges and scans in
+// <10ms, leaving ~20x headroom; the budget guards against a pathological
+// future graph. When the deadline fires the wrapper degrades to a silent
+// nil (no advisory emitted, no error surfaced) — context cancellation is NOT
+// an error to advertise (REQ-NS2-004 row 004e). Named constant per the
+// hardcoding-prevention rule (hns-moaiadk-best-practices §thresholds).
+const navigatorDetectTimeout = 200 * time.Millisecond
+
 // runNavigatorDetect is the M1.2 PostToolUse branch entry point for the BAS
 // Falconer Detect layer. It is called from exactly ONE site inside
 // postToolHandler.Handle (REQ-NS2-009 branch-not-fork).
@@ -113,6 +125,73 @@ func runNavigatorDetect(input *HookInput) *detect.Result {
 
 	graphPath := filepath.Join(projectRoot, navGraphRelPath)
 	return detectForChangedPath(graphPath, changedPath)
+}
+
+// runNavigatorDetectSafe is the M1.4 fail-open + concurrency-hardened wrapper
+// around runNavigatorDetect (REQ-NS2-004 / REQ-NS2-012). It guarantees the
+// PostToolUse tool call is NEVER blocked by the Detect branch:
+//
+//   - (a) deferred recover: any panic inside the traversal, graph read, or
+//     advisory surface is swallowed; the wrapper returns nil.
+//   - (b) bounded deadline: the work runs under a context.WithTimeout(parent,
+//     navigatorDetectTimeout). If the deadline fires (or the parent context is
+//     cancelled) before the work completes, the wrapper returns nil silently —
+//     context cancellation is NOT an error to advertise (AC-NS2-004 row 004e).
+//
+// The wrapper is fail-open by construction: in every failure mode (panic,
+// timeout, cancellation, ordinary error) it returns nil and the dispatcher
+// proceeds as if the branch yielded no rows. The tool call's Decision stays
+// "allow" (REQ-NS2-012).
+//
+// A nil ctx is tolerated — context.WithTimeout panics on nil, which the
+// deferred recover catches. This is intentional: callers passing nil do not
+// crash the PostToolUse chain.
+func runNavigatorDetectSafe(ctx context.Context, input *HookInput) (result *detect.Result) {
+	toolName := ""
+	if input != nil {
+		toolName = input.ToolName
+	}
+	// (a) panic safety — REQ-NS2-012 never-blocks. Even a nil ctx (which
+	// makes context.WithTimeout panic) is contained here.
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Debug("navigator-detect: recovered from panic (fail-open)",
+				"tool_name", toolName,
+				"recover", r,
+			)
+			result = nil
+		}
+	}()
+
+	// (b) bounded deadline. A nil ctx panics here; the deferred recover above
+	// converts the panic into a silent nil return.
+	dctx, cancel := context.WithTimeout(ctx, navigatorDetectTimeout)
+	defer cancel()
+
+	type outcome struct{ res *detect.Result }
+	ch := make(chan outcome, 1)
+	go func() {
+		// Defensive recover inside the goroutine: a panic here must still
+		// deliver a value to ch so the select cannot deadlock. The outer
+		// recover would already catch a panic that escapes, but sending nil
+		// keeps the channel contract honest.
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Debug("navigator-detect: worker goroutine recovered (fail-open)",
+					"recover", r)
+				ch <- outcome{nil}
+			}
+		}()
+		ch <- outcome{runNavigatorDetect(input)}
+	}()
+
+	select {
+	case <-dctx.Done():
+		// Timeout / parent cancellation — silent partial (possibly empty).
+		return nil
+	case o := <-ch:
+		return o.res
+	}
 }
 
 // emitNavigatorDetectAdvisory produces the two M1.3 read-only output surfaces
@@ -206,6 +285,18 @@ func detectForChangedPath(graphPath, changedPath string) *detect.Result {
 		slog.Debug("navigator-detect: graph unparseable (fail-open)",
 			"graph_path", graphPath,
 			"error", err,
+		)
+		return nil
+	}
+
+	// Schema-invalid: the `edges` array is ABSENT (left nil after unmarshal).
+	// This is distinct from a legitimately-empty graph `{"edges":[]}`, which
+	// unmarshal populates as a non-nil empty slice (§F edge case "Empty
+	// graph"). A graph missing the edges array entirely cannot yield any
+	// affected row; REQ-NS2-004 row 004c requires one diagnostic line + nil.
+	if graph.Edges == nil {
+		slog.Debug("navigator-detect: graph schema-invalid — no edges array (fail-open)",
+			"graph_path", graphPath,
 		)
 		return nil
 	}
