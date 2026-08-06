@@ -2,7 +2,7 @@
 id: SPEC-GOAL-HTML-WIRING-001
 title: "v3.2 production-caller wiring for 3 inert goal/plan HTML renderer surfaces"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-07
 updated: 2026-08-07
 author: manager-spec
