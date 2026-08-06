@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -448,7 +449,12 @@ func runGoalRender(cmd *cobra.Command, sessionFlag string, jsonOutput bool) erro
 	// sidecar (REQ-WIRE-003 / AC-WIRE-002): the placeholder path is preserved
 	// byte-identical.
 	v, _ := goal.LoadVerdict(root, sessionID)
-	raw, err := goal.RenderDashboard(g, v)
+	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-009 / AC-WIRE-007: construct the
+	// render-only ReArmContext from the already-landed SPEC-INFINITE-GOAL-001
+	// state (pending.json EmbeddedGoal + post-/clear new-session goal file).
+	// nil reArm → byte-identical base view per AC-GHF-007 / AC-WIRE-009.
+	reArm := buildReArmContext(root, sessionID)
+	raw, err := goal.RenderDashboardReArm(g, v, reArm)
 	if err != nil {
 		return fmt.Errorf("goal render: %w", err)
 	}
@@ -477,4 +483,66 @@ func init() {
 	// SPEC amendment reachability: register the `moai goal` arming command under
 	// rootCmd so it appears in `moai --help` and the arm→eval linkage is reachable.
 	rootCmd.AddCommand(newGoalCmd())
+}
+
+// buildReArmContext constructs the render-only re-arm UI context from the
+// already-landed SPEC-INFINITE-GOAL-001 state (SPEC-GOAL-HTML-WIRING-001
+// REQ-WIRE-009 / AC-WIRE-007). It reads `.moai/state/handoff/pending.json`
+// (consume-only — the SPEC-INFINITE-GOAL-001 shape is untouched) and, when an
+// EmbeddedGoal is present, scans the per-session goal files for a post-/clear
+// new-session goal whose `Goal` text matches the embedded condition (the
+// `rearmEmbeddedGoal` write signature). Returns nil when no EmbeddedGoal is
+// present → the base view renders byte-identically (AC-WIRE-009). All steps are
+// best-effort / fail-open: a missing/corrupt pending.json or a scan miss leaves
+// the corresponding ReArmContext field empty.
+func buildReArmContext(root, sessionID string) *goal.ReArmContext {
+	rec, present, _ := handoff.ReadPending(root)
+	if !present || rec == nil || rec.EmbeddedGoal == nil {
+		return nil
+	}
+	eg := rec.EmbeddedGoal
+	ra := &goal.ReArmContext{
+		EmbeddedCondition:   eg.Condition,
+		EmbeddedMaxTurns:    eg.MaxTurns,
+		EmbeddedMaxDuration: eg.MaxDuration,
+		EmbeddedCostCap:     eg.CostCap,
+		EmbeddedUnbounded:   eg.IsUnbounded(),
+	}
+	if eg.Condition != "" {
+		ra.NewSessionID = findReArmSession(root, sessionID, eg.Condition)
+	}
+	return ra
+}
+
+// findReArmSession scans the per-session goal-state files for a session other
+// than currentSessionID whose goal text matches embeddedCondition (the
+// `rearmEmbeddedGoal` write signature: it reconstructs the goal with
+// `Goal: eg.Condition`). Best-effort — returns "" on miss / error.
+func findReArmSession(root, currentSessionID, embeddedCondition string) string {
+	dir := filepath.Join(root, goal.StateDir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		id := strings.TrimSuffix(name, ".json")
+		if id == currentSessionID {
+			continue
+		}
+		g, err := goal.LoadGoal(root, id)
+		if err != nil || g == nil {
+			continue
+		}
+		if g.Goal == embeddedCondition {
+			return id
+		}
+	}
+	return ""
 }
