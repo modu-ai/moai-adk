@@ -195,6 +195,20 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// flag overrides it below in runInit.
 	opts.WorktreeAutoCreate = result.WorktreeAutoCreate
 	opts.WorktreeAutoCreateSet = true
+
+	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): the audit + MCP
+	// opt-in selection flows from the wizard into opts here. The string fields
+	// reuse the M3 typed-config vocabulary (no fork). AuditConfigSet=true so the
+	// workflow.yaml writer persists the selection; a `--non-interactive` init
+	// (wizard skipped) leaves AuditConfigSet=false and the deployed template
+	// default (no audit block) is preserved.
+	opts.AuditModel = result.AuditModel
+	opts.AuditGateClaude = result.AuditGateClaude
+	opts.AuditGateCodex = result.AuditGateCodex
+	opts.AuditGateGLM = result.AuditGateGLM
+	opts.CodexAuditEnabled = result.CodexAuditEnabled
+	opts.MCPToolsOptIn = result.MCPToolsOptIn
+	opts.AuditConfigSet = true
 }
 
 // applyAutonomyTierFromWizard applies the interactive autonomy-tier wizard
@@ -822,6 +836,22 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
+
+	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020, C6 opt-in):
+	// provision the single neutral `.mcp.json` moai entry when the user opted in
+	// via the wizard (mcp_tools_opt_in). Reuses the M1 atomic-config seam
+	// (provisionMoaiMCPServerEntryAt — same package); the entry shape is the
+	// locked §G.5 neutral {command:"moai",args:["mcp-server"]} with no env
+	// secrets. Best-effort: a provisioning failure is surfaced as a stderr
+	// warning, never fatal (a fresh project that declined opt-in ships inert).
+	if opts.MCPToolsOptIn {
+		mcpPath := filepath.Join(opts.ProjectRoot, ".mcp.json")
+		if err := provisionMoaiMCPServerEntryAt(mcpPath); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: moai MCP entry provisioning failed: %v\n", err)
+		} else {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Provisioned the moai MCP server entry in .mcp.json (opt-in).")
+		}
+	}
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

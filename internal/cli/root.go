@@ -202,6 +202,12 @@ func init() {
 	// SSOT from which the settings.json permissions block is generated.
 	rootCmd.AddCommand(newToolPolicyCmd())
 
+	// SPEC-MOAI-MCP-SERVER-001 M1: register the `moai mcp-server` subcommand —
+	// a thin stdio JSON-RPC MCP server over the internal/ core. The server and
+	// its .mcp.json provisioning ship opt-in / default-off (REQ-MCP-002 / C6);
+	// registering the subcommand does NOT provision any entry.
+	rootCmd.AddCommand(newMCPServerCmd())
+
 	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
 	// read-only unified view composing sessions / worktrees / harnesses.
 	rootCmd.AddCommand(newInventoryCmd())

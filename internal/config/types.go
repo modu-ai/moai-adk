@@ -377,6 +377,20 @@ type WorkflowConfig struct {
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
+	// Codex gates the codex audit backend + the Stop-hook review gate
+	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
+	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
+	// a maintainer opts in via local config. The moai-default 5s hook timeout
+	// is overridden to DefaultCodexReviewGateTimeout (900s) for that hook only
+	// (REQ-MCP-008 / AC-MCP-010).
+	Codex CodexConfig `yaml:"codex"`
+
+	// Audit gates the 3-way audit backend selection + per-auditor gate
+	// contract (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010 / AC-MCP-012). The
+	// default profile is claude + codex required, glm advisory (user-enabled)
+	// so a distributed user without a GLM key is never hard-blocked (C2).
+	Audit AuditConfig `yaml:"audit"`
+
 	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
 	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
 
@@ -505,6 +519,66 @@ type WorkflowWorktreeConfig struct {
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
+// config surface (SPEC-MOAI-MCP-SERVER-001 M2, REQ-MCP-008/010). It is the
+// sibling of BranchGuard: an opt-in gate whose distributed default is OFF (C6).
+type CodexConfig struct {
+	ReviewGate CodexReviewGateConfig `yaml:"review_gate"`
+}
+
+// CodexReviewGateConfig mirrors workflow.codex.review_gate.* — the opt-in
+// toggle for the `moai hook codex-review-gate` Stop hook. Default false: the
+// review gate ships INERT (no Stop-hook blocking) until a maintainer opts in
+// via local config. Fail-CLOSED at the hook read site (default off), matching
+// the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
+type CodexReviewGateConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SPEC-MOAI-MCP-SERVER-001 M3 — audit_model + per-auditor audit_gate enums
+// (REQ-MCP-010 / AC-MCP-012, progress.md §G.3 locked).
+//
+// audit_model selects the single active audit backend. `multi` is a declared
+// token only here — its convergence logic (parallel fan-out, disagreement
+// synthesis) is owned by a future SPEC-AUDIT-MULTI-MODEL (spec.md §B, AP-8).
+// M3 accepts the token but does NOT orchestrate it.
+const (
+	AuditModelClaude = "claude"
+	AuditModelCodex  = "codex"
+	AuditModelGLM    = "glm"
+	AuditModelMulti  = "multi"
+)
+
+// audit_gate semantics (per auditor): off = skip that auditor; advisory =
+// surfaced as systemMessage (no block); required = must PASS before
+// convergence/merge (block). The distributed default gate is `required`.
+const (
+	AuditGateOff      = "off"
+	AuditGateAdvisory = "advisory"
+	AuditGateRequired = "required"
+)
+
+// AuditConfig mirrors workflow.audit.* — the 3-way audit backend selection +
+// per-auditor gate contract (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010). The
+// default profile (NewDefaultConfig) is claude + codex required, glm advisory
+// (user-enabled); glm ships advisory, NOT required, so a distributed user with
+// no GLM key is never hard-blocked (C2 fail-open).
+type AuditConfig struct {
+	// Model is the active audit backend ∈ {claude, codex, glm, multi}. `multi`
+	// is stored but not orchestrated in this SPEC (AP-8).
+	Model string `yaml:"model"`
+	// Gates is the per-auditor gate map. An absent gate falls back to the
+	// distributed default `required` at the read site.
+	Gates AuditGates `yaml:"gates"`
+}
+
+// AuditGates mirrors workflow.audit.gates.* — one gate value per auditor.
+type AuditGates struct {
+	Claude string `yaml:"claude"`
+	Codex  string `yaml:"codex"`
+	GLM    string `yaml:"glm"`
 }
 
 // SessionWorktreeConfig mirrors workflow.session_worktree.* — the opt-in

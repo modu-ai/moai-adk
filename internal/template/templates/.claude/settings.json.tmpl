@@ -135,6 +135,12 @@
           },
           {
             "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-codex-review-gate.sh"],
+            "timeout": 900,
+            "type": "command"
+          },
+          {
+            "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-security-turn.sh"],
             "timeout": 5,
             "type": "command",

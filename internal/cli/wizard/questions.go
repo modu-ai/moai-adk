@@ -469,5 +469,101 @@ func Page3Questions(projectRoot string) []Question {
 			Default:     "false",
 			Required:    false,
 		},
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — the audit +
+		// MCP opt-in selection. Grouped under "Audit & MCP" so they render as a
+		// distinct form page. The enum Values reuse the M3 typed-config constants
+		// (internal/config AuditModel* / AuditGate*) — the wizard and the audit
+		// backend share ONE interpreter (no fork; AC-MCP-021 relies on the same
+		// interpreter via the web console schema fields).
+		//
+		// audit_model — the active audit backend. `multi` is a declared token
+		// only (convergence is a follow-up SPEC); it is offered for forward
+		// compatibility and stored verbatim.
+		{
+			ID:          "audit_model",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeSelect,
+			Title:       "Select audit model",
+			Description: "The active review backend that gates merges. 'claude' uses the session model; 'codex'/'glm' add an external reviewer (fail-open if absent).",
+			Options: []Option{
+				{Label: "Claude (Recommended)", Value: config.AuditModelClaude, Desc: "Session model review — no external dependency"},
+				{Label: "Codex", Value: config.AuditModelCodex, Desc: "codex CLI review (requires codex installed; fails open)"},
+				{Label: "GLM", Value: config.AuditModelGLM, Desc: "z.ai GLM review (requires GLM key; fails open)"},
+				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Declare multi-auditor (convergence is a follow-up; stored only)"},
+			},
+			Default:  config.AuditModelClaude,
+			Required: true,
+		},
+		// Per-auditor audit_gate. The distributed default gate is `required`
+		// (§G.3); glm ships advisory in the locked default profile, applied at
+		// the config-default layer (defaults.go), not at the prompt. Each gate
+		// reuses the M3 AuditGate* constants.
+		{
+			ID:          "audit_gate_claude",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeSelect,
+			Title:       "Claude audit gate",
+			Description: "off = skip; advisory = warn only; required = block merge until PASS.",
+			Options: []Option{
+				{Label: "Required (Recommended)", Value: config.AuditGateRequired, Desc: "Block merge until Claude review PASS"},
+				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Warn only — no block"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the Claude auditor"},
+			},
+			Default:  config.AuditGateRequired,
+			Required: true,
+		},
+		{
+			ID:          "audit_gate_codex",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeSelect,
+			Title:       "Codex audit gate",
+			Description: "off = skip; advisory = warn only; required = block merge until PASS (fails open if codex absent).",
+			Options: []Option{
+				{Label: "Required (Recommended)", Value: config.AuditGateRequired, Desc: "Block merge until codex PASS (fail-open on missing codex)"},
+				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Warn only — no block"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the codex auditor"},
+			},
+			Default:  config.AuditGateRequired,
+			Required: true,
+		},
+		{
+			ID:          "audit_gate_glm",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeSelect,
+			Title:       "GLM audit gate",
+			Description: "off = skip; advisory = warn only; required = block merge until PASS (fails open if GLM key absent).",
+			Options: []Option{
+				{Label: "Required", Value: config.AuditGateRequired, Desc: "Block merge until GLM PASS (fail-open on missing key)"},
+				{Label: "Advisory (Recommended)", Value: config.AuditGateAdvisory, Desc: "Warn only — no block; the locked default profile for glm (a distributed user with no GLM key is never hard-blocked)"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the GLM auditor"},
+			},
+			Default:  config.AuditGateAdvisory,
+			Required: true,
+		},
+		// codex_audit_enabled — master toggle for the codex backend + the
+		// Stop-hook review gate. Default false (opt-in). When true, `moai init`
+		// persists workflow.codex.review_gate.enabled=true so the M2 review-gate
+		// hook activates.
+		{
+			ID:          "codex_audit_enabled",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable codex review gate?",
+			Description: "When enabled, MoAI activates the codex Stop-hook review gate (workflow.codex.review_gate.enabled). Default is off — the gate ships dormant.",
+			Default:     "false",
+			Required:    false,
+		},
+		// mcp_tools_opt_in — provisions the single neutral `.mcp.json` moai
+		// entry (the §G.5 locked shape). Default false (C6 — opt-in default-off).
+		// When true, `moai init` writes the entry via the M1 atomic-config seam.
+		{
+			ID:          "mcp_tools_opt_in",
+			Group:       "Audit & MCP",
+			Type:        QuestionTypeConfirm,
+			Title:       "Provision the moai MCP server (.mcp.json)?",
+			Description: "When enabled, MoAI writes the `moai mcp-server` stdio entry to .mcp.json (opt-in; a fresh project ships it inert). Default is off.",
+			Default:     "false",
+			Required:    false,
+		},
 	}
 }
