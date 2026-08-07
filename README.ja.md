@@ -147,10 +147,6 @@ MoAI-ADKはこの割り当てをその場の運任せにせず、システム化
 
 ## 🛡️ 品質管理の軸 — エージェンティック・ハーネス
 
-<p align="center">
-  <img src="./assets/section-why-ja.png" alt="検証のゲート — コードは証拠と共に通過する" width="85%">
-</p>
-
 手戻りが最大のトークン浪費である — 出荷されて戻ってきたバグ1つは、すべてのルーティング最適化を合わせたよりも高くつく。品質管理の軸は「完了」を*検証された完了*にし、並列エージェント同士が互いに踏み荒らさないよう作業を隔離する。
 
 ### SPEC 3フェーズライフサイクル
@@ -182,10 +178,6 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 ---
 
 ## クイックスタート
-
-<p align="center">
-  <img src="./assets/section-quickstart-ja.png" alt="ターミナルから最初のワークフローまで" width="85%">
-</p>
 
 ### インストール
 
@@ -423,10 +415,6 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 ---
 
 ## コミュニティとドキュメント
-
-<p align="center">
-  <img src="./assets/section-community-ja.png" alt="オープンソースを一緒に" width="85%">
-</p>
 
 ### 貢献について
 

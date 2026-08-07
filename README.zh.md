@@ -153,10 +153,6 @@ Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下
 
 ## 🛡️ 质量控制轴 —— 智能体框架
 
-<p align="center">
-  <img src="./assets/section-why-zh.png" alt="验证之门 — 代码携证据通过" width="85%">
-</p>
-
 返工是最大的 Token 浪费 —— 一个出货后返回的 bug，比所有路由优化加起来都贵。质量控制轴让"完成"意味着*经验证的完成*，并隔离工作，让并行智能体不会相互践踏。
 
 ### SPEC 3 阶段生命周期
@@ -188,10 +184,6 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 ---
 
 ## 快速开始
-
-<p align="center">
-  <img src="./assets/section-quickstart-zh.png" alt="从终端到首个工作流" width="85%">
-</p>
 
 ### 安装
 
@@ -429,10 +421,6 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 ---
 
 ## 社区与文档
-
-<p align="center">
-  <img src="./assets/section-community-zh.png" alt="开源,共同构建" width="85%">
-</p>
 
 ### 贡献
 

@@ -35,10 +35,6 @@
 
 ## 왜 moai-adk인가요?
 
-<p align="center">
-  <img src="./assets/section-why-ko.png" alt="검증의 문 — 코드가 증거와 함께 통과한다" width="85%">
-</p>
-
 에이전트가 코드를 쓰는 시대가 왔지만, 에이전트가 내놓은 결과를 그대로 믿을 수는 없다. "테스트가 통과했습니다"라는 말이 진짜 테스트를 돌린 결과인지, 그냥 에이전트의 추측인지를 구분하는 것이 처음부터 가장 큰 문제다. moai-adk는 바로 그 지점에서 출발한다 — **검증하지 않은 완료 선언을 시스템 차원에서 금지**하고, 모든 완료 주장에 실제로 돌린 명령과 그 출력을 증거로 묶는다.
 
 moai-adk는 Claude Code를 바깥에서 감싸는 하네스다. Claude Code를 대체하지 않고, 사용자가 직접 챙겨야 했던 부분 — 어느 모델을 쓸지, 얼마나 깊이 추론할지, 결과를 어떻게 검증할지, 세션이 끊겼을 때 어떻게 이을지, 병렬로 돌릴 때 서로 밟지 않게 어떻게 갈라놓을지 — 을 구조로 떠맡는다. 검증 무결성, SPEC 라이프사이클, 진짜 경계가 있는 자율 실행, 살아 있는 코드베이스 내비게이터, 자가 개선 루프, 병렬 안전 구조. 이 여섯 가지가 moai-adk의 정체성을 이룬다.
@@ -83,10 +79,6 @@ flowchart TD
 ---
 
 ## 빠르게 시작
-
-<p align="center">
-  <img src="./assets/section-quickstart-ko.png" alt="터미널에서 첫 워크플로우까지" width="85%">
-</p>
 
 ### 설치
 
@@ -245,10 +237,6 @@ flowchart TD
 
 ## 워크플로우 예시
 
-<p align="center">
-  <img src="./assets/section-recipes-ko.png" alt="병렬 worktree — 갈라졌다 하나로" width="85%">
-</p>
-
 ### 새 기능 만들기 (TDD)
 
 ```text
@@ -311,10 +299,6 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 
 ## 설정과 프로파일
 
-<p align="center">
-  <img src="./assets/section-config-ko.png" alt="high/medium/low 프로파일 다이얼" width="85%">
-</p>
-
 ### `.moai/config/sections/`
 
 프로젝트 설정은 YAML 단면 파일로 나뉜다.
@@ -354,10 +338,6 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 ---
 
 ## 어디서나 쓸 수 있어요
-
-<p align="center">
-  <img src="./assets/section-universal-ko.png" alt="16가지 언어 · 4-로케일 · 어느 플랫폼이나" width="85%">
-</p>
 
 ### 16가지 프로그래밍 언어 동등 지원
 
@@ -404,10 +384,6 @@ GLM Coding Plan은 월 $10부터다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)
 ---
 
 ## 문서와 학습
-
-<p align="center">
-  <img src="./assets/section-docs-ko.png" alt="문서와 학습 아카이브" width="85%">
-</p>
 
 ### 공식 문서 — adk.mo.ai.kr
 
@@ -469,10 +445,6 @@ GLM Coding Plan은 월 $10부터다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)
 ---
 
 ## 함께 만들어요
-
-<p align="center">
-  <img src="./assets/section-community-ko.png" alt="오픈소스 커뮤니티가 함께 짓는다" width="85%">
-</p>
 
 ### 기여하기
 
