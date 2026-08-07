@@ -79,10 +79,6 @@ cross_platform_build:
 total_run_phase_files: 16 (8 template sources + 7 local mirrors + 1 catalog.yaml regen + spec.md frontmatter + progress.md)
 m1_to_mN_commit_strategy: per-milestone feat commits (M1 9bda11d3f, M2 d80872d34, M3 7a61caea9, M4 d02e32e81, M5 9d0c57003) + this neutrality-fix commit (§E.3 close)
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: audit-ready
