@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/client"
@@ -27,6 +28,7 @@ import (
 // secondary call AND can be programmed per-backend (so tests assert the handler
 // did NOT re-implement the backend — it delegated through runMultiAudit).
 type recordingCallerMulti struct {
+	mu        sync.Mutex // protects calls; runMultiAudit fans out to backends concurrently (AC-AMM-013 race fix)
 	calls     []call
 	verdictBy map[string]ReviewOutput // backend → verdict
 }
@@ -36,7 +38,9 @@ type call struct {
 }
 
 func (r *recordingCallerMulti) call(ctx context.Context, backend, target, focus string) ReviewOutput {
+	r.mu.Lock()
 	r.calls = append(r.calls, call{backend: backend, target: target, focus: focus})
+	r.mu.Unlock()
 	if r.verdictBy == nil {
 		return ReviewOutput{Verdict: "pass", Summary: backend + ":pass", Findings: []Finding{}, NextSteps: []string{}}
 	}
