@@ -107,6 +107,36 @@ moai goal render                        # 현재 goal 대시보드를 HTML로 �
 - **안전 경계 유지** — 루프가 돌고 있어도 "되돌리기 어렵거나 공유 시스템을 건드리는 작업은 먼저 확인한다"는 경계는 느슨해지지 않습니다. goal 평가자는 계속할지 말지만 정할 뿐, 파괴적인 작업을 미리 승인해 주지 않습니다.
 - **auto mode와 조합** — Claude Code auto mode(도구별 자동 승인)와 `/moai goal`(턴별 연속)을 함께 쓰면 사람이 붙어 있지 않아도 `ac_converge` 루프를 돌릴 수 있습니다. auto mode는 도구별 승인 프롬프트를, `/moai goal`은 턴별 STOP 프롬프트를 없앱니다. 그래도 run-phase 진입 전 Implementation Kickoff Approval은 그대로 필요합니다.
 
+## 다중 모델 리뷰 게이트 (선택)
+
+{{< icon info >}} 옵션 Stop 훅 하나가 자율성 루프에 크로스 모델 적대 리뷰를 더해 줍니다. 그래서 완전 자율 `/moai goal` 실행에 다중 모델 안전망이 생깁니다 (자율성 재설계 Path C).
+
+### `audit_model: multi` 수렴
+
+`audit_model: multi`를 고르면 `audit_multi` MCP 도구가 활성 백엔드 전체로 감사를 병렬 펼칩니다. claude는 인세션 기준점, codex와 GLM은 보조(각자 `audit_gate`에 따라)로 동작하며, 결과는 4단계 정책으로 수렴합니다.
+
+- 필수 백엔드 어느 하나라도 `FAIL` → `overall_verdict = FAIL`.
+- 필수 백엔드 모두 `PASS` → `overall_verdict = PASS`.
+- 필수 백엔드 간 의견 엇갈림 → 보수적 `FAIL`에 `disagreement_flag` 추가.
+- 권고 전용 백엔드와의 충돌 → `PASS`에 `disagreement_flag` 추가.
+
+이견은 `ConvergenceResult`의 `disagreement_flag`와 `residual_risk_note`로 드러납니다. 그 자체로 흐름을 막지 않습니다. 독립성은 구조적으로 보장됩니다. 보조 펼침 고루틴은 `(target, focus, model, effort)`만 받고 `claude_verdict`를 절대 받지 않습니다. 그래서 codex와 GLM은 오염된 재표본이 아니라 상관 없는 제2의 의견을 냅니다. 필수 페일오픈도 양쪽으로 성립합니다. 빠지거나 인증 안 된 선택 백엔드는 `VerdictInconclusive`를 반환하고 claude로 돌아갈 뿐 하드 에러가 되지 않습니다.
+
+### `moai hook multi-review-gate` Stop 훅
+
+다중 리뷰 게이트 Stop 훅은 옵션입니다(`workflow.multi_review_gate.enabled`, `workflow.codex.review_gate`의 형제인 BranchGuard 패턴, 기본 꺼짐). 모아이 기본 5초 훅 타임아웃은 900초로 덮어씁니다. 코드 편집 턴마다 가장 최근 `ConvergenceResult`(수렴 엔진이 `.moai/state/audit-multi/<session>.json`에 기록)를 읽고 표준 ALLOW/BLOCK 계약을 냅니다.
+
+- 필수 백엔드 모두 PASS → ALLOW.
+- 필수 백엔드 어느 하나 FAIL → BLOCK.
+- 권고 전용 충돌 → ALLOW (이견은 권고로만 드러나고, 절대 차단하지 않음).
+- claude 외 백엔드가 모두 inconclusive → claude 판정으로 페일오픈.
+
+필수 셀프 게이트는 편집 없는 턴을 곧바로 ALLOW 합니다. 상태 보고, 리뷰 결과, 그 외 편집하지 않는 턴은 거짓으로 막히지 않습니다.
+
+### 어디에 들어맞는가
+
+{{< icon arrow-right >}} 다중 리뷰 게이트는 Stop 훅이지 연속 원시가 아닙니다. `/moai goal`(턴별 연속)과 `/moai loop`(진단 기반 프리셋) 위에 얹어 씁니다. 루프가 세션을 앞으로 밀고 나가면, 게이트가 코드 편집 경계마다 크로스 모델 수렴 계약을 적용합니다. 어떤 조합에서도 run-phase 진입 전 Implementation Kickoff Approval은 그대로 필요합니다.
+
 ## 다음 단계
 
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 자율 루프가 토크노믹스와 연결되는 지점

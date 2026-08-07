@@ -169,7 +169,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// loop it documents depends on shell scripts that are never shipped to
 	// user projects; the skill remains a development-repo-only asset),
 	// net -1 = 31.
-	const expectedSkillCount = 31
+	// moai-ref-cross-model-audit added (cross-model audit convergence reference,
+	// core.skills), net +1 = 32.
+	const expectedSkillCount = 32
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

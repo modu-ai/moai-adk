@@ -70,14 +70,18 @@ func PruneOrphans(projectRoot string, activeSessionIDs []string, now time.Time) 
 			continue // best-effort: a failed move does not abort the sweep
 		}
 		moved = append(moved, name)
-		// Sibling .html dashboard (REQ-GHF-005 / AC-GHF-004): move it alongside
+		// Sibling .html dashboard (REQ-GHF-005 / AC-GHF-004) and .verdict.json
+		// sidecar (SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-002): move them alongside
 		// the .json, best-effort. A failure here does NOT abort the sweep or
 		// undo the .json move already recorded in `moved`.
-		htmlName := strings.TrimSuffix(name, ".json") + ".html"
-		htmlSrc := filepath.Join(srcDir, htmlName)
-		htmlDst := filepath.Join(consumedDir, htmlName)
-		if _, statErr := os.Stat(htmlSrc); statErr == nil {
-			_ = os.Rename(htmlSrc, htmlDst) // best-effort; ignore failure
+		stem := strings.TrimSuffix(name, ".json")
+		for _, suffix := range []string{".html", VerdictSidecarSuffix} {
+			sibName := stem + suffix
+			sibSrc := filepath.Join(srcDir, sibName)
+			sibDst := filepath.Join(consumedDir, sibName)
+			if _, statErr := os.Stat(sibSrc); statErr == nil {
+				_ = os.Rename(sibSrc, sibDst) // best-effort; ignore failure
+			}
 		}
 	}
 	return moved, nil

@@ -98,6 +98,11 @@ catalog:
               path: templates/.claude/skills/moai-domain-svg-infographic/
               hash: 04e15e8246939a28712efcf8969d58a483002e3d7f7e5efb458effd7c64e3b6b
               version: 1.0.0
+            - name: moai-ref-cross-model-audit
+              tier: core
+              path: templates/.claude/skills/moai-ref-cross-model-audit/
+              hash: edbe85ce8a4f55a694d8d47065c20ad4ba8b7154cd59beb9efcf259d2f5ca0b4
+              version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core

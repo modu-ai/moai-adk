@@ -120,7 +120,7 @@ For each new tdd cycle in Chunk 2 (contract / drift / ADR / blueprint / symbol),
 ```yaml
 run_status: partial-complete
 run_complete_at: 2026-08-06
-run_commit_sha: d99ca4d1e  # M4.5 tip; final closeSHA backfilled after PR merge
+run_commit_sha: 23abbd206  # PR #1384 squash-merged to main (M4.1+M4.2+M4.3+M4.4+M4.5+M4.6+M4.7, 22/22 AC)
 ac_pass_count: 20  # AC-NS3-001..020 engine + non-overlap + provenance ACs
 ac_fail_count: 0
 ac_deferred_count: 2  # AC-NS3-021 (template-first) + AC-NS3-022 (metric fixture) → Chunk 3 (M4.7)
@@ -141,7 +141,23 @@ chunk_status: chunk-2-complete-pending-chunk-3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-07
+sync_commit_sha: 7e9648650  # PR #1385 squash-merged to main (sync-phase + 3-phase close); D3 self-referential-hazard workaround resolved
+run_commit_sha: 23abbd206                   # PR #1384 squash-merged to main (Route B)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"  # merged into the single sync commit (3-phase close)
+  updated_field_refreshed: "2026-08-07"
+changelog_entry_position: "[Unreleased] / Added"   # SPEC-NAVIGATOR-SYNC-003 entry appended
+readme_decision: skip                              # internal Navigator subsystem; navigator-tiers is Hidden + no user-facing command surface (consistent with NS1/NS2/NS3 predecessor precedent)
+docs_site_decision: skip                           # internal subsystem; no docs-site 4-locale page (consistent with predecessor precedent)
+mx_tag_validation: sub-step-complete               # MX tag validation is a sync sub-step (no separate Mx-phase commit)
+ac_pass_count_final: 22                            # AC-NS3-001..022 — all PASS post Chunk 3 (M4.6+M4.7 closed the 2 prior DEFERRED AC)
+ac_fail_count_final: 0
+coverage_pct_final: 85.0                           # internal/navigator/tiers/... — ≥85% AC target MET
+open_blockers: 0
+```
 
 ## §F Phase 4 Mode Selection
 
