@@ -172,6 +172,8 @@ plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅
 
 **worktree 격리**. SPEC마다 독립된 작업 트리를 둔다. `moai cc -w <이름>`으로 진입하고, `--spawn`을 붙이면 현재 세션을 유지한 채 새 창에서 연다.
 
+**트렌드 MCP 도구**. 배포용 `.mcp.json` 템플릿은 비밀값 없이 동작하는 세 서버(`context7` 라이브러리 문서 · `chrome-devtools` 브라우저 자동화 · `playwright` 엔드투엔드 테스트)를 기본으로 담고, `moai mcp add|remove|list` CLI로 추가 서버(Semgrep, GitHub, Postgres, Sentry, Codecov)를 옵트인할 때는 리터럴 비밀값 대신 `${VAR}` 환경변수 참조 토큰을 쓴다. 옵트인 레시피 전체는 `.moai/docs/mcp-recipes.md`에 있다.
+
 ---
 
 ## 인프라는 셋 모두를 지탱한다

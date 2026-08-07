@@ -2,7 +2,7 @@
 id: SPEC-TREND-MCP-001
 title: "Trend MCP tooling — Playwright + ast-grep bundle, opt-in recipes, generic atomic-RMW entry management"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-08-07
 updated: 2026-08-07
 author: manager-spec

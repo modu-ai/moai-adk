@@ -67,6 +67,31 @@ Cross-cutting (all milestones)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
-
-`sync_commit_sha:` _(pending sync-phase backfill)_
+- `sync_status:` audit-ready
+- `sync_complete_at:` 2026-08-07
+- `sync_commit_sha:` _(pending-backfill-trend-mcp — self-referential hazard; backfilled in a follow-up chore commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption (D3))_
+- `run_commit_sha_backfill:` ea1e36e7f (Docs commit; M3 head = 64773cfef already recorded in §E.3; §E.3 was already audit-ready, no placeholder to backfill)
+- `changelog_entry_position:` CHANGELOG.md `[Unreleased] → ### Added` (single bullet, immediately after the SPEC-TDD-ANTICHEAT-001 entry; B12 pre-emit duplicate grep returned 0 before emission, post-emit count = 1)
+- `frontmatter_status_transitions:`
+  - spec.md: `in-progress → completed` on this sync commit (single-owner manager-docs transition per Status Transition Ownership Matrix); `updated:` refreshed to 2026-08-07
+  - plan.md: n/a (Tier M — no frontmatter block; header-only artifact)
+  - acceptance.md: n/a (Tier M — no frontmatter block; header-only artifact)
+  - progress.md: §E.4 populated (this section); §E.2/§E.3 owned by manager-develop — untouched
+- `canary_compliance_check:`
+  - `go test ./internal/cli/...` : green (orchestrator verification batch, run-phase closure)
+  - `go test -race -run TestMCP_ ./internal/cli` : green
+  - `GOOS=windows GOARCH=amd64 go build ./...` : green
+  - `golangci-lint run --timeout=3m ./internal/cli/` : 0 issues
+  - `make build` : green (catalog.yaml regenerated; embedded FS recompiled)
+  - `diff internal/template/templates/.mcp.json .mcp.json` : empty (byte-identical repo-root mirror)
+  - `grep -c '\$comment' internal/template/templates/.mcp.json` : 0 (no `$comment` form)
+  - `grep -c 'os.Getenv("' internal/cli/mcp.go` : 0 (no inline env reads)
+  - `grep -c 'AskUserQuestion\|mcp__askuser' internal/cli/mcp.go` : 0 (orchestrator-subagent boundary)
+- `b12_self_test_a:` pre-emission `grep -c 'SPEC-TREND-MCP-001' CHANGELOG.md` → 0 (PASS — no duplicate)
+- `b12_self_test_b:` AC count match — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 16; CHANGELOG entry references "16/16 AC green" (PASS — count matches)
+- `b12_self_test_c:` file path verification — every path claimed in the CHANGELOG entry verified via `ls` before commit: `internal/template/templates/.mcp.json` (exists), `.mcp.json` (exists, repo-root mirror), `internal/cli/mcp.go` (exists), `internal/cli/mcp_test.go` (exists), `internal/cli/mcp_boundary_test.go` (exists), `.moai/docs/mcp-recipes.md` (exists), `.claude/rules/moai/core/settings-management.md` (exists), `internal/template/catalog.yaml` (regenerated). All PASS.
+- `readme_4_locale_parity:` PASS — new "trend MCP tooling" bullet added to README.md, README.ko.md, README.ja.md, README.zh.md (4-locale same-PR obligation met; placement: en adjacent to existing `moai mcp-server` bullet, ko/ja/zh adjacent to existing `worktree isolation` bullet — last Extension Points bullet in each locale)
+- `docs_site_4_locale:` SKIP — no moai-specific MCP CLI-reference page exists in `docs-site/content/<locale>/cli-reference/`; the `claude-code/extensibility/mcp.md` page is a mirror of Anthropic's Claude Code MCP docs (CC-internal MCP feature, not moai's CLI), so per the IF condition (moai-MCP page absent) docs-site is not touched
+- `template_neutrality_25:` PASS — `internal/template/templates/.mcp.json` carries no SPEC-ID / SHA / macOS path / `CLAUDE.local.md` ref; `TestMCPNeutralityTemplateShape` + `TestTemplateNoInternalContentLeak` guard the surface
+- `route:` B (PR-mandatory; `enforce_admins: true` on `main` per repo-local-pr-policy.md)
+- `close_infix_present:` true — sync commit subject carries literal `3-phase close` infix per close-subject convention (spec-frontmatter-schema.md § Close-subject full-ID mandate)
