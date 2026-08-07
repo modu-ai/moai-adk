@@ -412,3 +412,158 @@ func TestWriteProjectModeYAML_FreshFile(t *testing.T) {
 		t.Errorf("fresh project.yaml missing mode: team; got: %q", got)
 	}
 }
+
+// TestWriteWorkflowWorktreeYAML_PatchesExistingFile (Issue 3) verifies that the
+// workflow.worktree.auto_create value is patched into an existing deployed
+// workflow.yaml in place, preserving every unrelated line (token_budget, team
+// block, comments). This mirrors the real deployer path.
+func TestWriteWorkflowWorktreeYAML_PatchesExistingFile(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	before := `workflow:
+  execution_mode: auto
+  token_budget:
+    plan: 30000
+    run: 180000
+  worktree:
+    auto_create: false
+    auto_merge: true
+  team:
+    enabled: true
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.WorkflowYAML), []byte(before), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := InitOptions{ProjectRoot: root, WorktreeAutoCreate: true, WorktreeAutoCreateSet: true}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, &InitResult{}); err != nil {
+		t.Fatalf("writeWorkflowWorktreeYAML: %v", err)
+	}
+
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	if !bytes.Contains(got, []byte("auto_create: true")) {
+		t.Errorf("workflow.yaml missing auto_create: true; got: %q", got)
+	}
+	// Unrelated keys preserved.
+	for _, want := range []string{"plan: 30000", "run: 180000", "auto_merge: true", "enabled: true"} {
+		if !bytes.Contains(got, []byte(want)) {
+			t.Errorf("workflow.yaml lost unrelated line %q; got: %q", want, got)
+		}
+	}
+}
+
+// TestWriteWorkflowWorktreeYAML_FreshFile (Issue 3) verifies the no-deployer
+// fallback: when no workflow.yaml exists, a minimal block is created.
+func TestWriteWorkflowWorktreeYAML_FreshFile(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	opts := InitOptions{ProjectRoot: root, WorktreeAutoCreate: false, WorktreeAutoCreateSet: true}
+	result := &InitResult{}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, result); err != nil {
+		t.Fatalf("writeWorkflowWorktreeYAML: %v", err)
+	}
+
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	if !bytes.Contains(got, []byte("auto_create: false")) {
+		t.Errorf("fresh workflow.yaml missing auto_create: false; got: %q", got)
+	}
+}
+
+// TestWriteWorkflowWorktreeYAML_SetTrackerSkipsUnsetKeys (SPEC-WT-DOC-001)
+// verifies the Set-tracker contract: an InitOptions with all trackers false
+// (the zero-value state when no CLI flag was explicit) MUST NOT touch the
+// deployed workflow.yaml — guarding against a zero-value false clobber that
+// would silently disable the user's existing auto_merge/auto_cleanup.
+func TestWriteWorkflowWorktreeYAML_SetTrackerSkipsUnsetKeys(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	before := `workflow:
+  worktree:
+    auto_create: false
+    auto_merge: true
+    auto_cleanup: true
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.WorkflowYAML), []byte(before), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// All trackers false — zero-value InitOptions must be a no-op.
+	opts := InitOptions{ProjectRoot: root}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, &InitResult{}); err != nil {
+		t.Fatalf("writeWorkflowWorktreeYAML: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	if string(got) != before {
+		t.Errorf("Set-tracker skip failed — workflow.yaml mutated:\nwant: %q\ngot:  %q", before, string(got))
+	}
+}
+
+// TestWriteWorkflowWorktreeYAML_BranchGuardInsert (SPEC-WT-DOC-001) verifies
+// that opting into branch_guard.enabled (which is absent from the distributed
+// template) inserts a fresh branch_guard sub-block under the workflow key
+// rather than clobbering the existing file. Comments and unrelated keys must
+// survive the insert.
+func TestWriteWorkflowWorktreeYAML_BranchGuardInsert(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	before := `workflow:
+  # leading comment for worktree block
+  worktree:
+    auto_create: false
+    auto_merge: true
+  execution_mode: auto
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.WorkflowYAML), []byte(before), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := InitOptions{
+		ProjectRoot:      root,
+		BranchGuardEnabled: true,
+		BranchGuardSet:    true,
+	}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, &InitResult{}); err != nil {
+		t.Fatalf("writeWorkflowWorktreeYAML: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	if !bytes.Contains(got, []byte("branch_guard:")) || !bytes.Contains(got, []byte("enabled: true")) {
+		t.Errorf("branch_guard sub-block not inserted; got: %q", got)
+	}
+	// Unrelated lines preserved.
+	for _, want := range []string{"auto_merge: true", "execution_mode: auto", "# leading comment for worktree block"} {
+		if !bytes.Contains(got, []byte(want)) {
+			t.Errorf("workflow.yaml lost unrelated line %q; got: %q", want, got)
+		}
+	}
+}
+
+// TestWriteWorkflowWorktreeYAML_BranchGuardOnlyFreshFile (SPEC-WT-DOC-001)
+// verifies the no-deployer fallback when ONLY branch_guard is opted into —
+// buildFreshWorkflowBlock must emit the branch_guard block even when no
+// worktree toggles were set.
+func TestWriteWorkflowWorktreeYAML_BranchGuardOnlyFreshFile(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	opts := InitOptions{
+		ProjectRoot:        root,
+		BranchGuardEnabled: false,
+		BranchGuardSet:     true,
+	}
+	result := &InitResult{}
+	if err := writeWorkflowWorktreeYAML(sectionsDir, opts, result); err != nil {
+		t.Fatalf("writeWorkflowWorktreeYAML: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	if !bytes.Contains(got, []byte("branch_guard:")) || !bytes.Contains(got, []byte("enabled: false")) {
+		t.Errorf("fresh branch_guard-only workflow.yaml missing block; got: %q", got)
+	}
+	// Must NOT contain a worktree block (no worktree tracker set).
+	if bytes.Contains(got, []byte("worktree:")) {
+		t.Errorf("fresh workflow.yaml unexpectedly contains worktree block; got: %q", got)
+	}
+}

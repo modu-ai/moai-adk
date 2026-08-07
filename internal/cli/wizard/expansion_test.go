@@ -26,6 +26,16 @@ func TestPage3QuestionsStructure(t *testing.T) {
 
 	want := []entry{
 		{"project_mode", QuestionTypeSelect, true, false},
+		{"worktree_auto_create", QuestionTypeConfirm, false, false},
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): audit + MCP
+		// opt-in selection, grouped under "Audit & MCP". Enum values reuse the
+		// M3 typed-config constants (see mcp_audit_test.go).
+		{"audit_model", QuestionTypeSelect, true, false},
+		{"audit_gate_claude", QuestionTypeSelect, true, false},
+		{"audit_gate_codex", QuestionTypeSelect, true, false},
+		{"audit_gate_glm", QuestionTypeSelect, true, false},
+		{"codex_audit_enabled", QuestionTypeConfirm, false, false},
+		{"mcp_tools_opt_in", QuestionTypeConfirm, false, false},
 	}
 
 	if len(questions) != len(want) {
@@ -298,18 +308,33 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Page 3 (1, project_mode only) = 6 exactly.
-	if got != 6 {
-		t.Errorf("TotalVisibleQuestions = %d, want 6 (3 Basic + 2 Model & Report + 1 Quality & Workflow)", got)
+	// Page 1 (3) + Page 2 (2) + Page 3 "Quality & Workflow" (2: project_mode +
+	// worktree_auto_create — Issue 3) + Page 3 "Audit & MCP" (6: audit_model +
+	// 3 audit_gate + codex_audit_enabled + mcp_tools_opt_in — SPEC-MOAI-MCP-
+	// SERVER-001 M4) + Autonomy page (1, autonomy_tier — SPEC-AUTONOMY-TIERS-001
+	// AC-001) = 14.
+	if got != 14 {
+		t.Errorf("TotalVisibleQuestions = %d, want 14 (3 Basic + 2 Model & Report + 2 Quality & Workflow + 6 Audit & MCP + 1 Autonomy)", got)
 	}
-	// Only project_mode remains on page 3 (the four confirms were removed).
+	// Page 3 "Quality & Workflow" still has project_mode + worktree_auto_create
+	// (Issue 3). The M4 audit selection is a separate group ("Audit & MCP").
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
 		if q.Group == "Quality & Workflow" {
 			n++
 		}
 	}
-	if n != 1 {
-		t.Errorf("visible page-3 questions = %d, want 1", n)
+	if n != 2 {
+		t.Errorf("visible Quality & Workflow questions = %d, want 2", n)
+	}
+	// The M4 audit selection is its own group of 6.
+	a := 0
+	for _, q := range FilteredQuestions(all, res) {
+		if q.Group == "Audit & MCP" {
+			a++
+		}
+	}
+	if a != 6 {
+		t.Errorf("visible Audit & MCP questions = %d, want 6 (SPEC-MOAI-MCP-SERVER-001 M4)", a)
 	}
 }

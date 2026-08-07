@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "modules": [
+    {
+      "package_path": "cmd/app",
+      "display_name": "cmd-app",
+      "layer": "presentation",
+      "responsibility": "Entry point; parses argv and dispatches to the cli layer.",
+      "depends_on": ["internal/log"]
+    },
+    {
+      "package_path": "internal/log",
+      "display_name": "internal-log",
+      "layer": "infrastructure",
+      "responsibility": "Provides structured logging primitives.",
+      "depends_on": []
+    }
+  ]
+}

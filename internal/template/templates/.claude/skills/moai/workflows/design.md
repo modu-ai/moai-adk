@@ -20,7 +20,7 @@ metadata:
 progressive_disclosure:
   level_1_summary: "Conditional plan → design → run route for UI-surfaced SPECs; D1-D5 Claude Design pipeline."
   level_2_body: "Full D1-D5 pipeline + DesignSync tool contract + H1-H9 handoff contract reference (this file)."
-  level_3_bundled: ".claude/agents/moai/manager-design.md (H1-H9 verbatim + agent body)."
+  level_3_bundled: ".claude/agents/moai/manager-design.md (H1-H9 verbatim + agent body); workflows/references/shadcn-component-catalog.md (full component catalog + light/dark theme rule for D2)."
 ---
 
 # Design-Phase Workflow — Claude Design Collaboration
@@ -81,8 +81,11 @@ Tool/login absence → blocker report (H1 graceful degradation path).
 
 Bundle the design system from code and push it to the Claude Design project.
 
-- Bundle from `.moai/project/brand/` tokens + `design.yaml` + existing
-  components.
+- Bundle from `.moai/project/brand/` tokens + `design.yaml` + the **full
+  shadcn/ui component catalog** (bundled reference
+  `workflows/references/shadcn-component-catalog.md`). The bundle MUST cover
+  every catalog component, each in BOTH a light-theme and a dark-theme token
+  variant — a partial set or a single theme is a D2 defect.
 - `finalize_plan(planId)` — the user-approval gate before any write.
 - `write_files(localPath)` — component-unit increment push. Content stays on
   disk and is NOT passed through the model context (256KiB ceiling per file;

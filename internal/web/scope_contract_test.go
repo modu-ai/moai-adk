@@ -29,11 +29,15 @@ func TestScopeContractEditableSections(t *testing.T) {
 		}
 	}
 
-	// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
-	// RouteExcluded (tabs removed, web write path gone, config keys persist in
-	// baked template YAML — REQ-WC-003).
+	// workflow restored to RouteSeam (Issue 3 — worktree auto-create toggle +
+	// workflow scalar fields). The other 7 former seam sections remain
+	// RouteExcluded (SPEC-WEBCONF-SIMPLIFY-001 M3 — tabs removed, web write
+	// path gone, config keys persist in baked template YAML — REQ-WC-003).
+	if got := settings.RouteForSection("workflow"); got != settings.RouteSeam {
+		t.Errorf("section %q: route = %d, want RouteSeam (Issue 3 restored)", "workflow", got)
+	}
 	for _, name := range []string{
-		"workflow", "harness", "ralph",
+		"harness", "ralph",
 		"feedback", "observability", "security",
 		"handoff", "cache",
 	} {
@@ -70,8 +74,9 @@ func TestScopeContractExclusions(t *testing.T) {
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
 		"db", "research",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified.
-		"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections reclassified.
+		// workflow restored to RouteSeam in Issue 3 — NOT in this list.
+		"harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
 	}
 	for _, name := range excluded {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {

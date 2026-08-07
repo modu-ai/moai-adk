@@ -7,12 +7,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestConsoleTabsIncludesReport asserts the 7th 'report' tab is registered for
-// the report config section and that the pre-existing six tabs remain intact
+// TestConsoleTabsIncludesReport asserts the 'report' tab is registered for
+// the report config section and that the pre-existing tabs remain intact
 // and in order. report.format was relocated here off the launch tab.
+// Issue 3 restored the 'workflow' tab (after llm) for the worktree auto-create
+// toggle, so the canonical order is now 7 tabs.
 func TestConsoleTabsIncludesReport(t *testing.T) {
 	tabs := consoleTabs()
-	wantOrder := []string{"identity", "language", "launch", "llm", "agentfm", "report"}
+	wantOrder := []string{"identity", "language", "launch", "llm", "workflow", "agentfm", "report"}
 	if len(tabs) != len(wantOrder) {
 		t.Fatalf("consoleTabs() returned %d tabs, want %d", len(tabs), len(wantOrder))
 	}
@@ -36,6 +38,48 @@ func TestConsoleTabsIncludesReport(t *testing.T) {
 	}
 	if report.Baseline != "Report" {
 		t.Errorf("report Baseline = %q, want Report", report.Baseline)
+	}
+}
+
+// TestConsoleTabsIncludesWorkflow (Issue 3) asserts the restored workflow tab
+// carries the sec.workflow.title LabelKey and the Workflow baseline label, and
+// sits in its canonical position immediately after llm.
+func TestConsoleTabsIncludesWorkflow(t *testing.T) {
+	tabs := consoleTabs()
+	var wf *consoleTab
+	for i := range tabs {
+		if tabs[i].ID == "workflow" {
+			wf = &tabs[i]
+			break
+		}
+	}
+	if wf == nil {
+		t.Fatal("consoleTabs() missing workflow entry (Issue 3 restore)")
+	}
+	if wf.LabelKey != "sec.workflow.title" {
+		t.Errorf("workflow LabelKey = %q, want sec.workflow.title", wf.LabelKey)
+	}
+	if wf.Baseline != "Workflow" {
+		t.Errorf("workflow Baseline = %q, want Workflow", wf.Baseline)
+	}
+}
+
+// TestSchemaSectionMetasIncludesWorkflow (Issue 3) asserts the workflow section
+// renders via the generic fieldset path (root.templ loops schemaSectionMetas()).
+func TestSchemaSectionMetasIncludesWorkflow(t *testing.T) {
+	metas := schemaSectionMetas()
+	var found bool
+	for _, m := range metas {
+		if m.ID == settings.SectionWorkflow {
+			found = true
+			if m.Title == "" || m.Desc == "" {
+				t.Errorf("workflow section meta has empty Title/Desc: %+v", m)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("schemaSectionMetas() missing SectionWorkflow: %+v", metas)
 	}
 }
 

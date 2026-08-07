@@ -70,8 +70,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  무한 루프를 방지하기 위해 기본값은 10회입니다 (`ralph.yaml`의 `loop.max_iterations`).
-  반복 상한 우선순위는 CLI `--max` 플래그 > `ralph.yaml` `loop.max_iterations` >
+  무한 루프를 방지하기 위해 기본값은 5회입니다 (`ralph.yaml`의 `ralph.max_iterations`).
+  반복 상한 우선순위는 CLI `--max` 플래그 > `ralph.yaml` `ralph.max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations` 순입니다.
 {{< /callout >}}
 
@@ -170,7 +170,7 @@ flowchart TD
 
 | 안전장치           | 조건                   | 동작                                              |
 | ------------------ | ---------------------- | ------------------------------------------------- |
-| **최대 반복 제한** | 반복 상한 도달 (기본 10) | 루프를 강제 종료하고 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 낸 뒤 잔여 이슈를 `.moai/state/loop-verdict-<id>.json`에 영속화합니다 |
+| **최대 반복 제한** | 반복 상한 도달 (기본 5, `ralph.max_iterations`) | 루프를 강제 종료하고 5-섹션 판정 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) 을 낸 뒤 잔여 이슈를 `.moai/state/loop-verdict-<id>.json`에 영속화합니다 |
 | **정체 감지**      | N회 연속 무진전 (동일 실패 시그니처) | 정체로 판단하고 5-섹션 판정을 낸 뒤 사용자에게 개입을 요청합니다 |
 
 {{< callout type="warning" >}}

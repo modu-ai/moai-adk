@@ -4,10 +4,12 @@ description: >
   Markdown-to-single-file-HTML report renderer. Six modes (status, incident,
   plan, explainer, financial, pr) selected by report type, crossed with three
   audience tiers (expert, basic, learn) derived from the active output style.
-  The basic and learn tiers enrich the HTML with mermaid flowcharts, worked
-  examples, and plain-language primers; the expert tier stays dense. Zero
-  external JS/CSS framework dependencies — inline SVG charts, a font-CDN
-  exception for Korean readability, and a tier-gated mermaid-CDN exception.
+  All tiers emit mermaid structural diagrams; the basic and learn tiers
+  additionally carry worked examples and plain-language primers, while the
+  expert tier stays dense. Zero external JS/CSS framework dependencies —
+  inline SVG charts, a font-CDN exception for Korean readability, and a
+  mermaid-CDN exception at every tier (each diagram paired with a no-JS
+  fallback).
   Self-contained output for email attachment, print, and offline viewing.
 
 when_to_use: >
@@ -23,7 +25,7 @@ compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash
 user-invocable: true
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: "domain"
   status: "active"
 ---
@@ -40,7 +42,7 @@ This skill is a terminal renderer that converts a markdown report into a single 
 - Zero external CSS frameworks (no Tailwind, Bootstrap)
 - Inline SVG renders all charts directly
 - A font-CDN `<link>` is permitted for Korean readability
-- A mermaid-CDN `<script>` is permitted **only in the `basic` and `learn` audience tiers**, always paired with a no-JS fallback (see § Diagram Policy). The `expert` tier remains strictly zero-JS.
+- A mermaid-CDN `<script>` is permitted **at every audience tier** (including `expert`), always paired with a no-JS fallback (see § Diagram Policy). The prose enrichment (primers, worked examples, analogies) stays `basic` / `learn`-only; `expert` is dense and terse but may carry structural diagrams.
 
 **This skill does not replace the markdown output.** Markdown remains the single source of truth; HTML rendering is an additional branch that operates on it.
 
@@ -78,8 +80,8 @@ Two files at `<cwd>/reports/<slug>-<YYYYMMDD>.{html,md}`:
 
 **The `.html` file** — the human-facing artifact:
 
-- Size: ≤ 50KB at the `expert` tier; ≤ 120KB at the `basic` / `learn` tiers (the enrichment budget — diagrams and examples cost bytes)
-- External dependencies: one font-CDN `<link>` + two `preconnect` hints (Korean fonts), plus one mermaid-CDN `<script>` at the `basic` / `learn` tiers only
+- Size: ≤ 120KB at every tier (the diagram + enrichment budget — structural diagrams at all tiers, plus examples/primers at basic/learn, cost bytes)
+- External dependencies: one font-CDN `<link>` + two `preconnect` hints (Korean fonts), plus one mermaid-CDN `<script>` at every tier
 - Self-contained: opens directly in a browser, email-attachable, print-clean, and readable offline (diagrams degrade to their fallback — see § Diagram Policy)
 
 **The `.md` twin** — the agent-facing artifact (below).
@@ -154,11 +156,11 @@ An explicit `audience` argument always wins over the derived value.
 |---------|----------|---------|---------|
 | Section prose | Dense, terse | Dense + a one-paragraph plain-language lead per section | Same as basic + why-it-matters framing |
 | Jargon | Used bare | **First use is defined inline** — `함수 (function)` style, term followed by a plain-language gloss | Same as basic + a glossary callout box |
-| Diagrams | Inline SVG charts only (as today) | + **one mermaid flowchart** of the report's main flow | + **multiple mermaid diagrams** — flow, sequence, and/or state — one per concept that has structure worth seeing |
+| Diagrams | Inline SVG charts + **one mermaid flowchart** of the report's main flow (no decorative diagrams) | + mermaid flowcharts of the main flows + worked-example support | + **multiple mermaid diagrams** — flow, sequence, and/or state — one per concept that has structure worth seeing |
 | Examples | None (numbers speak) | **One worked example** per key claim, with concrete inputs and outputs | Same as basic + a step-by-step walkthrough that derives the result, not just states it |
 | Analogies | None | Sparingly, where a concept is genuinely unfamiliar | Freely — an everyday analogy per new concept |
 | Closing | Action items | Action items + "what to check yourself" | Action items + self-check questions the reader can answer to confirm they understood |
-| HTML size budget | ≤ 50KB | ≤ 120KB | ≤ 120KB |
+| HTML size budget | ≤ 120KB | ≤ 120KB | ≤ 120KB |
 | **`.md` twin** | **lean** | **lean — identical rule** | **lean — identical rule** |
 
 The last row is the invariant, restated because it is the one that is easy to violate: **no tier adds anything to the markdown twin.** Enrichment is an HTML-only concern.
@@ -181,7 +183,7 @@ Charts and diagrams follow two different rules depending on what they are.
 
 Quantitative charts — bar, variance, timeline — are hand-authored **inline SVG**, exactly as today. They work everywhere: browser, email, print, offline. This is unchanged and applies at every tier.
 
-### Mermaid diagrams (`basic` / `learn` tiers only)
+### Mermaid diagrams (all tiers)
 
 Structural diagrams — flowcharts, sequences, state machines — are rendered with **mermaid**, and mermaid needs JavaScript. To keep the single-file, offline-capable promise, mermaid is emitted in a **hybrid form**: the CDN renders it richly in a browser, and a no-JS fallback keeps it readable everywhere else.
 
@@ -226,14 +228,14 @@ flowchart TD
 
 ### Degradation matrix (what the reader actually sees)
 
-| Context | `expert` | `basic` / `learn` |
-|---------|----------|-------------------|
-| Browser, online | SVG charts | SVG charts + **rendered mermaid diagrams** |
-| Browser, offline | SVG charts | SVG charts + `<noscript>` fallback (SVG or prose) |
-| Email client (JS stripped) | SVG charts | SVG charts + `<noscript>` fallback |
-| Print | SVG charts | SVG charts + fallback (mermaid does not render to print reliably) |
+| Context | All tiers (`expert` / `basic` / `learn`) |
+|---------|-------------------------------------------|
+| Browser, online | SVG charts + **rendered mermaid diagrams** |
+| Browser, offline | SVG charts + `<noscript>` fallback (SVG or prose) |
+| Email client (JS stripped) | SVG charts + `<noscript>` fallback |
+| Print | SVG charts + fallback (mermaid does not render to print reliably) |
 
-The `expert` tier's strict zero-JS guarantee is **untouched** — the mermaid exception is tier-gated and never fires there.
+Every tier degrades identically — mermaid renders in a browser, falls back elsewhere. What still differs by tier is **prose enrichment** (primers / worked examples / analogies), not diagram availability. `expert` stays dense and terse; it simply no longer forgoes structural diagrams.
 
 ### Diagram selection
 
@@ -395,7 +397,7 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## Non-goals
 
 - Does not replace the markdown default output — HTML is an additional rendering branch.
-- Does not pull in external libraries such as React, Vue, a Tailwind CDN, Chart.js, or D3. The only sanctioned external dependencies are the font CDN (all tiers) and the mermaid CDN (`basic` / `learn` tiers, always with a `<noscript>` fallback — § Diagram Policy). Charting stays inline SVG at every tier; mermaid never replaces a chart.
+- Does not pull in external libraries such as React, Vue, a Tailwind CDN, Chart.js, or D3. The only sanctioned external dependencies are the font CDN (all tiers) and the mermaid CDN (all tiers, always with a `<noscript>` fallback — § Diagram Policy). Charting stays inline SVG at every tier; mermaid never replaces a chart.
 - Does not introduce a build step (webpack, vite, esbuild).
 - Does not split the human artifact across multiple files — the report is a single `.html`. The `.md` twin is a *different artifact for a different reader*, not a second half of the report.
 - Does not enrich the markdown twin. Audience-tier depth is an HTML-only concern (§ The asymmetry principle).

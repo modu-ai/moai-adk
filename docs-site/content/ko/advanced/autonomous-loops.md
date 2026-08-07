@@ -48,15 +48,29 @@ flowchart TD
 
 {{< icon arrow-right >}} `/moai goal`은 MoAI가 소유한 프로그래밍 방식 재구현입니다. 네이티브 `/goal`이 HUMAN-ONLY이므로, 오케스트레이터가 파이프라인 안에서 자율 연속 루프를 등록하고 활성화(arm)할 수 있는 길은 이것뿐입니다.
 
-동사는 세 개입니다.
+동사는 네 개입니다.
 
 ```bash
-moai goal arm "<completion-condition>"  # 조건 등록 + 무장
+moai goal arm "<completion-condition>"  # 조건 등록 + 무장 (arm-only)
 moai goal status                        # 현재 조건 + 턴/토큰 소비 확인
 moai goal clear                         # 조건 제거 (루프 종료)
+moai goal render                        # 현재 goal 대시보드를 HTML로 렌더
 ```
 
+> **arm-only 속성**: `arm` 은 조건을 등록하고 활성화할 뿐, 그 자체로 작업을 시작하지 않습니다. arm 된 goal 은 매 턴 끝에서 `stop-goal` Stop-hook 평가자가 조건이 충족됐는지 판정해 다음 턴을 이어갈지 결정합니다. 진짜 작업 개시 명령(예: `/moai run SPEC-XXX`)과 함께 써야 합니다 — arm 만 세워두고 작업 명령이 없으면 턴만 소모합니다.
+
+### 무한 goal 과 블록 캡 (SPEC-INFINITE-GOAL-001)
+
+`--max-turns 0` 을 주면 턴 상한이 사라지는 **무한 goal** 이 됩니다. 무한 goal은 반드시 `--max-duration <sec>` (벽시계 상한, 초 단위) 와 짝지어야 arm 시점에서 fail-closed 로 거부됩니다 — 실제 bound 없이 무한으로 두면 안전 가드가 성립하지 않기 때문입니다.
+
+- `--cost-cap <value>` 는 **기록 전용(recorded-only)** — 호출 수 상한으로 저장만 되고, 현재 enforce 로직이 없어 실제 bound 역할을 하지 못합니다. 그래서 `--max-turns 0` 에 요구되는 실제 bound 요구를 cost-cap 단독으로는 충족하지 못하고 거부됩니다.
+- **블록 캡 선점**: Claude Code 런타임의 연속 block 캡 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (기본 8) 이 턴 상한보다 먼저 루프를 끊냅니다. 무한 goal(`--max-turns 0`)을 제대로 돌리려면 이 캡을 올려야 합니다(예: `200`). `moai cc` / `moai cg` 런처는 무한 goal이 arm 된 세션을 시작할 때 이 값을 자동으로 주입합니다. 이미 떠 있는 세션에서는 arm 전에 환경변수를 직접 설정하세요.
+- **턴 상한 도달 시 판정**: 턴 상한(또는 블록 캡)에 닿으면 평가자가 5-섹션 판정문(verdict)을 내놓습니다 — `Claim / Evidence / Baseline-attribution / Gaps / Residual-risk`. 이 판정문은 "수렴했다"는 신호가 아니라 "상한에 닿아 멈췄다"는 보고입니다.
+- **Progression Mode**: 자율(autonomous) vs 반자율(semi-autonomous) 선택은 Implementation Kickoff Approval 게이트에서 이루어집니다. arm 자체가 이 게이트를 건너뛰지 않습니다.
+
 세션이 시작될 때 `PruneOrphans`가 남겨진 고아 goal을 정리합니다. 이 메커니즘은 SPEC-GOAL-ENGINE-001(CLOSED)에서 구현했습니다.
+
+현재 루프 상태를 정적 HTML 대시보드로 렌더하려면 `moai goal render`를 쓰세요 — 자세한 내용은 [/moai goal - 목표 대시보드](/ko/utility-commands/moai-goal/)를 참고하세요.
 
 ### `/moai loop` — Ralph Engine (진단 기반 프리셋)
 

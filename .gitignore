@@ -207,11 +207,10 @@ secret-*.*
 **/.moai/state/
 
 # ===========================================
-# Plan Audit Reports (local artifacts)
-# See SPEC-WF-AUDIT-GATE-001
+# Reports (local-only analysis/audit artifacts, never public)
+# All .moai/reports/ content is local output; nothing under it is tracked.
 # ===========================================
-.moai/reports/plan-audit/*.md
-!.moai/reports/plan-audit/.gitkeep
+.moai/reports/
 
 # ===========================================
 # Evolution Telemetry (local-only usage data)
@@ -273,7 +272,6 @@ pencil/
 .moai/cache/
 .moai/logs/
 .moai/state/
-.moai/reports/*.md
 .moai/research/cc-update-*.md
 .moai/temp/
 temp/

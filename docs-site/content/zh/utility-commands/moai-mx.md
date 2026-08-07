@@ -35,6 +35,12 @@ draft: false
 | P4 | 缺失的测试 | `@MX:TODO`(未完成) |
 | P5 | 有意的可运行简化(伴随 `@MX:CEILING` + `@MX:UPGRADE` 子行) | `@MX:DEBT` |
 
+### 子行(sub-lines)
+
+每个标签后面可以跟附加更细粒度元数据的 **子行**: `@MX:REASON`(WARN 的必备理由)、`@MX:CEILING`/`@MX:UPGRADE`(DEBT 的极限·再访问条件)、`@MX:TEST`、`@MX:PRIORITY`、`@MX:LEGACY`,以及 `@MX:SPEC:<SPEC-ID>`。
+
+`@MX:SPEC:<SPEC-ID>` 紧贴标签后面书写,可创建反映作者意图的 SPEC 关联(SPEC association)。该关联是路径关联·正文关联之外的第三个来源,与文件位置或正文文本无关,显式的 SPEC 链接会反映在 `moai mx query` 的结果中。若没有前置标签而只有单独的子行,则只发出警告,不会创建关联。
+
 ## 用法
 
 ```bash
@@ -76,6 +82,8 @@ flowchart TD
     Pass2 --> Pass3["Pass 3:批量编辑<br/>每文件一次 Edit 插入标签"]
     Pass3 --> Report["报告<br/>添加/更新/跳过统计"]
 ```
+
+> 上图是 `/moai mx` 命令自身 3-Pass 的执行流程。扫描器此外还会在 SessionStart 冷启动、PostToolUse 验证、SessionEnd 批量验证、sync 门控等五个触发点自动运行。各触发点的作用以及两个 2 秒上限（`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`）参见 [MX 扫描器内部结构 - 扫描自动化触发点](/zh/advanced/mx-scanner-internals#扫描自动化触发点)。
 
 ### 第 1 步:代码库探索
 

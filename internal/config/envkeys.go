@@ -106,6 +106,26 @@ const (
 	// fully-autonomous (see defaults.go). Unset/empty/invalid → semi-auto
 	// (REQ-003 backward compat).
 	EnvAutonomyTier = "MOAI_AUTONOMY_TIER"
+
+	// EnvSandboxProof carries a sandbox/container proof marker set by a
+	// container/VM launcher (Docker, Firecracker, gVisor, E2B, devcontainer)
+	// OR by the --sandbox-proof CLI flag. A non-empty value attests that the
+	// session runs inside an OS-level sandbox, which is the precondition the
+	// fully-autonomous tier (bypassPermissions) requires
+	// (SPEC-AUTONOMY-TIERS-001 REQ-002 / OQ-1). The value names the isolation
+	// tech (e.g. "docker") and is recorded in the downgrade audit log. A git
+	// worktree is NOT a sandbox (it isolates the working tree, not the
+	// process/OS).
+	EnvSandboxProof = "MOAI_SANDBOX_PROOF"
+
+	// EnvDisableBypassPermissionsMode is the env seam for the Claude Code
+	// documented enterprise kill-switch disableBypassPermissionsMode
+	// (SPEC-AUTONOMY-TIERS-001 REQ-005). When the managed/enterprise config
+	// layer sets it to a truthy value, fully-autonomous is unselectable in
+	// every surface and an existing bypassPermissions session downgrades to
+	// automatic at the next resolution. MoAI does not ship a managed-config
+	// file loader; the managed layer injects this env var instead.
+	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

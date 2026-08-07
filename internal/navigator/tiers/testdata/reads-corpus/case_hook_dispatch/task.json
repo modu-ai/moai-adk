@@ -1,0 +1,5 @@
+{
+  "question": "How does the hook dispatcher route events?",
+  "anchor": "HookDispatcher",
+  "start_module": "cmd-app"
+}

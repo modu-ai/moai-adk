@@ -52,13 +52,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch latest 100 releases with draft status and creation date
+          # Fetch latest 100 releases with draft status and creation date.
+          # NOTE: targetCommitish is intentionally omitted -- it is no longer a
+          # valid `gh release list --json` field. It is fetched per-release
+          # below, only for the small draft+age-filtered candidate set, to
+          # preserve the release/* branch exemption.
           gh release list \
-            --json tagName,isDraft,createdAt,targetCommitish \
+            --json tagName,isDraft,createdAt \
             -L 100 \
             > /tmp/releases.json
 
-          # Filter to drafts older than threshold, excluding active release branches
+          # Filter to drafts older than threshold (release/* exemption applied below).
           jq -r \
             --arg threshold_days "${{ steps.env.outputs.threshold_days }}" \
             '
@@ -67,13 +71,28 @@ jobs:
               .[] |
               select(
                 .isDraft == true and
-                (($now - (.createdAt | fromdate)) > $threshold_secs) and
-                (.targetCommitish | startswith("release/") | not)
+                (($now - (.createdAt | fromdate)) > $threshold_secs)
               ) |
               .tagName
             ' \
             /tmp/releases.json \
-            > /tmp/stale_tags.txt
+            > /tmp/candidate_tags.txt
+
+          # Preserve the release/* branch exemption: fetch targetCommitish
+          # per-release ONLY for the small candidate set, skip release/* targets.
+          > /tmp/stale_tags.txt
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            target_commitish=$(gh release view "$tag" --json targetCommitish --jq '.targetCommitish')
+            case "$target_commitish" in
+              release/*)
+                echo "Skipping (release/* exempt): ${tag}"
+                ;;
+              *)
+                echo "$tag" >> /tmp/stale_tags.txt
+                ;;
+            esac
+          done < /tmp/candidate_tags.txt
 
           count=$(wc -l < /tmp/stale_tags.txt)
           echo "stale_count=${count}" >> "$GITHUB_OUTPUT"

@@ -46,7 +46,7 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-Git automation mode and provider are NOT asked by the wizard. `moai init` auto-detects them from the repository's already-configured Git remotes. To change Git settings later, run `moai update --reconfigure` — only that path shows a separate set of Git questions (automation mode, provider, credentials).
+Git automation mode and provider are NOT asked by the wizard. `moai init` auto-detects them from the repository's already-configured Git remotes. To change Git settings later, run `moai update -c` (or `moai update --config`) to re-run the wizard. Only that path surfaces the Git questions (automation mode, provider, credentials).
 {{< /callout >}}
 
 ## Page 1 — Basic

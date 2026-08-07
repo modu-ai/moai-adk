@@ -115,7 +115,24 @@ The core differences:
 
 ### /moai goal — The Programmatic Counterpart
 
-Native `/goal` is a TUI command only a user can type, so a model or workflow cannot set a goal on the user's behalf. MoAI-ADK fills this gap with **`/moai goal`** — a reimplementation of the same "declare a condition → Stop-hook evaluation at each turn-end → clear on satisfaction" semantics using a goal engine MoAI owns. Declare a completion condition and the session works on its own until the condition is met or the turn ceiling (default 30) is reached, with `/moai goal status` and `/moai goal clear` handling status and clearing. `/moai loop` is a preset on this goal engine — the condition "until the queue of issues the diagnostics found is empty" pre-filled.
+Native `/goal` is a TUI command only a user can type, so a model or workflow cannot set a goal on the user's behalf. MoAI-ADK fills this gap with **`/moai goal`** — a reimplementation of the same "declare a condition → Stop-hook evaluation at each turn-end → clear on satisfaction" semantics using a goal engine MoAI owns.
+
+**4-verb CLI** (`internal/cli/goal.go`):
+
+| Verb | Purpose |
+|------|------|
+| `moai goal arm "<condition>"` | Register + arm a condition on the active session |
+| `moai goal status [--all]` | Print the goal status of the current session (or every session) |
+| `moai goal clear` | Clear the active goal |
+| `moai goal render` | Render the active session's goal dashboard as a self-contained HTML file (`.moai/state/goal/<id>.html`) |
+
+**arm-only property**: `arm` only registers and arms the condition — it starts no work by itself. An armed goal is evaluated at every turn-end by the `stop-goal` Stop-hook evaluator, which decides whether to continue to the next turn. Pair it with a real work-starting command (e.g. `/moai run SPEC-XXX`); arming a goal with no work command only burns turns.
+
+**Progression Mode**: the autonomous vs semi-autonomous choice is made at the Implementation Kickoff Approval gate (plan → run). `arm` itself does not bypass this gate, and even after the gate passes the safety boundary — "confirm first before hard-to-reverse or shared-system actions" — does not loosen.
+
+**Infinite goal (`--max-turns 0`)**: an infinite goal with no turn ceiling was introduced in SPEC-INFINITE-GOAL-001. An infinite goal MUST be paired with `--max-duration <sec>` (wall-clock bound); otherwise arm time fail-closed rejects it. `--cost-cap` is recorded-only and does not satisfy this requirement. Additionally, the Claude Code runtime's consecutive block cap `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (default 8) terminates the loop before the turn ceiling does, so for an infinite goal you need to raise this cap (e.g. to 200). The `moai cc` / `moai cg` launchers inject this automatically when starting a session that has an infinite goal armed.
+
+Declare a completion condition and the session works on its own until the condition is met or the turn limit (default 30) is reached. When the turn ceiling is reached, the evaluator emits a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — this verdict is a "hit the ceiling and stopped" report, not a "converged" signal. `/moai loop` is a preset on this goal engine, with the condition "until the issue queue the diagnostic tools found is empty" pre-filled.
 
 This condition-declared loop is the execution unit of MoAI-ADK's **Agentic Loop Engineering** pillar. The record of the loop's run (how many turns, which verdicts, which failures) accumulates as observations, and the harness learns from them.
 

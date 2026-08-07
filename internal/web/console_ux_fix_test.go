@@ -100,6 +100,43 @@ func TestOptionLabelsStayEnglish(t *testing.T) {
 	}
 }
 
+// TestOptionDescriptionsTranslate verifies that option DESCRIPTION keys
+// (".opt.*.desc") are NOT frozen to English — only enum-token LABEL values are
+// (G1-2). The report.format option descriptions are prose and must follow the
+// active locale; the old blanket ".opt." guard froze them to English (the
+// report-format 다국어-안-됨 defect).
+func TestOptionDescriptionsTranslate(t *testing.T) {
+	js := readEmbeddedAsset(t, "app.js")
+
+	start := strings.Index(js, "function applyI18n")
+	if start < 0 {
+		t.Fatal("app.js does not define applyI18n")
+	}
+	searchFrom := start + len("function applyI18n")
+	end := len(js)
+	if next := strings.Index(js[searchFrom:], "\n  function "); next >= 0 {
+		end = searchFrom + next
+	}
+	fn := js[start:end]
+
+	if !strings.Contains(fn, `endsWith(".desc")`) {
+		t.Error(`applyI18n has no ".desc" exemption — option descriptions (report.format) are frozen to English instead of following the active locale`)
+	}
+}
+
+// TestRadioWithdescPointerCursor verifies the html/md radio row (".radio--
+// withdesc") shows a pointer cursor: the whole stacked <label> is the click
+// surface, not just the small circle, so hovering the label/desc text must show
+// the hand cursor.
+func TestRadioWithdescPointerCursor(t *testing.T) {
+	css := readEmbeddedAsset(t, "console.css")
+
+	blk := cssRuleBlock(t, css, ".radio--withdesc")
+	if !strings.Contains(blk, "cursor: pointer") && !strings.Contains(blk, "cursor:pointer") {
+		t.Errorf(".radio--withdesc has no cursor:pointer — the html/md radio row does not show the hand cursor on hover:\n%s", blk)
+	}
+}
+
 // TestEffortGoUnboundWording verifies G3-6: the stale "(declarative — not read by
 // the runtime)" caption is reworded in all 4 locales (post-G3-1 the per-agent
 // model/effort IS runtime-bound via the profile matrix, so the old caption is
@@ -295,7 +332,7 @@ func agentFMSectionCount(t *testing.T, body string) int {
 // frontmatter), so it must NOT be treated as a manual override. Only `effort: max`
 // still marks a row CUSTOM.
 func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
-	// inherit → the inherit glyph (🩵), the default model badge — NOT the CUSTOM pill.
+	// inherit → the inherit cost color (⚪), the default model badge — NOT the CUSTOM pill.
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs"} {
 		b := agentTierBadge(name, v4manifest.ModelInherit, v4manifest.EffortXhigh)
 		if b.IsCustom {
@@ -304,8 +341,8 @@ func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
 		if !b.HasBadge {
 			t.Errorf("%s (model=inherit): expected a badge", name)
 		}
-		if want := v4manifest.ModelColor(v4manifest.ModelInherit); b.Glyph != want {
-			t.Errorf("%s (model=inherit): glyph = %q, want the inherit glyph %q", name, b.Glyph, want)
+		if want := v4manifest.ModelCellColor(v4manifest.ModelInherit, v4manifest.EffortXhigh); b.Glyph != want {
+			t.Errorf("%s (model=inherit): glyph = %q, want the inherit cost color %q", name, b.Glyph, want)
 		}
 	}
 
@@ -318,9 +355,9 @@ func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
 	}
 }
 
-// TestAgentTierBadgeGlyphConsistency verifies the badge is model-derived and
-// consistent: with the shipped `model: inherit` frontmatter, EVERY seeded core
-// agent renders the inherit glyph (🩵) — no mixed CUSTOM/glyph rows.
+// TestAgentTierBadgeGlyphConsistency verifies the badge is consistent: with the
+// shipped `model: inherit` frontmatter, EVERY seeded core agent renders the
+// inherit cost color (⚪) — no mixed CUSTOM/glyph rows.
 func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs", "manager-git"} {
@@ -331,8 +368,8 @@ func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
 	if strings.Contains(body, "agentfm-badge--custom") {
 		t.Error("a CUSTOM badge renders for shipped `model: inherit` agents")
 	}
-	want := v4manifest.ModelColor(v4manifest.ModelInherit)
+	want := v4manifest.ModelCellColor(v4manifest.ModelInherit, "")
 	if !strings.Contains(body, want) {
-		t.Errorf("inherit glyph %q missing from the render — all seeded agents share model=inherit", want)
+		t.Errorf("inherit cost color %q missing from the render — all seeded agents share model=inherit", want)
 	}
 }

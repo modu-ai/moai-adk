@@ -151,6 +151,160 @@ security:
 
 관련: [보안 노트](/ko/advanced/security-notes), [settings.json 가이드](/ko/advanced/settings-json).
 
+## ralph.yaml — Ralph Engine
+
+`/moai loop` 의 진단 기반 반복 수정 루프(Ralph Engine) 동작을 제어합니다.
+
+```yaml
+ralph:
+  max_iterations: 5         # 반복 상한 (기본 5; CLI --max 가 우선)
+  auto_converge: true       # 정체 감지 시 자동 수렴
+  human_review: true        # 리뷰 단계에서 사람 개입 중단
+  lint_as_instruction: true # LSP diagnostic 을 다음 턴 지침으로 주입
+  warn_as_instruction: false # 에러가 없을 때만 warning 도 주입
+```
+
+| 키 | 설명 |
+|----|------|
+| `max_iterations` | 반복 상한 (기본 5). 우선순위: CLI `--max` 플래그 > `ralph.max_iterations` > `workflow.yaml loop_prevention.max_iterations` |
+| `auto_converge` | N 턴 연속 무진전 시 자동으로 수렴 판정 |
+| `human_review` | 리뷰 단계에서 사람이 들여다보게 중단 |
+| `lint_as_instruction` | LSP diagnostic 을 `systemMessage` 로 주입해 AI 가 다음 프롬프트로 받게 함 (기본 true) |
+| `warn_as_instruction` | 에러가 없을 때 warning 도 함께 주입 (기본 false) |
+
+관련: [/moai loop](/ko/utility-commands/moai-loop), [자율 연속 루프](/ko/advanced/autonomous-loops).
+
+## harness.yaml — 하네스 깊이·평가
+
+하네스 품질 파이프라인 깊이(minimal/standard/thorough)와 자동 감지, 평가자 memory scope, 에스컬레이션을 정의합니다.
+
+```yaml
+harness:
+  default_profile: "default"  # default | strict | lenient | frontend
+  evaluator:
+    memory_scope: per_iteration  # FROZEN — 변경 불가 (design-constitution §11.4.1)
+  mode_defaults:
+    solo: auto
+    team: auto
+    cg: thorough                 # CG 모드는 항상 thorough
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:  # file_count <= 3 AND single_domain, ...
+      standard: # file_count > 3 OR multi_domain, ...
+      thorough: # security/payment 키워드, critical 우선순위, ...
+  escalation:
+    enabled: true
+```
+
+| 블록 | 설명 |
+|------|------|
+| `default_profile` | SPEC 에 `evaluator_profile` 이 없을 때 쓸 기본 평가 프로필 |
+| `evaluator.memory_scope` | 평가자 메모리 범위. `per_iteration` 으로 고정(FROZEN) |
+| `mode_defaults` | 실행 모드(solo/team/cg)별 기본 깊이 |
+| `auto_detection.rules` | Complexity Estimator 가 minimal/standard/thorough 로 자동 분류하는 조건 |
+| `escalation` | 실패 시 상위 깊이로 에스컬레이션 |
+
+관련: [하네스 프로필과 평가](/ko/advanced/harness-profiles), [moai harness](/ko/cli-reference/harness).
+
+## quality.yaml — 품질 게이트·개발 방법론
+
+개발 모드(DDD/TDD), 커버리지 목표, LSP 품질 게이트 임계값, 품질 게이트 강제 여부를 제어합니다.
+
+```yaml
+constitution:
+  development_mode: tdd        # tdd | ddd | off
+  enforce_quality: true
+  test_coverage_target: 85
+  lsp_quality_gates:
+    enabled: true
+    plan: { require_baseline: true }
+    run:  { max_errors: 0, max_type_errors: 0, max_lint_errors: 0, allow_regression: false }
+    sync: { max_errors: 0, max_warnings: 10, require_clean_lsp: true }
+```
+
+| 블록 | 설명 |
+|------|------|
+| `development_mode` | `tdd` / `ddd` / `off`. `/moai run` 의 cycle_type 기본값 결정 |
+| `enforce_quality` | `true` 면 품질 게이트 위반 시 run-phase 가 GREEN 되지 않음 |
+| `test_coverage_target` | 패키지 커버리지 최소 목표(%). 임계 패키지(cli/template/hook)는 90%+ 권장 |
+| `lsp_quality_gates.plan` | plan-phase: LSP baseline 캡처 여부 |
+| `lsp_quality_gates.run` | run-phase: 에러/타입에러/린트에러 0, 회귀 금지 |
+| `lsp_quality_gates.sync` | sync-phase: 에러 0, warning ≤ 10, clean LSP 요구 |
+
+관련: [SPEC 워크플로우](/ko/advanced/spec-workflow), [LSP 게이트](/ko/advanced/lsp-gates).
+
+## workflow.yaml — 워크플로우 상태
+
+워크플로우 임계값, branch-state guard opt-in, 세션 worktree opt-in, agentic 루프 상한을 제어합니다.
+
+```yaml
+workflow:
+  agentic_loop:
+    max_iterations: 10        # 파이프라인 수준 completion-loop 상한
+  branch_guard:
+    enabled: false            # distributed default — hook 이 INERT (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001)
+  session_worktree:
+    enabled: false            # distributed default — auto-isolation INERT
+  loop_prevention:
+    max_iterations: 5         # per-operation 진단 fix-loop 상한 (ralph.max_iterations 과 별개 축)
+```
+
+| 블록 | 설명 |
+|------|------|
+| `agentic_loop.max_iterations` | 파이프라인 수준 completion-loop 상한 (`AgenticLoopConfig`) |
+| `branch_guard.enabled` | Main-Checkout Branch-State Guard 활성화. **분산 기본 `false`** — 공유 체크아웃이 아닌 1인 개발 환경에서는 hook 이 평가하지 않음. 공유 다중 세션 체크아웃 운영자가 opt-in |
+| `session_worktree.enabled` | `moai init`/`moai profile`/`moai web` 시 자동 worktree 격리 활성화. **분산 기본 `false`** (SPEC-SESSION-WORKTREE-001). `MOAI_SESSION_WORKTREE` env 로 재정의 |
+| `loop_prevention.max_iterations` | per-operation 진단 fix-loop 상한. `ralph.max_iterations` 과 별개 축 — ralph.yaml 이 우선 |
+
+> branch_guard 와 session_worktree 는 모두 분산 기본값이 `false` 입니다. 단일 사용자 리포에서 이 값들이 `false` 인 것은 의도된 동작이지 결함이 아닙니다.
+
+관련: [Main-Checkout Branch Guard](/ko/advanced/branch-guard), [Worktree 통합](/ko/advanced/worktree).
+
+## mx.yaml — @MX 태그 시스템
+
+`@MX` 코드 주석 태그 시스템의 태그 종류, 언어별 감지, 검증 규칙을 정의합니다.
+
+```yaml
+mx:
+  version: "2.1"
+  languages:
+    go:      { enabled: auto, patterns: ["*.go"], exclude: ["*_generated.go", "vendor/**"] }
+    python:  { enabled: auto, patterns: ["*.py"], exclude: ["**/__pycache__/**"] }
+    # ... 16개 언어 동등 (go, python, typescript, javascript, rust, java, kotlin,
+    #     csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)
+  tags:
+    # 각 태그별 설명·활성화 여부
+  reason_required:  # @MX:REASON 필수 태그 목록
+    - WARN
+    - DEBT
+```
+
+| 블록 | 설명 |
+|------|------|
+| `version` | MX 태그 시스템 스키마 버전 |
+| `languages` | 16개 언어를 동등하게 나열. 각 언어는 프로젝트 마커(`go.mod`, `pyproject.toml`, `Cargo.toml` 등)로 자동 감지(`enabled: auto`) |
+| `tags` | `@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` / `@MX:TODO` / `@MX:SPEC` / `@MX:DEBT` / `@MX:LEGACY` 등 태그별 메타데이터. `@MX:SPEC` 은 SPEC 연관 관계를 기록 (SPEC-MX-ASSOCIATION-001) |
+| `reason_required` | `@MX:REASON` 필수 태그 목록 (기본: WARN, DEBT) |
+
+> 특정 언어를 "PRIMARY"로 격하하거나 일부만 "enabled" 로 두지 마세요 — 16개 언어는 모두 동등합니다.
+
+관련: [@MX 태그 프로토콜](/ko/advanced/mx-tag-protocol), [moai mx](/ko/cli-reference/mx).
+
+## 환경변수 오버라이드
+
+YAML 섹션 값 일부는 환경변수로 재정의할 수 있습니다. 환경변수가 파일 값보다 우선합니다 (`internal/config/manager.go` 의 `applyEnvOverrides`).
+
+| 환경변수 | 대상 | 설명 |
+|----------|------|------|
+| `MOAI_DEVELOPMENT_MODE` | `constitution.development_mode` | `tdd`/`ddd`/`off` 중 강제 |
+| `MOAI_LOG_LEVEL` | 로그 레벨 | `debug`/`info`/`warn`/`error` |
+| `MOAI_LOG_FORMAT` | 로그 포맷 | `text`/`json` |
+| `MOAI_NO_COLOR` | 컬러 출력 | `1`/`true` 면 컬러 강제 off |
+| `MOAI_CONFIG_DIR` | config 디렉터리 위치 | `.moai/config/` 대신 다른 경로 사용 |
+
+> 위 5개가 config manager 가 실제로 읽는 환경변수 오버라이드의 전부입니다. 상수 정의는 `internal/config/envkeys.go` 에 있습니다. `MOAI_USER_NAME`/`MOAI_CONVERSATION_LANG` 은 현재 구현되지 않습니다 — 이름과 대화 언어는 `user.yaml`/`language.yaml` 만 읽습니다.
+
 ## 관련 문서
 
 - [settings.json 가이드](/ko/advanced/settings-json) — Claude Code 런타임 설정

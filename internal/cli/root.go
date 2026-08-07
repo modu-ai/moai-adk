@@ -170,6 +170,17 @@ func init() {
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
 
+	// SPEC-PROJECT-NAVIGATOR-003: AST enrichment entry point for /moai codemaps.
+	rootCmd.AddCommand(newNavigatorEnrichCmd())
+
+	// SPEC-NAVIGATOR-SYNC-001: BAS integration-layer join step for /moai project.
+	rootCmd.AddCommand(newNavigatorSyncCmd())
+
+	// SPEC-NAVIGATOR-SYNC-003 M4.6: BAS 4-tier overlay step. Sibling of
+	// navigator-sync — invoked AFTER it during /moai project to emit the
+	// additive tiers.json overlay (fail-open, byte-identical re-run).
+	rootCmd.AddCommand(newNavigatorTiersCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
@@ -196,6 +207,12 @@ func init() {
 	// SSOT from which the settings.json permissions block is generated.
 	rootCmd.AddCommand(newToolPolicyCmd())
 
+	// SPEC-MOAI-MCP-SERVER-001 M1: register the `moai mcp-server` subcommand —
+	// a thin stdio JSON-RPC MCP server over the internal/ core. The server and
+	// its .mcp.json provisioning ship opt-in / default-off (REQ-MCP-002 / C6);
+	// registering the subcommand does NOT provision any entry.
+	rootCmd.AddCommand(newMCPServerCmd())
+
 	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
 	// read-only unified view composing sessions / worktrees / harnesses.
 	rootCmd.AddCommand(newInventoryCmd())
@@ -207,4 +224,8 @@ func init() {
 	// SPEC-MODEL-PROFILE-MATRIX-001 M2: register the read-only `moai model
 	// profile` resolver — the per-agent model+effort profile injection surface.
 	rootCmd.AddCommand(newModelCmd())
+
+	// SPEC-GOAL-HTML-WIRING-001 M3: register the `moai plan` CLI parent + the
+	// `render-html` subcommand (Surface 2 production caller for planhtml.RenderPlanHTML).
+	rootCmd.AddCommand(newPlanCmd())
 }

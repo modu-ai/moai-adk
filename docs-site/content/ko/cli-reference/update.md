@@ -131,7 +131,7 @@ graph TD
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` 의 `profile` 에 저장) |
+| `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` 의 `profile` 에 저장). 정규 클로즈드 셋은 `high`/`medium`/`low` 이며, legacy `max` 도 입력으로 받아 `high` 로 정규화 (`internal/config/profile.go` 의 `NormalizeProfile`) |
 
 ### 동작 방식
 
