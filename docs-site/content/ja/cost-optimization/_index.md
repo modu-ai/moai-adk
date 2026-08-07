@@ -13,4 +13,4 @@ MoAI-ADK トークノミクスは 2 つのアプローチで推論コストを�
 
 ## このセクションのドキュメント
 
-- [プロンプトキャッシング — 損益分岐分析と実装ガイド](/ja/cost-optimization/prompt-caching) — 2 リクエスト損益分岐ルール、`cacheStrategy` 設定、statusline モニタリング
+- [プロンプトキャッシング — 損益分岐分析と実装ガイド](/ja/cost-optimization/prompt-caching) — 2 リクエスト損益分岐ルール、ブレークポイント配置、statusline モニタリング

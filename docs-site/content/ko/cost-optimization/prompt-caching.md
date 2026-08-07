@@ -93,15 +93,15 @@ response = client.messages.create(
 마지막 안정 블록에** 둡니다. 손익분기는 요청 2개입니다. 첫 요청의 기록 프리미엄은
 TTL 안에서 두 번째 요청의 0.1배 읽기로 회수됩니다.
 
-## MoAI cache.yaml의 적용 범위
+## MoAI가 관여하는 부분
 
-`.moai/config/sections/cache.yaml`(`enabled`, `session_ttl`)은 **MoAI가 자체
-SDK 래퍼 경로로 Anthropic API를 직접 호출할 때 넣어 주는 cache_control**에만
-적용됩니다. **Claude Code 세션의 캐싱과는 상관이 없습니다.** Claude Code
-쪽 캐싱은 위에서 설명한 대로 런타임이 알아서 관리하므로 MoAI가 끼어들 수 없습니다.
+이 축에서는 없습니다. MoAI는 프롬프트 캐싱 설정을 제공하지 않고,
+자체적으로 `cache_control`을 주입하지도 않습니다. **Claude Code 세션의 캐싱은
+위에서 설명한 대로 런타임이 알아서 관리하므로** MoAI가 끼어들 수 없습니다 —
+세션의 캐시 동작을 바꾸는 MoAI 쪽 스위치는 없습니다.
 
-> **GLM 백엔드**: z.ai(GLM)는 콘텐츠 유사도 기반 **암묵적 캐싱**을 사용하므로
-> MoAI는 GLM 경로에 `cache_control`을 주입하지 않습니다.
+> **GLM 백엔드**: z.ai(GLM)는 콘텐츠 유사도 기반 **암묵적 캐싱**을 사용하며,
+> 이 역시 제공자가 알아서 관리합니다.
 
 ## 요약
 

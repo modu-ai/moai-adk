@@ -16,4 +16,4 @@ rule for deciding when to enable caching and how to configure it.
 
 ## Documents in this section
 
-- [Prompt Caching — Break-even Analysis and Implementation Guide](/en/cost-optimization/prompt-caching) — the 2-request break-even rule, `cacheStrategy` configuration, and statusline monitoring
+- [Prompt Caching — Break-even Analysis and Implementation Guide](/en/cost-optimization/prompt-caching) — the 2-request break-even rule, breakpoint placement, and statusline monitoring
