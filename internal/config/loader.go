@@ -73,9 +73,6 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
 
-	// Load research section
-	l.loadResearchSection(sectionsDir, cfg)
-
 	// Load feedback section (SPEC-INVOCATION-MODEL-001: /moai feedback target repo)
 	l.loadFeedbackSection(sectionsDir, cfg)
 
@@ -266,24 +263,10 @@ func (l *Loader) loadRalphSection(dir string, cfg *Config) {
 	}
 }
 
-// loadResearchSection loads the research configuration section from research.yaml.
-func (l *Loader) loadResearchSection(dir string, cfg *Config) {
-	wrapper := &researchFileWrapper{Research: cfg.Research}
-	loaded, err := loadYAMLFile(dir, "research.yaml", wrapper)
-	if err != nil {
-		slog.Warn("failed to load research config, using defaults", "error", err)
-		return
-	}
-	if loaded {
-		cfg.Research = wrapper.Research
-		l.loadedSections["research"] = true
-	}
-}
-
 // loadFeedbackSection loads the feedback configuration section from feedback.yaml.
 // The wrapper is seeded with the populated default (cfg.Feedback) so that a
 // feedback.yaml omitting the repository key retains the default tool channel
-// (partial-override contract; parallel to loadResearchSection).
+// (partial-override contract).
 func (l *Loader) loadFeedbackSection(dir string, cfg *Config) {
 	wrapper := &feedbackFileWrapper{Feedback: cfg.Feedback}
 	loaded, err := loadYAMLFile(dir, "feedback.yaml", wrapper)
@@ -336,7 +319,7 @@ var knownHarnessTopLevelKeys = map[string]bool{
 	"model_upgrade_review": true,
 	"plan_audit_global":    true,
 	"evaluator":            true,
-	"learning":             true, // Legacy sub-system (out-of-scope, warning suppressed)
+	"learning":             true, // Live sub-system — consumed at internal/cli/hook.go:551-1106
 }
 
 // LoadHarnessConfig reads the harness.yaml file at the given path and returns a HarnessConfig.
