@@ -55,7 +55,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// optional-pack:frontend), net +1 = 42.
 	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
-	const wantTotal = 41
+	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead agent added (core.agents,
+	// hierarchical-team coordination specialist, sole Agent-carrier), net +1 = 42.
+	const wantTotal = 42
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

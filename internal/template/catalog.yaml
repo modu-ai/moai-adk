@@ -144,6 +144,11 @@ catalog:
               path: templates/.claude/agents/moai/e2e-tester.md
               hash: 61bbd26d61b3d0fda4c9776fd64edae3247c7c9ee08380110aaba039b1928809
               version: 1.0.0
+            - name: manager-lead
+              tier: core
+              path: templates/.claude/agents/moai/manager-lead.md
+              hash: a4f1ae6ce1e949c86a51d538cfbef2e7ec3bedffbd57aa1abc65098ed9da6638
+              version: 1.0.0
     optional_packs:
         backend:
             description: Backend API development, database integration, and server-side patterns

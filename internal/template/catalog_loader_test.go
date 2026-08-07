@@ -64,7 +64,9 @@ func TestLoadCatalog(t *testing.T) {
 	// optional-pack:frontend), net +1 = 42.
 	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
-	const expectedTotal = 41
+	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead agent added (core.agents),
+	// net +1 = 42.
+	const expectedTotal = 42
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
