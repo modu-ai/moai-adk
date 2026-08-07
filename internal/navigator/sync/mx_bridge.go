@@ -49,6 +49,22 @@ func BridgeMxAssociations(projectRoot string) ([]MxBridgeSpec, error) {
 		return nil, err
 	}
 
+	// @MX:DEBT: path-based association (source (a) of AssociateWithDiagnostics)
+	// fans out far wider than it is useful, because SPEC `module:` declarations
+	// are coarse. Measured on this repo: 863 tags produce ~28.8k bridge records
+	// across 259 SPECs, and each record materializes both a symbol node and a
+	// spec-edge — a ~7 MB nav-graph.json. The driver is declaration breadth, not
+	// the matching rule: 34 SPECs declare `module: internal` (the whole tree) and
+	// 65 declare `internal/cli`, so one tag under internal/cli/ edges to all of
+	// them. The blast radius is LATENT today — join.go's capability gate
+	// suppresses the artifact while capability-map.md is absent.
+	// @MX:CEILING: no algorithmic rule fixes this. Measured alternatives:
+	// separator-boundary matching removes 77 records (false sibling matches
+	// only), and most-specific-module-wins removes ~43% but leaves ~16.4k,
+	// because the 65 SPECs sharing `internal/cli` tie at the same specificity.
+	// @MX:UPGRADE: narrow the `module:` declarations themselves — a SPEC whose
+	// module is the entire internal tree carries no navigational signal. Until
+	// then, treat spec-edge density as an artifact of declaration breadth.
 	assoc := mx.NewSpecAssociator(specModules)
 	seen := map[string]bool{}
 	var out []MxBridgeSpec
@@ -64,9 +80,15 @@ func BridgeMxAssociations(projectRoot string) ([]MxBridgeSpec, error) {
 		// mutating the shared tag — makes path-based association work and keeps
 		// SourcePath consistent with the rest of the graph (project-relative).
 		// Consumer-only: this bridge does NOT modify internal/mx (REQ-NS-005).
-		assocFile := tag.File
+		// `filepath.Rel` returns OS-native separators, so on Windows the result
+		// is `internal\mx\tagged.go` while `mx.LoadSpecModules` returns module
+		// paths verbatim from frontmatter YAML (always forward-slash). Without
+		// ToSlash the HasPrefix comparison below fails on Windows exactly as it
+		// did before relativization, and `mx:` node identifiers would differ
+		// between a graph built on Windows and one built on macOS/Linux.
+		assocFile := filepath.ToSlash(tag.File)
 		if rel, err := filepath.Rel(projectRoot, tag.File); err == nil {
-			assocFile = rel
+			assocFile = filepath.ToSlash(rel)
 		}
 		assocTag := tag
 		assocTag.File = assocFile

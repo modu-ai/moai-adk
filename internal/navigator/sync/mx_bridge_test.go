@@ -100,7 +100,14 @@ func TestBridgeMxAssociations_PathBasedAssociationIsAbsoluteVsRelativeSafe(t *te
 	if filepath.IsAbs(match.SourcePath) {
 		t.Errorf("SourcePath is absolute, want project-relative: %q", match.SourcePath)
 	}
-	if filepath.ToSlash(match.SourcePath) != "internal/mx/tagged.go" {
-		t.Errorf("SourcePath = %q, want internal/mx/tagged.go", match.SourcePath)
+	// Compare WITHOUT normalizing: the bridge itself must emit forward slashes.
+	// Normalizing here first would mask the Windows separator defect, since
+	// `filepath.Rel` returns OS-native separators and the module paths this is
+	// matched against come from frontmatter YAML (always forward-slash).
+	if match.SourcePath != "internal/mx/tagged.go" {
+		t.Errorf("SourcePath = %q, want internal/mx/tagged.go (forward slashes on every OS)", match.SourcePath)
+	}
+	if strings.Contains(match.SourcePath, `\`) {
+		t.Errorf("SourcePath carries an OS-native separator: %q", match.SourcePath)
 	}
 }

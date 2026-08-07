@@ -129,7 +129,15 @@ func ExtractSpecIDs(body string) []string {
 // Uses path prefix matching (REQ-SPC-004-006 (a)).
 func isFileUnderModules(filePath string, modulePaths []string) bool {
 	for _, modulePath := range modulePaths {
-		if strings.HasPrefix(filePath, modulePath) {
+		// Compare on a separator boundary, not a raw string prefix. Frontmatter
+		// accepts a module with or without a trailing slash, so a bare
+		// `internal/mx` would otherwise swallow the sibling `internal/mxtools/`.
+		m := strings.TrimSuffix(modulePath, "/")
+		if m == "" || m == "." {
+			// A module declaring the project root contains every file.
+			return true
+		}
+		if filePath == m || strings.HasPrefix(filePath, m+"/") {
 			return true
 		}
 	}
