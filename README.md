@@ -152,7 +152,7 @@ The cheapest session is the one that does not repeat last session's mistakes. Th
 ## 🛡️ The Quality-Control Axis — Agentic Harness
 
 <p align="center">
-  <img src="./assets/section-why.png" alt="The verification gate — code passes with evidence" width="85%">
+  <img src="./assets/section-why-en.png" alt="The verification gate — code passes with evidence" width="85%">
 </p>
 
 Rework is the worst token waste — a bug that ships and comes back costs more than every routing optimization combined. The quality-control axis makes "done" mean *verified done*, and isolates work so parallel agents never trample each other.
@@ -188,7 +188,7 @@ A single Go binary with no extra dependencies, running on macOS, Linux, and Wind
 ## Quick Start
 
 <p align="center">
-  <img src="./assets/section-quickstart.png" alt="Terminal to first workflow" width="85%">
+  <img src="./assets/section-quickstart-en.png" alt="Terminal to first workflow" width="85%">
 </p>
 
 ### Install
@@ -429,7 +429,7 @@ Yes. `moai init` detects project state and selects methodology — DDD (characte
 ## Community and Documentation
 
 <p align="center">
-  <img src="./assets/section-community.png" alt="Built together, open source" width="85%">
+  <img src="./assets/section-community-en.png" alt="Built together, open source" width="85%">
 </p>
 
 ### Contributing

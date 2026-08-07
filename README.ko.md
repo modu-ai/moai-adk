@@ -36,7 +36,7 @@
 ## 왜 moai-adk인가요?
 
 <p align="center">
-  <img src="./assets/section-why.png" alt="검증의 문 — 코드가 증거와 함께 통과한다" width="85%">
+  <img src="./assets/section-why-ko.png" alt="검증의 문 — 코드가 증거와 함께 통과한다" width="85%">
 </p>
 
 에이전트가 코드를 쓰는 시대가 왔지만, 에이전트가 내놓은 결과를 그대로 믿을 수는 없다. "테스트가 통과했습니다"라는 말이 진짜 테스트를 돌린 결과인지, 그냥 에이전트의 추측인지를 구분하는 것이 처음부터 가장 큰 문제다. moai-adk는 바로 그 지점에서 출발한다 — **검증하지 않은 완료 선언을 시스템 차원에서 금지**하고, 모든 완료 주장에 실제로 돌린 명령과 그 출력을 증거로 묶는다.
@@ -85,7 +85,7 @@ flowchart TD
 ## 빠르게 시작
 
 <p align="center">
-  <img src="./assets/section-quickstart.png" alt="터미널에서 첫 워크플로우까지" width="85%">
+  <img src="./assets/section-quickstart-ko.png" alt="터미널에서 첫 워크플로우까지" width="85%">
 </p>
 
 ### 설치
@@ -246,7 +246,7 @@ flowchart TD
 ## 워크플로우 예시
 
 <p align="center">
-  <img src="./assets/section-recipes.png" alt="병렬 worktree — 갈라졌다 하나로" width="85%">
+  <img src="./assets/section-recipes-ko.png" alt="병렬 worktree — 갈라졌다 하나로" width="85%">
 </p>
 
 ### 새 기능 만들기 (TDD)
@@ -312,7 +312,7 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 ## 설정과 프로파일
 
 <p align="center">
-  <img src="./assets/section-config.png" alt="high/medium/low 프로파일 다이얼" width="85%">
+  <img src="./assets/section-config-ko.png" alt="high/medium/low 프로파일 다이얼" width="85%">
 </p>
 
 ### `.moai/config/sections/`
@@ -356,7 +356,7 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 ## 어디서나 쓸 수 있어요
 
 <p align="center">
-  <img src="./assets/section-universal.png" alt="16가지 언어 · 4-로케일 · 어느 플랫폼이나" width="85%">
+  <img src="./assets/section-universal-ko.png" alt="16가지 언어 · 4-로케일 · 어느 플랫폼이나" width="85%">
 </p>
 
 ### 16가지 프로그래밍 언어 동등 지원
@@ -406,7 +406,7 @@ GLM Coding Plan은 월 $10부터다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)
 ## 문서와 학습
 
 <p align="center">
-  <img src="./assets/section-docs.png" alt="문서와 학습 아카이브" width="85%">
+  <img src="./assets/section-docs-ko.png" alt="문서와 학습 아카이브" width="85%">
 </p>
 
 ### 공식 문서 — adk.mo.ai.kr
@@ -471,7 +471,7 @@ GLM Coding Plan은 월 $10부터다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)
 ## 함께 만들어요
 
 <p align="center">
-  <img src="./assets/section-community.png" alt="오픈소스 커뮤니티가 함께 짓는다" width="85%">
+  <img src="./assets/section-community-ko.png" alt="오픈소스 커뮤니티가 함께 짓는다" width="85%">
 </p>
 
 ### 기여하기
