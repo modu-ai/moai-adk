@@ -16,14 +16,15 @@ import (
 // is the sole source of truth for tier assignment.
 
 // expectedAgentTiers is the hand-curated name→tier mapping per design.md §C
-// (distribution 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 = 20). Every catalog agent file stem
+// (distribution 🔴×5 · 🟠×4 · 🔵×5 · 🩵×7 = 21). Every catalog agent file stem
 // under .claude/agents/{moai,harness}/ MUST appear here exactly once.
 var expectedAgentTiers = map[string]Tier{
-	// 🔴 — deep reasoning (×4)
+	// 🔴 — deep reasoning (×5)
 	"manager-spec":  TierRed,
 	"plan-auditor":  TierRed,
 	"super-advisor": TierRed,
 	"sync-auditor":  TierRed,
+	"manager-lead":  TierRed,
 	// 🟠 — heavy reasoning (×4)
 	"manager-develop": TierOrange,
 	"manager-design":   TierOrange,
@@ -49,8 +50,8 @@ var expectedAgentTiers = map[string]Tier{
 // design.md §C tier for each of the 20 expected agent names
 // (AC-WC-005 + AC-WC-016 data-driven half).
 func TestAgentTier_All20ExpectedAgents(t *testing.T) {
-	if len(expectedAgentTiers) != 20 {
-		t.Fatalf("expectedAgentTiers fixture has %d entries, want 20 — fixture is wrong", len(expectedAgentTiers))
+	if len(expectedAgentTiers) != 21 {
+		t.Fatalf("expectedAgentTiers fixture has %d entries, want 21 — fixture is wrong", len(expectedAgentTiers))
 	}
 	for name, wantTier := range expectedAgentTiers {
 		gotTier, ok := AgentTier(name)
@@ -96,7 +97,7 @@ func TestAgentTier_CatalogFileCoverage(t *testing.T) {
 	}
 }
 
-// TestAgentTier_Distribution pins the 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 split
+// TestAgentTier_Distribution pins the 🔴×5 · 🟠×4 · 🔵×5 · 🩵×7 split
 // (design.md §C distribution footnote).
 func TestAgentTier_Distribution(t *testing.T) {
 	table := AllAgentTiers()
@@ -105,7 +106,7 @@ func TestAgentTier_Distribution(t *testing.T) {
 		counts[tier]++
 	}
 	want := map[Tier]int{
-		TierRed:       4,
+		TierRed:       5,
 		TierOrange:    4,
 		TierBlue:      5,
 		TierLightBlue: 7,
@@ -115,8 +116,8 @@ func TestAgentTier_Distribution(t *testing.T) {
 			t.Errorf("tier %q has %d agents, want %d", tier, got, wantN)
 		}
 	}
-	if total := len(table); total != 20 {
-		t.Errorf("table has %d entries, want 20", total)
+	if total := len(table); total != 21 {
+		t.Errorf("table has %d entries, want 21", total)
 	}
 }
 

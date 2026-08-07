@@ -385,6 +385,16 @@ type WorkflowConfig struct {
 	// (REQ-MCP-008 / AC-MCP-010).
 	Codex CodexConfig `yaml:"codex"`
 
+	// Multi gates the multi-model convergence Stop-hook review gate
+	// (SPEC-AUDIT-MULTI-MODEL-001 M5). The ReviewGate sub-block is the opt-in
+	// toggle for `moai hook multi-review-gate` — it ships default-OFF (C6 /
+	// BranchGuard pattern — sibling to Codex.ReviewGate); a maintainer opts
+	// in via local config. The moai-default 5s hook timeout is overridden to
+	// DefaultMultiReviewGateTimeout (900s) for that hook only
+	// (REQ-AMM-013 / AC-AMM-018). Template neutrality (§25): no `enabled: true`
+	// under internal/template/templates/ — the distributed default is OFF.
+	Multi MultiConfig `yaml:"multi"`
+
 	// Audit gates the 3-way audit backend selection + per-auditor gate
 	// contract (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010 / AC-MCP-012). The
 	// default profile is claude + codex required, glm advisory (user-enabled)
@@ -534,6 +544,25 @@ type CodexConfig struct {
 // via local config. Fail-CLOSED at the hook read site (default off), matching
 // the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
 type CodexReviewGateConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
+// config surface (SPEC-AUDIT-MULTI-MODEL-001 M5, REQ-AMM-013). It is the sibling
+// of Codex: an opt-in gate whose distributed default is OFF (BranchGuard
+// pattern). The multi_review_gate config block REUSES the existing
+// CodexReviewGateConfig structural pattern (a sibling `multi_review_gate` key
+// under `workflow:`, NOT a new schema shape — REQ-AMM-019 / AC-AMM-025).
+type MultiConfig struct {
+	ReviewGate MultiReviewGateConfig `yaml:"review_gate"`
+}
+
+// MultiReviewGateConfig mirrors workflow.multi.review_gate.* — the opt-in
+// toggle for the `moai hook multi-review-gate` Stop hook. Default false: the
+// gate ships INERT (no Stop-hook blocking) until a maintainer opts in via local
+// config. Fail-CLOSED at the hook read site (default off), matching the
+// codex-review-gate + BranchGuard precedents.
+type MultiReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

@@ -119,7 +119,7 @@ var agentLintCmd = &cobra.Command{
 	Long: `Validate agent definition files (.claude/agents/{moai,harness}/*.md) against common issues.
 
 	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
-	  LR-02: Reject Agent token in tools: CSV list (except the sanctioned read-only nesting-pilot allowlist)
+	  LR-02: Reject Agent token in tools: CSV list (except the read-only nesting-pilot allowlist + manager-lead, sole hierarchical-team coordinator per SPEC-HIERARCHICAL-TEAM-001 REQ-LEAD-001, depth-2 sealed)
 	  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
 	  LR-12: Reject effort drift from SPEC-V3R2-ORC-003 canonical matrix
 	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
@@ -460,21 +460,34 @@ func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 	return violations
 }
 
-// nestingPilotAllowlist names the agents sanctioned for the opt-in, read-only
-// subagent-nesting pilot (SPEC-SUBAGENT-NESTING-DOCTRINE-001 M2). An agent in
-// this set MAY declare the Agent tool in its tools: CSV without tripping LR-02.
+// nestingPilotAllowlist names the agents sanctioned to declare the Agent tool
+// in their tools: CSV without tripping LR-02. The flat-hierarchy-by-tool-omission
+// principle is the shipped default; an entry here is a narrow, named carve-out.
 //
-// The shipped default remains a FLAT hierarchy: even for a pilot agent, nested
-// spawning only occurs at runtime when CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH is
-// raised above its default-off value. This allowlist only lets the pilot agent's
-// frontmatter pass CI — it does NOT enable nesting on its own. Every agent NOT
-// in this set still fails LR-02, preserving the flat-hierarchy guard for the
-// other retained agents (subagents cannot spawn sub-subagents).
+// Two distinct carve-out rationales coexist in this map:
+//
+//   - sync-auditor: legacy read-only subagent-nesting pilot
+//     (SPEC-SUBAGENT-NESTING-DOCTRINE-001 M2).
+//   - manager-lead: sole hierarchical-team coordinator. The ONLY retained agent
+//     that the orchestrator delegates Mode-5-shaped fan-out to; it opens exactly
+//     one layer of the hierarchy. The depth-2 seal is enforced structurally by
+//     the leaf workers it spawns omitting Agent from their own tools: lists,
+//     guarded by the TestManagerLeadIsSoleAgentCarrier /
+//     TestNoNestedLeafWorkerCarrier CI guards (SPEC-HIERARCHICAL-TEAM-001
+//     REQ-LEAD-001 / REQ-DEPTH-001). This is the active flat-hierarchy
+//     guarantee for the manager-lead carve-out, NOT the runtime
+//     CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH env-default-off premise (which
+//     v2.1.219 superseded). The carve-out is narrow: manager-lead ONLY — do
+//     NOT generalize to other names or patterns.
+//
+// Every agent NOT in this set still fails LR-02, preserving the flat-hierarchy
+// guard for the remaining retained agents.
 //
 // Keyed by agent name (frontmatter `name:`, or the file basename when `name:`
-// is absent — see agentNameFor). Initially the single sanctioned pilot agent.
+// is absent — see agentNameFor).
 var nestingPilotAllowlist = map[string]bool{
 	"sync-auditor": true,
+	"manager-lead": true,
 }
 
 // agentNameFor resolves the canonical agent name used for allowlist lookups.

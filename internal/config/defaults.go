@@ -212,6 +212,16 @@ const (
 	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
 	DefaultCodexReviewGateTimeout = 900 * time.Second
 
+	// DefaultMultiReviewGateTimeout is the per-invocation timeout override for
+	// the `moai hook multi-review-gate` Stop hook (SPEC-AUDIT-MULTI-MODEL-001
+	// M5 REQ-AMM-013 / AC-AMM-018). The moai-default 5s hook budget does NOT
+	// apply to this hook: the gate itself only reads a state file, but the
+	// generous 900s budget (sibling to DefaultCodexReviewGateTimeout) keeps
+	// Stop-hook-composition uniform across both review gates so a future
+	// evolution that adds I/O does not silently regress the budget.
+	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
+	DefaultMultiReviewGateTimeout = 900 * time.Second
+
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -625,6 +635,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
+				Enabled: false,
+			},
+		},
+		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the
+		// multi-model review gate ships default-OFF (BranchGuard pattern —
+		// sibling to Codex.ReviewGate). Distributed users get an inert Stop
+		// hook; a maintainer opts in via local config. Template neutrality
+		// (§25): no `enabled: true` under internal/template/templates/.
+		Multi: MultiConfig{
+			ReviewGate: MultiReviewGateConfig{
 				Enabled: false,
 			},
 		},

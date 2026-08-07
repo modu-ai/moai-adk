@@ -37,7 +37,7 @@ Flags:
 | Rule | Default | --strict | Description |
 |------|---------|----------|-------------|
 | LR-01 | error | error | Literal `AskUserQuestion` in body text (excluding code blocks). Orchestrator agents declaring `AskUserQuestion` in `tools:` are exempt. |
-| LR-02 | error | error | `Agent` token in `tools:` CSV list. Subagents cannot spawn sub-subagents. |
+| LR-02 | error | error | `Agent` token in `tools:` CSV list. Forbidden EXCEPT for the orchestrator (main session, not an agent file) and `manager-lead` (sole hierarchical-team coordinator per SPEC-HIERARCHICAL-TEAM-001 REQ-LEAD-001, depth-2 sealed — leaf workers it spawns omit Agent, enforced by the `manager_lead_depth_test.go` CI guard). |
 | LR-03 | error | error | Missing `effort:` field in frontmatter. Promoted from warning per SPEC-V3R2-ORC-003. |
 | LR-04 | error | error | Dead hook entry: `matcher:` references a tool absent from `tools:` list. |
 | LR-05 | error | error | Write-heavy agent missing `isolation: worktree`. Promoted from warning per SPEC-V3R2-ORC-004. |
