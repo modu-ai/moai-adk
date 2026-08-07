@@ -321,7 +321,7 @@ Three obligations from that file bind here and are restated so they hold without
   `/tmp`, which the OS clears. A claim whose cited evidence path no longer resolves
   is an unattributed claim (`verification-claim-integrity.md` §2).
 
-### Attributable diff-check doctrinal switch (REQ-SPD-008 / AC-SPD-008 — SPEC-SYNC-PARALLEL-DOCS-001)
+### Attributable diff-check doctrinal switch (SPEC-SYNC-PARALLEL-DOCS-001 A9)
 
 The canonical 7-command batch RE-EXECUTES test / lint / vet / cover by default. SPEC-SYNC-PARALLEL-DOCS-001 A9 introduces a **doctrinal switch** in how the orchestrator COMPOSES that batch: before re-executing a verification dimension, the orchestrator SHALL first consult the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA). This is a composition-time doctrinal switch — there is NO mechanical "about to re-run command X" preamble token to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash). The switch binds the orchestrator's batch-composition discipline, not a runtime hook.
 
@@ -332,7 +332,7 @@ The canonical 7-command batch RE-EXECUTES test / lint / vet / cover by default. 
 
 On all-three match, the batch records the snapshot key + cited §E evidence path as its baseline-attribution per VCI §2 and DOES NOT re-execute the corresponding command (test / lint / vet / cover). The verification dimension is marked PASS-attributed, not PASS-reexecuted — both satisfy VCI §1.1, but the attribution path is faster and the re-execution path is stronger.
 
-**Any mismatch → fallback to re-execution (REQ-SPD-009 / AC-SPD-009).** On ANY of (1) snapshot key drift (HEAD SHA changed since §E recording), (2) command drift (§E-cited command does not match the snapshot's recorded command), OR (3) §E evidence missing or citing no observable output, the batch SHALL fall back to re-execution of the affected verification dimension. The fallback is logged with the mismatch reason (`snapshot_key_drift` / `command_drift` / `missing_section_e`). The batch NEVER silently skips verification — the `verification-claim-integrity.md` §1.1 invariant holds on every path. The full attributable diff-check pattern + fallback contract lives in `.claude/rules/moai/workflow/verification-batch-pattern.md` § Attributable diff-check pattern.
+**Any mismatch → fallback to re-execution (SPEC-SYNC-PARALLEL-DOCS-001 A9 fallback contract).** On ANY of (1) snapshot key drift (HEAD SHA changed since §E recording), (2) command drift (§E-cited command does not match the snapshot's recorded command), OR (3) §E evidence missing or citing no observable output, the batch SHALL fall back to re-execution of the affected verification dimension. The fallback is logged with the mismatch reason (`snapshot_key_drift` / `command_drift` / `missing_section_e`). The batch NEVER silently skips verification — the `verification-claim-integrity.md` §1.1 invariant holds on every path. The full attributable diff-check pattern + fallback contract lives in `.claude/rules/moai/workflow/verification-batch-pattern.md` § Attributable diff-check pattern.
 
 
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)

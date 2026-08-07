@@ -167,7 +167,7 @@ Explicit list in each delegation prompt:
 
 > Each E-item is reported per the verification-claim-integrity 5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — see `.claude/rules/moai/core/verification-claim-integrity.md` §3.
 
-**Attribution discipline (REQ-SPD-007 / AC-SPD-007 — SPEC-SYNC-PARALLEL-DOCS-001).** Each §E item (E1-E8) is a formal attributable artifact, not a self-report summary. For every item, the manager-develop MUST name, verbatim:
+**Attribution discipline (SPEC-SYNC-PARALLEL-DOCS-001 A9).** Each §E item (E1-E8) is a formal attributable artifact, not a self-report summary. For every item, the manager-develop MUST name, verbatim:
 - **(a) the command** — the exact invocation that produced the evidence (e.g. `go test ./internal/<pkg>/...`);
 - **(b) the observed output** — the verbatim result block the invocation produced in this run, against this tree (summarized evidence like "all tests passed" is NOT acceptable);
 - **(c) the baseline-attribution** — `(this run, this tree)` plus the HEAD SHA the evidence was captured against, so a later consumer can diff-check the attribution chain.

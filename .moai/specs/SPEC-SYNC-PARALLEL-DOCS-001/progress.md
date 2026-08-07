@@ -58,6 +58,27 @@ Baseline-attribution: `(this run, this tree)` M4 commit (pending). MX scan input
 
 Baseline-attribution: `(this run, this tree)` M5 commit (pending). Files: `sync.md` (template source + local mirror, byte-identical). acceptance.md NOT touched by run-phase (ownership matrix respected).
 
+### Template-neutrality fix (REQ/AC token strip)
+
+The initial M1-M4 edits carried `REQ-SPD-*` / `AC-SPD-*` tokens in template `.claude/rules/` + `.claude/skills/` files, tripping `RULE_REQ_AC_TOKEN_LEAK` + `TestTemplateNoInternalContentLeak` (§25 Template Internal-Content Isolation). Fix: stripped REQ/AC tokens from all 6 affected files (template + local, byte-identical), replaced with `SPEC-SYNC-PARALLEL-DOCS-001` + axis-label provenance (SPEC IDs are allowed; REQ/AC tokens are forbidden). AC greps updated to clause-based matching (heading text, not REQ tokens).
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready
+run_complete_at: 2026-08-07
+run_commit_sha: pending-backfill-sync-par-docs (M1+M2+M3+M4+M5 + neutrality fix + catalog regen + §E.3)
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0 (all 4 axes are doctrine-prose edits + YAML; no source-code preserve-list)
+l44_pre_commit_fetch: n/a (Tier M doctrine SPEC, no L44 lint bindings)
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues on affected packages)
+cross_platform_build:
+  go_build: exit 0
+  goos_windows_amd64: exit 0
+total_run_phase_files: 16 (8 template sources + 7 local mirrors + 1 catalog.yaml regen + spec.md frontmatter + progress.md)
+m1_to_mN_commit_strategy: per-milestone feat commits (M1 9bda11d3f, M2 d80872d34, M3 7a61caea9, M4 d02e32e81, M5 9d0c57003) + this neutrality-fix commit (§E.3 close)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
