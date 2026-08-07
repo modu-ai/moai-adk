@@ -214,6 +214,25 @@ if [[ ! -s "$TMP_NOTES" ]]; then
     die "Failed to extract CHANGELOG section for $VERSION"
 fi
 
+# ─── Append Korean release notes to annotation (if authored) ────────────────
+# CHANGELOG.md is English-only; the Korean counterpart lives in a per-version
+# file (.moai/release-notes/vX.Y.Z.ko.md, authored in Phase 4.5 of the release
+# harness). When present, append it after a separator so the annotated tag
+# carries the bilingual body. NOTE: GoReleaser's changelog.use=github still
+# discards the annotation body for the GitHub release, so Phase 7's manual
+# `gh release edit --notes-file` remains the load-bearing delivery path — this
+# append is a preservation safety net, not the delivery path. Absent file =>
+# annotation stays English-only (fail-open, backward-compatible).
+KO_NOTES_FILE=".moai/release-notes/${VERSION}.ko.md"
+if [[ -s "$KO_NOTES_FILE" ]]; then
+    {
+        echo
+        echo "---"
+        cat "$KO_NOTES_FILE"
+    } >> "$TMP_NOTES"
+    log_ok "Appended Korean release notes from $KO_NOTES_FILE to tag annotation"
+fi
+
 # ─── Provenance trailer 추가 ────────────────────────────────────────────────
 # annotation 본문 끝에 provenance trailer 3줄을 append 한다.
 # release.yml 의 verify-provenance job 이 이 3개 키를 literal 로 파싱하므로
