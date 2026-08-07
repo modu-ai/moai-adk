@@ -39,6 +39,16 @@ Baseline-attribution: `(this run, this tree)` M2 commit (pending). `go test ./in
 
 Baseline-attribution: `(this run, this tree)` M3 commit (pending). Files: `sync.md`, `doc-execution.md` (template source + local mirror, byte-identical).
 
+### M4 — A7 MX Tag early + parallel (committed)
+
+| AC | Status | Verification command | Observed output (verbatim) |
+|---|---|---|---|
+| AC-SPD-004 | PASS | `grep -c 'Concurrent scheduling with the Phase 7-10 audit (A7 — REQ-SPD-004' .claude/skills/moai/workflows/sync/quality-gates-quality.md` | `1` — Phase 9 MX scan (FO-SYNC-2) launches concurrently with Phase 7 audit, NOT serially after Phase 8 |
+| AC-SPD-005 | PASS | `grep -c 'halt BEFORE Phase 10 coverage (A7 — REQ-SPD-005' .claude/skills/moai/workflows/sync/quality-gates-quality.md` | `1` — P1/P2 violations halt BEFORE Phase 10 (Coverage) executes; "30-min coverage then 1 missing tag aborts all" worst case eliminated |
+| AC-SPD-006 | PASS | `grep -c 'No-false-abort guard (AC-SPD-006' .claude/skills/moai/workflows/sync/quality-gates-quality.md` | `1` — no P1/P2 → Phase 10 coverage proceeds unchanged; P3/P4 remain advisory (EC-3) |
+
+Baseline-attribution: `(this run, this tree)` M4 commit (pending). MX scan input-independence (REQ-SPD-006): reads git diff + source, NOT audit output. Files: `quality-gates-quality.md` (template source + local mirror, byte-identical).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
