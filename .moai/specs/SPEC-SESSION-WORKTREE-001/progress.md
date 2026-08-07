@@ -506,7 +506,7 @@ Both fire BEFORE the subcommand's main work (RegisterSession / QueryActiveWork).
 
 - sync_status: completed
 - sync_complete_at: 2026-08-03
-- sync_commit_sha: pending-backfill-SPEC-SESSION-WORKTREE-001-001
+- sync_commit_sha: 38b8c2a29f04b66a75c62dc1bc4dd27404c54379 (PR #1306 squash merge; backfilled from D3 placeholder)
 - sync_pr_number: 1306
 - code_pr_number: 1305 (PR #1305 squash merge `f9ee7bbd1` carried the run-phase implementation)
 - note: a commit cannot reference its own SHA (physics) — the placeholder above is backfilled to the real sync-commit SHA in a follow-up commit (D3 SHA-placeholder-backfill exemption). The run-phase code already landed on main via PR #1305; this sync PR carries only the `in-progress → implemented → completed` frontmatter transition, the §E.3/§E.4 signals, and the CHANGELOG entry.

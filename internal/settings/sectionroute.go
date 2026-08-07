@@ -36,8 +36,10 @@ const (
 	// RouteSeam — yamlpatch seam(internal/settings/yamlpatch) 전용으로 영속화한다.
 	// typed Save() 경로가 없는 8개 섹션: workflow, harness, ralph,
 	// feedback, observability, security (REQ-WC11-017) + handoff, cache
-	// (SPEC-WEB-CONSOLE-013 REQ-WC13-002/005 — typed HandoffConfig/CacheConfig
-	// struct는 read-side 전용 유지). 특히 workflow.yaml은 typed re-marshal이
+	// (SPEC-WEB-CONSOLE-013 REQ-WC13-002/005 — typed HandoffConfig struct는
+	// read-side 전용 유지; cache.yaml의 CacheConfig struct는 SPEC-CONFIG-DEAD-SWEEP-001
+	// 제거 — session_ttl 드롭다운 옵션은 config.ValidSessionTTLs() 접근자로 생존).
+	// 특히 workflow.yaml은 typed re-marshal이
 	// 금지된다 (REQ-WC11-005 — team.patterns 미모델링 + role-profile effort
 	// Go-invisible).
 	RouteSeam

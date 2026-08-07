@@ -147,8 +147,6 @@ const (
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
 
-	DefaultStateDir = ".moai/state"
-
 	// DefaultTraceRetentionDays is the age threshold (in days) past which
 	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
 	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
@@ -299,7 +297,6 @@ func NewDefaultConfig() *Config {
 		State:         NewDefaultStateConfig(),
 		Gate:          NewDefaultGateConfig(),
 		Sunset:        NewDefaultSunsetConfig(),
-		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
 		Handoff:       NewDefaultHandoffConfig(),
 		Archive:       NewDefaultArchiveConfig(),
@@ -309,42 +306,6 @@ func NewDefaultConfig() *Config {
 		ContextSearch: defaultContextConfig(),
 		Interview:     defaultInterviewConfig(),
 		Design:        defaultDesignConfig(),
-	}
-}
-
-// NewDefaultResearchConfig returns a ResearchConfig with safe defaults.
-func NewDefaultResearchConfig() ResearchConfig {
-	return ResearchConfig{
-		Enabled: false,
-		Passive: ResearchPassiveConfig{
-			Enabled:                 true,
-			CorrectionWindowSeconds: 60,
-			PatternThresholds: ResearchPatternThresholds{
-				Heuristic:      3,
-				Rule:           5,
-				HighConfidence: 10,
-			},
-		},
-		Active: ResearchActiveConfig{
-			RunsPerExperiment: 3,
-			MaxExperiments:    20,
-			PassThreshold:     0.80,
-			TargetScore:       0.95,
-			BudgetCapTokens:   500000,
-		},
-		Safety: ResearchSafetyConfig{
-			WorktreeIsolation:         true,
-			CanaryRegressionThreshold: 0.10,
-			RateLimits: ResearchRateLimitConfig{
-				MaxExperimentsPerSession: 20,
-				MaxAcceptedPerSession:    5,
-				MaxAutoResearchPerWeek:   3,
-			},
-		},
-		Dashboard: ResearchDashboardConfig{
-			DefaultMode:     "terminal",
-			HTMLOpenBrowser: true,
-		},
 	}
 }
 
@@ -675,9 +636,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 
 // NewDefaultStateConfig returns a StateConfig with default values.
 func NewDefaultStateConfig() StateConfig {
-	return StateConfig{
-		StateDir: DefaultStateDir,
-	}
+	return StateConfig{}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
