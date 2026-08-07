@@ -28,8 +28,10 @@ func TestActiveAuditBackend_SingleBackends(t *testing.T) {
 }
 
 func TestActiveAuditBackend_MultiTokenAccepted(t *testing.T) {
-	// AC-MCP-017: `multi` is accepted as a stored value but its convergence
-	// logic is NOT implemented here (AP-8 → SPEC-AUDIT-MULTI-MODEL).
+	// AC-MCP-017: `multi` is accepted as a stored value. Its convergence logic
+	// was deferred by SPEC-MOAI-MCP-SERVER-001 M3 (AP-8) and IMPLEMENTED by
+	// SPEC-AUDIT-MULTI-MODEL-001 M1 (multiConvergenceImplemented flipped
+	// false → true in the same commit as internal/cli/mcp_convergence.go).
 	got, err := activeAuditBackend(config.AuditModelMulti)
 	if err != nil {
 		t.Fatalf("multi token rejected: %v (must be accepted)", err)
@@ -37,8 +39,11 @@ func TestActiveAuditBackend_MultiTokenAccepted(t *testing.T) {
 	if got != config.AuditModelMulti {
 		t.Errorf("activeAuditBackend(multi) = %q, want multi (stored verbatim)", got)
 	}
-	if multiConvergenceImplemented {
-		t.Error("multiConvergenceImplemented = true; M3 must NOT orchestrate multi (AP-8)")
+	// SPEC-AUDIT-MULTI-MODEL-001 M1: the sentinel MUST now be true (the engine
+	// exists). A false value here would mean the sentinel lies — a missing-engine
+	// hazard (R3).
+	if !multiConvergenceImplemented {
+		t.Error("multiConvergenceImplemented = false; want true (SPEC-AUDIT-MULTI-MODEL-001 M1 engine is present)")
 	}
 }
 

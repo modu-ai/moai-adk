@@ -176,6 +176,11 @@ func init() {
 	// SPEC-NAVIGATOR-SYNC-001: BAS integration-layer join step for /moai project.
 	rootCmd.AddCommand(newNavigatorSyncCmd())
 
+	// SPEC-NAVIGATOR-SYNC-003 M4.6: BAS 4-tier overlay step. Sibling of
+	// navigator-sync — invoked AFTER it during /moai project to emit the
+	// additive tiers.json overlay (fail-open, byte-identical re-run).
+	rootCmd.AddCommand(newNavigatorTiersCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
@@ -219,4 +224,8 @@ func init() {
 	// SPEC-MODEL-PROFILE-MATRIX-001 M2: register the read-only `moai model
 	// profile` resolver — the per-agent model+effort profile injection surface.
 	rootCmd.AddCommand(newModelCmd())
+
+	// SPEC-GOAL-HTML-WIRING-001 M3: register the `moai plan` CLI parent + the
+	// `render-html` subcommand (Surface 2 production caller for planhtml.RenderPlanHTML).
+	rootCmd.AddCommand(newPlanCmd())
 }

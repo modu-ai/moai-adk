@@ -15,7 +15,7 @@ draft: false
 | `moai goal arm "<condition>"` | アクティブセッションにゴールを登録 + arm (`moai goal "<condition>"` も arm のエイリアス)。arm 専用 — これ自体は作業を開始しない |
 | `moai goal status` | アクティブセッションのゴール状態を出力 (`--all` で全セッションを一覧) |
 | `moai goal clear` | アクティブセッションのゴールを解除 |
-| `moai goal render` | アクティブセッションのゴールダッシュボードを self-contained HTML ファイルにレンダリング (`.moai/state/goal/` 配下に保存)。arm された goal がない場合は非 0 の終了コードで終了 |
+| `moai goal render` | アクティブセッションのゴールダッシュボードを self-contained HTML ファイルにレンダリング (`.moai/state/goal/` 配下に保存)。arm された goal がない場合は非 0 の終了コードで終了。v3.1(PR #1388)からダッシュボードに判定セクション (天井 exit 時にサイドカーからロード) と再武装条件付きビューが表示されます — 詳細は [/moai goal ダッシュボードセクション](/ja/utility-commands/moai-goal#ゴールダッシュボード) を参照 |
 
 ## 共通フラグ
 

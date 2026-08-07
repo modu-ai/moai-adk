@@ -107,6 +107,36 @@ moai goal render                        # 把当前 goal 仪表板渲染为 HTML
 - **安全边界不变** — 即使循环活动，"难以逆转/共享系统操作前确认"边界不会被放宽。goal 评估器仅决定是否继续; 不预批准破坏性操作。
 - **与 auto mode 组合** — 将 Claude Code auto mode(每工具自动批准)与 `/moai goal`(每回合连续)组合可实现无人值守 `ac_converge` 循环。auto mode 移除每工具批准提示; `/moai goal` 移除每回合 STOP 提示。Implementation Kickoff Approval 在 run-phase 进入前仍强制。
 
+## 多模型审查门 (可选)
+
+{{< icon info >}} 一个可选的 Stop 钩子为自主循环追加跨模型对抗审查, 让完全自主的 `/moai goal` 运行获得多模型安全网 (自主性再设计的 Path C)。
+
+### `audit_model: multi` 收敛
+
+选择 `audit_model: multi` 后, `audit_multi` MCP 工具把审查并行展开到所有活动后端 — claude 作为会话内锚点, codex 与 GLM 作为次级 (各自按其 `audit_gate`) — 再按 4 步策略收敛判定。
+
+- 任一必需后端返回 `FAIL` → `overall_verdict = FAIL`。
+- 所有必需后端返回 `PASS` → `overall_verdict = PASS`。
+- 必需后端之间出现分裂 → 保守的 `FAIL` 并设 `disagreement_flag`。
+- 与仅建议性后端的冲突 → `PASS` 并设 `disagreement_flag`。
+
+分歧通过 `ConvergenceResult` 的 `disagreement_flag` 和 `residual_risk_note` 显露, 其本身绝不会硬性阻断流程。独立性由结构保证。次级展开 goroutine 只接收 `(target, focus, model, effort)`, 绝不接收 `claude_verdict`。因此 codex 与 GLM 给出的是不相关的第二意见, 而非被污染的再采样。故障开放双向成立。缺失或未认证的可选后端返回 `VerdictInconclusive` 并回落到 claude, 永远不会变成硬错误。
+
+### `moai hook multi-review-gate` Stop 钩子
+
+多模型审查门 Stop 钩子是可选的 (`workflow.multi_review_gate.enabled`, 与 `workflow.codex.review_gate` 同模式的 BranchGuard 兄弟, 默认关闭), 并把 moai 默认的 5 秒钩子超时覆盖为 900 秒。每个代码编辑回合读取最近的 `ConvergenceResult` (收敛引擎写入 `.moai/state/audit-multi/<session>.json`) 并发出标准的 ALLOW/BLOCK 契约。
+
+- 所有必需后端 PASS → ALLOW。
+- 任一必需后端 FAIL → BLOCK。
+- 仅建议性冲突 → ALLOW (分歧仅以建议形式显露, 永不阻断)。
+- claude 之外的后端全部 inconclusive → 回落到 claude 判定 (故障开放)。
+
+强制自门让无编辑回合立即 ALLOW。状态汇报、审查结果及其他不编辑的回合永远不会被误拦。
+
+### 它放在哪里
+
+{{< icon arrow-right >}} 多模型审查门是 Stop 钩子, 不是连续原语。它与 `/moai goal` (每回合连续) 和 `/moai loop` (诊断驱动预设) 叠加使用。循环驱动会话向前, 审查门在每个代码编辑边界应用跨模型收敛契约。任何组合下, 进入 run-phase 前的 Implementation Kickoff Approval 仍然必须。
+
 ## 下一步
 
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) — 自主循环与代币经济学的连接点

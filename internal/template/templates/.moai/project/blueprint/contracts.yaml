@@ -1,0 +1,50 @@
+# Blueprint Contract Registry
+#
+# A neutral registry of the contracts a project commits to. Each entry pins
+# a (contract_kind, contract_path, validator_command) triple: WHAT kind of
+# contract, WHERE it lives, and HOW it is checked. The blueprint layer
+# surfaces this registry to consumers so that drift is detectable without
+# reading the whole codebase.
+#
+# This file is a registry FORMAT doc — replace the example entries with
+# your project's actual contracts, then commit the file. It is authored
+# content: the blueprint layer does NOT auto-replace a human-edited
+# registry.
+#
+# Schema (additive only — new contract_kind values are forward-compatible):
+#   contracts:            list of contract entries
+#     - contract_kind:    short tag (e.g. schema-json, openapi, cli-flags,
+#                         hook-event, tauri-allowlist). Free-form, but use
+#                         one tag per kind across the registry.
+#       contract_path:    repository-relative path to the contract artifact
+#                         (the file the validator reads).
+#       validator_command: shell command that exits 0 when the contract
+#                         holds and non-zero when it drifts. Parameter-less;
+#                         run from the repository root.
+#       notes:            optional human-readable comment.
+#
+# Drift handling: validator_command is the source of truth. A non-zero exit
+# is a build-time failure; the registry itself never goes stale silently.
+
+version: "1"
+
+contracts:
+  # Example: a JSON-Schema-validated artifact.
+  - contract_kind: schema-json
+    contract_path: .moai/project/blueprint/module_tree.schema.json
+    validator_command: >
+      ajv validate -s .moai/project/blueprint/module_tree.schema.json
+      -d .moai/project/blueprint/module_tree.json
+    notes: Module tree registry must match its schema.
+
+  # Example: a CLI surface contract (flag / subcommand stability).
+  # - contract_kind: cli-flags
+  #   contract_path: docs/cli-reference.yaml
+  #   validator_command: scripts/verify-cli-reference.sh
+  #   notes: Generated CLI reference must match the actual cobra tree.
+
+  # Example: a hook event contract (settings.json event names).
+  # - contract_kind: hook-event
+  #   contract_path: .claude/settings.json
+  #   validator_command: scripts/verify-hook-events.sh
+  #   notes: Every configured hook event must be a recognized event name.
