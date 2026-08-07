@@ -118,7 +118,36 @@ m1_to_mN_commit_strategy: "single atomic M1 commit (RED test + GREEN script+mirr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-08-07"
+sync_commit_sha: "pending-backfill"   # self-referential-hazard workaround per D3 — a commit cannot know its own SHA; orchestrator backfills the real value after merge
+sync_status: "audit-ready"
+sync_phase_close_type: "3-phase close (plan→run→sync)"   # MX Tag is a cross-cutting sync concern, NOT a separate phase
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # single sync commit carries the terminal transition; manager-docs owns this per the Status Transition Ownership Matrix
+  plan_md: "n/a (no frontmatter)"      # plan.md has no YAML frontmatter
+  acceptance_md: "n/a (no frontmatter)"
+  progress_md: "n/a (no frontmatter)"
+b12_self_test:
+  b12_a_pre_emission_grep: "PASS — grep -c 'SPEC-PROJECT-NAVIGATOR-004' CHANGELOG.md == 0 BEFORE append (no duplicate)"
+  b12_b_ac_count_match: "PASS — 7 distinct ACs in acceptance.md (AC-001..AC-007); CHANGELOG entry references 7/7 ACs"
+  b12_c_file_path_verification: "PASS — navigator-regen.sh (template + mirror byte-identical @ 12720 bytes), references/navigator.md, navigator_regen_test.go all exist; cmp template vs mirror exit 0 (per run-phase §E.2 E1 AC-005)"
+changelog_entry_position: "## [Unreleased] → ### Fixed → top entry (newest first, consistent with the Added section)"
+readme_touched: false                   # internal navigator-selection bugfix; no install / usage / API change
+canary_compliance_check:
+  spec_audit_drift: "n/a — pre-merge; orchestrator runs `moai spec audit` post-merge (this commit transitions SPEC to completed; drift detector's completed-no-drift predicate fires after this commit lands on main)"
+  frontmatter_ownership_transition_rule: "PASS — sync-commit subject `docs(SPEC-PROJECT-NAVIGATOR-004): sync-phase artifacts` matches the canonical manager-docs ownership row pattern (`docs(SPEC-{ID}): sync-phase artifacts`); OwnershipTransitionRule will validate on lint"
+total_sync_phase_files: 4               # CHANGELOG.md + spec.md frontmatter-only + progress.md §E.4 population + (README not touched); implementation files (script + mirror + test + reference) owned by run-phase — NOT modified in this sync commit
+mx_tag_validation: "n/a — fix is in a bash script + Go test file + markdown reference; no @MX tags applicable (per spec.md §C constraints, run-phase did not author @MX tags)"
+```
+
+**Evidence summary (sync-phase):**
+- CHANGELOG.md: one entry appended to `### Fixed` under `[Unreleased]`, references SPEC-PROJECT-NAVIGATOR-004 + 7/7 ACs + the positive status-tier predicate.
+- README.md: not modified — internal navigator-selection bug fix with no install / usage / API surface change.
+- spec.md frontmatter: `status: in-progress → completed` + `updated: 2026-08-07` refresh ONLY (no body content modified — forbidden ownership crossing respected).
+- plan.md / acceptance.md: not touched in this commit (body content forbidden surface for manager-docs).
+- progress.md: this §E.4 block populated with `sync_commit_sha: "pending-backfill"` (D3 self-referential-hazard exemption).
+- sync_commit_sha backfill: the orchestrator populates the real SHA in a follow-up backfill commit after this sync commit merges (the conventional backfill pattern, consistent with prior merged SPECs in this repo — e.g. SPEC-NAVIGATOR-SYNC-003 backfill #1390, SPEC-GOAL-HTML-WIRING-001 backfill #1392).
 
 ## §F Phase 4 Mode Selection
 
