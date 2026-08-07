@@ -39,6 +39,13 @@ func (realCmdRunner) Run(ctx context.Context, cmd string) (int, string, error) {
 	return exit, string(out), nil
 }
 
+// saveVerdictFn is the indirection hook used by AC-WIRE-013 (write-frequency
+// backstop). The default delegates to goal.SaveVerdict; tests swap it for a
+// counting spy. The hook calls this ONLY at a ceiling/wall-clock/stagnation
+// exit transition (verdict.Verdict != nil) — per-turn writes are forbidden
+// (SPEC-GOAL-HTML-WIRING-001 §A.3 / §G out-of-scope c2).
+var saveVerdictFn = goal.SaveVerdict
+
 // stopGoalCmd is the `moai hook stop-goal` verb. Registered under hookCmd in
 // init() below. It evaluates the active session's goal on turn-end and emits a
 // block decision until the conditions hold or the ceiling is reached.
@@ -87,6 +94,18 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 	if err := goal.SaveGoal(root, g); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save: %v\n", err)
 		// Continue: the verdict is still emitted; a save failure is best-effort.
+	}
+	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-002 / AC-WIRE-013: at-ceiling-ONLY
+	// verdict sidecar write. The evaluator's `*CeilingVerdict` field is non-nil
+	// ONLY on a ceiling / wall-clock / stagnation exit transition (verified
+	// against internal/goal/evaluate.go); non-exiting turns carry nil and write
+	// NOTHING. This is NOT the per-turn Stop-hook `.html` write the user declined
+	// (c2, spec.md §A.3 / §G out-of-scope). Fail-open: a persistence error MUST
+	// NOT block the evaluator's stdout-JSON duty.
+	if verdict.Verdict != nil {
+		if err := saveVerdictFn(root, sessionID, &verdict); err != nil {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save verdict: %v\n", err)
+		}
 	}
 	if !block && !verdict.CeilingExit && !verdict.Stagnation && !verdict.Yielded {
 		// All conditions satisfied — nothing to emit.

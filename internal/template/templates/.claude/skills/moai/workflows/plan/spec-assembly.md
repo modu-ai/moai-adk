@@ -201,7 +201,7 @@ Log: "SPEC review passed (iteration 1). Proceeding to Phase 12."
 boundary work, the orchestrator emits a single self-contained plan HTML report
 that enriches the review surface for the Implementation Kickoff Approval gate.
 
-1. Invoke the plan-HTML renderer: `RenderPlanHTML(specDir="<.moai/specs/{SPEC-ID}/>", reviewFile="<.moai/reports/plan-audit/{SPEC-ID}-review-{N}.md>")` — the Go function lives at `internal/report/planhtml/renderer.go`. It parses the review markdown (verdict / score / must-pass / defects) with fail-open, derives the 8-field autonomy contract deterministically from SPEC artifacts, and renders the report.
+1. Execute the CLI verb: `moai plan render-html {SPEC-ID}` — the `moai` binary resolves `<root>/.moai/specs/{SPEC-ID}/` and the most recent `<root>/.moai/reports/plan-audit/{SPEC-ID}-review-{N}.md`, parses the review markdown (verdict / score / must-pass / defects) with fail-open, derives the 8-field autonomy contract deterministically from SPEC artifacts, and writes a self-contained report to `<root>/.moai/reports/plan-html/{SPEC-ID}-plan.html` (exit 0 on success; non-zero + stderr when the SPEC directory is absent). The renderer is fail-open on a missing or unparseable review file — the report is still written with the "audit verdict unavailable" placeholder and exit 0.
 2. Write the output to `.moai/reports/plan-html/{SPEC-ID}-plan.html` (gitignored directory; create it if absent).
 3. Surface the resulting HTML path to the orchestrator as additive prose context in the SAME turn the Implementation Kickoff Approval `AskUserQuestion` fires (see `orchestration-mode-selection.md` §E). The path is a pointer, NOT the report content — do NOT inline the HTML into the gate option text.
 

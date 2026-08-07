@@ -66,7 +66,9 @@ func TestLoadCatalog(t *testing.T) {
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
 	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead agent added (core.agents),
 	// net +1 = 42.
-	const expectedTotal = 42
+	// moai-ref-cross-model-audit added (cross-model audit convergence reference
+	// for plan-auditor + sync-auditor, core.skills), net +1 = 43.
+	const expectedTotal = 43
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
