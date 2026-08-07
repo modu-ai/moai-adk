@@ -32,8 +32,7 @@
 
 <p align="center">
   <a href="https://adk.mo.ai.kr"><strong>Official Documentation</strong></a> ·
-  <a href="https://adk.mo.ai.kr/book">Book: Practical Agentic Coding with Claude Code</a> ·
-  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
+  <a href="https://adk.mo.ai.kr/book">Book: Practical Agentic Coding with Claude Code</a>
 </p>
 
 ---
@@ -152,6 +151,10 @@ The cheapest session is the one that does not repeat last session's mistakes. Th
 
 ## 🛡️ The Quality-Control Axis — Agentic Harness
 
+<p align="center">
+  <img src="./assets/section-why.png" alt="The verification gate — code passes with evidence" width="85%">
+</p>
+
 Rework is the worst token waste — a bug that ships and comes back costs more than every routing optimization combined. The quality-control axis makes "done" mean *verified done*, and isolates work so parallel agents never trample each other.
 
 ### SPEC 3-Phase Lifecycle
@@ -174,8 +177,6 @@ plan → run → sync. Tier S/M/L size classification determines verification de
 
 **worktree isolation**. Give each SPEC its own working tree. Enter one with `moai cc -w <name>`, or add `--spawn` to open it in a new window while keeping the current session.
 
-**self-hosted MCP server**. Run `moai mcp-server` to expose moai's core read/status/audit tools as typed JSON-RPC tools to any MCP-capable host (Cursor, Cline, Zed, another LLM) — a thin wrapper over the same `internal/` core the CLI uses, with 3-way audit backends (Claude / Codex / GLM) behind a uniform per-auditor gate and mandatory fail-open. Provisioning into `.mcp.json` is opt-in (default off).
-
 ---
 
 ## Infrastructure Sustains All Three Axes
@@ -185,6 +186,10 @@ A single Go binary with no extra dependencies, running on macOS, Linux, and Wind
 ---
 
 ## Quick Start
+
+<p align="center">
+  <img src="./assets/section-quickstart.png" alt="Terminal to first workflow" width="85%">
+</p>
 
 ### Install
 
@@ -214,8 +219,6 @@ moai init my-project
 ```
 
 Interactive wizard auto-detects language, framework, and methodology, selects model policy, and generates Claude Code integration files.
-
-New: pick an autonomy tier with `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` (or via the wizard page / `moai web` console toggle). `semi-auto` is the default and changes nothing; `automatic` sets `defaultMode: auto` for daily work; `fully-autonomous` (`bypassPermissions`) is opt-in and requires sandbox proof (env marker or `--sandbox-proof`), downgrading to `automatic` without it. The deny/ask safety rules bind at every tier.
 
 ### First Workflow
 
@@ -277,7 +280,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
-| `moai goal <arm\|status\|clear\|render>` | Goal engine CLI |
+| `moai goal <arm\|status\|clear>` | Goal engine CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
@@ -421,25 +424,13 @@ Yes. `moai cc` launches a Claude-only session. CG mode (`moai cg`, Claude leader
 
 Yes. `moai init` detects project state and selects methodology — DDD (characterization tests fix behavior, then incremental improvement) for existing code with <10% coverage, TDD for new/well-tested code.
 
-### Q: What does `"rotRisk": "no-trigger"` mean in `moai mx query` output?
-
-It marks an `@MX:DEBT` tag without a paired `@MX:UPGRADE` sub-line — a working simplification with no end condition, which quietly rots. The rot gate is the missing `@MX:UPGRADE`; a missing `@MX:CEILING` is a quality note only, not the rot gate. An `@MX:DEBT` carrying `@MX:UPGRADE` reports an empty `rotRisk`.
-
-### Q: Why does the scanner report `fan_in_method: "textual"` instead of `"lsp"`?
-
-The scanner prefers `textDocument/references` from a language server, but in non-strict mode (the default) it silently falls back to textual grep when LSP is unavailable. The result's `fan_in_method` field discloses which engine produced the count. Set `MOAI_MX_QUERY_STRICT=1` to raise `LSPRequiredError` instead of falling back — useful in CI where accuracy beats graceful degradation.
-
-### Q: Why are complexity metrics missing for my language?
-
-Complexity is measured via tree-sitter, which requires CGO. A non-CGO build returns `Supported: false` for every language as a hard stub — there is no fallback heuristic. On a CGO build, scaffolded languages, files larger than 1 MiB, parse errors, and query-compile errors also yield `Supported: false`. The value is a silent skip, never an error.
-
-### Q: When does MoAI run MX scans automatically?
-
-Five points: the explicit `moai mx scan` CLI; a SessionStart deferred cold-start scan (time-boxed, fail-open); PostToolUse validation that reads the sidecar index without rebuilding it; SessionEnd batch validation; and the `/moai sync` gate (P1/P2 findings block, `--skip-mx` to escape). Note that `mxIndexScanTimeoutDefault` (the cold-start scan ceiling) and `DefaultSessionStartDriftTimeout` (the drift-scan ceiling) are two distinct 2s constants — same value by coincidence, not the same gate.
-
 ---
 
 ## Community and Documentation
+
+<p align="center">
+  <img src="./assets/section-community.png" alt="Built together, open source" width="85%">
+</p>
 
 ### Contributing
 
@@ -455,7 +446,6 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed p
 
 ### Community
 
-- [Discord](https://discord.gg/Z7E7Mdc5aN) — Real-time discussion and tips
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — Bug reports, feature requests (use `/moai feedback` in Claude Code)
 
 ### License
@@ -487,7 +477,6 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed p
 - [Book: Practical Agentic Coding with Claude Code](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
-- [Discord Community](https://discord.gg/Z7E7Mdc5aN)
 
 ---
 

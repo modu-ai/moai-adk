@@ -32,8 +32,7 @@
 
 <p align="center">
   <a href="https://adk.mo.ai.kr"><strong>官方文档</strong></a> ·
-  <a href="https://adk.mo.ai.kr/book">图书：Claude Code 实战 Agentic 编程</a> ·
-  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
+  <a href="https://adk.mo.ai.kr/book">图书：Claude Code 实战 Agentic 编程</a>
 </p>
 
 ---
@@ -154,6 +153,10 @@ Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下
 
 ## 🛡️ 质量控制轴 —— 智能体框架
 
+<p align="center">
+  <img src="./assets/section-why.png" alt="验证之门 — 代码携证据通过" width="85%">
+</p>
+
 返工是最大的 Token 浪费 —— 一个出货后返回的 bug，比所有路由优化加起来都贵。质量控制轴让"完成"意味着*经验证的完成*，并隔离工作，让并行智能体不会相互践踏。
 
 ### SPEC 3 阶段生命周期
@@ -186,6 +189,10 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 
 ## 快速开始
 
+<p align="center">
+  <img src="./assets/section-quickstart.png" alt="从终端到首个工作流" width="85%">
+</p>
+
 ### 安装
 
 #### macOS / Linux / WSL
@@ -214,8 +221,6 @@ moai init my-project
 ```
 
 交互式向导自动检测语言、框架、方法论，选择模型策略，并生成 Claude Code 集成文件。
-
-新增：通过 `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` 标志（或向导页 / `moai web` 控制台开关）选择自主档位。`semi-auto` 为默认值，不改变任何行为；`automatic` 设为 `defaultMode: auto`，用于日常工作；`fully-autonomous`（`bypassPermissions`）为可选项，需要沙箱证明（环境变量标记或 `--sandbox-proof`），无证明时降级为 `automatic`。拦截破坏性操作的 deny/ask 规则在每一档都同样生效。
 
 ### 第一个工作流
 
@@ -277,7 +282,7 @@ claude        # launch Claude Code inside the project
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进入 worktree 由启动器负责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
-| `moai goal <arm\|status\|clear\|render>` | Goal 引擎 CLI |
+| `moai goal <arm\|status\|clear>` | Goal 引擎 CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | Harness 学习生命周期 |
 | `moai handoff <save\|list>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
@@ -421,25 +426,13 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 
 适用。`moai init` 检测项目状态并选择方法论 — 对覆盖率 <10% 的现有代码使用 DDD（特性化测试固定行为后渐进改进），对新/充分测试的代码使用 TDD。
 
-### Q: `moai mx query` 输出里的 `"rotRisk": "no-trigger"` 是什么意思？
-
-它标记的是一个没有配对 `@MX:UPGRADE` 子行的 `@MX:DEBT` 标签 —— 一种没有终止条件的工作简化，会悄悄腐化。腐化闸门是缺失 `@MX:UPGRADE`；缺失 `@MX:CEILING` 只是质量备注，不是腐化闸门。带有 `@MX:UPGRADE` 的 `@MX:DEBT` 报告空的 `rotRisk`。
-
-### Q: 扫描器为什么报告 `fan_in_method: "textual"` 而不是 `"lsp"`？
-
-扫描器优先使用语言服务器的 `textDocument/references`，但在非严格模式（默认）下 LSP 不可用时会静默回退到文本 grep。结果的 `fan_in_method` 字段标明了产生计数的引擎。设置 `MOAI_MX_QUERY_STRICT=1` 会改为抛出 `LSPRequiredError` —— 在精度优于优雅降级的 CI 中有用。
-
-### Q: 我的语言为什么没有复杂度指标？
-
-复杂度通过 tree-sitter 测量，需要 CGO。non-CGO 构建对每种语言都返回 `Supported: false` 的硬桩 —— 没有回退启发式。在 CGO 构建上，脚手架语言、超过 1 MiB 的文件、解析错误、查询编译错误也会返回 `Supported: false`。这个值是静默跳过，绝不是错误。
-
-### Q: MoAI 什么时候自动跑 MX 扫描？
-
-五个时机：显式的 `moai mx scan` CLI；SessionStart 的延迟冷启动扫描（有时间盒、失败即放过）；PostToolUse 校验（读侧车索引但不重建）；SessionEnd 批量校验；以及 `/moai sync` 闸门（P1/P2 会阻塞，`--skip-mx` 可绕过）。注意 `mxIndexScanTimeoutDefault`（冷启动扫描上限）和 `DefaultSessionStartDriftTimeout`（漂移扫描上限）是两个不同的 2 秒常量 —— 值相同是巧合，并非同一个闸门。
-
 ---
 
 ## 社区与文档
+
+<p align="center">
+  <img src="./assets/section-community.png" alt="开源,共同构建" width="85%">
+</p>
 
 ### 贡献
 
@@ -455,7 +448,6 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 
 ### 社区
 
-- [Discord](https://discord.gg/Z7E7Mdc5aN) — 实时讨论和技巧
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — 错误报告、功能请求（Claude Code 内使用 `/moai feedback`）
 
 ### 许可证
@@ -487,7 +479,6 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 - [图书：Claude Code 实战 Agentic 编程](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
-- [Discord 社区](https://discord.gg/Z7E7Mdc5aN)
 
 ---
 

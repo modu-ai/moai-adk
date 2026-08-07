@@ -32,8 +32,7 @@
 
 <p align="center">
   <a href="https://adk.mo.ai.kr"><strong>公式ドキュメント</strong></a> ·
-  <a href="https://adk.mo.ai.kr/book">書籍: Claude Code 実践エージェンティックコーディング</a> ·
-  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
+  <a href="https://adk.mo.ai.kr/book">書籍: Claude Code 実践エージェンティックコーディング</a>
 </p>
 
 ---
@@ -148,6 +147,10 @@ MoAI-ADKはこの割り当てをその場の運任せにせず、システム化
 
 ## 🛡️ 品質管理の軸 — エージェンティック・ハーネス
 
+<p align="center">
+  <img src="./assets/section-why.png" alt="検証のゲート — コードは証拠と共に通過する" width="85%">
+</p>
+
 手戻りが最大のトークン浪費である — 出荷されて戻ってきたバグ1つは、すべてのルーティング最適化を合わせたよりも高くつく。品質管理の軸は「完了」を*検証された完了*にし、並列エージェント同士が互いに踏み荒らさないよう作業を隔離する。
 
 ### SPEC 3フェーズライフサイクル
@@ -180,6 +183,10 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 
 ## クイックスタート
 
+<p align="center">
+  <img src="./assets/section-quickstart.png" alt="ターミナルから最初のワークフローまで" width="85%">
+</p>
+
 ### インストール
 
 #### macOS / Linux / WSL
@@ -208,8 +215,6 @@ moai init my-project
 ```
 
 対話型ウィザードが言語とフレームワーク、方法論を自動検出し、モデルポリシーを選んだ後、Claude Code統合ファイルまで作成する。
-
-新機能: `moai init --autonomy-tier=<semi-auto|automatic|fully-autonomous>` フラグ（またはウィザードページ／`moai web` コンソールトグル）で自律ティアを選べる。デフォルトの `semi-auto` は挙動を変えず、`automatic` は日常作業向けに `defaultMode: auto` を適用し、`fully-autonomous`（`bypassPermissions`）はオプトイン専用でサンドボックス証明（環境変数マーカーまたは `--sandbox-proof`）を要求する。証明がない場合は `automatic` に落ちる。破壊的操作を防ぐ deny/ask ルールはどのティアでも同じように効く。
 
 ### 最初のワークフロー
 
@@ -271,7 +276,7 @@ claude        # launch Claude Code inside the project
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守（worktree への移動はランチャーの役割） |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクルツール |
-| `moai goal <arm\|status\|clear\|render>` | Goal エンジン CLI |
+| `moai goal <arm\|status\|clear>` | Goal エンジン CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | harness 学習ライフサイクル |
 | `moai handoff <save\|list>` | セッションハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
@@ -415,25 +420,13 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 
 使える。`moai init` がプロジェクト状態を検出して方法論を選ぶ — カバレッジ 10% 未満の既存コードには DDD（特性化テストで動作を固定してから段階的に改善）、新規または十分にテストされたコードには TDD を適用する。
 
-### Q: `moai mx query` の出力で `"rotRisk": "no-trigger"` は何を意味するか？
-
-`@MX:UPGRADE` サブラインを伴わない `@MX:DEBT` タグを示す — 終了条件のない作業の単純化であり、静かに腐敗する。腐敗ゲートは `@MX:UPGRADE` の欠落である。`@MX:CEILING` の欠落は品質上の注記にすぎず、腐敗ゲートではない。`@MX:UPGRADE` を伴う `@MX:DEBT` は空の `rotRisk` を報告する。
-
-### Q: スキャナが `"lsp"` ではなく `fan_in_method: "textual"` を報告するのはなぜか？
-
-スキャナは言語サーバの `textDocument/references` を優先するが、非厳格モード（デフォルト）では LSP が使えないとき暗黙にテキスト grep にフォールバックする。結果の `fan_in_method` フィールドがどのエンジンでカウントしたかを明示する。`MOAI_MX_QUERY_STRICT=1` を設定すると、フォールバックの代わりに `LSPRequiredError` を送出する — graceful degradation より精度が優先される CI で有用である。
-
-### Q: 言語の複雑度メトリクスが表示されないのはなぜか？
-
-複雑度は CGO が必要な tree-sitter で測る。non-CGO ビルドはすべての言語で `Supported: false` を返す硬いスタブであり — フォールバックヒューリスティクスはない。CGO ビルドでも、スキャフォールド済み言語、1 MiB を超えるファイル、パースエラー、クエリコンパイルエラーは `Supported: false` を返す。この値は暗黙のスキップであり、エラーではない。
-
-### Q: MoAI はいつ MX スキャンを自動的に実行するか？
-
-5 つのポイントがある: 明示的な `moai mx scan` CLI。SessionStart での遅延コールドスタートスキャン（タイムボックス、フェイルオープン）。PostToolUse 検証（サイドカーインデックスを読むが再構築はしない）。SessionEnd バッチ検証。そして `/moai sync` ゲート（P1/P2 はブロック、`--skip-mx` で回避可能）。なお `mxIndexScanTimeoutDefault`（コールドスタートスキャン上限）と `DefaultSessionStartDriftTimeout`（ドリフトスキャン上限）は異なる 2 つの 2 秒定数である — 値が同じなのは偶然で、同じゲートではない。
-
 ---
 
 ## コミュニティとドキュメント
+
+<p align="center">
+  <img src="./assets/section-community.png" alt="オープンソースを一緒に" width="85%">
+</p>
 
 ### 貢献について
 
@@ -449,7 +442,6 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 
 ### コミュニティ
 
-- [Discord](https://discord.gg/Z7E7Mdc5aN) — リアルタイム討論と tips
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — バグ報告、機能リクエスト（Claude Code 内では `/moai feedback`）
 
 ### ライセンス
@@ -481,7 +473,6 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 - [書籍: Claude Code 実践エージェンティックコーディング](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://code.claude.com/docs/en)
-- [Discord コミュニティ](https://discord.gg/Z7E7Mdc5aN)
 
 ---
 
