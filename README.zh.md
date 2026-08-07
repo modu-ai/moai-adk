@@ -176,6 +176,8 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 
 **worktree 隔离**. 为每个 SPEC 准备独立的工作树。用 `moai cc -w <名称>` 进入，加上 `--spawn` 则在保留当前会话的同时于新窗口中打开。
 
+**趋势 MCP 工具**. 分发的 `.mcp.json` 模板默认内置三个无需密钥即可运行的服务器(`context7` 库文档 · `chrome-devtools` 浏览器自动化 · `playwright` 端到端测试)，使用 `moai mcp add|remove|list` CLI 添加可选服务器(Semgrep、GitHub、Postgres、Sentry、Codecov)时使用 `${VAR}` 环境变量引用令牌而非字面密钥。完整的可选配方见 `.moai/docs/mcp-recipes.md`。
+
 ---
 
 ## 基础设施支撑全部三个轴

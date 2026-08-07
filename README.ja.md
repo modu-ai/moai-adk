@@ -170,6 +170,8 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 
 **worktree隔離**. SPEC ごとに独立した作業ツリーを用意する。`moai cc -w <名前>` で入り、`--spawn` を付けると現在のセッションを保ったまま新しいウィンドウで開く。
 
+**トレンドMCPツール**. 配布用 `.mcp.json` テンプレートは、シークレット不要で動く3つのサーバー(`context7` ライブラリドキュメント · `chrome-devtools` ブラウザ自動化 · `playwright` エンドツーエンドテスト)を既定で同梱し、`moai mcp add|remove|list` CLI で追加サーバー(Semgrep, GitHub, Postgres, Sentry, Codecov)をオプトインする際はリテラルのシークレットではなく `${VAR}` 環境変数参照トークンを使う。オプトインレシピの一覧は `.moai/docs/mcp-recipes.md` にある。
+
 ---
 
 ## インフラが3つの軸をすべて支える
