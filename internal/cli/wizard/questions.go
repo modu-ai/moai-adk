@@ -425,7 +425,7 @@ func Page3Questions(projectRoot string) []Question {
 				{Label: "Claude (Recommended)", Value: config.AuditModelClaude, Desc: "Session model review — no external dependency"},
 				{Label: "Codex", Value: config.AuditModelCodex, Desc: "codex CLI review (requires codex installed; fails open)"},
 				{Label: "GLM", Value: config.AuditModelGLM, Desc: "z.ai GLM review (requires GLM key; fails open)"},
-				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Declare multi-auditor (convergence is a follow-up; stored only)"},
+				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Multi-auditor super-review (parallel codex+GLM + convergence; fails open)"},
 			},
 			Default:  config.AuditModelClaude,
 			Required: true,

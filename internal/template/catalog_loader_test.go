@@ -64,7 +64,9 @@ func TestLoadCatalog(t *testing.T) {
 	// optional-pack:frontend), net +1 = 42.
 	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
-	const expectedTotal = 41
+	// moai-ref-cross-model-audit added (cross-model audit convergence reference
+	// for plan-auditor + sync-auditor, core.skills), net +1 = 42.
+	const expectedTotal = 42
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
