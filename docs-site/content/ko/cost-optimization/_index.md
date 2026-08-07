@@ -16,4 +16,4 @@ MoAI-ADK 토크노믹스는 두 갈래로 추론 비용을 줄입니다. **컨�
 
 ## 이 섹션의 문서
 
-- [프롬프트 캐싱 — 개념과 Claude Code에서의 동작](/ko/cost-optimization/prompt-caching) — 2개 요청 손익분기 규칙, `cacheStrategy` 설정, statusline 모니터링
+- [프롬프트 캐싱 — 개념과 Claude Code에서의 동작](/ko/cost-optimization/prompt-caching) — 2개 요청 손익분기 규칙, 브레이크포인트 배치, statusline 모니터링

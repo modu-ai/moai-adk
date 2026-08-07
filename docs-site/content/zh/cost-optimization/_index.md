@@ -15,4 +15,4 @@ MoAI-ADK 代币经济学通过两种方式削减推理成本。**上下文瘦身
 
 ## 本节文档
 
-- [提示缓存 — 盈亏平衡分析与实现指南](/zh/cost-optimization/prompt-caching) — 2 次请求盈亏平衡规则、`cacheStrategy` 配置、statusline 监控
+- [提示缓存 — 盈亏平衡分析与实现指南](/zh/cost-optimization/prompt-caching) — 2 次请求盈亏平衡规则、断点放置、statusline 监控

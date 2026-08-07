@@ -62,11 +62,11 @@ response = client.messages.create(
 
 原则只有一条：**把断点放在每次请求都会变的数据（问题、时间戳）之前的最后一个稳定块上**。盈亏平衡点是 2 个请求 —— 第一个请求的写入溢价，会由 TTL 内第二个请求的 0.1 倍读取收回。
 
-## MoAI cache.yaml 的适用范围
+## MoAI 介入的范围
 
-`.moai/config/sections/cache.yaml`（`enabled`、`session_ttl`）只适用于 **MoAI 经自有 SDK 包装路径直接调用 Anthropic API 时的 cache_control 注入**。**它与 Claude Code 会话的缓存无关** —— Claude Code 的缓存如上节所述由运行时自动管理，MoAI 无法介入。
+在这条轴上没有。MoAI 不提供提示缓存配置，也不会自行注入 `cache_control`。**Claude Code 会话的缓存如上节所述由运行时自动管理**，MoAI 无法介入 —— 不存在能改变会话缓存行为的 MoAI 侧开关。
 
-> **GLM 后端**：z.ai（GLM）使用基于内容相似度的**隐式缓存**，因此 MoAI 不在 GLM 路径注入 `cache_control`。
+> **GLM 后端**：z.ai（GLM）使用基于内容相似度的**隐式缓存**，同样由提供方自行管理。
 
 ## 小结
 

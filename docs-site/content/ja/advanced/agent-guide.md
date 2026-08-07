@@ -5,7 +5,7 @@ draft: false
 description: "MoAI-ADK v3.0の11個のコアエージェントカタログ — 役割、フェーズ範囲、計画-監査の分離原則。"
 ---
 
-MoAI-ADK v3.0 の 11 個のコアエージェントカタログを詳しく解説します。
+MoAI-ADK v3.0 の 12 個のコアエージェントカタログを詳しく解説します。
 
 {{< callout type="info" >}}
 **ひと言要約**: エージェントは各分野の **専門家チーム** です。MoAI がチームリーダーとして適切な専門家に作業を割り振ります — そして計画を作るエージェントとそれを監査するエージェントは必ず分離されます。
@@ -34,11 +34,11 @@ MoAI は MoAI-ADK の **最上位コーディネーター** です。ユーザ�
 | 並列実行 | 独立した読み取り専用作業は複数エージェントに同時委任 |
 | 結果統合 | エージェントの実行結果を集約してユーザーに報告 |
 
-## 11 個のコアエージェントカタログ
+## 12 個のコアエージェントカタログ
 
-MoAI-ADK は **11 個のコアエージェント** (10 個の MoAI カスタム + 1 個の Anthropic ビルトイン) を使用します。
+MoAI-ADK は **12 個のコアエージェント** (11 個の MoAI カスタム + 1 個の Anthropic ビルトイン) を使用します。
 
-### Manager エージェント (5 個)
+### Manager エージェント (6 個)
 
 | エージェント | 役割 | フェーズ | Model / effort | 主要スキル |
 |----------|------|------|---------------|----------|
@@ -47,6 +47,7 @@ MoAI-ADK は **11 個のコアエージェント** (10 個の MoAI カスタム 
 | `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator エージェント (2 個)
 
@@ -117,6 +118,97 @@ flowchart TD
 
     Q5 -->|はい| ADVISOR["super-advisor<br>E1-E4 エスカレーション"]
     Q5 -->|いいえ| DIRECT["MoAI 直接処理<br>簡単な作業"]
+```
+
+## 階層型チーム — manager-lead の仕組み
+
+`manager-lead` は Tier L 規模の run フェーズを調整する専用エージェントです。自分でコードを書くことはなく、作業をマイルストーンに分割してリーフワーカー (leaf worker) に委ね、各マイルストーンの境界でコンテキストを畳み、検証を交差させて実行します。リーフワーカーは `Agent(general-purpose)` で必要に応じて生成され、互いの書き込み範囲が重ならないよう worktree で隔離されたブランチ上で動作します。
+
+この委譲経路は Mode 5 (順次サブエージェント) の変種であり、新しい実行モードではありません。引退した Agent Teams 静的階層とも無関係です — Mode 3 の tombstone と `MODE_TEAM_UNAVAILABLE` の挙動は変わりません。
+
+### 進入条件 — 3 つすべてを満たす場合のみ
+
+オーケストレーターは、以下の 3 条件が **すべて** 成立する場合にのみ `manager-lead` を生成します。1 つでも欠ける場合は、オーケストレーター自身が Mode 5 でマイルストーンを順次処理します。条件を満たさない作業に `manager-lead` を付けても、回収されない調整コストが増えるだけだからです。
+
+| 軸 | 基準 |
+|----|------|
+| マイルストーン数 | plan.md §F のマイルストーン一覧に 3 個以上 |
+| ファイル表面 | マイルストーン全体の書き込み対象が 10 個以上 |
+| ドメイン範囲 | 異なるドメインが 3 個以上 (例: バックエンド + フロントエンド + devops) |
+
+3 条件は OR ではなく AND です。単一マイルストーンの 10 ファイルリファクタリングのように 1 つの軸しか満たさない作業まで巻き込まないよう、意図的に狭く設定した値です。オーケストレーターは 3 条件がすべて満たされたという判断を `progress.md` § Mode Selection に記録してから生成します。
+
+```mermaid
+flowchart TD
+    START["run フェーズ委譲リクエスト"] --> Q1{"マイルストーン 3 個以上?"}
+    Q1 -->|"いいえ"| MODE5["オーケストレーターが直接 Mode 5<br>manager-develop を順次実行"]
+    Q1 -->|"はい"| Q2{"書き込み対象ファイル 10 個以上?"}
+    Q2 -->|"いいえ"| MODE5
+    Q2 -->|"はい"| Q3{"ドメイン 3 個以上?"}
+    Q3 -->|"いいえ"| MODE5
+    Q3 -->|"はい"| LEAD["manager-lead を生成<br>リーフワーカーのファンアウトを調整"]
+```
+
+### depth-2 の封印
+
+`manager-lead` は、カタログエージェントの中で `tools:` 一覧に `Agent` を含む **唯一** のエージェントです。他のエージェントはすべて `Agent` を除外することでフラットな階層を維持しており、その例外をちょうど 1 層だけ開く場所がここです。したがってオーケストレーター → `manager-lead` が depth 1、`manager-lead` → リーフワーカーが depth 2 であり、depth 3 が生まれることはありません。
+
+リーフワーカーは生成時点で `tools:` 一覧を受け取り、そこから `Agent` は常に除外されます。今後リーフワーカーをファイルとして定義する場合でも、frontmatter の `leaf_of: manager-lead` または本文マーカー `<!-- manager-lead leaf-worker -->` で自らを宣言すれば、`internal/template/manager_lead_depth_test.go` の CI ガードがそのファイルの `tools:` に `Agent` があるかを検査し、存在すればビルドを失敗させます。
+
+{{< callout type="warning" >}}
+この封印は **MoAI のポリシー不変条件であり、ランタイムの不変条件ではありません**。Claude Code ランタイム自体はより深い再帰を許可しています — v2.1.219 からネストした生成がデフォルトで有効になり、デフォルトの深さ上限は 3 です。ランタイムが止めてくれない以上、深さを実際に押さえているのは `tools:` から `Agent` を外す運用と上記の CI ガードの 2 つだけです。
+{{< /callout >}}
+
+```mermaid
+flowchart TD
+    ORCH["オーケストレーター"] -->|"depth 1"| LEAD["manager-lead<br>tools に Agent を含む (唯一)"]
+    LEAD -->|"depth 2"| W1["リーフワーカー A<br>tools に Agent なし"]
+    LEAD -->|"depth 2"| W2["リーフワーカー B<br>tools に Agent なし"]
+    W1 -.->|"ブロック"| X["depth 3 の再帰"]
+    W2 -.->|"ブロック"| X
+    GUARD["manager_lead_depth_test.go<br>CI ガード"] -.->|"ビルド失敗で検出"| X
+```
+
+### コンテキストフォールディングの 3 ステップ
+
+マイルストーン Mn の AC 行がすべて PASS になり、それらの行の交差検証も PASS で返ってきたら、`manager-lead` は次のマイルストーンに進む前に 3 つのステップを踏みます。この手順は **既存のツールだけを組み合わせます** — 新しい Go コードも、新しいフックも、新しい CLI サブコマンドも作りません。
+
+1. **証拠の永続化** — 各 AC の検証コマンド出力を `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` にリダイレクトします。`/tmp` は OS が消去するため使いません。監査時点でそのパスが実際に開けて初めて、引用された根拠が有効になります。証拠を取得できなかった AC は `PASS` ではなく `GAP` と表記します。
+2. **フォールド行の追加** — `progress.md` §E.2 に既存の行フォーマットのまま 1 行を追記します: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`。`M<n>:` という接頭辞は `internal/spec/era.go` の §E 見出しマッチャーと衝突しないよう選んだ形であり、マッチャーに手を入れずに共存できます。
+3. **`/compact` の実行** — 保持する項目を明示して圧縮します: retain-current-milestone (いま終えたマイルストーンとそのフォールド行)、retain-fold-rows (§E.2 にある過去のフォールド行すべて)、retain-armed-goal (`/moai goal` で設定した条件があればその条件)。
+
+フォールド後の不変条件は 2 つです。圧縮後のトークン使用量が圧縮前より減っていること、そして同時にモデル別のハンドオフ閾値 (1M 系は 50%、200K/256K 系は 90%) を下回っていることです。減っていなければ失敗したフォールドとして扱い、計画を立て直します。サブエージェントのコンテキストで `/compact` が使えない場合は blocker レポートを返し、オーケストレーターに代わりに圧縮してもらうか、`/clear` と再開メッセージで迂回します。
+
+```mermaid
+flowchart TD
+    MN["マイルストーン Mn 完了<br>AC すべて PASS + 交差検証 PASS"] --> S1["ステップ 1: 証拠の永続化<br>.moai/state/verify/session/"]
+    S1 --> S2["ステップ 2: フォールド行の追加<br>progress.md §E.2"]
+    S2 --> S3["ステップ 3: /compact の実行<br>retain 指示 3 種"]
+    S3 --> CHECK{"使用量が減り<br>閾値未満?"}
+    CHECK -->|"はい"| NEXT["マイルストーン M(n+1) へ進入"]
+    CHECK -->|"いいえ"| REPLAN["失敗したフォールドとして処理<br>再計画"]
+```
+
+### peer 交差検証
+
+リーフワーカーがある AC を PASS と表記すると、`manager-lead` は **その作業を行っていない** 2 番目の `Agent(general-purpose)` を読み取り専用で生成します。読み取り専用は `tools:` から Write/Edit/NotebookEdit を除外することで強制します。このワーカーは `acceptance.md` §D の Given-When-Then コマンドをそのまま再実行し、`PASS` / `PARTIAL` / `FAIL` のいずれかを返します。
+
+2 番目のワーカーは著者の主張に何の利害も持ちません。だからこそ、grep の結果を数え違える、古い baseline を引用する、検証コマンドを 1 つ飛ばすといった自己報告の失敗がそのまま露呈します。
+
+`FAIL` または `PARTIAL` が出た場合、`manager-lead` は次のマイルストーンに進みません。代わりに AC ID、著者が提示した根拠、交差検証ワーカーの根拠、両者が食い違った箇所を含む blocker レポートをオーケストレーターに返します。ユーザーに問い合わせるのはオーケストレーターの役割です — サブエージェントはユーザー窓口を使いません。Tier S は交差検証を省略します (範囲が小さく、検証コストが得られるものを上回るため)。
+
+sync フェーズの `sync-auditor` とは役割が異なります。`sync-auditor` は実装完了後に 4 次元のスコアを付ける最終的な懐疑的判読であり、peer 交差検証は実装の途中で AC 一つひとつに付く二値判定です。両者は互いの代わりにはなりません。
+
+```mermaid
+flowchart TD
+    AUTHOR["リーフワーカーが AC-X を PASS と報告"] --> TIER{"Tier S か?"}
+    TIER -->|"はい"| SKIP["交差検証を省略"]
+    TIER -->|"いいえ"| PEER["読み取り専用の 2 番目のワーカーを生成<br>Write/Edit ツールなし"]
+    PEER --> RERUN["acceptance.md §D の GWT コマンドを再実行"]
+    RERUN --> VERDICT{"判定"}
+    VERDICT -->|"PASS"| NEXT["フォールド後、次のマイルストーンへ"]
+    VERDICT -->|"PARTIAL または FAIL"| BLOCK["blocker レポートを返す<br>マイルストーン進行を停止"]
+    BLOCK --> ORCH["オーケストレーターがユーザーに問い合わせ"]
 ```
 
 ## エージェント定義ファイル

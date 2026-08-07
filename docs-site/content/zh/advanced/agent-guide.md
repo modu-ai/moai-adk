@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-详细介绍 MoAI-ADK v3.0 的 11 个核心智能体目录。
+详细介绍 MoAI-ADK v3.0 的 12 个核心智能体目录。
 
 {{< callout type="info" >}}
 **一句话总结**：智能体是各领域的 **专家团队**。MoAI 作为团队负责人把任务分派给合适的专家 — 并且制定计划的智能体与审计它的智能体必须分离。
@@ -33,11 +33,11 @@ MoAI 是 MoAI-ADK 的 **最高层协调者**。它分析用户请求，并把任
 | 并行执行 | 独立的只读任务同时委派给多个智能体 |
 | 结果整合 | 汇总智能体执行结果并向用户汇报 |
 
-## 11 个核心智能体目录
+## 12 个核心智能体目录
 
-MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthropic 内置）。
+MoAI-ADK 使用 **12 个核心智能体**（11 个 MoAI 自定义 + 1 个 Anthropic 内置）。
 
-### Manager 智能体（5 个）
+### Manager 智能体（6 个）
 
 | 智能体 | 角色 | 阶段 | 模型 / effort | 主要技能 |
 |----------|------|------|---------------|----------|
@@ -46,6 +46,7 @@ MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthro
 | `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator 智能体（2 个）
 
@@ -116,6 +117,97 @@ flowchart TD
 
     Q5 -->|是| ADVISOR["super-advisor<br>E1-E4 升级"]
     Q5 -->|否| DIRECT["MoAI 直接处理<br>简单任务"]
+```
+
+## 分层团队 — manager-lead 的运作原理
+
+`manager-lead` 是专门用于协调 Tier L 规模 run 阶段的智能体。它自己不写代码，而是把工作拆成若干里程碑交给叶子工作者（leaf worker），并在每个里程碑边界折叠上下文、执行交叉验证。叶子工作者通过 `Agent(general-purpose)` 按需创建，运行在 worktree 隔离的分支上，因此各自的写入面互不重叠。
+
+这条委派路径是 Mode 5（顺序子智能体）的一种变体，并非新的执行模式。它与已退役的 Agent Teams 静态层也没有关系 —— Mode 3 的墓碑标记与 `MODE_TEAM_UNAVAILABLE` 行为保持不变。
+
+### 进入条件 — 三项必须同时成立
+
+只有当下面三个条件**全部**成立时，编排器才会创建 `manager-lead`。只要有一项不达标，编排器就以 Mode 5 自行顺序处理各里程碑。给达不到门槛的工作套上 `manager-lead`，只会增加永远收不回来的协调成本。
+
+| 维度 | 门槛 |
+|------|------|
+| 里程碑数量 | plan.md §F 里程碑列表中 3 个及以上 |
+| 文件面 | 所有里程碑的写入目标合计 10 个及以上 |
+| 领域跨度 | 3 个及以上互不相同的领域（例如后端 + 前端 + devops） |
+
+这三个条件是 AND 而非 OR。门槛刻意收得很窄，为的是不把只涉及单一维度的工作卷进来 —— 比如单个里程碑的 10 文件重构。编排器会先把三项条件均已满足的判定记录到 `progress.md` § Mode Selection，然后再创建。
+
+```mermaid
+flowchart TD
+    START["run 阶段委派请求"] --> Q1{"里程碑 3 个及以上?"}
+    Q1 -->|"否"| MODE5["编排器直接以 Mode 5 处理<br>manager-develop 顺序执行"]
+    Q1 -->|"是"| Q2{"写入目标文件 10 个及以上?"}
+    Q2 -->|"否"| MODE5
+    Q2 -->|"是"| Q3{"领域 3 个及以上?"}
+    Q3 -->|"否"| MODE5
+    Q3 -->|"是"| LEAD["创建 manager-lead<br>协调叶子工作者扇出"]
+```
+
+### depth-2 封印
+
+`manager-lead` 是目录中**唯一**在 `tools:` 列表里带有 `Agent` 的智能体。其余智能体一律省略 `Agent`，扁平层级正是这样维持的 —— 而这里是唯一开口的地方，且只开一层。因此编排器 → `manager-lead` 是深度 1，`manager-lead` → 叶子工作者是深度 2，深度 3 永远不会出现。
+
+叶子工作者的 `tools:` 列表在创建时下发，其中始终不含 `Agent`。今后即便把叶子工作者定义成文件，只要它通过 frontmatter 字段 `leaf_of: manager-lead` 或正文标记 `<!-- manager-lead leaf-worker -->` 声明自身，`internal/template/manager_lead_depth_test.go` 中的 CI 守卫就会检查该文件的 `tools:` 是否含有 `Agent`，若有则让构建失败。
+
+{{< callout type="warning" >}}
+这道封印是 **MoAI 的策略不变式，而非运行时不变式**。Claude Code 运行时本身允许更深的递归 —— 自 v2.1.219 起嵌套创建默认开启，默认深度上限为 3。既然运行时不会拦，真正把深度按住的只有两样东西：在 `tools:` 中省略 `Agent` 的惯例，以及上面那道 CI 守卫。
+{{< /callout >}}
+
+```mermaid
+flowchart TD
+    ORCH["编排器"] -->|"depth 1"| LEAD["manager-lead<br>tools 中含 Agent（唯一）"]
+    LEAD -->|"depth 2"| W1["叶子工作者 A<br>tools 中无 Agent"]
+    LEAD -->|"depth 2"| W2["叶子工作者 B<br>tools 中无 Agent"]
+    W1 -.->|"被阻断"| X["depth 3 递归"]
+    W2 -.->|"被阻断"| X
+    GUARD["manager_lead_depth_test.go<br>CI 守卫"] -.->|"以构建失败检出"| X
+```
+
+### 上下文折叠三步
+
+当里程碑 Mn 的所有 AC 行都是 PASS、且这些行的交叉验证同样返回 PASS 后，`manager-lead` 会在进入下一个里程碑之前走完三步。该流程**只组合已有工具** —— 不新增 Go 代码，不新增钩子，也不新增 CLI 子命令。
+
+1. **持久化证据** —— 把每个 AC 的验证命令输出重定向到 `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`。不使用 `/tmp`，因为操作系统会清空它。只有审计时这个路径确实能打开，所引用的证据才算有效。未能采集到证据的 AC 标记为 `GAP`，而不是 `PASS`。
+2. **追加折叠行** —— 按既有行格式在 `progress.md` §E.2 追加一行：`M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`。`M<n>:` 前缀是特意选来避免与 `internal/spec/era.go` 中 §E 标题匹配器冲突的，因此两者无需改动匹配器即可共存。
+3. **执行 `/compact`** —— 压缩时明确给出保留指令：retain-current-milestone（刚完成的里程碑及其折叠行）、retain-fold-rows（§E.2 中此前的全部折叠行）、retain-armed-goal（若通过 `/moai goal` 挂载了条件，则保留该条件）。
+
+折叠之后有两条不变式：压缩后的 token 用量必须低于压缩前，并且同时低于按模型划分的移交阈值（1M 级别为 50%，200K/256K 级别为 90%）。若用量没有下降，就按折叠失败处理并重新规划。当子智能体上下文中无法使用 `/compact` 时，返回 blocker 报告，由编排器代为压缩，或改走 `/clear` 加恢复消息的路径绕开。
+
+```mermaid
+flowchart TD
+    MN["里程碑 Mn 完成<br>AC 全部 PASS + 交叉验证 PASS"] --> S1["第 1 步：持久化证据<br>.moai/state/verify/session/"]
+    S1 --> S2["第 2 步：追加折叠行<br>progress.md §E.2"]
+    S2 --> S3["第 3 步：执行 /compact<br>3 条保留指令"]
+    S3 --> CHECK{"用量已下降且<br>低于阈值?"}
+    CHECK -->|"是"| NEXT["进入里程碑 M(n+1)"]
+    CHECK -->|"否"| REPLAN["按折叠失败处理<br>重新规划"]
+```
+
+### peer 交叉验证
+
+当叶子工作者把某个 AC 标记为 PASS 时，`manager-lead` 会创建第二个只读的 `Agent(general-purpose)`，且这个工作者**没有做过那份工作**。只读通过在 `tools:` 中省略 Write/Edit/NotebookEdit 来强制。该工作者原样重跑 `acceptance.md` §D 中的 Given-When-Then 命令，并返回 `PASS` / `PARTIAL` / `FAIL` 三者之一。
+
+第二个工作者对作者的说法没有任何利害关系。正因如此，诸如把 grep 结果数错、引用过时的 baseline、漏跑一条验证命令这类自我报告失效，才会暴露出来。
+
+一旦出现 `FAIL` 或 `PARTIAL`，`manager-lead` 就不会推进到下一个里程碑，而是向编排器返回一份 blocker 报告，其中包含 AC ID、作者给出的证据、交叉验证工作者的证据，以及两者出现分歧的地方。向用户提问是编排器的职责 —— 子智能体不使用用户通道。Tier S 跳过交叉验证（范围小到验证成本高于收益）。
+
+它与 sync 阶段的 `sync-auditor` 角色不同。`sync-auditor` 是实现完成后给出 4 维评分的最终怀疑式判读；peer 交叉验证则是实现过程中挂在每一个 AC 上的二元判定。两者互不替代。
+
+```mermaid
+flowchart TD
+    AUTHOR["叶子工作者报告 AC-X 为 PASS"] --> TIER{"是 Tier S 吗?"}
+    TIER -->|"是"| SKIP["跳过交叉验证"]
+    TIER -->|"否"| PEER["创建只读的第二个工作者<br>无 Write/Edit 工具"]
+    PEER --> RERUN["重跑 acceptance.md §D GWT 命令"]
+    RERUN --> VERDICT{"判定"}
+    VERDICT -->|"PASS"| NEXT["折叠后进入下一个里程碑"]
+    VERDICT -->|"PARTIAL 或 FAIL"| BLOCK["返回 blocker 报告<br>中止里程碑推进"]
+    BLOCK --> ORCH["编排器向用户发起询问"]
 ```
 
 ## 智能体定义文件

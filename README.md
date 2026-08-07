@@ -106,7 +106,7 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 **Routing — assign the right model and reasoning depth to each task.** Declaratively assign models and reasoning effort (low / medium / high / max) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition.
 
 - **No-Haiku 3-Tier Policy** — excludes Haiku from the routing set; Sonnet at low effort takes single-shot, input-dominated work, Opus carries every multi-turn agentic row.
-- **Profile Matrix** — 11 agents × 3 profiles = 33 cells. `moai model profile` resolves each agent's `{model, effort}` pair.
+- **Profile Matrix** — 12 agents × 3 profiles = 36 cells. `moai model profile` resolves each agent's `{model, effort}` pair.
 - **CG Mode** — `moai cg` combines a Claude leader (strategy, planning, audits) with GLM workers (bulk implementation). **60-70% cost savings** on implementation-heavy workloads.
 
 <p align="center">
@@ -163,7 +163,7 @@ plan → run → sync. Tier S/M/L size classification determines verification de
 
 **TRUST 5 Quality Gates**. Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
 
-**11-Agent Catalog**. MoAI custom 10 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
+**12-Agent Catalog**. MoAI custom 11 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
 
 ### Extension Points — duplicate proven patterns for project-specific reuse
 
@@ -280,7 +280,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 > Full 36 commands: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
 
-### 11-Agent Catalog
+### 12-Agent Catalog
 
 | Category | Agent | Cost | Role |
 |----------|-------|------|------|
@@ -289,6 +289,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | | manager-docs | 🔵 | Sync-phase documentation |
 | | manager-git | 🩵 | PR creation and routing |
 | | manager-design | 🟠 | Design-phase collaboration (Claude Design) |
+| | manager-lead | 🔴 | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) |
 | **Evaluator** | plan-auditor | 🔴 | Independent plan audit (bias prevention) |
 | | sync-auditor | 🔴 | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |

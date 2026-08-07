@@ -147,8 +147,6 @@ const (
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
 
-	DefaultStateDir = ".moai/state"
-
 	// DefaultTraceRetentionDays is the age threshold (in days) past which
 	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
 	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
@@ -211,6 +209,16 @@ const (
 	// manifest pins 900s (15 min) for this hook only. Other hooks keep 5s.
 	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
 	DefaultCodexReviewGateTimeout = 900 * time.Second
+
+	// DefaultMultiReviewGateTimeout is the per-invocation timeout override for
+	// the `moai hook multi-review-gate` Stop hook (SPEC-AUDIT-MULTI-MODEL-001
+	// M5 REQ-AMM-013 / AC-AMM-018). The moai-default 5s hook budget does NOT
+	// apply to this hook: the gate itself only reads a state file, but the
+	// generous 900s budget (sibling to DefaultCodexReviewGateTimeout) keeps
+	// Stop-hook-composition uniform across both review gates so a future
+	// evolution that adds I/O does not silently regress the budget.
+	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
+	DefaultMultiReviewGateTimeout = 900 * time.Second
 
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
@@ -289,7 +297,6 @@ func NewDefaultConfig() *Config {
 		State:         NewDefaultStateConfig(),
 		Gate:          NewDefaultGateConfig(),
 		Sunset:        NewDefaultSunsetConfig(),
-		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
 		Handoff:       NewDefaultHandoffConfig(),
 		Archive:       NewDefaultArchiveConfig(),
@@ -299,42 +306,6 @@ func NewDefaultConfig() *Config {
 		ContextSearch: defaultContextConfig(),
 		Interview:     defaultInterviewConfig(),
 		Design:        defaultDesignConfig(),
-	}
-}
-
-// NewDefaultResearchConfig returns a ResearchConfig with safe defaults.
-func NewDefaultResearchConfig() ResearchConfig {
-	return ResearchConfig{
-		Enabled: false,
-		Passive: ResearchPassiveConfig{
-			Enabled:                 true,
-			CorrectionWindowSeconds: 60,
-			PatternThresholds: ResearchPatternThresholds{
-				Heuristic:      3,
-				Rule:           5,
-				HighConfidence: 10,
-			},
-		},
-		Active: ResearchActiveConfig{
-			RunsPerExperiment: 3,
-			MaxExperiments:    20,
-			PassThreshold:     0.80,
-			TargetScore:       0.95,
-			BudgetCapTokens:   500000,
-		},
-		Safety: ResearchSafetyConfig{
-			WorktreeIsolation:         true,
-			CanaryRegressionThreshold: 0.10,
-			RateLimits: ResearchRateLimitConfig{
-				MaxExperimentsPerSession: 20,
-				MaxAcceptedPerSession:    5,
-				MaxAutoResearchPerWeek:   3,
-			},
-		},
-		Dashboard: ResearchDashboardConfig{
-			DefaultMode:     "terminal",
-			HTMLOpenBrowser: true,
-		},
 	}
 }
 
@@ -628,6 +599,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				Enabled: false,
 			},
 		},
+		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the
+		// multi-model review gate ships default-OFF (BranchGuard pattern —
+		// sibling to Codex.ReviewGate). Distributed users get an inert Stop
+		// hook; a maintainer opts in via local config. Template neutrality
+		// (§25): no `enabled: true` under internal/template/templates/.
+		Multi: MultiConfig{
+			ReviewGate: MultiReviewGateConfig{
+				Enabled: false,
+			},
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M3 (REQ-MCP-010 / AC-MCP-012, progress.md
 		// §G.3 locked default profile): claude + codex required, glm advisory.
 		// glm ships advisory (NOT required) so a distributed user without a GLM
@@ -655,9 +636,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 
 // NewDefaultStateConfig returns a StateConfig with default values.
 func NewDefaultStateConfig() StateConfig {
-	return StateConfig{
-		StateDir: DefaultStateDir,
-	}
+	return StateConfig{}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.

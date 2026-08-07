@@ -67,7 +67,6 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
 | `--git-provider <github\|gitlab>` | Git 提供者 |
 | `--project-mode <personal\|team>` | 项目模式(默认: personal) |
-| `--harness-profile <profile>` | harness 评估器配置文件(default, strict, lenient, frontend);接受该值,但目前不会持久化生效 |
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |

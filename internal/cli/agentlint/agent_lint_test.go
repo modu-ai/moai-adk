@@ -226,6 +226,45 @@ func TestCheckAgentInTools_NestingPilotAllowlist(t *testing.T) {
 	})
 }
 
+// TestCheckAgentInTools_ManagerLeadException verifies the LR-02 manager-lead
+// carve-out (SPEC-HIERARCHICAL-TEAM-001 REQ-LEAD-001): manager-lead is the sole
+// hierarchical-team coordinator — the single retained Agent-carrier that opens
+// the depth-1 fan-out seam. The depth-2 seal (leaf workers omit Agent) is
+// enforced by TestManagerLeadIsSoleAgentCarrier / TestNoNestedLeafWorkerCarrier
+// in internal/template, NOT by this lint. LR-02 must therefore admit manager-lead
+// with Agent in tools: while still firing for every other agent.
+func TestCheckAgentInTools_ManagerLeadException(t *testing.T) {
+	t.Run("manager-lead with Agent in tools is exempt (sole hierarchical-team coordinator)", func(t *testing.T) {
+		fm := AgentFrontmatter{Name: "manager-lead", Tools: "Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill"}
+		violations := checkAgentInTools("/tmp/agents/manager-lead.md", fm)
+		if len(violations) != 0 {
+			t.Errorf("got %d LR-02 violations for manager-lead, want 0: %v", len(violations), violations)
+		}
+	})
+
+	t.Run("non-allowlisted sibling agent with Agent in tools still fails (carve-out is narrow)", func(t *testing.T) {
+		fm := AgentFrontmatter{Name: "manager-spec", Tools: "Read, Write, Edit, Agent"}
+		violations := checkAgentInTools("/tmp/agents/manager-spec.md", fm)
+		if len(violations) != 1 {
+			t.Fatalf("got %d violations for manager-spec, want 1 (LR-02 guard — carve-out is manager-lead ONLY)", len(violations))
+		}
+		if violations[0].Rule != "LR-02" {
+			t.Errorf("rule = %s, want LR-02", violations[0].Rule)
+		}
+		if violations[0].Severity != SeverityError {
+			t.Errorf("LR-02 severity = %s, want error", violations[0].Severity)
+		}
+	})
+
+	t.Run("manager-lead exemption resolves from file basename when name: is absent", func(t *testing.T) {
+		fm := AgentFrontmatter{Tools: "Read, Write, Agent"}
+		violations := checkAgentInTools("/tmp/agents/manager-lead.md", fm)
+		if len(violations) != 0 {
+			t.Errorf("got %d violations for basename-identified manager-lead, want 0: %v", len(violations), violations)
+		}
+	})
+}
+
 // Helper to extract tools from frontmatter string
 func extractToolsFromFrontmatter(content string) string {
 	lines := strings.Split(content, "\n")

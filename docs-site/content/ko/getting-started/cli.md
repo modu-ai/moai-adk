@@ -67,7 +67,6 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
 | `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
-| `--harness-profile <profile>` | 하네스 평가자 프로필 (default, strict, lenient, frontend); 값은 받지만 현재 저장되어 반영되지는 않음 |
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |

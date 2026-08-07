@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-A detailed guide to the catalog of 11 core agents in MoAI-ADK v3.0.
+A detailed guide to the catalog of 12 core agents in MoAI-ADK v3.0.
 
 {{< callout type="info" >}}
 **One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
@@ -33,11 +33,11 @@ MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and
 | Parallel execution | Independent read-only tasks are delegated to multiple agents simultaneously |
 | Result consolidation | Agent execution results are aggregated and reported to the user |
 
-## The 11-Agent Core Catalog
+## The 12-Agent Core Catalog
 
-MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
+MoAI-ADK uses **12 core agents** (11 MoAI custom + 1 Anthropic built-in).
 
-### Manager Agents (5)
+### Manager Agents (6)
 
 | Agent | Role | Phase | Model / effort | Key skills |
 |----------|------|------|---------------|----------|
@@ -46,6 +46,7 @@ MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
 | `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator Agents (2)
 
@@ -116,6 +117,97 @@ flowchart TD
 
     Q5 -->|Yes| ADVISOR["super-advisor<br>E1-E4 escalation"]
     Q5 -->|No| DIRECT["MoAI handles directly<br>Simple tasks"]
+```
+
+## Hierarchical Teams — How manager-lead Works
+
+`manager-lead` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
+
+This delegation path is a variant of Mode 5 (sequential sub-agents), not a new execution mode. It is also unrelated to the retired Agent Teams static layer — the Mode 3 tombstone and the `MODE_TEAM_UNAVAILABLE` behavior are unchanged.
+
+### Entry Conditions — All Three Must Hold
+
+The orchestrator spawns `manager-lead` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in Mode 5. Attaching `manager-lead` to work that does not meet the bar only adds coordination cost that is never recovered.
+
+| Axis | Threshold |
+|------|-----------|
+| Milestone count | 3 or more in the plan.md §F milestone list |
+| File surface | 10 or more write targets across all milestones |
+| Domain span | 3 or more distinct domains (e.g. backend + frontend + devops) |
+
+The three conditions are AND, not OR. The thresholds are deliberately narrow so that work touching only one axis — a single-milestone 10-file refactor, for instance — is not pulled in. The orchestrator records its finding that all three conditions are satisfied in `progress.md` § Mode Selection before spawning.
+
+```mermaid
+flowchart TD
+    START["Run-phase delegation request"] --> Q1{"3 or more milestones?"}
+    Q1 -->|"No"| MODE5["Orchestrator handles Mode 5 directly<br>manager-develop sequentially"]
+    Q1 -->|"Yes"| Q2{"10 or more write-target files?"}
+    Q2 -->|"No"| MODE5
+    Q2 -->|"Yes"| Q3{"3 or more domains?"}
+    Q3 -->|"No"| MODE5
+    Q3 -->|"Yes"| LEAD["Spawn manager-lead<br>Coordinate leaf-worker fan-out"]
+```
+
+### The depth-2 Seal
+
+`manager-lead` is the **only** catalog agent that carries `Agent` in its `tools:` list. Every other agent omits `Agent`, which is how the flat hierarchy is maintained — and this is the single place where that exception is opened, one layer deep. So orchestrator → `manager-lead` is depth 1, `manager-lead` → leaf worker is depth 2, and no depth 3 is ever created.
+
+Leaf workers receive their `tools:` list at spawn time, and `Agent` is always excluded from it. Should leaf workers later be defined as files, declaring themselves via the frontmatter field `leaf_of: manager-lead` or the body marker `<!-- manager-lead leaf-worker -->` makes the CI guard in `internal/template/manager_lead_depth_test.go` check that file's `tools:` for `Agent` and fail the build if it is present.
+
+{{< callout type="warning" >}}
+This seal is a **MoAI policy invariant, not a runtime invariant**. The Claude Code runtime itself permits deeper recursion — nested spawning is enabled by default as of v2.1.219, with a default depth ceiling of 3. Since the runtime will not stop it, the only two things actually holding the depth are the practice of omitting `Agent` from `tools:` and the CI guard above.
+{{< /callout >}}
+
+```mermaid
+flowchart TD
+    ORCH["Orchestrator"] -->|"depth 1"| LEAD["manager-lead<br>Agent in tools (only one)"]
+    LEAD -->|"depth 2"| W1["Leaf worker A<br>no Agent in tools"]
+    LEAD -->|"depth 2"| W2["Leaf worker B<br>no Agent in tools"]
+    W1 -.->|"blocked"| X["depth 3 recursion"]
+    W2 -.->|"blocked"| X
+    GUARD["manager_lead_depth_test.go<br>CI guard"] -.->|"caught by build failure"| X
+```
+
+### Context Folding in Three Steps
+
+Once every AC row for milestone Mn is PASS and the cross-verification of those rows also comes back PASS, `manager-lead` takes three steps before moving to the next milestone. The procedure **composes only existing tooling** — it introduces no new Go code, no new hooks, and no new CLI subcommands.
+
+1. **Persist evidence** — redirect each AC's verification command output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`. `/tmp` is not used because the OS clears it. The cited evidence is valid only if that path actually opens at audit time. An AC whose evidence could not be captured is marked `GAP`, not `PASS`.
+2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
+3. **Run `/compact`** — compact with explicit retain instructions: retain-current-milestone (the milestone just finished and its fold row), retain-fold-rows (every earlier fold row in §E.2), and retain-armed-goal (the condition armed via `/moai goal`, if any).
+
+Two invariants hold after the fold: post-compaction token usage must be lower than it was before compaction, and it must simultaneously sit below the model-specific handoff threshold (50% for the 1M class, 90% for the 200K/256K class). If it did not drop, treat the fold as failed and re-plan. When `/compact` is unavailable in a sub-agent context, return a blocker report so the orchestrator can compact on its behalf or route around it via `/clear` plus a resume message.
+
+```mermaid
+flowchart TD
+    MN["Milestone Mn complete<br>all ACs PASS + cross-verification PASS"] --> S1["Step 1: Persist evidence<br>.moai/state/verify/session/"]
+    S1 --> S2["Step 2: Append fold row<br>progress.md §E.2"]
+    S2 --> S3["Step 3: Run /compact<br>3 retain instructions"]
+    S3 --> CHECK{"Usage dropped and<br>below threshold?"}
+    CHECK -->|"Yes"| NEXT["Enter milestone M(n+1)"]
+    CHECK -->|"No"| REPLAN["Treat as failed fold<br>re-plan"]
+```
+
+### Peer Cross-Verification
+
+When a leaf worker marks an AC as PASS, `manager-lead` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Read-only is enforced by omitting Write/Edit/NotebookEdit from its `tools:`. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
+
+The second worker has no stake in the author's claim. That is what exposes self-report failures such as miscounting a grep result, citing a stale baseline, or skipping one verification command.
+
+On `FAIL` or `PARTIAL`, `manager-lead` does not advance to the next milestone. It returns a blocker report to the orchestrator carrying the AC ID, the evidence the author offered, the cross-verifying worker's evidence, and the point where the two diverged. Asking the user is the orchestrator's job — sub-agents do not use the user channel. Tier S skips cross-verification (the scope is small enough that verification costs more than it returns).
+
+The role differs from `sync-auditor` in the sync phase. `sync-auditor` is a final skeptical read that scores four dimensions after implementation is done; peer cross-verification is a binary verdict attached to each individual AC during implementation. Neither substitutes for the other.
+
+```mermaid
+flowchart TD
+    AUTHOR["Leaf worker reports AC-X as PASS"] --> TIER{"Tier S?"}
+    TIER -->|"Yes"| SKIP["Skip cross-verification"]
+    TIER -->|"No"| PEER["Spawn read-only second worker<br>no Write/Edit tools"]
+    PEER --> RERUN["Re-run acceptance.md §D GWT commands"]
+    RERUN --> VERDICT{"Verdict"}
+    VERDICT -->|"PASS"| NEXT["Fold, then next milestone"]
+    VERDICT -->|"PARTIAL or FAIL"| BLOCK["Return blocker report<br>halt milestone progression"]
+    BLOCK --> ORCH["Orchestrator queries the user"]
 ```
 
 ## Agent Definition Files
