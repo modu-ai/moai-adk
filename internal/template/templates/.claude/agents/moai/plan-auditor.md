@@ -385,7 +385,9 @@ Defects from previous iteration:
 
 ## Retry Loop Contract
 
-This agent is invoked by the orchestrator up to 3 times per SPEC (max_iterations: 3 per harness.yaml).
+This agent is invoked by the orchestrator up to a Tier-resolved number of times per SPEC. The Tier-resolved ceiling is the SSOT at `.moai/config/sections/harness.yaml` → `harness.plan_audit_tier_ceilings` (S=1, M=2, L=3; SPEC-SYNC-PARALLEL-DOCS-001 A6 / REQ-SPD-010 / REQ-SPD-011). The agent consults the SPEC's `tier:` frontmatter field, reads the matching ceiling from `plan_audit_tier_ceilings`, and bounds its iteration count accordingly. Where `tier:` is absent, the Tier L value (3) is used — pre-A6 SPECs see no behavior change (AC-SPD-012). The former `max_iterations: 3` literal below is now a consumer-side reference value (the Tier L ceiling), NOT the SSOT; the SSOT is the `plan_audit_tier_ceilings` map.
+
+**Ceiling bounds ITERATION COUNT, NOT verdict.** A Tier S SPEC still receives a full adversarial review on iteration 1 — the ceiling only prevents iteration 2+. The verdict authority stays with this agent; a lower ceiling never permits an orchestrator self-assessment to substitute for an auditor verdict (anti-pattern AP-SPD-004 in `SPEC-SYNC-PARALLEL-DOCS-001/plan.md` §G).
 
 On iteration 1: Full audit against all criteria.
 

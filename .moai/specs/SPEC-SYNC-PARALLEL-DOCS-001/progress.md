@@ -18,6 +18,17 @@ _<pending plan-auditor verdict>_
 
 Baseline-attribution: `(this run, this tree)` HEAD = 63fceb889 (pre-M1) → M1 commit (pending). Files: `manager-develop-prompt-template.md`, `agent-common-protocol.md`, `verification-batch-pattern.md` (template source + local mirror, byte-identical).
 
+### M2 — A6 Tier-aware plan-auditor retry ceilings (committed)
+
+| AC | Status | Verification command | Observed output (verbatim) |
+|---|---|---|---|
+| AC-SPD-010 | PASS | `grep -c 'plan_audit_tier_ceilings' .moai/config/sections/harness.yaml` | `1` — `S: 1` entry present (Tier S single-pass ceiling) |
+| AC-SPD-011 | PASS | `grep -A3 'plan_audit_tier_ceilings' .moai/config/sections/harness.yaml \| grep -c 'M: 2'` | `1` — `M: 2` entry present (Tier M two-spawn ceiling) |
+| AC-SPD-012 | PASS | `grep -c 'L: 3' .moai/config/sections/harness.yaml` | `1` — `L: 3` entry present (Tier L legacy 3-spawn fallback); backward-compat clause also in plan-auditor.md § Retry Loop Contract |
+| (consumer) | PASS | `grep -c 'Tier-resolved' .claude/agents/moai/plan-auditor.md` | `1` — plan-auditor consults Tier ceiling from harness.yaml SSOT; former `max_iterations: 3` literal demoted to consumer-side reference |
+
+Baseline-attribution: `(this run, this tree)` M2 commit (pending). `go test ./internal/config/...` → `ok github.com/modu-ai/moai-adk/internal/config 8.126s` (no CI regression; harness.yaml outside struct-yaml symmetry audit scope). Files: `harness.yaml`, `plan-auditor.md` (template source + local mirror, byte-identical).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
