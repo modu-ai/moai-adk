@@ -29,7 +29,7 @@
 ## §B Known Issues (auto-injected — relevance-filtered)
 
 - **B3 subagent boundary**: all A5/A7 concurrent agents are read-only drafters/scanners/auditors; the orchestrator is the sole writer at gate-sync-2. No `AskUserQuestion` calls inside any fan-out agent; blocker reports return to the orchestrator per `agent-common-protocol.md` § Blocker Report Format.
-- **B5 CI 3-tier awareness**: spec-lint, golangci-lint, Test (per OS) can each fail separately. A9 changes orchestrator verification batch behavior (prose-level); no Go test changes required unless plan-auditor resolves OQ-1 toward a mechanical hook.
+- **B5 CI 3-tier awareness**: spec-lint, golangci-lint, Test (per OS) can each fail separately. A9 changes orchestrator verification batch behavior (prose-level doctrinal switch, per OQ-1 RESOLVED — NOT a mechanical hook); no Go test changes required.
 - **B10 scope discipline**: A5/A7/A9/A6 touch ONLY the sync-phase execution shape + plan-auditor retry contract + §E attribution. Run-phase, plan-phase, and cross-phase flows are NOT modified.
 - **B11 AskUserQuestion prohibited in subagents**: A5 drafters, A7 MX shards, and the audit agents return blocker reports; the orchestrator runs `gate-sync-2` AskUserQuestion round.
 
@@ -50,6 +50,12 @@ grep -n 'max_iterations' .moai/config/sections/harness.yaml
 
 # 4. Confirm AUDIT-SNAPSHOT-001 A4 snapshot interface
 grep -n 'moai verify check\|key-current\|shared.*snapshot' .claude/skills/moai/workflows/sync/quality-gates-quality.md
+# NOTE (D3): M1 MUST run this grep live. On zero hits (token drift post-AUDIT-SNAPSHOT-001),
+# re-derive the live snapshot CLI interface from `internal/runtime/` before authoring the
+# diff-check clause — do NOT assume the `moai verify check --key-current` token surface is
+# still current. The doctrinal switch (OQ-1 RESOLVED) depends on the snapshot interface
+# being reachable; a stale token makes the diff-check vacuously fall back to re-execution
+# (REQ-SPD-009), losing the A9 time saving without warning.
 ```
 
 ## §D Constraints (DO NOT VIOLATE)
@@ -85,22 +91,20 @@ Ordered by decision-reversibility (§A.3), NOT by wall-clock. Priority labels pe
 The most review-sensitive milestone: binds the verification-claim-integrity invariant. Reviewers + plan-auditor focus here.
 
 - Promote `manager-develop` §E evidence to formal attributable artifact (REQ-SPD-007): each E1-E8 item names command + verbatim output + baseline-attribution.
-- Wire orchestrator trust-but-verify batch to attributable diff-check (REQ-SPD-008): consult AUDIT-SNAPSHOT-001 A4 snapshot key + recorded command + recorded output.
-- Implement diff-check fallback (REQ-SPD-009): on snapshot key mismatch / command mismatch / missing §E → re-execution.
-- Resolve **OQ-1**: does the orchestrator batch today carry a structured "I am about to re-run command X" preamble? (Determines whether A9 wires a literal hook or applies a doctrinal switch.)
+- Wire orchestrator trust-but-verify batch to the **doctrinal diff-check switch** (REQ-SPD-008; OQ-1 RESOLVED): the orchestrator composes the batch by first consulting `moai verify check --key-current`; on all-three attribution match (snapshot key + recorded command + recorded output) it consumes the §E evidence instead of re-executing; on any mismatch it falls back to re-execution (REQ-SPD-009). This is a composition-time doctrinal switch — there is NO mechanical "about to re-run command X" preamble token to intercept (`agent-common-protocol.md` § Parallel Execution binds the batch as orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash).
+- Implement diff-check fallback (REQ-SPD-009): on snapshot key mismatch / command mismatch / missing §E → re-execution (NOT silent removal).
 
-Files touched: `.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E (attribution discipline clause); `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (diff-check doctrinal clause); `.claude/rules/moai/workflow/verification-batch-pattern.md` (attributable diff-check pattern).
+Files touched: `.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E (attribution discipline clause); `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (diff-check doctrinal-switch clause); `.claude/rules/moai/workflow/verification-batch-pattern.md` (attributable diff-check pattern).
 
 ### M2 — A6 Tier-aware plan-auditor ceiling (Priority High)
 
 Config-schema decision; hard to reverse once consumers depend on the location.
 
-- Resolve **OQ-2**: harness.yaml per-Tier `max_iterations` map vs. plan-auditor body Tier→ceiling table.
-- Add Tier-aware ceiling (S=1, M=2, L=3) to the chosen location (REQ-SPD-010).
-- Update `plan-auditor.md` Retry Loop Contract (L386-418) to consult Tier ceiling in place of flat `max_iterations: 3` (REQ-SPD-011).
+- Add the per-Tier `max_iterations` map (S=1, M=2, L=3) to `harness.yaml`, alongside the existing per-level map (OQ-2 RESOLVED — harness.yaml is the SSOT; REQ-SPD-010).
+- Update `plan-auditor.md` Retry Loop Contract (L386-418) to consult the Tier-resolved ceiling from `harness.yaml` in place of its hard-coded `max_iterations: 3` literal — the literal becomes a consumer-side reference value, NOT the SSOT (REQ-SPD-011).
 - Backward-compat: where `tier:` is absent, ceiling remains 3 (Tier L fallback).
 
-Files touched: `.moai/config/sections/harness.yaml` (per-Tier `max_iterations` map — IF OQ-2 resolves to harness.yaml); `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract (Tier-ceiling consultation).
+Files touched: `.moai/config/sections/harness.yaml` (per-Tier `max_iterations` map, SSOT); `.claude/agents/moai/plan-auditor.md` § Retry Loop Contract (Tier-ceiling consultation — consumer).
 
 ### M3 — A5 docs ∥ audit concurrent scheduling (Priority Medium)
 
