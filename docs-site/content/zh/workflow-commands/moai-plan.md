@@ -555,6 +555,31 @@ WHEN input is null is detected, the system shall return an error.
 **内部机制**: 5 项原则在 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles 中规格化,并渲染到 `moai.md`。捕获钩子实现于 `internal/hook/user_decision_capture.go`,支持 schema 宽容解析与域分类。衰减策略遵循 power-law 函数 `(age+1)^(-0.5)`,α=0.5 固定(Standard tier)。完整架构与验收标准请参阅项目的 SPEC 文档。
 {{< /callout >}}
 
+## 计划 HTML 报告 (v3.1+)
+
+从 v3.1(PR #1388)起,终端 CLI `moai plan` 新增了 `render-html` 子命令。它从已编写的 SPEC 产物生成一份 plan 阶段 HTML 报告,写入 `.moai/reports/plan-html/<SPEC-ID>-plan.html`。
+
+```bash
+moai plan render-html SPEC-AUTH-001
+# → .moai/reports/plan-html/SPEC-AUTH-001-plan.html
+```
+
+**输入与输出**:
+
+- **输入** — `.moai/specs/<SPEC-ID>/` 目录,以及(若存在)最近的 plan-audit 审查文件(`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`)。
+- **输出** — 一份不依赖外部 JS/CSS 的自包含 HTML 文件。goal 声明、8 字段自主性契约、(有审查时)审计判定分数、里程碑打包到一个文件中,可在离线浏览器直接打开。
+
+**失败模式**:
+
+- SPEC 目录缺失时,以非零退出码向 stderr 输出 SPEC-ID,不写入 HTML。
+- plan-audit 审查文件缺失或无法解析时,以"审计判定不可用"占位符渲染并 **exit 0**(fail-open)。
+
+{{< callout type="info" >}}
+**与 `/moai plan` 斜杠命令不同**:`/moai plan` 斜杠命令通过 Claude Code 技能系统编写 SPEC 产物,而 `moai plan render-html` CLI 是一个 Go 二进制子命令,从已编写的产物生成 HTML 报告。
+{{< /callout >}}
+
+加 `--json` 标志可输出 `{action, spec_id, path, bytes}` JSON。
+
 ## 相关文档
 
 - [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详解
