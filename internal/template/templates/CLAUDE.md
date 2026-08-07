@@ -79,7 +79,7 @@ The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custo
 12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-tester` subagent
 13. Multi-milestone Tier L coordination (≥3 milestones AND ≥10 files AND cross-domain fan-out)? Use the `manager-lead` subagent (the sole Agent-carrier among retained agents; depth-2 sealed)
 
-### Retained Agents (11 total)
+### Retained Agents (12 total)
 
 | Agent | Class | Phase scope | Reference |
 |-------|-------|-------------|-----------|

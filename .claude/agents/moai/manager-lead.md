@@ -52,7 +52,7 @@ Below this threshold the orchestrator drives Mode 5 directly (single sequential 
 
 Rationale: the Claude Code runtime (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` default-off historically; depth-3 by default as of v2.1.219) would mechanically permit deeper recursion — the seal is a MoAI policy invariant, not a runtime invariant. The CI guard catches a depth-2 violation at lint time, before runtime.
 
-Leaf workers spawned per-delegation are `Agent(general-purpose)` instances with a domain whitelist per `archived-agent-rejection.md` §C; they are NOT authored as files under `.claude/agents/moai/` and their `tools:` list is supplied at spawn time (always omitting `Agent`). The CI guard scans for any FUTURE authoredfFile that declares `leaf_of: manager-lead` — the pattern is opt-in by declaration.
+Leaf workers spawned per-delegation are `Agent(general-purpose)` instances with a domain whitelist per `archived-agent-rejection.md` §C; they are NOT authored as files under `.claude/agents/moai/` and their `tools:` list is supplied at spawn time (always omitting `Agent`). The CI guard scans for any FUTURE authored file that declares `leaf_of: manager-lead` — the pattern is opt-in by declaration.
 
 ## Context-Folding Procedure (REUSE — no new mechanism)
 

@@ -47,8 +47,8 @@ All ACs in §D are MUST unless marked otherwise.
 **When** the inspector greps the agent file's YAML frontmatter and body.
 **Then** ALL of:
 - `tools:` field includes the literal token `Agent`;
-- `tools:` field includes `Read`, `Grep`, `Glob`, `Bash`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `Skill`;
-- the body prose declares a coordination-only role (does NOT write code, does NOT author SPEC body content);
+- `tools:` field includes `Read`, `Write`, `Edit`, `Grep`, `Glob`, `Bash`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `Skill`;
+- the body prose declares a coordination-only role (does NOT write implementation code — Write/Edit are scoped to coordination artifacts only: fold-row appends to `progress.md` §E.2 and evidence-file writes under `.moai/state/verify/`; does NOT author SPEC body content);
 - the body prose declares it returns blocker reports (does NOT invoke `AskUserQuestion`);
 - `grep -c 'AskUserQuestion' .claude/agents/moai/manager-lead.md` returns `0`.
 
