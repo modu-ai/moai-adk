@@ -100,7 +100,7 @@ ok  	github.com/modu-ai/moai-adk/internal/template	1.131s
 
 ```yaml
 run_complete_at: "2026-08-07"
-run_commit_sha: "pending-backfill-M1"   # M1 commit SHA backfilled in a follow-up commit (self-referential-hazard workaround per D3)
+run_commit_sha: "ecc9df09139627668c05bd427a86fb32680f604e"   # squash-merge commit (plan+run+sync folded into PR #1397's single main commit; M1 run work lives here)
 run_status: "audit-ready"
 ac_pass_count: 7
 ac_fail_count: 0
@@ -120,7 +120,7 @@ m1_to_mN_commit_strategy: "single atomic M1 commit (RED test + GREEN script+mirr
 
 ```yaml
 sync_complete_at: "2026-08-07"
-sync_commit_sha: "pending-backfill"   # self-referential-hazard workaround per D3 — a commit cannot know its own SHA; orchestrator backfills the real value after merge
+sync_commit_sha: "ecc9df09139627668c05bd427a86fb32680f604e"   # PR #1397 squash-merge SHA (backfilled post-merge per D3 self-referential-hazard workaround)
 sync_status: "audit-ready"
 sync_phase_close_type: "3-phase close (plan→run→sync)"   # MX Tag is a cross-cutting sync concern, NOT a separate phase
 frontmatter_status_transitions:
