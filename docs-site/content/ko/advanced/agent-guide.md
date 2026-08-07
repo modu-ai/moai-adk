@@ -120,6 +120,97 @@ flowchart TD
     Q5 -->|아니오| DIRECT["MoAI 직접 처리<br>간단한 작업"]
 ```
 
+## 계층형 팀 — manager-lead 원리
+
+`manager-lead`는 Tier L 규모의 run 단계를 조정하는 전용 에이전트입니다. 직접 코드를 쓰지 않고, 마일스톤을 나눠 리프 워커(leaf worker)에게 맡긴 뒤 각 마일스톤 경계에서 컨텍스트를 접고 검증을 교차로 돌립니다. 리프 워커는 `Agent(general-purpose)`로 그때그때 생성되며, 서로 쓰기 영역이 겹치지 않도록 worktree로 격리된 브랜치에서 실행됩니다.
+
+이 위임 경로는 Mode 5(순차 하위 에이전트)의 변형이며 새 실행 모드가 아닙니다. 은퇴한 Agent Teams 정적 계층과도 무관합니다 — Mode 3 tombstone과 `MODE_TEAM_UNAVAILABLE` 동작은 그대로입니다.
+
+### 진입 조건 — 세 가지를 모두 만족할 때만
+
+오케스트레이터는 아래 세 조건이 **전부** 성립할 때만 `manager-lead`를 생성합니다. 하나라도 어긋나면 오케스트레이터가 Mode 5로 직접 마일스톤을 순차 처리합니다. 조건을 못 채운 작업에 `manager-lead`를 붙이면 조정 비용만 늘고 회수되지 않기 때문입니다.
+
+| 축 | 기준 |
+|----|------|
+| 마일스톤 수 | plan.md §F 마일스톤 목록에 3개 이상 |
+| 파일 표면 | 마일스톤 전체의 쓰기 대상이 10개 이상 |
+| 도메인 범위 | 서로 다른 도메인 3개 이상 (예: 백엔드 + 프론트엔드 + devops) |
+
+세 조건은 OR가 아니라 AND입니다. 단일 마일스톤짜리 10파일 리팩터링처럼 한 축만 걸치는 작업까지 끌어들이지 않으려고 의도적으로 좁게 잡은 값입니다. 오케스트레이터는 세 조건이 모두 충족됐다는 판단을 `progress.md` § Mode Selection에 기록한 뒤 생성합니다.
+
+```mermaid
+flowchart TD
+    START["run 단계 위임 요청"] --> Q1{"마일스톤 3개 이상?"}
+    Q1 -->|"아니오"| MODE5["오케스트레이터 직접 Mode 5<br>manager-develop 순차 실행"]
+    Q1 -->|"예"| Q2{"쓰기 대상 파일 10개 이상?"}
+    Q2 -->|"아니오"| MODE5
+    Q2 -->|"예"| Q3{"도메인 3개 이상?"}
+    Q3 -->|"아니오"| MODE5
+    Q3 -->|"예"| LEAD["manager-lead 생성<br>리프 워커 팬아웃 조정"]
+```
+
+### depth-2 봉인
+
+`manager-lead`는 카탈로그 에이전트 가운데 `tools:` 목록에 `Agent`를 담은 **유일한** 에이전트입니다. 나머지는 모두 `Agent`를 빼는 방식으로 평면 계층을 유지하는데, 그 예외를 딱 한 겹만 여는 자리입니다. 그래서 오케스트레이터 → `manager-lead`가 1단, `manager-lead` → 리프 워커가 2단이고, 3단은 생기지 않습니다.
+
+리프 워커는 생성 시점에 `tools:` 목록을 받으며 여기서 `Agent`가 항상 빠집니다. 앞으로 리프 워커를 파일로 정의하게 되더라도 frontmatter의 `leaf_of: manager-lead` 또는 본문 마커 `<!-- manager-lead leaf-worker -->`로 스스로를 선언하면, `internal/template/manager_lead_depth_test.go`의 CI 가드가 그 파일의 `tools:`에 `Agent`가 있는지 검사해 빌드를 실패시킵니다.
+
+{{< callout type="warning" >}}
+이 봉인은 **MoAI 정책 불변식이지 런타임 불변식이 아닙니다**. Claude Code 런타임 자체는 더 깊은 재귀를 허용합니다 — v2.1.219부터 중첩 생성이 기본으로 켜져 있고 기본 깊이 상한은 3입니다. 즉 런타임은 막아주지 않으므로, 깊이를 붙드는 실질적인 장치는 `tools:`에서 `Agent`를 빼는 관행과 위 CI 가드 두 가지뿐입니다.
+{{< /callout >}}
+
+```mermaid
+flowchart TD
+    ORCH["오케스트레이터"] -->|"depth 1"| LEAD["manager-lead<br>tools에 Agent 포함 (유일)"]
+    LEAD -->|"depth 2"| W1["리프 워커 A<br>tools에 Agent 없음"]
+    LEAD -->|"depth 2"| W2["리프 워커 B<br>tools에 Agent 없음"]
+    W1 -.->|"차단됨"| X["depth 3 재귀"]
+    W2 -.->|"차단됨"| X
+    GUARD["manager_lead_depth_test.go<br>CI 가드"] -.->|"빌드 실패로 검출"| X
+```
+
+### 컨텍스트 폴딩 3단계
+
+마일스톤 Mn의 AC 행이 모두 PASS이고 그 행들의 교차 검증까지 PASS로 돌아오면, `manager-lead`는 다음 마일스톤으로 넘어가기 전에 세 단계를 밟습니다. 이 절차는 **이미 있는 도구만 조합**합니다 — 새 Go 코드도, 새 훅도, 새 CLI 서브커맨드도 만들지 않습니다.
+
+1. **증거 영속화** — 각 AC의 검증 명령 출력을 `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`으로 리다이렉트합니다. `/tmp`는 OS가 비우기 때문에 쓰지 않습니다. 감사 시점에 이 경로가 실제로 열려야 인용된 근거가 유효합니다. 증거를 채우지 못한 AC는 `PASS`가 아니라 `GAP`으로 표기합니다.
+2. **폴드 행 추가** — `progress.md` §E.2에 기존 행 형식 그대로 한 줄을 덧붙입니다: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`. `M<n>:` 접두사는 `internal/spec/era.go`의 §E 헤딩 매처와 충돌하지 않도록 고른 형태여서, 매처를 손대지 않고 공존합니다.
+3. **`/compact` 실행** — 유지할 항목을 명시해 압축합니다: retain-current-milestone(방금 끝낸 마일스톤과 그 폴드 행), retain-fold-rows(§E.2의 이전 폴드 행 전체), retain-armed-goal(`/moai goal`로 걸어둔 조건이 있으면 그 조건).
+
+폴드 이후 불변식은 두 가지입니다 — 압축 후 토큰 사용량이 압축 전보다 줄어야 하고, 동시에 모델별 핸드오프 임계값(1M 계열 50%, 200K/256K 계열 90%) 아래여야 합니다. 줄지 않았다면 실패한 폴드로 보고 다시 계획합니다. 서브에이전트 컨텍스트에서 `/compact`를 쓸 수 없을 때는 blocker 보고서를 반환해 오케스트레이터가 대신 압축하거나 `/clear` + 재개 메시지 경로로 우회합니다.
+
+```mermaid
+flowchart TD
+    MN["마일스톤 Mn 완료<br>AC 전부 PASS + 교차 검증 PASS"] --> S1["1단계: 증거 영속화<br>.moai/state/verify/session/"]
+    S1 --> S2["2단계: 폴드 행 추가<br>progress.md §E.2"]
+    S2 --> S3["3단계: /compact 실행<br>retain 지시 3종"]
+    S3 --> CHECK{"압축 후 사용량이<br>줄고 임계값 미만?"}
+    CHECK -->|"예"| NEXT["마일스톤 M(n+1) 진입"]
+    CHECK -->|"아니오"| REPLAN["실패한 폴드로 처리<br>재계획"]
+```
+
+### peer 교차 검증
+
+리프 워커가 어떤 AC를 PASS로 표기하면, `manager-lead`는 **그 작업을 하지 않은** 두 번째 `Agent(general-purpose)`를 읽기 전용으로 생성합니다. 읽기 전용은 `tools:`에서 Write/Edit/NotebookEdit를 빼는 방식으로 강제합니다. 이 워커는 `acceptance.md` §D의 Given-When-Then 명령을 그대로 다시 돌리고 `PASS` / `PARTIAL` / `FAIL` 중 하나를 반환합니다.
+
+두 번째 워커는 저자의 주장에 아무 이해관계가 없습니다. 그래서 grep 결과를 잘못 세거나, 오래된 baseline을 인용하거나, 검증 명령 하나를 건너뛰는 식의 자기 보고 실패가 그대로 드러납니다.
+
+`FAIL` 또는 `PARTIAL`이 나오면 `manager-lead`는 다음 마일스톤으로 넘어가지 않습니다. 대신 AC ID, 저자가 제시한 근거, 교차 검증 워커의 근거, 두 결과가 갈라진 지점을 담은 blocker 보고서를 오케스트레이터에 반환합니다. 사용자에게 묻는 일은 오케스트레이터 몫입니다 — 하위 에이전트는 사용자 창구를 쓰지 않습니다. Tier S는 교차 검증을 건너뜁니다(범위가 작아 검증 비용이 얻는 것보다 큽니다).
+
+sync 단계의 `sync-auditor`와는 역할이 다릅니다. `sync-auditor`는 구현이 끝난 뒤 4차원 점수를 매기는 최종 회의적 판독이고, peer 교차 검증은 구현 도중 AC 하나하나에 붙는 이진 판정입니다. 둘은 서로를 대신하지 않습니다.
+
+```mermaid
+flowchart TD
+    AUTHOR["리프 워커가 AC-X를 PASS로 보고"] --> TIER{"Tier S인가?"}
+    TIER -->|"예"| SKIP["교차 검증 생략"]
+    TIER -->|"아니오"| PEER["읽기 전용 두 번째 워커 생성<br>Write/Edit 도구 없음"]
+    PEER --> RERUN["acceptance.md §D GWT 명령 재실행"]
+    RERUN --> VERDICT{"판정"}
+    VERDICT -->|"PASS"| NEXT["폴드 후 다음 마일스톤"]
+    VERDICT -->|"PARTIAL 또는 FAIL"| BLOCK["blocker 보고서 반환<br>마일스톤 진행 중단"]
+    BLOCK --> ORCH["오케스트레이터가 사용자에게 질의"]
+```
+
 ## 에이전트 정의 파일
 
 10개 MoAI 사용자 정의 에이전트는 `.claude/agents/moai/` 디렉터리에 마크다운 파일로 정의합니다.
