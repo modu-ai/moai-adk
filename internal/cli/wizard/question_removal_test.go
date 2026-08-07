@@ -57,11 +57,9 @@ func TestRemovedQuestionsHaveNoCaptureBranch(t *testing.T) {
 	t.Parallel()
 
 	locale := ""
-	result := &WizardResult{}
-	saveAnswer("harness_profile", "strict", result, &locale)
-	if result.HarnessProfile != "" {
-		t.Errorf("saveAnswer still captures harness_profile (got %q) — the case must be gone", result.HarnessProfile)
-	}
+	// harness_profile field is fully removed from WizardResult (WS1 dead-code
+	// removal), so there is no field left to capture into — the assertion is
+	// vacuous and only the retained-capture branches below are meaningful.
 
 	boolResult := &WizardResult{}
 	saveBoolAnswer("coverage_exemptions_enabled", true, boolResult)

@@ -339,7 +339,6 @@ func TestValidateInitFlags_EmptyFlags(t *testing.T) {
 func TestInitCmd_HasPage3OverrideFlags(t *testing.T) {
 	page3Flags := []string{
 		"project-mode",
-		"harness-profile",
 		"enable-lsp",
 		"enforce-quality",
 		"enable-design",

@@ -46,7 +46,6 @@ moai init [project-name]
 | 标志 | 说明 |
 |--------|------|
 | `--project-mode <personal\|team>` | 项目模式(默认:personal) |
-| `--harness-profile <name>` | harness 评估配置:default、strict、lenient、frontend;接受该值,但目前不会持久化生效 |
 | `--enable-lsp` | 启用 LSP 集成(默认:true) |
 | `--enforce-quality` | 强制质量门禁(默认:true) |
 | `--enable-design` | 启用设计工作流(默认:true) |
