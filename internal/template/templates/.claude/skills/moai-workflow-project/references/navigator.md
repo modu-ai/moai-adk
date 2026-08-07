@@ -40,6 +40,13 @@ content there (it depends on the user's SPEC registry).
 Advance **SPEC-X-001** toward its next milestone. See `progress-map.md`.
 ```
 
+The "Next task" recommendation uses a positive status-tier selection: it picks
+the alphabetically-first `in-progress` SPEC; if none, the alphabetically-first
+`draft` SPEC; otherwise it falls back to "No active SPEC". This deliberately
+differs from the "Current frontier" display list, which stays inclusive of
+`implemented` SPECs for context — `implemented` (and any future non-active
+status) is excluded from the recommendation but kept visible in the frontier.
+
 ### `capability-map.md` (feature inventory)
 
 ```markdown
