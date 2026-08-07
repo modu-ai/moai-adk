@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-NAVIGATOR-004
 title: "Fix Next-task misclassification — exclude implemented SPECs, prefer in-progress"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-07
 updated: 2026-08-07
 author: manager-spec
