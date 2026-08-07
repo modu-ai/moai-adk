@@ -13,7 +13,7 @@ Claude Code와 moai-adk-go를 잇는 **커스텀 statusline 시스템**입니다
 ### 최종 레이아웃 (3-line v3)
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.2 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
@@ -91,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **포맷**: `🗿 v<current>` 또는 업데이트 가능 시 `🗿 v<current> -> 🗿 v<latest>`
 - **데이터 소스**: `.moai/config/sections/system.yaml` `moai.version` + 백그라운드 update checker 결과
 - **예시**:
-  - `🗿 v3.0.0` (최신)
-  - `🗿 v2.18.0 -> 🗿 v3.0.0` (업데이트 권고)
+  - `🗿 v3.0.2` (최신)
+  - `🗿 v2.18.0 -> 🗿 v3.0.2` (업데이트 권고)
 - **세그먼트 키**: `moai_version`
 
 ### 세션 시간

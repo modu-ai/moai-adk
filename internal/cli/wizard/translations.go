@@ -113,6 +113,64 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
 			},
 		},
+		"autonomy_tier": {
+			Title:       "자율성 등급 선택",
+			Description: "Claude Code가 표시하는 권한 프롬프트 수를 제어합니다. 'Semi-auto'가 안전한 기본값입니다.",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (권장)", Desc: "도구별 프롬프트 — 현재 동작"},
+				{Label: "Automatic", Desc: "도구별 자동 승인"},
+				{Label: "Fully-autonomous", Desc: "모든 프롬프트 건너뜀 (bypassPermissions); 샌드박스 증명 필요, 킬스위치로 제어"},
+			},
+		},
+		"worktree_auto_create": {
+			Title:       "워크트리 자동 생성을 활성화할까요?",
+			Description: "활성화하면 MoAI가 run-phase 작업을 위해 격리된 git 워크트리를 자동으로 생성합니다. 기본값은 꺼짐입니다 (L1 워크트리는 Claude Code 런타임이 자체 처리합니다).",
+		},
+		"audit_model": {
+			Title:       "감사 모델 선택",
+			Description: "병합을 게이트하는 활성 리뷰 백엔드입니다. 'claude'는 세션 모델을 사용하고, 'codex'/'glm'은 외부 리뷰어를 추가합니다 (부재 시 fail-open).",
+			Options: []OptionTranslation{
+				{Label: "Claude (권장)", Desc: "세션 모델 리뷰 — 외부 종속성 없음"},
+				{Label: "Codex", Desc: "codex CLI 리뷰 (codex 설치 필요, fail-open)"},
+				{Label: "GLM", Desc: "z.ai GLM 리뷰 (GLM 키 필요, fail-open)"},
+				{Label: "Multi", Desc: "다중 감사자 선언 (수렴 로직은 후속 SPEC, 저장만)"},
+			},
+		},
+		"audit_gate_claude": {
+			Title:       "Claude 감사 게이트",
+			Description: "off = 건너뜀, advisory = 경고만, required = PASS까지 병합 차단.",
+			Options: []OptionTranslation{
+				{Label: "Required (권장)", Desc: "Claude 리뷰 PASS까지 병합 차단"},
+				{Label: "Advisory", Desc: "경고만 — 차단 없음"},
+				{Label: "Off", Desc: "Claude 감사자 건너뜀"},
+			},
+		},
+		"audit_gate_codex": {
+			Title:       "Codex 감사 게이트",
+			Description: "off = 건너뜀, advisory = 경고만, required = PASS까지 병합 차단 (codex 부재 시 fail-open).",
+			Options: []OptionTranslation{
+				{Label: "Required (권장)", Desc: "codex PASS까지 병합 차단 (부재 시 fail-open)"},
+				{Label: "Advisory", Desc: "경고만 — 차단 없음"},
+				{Label: "Off", Desc: "codex 감사자 건너뜀"},
+			},
+		},
+		"audit_gate_glm": {
+			Title:       "GLM 감사 게이트",
+			Description: "off = 건너뜀, advisory = 경고만, required = PASS까지 병합 차단 (GLM 키 부재 시 fail-open).",
+			Options: []OptionTranslation{
+				{Label: "Required", Desc: "GLM PASS까지 병합 차단 (키 부재 시 fail-open)"},
+				{Label: "Advisory (권장)", Desc: "경고만 — 차단 없음, glm 분산 기본값"},
+				{Label: "Off", Desc: "GLM 감사자 건너뜀"},
+			},
+		},
+		"codex_audit_enabled": {
+			Title:       "codex 리뷰 게이트를 활성화할까요?",
+			Description: "활성화하면 MoAI가 codex Stop-hook 리뷰 게이트를 켭니다 (workflow.codex.review_gate.enabled). 기본값은 꺼짐 — 게이트는 휴면 상태로 배포됩니다.",
+		},
+		"mcp_tools_opt_in": {
+			Title:       "moai MCP 서버를 프로비저닝할까요 (.mcp.json)?",
+			Description: "활성화하면 MoAI가 `moai mcp-server` stdio 항목을 .mcp.json에 기록합니다 (옵트인, 신규 프로젝트는 휴면). 기본값은 꺼짐입니다.",
+		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -197,6 +255,64 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
 			},
 		},
+		"autonomy_tier": {
+			Title:       "自律性レベルを選択",
+			Description: "Claude Codeが表示する権限プロンプトの数を制御します。'Semi-auto'が安全なデフォルトです。",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (推奨)", Desc: "ツールごとのプロンプト — 現在の動作"},
+				{Label: "Automatic", Desc: "ツールごとの自動承認"},
+				{Label: "Fully-autonomous", Desc: "すべてのプロンプトをスキップ (bypassPermissions); サンドボックス証明が必要、キルスイッチで制御"},
+			},
+		},
+		"worktree_auto_create": {
+			Title:       "ワークツリー自動生成を有効にしますか?",
+			Description: "有効にすると、MoAI が run-phase 作業のために分離された git ワークツリーを自動生成します。デフォルトはオフです (L1 ワークツリーは Claude Code ランタイムが自律的に処理します)。",
+		},
+		"audit_model": {
+			Title:       "監査モデルを選択",
+			Description: "マージをゲートするアクティブなレビューバックエンドです。'claude' はセッションモデルを使用し、'codex'/'glm' は外部レビューアを追加します (不在時は fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Claude (推奨)", Desc: "セッションモデルレビュー — 外部依存なし"},
+				{Label: "Codex", Desc: "codex CLI レビュー (codex インストール必須, fail-open)"},
+				{Label: "GLM", Desc: "z.ai GLM レビュー (GLM キー必須, fail-open)"},
+				{Label: "Multi", Desc: "複数監査者を宣言 (収束ロジックは後続 SPEC, 保存のみ)"},
+			},
+		},
+		"audit_gate_claude": {
+			Title:       "Claude 監査ゲート",
+			Description: "off = スキップ, advisory = 警告のみ, required = PASS までマージブロック。",
+			Options: []OptionTranslation{
+				{Label: "Required (推奨)", Desc: "Claude レビュー PASS までマージブロック"},
+				{Label: "Advisory", Desc: "警告のみ — ブロックなし"},
+				{Label: "Off", Desc: "Claude 監査者をスキップ"},
+			},
+		},
+		"audit_gate_codex": {
+			Title:       "Codex 監査ゲート",
+			Description: "off = スキップ, advisory = 警告のみ, required = PASS までマージブロック (codex 不在時は fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Required (推奨)", Desc: "codex PASS までマージブロック (不在時 fail-open)"},
+				{Label: "Advisory", Desc: "警告のみ — ブロックなし"},
+				{Label: "Off", Desc: "codex 監査者をスキップ"},
+			},
+		},
+		"audit_gate_glm": {
+			Title:       "GLM 監査ゲート",
+			Description: "off = スキップ, advisory = 警告のみ, required = PASS までマージブロック (GLM キー不在時は fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Required", Desc: "GLM PASS までマージブロック (キー不在時 fail-open)"},
+				{Label: "Advisory (推奨)", Desc: "警告のみ — ブロックなし, glm 配布デフォルト"},
+				{Label: "Off", Desc: "GLM 監査者をスキップ"},
+			},
+		},
+		"codex_audit_enabled": {
+			Title:       "codex レビューゲートを有効にしますか?",
+			Description: "有効にすると、MoAI が codex Stop-hook レビューゲートを起動します (workflow.codex.review_gate.enabled)。デフォルトはオフ — ゲートは休止状態で配布されます。",
+		},
+		"mcp_tools_opt_in": {
+			Title:       "moai MCP サーバーをプロビジョニングしますか (.mcp.json)?",
+			Description: "有効にすると、MoAI が `moai mcp-server` stdio エントリーを .mcp.json に書き込みます (オプトイン, 新規プロジェクトは休止)。デフォルトはオフです。",
+		},
 	},
 	"zh": {
 		"conversation_language": {
@@ -280,6 +396,64 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
 				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
 			},
+		},
+		"autonomy_tier": {
+			Title:       "选择自主性等级",
+			Description: "控制 Claude Code 显示的权限提示数量。'Semi-auto' 是安全的默认值。",
+			Options: []OptionTranslation{
+				{Label: "Semi-auto (推荐)", Desc: "逐工具提示 — 当前行为"},
+				{Label: "Automatic", Desc: "逐工具自动批准"},
+				{Label: "Fully-autonomous", Desc: "跳过所有提示 (bypassPermissions); 需要沙箱证明，受紧急开关控制"},
+			},
+		},
+		"worktree_auto_create": {
+			Title:       "是否启用工作树自动创建?",
+			Description: "启用后,MoAI 会为 run-phase 工作自动创建隔离的 git 工作树。默认关闭(L1 工作树由 Claude Code 运行时自主处理)。",
+		},
+		"audit_model": {
+			Title:       "选择审计模型",
+			Description: " gating 合并的活跃审查后端。'claude' 使用会话模型;'codex'/'glm' 增加外部审查者(缺席时 fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Claude (推荐)", Desc: "会话模型审查 — 无外部依赖"},
+				{Label: "Codex", Desc: "codex CLI 审查(需安装 codex,fail-open)"},
+				{Label: "GLM", Desc: "z.ai GLM 审查(需 GLM key,fail-open)"},
+				{Label: "Multi", Desc: "声明多审计者(收敛逻辑为后续 SPEC,仅存储)"},
+			},
+		},
+		"audit_gate_claude": {
+			Title:       "Claude 审计闸门",
+			Description: "off = 跳过,advisory = 仅警告,required = 阻塞合并直至 PASS。",
+			Options: []OptionTranslation{
+				{Label: "Required (推荐)", Desc: "阻塞合并直至 Claude 审查 PASS"},
+				{Label: "Advisory", Desc: "仅警告 — 不阻塞"},
+				{Label: "Off", Desc: "跳过 Claude 审计者"},
+			},
+		},
+		"audit_gate_codex": {
+			Title:       "Codex 审计闸门",
+			Description: "off = 跳过,advisory = 仅警告,required = 阻塞合并直至 PASS(codex 缺席时 fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Required (推荐)", Desc: "阻塞合并直至 codex PASS(缺席 fail-open)"},
+				{Label: "Advisory", Desc: "仅警告 — 不阻塞"},
+				{Label: "Off", Desc: "跳过 codex 审计者"},
+			},
+		},
+		"audit_gate_glm": {
+			Title:       "GLM 审计闸门",
+			Description: "off = 跳过,advisory = 仅警告,required = 阻塞合并直至 PASS(GLM key 缺席时 fail-open)。",
+			Options: []OptionTranslation{
+				{Label: "Required", Desc: "阻塞合并直至 GLM PASS(key 缺席 fail-open)"},
+				{Label: "Advisory (推荐)", Desc: "仅警告 — 不阻塞,glm 分发默认"},
+				{Label: "Off", Desc: "跳过 GLM 审计者"},
+			},
+		},
+		"codex_audit_enabled": {
+			Title:       "是否启用 codex 审查闸门?",
+			Description: "启用后,MoAI 激活 codex Stop-hook 审查闸门(workflow.codex.review_gate.enabled)。默认关闭 — 闸门以休眠状态分发。",
+		},
+		"mcp_tools_opt_in": {
+			Title:       "是否 provisioning moai MCP 服务器(.mcp.json)?",
+			Description: "启用后,MoAI 将 `moai mcp-server` stdio 条目写入 .mcp.json(opt-in,新项目休眠)。默认关闭。",
 		},
 	},
 }

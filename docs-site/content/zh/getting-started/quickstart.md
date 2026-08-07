@@ -65,7 +65,7 @@ flowchart TB
 
 ### 第 3 步：生成 SPEC 文档
 
-为第一个功能生成 SPEC 文档。使用 EARS 格式定义明确的需求。
+为第一个功能生成 SPEC 文档。使用 GEARS 格式定义明确的需求。
 
 {{< callout type="info" >}}
 **为什么需要 SPEC？**
@@ -81,7 +81,7 @@ flowchart TB
 | 问题 | SPEC 的解决方式 |
 |------|-----------------|
 | 上下文丢失 | 将需求**保存为文件**，永久留存 |
-| 需求含糊 | 用 **EARS 格式**明确结构化 |
+| 需求含糊 | 用 **GEARS 格式**明确结构化 |
 | 沟通错误 | 用**验收标准**明示完成条件 |
 | 无法追踪进度 | 用 **SPEC ID** 管理工作单元 |
 
@@ -96,7 +96,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["输入需求"] --> B["EARS 格式分析"]
+    A["输入需求"] --> B["GEARS 格式分析"]
     B --> C["生成 SPEC 文档"]
     C --> D["保存 SPEC-001"]
     D --> E["验证需求"]
@@ -260,7 +260,7 @@ sequenceDiagram
     Project-->>Dev: product/structure/tech.md
 
     Dev->>Plan: 输入功能需求
-    Plan->>Plan: 以 EARS 格式分析
+    Plan->>Plan: 以 GEARS 格式分析
     Plan-->>Dev: SPEC-001 文档
 
     Note over Dev: 执行 /clear

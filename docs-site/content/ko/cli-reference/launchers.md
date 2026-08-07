@@ -30,6 +30,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 이전 세션 이어서 시작 |
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
+| `--spawn` | 현재 프로세스를 대체하는 대신 **새 tmux 창** 에 세션을 열고 호출자 세션은 그대로 유지 (아래 "Team window spawn" 참고) |
 | `--chrome` / `--no-chrome` | Chrome MCP 토글 |
 
 권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사하며, Team 플랜과 Sonnet/Opus 4.6 이상이 필요합니다.
@@ -98,6 +99,24 @@ moai cg -w feat-login    # 하이브리드도 동일
 {{< callout type="info" >}}
 세션 인수인계에서 worktree 이름을 SPEC ID와 같게 지어 두면(`moai cc -w SPEC-XXX-001`) 다음 세션이 한 줄로 같은 작업 트리에 복귀할 수 있습니다.
 {{< /callout >}}
+
+## Team window spawn (`--spawn` 플래그)
+
+세 런처 (`moai cc`, `moai cg`, `moai glm`) 모두 `--spawn` 플래그를 받습니다. `-w` 와 짝지어 쓰면, 현재 프로세스를 Claude Code로 대체하는 대신 **새 tmux 창** 에 세션을 띄우고 호출자 세션은 그대로 유지합니다. 팀 모드에서 동료 창을 띄울 때 씁니다.
+
+```bash
+moai cc -w feat-login --spawn        # Claude 동료 창 (현재 세션 유지)
+moai cg -w feat-auth --spawn         # GLM 동료 창 (현재 세션 유지)
+moai glm -w feat-auth --spawn        # GLM 세션 (현재 세션 유지)
+```
+
+동작 규칙:
+
+- tmux 세션 안에서만 동작합니다. tmux 밖에서 호출하면 **폴백 없이 거부** 합니다 — 조용히 in-place 로 대체하면 호출자 세션을 덮어쓰는 결과를 낳기 때문입니다.
+- `tmux` 와 `moai` 바이너리가 둘 다 필요합니다. 하나라도 없으면 거부합니다.
+- `--spawn` 없이 그냥 `-w <name>` 만 쓰면 기존처럼 현재 프로세스를 대체합니다.
+
+`--spawn` 은 CLI 런처 결정을 `AskUserQuestion` 으로 묻지 않는다는 HARD 규칙을 따릅니다 — 모든 결과는 관측 가능한 상태(tmux 세션 존재, 바이너리 존재) 에서 결정되어 종료 코드와 stderr 로 보고됩니다.
 
 ## 관련 문서
 

@@ -56,9 +56,16 @@ moai init [project-name]
 |--------|------|
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认:manual) |
 | `--git-provider <github\|gitlab>` | Git 提供商 |
+| `--gitlab-instance-url <url>` | GitLab 自托管实例 URL(`--git-provider gitlab` 时使用) |
 | `--github-username <name>` | GitHub 用户名(personal/team 模式必填) |
 | `--profile <high\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` 的 `profile` (选择配置矩阵列)。legacy 值 `max` 也接受作为输入并规范化为 `high` |
 | `--model-policy <high\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` 的 `performance_tier` (`profile` 缺失时作为别名读取) |
+
+### 自主性策略
+
+| 标志 | 说明 |
+|--------|------|
+| `--autonomy-tier <semi-auto\|automatic\|fully-autonomous>` | Claude Code 权限模式。`semi-auto`(默认值,按工具逐个提示)、`automatic`(自动批准)、`fully-autonomous`(`bypassPermissions` —— 需要沙盒门禁 opt-in) |
 
 ## 示例
 

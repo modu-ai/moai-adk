@@ -61,7 +61,7 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load LLM section
 	l.loadLLMSection(sectionsDir, cfg)
 
-	// Load ralph section (RalphConfig + Session.StaleSeconds)
+	// Load ralph section (RalphConfig)
 	l.loadRalphSection(sectionsDir, cfg)
 
 	// Load state section
@@ -251,8 +251,6 @@ func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
 }
 
 // loadRalphSection loads the ralph configuration section from ralph.yaml.
-// Injects the ralph.stale_seconds key in ralph.yaml into Config.Session.StaleSeconds.
-// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS defaults to 3600 and is overridable from ralph.yaml.
 func (l *Loader) loadRalphSection(dir string, cfg *Config) {
 	wrapper := &ralphFileWrapper{}
 	// Initialize defaults for ralph.yaml (inline field)
@@ -264,10 +262,6 @@ func (l *Loader) loadRalphSection(dir string, cfg *Config) {
 	}
 	if loaded {
 		cfg.Ralph = wrapper.Ralph.RalphConfig
-		// Only override when stale_seconds is non-zero (0 is treated as no explicit setting)
-		if wrapper.Ralph.StaleSeconds > 0 {
-			cfg.Session.StaleSeconds = wrapper.Ralph.StaleSeconds
-		}
 		l.loadedSections["ralph"] = true
 	}
 }

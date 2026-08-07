@@ -164,11 +164,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│    moai-adk v3.0.0     │
+│    moai-adk v3.0.2     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0   none   built unknown
+ v3.0.2   none   built unknown
 ```
 
 {{< callout type="info" >}}

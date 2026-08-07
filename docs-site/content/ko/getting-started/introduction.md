@@ -51,7 +51,7 @@ MoAI-ADK는 **SPEC 기반 TDD/DDD** 방법론을 따르며, **TRUST 5** 품질 �
 
 - 요구사항을 **파일로 저장**하여 영구 보존
 - 세션이 끊겨도 SPEC만 읽으면 **이어서 작업** 가능
-- EARS 형식으로 **모호함 없이** 명확하게 정의
+- GEARS 형식으로 **모호함 없이** 명확하게 정의
 - 같은 설명을 반복하지 않으니 **토큰도 절약**됩니다
 
 {{< callout type="info" >}}
@@ -148,7 +148,7 @@ MoAI-ADK는 Python Edition을 Go로 완전히 재작성하여 성능과 효율�
 
 - **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **31개** 스킬 (template-managed)
-- **36개** 터미널 CLI 명령 · **16종** `/moai` 슬래시 서브커맨드
+- **36개** 터미널 CLI 명령 · **15종** `/moai` 슬래시 서브커맨드
 - **16개** 프로그래밍 언어 지원
 - **543개** SPEC 문서 기반으로 개발된 코드베이스
 
@@ -212,7 +212,7 @@ MoAI-ADK는 3단계 개발 워크플로우를 따릅니다. Run 단계의 방법
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"EARS 형식으로 요구사항 정의"| B{"방법론 선택"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"GEARS 형식으로 요구사항 정의"| B{"방법론 선택"}
     B -->|"신규 프로젝트 (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"기존 프로젝트 (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]

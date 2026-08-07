@@ -317,8 +317,11 @@ MoAI-ADK 以 **shell 包装器 + Go 二进制** 架构提供 Hook。每个 `hand
 | `handle-compact.sh` | `compact` | PreCompact | 全部 | `/clear` 前保存上下文 | 30 秒 |
 | `handle-session-end.sh` | `session-end` | SessionEnd | 全部 | 会话结束时清理工作 | 10 秒 |
 | `handle-stop.sh` | `stop` | Stop | 全部 | 循环控制与完成确认 | 默认值 |
+| `handle-stop-goal.sh` | `stop-goal` | Stop(goal 引擎) | 全部 | `/moai goal` 回合判定(机械条件 + 模型条件) | 默认值 |
 | `handle-subagent-stop.sh` | `subagent-stop` | SubagentStop | 全部 | 处理子智能体工作结果 | 默认值 |
 | `handle-permission-request.sh` | `permission-request` | PermissionRequest | 全部 | 权限自动允许/拒绝决策 | 5 秒 |
+| `sync-phase-quality-gate.sh` | (Stop 钩子) | Stop(sync 阶段) | 全部 | sync 阶段提交完成时跑质量门禁(lint + test + 覆盖率 delta) | 默认值 |
+| `team-ac-verify.sh` | (TaskCompleted 钩子) | TaskCompleted | 全部 | team 模式下校验 AC PASS 证据文件 | 默认值 |
 
 ### SessionStart：显示项目信息
 
@@ -444,7 +447,7 @@ ralph:
 
 **保存内容：**
 - 当前活动 SPEC 状态（ID、阶段、进度）
-- 进行中的任务列表（TodoWrite）
+- 进行中的任务列表（TaskCreate/TaskUpdate/TaskList/TaskGet）
 - 已完成的任务列表
 - 已修改的文件列表
 - Git 状态信息（分支、未提交的变更）
@@ -694,38 +697,46 @@ Hook 脚本通过标准输入（stdin）接收 JSON 数据。
 
 ```
 .claude/hooks/moai/
-├── handle-session-start.sh          # SessionStart → moai hook session-start
-├── handle-pre-tool.sh               # PreToolUse → moai hook pre-tool
-├── handle-post-tool.sh              # PostToolUse → moai hook post-tool
-├── handle-compact.sh                # PreCompact → moai hook compact
-├── handle-post-compact.sh           # PostCompact → moai hook post-compact
-├── handle-session-end.sh            # SessionEnd → moai hook session-end
-├── handle-stop.sh                   # Stop → moai hook stop
-├── handle-stop-goal.sh              # Stop (goal 引擎) → moai hook stop-goal
-├── handle-stop-failure.sh           # StopFailure → moai hook stop-failure
-├── handle-subagent-start.sh         # SubagentStart → moai hook subagent-start
-├── handle-subagent-stop.sh          # SubagentStop → moai hook subagent-stop
-├── handle-notification.sh           # Notification → moai hook notification
-├── handle-user-prompt-submit.sh     # UserPromptSubmit → moai hook user-prompt-submit
-├── handle-permission-request.sh     # PermissionRequest → moai hook permission-request
-├── handle-permission-denied.sh      # PermissionDenied → moai hook permission-denied
-├── handle-teammate-idle.sh          # TeammateIdle → moai hook teammate-idle
-├── handle-task-completed.sh         # TaskCompleted → moai hook task-completed
-├── handle-task-created.sh           # TaskCreated → moai hook task-created
-├── handle-config-change.sh          # ConfigChange → moai hook config-change
-├── handle-cwd-changed.sh            # CwdChanged → moai hook cwd-changed
-├── handle-file-changed.sh           # FileChanged → moai hook file-changed
-├── handle-instructions-loaded.sh    # InstructionsLoaded → moai hook instructions-loaded
-├── handle-worktree-create.sh        # WorktreeCreate → moai hook worktree-create
-├── handle-worktree-remove.sh        # WorktreeRemove → moai hook worktree-remove
-├── handle-elicitation.sh            # Elicitation → moai hook elicitation
-├── handle-elicitation-result.sh     # ElicitationResult → moai hook elicitation-result
-├── handle-post-tool-failure.sh      # PostToolUseFailure → moai hook post-tool-failure
-├── handle-agent-hook.sh             # Agent 钩子通用包装器
-├── status-transition-ownership.sh    # SPEC 状态转换审计 (PostToolUse)
-├── handle-harness-observe-stop.sh   # 框架观察 (Stop)
-├── handle-harness-observe-subagent-stop.sh  # 框架观察 (SubagentStop)
-└── handle-harness-observe-user-prompt-submit.sh  # 框架观察 (UserPromptSubmit)
+├── handle-session-start.sh                 # SessionStart → moai hook session-start
+├── handle-session-start-compact.sh         # SessionStart(节省上下文) → 会话开始处理器变体
+├── handle-session-start-navigator.sh       # SessionStart(Project Navigator) → 实时导航器注入
+├── handle-pre-tool.sh                      # PreToolUse → moai hook pre-tool
+├── handle-post-tool.sh                     # PostToolUse → moai hook post-tool
+├── handle-post-tool-failure.sh             # PostToolUseFailure → moai hook post-tool-failure
+├── handle-compact.sh                       # PreCompact → moai hook compact
+├── handle-post-compact.sh                  # PostCompact → moai hook post-compact
+├── handle-session-end.sh                   # SessionEnd → moai hook session-end
+├── handle-stop.sh                          # Stop → moai hook stop
+├── handle-stop-goal.sh                     # Stop (goal 引擎) → moai hook stop-goal
+├── handle-stop-failure.sh                  # StopFailure → moai hook stop-failure
+├── handle-subagent-start.sh                # SubagentStart → moai hook subagent-start
+├── handle-subagent-stop.sh                 # SubagentStop → moai hook subagent-stop
+├── handle-notification.sh                  # Notification → moai hook notification
+├── handle-user-prompt-submit.sh            # UserPromptSubmit → moai hook user-prompt-submit
+├── handle-permission-request.sh            # PermissionRequest → moai hook permission-request
+├── handle-permission-denied.sh             # PermissionDenied → moai hook permission-denied
+├── handle-teammate-idle.sh                 # TeammateIdle → moai hook teammate-idle
+├── handle-task-completed.sh                # TaskCompleted → moai hook task-completed
+├── handle-task-created.sh                  # TaskCreated → moai hook task-created
+├── handle-config-change.sh                 # ConfigChange → moai hook config-change
+├── handle-cwd-changed.sh                   # CwdChanged → moai hook cwd-changed
+├── handle-file-changed.sh                  # FileChanged → moai hook file-changed
+├── handle-instructions-loaded.sh           # InstructionsLoaded → moai hook instructions-loaded
+├── handle-worktree-create.sh               # WorktreeCreate → moai hook worktree-create
+├── handle-worktree-remove.sh               # WorktreeRemove → moai hook worktree-remove
+├── handle-elicitation.sh                   # Elicitation → moai hook elicitation
+├── handle-elicitation-result.sh            # ElicitationResult → moai hook elicitation-result
+├── handle-security-scan.sh                 # 安全扫描钩子
+├── handle-security-turn.sh                 # 回合级安全审查钩子
+├── handle-security-commit.sh               # 提交级安全审查钩子
+├── handle-agent-hook.sh                    # Agent 钩子通用包装器
+├── handle-harness-observe.sh               # harness 观察(基础)
+├── handle-harness-observe-stop.sh          # harness 观察 (Stop)
+├── handle-harness-observe-subagent-stop.sh # harness 观察 (SubagentStop)
+├── handle-harness-observe-user-prompt-submit.sh # harness 观察 (UserPromptSubmit)
+├── status-transition-ownership.sh          # SPEC 状态转换审计 (PostToolUse, 所有权矩阵)
+├── sync-phase-quality-gate.sh              # sync 阶段提交质量门禁 (lint+test+coverage delta)
+└── team-ac-verify.sh                       # team 模式 TaskCompleted AC 校验
 ```
 
 {{< callout type="warning" >}}

@@ -122,6 +122,28 @@ If --area flag: Generate only area-specific maps:
 If --format mermaid: Include mermaid diagrams in documentation.
 If --format json: Generate machine-readable JSON alongside markdown.
 
+### Phase 3 extension: AST symbol enrichment (capability-gated)
+
+After generating the existing five map files above, run a deterministic
+capability-gated AST enrichment step. This is executor delegation inside
+Phase 3 (NOT an LLM-driven phase selection):
+
+- IF `.moai/project/navigator/capability-map.md` EXISTS:
+  run `scripts/navigator-enrich.sh`, which emits
+  `.moai/project/codemaps/capability-symbols.md` and
+  `.moai/project/codemaps/capability-symbols.json` (the AST-derived symbol
+  view of the capability map).
+- ELSE: log an info line ("navigator: capability-map.md absent, skipping AST
+  enrichment") and continue — codemaps completes normally.
+
+The enrichment reads 001's capability-map.md header-driven, walks each row's
+implementation-path, and extracts tree-sitter symbols. It is fail-open
+(exit 0 always), idempotent (provenance from git, never wall-clock), and
+writes atomically. The Agentless pipeline classification of /moai codemaps
+is preserved: the step is a deterministic script invocation, not an LLM
+dispatch. See `references/navigator-astx.md` for the per-language grammar
+matrix and extension model.
+
 ## Phase 4: Verification
 
 - Verify all referenced files and modules actually exist

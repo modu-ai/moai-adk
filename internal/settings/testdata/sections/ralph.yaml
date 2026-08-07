@@ -1,35 +1,36 @@
+# Ralph Engine Settings
+# Automated feedback loop with LSP diagnostics and AST-grep integration.
+#
+# Every key below maps to a RalphConfig struct field read by Go code:
+#   - max_iterations  → RalphConfig.MaxIterations     (internal/cli/deps.go, loop.NewLoopController ceiling)
+#   - auto_converge   → RalphConfig.AutoConverge       (internal/ralph/engine.go Decide stagnation detection)
+#   - human_review    → RalphConfig.HumanReview        (internal/ralph/engine.go Decide review breakpoint)
+#   - lint_as_instruction → RalphConfig.LintAsInstruction (internal/hook/post_tool.go, inject errors as instruction)
+#   - warn_as_instruction → RalphConfig.WarnAsInstruction (internal/hook/post_tool.go, inject warnings as instruction)
+#
+# LSP bridge configuration lives in lsp.yaml (gopls); AST-grep gate configuration
+# lives in gate.yaml. The former ralph.lsp.* / ralph.ast_grep.* / ralph.loop.* /
+# ralph.hooks.* / ralph.enabled blocks were inert (the non-strict loader silently
+# ignored them) and have been removed so this file is an honest contract between
+# user intent and engine behavior (SPEC-RALPH-CONFIG-REDESIGN-001).
+
 ralph:
-    ast_grep:
-        auto_fix: false
-        config_path: .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml
-        enabled: true
-        quality_scan: true
-        security_scan: true
-    enabled: true
-    hooks:
-        post_tool_lsp:
-            enabled: true
-            severity_threshold: error
-            trigger_on:
-                - Write
-                - Edit
-        stop_loop_controller:
-            check_completion: true
-            enabled: true
-    lint_as_instruction: true
-    loop:
-        auto_fix: false
-        completion:
-            coverage_threshold: 85
-            tests_pass: true
-            zero_errors: true
-            zero_warnings: false
-        cooldown_seconds: 2
-        max_iterations: 10
-        require_confirmation: true
-    lsp:
-        auto_start: true
-        graceful_degradation: true
-        poll_interval_ms: 1000
-        timeout_seconds: 15
-    warn_as_instruction: false
+  # Maximum number of feedback loop iterations. Compiled default: 5.
+  # Iteration-ceiling precedence: CLI --max flag > this key > workflow.yaml loop_prevention.max_iterations.
+  max_iterations: 5
+
+  # When true, the engine auto-converges on stagnation instead of spinning iterations.
+  # Compiled default: true.
+  auto_converge: true
+
+  # When true, the engine breaks for human review at the review phase.
+  # Compiled default: true.
+  human_review: true
+
+  # Inject LSP diagnostics as systemMessage so the AI receives errors as its next prompt.
+  # Default: true.
+  lint_as_instruction: true
+
+  # Include warnings in the systemMessage when there are no errors.
+  # Default: false (errors only).
+  warn_as_instruction: false

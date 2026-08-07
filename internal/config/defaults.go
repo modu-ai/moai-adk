@@ -149,10 +149,6 @@ const (
 
 	DefaultStateDir = ".moai/state"
 
-	// DefaultStaleSeconds is the threshold (in seconds) at which a session checkpoint is considered stale.
-	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
-	DefaultStaleSeconds = 3600
-
 	// DefaultTraceRetentionDays is the age threshold (in days) past which
 	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
 	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
@@ -208,6 +204,14 @@ const (
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
 
+	// DefaultCodexReviewGateTimeout is the per-invocation timeout override for
+	// the `moai hook codex-review-gate` Stop hook (SPEC-MOAI-MCP-SERVER-001
+	// REQ-MCP-008 / AC-MCP-010). The moai-default 5s hook budget does NOT apply
+	// to this hook: a codex review legitimately runs for minutes, so the
+	// manifest pins 900s (15 min) for this hook only. Other hooks keep 5s.
+	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
+	DefaultCodexReviewGateTimeout = 900 * time.Second
+
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -232,6 +236,19 @@ const (
 	HandoffHardCeilingCapPct    = 95      // absolute cap for the hard (stage-2) ceiling
 	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
+
+// SandboxProofKinds is the allowlist of recognized sandbox/container isolation
+// kinds for the MOAI_SANDBOX_PROOF env marker (SPEC-AUTONOMY-TIERS-001 REQ-002
+// S3 hardening — sandbox-proof spoofing). A proof whose kind is not in this
+// list is rejected. Each kind names one of Claude Code's official full-process
+// isolation options (container, VM, or the sandbox-runtime); the marker is an
+// attestation and the allowlist is the proof — moai-adk does not re-verify the
+// boundary from inside (see autonomy_tiers.go SandboxProofKind). The slice is a
+// var (composite literals are not const expressions) so it remains
+// config-extendable without code change; callers treat it as read-only.
+var SandboxProofKinds = []string{
+	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
+}
 
 // DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
 // considered stale and silently removed by the SessionStart handler — auto-mode
@@ -602,6 +619,28 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
+		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
+		// ships default-OFF. Distributed users get an inert Stop hook; a
+		// maintainer opts in via local config. Template neutrality (§25): no
+		// `enabled: true` under internal/template/templates/.
+		Codex: CodexConfig{
+			ReviewGate: CodexReviewGateConfig{
+				Enabled: false,
+			},
+		},
+		// SPEC-MOAI-MCP-SERVER-001 M3 (REQ-MCP-010 / AC-MCP-012, progress.md
+		// §G.3 locked default profile): claude + codex required, glm advisory.
+		// glm ships advisory (NOT required) so a distributed user without a GLM
+		// key is never hard-blocked — the fail-open C2 invariant. `multi` is a
+		// declared token only; convergence logic is SPEC-AUDIT-MULTI-MODEL.
+		Audit: AuditConfig{
+			Model: AuditModelClaude,
+			Gates: AuditGates{
+				Claude: AuditGateRequired,
+				Codex:  AuditGateRequired,
+				GLM:    AuditGateAdvisory,
+			},
+		},
 		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
 		// feature ships default-OFF. When unset, moai init / moai profile /
 		// moai web behave byte-identically to the shared-checkout baseline.
@@ -622,11 +661,12 @@ func NewDefaultStateConfig() StateConfig {
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
-// SPEC-V3R2-RT-004 REQ-022: default stale_seconds = 3600 (1 hour).
+//
+// The StaleSeconds default was removed in SPEC-RALPH-CONFIG-REDESIGN-001 M3
+// (dead producer-side pipeline, zero runtime consumers). The constructor is
+// retained because NewDefaultConfig wires Config.Session via it.
 func NewDefaultSessionConfig() SessionConfig {
-	return SessionConfig{
-		StaleSeconds: DefaultStaleSeconds,
-	}
+	return SessionConfig{}
 }
 
 // NewDefaultGitConventionConfig returns a GitConventionConfig with default values.

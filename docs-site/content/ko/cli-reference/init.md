@@ -56,9 +56,16 @@ moai init [project-name]
 |--------|------|
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
+| `--gitlab-instance-url <url>` | GitLab 자체 호스팅 인스턴스 URL (`--git-provider gitlab` 일 때) |
 | `--github-username <name>` | GitHub 사용자명 (personal/team 모드 필수) |
 | `--profile <high\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` 의 `profile` 에 저장 (프로필 매트릭스 열 선택). legacy 값 `max` 도 입력으로 받아 `high` 로 정규화 |
 | `--model-policy <high\|medium\|low>` | legacy 성능 티어 — `llm.yaml` 의 `performance_tier` 에 저장 (`profile` 부재 시 별칭으로 읽힘) |
+
+### 자율성 정책
+
+| 플래그 | 설명 |
+|--------|------|
+| `--autonomy-tier <semi-auto\|automatic\|fully-autonomous>` | Claude Code 권한 모드. `semi-auto` (기본값, 도구별 프롬프트), `automatic` (자동 승인), `fully-autonomous` (`bypassPermissions` — 샌드박스 게이트 opt-in 필요) |
 
 ## 예시
 

@@ -46,7 +46,7 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-Git 自動化モード・プロバイダーはウィザードでは尋ねません。`moai init` はリポジトリに既に設定されている Git リモートから自動検出します。後から Git 設定を変更するには `moai update --reconfigure` を実行してください — このパスでのみ別の Git 質問セット (自動化モード、プロバイダー、認証情報) が表示されます。
+Git 自動化モード・プロバイダーはウィザードでは尋ねません。`moai init` はリポジトリに既に設定されている Git リモートから自動検出します。後から Git 設定を変更するには `moai update -c` (または `moai update --config`) を実行してウィザードを再実行してください。Git 関連の質問 (自動化モード、プロバイダー、認証情報) はこのパスでのみ表示されます。
 {{< /callout >}}
 
 ## Page 1 — 基本
@@ -102,7 +102,7 @@ Claude が応答する言語を選択します。以降のすべての質問が�
 | **Medium** (デフォルト) | 品質とコストのバランス — コスト/スコア曲線の膝 |
 | **Low** | タスクあたり最低コスト — エージェンティックなエージェントは Opus `low` effort へ |
 
-この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile high|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
+この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile high|medium|low` フラグで直接指定すると `profile` フィールドに保存されます (legacy 値 `max` も入力として受け付け、`high` に正規化されます)。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ### レポート形式
 

@@ -12,9 +12,10 @@ draft: false
 
 | 명령어 | 설명 |
 |--------|------|
-| `moai goal arm "<condition>"` | 활성 세션에 목표 등록 + arm (`moai goal "<condition>"` 도 arm 별칭) |
-| `moai goal status` | 활성 세션의 목표 상태 출력 |
+| `moai goal arm "<condition>"` | 활성 세션에 목표 등록 + arm (`moai goal "<condition>"` 도 arm 별칭). arm-only — 그 자체로는 작업을 시작하지 않는다 |
+| `moai goal status` | 활성 세션의 목표 상태 출력 (`--all` 로 전 세션 나열) |
 | `moai goal clear` | 활성 세션의 목표 해제 |
+| `moai goal render` | 활성 세션의 목표 대시보드를 self-contained HTML 파일로 렌더 (`.moai/state/goal/` 옆에 저장). arm 된 goal이 없으면 0이 아닌 종료 코드로 끝남. v3.1(PR #1388)부터 판정 섹션(천장 exit 시 사이드카에서 로드)과 재무장 조건부 보기가 대시보드에 표시됩니다 — 자세한 내용은 [/moai goal 대시보드 섹션](/utility-commands/moai-goal#목표-대시보드)을 참고하세요 |
 
 ## 공통 플래그
 
@@ -28,9 +29,9 @@ draft: false
 
 | 플래그 | 설명 |
 |--------|------|
-| `--max-turns <N>` | 턴 상한. `0` = 무한 (오토컴팩트 기반); 생략 시 기본 `30` (완전 호환). `0`은 `--max-duration` 또는 `--cost-cap` 중 하나를 필수로 요구 (arm 시점 fail-closed). |
-| `--max-duration <sec>` | 실행 시간 상한 (arm 시점 이후 초 단위). 무한 goal의 1차 실행 상한. |
-| `--cost-cap <value>` | `Ceiling`에 기록되는 비용 상한. 실제 적용은 후속 작업 (현재 호출/토큰 계산이 없음); 무한 goal은 `--max-duration`과 정체 가드로 여전히 묶인다. |
+| `--max-turns <N>` | 턴 상한. `0` = 무한 (SPEC-INFINITE-GOAL-001); 생략 시 기본 `30` (완전 호환). **`0`(무한)은 `--max-duration <sec>` 을 필수로 요구** (arm 시점 fail-closed). |
+| `--max-duration <sec>` | 실행 시간 상한 (arm 시점 이후 초 단위). **무한 goal(`--max-turns 0`)의 실제 벽시계 상한** — 무한 goal은 이 플래그 없이 arm 할 수 없다. |
+| `--cost-cap <value>` | 호출 수 상한으로 **기록 전용(recorded-only)** — 현재 enforce 로직이 없어 실제 bound가 아니다. `--max-turns 0` 에 대한 실제 bound 요구를 충족하지 못해 cost-cap 단독으로는 거부된다. |
 
 ## 상태와 평가
 
