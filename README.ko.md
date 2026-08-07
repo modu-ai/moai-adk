@@ -105,7 +105,7 @@ Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort
 **라우팅 — 작업마다 알맞은 모델과 추론 깊이 배정.** 작업 단계(plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 effort(low / medium / high / max)를 선언적으로 배정한다. 깊은 추론이 필요한 계획 단계에는 추론이 센 모델을 붙이고, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 붙인다.
 
 - **No-Haiku 3-티어 정책** — Haiku는 라우팅 세트에서 뺀다. 단발·입력 지배 작업은 Sonnet low effort가 맡고, 멀티턴 에이전틱 작업은 전부 Opus가 맡는다.
-- **프로파일 매트릭스** — 11 에이전트 × 3 프로파일 = 33셀. `moai model profile`이 각 에이전트의 `{model, effort}` 쌍을 해석한다.
+- **프로파일 매트릭스** — 12 에이전트 × 3 프로파일 = 36셀. `moai model profile`이 각 에이전트의 `{model, effort}` 쌍을 해석한다.
 - **CG 모드** — `moai cg`는 Claude 리더(전략·계획·감사)와 GLM 워커(대량 구현)를 결합한다. 구현 중심 작업에서 **60-70% 비용 절감**.
 
 <p align="center">
@@ -162,7 +162,7 @@ plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅
 
 **TRUST 5 품질 게이트**. Tested(85%+ 커버리지) · Readable · Unified · Secured · Trackable, 모든 변경에 적용한다. 판정은 에이전트가 아니라 게이트가 내린다.
 
-**11-에이전트 카탈로그**. MoAI 커스텀 10개 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
+**12-에이전트 카탈로그**. MoAI 커스텀 11개 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
 
 ### 확장 지점 — 검증된 패턴을 프로젝트 맞춤으로 복제
 
@@ -171,6 +171,8 @@ plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅
 **@MX 태그**. AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는 인라인 코드 어노테이션이다.
 
 **worktree 격리**. SPEC마다 독립된 작업 트리를 둔다. `moai cc -w <이름>`으로 진입하고, `--spawn`을 붙이면 현재 세션을 유지한 채 새 창에서 연다.
+
+**트렌드 MCP 도구**. 배포용 `.mcp.json` 템플릿은 비밀값 없이 동작하는 세 서버(`context7` 라이브러리 문서 · `chrome-devtools` 브라우저 자동화 · `playwright` 엔드투엔드 테스트)를 기본으로 담고, `moai mcp add|remove|list` CLI로 추가 서버(Semgrep, GitHub, Postgres, Sentry, Codecov)를 옵트인할 때는 리터럴 비밀값 대신 `${VAR}` 환경변수 참조 토큰을 쓴다. 옵트인 레시피 전체는 `.moai/docs/mcp-recipes.md`에 있다.
 
 ---
 
@@ -279,7 +281,7 @@ claude        # 프로젝트 안에서 Claude Code 실행
 
 > 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 
-### 11-에이전트 카탈로그
+### 12-에이전트 카탈로그
 
 | 분류 | 에이전트 | 비용 | 역할 |
 |----------|-------|------|------|
@@ -288,6 +290,7 @@ claude        # 프로젝트 안에서 Claude Code 실행
 | | manager-docs | 🔵 | Sync-phase 문서화 |
 | | manager-git | 🩵 | PR 생성 및 라우팅 |
 | | manager-design | 🟠 | Design-phase 협업 (Claude Design) |
+| | manager-lead | 🔴 | 계층형 팀 Tier L 조정 (유일한 Agent-carrier, depth-2 seal) |
 | **Evaluator** | plan-auditor | 🔴 | 독립 계획 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |

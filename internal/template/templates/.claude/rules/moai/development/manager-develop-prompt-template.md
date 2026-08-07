@@ -167,6 +167,13 @@ Explicit list in each delegation prompt:
 
 > Each E-item is reported per the verification-claim-integrity 5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — see `.claude/rules/moai/core/verification-claim-integrity.md` §3.
 
+**Attribution discipline (SPEC-SYNC-PARALLEL-DOCS-001 A9).** Each §E item (E1-E8) is a formal attributable artifact, not a self-report summary. For every item, the manager-develop MUST name, verbatim:
+- **(a) the command** — the exact invocation that produced the evidence (e.g. `go test ./internal/<pkg>/...`);
+- **(b) the observed output** — the verbatim result block the invocation produced in this run, against this tree (summarized evidence like "all tests passed" is NOT acceptable);
+- **(c) the baseline-attribution** — `(this run, this tree)` plus the HEAD SHA the evidence was captured against, so a later consumer can diff-check the attribution chain.
+
+This attribution triple is what the orchestrator's trust-but-verify batch diff-checks against the shared diagnostic snapshot (`.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → attributable diff-check doctrinal switch; `.claude/rules/moai/workflow/verification-batch-pattern.md` → attributable diff-check pattern). A §E item missing any of (a)/(b)/(c) is reported as a Gap per VCI §3.4, never as a silent PASS.
+
 When manager-develop reports completion, it MUST include self-verification of the following items:
 
 **E1. AC Binary PASS/FAIL Matrix**

@@ -166,7 +166,7 @@ Full-suite green: `go test ./... → exit 0`. Lint clean: `golangci-lint run →
 
 ```yaml
 sync_complete_at: "2026-08-07"
-sync_commit_sha: "pending-backfill-sync"   # self-referential-hazard workaround per spec-frontmatter-schema.md D3 — a commit cannot know its own SHA until it lands; backfilled in a follow-up commit after the sync PR merges (same pattern as SPEC-PROJECT-NAVIGATOR-003 #1366)
+sync_commit_sha: "db48a6c68"   # backfilled — squash merge of PR #1386 (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
 sync_status: "PASS"
 sync_phase_route: "B (PR-mandatory — this repo's enforce_admins: true branch-protection override)"
 sync_commit_subject: "docs(SPEC-AUDIT-MULTI-MODEL-001): sync-phase artifacts + 3-phase close"
