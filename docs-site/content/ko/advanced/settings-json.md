@@ -258,7 +258,7 @@ Claude Code를 열 때의 기본 권한 모드입니다. 유효한 값은 다음
 | 코드 품질 | `ruff`, `black`, `prettier`, `eslint` | 6개+ |
 | 탐색 도구 | `ls`, `find`, `tree`, `cat`, `head` | 10개+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2개 |
-| 기타 | `AskUserQuestion`, `Task`, `Skill`, `TaskCreate/TaskUpdate/TaskList/TaskGet` | 4개 |
+| 기타 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4개 |
 
 **allow 형식 예시:**
 

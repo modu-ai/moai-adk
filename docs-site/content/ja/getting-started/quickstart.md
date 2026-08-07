@@ -65,7 +65,7 @@ flowchart TB
 
 ### ステップ 3: SPEC 文書の生成
 
-最初の機能に対する SPEC 文書を生成します。GEARS 形式を使って明確な要件を定義します。
+最初の機能に対する SPEC 文書を生成します。EARS 形式を使って明確な要件を定義します。
 
 {{< callout type="info" >}}
 **なぜ SPEC が必要なのか?**
@@ -81,7 +81,7 @@ flowchart TB
 | 問題 | SPEC の解決方法 |
 |------|-----------------|
 | コンテキストの喪失 | 要件を **ファイルとして保存** し永久保存 |
-| 曖昧な要件 | **GEARS 形式** で明確に構造化 |
+| 曖昧な要件 | **EARS 形式** で明確に構造化 |
 | コミュニケーションエラー | **受け入れ基準** で完了条件を明示 |
 | 進捗の追跡不能 | **SPEC ID** で作業単位を管理 |
 
@@ -96,7 +96,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["要件の入力"] --> B["GEARS 形式の分析"]
+    A["要件の入力"] --> B["EARS 形式の分析"]
     B --> C["SPEC 文書の生成"]
     C --> D["SPEC-001 の保存"]
     D --> E["要件の検証"]
@@ -260,7 +260,7 @@ sequenceDiagram
     Project-->>Dev: product/structure/tech.md
 
     Dev->>Plan: 機能要件の入力
-    Plan->>Plan: GEARS 形式で分析
+    Plan->>Plan: EARS 形式で分析
     Plan-->>Dev: SPEC-001 文書
 
     Note over Dev: /clear を実行

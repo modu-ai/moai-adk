@@ -30,34 +30,42 @@ draft: false
 MoAI statusline 同时显示版本信息与更新提醒：
 
 ```
-🗿 v3.0.1 ⬆️ v3.0.2
+🗿 v2.2.2 ⬆️ v2.2.5
 ```
 
-- **`v3.0.1`**：当前已安装的版本
-- **`⬆️ v3.0.2`**：可更新的新版本
+- **`v2.2.2`**：当前已安装的版本
+- **`⬆️ v2.2.5`**：可更新的新版本
 
 使用最新版本时只显示版本号：
 
 ```
-🗿 v3.0.2
+🗿 v2.2.5
 ```
 
 **更新方法**：执行 `moai update` 后更新提醒会消失。
 
 {{< callout type="info" >}}
-**提示**：这与 Claude Code 内置的版本显示（`🔅 v2.1.172`）不同。MoAI 显示追踪的是 MoAI-ADK 版本，Claude Code 会单独显示自己的版本。
+**提示**：这与 Claude Code 内置的版本显示（`🔅 v2.1.38`）不同。MoAI 显示追踪的是 MoAI-ADK 版本，Claude Code 会单独显示自己的版本。
 {{< /callout >}}
 
 ---
 
 ## Q: 如何自定义 statusline 显示的分段？
 
-statusline 的各分段可独立开关。把每个分段单独切换,只保留你想要的信息即可。没有所谓的显示预设,只由主题与分段这两项构成。
+statusline 支持 4 种显示预设与自定义设置：
 
-可在 `moai init` 或 `moai update -c` 向导中设置,或直接编辑 `.moai/config/sections/statusline.yaml`：
+| 预设 | 说明 |
+|--------|------|
+| **Full**（默认值） | 显示全部 8 个分段 |
+| **Compact** | 仅显示 Model + Context + Git Status + Branch |
+| **Minimal** | 仅显示 Model + Context |
+| **Custom** | 逐个选择分段 |
+
+可在 `moai init` 或 `moai update -c` 向导中设置，或直接编辑 `.moai/config/sections/statusline.yaml`：
 
 ```yaml
 statusline:
+  preset: compact  # 或 full, minimal, custom
   segments:
     model: true
     context: true
@@ -68,8 +76,6 @@ statusline:
     moai_version: false
     git_branch: true
 ```
-
-若没有 `segments:` 块,则默认所有分段都启用。
 
 {{< callout type="info" >}}
 详细内容请参考 [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md)。
@@ -130,7 +136,7 @@ moai update -c                # 重新运行设置向导
 ```
 
 {{< callout type="info" >}}
-默认层级为 `medium`。可以用 `moai update -c` 重新运行设置向导进行更改。
+默认策略为 `High`。执行 `moai update` 后，会提示用 `moai update -c` 来配置此设置。
 {{< /callout >}}
 
 ---

@@ -51,26 +51,12 @@ flowchart TD
 4つの動詞を提供します:
 
 ```bash
-moai goal arm "<completion-condition>"  # 条件登録 + 武装 (arm 専用)
+moai goal arm "<completion-condition>"  # 条件登録 + 武装
 moai goal status                        # 現在の条件 + ターン/トークン消費確認
 moai goal clear                         # 条件削除 (ループ終了)
-moai goal render                        # 現在の goal ダッシュボードを HTML でレンダリング
 ```
 
-> **arm 専用属性**: `arm` は条件を登録して有効化するだけで、それ自体は作業を開始しません。arm された goal は毎ターン終了時に `stop-goal` Stop-hook 評価者が条件が満たされたか判定し、次のターンを続けるかを決めます。実際の作業開始コマンド(例: `/moai run SPEC-XXX`)と組み合わせて使う必要があります — arm だけ立てて作業コマンドがないとターンだけを消費します。
-
-### 無限 goal とブロックキャップ (SPEC-INFINITE-GOAL-001)
-
-`--max-turns 0` を指定するとターン上限がなくなる**無限 goal** になります。無限 goal は必ず `--max-duration <sec>` (壁時間上限、秒単位) とペアにする必要があります — arm 時点で fail-closed として拒否されます。実際の bound なしに無限に放置すると安全ガードが成立しないためです。
-
-- `--cost-cap <value>` は**記録専用 (recorded-only)** — 呼び出し回数上限として保存されるだけ、現在 enforce ロジックがないため実際の bound として機能しません。そのため `--max-turns 0` に要求される実際の bound 要件を cost-cap 単独では満たせず、拒否されます。
-- **ブロックキャップの先取り**: Claude Code ランタイムの連続 block キャップ `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (デフォルト 8) がターン上限より先にループを切ります。無限 goal (`--max-turns 0`) を正しく回すにはこのキャップを上げる必要があります(例: `200`)。`moai cc` / `moai cg` ランチャーは無限 goal が arm されたセッションを開始するとき、この値を自動的に注入します。既に起動しているセッションでは arm 前に環境変数を直接設定してください。
-- **ターン上限到達時の判定**: ターン上限(またはブロックキャップ)に達すると、評価者は 5 セクションの判定文 (verdict) を出します — `Claim / Evidence / Baseline-attribution / Gaps / Residual-risk`。この判定文は「収束した」というシグナルではなく「上限に達して止まった」という報告です。
-- **Progression Mode**: 自律 (autonomous) vs 半自律 (semi-autonomous) の選択は Implementation Kickoff Approval ゲートで行われます。arm 自体がこのゲートを飛び越えることはありません。
-
 セッション開始時に`PruneOrphans`が孤立goalをクリーンアップします。このメカニズムはSPEC-GOAL-ENGINE-001 (CLOSED)で実装されました。
-
-現在のループ状態を静的HTMLダッシュボードとしてレンダリングするには `moai goal render` を使います — 詳細は [/moai goal - ゴールダッシュボード](/ja/utility-commands/moai-goal/) を参照してください。
 
 ### `/moai loop` — Ralph Engine (診断駆動プリセット)
 

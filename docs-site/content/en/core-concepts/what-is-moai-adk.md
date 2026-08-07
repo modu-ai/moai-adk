@@ -84,7 +84,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 - **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
-- **36** CLI commands · **15** `/moai` subcommands
+- **36** CLI commands · **16** `/moai` subcommands
 - **16** programming languages supported
 - A codebase developed with a **SPEC-based workflow** (plan → run → sync)
 
@@ -419,7 +419,7 @@ All subcommands run inside Claude Code as `/moai <subcommand>`.
 | Subcommand | Purpose | Key flags |
 |-----------|------|-----------|
 | `goal` | Condition-declared autonomous continuation loop (until the condition is met or the turn limit) | `status`, `clear` |
-| `loop` | Diagnostic-driven iterative auto-fixing (a preset on the goal engine, default max 5 iterations) | `--max N`, `--auto-fix`, `--seq` |
+| `loop` | Diagnostic-driven iterative auto-fixing (a preset on the goal engine, up to 10 iterations by default) | `--max N`, `--auto-fix`, `--seq` |
 | `fix` | Auto-fix LSP errors, lint, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume` |
 
 #### Quality and Codebase
@@ -431,7 +431,6 @@ All subcommands run inside Claude Code as `/moai <subcommand>`.
 | `clean` | `refactor-clean` | Dead-code identification and safe removal | `--dry`, `--safe-only`, `--file PATH` |
 | `mx` | -- | Codebase scan and @MX code-level annotation | `--all`, `--dry`, `--priority P1-P4`, `--force` |
 | `codemaps` | `update-codemaps` | Architecture documentation generation | `--force`, `--area AREA` |
-| `e2e` | -- | E2E test execution across web/mobile/desktop and artifact management | -- |
 
 #### Project and Harness
 
@@ -505,7 +504,7 @@ An autonomous error-fixing engine combining LSP diagnostics with AST-grep:
 
 ```bash
 /moai fix       # Single pass: scan → classify → fix → verify
-/moai loop      # Iterative fixing: repeat until the completion condition is met (default max 5 iterations)
+/moai loop      # Iterative fixing: repeat until the completion condition is met (up to 10 iterations by default)
 ```
 
 **How the Ralph Engine works:**

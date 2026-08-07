@@ -48,29 +48,15 @@ The condition can be up to 4,000 characters, and you can include a turn/time bou
 
 {{< icon arrow-right >}} `/moai goal` is MoAI's programmatic reimplementation. Since native `/goal` is HUMAN-ONLY, this is the only path for the orchestrator to register and arm an autonomous continuation loop within the pipeline.
 
-It provides four verbs:
+It provides three verbs:
 
 ```bash
-moai goal arm "<completion-condition>"  # register + arm the condition (arm-only)
+moai goal arm "<completion-condition>"  # register + arm the condition
 moai goal status                        # check current condition + turn/token spend
 moai goal clear                         # remove the condition (end loop)
-moai goal render                        # render the current goal dashboard as HTML
 ```
 
-> **arm-only property**: `arm` only registers and arms the condition — it starts no work by itself. An armed goal is evaluated at every turn-end by the `stop-goal` Stop-hook evaluator, which decides whether to continue to the next turn. You must pair it with a real work-starting command (e.g. `/moai run SPEC-XXX`) — arming a goal with no work command only burns turns.
-
-### Infinite goal and block cap (SPEC-INFINITE-GOAL-001)
-
-Passing `--max-turns 0` produces an **infinite goal** with no turn ceiling. An infinite goal MUST be paired with `--max-duration <sec>` (wall-clock bound, in seconds) — otherwise arm-time fail-closed rejects it. Without a real bound, an infinite goal cannot establish a safety guard.
-
-- `--cost-cap <value>` is **recorded-only** — it is stored as an invocation ceiling but has no enforcement logic today, so it cannot act as a real bound. It does not satisfy the real-bound requirement for `--max-turns 0` and is rejected on its own.
-- **Block-cap preemption**: the Claude Code runtime's consecutive-block cap `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (default 8) terminates the loop before the turn ceiling does. To run an infinite goal (`--max-turns 0`) properly, raise this cap (e.g. to `200`). The `moai cc` / `moai cg` launchers inject this automatically when starting a session that has an infinite goal armed. On an already-running session, set the env var yourself before arming.
-- **Turn-ceiling verdict**: when the turn ceiling (or block cap) is reached, the evaluator emits a 5-section verdict — `Claim / Evidence / Baseline-attribution / Gaps / Residual-risk`. This verdict is a "hit the ceiling and stopped" report, not a "converged" signal.
-- **Progression Mode**: the autonomous vs semi-autonomous choice is made at the Implementation Kickoff Approval gate. Arming a goal does not bypass this gate.
-
 At session start, `PruneOrphans` cleans up orphan goals. This mechanism was implemented in SPEC-GOAL-ENGINE-001 (CLOSED).
-
-To render the current loop state as a static HTML dashboard, use `moai goal render` — see [/moai goal - Goal Dashboard](/en/utility-commands/moai-goal/) for details.
 
 ### `/moai loop` — Ralph Engine (diagnostic-driven preset)
 

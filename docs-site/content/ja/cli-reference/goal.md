@@ -12,10 +12,9 @@ draft: false
 
 | コマンド | 説明 |
 |--------|------|
-| `moai goal arm "<condition>"` | アクティブセッションにゴールを登録 + arm (`moai goal "<condition>"` も arm のエイリアス)。arm 専用 — これ自体は作業を開始しない |
-| `moai goal status` | アクティブセッションのゴール状態を出力 (`--all` で全セッションを一覧) |
+| `moai goal arm "<condition>"` | アクティブセッションにゴールを登録 + arm (`moai goal "<condition>"` も arm のエイリアス) |
+| `moai goal status` | アクティブセッションのゴール状態を出力 |
 | `moai goal clear` | アクティブセッションのゴールを解除 |
-| `moai goal render` | アクティブセッションのゴールダッシュボードを self-contained HTML ファイルにレンダリング (`.moai/state/goal/` 配下に保存)。arm された goal がない場合は非 0 の終了コードで終了。v3.1(PR #1388)からダッシュボードに判定セクション (天井 exit 時にサイドカーからロード) と再武装条件付きビューが表示されます — 詳細は [/moai goal ダッシュボードセクション](/ja/utility-commands/moai-goal#ゴールダッシュボード) を参照 |
 
 ## 共通フラグ
 
@@ -29,9 +28,9 @@ draft: false
 
 | フラグ | 説明 |
 |--------|------|
-| `--max-turns <N>` | ターン上限。`0` = 無限 (SPEC-INFINITE-GOAL-001); 省略時はデフォルト `30` (完全な後方互換)。**`0` (無限) は `--max-duration <sec>` を必須とする** (arm 時点の fail-closed)。 |
-| `--max-duration <sec>` | 実時間上限 (arm 時点からの秒数)。**無限 goal (`--max-turns 0`) の実際の壁時間上限** — 無限 goal はこのフラグなしでは arm できない。 |
-| `--cost-cap <value>` | 呼び出し回数上限として**記録専用 (recorded only)** — 現在 enforce ロジックがないため実際の bound ではない。`--max-turns 0` に対する実際の bound 要件を満たさないため、cost-cap 単独では拒否される。 |
+| `--max-turns <N>` | ターン上限。`0` = 無限 (自動コンパクション駆動); 省略時はデフォルト `30` (完全な後方互換)。`0` は `--max-duration` または `--cost-cap` を必須とする (arm 時の fail-closed)。 |
+| `--max-duration <sec>` | 実時間上限 (arm 時点からの秒数)。無限 goal の一次実行上限。 |
+| `--cost-cap <value>` | `Ceiling` に記録されるコスト上限。実適用は今後の課題 (現在は呼び出し/トークン計測なし); 無限 goal は `--max-duration` と停滞ガードで依然として束ねられる。 |
 
 ## 状態と評価
 

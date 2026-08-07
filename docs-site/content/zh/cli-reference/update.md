@@ -131,7 +131,7 @@ graph TD
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` 的 `profile`)。规范封闭集合为 `high`/`medium`/`low`,legacy `max` 也接受作为输入并归一化为 `high`(`internal/config/profile.go` 的 `NormalizeProfile`) |
+| `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` 的 `profile`) |
 
 ### 工作方式
 

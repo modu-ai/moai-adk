@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>moai CLI 전체 코드 감사 보고서 — 2026-07-10</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard Variable","Pretendard",system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",monospace;
+  --max-width:1040px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15px;padding:40px 20px}
+.wrap{max-width:var(--max-width);margin:0 auto}
+header{margin-bottom:28px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.meta{color:var(--g500);font-size:13px;margin-top:6px}
+.banner{background:var(--g700);color:var(--ivory);border-radius:var(--radius-panel);padding:20px 24px;margin:20px 0}
+.banner h2{font-size:15px;color:var(--oat);margin-bottom:8px}
+.banner p{font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 18px}
+.card .num{font-size:28px;font-weight:700}
+.card .lbl{font-size:12px;color:var(--g500);margin-top:2px}
+.card.crit .num{color:#B3261E}.card.maj .num{color:var(--clay-d)}.card.min .num{color:var(--olive)}
+h2.sec{font-size:19px;font-weight:700;margin:36px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--oat)}
+h3.sub{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--g700)}
+p.desc{color:var(--g700);font-size:14px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden;font-size:13.5px;margin:10px 0 18px}
+th{background:var(--g100);text-align:left;padding:8px 10px;font-size:12px;color:var(--g700);border-bottom:var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code,.loc{font-family:var(--mono);font-size:12px;background:var(--g100);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:10px;white-space:nowrap}
+.b-crit{background:#B3261E;color:#fff}
+.b-maj{background:var(--clay);color:#fff}
+.b-min{background:var(--oat);color:var(--g700)}
+details{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);margin:10px 0;padding:0}
+summary{cursor:pointer;padding:12px 16px;font-weight:700;font-size:14.5px}
+summary:hover{color:var(--clay-d)}
+details .inner{padding:0 16px 14px}
+.chart{margin:14px 0}
+.foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--g300);color:var(--g500);font-size:12px}
+ul.list{padding-left:20px;font-size:14px;margin:8px 0}
+ul.list li{margin:4px 0}
+@media print{body{padding:0}details{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>🗿 moai CLI 전체 코드 감사 보고서</h1>
+  <div class="meta">대상: <code>internal/cli/**</code> (루트 93파일 + 하위 9패키지) + <code>cmd/moai</code> · 150개 소스 파일 · 34,310 LOC · 2026-07-10 · 감사 방식: 5개 병렬 read-only 정적 감사</div>
+</header>
+
+<div class="banner">
+  <h2>TL;DR</h2>
+  <p>총 <b>131건</b>의 개선 필요 지점 식별 — <b>Critical 8건</b>(데이터 손실·원장 파손·교차 하네스 삭제), <b>Major 30건</b>, <b>Minor 93건</b>. 지배적 결함 계열은 ① <b>공유 JSON/YAML 상태의 비원자적 read-modify-write + 폐쇄형 struct 왕복으로 인한 사용자 데이터 소실</b>(settings.local.json / workflow.yaml), ② <b>작성됐지만 배선되지 않은 안전장치</b>(update 락, 백업, dry-run, 체크포인트 전부 미호출), ③ <b>선언과 구현이 어긋난 exit-code/플래그 계약</b>(--dry-run 무시, exit 2/3 미구현, RunE 내 os.Exit)입니다.</p>
+</div>
+
+<div class="cards">
+  <div class="card"><div class="num">131</div><div class="lbl">총 발견 건수</div></div>
+  <div class="card crit"><div class="num">8</div><div class="lbl">Critical</div></div>
+  <div class="card maj"><div class="num">30</div><div class="lbl">Major</div></div>
+  <div class="card min"><div class="num">93</div><div class="lbl">Minor</div></div>
+  <div class="card"><div class="num">10</div><div class="lbl">패키지 커버리지 10/10</div></div>
+</div>
+
+<h2 class="sec">1. Critical — 즉시 수정 권고 (8건)</h2>
+<p class="desc">데이터 손실 또는 파일 파손이 실제 사용 흐름에서 재현 가능한 항목입니다.</p>
+<table>
+<tr><th>위치</th><th>결함</th><th>실패 시나리오</th><th>권고</th></tr>
+<tr><td><span class="loc">glm.go:98<br>launcher.go:241</span></td><td><code>SettingsLocal</code> struct가 6개 키만 정의 — 이를 통한 모든 read-modify-write가 <code>settings.local.json</code>의 나머지 최상위 키(hooks, outputStyle 등)를 <b>무조건 삭제</b></td><td><code>moai cc</code>/<code>moai glm</code> 1회 실행만으로 사용자 설정 소실</td><td><code>map[string]any</code> 왕복 또는 기존 <code>mutateSettingsLocal</code> seam 사용</td></tr>
+<tr><td><span class="loc">team_spawn.go:316-384</span></td><td><code>ClaimTask</code>가 <code>O_RDWR</code>로 열고 offset 0에서 write — claim 라인이 tasklist.md <b>선두를 덮어씀</b> (append-only 원장 파손)</td><td>팀 모드에서 매 claim마다 원장 헤더/첫 태스크 파괴</td><td><code>O_APPEND|O_WRONLY</code>로 열기</td></tr>
+<tr><td><span class="loc">harness_mute.go:198-228</span></td><td><code>saveWorkflowMuteConfig</code>가 최소 struct로 YAML 왕복 — <code>workflow.yaml</code>의 agentic_loop/team 등 <b>모든 다른 키 소실</b></td><td><code>moai harness mute testing</code> 1회로 워크플로 설정 파괴</td><td>yaml.v3 Node API로 대상 키만 변경 (harness.go:363 패턴 재사용)</td></tr>
+<tr><td><span class="loc">harness/v4lifecycle.go:257,285</span></td><td><code>RemoveHarness</code>가 bare prefix <code>"harness-"+name</code> 매칭 — <code>remove release</code>가 <b>release-update 하네스 아티팩트까지 삭제</b></td><td>본 저장소가 실제로 release + release-update 둘 다 보유 (§21)</td><td><code>prefix+"-"</code> 경계 매칭, EditHarness에도 동일 적용</td></tr>
+<tr><td><span class="loc">update_cleanup.go:55</span></td><td><code>acquireUpdateLock</code> 및 락 서브시스템 전체가 <b>프로덕션 호출자 0</b> — <code>moai update</code>가 무락(無lock) 실행</td><td>동시 2개 update가 같은 트리의 clean/deploy/restore를 교차 실행</td><td><code>runUpdate</code> 파괴적 단계 전 락 배선</td></tr>
+<tr><td><span class="loc">migrate_agency.go:87-95,398,467</span></td><td>rollback이 기록된 경로를 <b>무조건 삭제</b> — <code>--force</code> 덮어쓰기·기존 디렉터리도 삭제 대상으로 기록됨</td><td>phase-3/5 실패 시 사용자의 기존 <code>.moai/research/observations/</code> 소실</td><td>선존재 경로는 스냅숏 후 복원, 신규 생성분만 삭제</td></tr>
+<tr><td><span class="loc">migrate_agency.go:446-452</span></td><td>symlink 가드가 죽은 코드 — <code>os.Stat</code>은 symlink를 따라가므로 <code>ModeSymlink</code> 검사가 항상 false</td><td>symlink 역참조로 트리 밖 파일이 <code>.agency.archived/</code>로 복사</td><td><code>os.Lstat</code> 사용 (기존 <code>isSymlinkEntry</code> 재사용)</td></tr>
+<tr><td><span class="loc">hook.go:773-792,1167-1206</span></td><td>Stop 훅 auto-classify가 매 세션 종료마다 패턴별 Promotion을 <b>중복 append</b> — <code>tier-promotions.jsonl</code> 무한 증식</td><td>파일·proposal 이 무한 성장, 전체 로그 재집계로 5초 훅 예산 초과</td><td>high-water mark 추적, tier <b>변경</b> 시에만 기록</td></tr>
+</table>
+
+<h2 class="sec">2. 심각도 분포 (클러스터별)</h2>
+<div class="chart">
+<svg viewBox="0 0 700 190" width="100%" role="img" aria-label="클러스터별 발견 건수">
+<style>.bl{font:12px var(--sans);fill:#3D3D3A}.bn{font:700 12px var(--sans);fill:#141413}</style>
+<!-- rows: name, crit, maj, min ; scale 6px per finding -->
+<g transform="translate(180,14)">
+<text class="bl" x="-10" y="12" text-anchor="end">update/init/doctor (39)</text>
+<rect x="0" y="2" width="18" height="14" fill="#B3261E"/><rect x="18" y="2" width="48" height="14" fill="#D97757"/><rect x="66" y="2" width="168" height="14" fill="#E3DACC"/><text class="bn" x="240" y="14">3C · 8M · 28m</text>
+<text class="bl" x="-10" y="42" text-anchor="end">launcher/GLM/session (23)</text>
+<rect x="0" y="32" width="12" height="14" fill="#B3261E"/><rect x="12" y="32" width="36" height="14" fill="#D97757"/><rect x="48" y="32" width="90" height="14" fill="#E3DACC"/><text class="bn" x="144" y="44">2C · 6M · 15m</text>
+<text class="bl" x="-10" y="72" text-anchor="end">hook/harness/quality (22)</text>
+<rect x="0" y="62" width="12" height="14" fill="#B3261E"/><rect x="12" y="62" width="36" height="14" fill="#D97757"/><rect x="48" y="62" width="84" height="14" fill="#E3DACC"/><text class="bn" x="138" y="74">2C · 6M · 14m</text>
+<text class="bl" x="-10" y="102" text-anchor="end">spec/git/기타 루트 (27)</text>
+<rect x="0" y="92" width="60" height="14" fill="#D97757"/><rect x="60" y="92" width="102" height="14" fill="#E3DACC"/><text class="bn" x="168" y="104">0C · 10M · 17m</text>
+<text class="bl" x="-10" y="132" text-anchor="end">하위 9패키지 (38)</text>
+<rect x="0" y="122" width="6" height="14" fill="#B3261E"/><rect x="6" y="122" width="60" height="14" fill="#D97757"/><rect x="66" y="122" width="162" height="14" fill="#E3DACC"/><text class="bn" x="234" y="134">1C · 10M · 27m</text>
+<g transform="translate(0,158)">
+<rect x="0" y="0" width="12" height="12" fill="#B3261E"/><text class="bl" x="16" y="10">Critical</text>
+<rect x="80" y="0" width="12" height="12" fill="#D97757"/><text class="bl" x="96" y="10">Major</text>
+<rect x="160" y="0" width="12" height="12" fill="#E3DACC"/><text class="bl" x="176" y="10">Minor</text>
+</g>
+</g>
+</svg>
+</div>
+
+<h2 class="sec">3. 클러스터별 상세 발견 항목</h2>
+
+<details open>
+<summary>클러스터 1 — update / init / migrate / doctor (11파일, ~7.5K LOC) · 39건</summary>
+<div class="inner">
+<p class="desc">보안 의식은 높으나(경로 순회·URL 허용목록 가드), SPEC 하나 분량의 안전장치(락·백업·skip-marker·텔레메트리)가 <b>작성만 되고 전부 미배선</b>. update.go 3,181라인 단일 파일이 최대 구조 부채.</p>
+<h3 class="sub">Major (8건)</h3>
+<table>
+<tr><th></th><th>위치</th><th>결함 / 권고</th></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">migrate_agency.go:192-201</span></td><td>resume 체크포인트가 생성 후 갱신되지 않아 <code>--resume</code>이 항상 no-op — phase별 갱신 또는 플래그 제거</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update_clean_install.go:12,229-240</span></td><td>주석은 백업 약속, 코드는 <code>os.RemoveAll</code>만 — deprecated 사용자 수정 파일 무백업 파괴. <code>backupDeprecatedPaths</code> 호출 배선</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:233-239 vs 268</span></td><td><code>--dry-run</code>이 archive plan에서 조기 반환 — clean-reinstall/deploy 경로는 dry-run 미지원인데 help는 지원 선언</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:2641-2651</span></td><td><code>github_token</code>/<code>gitlab_token</code>을 0644 평문으로 user.yaml에 기록 — 0600으로 기록</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:2806-2837</span></td><td><code>updateSettingsLocalEnv</code>가 Env만 가진 struct 왕복(호출되면 전체 키 소실) — 삭제 또는 map 재작성</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:618-717</span></td><td>steps 테이블의 Backup 클로저 미호출·Restore는 no-op 스텁 — ~90라인 도달 불능 중복, 단일 실행 경로로 통합</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:2396-2452</span></td><td><code>deepMerge3Way</code>가 새 템플릿에 없는 사용자 추가 키를 <b>조용히 드롭</b> — old-only 키 승계</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">update.go:1223-1355 외</span></td><td>경로 분류기 4종(<code>isUserAreaPath</code>/<code>isUserOwnedNamespace</code>/…)이 같은 prefix 목록을 미묘하게 다르게 중복 — 공유 테이블 추출</td></tr>
+</table>
+<h3 class="sub">Minor (28건, 요약)</h3>
+<ul class="list">
+<li><b>죽은 코드</b>: update_cleanup.go 전체(~300라인), <span class="loc">update.go:1596-1624</span> excludedDirs 항상 빈 값, <span class="loc">update.go:1069-1073</span> 미사용 manifest 로드, <span class="loc">update.go:730-737</span> 미사용 파라미터</li>
+<li><b>정확성</b>: <span class="loc">update.go:2456</span> <code>fmt.Sprintf("%v")</code> 값 비교(1 == "1"), <span class="loc">migrate_agency.go:380</span> <code>strings.Cut</code> 키 오매칭, <span class="loc">init.go:256-277</span> projectName에 경로 전체 사용 + --root 미정규화, <span class="loc">doctor.go:283</span> 빈 출력 slice 언더플로 패닉, <span class="loc">update.go:463-473</span> Windows re-exec 실패 후 구버전으로 sync 계속</li>
+<li><b>에러 처리</b>: <span class="loc">update.go:2736-2753</span> model-policy 저장 오류 전량 무시, <span class="loc">migrate_agency.go:422</span> EACCES를 부재로 오분류, <span class="loc">migrate_agency.go:590</span> RunE 내 os.Exit, <span class="loc">doctor.go:59-139</span> fail에도 exit 0</li>
+<li><b>하드코딩(§14)</b>: <span class="loc">update.go:459</span> env명 인라인, 10MB/30s/120s/5min/circuit-3 리터럴, <span class="loc">init.go:270</span> 0755 인라인</li>
+<li><b>구조</b>: update.go 3,181라인 → update_sync/merge/wizard/settings 분리 + YAML 3-way merge 독립 패키지화 권고, <span class="loc">update.go:920-963</span> 분석 2회 중복 수행, <span class="loc">update.go:133</span> 비동기화 전역 verbose 플래그</li>
+<li><b>i18n/UX</b>: doctor.go 한국어 하드코딩(<code>error_messages: en</code> 위반), "Current version" 2회 출력, <span class="loc">update_archive.go:332</span> 항상 "0 user customizations"</li>
+</ul>
+</div>
+</details>
+
+<details>
+<summary>클러스터 2 — launcher / GLM / session / team / profile (8파일, ~5K LOC) · 23건</summary>
+<div class="inner">
+<p class="desc">지배적 결함: 공유 JSON 상태의 비동기화 read-modify-write. 자격증명 처리는 대체로 신중(0600)하나 가장자리에서 누수.</p>
+<h3 class="sub">Major (6건)</h3>
+<table>
+<tr><th></th><th>위치</th><th>결함 / 권고</th></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">glm.go:562,667,1015<br>launcher.go:296,705</span></td><td>settings.local.json 기록 5곳이 무락·비원자 — 병렬 세션에서 갱신 소실/파일 절단. <code>mutateSettingsLocal</code> seam으로 일원화</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">launcher.go:241-301</span></td><td><code>removeGLMEnv</code>가 <code>CLAUDE_CODE_AUTO_COMPACT_WINDOW</code> 미삭제 — <code>moai cc</code> 복귀 후 1M 창 잔존</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">team_spawn.go:345-352</span></td><td><code>ClaimTask</code>가 존재하지 않는/완료된 태스크도 "claim 성공" — pending 매칭 시에만 claim</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">glm_tools.go:496-615</span></td><td><code>~/.claude.json</code> RMW가 라이브 Claude Code 프로세스와 레이스 — flock 또는 mtime diff-검사 재시도</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">glm.go:913-918</span></td><td>dotenv escape가 백틱·개행 미처리 — source 시 명령 치환/라인 주입 가능. 제어문자·백틱 거부</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">glm.go:194-209 외 6곳<br>glm_tools.go:368-377</span></td><td>GLM env명 세트 6개 함수에 리터럴 중복(inject↔clear 드리프트 이미 발생) — envkeys.go 상수화. + <code>~/.claude.json</code>에 API 키 평문 기록(백업 파일에 영구 잔존)</td></tr>
+</table>
+<h3 class="sub">Minor (15건, 요약)</h3>
+<ul class="list">
+<li><b>보안</b>: setup 키 argv 노출(shell history/ps), <span class="loc">glm.go:893</span> .env.glm 퍼미션 미검사 + scanner.Err() 무시</li>
+<li><b>정확성</b>: <span class="loc">glm_tools.go:529</span> 마스크에서 suffix 추출(항상 "****"), <span class="loc">launcher.go:562</span> exit 1 전부 "no session" 처리, <span class="loc">glm.go:126</span> args[0]만 검사한 라우팅, <span class="loc">state.go:91</span> <code>==</code> 대신 <code>errors.Is</code> 필요, <span class="loc">state.go:190</span> home-skip 없는 상향 탐색, <span class="loc">session.go:350</span> 존재검사와 카운트가 다른 파일 참조</li>
+<li><b>주입/형식</b>: <span class="loc">team_spawn.go:249</span> YAML 문자열 연결 생성(콜론/개행 파손, 비결정 순서) — yaml.Marshal</li>
+<li><b>기타</b>: tmux set-environment 실패 무시, isTestEnvironment의 프로덕션 우회, 모델명/컨텍스트 하드코딩 드리프트, profile bool 항상 강제 기록, 죽은 코드 3건(<code>buildGLMEnvVars</code> 등)</li>
+</ul>
+</div>
+</details>
+
+<details>
+<summary>클러스터 3 — hook / harness / astgrep / constitution / loop / tool_policy (12파일, ~5.5K LOC) · 22건</summary>
+<div class="inner">
+<p class="desc">하네스 학습 파이프라인(설정 소실 + 무한 증식)과 exit-code/스트림 계약 드리프트가 양대 리스크.</p>
+<h3 class="sub">Major (6건)</h3>
+<table>
+<tr><th></th><th>위치</th><th>결함 / 권고</th></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">astgrep.go:107-122</span></td><td>"error 발견 시 exit 1"이 text 포맷에서만 동작 — json/sarif는 exit 0. HasErrors 판정을 포맷 분기 뒤로 이동</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">constitution.go:296-319</span></td><td><code>exitCodeError{2}</code>를 아무도 해석 안 함 — 문서화된 exit 2 계약 미구현. Execute 경계에서 코드 매핑</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">hook_pre_push.go:180-198</span></td><td>위반 상세를 stdout에 출력 후 exit 2 — Claude Code는 exit 2에서 stderr만 노출, 사용자는 이유 없는 차단만 봄</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">hook.go:214,345</span></td><td>디스패처 타임아웃 30초 하드코딩 × 2 — 훅 5초 예산보다 커서 절대 발화 불가. defaults.go 상수(≤5s)로</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">harness_route.go:188-199</span></td><td><code>--base-dir</code>가 spec에만 적용되고 harness.yaml은 cwd에서 로드 — 타 프로젝트 SPEC을 현 디렉터리 설정으로 라우팅</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">hook_pre_push.go:268-274</span></td><td>stdin 읽기 오류를 <code>nil,nil</code>로 삼킴 — enforce 설정에서도 I/O 실패 시 push 무조건 허용(fail-open)</td></tr>
+</table>
+<h3 class="sub">Minor (14건, 요약)</h3>
+<ul class="list">
+<li><b>검증/에러</b>: <span class="loc">harness.go:262</span> 권한 오류를 "No pending proposals"로 보고, <span class="loc">harness.go:241</span> <code>--execute</code>가 빈 <code>--id</code> 허용, <span class="loc">harness_route.go:263</span> SPEC-ID 미검증 경로 조합(<code>../../x</code> 탐침 가능)</li>
+<li><b>계약/스트림</b>: RunE 내 os.Exit 4곳(테스트 불능), <span class="loc">astgrep.go:126</span> 오류를 stdout+exit 0으로 위장, <span class="loc">astgrep.go:87</span> nil-context 패닉 가능성+scan 무타임아웃</li>
+<li><b>중복/하드코딩</b>: tier 임계값 <code>[1,3,5,10]</code> 2회 정의, harness 설정 경로 상수 2벌, <span class="loc">constitution.go:21,149</span> env명 인라인, <span class="loc">hook.go:464</span> yaml.v3 옆에서 수제 라인 파서</li>
+<li><b>기타</b>: UTF-8 바이트 절단 2곳(CJK 파손), <span class="loc">constitution.go:376</span> 항상 "0 entries checked", lsp_doctor SilenceUsage 누락, hook_install TOCTOU, <code>.tmp</code> 잔존물, 버블 정렬, 죽은 import 가드</li>
+</ul>
+</div>
+</details>
+
+<details>
+<summary>클러스터 4 — spec/git/web/기타 루트 잔여 (~60파일, ~6.5K LOC) · 27건</summary>
+<div class="inner">
+<p class="desc">구조는 양호하나 ① 플래그·exit-code 계약 드리프트, ② 살아있는 시스템 대비 staleness, ③ 롱테일의 정책 위반(한국어 에러·fmt.Println·env 인라인)이 반복.</p>
+<h3 class="sub">Major (10건)</h3>
+<table>
+<tr><th></th><th>위치</th><th>결함 / 권고</th></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">github.go:97,103</span></td><td><code>--dry-run</code> 등록만 되고 어떤 서브커맨드도 읽지 않음 — link-spec이 그대로 레지스트리 기록. 플래그 배선</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">team_spawn_lock_test_unix.go</span></td><td>파일명이 <code>_test.go</code>로 끝나지 않아 <b>테스트가 영구 미실행</b> + testing 패키지가 프로덕션 바이너리에 컴파일 — 파일명 교정</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">spec_lint.go:70,96<br>spec_drift.go:74</span></td><td>RunE/PostRunE 내 os.Exit — defer 스킵·테스트 불능·문서화된 exit 3 미구현·DriftCount 2회 재계산</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">mx_query.go:177-179</span></td><td>TruncationNotice 인자 순서 뒤바뀜 — "showing 500 of 100" 출력. 인자 교환</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">help.go:57</span></td><td>루트 help에 존재하지 않는 <code>moai brain</code> 노출 — 제거 또는 등록 커맨드 기준 게이트</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">doctor_skills.go:10-27</span></td><td>skills allowlist가 심하게 stale(주석 23 vs 실제 22, 살아있는 스킬 WARN·은퇴 스킬 PASS) — 카탈로그에서 파생</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">spec_status.go:205-235</span></td><td><code>--sync-git</code>이 <code>fmt.Scanln</code> 대화형 프롬프트(비-TTY에서 행), <code>--confirm</code> 죽은 플래그, git이 cwd 실행으로 specs 루트와 불일치 — <code>--yes</code> 요구 + <code>git -C projectRoot</code></td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">web_port.go:42-49</span></td><td>포트 점유를 영어 오류 문자열 매칭으로 감지 — Windows/비영어 로케일에서 침묵 실패. <code>errors.Is(err, syscall.EADDRINUSE)</code></td></tr>
+</table>
+<h3 class="sub">Minor (17건, 요약)</h3>
+<ul class="list">
+<li><b>계약</b>: spec_audit exit 2 미구현, spec_status 임의 status 문자열 무검증 기록, spec_close --json 마샬 오류 침묵</li>
+<li><b>정책 위반</b>: migration.go/clean.go/web_port* 한국어 에러(<code>error_messages: en</code> 위반), bare fmt.Println(cobra writer 우회), env명 인라인 3곳 + <code>CI == "1"</code> 오검사(GitHub Actions는 "true")</li>
+<li><b>정확성</b>: web_port_posix 첫 PID만 검사+substring "moai" 오매칭, harness_validate 수동 경로 연결, github.go UTF-8 바이트 절단, spec_view 트리 정렬 깨짐, worktree_validation/init_layout/ttyConfirmer 죽은 코드(init 힌트가 CLI에 없는 <code>moai plan</code> 안내 — §1 혼동 그 자체)</li>
+<li><b>기타</b>: branch_protection gh stderr 미노출, web.go 패키지 전역 플래그 공유, atomic writer 3벌 중복, spec_close 정렬 주석-코드 불일치</li>
+</ul>
+</div>
+</details>
+
+<details>
+<summary>클러스터 5 — 하위 9패키지: agentlint / harness / preference / wizard / worktree / uikit / pr / specid / cmd (~9.6K LOC) · 38건</summary>
+<div class="inner">
+<h3 class="sub">Major (10건)</h3>
+<table>
+<tr><th></th><th>위치</th><th>결함 / 권고</th></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">agentlint/agent_lint.go:530-570</span></td><td>수제 frontmatter 파서가 Hooks/Skills/Sandbox를 <b>절대 채우지 않아</b> LR-04(죽은 훅 감지) 영구 무효 — yaml.v3로 파싱</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">agentlint/agent_lint.go:581-599</span></td><td>effort 매트릭스가 은퇴한 17-에이전트 로스터 기준 — 현행 10 에이전트는 전부 미커버. 카탈로그에서 재생성</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">agentlint/agent_lint.go:184,835</span></td><td>라이브+템플릿 미러 동시 스캔으로 LR-07 중복 감지가 구조적 오탐 — 경로/해시 dedupe</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">harness/execute.go:327<br>agentlint/workflow_lint.go:159</span></td><td>RunE 내 os.Exit — main.go의 <code>ExitCoder</code> 메커니즘 우회, 문서화된 exit 2/3 미산출</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">worktree/tmux_integration.go:160<br>worktree/new.go:481</span></td><td><code>strings.Contains</code> YAML "파싱"이 <b>주석 라인도 매칭</b> — <code># team_mode: cg</code>가 CG 모드 활성화. # 라인 스킵 또는 yaml.v3</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">preference/filestore.go:78-113</span></td><td><code>Upsert</code>가 tier 전환 시 core의 구본을 미제거 — core-first 캐스케이드가 영원히 구값 반환 (replace 계약 파기)</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">worktree/tmux_integration.go:114,124</span></td><td>tmux 초기 명령에 worktree 경로 무인용 삽입 — 공백/메타문자 경로에서 파손·해석. <code>%q</code> 인용</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">wizard/wizard.go:99,126</span></td><td>스테퍼 총계 6 하드코딩 vs 실제 표시 질문 7~9개 — "7/6" 렌더. 동적 계산</td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">wizard/questions.go:119-154</span></td><td>GitHub/GitLab PAT 입력이 평문 에코(터미널 스크롤백 잔존) — <code>EchoModePassword</code></td></tr>
+<tr><td><span class="badge b-maj">MAJ</span></td><td><span class="loc">preference/decay.go:142-189</span></td><td><code>DecayScan</code> archival 선기록 + recall 후기록이 crash-consistent 하지 않음 — 중복 잔존. 트랜잭션화 또는 로드 시 조정</td></tr>
+</table>
+<h3 class="sub">Minor (27건, 요약)</h3>
+<ul class="list">
+<li><b>agentlint</b>: <code>---</code> 구분자 미앵커(본문 hr 오인), 파일 재독 + 오류 무시, 코드펜스 column-0 한정, "specialist" substring 오버매칭, <code>errors</code> 패키지 섀도잉, 첫 파손 파일에서 전체 중단, justification 위치 무관 통과, dev 경로 하드코딩</li>
+<li><b>harness</b>: 삭제 중간 실패 시 부분 상태(롤백/재개 없음), "rejected" 문자열 분류, doctor 휴리스틱 침묵 통과</li>
+<li><b>preference</b>: ScanDue/MarkScanned TOCTOU + <code>--memory-dir</code>이 공유 24h 게이트 소비, toggle read-then-flip 레이스, <code>*fileStore</code> 타입 단언으로 Store 인터페이스 누수, ParseInt 2회 중첩, Touch가 주입 clock 규율 위반, env명 인라인 3곳</li>
+<li><b>worktree</b>: <code>IsTmuxAvailable</code>이 실제로는 "세션 내부인가" 검사, <code>BuildTmuxSessionConfig(...,".")</code> cwd 오전달, <code>--path</code> Abs 미해석, P3 실패 시 stale swarm 레지스트리 + done이 미정리, autoMode 오류 전부 <code>(false,nil)</code> 침묵, git stderr 소실, <code>--base "main"</code> vs BODP <code>origin/main</code> 드리프트, 공백 전용 경로 미검출</li>
+<li><b>wizard</b>: model_policy·Phase-1 질문 ko/ja/zh 번역 부재, 첫 프로필 무조건 "(Recommended)", advanced 게이트 영구 false 스텁, Validate 콜백 내 영속화 부작용</li>
+<li><b>pr/uikit</b>: 수제 JSON 조립(ciwatch.Handoff 스키마 드리프트 위험), <code>min</code> 재구현, banner env명 인라인</li>
+</ul>
+</div>
+</details>
+
+<h2 class="sec">4. 횡단 패턴 (반복 결함 계열)</h2>
+<table>
+<tr><th>패턴</th><th>발생</th><th>대표 사례</th><th>구조적 처방</th></tr>
+<tr><td><b>폐쇄형 struct의 설정 파일 왕복 → 데이터 소실</b></td><td>4곳</td><td>SettingsLocal, workflowMuteConfig, updateSettingsLocalEnv, deepMerge3Way</td><td>공유 설정 파일은 <code>map[string]any</code>/yaml Node 왕복만 허용하는 헬퍼로 일원화 + 회귀 테스트</td></tr>
+<tr><td><b>작성됐지만 미배선된 안전장치</b></td><td>7곳</td><td>update 락, deprecated 백업, dry-run, resume 체크포인트, --confirm, ttyConfirmer, exitCodeError</td><td>"dead-wire" 감지: 죽은 코드 CI 게이트(unused 검출) + SPEC AC에 배선 검증 포함</td></tr>
+<tr><td><b>RunE 내 os.Exit</b></td><td>8곳+</td><td>hook, astgrep, spec_lint, spec_drift, migrate, harness/execute, workflow_lint</td><td>기존 <code>ExitCoder</code>를 main.go 경계에서 일괄 매핑 — 이미 인프라 존재, 채택만 필요</td></tr>
+<tr><td><b>exit-code/플래그 문서-구현 불일치</b></td><td>7곳</td><td>github --dry-run, astgrep json/sarif, constitution 2, spec_lint 3, spec_audit 2, pre-push stdout</td><td>커맨드별 계약 테스트(help 텍스트 선언 코드 ↔ 실제 산출 코드)</td></tr>
+<tr><td><b>비원자/무락 공유 상태 RMW</b></td><td>8곳</td><td>settings.local.json ×5, ~/.claude.json, preference toggle/scan, update 무락</td><td>atomic writer 3벌 → 1개 통합 + flock 헬퍼 제공</td></tr>
+<tr><td><b>§14 하드코딩 위반 (env명·임계값 인라인)</b></td><td>12곳+</td><td>ANTHROPIC_* 6함수 중복, CLAUDE_PROJECT_DIR, CI=="1", tier 임계값 2벌</td><td>envkeys.go/defaults.go 상수화 일괄 청소 + ast-grep 룰로 재발 방지</td></tr>
+<tr><td><b>수제 파서 (yaml.v3 옆에서)</b></td><td>4곳</td><td>agentlint frontmatter, hook.go migration_patterns, worktree strings.Contains, team_spawn YAML 연결</td><td>yaml.v3 일원화 — 주석/중첩/특수문자 엣지 전부 해소</td></tr>
+<tr><td><b>UTF-8 바이트 절단</b></td><td>4곳</td><td>constitution, tool_policy, github.go, (CJK 콘텐츠 파손)</td><td>rune-경계 truncate 헬퍼 1개 추출</td></tr>
+<tr><td><b>en 정책 위반 한국어 UI 문자열</b></td><td>6파일</td><td>doctor.go, migration.go, clean.go, web_port*</td><td><code>error_messages: en</code> 기준 일괄 영문화</td></tr>
+</table>
+
+<h2 class="sec">5. 우선순위 권고 로드맵</h2>
+<table>
+<tr><th>순위</th><th>범위</th><th>내용</th><th>기대 효과</th></tr>
+<tr><td><b>P0</b></td><td>Critical 8건</td><td>설정 소실 4건(SettingsLocal·mute·rollback·RemoveHarness prefix) + ClaimTask 원장 파손 + update 락 배선 + symlink Lstat + promotion 증식</td><td>사용자 데이터 손실 리스크 제거 — 전부 국소 수정(각 1파일)</td></tr>
+<tr><td><b>P1</b></td><td>계약 드리프트</td><td>ExitCoder 일괄 채택(os.Exit 8곳 제거), --dry-run/--confirm 배선, astgrep/constitution/pre-push exit·스트림 계약 구현, 미실행 flock 테스트 파일명 교정</td><td>CI·훅 파이프라인 신뢰성 + 전 커맨드 테스트 가능화</td></tr>
+<tr><td><b>P2</b></td><td>동시성</td><td>settings.local.json 5곳 mutateSettingsLocal 일원화, ~/.claude.json flock, preference TOCTOU, atomic writer 통합</td><td>다중 세션(이 저장소의 실사용 패턴) 안정화</td></tr>
+<tr><td><b>P3</b></td><td>staleness/린터</td><td>agentlint 파서 yaml.v3 전환 + 10-에이전트 로스터 재생성, doctor_skills allowlist 파생화, help.go phantom 커맨드 제거</td><td>품질 게이트가 실제 시스템을 다시 감사하게 됨</td></tr>
+<tr><td><b>P4</b></td><td>구조/위생</td><td>update.go 3,181라인 분해, 죽은 코드 ~500라인 정리, §14 상수화 일괄, 한국어 UI 영문화, rune-truncate 헬퍼</td><td>유지보수 비용·재발 위험 감소</td></tr>
+</table>
+
+<div class="foot">
+생성: MoAI 오케스트레이터 · 2026-07-10 · 감사 입력: 5개 병렬 read-only 정적 감사 에이전트 (총 ~1.33M 토큰, 155 도구 호출) · 본 보고서의 발견 항목은 각 에이전트가 소스를 직접 읽어 검증한 것이며, 수정 전 개별 항목의 재현 확인을 권장합니다. 원본 상세는 file:line 좌표로 소스에서 직접 확인 가능합니다.
+</div>
+
+</div>
+</body>
+</html>

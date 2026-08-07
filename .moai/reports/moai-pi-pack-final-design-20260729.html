@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>moai-pi-pack + moai-adk v4 — 최종 설계 및 개발 착수 계획</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    /* ============================================================
+       CSS variable contract (design-tokens.md SSOT)
+       html-report — plan mode / basic tier
+    ============================================================ */
+    :root {
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      --max-width:    1100px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      padding: 56px 32px 120px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    /* header */
+    header.page-head { margin-bottom: 48px; max-width: 860px; }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+      font-family: var(--mono);
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 36px;
+      line-height: 1.2;
+      color: var(--slate);
+      margin-bottom: 18px;
+      letter-spacing: -0.01em;
+    }
+
+    .goal-box {
+      background: var(--g100);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 22px;
+      font-size: 14.5px;
+      color: var(--g700);
+    }
+
+    .goal-box .label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .goal-box p + p { margin-top: 8px; }
+    .goal-box strong { color: var(--slate); }
+
+    /* sections */
+    section { margin-bottom: 64px; }
+
+    .sec-head {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .sec-head .num {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 3px 9px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .sec-head h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 24px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+    }
+
+    .sec-intro {
+      font-size: 14.5px;
+      color: var(--g500);
+      max-width: 780px;
+      margin-bottom: 28px;
+    }
+
+    .sec-intro strong { color: var(--g700); }
+
+    h3.sub {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--slate);
+      margin: 32px 0 12px;
+    }
+
+    /* summary strip */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 64px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .sum-cell {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 20px;
+    }
+
+    .sum-cell .k {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--g500);
+      margin-bottom: 6px;
+    }
+
+    .sum-cell .v {
+      font-size: 17px;
+      color: var(--slate);
+      font-weight: 600;
+    }
+
+    .sum-cell .v.accent { color: var(--clay); }
+    .sum-cell .note { font-size: 12.5px; color: var(--g500); margin-top: 4px; font-weight: 400; }
+
+    /* glossary callout */
+    .glossary {
+      background: var(--paper);
+      border: var(--border);
+      border-left: 4px solid var(--olive);
+      border-radius: var(--radius-row);
+      padding: 16px 20px;
+      margin: 24px 0;
+      max-width: 820px;
+    }
+
+    .glossary .g-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--olive);
+      margin-bottom: 10px;
+    }
+
+    .glossary dl { display: grid; grid-template-columns: 190px 1fr; gap: 8px 16px; font-size: 13.5px; }
+    @media (max-width: 720px) { .glossary dl { grid-template-columns: 1fr; gap: 2px 0; } }
+    .glossary dt { font-weight: 600; color: var(--slate); }
+    .glossary dd { color: var(--g500); }
+    .glossary dd + dt { margin-top: 4px; }
+
+    /* diagram */
+    .diagram {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    .diagram pre.mermaid {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--g700);
+      white-space: pre;
+    }
+
+    .caption { font-size: 13px; color: var(--g500); margin-top: 14px; }
+
+    /* milestones */
+    .milestones { display: flex; flex-direction: column; }
+
+    .milestone {
+      display: grid;
+      grid-template-columns: 130px 28px 1fr;
+      gap: 0 18px;
+      position: relative;
+    }
+
+    @media (max-width: 720px) {
+      .milestone { grid-template-columns: 74px 28px 1fr; }
+    }
+
+    .milestone .when {
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding-top: 4px;
+    }
+
+    .milestone .dot-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .milestone .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--paper);
+      border: 3px solid var(--clay);
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .milestone .dot.done {
+      background: var(--olive);
+      border-color: var(--olive);
+    }
+
+    .milestone .line {
+      width: 2px;
+      flex: 1;
+      background: var(--g300);
+      margin: 4px 0;
+    }
+
+    .milestone:last-child .line { display: none; }
+
+    .milestone .body { padding-bottom: 34px; }
+
+    .milestone .body h3 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--slate);
+      margin-bottom: 4px;
+    }
+
+    .milestone .body p {
+      font-size: 14px;
+      color: var(--g500);
+      margin-bottom: 10px;
+      max-width: 660px;
+    }
+
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      background: var(--g100);
+      border: 1px solid var(--g300);
+      border-radius: 6px;
+      padding: 3px 8px;
+      color: var(--g700);
+    }
+
+    .tag.hero { background: #F3D9CC; border-color: #E0B8A4; color: #8A3B1E; }
+
+    /* risk grid */
+    .risks {
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .risks .row {
+      display: grid;
+      grid-template-columns: 1.5fr 96px 1.9fr;
+    }
+
+    @media (max-width: 780px) {
+      .risks .row { grid-template-columns: 1fr; }
+    }
+
+    .risks .row + .row { border-top: var(--border); }
+
+    .risks .cell {
+      padding: 14px 18px;
+      font-size: 13.5px;
+    }
+
+    .risks .cell + .cell { border-left: var(--border); }
+
+    @media (max-width: 780px) {
+      .risks .cell + .cell {
+        border-left: none;
+        border-top: 1px dashed var(--g300);
+      }
+    }
+
+    .risks .head {
+      background: var(--g100);
+      font-weight: 600;
+      color: var(--slate);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .risks .cell code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      background: var(--g100);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--clay-d);
+    }
+
+    .sev {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .sev.high { background: #F3D9CC; color: #8A3B1E; }
+    .sev.med  { background: var(--oat); color: var(--slate); }
+    .sev.low  { background: #E4E9DC; color: #4B5C39; }
+
+    /* generic table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      font-size: 13.5px;
+    }
+
+    th {
+      background: var(--g100);
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--slate);
+      font-weight: 600;
+    }
+
+    td { padding: 12px 16px; border-top: var(--border); vertical-align: top; }
+    td code, th code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      background: var(--g100);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--clay-d);
+    }
+
+    .ok { color: var(--olive); font-weight: 600; }
+
+    /* code panel */
+    .code-panel {
+      background: var(--slate);
+      border-radius: var(--radius-panel);
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .code-panel .bar {
+      background: #232320;
+      padding: 10px 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #B8B7B0;
+      border-bottom: 1px solid #35342F;
+    }
+
+    .code-panel pre {
+      padding: 20px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: #E8E6DF;
+    }
+
+    .code-panel pre .c { color: #87867F; }
+    .code-panel pre .s { color: #C9A87C; }
+    .code-panel pre .k { color: #D97757; }
+
+    /* worked example */
+    .example {
+      background: var(--paper);
+      border: var(--border);
+      border-left: 4px solid var(--clay);
+      border-radius: var(--radius-row);
+      padding: 16px 20px;
+      margin: 22px 0;
+      max-width: 860px;
+      font-size: 13.5px;
+    }
+
+    .example .e-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--clay-d);
+      margin-bottom: 8px;
+    }
+
+    .example ol { margin: 8px 0 0 20px; }
+    .example li { margin-bottom: 4px; color: var(--g700); }
+    .example code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      background: var(--g100);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--clay-d);
+    }
+
+    /* checklist */
+    .checklist { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      padding: 14px 18px;
+    }
+
+    .check-box {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--g300);
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .check-body { flex: 1; font-size: 14px; color: var(--slate); }
+    .check-body .d { font-size: 13px; color: var(--g500); margin-top: 3px; }
+
+    /* open questions */
+    .open-q {
+      background: var(--g100);
+      border: var(--border);
+      border-radius: var(--radius-panel);
+      padding: 18px 22px;
+      max-width: 860px;
+    }
+
+    .open-q ul { margin-left: 20px; font-size: 14px; }
+    .open-q li { margin-bottom: 6px; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      line-height: 1.8;
+    }
+
+    @media print {
+      body { background: white; color: black; padding: 0; font-size: 11pt; }
+      .page { max-width: none; }
+      a[href]::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
+      h1, h2, h3 { page-break-after: avoid; }
+      table, .risks, .diagram, .code-panel, .example { page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-head">
+      <div class="eyebrow">Final Design &middot; 2026-07-29 &middot; canonical</div>
+      <h1>moai-pi-pack + moai-adk v4<br>최종 설계 및 개발 착수 계획</h1>
+      <div class="goal-box">
+        <span class="label">Goal</span>
+        <p><strong>무엇을 하려는가</strong> — moai-adk의 하네스 (harness &mdash; AI 코딩 도구를 감싸서 품질·비용을 통제하는 바깥 껍데기) 철학을 Claude Code·Codex·OMP 세 런타임에 똑같이 전달합니다. OMP에는 <strong>moai-pi-pack</strong> 이라는 네이티브 플러그인으로, CC/Codex에는 파일 배포로 전달합니다.</p>
+        <p><strong>왜 지금 이 문서인가</strong> — 이 세션에서 나온 설계·기획·감사 결과를 하나로 합친 정본(canonical)입니다. 재논의가 끝난 결정들이 §4에 정리돼 있고, 다음 세션이 바로 코드부터 칠 수 있게 §5에 복사 가능한 스파이크 코드를 넣어 뒀습니다.</p>
+      </div>
+    </header>
+
+    <div class="summary-strip">
+      <div class="sum-cell">
+        <div class="k">플러그인명</div>
+        <div class="v accent">moai-pi-pack</div>
+        <div class="note">Moai &times; Pi &middot; TypeScript &middot; MIT</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">코어</div>
+        <div class="v">moai-adk v4</div>
+        <div class="note">Go &middot; moai-adk-go 진화 &middot; 다중런타임</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">감사 결과</div>
+        <div class="v ok">5 / 5 확증</div>
+        <div class="note">ExtensionAPI 핵심 주장 전부 문서 확인</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">다음 단계</div>
+        <div class="v accent">P-1 스파이크</div>
+        <div class="note">1일 · 4경로 실측 확인 게이트</div>
+      </div>
+    </div>
+
+    <!-- 01 ================================================== -->
+    <section aria-label="Architecture">
+      <div class="sec-head"><span class="num">01</span><h2>구조 — 3층으로 나눈 이유</h2></div>
+      <p class="sec-intro">
+        같은 기능을 런타임마다 세 번 만들면 세 배로 망가집니다. 그래서 <strong>철학과 콘텐츠는 가운데(코어)에 한 번만</strong> 두고,
+        런타임마다 다른 부분만 얇은 <strong>어댑터</strong> (adapter &mdash; 서로 다른 규격을 이어주는 변환기)로 감쌌습니다.
+        아래 그림에서 세로로 내려가는 흐름이 그 구조입니다.
+      </p>
+
+      <div class="glossary">
+        <div class="g-title">먼저 알아 둘 용어</div>
+        <dl>
+          <dt>런타임 (runtime)</dt>
+          <dd>실제로 AI가 돌아가는 프로그램. 여기서는 Claude Code · Codex · OMP 세 가지.</dd>
+          <dt>OMP</dt>
+          <dd>oh-my-pi. 플러그인을 공식으로 받아 주는 오픈소스 AI 코딩 도구(MIT).</dd>
+          <dt>ExtensionAPI</dt>
+          <dd>OMP가 플러그인에게 열어 준 확장 창구. 여기에 함수를 걸어 두면 특정 순간에 불립니다.</dd>
+          <dt>후크 (hook)</dt>
+          <dd>“이 순간이 오면 내 코드를 불러 줘”라고 미리 걸어 두는 갈고리.</dd>
+          <dt>SSOT</dt>
+          <dd>Single Source of Truth. 같은 정보를 딱 한 군데만 두는 원칙.</dd>
+        </dl>
+      </div>
+
+      <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["moai-adk 코어 (Go, 런타임 무관)<br/>철학 엔진 · 콘텐츠 SSOT · 모델 라우팅 · 러닝 · CLI"] --> B{"런타임 어댑터 RCA"}
+  B --> C["claude-code 어댑터"]
+  B --> D["codex 어댑터"]
+  B --> E["omp 어댑터"]
+  C --> F[".claude/ 파일 배포"]
+  D --> G[".codex/ 파일 배포"]
+  E --> H[".omp/ + moai-pi-pack 플러그인"]
+  F --> I["공유 증거 저장소 .moai/state/<br/>SPEC · TRUST5 결과 (런타임 무관)"]
+  G --> I
+  H --> I
+</pre>
+        <noscript>
+          <p><strong>구조 요약</strong> — 맨 위에 런타임과 무관한 Go 코어(철학 엔진·콘텐츠 SSOT·모델 라우팅·러닝·CLI)가 있고,
+          그 아래 런타임 어댑터(RCA)가 claude-code / codex / omp 세 갈래로 갈라집니다.
+          각 갈래는 <code>.claude/</code>, <code>.codex/</code>, <code>.omp/ + moai-pi-pack</code> 으로 배포되며,
+          세 갈래 모두 같은 <code>.moai/state/</code> 증거 저장소를 공유합니다.</p>
+        </noscript>
+        <p class="caption">그림 1 — 3층 구조. 맨 아래 증거 저장소를 공유하는 것이 핵심입니다. 어느 런타임에서 작업하든 SPEC·TRUST5 결과는 한 곳에 쌓입니다.</p>
+      </div>
+
+      <h3 class="sub">한 프로젝트가 여러 런타임을 동시에</h3>
+      <p class="sec-intro">
+        사용자 요구를 반영해, 하나의 프로젝트가 Claude Code와 OMP를 <strong>동시에</strong> 타깃할 수 있습니다.
+        어떤 런타임을 쓸지는 <code>.moai/config/runtime.yaml</code> 한 파일에만 적습니다(SSOT).
+      </p>
+
+      <table>
+        <thead>
+          <tr><th style="width:170px">명령</th><th>동작</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>moai init</code></td>
+            <td>대화형 다중 선택(<code>&#9744; CC &#9744; OMP &#9744; Codex</code>) 또는 <code>--runtime claude-code,omp</code>. 선택한 트리를 동시에 배포합니다.</td>
+          </tr>
+          <tr>
+            <td><code>moai update</code></td>
+            <td>선택 집합을 다시 확인하고 리싱크. <code>--runtime +omp</code> / <code>-codex</code> 로 증분 변경. 네임스페이스 보호는 그대로 유지.</td>
+          </tr>
+          <tr>
+            <td><code>moai cc</code> / <code>codex</code> / <code>omp</code></td>
+            <td>런처. 어떤 런처로 들어가든 <code>.moai/state/</code> 의 SPEC·TRUST5 증거는 공유됩니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 02 ================================================== -->
+    <section aria-label="moai-pi-pack">
+      <div class="sec-head"><span class="num">02</span><h2>moai-pi-pack — 감사로 확정된 설계</h2></div>
+      <p class="sec-intro">
+        플러그인 하나(TypeScript extension 1개)가 OMP의 확장 창구에 다섯 갈래로 걸립니다.
+        아래 표의 <span class="ok">VERIFIED</span> 는 “문서로 확인했다”는 뜻입니다 &mdash; 추측이 아니라 OMP 공식 문서에서 근거를 찾은 항목입니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:180px">기능</th>
+            <th style="width:300px">거는 후크</th>
+            <th>확인 상태 / 근거</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TRUST5 게이트</strong><br><span style="color:var(--clay-d);font-size:12px">히어로 경로</span></td>
+            <td><code>tool_call</code> &rarr; <code>{block, reason}</code> 또는 입력 수정</td>
+            <td><span class="ok">VERIFIED</span> — 정규 경로, fail-closed(막히는 쪽이 기본)</td>
+          </tr>
+          <tr>
+            <td>모델 라우팅</td>
+            <td><code>before_provider_request</code> + <code>setModel</code> / <code>setThinkingLevel</code> / <code>setServiceTier</code></td>
+            <td><span class="ok">VERIFIED</span> — extensions L123 / L128 / L245</td>
+          </tr>
+          <tr>
+            <td>검증 경제</td>
+            <td><code>compact()</code> + <code>session.compacting</code> + <code>context</code> 다이어트</td>
+            <td><span class="ok">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>토큰 모니터</td>
+            <td><code>getContextUsage()</code></td>
+            <td><span class="ok">VERIFIED</span></td>
+          </tr>
+          <tr>
+            <td>에이전트 · 스킬 · 명령</td>
+            <td>pack <code>agents/</code>(Explore&rarr;scout) · 21+ 스킬 · 16 슬래시명령(<code>registerCommand</code>) · @MX(<code>registerTool</code>+TTSR) · 러닝(memory + managed-skills + metaharness)</td>
+            <td><span class="ok">VERIFIED</span> — 11 에이전트 매핑 완료</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="example">
+        <div class="e-title">이게 실제로 어떻게 동작하나 — TRUST5 게이트 예시</div>
+        <ol>
+          <li>AI가 <code>git commit --no-verify</code> 를 실행하려고 합니다. (<code>--no-verify</code> 는 커밋 전 품질 검사를 건너뛰라는 옵션입니다.)</li>
+          <li>OMP가 실행 직전 <code>tool_call</code> 후크를 부릅니다 &rarr; moai-pi-pack의 함수가 깨어납니다.</li>
+          <li>명령 문자열에 <code>--no-verify</code> 가 있으므로 <code>{ block: true, reason: "[moai TRUST5] 정책 위반 명령 차단" }</code> 을 돌려줍니다.</li>
+          <li>명령은 <strong>실행되지 않고</strong>, 사용자 화면에 차단 이유가 그대로 보입니다.</li>
+        </ol>
+        <p style="margin-top:10px;color:var(--g500)">핵심: 품질 규칙이 “권고 문서”가 아니라 <strong>실행 시점에 실제로 막는 장치</strong>가 됩니다. 그래서 이 경로가 가장 위험이 낮고 가치가 높은 첫 구축 대상입니다.</p>
+      </div>
+
+      <h3 class="sub">배포 방법 (감사 지적 R-C 반영)</h3>
+      <p class="sec-intro">
+        마켓플레이스 캐시만으로는 extension이 로드되지 않는다는 점이 감사에서 드러났습니다. 따라서 두 경로만 유효합니다 —
+        <code>omp plugin install moai-pi-pack</code> (npm/git, <code>omp.extensions</code> 매니페스트 경유) 또는
+        <code>.omp/extensions/</code> 에 직접 배치. 한국어 지시문은 pack의 <code>APPEND_SYSTEM.md</code>(KO canonical)에 둡니다.
+      </p>
+    </section>
+
+    <!-- 03 ================================================== -->
+    <section aria-label="Value proposition">
+      <div class="sec-head"><span class="num">03</span><h2>가치 제안 — 히어로와 훅을 나눈 이유</h2></div>
+      <p class="sec-intro">
+        똑같은 제품이라도 사용자층마다 아픈 곳이 다릅니다. 그래서 하나의 메시지로 밀지 않고 둘로 나눴습니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th style="width:120px">역할</th><th style="width:190px">무엇</th><th>누구에게 / 왜</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--clay-d)">히어로</strong></td>
+            <td>품질 · 신뢰성<br>(SPEC &middot; TRUST5)</td>
+            <td>구독형 사용자 다수의 <strong>1순위 고통</strong>. 런타임과 무관하게 통합니다. 대문에 내세울 메시지.</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--olive)">훅</strong></td>
+            <td>Tokenomics<br>(비용 통제)</td>
+            <td>종량제 파워유저의 지갑을 직접 건드리는 이야기. 관심을 끌어오는 미끼 역할.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">런타임별 강제 수단</h3>
+      <table>
+        <thead>
+          <tr><th style="width:130px">런타임</th><th>품질 강제</th><th>비용 강제</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Claude Code</td>
+            <td>command 후크 exit-code + LSP 게이트</td>
+            <td>외부 회로차단기</td>
+          </tr>
+          <tr>
+            <td>Codex</td>
+            <td>command 후크 exit-code + LSP 게이트</td>
+            <td><code>rollout_budget</code> 에 위임</td>
+          </tr>
+          <tr>
+            <td>OMP</td>
+            <td><code>tool_call</code> block <span class="ok">VERIFIED</span> + lsp 툴 + advisor</td>
+            <td><code>session_stop{block}</code> (메인 세션 전용)</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="sec-intro" style="margin-top:14px">
+        세 런타임 모두 결과 증거는 <code>.moai/state/</code> 한 곳(SSOT)에 씁니다. 검증 경제는 <code>compact</code> + <code>context</code> 다이어트 + mnemopi 로 처리합니다.
+      </p>
+    </section>
+
+    <!-- 04 ================================================== -->
+    <section aria-label="Risks">
+      <div class="sec-head"><span class="num">04</span><h2>감사가 잡아낸 함정 4개 (R-A ~ R-D)</h2></div>
+      <p class="sec-intro">
+        감사(<code>moai-pack-audit-20260729.md</code>)에서 나온 지적 네 가지입니다. <strong>네 개 모두 설계에 이미 반영</strong>되어 재논의 대상이 아닙니다.
+        여기 적힌 대응을 그대로 따라가면 같은 함정을 다시 밟지 않습니다.
+      </p>
+
+      <div class="risks">
+        <div class="row">
+          <div class="cell head">함정</div>
+          <div class="cell head">위험도</div>
+          <div class="cell head">확정된 대응</div>
+        </div>
+        <div class="row">
+          <div class="cell"><strong>R-A</strong> — <code>session_stop</code> 이 메인 세션에서만 발화. 서브에이전트에서는 안 불림</div>
+          <div class="cell"><span class="sev high">HIGH</span></div>
+          <div class="cell">예산 강제는 <strong>오케스트레이터(메인) 단에서 총괄</strong>. 서브에이전트는 <code>task.isolation</code> 한도 + <code>turn_end</code> 모니터 + <code>context</code> 주입 게이트로 대신합니다. moai 위임 패턴과 정합.</div>
+        </div>
+        <div class="row">
+          <div class="cell"><strong>R-B</strong> — raw 타이머(<code>setInterval</code> 직접 호출)를 쓰면 세션이 크래시</div>
+          <div class="cell"><span class="sev high">HIGH</span></div>
+          <div class="cell">예산 모니터는 <strong>반드시</strong> <code>ctx.setInterval</code> 사용. 예외 없음.</div>
+        </div>
+        <div class="row">
+          <div class="cell"><strong>R-C</strong> — 마켓플레이스 캐시만으로는 extension 미로드</div>
+          <div class="cell"><span class="sev med">MED</span></div>
+          <div class="cell"><code>omp plugin install</code>(매니페스트 경유) 또는 <code>.omp/extensions/</code> 직접 배치 — 두 경로만 지원.</div>
+        </div>
+        <div class="row">
+          <div class="cell"><strong>R-D</strong> — 관측성. 화면이 없는 환경에서 상태를 볼 수 없음</div>
+          <div class="cell"><span class="sev low">LOW</span></div>
+          <div class="cell">statusline interactive 를 1순위로. CI/RPC/헤드리스는 로그(<code>pi.logger</code> / <code>~/.omp/logs/</code>) + <code>ctx.hasUI</code> 가드로 보조.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 ================================================== -->
+    <section aria-label="Milestones">
+      <div class="sec-head"><span class="num">05</span><h2>로드맵</h2></div>
+      <p class="sec-intro">
+        <strong>P-1이 게이트</strong>입니다. 스파이크 (spike &mdash; 본격 개발 전에 “이게 진짜 되나?”만 확인하는 최소 코드) 결과가 나오기 전에는
+        pack 설계를 확정으로 취급하지 않습니다. 그 뒤로는 코어 &rarr; 어댑터 &rarr; pack &rarr; 품질 &rarr; 비용 &rarr; 문서 순서입니다.
+      </p>
+
+      <div class="milestones">
+        <div class="milestone">
+          <div class="when">1일차</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>P-1 &mdash; 확인 스파이크</h3>
+            <p>TS 50~150줄로 네 경로가 실제로 발화하는지 실측합니다. 모든 pack 설계의 확인 게이트.</p>
+            <div class="tag-row">
+              <span class="tag hero">최우선</span>
+              <span class="tag">tool_call block</span>
+              <span class="tag">session_stop 예산</span>
+              <span class="tag">ctx.setInterval</span>
+              <span class="tag">setModel 타이밍</span>
+            </div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P0</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>코어 골격</h3>
+            <p>Runtime 인터페이스 + LayoutManifest + 콘텐츠 SSOT 분할 + <code>runtime.yaml</code> 다중 선택 init/update.</p>
+            <div class="tag-row"><span class="tag">Go</span><span class="tag">runtime.yaml</span><span class="tag">LayoutManifest</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P1</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>CC / Codex 어댑터</h3>
+            <p>기존 배포 경로를 어댑터 형태로 정리합니다.</p>
+            <div class="tag-row"><span class="tag">.claude/</span><span class="tag">.codex/</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P2</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>moai-pi-pack MVP</h3>
+            <p>스파이크 결과를 반영한 extension + 11 에이전트 + 한국어 APPEND_SYSTEM. vanilla OMP에서 검증합니다.</p>
+            <div class="tag-row"><span class="tag">TS extension</span><span class="tag">11 agents</span><span class="tag">KO canonical</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P3</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>품질 (히어로)</h3>
+            <p>SPEC / TRUST5 를 세 런타임에서 <strong>동일하게</strong> 강제합니다.</p>
+            <div class="tag-row hero"><span class="tag hero">히어로 경로</span><span class="tag">SPEC 3-Phase</span><span class="tag">TRUST5</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P4</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>Tokenomics (훅)</h3>
+            <p>라우팅 · 예산 · 검증 경제를 다중 런타임으로 확장합니다.</p>
+            <div class="tag-row"><span class="tag">라우팅</span><span class="tag">예산</span><span class="tag">검증경제</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">P5</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>i18n &amp; 문서</h3>
+            <p>4-locale + docs 정비.</p>
+            <div class="tag-row"><span class="tag">4-locale</span><span class="tag">docs</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 ================================================== -->
+    <section aria-label="Handoff">
+      <div class="sec-head"><span class="num">06</span><h2>다음 세션 개발 착수 핸드오프</h2></div>
+      <p class="sec-intro">
+        <strong>재논의 불필요한 결정</strong> — C안 / Go 진화 / 품질-히어로 &middot; 비용-훅 / 예산 메인-중심(R-A) /
+        <code>ctx.setInterval</code> 필수(R-B) / <code>omp plugin install</code> 배포(R-C) / statusline 1순위(R-D) / 플러그인명 moai-pi-pack.
+      </p>
+
+      <h3 class="sub">1일차 작업 순서</h3>
+      <div class="checklist">
+        <div class="check-row">
+          <div class="check-box"></div>
+          <div class="check-body">
+            OMP 로컬 확보
+            <div class="d"><code>omp plugin link</code> 또는 <code>.omp/extensions/</code> 배치</div>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-box"></div>
+          <div class="check-body">
+            <code>moai-pi-pack/spike.ts</code> 작성 &mdash; 아래 골격을 그대로 복사
+            <div class="d">배치 위치: <code>&lt;cwd&gt;/.omp/extensions/spike.ts</code> 또는 <code>~/.omp/agent/extensions/spike.ts</code></div>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-box"></div>
+          <div class="check-body">
+            4경로 각각 실세션에서 발화 확인
+            <div class="d">검증: <code>omp</code> 실행 후 <code>tail -f ~/.omp/logs/omp.$(date +%F).log</code> 로 증거 캡처</div>
+          </div>
+        </div>
+        <div class="check-row">
+          <div class="check-box"></div>
+          <div class="check-body">
+            R-A 검증 &mdash; 서브에이전트 세션에서 <code>session_stop</code> 이 <strong>안 불리는지</strong> 확인
+            <div class="d">여기서 발화가 관측되면 R-A 대응 설계를 재검토해야 합니다</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-panel">
+        <div class="bar">moai-pi-pack/spike.ts &nbsp;&middot;&nbsp; 원천: extensions.md / authoring-extensions.md</div>
+<pre><span class="c">// P-1 확인 스파이크</span>
+<span class="k">import type</span> { ExtensionAPI } <span class="k">from</span> <span class="s">"@oh-my-pi/pi-coding-agent"</span>;
+
+<span class="k">const</span> BUDGET_TOKENS = 200_000; <span class="c">// 예시 예산</span>
+
+<span class="k">export default function</span> (pi: ExtensionAPI) {
+  <span class="c">// (1) TRUST5 게이트 — 금지 tool_call 차단 (fail-closed, VERIFIED)</span>
+  pi.on(<span class="s">"tool_call"</span>, <span class="k">async</span> (event) =&gt; {
+    <span class="k">const</span> cmd = String((event.input <span class="k">as</span> { command?: unknown }).command ?? <span class="s">""</span>);
+    <span class="k">if</span> (event.toolName === <span class="s">"bash"</span> &amp;&amp; /--no-verify|rm -rf \//.test(cmd)) {
+      <span class="k">return</span> { block: <span class="k">true</span>, reason: <span class="s">"[moai TRUST5] 정책 위반 명령 차단"</span> };
+    }
+  });
+
+  <span class="c">// (2)+(3) 예산 모니터 — 반드시 ctx.setInterval (R-B: raw 타이머 = 세션 크래시)</span>
+  <span class="k">let</span> over = <span class="k">false</span>;
+  pi.on(<span class="s">"session_start"</span>, <span class="k">async</span> (_e, ctx) =&gt; {
+    ctx.setInterval(() =&gt; {
+      <span class="k">const</span> u = ctx.getContextUsage();
+      <span class="k">if</span> (u &amp;&amp; (u.tokens ?? 0) &gt; BUDGET_TOKENS) {
+        over = <span class="k">true</span>;
+        <span class="k">if</span> (ctx.hasUI) ctx.ui.setStatus(<span class="s">"moai-budget"</span>, <span class="s">"⚠ 예산 초과"</span>);
+      }
+    }, 30_000);
+  });
+
+  <span class="c">// (2) 메인 세션 회로차단기 — stop_hook_active 가드 필수(없으면 무한 continue 루프)</span>
+  <span class="c">//     R-A: 서브에이전트 세션에서는 session_stop 자체가 미발화됨</span>
+  pi.on(<span class="s">"session_stop"</span>, <span class="k">async</span> (event) =&gt; {
+    <span class="k">if</span> (event.stop_hook_active) <span class="k">return</span>;        <span class="c">// ← authoring-extensions L206 필수 가드</span>
+    <span class="k">return</span> over ? { decision: <span class="s">"block"</span>, reason: <span class="s">"[moai Budget] 토큰 예산 초과"</span> } : <span class="k">undefined</span>;
+  });
+
+  <span class="c">// (4) 라우팅 타이밍 점검 — before_provider_request 페이로드 관찰</span>
+  pi.on(<span class="s">"before_provider_request"</span>, <span class="k">async</span> (_event, ctx) =&gt; {
+    pi.logger?.debug?.(<span class="s">"[moai] route probe"</span>, { model: ctx.model });
+  });
+}</pre>
+      </div>
+
+      <div class="example">
+        <div class="e-title">이 코드에서 절대 빼면 안 되는 한 줄</div>
+        <p><code>if (event.stop_hook_active) return;</code> — 이 가드가 없으면 세션이 “멈춰라 &rarr; 계속해라”를 무한 반복합니다.
+        <code>session_stop</code> 에서 block을 돌려주면 세션이 다시 이어지는데, 그때 또 <code>session_stop</code> 이 불리기 때문입니다.
+        이 플래그는 “지금 이미 stop 후크 처리 중”이라는 표시라서, 그때는 그냥 빠져나와야 루프가 끊깁니다.</p>
+      </div>
+
+      <h3 class="sub">스파이크 수락 기준</h3>
+      <div class="checklist">
+        <div class="check-row"><div class="check-box"></div><div class="check-body"><code>tool_call</code> block 의 reason 이 화면에 보인다</div></div>
+        <div class="check-row"><div class="check-box"></div><div class="check-body">메인 세션의 <code>session_stop</code> block 이 발화한다</div></div>
+        <div class="check-row"><div class="check-box"></div><div class="check-body"><code>ctx.setInterval</code> 이 크래시 없이 안정적으로 돈다</div></div>
+        <div class="check-row"><div class="check-box"></div><div class="check-body"><code>setModel</code> 이 후속 요청에 실제로 영향을 준다</div></div>
+      </div>
+
+      <h3 class="sub">그 다음 (P0 →)</h3>
+      <p class="sec-intro">
+        코어 Runtime 인터페이스 + <code>runtime.yaml</code> 다중 선택을 세운 뒤,
+        <strong>TRUST5 게이트(<code>tool_call</code> block)부터 pack에 구현</strong>합니다 &mdash; 위험이 가장 낮고 가치가 가장 높은 히어로 경로이기 때문입니다.
+      </p>
+
+      <h3 class="sub">아직 안 정한 것 (다음 세션에서 결정)</h3>
+      <div class="open-q">
+        <ul>
+          <li>초기 타깃 — CC + OMP 동시 진행 vs OMP 우선</li>
+          <li>저장소 구성 — 코어 모노레포 단일 vs pack 별도 2-repo</li>
+          <li>초기 모델 셋 — 어떤 모델들을 기본 라우팅 대상으로 둘지</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 07 ================================================== -->
+    <section aria-label="Self check">
+      <div class="sec-head"><span class="num">07</span><h2>이해했는지 스스로 확인해 보기</h2></div>
+      <p class="sec-intro">아래 세 가지에 답할 수 있으면 이 문서를 다 읽은 겁니다.</p>
+      <div class="checklist">
+        <div class="check-row"><div class="check-box"></div><div class="check-body">코어 · 어댑터 · 배포 3층 중, 런타임마다 달라지는 층은 어디인가?</div></div>
+        <div class="check-row"><div class="check-box"></div><div class="check-body">TRUST5 게이트를 “가장 먼저” 만들기로 한 이유는 무엇인가?</div></div>
+        <div class="check-row"><div class="check-box"></div><div class="check-body">R-A 때문에 예산 강제를 서브에이전트가 아니라 메인에서 하는 이유는?</div></div>
+      </div>
+    </section>
+
+    <footer>
+      Sources: local://moai-pack-audit-20260729.md &middot; local://{codebase,omp,codex}-analysis.md &middot; local://moai-adk-v4-moai-pack-design-20260729.md &middot; local://moai-omp-fork-planning-20260729.md &middot; OMP repo can1357/oh-my-pi (MIT)<br>
+      Rendered from: .moai/reports/moai-pi-pack-final-design-20260729.md &nbsp;&mdash;&nbsp; mode: plan &middot; audience: basic &nbsp;&mdash;&nbsp; Generated: 2026-07-30
+    </footer>
+
+  </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor:       "#FAF9F5",
+        primaryTextColor:   "#141413",
+        primaryBorderColor: "#D97757",
+        lineColor:          "#87867F",
+        secondaryColor:     "#E3DACC",
+        tertiaryColor:      "#F0EEE6",
+        fontFamily:         "Pretendard, system-ui, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

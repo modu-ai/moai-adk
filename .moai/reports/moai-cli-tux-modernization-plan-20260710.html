@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>moai CLI TUI/TUX 현대화 계획 — 2026-07-10</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard Variable","Pretendard",system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",monospace;
+  --max-width:900px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15px}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 24px 96px}
+header.hero{border-bottom:3px solid var(--clay);padding-bottom:24px;margin-bottom:32px}
+.hero .kicker{color:var(--clay);font-weight:700;letter-spacing:.08em;font-size:12px;text-transform:uppercase}
+.hero h1{font-size:30px;margin:8px 0 6px;line-height:1.3}
+.hero .meta{color:var(--g500);font-size:13px}
+h2{font-size:21px;margin:48px 0 16px;padding-left:12px;border-left:4px solid var(--clay)}
+h3{font-size:16px;margin:28px 0 10px;color:var(--g700)}
+p{margin:8px 0}
+code,.mono{font-family:var(--mono);font-size:.88em;background:var(--g100);padding:1px 5px;border-radius:4px}
+pre{background:#181715;color:#EDEAE2;padding:16px 18px;border-radius:var(--radius-panel);overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+pre code{background:none;color:inherit;padding:0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:24px 0}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 18px}
+.kpi .num{font-size:24px;font-weight:800;color:var(--clay-d)}
+.kpi .lbl{font-size:12.5px;color:var(--g500);margin-top:2px}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:var(--border);border-radius:var(--radius-panel);overflow:hidden;margin:16px 0;font-size:13.5px}
+th{background:var(--g100);text-align:left;padding:10px 12px;font-size:12.5px;color:var(--g700);border-bottom:2px solid var(--g300)}
+td{padding:9px 12px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:11.5px;font-weight:700}
+.pill.p0{background:#F6D5CB;color:#8A3A22}.pill.p1{background:#EFE3C8;color:#7A5B14}
+.pill.p2{background:#DDE6D2;color:#44562E}.pill.info{background:var(--g100);color:var(--g700)}
+.card{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:18px 22px;margin:16px 0}
+.card.accent{border-left:5px solid var(--clay)}
+.card.warn{border-left:5px solid #C9A227;background:#FDFBF3}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:720px){.two{grid-template-columns:1fr}}
+.tl{list-style:none;margin:20px 0;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--g300)}
+.tl li{position:relative;padding:0 0 26px 40px}
+.tl li::before{content:"";position:absolute;left:4px;top:4px;width:15px;height:15px;border-radius:50%;background:var(--clay);border:3px solid var(--ivory)}
+.tl .mtitle{font-weight:800;font-size:15px}
+.tl .mtag{color:var(--g500);font-size:12px;margin-left:8px}
+ul.tight{margin:6px 0;padding-left:20px}
+ul.tight li{margin:4px 0}
+.before,.after{border-radius:var(--radius-panel);padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap}
+.before{background:#F2EBE4;border:1px solid var(--g300)}
+.after{background:#181715;color:#EDEAE2}
+.after .ok{color:#9AC07C}.after .acc{color:#E9967A}.after .dim{color:#8a887f}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);color:var(--g500);font-size:12px}
+a{color:var(--clay-d)}
+.src{font-size:12px;color:var(--g500)}
+</style>
+</head>
+<body><div class="wrap">
+
+<header class="hero">
+  <div class="kicker">MoAI-ADK · CLI Design Plan</div>
+  <h1>moai CLI TUI/TUX 현대화 계획</h1>
+  <div class="meta">2026-07-10 · moai-adk-go · 대상: 전 CLI 표면 + <code>moai init</code> / <code>moai update</code> 로직</div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="num">Charm v2</div><div class="lbl">선정 스택 (2026-02 안정화, charm.land)</div></div>
+  <div class="kpi"><div class="num">4 마일스톤</div><div class="lbl">M1 기반 → M4 폴리시</div></div>
+  <div class="kpi"><div class="num">~34.3k LOC</div><div class="lbl">internal/cli (update.go 단일 117KB)</div></div>
+  <div class="kpi"><div class="num">1곳</div><div class="lbl">현재 Bubble Tea 사용처 (merge confirm)</div></div>
+</div>
+
+<h2>1. 현행 진단 (Discovery)</h2>
+<div class="card accent">
+<p><strong>이미 좋은 뼈대가 있다.</strong> <code>internal/tui</code>(~1,824 LOC)는 lipgloss v1 기반 자체 디자인 시스템(테마 토큰·<code>NO_COLOR</code>/<code>MOAI_THEME</code> 감지·hex 리터럴 금지 계약)을 갖추고 있고, <code>internal/cli/uikit</code>이 배너·카드·에러 박스를 제공합니다. 문제는 <em>세대</em>(전부 v1 라이브러리)와 <em>일관성</em>(출력 채널 분산)입니다.</p>
+</div>
+
+<table>
+<tr><th>영역</th><th>현재 상태</th><th>문제점</th></tr>
+<tr><td>스타일링</td><td>lipgloss v1.1.0 + catppuccin 팔레트, <code>internal/tui</code> 토큰 SSOT</td><td>v1 세대. 색 다운샘플링·배경 감지 정확도가 v2 대비 열세</td></tr>
+<tr><td>인터랙션</td><td>huh v1.0.0 폼 (init 위저드), bubbletea v1.3.10은 <code>internal/merge/confirm.go</code> 단 1곳</td><td>huh v0.8 스크롤 버그 회피용 "질문 1개 = 폼 1개" 워크어라운드 (<code>wizard.go:14</code>) — 통합 화면 부재</td></tr>
+<tr><td>진행 표시</td><td>수제 stateless <code>Spinner()</code>/<code>Progress()</code>/<code>ProgressLine</code> (<code>internal/tui/status.go</code>, <code>progress_line.go</code>)</td><td>비동기 애니메이션 스피너 없음. init은 정적 줄 출력만 — 긴 단계에서 무반응처럼 보임</td></tr>
+<tr><td>도움말/에러</td><td>cobra 기본 help, 에러는 <code>RenderError</code>와 cobra 기본 stderr 혼용</td><td>help 페이지 무스타일. 경고가 stdout에 <code>"Warning: %v"</code>로 새어나감 (자체 컨벤션 위반)</td></tr>
+<tr><td>출력 채널</td><td><code>fmt.Printf</code> 직접 호출 / <code>cmd.OutOrStdout()</code> / <code>ConsoleReporter</code> 혼재</td><td><strong>통합 Printer 추상화 부재</strong> — 재설계의 1순위 대상</td></tr>
+<tr><td>init 흐름</td><td><code>internal/cli/init.go:218</code> runInit — 셀프업데이트 → wizard → PhaseExecutor</td><td>사용자 인터랙션 <em>전에</em> 블로킹 네트워크 셀프업데이트(<code>init.go:220</code>); 진행 피드백 빈약</td></tr>
+<tr><td>update 흐름</td><td><code>update.go</code> 117KB 단일 파일, 7단계 파이프라인 + namespace 보호 + 3-way merge</td><td>파일 비대화; 변경 요약이 텍스트 나열 — diff 프리뷰/선택 UI 부재</td></tr>
+</table>
+
+<h2>2. 라이브러리 선정 (2026-07 기준 최신)</h2>
+<p>2026-02-23 Charm이 Bubble Tea · Lip Gloss · Bubbles <strong>v2 안정판</strong>을 동시 출시했습니다(6년 만의 첫 breaking change, import 경로가 <code>charm.land/*/v2</code> vanity 도메인으로 이동). Crush(Charm의 AI 코딩 에이전트)에서 수개월 프로덕션 검증을 거친 스택입니다.</p>
+
+<table>
+<tr><th>라이브러리</th><th>버전/경로</th><th>역할</th><th>핵심 이점</th></tr>
+<tr><td><strong>Bubble Tea v2</strong></td><td><code>charm.land/bubbletea/v2</code> (v2.0.8, 2026-07-03)</td><td>TUI 런타임 (위저드·update 프리뷰·doctor 대시보드)</td><td>Cursed Renderer(ncurses 계열)로 렌더링 수십 배 고속화, mode 2026 원자적 갱신(티어링 제거), 선언적 View 구조체, 향상된 키보드 지원</td></tr>
+<tr><td><strong>Lip Gloss v2</strong></td><td><code>charm.land/lipgloss/v2</code></td><td>스타일링 커널 (<code>internal/tui</code> 대체 기반)</td><td>정확한 배경색 질의 기반 라이트/다크 적응, 컬러 프로파일 자동 다운샘플링</td></tr>
+<tr><td><strong>Bubbles v2</strong></td><td><code>charm.land/bubbles/v2</code></td><td>스피너·프로그레스·테이블·viewport 컴포넌트</td><td>수제 stateless 스피너/바를 검증된 컴포넌트로 대체</td></tr>
+<tr><td><strong>Fang v2</strong></td><td><code>charm.land/fang/v2</code></td><td>cobra 래퍼 — 스타일드 help/에러, <code>--version</code>, man page, completion 자동화</td><td><code>fang.Execute(ctx, rootCmd)</code> 한 줄로 전 서브커맨드 help 현대화 + 터미널 배경 적응 테마</td></tr>
+<tr><td><strong>Huh</strong></td><td>v2 계열로 승격 (Bubble Tea v2 호환 버전)</td><td>init 위저드 폼</td><td>단일 멀티필드 폼 복원 — "질문당 폼 1개" 워크어라운드 제거 (스크롤 버그 해소 검증은 M2 선행 스파이크)</td></tr>
+<tr><td>Glamour</td><td><code>github.com/charmbracelet/glamour</code></td><td>(선택) <code>moai spec</code>/<code>moai status</code>의 마크다운 터미널 렌더</td><td>SPEC 문서·핸드오프를 터미널에서 서식 있는 출력</td></tr>
+</table>
+
+<div class="card warn"><strong>대안 검토 및 기각:</strong> <code>pterm</code>(스타일 통일성 낮음, MoAI 디자인 토큰 계약과 충돌), <code>survey</code>(사실상 유지보수 중단, huh가 후계), <code>tview</code>(풀스크린 위젯 지향 — 파이프라인형 CLI에 과함). Charm 생태계 단일화가 기존 <code>internal/tui</code> 투자·계약(hex 금지, 토큰 SSOT)과 정합.</div>
+
+<h2>3. 디자인 방향 — "MoAI Terminal Design Language v3"</h2>
+<div class="two">
+<div class="card">
+<h3 style="margin-top:0">원칙</h3>
+<ul class="tight">
+<li><strong>토큰 SSOT 유지</strong>: <code>internal/tui</code>가 유일한 색·글리프 원천 (기존 AC-CLI-TUI-013 계약 승계)</li>
+<li><strong>3계층 출력</strong>: 토큰(tui) → 컴포넌트(uikit) → <strong>통합 Printer</strong>(신규) — 모든 커맨드는 Printer만 사용</li>
+<li><strong>stdout=데이터, stderr=상태/경고</strong> 규율 기계화 (+ <code>--json</code>/<code>--plain</code> 전역 플래그)</li>
+<li><strong>graceful degradation</strong>: TTY→풀 TUI, non-TTY/CI→plain 라인, <code>NO_COLOR</code>/<code>MOAI_REDUCED_MOTION</code> 존중 (기존 계약 유지)</li>
+</ul>
+</div>
+<div class="card">
+<h3 style="margin-top:0">비주얼</h3>
+<ul class="tight">
+<li>브랜드 액센트: 코랄/테라코타 계열(claude warm 계열과 정합) + catppuccin 유지 검토</li>
+<li>배너 경량화: 대형 ASCII 로고 → 컴팩트 1–2행 아이덴티티 + pill 메타(버전/go/claude)</li>
+<li>상태 어휘 통일: <code>✓ ✗ ! ● ○ ◆</code> 글리프 화이트리스트 유지, 스피너는 bubbles v2</li>
+<li>Fang 테마를 tui 토큰으로 주입 → help/에러/커맨드 출력 색 일치</li>
+</ul>
+</div>
+</div>
+
+<h3>Before → After (moai init)</h3>
+<div class="two">
+<div class="before">$ moai init myproj
+  ○ Checking for updates...
+  ○ deploy templates...
+  ✓ deploy templates
+Warning: hook install failed: ...
+MoAI project initialized</div>
+<div class="after"><span class="acc">◆ MoAI</span> v2.17 <span class="dim">· go 1.26 · claude 2.1.19x</span>
+
+<span class="acc">┌ 프로젝트 설정 (1/1 통합 폼)</span>
+│ 이름 myproj   언어 go   모드 tdd …
+<span class="acc">└</span> Enter로 확인
+
+<span class="ok">⠸</span> 템플릿 배포 중 <span class="dim">42/96 files · 1.2s</span>
+<span class="ok">✓</span> 배포 완료 <span class="dim">96 files</span>
+<span class="ok">✓</span> git hooks 설치
+<span class="acc">╭─ 완료 ────────────────────╮</span>
+│ 다음: cd myproj && moai cc │
+<span class="acc">╰───────────────────────────╯</span>
+<span class="dim">! 경고 1건 → stderr 참조</span></div>
+</div>
+
+<h2>4. 실행 계획 — 4 마일스톤</h2>
+<ul class="tl">
+<li>
+  <div class="mtitle">M1 — 기반 교체: Charm v2 마이그레이션 + 통합 Printer <span class="mtag"><span class="pill p0">P0</span> Tier L 진입점</span></div>
+  <ul class="tight">
+    <li><code>go.mod</code>: <code>charm.land/{lipgloss,bubbletea,bubbles}/v2</code> + <code>charm.land/fang/v2</code> 도입, v1 제거</li>
+    <li><code>internal/tui</code>를 lipgloss v2 API로 포팅 (토큰 계약·테스트 보존, behavior-preserving DDD)</li>
+    <li><strong>신규 <code>internal/cli/printer</code></strong>: <code>Printer</code> 인터페이스(Info/Warn/Error/Data/Step/Spinner) — stdout/stderr 규율 + TTY/plain/json 3모드 단일 구현. <code>ConsoleReporter</code>·직접 <code>fmt.Printf</code> 호출을 전량 흡수</li>
+    <li><code>fang.Execute</code>로 root 진입 교체 → 전 서브커맨드 help/에러 즉시 현대화</li>
+  </ul>
+</li>
+<li>
+  <div class="mtitle">M2 — <code>moai init</code> 재설계 <span class="mtag"><span class="pill p0">P0</span></span></div>
+  <ul class="tight">
+    <li><strong>순서 교정</strong>: 셀프업데이트 체크를 위저드 <em>이후</em> 비동기(또는 <code>--check-update</code> opt-in)로 이동 — 첫 인터랙션까지 네트워크 0회</li>
+    <li>huh v2 스파이크로 스크롤 버그 해소 확인 → 6개 개별 폼을 <strong>단일 멀티필드 위저드</strong>(그룹 2–3개 + 사이드 스텝퍼)로 통합; 실패 시 현행 구조 유지 + 스타일만 v2</li>
+    <li>PhaseExecutor 진행을 bubbles v2 spinner + 파일 카운트 라이브 진행률로 교체 (non-TTY는 기존 plain 라인)</li>
+    <li>경고 수집기: 단계별 <code>Warning:</code> 산발 출력 → 종료 시 stderr 요약 패널 1회</li>
+    <li>완료 카드에 "다음 액션"(<code>cd</code> → <code>moai cc</code> → <code>/moai plan</code>) 명시</li>
+  </ul>
+</li>
+<li>
+  <div class="mtitle">M3 — <code>moai update</code> 재설계 <span class="mtag"><span class="pill p1">P1</span></span></div>
+  <ul class="tight">
+    <li><code>update.go</code>(117KB) 서브패키지 분해: <code>internal/cli/update/{plan,backup,deploy,merge,report}</code> — namespace 보호·3-way merge 로직은 behavior-preserving 이동</li>
+    <li><strong>변경 프리뷰 TUI</strong>: 분석 단계 결과를 Bubble Tea 테이블(추가/갱신/보존/충돌 분류 + 파일별 diff 프리뷰)로 표시, <code>--yes</code>/non-TTY는 요약 텍스트</li>
+    <li>기존 <code>internal/merge/confirm.go</code> 체크박스 UI를 bubbles v2 list로 승격해 update 충돌 해소에도 재사용</li>
+    <li>버전 스킵/강제/드라이런 결과를 통일된 outcome 카드로 (Already up-to-date / Updated N files / Dry-run)</li>
+    <li>백업 위치·복구 커맨드를 완료 화면에 항상 표기</li>
+  </ul>
+</li>
+<li>
+  <div class="mtitle">M4 — 전면 폴리시: doctor/status/spec 표면 <span class="mtag"><span class="pill p2">P2</span></span></div>
+  <ul class="tight">
+    <li><code>moai doctor</code>: 체크 항목 라이브 진행 + 섹션별 pass/fail 테이블 (bubbles table)</li>
+    <li><code>moai status</code>/<code>moai spec</code>: glamour 마크다운 렌더 (SPEC 요약·핸드오프 열람)</li>
+    <li>배너 경량화 + <code>moai --help</code> 그룹 재정리 (launch/project/tools 그룹 유지, 사용 빈도순 정렬)</li>
+    <li>스크린리더·CI 회귀 검증: <code>NO_COLOR</code>, non-TTY, Windows Terminal 골든 테스트 갱신</li>
+  </ul>
+</li>
+</ul>
+
+<h2>5. init / update 로직 개선 상세</h2>
+<table>
+<tr><th>#</th><th>개선</th><th>현재 (근거)</th><th>변경</th><th>우선순위</th></tr>
+<tr><td>I-1</td><td>셀프업데이트 위치</td><td>runInit 최선두 블로킹 네트워크 (<code>init.go:220</code>)</td><td>위저드 후 비동기 알림, 또는 별도 opt-in</td><td><span class="pill p0">P0</span></td></tr>
+<tr><td>I-2</td><td>위저드 통합 폼</td><td>질문 1개=폼 1개 워크어라운드 (<code>wizard.go:14</code>)</td><td>huh v2 단일 멀티그룹 폼 + 스텝퍼</td><td><span class="pill p0">P0</span></td></tr>
+<tr><td>I-3</td><td>진행 피드백</td><td>정적 <code>○/✓</code> 줄 (<code>reporter.go:33</code>)</td><td>라이브 스피너+파일 카운트, non-TTY 폴백</td><td><span class="pill p0">P0</span></td></tr>
+<tr><td>I-4</td><td>경고 채널</td><td>stdout에 <code>Warning:</code> 산발</td><td>수집 후 stderr 요약 패널 1회</td><td><span class="pill p1">P1</span></td></tr>
+<tr><td>I-5</td><td>재실행 안내</td><td><code>--force</code> 필요만 에러로 안내</td><td>기존 프로젝트 감지 시 "update를 원하시나요?" 리다이렉트 힌트</td><td><span class="pill p2">P2</span></td></tr>
+<tr><td>U-1</td><td>파일 분해</td><td><code>update.go</code> 단일 117KB</td><td><code>internal/cli/update/*</code> 5모듈 (동작 보존)</td><td><span class="pill p1">P1</span></td></tr>
+<tr><td>U-2</td><td>변경 프리뷰</td><td>분석 결과 텍스트 확인 프롬프트 (<code>update.go:596</code>)</td><td>분류 테이블+diff 프리뷰 TUI, <code>--yes</code> 폴백</td><td><span class="pill p1">P1</span></td></tr>
+<tr><td>U-3</td><td>outcome 통일</td><td>Updated/Skipped/Up-to-date 각기 다른 출력</td><td>단일 outcome 카드 + 백업 경로·복구 커맨드 상시 표기</td><td><span class="pill p1">P1</span></td></tr>
+<tr><td>U-4</td><td>namespace 보호 가시화</td><td>보호는 동작하나 무언 (<code>ns_protect.go:260</code>)</td><td>프리뷰에 "보존됨(user-owned)" 분류 명시 → 신뢰 가시화</td><td><span class="pill p2">P2</span></td></tr>
+</table>
+
+<h2>6. 리스크</h2>
+<table>
+<tr><th>리스크</th><th>영향</th><th>완화</th></tr>
+<tr><td>lipgloss v1→v2 API breaking (배경 감지·Style 시그니처 변경)</td><td><code>internal/tui</code> 전면 수정 + 골든 테스트 대량 갱신</td><td>M1을 DDD(characterization test 선행)로; 토큰 계약 테스트를 회귀 앵커로 사용</td></tr>
+<tr><td>huh v2의 Bubble Tea v2 호환/스크롤 버그 잔존</td><td>M2 통합 폼 불가</td><td>M2 착수 전 1일 스파이크; 실패 시 현행 구조+스타일만 갱신하는 플랜 B 명시</td></tr>
+<tr><td><code>update.go</code> 분해 중 namespace 보호 회귀</td><td>사용자 자산 손실 (최악)</td><td>behavior-preserving 이동 + 기존 <code>TestSplitHarnessNamespaceNoLeak</code>류 가드 전량 유지 + 신규 통합 테스트</td></tr>
+<tr><td>statusline(renderer.go)과의 시각 언어 불일치</td><td>브랜드 파편화</td><td>statusline은 범위 외로 고정하되 토큰 팔레트만 공유 문서화</td></tr>
+<tr><td>Windows/CI 환경 회귀 (mode 2026 미지원 터미널)</td><td>깨진 출력</td><td>Bubble Tea v2 자동 폴백 신뢰 + non-TTY 골든 테스트 CI 매트릭스</td></tr>
+</table>
+
+<h2>7. 성공 지표</h2>
+<ul class="tight">
+<li><strong>일관성</strong>: <code>internal/cli</code>에서 직접 <code>fmt.Printf</code>(os.Stdout) 호출 0건 — 전량 Printer 경유 (grep 게이트)</li>
+<li><strong>채널 규율</strong>: 경고/상태 문자열의 stdout 유출 0건 (골든 테스트)</li>
+<li><strong>init 체감</strong>: 첫 인터랙션까지 네트워크 호출 0회; 배포 중 1초 이상 무피드백 구간 0</li>
+<li><strong>update 신뢰</strong>: 프리뷰에 보존/덮어쓰기/병합 분류 100% 표기; namespace 보호 테스트 전량 green</li>
+<li><strong>품질 게이트</strong>: <code>go test ./...</code> + <code>golangci-lint</code> green, 커버리지 cli/template/hook ≥ 90% 유지</li>
+</ul>
+
+<h2>8. SPEC 분할 제안 (다음 액션)</h2>
+<table>
+<tr><th>SPEC</th><th>범위</th><th>Tier</th><th>의존</th></tr>
+<tr><td><code>SPEC-CLI-TUX-V3-001</code></td><td>M1: Charm v2 마이그레이션 + Fang + 통합 Printer</td><td>L</td><td>—</td></tr>
+<tr><td><code>SPEC-CLI-TUX-V3-002</code></td><td>M2: init 재설계 (I-1~I-5)</td><td>M</td><td>001</td></tr>
+<tr><td><code>SPEC-CLI-TUX-V3-003</code></td><td>M3: update 분해 + 프리뷰 TUI (U-1~U-4)</td><td>L</td><td>001</td></tr>
+<tr><td><code>SPEC-CLI-TUX-V3-004</code></td><td>M4: doctor/status/spec 폴리시 + 회귀 매트릭스</td><td>M</td><td>001–003</td></tr>
+</table>
+<p>착수 커맨드: <code>/moai plan "SPEC-CLI-TUX-V3-001 Charm v2 마이그레이션 + 통합 Printer"</code></p>
+
+<footer>
+Sources: <a href="https://charm.land/blog/v2/">Charm v2 발표</a> · <a href="https://github.com/charmbracelet/bubbletea/releases/tag/v2.0.0">Bubble Tea v2.0.0</a> · <a href="https://github.com/charmbracelet/lipgloss/releases/tag/v2.0.0">Lip Gloss v2.0.0</a> · <a href="https://github.com/charmbracelet/bubbles/releases/tag/v2.0.0">Bubbles v2.0.0</a> · <a href="https://github.com/charmbracelet/fang">Fang</a><br>
+근거 코드: internal/tui/ · internal/cli/uikit/ · internal/cli/init.go · internal/cli/update.go · internal/cli/wizard/ · internal/merge/confirm.go<br>
+MoAI-ADK · 생성일 2026-07-10 · 본 문서는 계획 보고서이며 구현 착수는 별도 승인(Implementation Kickoff Approval)을 거칩니다.
+</footer>
+
+</div></body></html>

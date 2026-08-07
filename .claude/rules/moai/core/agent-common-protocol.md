@@ -422,8 +422,6 @@ This is **procedural enforcement** (same trust model as the Pre-Spawn Sync Check
 
 **Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is therefore satisfied without additional code; the PreToolUse-on-Edit advisory above adds per-edit awareness on top of that session-start baseline.
 
-**Gate for orchestrator-direct Tier S/M push+PR.** The Pre-Spawn Sync Check (§ above) and the Pre-Edit Sync Check (§ above) are the mandatory gate for orchestrator-direct Tier S/M push+PR. When the orchestrator handles a Tier S/M push+PR directly via Bash (`git switch -c` / `git push -u` / `gh pr create` with `MOAI_BRANCH_GUARD_EXEMPT=1`) instead of spawning `manager-git`, the env-path branch-guard exemption is predicated on these sync checks passing first: the orchestrator MUST run the `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` + `moai session list --json` batch and halt (or auto-isolate per `worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation) on any divergence or foreign active session BEFORE issuing the branch-state-mutating Bash calls. The exemption sentinel admits the branch mutation mechanically; the sync check is what makes that admission safe.
-
 ## Time Estimation
 
 [ZONE:Evolvable] [HARD] Never use time predictions in plans or reports.

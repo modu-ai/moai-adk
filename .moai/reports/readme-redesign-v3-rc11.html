@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoAI-ADK v3.0.0-rc11 — 토크노믹스 재귀적 자가 학습 에이전틱 하네스</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+      --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+      --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+      --sans:"Noto Sans KR",system-ui,-apple-system,sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1120px; --content-max:720px;
+      --radius-panel:12px; --radius-row:8px;
+      --border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased;padding:40px 24px 120px}
+    .page{max-width:var(--max-width);margin:0 auto;display:grid;grid-template-columns:210px minmax(0,1fr);gap:48px}
+    @media (max-width:960px){.page{grid-template-columns:1fr}nav{display:none}}
+
+    /* side nav */
+    nav{position:sticky;top:24px;align-self:start;font-size:13px;max-height:calc(100vh - 48px);overflow-y:auto}
+    nav .nav-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);margin-bottom:12px}
+    nav a{display:block;padding:5px 0 5px 12px;border-left:2px solid var(--g300);color:var(--g700);text-decoration:none;line-height:1.35}
+    nav a:hover{color:var(--slate);border-color:var(--clay)}
+    nav a.l2{padding-left:24px;font-size:12px;color:var(--g500)}
+    nav .nav-version{font-family:var(--mono);font-size:10px;color:var(--clay);margin-top:14px;padding-top:12px;border-top:1px solid var(--g300)}
+
+    /* hero */
+    .hero{text-align:center;margin-bottom:24px}
+    .hero img{max-width:100%;border-radius:14px;border:var(--border)}
+    .hero h1{font-family:var(--serif);font-weight:700;font-size:36px;color:var(--slate);letter-spacing:-.01em;margin:18px 0 6px}
+    .hero .tagline{font-family:var(--serif);font-size:17px;color:var(--clay-d);margin-bottom:10px;font-weight:700}
+    .hero .lang-switch a{color:var(--clay);margin:0 6px;font-size:13px;text-decoration:none}
+    .hero .lang-switch a:hover{text-decoration:underline}
+    .hero .badges{margin:12px 0}
+    .hero .badges img{margin:2px;border-radius:0;border:none;display:inline-block;width:auto;height:20px}
+    .hero .docs-link a{color:var(--slate);font-weight:700;font-size:14px;text-decoration:none;border-bottom:2px solid var(--clay)}
+
+    h2{font-family:var(--serif);font-weight:700;font-size:23px;color:var(--slate);margin:44px 0 12px;scroll-margin-top:20px;padding-bottom:6px;border-bottom:2px solid var(--oat)}
+    h3{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--slate);margin:22px 0 8px}
+    h4{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--clay-d);margin:16px 0 6px}
+    p{margin-bottom:12px;max-width:var(--content-max)}
+    strong{color:var(--slate)}
+    code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px;color:var(--clay-d)}
+    pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#1e1e1e;color:#e8e8e8;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:12px 0;max-width:var(--content-max)}
+    pre code{background:none;color:inherit;padding:0;font-size:inherit}
+    a{color:var(--clay)}
+    ul,ol{margin:8px 0 12px 22px;max-width:var(--content-max)} li{margin-bottom:5px}
+
+    /* tables */
+    table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--paper);border-radius:10px;overflow:hidden;border:var(--border)}
+    th,td{border:1px solid var(--g300);padding:8px 11px;text-align:left;vertical-align:top}
+    th{background:var(--oat);color:var(--slate);font-family:var(--serif);font-weight:700}
+    tbody tr:nth-child(even){background:var(--g100)}
+    td code{font-size:11.5px}
+
+    /* TL;DR */
+    .tldr{border:var(--border);border-left:4px solid var(--clay);border-radius:10px;background:var(--paper);padding:16px 18px;margin:0 0 8px;font-size:14.5px}
+    .tldr b{color:var(--slate)}
+    .tldr ul{margin:6px 0 0 18px}
+
+    /* callouts */
+    .callout{display:flex;gap:12px;border:var(--border);border-radius:10px;padding:14px 16px;margin:16px 0;font-size:14px;align-items:flex-start}
+    .callout .ico{font-weight:700;flex-shrink:0;font-size:16px}
+    .callout.note{border-color:var(--oat);background:rgba(227,218,204,.35)}
+    .callout.note .ico{color:var(--clay)}
+    .callout.philosophy{border-color:var(--clay);background:rgba(217,119,87,.08)}
+    .callout.philosophy .ico{color:var(--clay-d)}
+    .callout.glm{border-color:var(--olive);background:rgba(120,140,93,.12)}
+    .callout.glm .ico{color:var(--olive)}
+    .callout.warn{border-color:#c0392b;background:rgba(192,57,43,.06)}
+    .callout.warn .ico{color:#c0392b}
+    .callout .body{flex:1}
+    .callout .body p{max-width:none;margin-bottom:6px}
+    .callout .body p:last-child{margin-bottom:0}
+
+    /* pillars (3 cards) */
+    .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+    @media(max-width:760px){.pillars{grid-template-columns:1fr}}
+    .pillar{border:var(--border);border-radius:12px;background:var(--paper);padding:16px;border-top:4px solid var(--clay)}
+    .pillar:nth-child(2){border-top-color:var(--olive)}
+    .pillar:nth-child(3){border-top-color:#6B5B95}
+    .pillar .p-ico{font-size:24px;margin-bottom:6px}
+    .pillar h4{margin:4px 0 6px;font-size:15px}
+    .pillar p{font-size:13px;margin:0;max-width:none;color:var(--g700)}
+
+    /* metric strip */
+    .metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:16px 0}
+    @media(max-width:760px){.metrics{grid-template-columns:repeat(3,1fr)}}
+    .metric{background:var(--paper);border:var(--border);border-radius:10px;padding:12px;text-align:center}
+    .metric .num{font-family:var(--serif);font-weight:700;font-size:22px;color:var(--clay);display:block}
+    .metric .lbl{font-size:11px;color:var(--g500);margin-top:2px;display:block}
+
+    /* tabs */
+    .tabs{border:var(--border);border-radius:10px;background:var(--paper);margin:14px 0;overflow:hidden;max-width:var(--content-max)}
+    .tabbar{display:flex;border-bottom:1px solid var(--g300);background:var(--g100)}
+    .tabbar button{appearance:none;border:none;background:none;font-family:var(--mono);font-size:12px;color:var(--g500);padding:10px 16px;cursor:pointer;border-right:1px solid var(--g300)}
+    .tabbar button.active{background:var(--paper);color:var(--slate);border-bottom:2px solid var(--clay);margin-bottom:-1px}
+    .tab-pane{display:none;margin:0;padding:0}
+    .tab-pane.active{display:block}
+    .tab-pane pre{margin:0;border-radius:0;max-width:none}
+
+    /* ASCII diagram */
+    .ascii{font-family:var(--mono);font-size:11.5px;line-height:1.5;background:var(--g100);color:var(--slate);padding:14px;border-radius:10px;overflow-x:auto;white-space:pre;border:var(--border);max-width:var(--content-max)}
+
+    /* FAQ accordion */
+    details.faq-item{border-bottom:1px solid var(--g300);padding:2px 0}
+    details.faq-item>summary{list-style:none;cursor:pointer;font-family:var(--serif);font-size:16px;color:var(--slate);padding:12px 4px;display:flex;align-items:center;gap:10px}
+    details.faq-item>summary::-webkit-details-marker{display:none}
+    details.faq-item>summary::before{content:"+";color:var(--clay);font-size:18px;width:20px;text-align:center;flex-shrink:0}
+    details.faq-item[open]>summary::before{content:"−"}
+    details.faq-item .faq-body{padding:0 4px 14px 30px;font-size:14px;color:var(--g700);max-width:var(--content-max)}
+
+    /* mermaid */
+    .mermaid-wrap{text-align:center;margin:18px 0;background:var(--paper);border:var(--border);border-radius:10px;padding:8px}
+    pre.mermaid{font-family:var(--mono);font-size:12px;text-align:left;background:none;color:var(--g700);padding:8px}
+
+    /* star history */
+    .stars{text-align:center;margin:24px 0}
+    .stars img{max-width:100%;border-radius:10px;border:var(--border)}
+
+    footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--g300);font-family:var(--mono);font-size:12px;color:var(--g500)}
+    .lead{font-size:15px;color:var(--g700);font-style:italic;border-left:3px solid var(--clay);padding-left:12px;margin:0 0 14px;max-width:var(--content-max)}
+    .term{font-weight:700;color:var(--clay-d)}
+    hr{border:none;border-top:1px solid var(--g300);margin:32px 0}
+
+    @media print{
+      .page{grid-template-columns:1fr}nav{display:none}
+      body{background:#fff;color:#000;padding:0;font-size:11pt}
+      a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#555}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav>
+    <div class="nav-label">목차</div>
+    <a href="#pillars">핵심 3기둥</a>
+    <a href="#philosophy">설계 철학 (Lilian Weng)</a>
+    <a href="#why">왜 MoAI-ADK?</a>
+    <a href="#tokenomics">🪙 토크노믹스</a>
+    <a href="#recursive">🔁 재귀적 자가 학습</a>
+    <a href="#agentic-loop" class="l2">에이전틱 루프 상세</a>
+    <a href="#loop-eng" class="l2">4.1 루프 엔지니어링</a>
+    <a href="#evolution" class="l2">4.2 하네스 진화</a>
+    <a href="#harness">🤖 에이전틱 하네스</a>
+    <a href="#harness-builder" class="l2">하네스 빌더</a>
+    <a href="#rc11">v3.0.0-rc11 새기능</a>
+    <a href="#arch">하네스 아키텍처</a>
+    <a href="#quickstart">빠른 시작</a>
+    <a href="#cli">CLI 36개</a>
+    <a href="#subcommands" class="l2">서브커맨드 15개</a>
+    <a href="#statusline">statusline</a>
+    <a href="#output-styles">아웃풋 스타일</a>
+    <a href="#glm">💰 Claude x GLM</a>
+    <a href="#mx">@MX 태그</a>
+    <a href="#quality">품질·의사결정</a>
+    <a href="#faq">FAQ</a>
+    <a href="#stars">⭐ Star History</a>
+    <div class="nav-version">v3.0.0-rc11 preview<br>Korean · explainer/basic</div>
+  </nav>
+
+  <main>
+
+    <div class="hero">
+      <img src="https://raw.githubusercontent.com/modu-ai/moai-adk/main/assets/images/moai-adk-og.png" alt="MoAI-ADK">
+      <h1>MoAI-ADK</h1>
+      <div class="tagline">Claude Code를 위한 재귀적 자가 학습 에이전틱 하네스</div>
+      <div class="lang-switch">
+        <a href="#">English</a> ·
+        <a href="#"><strong>한국어</strong></a> ·
+        <a href="#">日本語</a> ·
+        <a href="#">中文</a>
+      </div>
+      <div class="badges">
+        <img src="https://github.com/modu-ai/moai-adk/actions/workflows/ci.yml/badge.svg" alt="CI">
+        <img src="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml/badge.svg" alt="CodeQL">
+        <img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov">
+        <img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go">
+        <img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release">
+        <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License">
+      </div>
+      <div class="docs-link"><a href="https://adk.mo.ai.kr">📚 공식 문서</a> &nbsp;·&nbsp; <a href="https://adk.mo.ai.kr/book">📖 책</a> &nbsp;·&nbsp; <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a></div>
+    </div>
+
+    <div class="tldr" id="tldr">
+      <b>TL;DR</b> — MoAI-ADK는 <b>토크노믹스를 추구하는 재귀적 자가 학습 에이전틱 하네스</b>다. Go 단일 바이너리로, 세 가지 원칙이 처음부터 끝까지 이어진다:
+      <ul>
+        <li><b>🪙 토크노믹스</b> — 더 싼 모델 + 더 깊은 추론 = 비용 대비 품질 극대화</li>
+        <li><b>🔁 재귀적 자가 학습</b> — <code>/goal</code>·<code>/loop</code> 루프가 관찰을 축적하고, 하네스가 <b>스킬과 에이전트 지침을 스스로 업그레이드</b></li>
+        <li><b>🤖 에이전틱 하네스</b> — 코드를 직접 쓰는 대신 에이전트가 작업할 환경을 만듭니다</li>
+      </ul>
+    </div>
+
+    <div class="callout philosophy">
+      <span class="ico">✦</span>
+      <div class="body">
+        <p><b>"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."</b></p>
+        <p>MoAI-ADK는 <a href="https://lilianweng.github.io/posts/2026-07-04-harness/"><b>Lilian Weng, <em>Harness Engineering for Self-Improvement</em></b></a>(2026-07-04)가 정립한 하네스 엔지니어링 프레임워크를 <b>최대한 승계</b>해 설계됐다 — 루프 엔지니어링·파일 영속 메모리·서브에이전트 3대 디자인 패턴과 Self-Harness 자기 개선 루프를 구현체로 옮겼다. (<a href="#philosophy">승계 매핑 보기 ↓</a>)</p>
+        <p><small>이 문서는 v3.0.0-rc11 README 재설계 <b>미리보기</b>입니다. 확정 후 <code>README.md</code>에 반영됩니다.</small></p>
+      </div>
+    </div>
+
+    <!-- ============ 1. THREE PILLARS ============ -->
+    <h2 id="pillars">핵심 — 세 가지 기둥</h2>
+    <p class="lead">첫 단어 설명: <b>하네스(harness)</b>는 모델을 둘러싼 실행·운영 계층으로, 에이전트가 안정적으로 일하게 만드는 "작업대"다. MoAI-ADK는 코드를 직접 짜는 대신 이 하네스를 설계합니다.</p>
+    <p>MoAI-ADK는 세 가지 핵심 원칙으로 AI 개발을 새롭게 정의합니다.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="p-ico">🪙</div>
+        <h4>토크노믹스</h4>
+        <p>더 저렴한 모델에 더 깊은 추론을 결합합니다. CG 모드로 <b>60–70% 비용 절감</b>, 3-tier 정책(max/medium/low), GLM <code>glm-5.2[1m]</code> 1M 컨텍스트.</p>
+      </div>
+      <div class="pillar">
+        <div class="p-ico">🔁</div>
+        <h4>재귀적 자가 학습</h4>
+        <p><code>/goal</code>·<code>/loop</code>가 <b>에이전틱 루프</b>를 돌며 관찰을 축적합니다. 하네스가 학습해 <b>스킬·에이전트 지침을 진화</b>시킵니다.</p>
+      </div>
+      <div class="pillar">
+        <div class="p-ico">🤖</div>
+        <h4>에이전틱 하네스</h4>
+        <p>10개 retained 에이전트가 협력합니다. <code>builder-harness</code>가 <b>하네스가 하네스를 만드는</b> 재귀 구조를 제공합니다.</p>
+      </div>
+    </div>
+
+    <!-- ============ 1.5 DESIGN PHILOSOPHY (Lilian Weng 승계) ============ -->
+    <h2 id="philosophy">설계 철학 — Lilian Weng <em>Harness Engineering</em> 승계</h2>
+    <p class="lead">MoAI-ADK는 Lilian Weng의 <a href="https://lilianweng.github.io/posts/2026-07-04-harness/"><b>Harness Engineering for Self-Improvement</b></a>(2026-07-04)가 정립한 하네스 엔지니어링 프레임워크를 <b>최대한 승계</b>해 설계됐다. 이 글이 제시한 디자인 패턴과 자기 개선 루프를 그대로 구현체로 옮겼다.</p>
+
+    <div class="callout note">
+      <span class="ico">❝</span>
+      <div class="body">
+        <p><b>하네스란</b> — "A harness is the system surrounding a base model that orchestrates execution and decides how the model thinks and plans, calls tools and acts, perceives and manages context, stores artifacts, and evaluates results."</p>
+        <p style="text-align:right;color:var(--g500)">— Lilian Weng, <em>Harness Engineering for Self-Improvement</em> (2026-07-04)</p>
+      </div>
+    </div>
+
+    <p>Weng은 RSI(재귀적 자기 개선)의 단기 경로가 "모델이 가중치를 직접 수정하는 것"이 아니라 <b>"훈련 파이프라인과 배포 시스템(하네스)을 개선하는 것"</b>이라고 예측했다. <b>MoAI-ADK는 정확히 이 경로를 취한다</b> — 모델 가중치가 아니라 하네스(스킬·에이전트 지침)를 재귀적으로 개선합니다.</p>
+
+    <h3>승계 매핑 — Weng 프레임워크 → MoAI-ADK 구현체</h3>
+    <table>
+      <thead><tr><th>Lilian Weng harness 개념</th><th>MoAI-ADK 구현체</th></tr></thead>
+      <tbody>
+        <tr><td><b>하네스</b> 정의 (기본 모델을 둘러싼 실행·운영 계층)</td><td>MoAI-ADK = Claude Code 하네스 (Go 단일 바이너리, CLAUDE.md orchestrator)</td></tr>
+        <tr><td><b>Pattern 1: Workflow Automation</b> — plan→execute→observe→improve 목표 지향 루프</td><td><code>/goal</code> 엔진, <code>/loop</code> Ralph Engine, Analyze-First 라우팅</td></tr>
+        <tr><td><b>Pattern 2: File System 영속 메모리</b> — "durable state in files"</td><td><code>.moai/specs/</code>, <code>progress.md</code>, <code>usage-log.jsonl</code>, <code>.moai/state/</code>, session handoff</td></tr>
+        <tr><td><b>Pattern 3: Sub-agent & Backend Jobs</b> — "병렬성을 명시적·검사 가능하게"</td><td>10 retained 에이전트, <code>Agent()</code> spawn, 동적 워크플로우(모드 4/6)</td></tr>
+        <tr><td><b>Self-Harness</b> (propose-evaluate-accept; bounded edit → held-in/held-out 회귀 검증)</td><td><code>internal/harness/</code> 4-tier 사다리 + 5-Layer Safety Pipeline (<code>applier</code>=bounded edit, <code>regression_gate</code>=검증)</td></tr>
+        <tr><td><b>Meta-Harness</b> — "하네스를 최적화하는 하네스"</td><td><code>builder-harness</code> — 하네스가 하네스를 만든다 (재귀); <code>/moai project</code> → harness 자동 생성</td></tr>
+        <tr><td><b>STOP "개선자를 개선하라"</b> + RSI 단기 경로 = 배포 시스템 개선</td><td><b>재귀적 하네스 진화</b> — 루프가 관찰 축적 → 하네스가 스킬/에이전트 지침을 스스로 업그레이드 (= Weng의 단기 RSI 경로 그 자체)</td></tr>
+        <tr><td><b>"평가자·권한은 루프 밖"</b> (reward hacking 방지)</td><td>Layer 5 사용자 승인 게이트(AskUserQuestion), Implementation Kickoff Approval — <b>진화 루프 밖에 인간 감시</b></td></tr>
+        <tr><td><b>"인간은 루프에서 빠지지 않고 위로 이동"</b></td><td>오케스트레이터 = 인간 단일 접점, AskUserQuestion 강제, SPEC 승인 게이트</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout warn">
+      <span class="ico">⚠</span>
+      <div class="body">
+        <p><b>Weng의 경고를 성실히 반영</b>: "평가자와 권한 컨트롤은 하네스를 진화시키는 루프 <b>밖</b>에 있어야 한다." MoAI-ADK는 하네스 진화(Tier-4 자동업데이트)를 <b>사용자 승인 게이트</b>(Layer 5)로 묶어, 자동 진화가 인간 감시 없이 닫힌 루프를 돌지 않도록 설계했습니다. Self-Harness 논문이 우려한 "reward hacking / 추상 경계 붕괴"에 대한 방어입니다.</p>
+      </div>
+    </div>
+
+    <p><small>참고: Weng은 또한 "재귀 구조만으로는 부족하고 기본 모델이 충분히 capable해야 한다"(STOP 실험 교훈)고 경고합니다. MoAI-ADK는 Claude Code라는 충분히 capable한 기반 위에 하네스를 얹습니다.</small></p>
+
+    <!-- ============ 2. WHY ============ -->
+    <h2 id="why">왜 MoAI-ADK인가?</h2>
+    <p class="lead">Python 기반 구버전(~73,000줄)을 Go로 완전히 재작성했습니다. 단일 바이너리·의존성 없음·네이티브 속도가 핵심 차이다.</p>
+    <table>
+      <thead><tr><th>항목</th><th>Python Edition</th><th>Go Edition</th></tr></thead>
+      <tbody>
+        <tr><td>배포</td><td>pip + venv + 의존성</td><td><b>단일 바이너리</b>, 의존성 없음</td></tr>
+        <tr><td>시작 시간</td><td>~800ms</td><td><b>~5ms</b> 네이티브 실행</td></tr>
+        <tr><td>동시성</td><td>asyncio / threading</td><td><b>네이티브 goroutines</b></td></tr>
+        <tr><td>타입 안전성</td><td>런타임 (mypy 선택)</td><td><b>컴파일 타임 강제</b></td></tr>
+        <tr><td>크로스 플랫폼</td><td>Python 런타임 필요</td><td><b>프리빌트 바이너리</b> (macOS/Linux/Windows)</td></tr>
+        <tr><td>훅 실행</td><td>Shell 래퍼 + Python</td><td><b>컴파일된 바이너리</b>, JSON 프로토콜</td></tr>
+      </tbody>
+    </table>
+
+    <h3>핵심 수치 (v3.0.0-rc11 기준)</h3>
+    <div class="metrics">
+      <div class="metric"><span class="num">10</span><span class="lbl">retained 에이전트</span></div>
+      <div class="metric"><span class="num">485</span><span class="lbl">active SPEC</span></div>
+      <div class="metric"><span class="num">36</span><span class="lbl">CLI 명령</span></div>
+      <div class="metric"><span class="num">27</span><span class="lbl">moai-* 스킬</span></div>
+      <div class="metric"><span class="num">16</span><span class="lbl">지원 언어</span></div>
+      <div class="metric"><span class="num">2,061</span><span class="lbl">commits (v2.14→rc11)</span></div>
+    </div>
+
+    <!-- ============ 3. TOKENOMICS ============ -->
+    <h2 id="tokenomics">🪙 토크노믹스 (Token Economics)</h2>
+    <p class="lead"><b>토크노믹스(token-economics)</b>는 토큰(모델이 읽고 쓰는 텍스트 단위)을 돈처럼 관리해, 비용 대비 품질을 극대화하는 설계 철학입니다.</p>
+    <p>더 저렴한 모델에 더 깊은 추론을 결합합니다. 고가 모델보다 우수한 결과를 약 1/10 가격으로 달성하는 것이 목표입니다.</p>
+
+    <h3>3-계층 No-Haiku 정책</h3>
+    <p>Haiku(가장 가벼운 모델)는 run-phase(구현) 전용입니다. plan-phase와 sync-phase는 더 강력한 Sonnet/Opus가 담당합니다.</p>
+    <table>
+      <thead><tr><th>정책</th><th>Max $200/월</th><th>Max $100/월</th><th>Plus $20/월</th></tr></thead>
+      <tbody>
+        <tr><td><b>High</b></td><td>Opus 16 / Sonnet 5 / Haiku 3</td><td>Opus 3 / Sonnet 17 / Haiku 4</td><td>—</td></tr>
+        <tr><td><b>Medium</b></td><td>—</td><td>—</td><td>Sonet 13 / Haiku 11</td></tr>
+        <tr><td><b>Low</b></td><td>—</td><td>—</td><td>Sonet 13 / Haiku 11</td></tr>
+      </tbody>
+    </table>
+    <p><small>구현 위치: <code>internal/config/model_routing.go</code> — Tier×Phase → {model, effort} 선언적 비용 축. closed sets: model inherit/sonnet/opus/glm/fable, effort low/medium/high/xhigh/max.</small></p>
+
+    <h3>CG 모드 (60–70% 절감)</h3>
+    <p><b>CG 모드</b>는 Claude 리더 + GLM 워커의 하이브리드입니다. tmux <span class="term">pane</span>(터미널 창 분할) 격리로, 리더는 전략·오케스트레이션(Claude API), 워커는 구현(GLM API)을 담당합니다.</p>
+    <pre class="ascii">┌─────────────────────────────────────────────────────────────┐
+│  LEADER (Claude API)                                        │
+│  - Orchestrator: 전략, 워크플로우 조율                       │
+│  - Plan / Quality / Sync 단계 수행                          │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ Agent Teams (새 tmux panes)
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  TEAMMATES (GLM API)                                        │
+│  - Run 단계 구현 작업                                        │
+│  - SendMessage으로 리더와 통신                               │
+└─────────────────────────────────────────────────────────────┘</pre>
+
+    <h3>effort 매핑 · GLM 1M · Circuit Breaker</h3>
+    <ul>
+      <li><code>ultrathink</code> 키워드 = <code>xhigh</code> effort (Claude native extended reasoning)</li>
+      <li><code>/effort ultracode</code> = xhigh + 동적 워크플로우 (Claude Code v2.1.154+)</li>
+      <li><b>GLM-5.2[1m]</b>: 4개 Claude 티어(Opus/Sonnet/Haiku/Fable) 모두 <code>glm-5.2[1m]</code> 단일 모델(1M 컨텍스트)로 통합. 1M과 200K를 같은 세션에 섞어 쓸 수 없기 때문입니다.</li>
+      <li><b>Token Circuit Breaker</b> (<code>internal/runtime/budget.go</code>): per-agent 사용량 추적, 예산 초과 시 graceful-abort (자동 <code>/clear</code> 금지).</li>
+    </ul>
+
+    <table>
+      <thead><tr><th>Claude 티어</th><th>GLM 모델</th><th>입력 (1M 토큰당)</th><th>출력 (1M 토큰당)</th></tr></thead>
+      <tbody><tr><td>Opus / Sonnet / Haiku / Fable</td><td>glm-5.2[1m]</td><td>$2.00</td><td>$8.00</td></tr></tbody>
+    </table>
+
+    <div class="callout glm">
+      <span class="ico">💰</span>
+      <div class="body">
+        <p><b>[GLM Coding Plan 가입하기]</b> — <b>$10/월</b>부터</p>
+        <p><a href="https://z.ai/subscribe?ic=1NDV03BGWU">https://z.ai/subscribe?ic=1NDV03BGWU</a></p>
+      </div>
+    </div>
+
+    <h3>Token-Economy Epic (4 SPEC)</h3>
+    <ol>
+      <li><b>ACCOUNTING</b> — 토큰 회계 시스템 (사용량 추적·보고)</li>
+      <li><b>ROUTING</b> — 라우팅 최적화 (<code>internal/config/model_routing.go</code>)</li>
+      <li><b>VERIFY-DIET</b> — 검증 다이어트 (증거 출력 경량화)</li>
+      <li><b>BUDGET-STOP</b> — 예산 중단 (Token Circuit Breaker + handoff)</li>
+    </ol>
+
+    <!-- ============ 4. RECURSIVE SELF-LEARNING ============ -->
+    <h2 id="recursive">🔁 재귀적 자가 학습 (에이전틱 루프 엔지니어링)</h2>
+    <p class="lead">이것이 MoAI-ADK의 핵심 혁신입니다. <b>에이전틱 루프 엔지니어링</b>이란, 루프를 돌며 관찰을 축적하고 그 관찰로 하네스가 스스로 진화하는 구조를 설계하는 것입니다.</p>
+    <p>두 가지 운동으로 구성됩니다: <b>(4.1) 루프 엔지니어링</b>이 관찰을 만들고, <b>(4.2) 재귀적 하네스 진화</b>가 그 관찰로 지침을 업그레이드합니다.</p>
+
+    <h3 id="agentic-loop">에이전틱 루프 (Agentic Loop) 상세</h3>
+    <p>MoAI-ADK의 에이전틱 루프는 두 가지 핵심 명령어로 구동됩니다. 각각은 재귀적 자가 학습의 다른 측면을 담당합니다.</p>
+
+    <h4>/goal — 완료 조건 자율 루프</h4>
+    <p><code>/goal "<조건>"</code>은 세션별 완료 조건을 설정합니다. 조건이 충족될 때까지 턴을 이어가며, <code>status</code>로 상태 확인, <code>clear</code>로 초기화, <code>resume</code>로 재개할 수 있습니다.</p>
+    <ul>
+      <li><b>autonomous(기본)</b>: 조건 충족 시 자동으로 다음 턴 진행</li>
+      <li><b>semi-autonomous</b>: 중요 단계마다 게이트(사용자 승인) 통과</li>
+      <li><b>턴 상한</b>: 기본 30턴, <code>stop after N turns</code>로 조정</li>
+    </ul>
+    <p><code>stop-goal</code> Stop-hook가 매 턴 끝에 조건을 평가합니다. 예시: <code>/goal "모든 테스트가 통과하고 lint가 깨끗할 때까지"</code></p>
+    <p><small>구현: <code>internal/goal/</code> — SPEC-GOAL-ENGINE-001</small></p>
+
+    <h4>/loop — 진단형 자가 수정 루프 (Ralph Engine)</h4>
+    <p><code>/moai loop</code>는 <code>internal/ralph/engine.go</code>가 구동하는 진단 기반 자가 수정 루프입니다. 병렬 스캔으로 문제를 찾고, 자동 분류로 우선순위를 정하고, 수렴 감지로 완료를 판단합니다.</p>
+    <table>
+      <thead><tr><th>단계</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><b>병렬 스캔</b></td><td>LSP 진단 + AST-grep + 린터 동시 실행</td></tr>
+        <tr><td><b>자동 분류</b></td><td>Level 1(자동 수정) ~ Level 4(사용자 개입 필요)</td></tr>
+        <tr><td><b>수렴 감지</b></td><td>동일 에러 반복 시 대체 전략 시도</td></tr>
+        <tr><td><b>완료 조건</b></td><td>0 에러, 0 타입 에러, 85%+ 커버리지</td></tr>
+      </tbody>
+    </table>
+    <pre><code>/moai loop     # 완료 마커 감지까지 반복 (최대 100회)
+/moai fix      # 단일 패스 비교</code></pre>
+
+    <h4>관계: goal vs loop</h4>
+    <p>두 루프는 상호 보완적입니다. <b>goal</b>은 목표 수렴 루프(언제까지), <b>loop</b>는 진단 수정 루프(무엇을). 둘 다 에이전틱 루프 엔지니어링의 핵심이며, 재귀적 하네스 진화의 관찰 원료가 됩니다.</p>
+
+    <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart TB
+    A["👤 사용자 요청"] --> B["/goal 엔진 설정"]
+    B --> C{"관찰 시작"}
+    C --> D["루프 실행 /loop"]
+    D --> E["결과 관찰"]
+    E --> F{"완료?"}
+    F -->|아니오| D
+    F -->|예| G["📊 관찰 기록"]
+    G --> H["Ralph Engine 분석"]
+    H --> I["패턴 추출"]
+    I --> J["🧠 하네스 학습 4-tier"]
+    J --> K["✨ 스킬/에이전트 지침 업데이트"]
+    K --> L["🧬 진화"]
+    style A fill:#E3F2FD
+    style G fill:#FFF3E0
+    style L fill:#E8F5E9
+</pre>
+<noscript>
+  <p style="text-align:center;color:var(--g500);font-size:13px">흐름: 사용자 요청 → /goal 설정 → 루프 실행·관찰 → 완료 시 관찰 기록 → Ralph Engine 분석·패턴 추출 → 하네스 4-tier 학습 → 스킬/에이전트 지침 업데이트 → 진화. (Mermaid 미지원 환경 — 텍스트 요약)</p>
+</noscript>
+    </div>
+
+    <h3 id="loop-eng">4.1 에이전틱 루프 엔지니어링 — 관찰 축적</h3>
+    <p>루프가 돌며 관찰을 축적하고, 축적된 관찰이 학습의 원료가 됩니다.</p>
+
+    <h4>/goal 엔진 (SPEC-GOAL-ENGINE-001)</h4>
+    <p><code>internal/goal/</code> — 세션별 완료 조건 상태(<code>.moai/state/goal/&lt;session-id&gt;.json</code>), 하이브리드 2-tier Stop-hook 평가자: <b>Tier 1</b> 기계적(종료코드·grep 수·파일 존재·턴 상한), <b>Tier 2</b> 오케스트레이터 자기평가. 턴 상한 기본 30.</p>
+    <pre><code># 세션별 완료 조건 설정 — 조건 충족까지 턴을 이어감
+/goal "모든 테스트가 통과하고 lint가 깨끗할 때까지"</code></pre>
+
+    <h4>/loop Ralph Engine</h4>
+    <p><code>internal/ralph/engine.go</code> — <code>Decide()</code>가 continue/converge/request_review/abort를 우선순위로 반환. 진단 기반 자가 수정 루프.</p>
+    <ol>
+      <li><b>병렬 스캔</b>: LSP 진단 + AST-grep + 린터</li>
+      <li><b>자동 분류</b>: Level 1(자동 수정) ~ Level 4(사용자 개입)</li>
+      <li><b>수렴 감지</b>: 동일 에러 반복 시 대체 전략</li>
+      <li><b>완료 조건</b>: 0 에러, 0 타입 에러, 85%+ 커버리지</li>
+    </ol>
+    <pre><code>/moai loop     # 완료 마커 감지까지 반복 (최대 100회)
+/moai fix      # 단일 패스</code></pre>
+
+    <h4>Analyze-First 라우팅 (SPEC-ANALYZE-FIRST-ROUTING-001)</h4>
+    <p>언어 독립적 의도 분석이 <code>/moai</code> 기본 라우팅입니다. cue word는 영어 예시지만, semantic classification은 어떤 언어든 작동합니다.</p>
+    <ol>
+      <li><b>의도 분석</b>: 요청의 의도를 분류 (기술 언어 무관)</li>
+      <li><b>컨텍스트 충분성</b>: 불충분 시 Socratic 인터뷰</li>
+      <li><b>실행 계획</b>: 스킬/에이전트/동적 워크플로우 체인 선택</li>
+      <li><b>오케스트레이션 모드</b>: solo-sequential / parallel-subagents / dynamic-workflow</li>
+    </ol>
+
+    <h3 id="evolution">4.2 재귀적 하네스 진화 — 스스로 업그레이드</h3>
+    <p>축적된 관찰을 바탕으로 하네스가 <b>스킬과 에이전트 지침을 스스로</b> 업그레이드합니다. 이것이 "재귀적"의 핵심입니다.</p>
+
+    <h4>4계층 학습 사다리 <small style="color:var(--olive)">● LIVE</small></h4>
+    <p><code>internal/harness/learner.go</code> — confidence floor 0.70. 관찰이 쌓일수록 학습이 자율성을 얻습니다.</p>
+    <table>
+      <thead><tr><th>Tier</th><th>관찰 수</th><th>동작</th></tr></thead>
+      <tbody>
+        <tr><td><b>TierObservation</b></td><td>≥ 1</td><td>단순 기록</td></tr>
+        <tr><td><b>TierHeuristic</b></td><td>≥ 3</td><td>패턴 인식</td></tr>
+        <tr><td><b>TierRule</b></td><td>≥ 5</td><td>규칙 형성</td></tr>
+        <tr><td><b>TierAutoUpdate</b></td><td>≥ 10</td><td><b>자동 업데이트</b> (스킬·에이전트 지침 수정)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>5-Layer Safety Pipeline</h4>
+    <ol>
+      <li><b>Observer</b> (<code>observer.go</code>): hook event 수집 → <code>.moai/harness/usage-log.jsonl</code></li>
+      <li><b>Learner</b> (<code>learner.go</code>): 4-tier 사다리로 패턴 학습</li>
+      <li><b>Applier</b> (<code>applier.go</code>): Tier-4 제안 적용 (snapshot → frontmatter edit)</li>
+      <li><b>Layer 2/3</b> (<code>layer2.go</code>/<code>layer3.go</code>): workflow.yaml.harness 갱신 + CLAUDE.md 마커 주입</li>
+      <li><b>Layer 5</b>: 사용자 승인 게이트 (AskUserQuestion)</li>
+    </ol>
+    <pre><code>moai harness status      # 학습 상태 확인
+moai harness apply       # 제안 적용
+moai harness rollback    # 롤백
+moai harness disable     # 비활성화</code></pre>
+
+    <h4>Routing Observation Ledger <small style="color:#c0392b">⚠ 구축 중 (Loop 0)</small></h4>
+    <div class="callout warn">
+      <span class="ico">⚠</span>
+      <div class="body">
+        <p><b>정직성 안내</b>: <code>SPEC-HARNESS-EVOLVE-001</code>(Routing Observation Ledger)은 현재 <b>plan-phase</b> 상태입니다. <code>routing-ledger.jsonl</code>이 아직 디스크에 materialize되지 않았습니다.</p>
+        <p>위 4-tier 학습 사다리(<code>learner.go</code>)는 <b>이미 live</b>로 작동합니다. 완전한 자가 진화(routing-ledger 기반)는 구축 중이며, "이미 완전히 자가 진화한다"고 단언하지 않습니다.</p>
+      </div>
+    </div>
+    <p><b>비전</b>: 루프가 관찰을 만들고 → 하네스가 학습하고 → 스킬/에이전트 지침이 진화하는 재귀 고리. <b>HARNESS-EVOLVE Epic 5-SPEC</b>: EVOLVE-001(Routing Ledger, 구축 중) / 002(Curator Editable Surfaces) / 003(Pattern Discovery) / 004(Conflict Resolution) / 005(Evolution Approval Gate).</p>
+
+    <!-- ============ 5. AGENT HARNESS ============ -->
+    <h2 id="harness">🤖 에이전틱 하네스 (Agent Harness)</h2>
+    <p class="lead">코드를 직접 작성하는 대신 에이전트가 작업할 환경을 만듭니다. 엔지니어의 역할이 코딩에서 <b>하네스 설계</b>(SPEC, 품질 게이트, 피드백 루프)로 전환됩니다.</p>
+
+    <h3>10 Retained 에이전트</h3>
+    <p>9개 MoAI-custom <code>.md</code> + 1 Anthropic built-in <code>Explore</code>. <small>(주의: 구 README의 "8개"는 outdated — manager-design·super-advisor 추가됨)</small></p>
+    <table>
+      <thead><tr><th>카테고리</th><th>에이전트</th><th>역할</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="5"><b>Manager</b></td><td><code>manager-spec</code></td><td>Plan-phase 산출물 작성 (spec/plan/acceptance)</td></tr>
+        <tr><td><code>manager-develop</code></td><td>Run-phase DDD/TDD 구현</td></tr>
+        <tr><td><code>manager-docs</code></td><td>Sync-phase 문서 동기화</td></tr>
+        <tr><td><code>manager-git</code></td><td>PR 라우팅 (Tier L)</td></tr>
+        <tr><td><code>manager-design</code></td><td>Design-phase Claude Design 협업</td></tr>
+        <tr><td rowspan="2"><b>Evaluator</b></td><td><code>plan-auditor</code></td><td>독립적 plan 감사 (편향 방지)</td></tr>
+        <tr><td><code>sync-auditor</code></td><td>Sync-phase 4차원 품질 평가</td></tr>
+        <tr><td><b>Builder</b></td><td><code>builder-harness</code></td><td>프로젝트 전용 harness 전문가 생성 (하네스가 하네스를)</td></tr>
+        <tr><td><b>Meta/Advisor</b></td><td><code>super-advisor</code></td><td>On-demand high-reasoning 상담 (E1–E4 escalation)</td></tr>
+        <tr><td><b>Anthropic 내장</b></td><td><code>Explore</code></td><td>읽기 전용 코드베이스 탐색</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout note">
+      <span class="ico">♻</span>
+      <div class="body">
+        <p><b>builder-harness — 하네스가 하네스를 만든다 (재귀)</b>: agents/skills/plugins/commands/hooks/MCP/LSP를 스캐폴드(뼈대 생성)합니다. Lilian Weng의 Meta-Harness 개념을 구현합니다. 즉 하네스가 스스로를 확장·생산하는 재귀 구조입니다.</p>
+      </div>
+    </div>
+
+    <h3 id="harness-builder">/moai harness — 하네스 학습 라이프사이클</h3>
+    <p>하네스가 관찰을 학습하고 지침을 업그레이드하는 4-tier 사다리를 관리합니다.</p>
+    <pre><code>moai harness status      # 학습 상태 확인
+moai harness apply       # 제안 적용
+moai harness rollback    # 롤백
+moai harness disable     # 비활성화
+
+# v4 (live):
+moai harness list        # 활성 하네스 목록
+moai harness edit        # 하네스 편집
+moai harness remove      # 하네스 제거
+moai harness doctor      # 하네스 진단</code></pre>
+    <p>4-tier 사다리: TierObservation(≥1, 기록) → TierHeuristic(≥3, 패턴) → TierRule(≥5, 규칙) → <b>TierAutoUpdate</b>(≥10, 자동 수정). Tier-4는 지침 자동 수정으로, <code>.moai/harness/</code>의 스킬/에이전트 지침을 직접 업데이트합니다.</p>
+
+    <h3>/moai project → Harness 자동 생성</h3>
+    <p>3-SPEC Epic이 프로젝트 문서화에서 하네스 생성까지 한 번에 처리합니다.</p>
+    <pre><code>/moai project
+# → product.md, structure.md, tech.md, codemaps/ 생성
+# → harness 자동 생성 (프로젝트 맞춤형)
+</code></pre>
+    <ol>
+      <li><b>PROJECT-HARNESS-BRIDGE-001</b> — <code>harness-spec.yaml</code> 8필드 브리지</li>
+      <li><b>HARNESS-MCP-PROVISION-001</b> — Phase 3.6 MCP 프로비저닝 + 라우터 등록</li>
+      <li><b>HARNESS-VERIFY-PROMOTE-001</b> — verify skill 의무화</li>
+    </ol>
+
+    <h3>3-Phase 라이프사이클 (plan → run → sync)</h3>
+    <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart LR
+    A["📋 Plan Phase"] --> B["🔨 Run Phase"]
+    B --> C["📄 Sync Phase"]
+    A -->|SPEC 문서| D[".moai/specs/"]
+    B -->|구현| E["소스 코드"]
+    C -->|문서| F["README/CHANGELOG/PR"]
+    style A fill:#E3F2FD
+    style B fill:#E8F5E9
+    style C fill:#FFF3E0
+</pre>
+<noscript><p style="text-align:center;color:var(--g500);font-size:13px">Plan(SPEC 문서 생성) → Run(구현) → Sync(README/CHANGELOG/PR). 3-phase 라이프사이클 (Mx-phase는 retired).</p></noscript>
+    </div>
+
+    <h3>TRUST 5 + Agent Teams RETIRED</h3>
+    <p>모든 코드 변경은 5가지 품질 기준으로 검증됩니다: <b>T</b>ested(85%+ 커버리지) · <b>R</b>eadable · <b>U</b>nified · <b>S</b>ecured(OWASP) · <b>T</b>rackable. sync-auditor 4차원: Functionality 40 / Security 25 / Craft 20 / Consistency 15.</p>
+    <p><b>Agent Teams 정적 계층은 RETIRED</b>(SPEC-AGENT-TEAM-RETIRE-001) → 동적 워크플로우 2종(<code>sync-audit-4dim.js</code>, <code>plan-research-fanout.js</code>)으로 대체. 단 native teammate 런타임(<code>moai cg</code> tmux panes)은 보존.</p>
+
+    <!-- ============ 6. RC11 ============ -->
+    <h2 id="rc11">v3.0.0-rc11 새로운 기능</h2>
+    <p class="lead">v2.14.0 이후 2,061개 커밋이 rc11까지 축적됐습니다. 철학 3기둥이 이 기간에 구체화됐습니다.</p>
+    <table>
+      <thead><tr><th>버전</th><th>주요 기능</th></tr></thead>
+      <tbody>
+        <tr><td><b>v3.0.0-rc1</b></td><td>8→10 에이전트 통합 시작, Anthropic 2026 정합</td></tr>
+        <tr><td><b>v3.0.0-rc2</b></td><td>3-phase 라이프사이클, glm-5.2[1m], 동적 워크플로우</td></tr>
+        <tr><td><b>v3.0.0-rc5</b></td><td>세션 핸드오프 /goal 결합, 결정 메모리</td></tr>
+        <tr><td><b>v3.0.0-rc7</b></td><td>Charm v2 CLI, /moai goal 엔진</td></tr>
+        <tr><td><b>v3.0.0-rc10</b></td><td>10-agent 카탈로그 완료, Analyze-First 라우팅 시작</td></tr>
+        <tr><td><b>v3.0.0-rc11</b></td><td><b>Analyze-First 완료, HARNESS-EVOLVE-001, GOAL-ENGINE, SESSIONSTART-PERF (13s→0.2s), AGENT-TEAM-RETIRE</b></td></tr>
+      </tbody>
+    </table>
+    <ol>
+      <li><b>Analyze-First 라우팅 완료</b> — 언어 독립적 의도 분석이 /moai 기본 라우팅. 17/17 AC.</li>
+      <li><b>HARNESS-EVOLVE-001</b> — Routing Observation Ledger (plan-phase 완료, run 진입, 91.6% 커버리지).</li>
+      <li><b>GOAL-ENGINE</b> — /goal 엔진: per-session goal state + hybrid 2-tier evaluator.</li>
+      <li><b>SESSIONSTART-PERF</b> — session-start 12.8s 블로킹 해결 (O(1) 단일패스 + HEAD-SHA 캐시). <b>13s → 0.2s</b>.</li>
+      <li><b>AGENT-TEAM-RETIRE</b> — 정적 계층 제거 → 동적 워크플로우 2종.</li>
+    </ol>
+
+    <!-- ============ 7. ARCH ============ -->
+    <h2 id="arch">하네스 엔지니어링 아키텍처</h2>
+    <table>
+      <thead><tr><th>구성 요소</th><th>설명</th><th>명령어</th></tr></thead>
+      <tbody>
+        <tr><td><b>자가 검증 루프</b></td><td>코드 작성 → 테스트 → 실패 → 수정 → 통과 사이클 자율 반복</td><td><code>/moai loop</code></td></tr>
+        <tr><td><b>컨텍스트 맵</b></td><td>코드베이스 아키텍처 맵·문서를 항상 참조 가능</td><td><code>/moai codemaps</code></td></tr>
+        <tr><td><b>세션 지속성</b></td><td><code>progress.md</code>가 단계 추적, 중단 시 자동 재시작</td><td><code>/moai run</code></td></tr>
+        <tr><td><b>실패 체크리스트</b></td><td>인수 조건이 pending 작업으로 등록, 완료 표시</td><td><code>/moai run</code></td></tr>
+        <tr><td><b>언어 중립</b></td><td>16개 언어 자동 감지, LSP/린터/테스트 자동 선택</td><td>전체 워크플로우</td></tr>
+        <tr><td><b>가비지 컬렉션</b></td><td>죽은 코드·AI Slop·미사용 임포트 제거</td><td><code>/moai clean</code></td></tr>
+        <tr><td><b>Goal 엔진</b></td><td>세션별 완료 조건 + 2-tier 평가자</td><td><code>/moai goal</code></td></tr>
+        <tr><td><b>스캐폴딩 우선</b></td><td>구현 전 빈 파일 스텁으로 엔트로피 방지</td><td><code>/moai run</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout note">
+      <span class="ico">★</span>
+      <div class="body"><p><b>"인간은 방향을 잡고, 에이전트는 실행한다."</b> 엔지니어의 역할이 코드 작성에서 하네스 설계(SPEC, 품질 게이트, 피드백 루프)로 전환됩니다.</p></div>
+    </div>
+
+    <!-- ============ 8. QUICK START ============ -->
+    <h2 id="quickstart">빠른 시작 (Quick Start)</h2>
+    <p class="lead">단일 바이너리라 의존성 설치 없이 한 줄이면 끝난다.</p>
+
+    <div class="tabs" data-tabs="install">
+      <div class="tabbar">
+        <button data-pane="mac" class="active">macOS / Linux</button>
+        <button data-pane="win">Windows</button>
+        <button data-pane="src">소스 빌드</button>
+      </div>
+      <pre class="tab-pane active" id="mac"><code>curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash</code></pre>
+      <pre class="tab-pane" id="win"><code># PowerShell 7.x+ (WSL 권장)
+irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex</code></pre>
+      <pre class="tab-pane" id="src"><code>git clone https://github.com/modu-ai/moai-adk.git
+cd moai-adk &amp;&amp; make build   # Go 1.26+</code></pre>
+    </div>
+
+    <h3>초기화 & 첫 SPEC</h3>
+    <pre><code>moai init my-project              # 언어/프레임워크/방법론 자동 감지
+
+# Claude Code 실행 후:
+/moai project                      # 프로젝트 문서 + harness 생성
+/moai plan "사용자 인증 추가"       # SPEC 문서
+/moai run SPEC-AUTH-001            # DDD/TDD 구현
+/moai sync SPEC-AUTH-001           # 문서 동기화 &amp; PR</code></pre>
+
+    <!-- ============ 9. SYSTEM REQ (concise) ============ -->
+    <h3 style="margin-top:36px">시스템 요구사항</h3>
+    <table>
+      <thead><tr><th>플랫폼</th><th>지원 환경</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>macOS</td><td>Terminal, iTerm2</td><td>완전 지원</td></tr>
+        <tr><td>Linux</td><td>Bash, Zsh</td><td>완전 지원</td></tr>
+        <tr><td>Windows</td><td><b>WSL 권장</b>, PowerShell 7.x+</td><td>cmd.exe 미지원, Git for Windows 필수</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ============ 10. METHODOLOGY (condensed) ============ -->
+    <h3 style="margin-top:30px">개발 방법론 (TDD / DDD 자동 선택)</h3>
+    <p>프로젝트 상태에 따라 최적의 방법론을 자동 선택합니다. 신규·커버리지 10%+ → <b>TDD</b>(RED→GREEN→REFACTOR). 기존 커버리지 &lt;10% → <b>DDD</b>(ANALYZE→PRESERVE→IMPROVE, 특성 테스트로 동작 보존 후 개선).</p>
+
+    <h3 style="margin-top:24px">MoAI 워크플로우 (plan → run → sync)</h3>
+    <p>Plan(코드베이스 탐색·요구사항 분석·SPEC 생성) → Run(SPEC 분석·DDD/TDD 구현·TRUST 5 검증) → Sync(문서 생성·CHANGELOG·PR).</p>
+
+    <!-- ============ 11. CLI ============ -->
+    <h2 id="cli">CLI 명령어 (36개)</h2>
+    <p class="lead">상위 Cobra 명령 36개. <code>moai &lt;cmd&gt; --help</code>로 각 명령 상세.</p>
+
+    <h3 id="subcommands">/moai 서브커맨드 카탈로그 (15개)</h3>
+    <div class="callout note">
+      <span class="ico">💡</span>
+      <div class="body">
+        <p><b>중요한 구분</b>: <code>moai</code>(터미널 CLI) ≠ <code>/moai</code>(Claude Code 슬래시 서브커맨드). 터미널에서는 <code>moai init</code>, Claude Code 세션에서는 <code>/moai plan</code>를 사용합니다.</p>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>서브커맨드</th><th>용도</th></tr></thead>
+      <tbody>
+        <tr><td><code>/moai plan</code></td><td>SPEC 문서 생성 (EARS 형식 요구사항)</td></tr>
+        <tr><td><code>/moai run</code></td><td>SPEC 구현 (DDD/TDD 자동 선택)</td></tr>
+        <tr><td><code>/moai sync</code></td><td>문서 동기화 + PR 생성</td></tr>
+        <tr><td><code>/moai project</code></td><td>프로젝트 문서 + harness 자동 생성</td></tr>
+        <tr><td><code>/moai fix</code></td><td>에러 단일 패스 수정</td></tr>
+        <tr><td><code>/moai loop</code></td><td>진단형 반복 수정 (Ralph Engine)</td></tr>
+        <tr><td><code>/moai goal</code></td><td>완료 조건 자율 루프</td></tr>
+        <tr><td><code>/moai gate</code></td><td>커밋 전 품질 게이트</td></tr>
+        <tr><td><code>/moai mx</code></td><td>@MX 주석 스캔</td></tr>
+        <tr><td><code>/moai review</code></td><td>다관점 리뷰 + 보안 검사</td></tr>
+        <tr><td><code>/moai clean</code></td><td>데드 코드 제거</td></tr>
+        <tr><td><code>/moai codemaps</code></td><td>아키텍처 문서 생성</td></tr>
+        <tr><td><code>/moai harness</code></td><td>하네스 학습/빌드 관리</td></tr>
+        <tr><td><code>/moai feedback</code></td><td>→ GitHub 이슈 자동 생성</td></tr>
+        <tr><td><code>/moai</code></td><td>자연어 → 기본 plan→run→sync 파이프라인</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>명령어</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td><code>moai init</code></td><td>대화형 프로젝트 설정 (언어/프레임워크 자동 감지)</td></tr>
+        <tr><td><code>moai doctor</code></td><td>시스템 상태 진단·환경 검증</td></tr>
+        <tr><td><code>moai status</code></td><td>Git 브랜치·품질 메트릭 요약</td></tr>
+        <tr><td><code>moai update</code></td><td>최신 버전 업데이트 (자동 롤백 지원)</td></tr>
+        <tr><td><code>moai glm / cc / cg</code></td><td>GLM / Claude / CG(Claude+GLM) 백엔드 시작</td></tr>
+        <tr><td><code>moai worktree ...</code></td><td>Git worktree 관리 (new/list/switch/sync/remove/clean/go)</td></tr>
+        <tr><td><code>moai hook &lt;event&gt;</code></td><td>Claude Code 훅 디스패처</td></tr>
+        <tr><td><code>moai spec ...</code></td><td>SPEC 관리 (audit/archive/lint/list/new)</td></tr>
+        <tr><td><code>moai session ...</code></td><td>세션 관리 (list/register/current)</td></tr>
+        <tr><td><code>moai harness ...</code></td><td>하네스 학습 (status/apply/rollback/disable)</td></tr>
+        <tr><td><code>moai preference ...</code></td><td>결정 메모리 (decay-scan/list/toggle)</td></tr>
+        <tr><td><code>moai handoff ...</code></td><td>핸드오프 (save/list)</td></tr>
+        <tr><td><code>moai mx / clean / codemaps / feedback</code></td><td>MX 태그 / 데드 코드 / 아키텍처 문서 / 피드백</td></tr>
+        <tr><td><code>moai version</code></td><td>버전·커밋 해시·빌드 날짜</td></tr>
+      </tbody>
+    </table>
+    <p><small>총 36개 top-level Cobra 명령 (glm/cc/cg/harness/spec/session/hook/loop/web/update/init/doctor/mx/clean/handoff/feedback/codemaps/worktree/preference/version/status 외).</small></p>
+
+    <!-- ============ 12. STATUSLINE ============ -->
+    <h2 id="statusline">statusline — 터미널 하단 표시</h2>
+    <p class="lead">터미널 하단에 표시되는 상태 바로, 각 세그먼트가 실시간 정보를 제공합니다. 구현: <code>internal/statusline/</code> 패키지.</p>
+
+    <table>
+      <thead><tr><th>영역</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td><b>🗿 버전</b></td><td>v3.0.0-rc11 + ⬆️ 업데이트 가능 표시</td></tr>
+        <tr><td><b>Git</b></td><td>브랜치 + 상태 (clean/modified/untracked)</td></tr>
+        <tr><td><b>모델</b></td><td>티어(max/medium/low) + effort, Claude/GLM 구분</td></tr>
+        <tr><td><b>CW%</b></td><td>컨텍스트 사용량 (1M 보정). ⚠️ 50% → 🛑 90% 2단계. /clear 권장</td></tr>
+        <tr><td><b>비용/토큰</b></td><td>현재 세션 예산 사용량</td></tr>
+        <tr><td><b>세션/SPEC</b></td><td>활성 세션 ID + 작업 중 SPEC</td></tr>
+        <tr><td><b>handoff</b></td><td>핸드오프 단계 표시</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout note">
+      <span class="ico">💡</span>
+      <div class="body">
+        <p><b>GLM 1M 보정</b>: Claude Code가 <code>effectiveWindow</code>를 180K로 보고하는 이슈(#653)를 MoAI가 보정합니다. <code>.moai/state/context-usage.json</code>에 실제 사용량이 저장되며, GLM-5.2는 1M 컨텍스트 모델로 올바르ly 처리됩니다.</p>
+      </div>
+    </div>
+
+    <!-- ============ 13. OUTPUT STYLES ============ -->
+    <h2 id="output-styles">아웃풋 스타일 (3종)</h2>
+    <p class="lead">MoAI는 3가지 출력 스타일을 제공합니다. <code>/config</code> → Output style에서 전환 (settings.local.json, local 최고 우선순위).</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="p-ico">📋</div>
+        <h4>MoAI (Expert)</h4>
+        <p>밀집한 전문가용 출력. 상세한 메트릭과 품질 점수를 포함합니다.</p>
+      </div>
+      <div class="pillar">
+        <div class="p-ico">👍</div>
+        <h4>MoAI-Easy (Basic)</h4>
+        <p>기본값. 초보자 친화적이고 단순한 출력. 현재 기본 스타일입니다.</p>
+      </div>
+      <div class="pillar">
+        <div class="p-ico">🎓</div>
+        <h4>MoAI-Learn (Learn)</h4>
+        <p>Socratic 대화형. 질문을 통해 학습을 유도합니다.</p>
+      </div>
+    </div>
+
+    <h4>Progress Board 7-아이콘 규약</h4>
+    <p>3 스타일 모두 동일한 Progress Board 아이콘을 사용합니다.</p>
+    <table>
+      <thead><tr><th>아이콘</th><th>의미</th></tr></thead>
+      <tbody>
+        <tr><td>⬜</td><td>미시작 (순서 대기)</td></tr>
+        <tr><td>🟢</td><td>완료</td></tr>
+        <tr><td>🟡</td><td>진행중</td></tr>
+        <tr><td>⏸️</td><td>차단 (블로커)</td></tr>
+        <tr><td>🔵</td><td>검토 필요</td></tr>
+        <tr><td>❌</td><td>실패</td></tr>
+        <tr><td>🔴</td><td>위험</td></tr>
+      </tbody>
+    </table>
+    <p><b>핵심 구분</b>: ⬜(미시작, 순서만 대기) ≠ ⏸️(실제 차단, 블로커 존재). Progress Board는 3 스타일 공유이며, <code>.claude/output-styles/moai/</code>에 위치합니다.</p>
+
+    <!-- ============ 14. GLM ============ -->
+    <h2 id="glm">💰 Claude x GLM 멀티 LLM</h2>
+    <p class="lead"><b>z.ai GLM</b>을 Claude Code의 대안 백엔드로 지원합니다. 코드 수정 없이 바로 전환 가능합니다.</p>
+    <table>
+      <thead><tr><th>항목</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td>GLM Coding Plan</td><td><b>$10/월</b>부터 (<a href="https://z.ai/subscribe?ic=1NDV03BGWU">z.ai</a>)</td></tr>
+        <tr><td>호환성</td><td>Claude Code와 코드 수정 없이 사용 가능</td></tr>
+        <tr><td>모델</td><td>glm-5.2[1m], glm-4.7, glm-4.5-air 및 무료 모델</td></tr>
+      </tbody>
+    </table>
+
+    <h3>CG 모드 (Claude + GLM 하이브리드)</h3>
+    <p>Leader는 Claude API, Workers는 GLM API를 사용합니다. tmux session-level 환경변수 pane 격리로 구현됩니다.</p>
+    <table>
+      <thead><tr><th>명령어</th><th>Leader</th><th>Workers</th><th>tmux</th><th>비용 절감</th><th>시나리오</th></tr></thead>
+      <tbody>
+        <tr><td><code>moai cc</code></td><td>Claude</td><td>Claude</td><td>아니오</td><td>—</td><td>복잡한 작업, 최고 품질</td></tr>
+        <tr><td><code>moai glm</code></td><td>GLM</td><td>GLM</td><td>권장</td><td>~70%</td><td>비용 최적화</td></tr>
+        <tr><td><code>moai cg</code></td><td>Claude</td><td>GLM</td><td><b>필수</b></td><td><b>~60%</b></td><td>품질 + 비용 균형</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout glm">
+      <span class="ico">💰</span>
+      <div class="body">
+        <p><b>[GLM Coding Plan 가입하기]</b> — <b>$10/월</b>부터</p>
+        <p><a href="https://z.ai/subscribe?ic=1NDV03BGWU">https://z.ai/subscribe?ic=1NDV03BGWU</a></p>
+      </div>
+    </div>
+
+    <!-- ============ 13. MX ============ -->
+    <h2 id="mx">@MX 태그 시스템</h2>
+    <p class="lead"><b>@MX</b>는 코드에 다는 레벨별 주석으로, AI 에이전트 간 컨텍스트·불변 계약·위험 영역을 전달합니다. <b>"모든 코드에 태그를 붙이는 것"이 목적이 아니라 "AI가 가장 먼저 주목해야 할 위험/중요 코드만 표시"하는 것이 목적입니다.</b></p>
+    <table>
+      <thead><tr><th>태그</th><th>용도</th><th>조건</th></tr></thead>
+      <tbody>
+        <tr><td><code>@MX:ANCHOR</code></td><td>중요 계약</td><td>fan_in ≥ 3 함수</td></tr>
+        <tr><td><code>@MX:WARN</code></td><td>위험 영역</td><td>goroutine, 복잡도 ≥ 15</td></tr>
+        <tr><td><code>@MX:NOTE</code></td><td>컨텍스트</td><td>매직 상수, godoc 누락</td></tr>
+        <tr><td><code>@MX:TODO</code></td><td>미완성</td><td>테스트 누락, 미구현</td></tr>
+      </tbody>
+    </table>
+    <p>대부분의 코드는 어떤 조건도 만족하지 못해 태그가 없다 — 이것이 <b>정상</b>입니다.</p>
+
+    <!-- ============ 14. QUALITY (condensed) ============ -->
+    <h2 id="quality">품질 · 의사결정 · 실행 모드</h2>
+    <h3>TRUST 5</h3>
+    <p><b>T</b>ested(85%+) · <b>R</b>eadable(린트 0) · <b>U</b>nified(포맷 일관) · <b>S</b>ecured(OWASP·입력 검증) · <b>T</b>rackable(컨벤셔널 커밋).</p>
+    <h3>의사결정 메모리</h3>
+    <p>AskUserQuestion 결정을 캡처해 미래 추천에 개인화로 활용합니다. 3계층(Core/Recall/Archival 28일 TTL), 적응형 추천(불확실성 p≈0.5일 때 질문), 감쇠 정책 <code>(age+1)^(-0.5)</code>.</p>
+    <h3>이중 실행 모드</h3>
+    <p><b>Sub-Agent</b>(순차 위임, 단순·예측 가능) vs <b>동적 워크플로우</b>(병렬 팬아웃, 대규모 작업).</p>
+
+    <!-- ============ 15. FAQ ============ -->
+    <h2 id="faq">자주 묻는 질문 (FAQ)</h2>
+    <details class="faq-item" open>
+      <summary>왜 모든 Go 코드에 @MX 태그가 없나요?</summary>
+      <div class="faq-body"><p><b>이것이 정상입니다.</b> @MX 태그는 "필요한 코드에만" 추가됩니다. 대부분의 코드는 충분히 단순·안전해서 태그가 필요 없습니다. 위 <a href="#mx">@MX 태그 시스템</a> 섹션을 참조하세요.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary>statusline의 버전 표시는 무엇을 의미하나요?</summary>
+      <div class="faq-body">
+        <p><code>🗿 v2.2.2 ⬆️ v2.2.5</code> — <code>v2.2.2</code>는 현재 설치 버전, <code>⬆️ v2.2.5</code>는 업데이트 가능한 새 버전. 최신이면 버전 번호만 표시합니다. <code>moai update</code>로 갱신.</p>
+      </div>
+    </details>
+    <details class="faq-item">
+      <summary>"하네스가 스스로 진화한다"는 게 이미 작동하나요?</summary>
+      <div class="faq-body">
+        <p><b>부분적으로</b>. 4-tier 학습 사다리(<code>internal/harness/learner.go</code>)는 <b>이미 live</b>로 관찰을 축적·학습합니다. 완전한 자가 진화를 담당할 Routing Observation Ledger(SPEC-HARNESS-EVOLVE-001)는 <b>현재 구축 중(plan-phase)</b>입니다. 과대 광고 없이 정확한 상태를 표시합니다.</p>
+      </div>
+    </details>
+
+    <!-- ============ CONTRIB ============ -->
+    <h2 id="contributing" style="margin-top:36px">기여</h2>
+    <p>기여를 환영합니다! 저장소 포크 → 기능 브랜치 → 테스트 작성 → <code>make test</code>·<code>make lint</code>·<code>make fmt</code> → 컨벤셔널 커밋 → PR. 상세는 <code>CONTRIBUTING.ko.md</code>. <b>품질 요구사항</b>: 85%+ 커버리지 · 0 린트 오류 · 0 타입 오류 · 컨벤셔널 커밋.</p>
+
+    <hr>
+
+    <!-- ============ STAR HISTORY (verbatim) ============ -->
+    <h2 id="stars">⭐ Star History</h2>
+    <div class="stars">
+      <a href="https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left"><img src="https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left" alt="Star History Chart"></a>
+    </div>
+
+    <h3>라이선스</h3>
+    <p><a href="./LICENSE">Apache License 2.0</a></p>
+
+    <h3>관련 링크</h3>
+    <ul>
+      <li><a href="https://adk.mo.ai.kr">공식 문서</a></li>
+      <li><a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a></li>
+      <li><a href="https://discord.gg/Z7E7Mdc5aN">Discord 커뮤니티</a> — 실시간 소통, 팁 공유</li>
+    </ul>
+
+    <footer>
+      MoAI-ADK v3.0.0-rc11 README 재설계 미리보기 &nbsp;·&nbsp; explainer / basic 티어 &nbsp;·&nbsp; 한국어<br>
+      산출: manager-docs 초안(<code>.moai/reports/readme-draft-v3-rc11.md</code>) → html-report 렌더 &nbsp;·&nbsp; 확정 후 README.md 반영
+    </footer>
+
+  </main>
+</div>
+
+<!-- mermaid (basic tier) -->
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6"
+    }
+  });
+</script>
+<!-- tab switching -->
+<script>
+  document.querySelectorAll("[data-tabs]").forEach(function(box){
+    var btns=box.querySelectorAll(".tabbar button"),panes=box.querySelectorAll(".tab-pane");
+    btns.forEach(function(btn){btn.addEventListener("click",function(){
+      btns.forEach(function(b){b.classList.remove("active")});
+      panes.forEach(function(p){p.classList.remove("active")});
+      btn.classList.add("active");
+      var t=document.getElementById(btn.dataset.pane);if(t)t.classList.add("active");
+    });});
+  });
+</script>
+</body>
+</html>

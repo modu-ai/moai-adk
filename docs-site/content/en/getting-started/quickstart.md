@@ -65,7 +65,7 @@ Run `/moai project` after initial project setup or after major structural change
 
 ### Step 3: Create a SPEC Document
 
-Create a SPEC document for your first feature. It uses the GEARS format to define clear requirements.
+Create a SPEC document for your first feature. It uses the EARS format to define clear requirements.
 
 {{< callout type="info" >}}
 **Why do you need a SPEC?**
@@ -81,7 +81,7 @@ The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 | Problem | How the SPEC solves it |
 |------|-----------------|
 | Context loss | Requirements **saved as files**, preserved permanently |
-| Ambiguous requirements | Clearly structured in the **GEARS format** |
+| Ambiguous requirements | Clearly structured in the **EARS format** |
 | Communication errors | Completion conditions stated as **acceptance criteria** |
 | No progress tracking | Work units managed by **SPEC ID** |
 
@@ -96,7 +96,7 @@ This command does the following:
 
 ```mermaid
 flowchart TB
-    A["Requirements input"] --> B["GEARS-format analysis"]
+    A["Requirements input"] --> B["EARS-format analysis"]
     B --> C["SPEC document generation"]
     C --> D["SPEC-AUTH-001 saved"]
     D --> E["Requirements verification"]
@@ -260,7 +260,7 @@ sequenceDiagram
     Project-->>Dev: product/structure/tech.md
 
     Dev->>Plan: Enter feature requirements
-    Plan->>Plan: Analyze in GEARS format
+    Plan->>Plan: Analyze in EARS format
     Plan-->>Dev: SPEC-AUTH-001 document
 
     Note over Dev: Run /clear

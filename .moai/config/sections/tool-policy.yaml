@@ -499,84 +499,6 @@ entries:
     audit: "GCP credentials enumeration protection"
     source: ".claude/settings.json#permissions.deny"
 
-  # --- §D.1h Secret-read class: project env files (secret-exposure prevention) ---
-  # These were previously ask-tier; flipped to deny so they bind at EVERY
-  # autonomy tier including fully-autonomous (bypassPermissions skips ask
-  # prompts — only deny mechanically binds under bypass). Mirrors the
-  # ./secrets/** / ~/.ssh/** deny treatment in §D.1g. Near-zero legitimate-
-  # workflow cost; a user who genuinely needs to read .env grants an explicit
-  # project-scope allow.
-  - tool: "Read"
-    args_pattern: "./.env"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "secret exposure prevention (project root env file); binds at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Read"
-    args_pattern: "./.env.*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "secret exposure prevention (env variant files like .env.local/.env.prod); binds at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-
-  # --- §D.1i Protected-branch + irreversible infra ops (deny at every tier) ---
-  # Main-branch push, irreversible infra destruction, and IAM privilege grants
-  # are protected at every autonomy tier. Only deny mechanically binds under
-  # fully-autonomous (bypassPermissions); ask is advisory-only there. These
-  # rules take precedence over the broad Bash(git push:*) allow in §D.2 via
-  # most-specific-pattern-wins (Claude Code permission resolution).
-  - tool: "Bash"
-    args_pattern: "git push origin main:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "main-branch push protection; protects shared history at every autonomy tier (defense-in-depth alongside GitHub branch protection)"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "git push origin master:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "main-branch push protection (legacy branch name); protects shared history at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "terraform destroy:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "state-destroying infra operation; irreversible resource deletion at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "aws iam put-*:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "IAM identity policy write; privilege modification protected at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "aws iam create-*:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "IAM identity/resource creation; privilege surface expansion protected at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "aws iam attach-*:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "IAM policy attachment; privilege grant protected at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Bash"
-    args_pattern: "gcloud * add-iam-policy-binding:*"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "IAM policy binding grant; privilege escalation protected at every autonomy tier"
-    source: ".claude/settings.json#permissions.deny"
-
   # -------------------------------------------------------------------------
   # §D.2 Write-tier (filesystem-mutating; current behavior preserved)
   # Source: .claude/settings.json#permissions.allow (write/mutating subset).
@@ -890,32 +812,19 @@ entries:
     owner_agent: orchestrator
     audit: "chown requires confirmation (ownership change)"
     source: ".claude/settings.json#permissions.ask"
-
-  # --- §D.4-prod Prod-deploy class (ask at semi-auto/automatic; advisory under fully-autonomous per spec §C.1) ---
-  # kubectl/helm/ansible bind at semi-auto/automatic; under fully-autonomous
-  # (bypassPermissions) ask is advisory-only and the verified sandbox + deny
-  # list is the safety boundary. Users who deploy from a coding session should
-  # not be in fully-autonomous without a sandbox.
-  - tool: "Bash"
-    args_pattern: "kubectl apply:*"
-    risk_tier: write
+  - tool: "Read"
+    args_pattern: "./.env"
+    risk_tier: read
     decision: ask
     owner_agent: orchestrator
-    audit: "kubectl apply (cluster mutation); confirm before prod apply at semi-auto/automatic"
+    audit: ".env read requires confirmation (secret exposure)"
     source: ".claude/settings.json#permissions.ask"
-  - tool: "Bash"
-    args_pattern: "helm upgrade:*"
-    risk_tier: write
+  - tool: "Read"
+    args_pattern: "./.env.*"
+    risk_tier: read
     decision: ask
     owner_agent: orchestrator
-    audit: "helm release upgrade; cluster state mutation requires confirmation"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Bash"
-    args_pattern: "ansible-playbook:*"
-    risk_tier: write
-    decision: ask
-    owner_agent: orchestrator
-    audit: "configuration management run; multi-host state mutation requires confirmation"
+    audit: ".env.* read requires confirmation (secret exposure)"
     source: ".claude/settings.json#permissions.ask"
 
   # -------------------------------------------------------------------------

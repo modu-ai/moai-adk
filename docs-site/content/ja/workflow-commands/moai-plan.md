@@ -559,31 +559,6 @@ MoAI が `AskUserQuestion` で質問するとき、推奨配置を案内する 5
 **内部動作**: 5 つの原則は `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles に明細化されており、`moai.md` にレンダリングされます。キャプチャフックは `internal/hook/user_decision_capture.go` に実装されており schema 許容パースとドメイン分類をサポートします。減衰ポリシーは power-law 関数 `(age+1)^(-0.5)` に従い α=0.5 固定 (Standard tier)。全体のアーキテクチャと受け入れ基準はプロジェクトの SPEC ドキュメントを参照してください。
 {{< /callout >}}
 
-## 計画HTMLレポート (v3.1+)
-
-v3.1(PR #1388)から、ターミナルCLI `moai plan` に `render-html` サブコマンドが追加されました。既に作成済みのSPEC産出物からplan-phase HTMLレポートを1つ生成し、`.moai/reports/plan-html/<SPEC-ID>-plan.html` に書き出します。
-
-```bash
-moai plan render-html SPEC-AUTH-001
-# → .moai/reports/plan-html/SPEC-AUTH-001-plan.html
-```
-
-**入力と出力**:
-
-- **入力** — `.moai/specs/<SPEC-ID>/` ディレクトリと、存在すれば最新のplan-auditレビューファイル (`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`)。
-- **出力** — 外部JS・CSSに依存しない自己完結型HTMLファイル1つ。goal宣言部・8-フィールド自律性契約・(レビューがあれば)監査判定スコア・マイルストンを1ファイルにまとめ、オフラインのブラウザでそのまま開けます。
-
-**失敗モード**:
-
-- SPECディレクトリが存在しない場合、0以外の終了コードとともにstderrにSPEC-IDを出力し、HTMLは書き出しません。
-- plan-auditレビューファイルが存在しない・パースできない場合、「監査判定を利用できません」プレースホルダを入れて **exit 0** でレンダリングします (fail-open)。
-
-{{< callout type="info" >}}
-**`/moai plan` スラッシュコマンドとは別物です**: `/moai plan` スラッシュコマンドがClaude Codeスキルシステムを経由してSPEC産出物を作成するのに対し、`moai plan render-html` CLIは既に作成済みの産出物からHTMLレポートを抽出するGoバイナリのサブコマンドです。
-{{< /callout >}}
-
-`--json` フラグを付けると `{action, spec_id, path, bytes}` JSONを出力します。
-
 ## 関連ドキュメント
 
 - [SPEC ベース開発](/core-concepts/spec-based-dev) - EARS 形式の詳細説明

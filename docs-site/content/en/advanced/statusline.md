@@ -13,7 +13,7 @@ A **custom statusline system** for the Claude Code and moai-adk-go integration. 
 ### Final Layout (3-line v3)
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.2 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
@@ -91,8 +91,8 @@ The cache hit rate is the effect meter of the context diet — trim the always-l
 - **Format**: `🗿 v<current>` or, when an update is available, `🗿 v<current> -> 🗿 v<latest>`
 - **Data source**: `.moai/config/sections/system.yaml` `moai.version` + the background update checker result
 - **Examples**:
-  - `🗿 v3.0.2` (up to date)
-  - `🗿 v2.18.0 -> 🗿 v3.0.2` (update advised)
+  - `🗿 v3.0.0` (up to date)
+  - `🗿 v2.18.0 -> 🗿 v3.0.0` (update advised)
 - **Segment key**: `moai_version`
 
 ### Session Time

@@ -2,7 +2,7 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-  Invocation gate: invoked for Tier L release PRs, multi-step merges (--auto-merge team-mode flows), Late-Branch 4-Phase closure, and any tier when the user explicitly sets --pr. Tier S/M push+PR (without --pr) is handled orchestrator-direct per SPEC-ORCH-GIT-RELAX-001 (orchestrator runs git switch -c / git push -u / gh pr create directly with MOAI_BRANCH_GUARD_EXEMPT=1 + Pre-Spawn Sync Check; manager-develop/manager-docs perform commits only and the orchestrator does NOT spawn manager-git for that class).
+  Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill

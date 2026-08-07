@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAS — Project Navigator 재설계안</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413; --clay:#D97757; --clay-d:#B85C3E;
+    --oat:#E3DACC; --olive:#788C5D;
+    --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+    --sans:"Pretendard",system-ui,-apple-system,sans-serif;
+    --serif:"Noto Serif KR",Pretendard,ui-serif,Georgia,serif;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+    --max-width:880px; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ivory);color:var(--slate);
+    font-family:var(--sans);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--max-width);margin:0 auto;padding:48px 28px 96px}
+  header.report-head{border-bottom:2px solid var(--slate);padding-bottom:28px;margin-bottom:36px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--clay);
+    text-transform:uppercase;margin-bottom:10px}
+  h1{font-family:var(--serif);font-size:34px;line-height:1.25;margin:0 0 10px;font-weight:700;letter-spacing:-.01em}
+  .subtitle{font-size:17px;color:var(--g700);margin:0}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--g500);margin-top:14px}
+  h2{font-family:var(--serif);font-size:24px;margin:48px 0 14px;font-weight:700;letter-spacing:-.01em;
+    border-left:4px solid var(--clay);padding-left:12px}
+  h3{font-size:18px;margin:28px 0 10px;font-weight:600}
+  p{margin:0 0 14px}
+  .lead{font-size:17px;color:var(--g700);background:var(--g100);border-radius:var(--radius);
+    padding:16px 20px;margin:0 0 18px;border-left:3px solid var(--olive)}
+  strong{font-weight:600;color:var(--slate)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--g100);padding:1px 6px;border-radius:4px;color:var(--clay-d)}
+  pre{font-family:var(--mono);background:#181715;color:#e8e6e1;padding:16px 18px;border-radius:var(--radius);
+    overflow-x:auto;font-size:13.5px;line-height:1.6}
+  pre code{background:none;padding:0;color:inherit}
+  ul,ol{padding-left:22px;margin:0 0 16px}
+  li{margin-bottom:6px}
+  /* KPI strip */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0 8px}
+  .kpi{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius);padding:16px 14px}
+  .kpi .delta{font-family:var(--mono);font-size:12px;color:var(--olive);font-weight:500;margin-bottom:6px}
+  .kpi .num{font-family:var(--serif);font-size:22px;font-weight:700;line-height:1.1}
+  .kpi .num .from{color:var(--g500);text-decoration:line-through;font-weight:500;font-size:15px}
+  .kpi .lbl{font-size:12.5px;color:var(--g700);margin-top:6px;line-height:1.35}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:14.5px;background:var(--paper);
+    border:1.5px solid var(--g300);border-radius:var(--radius);overflow:hidden}
+  th{background:var(--g100);text-align:left;padding:10px 12px;font-weight:600;border-bottom:1.5px solid var(--g300);
+    font-size:13px;color:var(--g700)}
+  td{padding:10px 12px;border-bottom:1px solid var(--g100);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  /* cards */
+  .card{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius);padding:20px 22px;margin:16px 0}
+  .card.tier{border-left:4px solid var(--clay)}
+  .card.decision{border-left:4px solid var(--olive)}
+  .callout{background:#FBF3EE;border-left:4px solid var(--clay);padding:14px 18px;border-radius:8px;margin:18px 0;font-size:15px}
+  .callout.olive{background:#F0F2EB;border-left-color:var(--olive)}
+  .quote{font-family:var(--serif);font-size:17px;font-style:italic;color:var(--g700);
+    border-left:3px solid var(--g300);padding-left:16px;margin:18px 0}
+  /* milestone timeline */
+  .tl{position:relative;margin:20px 0;padding-left:28px}
+  .tl::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--g300)}
+  .ms{position:relative;margin-bottom:18px}
+  .ms .dot{position:absolute;left:-27px;top:4px;width:18px;height:18px;border-radius:50%;
+    background:var(--paper);border:2.5px solid var(--clay);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;font-weight:600;color:var(--clay-d)}
+  .ms h4{margin:0 0 4px;font-size:15.5px;font-weight:600}
+  .ms .msmeta{font-family:var(--mono);font-size:11.5px;color:var(--g500);margin-bottom:6px}
+  .ms p{margin:0;font-size:14.5px;color:var(--g700)}
+  /* risk grid */
+  .risk{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+  .risk .r{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius);padding:14px 16px}
+  .risk .r .rt{font-weight:600;font-size:14.5px;margin-bottom:6px;color:var(--clay-d)}
+  .risk .r .rr{font-size:13.5px;color:var(--g700)}
+  .risk .r .rr b{color:var(--olive);font-weight:600}
+  /* tier ladder */
+  .ladder{display:grid;grid-template-columns:1fr;gap:10px;margin:16px 0}
+  .rung{display:grid;grid-template-columns:90px 1fr;gap:16px;background:var(--paper);
+    border:1.5px solid var(--g300);border-radius:var(--radius);padding:14px 16px;align-items:start}
+  .rung .tname{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--clay-d);
+    background:#FBF3EE;padding:6px 8px;border-radius:6px;text-align:center}
+  .rung .tname .tn{display:block;font-size:15px;color:var(--slate);margin-bottom:2px}
+  .qblock{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius);margin:14px 0;overflow:hidden}
+  .qblock .qh{background:var(--slate);color:var(--ivory);padding:12px 18px;font-weight:600;font-size:15px}
+  .qblock .qb{padding:14px 18px}
+  .qblock .qb p{margin:0 0 8px;font-size:15px}
+  .qblock .qb p:last-child{margin-bottom:0}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:10px;
+    background:var(--oat);color:var(--g700);margin-right:4px}
+  hr.sec{border:none;border-top:1px solid var(--g300);margin:36px 0}
+  .foot{margin-top:48px;padding-top:20px;border-top:1px solid var(--g300);
+    font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.6}
+  @media(max-width:640px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .risk{grid-template-columns:1fr}
+    .rung{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="report-head">
+  <div class="eyebrow">Plan · 시스템 아키텍처 설계안 · BASIC 티어</div>
+  <h1>BAS — Blueprint-Anchored Synchronization</h1>
+  <p class="subtitle">Project Navigator 재설계: 3개의 단방향 chain을 하나의 주소 가능 그래프로</p>
+  <div class="meta">2026-08-05 · 대화 세션 3db3f943 · 조사 기반 (현 구현 Explore + 외부 codewiki/SDD/SCIP/contract-first/ADR)</div>
+</header>
+
+<!-- KPI STRIP -->
+<div class="kpis">
+  <div class="kpi">
+    <div class="delta">구조 통합</div>
+    <div class="num"><span class="from">3</span> → 1</div>
+    <div class="lbl">단방향 chain을 단일 결합 그래프로</div>
+  </div>
+  <div class="kpi">
+    <div class="delta">동기화 경로</div>
+    <div class="num"><span class="from">0</span> → 3</div>
+    <div class="lbl">detect · route · fix (Falconer 3요소)</div>
+  </div>
+  <div class="kpi">
+    <div class="delta">지도 계층</div>
+    <div class="num"><span class="from">1</span> → 4</div>
+    <div class="lbl">contract · blueprint · ADR · symbol</div>
+  </div>
+  <div class="kpi">
+    <div class="delta">결합 식별자</div>
+    <div class="num"><span class="from">없음</span> → SSOT</div>
+    <div class="lbl">design ↔ SPEC ↔ code 를 잇는 토큰</div>
+  </div>
+</div>
+
+<!-- §1 핵심 테제 -->
+<h2>1. 왜 다시 설계하는가 — 핵심 테제</h2>
+
+<div class="lead">
+이 보고서 전체를 한 문장으로: <strong>"시작은 아름답지만 끝이 고통스러운 이유는, 방향과 길을 잃은 LLM에게 제대로 된 지도를 주지 않아서다."</strong> BAS는 그 지도를 만들고, 코드가 바뀌어도 지도가 어긋나지 않게 붙잡는 시스템이다.
+</div>
+
+<p>오라버니가 짚은 핵심 통찰 — <em>"LLM은 토큰을 아끼려 필요한 줄만 읽는다 → 큰 그림을 놓친다 → 청사진이 필요하다"</em> — 은 이 설계의 철학적 기둥이다. 주목할 점은 외부 레퍼런스가 이 통찰을 <strong>독립적으로 검증</strong>한다는 것이다. Augment Code의 SDD 가이드는 한 작업 사례를 요약하며 이렇게 쓴다:</p>
+
+<div class="quote">"각 에이전트가 덜어낸 관련 없는 컨텍스트가 적을수록 결과가 더 좋았다. 백만 토큰의 코드베이스 컨텍스트는 보기와 달리 장점이 아니다. 에이전트는 <strong>정밀하고 작업에 관련된 컨텍스트</strong>에서 더 잘 동작한다."</div>
+
+<p>즉 청사진(지도)의 가치는 <strong>토큰을 늘려서</strong>가 아니라, <strong>토큰을 줄이면서도 큰 그림을 잃지 않기 때문</strong>에 생긴다. 이게 BAS 설계의 모든 결정을 관통한다 — 지도는 정밀해야 하고(더 큰 컨텍스트가 아니라 더 정확한 컨텍스트), 코드와 어긋나면 즉시 드러나야 한다(어긋난 지도는 지도가 아니다).</p>
+
+<div class="callout olive">
+<b>이 보고서가 답하는 세 물음.</b>
+<span class="pill">Q1</span> 코딩 전에 세밀한 설계를 끝내는 법 ·
+<span class="pill">Q2</span> codewiki식 소스 분석으로 설계+기능정의를 동시에 만드는 법 ·
+<span class="pill">Q3</span> 중간에 설계가 바뀌면 코드와 문서를 어떻게 같이 갱신하는가.
+각 물음에 대한 직접 답은 <strong>§5</strong>에, 구현 로드맵은 <strong>§6</strong>에 있다.
+</div>
+
+<!-- §2 현 상태 진단 -->
+<h2>2. 현 상태 진단 — 열려 있는 고리</h2>
+
+<div class="lead">
+Project Navigator(SPEC-001/002/003, 최근 3-phase close)는 이미 강력하다 — tree-sitter 14문법 심볼 추출, header-driven 결합, provenance 모델까지 갖췄다. 문제는 <strong>세 부분이 각자 단방향으로만 흐른다</strong>는 것. 어느 쪽이 바뀌어도 반대편이 모른다.
+</div>
+
+<h3>2.1 세 chain의 현재 구조</h3>
+
+<pre class="mermaid">
+flowchart LR
+  subgraph C1["Chain 1 · regen (001)"]
+    S1["SPEC frontmatter + git log"] --> N1["navigator.md<br/>capability-map.md<br/>progress-map.md"]
+  end
+  subgraph C2["Chain 2 · enrich (003)"]
+    S2["capability-map + 소스 코드"] --> N2["capability-symbols.md<br/>.json"]
+  end
+  subgraph C3["Chain 3 · audit (002)"]
+    S3["design docs + capability-map"] --> N3["audit-report.md<br/>.json"]
+  end
+  CM(["capability-map.md<br/>(유일한 결합 지점)"]) -.-> C1
+  CM -.-> C2
+  CM -.-> C3
+  N1 -. 쓰기 .- X1["❌ 역방향 없음"]
+  N2 -. 쓰기 .- X2["❌ design/SPEC 로 write-back 없음"]
+  N3 -. advisory .- X3["❌ read-only, 갱신 트리거 없음"]
+  classDef gap fill:#FBF3EE,stroke:#D97757,color:#B85C3E
+  class X1,X2,X3 gap
+</pre>
+<noscript>
+<p><b>다이어그램 요약:</b> 세 chain(regen/enrich/audit)이 각각 단방향으로 흐르며, 오직 <code>capability-map.md</code> 하나로만 결합된다. 모든 산출물의 역방향 쓰기 경로가 없고(❌), audit은 read-only 권고라 갱신을 트리거하지 않는다.</p>
+</noscript>
+
+<h3>2.2 닫혀 있지 않은 고리들 (gap 목록)</h3>
+
+<table>
+<thead><tr><th>필요 역량</th><th>현재 상태</th><th>어디가 빠졌나</th></tr></thead>
+<tbody>
+<tr><td>사전 설계 포착<br/><span class="pill">Q1</span></td><td><code>product/structure/tech.md</code>가 자유 서술. 결정↔SPEC↔코드를 잇는 식별자 없음</td><td>구조화된 design-capture 산출물 자체가 없음</td></tr>
+<tr><td>소스 분석 자동 문서화<br/><span class="pill">Q2</span></td><td>astx가 flat 심볼 목록(이름/종류/파일/줄)만 만듦</td><td>docstring·시그니처·호출그래프·중요도 순위 없음</td></tr>
+<tr><td>양방향 동기화<br/><span class="pill">Q3</span></td><td>세 chain 모두 regenerate-and-replace. 역방향 쓰기 0건</td><td>audit만이 "연결"이나 read-only 권고. SSOT 식별자 없음</td></tr>
+<tr><td>변경 전파</td><td>유일한 변경 감지 = SessionStart staleness hint(N=3 cycle). 트리거 아님</td><td>file-watcher·PostToolUse 갱신·content-hash 증분 전부 없음</td></tr>
+</tbody>
+</table>
+
+<div class="quote">"한 번 생성되고 다시 갱신되지 않는 문서는 살아있는 게 아니다. 그건 그냥 <strong>출처가 더 좋은 스냅샷</strong>이다." — falconer, living-documentation 가이드</div>
+
+<p>이 한 문장이 현 Navigator의 근본 한계를 정확히 짚는다. 세 chain이 아무리 정교해도, <strong>갱신 인프라가 없으면 스냅샷일 뿐</strong>이다. BAS가 닫으려는 고리가 바로 이것이다.</p>
+
+<!-- §3 제안 -->
+<h2>3. 제안 — BAS (Blueprint-Anchored Synchronization)</h2>
+
+<div class="lead">
+BAS는 세 부분으로 이루어진다: <strong>(A) SSOT 결합 토큰</strong>으로 design↔SPEC↔code를 하나의 그래프로 잇고, <strong>(B) 4-tier 지도</strong>로 LLM이 먼저 읽는 청사진을 세우며, <strong>(C) Falconer 3요소</strong>(detect·route·fix)로 어느 쪽이 바뀌어도 반대편이 따라잡게 한다. 핵심은 <em>처음부터 다시 짜는 게 아니라 현 자산 위에 결합층을 얹는 것</em>이다.
+</div>
+
+<h3>3.1 (A) SSOT 결합 토큰 — 주소 가능 그래프</h3>
+
+<p>현재 <code>@MX:SPEC:&lt;id&gt;</code> 토큰이 코드→SPEC 역포인터로 존재하나 Navigator 어느 chain도 소비하지 않는다(001 §B.3, 003 §B.6이 명시적으로 제외). BAS는 design 결정에도 ID를 부여해 그래프를 닫는다.</p>
+
+<pre><code>design decision  ──@NAV:DEC-042──▶  SPEC  ──@MX:SPEC:NAV-SYNC-001──▶  code symbol
+     (ADR)                           (REQ/AC)                           (@NAV:SYM:Handler.Parse)
+
+  ←───────────── 하나의 주소 가능 그래프로 join ─────────────→</code></pre>
+
+<p>이렇게 하면 <strong>어떤 design 결정이 어떤 코드 심볼로 실현되는지, 어떤 코드 변경이 어떤 설계 결정에 영향을 주는지</strong>를 기계적으로 추적할 수 있다. falconer의 "코드를 건 엔지니어에게 관련 doc 섹션을 알려주는 work routing"이 이 그래프 위에서 동작한다.</p>
+
+<h3>3.2 (B) 4-tier 지도 — LLM이 먼저 읽는 청사진</h3>
+
+<p>오라버니 통찰과 CodeWiki/Kiro 양식의 합류점. LLM이 "필요한 줄만 읽기 전에" 가장 먼저 보는 4개 층. 아래로 갈수록 세밀하고, 위에서부터 읽는다.</p>
+
+<div class="ladder">
+  <div class="rung">
+    <div class="tname"><span class="tn">Tier 0</span>Contract</div>
+    <div>
+      <strong>빌드와 CI가 이미 강제하는 계약 — moai-adk가 가진 실제 표면.</strong>
+      <code>//go:embed all:templates</code> + <code>catalog.yaml</code>(템플릿 구조가 바뀌면 컴파일이 실패) · SPEC frontmatter 스키마(<code>moai spec audit</code>가 위반을 잡음) · template-neutrality CI(내부 SPEC ID·REQ 토큰·commit SHA 누출을 CI가 차단) · mirror-parity 테스트(규칙 파일의 바이트 정합을 테스트가 강제).
+      <em>어긋나면 기계가 붙잡는다</em> — 문서에 따로 적지 않아도 지켜진다. BAS는 이 표면들을 Navigator의 한 축으로 끌어올려 활용한다.
+    </div>
+  </div>
+  <div class="callout olive" style="margin-top:0">
+    <b>외부 레퍼런스가 보여주는 같은 원리 (도입 아님).</b> Tauri <code>tauri.conf.json</code> capability allowlist · OpenAPI · Protobuf schema — 모두 "계약을 먼저 쓰면 빌드가 어긋남을 잡는다"는 contract-first 사례다. BAS는 이 <em>원리</em>를 moai-adk가 이미 가진 위 네 표면에 적용한다는 뜻이지, Tauri·OpenAPI·Protobuf를 moai-adk에 새로 도입하자는 게 아니다. 오라버니가 Orca vs Paseo(데스크탑 앱) 글에서 짚은 Tauri 맥락은 이 원리의 사례일 뿐 BAS의 대상이 아니다.
+  </div>
+  <div class="rung">
+    <div class="tname"><span class="tn">Tier 1</span>Blueprint</div>
+    <div>
+      <strong>LLM의 진입 지도.</strong> <code>module_tree.json</code>(구조적 색인) + <code>overview.md</code>(서술).
+      CodeWiki의 산출물 양식이 증명된 형태. 핵심 전환: <em>코드 뒤에 "생성"하는 게 아니라 코드 앞에 "저술"한다</em>(Q1의 답).
+    </div>
+  </div>
+  <div class="rung">
+    <div class="tname"><span class="tn">Tier 2</span>Decision</div>
+    <div>
+      <strong>불변 결정 기록(ADR).</strong> "편집하지 않고 대체한다" — 결정이 바뀌면 새 ADR를 써서 이전 것을 supersede.
+      <em>"어느 버전이 진실인가" 문제가 사라진다.</em> log4brains의 다중 패키지 지원이 프론트/백/네이티브가 나뉜 데스크탑 앱에 자연스럽다.
+    </div>
+  </div>
+  <div class="rung">
+    <div class="tname"><span class="tn">Tier 3</span>Symbol</div>
+    <div>
+      <strong>심볼 그래프.</strong> 현재 <code>astx</code>(tree-sitter 14문법) → 향후 SCIP로 확장 경로.
+      flat 목록에서 docstring·시그니처·find-refs까지(Q2의 답). 2-tier 원칙: <em>결정론적 구조층(astx/SCIP) + LLM 서술층</em>.
+    </div>
+  </div>
+</div>
+
+<h3>3.3 (C) Falconer 3요소 — 양방향 동기화 루프</h3>
+
+<p>living-documentation의 합의된 모델: 세 요소가 <strong>모두</strong> 있어야 한다. 하나라도 빠지면 정적 스냅샷으로 추락한다. 현재 Navigator는 셋 다 없다. BAS가 세 요소를 현 자산 위에 얹는다.</p>
+
+<pre class="mermaid">
+flowchart LR
+  D["<b>Detect</b><br/>PostToolUse hook<br/>changed path → affected rows<br/>(audit 매칭 로직 재사용)"] --> R["<b>Route</b><br/>audit advisory → work item<br/>owner = code path<br/>(002 승격)"] --> F["<b>Fix</b><br/>AI-drafted incremental rewrite<br/>CodeWiki --compare-to 패턴<br/>(changed subtrees만)"] --> D
+  classDef d fill:#F0F2EB,stroke:#788C5D
+  classDef r fill:#FBF3EE,stroke:#D97757
+  classDef f fill:#FAF9F5,stroke:#87867F
+  class D d
+  class R r
+  class F f
+</pre>
+<noscript>
+<p><b>루프 요약:</b> Detect(변경 파일이 어느 doc 행에 영향을 주는지 매핑) → Route(권고를 작업 항목으로 승격, 담당자를 코드 경로에 결합) → Fix(변경된 하위 트리만 AI 초안으로 갱신, CodeWiki <code>--compare-to</code> 패턴) → 다시 Detect. 세 요소가 모두 있어야 living doc이 유지된다.</p>
+</noscript>
+
+<!-- §4 자산 재사용 -->
+<h2>4. 처음부터 다시 짜지 않는다 — 현 자산 재사용</h2>
+
+<div class="lead">
+BAS는 새 시스템이 아니다. <strong>현 Navigator의 자산 위에 결합층을 얹는 것</strong>이다. 아래 자산들은 그대로 import/재사용한다. 기존 SPEC 3종의 비중척 계약(REQ-PN-016, REQ-NA-011, REQ-NT-018/019)은 그대로 두고, 그 위 통합층을 새 SPEC으로 올린다.
+</div>
+
+<table>
+<thead><tr><th>재사용 자산</th><th>위치</th><th>BAS에서의 역할</th></tr></thead>
+<tbody>
+<tr><td>tree-sitter 심볼 추출 라이브러리</td><td><code>internal/navigator/astx/</code></td><td>그대로 import — Tier 3 symbol 그래프의 결정론적 엔진</td></tr>
+<tr><td>header-driven capability-map 파서</td><td><code>enrich.go:122</code></td><td>결합층의 조인 엔진 — 열 순서에 무관</td></tr>
+<tr><td>Provenance 모델</td><td><code>enrich.go:21,83</code></td><td>verification-claim-integrity 정합 — "관측 안 한 주장 금지"</td></tr>
+<tr><td>atomic-write + barrier 훅</td><td><code>navigator_enrich.go:128</code></td><td>동시성 안전 갱신 + 결정론적 테스트 픽스처</td></tr>
+<tr><td>audit 토큰 정규화 매칭</td><td><code>navigator-audit.sh</code></td><td>Detect 요소의 path→doc 매핑 로직</td></tr>
+<tr><td><code>@MX:SPEC</code> 토큰</td><td><code>mx-tag-protocol.md</code></td><td>code→SPEC 역포인터 — SSOT 그래프의 한 축으로 흡수</td></tr>
+<tr><td>codemaps dep-graph baseline</td><td><code>/moai codemaps</code> Phase 2</td><td>빌드가 증명한 의존 그래프 — Tier 1 blueprint에 무료로 활용</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<b>왜 비중척 계약을 그대로 두는가.</b> 세 SPEC이 분리 가능한 변경성(separable changeability)을 위해 의도적으로 비중척을 설계했다. 이를 깨면 기존 자산의 독립성이 사라진다. BAS는 <strong>그 위에 통합층</strong>을 올려 각 chain의 산출물을 소비하기만 한다 — 기존 계약을 위반하지 않고 그래프를 닫는다.
+</div>
+
+<!-- §5 세 물음 답 -->
+<h2>5. 오라버니의 세 물음에 대한 직접 답</h2>
+
+<div class="qblock">
+  <div class="qh">Q1 · 코딩 전에 세밀한 설계를 어떻게 끝내는가</div>
+  <div class="qb">
+    <p><strong>Tier 1 Blueprint를 "생성"이 아니라 "저술"한다.</strong> <code>/moai project</code>에 <em>blueprint-first 모드</em>를 추가: <code>module_tree</code> + contract + ADR을 <strong>코드 전에 먼저 쓴다</strong>.</p>
+    <p>검증된 양식이 이미 있다. Kiro의 Design 섹션 목록 — 컴포넌트 아키텍처 다이어그램 · 데이터 흐름 · 데이터 모델 · 에러 처리 · 테스트 전략 · 구현 접근 · 마이그레이션 전략. 오라버니가 데스크탑 앱(Tauri·Electron) 맥락에서 말씀하신 "코딩 전 설계 도면"이 바로 이 양식이다. BAS는 이 설계-도면 사고방식을 <em>moai-adk의 Navigator</em>에 적용한다 — Tauri·Electron이 BAS의 대상이 아니라, 그 도면을 먼저 그린다는 발상을 빌려온다.</p>
+    <p><strong>Fowler의 <em>spec-anchored</em> 수준을 채택</strong> — 코딩 전에 쓰고 코딩 후에도 유지한다. spec-first(코드 뒤 삭제, 변경 추적 불가)도, spec-as-source(MDD 함정, 빠져나오기 비싸)도 아닌 <strong>가역적 최적점</strong>. Fowler가 다른 두 수준을 비판하며 남긴 살아남는 유일한 길이다.</p>
+  </div>
+</div>
+
+<div class="qblock">
+  <div class="qh">Q2 · codewiki식 분석으로 설계+기능정의를 동시에 만드는가</div>
+  <div class="qb">
+    <p><strong>astx를 flat 목록에서 per-symbol docstring/시그니처/호출맥락으로 확장 + CodeWiki식 hierarchical decomposition.</strong></p>
+    <p>2-tier 원칙이 핵심: <em>결정론적 구조층(astx → 향후 SCIP) 위에 LLM 서술층</em>. 순수 LLM(DeepWiki)은 시스템 언어에서 측정가능하게 약하다(CodeWikiBench: C/C++ −3.15% vs DeepWiki). 구조층을 올리면 LLM의 약점을 구조층이 보완한다.</p>
+    <p>CodeWiki의 <code>--update</code> / <code>--compare-to &lt;commit&gt;</code> + <code>metadata.json</code> 증분 모델이 "갱신"의 검증된 기법 — Fix 요소가 이 패턴을 가져온다.</p>
+  </div>
+</div>
+
+<div class="qblock">
+  <div class="qh">Q3 · 중간에 설계가 바뀌면 코드와 문서를 어떻게 같이 갱신하는가</div>
+  <div class="qb">
+    <p><strong>Falconer 3요소(detect·route·fix) + SSOT 그래프.</strong> 계층별로 다른 동기화 전략을 쓴다:</p>
+    <ul>
+      <li><strong>Tier 0 Contract</strong> — 빌드가 강제. drift 자체가 불가능 (코드와 계약이 어긋나면 빌드 실패).</li>
+      <li><strong>Tier 1·3 Blueprint/Symbol</strong> — detect→route→fix 루프. CodeWiki <code>--compare-to</code>로 변경된 하위 트리만 재생성.</li>
+      <li><strong>Tier 2 ADR</strong> — "편집 대신 대체". 결정이 바뀌면 새 ADR를 써서 supersede. <em>"어느 버전이 진실인가" 문제 자체가 발생하지 않는다.</em></li>
+    </ul>
+    <p>단일 패턴이 세 물음을 다 풀지는 못한다. 레퍼런스의 합의는 <strong>포트폴리오</strong>다 — contract-first는 계약 가능한 표면(IPC·API·스키마)을, spec-anchored는 동작을, ADR은 결정을, living-doc detect는 서술을, CodeWiki식 재생성은 개요/지도를. 각자 다른 방식으로 실패하고, 함께 서로의 빈틈을 덮는다.</p>
+  </div>
+</div>
+
+<!-- §6 마일스톤 -->
+<h2>6. 구현 로드맵 — 마일스톤</h2>
+
+<div class="lead">
+BAS는 한 SPEC이 아니라 <strong>Epic</strong> 규모다. 각 마일스톤이 독립 SPEC으로 plan→run→sync를 밟는다. 순서의 핵심: <strong>Detect(M1)를 먼저</strong> — 가장 가치가 크고, Fix(M3)는 Detect가 검증된 뒤에才有. 의존성 그래프를 따라 직렬·병렬이 섞인다.
+</div>
+
+<div class="tl">
+  <div class="ms">
+    <div class="dot">M0</div>
+    <h4>SSOT 토큰 + 그래프 결합층 스키마</h4>
+    <div class="msmeta">새 SPEC · plan-phase · 모든后续 마일스톤의 전제</div>
+    <p><code>@NAV:DEC</code> / <code>@NAV:SYM</code> 토큰 정의, <code>@MX:SPEC</code> 흡수, 결합 그래프 산출물 포맷. <strong>임계 경로의 출발점</strong> — 이것 없이는 어느 마일스톤도 그래프 위에서 동작할 수 없다.</p>
+  </div>
+  <div class="ms">
+    <div class="dot">M1</div>
+    <h4>Detect — PostToolUse 변경 감지 훅</h4>
+    <div class="msmeta">run-phase · M0에 의존 · 가치 최대</div>
+    <p>changed file path → affected doc rows 매핑. audit의 토큰 정규화 매칭을 훅으로 옮긴다. advisory를 넘어 <strong>실시간 영향 범위 표시</strong>. 이것만으로도 "어디가 바뀌었는지 모르는" 현 상태의 가장 큰 고통이 사라진다.</p>
+  </div>
+  <div class="ms">
+    <div class="dot">M2</div>
+    <h4>Route — audit 권고 → 작업 항목 승격</h4>
+    <div class="msmeta">run-phase · M1과 병렬 가능 · 002 확장</div>
+    <p>002 audit의 missing/orphan을 actionable work item으로. owner를 code path에 결합(falconer의 "담당자를 자원봉사자가 아니라 코드 경로에"). <strong>M1과 병렬</strong> — 같은 audit 자산의 다른 표면.</p>
+  </div>
+  <div class="ms">
+    <div class="dot">M3</div>
+    <h4>Fix — AI 초안 증분 갱신</h4>
+    <div class="msmeta">run-phase · M1+M2 완료 후 · 가장 복잡</div>
+    <p>CodeWiki <code>--compare-to &lt;commit&gt;</code> 패턴 — changed subtrees만 재생성, AI가 초안 작성, 1-click 승인. <strong>M1·M2가 검증된 뒤에만</strong> — Detect 없는 Fix는 잘못된 곳을 고친다.</p>
+  </div>
+  <div class="ms">
+    <div class="dot">M4</div>
+    <h4>4-tier 지도 — contract·blueprint·ADR·symbol 확장</h4>
+    <div class="msmeta">run-phase · M0에 의존 · M1-3과 병렬 가능</div>
+    <p>blueprint-first 저술 모드(Q1), astx docstring/시그니처 확장(Q2), ADR 도입. M1-3과 <strong>다른 표면</strong>이라 병렬. Tier 0 contract는 Tauri allowlist에서 시작.</p>
+  </div>
+  <div class="ms">
+    <div class="dot">M5</div>
+    <h4>Brownfield 역추출 — 기존 코드 → 설계</h4>
+    <div class="msmeta">run-phase · M4 완료 후 · 데스크탑 앱 시나리오 핵심</div>
+    <p>Tessl <code>tessl document --code</code> 패턴 — 이미 코드가 있는 데스크탑 앱에서 설계를 역으로 뽑아내 blueprint를 채운다. InfoQ가 지적한 "기존 SPEC 갱신에 부적합" 문제의 답. <strong>오라버니 시나리오(이미 부분 코드가 있는 앱)의 직접 경로</strong>.</p>
+  </div>
+</div>
+
+<!-- §7 슬라이스 테이블 -->
+<h2>7. 슬라이스 — 범위·산출물·의존성</h2>
+
+<table>
+<thead><tr><th>슬라이스</th><th>핵심 산출물</th><th>의존</th><th>Tier 분류</th></tr></thead>
+<tbody>
+<tr><td>M0 그래프 결합층</td><td>SSOT 토큰 명세, 결합 그래프 스키마, <code>@MX:SPEC</code> 흡수 명세</td><td>—</td><td>L (기반 구조)</td></tr>
+<tr><td>M1 Detect 훅</td><td>PostToolUse hook, path→rows 매핑, 실시간 영향 표시</td><td>M0</td><td>M</td></tr>
+<tr><td>M2 Route 승격</td><td>audit → work item 변환, owner=path 결합, 002 확장</td><td>M0 (M1과 병렬)</td><td>M</td></tr>
+<tr><td>M3 Fix 증분 갱신</td><td>AI-drafted rewrite, <code>--compare-to</code> 패턴, 1-click 승인 UI</td><td>M1+M2</td><td>L (검증 필요)</td></tr>
+<tr><td>M4 4-tier 지도</td><td>blueprint-first 모드, astx 확장, ADR 통합, Tauri contract 캡처</td><td>M0 (M1-3과 병렬)</td><td>L</td></tr>
+<tr><td>M5 Brownfield 역추출</td><td><code>document --code</code> 스타일 추출기, blueprint 자동 채우기</td><td>M4</td><td>M</td></tr>
+</tbody>
+</table>
+
+<!-- §8 리스크 -->
+<h2>8. 리스크 그리드</h2>
+
+<div class="risk">
+  <div class="r">
+    <div class="rt">spec-as-source 함정</div>
+    <div class="rr">SPEC을 코드의 원천으로 삼으면 MDD(모델 주도 개발)의 경직성과 LLM의 비결정성을 둘 다 물려받는다(Fowler 경고). <b>완화: spec-anchored 고정</b> — SPEC은 코드 후에도 살아있되 원천은 아니다.</div>
+  </div>
+  <div class="r">
+    <div class="rt">heavy up-front spec 부담</div>
+    <div class="rr">설계 도면이 너무 무거우면 팀이 우회한다(Fowler: Verschlimmbesserung, "고치려다 더 망치는 것"). <b>완화: SPEC을 싸게 쓰고 싸게 진화시킨다</b> — 도면이 자전거 보조바대지 장갑차여야 한다.</div>
+  </div>
+  <div class="r">
+    <div class="rt">brownfield 적합성</div>
+    <div class="rr">GitHub Spec Kit은 신규 기능에 최적화(#1191, 기존 SPEC 갱신 곤란). 이미 코드가 있는 데스크탑 앱은 brownfield. <b>완화: M5 역추출 경로</b>를 명시적으로 둔다.</div>
+  </div>
+  <div class="r">
+    <div class="rt">SCIP 인덱서 미성숙</div>
+    <div class="rr">SCIP는 정확하나 언어별 인덱서 성숙도가 다르다. <b>완화: astx + 빌드 그래프 먼저, SCIP는 인덱서가 성숙한 언어부터 점진</b> — 결정론적 기반을 먼저 확정한다.</div>
+  </div>
+  <div class="r">
+    <div class="rt">단방향 습관</div>
+    <div class="rr">팀이 "한 번 생성하고 잊는" 현 패턴에 익숙하면 detect 신호를 무시한다. <b>완화: M1을 먼저, fix는 나중</b> — 가장 큰 가치(detect)를 먼저 체감시키고, fix는 그 습관이 붙은 뒤.</div>
+  </div>
+  <div class="r">
+    <div class="rt">다이어그램≠문서</div>
+    <div class="rr">CodeWiki형 도구가 "한 번 생성 = 끝"으로 포지셔닝하지만 falconer가 반박 — 생성은 스냅샷일 뿐. <b>완화: BAS의 Fix 요소가 생성 위에 갱신 인프라를 강제</b> — 생성 자체는 충분조건이 아니다.</div>
+  </div>
+</div>
+
+<!-- §9 성공 지표 -->
+<h2>9. 성공 지표</h2>
+
+<table>
+<thead><tr><th>지표</th><th>측정 방법</th><th>목표</th></tr></thead>
+<tbody>
+<tr><td>Detect 커버리지</td><td>변경 파일이 affected doc rows에 매핑되는 비율</td><td>≥ 80% (M1 완료 시점)</td></tr>
+<tr><td>Route 정확도</td><td>missing/orphan 중 actionable work item으로 전환되는 비율</td><td>≥ 70%</td></tr>
+<tr><td>Fix 자동화율</td><td>AI 초안이 1-click 승인으로 들어가는 비율 (수정 없이)</td><td>≥ 50% (나머지는 가벼운 수정)</td></tr>
+<tr><td>drift 감소율</td><td>audit missing/orphan 건수의 sprint 대비 감소</td><td>매 sprint ≥ 30% 감소</td></tr>
+<tr><td>LLM 컨텍스트 정밀도</td><td>blueprint 선행 독서 시 작업 완료에 필요한 추가 파일 reads 수</td><td>대조군(현 상태) 대비 ≥ 40% 감소</td></tr>
+</tbody>
+</table>
+
+<div class="callout olive">
+<b>마지막 지표가 가장 중요하다.</b> 오라버니 통찰의 직접 측정 — "청사진이 LLM이 읽는 줄을 줄이면서도 큰 그림을 유지하는가." blueprint를 먼저 읽은 뒤 작업을 끝내기까지 <strong>추가로 열어야 하는 파일 수</strong>가 현 상태보다 40% 이상 줄어야, BAS가 테제를 입증한 것이다.
+</div>
+
+<!-- §10 다음 단계 -->
+<h2>10. 즉시 다음 단계</h2>
+
+<div class="card decision">
+<p>이 설계안은 <strong>새 Epic(<code>SPEC-NAVIGATOR-SYNC</code> 시리즈)의 청사진</strong>이다. M0(그래프 결합층)이 임계 경로의 출발점이며, 나머지 마일스톤은 의존성 그래프에 따라 직렬·병렬로 전개한다.</p>
+<p>승인되면 <code>SPEC-NAVIGATOR-SYNC-001(M0)</code> plan-phase 진입이 첫 작업이다. 이 보고서의 §3.1(SSOT 토큰)과 §4(자산 재사용)가 plan의 출발 자료가 된다.</p>
+</div>
+
+<hr class="sec">
+
+<div class="foot">
+  <strong>레퍼런스 (조사에서 검증됨).</strong><br>
+  CodeWiki(FSoft-AI4Code, ACL 2026) · DeepWiki/DeepWiki-Open(Cognition) · falconer living-documentation ·
+  Martin Fowler "SDD 세 가지 수준"(spec-first / spec-anchored / spec-as-source) · Augment Code SDD 가이드(6요소 프레임워크, 적대적 Verifier) ·
+  Kiro Design 섹션 · GitHub Spec Kit · Tessl(document --code) · SCIP(Sourcegraph, LSIF 후계) · tree-sitter · LSIF ·
+  Doxygen · OpenAPI/Protobuf contract-first(kmcd.dev) · log4brains(ADR, 불변+대체) · Cucumber(실행 가능 명세) · Bazel/Buck(빌드 그래프 = 문서).<br><br>
+  <strong>현 구현 조사 출처.</strong> internal/navigator/astx/ · internal/cli/navigator_enrich.go ·
+  .claude/skills/moai-workflow-project/{SKILL.md,references/*,scripts/*} · SPEC-PROJECT-NAVIGATOR-001/002/003 (모두 completed, 3-phase close).<br><br>
+  본 보고서는 <code>verification-claim-integrity.md</code>에 따라 "관측한" 현 구현 + "검증한" 외부 URL 에 근거한다. 추정·가설은 명시적으로 표시했다.
+</div>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor: "#FAF9F5",
+      primaryTextColor: "#141413",
+      primaryBorderColor:"#D97757",
+      lineColor: "#87867F",
+      secondaryColor:"#E3DACC",
+      tertiaryColor:"#F0EEE6",
+      fontSize:"14px"
+    },
+    flowchart:{curve:"basis",padding:14}
+  });
+</script>
+
+</body>
+</html>

@@ -14,7 +14,6 @@ It accepts the common flag `--project-root <path>` (default: current directory).
 |--------|------|
 | `moai harness route --spec <id>` | Route a SPEC to a minimal/standard/thorough harness level |
 | `moai harness validate` | Validate harness.yaml against the schema and invariants |
-| `moai harness clusters` | Read and display the deterministic failure-signature clusters from apply outcomes (`apply_outcome`) — read-only, source `.moai/harness/usage-log.jsonl` |
 
 `route` accepts `--json` (JSON output), `--path <harness.yaml>`, and `--base-dir <dir>`.
 
@@ -24,17 +23,8 @@ It accepts the common flag `--project-root <path>` (default: current directory).
 |--------|------|
 | `moai harness status` | Show observation/tier/evolution summary |
 | `moai harness apply` | Return pending proposals to the orchestrator (or run the Go apply path with `--execute`) |
-| `moai harness execute` | Apply pending proposals through the Go pipeline (opt-in — the first production call path of `Applier.Apply()`) |
 | `moai harness rollback <date>` | Restore the snapshot for the given date |
 | `moai harness disable` | Disable the learning subsystem (`learning.enabled: false`) |
-
-## Proposal-generation & activation verbs
-
-| Command | Description |
-|--------|------|
-| `moai harness propose` | Consume the harness learning history (`tier-promotions.jsonl`) to generate a draft SPEC proposal |
-| `moai harness install` | Activate the generated harness — scaffolds `.moai/harness/main.md` and installs `CLAUDE.md` markers |
-| `moai harness promote` | Promote a discovery draft to a SPEC skeleton (routes to manager-spec authoring) |
 
 ## Proposal-management verbs
 

@@ -12,10 +12,9 @@ This is the programmatic MoAI counterpart of the native `/goal` (a user-only TUI
 
 | Command | Description |
 |--------|------|
-| `moai goal arm "<condition>"` | Register + arm a goal on the active session (`moai goal "<condition>"` is also an arm alias). Arm-only — it starts no work by itself |
-| `moai goal status` | Print the goal status of the active session (use `--all` to list every session) |
+| `moai goal arm "<condition>"` | Register + arm a goal on the active session (`moai goal "<condition>"` is also an arm alias) |
+| `moai goal status` | Print the goal status of the active session |
 | `moai goal clear` | Clear the goal of the active session |
-| `moai goal render` | Render the active session's goal dashboard as a self-contained HTML file (saved next to `.moai/state/goal/`). Exits non-zero when no goal is armed. Starting in v3.1 (PR #1388) the dashboard surfaces the verdict section (loaded from the sidecar at ceiling exit) and the re-arm conditional views — see the [/moai goal dashboard section](/en/utility-commands/moai-goal#goal-dashboard) for detail |
 
 ## Common flags
 
@@ -29,9 +28,9 @@ This is the programmatic MoAI counterpart of the native `/goal` (a user-only TUI
 
 | Flag | Description |
 |--------|------|
-| `--max-turns <N>` | Turn ceiling. `0` = infinite (SPEC-INFINITE-GOAL-001); default `30` when omitted (full backward compat). **`0` (infinite) REQUIRES `--max-duration <sec>`** (arm-time fail-closed). |
-| `--max-duration <sec>` | Wall-clock bound (seconds since arm time). **The actual wall-clock bound for an infinite goal (`--max-turns 0`)** — an infinite goal cannot be armed without this flag. |
-| `--cost-cap <value>` | Recorded-only on the invocation ceiling — there is no enforcement logic today, so it is not an actual bound. It does not satisfy the real-bound requirement for `--max-turns 0`, so `--cost-cap` alone is rejected. |
+| `--max-turns <N>` | Turn ceiling. `0` = infinite (auto-compact-driven); default `30` when omitted (full backward compat). `0` requires `--max-duration` or `--cost-cap` (arm-time fail-closed). |
+| `--max-duration <sec>` | Wall-clock bound (seconds since arm time). The primary run-time bound for an infinite goal. |
+| `--cost-cap <value>` | Cost cap recorded in `Ceiling`. Enforcement is a documented follow-up (no invocation/token accounting today); an infinite goal is still bounded by `--max-duration` and the stagnation guard. |
 
 ## State and evaluation
 

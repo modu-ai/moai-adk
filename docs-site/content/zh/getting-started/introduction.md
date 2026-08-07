@@ -51,7 +51,7 @@ MoAI-ADK 以 **基于 SPEC 的 TDD/DDD** 方法论为基础,并通过 **TRUST 5*
 
 - 将需求 **保存为文件** 永久保留
 - 即使会话中断,只要读 SPEC 就能 **接着工作**
-- 用 GEARS 格式 **无歧义地** 明确定义
+- 用 EARS 格式 **无歧义地** 明确定义
 - 无需重复相同说明,因此 **也节省 token**
 
 {{< callout type="info" >}}
@@ -148,7 +148,7 @@ MoAI-ADK 将 Python Edition 完全用 Go 重写,以最大化性能与效率。
 
 - **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **31 个** 技能(template-managed)
-- **36 个** CLI 命令 · **15 种** `/moai` 子命令
+- **36 个** CLI 命令 · **16 种** `/moai` 子命令
 - **16 种** 编程语言支持
 - 基于 **543 个** SPEC 文档开发的代码库
 
@@ -212,7 +212,7 @@ MoAI-ADK 遵循 3 阶段开发工作流。Run 阶段的方法论依项目状态�
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"用 GEARS 格式定义需求"| B{"方法论选择"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"用 EARS 格式定义需求"| B{"方法论选择"}
     B -->|"新项目 (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"既有项目 (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]

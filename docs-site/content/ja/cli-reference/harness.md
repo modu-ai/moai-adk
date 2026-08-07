@@ -14,7 +14,6 @@ draft: false
 |--------|------|
 | `moai harness route --spec <id>` | SPEC を minimal/standard/thorough ハーネスレベルへルーティング |
 | `moai harness validate` | harness.yaml をスキーマ・不変条件基準で検証 |
-| `moai harness clusters` | apply 結末 (apply_outcome) の決定論的失敗シグネチャクラスタを読み出して表示 (read-only、`.moai/harness/usage-log.jsonl`) |
 
 `route` は `--json` (JSON 出力)、`--path <harness.yaml>`、`--base-dir <dir>` フラグを受け取ります。
 
@@ -24,17 +23,8 @@ draft: false
 |--------|------|
 | `moai harness status` | 観測/ティア/進化サマリーを表示 |
 | `moai harness apply` | 保留中の提案をオーケストレーターへ返却 (または `--execute` で Go apply 経路を実行) |
-| `moai harness execute` | 保留中の提案を Go パイプラインに apply (opt-in — `Applier.Apply()` の初のプロダクション呼び出し経路) |
 | `moai harness rollback <date>` | 指定日付のスナップショットを復元 |
 | `moai harness disable` | 学習サブシステムを無効化 (`learning.enabled: false`) |
-
-## 提案・有効化 verb
-
-| コマンド | 説明 |
-|--------|------|
-| `moai harness propose` | ハーネス学習履歴 (`tier-promotions.jsonl`) を消費してドラフト SPEC 提案を生成 |
-| `moai harness install` | 生成されたハーネスを有効化 — `.moai/harness/main.md` スキャフォールド + `CLAUDE.md` マーカー設置 |
-| `moai harness promote` | 発見ドラフト (discovery draft) を SPEC 骨格に昇格 (manager-spec 作成へルーティング) |
 
 ## 提案管理 verb
 

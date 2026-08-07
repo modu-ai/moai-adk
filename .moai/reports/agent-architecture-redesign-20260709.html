@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoAI-ADK 에이전트 구성 재설계 — Action Plan</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:  #FAF9F5; --paper: #FFFFFF; --slate: #141413;
+      --clay:   #D97757; --clay-d:#B85C3E; --oat: #E3DACC; --olive: #788C5D;
+      --g100: #F0EEE6; --g300: #D1CFC5; --g500: #87867F; --g700: #3D3D3A;
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --max-width: 1100px; --radius-panel: 12px; --radius-row: 8px;
+      --border: 1.5px solid var(--g300);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--ivory); color: var(--g700); font-family: var(--sans);
+      font-size: 15px; line-height: 1.6; padding: 56px 32px 120px; -webkit-font-smoothing: antialiased; }
+    .page { max-width: var(--max-width); margin: 0 auto; }
+    header.page-head { margin-bottom: 48px; max-width: 880px; }
+    .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); margin-bottom: 12px; }
+    h1 { font-family: var(--serif); font-weight: 700; font-size: 34px; line-height: 1.18; color: var(--slate); margin-bottom: 16px; letter-spacing: -.01em; }
+    .goal-box { background: var(--g100); border: var(--border); border-radius: var(--radius-panel); padding: 16px 20px; font-size: 14.5px; }
+    .goal-box .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--g500); display: block; margin-bottom: 6px; }
+    section { margin-bottom: 60px; }
+    .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+    .sec-head .num { font-family: var(--mono); font-size: 12px; background: var(--oat); color: var(--slate); padding: 3px 9px; border-radius: 8px; flex-shrink: 0; }
+    .sec-head h2 { font-family: var(--serif); font-weight: 700; font-size: 23px; color: var(--slate); letter-spacing: -.01em; }
+    .sec-intro { font-size: 14.5px; color: var(--g500); max-width: 780px; margin-bottom: 24px; }
+    .summary-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 56px; }
+    @media (max-width: 900px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+    .sum-cell { background: var(--paper); border: var(--border); border-radius: var(--radius-panel); padding: 18px 20px; }
+    .sum-cell .k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--g500); margin-bottom: 6px; }
+    .sum-cell .v { font-size: 16.5px; color: var(--slate); font-weight: 600; }
+    .sum-cell .v.accent { color: var(--clay); }
+    /* tables */
+    .tbl { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--paper);
+      border: var(--border); border-radius: var(--radius-panel); overflow: hidden; font-size: 13.5px; }
+    .tbl th { background: var(--g100); text-align: left; padding: 11px 14px; font-size: 12px;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--slate); border-bottom: var(--border); }
+    .tbl td { padding: 11px 14px; border-bottom: 1px solid var(--g100); vertical-align: top; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl code, .inline-code { font-family: var(--mono); font-size: 12px; background: var(--g100); border: 1px solid var(--g300); border-radius: 5px; padding: 1px 5px; white-space: nowrap; }
+    .pill { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+    .pill.new  { background: #F3D9CC; color: #8A3B1E; }
+    .pill.keep { background: #E4E9DC; color: #4B5C39; }
+    .pill.doc  { background: var(--oat); color: var(--slate); }
+    .pill.no   { background: var(--g100); color: var(--g500); border: 1px solid var(--g300); }
+    .quote { border-left: 3px solid var(--clay); background: var(--paper); border-radius: 0 var(--radius-row) var(--radius-row) 0;
+      padding: 12px 16px; font-size: 13.5px; color: var(--g700); margin: 10px 0; }
+    .quote .src { display: block; font-family: var(--mono); font-size: 11px; color: var(--g500); margin-top: 6px; }
+    .codeblock { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; background: var(--slate); color: #EDEAE2;
+      border-radius: var(--radius-panel); padding: 18px 20px; overflow-x: auto; white-space: pre; }
+    .codeblock .cmt { color: #9C9A90; }
+    .codeblock .key { color: #E8A87C; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+    .panel { background: var(--paper); border: var(--border); border-radius: var(--radius-panel); padding: 18px 20px; }
+    .panel h3 { font-family: var(--serif); font-size: 16.5px; color: var(--slate); margin-bottom: 8px; }
+    .panel ul { padding-left: 18px; font-size: 13.5px; }
+    .panel li { margin-bottom: 6px; }
+    /* milestones */
+    .milestones { display: flex; flex-direction: column; }
+    .milestone { display: grid; grid-template-columns: 120px 28px 1fr; gap: 0 18px; position: relative; }
+    .milestone .when { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--g500); padding-top: 4px; }
+    .milestone .dot-col { display: flex; flex-direction: column; align-items: center; }
+    .milestone .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--paper); border: 3px solid var(--clay); margin-top: 4px; flex-shrink: 0; }
+    .milestone .dot.done { background: var(--olive); border-color: var(--olive); }
+    .milestone .line { width: 2px; flex: 1; background: var(--g300); margin: 4px 0; }
+    .milestone:last-child .line { display: none; }
+    .milestone .body { padding-bottom: 32px; }
+    .milestone .body h3 { font-family: var(--serif); font-weight: 700; font-size: 17px; color: var(--slate); margin-bottom: 4px; }
+    .milestone .body p { font-size: 14px; color: var(--g500); margin-bottom: 10px; max-width: 680px; }
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { font-family: var(--mono); font-size: 11.5px; background: var(--g100); border: 1px solid var(--g300); border-radius: 6px; padding: 3px 8px; color: var(--g700); }
+    .diagram { background: var(--paper); border: var(--border); border-radius: var(--radius-panel); padding: 28px; overflow-x: auto; }
+    .diagram svg { display: block; min-width: 760px; }
+    .caption { font-size: 13px; color: var(--g500); margin-top: 12px; }
+    /* risk grid */
+    .risks { border: var(--border); border-radius: var(--radius-panel); overflow: hidden; background: var(--paper); }
+    .risks .row { display: grid; grid-template-columns: 1.6fr 90px 1.6fr; }
+    @media (max-width: 780px) { .risks .row { grid-template-columns: 1fr; } }
+    .risks .row + .row { border-top: var(--border); }
+    .risks .cell { padding: 13px 18px; font-size: 13.5px; }
+    .risks .cell + .cell { border-left: var(--border); }
+    .risks .head { background: var(--g100); font-weight: 600; color: var(--slate); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .sev { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+    .sev.high { background: #F3D9CC; color: #8A3B1E; }
+    .sev.med  { background: var(--oat); color: var(--slate); }
+    .sev.low  { background: #E4E9DC; color: #4B5C39; }
+    .metrics-list { display: flex; flex-direction: column; gap: 10px; max-width: 820px; }
+    .metric-row { display: flex; align-items: center; gap: 16px; background: var(--paper); border: var(--border); border-radius: var(--radius-row); padding: 13px 18px; }
+    .metric-indicator { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .metric-indicator.met { background: var(--olive); } .metric-indicator.unmet { background: var(--g300); }
+    .metric-label { flex: 1; font-size: 14px; color: var(--slate); }
+    .metric-target { font-family: var(--mono); font-size: 12px; color: var(--g500); }
+    footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--g300); font-family: var(--mono); font-size: 12px; color: var(--g500); line-height: 1.9; }
+    footer a { color: var(--clay-d); }
+    @media print {
+      body { background: white; color: black; padding: 0; font-size: 11pt; }
+      .page { max-width: none; }
+      h1, h2, h3 { page-break-after: avoid; }
+      table, .risks, .diagram, .panel { page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-head">
+      <div class="eyebrow">MoAI-ADK · Agent Architecture Redesign · 2026-07-09</div>
+      <h1>에이전트 구성 재설계 보고서<br>— 범용 Advisor + 2-패턴 + 4-루프 정렬</h1>
+      <div class="goal-box">
+        <span class="label">Goal</span>
+        참고 이미지 2장(① Turn/Goal/Time/Proactive 4-루프 유형, ② Executor-Advisor · Orchestrator-Worker 패턴)과
+        Anthropic 공식 최신 문서를 근거로 moai-adk 에이전트 전체 구성을 재설계한다.
+        결론: <strong>대수술은 불필요</strong> — 현행 구조는 2-패턴·4-루프를 이미 대부분 충족하며,
+        유일한 구조적 공백인 <strong>범용 Advisor 슬롯 1개 신설</strong> + 독트린 최신화 4건이 필요한 전부다.
+      </div>
+    </header>
+
+    <div class="summary-strip">
+      <div class="sum-cell"><div class="k">현행 카탈로그</div><div class="v">7 + 1 (Explore)</div></div>
+      <div class="sum-cell"><div class="k">제안 카탈로그</div><div class="v accent">8 + 1 — advisor 신설</div></div>
+      <div class="sum-cell"><div class="k">4-루프 커버리지</div><div class="v">4 / 4 (현행 기충족)</div></div>
+      <div class="sum-cell"><div class="k">2-패턴 커버리지</div><div class="v accent">1.5 / 2 → 2 / 2</div></div>
+    </div>
+
+    <!-- 01 패턴 · 루프 매핑 -->
+    <section>
+      <div class="sec-head"><span class="num">01</span><h2>참고 이미지 → MoAI 매핑 진단</h2></div>
+      <p class="sec-intro">
+        핵심 통찰: 이미지 ①의 4-루프는 <strong>에이전트 종류가 아니라 오케스트레이션 메커니즘</strong>이다
+        (에이전트 카탈로그와 직교). MoAI는 4종 모두 기존 메커니즘으로 커버한다.
+        이미지 ②의 2-패턴 중 Orchestrator-Worker는 완비, Executor-Advisor의 <strong>Advisor 슬롯만 공백</strong>이다.
+      </p>
+      <table class="tbl" style="margin-bottom:18px">
+        <tr><th style="width:170px">루프 (이미지 ①)</th><th>MoAI 대응 메커니즘</th><th style="width:90px">상태</th><th style="width:220px">개선</th></tr>
+        <tr>
+          <td><strong>1. Turn-based</strong><br><span style="color:var(--g500);font-size:12.5px">프롬프트→작업→점검→답변</span></td>
+          <td>오케스트레이터 기본 턴 루프 + 4-Step State Machine(Clarify→Delegate→Execute→Verify) + AskUserQuestion 게이트</td>
+          <td><span class="pill keep">완비</span></td><td>—</td>
+        </tr>
+        <tr>
+          <td><strong>2. Goal-based</strong><br><span style="color:var(--g500);font-size:12.5px">목표→시도→평가→완료</span></td>
+          <td><code>/goal</code> directive(평가자 매 턴 재검) + <code>/moai loop</code>(Ralph, max 10) + TDD RED-GREEN + 핸드오프 post-paste /goal 블록</td>
+          <td><span class="pill keep">완비</span></td>
+          <td>교착 시 <strong>advisor 에스컬레이션</strong> 와이어링 (M3)</td>
+        </tr>
+        <tr>
+          <td><strong>3. Time-based</strong><br><span style="color:var(--g500);font-size:12.5px">주기→점검→반응→대기</span></td>
+          <td>Cron 툴(CronCreate/List) + <code>/loop</code> 인터벌 스킬 + CI watch 30초 폴링(<code>moai pr watch</code>)</td>
+          <td><span class="pill keep">커버</span></td>
+          <td>에이전트 불필요 — 스케줄러 소관 (매핑 기록만, M4)</td>
+        </tr>
+        <tr>
+          <td><strong>4. Proactive</strong><br><span style="color:var(--g500);font-size:12.5px">이벤트→경로→작업→검토</span></td>
+          <td>Hooks(SessionStart/PreToolUse/Stop — 컨텍스트 비용 0 계층) + Dynamic Workflows(스크립트 팬아웃) + harness-learner(Tier 4 제안)</td>
+          <td><span class="pill keep">완비</span></td><td>—</td>
+        </tr>
+      </table>
+      <table class="tbl">
+        <tr><th style="width:200px">패턴 (이미지 ②)</th><th>MoAI 대응</th><th style="width:90px">상태</th><th style="width:220px">개선</th></tr>
+        <tr>
+          <td><strong>Orchestrator-Worker</strong><br><span style="color:var(--g500);font-size:12.5px">Fable→Opus 계획 / Sonnet 워커</span></td>
+          <td>메인 세션(Opus, <code>/model opus</code>) + Workers Sonnet — <code>model_routing</code> Tier×Phase per-spawn 주입 (2026-07-09 선행 작업으로 정렬 완료)</td>
+          <td><span class="pill keep">완비</span></td><td>—</td>
+        </tr>
+        <tr>
+          <td><strong>Executor-Advisor</strong><br><span style="color:var(--g500);font-size:12.5px">실행자 + 온디맨드 고지능 조언자</span></td>
+          <td>Executor(manager-develop 등)는 존재. <strong>범용 Advisor 슬롯 부재</strong> — 버그 교착·설계 결정·세컨드 오피니언 자문을 상시 지시로 받는 전담 에이전트 없음 (현재 임시 per-spawn 라우팅)</td>
+          <td><span class="pill new">공백</span></td>
+          <td><strong>advisor 신설 (M1)</strong></td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- 02 공식 근거 -->
+    <section>
+      <div class="sec-head"><span class="num">02</span><h2>공식 문서 근거 (2026-07 조사)</h2></div>
+      <p class="sec-intro">code.claude.com 공식 문서 2건 전문 + 2026 실무 가이드를 조사한 핵심 근거 4가지.</p>
+      <div class="quote">
+        “Define a custom subagent when you keep spawning the same kind of worker with the same instructions.”
+        <span class="src">F1 · sub-agents 문서 — 정적 파일 vs 동적 스폰의 유일한 공식 판정 기준. “모든 상황을 같은 자문 지시로 반복 호출”하는 범용 Advisor는 이 기준을 통과한다.</span>
+      </div>
+      <div class="quote">
+        “By a second opinion: a verification subagent … has a fresh model try to refute the result, so the agent doing the work isn’t the one grading it.”
+        <span class="src">F2 · best-practices 문서 — Advisor 패턴은 공식 권장. 단 경고 동반: “reviewer는 시키면 항상 gap을 찾아내므로 correctness에 영향 있는 것만 보고하게 하라.”</span>
+      </div>
+      <div class="quote">
+        “effort — Overrides the session effort level. Default: inherits from session.” + 모델 해석 우선순위(v2.1.196+): env → <strong>per-spawn model 인자</strong> → frontmatter → inherit
+        <span class="src">F3·F4 · sub-agents 문서 — 서브에이전트 effort를 xhigh로 고정할 유일한 지점은 frontmatter(스폰 인자에 effort 없음). 모델은 스폰 인자가 frontmatter보다 우선 → “frontmatter inherit + 스폰 시 opus 주입”이 [1m] 안전 + 공식 우선순위 정합.</span>
+      </div>
+      <div class="quote">
+        “Four to eight specialized agents is usually enough … too many agents with overlapping descriptions creates routing ambiguity.”
+        <span class="src">F6 · 2026 실무 가이드 컨센서스 — 제안 8+1은 권장 구간 상단. 신설은 1종으로 한정하고 description 상호배제를 강제한다.</span>
+      </div>
+    </section>
+
+    <!-- 03 재설계 아키텍처 -->
+    <section>
+      <div class="sec-head"><span class="num">03</span><h2>재설계 아키텍처 (Target)</h2></div>
+      <p class="sec-intro">두 패턴을 하나의 위상으로 통합: Orchestrator(Opus)가 Turn-based 메인 루프를 돌며, 좌하단 Worker 군단에 분배(Orchestrator-Worker)하고, 우측 advisor에게 온디맨드 자문(Executor-Advisor)한다. 판정(게이트)과 자문(비구속)은 분리된다.</p>
+      <div class="diagram">
+        <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" font-family="Pretendard, sans-serif">
+          <defs>
+            <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#87867F"/>
+            </marker>
+            <marker id="arwC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#D97757"/>
+            </marker>
+          </defs>
+          <!-- user -->
+          <rect x="20" y="34" width="110" height="52" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="75" y="56" text-anchor="middle" font-size="13" fill="#141413" font-weight="600">사용자</text>
+          <text x="75" y="74" text-anchor="middle" font-size="10" fill="#87867F">Turn-based 루프</text>
+          <!-- orchestrator -->
+          <rect x="200" y="20" width="270" height="80" rx="10" fill="#F0EEE6" stroke="#D97757" stroke-width="2"/>
+          <text x="335" y="46" text-anchor="middle" font-size="14" fill="#141413" font-weight="700">Orchestrator (MoAI 메인 세션)</text>
+          <text x="335" y="66" text-anchor="middle" font-size="11" fill="#B85C3E">Opus · 계획·작업분해·지시 · ultrathink(동적 xhigh)</text>
+          <text x="335" y="84" text-anchor="middle" font-size="10" fill="#87867F">4-Step: Clarify → Delegate → Execute → Verify</text>
+          <!-- advisor -->
+          <rect x="600" y="20" width="260" height="80" rx="10" fill="#F7E5DA" stroke="#D97757" stroke-width="2" stroke-dasharray="0"/>
+          <text x="730" y="44" text-anchor="middle" font-size="14" fill="#8A3B1E" font-weight="700">advisor (신설)</text>
+          <text x="730" y="63" text-anchor="middle" font-size="11" fill="#8A3B1E">Opus(스폰 주입) · effort: xhigh 고정</text>
+          <text x="730" y="81" text-anchor="middle" font-size="10" fill="#87867F">온디맨드 · read-only · 모든 국면 자문</text>
+          <!-- user <-> orch -->
+          <path d="M130 60 L196 60" stroke="#87867F" stroke-width="1.6" marker-end="url(#arw)"/>
+          <!-- orch <-> advisor -->
+          <path d="M470 46 L596 46" stroke="#D97757" stroke-width="1.8" marker-end="url(#arwC)"/>
+          <text x="533" y="38" text-anchor="middle" font-size="10.5" fill="#B85C3E">질문·상담 (교착·설계·세컨드오피니언)</text>
+          <path d="M596 78 L470 78" stroke="#87867F" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arw)"/>
+          <text x="533" y="94" text-anchor="middle" font-size="10.5" fill="#87867F">조언 반환 (비구속 처방)</text>
+          <!-- workers group -->
+          <rect x="20" y="160" width="560" height="110" rx="12" fill="none" stroke="#D1CFC5" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <text x="34" y="182" font-size="11" fill="#87867F" font-weight="600">WORKERS — Sonnet (model_routing Tier×Phase per-spawn 주입, L-run/L-plan은 Opus)</text>
+          <g font-size="11.5" fill="#141413" font-weight="600" text-anchor="middle">
+            <rect x="36"  y="196" width="98" height="52" rx="8" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="85" y="218">manager-spec</text><text x="85" y="234" font-size="9.5" fill="#87867F" font-weight="400">plan · xhigh</text>
+            <rect x="144" y="196" width="110" height="52" rx="8" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="199" y="218">manager-develop</text><text x="199" y="234" font-size="9.5" fill="#87867F" font-weight="400">run · xhigh</text>
+            <rect x="264" y="196" width="98" height="52" rx="8" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="313" y="218">manager-docs</text><text x="313" y="234" font-size="9.5" fill="#87867F" font-weight="400">sync · high</text>
+            <rect x="372" y="196" width="90" height="52" rx="8" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="417" y="218">manager-git</text><text x="417" y="234" font-size="9.5" fill="#87867F" font-weight="400">PR · high</text>
+            <rect x="472" y="196" width="94" height="52" rx="8" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="519" y="214">builder-</text><text x="519" y="228">harness</text><text x="519" y="242" font-size="9.5" fill="#87867F" font-weight="400">meta · high</text>
+          </g>
+          <path d="M300 100 L300 156" stroke="#87867F" stroke-width="1.6" marker-end="url(#arw)"/>
+          <text x="230" y="134" font-size="10.5" fill="#87867F">작업 할당 (지시)</text>
+          <path d="M330 156 L330 100" stroke="#87867F" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#arw)"/>
+          <text x="410" y="134" font-size="10.5" fill="#87867F">결과 반환 (레포트)</text>
+          <!-- evaluators group -->
+          <rect x="20" y="300" width="380" height="80" rx="12" fill="none" stroke="#788C5D" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <text x="34" y="322" font-size="11" fill="#4B5C39" font-weight="600">GATE EVALUATORS — 구속 판정 (advisor와 분리)</text>
+          <g font-size="11.5" fill="#141413" font-weight="600" text-anchor="middle">
+            <rect x="40" y="332" width="130" height="38" rx="8" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+            <text x="105" y="350">plan-auditor</text><text x="105" y="363" font-size="9.5" fill="#87867F" font-weight="400">PASS/FAIL · xhigh</text>
+            <rect x="186" y="332" width="130" height="38" rx="8" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+            <text x="251" y="350">sync-auditor</text><text x="251" y="363" font-size="9.5" fill="#87867F" font-weight="400">4-차원 채점 · xhigh</text>
+          </g>
+          <path d="M230 100 L120 328" stroke="#788C5D" stroke-width="1.4" marker-end="url(#arw)"/>
+          <!-- explore -->
+          <rect x="460" y="316" width="150" height="52" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="535" y="338" text-anchor="middle" font-size="12" fill="#141413" font-weight="600">Explore (built-in)</text>
+          <text x="535" y="355" text-anchor="middle" font-size="9.5" fill="#87867F">read-only 정찰 · 세션 모델 상속</text>
+          <path d="M400 100 L520 312" stroke="#87867F" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#arw)"/>
+          <!-- loops legend -->
+          <rect x="650" y="160" width="210" height="150" rx="12" fill="#F0EEE6" stroke="#D1CFC5" stroke-width="1.5"/>
+          <text x="666" y="184" font-size="11" fill="#141413" font-weight="700">4-Loop 메커니즘 (직교 축)</text>
+          <g font-size="10.5" fill="#3D3D3A">
+            <text x="666" y="206">① Turn — 메인 턴 루프</text>
+            <text x="666" y="226">② Goal — /goal · /moai loop · TDD</text>
+            <text x="666" y="246">③ Time — Cron · /loop · CI watch</text>
+            <text x="666" y="266">④ Proactive — Hooks · Workflows</text>
+            <text x="666" y="292" fill="#87867F" font-size="9.5">루프는 에이전트가 아니라 실행 방식</text>
+          </g>
+        </svg>
+        <p class="caption">실선 = 지시·의뢰 흐름, 점선 = 응답·결과 흐름. advisor는 Executor-Advisor 패턴의 온디맨드 조언자 슬롯(이미지 ②의 Fable 5 위치 → Opus 치환), Worker 군단은 Orchestrator-Worker 패턴(Sonnet). 우측 하단 4-Loop은 에이전트 카탈로그와 직교하는 실행 메커니즘 축.</p>
+      </div>
+    </section>
+
+    <!-- 04 카탈로그 재설계 표 -->
+    <section>
+      <div class="sec-head"><span class="num">04</span><h2>에이전트 카탈로그 재설계 (에이전트별 판정)</h2></div>
+      <p class="sec-intro">전 에이전트를 2-패턴 슬롯에 재배치하고 유지/신설/문서갱신을 판정. 모델 계층화(Advisor·Orchestrator=Opus, Worker=Sonnet)는 2026-07-09 선행 작업으로 이미 적용된 상태를 전제로 한다.</p>
+      <table class="tbl">
+        <tr><th>에이전트</th><th style="width:150px">패턴 슬롯</th><th style="width:180px">실효 모델</th><th style="width:70px">effort</th><th style="width:110px">판정</th></tr>
+        <tr><td><strong>Orchestrator</strong> (메인 세션)</td><td>Orchestrator / Executor</td><td>Opus (<code>/model opus</code>)</td><td>동적<br><span style="font-size:11px;color:var(--g500)">ultrathink</span></td><td><span class="pill keep">유지</span></td></tr>
+        <tr style="background:#FDF6F1"><td><strong>advisor</strong> 🆕 — 모든 국면 고지능 자문</td><td><strong>Advisor (신설)</strong></td><td>inherit + 스폰 시 <code>opus</code> 주입</td><td><strong>xhigh 고정</strong></td><td><span class="pill new">신설 M1</span></td></tr>
+        <tr><td>manager-spec — plan-phase 산출물</td><td>Worker (계획)</td><td>routing: M-plan sonnet / L-plan opus</td><td>xhigh</td><td><span class="pill keep">유지</span></td></tr>
+        <tr><td>manager-develop — run-phase 구현</td><td>Worker / Executor</td><td>routing: sonnet (L-run opus)</td><td>xhigh</td><td><span class="pill keep">유지</span></td></tr>
+        <tr><td>manager-docs — sync-phase 문서</td><td>Worker</td><td>routing: sonnet / haiku</td><td>high</td><td><span class="pill keep">유지</span></td></tr>
+        <tr><td>manager-git — Tier L PR</td><td>Worker</td><td>sonnet</td><td>high</td><td><span class="pill keep">유지</span></td></tr>
+        <tr><td>builder-harness — 아티팩트 메타</td><td>Worker (메타)</td><td>sonnet</td><td>high</td><td><span class="pill keep">유지</span></td></tr>
+        <tr><td>plan-auditor — 계획 감사 <strong>판정</strong></td><td>Gate Evaluator</td><td>inherit (필요 시 opus 주입)</td><td>xhigh</td><td><span class="pill keep">유지·분리</span></td></tr>
+        <tr><td>sync-auditor — 구현 검증 <strong>판정</strong></td><td>Gate Evaluator</td><td>inherit (필요 시 opus 주입)</td><td>xhigh</td><td><span class="pill keep">유지·분리</span></td></tr>
+        <tr><td>Explore — built-in 정찰</td><td>Scout</td><td>세션 상속 (v2.1.198, Opus 상한)</td><td>상속</td><td><span class="pill doc">문서갱신 M2</span></td></tr>
+      </table>
+      <p class="sec-intro" style="margin-top:14px">
+        <strong>advisor ↔ auditor 분리 원칙</strong>: advisor는 <em>자문(비구속 처방)</em>, auditor는 <em>판정(구속 게이트 — PASS/FAIL·스킵 정책 0.90·소유권 매트릭스에 기계 결합)</em>.
+        하나로 합치면 ①심판·조언자 이해충돌, ②30KB급 감사 루브릭이 매 자문 스폰에 실리는 컨텍스트 낭비, ③게이트 기계 전면 재배선이 발생한다.
+        따라서 “advisor 하나가 감사·검증까지 전부”가 아니라 <strong>“자문은 advisor 단일 창구, 판정은 auditor 2종 유지”</strong>가 재설계 결론이다.
+      </p>
+    </section>
+
+    <!-- 05 advisor 상세 설계 -->
+    <section>
+      <div class="sec-head"><span class="num">05</span><h2>advisor 상세 설계</h2></div>
+      <div class="two-col">
+        <div>
+          <div class="codeblock"><span class="cmt"># .claude/agents/moai/advisor.md (frontmatter)</span>
+<span class="key">name:</span> advisor
+<span class="key">description:</span> 모든 국면 온디맨드 고지능 자문
+  (버그 교착·설계 트레이드오프·세컨드 오피니언·
+   루프 교착 처방). NOT for: plan/sync 게이트 판정.
+<span class="key">tools:</span> Read, Grep, Glob, Bash   <span class="cmt"># read-only</span>
+<span class="key">model:</span> inherit   <span class="cmt"># 스폰 시 Agent(model:"opus") 주입</span>
+<span class="key">effort:</span> xhigh    <span class="cmt"># frontmatter가 유일한 고정 지점</span>
+<span class="key">permissionMode:</span> plan
+<span class="key">memory:</span> project  <span class="cmt"># 교착 패턴·처방 이력 축적</span>
+<span class="key">skills:</span>
+  - moai-foundation-thinking</div>
+        </div>
+        <div class="panel">
+          <h3>진입 조건 (오케스트레이터 에스컬레이션 독트린)</h3>
+          <ul>
+            <li><strong>E1 버그 교착</strong> — 동일 결함 수정 3회 실패 (<code>loop_prevention.max_retries: 3</code>과 정렬) 또는 <code>/moai fix</code> 파이프라인 교착</li>
+            <li><strong>E2 설계 결정</strong> — 아키텍처·트레이드오프에서 오케스트레이터 확신이 낮은 결정 직전</li>
+            <li><strong>E3 세컨드 오피니언</strong> — 비게이트 리뷰(작성자와 채점자 분리가 필요한 검토)</li>
+            <li><strong>E4 루프 교착</strong> — <code>/goal</code>·<code>/moai loop</code>이 수렴하지 않을 때 탈출 처방</li>
+          </ul>
+          <h3 style="margin-top:14px">반환 계약</h3>
+          <ul>
+            <li>반박 우선(refute-first) — correctness에 영향 있는 것만 (F2 경고 반영)</li>
+            <li>근본원인 가설 <strong>순위 목록</strong> + 각 가설의 <strong>검증 커맨드</strong></li>
+            <li>수정은 직접 하지 않음 — manager-develop 재위임용 처방 반환 (read-only)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 검토 후 불채택 -->
+    <section>
+      <div class="sec-head"><span class="num">06</span><h2>검토했으나 불채택한 대안</h2></div>
+      <table class="tbl">
+        <tr><th style="width:250px">대안</th><th>불채택 근거</th><th style="width:90px">판정</th></tr>
+        <tr>
+          <td>전면 동적화 — 정적 에이전트 전부 제거, 매번 <code>Agent()</code> 동적 생성</td>
+          <td>이미 부분 실행 완료(반복성 미달 12종 archived → per-spawn 전환). 잔존 7종을 마저 없애면 agent-scoped hooks(품질 게이트 와이어링)·도구 최소권한 allowlist·effort 고정·skills/memory·SPEC 생명주기 기계·템플릿 배포를 모두 상실. 공식 기준(F1)의 문자적 적용 결과가 현행 하이브리드.</td>
+          <td><span class="pill no">불채택</span></td>
+        </tr>
+        <tr>
+          <td>advisor가 auditor 2종 흡수 (자문+판정 통합)</td>
+          <td>게이트 판정은 스킵 정책·verdict 배너·소유권 매트릭스에 기계 결합. 심판·조언자 통합은 이해충돌 + 루브릭 컨텍스트 낭비. §04 분리 원칙 참조.</td>
+          <td><span class="pill no">불채택</span></td>
+        </tr>
+        <tr>
+          <td>frontmatter <code>model: opus</code> 정적 핀</td>
+          <td>MoAI HARD 독트린(Inherit-by-Default) 위반 — [1m] 엔타이틀먼트 미상속으로 spawn 실패 리스크 (#45847/#51060). v2.1.196 공식 우선순위상 per-spawn 인자 주입이 동일 효과 + 안전.</td>
+          <td><span class="pill no">불채택</span></td>
+        </tr>
+        <tr>
+          <td>Time-based 루프용 에이전트 신설</td>
+          <td>루프는 실행 메커니즘(스케줄러·훅 소관)이지 에이전트가 아님. Cron 툴 + /loop + CI watch로 기충족.</td>
+          <td><span class="pill no">불채택</span></td>
+        </tr>
+      </table>
+    </section>
+
+    <!-- 07 Milestones -->
+    <section>
+      <div class="sec-head"><span class="num">07</span><h2>실행 계획 (Milestones)</h2></div>
+      <p class="sec-intro">단일 SPEC(Tier S~M 예상)으로 기동: plan(manager-spec) → plan-audit → <strong>구현 착수 승인(HUMAN GATE)</strong> → run(manager-develop) → sync(manager-docs) → sync-audit.</p>
+      <div class="milestones">
+        <div class="milestone">
+          <div class="when">M1 · P-High</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>advisor 에이전트 신설</h3>
+            <p>§05 설계대로 에이전트 파일 작성(템플릿+로컬), 8-agent ceiling 개정(8→9, 반복성 근거 = F1/F2/F3 인용), CLAUDE.md §4 카탈로그·Effort Calibration Matrix 갱신. description에 auditor 상호배제(NOT for) 명시.</p>
+            <div class="tag-row"><span class="tag">agents/moai/advisor.md ×2</span><span class="tag">CLAUDE.md §4</span><span class="tag">agent-authoring.md</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">M2 · P-High</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>독트린 최신화 (공식 문서 추적)</h3>
+            <p>model enum에 fable 별칭·풀 모델 ID, v2.1.196 모델 해석 우선순위, v2.1.198 Explore 모델 상속(Opus 상한)·extended-thinking 상속·/agents 위저드 제거 반영.</p>
+            <div class="tag-row"><span class="tag">model-policy.md</span><span class="tag">agent-authoring.md</span><span class="tag">템플릿+로컬 미러</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">M3 · P-Med</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>에스컬레이션 와이어링 (E1~E4)</h3>
+            <p>Error Recovery 패턴에 advisor 진입 조건 4종 편입: 3회 실패 → advisor 처방 → manager-develop 재위임. /goal·/moai loop 교착 시 advisor 상담 경로 기록.</p>
+            <div class="tag-row"><span class="tag">agent-common-protocol.md</span><span class="tag">moai 스킬 fix/loop 워크플로</span></div>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="when">M4 · P-Low</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>매핑 기록 + 불채택 판정 기록</h3>
+            <p>4-루프 ↔ MoAI 메커니즘 매핑 표와 §06 불채택 4건(전면 동적화·auditor 통합 등)을 agent-patterns.md 결정 트리에 반례로 기록 — 재논의 방지.</p>
+            <div class="tag-row"><span class="tag">agent-patterns.md</span><span class="tag">검증: lint + mirror parity + make build</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 Risks -->
+    <section>
+      <div class="sec-head"><span class="num">08</span><h2>Risks &amp; Mitigation</h2></div>
+      <div class="risks">
+        <div class="row"><div class="cell head">Risk</div><div class="cell head">Severity</div><div class="cell head">Mitigation</div></div>
+        <div class="row">
+          <div class="cell">advisor ↔ auditor 라우팅 모호성 (F6 — 설명 중복 시 오발동)</div>
+          <div class="cell"><span class="sev med">MED</span></div>
+          <div class="cell">description 상호배제 명시(“NOT for: 게이트 판정”), 트리거 키워드 분리(자문·상담·교착 vs 감사·평가·판정)</div>
+        </div>
+        <div class="row">
+          <div class="cell">9-에이전트 ceiling 개정에 대한 plan-auditor 반려</div>
+          <div class="cell"><span class="sev med">MED</span></div>
+          <div class="cell">SPEC 본문에 반복성 증거(F1)·공식 패턴(F2)·effort 고정 기술 근거(F3) 인용, 신설 1종 한정</div>
+        </div>
+        <div class="row">
+          <div class="cell">advisor 남용 — 모든 결정을 Opus 자문으로 우회 (토큰 비용 증가)</div>
+          <div class="cell"><span class="sev med">MED</span></div>
+          <div class="cell">진입 조건 E1~E4 한정(독트린), 온디맨드 원칙 — 이미지 ②의 “답을 모를 때만 문의” 그대로</div>
+        </div>
+        <div class="row">
+          <div class="cell">스폰 시 opus 주입 실패 ([1m] 엔타이틀먼트 변수)</div>
+          <div class="cell"><span class="sev low">LOW</span></div>
+          <div class="cell">per-spawn 런타임 인자는 부모 엔타이틀먼트 상속(공식 F4) — run-phase에 spawn 성공 실측 AC 포함</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 Success Metrics -->
+    <section>
+      <div class="sec-head"><span class="num">09</span><h2>Success Metrics</h2></div>
+      <div class="metrics-list">
+        <div class="metric-row"><div class="metric-indicator unmet"></div><div class="metric-label">advisor spawn 성공 (opus 주입 + effort xhigh 실효) 실측</div><div class="metric-target">Target: run-phase AC PASS</div></div>
+        <div class="metric-row"><div class="metric-indicator unmet"></div><div class="metric-label">교착 탈출 — 3회 실패 결함이 advisor 처방 후 해결되는 사례 확보</div><div class="metric-target">Target: 첫 실사례 기록</div></div>
+        <div class="metric-row"><div class="metric-indicator unmet"></div><div class="metric-label">라우팅 오발동 0건 — 게이트 판정 작업이 advisor로 위임되는 사례 없음</div><div class="metric-target">Target: 0건</div></div>
+        <div class="metric-row"><div class="metric-indicator unmet"></div><div class="metric-label">독트린 정합 — lint·mirror parity·make build·go test 전부 green</div><div class="metric-target">Target: 게이트 통과</div></div>
+        <div class="metric-row"><div class="metric-indicator met"></div><div class="metric-label">모델 계층화 (Orchestrator/Advisor=Opus, Worker=Sonnet 동적 라우팅)</div><div class="metric-target">2026-07-09 선행 완료</div></div>
+        <div class="metric-row"><div class="metric-indicator met"></div><div class="metric-label">4-루프 커버리지 (Turn/Goal/Time/Proactive ↔ MoAI 메커니즘)</div><div class="metric-target">현행 기충족 4/4</div></div>
+      </div>
+    </section>
+
+    <footer>
+      Sources:
+      <a href="https://code.claude.com/docs/en/sub-agents">code.claude.com/docs/en/sub-agents</a> ·
+      <a href="https://code.claude.com/docs/en/best-practices">code.claude.com/docs/en/best-practices</a> ·
+      <a href="https://www.tembo.io/blog/claude-code-subagents">tembo.io — Claude Code Subagents 2026 Guide</a> ·
+      <a href="https://github.com/shanraisshan/claude-code-best-practice/blob/main/best-practice/claude-subagents.md">claude-subagents frontmatter field reference</a>
+      <br>내부 근거: .claude/rules/moai/development/model-policy.md · agent-authoring.md · agent-patterns.md · .moai/config/sections/workflow.yaml (model_routing)
+      &nbsp;&mdash;&nbsp; Generated: 2026-07-09 · MoAI Orchestrator (참고 이미지: 4-Loop 유형도 + Executor-Advisor/Orchestrator-Worker 패턴도)
+    </footer>
+
+  </div>
+</body>
+</html>

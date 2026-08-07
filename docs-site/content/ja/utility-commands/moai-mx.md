@@ -35,12 +35,6 @@ draft: false
 | P4 | 欠落したテスト | `@MX:TODO` (未完成) |
 | P5 | 意図的な動作の単純化 (`@MX:CEILING` + `@MX:UPGRADE` サブラインを伴う) | `@MX:DEBT` |
 
-### サブライン (sub-lines)
-
-各タグの後には、より細かいメタデータを付与する **サブライン** を続けられます: `@MX:REASON` (WARN の必須事由)、`@MX:CEILING`/`@MX:UPGRADE` (DEBT の限界・再訪条件)、`@MX:TEST`、`@MX:PRIORITY`、`@MX:LEGACY`、そして `@MX:SPEC:<SPEC-ID>` です。
-
-`@MX:SPEC:<SPEC-ID>` はタグの直後に付けて、作者の意図が反映された SPEC 関連付け (SPEC association) を作ります。この関連付けは、パス基準・本文基準の関連付けに加わる 3 つ目のソースであり、ファイル位置や本文テキストとは無関係に、明示的な SPEC リンクが `moai mx query` の結果に反映されます。先行するタグなしにサブラインだけを単独で置くと警告だけ出て関連付けは作られません。
-
 ## 使い方
 
 ```bash
@@ -98,8 +92,6 @@ P1・P2 ファイルのみ精読して関数シグネチャと呼び出しパタ
 ### Pass 3: バッチ編集
 
 ファイルあたり Edit 1 回でそのファイルのすべてのタグを一度に挿入します。既存の @MX タグは `--force` がなければ保存されます。挿入対象が 5 個未満ならオーケストレーターが直接編集し (スポーンなし)、5 個以上ならバッチ編集エージェントに委任します。
-
-> 上のダイアグラムは `/moai mx` コマンド自体の 3-Pass 実行フローです。スキャナはこの他に、SessionStart コールドスタート、PostToolUse 検証、SessionEnd 一括検証、sync ゲートなど 5 つのタイミングで自動実行されます。各タイミングの役割と 2 つの 2 秒上限 (`mxIndexScanTimeoutDefault` vs `DefaultSessionStartDriftTimeout`) は [MX スキャナ内部構造 - スキャン自動化タイミング](/ja/advanced/mx-scanner-internals#スキャン自動化タイミング) で解説します。
 
 ## /moai sync・run との統合
 

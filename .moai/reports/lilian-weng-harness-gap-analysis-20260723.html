@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lilian Weng Harness 원문 대조 — MoAI-ADK 적용 갭 분석 (2026-07-23)</title>
+<style>
+  :root {
+    --coral: #cc785c;
+    --coral-dark: #a85e46;
+    --coral-bg: #faf3f0;
+    --ink: #262421;
+    --muted: #6e6a64;
+    --line: #e8e2dc;
+    --ok: #2e7d4f;
+    --warn: #b7791f;
+    --card: #ffffff;
+    --canvas: #fbf9f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", sans-serif;
+    background: var(--canvas);
+    color: var(--ink);
+    line-height: 1.65;
+    padding: 48px 24px;
+  }
+  main { max-width: 880px; margin: 0 auto; }
+  header { border-bottom: 3px solid var(--coral); padding-bottom: 24px; margin-bottom: 36px; }
+  .eyebrow { color: var(--coral); font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+  h1 { font-size: 28px; font-weight: 800; margin-top: 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .meta code { background: var(--coral-bg); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 40px 0 16px; padding-left: 12px; border-left: 4px solid var(--coral); }
+  h3 { font-size: 15px; font-weight: 700; margin: 20px 0 8px; }
+  p { margin-bottom: 12px; }
+  .summary {
+    background: var(--coral-bg); border: 1px solid #f0ddd4; border-radius: 12px;
+    padding: 20px 24px; margin-bottom: 8px;
+  }
+  .summary strong { color: var(--coral-dark); }
+  .kpis { display: flex; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
+  .kpi {
+    flex: 1; min-width: 180px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px; text-align: center;
+  }
+  .kpi .num { font-size: 30px; font-weight: 800; color: var(--coral); }
+  .kpi .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin: 16px 0; }
+  th { background: var(--ink); color: #fff; text-align: left; padding: 10px 14px; font-size: 13px; }
+  td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: #fdfcfb; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .b-ok { background: #e6f2ea; color: var(--ok); }
+  .b-rec { background: #fdeee7; color: var(--coral-dark); }
+  .b-rev { background: #fdf3e0; color: var(--warn); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; margin: 14px 0; }
+  .card.rec { border-left: 5px solid var(--coral); }
+  .card.rev { border-left: 5px solid var(--warn); }
+  .card h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+  .src { color: var(--muted); font-size: 12.5px; }
+  ul { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; }
+  code { font-family: "Goorm Sans Code", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: #f3efeb; padding: 1px 5px; border-radius: 4px; }
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .flow .step { background: var(--card); border: 1.5px solid var(--coral); border-radius: 10px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; }
+  .flow .arr { color: var(--coral); font-weight: 800; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+  a { color: var(--coral-dark); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">MoAI-ADK · Harness Gap Analysis</div>
+  <h1>Lilian Weng "Harness" 원문 대조 — moai-adk 적용점 보고</h1>
+  <div class="meta">
+    2026-07-23 · 세션 <code>963db31a</code> · 원문: <a href="https://lilianweng.github.io/posts/2026-07-04-harness/">lilianweng.github.io/posts/2026-07-04-harness/</a> (2026-07-04)
+    · 대조 기준: 기존 메모리 8행 대응표 + 원문 실무 권고 10항
+  </div>
+</header>
+
+<div class="summary">
+  <strong>결론 한 줄:</strong> 원문의 실무 권고 10개 중 8개는 MoAI-ADK가 이미 구조적으로 충족한다.
+  미충족 갭은 전부 <strong>"하네스 자체를 고칠 때의 과학적 절차"</strong>(반증 가능한 예측 → 검증 → 회귀 검사 → 기각 이력) 한 축에 모이며,
+  P1+P2를 묶은 SPEC 1건(<code>SPEC-HARNESS-EDIT-DISCIPLINE-001</code>, Tier S~M) 승격이 권장안이다.
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="num">8 / 10</div><div class="lbl">원문 실무 권고 기충족</div></div>
+  <div class="kpi"><div class="num">2</div><div class="lbl">권장 적용 (P1·P2)</div></div>
+  <div class="kpi"><div class="num">3</div><div class="lbl">검토 항목 (P3·P4·P5)</div></div>
+  <div class="kpi"><div class="num">1</div><div class="lbl">권장 SPEC 승격 건수</div></div>
+</div>
+
+<h2>1. 이미 충족되는 축 (변경 불필요)</h2>
+<table>
+  <tr><th>Weng 권고</th><th>MoAI-ADK 구현</th><th>상태</th></tr>
+  <tr><td>반복 루프 (plan→execute→observe→improve)</td><td>SPEC plan→run→sync, <code>/moai loop</code>, <code>/goal</code></td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>파일 기반 장기 기억</td><td>auto-memory, progress.md, <code>.moai/state</code></td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>서브에이전트 위임 + 파일 보존</td><td>11-agent 카탈로그, file-redirect 계약, evidence persistence</td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>실패 구조화 재사용</td><td>Lessons Protocol, lessons-inbox.jsonl</td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>평가자·권한을 루프 밖에 (read-only)</td><td>plan/sync-auditor 독립 감사, Kickoff human gate, hooks</td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>Meta-Harness (하네스가 하네스를 생성)</td><td>builder-harness, <code>/moai harness</code></td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>Harness as code, not templates</td><td><code>.claude/rules</code> · hooks · workflows 전부 파일 코드</td><td><span class="badge b-ok">충족</span></td></tr>
+  <tr><td>구조화된 컨텍스트 (ACE 플레이북)</td><td>MEMORY.md 인덱스 다이어트 + topic 파일 분리</td><td><span class="badge b-ok">충족</span></td></tr>
+</table>
+
+<h2>2. 신규 적용 후보 5건</h2>
+
+<div class="card rec">
+  <h3><span class="badge b-rec">P1 권장</span> 하네스 편집의 "결정 관측성"</h3>
+  <p class="src">근거: 원문 AHE(Agentic Harness Engineering) — decision observability</p>
+  <p>룰·에이전트·훅을 수정할 때마다 <strong>실패 증거 → 추정 원인 → 표적 수정 → 반증 가능한 예측</strong>을 기록하고, 예측이 빗나가면 롤백한다.
+  현행 Lessons Protocol은 "잘못된 패턴→올바른 접근"까지만 기록하며, 편집의 사전 예측·사후 검증 고리가 없다.
+  이 리포에서 반복된 "룰을 고쳤는데 같은 위반 재발" 패턴의 구조적 해법.</p>
+  <ul><li>경량 시작안: lessons 엔트리에 <code>prediction:</code> / <code>verified:</code> 필드 2개 추가</li></ul>
+</div>
+
+<div class="card rec">
+  <h3><span class="badge b-rec">P2 권장</span> 하네스 편집 회귀 검사 (held-in / held-out)</h3>
+  <p class="src">근거: 원문 Self-Harness — 무회귀 채택 조건</p>
+  <p>수정이 <strong>잡으려던 실패를 잡는지(held-in)</strong>와 <strong>다른 것을 깨뜨리지 않는지(held-out)</strong> 둘 다 통과해야 채택.
+  코드에는 TRUST 5 회귀 검사가 있으나 룰/템플릿/에이전트 본문 편집에는 정적 가드(spec-lint, neutrality-check)만 존재.</p>
+  <ul><li>시작안: 룰 편집 커밋/PR에 "이 편집이 해결하는 실패 사례 재현" 체크리스트 항목 요구</li></ul>
+</div>
+
+<div class="card rev">
+  <h3><span class="badge b-rev">P3 검토</span> 실패 클러스터링 기반 weakness mining</h3>
+  <p>lessons-inbox.jsonl 스텁을 개별 드레인하는 대신, <code>event_key</code> 클러스터링으로 "반복 근본원인 → 하네스 편집 후보" 승격.
+  harness learner Tier-ladder가 부분 수행 중이므로 신규 SPEC 대신 <strong>Epic HARNESS-EVOLVE의 EVOLVE-004 범위로 흡수</strong> 검토.</p>
+</div>
+
+<div class="card rev">
+  <h3><span class="badge b-rev">P4 검토</span> 부정적 결과(기각 이력) 보존</h3>
+  <p>"시도했으나 채택 안 함" 후보 기록 — 같은 시도 반복 방지. P1의 <code>verified: false</code> 기록으로 자연 흡수 가능 → 별도 작업 불필요할 수 있음.</p>
+</div>
+
+<div class="card rev">
+  <h3><span class="badge b-rev">P5 검토</span> 컴포넌트 관측성 태깅</h3>
+  <p>lessons 엔트리에 결함 표면 태그(<code>rule / agent / skill / hook / config / template</code>) 1개 필드 추가.
+  P3 클러스터링의 전제이며 저비용. 원문 AHE의 7-컴포넌트 분류에 대응.</p>
+</div>
+
+<h2>3. 권장 실행 구성</h2>
+<div class="flow">
+  <div class="step">P1 + P2 (+P4·P5 흡수)<br><span style="font-weight:400;font-size:12px">SPEC-HARNESS-EDIT-DISCIPLINE-001 · Tier S~M</span></div>
+  <div class="arr">→</div>
+  <div class="step">P3<br><span style="font-weight:400;font-size:12px">EVOLVE-004로 이관</span></div>
+  <div class="arr">→</div>
+  <div class="step">착수 시 <code>/moai plan</code></div>
+</div>
+
+<h2>4. 부록 — 원문에서 새로 확인된 개념 (카드뉴스 요약에 없던 것)</h2>
+<ul>
+  <li><strong>AHE 3-관측성</strong>: component(7개 편집 표면) / experience(계층적 증거 요약) / decision(편집↔반증 가능 예측 쌍) — 평가기·트레이서·LLM 설정은 read-only로 격리해 reward hacking 차단</li>
+  <li><strong>STOP의 핵심 발견</strong>: 자기개선 루프는 강한 모델(GPT-4)에서만 개선, 약한 모델에서는 오히려 악화 — MoAI 모델 티어 설계의 "약한 모델+높은 effort 경고"와 공명</li>
+  <li><strong>Auto-research 실패 모드 6종</strong> (Trehan &amp; Chopra 2026): 학습데이터 기본값 편향 · 구현 드리프트 · 기억 열화 · 과잉 낙관("numerical duct tape") · 도메인 암묵지 부족 · 과학적 감각 부재 — verification-claim-integrity 독트린이 이미 방어하는 축과 상당 부분 일치</li>
+</ul>
+
+<footer>
+  MoAI-ADK · Gap Analysis Report · 생성: 2026-07-23 · 메모리 갱신: <code>reference_lilian_weng_harness_selfimprove.md</code> §원문 전체 대조 결과<br>
+  Sources: https://lilianweng.github.io/posts/2026-07-04-harness/
+</footer>
+</main>
+</body>
+</html>

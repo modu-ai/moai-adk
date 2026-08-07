@@ -53,9 +53,9 @@ flowchart TD
 
 ## Skill Categories
 
-The MoAI-ADK template includes a total of **30 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 8 + Domain 6 + Reference 10 + Meta/Harness 2 = 30). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
+The MoAI-ADK template includes a total of **26 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 7 + Domain 5 + Reference 8 + Meta/Harness 2 = 26). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
 
-This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 29 over the v3 period, and after adding `moai-ref-ui-polish` and `moai-ref-seo`, and retiring the `ci-loop` skill, it now stands at 30. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
+This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 26 over the v3 period. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
 
 ### Foundation (Core Philosophy) - 4
 
@@ -66,7 +66,7 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-foundation-thinking` | Structured thinking, ideation, first-principles analysis             |
 | `moai-foundation-quality`  | Automatic code-quality verification, TRUST 5 validation             |
 
-### Workflow (Automated Workflows) - 8
+### Workflow (Automated Workflows) - 7
 
 | Skill name                | Description                                          |
 | ------------------------ | --------------------------------------------- |
@@ -77,9 +77,8 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-workflow-testing`  | Test creation, debugging, code-review integration           |
 | `moai-workflow-worktree` | Git-worktree-based parallel development                   |
 | `moai-workflow-loop`     | Ralph Engine autonomous loop, LSP integration              |
-| `moai-workflow-docs-claim-check` | Public-doc (README, release notes) claim verification, read-only |
 
-### Domain (Domain Expertise) - 6
+### Domain (Domain Expertise) - 5
 
 | Skill name                   | Description                                             |
 | --------------------------- | ------------------------------------------------ |
@@ -88,9 +87,8 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-domain-database`      | PostgreSQL, MongoDB, Redis, advanced data patterns     |
 | `moai-domain-html-report`   | Markdown → single-file HTML report renderer (6 modes, no external dependencies) |
 | `moai-domain-humanize`      | AI text humanization and post-editing (KO/EN/JA/ZH)    |
-| `moai-domain-svg-infographic` | Editable-SVG technical infographics (architecture, flows, comparisons), CJK fonts |
 
-### Reference (Best Practices) - 10
+### Reference (Best Practices) - 8
 
 | Skill name                  | Description                                              |
 | -------------------------- | ------------------------------------------------- |
@@ -102,7 +100,6 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-ref-llm-security`    | AI/LLM defensive security (prompt injection, OWASP LLM Top 10) |
 | `moai-ref-secops`          | DevSecOps/container/API operational defensive security             |
 | `moai-ref-supply-chain`    | Software supply-chain defensive security (SBOM, SLSA, Sigstore) |
-| `moai-ref-ui-polish`       | UI design polish, interface-quality reference            |
 | `moai-ref-seo`             | Search visibility and crawlability (canonical URLs, per-page metadata, JSON-LD) |
 
 ### Meta/Harness (System Extension) - 2
@@ -112,7 +109,7 @@ This number is also a result of dieting — the skill catalog was refined from 4
 | `moai-meta-harness`    | **DEPRECATED** — the legacy 7-Phase meta-harness. Redirects to the v4 Builder (`/moai:harness <natural-language request>`) |
 | `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
 
-> The 30 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
+> The 26 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
 
 ## The Progressive Disclosure System
 
@@ -150,7 +147,7 @@ flowchart TD
 
 ### Token Savings
 
-- **Naive approach**: loading all 30 skills = about 135,000 tokens (infeasible)
+- **Naive approach**: loading all 31 skills = about 135,000 tokens (infeasible)
 - **Progressive disclosure**: metadata only = about 5,200 tokens (97% savings)
 - **Load on demand**: only the 2-3 skills the task needs = about 15,000 additional tokens
 

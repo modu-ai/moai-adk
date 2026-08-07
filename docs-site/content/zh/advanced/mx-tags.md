@@ -56,7 +56,7 @@ draft: false
 // @MX:UPGRADE: switch to LRU when entry count exceeds 10k
 ```
 
-无 `@MX:UPGRADE` 的 DEBT 没有终止条件，会 **悄悄腐化** (rot)。`moai mx query --kind DEBT --json` 将其显示为 `"rotRisk": "no-trigger"`。腐化信号是 `@MX:UPGRADE` 的缺失；`@MX:CEILING` 的缺失仅是质量备忘，不是腐化的判据。rotRisk 字段的语义以及扫描器如何填充该值，参见 [MX 扫描器内部结构 - rotRisk 评分](/zh/advanced/mx-scanner-internals#rotrisk-评分)。
+无 `@MX:UPGRADE` 的 DEBT 没有终止条件，会 **悄悄腐化** (rot)。`moai mx query --kind DEBT --json` 将其显示为 `"rotRisk": "no-trigger"`。腐化信号是 `@MX:UPGRADE` 的缺失；`@MX:CEILING` 的缺失仅是质量备忘，不是腐化的判据。
 
 > `@MX:TODO` 标示在 GREEN 阶段解决的未完成工作（代码尚未完成），`@MX:DEBT` 标示已完成且准确运行但具明示界限的简化（代码已完成）。DEBT 可正常跨多个 GREEN 阶段维持，TODO 的"3 次未解决即升为 WARN"规则不适用。
 

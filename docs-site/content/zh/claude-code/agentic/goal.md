@@ -115,24 +115,7 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 
 ### /moai goal —— 程序化对应物
 
-原生 `/goal` 是只有用户能输入的 TUI 命令，模型或工作流无法代替用户设定目标。MoAI-ADK 用 **`/moai goal`** 填补这一空隙 —— 用 MoAI 自有的 goal 引擎重新实现同样的"声明条件 → 每回合末 Stop-hook 评估 → 满足即解除"语义。
-
-**4 动词 CLI** (`internal/cli/goal.go`):
-
-| 动词 | 用途 |
-|------|------|
-| `moai goal arm "<条件>"` | 为活跃会话注册条件 + arm |
-| `moai goal status [--all]` | 输出当前会话（或全都会话）的 goal 状态 |
-| `moai goal clear` | 解除活跃 goal |
-| `moai goal render` | 把活跃会话的 goal 仪表板渲染为自包含 HTML（`.moai/state/goal/<id>.html`） |
-
-**arm-only 属性**：`arm` 只负责注册并激活条件，其自身不会启动任何工作。已 arm 的 goal 在每个回合结束时由 `stop-goal` Stop-hook 评估器判定条件是否满足，再决定是否继续下一回合。因此必须与真正的工作启动命令（例如 `/moai run SPEC-XXX`）搭配使用 —— 只 arm 而无工作命令，只会白白消耗回合。
-
-**Progression Mode**：自主（autonomous）与半自主（semi-autonomous）的选择在 Implementation Kickoff Approval 门禁（plan → run）进行。`arm` 本身不会跳过这个门禁，门禁通过后"难以回退或触碰共享系统的操作要先确认"这一安全边界也不会被放宽。
-
-**无限 goal（`--max-turns 0`）**：取消回合上限的无限 goal 由 SPEC-INFINITE-GOAL-001 引入。无限 goal 必须搭配 `--max-duration <sec>`（墙上时间上限），否则在 arm 时会被 fail-closed 拒绝。`--cost-cap` 是仅记录（recorded-only）字段，无法满足该要求。此外，Claude Code 运行时的连续 block 上限 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`（默认 8）会先于回合上限打断循环，因此使用无限 goal 时需要把这个上限调高（例如 200）。`moai cc` / `moai cg` 启动器在为已 arm 无限 goal 的会话启动时会自动注入此值。
-
-声明完成条件后，会话会自行工作直到条件满足或触及回合上限（默认 30）。触及上限时，评估器会输出 5-段判定（Claim / Evidence / Baseline-attribution / Gaps / Residual-risk）—— 该判定不是"已收敛"的信号，而是"已达上限、停止"的报告。`/moai loop` 是这台 goal 引擎之上的预设 —— 预先填好"直到诊断工具发现的问题队列清空"这一条件的形态。
+原生 `/goal` 是只有用户能输入的 TUI 命令，模型或工作流无法代替用户设定目标。MoAI-ADK 用 **`/moai goal`** 填补这一空隙 —— 用 MoAI 自有的 goal 引擎重新实现同样的"声明条件 → 每回合末 Stop-hook 评估 → 满足即解除"语义。声明完成条件后，会话会自主工作直到条件满足或触及回合上限（默认 30），`/moai goal status` 与 `/moai goal clear` 负责查状态与解除。`/moai loop` 是这台 goal 引擎之上的预设 —— 预先填好"直到诊断工具发现的问题队列清空"这一条件的形态。
 
 这种条件声明式循环正是 MoAI-ADK **智能体循环工程**支柱的执行单元。循环运转的记录（多少回合、什么判定、什么失败）作为观察积累，挽具再从这些观察中学习。
 

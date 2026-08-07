@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>README 재설계 + 문서 목차 재구성 보고서 — MoAI-ADK v3.0.0-rc11</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard Variable",Pretendard,system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",monospace;
+  --max-width:860px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15px}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 24px 96px}
+header.hero{border-bottom:3px solid var(--clay);padding-bottom:24px;margin-bottom:32px}
+.hero .kicker{color:var(--clay);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:28px;font-weight:800;line-height:1.3;margin:8px 0 6px}
+.hero .meta{color:var(--g500);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0 8px}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 14px}
+.kpi .n{font-size:24px;font-weight:800;color:var(--clay-d)}
+.kpi .l{font-size:12px;color:var(--g500);margin-top:2px}
+h2{font-size:20px;font-weight:800;margin:48px 0 14px;padding-left:12px;border-left:4px solid var(--clay)}
+h3{font-size:16px;font-weight:700;margin:26px 0 10px;color:var(--g700)}
+p{margin:10px 0}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden;font-size:13.5px;margin:14px 0}
+th{background:var(--g100);text-align:left;padding:9px 12px;font-weight:700;border-bottom:2px solid var(--g300);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td strong{color:var(--clay-d)}
+.panel{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:18px 20px;margin:14px 0}
+.callout{background:var(--g100);border-left:4px solid var(--olive);border-radius:0 var(--radius-row) var(--radius-row) 0;padding:12px 16px;margin:14px 0;font-size:14px}
+.callout.warn{border-left-color:var(--clay)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--mono);font-size:12px;line-height:1.55;background:#1F1E1C;color:#EDEAE2;padding:18px;border-radius:var(--radius-panel);overflow-x:auto;margin:12px 0}
+pre code{background:none;padding:0;color:inherit}
+details{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);margin:14px 0}
+details summary{cursor:pointer;font-weight:700;padding:14px 18px;color:var(--clay-d)}
+details[open] summary{border-bottom:1px solid var(--g300)}
+details .inner{padding:4px 18px 16px}
+.pill{display:inline-block;background:var(--oat);color:var(--g700);border-radius:999px;padding:1px 10px;font-size:11.5px;font-weight:700;margin-right:6px;white-space:nowrap}
+.pill.new{background:var(--clay);color:#fff}
+.pill.move{background:var(--olive);color:#fff}
+ul,ol{margin:10px 0 10px 22px}
+li{margin:4px 0}
+.chart{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:18px;margin:14px 0}
+.chart .cap{font-size:12px;color:var(--g500);margin-top:8px}
+.flow{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 18px;margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.9;color:var(--g700);overflow-x:auto;white-space:pre}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--g300);color:var(--g500);font-size:12px}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media print{body{background:#fff}.wrap{padding:0}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">MoAI-ADK · 재설계 보고서</div>
+  <h1>README 재설계 + 온라인 문서 목차 재구성</h1>
+  <div class="meta">2026-07-13 · 분석 구간 v2.14.0 (04-24) → v3.0.0-rc11 (07-13) · 산출: 보고서만 (README·docs-site 원본 미수정)</div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">2,373</div><div class="l">커밋 (80일)</div></div>
+  <div class="kpi"><div class="n">9</div><div class="l">RC 릴리스 (rc1→rc11)</div></div>
+  <div class="kpi"><div class="n">22→10</div><div class="l">에이전트 카탈로그</div></div>
+  <div class="kpi"><div class="n">487</div><div class="l">SPEC 문서</div></div>
+</div>
+
+<!-- ============ 1. 변경 이력 분석 ============ -->
+<h2>1. v2.14 → rc11 변경 이력 분석</h2>
+
+<h3>커밋 타입 분포</h3>
+<div class="chart">
+  <svg viewBox="0 0 720 210" width="100%" role="img" aria-label="커밋 타입 분포 막대 그래프">
+    <g font-family="Pretendard,system-ui" font-size="12" fill="#141413">
+      <!-- feat 727 -->
+      <text x="0" y="24">feat</text><rect x="70" y="12" width="509" height="16" rx="4" fill="#D97757"/><text x="587" y="24" fill="#3D3D3A">727</text>
+      <!-- chore 672 -->
+      <text x="0" y="52">chore</text><rect x="70" y="40" width="470" height="16" rx="4" fill="#E3DACC"/><text x="548" y="52" fill="#3D3D3A">672</text>
+      <!-- docs 517 -->
+      <text x="0" y="80">docs</text><rect x="70" y="68" width="362" height="16" rx="4" fill="#788C5D"/><text x="440" y="80" fill="#3D3D3A">517</text>
+      <!-- fix 240 -->
+      <text x="0" y="108">fix</text><rect x="70" y="96" width="168" height="16" rx="4" fill="#B85C3E"/><text x="246" y="108" fill="#3D3D3A">240</text>
+      <!-- lifecycle 105 -->
+      <text x="0" y="136">plan/sync</text><rect x="70" y="124" width="74" height="16" rx="4" fill="#D1CFC5"/><text x="152" y="136" fill="#3D3D3A">105</text>
+      <!-- refactor 39 -->
+      <text x="0" y="164">refactor</text><rect x="70" y="152" width="27" height="16" rx="4" fill="#87867F"/><text x="105" y="164" fill="#3D3D3A">39</text>
+      <!-- test 38 -->
+      <text x="0" y="192">test</text><rect x="70" y="180" width="27" height="16" rx="4" fill="#87867F"/><text x="105" y="192" fill="#3D3D3A">38</text>
+    </g>
+  </svg>
+  <div class="cap">feat(신규 기능)가 최다 — v3는 리팩터링이 아니라 기능 확장기였다. docs 517건은 4-locale 문서 동기화 의무의 흔적.</div>
+</div>
+
+<h3>시대별 타임라인</h3>
+<table>
+<tr><th>RC</th><th>날짜</th><th>핵심</th></tr>
+<tr><td><strong>rc1</strong></td><td>05-22</td><td>v3 진입. 하네스 자율성 기반(4-Tier 자가진화 + 5-Layer 안전), 8-tier 권한 스택 + OS 샌드박스(Bubblewrap/Seatbelt/Docker), 보안 강화(CWE 4종), 멀티세션 조정, docs-site geekdoc 이관</td></tr>
+<tr><td><strong>rc2</strong></td><td>06-19</td><td>v3 아키텍처 통합(최대 릴리스). Harness v4 Builder, 3-phase 라이프사이클 복원, 에이전트 17→8, Web Console 스위트, 3-축 모델 라우팅(model×effort×cycle_type), 프롬프트 캐싱 통합</td></tr>
+<tr><td><strong>rc5</strong></td><td>07-01</td><td><code>moai cg</code> 하이브리드 강화, 레거시 서브커맨드 5종 은퇴, 토큰/컨텍스트 다이어트 1차, AskUserQuestion 의사결정 메모리, <code>/goal</code> 핸드오프 결합</td></tr>
+<tr><td><strong>rc7</strong></td><td>07-07</td><td>토큰 효율 P0: 항시로드 컨텍스트 예산 가드 + 프롬프트 캐시 적중률 신호, 세션 핸드오프 v2 auto-resume, GateGuard 훅, GLM 암시적 캐싱</td></tr>
+<tr><td><strong>rc10</strong></td><td>07-09</td><td>안정화 — 세션 타이틀 훅 수정, phantom rc9 버전 정렬</td></tr>
+<tr><td><strong>rc11</strong></td><td>07-13</td><td><strong>에이전틱 + 토크노믹스 캡스톤.</strong> 자가진화 하네스 Loop 0–2(Routing Ledger + Curator), No-Haiku 3-계층 모델 정책, <code>/moai goal</code> 엔진, Agent Teams 정적 계층 은퇴, plan_type 티어 프로파일 + GLM effort 오버레이, Token Budget graceful-abort, Charm v2 CLI/TUI</td></tr>
+</table>
+
+<div class="callout">
+<strong>주제별 결론 — 토크노믹스가 v3의 중심 서사.</strong> 80일의 변경을 묶으면 토크노믹스 계열이 가장 두터운 축이다: GLM 통합(rc2→rc7) → 3-축 모델 라우팅(rc2) → 컨텍스트 다이어트(rc5→rc11) → 캐시 적중률 신호(rc7) → No-Haiku 3-계층 + plan_type 프로파일 + Token Circuit Breaker(rc11). 2축은 에이전틱 하네스(22→10 카탈로그, 자가진화, goal 엔진), 3축은 SPEC 워크플로우 정련. <strong>README도 이 3축을 그대로 3기둥으로 삼는다.</strong>
+</div>
+
+<!-- ============ 2. README 재설계 ============ -->
+<h2>2. README 재설계 (처음부터 새로)</h2>
+
+<h3>현행 README의 문제</h3>
+<table>
+<tr><th>#</th><th>문제</th><th>증거</th></tr>
+<tr><td>1</td><td>정체성 문장에 토크노믹스 서사 부재</td><td>"high-performance AI development environment"</td></tr>
+<tr><td>2</td><td>구버전 수치</td><td>"8 retained agents" (실제 10) · 커밋 수 미표기</td></tr>
+<tr><td>3</td><td>가치 서사 없는 기능 카탈로그 나열</td><td>방법론→에이전트→모델→메모리→모드 순 나열</td></tr>
+<tr><td>4</td><td>토크노믹스 요소 문서 중반 이후 분산</td><td>모델 정책·GLM·예산이 각기 다른 섹션</td></tr>
+</table>
+
+<h3>새 구조 — 서사: 가치 → 증거 → 시작 → 심화 → 레퍼런스</h3>
+<div class="flow">Hero — "토크노믹스를 목표로 하는 Agentic Development Kit"
+ ├─ 1. 왜 토크노믹스인가        (시장 맥락 + MoAI의 답 3가지)
+ ├─ 2. 핵심 가치 — 3기둥        (🪙 토크노믹스 · 🔁 재귀적 자가 학습 · 🤖 에이전틱 하네스)
+ ├─ 3. 숫자로 보는 v3           (80일 · 2,373커밋 · 9 RC · 22→10 에이전트)
+ ├─ 4. 빠른 시작                (설치 → moai init → /moai)
+ ├─ 5. 🪙 토크노믹스 심화        (No-Haiku 3-계층 · plan_type 프로파일 · CG/GLM · Circuit Breaker · 컨텍스트 다이어트)
+ ├─ 6. 🔁 재귀적 자가 학습       (자가진화 하네스 · /moai goal · 세션 핸드오프)
+ ├─ 7. 🤖 에이전틱 하네스        (10 에이전트 · SPEC 3-phase · TRUST 5 · Harness v4)
+ ├─ 8. 핵심 도구 레퍼런스        (/moai 15종 · CLI 36종 · Web Console · statusline · @MX · worktree · 16개 언어)
+ └─ 9. 문서 · 커뮤니티 · 라이선스</div>
+
+<div class="callout warn">
+<strong>설계 원칙.</strong> ① 첫 화면에서 "왜 이 도구인가"(토크노믹스)가 읽히고, ② 3기둥이 이후 모든 섹션의 목차 역할을 하며(5·6·7절이 기둥별 심화), ③ 모든 수치는 이번 분석에서 재검증된 값만 사용(커밋 2,373 · 에이전트 10 · SPEC 487 · 스킬 27 · CLI 36).
+</div>
+
+<h3>README 재설계 전문 (한국어 초안)</h3>
+<p>적용 시 README.ko.md 기준 반영 후 en/ja/zh 번역 동기화. 마크다운 원문은 트윈 파일 <code>.moai/reports/readme-docs-redesign-20260713.md</code> §2에 복사-적용 가능한 형태로 수록되어 있다. 아래는 섹션별 핵심 내용 요약이다.</p>
+
+<table>
+<tr><th>섹션</th><th>담는 내용</th></tr>
+<tr><td><strong>Hero</strong></td><td>태그라인 교체: "토크노믹스를 목표로 하는 Agentic Development Kit". 배지·4개 언어 링크·공식 문서/책/Discord 링크 유지</td></tr>
+<tr><td><strong>왜 토크노믹스인가</strong></td><td>토큰 단가↓ vs 사용량↑ → 비용은 토큰 운용 방식이 결정. MoAI의 답 3가지: 작업별 모델·추론 배정 / 컨텍스트 다이어트 / 시스템이 예산 수호</td></tr>
+<tr><td><strong>3기둥</strong></td><td>🪙 No-Haiku 3-계층·plan_type 프로파일·CG 60-70% 절감·Circuit Breaker · 🔁 Routing Ledger→Curator→4-계층 학습 사다리 · 🤖 10 에이전트·3-phase·TRUST 5·Harness v4</td></tr>
+<tr><td><strong>숫자로 보는 v3</strong></td><td>80일 · 2,373 커밋(feat 727·fix 240·docs 517) · 9 RC · 22→10 에이전트 · 487 SPEC · 27 스킬 · 36 CLI · 16 언어</td></tr>
+<tr><td><strong>빠른 시작</strong></td><td>brew / go install / 릴리스 바이너리 → <code>moai init .</code> → <code>claude</code> → <code>/moai plan·run·sync</code> + 자연어 Analyze-First 라우팅 안내</td></tr>
+<tr><td><strong>🪙 심화</strong></td><td>No-Haiku 3-계층 표(max/medium/low = $200/$100/$20 요금제 대응), plan_type API vs 구독 분리, glm-5.2[1m] 1M 컨텍스트($2/$8), graceful-abort(자동 /clear 금지), CLAUDE.md 405→319줄 다이어트 + cache_hit 세그먼트</td></tr>
+<tr><td><strong>🔁 심화</strong></td><td>루프→관찰(Ledger)→학습(Curator)→진화(승인 게이트) 흐름, 학습 사다리(≥1/≥3/≥5/≥10), <code>moai harness</code> 8개 동사, <code>/moai goal</code> 조건 선언 + 턴 한도 30, 핸드오프 auto-resume(1M 50%/200K 90%)</td></tr>
+<tr><td><strong>🤖 심화</strong></td><td>10 에이전트 표(Manager 5·Evaluator 2·Builder 1·Advisor 1·내장 1), "만든 사람이 검사하지 않는다"(감사 분리), 구현 착수 승인 휴먼 게이트, GEARS + AC 증거 기반 완료 판정</td></tr>
+<tr><td><strong>레퍼런스</strong></td><td>/moai 15종 표 · CLI 36 명령 · Web Console · statusline(CW%·cache_hit) · @MX 5태그 · worktree · 16언어 · 8-tier 권한+샌드박스</td></tr>
+</table>
+
+<details>
+<summary>README.ko.md 재설계 전문 보기 (마크다운 원문)</summary>
+<div class="inner">
+<pre><code>&lt;h1 align="center"&gt;MoAI-ADK&lt;/h1&gt;
+&lt;p align="center"&gt;&lt;strong&gt;토크노믹스를 목표로 하는 Agentic Development Kit&lt;/strong&gt;&lt;/p&gt;
+(배지 · 4-locale 링크 · 공식 문서/책/Discord — 기존 유지)
+
+&gt; **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
+
+MoAI-ADK(Agentic Development Kit)는 **토크노믹스(Token Economics)를 목표로 하는
+에이전틱 개발 키트**입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은
+품질을 — 모델 선택·추론 깊이·컨텍스트 사용량을 시스템이 관리합니다.
+
+Go로 작성된 단일 바이너리. 의존성 없이 macOS · Linux · Windows에서 바로 실행됩니다.
+
+## 왜 토크노믹스인가
+
+토큰 단가는 계속 내려가지만, 에이전틱 개발의 토큰 사용량은 그보다 빠르게 늘어납니다.
+에이전트가 여러 개 돌고, 컨텍스트가 길어지고, 추론이 깊어질수록 **비용은 모델 가격이
+아니라 토큰 운용 방식**이 결정합니다.
+
+MoAI-ADK의 답은 세 가지입니다.
+1. **작업마다 맞는 모델·추론 깊이를 배정한다** — 계획은 깊게, 구현은 싸게, 검증은 독립적으로.
+2. **컨텍스트를 다이어트한다** — 항시 로드 지침 최소화, 프롬프트 캐시 적중률 측정.
+3. **예산을 시스템이 지킨다** — 토큰 사용 추적, 임계 초과 전 우아한 중단.
+
+## 핵심 가치 — 세 가지 기둥
+
+### 🪙 토크노믹스 (Token Economics)
+No-Haiku 3-계층 모델 정책(max/medium/low), 요금제 인지 티어 프로파일(API vs 구독),
+Claude×GLM 하이브리드(CG 모드, 60-70% 절감), Token Circuit Breaker.
+
+### 🔁 재귀적 자가 학습 (Recursive Self-Learning)
+Routing Observation Ledger가 라우팅 결정을 기록하고, Curator가 개선 제안을 만들며,
+4-계층 학습 사다리(관찰→휴리스틱→규칙→자동 업데이트)가 사용자 승인 게이트 아래에서
+하네스를 업그레이드합니다.
+
+### 🤖 에이전틱 하네스 (Agentic Harness)
+코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계합니다. 10개 에이전트 카탈로그,
+SPEC 3-phase(plan→run→sync), TRUST 5 품질 게이트, 자연어 Harness v4 Builder.
+
+## 숫자로 보는 v3
+v2.14.0(2026-04-24) → v3.0.0-rc11(2026-07-13), **80일**:
+- **2,373 커밋** — feat 727 · fix 240 · docs 517
+- **9개 릴리스 후보** (rc1 → rc11)
+- 에이전트 카탈로그 **22 → 10**
+- **487개 SPEC** · **27개** 스킬 · **36개** CLI 명령 · **16개** 언어
+
+## 빠른 시작
+### 1. 설치
+    brew install modu-ai/tap/moai          # macOS/Linux
+    go install github.com/modu-ai/moai-adk/cmd/moai@latest
+    # 또는 릴리스 바이너리: github.com/modu-ai/moai-adk/releases
+### 2. 프로젝트 초기화
+    cd my-project &amp;&amp; moai init .
+### 3. Claude Code에서 개발 시작
+    claude
+    /moai plan "JWT 로그인 기능"      # SPEC 작성
+    /moai run SPEC-AUTH-001          # TDD/DDD 구현
+    /moai sync SPEC-AUTH-001         # 문서 동기화 + PR
+자연어 요청도 Analyze-First 라우팅으로 알맞은 워크플로우에 배정됩니다.
+
+## 🪙 토크노믹스 심화
+### No-Haiku 3-계층 모델 정책
+| 정책 | 대상 | 특징 |
+| max | Max $200/월 | 최고 품질 — 계획·감사에 Opus/Fable |
+| medium | Max $100/월 | 품질·비용 균형 |
+| low | Plus $20/월 | Opus 미포함, Sonnet 중심 |
+`--model-policy` 플래그 + HARD 린트가 정책 위반 차단.
+
+### 요금제 인지 티어 프로파일 (plan_type)
+API 종량제와 구독 요금제는 최적 배분이 다르다 — 요금제별 Tier×Phase 모델/effort
+매트릭스 분리 적용 + GLM 백엔드 effort 오버레이.
+
+### Claude × GLM 하이브리드 (CG 모드)
+`moai cg` — Claude 리더 + GLM 워커. 구현 중심 작업 **60-70% 비용 절감**.
+glm-5.2[1m] 단일 모델(1M 컨텍스트, 입력 $2 / 출력 $8), z.ai 암시적 캐싱.
+
+### Token Circuit Breaker
+에이전트별 토큰 추적 → 경고 → 임계 초과 시 우아한 중단(상태 저장 + 핸드오프).
+자동 /clear는 절대 하지 않음.
+
+### 컨텍스트 다이어트 + 프롬프트 캐시
+항시 로드 예산 가드(CLAUDE.md 405→319줄), 규칙 path-scoping,
+statusline cache_hit 세그먼트, 검증 출력 파일-리다이렉트.
+
+## 🔁 재귀적 자가 학습
+### 자가 진화 하네스
+루프 실행 → 관찰 축적(Routing Ledger) → 패턴 학습(Curator) → 지침 진화(승인 게이트)
+- 4-계층 학습 사다리: 관찰(≥1) → 휴리스틱(≥3) → 규칙(≥5) → 자동 업데이트(≥10, 승인 필수)
+- 5-Layer 안전 파이프라인 + 스냅샷/롤백
+- moai harness status|apply|rollback|disable|list|edit|remove|doctor
+
+### /moai goal — 조건 선언형 에이전틱 루프
+    /moai goal "go test ./... exits 0; 모든 AC가 PASS로 기록"
+조건 충족 또는 턴 한도(기본 30)까지 세션이 스스로 일합니다.
+/moai loop는 goal 엔진 위의 프리셋 — 진단 이슈 큐를 비울 때까지 반복 수정.
+
+### 세션 핸드오프 auto-resume
+컨텍스트 임계(1M 모델 50% / 200K 모델 90%)에서 붙여넣기 한 번으로 다음 세션 연속.
+
+## 🤖 에이전틱 하네스
+### 10개 에이전트 카탈로그
+Manager: manager-spec / manager-develop / manager-docs / manager-git / manager-design
+Evaluator: plan-auditor / sync-auditor (기능40·보안25·장인정신20·일관성15)
+Builder: builder-harness · Advisor: super-advisor · 내장: Explore
+계획과 감사는 분리 — 만든 사람이 검사하지 않습니다.
+
+### SPEC 3-Phase 라이프사이클
+/moai plan → [plan-auditor 감사] → 구현 착수 승인(휴먼 게이트) → /moai run
+→ /moai sync → [sync-auditor 평가]
+Tier S/M/L이 검증 깊이·PR 라우팅 결정. GEARS 요구사항 + AC 증거 기반 완료 판정.
+
+### TRUST 5 품질 게이트
+Tested(85%+) · Readable · Unified · Secured(OWASP) · Trackable
+
+### Harness v4 Builder
+    /moai harness "CLI 템플릿 개발용 하네스 만들어줘"
+자연어 → 도메인/목표/제약 추출 → 승인 게이트 → 전용 에이전트·스킬·커맨드 생성.
+/moai project는 프로젝트 문서(product/structure/tech.md)와 하네스를 자동 구성.
+
+## 핵심 도구 레퍼런스
+### /moai 서브커맨드 (15종)
+plan/run/sync · goal/loop/fix · project/harness · review/gate/clean ·
+mx/codemaps/feedback · (자연어 → Analyze-First 자율 파이프라인)
+
+### CLI (36 명령)
+moai init · update · cg/glm/cc · worktree · session · handoff · goal · harness ·
+spec · web(Web Console) …
+
+### 그 외 핵심 요소
+Web Console(브라우저 설정 CRUD·SPEC 보드, 4-locale) · statusline(CW%·cache_hit) ·
+@MX 태그(NOTE/WARN/ANCHOR/TODO/DEBT) · worktree 격리 · 16개 언어 ·
+8-tier 권한 스택 + OS 샌드박스(Bubblewrap/Seatbelt/Docker)
+
+## 시스템 요구사항
+필수: Claude Code v2.1.139+ · git / 권장: gh · tmux(CG) · 언어별 품질 도구
+플랫폼: macOS · Linux · Windows (단일 바이너리)
+
+## 문서
+공식 문서 https://adk.mo.ai.kr · 시작하기 /getting-started/ ·
+토크노믹스 가이드 /tokenomics/ (신설 제안) · CHANGELOG.md
+
+## 커뮤니티 · 라이선스
+Discord discord.gg/Z7E7Mdc5aN · 이슈: /moai feedback · Apache-2.0 © modu-ai</code></pre>
+<p style="font-size:13px;color:var(--g500)">전체 원문(코드 블록·표 마크다운 포함 완전판)은 트윈 파일 <code>readme-docs-redesign-20260713.md</code> §2에 있다 — 적용 시 그쪽을 복사한다.</p>
+</div>
+</details>
+
+<!-- ============ 3. 문서 목차 재구성 ============ -->
+<h2>3. 온라인 문서(docs-site) 목차 재구성 제안</h2>
+
+<h3>현행 문제 (adk.mo.ai.kr, 4-locale × 12+2 섹션)</h3>
+<table>
+<tr><th>#</th><th>문제</th><th>상세</th></tr>
+<tr><td>1</td><td><strong>고아 섹션 2개</strong></td><td><code>cost-optimization/</code>, <code>guides/</code>가 <code>_meta.yaml</code> 미등록 — 내비게이션에 노출되지 않음</td></tr>
+<tr><td>2</td><td>토크노믹스 산재</td><td>model-policy(multi-llm) · prompt-caching(cost-optimization) · cg-mode(multi-llm)로 분산; v3 핵심 가치인데 전용 섹션 없음</td></tr>
+<tr><td>3</td><td>명령어 3분할</td><td>workflow/utility/quality 3개 섹션 분산 + goal/loop 문서 부재</td></tr>
+<tr><td>4</td><td>하네스 심화 매몰</td><td>agent-guide·harness-v4-builder·decision-memory가 advanced에 묻힘</td></tr>
+<tr><td>5</td><td>3기둥 미반영</td><td>core-concepts의 what-is가 v3 서사 이전 버전</td></tr>
+</table>
+
+<h3>제안 목차 (12+2 → 11 섹션)</h3>
+<table>
+<tr><th>#</th><th>섹션 (weight)</th><th>구성</th><th>변경</th></tr>
+<tr><td>1</td><td>시작하기 (10)</td><td>introduction · installation · init-wizard · cli · profile · inventory · faq</td><td><span class="pill">유지</span></td></tr>
+<tr><td>2</td><td>핵심 개념 (20)</td><td>what-is(3기둥 재작성) · tokenomics-overview · harness-engineering · spec-based-dev · trust-5 · tdd/ddd · constitution</td><td><span class="pill new">신규 1</span> what-is 재작성</td></tr>
+<tr><td>3</td><td><strong>🪙 토크노믹스 (25)</strong></td><td>model-policy · no-haiku-3tier · plan-type-profiles · token-budget · prompt-caching · context-diet · cg-mode · multi-llm-ci</td><td><span class="pill new">섹션 신설</span> <span class="pill move">multi-llm·cost-optimization·guides 3개 흡수</span></td></tr>
+<tr><td>4</td><td>워크플로우 명령어 (30)</td><td>moai(라우터) · plan · run · sync · project · goal · loop · harness</td><td><span class="pill new">goal 신규</span> <span class="pill move">loop 편입</span></td></tr>
+<tr><td>5</td><td>명령어 레퍼런스 (40)</td><td>fix · mx · clean · feedback · review · gate · codemaps</td><td><span class="pill move">utility+quality 통합</span></td></tr>
+<tr><td>6</td><td><strong>🤖 에이전틱 하네스 (50)</strong></td><td>agent-guide · builder-agents · harness-v4-builder · self-evolving · decision-memory · harness-profiles · hooks 개요</td><td><span class="pill new">섹션 신설</span> <span class="pill move">advanced에서 승격</span></td></tr>
+<tr><td>7</td><td>Claude Code 가이드 (60)</td><td>foundations · agentic · context-memory · extensibility</td><td><span class="pill">유지</span></td></tr>
+<tr><td>8</td><td>깃 워크트리 (70)</td><td>guide · examples · faq</td><td><span class="pill">유지</span></td></tr>
+<tr><td>9</td><td>디자인 시스템 (80) · DB 스키마 (85)</td><td>기존 콘텐츠</td><td><span class="pill">weight 조정</span></td></tr>
+<tr><td>10</td><td>심화 학습 (90)</td><td>claude-md-guide · catalog-system · 잔여</td><td><span class="pill move">승격분 제외 후 잔여</span></td></tr>
+<tr><td>11</td><td>참여하기 (100)</td><td>contributing</td><td><span class="pill">유지</span></td></tr>
+</table>
+
+<div class="callout warn">
+<strong>마이그레이션 주의.</strong> ① 이동 문서는 Hugo alias(구 URL 리다이렉트) 필수 — 외부 링크 보존. ② <code>_meta.yaml</code> × en/ko/ja/zh 4-locale 동시 변경 의무. ③ 신규 저작 필요 문서 6편+(tokenomics-overview · no-haiku-3tier · plan-type-profiles · token-budget · context-diet · goal · self-evolving) × 4 locale. → <strong>실제 개편은 별도 SPEC(Tier M 이상) 권장.</strong>
+</div>
+
+<!-- ============ 4. 다음 단계 ============ -->
+<h2>4. 다음 단계 (권장 순서)</h2>
+<div class="panel">
+<ol>
+<li><strong>이 보고서 검토</strong> → README 방향(토크노믹스 정체성·3기둥 구조) 확정</li>
+<li><strong>README.ko.md 적용</strong> → humanize 검수 → en/ja/zh 번역 동기화 (별도 턴)</li>
+<li><strong>docs-site 목차 개편 SPEC 승격</strong> — <code>/moai plan "docs-site 토크노믹스 목차 개편"</code> (신규 6편 저작 + alias + 4-locale, Tier M+)</li>
+</ol>
+</div>
+
+<footer>
+MoAI-ADK 재설계 보고서 · 2026-07-13 · 분석: v2.14.0 → v3.0.0-rc11 (2,373 commits) · 트윈: readme-docs-redesign-20260713.md · 원본 파일 미수정 (보고서 전용)
+</footer>
+
+</div>
+</body>
+</html>
