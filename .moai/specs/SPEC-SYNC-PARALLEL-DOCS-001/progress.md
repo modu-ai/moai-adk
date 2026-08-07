@@ -29,6 +29,16 @@ Baseline-attribution: `(this run, this tree)` HEAD = 63fceb889 (pre-M1) → M1 c
 
 Baseline-attribution: `(this run, this tree)` M2 commit (pending). `go test ./internal/config/...` → `ok github.com/modu-ai/moai-adk/internal/config 8.126s` (no CI regression; harness.yaml outside struct-yaml symmetry audit scope). Files: `harness.yaml`, `plan-auditor.md` (template source + local mirror, byte-identical).
 
+### M3 — A5 docs ∥ audit concurrent scheduling (committed)
+
+| AC | Status | Verification command | Observed output (verbatim) |
+|---|---|---|---|
+| AC-SPD-001 | PASS | `grep -c 'Docs ∥ Audit Concurrent Scheduling (A5' .claude/skills/moai/workflows/sync.md` | `1` — concurrent-launch clause present; FO-SYNC-4 launches in the same turn as Phase 7 audit |
+| AC-SPD-002 | PASS | `grep -c 'Drafter input independence (REQ-SPD-002' .claude/skills/moai/workflows/sync/doc-execution.md` | `1` — each D1-D5 drafter reads SPEC+git diff+divergence report, NOT the concurrent audit's quality report |
+| AC-SPD-003 | PASS | `grep -c 'Single-writer applier sequencing at gate-sync-2 (REQ-SPD-003' .claude/skills/moai/workflows/sync/doc-execution.md` | `1` — manager-docs applies drafts sequentially after both fan-outs return; concurrency guard [HARD] preserved; audit verdict surfaced at the same gate-sync-2 round (no extra human round-trip) |
+
+Baseline-attribution: `(this run, this tree)` M3 commit (pending). Files: `sync.md`, `doc-execution.md` (template source + local mirror, byte-identical).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

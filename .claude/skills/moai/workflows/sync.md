@@ -40,7 +40,7 @@ Skill injection: at each `manager-docs` spawn the orchestrator injects `At start
 
 Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
-Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
+Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook exits 0 always; in blocking mode (MOAI_SYNC_GATE_BLOCKING=1) it emits stdout JSON {"decision":"block"} on lint/test failure or coverage regression > 5pp. Per Claude Code hook semantics, stdout JSON is honored only on exit 0. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
 
 ## Phase Routing Table
 
@@ -61,6 +61,14 @@ Every sync-phase fan-out site, listed here rather than only at the site itself. 
 | `FO-SYNC-2` | the modified files span several languages or packages | `workflows/sync/quality-gates-quality.md` | Phase 9 MX tag scan — one read-only shard per language or package |
 | `FO-SYNC-3` | the coverage gaps span several independent packages | `workflows/sync/quality-gates-quality.md` | Phase 10 test drafting — one read-only drafter per package |
 | `FO-SYNC-4` | the sync scope spans several independent document families | `workflows/sync/doc-execution.md` | Phase 12 document drafting — five read-only drafters, one applier |
+
+## Docs ∥ Audit Concurrent Scheduling (A5 — SPEC-SYNC-PARALLEL-DOCS-001, REQ-SPD-001 / AC-SPD-001)
+
+The docs drafter fan-out (`FO-SYNC-4`, five read-only drafters D1-D5) launches CONCURRENTLY with the Phase 7-10 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after the audit completes. The former scheduling read the Phase Routing Table strictly top-to-bottom (Phase 7 → Phase 11 → Phase 12), which serialized the docs draft behind the full quality / security / MX / coverage pipeline. A5 lifts that serialization for the docs draft: the orchestrator spawns the `FO-SYNC-4` drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the docs draft is ready by the time the audit returns.
+
+**Input independence (REQ-SPD-002 / AC-SPD-002).** Each docs drafter (D1-D5) reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report — NOT from the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that read "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the concurrency.
+
+**Single-writer applier at gate-sync-2 (REQ-SPD-003 / AC-SPD-003).** The concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` remains the sole write-capable agent: it applies the five drafts sequentially AFTER both fan-outs return, at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout; at no point during the concurrent fan-out do two write-capable agents run simultaneously. The audit verdict is surfaced to the user at the same gate-sync-2 round, with no extra human round-trip introduced.
 
 ## Parallel Quality-Evidence Fan-Out (capability-gated)
 
