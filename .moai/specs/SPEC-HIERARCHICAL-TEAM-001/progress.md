@@ -36,6 +36,17 @@ _(pending run-phase — manager-develop populates this section when all M1-M6 MU
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — manager-docs populates `sync_commit_sha` (placeholder `pending-backfill-SPEC-HIERARCHICAL-TEAM-001` until the sync commit lands; backfilled in a follow-up commit per the SHA-placeholder backfill exemption D3).)_
+- `sync_status: completed`
+- `sync_complete_at: 2026-08-07` (ISO-8601 placeholder — manager-docs emission; actual timestamp is the sync commit's author date)
+- `sync_commit_sha: pending-backfill-SPEC-HIERARCHICAL-TEAM-001` (self-referential-hazard workaround per `spec-frontmatter-schema.md` D3; backfilled in a follow-up commit after the sync PR merges — same pattern as SPEC-NAVIGATOR-SYNC-003 / SPEC-MOAI-MCP-SERVER-001)
+- `changelog_entry_position: CHANGELOG.md `[Unreleased] → Added` (top of section, above SPEC-MOAI-MCP-SERVER-001)`
+- `frontmatter_status_transitions`:
+  - spec.md: `draft → in-progress → completed` (3-phase close merged on this sync commit; `updated:` refreshed to 2026-08-07)
+  - plan.md / acceptance.md / progress.md: no YAML frontmatter (plain markdown) — no frontmatter transition applicable
+- `canary_compliance_check`: 15/15 AC PASS (orchestrator trust-but-verify `go test ./internal/template/...` ok 37.859s; `moai spec lint --strict` clean; manager-lead Agent-carrier + AskUserQuestion=0 verified; depth-2 seal CI guard + catalog-count guards green)
+- `b12_self_test`:
+  - a (pre-emission grep): `grep -c 'SPEC-HIERARCHICAL-TEAM-001' CHANGELOG.md` returned 0 before emission (no duplicate)
+  - b (AC count match): 15 distinct AC IDs in acceptance.md → 15/15 AC referenced in run-phase evidence (§E.2)
+  - c (file path verification): every claimed file path verified via `ls` / `git ls-files` before commit
 
 `sync_commit_sha: pending-backfill-SPEC-HIERARCHICAL-TEAM-001`

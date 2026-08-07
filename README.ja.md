@@ -106,7 +106,7 @@ MoAI-ADKはこの割り当てをその場の運任せにせず、システム化
 
 **No-Haiku 3ティア・ポリシー**. Haikuをルーティングモデルセットから排除し、タスクの性格に合わせた3ティア構造で作業を分散する。Sonnet low effortは単発・入力支配の作業（gitの機械的作業、読み取り専用検索）を担ってステップ数を最小化し、マルチターンのエージェンティック行はすべてOpusが担当する。`max` effortは呼び出し頻度が最も低い2行のために残す。
 
-**プロファイルマトリクス**. 単一のper-agentプロファイルマトリクスが、維持される11個のエージェントそれぞれを`{model, effort}`ペアにマッピングする — 33セル。1つのプロファイル軸 — `high` / `medium`（デフォルト）/ `low`、`llm.profile`（`moai init --profile`、`moai update --profile`）で選択 — がアクティブ列を選び、`moai model profile`が各エージェントのセルを解決する。`Explore`を含む維持されるすべてのエージェントがマトリクスからmodel+effortを受け取り（どこにもHaikuはない）、セッションモデルを継承するのはユーザー定義エージェントだけだ。
+**プロファイルマトリクス**. 単一のper-agentプロファイルマトリクスが、維持される12個のエージェントそれぞれを`{model, effort}`ペアにマッピングする — 36セル。1つのプロファイル軸 — `high` / `medium`（デフォルト）/ `low`、`llm.profile`（`moai init --profile`、`moai update --profile`）で選択 — がアクティブ列を選び、`moai model profile`が各エージェントのセルを解決する。`Explore`を含む維持されるすべてのエージェントがマトリクスからmodel+effortを受け取り（どこにもHaikuはない）、セッションモデルを継承するのはユーザー定義エージェントだけだ。
 
 **CGモード（Claude + GLM）**. `moai cg`はClaudeリーダーとGLMワーカーを組み合わせたハイブリッドモードである。戦略・計画・監査はClaudeが担当し、大量の実装作業はGLMが担当する。実装集中作業で**60-70%のコスト削減**効果がある。
 
@@ -160,7 +160,7 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 
 **TRUST 5品質ゲート**. Tested（85%+カバレッジ）・Readable・Unified・Secured・Trackable、すべての変更に適用される。検証はエージェントではなくゲートが判定する。
 
-**11エージェントカタログ**. MoAIカスタム10 + 内蔵Explore。計画と監査を設計段階から分離し、作成した側が自作業に点数をつけないようにする。
+**12エージェントカタログ**. MoAIカスタム11 + 内蔵Explore。計画と監査を設計段階から分離し、作成した側が自作業に点数をつけないようにする。
 
 ### 拡張ポイント — 実績あるパターンをプロジェクト固有に複製
 
@@ -279,7 +279,7 @@ claude        # launch Claude Code inside the project
 
 > 全 36 コマンド: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
 
-### 11 エージェントカタログ
+### 12 エージェントカタログ
 
 | カテゴリ | エージェント | コスト | 役割 |
 |----------|-------|------|------|
@@ -288,6 +288,7 @@ claude        # launch Claude Code inside the project
 | | manager-docs | 🔵 | Sync フェーズ ドキュメント化 |
 | | manager-git | 🩵 | PR 作成とルーティング |
 | | manager-design | 🟠 | Design フェーズ協業（Claude Design） |
+| | manager-lead | 🔴 | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） |
 | **Evaluator** | plan-auditor | 🔴 | 独立計画監査（バイアス防止） |
 | | sync-auditor | 🔴 | 4 次元品質スコアリング（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
 | **Builder** | builder-harness | 🟠 | プロジェクト専用エージェント・スキル・コマンド・フックの足場作り |

@@ -108,7 +108,7 @@ Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下
 
 **No-Haiku 3 层策略**。将 Haiku 从路由模型集中排除，工作分散到贴合任务性质的 3 层结构。Sonnet 以 low effort 承担单次完成、以输入为主的工作（Git 机械操作、只读检索）以最小化步数；Opus 承担所有多轮代理式行，`max` effort 只保留给两个调用频率最低的行。
 
-**配置矩阵**。单一的 per-agent 配置矩阵将 11 个保留 agent 各自映射到一个 `{model, effort}` 对 —— 共 33 格。单一配置轴 —— `high` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。包括 `Explore` 在内的每个保留 agent 都从矩阵获取 model+effort（任何位置都没有 Haiku）；只有用户自定义 agent 继承会话模型。
+**配置矩阵**。单一的 per-agent 配置矩阵将 12 个保留 agent 各自映射到一个 `{model, effort}` 对 —— 共 36 格。单一配置轴 —— `high` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。包括 `Explore` 在内的每个保留 agent 都从矩阵获取 model+effort（任何位置都没有 Haiku）；只有用户自定义 agent 继承会话模型。
 
 <p align="center">
   <img src="./assets/images/cg-mode-infographic-zh.png" alt="CG 模式 — Claude 领队 + GLM 执行者混合" width="85%">
@@ -166,7 +166,7 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 
 **TRUST 5 质量门**. Tested（85%+ 覆盖率）· Readable · Unified · Secured · Trackable，应用于所有变更。门控判定验证，而非智能体自判。
 
-**11-Agent 目录**. MoAI 自定义 10 个 + 内置 Explore。规划和审计从一开始分离，编写方不能给自己的工作打分。
+**12-Agent 目录**. MoAI 自定义 11 个 + 内置 Explore。规划和审计从一开始分离，编写方不能给自己的工作打分。
 
 ### 扩展点 —— 复用已验证模式做项目定制
 
@@ -285,7 +285,7 @@ claude        # launch Claude Code inside the project
 
 > 全部 36 个命令：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)
 
-### 11-Agent 目录
+### 12-Agent 目录
 
 | 分类 | Agent | 成本 | 职责 |
 |----------|-------|------|------|
@@ -294,6 +294,7 @@ claude        # launch Claude Code inside the project
 | | manager-docs | 🔵 | Sync-phase 文档化 |
 | | manager-git | 🩵 | PR 创建和路由 |
 | | manager-design | 🟠 | Design-phase 协作（Claude Design） |
+| | manager-lead | 🔴 | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） |
 | **Evaluator** | plan-auditor | 🔴 | 独立计划审计（偏见防止） |
 | | sync-auditor | 🔴 | 4 维质量评分（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
 | **Builder** | builder-harness | 🟠 | 项目专用 agent·skill·command·hook 脚手架 |

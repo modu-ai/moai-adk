@@ -2,7 +2,7 @@
 id: SPEC-HIERARCHICAL-TEAM-001
 title: "Hierarchical Agent Team — manager-lead leader + Context-Folding + peer cross-validation + schema-driven fan-out"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-07
 updated: 2026-08-07
 author: manager-spec
