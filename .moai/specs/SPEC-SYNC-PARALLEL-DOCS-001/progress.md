@@ -83,7 +83,7 @@ m1_to_mN_commit_strategy: per-milestone feat commits (M1 9bda11d3f, M2 d80872d34
 
 sync_status: audit-ready
 sync_complete_at: 2026-08-07
-sync_commit_sha: pending-backfill-sync-par-docs (self-referential-hazard workaround per spec-frontmatter-schema.md D3; Route B squash merge — SHA known only after PR merge; backfilled in a follow-up commit post-merge)
+sync_commit_sha: adaff36e5829723b737bcf640f63766205c9a168
 changelog_entry_position: top-of-unreleased-added (most-recent-first ordering; entry references all 14 AC PASS with clause-based matching after the §25 REQ/AC token strip)
 frontmatter_status_transitions:
   spec_md: in-progress → implemented → completed (3-phase close merged into this sync commit; spec.md is the sole YAML-frontmatter-bearing artifact)
