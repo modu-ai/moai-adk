@@ -110,15 +110,18 @@ func SaveGoal(projectRoot string, g *Goal) error {
 	return nil
 }
 
-// ClearGoal marks the goal cleared by deleting its state file AND the .html
-// dashboard sibling written by `moai goal render` (REQ-GHF-005 / AC-GHF-003).
-// Both removes use the fs.ErrNotExist-is-idempotent contract: a file already
-// absent is not an error. The hook's `clear` verb uses this so a subsequent
-// evaluation sees no armed goal and no orphan dashboard lingers.
+// ClearGoal marks the goal cleared by deleting its state file, the .html
+// dashboard sibling written by `moai goal render`, AND the .verdict.json sidecar
+// written by the stop-goal evaluator at ceiling exit
+// (SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-002). All removes use the
+// fs.ErrNotExist-is-idempotent contract: a file already absent is not an error.
+// The hook's `clear` verb uses this so a subsequent evaluation sees no armed
+// goal and no orphan artifacts linger.
 func ClearGoal(projectRoot, sessionID string) error {
 	paths := []string{
 		StatePath(projectRoot, sessionID),
 		HTMLPath(projectRoot, sessionID),
+		VerdictPath(projectRoot, sessionID),
 	}
 	for _, p := range paths {
 		if err := os.Remove(p); err != nil {
