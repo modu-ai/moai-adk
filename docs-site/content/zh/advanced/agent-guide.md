@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-详细介绍 MoAI-ADK v3.0 的 11 个核心智能体目录。
+详细介绍 MoAI-ADK v3.0 的 12 个核心智能体目录。
 
 {{< callout type="info" >}}
 **一句话总结**：智能体是各领域的 **专家团队**。MoAI 作为团队负责人把任务分派给合适的专家 — 并且制定计划的智能体与审计它的智能体必须分离。
@@ -33,11 +33,11 @@ MoAI 是 MoAI-ADK 的 **最高层协调者**。它分析用户请求，并把任
 | 并行执行 | 独立的只读任务同时委派给多个智能体 |
 | 结果整合 | 汇总智能体执行结果并向用户汇报 |
 
-## 11 个核心智能体目录
+## 12 个核心智能体目录
 
-MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthropic 内置）。
+MoAI-ADK 使用 **12 个核心智能体**（11 个 MoAI 自定义 + 1 个 Anthropic 内置）。
 
-### Manager 智能体（5 个）
+### Manager 智能体（6 个）
 
 | 智能体 | 角色 | 阶段 | 模型 / effort | 主要技能 |
 |----------|------|------|---------------|----------|
@@ -46,6 +46,7 @@ MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthro
 | `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator 智能体（2 个）
 

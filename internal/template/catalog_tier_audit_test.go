@@ -247,7 +247,11 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester added (10th MoAI-custom
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
-	const expectedAgentCount = 10
+	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead added (11th MoAI-custom
+	// retained agent — hierarchical-team coordination specialist, sole Agent-carrier
+	// opening the depth-1 fan-out seam; leaf workers omit Agent preserving depth-2 seal);
+	// net +1 = 11.
+	const expectedAgentCount = 11
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}

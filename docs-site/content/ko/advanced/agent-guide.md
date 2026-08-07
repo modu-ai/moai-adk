@@ -34,11 +34,11 @@ MoAI는 MoAI-ADK의 **최상위 조율자**입니다. 사용자의 요청을 분
 | 병렬 실행 | 독립적인 읽기 전용 작업은 여러 에이전트에게 동시에 위임 |
 | 결과 통합 | 에이전트 실행 결과를 취합하여 사용자에게 보고 |
 
-## 11개 핵심 에이전트 카탈로그
+## 12개 핵심 에이전트 카탈로그
 
-MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 Anthropic 내장)를 사용합니다.
+MoAI-ADK는 **12개 핵심 에이전트** (11개 MoAI 사용자 정의 + 1개 Anthropic 내장)를 사용합니다.
 
-### Manager 에이전트 (5개)
+### Manager 에이전트 (6개)
 
 | 에이전트 | 역할 | 단계 | 모델 / effort | 주요 스킬 |
 |----------|------|------|---------------|----------|
@@ -47,6 +47,7 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 | `manager-docs` | 문서 생성, CHANGELOG, README 동기화 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 생성, Git 브랜칭, 머지 전략 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 양방향 협업 (D1-D5 파이프라인) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | 계층형 팀 Tier L 조정 (유일한 Agent-carrier, depth-2 seal) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator 에이전트 (2개)
 
