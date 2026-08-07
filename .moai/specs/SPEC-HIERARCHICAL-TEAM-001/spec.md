@@ -82,7 +82,7 @@ The net-new surfaces are: (1) the `manager-lead` agent file (run-phase, builder-
 
 **Tool surface**: `tools:` includes `Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Agent, Skill`. The inclusion of `Agent` is the sole exception among retained agents — the flat-hierarchy guarantee (CLAUDE.md §4 Watch note, "omitting the Agent tool from its tools list is the sole remaining flat-hierarchy guarantee") is explicitly opened here ONLY. **Depth-2 seal**: leaf workers spawned by manager-lead carry their own `tools:` lists that OMIT `Agent` — so depth-1 = orchestrator spawns manager-lead, depth-2 = manager-lead spawns leaf workers, and NO depth-3 recursion occurs. `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2` is the runtime ceiling manager-lead operates under.
 
-**Selection decision tree extension** (CLAUDE.md §4): a 13th row is added — "Multi-milestone Tier L coordination (≥3 milestones OR ≥10 files OR cross-domain fan-out)? Use the `manager-lead` subagent." This is a NEW delegation path; it does NOT displace Mode 5 (sequential `manager-develop`) for Tier S/M single-milestone work.
+**Selection decision tree extension** (CLAUDE.md §4): a 13th row is added — "Multi-milestone Tier L coordination (≥3 milestones AND ≥10 files AND cross-domain fan-out)? Use the `manager-lead` subagent." This is a NEW delegation path; it does NOT displace Mode 5 (sequential `manager-develop`) for Tier S/M single-milestone work.
 
 ### §C.2 Axis 2 — worktree writer re-keying
 
@@ -134,11 +134,15 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 
 ### REQ-LEAD-002 — `manager-lead` selection decision tree extension
 
-**The** CLAUDE.md §4 Selection Decision Tree **shall** gain a 13th row: "Multi-milestone Tier L coordination (≥3 milestones OR ≥10 files OR cross-domain fan-out)? Use the `manager-lead` subagent." **When** a SPEC does not satisfy that predicate, the orchestrator **shall** continue to use Mode 5 (sequential `manager-develop` / `manager-docs`) — `manager-lead` is an opt-in delegation target for the multi-milestone case, NOT a replacement for the standard run-phase path.
+**The** CLAUDE.md §4 Selection Decision Tree **shall** gain a 13th row: "Multi-milestone Tier L coordination (≥3 milestones AND ≥10 files AND cross-domain fan-out)? Use the `manager-lead` subagent." **When** a SPEC does not satisfy that predicate, the orchestrator **shall** continue to use Mode 5 (sequential `manager-develop` / `manager-docs`) — `manager-lead` is an opt-in delegation target for the multi-milestone case, NOT a replacement for the standard run-phase path.
 
 ### REQ-LEAD-003 — `manager-lead` catalog entry + CLAUDE.md §4 Watch note update
 
 **The** CLAUDE.md §4 Retained Agents table **shall** grow from 11 to 12 entries with `manager-lead` added. **The** §4 Watch note's claim "every retained MoAI agent omits Agent, so the flat hierarchy holds by tool omission" **shall** be amended to: "every retained MoAI agent except `manager-lead` omits `Agent`; `manager-lead` is the sole Agent-carrying retained agent, and the flat hierarchy holds by depth-2 sealing (leaf workers it spawns omit Agent)." **The** `amendment_of:` / supersession note for `SPEC-SUBAGENT-NESTING-DOCTRINE-001` **shall** be extended to reference this SPEC's depth-2 seal as the active flat-hierarchy guarantee.
+
+### REQ-DEPTH-001 — depth-2 seal CI guard (defense-in-depth)
+
+**The** repository **shall** contain a CI test under `internal/template/` that mirrors the `subagent_boundary_test.go` pattern and greps every `manager-lead`-spawned leaf-worker agent file for the literal token `Agent` in its `tools:` list, failing the build on match. **The** test is defense-in-depth on the REQ-LEAD-001 depth-2 seal: it mechanically catches a future SPEC that amends a leaf-worker agent file to add `Agent` to `tools:` — catching it at lint time rather than at runtime (where the depth-3 spawn attempt would be rejected by `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`). **The** test is OBLIGATORY (OQ-4 RESOLVED — user confirmed); it is NOT gated on a follow-up decision.
 
 ### REQ-WORKTREE-001 — worktree decision tree re-key
 
@@ -193,8 +197,8 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 
 - **OQ-1 (G-CTX-FOLD)** — Context-Folding trigger policy: automatic at every Tier L milestone boundary, OR opt-in via a config flag (`workflow.context_folding: auto | opt-in | off`, default `auto` for Tier L, `opt-in` for Tier M)? The cost/benefit profile differs by Tier: Tier L runs genuinely need folding to survive; Tier M runs may finish inside one context window. **Recommended**: `auto` at Tier L, `opt-in` at Tier M. **Decision DEFERRED to Implementation Kickoff** (this is the load-bearing fold-policy question).
 - **OQ-2 (G-PEER-SCOPE)** — peer cross-validation AC scope: all ACs at Tier M/L (the spec's REQ-PEER-001 framing), OR only "critical-path" ACs (those tied to REQs whose `priority` ∈ `{P0, P1}`)? Peer overhead scales linearly in AC count; a 25-AC Tier L SPEC pays 25 peer spawns. **Recommended**: all ACs at Tier M/L (structural strength is the point); Tier S skips entirely. The 25-spawn cost is the price of falsifiable ACs.
-- **OQ-3 (G-LEAD-TRIGGER)** — `manager-lead` entry trigger: always spawned for Tier L, OR conditionally spawned via a heuristic (≥3 milestones AND ≥10 files AND cross-domain fan-out)? Always-spawned is simpler but adds a delegation layer to Tier L runs that may not need it. **Recommended**: conditionally spawned — the heuristic matches the §C.1 delegation predicate, and Tier L runs below the heuristic stay on the standard Mode 5 path.
-- **OQ-4 (G-DEPTH-VERIFICATION)** — depth-2 seal verification: trust the leaf-worker `tools:` list omission mechanically (assumption 4), OR add a repo-local CI guard that greps `manager-lead`-spawned leaf-worker agent files for `Agent` in `tools:` and fails on match? **Recommended**: add the CI guard (a new test in `internal/template/` mirroring the existing `subagent_boundary_test.go` pattern). Defense-in-depth on the flat-hierarchy carve-out.
+- **OQ-3 (G-LEAD-TRIGGER) — RESOLVED**: conditionally spawned via the conjunctive heuristic. The `manager-lead` entry predicate is conjunctive: the run MUST satisfy ALL three dimensions (≥3 milestones AND ≥10 files AND cross-domain fan-out). User confirmed at audit-entry. Disjunctive OR was rejected as too permissive — it would admit runs satisfying only one dimension (e.g. a 10-file single-milestone refactor with no cross-domain fan-out). Tier L runs below the heuristic stay on the standard Mode 5 path.
+- **OQ-4 (G-DEPTH-VERIFICATION) — RESOLVED**: add the CI guard (defense-in-depth on the flat-hierarchy carve-out). User confirmed. The guard is codified as REQ-DEPTH-001 + AC-DEPTH-001: a CI test under `internal/template/` mirroring the `subagent_boundary_test.go` pattern that greps every `manager-lead`-spawned leaf-worker agent file for `Agent` in `tools:` and fails on match.
 
 ## §G. References
 
@@ -216,6 +220,7 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 - AC-LEAD-001 (REQ-LEAD-001): `manager-lead.md` exists, declares coordination-only role, carries `Agent` in `tools:`, leaf-worker spawns omit `Agent`.
 - AC-LEAD-002 (REQ-LEAD-002): CLAUDE.md §4 Selection Decision Tree carries the 13th `manager-lead` row; non-matching SPECs still use Mode 5.
 - AC-LEAD-003 (REQ-LEAD-003): CLAUDE.md §4 Retained Agents table shows 12 entries; Watch note amended to name `manager-lead` as sole Agent-carrier; supersession note for SUBAGENT-NESTING-DOCTRINE references depth-2 seal.
+- AC-DEPTH-001 (REQ-DEPTH-001): a CI test under `internal/template/` greps leaf-worker agent files for `Agent` in `tools:` and fails on match; the regression is caught at lint time.
 - AC-WORKTREE-001 (REQ-WORKTREE-001): worktree-integration.md decision tree + HARD rule re-keyed to "parallel write workers within hierarchical team"; no residual "team mode" gating language in the decision tree.
 - AC-WORKTREE-002 (REQ-WORKTREE-002): agent-common-protocol.md § Background Agent's stale team-mode framing re-keyed; concurrency safeguard retained verbatim.
 - AC-FOLD-001 (REQ-FOLD-001): manager-lead executes the 3-step fold procedure at milestone Mn completion (evidence → fold row → `/compact`); fold row format matches existing §E.2 row.

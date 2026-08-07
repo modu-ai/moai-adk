@@ -100,7 +100,7 @@ Each item follows the 5-section Evidence-Bearing Report format (Claim / Evidence
 - Amend CLAUDE.md §4: add the 13th Selection Decision Tree row; add the 12th Retained Agents table entry; amend the Watch note's flat-hierarchy claim to name `manager-lead` as the sole Agent-carrier.
 - Amend CLAUDE.md §4 Supersession note for `SPEC-SUBAGENT-NESTING-DOCTRINE-001` to reference this SPEC's depth-2 seal as the active flat-hierarchy guarantee.
 - Mirror all three edits to `internal/template/templates/.claude/agents/moai/manager-lead.md` + `internal/template/templates/CLAUDE.md`; run `make build`.
-- Add the OQ-4 CI guard (if OQ-4 = "add guard"): a new test in `internal/template/` mirroring `subagent_boundary_test.go` that greps `manager-lead`-spawned leaf-worker agent files for `Agent` in `tools:` and fails on match.
+- Add the depth-2 seal CI guard (OQ-4 RESOLVED — guard obligatory, codified as REQ-DEPTH-001): a new test in `internal/template/` mirroring `subagent_boundary_test.go` that greps `manager-lead`-spawned leaf-worker agent files for `Agent` in `tools:` and fails on match.
 
 **Self-verify**: AC-LEAD-001, AC-LEAD-002, AC-LEAD-003; `moai spec lint --strict` on this SPEC's directory exits 0; `grep -rn 'AskUserQuestion' .claude/agents/moai/manager-lead.md` returns 0.
 
@@ -183,7 +183,7 @@ Each item follows the 5-section Evidence-Bearing Report format (Claim / Evidence
 - `.moai/specs/SPEC-AUTONOMY-TIERS-001/spec.md` — sibling completed SPEC whose OQ-1..OQ-4 pattern this plan's OQ-1..OQ-4 mirror.
 - `.moai/reports/moai-autonomy-workflow-redesign-20260803.html` §3.3 — the design authority (cited via AUTONOMY-TIERS §G; the report is gitignored from the worktree but lives in the main checkout).
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix — the `(none) → draft` transition this plan-phase artifacts emission triggers (owner: manager-spec; commit subject `feat(SPEC-HIERARCHICAL-TEAM-001): plan-phase artifacts (Tier M, 3 artifacts)` per the canonical pattern).
-- `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier — Tier M = 3 artifacts (spec + plan + acceptance), ceiling 16 REQs / 16 ACs. This SPEC carries 13 REQs + 14 ACs (within budget).
+- `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier — Tier M = 3 artifacts (spec + plan + acceptance), ceiling 16 REQs / 16 ACs. This SPEC carries 14 REQs + 15 ACs (within budget).
 - `.claude/agents/moai/builder-harness.md` — the agent that authors `manager-lead.md` at run-phase M1 (CLAUDE.local.md §16 — 3+ agent creation mandates builder-harness).
 - `.claude/skills/plan-research-fanout/` — the skill REQ-FANOUT-001 consumes (fixed-heading markdown schema for explorer returns).
 - `internal/spec/era.go` — the §E.2 / §E.3 / §E.4 / §E.5 heading matchers the fold row format MUST NOT collide with (Pre-flight §4 verifies).

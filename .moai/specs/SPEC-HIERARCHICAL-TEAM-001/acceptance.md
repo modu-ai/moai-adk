@@ -26,6 +26,7 @@ All ACs in §D are MUST unless marked otherwise.
 | AC-LEAD-001 | REQ-LEAD-001 | M1 | MUST |
 | AC-LEAD-002 | REQ-LEAD-002 | M1 | MUST |
 | AC-LEAD-003 | REQ-LEAD-003 | M1 | MUST |
+| AC-DEPTH-001 | REQ-DEPTH-001 | M1 | MUST |
 | AC-WORKTREE-001 | REQ-WORKTREE-001 | M2 | MUST |
 | AC-WORKTREE-002 | REQ-WORKTREE-002 | M2 | MUST |
 | AC-FOLD-001 | REQ-FOLD-001 | M3 | MUST |
@@ -59,11 +60,11 @@ All ACs in §D are MUST unless marked otherwise.
 **When** the inspector greps CLAUDE.md §4 Selection Decision Tree.
 **Then** ALL of:
 - the tree carries a row matching `Use the .manager-lead. subagent` (regex `manager-lead`);
-- the row's predicate names multi-milestone Tier L coordination (`≥3 milestones OR ≥10 files OR cross-domain fan-out` or semantic equivalent);
+- the row's predicate names multi-milestone Tier L coordination (`≥3 milestones AND ≥10 files AND cross-domain fan-out` or semantic equivalent — conjunctive AND, NOT disjunctive OR);
 - the existing 12 rows (1-12) remain present verbatim (no row deleted, no row renumbered);
 - `grep -c 'Use the' CLAUDE.md` returns ≥ the pre-M1 count + 1 (the new 13th row).
 
-**Verify**: `grep -nE 'manager-lead' CLAUDE.md`; diff `CLAUDE.md` against `internal/template/templates/CLAUDE.md` (whitespace-normalized).
+**Verify**: `grep -nE 'manager-lead' CLAUDE.md`; `grep -n '≥3 milestones AND ≥10 files AND cross-domain fan-out' CLAUDE.md` (expect ≥1 match); diff `CLAUDE.md` against `internal/template/templates/CLAUDE.md` (whitespace-normalized).
 
 ### AC-LEAD-003 — CLAUDE.md §4 Retained Agents table 12 entries + Watch note amendment
 
@@ -76,6 +77,18 @@ All ACs in §D are MUST unless marked otherwise.
 - the Supersession note for `SPEC-SUBAGENT-NESTING-DOCTRINE-001` references this SPEC's depth-2 seal (regex `SPEC-HIERARCHICAL-TEAM-001|depth-2 seal`).
 
 **Verify**: `grep -c '| .manager-lead. |' CLAUDE.md`; `grep -E 'sole (exception|Agent-carrier)' CLAUDE.md`; `grep -E 'SUBAGENT-NESTING-DOCTRINE-001' CLAUDE.md` (the supersession note).
+
+### AC-DEPTH-001 — depth-2 seal CI guard (defense-in-depth)
+
+**Given** the M1 depth-2 seal is in effect and the OQ-4 RESOLVED decision (guard obligatory) has landed.
+**When** the inspector runs the CI test under `internal/template/` (or, if the test has not yet been authored, greps for its presence + the grep pattern).
+**Then** ALL of:
+- a CI test exists under `internal/template/` mirroring the `subagent_boundary_test.go` pattern (grep the test for `subagent_boundary` or `manager-lead` references);
+- the test greps every `manager-lead`-spawned leaf-worker agent file for the literal token `Agent` in its `tools:` list;
+- the test FAILS the build when a leaf-worker agent file adds `Agent` to `tools:` (regression guard);
+- where a leaf-worker agent file omits `Agent` from `tools:` (the REQ-LEAD-001 invariant), the test PASSES.
+
+**Verify**: run the CI test (`go test ./internal/template/... -run <DepthSeal|SubagentBoundary>`); or, if not yet authored, `ls internal/template/*depth* internal/template/*leaf* 2>/dev/null` + `grep -rln 'manager-lead.*Agent\|leaf-worker.*Agent' internal/template/` (expect the test file path to resolve once authored at M1).
 
 ### AC-WORKTREE-001 — worktree-integration.md decision tree + HARD rule re-key
 
@@ -127,13 +140,13 @@ All ACs in §D are MUST unless marked otherwise.
 ### AC-FOLD-003 — Bounded-context invariant
 
 **Given** the M3 fold procedure has fired at milestone Mn.
-**When** the inspector reads post-fold token usage.
+**When** the inspector reads post-fold token usage from the statusline context-usage readout.
 **Then** ALL of:
-- manager-lead's context usage is approximately proportional to current-milestone (M{n+1}) size + cumulative fold rows + always-loaded rule prefix — NOT proportional to Mn-cumulative raw transcript;
-- the model-specific handoff threshold (context-window-management.md § Context Window Targets) still fires when crossed (the fold does NOT bypass the handoff gate);
+- post-fold token usage < pre-fold token usage (the fold reduced the live context — strict binary);
+- post-fold token usage < the model-specific handoff threshold (context-window-management.md § Context Window Targets — 50% on 1M / GLM-5.2, 90% on 200K/256K);
 - the armed goal condition (if any) is preserved across the `/compact` (AP-3).
 
-**Verify**: statusline context-usage readout pre-fold vs post-fold; `moai goal status` (if armed) returns the same condition post-fold.
+**Verify**: statusline context-usage readout pre-fold vs post-fold (numeric comparison: post < pre); confirm post-fold reading is below the model-specific handoff threshold; `moai goal status` (if armed) returns the same condition post-fold.
 
 ### AC-PEER-001 — Peer cross-validation spawn at Tier M/L
 
@@ -208,7 +221,7 @@ All ACs in §D are MUST unless marked otherwise.
 
 ## §D.4 Forward-looking checks (post-close invariants)
 
-- **Depth-2 seal regression guard**: if a future SPEC amends `manager-lead.md` to add `Agent` to a leaf-worker agent's `tools:` list, the OQ-4 CI guard (if added) catches it at lint time. If OQ-4 = "no CI guard", the regression surfaces only at runtime (depth-3 spawn attempt rejected by `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` cap).
+- **Depth-2 seal regression guard**: if a future SPEC amends `manager-lead.md` to add `Agent` to a leaf-worker agent's `tools:` list, the REQ-DEPTH-001 CI guard (obligatory per OQ-4 RESOLVED) catches it at lint time. The regression never reaches runtime (where it would otherwise be rejected by `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`).
 - **Worktree re-key stability**: if a future SPEC re-introduces team-mode language into `worktree-integration.md`, AC-WORKTREE-001's residual-phrase grep (`team mode implementation` returns 0) catches the regression at sync-phase lint.
 - **Context-Folding evidence audit**: a future `moai spec audit` SHOULD resolve all `.moai/state/verify/<session>/M<n>.*` paths cited in §E.2 fold rows. Dangling paths indicate either session-directory cleanup over-reach or a fold-procedure gap — either is a follow-up SPEC, not a silent acceptance.
 
@@ -216,7 +229,7 @@ All ACs in §D are MUST unless marked otherwise.
 
 - **`phase:` value audit**: `phase: "v3.x target"` is a release-target label (NOT a lifecycle-stage token). `moai spec lint --strict` MUST NOT emit `FrontmatterPhaseInvalid`. (Self-check passes by construction at plan-phase emission; included here for plan-audit visibility.)
 - **OQ resolution gate**: OQ-1 / OQ-2 / OQ-3 / OQ-4 are DEFERRED to Implementation Kickoff per the AUTONOMY-TIERS precedent. plan-auditor verifies the OQs are documented in spec.md §F and surface at the Implementation Kickoff Approval gate; the OQ decisions ride `progress.md` §E.1 as plan-phase-terminated inputs.
-- **REQ/AC budget**: Tier M ceiling is 16 REQs / 16 ACs. This SPEC carries 13 REQs (REQ-LEAD-001..REQ-CLOSE-001) + 14 ACs (AC-LEAD-001..AC-REGRESS-001). Within budget; plan-auditor verifies no ceiling breach.
+- **REQ/AC budget**: Tier M ceiling is 16 REQs / 16 ACs. This SPEC carries 14 REQs (REQ-LEAD-001..REQ-CLOSE-001, including REQ-DEPTH-001) + 15 ACs (AC-LEAD-001..AC-REGRESS-001, including AC-DEPTH-001). Within budget; plan-auditor verifies no ceiling breach.
 
 ## §D.6 Anti-patterns binding at acceptance time
 
@@ -226,4 +239,4 @@ All ACs in §D are MUST unless marked otherwise.
 
 ## §D.7 Summary
 
-14 ACs total, all MUST severity, all binary-testable, all traceable to a REQ in spec.md §D (except AC-REGRESS-001 which is cross-cutting). The matrix is the run-phase verification SSOT; the spec.md §H summary is the cross-reference index. Indirect verification (§D.2) covers the two load-bearing assumptions (`/compact` in subagent context, peer-worker read-only enforcement) whose direct verification is changelog-sourced and run-phase-confirmed.
+15 ACs total, all MUST severity, all binary-testable, all traceable to a REQ in spec.md §D (except AC-REGRESS-001 which is cross-cutting). The matrix is the run-phase verification SSOT; the spec.md §H summary is the cross-reference index. Indirect verification (§D.2) covers the two load-bearing assumptions (`/compact` in subagent context, peer-worker read-only enforcement) whose direct verification is changelog-sourced and run-phase-confirmed.
