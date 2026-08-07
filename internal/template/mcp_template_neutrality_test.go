@@ -45,10 +45,10 @@ var mcpForbiddenTokenRes = []*regexp.Regexp{
 	regexp.MustCompile(`SPEC-[A-Z][A-Z0-9]+-[0-9]{3}`), // SPEC-ID leak
 	regexp.MustCompile(`\b[0-9a-f]{40}\b`),             // 40-char commit SHA
 	regexp.MustCompile(`\b[0-9a-f]{7,8}\b`),            // short SHA (word-bounded)
-	regexp.MustCompile(`/Users/`),                       // macOS-bias absolute path
-	regexp.MustCompile(`CLAUDE\.local\.md`),             // maintainer-only local file
-	regexp.MustCompile(`PR #[0-9]+`),                    // pull-request number
-	regexp.MustCompile(`\$comment`),                     // JSONC $comment form (REQ-TMC-004)
+	regexp.MustCompile(`/Users/`),                      // macOS-bias absolute path
+	regexp.MustCompile(`CLAUDE\.local\.md`),            // maintainer-only local file
+	regexp.MustCompile(`PR #[0-9]+`),                   // pull-request number
+	regexp.MustCompile(`\$comment`),                    // JSONC $comment form (REQ-TMC-004)
 }
 
 // TestMCPNeutralityTemplateShape asserts AC-TMC-001 (3-active-entries shape),
@@ -72,9 +72,9 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 
 	// AC-TMC-001: structural shape — exactly the 3 default-on active entries.
 	var doc struct {
-		Schema         string            `json:"$schema"`
-		McpServers     map[string]any    `json:"mcpServers"`
-		StaggeredStart map[string]any    `json:"staggeredStartup"`
+		Schema         string         `json:"$schema"`
+		McpServers     map[string]any `json:"mcpServers"`
+		StaggeredStart map[string]any `json:"staggeredStartup"`
 	}
 	if err := json.Unmarshal(data, &doc); err != nil {
 		t.Fatalf("template .mcp.json is not valid JSON: %v", err)
