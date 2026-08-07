@@ -321,6 +321,19 @@ Three obligations from that file bind here and are restated so they hold without
   `/tmp`, which the OS clears. A claim whose cited evidence path no longer resolves
   is an unattributed claim (`verification-claim-integrity.md` §2).
 
+### Attributable diff-check doctrinal switch (REQ-SPD-008 / AC-SPD-008 — SPEC-SYNC-PARALLEL-DOCS-001)
+
+The canonical 7-command batch RE-EXECUTES test / lint / vet / cover by default. SPEC-SYNC-PARALLEL-DOCS-001 A9 introduces a **doctrinal switch** in how the orchestrator COMPOSES that batch: before re-executing a verification dimension, the orchestrator SHALL first consult the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA). This is a composition-time doctrinal switch — there is NO mechanical "about to re-run command X" preamble token to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash). The switch binds the orchestrator's batch-composition discipline, not a runtime hook.
+
+**All-three attribution match → consume §E evidence (no re-execution).** When ALL THREE of the following hold for a verification dimension, the orchestrator SHALL consume the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command:
+1. **Snapshot key match** — the §E-cited HEAD SHA equals the current `moai verify check --key-current` snapshot key (no commit landed between §E recording and orchestrator batch);
+2. **Command match** — the §E-cited command (a) matches the snapshot's recorded command for that dimension;
+3. **Output match** — the §E-cited observed output (b) matches the snapshot's recorded output for that dimension.
+
+On all-three match, the batch records the snapshot key + cited §E evidence path as its baseline-attribution per VCI §2 and DOES NOT re-execute the corresponding command (test / lint / vet / cover). The verification dimension is marked PASS-attributed, not PASS-reexecuted — both satisfy VCI §1.1, but the attribution path is faster and the re-execution path is stronger.
+
+**Any mismatch → fallback to re-execution (REQ-SPD-009 / AC-SPD-009).** On ANY of (1) snapshot key drift (HEAD SHA changed since §E recording), (2) command drift (§E-cited command does not match the snapshot's recorded command), OR (3) §E evidence missing or citing no observable output, the batch SHALL fall back to re-execution of the affected verification dimension. The fallback is logged with the mismatch reason (`snapshot_key_drift` / `command_drift` / `missing_section_e`). The batch NEVER silently skips verification — the `verification-claim-integrity.md` §1.1 invariant holds on every path. The full attributable diff-check pattern + fallback contract lives in `.claude/rules/moai/workflow/verification-batch-pattern.md` § Attributable diff-check pattern.
+
 
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
@@ -409,7 +422,7 @@ This is **procedural enforcement** (same trust model as the Pre-Spawn Sync Check
 
 **Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is therefore satisfied without additional code; the PreToolUse-on-Edit advisory above adds per-edit awareness on top of that session-start baseline.
 
-**Gate for orchestrator-direct Tier S/M push+PR (SPEC-ORCH-GIT-RELAX-001).** The Pre-Spawn Sync Check (§ above) and the Pre-Edit Sync Check (§ above) are the mandatory gate for orchestrator-direct Tier S/M push+PR. When the orchestrator handles a Tier S/M push+PR directly via Bash (`git switch -c` / `git push -u` / `gh pr create` with `MOAI_BRANCH_GUARD_EXEMPT=1`) instead of spawning `manager-git`, the env-path branch-guard exemption is predicated on these sync checks passing first: the orchestrator MUST run the `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` + `moai session list --json` batch and halt (or auto-isolate per `worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation) on any divergence or foreign active session BEFORE issuing the branch-state-mutating Bash calls. The exemption sentinel admits the branch mutation mechanically; the sync check is what makes that admission safe.
+**Gate for orchestrator-direct Tier S/M push+PR.** The Pre-Spawn Sync Check (§ above) and the Pre-Edit Sync Check (§ above) are the mandatory gate for orchestrator-direct Tier S/M push+PR. When the orchestrator handles a Tier S/M push+PR directly via Bash (`git switch -c` / `git push -u` / `gh pr create` with `MOAI_BRANCH_GUARD_EXEMPT=1`) instead of spawning `manager-git`, the env-path branch-guard exemption is predicated on these sync checks passing first: the orchestrator MUST run the `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` + `moai session list --json` batch and halt (or auto-isolate per `worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation) on any divergence or foreign active session BEFORE issuing the branch-state-mutating Bash calls. The exemption sentinel admits the branch mutation mechanically; the sync check is what makes that admission safe.
 
 ## Time Estimation
 

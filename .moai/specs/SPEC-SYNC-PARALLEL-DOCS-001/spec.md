@@ -2,7 +2,7 @@
 id: SPEC-SYNC-PARALLEL-DOCS-001
 title: "Sync-phase parallelization: docs∥audit (A5), MX-early+parallel (A7), §E+7-batch attributable diff-check (A9), plan-auditor Tier retry ceilings (A6)"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-07
 updated: 2026-08-07
 author: manager-spec
