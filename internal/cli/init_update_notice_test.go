@@ -47,7 +47,6 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("no-hooks", true, "")
 	cmd.Flags().Bool("all", false, "")
 	cmd.Flags().String("project-mode", "", "")
-	cmd.Flags().String("harness-profile", "", "")
 	cmd.Flags().Bool("enable-lsp", false, "")
 	cmd.Flags().Bool("enforce-quality", true, "")
 	cmd.Flags().Bool("enable-design", true, "")

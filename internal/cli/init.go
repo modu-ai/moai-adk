@@ -88,7 +88,6 @@ func init() {
 
 	// Page-3 non-interactive override flags (REQ-IWE-008)
 	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
-	initCmd.Flags().String("harness-profile", "", "Default harness evaluator profile: default, strict, lenient, frontend")
 	// Registered false but read with a true default (the LSPEnabled seed in
 	// runInit), so the effective default matches the wizard's lsp_enabled
 	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
@@ -175,13 +174,10 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 		opts.DesignEnabled = result.DesignEnabled
 	}
 
-	// harness_profile and coverage_exemptions_enabled are no longer asked
-	// (REQ-WIZ-012/013), so these result fields are permanently zero and the
-	// assignments are inert; they are retained so the wizard→opts mapping stays
-	// complete if either question ever returns.
-	if result.HarnessProfile != "" {
-		opts.HarnessProfile = result.HarnessProfile
-	}
+	// coverage_exemptions_enabled is no longer asked (REQ-WIZ-013), so this
+	// result field is permanently zero and the assignment is inert; it is
+	// retained so the wizard→opts mapping stays complete if the question ever
+	// returns.
 	opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
@@ -528,7 +524,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
 		ProjectMode:               getStringFlag(cmd, "project-mode"),
-		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
 		LSPEnabled:                getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only
@@ -646,7 +641,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-014/016): the model-routing wizard
 		// answer IS the profile selection; it flows through opts.ModelPolicy and is
-		// normalized to {max, medium, low} at profile persistence (the --profile flag
+		// normalized to {high, medium, low} at profile persistence (the --profile flag
 		// takes precedence over it).
 		// Report format is wizard-only (no CLI flag); empty resolves to the
 		// html+md default at persistence time (initializer.writeReportConfig).
@@ -781,7 +776,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
 	// performance tier to llm.yaml. CLI --model-policy takes precedence over
-	// the wizard's ModelPolicy; both resolve to one of {max, medium, low}.
+	// the wizard's ModelPolicy; both resolve to one of {high, medium, low}.
 	perfTier := resolveModelPolicy(cmd)
 	if perfTier == "" && opts.ModelPolicy != "" {
 		perfTier = opts.ModelPolicy
@@ -794,7 +789,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): persist the resolved per-agent
 	// profile to llm.profile. Precedence: the --profile flag (opts.Profile, already
-	// validated to {max, medium, low}), else the resolved model-policy tier
+	// validated to {high, medium, low}), else the resolved model-policy tier
 	// (perfTier / opts.ModelPolicy). NormalizeToTier is total (high→max, ""→medium),
 	// so the wizard's legacy {high, medium, low} answer maps correctly.
 	{

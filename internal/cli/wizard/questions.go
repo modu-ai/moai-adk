@@ -1,10 +1,7 @@
 package wizard
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -367,67 +364,6 @@ func QuestionByID(questions []Question, id string) *Question {
 	return nil
 }
 
-// canonicalHarnessProfiles is the fallback list used when the evaluator-profiles
-// directory is absent or empty (AC-IWE-002 EC-2).
-var canonicalHarnessProfiles = []string{"default", "strict", "lenient", "frontend"}
-
-// loadHarnessProfiles reads profile filenames from projectRoot/.moai/config/evaluator-profiles/.
-// Falls back to canonicalHarnessProfiles when the directory is absent or empty.
-// A warning is printed to stderr when the fallback is triggered (EC-2).
-func loadHarnessProfiles(projectRoot string) []Option {
-	dir := filepath.Join(projectRoot, ".moai", "config", "evaluator-profiles")
-	entries, err := os.ReadDir(dir)
-	if err != nil || len(entries) == 0 {
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr,
-				"warning: evaluator-profiles directory not found at %s; using canonical fallback list [default, strict, lenient, frontend]\n",
-				dir)
-		}
-		return harnessProfileOptions(canonicalHarnessProfiles)
-	}
-
-	var profiles []string
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if base, ok := strings.CutSuffix(e.Name(), ".md"); ok {
-			profiles = append(profiles, base)
-		}
-	}
-
-	if len(profiles) == 0 {
-		_, _ = fmt.Fprintf(os.Stderr,
-			"warning: no .md profile files found in %s; using canonical fallback list\n", dir)
-		return harnessProfileOptions(canonicalHarnessProfiles)
-	}
-
-	return harnessProfileOptions(profiles)
-}
-
-func harnessProfileOptions(profiles []string) []Option {
-	opts := make([]Option, 0, len(profiles))
-	for i, p := range profiles {
-		desc := ""
-		switch p {
-		case "default":
-			desc = "Standard quality scoring"
-		case "strict":
-			desc = "Stricter thresholds — fewer false PASS"
-		case "lenient":
-			desc = "Relaxed thresholds — faster iteration"
-		case "frontend":
-			desc = "Frontend-optimised scoring dimensions"
-		}
-		label := p
-		if i == 0 {
-			label = p + " (Recommended)"
-		}
-		opts = append(opts, Option{Label: label, Value: p, Desc: desc})
-	}
-	return opts
-}
-
 // Page3Questions returns page 3 of the `moai init` set, "Quality & Workflow".
 //
 // The four former confirm questions — lsp_enabled, enforce_quality,
@@ -489,7 +425,7 @@ func Page3Questions(projectRoot string) []Question {
 				{Label: "Claude (Recommended)", Value: config.AuditModelClaude, Desc: "Session model review — no external dependency"},
 				{Label: "Codex", Value: config.AuditModelCodex, Desc: "codex CLI review (requires codex installed; fails open)"},
 				{Label: "GLM", Value: config.AuditModelGLM, Desc: "z.ai GLM review (requires GLM key; fails open)"},
-				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Declare multi-auditor (convergence is a follow-up; stored only)"},
+				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Multi-auditor super-review (parallel codex+GLM + convergence; fails open)"},
 			},
 			Default:  config.AuditModelClaude,
 			Required: true,
