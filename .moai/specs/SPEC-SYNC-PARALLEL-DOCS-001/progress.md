@@ -66,7 +66,7 @@ The initial M1-M4 edits carried `REQ-SPD-*` / `AC-SPD-*` tokens in template `.cl
 
 run_status: audit-ready
 run_complete_at: 2026-08-07
-run_commit_sha: pending-backfill-sync-par-docs (M1+M2+M3+M4+M5 + neutrality fix + catalog regen + §E.3)
+run_commit_sha: 4c1b9ae62
 ac_pass_count: 14
 ac_fail_count: 0
 preserve_list_post_run_count: 0 (all 4 axes are doctrine-prose edits + YAML; no source-code preserve-list)
@@ -85,4 +85,30 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-08-07
+sync_commit_sha: pending-backfill-sync-par-docs (self-referential-hazard workaround per spec-frontmatter-schema.md D3; Route B squash merge — SHA known only after PR merge; backfilled in a follow-up commit post-merge)
+changelog_entry_position: top-of-unreleased-added (most-recent-first ordering; entry references all 14 AC PASS with clause-based matching after the §25 REQ/AC token strip)
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented → completed (3-phase close merged into this sync commit; spec.md is the sole YAML-frontmatter-bearing artifact)
+  plan_md: n/a (no frontmatter transition — plan.md carries no YAML frontmatter)
+  acceptance_md: n/a (no frontmatter transition — acceptance.md carries no YAML frontmatter)
+  progress_md: §E.3 run_commit_sha backfill (4c1b9ae62) + §E.4 sync signal (this commit); §E.2 untouched (manager-develop-owned), §E.3 audit-ready body untouched (manager-develop-owned), duplicate §E.3 placeholder heading at L82 untouched (parser-load-bearing)
+run_commit_sha_backfilled: 4c1b9ae62 (M5 cross-cutting concurrency-guard codification + §25 template-neutrality strip + §E.3 run-phase close)
+b12_self_test_a: pre_emission_changelog_duplicate_grep_count_0 (grep -c 'SPEC-SYNC-PARALLEL-DOCS-001' CHANGELOG.md pre-emission returned 0 → no duplicate entry from parallel BATCH-SYNC)
+b12_self_test_b: ac_count_match_14 (acceptance.md distinct AC identifiers AC-SPD-001..014 = 14; CHANGELOG entry references all 14 AC IDs by axis group A5/A7/A9/A6 + cross-cutting, mapping 1:1 to the §A AC matrix)
+b12_self_test_c: file_path_verification_8_of_8 (all 8 run-phase-modified files verified via ls pre-commit: 6 template-managed `.claude/` files + 1 local-only `harness.yaml` + 1 agent file; template↔local mirror parity verified byte-identical in run-phase §E.2 evidence)
+canary_compliance_check:
+  template_neutrality_25: green (M5 sub-step stripped REQ-SPD-*/AC-SPD-* tokens from 6 template files; CI guard `RULE_REQ_AC_TOKEN_LEAK` + `TestTemplateNoInternalContentLeak` pass; SPEC-SYNC-PARALLEL-DOCS-001 ID retained as allowed C1 class per §25.1)
+  make_build_required: false (no template asset changed during sync-phase — run-phase M5 already executed `make build`; sync-phase is doctrine-only edits to SPEC artifacts + CHANGELOG)
+parity_status:
+  readme_4_locale: skipped_per_task_instruction (A5/A7/A9/A6 are orchestrator-internal scheduling doctrines, not user-facing CLI/config/command; README has no sync-scheduling section to amend; §17.2 oss-docs chaining trigger does not fire — no user-visible behavior changed)
+  docs_site_4_locale: skipped_per_task_instruction (existing moai-sync.md Phase 7 + moai-run.md Plan Audit Gate pages describe user-visible parallel-diagnostics + verdict flow, not orchestrator-internal fan-out scheduling / MX scan ordering / §E attribution / Tier-resolved retry iteration counts; per task "do not invent sections", no docs-site section added or amended)
+files_changed_per_locale:
+  changelog: 1 (CHANGELOG.md — single bullet entry under [Unreleased] → Added; en-only canonical surface, no 4-locale derivation since CHANGELOG is mono-locale per keepachangelog convention)
+  spec_md_frontmatter: 1 (status in-progress → completed + updated refreshed to 2026-08-07; both were already 2026-08-07 from plan/run phases — no date drift)
+  progress_md: 1 (§E.3 run_commit_sha field backfilled 4c1b9ae62; §E.4 sync-phase audit-ready signal block populated; §E.2 untouched; §E.3 audit-ready body untouched; duplicate §E.3 placeholder heading preserved)
+  template_mirror: 0 sync-phase edits (run-phase M5 already mirrored all 6 template files byte-identical; sync-phase is SPEC-artifact + CHANGELOG-only — no template asset touched)
+residual_risk:
+  post_merge_backfill: 1 follow-up commit required to replace the `pending-backfill-sync-par-docs` placeholder with the real sync-commit SHA (same Route B squash-merge self-referential-hazard pattern as SPEC-PROJECT-NAVIGATOR-003 #1367 / SPEC-PROJECT-NAVIGATOR-002 #1361)
+  sync_auditor_4_dim: pending (this §E.4 signal is the manager-docs self-verification; the independent sync-auditor 4-dimension scoring runs as a separate orchestrator-delegated verification post-sync-commit, NOT as a sync-phase sub-step owned by this agent)
