@@ -104,16 +104,15 @@ before the data that changes on every request** (the query, a timestamp). The
 break-even point is 2 requests — the first request's write premium is recovered
 by the 0.1x read of the second request within the TTL.
 
-## The Scope of MoAI cache.yaml
+## What MoAI Controls
 
-`.moai/config/sections/cache.yaml` (`enabled`, `session_ttl`) applies **only to
-the `cache_control` injection when MoAI calls the Anthropic API directly through
-its own SDK-wrapper path**. **It is unrelated to caching in Claude Code
-sessions** — Claude Code's caching is managed automatically by the runtime as
-described above, and MoAI cannot intervene in it.
+Nothing, on this axis. MoAI ships no prompt-caching configuration and injects
+no `cache_control` of its own. **Caching in Claude Code sessions is managed
+automatically by the runtime** as described above, and MoAI cannot intervene in
+it — no MoAI-side switch changes cache behavior in a session.
 
 > **GLM backend**: z.ai (GLM) uses content-similarity-based **implicit
-> caching**, so MoAI does not inject `cache_control` on the GLM path.
+> caching**, which the provider likewise manages on its own.
 
 ## Summary
 
