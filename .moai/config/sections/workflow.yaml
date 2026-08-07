@@ -14,6 +14,14 @@ workflow:
         token_threshold: 150000
     default_mode: ""
     execution_mode: auto
+    # context_folding: manager-lead's per-milestone Context-Folding trigger policy
+    # (SPEC-HIERARCHICAL-TEAM-001 REQ-FOLD-001 OQ-1 decision). The fold procedure
+    # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
+    # progress.md §E.2 fold row); this flag governs WHEN manager-lead fires it.
+    # Values: auto | opt-in | off. `auto` fires at every Tier L milestone
+    # boundary; `opt-in` (default) requires manager-lead to decide per milestone;
+    # `off` disables folding entirely (Tier L runs fall back to /clear + handoff).
+    context_folding: opt-in
     # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
     # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
     # precedence documented ceiling surface for the diagnostic fix-loop). The

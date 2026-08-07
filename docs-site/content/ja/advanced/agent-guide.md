@@ -5,7 +5,7 @@ draft: false
 description: "MoAI-ADK v3.0の11個のコアエージェントカタログ — 役割、フェーズ範囲、計画-監査の分離原則。"
 ---
 
-MoAI-ADK v3.0 の 11 個のコアエージェントカタログを詳しく解説します。
+MoAI-ADK v3.0 の 12 個のコアエージェントカタログを詳しく解説します。
 
 {{< callout type="info" >}}
 **ひと言要約**: エージェントは各分野の **専門家チーム** です。MoAI がチームリーダーとして適切な専門家に作業を割り振ります — そして計画を作るエージェントとそれを監査するエージェントは必ず分離されます。
@@ -34,11 +34,11 @@ MoAI は MoAI-ADK の **最上位コーディネーター** です。ユーザ�
 | 並列実行 | 独立した読み取り専用作業は複数エージェントに同時委任 |
 | 結果統合 | エージェントの実行結果を集約してユーザーに報告 |
 
-## 11 個のコアエージェントカタログ
+## 12 個のコアエージェントカタログ
 
-MoAI-ADK は **11 個のコアエージェント** (10 個の MoAI カスタム + 1 個の Anthropic ビルトイン) を使用します。
+MoAI-ADK は **12 個のコアエージェント** (11 個の MoAI カスタム + 1 個の Anthropic ビルトイン) を使用します。
 
-### Manager エージェント (5 個)
+### Manager エージェント (6 個)
 
 | エージェント | 役割 | フェーズ | Model / effort | 主要スキル |
 |----------|------|------|---------------|----------|
@@ -47,6 +47,7 @@ MoAI-ADK は **11 個のコアエージェント** (10 個の MoAI カスタム 
 | `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator エージェント (2 個)
 

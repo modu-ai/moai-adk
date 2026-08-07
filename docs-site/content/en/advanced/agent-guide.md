@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-A detailed guide to the catalog of 11 core agents in MoAI-ADK v3.0.
+A detailed guide to the catalog of 12 core agents in MoAI-ADK v3.0.
 
 {{< callout type="info" >}}
 **One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
@@ -33,11 +33,11 @@ MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and
 | Parallel execution | Independent read-only tasks are delegated to multiple agents simultaneously |
 | Result consolidation | Agent execution results are aggregated and reported to the user |
 
-## The 11-Agent Core Catalog
+## The 12-Agent Core Catalog
 
-MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
+MoAI-ADK uses **12 core agents** (11 MoAI custom + 1 Anthropic built-in).
 
-### Manager Agents (5)
+### Manager Agents (6)
 
 | Agent | Role | Phase | Model / effort | Key skills |
 |----------|------|------|---------------|----------|
@@ -46,6 +46,7 @@ MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
 | `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
+| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator Agents (2)
 
