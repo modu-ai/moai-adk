@@ -531,6 +531,95 @@ func TestACPN015_NonGoProject(t *testing.T) {
 	}
 }
 
+// TestNavigatorRegen_NextTask_ExcludesImplemented_PrefersInProgress verifies
+// SPEC-PROJECT-NAVIGATOR-004 AC-001/AC-002/AC-003: the "Next task" line must
+// exclude implemented SPECs and prefer in-progress SPECs over draft SPECs,
+// while the "Current frontier" display list stays inclusive of implemented.
+//
+// Fixture (alphabetically ordered so the pre-fix bug would misclassify):
+//   SPEC-A-001 — status implemented (alphabetically first)
+//   SPEC-B-001 — status in-progress
+//   SPEC-C-001 — status draft
+//
+// Pre-fix, "Next task" = first non-terminal by alphabetical sort = SPEC-A-001
+// (the misclassification). Post-fix, the positive status-tier predicate selects
+// SPEC-B-001 (in-progress). SPEC-A-001 must remain in "Current frontier".
+func TestNavigatorRegen_NextTask_ExcludesImplemented_PrefersInProgress(t *testing.T) {
+	dir := t.TempDir()
+	initFixtureRepo(t, dir)
+	writeSPEC(t, dir, "SPEC-A-001", "alpha", "implemented", "v1.0.0", "internal/a")
+	writeSPEC(t, dir, "SPEC-B-001", "beta", "in-progress", "v1.0.0", "internal/b")
+	writeSPEC(t, dir, "SPEC-C-001", "gamma", "draft", "v1.0.0", "internal/c")
+	if err := gitRun(dir, "add", ".moai/specs"); err != nil {
+		t.Fatalf("git add specs: %v", err)
+	}
+	if err := gitRun(dir, "commit", "-m", "fixture: implemented + in-progress + draft"); err != nil {
+		t.Fatalf("git commit: %v", err)
+	}
+
+	if _, err := runRegen(t, dir); err != nil {
+		t.Fatalf("regen exited non-zero: %v", err)
+	}
+
+	nav, _, _ := navigatorFiles(dir)
+	data, err := os.ReadFile(nav)
+	if err != nil {
+		t.Fatalf("read navigator.md: %v", err)
+	}
+	body := string(data)
+
+	// AC-003: "Current frontier" remains inclusive of implemented SPECs.
+	if !strings.Contains(body, "SPEC-A-001") {
+		t.Errorf("AC-003: SPEC-A-001 (implemented) is MISSING from Current frontier (display regression — frontier must stay inclusive)")
+	}
+
+	// Slice the "## Next task" section so the assertions scope to the
+	// recommendation, not the whole document (the frontier list also names
+	// every SPEC). The section runs from its heading to the next "## " heading
+	// or end of file.
+	nextTaskSection := extractSection(body, "## Next task")
+
+	// AC-001: implemented SPEC excluded from "Next task".
+	if strings.Contains(nextTaskSection, "SPEC-A-001") {
+		t.Errorf("AC-001: SPEC-A-001 (implemented) appeared in Next task section (must be excluded):\n%s", nextTaskSection)
+	}
+	// AC-002: in-progress preferred over draft.
+	if !strings.Contains(nextTaskSection, "SPEC-B-001") {
+		t.Errorf("AC-002: SPEC-B-001 (in-progress) is NOT the Next task (must be preferred over draft):\n%s", nextTaskSection)
+	}
+	if strings.Contains(nextTaskSection, "SPEC-C-001") {
+		t.Errorf("AC-002: SPEC-C-001 (draft) appeared in Next task over the in-progress SPEC (tier order wrong):\n%s", nextTaskSection)
+	}
+}
+
+// extractSection returns the body of the markdown section introduced by heading
+// `## <name>` up to the next `## ` heading or end of text. Whitespace-only
+// matching of the heading name.
+func extractSection(md, name string) string {
+	lines := strings.Split(md, "\n")
+	var (
+		out      strings.Builder
+		capturing bool
+	)
+	for _, ln := range lines {
+		trim := strings.TrimSpace(ln)
+		if strings.HasPrefix(trim, "## ") {
+			if capturing {
+				break // next ## heading ends the section
+			}
+			if strings.TrimSpace(strings.TrimPrefix(trim, "##")) == strings.TrimSpace(strings.TrimPrefix(name, "##")) {
+				capturing = true
+				continue
+			}
+		}
+		if capturing {
+			out.WriteString(ln)
+			out.WriteByte('\n')
+		}
+	}
+	return out.String()
+}
+
 // TestACPN016_LSELBoundary verifies AC-PN-016: the script does NOT touch any
 // LSEL surface. We assert by creating sentinel LSEL files and confirming the
 // script neither reads nor deletes them (write-set is only navigator/ + state/navigator/).

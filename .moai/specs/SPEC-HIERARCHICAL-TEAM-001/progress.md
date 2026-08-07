@@ -38,7 +38,7 @@ _(pending run-phase — manager-develop populates this section when all M1-M6 MU
 
 - `sync_status: completed`
 - `sync_complete_at: 2026-08-07` (ISO-8601 placeholder — manager-docs emission; actual timestamp is the sync commit's author date)
-- `sync_commit_sha: pending-backfill-SPEC-HIERARCHICAL-TEAM-001` (self-referential-hazard workaround per `spec-frontmatter-schema.md` D3; backfilled in a follow-up commit after the sync PR merges — same pattern as SPEC-NAVIGATOR-SYNC-003 / SPEC-MOAI-MCP-SERVER-001)
+- `sync_commit_sha: a83934d554fe79e2d7d0cdfad66c91ecdb7bef48` (self-referential-hazard workaround per `spec-frontmatter-schema.md` D3; backfilled in a follow-up commit after the sync PR merges — same pattern as SPEC-NAVIGATOR-SYNC-003 / SPEC-MOAI-MCP-SERVER-001)
 - `changelog_entry_position: CHANGELOG.md `[Unreleased] → Added` (top of section, above SPEC-MOAI-MCP-SERVER-001)`
 - `frontmatter_status_transitions`:
   - spec.md: `draft → in-progress → completed` (3-phase close merged on this sync commit; `updated:` refreshed to 2026-08-07)
@@ -49,4 +49,4 @@ _(pending run-phase — manager-develop populates this section when all M1-M6 MU
   - b (AC count match): 15 distinct AC IDs in acceptance.md → 15/15 AC referenced in run-phase evidence (§E.2)
   - c (file path verification): every claimed file path verified via `ls` / `git ls-files` before commit
 
-`sync_commit_sha: pending-backfill-SPEC-HIERARCHICAL-TEAM-001`
+`sync_commit_sha: a83934d554fe79e2d7d0cdfad66c91ecdb7bef48`
