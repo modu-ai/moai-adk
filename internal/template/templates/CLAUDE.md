@@ -70,7 +70,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 3. SPEC plan-phase authoring? Use the `manager-spec` subagent
 4. Run-phase implementation (DDD/TDD/autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`
 5. Sync-phase documentation? Use the `manager-docs` subagent
-6. PR creation for Tier L OR explicit `--pr` (heavy ceremony: release PRs, multi-step merges, Late-Branch 4-Phase closure)? Use the `manager-git` subagent. Tier S/M push+PR (without `--pr`) is handled orchestrator-direct via Bash (`git switch -c` / `git push -u` / `gh pr create`) with `MOAI_BRANCH_GUARD_EXEMPT=1` + the Pre-Spawn Sync Check — no `manager-git` spawn
+6. PR creation per Tier-based routing (Tier L OR explicit `--pr`)? Use the `manager-git` subagent
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent
 8. Sync-phase quality 4-dimension scoring? Use the `sync-auditor` subagent
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
@@ -85,7 +85,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 | `manager-spec` | core/manager | Plan-phase artifact authoring (spec/plan/acceptance/research/design) | `.claude/agents/moai/manager-spec.md` |
 | `manager-develop` | core/manager | Run-phase implementation (cycle_type ∈ {ddd, tdd, autofix}) | `.claude/agents/moai/manager-develop.md` |
 | `manager-docs` | core/manager | Sync-phase documentation (CHANGELOG, README, frontmatter transitions) | `.claude/agents/moai/manager-docs.md` |
-| `manager-git` | core/manager | Tier L / `--pr` PR creation + Late-Branch 4-Phase closure (Tier S/M push+PR is orchestrator-direct) | `.claude/agents/moai/manager-git.md` |
+| `manager-git` | core/manager | PR creation per Tier-based routing + Late-Branch closure | `.claude/agents/moai/manager-git.md` |
 | `plan-auditor` | meta/evaluator | Independent plan-phase audit, bias prevention, GEARS compliance | `.claude/agents/moai/plan-auditor.md` |
 | `sync-auditor` | meta/evaluator | Independent skeptical quality assessment, 4-dimension scoring | `.claude/agents/moai/sync-auditor.md` |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
@@ -250,7 +250,7 @@ For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-m
 
 For core principles, see `.claude/rules/moai/core/moai-constitution.md`. Operational safeguards: file-write-conflict prevention (dependency graphs before parallel execution), agent tool requirements (Read/Write/Edit/Grep/Glob/Bash/TaskCreate/Update/List/Get), loop prevention (max 3 retries), platform compatibility (prefer Edit over sed/awk), team file ownership (per-teammate patterns).
 - **Background Agent Execution (background-default aligned)**: [ZONE:Evolvable] [HARD] As of Claude Code v2.1.198, subagents run in the background by default; the runtime chooses foreground only when it needs the result before continuing, and a background subagent still surfaces every permission prompt in the main session (naming the asking subagent since v2.1.186; Esc denies just that one call). MoAI aligns with this runtime default rather than forcing write-capable agents to the foreground, and does not set the `background:` frontmatter field. The retained safeguard is concurrency, not backgrounding: MoAI does not run two write-capable agents concurrently, and orchestrator work concurrent with a write-capable agent is read-only.
-- **Subagent concurrency caps (v2.1.217)**: [ZONE:Evolvable] Three independent runtime caps bound subagent fan-out, distinct from the nesting *depth* cap (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, §4 Watch note): `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20; ultracode sessions exempt) bounds how many subagents run at once, and `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` (default 200) bounds the per-session total. MoAI's own 3-5 concurrent `Agent()` ceiling (Mode 4) sits well under the runtime cap.
+- **Subagent concurrency caps (v2.1.217; per-session cap removed v2.1.224)**: [ZONE:Evolvable] The runtime caps that bound subagent fan-out are distinct from the nesting *depth* cap (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, §4 Watch note): `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20; ultracode sessions exempt) bounds how many subagents run at once. The per-session total cap (`CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`, default 200) was removed in v2.1.224 — long-running sessions no longer refuse new agents; the concurrency and depth limits still apply. MoAI's own 3-5 concurrent `Agent()` ceiling (Mode 4) sits well under the runtime cap.
 
 Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous (MoAI does not mandate isolation). For the decision tree and per-role guidance, see `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary.
 
