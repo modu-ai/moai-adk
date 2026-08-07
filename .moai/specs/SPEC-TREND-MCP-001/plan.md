@@ -16,9 +16,9 @@
 
 ### §A.2 Decision-reversibility ordering (this plan leads with the highest-change-likelihood decisions)
 
-1. **Tier / scope decision** (NEEDS CLARIFICATION — see §B.B1): whether to ship the full Tier M scope (template `.mcp.json` + generic CLI + doctrine update + catalogue) OR collapse to a Tier S recipe-only scope (catalogue doc + skip rationale, no template `.mcp.json`, no CLI). This decision changes the file count, the doctrine reversal, and the §25 CI guard interaction. The SPEC is authored Tier M; the orchestrator's user-question channel resolves this BEFORE Implementation Kickoff Approval.
-2. **Doctrine reversal scope**: how to reconcile with MOAI-MCP-SERVER-001 REQ-MCP-002 — narrow re-scoping (this SPEC's choice) vs. in-place amendment of the completed SPEC (heavier, requires `amendment_of:` flow).
-3. **ast-grep default-disabled rendering**: commented-out JSON (unusual but catalogue-friendly) vs. JSON5/`$comment`-anchored disable instructions vs. a separate `mcp.disabledServers` field (cleaner but a schema change).
+1. **Tier / scope decision** (RESOLVED — see §B.B1): full Tier M scope confirmed (user decision, 2026-08-07). The template ships 3 active entries (context7, chrome-devtools, playwright) + 2 documented-but-disabled (ast-grep via recipe + moai opt-in), the generic CLI, the doctrine update, and the catalogue. ~10-12 files.
+2. **Doctrine reversal scope**: narrow re-scoping of MOAI-MCP-SERVER-001 REQ-MCP-002 (this SPEC's choice — "no third-party entries THAT CARRY SECRETS / require credentials / fail §25 neutrality") rather than in-place amendment of the completed SPEC.
+3. **ast-grep default-disabled rendering** (RESOLVED): the third form (omitted from active `mcpServers` map, documented in recipe catalogue, activated via `moai mcp add ast-grep ...`) is chosen — no JSONC/`$comment` form in the template (spec.md REQ-TMC-004 v0.1.1).
 4. **Generic CLI surface shape**: `moai mcp add|remove|list` (this SPEC's choice) vs. extending `moai glm tools enable|disable` (rejected — GLM CLI is AUTH-bearing for Z.AI, mixing concerns).
 5. **Catalogue surface**: `.moai/docs/mcp-recipes.md` (local-only, like other `.moai/docs/`) vs. `docs-site/content/en/mcp-recipes.md` (distributed public doc) vs. both. docs-site is sync-phase (manager-docs).
 6. **Refactor depth of `glm_tools.go`**: reuse-unchanged (this SPEC's choice, REQ-TMC-008) vs. extract a narrower `mcp_entry_ops.go` helper. The reuse-unchanged path is lower-risk; the refactor is additive if extracted.
@@ -54,15 +54,13 @@
 
 ## §B. Known Issues + NEEDS CLARIFICATION
 
-### §B.B1 — [NEEDS CLARIFICATION: Tier / scope — full Tier M vs collapsed Tier S]
+### §B.B1 — Tier / scope decision (RESOLVED: full Tier M)
 
-The autonomy report §3.7 language "번들 추가" (bundle add) for Playwright and "번들(opt-in 토글)" for ast-grep suggests the template ships these entries. MOAI-MCP-SERVER-001 REQ-MCP-002 (completed AFTER the report) prohibits "third-party entries" in the provisioned `.mcp.json`. The two are in tension.
+The autonomy report §3.7 language "번들 추가" (bundle add) for Playwright and "번들(opt-in 토글)" for ast-grep suggests the template ships these entries. MOAI-MCP-SERVER-001 REQ-MCP-002 (completed AFTER the report) prohibits "third-party entries" in the provisioned `.mcp.json`. The two were in tension.
 
-**Option A (full Tier M — this SPEC's authored scope)**: create the template `.mcp.json` with 5 entries (context7, chrome-devtools, playwright default-on, ast-grep default-disabled, moai opt-in), reverse MOAI-MCP-SERVER-001 REQ-MCP-002 narrowly, ship the generic CLI, update doctrine + catalogue. ~10-12 files.
+**Decision (resolved 2026-08-07 via orchestrator AskUserQuestion round): full Tier M — Option A.** The user confirmed the full Tier M scope: create the template `.mcp.json` with 5 structural entries (context7, chrome-devtools, playwright active; ast-grep + moai documented-but-disabled), reverse MOAI-MCP-SERVER-001 REQ-MCP-002 narrowly, ship the generic CLI, update doctrine + catalogue. ~10-12 files. The prior `[NEEDS CLARIFICATION]` marker is removed; this SPEC proceeds to Implementation Kickoff Approval at Tier M.
 
-**Option B (collapsed Tier S — recipe-only)**: NO template `.mcp.json` creation. Deliver ONLY the recipe catalogue (`.moai/docs/mcp-recipes.md`) + skip rationale + the generic `moai mcp add|remove|list` CLI (which a user uses to populate their own `.mcp.json`). MOAI-MCP-SERVER-001 REQ-MCP-002 stays literally intact. ~4-5 files.
-
-The orchestrator's user-question channel resolves this BEFORE Implementation Kickoff Approval. If Option B, this SPEC is re-tiered to S and the doctrine-update REQ-TMC-013 + the template-`.mcp.json` REQ-TMC-001/002/003/004 are struck (the generic CLI REQ-TMC-005..010 and the catalogue REQ-TMC-011/012/014 stay).
+Option B (collapsed Tier S — recipe-only) was explicitly rejected by the user decision. The doctrine-update REQ-TMC-013 + the template-`.mcp.json` REQ-TMC-001/002/003/004 + the generic CLI REQ-TMC-005..010 + the catalogue REQ-TMC-011/012/014 all stand.
 
 ### §B.B2 — Concurrent writer behavior
 
@@ -79,7 +77,7 @@ Standard `.mcp.json` (per the Claude Code schema) does not define a `disabled` f
 - A `$comment`-anchored disable marker that the Claude Code runtime ignores (verified — the existing `.mcp.json` entries already carry `$comment` fields, e.g. the `context7` entry has `$comment: "Up-to-date documentation..."`), OR
 - The entry omitted from the active `mcpServers` map and documented in the recipe catalogue only.
 
-**Plan-phase choice**: the third form (omitted from active map, documented in catalogue) is the cleanest — it avoids JSONC interpretation entirely and the catalogue's `moai mcp add ast-grep ...` one-liner is the enable path. REQ-TMC-004 is re-interpreted accordingly: the template ships a documented placeholder (in the catalogue) and the user runs one CLI command to activate it. The NEEDS CLARIFICATION marker on this rendering choice is removed at M1 entry.
+**Plan-phase choice**: the third form (omitted from active map, documented in catalogue) is the cleanest — it avoids JSONC interpretation entirely and the catalogue's `moai mcp add ast-grep ...` one-liner is the enable path. REQ-TMC-004 is authored accordingly (spec.md v0.1.1): the template ships a documented placeholder (in the catalogue) and the user runs one CLI command to activate it; no JSONC/`$comment` form appears in the template. The §B.B1 Tier/scope NEEDS CLARIFICATION marker is resolved at plan-phase (user confirmed Tier M, 2026-08-07); no NEEDS CLARIFICATION marker remains in this plan.
 
 ### §B.B5 — Subagent boundary static guard
 
@@ -143,7 +141,7 @@ The §E.1 plan-phase audit-ready signal is populated at plan-phase close. The §
 
 ### M1 — Template `.mcp.json` + §25 neutrality (Priority High)
 
-1. Author `internal/template/templates/.mcp.json` with 4 active entries (`context7`, `chrome-devtools`, `playwright`, `moai` opt-in placeholder via `$comment`) + 1 documented-only catalogue entry (`ast-grep`).
+1. Author `internal/template/templates/.mcp.json` with exactly 3 active entries (`context7`, `chrome-devtools`, `playwright`) — `moai` and `ast-grep` are documented-only (omitted from the active map; activated via `moai mcp add ...` per their recipe entries). No JSONC/`$comment` form in the template.
 2. Run `make build`; verify the embedded catalog regenerates and the repo-root `.mcp.json` aligns.
 3. Run `go test -run TestTemplateNeutrality ./internal/template/...` — must PASS (no SPEC IDs / SHAs / macOS paths / PR refs in the new `.mcp.json`).
 4. Run `go test -run TestInternalContentLeak ./internal/template/...` — must PASS.

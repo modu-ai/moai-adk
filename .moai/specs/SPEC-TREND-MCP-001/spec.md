@@ -1,7 +1,7 @@
 ---
 id: SPEC-TREND-MCP-001
 title: "Trend MCP tooling — Playwright + ast-grep bundle, opt-in recipes, generic atomic-RMW entry management"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-07
 updated: 2026-08-07
@@ -61,13 +61,13 @@ This SPEC delivers the §3.7 trend-MCP layer: a template-managed `.mcp.json` (th
 
 ### M1 — Template-managed .mcp.json + bundled neutral entries
 
-**REQ-TMC-001** (Ubiquitous) The template source SHALL establish `internal/template/templates/.mcp.json` as the template-managed MCP provisioning surface, carrying exactly five neutral entries at the distributed default: `context7` (HTTP/npx — already in the local repo-root `.mcp.json`), `chrome-devtools` (HTTP/npx — already in the local repo-root `.mcp.json`), `playwright` (HTTP/npx — NEW, default-enabled), `ast-grep` (HTTP/uvx — NEW, default-disabled), and `moai` (the local stdio server from SPEC-MOAI-MCP-SERVER-001).
+**REQ-TMC-001** (Ubiquitous) The template source SHALL establish `internal/template/templates/.mcp.json` as the template-managed MCP provisioning surface, carrying exactly five structural neutral entries: three active at the distributed default (`context7`, `chrome-devtools`, `playwright`) plus two documented-but-disabled (`ast-grep` opt-in per REQ-TMC-004, `moai` opt-in per REQ-TMC-003). The active-vs-structural distinction is explicit: exactly 3 entries in the active `mcpServers` map at the distributed default, and 5 entries documented in the template/recipe catalogue (3 active + 2 disabled).
 
 **REQ-TMC-002** (Unwanted) The template `.mcp.json` SHALL NOT carry any secret, any resolved API key, any SPEC ID, any commit SHA, any macOS-bias path, any `CLAUDE.local.md` reference, or any `PR #N` reference — every entry is either secret-free npx/uvx stdio OR HTTP-with-`${VAR}`-literal expanded by the Claude Code runtime at load, and every entry passes the §25 CI guard (`template-neutrality-check.yaml` + `internal_content_leak_test.go`).
 
 **REQ-TMC-003** (Capability gate) **Where** the user has not opted into the `moai mcp-server` local server, the template provisioning SHALL leave the `moai` entry OFF in the distributed default (the entry is opt-in per SPEC-MOAI-MCP-SERVER-001 REQ-MCP-002; this SPEC does not change that single-server opt-in property — only widens the third-party-neutral-entry surface around it).
 
-**REQ-TMC-004** (State-driven) **While** the `ast-grep` entry is shipped in the template `.mcp.json`, it SHALL be rendered default-DISABLED via a commented-out JSON form documented in the recipe catalogue (the bundled entry carries `$comment`-anchored disable instructions; the entry is structurally present so users uncomment one line to enable, but the active JSON remains inert at the distributed default).
+**REQ-TMC-004** (State-driven) **While** the `ast-grep` tool is documented in the recipe catalogue, the template `.mcp.json` SHALL ship it default-DISABLED via omission from the active `mcpServers` map — the entry is documented in the recipe catalogue with a one-line `moai mcp add ast-grep ...` activation command, and NO JSONC/`$comment`-anchored disable form is used in the template (the active distributed map carries only the three default-on entries: `context7`, `chrome-devtools`, `playwright`).
 
 ### M2 — Generic atomic-RMW entry-management CLI
 
@@ -101,7 +101,7 @@ This SPEC delivers the §3.7 trend-MCP layer: a template-managed `.mcp.json` (th
 
 ## §D. Acceptance Criteria (summary — full Given-When-Then in acceptance.md)
 
-Each requirement maps to one or more binary-testable acceptance criteria (AC-TMC-NNN) enumerated in `acceptance.md`. The acceptance matrix binds: M1 ↔ AC-TMC-001..004, M2 ↔ AC-TMC-005..010, M3 ↔ AC-TMC-011..014, cross-cutting ↔ AC-TMC-015..016. Severity classification, traceability, and Definition of Done live in `acceptance.md`.
+Each requirement maps to one or more binary-testable acceptance criteria (AC-TMC-NNN) enumerated in `acceptance.md`. The acceptance matrix binds 16 ACs across 16 REQs: M1 ↔ AC-TMC-001..004, M2 ↔ AC-TMC-005..010, M3 ↔ AC-TMC-011..014, cross-cutting ↔ AC-TMC-015..016. Severity classification, traceability, and Definition of Done live in `acceptance.md`.
 
 ## §E. Constraints (non-functional)
 
