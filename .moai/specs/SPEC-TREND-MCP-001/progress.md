@@ -69,7 +69,7 @@ Cross-cutting (all milestones)
 
 - `sync_status:` audit-ready
 - `sync_complete_at:` 2026-08-07
-- `sync_commit_sha:` _(pending-backfill-trend-mcp — self-referential hazard; backfilled in a follow-up chore commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption (D3))_
+- `sync_commit_sha:` 63f87341517ea0cd26b6230216cf55312610f5ab
 - `run_commit_sha_backfill:` ea1e36e7f (Docs commit; M3 head = 64773cfef already recorded in §E.3; §E.3 was already audit-ready, no placeholder to backfill)
 - `changelog_entry_position:` CHANGELOG.md `[Unreleased] → ### Added` (single bullet, immediately after the SPEC-TDD-ANTICHEAT-001 entry; B12 pre-emit duplicate grep returned 0 before emission, post-emit count = 1)
 - `frontmatter_status_transitions:`
