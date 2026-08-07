@@ -107,6 +107,36 @@ Include a turn bound to bound the loop ("`or stop after 20 turns`"). Running `/c
 - **Safety boundary unchanged** — even with a loop active, the "confirm before hard-to-reverse / shared-system actions" boundary is not relaxed. The goal evaluator only decides whether to continue; it does not pre-approve destructive operations.
 - **Combination with auto mode** — combining Claude Code auto mode (per-tool auto-approval) with `/moai goal` (per-turn continuation) enables an unattended `ac_converge` loop. Auto mode removes per-tool approval prompts; `/moai goal` removes per-turn STOP prompts. Implementation Kickoff Approval is still mandatory before run-phase entry.
 
+## Multi-Model Review Gate (Optional)
+
+{{< icon info >}} An opt-in Stop hook extends the autonomy loop with cross-model adversarial review, so a fully-autonomous `/moai goal` run gains a multi-model safety net (Path C of the autonomy redesign).
+
+### `audit_model: multi` convergence
+
+When `audit_model: multi` is selected, the `audit_multi` MCP tool fans out audit across the active backends — claude as the in-session anchor, plus codex and GLM as secondaries (each per its `audit_gate`) — and converges their verdicts through a 4-step policy:
+
+- Any required backend returning `FAIL` → `overall_verdict = FAIL`.
+- All required backends returning `PASS` → `overall_verdict = PASS`.
+- A split among required backends → conservative `FAIL` plus a `disagreement_flag`.
+- A conflict involving advisory-only backends → `PASS` plus a `disagreement_flag`.
+
+Disagreement is surfaced as `disagreement_flag` + `residual_risk_note` in the `ConvergenceResult` — it NEVER hard-blocks the flow on its own. Independence is structurally preserved: the secondary fan-out goroutines receive only `(target, focus, model, effort)` and never the `claude_verdict`, so codex and GLM produce uncorrelated second opinions rather than contaminated re-samples. Mandatory fail-open holds in both directions — a missing or unauthenticated optional backend returns `VerdictInconclusive` and falls back to claude, never a hard error.
+
+### `moai hook multi-review-gate` Stop hook
+
+The multi-review-gate Stop hook is opt-in (`workflow.multi_review_gate.enabled`, BranchGuard pattern sibling to `workflow.codex.review_gate`, default off) and overrides the moai-default 5 s hook timeout to 900 s. On each code-edit turn it reads the most recent `ConvergenceResult` (persisted at `.moai/state/audit-multi/<session>.json` by the convergence engine) and emits the standard ALLOW/BLOCK contract:
+
+- All required backends PASS → ALLOW.
+- Any required backend FAIL → BLOCK.
+- Advisory-only conflict → ALLOW (the disagreement surfaces as advisory, never a block).
+- All non-Claude backends inconclusive → fail-open to the claude verdict.
+
+The mandatory self-gate ALLOWs no-edit turns immediately — status reports, review results, and other non-editing turns are never falsely blocked.
+
+### Where it fits
+
+{{< icon arrow-right >}} The multi-review-gate is a Stop hook, not a continuation primitive. It composes with `/moai goal` (per-turn continuation) and `/moai loop` (diagnostic-driven preset): the loop drives the session forward, and the gate applies the cross-model convergence contract at each code-edit boundary. Implementation Kickoff Approval remains mandatory before run-phase entry in every combination.
+
 ## Next Steps
 
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — where autonomous loops connect to tokenomics

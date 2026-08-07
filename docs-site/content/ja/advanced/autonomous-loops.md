@@ -107,6 +107,36 @@ moai goal render                        # 現在の goal ダッシュボード�
 - **安全境界 unchanged** — ループがアクティブでも「元に戻しにくい / 共有システム作業前の確認」境界は緩和されません。goal評価者は継続の可否のみを決定し、破壊的操作を事前承認しません。
 - **auto modeとの組合せ** — Claude Code auto mode(ツールごとの自動承認)と`/moai goal`(ターンごとの連続)を組合せると無人`ac_converge`ループが可能です。auto modeはツールごとの承認プロンプトを削除し、`/moai goal`はターンごとのSTOPプロンプトを削除します。Implementation Kickoff Approvalはrun-phase進入前に依然必須です。
 
+## マルチモデルレビューゲート (オプション)
+
+{{< icon info >}} オプションの Stop フックが自律ループにクロスモデル敵対レビューを追加し、完全自律の `/moai goal` 実行にマルチモデル安全網を与えます (自律性再設計の Path C)。
+
+### `audit_model: multi` 収束
+
+`audit_model: multi` を選ぶと、`audit_multi` MCP ツールがアクティブなバックエンド全体に監査を並列展開します。claude がセッション内アンカー、codex と GLM がセカンダリ (各々 `audit_gate` に従う) となり、評決は 4 ステップ方針で収束します。
+
+- 必須バックエンドのいずれかが `FAIL` → `overall_verdict = FAIL`。
+- 必須バックエンドが全て `PASS` → `overall_verdict = PASS`。
+- 必須バックエンド間の分裂 → 保守的 `FAIL` に `disagreement_flag` を付加。
+- アドバイザリ専用バックエンドとの衝突 → `PASS` に `disagreement_flag` を付加。
+
+不一致は `ConvergenceResult` の `disagreement_flag` と `residual_risk_note` で表面化し、それ自体がフローをハードブロックすることはありません。独立性は構造的に保証されます。セカンダリ展開ゴルーチンは `(target, focus, model, effort)` のみを受け取り、`claude_verdict` を一切受け取りません。よって codex と GLM は汚染された再サンプルではなく相関のない第二意見を生成します。フェイルオープンは両方向で成り立ちます。欠落または未認証のオプショナルバックエンドは `VerdictInconclusive` を返し claude にフォールバックするだけで、ハードエラーになりません。
+
+### `moai hook multi-review-gate` Stop フック
+
+マルチレビューゲート Stop フックはオプションです (`workflow.multi_review_gate.enabled`、`workflow.codex.review_gate` の兄弟である BranchGuard パターン、デフォルトオフ)。moai デフォルトの 5 秒フックタイムアウトは 900 秒で上書きされます。コード編集ターンごとに直近の `ConvergenceResult` (収束エンジンが `.moai/state/audit-multi/<session>.json` に記録) を読み、標準の ALLOW/BLOCK 契約を出します。
+
+- 必須バックエンドが全て PASS → ALLOW。
+- 必須バックエンドのいずれかが FAIL → BLOCK。
+- アドバイザリ専用の衝突 → ALLOW (不一致はアドバイザリとしてのみ表面化し、ブロックしない)。
+- claude 以外のバックエンドが全て inconclusive → claude 評決にフェイルオープン。
+
+必須セルフゲートは編集のないターンを即座に ALLOW します。ステータス報告、レビュー結果、その他の編集を伴わないターンが誤ってブロックされることはありません。
+
+### どこに当てはまるか
+
+{{< icon arrow-right >}} マルチレビューゲートは Stop フックであり、連続プリミティブではありません。`/moai goal` (ターンごとの連続) と `/moai loop` (診断駆動プリセット) の上に重ねて使います。ループがセッションを前に進め、ゲートがコード編集の境界ごとにクロスモデル収束契約を適用します。いかなる組合せでも run-phase 進入前の Implementation Kickoff Approval は引き続き必須です。
+
 ## 次のステップ
 
 - [トークノミクス概論](/ja/advanced/tokenomics-overview/) — 自律ループがトークノミクスと接続するポイント
