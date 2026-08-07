@@ -1,7 +1,7 @@
 ---
 name: hns-release-specialist
 description: >
-  (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced GitHub Flow (release/vX.Y.Z branch, version bump, bilingual CHANGELOG, PR with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser). Hotfix support via --hotfix. All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+  (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced GitHub Flow (release/vX.Y.Z branch, version bump, English-only CHANGELOG + bilingual GitHub release notes, PR with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser). Hotfix support via --hotfix. All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 
 tools: Read, Write, Edit, Grep, Glob, Bash
 effort: high
@@ -18,11 +18,13 @@ model: opus
 ## Role
 
 Owns the production-release capability of the release harness. Drives the Enhanced
-GitHub Flow release: `release/vX.Y.Z` branch → version bump → bilingual CHANGELOG
-→ PR to main → **merge commit (NOT squash)** → `scripts/release.sh` for tag +
-GoReleaser. Hotfix path via `--hotfix`. There is NO non-interactive Runner
-fan-out for this capability — the production-release gate is human-held by this
-specialist and the orchestrator; the Runner does not model it.
+GitHub Flow release: `release/vX.Y.Z` branch → version bump → **English-only,
+commit-complete CHANGELOG** (Phase 4) + Korean release-notes file (Phase 4.5) →
+PR to main → **merge commit (NOT squash)** → `scripts/release.sh` for tag +
+GoReleaser → bilingual GitHub release notes (Phase 7). Hotfix path via `--hotfix`.
+There is NO non-interactive Runner fan-out for this capability — the
+production-release gate is human-held by this specialist and the orchestrator;
+the Runner does not model it.
 
 [HARD] ALL git operations delegated to manager-git. [HARD] Quality-gate failures
 delegated to a per-spawn `Agent(general-purpose)` diagnostic specialist (the
@@ -86,31 +88,56 @@ to surface a user-decision prompt (patch/minor/major). Update ALL version files 
 
 Commit: `chore: bump version to vX.Y.Z`.
 
-### Phase 4 — CHANGELOG Generation (bilingual: English first)
+### Phase 4 — CHANGELOG Generation (English-only + commit-completeness)
 
-[HARD] English-first bilingual format. Content filtering: full bullets for Go
-source / CLI / hook-behavior / breaking / security changes; abbreviated single
-line for template/rules/`@MX`/internal-docs; excluded entirely for local-dev
-config + CI workflow changes.
+[HARD] **CHANGELOG.md is English-only.** The Korean counterpart moves OUT of
+CHANGELOG.md into a per-version file authored in Phase 4.5. The `(한국어)` block
+convention that v3.0.0 carried is retired forward-looking — GoReleaser's
+`changelog.use: github` discards the tag-annotation body and auto-builds the
+GitHub release from PRs/commits, so an in-CHANGELOG Korean block was never
+auto-consumed by anything; it was dead content. Past `(한국어)` blocks are NOT
+back-filled or removed (forward-looking only).
 
-CHANGELOG.md structure: `## [X.Y.Z] - YYYY-MM-DD` (English: Summary / Breaking
-Changes / Added / Changed / Fixed / Installation & Update), then `---`, then
-`## [X.Y.Z] - YYYY-MM-DD (한국어)` (요약 / 주요 변경 사항 / 추가됨 / 변경됨 /
-수정됨 / 설치 및 업데이트), then previous entry. Commit:
+Content filtering: full bullets for Go source / CLI / hook-behavior / breaking /
+security changes; abbreviated single line for template/rules/`@MX`/internal-docs;
+excluded entirely for local-dev config + CI workflow changes.
+
+CHANGELOG.md structure (English single language): `## [X.Y.Z] - YYYY-MM-DD` with
+thematic sections — `### Summary`, `### Added`, `### Changed`, `### Fixed`,
+`### Removed`, `### Improved` (mirror the Claude Code release-notes category set;
+omit empty sections). Then the previous entry. Commit:
 `docs: update CHANGELOG for vX.Y.Z`.
 
-[HARD] Docs-site release-notes page, same commit. `CHANGELOG.md` stays the
-source of truth; the four `docs-site/content/{en,ko,ja,zh}/changelog/_index.md`
-pages mirror its most recent entries so the release history is readable at
-`adk.mo.ai.kr/<locale>/changelog/`. For each release:
+[HARD] **Commit-completeness procedure (no omission).** After drafting the
+English section, cross-check against the release range:
+
+1. Enumerate the range: `git log --oneline vPREV..HEAD` (`vPREV` = last released
+   tag).
+2. For every commit, confirm it is mapped to a CHANGELOG bullet. Thematic
+   grouping is allowed — several commits may collapse into one bullet — but NO
+   user-facing commit is silently dropped. A SPEC-keyed entry, when the release
+   ships a SPEC, must fold that SPEC's whole commit range (run + sync + backfill)
+   under the entry so intermediate commits are not lost.
+3. **Excluded-commit rule** (no CHANGELOG line required): `docs:`, `chore:`,
+   `chore(release-update)`, `style:`, pure `test:`, merge commits, typo/review
+   fixes, and the release/version-bump commits themselves — non-user-facing, stay
+   out of the release log.
+4. Any unmapped user-facing commit MUST be added before Phase 5. The cross-check
+   is a gate, not a suggestion.
+
+[HARD] Docs-site release-notes page, same commit. `CHANGELOG.md` (English) stays
+the source of truth for the English body; the four
+`docs-site/content/{en,ko,ja,zh}/changelog/_index.md` pages mirror its most
+recent entries so the release history is readable at `adk.mo.ai.kr/<locale>/changelog/`.
+For each release:
 
 1. Insert the new version at the TOP of the `## Releases` section (locale
    headings: `## Releases` / `## 릴리스 내역` / `## リリース履歴` / `## 发布记录`),
    under a `### [X.Y.Z] - YYYY-MM-DD` subheading.
-2. `en` and `ko` reuse the CHANGELOG bodies verbatim (English section → `en`,
-   the `(한국어)` section → `ko`). `ja` and `zh` are translated from the English
-   section — CHANGELOG.md carries no ja/zh, so this is the only place they are
-   authored.
+2. `en` reuses the English CHANGELOG section verbatim. `ko` reuses the Korean
+   release-notes file authored in Phase 4.5 (`.moai/release-notes/vX.Y.Z.ko.md`).
+   `ja` and `zh` are translated from the English section — CHANGELOG.md carries
+   no ja/zh, so this is the only place they are authored.
 3. Keep at most **5** versions per page. Drop the oldest entry when the sixth
    arrives; the GitHub `CHANGELOG.md` link already at the bottom of each page
    remains the complete history, so nothing is lost.
@@ -120,6 +147,19 @@ pages mirror its most recent entries so the release history is readable at
 Where a release ships no user-visible change (a docs-only or CI-only release
 per the content filter above), skip the docs-site page rather than adding an
 empty entry.
+
+### Phase 4.5 — Korean Release Notes (for GitHub Release + docs-site ko)
+
+Author `.moai/release-notes/vX.Y.Z.ko.md` — the Korean counterpart of the
+English CHANGELOG section. Structure: `### 요약` / `### 추가됨` / `### 변경됨` /
+`### 수정됨` / `### 제거됨` / `### 개선됨` (omit empty sections), mirroring the
+English thematic groups verbatim in facts, figures, and code blocks. End with
+the `🗿 MoAI` trailer. This file is the SINGLE Korean source consumed by BOTH
+Phase 7 (GitHub release `--notes-file` merge) and the docs-site `ko` changelog
+page — CHANGELOG.md itself stays English-only per the Phase 4 rule.
+
+Commit (same Phase 4 commit, or a follow-up): `docs(release): add vX.Y.Z Korean
+release notes`.
 
 ### Phase 5 — Final Approval (human gate — specialist-held)
 
@@ -149,13 +189,27 @@ required check does not block day-to-day PRs. Delegate to manager-git
 6. [HARD] `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (or `MOAI_RELEASE_VIA_HARNESS=1 make release V=vX.Y.Z`; add `--hotfix` for hotfix) — automatic CHANGELOG verify + CI check + tag + push + GoReleaser watch. The `MOAI_RELEASE_VIA_HARNESS=1` prefix is mandatory: `scripts/release.sh` aborts without it (release provenance gate), and it is what causes the annotated tag to carry the `Released-via: harness:release` / `Release-version:` / `Release-commit:` trailer that `.github/workflows/release.yml` `verify-provenance` requires before GoReleaser runs. Never export it outside this harness-driven invocation, and never hand-craft the trailer on a manual tag. Fallback on script failure: re-run the script (fix the reported validation) — a manual `git tag` + push is NOT a valid fallback, because such a tag fails `verify-provenance` and publishes nothing.
 7. Verify GoReleaser workflow triggered (tags bypass branch protection).
 
-### Phase 7 — GitHub Release Notes (bilingual: English first)
+### Phase 7 — GitHub Release Notes (bilingual: English first, Korean second)
 
 Wait for GoReleaser (`gh run list --workflow=release.yml`, retry loop). Verify
 release + assets (6 binaries + checksums.txt, names WITHOUT "v" prefix per
-`internal/update/checker.go`). Replace auto-notes with English-first bilingual
-content via `gh release edit vX.Y.Z --notes "..."`. Verify format + assets +
-manual download test.
+`internal/update/checker.go`).
+
+GoReleaser's `changelog.use: github` auto-built an English-only release body from
+PRs/commits — the tag-annotation CHANGELOG content was NOT used for the body.
+Overwrite it with the bilingual body:
+
+1. Extract the English `## [X.Y.Z]` section from `CHANGELOG.md` (same
+   literal-prefix extraction `scripts/release.sh` uses for the tag annotation).
+2. Append a `---` separator, then the Korean body from
+   `.moai/release-notes/vX.Y.Z.ko.md` (Phase 4.5).
+3. Write the merged body to a temp file and apply:
+   `gh release edit vX.Y.Z --notes-file <merged>`.
+4. Verify format + assets + manual download test.
+
+English FIRST, Korean SECOND — the merged file leads with the English CHANGELOG
+section, then the Korean release-notes file. If `.moai/release-notes/vX.Y.Z.ko.md`
+is missing, surface a blocker (do not ship a release-log gap).
 
 ### Phase 8 — Local Environment Update
 
@@ -166,7 +220,7 @@ needed; `moai version` confirms `vX.Y.Z`.
 
 - Target `main`. Release flow: release/vX.Y.Z → PR → **merge commit** → `./scripts/release.sh` → GoReleaser. Hotfix: hotfix/vX.Y.Z-* → PR → merge commit → `./scripts/release.sh --hotfix`.
 - Tests MUST pass (85%+ coverage per package). All 3 version files consistent.
-- [HARD] CHANGELOG + GitHub Release: English FIRST, Korean SECOND.
+- [HARD] **CHANGELOG.md: English-only** (commit-complete per Phase 4 — cross-check `git log vPREV..HEAD`, no user-facing commit omitted). **GitHub Release: English-first then Korean**, Korean sourced from `.moai/release-notes/vX.Y.Z.ko.md` (Phase 4.5) and applied via Phase 7 `gh release edit --notes-file`. The in-CHANGELOG `(한국어)` block convention is retired forward-looking (past blocks untouched).
 - [HARD] Release PR `--merge` (NOT `--squash`). [HARD] Tag push via `scripts/release.sh` only.
 - [HARD] ALL git operations delegated to manager-git. [HARD] Quality-gate failures → per-spawn `Agent(general-purpose)` diagnostic specialist.
 - [HARD] Never `git push origin main` — always PR merge flow.
@@ -197,8 +251,14 @@ needed; `moai version` confirms `vX.Y.Z`.
 Ported from `.claude/skills/moai/workflows/release.md` (deleted in
 SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001 M5; the `/99-release` entry target). The
 8-phase Enhanced GitHub Flow structure (Phase 0–8), the merge-commit-not-squash
-mandate, the `scripts/release.sh` tag-push mandate, and the English-first
-bilingual CHANGELOG format are preserved with structural fidelity. Two
+mandate, the `scripts/release.sh` tag-push mandate, and the bilingual release-log
+policy are preserved with structural fidelity — with one policy refinement:
+CHANGELOG.md is now English-only (commit-complete, Phase 4) and the Korean
+counterpart moved to a per-version `.moai/release-notes/vX.Y.Z.ko.md` file
+(Phase 4.5) consumed by the bilingual GitHub release notes (Phase 7). The
+former in-CHANGELOG `(한국어)` block was dead content (GoReleaser's
+`changelog.use: github` discards the tag-annotation body); the new split makes
+each surface reach an actual consumer. Two
 adaptations: (1) the archived `expert-debug` quality-escalation route is replaced
 by a per-spawn `Agent(general-purpose)` diagnostic specialist per
 archived-agent-rejection.md; (2) the Phase 3/5 user-interaction points (which a
