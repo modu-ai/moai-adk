@@ -67,7 +67,6 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダー |
 | `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
-| `--harness-profile <profile>` | ハーネス評価者プロファイル (default, strict, lenient, frontend); 値は受け付けるが現在は永続化されない |
 | `--enable-lsp` | LSP 連携の有効化 (デフォルト値: true) |
 | `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
 | `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
