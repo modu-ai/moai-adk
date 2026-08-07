@@ -144,7 +144,7 @@ chunk_status: chunk-2-complete-pending-chunk-3
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-07
-sync_commit_sha: pending-backfill-sync-003  # self-referential-hazard workaround (spec-frontmatter-schema.md D3); orchestrator backfills the real SHA in a follow-up commit after PR #1385 merge
+sync_commit_sha: 7e9648650  # PR #1385 squash-merged to main (sync-phase + 3-phase close); D3 self-referential-hazard workaround resolved
 run_commit_sha: 23abbd206                   # PR #1384 squash-merged to main (Route B)
 frontmatter_status_transitions:
   spec_md: "in-progress → implemented → completed"  # merged into the single sync commit (3-phase close)
