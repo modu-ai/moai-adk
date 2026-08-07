@@ -8,8 +8,6 @@ package hook
 //     three predecessor-chain outputs (capability-map.md, audit-report,
 //     capability-symbols). Pattern carried forward from
 //     internal/navigator/sync/nonoverlap_test.go (M0).
-//   - AC-NS2-005a (consumer-only: M0 + mx byte-unchanged) — the M1 run-phase
-//     diff touches NO path under internal/navigator/sync/ or internal/mx/.
 //   - AC-NS2-005b (consumer-only: read via public API) — navigator_detect.go
 //     has NO write/rename call targeting a predecessor surface; the M0 types
 //     are consumed via the public sync.Graph / sync.Edge / sync.Node API only
@@ -22,6 +20,15 @@ package hook
 // consumes their outputs read-only. A regression that adds a write to a
 // predecessor surface would silently corrupt the producer's output and is
 // the single most dangerous scope-creep failure mode for this layer.
+//
+// All guards here are source-content checks, safe to run on any branch. A
+// prior AC-NS2-005a guard instead diffed the working branch against
+// origin/main and failed whenever the diff touched internal/navigator/sync/
+// or internal/mx/. That assertion was one-shot — it held for the branch that
+// introduced this layer and was satisfied at merge — but as a permanent test
+// it failed every later branch legitimately editing those packages. Do not
+// reintroduce a git-diff-based guard here; scope such an assertion to the
+// branch that needs it.
 
 import (
 	"os"
@@ -185,43 +192,6 @@ func TestNonOverlap_DetectNeverWritesToSyncOrMxPaths(t *testing.T) {
 			for _, frag := range forbiddenPathFragments {
 				if strings.Contains(line, frag) {
 					t.Errorf("%s: write verb targets M0/mx producer path %q: %s",
-						src, frag, strings.TrimSpace(line))
-				}
-			}
-		}
-	}
-}
-
-// TestConsumerOnly_M0AndMxByteUnchanged (AC-NS2-005a, REQ-NS2-005) asserts the
-// Detect consumer layer never WRITES to the M0/mx producer packages
-// (internal/navigator/sync/, internal/mx/). Originally a git-diff guard
-// ("M1 diff touches no sync/mx path"), narrowed to a source-grep on the Detect
-// source: the git-diff form over-blocked legitimate maintenance to the producer
-// packages themselves (e.g. navigator-sync bug fixes), which does not violate
-// the consumer-only contract. The Detect layer must consume sync/mx via their
-// public API only — verified here by asserting no write verb in
-// navigator_detect*.go targets a sync/mx path. Companion to
-// TestNonOverlap_DetectNeverWritesToSyncOrMxPaths (AC-NS2-005b).
-func TestConsumerOnly_M0AndMxByteUnchanged(t *testing.T) {
-	forbiddenPathFragments := []string{
-		"internal/navigator/sync/",
-		"internal/mx/",
-	}
-	for _, src := range detectSourceGlob(t) {
-		b, err := os.ReadFile(src)
-		if err != nil {
-			t.Fatalf("read %s: %v", src, err)
-		}
-		for _, line := range strings.Split(string(b), "\n") {
-			if isCommentLine(line) {
-				continue
-			}
-			if !hasWriteVerb(line) {
-				continue
-			}
-			for _, frag := range forbiddenPathFragments {
-				if strings.Contains(line, frag) {
-					t.Errorf("AC-NS2-005a FAIL: %s: Detect consumer writes to M0/mx producer path %q — must consume read-only via public API: %s",
 						src, frag, strings.TrimSpace(line))
 				}
 			}
