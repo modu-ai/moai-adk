@@ -176,6 +176,8 @@ plan → run → sync. Tier S/M/L size classification determines verification de
 
 **self-hosted MCP server**. Run `moai mcp-server` to expose moai's core read/status/audit tools as typed JSON-RPC tools to any MCP-capable host (Cursor, Cline, Zed, another LLM) — a thin wrapper over the same `internal/` core the CLI uses, with 3-way audit backends (Claude / Codex / GLM) behind a uniform per-auditor gate and mandatory fail-open. `audit_model: multi` fans out across backends in parallel and converges their verdicts via a `audit_multi` MCP tool (cross-model disagreement surfaces as advisory residual-risk, never a hard block); an opt-in `multi-review-gate` Stop hook (default off, 900 s timeout) extends the convergence to fully-autonomous goal loops. Provisioning into `.mcp.json` is opt-in (default off).
 
+**trend MCP tooling**. The distributed `.mcp.json` template ships with three secret-free bundled servers — `context7` (library docs) · `chrome-devtools` (browser automation) · `playwright` (end-to-end testing) — and the generic `moai mcp add|remove|list` CLI registers opt-in servers (Semgrep, GitHub, Postgres, Sentry, Codecov) using `${VAR}` env-reference tokens rather than literal secrets. The full opt-in recipe catalogue lives at `.moai/docs/mcp-recipes.md`.
+
 ---
 
 ## Infrastructure Sustains All Three Axes
