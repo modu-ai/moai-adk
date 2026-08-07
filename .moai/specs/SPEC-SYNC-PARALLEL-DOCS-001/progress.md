@@ -49,6 +49,15 @@ Baseline-attribution: `(this run, this tree)` M3 commit (pending). Files: `sync.
 
 Baseline-attribution: `(this run, this tree)` M4 commit (pending). MX scan input-independence (REQ-SPD-006): reads git diff + source, NOT audit output. Files: `quality-gates-quality.md` (template source + local mirror, byte-identical).
 
+### M5 — Cross-cutting concurrency guard + audit-semantics invariant (committed)
+
+| AC | Status | Verification command | Observed output (verbatim) |
+|---|---|---|---|
+| AC-SPD-013 | PASS | `grep -c 'Concurrency guard codification (REQ-SPD-012 / AC-SPD-013' .claude/skills/moai/workflows/sync.md` | `1` — every A5/A7 concurrent agent (D1-D5 drafters, FO-SYNC-2 MX shards, FO-SYNC-1 judges, sync-auditor fallback) is read-only; single writer (manager-docs) runs after both fan-outs return; `[HARD]` concurrency guard holds |
+| AC-SPD-014 | PASS | `grep -c 'audit semantics.*IMMUTABLE\|4-dim weights (40/25/20/15)' .moai/specs/SPEC-SYNC-PARALLEL-DOCS-001/spec.md` | invariant authored by manager-spec at plan time in spec.md §D constraint #4 (audit semantics immutable; A5/A7/A9/A6 change scheduling + ceiling + consumption mode ONLY). acceptance.md AC-SPD-014 unchanged — NOT modified by manager-develop per the Status Transition Ownership Matrix forbidden-crossing rule. |
+
+Baseline-attribution: `(this run, this tree)` M5 commit (pending). Files: `sync.md` (template source + local mirror, byte-identical). acceptance.md NOT touched by run-phase (ownership matrix respected).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
