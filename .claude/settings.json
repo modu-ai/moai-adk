@@ -46,6 +46,16 @@
           }
         ],
         "matcher": "Write|Edit|Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Agent|Task"
       }
     ],
     "PostToolUse": [

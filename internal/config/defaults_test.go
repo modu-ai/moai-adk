@@ -663,3 +663,17 @@ func TestNewDefaultConfigContainsGitConvention(t *testing.T) {
 			cfg.GitConvention.Convention, DefaultGitConvention)
 	}
 }
+
+// TestDefaultAgentModelGuardDisabled pins the distributed default of the
+// agent-model guard's BLOCKING layer to false. The observation and advisory
+// layers always run; denial is opt-in. Flipping this default would make an
+// upgrade suddenly start refusing spawns, so the default is load-bearing.
+func TestDefaultAgentModelGuardDisabled(t *testing.T) {
+	t.Parallel()
+
+	cfg := NewDefaultConfig()
+
+	if cfg.Workflow.AgentModelGuard.Enabled {
+		t.Errorf("Workflow.AgentModelGuard.Enabled: got true, want false (default-off / template neutrality)")
+	}
+}

@@ -396,6 +396,12 @@ type WorkflowConfig struct {
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
+	// AgentModelGuard gates the blocking layer of the PreToolUse agent-model
+	// guard. Default false: the observation and advisory layers always run,
+	// but no spawn is ever denied until a maintainer opts in via local config.
+	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
+	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -547,6 +553,17 @@ type WorkflowWorktreeConfig struct {
 // config; the exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity)
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
+// blocking layer of the PreToolUse agent-model guard. When Enabled is false
+// (the distributed default) the guard still observes every Agent spawn and
+// still emits advisories, but it never returns a deny decision. Only the
+// mismatch verdict is blockable even when enabled; the far more common
+// missing verdict stays advisory, because blocking it would refuse nearly
+// every spawn.
+type AgentModelGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

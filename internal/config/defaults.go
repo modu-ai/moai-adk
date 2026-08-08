@@ -590,6 +590,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
+		// The agent-model guard ships with its BLOCKING layer off. Observation
+		// and advisory always run; a maintainer opts into denial via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		AgentModelGuard: AgentModelGuardConfig{
+			Enabled: false,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
 		// ships default-OFF. Distributed users get an inert Stop hook; a
 		// maintainer opts in via local config. Template neutrality (§25): no
