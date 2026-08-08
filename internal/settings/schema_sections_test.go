@@ -93,14 +93,17 @@ func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	before := seedSectionFixture(t, root, "workflow")
 
+	// The seam probe uses loop_prevention.max_iterations (a surviving workflow
+	// scalar); token_budget.plan was retired from the edit surface in
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M1 while its yaml key stayed on disk.
 	err := ApplySchemaEdits(root, map[string]string{
-		"workflow.token_budget.plan": "31000",
+		"workflow.loop_prevention.max_iterations": "77",
 	})
 	if err != nil {
 		t.Fatalf("ApplySchemaEdits(workflow): %v", err)
 	}
 	after := readSection(t, root, "workflow")
-	if !strings.Contains(after, "plan: 31000") {
+	if !strings.Contains(after, "max_iterations: 77") {
 		t.Errorf("seam edit not persisted:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -450,7 +453,7 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 	cases := map[string]string{
 		// 구 workflow.team.max_teammates(10)는 Agent Teams 정적 레이어와 함께 제거됨
 		// (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
-		"workflow.token_budget.plan":                   "30000",
+		"workflow.loop_prevention.max_iterations":      "100",
 		"harness.default_profile":                      "default",
 		"learning.enabled":                             "true",
 		"ralph.lint_as_instruction":                    "true",
@@ -488,7 +491,7 @@ func TestSchemaCurrentValuesMissingFilesAreEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaCurrentValues(empty root): %v", err)
 	}
-	if got := values["workflow.token_budget.plan"]; got != "" {
+	if got := values["workflow.loop_prevention.max_iterations"]; got != "" {
 		t.Errorf("missing file should read empty, got %q", got)
 	}
 }

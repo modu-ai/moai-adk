@@ -14,7 +14,7 @@ import (
 // toggle, so the canonical order is now 7 tabs.
 func TestConsoleTabsIncludesReport(t *testing.T) {
 	tabs := consoleTabs()
-	wantOrder := []string{"identity", "language", "launch", "llm", "workflow", "agentfm", "report"}
+	wantOrder := []string{"identity", "language", "launch", "llm", "workflow", "git-worktree", "agentfm", "report"}
 	if len(tabs) != len(wantOrder) {
 		t.Fatalf("consoleTabs() returned %d tabs, want %d", len(tabs), len(wantOrder))
 	}

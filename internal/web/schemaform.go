@@ -39,31 +39,67 @@ func consoleTabs() []consoleTab {
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
+		// git-worktree (M1): the git_strategy section had FieldDefs but no render
+		// meta, so mode + the three per-profile merge_method controls had no UI at
+		// all. The tab id is deliberately NOT the section id — this panel mixes
+		// git_strategy and workflow.worktree fields, so it carries its own tab.*
+		// i18n namespace instead of reusing sec.<section>.*.
+		{ID: "git-worktree", LabelKey: "tab.git-worktree.title", Baseline: "Git & Worktree"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
 }
 
-// schemaSectionMeta는 제네릭 fieldset의 섹션 표시 메타다. Title/Desc는 영어
-// baseline이고 data-i18n 키(sec.<id>.title/.desc)가 4-locale 렌더를 담당한다.
+// schemaSectionMeta는 제네릭 fieldset의 패널 표시 메타다. Title/Desc는 영어
+// baseline이고 TitleKey/DescKey의 data-i18n 키가 4-locale 렌더를 담당한다.
 // 필드 자체의 라벨은 기술 식별자(key chip)로 렌더하며 번역하지 않는다 —
 // i18n.js 헤더의 "Field identifiers stay in English" 계약과 동일.
+//
+// PanelID는 data-tab/data-panel 식별자이고 ID는 영속화 섹션이다. 두 값은 대개
+// 같지만 한 패널이 여러 섹션의 필드를 섞으면 갈라진다 (git-worktree). Fields는
+// 그 패널이 렌더할 필드 목록이며, 섹션 전체가 아니라 패널 단위로 명시된다 —
+// 탭 배치는 렌더 관심사이고 섹션은 영속화 단위다 (섹션 재분류로 탭을 옮기면
+// 영속화 경로가 바뀐다).
 type schemaSectionMeta struct {
-	ID    settings.SectionID
-	Icon  string
-	Title string
-	Desc  string
+	ID       settings.SectionID
+	PanelID  string
+	Icon     string
+	TitleKey string
+	DescKey  string
+	Title    string
+	Desc     string
+	Fields   []settings.FieldDef
 }
 
-// schemaSectionMetas는 제네릭 렌더 대상 섹션의 표시 메타를 렌더 순서대로
-// 반환한다 (settings.SchemaSectionIDs와 동순).
+// schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
-		{settings.SectionLLM, "rocket", "3rd Party LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
+		{
+			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
+			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
+			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings (high/medium/low/fable).",
+			Fields: settings.SectionFields(settings.SectionLLM),
+		},
 		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
 		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.
-		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, token budget, and worktree settings."},
-		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
+		{
+			ID: settings.SectionWorkflow, PanelID: "workflow", Icon: "panel-bottom",
+			TitleKey: "sec.workflow.title", DescKey: "sec.workflow.desc",
+			Title: "Workflow", Desc: "Workflow execution mode and loop-prevention settings.",
+			Fields: settings.SectionFields(settings.SectionWorkflow),
+		},
+		{
+			ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",
+			TitleKey: "tab.git-worktree.title", DescKey: "tab.git-worktree.desc",
+			Title: "Git & Worktree", Desc: "Git strategy mode, per-profile merge method, and worktree automation.",
+			Fields: settings.SectionFields(settings.SectionGitStrategy),
+		},
+		{
+			ID: settings.SectionReport, PanelID: "report", Icon: "panel-bottom",
+			TitleKey: "sec.report.title", DescKey: "sec.report.desc",
+			Title: "Report", Desc: "Output format for the HTML report skill (report.format: html+md or md).",
+			Fields: settings.SectionFields(settings.SectionReport),
+		},
 	}
 }
 

@@ -138,7 +138,7 @@ templ page(view pageView) {
 					// preserved; only the unreachable render surface is dropped).
 					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
 					for _, meta := range schemaSectionMetas() {
-						<div class="tabpanel" data-panel={ string(meta.ID) }>
+						<div class="tabpanel" data-panel={ meta.PanelID }>
 							@fieldsetSchemaSection(view, meta)
 						</div>
 					}

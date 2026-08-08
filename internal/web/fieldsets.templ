@@ -159,14 +159,14 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon(meta.Icon)</span><span data-i18n={ "sec." + string(meta.ID) + ".title" }>{ meta.Title }</span></legend>
-				@sectionCount(len(settings.SectionFields(meta.ID)))
+				<legend class="section__legend"><span class="section__ico">@icon(meta.Icon)</span><span data-i18n={ meta.TitleKey }>{ meta.Title }</span></legend>
+				@sectionCount(len(meta.Fields))
 			</div>
-			<p class="section__desc" data-i18n={ "sec." + string(meta.ID) + ".desc" }>{ meta.Desc }</p>
+			<p class="section__desc" data-i18n={ meta.DescKey }>{ meta.Desc }</p>
 		</div>
 		<div class="section__body">
 			<div class="grid">
-				for _, f := range settings.SectionFields(meta.ID) {
+				for _, f := range meta.Fields {
 					@schemaFieldWidget(view, f)
 				}
 				for _, ro := range settings.ReadOnlyDisplayFields() {

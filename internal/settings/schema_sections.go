@@ -232,19 +232,20 @@ func seamSectionFields() []FieldDef {
 		// workflow (파일: workflow.yaml, 최상위 키 workflow).
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "default_mode"),
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "execution_mode"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "enabled"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_plan"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_run"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "auto_clear", "token_threshold"),
+		// workflow.auto_clear.{enabled,after_plan,after_run,token_threshold} 4종은
+		// 웹 편집 표면에서 철거되었다: 접근자 WorkflowAutoClearEnabled의 Go 호출자
+		// 0건이고 산문 소비자도 0건인 죽은 설정이다. yaml 키 / struct 멤버 / 접근자
+		// 시그니처는 무접촉 보존된다 — 기존 workflow.yaml은 계속 오류 없이 로드된다
+		// (M4 다이어트 선례와 동일한 처분).
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "agentic_loop", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "loop_prevention", "failure_pattern_detection"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_retries_per_operation"),
 		// workflow.team.* 편집 필드는 Agent Teams 정적 레이어와 함께 제거되었다
 		// (SPEC-AGENT-TEAM-RETIRE-001). workflow.yaml team 블록은 M3에서 제거된다.
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "plan"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "run"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "sync"),
+		// workflow.token_budget.{plan,run,sync} 3종도 같은 사유로 철거되었다:
+		// WorkflowPlanTokens / WorkflowRunTokens / WorkflowSyncTokens 접근자의
+		// 호출자 0건. yaml 키·struct 멤버·접근자는 보존한다.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_cleanup"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),

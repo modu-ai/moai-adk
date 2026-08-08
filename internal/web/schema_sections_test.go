@@ -99,13 +99,13 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// llm + workflow (restored Issue 3) are the schema-rendered sections
-	// rendering form controls. The git_strategy section was removed from the web
-	// console (tab + panel); its config keys stay in git-strategy.yaml (defaults
-	// used) but are no longer web-editable.
+	// llm + workflow (restored Issue 3) + git_strategy (restored by
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M1 on the git-worktree panel) are the
+	// schema-rendered sections rendering form controls.
 	for _, name := range []string{
 		"llm.glm.models.high",
 		"workflow.worktree.auto_create",
+		"git_strategy.mode",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("rendered page missing form control %q (surviving section)", name)
@@ -119,8 +119,6 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
 		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections removed from UI.
 		"harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
-		// git_strategy section removed from the web console (config stays in yaml).
-		"git_strategy.",
 	} {
 		if strings.Contains(body, `name="`+prefix) {
 			t.Errorf("excluded/removed section control rendered: name=%q...", prefix)
@@ -166,14 +164,17 @@ func TestSaveWorkflowRoutesThroughSeam(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 	before := readSectionFile(t, root, "workflow")
 
-	rec := postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
+	// The seam probe uses loop_prevention.max_iterations (a surviving workflow
+	// scalar); token_budget.plan was retired from the edit surface in
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M1 while its yaml key stayed on disk.
+	rec := postSave(t, a, url.Values{"workflow.loop_prevention.max_iterations": {"77"}})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
 	}
 
 	after := readSectionFile(t, root, "workflow")
-	if !strings.Contains(after, "plan: 31000") {
-		t.Errorf("workflow.token_budget.plan not persisted:\n%s", after)
+	if !strings.Contains(after, "max_iterations: 77") {
+		t.Errorf("workflow.loop_prevention.max_iterations not persisted:\n%s", after)
 	}
 	// 주석 전량 보존 (AC-WC11-017).
 	if got, want := commentLines(after), commentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
