@@ -1,3 +1,4 @@
+isolation: worktree
 ---
 name: e2e-tester
 description: |

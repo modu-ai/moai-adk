@@ -1,3 +1,4 @@
+isolation: worktree
 ---
 name: cli-template-specialist
 description: >-

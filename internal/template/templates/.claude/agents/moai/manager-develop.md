@@ -1,3 +1,4 @@
+isolation: worktree
 ---
 name: manager-develop
 description: |

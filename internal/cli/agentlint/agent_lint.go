@@ -475,6 +475,7 @@ func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 // is absent — see agentNameFor). Initially the single sanctioned pilot agent.
 var nestingPilotAllowlist = map[string]bool{
 	"sync-auditor": true,
+	"manager-lead": true, // depth-1 fan-out (SPEC-V3R2-ORC-004)
 }
 
 // agentNameFor resolves the canonical agent name used for allowlist lookups.
@@ -871,10 +872,11 @@ func checkStaticTeamAgent(file string) []LintViolation {
 // + "Performance issues: Delegate to expert-performance" + "Quality validation:
 // Delegate to manager-quality" tripped LR-07 even though they are routing rules,
 // not Skeptical-Evaluator Mandate blocks). v2 fingerprint requires:
-//   1. Preceding markdown header (#, ##, ### etc.) containing "Skeptical",
-//      "Evaluator Mandate", or "Evaluation Mandate" (case-insensitive).
-//   2. Within 30 lines after such header (or until next header), 3+ consecutive
-//      bullets matching the evaluation keyword regex.
+//  1. Preceding markdown header (#, ##, ### etc.) containing "Skeptical",
+//     "Evaluator Mandate", or "Evaluation Mandate" (case-insensitive).
+//  2. Within 30 lines after such header (or until next header), 3+ consecutive
+//     bullets matching the evaluation keyword regex.
+//
 // This eliminates false positives from Delegation Protocol, Complexity Analysis,
 // SPEC Review Report, and other legitimate sections that happen to use eval keywords.
 func checkDuplicateMandateBlocks(files []string) []LintViolation {
@@ -1224,7 +1226,7 @@ func parseFieldName(frontmatter []byte) string {
 // aborts on the scalar form (cannot unmarshal !!str into struct), which would
 // make the parser non-resilient to agents declaring `sandbox: <scalar>`.
 type agentSandbox struct {
-	Backend      string `yaml:"backend"`
+	Backend       string `yaml:"backend"`
 	Justification string `yaml:"justification"`
 }
 
