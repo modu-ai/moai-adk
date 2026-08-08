@@ -229,6 +229,33 @@ test(settings): add TestEnsureGlobalSettingsEnv test cases
 - Runtime Access: `pkg/version/version.go` via `git describe`
 - Config Display: `.moai/config/sections/system.yaml` (updated by release process)
 
+### [HARD] Pre-release Versioning — SemVer 2.0.0
+
+Canonical pre-release form: **`vX.Y.Z-rc.N`** (dot before the number, `N` starting at `0`).
+
+```
+v3.1.0-rc.0   v3.1.0-rc.1   ...   v3.1.0-rc.10      → then v3.1.0
+```
+
+The dot is not cosmetic. SemVer splits a pre-release on `.` and compares each
+identifier separately, comparing a purely numeric identifier **numerically**.
+So `rc.9 < rc.10` orders correctly. The older undotted form (`rc9`, `rc10`) is a
+single alphanumeric identifier and compares ASCII-lexically, which puts `rc10`
+*before* `rc9` — the failure surfaces only once a line reaches its tenth
+candidate, which is exactly when a release is least forgiving.
+
+Rules:
+
+- [HARD] New pre-release tags use `-rc.N`. A numeric identifier carries no
+  leading zero (`rc.1`, never `rc.01`) — SemVer forbids it and
+  `scripts/release.sh` rejects it.
+- Legacy undotted tags (`v3.0.0-rc12` and the eleven before it) stay valid and
+  are NOT retagged; `scripts/release.sh` still accepts that form so the existing
+  history remains reproducible. Do not author new tags in it.
+- Enforcement lives in `scripts/release.sh` Validation 1, which implements the
+  official SemVer 2.0.0 grammar (pre-release + optional build metadata).
+- Local testing needs no tag at all — see Build Version Injection below.
+
 ### Build Version Injection
 
 Version is injected at build time using ldflags:
@@ -238,8 +265,20 @@ Version is injected at build time using ldflags:
 go build -ldflags="-X github.com/modu-ai/moai-adk/pkg/version.Version=v1.0.0"
 
 # Makefile handles this automatically
-make build VERSION=1.0.0
+make build VERSION=v1.0.0
 ```
+
+**Local pre-release testing needs no git tag.** `VERSION` is injected via ldflags
+at build time, so a release candidate can be built and installed locally without
+tagging, pushing, or invoking `scripts/release.sh`:
+
+```bash
+make build   VERSION=v3.1.0-rc.0   # bin/moai
+make install VERSION=v3.1.0-rc.0   # $GOPATH/bin/moai
+make release-local VERSION=v3.1.0-rc.0   # dist copy + version.json
+```
+
+Tagging is a separate, remote-facing act performed only by the release harness.
 
 ### Files Requiring Version Sync
 

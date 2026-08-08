@@ -71,9 +71,20 @@ done
 
 [[ -n "$VERSION" ]] || die "Version argument required (e.g., v2.15.0). Try --help."
 
-# ─── Validation 1: Version format (SemVer with v prefix) ────────────────────
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-    die "Invalid version format: $VERSION (expected: vX.Y.Z or vX.Y.Z-preN)"
+# ─── Validation 1: Version format (SemVer 2.0.0 with v prefix) ─────────────
+# The pre-release and build-metadata groups below are the official SemVer 2.0.0
+# grammar, not a loose approximation. A pre-release is a dot-separated series of
+# identifiers; a numeric identifier carries no leading zero, so `rc.01` is
+# rejected while `rc.1` is accepted. This matters for ordering: SemVer compares
+# dot-separated numeric identifiers NUMERICALLY, so `rc.9` precedes `rc.10`,
+# whereas the older undotted `rc9` / `rc10` form compares as a single
+# alphanumeric identifier and sorts ASCII-lexically (`rc10` before `rc9`).
+#
+# The canonical pre-release form for this project is `-rc.N` (see
+# CLAUDE.local.md §5 Pre-release Versioning). The undotted legacy form stays
+# ACCEPTED so the historical `v3.0.0-rc12` line of tags remains valid input.
+if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+    die "Invalid version format: $VERSION (expected SemVer 2.0.0: vX.Y.Z, or vX.Y.Z-rc.N for a pre-release)"
 fi
 
 log_info "Release version: ${BOLD}$VERSION${NC}"
