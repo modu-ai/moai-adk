@@ -51,10 +51,10 @@ func writeWorkflowYAML(t *testing.T, body string) string {
 // TestReadMultiReviewGateEnabled_TruthTable pins the fail-CLOSED truth table of
 // the config reader. Every non-affirmative path (missing file, malformed YAML,
 // absent block, explicit false) MUST read false so the distributed default is
-// OFF — the BranchGuard / codex-review-gate opt-in precedent. Both accepted key
-// paths are exercised: the canonical nested `multi.review_gate.enabled` (the
-// MultiConfig struct in internal/config/types.go) and the flat
-// `multi_review_gate.enabled` spelled by AC-AMM-018.
+// OFF — the BranchGuard / codex-review-gate opt-in precedent. The single
+// canonical key path is the nested `multi.review_gate.enabled` (the MultiConfig
+// struct in internal/config/types.go); the flat spelling an earlier AC-AMM-018
+// draft used is NOT accepted, and the "flat spelling ignored" case pins that.
 func TestReadMultiReviewGateEnabled_TruthTable(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -66,8 +66,7 @@ func TestReadMultiReviewGateEnabled_TruthTable(t *testing.T) {
 		{"block absent", "codex:\n  review_gate:\n    enabled: true\n", false},
 		{"nested explicit false", "multi:\n  review_gate:\n    enabled: false\n", false},
 		{"nested explicit true", "multi:\n  review_gate:\n    enabled: true\n", true},
-		{"flat explicit false", "multi_review_gate:\n  enabled: false\n", false},
-		{"flat explicit true", "multi_review_gate:\n  enabled: true\n", true},
+		{"flat spelling ignored", "multi_review_gate:\n  enabled: true\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := writeWorkflowYAML(t, tc.body)

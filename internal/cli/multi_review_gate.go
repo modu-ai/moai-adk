@@ -46,8 +46,7 @@ import (
 //  3. no reviewable uncommitted change       → ALLOW (self-gate; no false block)
 //  4. no session id / missing state file     → ALLOW (fail-open; no result yet)
 //  5. malformed state file                   → ALLOW (fail-open; corrupt JSON)
-//  6. overall_verdict = pass                 → ALLOW (all required PASS, OR
-//                                              advisory-only conflict — never block)
+//  6. overall_verdict = pass                 → ALLOW (all required PASS, or an advisory-only conflict — never blocks)
 //  7. overall_verdict = fail (required FAIL) → BLOCK (the gate's ONLY block path)
 //
 // `enabled` is read by the caller (runMultiReviewGate via
@@ -137,23 +136,19 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 //   - `...enabled: false`                  → false
 //   - `...enabled: true`                   → true
 //
-// TWO key paths are accepted, deliberately, because the SPEC's own surfaces
-// disagree on the spelling:
+// The canonical — and only — key path is `multi.review_gate.enabled`. It is
+// what the committed config schema declares (config.MultiConfig →
+// MultiReviewGateConfig, `yaml:"multi"` / `yaml:"review_gate"`) and what
+// config.Load populates, so any other spelling would leave that struct dead.
+// It is also the literal structural mirror of the sibling gate's
+// `workflow.codex.review_gate.enabled`, which is the "no new schema shape"
+// requirement AC-AMM-025 states.
 //
-//   - `multi.review_gate.enabled` — the CANONICAL path. It is what the
-//     committed config schema declares (config.MultiConfig →
-//     MultiReviewGateConfig, `yaml:"multi"` / `yaml:"review_gate"`) and what
-//     config.Load populates, so reading only the flat path below would leave
-//     that struct dead. It is also the literal structural mirror of
-//     `workflow.codex.review_gate.enabled` that AC-AMM-025 demands ("no new
-//     schema shape").
-//   - `multi_review_gate.enabled` — the FLAT path spelled verbatim by
-//     AC-AMM-018 / AC-AMM-019 and by the shipped hook wrapper's header comment.
-//
-// Both default to false, so accepting either cannot weaken the fail-CLOSED
-// direction: the gate activates only on an explicit affirmative opt-in, under
-// whichever spelling the operator used. The template NEVER carries
-// `enabled: true` (§25) — the distributed default is OFF.
+// An earlier draft of AC-AMM-018 / AC-AMM-019 spelled a FLAT
+// `multi_review_gate.enabled`; that wording was corrected to the nested path
+// in this milestone rather than carried as an alias, so users and docs have
+// exactly one spelling to learn. The template NEVER carries `enabled: true`
+// (§25) — the distributed default is OFF.
 func readMultiReviewGateEnabled(projectDir string) bool {
 	if projectDir == "" {
 		return false
@@ -169,14 +164,11 @@ func readMultiReviewGateEnabled(projectDir string) bool {
 				Enabled bool `yaml:"enabled"`
 			} `yaml:"review_gate"`
 		} `yaml:"multi"`
-		MultiReviewGate struct {
-			Enabled bool `yaml:"enabled"`
-		} `yaml:"multi_review_gate"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
 	}
-	return doc.Multi.ReviewGate.Enabled || doc.MultiReviewGate.Enabled
+	return doc.Multi.ReviewGate.Enabled
 }
 
 // ─── CLI subcommand wiring ───

@@ -588,9 +588,10 @@ type CodexReviewGateConfig struct {
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
 // config surface (SPEC-AUDIT-MULTI-MODEL-001 M5, REQ-AMM-013). It is the sibling
 // of Codex: an opt-in gate whose distributed default is OFF (BranchGuard
-// pattern). The multi_review_gate config block REUSES the existing
-// CodexReviewGateConfig structural pattern (a sibling `multi_review_gate` key
-// under `workflow:`, NOT a new schema shape — REQ-AMM-019 / AC-AMM-025).
+// pattern). The multi review-gate config block REUSES the existing
+// CodexReviewGateConfig structural pattern (a sibling `multi` key under
+// `workflow:` carrying the same `review_gate.enabled` shape as `codex`, NOT a
+// new schema shape — REQ-AMM-019 / AC-AMM-025).
 type MultiConfig struct {
 	ReviewGate MultiReviewGateConfig `yaml:"review_gate"`
 }

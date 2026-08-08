@@ -7,7 +7,7 @@
 # sync-phase-quality-gate.sh, and handle-codex-review-gate.sh; it does NOT
 # replace them. Each wrapper reads the same stdin JSON independently.
 #
-# The handler is opt-in (workflow.multi_review_gate.enabled, default OFF) and
+# The handler is opt-in (workflow.multi.review_gate.enabled, default OFF) and
 # self-gates to ALLOW on a no-edit / loop-prevention / disabled turn. Otherwise
 # it reads the most recent multi-model convergence result and BLOCKs only on an
 # unresolved required-backend FAIL. Disagreement among advisory-only backends
