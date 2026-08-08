@@ -143,6 +143,31 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 	return val
 }
 
+// provisionMCPEntryIfOptedIn writes the single neutral `moai` entry into the
+// project's .mcp.json when the user opted in through the wizard's
+// mcp_tools_opt_in question, and does nothing otherwise (opt-in default-off).
+//
+// It is the call site that makes the MCP server reachable at runtime: without
+// it the wizard answer is collected into opts and then dropped, leaving the
+// stdio server registered in code but absent from every host's config.
+//
+// The write goes through the shared atomic-config seam
+// (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
+// same lock + backup + idempotent-skip behaviour the other entry writers use.
+// Provisioning is best-effort: a failure warns and is swallowed, so a broken or
+// unwritable config can never fail an init.
+func provisionMCPEntryIfOptedIn(out, errOut io.Writer, projectRoot string, optedIn bool) {
+	if !optedIn {
+		return
+	}
+	configPath := filepath.Join(projectRoot, ".mcp.json")
+	if err := provisionMoaiMCPServerEntryAt(configPath); err != nil {
+		_, _ = fmt.Fprintf(errOut, "warning: MCP server entry provisioning failed: %v\n", err)
+		return
+	}
+	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (opt-in).")
+}
+
 // applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
 // opts, honouring flag-over-wizard precedence (REQ-WIZ-020).
 //
@@ -751,6 +776,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
+
+	// REQ-MCP-015 (opt-in, C6): turn the wizard's mcp_tools_opt_in answer into
+	// the single neutral .mcp.json entry. A project that declined ships inert.
+	provisionMCPEntryIfOptedIn(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, opts.MCPToolsOptIn)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
