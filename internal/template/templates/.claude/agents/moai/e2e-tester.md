@@ -1,5 +1,5 @@
-isolation: worktree
 ---
+isolation: worktree
 name: e2e-tester
 description: |
   End-to-end test execution specialist for web, mobile, and desktop applications.
