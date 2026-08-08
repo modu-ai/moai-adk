@@ -145,12 +145,17 @@ func TestProfileCreateInvalidName(t *testing.T) {
 // TestProfileCRUDI18nKeys covers AC-WC11-061 for the M4 CRUD strings: every new
 // data-i18n key exists in all 4 locales (en/ko/ja/zh).
 func TestProfileCRUDI18nKeys(t *testing.T) {
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M5 retired the profileManager card, so its
+	// three card-only keys (profile.manage.title / .desc / profile.current) are
+	// gone from the catalogue. The bar's keys — including the two new rename
+	// controls and the delete label — carry the same 4-locale obligation.
 	keys := []string{
-		"profile.manage.title",
-		"profile.manage.desc",
-		"profile.current",
+		"profile.label",
 		"profile.create.label",
 		"profile.create.button",
+		"profile.rename.label",
+		"profile.rename.button",
+		"profile.delete.label",
 		"profile.delete.button",
 	}
 	for _, k := range keys {
@@ -164,7 +169,7 @@ func TestProfileCRUDI18nKeys(t *testing.T) {
 func TestProfileCRUDMethodNotAllowed(t *testing.T) {
 	a, _ := crudApp(t, "default")
 	h := a.routes()
-	for _, path := range []string{"/profile/create", "/profile/delete"} {
+	for _, path := range []string{"/profile/create", "/profile/delete", "/profile/rename"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -293,19 +298,20 @@ func TestProfileResultDegradesOnReadError(t *testing.T) {
 	}
 }
 
-// TestProfileManagerRendered verifies the CRUD manager renders on GET / with its
-// create form + i18n-keyed controls (AC-WC11-032 render half).
-func TestProfileManagerRendered(t *testing.T) {
+// TestProfileBarRendered verifies the consolidated profile bar renders on GET /
+// with all three CRUD targets and their i18n-keyed controls
+// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-040/041).
+func TestProfileBarRendered(t *testing.T) {
 	body := renderConsolePage(t)
 	for _, marker := range []string{
-		`id="profile-manager"`,
+		`class="profilebar`,
 		`action="/profile/create"`,
 		`name="profile_name"`,
 		`data-i18n="profile.create.button"`,
-		`data-i18n="profile.manage.title"`,
+		`data-i18n="profile.label"`,
 	} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("rendered page missing profile-manager marker %q", marker)
+			t.Errorf("rendered page missing profile bar marker %q", marker)
 		}
 	}
 }

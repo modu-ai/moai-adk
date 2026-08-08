@@ -80,6 +80,10 @@ type app struct {
 	// CLAUDE_CONFIG_DIR); deleteProfile removes it. Tests inject failures here.
 	createProfile func(name string) error
 	deleteProfile func(name string) error
+	// renameProfile moves a profile directory (SPEC-WEB-CONSOLE-REDESIGN-001
+	// REQ-WCR-042). Same seam shape as create/delete so tests can inject a
+	// failure without touching the filesystem.
+	renameProfile func(oldName, newName string) error
 
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
@@ -122,6 +126,7 @@ func newApp(cfg Config) *app {
 		patchAgentFM: applyAgentOverrides,
 
 		createProfile: createProfileDir,
+		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
 }
@@ -142,6 +147,8 @@ func (a *app) routes() http.Handler {
 	// GET /?profile=<name> load path (no dedicated route needed).
 	mux.HandleFunc("/profile/create", a.handleProfileCreate)
 	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M5 (REQ-WCR-042): profile rename.
+	mux.HandleFunc(profileRenameAction(), a.handleProfileRename)
 	// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit GLM key reveal.
 	// POST-only so it inherits the loopback-Host + same-origin gates that
 	// hostCheckMiddleware applies to mutating methods; the handler re-checks

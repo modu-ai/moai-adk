@@ -38,6 +38,84 @@ func createProfileDir(name string) error {
 	return os.MkdirAll(dir, 0o755)
 }
 
+// renameProfileDir is the default renameProfile seam. It moves a profile
+// directory, mirroring createProfileDir's env-untouched approach: both paths go
+// through profile.GetProfileDir, which returns "" for the reserved names and for
+// any name failing the traversal gate, so neither side of the rename can escape
+// the profile base.
+//
+// os.Rename is used rather than a copy-then-delete because a partial copy would
+// leave two half-profiles; a failed rename leaves the original intact.
+func renameProfileDir(oldName, newName string) error {
+	src := profile.GetProfileDir(oldName)
+	if src == "" {
+		return fmt.Errorf("invalid or reserved profile name %q", oldName)
+	}
+	dst := profile.GetProfileDir(newName)
+	if dst == "" {
+		return fmt.Errorf("invalid or reserved profile name %q", newName)
+	}
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("profile %q does not exist", oldName)
+	}
+	if _, err := os.Stat(dst); err == nil {
+		return fmt.Errorf("profile %q already exists", newName)
+	}
+	return os.Rename(src, dst)
+}
+
+// handleProfileRename serves POST /profile/rename
+// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-042).
+//
+// The refusal set mirrors handleProfileDelete: the default profile and the
+// currently-active profile are off limits, because renaming the profile the
+// console is currently reading would leave the running session pointed at a
+// path that no longer exists. Name conflicts and traversal names are refused on
+// top of that. Every refusal happens BEFORE any filesystem call, so a rejected
+// request leaves both directories untouched.
+func (a *app) handleProfileRename(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		a.renderError(w, http.StatusBadRequest, "could not parse form: "+err.Error())
+		return
+	}
+	oldName := strings.TrimSpace(r.PostFormValue("profile_name"))
+	newName := strings.TrimSpace(r.PostFormValue("new_name"))
+
+	// Same guard set as delete: default and the active profile are protected.
+	if oldName == "default" || oldName == a.activeProfileName() || oldName == profile.GetCurrentName() {
+		a.renderProfileResult(w, r, http.StatusBadRequest,
+			"Cannot rename the default or currently active profile.")
+		return
+	}
+	if oldName == "" || !profile.IsValidProfileName(oldName) {
+		a.renderProfileResult(w, r, http.StatusBadRequest,
+			"Invalid profile name — must contain no path separators or leading dot.")
+		return
+	}
+	if newName == "" || newName == "default" || !profile.IsValidProfileName(newName) {
+		a.renderProfileResult(w, r, http.StatusBadRequest,
+			"Invalid new profile name — must be non-empty, not 'default', and contain no path separators or leading dot.")
+		return
+	}
+	if newName == oldName {
+		a.renderProfileResult(w, r, http.StatusBadRequest,
+			"The new profile name is the same as the current one.")
+		return
+	}
+
+	if err := a.renameProfile(oldName, newName); err != nil {
+		a.renderProfileResult(w, r, http.StatusBadRequest,
+			"Could not rename profile "+oldName+": "+err.Error())
+		return
+	}
+
+	a.renderProfileSuccess(w, a.activeProfileName(), "Profile "+oldName+" renamed to "+newName+".")
+}
+
 // activeProfileName reports the profile the console treats as currently active.
 // It is the launch profile (a.cfg.ProfileName, seeded from profile.GetCurrentName
 // at web.go startup), falling back to "default". The delete guard refuses this
