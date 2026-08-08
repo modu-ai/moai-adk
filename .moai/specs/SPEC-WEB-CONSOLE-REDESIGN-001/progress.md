@@ -51,7 +51,12 @@ run_commit_sha: c9406abf5
 ac_pass_count: 13
 ac_fail_count: 1 (AC-WCR-063 커버리지 — M7 소관)
 ac_vacuous_count: 2 (AC-WCR-061 / AC-WCR-062 — yaml·템플릿 편집 0건)
-preserve_list_post_run_count: 6 (plan.md §A.3 전 항목 무접촉)
+preserve_list_post_run_count: 5/6 (plan.md §A.3). 6번 항목("미렌더 섹션 중
+  git_strategy 외 나머지의 FieldDef 무접촉")은 의도적 편차다: REQ-WCR-022가
+  `harness.*`를 닫힌 집합 전환 대상으로 명시하므로 harness FieldDef 8종의
+  Type/Options/Validate를 변경했다. 이름·섹션·영속화 경로는 무변경이고 harness
+  섹션은 여전히 미렌더다. 나머지 5항목(workflow.yaml 키, config struct+접근자,
+  `parseSchemaForm` bool 분기, glmkey.go 계약, board.*)은 diff 0라인으로 실측 확인.
 new_warnings_or_lints_introduced: 0
 cross_platform_build: darwin/arm64 PASS, windows/amd64 PASS
 total_run_phase_files: 15
