@@ -1,6 +1,6 @@
 # SPEC-FACTORY-MODE-001 — Acceptance Criteria
 
-Version: 0.4.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
+Version: 0.5.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
 
 > **Count declaration.** A "leaf" is one independently-asserted binary criterion: `AC-FM-020a` and `AC-FM-020b` are two leaves, not one. Counting parent IDs alone yields 26, which is the number v0.2.0 reported (as "25") and is not what a reviewer must actually evaluate. The honest leaf count is 36. It is declared, not adjusted — see `spec.md` §D for why the excess is verification depth on one security-critical chain rather than scope creep, and why the SPEC was not split to fit.
 
@@ -317,7 +317,7 @@ grep -c 'governs suppression' "$R"      # >= 1
 
 ### B.6 Distribution and quality
 
-**AC-FM-025** — Given the completed change set, When `go test ./...`, `golangci-lint run`, `go test -cover ./internal/cli/... ./internal/factory/...`, `make build`, and the template-neutrality guard are run, Then all exit 0, coverage is at least 90% for `internal/cli` and 85% for `internal/factory`, every `.claude/` file touched has a mirrored counterpart under `internal/template/templates/.claude/`, and **no mirrored file this SPEC touches** contains a SPEC identifier, requirement token, acceptance token, internal date, commit SHA, or internal Go package path. The package-path clause is judged by:
+**AC-FM-025** — Given the completed change set, When `go test ./...`, `golangci-lint run`, the coverage commands of the coverage clause below, `make build`, and the template-neutrality guard are run, Then all exit 0, the **coverage clause** below holds, every `.claude/` file touched has a mirrored counterpart under `internal/template/templates/.claude/`, and **no mirrored file this SPEC touches** contains a SPEC identifier, requirement token, acceptance token, internal date, commit SHA, or internal Go package path. The package-path clause is judged by:
 
 ```bash
 for m in "${MIRRORS[@]}"; do
@@ -334,6 +334,35 @@ The existence guard is not decoration. Without it the grep's "no output" PASS co
 **Scope bound (v0.3.0).** The v0.2.0 form ran this grep across the entire `internal/template/templates/.claude/` tree, where **8 pre-existing matches** live in files this SPEC never touches — `plan-auditor.md:210`, `askuser-protocol-reference.md:149`, `agent-hooks.md:69`, `worktree-integration.md:307,369,380`, and `worktree-state-guard.md:2,15`. The criterion therefore failed on every run regardless of this SPEC's cleanliness, and the obvious "fix" — scrubbing five unrelated shipped rule files — is a scope-discipline violation with its own mirror-parity blast radius. REQ-FM-025 was already correctly scoped to the files this SPEC mirrors; only the criterion over-reached. Those 8 references are recorded as out of scope in `spec.md` §C.
 
 Positive control: the same pattern applied to the corresponding **live** files (`grep -n 'internal/factory\|internal/cli' $DOCS`) DOES match after M4 and M5 land — the plan and the live doctrine legitimately name `internal/factory` — proving the pattern is capable of firing and the empty `$MIRRORS` result is a real absence rather than a mis-typed pattern.
+
+**Coverage clause (corrected v0.5.0 — AP-16).**
+
+```bash
+# (1) internal/cli — non-regression against the measured pre-SPEC baseline
+go test -coverprofile=/tmp/fm-cli.out ./internal/cli/
+go tool cover -func=/tmp/fm-cli.out | tail -1
+#   measured baseline at commit 7171880a9 (pre-SPEC tree, detached worktree),
+#   two independent observations: 76.4% and 76.3%
+#   expected: total >= 76.3%  (the LOWER observation — see the jitter note below)
+
+# (2) internal/factory — absolute floor (unchanged)
+go test -cover ./internal/factory/          # expected: >= 85%
+
+# (3) every function this SPEC introduces or extends is fully covered
+go tool cover -func=/tmp/fm-cli.out | grep -E \
+  'parseFactoryFlag|enterFactoryMode|captureEnvState|recordFactorySession|rejectFactoryOnCG|injectStopHookBlockCapForGoal|setStopHookBlockCap'
+#   expected: exactly seven rows, each reporting 100.0%
+```
+
+Judgement, all three required: (a) the `internal/cli` package total is at or above `76.3%` — a non-regression against a measured starting point, not an absolute floor; (b) `internal/factory` is at or above 85%; (c) the per-function grep returns seven rows and every one reports `100.0%`.
+
+**Why the floor is the lower observation, not the higher.** The pre-SPEC baseline was measured twice, independently, against the same pre-SPEC tree at commit `7171880a9`, and returned **76.4%** and **76.3%** — a 0.1pp spread. The current tree measures **76.5%** on two runs. The spread is real, not a transcription error, and it has a known source: `internal/cli` currently has one failing test (see the note below), and a run that fails partway does not execute an identical statement set each time. Setting the floor at the *higher* observation would make the criterion fail on measurement jitter alone, which is the same unfalsifiable-criterion defect in a subtler form — a criterion that fails for reasons unrelated to the work teaches a reviewer to ignore it. The floor is therefore the **lower** observation (76.3%): it cannot trip on jitter, and a genuine regression — the thing this clause exists to catch — moves coverage by far more than 0.1pp. Where a future run observes a baseline below 76.3%, re-measure rather than lower the floor; a drifting baseline is itself the finding.
+
+**Pre-existing failing test (recorded, NOT introduced by this SPEC).** `TestRunHarnessObserveStop_ProposeChainAutoRuns` fails in the `internal/cli` package on **both** the current tree and the pre-SPEC baseline tree at `7171880a9`. It is a pre-existing red, unrelated to Factory Mode, and it is recorded here so M6 does not mis-attribute it. It is out of scope for this SPEC. Note that it also bears on this criterion's separate `go test ./...` exits-0 conjunct, which was itself never measured against a baseline — that conjunct is left untouched here (correcting it is a scope decision for the orchestrator, not a unilateral relaxation).
+
+**Why this clause changed.** The v0.4.0 form required "at least 90% for `internal/cli`". That figure was never measured against the package's actual starting point: `internal/cli` stood at **76.3-76.4%** before this SPEC began, so 90% sat roughly 13.6pp away on a large pre-existing package that this SPEC touches only at its edges. The criterion was unsatisfiable from the SPEC's own baseline and would have failed at M6 no matter how well the work was done — the exact shape §G names as **AP-16, "writing an acceptance criterion whose baseline was never measured"**. Two other instances of AP-16 were caught during plan-audit (AC-FM-007's presence grep and this criterion's own mirror grep) and were corrected the same way, by converting an absolute assertion into a measured-baseline delta; the coverage conjunct inside this criterion was missed. It is corrected here on the same principle rather than recorded as debt. **This is not a threshold lowered to turn a red build green**: clause (c) raises the bar on the code this SPEC actually adds — 100% on all seven functions, above the withdrawn 90% — while clause (a) stops asserting a package-wide figure the SPEC never had the scope to reach. Clause (b) is untouched and already met. The leaf count is unchanged: the coverage conjunct was one leaf in v0.4.0 (asserting two package figures) and remains one leaf here.
+
+Positive control: the per-function grep of (3) returns seven rows rather than zero. A mistyped or renamed symbol returns no rows, and an empty result must not be read as a pass — the same vacuous-absence failure the mirror-existence guard above exists to prevent.
 
 **AC-FM-026** — Given the edited `.claude/rules/moai/workflow/goal-directive.md` and its template mirror, When the block-cap trigger sentence is read, Then it names both trigger conditions rather than only the launch-time armed-goal condition:
 
