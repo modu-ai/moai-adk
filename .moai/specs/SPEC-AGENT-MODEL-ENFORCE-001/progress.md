@@ -49,9 +49,68 @@ go list -deps ./internal/template/... | grep 'moai-adk/internal/hook'   → 출�
 역방향 의존 **부재 확인**. `internal/hook → internal/template` 직접 임포트가 안전하므로
 REQ-AME-012의 해석기 직접 호출을 그대로 채택(제3 패키지 승격/인터페이스 주입 불필요).
 
+### 종단 실측 (§E DoD 6번 — 게이트 기본값에서 spawn 미차단)
+
+새 바이너리를 PATH 선두에 두고 워크트리에서 실세션 Agent spawn 1회 발생:
+
+```
+audit rows before: 0
+(Explore 서브에이전트가 정상 실행되어 결과 반환 — 차단 없음)
+audit rows after: 1
+{"timestamp":"2026-08-08T07:04:56Z","session_id":"84091ded-2e06-4f9e-8c9c-297999d253d8",
+ "agent":"Explore","declared_model":"","resolved_model":"sonnet","verdict":"missing"}
+```
+
+관측: (1) 게이트 기본값 `false`에서 spawn이 **차단되지 않음**, (2) 감사 로그에 정확히 1행 기록,
+(3) 판정이 `missing`으로 정확 — 실세션 spawn이 model 인자를 담지 않았고 해석값은 `sonnet`,
+(4) prompt 본문 미유출, (5) 실제 UUID session_id. 배선 전 구간이 실동작으로 확인됨.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-08
+run_commit_sha: pending-backfill-run
+run_status: PASS-WITH-DEBT
+ac_pass_count: 28
+ac_fail_count: 1          # AC-AME-053 (커버리지) — 사전 존재 격차, 아래 참조
+ac_debt_count: 2          # AC-AME-041 / 042 — D4(b) 결정에 따른 측정 대상 변경
+preserve_list_post_run_count: 6   # plan.md §A.3 PRESERVE 6항목 전부 무변경
+new_warnings_or_lints_introduced: 0
+total_run_phase_files: 12
+m1_to_mN_commit_strategy: 3 commits (M1 / M2-M4 / M5)
+```
+
+### 미해결 항목 (정직 보고)
+
+**AC-AME-053 — FAIL (사전 존재 격차, 본 SPEC 범위 밖)**
+`internal/hook` 패키지 커버리지 목표 90%, 실측 **84.1%**. 단 이는 본 SPEC이 만든 격차가
+아니다 — HEAD(4fc632280) 분리 워크트리 실측 baseline이 **83.9%** 이고 본 변경이 **+0.2pp**
+올렸다. 신규 코드 자체는 8개 함수 중 7개 100%, `appendAgentModelAudit` 76.2%(도달 불가한
+marshal 실패 분기 제외 시 실질 전량). 90% 달성은 `internal/hook` 176개 파일 전반의 테스트
+보강이 필요하며 본 SPEC의 scope 봉투 밖이다.
+
+**AC-AME-041 / AC-AME-042 — PASS-WITH-DEBT (측정 대상 불일치)**
+두 AC는 스텁이 **독립 파일**로 신설된다는 전제로 `wc -c <스텁 경로>` / `grep -cE 'opus|...'
+<스텁 경로>`를 지정한다. 오케스트레이터의 D4 확정은 (b) — 이미 항상 로드되는
+`agent-common-protocol.md`의 한 절로 삽입 — 이므로 명령을 호스트 파일에 그대로 적용하면
+36,585 bytes(> 2048)이고 alias 단어도 1건(기존 super-advisor 절의 "Opus/Sonnet") 잡힌다.
+**추가된 절 자체**로 측정하면 요구사항 의도(REQ-AME-041/042)를 충족한다:
+
+| 측정 | 값 | 기준 |
+|---|---|---|
+| 추가 절 크기 | 1,595 bytes | ≤ 2048 |
+| 절 내 alias 리터럴 | 0건 | 0 |
+| `model-policy.md` 교차 참조 | 1건 | ≥ 1 |
+| `model` 언급 | 13건 | ≥ 1 |
+| `model-policy.md` `paths:` 스코프 | 유지 | REQ-AME-043 |
+
+acceptance.md 본문 수정은 manager-develop 소관 밖(수정 금지)이므로 여기 기록만 남긴다.
+AC 명령의 측정 대상을 "추가된 절"로 정정하는 것은 manager-spec 재위임 사안이다.
+
+**AC-AME-054 — 전체 수트 3건 실패 (전부 사전 존재)**
+`TestLateBranchTemplateMirror/spec-assembly.md`, `TestRuleTemplateMirrorDrift/spec-workflow.md`,
+`TestSanitizedPairParity/main-checkout-branch-guard.md`. run-phase 착수 전 baseline과 동일하며
+본 변경이 추가한 4번째 실패는 **없다**(agent-common-protocol.md 미러를 동일 커밋에 반영).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
