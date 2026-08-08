@@ -162,14 +162,6 @@ func gitStrategyFields() []FieldDef {
 
 // ─── llm 안전 키 (REQ-WC11-012/013/014 — typed 경로) ─────────────────────────
 
-// llmFields는 실소비 GLM tier 매핑 4종(high/medium/low/fable)만 반환한다
-// (glm.go setGLMEnv 런타임 소비자 — ANTHROPIC_DEFAULT_*_MODEL 환경변수;
-// ANTHROPIC_DEFAULT_OPUS_MODEL조차 Models.High에서 온다). legacy alias
-// opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹 편집면에서
-// 제거되었다 — resolveGLMModels empty-fallback 체인과 GLMModels legacy struct
-// 멤버는 무접촉 보존되어 legacy yaml 로드가 backward-compat를 유지한다
-// (REQ-WC12-006). performance_tier와 claude_models.*는 M4 다이어트에서 제거
-// (struct 멤버와 yaml 로드 보존).
 // glmTiers는 GLM 티어 내부 키를 렌더 순서대로 반환한다. 표시 라벨은 Claude 대응
 // 이름(Opus/Sonnet/Haiku/Fable)이지만 내부 키는 불변이다 — 라벨은 i18n 소관이고
 // 이 슬라이스는 영속화 키의 원천이다 (SPEC-WEB-CONSOLE-REDESIGN-001 M4).
@@ -275,6 +267,22 @@ func QualityExcludedKeyPrefixes() []string {
 
 // ─── 7개 seam 섹션 스칼라 키 (REQ-WC11-016/017 — 2026-07-03 §C-7 실측 기반) ──
 
+// modeDefaultFields는 harness.mode_defaults.* 필드를 실행 모드 pin 집합에서
+// 파생해 반환한다. 렌더 순서는 정렬로 고정한다 (파생이지 재선언이 아님 —
+// gitStrategyFields의 mergeMethods 선례와 동일한 패턴).
+func modeDefaultFields() []FieldDef {
+	modes := append([]string{}, config.ValidExecutionModePins()...)
+	sort.Strings(modes)
+	fields := make([]FieldDef, 0, len(modes))
+	for _, mode := range modes {
+		f := withSelect(
+			seamField(SectionHarness, "harness", TypeSelect, "harness", "mode_defaults", mode),
+			"f.harness.mode_defaults.opt.", config.ValidModeDefaultLevels(), "", "")
+		fields = append(fields, f)
+	}
+	return fields
+}
+
 func seamSectionFields() []FieldDef {
 	s := seamField
 	// 닫힌 집합 필드는 withRadio/withSelect로 닫힌 위젯 + 멤버십 검증을 갖춘다
@@ -286,7 +294,7 @@ func seamSectionFields() []FieldDef {
 	selectSeam := func(sec SectionID, file, keyPrefix string, values []string, path ...string) FieldDef {
 		return withSelect(s(sec, file, TypeSelect, path...), keyPrefix, values, "", "")
 	}
-	return []FieldDef{
+	fields := []FieldDef{
 		// workflow (파일: workflow.yaml, 최상위 키 workflow).
 		// default_mode는 빈 값이 "하네스 자동 선택"이라 빈 옵션을 함께 렌더한다.
 		closedSeam(SectionWorkflow, "workflow", "f.workflow.default_mode.opt.",
@@ -353,12 +361,11 @@ func seamSectionFields() []FieldDef {
 		// 사용자가 입력하도록 초대하게 된다.
 		closedSeam(SectionHarness, "harness", "f.harness.evaluator.memory_scope.opt.",
 			config.ValidEvaluatorMemoryScopes(), "", "", "harness", "evaluator", "memory_scope"),
-		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
-			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "cg"),
-		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
-			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "solo"),
-		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
-			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "team"),
+		// mode_defaults 필드 목록은 config.ValidExecutionModePins()에서 파생한다 —
+		// mode_defaults의 키 집합과 workflow.execution_mode의 pin 집합은 같은 개념의
+		// 양면이므로, 한쪽만 늘어나면 콘솔이 하니스가 아는 모드를 거부하거나
+		// 하니스가 레벨을 못 정하는 모드를 제안하게 된다. 렌더 순서 안정성을 위해
+		// 정렬한다 (파생이지 재선언이 아님 — gitStrategyFields의 mergeMethods 선례).
 		s(SectionHarness, "harness", TypeBool, "learning", "enabled"),
 		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): learning.auto_apply 편집 필드 철거 →
 		// ReadOnlyDisplayFields로 강등. 파이프라인 in-memory AutoApply:true는 디스크 값
@@ -400,6 +407,9 @@ func seamSectionFields() []FieldDef {
 		s(SectionSecurity, "security", TypeBool, "security", "sandbox", "required"),
 		s(SectionSecurity, "security", TypeText, "security", "sandbox", "docker_image"),
 	}
+	// harness.mode_defaults.* 는 실행 모드 pin 집합에서 파생하므로 리터럴 목록에
+	// 인라인하지 않고 뒤에 붙인다 (렌더 순서: harness 블록 뒤).
+	return append(fields, modeDefaultFields()...)
 }
 
 // ─── SPEC-WEB-CONSOLE-013 M2: handoff / cache 섹션 (seam 전용) ────────────────
@@ -478,8 +488,8 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, llmFields()...)
 	fields = append(fields, seamSectionFields()...)
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
-	fields = append(fields, cacheFields()...)    // SPEC-WEB-CONSOLE-013 M2
-	fields = append(fields, reportFields()...)   // report.format (launch tab)
+	fields = append(fields, cacheFields()...)   // SPEC-WEB-CONSOLE-013 M2
+	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	return fields
 }
 

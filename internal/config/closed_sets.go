@@ -17,10 +17,35 @@ import "sort"
 // ErrEvalMemoryFrozen.
 const EvaluatorMemoryScopePerIteration = "per_iteration"
 
+// ExecutionModeAuto is the workflow.execution_mode value that defers the choice
+// to harness auto-selection rather than pinning a mode.
+const ExecutionModeAuto = "auto"
+
+// ValidExecutionModePins returns the execution modes a user may pin, in the
+// order the harness config lists them.
+//
+// These are exactly the keys of harness.mode_defaults: that map assigns a
+// harness level to each execution mode, and execution_mode selects which of
+// those modes is in force. The two are one concept seen from two sides, so this
+// accessor is the shared declaration and the harness mode_defaults field list is
+// built from it — a set written twice would drift, and the drift is silent
+// (the console would refuse a mode the harness knows, or offer one it cannot
+// resolve a level for).
+//
+// `cg` is a genuine member. Nothing in the Go tree reads ExecutionMode, so the
+// value's meaning is carried by prose; the harness router contract names
+// solo|team|cg as the modes consulted when execution_mode is `auto`, and the
+// shipped harness.yaml declares all three. An earlier {auto, solo, team}
+// declaration omitted `cg`, which mattered once the console became a closed-set
+// widget: an unlisted value stops being savable.
+func ValidExecutionModePins() []string {
+	return []string{"solo", "team", "cg"}
+}
+
 // ValidExecutionModes returns the closed set for workflow.execution_mode:
-// `auto` defers to harness auto-selection, `solo` and `team` pin the shape.
+// `auto` defers to harness auto-selection; the remaining members pin the shape.
 func ValidExecutionModes() []string {
-	return []string{"auto", "solo", "team"}
+	return append([]string{ExecutionModeAuto}, ValidExecutionModePins()...)
 }
 
 // ValidWorkflowDefaultModes returns the closed set for workflow.default_mode —

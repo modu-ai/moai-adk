@@ -43,6 +43,29 @@ M1-M3 완료. M4(서드파티 LLM 탭) / M5(프로필 UI) / M6(autonomy stub) / 
   변경분을 `git stash` 한 베이스라인에서 동일하게 실패함을 실측 확인. 신규 실패 0건
 - `templ generate` 재실행 후 `*_templ.go` 해시 무변경 (생성 산출물 동기화 완료)
 
+### §E.2.1 `workflow.execution_mode` 닫힌 집합 정정 (M3 잔여 항목 해소)
+
+M3는 `config.ValidExecutionModes()`를 `{auto, solo, team}`으로 선언했으나 이 집합은
+**추론**이었고 SSOT 근거가 없었다. M4-M6 구간에서 실측한 결과 `cg`가 누락된 4번째
+값임이 확인됐다.
+
+| 근거 | 관측 |
+|------|------|
+| `.moai/config/sections/harness.yaml` `mode_defaults` 키 | `solo` / `team` / `cg` (3개) |
+| `internal/config/types.go:868` `ModeDefaults` 주석 | "default harness level map per execution mode (solo/team/cg)" |
+| `SPEC-V3R2-HRN-001` REQ-HRN-001-014 | "**While** `workflow.yaml execution_mode` is `auto`, the router **shall** consult `cfg.ModeDefaults.solo\|team\|cg`" |
+| Go 런타임 reader | 0건 (`ExecutionMode` struct 멤버 + 기본값만; 소비는 산문) |
+
+M3가 이 필드를 닫힌 위젯으로 전환하면서 집합 밖 값의 저장이 거부되므로, 누락은
+표시 문제가 아니라 **문서화된 모드 하나를 사용자가 설정할 수 없게 만드는 회귀**였다.
+
+처분: `ValidExecutionModePins()` = `{solo, team, cg}`를 신설하고
+`ValidExecutionModes()` = `auto` + pins로 구성했다. `harness.mode_defaults.*`
+FieldDef 목록도 같은 접근자에서 파생하도록 바꿔 두 집합이 구조적으로 드리프트할 수
+없게 했다 (`modeDefaultFields()`). `internal/config/execution_modes_test.go`가 배포되는
+`harness.yaml`의 `mode_defaults` 키를 실제로 파싱해 pin 집합과 대조한다 — 추론이 아닌
+산출물 대조다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: partial (M1-M3 완료, M4-M7 미착수)
