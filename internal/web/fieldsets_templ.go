@@ -651,7 +651,7 @@ func fieldsetSchemaSection(view pageView, meta schemaSectionMeta) templ.Componen
 			}
 		}
 		for _, ro := range settings.ReadOnlyDisplayFields() {
-			if ro.Section == meta.ID {
+			if meta.Extras && ro.Section == meta.ID {
 				templ_7745c5c3_Err = schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -669,7 +669,7 @@ func fieldsetSchemaSection(view pageView, meta schemaSectionMeta) templ.Componen
 			return templ_7745c5c3_Err
 		}
 		for _, rb := range settings.RawViewBlocks() {
-			if rb.Section == meta.ID {
+			if meta.Extras && rb.Section == meta.ID {
 				templ_7745c5c3_Err = schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

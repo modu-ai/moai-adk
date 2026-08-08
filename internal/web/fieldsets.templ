@@ -170,7 +170,7 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 					@schemaFieldWidget(view, f)
 				}
 				for _, ro := range settings.ReadOnlyDisplayFields() {
-					if ro.Section == meta.ID {
+					if meta.Extras && ro.Section == meta.ID {
 						@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
 					}
 				}
@@ -184,7 +184,7 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 				}
 			</div>
 			for _, rb := range settings.RawViewBlocks() {
-				if rb.Section == meta.ID {
+				if meta.Extras && rb.Section == meta.ID {
 					@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
 				}
 			}

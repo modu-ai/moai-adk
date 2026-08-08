@@ -122,30 +122,28 @@ templ page(view pageView) {
 					// M5-b D1: 각 fieldset 을 .tabpanel 로 감싼다. CSS 가 비활성 패널을
 					// display:none 한다 — DOM 에서 제거하지 않으므로 비활성 패널의
 					// 필드도 제출된다 (atomic Save contract).
-					<div class={ "tabpanel", templ.KV("is-active", true) } data-panel="identity">
-						@fieldsetIdentity(view)
-					</div>
-					<div class="tabpanel" data-panel="language">
-						@fieldsetLanguage(view)
-					</div>
-					<div class="tabpanel" data-panel="launch">
-						@fieldsetLaunch(view)
-					</div>
-					// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` tabpanel was
-					// removed (REQ-MWV2-020/021) — it had no navigable data-tab and was
-					// unreachable. development_mode / git_convention / quality.* remain
-					// editable via yaml config files / CLI (the server-side parse seam is
-					// preserved; only the unreachable render surface is dropped).
-					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
-					for _, meta := range schemaSectionMetas() {
-						<div class="tabpanel" data-panel={ meta.PanelID }>
-							@fieldsetSchemaSection(view, meta)
+					//
+					// SPEC-WEB-CONSOLE-REDESIGN-001 M2: 패널은 consoleTabs() 순서를
+					// 그대로 따라 생성된다 — 탭 목록이 순서의 단일 원천이고, 패널 ID 가
+					// 섹션 ID 와 같다는 전제(한 패널 = 한 섹션)는 깨졌다. 수제 fieldset
+					// 3종과 agentfm 은 명시 분기로, 나머지는 스키마 주도 제네릭 패널로
+					// 렌더한다.
+					for i, tab := range consoleTabs() {
+						<div class={ "tabpanel", templ.KV("is-active", i == 0) } data-panel={ tab.ID }>
+							switch tab.ID {
+								case "identity":
+									@fieldsetIdentity(view)
+								case "language":
+									@fieldsetLanguage(view)
+								case "launch":
+									@fieldsetLaunch(view)
+								case "agentfm":
+									@fieldsetAgentFrontmatter(view)
+								default:
+									@fieldsetSchemaSection(view, schemaPanelMeta(tab.ID))
+							}
 						</div>
 					}
-					// SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 카드.
-					<div class="tabpanel" data-panel="agentfm">
-						@fieldsetAgentFrontmatter(view)
-					</div>
 					<div class="actions">
 						<button class="btn btn--primary" type="submit">@icon("save")<span data-i18n="actions.save">Save settings</span></button>
 						<span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>

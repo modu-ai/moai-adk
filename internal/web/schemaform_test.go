@@ -7,22 +7,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestConsoleTabsIncludesReport asserts the 'report' tab is registered for
-// the report config section and that the pre-existing tabs remain intact
-// and in order. report.format was relocated here off the launch tab.
-// Issue 3 restored the 'workflow' tab (after llm) for the worktree auto-create
-// toggle, so the canonical order is now 7 tabs.
+// TestConsoleTabsIncludesReport asserts the 'report' tab is registered for the
+// report config section and carries its own label key. report.format was
+// relocated here off the launch tab. The tab SEQUENCE is owned by
+// TestConsoleTabsOrder (tab_layout_test.go) — this test covers only the report
+// entry's identity.
 func TestConsoleTabsIncludesReport(t *testing.T) {
 	tabs := consoleTabs()
-	wantOrder := []string{"identity", "language", "launch", "llm", "workflow", "git-worktree", "agentfm", "report"}
-	if len(tabs) != len(wantOrder) {
-		t.Fatalf("consoleTabs() returned %d tabs, want %d", len(tabs), len(wantOrder))
-	}
-	for i, want := range wantOrder {
-		if tabs[i].ID != want {
-			t.Errorf("consoleTabs()[%d].ID = %q, want %q", i, tabs[i].ID, want)
-		}
-	}
 	var report *consoleTab
 	for i := range tabs {
 		if tabs[i].ID == "report" {
