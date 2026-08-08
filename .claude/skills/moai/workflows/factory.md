@@ -61,6 +61,52 @@ Four human gates fire across a factory chain. Exactly one is added by this contr
 
 All four are orchestrator-issued question rounds, never Stop-hook blocks. That distinction matters for the block-cap note below: raising the block cap cannot skip any of them.
 
+## The `factory_chain` goal preset
+
+The chain is driven by a goal preset named `factory_chain`, evaluated at each turn-end by the existing `stop-goal` Stop-hook evaluator. The preset introduces no new runtime, no new hook, and no new evaluator — it is a condition armed against machinery that already ships.
+
+### The condition
+
+The condition is authored **entirely as model conditions**: every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file. Nothing here is a shell command whose exit code decides.
+
+```text
+The plan-phase artifacts for the targeted SPEC are surfaced as authored and
+the plan audit verdict is surfaced as PASS; AND every blocking acceptance
+criterion has its PASS evidence surfaced in the conversation (test output,
+build exit 0, or an explicit AC-id: PASS line); AND the verify stage is
+surfaced as having produced a readable result, with its severity case
+(S1 / S2 / S3) and its rung (PRIMARY / FALLBACK / DEGRADED, or none for S3)
+stated in the transcript; AND the sync phase is surfaced as closed, with the
+SPEC status transition recorded. All of these hold — that is the end state.
+On a surfaced S1 (a confirmed critical or high finding), the chain does not
+advance to sync; the operator decides at gate 2 above, and the goal keeps
+the chain working through the scoped re-entry.
+On a surfaced S3 (no readable result), clear this goal and escalate rather
+than continue.
+[PRECONDITION: the plan-to-run approval of gate 1 above is already obtained;
+this goal neither substitutes for it nor bypasses it, nor any of gates 2-4.]
+```
+
+Each conjunct names something the orchestrator writes into the transcript as it works — the audit verdict line, the per-criterion PASS lines, the verify result's case and rung, the close record. A predicate that named a file path the evaluator would have to open instead would not be a model condition, and would silently never converge.
+
+### Arming rules
+
+- **Arm only after the plan-to-run approval of gate 1 in § Human gates is cleared.** That gate is where every operator preference is drained; the chain has no way to ask afterwards.
+- **Arm alongside the work, never in place of it.** Arming is arm-only: it records the condition and starts nothing. A goal armed while nothing is running finds its condition unmet at every turn-end and spins idle turns until a bound fires. The orchestrator therefore arms the preset in the same turn it starts the phase the preset is driving.
+- **Bound it with the flags, never with prose.** The preset arms with `--max-turns 0 --max-duration 14400` — infinite turns, a four-hour wall clock. A prose turn clause in the condition text is not parsed and has no mechanical effect, so authoring one would leave the chain running on a bound the operator believes exists and the evaluator never reads. The flags are the only bound that binds.
+- **Accepted risk.** An unattended factory run may consume up to four hours of tokens before the wall-clock bound fires. This is a deliberate trade, taken so a chain that legitimately needs many turns is not cut off mid-phase; an operator who does not want it should not arm the preset with these bounds.
+
+### Termination
+
+The chain ends on whichever of these arrives first: the condition above holding (chain completion), the four-hour wall-clock bound, the goal engine's stagnation guard halting a no-progress loop, or a refusal at any of the four human gates in § Human gates. There is no fifth exit.
+
+### Escalation and degradation
+
+Two behaviors govern the preset and are **defined elsewhere**; they are cited here rather than restated, because a second copy is a second thing to drift.
+
+- **Semantic-failure escalation** — a data race, deadlock, panic, or test assertion failure surfaced during the loop clears the goal and escalates to the operator instead of being auto-fixed. See `workflows/run.md` § Run-phase Autonomy, autonomy invariants.
+- **Graceful degradation** — the evaluator is a Stop hook, so the preset is unavailable when hooks are disabled. The chain then degrades to the standard manual per-turn flow rather than failing. See `.claude/rules/moai/workflow/goal-directive.md`.
+
 ## Backend exclusion
 
 Factory Mode is rejected on the mixed-backend launcher (`moai cg`) with the sentinel `FACTORY_MODE_UNSUPPORTED_BACKEND`, and no session is launched. That launcher runs a leader on one backend and teammates on another, which contradicts the one-session / one-backend / one-chain premise the chain rests on — the verify stage would run under an indeterminate backend. The rejection is deliberate, not a gap to be adapted around.
