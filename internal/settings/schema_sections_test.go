@@ -22,12 +22,11 @@ func seedTypedFixtures(t *testing.T, root string, names ...string) {
 }
 
 // m3ReclassifiedSeamSections는 SPEC-WEBCONF-SIMPLIFY-001 M3가 RouteExcluded로
-// 재분류한 7개 전 seam 섹션이다 (workflow는 Issue 3에서 RouteSeam으로 복구됨).
-// 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며 (config keys persist),
-// WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write path removed). 구조
-// 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
+// 재분류한 8개 전 seam 섹션이다. 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며
+// (config keys persist), WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write
+// path removed). 구조 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
 var m3ReclassifiedSeamSections = map[string]bool{
-	"harness": true, "ralph": true, "feedback": true,
+	"workflow": true, "harness": true, "ralph": true, "feedback": true,
 	"observability": true, "security": true, "handoff": true, "cache": true,
 }
 
@@ -84,10 +83,11 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 	}
 }
 
-// TestApplySchemaEditsSeamRoundTrip은 workflow seam 편집이 다시 성공함을 검증한다
-// (Issue 3 — workflow가 RouteSeam으로 복구됨). ApplySchemaEdits가 workflow scalar
-// 필드를 yamlpatch seam으로 기록하고, 디스크의 workflow.yaml에 값이 반영되며,
-// 주석이 보존됨을 확인한다.
+// TestApplySchemaEditsSeamRoundTrip은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 seam 섹션
+// 편집이 거부됨을 검증한다. M3가 workflow를 RouteExcluded로 재분류하여
+// WriteSectionViaSeam이 오류를 반환하고, ApplySchemaEdits가 이를 전파하며, 디스크의
+// workflow.yaml이 바이트 단위로 무변경임을 확인한다 (REQ-WC-003 — config keys
+// persist, web write path removed).
 func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -96,15 +96,15 @@ func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	err := ApplySchemaEdits(root, map[string]string{
 		"workflow.token_budget.plan": "31000",
 	})
-	if err != nil {
-		t.Fatalf("ApplySchemaEdits(workflow): %v", err)
+	if err == nil {
+		t.Fatal("ApplySchemaEdits(workflow): want rejection error (M3 RouteExcluded), got nil")
 	}
 	after := readSection(t, root, "workflow")
-	if !strings.Contains(after, "plan: 31000") {
-		t.Errorf("seam edit not persisted:\n%s", after)
+	if strings.Contains(after, "plan: 31000") {
+		t.Errorf("rejected seam edit leaked to disk:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Error("comments not preserved by seam routing")
+		t.Error("comments not preserved after rejected seam routing")
 	}
 }
 
@@ -645,12 +645,9 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 // TestRemovedFieldsLoadWithoutError는 M4 다이어트로 제거된 필드 키가 포함된
 // 기존 yaml 설정이 오류 없이 로드됨을 검증한다 (backward compat — 제거된 키는
 // 조용히 무시되고 KEPT 키의 yaml 경로는 안정적이다). fixture(testdata/sections)
-// 각 파일은 제거된 키(research.enabled, quality.coverage_threshold,
-// llm.performance_tier, git_strategy 전 profile leaf 등)를 그대로 포함한다.
-// ralph.yaml의 23 inert leaf는 SPEC-RALPH-CONFIG-REDESIGN-001에서 testdata까지
-// 5-key로 축소했으므로 ralph 섹션 fixture는 더 이상 제거 키를 담지 않는다
-// (비-strict 로더가 레거시 사용자 파일의 잔여 키를 조용히 무시하는 동작은
-// internal/config/CLAUDE.md로 문서 보존).
+// 각 파일은 제거된 키(ralph.loop.max_iterations, research.enabled,
+// quality.coverage_threshold, llm.performance_tier, git_strategy 전 profile
+// leaf 등)를 그대로 포함한다.
 func TestRemovedFieldsLoadWithoutError(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -886,69 +883,5 @@ func collectScalarLeaves(node *yaml.Node, prefix string, out *[]string) {
 		case yaml.MappingNode:
 			collectScalarLeaves(val, path, out)
 		}
-	}
-}
-
-// TestBranchGuardFieldDefRegistered (SPEC-WT-DOC-001) verifies the
-// workflow.branch_guard.enabled FieldDef is registered so the web console
-// schemaform can render the toggle. The distributed template ships without a
-// branch_guard block (CLAUDE.local.md §22.9 — default-off opt-in), so the
-// FieldDef is the sole signal to the console that this key exists. Asserts:
-// (i) the field name is present (ii) it targets the seam at
-// workflow.branch_guard.enabled (iii) TypeBool so the form renders a toggle.
-func TestBranchGuardFieldDefRegistered(t *testing.T) {
-	t.Parallel()
-
-	const wantName = "workflow.branch_guard.enabled"
-	var found *FieldDef
-	for i := range AllFields() {
-		f := AllFields()[i]
-		if f.Name == wantName {
-			found = &f
-			break
-		}
-	}
-	if found == nil {
-		t.Fatalf("%q FieldDef not registered — web console cannot render the toggle", wantName)
-	}
-	if found.Type != TypeBool {
-		t.Errorf("%q Type = %v, want TypeBool", wantName, found.Type)
-	}
-	if found.Persist.Kind != PersistSeam {
-		t.Errorf("%q Persist.Kind = %v, want PersistSeam", wantName, found.Persist.Kind)
-	}
-	if got, want := len(found.Persist.Path), 3; got != want {
-		t.Fatalf("%q Persist.Path length = %d, want %d", wantName, got, want)
-	}
-	wantPath := []string{"workflow", "branch_guard", "enabled"}
-	for i, seg := range wantPath {
-		if found.Persist.Path[i] != seg {
-			t.Errorf("%q Persist.Path[%d] = %q, want %q", wantName, i, found.Persist.Path[i], seg)
-		}
-	}
-}
-
-// TestApplySchemaEditsBranchGuardSeamRoundTrip (SPEC-WT-DOC-001) verifies that
-// the branch_guard.enabled key — absent from the distributed template — is
-// upserted cleanly via the yamlpatch seam (the same path the reconfigure
-// wizard's runWorkflowConfigStep uses), and that sibling workflow keys survive.
-func TestApplySchemaEditsBranchGuardSeamRoundTrip(t *testing.T) {
-	t.Parallel()
-	root := t.TempDir()
-	before := seedSectionFixture(t, root, "workflow")
-
-	err := ApplySchemaEdits(root, map[string]string{
-		"workflow.branch_guard.enabled": "true",
-	})
-	if err != nil {
-		t.Fatalf("ApplySchemaEdits(branch_guard): %v", err)
-	}
-	after := readSection(t, root, "workflow")
-	if !strings.Contains(after, "branch_guard:") || !strings.Contains(after, "enabled: true") {
-		t.Errorf("branch_guard.enabled upsert missing in:\n%s", after)
-	}
-	// Sibling keys preserved (comment-stability check mirrors TestApplySchemaEditsSeamRoundTrip).
-	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Error("comments not preserved by branch_guard seam edit")
 	}
 }

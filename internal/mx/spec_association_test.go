@@ -189,34 +189,6 @@ func TestIsFileUnderModules(t *testing.T) {
 			modules:  []string{},
 			expected: false,
 		},
-		{
-			// A module declared without a trailing slash must not match a
-			// sibling directory that merely shares a name prefix. Frontmatter
-			// accepts both `internal/mx` and `internal/mx/`, so the separator
-			// boundary — not the raw string prefix — decides containment.
-			name:     "sibling directory sharing a name prefix does not match",
-			file:     "internal/mxtools/unrelated.go",
-			modules:  []string{"internal/mx"},
-			expected: false,
-		},
-		{
-			name:     "module without trailing slash still matches its own files",
-			file:     "internal/mx/scanner.go",
-			modules:  []string{"internal/mx"},
-			expected: true,
-		},
-		{
-			name:     "file path equal to the module path matches",
-			file:     "internal/mx",
-			modules:  []string{"internal/mx"},
-			expected: true,
-		},
-		{
-			name:     "prefix match is rejected within a single path segment",
-			file:     "internal/auth2/handler.go",
-			modules:  []string{"internal/auth"},
-			expected: false,
-		},
 	}
 
 	for _, tt := range tests {

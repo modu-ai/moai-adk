@@ -79,16 +79,6 @@ Constraints: 10k concurrent users, 100ms read latency target
 
 ---
 
-## Project Navigator Consultation
-
-At Phase 1 context-load, consult `.moai/project/navigator/navigator.md` (if
-present) to scope the candidate SPEC against the current frontier — read the
-frontier + `capability-map.md`, and if the candidate overlaps an existing
-tracked capability, prefer amending the existing SPEC over creating a
-duplicate. Opt-in (fire only at the named phase); skip silently if absent.
-
----
-
 ## Phase Routing Table
 
 | Phase / Section | Sub-skill | Description |

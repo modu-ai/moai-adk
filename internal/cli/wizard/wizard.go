@@ -433,11 +433,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	// (REQ-WIZ-012), so it has no capture branch.
 	case "project_mode":
 		result.ProjectMode = value
-	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): autonomy-tier wizard page.
 	case "autonomy_tier":
 		result.AutonomyTier = value
-	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): audit selection.
-	// Values reuse the M3 typed-config enum vocabulary (no fork).
 	case "audit_model":
 		result.AuditModel = value
 	case "audit_gate_claude":
@@ -455,13 +452,14 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // The four former page-3 confirm questions (lsp_enabled, enforce_quality,
 // design_enabled, claude_design_enabled) are no longer asked — fixed at their
 // shipped true defaults (removed 2026-08-03). Their capture branches are gone
-// (M3 invariant: a removed question stores nothing). The worktree_auto_create
-// confirm (Issue 3) is the sole live capture branch.
+// (M3 invariant: a removed question stores nothing). No page-3 boolean
+// question remains interactive, so this is now a no-op for the init/update
+// set; it is still wired through buildConfirmField for any future confirm
+// question and is exercised by the removal tests.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
 	case "worktree_auto_create":
 		result.WorktreeAutoCreate = value
-	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020): opt-in toggles.
 	case "codex_audit_enabled":
 		result.CodexAuditEnabled = value
 	case "mcp_tools_opt_in":

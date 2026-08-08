@@ -36,6 +36,7 @@ var yamlToStructRegistry = map[string]string{
 	"statusline":     "StatuslineConfig",
 	"gate":           "GateConfig",
 	"sunset":         "SunsetConfig",
+	"research":       "ResearchConfig",
 	"handoff":        "HandoffConfig",  // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
 	"archive":        "ArchiveConfig",  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	"feedback":       "FeedbackConfig", // loaded via Loader.Load → loadFeedbackSection
@@ -69,9 +70,9 @@ var yamlAuditExceptions = map[string]string{
 	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
 	// Local-tree sections without a Loader.Load struct mapping (real-tree
 	// parity reconciliation):
-	"cache":         "retired (SPEC-CONFIG-DEAD-SWEEP-001) — cache.yaml removed from template; LoadCacheConfig/CacheConfig deleted as dead. session_ttl closed-set survives via config.ValidSessionTTLs() accessor consumed by internal/settings schema seam",
+	"cache":         "settings-seam only (cacheStrategy.enabled / session_ttl editable via internal/settings); the cache_control injector, doctor metric, and PostToolUse telemetry it once fed were all removed as unreachable — prompt caching is performed by Claude Code, and the live signal is the statusline ♻️ segment",
 	"mcp-matrix":    "maintainer-only prompt-consumed inventory (dev-only, not distributed; zero Go consumers)",
-	"observability": "partial direct-read (internal/hook/observability_master.go:85 reads `enabled` live)",
+	"observability": "observability config — no Go loader yet (separate SPEC)",
 	"report":        "settings-seam only (report.format select persisted via internal/settings) — not in the Loader.Load chain",
 	"tool-policy":   "maintainer-only codegen SSOT (internal/config/toolpolicy dedicated loader; dev-only, not distributed)",
 }

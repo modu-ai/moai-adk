@@ -50,11 +50,11 @@ func sectionCommentLines(s string) []string {
 }
 
 // TestWriteSectionViaSeamRejectsM3ReclassifiedSections는 SPEC-WEBCONF-SIMPLIFY-001
-// M3가 RouteExcluded로 재분류한 7개 전 seam 섹션에 대한 WriteSectionViaSeam 호출이
+// M3가 RouteExcluded로 재분류한 8개 전 seam 섹션에 대한 WriteSectionViaSeam 호출이
 // 전부 오류로 거부되고, 디스크의 섹션 파일이 바이트 단위로 무변경임을 검증한다
-// (REQ-WC-003 — config keys persist, web write path removed). workflow는 Issue 3에서
-// RouteSeam으로 복구되어 이 거부 목록에서 제외되었다 (별도 round-trip 테스트가
-// 성공 케이스를 담당한다).
+// (REQ-WC-003 — config keys persist, web write path removed). M3 이전에는 이
+// 섹션들이 seam-writable이었고 golden round-trip이 성공했다; M3 이후 웹 쓰기
+// 경로가 제거되어 전원 거부된다.
 func TestWriteSectionViaSeamRejectsM3ReclassifiedSections(t *testing.T) {
 	t.Parallel()
 
@@ -62,6 +62,7 @@ func TestWriteSectionViaSeamRejectsM3ReclassifiedSections(t *testing.T) {
 		section string
 		edit    yamlpatch.KeyEdit
 	}{
+		{"workflow", yamlpatch.KeyEdit{Path: []string{"workflow", "execution_mode"}, Value: "auto"}},
 		{"harness", yamlpatch.KeyEdit{Path: []string{"harness", "default_profile"}, Value: "strict"}},
 		{"ralph", yamlpatch.KeyEdit{Path: []string{"ralph", "loop", "max_iterations"}, Value: "20"}},
 		{"feedback", yamlpatch.KeyEdit{Path: []string{"feedback", "repository"}, Value: "example-org/fork"}},
@@ -152,10 +153,9 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
 		"research", "db",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections reclassified to
-		// RouteExcluded (tabs removed, web write path gone). workflow restored
-		// to RouteSeam in Issue 3 — NOT in this rejection list.
-		"harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+		// RouteExcluded (tabs removed, web write path gone).
+		"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
 		"nonexistent",
 	} {
 		err := WriteSectionViaSeam(root, section, []yamlpatch.KeyEdit{
@@ -192,9 +192,8 @@ func TestWriteSectionViaSeamRejectsResearchPreservesFile(t *testing.T) {
 }
 
 // TestWriteSectionViaSeamRejectsForeignRootKey는 섹션 파일 밖의 최상위 키 주입
-// (upsert 오남용)을 차단함을 검증한다. workflow는 Issue 3에서 RouteSeam으로
-// 복구되었으므로 라우트 게이트를 통과하고, 외래 키 검사(sectionRootKeys)에서
-// 거부된다.
+// (upsert 오남용)을 차단함을 검증한다. M3 이후 workflow는 RouteExcluded이므로
+// 라우트 게이트에서 거부된다 (외래 키 검사 도달 전).
 func TestWriteSectionViaSeamRejectsForeignRootKey(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

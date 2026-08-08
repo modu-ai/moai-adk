@@ -2,9 +2,10 @@ package settings
 
 import "testing"
 
-// TestRouteForSectionTable은 라우팅 테이블의 분류(typed/seam/statusline/excluded)를
-// 전수 검증한다. Issue 3이 workflow를 RouteSeam으로 부분 복구했다 (worktree
-// auto-create 토글). 나머지 7개 전 seam 섹션은 RouteExcluded로 잔류한다.
+// TestRouteForSectionTable은 라우팅 테이블의 분류(typed/statusline/excluded)를
+// 전수 검증한다. SPEC-WEBCONF-SIMPLIFY-001 M3가 기존 8개 seam 섹션을
+// RouteExcluded로 재분류하여 현재 RouteSeam에 등록된 섹션은 없다
+// (REQ-WC-003 — config keys persist, web write path removed).
 func TestRouteForSectionTable(t *testing.T) {
 	t.Parallel()
 
@@ -16,12 +17,11 @@ func TestRouteForSectionTable(t *testing.T) {
 		"git-convention": RouteTypedSave,
 		"git-strategy":   RouteTypedSave,
 		"llm":            RouteTypedSave,
-		// seam (restored — Issue 3).
-		"workflow": RouteSeam,
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections still reclassified
-		// to RouteExcluded (tabs removed, config keys persist — REQ-WC-003).
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+		// RouteExcluded (tabs removed, config keys persist — REQ-WC-003).
+		"workflow":      RouteExcluded,
 		"harness":       RouteExcluded,
 		"ralph":         RouteExcluded,
 		"feedback":      RouteExcluded,
@@ -46,23 +46,17 @@ func TestRouteForSectionTable(t *testing.T) {
 	}
 }
 
-// TestSeamSectionsMatchesRoutes는 SeamSections 열거가 workflow만 포함함을 검증한다
-// (Issue 3 — workflow가 RouteSeam으로 복구되었고, 나머지 7개는 RouteExcluded).
+// TestSeamSectionsMatchesRoutes는 SeamSections 열거가 M3 이후 비어 있음을 검증한다
+// (SPEC-WEBCONF-SIMPLIFY-001 M3 — 8개 seam 섹션이 전부 RouteExcluded로
+// 재분류되어 현재 seam-writable 섹션은 없다).
 func TestSeamSectionsMatchesRoutes(t *testing.T) {
 	t.Parallel()
 	seam := SeamSections()
-	if len(seam) != 1 {
-		t.Fatalf("SeamSections() length = %d, want 1 (workflow restored — Issue 3)", len(seam))
+	if len(seam) != 0 {
+		t.Fatalf("SeamSections() length = %d, want 0 (M3 reclassified all 8 seam sections to RouteExcluded)", len(seam))
 	}
-	if seam[0] != "workflow" {
-		t.Errorf("SeamSections()[0] = %q, want %q", seam[0], "workflow")
-	}
-	// workflow는 RouteSeam으로 라우팅되어야 한다.
-	if got := RouteForSection("workflow"); got != RouteSeam {
-		t.Errorf("workflow routes to %d, want RouteSeam (Issue 3 restored)", got)
-	}
-	// 나머지 7개 전 seam 섹션은 여전히 RouteExcluded.
-	for _, name := range []string{"harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
+	// M3 이전에 seam이었던 8개 섹션이 전부 RouteExcluded로 라우팅되는지 확인.
+	for _, name := range []string{"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
 		if got := RouteForSection(name); got != RouteExcluded {
 			t.Errorf("former seam section %q routes to %d, want RouteExcluded (M3)", name, got)
 		}
@@ -70,28 +64,25 @@ func TestSeamSectionsMatchesRoutes(t *testing.T) {
 }
 
 // TestExcludedSectionsAllRejected는 명시적 제외군 전원이 RouteExcluded임을 검증한다.
-// Issue 3이 workflow를 제외군에서 제거했다 (기존 19 - 1 = 18).
+// SPEC-WEBCONF-SIMPLIFY-001 M3가 8개 전 seam 섹션을 제외군에 추가했다
+// (기존 11 + M3 8 = 19).
 func TestExcludedSectionsAllRejected(t *testing.T) {
 	t.Parallel()
 	excluded := ExcludedSections()
-	if len(excluded) != 18 {
-		t.Fatalf("ExcludedSections() length = %d, want 18 (19 M3 - workflow restored — Issue 3)", len(excluded))
+	if len(excluded) != 19 {
+		t.Fatalf("ExcludedSections() length = %d, want 19 (11 original + 8 M3-reclassified)", len(excluded))
 	}
 	for _, name := range excluded {
 		if got := RouteForSection(name); got != RouteExcluded {
 			t.Errorf("excluded section %q routes to %d, want RouteExcluded", name, got)
 		}
 	}
-	// workflow는 제외군에 없어야 한다 (Issue 3 복구).
+	// M3로 추가된 8개 섹션이 제외군에 명시되어 있는지 확인.
 	present := map[string]bool{}
 	for _, name := range excluded {
 		present[name] = true
 	}
-	if present["workflow"] {
-		t.Error("workflow must NOT be in ExcludedSections() (restored to RouteSeam — Issue 3)")
-	}
-	// 나머지 7개 M3 섹션은 제외군에 명시되어 있어야 한다.
-	for _, name := range []string{"harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
+	for _, name := range []string{"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
 		if !present[name] {
 			t.Errorf("M3-reclassified section %q missing from ExcludedSections()", name)
 		}

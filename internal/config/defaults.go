@@ -147,6 +147,12 @@ const (
 	DefaultGitConventionFallback            = "conventional-commits"
 	DefaultGitConventionMaxLength           = 100
 
+	DefaultStateDir = ".moai/state"
+
+	// DefaultStaleSeconds is the threshold (in seconds) at which a session checkpoint is considered stale.
+	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
+	DefaultStaleSeconds = 3600
+
 	// DefaultTraceRetentionDays is the age threshold (in days) past which
 	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
 	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
@@ -202,24 +208,6 @@ const (
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
 
-	// DefaultCodexReviewGateTimeout is the per-invocation timeout override for
-	// the `moai hook codex-review-gate` Stop hook (SPEC-MOAI-MCP-SERVER-001
-	// REQ-MCP-008 / AC-MCP-010). The moai-default 5s hook budget does NOT apply
-	// to this hook: a codex review legitimately runs for minutes, so the
-	// manifest pins 900s (15 min) for this hook only. Other hooks keep 5s.
-	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
-	DefaultCodexReviewGateTimeout = 900 * time.Second
-
-	// DefaultMultiReviewGateTimeout is the per-invocation timeout override for
-	// the `moai hook multi-review-gate` Stop hook (SPEC-AUDIT-MULTI-MODEL-001
-	// M5 REQ-AMM-013 / AC-AMM-018). The moai-default 5s hook budget does NOT
-	// apply to this hook: the gate itself only reads a state file, but the
-	// generous 900s budget (sibling to DefaultCodexReviewGateTimeout) keeps
-	// Stop-hook-composition uniform across both review gates so a future
-	// evolution that adds I/O does not silently regress the budget.
-	// Centralized here per CLAUDE.local.md §14 (thresholds in defaults.go).
-	DefaultMultiReviewGateTimeout = 900 * time.Second
-
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -266,6 +254,15 @@ var SandboxProofKinds = []string{
 // multiplication is not a constant expression.
 var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 
+// DefaultCodexReviewGateTimeout is the per-call timeout for the codex
+// JSON-RPC review invoked by the codex-review-gate Stop hook
+// (SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008 / AC-MCP-010). It overrides the
+// moai-default 5s hook budget so a slow review cannot stall the Stop beyond
+// the hook manifest budget (the manifest pins 900s for this hook only).
+// Not a compile-time const because time.Duration multiplication is not a
+// constant expression.
+var DefaultCodexReviewGateTimeout = 900 * time.Second
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
@@ -297,6 +294,7 @@ func NewDefaultConfig() *Config {
 		State:         NewDefaultStateConfig(),
 		Gate:          NewDefaultGateConfig(),
 		Sunset:        NewDefaultSunsetConfig(),
+		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
 		Handoff:       NewDefaultHandoffConfig(),
 		Archive:       NewDefaultArchiveConfig(),
@@ -306,6 +304,42 @@ func NewDefaultConfig() *Config {
 		ContextSearch: defaultContextConfig(),
 		Interview:     defaultInterviewConfig(),
 		Design:        defaultDesignConfig(),
+	}
+}
+
+// NewDefaultResearchConfig returns a ResearchConfig with safe defaults.
+func NewDefaultResearchConfig() ResearchConfig {
+	return ResearchConfig{
+		Enabled: false,
+		Passive: ResearchPassiveConfig{
+			Enabled:                 true,
+			CorrectionWindowSeconds: 60,
+			PatternThresholds: ResearchPatternThresholds{
+				Heuristic:      3,
+				Rule:           5,
+				HighConfidence: 10,
+			},
+		},
+		Active: ResearchActiveConfig{
+			RunsPerExperiment: 3,
+			MaxExperiments:    20,
+			PassThreshold:     0.80,
+			TargetScore:       0.95,
+			BudgetCapTokens:   500000,
+		},
+		Safety: ResearchSafetyConfig{
+			WorktreeIsolation:         true,
+			CanaryRegressionThreshold: 0.10,
+			RateLimits: ResearchRateLimitConfig{
+				MaxExperimentsPerSession: 20,
+				MaxAcceptedPerSession:    5,
+				MaxAutoResearchPerWeek:   3,
+			},
+		},
+		Dashboard: ResearchDashboardConfig{
+			DefaultMode:     "terminal",
+			HTMLOpenBrowser: true,
+		},
 	}
 }
 
@@ -590,38 +624,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
-		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
-		// ships default-OFF. Distributed users get an inert Stop hook; a
-		// maintainer opts in via local config. Template neutrality (§25): no
-		// `enabled: true` under internal/template/templates/.
-		Codex: CodexConfig{
-			ReviewGate: CodexReviewGateConfig{
-				Enabled: false,
-			},
-		},
-		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the
-		// multi-model review gate ships default-OFF (BranchGuard pattern —
-		// sibling to Codex.ReviewGate). Distributed users get an inert Stop
-		// hook; a maintainer opts in via local config. Template neutrality
-		// (§25): no `enabled: true` under internal/template/templates/.
-		Multi: MultiConfig{
-			ReviewGate: MultiReviewGateConfig{
-				Enabled: false,
-			},
-		},
-		// SPEC-MOAI-MCP-SERVER-001 M3 (REQ-MCP-010 / AC-MCP-012, progress.md
-		// §G.3 locked default profile): claude + codex required, glm advisory.
-		// glm ships advisory (NOT required) so a distributed user without a GLM
-		// key is never hard-blocked — the fail-open C2 invariant. `multi` is a
-		// declared token only; convergence logic is SPEC-AUDIT-MULTI-MODEL.
-		Audit: AuditConfig{
-			Model: AuditModelClaude,
-			Gates: AuditGates{
-				Claude: AuditGateRequired,
-				Codex:  AuditGateRequired,
-				GLM:    AuditGateAdvisory,
-			},
-		},
 		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
 		// feature ships default-OFF. When unset, moai init / moai profile /
 		// moai web behave byte-identically to the shared-checkout baseline.
@@ -631,21 +633,35 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		SessionWorktree: SessionWorktreeConfig{
 			Enabled: false,
 		},
+		// SPEC-MOAI-MCP-SERVER-001 M3 (REQ-MCP-010 / AC-MCP-012): locked
+		// distributed-default audit profile — claude required (anchor),
+		// codex required, glm advisory (user-enabled). The convergence engine
+		// treats an empty gate as "apply default", so these are also the
+		// fallback when workflow.yaml omits the block.
+		Audit: AuditConfig{
+			Model: AuditModelClaude,
+			Gates: AuditGates{
+				Claude: AuditGateRequired,
+				Codex:  AuditGateRequired,
+				GLM:    AuditGateAdvisory,
+			},
+		},
 	}
 }
 
 // NewDefaultStateConfig returns a StateConfig with default values.
 func NewDefaultStateConfig() StateConfig {
-	return StateConfig{}
+	return StateConfig{
+		StateDir: DefaultStateDir,
+	}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
-//
-// The StaleSeconds default was removed in SPEC-RALPH-CONFIG-REDESIGN-001 M3
-// (dead producer-side pipeline, zero runtime consumers). The constructor is
-// retained because NewDefaultConfig wires Config.Session via it.
+// SPEC-V3R2-RT-004 REQ-022: default stale_seconds = 3600 (1 hour).
 func NewDefaultSessionConfig() SessionConfig {
-	return SessionConfig{}
+	return SessionConfig{
+		StaleSeconds: DefaultStaleSeconds,
+	}
 }
 
 // NewDefaultGitConventionConfig returns a GitConventionConfig with default values.

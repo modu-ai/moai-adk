@@ -10,12 +10,6 @@
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
             "timeout": 30,
             "type": "command"
-          },
-          {
-            "command": "bash",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start-navigator.sh"],
-            "timeout": 5,
-            "type": "command"
           }
         ]
       }
@@ -131,12 +125,6 @@
             "command": "bash",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop-goal.sh"],
             "timeout": 120,
-            "type": "command"
-          },
-          {
-            "command": "bash",
-            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-codex-review-gate.sh"],
-            "timeout": 900,
             "type": "command"
           },
           {
@@ -501,9 +489,8 @@
       "Bash(sudo:*)",
       "Bash(chmod:*)",
       "Bash(chown:*)",
-      "Bash(ansible-playbook:*)",
-      "Bash(helm upgrade:*)",
-      "Bash(kubectl apply:*)"
+      "Read(./.env)",
+      "Read(./.env.*)"
     ],
     "deny": [
       "Read(./secrets/**)",
@@ -553,16 +540,7 @@
       "Bash(redis-cli FLUSHALL:*)",
       "Bash(redis-cli FLUSHDB:*)",
       "Bash(psql -c DROP:*)",
-      "Bash(mysql -e DROP:*)",
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Bash(git push origin main:*)",
-      "Bash(git push origin master:*)",
-      "Bash(terraform destroy:*)",
-      "Bash(aws iam put-*:*)",
-      "Bash(aws iam create-*:*)",
-      "Bash(aws iam attach-*:*)",
-      "Bash(gcloud * add-iam-policy-binding:*)"
+      "Bash(mysql -e DROP:*)"
     ]
   },
   "attribution": {

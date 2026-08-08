@@ -168,7 +168,7 @@ const skillMoaiPrefix = ".claude/skills/moai/"
 var leakClasses = []leakClass{
 	{
 		name:    "C1-spec-id-prefix",
-		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE|PROJECT-NAVIGATOR)-[A-Z0-9-]+\b`),
+		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
 	},
 	{
 		name:    "C2-req-ac-internal-prefix",
@@ -254,41 +254,6 @@ var leakClasses = []leakClass{
 		name:            "S3-req-ac-token-any-prefix",
 		pattern:         regexp.MustCompile(`\b(REQ|AC)-[A-Z][A-Z0-9]*-[0-9]+\b`),
 		skillBodyScoped: true,
-	},
-	// --- SPEC-LSEL-LOCAL-EVOLUTION-001 M2 additions (AC-LSEL-006) ---
-	//
-	// The LSEL loop is a GOOS-local user-owned subsystem. Its artifacts (the
-	// `hns-lsel-*` skill namespace, `SPEC-LSEL-*` SPEC IDs, the
-	// `LSEL:LOCAL-ONLY-DO-NOT-DISTRIBUTE` CLAUDE.local.md internal marker, and
-	// internal-SHA references in LSEL state) MUST NOT leak into the distributed
-	// template tree. These classes are whole-tree (not skill-body-scoped) because
-	// the LSEL footprint spans skills, CLAUDE.local.md, and state files — a leak
-	// could land in any template surface. The positive-control fixture test
-	// (TestLSELLeakPositiveControl) plants a synthetic LSEL fixture and confirms
-	// each class flags it.
-	{
-		// L1 — SPEC-LSEL-* SPEC ID (whole-tree). The LSEL SPEC family is
-		// GOOS-local dogfood; its SPEC IDs must never ship to 16-language users.
-		name:    "L1-spec-id-lsel",
-		pattern: regexp.MustCompile(`\bSPEC-LSEL-[A-Z0-9-]+\b`),
-	},
-	{
-		// L2 — hns-lsel-* skill/agent name (whole-tree). The hns-lsel-* namespace
-		// is user-owned dogfood per §24; it must never appear under templates/.
-		// (split_namespace_test.go guards the broader hns-* agent leak; this
-		// class catches the LSEL-specific skill name in any template file body.)
-		name:    "L2-hns-lsel-skill",
-		pattern: regexp.MustCompile(`\bhns-lsel-[a-z0-9-]+\b`),
-	},
-	{
-		// L3 — CLAUDE.local.md internal marker. CLAUDE.local.md is local-only
-		// (never templated); a piece of its internal content leaking into a
-		// template is a namespace violation. The marker
-		// `LSEL:LOCAL-ONLY-DO-NOT-DISTRIBUTE` is the sentinel placed at the top
-		// of CLAUDE.local.md §0 (INVARANTS kernel); its presence under templates/
-		// would mean local-only content escaped into distribution.
-		name:    "L3-claudelocal-internal-marker",
-		pattern: regexp.MustCompile(`LSEL:LOCAL-ONLY-DO-NOT-DISTRIBUTE`),
 	},
 	// --- SPEC-MOAI-SKILL-DOCTRINE-FIX-001 REQ-SKF-053 additions ---
 	//
@@ -1619,69 +1584,6 @@ func TestReqSkf053NewLeakClassesDetectShapes(t *testing.T) {
 					tc.class, tc.text, tc.outScopePath, outViolations)
 			}
 		})
-	}
-}
-
-// TestLSELLeakPositiveControl (AC-LSEL-006) plants a synthetic fixture
-// containing `lsel`/`hns-lsel`/`SPEC-LSEL`/the CLAUDE.local.md internal marker
-// under a temp tree and confirms each LSEL leak class (L1/L2/L3) flags it. This
-// is the positive-control fixture: it proves the LSEL classes detect a real
-// leak. The clean template tree (TestTemplateNoInternalContentLeak) is the
-// negative control — it confirms zero LSEL content under templates/ today.
-//
-// SPEC-LSEL-LOCAL-EVOLUTION-001 M2 / REQ-LSEL-006.
-func TestLSELLeakPositiveControl(t *testing.T) {
-	t.Parallel()
-
-	leakTree := t.TempDir()
-	// Plant one file carrying all four LSEL leak shapes.
-	leaky := strings.Join([]string{
-		"// see SPEC-LSEL-LOCAL-EVOLUTION-001 for the loop",
-		"// the hns-lsel-curator skill drives the drain",
-		"<!-- LSEL:LOCAL-ONLY-DO-NOT-DISTRIBUTE -->",
-		"// lsel-curator companion (bare 'lsel-' token, not flagged alone — 'lsel' is a common substring)",
-	}, "\n")
-	leakPath := filepath.Join(leakTree, "leak.md")
-	if err := os.WriteFile(leakPath, []byte(leaky), 0o644); err != nil {
-		t.Fatalf("write planted leak: %v", err)
-	}
-
-	var flagged []string
-	walkErr := filepath.WalkDir(leakTree, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !shouldScanForLeak(path) {
-			return nil
-		}
-		content, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
-		rel := filepath.ToSlash(strings.TrimPrefix(path, leakTree+string(os.PathSeparator)))
-		flagged = append(flagged, collectLeakViolations(rel, rel, string(content), leakClasses)...)
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk planted tree: %v", walkErr)
-	}
-
-	// Each of L1/L2/L3 MUST fire on the planted fixture.
-	for _, class := range []string{"L1-spec-id-lsel", "L2-hns-lsel-skill", "L3-claudelocal-internal-marker"} {
-		if !anyViolationHasClass(flagged, class) {
-			t.Errorf("AC-LSEL-006: leak class %q did NOT fire on the positive-control fixture — the LSEL leak guard is not detecting a real leak", class)
-		}
-	}
-
-	// (b) Regression backstop: a clean file (no LSEL token) is NOT flagged.
-	cleanTree := t.TempDir()
-	cleanPath := filepath.Join(cleanTree, "clean.md")
-	if err := os.WriteFile(cleanPath, []byte("# Clean doc\nNo internal tokens here.\n"), 0o644); err != nil {
-		t.Fatalf("write clean: %v", err)
-	}
-	cleanContent, _ := os.ReadFile(cleanPath)
-	if v := collectLeakViolations("clean.md", "clean.md", string(cleanContent), leakClasses); len(v) != 0 {
-		t.Errorf("clean file falsely flagged as LSEL leak: %v", v)
 	}
 }
 

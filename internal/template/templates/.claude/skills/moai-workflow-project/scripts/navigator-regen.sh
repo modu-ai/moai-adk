@@ -214,15 +214,8 @@ ROW_COUNT="$(wc -l <"$ROWS_FILE" 2>/dev/null | tr -dc '0-9' || echo 0)"
             printf '_All tracked SPECs are in a terminal state._\n'
         fi
         printf '\n## Next task\n\n'
-        # Next task = preferred-status recommendation: in-progress first, else
-        # draft, else none. This POSITIVE status-tier predicate deliberately
-        # differs from the "Current frontier" filter above (which stays
-        # inclusive of implemented SPECs for display context) — implemented
-        # SPECs remain visible in the frontier but are NOT recommended as the
-        # next task. Alphabetical sort (sort -k1) already applied to ROWS_FILE
-        # is the tiebreaker WITHIN a status tier only.
-        next_line="$(awk -F'\t' '$3 == "in-progress" { print; exit }' "$ROWS_FILE")"
-        [ -z "$next_line" ] && next_line="$(awk -F'\t' '$3 == "draft" { print; exit }' "$ROWS_FILE")"
+        # Next task = the first non-terminal SPEC by sort order.
+        next_line="$(awk -F'\t' '$3 != "completed" && $3 != "superseded" && $3 != "archived" && $3 != "rejected" { print; exit }' "$ROWS_FILE")"
         if [ -n "$next_line" ]; then
             nid="$(printf '%s' "$next_line" | awk -F'\t' '{print $1}')"
             printf 'Advance **%s** toward its next milestone. See `.moai/project/navigator/progress-map.md` for its frontier milestone.\n\n' "$nid"

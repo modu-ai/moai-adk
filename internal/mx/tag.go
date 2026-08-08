@@ -52,9 +52,7 @@ type Tag struct {
 	// link). It is the exact structural analogue of Reason: a single sub-line
 	// content carrier with omitempty serialization. When non-empty, it drives an
 	// additive third association source in SpecAssociator.Associate, independent
-	// of the path-based and body-based sources. Serialized in the sidecar so the
-	// association is observable to consumers; omitempty means existing sidecar
-	// JSON deserializes unchanged.
+	// of path- and body-based sources.
 	//
 	// @MX:NOTE: [AUTO] SpecRef — additive sub-line content carrier for @MX:SPEC; parallel to Reason, drives the sub-line association source
 	SpecRef string `json:"specRef,omitempty"`

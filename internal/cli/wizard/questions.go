@@ -296,39 +296,10 @@ func ReconfigureQuestions(projectRoot string) []Question {
 func InitQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	page3 := Page3Questions(projectRoot)
-	all := make([]Question, 0, len(base)+len(page3)+1)
+	all := make([]Question, 0, len(base)+len(page3))
 	all = append(all, base...)
 	all = append(all, page3...)
-	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): the interactive autonomy-tier
-	// selector page, appended after the Quality & Workflow page. The flag
-	// (M4) validates the closed set fail-loud; this page PROMPTS the user.
-	all = append(all, AutonomyTierQuestion())
 	return all
-}
-
-// AutonomyTierQuestion returns the interactive autonomy-tier selector question
-// (SPEC-AUTONOMY-TIERS-001 REQ-001 / AC-001). It offers the 3-tier closed set
-// {semi-auto, automatic, fully-autonomous} with semi-auto pre-selected (REQ-006:
-// no fully-autonomous default ships). The fully-autonomous tier is gated at
-// apply time (init.go) via config.EffectiveTierWithGates — the sandbox-proof +
-// kill-switch gating is NOT duplicated in the static option set; instead a
-// fully-autonomous selection made without proof / under the kill-switch is
-// downgraded to automatic with an advisory (AC-005).
-func AutonomyTierQuestion() Question {
-	return Question{
-		ID:          "autonomy_tier",
-		Group:       "Autonomy",
-		Type:        QuestionTypeSelect,
-		Title:       "Select autonomy tier",
-		Description: "Controls how many permission prompts Claude Code shows. 'Semi-auto' is the safe default.",
-		Options: []Option{
-			{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Per-tool prompt — today's behavior"},
-			{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Per-tool auto-approval"},
-			{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "All prompts skipped (bypassPermissions); requires sandbox proof, gated by the kill-switch"},
-		},
-		Default:  config.AutonomyTierSemiAuto,
-		Required: true,
-	}
 }
 
 // FilteredQuestions returns questions filtered by their conditions.
@@ -370,8 +341,8 @@ func QuestionByID(questions []Question, id string) *Question {
 // design_enabled, claude_design_enabled — are FIXED at their shipped true
 // defaults and no longer asked (removed 2026-08-03). Their values are seeded
 // by RunWithDefaults (see wizard.go), so interactive `moai init` writes the
-// true default for each without prompting. project_mode and the worktree
-// auto-create toggle remain interactive on this page.
+// true default for each without prompting. Only project_mode remains
+// interactive on this page.
 //
 // The constructor is named for the page it builds rather than for the retired
 // mode taxonomy (REQ-WIZ-018): no flag selects it any more.
@@ -391,115 +362,103 @@ func Page3Questions(projectRoot string) []Question {
 			Default:  "personal",
 			Required: true,
 		},
-		// Worktree auto-create (Issue 3). Persisted to
-		// workflow.worktree.auto_create via the workflow seam. Default false
-		// matches the config default (internal/config/defaults.go AutoCreate:
-		// false). When enabled, `moai init` patches workflow.yaml so the
-		// orchestrator auto-creates an L1 worktree for run-phase isolation.
+		// Issue 3 — worktree_auto_create confirm. Mirrors the config default
+		// (workflow.worktree.auto_create = false) so the wizard ships INERT.
 		{
 			ID:          "worktree_auto_create",
 			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable worktree auto-creation?",
-			Description: "When enabled, MoAI automatically creates an isolated git worktree for run-phase work. Default is off (Claude Code runtime handles L1 worktrees autonomously).",
+			Description: "When enabled, moai init / moai profile / moai web automatically enter a worktree. Ships disabled (recommended for solo developers).",
 			Default:     "false",
-			Required:    false,
 		},
-		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — the audit +
-		// MCP opt-in selection. Grouped under "Audit & MCP" so they render as a
-		// distinct form page. The enum Values reuse the M3 typed-config constants
-		// (internal/config AuditModel* / AuditGate*) — the wizard and the audit
-		// backend share ONE interpreter (no fork; AC-MCP-021 relies on the same
-		// interpreter via the web console schema fields).
-		//
-		// audit_model — the active audit backend. `multi` is a declared token
-		// only (convergence is a follow-up SPEC); it is offered for forward
-		// compatibility and stored verbatim.
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — audit +
+		// MCP opt-in selection. Reuses the M3 typed-config enum vocabulary.
 		{
 			ID:          "audit_model",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Select audit model",
-			Description: "The active review backend that gates merges. 'claude' uses the session model; 'codex'/'glm' add an external reviewer (fail-open if absent).",
+			Description: "The active audit backend. 'claude' is the locked distributed default.",
 			Options: []Option{
-				{Label: "Claude (Recommended)", Value: config.AuditModelClaude, Desc: "Session model review — no external dependency"},
-				{Label: "Codex", Value: config.AuditModelCodex, Desc: "codex CLI review (requires codex installed; fails open)"},
-				{Label: "GLM", Value: config.AuditModelGLM, Desc: "z.ai GLM review (requires GLM key; fails open)"},
-				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Multi-auditor super-review (parallel codex+GLM + convergence; fails open)"},
+				{Label: "Claude", Value: config.AuditModelClaude, Desc: "Default anchor verdict"},
+				{Label: "Codex", Value: config.AuditModelCodex, Desc: "Codex JSON-RPC reviewer"},
+				{Label: "GLM", Value: config.AuditModelGLM, Desc: "GLM (z.ai) reviewer"},
+				{Label: "Multi", Value: config.AuditModelMulti, Desc: "Multi-auditor convergence (deferred)"},
 			},
 			Default:  config.AuditModelClaude,
 			Required: true,
 		},
-		// Per-auditor audit_gate. The distributed default gate is `required`
-		// (§G.3); glm ships advisory in the locked default profile, applied at
-		// the config-default layer (defaults.go), not at the prompt. Each gate
-		// reuses the M3 AuditGate* constants.
 		{
 			ID:          "audit_gate_claude",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Claude audit gate",
-			Description: "off = skip; advisory = warn only; required = block merge until PASS.",
+			Description: "Gate for the claude anchor verdict.",
 			Options: []Option{
-				{Label: "Required (Recommended)", Value: config.AuditGateRequired, Desc: "Block merge until Claude review PASS"},
-				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Warn only — no block"},
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the Claude auditor"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the claude auditor"},
+				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
+				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
 			},
-			Default:  config.AuditGateRequired,
-			Required: true,
+			Default: config.AuditGateRequired,
 		},
 		{
 			ID:          "audit_gate_codex",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Codex audit gate",
-			Description: "off = skip; advisory = warn only; required = block merge until PASS (fails open if codex absent).",
+			Description: "Gate for the codex reviewer.",
 			Options: []Option{
-				{Label: "Required (Recommended)", Value: config.AuditGateRequired, Desc: "Block merge until codex PASS (fail-open on missing codex)"},
-				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Warn only — no block"},
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the codex auditor"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the codex auditor"},
+				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
+				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
 			},
-			Default:  config.AuditGateRequired,
-			Required: true,
+			Default: config.AuditGateRequired,
 		},
 		{
 			ID:          "audit_gate_glm",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "GLM audit gate",
-			Description: "off = skip; advisory = warn only; required = block merge until PASS (fails open if GLM key absent).",
+			Description: "Gate for the GLM reviewer. 'advisory' default — a missing GLM key never hard-blocks (fail-open).",
 			Options: []Option{
-				{Label: "Required", Value: config.AuditGateRequired, Desc: "Block merge until GLM PASS (fail-open on missing key)"},
-				{Label: "Advisory (Recommended)", Value: config.AuditGateAdvisory, Desc: "Warn only — no block; the locked default profile for glm (a distributed user with no GLM key is never hard-blocked)"},
-				{Label: "Off", Value: config.AuditGateOff, Desc: "Skip the GLM auditor"},
+				{Label: "Off", Value: config.AuditGateOff, Desc: "Disable the GLM auditor"},
+				{Label: "Advisory", Value: config.AuditGateAdvisory, Desc: "Run but never block"},
+				{Label: "Required", Value: config.AuditGateRequired, Desc: "Fail blocks convergence"},
 			},
-			Default:  config.AuditGateAdvisory,
-			Required: true,
+			Default: config.AuditGateAdvisory,
 		},
-		// codex_audit_enabled — master toggle for the codex backend + the
-		// Stop-hook review gate. Default false (opt-in). When true, `moai init`
-		// persists workflow.codex.review_gate.enabled=true so the M2 review-gate
-		// hook activates.
 		{
 			ID:          "codex_audit_enabled",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
-			Title:       "Enable codex review gate?",
-			Description: "When enabled, MoAI activates the codex Stop-hook review gate (workflow.codex.review_gate.enabled). Default is off — the gate ships dormant.",
+			Title:       "Enable the codex review-gate Stop hook?",
+			Description: "Opt-in default-off. When enabled, the Stop hook runs codex on uncommitted changes.",
 			Default:     "false",
-			Required:    false,
 		},
-		// mcp_tools_opt_in — provisions the single neutral `.mcp.json` moai
-		// entry (the §G.5 locked shape). Default false (C6 — opt-in default-off).
-		// When true, `moai init` writes the entry via the M1 atomic-config seam.
 		{
 			ID:          "mcp_tools_opt_in",
-			Group:       "Audit & MCP",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
-			Title:       "Provision the moai MCP server (.mcp.json)?",
-			Description: "When enabled, MoAI writes the `moai mcp-server` stdio entry to .mcp.json (opt-in; a fresh project ships it inert). Default is off.",
+			Title:       "Opt in to MCP tools provisioning?",
+			Description: "Opt-in default-off (REQ-MCP-002).",
 			Default:     "false",
-			Required:    false,
+		},
+		// SPEC-AUTONOMY-TIERS-001 M7 — interactive autonomy-tier selector.
+		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
+		{
+			ID:          "autonomy_tier",
+			Group:       "Autonomy",
+			Type:        QuestionTypeSelect,
+			Title:       "Select autonomy tier",
+			Description: "Controls how many turns the session runs without prompting. 'semi-auto' is the recommended default.",
+			Options: []Option{
+				{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Prompt before each non-trivial action"},
+				{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Run milestones autonomously; prompt at gates"},
+				{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "Requires sandbox proof (Docker/gVisor/etc.)"},
+			},
+			Default:  config.AutonomyTierSemiAuto,
+			Required: true,
 		},
 	}
 }

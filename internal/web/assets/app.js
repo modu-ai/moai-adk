@@ -183,11 +183,7 @@
     var nodes = document.querySelectorAll("[data-i18n]");
     for (var i = 0; i < nodes.length; i++) {
       var key = nodes[i].getAttribute("data-i18n");
-      // Option LABEL tokens (".opt.*") stay English in every locale (G1-2), but
-    // option DESCRIPTIONS (".opt.*.desc") are prose — they follow the active
-    // locale. Freezing them was the report.format 다국어-안-됨 defect.
-    var forceEn = key.indexOf(".opt.") >= 0 && !key.endsWith(".desc");
-    var str = (forceEn ? enDict : dict)[key];
+      var str = (key.indexOf(".opt.") >= 0 ? enDict : dict)[key];
       // Missing key → restore the server-side baseline (data-i18n-baseline) so a
       // locale switch back to en — or any locale whose dictionary lacks this key
       // — does not leave the previous locale's text stuck on the row. Only

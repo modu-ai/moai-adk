@@ -371,8 +371,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"security-turn":                      true, // in-session security guardian L2: domain hook, not a Claude Code event
 		"security-commit":                    true, // in-session security guardian L3: domain hook, not a Claude Code event
 		"session-start-compact":              true, // SPEC-INFINITE-GOAL-001 REQ-5: isolated-invocation domain hook (shares EventSessionStart; production firing via deps.go registration)
-		"codex-review-gate":                  true, // SPEC-MOAI-MCP-SERVER-001 M2: codex review-gate Stop hook (domain, not a Claude Code event)
-		"multi-review-gate":                  true, // SPEC-AUDIT-MULTI-MODEL-001 M5: multi-model review-gate Stop hook (domain, not a Claude Code event)
+		"codex-review-gate":                  true, // SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008: Stop-hook domain gate (shares EventStop; opt-in via workflow.codex.review_gate.enabled)
 	}
 
 	for _, cmd := range hookCmd.Commands() {

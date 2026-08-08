@@ -186,42 +186,9 @@ func (a *app) render(w http.ResponseWriter, status int, view pageView) {
 		a.renderError(w, http.StatusInternalServerError, "internal error: render failed: "+err.Error())
 		return
 	}
-	// SPEC-AUTONOMY-TIERS-001 M10 (gap-2 / console 완성): inject a discoverable
-	// link to the autonomy toggle into the main console page so a user on `moai
-	// web` can reach /autonomy/tiers without knowing the URL. The toggle fragment
-	// + handler (M8) existed but were unreachable from the main page. Embedding
-	// the toggle inline into the ~160KB generated templ monolith (root_templ.go)
-	// is impractical to do cleanly here; the full inline embed is deferred UI
-	// polish — the link makes the toggle reachable NOW (the M10 contract).
-	rendered := injectAutonomyToggleLink(buf.Bytes())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = w.Write(rendered)
-}
-
-// autonomyToggleLinkHTML is the discoverable link section injected before
-// </main> on the main console page. It is a fixed compile-time constant — no
-// user data flows into it — so there is no injection surface. The link target
-// /autonomy/tiers is the M8 handler that renders the 3-tier toggle fragment.
-const autonomyToggleLinkHTML = `<section class="autonomy-link" aria-label="Autonomy tier"><a href="/autonomy/tiers">Autonomy tier settings</a></section>`
-
-// injectAutonomyToggleLink inserts the autonomy-toggle link section immediately
-// before the first </main> close tag in the rendered page. The root component
-// (root.templ) emits exactly one </main>; the injection is therefore stable and
-// idempotent. When </main> is absent (defensive — should not happen on the
-// canonical page render) the link is appended so reachability never silently
-// regresses.
-func injectAutonomyToggleLink(html []byte) []byte {
-	const marker = "</main>"
-	idx := bytes.Index(html, []byte(marker))
-	if idx < 0 {
-		return append(html, []byte(autonomyToggleLinkHTML)...)
-	}
-	out := make([]byte, 0, len(html)+len(autonomyToggleLinkHTML))
-	out = append(out, html[:idx]...)
-	out = append(out, []byte(autonomyToggleLinkHTML)...)
-	out = append(out, html[idx:]...)
-	return out
+	_, _ = w.Write(buf.Bytes())
 }
 
 // handleIndex serves GET / — the READ handler (REQ-WC-006, REQ-WC-010,

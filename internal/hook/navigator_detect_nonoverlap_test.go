@@ -8,6 +8,8 @@ package hook
 //     three predecessor-chain outputs (capability-map.md, audit-report,
 //     capability-symbols). Pattern carried forward from
 //     internal/navigator/sync/nonoverlap_test.go (M0).
+//   - AC-NS2-005a (consumer-only: M0 + mx byte-unchanged) — the M1 run-phase
+//     diff touches NO path under internal/navigator/sync/ or internal/mx/.
 //   - AC-NS2-005b (consumer-only: read via public API) — navigator_detect.go
 //     has NO write/rename call targeting a predecessor surface; the M0 types
 //     are consumed via the public sync.Graph / sync.Edge / sync.Node API only
@@ -20,18 +22,10 @@ package hook
 // consumes their outputs read-only. A regression that adds a write to a
 // predecessor surface would silently corrupt the producer's output and is
 // the single most dangerous scope-creep failure mode for this layer.
-//
-// All guards here are source-content checks, safe to run on any branch. A
-// prior AC-NS2-005a guard instead diffed the working branch against
-// origin/main and failed whenever the diff touched internal/navigator/sync/
-// or internal/mx/. That assertion was one-shot — it held for the branch that
-// introduced this layer and was satisfied at merge — but as a permanent test
-// it failed every later branch legitimately editing those packages. Do not
-// reintroduce a git-diff-based guard here; scope such an assertion to the
-// branch that needs it.
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -195,6 +189,47 @@ func TestNonOverlap_DetectNeverWritesToSyncOrMxPaths(t *testing.T) {
 						src, frag, strings.TrimSpace(line))
 				}
 			}
+		}
+	}
+}
+
+// TestConsumerOnly_M0AndMxByteUnchanged (AC-NS2-005a, REQ-NS2-005) asserts
+// the M1 run-phase diff touches NO path under internal/navigator/sync/ or
+// internal/mx/. The command is the verbatim AC:
+//
+//	git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'
+//
+// grep exit 1 (no matches) = PASS. The test is skipped when origin/main is
+// unavailable (shallow clone, detached HEAD in CI without origin) so it does
+// not produce false failures in environments that lack the git baseline; in
+// those environments the orchestrator's verification batch surfaces the same
+// command directly.
+func TestConsumerOnly_M0AndMxByteUnchanged(t *testing.T) {
+	// Serial: shells out to git. Skip if origin/main is unavailable.
+	if os.Getenv("MOAI_NAVIGATOR_DETECT_SKIP_GIT_DIFF") == "1" {
+		t.Skip("MOAI_NAVIGATOR_DETECT_SKIP_GIT_DIFF=1 — skipping git-diff guard")
+	}
+	// Verify origin/main exists so `git diff origin/main...HEAD` is meaningful.
+	revCmd := exec.Command("git", "rev-parse", "--verify", "origin/main")
+	if err := revCmd.Run(); err != nil {
+		t.Skipf("origin/main not resolvable (git rev-parse failed: %v); skipping AC-NS2-005a git-diff guard — run the verbatim command manually if needed",
+			err)
+	}
+	cmd := exec.Command("git", "diff", "--name-only", "origin/main...HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git diff --name-only origin/main...HEAD failed: %v", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "internal/navigator/sync/") {
+			t.Errorf("AC-NS2-005a FAIL: M1 diff touches M0 producer path %q — the Detect layer must consume internal/navigator/sync/ read-only", line)
+		}
+		if strings.HasPrefix(line, "internal/mx/") {
+			t.Errorf("AC-NS2-005a FAIL: M1 diff touches mx producer path %q — the Detect layer must consume internal/mx/ read-only", line)
 		}
 	}
 }
