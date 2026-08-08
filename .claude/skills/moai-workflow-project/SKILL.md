@@ -79,56 +79,6 @@ Three workflows: project initialization, documentation generation from SPEC, tem
 
 See [core workflow walkthroughs](references/workflows.md) for detailed step-by-step procedures.
 
-### Project Navigator (living navigation layer)
-
-A living project-scoped navigation layer that aggregates the SPEC registry into
-a single reorientable view. Three markdown files under
-`.moai/project/navigator/` (`navigator.md` entry point, `capability-map.md`
-feature inventory, `progress-map.md` per-SPEC rollup) are regenerated on every
-`/moai project` invocation AND chained into `/moai sync` (before the sync
-commit lands), so the Navigator's staleness window never exceeds one sync cycle.
-
-Every row carries `commit-sha` + ISO-8601 `captured-at` provenance (drawn from
-`git log`), so any Navigator claim is attributable to a measured baseline.
-
-**Regeneration mechanism** — the deterministic core is
-`${CLAUDE_SKILL_DIR}/scripts/navigator-regen.sh`, a self-contained bash script
-(no `jq`, no `moai` binary). Invoke it on-demand (`/moai project`) and the sync
-workflow invokes it before the sync commit. See
-[navigator.md reference](references/navigator.md) for the full schema, the
-atomic-rename strategy, the malformed-frontmatter tolerance, and the empty-
-project form.
-
-**`--brief` reorientation mode** — `/moai project --brief` loads the full
-`navigator.md` entry brief PLUS the current-frontier section of
-`progress-map.md` into the active context as a structured reorientation brief.
-Use it for mid-session deep re-orientation. A separate SessionStart hook
-(`handle-session-start-navigator.sh`) emits an ambient auto-brief (≤500 tokens)
-on every new session — the zero-touch path.
-
-**`--audit` drift / completeness mode** — `/moai project --audit` runs the
-audit script (`scripts/navigator-audit.sh`) over the project's design docs
-(`product.md` / `structure.md` / `tech.md`) and the existing capability-map,
-then emits a bidirectional drift report under `.moai/project/navigator/`:
-
-- `audit-report.md` — human-readable, grouped into `## Missing SPECs`,
-  `## Orphan SPECs`, `## Matched` sections.
-- `audit-report.json` — machine-readable, stable schema (`audit_at`,
-  `audit_commit`, `inputs`, `missing`, `orphan`, `matched`).
-
-**Missing SPECs** are design-named features with no matching capability-map
-row; **Orphan SPECs** are capability-map rows with no design-doc anchor. The
-audit is ADVISORY — it surfaces candidates, never auto-creates or auto-retires
-SPECs. It is read-only over its inputs (never triggers regeneration, never
-modifies design docs or the capability-map). Recommended invocation order:
-`/moai project` (regenerates 001's capability-map) → `/moai project --audit`
-(consumes it). An optional user-authored override file
-(`audit-known-matches.yaml`) silences deliberate naming divergence the
-heuristic cannot resolve. See
-[navigator-audit.md reference](references/navigator-audit.md) for the full
-algorithm, the header-driven column resolution, the matching heuristic, and
-the override-file schema.
-
 ### Language and Localization
 
 Automatic Language Detection: analyzes file content, configuration files, system locale, and directory structure.

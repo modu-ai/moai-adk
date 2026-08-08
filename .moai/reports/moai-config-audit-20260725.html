@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>.moai/config 전수 감사 — 데드코드·설정 / 문서-코드 갭 (2026-07-25)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard Variable","Pretendard",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15.5px}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:40px 24px 80px}
+header.rep{border-bottom:3px solid var(--clay);padding-bottom:20px;margin-bottom:28px}
+h1{font-size:26px;line-height:1.35;margin:0 0 8px}
+.meta{color:var(--g500);font-size:13px}
+.meta code{font-family:var(--mono);font-size:12px;background:var(--g100);padding:1px 6px;border-radius:4px}
+h2{font-size:19px;margin:40px 0 12px;padding-left:10px;border-left:4px solid var(--clay)}
+h3{font-size:16px;margin:24px 0 8px}
+p{margin:8px 0}
+.lead{background:var(--g100);border-radius:var(--radius-panel);padding:14px 18px;font-size:14.5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+.card{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:14px 16px}
+.card .num{font-size:28px;font-weight:800;color:var(--clay)}
+.card .lbl{font-size:12.5px;color:var(--g500)}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden;font-size:13.5px;margin:12px 0}
+th{background:var(--g100);text-align:left;padding:8px 10px;font-size:12.5px;color:var(--g700);border-bottom:var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:var(--mono);font-size:12px;background:var(--g100);padding:1px 5px;border-radius:4px;word-break:break-all}
+.sev{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;color:#fff}
+.sev.h{background:var(--clay-d)} .sev.m{background:#C9963B} .sev.l{background:var(--g500)} .sev.ok{background:var(--olive)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--oat);color:var(--g700)}
+.callout{background:var(--paper);border:var(--border);border-left:4px solid var(--olive);border-radius:var(--radius-row);padding:12px 16px;margin:14px 0;font-size:14px}
+.callout.warn{border-left-color:var(--clay)}
+details{background:var(--paper);border:var(--border);border-radius:var(--radius-row);padding:10px 14px;margin:10px 0}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+ol.rec li{margin:8px 0}
+.chart{margin:16px 0}
+footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--g300);color:var(--g500);font-size:12.5px}
+@media print{.wrap{padding:0} body{background:#fff}}
+</style>
+</head>
+<body><div class="wrap">
+
+<header class="rep">
+<h1>.moai/config 전수 감사 보고서<br><span style="font-size:17px;color:var(--g700)">데드코드·데드설정 · 문서-코드 갭</span></h1>
+<div class="meta">2026-07-25 · moai-adk-go · 조사 범위: <code>.moai/config/**</code> ↔ <code>internal/config</code> 등 Go 코드 ↔ 규칙·스킬·에이전트·문서 ↔ 템플릿 미러 · 방법: 4-렌즈 병렬 조사 + 상위 6건 오케스트레이터 재검증(전부 CONFIRMED)</div>
+</header>
+
+<p class="lead">이 보고서는 <b>설정 파일(config)</b> — 프로그램의 동작을 코드 수정 없이 바꾸도록 값을 모아둔 파일 — 과 그것을 읽는 코드·문서 사이의 <b>어긋남</b>을 찾은 결과예요. 어긋남은 세 종류입니다: ① <b>데드 설정</b>(써 있어도 아무 코드가 안 읽어서 바꿔도 효과가 없는 키), ② <b>데드 코드</b>(배선은 돼 있지만 절대 실행될 수 없는 경로), ③ <b>문서-실체 갭</b>(문서가 존재하지 않는 파일·키를 가리키는 것). 총 <b>HIGH 4 · MEDIUM 6 · LOW/INFO 8</b>건을 확인했고, 건강 판정(문제 없음)도 함께 기록했어요.</p>
+
+<div class="cards">
+<div class="card"><div class="num">4</div><div class="lbl">HIGH — 즉시 수정 권고</div></div>
+<div class="card"><div class="num">6</div><div class="lbl">MEDIUM — 정정 대상</div></div>
+<div class="card"><div class="num">8</div><div class="lbl">LOW / INFO</div></div>
+<div class="card"><div class="num">10</div><div class="lbl">문서 참조 0인 고아 섹션</div></div>
+</div>
+
+<h2>전체 흐름 한눈에</h2>
+<pre class="mermaid">
+flowchart TD
+  A[".moai/config/sections/*.yaml (32)"] --> B{"누가 읽나?"}
+  B -->|"Go 로더 (internal/config)"| C["코드 소비 — 대부분 건강"]
+  B -->|"오케스트레이터 프롬프트"| D["prompt 소비 (delegation 등) — 정상"]
+  B -->|"아무도 안 읽음"| E["데드 키: db.auto_sync 3종"]
+  F["문서·규칙·스킬"] -->|"존재하지 않는 파일/키 참조"| G["갭: config.yaml · git_workflow · role_profiles"]
+  H["게이트 코드 (AstGrepGate)"] -->|"켤 방법 없음"| I["데드 경로: RunAstGrepGateV2"]
+</pre>
+<noscript><p>흐름 요약: 섹션 YAML은 대부분 Go 로더 또는 오케스트레이터 프롬프트가 소비하지만, db.yaml의 auto_sync 세부 키 3종은 아무도 읽지 않는 데드 키입니다. 반대 방향으로, 문서·규칙이 존재하지 않는 config.yaml·git_workflow 키·role_profiles 블록을 참조하는 갭이 있고, ast-grep 게이트 코드는 활성화 경로가 없는 데드 경로입니다.</p></noscript>
+
+<h2>HIGH — 즉시 수정 권고 4건</h2>
+
+<h3><span class="sev h">H1</span> 퇴역한 <code>team.role_profiles</code>를 아직 HARD 규칙으로 강제</h3>
+<p>Agent Teams 정적 계층은 퇴역했고(CLAUDE.md §4/§15), 실제 <code>workflow.yaml</code>에는 <code>team:</code> 블록이 없어요(grep으로 확인). 그런데 규칙 3개 파일이 이 블록을 <b>살아있는 설정처럼</b> — 그것도 [HARD] 규칙과 lint 코드(<code>ORC_WORKTREE_REQUIRED</code>)의 근거로 — 참조하고 있어요. 존재하지 않는 설정에 강제 규칙이 묶여 있는 가장 날카로운 모순입니다.</p>
+<table><tr><th>문서 측 증거</th><th>실체 측 증거</th></tr>
+<tr><td><code>worktree-integration.md:93,98,178-179,193,239,249</code> ([HARD] 2건 + lint 표) · <code>agent-authoring.md:168</code> · <code>model-policy.md:166</code></td><td><code>grep '^team:\|role_profiles' workflow.yaml</code> → 매치 없음</td></tr></table>
+
+<h3><span class="sev h">H2</span> 존재하지 않는 <code>.moai/config/config.yaml</code>을 다수 표면이 참조 — abort gate까지</h3>
+<p>루트 <code>config.yaml</code>은 <b>로컬에도 템플릿에도 없어요</b>. 그런데 SKILL.md("Essential Files"), 에이전트, 워크플로우 문서, CLAUDE.local.md §5/§9가 실체처럼 참조하고, 특히 <code>harness.md:129</code>는 이 파일의 존재를 프로젝트 루트 판정 <b>abort gate</b>(중단 관문)로 사용해요 — 이 저장소에서는 그 관문이 항상 실패 방향으로 판정됩니다.</p>
+<table><tr><th>참조 위치</th><th>실체</th></tr>
+<tr><td><code>SKILL.md:19,335</code> · <code>manager-spec.md:102</code> · <code>harness.md:129</code> · <code>run/context-loading.md:130</code> · <code>sync/quality-gates-context.md:108</code> · <code>settings-management.md</code> · CLAUDE.local.md §5/§9</td><td><code>ls .moai/config/config.yaml</code> → 없음(로컬·템플릿 모두). 실제 시스템은 섹션 파일 기반(<code>loader.go:38</code>)</td></tr></table>
+<p><span class="badge">미검증</span> <code>moai init</code>이 런타임에 생성하는 aggregate일 가능성 — 사실이라도 문서가 "생성 파일"임을 밝히지 않는 갭은 남습니다.</p>
+
+<h3><span class="sev h">H3</span> ast-grep pre-tool 게이트 = 배선됐지만 절대 켜질 수 없는 데드 경로</h3>
+<p>훅 → 게이트 매핑(<code>pre_tool.go:566-575</code>)과 실행 함수(<code>RunAstGrepGateV2</code>)는 존재하지만, 게이트를 켜는 <code>AstGrepGate.Enabled</code>를 true로 만들 경로가 <b>전무</b>해요: 기본값 생성자(<code>defaults.go:286-296</code>)가 이 필드를 설정하지 않고(Go 제로값 false), <code>gate.yaml</code>도 그 로더도 없습니다(<code>loader.go:47-98</code>에 gate 항목 없음). 가드(<code>quality/gate.go:281</code>)가 영원히 닫혀 있는 구조예요.</p>
+
+<h3><span class="sev h">H4</span> <code>tool-policy.yaml</code>(47KB): 코드는 요구하는데 배포도 문서화도 안 됨</h3>
+<p><code>moai tool-policy build|list</code> CLI가 이 파일을 읽고, 없으면 hard error를 냅니다(<code>toolpolicy/loader.go:19</code>). 그런데 템플릿은 이 파일을 배포하지 않고, dev-only라고 선언한 문서도 없어요(문서 참조 0 — 최대 크기 섹션인데 완전 무문서). 배포 사용자가 이 CLI를 실행하면 파일-부재 에러를 만납니다.</p>
+
+<h2>MEDIUM — 정정 대상 6건</h2>
+<table>
+<tr><th>#</th><th>발견</th><th>증거</th></tr>
+<tr><td><span class="sev m">M1</span></td><td><b>db.yaml 데드 키 3종</b> — <code>auto_sync.debounce_seconds / require_user_approval / excluded_patterns</code>는 Go 소비 0(repo-wide grep no-hit). 훅의 제외 판정은 내장 기본값을 쓰므로 이 YAML 값을 바꿔도 <b>아무 효과가 없어요</b>. <code>migration_patterns</code>만 소비되는데 그것도 struct가 아닌 라인 스캔(fragile) 방식.</td><td><code>db.yaml:15-23</code> · <code>cli/hook.go:513-520</code> · <code>db_schema_sync.go:117</code> · db-scaffold 보고와 상호 확증</td></tr>
+<tr><td><span class="sev m">M2</span></td><td><b>존재하지 않는 키 <code>github.git_workflow</code></b>를 sync 배송 문서가 3곳에서 읽음 — 실제 키는 <code>spec_git_workflow</code>. 같은 파일 27행은 올바른 키를 써서 내부 모순. sync 배송 라우팅 결정에 직접 영향.</td><td><code>sync/delivery.md:17,215,417</code> vs <code>system.yaml:44</code></td></tr>
+<tr><td><span class="sev m">M3</span></td><td><b><code>mcp-matrix.yaml</code> 배포 갭</b> — 배포되는 스킬(doc-generation.md 템플릿판)이 참조하지만 템플릿은 이 yaml을 배포하지 않음. init 사용자에게 dangling 참조.</td><td>템플릿 sections에 부재 · Go 소비 0 · 같은 성격의 <code>delegation.yaml</code>은 배포+예외 등록되어 비일관</td></tr>
+<tr><td><span class="sev m">M4</span></td><td><b>부재 파일 <code>mcp-servers.yaml</code> 참조</b> — 실체는 <code>.mcp.json</code>/<code>mcp-matrix.yaml</code>.</td><td><code>MCP_OAUTH_SETUP.md:163</code></td></tr>
+<tr><td><span class="sev m">M5</span></td><td><b>(로컬 dogfood) sgconfig 유령 <code>utils</code> ruleDir</b> — config-mode <code>sg scan</code> 전체 실패 유발 가능. 부수: 루트 <code>go-hardcoding.yml</code>은 어떤 ruleDir에도 없어 config-mode에서 로드 안 됨 — 정작 배포 baseline 룰을 로컬이 스킵하는 역설.</td><td><code>sgconfig.yml:24</code> · <code>utils/</code> 부재 · <code>scanner.go:250-281</code></td></tr>
+<tr><td><span class="sev m">M6</span></td><td><b>문서 키 오기 2건</b> — <code>design.yaml adaptation.phase_weights</code>는 부재 키; <code>quality.yaml development_mode</code>의 실제 경로는 <code>constitution.development_mode</code>인데 5개 문서가 bare 표기.</td><td><code>design/constitution.md:60</code> · <code>run.md:74</code>, <code>moai.md:152</code> 외</td></tr>
+</table>
+
+<h2>LOW / INFO</h2>
+<details open><summary>고아 섹션 10개 — config는 있는데 어떤 문서도 언급하지 않음</summary>
+<p><code>tool-policy(47KB)</code> · <code>lsp(8.2KB)</code> · <code>security</code> · <code>observability</code> · <code>report</code> · <code>sunset</code> · <code>archive</code> · <code>cache</code> · <code>feedback</code> · <code>project</code>. 특히 CLAUDE.md §6이 LSP 품질 게이트를 논하면서 그 SSOT인 <code>lsp.yaml</code>을 한 번도 이름 부르지 않아요. 우선 문서화 대상: tool-policy, lsp.</p></details>
+<details><summary>주석·레지스트리 드리프트 및 기타</summary>
+<ul>
+<li><code>audit_loader_completeness_test.go:16</code> — "db not yet runtime-consumed" 주석은 거짓(훅이 migration_patterns 소비 중).</li>
+<li><code>audit_registry.go</code> — constitution을 "no loader" 예외로 표기하나 <code>loader_constitution.go</code> 존재.</li>
+<li>로컬 <code>quality.yaml</code> 잔존 <code>coverage_threshold: 0</code> — 데드 leaf(템플릿은 clean).</li>
+<li><code>dynamic-workflows.md:91</code> — 퇴역한 <code>haiku</code>를 workflow_agents 모델 셋에 여전히 나열.</li>
+<li><code>quality-gates-context.md:197</code> — map인 <code>db.auto_sync</code>를 스칼라처럼 안내.</li>
+<li><span class="badge">미검증</span> orphan-audit 테스트의 실 트리 스캔 방향성(F3) — 별도 확인 필요.</li>
+</ul></details>
+<details><summary>건강 판정 (문제 없음 — 오탐 방지 기록)</summary>
+<ul>
+<li>sunset DORMANT · astgrep 빈 stub 10/17 · gate/runtime defaults-only 구조체 — 모두 <b>의도된 설계</b>로 문서/테스트에 명시됨.</li>
+<li>evaluator-profiles 4종 전부 도달 가능(선택 키 <code>evaluator_profile</code>/<code>harness.default_profile</code> 실존).</li>
+<li>toolpolicy Go 스키마 ↔ yaml 키 완전 일치. handoff/llm/workflow/harness/interview 등 자주 인용되는 키 spot-check 전부 일치.</li>
+<li>템플릿 astgrep 서브셋은 clean — 유령 ruleDir 없음, 내부 콘텐츠 누출 0.</li>
+<li>양측 공존 23개 섹션의 값 차이는 dev 인스턴스 커스터마이즈로 구조 드리프트 아님.</li>
+</ul></details>
+
+<h2>심각도 분포</h2>
+<div class="chart">
+<svg viewBox="0 0 600 120" width="100%" role="img" aria-label="심각도 분포 막대 차트">
+<text x="0" y="20" font-size="13" fill="#3D3D3A">HIGH</text><rect x="90" y="8" width="120" height="16" rx="4" fill="#B85C3E"/><text x="218" y="21" font-size="12" fill="#3D3D3A">4</text>
+<text x="0" y="50" font-size="13" fill="#3D3D3A">MEDIUM</text><rect x="90" y="38" width="180" height="16" rx="4" fill="#C9963B"/><text x="278" y="51" font-size="12" fill="#3D3D3A">6</text>
+<text x="0" y="80" font-size="13" fill="#3D3D3A">LOW/INFO</text><rect x="90" y="68" width="240" height="16" rx="4" fill="#87867F"/><text x="338" y="81" font-size="12" fill="#3D3D3A">8</text>
+<text x="0" y="110" font-size="13" fill="#3D3D3A">건강 판정</text><rect x="90" y="98" width="150" height="16" rx="4" fill="#788C5D"/><text x="248" y="111" font-size="12" fill="#3D3D3A">5+</text>
+</svg>
+</div>
+
+<h2>추가 검증 (2차 — 미검증 2건 해소, 잔여 Gaps 0)</h2>
+<table>
+<tr><th>#</th><th>검증 결과</th><th>증거</th></tr>
+<tr><td><span class="sev h">V1</span></td><td><b>H2 확정 승격</b> — 루트 <code>config.yaml</code>은 어떤 코드도 생성하지 않음(<code>moai init</code> 생성물 아님). <code>resolver.go</code>의 "존재 시 읽기" 선택적 레거시 경로만 존재 → 문서 참조 전부가 <b>어떤 프로젝트에도 존재하지 않는 파일</b>을 가리킴.</td><td>WriteFile/Create repo-wide grep 무매치 · <code>resolver.go:349</code> <code>os.Stat</code> 선택 읽기</td></tr>
+<tr><td><span class="sev m">M7</span></td><td><b>신규 MEDIUM</b> — 실 트리 고아 가드 <code>TestAuditParity</code>가 통상 <code>go test</code>에서 <b>항상 SKIP</b>(cwd=패키지 디렉터리라 상대경로 미발견). 살아있는 가드는 템플릿 dir만 스캔 → 로컬 전용 yaml은 어떤 가드에도 안 걸림. 수리: <code>runtime.Caller</code> 기반 repo-root 해석으로 교체(completeness 테스트와 동일 패턴).</td><td><code>go test -run 'TestAuditParity$' -v</code> → <code>--- SKIP: sections dir not found</code></td></tr>
+<tr><td><span class="sev l">보정</span></td><td>H4 뉘앙스 — tool-policy dev-only 지위가 테스트 allowlist 주석에는 기록됨("removed from template distribution as an orphan"). 사용자-facing 문서 0 + CLI hard-error는 그대로.</td><td><code>audit_loader_completeness_test.go:39</code></td></tr>
+</table>
+
+<h2>개선 권고 (우선순위 순)</h2>
+<ol class="rec">
+<li><b>H1</b> — 규칙 3파일에서 <code>role_profiles</code> 참조 제거/재서술 (Agent Teams 퇴역 정합; [HARD] 규칙이 유령 설정에 묶인 상태 해소).</li>
+<li><b>M2</b> — <code>delivery.md</code>의 <code>git_workflow</code> → <code>spec_git_workflow</code> 3곳 정정 (라우팅 영향, 1파일 기계적 수정).</li>
+<li><b>H2</b> — config.yaml 참조를 섹션-SSOT 서술로 교체하거나 "init-생성 파일"임을 명시; <code>harness.md:129</code> abort gate는 <code>sections/</code> 존재 확인으로 교체.</li>
+<li><b>H3 + M5</b> — gate.yaml 로더를 신설해 게이트 활성화 경로를 제공하거나, 데드 경로를 제거 결정; sgconfig의 <code>utils</code> 라인 삭제. 백로그 SPEC(ASTGREP-DOGFOOD-CLEANUP-001)으로 통합 처리 적합.</li>
+<li><b>H4 + M3</b> — tool-policy.yaml·mcp-matrix.yaml 지위 명문화: dev-only 선언(로컬 전용 목록 등재) 또는 중립화 후 템플릿 배포. <code>moai tool-policy</code>는 파일 부재 시 graceful 안내로.</li>
+<li><b>M1</b> — db.yaml auto_sync 데드 키 3종을 실제 구현하거나 삭제 (db-scaffold 수리 SPEC과 병합 권장).</li>
+<li><b>M4/M6/LOW</b> — 부재 파일 참조·키 오기·주석 드리프트 일괄 정정 (기계적, Tier S 묶음).</li>
+</ol>
+
+<div class="callout warn"><b>스스로 확인해 보기</b> — 이 보고서의 대표 주장은 아래 명령으로 직접 재현할 수 있어요:<br>
+<code>grep -n role_profiles .claude/rules/moai/workflow/worktree-integration.md</code> (H1) ·
+<code>ls .moai/config/config.yaml</code> (H2) ·
+<code>grep -rn excluded_patterns --include="*.go" internal/ cmd/ pkg/</code> → 무매치 (M1)</div>
+
+<footer>
+방법론: 4-렌즈 병렬 조사(① YAML↔로더 커버리지 ② 템플릿 미러 드리프트 ③ 문서↔config 갭 ④ 비-YAML 자산 소비자) → 오케스트레이터 교차 재검증(상위 6건 CONFIRMED). 검증 원칙: 결함 주장은 grep/코드 인용 없이는 채택하지 않음(verification-claim-integrity §1.1). 미검증 항목은 본문에 명시(2건). · 마크다운 트윈: <code>.moai/reports/moai-config-audit-20260725.md</code>
+</footer>
+
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({startOnLoad:true,theme:"base",themeVariables:{
+  primaryColor:"#FAF9F5",primaryTextColor:"#141413",primaryBorderColor:"#D97757",
+  lineColor:"#87867F",secondaryColor:"#E3DACC",tertiaryColor:"#F0EEE6"}});
+</script>
+</body>
+</html>

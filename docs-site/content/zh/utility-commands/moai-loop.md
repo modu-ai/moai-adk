@@ -51,9 +51,10 @@ draft: false
 
 | 标志                                   | 说明                             | 示例                          |
 | ---------------------------------------- | -------------------------------- | ----------------------------- |
-| `--max N`(或 `--max-iterations`)      | 限制最大迭代次数(默认 10) | `/moai loop --max 20`         |
-| `--lens {clean\|simplify\|coverage}`     | 追加扫描镜头(逗号分隔,opt-in) | `/moai loop --lens clean,coverage` |
-| `--auto-fix`                             | 启用自动修复(默认 Level 1)  | `/moai loop --auto-fix`       |
+| `--max N`(或 `--max-iterations`)      | 限制最大迭代次数(默认 100) | `/moai loop --max 10`         |
+| `--path <path>`                          | 仅针对特定路径        | `/moai loop --path src/auth/` |
+| `--stop-on {level}`                      | 在特定级别及以上中断          | `/moai loop --stop-on 3`      |
+| `--auto`(或 `--auto-fix`)             | 启用自动修复(默认 Level 1)  | `/moai loop --auto`           |
 | `--sequential`(或 `--seq`)            | 顺序诊断代替并行        | `/moai loop --sequential`     |
 | `--errors`(或 `--errors-only`)        | 仅修复错误,跳过警告         | `/moai loop --errors`         |
 | `--coverage`(或 `--include-coverage`) | 包含覆盖率(默认 85%)       | `/moai loop --coverage`       |
@@ -70,8 +71,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  为防止无限循环,默认值为 5 次(`ralph.yaml` 的 `ralph.max_iterations`)。
-  迭代上限优先级依次为 CLI `--max` 标志 > `ralph.yaml` `ralph.max_iterations` >
+  为防止无限循环,默认值为 10 次 (`ralph.yaml` 的 `loop.max_iterations`)。
+  迭代上限优先级依次为 CLI `--max` 标志 > `ralph.yaml` `loop.max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations`。
 {{< /callout >}}
 
@@ -162,20 +163,20 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[执行迭代] --> B{超过最大<br/>迭代次数?}
-    B -->|是: 上限到达| C["强制结束<br/>5-段式判定 + 残留问题持久化"]
-    B -->|否| D{连续 N 次<br/>无进展?}
-    D -->|是: 重复相同失败签名| E["检测到停滞<br/>请求用户介入"]
+    B -->|是: 超过 100 次| C["强制结束<br/>向用户报告"]
+    B -->|否| D{连续 5 次<br/>无进展?}
+    D -->|是: 重复相同错误| E["检测到死锁状态<br/>请求用户介入"]
     D -->|否| F[继续下一次迭代]
 ```
 
 | 安全装置           | 条件               | 行为                                              |
 | ------------------ | ------------------ | ------------------------------------------------- |
-| **最大迭代限制** | 迭代上限到达(默认 5,`ralph.max_iterations`) | 强制结束循环并给出 5-段式判定(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk),残留问题持久化到 `.moai/state/loop-verdict-<id>.json` |
-| **停滞检测**    | 连续 N 次无进展(同一失败签名) | 判定为停滞,先给出 5-段式判定再请求用户介入 |
+| **最大迭代限制** | 超过 100 次         | 强制结束循环并报告当前状态       |
+| **无进展检测**    | 连续 5 次相同错误 | 判定为死锁状态并请求用户介入 |
 
 {{< callout type="warning" >}}
-  **发生停滞状态怎么办?** AI 连续 N 次未能解决同一失败签名时,
-  会自动中断并附带 5-段式证据判定请求用户介入。此时请直接
+  **发生死锁状态怎么办?** AI 连续 5 次未能修复同一错误时,
+  会自动中断并请求用户介入。此时请直接
   查看错误内容或提供提示。
 {{< /callout >}}
 
@@ -251,25 +252,20 @@ flowchart TD
     Todo --> Loop["开始循环"]
 
     Loop --> Fix["向 manager-develop<br/>委派修复"]
-    Fix --> Predicate{"机械式完成谓词<br/>(队列耗尽 + 诊断 clean)?"}
-    Predicate -->|否| Loop
-    Predicate -->|是| FinalPass["Step 1.5<br/>独立最终验证"]
-    FinalPass --> Done["完成"]
+    Fix --> Verify["sync-auditor<br/>验证"]
+
+    Verify --> Complete{"完成条件?"}
+    Complete -->|否| Loop
+    Complete -->|是| Done["完成"]
 ```
-
-**完成判定:机械式谓词 + 独立最终验证**
-
-循环是否成功结束,由 **机械式完成谓词** 判定。编排器直接确认问题队列是否已清空、诊断(LSP/AST-grep/测试/覆盖率)是否干净。没有单独的审计 agent(sync-auditor)来判定完成。
-
-谓词满足后,在成功结束路径上会运行 **Step 1.5 独立最终验证**(Independent Final Pass)。通过在新上下文中运行 `/moai gate --fresh`,或启动只读验证 Agent,从外部确认最终状态 —— 避免循环自己给自己打分。
 
 **智能体角色:**
 
 | 智能体                | 角色      | 主要工作            |
 | ----------------------- | --------- | -------------------- |
-| **MoAI 编排器** | 协调循环 + 完成谓词判定 | 协调诊断、机械式完成谓词确认、向用户报告 |
+| **MoAI 编排器** | 协调循环 | 协调诊断、向用户报告 |
 | **manager-develop**     | 管理循环与执行修复 | 生成 TODO、实际修改代码 (cycle_type=autofix) |
-| **`/moai gate --fresh` 或只读验证 Agent** | Step 1.5 独立最终验证 | 成功结束前在独立上下文中确认最终状态 |
+| **sync-auditor**        | 质量验证 | 确认完成条件       |
 
 ## 实战示例
 
@@ -293,19 +289,19 @@ $ pytest --tb=short
 **执行日志:**
 
 ```
-[迭代 1/10]
+[迭代 1/100]
   诊断: LSP 错误 5 个, 测试失败 3 个, 覆盖率 71%
   TODO: 生成 7 项修复工作
   修复: 解决 5 个类型错误
   验证: LSP 错误 0 个, 测试失败 2 个, 覆盖率 71%
 
-[迭代 2/10]
+[迭代 2/100]
   诊断: 测试失败 2 个, 覆盖率 71%
   TODO: 生成 2 项修复工作
   修复: 修改测试逻辑 2 处
   验证: LSP 错误 0 个, 测试失败 0 个, 覆盖率 74%
 
-[迭代 3/10]
+[迭代 3/100]
   诊断: 覆盖率 74%(目标 85%)
   TODO: 生成 3 项添加测试的工作
   修复: 补充缺失的测试用例

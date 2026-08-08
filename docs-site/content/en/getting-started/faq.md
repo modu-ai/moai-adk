@@ -30,16 +30,16 @@ They are two completely different things. This is the most common confusion, so 
 The MoAI statusline shows version information together with an update notification:
 
 ```
-🗿 v3.0.1 ⬆️ v3.0.2
+🗿 v3.0.0 ⬆️ v3.0.1
 ```
 
-- **`v3.0.1`**: The currently installed version
-- **`⬆️ v3.0.2`**: A newer version available for update
+- **`v3.0.0`**: The currently installed version
+- **`⬆️ v3.0.1`**: A newer version available for update
 
 When you are on the latest version, only the version number is shown:
 
 ```
-🗿 v3.0.2
+🗿 v3.0.1
 ```
 
 **How to update**: Run `moai update` and the update notification disappears.
@@ -52,12 +52,20 @@ When you are on the latest version, only the version number is shown:
 
 ## Q: How do I customize the segments shown in the statusline?
 
-The statusline can be toggled segment by segment. Turn each segment on or off individually to leave only the information you want. There are no display presets — it consists of only two things: a theme and the segments.
+The statusline supports 4 display presets plus a custom configuration:
+
+| Preset | Description |
+|--------|------|
+| **Full** (default) | Shows all 8 segments |
+| **Compact** | Shows only Model + Context + Git Status + Branch |
+| **Minimal** | Shows only Model + Context |
+| **Custom** | Select individual segments |
 
 Configure it in the `moai init` or `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
+  preset: compact  # or full, minimal, custom
   segments:
     model: true
     context: true

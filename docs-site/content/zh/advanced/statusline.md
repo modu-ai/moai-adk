@@ -13,7 +13,7 @@ draft: false
 ### 最终布局 (3-line v3)
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.2 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
@@ -91,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **格式**：`🗿 v<current>`，或可更新时 `🗿 v<current> -> 🗿 v<latest>`
 - **数据来源**：`.moai/config/sections/system.yaml` `moai.version` + 后台 update checker 结果
 - **示例**：
-  - `🗿 v3.0.2`（最新）
-  - `🗿 v2.18.0 -> 🗿 v3.0.2`（建议更新）
+  - `🗿 v3.0.0`（最新）
+  - `🗿 v2.18.0 -> 🗿 v3.0.0`（建议更新）
 - **段键**：`moai_version`
 
 ### 会话时长

@@ -444,7 +444,7 @@ ralph:
 
 **저장 내용:**
 - 현재 활성 SPEC 상태 (ID, 단계, 진행률)
-- 진행 중인 작업 목록 (TaskCreate/TaskUpdate/TaskList/TaskGet)
+- 진행 중인 작업 목록 (TodoWrite)
 - 완료된 작업 목록
 - 수정된 파일 목록
 - Git 상태 정보 (브랜치, 커밋되지 않은 변경)
@@ -694,46 +694,38 @@ Hook 스크립트는 표준 입력 (stdin)으로 JSON 데이터를 받습니다.
 
 ```
 .claude/hooks/moai/
-├── handle-session-start.sh                 # SessionStart → moai hook session-start
-├── handle-session-start-compact.sh         # SessionStart(컨택스트 절약) → 세션 시작 핸들러
-├── handle-session-start-navigator.sh       # SessionStart(Project Navigator) → 라이빙 내비게이터 주입
-├── handle-pre-tool.sh                      # PreToolUse → moai hook pre-tool
-├── handle-post-tool.sh                     # PostToolUse → moai hook post-tool
-├── handle-post-tool-failure.sh             # PostToolUseFailure → moai hook post-tool-failure
-├── handle-compact.sh                       # PreCompact → moai hook compact
-├── handle-post-compact.sh                  # PostCompact → moai hook post-compact
-├── handle-session-end.sh                   # SessionEnd → moai hook session-end
-├── handle-stop.sh                          # Stop → moai hook stop
-├── handle-stop-goal.sh                     # Stop (goal 엔진) → moai hook stop-goal
-├── handle-stop-failure.sh                  # StopFailure → moai hook stop-failure
-├── handle-subagent-start.sh                # SubagentStart → moai hook subagent-start
-├── handle-subagent-stop.sh                 # SubagentStop → moai hook subagent-stop
-├── handle-notification.sh                  # Notification → moai hook notification
-├── handle-user-prompt-submit.sh            # UserPromptSubmit → moai hook user-prompt-submit
-├── handle-permission-request.sh            # PermissionRequest → moai hook permission-request
-├── handle-permission-denied.sh             # PermissionDenied → moai hook permission-denied
-├── handle-teammate-idle.sh                 # TeammateIdle → moai hook teammate-idle
-├── handle-task-completed.sh                # TaskCompleted → moai hook task-completed
-├── handle-task-created.sh                  # TaskCreated → moai hook task-created
-├── handle-config-change.sh                 # ConfigChange → moai hook config-change
-├── handle-cwd-changed.sh                   # CwdChanged → moai hook cwd-changed
-├── handle-file-changed.sh                  # FileChanged → moai hook file-changed
-├── handle-instructions-loaded.sh           # InstructionsLoaded → moai hook instructions-loaded
-├── handle-worktree-create.sh               # WorktreeCreate → moai hook worktree-create
-├── handle-worktree-remove.sh               # WorktreeRemove → moai hook worktree-remove
-├── handle-elicitation.sh                   # Elicitation → moai hook elicitation
-├── handle-elicitation-result.sh            # ElicitationResult → moai hook elicitation-result
-├── handle-security-scan.sh                 # 보안 스캔 훅
-├── handle-security-turn.sh                 # 턴 단위 보안 리뷰 훅
-├── handle-security-commit.sh               # 커밋 단위 보안 리뷰 훅
-├── handle-agent-hook.sh                    # Agent 훅 범용 래퍼
-├── handle-harness-observe.sh               # 하네스 관찰(기본)
-├── handle-harness-observe-stop.sh          # 하네스 관찰 (Stop)
-├── handle-harness-observe-subagent-stop.sh # 하네스 관찰 (SubagentStop)
-├── handle-harness-observe-user-prompt-submit.sh # 하네스 관찰 (UserPromptSubmit)
-├── status-transition-ownership.sh          # SPEC 상태 전환 감사 (PostToolUse, 소유권 매트릭스)
-├── sync-phase-quality-gate.sh              # sync-phase 커밋 품질 게이트 (lint+test+coverage delta)
-└── team-ac-verify.sh                       # team 모드 TaskCompleted AC 검증
+├── handle-session-start.sh          # SessionStart → moai hook session-start
+├── handle-pre-tool.sh               # PreToolUse → moai hook pre-tool
+├── handle-post-tool.sh              # PostToolUse → moai hook post-tool
+├── handle-compact.sh                # PreCompact → moai hook compact
+├── handle-post-compact.sh           # PostCompact → moai hook post-compact
+├── handle-session-end.sh            # SessionEnd → moai hook session-end
+├── handle-stop.sh                   # Stop → moai hook stop
+├── handle-stop-goal.sh              # Stop (goal 엔진) → moai hook stop-goal
+├── handle-stop-failure.sh           # StopFailure → moai hook stop-failure
+├── handle-subagent-start.sh         # SubagentStart → moai hook subagent-start
+├── handle-subagent-stop.sh          # SubagentStop → moai hook subagent-stop
+├── handle-notification.sh           # Notification → moai hook notification
+├── handle-user-prompt-submit.sh     # UserPromptSubmit → moai hook user-prompt-submit
+├── handle-permission-request.sh     # PermissionRequest → moai hook permission-request
+├── handle-permission-denied.sh      # PermissionDenied → moai hook permission-denied
+├── handle-teammate-idle.sh          # TeammateIdle → moai hook teammate-idle
+├── handle-task-completed.sh         # TaskCompleted → moai hook task-completed
+├── handle-task-created.sh           # TaskCreated → moai hook task-created
+├── handle-config-change.sh          # ConfigChange → moai hook config-change
+├── handle-cwd-changed.sh            # CwdChanged → moai hook cwd-changed
+├── handle-file-changed.sh           # FileChanged → moai hook file-changed
+├── handle-instructions-loaded.sh    # InstructionsLoaded → moai hook instructions-loaded
+├── handle-worktree-create.sh        # WorktreeCreate → moai hook worktree-create
+├── handle-worktree-remove.sh        # WorktreeRemove → moai hook worktree-remove
+├── handle-elicitation.sh            # Elicitation → moai hook elicitation
+├── handle-elicitation-result.sh     # ElicitationResult → moai hook elicitation-result
+├── handle-post-tool-failure.sh      # PostToolUseFailure → moai hook post-tool-failure
+├── handle-agent-hook.sh             # Agent 훅 범용 래퍼
+├── status-transition-ownership.sh    # SPEC 상태 전환 감사 (PostToolUse)
+├── handle-harness-observe-stop.sh   # 하네스 관찰 (Stop)
+├── handle-harness-observe-subagent-stop.sh  # 하네스 관찰 (SubagentStop)
+└── handle-harness-observe-user-prompt-submit.sh  # 하네스 관찰 (UserPromptSubmit)
 ```
 
 {{< callout type="warning" >}}

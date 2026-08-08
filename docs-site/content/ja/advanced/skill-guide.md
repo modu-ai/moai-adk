@@ -54,9 +54,9 @@ flowchart TD
 
 ## スキルカテゴリ
 
-MoAI-ADK テンプレートには合計 **30 個の `moai-*` スキル** が 5 つの機能カテゴリに分類されています (Foundation 4 + Workflow 8 + Domain 6 + Reference 10 + Meta/Harness 2 = 30)。ここにリクエストを専門スキルにルーティングする `moai` umbrella スキル 1 個が別途存在します。ユーザープロジェクトでは追加で `hns-*` ユーザー定義スキルを作成できます (レガシー `harness-*` も認識されます)。プログラミング言語対応は `rules/moai/languages/` 配下のルールで提供され、別途スキルではありません。
+MoAI-ADK テンプレートには合計 **26 個の `moai-*` スキル** が 5 つの機能カテゴリに分類されています (Foundation 4 + Workflow 7 + Domain 5 + Reference 8 + Meta/Harness 2 = 26)。ここにリクエストを専門スキルにルーティングする `moai` umbrella スキル 1 個が別途存在します。ユーザープロジェクトでは追加で `harness-*` ユーザー定義スキルを作成できます。プログラミング言語対応は `rules/moai/languages/` 配下のルールで提供され、別途スキルではありません。
 
-この数字もダイエットの結果です — スキルカタログは v3 期間中に 48 → 38 → 29 個へと精練され、その後 `moai-ref-ui-polish` と `moai-ref-seo` の追加、`ci-loop` スキルの引退を経て現在 30 個です。ユーザー定義ハーネススキルの現在の接頭辞は `hns-*` です (レガシー `harness-*` も認識されます)。
+この数字もダイエットの結果です — スキルカタログは v3 期間中に 48 → 38 → 26 個へと精練されました。
 
 ### Foundation (核心哲学) - 4 個
 
@@ -67,20 +67,19 @@ MoAI-ADK テンプレートには合計 **30 個の `moai-*` スキル** が 5 �
 | `moai-foundation-thinking` | 構造化された思考、アイデエーション、第 1 原理分析             |
 | `moai-foundation-quality`  | コード品質の自動検証、TRUST 5 バリデーション             |
 
-### Workflow (自動化ワークフロー) - 8 個
+### Workflow (自動化ワークフロー) - 7 個
 
-| スキル名                       | 説明                                          |
-| ------------------------------- | --------------------------------------------- |
-| `moai-workflow-spec`            | SPEC ドキュメント生成、GEARS 形式、要件分析     |
-| `moai-workflow-project`         | プロジェクト初期化、ドキュメント生成、言語設定         |
-| `moai-workflow-ddd`             | ANALYZE-PRESERVE-IMPROVE サイクル               |
-| `moai-workflow-tdd`             | RED-GREEN-REFACTOR テスト駆動開発           |
-| `moai-workflow-testing`         | テスト生成、デバッグ、コードレビュー統合           |
-| `moai-workflow-worktree`        | Git worktree ベースの並列開発                   |
-| `moai-workflow-loop`            | Ralph Engine 自律ループ、LSP 連携              |
-| `moai-workflow-docs-claim-check`| 公開ドキュメント (README・リリースノート) の主張検証、読み取り専用 |
+| スキル名                | 説明                                          |
+| ------------------------ | --------------------------------------------- |
+| `moai-workflow-spec`     | SPEC ドキュメント生成、GEARS 形式、要件分析     |
+| `moai-workflow-project`  | プロジェクト初期化、ドキュメント生成、言語設定         |
+| `moai-workflow-ddd`      | ANALYZE-PRESERVE-IMPROVE サイクル               |
+| `moai-workflow-tdd`      | RED-GREEN-REFACTOR テスト駆動開発           |
+| `moai-workflow-testing`  | テスト生成、デバッグ、コードレビュー統合           |
+| `moai-workflow-worktree` | Git worktree ベースの並列開発                   |
+| `moai-workflow-loop`     | Ralph Engine 自律ループ、LSP 連携              |
 
-### Domain (ドメイン専門性) - 6 個
+### Domain (ドメイン専門性) - 5 個
 
 | スキル名                   | 説明                                             |
 | --------------------------- | ------------------------------------------------ |
@@ -89,9 +88,8 @@ MoAI-ADK テンプレートには合計 **30 個の `moai-*` スキル** が 5 �
 | `moai-domain-database`      | PostgreSQL, MongoDB, Redis, 高度なデータパターン     |
 | `moai-domain-html-report`   | Markdown → 単一 HTML レポートレンダラー (6 個のモード、外部依存性なし) |
 | `moai-domain-humanize`      | AI テキストのヒューマナイズ、後編集 (KO/EN/JA/ZH)    |
-| `moai-domain-svg-infographic`| 編集可能 SVG テクニカルインフォグラフィック (アーキテクチャ・フロー・比較)、CJK フォント |
 
-### Reference (ベストプラクティス) - 10 個
+### Reference (ベストプラクティス) - 8 個
 
 | スキル名                  | 説明                                              |
 | -------------------------- | ------------------------------------------------- |
@@ -103,17 +101,16 @@ MoAI-ADK テンプレートには合計 **30 個の `moai-*` スキル** が 5 �
 | `moai-ref-llm-security`    | AI/LLM 防御セキュリティ (プロンプトインジェクション、OWASP LLM Top 10) |
 | `moai-ref-secops`          | DevSecOps/コンテナ/API 運用防御セキュリティ             |
 | `moai-ref-supply-chain`    | ソフトウェアサプライチェーン防御セキュリティ (SBOM, SLSA, Sigstore) |
-| `moai-ref-ui-polish`       | UI デザインの完成度、インターフェースのポリッシュ参照            |
 | `moai-ref-seo`             | 検索可視性とクロール可能性 (正規 URL、ページ別メタデータ、JSON-LD) |
 
 ### Meta/Harness (システム拡張) - 2 個
 
 | スキル名              | 説明                                        |
 | ---------------------- | ------------------------------------------- |
-| `moai-meta-harness`    | **DEPRECATED** — レガシー 7-Phase メタハーネス。v4 Builder (`/moai:harness <自然言語リクエスト>`) へリダイレクト |
+| `moai-meta-harness`    | プロジェクト特化のエージェントチームの動的生成         |
 | `moai-harness-learner` | Harness 学習サブシステム、自動アップデート提案 |
 
-> 30 個の `moai-*` スキルは MoAI-ADK テンプレートにデフォルトで含まれ、各スキルは独立してロードされてトークンを節約します。ユーザーは追加でプロジェクト別の `hns-*` ユーザー定義ハーネススキルを作成できます (レガシー `harness-*` 接頭辞も認識されます)。
+> 26 個の `moai-*` スキルは MoAI-ADK テンプレートにデフォルトで含まれ、各スキルは独立してロードされてトークンを節約します。ユーザーは追加でプロジェクト別の `harness-*` ユーザー定義スキルを作成できます。
 
 ## 段階的公開システム
 
@@ -151,7 +148,7 @@ flowchart TD
 
 ### トークン節約効果
 
-- **従来方式**: 30 個のスキルを全ロード = 約 135,000 トークン (不可能)
+- **従来方式**: 31 個のスキルを全ロード = 約 135,000 トークン (不可能)
 - **段階的公開**: メタデータのみロード = 約 5,200 トークン (97% 節約)
 - **必要時にロード**: 作業に必要な 2~3 個のスキルのみ = 約 15,000 トークン追加
 
@@ -179,25 +176,20 @@ flowchart TD
 ### トリガー設定例
 
 ```yaml
-# 実際の SKILL.md フロントマター (自動発見は description/when_to_use プローズで駆動)
-name: moai-domain-backend
-description: >
-  Backend development specialist ... Use when designing APIs,
-  implementing server logic, authentication, or authorization.
-when_to_use: >
-  Use for backend work: API design (REST, GraphQL, gRPC) ...
-allowed-tools: Read, Write, Edit, Bash(go:*), Grep, Glob   # CSV 文字列 (YAML 配列ではない)
-user-invocable: false
-metadata:
-  version: "1.0.0"
-  category: "domain"
+# スキルフロントマターでトリガーを定義
+triggers:
+  keywords: ["api", "database", "authentication"] # キーワードマッチング
+  agents: ["manager-spec", "manager-develop"] # エージェント呼び出し時
+  phases: ["plan", "run"] # ワークフローステップ
+  languages: ["python", "typescript"] # プログラミング言語
 ```
 
-**自動ロードメカニズム:**
+**トリガーの優先順位:**
 
-- Claude Code は `description` / `when_to_use` プローズを読んでユーザーリクエストのドメインとマッチングさせ、スキルを発見します (別途 `triggers:` ブロックはありません)。
-- `allowed-tools` は **CSV 文字列** で記述します (空格区切りではなく、YAML 配列でもありません)。
-- オーケストレータはエージェント spawn 時に `At start, invoke Skill("<name>")` 指示を注入してドメインスキルをルーティングします (`skill-routing.md`)。
+1. **キーワード** (keywords): ユーザーメッセージからキーワードを検出すると即座にロード
+2. **エージェント** (agents): 特定のエージェントが呼び出されたとき自動ロード
+3. **ステップ** (phases): Plan/Run/Sync ステップに応じてロード
+4. **言語** (languages): 作業中のファイルのプログラミング言語に応じてロード
 
 ## スキルの使い方
 

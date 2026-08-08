@@ -70,22 +70,6 @@ State file schema:
 }
 ```
 
-### Phase 0.5 — Reconcile Stale Gates (self-healing)
-
-Before collecting new release notes, heal any `analysis_history` entry whose follow-up has since shipped, so a merged follow-up SPEC does not freeze this gitignored state file at "PENDING" until a later run notices.
-
-**Incident of record (2026-07-25 → 2026-08-05):** the 2026-07-25 run proposed the umbrella SPEC `SPEC-CC2219-UPSTREAM-ALIGN-001` and recorded "Phase 5 human gate PENDING". That SPEC was in fact created and merged as PR #1151 (commit `177148b3e`) shortly after — but because this state file is gitignored dev-only, the resolving PR did not reconcile it, leaving a 9-cluster gate stale for ~11 days. The 2026-08-05 run re-audited the live tree and found all 9 already resolved (the verification-claim-integrity §5 stale-defect-claim hazard, realized). Phase 0.5 prevents that recurrence by self-healing on every run.
-
-1. Scan `analysis_history` for entries where `_legacy_followup` contains `PENDING`/`pending`/`PROPOSED`, OR whose `followup_specs` array is non-empty.
-2. For each referenced SPEC-ID (regex `SPEC-[A-Z0-9-]+`):
-   - Determine lifecycle status by reading `.moai/specs/<SPEC-ID>/spec.md` YAML frontmatter `status:`, OR — preferred, it is the domain's dedicated verification tool (verification-claim-integrity §1.1 surface 3) — run `moai spec audit --json` and read the SPEC's `status` / `era_final` classification.
-   - Reconcile ONLY on positive evidence the follow-up shipped: a SPEC at `status: completed` (3-phase close done) has shipped. Do NOT reconcile on `status: implemented` alone — the 3-phase close rides the sync commit, so `implemented` has NOT closed; leave its gate open.
-   - On confirmed completion, rewrite the entry's `_legacy_followup` to `[RESOLVED <run-date>] <SPEC-ID> shipped (status: completed)` and clear the open-gate marker. If the resolving PR/commit is readily findable via `git log --oneline -- .moai/specs/<SPEC-ID>/ | head -3`, record it in the reconciled text.
-3. This Phase writes ONLY the gitignored dev-only state file (`.moai/state/last-cc-version.json`) — the same surface Phase 7a writes. No commit, no PR, no distributed-doctrine edit. Re-verify each SPEC against the LIVE tree (current branch); never trust the history entry's stale claim — the incident above was exactly a stale PENDING that the live tree had already passed.
-4. If no stale entries are found, Phase 0.5 is a no-op.
-
-**Why a procedure, not a hook:** a hook firing at SPEC close would live on a distributed surface (`.claude/hooks/moai/`) and trigger on frontmatter status transitions — a heavier change requiring its own SPEC. Self-healing at Phase 0.5 closes the same loop using only this dev-only harness surface, on every run.
-
 ### Phase 1 — Collect Release Notes
 
 Obtain the raw CC changelog text (priority order):

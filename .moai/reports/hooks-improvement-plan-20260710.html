@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoAI-ADK 템플릿 Hooks 공식문서 기준 개선계획 — 2026-07-10</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#fbfaf6; --card:#ffffff; --ink:#1c1b19; --muted:#6b6862;
+    --line:#e7e2d8; --accent:#cc785c; --accent-d:#b5644a;
+    --crit:#b3261e; --high:#d9543a; --med:#c98a3a; --low:#7a8a5c; --info:#5c7a8a;
+    --ok:#3f7a5c; --bg-soft:#f3efe6;
+    --code-bg:#1f1d1a; --code-ink:#f4f0e6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:48px 32px 96px}
+  header.report-head{border-bottom:3px solid var(--accent); padding-bottom:24px; margin-bottom:36px}
+  .eyebrow{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent-d); font-weight:700; margin-bottom:10px}
+  h1{font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:800; letter-spacing:-.01em}
+  .meta{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:13px; color:var(--muted); margin-top:10px}
+  .meta b{color:var(--ink); font-weight:600}
+  h2{font-size:21px; margin:46px 0 14px; padding-bottom:8px; border-bottom:1px solid var(--line); font-weight:750; letter-spacing:-.01em}
+  h2 .n{color:var(--accent); font-variant-numeric:tabular-nums; margin-right:10px}
+  h3{font-size:16.5px; margin:26px 0 10px; font-weight:700}
+  p{margin:0 0 12px}
+  .lead{font-size:16px; color:#3a3833}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px 22px; margin:14px 0}
+  .card.tight{padding:16px 18px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px}
+  .stat .v{font-size:32px; font-weight:800; line-height:1; letter-spacing:-.02em}
+  .stat .l{font-size:12.5px; color:var(--muted); margin-top:6px; font-weight:600}
+  .stat .sub{font-size:12px; color:var(--muted); margin-top:4px}
+  .statrow{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:16px 0 8px}
+  @media(max-width:760px){.statrow{grid-template-columns:repeat(2,1fr)}}
+
+  .sev{display:inline-block; font-size:11px; font-weight:800; letter-spacing:.06em; padding:2px 8px; border-radius:4px; color:#fff; vertical-align:middle}
+  .sev-CRITICAL{background:var(--crit)}
+  .sev-HIGH{background:var(--high)}
+  .sev-MEDIUM{background:var(--med)}
+  .sev-LOW{background:var(--low)}
+  .sev-INFO{background:var(--info)}
+  .effort{display:inline-block; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px; border:1px solid var(--line); background:var(--bg-soft); color:#5a574f; margin-left:6px}
+  .gapid{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12px; color:var(--accent-d); font-weight:700; background:#f7f1ea; padding:1px 6px; border-radius:3px}
+  code, pre{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  code{background:#f3efe6; padding:1px 5px; border-radius:3px; font-size:13px; color:#8a4a33}
+  pre{background:var(--code-bg); color:var(--code-ink); padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:12.8px; line-height:1.55}
+  pre .c{color:#8a8579}
+  pre .k{color:#d9a27a}
+
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:13.5px}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{background:var(--bg-soft); font-weight:700; font-size:12px; color:#4a4740; border-bottom:2px solid var(--line)}
+  td code, td .gapid{white-space:nowrap}
+  tr:hover td{background:#fdfcf8}
+  .filepath{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; color:var(--muted); word-break:break-all}
+
+  .bar-chart{margin:10px 0}
+  .bar-row{display:grid; grid-template-columns:120px 1fr 48px; align-items:center; gap:10px; margin:6px 0; font-size:13px}
+  .bar-row .lbl{color:#4a4740; font-weight:600}
+  .bar-track{background:#efeae0; border-radius:4px; height:18px; overflow:hidden}
+  .bar-fill{height:100%; border-radius:4px; background:var(--accent)}
+  .bar-row .num{text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); font-size:12.5px; font-weight:600}
+
+  .rec{border-left:3px solid var(--accent); background:var(--card); border:1px solid var(--line); border-left-width:3px; border-radius:6px; padding:16px 18px; margin:12px 0}
+  .rec .rh{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+  .rec .rank{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:800; font-size:13px; flex-shrink:0}
+  .rec .rt{font-weight:750; font-size:15px; flex:1; min-width:200px}
+  .rec .ra{font-size:13.5px; margin:8px 0}
+  .rec .ri{font-size:12.5px; color:var(--muted); margin-top:8px; padding-top:8px; border-top:1px dashed var(--line)}
+  .rec .ra b{color:var(--ink)}
+
+  .group{margin:18px 0; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .group>summary{cursor:pointer; list-style:none; padding:14px 18px; background:var(--bg-soft); font-weight:750; font-size:15px; display:flex; align-items:center; gap:10px}
+  .group>summary::-webkit-details-marker{display:none}
+  .group>summary::before{content:"▸"; color:var(--accent); transition:transform .15s; font-size:13px}
+  .group[open]>summary::before{transform:rotate(90deg)}
+  .group>summary .gmeta{margin-left:auto; font-size:12px; color:var(--muted); font-weight:600}
+  .score-badge{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f0e8; color:var(--ok)}
+  .score-badge.mid{background:#fbf0e0; color:#9a6a2a}
+  .score-badge.low{background:#f4e8e0; color:var(--high)}
+  .group .body{padding:4px 18px 14px}
+  .gap{padding:12px 0; border-bottom:1px solid var(--line)}
+  .gap:last-child{border-bottom:0}
+  .gap .gh{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px}
+  .gap .gf{font-size:13px; margin:4px 0}
+  .gap .cat{font-size:11px; color:#6b6862; font-weight:700; text-transform:uppercase; letter-spacing:.05em}
+
+  .pill{display:inline-block; font-size:12px; padding:3px 9px; border-radius:12px; margin:3px 4px 3px 0; font-weight:600}
+  .pill.ok{background:#eaf3ec; color:var(--ok); border:1px solid #cfe2d4}
+  .pill.no{background:#f5ede8; color:var(--high); border:1px solid #e8d2c6}
+
+  .note{background:#fdf6ed; border:1px solid #ecd9bf; border-radius:8px; padding:14px 16px; font-size:13px; margin:14px 0}
+  .note b{color:#9a6a2a}
+  .warn-box{background:#fbeee9; border-left:3px solid var(--high); border-radius:6px; padding:12px 16px; font-size:13.5px; margin:14px 0}
+  .warn-box b{color:var(--high)}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:12px; color:var(--muted)}
+  .toc{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 22px; margin:0 0 28px}
+  .toc ol{margin:6px 0 0; padding-left:22px}
+  .toc li{margin:3px 0}
+  .toc a{color:var(--accent-d); text-decoration:none; font-weight:600}
+  .toc a:hover{text-decoration:underline}
+  .src{font-size:12px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace}
+  a.src-link{color:var(--accent-d)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="report-head">
+  <div class="eyebrow">MoAI-ADK · Hooks 개선계획 보고서</div>
+  <h1>템플릿 Hooks 공식문서 기준 전수 감사 및 개선계획</h1>
+  <div class="meta">
+    <span><b>기준문서:</b> <a class="src-link" href="https://code.claude.com/docs/en/hooks">code.claude.com/docs/en/hooks</a></span>
+    <span><b>분석일:</b> 2026-07-10</span>
+    <span><b>분석 대상:</b> 39 파일 (템플릿 hooks 35 + 지침 3 + settings.json.tmpl)</span>
+    <span><b>방법:</b> 8그룹 병렬 동적 워크플로 (xhigh) + 2그룹 직접 분석</span>
+  </div>
+</header>
+
+<div class="toc">
+  <b>목차</b>
+  <ol>
+    <li><a href="#exec">요약 및 핵심 지표</a></li>
+    <li><a href="#risk">위험 평가</a></li>
+    <li><a href="#recs">우선순위 개선 권고 (Top 8)</a></li>
+    <li><a href="#themes">공통 패턴 (Cross-cutting themes)</a></li>
+    <li><a href="#features">공식 기능 채택 / 미채택</a></li>
+    <li><a href="#groups">그룹별 상세 분석 (8개)</a></li>
+    <li><a href="#method">방법론 · 검증한계 · 증거</a></li>
+  </ol>
+</div>
+
+<!-- ===================== EXECUTIVE SUMMARY ===================== -->
+<h2 id="exec"><span class="n">1</span>요약 및 핵심 지표</h2>
+
+<div class="statrow">
+  <div class="stat"><div class="v">0.80</div><div class="l">전체 공식문서 준수도</div><div class="sub">8그룹 가중 평균</div></div>
+  <div class="stat"><div class="v">32</div><div class="l">식별된 gap</div><div class="sub">26 자동감사 + 6 직접분석</div></div>
+  <div class="stat"><div class="v">2</div><div class="l">HIGH 심각도 결함</div><div class="sub">게이트 JSON 계약 + PreToolUse 거부경로</div></div>
+  <div class="stat"><div class="v">39</div><div class="l">분석 파일 수</div><div class="sub">32 wrapper/gate + 3 rule + 기타</div></div>
+</div>
+
+<p class="lead">템플릿 hooks 레이어는 <b>구조적으로 건전</b>합니다. 약 31개 wrapper는 stdin을 충실히 전달하는 thin forwarder이며 matcher / handler-type / exit-code / CLAUDE_ENV_FILE 규율이 정확합니다. 위험은 두 곳에 집중돼 있습니다. <b>(1)</b> 두 블로킹 품질 게이트(<code>team-ac-verify.sh</code> · <code>sync-phase-quality-gate.sh</code>)가 비정형 JSON을 출력하여 런타임이 스키마 검증을 강화하면 조용히 차단 기능이 무효화되며, <b>(2)</b> <code>handle-pre-tool.sh.tmpl</code>이 PreToolUse 거부(exit 2) 경로를 wrapper 단에서 덮어쓴다. 두 HIGH 결함 모두 현재 관대한 런타임에서는 발현되지 않지만, 한 번의 우선순위 패스(JSON 계약 수정 + doctrine 갱신 + async/timeout 조정)로 대부분 닫힙니다.</p>
+
+<h3>심각도 분포</h3>
+<div class="bar-chart">
+  <div class="bar-row"><span class="lbl">CRITICAL</span><div class="bar-track"><div class="bar-fill" style="width:0%;background:var(--crit)"></div></div><span class="num">0</span></div>
+  <div class="bar-row"><span class="lbl"><span class="sev sev-HIGH">HIGH</span></span><div class="bar-track"><div class="bar-fill" style="width:6%;background:var(--high)"></div></div><span class="num">2</span></div>
+  <div class="bar-row"><span class="lbl"><span class="sev sev-MEDIUM">MEDIUM</span></span><div class="bar-track"><div class="bar-fill" style="width:25%;background:var(--med)"></div></div><span class="num">8</span></div>
+  <div class="bar-row"><span class="lbl"><span class="sev sev-LOW">LOW</span></span><div class="bar-track"><div class="bar-fill" style="width:47%;background:var(--low)"></div></div><span class="num">15</span></div>
+  <div class="bar-row"><span class="lbl"><span class="sev sev-INFO">INFO</span></span><div class="bar-track"><div class="bar-fill" style="width:22%;background:var(--info)"></div></div><span class="num">7</span></div>
+</div>
+<p class="src">CRITICAL 0건 — 현재 관대한 런타임에서는 즉각적 파손이 없음. HIGH 2건은 잠재적 silent-disable(런타임 강화 시 발현).</p>
+
+<h3>결함 카테고리 분포</h3>
+<div class="bar-chart">
+  <div class="bar-row"><span class="lbl">doctrine (문서)</span><div class="bar-track"><div class="bar-fill" style="width:90%"></div></div><span class="num">10</span></div>
+  <div class="bar-row"><span class="lbl">json-output</span><div class="bar-track"><div class="bar-fill" style="width:36%"></div></div><span class="num">4</span></div>
+  <div class="bar-row"><span class="lbl">coverage</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="num">3</span></div>
+  <div class="bar-row"><span class="lbl">timeout</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="num">3</span></div>
+  <div class="bar-row"><span class="lbl">exit-code</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="num">3</span></div>
+  <div class="bar-row"><span class="lbl">async</span><div class="bar-track"><div class="bar-fill" style="width:18%"></div></div><span class="num">2</span></div>
+  <div class="bar-row"><span class="lbl">security</span><div class="bar-track"><div class="bar-fill" style="width:18%"></div></div><span class="num">2</span></div>
+  <div class="bar-row"><span class="lbl">matcher</span><div class="bar-track"><div class="bar-fill" style="width:9%"></div></div><span class="num">1</span></div>
+  <div class="bar-row"><span class="lbl">exec-form</span><div class="bar-track"><div class="bar-fill" style="width:9%"></div></div><span class="num">1</span></div>
+  <div class="bar-row"><span class="lbl">handler-type</span><div class="bar-track"><div class="bar-fill" style="width:9%"></div></div><span class="num">1</span></div>
+</div>
+<p class="src"><b>doctrine 카테고리가 10건(31%)</b>로 가장 많습니다. 단일 파일(<code>hooks-system.md</code>)의 stale이 모든 그룹에 걸쳐 확산된 패턴 — 한 번의 갱신 패스로 최대 효율.</p>
+
+<!-- ===================== RISK ===================== -->
+<h2 id="risk"><span class="n">2</span>위험 평가</h2>
+<div class="card">
+<p>템플릿 hooks 레이어는 구조적으로 건전합니다 — 약 27개 wrapper는 충실한 thin stdin-forwarder이며 준수도 점수가 0.82~0.88로 모이고, matcher / handler-type / exit-code / CLAUDE_ENV_FILE 규율이 정확하며, 자체완결형 거버넌스 게이트는 미묘한 <code>stdout JSON is honored only on exit 0</code> 규칙을 올바르게 준수합니다.</p>
+<p>실질적 위험은 두 곳에 집중됩니다. <b>첫째</b>, 두 블로킹 품질 게이트(<code>team-ac-verify.sh</code> on TaskCompleted, <code>sync-phase-quality-gate.sh</code> on Stop)가 비정형 JSON을 출력합니다 — TaskCompleted는 잘못된 필드(<code>decision:block</code> 대신 <code>continue:false+stopReason</code>), Stop은 잘못된 네스팅(최상위 <code>decision</code> 대신 <code>hookSpecificOutput+hookEventName</code>)을 사용합니다. 이는 런타임이 JSON 스키마 검증을 강화할 때만 발현되는 잠재적 silent-disable 결함이지만, 발현 시 전체 품질강제 표면이 신호 없이 차단을 멈춥니다. <b>둘째</b>, <code>handle-pre-tool.sh.tmpl</code>이 <code>printf | moai; exit 0</code> 패턴으로 moai binary의 exit 2(PreToolUse 거부)를 wrapper 단에서 덮어쓰고 stderr까지 로그로 redirect합니다 — moai가 exit-2 경로를 쓰면 거부 사유가 Claude에게 전달되지 않습니다(JSON <code>permissionDecision:deny</code> 경로는 보존).</p>
+<p>추가로 권위적 레퍼런스 <code>hooks-system.md</code>가 공식 스펙과 8곳 이상에서 드리프트되어, 모든 차후 hook 작성자가 원천에서 잘못된 정보를 받게 됩니다. MEDIUM 등급의 운영 위험으로 마무리됩니다: 세 observation tap이 async가 정답인 user-prompt / turn-end 경로에 동기로 있고, 두 블로킹 게이트(TeammateIdle/TaskCompleted LSP 게이트, PreCompact memo 저장)가 5s로 과소 타이밍되어 부하 시 조용히 no-op가 되며, 공유 silent-exit-0 fail-open이 WorktreeCreate(fail-closed: 생성 중단)와 PermissionRequest(보안 부정: silent allow)에서 의미가 반전됩니다. 현재 관대한 런타임에서는 망가지지 않았지만, 단일 우선순위 패스(JSON 계약 수정 + doctrine 갱신 + async/timeout 조정)가 잠재적 silent-failure 표면을 상당히 줄입니다.</p>
+</div>
+
+<!-- ===================== RECOMMENDATIONS ===================== -->
+<h2 id="recs"><span class="n">3</span>우선순위 개선 권고 (Top 8)</h2>
+
+<div class="rec">
+  <div class="rh"><span class="rank">1</span><span class="rt">블로킹 게이트 JSON 출력 계약 수정 (TaskCompleted + Stop + PreToolUse)</span><span class="sev sev-HIGH">HIGH</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> (a) <code>team-ac-verify.sh</code> 거부 경로를 <code>{"decision":"block",...}</code>에서 exit 0 + <code>{"continue":false,"stopReason":"AC verification failed: ...","ledger_note":"..."}</code>로 변경. (b) <code>sync-phase-quality-gate.sh</code> 블록 페이로드를 <code>{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"..."},"systemMessage":"..."}</code>로 래핑. (c) <code>handle-pre-tool.sh.tmpl</code>의 <code>exit 0</code> 하드코딩을 moai exit code 통과로 수정(stderr redirect도 PreToolUse에서는 Claude 전달 경로 보존). (d) 동일한 잘못된 TaskCompleted 형태를 인코딩하는 <code>agent-common-protocol.md § Ledger Closure (b)</code>에 반영.</div>
+  <div class="ri"><b>영향:</b> Claude Code가 <code>hookSpecificOutput/hookEventName</code> 검증을 강화해도 두 게이트(그리고 PreToolUse 거부)가 조용히 차단을 멈추지 않도록 보장. 유일한 HIGH 등급 결함이며 게이트는 품질강제 표면의 전부.<br>
+  <b>대상 파일:</b> <span class="filepath">team-ac-verify.sh · sync-phase-quality-gate.sh · handle-pre-tool.sh.tmpl · agent-common-protocol.md</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">2</span><span class="rt">hooks-system.md + hook-independence.md doctrine 통합 갱신 (단일 패스)</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="effort">M</span></div>
+  <div class="ra"><b>조치:</b> 한 번의 편집 패스에서: (1) PreCompact 행 Can Block → Yes; (2) SubagentStop stdout에 <code>decision:block+reason | additionalContext</code> 추가; (3) Notification matcher 목록을 공식 8개값으로 확장(+ SessionEnd 6 / StopFailure 10 갱신); (4) FileChanged 행 "literal filenames, NOT regex/glob" 명시; (5) UserPromptSubmit stdout에 <code>decision:block+reason/sessionTitle/suppressOriginalPrompt</code>, PermissionRequest에 <code>decision.behavior/updatedInput/updatedPermissions</code> 추가; (6) 이벤트별 지원 handler-type 행 추가(Elicitation/ElicitationResult command+http+mcp_tool only); (7) "exit 2 is universal"을 이벤트별 enum으로 재작성; (8) hook-independence.md row (g) timeout 10s → 60s.</div>
+  <div class="ri"><b>영향:</b> 9개 doctrine-category gap 중 8개를 한 패스에 제거하고 차후 hook 작성자에 대한 잘못된 정보 전파를 중단. 최고 레버리지 문서 수정.<br>
+  <b>대상 파일:</b> <span class="filepath">hooks-system.md · hook-independence.md (template + local mirror)</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">3</span><span class="rt">3개 동기 observation tap에 async:true 추가</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> settings.json.tmpl에서 UserPromptSubmit(<code>handle-harness-observe-user-prompt-submit.sh</code> — 매 사용자 제출에 실행되어 최고 영향), Stop(<code>handle-harness-observe-stop.sh</code>), SubagentStop(<code>handle-harness-observe-subagent-stop.sh</code>)의 harness-observe 항목에 <code>"async": true</code> 추가. 이미 async인 PostToolUse observe 항목과 정렬. observation tap은 비결정적이므로 async가 아무것도 잃지 않고 prompt 경로 및 death-spiral 위험 turn-end 경로에서 I/O 지연을 제거.</div>
+  <div class="ri"><b>영향:</b> 모든 사용자 prompt에 대한 최대 5s 지연세 제거 + recovery turn에서 observe tap이 Stop error→block→retry 루프에 빠지지 않음.<br>
+  <b>대상 파일:</b> <span class="filepath">settings.json.tmpl (UserPromptSubmit/Stop/SubagentStop harness-observe 블록)</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">4</span><span class="rt">실작업 블로킹 게이트에 timeout 여유 부여 (TeammateIdle/TaskCompleted/PreCompact)</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> TeammateIdle/TaskCompleted timeout을 5s에서 sync-gate의 60s 선례 수준으로 상향(LSP-threshold 검사 실행), PreCompact timeout을 SessionStart의 30s 클래스 수준으로 상향(PostCompact가 의존하는 session-memo 저장). 대안으로 Go 핸들러가 5s 미만 fast pre-check + full LSP 검증을 비블로킹 async/next-turn으로 지연. 최소한 5s ceiling이 빠른 구조 검사로만 gate를 한정한다는 점을 문서화.</div>
+  <div class="ri"><b>영향:</b> 코드베이스가 느리고 오류가 많을 정확히 그 순간에 품질 게이트가 조용히 bypass되는 것을 중단. compact 후 context recovery의 조용한 저하도 방지.<br>
+  <b>대상 파일:</b> <span class="filepath">settings.json.tmpl (TeammateIdle L232 · TaskCompleted L247 · PreCompact L30)</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">5</span><span class="rt">FileChanged literal-vs-regex matcher 모호성 해소 + ConfigChange 블록 채널 확인</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> FileChanged matcher <code>.env|.envrc|.gitignore</code>의 런타임 동작 확인 — literal-only를 존중하면 pipe는 alternation이 아니므로 matcher가 malformed(파일명당 개별 FileChanged 항목 등록). hooks-system.md에 해석 문서화. 별도로 Go ConfigChange 핸들러가 exit-2+stderr가 아닌 stdout JSON(<code>decision:block+reason</code>, <code>hookEventName:ConfigChange</code>)으로 블록을 내보내는지 확인(wrapper의 blanket stderr redirect가 사용자 가시적 블록 사유를 삼키지 않도록).</div>
+  <div class="ri"><b>영향:</b> 외부 파일 변경 이벤트의 잠재적 silent-no-match와 ConfigChange의 잠재적 silent block-reason 손실 제거.<br>
+  <b>대상 파일:</b> <span class="filepath">settings.json.tmpl · hooks-system.md · handle-config-change.sh.tmpl</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">6</span><span class="rt">moai binary 미해결 시 이벤트별 fail-open 의미 교정 (WorktreeCreate + PermissionRequest 우선)</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="effort">M</span></div>
+  <div class="ra"><b>조치:</b> 기존 <code>hook-independence.md</code> mode-A SessionStart moai-resolvability probe 구현(31개 wrapper 전체의 조용한 동시 저하를 하나의 표면 경고로 변환). 그 안에서 의미 반전 두 케이스 우선처리: WorktreeCreate(exit-0+empty-stdout이 생성 중단 — wrapper-level guard 또는 헤더 경고)와 PermissionRequest(exit-0 = ALLOW가 권한 게이트를 조용히 중화 — probe에서 명시 경고).</div>
+  <div class="ri"><b>영향:</b> moai가 PATH를 떠났을 때 worktree 격리 spawn의 fail-closed 함정과 권한 게이트의 보안 부정 silent allow 제거.<br>
+  <b>대상 파일:</b> <span class="filepath">handle-worktree-create.sh.tmpl · handle-permission-request.sh.tmpl · hook-independence.md</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">7</span><span class="rt">미검증 입력 경화 (MOAI_HOOK_STDERR_LOG allowlist + gateguard JSON escaping)</span><span class="sev sev-LOW">LOW</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> <code>MOAI_HOOK_STDERR_LOG</code>를 allowlist prefix(<code>$HOME/.moai/logs</code> 또는 <code>$CLAUDE_PROJECT_DIR/.moai/logs</code> 하위)로 제한하고 불일치 시 기본값 폴백 — 공유 wrapper 패턴에 1회 적용. <code>gateguard-fact-force.sh</code>에서 systemMessage에 이미 사용 중인 awk 기반 escaping을 state-file 기록에도 적용(또는 plain key=value로 기록 — 존재 확인만 하므로 JSON 불필요).</div>
+  <div class="ri"><b>영향:</b> validate/sanitize 모범사례에 부합하게 미검증 경로·미이스케이프 입력 표면 폐쇄. 위협모델 우선순위는 낮지만 비용 저렴.<br>
+  <b>대상 파일:</b> <span class="filepath">gateguard-fact-force.sh · handle-*.sh.tmpl (공유 패턴)</span></div>
+</div>
+
+<div class="rec">
+  <div class="rh"><span class="rank">8</span><span class="rt">커버리지 홀 + shell/code 결함 폐쇄 (MultiEdit matcher · csharp glob · agent-hook exec form · compact 네이밍)</span><span class="sev sev-LOW">LOW</span><span class="effort">S</span></div>
+  <div class="ra"><b>조치:</b> (a) PostToolUse status-transition matcher를 <code>Write|Edit</code>에서 <code>Write|Edit|MultiEdit</code>로 확장(MultiEdit on SPEC artifact가 audit log를 우회하지 않게). (b) <code>sync-phase-quality-gate.sh</code> detect_language의 dead <code>[ -f "$root/*.csproj" ]</code> glob을 <code>find "$root" -maxdepth 1 -name '*.csproj' -print -quit</code>로 교체. (c) agent-frontmatter <code>handle-agent-hook.sh</code> 호출을 exec form(args=["{action}"]) 또는 invocation layer에서 <code>"{action}"</code> 인용으로 전환. (d) <code>handle-compact.sh.tmpl</code> line-7 stale comment 수정(compact.sh → handle-compact.sh) + 관행 일관성 위해 <code>handle-pre-compact.sh.tmpl</code>로 rename 검토.</div>
+  <div class="ri"><b>영향:</b> silent audit-log 커버리지 홀, dead 언어감지 분기, shell word-split 위험, 자기오참조 comment 제거. 개별 영향 낮음, 효율 위해 일괄.<br>
+  <b>대상 파일:</b> <span class="filepath">settings.json.tmpl · sync-phase-quality-gate.sh · handle-agent-hook.sh.tmpl · handle-compact.sh.tmpl</span></div>
+</div>
+
+<!-- ===================== THEMES ===================== -->
+<h2 id="themes"><span class="n">4</span>공통 패턴 (Cross-cutting themes)</h2>
+<p>2개 이상 그룹에서 재발하는 패턴 — 최고 레버리지 수정 지점.</p>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-HIGH">HIGH</span> 블로킹 게이트 JSON 출력 계약 위반 (잘못된 필드 / 잘못된 네스팅)</h3>
+  <p><b>영향 그룹:</b> gates-doctrine · subagent-task-team · <i>tool(직접분석)</i>. <code>team-ac-verify.sh</code>(TaskCompleted)와 <code>sync-phase-quality-gate.sh</code>(Stop)가 <code>decision:block+reason</code>을 잘못된 이벤트(TaskCompleted의 공식은 <code>continue:false+stopReason</code>) 또는 잘못된 네스팅(Stop은 <code>hookSpecificOutput:{hookEventName,decision,reason}</code> 요구, bare 최상위 decision 아님)으로 출력. 런타임은 현재 관대하지만, JSON 스키마 검증이 강화되면 거버넌스 게이트가 신호 없이 차단을 멈춤. 동일한 잘못된 TaskCompleted 형태가 2회 인코딩(GAP-GD-01 == GAP-STT-02)되고 <code>agent-common-protocol.md</code> Ledger Closure (b)에도 재인코딩.</p>
+</div>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-MEDIUM">MEDIUM</span> hooks-system.md doctrine이 6그룹에 걸쳐 공식 스펙과 드리프트</h3>
+  <p><b>영향 그룹:</b> compact · subagent-task-team · observation · config-env-worktree · permission-elicitation · gates-doctrine (사실상 전체). 단일 권위 레퍼런스 파일이 최소 8곳에서 stale: PreCompact 비블로킹 오분류, SubagentStop stdout 불완전, Notification/SessionEnd/StopFailure matcher 과소산출, FileChanged literal-not-regex 제약 미문서화, UserPromptSubmit/PermissionRequest 필드집 불완전, 이벤트별 handler-type 행 누락, "exit 2 is universal" 과잉일반화, hook-independence.md row (g) stale 10s(실제 60s). 모든 차후 hook 작성자가 이 표를 참조하므로 드리프트가 곱해짐 — 단일 갱신 패스가 최고 레버리지.</p>
+</div>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-MEDIUM">MEDIUM</span> async가 정답인 곳에 동기 observation tap 배선</h3>
+  <p><b>영향 그룹:</b> observation. PostToolUse observe tap은 올바르게 async:true를 가지지만, 세 형제 — UserPromptSubmit(가장 사용자 대면적), Stop, SubagentStop — 는 동기. observation tap은 비결정적이므로 async가 아무것도 잃지 않고 user-prompt 경로와 turn-end(death-spiral 위험) 경로에서 I/O 지연세를 제거. 체계적 비대칭, settings.json.tmpl에서 한 번 수정.</p>
+</div>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-MEDIUM">MEDIUM</span> 블로킹 품질 게이트 5s 과소 타이밍</h3>
+  <p><b>영향 그룹:</b> subagent-task-team · compact. 보편적 5s fast-path 정책이 문서화된 목적이 실작업을 요구하는 이벤트를 저해: TeammateIdle/TaskCompleted는 실제 코드베이스에서 5s를 초과하는 LSP-error-threshold 게이트 실행, PreCompact는 PostCompact가 의존하는 session-memo 저장. 이들에서 timeout kill은 게이트를 silent no-op으로 만드는데, 정확히 tree가 느리고 오류가 많을 때 발생. sync-gate는 이미 60s 선례가 있음; 이 게이트들도 유사 여유 또는 fast-pre-check + async-deferred 분할 필요.</p>
+</div>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-MEDIUM">MEDIUM</span> moai binary 미해결 시 silent fail-open / fail-closed</h3>
+  <p><b>영향 그룹:</b> subagent-task-team · config-env-worktree · permission-elicitation · <i>tool(직접분석)</i>. 약 31개 wrapper가 silent exit 0로 끝나는 3-tier resolution chain 공유. 그 exit-0는 observer 이벤트에서는 의미론적으로 올바르지만 WorktreeCreate(exit-0+empty-stdout이 active-creator 계약에 따라 생성 중단 — fail-closed)와 PermissionRequest(exit-0 = ALLOW, 권한 게이트를 조용히 중화 — 보안 부정)에서 반전. 기존 hook-independence.md mode-A SessionStart-probe 권고가 모든 wrapper를 한 번에 표면화; WorktreeCreate/PermissionRequest 차원이 그 안에서 우선순위.</p>
+</div>
+
+<div class="card tight">
+  <h3 style="margin-top:4px"><span class="sev sev-LOW">LOW</span> 파일시스템·JSON 싱크로의 미검증·미이스케이프 입력</h3>
+  <p><b>영향 그룹:</b> subagent-task-team · gates-doctrine · <i>tool(직접분석)</i>. <code>MOAI_HOOK_STDERR_LOG</code>가 모든 wrapper에서 미검증으로 읽혀 mkdir/mv/redirection에 투입, <code>gateguard-fact-force.sh</code>는 raw session_id/file_path interpolation로 state file 기록(JSON escaping 없음, 올바르게 awk-escape하는 자체 systemMessage 경로와 대조). 둘 다 로컬 위협모델에서 저위험이지만 validate/sanitize 모범사례에 일관되게 위배.</p>
+</div>
+
+<!-- ===================== FEATURES ===================== -->
+<h2 id="features"><span class="n">5</span>공식 기능 채택 / 미채택</h2>
+<div class="grid2">
+  <div class="card tight">
+    <h3 style="margin-top:4px;color:var(--ok)">채택 (8)</h3>
+    <span class="pill ok">command handler type (보편)</span>
+    <span class="pill ok">async:true (부분 — PostToolUse observe만)</span>
+    <span class="pill ok">systemMessage stdout (PostCompact 복구)</span>
+    <span class="pill ok">exit-2 블로킹 (exec로 전파)</span>
+    <span class="pill ok">matcher 축 올바름 (이벤트별)</span>
+    <span class="pill ok">file side-channel (session-memo round-trip)</span>
+    <span class="pill ok">CLAUDE_ENV_FILE scope 규율</span>
+    <span class="pill ok">stderr 회전 + cross-platform stat</span>
+  </div>
+  <div class="card tight">
+    <h3 style="margin-top:4px;color:var(--high)">미채택 (14)</h3>
+    <span class="pill no">prompt handler type</span>
+    <span class="pill no">agent handler type</span>
+    <span class="pill no">HTTP handler type</span>
+    <span class="pill no">mcp_tool handler type</span>
+    <span class="pill no">asyncRewake (전무)</span>
+    <span class="pill no">updatedInput / updatedPermissions</span>
+    <span class="pill no">updatedToolOutput</span>
+    <span class="pill no">defer</span>
+    <span class="pill no">terminalSequence</span>
+    <span class="pill no">watchPaths (Go 영역, 불분명)</span>
+    <span class="pill no">reloadSkills</span>
+    <span class="pill no">exec form (shell form 인용 사용)</span>
+    <span class="pill no">async 3/4 observe tap (핵심 gap)</span>
+    <span class="pill no">hookSpecificOutput+hookEventName (HIGH 결함)</span>
+  </div>
+</div>
+<div class="note"><b>해석:</b> 미채택의 대부분(prompt/agent/HTTP/mcp_tool handler-type, terminalSequence, defer 등)은 <b>의도적 비채택</b>입니다 — MoAI는 command thin-wrapper 아키텍처로 Go binary에 의사결정을 위임하므로 다른 handler-type이 불필요합니다. 그러나 <code>hookSpecificOutput+hookEventName</code>과 <code>async 3/4 observe tap</code>은 HIGH/MEDIUM 결함의 원인이므로 적극적 도입이 권고됩니다.</div>
+
+<!-- ===================== GROUPS DETAIL ===================== -->
+<h2 id="groups"><span class="n">6</span>그룹별 상세 분석 (8개)</h2>
+
+<!-- GROUP: gates-doctrine -->
+<details class="group" open>
+  <summary>① gates-doctrine <span class="score-badge low">0.72</span><span class="gmeta">9 gaps · 1 HIGH</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-01</span><span class="sev sev-HIGH">HIGH</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">internal/template/templates/.claude/hooks/moai/team-ac-verify.sh:45</span></div>
+      <p><b>발견:</b> reject 경로가 TaskCompleted 이벤트에 <code>{"decision":"block","reason":...,"ledger_note":...}</code> 출력. 공식 TaskCompleted JSON 스키마는 <code>{continue:false, stopReason}</code>(또는 exit 2 + stderr). <code>decision</code> 필드는 PostToolUse/Stop/SubagentStop/UserPromptSubmit/ConfigChange/PreCompact/PostToolBatch에만 문서화됨. 인코딩된 <code>ledger_note</code>가 무효 블록 형태를 타므로 블록이나 ledger_note 모두 보장되지 않음.</p>
+      <p><b>공식 근거:</b> JSON OUTPUT: "TeammateIdle/TaskCreated/TaskCompleted: {continue:false, stopReason}". <code>decision:block</code>은 Stop/SubagentStop/PostToolUse 등에만 나열.</p>
+      <p><b>권고:</b> exit 0 + <code>{"continue":false,"stopReason":"AC verification failed: ...","ledger_note":"..."}</code>로 변경(ledger_note를 sidecar 필드로), 또는 exit 2 + stderr 사용(그러면 stdout이 폐기되므로 ledger_note는 side-channel file로 이동). <code>agent-common-protocol.md § Ledger Closure (b)</code>에 동일한 잘못된 형태 반영.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-02</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">sync-phase-quality-gate.sh:357</span></div>
+      <p><b>발견:</b> sync-phase-quality-gate.sh(Stop)와 team-ac-verify.sh(TaskCompleted)가 stdout JSON <b>최상위</b>에 decision/reason 출력. 공식 스키마상 Stop/SubagentStop의 decision+reason은 <code>hookEventName</code> 필드가 필수인 <code>hookSpecificOutput</code> 하위에 있어야 함. 게이트는 hookEventName도 hookSpecificOutput 래퍼도 없음.</p>
+      <p><b>권고:</b> <code>{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"..."},"systemMessage":"..."}</code>로 래핑. 런타임이 현재 최상위 decision을 관대히 수용할 수 있으나 정형 스키마는 네스팅하므로 정렬이 잠재 break-risk 제거.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-03</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hook-independence.md:row(g)</span></div>
+      <p><b>발견:</b> 거버넌스 게이트 cross-tab row (g)가 sync-phase-quality-gate.sh timeout을 "10s (Stop)"로 표시하지만, settings.json.tmpl은 60(line 139), hooks-system.md도 60s로 문서화. doctrine이 wiring과 형제 doctrine 모두와 불일치.</p>
+      <p><b>권고:</b> hook-independence.md row (g)를 "60s (Stop)"로 갱신.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-04</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">matcher</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl:353</span></div>
+      <p><b>발견:</b> FileChanged matcher가 <code>.env|.envrc|.gitignore</code>(pipe 구분). 공식 스펙은 FileChanged가 literal FILENAMES에 일치하며 regex가 아님을 명시. 런타임이 literal-only를 존중하면 pipe가 alternation이 아니므로 matcher malformed; 관대히 regex로 취급하면 문서화된 계약에 모순.</p>
+      <p><b>권고:</b> 런타임 동작 확인; literal-only면 파일명당 개별 matcher 그룹 등록 또는 지배적 <code>.env/.envrc</code> 쌍만. 최소한 shipping 런타임의 해석 문서화.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-05</span><span class="sev sev-LOW">LOW</span><span class="cat">coverage</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl:104</span></div>
+      <p><b>발견:</b> PostToolUse matcher가 <code>Write|Edit</code>(MultiEdit 제외)이지만 status-transition-ownership.sh case문(line 54)은 명시적으로 Write|Edit|MultiEdit 처리. SPEC artifact에 대한 MultiEdit이 상태전환 audit log를 완전히 우회 — ownership-matrix 게이트의 silent 커버리지 홀.</p>
+      <p><b>권고:</b> matcher를 <code>Write|Edit|MultiEdit</code>로 확장하거나 의도적 제외 문서화.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-06</span><span class="sev sev-LOW">LOW</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md:Rules</span></div>
+      <p><b>발견:</b> Rules 섹션이 "Exit code 2 is the universal block/reject signal for blocking events" 명시. 공식 스펙은 exit 2가 무시되거나 user-only인 다수 이벤트를 enum(PermissionDenied, Notification, SessionStart, SessionEnd, Setup, CwdChanged, FileChanged, PostCompact, SubagentStart, InstructionsLoaded, StopFailure, MessageDisplay). "universal" 프레이밍이 과잉일반화.</p>
+      <p><b>권고:</b> "exit 2는 블로킹 tool/prompt/stop 이벤트의 block/reject 신호; Notification/SessionStart/.../PermissionDenied에서는 무시됨 — 문서화된 JSON 필드 대신 사용"으로 재작성.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-07</span><span class="sev sev-LOW">LOW</span><span class="cat">handler-type</span></div>
+      <div class="gf"><span class="filepath">sync-phase-quality-gate.sh:80</span></div>
+      <p><b>발견:</b> detect_language csharp 분기가 <code>[ -f "$root/*.csproj" ]</code> 사용 — glob이 <code>[ -f ... ]</code> 내에서 확장되지 않으므로 문자 그대로 '*.csproj'라는 파일 검사가 되어 항상 실패. csharp 감지는 .vs dir 검사 또는 다음 분기의 find 폴백으로만 성공. dead/오해 유발 코드.</p>
+      <p><b>권고:</b> <code>find "$root" -maxdepth 1 -name '*.csproj' -print -quit</code>(이미 작동하는 폴백) 또는 <code>[ -f ]</code> 밖의 case glob으로 교체.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-08</span><span class="sev sev-LOW">LOW</span><span class="cat">security</span></div>
+      <div class="gf"><span class="filepath">gateguard-fact-force.sh:107</span></div>
+      <p><b>발견:</b> state file이 raw <code>$session_id/$file_path/$tool_name</code> interpolation(JSON escaping 없이)으로 <code>printf '{...}'</code> 기록. double-quote나 backslash 포함 file_path가 malformed JSON 생성. 영향 낮음(state file은 존재만 확인, 파싱 안 함)이지만 미이스케이프-입력-to-JSON 패턴.</p>
+      <p><b>권고:</b> systemMessage에 사용 중인 awk 기반 escaping 적용, 또는 plain key=value로 기록(존재 확인만 하므로 JSON 불필요).</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-GD-09</span><span class="sev sev-INFO">INFO</span><span class="cat">coverage</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl:247</span></div>
+      <p><b>발견:</b> team-ac-verify.sh가 settings.json.tmpl에 미등록 — TaskCompleted 이벤트는 handle-task-completed.sh를 대신 배선. 게이트는 설계상 dormant(hook-independence.md row g caveat에서 인정). 완전성을 위해 플래그: gates+doctrine 그룹이 자신이 수호하는 이벤트에 전기적으로 연결되지 않은 TaskCompleted 게이트를 shipping.</p>
+      <p><b>권고:</b> dormancy가 의도적이면 조치 불필요; team mode에서 활성화해야 하면 <code>workflow.team.enabled</code>에 게이트된 두 번째 TaskCompleted hook 항목으로 등록.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: subagent-task-team -->
+<details class="group">
+  <summary>② subagent-task-team <span class="score-badge mid">0.82</span><span class="gmeta">5 gaps</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-STT-01</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">timeout</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl (TeammateIdle L232, TaskCompleted L247)</span></div>
+      <p><b>발견:</b> TeammateIdle/TaskCompleted가 timeout:5로 배선된 BLOCKING 품질 게이트. TeammateIdle의 문서화된 목적은 LSP-error-threshold 검사(CLAUDE.md §17). 비변칙 코드베이스에서 LSP 계산은 5s를 초과. hook timeout이 프로세스를 kill하고 action이 non-blocking으로 진행되므로, 코드베이스가 느리고 오류가 많을 정확히 그 순간에 품질 게이트가 silent bypass.</p>
+      <p><b>권고:</b> sync-phase-quality-gate 선례(60s)로 상향, 또는 Go 핸들러가 fast pre-check(&lt;5s) + full LSP 검증을 비블로킹 async/next-turn으로 지연.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-STT-02</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">agent-common-protocol.md (Hook Invocation Surface)</span></div>
+      <p><b>발견:</b> team-ac-verify.sh(TaskCompleted 게이트)가 완료 거부를 stdout JSON <code>{"decision":"block",...}</code>로 신호한다는 doctrine. 그러나 공식 TaskCompleted JSON 계약은 <code>{"continue":false,"stopReason":"..."}</code>. <code>decision:block+reason</code>은 PostToolUse/UserPromptSubmit/Stop/SubagentStop/ConfigChange/PreCompact용, TaskCompleted가 아님. 게이트가 배선되면 잘못된 필드가 조용히 무시되어 거부 효과 없음 — 블로킹 게이트의 잠재적 silent-failure.</p>
+      <p><b>권고:</b> team-ac-verify.sh doctrine(및 게이트 구현)을 exit 0 + <code>{"continue":false,"stopReason":...}</code>로 수정, 또는 exit-2 + stderr-feedback 경로 사용. <code>decision:block</code>을 TaskCompleted에 사용 금지.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-STT-03</span><span class="sev sev-LOW">LOW</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md (SubagentStop row)</span></div>
+      <p><b>발견:</b> SubagentStop stdout 열이 systemMessage만 나열, 공식 <code>hookSpecificOutput</code> 옵션인 <code>decision:block+reason</code>과 <code>additionalContext</code> 누락. doctrine은 SubagentStop을 Can Block:Yes로 표시하지만 stdout 레퍼런스를 참조하는 유지자는 non-error additionalContext 피드백 경로와 구조화 decision:block 형태를 놓침.</p>
+      <p><b>권고:</b> SubagentStop stdout 셀을 <code>systemMessage; hookSpecificOutput: decision:block+reason | additionalContext</code>로 확장(Stop 행 처리와 정렬).</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-STT-04</span><span class="sev sev-LOW">LOW</span><span class="cat">security</span></div>
+      <div class="gf"><span class="filepath">all 5 wrappers (공유 패턴)</span></div>
+      <p><b>발견:</b> <code>MOAI_HOOK_STDERR_LOG</code>가 미검증으로 읽혀 <code>mkdir -p "$(dirname ...)"</code>, <code>mv -f</code>, <code>2&gt;&gt;</code> redirection에 사용. malformed/hostile 값(민감 디렉터리 내부)이 파일 생성/이동 작업을 그곳으로 향하게 함. hooks는 FULL user permissions로 실행. 위험은 bounded(정상 동작에서 환경변수는 로컬, 공격자 제어 아님)이지만 'validate/sanitize inputs' 모범사례에 위배.</p>
+      <p><b>권고:</b> <code>MOAI_HOOK_STDERR_LOG</code>를 예상 prefix로 제한(예: <code>$HOME/.moai/logs</code> 또는 <code>$CLAUDE_PROJECT_DIR/.moai/logs</code> 하위) 또는 override가 allowlist에 불일치 시 기본값 폴백.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-STT-05</span><span class="sev sev-INFO">INFO</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">all 5 wrappers (26개 다른 wrapper와 공유)</span></div>
+      <p><b>발견:</b> 5 wrapper 모두 silent exit 0로 끝나는 동일 3-tier moai-binary resolution chain 탑재. moai binary가 3 tier 모두에서 미해결(PATH + <code>$HOME/go/bin</code> + <code>$HOME/.local/bin</code>) 시 5개 — 그리고 31-wrapper 레이어 전체 — 가 표면 경고 없이 silent 저하. 이미 hook-independence.md mode A에서 genuine-risk로 분류되어 지연 mitigation 권고(SessionStart probe) 있음.</p>
+      <p><b>권고:</b> 이 그룹 고유 신규 조치 없음; 기존 hook-independence.md mode A 권고(일회성 SessionStart moai-resolvability probe) 추적.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: observation -->
+<details class="group">
+  <summary>③ observation <span class="score-badge mid">0.83</span><span class="gmeta">4 gaps</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-OBS-01</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">async</span></div>
+      <div class="gf"><span class="filepath">handle-harness-observe-user-prompt-submit.sh.tmpl</span></div>
+      <p><b>발견:</b> UserPromptSubmit는 BLOCKING, 사용자 대면 이벤트(exit 2가 prompt 차단+삭제; 사전 처리, 공식 30s ceiling)인데 observe tap이 동기 배선(settings.json.tmpl: timeout 5, async 없음). 형제 PostToolUse observe tap은 async:true. UserPromptSubmit가 가장 async가 필요한 이벤트(매 제출 gate)인데 동기인 것. moai binary의 harness-observe handler가 비변칙 I/O를 하면 사용자 prompt가 매 제출마다 최대 5s 지연.</p>
+      <p><b>권고:</b> settings.json.tmpl의 UserPromptSubmit harness-observe 항목에 <code>"async": true</code> 추가(PostToolUse observe와 정렬). observation은 비결정적이어서 async가 아무것도 잃지 않음.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-OBS-02</span><span class="sev sev-LOW">LOW</span><span class="cat">async</span></div>
+      <div class="gf"><span class="filepath">handle-harness-observe-stop.sh.tmpl · -subagent-stop.sh.tmpl</span></div>
+      <p><b>발견:</b> Stop과 SubagentStop observe tap이 동기 배선(async 없음). Stop exit-2는 "Claude 정지 방지(계속)" 의미이며 문서화된 death-spiral 위험(CLAUDE.md §17, runtime-recovery-doctrine §4)과 8-block cap 동반. turn-end 경로의 동기 observe forwarder는 moai binary의 느린 I/O가 turn-end를 차단함; binary가 recovery turn에서 non-zero를 반환하면 error→block→retry 루프에 기여. PostToolUse 형제는 async 받았으나 이들은 못 받음.</p>
+      <p><b>권고:</b> Stop과 SubagentStop의 harness-observe 항목에 <code>"async": true</code> 추가.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-OBS-03</span><span class="sev sev-LOW">LOW</span><span class="cat">exec-form</span></div>
+      <div class="gf"><span class="filepath">handle-agent-hook.sh.tmpl</span></div>
+      <p><b>발견:</b> agent frontmatter에서 shell form으로 <code>{action}</code>이 UNQUOTED: <code>command = "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" {action}"</code>. wrapper 내부는 <code>"$1"</code>을 올바르게 인용하므로 wrapper측 안전; 위험은 invocation layer — <code>{action}</code>이 bare shell token로 전달되어 whitespace 포함 시 word-split. 현재 action token은 단일 bareword라 실제 안전하지만 공식 exec-form 지침이 제거하려는 정확한 shell-quoting 위험.</p>
+      <p><b>권고:</b> exec form(<code>args=["{action}"]</code>)으로 전환 또는 invocation layer에서 <code>"{action}"</code> 인용.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-OBS-04</span><span class="sev sev-INFO">INFO</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">handle-notification.sh.tmpl</span></div>
+      <p><b>발견:</b> wrapper 자체는 compliant하고 RETIRE-OBS-ONLY로 올바르게 자체문서화. 그러나 인접 doctrine hooks-system.md가 Notification matcher 표면을 과소문서화: 4 matcher만 나열하지만 공식은 8개(+ elicitation_complete, elicitation_response, agent_needs_input, agent_completed). 동일 staleness가 SessionEnd(4 vs 6)와 StopFailure(4 vs 10)에도. runtime 영향 없음(notification wrapper는 inert/미등록)이지만 차후 opt-in 작성자가 의존할 이벤트 표면을 과소 진술.</p>
+      <p><b>권고:</b> hooks-system.md 갱신 시 Notification matcher 목록(+ SessionEnd/StopFailure 행)을 공식 전체 세트로 갱신.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: config-env-worktree -->
+<details class="group">
+  <summary>④ config-env-worktree <span class="score-badge mid">0.86</span><span class="gmeta">3 gaps</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-CEW-01</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">exit-code</span></div>
+      <div class="gf"><span class="filepath">handle-worktree-create.sh.tmpl</span></div>
+      <p><b>발견:</b> wrapper의 missing-binary 폴백이 empty stdout로 <code>exit 0</code>. WorktreeCreate에서 이는 의미론적 반전: 공식 active-creator 계약이 "empty stdout 또는 non-zero exit가 생성 중단" — hook이 CREATOR이고 mkdir + 절대경로를 stdout에 echo해야 함. 그러므로 moai 부재 시 exit 0 + empty stdout은 graceful skip이 아니라 생성 중단(ABORT). fail-open 가정은 다른 4 이벤트에서는 맞지만 WorktreeCreate에서는 fail-CLOSED. wrapper 자체에 creator logic이 전무(mkdir/path echo 없음) — 전체 active-creator 책임을 wrapper-level guard 없이 Go binary에 위임.</p>
+      <p><b>권고:</b> (a) 이 wrapper는 moai binary가 보장 해결 가능하지 않으면 settings.json에 등록하면 안 된다는 헤더 comment 추가 + 오해 유발 "Claude Code handles missing hooks gracefully" comment 수정; 또는 (b) missing-binary 케이스 감지 시 non-zero exit + 명확 stderr 메시지로 abort를 진단 가능하게 loud 처리.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-CEW-02</span><span class="sev sev-LOW">LOW</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">handle-config-change.sh.tmpl</span></div>
+      <p><b>발견:</b> 모든 exec 라인이 stderr를 <code>2&gt;&gt;"$MOAI_HOOK_STDERR_LOG"</code>로 redirect. ConfigChange는 이 그룹에서 유일하게 BLOCK 가능(exit 2가 config change 차단; stderr가 블록 피드백 전달). Go binary가 exit-2 + stderr 채널을 쓰면 blanket stderr redirect가 사유를 로그로 삼킴. 이는 Go binary가 modern JSON-on-stdout 경로를 쓸 때만 완전히 완화(wrapper의 clean stdout passthrough가 보존).</p>
+      <p><b>권고:</b> Go ConfigChange 핸들러가 exit 2 + stderr가 아닌 stdout JSON으로 블록을 내보내는지 확인. 그러면 info-only; exit 2를 쓰면 stderr redirect가 사용자 가시적 블록 사유를 조용히 삭제 — 이벤트 조건부 stderr 정책 고려.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-CEW-03</span><span class="sev sev-INFO">INFO</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md</span></div>
+      <p><b>발견:</b> doctrine이 FileChanged를 matcher "Filename"으로 문서화하지만 FileChanged matcher가 LITERAL 파일명(.envrc, .env 등)이지 regex/glob이 아닌 공식 제약 미명시. regex/glob matcher를 작성하는 settings.json 작성자는 silent no-matching을 받음(literal-match 의미론이 표의 다른 모든 matcher 필드와 상이). CwdChanged/WorktreeCreate/WorktreeRemove는 정확히 "no matcher / silently ignored" 규칙 상속.</p>
+      <p><b>권고:</b> FileChanged 행 또는 stdin/stdout 표에 한 줄 메모: matcher는 literal 파일명이지 regex/glob이 아님 — 공식 스펙 표현 미러.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: permission-elicitation -->
+<details class="group">
+  <summary>⑤ permission-elicitation <span class="score-badge mid">0.88</span><span class="gmeta">3 gaps</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-PE-01</span><span class="sev sev-LOW">LOW</span><span class="cat">exit-code</span></div>
+      <div class="gf"><span class="filepath">handle-permission-request.sh.tmpl</span></div>
+      <p><b>발견:</b> moai binary 부재 시 권한 게이트에서 fail-open. wrapper의 terminal 폴백이 <code>exit 0</code>; PermissionRequest 공식 의미론은 exit 0 = ALLOW(대화상자 skip). 그러므로 broken/missing moai 설치가 권한 게이트를 조용히 중화 — moai logic이 deny할 도구가 auto-allow됨. 동일 exit-0 폴백이 UserPromptSubmit(prompt 진행), Elicitation/ElicitationResult(elicitation 진행)에서도 fail-open(덜 보안 민감); PermissionDenied는 무해(exit 무시).</p>
+      <p><b>권고:</b> 기존 문서화된 shared-failure-mode A(hook-independence.md §3 mode A, genuine-risk로 분류, 지연 SessionStart-probe mitigation). wrapper 개별 편집은 부당하지만 권한 차원은 그룹 고유: 지연 SessionStart probe가 도착하면 'allow'가 observer hook의 양성 silent-degradation보다 강한 실패 모드이므로 PermissionRequest wrapper가 fail-open 시 경고 우선.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-PE-02</span><span class="sev sev-LOW">LOW</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md</span></div>
+      <p><b>발견:</b> stdin/stdout 레퍼런스 표가 이 그룹의 두 이벤트에서 공식 JSON output 계약 대비 stale. UserPromptSubmit 행은 <code>additionalContext, reason</code>만 — <code>decision:{block,reason}</code>, <code>sessionTitle</code>, <code>suppressOriginalPrompt</code> 누락. PermissionRequest 행은 <code>reason</code>만 — <code>decision.behavior (allow|deny)</code>, <code>updatedInput</code>, <code>updatedPermissions</code> 누락. <code>sessionTitle</code>은 동일 파일 다른 곳(Smart Hook Behaviors)에 언급되어 커버리지는 부분적이지만 정형 레퍼런스 표 자체는 불완전.</p>
+      <p><b>권고:</b> hooks-system.md stdin/stdout 레퍼런스 표 UserPromptSubmit/PermissionRequest 행을 공식 전체 필드 세트로 갱신.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-PE-03</span><span class="sev sev-LOW">LOW</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md</span></div>
+      <p><b>발견:</b> doctrine이 5 handler type을 문서화하지만 이벤트별 handler-type 지원 매트릭스는 미문서화. 이 그룹의 두 이벤트 — Elicitation과 ElicitationResult — 가 command+http+mcp_tool ONLY(prompt/agent 미지원, 조용히 폐기). doctrine 이벤트 표는 'Can Block: Yes'로 표시하지만 type 제한을 명시하지 않아 차후 작성자가 <code>type: prompt</code>/<code>type: agent</code>를 Elicitation에 배선하고 조용히 무시당할 수 있음.</p>
+      <p><b>권고:</b> hooks-system.md 이벤트 표에 이벤트별 지원-type 열(또는 각주) 추가; Elicitation/ElicitationResult가 prompt/agent 거부 명시.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: compact -->
+<details class="group">
+  <summary>⑥ compact <span class="score-badge mid">0.82</span><span class="gmeta">3 gaps</span></summary>
+  <div class="body">
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-LC-01</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">doctrine</span></div>
+      <div class="gf"><span class="filepath">hooks-system.md (line 27; local mirror 포함)</span></div>
+      <p><b>발견:</b> 이벤트 레퍼런스 표가 PreCompact를 "Can Block: No"로 분류. 공식 스펙과 모순: PreCompact는 블로킹 가능 이벤트 — exit 2가 compaction 차단("PreCompact: blocks compaction")하고 exit-0 JSON 계약이 ConfigChange와 함께 PreCompact에 <code>decision:block+reason</code> 예약. doctrine이 블로킹 이벤트를 순수 observer로 오분류. shipping Go 핸들러(compact.go)와 테스트(compact_test.go:101-102가 PreCompact에 HookSpecificOutput이 nil이어야 한다고 단언)가 이 잘못된 doctrine과 일치 — 블로킹 능력이 미문서화이자 미구현.</p>
+      <p><b>권고:</b> hooks-system.md 표 행을 "PreCompact | Trigger | Yes"(exit 2 / decision:block+reason로 블록 가능)로 수정, compact.go 핸들러 + compact_test.go 정렬. PostCompact의 'Can Block: No' 행은 정확하므로 유지.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-LC-02</span><span class="sev sev-LOW">LOW</span><span class="cat">coverage</span></div>
+      <div class="gf"><span class="filepath">handle-compact.sh.tmpl</span></div>
+      <p><b>발견:</b> <code>handle-pre-compact.sh.tmpl</code>이 존재하지 않음. PreCompact는 <code>handle-compact.sh.tmpl</code>이 서비스하여, 디렉터리의 다른 모든 wrapper가 따르는 <code>handle-&lt;event-name&gt;</code> 관행 위반. settings.json 배선은 올바름(PreCompact → handle-compact.sh)이므로 기능 결함은 아니나, (a) 파일명이 어느 이벤트 서비스인지 표시 안 함('pre-compact' grep하는 독자가 못 찾음), (b) 파일 내 comment가 잘못된 스크립트명 자기참조: line 7이 <code>.claude/hooks/moai/compact.sh</code>인데 실제 배포 파일은 <code>handle-compact.sh</code>.</p>
+      <p><b>권고:</b> handle-compact.sh.tmpl → handle-pre-compact.sh.tmpl rename(settings.json.tmpl + moai hook subcommand 매핑 갱신), 또는 최소한 stale line-7 comment 수정.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-LC-03</span><span class="sev sev-LOW">LOW</span><span class="cat">timeout</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl (PreCompact block, line 30)</span></div>
+      <p><b>발견:</b> PreCompact가 5s timeout로 실행. hooks-system.md § Smart Hook Behaviors와 compact.go에 따르면 PreCompact의 작업은 PostCompact가 context 복구용으로 읽는 session-memo.md 파일시스템 side-effect 저장. memo 저장이 5s 초과(느린/네트워크 파일시스템, 대형 session state 직렬화) 시 hook이 쓰기 중 kill → PostCompact가 누락/절단 memo 발견 → compact 후 context 복구가 표면 신호 없이 silent 저하. PostCompact 자체 5s는 적절, 동기 유지도 올바름(async면 다음 turn에 복원 context 전달).</p>
+      <p><b>권고:</b> PreCompact timeout을 SessionStart의 30s 여유 수준으로 상향 검토, 또는 compact.go가 memo 쓰기 불완전 시 loud 실패(stderr 라인)하여 PostCompact no-memo 케이스가 silent가 아닌 관찰 가능하게. 낮은 가능성, 높은 silent-failure 비용.</p>
+    </div>
+  </div>
+</details>
+
+<!-- GROUP: tool (직접 분석) -->
+<details class="group">
+  <summary>⑦ tool (Pre/PostTool/Failure) <span class="score-badge low">0.78</span><span class="gmeta">4 gaps · 1 HIGH · <i>직접 분석</i></span></summary>
+  <div class="body">
+    <div class="warn-box">이 그룹은 동적 워크플로 429 rate-limit로 자동 감사가 실패하여 메인 컨텍스트에서 직접 분석했습니다. 3 파일(handle-pre-tool.sh.tmpl · handle-post-tool.sh.tmpl · handle-post-tool-failure.sh.tmpl)을 공식 문서 기준으로 평가.</div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-TOOL-01</span><span class="sev sev-HIGH">HIGH</span><span class="cat">exit-code</span></div>
+      <div class="gf"><span class="filepath">handle-pre-tool.sh.tmpl:54-56 (및 모든 binary-resolution 분기)</span></div>
+      <p><b>발견:</b> 다른 wrapper들과 달리 <code>exec moai</code> 대신 <code>printf '%s' "$payload" | moai hook pre-tool 2&gt;&gt;"$LOG"; exit 0</code> 패턴 사용(stdin을 Bash Risk-Amplifier warn용으로 한 번 읽고 moai에 포워드하기 위해). 이 패턴이 PreToolUse 거부 경로를 무효화합니다. 공식은 PreToolUse 블록이 (a) exit 2 + stderr-to-Claude 또는 (b) exit 0 + JSON <code>hookSpecificOutput.permissionDecision: "deny"</code>. wrapper는 항상 <code>exit 0</code>를 하드코딩 → moai binary가 exit 2(경로 a)를 내도 wrapper가 exit 0로 덮어쓰고, 동시에 stderr를 <code>2&gt;&gt;"$MOAI_HOOK_STDERR_LOG"</code>로 redirect하여 stderr-to-Claude 경로까지 차단. 결과: moai가 exit-2 블록 경로를 사용하면 Claude Code는 JSON(없으면)을 파싱하지 못해 사유 없이 통과시킴. JSON <code>permissionDecision:deny</code> 경로(b)는 stdout passthrough로 보존되어 작동.</p>
+      <p><b>공식 근거:</b> EXIT CODE 2: "PreToolUse exit 2 blocks the tool call"; "stderr text is fed back to Claude as an error message". JSON OUTPUT: PreToolUse hookSpecificOutput permissionDecision (allow/deny/ask/defer).</p>
+      <p><b>권고:</b> (1) <code>printf | moai</code> 후 <code>exit 0</code> 대신 moai exit code를 통과(<code>pipefail</code> 또는 <code>moai ...; exit $?</code>) — JSON 경로는 exit 0에서만 처리되므로 Go가 JSON을 쓰면 사실상 exit 0가 필요하나, exit-2 경로를 Go가 쓰면 그 exit code가 Claude에게 도달해야 함. (2) PreToolUse에서는 stderr를 로그가 아닌 Claude 전달 경로로 보존(redirect 제거 또는 이벤트 조건부). Go 핸들러가 어느 경로를 쓰는지 확인 후 정확히 수정. <b>이 그룹의 HIGH 결함 + gates-doctrine HIGH와 함께 Rec #1에서 처리.</b></p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-TOOL-02</span><span class="sev sev-LOW">LOW</span><span class="cat">security</span></div>
+      <div class="gf"><span class="filepath">handle-pre-tool.sh.tmpl · handle-post-tool.sh.tmpl · handle-post-tool-failure.sh.tmpl</span></div>
+      <p><b>발견:</b> <code>MOAI_HOOK_STDERR_LOG</code>가 미검증으로 읽혀 <code>mkdir -p "$(dirname ...)"</code>, <code>mv -f</code>, <code>2&gt;&gt;</code> redirection에 투입(GAP-STT-04와 동일 패턴, 31 wrapper 공유). hooks는 FULL user permissions로 실행.</p>
+      <p><b>권고:</b> allowlist prefix 제한 + 불일치 시 기본값 폴백. 공유 wrapper 패턴에서 1회 적용(Rec #7).</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-TOOL-03</span><span class="sev sev-LOW">LOW</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">handle-pre-tool.sh.tmpl:35</span></div>
+      <p><b>발견:</b> <code>payload=$(head -c 1048576)</code> — 1MB cap. 대형 Write/Edit payload가 1MB 초과 시 잘려서 JSON이 손상되어 moai binary가 파싱 실패 → security scan이 조용히 스킵. comment에 "so a large Write/Edit payload is not truncated mid-JSON, which would silently skip the security scan"로 명시되긴 하나, 1MB 자체가 대형 파일(예: 생성된 코드 블록, lock 파일)에서 도달 가능.</p>
+      <p><b>권고:</b> cap 상향(예: 10MB) 또는 payload가 잘렸을 때 moai binary에 플래그 전달하여 부분 scan 대신 명시적 skip/warn. 보호적 의도이나 한계 명시.</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-TOOL-04</span><span class="sev sev-INFO">INFO</span><span class="cat">async</span></div>
+      <div class="gf"><span class="filepath">settings.json.tmpl — PostToolUse handle-post-tool</span></div>
+      <p><b>발견:</b> PostToolUse가 <code>async: true</code> + matcher <code>Write|Edit</code>로 배선. 공식: async hook은 decision/updatedToolOutput 제어 불가("Async hooks can't block or control Claude's behavior"). MoAI가 PostToolUse를 의도적으로 비결정적 LSP/AST/MX observation으로 사용하므로 design choice이나, async가 <code>updatedToolOutput</code>(tool 결과 교체)이나 <code>decision:block</code>을 쓰려는 차후 필요성을 차단. doctrine에 async 제약 명시 부족.</p>
+      <p><b>권고:</b> design choice이므로 조치 불필요하나, hooks-system.md에 PostToolUse async가 의미론적으로 <code>additionalContext</code>만 전달 가능함을 명시.</p>
+    </div>
+    <p style="margin-top:14px"><b>강점:</b> PostToolUseFailure와 PostToolUse는 <code>exec moai</code>로 exit code 정확 전달(PostToolUseFailure는 공식상 exit 무관·additionalContext만, PostToolUse는 exit 2 시 stderr-to-Claude — 둘 다 exec로 보존). matcher tool_name 준수. handler-type command 준수. PreToolUse Bash Risk-Amplifier는 WARN-ONLY/FAIL-OPEN(exit non-zero 안 함)으로 공식 보안 best-practice와 양립.</p>
+  </div>
+</details>
+
+<!-- GROUP: lifecycle-core (직접 분석) -->
+<details class="group">
+  <summary>⑧ lifecycle-core (SessionStart/End/Stop/StopFailure/Instructions) <span class="score-badge mid">0.86</span><span class="gmeta">2 gaps · <i>직접 분석</i></span></summary>
+  <div class="body">
+    <div class="warn-box">이 그룹도 동적 워크플로 429 rate-limit로 실패하여 직접 분석. 5 파일(handle-session-start/end, handle-stop/stop-failure, handle-instructions-loaded) 평가.</div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-LC2-01</span><span class="sev sev-MEDIUM">MEDIUM</span><span class="cat">json-output</span></div>
+      <div class="gf"><span class="filepath">handle-session-start.sh.tmpl:44</span></div>
+      <p><b>발견:</b> SessionStart probe(binary 미발견 시)가 <code>{"hookSpecificOutput":{"additionalContext":"..."}}</code> 출력 — <b><code>hookEventName</code> 누락</b>. 공식: "Return additionalContext inside hookSpecificOutput <b>alongside the event name</b>"; "hookSpecificOutput (<b>requires a hookEventName field</b>)". <code>hookEventName</code> 없으면 일부 런타임에서 additionalContext가 무시될 수 있어, moai binary 미해결이라는 가장 중요한 경고가 사용자/Claude에게 도달하지 않을 수 있음.</p>
+      <p><b>공식 근거:</b> JSON OUTPUT § Add context: "Return additionalContext inside hookSpecificOutput alongside the event name". SessionStart hookSpecificOutput: additionalContext, initialUserMessage, sessionTitle, watchPaths, reloadSkills (모두 hookEventName:"SessionStart" 하위).</p>
+      <p><b>권고:</b> probe emit을 <code>{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"..."}}</code>로 수정. 단순한 한 줄 수정이나 기능적 영향 큼(silent 저하 경고의 도달 보장).</p>
+    </div>
+    <div class="gap">
+      <div class="gh"><span class="gapid">GAP-LC2-02</span><span class="sev sev-LOW">LOW</span><span class="cat">async</span></div>
+      <div class="gf"><span class="filepath">handle-instructions-loaded.sh.tmpl</span></div>
+      <p><b>발견:</b> InstructionsLoaded는 공식적으로 "runs asynchronously for observability purposes"(감사 로깅, 컴플라이언스 추적, 관측성 목적)로 명시. wrapper는 동기 <code>exec moai hook instructions-loaded</code>. InstructionsLoaded는 session 시작 + 모든 lazy load(nested CLAUDE.md 접근, path_glob_match, include, compact)마다 발화하므로, 비결정적 observation인데 동기 exec로 매 로드마다 I/O 지연. async가 권장되나 강제는 아님.</p>
+      <p><b>권고:</b> settings.json.tmpl InstructionsLoaded 항목에 <code>"async": true</code> 추가 검토(관측성 tap이므로 async가 자연스러운 모드). 우선순위 낮음.</p>
+    </div>
+    <p style="margin-top:14px"><b>강점:</b> SessionEnd는 명시적 10s timeout으로 공식 기본 1.5s의 budget을 상승(공식 준수 — per-hook timeout이 budget을 최고값까지 올림). 모든 wrapper가 <code>exec moai</code>로 exit code 정확 전달(Stop exit-2 계속진행 / StopFailure exit-ignored 모두 올바르게 exec로 보존). handler-type command 준수(SessionStart는 공식상 command+mcp_tool만 허용, command ✓). SessionStart CLAUDE_ENV_FILE 미사용(Go 소관 — scope 규율 준수). SessionStart source matcher dedup(REQ-HOOK-004) 올바름. handle-stop.sh는 settings.json에서 sync-phase-quality-gate와 함께 Stop에 2개 핸들러로 올바르게 공존.</p>
+  </div>
+</details>
+
+<!-- ===================== METHODOLOGY ===================== -->
+<h2 id="method"><span class="n">7</span>방법론 · 검증한계 · 증거</h2>
+
+<h3>방법론</h3>
+<div class="card">
+<p><b>1. 공식 문서 확보:</b> <code>code.claude.com/docs/en/hooks</code> 전문을 z.ai webReader MCP(GLM 백엔드 라우팅)로 취득 — 34개 이벤트, 5개 핸들러 타입, matcher 규칙, exit-code-2 이벤트별 동작, JSON 출력 계약, async/asyncRewake, CLAUDE_ENV_FILE, exec vs shell form, timeout 정책, 보안 best-practice 전 스펙.</p>
+<p><b>2. 분석 대상 식별:</b> 템플릿 hooks 35개 파일(32 <code>handle-*.sh.tmpl</code> + <code>gateguard-fact-force.sh</code> + <code>status-transition-ownership.sh</code> + <code>sync-phase-quality-gate.sh</code> + <code>team-ac-verify.sh</code>) + 지침 3개(<code>agent-hooks.md</code> · <code>hooks-system.md</code> · <code>hook-independence.md</code>) + <code>settings.json.tmpl</code> 배선.</p>
+<p><b>3. 8그룹 병렬 동적 워크플로:</b> 각 그룹에 공식 문서 기준(baseline)을 주입하고 xhigh effort로 독립 감사 수행. 6그룹이 구조화된 schema(gaps/strengths/complianceScore) 반환.</p>
+<p><b>4. 종합(synthesize):</b> 6그룹 결과를 cross-cutting themes + 우선순위 topRecommendations + 공식 기능 채택/미채택 + 위험평가로 통합.</p>
+<p><b>5. 실패 그룹 직접 분석:</b> 2그룹(tool, lifecycle-core)이 429 rate-limit로 실패 → 메인 컨텍스트에서 8개 파일을 직접 읽고 공식 문서 기준으로 분석하여 보완. <code>synthesis</code> 객체는 6그룹 기준이므로, 보고서의 tool/lifecycle-core gap(GAP-TOOL-* · GAP-LC2-*)은 직접 분석으로 추가됨을 투명 공개.</p>
+</div>
+
+<h3>검증 한계 (verification-claim-integrity 준수)</h3>
+<div class="card">
+<p><b>Go 코드 미감사:</b> 이 감사는 셸 wrapper와 doctrine만 평가했습니다. 실제 의사결정 로직은 <code>internal/hook/*.go</code>(91 파일, ~18.7K LOC)에 있으며, wrapper는 이를 <code>exec moai hook &lt;event&gt;</code>로 위임합니다. 따라서 여러 gap은 "Go 핸들러가 어느 JSON 경로를 쓰는지 확인 필요"로 표기됨(GAP-CEW-02, GAP-TOOL-01 등). 이들은 가설이지 검증된 결함이 아닙니다 — Rec #1/#5에 Go 코드 확인이 포함된 이유입니다.</p>
+<p><b>동적 워크플로 부분 실패:</b> 8그룹 중 6그룹 자동 완료, 2그룹(tool/lifecycle-core) 429 rate-limit 실패. 직접 분석으로 보완했으나, 자동 감사의 일관된 schema 기반 점수 산정과 직접 분석의 점수(GAP-TOOL-01 HIGH 반영 0.78, lifecycle-core 0.86)는 방법론이 다소 상이합니다. <code>overallCompliance 0.80</code>은 synthesis(6그룹) 값이며 8그루 가중치에 약간의 노이즈가 있을 수 있습니다.</p>
+<p><b>runtime 동작 미실행:</b> FileChanged matcher literal-vs-regex(GAP-GD-04), ConfigChange 블록 채널(GAP-CEW-02), gate JSON 계약 수용 여부(GAP-GD-01/02) 등은 "현재 관대한 런타임에서는 작동하지만 강화 시 발현" 형태의 잠재 결함입니다. 실제 Claude Code 런타임에서 검증하지 않았습니다.</p>
+<p><b>보고서 성격:</b> 본 문서는 <b>분석 및 계획</b>이지 구현 검증이 아닙니다. 어떤 코드/문서도 수정하지 않았습니다. Rec는 실행 가능한 조치 제안일 뿐 적용된 변경이 아닙니다.</p>
+</div>
+
+<h3>증거 파일</h3>
+<div class="card tight">
+<p>워크플로 journal 및 추출 데이터(verification-claim-integrity §3.2 evidence persistence):</p>
+<ul style="font-size:13px; line-height:1.8">
+<li><span class="src">/Users/goos/.claude/projects/-Users-goos-MoAI-moai-adk-go/e241de14-2807-4c60-bd22-4ec125eea22b/subagents/workflows/wf_d58f69e2-9ed/journal.jsonl</span> — 워크플로 에이전트 결과 journal</li>
+<li><span class="src">/private/tmp/claude-501/.../tasks/wbow6h38t.output</span> — 워크플로 전체 결과(100KB, groupResults + synthesis)</li>
+<li><span class="src">/tmp/moai-hooks-analyze/synthesis.json</span> · <span class="src">groups.jsonl</span> — 본 보고서 생성용 추출 데이터</li>
+</ul>
+<p class="src" style="margin-top:10px"><b>공식 기준문서:</b> <a class="src-link" href="https://code.claude.com/docs/en/hooks">https://code.claude.com/docs/en/hooks</a> (2026-07-10 취득)</p>
+</div>
+
+<footer>
+  <p><b>MoAI-ADK 템플릿 Hooks 공식문서 기준 개선계획</b> · 2026-07-10 · ultracode 동적 워크플로(8그룹) + 2그룹 직접 분석 · GLM-5.2 1M · conversation_language: ko<br>
+  본 보고서는 분석/계획이며 코드·문서 수정을 포함하지 않습니다. Rec 실행 시 별도 SPEC(Tier L 권장 — 8그룹 다수 파일 + Go 코드 확인)로 진행하십시오.</p>
+</footer>
+
+</div>
+</body>
+</html>

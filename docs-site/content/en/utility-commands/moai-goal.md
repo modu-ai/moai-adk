@@ -42,12 +42,8 @@ Prints the active session's goal (or, with `--all`, all sessions' goals) — the
 Releases the active session's goal (deletes the state file). The Stop hook sees no armed goal and stops blocking. This is how the orchestrator ends the loop after judging a model condition satisfied.
 
 {{< callout type="info" >}}
-**There is no `resume` verb.** The once-discussed `resume` verb (restoring a released goal from an archive) does not exist in the current CLI — `moai goal --help` shows no `resume`, only `arm` / `status` / `clear` / `render`. Because `clear` **deletes** the state file (it does not tombstone to an archive), there is no original left to restore.
+**There is no `resume` verb.** The once-discussed `resume` verb (restoring a released goal from an archive) does not exist in the current CLI — `moai goal --help` lists only `arm` / `status` / `clear`. Because `clear` **deletes** the state file (it does not tombstone to an archive), there is no original left to restore.
 {{< /callout >}}
-
-### `/moai goal render` — dashboard HTML render
-
-Renders the active session's goal state as a **self-contained HTML dashboard** to `.moai/state/goal/<session-id>.html`. It is idempotent — re-running overwrites the same path. It can be invoked both as a slash command (`/moai goal render`) and as a terminal CLI (`moai goal render`); both call the same `goal.RenderDashboardReArm`. If no goal is armed, it exits with a non-zero code and prints the session id to stderr without writing any HTML. Adding the `--json` flag emits `{action, session_id, path, bytes}`. See the [Goal Dashboard](#goal-dashboard) section below for what gets rendered and the security properties.
 
 ## Progression modes (autonomous / semi-autonomous)
 
@@ -83,46 +79,6 @@ The evaluator runs at the end of every turn. Prefer `go test -run <pattern>` ove
 | `/moai loop` | Diagnostic fix loop (preset) | Issue queue drained + diagnostics clean (0 errors / tests pass / coverage) |
 
 If the end state can be expressed as a condition expression, `/moai goal` is right; if it is "get rid of every problem the tools find," `/moai loop` is right.
-
-## Goal Dashboard
-
-The `render` verb renders the current session's goal state as a single static HTML dashboard at `.moai/state/goal/<session-id>.html`. The file depends on no external JS/CSS framework or CDN — it uses inline CSS only — so it opens directly in a browser offline and survives email attachment and Slack drag-and-drop without breaking.
-
-```mermaid
-flowchart TD
-    A["/moai goal render<br/>or moai goal render"] --> B["goal.LoadGoal"]
-    B --> C{"armed goal exists?"}
-    C -- "no" --> D["exit non-zero<br/>stderr: session id<br/>no HTML written"]
-    C -- "yes" --> E["goal.RenderDashboardReArm"]
-    E --> F["write dashboard HTML file<br/>(overwrite, idempotent)"]
-    F --> G["open offline in a browser"]
-```
-
-{{< callout type="info" >}}
-**Self-contained HTML**: there are no external resources, so it opens even when the network is down. The goal state at render time is fully serialized inside the file.
-{{< /callout >}}
-
-**What the dashboard shows**: starting in v3.1 (PR #1388) the renderer is wired into production, so the verdict and re-arm state are actually surfaced on the dashboard.
-
-- **Header** — session id, lifecycle state (`armed` / `satisfied` / `ceiling-exit` / `cleared`), turns used vs. ceiling, progression mode (`autonomous` / `semi-autonomous`), generation timestamp
-- **Condition declaration** — the goal condition text shown verbatim inside a bordered block
-- **Declared Conditions table** — each condition listed in a table. Mechanical conditions are shown as `<command> (expect exit N)`; model-evaluated conditions are shown as the claim text verbatim
-- **Verdict section (active at ceiling exit)** — the `stop-goal` evaluator writes the 5-section ceiling verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) to the sidecar `.moai/state/goal/<sid>.verdict.json` ONLY on the exit turn (turn ceiling / stagnation guard / wall-clock ceiling). `moai goal render` loads this sidecar at render time and fills in the turn/ceiling line, the failed-conditions table, and the 5-section verdict. If you render after a non-exit turn, the "no verdict yet" placeholder is shown (the sidecar is written only on exit).
-- **Re-arm conditional views** — at render time the dashboard auto-constructs three conditional views from the pending/active state: (1) a will-rearm indicator on `/clear`, (2) a "re-armed under a new id" view, (3) a D8 infinite-goal rejection banner. Each view is hidden when its condition does not apply.
-
-**XSS auto-escape**: every untrusted field is rendered via the Go standard library `html/template` `{{.Field}}` syntax and auto-escaped. Even if a `<script>` payload is placed inside the condition text or condition values, it is converted to HTML entities and not executed. Goal conditions can mix shell-command strings and free text, so this auto-escape is a meaningful security property.
-
-**Sibling HTML cleanup tied to `clear`**: `moai goal clear` deletes the sibling `<session>.html` dashboard file alongside the state file (`<session>.json`). In addition, `PruneOrphans` moves orphaned `.html` files together with `.json` files into the `consumed/` archive directory (best-effort). This keeps stale dashboards from piling up in the state directory.
-
-## Roadmap
-
-{{< icon clock muted >}} The renderer is ready but will be wired in a later release.
-
-- {{< icon clock muted >}} **LIVE dashboard (per-turn auto-refresh)** — today `moai goal render` renders a static snapshot of the moment it is invoked. In a later release the `stop-goal` Stop hook will rewrite the `.html` file at the end of every turn, so refreshing the browser shows progress in real time as a LIVE board.
-
-{{< callout type="info" >}}
-**Re-arm mechanism already shipped**: the re-arm logic itself (session-handoff embed + re-arm on `/clear` + D8 infinite-goal rejection defense) already shipped under SPEC-INFINITE-GOAL-001. What is new in v3.1 (PR #1388) is ONLY the surfacing of that mechanism state onto the dashboard UI.
-{{< /callout >}}
 
 ## Related documents
 

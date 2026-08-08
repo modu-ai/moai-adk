@@ -51,7 +51,7 @@ MoAI-ADK は **SPEC ベースの TDD/DDD** 方法論を基盤とし、**TRUST 5*
 
 - 要件を **ファイルに保存** して永久保存
 - セッションが切れても SPEC を読めば **続けて作業** 可能
-- GEARS 形式で **曖昧さなく** 明確に定義
+- EARS 形式で **曖昧さなく** 明確に定義
 - 同じ説明を繰り返さないので **トークンも節約** されます
 
 {{< callout type="info" >}}
@@ -148,7 +148,7 @@ MoAI-ADK は Python Edition を Go で完全に書き直し、性能と効率性
 
 - **11 個** のエージェントカタログ (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
 - **31 個** のスキル (template-managed)
-- **36 個** の CLI コマンド · **15 種** の `/moai` サブコマンド
+- **36 個** の CLI コマンド · **16 種** の `/moai` サブコマンド
 - **16 個** のプログラミング言語対応
 - **543 個** の SPEC ドキュメントを基に開発されたコードベース
 
@@ -212,7 +212,7 @@ MoAI-ADK は 3 段階の開発ワークフローに従います。Run ステッ�
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"GEARS 形式で要件を定義"| B{"方法論の選択"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"EARS 形式で要件を定義"| B{"方法論の選択"}
     B -->|"新規プロジェクト (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"既存プロジェクト (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]

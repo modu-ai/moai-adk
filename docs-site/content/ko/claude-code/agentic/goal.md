@@ -115,24 +115,7 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 
 ### /moai goal — 프로그래매틱 대응물
 
-네이티브 `/goal`은 사용자만 입력할 수 있는 TUI 명령이라, 모델이나 워크플로우가 사용자를 대신해 목표를 걸 수 없습니다. MoAI-ADK는 이 간극을 `/moai goal`로 메웁니다. 같은 "조건 선언 → 매 턴 끝 Stop-hook 평가 → 충족 시 해제" 의미론을 MoAI가 소유한 goal 엔진으로 재구현한 것입니다.
-
-**4동사 CLI** (`internal/cli/goal.go`):
-
-| 동사 | 용도 |
-|------|------|
-| `moai goal arm "<조건>"` | 활성 세션에 조건 등록 + arm |
-| `moai goal status [--all]` | 현재 세션(또는 전 세션) 목표 상태 출력 |
-| `moai goal clear` | 활성 목표 해제 |
-| `moai goal render` | 활성 세션의 목표 대시보드를 self-contained HTML로 렌더 (`.moai/state/goal/<id>.html`) |
-
-**arm-only 속성**: `arm` 은 조건을 등록·활성화할 뿐 그 자체로 작업을 시작하지 않습니다. arm 된 goal은 매 턴 끝에서 `stop-goal` Stop-hook 평가자가 조건을 판정해 다음 턴을 이어갈지 결정합니다. 그래서 진짜 작업 개시 명령(예: `/moai run SPEC-XXX`)과 짝지어 써야 하며, arm만 세워두고 작업 명령이 없으면 턴만 소모합니다.
-
-**Progression Mode**: 자율(autonomous) vs 반자율(semi-autonomous) 선택은 Implementation Kickoff Approval 게이트(plan → run)에서 이루어집니다. `arm` 자체가 이 게이트를 건너뛰지 않으며, 게이트 통과 후에도 "되돌리기 어렵거나 공유 시스템을 건드리는 작업은 먼저 확인한다"는 안전 경계가 느슨해지지 않습니다.
-
-**무한 goal (`--max-turns 0`)**: 턴 상한을 없앤 무한 goal은 SPEC-INFINITE-GOAL-001에서 도입했습니다. 무한 goal은 반드시 `--max-duration <sec>` (벽시계 상한)과 짝지어야 하며, 그렇지 않으면 arm 시점에서 fail-closed로 거부됩니다. `--cost-cap`은 기록 전용(recorded-only)이라 이 요구를 충족하지 못합니다. 또한 Claude Code 런타임의 연속 block 캡 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`(기본 8)이 턴 상한보다 먼저 루프를 끊어버리므로, 무한 goal에서는 이 캡을 올려야(예: 200) 합니다. `moai cc`/`moai cg` 런처는 무한 goal이 arm된 세션을 시작할 때 이 값을 자동으로 주입합니다.
-
-완료 조건을 선언하면 조건이 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 스스로 일합니다. 턴 상한에 닿으면 평가자가 5-섹션 판정문(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)을 내놓습니다 — 이 판정문은 "수렴했다"가 아니라 "상한에 닿아 멈췄다"는 보고입니다. `/moai loop`는 이 goal 엔진 위의 프리셋, "진단 도구가 찾은 이슈 큐가 빌 때까지"라는 조건을 미리 채워 둔 형태입니다.
+네이티브 `/goal`은 사용자만 입력할 수 있는 TUI 명령이라, 모델이나 워크플로우가 사용자를 대신해 목표를 걸 수 없습니다. MoAI-ADK는 이 간극을 `/moai goal`로 메웁니다. 같은 "조건 선언 → 매 턴 끝 Stop-hook 평가 → 충족 시 해제" 의미론을 MoAI가 소유한 goal 엔진으로 재구현한 것입니다. 완료 조건을 선언하면 조건이 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 스스로 일하며, `/moai goal status`와 `/moai goal clear`로 상태 확인과 해제를 처리합니다. `/moai loop`는 이 goal 엔진 위의 프리셋, "진단 도구가 찾은 이슈 큐가 빌 때까지"라는 조건을 미리 채워 둔 형태입니다.
 
 이 조건 선언형 루프가 MoAI-ADK **에이전틱 루프 엔지니어링**의 실행 단위입니다. 루프가 돈 기록(몇 턴, 어떤 판정, 어떤 실패)이 관찰로 축적되고, 하네스가 그 관찰에서 학습합니다.
 

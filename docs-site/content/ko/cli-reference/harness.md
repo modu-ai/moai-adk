@@ -14,7 +14,6 @@ draft: false
 |--------|------|
 | `moai harness route --spec <id>` | SPEC을 minimal/standard/thorough 하네스 레벨로 라우팅 |
 | `moai harness validate` | harness.yaml을 스키마·불변조건 기준으로 검증 |
-| `moai harness clusters` | apply 결말(apply_outcome)에서 결정론적 실패 시그니처 클러스터를 읽어 표시 (read-only, `.moai/harness/usage-log.jsonl`) |
 
 `route` 는 `--json` (JSON 출력), `--path <harness.yaml>`, `--base-dir <dir>` 플래그를 받습니다.
 
@@ -24,17 +23,8 @@ draft: false
 |--------|------|
 | `moai harness status` | 관찰/티어/진화 요약 표시 |
 | `moai harness apply` | 대기 중인 제안을 오케스트레이터에 반환 (또는 `--execute` 로 Go apply 경로 실행) |
-| `moai harness execute` | 대기 중인 제안을 Go 파이프라인으로 apply (옵트인 — `Applier.Apply()` 의 첫 프로덕션 호출 경로) |
 | `moai harness rollback <date>` | 지정 날짜의 스냅샷 복원 |
 | `moai harness disable` | 학습 서브시스템 비활성화 (`learning.enabled: false`) |
-
-## 제안·활성화 verb
-
-| 명령어 | 설명 |
-|--------|------|
-| `moai harness propose` | 하네스 학습 이력(`tier-promotions.jsonl`)을 소비해 초안 SPEC 제안 생성 |
-| `moai harness install` | 생성된 하네스 활성화 — `.moai/harness/main.md` 스캐폴드 + `CLAUDE.md` 마커 설치 |
-| `moai harness promote` | 발견 초안(discovery draft)을 SPEC 골격으로 승격 (manager-spec 저작으로 라우팅) |
 
 ## 제안 관리 verb
 

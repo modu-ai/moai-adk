@@ -76,7 +76,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 
 ## Quick Reference
 
-**Purpose**: SPEC 요구사항을 DDD 또는 TDD 방법론으로 구현합니다. At run-phase entry, consult `.moai/project/navigator/navigator.md` (if present) for the current frontier before the first implementation action.
+**Purpose**: SPEC 요구사항을 DDD 또는 TDD 방법론으로 구현합니다.
 
 **Input**: `$ARGUMENTS` = SPEC-ID (예: `SPEC-AUTH-001`)
 

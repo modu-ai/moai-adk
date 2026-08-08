@@ -6,34 +6,6 @@
 
 ---
 
-<!-- LSEL:LOCAL-ONLY-DO-NOT-DISTRIBUTE — INVARANTS KERNEL (SPEC-LSEL-LOCAL-EVOLUTION-001 M2) -->
-## §0. INVARANTS Kernel (read-only goal — LSEL)
-
-> 이 블록은 LSEL 루프가 절대로 수정하지 않는 읽기 전용 골 커널이다. 모든 LSEL 제안(proposal)은
-> 이 커널에 명시된 불변량을 위반하면 CSA forced-gate(REQ-LSEL-005) 대상이 된다. distributed doctrine
-> (`CLAUDE.md`, `.claude/rules/moai/**`)이 아니다 — 이 파일은 local-only 가이드이며 템플릿에 미러되지 않는다.
-
-**절대 위반 불가 (CSA forced-gate, 동기식 AskUserQuestion 강제):**
-
-1. **분산 doctrine 불변량** — `internal/template/templates/**`, `CLAUDE.md`, `.claude/rules/moai/**`,
-   retained agents (`.claude/agents/moai/**`), `moai*`/`moai-*` skills, frozen Go applier
-   (`internal/harness/applier.go` with `enableTriggerInjectionWrites=false`)은 byte-for-byte 동결.
-   LSEL 루프는 이들 표면에 한 글자도 쓰지 않는다 (REQ-LSEL-001/003).
-2. **6 evolvable surfaces만 쓰기 허용** — `CLAUDE.local.md`, `.claude/settings.local.json`,
-   `memory/`, `.claude/agents/harness/**` + `hns-*` skills, `.moai/lessons-inbox.jsonl`,
-   `.moai/state/` (+ `.moai/state/lsel/`). 그 외 모든 경로는 hard-reject (REQ-LSEL-001).
-3. **self-amending-handcuffs 금지** — frozen allowlist(`.claude/lsel/frozen-allowlist.json`),
-   applier/curator 스킬 본체, `lsel-apply.sh`, `settings.local.json` hook-registration subblock은
-   execution-meta 카테고리로서 동기식 승인 마커 없이는 기계적으로 거부된다 (REQ-LSEL-002/005 D3).
-4. **AskUserQuestion은 orchestrator 전용** — LSEL 메커니즘 스킬(`hns-lsel-*`)은 subagent 맥락에서
-   동작하며 절대 AskUserQuestion을 호출하지 않는다. blocker report 반환 (CLAUDE.md §8).
-
-**LSEL Tier-4 DEAD 회피 (AC-LSEL-012):** `moai-harness-learner` Tier-4 AskUserQuestion flow는
-production invocation layer에서 DEAD이다 (`tier4_firing_test.sh`로 검증). 따라서 LSEL PROPOSE→APPROVE
-handoff는 Tier-4에 의존하지 않고 M3 fresh path(`hns-lsel-applier` + `decision.json`)로 간다.
-
----
-
 ## 1. Quick Start
 
 ### Work Location
@@ -276,7 +248,8 @@ When releasing new version, update:
 **Documentation Files:**
 - README.md (Version line)
 - README.ko.md (Version line)
-- CHANGELOG.md (New version entry)
+- CHANGELOG.md (New version entry — **English-only**; Korean lives in `.moai/release-notes/vX.Y.Z.ko.md`, NOT in CHANGELOG.md)
+- .moai/release-notes/vX.Y.Z.ko.md (Korean release notes — consumed by the GitHub release body and the docs-site `ko` changelog page)
 
 **Configuration Files:**
 - .moai/config/sections/system.yaml (moai.version)
@@ -284,10 +257,17 @@ When releasing new version, update:
 
 ### Release Process
 
-1. Update CHANGELOG.md with new version entry
-2. Create git tag: `git tag v1.0.0`
-3. Push tag: `git push origin v1.0.0`
-4. Build release binaries: `make release VERSION=1.0.0`
+Driven by the `hns-release-specialist` harness (`/harness:release`) under the PR-mandatory regime (`.moai/docs/git-local-workflow-doctrine.md` §18/§23). High-level:
+
+1. Phase 4 — update `CHANGELOG.md` (**English-only**, commit-complete: cross-check `git log vPREV..HEAD`, no user-facing commit omitted; `docs:`/`chore:`/`style:`/`test:`/merge/typo commits excluded).
+2. Phase 4.5 — author `.moai/release-notes/vX.Y.Z.ko.md` (Korean counterpart).
+3. Phase 5 — human gate (release/abort).
+4. Phase 6 — `release/vX.Y.Z` PR → **merge commit (NOT squash)** → `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (annotated tag + provenance trailer, triggers GoReleaser; `verify-provenance` gates GoReleaser).
+5. Phase 7 — GoReleaser publishes a `changelog.use: github` English body; overwrite with English (CHANGELOG) + Korean (`.moai/release-notes/vX.Y.Z.ko.md`) via `gh release edit vX.Y.Z --notes-file <merged>`.
+
+[HARD] `CHANGELOG.md` English-only; GitHub Release English-first then Korean. A manual `git tag` + `make release VERSION=` (the older flow below) is NOT the release path under the PR-mandatory regime — `scripts/release.sh` is; the `make build VERSION=` snippet in §Build Version Injection above remains valid for local build-only injection.
+
+> Legacy (build-only, not release): `make build VERSION=1.0.0` injects the version into a local binary via ldflags; it does NOT tag, push, or publish.
 
 ---
 
@@ -638,19 +618,6 @@ docs-site는 Claude Warm Editorial 디자인 시스템(코랄 `#cc785c` · Prete
 - [HARD] **푸터**: geekdoc 기본 `.gdoc-footer` 다크틸 배경을 `.cw-footer` 라이트 캔버스로 오버라이드(`!important`).
 - [HARD] **CSS 캐시 버스팅**: custom.html이 `hash.FNV32a (readFile ...)`로 CSS URL에 `?h=` 해시 부여(프로덕션 full build에서 정확). dev `hugo server`는 template 변경 시에만 해시 갱신되므로 CSS만 수정 후 미반영 시 서버 재시작 또는 하드 리로드.
 
-### §17.2 코드 변경 → 공개 문서 갱신 제안 (oss-docs chaining)
-
-사용자 가시 변화를 동반한 코드 변경이 main에 병합되면(SPEC sync-phase 완료 또는 직접 PR merge), 공개 문서(docs-site `adk.mo.ai.kr` + README 4-locale)에 해당 변화를 반영하도록 orchestrator가 `/harness:oss-docs` 실행을 **제안**한다. 자동 실행이 아닌 제안 기반 — 하네스가 무거워(opus content-author + locale-translator×3 sonnet + structure-curator) 매번 자동으로 돌리지 않고 GOSS 승인으로 실행한다.
-
-- [HARD] **트리거 조건** (아래 중 하나 이상의 사용자 가시 변경이 main에 들어왔을 때 제안):
-  - 신규 기능 · 명령어/서브커맨드/플래그 추가·변경
-  - 설정 키(config keys)·기본값·동작 변경
-  - 공개 API·CLI 동작 변경
-  - 설치 방식·런타임 요구사항 변화
-- [HARD] **제외** (제안 안 함): 내부 리팩터링(사용자 가시 변화 없음) · test-only · docs-only 변경 · 빌드/CI-only · 의존성 bump(가시 영향 없을 때)
-- [HARD] **제안 방식**: 해당 sync/merge 직후 `AskUserQuestion`으로 `/harness:oss-docs` 실행 여부 제안 — 옵션: run-now(지금 실행) / later(나중에) / skip(불필요). 자동 실행 아님.
-- **범위 가이드**: 변경이 특정 docs 페이지에 국한되면 풀 하네스(`/harness:oss-docs`) 대신 manager-docs sync로 가볍게 처리 가능. `/harness:oss-docs`는 README 재설계·신규 페이지·대규모 4-locale 갱신에 적합.
-
 ---
 
 ## 18. Git Workflow — Enhanced GitHub Flow
@@ -733,21 +700,6 @@ See: `.moai/docs/git-local-workflow-doctrine.md`
 
 See: `.moai/docs/harness-namespace-doctrine.md`
 
-### §24.6 Harness Trigger Registry (활성 split-harness 빠른 참조)
-
-`/harness:X` 4종 진입점 단일 표. `.claude/agents/harness/` 내 `hns-*`(split-harness 전문가)와 비-hns(cli-template·hook-ci·quality·workflow, 직접 호출형)는 다른 축이므로 본 표에서 분리.
-
-| 진입점 | 발동 조건 | 소유 specialist | Runner (비대칭) | companion skill |
-|---|---|---|---|---|
-| `/harness:oss-docs` | README 4-locale + docs-site(adk.mo.ai.kr) 갱신·제작 | content-author · locale-translator · structure-curator | `hns-oss-docs-run.js` | hns-oss-docs-{i18n-rules,readme-sync,structure-map,verify} |
-| `/harness:release` | production release (Enhanced GitHub Flow + `scripts/release.sh` + GoReleaser) | hns-release-specialist | 없음 (순수 human-gated) | — |
-| `/harness:release-update` | Claude Code upstream 변경 추적 (release-notes version-delta sweep + docs sync) | hns-release-update-specialist | `hns-release-update-run.js` | — |
-| `/harness:github` | GitHub issue-fix / PR-review (`gh` CLI) | hns-github-specialist | 없음 (순수 human-gated) | — |
-
-- **Runner 비대칭**: oss-docs·release-update만 비-상호작용 fan-out Runner 보유(각 manifest SSOT: `.claude/commands/harness/{oss-docs,release-update}/manifest.json`); github·release는 Runner/manifest 없는 순수 human-gated specialist. 4종 전부 publish·PR·승인 게이트에서 사람 개입.
-- **배포 범위**: oss-docs만 **user-owned**(사용자 프로젝트에 분포, `moai update` 보존). 나머지 3종은 dev-only(moai-adk-go 메인테이너 전용, 미배포).
-- **비-hns 도메인 전문가**(`cli-template`·`hook-ci`·`quality`·`workflow`-specialist)는 `/harness:X` 트리거가 아닌 직접 호출형; `hns-moaiadk-{patterns,dev-reference,best-practices}` reference skill 계열을 공동 로드. 본 레지스트리와 별개 축.
-
 ---
 
 ## 25. Template Internal-Content Isolation
@@ -794,58 +746,3 @@ See: `.moai/docs/template-internal-isolation-doctrine.md`
 
 - 사용자가 일반 요청을 하든 `/moai '요청'` 을 하든, 실행 전에 반드시: **요구사항 분석 → 계획 수립 → 스킬·에이전트 호출 계획 명시 → 진행**. 근거: CLAUDE.md §2 Request Processing Pipeline (①~⑤).
 - 실행 계획에는 어떤 스킬을 로드하고 어떤 에이전트를 어떤 순서로 spawn할지가 포함되어야 하며, 사용자에게 제시 후 진행한다 (Rule 1 Approach-First + 구현 착수 승인 gate 유지).
-
----
-
-## 28. LSEL (Local Self-Evolution Loop) 운용 지침 — SPEC-LSEL-LOCAL-EVOLUTION-001
-
-> 본 절은 GOOS 로컬 전용 LSEL 루프의 운용 지침이다. 분산 doctrine이 아님 — 템플릿에 미러 금지.
-> INVARANTS kernel은 파일 최상단 §0에 있다. 메커니즘 SSOT: design report
-> `.moai/reports/moai-local-self-evolution-design-20260804.html`.
-
-### §28.1 루프의 7단계 + REFLECTION
-
-`OBSERVE → CLUSTER → PROPOSE → APPROVE → APPLY → REMEMBER → VERIFY` + 주기적 REFLECTION.
-M1 = CLUSTER/drain 마감, M2 = PROPOSE shadow + INVARANTS kernel, M3 = APPLY(bypass)가 critical path.
-분산 Go applier는 동결된 채(`enableTriggerInjectionWrites=false`) bypass로 닫는다 — 절대 unfreeze하지 않는다(AP-LSEL-002).
-
-### §28.2 쓰기 허용 표면 (6 evolvable surfaces)
-
-1. `CLAUDE.local.md`(본 파일, §0 INVARANTS kernel 제외), 2. `.claude/settings.local.json`,
-3. `memory/`, 4. `.claude/agents/harness/**` + `hns-*` skills, 5. `.moai/lessons-inbox.jsonl`,
-6. `.moai/state/` (+ `.moai/state/lsel/`). 그 외는 전부 FROZEN.
-
-### §28.3 기계적 트리거 (REQ-LSEL-007)
-
-- **SessionStart backlog check:** `.claude/skills/hns-lsel-curator/backlog_check.sh`가
-  `wc -l .moai/lessons-inbox.jsonl`을 `drain-offset.json + N`(기본 N=25)과 비교하여 초과 시
-  LSEL drain을 참조하는 system-reminder를 stderr로 발행(advisory, non-blocking).
-- **default `/loop` recipe:** `.claude/workflows/lsel-drain-loop.js`(read-only drain 트리거).
-  루프가 orchestrator의 기억에 의존하지 않게 한다(audit의 정확한 실패 모드, report §11 mustFix B#1).
-
-### §28.4 PROPOSE shadow + 자가비판 게이트 (M2)
-
-각 제안은 `.moai/state/lsel/proposals/<id>/{proposal.md, diff.patch, self-critique.md}` triple을
-갖는다. `proposal.md`는 8-key schema(`proposal_id`, `target_surface`, `rationale`,
-`WHY-not-just-WHAT`, `prediction`, `verify_command`, `blast_radius`, `memory_type`) +
-`retrieval_evidence`를 담는다. retrieval-before-propose(Reflexion)는 필수 — 관련 `feedback_*.md`를
-draft 전에 읽고 증거를 기록. 자가비판에 UNRESOLVED 이의가 있으면 `status: blocked`로 APPROVE 불가.
-
-### §28.5 CSA forced-gate (REQ-LSEL-005) — 동기식 AskUserQuestion 강제
-
-6 카테고리: INVARANTS kernel, security/validation exception, HIGH-fan-in refs, Bash risk path,
-`permissions.allow`, execution-meta files. execution-meta 4종(allowlist, applier/curator 본체,
-`lsel-apply.sh`, `settings.local.json` hook-registration)은 `decision.json`의 동기식 승인 마커
-부재 시 기계적으로 거부(reject-log 행 추가 + write 없음). forced-gate는 bother-cost 면제.
-`csa_refusal_test.sh`가 거부 규칙을 fixture로 검증한다.
-
-### §28.6 Tier-4 DEAD — APPROVE는 fresh path로 (AC-LSEL-012)
-
-`moai-harness-learner` Tier-4 AskUserQuestion flow는 production layer에서 DEAD
-(`tier4_firing_test.sh` 검증). 따라서 LSEL의 PROPOSE→APPROVE handoff는 Tier-4를 타지 않고,
-M3의 fresh path(`hns-lsel-applier` + `decision.json` 동기식 승인 마커)로 간다.
-
-### §28.7 PR-mandatory + lsel-tagged commit
-
-모든 apply는 feature branch + PR 경유(CLAUDE.local.md §23, `enforce_admins:true`). 각 apply는
-`lsel-<proposal-id>`-tagged 단일 commit(REQ-LSEL-004) — rollback은 `git revert <lsel-tag>` 1-liner.

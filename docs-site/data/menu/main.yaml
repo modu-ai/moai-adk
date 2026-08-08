@@ -583,12 +583,6 @@ main:
           zh: MX TAG 系统
         ref: /advanced/mx-tags
       - name:
-          ko: MX 스캐너 내부 구조
-          en: MX Scanner Internals
-          ja: MX スキャナ内部構造
-          zh: MX 扫描器内部结构
-        ref: /advanced/mx-scanner-internals
-      - name:
           ko: config 섹션 레퍼런스
           en: Configuration Sections Reference
           ja: 設定セクションリファレンス

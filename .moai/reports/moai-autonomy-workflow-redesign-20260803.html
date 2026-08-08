@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoAI 워크플로 속도·자율성 개편 설계 — 2026-08-03</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --panel2:#1c2129; --ink:#e7e9ee; --ink-dim:#a7adb8;
+    --line:#2a3038; --accent:#cc785c; --accent2:#7aa2f7; --green:#9ece6a; --amber:#e0af68;
+    --red:#f7768e; --gray:#565f89; --crit:#f7768e; --high:#e0af68; --med:#7dcfff; --low:#565f89;
+    --code-bg:#0b0d12; --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif;line-height:1.65;font-size:15.5px}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,pre,kbd{font-family:"Goorm Sans Code","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+  code{background:var(--code-bg);padding:.12em .4em;border-radius:5px;color:var(--amber);border:1px solid var(--line)}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;overflow:auto;color:var(--ink)}
+  pre code{background:none;border:none;color:inherit;padding:0}
+
+  /* layout */
+  .wrap{display:grid;grid-template-columns:248px 1fr;max-width:1280px;margin:0 auto;gap:0}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:26px 18px;border-right:1px solid var(--line);background:var(--panel);font-size:13.5px}
+  nav.toc h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 10px}
+  nav.toc ol{list-style:none;padding:0;margin:0 0 18px}
+  nav.toc li{margin:3px 0}
+  nav.toc li a{color:var(--ink-dim);display:block;padding:3px 8px;border-radius:6px}
+  nav.toc li a:hover{background:var(--panel2);color:var(--ink);text-decoration:none}
+  nav.toc li.sub a{padding-left:18px;font-size:12.5px;color:var(--gray)}
+  main{padding:40px 48px 120px;min-width:0}
+
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--ink-dim);font-size:16px;margin:0 0 22px}
+  h2{font-size:24px;margin:46px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line);scroll-margin-top:20px}
+  h3{font-size:19px;margin:34px 0 10px;color:var(--ink);scroll-margin-top:20px}
+  h4{font-size:16px;margin:22px 0 8px;color:var(--accent)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+
+  /* badges */
+  .sev{display:inline-block;padding:.1em .55em;border-radius:5px;font-size:11.5px;font-weight:700;letter-spacing:.03em;vertical-align:middle}
+  .sev.crit{background:rgba(247,118,142,.15);color:var(--crit);border:1px solid rgba(247,118,142,.4)}
+  .sev.high{background:rgba(224,175,104,.15);color:var(--high);border:1px solid rgba(224,175,104,.4)}
+  .sev.med{background:rgba(125,207,255,.13);color:var(--med);border:1px solid rgba(125,207,255,.35)}
+  .sev.low{background:rgba(86,95,137,.18);color:var(--low);border:1px solid rgba(86,95,137,.4)}
+  .tier{display:inline-block;padding:.1em .5em;border-radius:5px;font-size:11.5px;font-weight:700;background:rgba(122,162,247,.14);color:var(--accent2);border:1px solid rgba(122,162,247,.35)}
+
+  /* callouts */
+  .box{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 18px;margin:16px 0}
+  .box.k{border-left-color:var(--accent2)}
+  .box.w{border-left-color:var(--high)}
+  .box.g{border-left-color:var(--green)}
+  .box .t{font-weight:700;margin-bottom:4px;color:var(--ink)}
+  .box.k .t{color:var(--accent2)}
+  .box.w .t{color:var(--high)}
+  .box.g .t{color:var(--green)}
+
+  /* tables */
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.8px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--ink);font-weight:700}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  td.loc{font-family:"Goorm Sans Code",monospace;font-size:12.3px;color:var(--ink-dim)}
+  .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .stat .n{font-size:26px;font-weight:800;color:var(--accent);line-height:1}
+  .stat .l{font-size:12.5px;color:var(--ink-dim);margin-top:6px}
+
+  /* flow diagram */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:18px 0}
+  .flow .node{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;text-align:center}
+  .flow .node.hot{border-color:var(--accent);background:rgba(204,120,92,.08)}
+  .flow .node.cool{border-color:var(--accent2)}
+  .flow .arr{display:flex;align-items:center;justify-content:center;padding:0 6px;color:var(--gray);font-size:18px}
+  .stack{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h4{margin-top:0}
+  .card.sel{border-color:var(--accent);background:rgba(204,120,92,.06)}
+  .pillrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .pill{font-size:11.5px;padding:.12em .5em;border-radius:5px;background:var(--panel2);border:1px solid var(--line);color:var(--ink-dim)}
+  hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+  .small{font-size:13px;color:var(--ink-dim)}
+  .evi{font-family:"Goorm Sans Code",monospace;font-size:12px;color:var(--ink-dim);background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:6px 0;white-space:pre-wrap;word-break:break-word}
+  .ref{font-size:12.5px}
+  .ref li{margin:4px 0;color:var(--ink-dim)}
+  .tag{color:var(--accent)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}nav.toc{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <h3>MoAI 개편 보고서</h3>
+  <ol>
+    <li><a href="#summary">실행 요약</a></li>
+    <li><a href="#ch1">1. 병목 진단</a></li>
+    <li class="sub"><a href="#b-plan">1.1 plan</a></li>
+    <li class="sub"><a href="#b-run">1.2 run</a></li>
+    <li class="sub"><a href="#b-sync">1.3 sync</a></li>
+    <li class="sub"><a href="#b-hook">1.4 hook·권한</a></li>
+    <li class="sub"><a href="#b-team">1.5 오케스트레이션</a></li>
+    <li><a href="#ch2">2. 베스트프랙티스 연구</a></li>
+    <li class="sub"><a href="#r-econ">2.1 토큰 경제학</a></li>
+    <li class="sub"><a href="#r-cc">2.2 CC 런타임</a></li>
+    <li class="sub"><a href="#r-auto">2.3 자율성 사다리</a></li>
+    <li class="sub"><a href="#r-codex">2.4 Codex MCP</a></li>
+    <li class="sub"><a href="#r-long">2.5 장기호라이즌</a></li>
+    <li><a href="#ch3">3. 개편 설계</a></li>
+    <li class="sub"><a href="#d-modes">3.1 자율성 3모드</a></li>
+    <li class="sub"><a href="#d-goal">3.2 goal HTML 흐름</a></li>
+    <li class="sub"><a href="#d-team">3.3 계층 에이전트팀</a></li>
+    <li class="sub"><a href="#d-codex">3.4 Codex 감사 위임</a></li>
+    <li class="sub"><a href="#d-audit">3.5 감사 최적화</a></li>
+    <li class="sub"><a href="#d-mcp">3.6 moai MCP 서버</a></li>
+    <li class="sub"><a href="#d-trend">3.7 트렌드 MCP 도구</a></li>
+    <li><a href="#ch4">4. 통합 아키텍처</a></li>
+    <li><a href="#ch5">5. 구현 로드맵</a></li>
+    <li><a href="#exec-plan">실행 계획서 (임계 경로·게이트·연속 프로토콜)</a></li>
+    <li><a href="#ch6">6. 리스크·공개질문</a></li>
+    <li><a href="#refs">참고자료</a></li>
+  </ol>
+</nav>
+
+<main>
+<h1>MoAI 워크플로 속도·자율성 개편 설계</h1>
+<p class="sub">plan·run·sync 병목 진단 · 베스트프랙티스 연구 · 자율성 3모드 · <code>/moai goal</code> 무한 지속(v2) · 계층 에이전트팀 · Codex 감사 moai-mcp 내장(v2) · 트렌드 MCP 도구(v2)</p>
+
+<div class="meta-grid">
+  <div class="stat"><div class="n">11</div><div class="l">분석 에이전트<br>(Understand 6 + Research 5)</div></div>
+  <div class="stat"><div class="n">1.57M</div><div class="l">소비 토큰<br>전수 독해 기반</div></div>
+  <div class="stat"><div class="n">38</div><div class="l">식별 병목 지점<br>(critical 5 · high 15)</div></div>
+  <div class="stat"><div class="n">6</div><div class="l">개편 설계 축<br>(v3: 감사 3-way·무한 goal·codex/GLM 내장)</div></div>
+</div>
+
+<p class="small">작성: MoAI 오케스트레이터 · 2026-08-03 · 근거: <code>wf_bbc44931-a20</code> 워크플로(11 에이전트 병렬, 코드베이스 전수 독해 6 + 웹 연구 5). U5(autonomy-CLI) 에이전트는 429 rate-limit로 누락 — 동일 표면은 U4가 이미 독해(<code>internal/cli/hook_stop_goal.go</code>, <code>internal/hook/pre_tool.go</code>, <code>internal/goal/evaluate.go</code>, <code>.claude/settings.json</code> 권한 블록)하고 R2가 권한 모드·settings 우선순위로 보완하여 설계 공백 없음.</p>
+
+<!-- ===================== SUMMARY ===================== -->
+<h2 id="summary">실행 요약</h2>
+
+<div class="box w"><div class="t">⚠️ 핵심 진단 — "감사 단계가 생산성을 갉아먹는다"는 사실임</div>
+<p>유지보보자의 호소는 구조적 사실로 확인됐다. 동일한 test·lint·coverage·build 차원이 <strong>sync 한 사이클에 최대 4회 반복 실행</strong>되고(Phase 7 병렬 검증 → sync-auditor Craft 차원 → sync-phase-quality-gate.sh Stop 훅 → manager-docs §E), 각 단계가 <strong>별도 콜드 캐시 서브에이전트 스폰</strong>으로 직렬 연결돼 있다. sync는 6-단계 직렬 콜드-스폰 체인 + 2개의 명명된 HUMAN GATE + 7개 인라인 AskUserQuestion 결정점 + 1개 블로킹 Stop 훅으로 구성된다.</p>
+</div>
+
+<p>분석 결과, 속도 병목은 "감사가 느리다"가 아니라 <strong>세 가지 구조적 결함</strong>에서 온다:</p>
+<ol>
+  <li><strong>중복 검증(redundant verification)</strong> — 동일 차원을 2~4개의 독립 게이트가 각각 재실행. snapshot 공유 한 번으로 제거 가능.</li>
+  <li><strong>직렬 콜드-스폰 체인</strong> — 한 단계가 끝나야 다음 단계가 스폰되어 매번 시스템 프롬프트·룰·스킬을 재적재. 병렬화·바인딩 승격·사전 단축으로 완화.</li>
+  <li><strong>흐름을 끊는 인라인 게이트</strong> — Implementation Kickoff Approval(점수 무관 강제), sync 9개 결정점, ac_converge의 "테스트 어설션 실패 = 즉시 인간 에스컬레이션"이 자율 루프를 매 턴 끊음. HTML 대시보드 + 자율성 티어로 치환.</li>
+</ol>
+
+<div class="box k"><div class="t">🎯 핵심 권장 방향 (6축, v3)</div>
+<ol>
+  <li><strong>자율성 3모드</strong> — 반자동(기본)·자동(auto)·완전자율(bypass+sandbox). 네이티브 프리미티브 번들로 정의하고 <code>moai init</code>/<code>moai web</code>에서 선택. <span class="tag">→ §3.1</span></li>
+  <li><strong><code>/moai goal</code> 무한 지속(v2)</strong> — plan을 HTML 보고서로 1회 비동기 검토 → 승인 시 <strong>1M 한도 제거·auto-compact로 무한 자율 실행</strong>, evaluate.go Verdict를 매 턴 끝 HTML 대시보드로 렌더. <span class="tag">→ §3.2</span></li>
+  <li><strong>계층 에이전트팀</strong> — Agent 도구를 포함한 leader 역할 신설(유일 예외), worktree 격리 병렬 writer, milestone별 Context-Folding. <span class="tag">→ §3.3</span></li>
+  <li><strong>감사 3-way moai-mcp 내장(v3)</strong> — 감사 백엔드 <strong>Claude·Codex·GLM</strong> 선택, 게이트 <strong>3단계(off/advisory/required, 기본 required)</strong>, codex 미사용 시 claude로 fail-open 폴백. <span class="tag">→ §3.4</span></li>
+  <li><strong>감사 최적화</strong> — sticky 해시 캐시·skip 임계치 정렬·4dim 바인딩 승격·snapshot 공유·직렬 체인 병렬화. <span class="tag">→ §3.5</span></li>
+  <li><strong>moai 자체 MCP 서버</strong> — CLI 코어의 thin 스키마 래퍼(같은 <code>internal/</code> 코어, 3-way 감사 + 상태/trend 툴, AI 반복 호출·완전자율 공격면 축소·외부 클라이언트 이식). <span class="tag">→ §3.6</span></li>
+</ol>
+</div>
+
+<div class="box g"><div class="t">✓ 연구가 뒷받침하는 불변 (변경 금지)</div>
+<ul style="margin:6px 0">
+  <li><strong>코딩은 직렬 단일 에이전트</strong> — Anthropic: "대부분의 코딩 작업은 병렬화에 부적합". run-phase(manager-develop) 동시성 상한을 올리지 않는다. 병렬은 READ(감사·연구·검증)에만. <span class="ref">[R1,R4]</span></li>
+  <li><strong>Implementation Kickoff Approval은 모든 티어에서 강제</strong> — 자율성은 "턴 계속 여부"의 자율이지 "파괴적/비가역 행위"의 자율이 아니다. <span class="ref">[R2,R5]</span></li>
+  <li><strong>서브에이전트는 요약만 반환</strong> — 사이드체인 패턴. 부모 컨텍스트 인플레이션 방지가 1M 예산의 핵심. <span class="ref">[R1,R5]</span></li>
+</ul>
+</div>
+
+<!-- ===================== CH1 ===================== -->
+<h2 id="ch1">제1장 — 병목 진단 (현황 전수 분석)</h2>
+<p class="small">각 병목은 파일·섹션 인증 기반이다. 심각도는 실제 개발 속도 기여도 기준.</p>
+
+<h3 id="b-plan">1.1 plan-phase 병목</h3>
+<table>
+<tr><th style="width:24%">위치</th><th style="width:9%">심각도</th><th>원인 (인증)</th></tr>
+<tr><td class="loc">spec-workflow.md § skip policy + § Tier PASS thresholds</td><td><span class="sev crit">critical</span></td><td><strong>이중 스폰 구조</strong>: plan-auditor가 plan Phase 11에서 1회(최대 3 iter) 돌고, <code>/moai run</code> Phase 1에서 skip-eligible 아니면 <em>다시</em> 돈다. skip 조건이 <code>score ≥ 0.90</code>인데 PASS 임계치는 S 0.75 / M 0.80 / L 0.85라 <strong>skip 기준이 모든 PASS 기준보다 높아 skip이 예외</strong>가 됨. 단일 감사 1회 ≈ 5분(53 툴콜 × 5초 메타분석). 대다수 SPEC이 2회 감사 비용 지불.
+<div class="evi">"MAY skip Phase 1 re-execution ... IF AND ONLY IF ... score >= 0.90" vs "PASS threshold Tier S 0.75 / M 0.80 / L 0.85"</div></td></tr>
+<tr><td class="loc">orchestration-mode-selection.md 헤더 + §C.3; CLAUDE.local.md §19.1</td><td><span class="sev crit">critical</span></td><td><strong>Implementation Kickoff Approval 강제 블로킹</strong>: 점수 무관, 모드 무관. Mode 6(workflow) + auto + armed goal(최대 자율 조합)조차 plan→run 경계에서 인라인 AskUserQuestion을 통과해야 함. plan-auditor PASS나 높은 skip-eligible 점수로 자동 우회 불가. <strong>비참석 장기 실행이 plan→run을 건널 수 없는 1차 원인</strong>.
+<div class="evi">"Implementation Kickoff Approval is mandatory and score-independent ... skip-eligibility applies only to Phase 1 verdict re-execution"</div></td></tr>
+<tr><td class="loc">plan-auditor.md § Retry Loop + § Input Contract</td><td><span class="sev high">high</span></td><td>최대 3회 스폰이 각각 <strong>FRESH 콜드 서브에이전트</strong>(모델 inherit, effort medium). iter 2+는 결함 델타만 재감사해 in-context 작업은 줄지만 <strong>스폰당 콜드-스타트 비용은 그대로</strong>. 3-iter plan = 감사만 ~15분.</td></tr>
+<tr><td class="loc">plan.md Phase Routing(Decision Point 1) + Kickoff</td><td><span class="sev high">high</span></td><td><strong>2개 직렬 HUMAN GATE</strong>: Decision Point 1(1-6 annotation iteration)이 Phase 9 이전, Kickoff가 Phase 15 이후. 단일 plan이 코드 1줄 전에 최대 7+회 동기 사용자 상호작용.</td></tr>
+<tr><td class="loc">spec-workflow.md skip 정책 조건 3+4 + § Report Persistence</td><td><span class="sev high">high</span></td><td><strong>skip 캐시 부패</strong>: (a) 24h 윈도우가 하루만 지나도(또는 /clear 후 재개) 전체 재감사 강제; (b) 해시 대상이 {spec,plan,acceptance,tasks}.md 4개 파일만 — Tier L의 design.md·research.md는 해시 대상 아니라 드리프트를 기계적으로 감지 못 함.</td></tr>
+<tr><td class="loc">plan.md § Fan-Out Index (FO-PLAN-1/2)</td><td><span class="sev med">medium</span></td><td>plan 워크플로에 이미 2개 병렬화 프리미티브가 정의됐으나 <strong>둘 다 capability-gated</strong>(FO-PLAN-1: JS 스크립트+다이내믹 워크플 런타임 필요; FO-PLAN-2: harness standard/thorough 필요). minimal harness 또는 스크립트 없으면 직렬 경로로 폴백.</td></tr>
+<tr><td class="loc">askuser-protocol.md § ToolSearch Preload; §19.1</td><td><span class="sev med">medium</span></td><td>Implementation Kickoff Approval 매 라운드마다 <code>ToolSearch(select:AskUserQuestion)</code> 프리로드 왕복 비용이 블로킹 대기 위에 추가. HTML-검토 게이트는 이 세금을 내지 않음.</td></tr>
+</table>
+
+<h3 id="b-run">1.2 run-phase 병목</h3>
+<table>
+<tr><th style="width:24%">위치</th><th style="width:9%">심각도</th><th>원인 (인증)</th></tr>
+<tr><td class="loc">manager-develop.md L18-29 (frontmatter hooks)</td><td><span class="sev high">high</span></td><td><strong>편집당 2회 moai 바이너리 스폰</strong>: PreToolUse <code>develop-pre-implementation</code>(5s) + PostToolUse <code>develop-post-implementation</code>(10s)가 모든 Write|Edit에 발화. TDD의 원자적 편집이 많으면 N번 직렬 부과. 50-100편집 run은 N×(콜드 스타트×2). <strong>run-phase에서 개발자가 "느리다"고 느끼는 1차 지점</strong>.</td></tr>
+<tr><td class="loc">run.md L154-166 (ac_converge 자율성)</td><td><span class="sev high">high</span></td><td><strong>자율 루프가 TDD의 정상 상태에서 끊김</strong>: ac_converge가 "테스트 어설션 실패"를 의미론적 실패로 분류해 goal 클리어 + AskUserQuestion 에스컬레이션. 그러나 RED 테스트는 <em>설계상</em> 실패 어설션이고 REFACTOR 중 회귀도 마찬가지. <strong>자율 루프가 가장 유용한 순간에 인간 프롬프트로 되돌아감</strong>.
+<div class="evi">"on a ... test assertion failure surfaced during the loop, clear the goal and escalate via AskUserQuestion — NEVER auto-fix a semantic failure"</div></td></tr>
+<tr><td class="loc">manager-develop-prompt-template.md §C Pre-flight L133-154</td><td><span class="sev med">medium</span></td><td>Tier M/L 위임이 코드 변경 전 5-명령 pre-flight를 직렬 실행(git HEAD, <code>go build</code>, <code>GOOS=windows go build</code>, <code>golangci-lint</code>, retired-SPEC grep). 이 중 build·lint가 완료 시 §E 자가검증 + 오케스트레이터 7-명령 배치에서 <strong>동일 차원이 2-3회 재실행</strong>.</td></tr>
+<tr><td class="loc">§E1-E8 vs verification-batch-pattern.md 7-item</td><td><span class="sev med">medium</span></td><td>run 완료 시 <strong>2개의 독립 전수 검증 패스</strong>: (a) manager-develop §E 자가검증 매트릭스, (b) 오케스트레이터 7-명령 읽기전용 배치. 겹치는 차원(test suite, coverage, lint, cross-platform build)이 2회 실행.</td></tr>
+<tr><td class="loc">run.md L154 (Max 20 turns) + goal-directive (block cap 8)</td><td><span class="sev med">medium</span></td><td>ac_converge 상한 20턴 + arm-only. 런타임 연속-block 캡(기본 8, <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code>)이 먼저 선점 → 유효 상한 <code>min(20,8)</code>. 긴 Tier-L run이 도중에 끊기며, 캡 선점 시 <strong>판정 없이 조용히 종료</strong>(수렴으로 오독 위험).</td></tr>
+<tr><td class="loc">spec-workflow.md L258-281 (Re-planning) + run.md L181-195 (Self-Diagnosis)</td><td><span class="sev med">medium</span></td><td>2개 미드-run 에스컬레이션 경로 모두 AskUserQuestion 종료. Re-planning Gate(3+ iter no AC) + Recursive Self-Diagnosis(max 3, iter-4 금지). 끈질긴 기계적 실패·AC 정체가 인간 게이트로 경직.</td></tr>
+</table>
+
+<h3 id="b-sync">1.3 sync-phase 병목 <span class="tier">유지보수자 1순위 호소</span></h3>
+<table>
+<tr><th style="width:24%">위치</th><th style="width:9%">심각도</th><th>원인 (인증)</th></tr>
+<tr><td class="loc">quality-gates-quality.md Phase 10 (0.7.1-0.7.4)</td><td><span class="sev crit">critical</span></td><td><strong>sync가 run-phase-2로 변질</strong>: Phase 10 Step 0.7.1/0.7.3이 커버리지 측정·테스트 생성을 위해 <code>manager-develop</code>을 재스폰. 0.7.4가 전체 테스트 스위트 재실행 + 커버리지 재측정. <strong>단일 sync 호출이 또 다른 RED-GREEN 루프 + 풀스위트 재실행으로 붕괴</strong>. 사용자의 "sync는 빠른 docs 단계"라는 모델이 틀림 — 85% 미만 SPEC은 sync에서 또 20분+ 구현 비용.
+<div class="evi">"Step 0.7.3 Agent: manager-develop subagent. Generate missing tests for P1 and P2 gaps"</div></td></tr>
+<tr><td class="loc">sync-auditor.md § Per-Dimension Mechanical Verification</td><td><span class="sev high">high</span></td><td><strong>4차원 감사가 이미 실행된 기계 검증을 재실행</strong>: Functionality=test 실행, Craft=coverage+linter, Consistency=lint+grep. 이는 run-phase 검증 배치·Phase 7·Phase 8·Phase 10이 이미 만든 결과와 동일. 각 Evidence 셀이 verbatim 기계 출력이어야(verification-claim-integrity §1.1) 재실행 발생. 콜드 Opus 서브에이전트(medium/xhigh)가 2-5분 전에 끝난 <code>go test</code>+<code>golangci-lint</code>를 다시.</td></tr>
+<tr><td class="loc">.claude/workflows/sync-audit-4dim.js + sync.md FO-SYNC-1</td><td><span class="sev high">high</span></td><td><strong>4dim 워크플로(1 context + 4 xhigh 판사 = 5 스폰)가 증거수집용이지 바인딩 판정 아님</strong>. sync-auditor가 별도로 또 돌아 PASS/FAIL. "병렬 4차원 판정이 작동한다"는 증명해 놓고, 그 증명을 낭비함 — 5 xhigh 스폰 + 1 medium/xhigh 스폰이 동일 4차원을 동일 AC로 평가.</td></tr>
+<tr><td class="loc">sync.md Phase Routing + cache-aware directive 2</td><td><span class="sev high">high</span></td><td><strong>6-단계 직렬 콜드-스폰 체인</strong>: Phase 1 → 7-10(sync-auditor + security + manager-develop 커버리지) → 11-12(manager-docs) → 13(manager-git). fan-out(FO-SYNC-2/3/4)은 <em>페이즈 내</em> 병렬만, <em>페이즈 간</em>은 항상 직렬. 각 스폰이 풀 시스템 프롬프트+룰+스킬 재적재. 단일 페이즈가 느리지 않아도 이 체인이 sync 실제 시간을 지배.</td></tr>
+<tr><td class="loc">sync-phase-quality-gate.sh L222-335</td><td><span class="sev high">high</span></td><td><strong>Stop 훅이 매 sync 커밋 턴 끝에 <code>go vet</code>+<code>go build</code>를 동기 실행하고 기본 블로킹</strong>(<code>MOAI_SYNC_GATE_BLOCKING</code> 기본 1). Phase 7·sync-auditor Craft가 이미 검증한 구조 검사를 <strong>3번째로</strong> 재실행. <code>go build ./...</code> 콜드 빌드 캐시면 20-40s. 실패 시 AskUserTranslation→자율 goal 루프 중단. <strong>sync 속도 1위 킬러</strong>.</td></tr>
+<tr><td class="loc">sync.md HUMAN GATE Map L72-78</td><td><span class="sev med">medium</span></td><td><strong>9개 인터럽트 지점</strong>: gate-sync-1/2 + 인라인 AskUserQuestion(Phase 1/3/6/7/8/13/14). 각 블로킹 왕복이 5분 초과 시 전체 프리픽스 캐시 만료(1.25× 재지불). sync는 <code>/moai goal</code>로 무인 수렴 불가 — 9곳 감시 강제.</td></tr>
+<tr><td class="loc">quality-gates-quality.md Phase 9 (MX Tag)</td><td><span class="sev med">medium</span></td><td>MX Tag 검증이 security(8)와 coverage(10) <em>사이</em> 직렬 실행. P1/P2 위반(<code>@MX:ANCHOR</code> 누락 등)이 sync를 HARD-BLOCK하고 run 재진입 강제. <strong>30분 커버리지 작업 후 누락 1개로 전체 중단</strong> 최악 사례.</td></tr>
+</table>
+
+<h3 id="b-hook">1.4 hook·권한 중단점</h3>
+<table>
+<tr><th style="width:24%">위치</th><th style="width:9%">심각도</th><th>원인 (인증)</th></tr>
+<tr><td class="loc">settings.json Stop 배열(6 엔트리) L85-121</td><td><span class="sev high">high</span></td><td><strong>매 턴 끝 6개 훅 병렬 스폰</strong>(handle-stop 5s, sync-gate 60s, stop-goal 120s, security-turn 5s, security-commit 5s, harness-observe 5s async). 그중 4개가 moai Go 바이너리 콜드 스타트. goal 유무 무관 <strong>모든 턴</strong>에 발화. 긴 goal 루프 = 6N 훅 호출. 1M 자율 루프의 1차 per-turn 지연원.</td></tr>
+<tr><td class="loc">handle-stop-goal.sh L98-102 + hook_stop_goal.go L61-77</td><td><span class="sev med">medium</span></td><td>handle-stop-goal.sh가 <strong>무조건 <code>exec moai hook stop-goal</code></strong>. Go 바이너리 콜드 스타트 후에야 goal 로드 → 없으면 <code>return nil</code>. goal 없는 세션이 매 턴 끝 콜드 스타트 비용을 "아무것도 안 함" 확인만 지불. 셸 단 precondition 체크(상태 파일 존재)로 제거 가능.</td></tr>
+<tr><td class="loc">sync-phase-quality-gate.sh L24-26 (stopReason 미파싱)</td><td><span class="sev med">medium</span></td><td>Recovery-Signal Carve-Out(복구 턴은 block 말고 exit 0)이 문서 전용. stopReason 파싱 안 해서 sync 실패 복구 턴도 동일하게 하드 블로킹 → error→block→retry→error 사망 회전.</td></tr>
+<tr><td class="loc">internal/hook/pre_tool.go L429-441 (커밋 게이트)</td><td><span class="sev high">high</span></td><td><strong>모든 <code>git commit</code>에 동기 vet+lint+test 게이트</strong>(PreToolUse). manager-develop이 milestone별 커밋하므로 자율 goal 루프가 매 커밋마다 이 게이트 지불. 실패 시 커밋 거부 → agent 수정·재시도 → goal 턴 소모. <strong>게다가 훅 래퍼 타임아웃이 5s</strong>라 비 trivial 저장소에서 게이트가 끝나기 전 킬될 수 있음(잠재 취약성).</td></tr>
+<tr><td class="loc">agent-common-protocol.md § Hook Invocation Surface (Orchestrator translation)</td><td><span class="sev high">high</span></td><td>훅은 AskUserQuestion 금지 → 구조화 JSON block → 오케스트레이터가 <strong>매 block을 AskUserQuestion로 번역</strong>(3곳: sync-gate block, semi-autonomous checkpoint 매 터, team-ac-verify reject). 매 AskUserQuestion에 ToolSearch 프리로드 선행 = block당 2왕복. <strong>이것이 HTML-first goal flow가 녹여야 할 핵심 마찰</strong>.</td></tr>
+<tr><td class="loc">settings.json L308-425 (permissions) + §22.1</td><td><span class="sev high">high</span></td><td><strong>권한 축이 자율성의 1급 시그널이 되어야 함</strong>: 로컬은 <code>defaultMode: bypassPermissions</code>지만 배포 템플릿 기본은 미지정→<code>default</code>(per-tool 프롬프트). allow-list가 넓어도 매칭 안 되는 Bash(특이 플래그·프로젝트 스크립트)는 프롬프트로 무인 루프 중단. 오늘 hook 계층에는 <strong>모드 시그널 자체가 없음</strong> — 동일 allowlist가 goal 유무와 무관 적용.</td></tr>
+<tr><td class="loc">internal/goal/evaluate.go L31-35, L226-246</td><td><span class="sev med">medium</span></td><td>평가기가 이미 풍부한 구조화 데이터(조건별 cmd/exit/tail, turn/ceiling, snapshot_attribution) 생성하지만 <strong>오케스트레이터 산문 → AskUserQuestion 옵션/preview로 압축되어 충실도 손실</strong>. askuser-protocol § Preview-as-Report Substitution 안티패턴이 정확히 이 지점. <strong>HTML 대시보드 렌더의 데이터 모델은 이미 존재 — 렌더 표면만 없음</strong>.</td></tr>
+</table>
+
+<h3 id="b-team">1.5 오케스트레이션·에이전트팀 한계</h3>
+<table>
+<tr><th style="width:24%">위치</th><th style="width:9%">심각도</th><th>원인 (인증)</th></tr>
+<tr><td class="loc">orchestration-mode-selection.md §C.3 + CLAUDE.md §4 Watch</td><td><span class="sev crit">critical</span></td><td><strong>평평-계층-by-도구생략이 계층 팀의 유일한 차단물</strong>: 11개 전체 MoAI 에이전트가 tools 목록에서 Agent를 생략 → 어떤 에이전트도 서브에이전트 스폰 불가. v2.1.219 런타임은 depth-3 허용하지만 <strong>MoAI 자체 도구생략이 막음</strong>. 계층 팀(leader→sub-team leaders→workers)은 leader 역할만 Agent 포함 예외를 주지 않는 한 구조적으로 불가.</td></tr>
+<tr><td class="loc">§C.1 + spec-workflow.md Agent Teams RETIRED</td><td><span class="sev high">high</span></td><td>Mode 3(agent-team)은 tombstone. 유일 생존 팀 표면은 네이티브 teammate 런타임(tmux panes, <code>moai cg</code>) — 인간이 진입하는 메커니즘이지 오케스트레이터가 spawn·synthesize하는 라우팅 가능 프리미티브가 아님. <strong>MoAI 라우팅 팀 프리미티브가 없음</strong>.</td></tr>
+<tr><td class="loc">orchestration-mode-selection.md §A/§B/§E + dynamic-workflows § When NOT</td><td><span class="sev high">high</span></td><td>Mode 6(workflow)이 <strong>순수 기계적 변환(≥30파일 + 단일 균일 변환 + 파일 간 의존성 없음)으로만 입장</strong>. 코딩/다중도메인/신규 코드는 Mode 5(직렬)로 강제. 그러나 Mode 6만이 <strong>중간 결과를 스크립트 변수(세션 컨텍스트 아님)에 보존</strong> — 1M 예산 내 계층 코딩 팀에 필요한 컨텍스트 격리 속성. 코딩 leaf-worker는 Mode 4(3-5) 상한으로 갇힘.</td></tr>
+<tr><td class="loc">agent-common-protocol.md § Background Agent + worktree-integration.md 의사결정나무</td><td><span class="sev high">high</span></td><td>동시성 안전장치="2개 write-capable 동시 금지". 유일 탈출구 = <code>Agent(isolation:worktree)</code>인데, worktree 격리 명령이 <strong>"team mode 구현"에 조건부</strong> — team mode는 RETIRED. <strong>병렬 write worker fan-out이 두 규칙 모두를 만족 못 함</strong>: 동시 write 금지 + worktree 합법화 조건이 은퇴 모드.</td></tr>
+<tr><td class="loc">dynamic-workflows.md ultracode 노트 + goal-directive § What It Is</td><td><span class="sev high">high</span></td><td><strong>goal 상태가 per-session + ultracode가 resume 시 복원 안 됨</strong>. 1M 자율 run이 50% 임계를 넘어 /clear하면 armed goal과 자동-워크플 오케스트레이션 <strong>둘 다</strong> 상실, 수동 재무장 필요. "1M 한도 자율 run"이 첫 컨텍스트 경계에서 약속 붕괴.</td></tr>
+<tr><td class="loc">dynamic-workflows.md § model+effort 선택</td><td><span class="sev med">medium</span></td><td>workflow <code>agent()</code>가 effort 생략 시 세션 effort inherit → ultrathink resume이 xhigh 남겨 <strong>모든 leaf worker(기계적 읽기 포함)가 조용히 xhigh 실행</strong>. 가이드는 읽기 추출에 low 권장. ~3-5× 토큰 누수가 1M 예산 조용히 갉아먹음.</td></tr>
+<tr><td class="loc">agent-common-protocol.md § Pre-Spawn Sync Check</td><td><span class="sev med">medium</span></td><td>write-capable Agent() 스폰 전 3-명령 병렬 배치(git fetch + rev-list + moai session list) 강제. 계층 팀이 N write worker 펼치면 N번 지불 — wave당 1회로 분할 상각 가능.</td></tr>
+</table>
+
+<!-- ===================== CH2 ===================== -->
+<h2 id="ch2">제2장 — 베스트프랙티스 연구 (근거)</h2>
+<p class="small">5개 연구 에이전트가 Anthropic 엔지니어링 블로그·Claude Code 공식 문서·Codex MCP 공식 저장소·2026 실무 가이드·학술 논문을 웹 검색 후 WebFetch로 실제 패치한 출처만 인용.</p>
+
+<h3 id="r-econ">2.1 멀티에이전트 토큰 경제학 <span class="ref">[R1,R4,R5]</span></h3>
+<div class="box"><div class="t">멀티에이전트 연구 = 단일 채팅 대비 ~15× 토큰 (단일 에이전트 ≈ 4×). 토큰 사용량이 BrowseComp 성능 분산의 ~80% 설명.</div>
+<p>Anthropic 자체 연구 시스템(LeadResearcher + 전문 subagents + CitationAgent)이 채팅 대비 ~15× 토큰 소비. 도구 호출 + 모델 선택이 나머지 20%. Opus-4-lead + Sonnet-4-sub가 내부 연구 eval에서 단일 Opus 4 대비 90.2% 우수. <strong>READ(연구·분석·감사·검증)에는 병렬이 가치 있고, WRITE(코드 생성·리팩터·순차 상태 의존 작업)에는 부적합</strong> — "대부분의 코딩 작업은 진정 병렬화 가능한 서브태스크가 적다"(Phil Schmid 요약). 3-5 병렬 subagent, 각 3+ 도구 병렬 실행이 복잡 쿼리 시간을 ~90% 단축.</p>
+<p class="ref"><strong>적용</strong>: MoAI 기존 설계 정당화 — run-phase(manager-develop 코딩)는 직렬 단일 에이전트 유지, Mode 4(3-5)는 plan 연구 fan-out·sync 읽기전용 감사·run 검증 배치에만. <strong>위임 맵(delegation.yaml)이 지배적 비용 레버</strong> — 라우팅 레저 → harness-learning으로 진화시킬 것(Meta Context Engineering과 정합, §2.5).</p>
+</div>
+
+<h3 id="r-cc">2.2 Claude Code 런타임 프리미티브 <span class="ref">[R2]</span></h3>
+<div class="box k"><div class="t">권한 모드는 6개 — default(Manual v2.1.200+) · acceptEdits · plan · <strong>auto</strong> · dontAsk · bypassPermissions. 결정적 사실: deny 규칙 + 명시적 ask 규칙 + requiresUserInteraction은 <strong>bypassPermissions를 포함한 모든 모드에서 바인딩</strong>.</div>
+<ul style="margin:6px 0">
+  <li><strong>auto 모드 = "자동" 티어의 부재 중간</strong>: 백그라운드 분류기 모델(Sonnet 5 기본)이 per-tool 프롬프트 제거하되 파괴 행위는 블로킹. 결정 순서: allow/ask/deny 규칙 → 읽기전용+작업디렉토리 편집 자동승인 → 나머지 분류기. <strong>3 연속 또는 20 총 블록 후 프롬프트로 폴백</strong>(임계값 비설정 가능). 단, <code>defaultMode:'auto'</code>는 user/managed 설정에서만 인정(project/local은 v2.1.142+ 무시) — 저장소가 스스로 auto 부여 불가.</li>
+  <li><strong>native <code>/goal</code> = prompt Stop 훅 + Haiku 판사</strong>: 매 턴 후 소형 고속 모델이 조건 평가. <strong>"auto 모드는 단일 턴 내 툴 호출을 승인하지만 새 턴을 시작하지 않고, /goal은 턴마다 조건을 검사하는 별도 평가기"</strong> — 둘의 보완 관계가 무인 스택의 정석.</li>
+  <li><strong>Stop 훅 8-연속-block 캡</strong>(<code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code> 기본 8)이 goal 상한보다 먼저 선점 → 목표 판정 없이 조용히 종료 가능. 모든 Stop 훅은 <code>stop_hook_active</code> 파싱 후 early exit 필수.</li>
+  <li><strong>3가지 훅 결정 메커니즘</strong>: command(결정적 셸) · prompt(1턴 Haiku 판정) · agent(다턴 subagent, 60s/50턴). <strong>메커니즘 선택 자체가 자율성 티어 레버</strong>.</li>
+  <li><strong>동시성/세션 캡</strong>: <code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code> 기본 20(ultracode 면제) · <code>CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION</code> 기본 200 · workflow는 16 동시 / 1000 총 별도. MoAI Mode 4(3-5)는 20 런타임 캡 안에 안전.</li>
+  <li><strong>서브에이전트 permissionMode 비대칭</strong>: 부모 bypassPermissions/acceptEdits가 우선(자식이 더 안전 모드로 스코프 불가). <strong>스폰 시점 mode 파라미터는 v2.1.213+ 무시</strong>. → 티어 안전성은 (a) deny/ask 규칙 + (b) tools: allowlist + 도구생략(Explore)에서 옴.</li>
+  <li><strong>설정 우선순위</strong>: Managed &gt; CLI &gt; Local &gt; Project &gt; User. <strong>권한 규칙은 override가 아니라 merge</strong>. defaultMode는 단일 값(최고 스코프). 관리자 kill-switch: managed <code>disableBypassPermissionsMode</code>·<code>disableAutoMode</code>.</li>
+</ul>
+</div>
+
+<h3 id="r-auto">2.3 자율성 사다리 & HITL 게이트 <span class="ref">[R4]</span></h3>
+<div class="box"><div class="t">자율성은 랭킹이 아니라 <strong>스태핑 결정</strong> — "높을수록 좋다"가 아니다. 대부분 팀의 실질 천장은 L2-L3이며, 도구 한계가 아니라 "'완료'를 얼마나 잘 정의했는가"가 결정.</div>
+<p><strong>Osmani L0-L5 사다리</strong>(Agency × Orchestration 2축) — L0 제안만 · L1 감독 행동(승인 피로가 실패 모드) · L2 범위 위임+증거검증 · L3 목표주도 자율(측정 가능 정지조건 필수 — "품질 개선"은 기각) · L4 격리 슬라이스 병렬 위임 · L5 예외관리 소프트웨어 공장. <strong>모든 agent run이 8-필드 계약을 휴대해야 함</strong>: goal, scope, non-goals, tools/permissions, stopping condition, evidence, escalation path, budget. 3개 검증 질문이 핵심: "얼마나 빨리 틀렸는지 알 수 있는가? 얼마나 깔끔하게 되돌릴 수 있는가? 무엇이 옳음을 증명할 것인가?"</p>
+<p><strong>Galileo bounded autonomy</strong>: 전략 계획(인간 승인) vs 전술 실행(자율) 분리. 4 에스컬레이션 신호 — 신뢰도 임계치 · 컨텍스트/위험 클래스 · <strong>행위 가역성</strong>(되돌릴 수 없는 것은 동기 승인, 가역적은 비동기 감사) · 멀티에이전트 체인 복잡도(체인 길이·신뢰도 감쇠·에이전트 간 불일치 모니터링).</p>
+</div>
+<div class="box w"><div class="t">⚠️ METR RCT — 경험 많은 OSS 개발자가 초기-2025 AI 도구로 19% <em>더 느림</em> (CI +2%~+39%). 그런데도 사후에 20% 더 빠르다고 믿음.</div>
+<p>5 원인: 프롬프팅 오버헤드 · AI 코드 리뷰 오버헤드 · AI 코드 디버깅 · 인간/AI 코딩 컨텍스트 스위칭 · AI가 충족 못 하는 높은 생산 품질 기준. <strong>믿음 격차(느린데 빠르다고 믿음)가 verification-claim-integrity 독트린이 겨냥하는 정확한 실패 모드</strong> — 관측 안 된 PASS 주장이 진척처럼 느껴짐. → 기계 검증(exit code·테스트 출력)이 <code>/moai goal</code> 평가기의 1차 진척 신호여야 함, agent 자가보고가 아니라.</p>
+<p class="ref"><a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/" target="_blank">metr.org · 2025-07-10</a></p>
+</div>
+
+<h3 id="r-codex">2.4 Codex MCP — 교차모델 감사 <span class="ref">[R3]</span></h3>
+<div class="box g"><div class="t">✓ 정확한 명령은 <code>codex mcp-server</code> (NOT <code>codex mcp</code>). 공식 플러그인 <code>openai/codex-plugin-cc</code>가 감사 슬래시명령까지 갖춘 상위 경로.</div>
+<ul style="margin:6px 0">
+  <li><strong>직접 MCP</strong>: <code>codex mcp-server</code>(stdio, JSON-RPC 2.0). 인스펙트: <code>npx @modelcontextprotocol/inspector codex mcp-server</code>. 상태: <em>experimental</em>.</li>
+  <li><strong>공식 플러그인(권장)</strong>: <code>/plugin marketplace add openai/codex-plugin-cc</code> → install → <code>/codex:setup</code>. 명령: <code>/codex:review</code>(읽기전용 diff 감사) · <code>/codex:adversarial-review</code>(설계·구현 결정을 묻는 조종 가능 감사) · <code>/codex:rescue</code> · <code>/codex:transfer</code>. <strong>선택적 review 게이트 = Claude Code Stop 훅으로 구현</strong> — 응답 허용 전 Codex 리뷰 실행.</li>
+  <li><strong>원리 — 상관된 맹점(correlated blind spots)</strong>: 모델이 자기 출력을 감사하면 오류를 낸 분포에서 재샘플링 → 편향. 다른 모델 패밀리는 다른 코퍼스·목표·팀으로 훈련 → 실패 모드가 상관 없음 → 진짜 보완적(단순 중복 아님). "Codex가 더 똑똑하다는 게 아니라 <em>다르게</em> 똑똑하다."</li>
+  <li><strong>super-review 패턴</strong>(Drew Hyde): Claude 8-차원 1차 리뷰 → Codex 독립 2차 의견(Claude 분석 미공개로 독립성 보존) → orchestrator 합성. MCP 도구명 <code>mcp__codex__codex</code>(커뮤니티 소싱 — 설치 시 재검증 필요).</li>
+</ul>
+<p class="ref">출처: <a href="https://github.com/openai/codex-plugin-cc" target="_blank">openai/codex-plugin-cc</a> · <a href="https://github.com/openai/codex/blob/main/codex-rs/docs/codex_mcp_interface.md" target="_blank">codex_mcp_interface.md</a> · <a href="https://stevekinney.com/writing/codex-as-a-second-opinion" target="_blank">Codex as a Second Opinion</a></p>
+</div>
+
+<h3 id="r-long">2.5 장기호라이즌 & 컨텍스트 관리 <span class="ref">[R1,R5]</span></h3>
+<table>
+<tr><th>연구</th><th>핵심 발견</th><th>MoAI 적용</th></tr>
+<tr><td><strong>Graduated Compaction</strong><br><span class="ref">arXiv:2604.14228</span></td><td>5-레이어: Budget Reduction → Snip → Microcompact → Context Collapse → Auto-Compact. 오케스트레이터는 앞 4개가 조용히 실행된 후에야 압력 감지.</td><td>/clear를 Auto-Compact 활성 레이어에서만 예약; 툴 결과 정리·구조화 메모를 더 싼 우선 수단으로.</td></tr>
+<tr><td><strong>Sidechain 요약</strong><br><span class="ref">arXiv:2604.14228 §8 + Anthropic</span></td><td>서브에이전트가 수만 토큰 탐색해도 <strong>1,000-2,000 토큰 요약만 반환</strong>. 부모 컨텍스트 인플레이션 방지.</td><td>임빈한 검증 위임 가능(매 터 ~1-2K만). codex-audit도 동일 — 감사자 풀 컨텍스트를 끌어오지 말 것.</td></tr>
+<tr><td><strong>교차모델 적대 리뷰</strong><br><span class="ref">Frontiers 10.3389/fcomp.2025.1655469</span></td><td>GPT-4 자기 코드 수리 85.5% vs 타 LLM 코드 77.4%. 하이브리드 LLM+정적분석이 +30%.</td><td>감사자를 구현자와 <em>다른 모델 클래스</em>로. 기계 도구(lint·test·LSP)는 1급 입력 — LLM 단독 금지.</td></tr>
+<tr><td><strong>SWE-EVO 실패 분류</strong><br><span class="ref">arXiv:2512.18470</span></td><td>장기호라이즌 붕괴(72.8%→18.75%). 강 모델 실패의 &gt;60% = "Instruction Following"(요구사항 해석). 약 모델 = 구현 오류. 구형 = looping/조기종료.</td><td>stagnation guard가 no-progress뿐 아니라 <strong>looping·조기종료</strong> 전용 감지. AC 리스트를 run 중 주기적 재주입(요구사항 드리프트 방어). 턴 상한 Tier별 적응.</td></tr>
+<tr><td><strong>Context-Folding</strong><br><span class="ref">arXiv:2510.11967 (ICML 2026)</span></td><td>완료 서브태스크를 간결 요약로 폴딩 → <strong>활성 컨텍스트 10× 축소</strong>, 일반 요약 기반 관리보다 우수.</td><td>세션 핸드오프 폴딩을 <strong>run-phase 내 milestone 경계</strong>로 일반화 → Tier L 다중-milestone run을 /clear 없이 생존. 핵심 기제.</td></tr>
+<tr><td><strong>Meta Context Engineering</strong><br><span class="ref">OpenReview P1jHroBS5E</span></td><td>컨텍스트 조립을 최적화 대상으로 → SWE-bench Verified 70.7%→89.1%(대부분 모델 업그레이드보다 큰 향상).</td><td>harness-learning = MoAI의 하위레벨 최적화기. 관측된 run 결과로 위임 맵·스킬 주입·에이전트 컨텍스트를 진화(수동 YAML 튜닝 대신).</td></tr>
+<tr><td><strong>AgentOrchestra</strong><br><span class="ref">arXiv:2506.12508</span></td><td>계층 planner + 교차 검증(peer workers 상호) + 메모리 기반 동적 재계획. GAIA 82.42% SOTA.</td><td>manager-develop 후 <strong>두 번째 worker가 동일 산물 검증</strong>(작성자 자가보고보다 강함) = AC 수준 codex-audit 형태. 정체 시 재계획(goal stagnation과 합성).</td></tr>
+<tr><td><strong>A-MapReduce</strong><br><span class="ref">arXiv:2602.01331</span></td><td>스키마 주도 fan-out + bounded delta-patch 수리 + 경험 메모리 배칭 → <strong>subagent 60→6, 비용 ~47% 절감</strong>.</td><td>fan-out 출력을 고정 스키마로(reduce를 기계적 병합으로). 동시 배치 상한 보수적 유지(MoAI 3-5 정당). 라우팅 레저→harness-learning이 경험 메모리 채널.</td></tr>
+</table>
+
+<!-- ===================== CH3 ===================== -->
+<h2 id="ch3">제3장 — 개편 설계 (6축, v3)</h2>
+
+<h3 id="d-modes">3.1 자율성 3모드 — 반자동 · 자동 · 완전자율</h3>
+<p>네이티브 프리미티브의 <strong>번들</strong>로 정의한다(새 개념 창조 금지). <code>moai init</code>(CLI 대화형)과 <code>moai web</code>(콘솔 토글)에서 선택 → defaultMode는 <strong>USER 설정</strong>에(auto/bypass는 project/local 무시, v2.1.142+), deny/ask 규칙 세트는 <strong>PROJECT 설정</strong>에(merge되어 모든 세션에 적용). 단일 모드 토큰(<code>MOAI_AUTONOMY_TIER</code> 또는 <code>workflow.yaml</code> 키)을 훅들이 읽는다.</p>
+
+<div class="stack">
+  <div class="card">
+    <h4>🟡 반자동 <span class="pill">기본값</span></h4>
+    <div class="pillrow"><span class="pill">Osmani L1-L2</span><span class="pill">defaultMode: default</span></div>
+    <ul class="small">
+      <li><code>/moai goal</code> semi-autonomous checkpoint(매 턴 HTML 대시보드로 컨펌)</li>
+      <li>sync-gate <strong>전체 블로킹</strong>(vet+build+lint)</li>
+      <li>커밋 게이트 <strong>ON</strong></li>
+      <li>allowlist 외 Bash = per-tool 프롬프트</li>
+      <li>SubagentStop·TeammateIdle 블로킹 유지</li>
+    </ul>
+    <p class="small">민감/파괴 작업·불확실 도메인. 안전망 최대, 속도 최소.</p>
+  </div>
+  <div class="card sel">
+    <h4>🔵 자동 <span class="pill">권장 일반용</span></h4>
+    <div class="pillrow"><span class="pill">Osmani L2-L3</span><span class="pill">defaultMode: auto</span></div>
+    <ul class="small">
+      <li><code>/moai goal</code> Kickoff 후 arm(자율)</li>
+      <li>auto 분류기 안전망 → <strong>3 연속/20 총 블록 시 AskUserQuestion 폴백</strong></li>
+      <li>sync-gate <strong>build-only-block</strong>(vet/lint는 CI로)</li>
+      <li>커밋 게이트 <strong>OFF</strong>(위험 패턴 deny는 유지)</li>
+      <li>stop-goal <code>type:agent</code> 승격(테스트 실행 가능)</li>
+    </ul>
+    <p class="small">일상 Tier S/M 작업. 분류기가 흐름 끊김 최소화.</p>
+  </div>
+  <div class="card">
+    <h4>🔴 완전자율 <span class="pill">sandbox 전용</span></h4>
+    <div class="pillrow"><span class="pill">Osmani L3-L5</span><span class="pill">defaultMode: bypassPermissions</span><span class="pill">+sandbox 증명</span></div>
+    <ul class="small">
+      <li><code>/moai goal</code> + <code>ultracode</code>/workflows</li>
+      <li>sync-gate <strong>advisory</strong>(systemMessage만)</li>
+      <li>커밋 게이트 <strong>OFF</strong></li>
+      <li>SubagentStop·TeammateIdle <strong>dormant</strong>(관찰만)</li>
+      <li>deny/ask 규칙이 main push·secrets·<code>rm -rf</code>·deploy 고정(bypass에서도 바인딩)</li>
+    </ul>
+    <p class="small">컨테이너/VM 증명 필수. prompt-injection 보호 없음 문서화.</p>
+  </div>
+</div>
+
+<div class="box k"><div class="t">모드 토큰 → 기존 노브 매핑 (새 메커니즘 최소)</div>
+<table style="margin:8px 0">
+<tr><th>노브</th><th>반자동</th><th>자동</th><th>완전자율</th></tr>
+<tr><td>defaultMode (USER 설정)</td><td>default</td><td>auto</td><td>bypassPermissions</td></tr>
+<tr><td>MOAI_SYNC_GATE_BLOCKING</td><td>1 (전체)</td><td>build-only</td><td>0 (advisory)</td></tr>
+<tr><td>pre_tool.go 커밋 게이트 (L431)</td><td>ON</td><td>OFF</td><td>OFF</td></tr>
+<tr><td>stop-goal checkpoint 모드</td><td>semi-auto(매 턴)</td><td>autonomous</td><td>autonomous + Codex 게이트</td></tr>
+<tr><td>SubagentStop/TeammateIdle</td><td>블로킹</td><td>블로킹</td><td>dormant</td></tr>
+<tr><td>deny/ask 규칙 (PROJECT, 모든 모드 바인딩)</td><td colspan="3">동일 — main push·force-push·secrets·<code>rm -rf</code>·prod deploy·<code>terraform destroy</code>·IAM 부여 = 항상 ask</td></tr>
+</table>
+<p class="small">핵심: <strong>각 티어는 이미 존재하는 노브의 일관된 조합</strong>. <code>progression_mode</code> 필드(goal/schema.go)가 자연스러운 확장점. PermissionRequest 핸들러는 no-op 유지(레버 아님 — defaultMode+allowlist+PreToolUse가 진짜).</p>
+</div>
+
+<h3 id="d-goal">3.2 <code>/moai goal</code> HTML-퍼스트 흐름</h3>
+<p>plan→run 경계의 인라인 AskUserQuestion을 <strong>HTML 보고서 비동기 검토</strong>로 치환하고, 자율 실행 중 매 턴 끝 <strong>HTML 대시보드</strong>를 렌더해 채팅 감시를 브라우저 감시로 바꾼다.</p>
+
+<div class="flow">
+  <div class="node">① <code>/moai plan</code><br><span class="small">manager-spec 저작<br>→ plan-auditor</span></div>
+  <div class="arr">▶</div>
+  <div class="node hot">② HTML 보고서<br><span class="small">spec+plan+acceptance<br>+ 감사 판정 + 8-필드 계약<br>단일 HTML 산출</span></div>
+  <div class="arr">▶</div>
+  <div class="node cool">③ 비동기 검토<br><span class="small">사용자가 HTML 검토<br>승인 또는 편집 반환<br>(인라인 블로킹 없음)</span></div>
+  <div class="arr">▶</div>
+  <div class="node hot">④ 컨펌 시 자율 실행<br><span class="small">/moai goal arm(티어 선택)<br>1M 한도: milestone 폴딩<br>read-only fan-out · workflow<br>worktree 병렬 write</span></div>
+  <div class="arr">▶</div>
+  <div class="node cool">⑤ 매 턴 끝 HTML 대시보드<br><span class="small">evaluate.go Verdict 렌더<br>AC 매트릭스 · turn/ceiling<br>실패조건 cmd/exit/tail</span></div>
+</div>
+
+<div class="box g"><div class="t">핵심: evaluate.go의 데이터 모델은 이미 존재한다</div>
+<p><code>FailedCond{Cmd,Exit,Tail}</code>, checkpoint <code>Verdict{Turn,Ceiling,LastProgress,FailedConditions,snapshot_attribution}</code>(evaluate.go L31-35, L226-246)이 매 턴 끝 생성된다. 이를 <strong>산문 → AskUserQuestion 옵션으로 압축하지 말고</strong>, <code>moai goal render</code>(또는 <code>hook_stop_goal.go</code> Evaluate 후)가 자체완결 HTML을 <code>.moai/state/goal/&lt;session&gt;.html</code>에 매 터 기록. 오케스트레이터는 사용자에게 "대시보드 갱신했습니다 — continue/clear/switch?"만 물을 뿐, 실패 상세는 옵션에 중복하지 않는다(askuser-protocol § Preview-as-Report 안티패턴 회피).</p>
+<p>모드별 후크 메커니즘(R2 기반): 반자동·자동 = command Stop(결정적 grep/exit); 자동은 코드베이스 상태 조건을 <code>type:agent</code>로 승격(테스트 실행 가능 → native <code>/goal</code>의 "평가기는 명령 실행 불가" 갭 폐쇄); 완전자율 = <code>type:prompt</code>(Haiku) + Codex 적대 게이트. <strong>세 티어 모두 <code>stop_hook_active</code> 파싱 후 early exit 필수</strong>(8-블록 캡 조용한 종료 방지).</p>
+</div>
+
+<div class="box w"><div class="t">⚡ v2 개정 — /moai goal 1M 한도 제거, auto-compact로 무한 지속</div>
+<p>사용자 결정: "1M 토큰 제약 두지 말고, auto-compact가 있으니 /moai goal이 지속 진행되도록." 실측(C2) 결과 <strong>1M 숫자 자체(<code>defaults.go:90</code>)는 하드 캡이 아니라 auto-compact 윈도우</strong> — 진짜 루프를 끊는 캡은 3곳: (1) <code>Ceiling.MaxTurns=30</code>(<code>schema.go:78</code>), (2) 런타임 <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8</code>(silent, min(30,8)=8), (3) /clear 독트린(50%/90%에서 /clear 지시). auto-compact 자체는 <strong>이미 goal을 살림</strong> — 세션-id不变이라 goal 상태 파일이 compaction 통과(훅은 코드라 compaction 생존, evaluator 매 post-compact 턴 재실행).</p>
+<p><strong>설계</strong>: (1) <code>--max-turns 0</code>(무한) arm 플래그 + <code>evaluate.go:142</code>의 <code>&gt; 0</code> 가드가 0에서 검사 비활성; (2) <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code> 인상(예 200) — stagnation guard가 진짜 bound; (3) goal armed 시 statusline soft/hard 단계를 정보용으로(/clear 지시 억제) → auto-compact가 압력 처리; (4) <strong>진짜 종료 bound 추가</strong>: wall-clock/cost cap(MaxTurns=0만으론 무한 → 비용 무한 증가 risk); (5) stagnation guard 강화(동일 note 3회 → "N턴 mechanical-condition 변화 없음", test 카운트·파일 해시 비교); (6) <strong>/clear 경계</strong>: <code>moai handoff save</code>가 라이브 goal을 읽어 pending에 임베드 → <code>handoffInjectHandler</code>가 새 세션-id로 새 goal 파일 작성(기계적 재무장, 옵션 A); (7) <strong>치명 발견 시정</strong>: ac_converge "Max 20 turns"는 parseCondition이 안 파싱(<code>exits &lt;N&gt;</code>만) → 실제 MaxTurns=30으로 실행 중. 'stop after N turns' 파서 추가 필요.</p>
+<p class="small"><strong>auto-compact 한계</strong>: thrashing guard(단일 큰 출력이 즉시 재충전 시 중단) → 매 iteration이 context를 작게 만들어야(서브에이전트 위임·file-redirect bounded tail·표적 명령). model conditions는 auto-compact에 깨짐(verbatim 증거 요약) → ac_converge를 mechanical로. <code>SessionStart(matcher:compact)</code> 훅이 goal 조건+SPEC-id+progress 포인터 재주입.</p>
+</div>
+
+<h3 id="d-team">3.3 계층 에이전트팀</h3>
+<div class="box w"><div class="t">차단물 해결 — leader 1곳만 Agent 도구 포함(유일 예외)</div>
+<p>평평-계층-by-도구생략(§1.5 critical)을 leader 역할에만 예외 허용: 신규 leader 에이전트의 <code>tools:</code>가 Agent를 <strong>포함</strong>, leaf worker는 기존대로 생략. 동시성 안전장치(2개 write-capable 동시 금지)는 <strong>worktree 격리된 writer</strong>로 우회 — worktree-integration 의사결정나무의 "team mode" 조건을 <strong>"계층 팀 내 병렬 write worker"</strong>로 재키잉(은퇴 모드 의존 제거).</p>
+</div>
+<ul>
+  <li><strong>coding-workflow 입장 티어</strong>(Mode 6 하위): 각 worker가 worktree 격리 + effort 목적별 핀(읽기추출=low, 구현=xhigh) + milestone 범위. 코딩 팀이 workflow의 16-동시/1000-총 스케일링 + 스크립트 변수 컨텍스트 격리 획득 → 중간 결과가 leader 컨텍스트에 누적 안 함(1M 예산 보존).</li>
+  <li><strong>milestone별 Context-Folding</strong>(arXiv:2510.11967): milestone Mn 완료 시 raw transcript를 <code>progress.md</code> 요약 행으로 폴딩, 검증 가능 증거(명령+출력)는 <code>.moai/state/verify/</code>에 영속. 오케스트레이터 컨텍스트가 누적 run 크기가 아니라 <strong>현재 milestone 크기</strong>로 bound → Tier L 다중-milestone run이 /clear 없이 생존.</li>
+  <li><strong>peer 교차 검증</strong>(AgentOrchestra): manager-develop이 AC 구현 후 <strong>두 번째 worker(작성자 아님, 이상적 교차모델)가 동일 산물 검증</strong>. 자가보고보다 구조적으로 강함. AC 수준 codex-audit 형태.</li>
+  <li><strong>스키마 주도 fan-out + bounded 수리</strong>(A-MapReduce): 각 탐색기 고정 스키마 반환 → reduce가 기계적 병합(자유형 합성 아님). 동시 배치 상한 보수적(3-5 유지). 라우팅 레저→harness-learning이 경험 메모리("60→6 subagent") 채널.</li>
+  <li><strong>Pre-Spawn Sync Check 분할 상각</strong>: 3-명령 배치를 leader 스폰 경계에서 1회만; worktree 격리 leaf worker는 읽기전용 agent처럼 면제.</li>
+  <li><strong>goal+ultracode /clear 생존</strong>: goal 상태를 SPEC-ID 키잉(세션 아님) 또는 session-handoff resume flow(Block 1/5)에 자동 재무장 추가 → 1M run이 컨텍스트 경계 넘어 연속.</li>
+</ul>
+
+<h3 id="d-codex">3.4 Codex 감사 위임 — moai-mcp 내장 (v2 전환)</h3>
+<div class="box g"><div class="t">v2 전환 — 외부 플러그인 의존 → moai-mcp 내장 (단일 .mcp.json)</div>
+<p>사용자 결정: <code>openai/codex-plugin-cc</code> 소스를 분석해 <strong>moai-mcp에 내장</strong>. 실측(R1 역공학) 핵심 — 플러그인은 host-agnostic Node.js 엔진(<code>codex-companion.mjs</code>) 위의 Claude-Code 특정 셸이고, 감사 지능은 <strong>별개 프로세스 <code>codex app-server</code>와의 JSON-RPC</strong>(<code>thread/start</code>·<code>turn/start</code>·<code>review/start</code>)에 있다. Claude-Code 결합은 슬래시 명령·훅 셸만. <strong>따라서 moai가 Go에서(또는 .mjs 브릿지로) codex app-server에 직접 말하면 Claude-Code 의존 0, GLM 세션에서도 동일 호출</strong>(<code>serviceName</code>은 코스메틱).</p>
+</div>
+<h4>단일 MCP, 6개 툴</h4>
+<p><code>.mcp.json</code>에 정확히 1개 엔트리: <code>{"mcpServers":{"moai":{"command":"moai","args":["mcp-server"]}}}</code>. Claude·GLM 호스트 모두 동일 엔트리 로드. codex 감사는 이 서버의 툴 중 일부.</p>
+<table>
+<tr><th>툴</th><th>대체</th><th>구현</th></tr>
+<tr><td><code>codex_audit</code></td><td>/codex:review + /codex:adversarial-review 통합(<code>mode</code> enum)</td><td><strong>codex 바이너리 셸아웃</strong>(감사 지능 = codex 모델). 입력: mode·target(uncommittedChanges|baseBranch)·focus(adversarial만)·model·background. 출력: <code>review-output.schema.json</code> 그대로 채택(verdict·summary·findings[severity/title/body/file/line/confidence/recommendation]·next_steps). native→<code>review/start</code>, adversarial→<code>turn/start</code>+adversarial-review.md 프롬프트.</td></tr>
+<tr><td><code>codex_task</code></td><td>/codex:rescue (서브에이전트 불필요)</td><td>codex 셸아웃. 입력: prompt·write·resume_last·model·effort·background. <code>turn/start</code>.</td></tr>
+<tr><td><code>codex_setup</code></td><td>/codex:setup</td><td><strong>Go 재구현</strong>(바이너리 프로브: exec.LookPath + <code>codex --version</code>) + 최소 RPC. ChatGPT/apiKey/provider 분류. <code>enable_review_gate</code> 토글.</td></tr>
+<tr><td><code>codex_job_status/result/cancel</code></td><td>/codex:status|result|cancel</td><td><strong>Go 예약부 재구현</strong>(<code>.moai/state/codex-jobs/</code>); cancel은 <code>turn/interrupt</code> RPC + pid kill.</td></tr>
+<tr><td><code>codex_transfer</code> <span class="pill">Phase 2</span></td><td>/codex:transfer</td><td>codex 외부에이전트 세션 임포터. 미문서화·버전 결합 → Phase 2 연기.</td></tr>
+</table>
+<h4>Stop-hook 게이트 — Go 재구현</h4>
+<p><code>.claude/hooks/moai/codex-review-gate.sh</code> → <code>moai hook codex-review-gate</code>. opt-in(<code>workflow.codex.review_gate.enabled</code>, BranchGuard 패턴). ALLOW/BLOCK 계약 그대로. <strong>핵심 자가 게이트</strong>: "이전 턴이 코드 편집 없는 상태/보고/review-result면 즉시 ALLOW" — 허위 블록 방지. timeout 900s(plugin 따라; moai 기본 5s에서 이 훅만 오버라이드).</p>
+<div class="box"><div class="t">강제 조건 (v2)</div>
+<ul style="margin:6px 0">
+  <li><strong>fail-open</strong>: codex 키 부재 → <code>codex_audit</code>가 <code>VerdictInconclusive</code> 반환 → 게이트가 기존 Claude-only plan-auditor Agent 경로로 폴백. <strong>MCP 툴은 AskUserQuestion 못 함</strong>(서브에이전트 경계) → INCONCLUSIVE를 결과로 반환, orchestrator가 번역.</li>
+  <li><strong>auth/secret</strong>: codex 키는 <code>~/.moai/.env.codex</code>(<code>loadGLMKey</code> 패턴), <strong>.mcp.json env에 직렬화 금지</strong>(project-scope은 git 추적) — <code>${CODEX_API_KEY}</code> 리터럴로 Claude Code 런타임 expand.</li>
+  <li><strong>모델/effort 일원화</strong>: <code>codex_audit</code>가 <code>template.ResolveAgentModelEffort</code>(<code>handlers.go:85</code>, 웹 콘솔·launcher 동일 해석기)로 감사 모델/effort 해석 → <strong>moai web에서 설정한 값과 MCP가 동일 적용</strong>(SSOT). agentfm frontmatter·llm.agent_overrides 두 저장소 직접 읽기 금지(분기 위험).</li>
+  <li><strong>GLM 호환</strong>: moai-mcp는 local stdio → z.ai 게이트웨이 안 거침 → glm-web-tooling HARD 테이블 미적용. <code>moai glm</code>/<code>moai cg</code>에서 동일 호출. 유일 GLM 민감 = audit 호출 자체(IsGLMBackend 인식).</li>
+  <li><strong>Phase 분리</strong>: Phase 1(codex_audit native+adversarial + codex_setup + Stop 훅, .mjs 래핑) → Phase 2(codex_task·job_*·transfer + 네이티브 Go JSON-RPC 클라). 각 툴 = 별도 SPEC/AC.</li>
+</ul>
+</div>
+
+<div class="box w"><div class="t">⚡ v3 확장 — 감사 모델 3-way (Claude/Codex/GLM) + 감사 게이트 3단계</div>
+<p>사용자 결정: 감사 백엔드를 <strong>Claude·Codex·GLM 3-way</strong>로 선택(moai init/web), 감사 게이트는 <strong>3단계(off/advisory/required)</strong> 모두 선택 가능, 기본 <strong>required(수렴 전 필수)</strong>. codex/glm 미사용(미설치/미인증) 시 fail-open → 활성 auditor(claude)로 폴백.</p>
+<h4>감사 모델 3-way (auditor 파라미터)</h4>
+<table>
+<tr><th>auditor</th><th>호출</th><th>인증</th></tr>
+<tr><td><code>claude</code></td><td>세션 백엔드 상속(현재 plan-auditor/sync-auditor Agent 경로)</td><td>세션(이미)</td></tr>
+<tr><td><code>codex</code></td><td>codex app-server JSON-RPC(<code>review/start</code>·<code>turn/start</code>)</td><td><strong>OAuth</strong>(<code>codex login</code> — ChatGPT 계정 또는 API 키)</td></tr>
+<tr><td><code>glm</code></td><td><strong>z.ai GLM API 직접 호출</strong>(Anthropic-compatible 엔드포인트, <code>glm-tools.go</code> z.ai 클라이언트 재사용)</td><td><strong>API 키</strong>(<code>~/.moai/.env.glm</code>, <code>loadGLMKey</code> 재사용)</td></tr>
+<tr><td><code>cross-model</code></td><td>둘 이상 병렬(super-review 패턴) → 불일치 = Verification Matrix 최우선 잔여위험</td><td>각 인증 결합</td></tr>
+</table>
+<p class="small"><strong>GLM MCP 공식 자료 결론</strong>: z.ai 공식 MCP 서버(Vision·Web Search)는 GLM <em>능력</em>을 MCP로 노출 — 감사용은 <strong>GLM 모델 API 직접 호출</strong>이지 MCP 서버 의존이 아님. moai-mcp가 z.ai API 클라이언트로 감사 프롬프트 전송(<code>@z_ai/mcp-server</code> npm·<code>docs.z.ai/devpack/mcp</code> 참고하나 자체 구현). codex=OAuth, glm=API키 — 인증 분기.</p>
+<h4>감사 게이트 3단계 (audit_gate, 기본 required)</h4>
+<table>
+<tr><th>강도</th><th>동작</th></tr>
+<tr><td><code>off</code></td><td>해당 auditor 안 함(다른 auditor만)</td></tr>
+<tr><td><code>advisory</code></td><td>감사 결과를 systemMessage로(블록 아님)</td></tr>
+<tr><td><code>required</code> <span class="pill">기본</span></td><td>수렴/머지 전 해당 auditor PASS 필수(블록). 미인증/미설치 시 fail-open → claude로 폴백</td></tr>
+</table>
+<p class="small">moai init/web: <code>audit_model</code> ∈ {claude, codex, glm, multi} + 각 auditor별 <code>audit_gate</code> ∈ {off, advisory, required}. 기본 = claude+codex required, glm advisory(사용자 활성화). <strong>모델/effort는 웹 설정과 동일</strong>(<code>ResolveAgentModelEffort</code> SSOT, §3.6).</p>
+</div>
+
+<h3 id="d-audit">3.5 plan·run·sync 감사 최적화 (속도 직격)</h3>
+<table>
+<tr><th>#</th><th>최적화</th><th>레버</th><th>효과</th></tr>
+<tr><td>A1</td><td><strong>sticky 해시 캐시</strong></td><td>audit_cache.go <code>ComputeHash</code>에서 24h 조건 제거 — 해시不变 시 캐시 판정 유효. Tier L은 해시 대상에 design.md+research.md 추가.</td><td>plan→run 이중 스폰 제거(변경 없는 모든 SPEC). 재개 세션의 하루 경과 재감사 벌점 제거.</td></tr>
+<tr><td>A2</td><td><strong>skip 임계치 → PASS 정렬</strong></td><td>0.90 평시 → Tier별 PASS(0.75/0.80/0.85)로.</td><td>skip이 예외→규칙. 대다수 PASS SPEC이 run Phase 1 재감사 면제.</td></tr>
+<tr><td>A3</td><td><strong>4dim → 바인딩 판정 승격</strong></td><td>sync-audit-4dim.js verdict를 happy path 바인딩; sync-auditor 콜드 스폰은 INCOMPLETE/0점/이의제기 시만.</td><td>clean sync에서 콜드 Opus 스폰 제거(사례). 4 병렬 판사가 동시에 돌아 1 직렬 판사보다 빠름.</td></tr>
+<tr><td>A4</td><td><strong>공유 진단 snapshot</strong></td><td>quality-gates Step 0.5.2 snapshot 메커니즘 확장 — sync-auditor·Stop 훅·4dim 판사가 트리 상태 키로 동일 snapshot 소비(go test·lint·vet·cover 재실행 無).</td><td>sync당 4회→1회 test/lint/coverage. 중형 Go SPEC에서 가장 큰 시간 절약(golangci-lint 단독 30-90s).</td></tr>
+<tr><td>A5</td><td><strong>docs ∥ audit 병렬화</strong></td><td>CHANGELOG/README/docs-site는 SPEC+git diff에서 파생(감사 결과 아님). manager-docs를 감사(7-10)와 동시 background Agent로 드래프트(읽기전용 감사와 동시 write 허용). gate-sync-2가 병합.</td><td>임계 경로 1 페이즈 제거. snapshot 중복 제거와 합쳐 sync 시간 ~반감(4-locale docs 동기화에 큰 효과).</td></tr>
+<tr><td>A6</td><td><strong>plan-auditor retry Tier별 상한</strong></td><td>harness.yaml: Tier S=1, M=2, L=3.</td><td>대다수(S/M) 단일 스폰; 3-iter 꼬리는 대형 전용. 최악 3× 콜드 스폰 제거.</td></tr>
+<tr><td>A7</td><td><strong>MX Tag 조기+병렬</strong></td><td>Phase 9 직렬 → Phase 7 감사와 동시 fan-out; P1/P2 블록은 coverage 실행 전 중단(후기 중단 낭비 제거).</td><td>직렬 페이즈 제거 + "30분 커버리지 후 누락 1개 전체 중단" 최악 사례 제거.</td></tr>
+<tr><td>A8</td><td><strong>per-edit 훅 통합</strong></td><td>develop-pre+post(5s+10s/편집) 대부분을 develop-completion Stop 훅(사이클당) 또는 milestone 커밋 경계로 이동; PreToolUse는 파괴 패턴·scope-discipline만 잔류.</td><td>TDD 다수 원자 편집의 편집당 서브프로세스 세금 제거. run-phase per-edit 속도 1위 개선.</td></tr>
+<tr><td>A9</td><td><strong>§E + 7-batch 통합</strong></td><td>agent §E 증거를 정규 산물로; 오케스트레이터 trust-but-verify를 재실행→diff-check로.</td><td>완료 단계 검증 시간 ~반감(verification-claim-integrity §2 attribution 준수 — 재실행 자동 제거 無, attributable diff-check로 치환).</td></tr>
+<tr><td>A10</td><td><strong>Stop 체인 셸 단축</strong></td><td>handle-stop-goal.sh: goal 상태 파일 존재 시만 exec; sync-gate: HEAD subject 매치 시만 exec. observer/security 4개 훅 async 전환.</td><td>per-turn 6 fork+exec(4 콜드 스타트) → 조건부 2 콜드 스타트. goal 미사용 세션 0 비용.</td></tr>
+<tr><td>A11</td><td><strong>모드 인지 훅</strong></td><td>sync-gate(완전자율=advisory), 커밋 게이트(자동/완전자율=OFF), subagent lifecycle(완전자율=dormant) — 모두 모드 토큰 읽기.</td><td>자율 goal 루프의 per-turn·per-commit·per-teammate 중단점 제거.</td></tr>
+</table>
+
+<h3 id="d-mcp">3.6 moai 자체 MCP 서버 — thin CLI 코어 래퍼</h3>
+<div class="box w"><div class="t">오해 정정 먼저 — "대시보드를 위해 MCP 서버를 개발?" → 아니다</div>
+<p>두 표면은 <strong>방향이 다르다</strong>: 웹 대시보드는 브라우저→moai(인간용), moai MCP 서버는 AI→moai(AI용). 대시보드는 <code>moai web</code>(이미 <code>internal/web/</code>에 <code>board.go</code> SPEC 보드 존재)에 WebSocket만 추가하면 끝 — MCP 서버 불필요. <strong>웹 라이브 보드는 이번 scope에서 제외, v3.1 배포 타깃</strong>(별도 메모리 저장 완료). moai MCP 서버는 AI 통합용 별개 가치로 P2.</p>
+</div>
+
+<h4>핵심 설계 — 같은 코어, 두 표면</h4>
+<p>MCP 서버를 CLI와 <strong>별개 코어로 새로 짜지 않는다</strong>. CLI의 Cobra 핸들러가 부르는 같은 <code>internal/</code> 함수(<code>internal/spec</code>·<code>internal/session</code>·<code>internal/goal</code>·<code>internal/verify</code>)를 래핑하는 thin JSON-RPC 레이어. 이건 업계 정석 — Anthropic 자체(context7·playwright MCP), 그리고 Codex도 <code>codex</code> CLI와 <code>codex mcp-server</code>를 동시 제공한다.</p>
+<pre><code>   internal/spec · internal/session · internal/goal · internal/verify
+              (단일 코어 로직 — 단일 source of truth)
+                              │
+            ┌─────────────────┴─────────────────┐
+            ▼                                   ▼
+   moai CLI (Cobra)                    moai MCP 서버 (P2)
+   인간·스크립트·훅·AI 폴백            "moai mcp-server" stdio JSON-RPC
+   "임의 결합·탐색" (Bash)             AI 오케스트레이터·외부 MCP 클라이언트
+   이미 존재                           "선언적·반복·스키마 안전" (tools/list)
+                                      thin wrapper (같은 코어 재사용)</code></pre>
+
+<h4>CLI Bash 호출 vs MCP 서버 — 정직한 비교</h4>
+<table>
+<tr><th>축</th><th>CLI Bash 호출 <span class="small">(오늘)</span></th><th>moai MCP 서버 <span class="small">(P2)</span></th></tr>
+<tr><td>발견/스키마</td><td>AI가 <code>--help</code>로 학습, 플래그 추측 → 틀리면 재시도·토큰 낭비</td><td><code>tools/list</code>가 name+JSON Schema 선언 → <strong>타입 안전, 추측 0</strong></td></tr>
+<tr><td>결과 파싱</td><td>stdout 텍스트, verbose 출력이 컨텍스트 갉아먹음</td><td>JSON-RPC 구조화 객체가 도구 결과로 직접 수신</td></tr>
+<tr><td>지연/오버헤드</td><td>매 호출 = Go 바이너리 콜드 스타트+config 로드 (§1.4 병목과 동일 세금)</td><td>장기 실행 프로세스, 핸드셰이크 1회 → <strong>반복 호출 훨씬 저렴</strong>, in-memory 캐시</td></tr>
+<tr><td>상태 유지</td><td>stateless</td><td><strong>stateful</strong> 가능 (캐시·트랜잭션·롤백)</td></tr>
+<tr><td>보안/공격면</td><td>AI가 임의 플래그 조합 → <code>moai spec delete --force</code> 자의 실행 위험</td><td>노출된 툴만 호출 → <strong>훨씬 좁은 공격면</strong> (완전자율 티어 안전망)</td></tr>
+<tr><td>이식성</td><td>moai 설치 기기 + PATH만</td><td><strong>표준 프로토콜</strong> — Cursor·Cline·Zed·다른 LLM 클라이언트 재사용</td></tr>
+<tr><td>유연성/탐색</td><td><strong>AI가 즉석 결합</strong> (파이프·grep·jq) — 탐색에 압도적</td><td>노출된 툴만 — 새 결합 못 만듦</td></tr>
+<tr><td>개발 비용</td><td>이미 대부분 존재, <code>--json</code> 정제만</td><td>Go MCP SDK 래퍼 (중간 비용, 코어 재사용)</td></tr>
+</table>
+<p class="small"><strong>결론</strong>: 단발·탐색은 CLI Bash가 이기고, 반복·구조화·자율·이식은 MCP가 이긴다. 둘 다 같은 코어 위에 올린다 — CLI가 이미 있으니 MCP는 그 코어의 thin 스키마 래퍼.</p>
+
+<h4>Q1: Codex 감사를 스킬/감사 에이전트가 자동 호출? — 가능 (3경로)</h4>
+<p>실측: <code>plan-auditor</code>·<code>sync-auditor</code> 모두 <code>tools:</code>에 <code>Skill</code> 도구 포함(이미 조건부 스킬 로드 메커니즘 작동 중). Codex MCP 툴은 세션에 서버 로드 시 에이전트가 접근 가능. 세 경로, 목적별 조합:</p>
+<table>
+<tr><th>경로</th><th>방식</th><th>용도</th></tr>
+<tr><td><strong>A (추천)</strong></td><td>감사 에이전트가 <code>Skill("moai-ref-codex-audit")</code> 로드 → 스킬 본문이 <code>mcp__codex__codex</code> 호출 지시(Claude 자기 분석은 넘기지 않음 = super-review 독립성). 기존 skill-routing 100% 재사용</td><td>plan/sync 감사 기본</td></tr>
+<tr><td>B</td><td>에이전트 <code>tools:</code>에 <code>mcp__codex__codex</code> 직접 명시</td><td>회피 (툴명 하드코딩·항상 켜짐)</td></tr>
+<tr><td><strong>C</strong></td><td><code>codex-plugin-cc</code>의 Stop-hook review 게이트(훅 스크립트가 codex CLI 직접 exec)</td><td>완전자율 <code>/moai goal</code> 수렴 전 안전망</td></tr>
+</table>
+<p class="small"><strong>추천</strong>: 경로 A를 plan/sync 감사 기본, 경로 C를 완전자율 goal 안전장치. 공통 전제 — MCP 서버 로드는 사용자 옵트인(<code>settings.local.json</code>+Codex 인증), 템플릿 기본 탑재 불가, fail-open 필수(§3.4).</p>
+
+<h4>Q2: moai web 실시간 소켓 대시보드는? — v3.1 배포 (이번 scope 제외)</h4>
+<div class="box"><div class="t">실측 현황</div>
+<ul style="margin:6px 0">
+<li><code>internal/web/</code>에 실제 Go HTTP 서버 존재(<code>app.go</code>·<code>server.go</code>·<code>handlers.go</code>)</li>
+<li><strong>이미 SPEC 보드 있음</strong> — <code>board.go</code>의 <code>handleBoard</code>가 <code>GET /specs</code>에서 8-상태 분포(draft→completed)+close-debt를 templ SSR로 렌더. 단, <strong>지금 읽기전용 GET이라 새로고침 필요</strong></li>
+<li><code>gorilla/websocket</code>은 go.mod에 <strong>없음</strong> — WebSocket/SSE 미구현</li>
+<li>상태 데이터 소스는 풍부: <code>.moai/state/</code>(active-sessions·context-usage·routing-ledger), goal, SPEC scanner, <code>evaluate.go</code> Verdict</li>
+</ul>
+<p>실시간 보드 = <code>moai web</code>에 WebSocket 엔드포인트 + <code>fsnotify</code>로 상태 파일 watch→소켓 broadcast. <strong>이 전부가 moai web 안에서 끝 — MCP 서버 불필요.</strong> 단, 핵심 개편(6축)이 안정화된 뒤 상태 데이터가 의미 있으므로 <strong>v3.1 배포 타깃</strong>으로 연기.</p>
+</div>
+
+<h4>구현 원칙</h4>
+<ul>
+<li><strong>thin wrapper</strong>: MCP 핸들러는 CLI Cobra 핸들러가 부르는 같은 <code>internal/</code> 함수 호출. 두 표면 영원히 일치.</li>
+<li><strong>같은 상태 계층 공유</strong>: 웹 대시보드(v3.1)·MCP 서버·CLI 모두 동일 <code>internal/spec·session·goal</code> 읽기 함수 재사용 → 중복 0.</li>
+<li><strong>도구 설계</strong>: <code>moai_session_list</code>·<code>moai_goal_status</code>·<code>moai_spec_progress</code>·<code>moai_verify_snapshot</code>·<code>moai_goal_arm</code> 등. 쓰기 툴(goal arm 등)은 모드 토큰·deny/ask 규칙 준수.</li>
+<li><strong>전환점</strong>: <code>/moai goal</code> 자율 루프가 매 턴 moai 상태를 조회 → 콜드 스타트 N×가 stateful MCP 한 프로세스로 흡수(§1.4 병목 직격). 이때 P2 도입 가치.</li>
+<li><strong>Go MCP SDK</strong>: <code>mark3labs/mcp-go</code> 또는 <code>modelcontextprotocol/go-sdk</code>.</li>
+</ul>
+
+<h4>내장 통합맵 (C1 실측)</h4>
+<p>모든 툴은 <strong>이미 존재하는 internal/* 함수를 래핑</strong> — MCP는 thin JSON-RPC 전송:</p>
+<table>
+<tr><th>항목</th><th>위치 (file:line)</th></tr>
+<tr><td><code>moai mcp-server</code> 서브커맨드 부착</td><td>신규 <code>internal/cli/mcp_server.go</code> + <code>root.go</code> AddCommand (<code>goal.go</code> 패턴, 블로킹 RunE stdio 루프)</td></tr>
+<tr><td>spec_audit / spec_drift 툴</td><td><code>spec.Audit</code>(<code>spec/audit.go:156</code>) — moai spec audit CLI가 이미 래핑</td></tr>
+<tr><td>session_list / goal_status 툴</td><td><code>session.QueryActiveWork</code>(<code>registry.go:254</code>) · <code>goal.LoadGoal</code>(<code>state.go:43</code>)</td></tr>
+<tr><td>verify_snapshot / trend 툴 (신규 CLI 없음)</td><td><code>verify.Load</code>(<code>store.go:38</code>) + <code>RecordCheck</code> — 현재 goal 평가기만 소비 → MCP가 최초 CLI 표면</td></tr>
+<tr><td>audit_cache 툴</td><td><code>runtime.AuditCache</code>(<code>audit_cache.go:43</code>) ComputeHash/Lookup/Store — 24h PASS 캐시 재사용(중복 감사 회피)</td></tr>
+<tr><td><code>.mcp.json</code> 쓰기</td><td><strong>인프라 이미 구축</strong>: <code>glm_tools.go</code> <code>mutateClaudeJSONAtomic</code>(flock+RMW)·<code>resolveConfigPath</code>·<code>buildMoaiMCPServerEntry</code>(buildZAIMCPEntry 유사) 재사용</td></tr>
+<tr><td>init 'codex 감사 on/off' 분기</td><td><code>wizard/questions.go</code> Page3Questions + <code>init.go applyWizardPage3ToOpts</code> — codex_audit_enabled + mcp_tools_opt_in</td></tr>
+<tr><td>감사 모델/effort SSOT</td><td><code>template.ResolveAgentModelEffort</code>(<code>handlers.go:85</code>) — 웹·launcher·MCP 동일 해석기</td></tr>
+<tr><td>의존성 선택</td><td>go.mod에 MCP SDK 없음 → hand-rolled JSON-RPC stdio(~200 LOC) 또는 <code>mark3labs/mcp-go</code> 추가</td></tr>
+</table>
+<div class="box w"><div class="t">자세 반전 (Template-First)</div>
+<p><code>settings-management.md:33</code> "MoAI-ADK no longer ships or provisions MCP servers via .mcp.json" → <strong>반전</strong>: 이제 정확히 1개 서버(<code>moai mcp-server</code>, local 바이너리) 프로비전. generic/중립적이라 §25 template-neutrality 통과(SPEC ID·SHA·macOS 경로 無). 템플릿 소스 + CI guard 동시 갱신 필수.</p>
+</div>
+
+<h3 id="d-trend">3.7 트렌드 MCP 도구 — 번들·opt-in·스킵 (R2)</h3>
+<p>2026 MCP 생태계 리서치(R2) + "활성 MCP 3-6개 유지" 컨센서스(per-tool 호출 지연) 기반 분할. 기존 <code>.mcp.json</code>은 Context7 + chrome-devtools.</p>
+<table>
+<tr><th>분류</th><th>MCP</th><th>MoAI-ADK 용도</th></tr>
+<tr><td><strong>번들 추가</strong></td><td>Playwright (<code>npx @playwright/mcp</code>)</td><td>e2e-tester 에이전트 + docs-site 4-locale 기능 검증. chrome-devtools(성능/Lighthouse)와 보완. 2026 글로벌 #1 MCP.</td></tr>
+<tr><td><strong>번들(opt-in 토글)</strong></td><td>ast-grep (<code>uvx ast-grep-mcp</code>)</td><td>16언어 구조적 검색 — /moai codemaps·mx·마이그레이션. 중립적(§25 통과, dogfood 룰셋과 별개). default-disabled 엔트리.</td></tr>
+<tr><td><strong>opt-in 레시피</strong></td><td>Semgrep</td><td>TRUST 5 Secured 차원 — moai-ref-owasp/secops를 산문 참조→기계 검증으로. 5000+ 레지스트리 룰.</td></tr>
+<tr><td><strong>opt-in</strong></td><td>GitHub MCP</td><td>Actions 로그·Dependabot/code-scanning 구조화 섭취(gh CLI manager-git과 중복 회피).</td></tr>
+<tr><td><strong>opt-in (사용자 프로젝트용)</strong></td><td>Postgres/neon·Sentry·Codecov</td><td>DB/프로덕션 디버그/커버리지 — moai-adk-go 자체엔 무관, 사용자 앱용 레시피.</td></tr>
+<tr><td><strong>스킵 (사유 기록)</strong></td><td>Sequential Thinking·Filesystem·Git·Memory/KG·Brave/Exa</td><td>Sequential=ultrathink로 은퇴 regress · Filesystem=네이티브 R/W 중복 · Git=branch-guard 충돌 · Memory=auto-memory 중복 · Brave=built-in WebSearch 중복</td></tr>
+</table>
+<p class="small"><strong>MCP는 게이트 대체 아님</strong> — /moai gate LSP·verification-claim-integrity attributed-baseline·sync-auditor 4-dim이 SSOT; Semgrep/Codecov는 증거를 공급할 뿐 재정의 안 함.</p>
+
+<!-- ===================== CH4 ===================== -->
+<h2 id="ch4">제4장 — 통합 아키텍처</h2>
+<p>5축이 하나로 맞물리는 흐름. <strong>Implementation Kickoff Approval은 모든 티어에서 강제</strong>(R2·R5 불변) — 자율성은 턴 계속의 자율이지 파괴 행위의 자율이 아니다.</p>
+<pre><code>사용자
+ │  moai init / moai web → 티어 선택 (반자동·자동·완전자율)
+ │  └─ USER 설정: defaultMode     └─ PROJECT 설정: deny/ask 규칙(merge)
+ │  └─ workflow.yaml: MOAI_AUTONOMY_TIER 토큰
+ ▼
+/moai plan ── manager-spec ── plan-auditor(Claude) ──┐
+ │                                                   ▼
+ │              【A1 sticky hash】  【A6 retry 상한】  HTML 보고서 렌더
+ │              【A2 skip 정렬】                       (spec+plan+accept+판정+8필드계약)
+ ▼                                                        │
+ 비동기 검토  ◀──────────────────────────────────────────┘
+ │  (인라인 AskUserQuestion 없음 — 캐시 만료 세금 0)
+ ▼
+Implementation Kickoff Approval 【모든 티어 강제】
+ │  + 티어별 goal arm(반자동=checkpoint / 자동·완전자율=autonomous)
+ ▼
+/moai run (1M 한도)
+ ├─ 리더 에이전트(Agent 포함) → worktree 견리 writer fan-out 【3.3】
+ ├─ milestone별 Context-Folding → progress.md 요약 + verify/ 증거
+ ├─ read-only fan-out(감사·연구·검증) ∥ 단일 write(manager-develop) 【R1: 코딩=직렬】
+ ├─ Codex 감사 위임(plan/sync/goal) 【3.4】 — 교차모델, fail-open
+ └─ 매 턴 끝 HTML 대시보드 【3.2】 — evaluate.go Verdict 렌더
+      │
+      ├─ 모드 인지 훅 【A11】: sync-gate advisory · 커밋 게이트 OFF · subagent dormant
+      ├─ Stop 체인 단축 【A10】 · per-edit 통합 【A8】
+      └─ deny/ask 규칙 = 모든 모드에서 main push·secrets·rm -rf·deploy 고정 바인딩
+ ▼
+/moai sync
+ ├─ 공유 snapshot 【A4】 (test/lint/cover 1회, 4dim·sync-auditor·Stop훅이 소비)
+ ├─ docs ∥ audit 병렬 【A5】
+ ├─ 4dim 바인딩 승격 【A3】 + Codex 4-dim 독립 패스 【3.4】
+ ├─ MX 조기+병렬 【A7】
+ └─ Claude↔Codex 불일치 = Verification Matrix 최우선 잔여위험
+</code></pre>
+
+<div class="box k"><div class="t">모드별 행동 매트릭스 (요약)</div>
+<table style="margin:8px 0">
+<tr><th>표면</th><th>반자동</th><th>자동</th><th>완전자율</th></tr>
+<tr><td>plan HTML 검토</td><td colspan="3">동일(비동기, 모든 티어)</td></tr>
+<tr><td>Kickoff Approval</td><td colspan="3">강제(모든 티어)</td></tr>
+<tr><td>per-tool 프롬프트</td><td>allowlist 외</td><td>auto 분류기(3/20 폴백)</td><td>제거(bypass)</td></tr>
+<tr><td>per-turn STOP</td><td>checkpoint(HTML)</td><td>제거(자율)</td><td>제거(자율)</td></tr>
+<tr><td>커밋 게이트</td><td>ON</td><td>OFF</td><td>OFF</td></tr>
+<tr><td>sync Stop 훅</td><td>전체 블록</td><td>build-only</td><td>advisory</td></tr>
+<tr><td>감사 게이트(auditor+강도)</td><td>claude required</td><td>claude+codex required</td><td>claude+codex required, glm advisory</td></tr>
+<tr><td>파괴/비가역 (deny/ask)</td><td colspan="3">항상 ask — 모드 무관</td></tr>
+<tr><td>sandbox 요구</td><td>—</td><td>—</td><td>필수(증명)</td></tr>
+</table>
+</div>
+
+<!-- ===================== CH5 ===================== -->
+<h2 id="ch5">제5장 — 구현 로드맵 (우선순위 라벨)</h2>
+<p class="small">시간 예측 금지 규칙 준수 — 우선순위 라벨 + 의존성 순서로 표현.</p>
+<table>
+<tr><th>우선순위</th><th>SPEC 후보</th><th>내용</th><th>의존성</th></tr>
+<tr><td><span class="sev crit">P0</span></td><td>SPEC-AUDIT-SNAPSHOT</td><td>A4 공유 snapshot + A3 4dim 바인딩 승격 + A2 skip 정렬 + A1 sticky hash. <strong>sync 속도 직격, 신규 메커니즘 최소</strong>.</td><td>—</td></tr>
+<tr><td><span class="sev crit">P0</span></td><td>SPEC-STOPCHAIN-TRIM</td><td>A10 셸 단축 + A8 per-edit 통합 + A11 모드 인지 훅 + 모드 토큰(<code>MOAI_AUTONOMY_TIER</code>). per-turn·per-edit 지연 직격.</td><td>—</td></tr>
+<tr><td><span class="sev high">P1</span></td><td>SPEC-AUTONOMY-TIERS</td><td>3.1 자율성 3모드 — <code>moai init</code>/<code>moai web</code> 셀렉터 + USER/PROJECT 설정 분리 쓰기 + 관리자 kill-switch.</td><td>STOPCHAIN-TRIM(모드 토큰)</td></tr>
+<tr><td><span class="sev high">P1</span></td><td>SPEC-GOAL-HTML-FLOW</td><td>3.2 — <code>moai goal render</code> + evaluate.go→HTML + plan HTML 보고서 + resume 자동 재무장.</td><td>AUTONOMY-TIERS</td></tr>
+<tr><td><span class="sev high">P1</span></td><td>SPEC-AUDIT-MULTI-MODEL <span class="pill">v3</span></td><td><a href="#d-codex">§3.4</a> — 감사 3-way(claude/codex/glm) moai-mcp 내장 + 게이트 3단계(off/advisory/required, 기본 required) + 인증 분기(codex OAuth·glm API키) + cross-model super-review + fail-open 폴백. moai init/web 셀렉터(audit_model+gate).</td><td>MOAI-MCP-SERVER</td></tr>
+<tr><td><span class="sev med">P2</span></td><td>SPEC-HIERARCHICAL-TEAM</td><td>3.3 — leader 역할(Agent 포함 예외) + worktree 견리 writer 재키잉 + coding-workflow 입장 티어 + milestone Context-Folding.</td><td>AUTONOMY-TIERS</td></tr>
+<tr><td><span class="sev med">P2</span></td><td>SPEC-SYNC-PARALLEL-DOCS</td><td>A5 docs∥audit + A7 MX 조기 + A9 §E/batch 통합 + A6 retry 상한.</td><td>AUDIT-SNAPSHOT</td></tr>
+<tr><td><span class="sev low">P3</span></td><td>SPEC-HARNESS-LEARNING-EVO</td><td>2.5 Meta Context Engineering 적용 — 라우팅 레저→delegation.yaml 자동 진화. 장기 투자.</td><td>전 선행</td></tr>
+<tr><td><span class="sev crit">P0</span></td><td>SPEC-INFINITE-GOAL <span class="pill">v2</span></td><td><a href="#d-goal">§3.2</a> — 1M 한도 제거·auto-compact 무한 지속. <code>--max-turns 0</code> + block-cap 인상 + statusline /clear 억제(armed 시) + wall-clock/cost bound + stagnation 강화 + <code>SessionStart(compact)</code> 재주입 + /clear 자동 재무장. <strong>치명 시정</strong>: ac_converge "Max 20" 미파싱→실제 30 실행.</td><td>GOAL-HTML-FLOW</td></tr>
+<tr><td><span class="sev med">P2</span></td><td>SPEC-MOAI-MCP-SERVER <span class="pill">v3 3-way</span></td><td><a href="#d-codex">§3.4</a>+<a href="#d-mcp">§3.6</a> — <code>moai mcp-server</code> 단일 .mcp.json. 감사 3-way(claude/codex/glm) 툴 내장 + trend 툴. 같은 internal/ 코어 래핑, init 분기(audit_model+gate), <strong>모델/effort SSOT</strong>.</td><td>AUTONOMY-TIERS·INFINITE-GOAL</td></tr>
+<tr><td><span class="sev low">P2</span></td><td>SPEC-TREND-MCP <span class="pill">v2</span></td><td><a href="#d-trend">§3.7</a> — Playwright+ast-grep 번들, Semgrep/GitHub/Postgres/Sentry opt-in 레시피, 스킵 사유 기록.</td><td>MOAI-MCP-SERVER</td></tr>
+<tr><td><span class="sev low">v3.1</span></td><td>SPEC-WEB-LIVE-BOARD <span class="pill">이번 scope 제외</span></td><td><a href="#d-mcp">§3.6</a> — moai web WebSocket + todo/plan/run/sync/done 실시간 보드. <strong>v3.1 배포 타깃</strong>(<code>internal/web/board.go</code> 토대 + WebSocket 레이어). MCP 코어와 같은 상태 함수 공유 예정.</td><td>MOAI-MCP-SERVER 권장</td></tr>
+</table>
+<div class="box"><div class="t">빠른 승리(quick win) 순서</div>
+<p class="small">P0 두 건만으로 유지보수자 체감 속도의 대부분이 해소된다 — sync 감사의 중복 실행 제거(A4)+직렬 체인 병렬화(A3)가 sync 시간을, Stop 체인 단축(A10)+per-edit 통합(A8)이 run·일반 세션 per-turn 지연을 각각 직격. 신규 메커니즘 추가 없이 기존 노브 재배선이 대부분.</p>
+</div>
+
+<!-- ===================== CH6 ===================== -->
+<h2 id="exec-plan">실행 계획서 — 임계 경로·게이트·연속 실행 프로토콜</h2>
+<p class="small">/moai:goal plan HTML 품질 기준(rebuild-execution-plan 구조, 메모리 <code>plan-html-quality-standard</code>) 적용 — 로드맵(§5)을 실행 지향적으로 보강. 마비(적체·조각남·세션 단절) 방지가 핵심.</p>
+
+<h3>임계 경로 (의존성 다이어그램)</h3>
+<pre><code>✅ G1 diverged 해결(worktree 진입) ── ✅ G2 AUDIT-SNAPSHOT plan-phase 산출
+                  │
+        ┌─────────┴──────────────┐
+        ▼                        ▼
+   AUDIT-SNAPSHOT            STOPCHAIN-TRIM      ← P0 병렬 (독립)
+   (plan-audit 진행中)       (모드 토큰 MOAI_AUTONOMY_TIER)
+        │                        │
+        └────────┬───────────────┘
+                 ▼
+           INFINITE-GOAL ← GOAL-HTML-FLOW 선행 (P0)
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+   AUTONOMY-TIERS     (P0 완료 → P1)
+   (STOPCHAIN 모드 토큰 의존)
+                 │
+                 ▼  (MOAI-MCP-SERVER 선행)
+        AUDIT-MULTI-MODEL (3-way 감사·게이트 3단계)
+                 │
+        ┌────────┴────────────┐
+        ▼                     ▼
+  HIERARCHICAL-TEAM     MOAI-MCP-SERVER → TREND-MCP · WEB-LIVE-BOARD(v3.1)
+
+  ⛔ 차단 게이트: G3(plan-audit verdict) · G4(Implementation Kickoff, 매 SPEC plan→run)
+  🔁 병렬: AUDIT-SNAPSHOT ∥ STOPCHAIN-TRIM (P0, 독립 브랜치 충돌 없음)</code></pre>
+
+<h3>게이트 현황</h3>
+<table>
+<tr><th>ID</th><th>결정 항목</th><th>막는 SPEC</th><th>상태</th></tr>
+<tr><td class="loc">G1</td><td>diverged(16/10) 브랜치 전략</td><td>전체 에픽</td><td><span class="sev low">green — worktree-autonomy-epic 진입(primary docs/ 분리)</span></td></tr>
+<tr><td class="loc">G2</td><td>AUDIT-SNAPSHOT plan-audit verdict</td><td>AUDIT-SNAPSHOT run</td><td><span class="sev med">yellow — plan-auditor 백그라운드 진행中</span></td></tr>
+<tr><td class="loc">G3</td><td>Implementation Kickoff Approval</td><td>각 SPEC run</td><td><span class="sev crit">red — 매 SPEC plan→run 경계 강제 게이트(사용자)</span></td></tr>
+<tr><td class="loc">G4</td><td>OQ-1/OQ-2(AUDIT-SNAPSHOT) 해소</td><td>AUDIT-SNAPSHOT run</td><td><span class="sev med">yellow — plan-auditor가 sync-audit-4dim.js·verify/store.go 증거로 해소中</span></td></tr>
+<tr><td class="loc">G5</td><td>감사 모델 3-way 인증 분기(codex OAuth·glm API키)</td><td>AUDIT-MULTI-MODEL</td><td><span class="sev crit">red — 설계 확정(§3.4), 구현 전</span></td></tr>
+<tr><td class="loc">G6</td><td>leader 에이전트 Agent-포함-예외 승인(flat-hierarchy 예외)</td><td>HIERARCHICAL-TEAM</td><td><span class="sev med">yellow — 설계 확정(§3.3), 구현 전</span></td></tr>
+<tr><td class="loc">G7</td><td>완전자율 sandbox 증명 방식(CLI 플래그 vs 웹 노출)</td><td>AUTONOMY-TIERS(완전자율)</td><td><span class="sev crit">red — 미결정(권장: CLI 플래그+sandbox 증명)</span></td></tr>
+</table>
+
+<h3>연속 실행 프로토콜 — 마비 방지 (7규칙)</h3>
+<table>
+<tr><th>규칙</th><th>내용</th></tr>
+<tr><td><b>1. 단일 브랜치</b></td><td><code>worktree-autonomy-epic</code>에서 P0~P2 전부. SPEC별 브랜치 생성 금지(primary guard 정합 + diverged 재발 방지).</td></tr>
+<tr><td><b>2. commit-as-you-go</b></td><td>마일스톤/SPEC 단위가 끝나면 즉시 커밋. 적체 방지(rebuild-execution-plan 75건 적체 교훈).</td></tr>
+<tr><td><b>3. 경로 명시 add</b></td><td><code>git add &lt;경로&gt;</code>만. <code>git add -A</code>/<code>.</code> 금지 — 이물질 커밋 방지.</td></tr>
+<tr><td><b>4. 마일스톤 = SPEC</b></td><td>각 SPEC plan→run→sync를 같은 브랜치에서. <code>.moai/specs/&lt;ID&gt;/progress.md</code>가 SSOT.</td></tr>
+<tr><td><b>5. 정기 PR</b></td><td>완료된 SPEC 단위로 PR(PR-mandatory 정책, <code>enforce_admins:true</code>로 main 직접 push 차단).</td></tr>
+<tr><td><b>6. 의존성 존중</b></td><td>임계 경로 준수 — STOPCHAIN-TRIM(모드 토큰) 선행 후 AUTONOMY-TIERS · GOAL-HTML-FLOW 선행 후 INFINITE-GOAL · MOAI-MCP-SERVER 선행 후 AUDIT-MULTI-MODEL.</td></tr>
+<tr><td><b>7. 세션 단절 시</b></td><td>paste-ready resume은 같은 <code>worktree-autonomy-epic</code> 기준. 진행은 <code>progress.md</code> SSOT. INFINITE-GOAL(auto-compact 무한)이 세션 단절 자체를 줄임.</td></tr>
+</table>
+<div class="box"><div class="t">왜 이게 마비를 끝내는가</div>
+<p class="small">마비 원인은 "브랜치 옮길 때마다 변경을 어찌할까" + "SPEC마다 세션 조각남"이었다. 단일 worktree 브랜치 + commit-as-you-go + <code>progress.md</code> SSOT + INFINITE-GOAL(auto-compact 무한)로 그 질문이 두 번 다시 나오지 않는다. diverged(16/10)도 worktree 격리로 1회 해결.</p>
+</div>
+
+<h3>즉시 다음 단계 (승인 후 연속 진행)</h3>
+<ol>
+  <li><b>AUDIT-SNAPSHOT plan-audit verdict 대기</b> — plan-auditor 백그라운드. verdict(PASS/PASS-WITH-DEBT/FAIL + score) 오면 즉시 검토.</li>
+  <li><b>Implementation Kickoff Approval</b> — AUDIT-SNAPSHOT run 진입 전 사용자 게이트(이 보고서 + plan-audit verdict + OQ 해소 제시).</li>
+  <li><b>AUDIT-SNAPSHOT run</b> — 승인 시 manager-develop(cycle_type=tdd)이 A1→A2→A3→A4 순 구현(M1 해시+skip → M2 4dim 바인딩 → M3 snapshot wiring → M4 검증).</li>
+  <li><b>AUDIT-SNAPSHOT sync</b> — manager-docs(sync-phase-quality-gate·sync-auditor 소비, 같은 브랜치).</li>
+  <li><b>STOPCHAIN-TRIM plan 병렬 착수</b> — AUDIT-SNAPSHOT과 독립, 같은 브랜치 commit-as-you-go.</li>
+  <li>이후 임계 경로 따라 INFINITE-GOAL → P1(AUTONOMY-TIERS·GOAL-HTML-FLOW·AUDIT-MULTI-MODEL) → P2 순.</li>
+</ol>
+
+<h2 id="ch6">제6장 — 리스크 · 공개 질문</h2>
+<div class="box w"><div class="t">리스크</div>
+<ul style="margin:6px 0">
+  <li><strong>verification-claim-integrity 훼손 위험</strong>: 검증 재실행을 snapshot 소비·diff-check로 치환 시 증거 귀속(§2)이 약화될 수 있음. → snapshot 키를 트리 상태(HEAD SHA)에 엄격히 바인딩, 재실행은 attributable diff-check로만 치환(자동 제거 無).</li>
+  <li><strong>완전자율 + bypassPermissions 보안</strong>: prompt-injection 보호 없음. → sandbox/컨테이너 증명 강제, deny/ask 규칙으로 비가역 행위 핀, 관리자 <code>disableBypassPermissionsMode</code> kill-switch. 웹 셀렉터는 sandbox 증명 없이 완전자율 비활성화.</li>
+  <li><strong>Codex experimental 상태</strong>: <code>codex mcp-server</code> 변경 가능성, 도구명 커뮤니티 소싱. → 설치 시 툴 표면 프로브, fail-open 필수.</li>
+  <li><strong>계층 팀 컨텍스트 폭발</strong>: leader가 worker 반환을 축적. → Context-Folding + workflow script 변수 격리 + 1-2K 요약 반환 강제(R1·R5 sidechain).</li>
+  <li><strong>8-블록 캡 조용한 종료</strong>: 모드 인지 훅이 <code>stop_hook_active</code> 파싱 누락 시 goal 판정 없이 종료. → 모든 Stop 훅 early-exit 필수(AC로 검증).</li>
+  <li><strong>믿음 격차(METR)</strong>: 자율화가 "빠르다"는 착각. → goal 평가기의 1차 신호를 기계 검증(exit code·테스트 출력)으로, agent 자가보고 불가.</li>
+</ul>
+</div>
+<div class="box k"><div class="t">공개 질문 (사용자 결정 필요 — 구현 착수 전)</div>
+<ul style="margin:6px 0">
+  <li>완전자율 티어를 <code>moai web</code> 셀렉터에 노출할 것인가, 아니면 CLI <code>--dangerously-autonomous</code> 플래그+sandbox 증명으로만?(권장: 후자)</li>
+  <li>Codex 통합을 "선택적 opt-in"으로 유지할 것인가, 템플릿에 "설치 권장" 가이드로 넣을 것인가?(권장: opt-in 유지 — Codex 인증이 사용자마다 다름)</li>
+  <li>leader 에이전트(Agent 포함 예외)를 단일 신규 에이전트로 둘 것인가, 아니면 기존 오케스트레이션을 확장할 것인가?(권장: 신규 leader — flat-hierarchy 예외를 명시적 격리)</li>
+  <li>goal 상태를 SPEC-ID 키잉으로 바꿀 것인가(다중 세션 공유 위험), session-handoff 자동 재무장으로 할 것인가?(권장: 후자 — per-session 의미 보존)</li>
+</ul>
+</div>
+
+<hr>
+<h2 id="refs">참고자료 (Sources)</h2>
+<p class="small">5개 연구 에이전트가 WebSearch→WebFetch로 실제 패치한 출처만. 인용 번호는 본문 <code>[R1]-[R5]</code>와 대응.</p>
+<ul class="ref">
+<li><strong>[R1]</strong> <a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank">Anthropic — Build a multi-agent research system</a> (15× 토큰, 80% 분산, 오케스트레이터-워커)</li>
+<li><strong>[R1]</strong> <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank">Anthropic — Building Effective Agents</a> (5 패턴, evaluator-optimizer, simplest-solution)</li>
+<li><strong>[R1][R5]</strong> <a href="https://arxiv.org/abs/2604.14228" target="_blank">Dive into Claude Code (arXiv:2604.14228)</a> (5-레이어 compaction, sidechain, 7× 주의: 동반 repo 소싱)</li>
+<li><strong>[R1][R5]</strong> <a href="https://github.com/VILA-Lab/Dive-into-Claude-Code" target="_blank">VILA-Lab/Dive-into-Claude-Code</a> (7× plan-mode — repo 소싱, 논문 아님)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/permission-modes" target="_blank">Claude Code — Permission Modes</a> (6 모드, auto, deny/ask 모든 모드 바인딩)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/goal" target="_blank">Claude Code — Goal</a> (prompt Stop 훅 + Haiku, auto 모드 보완)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/hooks" target="_blank">Claude Code — Hooks Reference</a> (8-블록 캡, exit-2/decision:block)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/hooks-guide" target="_blank">Claude Code — Hooks Guide</a> (command/prompt/agent 3 메커니즘)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/sub-agents" target="_blank">Claude Code — Sub-agents</a> (동시성 20/200, nesting 5→1→3, permissionMode 비대칭)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/agent-teams" target="_blank">Claude Code — Agent Teams</a> (실험적, opt-in, 3-5 추천)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/settings" target="_blank">Claude Code — Settings</a> (우선순위, 권한 merge, kill-switch)</li>
+<li><strong>[R2]</strong> <a href="https://code.claude.com/docs/en/workflows" target="_blank">Claude Code — Workflows</a> (16/1000 캡, ultracode)</li>
+<li><strong>[R3]</strong> <a href="https://github.com/openai/codex-plugin-cc" target="_blank">openai/codex-plugin-cc</a> (공식 플러그인 — /codex:review, adversarial-review, Stop 게이트)</li>
+<li><strong>[R3]</strong> <a href="https://github.com/openai/codex/blob/main/codex-rs/docs/codex_mcp_interface.md" target="_blank">openai/codex — codex_mcp_interface.md</a> (<code>codex mcp-server</code>, experimental)</li>
+<li><strong>[R3]</strong> <a href="https://stevekinney.com/writing/codex-as-a-second-opinion" target="_blank">Steve Kinney — Codex as a Second Opinion</a> (상관된 맹점)</li>
+<li><strong>[R3]</strong> <a href="https://drewhyde.io/blog/codex-mcp-claude-code" target="_blank">Drew Hyde — Multi-Model Code Review via MCP</a> (super-review 패턴)</li>
+<li><strong>[R4]</strong> <a href="https://addyo.substack.com/p/agentic-autonomy-levels" target="_blank">Addy Osmani — Agentic Autonomy Levels</a> (L0-L5, 8-필드 계약)</li>
+<li><strong>[R4]</strong> <a href="https://www.swarmia.com/blog/five-levels-ai-agent-autonomy/" target="_blank">Swarmia — Five Levels of AI Agent Autonomy</a> (스태핑 결정)</li>
+<li><strong>[R4]</strong> <a href="https://galileo.ai/blog/human-in-the-loop-agent-oversight" target="_blank">Galileo — Human-in-the-Loop Agent Oversight</a> (가역성 분할, 4 에스컬레이션)</li>
+<li><strong>[R4]</strong> <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank">Anthropic — Prompt Caching</a> (5분/1시간 TTL, cache 순서)</li>
+<li><strong>[R4]</strong> <a href="https://arxiv.org/html/2601.06007v2" target="_blank">Prompt caching for long-horizon agents (arXiv:2601.06007)</a> (78-81% 절감, 전략적 경계)</li>
+<li><strong>[R4]</strong> <a href="https://www.philschmid.de/single-vs-multi-agents" target="_blank">Phil Schmid — Single vs Multi Agents</a> (READ 병렬·WRITE 직렬)</li>
+<li><strong>[R4]</strong> <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/" target="_blank">METR — Early-2025 AI & experienced OSS devs</a> (19% 느림, 믿음 격차)</li>
+<li><strong>[R4]</strong> <a href="https://hamy.xyz/blog/2026-02_code-reviews-claude-subagents" target="_blank">hamy.xyz — Code Reviews with Claude Subagents</a> (9-specialist 심각도 집계)</li>
+<li><strong>[R5]</strong> <a href="https://www.frontiersin.org/journals/computer-science/articles/10.3389/fcomp.2025.1655469/full" target="_blank">Frontiers — Dual-perspective LLM code review</a> (교차모델, 하이브리드 +30%)</li>
+<li><strong>[R5]</strong> <a href="https://arxiv.org/html/2512.18470v6" target="_blank">SWE-EVO (arXiv:2512.18470)</a> (장기호라이즌 붕괴, 실패 분류)</li>
+<li><strong>[R5]</strong> <a href="https://arxiv.org/abs/2510.11967" target="_blank">Context-Folding (arXiv:2510.11967, ICML 2026)</a> (10× 컨텍스트 축소)</li>
+<li><strong>[R5]</strong> <a href="https://openreview.net/pdf?id=P1jHroBS5E" target="_blank">Meta Context Engineering (OpenReview P1jHroBS5E)</a> (89.1% vs 70.7%)</li>
+<li><strong>[R5]</strong> <a href="https://arxiv.org/html/2506.12508v1" target="_blank">AgentOrchestra (arXiv:2506.12508)</a> (계층 + 교차검증 + 메모리 재계획)</li>
+<li><strong>[R5]</strong> <a href="https://arxiv.org/html/2602.01331v1" target="_blank">A-MapReduce (arXiv:2602.01331)</a> (스키마 fan-out, 60→6 subagent)</li>
+<li><strong>[R5]</strong> <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank">Anthropic — Effective Context Engineering</a> (1-2K 요약 반환)</li>
+<li><strong>[R3 v3]</strong> <a href="https://docs.z.ai/devpack/mcp/vision-mcp-server" target="_blank">Z.AI — Vision MCP Server</a> · <a href="https://docs.z.ai/devpack/mcp/search-mcp-server" target="_blank">Web Search MCP</a> (GLM 능력 MCP 노출 — 감사용은 모델 API 직접 호출)</li>
+<li><strong>[R3 v3]</strong> <a href="https://www.npmjs.com/package/@z_ai/mcp-server" target="_blank">@z_ai/mcp-server (npm)</a> · <a href="https://z.ai/blog/glm-4.5" target="_blank">Z.AI GLM-4.5/5.2</a> (z.ai API 클라이언트 기반 GLM 감사, API 키 인증)</li>
+</ul>
+
+<p class="small" style="margin-top:40px;color:var(--gray)">— 보고서 끝(v3). 검토 후 §6 공개질문에 대한 방향이 정해지면 <strong>P0 3건(AUDIT-SNAPSHOT·STOPCHAIN-TRIM·INFINITE-GOAL)부터 착수</strong>. 빠른 승리 2건(AUDIT-SNAPSHOT·STOPCHAIN-TRIM)만으로 sync·run 체감 속도 대부분 해소, INFINITE-GOAL이 무한 자율 실행을, P1 AUDIT-MULTI-MODEL이 감사 3-way·게이트를 채운다.</p>
+
+</main>
+</div>
+</body>
+</html>

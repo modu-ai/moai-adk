@@ -51,7 +51,7 @@ The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 
 - **Saves requirements as a file** for permanent preservation
 - Even if the session ends, you can **resume work** just by reading the SPEC
-- Defines things clearly, **without ambiguity**, in the GEARS format
+- Defines things clearly, **without ambiguity**, in the EARS format
 - Since you do not repeat the same explanation, you **save tokens** too
 
 {{< callout type="info" >}}
@@ -148,7 +148,7 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 
 - **11** agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
-- **36** terminal CLI commands · **15** `/moai` slash subcommands
+- **36** terminal CLI commands · **16** `/moai` slash subcommands
 - **16** programming languages supported
 - A codebase developed on the basis of **543** SPEC documents
 
@@ -212,7 +212,7 @@ MoAI-ADK follows a 3-phase development workflow. The run-phase methodology is se
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"Define requirements in GEARS format"| B{"Methodology selection"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"Define requirements in EARS format"| B{"Methodology selection"}
     B -->|"New project (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"Existing project (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]

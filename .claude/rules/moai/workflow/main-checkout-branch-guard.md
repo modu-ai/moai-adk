@@ -133,23 +133,6 @@ flows. The hook applies the doctrine conditionally.
   Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN). This norm is unchanged by
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
-- **Orchestrator-direct Tier S/M env path (SPEC-ORCH-GIT-RELAX-001)**: when
-  the orchestrator handles a Tier S/M push+PR directly (no `manager-git`
-  spawn), it sets `MOAI_BRANCH_GUARD_EXEMPT=1` per-invocation inline (e.g.
-  `MOAI_BRANCH_GUARD_EXEMPT=1 git switch -c feat/SPEC-XXX`). The env branch
-  of `isExemptAgent` (`internal/hook/branch_guard.go:145`,
-  `os.Getenv(branchGuardExemptEnv) == "1"`) returns true BEFORE the
-  `AgentType == "manager-git"` identity branch (line 154) is reached, so
-  orchestrator-direct Tier S/M is admitted with NO Go code change — no new
-  identity branch for "orchestrator" is added (the env path is the sole
-  admission mechanism for orchestrator-direct ops, per REQ-OGR-012). The
-  orchestrator MUST run the Pre-Spawn/Pre-Edit Sync Check (`.claude/rules/moai/core/agent-common-protocol.md`)
-  BEFORE setting the sentinel + mutating branch state. Defense-in-depth only
-  on checkouts where `Workflow.BranchGuard.Enabled = true`; on this project
-  the distributed default is `false`, so the env path is dormant here and the
-  orchestrator-direct Tier S/M push+PR proceeds via plain `git` (no sentinel
-  needed) — the exemption-path documentation remains correct for any
-  downstream maintainer checkout that enables the guard.
 
 Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
 Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001

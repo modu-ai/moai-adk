@@ -65,7 +65,7 @@ flowchart TB
 
 ### 3단계: SPEC 문서 생성
 
-첫 기능의 SPEC 문서를 만듭니다. GEARS 형식으로 요구사항을 명확하게 정의합니다.
+첫 기능의 SPEC 문서를 만듭니다. EARS 형식으로 요구사항을 명확하게 정의합니다.
 
 {{< callout type="info" >}}
 **SPEC이 왜 필요한가요?**
@@ -81,7 +81,7 @@ flowchart TB
 | 문제 | SPEC의 해결 방법 |
 |------|-----------------|
 | 맥락 유실 | 요구사항을 **파일로 저장**하여 영구 보존 |
-| 모호한 요구사항 | **GEARS 형식**으로 명확하게 구조화 |
+| 모호한 요구사항 | **EARS 형식**으로 명확하게 구조화 |
 | 커뮤니케이션 오류 | **인수 기준**으로 완료 조건 명시 |
 | 진행 상황 추적 불가 | **SPEC ID**로 작업 단위 관리 |
 
@@ -96,7 +96,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["요구사항 입력"] --> B["GEARS 형식 분석"]
+    A["요구사항 입력"] --> B["EARS 형식 분석"]
     B --> C["SPEC 문서 생성"]
     C --> D["SPEC-AUTH-001 저장"]
     D --> E["요구사항 검증"]
@@ -260,7 +260,7 @@ sequenceDiagram
     Project-->>Dev: product/structure/tech.md
 
     Dev->>Plan: 기능 요구사항 입력
-    Plan->>Plan: GEARS 형식으로 분석
+    Plan->>Plan: EARS 형식으로 분석
     Plan-->>Dev: SPEC-AUTH-001 문서
 
     Note over Dev: /clear 실행

@@ -140,33 +140,32 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `git reset --hard` 대신 `--keep` 사용 (sandbox 안전)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
-- [HARD] **(2026-07-20 신규; 2026-08-05 Tier S/M 완화 — SPEC-ORCH-GIT-RELAX-001) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. push+PR 주체는 tier별 분리: Tier L / `--pr` 은 `manager-git`, Tier S/M (without `--pr`) 은 orchestrator-direct (`MOAI_BRANCH_GUARD_EXEMPT=1` + Pre-Spawn Sync Check). tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9) + push+PR 주체에 영향.
+- [HARD] **(2026-07-20 신규) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향.
 - [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. 항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름.
 - ~~[HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용~~ **[RETIRED 2026-07-20 — enforce_admins: true 적용으로 무효]** (종전: CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호, §23.0 chore commit `cd9eead14`, 2026-05-22 채택. 이 문장은 역사적 기록으로만 유지.)
 
 ### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001; 2026-07-20 PR-mandatory 개정)
 
-[HARD] **(2026-07-20 개정; 2026-08-05 Tier S/M 완화 — SPEC-ORCH-GIT-RELAX-001)** 모든 tier (S/M/L)는 PR을 경유한다 (`enforce_admins: true`). 단, **push+PR 생성 주체는 tier에 따라 분리**된다: Tier S/M (without `--pr`)은 orchestrator가 직접 수행 (`MOAI_BRANCH_GUARD_EXEMPT=1` env sentinel로 branch guard 통과 + Pre-Spawn Sync Check로 foreign-session race 사전 차단), Tier L / `--pr` 은 `manager-git` 서브에이전트가 담당한다 (Late-Branch 4-Phase closure 포함). tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부) + **push+PR 주체** (orchestrator-direct vs manager-git)이다.
+[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.
 
 | Tier / 조건 | 기본 routing | Owner | PR ceremony 무게 |
 |------------|-------------|-------|------|
-| Tier S (< 300 LOC, < 5 files) | `fix/*`·`chore/*`·`docs/*` 등 단기 브랜치 + `gh pr create` → self-merge (0 approvals) | **orchestrator-direct** (`MOAI_BRANCH_GUARD_EXEMPT=1` + Pre-Spawn Sync Check; SPEC-ORCH-GIT-RELAX-001) — manager-develop/manager-docs commit 후 orchestrator가 직접 push+PR | 경량 — 3축 라벨 최소, Tier 1 CI (4 checks) 통과 즉시 self-merge |
-| Tier M (300-1000 LOC, 5-15 files) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **orchestrator-direct** (`MOAI_BRANCH_GUARD_EXEMPT=1` + Pre-Spawn Sync Check; SPEC-ORCH-GIT-RELAX-001) | 중간 — 3축 라벨 + PR body 설명, Tier 1 CI |
-| Tier L (> 1000 LOC OR > 15 files OR constitutional) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **manager-git** (Late-Branch 4-Phase closure 포함) | 무거움 — Late-Branch 4-Phase + 풀 CI 매트릭스 (release PR 시 Tier 2 macOS/Windows) + 상세 리뷰 |
+| Tier S (< 300 LOC, < 5 files) | `fix/*`·`chore/*`·`docs/*` 등 단기 브랜치 + `gh pr create` → self-merge (0 approvals) | **manager-git** (commit은 manager-develop/manager-docs) | 경량 — 3축 라벨 최소, Tier 1 CI (4 checks) 통과 즉시 self-merge |
+| Tier M (300-1000 LOC, 5-15 files) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **manager-git** | 중간 — 3축 라벨 + PR body 설명, Tier 1 CI |
+| Tier L (> 1000 LOC OR > 15 files OR constitutional) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **manager-git** | 무거움 — Late-Branch 4-Phase + 풀 CI 매트릭스 (release PR 시 Tier 2 macOS/Windows) + 상세 리뷰 |
 | Explicit `--pr` (any tier) | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | 사용자 명시적 review round 요구 시 (cross-team review, security-sensitive change 등) — Tier 무관 무거운 ceremony 적용 |
 
 > **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 "main 직접 push (manager-develop/manager-docs commit 직접 수행)" 이었다. `enforce_admins: true` 로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`/`manager-docs`는 여전히 commit을 수행하되, push·PR은 `manager-git`이 담당한다 (self-merge 흐름).
 
-**Owner 명시 (REQ-ATR-020 정합; 2026-08-05 SPEC-ORCH-GIT-RELAX-001로 Tier S/M carve-out)**: Tier L / `--pr` 에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다 (Late-Branch 4-Phase closure 포함). **Tier S/M (without `--pr`)** 예외: orchestrator가 live HEAD + active worktree registry + concurrent-session registry 를 모두 가지므로 state-sensitive git op 에서 최대 문맥을 보유한 주체로 push+PR을 직접 수행한다 (`MOAI_BRANCH_GUARD_EXEMPT=1` per-invocation inline + Pre-Spawn Sync Check). 이 완화(relaxation)는 context-sensitivity inversion 원리 (SPEC-ORCH-GIT-RELAX-001 §A/§B)에 근거한다 — Tier L release / multi-step merge / Late-Branch closure 같은 반복적이고 분해 가능한 복잡 흐름은 `manager-git` isolated context가 자산이나, Tier S/M state-sensitive op (PR-#1338 incident class: multi-worktree restore)에서는 isolated context가 liability. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 manager-git 경유로 바뀌었고, 2026-08-05 다시 orchestrator-direct로 완화.)
+**Owner 명시 (REQ-ATR-020 정합)**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
 
 **Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern 참조.
 
-**Routing 결정 흐름 (2026-07-20 PR-mandatory; 2026-08-05 Tier S/M orchestrator-direct 완화 — SPEC-ORCH-GIT-RELAX-001)**:
-1. 모든 SPEC/변경 → PR 경유 (main-direct 불가, `enforce_admins: true`)
-2. SPEC tier 가 L OR 사용자가 `--pr` 명시 → `manager-git` routing + 무거운 ceremony (Late-Branch 4-Phase + 풀 CI 매트릭스)
-3. Tier S/M (without `--pr`) → **orchestrator-direct** push+PR (`MOAI_BRANCH_GUARD_EXEMPT=1` + Pre-Spawn Sync Check) + 경량 ceremony (단기 브랜치 + Tier 1 CI 통과 즉시 self-merge) — PR 경유이되 `manager-git` spawn 없이 orchestrator가 직접 git op 수행
-   > **[2026-08-05 완화]** 종전 item 3은 "Tier S/M → `manager-git` routing" 이었다. SPEC-ORCH-GIT-RELAX-001로 orchestrator-direct로 완화 — PR-#1338 incident class (multi-worktree state op) 해소. `manager-git`은 Tier L / `--pr` 에만 retained.
-   > **[RETIRED 2026-07-20]** 종전 종전 item 3은 "그 외 (Tier S/M without `--pr`) → main 직접 push" 였다. `enforce_admins: true`로 무효 — 모든 tier PR 경유.
+**Routing 결정 흐름 (2026-07-20 PR-mandatory)**:
+1. 모든 SPEC/변경 → `manager-git` routing으로 PR 생성 (main-direct 불가)
+2. SPEC tier 가 L OR 사용자가 `--pr` 명시 → 무거운 ceremony (Late-Branch 4-Phase + 풀 CI 매트릭스)
+3. Tier S/M (without `--pr`) → 경량 ceremony (단기 브랜치 + Tier 1 CI 통과 즉시 self-merge) — 여전히 PR 경유이나 리뷰 오버헤드 최소
+   > **[RETIRED 2026-07-20]** 종전 item 3은 "그 외 (Tier S/M without `--pr`) → main 직접 push" 였다. `enforce_admins: true`로 무효 — 모든 tier PR 경유.
 
 상위 SPEC 참조:
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-020 (manager-git PR doctrine reconciliation)

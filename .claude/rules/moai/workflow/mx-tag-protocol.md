@@ -26,8 +26,6 @@ This rule applies to all agents working with source code in the supported progra
 
 **Sub-lines:** @MX:SPEC, @MX:LEGACY, @MX:REASON, @MX:TEST, @MX:PRIORITY, @MX:CEILING, @MX:UPGRADE
 
-**@MX:SPEC association:** an `@MX:SPEC:<SPEC-ID>` sub-line following a tag captures onto that tag and drives an additive SPEC association (a third source alongside path-based and body-based), so an explicit author-intended SPEC link is reflected in query results regardless of file path or body text. A dangling sub-line (no preceding tag) emits a warning.
-
 ## When to Add Tags
 
 **@MX:NOTE** -- Add when:

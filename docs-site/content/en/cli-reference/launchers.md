@@ -30,7 +30,6 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
-| `--spawn` | Instead of replacing the current process, open the session in a **new tmux window** and keep the caller's session intact (see "Team window spawn" below) |
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
 
 The permission mode is one of `default`, `acceptEdits` (project default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions and requires a Team plan + Sonnet/Opus 4.6 or later.
@@ -99,24 +98,6 @@ Behavior:
 {{< callout type="info" >}}
 Naming the worktree after the SPEC ID (`moai cc -w SPEC-XXX-001`) lets a session handoff bring the next session back into the same working tree with one line.
 {{< /callout >}}
-
-## Team window spawn (`--spawn` flag)
-
-All three launchers (`moai cc`, `moai cg`, `moai glm`) accept the `--spawn` flag. Paired with `-w`, instead of replacing the current process with Claude Code, it opens the session in a **new tmux window** and keeps the caller's session intact. Use it to spawn a teammate window in team mode.
-
-```bash
-moai cc -w feat-login --spawn        # Claude teammate window (keeps the current session)
-moai cg -w feat-auth --spawn         # GLM teammate window (keeps the current session)
-moai glm -w feat-auth --spawn        # GLM session (keeps the current session)
-```
-
-Behavior rules:
-
-- Works only inside a tmux session. Invoked outside tmux, it **refuses rather than falls back** — a silent in-place replacement would overwrite the caller's session.
-- Both the `tmux` and `moai` binaries are required. If either is missing, it refuses.
-- Using `-w <name>` without `--spawn` replaces the current process as before.
-
-`--spawn` follows the HARD rule that CLI launch decisions MUST NOT ask the user via `AskUserQuestion` — every outcome is decided from observable state (tmux session presence, binary presence) and reported through exit codes and stderr.
 
 ## Related documents
 

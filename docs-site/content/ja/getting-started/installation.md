@@ -159,16 +159,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ```bash
 moai version
-```
-
-```text
-╭────────────────────────╮
-│                        │
-│    moai-adk v3.0.2     │
-│                        │
-│                        │
-╰────────────────────────╯
- v3.0.2   none   built unknown
+# 出力例: moai <バージョン> (commit: <ハッシュ>, built: <ビルド日付>)
 ```
 
 {{< callout type="info" >}}

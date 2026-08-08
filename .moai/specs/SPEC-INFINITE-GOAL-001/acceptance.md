@@ -16,7 +16,7 @@
 | AC-INFINITE-GOAL-008 | REQ-006 | `/clear` re-arms embedded goal under new session-id | MUST | plan M6 |
 | AC-INFINITE-GOAL-009 | REQ-007 | ac_converge "Max 20" — OQ-1 option (b) doc-only correction | MUST | plan M7 |
 | AC-INFINITE-GOAL-010 | cross-ref (deny/ask surface — cross-cuts `SPEC-STOPCHAIN-TRIM-001` REQ-007/AC-006) | armed infinite goal does NOT weaken deny/ask | MUST | plan M8 |
-| AC-INFINITE-GOAL-011 | REQ-004 | `--max-turns 0` without `--max-duration` rejected at arm time (`--cost-cap` does NOT satisfy the bound) | MUST | plan M1+M4 |
+| AC-INFINITE-GOAL-011 | REQ-004 | `--max-turns 0` with NEITHER `--max-duration` NOR `--cost-cap` rejected at arm time | MUST | plan M1+M4 |
 
 ### §D.1 Severity model
 
@@ -132,13 +132,13 @@ returns at least one match — i.e. a single line that names BOTH the cap AND th
 
 #### AC-INFINITE-GOAL-011 — Arm-time reject for unbounded infinite arm (REQ-4 arm-time enforcement, D1)
 
-**Given** the `/moai goal` arm verb (`internal/cli/goal.go` `runGoalArm`) invoked with `--max-turns 0` AND `--max-duration` NOT supplied — regardless of whether `--cost-cap` is supplied (cost-cap is recorded-only and does not satisfy the bound).
+**Given** the `/moai goal` arm verb (`internal/cli/goal.go` `runGoalArm`) invoked with `--max-turns 0` AND NEITHER `--max-duration` NOR `--cost-cap` supplied.
 
 **When** the arm command runs.
 
-**Then** the arm command REJECTS the invocation (fail-closed): non-zero exit code AND a stderr message naming `--max-duration` as the required real bound (e.g. "`--max-turns 0` requires `--max-duration <seconds>` as the real bound (cost-cap is recorded-only and does not satisfy the requirement)"). No goal state file is written. **While** `--max-turns 0` is supplied WITH `--max-duration <D>`, the arm succeeds (covered by AC-005).
+**Then** the arm command REJECTS the invocation (fail-closed): non-zero exit code AND a stderr message naming the missing bound (e.g. "`--max-turns 0` requires at least one real bound: `--max-duration <seconds>` or `--cost-cap <N>`"). No goal state file is written. **While** `--max-turns 0` is supplied WITH at least one real bound, the arm succeeds (covered by AC-005).
 
-**Test shape:** Go unit test covering THREE cases — (1) `--max-turns 0` alone → non-zero exit + stderr + no goal file; (2) `--max-turns 0 --cost-cap 100` (no `--max-duration`) → non-zero exit + stderr + no goal file (the NEW D1 rejection case: cost-cap alone does NOT satisfy the bound); (3) `--max-turns 0 --max-duration 3600` → exit 0 + goal file written (AC-005 positive path, cross-referenced).
+**Test shape:** Go unit test — invoke `runGoalArm` with `--max-turns 0` alone, assert non-zero exit + stderr contains the missing-bound message + no goal file written. Negative case: invoke with `--max-turns 0 --max-duration 3600`, assert exit 0 + goal file written (this is the AC-005 positive path, cross-referenced).
 
 ### §D.3 Indirect verification
 

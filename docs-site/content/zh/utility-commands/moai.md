@@ -33,18 +33,9 @@ draft: false
 1. **意图分析**: 对用户请求的意图分类(与输入语言无关)
 2. **上下文充分性检查**: 不充分时通过苏格拉底式访谈澄清
 3. **构建执行计划**: 选择技能 / 智能体 / 动态工作流链
-4. **选择编排模式** (Phase 4): 6-模式目录 (trivial / background / agent-team(已退役) / parallel / sub-agent / workflow) 中自主选择
+4. **选择编排模式** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
 
 也就是说,即使像 `/moai "帮我修复登录 bug"` 这样只输入自然语言而不带子命令,也会经过意图分析连接到合适的工作流(修复类走 fix 系列,新功能走 plan→run→sync 流水线)。
-
-### 管道门禁 (Pipeline Gates)
-
-默认管道按顺序通过以下四个命名的门禁:
-
-1. **Plan-audit 门禁** (plan-auditor): 单独审计 SPEC 计划产出物,FAIL 或 INCONCLUSIVE 时中断
-2. **实现启动批准** (plan→run 人工门禁): 每次进入管道时恰好 1 次,与分数无关地始终获得用户批准
-3. **Phase 4 模式选择** (6-模式目录): 实现启动批准之后自主选择,记录到 progress.md
-4. **Sync-audit 门禁** (sync-auditor): 将同步结果按 4 维度评估,FAIL 或 INCONCLUSIVE 时中断链路
 
 ## 使用方法
 
@@ -67,14 +58,12 @@ draft: false
 | 标志              | 说明                             | 示例                           |
 | ------------------- | -------------------------------- | ------------------------------ |
 | `--loop`            | 实现后启用自动迭代修复    | `/moai "功能" --loop`          |
-| `--max N`           | 指定最大迭代次数(默认 100) | `/moai "功能" --loop --max 20` |
-| `--sequential`      | Phase 1 探索智能体顺序执行而非并行 | `/moai "功能" --sequential`    |
+| `--max N`           | 指定最大迭代次数(默认 100) | `/moai "功能" --loop --max 10` |
 | `--branch`          | 自动创建 feature 分支         | `/moai "功能" --branch`        |
 | `--pr`              | 完成后自动创建 PR             | `/moai "功能" --pr`            |
-| `--issue`           | SPEC 生成 (plan 阶段) 后 opt-in 创建 GitHub issue(缺失时按 late-branch opt-in 策略跳过) | `/moai "功能" --issue` |
 | `--resume SPEC-XXX` | 恢复既有 SPEC 工作              | `/moai --resume SPEC-AUTH-001` |
-| `--solo`            | 强制子智能体模式(顺序执行) | `/moai "功能" --solo`          |
 | `--team`            | (已退役)伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式 | `/moai "功能" --team`          |
+| `--solo`            | 强制子智能体模式          | `/moai "功能" --solo`          |
 
 ### --loop 标志
 
@@ -97,7 +86,7 @@ draft: false
   最大化。
 {{< /callout >}}
 
-### --solo 标志与编排模式
+### --team / --solo 标志与编排模式
 
 不带标志执行时,MoAI 会根据工作规模自动选择编排模式:
 
@@ -110,8 +99,8 @@ draft: false
 
 | 标志 | 行为 |
 | ------ | ---- |
-| `--solo` | 强制子智能体模式(顺序执行) |
 | `--team` | (已退役)伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式 |
+| `--solo` | 强制子智能体模式(顺序执行) |
 | (无) | 基于复杂度自动选择 |
 
 {{< callout type="warning" >}}
@@ -132,8 +121,8 @@ flowchart TD
 
     subgraph D["Phase 0: 并行探索 (15-30 秒)"]
         D1["Explore 子智能体<br/>分析代码库"]
-        D2["WebSearch / WebFetch / Context7 MCP<br/>调查外部文档"]
-        D3["LSP / lint / 覆盖率测量<br/>确认质量基线"]
+        D2["Research 子智能体<br/>调查外部文档"]
+        D3["Quality 子智能体<br/>确认质量基线"]
     end
 
     D --> E{"单一域?"}
@@ -142,7 +131,7 @@ flowchart TD
 
     C --> G["Phase 1<br/>生成 SPEC"]
     G --> H["调用 manager-spec"]
-    H --> I["生成 GEARS 格式 SPEC"]
+    H --> I["生成 EARS 格式 SPEC"]
     I --> J[".moai/specs/SPEC-XXX/spec.md"]
 
     J --> K["Phase 2<br/>DDD 实现"]
@@ -167,7 +156,7 @@ flowchart TD
 
 **核心要点:**
 
-- **Phase 0(并行探索)**: Explore 子智能体与外部检索、质量基线测量同时执行,提速 2-3 倍
+- **Phase 0(并行探索)**: 三个智能体同时执行,提速 2-3 倍
 - **单一域路由**: 简单工作直接委派给专家智能体,跳过 SPEC
 - **完成信号**: 工作完成时在完成报告中明示工作已完成
 
@@ -175,13 +164,13 @@ flowchart TD
 
 ### Phase 0: 并行探索(可选)
 
-Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器同时运行外部文档调查(WebSearch/WebFetch/Context7 MCP)与质量基线测量(LSP/lint/覆盖率),快速掌握项目上下文:
+三个智能体 **同时** 执行,快速掌握项目上下文:
 
-| 主体                      | 角色            | 工作                                     |
-| ------------------------- | --------------- | ---------------------------------------- |
-| **Explore**(子智能体) | 分析代码库 | 发现相关文件、架构模式、既有实现 |
-| **WebSearch / WebFetch / Context7 MCP** | 调查外部文档  | 官方文档、API 文档、类似实现示例      |
-| **质量基线测量**(编排器直接执行) | 质量基线     | 测试覆盖率、lint 状态、技术债务    |
+| 智能体     | 角色            | 工作                                     |
+| ------------ | --------------- | ---------------------------------------- |
+| **Explore**  | 分析代码库 | 发现相关文件、架构模式、既有实现 |
+| **Research** | 调查外部文档  | 官方文档、API 文档、类似实现示例      |
+| **Quality**  | 质量基线     | 测试覆盖率、lint 状态、技术债务    |
 
 **速度提升:** 并行执行比顺序执行快 2-3 倍(15-30 秒 vs 45-90 秒)
 
@@ -192,16 +181,12 @@ Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器�
 
 ### Phase 1: 生成 SPEC
 
-**manager-spec** 子智能体生成 GEARS 格式 SPEC 文档:
+**manager-spec** 子智能体生成 EARS 格式 SPEC 文档:
 
 - .moai/specs/SPEC-XXX/spec.md
-- GEARS 格式需求
+- EARS 格式需求
 - Given-When-Then 验收标准
 - 以 conversation_language 编写的内容
-
-{{< callout type="info" >}}
-**GEARS 格式**是当前 SPEC 需求的正式格式。旧文档、配置中出现的 **EARS** 是遗留名称,已被 GEARS 替代。
-{{< /callout >}}
 
 ### Phase 2: DDD/TDD 实现循环
 
@@ -238,11 +223,11 @@ Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器�
 
 ## TODO 管理
 
-**[HARD] Task\* 工具必填:** 所有工作追踪使用 `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet`。这四个工具是会话启动时不加载 schema 的 **延迟(deferred)工具**,首次使用前必须用 `ToolSearch(query: "select:TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` 拉取 schema(`AskUserQuestion` 也是同样的延迟工具)。
+**[HARD] 必须使用 TodoWrite 工具:** 所有工作追踪必须使用 TodoWrite
 
-- 发现问题时: `TaskCreate`(pending 状态)
-- 开始工作前: `TaskUpdate`(in_progress 状态)
-- 工作完成后: `TaskUpdate`(completed 状态)
+- 发现问题时: TodoWrite (pending 状态)
+- 开始工作前: TodoWrite (in_progress 状态)
+- 工作完成后: TodoWrite (completed 状态)
 - 禁止以文本形式输出 TODO 列表
 
 ## 完成信号
@@ -269,17 +254,13 @@ Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器�
 > /moai "基于 JWT 的用户认证系统: 注册、登录、令牌刷新" --loop --pr
 ```
 
-{{< callout type="info" >}}
-管道本身不会创建 worktree。要在隔离的 worktree 中工作,请先用 `moai cc -w <名称>` 进入,然后在其中执行命令。
-{{< /callout >}}
-
 **第 2 步: Phase 0 - 并行探索**
 
 ```
 [开始并行探索]
   Explore 子智能体: 正在分析 src/auth/...
-  WebSearch/WebFetch: 正在调查 JWT best practices...
-  质量基线测量: 确认测试覆盖率 32%...
+  Research 子智能体: 正在调查 JWT best practices...
+  Quality 子智能体: 确认测试覆盖率 32%...
 
 [探索完成 - 23 秒]
   发现文件: 4 个
@@ -292,7 +273,7 @@ Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器�
 ```
 [调用 manager-spec]
   SPEC ID: SPEC-AUTH-001
-  需求: 5 项 (GEARS 格式)
+  需求: 5 项 (EARS 格式)
   验收标准: 3 个场景
 
   用户批准: 完成
@@ -348,7 +329,7 @@ Explore 子智能体(Anthropic 内置,只读)分析代码库的同时,编排器�
   覆盖率: 89%
   PR: #42 创建 (Draft → Ready)
 
-  → 完成报告(Completion Report)横幅明示工作已完成
+<moai:COMPLETE />
 ```
 
 ## 常见问题

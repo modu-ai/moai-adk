@@ -56,7 +56,7 @@ A tag is an inline source comment, not a separate JSON ledger. It is collected v
 // @MX:UPGRADE: switch to LRU when entry count exceeds 10k
 ```
 
-A DEBT without `@MX:UPGRADE` has no termination condition and rots silently. `moai mx query --kind DEBT --json` reports this as `"rotRisk": "no-trigger"`. The rot signal is the absence of `@MX:UPGRADE`; the absence of `@MX:CEILING` is merely a quality memo and not a criterion for rot. The rotRisk field semantics and how the scanner populates this value are covered in [MX Scanner Internals - rotRisk Score](/en/advanced/mx-scanner-internals#rotrisk-score).
+A DEBT without `@MX:UPGRADE` has no termination condition and rots silently. `moai mx query --kind DEBT --json` reports this as `"rotRisk": "no-trigger"`. The rot signal is the absence of `@MX:UPGRADE`; the absence of `@MX:CEILING` is merely a quality memo and not a criterion for rot.
 
 > `@MX:TODO` marks incomplete work resolved in the GREEN step (code not yet complete), while `@MX:DEBT` marks a simplification that is complete and works correctly but has an explicit limit (code is complete). DEBT may legitimately persist across multiple GREEN steps, and the "promote to WARN after 3 unresolved occurrences" rule for TODO does not apply.
 

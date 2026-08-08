@@ -21,7 +21,7 @@ draft: false
 
 `/moai fix` が **一度だけ** 修正するのとは異なり、`/moai loop` は **完了条件を満たすまで** 繰り返します。
 
-このループが v3 の 3 つの核心の 1 つ、**エージェンティックループエンジニアリング** の代表例です。人がエラーのたびに介入する代わりにループが自ら診断して修正し、ループが残した観察はハーネス学習 (エージェンティックループエンジニアリング) の原料として蓄積されます。エンジンの実装は `internal/ralph/engine.go` にあります。各反復の `Decide()` が continue / converge / request_review / abort のいずれかを優先順位順に判定します。
+このループが v3 の 2 つ目の柱、**エージェンティックループエンジニアリング** の代表例です。人がエラーのたびに介入する代わりにループが自ら診断して修正し、ループが残した観察はハーネス学習 (再帰的な自己学習) の原料として蓄積されます。エンジンの実装は `internal/ralph/engine.go` にあります。各反復の `Decide()` が continue / converge / request_review / abort のいずれかを優先順位順に判定します。
 
 ## /moai goal との関係
 
@@ -53,7 +53,7 @@ draft: false
 | ---------------------------------------- | -------------------------------- | ----------------------------- |
 | `--max N` (または `--max-iterations`)      | 最大反復回数の制限 (デフォルト値 10)  | `/moai loop --max 20`         |
 | `--lens {clean\|simplify\|coverage}`     | スキャンレンズの追加 (カンマ区切り、opt-in) | `/moai loop --lens clean,coverage` |
-| `--auto-fix`                             | 自動修正の有効化 (デフォルト Level 1)  | `/moai loop --auto-fix`           |
+| `--auto` (または `--auto-fix`)             | 自動修正の有効化 (デフォルト Level 1)  | `/moai loop --auto`           |
 | `--sequential` (または `--seq`)            | 並列の代わりに順次診断        | `/moai loop --sequential`     |
 | `--errors` (または `--errors-only`)        | エラーのみ修正、警告をスキップ         | `/moai loop --errors`         |
 | `--coverage` (または `--include-coverage`) | カバレッジを含む (デフォルト値 85%)       | `/moai loop --coverage`       |
@@ -70,8 +70,8 @@ draft: false
 ```
 
 {{< callout type="warning" >}}
-  無限ループを防ぐためデフォルト値は 5 回です (`ralph.yaml` の `ralph.max_iterations`)。
-  反復上限の優先順位は CLI `--max` フラグ > `ralph.yaml` `ralph.max_iterations` >
+  無限ループを防ぐためデフォルト値は 10 回です (`ralph.yaml` の `loop.max_iterations`)。
+  反復上限の優先順位は CLI `--max` フラグ > `ralph.yaml` `loop.max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations` の順です。
 {{< /callout >}}
 
@@ -170,7 +170,7 @@ flowchart TD
 
 | 安全装置           | 条件                   | 動作                                              |
 | ------------------ | ---------------------- | ------------------------------------------------- |
-| **最大反復制限** | 反復上限に到達 (デフォルト 5) | ループを強制終了して 5 セクション判定 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) を出した後、残余課題を `.moai/state/loop-verdict-<id>.json` に永続化します |
+| **最大反復制限** | 反復上限に到達 (デフォルト 10) | ループを強制終了して 5 セクション判定 (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) を出した後、残余課題を `.moai/state/loop-verdict-<id>.json` に永続化します |
 | **停滞検出**      | N 回連続で無進展 (同一の失敗シグネチャ) | 停滞と判断して 5 セクション判定を出した後、ユーザーに介入を要請します |
 
 {{< callout type="warning" >}}
@@ -251,25 +251,20 @@ flowchart TD
     Todo --> Loop["ループ開始"]
 
     Loop --> Fix["manager-develop に<br/>修正を委任"]
-    Fix --> Predicate{"機械的完了述語<br/>(キュー枯渇 + 診断 clean)?"}
-    Predicate -->|いいえ| Loop
-    Predicate -->|はい| FinalPass["Step 1.5<br/>独立最終検証"]
-    FinalPass --> Done["完了"]
+    Fix --> Verify["sync-auditor<br/>検証"]
+
+    Verify --> Complete{"完了条件?"}
+    Complete -->|いいえ| Loop
+    Complete -->|はい| Done["完了"]
 ```
-
-**完了判定: 機械的述語 + 独立最終検証**
-
-ループが成功で終わったかは**機械的完了述語**で判定します。イシューキューが空になったか、診断 (LSP / AST-grep / テスト / カバレッジ) がクリーンかをオーケストレーターが直接確認します。別途監査エージェント (sync-auditor) が完了を判定することはありません。
-
-述語が満たされると成功終了経路で **Step 1.5 独立最終検証** (Independent Final Pass) が走ります。`/moai gate --fresh` を新しいコンテキストで回すか read-only 検証 Agent を立ち上げ、ループが自分の手で自分の結果を採点しないように最終状態を外から確認します。
 
 **エージェントの役割:**
 
 | エージェント                | 役割      | 主な作業            |
 | ----------------------- | --------- | -------------------- |
-| **MoAI オーケストレーター** | ループ調整 + 完了述語判定 | 診断の調整、機械的完了述語の確認、ユーザー報告 |
+| **MoAI オーケストレーター** | ループ調整 | 診断の調整、ユーザー報告 |
 | **manager-develop**     | ループ管理および修正実行 | TODO 生成、実際のコード修正 (cycle_type=autofix) |
-| **`/moai gate --fresh` または read-only 検証 Agent** | Step 1.5 独立最終検証 | 成功終了前に独立コンテキストで最終状態を確認 |
+| **sync-auditor**        | 品質検証 | 完了条件の確認       |
 
 ## 実践例
 

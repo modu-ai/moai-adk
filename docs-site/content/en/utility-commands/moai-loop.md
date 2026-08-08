@@ -70,8 +70,8 @@ Limits the number of iterations:
 ```
 
 {{< callout type="warning" >}}
-  To prevent infinite loops, the default is 5 iterations (`ralph.yaml`'s `ralph.max_iterations`).
-  The iteration-ceiling priority is CLI `--max` flag > `ralph.yaml` `ralph.max_iterations` >
+  To prevent infinite loops, the default is 10 iterations (`ralph.yaml`'s `loop.max_iterations`).
+  The iteration-ceiling priority is CLI `--max` flag > `ralph.yaml` `loop.max_iterations` >
   `workflow.yaml` `loop_prevention.max_iterations`.
 {{< /callout >}}
 
@@ -170,7 +170,7 @@ flowchart TD
 
 | Safeguard              | Condition               | Behavior                                          |
 | ---------------------- | ----------------------- | ------------------------------------------------- |
-| **Max iteration limit** | Iteration ceiling reached (default 5, `ralph.max_iterations`) | Force-stops the loop, issues a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and persists residual issues to `.moai/state/loop-verdict-<id>.json` |
+| **Max iteration limit** | Iteration ceiling reached (default 10) | Force-stops the loop, issues a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and persists residual issues to `.moai/state/loop-verdict-<id>.json` |
 | **Stagnation detection** | N consecutive no-progress iterations (same failure signature) | Judged a stagnation; issues a 5-section verdict and requests user intervention |
 
 {{< callout type="warning" >}}

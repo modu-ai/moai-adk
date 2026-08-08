@@ -560,31 +560,6 @@ MoAI가 `AskUserQuestion`으로 물을 때는 추천을 어디에 놓을지 정�
 **내부 동작**: 다섯 가지 원칙의 명세는 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles에 있고, `moai.md`로 렌더링됩니다. 캡처 훅은 `internal/hook/user_decision_capture.go`에 있으며 schema 허용 파싱과 도메인 분류를 지원합니다. 감쇠 정책은 power-law 함수 `(age+1)^(-0.5)`를 따르고 α는 0.5로 고정입니다(Standard tier). 전체 아키텍처와 수용 기준은 프로젝트의 SPEC 문서를 참조하세요.
 {{< /callout >}}
 
-## 계획 HTML 리포트 (v3.1+)
-
-v3.1(PR #1388)부터 터미널 CLI `moai plan`에 `render-html` 하위 명령어가 추가됐습니다. 이 CLI는 이미 작성된 SPEC 산출물에서 plan-phase HTML 리포트 하나를 만들어 `.moai/reports/plan-html/<SPEC-ID>-plan.html` 에 씁니다.
-
-```bash
-moai plan render-html SPEC-AUTH-001
-# → .moai/reports/plan-html/SPEC-AUTH-001-plan.html
-```
-
-**입력과 출력**:
-
-- **입력** — `.moai/specs/<SPEC-ID>/` 디렉터리와, 있다면 가장 최근의 plan-audit 리뷰 파일(`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`).
-- **출력** — 외부 JS·CSS에 의존하지 않는 자체 완결형 HTML 하나. goal 선언부·8-필드 자율성 계약·(리뷰가 있으면) 감사 판정 점수·마일스톤을 한 파일에 정리해 오프라인 브라우저로 바로 열립니다.
-
-**실패 모드**:
-
-- SPEC 디렉터리가 없으면 0이 아닌 종료 코드와 함께 stderr에 SPEC-ID를 출력하고 HTML을 쓰지 않습니다.
-- plan-audit 리뷰 파일이 없거나 파싱할 수 없으면 "감사 판정을 사용할 수 없음" 자리표시자를 넣고 **exit 0**으로 렌드합니다 (fail-open).
-
-{{< callout type="info" >}}
-**`/moai plan` 슬래시 커맨드와 다릅니다**: `/moai plan` 슬래시 커맨드가 Claude Code 스킬 시스템을 거쳐 SPEC 산출물을 저작한다면, `moai plan render-html` CLI는 이미 저작된 산출물에서 HTML 리포트를 뽑아내는 Go 바이너리 하위 명령어입니다.
-{{< /callout >}}
-
-`--json` 플래그를 붙이면 `{action, spec_id, path, bytes}` JSON을 내보냅니다.
-
 ## 관련 문서
 
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) - EARS 형식 상세 설명

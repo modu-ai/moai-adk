@@ -132,8 +132,8 @@ flowchart TD
 
     subgraph D["Phase 0: 병렬 탐색 (15-30초)"]
         D1["Explore 하위 에이전트<br/>코드베이스 분석"]
-        D2["WebSearch / WebFetch / Context7 MCP<br/>외부 문서 조사"]
-        D3["LSP / 린트 / 커버리지 측정<br/>품질 기준선 확인"]
+        D2["Research 하위 에이전트<br/>외부 문서 조사"]
+        D3["Quality 하위 에이전트<br/>품질 기준선 확인"]
     end
 
     D --> E{"단일 도메인?"}
@@ -167,7 +167,7 @@ flowchart TD
 
 **핵심 포인트:**
 
-- **Phase 0 (병렬 탐색)**: Explore 서브에이전트와 외부 검색·품질 기준선 측정이 동시에 실행되어 2-3배 속도 향상
+- **Phase 0 (병렬 탐색)**: 세 에이전트가 동시에 실행되어 2-3배 속도 향상
 - **단일 도메인 라우팅**: 단순 작업은 전문가 에이전트에 곧바로 넘겨 SPEC 단계를 건너뜀
 - **완료 신호**: 작업이 끝나면 완료 보고서에 그 사실을 분명히 적음
 
@@ -175,13 +175,13 @@ flowchart TD
 
 ### Phase 0: 병렬 탐색 (선택적)
 
-Explore 서브에이전트(Anthropic 빌트인, 읽기 전용) 가 코드베이스를 분석하는 동안, 오케스트레이터가 외부 문서 조사(WebSearch/WebFetch/Context7 MCP) 와 품질 기준선 측정(LSP/린트/커버리지) 을 동시에 돌려 프로젝트 맥락을 빠르게 파악합니다:
+세 에이전트가 **동시에** 실행되어 프로젝트 맥락을 빠르게 파악합니다:
 
-| 주체                      | 역할            | 작업                                     |
-| ------------------------- | --------------- | ---------------------------------------- |
-| **Explore** (서브에이전트) | 코드베이스 분석 | 관련 파일, 아키텍처 패턴, 기존 구현 발견 |
-| **WebSearch / WebFetch / Context7 MCP** | 외부 문서 조사  | 공식 문서, API 문서, 유사 구현 예시      |
-| **품질 기준선 측정** (오케스트레이터 직접) | 품질 기준선     | 테스트 커버리지, 린트 상태, 기술 부채    |
+| 에이전트     | 역할            | 작업                                     |
+| ------------ | --------------- | ---------------------------------------- |
+| **Explore**  | 코드베이스 분석 | 관련 파일, 아키텍처 패턴, 기존 구현 발견 |
+| **Research** | 외부 문서 조사  | 공식 문서, API 문서, 유사 구현 예시      |
+| **Quality**  | 품질 기준선     | 테스트 커버리지, 린트 상태, 기술 부채    |
 
 **속도 향상:** 병렬 실행으로 순차 실행 대비 2-3배 빠름 (15-30초 vs 45-90초)
 
@@ -238,11 +238,11 @@ Explore 서브에이전트(Anthropic 빌트인, 읽기 전용) 가 코드베이�
 
 ## TODO 관리
 
-**[HARD] Task\* 도구 필수:** 모든 작업 추적은 `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` 으로 합니다. 이 네 도구는 세션 시작 시 스키마가 로드되지 않는 **지연(deferred) 도구**이므로, 처음 쓰기 전에 `ToolSearch(query: "select:TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` 한 번으로 스키마를 끌어와야 합니다 (`AskUserQuestion` 도 동일한 지연 도구).
+**[HARD] TodoWrite 도구 필수:** 모든 작업 추적에 TodoWrite를 써야 합니다
 
-- 이슈 발견 시: `TaskCreate` (pending 상태)
-- 작업 시작 전: `TaskUpdate` (in_progress 상태)
-- 작업 완료 후: `TaskUpdate` (completed 상태)
+- 이슈 발견 시: TodoWrite (pending 상태)
+- 작업 시작 전: TodoWrite (in_progress 상태)
+- 작업 완료 후: TodoWrite (completed 상태)
 - TODO 목록을 텍스트로 출력 금지
 
 ## 완료 신호
@@ -278,8 +278,8 @@ MoAI-ADK가 비용을 줄이는 장치 중 하나입니다. llm.yaml 설정에 �
 ```
 [병렬 탐색 시작]
   Explore 하위 에이전트: src/auth/ 분석 중...
-  WebSearch/WebFetch: JWT best practices 조사 중...
-  품질 기준선 측정: 테스트 커버리지 32% 확인...
+  Research 하위 에이전트: JWT best practices 조사 중...
+  Quality 하위 에이전트: 테스트 커버리지 32% 확인...
 
 [탐색 완료 - 23초]
   발견 파일: 4개

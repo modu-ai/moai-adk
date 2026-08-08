@@ -131,7 +131,7 @@ graph TD
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `profile` of `llm.yaml`). The canonical closed set is `high`/`medium`/`low`; the legacy value `max` is also accepted as input and normalized to `high` (`internal/config/profile.go`'s `NormalizeProfile`) |
+| `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `profile` of `llm.yaml`) |
 
 ### How it behaves
 

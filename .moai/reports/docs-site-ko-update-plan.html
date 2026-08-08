@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>docs-site/content/ko 업데이트 계획 — Action Plan</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory: #FAF9F5; --paper: #FFFFFF; --slate: #141413;
+      --clay: #D97757; --clay-d: #B85C3E; --oat: #E3DACC; --olive: #788C5D;
+      --g100: #F0EEE6; --g300: #D1CFC5; --g500: #87867F; --g700: #3D3D3A;
+      --sans: "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --max-width: 1180px; --radius-panel: 12px; --radius-row: 8px;
+      --border: 1.5px solid var(--g300);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ivory); color: var(--g700);
+      font-family: var(--sans); font-size: 15px; line-height: 1.6;
+      padding: 56px 32px 120px; -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    /* header */
+    header.page-head { margin-bottom: 40px; max-width: 900px; }
+    .eyebrow {
+      font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--g500); margin-bottom: 12px;
+    }
+    h1 {
+      font-family: var(--serif); font-weight: 700; font-size: 34px;
+      line-height: 1.15; color: var(--slate); margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+    .goal-box {
+      background: var(--g100); border: var(--border);
+      border-radius: var(--radius-panel); padding: 16px 20px;
+      font-size: 14.5px; color: var(--g700);
+    }
+    .goal-box .label {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--g500); display: block; margin-bottom: 6px;
+    }
+
+    /* summary strip */
+    .summary-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-bottom: 56px;
+    }
+    @media (max-width: 900px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+    .sum-cell {
+      background: var(--paper); border: var(--border);
+      border-radius: var(--radius-panel); padding: 18px 20px;
+    }
+    .sum-cell .k {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--g500); margin-bottom: 6px;
+    }
+    .sum-cell .v { font-size: 24px; color: var(--slate); font-weight: 700; }
+    .sum-cell .v.accent { color: var(--clay); }
+    .sum-cell .sub { font-size: 12px; color: var(--g500); margin-top: 4px; font-family: var(--mono); }
+
+    /* sections */
+    section { margin-bottom: 56px; }
+    .sec-head {
+      display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px;
+    }
+    .sec-head .num {
+      font-family: var(--mono); font-size: 12px; background: var(--oat);
+      color: var(--slate); padding: 3px 9px; border-radius: 8px; flex-shrink: 0;
+    }
+    .sec-head h2 {
+      font-family: var(--serif); font-weight: 700; font-size: 22px;
+      color: var(--slate); letter-spacing: -0.01em;
+    }
+    .sec-intro {
+      font-size: 14px; color: var(--g500); max-width: 820px;
+      margin-bottom: 24px;
+    }
+
+    /* paragraphs */
+    p.body { font-size: 14.5px; color: var(--g700); margin-bottom: 12px; max-width: 820px; }
+    ul.body { margin: 0 0 16px 22px; }
+    ul.body li { font-size: 14.5px; color: var(--g700); margin-bottom: 6px; max-width: 820px; }
+
+    /* README structure list */
+    .readme-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    }
+    @media (max-width: 780px) { .readme-grid { grid-template-columns: 1fr; } }
+    .readme-card {
+      background: var(--paper); border: var(--border);
+      border-radius: var(--radius-row); padding: 12px 16px;
+      display: flex; gap: 12px; align-items: baseline;
+    }
+    .readme-card .n {
+      font-family: var(--mono); font-size: 12px; color: var(--clay);
+      font-weight: 600; flex-shrink: 0;
+    }
+    .readme-card .t { font-size: 14px; color: var(--slate); font-weight: 500; }
+    .readme-card .d { font-size: 12.5px; color: var(--g500); margin-top: 2px; }
+
+    /* matrix table */
+    .matrix-table {
+      width: 100%; border-collapse: collapse; background: var(--paper);
+      border: var(--border); border-radius: var(--radius-panel);
+      overflow: hidden; font-size: 13px; margin-bottom: 24px;
+    }
+    .matrix-table thead { background: var(--g100); }
+    .matrix-table th {
+      padding: 10px 12px; text-align: left; font-weight: 600;
+      font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--slate); border-bottom: var(--border);
+    }
+    .matrix-table td {
+      padding: 9px 12px; border-bottom: 1px solid var(--g100);
+      vertical-align: top; color: var(--g700);
+    }
+    .matrix-table tr:last-child td { border-bottom: none; }
+    .matrix-table .page-cell {
+      font-family: var(--mono); font-size: 12px; color: var(--slate); white-space: nowrap;
+    }
+    .matrix-table .gap-cell { font-size: 12.5px; color: var(--g500); max-width: 380px; }
+
+    /* action / priority pills */
+    .pill {
+      font-family: var(--mono); font-size: 10.5px; padding: 2px 7px;
+      border-radius: 5px; font-weight: 600; display: inline-block;
+      text-transform: lowercase; letter-spacing: 0.02em; white-space: nowrap;
+    }
+    .p-p0 { background: #F3D9CC; color: #8A3B1E; }
+    .p-p1 { background: #E4E9DC; color: #4B5C39; }
+    .p-p2 { background: var(--g100); color: var(--g700); }
+
+    .a-keep    { background: #E4E9DC; color: #4B5C39; }
+    .a-rewrite { background: #F3D9CC; color: #8A3B1E; }
+    .a-new     { background: var(--clay); color: var(--paper); }
+    .a-merge   { background: var(--oat); color: var(--slate); }
+    .a-other   { background: var(--g100); color: var(--g700); }
+
+    /* section group subheading */
+    .grp-title {
+      font-family: var(--serif); font-weight: 700; font-size: 16px;
+      color: var(--slate); margin: 24px 0 8px; padding-top: 8px;
+      border-top: 1px dashed var(--g300);
+    }
+    .grp-title:first-of-type { border-top: none; padding-top: 0; }
+    .grp-meta {
+      font-family: var(--mono); font-size: 11px; color: var(--g500);
+      margin-left: 8px; font-weight: 400;
+    }
+
+    /* callout */
+    .callout {
+      background: var(--g100); border-left: 3px solid var(--clay);
+      padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 16px 0;
+      font-size: 13.5px; color: var(--g700);
+    }
+    .callout .label {
+      font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--clay-d); font-weight: 600;
+      display: block; margin-bottom: 4px;
+    }
+
+    /* contradiction list (risk-flavored) */
+    .contra {
+      border: var(--border); border-radius: var(--radius-panel);
+      overflow: hidden; background: var(--paper);
+    }
+    .contra .row {
+      display: grid; grid-template-columns: 50px 1fr 1fr; gap: 0;
+    }
+    .contra .row + .row { border-top: var(--border); }
+    .contra .cell { padding: 12px 16px; font-size: 13px; }
+    .contra .cell + .cell { border-left: var(--border); }
+    .contra .cell.num {
+      font-family: var(--mono); font-weight: 700; color: var(--clay);
+      background: var(--g100); display: flex; align-items: center; justify-content: center;
+    }
+    .contra .cell .loc { font-family: var(--mono); font-size: 12px; color: var(--slate); display: block; margin-bottom: 2px; }
+    .contra .cell .iss { color: var(--g700); }
+    .contra .head {
+      background: var(--g100); font-weight: 600; color: var(--slate);
+      font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* new-pages cards */
+    .new-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+    }
+    @media (max-width: 780px) { .new-grid { grid-template-columns: 1fr; } }
+    .new-card {
+      background: var(--paper); border: var(--border);
+      border-radius: var(--radius-panel); padding: 16px 18px;
+    }
+    .new-card .hdr {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .new-card .path {
+      font-family: var(--mono); font-size: 12px; color: var(--clay); font-weight: 600;
+    }
+    .new-card .rat { font-size: 13px; color: var(--g700); margin-bottom: 8px; }
+    .new-card .ref { font-size: 12px; color: var(--g500); font-family: var(--mono); }
+
+    /* de-prio table */
+    .deprio {
+      width: 100%; border-collapse: collapse; background: var(--paper);
+      border: var(--border); border-radius: var(--radius-panel);
+      overflow: hidden; font-size: 13px; margin-bottom: 16px;
+    }
+    .deprio thead { background: var(--g100); }
+    .deprio th {
+      padding: 10px 12px; text-align: left; font-weight: 600;
+      font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--slate); border-bottom: var(--border);
+    }
+    .deprio td {
+      padding: 10px 12px; border-bottom: 1px solid var(--g100);
+      vertical-align: top; color: var(--g700); font-size: 12.5px;
+    }
+    .deprio tr:last-child td { border-bottom: none; }
+    .deprio .canon { color: var(--olive); font-weight: 600; }
+    .deprio .back  { color: var(--g500); }
+    .deprio .arrow { font-family: var(--mono); color: var(--clay); font-size: 11px; }
+
+    /* rollout timeline */
+    .rollout { display: flex; flex-direction: column; }
+    .phase {
+      display: grid; grid-template-columns: 130px 28px 1fr;
+      gap: 0 18px; position: relative;
+    }
+    .phase .when {
+      text-align: right; font-family: var(--mono); font-size: 12px;
+      color: var(--clay); padding-top: 4px; font-weight: 600;
+    }
+    .phase .dot-col { display: flex; flex-direction: column; align-items: center; }
+    .phase .dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--paper); border: 3px solid var(--clay);
+      margin-top: 4px; flex-shrink: 0;
+    }
+    .phase .dot.done { background: var(--olive); border-color: var(--olive); }
+    .phase .line { width: 2px; flex: 1; background: var(--g300); margin: 4px 0; }
+    .phase:last-child .line { display: none; }
+    .phase .body { padding-bottom: 32px; }
+    .phase .body h3 {
+      font-family: var(--serif); font-weight: 700; font-size: 17px;
+      color: var(--slate); margin-bottom: 6px;
+    }
+    .phase .body p { font-size: 13.5px; color: var(--g500); margin-bottom: 10px; max-width: 720px; }
+    .phase .sublist {
+      margin: 8px 0 10px 20px; padding: 0; list-style: none;
+    }
+    .phase .sublist li {
+      font-size: 13px; color: var(--g700); margin-bottom: 5px;
+      padding-left: 14px; position: relative;
+    }
+    .phase .sublist li::before {
+      content: ""; position: absolute; left: 0; top: 8px;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--clay);
+    }
+    .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .tag {
+      font-family: var(--mono); font-size: 11px; background: var(--g100);
+      border: 1px solid var(--g300); border-radius: 5px;
+      padding: 2px 7px; color: var(--g700);
+    }
+
+    /* mini stats inline */
+    .stat-inline {
+      display: inline-block; font-family: var(--mono); font-weight: 600;
+      color: var(--slate); background: var(--oat); padding: 1px 6px;
+      border-radius: 4px; font-size: 12px;
+    }
+
+    /* footer */
+    footer {
+      margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--g300);
+      font-family: var(--mono); font-size: 12px; color: var(--g500);
+    }
+
+    /* print */
+    @media print {
+      body { background: white; color: black; padding: 0; font-size: 11pt; }
+      .page { max-width: none; }
+      h1, h2, h3 { page-break-after: avoid; }
+      table, .contra, .deprio, .new-card { page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-head">
+      <div class="eyebrow">Action Plan · docs-site (adk.mo.ai.kr) · 4-locale i18n</div>
+      <h1>docs-site/content/ko 업데이트 계획</h1>
+      <div class="goal-box">
+        <span class="label">Goal</span>
+        124페이지 한국어 docs-site를 새 10-섹션 README.ko.md 구조에 정합시키고, 6건 P0 모순을 해소하며, 8개 신규 페이지를 4-로케일 동기 PR로 추가한다. Claude-Code 업스트림 30페이지는 삭제 없이 de-prioritize한다.
+      </div>
+    </header>
+
+    <!-- summary strip -->
+    <div class="summary-strip">
+      <div class="sum-cell">
+        <div class="k">총 페이지</div>
+        <div class="v">124</div>
+        <div class="sub">11 섹션 그룹</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">P0 긴급</div>
+        <div class="v accent">15</div>
+        <div class="sub">모순 6 + 스크린샷 + 이모지 + 빈 페이지</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">신규 페이지</div>
+        <div class="v">8</div>
+        <div class="sub">README 암시 · docs-site 부재</div>
+      </div>
+      <div class="sum-cell">
+        <div class="k">4-로케일 동기 PR</div>
+        <div class="v">en · ko · ja · zh</div>
+        <div class="sub">구조 변경 same-PR 의무</div>
+      </div>
+    </div>
+
+    <!-- 01 Executive Summary -->
+    <section aria-label="Executive Summary">
+      <div class="sec-head"><span class="num">01</span><h2>실행 요약 (Executive Summary)</h2></div>
+      <p class="sec-intro">새 10-섹션 README.ko.md 도입에 맞춰 docs-site/content/ko 124페이지를 전수 조사한 결과, 6건의 문서 내 모순, 8개의 신규 페이지 부재, 30페이지 분량의 claude-code/ 업스트림 섹션 de-prioritization 과제가 확인됐다.</p>
+
+      <p class="body"><strong>핵심 발견 (Headline findings):</strong></p>
+      <ul class="body">
+        <li><strong>문서 내 모순 6건</strong>은 README 병합 전 또는 병행 단계에서 반드시 수정해야 한다 (P0).</li>
+        <li>새 README는 <strong>8개 신규 docs-site 페이지</strong>를 암시하지만 현재 존재하지 않는다 (§c).</li>
+        <li><strong>30페이지 claude-code/ 섹션</strong>은 유일한 대규모 업스트림 파생 영역 — 삭제가 아니라 "배경 참조"로 재구성한다 (§d).</li>
+        <li>본문 이모지 위반은 3개 페이지에 국한되며 기계적 수정으로 해결된다 (P0).</li>
+        <li><strong>changelog/_index.md</strong>는 README 배지가 v3.0.2를 표시함에도 불구하고 빈 skeleton 상태다 (P0).</li>
+      </ul>
+
+      <div class="callout">
+        <span class="label">Methodology</span>
+        모든 페이지를 새 10-섹션 README와 매핑. 우선순위 키 — <span class="stat-inline">P0</span> 정확성/모순/README 블로커 · <span class="stat-inline">P1</span> 구조 정합 + calque/i18n/패리티 + gap-filling · <span class="stat-inline">P2</span> 폴리시/보강/de-prioritization. 액션 키 — keep / rewrite / merge / split / new / move / delete.
+      </div>
+    </section>
+
+    <!-- 02 New README Structure -->
+    <section aria-label="New README 10-Section Structure">
+      <div class="sec-head"><span class="num">02</span><h2>새 README 10-섹션 구조</h2></div>
+      <p class="sec-intro">새 README.ko.md가 채택할 10-섹션 구조. docs-site 모든 페이지는 이 구조의 대응 §에 feed하거나 링크해야 한다. README 4-로케일 동기화는 <code>hns-oss-docs-readme-sync</code> 스킬이 소유한다.</p>
+
+      <div class="readme-grid">
+        <div class="readme-card"><span class="n">§1</span><div><div class="t">Hero / 헤더 라인</div><div class="d">프로젝트 슬로건, 현재 버전 배지, install one-liner</div></div></div>
+        <div class="readme-card"><span class="n">§2</span><div><div class="t">왜 MoAI-ADK인가 (차별점)</div><div class="d">3-core-values, 경쟁사 3-way 비교표, 검증 비용 절감</div></div></div>
+        <div class="readme-card"><span class="n">§3</span><div><div class="t">빠른 시작 (Quick Start)</div><div class="d">install → init → 최소 사용 예시, 9-row 읽기 순서</div></div></div>
+        <div class="readme-card"><span class="n">§4</span><div><div class="t">핵심 기능 카드</div><div class="t" style="font-size:12px;color:var(--g500)">@MX, Harness v4 Builder, moai-web, Navigator, No-Haiku 3-tier, Dynamic Workflows, statusline 3-line, moai-design</div></div></div>
+        <div class="readme-card"><span class="n">§5</span><div><div class="t">SPEC 워크플로우 (Analyze-First 5단계)</div><div class="d">의도 분석 → 맥락 충분성 → 실행 계획 → 승인 게이트 → 실행/검증</div></div></div>
+        <div class="readme-card"><span class="n">§6</span><div><div class="t">레시피 / 사용 패턴</div><div class="d">TDD/DDD 사이클, fix-vs-loop, CI/CD 통합, worktree 병렬 개발</div></div></div>
+        <div class="readme-card"><span class="n">§7</span><div><div class="t">설정 / 구성</div><div class="d">.moai/config 섹션, llm.yaml, handoff/delegation, tool-policy, namespace 정책</div></div></div>
+        <div class="readme-card"><span class="n">§8</span><div><div class="t">다중 LLM / 16-언어 / 범용성</div><div class="d">4-로케일 문서, 16-언어 LSP 동등, GLM 3-tier, CG mode 60-70% 절감</div></div></div>
+        <div class="readme-card"><span class="n">§9</span><div><div class="t">문서와 학습 자료</div><div class="d">docs-site 12-섹션 허브 + 도서(488p) + 플랫폼 기초(Claude Code)</div></div></div>
+        <div class="readme-card"><span class="n">§10</span><div><div class="t">커뮤니티 / 기여</div><div class="d">Apache 2.0, Discord, GitHub Issues, modu-ai/moai-adk</div></div></div>
+      </div>
+    </section>
+
+    <!-- 03 Per-Section Matrix -->
+    <section aria-label="Per-Section Page-Action Matrix">
+      <div class="sec-head"><span class="num">03</span><h2>섹션별 페이지-액션 매트릭스</h2></div>
+      <p class="sec-intro">124페이지 전수 매핑 (A.1–A.11). State는 전수 조사 시점의 신선도. <span class="pill p-p0">P0</span> 정확성/모순 · <span class="pill p-p1">P1</span> 구조 정합 · <span class="pill p-p2">P2</span> 폴리시.</p>
+
+      <div class="grp-title">A.1 root + getting-started <span class="grp-meta">9 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">ko/_index.md</td><td>fresh</td><td class="gap-cell">인라인 이모지 🪙🧠🛡️가 no-emoji 규칙 위반; 3-core-values가 introduction.md와 중복; 도서 프로모션은 §9에 부합</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">getting-started/_index.md</td><td>fresh</td><td class="gap-cell">9-row 읽기 순서가 온보딩 SSOT — README §3가 이 순서를 mirror; root와의 경미한 3-value 중복</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">introduction.md</td><td>fresh</td><td class="gap-cell">가장 풍부한 단일 페이지; <strong>모순</strong>: /moai loop "max 100" vs "기본 최대 10회"; SPEC/TDD/DDD/TRUST 5가 quickstart+faq와 중복</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">installation.md</td><td>fresh</td><td class="gap-cell">install script URL이 README와 정확히 일치해야; WSL/pip-uv 깊이는 여기 유지</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">init-wizard.md</td><td>fresh</td><td class="gap-cell"><strong>모순</strong>: <code>moai update --reconfigure</code>라고 하지만 cli.md는 <code>-c, --config</code> 문서화</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">quickstart.md</td><td>fresh</td><td class="gap-cell">방법론 중복이 가장 심함 (TDD/DDD/TRUST 5의 3번째 출처); sequenceDiagram은 TD-예외 준수; 파일 트리는 §5에 강력</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">cli.md</td><td>fresh</td><td class="gap-cell"><strong>모순</strong>: hook event 수 "27"(moai doctor) vs "약 38"(moai hook 섹션); init-wizard 플래그 정정</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">windows-guide.md</td><td>fresh</td><td class="gap-cell">이미 icon shortcode 사용(준수); non-ASCII 한국어 사용자명 처리는 ko 특화 페인포인트 — README §8에 노출 가치</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">faq.md</td><td>fresh</td><td class="gap-cell">statusline 샘플이 이모지 🗿🔅⬆️ 사용(text/icon으로 변환 필요); moai-vs-/moai 구분은 §2 callout에 강력; Discord URL 정준</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.2 core-concepts <span class="grp-meta">7 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">_index.md</td><td>fresh</td><td class="gap-cell">3-core 프레이밍이 §2 hero sub-header/feed; nav/landing</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">what-is-moai-adk.md</td><td>fresh</td><td class="gap-cell">README 단독으로 ~70% 커버; 타 곳의 TDD/DDD/TRUST 5 통합; Go 1.26+ 클레임 검증</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">harness-engineering.md</td><td>fresh</td><td class="gap-cell">namespace 정책(moai-* overwrite vs hns-* preserve) — §7에 노출 필수; 7-컴포넌트 표가 what-is보다 깊음</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">spec-based-dev.md</td><td>fresh</td><td class="gap-cell"><strong>정확성</strong>: 제목 + 변환표에 여전히 "EARS"; 정준은 GEARS (EARS 만료 2026-11-22). lifecycle + sync_commit_sha + era 분류가 §5 소스</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">ddd.md</td><td>fresh</td><td class="gap-cell">TDD/DDD 선택이 what-is + spec-based-dev와 중복; 제목은 "개발 방법론 (DDD/TDD)"이나 파일명은 ddd.md</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">trust-5.md</td><td>fresh</td><td class="gap-cell">heading 순서 약간 어긋 (첫 H2 전에 H3); 3-level harness + phase별 LSP 표는 고유 상세</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">constitution.md</td><td>fresh</td><td class="gap-cell">FROZEN/Evolvable 분할 + 5-layer safety 고유 상세 — §2 차별점 증거로 강력</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.3 workflow-commands <span class="grp-meta">7 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">_index.md</td><td>fresh</td><td class="gap-cell">15-서브커맨드 라우팅 맵 + 토큰-예산 표(30K/180K/40K) — §5/§7 flagship</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-project.md</td><td>fresh</td><td class="gap-cell">16-언어 LSP 표 + DB 엔진 매트릭스 = §8 범용성 증거; harness-spec.yaml 스키마는 §5용</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-plan.md</td><td>fresh</td><td class="gap-cell">가장 큰/flagship 페이지; GEARS 마이그레이션 내러티브 + Adaptive Recommendation Placement = §2 차별점; 15-phase 워크플로 + plan-auditor audit = §5</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-run.md</td><td>fresh</td><td class="gap-cell">Phase 19 라벨이 두 번 재사용 (sync-auditor + Git work); Plan Audit Gate + Implementation Kickoff Approval (REQ-ATR-015) = §5 spine</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-sync.md</td><td>fresh</td><td class="gap-cell">내부 주름: gate-sync-1 "Phase 3 진입 전"이나 mermaid는 Phase 7을 먼저 표기; Hybrid Trunk + tier routing + auto-fix CI loop = §2/§5 차별점</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-design.md</td><td>fresh</td><td class="gap-cell">가장 짧은 커맨드 페이지; D1-D5 + H1-H9 handoff + tool-absent fail-open = §2/§4 카드 후보</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-harness.md</td><td>fresh</td><td class="gap-cell">Harness v4 Builder 4-phase + 4-tier learning ladder + manifest 스키마 = §4 카드 + §5 검증; <code>/moai:harness</code>와 <code>moai harness</code> 혼용 (둘 다 유효)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.4 utility-commands <span class="grp-meta">12 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">_index.md</td><td>fresh</td><td class="gap-cell">"15 subcommands" vs "11 utility commands" 카운트를 README 열거와 조정 필수; agentic-loop-engineering 프레이밍 = §2</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai.md</td><td>fresh</td><td class="gap-cell">PRIMARY §5 feed; Analyze-First 라우팅 + 4 named gates + Phase 0 parallel exploration + LLM-mode cost routing + agent-team retirement = §2 차별점</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-goal.md</td><td>fresh</td><td class="gap-cell">4 safety invariants + stop-goal hook boundary + fail-closed arming = §2 rigor 증거</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-loop.md</td><td>fresh</td><td class="gap-cell">Ralph Engine + Step 1.5 independent final pass + stagnation guard = §5 검증; coverage 85% gate</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-fix.md</td><td>fresh</td><td class="gap-cell">4-level classification + fix-vs-loop 의사결정 = §6 레시피; "cheapest tool for the job" = §2</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-gate.md</td><td>fresh</td><td class="gap-cell">shared-snapshot-store 재사용 + --fresh 독립 검증 = §2 differentiator; 16-언어 동등 대우 = §8</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-mx.md</td><td>fresh</td><td class="gap-cell">@MX tag system = §2 차별점 ("context anchors baked into code"); 5 tag types + 우선순위 = §7</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-clean.md</td><td>fresh</td><td class="gap-cell">명시적 16-언어 열거가 정준 목록 — README §8이 인용; @MX:ANCHOR 보호 = §7</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-codemaps.md</td><td>fresh</td><td class="gap-cell">.moai/project/codemaps/ 출력 구조 + validation-must-pass = §5; loop/clean/mx보다 README 우선순위 낮음</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-review.md</td><td>fresh</td><td class="gap-cell">유일하게 "one-line summary" callout이 없는 페이지 (사소한 불일치); read-only review vs loop fix 분리 = §2; agent-team retirement tombstone 정합 필수</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">moai-e2e.md</td><td>fresh</td><td class="gap-cell">PRIMARY §8 feed; 7-row 플랫폼 툴체인 매트릭스 + 8-row 프로젝트-감지 마커 표 = 가장 강력한 범용성 증거</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">moai-feedback.md</td><td>fresh</td><td class="gap-cell">PRIMARY §10 feed; 기본 repo modu-ai/moai-adk가 README URL과 정확히 일치해야</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.5 cli-reference <span class="grp-meta">21 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">_index.md</td><td>fresh</td><td class="gap-cell">nav 페이지; <code>moai</code> 바이너리 vs <code>/moai</code> 슬래시 구분</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">ast-grep.md</td><td>fresh</td><td class="gap-cell">CI 보안 스캔 / SARIF 업로드 레시피; rule dir config</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">constitution.md</td><td>fresh</td><td class="gap-cell">niche advanced; README top-level 언급 가능성 낮음</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">doctor.md</td><td>fresh</td><td class="gap-cell">설치 후 검증 단계</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">github.md</td><td>fresh</td><td class="gap-cell">issue↔SPEC 연결</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">goal.md</td><td>fresh</td><td class="gap-cell">mechanical-vs-model condition 구분 — README 가치</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">handoff.md</td><td>fresh</td><td class="gap-cell">fail-open 보장 — README 언급 가치</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">harness.md</td><td>fresh</td><td class="gap-cell">ledger non-forgeability = §2 차별점</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">init.md</td><td>fresh</td><td class="gap-cell"><code>moai init</code>; --all vs slim 구분 — README 가치</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">inventory.md</td><td>fresh</td><td class="gap-cell">phase enum plan/run/sync/mx = §5 concrete; jq 레시피</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">launchers.md</td><td>fresh</td><td class="gap-cell">PRIMARY §8 multi-model 소스; cc/glm/cg + 60-70% 비용 절감 = §2 차별점</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">loop.md</td><td>fresh</td><td class="gap-cell">CLI-vs-skill 구분 유용</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">pr.md</td><td>fresh</td><td class="gap-cell">CI/CD PR watch 레시피</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">profile.md</td><td>ok</td><td class="gap-cell">"next release" 주석 2건 (project-scoped memory, login notice) — README 과장 금지</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">session.md</td><td>fresh</td><td class="gap-cell">다중 세션 race 방지</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">spec.md</td><td>fresh</td><td class="gap-cell">PRIMARY §5 SPEC-lifecycle 소스; atomic-4-phase-close + EARS/SARIF lint — README 가치</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">status.md</td><td>fresh</td><td class="gap-cell">post-init sanity check; BODP branch notice</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">tool-policy.md</td><td>fresh</td><td class="gap-cell">deny-by-default / risk-tiered permissions = §2 차별점</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">update.md</td><td>fresh</td><td class="gap-cell">가장 큰 페이지; mandatory-checksum (CWE-345, no --skip-checksum) = §2 보안 차별점; moai-* vs hns-* 폴더 소유권 = §7</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">web.md</td><td>fresh</td><td class="gap-cell">loopback-only/no-DB/no-auth = §2 보안; 4-로케일 UI = §8; "next release" 주석이 profile.md와 동일; §4 카드 + 신규 전용 페이지(§c) 후보</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">worktree.md</td><td>fresh</td><td class="gap-cell">snapshot/verify/restore exit-code 매트릭스 = §5 검증 상세; parallel-SPEC 레시피</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.6 advanced-part1 <span class="grp-meta">13 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">advanced/_index.md</td><td>fresh</td><td class="gap-cell">7-layer harness 아키텍처 + 3-axis 프레이밍; "심화 학습" §9 진입; "harness building harness" = §1 Hero 슬로건</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agent-guide.md</td><td>fresh</td><td class="gap-cell">정준 11-agent 카탈로그 (vs claude-md-guide 요약); model×effort 매트릭스 = §8 multi-model</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">autonomous-loops.md</td><td>fresh</td><td class="gap-cell">3-primitive 오너십 분리 (goal/moai goal/moai loop) + REQ-DA-062 정직성 = §2 차별점</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">builder-agents.md</td><td>fresh</td><td class="gap-cell">Harness v4 Builder 개요; 자연어→specialist team = §2 차별점; harness-v4-builder와 쌍 (개요 vs spec)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">catalog-system.md</td><td>fresh</td><td class="gap-cell">3-layer catalog (Core/Optional Packs/Harness); slim mode = §2 tokenomics; optional_packs 6 domains = §8</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">claude-md-guide.md</td><td>fresh</td><td class="gap-cell">CLAUDE.md/CLAUDE.local.md/.claude/rules/ 3-tier + 40K diet = §2 차별점; Analyze-First 파이프라인; conversation_language = §8</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">config-sections.md</td><td>fresh</td><td class="gap-cell">handoff/delegation/llm/statusline/security YAML 키; GLM 3-tier 매핑 (glm-5.2/glm-4.7/glm-4.5-air) = §8</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">decision-memory.md</td><td>fresh</td><td class="gap-cell">ACE 3-Tier memory + 5 placement principles + power-law decay — 고유, 중복 없음; = §2 차별점 (cold-start 투명성)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">harness-profiles.md</td><td>fresh</td><td class="gap-cell">3-tier adaptive verification + sync-auditor 4-dim + 5 bias-prevention 메커니즘 = §5 검증 핵심</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">harness-v4-builder.md</td><td>fresh</td><td class="gap-cell">design-spec 페이지; builder-agents와 쌍; manifest 스키마 + Runner primitives + L1_optional worktree 조건</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">hooks-guide.md</td><td>fresh</td><td class="gap-cell">shell-wrapper + Go 바이너리 (Python dep 없음) = §2 차별점; 13 events + 38 subcommands + MoAI 기본 hooks; 16-언어 formatters/linters = §8</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">hooks-reference.md</td><td>fresh</td><td class="gap-cell">30-event 카탈로그; README 본문 요약만 (30-event 표는 과도); hooks-guide와 쌍</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">mx-scanner-internals.md</td><td>fresh</td><td class="gap-cell">rotRisk/UPGRADE gate + LSP fan-in/textual fallback + CGO gate + 5 시점 자동 스캔; 고유 콘텐츠</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.7 advanced-part2 <span class="grp-meta">11 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">mx-tags.md</td><td>fresh</td><td class="gap-cell">@MX inline 프로토콜; "prompts can be ignored, code comments survive" = §2 차별점; 13-lang 표 (부분 — 16-lang 클레임은 rules/에 존재)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">no-haiku-3tier.md</td><td>fresh</td><td class="gap-cell">DeepSWE 비용 스토리 = §2 경쟁 증거의 1차 proof-point; §4 "No-Haiku 3-tier" 카드 후보</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">profile-matrix.md</td><td>fresh</td><td class="gap-cell">33-cell 매트릭스 (11 agents × 3 profiles); GLM overlay 정직성 고지; harness-specialist 표</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">security-notes.md</td><td>fresh</td><td class="gap-cell">v3.0.0 CWE-732/552/214/345 hardening; settings-json.md와 <strong>중복</strong> — 둘 다 일관, README는 security-notes를 정준으로 인용</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">self-evolving.md</td><td>fresh</td><td class="gap-cell">ACE 3-Loop (Observe→Reflect→Promote) + 5-tier ladder + 3-Zone contract = §4 카드 후보; 정직한 로드맵 (EVOLVE-004/005 미완료) 보존 필수</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">settings-json.md</td><td>fresh</td><td class="gap-cell">1123줄 — README가 권한 표를 절대 복제하지 않도록; ENABLE_TOOL_SEARCH "auto"(10%) vs MoAI template "1" — README는 MoAI default='1' 명시; hook timeout 단위 = seconds load-bearing</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">skill-guide.md</td><td>fresh</td><td class="gap-cell">29 moai-* skills; <strong>내부 불일치</strong>: progressive-disclosure 예시는 "31", 카탈로그는 "29" — README는 29 사용; moai-meta-harness DEPRECATED 상태 보존</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">statusline.md</td><td>fresh</td><td class="gap-cell">3-line v3 statusline CW/5H/7D + PR; GLM-5.2 true-1M (Issue #653)이 §8 강화; settings-json + token-budget와 일관</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">token-budget.md</td><td>fresh</td><td class="gap-cell">D-layer budget defense (graceful abort 90%, paste-ready 6-block resume, verify-diet file-redirect, evidence persistence) — README가 정준 budget-defense로 인용; statusline thresholds와 일관</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">tokenomics-overview.md</td><td>fresh</td><td class="gap-cell">4-layer 허브 (Metering/Routing/Verify-diet/Budget); v3.0 차별점; 정직성 분할 (구현됨 vs GLM-overlay-wire-validity-pending) 보존</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">ultracode-workflows.md</td><td>fresh</td><td class="gap-cell">3 orchestration primitives + Agent Teams RETIREMENT (v3.0 정직성 포인트); Dynamic Workflow JS template + Ultracode keyword = §6 레시피; §4 "Dynamic Workflows" 카드 후보</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.8 multi-llm + cost-optimization + guides <span class="grp-meta">8 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">multi-llm/_index.md</td><td>fresh</td><td class="gap-cell">3-run-mode 표 + Claude→GLM 매핑 = §2/§4/§8 README-수준 differentiators</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">multi-llm/cg-mode.md</td><td>fresh</td><td class="gap-cell">가장 상세한 CG 참조; CWE-214 source-file injection = §2 보안 차별점; 완전 복제 금지</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">multi-llm/model-policy.md</td><td>fresh</td><td class="gap-cell">11-agent × 3-profile 매트릭스 + No-Haiku = §2 차별점; --model-policy 플래그 + llm.yaml = §7</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">cost-optimization/_index.md</td><td>fresh</td><td class="gap-cell">두 갈래 프레이밍 (context diet vs prompt caching 90% off); README §2는 "90% off"를 전역으로 과장 금지 (cache-read tokens에 한함)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">cost-optimization/prompt-caching.md</td><td>fresh</td><td class="gap-cell">deep multipliers/TTL/min-token 표는 여기 유지; Haiku 4.5 min-token(4096) 언급 — No-Haiku 라우팅과 모순되지 않으나 README는 Haiku를 MoAI agent stack에 암시하지 않도록</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">guides/_index.md</td><td>fresh</td><td class="gap-cell">CI 자율성 + GitHub 통합 레시피</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">guides/ci-autonomy.md</td><td>fresh</td><td class="gap-cell">8-Tier 자율 CI/CD = §2 차별점; 4-로케일 i18n validator = §8; <strong>possibly stale links</strong> — /ko/worktree/guide, /ko/utility-commands/moai-loop, /ko/utility-commands/moai-fix — §9 빌드 중 검증</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">guides/multi-llm-ci.md</td><td>fresh</td><td class="gap-cell"><strong>파일명/콘텐츠 불일치</strong>: 파일명=multi-llm-ci.md but 콘텐츠=GitHub 통합; multi-LLM PR 리뷰 패널을 명시적으로 de-scope — README는 제목별 "GitHub 연동"으로 링크, multi-LLM PR 리뷰 패널을 설명하지 않도록; 16-언어 detect-language 목록 = §8 증거</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.9 worktree <span class="grp-meta">4 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">worktree/_index.md</td><td>fresh</td><td class="gap-cell">🛡️ 이모지 callout이 <strong>no-emoji 규칙 위반</strong>; guide + examples와 중복 (3-phase flow, --spawn, advantages); §8 콘텐츠 없음</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">worktree/guide.md</td><td>fresh</td><td class="gap-cell">PRIMARY §7 소스; snapshot/verify/restore state-guard primitives는 여기만 문서화 — §5 검증 feed; _index + examples와 강력 중복</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">worktree/examples.md</td><td>fresh</td><td class="gap-cell">§6 레시피 소스 (single/parallel/team + troubleshooting trio + startup 70% 수치); 70% 수치가 _index+faq에 반복 — 단일 SSOT 필요; §8 힌트 부족 (test cmd 언어별 상이)</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">worktree/faq.md</td><td>fresh</td><td class="gap-cell">다른 3페이지 모두 강화 (basics, --spawn, recover, --stale, 70%); GitHub Issues + Discord URLs = §10; worktree-vs-branch "LLM 설정 공유됨/독립적" = 가장 명확한 value-prop</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p2">P2</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="grp-title">A.10 claude-code <span class="grp-meta">30 pages · upstream-derived — de-prioritization 전략은 §d 참조</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">_index.md</td><td>fresh</td><td class="gap-cell">플랫폼 계층 프레이밍; README §9 허브 링크</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">foundations/_index.md</td><td>fresh</td><td class="gap-cell">nav 전용</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">foundations/features-overview.md</td><td>fresh</td><td class="gap-cell">§4 feature 카드의 가장 강력한 단일 소스 (skill-vs-subagent 표)</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">foundations/how-claude-code-works.md</td><td>fresh</td><td class="gap-cell">PRIMARY §5 개념적 소스 (agentic loop, harness 정의)</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">foundations/interactive-mode.md</td><td>fresh</td><td class="gap-cell">대부분 §9 참조; README에 shortcut 표를 복제하지 않도록</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">foundations/permissions.md</td><td>fresh</td><td class="gap-cell">plan→run human gate가 Implementation Kickoff Approval에 매핑 = §2/§5 차별점</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">foundations/commands.md</td><td>fresh</td><td class="gap-cell">/moai 서브커맨드 표 = README 커맨드 블록과 유일한 중복 위험</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">foundations/tools-reference.md</td><td>fresh</td><td class="gap-cell">권한 rule 구문 = §7; LSP multi-lang = §8</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">foundations/claude-directory.md</td><td>fresh</td><td class="gap-cell"><code>moai init</code>이 .claude/를 채우는 것 = §2 selling point</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">context-memory/* (5 pages)</td><td>fresh</td><td class="gap-cell">context-window, memory, prompt-caching, checkpointing, sessions — 대부분 advanced/* 또는 utility-commands/moai.md와 <strong>중복</strong>; MoAI-native를 정준으로 de-prioritize</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">extensibility/* (5 pages)</td><td>fresh</td><td class="gap-cell">hooks, mcp, plugins, skills, _index — 대부분 advanced/hooks-guide, advanced/skill-guide와 <strong>중복</strong>; MoAI-native 정준</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/sub-agents.md</td><td>fresh</td><td class="gap-cell">no-spawn 제약 (v2.1.219부터 depth 3); background 기본값 (v2.1.198); 11-agent 카탈로그; advanced/agent-guide.md와 <strong>중복</strong></td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/agent-teams.md</td><td>fresh</td><td class="gap-cell">CG mode 60-70% 비용 = §8 가장 강력한 selling point; native teams v2.1.178+ 활성화</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">agentic/agent-view.md</td><td>fresh</td><td class="gap-cell"><code>claude agents</code> UI; 10x quota 경고가 §8 tokenomics 강화</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/best-practices.md</td><td>fresh</td><td class="gap-cell">verification-first thesis + Writer/Reviewer pattern = §5 plan-auditor/sync-auditor 설계; PRIMARY §6 레시피 소스</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">agentic/goal.md</td><td>fresh</td><td class="gap-cell">/goal HUMAN-ONLY vs /moai goal programmatic = §5/§6; "evaluator reads only conversation" 한계 = §2 nuance</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">foreground</span></td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td class="page-cell">agentic/large-codebases.md</td><td>fresh</td><td class="gap-cell">sparse-worktree + monorepo 패턴 = §6/§7 config 레시피</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/scheduled-tasks.md</td><td>fresh</td><td class="gap-cell">/loop polling-interval=cost가 §8 강화</td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/workflows.md</td><td>fresh</td><td class="gap-cell">sync-audit-4dim, plan-research-fanout이 MoAI 파이프라인 단계 = §5; multi-model 스케일 = §8; advanced/ultracode-workflows.md와 <strong>중복</strong></td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td class="page-cell">agentic/worktrees.md</td><td>fresh</td><td class="gap-cell">SPEC-parallel dev = §6; multi-loop isolation = §5; worktree/* (MoAI-native)와 <strong>중복</strong></td><td><span class="pill a-keep">keep</span> <span class="pill a-other">bg ref</span></td><td><span class="pill p-p2">P2</span></td></tr>
+        </tbody>
+      </table>
+      <p class="sec-intro" style="font-size:12px;margin-top:-8px;">claude-code/ 30페이지 중 8개(foreground 표시)는 MoAI-native가 중복하지 않는 콘텐츠를 보유 — foreground 유지. 나머지 22개는 bg ref로 de-prioritize. 상세 redundancy map은 §6 참조.</p>
+
+      <div class="grp-title">A.11 changelog + contributing <span class="grp-meta">2 pages</span></div>
+      <table class="matrix-table">
+        <thead><tr><th>페이지</th><th>상태</th><th>Gap vs 새 README</th><th>액션</th><th>Pri</th></tr></thead>
+        <tbody>
+          <tr><td class="page-cell">changelog/_index.md</td><td><strong style="color:var(--clay-d)">stale</strong></td><td class="gap-cell"><strong>빈 skeleton</strong> — README 배지가 v3.0.2를 표시함에도 불구하고 정책만 정의; 영구 stale 위험</td><td><span class="pill a-rewrite">rewrite</span></td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td class="page-cell">contributing/_index.md</td><td>fresh</td><td class="gap-cell">PRIMARY §10 feed; Apache 2.0, Discord, docs-site URL이 모두 README와 일치; §3와 부분 중복이나 다른 청중 (기여자 vs 엔드유저)</td><td><span class="pill a-keep">keep</span></td><td><span class="pill p-p1">P1</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 04 Cross-Cutting Concerns -->
+    <section aria-label="Cross-Cutting Concerns">
+      <div class="sec-head"><span class="num">04</span><h2>횡단 관심사 (Cross-Cutting Concerns)</h2></div>
+      <p class="sec-intro">모든 섹션에 적용되는 6개 횡단 주제. B.6 모순 레지스트리가 P0 수정 목록의 단일 진실 공급원이다.</p>
+
+      <p class="body"><strong>B.1 4-로케일 패리티 (en / ko / ja / zh)</strong> — 구조 변경(신규 페이지, 병합, 분할, 이동, _meta.yaml 편집, 섹션 추가/제거)은 <code>hns-oss-docs-i18n-rules</code>에 따라 동일 PR에 4-로케일 모두 착지해야 한다. 섹션 수 패리티(verify recipe), README 4-파일 heading 패리티(<code>hns-oss-docs-readme-sync</code>), 스크린샷 4-로케일 패리티가 결합된다.</p>
+
+      <p class="body"><strong>B.2 Calque 정리 (Category A 번역투)</strong> — 124 ko 페이지 전수 스윕. 새 README.ko.md는 이미 calque를 피했고, docs-site는 일치해야 한다.</p>
+      <table class="deprio" style="max-width:820px;">
+        <thead><tr><th>Calque (회피)</th><th>원어 표현 (선호)</th><th>의심 위치</th></tr></thead>
+        <tbody>
+          <tr><td>3축 / 세 축 / 세 가지 기둥 / "Three Axes"</td><td>세 가지 핵심 / 세 가지 핵심 가치</td><td>ko/_index.md, core-concepts/_index.md, advanced/_index.md</td></tr>
+          <tr><td>7대 기둥 ("seven pillars")</td><td>7가지 핵심 차별점 / 일곱 가지 강점</td><td>("기둥" 발생 전수 스윕)</td></tr>
+          <tr><td>검증경제 ("verification economy")</td><td>검증 비용을 줄이는 방식</td><td>tokenomics-overview.md, harness-profiles.md</td></tr>
+          <tr><td>예산방어 ("budget defense")</td><td>예산 초과 전에 중단하기</td><td>token-budget.md</td></tr>
+          <tr><td>회로차단기 ("circuit breaker")</td><td>토큰 예산 가드 / 자동 중단기</td><td>token-budget.md, statusline.md</td></tr>
+        </tbody>
+      </table>
+      <p class="body" style="font-size:13px;color:var(--g500);">Heavy 다중-문단 페이지(tokenomics-overview, harness-profiles, token-budget, statusline)는 delivery 전 <code>moai-domain-humanize</code>(modules/korean.md)를 마지막 단계로 통과해야 한다.</p>
+
+      <p class="body"><strong>B.3 내비게이션 / _meta.yaml / menu 결합</strong> — 신규 페이지마다 로케일별 <code>_meta.yaml</code> weight 항목(4-로케일 동시); 새 사이드바 항목은 <code>data/menu/main.yaml</code>의 icon 값 + <code>layouts/partials/menu.html</code> SVG switch case 짝(CLAUDE.local.md §17.1 HARD). 불일치 시 빈 svg 렌더 → 아이콘 누락. ci-autonomy.md와 (이름 변경 후) github-integration.md의 의심 stale 링크 검증.</p>
+
+      <p class="body"><strong>B.4 추가 스크린샷</strong></p>
+      <table class="deprio">
+        <thead><tr><th>자산 경로</th><th>용도</th><th>우선순위</th></tr></thead>
+        <tbody>
+          <tr><td class="canon">assets/moai-web-console.png (repo root)</td><td>README.ko.md §4 카드 embed</td><td><span class="pill p-p0">P0</span> README이 이미 참조</td></tr>
+          <tr><td class="canon">docs-site/static/img/moai-web-console.png</td><td>docs-site web.md / 신규 moai-web 페이지</td><td><span class="pill p-p0">P0</span></td></tr>
+          <tr><td>docs-site/static/img/moai-web-console-{en,ja,zh}.png</td><td>4-로케일 패러티 (로케일 UI당 1장)</td><td><span class="pill p-p1">P1</span></td></tr>
+          <tr><td>analyze-first-pipeline.png (optional SVG/mermaid render)</td><td>README §5 / 신규 Analyze-First 개념 페이지</td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td>spec-lifecycle.png (optional)</td><td>README §5 / quickstart.md embed</td><td><span class="pill p-p2">P2</span></td></tr>
+          <tr><td>statusline-3line.png</td><td>README §4 statusline 카드 / statusline.md</td><td><span class="pill p-p2">P2</span></td></tr>
+        </tbody>
+      </table>
+
+      <p class="body"><strong>B.5 버전 / SSOT 일관성</strong></p>
+      <table class="deprio">
+        <thead><tr><th>SSOT</th><th>정준</th><th>드리프트 위험</th></tr></thead>
+        <tbody>
+          <tr><td>버전 문자열</td><td class="canon">hugo.toml params.version via <code>{{&lt; version &gt;}}</code> shortcode</td><td>README 배지 v3.0.2 vs 정적 샘플 v3.0.0 — 검증</td></tr>
+          <tr><td>스킬 수</td><td class="canon">29 (skill-guide.md 카탈로그)</td><td>skill-guide 내부 "31" → 29로 정정</td></tr>
+          <tr><td>Hook event 수</td><td>하나 선택: 27 (moai doctor) vs 약 38 (moai hook 섹션)</td><td>cli.md vs doctor.md 모순</td></tr>
+          <tr><td>/moai loop 반복 한계</td><td>하나 선택: "max 100" vs "기본 최대 10회"</td><td>introduction.md 자기 모순</td></tr>
+          <tr><td>update 플래그</td><td class="canon"><code>-c, --config</code> (cli.md 정준)</td><td>init-wizard.md는 <code>--reconfigure</code> — 정정</td></tr>
+          <tr><td>repo URL</td><td class="canon">modu-ai/moai-adk</td><td>moai-feedback.md, contributing/_index.md, README — 패리티 검증</td></tr>
+          <tr><td>install script URL</td><td class="canon">raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh</td><td>installation.md vs README — 정확 일치 검증</td></tr>
+        </tbody>
+      </table>
+
+      <p class="body"><strong>B.6 모순 레지스트리 (P0 수정 목록)</strong></p>
+      <div class="contra">
+        <div class="row">
+          <div class="cell head num">#</div>
+          <div class="cell head">위치</div>
+          <div class="cell head">이슈</div>
+        </div>
+        <div class="row">
+          <div class="cell num">1</div>
+          <div class="cell"><span class="loc">getting-started/introduction.md</span><span class="iss">/moai loop "max 100" vs "기본 최대 10회"</span></div>
+          <div class="cell">SSOT 선택 후 일관 적용</div>
+        </div>
+        <div class="row">
+          <div class="cell num">2</div>
+          <div class="cell"><span class="loc">getting-started/cli.md</span><span class="iss">hook event 수 "27" vs "약 38"</span></div>
+          <div class="cell">SSOT 선택, 불일치 해소 문서화</div>
+        </div>
+        <div class="row">
+          <div class="cell num">3</div>
+          <div class="cell"><span class="loc">getting-started/init-wizard.md</span><span class="iss"><code>moai update --reconfigure</code> vs cli.md <code>-c, --config</code></span></div>
+          <div class="cell"><code>-c, --config</code>로 정정</div>
+        </div>
+        <div class="row">
+          <div class="cell num">4</div>
+          <div class="cell"><span class="loc">core-concepts/spec-based-dev.md</span><span class="iss">본문 "EARS" vs 정준 "GEARS" (EARS 만료 2026-11-22)</span></div>
+          <div class="cell">본문 EARS → GEARS</div>
+        </div>
+        <div class="row">
+          <div class="cell num">5</div>
+          <div class="cell"><span class="loc">advanced/skill-guide.md</span><span class="iss">스킬 수 "31" (progressive-disclosure 예시) vs "29" (카탈로그)</span></div>
+          <div class="cell">29로 통일</div>
+        </div>
+        <div class="row">
+          <div class="cell num">6</div>
+          <div class="cell"><span class="loc">guides/multi-llm-ci.md</span><span class="iss">파일명(multi-LLM 리뷰 패널) vs 콘텐츠(GitHub 통합, multi-LLM 명시적 de-scope)</span></div>
+          <div class="cell"><code>github-integration.md</code>로 이름 변경 + vercel.json redirect</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 New Pages -->
+    <section aria-label="New Pages to Create">
+      <div class="sec-head"><span class="num">05</span><h2>신규 페이지 (8 pages, 새 README가 암시하나 docs-site에 부재)</h2></div>
+      <p class="sec-intro">각 페이지는 4-로케일 동일 PR 착지, 로케일별 _meta.yaml weight, data/menu/main.yaml icon 값 + menu.html SVG case를 동반해야 한다.</p>
+
+      <div class="new-grid">
+        <div class="new-card">
+          <div class="hdr"><span class="path">core-concepts/verification-claim-integrity.md</span><span class="pill p-p0">P0</span></div>
+          <div class="rat">README §5 "검증 주장 무결성"이 flagship 차별점으로 등장. 5-section evidence-bearing format + 4 binding surfaces를 증류.</div>
+          <div class="ref">소스: .claude/rules/moai/core/verification-claim-integrity.md (SSOT)</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">core-concepts/navigator.md</span><span class="pill p-p1">P1</span></div>
+          <div class="rat">README §4 "Navigator" 기능 카드. 전용 개념 페이지 부재. NAV:DEC / NAV:SYM / MX:SPEC trio + nav-graph.json.</div>
+          <div class="ref">소스: .claude/rules/moai/workflow/nav-tokens.md</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">getting-started/comparison.md</span><span class="pill p-p1">P1</span></div>
+          <div class="rat">README §2 "비교표 (Claude Code 단독 vs 일반 래퍼 vs moai-adk)". eval 단계 독자에게 유용.</div>
+          <div class="ref">소스: README §2 비교표</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">advanced/analyze-first-routing.md</span><span class="pill p-p1">P1</span></div>
+          <div class="rat">README §5 Analyze-First mermaid + §2 차별점. 의도 분류 → 맥락 충분성 → 계획 구성 → 승인 게이트 → 실행/검증 설명.</div>
+          <div class="ref">소스: utility-commands/moai.md (커버하나 개념 페이지 부재)</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">core-concepts/book.md (또는 resources/book.md)</span><span class="pill p-p2">P2</span></div>
+          <div class="rat">ko/_index.md에 도서 프로모션 블록이 있으나 전용 페이지 부재; README §9가 도서 참조. 추천사, 목차, 구매 링크 통합.</div>
+          <div class="ref">소스: ko/_index.md 프로모션 블록</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">getting-started/migration.md</span><span class="pill p-p1">P1</span></div>
+          <div class="rat">통합 마이그레이션 가이드 부재 (1.x→2.x→3.0). installation.md는 1.x→2.x만 다룸. 구 버전 신규 사용자에게 단일 페이지 필요.</div>
+          <div class="ref">소스: installation.md 일부</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">advanced/moai-web-console.md</span><span class="pill p-p1">P1</span></div>
+          <div class="rat">cli-reference/web.md는 참조 전용; README §4가 feature 카드로 격상. use-case(프로필 편집, 프로젝트 섹션 편집, 4-로케일 UI 투어), 보안 모델, 스크린샷. moai-web-console.png embed.</div>
+          <div class="ref">소스: cli-reference/web.md + README §4</div>
+        </div>
+        <div class="new-card">
+          <div class="hdr"><span class="path">resources/i18n-docs.md (또는 core-concepts/i18n.md)</span><span class="pill p-p2">P2</span></div>
+          <div class="rat">README §8 "4-로케일 문서 표". 4-로케일 패러티 의무, 정준-로케일 체인, 각 로케일 위치, 번역 이슈 신고 방법을 설명할 전용 페이지 부재.</div>
+          <div class="ref">소스: README §8 + hns-oss-docs-i18n-rules</div>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:18px;">
+        <span class="label">Optional P2 candidates</span>
+        recipes/cost-calculator.md (70% 비용 절감 수치 SSOT) · advanced/namespace-policy.md (moai-* vs hns-* 통합) · changelog/release-notes/ 디렉터리 (changelog/_index.md 채우기의 대안)
+      </div>
+    </section>
+
+    <!-- 06 Claude-Code De-prioritization -->
+    <section aria-label="Claude-Code De-prioritization">
+      <div class="sec-head"><span class="num">06</span><h2>Claude-Code 업스트림 De-prioritization (삭제 금지)</h2></div>
+      <p class="sec-intro">30페이지 claude-code/ 섹션은 유일한 대규모 업스트림 파생 영역. "MoAI가 기반을 두는 플랫폼 학습" 경로로 가치 있지만, 내비게이션·검색 가중치·README §9 프레이밍에서 MoAI-native 콘텐츠보다 de-prioritize한다. <strong>삭제하지 않는다</strong> — MoAI가 구축되는 개념을 가르치기 때문.</p>
+
+      <p class="body"><strong>D.1 De-prioritization 메커니즘 (3 레버, 삭제 없음)</strong></p>
+      <ul class="body">
+        <li><strong>내비게이션 강등</strong>: data/menu/main.yaml weight 순서에서 MoAI-native 섹션 아래로 이동. 현재 중간 등급 추정; 사이드바 하단 "Background reference" 그룹으로 강등.</li>
+        <li><strong>README §9 프레이밍</strong>: MoAI-native 섹션(adk.mo.ai.kr 12-섹션 표)을 먼저 나열, Claude Code 학습 경로는 별도로 라벨링된 "플랫폼 기초 (Claude Code 학습)" 서브섹션으로 — MoAI 토픽과 교차 금지.</li>
+        <li><strong>교차 링크 방향 역전</strong>: MoAI-native 페이지가 claude-code/를 "background" callout으로 인용("플랫폼 기초: claude-code/... 참조"), claude-code/ 페이지는 "MoAI-ADK와 어떻게 이어지는가" tie-in 유지. 인용 방향이 MoAI-native를 정준으로 만든다.</li>
+      </ul>
+
+      <p class="body"><strong>D.2 중복 맵 — MoAI-native 선호, claude-code/ 교차 링크</strong></p>
+      <table class="deprio">
+        <thead><tr><th>주제</th><th>MoAI-native (정준)</th><th>claude-code/ (배경)</th><th>액션</th></tr></thead>
+        <tbody>
+          <tr><td>Context window / budget defense</td><td class="canon">advanced/token-budget.md</td><td class="back">context-memory/context-window.md</td><td><span class="arrow">cross-link → foreground token-budget</span></td></tr>
+          <tr><td>Prompt caching</td><td class="canon">cost-optimization/prompt-caching.md</td><td class="back">context-memory/prompt-caching.md</td><td><span class="arrow">cross-link → foreground cost-optimization</span></td></tr>
+          <tr><td>Sessions / handoff</td><td class="canon">utility-commands/moai.md (handoff)</td><td class="back">context-memory/sessions.md</td><td><span class="arrow">cross-link → foreground utility-commands</span></td></tr>
+          <tr><td>Hooks</td><td class="canon">advanced/hooks-guide.md + hooks-reference.md</td><td class="back">extensibility/hooks.md</td><td><span class="arrow">cross-link → foreground advanced</span></td></tr>
+          <tr><td>Skills</td><td class="canon">advanced/skill-guide.md</td><td class="back">extensibility/skills.md</td><td><span class="arrow">cross-link → foreground advanced</span></td></tr>
+          <tr><td>Sub-agents / agent catalog</td><td class="canon">advanced/agent-guide.md</td><td class="back">agentic/sub-agents.md</td><td><span class="arrow">cross-link → foreground advanced</span></td></tr>
+          <tr><td>Dynamic workflows / ultracode</td><td class="canon">advanced/ultracode-workflows.md</td><td class="back">agentic/workflows.md</td><td><span class="arrow">cross-link → foreground advanced</span></td></tr>
+          <tr><td>Worktrees</td><td class="canon">worktree/* (4 pages)</td><td class="back">agentic/worktrees.md</td><td><span class="arrow">cross-link → foreground worktree section</span></td></tr>
+        </tbody>
+      </table>
+
+      <p class="body" style="margin-top:18px;"><strong>D.3 Foreground 후보 (de-prioritize 대상 아님)</strong> — MoAI-native 페이지가 중복하지 않는 콘텐츠를 보유한 8개 claude-code/ 페이지:</p>
+      <ul class="body">
+        <li><strong>foundations/features-overview.md</strong> — §4 feature 카드의 가장 강력한 소스</li>
+        <li><strong>foundations/how-claude-code-works.md</strong> — PRIMARY §5 개념적 소스 (agentic loop)</li>
+        <li><strong>foundations/permissions.md</strong> — plan→run human gate = MoAI Implementation Kickoff Approval 차별점</li>
+        <li><strong>agentic/agent-teams.md</strong> — CG mode 60-70% 비용 = §8 가장 강력한 selling point</li>
+        <li><strong>agentic/best-practices.md</strong> — verification-first + Writer/Reviewer = §5/§6 설계</li>
+        <li><strong>agentic/goal.md</strong> — /goal HUMAN-ONLY vs /moai goal = §2/§5 nuance</li>
+        <li><strong>foundations/commands.md</strong> — 유일한 중복 위험 (README overlap 검증)</li>
+        <li><strong>foundations/claude-directory.md</strong> — <code>moai init</code>이 .claude/를 채움 = §2 selling point</li>
+      </ul>
+    </section>
+
+    <!-- 07 Phased Rollout -->
+    <section aria-label="Phased Rollout">
+      <div class="sec-head"><span class="num">07</span><h2>단계적 롤아웃 (Phased Rollout)</h2></div>
+      <p class="sec-intro">P0는 README 병합 전 must-do. P1은 새 README와 구조 정합 + gap-filling. P2는 폴리시/보강.</p>
+
+      <div class="rollout">
+        <div class="phase">
+          <div class="when">P0</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>정확성, stale, README 블로커 (README 병합 전 필수)</h3>
+            <p>6건 모순 수정, 빈 페이지 채우기, 이모지→icon shortcode, 스크린샷 캡처, verify recipe 게이트 통과. 모든 구조/콘텐츠 P0 수정은 4-로케일 동일 PR 착지.</p>
+            <ul class="sublist">
+              <li><strong>모순 수정 (6)</strong>: spec-based-dev EARS→GEARS · introduction loop "max 100"/"10회" SSOT 선택 · cli hook count SSOT 선택 · init-wizard <code>-c, --config</code> 정정 · skill-guide 31→29 · multi-llm-ci→github-integration 이름 변경 + vercel.json redirect</li>
+              <li><strong>stale/빈 페이지</strong>: changelog/_index.md를 최근 5 릴리스(v3.0.0→v3.0.2)로 채우기 또는 GitHub Releases redirect로 전환</li>
+              <li><strong>이모지 → icon shortcode (3)</strong>: ko/_index.md 🪙🧠🛡️ · faq.md 🗿🔅⬆️ · worktree/_index.md 🛡️</li>
+              <li><strong>스크린샷</strong>: moai-web-console.png 캡처, assets/ + docs-site/static/img/ 추가, README.ko.md §4 카드 embed 확인</li>
+              <li><strong>verify recipe 게이트</strong>: <code>hns-oss-docs-verify</code> warning-free hugo build · sitemap · URL blacklist · mermaid TD-only · 4-로케일 파일-존재 + 섹션-수 패리티 · README 4-파일 heading 패리티 · body-emoji 스캔 — P1 진입 전 모두 통과</li>
+              <li><strong>4-로케일 same-PR</strong>: 모든 구조/콘텐츠 P0 수정은 en/ja/zh 동일 PR. ko-only calque 표현 수정은 형제가 이미 원어 표현 사용 시 ko-only 허용</li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">6 contradictions</span>
+              <span class="tag">3 emoji fixes</span>
+              <span class="tag">1 stale page</span>
+              <span class="tag">1 screenshot</span>
+              <span class="tag">verify gate</span>
+              <span class="tag">4-locale PR</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="when">P1</div>
+          <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+          <div class="body">
+            <h3>새 README와 구조 정합, gap-filling, 패리티</h3>
+            <p>7개 신규 페이지(verification-claim-integrity는 P0), calque 정리 스윕, 중복 탈중앙화, stale 링크 검증, claude-code 섹션 de-prioritization, README §-카드 후보 노출.</p>
+            <ul class="sublist">
+              <li><strong>신규 페이지 (7)</strong>: navigator, comparison, analyze-first-routing, migration, moai-web-console(feature), book, i18n-docs — 각 4-로케일 동일 PR + _meta.yaml weight + menu.html SVG case</li>
+              <li><strong>calque 정리 스윕</strong>: heavy 아티팩트에 <code>moai-domain-humanize</code> 통과 — tokenomics-overview, harness-profiles, token-budget, statusline, ko/_index, advanced/_index. 124페이지 축/기둥/검증경제/예산방어/회로차단기 잔여 스윕</li>
+              <li><strong>중복 탈중앙화</strong>: SPEC/TDD/DDD/TRUST 5 단일 SSOT 지정(spec-based-dev + ddd + trust-5) 후 introduction/quickstart/faq/what-is가 참조(반복 금지) · 70% 비용 절감 수치 단일 SSOT(examples.md) · 11-agent tier 매트릭스 단일 SSOT(agent-guide.md)</li>
+              <li><strong>stale 링크 검증</strong>: ci-autonomy.md, (이름 변경 후) github-integration.md related-docs 링크 해소 확인</li>
+              <li><strong>claude-code 섹션 de-prioritization</strong>: §D 레버 적용 — 내비게이션 강등, README §9 프레이밍, 교차 링크 방향 역전. 각 claude-code/ 페이지에 "Background reference" callout 추가</li>
+              <li><strong>README §-카드 후보 노출</strong>: §4 카드 — @MX(moai-mx), Harness v4 Builder(builder-agents), Self-evolving ACE 3-Loop(self-evolving), No-Haiku 3-tier(no-haiku-3tier), 33-cell profile matrix(profile-matrix), Dynamic Workflows(ultracode-workflows), statusline 3-line(statusline), moai-design UI pipeline(moai-design). 각 카드는 MoAI-native 소스 페이지로 링크</li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">7 new pages</span>
+              <span class="tag">humanize pass</span>
+              <span class="tag">3 dedup SSOTs</span>
+              <span class="tag">claude-code de-prio</span>
+              <span class="tag">8 README §4 cards</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase">
+          <div class="when">P2</div>
+          <div class="dot-col"><span class="dot"></span></div>
+          <div class="body">
+            <h3>폴리시, 보강, 스크린샷</h3>
+            <p>추가 스크린샷, heading 순서 정규화, 템플릿 일관성, optional 신규 페이지, moai-design §4 카드, Ultracode/Agent Teams 일관성 최종 스윕.</p>
+            <ul class="sublist">
+              <li><strong>추가 스크린샷</strong>: 4-로케일 moai-web-console-{en,ja,zh}.png · optional analyze-first-pipeline, spec-lifecycle, statusline-3line 렌더</li>
+              <li><strong>heading 순서 정규화</strong>: trust-5.md의 첫 H2 전 H3 수정</li>
+              <li><strong>템플릿 일관성</strong>: moai-review.md 누락 one-line summary callout 추가 · moai-run.md에 Phase 19 중복 설명 note · moai-sync.md에 gate-numbering vs phase-numbering 설명 note</li>
+              <li><strong>optional 신규 페이지</strong>: recipes/cost-calculator, advanced/namespace-policy, changelog/release-notes/ 디렉터리</li>
+              <li><strong>moai-design §4 카드</strong>: "UI SPEC 협업 파이프라인" 카드 추가 (tool-absent fail-open, H7 security-as-data)</li>
+              <li><strong>Ultracode/Agent Teams 일관성</strong>: Agent Teams 언급 페이지마다 RETIREMENT 고지 일관성 부여 (대부분 완료, 최종 스윕)</li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">4-locale screenshots</span>
+              <span class="tag">heading fixes</span>
+              <span class="tag">3 template notes</span>
+              <span class="tag">3 optional pages</span>
+              <span class="tag">final sweep</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:24px;">
+        <span class="label">Closure checklist — per-page coverage</span>
+        root+getting-started 9/9 · core-concepts 7/7 · workflow-commands 7/7 · utility-commands 12/12 · cli-reference 21/21 · advanced-part1 13/13 · advanced-part2 11/11 · multi-llm+cost+guides 8/8 · worktree 4/4 · claude-code 30/30 · changelog+contributing 2/2 — <strong>총 124/124 페이지 커버. 누락 없음.</strong>
+      </div>
+    </section>
+
+    <footer>
+      Sources: docs-site/content/ko 124-페이지 전수 조사 · 새 10-섹션 README.ko.md 구조 · hns-oss-docs-i18n-rules · hns-oss-docs-verify · moai-domain-humanize &nbsp;&mdash;&nbsp; Generated: 2026-08-07
+    </footer>
+
+  </div>
+</body>
+</html>
