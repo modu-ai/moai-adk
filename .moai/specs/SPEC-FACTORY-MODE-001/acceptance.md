@@ -1,6 +1,6 @@
 # SPEC-FACTORY-MODE-001 — Acceptance Criteria
 
-Version: 0.7.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
+Version: 0.8.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
 
 > **Count declaration.** A "leaf" is one independently-asserted binary criterion: `AC-FM-020a` and `AC-FM-020b` are two leaves, not one. Counting parent IDs alone yields 26, which is the number v0.2.0 reported (as "25") and is not what a reviewer must actually evaluate. The honest leaf count is 36. It is declared, not adjusted — see `spec.md` §D for why the excess is verification depth on one security-critical chain rather than scope creep, and why the SPEC was not split to fit.
 
@@ -367,41 +367,102 @@ go tool cover -func=/tmp/fm-cli.out | grep -E \
 
 Judgement, all three required: (a) the `internal/cli` package total is at or above `76.3%` — a non-regression against a measured starting point, not an absolute floor; (b) `internal/factory` is at or above 85%; (c) the per-function grep returns seven rows and every one reports `100.0%`.
 
-**Why the floor is the lower observation, not the higher.** The pre-SPEC baseline was measured twice, independently, against the same pre-SPEC tree at commit `7171880a9`, and returned **76.4%** and **76.3%** — a 0.1pp spread. The current tree measures **76.5%** on two runs. The spread is real, not a transcription error, and it has a known source: `internal/cli` currently has one failing test (see the note below), and a run that fails partway does not execute an identical statement set each time. Setting the floor at the *higher* observation would make the criterion fail on measurement jitter alone, which is the same unfalsifiable-criterion defect in a subtler form — a criterion that fails for reasons unrelated to the work teaches a reviewer to ignore it. The floor is therefore the **lower** observation (76.3%): it cannot trip on jitter, and a genuine regression — the thing this clause exists to catch — moves coverage by far more than 0.1pp. Where a future run observes a baseline below 76.3%, re-measure rather than lower the floor; a drifting baseline is itself the finding.
+**Why the floor is the lower observation, not the higher.** The pre-SPEC baseline was measured twice, independently, against the same pre-SPEC tree at commit `7171880a9`, and returned **76.4%** and **76.3%** — a 0.1pp spread. The current tree measures **76.5%** on two runs. The spread is real, not a transcription error, and it has a known source: `internal/cli` carries both pre-existing defects recorded below — a `--- FAIL` (defect 1) and a hang that can kill the package on its timeout (defect 2) — and a run that fails or dies partway does not execute an identical statement set each time. The spread is in fact wider than 0.1pp when the package times out; the floor below is chosen to be insensitive to that, and the coverage clause is measured on a package-scoped run rather than inferred from a full-suite run. Setting the floor at the *higher* observation would make the criterion fail on measurement jitter alone, which is the same unfalsifiable-criterion defect in a subtler form — a criterion that fails for reasons unrelated to the work teaches a reviewer to ignore it. The floor is therefore the **lower** observation (76.3%): it cannot trip on jitter, and a genuine regression — the thing this clause exists to catch — moves coverage by far more than 0.1pp. Where a future run observes a baseline below 76.3%, re-measure rather than lower the floor; a drifting baseline is itself the finding.
 
-**Pre-existing failing test (recorded, NOT introduced by this SPEC).** `TestRunHarnessObserveStop_ProposeChainAutoRuns` fails in the `internal/cli` package on **both** the current tree and the pre-SPEC baseline tree at `7171880a9`. It is a pre-existing red, unrelated to Factory Mode, and it is recorded here so M6 does not mis-attribute it. It is out of scope for this SPEC. It also bears on this criterion's separate `go test ./...` exits-0 conjunct, which was itself never measured against a baseline; that conjunct is scope-bound immediately below.
+**Two pre-existing defects (recorded, NEITHER introduced by this SPEC).** The repository carries two distinct defects that this SPEC did not cause and does not repair. Both are named individually below, each justified by its own provenance; neither is justified by a count.
 
-**Scope bound (v0.6.0) — the full-suite conjunct.** The v0.5.0 form required a bare `go test ./...` exit 0. The repository carries **one pre-existing failing test**, `TestRunHarnessObserveStop_ProposeChainAutoRuns` in `internal/cli/hook_harness_propose_chain_test.go`, so that conjunct fails on every run regardless of this SPEC's correctness — the same shape as the 8 pre-existing mirror-grep matches bounded above, and the same **AP-16** defect class. The conjunct is therefore bounded to exclude **that one named test**, and nothing else.
-
-The exclusion rests on **provenance, not on a diagnosis**. Two commands establish it, and a reader can re-derive the judgement from them:
+**Defect 1 — `internal/cli` / `TestRunHarnessObserveStop_ProposeChainAutoRuns` (a `--- FAIL`).** It fails on both the current tree and the pre-SPEC baseline tree at `7171880a9`, in the `internal/cli` package. **Its root cause is unidentified.**
 
 ```bash
-# (a) the test is red at the pre-SPEC baseline — it predates this SPEC
+# (a) red at the pre-SPEC baseline — it predates this SPEC
 git worktree add --detach /tmp/fm-base 7171880a9
-(cd /tmp/fm-base && go test -count=1 -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/)
-#   observed at 7171880a9: --- FAIL ... "proposals dir not created (propose chain did not run)"
+go -C /tmp/fm-base test -count=1 -timeout 300s -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/
+#   observed at 7171880a9: --- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)
+#   observed at HEAD:      --- FAIL ... "proposals dir not created (propose chain did not run)"
 
 # (b) this SPEC touches no file in the failing test's code path
 git diff --name-only 7171880a9..HEAD -- internal/
-#   observed: 20 paths (14 Go files under internal/cli, internal/config, internal/factory;
-#   6 mirrored markdown files). NONE is hook_harness*.go and NONE is under internal/harness/.
+#   observed: 21 paths (14 Go files under internal/cli, internal/config, internal/factory;
+#   7 mirrored markdown files). NONE is hook_harness*.go and NONE is under internal/harness/.
 ```
 
-**Environment-sensitivity contradiction (recorded verbatim, not smoothed over).** At run-phase entry the same package was run at the same commit `7171880a9` and returned `ok ... 262.236s` — green. Later runs at that same commit return red. Two independent observers therefore reached **opposite results on the same tree**, which means the failure is **environment- or time-sensitive, not commit-sensitive**. **The root cause is unidentified.** One hypothesis — a quiet-window throttle in `internal/harness/throttle` — was tested and **rejected**: `grep -rn "QuietStartHr:" internal/ | grep -v _test.go` returns only the struct-literal copy inside `throttle.go` itself, so no production caller configures the quiet window and the throttle is not implicated. No root-cause story is asserted here; the exclusion is justified by provenance (a) + (b) alone.
+**Environment-sensitivity contradiction (recorded verbatim, not smoothed over).** At run-phase entry the same package was run at the same commit `7171880a9` and returned `ok ... 262.236s` — green. Later runs at that same commit return red. Two independent observers therefore reached **opposite results on the same tree**, which means the failure is **environment- or time-sensitive, not commit-sensitive**. One hypothesis — a quiet-window throttle in `internal/harness/throttle` — was tested and **rejected**: `grep -rn "QuietStartHr:" internal/ | grep -v _test.go` returns only the struct-literal copy inside `throttle.go` itself, so no production caller configures the quiet window. No root-cause story is asserted; the exclusion rests on provenance (a) + (b) alone.
 
-**Decision procedure (mechanically decidable).** The conjunct is judged by:
+**Defect 2 — real network I/O in the statusline usage collector (a HANG, not a FAIL).** `(*usageCollector).fetchUsageFromOAuthAPI` at `internal/statusline/usage.go:572`, reached from `(*defaultBuilder).collectAll` at `internal/statusline/builder.go:331`, performs a live HTTP/2 request with no test seam. **Every test that reaches `defaultBuilder.Build` therefore blocks until the test binary's timeout**, and the package dies on a timeout panic rather than reporting a failure. Its proximate cause IS identified — unlike defect 1 — but its fix is out of scope here.
+
+It surfaces in **two packages**:
+
+- `internal/statusline` — `TestBuilder_Build_FullData`, and (measured) `TestBuilder_Build_NilReader` and `TestBuilder_Build_InvalidJSON` behind it.
+- `internal/cli` — `TestRunStatusline_NilDeps` (via `internal/cli/statusline.go:77`), and `TestStatuslineCmd_WithDeps` behind it.
 
 ```bash
-go test ./... 2>&1 | grep '^--- FAIL'
-# PASS iff the output is EXACTLY the single line:
-#   --- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)
-# measured baseline for the package alone (this tree, two runs):
-#   `go test -count=1 ./internal/cli/ 2>&1 | grep '^--- FAIL'` → exactly that one line
+# (a) reproduces at the pre-SPEC baseline — it predates this SPEC
+go -C /tmp/fm-base test -count=1 -timeout 90s -run 'TestBuilder_Build_FullData' ./internal/statusline/
+#   observed: panic: test timed out after 1m30s / running tests: TestBuilder_Build_FullData
+#             FAIL github.com/modu-ai/moai-adk/internal/statusline 90.481s
+go -C /tmp/fm-base test -count=1 -timeout 90s -run 'TestRunStatusline_NilDeps' ./internal/cli/
+#   observed: same shape — FAIL github.com/modu-ai/moai-adk/internal/cli 90.951s
+
+# (b) the cause is visible in the goroutine dump
+#   net/http.(*http2ClientConn).readLoop ... net/http.(*http2Transport).newClientConn
+#   github.com/modu-ai/moai-adk/internal/statusline.(*usageCollector).fetchUsageFromOAuthAPI
+
+# (c) this SPEC touches no statusline file
+git diff --name-only 7171880a9..HEAD -- internal/ | grep statusline
+#   observed: no output
 ```
 
-**Falsification direction.** The bound excludes **one named test, never a count**. If a second distinct `--- FAIL` line appears — any test other than `TestRunHarnessObserveStop_ProposeChainAutoRuns` — the criterion **FAILS**. If the named test starts passing, the criterion still passes (zero FAIL lines is a strict improvement). A blanket "known failures are excluded" clause was rejected: it would let any future regression hide behind the bound, which is the opposite of what this criterion exists to catch.
+A 20-minute run was also observed to hang (`FAIL … 1200.550s`), confirming a real hang rather than slowness. The 90-second reproduction above is sufficient and is the one to repeat.
 
-**Fixing the test was considered and deliberately deferred.** It belongs to the harness observe-stop / propose-chain subsystem, which this SPEC does not touch; its root cause is unidentified and the two contradictory observations above suggest an environment- or timing-dependent fault whose investigation is unbounded in cost. Repairing it here would mean editing an unrelated subsystem inside a Factory Mode SPEC — the same scope-discipline violation rejected for the 8 mirror-grep matches. It is deferred to a separate SPEC. **This is not a criterion weakened to make a red build green**: the bound names one test and one test only, and every other failure in the repository still fails the conjunct.
+**Defect 3 was ours and is repaired — it is NOT excluded.** `internal/skills` `TestEntryRouterLOCCeiling` failed because M1 pushed `run.md` past its 200-LOC ceiling. Commit `e9aa2c363` relocated the block and the guard passes (`ok github.com/modu-ai/moai-adk/internal/skills 0.509s`, measured this run). Listing a repaired defect among the exclusions would hide a future regression of it, so it appears nowhere below. This distinction is the entire justification for the bound: the SPEC repaired what it broke and bounds only what predated it.
+
+**Scope bound (v0.8.0) — the full-suite conjunct, made hang-aware.** The v0.6.0 form judged the conjunct by `go test ./... 2>&1 | grep '^--- FAIL'` and required exactly one named line. **That procedure is structurally unable to see defect 2**: a hang emits no `--- FAIL` line at all — the package dies on a timeout panic, printing `panic: test timed out` and a goroutine dump — so a hanging package reads as clean to a `--- FAIL` grep. Worse, in the full-suite run that surfaced defect 2, the `internal/cli` package timed out before reaching the defect-1 test, so the only `--- FAIL` line emitted was `TestEntryRouterLOCCeiling` (defect 3): the v0.6.0 procedure would have read that run as a FAIL for the wrong reason while silently missing two others. Measured: `grep -c '^--- FAIL'` over a captured statusline hang returns `0`, while `grep -E '^FAIL[[:space:]]'` over the same output returns the package line.
+
+The procedure below therefore judges **package-level `FAIL` lines**, which a hang does produce, and then confirms **defect identity inside each reported package** — so the bound stays per-defect, not a blanket amnesty on two packages.
+
+**Decision procedure (mechanically decidable, hang-aware).**
+
+```bash
+# STEP 1 — package-level gate over the whole suite.
+go test ./... > /tmp/fm-full.txt 2>&1
+grep -E '^FAIL[[:space:]]' /tmp/fm-full.txt | awk '{print $2}' | sort -u
+# PASS-eligible iff this set is a SUBSET of exactly:
+#   github.com/modu-ai/moai-adk/internal/cli
+#   github.com/modu-ai/moai-adk/internal/statusline
+# A third package name is a FAIL. Fewer than two is a strict improvement, not a failure.
+# (`^FAIL[[:space:]]` matches the tab-separated package lines and excludes the bare
+#  trailing `FAIL` summary line — verified.)
+
+# STEP 2 — defect-identity check, per reported package, RE-RUN IN ISOLATION.
+go test -count=1 -timeout 90s ./internal/statusline/ > /tmp/fm-sl.txt 2>&1
+go test -count=1 -timeout 480s ./internal/cli/        > /tmp/fm-cli.txt 2>&1
+
+#  2a. Every `--- FAIL` line in either file must name defect 1 and nothing else:
+grep -hE '^--- FAIL' /tmp/fm-sl.txt /tmp/fm-cli.txt
+#      expected: zero lines, OR only
+#      --- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (...)
+#      Any other test name is a FAIL.
+
+#  2b. Any timeout panic must be defect 2 — its dump must carry the network frame:
+grep -c 'fetchUsageFromOAuthAPI' /tmp/fm-sl.txt /tmp/fm-cli.txt
+#      expected: >= 1 in each file that contains `panic: test timed out`.
+#      A timeout whose dump lacks that frame is a DIFFERENT hang → FAIL.
+
+#  2c. Defect 1 is confirmed present-and-alone by a targeted run
+#      (the hang can kill the cli binary before 2a observes it):
+go test -count=1 -timeout 300s -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/ 2>&1 \
+  | grep -E '^--- FAIL'
+#      measured this tree: exactly `--- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)`
+#      in 0.777s; measured at 7171880a9: the same line in 0.806s.
+```
+
+**STEP 3 — the timeout confound: a `FAIL <pkg>` line is never a verdict on its own.** Under full-suite parallelism a package can reach its 600s per-package timeout for load reasons that have nothing to do with either named defect, and `internal/cli` is the package where this matters: measured in isolation on this machine it hit `FAIL … 600.970s`, and the running test at the panic was `TestRunStatusline_NilDeps` — defect 2, not load. A verifier MUST therefore re-run every package reported by STEP 1 in isolation (STEP 2) before recording anything, and record the STEP 2 signals rather than the STEP 1 line. Skipping this makes the criterion a coin flip on machine load.
+
+**Falsification direction.** The bound excludes **two named defects, never a count**. A `FAIL` line for any third package fails STEP 1. A `--- FAIL` naming any test other than defect 1 fails STEP 2a — including one inside `internal/cli` or `internal/statusline`, which is what keeps the exclusion per-defect rather than per-package. A timeout whose dump lacks the `fetchUsageFromOAuthAPI` frame fails STEP 2b. If either defect starts passing, the criterion still passes (fewer failures is a strict improvement). A blanket "known failures are excluded" clause was rejected: it would let any future regression hide behind the bound, which is the opposite of what this criterion exists to catch.
+
+**Both fixes were considered and deliberately deferred.** Defect 1 belongs to the harness observe-stop / propose-chain subsystem, which this SPEC does not touch, and its root cause is unidentified — the contradictory observations above suggest an environment- or timing-dependent fault whose investigation is unbounded in cost. Defect 2's proximate cause IS identified (a live HTTP call in a unit test), but repairing it means introducing a transport seam into `internal/statusline`'s usage collector and re-fixturing every `Build` test — a change to a subsystem this SPEC does not touch, with its own blast radius. Repairing either here would be the same scope-discipline violation rejected for the 8 mirror-grep matches. Both are deferred to separate SPECs. **This is not a criterion weakened to make a red build green**: the bound names two defects and no others, defect 3 was repaired rather than excluded, and every other failure in the repository still fails the conjunct.
+
+**Residual (stated, not claimed closed).** Because defect 2 kills the test binary, a *third* defect sitting behind it in execution order inside `internal/cli` or `internal/statusline` is not observable while defect 2 stands. Measured attempts to skip past it found no stable skip set — `-skip 'TestBuilder_Build_FullData'` surfaced `TestBuilder_Build_NilReader`, then `TestBuilder_Build_InvalidJSON`; `-skip 'TestRunStatusline'` surfaced `TestStatuslineCmd_WithDeps`; `-skip 'Statusline'` surfaced `TestCwdGuard_DeletedDirectory` — because the network call is reached through several unrelated paths. The residual is bounded to those two packages and disappears when defect 2 is fixed.
 
 **Why this clause changed.** The v0.4.0 form required "at least 90% for `internal/cli`". That figure was never measured against the package's actual starting point: `internal/cli` stood at **76.3-76.4%** before this SPEC began, so 90% sat roughly 13.6pp away on a large pre-existing package that this SPEC touches only at its edges. The criterion was unsatisfiable from the SPEC's own baseline and would have failed at M6 no matter how well the work was done — the exact shape §G names as **AP-16, "writing an acceptance criterion whose baseline was never measured"**. Two other instances of AP-16 were caught during plan-audit (AC-FM-007's presence grep and this criterion's own mirror grep) and were corrected the same way, by converting an absolute assertion into a measured-baseline delta; the coverage conjunct inside this criterion was missed. It is corrected here on the same principle rather than recorded as debt. **This is not a threshold lowered to turn a red build green**: clause (c) raises the bar on the code this SPEC actually adds — 100% on all seven functions, above the withdrawn 90% — while clause (a) stops asserting a package-wide figure the SPEC never had the scope to reach. Clause (b) is untouched and already met. The leaf count is unchanged: the coverage conjunct was one leaf in v0.4.0 (asserting two package figures) and remains one leaf here.
 
