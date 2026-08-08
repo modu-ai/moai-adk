@@ -217,6 +217,20 @@ fail-open).`,
 		SilenceUsage: true,
 		RunE:         runCodexReviewGate,
 	})
+
+	// Add "multi-review-gate" subcommand (SPEC-AUDIT-MULTI-MODEL-001 M5
+	// REQ-AMM-013 / REQ-AMM-014 / REQ-AMM-015). Stop-hook gate that reads the
+	// most recent multi-model ConvergenceResult and blocks only on an
+	// unresolved required-backend FAIL. Opt-in default-off via
+	// workflow.multi.review_gate.enabled (the manifest timeout override pins
+	// config.DefaultMultiReviewGateTimeout for this hook only).
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "multi-review-gate",
+		Short:        "Stop-hook multi-model review gate (opt-in; blocks on required-backend FAIL)",
+		Long:         `Read the most recent multi-model ConvergenceResult and emit the standard ALLOW/BLOCK Stop-hook output. Opt-in via workflow.multi.review_gate.enabled (default off). Reads the persisted ConvergenceResult rather than re-invoking the convergence engine — the audit_multi MCP tool owns that engine; this gate consumes its most recent output. Advisory-backend disagreement NEVER blocks; the only BLOCK path is an unresolved required-backend FAIL. Fail-open: any error logs to stderr and exits 0. SPEC-AUDIT-MULTI-MODEL-001 REQ-AMM-013 / AC-AMM-018 / AC-AMM-019 / AC-AMM-020 / AC-AMM-021.`,
+		SilenceUsage: true,
+		RunE:         runMultiReviewGate,
+	})
 }
 
 // registryShutdowner is the optional teardown capability the concrete hook

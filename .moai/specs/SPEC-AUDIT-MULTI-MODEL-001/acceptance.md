@@ -110,7 +110,7 @@
 **AC-AMM-018** (MUST) — multi-review-gate opt-in + BranchGuard pattern + 900 s timeout
 - **Given** the `moai hook multi-review-gate` Stop hook configuration,
 - **When** its manifest is inspected,
-- **Then** it is opt-in (`workflow.multi_review_gate.enabled`, BranchGuard pattern — sibling to `workflow.codex.review_gate`), the moai-default 5 s hook timeout is overridden to 900 s for this hook only, and it emits the standard ALLOW/BLOCK contract. (REQ-AMM-013)
+- **Then** it is opt-in (`workflow.multi.review_gate.enabled`, BranchGuard pattern — the structural sibling of `workflow.codex.review_gate.enabled`), the moai-default 5 s hook timeout is overridden to 900 s for this hook only, and it emits the standard ALLOW/BLOCK contract. (REQ-AMM-013)
 
 **AC-AMM-019** (MUST) — review-gate self-gate prevents false blocks
 - **Given** `workflow.multi_review_gate.enabled` is set and the previous turn produced no code edit (status report / review-result / no-op),

@@ -74,14 +74,31 @@ boundary: spec.md §C quotes AC-MCP-012 + AC-MCP-017 verbatim (the deferral this
 | AC-AMM-015 (plan-auditor Skill path) | PASS | `ls .claude/skills/moai-ref-cross-model-audit/SKILL.md` | file present + canonical `mcp__moai__audit_multi` reference in body |
 | AC-AMM-016 (sync-auditor Skill path, same skill) | PASS | (single skill — both audit entry points load it; body declares "the single skill both audit entry points load — no duplication") | same file as AC-AMM-015 |
 | AC-AMM-017 (independence rule verbatim) | PASS | `grep -A2 "Independence rule" .claude/skills/moai-ref-cross-model-audit/SKILL.md` | rule quoted verbatim ("Pass only the synthesized claude_verdict object...") |
-| AC-AMM-018 (opt-in + 900s timeout + BranchGuard pattern) | PASS | `grep DefaultMultiReviewGateTimeout internal/config/defaults.go` + `grep MultiConfig internal/config/types.go` + reader `readMultiReviewGateEnabled` fail-CLOSED | `DefaultMultiReviewGateTimeout = 900 * time.Second` + `Multi.ReviewGate.Enabled` default false |
+| AC-AMM-018 (opt-in + 900s timeout + BranchGuard pattern) | PASS | `go test -run "TestReadMultiReviewGateEnabled_TruthTable\|TestDefaultMultiReviewGateTimeout" -v ./internal/cli/` + `grep -n DefaultMultiReviewGateTimeout internal/config/defaults.go` | `--- PASS: TestReadMultiReviewGateEnabled_TruthTable (0.02s)` with all 7 subtests PASS (missing_file / malformed_yaml / block_absent / nested_explicit_false / nested_explicit_true / flat_explicit_false / flat_explicit_true) + `--- PASS: TestDefaultMultiReviewGateTimeout (0.00s)`; grep → `internal/config/defaults.go:277:var DefaultMultiReviewGateTimeout = 900 * time.Second` |
 | AC-AMM-019 (self-gate prevents false blocks) | PASS | `go test -run TestMultiReviewGate_NoEditTurnAllows ./internal/cli/` | `ok` — no-edit turn ALLOWs, no state file read |
 | AC-AMM-020 (gate verdict follows policy) | PASS | `go test -run "TestMultiReviewGate_(AllRequiredPassAllows|RequiredFailBlocks|AdvisoryDisagreementNeverBlocks)" ./internal/cli/` | `ok` — all-pass ALLOW, required-fail BLOCK, advisory NEVER BLOCK |
 | AC-AMM-021 (fail-open to claude) | PASS | `go test -run TestMultiReviewGate_AllSecondariesInconclusive_FailOpenClaude ./internal/cli/` | `ok` — all-secondaries-inconclusive + claude pass ⇒ ALLOW |
 | AC-AMM-022 (Skill mirrored + make build + §25) | PASS | `make build` + `grep moai-ref-cross-model-audit internal/template/catalog.yaml` + `go test -run TestTemplateNeutralityAudit ./internal/template/` | catalog hash `edbe85ce8a4f55a694d8d47065c20ad4ba8b7154cd59beb9efcf259d2f5ca0b4`; neutrality PASS |
 | AC-AMM-023 (canonical MCP tool reference + verbatim rule) | PASS | `grep mcp__moai__audit_multi .claude/skills/moai-ref-cross-model-audit/SKILL.md` | canonical name present; independence rule quoted verbatim |
 | AC-AMM-024 (subagent boundary, no AskUserQuestion) | PASS | `go test -run TestAuditMulti_NoHardErrorPath_AC_AMM_024 ./internal/cli/` + `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_audit_multi.go internal/cli/mcp_convergence.go internal/cli/multi_review_gate.go` | `ok` + grep returns 0 matches |
-| AC-AMM-025 (hardcoding prevention) | PASS | `grep -n "DefaultMultiReviewGateTimeout\|MultiConfig\|MultiReviewGateConfig" internal/config/defaults.go internal/config/types.go` | thresholds in defaults.go, config-block in types.go reusing the `workflow.codex.review_gate` structural pattern (sibling `multi.review_gate` key) |
+| AC-AMM-025 (hardcoding prevention) | PASS | `grep -rn "900 \* time.Second" --include="*.go" internal/ \| grep -v _test.go` + `grep -n "MultiConfig\|MultiReviewGateConfig" internal/config/types.go` | grep → exactly two hits, both in the defaults SSOT: `internal/config/defaults.go:264:var DefaultCodexReviewGateTimeout = 900 * time.Second` and `internal/config/defaults.go:277:var DefaultMultiReviewGateTimeout = 900 * time.Second` — no inlined literal at any call site; `MultiConfig`/`MultiReviewGateConfig` in types.go reuse the `workflow.codex.review_gate` structural pattern (nested `multi.review_gate` key, no new schema shape) |
+
+> **Correction notice (M5 wiring milestone) — two prior PASS records were unobserved claims.**
+> The earlier AC-AMM-018 and AC-AMM-025 rows cited `DefaultMultiReviewGateTimeout` and a
+> `readMultiReviewGateEnabled` fail-CLOSED reader as observed evidence. Neither symbol existed in
+> the tree at the time those rows were written — a `grep -rn "DefaultMultiReviewGateTimeout\|readMultiReviewGateEnabled" --include="*.go" .`
+> at the start of this milestone returned zero matches in non-comment code (the only hits were
+> prose references in `internal/config/types.go` comments and in `internal/cli/multi_review_gate.go`'s
+> package doc). The wiring had been lost in the minimal restoration; the PASS records survived it.
+> Per `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 the prior entries were
+> unobserved verification claims, not verified passes. Both rows above have been rewritten with the
+> command actually run and the output actually observed in this milestone, which implemented the
+> missing wiring (`DefaultMultiReviewGateTimeout`, `readMultiReviewGateEnabled`,
+> `runMultiReviewGate`, the cobra registration, and the template hook wrapper). The prior text is
+> not silently overwritten — this notice is the audit trail.
+>
+> AC-AMM-019 / AC-AMM-020 / AC-AMM-021 were NOT affected: they cite tests over the pure handler
+> (`HandleMultiReviewGate`), which did exist and does pass — re-observed in this milestone.
 
 ### Cross-platform build
 

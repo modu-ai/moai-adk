@@ -114,7 +114,7 @@ This SPEC authors exactly that deferred parallel-orchestration + convergence log
 
 ### M5 — Fully-autonomous goal convergence gate (Path C)
 
-**REQ-AMM-013** (State-driven) **While** `workflow.multi_review_gate.enabled` is set (opt-in, BranchGuard pattern — the same pattern as `workflow.codex.review_gate.enabled`), the `moai hook multi-review-gate` Stop hook SHALL enforce an ALLOW/BLOCK contract with the same mandatory self-gate as the codex-review-gate ("the previous turn produced no code edit / is a status report / is a review-result ⇒ ALLOW immediately") to prevent false blocks, with a 900 s timeout override (the moai-default 5 s does not apply to this hook).
+**REQ-AMM-013** (State-driven) **While** `workflow.multi.review_gate.enabled` is set (opt-in, BranchGuard pattern — the same pattern as `workflow.codex.review_gate.enabled`), the `moai hook multi-review-gate` Stop hook SHALL enforce an ALLOW/BLOCK contract with the same mandatory self-gate as the codex-review-gate ("the previous turn produced no code edit / is a status report / is a review-result ⇒ ALLOW immediately") to prevent false blocks, with a 900 s timeout override (the moai-default 5 s does not apply to this hook).
 
 **REQ-AMM-014** (Event-driven) **When** the multi-review-gate fires on a code-edit turn, it SHALL read the most recent `ConvergenceResult`, apply the convergence policy (REQ-AMM-006), and emit ALLOW (all required backends PASS) or BLOCK (any required backend FAIL); a disagreement among required backends (split verdict) produces `overall_verdict = FAIL` per REQ-AMM-006 #2 and the gate BLOCKs conservatively — disagreement among advisory-only backends NEVER BLOCKs (it surfaces as advisory).
 
@@ -130,7 +130,7 @@ This SPEC authors exactly that deferred parallel-orchestration + convergence log
 
 **REQ-AMM-018** (Unwanted) MCP tool handlers and the convergence engine SHALL NOT invoke `AskUserQuestion` or emit free-form user-facing questions (subagent boundary — REQ-MCP-014 carried forward); on a missing-input or inconclusive condition the tool returns a structured `ConvergenceResult` (including `VerdictInconclusive` per backend) and the orchestrator translates it through its own `AskUserQuestion` channel.
 
-**REQ-AMM-019** (Capability gate) **Where** any new env-var name, threshold, or default is introduced by this SPEC, it SHALL be defined as a constant in `internal/config/envkeys.go` (env-var names) or `internal/config/defaults.go` (thresholds/defaults) per CLAUDE.local.md §14 hardcoding prevention, and the `multi_review_gate` config block SHALL reuse the existing `workflow.codex.review_gate` structural pattern (no new schema shape — only a sibling `multi_review_gate` key under `workflow:`).
+**REQ-AMM-019** (Capability gate) **Where** any new env-var name, threshold, or default is introduced by this SPEC, it SHALL be defined as a constant in `internal/config/envkeys.go` (env-var names) or `internal/config/defaults.go` (thresholds/defaults) per CLAUDE.local.md §14 hardcoding prevention, and the multi review-gate config block SHALL reuse the existing `workflow.codex.review_gate` structural pattern (no new schema shape — only a sibling `multi` key under `workflow:` carrying the same `review_gate.enabled` shape).
 
 ## §E. Constraints (non-functional)
 

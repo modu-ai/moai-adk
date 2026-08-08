@@ -24,12 +24,15 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-
 	"github.com/modu-ai/moai-adk/internal/hook"
+
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // HandleMultiReviewGate is the Stop-hook gate logic. ALLOW/BLOCK contract:
@@ -43,8 +46,7 @@ import (
 //  3. no reviewable uncommitted change       → ALLOW (self-gate; no false block)
 //  4. no session id / missing state file     → ALLOW (fail-open; no result yet)
 //  5. malformed state file                   → ALLOW (fail-open; corrupt JSON)
-//  6. overall_verdict = pass                 → ALLOW (all required PASS, OR
-//                                              advisory-only conflict — never block)
+//  6. overall_verdict = pass                 → ALLOW (all required PASS, or an advisory-only conflict — never blocks)
 //  7. overall_verdict = fail (required FAIL) → BLOCK (the gate's ONLY block path)
 //
 // `enabled` is read by the caller (runMultiReviewGate via
@@ -119,4 +121,91 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 		return ConvergenceResult{}, false
 	}
 	return r, true
+}
+
+// ─── config gate reader ───
+
+// readMultiReviewGateEnabled reads the multi-review-gate opt-in toggle from
+// `.moai/config/sections/workflow.yaml`. Truth table (fail-CLOSED — the opt-in
+// default is OFF, matching readCodexReviewGateEnabled and the BranchGuard
+// precedent, NOT the fail-open learning gate):
+//
+//   - file missing / unreadable            → false (default disabled)
+//   - YAML parse error                     → false (default disabled)
+//   - neither block present                → false (Go zero-value default)
+//   - `...enabled: false`                  → false
+//   - `...enabled: true`                   → true
+//
+// The canonical — and only — key path is `multi.review_gate.enabled`. It is
+// what the committed config schema declares (config.MultiConfig →
+// MultiReviewGateConfig, `yaml:"multi"` / `yaml:"review_gate"`) and what
+// config.Load populates, so any other spelling would leave that struct dead.
+// It is also the literal structural mirror of the sibling gate's
+// `workflow.codex.review_gate.enabled`, which is the "no new schema shape"
+// requirement AC-AMM-025 states.
+//
+// An earlier draft of AC-AMM-018 / AC-AMM-019 spelled a FLAT
+// `multi_review_gate.enabled`; that wording was corrected to the nested path
+// in this milestone rather than carried as an alias, so users and docs have
+// exactly one spelling to learn. The template NEVER carries `enabled: true`
+// (§25) — the distributed default is OFF.
+func readMultiReviewGateEnabled(projectDir string) bool {
+	if projectDir == "" {
+		return false
+	}
+	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Multi struct {
+			ReviewGate struct {
+				Enabled bool `yaml:"enabled"`
+			} `yaml:"review_gate"`
+		} `yaml:"multi"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Multi.ReviewGate.Enabled
+}
+
+// ─── CLI subcommand wiring ───
+
+// runMultiReviewGate is the cobra RunE for `moai hook multi-review-gate`
+// (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013). It reads the Stop-hook stdin
+// JSON, resolves the project root and the session id, reads the opt-in flag,
+// and forwards to HandleMultiReviewGate. The output is emitted as JSON on
+// stdout (the Stop-hook contract). Fail-OPEN: any error logs to stderr and
+// exits 0 so the Stop pipeline is never trapped (REQ-AMM-015 — the same
+// direction the handler itself takes on a missing/malformed state file).
+//
+// The stdin/stdout/project-dir helpers (readHookInput, emitHookOutput,
+// resolveProjectDirFromInput) are shared with runCodexReviewGate rather than
+// duplicated, so the two Stop gates cannot drift in how they parse the hook
+// protocol.
+//
+// The session id comes from the hook payload's `session_id` field: it keys the
+// ConvergenceResult the audit_multi MCP tool persisted during the turn. An
+// absent session id is not an error — the handler fail-OPENs on it.
+func runMultiReviewGate(cmd *cobra.Command, _ []string) error {
+	input, err := readHookInput(cmd.InOrStdin())
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "multi-review-gate: invalid stdin JSON (%v); emitting default output\n", err)
+		// Fail-open: emit an empty ALLOW.
+		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
+	}
+	projectDir := resolveProjectDirFromInput(input)
+	enabled := readMultiReviewGateEnabled(projectDir)
+	out, gateErr := HandleMultiReviewGate(input, enabled, projectDir, input.SessionID)
+	if gateErr != nil {
+		// Fail-open: a handler error MUST NOT trap the Stop pipeline.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "multi-review-gate: error:", gateErr)
+		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
+	}
+	if out == nil {
+		out = &hook.HookOutput{}
+	}
+	return emitHookOutput(cmd.OutOrStdout(), out)
 }
