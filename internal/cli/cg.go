@@ -69,6 +69,13 @@ func runCG(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-FACTORY-MODE-001 REQ-FM-004: Factory Mode is unavailable on cg. The
+	// rejection precedes --spawn so `moai cg --factory --spawn` fails here
+	// rather than in the spawned window, where the operator would not see it.
+	if err := rejectFactoryOnCG(args); err != nil {
+		return err
+	}
+
 	// --spawn: open a GLM teammate in a new tmux window and keep this session.
 	// See cc.go for the ordering rationale.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {

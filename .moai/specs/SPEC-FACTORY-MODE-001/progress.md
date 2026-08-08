@@ -538,6 +538,176 @@ Both were honored rather than one being chosen: `Matches` ships with the plan-ma
 - Blank lines in `findings.jsonl` are tolerated as formatting rather than treated as records. If a producer ever emits a semantically meaningful empty line, this reader silently ignores it.
 - The doctrine section is prose an orchestrator reads, not a mechanism that executes. A future edit that softens "the gate defaults to RUN" into a permissive phrasing would pass every grep in AC-FM-020 while inverting the fail-safe direction — the greps assert token presence, not semantic direction.
 
+### M5 — Launcher entry
+
+Baseline attribution for every row below: **this run, this tree, HEAD `003f9555e`**, branch `feat/factory-mode`. `cycle_type=tdd` — the verbatim pre-GREEN failing output is recorded under "RED evidence" and persisted at `.moai/state/verify/factory-m5/red.txt`.
+
+#### Pre-flight baselines (re-measured before the first M5 edit)
+
+| Check | Command | Observed |
+|---|---|---|
+| build | `go build ./...` | `BUILD_OK` (exit 0) |
+| lint | `golangci-lint run --timeout=3m` | `0 issues.` |
+| working tree | `git status --porcelain` | empty |
+| AC-FM-006 pre-change | `grep -rn '"-f"' internal/cli/cc.go internal/cli/glm.go internal/cli/cg.go` | no match (exit 1) |
+| factory.go absent | `ls internal/cli/factory.go` | `No such file or directory` |
+| inject pre-change | `grep -n 'os.Getenv(config.EnvMoaiFactory)' internal/cli/launcher_blockcap_infinite.go` | no match (exit 1) |
+
+#### RED evidence (E8 — verbatim, captured BEFORE any implementation)
+
+Command: `go test ./internal/cli/ -run 'TestParseFactoryFlag|TestCC_Factory|TestCG_Factory|TestCG_WithoutFactory|TestGLM_FactoryFlagParity|TestACFM022a|TestACFM023c' -count=1`
+
+The RED was taken against a stub `internal/cli/factory.go` whose three functions returned zero values, with no launcher wiring and no inject change — so the failures are behavioural assertions, not build errors:
+
+```
+--- FAIL: TestParseFactoryFlag_LongFormWithoutSpec (0.00s)
+    cc_test.go:292: --factory must enable Factory Mode
+    cc_test.go:298: --factory must be stripped from the forwarded args, got [--factory -b]
+--- FAIL: TestParseFactoryFlag_ShortFormWithSpec (0.00s)
+    cc_test.go:308: AC-FM-002: -f must enable Factory Mode
+    cc_test.go:311: AC-FM-002: expected spec "SPEC-PLACEHOLDER", got ""
+    cc_test.go:314: AC-FM-002: both tokens must be stripped, got [-f SPEC-PLACEHOLDER --print]
+--- FAIL: TestParseFactoryFlag_SpecIsNotStolenFromAFlag (0.00s)
+    cc_test.go:339: --factory must enable Factory Mode
+    cc_test.go:345: the following flag must survive, got [--factory --print]
+--- FAIL: TestCC_FactoryFlagStrippedBeforeLaunch (0.00s)
+    cc_test.go:382: AC-FM-001: factory token must not reach the launcher, got [--factory SPEC-PLACEHOLDER]
+    cc_test.go:386: AC-FM-001: MOAI_FACTORY must be set at launch, got ""
+    cc_test.go:389: AC-FM-001: MOAI_FACTORY_SPEC must carry the identifier at launch, got ""
+--- FAIL: TestCC_FactoryWritesStateRecord (0.00s)
+    cc_test.go:430: AC-FM-023a: factory record not readable: read factory record: open .../.moai/state/factory/factory-record-session.json: no such file or directory
+--- FAIL: TestCG_FactoryFlagRejected (0.00s)
+    --- FAIL: TestCG_FactoryFlagRejected/--factory (0.00s)
+        cg_test.go:209: AC-FM-004: runCG(--factory) must return an error
+    --- FAIL: TestCG_FactoryFlagRejected/-f (0.00s)
+        cg_test.go:209: AC-FM-004: runCG(-f) must return an error
+--- FAIL: TestGLM_FactoryFlagParity (0.00s)
+    glm_test.go:677: AC-FM-005: factory token must not reach the launcher, got [--factory SPEC-PLACEHOLDER]
+    glm_test.go:681: AC-FM-005: MOAI_FACTORY must be set at launch, got ""
+    glm_test.go:684: AC-FM-005: MOAI_FACTORY_SPEC must carry the identifier at launch, got ""
+--- FAIL: TestACFM022a_FactoryRaisesBlockCapUnconditionally (0.00s)
+    launcher_blockcap_infinite_test.go:137: AC-FM-022a: expected "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200" in the launch env, got [PATH=/usr/bin HOME=/tmp]
+--- FAIL: TestACFM022a_FactoryCapReplacesPreexistingEntry (0.00s)
+    launcher_blockcap_infinite_test.go:155: AC-FM-022a: stale cap survived: "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.101s
+```
+
+Three of the fifteen M5 tests passed at RED — `TestParseFactoryFlag_PassThroughBoundary`, `TestCG_WithoutFactoryFlagStillLaunches`, and `TestACFM023c_FactoryEnvReachesChildEnvironment`. This is recorded rather than hidden: each is a **negative control or a pre-existing-property assertion**, so passing before the implementation is the correct outcome for them. `TestCC_FactoryEnvMutationIsRestored` also passed at RED for the same structural reason (with no mutation there is nothing to leak); its falsification control below is what gives it teeth.
+
+#### E1 — AC PASS/FAIL matrix
+
+Command for every test row: `go test ./internal/cli/ -run '<name>' -count=1 -v`; the consolidated run is `go test ./internal/cli/ -run 'TestParseFactoryFlag|TestCC_Factory|TestEnterFactoryMode|TestCG_|TestGLM_Factory|TestACFM|TestAC003_' -count=1`.
+
+| AC | Status | Verification | Actual output |
+|---|---|---|---|
+| AC-FM-001 (token stripped, signal published) | PASS | `TestCC_FactoryFlagStrippedBeforeLaunch` | `--- PASS: TestCC_FactoryFlagStrippedBeforeLaunch (0.00s)` |
+| AC-FM-002 (`-f SPEC-PLACEHOLDER` parse) | PASS | `TestParseFactoryFlag_ShortFormWithSpec` | `--- PASS: TestParseFactoryFlag_ShortFormWithSpec (0.00s)` |
+| AC-FM-003 (`--` pass-through boundary) | PASS | `TestParseFactoryFlag_PassThroughBoundary` | `--- PASS: TestParseFactoryFlag_PassThroughBoundary (0.00s)` |
+| AC-FM-004 (`cg` sentinel rejection, seam never invoked) | PASS | `TestCG_FactoryFlagRejected` (`--factory` + `-f` sub-tests) | `--- PASS: TestCG_FactoryFlagRejected (0.00s)` |
+| AC-FM-005 (`glm` parity, mode `glm`) | PASS | `TestGLM_FactoryFlagParity` | `--- PASS: TestGLM_FactoryFlagParity (0.00s)` |
+| AC-FM-006 (pre-change `-f` unbound; post-change positive control) | PASS | pre: `grep -rn '"-f"' internal/cli/{cc,glm,cg}.go` → no match; post: `grep -c '"-f"' internal/cli/factory.go` | pre `exit=1`; post `1` |
+| AC-FM-022a (unconditional factory inject + negative control) | PASS | `TestACFM022a_FactoryRaisesBlockCapUnconditionally`, `TestACFM022a_FactoryCapReplacesPreexistingEntry` | `--- PASS` on both |
+| AC-FM-023a (state record; unwritable dir fail-open) | PASS-WITH-INTERPRETATION | `TestCC_FactoryWritesStateRecord` | `--- PASS: TestCC_FactoryWritesStateRecord (0.01s)` — see the interpretation note below |
+| AC-FM-023b (env constants declared) | PASS (M3 deliverable, re-confirmed) | `grep -c 'EnvMoaiFactory = "MOAI_FACTORY"' internal/config/envkeys.go` / `...FactorySpec...` | `1` / `1` |
+| AC-FM-023c (env reaches the child environment) | PASS | `TestACFM023c_FactoryEnvReachesChildEnvironment` | `--- PASS: TestACFM023c_FactoryEnvReachesChildEnvironment (0.00s)` |
+| AC-FM-023d (mutation restored, success AND error path) | PASS | `TestCC_FactoryEnvMutationIsRestored` (+ `TestEnterFactoryMode_RestoresPriorValue`) | `--- PASS` on both, including the `success path` and `error path` sub-tests |
+| Non-regression: SPEC-INFINITE-GOAL-001 AC-003 | PASS | `TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal` | `--- PASS: TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal (0.00s)` |
+
+**AC-FM-023a interpretation (recorded, not silently resolved).** The criterion lists `verify_rung` among the fields the launch-time record "carries". The M3 record contract (`design.md` §7, and the `*Rung` + `omitempty` decision recorded in this file's M3 block) deliberately leaves that field **unrecorded at launch** so a later reader can distinguish "never written" from "written blank" — with `omitempty`, an unrecorded rung marshals away entirely. The test therefore asserts `session_id` / `spec_id` / `backend` / `entered_at` are populated and that `VerifyRung` is `nil`, i.e. the field exists in the schema and is legitimately unrecorded at this point in the chain. Reading the criterion as requiring a `verify_rung` JSON key at launch would contradict M3's own resolution of AP-13. This is flagged for the M6 verification pass rather than decided unilaterally.
+
+#### E2 — Cross-platform build
+
+```
+$ go build ./...                           → host-build-exit=0
+$ GOOS=windows GOARCH=amd64 go build ./... → windows-build-exit=0
+```
+
+#### E3 — Coverage
+
+```
+$ go test -cover ./internal/cli/... ./internal/factory/...
+ok  github.com/modu-ai/moai-adk/internal/cli       270.855s  coverage: 76.6% of statements
+ok  github.com/modu-ai/moai-adk/internal/factory   (cached)  coverage: 90.9% of statements
+```
+
+`internal/factory` is at **90.9%**, above its 85% target and unchanged by M5 (which adds no code there). `internal/cli` reports **76.6%**, below the 90% target stated in `plan.md` §D — reported honestly rather than framed as a pass. The package is large and pre-existing, and the M5 change cannot have lowered it: every function M5 adds is fully covered.
+
+```
+$ go tool cover -func=<M5 subset profile> | grep 'cli/factory.go'
+internal/cli/factory.go:50:   parseFactoryFlag       100.0%
+internal/cli/factory.go:89:   enterFactoryMode       100.0%
+internal/cli/factory.go:106:  captureEnvState        100.0%
+internal/cli/factory.go:125:  recordFactorySession   100.0%
+internal/cli/factory.go:136:  rejectFactoryOnCG      100.0%
+internal/cli/launcher_blockcap_infinite.go:39:  injectStopHookBlockCapForGoal  100.0%
+internal/cli/launcher_blockcap_infinite.go:65:  setStopHookBlockCap            100.0%
+```
+
+#### E4 — Subagent boundary
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/factory.go internal/factory/ | grep -v '_test.go' | grep -v '// '
+grep-exit=1   (no matches)
+```
+
+#### E5 — Lint
+
+```
+$ golangci-lint run --timeout=3m
+0 issues.
+```
+
+Identical to the pre-flight baseline — zero NEW findings.
+
+#### Falsification control (AC-FM-023d)
+
+The `defer enterFactoryMode(specID)()` in `runCC` was temporarily replaced with `_ = enterFactoryMode(specID)` (restore discarded), the M5 suite re-run, and the edit reverted immediately (`grep -n FALSIFICATION internal/cli/cc.go` → exit 1, no residue). Observed:
+
+```
+--- FAIL: TestCC_FactoryEnvMutationIsRestored/success_path
+    AC-FM-023d: MOAI_FACTORY presence = true after runCC, want false
+--- FAIL: TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal
+    AC-003 backward compat: block cap injected with no armed goal: "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200"
+    AC-003: block cap injected for a FINITE (MaxTurns>0) goal: "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200"
+--- FAIL: TestACFM022a_FactoryRaisesBlockCapUnconditionally
+    AC-FM-022a negative control: with MOAI_FACTORY unset and no armed goal the env must be unchanged, got [... CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200]
+```
+
+The leak is **worse than the acceptance criterion predicted**: `acceptance.md` states AC-FM-023d would fail "while every other AC in §B.5 still passes". In practice the unrestored `MOAI_FACTORY` also broke the pre-existing SPEC-INFINITE-GOAL-001 AC-003 test and AC-FM-022a's own negative control — the cross-test contamination AP-14 names, observed directly rather than argued.
+
+#### Other verifications
+
+- `go test ./internal/cli/ ./internal/factory/... ./internal/config/...` → all `ok` (`internal/cli` 254.755s, `internal/factory` 2.249s, `internal/config` 4.620s, `internal/config/toolpolicy` 3.152s).
+- `go test -race` on the M5 subset → `ok github.com/modu-ai/moai-adk/internal/cli 4.831s`. The env-mutation tests are non-parallel by construction (`t.Setenv`).
+- `cmp .claude/rules/moai/workflow/goal-directive.md internal/template/templates/.claude/rules/moai/workflow/goal-directive.md` → exit 0 (mirror parity intact, untouched by M5).
+- `git diff --name-only -- .claude/ internal/template/templates/ | wc -l` → `0`. M5 edits no `.claude/` doctrine, so **no mirror obligation and no `make build` applies** — `make build` regenerates the embedded template FS, and no template input changed.
+- `moai spec lint .moai/specs/SPEC-FACTORY-MODE-001/spec.md` → `✓ No findings — all SPEC documents are valid`.
+
+#### Design notes
+
+- **Parser placement.** `parseFactoryFlag` runs after `parseProfileFlag` and before `resolveWorktreeL2Path` / `normalizeWorktreeFlag`, per `design.md` §5: after `--spawn` stripping so a spawned session carries the token through, and before worktree handling so a factory token can never be consumed as a `-w` value.
+- **Optional SPEC identifier (REQ-FM-005).** A following token is consumed as the identifier only when it is neither `--` nor flag-shaped, so `moai cc --factory --print` yields `spec == ""` with `--print` intact. Absence is a valid parse, not an error.
+- **`setStopHookBlockCap` extraction.** The replace-in-place loop was extracted from the goal branch so both branches share one setter rather than duplicating fifteen lines. The goal branch's condition and semantics are unchanged, and `TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal` (a pre-existing test) passes unmodified — the "preserved verbatim" obligation is honored at the behavioural level, with the shared setter noted here as a deliberate REFACTOR-step change to the file's text.
+- **`cg` rejection placement.** `rejectFactoryOnCG` runs before `stripSpawnFlag`, so `moai cg --factory --spawn` fails in the operator's own terminal rather than inside a spawned tmux window they are not watching.
+
+#### Gaps (explicitly NOT observed in M5)
+
+- **`internal/cli`'s pre-change package coverage was NOT measured**, so the 76.6% figure above is reported as an absolute, not as a delta. Measuring the baseline would have required stashing or a second worktree; `git stash` is forbidden by the branch-state guard, and a second 270-second run was judged not to earn its cost. The claim that coverage did not decrease rests on the per-function evidence (every added function ≥ 100% except none) rather than on a measured before/after pair — it is an inference, not an observation.
+- `go test ./...` (the full repository suite) was NOT run. `./internal/cli/...`, `./internal/factory/...`, and `./internal/config/...` were. The full suite is M6's obligation.
+- **Nothing consumes `MOAI_FACTORY_SPEC` in Go.** M5 publishes it into the child environment (AC-FM-023c) but no code in this repository reads it; its only consumer is the orchestrator inside the launched session. A rename would break the chain with no Go test failing.
+- **The record's three orchestrator-written fields are never written by any code in this SPEC.** `DeepScanDir`, `VerifyRung`, and `VerifyReentries` are filled in by the orchestrator as the chain progresses; M5 writes only the four launch-time fields.
+- **No end-to-end launch was exercised.** Every test drives the `unifiedLaunchFunc` seam; the real `syscall.Exec` path — and therefore the actual delivery of the raised cap to a live Claude Code process — was not run, per the project's prohibition on running the real launcher flow in this development checkout.
+- The unwritable-state-directory fail-open case relies on POSIX directory permissions and was observed on POSIX as a non-root user. It is not skipped on Windows or as root, where `os.Chmod(dir, 0o500)` does not block writes — the fail-open control assertion would then report a spurious failure. This is a latent portability gap in the test, not in the implementation.
+
+#### Residual risk
+
+- **The raised block cap is session-wide and applied before Implementation Kickoff Approval.** A user who declines the gate still carries a 200-block ceiling for the rest of the session. `design.md` §6 accepts this and requires `factory.md` to document it (an M1 deliverable); M5 implements the inject, not the disclosure.
+- **The factory branch keys on `os.Getenv(config.EnvMoaiFactory) != ""`**, so any value — including `0` or `false` — enables the raise. Only the launcher sets the variable today, but an operator who exports `MOAI_FACTORY=0` expecting it to disable the mode would get the opposite.
+- **The `defer` never runs on the production success path.** `syscall.Exec` replaces the process, so the restore executes only on the error path and inside the test binary. That is precisely where it is needed, but it means the production success path is protected by process replacement rather than by the restore — and on Windows, where the launcher spawns a child and exits instead, the restore's coverage of the parent is equally moot.
+- **`recordFactorySession` silently no-ops when the session id cannot be resolved.** The side-channel file is written by the SessionStart hook of the *outgoing* session, so a launch from a shell with no prior MoAI session produces no record. The chain then runs with no stored state — safe by design (the dedup predicate reads absence as "run the check"), but an operator debugging a missing record has no signal that anything was skipped.
+- **`parseFactoryFlag` accepts the token more than once.** `moai cc --factory A --factory B` yields `spec == "B"` with no warning; last-wins is an accident of the loop rather than a stated contract.
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier **L**; scope ~14 files (6 doctrine + 6 mirrors + 3 Go source + tests); domain count 3 (workflow doctrine / rules, Go source under `internal/`, template mirrors); file language mix markdown-heavy with a Go minority; concurrency benefit **LOW** (coding-heavy, and the milestones carry declared `Depends on:` edges — M2 depends on M1, M4 on M1+M3, M5 on M3).

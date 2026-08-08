@@ -13,6 +13,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -37,6 +38,14 @@ const DefaultRaisedStopHookBlockCap = 200
 // (the launch must never block on a goal-state read).
 func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRoot, sessionID string) []string {
 	_ = ctx
+	// SPEC-FACTORY-MODE-001 REQ-FM-023: the factory branch is UNCONDITIONAL and
+	// sits ahead of the goal read. The goal-conditional branch below reads goal
+	// state at launch time; a factory chain arms its goal mid-session, so that
+	// predicate is structurally unable to see it and the chain would otherwise
+	// stay capped at the runtime default of 8.
+	if os.Getenv(config.EnvMoaiFactory) != "" {
+		return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
+	}
 	if projectRoot == "" || sessionID == "" {
 		return base
 	}
@@ -47,7 +56,13 @@ func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRo
 	if g.Status != goal.StatusArmed || g.Ceiling.MaxTurns != 0 {
 		return base // not an armed infinite goal → backward compat
 	}
-	cap := DefaultRaisedStopHookBlockCap
+	return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
+}
+
+// setStopHookBlockCap returns base with the runtime block-cap entry set to cap,
+// replacing any pre-existing entry in place rather than appending a duplicate
+// key (which a child process would resolve ambiguously).
+func setStopHookBlockCap(base []string, cap int) []string {
 	key := config.EnvClaudeCodeStopHookBlockCap
 	entry := key + "=" + strconvItoa(cap)
 	result := make([]string, 0, len(base)+1)
