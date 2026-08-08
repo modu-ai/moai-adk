@@ -153,6 +153,8 @@ type FieldDef struct {
 	EmptyLabel    string            // 정규 빈 옵션 라벨(4개 드리프트를 단일화)
 	EmptyLabelKey string            // 빈 옵션 라벨의 i18n 키
 	Validate      func(string) bool // 검증 술어 (nil이면 항상 유효)
+	Default       string            // 디스크 값 부재 시 위젯이 선택할 값 (빈 문자열이면 기존 동작 — 선택 없음)
+	StoreOnly     bool              // 값이 저장만 되고 런타임에 적용되지 않음 — 위젯이 저장 전용 배지를 렌더한다
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
 	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상

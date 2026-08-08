@@ -132,3 +132,19 @@ func rawNoteBaseline(noteKey string) string {
 		return "structured block (read-only)"
 	}
 }
+
+// selectedSchemaValue resolves which option a select should preselect.
+//
+// The disk value wins when present. When the key is absent the field's Default
+// is used, so a field whose runtime meaning has a defined starting point shows
+// that value rather than silently falling back to whichever option the schema
+// happens to list first. A field with no Default keeps the previous behavior
+// (nothing selected → the browser picks the first option).
+//
+// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-031).
+func selectedSchemaValue(f settings.FieldDef, value string) string {
+	if value != "" {
+		return value
+	}
+	return f.Default
+}

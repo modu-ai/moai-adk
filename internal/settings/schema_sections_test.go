@@ -684,14 +684,19 @@ func TestRemovedFieldsLoadWithoutError(t *testing.T) {
 // {high, medium, low, fable}만 노출함을 검증한다 (SPEC-WEB-CONSOLE-012
 // REQ-WC12-001/002 — glm.go setGLMEnv가 읽는 canonical 키만; legacy alias
 // opus/sonnet/haiku는 웹 편집면에서 제거, struct/fallback은 REQ-WC12-006 보존).
+//
+// SPEC-WEB-CONSOLE-REDESIGN-001 M4에서 같은 4개 tier의 추론 강도 필드가
+// 추가되었다. ghost-tier 가드의 취지는 "실재하지 않는 tier 이름 차단"이므로
+// tier 집합 자체는 그대로이고, 축(models/effort)만 늘어난다 — 두 축의 곱집합을
+// 기대 집합으로 구성해 tier 이름 가드를 유지한다.
 func TestLLMFieldsTierSet(t *testing.T) {
 	t.Parallel()
 
-	want := map[string]bool{
-		"llm.glm.models.high":   true,
-		"llm.glm.models.medium": true,
-		"llm.glm.models.low":    true,
-		"llm.glm.models.fable":  true,
+	want := map[string]bool{}
+	for _, axis := range []string{"llm.glm.models.", "llm.glm.effort."} {
+		for _, tier := range []string{"high", "medium", "low", "fable"} {
+			want[axis+tier] = true
+		}
 	}
 	got := map[string]bool{}
 	for _, f := range SectionFields(SectionLLM) {

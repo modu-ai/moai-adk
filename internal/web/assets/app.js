@@ -458,6 +458,57 @@
       /* 복사 불가 — 사용자는 <code> 텍스트를 직접 선택해 복사할 수 있다 */
     }
   }
+  // SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): GLM key reveal.
+  //
+  // The page never carries the stored key. This handler fetches it from the
+  // server only on an explicit click, so a page load, a prefetch, or a view
+  // of the HTML source still discloses nothing. Toggling off drops the text
+  // from the DOM rather than merely hiding it.
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest("#glmKeyReveal") : null;
+    if (!btn) {
+      return;
+    }
+    e.preventDefault();
+    var out = document.getElementById("glmKeyRevealed");
+    if (!out) {
+      return;
+    }
+    if (!out.hidden) {
+      out.textContent = "";
+      out.hidden = true;
+      out.removeAttribute("data-i18n");
+      btn.setAttribute("data-i18n", "f.glm_api_key.reveal");
+      applyI18n(readPersistedLang());
+      return;
+    }
+    fetch(btn.getAttribute("data-reveal-url"), {
+      method: "POST",
+      credentials: "same-origin",
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error("reveal failed: " + res.status);
+        }
+        return res.text();
+      })
+      .then(function (key) {
+        // The key itself is not a translatable string, so the output node must
+        // carry NO data-i18n binding — a stale binding here would let the next
+        // language switch overwrite the revealed key with a dictionary value.
+        out.removeAttribute("data-i18n");
+        out.textContent = key;
+        out.hidden = false;
+        btn.setAttribute("data-i18n", "f.glm_api_key.hide");
+        applyI18n(readPersistedLang());
+      })
+      .catch(function () {
+        out.setAttribute("data-i18n", "f.glm_api_key.reveal_failed");
+        out.hidden = false;
+        applyI18n(readPersistedLang());
+      });
+  });
+
   document.addEventListener("click", function (e) {
     var btn = e.target && e.target.closest ? e.target.closest("[data-copy]") : null;
     if (!btn) {

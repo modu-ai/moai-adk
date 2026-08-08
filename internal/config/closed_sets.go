@@ -31,6 +31,20 @@ func ValidWorkflowDefaultModes() []string {
 	return []string{"autopilot", "loop", "team"}
 }
 
+// ValidGLMModels returns the closed set offered for the llm.glm.models.* tier
+// slots, in descending capability order.
+//
+// The members are DERIVED from the DefaultGLM* constants rather than restated:
+// a second literal list would drift from the defaults the launcher actually
+// injects, and the widget would keep offering a model id the runtime no longer
+// maps. Note that these constants are not the only occurrences of these ids in
+// the tree — the statusline context-window table keys on some of them too — but
+// they are the SSOT for "which model may a tier slot hold", which is what this
+// set answers.
+func ValidGLMModels() []string {
+	return []string{DefaultGLMHigh, DefaultGLM51, DefaultGLMMedium, DefaultGLMLow}
+}
+
 // ValidAuditModels returns the closed set for workflow.audit.model, derived
 // from the AuditModel* constants that activeAuditBackend validates against.
 func ValidAuditModels() []string {

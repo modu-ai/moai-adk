@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
@@ -274,8 +275,14 @@ func TestSaveExcludedSectionForgedPost(t *testing.T) {
 func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 
+	// The tier slot became a closed-set select in M4
+	// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-030), so the submitted value must
+	// be a member. It is taken from the same SSOT the widget derives its options
+	// from — a literal here would drift out of the set and turn this smoke test
+	// into a rejection test without saying so.
+	wantModel := config.ValidGLMModels()[1]
 	form := url.Values{
-		"llm.glm.models.high": {"glm-test"},
+		"llm.glm.models.high": {wantModel},
 	}
 	rec := postSave(t, a, form)
 	if rec.Code != http.StatusOK {
@@ -287,7 +294,7 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"llm.glm.models.high": "glm-test",
+		"llm.glm.models.high": wantModel,
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)

@@ -305,6 +305,26 @@ type GLMSettings struct {
 	// Takes precedence over the built-in glmContextWindows table in
 	// internal/statusline/memory.go but yields to MOAI_STATUSLINE_CONTEXT_SIZE.
 	ContextWindows map[string]int `yaml:"context_windows,omitempty"`
+	// Effort carries a per-tier reasoning-effort preference.
+	//
+	// STORED ONLY. No runtime path reads it. The GLM launcher injects exactly
+	// one session-global ANTHROPIC_REASONING_EFFORT, derived in
+	// internal/template/glm_effort_overlay.go from the session-wide
+	// llm.effort_level preference — a value unrelated to this tier map. These
+	// four fields therefore record an intent the current single-channel runtime
+	// cannot honor per tier. They are persisted so the preference survives, and
+	// the console labels them stored-only rather than implying they apply.
+	Effort GLMTierEffort `yaml:"effort,omitempty"`
+}
+
+// GLMTierEffort holds the per-tier reasoning-effort preference. Values are the
+// canonical z.ai reasoning-state names (template.GLMState* constants); an empty
+// value means "unset".
+type GLMTierEffort struct {
+	High   string `yaml:"high,omitempty"`
+	Medium string `yaml:"medium,omitempty"`
+	Low    string `yaml:"low,omitempty"`
+	Fable  string `yaml:"fable,omitempty"`
 }
 
 // GLMModels represents GLM model mappings by performance tier.

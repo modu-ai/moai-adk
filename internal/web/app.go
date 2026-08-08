@@ -142,6 +142,11 @@ func (a *app) routes() http.Handler {
 	// GET /?profile=<name> load path (no dedicated route needed).
 	mux.HandleFunc("/profile/create", a.handleProfileCreate)
 	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit GLM key reveal.
+	// POST-only so it inherits the loopback-Host + same-origin gates that
+	// hostCheckMiddleware applies to mutating methods; the handler re-checks
+	// loopback itself.
+	mux.HandleFunc(glmKeyRevealPath, a.handleGLMKeyReveal)
 	// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers route is removed.
 	// It served a GET-only fragment with no form and no action, so no selection
 	// it offered could be persisted. config.TierToggleOptions and the init-time

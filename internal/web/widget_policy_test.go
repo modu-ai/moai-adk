@@ -212,15 +212,13 @@ var freeTextWhitelist = map[string]bool{
 	"security.sandbox.docker_image": true,
 }
 
-// m4PendingFreeText are the GLM model tier fields. Their domain IS closed
-// (REQ-WCR-030), but the conversion belongs to M4 — this list is the explicit
-// debt marker, and it must shrink to empty when M4 lands.
-var m4PendingFreeText = map[string]bool{
-	"llm.glm.models.high":   true,
-	"llm.glm.models.medium": true,
-	"llm.glm.models.low":    true,
-	"llm.glm.models.fable":  true,
-}
+// m4PendingFreeText held the GLM model tier fields while their conversion was
+// still M4's to do. M4 landed: all four are selects over
+// config.ValidGLMModels(), so the list is empty and TestFreeTextWhitelist now
+// covers them with no hole. The map is retained (rather than deleted along with
+// its guard) as the place a future deferred conversion is recorded — an empty
+// map with a live guard is a cheaper contract than re-deriving the pattern.
+var m4PendingFreeText = map[string]bool{}
 
 // TestFreeTextWhitelist verifies AC-WCR-023: no field survives as free text
 // unless its value domain is genuinely open (or it is the M4 debt above).

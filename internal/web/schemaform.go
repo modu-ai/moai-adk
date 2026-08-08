@@ -77,6 +77,12 @@ type schemaSectionMeta struct {
 	// 렌더한다. 한 섹션이 여러 패널로 갈라질 때(workflow → 워크플로우/감사) 그
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
 	Extras bool
+	// NoteKey/Note는 패널 헤더에 1회 렌더되는 주의 문구다 (빈 값이면 미렌더).
+	// 필드마다 반복되는 힌트를 헤더로 승격하는 기존 관례(agentfm-gridnote)와
+	// 동일한 자리다 — 한 패널의 모든 필드에 공통으로 걸리는 사실은 필드마다
+	// 되풀이하지 않는다.
+	NoteKey string
+	Note    string
 }
 
 // isWorktreeFieldName은 workflow 섹션 필드 중 Git·워크트리 탭으로 배치되는 것을
@@ -113,8 +119,14 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
 			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
-			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings (high/medium/low/fable).",
+			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
 			Fields: settings.SectionFields(settings.SectionLLM), Extras: true,
+			// REQ-WCR-033: the honesty note. The four per-tier effort values are
+			// stored and never applied — the runtime reads one session-global
+			// ANTHROPIC_REASONING_EFFORT derived from the session effort_level
+			// preference. Rendered once at the panel header, not per field.
+			NoteKey: "sec.llm.effortnote",
+			Note:    "Reasoning effort applied at runtime comes from the session-wide effort_level preference on the LLM tab, not from these tiers. The four per-tier values below are stored only.",
 		},
 		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
 		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.

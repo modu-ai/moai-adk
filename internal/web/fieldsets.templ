@@ -163,6 +163,12 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 				@sectionCount(len(meta.Fields))
 			</div>
 			<p class="section__desc" data-i18n={ meta.DescKey }>{ meta.Desc }</p>
+			// SPEC-WEB-CONSOLE-REDESIGN-001 M4: panel-level note, rendered once.
+			// A fact that holds for every field in a panel belongs at the header,
+			// not repeated on each row.
+			if meta.NoteKey != "" {
+				<p class="section__note" data-i18n={ meta.NoteKey }>{ meta.Note }</p>
+			}
 		</div>
 		<div class="section__body">
 			<div class="grid">
@@ -225,6 +231,21 @@ templ fieldsetGLMKey(view pageView) {
 				if view.GLMKeyHint != "" {
 					<code class="field__hint-key">…{ view.GLMKeyHint }</code>
 				}
+			</span>
+			// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit reveal.
+			// The default render still carries value="" above — this control
+			// fetches the plaintext from the server only when clicked, so the
+			// never-echo contract on the page itself is untouched. Rendered only
+			// when a key is actually stored; there is nothing to reveal otherwise.
+			<span class="field__reveal">
+				<button
+					class="btn btn--ghost btn--sm"
+					type="button"
+					id="glmKeyReveal"
+					data-reveal-url={ glmKeyRevealPath }
+					data-i18n="f.glm_api_key.reveal"
+				>Show stored key</button>
+				<code class="field__revealed" id="glmKeyRevealed" hidden></code>
 			</span>
 		}
 		if msg := fieldErrorMsg(view.FieldErrors, glmAPIKeyFormField); msg != "" {
@@ -335,6 +356,13 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 			if strings.HasSuffix(f.Name, ".effort") {
 				<span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span>
 			}
+			// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-033): a field whose value
+			// is persisted but never read by any runtime path says so on the row.
+			// Driven by FieldDef.StoreOnly, not by a name match — the widget stays
+			// field-agnostic.
+			if f.StoreOnly {
+				<span class="field__badge" data-store-only={ f.Name } data-i18n="badge.store_only">Stored only — not applied at runtime</span>
+			}
 		</span>
 		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
 		<span class="select-wrap">
@@ -347,7 +375,7 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 					}
 				}
 				for _, opt := range f.Options {
-					if opt.Value == value {
+					if opt.Value == selectedSchemaValue(f, value) {
 						<option value={ opt.Value } selected data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</option>
 					} else {
 						<option value={ opt.Value } data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</option>
