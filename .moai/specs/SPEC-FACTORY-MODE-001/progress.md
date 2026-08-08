@@ -365,6 +365,179 @@ ok  	github.com/modu-ai/moai-adk/internal/factory	0.345s
 - `EnteredAt` is stored as a preformatted RFC3339 string rather than a `time.Time`. That matches the documented schema and avoids monotonic-clock round-trip surprises, but it also means a malformed timestamp written by a future caller would round-trip silently — nothing validates the format on read.
 - The session-id validation rejects path separators and directory references, which covers the traversal shape reachable from a launcher-supplied identifier. It does not constrain length or character set beyond that, so an exotic-but-separator-free identifier would still produce a filename this package accepts.
 
+### M4 — Dedup contract and the `revision.json` reader
+
+Baseline attribution for every row below: **this run, this tree, HEAD `0c8b38ef8`**, branch `feat/factory-mode`. Pre-flight baselines were re-measured before the first M4 edit and matched the recorded §C figures.
+
+#### Pre-flight baselines (re-measured before any M4 edit)
+
+| Measurement | Command | Observed |
+|---|---|---|
+| Gate-token count, `sync/quality-gates-quality.md` | `grep -o 'HUMAN GATE\|gate-sync-1\|gate-sync-2\|Implementation Kickoff Approval\|AskUserQuestion' <file> \| wc -l` | `2` |
+| `Step 0.55.1` | `grep -on '...' <file>` | 1 occurrence (line 112) |
+| `regardless of whether manifest files changed` | same | 1 occurrence (line 121) |
+| `scanned_commit` / `inherited from the factory verify stage` / `dependency manifest audit` / `run unconditionally` / `runs unconditionally` / `PRIMARY` / `FALLBACK` / `DEGRADED` / `git rev-parse HEAD` / `git status --porcelain` / `revision-match predicate` | same | **0 occurrences each** — the AC-FM-020a/c/d positive controls |
+| Bounded mirror neutrality grep (6 mirrors) | `grep -rn 'internal/factory\|internal/cli' <6 mirror paths>` | no output (0 matches) |
+| `goal-directive.md` mirror parity | `cmp <op> <mirror>` | exit 0 |
+| Coverage baseline | `go test -cover ./internal/factory/...` | `coverage: 88.2% of statements` |
+
+#### E8 — RED evidence (verbatim, captured BEFORE GREEN)
+
+Two RED runs were captured. The first is the compile-level RED at the moment `revision_test.go` existed and `revision.go` did not:
+
+```
+$ go test ./internal/factory/...
+# github.com/modu-ai/moai-adk/internal/factory [github.com/modu-ai/moai-adk/internal/factory.test]
+internal/factory/revision_test.go:59:12: undefined: RevisionMatch
+internal/factory/revision_test.go:67:12: undefined: RevisionMatch
+internal/factory/revision_test.go:76:15: undefined: LoadRevision
+internal/factory/revision_test.go:79:12: undefined: RevisionMatch
+internal/factory/revision_test.go:102:15: undefined: LoadRevision
+internal/factory/revision_test.go:105:12: undefined: RevisionMatch
+internal/factory/revision_test.go:117:15: undefined: LoadRevision
+internal/factory/revision_test.go:120:12: undefined: RevisionMatch
+internal/factory/revision_test.go:132:12: undefined: RevisionMatch
+internal/factory/revision_test.go:144:12: undefined: RevisionMatch
+internal/factory/revision_test.go:144:12: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/factory [build failed]
+FAIL
+```
+
+A build failure is a weak RED — it proves the symbols are absent, not that the assertions discriminate. So signature stubs returning zero values were written and the suite re-run, producing the behavioral RED:
+
+```
+$ go test -run 'TestRevisionMatch|TestLoadRevision|TestMatches|TestSuppressStep0551' -v ./internal/factory/...
+=== RUN   TestRevisionMatchHappyPath
+    revision_test.go:60: RevisionMatch on a complete matching fixture = false, want true
+--- FAIL: TestRevisionMatchHappyPath (0.00s)
+=== RUN   TestRevisionMatchAbsentDirectoryIsFalse
+--- PASS: TestRevisionMatchAbsentDirectoryIsFalse (0.00s)
+=== RUN   TestRevisionMatchAbsentRevisionJSONIsFalse
+--- PASS: TestRevisionMatchAbsentRevisionJSONIsFalse (0.00s)
+=== RUN   TestLoadRevisionUnreadableFileIsError
+--- PASS: TestLoadRevisionUnreadableFileIsError (0.00s)
+=== RUN   TestLoadRevisionMalformedJSONIsError
+--- PASS: TestLoadRevisionMalformedJSONIsError (0.00s)
+=== RUN   TestRevisionMatchCommitMismatchIsFalse
+--- PASS: TestRevisionMatchCommitMismatchIsFalse (0.00s)
+=== RUN   TestRevisionMatchNonRepoScopeIsFalse
+--- PASS: TestRevisionMatchNonRepoScopeIsFalse (0.00s)
+=== RUN   TestRevisionMatchDirtyTreeWithWorkingTreeExcluded
+    revision_test.go:162: RevisionMatch with a clean tree and working_tree_included=false = false, want true
+--- FAIL: TestRevisionMatchDirtyTreeWithWorkingTreeExcluded (0.00s)
+=== RUN   TestRevisionMatchFindingsCompleteness
+    revision_test.go:179: RevisionMatch with a zero-line findings.jsonl = false, want true
+--- FAIL: TestRevisionMatchFindingsCompleteness (0.00s)
+=== RUN   TestRevisionMatchUnparseableFindingsLineIsFalse
+--- PASS: TestRevisionMatchUnparseableFindingsLineIsFalse (0.00s)
+=== RUN   TestMatchesNilRevisionIsFalse
+--- PASS: TestMatchesNilRevisionIsFalse (0.00s)
+=== RUN   TestSuppressStep0551RungAllowList
+=== RUN   TestSuppressStep0551RungAllowList/recorded_PRIMARY_suppresses
+    revision_test.go:229: SuppressStep0551 = false, want true
+=== RUN   TestSuppressStep0551RungAllowList/recorded_FALLBACK_suppresses
+    revision_test.go:229: SuppressStep0551 = false, want true
+--- FAIL: TestSuppressStep0551RungAllowList (0.00s)
+    --- FAIL: TestSuppressStep0551RungAllowList/recorded_PRIMARY_suppresses (0.00s)
+    --- FAIL: TestSuppressStep0551RungAllowList/recorded_FALLBACK_suppresses (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded_DEGRADED_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/never-recorded_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded-empty_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/unrecognized_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/failing_predicate_does_not_suppress_even_on_PRIMARY (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	4.210s
+```
+
+The stub RED is worth recording for what it demonstrates about the criteria themselves: an unconditionally-false predicate **passes every negative case** — absent directory, commit mismatch, non-repo scope, unparseable findings line, `DEGRADED`, `nil`, recorded-empty. Only the four positive controls fail. This is the mechanical demonstration of why AC-FM-019a, AC-FM-019b, and the AC-FM-020c row-1 positive control are stated as both-halves-in-one-test: without them the whole §B.3 suite is satisfiable by a function that never suppresses anything, which is safe but useless, and indistinguishable from a correct implementation by the test suite alone.
+
+#### E1 — per-AC matrix
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-FM-014 (happy path) | PASS | `go test -run TestRevisionMatchHappyPath ./internal/factory/...` | `ok github.com/modu-ai/moai-adk/internal/factory` (within the 90.9% suite run below) |
+| AC-FM-015 (absent `revision.json`) | PASS | `TestRevisionMatchAbsentRevisionJSONIsFalse` | asserts `LoadRevision` errors AND `RevisionMatch` false |
+| AC-FM-016 (malformed JSON) | PASS | `TestLoadRevisionMalformedJSONIsError` | asserts error + false |
+| AC-FM-017 (commit mismatch) | PASS | `TestRevisionMatchCommitMismatchIsFalse` | false |
+| AC-FM-018 (`scope != repo`) | PASS | `TestRevisionMatchNonRepoScopeIsFalse` | false |
+| AC-FM-019a (dirty tree, both halves) | PASS | `TestRevisionMatchDirtyTreeWithWorkingTreeExcluded` | dirty→false AND clean→true in one test |
+| AC-FM-019b (`findings.jsonl`, both halves) | PASS | `TestRevisionMatchFindingsCompleteness` | absent→false AND zero-line→true in one test |
+| AC-FM-020a (disclosure) | PASS | `grep -c 'scanned_commit' <Q>` = 2 (baseline 0); `grep -c 'inherited from the factory verify stage' <Q>` = 1 (baseline 0) | both positive controls fired |
+| AC-FM-020b (manifest audit exempt) | PASS | `grep -c 'Step 0.55.1'` = 7 (baseline 1); `grep -c 'dependency manifest audit'` = 1 (baseline 0); `grep -c 'run unconditionally\|runs unconditionally'` = 1 (baseline 0); `grep -c 'regardless of whether manifest files changed'` = 1 (**unchanged from baseline 1** — the pre-existing always-on sentence survives verbatim at line 140) | all four |
+| AC-FM-020c (rung allow-list) | PASS | `grep -c 'PRIMARY'` = 1, `'FALLBACK'` = 1, `'DEGRADED'` = 2 (all baseline 0); prose states suppression requires a **recorded** `PRIMARY` or `FALLBACK` and explicitly rejects the "not `DEGRADED`" deny-list phrasing. Go table `TestSuppressStep0551RungAllowList` asserts all three AC rows (`PRIMARY`→true positive control, `DEGRADED`→false, `""`→false) plus `nil`, an unrecognized rung, and a failing predicate | PASS |
+| AC-FM-020d (predicate consumed) | PASS | `grep -c 'git rev-parse HEAD'` = 1, `'git status --porcelain'` = 1, `'revision-match predicate'` = 1 (all baseline 0) | all three ≥ 1 |
+| AC-FM-012 (gate-token delta) | PASS | `grep -o '<5-token pattern>' <Q> \| wc -l` → `2`; baseline 2 + planned `N`=0 + planned `A`=0 = **2**. Exact match, no excess, escape valve not needed | `2` |
+
+#### E2 — cross-platform build
+
+```
+$ go build ./...                           → EXIT_0_native
+$ GOOS=windows GOARCH=amd64 go build ./... → EXIT_0_windows
+```
+
+#### E3 — coverage
+
+```
+$ go test -cover ./internal/factory/...
+ok  	github.com/modu-ai/moai-adk/internal/factory	0.361s	coverage: 90.9% of statements
+```
+
+Target 85% met; the 88.2% M3 baseline is not regressed (+2.7pp).
+
+#### E4 — subagent boundary
+
+```
+$ grep -rn 'AskUserQuestion\|mcp__askuser' internal/factory/
+GREP_EXIT=1
+```
+
+Exit 1 with no output — no matches, including in `_test.go`.
+
+#### E5 — lint
+
+```
+$ golangci-lint run --timeout=2m
+0 issues.
+```
+
+No NEW findings; the clean baseline is preserved.
+
+#### Additional verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Mirror-parity + neutrality guards | `go test ./internal/template/...` | `ok github.com/modu-ai/moai-adk/internal/template 47.336s` |
+| Bounded mirror neutrality grep | `grep -rn 'internal/factory\|internal/cli' <6 mirrors>` | `MIRROR_NEUTRALITY_GREP_EXIT=1` — still 0 matches |
+| Edited-mirror token leak | `grep -n 'SPEC-\|REQ-FM\|AC-FM\|internal/factory' <mirror Q>` | `TOKEN_LEAK_EXIT=1` — no matches |
+| `goal-directive.md` mirror parity | `cmp <op> <mirror>` | `CMP_EXIT=0` |
+| Template rebuild | `make build` | succeeded; `catalog.yaml updated successfully (12403 bytes)` then `go build -o bin/moai`. **`catalog.yaml` content did not change** — it is absent from `git status --porcelain`, because the regenerated hashes are identical (the edited workflow file is not a catalog-hashed skill entry) |
+| SPEC lint | `moai spec lint .moai/specs/SPEC-FACTORY-MODE-001/spec.md` | `✓ No findings — all SPEC documents are valid` |
+| Working-tree hygiene | `git status --porcelain` | exactly the two edited `quality-gates-quality.md` files plus the two new `internal/factory/` files — no `.moai/state/`, `.moai/harness/`, `.moai/cache/`, or `.moai/logs/` path touched |
+
+#### Interpretation note — `Matches` signature vs the AC wording
+
+`plan.md` §F fixes the pure predicate's signature as `Matches(rev *Revision, headSHA string, treeDirty bool) bool`, which takes an already-decoded revision and therefore cannot observe `findings.jsonl` or a missing directory. `acceptance.md` AC-FM-014 / AC-FM-015 / AC-FM-019b, meanwhile, describe fixture **directories** and say "when `Matches` is called". The two are not jointly satisfiable by one function.
+
+Both were honored rather than one being chosen: `Matches` ships with the plan-mandated signature exactly, and `RevisionMatch(deepScanDir, headSHA, treeDirty)` is the directory-level composition that performs the existence check, the `findings.jsonl` completeness check, `LoadRevision`, and then `Matches`. The directory-level ACs assert against `RevisionMatch`; `Matches` additionally carries its own nil-revision test. The semantics every AC specifies are preserved verbatim — only the entry-point name differs from the AC's prose, and the doctrine's "revision-match predicate" wording (AC-FM-020d) names the composition rather than either function, so no grep is affected. This is recorded as an interpretation, not a silent choice.
+
+#### Gaps (explicitly NOT observed in M4)
+
+- `go test ./...` (the full suite) was NOT run. `./internal/factory/...` and `./internal/template/...` were run; `./internal/cli/...` and `./internal/config/...` were NOT re-run, because M4 touches neither. The full suite is M6's obligation.
+- `internal/cli` coverage was NOT measured — M4 adds no `internal/cli` code; that 90% target is M5's.
+- **Nothing in production calls `RevisionMatch` or `SuppressStep0551`.** This is AP-11 in its exact shape: the Go suite is green whether or not sync Phase 8 ever consults the predicate. The only evidence that the gate is wired is AC-FM-020d's doctrine grep, which verifies the *doctrine* names the call and both derived inputs — it does not verify any runtime invocation, because the consumer is an orchestrator-read workflow file, not Go code. No Go-level test of the consumption exists or can exist under this design.
+- No `revision.json` **writer** was implemented or tested. Per `plan.md` §H the producer stays with the `--deep` workflow agents; nothing in this SPEC writes the artifact, so the reader has never been exercised against a real producer's output — only against `t.TempDir()` fixtures this milestone authored.
+- The unreadable-file test SKIPS on Windows and when running as root. It was observed here on POSIX-as-non-root.
+- The `treeDirty` derivation itself (the `git status --porcelain` exclusion set) is NOT implemented in Go — it is stated in doctrine as an orchestrator obligation and passed into `RevisionMatch` as a bare boolean. Nothing verifies the orchestrator derives it correctly.
+- AC-FM-025's full template-neutrality judgement was not re-run beyond the bounded grep and the token-leak grep above; the CI guard `go test ./internal/template/...` passing is the mechanical evidence offered.
+
+#### Residual risk
+
+- The mirror was first updated by a blind `cp` of the operational file, which clobbered a line the mirror carried in neutrality-stripped form (the Phase 9 P1/P2 sentence, which omits an internal SPEC ID the operational file names). The `cp` was reverted via `git restore` and replaced with a surgical `Edit`, and the token-leak grep above confirms the mirror is clean. The residual risk is general rather than specific: **the two files are not byte-identical by design**, so any future full-file copy in either direction silently reintroduces internal tokens or drops operational content, and only the `internal/template` CI guard stands between that and a merge.
+- `SuppressStep0551` takes `revisionMatched bool` rather than calling `RevisionMatch` itself. That keeps it pure and independently testable, but it also means a caller can pass `true` from any source — the allow-list constrains the rung, not the provenance of the match.
+- `findingsComplete` uses a 4 MiB scanner buffer ceiling. A `findings.jsonl` line longer than that yields a scanner error, which the function reports as incomplete — FALSE, so the safe direction — but it would be reported as "aborted scan" rather than "line too long", and nothing distinguishes the two for an operator reading the sync report.
+- Blank lines in `findings.jsonl` are tolerated as formatting rather than treated as records. If a producer ever emits a semantically meaningful empty line, this reader silently ignores it.
+- The doctrine section is prose an orchestrator reads, not a mechanism that executes. A future edit that softens "the gate defaults to RUN" into a permissive phrasing would pass every grep in AC-FM-020 while inverting the fail-safe direction — the greps assert token presence, not semantic direction.
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier **L**; scope ~14 files (6 doctrine + 6 mirrors + 3 Go source + tests); domain count 3 (workflow doctrine / rules, Go source under `internal/`, template mirrors); file language mix markdown-heavy with a Go minority; concurrency benefit **LOW** (coding-heavy, and the milestones carry declared `Depends on:` edges — M2 depends on M1, M4 on M1+M3, M5 on M3).

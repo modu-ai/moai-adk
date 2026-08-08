@@ -109,6 +109,25 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 **Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 9. Log: "Security scan skipped: no security-sensitive files changed."
 
+#### Step 0.55.0: Factory dedup gate (conditional suppression of Step 0.55.1)
+
+Applies only to a sync entered from a factory chain, whose run-phase verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
+
+**Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest audit below is a separate mechanism serving a separate purpose — detecting transitive-vulnerability drift unrelated to the current SPEC — and a source-code deep scan does not substitute for it, so it continues to run unconditionally whether or not this gate passes. Skipping the whole of Phase 8 would remove the only check for that drift.
+
+**Procedure.** Derive both runtime inputs at sync entry rather than judging them:
+
+- head SHA — the stdout of `git rev-parse HEAD`.
+- tree-dirty flag — `git status --porcelain` reports at least one line after excluding `.moai/state/`, `.moai/reports/`, `.moai/cache/`, `.moai/logs/`, and the results directory itself.
+
+Then call the **revision-match predicate** with the results directory recorded for the session plus those two derived inputs. The predicate returns TRUE only when: the results directory exists; its `findings.jsonl` exists and every line parses as JSON; its `revision.json` exists, is readable, and parses; the recorded `scanned_commit` equals the derived head SHA; the recorded scope is the whole repository; and — where the tree is dirty — the scan included the working tree. A clean tree makes the working-tree question irrelevant, because there were no uncommitted edits for the scan to have missed.
+
+**Fail-safe default — the gate defaults to RUN.** Every conjunct that fails yields FALSE, and FALSE means Step 0.55.1 runs. An absent results directory, an absent or unreadable `revision.json`, malformed JSON, a commit mismatch, a narrower scope, an absent `findings.jsonl`, and a `findings.jsonl` line that does not parse are each FALSE. Absence is never a match. The one absence-shaped input that does match is a zero-line `findings.jsonl`: a clean scan writes that file empty, while an aborted scan characteristically never writes it at all — which is why the completeness check consults `findings.jsonl` rather than `revision.json`, whose schema carries no completion field and therefore cannot distinguish an aborted run from a finished one.
+
+**Rung allow-list.** A passing predicate is only half the condition. Suppression additionally requires the verify stage's rigor rung to have been **recorded** on the session state record and to equal `PRIMARY` or `FALLBACK`. Every other value yields no suppression: `DEGRADED` (a single-pass, rigor-reduced scan, which must never suppress the independent adversarial analysis of the same surface), an unrecognized value, an empty value, and a rung that was never recorded at all. State this as an allow-list, never as a "not `DEGRADED`" exclusion — the state record is best-effort and its fields land independently, so a record carrying a results directory but no rung is reachable, and a deny-list would read that absence as permission to suppress. The scan's effort tier is deliberately not part of this condition: an effort level is not a rigor rung, so a maximum-effort single-pass scan would clear an effort floor while still being rigor-reduced.
+
+**Disclosure.** When the gate suppresses Step 0.55.1, the sync report MUST record the inheritance explicitly — naming the results directory and the matched `scanned_commit`, and stating that the findings were inherited from the factory verify stage. A suppressed scan must never be indistinguishable from a clean one.
+
 #### Step 0.55.1: Security Analysis
 
 Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
