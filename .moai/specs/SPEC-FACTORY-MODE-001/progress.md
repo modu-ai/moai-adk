@@ -162,6 +162,87 @@ AC-FM-024b judgement (a)/(b)/(c) by reading: `run.md` § Verify Exit Gate enumer
 - `goal-directive.md` and its mirror are byte-identical now. Any later edit to either side must be applied to both in the same commit or AC-FM-026 (b) fails.
 - The `review.md` correction widens the `--repo` statement inside the `--lean` section and forward-references the `--deep` section. If a later edit reorders those sections, the cross-reference wording ("see the --deep Mode section below") goes stale, though no acceptance criterion depends on it.
 
+### M2 — The `factory_chain` goal preset
+
+All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `c0279a8fb` (pre-commit; M1 is the parent commit). Commands are quoted verbatim; counts are the literal command output. M2 touches exactly two files — `.claude/skills/moai/workflows/factory.md` and its template mirror — plus this progress record.
+
+#### Post-change gate-token counts vs the M1 post-change values (AC-FM-012)
+
+Command, per file: `grep -o 'HUMAN GATE\|gate-sync-1\|gate-sync-2\|Implementation Kickoff Approval\|AskUserQuestion' <file> | wc -l`
+
+| File | Pre-flight baseline | Planned `N` + `A` | Expected | Observed after M2 | Status |
+|---|---:|---:|---:|---:|---|
+| `moai.md` | 23 | 2 + 0 | 25 | **25** | PASS (untouched by M2) |
+| `run.md` | 33 | 1 + 0 | 34 | **34** | PASS (untouched by M2) |
+| `review.md` | 3 | 0 + 0 | 3 | **3** | PASS (untouched by M2) |
+| `factory.md` | 0 (absent) | 4 + 1 | 5 | **5** | PASS |
+| `sync/quality-gates-quality.md` | 2 | 0 + 0 | 2 | **2** | PASS (untouched by M2) |
+| `goal-directive.md` | 18 | 0 + 0 | 18 | **18** | PASS (untouched by M2) |
+
+`factory.md` breakdown, command `grep -o 'HUMAN GATE\|gate-sync-1\|gate-sync-2\|Implementation Kickoff Approval\|AskUserQuestion' .claude/skills/moai/workflows/factory.md | sort | uniq -c`, verbatim output:
+
+```
+   1 AskUserQuestion
+   1 gate-sync-1
+   1 gate-sync-2
+   1 HUMAN GATE
+   1 Implementation Kickoff Approval
+```
+
+Judgement (a) — every file equals its expected value. Judgement (b) — M2 introduces **no new gate token at all**, so there is no new line to attribute; the five tokens are the same five M1 recorded. Judgement (c) — no file exceeds `baseline + N + A`; the escape valve was not needed. The M1 residual-risk note (that an M2 re-mention of the approval gate would push the count to 6) is **closed**: the new arming rule refers to the existing gate row by position ("the plan-to-run approval of gate 1 in § Human gates") rather than repeating the token.
+
+#### Per-AC matrix (M2-scoped)
+
+`§C` traceability maps REQ-FM-021 → AC-FM-022b, REQ-FM-022 → AC-FM-022c, and REQ-FM-027 → AC-FM-022c. Every leaf of both is evaluated below.
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-FM-022b (1) | PASS | `git diff --name-only --diff-filter=A origin/main...HEAD -- .claude/hooks/ internal/hook/` | no output, exit 0 — no Stop hook, evaluator, or hook script added |
+| AC-FM-022b (2, positive control) | PASS | `grep -c 'stop-goal' .claude/skills/moai/workflows/factory.md` | `2` — the file names the **existing** evaluator, so the empty first result reads as "reuses the existing runtime", not "never mentions a runtime" |
+| AC-FM-022c (a) | PASS | `grep -c 'Implementation Kickoff Approval' .claude/skills/moai/workflows/factory.md` | `1` |
+| AC-FM-022c (b) | PASS | `grep -c -- '--max-turns 0' .claude/skills/moai/workflows/factory.md` | `1` |
+| AC-FM-022c (c) | PASS | `grep -c -- '--max-duration 14400' .claude/skills/moai/workflows/factory.md` | `1` |
+| AC-FM-022c (neg control) | PASS | `grep -c 'stop after' .claude/skills/moai/workflows/factory.md` | `0` — no prose turn clause authored |
+| AC-FM-012 | PASS | per-file loop above | all six equal `baseline + N + A`; M2 adds zero tokens |
+| AC-FM-013 (b) | PASS | `grep -c 'verify_rung' .claude/skills/moai/workflows/factory.md` | `2` (unchanged by M2) |
+| AC-FM-025 (mirror existence) | PASS | `ls -1 <6 mirrors>` | all six listed |
+| AC-FM-025 (bounded neutrality grep) | PASS | `grep -n 'internal/factory\|internal/cli' <6 mirrors>` | no output, exit 1 (baseline 0 preserved) |
+| AC-FM-026 (b) | PASS | `cmp .claude/rules/moai/workflow/goal-directive.md internal/template/templates/.claude/rules/moai/workflow/goal-directive.md` | exit 0 — BYTE-IDENTICAL preserved |
+
+AC-FM-022c judgement by reading: § The `factory_chain` goal preset → Arming rules states, as its first bullet, "Arm only after the plan-to-run approval of gate 1 in § Human gates is cleared", then "Arm alongside the work, never in place of it", then the flag bound and the accepted four-hour token risk. The ordering is arm-after-approval, and the arm-only consequence (idle turns spinning to a bound) is stated as the reason for the second bullet rather than asserted bare.
+
+AC-FM-022b judgement by reading: the preset section opens by naming the `stop-goal` Stop-hook evaluator as the thing that evaluates the condition and states that the preset "introduces no new runtime, no new hook, and no new evaluator". The condition itself is a `text` block of model conditions only — no shell command whose exit code decides — so nothing in it requires a new mechanical evaluator either.
+
+#### Mirror, build, lint, and guard evidence
+
+| Item | Command | Observed |
+|---|---|---|
+| Mirror parity | `cmp .claude/skills/moai/workflows/factory.md internal/template/templates/.claude/skills/moai/workflows/factory.md` | exit 0 — BYTE-IDENTICAL (M1 mirrored verbatim; the authored text carries no internal token, so a verbatim mirror is also a neutral one) |
+| Mirror neutrality (this file) | `grep -n 'SPEC-FACTORY\|REQ-FM-\|AC-FM-\|internal/factory\|internal/cli' <factory.md mirror>` | no output, exit 1 |
+| Mirror neutrality (date / SHA) | `grep -nE '20[0-9]{2}-[0-9]{2}-[0-9]{2}\|\b[0-9a-f]{7,40}\b' <factory.md mirror>` | no output, exit 1 |
+| E2 host build | `go build ./...` | exit 0 |
+| E2 cross build | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| E5 lint | `golangci-lint run --timeout=2m` | `0 issues.` — no NEW findings; the M1 baseline was also clean |
+| Template guards | `go test ./internal/template/...` | `ok github.com/modu-ai/moai-adk/internal/template 43.207s` (mirror-parity + neutrality guards pass) |
+| SPEC lint | `moai spec lint .moai/specs/SPEC-FACTORY-MODE-001/spec.md` | `✓ No findings — all SPEC documents are valid` |
+| Template rebuild | `make build` | `catalog.yaml updated successfully (12403 bytes)` + `go build` exit 0; `git diff --stat internal/template/catalog.yaml` produced no diff — workflow sub-files are not catalog hash subjects, so there is no catalog change to commit (same result as M1) |
+| Working-tree hygiene | `git status --porcelain` | exactly two modified paths, both `factory.md` (live + mirror); no runtime-managed or unrelated file touched |
+
+#### Gaps (explicitly NOT observed in M2)
+
+- `go test ./...` (full suite) was NOT run. M2 is doctrine-only and touches no Go source, so no package's behavior can change; only `./internal/template/...` was run, because that is the package whose guards observe the mirrored markdown. The full suite is M6's obligation.
+- Coverage (`go test -cover`) was NOT measured. M2 adds no Go code, so the `internal/cli` 90% / `internal/factory` 85% targets are neither advanced nor regressed, and `internal/factory` does not exist yet (M3).
+- E4's subagent-boundary grep over `internal/template/templates/.claude/hooks/moai/` was NOT re-run — M2 touches no hook script and no file under that directory, so the M1 result stands unchanged rather than being re-asserted here.
+- `./internal/cli/...` and `./internal/config/...` were NOT re-run for M2 (unchanged since the M1 evidence, which recorded them `ok`); no Go package was touched.
+- The AC-FM-012 escape valve was not exercised, so its judgement path remains unverified by observation — it is untested because it was not needed, not because it was checked and found sound.
+- Whether the authored condition actually converges under a live `stop-goal` evaluation was NOT observed. The condition is doctrine text; no factory session has been run, and running one requires the launcher entry that M5 delivers.
+
+#### Residual risk
+
+- The `factory.md` gate-token budget is still exactly at its planned ceiling of 5, and M4 cross-references `factory.md` from the sync dedup doctrine. A future edit that quotes any of the four gate names into this file moves the count to 6 and forces the escape valve; the valve would admit it (the token would name an already-enumerated gate), but the cleaner move remains a positional reference.
+- The condition's convergence rests on the orchestrator actually surfacing each named line — the audit verdict, the per-criterion PASS lines, the verify case and rung, the close record. A phase that completes its work without surfacing its line leaves the goal unmet and the chain running to a bound. This is inherent to model conditions and is the same exposure `ac_converge` carries; it is stated rather than mitigated.
+- The four-hour wall clock is an accepted token risk, not a safety bound. It is the only automatic stop between the stagnation guard and chain completion, so a chain that neither converges nor stagnates will spend the full budget.
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier **L**; scope ~14 files (6 doctrine + 6 mirrors + 3 Go source + tests); domain count 3 (workflow doctrine / rules, Go source under `internal/`, template mirrors); file language mix markdown-heavy with a Go minority; concurrency benefit **LOW** (coding-heavy, and the milestones carry declared `Depends on:` edges — M2 depends on M1, M4 on M1+M3, M5 on M3).
