@@ -1,6 +1,6 @@
 # SPEC-FACTORY-MODE-001 — Acceptance Criteria
 
-Version: 0.5.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
+Version: 0.6.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
 
 > **Count declaration.** A "leaf" is one independently-asserted binary criterion: `AC-FM-020a` and `AC-FM-020b` are two leaves, not one. Counting parent IDs alone yields 26, which is the number v0.2.0 reported (as "25") and is not what a reviewer must actually evaluate. The honest leaf count is 36. It is declared, not adjusted — see `spec.md` §D for why the excess is verification depth on one security-critical chain rather than scope creep, and why the SPEC was not split to fit.
 
@@ -317,7 +317,7 @@ grep -c 'governs suppression' "$R"      # >= 1
 
 ### B.6 Distribution and quality
 
-**AC-FM-025** — Given the completed change set, When `go test ./...`, `golangci-lint run`, the coverage commands of the coverage clause below, `make build`, and the template-neutrality guard are run, Then all exit 0, the **coverage clause** below holds, every `.claude/` file touched has a mirrored counterpart under `internal/template/templates/.claude/`, and **no mirrored file this SPEC touches** contains a SPEC identifier, requirement token, acceptance token, internal date, commit SHA, or internal Go package path. The package-path clause is judged by:
+**AC-FM-025** — Given the completed change set, When `go test ./...`, `golangci-lint run`, the coverage commands of the coverage clause below, `make build`, and the template-neutrality guard are run, Then all exit 0 — with `go test ./...` judged under the **scope bound** below rather than on its bare exit code — the **coverage clause** below holds, every `.claude/` file touched has a mirrored counterpart under `internal/template/templates/.claude/`, and **no mirrored file this SPEC touches** contains a SPEC identifier, requirement token, acceptance token, internal date, commit SHA, or internal Go package path. The package-path clause is judged by:
 
 ```bash
 for m in "${MIRRORS[@]}"; do
@@ -358,7 +358,39 @@ Judgement, all three required: (a) the `internal/cli` package total is at or abo
 
 **Why the floor is the lower observation, not the higher.** The pre-SPEC baseline was measured twice, independently, against the same pre-SPEC tree at commit `7171880a9`, and returned **76.4%** and **76.3%** — a 0.1pp spread. The current tree measures **76.5%** on two runs. The spread is real, not a transcription error, and it has a known source: `internal/cli` currently has one failing test (see the note below), and a run that fails partway does not execute an identical statement set each time. Setting the floor at the *higher* observation would make the criterion fail on measurement jitter alone, which is the same unfalsifiable-criterion defect in a subtler form — a criterion that fails for reasons unrelated to the work teaches a reviewer to ignore it. The floor is therefore the **lower** observation (76.3%): it cannot trip on jitter, and a genuine regression — the thing this clause exists to catch — moves coverage by far more than 0.1pp. Where a future run observes a baseline below 76.3%, re-measure rather than lower the floor; a drifting baseline is itself the finding.
 
-**Pre-existing failing test (recorded, NOT introduced by this SPEC).** `TestRunHarnessObserveStop_ProposeChainAutoRuns` fails in the `internal/cli` package on **both** the current tree and the pre-SPEC baseline tree at `7171880a9`. It is a pre-existing red, unrelated to Factory Mode, and it is recorded here so M6 does not mis-attribute it. It is out of scope for this SPEC. Note that it also bears on this criterion's separate `go test ./...` exits-0 conjunct, which was itself never measured against a baseline — that conjunct is left untouched here (correcting it is a scope decision for the orchestrator, not a unilateral relaxation).
+**Pre-existing failing test (recorded, NOT introduced by this SPEC).** `TestRunHarnessObserveStop_ProposeChainAutoRuns` fails in the `internal/cli` package on **both** the current tree and the pre-SPEC baseline tree at `7171880a9`. It is a pre-existing red, unrelated to Factory Mode, and it is recorded here so M6 does not mis-attribute it. It is out of scope for this SPEC. It also bears on this criterion's separate `go test ./...` exits-0 conjunct, which was itself never measured against a baseline; that conjunct is scope-bound immediately below.
+
+**Scope bound (v0.6.0) — the full-suite conjunct.** The v0.5.0 form required a bare `go test ./...` exit 0. The repository carries **one pre-existing failing test**, `TestRunHarnessObserveStop_ProposeChainAutoRuns` in `internal/cli/hook_harness_propose_chain_test.go`, so that conjunct fails on every run regardless of this SPEC's correctness — the same shape as the 8 pre-existing mirror-grep matches bounded above, and the same **AP-16** defect class. The conjunct is therefore bounded to exclude **that one named test**, and nothing else.
+
+The exclusion rests on **provenance, not on a diagnosis**. Two commands establish it, and a reader can re-derive the judgement from them:
+
+```bash
+# (a) the test is red at the pre-SPEC baseline — it predates this SPEC
+git worktree add --detach /tmp/fm-base 7171880a9
+(cd /tmp/fm-base && go test -count=1 -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/)
+#   observed at 7171880a9: --- FAIL ... "proposals dir not created (propose chain did not run)"
+
+# (b) this SPEC touches no file in the failing test's code path
+git diff --name-only 7171880a9..HEAD -- internal/
+#   observed: 20 paths (14 Go files under internal/cli, internal/config, internal/factory;
+#   6 mirrored markdown files). NONE is hook_harness*.go and NONE is under internal/harness/.
+```
+
+**Environment-sensitivity contradiction (recorded verbatim, not smoothed over).** At run-phase entry the same package was run at the same commit `7171880a9` and returned `ok ... 262.236s` — green. Later runs at that same commit return red. Two independent observers therefore reached **opposite results on the same tree**, which means the failure is **environment- or time-sensitive, not commit-sensitive**. **The root cause is unidentified.** One hypothesis — a quiet-window throttle in `internal/harness/throttle` — was tested and **rejected**: `grep -rn "QuietStartHr:" internal/ | grep -v _test.go` returns only the struct-literal copy inside `throttle.go` itself, so no production caller configures the quiet window and the throttle is not implicated. No root-cause story is asserted here; the exclusion is justified by provenance (a) + (b) alone.
+
+**Decision procedure (mechanically decidable).** The conjunct is judged by:
+
+```bash
+go test ./... 2>&1 | grep '^--- FAIL'
+# PASS iff the output is EXACTLY the single line:
+#   --- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)
+# measured baseline for the package alone (this tree, two runs):
+#   `go test -count=1 ./internal/cli/ 2>&1 | grep '^--- FAIL'` → exactly that one line
+```
+
+**Falsification direction.** The bound excludes **one named test, never a count**. If a second distinct `--- FAIL` line appears — any test other than `TestRunHarnessObserveStop_ProposeChainAutoRuns` — the criterion **FAILS**. If the named test starts passing, the criterion still passes (zero FAIL lines is a strict improvement). A blanket "known failures are excluded" clause was rejected: it would let any future regression hide behind the bound, which is the opposite of what this criterion exists to catch.
+
+**Fixing the test was considered and deliberately deferred.** It belongs to the harness observe-stop / propose-chain subsystem, which this SPEC does not touch; its root cause is unidentified and the two contradictory observations above suggest an environment- or timing-dependent fault whose investigation is unbounded in cost. Repairing it here would mean editing an unrelated subsystem inside a Factory Mode SPEC — the same scope-discipline violation rejected for the 8 mirror-grep matches. It is deferred to a separate SPEC. **This is not a criterion weakened to make a red build green**: the bound names one test and one test only, and every other failure in the repository still fails the conjunct.
 
 **Why this clause changed.** The v0.4.0 form required "at least 90% for `internal/cli`". That figure was never measured against the package's actual starting point: `internal/cli` stood at **76.3-76.4%** before this SPEC began, so 90% sat roughly 13.6pp away on a large pre-existing package that this SPEC touches only at its edges. The criterion was unsatisfiable from the SPEC's own baseline and would have failed at M6 no matter how well the work was done — the exact shape §G names as **AP-16, "writing an acceptance criterion whose baseline was never measured"**. Two other instances of AP-16 were caught during plan-audit (AC-FM-007's presence grep and this criterion's own mirror grep) and were corrected the same way, by converting an absolute assertion into a measured-baseline delta; the coverage conjunct inside this criterion was missed. It is corrected here on the same principle rather than recorded as debt. **This is not a threshold lowered to turn a red build green**: clause (c) raises the bar on the code this SPEC actually adds — 100% on all seven functions, above the withdrawn 90% — while clause (a) stops asserting a package-wide figure the SPEC never had the scope to reach. Clause (b) is untouched and already met. The leaf count is unchanged: the coverage conjunct was one leaf in v0.4.0 (asserting two package figures) and remains one leaf here.
 
