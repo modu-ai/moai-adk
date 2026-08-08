@@ -97,7 +97,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-WEB-CONSOLE-012, SPEC-WEB-CONSOLE-013
 
 ### §B.6 M6 — autonomy stub 결말
 
-- **REQ-WCR-050**: 콘솔은 렌더된 HTML에 form/action 없는 맨 autonomy 링크 조각을 주입하지 **않아야 한다(shall not)**. **Where** 영속화 대상이 존재하는 경우, autonomy tier는 4개 로케일 i18n 키와 디자인 시스템 클래스를 갖춘 정식 콘솔 필드로 워크플로우 탭에 승격되어야 한다(shall); **Where** 영속화 대상이 존재하지 않는 경우, stub과 그 핸들러는 제거되고 제거 사유가 SPEC 산출물에 기록되어야 한다(shall).
+- **REQ-WCR-050**: 콘솔은 렌더된 HTML에 form/action 없는 맨 autonomy 링크 조각을 주입하지 **않아야 한다(shall not)**. autonomy tier의 영속화 대상이 config yaml에 존재하지 않으므로(plan.md §B D3 실측 — env reader 1건 + init 전용 writer만 존재), stub(`internal/web/autonomy.go`의 `handleAutonomyTiers` / `renderAutonomyToggle`)과 링크 주입부(`internal/web/handlers.go`의 `autonomyToggleLinkHTML` 상수 · `injectAutonomyToggleLink`)와 `/autonomy/tiers` 라우트는 제거되어야 한다(shall). 제거 사유는 plan.md §B D3에 기록되며, init 경로의 `ApplyAutonomyTierBundle`과 `MOAI_AUTONOMY_TIER` 환경변수 seam은 보존한다(콘솔 표면만 제거).
 
 ### §B.7 횡단 제약
 

@@ -66,7 +66,7 @@ SessionGLMReasoningStateForEffort(e)  → e != "" 이면 CollapseClaudeEffortToG
 
 **되돌리기 비용**: 키 네임스페이스는 4개 로케일과 governance 테스트에 동시 반영되므로 나중 변경 비용이 크다.
 
-### D3 — autonomy tier의 영속화 대상 [NEEDS CLARIFICATION: autonomy tier 승격 vs 제거]
+### D3 — autonomy tier의 영속화 대상 — 결정: (c) 제거
 
 실측 결과:
 
@@ -74,26 +74,25 @@ SessionGLMReasoningStateForEffort(e)  → e != "" 이면 CollapseClaudeEffortToG
 - init 경로 writer: `ApplyAutonomyTierBundle(projectRoot, userSettingsPath, projectSettingsPath, persistedTier)` — `opts.AutonomyTier`를 받아 배포된 settings의 `defaultMode`로 번역 (`internal/core/project/autonomy_bundle.go`)
 - **config yaml 필드는 존재하지 않는다.** `.moai/config/sections/*.yaml` 어디에도 autonomy tier를 담는 키가 없다
 
-따라서 콘솔 필드로 승격하려면 둘 중 하나가 필요하다:
+승격을 택하려면 둘 중 하나가 필요하다:
 
 - **(a)** `settings.local.json`의 env 블록에 `MOAI_AUTONOMY_TIER`를 기록 — 런타임 reader와 직결되지만, `settings.local.json`은 CLAUDE.local.md §2에서 **런타임 관리 파일**로 규정되어 콘솔이 쓰는 것이 계약상 애매하다
 - **(b)** 저장 시 `ApplyAutonomyTierBundle`을 호출해 settings의 `defaultMode`를 갱신 — init 전용으로 설계된 함수를 런타임 저장 경로에서 재사용하게 되며, 사용자가 손으로 바꾼 `defaultMode`를 덮어쓸 위험이 있다
-- **(c)** stub과 핸들러(`internal/web/autonomy.go` + `handlers.go`의 링크 주입 3함수)를 제거하고 사유를 기록
 
-**권고: (c) 제거.** (a)는 파일 소유권 계약 위반이고 (b)는 사용자 편집 덮어쓰기 위험이 있다. 두 위험 모두 "설정 하나를 콘솔에서 고를 수 있게 한다"는 이득보다 크다. REQ-WCR-050의 두 갈래 중 후자를 택하고, 제거 사유를 이 문단으로 인용한다.
+**결정: (c) 제거.** env-block 계약 위반 회피 + `defaultMode` 덮어쓰기 위험 회피 + 표면 제거가 가장 작은 구현 부담. REQ-WCR-050의 두 갈래 중 후자(영속화 대상 없음 → 제거)로 확정한다. M6의 파일 목록과 AC-WCR-050은 제거 기준으로 고정된다.
 
-**이 마커는 Implementation Kickoff Approval 이전에 오케스트레이터가 사용자에게 확인해야 한다.** (a)/(b)를 택하면 M6의 파일 목록과 AC-WCR-050이 달라진다.
-
-### D4 — bool 라디오의 "미설정" 표현 [NEEDS CLARIFICATION: bool 3-상태 여부]
+### D4 — bool 라디오의 "미설정" 표현 — 결정: (i) 2-option radio + `__present` 보존
 
 현행 `schemaToggleRow`는 체크박스 + hidden `__present` companion 조합으로 두 상태를 구분한다: 체크 해제(false 기록) vs 미제출(값 보존). 2옵션 라디오(사용/미사용)로 바꾸면 **둘 다 항상 제출되므로** "값 보존" 상태를 사용자가 선택할 수 없게 된다.
 
-두 해석이 가능하다:
+두 해석이 가능했다:
 
 - **(i)** 2옵션 유지 — 라디오는 항상 하나가 선택되므로 disk 값이 초기 선택으로 렌더되고, 저장은 항상 명시적 true/false를 기록한다. 브리프가 지시한 형태. `__present`는 계속 제출되어 파서는 무변경.
 - **(ii)** 3옵션(사용 / 미사용 / 프로젝트 기본값) — 키 부재 상태를 UI에 노출. 파서 변경 필요.
 
-**권고: (i).** 브리프가 명시적으로 2옵션을 지시했고, `__present`를 유지하면 `parseSchemaForm`이 무변경으로 남는다(REQ-WCR-021). 다만 **부작용을 명시한다**: 지금까지 "키 부재"였던 bool 필드가 첫 저장 시 명시적 값으로 기록된다. `workflow.branch_guard.enabled`처럼 배포 기본이 "키 부재"인 필드는 이 변화가 관측 가능한 동작 변화를 낳을 수 있다 — AC-WCR-021이 이 경계를 고정한다.
+**결정: (i).** 브리프가 명시적으로 2옵션을 지시했고, `__present`를 유지하면 `parseSchemaForm`이 무변경으로 남는다(REQ-WCR-021). 지금까지 "키 부재"였던 bool 필드가 첫 저장 시 명시적 값으로 기록되는 부작용을 AC-WCR-021이 고정한다.
+
+**M3 일치 확인 (commit c9406abf5):** M3이 이미 (i)을 구현했다 — `schemaToggleRow`는 2옵션 라디오 + `__present` hidden 입력 보존으로 전환되었고, `parseSchemaForm` 본문은 diff 0라인으로 실측 확인됨(§E.2 AC-WCR-021 PASS). 본 결정과 run-phase 산출물은 일치한다.
 
 ---
 

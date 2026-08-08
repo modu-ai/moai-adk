@@ -280,15 +280,14 @@ go test ./internal/web/ -run TestProfileRename -v
 ### §D.6 M6 — autonomy stub
 
 **AC-WCR-050** (REQ-WCR-050)
-*Given* autonomy stub 결말이 적용된 상태에서,
+*Given* autonomy stub 제거가 적용된 상태에서,
 *When* 렌더된 콘솔 HTML과 라우트 테이블을 검사하면,
-*Then* form/action 없는 맨 autonomy 링크가 부재하고 — 승격을 택한 경우 워크플로우 탭에 `data-i18n`과 디자인 시스템 클래스를 갖춘 정식 필드가 존재하며, 제거를 택한 경우 `/autonomy/tiers` 라우트가 부재한다.
+*Then* form/action 없는 맨 autonomy 링크가 부재하고 `/autonomy/tiers` 라우트가 부재한다.
 
 ```bash
 go test ./internal/web/ -run TestAutonomyStubResolved -v
-# 제거안(권고) 기준 본문: 렌더 HTML에 "/autonomy/tiers" 부재 AND mux에 해당 라우트 미등록
-# 승격안 기준 본문: 워크플로우 패널에 autonomy 필드 존재 AND data-i18n 키 4로케일 존재
-# plan.md D3 확정 후 둘 중 하나로 고정한다
+# 본문: 렌더 HTML에 "/autonomy/tiers" 부재 AND mux에 해당 라우트 미등록
+# (plan.md §B D3 결정 (c) 제거로 고정)
 ```
 
 ### §D.7 M7 — 횡단
@@ -340,6 +339,6 @@ go test -cover ./internal/web/... 2>&1 | grep -E 'coverage: [0-9.]+%'
 
 1. AC-WCR-001 ~ AC-WCR-063 전 25건이 PASS이거나, FAIL 항목이 사용자 승인된 debt로 기록되어 있다.
 2. §C 품질 게이트 8종이 전부 통과한다.
-3. `plan.md` §B의 `[NEEDS CLARIFICATION]` 마커 2건(D3 autonomy 결말, D4 bool 3-상태 여부)이 Implementation Kickoff Approval 이전에 해소되어 있다.
+3. `plan.md` §B D3(autonomy 결말) · D4(bool 3-상태 여부) 두 미해소 표식이 해소되어 있다 — D3=(c) 제거, D4=(i) 2-option radio + `__present` 보존으로 확정.
 4. `plan.md` §G 안티패턴 7종 중 어느 것도 최종 diff에 존재하지 않는다.
 5. `progress.md` §E.2/§E.3에 run-phase 증거가 기록되어 있다.
