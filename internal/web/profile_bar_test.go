@@ -274,3 +274,46 @@ func TestProfileRename(t *testing.T) {
 		}
 	})
 }
+
+// TestProfileBarMarksCurrentAndSelected pins the three display states a profile
+// row can be in. They are visually distinct for a reason: `current` is the
+// profile a new `moai cc` session would launch with, while `selected` is merely
+// the one this page is editing. Conflating them would let a user edit one
+// profile believing they had switched the launch default.
+func TestProfileBarMarksCurrentAndSelected(t *testing.T) {
+	a := newTestApp(t)
+	a.listProfiles = func() []profile.ProfileEntry {
+		return []profile.ProfileEntry{
+			{Name: "default", Current: false},
+			{Name: "work", Current: true},
+			{Name: "scratch", Current: false},
+		}
+	}
+	body := serveGet(t, a.routes(), "/").Body.String()
+
+	// The launch-current profile is annotated; the others are not.
+	if !strings.Contains(body, `>work (current)<`) {
+		t.Errorf("the current profile is not marked in the switch select:\n%s", body)
+	}
+	for _, other := range []string{"default", "scratch"} {
+		if strings.Contains(body, `>`+other+` (current)<`) {
+			t.Errorf("%q was marked current but is not", other)
+		}
+	}
+
+	// Exactly one option is preselected — the profile being edited.
+	if n := strings.Count(body, `<option value="default" selected>`); n != 1 {
+		t.Errorf("the edited profile is preselected %d times, want 1", n)
+	}
+
+	// The current profile is excluded from the rename/delete targets, matching
+	// the server guard; offering it would propose a refused action.
+	renameBlock := body[strings.Index(body, `action="/profile/rename"`):]
+	renameBlock = renameBlock[:strings.Index(renameBlock, "</form>")]
+	if strings.Contains(renameBlock, `value="work"`) {
+		t.Error("the current profile is offered as a rename target but the server refuses it")
+	}
+	if !strings.Contains(renameBlock, `value="scratch"`) {
+		t.Error("an eligible profile is missing from the rename targets")
+	}
+}
