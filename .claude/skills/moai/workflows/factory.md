@@ -35,7 +35,7 @@ An optional SPEC identifier may follow the switch. When it is supplied, the chai
 The `factory` pipeline contract **extends** the `full-pipeline` contract defined in `workflows/moai.md` § run→sync chaining policy. It inherits the run→sync auto-chain and the clause preserving the sync-internal gates verbatim, and adds exactly two deltas:
 
 1. **A plan-phase chain head** — the chain starts at plan rather than at an explicitly-invoked phase.
-2. **A verify exit gate** — a security review positioned at the exit of run-phase, specified in `workflows/run.md` § Verify Exit Gate.
+2. **A verify exit gate** — a security review positioned at the exit of run-phase, specified in `workflows/run/mode-orchestration.md` § Verify Exit Gate.
 
 There is no second chaining mechanism. Every other property of how phases chain is the inherited contract, unmodified.
 
@@ -45,7 +45,7 @@ There is no second chaining mechanism. Every other property of how phases chain 
 |---|---|---|
 | **plan** | SPEC authoring and the independent plan audit | the chain head; the audit gate is unchanged |
 | **run** | the configured implementation cycle to acceptance-criterion convergence | unchanged |
-| **verify** | `/moai review --security --deep --repo` | the exit gate of run-phase, not a stage of sync; outcome routing and the rung attribute are specified in `workflows/run.md` § Verify Exit Gate |
+| **verify** | `/moai review --security --deep --repo` | the exit gate of run-phase, not a stage of sync; outcome routing and the rung attribute are specified in `workflows/run/mode-orchestration.md` § Verify Exit Gate |
 | **sync** | documentation, changelog, and the phase close | entered via the inherited auto-chain |
 
 ## Human gates
