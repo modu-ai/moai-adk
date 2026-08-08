@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 )
 
@@ -228,10 +229,23 @@ func QualityExcludedKeyPrefixes() []string {
 
 func seamSectionFields() []FieldDef {
 	s := seamField
+	// 닫힌 집합 필드는 withRadio/withSelect로 닫힌 위젯 + 멤버십 검증을 갖춘다
+	// (SPEC-WEB-CONSOLE-REDESIGN-001 M3). 옵션 값은 전부 SSOT 접근자에서 파생한다 —
+	// 스키마 파일에서 리터럴 집합을 재선언하지 않는다.
+	closedSeam := func(sec SectionID, file, keyPrefix string, values []string, emptyLabel, emptyKey string, path ...string) FieldDef {
+		return withRadio(s(sec, file, TypeRadio, path...), keyPrefix, values, emptyLabel, emptyKey)
+	}
+	selectSeam := func(sec SectionID, file, keyPrefix string, values []string, path ...string) FieldDef {
+		return withSelect(s(sec, file, TypeSelect, path...), keyPrefix, values, "", "")
+	}
 	return []FieldDef{
 		// workflow (파일: workflow.yaml, 최상위 키 workflow).
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "default_mode"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "execution_mode"),
+		// default_mode는 빈 값이 "하네스 자동 선택"이라 빈 옵션을 함께 렌더한다.
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.default_mode.opt.",
+			config.ValidWorkflowDefaultModes(), emptyLabelProjectDefault, "opt.project_default",
+			"workflow", "default_mode"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.execution_mode.opt.",
+			config.ValidExecutionModes(), "", "", "workflow", "execution_mode"),
 		// workflow.auto_clear.{enabled,after_plan,after_run,token_threshold} 4종은
 		// 웹 편집 표면에서 철거되었다: 접근자 WorkflowAutoClearEnabled의 Go 호출자
 		// 0건이고 산문 소비자도 0건인 죽은 설정이다. yaml 키 / struct 멤버 / 접근자
@@ -265,23 +279,38 @@ func seamSectionFields() []FieldDef {
 		// per-auditor strictness. Typed as text (the enum is validated at the M3
 		// config-read layer, activeAuditBackend); the wizard offers the validated
 		// select for the primary path.
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "model"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "claude"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "codex"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "glm"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.model.opt.",
+			config.ValidAuditModels(), "", "", "workflow", "audit", "model"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "claude"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "codex"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
-		s(SectionHarness, "harness", TypeText, "harness", "default_profile"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "minimal"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "standard"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "thorough"),
+		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",
+			harness.DefaultEvaluatorProfileNames(), "harness", "default_profile"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "minimal"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "standard"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "thorough"),
 		s(SectionHarness, "harness", TypeBool, "harness", "auto_detection", "enabled"),
 		s(SectionHarness, "harness", TypeBool, "harness", "escalation", "enabled"),
 		s(SectionHarness, "harness", TypeInt, "harness", "escalation", "max_escalations"),
-		s(SectionHarness, "harness", TypeText, "harness", "evaluator", "memory_scope"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "cg"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "solo"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "team"),
+		// memory_scope는 단일 멤버 집합이다 — 값이 FROZEN이라(loader가
+		// ErrEvalMemoryFrozen로 거절) 자유 텍스트로 두면 로더가 반드시 되돌릴 값을
+		// 사용자가 입력하도록 초대하게 된다.
+		closedSeam(SectionHarness, "harness", "f.harness.evaluator.memory_scope.opt.",
+			config.ValidEvaluatorMemoryScopes(), "", "", "harness", "evaluator", "memory_scope"),
+		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
+			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "cg"),
+		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
+			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "solo"),
+		selectSeam(SectionHarness, "harness", "f.harness.mode_defaults.opt.",
+			config.ValidModeDefaultLevels(), "harness", "mode_defaults", "team"),
 		s(SectionHarness, "harness", TypeBool, "learning", "enabled"),
 		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): learning.auto_apply 편집 필드 철거 →
 		// ReadOnlyDisplayFields로 강등. 파이프라인 in-memory AutoApply:true는 디스크 값

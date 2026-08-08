@@ -289,22 +289,35 @@ templ schemaNumberRow(f settings.FieldDef, value, step string, errs map[string]s
 	</div>
 }
 
-// schemaToggleRow — bool 토글. hidden __present companion으로 "unchecked →
-// false"와 "미제출 → preserve"를 구분한다 (동일한 disambiguation 패턴).
-// M5-b D3: field__title + field__desc 추가.
+// schemaToggleRow — bool 필드. 2옵션 라디오 그룹(사용 / 미사용)으로 렌더한다
+// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-020). 체크박스는 "체크 안 함"과 "이 필드를
+// 못 봤음"을 화면상 구분해 주지 못했다 — 라디오는 두 상태를 눈에 보이게 만든다.
+//
+// hidden __present companion은 그대로 유지된다 (REQ-WCR-021): "미사용" 옵션의
+// value가 빈 문자열이라 PostFormValue가 ""를 돌려주고, parseSchemaForm의 기존
+// bool 분기가 무변경으로 false를 기록한다. 필드가 아예 제출되지 않으면 companion도
+// 없으므로 "값 보존"으로 읽힌다.
+//
+// 부작용(의도적으로 수용): 지금까지 키 부재였던 bool 필드는 첫 저장 시 명시적
+// true/false로 기록된다 — 라디오는 언제나 하나가 선택되기 때문이다. 배포 기본이
+// 키 부재인 workflow.branch_guard.enabled 같은 필드가 여기 해당한다.
 templ schemaToggleRow(f settings.FieldDef, checked bool) {
 	<div class="field">
 		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
 		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<label class="seg">
-			<input type="hidden" name={ f.Name + "__present" } value="1"/>
-			if checked {
-				<input type="checkbox" id={ f.Name } name={ f.Name } value="1" checked/>
-			} else {
-				<input type="checkbox" id={ f.Name } name={ f.Name } value="1"/>
-			}
-			<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
-		</label>
+		<input type="hidden" name={ f.Name + "__present" } value="1"/>
+		<div class="radio-group">
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--on" } name={ f.Name } value="1" checked?={ checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--off" } name={ f.Name } value="" checked?={ !checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.disabled">Not used</span>
+			</label>
+		</div>
 		@fieldDescription(f)
 	</div>
 }

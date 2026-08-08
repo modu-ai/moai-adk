@@ -6,6 +6,8 @@ package harness
 // @MX:NOTE: [AUTO] Cross-references internal/harness/rubric.go ParseRubricMarkdown (SPEC-V3R2-HRN-003)
 
 import (
+	"sort"
+
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
@@ -16,6 +18,20 @@ var defaultProfilePaths = map[string]string{
 	"strict":   ".moai/config/evaluator-profiles/strict.md",
 	"lenient":  ".moai/config/evaluator-profiles/lenient.md",
 	"frontend": ".moai/config/evaluator-profiles/frontend.md",
+}
+
+// DefaultEvaluatorProfileNames returns the shipped evaluator profile names in
+// sorted order, derived from defaultProfilePaths. It is the SSOT the settings
+// schema reads to render harness.default_profile as a closed widget — the
+// alternative (a second literal list in the schema file) drifts silently the
+// first time a profile is added or renamed here.
+func DefaultEvaluatorProfileNames() []string {
+	out := make([]string, 0, len(defaultProfilePaths))
+	for name := range defaultProfilePaths {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // defaultMustPassDimensionNames is the list of default must-pass dimension names.
