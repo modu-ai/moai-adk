@@ -67,8 +67,9 @@ func TestHookCmd_SubcommandCount(t *testing.T) {
 	// -1 the retired DB documentation-subsystem hook subcommand (SPEC-DB-RETIRE-001) = 39.
 	// +1 "session-start-compact" (SPEC-INFINITE-GOAL-001 REQ-5) = 40.
 	// +1 "codex-review-gate" (SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008) = 41.
-	if count != 41 {
-		t.Errorf("hook should have 41 subcommands, got %d", count)
+	// +1 "multi-review-gate" (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013) = 42.
+	if count != 42 {
+		t.Errorf("hook should have 42 subcommands, got %d", count)
 	}
 }
 

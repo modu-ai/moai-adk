@@ -263,6 +263,19 @@ var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 // constant expression.
 var DefaultCodexReviewGateTimeout = 900 * time.Second
 
+// DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
+// convergence read performed by the multi-review-gate Stop hook
+// (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013 / AC-AMM-018). It overrides the
+// moai-default 5s hook budget so a slow gate cannot stall the Stop beyond the
+// hook manifest budget (the manifest pins 900s for this hook only), mirroring
+// DefaultCodexReviewGateTimeout above — the two gates share one budget so an
+// operator reasons about a single number.
+// AC-AMM-025 (hardcoding prevention): this is the single source of truth for
+// the value; no call site may inline a 900s literal.
+// Not a compile-time const because time.Duration multiplication is not a
+// constant expression.
+var DefaultMultiReviewGateTimeout = 900 * time.Second
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
