@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // seedEventLines writes a usage-log.jsonl under dir/.moai/harness/ containing
@@ -24,12 +25,20 @@ func seedEventLines(t *testing.T, dir string, events []map[string]string) {
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatalf("mkdir usage-log dir: %v", err)
 	}
+	// The seeded timestamp MUST fall inside the observer's retention window
+	// (harness.defaultRetentionDays = 30): any handler that records an event
+	// first runs Retention.PruneStaleEntries, which moves out-of-window lines
+	// out of usage-log.jsonl into learning-history/archive/. A frozen literal
+	// timestamp silently ages past the cutoff and makes the fixture vanish
+	// before the classifier ever sees it, so derive it from the current clock
+	// (same convention as seedUsageLog in hook_harness_classify_chain_test.go).
+	ts := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339)
 	var b strings.Builder
 	for _, e := range events {
 		// Build a minimal valid usage-log line. defaultConfidence is 1.0 and
 		// the aggregator derives Count from line multiplicity.
 		line := map[string]any{
-			"timestamp":      "2026-07-09T10:00:00Z",
+			"timestamp":      ts,
 			"event_type":     e["event_type"],
 			"subject":        e["subject"],
 			"context_hash":   e["context_hash"],
