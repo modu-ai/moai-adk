@@ -120,26 +120,20 @@ func Run(opts Options) error {
 }
 
 // loadSpecsFromCapabilityMap reads 001's capability-map.md and returns the
-// set of SPEC IDs surfaced by its header-driven parse. Reuses 003's
-// `astx.EnrichRows` (which calls `parseCapabilityMap` internally) to avoid
-// duplicating the parser (REQ-NS-012 consumer-only).
+// sorted-unique set of SPEC IDs from its spec-id column. It delegates to the
+// lightweight `astx.SpecIDsFromCapabilityMap` helper, which reuses the shared
+// `parseCapabilityMap` parser WITHOUT walking implementation paths or running
+// tree-sitter extraction (REQ-NS-012 consumer-only). The previous
+// implementation called `astx.EnrichRows`, which runs the full enrichment
+// pipeline (per-row `filepath.WalkDir` + tree-sitter `Extract()` on every
+// file) just to read spec-ids already present in the table.
 func loadSpecsFromCapabilityMap(capMapPath, logPath string) []string {
-	res, err := astx.EnrichRows(astx.EnrichOptions{CapabilityMapPath: capMapPath})
+	ids, err := astx.SpecIDsFromCapabilityMap(capMapPath)
 	if err != nil {
 		appendLog(logPath, fmt.Sprintf("navigator-sync: capability-map parse error: %v", err))
 		return nil
 	}
-	seen := map[string]bool{}
-	var out []string
-	for _, r := range res.Rows {
-		if r.SpecID == "" || seen[r.SpecID] {
-			continue
-		}
-		seen[r.SpecID] = true
-		out = append(out, r.SpecID)
-	}
-	sort.Strings(out)
-	return out
+	return ids
 }
 
 // capabilitySymbolsDoc is the minimal shape of 003's capability-symbols.json

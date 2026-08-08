@@ -41,17 +41,12 @@ var recognizedSubLineKinds = map[string]bool{
 	"PRIORITY": true,
 }
 
-// NewScanner creates a new tag scanner seeded with DefaultScanIgnore (see
-// scan_ignore.go) so a bare NewScanner() does not descend into .claude/ /
-// .moai/ / .git/ (Bug-1 repro). Callers can override via SetIgnorePatterns.
+// NewScanner creates a new tag scanner.
 func NewScanner() *Scanner {
-	patterns := make([]string, len(DefaultScanIgnore))
-	copy(patterns, DefaultScanIgnore)
 	return &Scanner{
-		ignorePatterns: patterns,
-		anchorIDs:      make(map[string]string),
-		warnings:       make([]string, 0),
-		errors:         make([]string, 0),
+		anchorIDs: make(map[string]string),
+		warnings:  make([]string, 0),
+		errors:    make([]string, 0),
 	}
 }
 
