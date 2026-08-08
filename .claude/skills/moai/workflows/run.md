@@ -49,7 +49,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 | Phase 0: Context Loading | `Read workflows/run/context-loading.md` | Mode dispatch, UltraThink, harness level, context loading, worktree path rules |
 | Phase 1~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
 | Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
-| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
+| Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, verify exit gate (factory contract), test scenarios |
 
 ## Fan-Out Index
 
@@ -175,40 +175,6 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; Implementation Kickoff Approval unaffected).
 - `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 — the 5 circuit-breaker invariants the bounded self-diagnosis loop (below) complies with.
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` + `.claude/rules/moai/development/manager-develop-prompt-template.md` § cycle_type Mode Reference — the DIAGNOSE-PATCH-VERIFY max-3 mechanical-autofix contract the loop inherits.
-
----
-
-## Verify Exit Gate (factory contract)
-
-The `factory` pipeline contract (`workflows/moai.md` § run→sync chaining policy) adds exactly one stage to run-phase: a security verify stage that is the **exit gate of run-phase**. It is not a sync-phase stage and it is not a new subcommand. Ordering: the gate fires after acceptance-criterion convergence and BEFORE the inherited run→sync auto-chain, and the whole of run-phase — this gate included — is downstream of Implementation Kickoff Approval.
-
-Invocation, verbatim:
-
-```text
-/moai review --security --deep --repo
-```
-
-### Severity partition — three cases, mutually exclusive and jointly exhaustive
-
-Every verify stage lands in exactly one of the three cases below, and in no more than one. Readability is what separates S3 from S2: a stage with no readable result must never be absorbed by the S2 "no confirmed findings" wording, because a gate whose failure mode is *proceed* is not a gate.
-
-| Case | Condition | Route |
-|---|---|---|
-| **S1** | a readable result carrying one or more CONFIRMED findings at `critical` or `high` | the chain **shall not proceed to sync**; the findings **re-enter run-phase scoped to the changed surface** |
-| **S2** | a readable result carrying findings only at `medium` or `low`, or a readable result carrying no confirmed findings at all | proceed to sync, carrying the findings forward as **inherited sync-phase evidence** |
-| **S3** | **no readable result** — the invocation errored, the pipeline aborted, the recorded results directory is absent, or its findings artifact is absent or carries a line that does not parse | **HALT** the chain; it does not proceed to sync |
-
-S1 is the single human gate this contract adds — the operator decides whether to re-enter. S3 **HALT**s, emits the 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk per `verification-claim-integrity.md` §3), and escalates; an S3 attempt does **not** count against the re-entry ceiling, because a stage that produced nothing consumed none of the re-entry budget.
-
-The chain permits **at most two verify re-entries**. When a third would be required, halt and emit that same 5-section verdict, then escalate.
-
-### Rung attribute — orthogonal to the severity partition
-
-The rigor rung (`PRIMARY`, `FALLBACK`, or `DEGRADED`, as self-labelled by the review degradation ladder) is an **attribute of** an S1 or S2 result, recorded on the factory state record. It is not a fourth case standing beside S1/S2/S3: a readable result with no confirmed findings at the `DEGRADED` rung is S2 *and* `DEGRADED` simultaneously. S3 produced no result and therefore carries no rung at all.
-
-A `DEGRADED` rung (single-pass, no voter panel) is surfaced both in the chain transcript and in the sync report, and forces the sync-phase security-analysis suppression OFF, so the independent adversarial analysis of the same surface still runs.
-
-**Precedence, stated in both directions.** The severity case **governs routing** and the rung never changes it; the rung **governs suppression** and the severity case never relaxes it. An S2 result at the `DEGRADED` rung therefore proceeds to sync with suppression forced off.
 
 ---
 
