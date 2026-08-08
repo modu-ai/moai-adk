@@ -1,0 +1,179 @@
+---
+id: SPEC-FACTORY-MODE-001
+title: "Factory Mode — one-session plan→run→verify→sync chain for moai cc / moai glm"
+version: "0.4.0"
+status: in-progress
+created: 2026-08-08
+updated: 2026-08-08
+author: manager-spec
+priority: P1
+phase: "v3.2.0 target"
+module: "internal/cli, internal/factory, .claude/skills/moai/workflows"
+lifecycle: spec-anchored
+tier: L
+tags: "factory, launcher, pipeline, goal-preset, verify-gate, security-dedup"
+---
+
+# SPEC-FACTORY-MODE-001 — Factory Mode
+
+## HISTORY
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.4.0 | 2026-08-08 | manager-spec | plan-audit iter-3 (0.84 vs 0.85) scoped stale-text sweep. No new class of defect; no requirement added, none removed. **S1** — the withdrawn deny-list formula survived in `design.md` §4's composed-decision pseudocode; replaced with the allow-list membership test and the `progress.md` sweep claim corrected to name every site. **S2** — the withdrawn "four disjoint, jointly exhaustive outcomes" claim survived in `plan.md` §B R4 Resolution; rewritten as the 3-case severity partition × orthogonal rung attribute. **S3** — the three→four gate-count correction had reached three sites and missed four (`spec.md` REQ-FM-027, `plan.md` §D Constraints, `plan.md` §B R3, `design.md` §6); all four corrected, the §D Constraints line being the worst since it forbade the gate REQ-FM-012 mandates. **S4** — REQ-FM-013's resolution-(b) security-equivalence claim was unqualified; qualified on the Phase 8 analysis producing an observable result, with the fail-open asymmetry against (a) recorded rather than closed (no requirement substance changed). **S5** — the §A.2 / §C pre-flight loops used an unquoted scalar `DOCS`, which does not word-split under this project's `zsh`: the loop ran once and AC-FM-025's mirror grep passed vacuously on a non-existent path; converted to quoted arrays with a mandatory mirror-existence guard. **S6** — AC-FM-012's token set was gate-shaped only by accident; widened with `AskUserQuestion` and all six baselines re-measured (23 / 33 / 3 / absent / 2 / 18), with a narrow escape valve added to judgement (c) so a benign second mention of an already-enumerated gate is not a hard FAIL. Requirement count 26 and acceptance-criterion leaf count 36 are unchanged. |
+| 0.1.0 | 2026-08-08 | manager-spec | Initial plan-phase authoring. Tier L. Encodes the ten settled design decisions; resolves R1 (revision.json fail-safe dedup) and R2 (`--repo` scope contradiction). |
+| 0.3.0 | 2026-08-08 | manager-spec | plan-audit iter-2 FAIL (0.80) revision. Closes 6 BLOCKING defects. **B1** — the verify partition was not disjoint: severity and rung are orthogonal axes, and a readable DEGRADED result with no confirmed findings satisfied REQ-FM-011 ("proceed") and REQ-FM-013 ("not an automatic pass") simultaneously, with REQ-FM-013's gate unreachable for a non-critical result. Restated as a 3-case **severity partition** crossed with an orthogonal **rung attribute**, with explicit precedence; the `disjoint`-of-four claim is withdrawn. **B2** — REQ-FM-014's rung exclusion was a deny-list that permitted suppression on an absent `verify_rung`; inverted to an allow-list (`PRIMARY` or `FALLBACK`, recorded). **B3** — AC-FM-025's mirror grep was unsatisfiable against 8 pre-existing matches in files this SPEC never touches; bounded to the mirrored counterparts of the §A.2 set with the measured baseline recorded. **B4** — REQ-FM-023's `os.Setenv` leaked process-globally and broke AC-FM-022a's own negative control; scoped with a `defer` restore + AC-FM-023d. **B5** — AC-FM-012 was undecidable (~35 context-free gate-token fragments, blind to a fourth gate); converted to a per-file baseline-delta check. **B6** — REQ-FM-023 falsifies `goal-directive.md`'s launch-time-only sentence, which no requirement or milestone updated; added as REQ-FM-028 + AC-FM-026 + §A.2 + M1. Requirement count 26 and acceptance-criterion leaf count 36 are declared honestly over the Tier L ceiling of 25 — see §D Budget exception. |
+| 0.2.0 | 2026-08-08 | manager-spec | plan-audit iter-1 FAIL (0.68) revision. Closes 4 BLOCKING defects: D3 verify-gate fail-open (REQ-FM-026 + REQ-FM-015 completeness conjunct), D2 unqualified dependency-audit skip (REQ-FM-014 scoped to Step 0.55.1), D1 DEGRADED-rung suppression (REQ-FM-014 exclusion + `verify_rung` state field), D4 unfalsifiable dedup predicate (REQ-FM-015 input derivation + REQ-FM-017 consumption clause). D5 REQ-FM-023 propagation mechanism chosen (env-var, `os.Environ()` seam at `launcher.go:783/786`). D8 forbidden-content list extended. D12 `review.md:221` quotation corrected to verbatim. User decision encoded as REQ-FM-027 (`--max-turns 0 --max-duration 14400`). REQ-FM-003 folded into REQ-FM-002 and REQ-FM-020 into REQ-FM-019, holding the Tier L ceiling at 25 REQ while admitting REQ-FM-026 / REQ-FM-027. All other requirement IDs are unchanged from v0.1.0. |
+
+## §A Context
+
+`moai cc` and `moai glm` launch a Claude Code session. Driving a SPEC to completion inside that session currently requires the operator to issue `/moai plan`, `/moai run`, and `/moai sync` by hand, and to remember to run a security review somewhere in between.
+
+**Factory Mode** adds a `--factory` / `-f` entry switch to those two launchers. The switch does not add a runtime: it seeds a session whose orchestrator drives a `plan → run → verify → sync` chain end to end, powered by an armed goal preset in the same lineage as `/moai loop` and `/moai fix`.
+
+The chain machinery already exists. `.claude/skills/moai/workflows/moai.md` § run→sync chaining policy defines the `full-pipeline` contract: run-phase completion auto-chains into sync with no additional approval at that boundary, while the sync-internal gates `gate-sync-1` and `gate-sync-2` still fire. `.claude/skills/moai/workflows/run.md` defines the complementary `single-phase` contract for an explicit `/moai run`. Factory Mode therefore **extends** `full-pipeline`; it does not invent a second chaining mechanism.
+
+The one genuinely new stage is **verify** — a call to `/moai review --security --deep --repo` positioned as the **exit gate of run-phase**, not as a pre-sync stage. A CONFIRMED CRITICAL or HIGH finding does not reach sync; it re-enters run scoped to the changed surface.
+
+**The verify gate fails closed.** A verify stage that produced no observable result — the invocation errored, the pipeline aborted, the results directory was never written — is not a clean scan. Treating it as one would let an unscanned change reach sync under the appearance of having been scanned, which is the exact failure the gate exists to prevent.
+
+**Severity and rung are orthogonal axes, not alternatives.** A verify result carries *both* a severity classification and a rigor rung at the same time — a readable DEGRADED result with no confirmed findings is simultaneously "proceed-eligible" on the severity axis and "rigor-reduced" on the rung axis. The v0.2.0 draft listed the two axes as four peer outcomes and called them disjoint; they are not, and the overlap produced two binding requirements with no precedence between them. The corrected structure is:
+
+- **Severity partition (3 cases, disjoint and jointly exhaustive)** — every verify stage lands in exactly one: **S1** a readable result carrying one or more CONFIRMED findings at `critical` or `high` (REQ-FM-009); **S2** a readable result carrying findings only at `medium` or `low`, or a readable result carrying no confirmed findings (REQ-FM-011); **S3** no readable result (REQ-FM-026). Readability is what separates S3 from S2, so a no-result verify cannot be absorbed by the "no confirmed findings" wording.
+- **Rung attribute (orthogonal, one value per result)** — `PRIMARY` | `FALLBACK` | `DEGRADED`, recorded on the factory state record (REQ-FM-013). It applies to S1 and S2; S3 produced no result and therefore carries no rung.
+- **Precedence, stated explicitly** — the severity case decides the chain route and the rung attribute never changes it; the rung attribute constrains sync-phase suppression and the severity case never relaxes it. An S2 result at the `DEGRADED` rung therefore proceeds to sync (S2 governs routing) with Phase 8 Step 0.55.1 suppression forced OFF (the rung governs suppression) — see REQ-FM-013 and REQ-FM-014.
+
+## §B Requirements (GEARS)
+
+### B.1 Entry surface
+
+**REQ-FM-001** — **Where** the `--factory` or `-f` token appears in the argument list of `moai cc` or `moai glm` before any `--` pass-through marker, the launcher shall enter Factory Mode and shall remove that token from the arguments forwarded to Claude Code.
+
+**REQ-FM-002** — The `--factory` / `-f` parser shall follow the manual-parser pattern already used by `parseProfileFlag`, `normalizeWorktreeFlag`, and `stripSpawnFlag` — including their `--` discipline: it shall iterate, break at the `--` pass-through marker, and append every token at or after that marker verbatim. Both commands set `DisableFlagParsing: true` and therefore receive no cobra flag binding, so a `cmd.Flags()` registration would be silently inert.
+
+> REQ-FM-003 — **withdrawn in v0.2.0**, folded into REQ-FM-002 (the `--` boundary is part of the same parser-discipline requirement). AC-FM-003 continues to test the boundary and now traces to REQ-FM-002.
+
+**REQ-FM-004** — **When** `--factory` or `-f` is supplied to `moai cg`, the launcher shall reject the invocation with the sentinel `FACTORY_MODE_UNSUPPORTED_BACKEND` and shall not launch a session, because `moai cg` runs a mixed backend (leader Claude, teammates GLM) that violates the one-session / one-backend / one-chain premise.
+
+**REQ-FM-005** — **Where** Factory Mode is entered, the launcher shall accept an optional SPEC identifier positional value (`--factory <SPEC identifier>`) naming the SPEC the chain targets, and shall treat its absence as "the chain begins at plan-phase from the operator's first prompt".
+
+**REQ-FM-006** — The launcher shall not repurpose `-f` on any command that already binds it. `-f` is currently bound only by `doctor config dump` and `state` as a `--format` shorthand; those are distinct commands and are unaffected.
+
+### B.2 Chain contract and the verify exit gate
+
+**REQ-FM-007** — Factory Mode shall be expressed as a `factory` pipeline contract that **extends** the existing `full-pipeline` contract: it inherits the run→sync auto-chain and the clause preserving `gate-sync-1` and `gate-sync-2` verbatim, and adds exactly two deltas — a plan-phase chain head and the verify exit gate of REQ-FM-008. The `factory` contract shall not define a second chaining mechanism.
+
+**REQ-FM-008** — **When** run-phase acceptance-criterion convergence is reached under the `factory` contract, the orchestrator shall execute the verify stage — `/moai review --security --deep --repo` — before the run→sync auto-chain fires. The verify stage is the exit gate of run-phase; it is not a sync-phase stage and it is not a new subcommand.
+
+**REQ-FM-009** — **When** the verify stage produces one or more CONFIRMED findings at `critical` or `high` severity, the chain shall not proceed to sync. Those findings shall re-enter run-phase scoped to the changed surface.
+
+**REQ-FM-010** — The chain shall permit at most two verify re-entries. **When** a third re-entry would be required, the orchestrator shall halt the chain and emit the 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) per `verification-claim-integrity.md` §3, then escalate.
+
+**REQ-FM-011** — **When** the verify stage produces severity case S2 — a readable result containing findings only at `medium` or `low` severity, or a readable result containing no confirmed findings at all — the chain shall proceed to sync and shall carry the findings forward as inherited sync-phase evidence. This routing holds at every rung, including `DEGRADED`; the rung constrains suppression (REQ-FM-013 / REQ-FM-014), never routing. A verify stage with no readable result is severity case S3 and is governed by REQ-FM-026, not by this requirement.
+
+**REQ-FM-012** — Factory Mode shall introduce exactly one human gate of its own — the verify CRITICAL/HIGH decision of REQ-FM-009 — and shall introduce no other. Four gates therefore fire across a factory chain: Implementation Kickoff Approval at the plan→run boundary (inherited), the verify CRITICAL/HIGH decision (added by this SPEC), and `gate-sync-1` and `gate-sync-2` (both inherited unchanged via the `full-pipeline` clause). No fifth gate shall be introduced. The v0.2.0 phrasing "exactly three human gates" undercounted `gate-sync-1`, which `sync.md` § HUMAN GATE Map lists as a human gate; the substance — that this SPEC adds exactly one — is unchanged.
+
+**REQ-FM-013** — The orchestrator shall record the rigor rung of every readable verify result in the `verify_rung` field of the factory state record (REQ-FM-024), using exactly one of `PRIMARY`, `FALLBACK`, or `DEGRADED` as self-labelled by `review.md` § degradation ladder. **When** the recorded rung is `DEGRADED` (single-pass, no 3-voter panel), the orchestrator shall surface that label in the chain transcript and in the sync report, and the result shall not be treated as an automatic pass — which under this SPEC means concretely that sync Phase 8 Step 0.55.1 suppression is forced OFF for that result (REQ-FM-014), so the independent adversarial analysis of the same surface still runs. A `DEGRADED` rung shall not by itself route the chain to a human gate: the severity case governs routing (REQ-FM-009 / REQ-FM-011 / REQ-FM-026).
+
+> **Resolution note (v0.3.0).** Two resolutions were available for the S2 × `DEGRADED` overlap: (a) widen the REQ-FM-009 gate trigger to fire on CRITICAL/HIGH **or** `DEGRADED` — still one added gate, the same gate with a broader trigger; or (b) auto-proceed with suppression forced OFF. **(b) is chosen.** Rationale: the compensating control under (b) is mechanical and already required by REQ-FM-014, whereas (a) halts an unattended four-hour chain (REQ-FM-027) for a human decision at a moment when no critical or high finding exists — a low-information interruption that trains the operator to approve without reading. The security property is preserved **while the Phase 8 Step 0.55.1 analysis that (b) leans on produces an observable result** — that analysis is (b)'s sole compensating control, so its equivalence to (a) is conditional on it, not unqualified. The two options are therefore **not symmetric on the fail-open axis**: (a) routes to a human gate and does not depend on any downstream analysis producing a result, whereas (b) substitutes an unattended mechanical check whose own no-result case this SPEC does not govern. REQ-FM-026 supplies exactly this fail-closed symmetry for the **verify** stage; nothing in scope supplies it for the Phase 8 run. The asymmetry is recorded, not closed: extending a REQ-FM-026-shaped no-result rule to Phase 8 Step 0.55.1 would require governing the sync-phase security-analysis mechanism, which this SPEC does not own (see §C Out of Scope — the deep-scan producer). (a) is recorded here as the rejected alternative so it is not silently re-proposed.
+
+**REQ-FM-026** — **When** the verify stage produces severity case S3 — no readable result, because the `/moai review` invocation returns an error, the pipeline aborts, the results directory named in the factory state record is absent, or its `findings.jsonl` artifact is absent or contains a line that does not parse as JSON — the orchestrator shall HALT the chain, shall not proceed to sync, shall not count the attempt against the REQ-FM-010 re-entry ceiling, and shall emit the 5-section verdict then escalate. A verify stage with no readable result shall never be classified as "no confirmed findings", and carries no rung.
+
+> Note on `findings.jsonl`: a genuinely clean scan writes the file with zero lines, so an empty file satisfies this requirement. An aborted scan characteristically never writes the file at all — which is precisely the signal this requirement reads. `revision.json` alone is insufficient evidence of completion: its schema (`scanned_commit`, `effort_tier`, `working_tree_included`, `scope`, `generated_at`) carries no completion or status field, so an aborted run that stamped it would otherwise read as complete.
+
+### B.3 Security-scan dedup contract (R1)
+
+**REQ-FM-014** — **When** sync entry evaluates the Phase 8 dedup gate, the **agent-invoked security analysis of sync Phase 8 Step 0.55.1** shall be skipped, and its findings inherited from the deep-scan results directory, **if and only if BOTH** of the following hold; in every other case it shall run:
+
+- the revision-match predicate of REQ-FM-015 evaluates TRUE, **and**
+- the factory state record's `verify_rung` field is **recorded and equal to `PRIMARY` or `FALLBACK`**.
+
+The second conjunct is an **allow-list, not a deny-list**. Any other `verify_rung` value — `DEGRADED`, an unrecognized string, an empty string, or a field the orchestrator never wrote — yields no suppression. The v0.2.0 phrasing ("`verify_rung` is not `DEGRADED`") failed open on absence, and absence is reachable: `deepscan_dir`, `verify_rung`, and `verify_reentries` are three separately orchestrator-written fields on a best-effort record (REQ-FM-024), so a record carrying `deepscan_dir` but not `verify_rung` — an orchestrator omission, a `/clear` mid-chain, a partial write — satisfied the old predicate and cleared the exclusion by default. That is the DEGRADED hazard through a different door, and it contradicts the fail-closed direction that every ambiguity resolves toward *run the check*.
+
+The rung exclusion exists because a rigor-reduced scan (single-pass, no 3-voter panel) suppressing the independent Phase 8 analysis would remove the only remaining adversarial verification of the same surface.
+
+The skip shall not extend to the **dependency manifest audit** under any condition. `sync/quality-gates-quality.md` § Phase 8 states it runs "regardless of whether manifest files changed in this SPEC" as "a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis"; it audits ten manifests to catch transitive-vulnerability drift unrelated to the current SPEC, which a source-code deep scan does not substitute for. It shall run unconditionally under the `factory` contract.
+
+**REQ-FM-015** — The revision-match predicate shall evaluate TRUE only when every one of the following holds, and FALSE otherwise: the deep-scan results directory recorded in the factory state record exists; its `findings.jsonl` exists and every line parses as JSON; its `revision.json` exists, is readable, and parses as JSON; `revision.scanned_commit` equals the head SHA observed by running `git rev-parse HEAD` at sync entry; `revision.scope` equals `repo`; and — **where** the working tree is dirty at sync entry — `revision.working_tree_included` is `true`.
+
+The predicate's two runtime inputs are derived, never supplied by a caller's judgement:
+
+- `headSHA` is the stdout of `git rev-parse HEAD` executed at sync entry.
+- `treeDirty` is derived from `git status --porcelain` at sync entry over tracked and untracked paths, excluding the ephemeral runtime directories `.moai/state/`, `.moai/reports/`, `.moai/cache/`, and `.moai/logs/` — the same exclusion set `worktree-state-guard.md` § Divergence Threshold applies, and it excludes the results directory itself so a scan's own output never marks the tree dirty. The tree is dirty when at least one porcelain line survives the exclusion.
+
+**REQ-FM-016** — **When** the revision-match predicate evaluates FALSE for any reason, including an absent, unreadable, or malformed `revision.json`, an absent or unparseable `findings.jsonl`, or an absent results directory, sync Phase 8 Step 0.55.1 shall run normally. Absence of any artifact shall never cause a scan to be skipped.
+
+**REQ-FM-017** — The revision-match predicate shall be implemented as a pure, unit-testable Go reader under `internal/factory`, and sync Phase 8 shall **consume** it: the Phase 8 dedup gate doctrine shall state that the gate calls the predicate with the two derived inputs of REQ-FM-015 named explicitly, so the predicate is on the live path rather than dead code. The predicate is a **reader only**: producing `revision.json` and `findings.jsonl` remains owned by the `/moai review --deep` workflow agents, and no Go code in this SPEC's scope writes them.
+
+**REQ-FM-018** — **When** sync Phase 8 Step 0.55.1 is skipped by REQ-FM-014, the sync report shall record the inheritance explicitly, naming the results directory and the matched `scanned_commit`, so that a skipped scan is never silently indistinguishable from a clean scan.
+
+### B.4 Scope-flag contradiction (R2)
+
+**REQ-FM-019** — The authoritative reading of `--repo` shall be the one carried by `review.md` line 48 (flag definition), line 283 (`--deep` mode preamble), and line 293 (`--deep` job-menu table): `--repo` scopes a `--deep` scan to the whole working tree. The single contradicting statement at `review.md` line 221 — verbatim `The \`--repo\` flag is honored only in --lean mode.`, scoped inside the `--lean` mode section and predating `--deep` — shall be corrected to state that `--repo` is honored in both `--lean` and `--deep` modes. The verify-stage invocation shall remain `/moai review --security --deep --repo`; no alternative scope-flag combination shall be substituted to work around the contradiction.
+
+> REQ-FM-020 — **withdrawn in v0.2.0**, folded into REQ-FM-019 (the no-substitution clause is the direct consequence of the same resolution). AC-FM-021 traces to REQ-FM-019.
+
+### B.5 Autonomy engine
+
+**REQ-FM-021** — The Factory chain shall be driven by a goal preset (`factory_chain`) evaluated by the existing `moai hook stop-goal` Stop-hook evaluator. The preset shall introduce no new runtime, no new hook, and no new evaluator.
+
+**REQ-FM-022** — The `factory_chain` goal shall be armed only after Implementation Kickoff Approval has been obtained, and shall be armed alongside the work it drives, never in place of it, because arming is arm-only and an armed goal with no work advancing it spins idle turns to the ceiling.
+
+**REQ-FM-027** — The `factory_chain` goal shall be armed with the concrete bounds `--max-turns 0 --max-duration 14400` (infinite turns; four-hour wall clock). The chain shall terminate on any one of: chain completion, the four-hour wall-clock bound, the goal engine's stagnation guard, or a refusal at any of the four human gates of REQ-FM-012. The preset shall not express its bound as a prose turn clause, because `run.md` records that `parseCondition` matches only a trailing `exits <N>` and a prose "stop after N turns" suffix has no mechanical effect. **Accepted risk**: an unattended factory run may consume up to four hours of tokens before the wall-clock bound fires.
+
+**REQ-FM-023** — **Where** Factory Mode is entered, the launcher shall inject `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` into the session environment unconditionally, reusing the existing `DefaultRaisedStopHookBlockCap` constant and `config.EnvClaudeCodeStopHookBlockCap` key. The factory signal shall reach the inject through the **process environment**, not through a threaded parameter: `runCC` / `runGLM` shall set `MOAI_FACTORY` (and `MOAI_FACTORY_SPEC` when a SPEC identifier was supplied) before calling `unifiedLaunch`, and `injectStopHookBlockCapForGoal` shall read `os.Getenv(config.EnvMoaiFactory)` at its single production call site — `internal/cli/launcher.go:790`, inside `launchClaudeDefault`, where `launchEnv` has already been built from `os.Environ()` (`launcher.go:783` / `:786`) so the variable is present in the child environment without any signature change. The env-var route is chosen over threading a parameter because the alternative would require changing four signatures (`unifiedLaunch` → `unifiedLaunchFunc` → `launchClaude` → `launchClaudeFunc`) plus the two test seams, and `unifiedLaunch(profile, mode, args)` receives `args` from which REQ-FM-001 has already stripped the `--factory` token. **Consequence**: REQ-FM-024's environment variables are load-bearing for REQ-FM-023 — removing them would silently disable the cap raise.
+
+**The environment mutation shall be scoped, not leaked.** `runCC` / `runGLM` shall capture the prior value (and prior presence) of `MOAI_FACTORY` and `MOAI_FACTORY_SPEC` before setting them, and shall restore that prior state via `defer` before returning — restoring absence where the variable was previously unset, not merely setting an empty string. An unrestored `os.Setenv` is process-global in two ways that matter: inside the `internal/cli` test binary, an AC-FM-001 call to `runCC` with `--factory` would leave `MOAI_FACTORY=1` set for every subsequent test in the process, so AC-FM-022a's stated negative control ("the identical call with `MOAI_FACTORY` unset returns `base` unchanged") would pass or fail by test-execution order — the flake class the project's test-isolation rules exist to prevent; and in production a later re-exec or spawn from the same process would silently inherit factory semantics it was never given. Setting the variables on the launch env slice instead of the process was considered and rejected: the inject reads `os.Getenv` at `launcher.go:790` and cannot see a slice-local value without the signature change this requirement exists to avoid.
+
+The existing goal-conditional inject fires only when an armed infinite goal already exists **at launch time**; the `factory_chain` goal is armed mid-session, so the goal-conditional path alone would leave the chain capped at the default 8. That launch-time-only condition is documented in `.claude/rules/moai/workflow/goal-directive.md`, whose wording this requirement falsifies — see REQ-FM-028. The raised cap is **session-wide**, not scoped to the `factory_chain` goal: a user who declines at the Implementation Kickoff Approval gate, or who arms an unrelated goal later in the same session, inherits a 200-block ceiling. This is not a gate bypass — every human gate of REQ-FM-012 is an orchestrator-issued `AskUserQuestion` round, not a Stop-hook block — but the blast radius shall be stated in `factory.md` so an operator can reason about an unexpectedly long unrelated loop.
+
+**REQ-FM-028** — **Where** REQ-FM-023 adds an unconditional `MOAI_FACTORY`-gated branch to the block-cap inject, the sentence in `.claude/rules/moai/workflow/goal-directive.md` § Raising the block cap for an infinite goal that states the launchers inject the raised cap only "when an armed `--max-turns 0` goal exists for the resolving session **at launch time**" becomes false, and shall be amended to name both trigger conditions — the pre-existing armed-infinite-goal-at-launch condition and the new Factory Mode condition. The amendment shall be applied identically to the live file and to its template mirror at `internal/template/templates/.claude/rules/moai/workflow/goal-directive.md` (the two are byte-identical as of authoring), and shall introduce no internal SPEC identifier, requirement token, acceptance token, internal date, commit SHA, or internal Go package path. This is the same class of correction as REQ-FM-019: a shipped doctrine sentence that a code change silently falsifies, and that a user consults precisely when a session unexpectedly runs 200 blocks.
+
+**REQ-FM-024** — Factory Mode shall propagate its signal through the environment variables `MOAI_FACTORY` and `MOAI_FACTORY_SPEC`, whose names shall be declared as constants `config.EnvMoaiFactory` and `config.EnvMoaiFactorySpec` in `internal/config/envkeys.go`, and through a session-keyed record at `.moai/state/factory/<session>.json` carrying at minimum: `session_id`, `spec_id`, `backend`, `entered_at`, `deepscan_dir`, `verify_rung`, and `verify_reentries`.
+
+### B.6 Distribution
+
+**REQ-FM-025** — **Where** this SPEC modifies any file under `.claude/`, the corresponding file under `internal/template/templates/.claude/` shall receive the mirrored change, `make build` shall be run to recompile the embedded template FS, and the mirrored content shall carry no internal SPEC identifier, requirement token, acceptance token, internal date, commit SHA, **or internal Go package path** (`internal/factory`, `internal/cli`, and any other `internal/...` path). Mirrored prose describing the dedup predicate shall state it behaviorally — what the predicate evaluates and which direction it fails — rather than by naming the package that implements it, because an `internal/...` path is meaningless in a distributed user project.
+
+## §C Exclusions — what NOT to build
+
+### Out of Scope — new subcommands and revived surfaces
+
+- A `moai factory` or `/moai factory` subcommand. Factory Mode is an entry switch on two existing launchers, nothing more.
+- A `/moai verify` subcommand. Verify is a call to `/moai review --security --deep --repo`.
+- Any revival of the retired `/moai security` subcommand, or any `security` / `audit` / `sec` alias. It is retired permanently.
+
+### Out of Scope — runtime and engine work
+
+- A new Stop hook, a new evaluator, or a new autonomy runtime. The chain rides the existing goal engine.
+- Any change to the `stop-goal` evaluator's condition-parsing behavior.
+- Any change to `full-pipeline`'s existing run→sync semantics for non-factory sessions.
+- Threading a factory parameter through `unifiedLaunch` / `launchClaude`. REQ-FM-023 chose the environment route; changing those four signatures is out of scope.
+
+### Out of Scope — backends and sessions
+
+- `moai cg` support. Its mixed leader/teammate backend contradicts the one-session premise; the invocation is rejected, not adapted.
+- Cross-session messaging integration. Deferred to a v2 extension.
+- Multi-SPEC chaining within one factory session. One factory session drives one SPEC.
+
+### Out of Scope — the deep-scan producer
+
+- Writing `revision.json` or `findings.jsonl` from Go. This SPEC delivers a reader and a fail-safe predicate; the producer stays owned by the `--deep` workflow agents.
+- Adding a rung or rigor field to `revision.json`. The DEGRADED exclusion of REQ-FM-014 reads `verify_rung` from the factory state record — a record this SPEC owns — rather than extending an artifact schema it does not own.
+- Any change to the `--deep` pipeline's six phases, its 3-voter quorum, or its patch-drafting opt-in.
+- Rewriting the `--lean` mode scope semantics beyond the single corrective sentence of REQ-FM-019.
+- Scoping the raised Stop-hook block cap to the `factory_chain` goal alone. REQ-FM-023 accepts the session-wide blast radius and requires it be documented; a per-goal cap would need a runtime mechanism Claude Code does not expose.
+
+### Out of Scope — the 8 pre-existing internal-path references in the template tree
+
+- Scrubbing `internal/...` package paths from shipped template files this SPEC does not otherwise touch. Eight such references exist at authoring time — in `plan-auditor.md`, `askuser-protocol-reference.md`, `agent-hooks.md`, `worktree-integration.md` (three), and `worktree-state-guard.md` (two). They predate this SPEC, and removing them would be a scope-discipline violation with its own mirror-parity blast radius. REQ-FM-025 binds only the files this SPEC mirrors; AC-FM-025's judgement grep is bounded to match.
+
+## §D Budget exception — declared over the Tier L ceiling
+
+This SPEC carries **26 requirements** and **36 acceptance-criterion leaves** (independently-asserted binary criteria, counting each lowercase sub-ID separately). The Tier L ceiling is 25 for each. Both counts are declared honestly rather than adjusted to fit, and the exception is recorded here so a reader is never told a number the artifacts do not support. The v0.2.0 artifacts declared "25 criteria" against a real leaf count of 34; that declaration is corrected, not restored.
+
+**Why the excess is not scope creep.** The criteria added in iterations 2 and 3 exist to close BLOCKING fail-open defects on a single security-critical predicate: the verify exit gate and the Phase 8 suppression it authorizes. They are verification *depth* on one mechanism, not verification *breadth* across new deliverables — the deliverable set has not grown since v0.1.0. Removing them to meet a numeric budget would trade a real safety property for a counting convention: each one is the criterion that fails when the gate fails open, and a budget that deletes exactly those criteria is a budget optimizing against its own purpose.
+
+**Why the SPEC was not split.** The obvious split — the verify gate in one SPEC, the dedup contract in another — severs a single chain of custody: the verify exit gate produces the result, the revision-match predicate reads it, and sync Phase 8 suppression acts on it. Splitting creates a merge window in which one half lands without the other. Landing the suppression half first means Phase 8 can be skipped on the strength of a gate that does not yet fail closed; landing the gate half first is harmless but leaves the gate producing a record nothing consumes, so the split is asymmetric and its dangerous ordering is the likelier one. An over-budget single SPEC is strictly safer than a window in which the security-critical chain is half-present.
+
+**What the exception does not license.** It is scoped to this SPEC and to this reason. It does not raise the Tier L ceiling, does not apply to future SPECs by precedent, and does not excuse adding further criteria for any reason other than closing a defect on the verify → dedup → suppression chain.

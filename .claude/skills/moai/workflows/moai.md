@@ -203,6 +203,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 - `full-pipeline` contract: run-phase completion auto-chains into sync, announced in the transcript — no additional approval round at the run→sync phase boundary (sync doc work is non-destructive; PR creation still follows Tier-based PR routing and its own gates). The HUMAN GATEs preserved INSIDE the sync workflow (`gate-sync-1` pre-sync quality, `gate-sync-2` documentation scope) still fire unchanged within the chained sync phase.
 - `single-phase` contract (explicit `run`/`sync` invocation): phase completion surfaces the chain as the "(Recommended)" first option of the existing next-step AskUserQuestion — the chain never fires silently.
+- `factory` contract (Factory Mode, the `--factory` / `-f` entry switch on the session launchers): **extends** `full-pipeline` and defines no second chaining mechanism. It inherits the run→sync auto-chain verbatim, including the clause above that `gate-sync-1` and `gate-sync-2` still fire unchanged inside the chained sync phase, and adds exactly two deltas — a plan-phase chain head, and a verify exit gate at run-phase exit. Everything else about how phases chain is the inherited contract, unmodified. See `workflows/run.md` § Verify Exit Gate and `workflows/factory.md`.
 - Failing gates halt the chain: when the sync-audit gate returns FAIL/INCONCLUSIVE or the sync-phase quality gate blocks, the chain halts and escalates — the loop never auto-completes past a failing gate.
 
 ## Mode Selection (team dispatch retired)
