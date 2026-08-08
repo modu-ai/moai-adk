@@ -234,10 +234,10 @@ Three invocation modes control how skills appear and load:
 | Setting | User invokes | Claude invokes | Description loaded | Use case |
 |---------|-------------|---------------|-------------------|----------|
 | (default / user-invocable: true) | Yes | Yes | Always | Standard skills |
-| disable-model-invocation: true | Yes | No | No | Workflows with side effects |
+| disable-model-invocation: true | Yes | No (refused) | Yes | Workflows with side effects |
 | user-invocable: false | No | Yes | Always | Background knowledge |
 
-When `disable-model-invocation: true` is set, the skill is NOT loaded into Claude's context, so Claude cannot auto-invoke it. Use for skills that perform destructive actions.
+When `disable-model-invocation: true` is set, Claude cannot auto-invoke the skill. The skill remains visible to Claude — it is simply not model-invocable: as of CC v2.1.222 an attempted model invocation is refused, and Claude is told to ask the user to run the skill rather than replicating its workflow. Use for skills that perform destructive actions.
 
 When `user-invocable: false` is set, the skill is hidden from the `/` menu but Claude can still invoke it as background knowledge. Use for reference material.
 
