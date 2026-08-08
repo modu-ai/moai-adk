@@ -47,7 +47,7 @@ M1-M3 완료. M4(서드파티 LLM 탭) / M5(프로필 UI) / M6(autonomy stub) / 
 
 run_status: partial (M1-M3 완료, M4-M7 미착수)
 run_complete_at: 2026-08-08
-run_commit_sha: pending-backfill-m3
+run_commit_sha: c9406abf5
 ac_pass_count: 13
 ac_fail_count: 1 (AC-WCR-063 커버리지 — M7 소관)
 ac_vacuous_count: 2 (AC-WCR-061 / AC-WCR-062 — yaml·템플릿 편집 0건)
