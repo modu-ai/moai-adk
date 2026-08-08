@@ -142,10 +142,10 @@ func (a *app) routes() http.Handler {
 	// GET /?profile=<name> load path (no dedicated route needed).
 	mux.HandleFunc("/profile/create", a.handleProfileCreate)
 	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
-	// SPEC-AUTONOMY-TIERS-001 M8 (AC-002): 3-tier autonomy toggle fragment.
-	// GET-only, read-only — surfaces config.TierToggleOptions in the browser
-	// with fully-autonomous disabled without sandbox proof / under kill-switch.
-	mux.HandleFunc("/autonomy/tiers", a.handleAutonomyTiers)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers route is removed.
+	// It served a GET-only fragment with no form and no action, so no selection
+	// it offered could be persisted. config.TierToggleOptions and the init-time
+	// ApplyAutonomyTierBundle path are untouched — only the web surface is gone.
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
 	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 및 cross-site(REQ-SEC-002)
 	// POST 를 403 차단한다. 추가 CSRF 토큰 인프라는 없다(Goal Anti + @MX:NOTE 참조).
