@@ -72,28 +72,9 @@ and the lifecycle status (`armed` / `satisfied` / `ceiling-exit` / `cleared`).
 
 ### `/moai goal clear`
 
-Clear the active session's goal (delete its state file AND its `.html` dashboard
-sibling). The Stop hook then sees no armed goal and stops blocking. This is how
-the orchestrator ends the loop once it has evaluated the model claim as met. The
-`.html` sibling removal keeps the goal
-state directory from accumulating orphan dashboards after `/clear`.
-
-### `/moai goal render`
-
-Render the active session's goal dashboard to a self-contained HTML file.
-The verb resolves the live goal via the
-same `statusSessionID` + `goal.LoadGoal` path the read/idempotent verbs use,
-calls `goal.RenderDashboard`, and writes the bytes to
-`.moai/state/goal/<session>.html` (derived from the `.json` state path via
-suffix swap). The file is openable offline in a browser — inline CSS, zero
-external JS/CSS framework dependency, zero CDN.
-
-Open the written path to monitor the loop from a browser instead of chat. With
-no armed goal, the verb exits non-zero, names the session id on stderr, and
-writes NO html. `--json` emits `{action, session_id, path, bytes}`.
-
-This is the on-demand slice of the §3.2 HTML-first flow; the per-turn Stop-hook
-auto-refresh (the LIVE board) is deferred to v3.2.
+Clear the active session's goal (delete its state file). The Stop hook then sees
+no armed goal and stops blocking. This is how the orchestrator ends the loop once
+it has evaluated the model claim as met.
 
 ### `/moai goal resume` — deferred (follow-up), NOT delivered
 

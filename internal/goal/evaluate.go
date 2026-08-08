@@ -126,19 +126,7 @@ func lastProgress(g *Goal) string {
 // bounded file-set SHA) when present; it falls back to the legacy Note when
 // Fingerprint is empty (backward compat with pre-M4 / ceiling / satisfied
 // entries). N consecutive identical signatures → stagnation.
-//
-// SPEC-INFINITE-GOAL-001 D2: the stagnation guard applies ONLY to goals with
-// >=1 mechanical condition. A model-only goal has no reliable mechanical
-// fingerprint, so identical progress Notes would spuriously trigger stagnation;
-// model-only goals are bounded by wall-clock max-duration + MaxTurns per
-// REQ-004. This gate inspects the static g.Conditions types, so it is available
-// at the stagnation check site (which runs BEFORE the per-turn eval loop that
-// computes the L344 hasMechanical local).
 func (e *Eval) isStagnant(g *Goal) bool {
-	// D2: model-only goals skip stagnation (no reliable mechanical fingerprint).
-	if !hasMechanicalConditions(g) {
-		return false
-	}
 	n := e.StagnationThreshold
 	if n == 0 {
 		n = DefaultStagnationThreshold
@@ -158,20 +146,6 @@ func (e *Eval) isStagnant(g *Goal) bool {
 		}
 	}
 	return true
-}
-
-// hasMechanicalConditions reports whether the goal declares any Tier-1
-// (mechanical) condition. Used by isStagnant to gate the stagnation guard to
-// mechanical-bearing goals only (D2). This is structurally identical to the
-// existing Goal.HasModelConditions predicate style (schema.go L131) and inspects
-// the static g.Conditions types — available at the stagnation check site.
-func hasMechanicalConditions(g *Goal) bool {
-	for _, c := range g.Conditions {
-		if c.Type == ConditionMechanical {
-			return true
-		}
-	}
-	return false
 }
 
 // stagnationKey returns the per-turn signature used by isStagnant: the

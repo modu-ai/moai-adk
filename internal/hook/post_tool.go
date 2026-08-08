@@ -216,39 +216,29 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
-	// SPEC-NAVIGATOR-SYNC-002 M1.2 (REQ-NS2-001/009): BAS Falconer Detect — map
-	// the changed file path to affected navigator-graph rows via reverse edge
-	// traversal of the M0 nav-graph.json. BRANCH-NOT-FORK (REQ-NS2-009): this
-	// is a conditional branch inside postToolHandler.Handle, registered
-	// alongside runAstScan / runMxValidation / runMemoryAudit — NOT a forked
-	// PostToolUse chain. CONSUMER-ONLY (REQ-NS2-005): reads M0 outputs, never
-	// mutates internal/navigator/sync/ or internal/mx/. Fail-open on every
-	// error mode (REQ-NS2-004); NEVER blocks (REQ-NS2-012).
-	//
-	// M1.3 (REQ-NS2-003): on a non-empty affected-row set, emit (a) the
-	// advisory systemMessage appended to the existing systemMessage built by
-	// the diagnostic branches above (LSP / AST), and (b) the append-only JSONL
-	// impact record at .moai/state/navigator-detect/<session-id>.jsonl for M2
-	// Route to consume. NO work-item promotion (REQ-NS2-003c).
-	if result := runNavigatorDetectSafe(ctx, input); result != nil {
-		systemMessage = emitNavigatorDetectAdvisory(input, result, systemMessage)
-		recordNavigatorDetectImpact(input, result)
-		metrics["navigator_detect"] = map[string]any{
-			"affected_nodes": len(result.Nodes),
-			"affected_edges": len(result.Edges),
-		}
-	} else if navigatorDetectTools[input.ToolName] {
-		// Branch ran but yielded no rows (graph absent / unparseable / no match).
-		// Recorded so dispatcher-integration tests can observe the branch fired.
-		metrics["navigator_detect"] = map[string]any{"status": "no_match_or_fail_open"}
-	}
-
 	// Record evidence-bearing tool events for the Stop evidence gate
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
 	// Best-effort, additive — never blocks, never alters HookOutput.
 	if input.ToolName == "Bash" || input.ToolName == "Edit" || input.ToolName == "Write" {
 		logEvidence(input)
+	}
+
+	// Navigator Detect branch (SPEC-NAVIGATOR-SYNC-002 REQ-NS2-009b / AC-NS2-001b).
+	// Dispatches runNavigatorDetectSafe for Write/Edit/NotebookEdit tools so the
+	// navigator graph can surface affected rows as an advisory systemMessage
+	// (REQ-NS2-003a) and append a JSONL impact record (REQ-NS2-003b). Bash does
+	// NOT dispatch (AC-NS2-001b negative). Advisory-only and fail-open
+	// (REQ-NS2-012); a nil Result is a silent no-op.
+	if input.ToolName == "Write" || input.ToolName == "Edit" || input.ToolName == "NotebookEdit" {
+		if ndResult := runNavigatorDetectSafe(ctx, input); ndResult != nil {
+			metrics["navigator_detect"] = map[string]any{
+				"nodes": len(ndResult.Nodes),
+				"edges": len(ndResult.Edges),
+			}
+			systemMessage = emitNavigatorDetectAdvisory(input, ndResult, systemMessage)
+			recordNavigatorDetectImpact(input, ndResult)
+		}
 	}
 
 	// Capture AskUserQuestion user decisions into the preference memory layer

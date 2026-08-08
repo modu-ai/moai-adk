@@ -66,17 +66,6 @@ harness:
     enforce_gate_on_spec_creation: true  # [HARD] Blocks SPEC creation outside /moai plan
     rationale: "prevent scope-creep SPEC generation"
 
-  # Per-Tier plan-auditor retry ceiling SSOT (SPEC-SYNC-PARALLEL-DOCS-001 A6).
-  # The plan-auditor agent body consults the Tier-resolved value from this map
-  # INSTEAD of its former hard-coded `max_iterations: 3` literal; the literal is
-  # now a consumer-side fallback, NOT the SSOT. Backward compat: when `tier:` is
-  # absent from a SPEC's frontmatter, the Tier L value (3) is used — pre-A6
-  # SPECs see no behavior change (SPEC-SYNC-PARALLEL-DOCS-001 A6).
-  plan_audit_tier_ceilings:
-    S: 1   # Tier S (≤300 LOC, <5 files): single-pass audit, no iteration 2+
-    M: 2   # Tier M (300-1000 LOC, 5-15 files): up to two spawns
-    L: 3   # Tier L (>1000 LOC or constitutional): up to three spawns (legacy behavior)
-
   # Level definitions
   levels:
     minimal:

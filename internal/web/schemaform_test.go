@@ -32,48 +32,6 @@ func TestConsoleTabsIncludesReport(t *testing.T) {
 	}
 }
 
-// TestConsoleTabsIncludesWorkflow (Issue 3) asserts the restored workflow tab
-// carries the sec.workflow.title LabelKey and the Workflow baseline label, and
-// sits in its canonical position immediately after llm.
-func TestConsoleTabsIncludesWorkflow(t *testing.T) {
-	tabs := consoleTabs()
-	var wf *consoleTab
-	for i := range tabs {
-		if tabs[i].ID == "workflow" {
-			wf = &tabs[i]
-			break
-		}
-	}
-	if wf == nil {
-		t.Fatal("consoleTabs() missing workflow entry (Issue 3 restore)")
-	}
-	if wf.LabelKey != "sec.workflow.title" {
-		t.Errorf("workflow LabelKey = %q, want sec.workflow.title", wf.LabelKey)
-	}
-	if wf.Baseline != "Workflow" {
-		t.Errorf("workflow Baseline = %q, want Workflow", wf.Baseline)
-	}
-}
-
-// TestSchemaSectionMetasIncludesWorkflow (Issue 3) asserts the workflow section
-// renders via the generic fieldset path (root.templ loops schemaSectionMetas()).
-func TestSchemaSectionMetasIncludesWorkflow(t *testing.T) {
-	metas := schemaSectionMetas()
-	var found bool
-	for _, m := range metas {
-		if m.ID == settings.SectionWorkflow {
-			found = true
-			if m.Title == "" || m.Desc == "" {
-				t.Errorf("workflow section meta has empty Title/Desc: %+v", m)
-			}
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("schemaSectionMetas() missing SectionWorkflow: %+v", metas)
-	}
-}
-
 // TestSchemaSectionMetasIncludesReport asserts the report section renders via the
 // generic fieldsetSchemaSection path (root.templ loops schemaSectionMetas()).
 func TestSchemaSectionMetasIncludesReport(t *testing.T) {

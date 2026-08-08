@@ -61,7 +61,7 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load LLM section
 	l.loadLLMSection(sectionsDir, cfg)
 
-	// Load ralph section (RalphConfig)
+	// Load ralph section (RalphConfig + Session.StaleSeconds)
 	l.loadRalphSection(sectionsDir, cfg)
 
 	// Load state section
@@ -72,6 +72,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
+
+	// Load research section
+	l.loadResearchSection(sectionsDir, cfg)
 
 	// Load feedback section (SPEC-INVOCATION-MODEL-001: /moai feedback target repo)
 	l.loadFeedbackSection(sectionsDir, cfg)
@@ -248,6 +251,8 @@ func (l *Loader) loadStatuslineSection(dir string, cfg *Config) {
 }
 
 // loadRalphSection loads the ralph configuration section from ralph.yaml.
+// Injects the ralph.stale_seconds key in ralph.yaml into Config.Session.StaleSeconds.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS defaults to 3600 and is overridable from ralph.yaml.
 func (l *Loader) loadRalphSection(dir string, cfg *Config) {
 	wrapper := &ralphFileWrapper{}
 	// Initialize defaults for ralph.yaml (inline field)
@@ -259,14 +264,32 @@ func (l *Loader) loadRalphSection(dir string, cfg *Config) {
 	}
 	if loaded {
 		cfg.Ralph = wrapper.Ralph.RalphConfig
+		// Only override when stale_seconds is non-zero (0 is treated as no explicit setting)
+		if wrapper.Ralph.StaleSeconds > 0 {
+			cfg.Session.StaleSeconds = wrapper.Ralph.StaleSeconds
+		}
 		l.loadedSections["ralph"] = true
+	}
+}
+
+// loadResearchSection loads the research configuration section from research.yaml.
+func (l *Loader) loadResearchSection(dir string, cfg *Config) {
+	wrapper := &researchFileWrapper{Research: cfg.Research}
+	loaded, err := loadYAMLFile(dir, "research.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load research config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Research = wrapper.Research
+		l.loadedSections["research"] = true
 	}
 }
 
 // loadFeedbackSection loads the feedback configuration section from feedback.yaml.
 // The wrapper is seeded with the populated default (cfg.Feedback) so that a
 // feedback.yaml omitting the repository key retains the default tool channel
-// (partial-override contract).
+// (partial-override contract; parallel to loadResearchSection).
 func (l *Loader) loadFeedbackSection(dir string, cfg *Config) {
 	wrapper := &feedbackFileWrapper{Feedback: cfg.Feedback}
 	loaded, err := loadYAMLFile(dir, "feedback.yaml", wrapper)
@@ -319,7 +342,7 @@ var knownHarnessTopLevelKeys = map[string]bool{
 	"model_upgrade_review": true,
 	"plan_audit_global":    true,
 	"evaluator":            true,
-	"learning":             true, // Live sub-system — consumed at internal/cli/hook.go:551-1106
+	"learning":             true, // Legacy sub-system (out-of-scope, warning suppressed)
 }
 
 // LoadHarnessConfig reads the harness.yaml file at the given path and returns a HarnessConfig.

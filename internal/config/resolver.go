@@ -801,6 +801,8 @@ func strictUnmarshalSection(data []byte, basename string, filePath string) *Conf
 		target = &stateFileWrapper{}
 	case "statusline":
 		target = &statuslineFileWrapper{}
+	case "research":
+		target = &researchFileWrapper{}
 	default:
 		// No known wrapper — skip strict check.
 		return nil

@@ -2,12 +2,11 @@
 // (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010/011/014).
 //
 // mcp_audit.go holds the audit_model/audit_gate contract surface shared by the
-// codex (mcp_codex.go), GLM (mcp_glm.go), and multi-convergence
-// (mcp_convergence.go) backends:
+// codex (mcp_codex.go) and GLM (mcp_glm.go) backends:
 //   - activeAuditBackend: validates audit_model ∈ {claude,codex,glm,multi} and
-//     returns the single active backend. `multi` activates the parallel fan-out
-//     + disagreement-synthesis engine in mcp_convergence.go
-//     (SPEC-AUDIT-MULTI-MODEL-001 M1).
+//     returns the single active backend. `multi` is a DECLARED token only — its
+//     convergence logic is SPEC-AUDIT-MULTI-MODEL (AP-8); M3 accepts the token
+//     but does NOT orchestrate the parallel fan-out / disagreement synthesis.
 //   - buildAuditEnvBlock: the ONLY producer of backend env references for
 //     provisioning. Every value is a ${VAR} literal expanded by the Claude Code
 //     runtime at load — a resolved secret is NEVER serialized (C3 / REQ-MCP-011
@@ -17,7 +16,6 @@
 //     needs to reach the git-tracked host config.
 //
 // @MX:SPEC: SPEC-MOAI-MCP-SERVER-001
-// @MX:SPEC: SPEC-AUDIT-MULTI-MODEL-001
 package cli
 
 import (
@@ -26,15 +24,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// multiConvergenceImplemented documents that the `multi` audit_model token's
-// convergence logic (parallel fan-out + disagreement synthesis) is implemented.
-// Flipped from false → true by SPEC-AUDIT-MULTI-MODEL-001 M1, IN THE SAME COMMIT
-// as the engine (internal/cli/mcp_convergence.go) — there is no window where
-// the sentinel lies (R3 / Definition of Done sentinel-flip same-commit invariant).
-// The engine activates `audit_model: multi` end-to-end: parallel errgroup fan-out
-// across codex + glm, super-review independence (claude_verdict consumed only by
-// the synthesis step), disagreement = advisory (NOT block), fail-open identity.
-const multiConvergenceImplemented = true
+// multiConvergenceImplemented documents AP-8: the `multi` audit_model token is
+// accepted and stored by M3, but its convergence logic (parallel fan-out +
+// disagreement synthesis) is owned by a future SPEC-AUDIT-MULTI-MODEL. M3 MUST
+// NOT orchestrate it. This constant makes the deferral grep-visible.
+const multiConvergenceImplemented = false
 
 // ${VAR} literal env-reference tokens. These are Claude Code host-runtime
 // expansion tokens (the runtime substitutes them at .mcp.json load), NOT env
@@ -51,10 +45,10 @@ const (
 
 // activeAuditBackend validates audit_model and returns the single active
 // backend (AC-MCP-017). For claude/codex/glm the backend is the model itself
-// (exactly one executes, per its audit_gate). `multi` activates the convergence
-// engine in mcp_convergence.go (multiConvergenceImplemented = true since
-// SPEC-AUDIT-MULTI-MODEL-001 M1) — a caller that needs a concrete single
-// backend should still treat `multi` as "fan out, then converge".
+// (exactly one executes, per its audit_gate). `multi` is accepted verbatim
+// (stored) but its fan-out is NOT orchestrated here (multiConvergenceImplemented
+// = false); a caller that needs a concrete backend should treat `multi` as
+// "deferred to SPEC-AUDIT-MULTI-MODEL".
 func activeAuditBackend(model string) (string, error) {
 	switch model {
 	case config.AuditModelClaude, config.AuditModelCodex, config.AuditModelGLM, config.AuditModelMulti:

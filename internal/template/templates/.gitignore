@@ -204,10 +204,11 @@ secret-*.*
 .moai/cache/
 
 # ===========================================
-# Reports (local-only analysis/audit artifacts, never public)
-# All .moai/reports/ content is local output; nothing under it is tracked.
+# Plan Audit Reports (local artifacts)
+# Plan-audit verdict reports are local artifacts; only .gitkeep is tracked.
 # ===========================================
-.moai/reports/
+.moai/reports/plan-audit/*.md
+!.moai/reports/plan-audit/.gitkeep
 
 # ===========================================
 # Evolution Telemetry (local-only usage data)

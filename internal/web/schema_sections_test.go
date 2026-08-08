@@ -114,8 +114,6 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 
 	// 제외군 + removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + reclassified).
-	// workflow restored in Issue 3 — its controls ARE rendered, so it is NOT in
-	// this exclusion-prefix list.
 	for _, prefix := range []string{
 		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
 		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections removed from UI.

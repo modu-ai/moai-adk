@@ -28,6 +28,7 @@ type Config struct {
 	Statusline    models.StatuslineConfig    `yaml:"statusline"`
 	Gate          GateConfig                 `yaml:"gate"`
 	Sunset        SunsetConfig               `yaml:"sunset"`
+	Research      ResearchConfig             `yaml:"research"`
 	Feedback      FeedbackConfig             `yaml:"feedback"` // SPEC-INVOCATION-MODEL-001: /moai feedback target repo
 	Handoff       HandoffConfig              `yaml:"handoff"`  // SPEC-HANDOFF-AUTORESUME-001: auto-resume 핸드오프 설정
 	Archive       ArchiveConfig              `yaml:"archive"`  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
@@ -420,12 +421,6 @@ type WorkflowConfig struct {
 	// under internal/template/templates/ — the distributed default is OFF.
 	Multi MultiConfig `yaml:"multi"`
 
-	// Audit gates the 3-way audit backend selection + per-auditor gate
-	// contract (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010 / AC-MCP-012). The
-	// default profile is claude + codex required, glm advisory (user-enabled)
-	// so a distributed user without a GLM key is never hard-blocked (C2).
-	Audit AuditConfig `yaml:"audit"`
-
 	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
 	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
 
@@ -470,6 +465,13 @@ type WorkflowConfig struct {
 	// the map is nil and RouteModelFor falls back to the documented default
 	// entry with FallbackApplied=true.
 	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
+
+	// Audit is the workflow.audit block (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-010 /
+	// SPEC-AUDIT-MULTI-MODEL-001): the active audit_model token plus the
+	// per-auditor gates. When the block is absent the field is the zero value
+	// and callers resolve the distributed default profile via
+	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
+	Audit AuditConfig `yaml:"audit"`
 }
 
 // ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
@@ -602,50 +604,6 @@ type MultiReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// SPEC-MOAI-MCP-SERVER-001 M3 — audit_model + per-auditor audit_gate enums
-// (REQ-MCP-010 / AC-MCP-012, progress.md §G.3 locked).
-//
-// audit_model selects the single active audit backend. `multi` is a declared
-// token only here — its convergence logic (parallel fan-out, disagreement
-// synthesis) is owned by a future SPEC-AUDIT-MULTI-MODEL (spec.md §B, AP-8).
-// M3 accepts the token but does NOT orchestrate it.
-const (
-	AuditModelClaude = "claude"
-	AuditModelCodex  = "codex"
-	AuditModelGLM    = "glm"
-	AuditModelMulti  = "multi"
-)
-
-// audit_gate semantics (per auditor): off = skip that auditor; advisory =
-// surfaced as systemMessage (no block); required = must PASS before
-// convergence/merge (block). The distributed default gate is `required`.
-const (
-	AuditGateOff      = "off"
-	AuditGateAdvisory = "advisory"
-	AuditGateRequired = "required"
-)
-
-// AuditConfig mirrors workflow.audit.* — the 3-way audit backend selection +
-// per-auditor gate contract (SPEC-MOAI-MCP-SERVER-001 M3, REQ-MCP-010). The
-// default profile (NewDefaultConfig) is claude + codex required, glm advisory
-// (user-enabled); glm ships advisory, NOT required, so a distributed user with
-// no GLM key is never hard-blocked (C2 fail-open).
-type AuditConfig struct {
-	// Model is the active audit backend ∈ {claude, codex, glm, multi}. `multi`
-	// is stored but not orchestrated in this SPEC (AP-8).
-	Model string `yaml:"model"`
-	// Gates is the per-auditor gate map. An absent gate falls back to the
-	// distributed default `required` at the read site.
-	Gates AuditGates `yaml:"gates"`
-}
-
-// AuditGates mirrors workflow.audit.gates.* — one gate value per auditor.
-type AuditGates struct {
-	Claude string `yaml:"claude"`
-	Codex  string `yaml:"codex"`
-	GLM    string `yaml:"glm"`
-}
-
 // SessionWorktreeConfig mirrors workflow.session_worktree.* — the opt-in
 // automatic worktree-isolation gate for moai init / moai profile / moai web
 // (SPEC-SESSION-WORKTREE-001 REQ-SW-001 / REQ-SW-002). The distributed default
@@ -695,22 +653,19 @@ type SecuritySandbox struct {
 }
 
 // StateConfig represents the project state storage configuration.
-// It controls the retention window for the state directory's runs/ subdirectory.
-// The state directory path itself is a hardcoded literal (.moai/state/) shared
-// as the de-facto SSOT by internal/cli/state.go and internal/worktree/state_guard.go;
-// the former state_dir YAML key had no runtime consumer and was removed
-// (SPEC-CONFIG-DEAD-SWEEP-001).
+// It controls the directory where structured state data (checkpoints,
+// coverage, diagnostics) is stored.
 type StateConfig struct {
-	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
+	StateDir      string `yaml:"state_dir"`
+	RetentionDays int    `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
 }
 
 // SessionConfig holds session state management configuration.
-//
-// The former StaleSeconds field (fed by the ralph.yaml stale_seconds key) was
-// removed in SPEC-RALPH-CONFIG-REDESIGN-001 M3: it had zero runtime consumers
-// (only a producer-side injection pipeline). The struct is retained because
-// Config.Session references it; new session-level fields may be added here.
+// SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS setting.
 type SessionConfig struct {
+	// StaleSeconds is the threshold (in seconds) at which a checkpoint is considered stale.
+	// Default: 3600 (1 hour). Configured via the stale_seconds key in ralph.yaml.
+	StaleSeconds int `yaml:"stale_seconds"`
 }
 
 // LSPQualityGates represents LSP quality gate configuration.
@@ -856,11 +811,64 @@ type ArchiveConfig struct {
 	GraceDays int `yaml:"grace_days"`
 }
 
+// ResearchConfig represents the Self-Research System configuration section.
+type ResearchConfig struct {
+	Enabled   bool                    `yaml:"enabled"`
+	Passive   ResearchPassiveConfig   `yaml:"passive"`
+	Active    ResearchActiveConfig    `yaml:"active"`
+	Safety    ResearchSafetyConfig    `yaml:"safety"`
+	Dashboard ResearchDashboardConfig `yaml:"dashboard"`
+}
+
+// ResearchPassiveConfig represents passive observation settings.
+type ResearchPassiveConfig struct {
+	Enabled                 bool                      `yaml:"enabled"`
+	CorrectionWindowSeconds int                       `yaml:"correction_window_seconds"`
+	PatternThresholds       ResearchPatternThresholds `yaml:"pattern_thresholds"`
+}
+
+// ResearchPatternThresholds defines observation count thresholds for pattern classification.
+type ResearchPatternThresholds struct {
+	Heuristic      int `yaml:"heuristic"`
+	Rule           int `yaml:"rule"`
+	HighConfidence int `yaml:"high_confidence"`
+}
+
+// ResearchActiveConfig represents active experiment settings.
+type ResearchActiveConfig struct {
+	RunsPerExperiment int     `yaml:"runs_per_experiment"`
+	MaxExperiments    int     `yaml:"max_experiments"`
+	PassThreshold     float64 `yaml:"pass_threshold"`
+	TargetScore       float64 `yaml:"target_score"`
+	BudgetCapTokens   int     `yaml:"budget_cap_tokens"`
+}
+
+// ResearchSafetyConfig represents safety layer settings.
+type ResearchSafetyConfig struct {
+	WorktreeIsolation         bool                    `yaml:"worktree_isolation"`
+	CanaryRegressionThreshold float64                 `yaml:"canary_regression_threshold"`
+	RateLimits                ResearchRateLimitConfig `yaml:"rate_limits"`
+}
+
+// ResearchRateLimitConfig represents rate limiting settings.
+type ResearchRateLimitConfig struct {
+	MaxExperimentsPerSession int `yaml:"max_experiments_per_session"`
+	MaxAcceptedPerSession    int `yaml:"max_accepted_per_session"`
+	MaxAutoResearchPerWeek   int `yaml:"max_auto_research_per_week"`
+}
+
+// ResearchDashboardConfig represents dashboard display settings.
+type ResearchDashboardConfig struct {
+	DefaultMode     string `yaml:"default_mode"`
+	HTMLOpenBrowser bool   `yaml:"html_open_browser"`
+}
+
 // sectionNames lists all valid configuration section names.
 var sectionNames = []string{
 	"user", "language", "quality", "project",
 	"git_strategy", "git_convention", "system", "llm",
 	"pricing", "ralph", "workflow", "state", "statusline", "gate", "sunset",
+	"research",
 }
 
 // IsValidSectionName checks if the given name is a valid section name.
@@ -1320,6 +1328,11 @@ type statuslineFileWrapper struct {
 	Statusline models.StatuslineConfig `yaml:"statusline"`
 }
 
+// researchFileWrapper handles the research.yaml section file.
+type researchFileWrapper struct {
+	Research ResearchConfig `yaml:"research"`
+}
+
 // FeedbackConfig represents the /moai feedback workflow configuration section.
 // SPEC-INVOCATION-MODEL-001: the feedback target repository is a config value so
 // fork maintainers can redirect feedback away from the default tool channel.
@@ -1350,8 +1363,11 @@ type gateFileWrapper struct {
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.
+// stale_seconds lives under the ralph: key in ralph.yaml and is injected into Config.Session.StaleSeconds.
+// SPEC-V3R2-RT-004 REQ-022: source of the STALE_SECONDS setting.
 type ralphFileWrapper struct {
 	Ralph struct {
-		RalphConfig `yaml:",inline"`
+		RalphConfig  `yaml:",inline"`
+		StaleSeconds int `yaml:"stale_seconds"` // → Config.Session.StaleSeconds
 	} `yaml:"ralph"`
 }

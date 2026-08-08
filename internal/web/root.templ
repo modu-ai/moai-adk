@@ -103,6 +103,9 @@ templ page(view pageView) {
 				// comment, so it is not emitted into the rendered page.)
 				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) } hx-boost="true">
 					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
+					// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers toggle link is
+					// removed. It was a GET-only fragment with no form and no action, so no
+					// selection it offered could be persisted (see autonomy_console_test.go).
 					// M5-b D1: 탭 nav. 각 탭 label 은 기존 sec.<section>.title i18n 키를
 					// 재사용한다 (0 NEW sec.* keys). 탭은 type="button" 이라 폼을 제출하지
 					// 않는다. 모든 패널이 DOM 에 상주한다 (atomic Save contract).

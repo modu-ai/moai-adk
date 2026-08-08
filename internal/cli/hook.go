@@ -206,41 +206,16 @@ fail-open).`,
 		RunE: runHarnessClassify,
 	})
 
-	// Add "codex-review-gate" subcommand (SPEC-MOAI-MCP-SERVER-001 M2,
-	// REQ-MCP-008 / AC-MCP-009/010). A Stop hook that gates session end on a
-	// codex review of the uncommitted change. Opt-in via
-	// workflow.codex.review_gate.enabled (default OFF). The moai-default 5s
-	// hook timeout is overridden to 900s for this hook in the settings.json
-	// manifest (M4); the handler also enforces config.DefaultCodexReviewGateTimeout
-	// on the codex call. ALLOW/BLOCK rides the JSON Decision field (exit 0 —
-	// exit 2 would discard stdout JSON per Claude Code semantics). settings.json
-	// TEMPLATE registration is M4; M2 ships the handler + this subcommand +
-	// the handle-codex-review-gate.sh wrapper, tested via direct invocation.
+	// Add "codex-review-gate" subcommand (SPEC-MOAI-MCP-SERVER-001 M2
+	// REQ-MCP-008). Stop-hook gate that runs the codex JSON-RPC reviewer on
+	// uncommitted changes and blocks on a FAIL verdict. Opt-in default-off via
+	// workflow.codex.review_gate.enabled (the manifest timeout override is M4).
 	hookCmd.AddCommand(&cobra.Command{
 		Use:          "codex-review-gate",
-		Short:        "Stop-hook gate: block session end until codex reviews the uncommitted change",
-		Long:         "Stop hook (SPEC-MOAI-MCP-SERVER-001 M2). Opt-in via workflow.codex.review_gate.enabled. Self-gates to ALLOW on a no-edit / loop-prevention / disabled turn; runs a codex review otherwise and BLOCKs on a fail verdict. Fail-open ALLOW on a missing or inconclusive codex.",
+		Short:        "Stop-hook codex review gate (opt-in; blocks on codex FAIL verdict)",
+		Long:         `Run the codex JSON-RPC reviewer against uncommitted changes and emit the standard ALLOW/BLOCK Stop-hook output. Opt-in via workflow.codex.review_gate.enabled (default off). Fail-open: any error logs to stderr and exits 0. SPEC-MOAI-MCP-SERVER-001 REQ-MCP-008 / AC-MCP-009 / AC-MCP-010.`,
 		SilenceUsage: true,
 		RunE:         runCodexReviewGate,
-	})
-
-	// Add "multi-review-gate" subcommand (SPEC-AUDIT-MULTI-MODEL-001 M5,
-	// REQ-AMM-013 / AC-AMM-018-021). A Stop hook that consumes the
-	// ConvergenceResult persisted by the audit_multi MCP tool (DQ-1) and
-	// BLOCKs turn-end only if a required backend FAIL is unresolved. Advisory
-	// disagreement NEVER blocks (AC-AMM-009 — the user-policy fixed term).
-	// Opt-in via workflow.multi_review_gate.enabled (default OFF, BranchGuard
-	// pattern — sibling to workflow.codex.review_gate). The moai-default 5s
-	// hook timeout is overridden to 900s for this hook in the settings.json
-	// manifest (same override the codex-review-gate carries); the handler
-	// itself does no I/O beyond a single state-file read so the timeout is
-	// generous headroom. ALLOW/BLOCK rides the JSON Decision field (exit 0).
-	hookCmd.AddCommand(&cobra.Command{
-		Use:          "multi-review-gate",
-		Short:        "Stop-hook gate: block session end while a required multi-audit backend FAIL is unresolved",
-		Long:         "Stop hook (SPEC-AUDIT-MULTI-MODEL-001 M5). Opt-in via workflow.multi_review_gate.enabled. Self-gates to ALLOW on a no-edit / loop-prevention / disabled turn; reads the most-recent ConvergenceResult from .moai/state/audit-multi/<session>.json otherwise and BLOCKs only on a required-backend FAIL. Advisory disagreement is surfaced but NEVER blocks.",
-		SilenceUsage: true,
-		RunE:         runMultiReviewGate,
 	})
 }
 
@@ -552,83 +527,6 @@ func runSecurityTurn(cmd *cobra.Command, args []string) error {
 // Fail-open.
 func runSecurityCommit(cmd *cobra.Command, args []string) error {
 	return security.HandleSecurityCommit(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
-}
-
-// runCodexReviewGate is the `moai hook codex-review-gate` Stop-hook subcommand
-// (SPEC-MOAI-MCP-SERVER-001 M2). It reads the Stop stdin JSON, resolves the
-// project root env-first, reads the opt-in config gate, and forwards to the
-// pure gate logic (HandleCodexReviewGate). Fail-open: on any stdin/protocol
-// error it emits an empty (ALLOW) output and exits 0 so the Stop pipeline is
-// never broken. The BLOCK decision rides the JSON Decision field — the process
-// ALWAYS exits 0 (exit 2 would discard the stdout JSON per Claude Code).
-func runCodexReviewGate(cmd *cobra.Command, _ []string) error {
-	if deps == nil || deps.HookProtocol == nil {
-		// No protocol: fail-open ALLOW (never break the Stop pipeline).
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "codex-review-gate: hook protocol not initialized; ALLOW")
-		return nil
-	}
-	input, err := deps.HookProtocol.ReadInput(os.Stdin)
-	if err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex-review-gate: invalid stdin JSON (%v); ALLOW\n", err)
-		return nil
-	}
-	if input.HookEventName == "" {
-		input.HookEventName = string(hook.EventStop)
-	}
-	projectDir := resolveHookProjectRoot()
-	enabled := readCodexReviewGateEnabled(projectDir)
-	output, handleErr := HandleCodexReviewGate(input, enabled, projectDir)
-	if handleErr != nil {
-		// Fail-open: never propagate a handler error to the Stop pipeline.
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex-review-gate: handler error (%v); ALLOW\n", handleErr)
-		return nil
-	}
-	if writeErr := deps.HookProtocol.WriteOutput(cmd.OutOrStdout(), output); writeErr != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex-review-gate: write output (%v)\n", writeErr)
-	}
-	return nil
-}
-
-// runMultiReviewGate is the `moai hook multi-review-gate` Stop-hook subcommand
-// (SPEC-AUDIT-MULTI-MODEL-001 M5). It reads the Stop stdin JSON, resolves the
-// project root env-first, reads the opt-in config gate, and forwards to the
-// pure gate logic (HandleMultiReviewGate). Fail-open: on any stdin/protocol
-// error it emits an empty (ALLOW) output and exits 0 so the Stop pipeline is
-// never broken. The BLOCK decision rides the JSON Decision field — the process
-// ALWAYS exits 0 (exit 2 would discard the stdout JSON per Claude Code).
-//
-// Session id resolution: the gate keys the per-session state file
-// (.moai/state/audit-multi/<session>.json, DQ-1) by the same id Claude Code
-// passes the Stop hook. The handler falls back to the SessionStart-hook side-
-// channel file (.moai/state/current-session-id.txt) when the stdin payload
-// carries no session id — matching the goal-engine arm path's id-resolution
-// strategy so the Stop gate reads the file the most-recent audit_multi call
-// wrote.
-func runMultiReviewGate(cmd *cobra.Command, _ []string) error {
-	if deps == nil || deps.HookProtocol == nil {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "multi-review-gate: hook protocol not initialized; ALLOW")
-		return nil
-	}
-	input, err := deps.HookProtocol.ReadInput(os.Stdin)
-	if err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "multi-review-gate: invalid stdin JSON (%v); ALLOW\n", err)
-		return nil
-	}
-	if input.HookEventName == "" {
-		input.HookEventName = string(hook.EventStop)
-	}
-	projectDir := resolveHookProjectRoot()
-	enabled := readMultiReviewGateEnabled(projectDir)
-	sessionID := resolveMultiReviewGateSessionID(input)
-	output, handleErr := HandleMultiReviewGate(input, enabled, projectDir, sessionID)
-	if handleErr != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "multi-review-gate: handler error (%v); ALLOW\n", handleErr)
-		return nil
-	}
-	if writeErr := deps.HookProtocol.WriteOutput(cmd.OutOrStdout(), output); writeErr != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "multi-review-gate: write output (%v)\n", writeErr)
-	}
-	return nil
 }
 
 // isHarnessLearningEnabled reports whether the harness learning subsystem is

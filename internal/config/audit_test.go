@@ -104,7 +104,7 @@ func TestAuditParity_AllRegisteredYAMLPass(t *testing.T) {
 	expectedSections := []string{
 		"user", "language", "quality", "project",
 		"git-convention", "git-strategy", "system", "llm",
-		"state", "statusline", "ralph",
+		"state", "statusline", "ralph", "research",
 		"workflow",
 	}
 	for _, section := range expectedSections {

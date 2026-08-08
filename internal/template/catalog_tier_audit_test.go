@@ -169,8 +169,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// loop it documents depends on shell scripts that are never shipped to
 	// user projects; the skill remains a development-repo-only asset),
 	// net -1 = 31.
-	// moai-ref-cross-model-audit added (cross-model audit convergence reference,
-	// core.skills), net +1 = 32.
+	// SPEC-AUDIT-MULTI-MODEL (2026-08): moai-ref-cross-model-audit added
+	// (cross-model audit reference for the multi-auditor convergence surface);
+	// net +1 = 32.
 	const expectedSkillCount = 32
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
@@ -247,9 +248,8 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester added (10th MoAI-custom
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
-	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead added (11th MoAI-custom
-	// retained agent — hierarchical-team coordination specialist, sole Agent-carrier
-	// opening the depth-1 fan-out seam; leaf workers omit Agent preserving depth-2 seal);
+	// SPEC-NAVIGATOR-SYNC hierarchical-team (2026-08): manager-lead added
+	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator);
 	// net +1 = 11.
 	const expectedAgentCount = 11
 	if len(diskAgents) != expectedAgentCount {

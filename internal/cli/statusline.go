@@ -6,18 +6,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
-
-// statuslineRenderBudget caps the data-collection phase of a statusline render.
-// Claude Code hides the statusline when the command does not return promptly, so
-// slow collectors are cancelled rather than allowed to overrun.
-const statuslineRenderBudget = 800 * time.Millisecond
 
 // StatuslineCmd is the statusline command.
 var StatuslineCmd = &cobra.Command{
@@ -44,15 +38,7 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-
-	// Bound the whole collection pipeline: Claude Code drops the statusline when
-	// the command overruns its render budget, and the usage collector's Anthropic
-	// OAuth call can block for seconds (5s per-attempt timeout plus 2s/4s/8s
-	// retry backoff on 429). Collectors treat a cancelled context as a soft
-	// failure and leave their segment empty, so expiry degrades the statusline
-	// instead of losing it. See issue #646.
-	ctx, cancel := context.WithTimeout(context.Background(), statuslineRenderBudget)
-	defer cancel()
+	ctx := context.Background()
 
 	// Get project root for git and version detection (error ignored: empty root is valid)
 	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback

@@ -369,8 +369,12 @@ func TestPreserveGolden_PropertySet(t *testing.T) {
 			byteDifferCount++
 		}
 	}
-	// cache.yaml was retired (SPEC-CONFIG-DEAD-SWEEP-001); the byte-stable
-	// assertion that named it (AC-UYP-005) no longer has a target file.
+	// cache.yaml must be byte-stable (AC-UYP-005 names it).
+	cacheSrc, _ := os.ReadFile(filepath.Join(sectionTemplatesDir, "cache.yaml"))
+	_, cacheOut, _, _ := runGoldenMerge(t, cacheSrc)
+	if trimTrailingWS(string(cacheSrc)) != trimTrailingWS(string(cacheOut)) {
+		t.Errorf("cache.yaml should be byte-identical (it is one of the stable set)")
+	}
 	t.Logf("byte-stable=%d byte-differ=%d (differ is expected for reflow templates)", byteStableCount, byteDifferCount)
 }
 

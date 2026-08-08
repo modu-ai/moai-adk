@@ -10,70 +10,144 @@ mx:
       enabled: auto  # Auto-detect from go.mod
       patterns: ["*.go"]
       exclude: ["*_generated.go", "vendor/**", "**/mock_*.go"]
+      warn_patterns:
+        - pattern: "go func"
+          description: "Goroutine executes without context.Context"
+        - pattern: "go "
+          description: "Goroutine lifecycle risk"
     python:
       enabled: auto  # Auto-detect from pyproject.toml/setup.py
       patterns: ["*.py"]
       exclude: ["**/__pycache__/**", "**/venv/**", "**/site-packages/**"]
+      warn_patterns:
+        - pattern: "async def"
+          description: "Async function may require error handling"
+        - pattern: "threading"
+          description: "Thread usage requires concurrency caution"
     rust:
       enabled: auto  # Auto-detect from Cargo.toml
       patterns: ["*.rs"]
       exclude: ["**/target/**"]
+      warn_patterns:
+        - pattern: "async fn"
+          description: "Async function may require error handling"
+        - pattern: "unsafe "
+          description: "Unsafe code block detected"
     java:
       enabled: auto  # Auto-detect from pom.xml/build.gradle
       patterns: ["*.java"]
       exclude: ["**/target/**", "**/build/**"]
+      warn_patterns:
+        - pattern: "new Thread"
+          description: "Thread creation requires concurrency caution"
+        - pattern: "Executor"
+          description: "Executor usage requires proper management"
     kotlin:
       enabled: auto  # Auto-detect from build.gradle.kts
       patterns: ["*.kt", "*.kts"]
       exclude: ["**/build/**"]
+      warn_patterns:
+        - pattern: "GlobalScope"
+          description: "Global coroutine scope should be avoided"
+        - pattern: "runBlocking"
+          description: "Blocking call can be dangerous in coroutines"
     csharp:
       enabled: auto  # Auto-detect from .csproj/.sln
       patterns: ["*.cs"]
       exclude: ["**/bin/**", "**/obj/**", "**/Properties/**"]
+      warn_patterns:
+        - pattern: "Task.Run"
+          description: "Task usage requires proper await handling"
+        - pattern: "Thread."
+          description: "Direct thread usage should be avoided"
     ruby:
       enabled: auto  # Auto-detect from Gemfile
       patterns: ["*.rb"]
       exclude: ["**/vendor/**"]
+      warn_patterns:
+        - pattern: "Thread.new"
+          description: "Thread creation requires concurrency caution"
     php:
       enabled: auto  # Auto-detect from composer.json
       patterns: ["*.php"]
       exclude: ["**/vendor/**"]
+      warn_patterns:
+        - pattern: "async "
+          description: "Async call requires proper error handling"
     elixir:
       enabled: auto  # Auto-detect from mix.exs
       patterns: ["*.ex", "*.exs"]
       exclude: ["**/_build/**", "**/deps/**"]
+      warn_patterns:
+        - pattern: "Task.async"
+          description: "Async task requires proper error handling"
+        - pattern: "spawn"
+          description: "Process spawn requires proper supervision"
     cpp:
       enabled: auto  # Auto-detect from CMakeLists.txt/Makefile
       patterns: ["*.cpp", "*.cc", "*.cxx", "*.h", "*.hpp"]
       exclude: ["**/build/**", "**/vendor/**"]
+      warn_patterns:
+        - pattern: "std::thread"
+          description: "Thread usage requires concurrency caution"
+        - pattern: "new "
+          description: "Raw pointer usage requires memory management caution"
     scala:
       enabled: auto  # Auto-detect from build.sbt/build.sc
       patterns: ["*.scala"]
       exclude: ["**/target/**"]
+      warn_patterns:
+        - pattern: "Future."
+          description: "Future usage requires proper error handling"
+        - pattern: "new Thread"
+          description: "Thread creation requires concurrency caution"
 
     # Frontend Languages
     typescript:
       enabled: auto  # Auto-detect from package.json/tsconfig.json
       patterns: ["*.ts", "*.tsx"]
       exclude: ["**/node_modules/**", "**/*.d.ts", "**/dist/**"]
+      warn_patterns:
+        - pattern: "Promise.all"
+          description: "Parallel Promise may require error handling"
+        - pattern: "async "
+          description: "Async function may require try/catch"
     javascript:
       enabled: auto  # Auto-detect from package.json
       patterns: ["*.js", "*.jsx"]
       exclude: ["**/node_modules/**", "**/dist/**"]
+      warn_patterns:
+        - pattern: "Promise.all"
+          description: "Parallel Promise may require error handling"
+        - pattern: "async "
+          description: "Async function may require try/catch"
 
     # Data Science Languages
     r:
       enabled: auto  # Auto-detect from DESCRIPTION/.Rproj
       patterns: ["*.R", "*.r"]
       exclude: ["**/Rplots/**"]
+      warn_patterns:
+        - pattern: "parallel::"
+          description: "Parallel processing requires proper error handling"
     flutter:
       enabled: auto  # Auto-detect from pubspec.yaml
       patterns: ["*.dart"]
       exclude: ["**/.dart_tool/**", "**/build/**"]
+      warn_patterns:
+        - pattern: "Isolate."
+          description: "Isolate usage requires proper management"
+        - pattern: "Future."
+          description: "Future usage requires proper error handling"
     swift:
       enabled: auto  # Auto-detect from Package.swift/.xcodeproj
       patterns: ["*.swift"]
       exclude: ["**/DerivedData/**", "**/build/**"]
+      warn_patterns:
+        - pattern: "Task."
+          description: "Task usage requires proper error handling"
+        - pattern: "DispatchQueue"
+          description: "DispatchQueue usage requires concurrency caution"
 
   # Language-specific comment syntax
   comment_syntax:
