@@ -845,6 +845,219 @@ The sub-skill's frontmatter `description` was also extended in place to name the
 - **The doctrine is now one hop further from its entry point.** A reader of `run.md` reaches the verify exit gate only via the routing-table description cell. That is weaker discoverability than the inline form M1 chose, and it is the price the LOC ceiling extracts.
 - **Two copies of the block now exist** (live tree and template mirror), as for every mirrored file. They were edited surgically and separately rather than copied, so a future edit to one that skips the other will drift silently until `TestTemplateMirrorParity` — which compares path sets, not contents — fails to catch it.
 
+### M6 — Full verification
+
+Verification-only milestone. Mirrors were created in the milestone that made each edit (`plan.md` §D); M6 confirms them. One narrow repair was performed under the run-phase repair allowance — see § Repair below.
+
+All evidence in this section was captured in this run, in this worktree, on branch `feat/factory-mode`, at HEAD `5a4546e55` plus the working-tree repair described below. Persisted command output lives under `.moai/state/verify/fm-m6/`.
+
+#### Claim
+
+Every one of the 36 acceptance-criterion leaves was evaluated. **35 PASS, 0 FAIL, 1 GAP** — AC-FM-025 is a Gap because one of its three coverage sub-conjuncts (the `internal/cli` package total) could not be measured on this machine: defect 2 hung the package on two independent attempts (600 s and 900 s), and a coverage profile emitted by a timed-out run is a partial artifact, not a measurement. Every other conjunct of AC-FM-025 — including its full-suite hang-aware STEP 1/2/3 procedure, the mirror-existence guard, the neutrality grep, `make build`, the linter, and both other coverage sub-conjuncts — PASSES.
+
+#### Evidence — E1: the per-AC PASS/FAIL matrix (all 36 leaves)
+
+Every row names (a) the command and (b) the observed output; the attribution for every row is `(this run, this tree, HEAD 5a4546e55)`.
+
+| # | AC | Status | Command | Observed output |
+|---|---|---|---|---|
+| 1 | AC-FM-001 | PASS | `go test -run 'TestCC_FactoryFlagStrippedBeforeLaunch' ./internal/cli/` | `--- PASS: TestCC_FactoryFlagStrippedBeforeLaunch (0.00s)` |
+| 2 | AC-FM-002 | PASS | `go test -run 'TestParseFactoryFlag_ShortFormWithSpec' ./internal/cli/` | `--- PASS: TestParseFactoryFlag_ShortFormWithSpec (0.00s)` |
+| 3 | AC-FM-003 | PASS | `go test -run 'TestParseFactoryFlag_PassThroughBoundary' ./internal/cli/` | `--- PASS: TestParseFactoryFlag_PassThroughBoundary (0.00s)` |
+| 4 | AC-FM-004 | PASS | `go test -run 'TestCG_FactoryFlagRejected' ./internal/cli/` | `--- PASS: TestCG_FactoryFlagRejected (0.00s)` |
+| 5 | AC-FM-005 | PASS | `go test -run 'TestGLM_FactoryFlagParity' ./internal/cli/` | `--- PASS: TestGLM_FactoryFlagParity (0.00s)` |
+| 6 | AC-FM-006 | PASS | `grep -rn '"-f"' internal/cli/cc.go internal/cli/glm.go internal/cli/cg.go` / positive control on `internal/cli/factory.go` | no output, exit 1 / `internal/cli/factory.go:28: factoryFlagShort = "-f"` |
+| 7 | AC-FM-007 | PASS | `grep -c 'factory\` contract .*extends.*\`full-pipeline' moai.md` ; `grep -c 'gate-sync-1' moai.md` | `1` (baseline 0) ; `2` (baseline 1 → delta +1) |
+| 8 | AC-FM-008 | PASS | `grep -c -- '/moai review --security --deep --repo'` / `grep -c 'exit gate of run-phase'` on `run/mode-orchestration.md` | `1` ; `2` |
+| 9 | AC-FM-009 | PASS | `grep -c 're-enter run-phase scoped to the changed surface'` / `grep -c 'shall not proceed to sync'` | `1` ; `1` |
+| 10 | AC-FM-010 | PASS | `grep -c 'at most two verify re-entries'` / `grep -c 'Baseline-attribution'` | `1` ; `1` |
+| 11 | AC-FM-011 | PASS | `grep -c 'inherited sync-phase evidence'` / `grep -c 'readable result'` | `1` ; `5` |
+| 12 | AC-FM-012 | PASS | per-file 5-token `grep -o … \| wc -l` over the §A.2 set | `25 / 33 / 2 / 3 / 5 / 2 / 18` — equals every recorded `baseline + N + A` exactly (see the delta table below) |
+| 13 | AC-FM-013 | PASS | `grep -c 'DEGRADED' run/mode-orchestration.md` ; `grep -c 'verify_rung' factory.md` | `3` ; `2` |
+| 14 | AC-FM-014 | PASS | `go test -v ./internal/factory/` | `--- PASS: TestRevisionMatchHappyPath (0.00s)` |
+| 15 | AC-FM-015 | PASS | same run | `--- PASS: TestRevisionMatchAbsentRevisionJSONIsFalse (0.00s)` (+ `TestRevisionMatchAbsentDirectoryIsFalse` PASS) |
+| 16 | AC-FM-016 | PASS | same run | `--- PASS: TestLoadRevisionMalformedJSONIsError (0.00s)` |
+| 17 | AC-FM-017 | PASS | same run | `--- PASS: TestRevisionMatchCommitMismatchIsFalse (0.00s)` |
+| 18 | AC-FM-018 | PASS | same run | `--- PASS: TestRevisionMatchNonRepoScopeIsFalse (0.00s)` |
+| 19 | AC-FM-019a | PASS | same run | `--- PASS: TestRevisionMatchDirtyTreeWithWorkingTreeExcluded (0.00s)` |
+| 20 | AC-FM-019b | PASS | same run | `--- PASS: TestRevisionMatchFindingsCompleteness (0.00s)` |
+| 21 | AC-FM-020a | PASS | `grep -c 'scanned_commit'` / `grep -c 'inherited from the factory verify stage'` on `sync/quality-gates-quality.md` | `2` ; `1` |
+| 22 | AC-FM-020b | PASS | `grep -c 'Step 0.55.1'` / `'dependency manifest audit'` / `'run unconditionally\|runs unconditionally'` / `'regardless of whether manifest files changed'` | `6` ; `1` ; `1` ; `1` (the pre-existing always-on sentence survives) |
+| 23 | AC-FM-020c | PASS | `grep -c 'PRIMARY'` / `'FALLBACK'` / `'DEGRADED'` = `1 / 1 / 1`; allow-list prose read at line 127; `go test -v ./internal/factory/` | line 127 states suppression requires the rung **recorded and equal to** `PRIMARY` or `FALLBACK`, naming absent/empty/unrecognized as non-suppressing; `--- PASS: TestSuppressStep0551RungAllowList` with all 7 sub-cases PASS |
+| 24 | AC-FM-020d | PASS | `grep -c 'git rev-parse HEAD'` / `'git status --porcelain'` / `'revision-match predicate'` | `1` ; `1` ; `1` |
+| 25 | AC-FM-021 | PASS | `grep -c 'honored only in --lean mode'` / `grep -c 'honored in both --lean and --deep'` on `review.md` | `0` (was 1) ; `1` (was 0) |
+| 26 | AC-FM-022a | PASS | `go test -run 'TestACFM022a' ./internal/cli/` | `--- PASS: TestACFM022a_FactoryRaisesBlockCapUnconditionally (0.00s)` + `--- PASS: TestACFM022a_FactoryCapReplacesPreexistingEntry (0.00s)` |
+| 27 | AC-FM-022b | PASS | `git diff --name-only --diff-filter=A origin/main...HEAD -- .claude/hooks/ internal/hook/` ; `grep -c 'stop-goal' factory.md` | no output ; `2` |
+| 28 | AC-FM-022c | PASS | `grep -c 'Implementation Kickoff Approval'` / `'--max-turns 0'` / `'--max-duration 14400'` / negative control `'stop after'` on `factory.md` | `1` ; `1` ; `1` ; `0` |
+| 29 | AC-FM-023a | PASS | `go test -run 'TestCC_FactoryWritesStateRecord' ./internal/cli/` | `--- PASS: TestCC_FactoryWritesStateRecord (0.00s)` |
+| 30 | AC-FM-023b | PASS | `grep -c 'EnvMoaiFactory = "MOAI_FACTORY"'` / `grep -c 'EnvMoaiFactorySpec = "MOAI_FACTORY_SPEC"'` on `internal/config/envkeys.go` | `1` ; `1` |
+| 31 | AC-FM-023c | PASS | `go test -run 'TestACFM023c' ./internal/cli/` | `--- PASS: TestACFM023c_FactoryEnvReachesChildEnvironment (0.00s)` |
+| 32 | AC-FM-023d | PASS | `go test -run 'TestCC_FactoryEnvMutationIsRestored' ./internal/cli/` | `--- PASS: TestCC_FactoryEnvMutationIsRestored (0.00s)` |
+| 33 | AC-FM-024a | PASS | `grep -c 'no readable result'` / `grep -c 'HALT'`; negative control `grep -n 'no confirmed findings' \| grep -vc 'readable'` | `2` ; `2` ; `0` (every `no confirmed findings` line also carries `readable`) |
+| 34 | AC-FM-024b | PASS | `grep -c 'no readable result'` `2`; `grep -c 'readable result'` `5`; `grep -c 'orthogonal'` `1`; `grep -c 'governs routing'` `1`; `grep -c 'governs suppression'` `1` | all thresholds met; line 108 states the rung is an **attribute of** an S1/S2 result and explicitly "not a fourth case standing beside S1/S2/S3", and that S3 carries no rung — the v0.2.0 four-peer framing is absent |
+| 35 | AC-FM-025 | **GAP** | see § AC-FM-025 below | every conjunct PASSES except coverage clause (a); that clause is unmeasurable on this machine while defect 2 stands |
+| 36 | AC-FM-026 | PASS | `grep -c 'at launch time'` `1`; `grep -c 'Factory Mode'` (live) `1`, (mirror) `1`; `cmp` live/mirror; clause (c) grep | `cmp` exit 0 (BYTE-IDENTICAL); clause (c) grep for `SPEC-FACTORY\|REQ-FM-\|AC-FM-\|internal/factory\|internal/cli` over the mirror returns no output (exit 1) |
+
+**AC-FM-012 delta table** (post-change count vs recorded pre-flight baseline + planned `N` + `A`):
+
+| File | Baseline | Planned N + A | Expected | Observed | Verdict |
+|---|---:|---:|---:|---:|---|
+| `moai.md` | 23 | 2 + 0 | 25 | **25** | exact |
+| `run.md` | 33 | 0 + 0 | 33 | **33** | exact |
+| `run/mode-orchestration.md` | 1 | 1 + 0 | 2 | **2** | exact |
+| `review.md` | 3 | 0 + 0 | 3 | **3** | exact |
+| `factory.md` | 0 (absent) | 4 + 1 | 5 | **5** | exact |
+| `sync/quality-gates-quality.md` | 2 | 0 + 0 | 2 | **2** | exact |
+| `goal-directive.md` | 18 | 0 + 0 | 18 | **18** | exact |
+
+Clause (b) verified by reading the `grep -n` context of the new lines only (8 lines total): `moai.md:206` carries `gate-sync-1` + `gate-sync-2` inside the factory clause; `run/mode-orchestration.md:84` carries the one new `Implementation Kickoff Approval` (its `:141` `AskUserQuestion` is the pre-existing Error Flow line); `factory.md:57-60` is the four-gate table — `Implementation Kickoff Approval`, the verify decision (`AskUserQuestion` + `HUMAN GATE` on one line), `gate-sync-1`, `gate-sync-2`. Every contributing token names one of the four gates REQ-FM-012 enumerates. Clause (c): no file exceeds its expected count, so the escape valve was never needed.
+
+#### Evidence — AC-FM-025, executed end-to-end as one pass
+
+**STEP 1 — package-level gate over the whole suite.**
+
+```
+$ go test ./... > .moai/state/verify/fm-m6/step1-full.txt 2>&1
+$ grep -E '^FAIL[[:space:]]' .moai/state/verify/fm-m6/step1-full.txt | awk '{print $2}' | sort -u
+github.com/modu-ai/moai-adk/internal/cli
+github.com/modu-ai/moai-adk/internal/statusline
+```
+
+The set is exactly the two-package PASS-eligible subset; no third package. Confirming the v0.8.0 rationale empirically: `grep -c '^--- FAIL'` over the same file returns **`0`** — both packages died on timeout panics, so the retired v0.6.0 `--- FAIL` procedure would have read this run as clean.
+
+**STEP 2 — defect identity, per package, re-run in isolation.**
+
+```
+$ go test -count=1 -timeout 90s ./internal/statusline/   → exit 1
+panic: test timed out after 1m30s
+github.com/modu-ai/moai-adk/internal/statusline.(*usageCollector).fetchUsageFromOAuthAPI(...)
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	90.555s
+
+$ go test -count=1 -timeout 480s ./internal/cli/         → exit 1
+panic: test timed out after 8m0s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	481.557s
+```
+
+- **2a** — `grep -hE '^--- FAIL'` over both isolated files returns **zero lines**. No test other than defect 1 fails, so the per-defect bound holds.
+- **2b** — `grep -c 'fetchUsageFromOAuthAPI'` returns `1` in each file that contains `panic: test timed out`. Both timeouts are defect 2; neither is a different hang.
+- **2c** — targeted defect-1 run: `go test -count=1 -timeout 300s -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/` → `--- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)` in `0.984s`, and nothing else. Defect 1 is present and alone.
+
+**STEP 3 — the timeout confound, resolved before recording.** Both STEP 1 `FAIL <pkg>` lines were re-run in isolation before anything was recorded, per the v0.8.0 requirement. The isolated `internal/cli` run reproduced the same timeout with the `fetchUsageFromOAuthAPI` frame, so the STEP 1 line is attributable to defect 2 rather than to full-suite parallel load. The recorded signals are the STEP 2 ones.
+
+**Other AC-FM-025 conjuncts.**
+
+```
+$ go build ./...                            → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+$ golangci-lint run --timeout=3m            → 0 issues.
+$ make build                                → exit 0; catalog.yaml regenerated byte-identical (absent from git status)
+$ go test -count=1 ./internal/template/...  → ok  github.com/modu-ai/moai-adk/internal/template  21.601s
+```
+
+Mirror-existence guard over all seven `$MIRRORS`: every path present, **no `FAIL missing mirror` line**. Bounded neutrality grep `grep -n 'internal/factory\|internal/cli' "${MIRRORS[@]}"` → **no output, exit 1** (matches the measured pre-change baseline of 0). The clause-(c) extension over the two mirrors this milestone repaired (`grep -n 'internal/factory\|internal/cli\|SPEC-FACTORY\|REQ-FM-\|AC-FM-'`) also returns no output.
+
+**Coverage clause.**
+
+```
+# (2) internal/factory — absolute floor
+$ go test -cover ./internal/factory/
+ok  github.com/modu-ai/moai-adk/internal/factory  (cached)  coverage: 90.9% of statements     → PASS (≥ 85%)
+
+# (3) the seven functions this SPEC introduces or extends
+$ go test -count=1 -run '<factory + blockcap test set>' -coverprofile=.moai/state/verify/fm-m6/fm-cli-fn2.out ./internal/cli/
+ok  github.com/modu-ai/moai-adk/internal/cli  0.832s  coverage: 7.6% of statements
+$ go tool cover -func=.moai/state/verify/fm-m6/fm-cli-fn2.out | grep -E '<the seven symbols>'
+parseFactoryFlag              100.0%
+enterFactoryMode              100.0%
+captureEnvState               100.0%
+recordFactorySession          100.0%
+rejectFactoryOnCG             100.0%
+injectStopHookBlockCapForGoal 100.0%
+setStopHookBlockCap           100.0%
+                                                                                             → PASS (exactly seven rows, every one 100.0%)
+```
+
+Clause (3) was measured on a **test-scoped** run rather than a package run, because the package run cannot complete (below). This is sound rather than a weakening: statement coverage is monotonically non-decreasing in the set of tests executed, so 100.0% observed under a subset implies 100.0% under the full package run. The scoped run had to be widened once — an initial narrower `-run` set left `captureEnvState` and `rejectFactoryOnCG` at 66.7%, closed by adding `TestEnterFactoryMode*` and `TestCG_WithoutFactoryFlagStillLaunches`, which exercise the remaining branches.
+
+```
+# (1) internal/cli package total — NOT MEASURED
+$ go test -coverprofile=.moai/state/verify/fm-m6/fm-cli.out  ./internal/cli/   → FAIL … 604.082s (timeout)
+$ go test -count=1 -timeout 900s -coverprofile=…/fm-cli2.out ./internal/cli/   → FAIL … 900.962s (timeout)
+$ go tool cover -func=.moai/state/verify/fm-m6/fm-cli.out | tail -1
+total:  (statements)  26.9%
+```
+
+The `26.9%` figure is the artifact of a test binary killed mid-run, not a measurement of the package, and is **not** recorded as a coverage observation. Clause (1) is a Gap; see § Gaps.
+
+#### Evidence — E2 through E7
+
+- **E2** — `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **E3** — `internal/factory` 90.9% (floor 85%) PASS; `internal/cli` seven-function clause PASS at 100.0% on all seven; `internal/cli` package total GAP.
+- **E4** — `grep -rn 'AskUserQuestion\|mcp__askuser' internal/factory/ internal/cli/factory.go` → no output, exit 1.
+- **E5** — `golangci-lint run --timeout=3m` → `0 issues.` Run twice (before and after the repair below), identical output both times. No NEW findings; the baseline was already clean.
+- **E6** — see § Commit below.
+- **E7** — no blocker. The one finding that could have become a blocker was inside this SPEC's own scope and was repaired under the run-phase repair allowance.
+
+#### Additional verification
+
+```
+$ moai spec lint .moai/specs/SPEC-FACTORY-MODE-001/spec.md
+✓ No findings — all SPEC documents are valid
+
+$ grep -rnF '[NEEDS CLARIFICATION:' .moai/specs/SPEC-FACTORY-MODE-001/
+(no output, exit 1)
+
+$ wc -l .claude/skills/moai/workflows/run.md .claude/skills/moai/workflows/run/mode-orchestration.md
+     200 run.md            (entry-router ceiling 200)
+     156 mode-orchestration.md  (sub-skill ceiling 600)
+
+$ go test -count=1 ./internal/skills/
+ok  github.com/modu-ai/moai-adk/internal/skills  0.323s      ← defect 3 remains repaired
+```
+
+The clarification sweep used the single non-compound `grep -rnF` form; this worktree's sandbox refuses the two-fragment compound assembly that `plan.md` §E specifies, and the single form is the accepted substitute. It carries the same self-trip hazard the two-fragment form was designed to avoid — this file now contains the literal token inside a fenced block — so a future re-run of the sweep over this directory will match **this line**. That is a property of the substitute, and it is recorded rather than hidden.
+
+#### Repair — three stale cross-references (this SPEC's own defect, in files this SPEC owns)
+
+M1 authored three prose cross-references pointing readers at `workflows/run.md` § Verify Exit Gate. M5.1 relocated that section to `workflows/run/mode-orchestration.md` and re-pointed the acceptance criteria, but not these three prose references, which have pointed at a non-existent section ever since. `grep -n 'Verify Exit Gate' run.md` confirms `run.md` carries only the routing-table cell, never a section of that name.
+
+Repaired in place (path substitution only, net-zero lines), in both trees:
+
+| File | Line | Change |
+|---|---:|---|
+| `.claude/skills/moai/workflows/factory.md` | 38 | `workflows/run.md` → `workflows/run/mode-orchestration.md` |
+| `.claude/skills/moai/workflows/factory.md` | 48 | same |
+| `.claude/skills/moai/workflows/moai.md` | 206 | same |
+| `internal/template/templates/…/factory.md` | 38, 48 | same (mirror) |
+| `internal/template/templates/…/moai.md` | 206 | same (mirror) |
+
+Post-repair re-verification: `grep -rn 'workflows/run.md\` § Verify Exit Gate' .claude/ internal/template/templates/.claude/` → no output, exit 1. LOC unchanged (`moai.md` 278 live / 277 mirror; `factory.md` 141 / 141). AC-FM-012 counts unchanged (`moai.md` 25, `factory.md` 5). Mirror neutrality grep still empty. `make build` exit 0 with `catalog.yaml` byte-identical. `go test ./internal/template/... ./internal/skills/` → both `ok`. `golangci-lint run` → `0 issues.`
+
+This is the repair allowance's exact case — a defect this SPEC caused, in a file this SPEC owns — so it was repaired rather than reported as a blocker. It is reported here explicitly because a silent repair would be indistinguishable from no defect having existed.
+
+#### Baseline-attribution
+
+- Pre-flight gate-token baselines: the § Pre-flight baselines block above, measured at HEAD `7171880a9` before any M1 edit. Every AC-FM-012 delta in this section is measured against those recorded values, not against a remembered figure.
+- `internal/cli` coverage floor `76.3%`: the lower of two independent pre-SPEC observations at `7171880a9`, per `acceptance.md` AC-FM-025. **Not compared against this run** — no valid current measurement exists to compare it to.
+- `internal/factory` 90.9%: `go test -cover ./internal/factory/`, this run, this tree.
+- Defect 1 and defect 2 provenance: both reproduce at `7171880a9` per the pre-existing records in `acceptance.md`; this run re-observed defect 1 at HEAD in `0.984s` and defect 2 at HEAD in both packages. The pre-SPEC halves are cited from `acceptance.md`, not re-measured here.
+- Defect 3 repair: `go test -count=1 ./internal/skills/` → `ok … 0.323s`, this run, this tree.
+
+#### Gaps — explicitly not verified
+
+- **AC-FM-025 coverage clause (1) — the `internal/cli` package total.** Two attempts (600 s, 900 s) both ended in a defect-2 timeout panic, and the profile a killed binary leaves behind reports a partial `26.9%` that measures nothing. The non-regression against the `76.3%` floor is therefore **unverified**, and AC-FM-025 is recorded as a Gap rather than a pass. It is not a FAIL either: nothing observed suggests a regression, and the seven functions this SPEC actually adds are at 100.0%. The clause becomes measurable the moment defect 2 is fixed.
+- **The AC-FM-025 positive control does not fire.** The criterion states that `grep -n 'internal/factory\|internal/cli' $DOCS` over the **live** doctrine set "DOES match after M4 and M5 land". It does not: the observed result is no output, exit 1. The live doctrine is as free of internal package paths as the mirrors are — a good outcome, but it means the stated control cannot demonstrate the pattern is capable of firing. Pattern capability was demonstrated instead against `plan.md` (`grep -c 'internal/factory' plan.md` → `8`), so the empty `$MIRRORS` result is a real absence rather than a mistyped pattern. The criterion's premise is simply not true of the final tree; correcting it is manager-spec's call, not this milestone's (constraint 4).
+- **`internal/statusline` and `internal/cli` were never observed running to completion.** Any defect sitting behind defect 2 in execution order inside either package is unobservable while defect 2 stands. This is the residual `acceptance.md` already records; this run adds no new information about it.
+- **No renderer, no live session.** The repaired cross-references were verified by grep, not by navigating them in a running session. Prose discoverability remains mechanically untestable.
+- **`--- FAIL` absence is not test success.** STEP 1 produced zero `--- FAIL` lines because both packages died before finishing, not because every test in them passed. The per-defect bound rests on the STEP 2 isolated runs, and those two packages' full test sets remain unobserved.
+
+#### Residual risk
+
+- **Defect 2 is intermittent, and it is currently in its hanging state.** `acceptance.md` records earlier observations of `internal/cli` completing in 174 s and 178 s; every attempt in this run timed out. A future verifier may therefore see a green `internal/cli` where this run saw a hang, or vice versa. The AC-FM-025 STEP 1/2/3 procedure absorbs both cases; the coverage clause does not, and that asymmetry is what turned clause (1) into a Gap here.
+- **`run.md` remains at exactly 200/200.** Unchanged from M5.1 and still open: the next line added to that file re-breaks `TestEntryRouterLOCCeiling`. This milestone deliberately repaired the cross-references by substitution rather than by adding a pointer line, precisely because a pointer line is unaffordable there.
+- **`TestTemplateMirrorParity` compares path sets, not contents.** The repair edited four files across the two trees separately. They agree now (verified by grep in both trees), but no mechanical guard would catch a future edit that updates one side only.
+- **The seven-function 100% result rests on monotonicity, not on a package run.** The reasoning is sound, but it is reasoning rather than a direct observation of the criterion's literal command. A verifier who requires the literal package-scoped form must wait for defect 2's fix.
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier **L**; scope ~14 files (6 doctrine + 6 mirrors + 3 Go source + tests); domain count 3 (workflow doctrine / rules, Go source under `internal/`, template mirrors); file language mix markdown-heavy with a Go minority; concurrency benefit **LOW** (coding-heavy, and the milestones carry declared `Depends on:` edges — M2 depends on M1, M4 on M1+M3, M5 on M3).
@@ -864,7 +1077,60 @@ Justification: the six milestones carry explicit `Depends on:` edges that forbid
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-09
+run_commit_sha: pending-backfill-m6
+run_status: audit-ready-with-one-gap
+ac_pass_count: 35
+ac_fail_count: 0
+ac_gap_count: 1          # AC-FM-025 — coverage clause (1) unmeasurable while defect 2 hangs internal/cli
+ac_leaf_total: 36
+preserve_list_post_run_count: 0    # no file outside the plan.md §A.5 PRESERVE envelope was modified
+l44_pre_commit_fetch: performed    # git status --porcelain clean before and after; no foreign-session divergence observed
+l44_post_push_fetch: pending       # recorded after the push below
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  host: pass                       # go build ./... exit 0
+  windows_amd64: pass              # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 21          # 14 Go + 7 markdown per git diff --name-only 7171880a9..HEAD, plus the M6 repair's 4 markdown files
+m1_to_mN_commit_strategy: one commit per milestone on feat/factory-mode (M1…M5, M5.1 regression repair, SPEC-doc corrections, M6), pushed as a branch; no PR created in this milestone
+```
+
+### Milestone ledger
+
+| Milestone | Commit | Disposition |
+|---|---|---|
+| M1 — pipeline contract + verify exit gate | `c0279a8fb` | complete; the verify-gate block was later relocated by M5.1 |
+| M2 — `factory_chain` goal preset | `598cf280e` | complete |
+| M3 — signal propagation + state record | `0c8b38ef8` | complete |
+| M4 — dedup contract + `revision.json` reader | `003f9555e` | complete |
+| M5 — launcher entry | `08363698a` | complete |
+| M5.1 — relocate the verify gate out of the `run.md` entry router | `e9aa2c363` | regression repair (defect 3, ours) |
+| SPEC-doc corrections | `d6ceaa605`, `b56b64353`, `9b657fcef`, `5a4546e55` | four correction passes, manager-spec-owned |
+| M6 — full verification | this commit | verification + one narrow cross-reference repair |
+
+### The three defects and their dispositions
+
+| # | Defect | Ours? | Disposition | Evidence |
+|---|---|---|---|---|
+| 1 | `internal/cli` / `TestRunHarnessObserveStop_ProposeChainAutoRuns` — a `--- FAIL`, root cause unidentified | **No** — reproduces at the pre-SPEC baseline `7171880a9`; this SPEC touches no file in its code path | **Deferred by user decision**, excluded from the AC-FM-025 bound *by name* | targeted run at HEAD: `--- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)` in `0.984s`, and nothing else |
+| 2 | Real network I/O in `(*usageCollector).fetchUsageFromOAuthAPI` (`internal/statusline/usage.go:572`) — a HANG, not a FAIL; kills both `internal/statusline` and `internal/cli` on timeout | **No** — reproduces at `7171880a9`; this SPEC touches no statusline file | **Deferred by user decision**, excluded *by call site* rather than by test list, because the surfacing test varies with skip order | both isolated timeout dumps carry the `fetchUsageFromOAuthAPI` frame; `internal/statusline` at `90.555s`, `internal/cli` at `481.557s` |
+| 3 | `internal/skills` / `TestEntryRouterLOCCeiling` — M1 pushed `run.md` from 200 to 234 LOC | **Yes** | **Repaired in `e9aa2c363`; deliberately NOT excluded**, so a future regression of it still fails the suite | `go test -count=1 ./internal/skills/` → `ok … 0.323s`; `wc -l run.md` → `200` |
+| 4 | Three prose cross-references to `workflows/run.md` § Verify Exit Gate, a section that has not existed since M5.1 | **Yes** | **Repaired in this milestone** under the run-phase repair allowance; reported explicitly in §E.2 § Repair | post-repair grep returns no output, exit 1, in both trees |
+
+The distinction between rows 1-2 and rows 3-4 is what makes the AC-FM-025 bound defensible rather than convenient: this SPEC repaired everything it broke and bounded only what predated it. Neither exclusion rests on a root-cause diagnosis — both rest on provenance (reproduction at `7171880a9` plus `git diff --name-only 7171880a9..HEAD -- internal/` touching neither code path).
+
+### What a sync-phase auditor should RE-VERIFY rather than trust
+
+This section is written on the assumption that a sync-phase auditor treats it as a claim, not as a finding. The following items are the ones where re-verification is most likely to change the answer:
+
+1. **`internal/cli` package coverage (the open Gap).** Re-run `go test -coverprofile=… ./internal/cli/` and compare against the `76.3%` floor. If the package completes on the auditor's machine, this Gap closes with a real number; if it hangs again, the Gap is confirmed rather than resolved. **Do not** accept the `26.9%` figure in `fm-cli.out` — it is a killed-binary artifact. This is the single highest-value re-verification in this list.
+2. **The full-suite verdict, via the AC-FM-025 STEP 1/2/3 procedure — not a shortcut.** Defect 2 is intermittent, so an auditor may observe a completing `internal/cli` where this run observed a hang. Run STEP 1, then re-run every reported package in isolation (STEP 2) before recording anything. A `FAIL <pkg>` line is never a verdict on its own, and `grep '^--- FAIL'` alone cannot see a hang — this run measured `0` such lines against two genuinely failing packages.
+3. **The seven-function 100% coverage claim.** It was measured on a test-scoped run and extended to the package by monotonicity. The reasoning is sound but it is reasoning; an auditor with a completing `internal/cli` should re-measure it the literal way the criterion states.
+4. **The M6 cross-reference repair.** Four files were edited across two trees. `TestTemplateMirrorParity` compares path sets rather than contents, so no guard would catch a one-sided edit. Re-grep both trees for `workflows/run.md\` § Verify Exit Gate` and confirm both are empty.
+5. **AC-FM-025's positive control, which does not fire.** The criterion asserts the live `$DOCS` grep matches after M4/M5; it returns nothing. The mirror-neutrality judgement still passes, and pattern capability was demonstrated against `plan.md` instead — but the criterion text and the tree disagree, and that disagreement is a real finding for manager-spec, not a verification failure.
+6. **The clarification-marker sweep now self-trips.** §E.2 records the literal token inside a fenced block, so re-running the single-form `grep -rnF` over this SPEC directory will match this file. Confirm any hit is that one line before treating it as an unresolved marker.
+7. **Nothing in this section was verified by a running session.** No factory-mode session was launched; the entire verification is static (greps, unit tests, builds, guards). Whether the chain actually behaves as the doctrine specifies at runtime is untested by this milestone and by this SPEC.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
