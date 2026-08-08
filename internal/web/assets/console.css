@@ -441,16 +441,30 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
    Profile switcher
    ============================================================ */
 .profilebar {
-  display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface); border: 1px solid var(--border-1);
   border-radius: var(--radius-md); box-shadow: var(--shadow-xs);
   margin-bottom: var(--space-6);
 }
+.profilebar__row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .profilebar__label { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--fg-1); }
-.profilebar .select-wrap { min-width: 200px; }
+.profilebar__row .select-wrap { min-width: 200px; }
 .profilebar__meta { font-size: var(--text-sm); color: var(--fg-3); }
 .profilebar__meta strong { color: var(--fg-2); font-weight: var(--fw-semibold); font-family: var(--font-mono); letter-spacing: 0; }
+
+/* Profile CRUD controls (SPEC-WEB-CONSOLE-REDESIGN-001 M5). Each control is a
+   separate <form> — they are laid out as siblings in a wrapping row, which is
+   also what keeps them out of the main settings form. */
+.profilebar__actions {
+  display: flex; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap;
+  padding-top: var(--space-3); border-top: 1px solid var(--border-1);
+}
+.profilebar__form { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: 0; }
+.profilebar__form-label { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--fg-2); }
+.profilebar__form .select-wrap { min-width: 140px; }
+.input--sm, .select--sm { padding: 8px 12px; font-size: 13px; }
+.profilebar__form .input--sm { max-width: 180px; }
 
 /* ============================================================
    Banner (server-rendered; .BannerKind ok/error → success/error chrome)
@@ -771,24 +785,9 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .actions__meta { font-size: 13px; color: var(--fg-3); }
 .actions__meta .mono { font-size: 0.92em; color: var(--fg-2); }
 
-/* ── Profile CRUD manager (SPEC-WEB-CONSOLE-011 M4) ── */
-.profilemgr {
-  margin: 0 0 var(--space-6); padding: 18px 20px; border: 1px solid var(--border-2);
-  border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-xs);
-}
-.profilemgr__head { margin-bottom: 14px; }
-.profilemgr__title { font-size: var(--text-md, 16px); font-weight: var(--fw-semibold, 600); margin: 0; }
-.profilemgr__desc { font-size: var(--text-sm, 13px); color: var(--fg-3, #6b6660); margin: 4px 0 0; }
-.profilemgr__list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.profilemgr__item { display: flex; align-items: center; gap: 10px; }
-.profilemgr__name { font-family: var(--font-mono); font-size: var(--text-sm, 13px); color: var(--color-primary); text-decoration: none; }
-.profilemgr__name:hover { text-decoration: underline; }
-.profilemgr__name--active { color: var(--fg-1); font-weight: var(--fw-semibold, 600); text-decoration: none; }
-.profilemgr__badge { font-size: 12px; color: var(--fg-3, #6b6660); }
-.profilemgr__delete { margin-left: auto; }
-.profilemgr__create { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
-.profilemgr__create-label { font-size: var(--text-sm, 13px); font-weight: var(--fw-semibold, 600); align-self: center; }
-.profilemgr__create .input { max-width: 240px; }
+/* The .profilemgr card is retired (SPEC-WEB-CONSOLE-REDESIGN-001 M5) — its
+   controls moved into .profilebar__actions above. The shared button modifiers
+   below are still used there. */
 .btn--sm { padding: 8px 16px; border-radius: var(--radius-pill, 999px); font-size: 13px; }
 .btn--ghost { background: transparent; color: var(--fg-2, #3f3a34); border: 1px solid var(--border-1, #e5e2dc); }
 .btn--ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
@@ -1016,4 +1015,27 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }
+}
+
+/* ── M4: honesty surfaces on the 3rd Party LLM panel ──
+   SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-033. The note states which source the
+   runtime actually reads; the badge marks a field whose value is persisted but
+   never consulted. Both are informational, so they read as muted rather than as
+   an error state. */
+.section__note {
+  margin: 8px 0 0; padding: 8px 12px;
+  font-size: var(--text-sm, 13px); line-height: 1.5; color: var(--fg-2, #3f3a34);
+  background: var(--surface-2, #faf9f7); border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm, 6px);
+}
+.field__badge {
+  font-size: 11px; font-weight: var(--fw-semibold, 600); color: var(--fg-3, #6b6660);
+  border: 1px solid var(--border-1, #e5e2dc); border-radius: var(--radius-pill, 999px);
+  padding: 2px 8px; white-space: nowrap;
+}
+.field__reveal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.field__revealed {
+  font-family: var(--font-mono); font-size: 12px; color: var(--fg-1);
+  background: var(--surface-2, #faf9f7); border: 1px solid var(--border-1, #e5e2dc);
+  border-radius: var(--radius-sm, 6px); padding: 4px 8px; word-break: break-all;
 }

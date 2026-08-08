@@ -36,29 +36,140 @@ func consoleTabs() []consoleTab {
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
+		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
+		// Original ordering placed it after llm (pre-cca120c70).
+		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
+		// git-worktree (M1): the git_strategy section had FieldDefs but no render
+		// meta, so mode + the three per-profile merge_method controls had no UI at
+		// all. The tab id is deliberately NOT the section id — this panel mixes
+		// git_strategy and workflow.worktree fields, so it carries its own tab.*
+		// i18n namespace instead of reusing sec.<section>.*.
+		{ID: "git-worktree", LabelKey: "tab.git-worktree.title", Baseline: "Git & Worktree"},
+		// audit (M2): workflow.audit.* moved off the workflow tab onto its own.
+		// The move is a RENDER placement only — the fields keep SectionWorkflow
+		// and the workflow.yaml seam persist target (AP-4).
+		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
 }
 
-// schemaSectionMeta는 제네릭 fieldset의 섹션 표시 메타다. Title/Desc는 영어
-// baseline이고 data-i18n 키(sec.<id>.title/.desc)가 4-locale 렌더를 담당한다.
+// schemaSectionMeta는 제네릭 fieldset의 패널 표시 메타다. Title/Desc는 영어
+// baseline이고 TitleKey/DescKey의 data-i18n 키가 4-locale 렌더를 담당한다.
 // 필드 자체의 라벨은 기술 식별자(key chip)로 렌더하며 번역하지 않는다 —
 // i18n.js 헤더의 "Field identifiers stay in English" 계약과 동일.
+//
+// PanelID는 data-tab/data-panel 식별자이고 ID는 영속화 섹션이다. 두 값은 대개
+// 같지만 한 패널이 여러 섹션의 필드를 섞으면 갈라진다 (git-worktree). Fields는
+// 그 패널이 렌더할 필드 목록이며, 섹션 전체가 아니라 패널 단위로 명시된다 —
+// 탭 배치는 렌더 관심사이고 섹션은 영속화 단위다 (섹션 재분류로 탭을 옮기면
+// 영속화 경로가 바뀐다).
 type schemaSectionMeta struct {
-	ID    settings.SectionID
-	Icon  string
-	Title string
-	Desc  string
+	ID       settings.SectionID
+	PanelID  string
+	Icon     string
+	TitleKey string
+	DescKey  string
+	Title    string
+	Desc     string
+	Fields   []settings.FieldDef
+	// Extras가 true인 패널만 ID 섹션의 read-only 표시 키와 raw view 블록을
+	// 렌더한다. 한 섹션이 여러 패널로 갈라질 때(workflow → 워크플로우/감사) 그
+	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
+	Extras bool
+	// NoteKey/Note는 패널 헤더에 1회 렌더되는 주의 문구다 (빈 값이면 미렌더).
+	// 필드마다 반복되는 힌트를 헤더로 승격하는 기존 관례(agentfm-gridnote)와
+	// 동일한 자리다 — 한 패널의 모든 필드에 공통으로 걸리는 사실은 필드마다
+	// 되풀이하지 않는다.
+	NoteKey string
+	Note    string
 }
 
-// schemaSectionMetas는 제네릭 렌더 대상 섹션의 표시 메타를 렌더 순서대로
-// 반환한다 (settings.SchemaSectionIDs와 동순).
-func schemaSectionMetas() []schemaSectionMeta {
-	return []schemaSectionMeta{
-		{settings.SectionLLM, "rocket", "3rd Party LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
-		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
+// isWorktreeFieldName은 workflow 섹션 필드 중 Git·워크트리 탭으로 배치되는 것을
+// 판정한다. 이름 기반 분류이지 섹션 재분류가 아니다 — 영속화 경로는 그대로다.
+func isWorktreeFieldName(name string) bool {
+	return strings.HasPrefix(name, "workflow.worktree.") || name == "workflow.branch_guard.enabled"
+}
+
+// isAuditFieldName은 workflow 섹션 필드 중 감사 탭으로 배치되는 것을 판정한다.
+func isAuditFieldName(name string) bool {
+	return strings.HasPrefix(name, "workflow.audit.")
+}
+
+// partitionWorkflowFields는 workflow 섹션 필드를 3개 탭으로 가른다: 워크플로우
+// 잔여 / Git·워크트리 / 감사. 섹션 필드 순서를 보존한다.
+func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
+	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
+		switch {
+		case isWorktreeFieldName(f.Name):
+			worktree = append(worktree, f)
+		case isAuditFieldName(f.Name):
+			audit = append(audit, f)
+		default:
+			rest = append(rest, f)
+		}
 	}
+	return rest, worktree, audit
+}
+
+// schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
+func schemaSectionMetas() []schemaSectionMeta {
+	workflowRest, worktreeFields, auditFields := partitionWorkflowFields()
+	return []schemaSectionMeta{
+		{
+			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
+			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
+			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
+			Fields: settings.SectionFields(settings.SectionLLM), Extras: true,
+			// REQ-WCR-033: the honesty note. The four per-tier effort values are
+			// stored and never applied — the runtime reads one session-global
+			// ANTHROPIC_REASONING_EFFORT derived from the session effort_level
+			// preference. Rendered once at the panel header, not per field.
+			NoteKey: "sec.llm.effortnote",
+			Note:    "Reasoning effort applied at runtime comes from the session-wide effort_level preference on the LLM tab, not from these tiers. The four per-tier values below are stored only.",
+		},
+		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
+		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.
+		{
+			ID: settings.SectionWorkflow, PanelID: "workflow", Icon: "panel-bottom",
+			TitleKey: "sec.workflow.title", DescKey: "sec.workflow.desc",
+			Title: "Workflow", Desc: "Workflow execution mode and loop-prevention settings.",
+			Fields: workflowRest, Extras: true,
+		},
+		{
+			ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",
+			TitleKey: "tab.git-worktree.title", DescKey: "tab.git-worktree.desc",
+			Title: "Git & Worktree", Desc: "Git strategy mode, per-profile merge method, and worktree automation.",
+			Fields: append(settings.SectionFields(settings.SectionGitStrategy), worktreeFields...), Extras: true,
+		},
+		{
+			// The audit panel's persistence section stays SectionWorkflow: the
+			// tab is a render placement, the section is the write route (AP-4).
+			ID: settings.SectionWorkflow, PanelID: "audit", Icon: "check-circle",
+			TitleKey: "tab.audit.title", DescKey: "tab.audit.desc",
+			Title: "Audit", Desc: "Review backend that gates merges and the per-auditor gate strictness.",
+			Fields: auditFields,
+		},
+		{
+			ID: settings.SectionReport, PanelID: "report", Icon: "panel-bottom",
+			TitleKey: "sec.report.title", DescKey: "sec.report.desc",
+			Title: "Report", Desc: "Output format for the HTML report skill (report.format: html+md or md).",
+			Fields: settings.SectionFields(settings.SectionReport), Extras: true,
+		},
+	}
+}
+
+// schemaPanelMeta는 패널 ID로 렌더 메타를 조회한다. 탭 목록이 순서의 단일
+// 원천이므로 root.templ은 탭을 순회하며 이 함수로 메타를 끌어온다. 매칭이 없는
+// ID는 빈 메타를 반환한다 — 필드 0개의 빈 fieldset이 렌더되며, 그 자체가 탭↔패널
+// 배선 누락을 눈에 보이게 만든다 (TestEveryTabHasAPanel이 이를 고정한다).
+func schemaPanelMeta(panelID string) schemaSectionMeta {
+	for _, m := range schemaSectionMetas() {
+		if m.PanelID == panelID {
+			return m
+		}
+	}
+	return schemaSectionMeta{PanelID: panelID}
 }
 
 // schemaEditableField는 이 필드가 M2b 제네릭 폼 경로의 편집 대상인지 보고한다.

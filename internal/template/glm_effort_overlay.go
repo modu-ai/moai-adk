@@ -99,6 +99,14 @@ func CollapseClaudeEffortToGLM(effort string) GLMReasoningState {
 	}
 }
 
+// GLMReasoningStateNames returns the three canonical z.ai reasoning-state names
+// in descending reasoning depth. It exists so a settings surface can offer the
+// state set as a closed widget domain without re-declaring the literals — the
+// same domain CollapseClaudeEffortToGLM produces.
+func GLMReasoningStateNames() []string {
+	return []string{GLMStateReasoningMax, GLMStateReasoningHigh, GLMStateThinkingOff}
+}
+
 // glmCodingMaxOverrideAgents is the coding-max override set (REQ-MTP-028): the
 // single code-producing run-phase agent that z.ai recommends reasoning_effort:
 // max for coding tasks. manager-develop runs run-phase implementation at Claude

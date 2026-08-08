@@ -83,28 +83,30 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 	}
 }
 
-// TestApplySchemaEditsSeamRoundTrip은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 seam 섹션
-// 편집이 거부됨을 검증한다. M3가 workflow를 RouteExcluded로 재분류하여
-// WriteSectionViaSeam이 오류를 반환하고, ApplySchemaEdits가 이를 전파하며, 디스크의
-// workflow.yaml이 바이트 단위로 무변경임을 확인한다 (REQ-WC-003 — config keys
-// persist, web write path removed).
+// TestApplySchemaEditsSeamRoundTrip은 workflow seam 편집이 다시 성공함을 검증한다
+// (Issue 3 — workflow가 RouteSeam으로 복구됨). ApplySchemaEdits가 workflow scalar
+// 필드를 yamlpatch seam으로 기록하고, 디스크의 workflow.yaml에 값이 반영되며,
+// 주석이 보존됨을 확인한다.
 func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	before := seedSectionFixture(t, root, "workflow")
 
+	// The seam probe uses loop_prevention.max_iterations (a surviving workflow
+	// scalar); token_budget.plan was retired from the edit surface in
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M1 while its yaml key stayed on disk.
 	err := ApplySchemaEdits(root, map[string]string{
-		"workflow.token_budget.plan": "31000",
+		"workflow.loop_prevention.max_iterations": "77",
 	})
-	if err == nil {
-		t.Fatal("ApplySchemaEdits(workflow): want rejection error (M3 RouteExcluded), got nil")
+	if err != nil {
+		t.Fatalf("ApplySchemaEdits(workflow): %v", err)
 	}
 	after := readSection(t, root, "workflow")
-	if strings.Contains(after, "plan: 31000") {
-		t.Errorf("rejected seam edit leaked to disk:\n%s", after)
+	if !strings.Contains(after, "max_iterations: 77") {
+		t.Errorf("seam edit not persisted:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Error("comments not preserved after rejected seam routing")
+		t.Error("comments not preserved by seam routing")
 	}
 }
 
@@ -450,7 +452,7 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 	cases := map[string]string{
 		// 구 workflow.team.max_teammates(10)는 Agent Teams 정적 레이어와 함께 제거됨
 		// (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
-		"workflow.token_budget.plan":                   "30000",
+		"workflow.loop_prevention.max_iterations":      "100",
 		"harness.default_profile":                      "default",
 		"learning.enabled":                             "true",
 		"ralph.lint_as_instruction":                    "true",
@@ -488,7 +490,7 @@ func TestSchemaCurrentValuesMissingFilesAreEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaCurrentValues(empty root): %v", err)
 	}
-	if got := values["workflow.token_budget.plan"]; got != "" {
+	if got := values["workflow.loop_prevention.max_iterations"]; got != "" {
 		t.Errorf("missing file should read empty, got %q", got)
 	}
 }
@@ -678,14 +680,19 @@ func TestRemovedFieldsLoadWithoutError(t *testing.T) {
 // {high, medium, low, fable}만 노출함을 검증한다 (SPEC-WEB-CONSOLE-012
 // REQ-WC12-001/002 — glm.go setGLMEnv가 읽는 canonical 키만; legacy alias
 // opus/sonnet/haiku는 웹 편집면에서 제거, struct/fallback은 REQ-WC12-006 보존).
+//
+// SPEC-WEB-CONSOLE-REDESIGN-001 M4에서 같은 4개 tier의 추론 강도 필드가
+// 추가되었다. ghost-tier 가드의 취지는 "실재하지 않는 tier 이름 차단"이므로
+// tier 집합 자체는 그대로이고, 축(models/effort)만 늘어난다 — 두 축의 곱집합을
+// 기대 집합으로 구성해 tier 이름 가드를 유지한다.
 func TestLLMFieldsTierSet(t *testing.T) {
 	t.Parallel()
 
-	want := map[string]bool{
-		"llm.glm.models.high":   true,
-		"llm.glm.models.medium": true,
-		"llm.glm.models.low":    true,
-		"llm.glm.models.fable":  true,
+	want := map[string]bool{}
+	for _, axis := range []string{"llm.glm.models.", "llm.glm.effort."} {
+		for _, tier := range []string{"high", "medium", "low", "fable"} {
+			want[axis+tier] = true
+		}
 	}
 	got := map[string]bool{}
 	for _, f := range SectionFields(SectionLLM) {

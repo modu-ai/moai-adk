@@ -1,5 +1,7 @@
 package web
 
+import "github.com/modu-ai/moai-adk/internal/profile"
+
 // page is the Templ root component for the Console (SPEC-WEB-CONSOLE-006). It
 // ports the <html> shell + FOUC <head> script + appbar + 5 fieldsets + actions
 // from the retired page.html.tmpl 1:1, preserving the exact markup contract so
@@ -81,15 +83,13 @@ templ page(view pageView) {
 					</div>
 					<img class="pagehead__mascot" src="/static/mascots/mascot-explaining.png" alt="" width="110" height="110"/>
 				</div>
-				if view.ShowProfileSwitch {
-					@profileSwitch(view)
-				}
-				// SPEC-WEB-CONSOLE-011 M4: profile CRUD manager (create / switch /
-				// delete). Rendered OUTSIDE the main settings form (its create/delete
-				// forms are their own POST targets — nested forms are invalid HTML,
-				// same placement rationale as profileSwitch). Always rendered so the
-				// first non-default profile can be created.
-				@profileManager(view)
+				// SPEC-WEB-CONSOLE-REDESIGN-001 M5: one profile surface, not two.
+				// The bar carries the switch select AND the create / rename / delete
+				// controls. It is rendered OUTSIDE the main settings form because
+				// each control is its own POST target and a nested <form> is invalid
+				// HTML that browsers silently drop (REQ-WCR-041). Always rendered so
+				// the first non-default profile can be created.
+				@profileBar(view)
 				if view.Banner != "" {
 					@banner(view)
 				}
@@ -103,10 +103,9 @@ templ page(view pageView) {
 				// comment, so it is not emitted into the rendered page.)
 				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) } hx-boost="true">
 					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
-					// SPEC-AUTONOMY-TIERS-001 M5: /autonomy/tiers toggle link — rendered as a
-					// discrete nav entry so the page references the route (the toggle panel
-					// is fetched on demand by app.js).
-					<a class="autonomy-link" href={ templ.SafeURL("/autonomy/tiers") } data-i18n="autonomy.link">Autonomy</a>
+					// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers toggle link is
+					// removed. It was a GET-only fragment with no form and no action, so no
+					// selection it offered could be persisted (see autonomy_console_test.go).
 					// M5-b D1: 탭 nav. 각 탭 label 은 기존 sec.<section>.title i18n 키를
 					// 재사용한다 (0 NEW sec.* keys). 탭은 type="button" 이라 폼을 제출하지
 					// 않는다. 모든 패널이 DOM 에 상주한다 (atomic Save contract).
@@ -126,30 +125,28 @@ templ page(view pageView) {
 					// M5-b D1: 각 fieldset 을 .tabpanel 로 감싼다. CSS 가 비활성 패널을
 					// display:none 한다 — DOM 에서 제거하지 않으므로 비활성 패널의
 					// 필드도 제출된다 (atomic Save contract).
-					<div class={ "tabpanel", templ.KV("is-active", true) } data-panel="identity">
-						@fieldsetIdentity(view)
-					</div>
-					<div class="tabpanel" data-panel="language">
-						@fieldsetLanguage(view)
-					</div>
-					<div class="tabpanel" data-panel="launch">
-						@fieldsetLaunch(view)
-					</div>
-					// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` tabpanel was
-					// removed (REQ-MWV2-020/021) — it had no navigable data-tab and was
-					// unreachable. development_mode / git_convention / quality.* remain
-					// editable via yaml config files / CLI (the server-side parse seam is
-					// preserved; only the unreachable render surface is dropped).
-					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
-					for _, meta := range schemaSectionMetas() {
-						<div class="tabpanel" data-panel={ string(meta.ID) }>
-							@fieldsetSchemaSection(view, meta)
+					//
+					// SPEC-WEB-CONSOLE-REDESIGN-001 M2: 패널은 consoleTabs() 순서를
+					// 그대로 따라 생성된다 — 탭 목록이 순서의 단일 원천이고, 패널 ID 가
+					// 섹션 ID 와 같다는 전제(한 패널 = 한 섹션)는 깨졌다. 수제 fieldset
+					// 3종과 agentfm 은 명시 분기로, 나머지는 스키마 주도 제네릭 패널로
+					// 렌더한다.
+					for i, tab := range consoleTabs() {
+						<div class={ "tabpanel", templ.KV("is-active", i == 0) } data-panel={ tab.ID }>
+							switch tab.ID {
+								case "identity":
+									@fieldsetIdentity(view)
+								case "language":
+									@fieldsetLanguage(view)
+								case "launch":
+									@fieldsetLaunch(view)
+								case "agentfm":
+									@fieldsetAgentFrontmatter(view)
+								default:
+									@fieldsetSchemaSection(view, schemaPanelMeta(tab.ID))
+							}
 						</div>
 					}
-					// SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 카드.
-					<div class="tabpanel" data-panel="agentfm">
-						@fieldsetAgentFrontmatter(view)
-					</div>
 					<div class="actions">
 						<button class="btn btn--primary" type="submit">@icon("save")<span data-i18n="actions.save">Save settings</span></button>
 						<span class="actions__meta" data-i18n="actions.meta">writes to ~/.moai profile &amp; project config</span>
@@ -202,41 +199,25 @@ templ appbar(view pageView) {
 		</header>
 	}
 
-// profileSwitch ports the {{if .ShowProfileSwitch}} block (page.html.tmpl ~81-93).
-templ profileSwitch(view pageView) {
-	<div class="profilebar">
-		<label class="profilebar__label" for="__profile_select" data-i18n="profile.label">Profile:</label>
-		<span class="select-wrap">
-			<select class="select" name="__profile_select" id="__profile_select" aria-label="Active profile">
-				for _, p := range view.Profiles {
-					if p.Name == view.SelectedProfile {
-						if p.Current {
-							<option value={ p.Name } selected>{ p.Name } (current)</option>
-						} else {
-							<option value={ p.Name } selected>{ p.Name }</option>
-						}
-					} else {
-						if p.Current {
-							<option value={ p.Name }>{ p.Name } (current)</option>
-						} else {
-							<option value={ p.Name }>{ p.Name }</option>
-						}
-					}
-				}
-			</select>
-		</span>
-		<span class="profilebar__meta">selected: <strong>{ view.SelectedProfile }</strong></span>
-	</div>
+// profileModifiable reports whether the create/rename/delete controls may act
+// on a profile. The default profile, the profile currently active per
+// GetCurrentName, and the profile the console is editing are all off limits —
+// mirroring the server-side guards in handleProfileDelete and
+// handleProfileRename. The server enforces the block regardless; not offering
+// the control keeps the UI from proposing an action it will refuse.
+func profileModifiable(view pageView, name string, current bool) bool {
+	return name != "default" && !current && name != view.SelectedProfile
 }
 
-// profileCanDelete reports whether the delete control should render for a
-// profile entry. The default profile, the profile currently active per
-// GetCurrentName (current), and the profile the console is currently editing
-// (view.SelectedProfile) are never deletable — mirroring the server-side guard
-// in handleProfileDelete (REQ-WC11-033). The server enforces the block
-// regardless; hiding the control keeps the UI honest.
-func profileCanDelete(view pageView, name string, current bool) bool {
-	return name != "default" && !current && name != view.SelectedProfile
+// modifiableProfiles returns the profiles the CRUD controls may target.
+func modifiableProfiles(view pageView) []profile.ProfileEntry {
+	var out []profile.ProfileEntry
+	for _, p := range view.Profiles {
+		if profileModifiable(view, p.Name, p.Current) {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // profileDeleteAction is the delete form target.
@@ -245,44 +226,89 @@ func profileDeleteAction() string { return "/profile/delete" }
 // profileCreateAction is the create form target.
 func profileCreateAction() string { return "/profile/create" }
 
-// profileManager renders the CRUD manager: a switch/delete list + a create form
-// (SPEC-WEB-CONSOLE-011 M4, REQ-WC11-032/033/034). hx-boost enhances the create/
-// delete POSTs into AJAX full-page swaps; with JS/htmx disabled they degrade to
-// plain full-page POST round-trips (the server returns the full page in both
-// cases, same contract as /save). Every static string carries a data-i18n key
-// (4-locale, REQ-WC11-061).
-templ profileManager(view pageView) {
-	<section class="profilemgr" id="profile-manager" hx-boost="true">
-		<div class="profilemgr__head">
-			<h2 class="profilemgr__title" data-i18n="profile.manage.title">Profiles</h2>
-			<p class="profilemgr__desc" data-i18n="profile.manage.desc">Create, switch, or delete your ~/.moai profiles.</p>
-		</div>
-		<ul class="profilemgr__list">
-			for _, p := range view.Profiles {
-				<li class="profilemgr__item">
-					if p.Name == view.SelectedProfile {
-						<span class="profilemgr__name profilemgr__name--active">{ p.Name }</span>
-					} else {
-						<a class="profilemgr__name" href={ templ.SafeURL("/?profile=" + p.Name) }>{ p.Name }</a>
-					}
-					if p.Current {
-						<span class="profilemgr__badge" data-i18n="profile.current">(current)</span>
-					}
-					if profileCanDelete(view, p.Name, p.Current) {
-						<form class="profilemgr__delete" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
-							<input type="hidden" name="profile_name" value={ p.Name }/>
-							<button class="btn btn--ghost btn--sm" type="submit" data-i18n="profile.delete.button">Delete</button>
-						</form>
-					}
-				</li>
+// profileRenameAction is the rename form target.
+func profileRenameAction() string { return "/profile/rename" }
+
+// profileBar is the single profile surface (SPEC-WEB-CONSOLE-REDESIGN-001 M5,
+// REQ-WCR-040/041/042). It replaces the former profileSwitch + profileManager
+// pair: the switch select and the create / rename / delete controls now sit
+// together, and the separate card is gone.
+//
+// Each CRUD control is its own <form> with its own POST action. They sit here,
+// outside the main settings <form>, because nesting a form inside a form is
+// invalid HTML — a browser drops the inner start tag and the control silently
+// stops working. hx-boost turns the POSTs into AJAX full-page swaps where htmx
+// is available and degrades to plain round-trips where it is not; either way the
+// server returns the full page, the same contract as /save.
+//
+// Rename and delete target a profile chosen from a select listing only the
+// eligible ones. When nothing is eligible those controls are not rendered at
+// all, rather than offering an empty select.
+templ profileBar(view pageView) {
+	<div class="profilebar" hx-boost="true">
+		// REQ-WC-011 is preserved verbatim across the M5 consolidation: the
+		// switch select is omitted when `default` is the only profile, because
+		// there is nothing to switch between. The create form below is NOT
+		// gated on it — without that, a user with only `default` would have no
+		// way to make a second profile.
+		if view.ShowProfileSwitch {
+			<div class="profilebar__row">
+				<label class="profilebar__label" for="__profile_select" data-i18n="profile.label">Profile:</label>
+				<span class="select-wrap">
+					<select class="select" name="__profile_select" id="__profile_select" aria-label="Active profile">
+						for _, p := range view.Profiles {
+							if p.Name == view.SelectedProfile {
+								if p.Current {
+									<option value={ p.Name } selected>{ p.Name } (current)</option>
+								} else {
+									<option value={ p.Name } selected>{ p.Name }</option>
+								}
+							} else {
+								if p.Current {
+									<option value={ p.Name }>{ p.Name } (current)</option>
+								} else {
+									<option value={ p.Name }>{ p.Name }</option>
+								}
+							}
+						}
+					</select>
+				</span>
+				<span class="profilebar__meta">selected: <strong>{ view.SelectedProfile }</strong></span>
+			</div>
+		}
+		<div class="profilebar__actions">
+			<form class="profilebar__form" method="POST" action={ templ.SafeURL(profileCreateAction()) }>
+				<label class="profilebar__form-label" for="profile_name_new" data-i18n="profile.create.label">New profile name</label>
+				<input class="input input--sm" type="text" id="profile_name_new" name="profile_name" placeholder="e.g. work" autocomplete="off"/>
+				<button class="btn btn--primary btn--sm" type="submit" data-i18n="profile.create.button">Create</button>
+			</form>
+			if len(modifiableProfiles(view)) > 0 {
+				<form class="profilebar__form" method="POST" action={ templ.SafeURL(profileRenameAction()) }>
+					<label class="profilebar__form-label" for="profile_rename_target" data-i18n="profile.rename.label">Rename profile</label>
+					<span class="select-wrap">
+						<select class="select select--sm" id="profile_rename_target" name="profile_name" aria-label="Profile to rename">
+							for _, p := range modifiableProfiles(view) {
+								<option value={ p.Name }>{ p.Name }</option>
+							}
+						</select>
+					</span>
+					<input class="input input--sm" type="text" id="profile_rename_new" name="new_name" placeholder="new name" autocomplete="off" aria-label="New profile name"/>
+					<button class="btn btn--ghost btn--sm" type="submit" data-i18n="profile.rename.button">Rename</button>
+				</form>
+				<form class="profilebar__form" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
+					<label class="profilebar__form-label" for="profile_delete_target" data-i18n="profile.delete.label">Delete profile</label>
+					<span class="select-wrap">
+						<select class="select select--sm" id="profile_delete_target" name="profile_name" aria-label="Profile to delete">
+							for _, p := range modifiableProfiles(view) {
+								<option value={ p.Name }>{ p.Name }</option>
+							}
+						</select>
+					</span>
+					<button class="btn btn--ghost btn--sm" type="submit" data-i18n="profile.delete.button">Delete</button>
+				</form>
 			}
-		</ul>
-		<form class="profilemgr__create" method="POST" action={ templ.SafeURL(profileCreateAction()) }>
-			<label class="profilemgr__create-label" for="profile_name_new" data-i18n="profile.create.label">New profile name</label>
-			<input class="input" type="text" id="profile_name_new" name="profile_name" placeholder="e.g. work" autocomplete="off"/>
-			<button class="btn btn--primary btn--sm" type="submit" data-i18n="profile.create.button">Create profile</button>
-		</form>
-	</section>
+		</div>
+	</div>
 }
 
 // banner ports the {{if .Banner}} server-rendered status block (page.html.tmpl ~96-103).

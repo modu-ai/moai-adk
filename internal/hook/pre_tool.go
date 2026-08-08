@@ -540,9 +540,28 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Agent/Task spawn model observation. Placed LAST — after every existing
+	// deny path — so inserting it cannot displace an established decision
+	// (the Bash dangerous-pattern deny, the branch guard, the file-access
+	// deny all still win). The observation and advisory layers always run;
+	// the deny below is opt-in via Workflow.AgentModelGuard.Enabled and fires
+	// only on the mismatch verdict. Since v2.1.63 Claude Code renamed
+	// Task → Agent; accept both.
+	var agentAdvisory string
+	if input.ToolName == "Agent" || input.ToolName == "Task" {
+		decision, reason, advisory := h.checkAgentModel(input)
+		if decision == DecisionDeny {
+			return NewDenyOutput(reason), nil
+		}
+		agentAdvisory = advisory
+	}
+
 	out := NewSafeDefaultOutput(permissionModeOf(input))
 	if gateNotice != "" {
 		out.SystemMessage = gateNotice
+	}
+	if agentAdvisory != "" {
+		out.SystemMessage = agentAdvisory
 	}
 	return out, nil
 }

@@ -42,6 +42,10 @@ type PruneStats struct {
 	// otherwise — the file is either under threshold, absent, or the current
 	// write target).
 	TaskMetricsAged int
+	// AgentModelAuditAged is 1 when a stale agent-model-audit.jsonl was removed
+	// (0 otherwise). The guard appends one row per Agent spawn, so the file
+	// grows for the lifetime of the project without an age-out.
+	AgentModelAuditAged int
 	// Skipped counts candidates that were intentionally preserved (the current
 	// session's active trace) or skipped on a per-file error.
 	Skipped int
@@ -124,13 +128,28 @@ func PruneObservationLogs(logsDir, currentSessionID string, retentionDays int, n
 					stats.TaskMetricsAged++
 				}
 			}
+			continue
+		}
+
+		if name == agentModelAuditFileName {
+			path := filepath.Join(logsDir, name)
+			if info.ModTime().Before(cutoff) {
+				if rmErr := os.Remove(path); rmErr != nil {
+					slog.Warn("prune_logs: failed to remove aged agent-model audit log",
+						"path", path, "error", rmErr)
+					stats.Skipped++
+				} else {
+					stats.AgentModelAuditAged++
+				}
+			}
 		}
 	}
-	if stats.TraceZeroBytePruned+stats.TraceAgedPruned+stats.TaskMetricsAged > 0 {
+	if stats.TraceZeroBytePruned+stats.TraceAgedPruned+stats.TaskMetricsAged+stats.AgentModelAuditAged > 0 {
 		slog.Info("prune_logs: SessionEnd observation-log pruning complete",
 			"trace_zero_byte_pruned", stats.TraceZeroBytePruned,
 			"trace_aged_pruned", stats.TraceAgedPruned,
 			"task_metrics_aged", stats.TaskMetricsAged,
+			"agent_model_audit_aged", stats.AgentModelAuditAged,
 			"skipped", stats.Skipped,
 		)
 	}

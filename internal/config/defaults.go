@@ -624,6 +624,32 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
+		// The agent-model guard ships with its BLOCKING layer off. Observation
+		// and advisory always run; a maintainer opts into denial via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		AgentModelGuard: AgentModelGuardConfig{
+			Enabled: false,
+		},
+		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
+		// ships default-OFF. Distributed users get an inert Stop hook; a
+		// maintainer opts in via local config. Template neutrality (§25): no
+		// `enabled: true` under internal/template/templates/.
+		Codex: CodexConfig{
+			ReviewGate: CodexReviewGateConfig{
+				Enabled: false,
+			},
+		},
+		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the
+		// multi-model review gate ships default-OFF (BranchGuard pattern —
+		// sibling to Codex.ReviewGate). Distributed users get an inert Stop
+		// hook; a maintainer opts in via local config. Template neutrality
+		// (§25): no `enabled: true` under internal/template/templates/.
+		Multi: MultiConfig{
+			ReviewGate: MultiReviewGateConfig{
+				Enabled: false,
+			},
+		},
 		// SPEC-SESSION-WORKTREE-001 REQ-SW-001: the session-worktree auto-entry
 		// feature ships default-OFF. When unset, moai init / moai profile /
 		// moai web behave byte-identically to the shared-checkout baseline.

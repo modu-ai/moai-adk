@@ -225,6 +225,18 @@ func applyLLMKey(l *config.LLMConfig, key, v string) error {
 		l.GLM.Models.Low = v
 	case "glm.models.fable":
 		l.GLM.Models.Fable = v
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M4: per-tier reasoning effort. These are
+	// stored only — no runtime path reads them (the launcher injects one
+	// session-global ANTHROPIC_REASONING_EFFORT derived from llm.effort_level).
+	// The write exists so the preference survives; the console labels it.
+	case "glm.effort.high":
+		l.GLM.Effort.High = v
+	case "glm.effort.medium":
+		l.GLM.Effort.Medium = v
+	case "glm.effort.low":
+		l.GLM.Effort.Low = v
+	case "glm.effort.fable":
+		l.GLM.Effort.Fable = v
 	default:
 		return fmt.Errorf("settings: unknown llm key %q", key)
 	}

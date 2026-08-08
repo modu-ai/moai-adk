@@ -186,6 +186,13 @@ func (a *app) render(w http.ResponseWriter, status int, view pageView) {
 		a.renderError(w, http.StatusInternalServerError, "internal error: render failed: "+err.Error())
 		return
 	}
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the former autonomy-tier link injection
+	// is removed. The injected fragment was GET-only with no form and no action,
+	// so a tier selected there saved nothing — the only runtime reader is the
+	// MOAI_AUTONOMY_TIER env seam and the only writer is the init-time
+	// ApplyAutonomyTierBundle. With no persistence target, promoting it to a
+	// console field would require a new config field, which is a separate SPEC.
+	// The config-side tier core is untouched; only the dead web surface is gone.
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())

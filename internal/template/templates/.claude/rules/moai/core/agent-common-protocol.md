@@ -185,6 +185,35 @@ Architecture:
 - Commands orchestrate through natural language delegation
 - Agents own domain-specific expertise
 - Skills auto-load based on YAML frontmatter configuration
+### Per-Spawn Model Injection
+
+[ZONE:Evolvable] [HARD] When spawning a subagent, pass the model the active
+profile resolves for that agent as an explicit `model` argument on the spawn.
+
+Omitting it is not neutral. Nearly every agent definition carries
+`model: inherit`, so a spawn without an explicit model silently runs the agent
+on the parent session's model rather than its profiled one. The profile is still
+computed — nothing reports that it was never applied, which is why this is worth
+stating where it is always read rather than leaving it to the detailed policy
+file that only loads while agent files are being edited.
+
+- Resolve the value with `moai model profile --json`, which reports the
+  `{model, effort}` cell for every retained agent under the active profile.
+- Pass `model` per spawn. `effort` has no spawn-time parameter — it travels
+  only through the agent file's frontmatter, so it cannot be injected this way.
+- A spawn whose declared model differs from the resolved one is drift, not an
+  override. Change the profile instead when a different model is genuinely
+  wanted.
+- Agents outside the retained catalog (user-authored harness specialists)
+  resolve to the inherit sentinel and take no injection.
+
+A PreToolUse hook observes every spawn and records the outcome to
+`.moai/logs/agent-model-audit.jsonl`. It advises but does not block; the
+blocking layer is opt-in via `workflow.agent_model_guard.enabled` and refuses
+only a declared-vs-resolved conflict.
+
+Full profile matrix, precedence order, and channel table:
+`.claude/rules/moai/development/model-policy.md`.
 
 ## Background Agent Execution
 

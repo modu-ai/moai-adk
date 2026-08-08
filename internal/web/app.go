@@ -80,6 +80,10 @@ type app struct {
 	// CLAUDE_CONFIG_DIR); deleteProfile removes it. Tests inject failures here.
 	createProfile func(name string) error
 	deleteProfile func(name string) error
+	// renameProfile moves a profile directory (SPEC-WEB-CONSOLE-REDESIGN-001
+	// REQ-WCR-042). Same seam shape as create/delete so tests can inject a
+	// failure without touching the filesystem.
+	renameProfile func(oldName, newName string) error
 
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
@@ -122,6 +126,7 @@ func newApp(cfg Config) *app {
 		patchAgentFM: applyAgentOverrides,
 
 		createProfile: createProfileDir,
+		renameProfile: renameProfileDir,
 		deleteProfile: profile.Delete,
 	}
 }
@@ -142,14 +147,21 @@ func (a *app) routes() http.Handler {
 	// GET /?profile=<name> load path (no dedicated route needed).
 	mux.HandleFunc("/profile/create", a.handleProfileCreate)
 	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M5 (REQ-WCR-042): profile rename.
+	mux.HandleFunc(profileRenameAction(), a.handleProfileRename)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit GLM key reveal.
+	// POST-only so it inherits the loopback-Host + same-origin gates that
+	// hostCheckMiddleware applies to mutating methods; the handler re-checks
+	// loopback itself.
+	mux.HandleFunc(glmKeyRevealPath, a.handleGLMKeyReveal)
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M6: the /autonomy/tiers route is removed.
+	// It served a GET-only fragment with no form and no action, so no selection
+	// it offered could be persisted. config.TierToggleOptions and the init-time
+	// ApplyAutonomyTierBundle path are untouched — only the web surface is gone.
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
 	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 및 cross-site(REQ-SEC-002)
 	// POST 를 403 차단한다. 추가 CSRF 토큰 인프라는 없다(Goal Anti + @MX:NOTE 참조).
 	mux.HandleFunc("/__shutdown__", a.handleShutdown)
-	// SPEC-AUTONOMY-TIERS-001 M5: /autonomy/tiers exposes the 3-tier toggle
-	// (claude/automatic/fully-autonomous) read from TierToggleOptions. Read-only
-	// GET; the host-check middleware gates non-GET.
-	mux.HandleFunc("/autonomy/tiers", a.handleAutonomyTiers)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS()))))
 	return hostCheckMiddleware(mux)
 }

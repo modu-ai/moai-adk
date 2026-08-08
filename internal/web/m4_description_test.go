@@ -12,22 +12,22 @@ import (
 // surfaces (REQ-WC-016 git_strategy; llm GLM tier mapping) + quality_extras
 // enable/disable toggle on the launch tab (REQ-WC-004 / AC-WC-004).
 
-// TestGitStrategySectionRemoved verifies the git_strategy section was removed
-// from the web console: no git_strategy tab, no git_strategy panel, and no
-// git_strategy form control renders. The git_strategy config keys remain in the
-// settings schema (and git-strategy.yaml) but are no longer web-editable.
-func TestGitStrategySectionRemoved(t *testing.T) {
+// TestGitStrategySectionIDNotATab verifies the git_strategy SECTION id is not
+// itself a tab or panel id. SPEC-WEB-CONSOLE-REDESIGN-001 M1 restored the
+// git_strategy render surface (F1 — the FieldDefs existed with no UI), but it
+// lands on the `git-worktree` panel, which mixes git_strategy and
+// workflow.worktree fields and therefore owns its own tab.* i18n namespace.
+// The controls themselves are asserted present by TestGitStrategyRendered.
+func TestGitStrategySectionIDNotATab(t *testing.T) {
 	body := renderConsolePage(t)
 
 	for _, marker := range []string{
 		`data-tab="git_strategy"`,
 		`data-panel="git_strategy"`,
-		`name="git_strategy.mode"`,
 		`data-i18n="sec.git_strategy.title"`,
-		`data-i18n="fieldDesc.git_strategy.mode"`,
 	} {
 		if strings.Contains(body, marker) {
-			t.Errorf("rendered page still contains removed git_strategy marker %q", marker)
+			t.Errorf("rendered page uses the section id %q as a tab/panel id — the panel id is git-worktree", marker)
 		}
 	}
 }

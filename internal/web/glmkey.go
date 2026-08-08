@@ -92,6 +92,47 @@ func normalizeGLMKey(submitted string) string {
 	return strings.TrimSpace(submitted)
 }
 
+// glmKeyRevealPath is the endpoint that returns the stored GLM key in plaintext
+// on explicit user action (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-034).
+//
+// It is a POST for a read, deliberately. The never-echo contract above is what
+// keeps the key out of the default page render; reveal is the one path that
+// crosses it, so it must be an explicit act rather than something a page load,
+// a prefetch, or an <img src> can trigger. POST also routes the request through
+// hostCheckMiddleware's loopback-Host + same-origin gates, which safe methods
+// are not subject to. The handler re-checks loopback itself so the guarantee
+// does not rest solely on the middleware being wired.
+const glmKeyRevealPath = "/glm-key/reveal"
+
+// handleGLMKeyReveal serves POST /glm-key/reveal: the stored credential in
+// plaintext, once, for a same-origin loopback caller.
+//
+// The console binds to loopback only, but that is an argument for why reveal is
+// tolerable here — not a reason to skip the check. A non-loopback Host is
+// refused, a non-POST method is refused, and an absent credential is a 404
+// rather than an empty 200 (an empty body would be indistinguishable from a
+// stored empty key).
+func (a *app) handleGLMKeyReveal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopbackHost(r.Host) {
+		http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
+		return
+	}
+	key := glmcred.Load()
+	if key == "" {
+		http.Error(w, "no GLM API key is configured", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	// The plaintext must not be cached by anything between here and the tab.
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(key))
+}
+
 // glmKeyFieldBelongsToLLMSection reports whether the LLM schema section is the
 // one that hosts the GLM API key control. Used by fieldsetSchemaSection to
 // decide whether to render the hand-built key control alongside the schema

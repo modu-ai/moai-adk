@@ -306,6 +306,26 @@ type GLMSettings struct {
 	// Takes precedence over the built-in glmContextWindows table in
 	// internal/statusline/memory.go but yields to MOAI_STATUSLINE_CONTEXT_SIZE.
 	ContextWindows map[string]int `yaml:"context_windows,omitempty"`
+	// Effort carries a per-tier reasoning-effort preference.
+	//
+	// STORED ONLY. No runtime path reads it. The GLM launcher injects exactly
+	// one session-global ANTHROPIC_REASONING_EFFORT, derived in
+	// internal/template/glm_effort_overlay.go from the session-wide
+	// llm.effort_level preference — a value unrelated to this tier map. These
+	// four fields therefore record an intent the current single-channel runtime
+	// cannot honor per tier. They are persisted so the preference survives, and
+	// the console labels them stored-only rather than implying they apply.
+	Effort GLMTierEffort `yaml:"effort,omitempty"`
+}
+
+// GLMTierEffort holds the per-tier reasoning-effort preference. Values are the
+// canonical z.ai reasoning-state names (template.GLMState* constants); an empty
+// value means "unset".
+type GLMTierEffort struct {
+	High   string `yaml:"high,omitempty"`
+	Medium string `yaml:"medium,omitempty"`
+	Low    string `yaml:"low,omitempty"`
+	Fable  string `yaml:"fable,omitempty"`
 }
 
 // GLMModels represents GLM model mappings by performance tier.
@@ -376,6 +396,30 @@ type WorkflowConfig struct {
 	// multi-session checkouts opt in via local config. Additive BELOW the
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
+
+	// AgentModelGuard gates the blocking layer of the PreToolUse agent-model
+	// guard. Default false: the observation and advisory layers always run,
+	// but no spawn is ever denied until a maintainer opts in via local config.
+	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
+	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+
+	// Codex gates the codex audit backend + the Stop-hook review gate
+	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
+	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
+	// a maintainer opts in via local config. The moai-default 5s hook timeout
+	// is overridden to DefaultCodexReviewGateTimeout (900s) for that hook only
+	// (REQ-MCP-008 / AC-MCP-010).
+	Codex CodexConfig `yaml:"codex"`
+
+	// Multi gates the multi-model convergence Stop-hook review gate
+	// (SPEC-AUDIT-MULTI-MODEL-001 M5). The ReviewGate sub-block is the opt-in
+	// toggle for `moai hook multi-review-gate` — it ships default-OFF (C6 /
+	// BranchGuard pattern — sibling to Codex.ReviewGate); a maintainer opts
+	// in via local config. The moai-default 5s hook timeout is overridden to
+	// DefaultMultiReviewGateTimeout (900s) for that hook only
+	// (REQ-AMM-013 / AC-AMM-018). Template neutrality (§25): no `enabled: true`
+	// under internal/template/templates/ — the distributed default is OFF.
+	Multi MultiConfig `yaml:"multi"`
 
 	// Deprecated FLAT fields (Option (c) — preserved for backward-compat).
 	// yaml:"-" prevents yaml.Unmarshal from binding to these legacy paths.
@@ -511,6 +555,52 @@ type WorkflowWorktreeConfig struct {
 // config; the exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity)
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
+// blocking layer of the PreToolUse agent-model guard. When Enabled is false
+// (the distributed default) the guard still observes every Agent spawn and
+// still emits advisories, but it never returns a deny decision. Only the
+// mismatch verdict is blockable even when enabled; the far more common
+// missing verdict stays advisory, because blocking it would refuse nearly
+// every spawn.
+type AgentModelGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
+// config surface (SPEC-MOAI-MCP-SERVER-001 M2, REQ-MCP-008/010). It is the
+// sibling of BranchGuard: an opt-in gate whose distributed default is OFF (C6).
+type CodexConfig struct {
+	ReviewGate CodexReviewGateConfig `yaml:"review_gate"`
+}
+
+// CodexReviewGateConfig mirrors workflow.codex.review_gate.* — the opt-in
+// toggle for the `moai hook codex-review-gate` Stop hook. Default false: the
+// review gate ships INERT (no Stop-hook blocking) until a maintainer opts in
+// via local config. Fail-CLOSED at the hook read site (default off), matching
+// the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
+type CodexReviewGateConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate
+// config surface (SPEC-AUDIT-MULTI-MODEL-001 M5, REQ-AMM-013). It is the sibling
+// of Codex: an opt-in gate whose distributed default is OFF (BranchGuard
+// pattern). The multi_review_gate config block REUSES the existing
+// CodexReviewGateConfig structural pattern (a sibling `multi_review_gate` key
+// under `workflow:`, NOT a new schema shape — REQ-AMM-019 / AC-AMM-025).
+type MultiConfig struct {
+	ReviewGate MultiReviewGateConfig `yaml:"review_gate"`
+}
+
+// MultiReviewGateConfig mirrors workflow.multi.review_gate.* — the opt-in
+// toggle for the `moai hook multi-review-gate` Stop hook. Default false: the
+// gate ships INERT (no Stop-hook blocking) until a maintainer opts in via local
+// config. Fail-CLOSED at the hook read site (default off), matching the
+// codex-review-gate + BranchGuard precedents.
+type MultiReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

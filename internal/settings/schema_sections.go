@@ -19,7 +19,9 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // ─── v4manifest closed sets 재사용 (REQ-WC11-024/029/072 — 재선언 금지) ──────
@@ -160,19 +162,58 @@ func gitStrategyFields() []FieldDef {
 
 // ─── llm 안전 키 (REQ-WC11-012/013/014 — typed 경로) ─────────────────────────
 
-// llmFields는 실소비 GLM tier 매핑 4종(high/medium/low/fable)만 반환한다
-// (glm.go setGLMEnv 런타임 소비자 — ANTHROPIC_DEFAULT_*_MODEL 환경변수;
-// ANTHROPIC_DEFAULT_OPUS_MODEL조차 Models.High에서 온다). legacy alias
-// opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹 편집면에서
-// 제거되었다 — resolveGLMModels empty-fallback 체인과 GLMModels legacy struct
-// 멤버는 무접촉 보존되어 legacy yaml 로드가 backward-compat를 유지한다
-// (REQ-WC12-006). performance_tier와 claude_models.*는 M4 다이어트에서 제거
-// (struct 멤버와 yaml 로드 보존).
+// glmTiers는 GLM 티어 내부 키를 렌더 순서대로 반환한다. 표시 라벨은 Claude 대응
+// 이름(Opus/Sonnet/Haiku/Fable)이지만 내부 키는 불변이다 — 라벨은 i18n 소관이고
+// 이 슬라이스는 영속화 키의 원천이다 (SPEC-WEB-CONSOLE-REDESIGN-001 M4).
+func glmTiers() []string {
+	return []string{"high", "medium", "low", "fable"}
+}
+
+// glmDefaultTierEffort는 티어별 추론 강도 기본 선택값이다. 값은 z.ai 정규
+// reasoning-state 이름이며 template 패키지 상수에서 파생한다 — 리터럴 재선언
+// 없음. 이 값들은 저장만 되고 런타임에 적용되지 않는다 (아래 주석 참조).
+func glmDefaultTierEffort(tier string) string {
+	switch tier {
+	case "medium":
+		return template.GLMStateReasoningHigh
+	case "low":
+		return template.GLMStateThinkingOff
+	default: // high, fable
+		return template.GLMStateReasoningMax
+	}
+}
+
+// llmFields는 GLM tier 매핑 4종(high/medium/low/fable)과 티어별 추론 강도 4종을
+// 반환한다.
+//
+// 모델 슬롯은 닫힌 집합이므로 select로 렌더한다 — 옵션은 config.ValidGLMModels()
+// SSOT에서 파생하며 스키마 파일에서 리터럴을 재선언하지 않는다 (AP-2).
+//
+// 추론 강도 4종은 **저장 전용(store-only)** 이다. 런타임 추론 강도 전달 채널은
+// 세션 전역 ANTHROPIC_REASONING_EFFORT 하나뿐이고, 그 값은
+// internal/template/glm_effort_overlay.go가 세션 단위 llm.effort_level
+// 환경설정에서 파생한다 — 이 티어 맵과 무관하다. 따라서 어느 티어의 effort도
+// 런타임에 적용되지 않으며, 콘솔은 적용 원천을 명시하고 이 필드들을 저장 전용으로
+// 표시한다 (REQ-WCR-033). 기존 코드 주석은 z.ai가 해당 환경변수를 준수하는지를
+// UNVERIFIED로 표기하며, 그 표기는 그대로 유지된다.
+//
+// legacy alias opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹
+// 편집면에서 제거되었다 — GLMModels legacy struct 멤버는 무접촉 보존되어 legacy
+// yaml 로드가 backward-compat를 유지한다 (REQ-WC12-006).
 func llmFields() []FieldDef {
 	var fields []FieldDef
-	for _, tier := range []string{"high", "medium", "low", "fable"} {
-		f := typedField(SectionLLM, "llm", "glm.models."+tier, TypeText)
+	for _, tier := range glmTiers() {
+		f := withSelect(typedField(SectionLLM, "llm", "glm.models."+tier, TypeSelect),
+			"f.llm.glm.models.opt.", config.ValidGLMModels(), "", "")
 		f.Description = "fieldDesc.llm.glm.models." + tier
+		fields = append(fields, f)
+	}
+	for _, tier := range glmTiers() {
+		f := withSelect(typedField(SectionLLM, "llm", "glm.effort."+tier, TypeSelect),
+			"f.llm.glm.effort.opt.", template.GLMReasoningStateNames(), "", "")
+		f.Description = "fieldDesc.llm.glm.effort." + tier
+		f.Default = glmDefaultTierEffort(tier)
+		f.StoreOnly = true
 		fields = append(fields, f)
 	}
 	return fields
@@ -226,49 +267,105 @@ func QualityExcludedKeyPrefixes() []string {
 
 // ─── 7개 seam 섹션 스칼라 키 (REQ-WC11-016/017 — 2026-07-03 §C-7 실측 기반) ──
 
+// modeDefaultFields는 harness.mode_defaults.* 필드를 실행 모드 pin 집합에서
+// 파생해 반환한다. 렌더 순서는 정렬로 고정한다 (파생이지 재선언이 아님 —
+// gitStrategyFields의 mergeMethods 선례와 동일한 패턴).
+func modeDefaultFields() []FieldDef {
+	modes := append([]string{}, config.ValidExecutionModePins()...)
+	sort.Strings(modes)
+	fields := make([]FieldDef, 0, len(modes))
+	for _, mode := range modes {
+		f := withSelect(
+			seamField(SectionHarness, "harness", TypeSelect, "harness", "mode_defaults", mode),
+			"f.harness.mode_defaults.opt.", config.ValidModeDefaultLevels(), "", "")
+		fields = append(fields, f)
+	}
+	return fields
+}
+
 func seamSectionFields() []FieldDef {
 	s := seamField
-	return []FieldDef{
+	// 닫힌 집합 필드는 withRadio/withSelect로 닫힌 위젯 + 멤버십 검증을 갖춘다
+	// (SPEC-WEB-CONSOLE-REDESIGN-001 M3). 옵션 값은 전부 SSOT 접근자에서 파생한다 —
+	// 스키마 파일에서 리터럴 집합을 재선언하지 않는다.
+	closedSeam := func(sec SectionID, file, keyPrefix string, values []string, emptyLabel, emptyKey string, path ...string) FieldDef {
+		return withRadio(s(sec, file, TypeRadio, path...), keyPrefix, values, emptyLabel, emptyKey)
+	}
+	selectSeam := func(sec SectionID, file, keyPrefix string, values []string, path ...string) FieldDef {
+		return withSelect(s(sec, file, TypeSelect, path...), keyPrefix, values, "", "")
+	}
+	fields := []FieldDef{
 		// workflow (파일: workflow.yaml, 최상위 키 workflow).
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "default_mode"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "execution_mode"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "enabled"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_plan"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "auto_clear", "after_run"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "auto_clear", "token_threshold"),
+		// default_mode는 빈 값이 "하네스 자동 선택"이라 빈 옵션을 함께 렌더한다.
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.default_mode.opt.",
+			config.ValidWorkflowDefaultModes(), emptyLabelProjectDefault, "opt.project_default",
+			"workflow", "default_mode"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.execution_mode.opt.",
+			config.ValidExecutionModes(), "", "", "workflow", "execution_mode"),
+		// workflow.auto_clear.{enabled,after_plan,after_run,token_threshold} 4종은
+		// 웹 편집 표면에서 철거되었다: 접근자 WorkflowAutoClearEnabled의 Go 호출자
+		// 0건이고 산문 소비자도 0건인 죽은 설정이다. yaml 키 / struct 멤버 / 접근자
+		// 시그니처는 무접촉 보존된다 — 기존 workflow.yaml은 계속 오류 없이 로드된다
+		// (M4 다이어트 선례와 동일한 처분).
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "agentic_loop", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "loop_prevention", "failure_pattern_detection"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_iterations"),
 		s(SectionWorkflow, "workflow", TypeInt, "workflow", "loop_prevention", "max_retries_per_operation"),
 		// workflow.team.* 편집 필드는 Agent Teams 정적 레이어와 함께 제거되었다
 		// (SPEC-AGENT-TEAM-RETIRE-001). workflow.yaml team 블록은 M3에서 제거된다.
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "plan"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "run"),
-		s(SectionWorkflow, "workflow", TypeInt, "workflow", "token_budget", "sync"),
+		// workflow.token_budget.{plan,run,sync} 3종도 같은 사유로 철거되었다:
+		// WorkflowPlanTokens / WorkflowRunTokens / WorkflowSyncTokens 접근자의
+		// 호출자 0건. yaml 키·struct 멤버·접근자는 보존한다.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_cleanup"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "tmux_preferred"),
-		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): audit selection
-		// surfaces in the web console schema (workflow.audit.model + per-auditor
-		// gates), reusing the M3 typed-config yaml paths — no forked interpreter.
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "model"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "claude"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "codex"),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "glm"),
+		// SPEC-WT-DOC-001 (branch-guard config surface): the distributed template
+		// ships without a branch_guard block, so this key is absent until the user
+		// opts in via `moai init --branch-guard` or the reconfigure wizard. The web
+		// console renders it from this FieldDef via schemaform.go; the seam writer
+		// (yamlpatch) upserts the nested mapping on first edit.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "branch_guard", "enabled"),
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
+		// selection surfaced in the web console. These are PersistSeam fields
+		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
+		// 5-level path), reading back through the M3 AuditConfig typed config
+		// (the IDENTICAL interpreter the wizard writes + the MCP handlers read —
+		// no fork). audit_model is the active backend; the three gates are the
+		// per-auditor strictness. Typed as text (the enum is validated at the M3
+		// config-read layer, activeAuditBackend); the wizard offers the validated
+		// select for the primary path.
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.model.opt.",
+			config.ValidAuditModels(), "", "", "workflow", "audit", "model"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "claude"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "codex"),
+		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
-		s(SectionHarness, "harness", TypeText, "harness", "default_profile"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "minimal"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "standard"),
-		s(SectionHarness, "harness", TypeText, "harness", "effort_mapping", "thorough"),
+		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",
+			harness.DefaultEvaluatorProfileNames(), "harness", "default_profile"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "minimal"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "standard"),
+		selectSeam(SectionHarness, "harness", "f.effort_level.opt.",
+			v4EffortValues(), "harness", "effort_mapping", "thorough"),
 		s(SectionHarness, "harness", TypeBool, "harness", "auto_detection", "enabled"),
 		s(SectionHarness, "harness", TypeBool, "harness", "escalation", "enabled"),
 		s(SectionHarness, "harness", TypeInt, "harness", "escalation", "max_escalations"),
-		s(SectionHarness, "harness", TypeText, "harness", "evaluator", "memory_scope"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "cg"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "solo"),
-		s(SectionHarness, "harness", TypeText, "harness", "mode_defaults", "team"),
+		// memory_scope는 단일 멤버 집합이다 — 값이 FROZEN이라(loader가
+		// ErrEvalMemoryFrozen로 거절) 자유 텍스트로 두면 로더가 반드시 되돌릴 값을
+		// 사용자가 입력하도록 초대하게 된다.
+		closedSeam(SectionHarness, "harness", "f.harness.evaluator.memory_scope.opt.",
+			config.ValidEvaluatorMemoryScopes(), "", "", "harness", "evaluator", "memory_scope"),
+		// mode_defaults 필드 목록은 config.ValidExecutionModePins()에서 파생한다 —
+		// mode_defaults의 키 집합과 workflow.execution_mode의 pin 집합은 같은 개념의
+		// 양면이므로, 한쪽만 늘어나면 콘솔이 하니스가 아는 모드를 거부하거나
+		// 하니스가 레벨을 못 정하는 모드를 제안하게 된다. 렌더 순서 안정성을 위해
+		// 정렬한다 (파생이지 재선언이 아님 — gitStrategyFields의 mergeMethods 선례).
 		s(SectionHarness, "harness", TypeBool, "learning", "enabled"),
 		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): learning.auto_apply 편집 필드 철거 →
 		// ReadOnlyDisplayFields로 강등. 파이프라인 in-memory AutoApply:true는 디스크 값
@@ -303,6 +400,9 @@ func seamSectionFields() []FieldDef {
 		s(SectionSecurity, "security", TypeBool, "security", "sandbox", "required"),
 		s(SectionSecurity, "security", TypeText, "security", "sandbox", "docker_image"),
 	}
+	// harness.mode_defaults.* 는 실행 모드 pin 집합에서 파생하므로 리터럴 목록에
+	// 인라인하지 않고 뒤에 붙인다 (렌더 순서: harness 블록 뒤).
+	return append(fields, modeDefaultFields()...)
 }
 
 // ─── SPEC-WEB-CONSOLE-013 M2: handoff / cache 섹션 (seam 전용) ────────────────
@@ -381,8 +481,8 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, llmFields()...)
 	fields = append(fields, seamSectionFields()...)
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
-	fields = append(fields, cacheFields()...)    // SPEC-WEB-CONSOLE-013 M2
-	fields = append(fields, reportFields()...)   // report.format (launch tab)
+	fields = append(fields, cacheFields()...)   // SPEC-WEB-CONSOLE-013 M2
+	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	return fields
 }
 
