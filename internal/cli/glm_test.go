@@ -637,3 +637,50 @@ func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
 		})
 	}
 }
+
+// ── SPEC-FACTORY-MODE-001 M5 ──
+
+// TestGLM_FactoryFlagParity is AC-FM-005: `moai glm --factory` reaches the
+// launcher in glm mode with the factory signal published, confirming parity
+// with `moai cc`. Both launchers are single-backend, so both support the mode.
+func TestGLM_FactoryFlagParity(t *testing.T) {
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	var capturedMode string
+	var capturedArgs []string
+	var factoryAtLaunch, specAtLaunch string
+	unifiedLaunchFunc = func(_ string, mode string, args []string) error {
+		capturedMode = mode
+		capturedArgs = args
+		factoryAtLaunch = os.Getenv(config.EnvMoaiFactory)
+		specAtLaunch = os.Getenv(config.EnvMoaiFactorySpec)
+		return nil
+	}
+
+	origFn := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
+	defer func() { findProjectRootFn = origFn }()
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+
+	if err := runGLM(glmCmd, []string{"--factory", "SPEC-PLACEHOLDER"}); err != nil {
+		t.Fatalf("AC-FM-005: runGLM(--factory) should not error, got: %v", err)
+	}
+	if capturedMode != "glm" {
+		t.Errorf("AC-FM-005: mode = %q, want %q", capturedMode, "glm")
+	}
+	for _, a := range capturedArgs {
+		if a == "--factory" || a == "-f" {
+			t.Errorf("AC-FM-005: factory token must not reach the launcher, got %v", capturedArgs)
+		}
+	}
+	if factoryAtLaunch != "1" {
+		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiFactory, factoryAtLaunch)
+	}
+	if specAtLaunch != "SPEC-PLACEHOLDER" {
+		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiFactorySpec, specAtLaunch)
+	}
+}

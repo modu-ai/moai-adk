@@ -7,6 +7,8 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // findProjectRootFn is the function used to locate the project root.
@@ -85,6 +87,16 @@ func runCC(cmd *cobra.Command, args []string) error {
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
 		return err
+	}
+	// SPEC-FACTORY-MODE-001: --factory / -f seeds a plan -> run -> verify -> sync
+	// chain in the launched session. Parsed after --spawn is stripped (a spawned
+	// session re-issues this command and must carry the token through) and before
+	// worktree handling (so a factory token can never be mistaken for a -w value).
+	// The environment mutation is restored on every return path, including error.
+	if specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs); factoryEnabled {
+		filteredArgs = factoryArgs
+		defer enterFactoryMode(specID)()
+		recordFactorySession(specID, factory.BackendClaude)
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
