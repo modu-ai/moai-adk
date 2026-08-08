@@ -1,0 +1,20 @@
+{
+  "cwd": "/tmp/probe-project",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "permission_mode": "bypassPermissions",
+  "prompt_id": "00000000-0000-0000-0000-000000000001",
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "tool_input": {
+    "description": "List files in directory",
+    "model": "haiku",
+    "prompt": "List the files in the project directory. [truncated for fixture hygiene]",
+    "run_in_background": false,
+    "subagent_type": "Explore"
+  },
+  "tool_name": "Agent",
+  "tool_use_id": "toolu_probe_0001",
+  "transcript_path": "/tmp/probe-project/transcript.jsonl"
+}
