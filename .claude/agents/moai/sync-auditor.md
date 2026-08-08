@@ -6,7 +6,7 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi
 model: inherit
 effort: medium
 color: red
@@ -147,6 +147,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When assessing the security perspective (Security dimension scoring), invoke Skill("moai-ref-owasp-checklist") to load it on demand.
 - When assessing test-coverage adequacy or test-pyramid balance, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
 - When SPEC workflow or TRUST 5 framework context is needed, invoke Skill("moai-foundation-core") to load it on demand.
+- When the project sets `audit_model: multi` and a cross-backend second opinion is needed before scoring, invoke Skill("moai-ref-cross-model-audit") to load it on demand — it documents the `mcp__moai__audit_multi` convergence tool and the independence rule that keeps the secondary verdicts uncorrelated.
 
 The Skill tool is for read-only reference loading only; auditor independence means never loading a skill that prescribes acceptance.
 
