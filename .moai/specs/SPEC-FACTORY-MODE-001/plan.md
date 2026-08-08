@@ -1,6 +1,6 @@
 # SPEC-FACTORY-MODE-001 — Implementation Plan
 
-Version: 0.4.0 | Tier: L | Status: draft | 26 requirements · 36 acceptance-criterion leaves (over the Tier L ceiling of 25 — declared, see `spec.md` §D)
+Version: 0.5.0 | Tier: L | Status: draft | 26 requirements · 36 acceptance-criterion leaves (over the Tier L ceiling of 25 — declared, see `spec.md` §D)
 
 Milestones below are ordered by **decision-reversibility**: the contract and gate semantics a reviewer is most likely to want changed come first, the data-model decision (the state-record schema) follows, and the mechanical launcher plumbing comes last. Each milestone declares its hard dependencies explicitly — reversibility governs the ordering, but a dependency overrides it where the two conflict (v0.2.0: the state-record schema moved ahead of the dedup gate that reads it).
 
@@ -157,7 +157,7 @@ Baselines measured at authoring time with the widened five-token pattern, for co
 - **No new runtime.** No new hook, evaluator, subcommand, or daemon.
 - **Manual-parser discipline.** `--factory` / `-f` handling obeys the `--` boundary exactly as the three existing parsers do.
 - **Test isolation.** `t.TempDir()` for every fixture; no `t.Setenv` on OTEL variables; the `MOAI_FACTORY` `t.Setenv` tests are non-parallel; launcher tests live beside the code.
-- **Coverage.** 90% for `internal/cli`; 85% for `internal/factory`.
+- **Coverage.** `internal/factory` at 85% or above (absolute floor, already met at 90.9%). `internal/cli` is a **non-regression against its measured pre-SPEC baseline** — floor `76.3%`, the lower of two independent observations (76.4% / 76.3%) at commit `7171880a9` — *plus* 100% per-function coverage on every function this SPEC introduces or extends. The v0.4.0 line read "90% for `internal/cli`", a figure never measured against the package's real starting point and ~13.6pp above it, so it was unsatisfiable from this SPEC's own scope. That is **AP-16** below; see `acceptance.md` AC-FM-025 § Coverage clause for the runnable form, the jitter rationale, and the pre-existing `internal/cli` test failure recorded there.
 - **Gate preservation.** Four human gates fire across a factory chain (Implementation Kickoff Approval, the verify CRITICAL/HIGH decision added by this SPEC, `gate-sync-1`, `gate-sync-2`); no fifth, no bypass.
 - **Fail-closed direction.** Every ambiguity in the verify gate and the dedup predicate resolves toward *run the check*, never toward *skip it*.
 
@@ -165,7 +165,7 @@ Baselines measured at authoring time with the widened five-token pattern, for co
 
 - `go test ./...` exits 0.
 - `golangci-lint run` clean.
-- `go test -cover ./internal/cli/... ./internal/factory/...` meets the targets above.
+- The three-part coverage clause of `acceptance.md` AC-FM-025 holds: `internal/cli` at or above its measured 76.3% baseline floor, `internal/factory` at or above 85%, and each of the seven functions this SPEC introduces or extends at 100.0%.
 - `make build` succeeds and the resulting diff includes the regenerated embedded catalog.
 - Template-neutrality CI guard passes on the mirrored files, including the internal-package-path clause.
 - The clarification-marker sweep below returns no matches. The search token is assembled at runtime from two fragments so that neither this plan nor the acceptance criteria can satisfy their own check — a literal pattern spelled out in prose matches itself, which is a self-trip, not a green:
@@ -249,7 +249,7 @@ grep -rnF "$T" .moai/specs/SPEC-FACTORY-MODE-001/
 - **AP-13 — Expressing the rung exclusion as a deny-list (v0.3.0).** `verify_rung != "DEGRADED"` permits suppression on an absent or empty field, which a best-effort record makes reachable. The exclusion is an allow-list: suppression requires a *recorded* `PRIMARY` or `FALLBACK`. Any predicate whose behavior on a missing field is "suppress" is wrong by construction, in the same way AP-4 is.
 - **AP-14 — Leaking the factory env mutation past the call (v0.3.0).** An `os.Setenv` without a `defer`ed restore turns AC-FM-022a's negative control into a test-order lottery and lets a later spawn inherit factory semantics silently. Restore prior presence, not an empty string, and restore on the error path too.
 - **AP-15 — Presenting the rung as a fourth peer outcome (v0.3.0).** Severity and rung are orthogonal axes; listing them as four alternatives and asserting disjointness produces two binding requirements with no precedence between them, which is how v0.2.0 shipped a requirement that was unsatisfiable exactly where it mattered.
-- **AP-16 — Writing an acceptance criterion whose baseline was never measured (v0.3.0).** An absence grep run against a tree with pre-existing matches (AC-FM-025) and a presence grep whose pattern already matches (AC-FM-007) are the two shapes. Measure in §C pre-flight, assert a delta, and never let "fixing" a criterion mean editing unrelated shipped files.
+- **AP-16 — Writing an acceptance criterion whose baseline was never measured (v0.3.0; third shape added v0.5.0).** Three shapes have now been found in this SPEC: an absence grep run against a tree with pre-existing matches (AC-FM-025's mirror clause), a presence grep whose pattern already matches (AC-FM-007), and — found during run-phase, after M5 landed — **a coverage floor set above the package's actual starting point** (AC-FM-025's coverage conjunct: 90% asserted on a package measured at 76.3-76.4%). Measure in §C pre-flight, assert a delta against the measured value, and never let "fixing" a criterion mean editing unrelated shipped files. The third shape is the one that survives plan-audit most easily, because a coverage number reads as a policy target rather than as a claim about this tree. Corollary learned while correcting it: when a measured baseline is noisy, anchor the delta to the **lowest** observation — a floor set at the highest observation fails on jitter and is unfalsifiable in the opposite direction.
 
 ## §H Resolved decisions
 
