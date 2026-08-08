@@ -1,4 +1,5 @@
 ---
+isolation: worktree
 name: manager-develop
 description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.

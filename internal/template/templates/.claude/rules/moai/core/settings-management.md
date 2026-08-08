@@ -30,9 +30,7 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 
 ### MCP Configuration
 
-MoAI-ADK provisions a small, neutral MCP surface via a template-managed `.mcp.json` (project scope) or `~/.claude.json` (user scope). The distributed default ships exactly three active third-party entries (`context7`, `chrome-devtools`, `playwright`) — every one secret-free, npx-launched, and §25-neutral — plus two documented-but-disabled entries (`ast-grep`, `moai`) activated via `moai mcp add <name> ...`. The single local stdio server (`moai mcp-server`) stays opt-in: `moai init` and `moai web` offer it, and a fresh project ships it inert. The contract is "no third-party entries THAT CARRY SECRETS, require credentials, or fail §25 neutrality" — the prior narrower "no third-party entries" wording is reconciled to permit secret-free neutral third-party surfaces while preserving the load-bearing secret-hygiene invariant (every env value is a `${VAR}` literal expanded by the Claude Code runtime; resolved secrets are NEVER serialized into a git-tracked `.mcp.json`).
-
-The generic `moai mcp add|remove|list` CLI manages third-party entries via the SAME atomic-RMW seam the GLM tools CLI uses (flock + compare-retry + backup-before-publish + idempotent-skip); users NEVER hand-edit `.mcp.json`. Authenticated HTTP servers (z.ai, Semgrep, Sentry) keep their `${VAR}`-literal env-expansion pattern; the GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session (see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table). Users may also configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation.
+MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`. Users may still configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
 > Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5 and 4.8) for deep reasoning.
 
@@ -98,6 +96,7 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 | state.yaml | `state` | `cfg.State` |
 | workflow.yaml | `workflow` | `cfg.Workflow` |
 | statusline.yaml | `statusline` | `cfg.Statusline` |
+| research.yaml | `research` | `cfg.Research` |
 | constitution.yaml | `constitution` | `cfg.Constitution` |
 | context.yaml | `context_search` | `cfg.ContextSearch` |
 | interview.yaml | `interview` | `cfg.Interview` |
@@ -126,7 +125,8 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 **Acknowledged config orphans** (single documented inventory): the following section
 files currently have no doc cross-references and/or no `Loader.Load()` consumer and are
 acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `sunset.yaml`
-(DORMANT by design), `archive.yaml`, `feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
+(DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
+`feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
 `mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
 threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
 is `internal/config/audit_registry.go` + the loader-completeness allowlist.
@@ -205,17 +205,6 @@ Example:
   }
 }
 ```
-
-#### File-tool category matching (no Glob/Grep/Write deny rules)
-
-Claude Code's permission check matches file tools by **category**, not by individual tool name. A single rule covers the whole category:
-
-- A **`Read(...)`** rule matches ALL file-reading tools (Read, Glob, Grep). A `Read` deny rule also blocks the Edit tool on the matching paths.
-- An **`Edit(...)`** rule matches ALL file-editing tools (Edit, Write, MultiEdit).
-
-Because the category is the unit of matching, `Glob(...)`, `Grep(...)`, and `Write(...)` deny/ask/allow rules are **no-ops** — they match nothing. Claude Code emits a "not matched by file permission checks" warning on load when such rules are present. Do NOT emit them from settings generators; a single `Read(...)` or `Edit(...)` rule per secret path is sufficient and is the only effective form.
-
-Reference: https://code.claude.com/docs/en/settings ("Permission rules" + "Permission rule syntax").
 
 ## Quality Configuration
 

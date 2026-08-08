@@ -103,6 +103,10 @@ templ page(view pageView) {
 				// comment, so it is not emitted into the rendered page.)
 				<form class="form" method="POST" action={ templ.SafeURL(saveAction(view.SelectedProfile)) } hx-boost="true">
 					<input type="hidden" name="__profile" value={ view.SelectedProfile }/>
+					// SPEC-AUTONOMY-TIERS-001 M5: /autonomy/tiers toggle link — rendered as a
+					// discrete nav entry so the page references the route (the toggle panel
+					// is fetched on demand by app.js).
+					<a class="autonomy-link" href={ templ.SafeURL("/autonomy/tiers") } data-i18n="autonomy.link">Autonomy</a>
 					// M5-b D1: 탭 nav. 각 탭 label 은 기존 sec.<section>.title i18n 키를
 					// 재사용한다 (0 NEW sec.* keys). 탭은 type="button" 이라 폼을 제출하지
 					// 않는다. 모든 패널이 DOM 에 상주한다 (atomic Save contract).

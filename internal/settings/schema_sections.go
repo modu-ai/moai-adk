@@ -249,21 +249,9 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "tmux_preferred"),
-		// SPEC-WT-DOC-001 (branch-guard config surface): the distributed template
-		// ships without a branch_guard block, so this key is absent until the user
-		// opts in via `moai init --branch-guard` or the reconfigure wizard. The web
-		// console renders it from this FieldDef via schemaform.go; the seam writer
-		// (yamlpatch) upserts the nested mapping on first edit.
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "branch_guard", "enabled"),
-		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
-		// selection surfaced in the web console. These are PersistSeam fields
-		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
-		// 5-level path), reading back through the M3 AuditConfig typed config
-		// (the IDENTICAL interpreter the wizard writes + the MCP handlers read —
-		// no fork). audit_model is the active backend; the three gates are the
-		// per-auditor strictness. Typed as text (the enum is validated at the M3
-		// config-read layer, activeAuditBackend); the wizard offers the validated
-		// select for the primary path.
+		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): audit selection
+		// surfaces in the web console schema (workflow.audit.model + per-auditor
+		// gates), reusing the M3 typed-config yaml paths — no forked interpreter.
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "model"),
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "claude"),
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "gates", "codex"),
@@ -288,16 +276,9 @@ func seamSectionFields() []FieldDef {
 		// 노출은 오해를 유발한다 (spec.md F3).
 		s(SectionHarness, "harness", TypeInt, "learning", "log_retention_days"),
 
-		// ralph — the 23 inert leaves (enabled/ast_grep/loop/lsp/hooks) were
-		// removed from ralph.yaml in SPEC-RALPH-CONFIG-REDESIGN-001 so the file
-		// is an honest 5-key contract. All 5 RalphConfig fields are now
-		// runtime-live (post_tool.go reads LintAsInstruction/WarnAsInstruction;
-		// M2 wires cfg.Ralph into the engine so MaxIterations/AutoConverge/
-		// HumanReview reach Decide() and the loop controller). The web console
-		// intentionally surfaces only the 2 instruction-injection knobs — the
-		// 3 engine-decision knobs are advanced tuning edited via ralph.yaml
-		// directly, not exposed as console-editable rows (a deliberate UX
-		// choice, not an oversight; SPEC §E scopes schema to row deletion).
+		// ralph — M4 다이어트: 런타임 reader가 있는 2개만 잔류
+		// (post_tool.go:431/444, engine.go:239). 나머지 17개(enabled/ast_grep/
+		// loop/lsp)는 문서화 전용이고 Go runtime이 binding하지 않는다.
 		s(SectionRalph, "ralph", TypeBool, "ralph", "lint_as_instruction"),
 		s(SectionRalph, "ralph", TypeBool, "ralph", "warn_as_instruction"),
 

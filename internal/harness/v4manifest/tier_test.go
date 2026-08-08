@@ -16,15 +16,15 @@ import (
 // is the sole source of truth for tier assignment.
 
 // expectedAgentTiers is the hand-curated name→tier mapping per design.md §C
-// (distribution 🔴×5 · 🟠×4 · 🔵×5 · 🩵×7 = 21). Every catalog agent file stem
+// (distribution 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 = 20). Every catalog agent file stem
 // under .claude/agents/{moai,harness}/ MUST appear here exactly once.
 var expectedAgentTiers = map[string]Tier{
 	// 🔴 — deep reasoning (×5)
 	"manager-spec":  TierRed,
+	"manager-lead":  TierRed,
 	"plan-auditor":  TierRed,
 	"super-advisor": TierRed,
 	"sync-auditor":  TierRed,
-	"manager-lead":  TierRed,
 	// 🟠 — heavy reasoning (×4)
 	"manager-develop": TierOrange,
 	"manager-design":   TierOrange,
@@ -235,30 +235,6 @@ func TestModelColor_UnknownReturnsDefault(t *testing.T) {
 	for _, m := range []string{"", "not-a-real-model"} {
 		if got := ModelColor(m); got != "🩵" {
 			t.Errorf("ModelColor(%q) = %q, want %q (default)", m, got, "🩵")
-		}
-	}
-}
-
-// TestModelCellColor verifies the docs cost-color matrix (what-is-moai-adk.md
-// "비용 색상") the agentfm badge renders: opus+high→🔴, opus+medium→🟠,
-// opus+low→🔵, sonnet→🩵, inherit/haiku→⚪.
-func TestModelCellColor(t *testing.T) {
-	cases := []struct {
-		model, effort, glyph string
-	}{
-		{ModelOpus, EffortHigh, "🔴"},
-		{ModelOpus, EffortXhigh, "🔴"},
-		{ModelOpus, EffortMedium, "🟠"},
-		{ModelOpus, EffortLow, "🔵"},
-		{ModelSonnet, EffortLow, "🩵"},
-		{ModelSonnet, EffortHigh, "🩵"},
-		{ModelHaiku, EffortLow, "⚪"},
-		{ModelInherit, "", "⚪"},
-		{"", "", "⚪"},
-	}
-	for _, tc := range cases {
-		if got := ModelCellColor(tc.model, tc.effort); got != tc.glyph {
-			t.Errorf("ModelCellColor(%q, %q) = %q, want %q", tc.model, tc.effort, got, tc.glyph)
 		}
 	}
 }

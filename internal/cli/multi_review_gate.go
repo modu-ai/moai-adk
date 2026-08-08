@@ -28,7 +28,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
@@ -120,73 +119,4 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 		return ConvergenceResult{}, false
 	}
 	return r, true
-}
-
-// resolveMultiReviewGateSessionID resolves the session id the Stop gate keys
-// its state-file read on. Preference order: (1) the session_id field Claude
-// Code passes in the Stop stdin payload, (2) the SessionStart-hook side-channel
-// file (.moai/state/current-session-id.txt). Returns "" when neither resolves —
-// the gate fail-OPENs (loadConvergenceResult returns ok=false on empty id).
-func resolveMultiReviewGateSessionID(input *hook.HookInput) string {
-	if input != nil && strings.TrimSpace(input.SessionID) != "" {
-		return input.SessionID
-	}
-	if path, ok := sessionSidechannelIDPath(); ok {
-		if b, err := os.ReadFile(path); err == nil {
-			if id := strings.TrimSpace(string(b)); id != "" {
-				return id
-			}
-		}
-	}
-	return ""
-}
-
-// sessionSidechannelIDPath resolves the SessionStart-hook side-channel path
-// (.moai/state/current-session-id.txt) under the project root. Returns ok=false
-// when the project dir cannot be resolved (the caller fail-OPENs).
-func sessionSidechannelIDPath() (string, bool) {
-	projectDir := resolveProjectDir()
-	if projectDir == "" {
-		return "", false
-	}
-	return filepath.Join(projectDir, ".moai", "state", "current-session-id.txt"), true
-}
-
-// readMultiReviewGateEnabled reads workflow.multi.review_gate.enabled from
-// `.moai/config/sections/workflow.yaml`. The path mirrors the codex-review-gate
-// precedent (workflow.codex.review_gate.enabled) — the `multi_review_gate`
-// block is a sibling under `workflow:` reusing the SAME structural pattern
-// (AC-AMM-025 — no new schema shape). Truth table (fail-CLOSED — the opt-in
-// default is OFF, matching the codex-review-gate + BranchGuard precedents):
-//
-//   - file missing / unreadable               → false (default disabled)
-//   - YAML parse error                        → false (default disabled)
-//   - `multi.review_gate` block absent        → false (Go zero-value default)
-//   - `multi.review_gate.enabled: false`      → false
-//   - `multi.review_gate.enabled: true`       → true
-//
-// The distributed default is false (AC-AMM-018 opt-in, BranchGuard pattern). A
-// maintainer opts in via local config; the template NEVER carries
-// `enabled: true` (§25 template-neutrality — same discipline as codex +
-// branch_guard + session_worktree).
-func readMultiReviewGateEnabled(projectDir string) bool {
-	if projectDir == "" {
-		return false
-	}
-	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false
-	}
-	var doc struct {
-		Multi struct {
-			ReviewGate struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"review_gate"`
-		} `yaml:"multi"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return false
-	}
-	return doc.Multi.ReviewGate.Enabled
 }

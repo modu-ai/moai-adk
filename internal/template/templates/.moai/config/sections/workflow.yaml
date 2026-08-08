@@ -4,14 +4,6 @@ workflow:
     # Precedence: CLI --mode flag > this field > harness auto.
     # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
     default_mode: ""
-    # context_folding: manager-lead's per-milestone Context-Folding trigger
-    # policy. The fold procedure itself reuses existing primitives (/compact +
-    # .moai/state/verify/ redirect + progress.md §E.2 fold row); this flag
-    # governs WHEN manager-lead fires it. Values: auto | opt-in | off. `auto`
-    # fires at every Tier L milestone boundary; `opt-in` (default) requires
-    # manager-lead to decide per milestone; `off` disables folding entirely
-    # (Tier L runs fall back to /clear + handoff).
-    context_folding: opt-in
     # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
     # internal/config AgenticLoopConfig (types.go) with default from
     # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the

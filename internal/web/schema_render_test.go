@@ -65,9 +65,9 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 	// SPEC-WEBCONF-SIMPLIFY-001 M3: skip fields belonging to removed sections
 	// (their tabs/fieldsets are removed; fields are schema-preserved but
 	// web-not-rendered — config keys persist in baked template YAML, REQ-WC-003).
-	// workflow restored to RouteSeam in Issue 3 — its fields ARE rendered.
 	m3RemovedSections := map[settings.SectionID]bool{
 		settings.SectionQualityExtras: true,
+		settings.SectionWorkflow:      true,
 		settings.SectionHarness:       true,
 		settings.SectionRalph:         true,
 		settings.SectionFeedback:      true,

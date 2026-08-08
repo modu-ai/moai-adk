@@ -55,10 +55,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// optional-pack:frontend), net +1 = 42.
 	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
-	// SPEC-HIERARCHICAL-TEAM-001 (2026-08-07): manager-lead agent added (core.agents,
-	// hierarchical-team coordination specialist, sole Agent-carrier), net +1 = 42.
-	// moai-ref-cross-model-audit added (cross-model audit convergence reference,
-	// core.skills), net +1 = 43.
+	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-lead agent
+	// (core.agents, hierarchical-team coordinator) + moai-ref-cross-model-audit
+	// skill (optional-pack:devops), net +2 = 43.
 	const wantTotal = 43
 	all := cat.AllEntries()
 	if len(all) != wantTotal {

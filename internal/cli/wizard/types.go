@@ -50,30 +50,25 @@ type WizardResult struct {
 	DesignEnabled             bool   // design.enabled: true (fixed default, no longer asked)
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (fixed default, no longer asked)
 
-	// SPEC-AUTONOMY-TIERS-001 (REQ-001 / AC-001): autonomy-tier selection from
-	// the interactive wizard page. semi-auto is the pre-selected default
-	// (REQ-006). The effective tier is resolved at apply time (init.go) through
-	// config.EffectiveTierWithGates so the sandbox-proof + kill-switch gating is
-	// not duplicated here.
-	AutonomyTier string
-	// WorktreeAutoCreate — workflow.worktree.auto_create (Issue 3). Asked on
-	// page 3 ("Quality & Workflow"). Default false matches the config default
-	// (internal/config/defaults.go AutoCreate: false). When true, `moai init`
-	// patches workflow.yaml so the orchestrator auto-creates an L1 worktree.
-	WorktreeAutoCreate bool // workflow.worktree.auto_create: false (asked, default false)
+	// Worktree advisory (SPEC-CLI-WORKTREE-ADVISORY-001). Wizard-collected;
+	// seeded false when the question is skipped (--non-interactive).
+	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
-	// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — the audit + MCP
-	// opt-in selection on page 3 ("Audit & MCP"). These reuse the M3 typed
-	// config vocabulary (internal/config AuditModel* / AuditGate* constants) so
-	// the wizard and the audit backend share ONE interpreter — no fork. Defaults
-	// match the locked M3 profile (§G.3): claude + codex required, glm advisory;
-	// the two opt-in flags ship false (C6 — opt-in default-off).
-	AuditModel        string // workflow.audit.model: claude|codex|glm|multi (default claude)
-	AuditGateClaude   string // workflow.audit.gates.claude: off|advisory|required (default required)
-	AuditGateCodex    string // workflow.audit.gates.codex: off|advisory|required (default required)
-	AuditGateGLM      string // workflow.audit.gates.glm: off|advisory|required (default required at the prompt; glm advisory applied at the config-default layer)
-	CodexAuditEnabled bool   // workflow.codex.review_gate.enabled master toggle (default false — opt-in)
-	MCPToolsOptIn     bool   // provisions the .mcp.json moai entry (default false — opt-in, C6)
+	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
+	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
+	// not collect a selection (--non-interactive → downstream resolves semi-auto).
+	AutonomyTier string // workflow.autonomy_tier
+
+	// M4 audit + MCP opt-in selection (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 /
+	// AC-MCP-020). Reuses the M3 typed-config vocabulary (config.AuditModel* /
+	// AuditGate*). Empty strings mean "wizard did not run"; the init writer
+	// treats the whole block as opt-in via AuditConfigSet.
+	AuditModel        string // audit.model: claude|codex|glm|multi
+	AuditGateClaude   string // audit.gates.claude: off|advisory|required
+	AuditGateCodex    string // audit.gates.codex: off|advisory|required
+	AuditGateGLM      string // audit.gates.glm: off|advisory|required
+	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
+	MCPToolsOptIn     bool   // mcp tools opt-in (provisioning gate)
 }
 
 // QuestionType represents the type of wizard question.

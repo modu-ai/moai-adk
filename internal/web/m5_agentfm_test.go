@@ -17,32 +17,30 @@ import (
 // agent's effort file). M1 supplied TierForAgent/TierColor/TierSuggestedModelEffort;
 // M5 wires them into the agentFMRow render.
 
-// TestM5AgentTierBadgeModelGlyphMap verifies the badge renders the docs
-// cost-color matrix (what-is-moai-adk.md "비용 색상") for the agent's (model,
-// effort) cell: opus+high→🔴, opus+medium→🟠, opus+low→🔵, sonnet→🩵,
-// inherit/haiku→⚪. Every non-max cell yields a non-custom badge.
+// TestM5AgentTierBadgeModelGlyphMap verifies the badge is model-derived: each
+// model tier maps to its glyph (opus → 🔴, sonnet → 🟠, haiku → 🔵, inherit → 🩵)
+// and every model yields a non-custom badge.
 func TestM5AgentTierBadgeModelGlyphMap(t *testing.T) {
 	cases := []struct {
-		model, effort, glyph string
+		model string
+		glyph string
 	}{
-		{v4manifest.ModelOpus, v4manifest.EffortHigh, "🔴"},
-		{v4manifest.ModelOpus, v4manifest.EffortMedium, "🟠"},
-		{v4manifest.ModelOpus, v4manifest.EffortLow, "🔵"},
-		{v4manifest.ModelSonnet, v4manifest.EffortLow, "🩵"},
-		{v4manifest.ModelInherit, "", "⚪"},
-		{v4manifest.ModelHaiku, v4manifest.EffortLow, "⚪"},
+		{v4manifest.ModelOpus, "🔴"},
+		{v4manifest.ModelSonnet, "🟠"},
+		{v4manifest.ModelHaiku, "🔵"},
+		{v4manifest.ModelInherit, "🩵"},
 	}
 	for _, tc := range cases {
-		b := agentTierBadge("any-agent", tc.model, tc.effort)
+		b := agentTierBadge("any-agent", tc.model, "")
 		if !b.HasBadge {
-			t.Errorf("model=%s effort=%s: expected a badge, got none", tc.model, tc.effort)
+			t.Errorf("model=%s: expected a badge, got none", tc.model)
 			continue
 		}
 		if b.IsCustom {
-			t.Errorf("model=%s effort=%s: unexpected custom badge (no max effort set)", tc.model, tc.effort)
+			t.Errorf("model=%s: unexpected custom badge (no max effort set)", tc.model)
 		}
 		if b.Glyph != tc.glyph {
-			t.Errorf("model=%s effort=%s: glyph = %q, want %q", tc.model, tc.effort, b.Glyph, tc.glyph)
+			t.Errorf("model=%s: glyph = %q, want %q", tc.model, b.Glyph, tc.glyph)
 		}
 	}
 }

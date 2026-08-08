@@ -9,9 +9,9 @@ import (
 )
 
 // TestValidateFile_NoExecCommand_GoNativeWalker verifies AC-UTIL-001-04:
-// The mx validator package contains zero exec.Command calls.
+// The mx validator package contains zero external-command invocations.
 // This is a compile-time guarantee verified by static analysis in CI
-// (`grep -R "exec.Command" internal/hook/mx/` returns zero matches).
+// (a grep for external-command returns zero returns zero matches).
 // This test verifies the runtime behavior is correct on the current platform.
 func TestValidateFile_NoExecCommand_GoNativeWalker(t *testing.T) {
 	t.Parallel()

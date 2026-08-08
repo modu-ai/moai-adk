@@ -213,13 +213,6 @@ func init() {
 	// registering the subcommand does NOT provision any entry.
 	rootCmd.AddCommand(newMCPServerCmd())
 
-	// SPEC-TREND-MCP-001 M2: register the generic `moai mcp add|remove|list`
-	// subcommand — a thin wrapper over mutateClaudeJSONAtomic (the SAME atomic-
-	// RMW seam glm_tools.go owns). Manages third-party entries in the project
-	// .mcp.json or the user ~/.claude.json; rejects resolved secrets. The
-	// subagent-boundary static guard TestMCP_NoAskUserQuestion enforces C-HRA-008.
-	rootCmd.AddCommand(newMCPCmd())
-
 	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
 	// read-only unified view composing sessions / worktrees / harnesses.
 	rootCmd.AddCommand(newInventoryCmd())

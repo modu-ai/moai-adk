@@ -36,9 +36,6 @@ func consoleTabs() []consoleTab {
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
-		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
-		// Original ordering placed it after llm (pre-cca120c70).
-		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
@@ -60,9 +57,6 @@ type schemaSectionMeta struct {
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
 		{settings.SectionLLM, "rocket", "3rd Party LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
-		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
-		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.
-		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, token budget, and worktree settings."},
 		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
 	}
 }

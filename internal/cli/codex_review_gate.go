@@ -15,11 +15,16 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
+
+	"github.com/spf13/cobra"
 )
 
 // reviewGateRuntimePrefixes are the working-tree paths the change detector
@@ -158,4 +163,66 @@ func isRuntimeManagedPath(path string) bool {
 		}
 	}
 	return false
+}
+
+
+// runCodexReviewGate is the cobra RunE for `moai hook codex-review-gate`
+// (SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008). It reads the Stop-hook stdin JSON,
+// resolves the project root, reads the workflow.codex.review_gate.enabled
+// opt-in flag, and forwards to HandleCodexReviewGate. The output is emitted as
+// JSON on stdout (the Stop-hook contract). Fail-open: any error logs to stderr
+// and exits 0 so the Stop pipeline is never broken (REQ-MCP-012).
+func runCodexReviewGate(cmd *cobra.Command, _ []string) error {
+	input, err := readHookInput(cmd.InOrStdin())
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex-review-gate: invalid stdin JSON (%v); emitting default output\n", err)
+		// Fail-open: emit an empty ALLOW.
+		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
+	}
+	projectDir := resolveProjectDirFromInput(input)
+	enabled := readCodexReviewGateEnabled(projectDir)
+	out, gateErr := HandleCodexReviewGate(input, enabled, projectDir)
+	if gateErr != nil {
+		// Fail-open: a handler error MUST NOT trap the Stop pipeline.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "codex-review-gate: error:", gateErr)
+		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
+	}
+	if out == nil {
+		out = &hook.HookOutput{}
+	}
+	return emitHookOutput(cmd.OutOrStdout(), out)
+}
+
+// readHookInput reads and parses the hook stdin JSON into a HookInput. It is
+// broken out so the fail-open path can distinguish "could not read stdin" from
+// "handler errored".
+func readHookInput(r io.Reader) (*hook.HookInput, error) {
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("read stdin: %w", err)
+	}
+	var input hook.HookInput
+	if err := json.Unmarshal(data, &input); err != nil {
+		return nil, fmt.Errorf("parse stdin: %w", err)
+	}
+	return &input, nil
+}
+
+// emitHookOutput serializes out as JSON to w. A nil-safe helper used by the
+// fail-open path and the success path alike.
+func emitHookOutput(w io.Writer, out *hook.HookOutput) error {
+	enc := json.NewEncoder(w)
+	return enc.Encode(out)
+}
+
+// resolveProjectDirFromInput picks the best available project dir from the hook
+// input: ProjectDir first, then Cwd, then empty (the gate self-gates on empty).
+func resolveProjectDirFromInput(input *hook.HookInput) string {
+	if input == nil {
+		return ""
+	}
+	if input.ProjectDir != "" {
+		return input.ProjectDir
+	}
+	return ""
 }

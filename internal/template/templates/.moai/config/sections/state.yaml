@@ -1,6 +1,5 @@
 # State Configuration
-# State directory path is the hardcoded literal ".moai/state/" (de-facto SSOT —
-# internal/cli/state.go, internal/worktree/state_guard.go); the state_dir YAML
-# key had no runtime consumer and was removed.
+# Session state directory for Claude Code sessions (diagnostics baseline, coverage, etc.)
 
-state: {}
+state:
+  state_dir: ".moai/state"

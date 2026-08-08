@@ -224,30 +224,20 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 		mcp.WithOutputSchema[ReviewOutput](),
 	), handleGLMAudit)
 
-	// --- SPEC-AUDIT-MULTI-MODEL-001 M3 multi-convergence tool surface (§3 M3) ---
-
-	// audit_multi → runMultiAudit parallel fan-out + convergence (REQ-AMM-009 /
-	// AC-AMM-012 / AC-AMM-013). A THIN WRAPPER over the convergence engine: it
-	// maps the tool params (claude_verdict, target, focus, gates) onto the
-	// engine's MultiAuditConfig and returns the ConvergenceResult (overall_verdict,
-	// disagreement_flag, residual_risk_note, per_backend_verdicts). The engine
-	// reuses the existing codex/glm handlers — NO backend re-implementation
-	// (AC-AMM-013). Super-review independence (REQ-AMM-003 / C4) holds: the
-	// claude_verdict is consumed ONLY by the synthesis step, structurally
-	// excluded from the secondary backends by the backendCaller signature.
-	// Fail-open identity (C2): a missing/unauthenticated optional backend
-	// returns VerdictInconclusive and convergence continues — NEVER a hard error.
+	// audit_multi → SPEC-AUDIT-MULTI-MODEL-001 multi-auditor convergence
+	// (REQ-AMM-009 / REQ-AMM-010 / AC-AMM-012 / AC-AMM-013). Thin wrapper over
+	// runMultiAudit (mcp_convergence.go) — does NOT re-implement the
+	// codex/glm backends (C1). The claude_verdict argument is the always-available
+	// anchor; gates is an optional per-auditor override (defaults: claude+codex
+	// required, glm advisory).
 	s.AddTool(mcp.NewTool(
 		auditMultiToolName,
-		mcp.WithDescription("Run a cross-model multi-audit convergence: the in-session claude verdict is the always-available anchor; codex + glm backends are fanned out in parallel per their audit_gate (off=skip, advisory=surfaced, required=block on FAIL). The claude analysis is NEVER shared with the secondary backends — only the verdict token is consumed by the synthesis step (super-review independence). Returns a ConvergenceResult: overall_verdict (pass|fail), disagreement_flag, residual_risk_note, per_backend_verdicts, fail_open_backends. The codex/GLM backends are OPTIONAL; a missing or unauthenticated backend yields verdict 'inconclusive' (fail-open → claude anchor)."),
-		mcp.WithObject("claude_verdict", mcp.Description("The in-session claude review verdict (the always-available anchor). Object shape: {verdict, summary, findings, next_steps} — the same review-output.schema.json the single-backend tools return. The full claude analysis is consumed ONLY by the synthesis step; it is NEVER passed to the codex/glm backends (super-review independence).")),
-		mcp.WithString("target", mcp.Description("What the secondary backends review (e.g. 'uncommittedChanges', 'baseBranch'). Passed through to the codex/glm handlers unchanged.")),
-		mcp.WithString("focus", mcp.Description("Optional focus area forwarded to the secondary backends (e.g. 'concurrency', 'auth').")),
-		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT when omitted). Reserved for symmetry with codex_audit/glm_audit; the secondary backends handle their own resolution.")),
-		mcp.WithString("effort", mcp.Description("Optional effort override (resolved via the model/effort SSOT when omitted). Reserved for symmetry; see model.")),
-		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate map (claude/codex/glm ∈ off|advisory|required). When omitted or partial, distributed defaults apply: claude required, codex required, glm advisory.")),
-		mcp.WithString("session_id", mcp.Description("Optional session id. When set, the ConvergenceResult is persisted to .moai/state/audit-multi/<session>.json so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence.")),
-		mcp.WithOutputSchema[ConvergenceResult](),
+		mcp.WithDescription("Run the multi-auditor convergence engine over a claude_verdict anchor + optional codex/glm backend verdicts. Returns a ConvergenceResult (overall verdict + per-auditor verdicts + residual_risk_note). Backend fan-out reuses the existing codex/glm handlers — no re-implementation."),
+		mcp.WithObject("claude_verdict", mcp.Description("The always-available claude anchor verdict (review-output schema: verdict/summary/findings/next_steps).")),
+		mcp.WithString("target", mcp.Description("Optional review target (file path, diff ref, or scope label).")),
+		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
+		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
+		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
 	), handleAuditMulti)
 }
 
