@@ -1,6 +1,6 @@
 # SPEC-FACTORY-MODE-001 — Acceptance Criteria
 
-Version: 0.6.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
+Version: 0.7.0 | Tier: L | **36 acceptance-criterion leaves** — declared over the Tier L ceiling of 25, per `spec.md` §D Budget exception
 
 > **Count declaration.** A "leaf" is one independently-asserted binary criterion: `AC-FM-020a` and `AC-FM-020b` are two leaves, not one. Counting parent IDs alone yields 26, which is the number v0.2.0 reported (as "25") and is not what a reviewer must actually evaluate. The honest leaf count is 36. It is declared, not adjusted — see `spec.md` §D for why the excess is verification depth on one security-critical chain rather than scope creep, and why the SPEC was not split to fit.
 
@@ -23,11 +23,20 @@ The complete set of workflow files this SPEC edits. Absence criteria are bounded
 ```
 .claude/skills/moai/workflows/moai.md
 .claude/skills/moai/workflows/run.md
+.claude/skills/moai/workflows/run/mode-orchestration.md       (sub-skill — added v0.7.0; see § Verify-gate relocation)
 .claude/skills/moai/workflows/review.md
 .claude/skills/moai/workflows/factory.md                      (new file)
 .claude/skills/moai/workflows/sync/quality-gates-quality.md
 .claude/rules/moai/workflow/goal-directive.md                 (rule file — added v0.3.0 per REQ-FM-028)
 ```
+
+### A.2.1 Verify-gate relocation (v0.7.0) — why the paths below changed
+
+M1 authored the `## Verify Exit Gate (factory contract)` block inline in `.claude/skills/moai/workflows/run.md`. That file is an **entry router** held to a 200-LOC ceiling by `internal/skills/workflow_split_test.go` `TestEntryRouterLOCCeiling`, and its pre-SPEC baseline was **exactly 200** — zero headroom. The block was therefore relocated into the existing sub-skill `.claude/skills/moai/workflows/run/mode-orchestration.md` (156 LOC, sub-skill ceiling 600), which already owned run-phase orchestration prose. `run.md` returned to exactly 200 LOC and to its pre-SPEC gate-token count of 33; discoverability was preserved by extending the description cell of the **existing** correct row in `run.md`'s Phase Routing Table in place — a fifth row could not be added at 200/200, and a new dedicated file would have required one.
+
+**The content was not dropped; its address changed.** Every criterion below that previously named `run.md` for verify-gate content now names `run/mode-orchestration.md`. The literal patterns, expected counts, positive controls, negative controls, and falsification directions are **byte-identical to their pre-relocation form** — only the file path is substituted. `run.md` remains in the §A.2 set because it is still edited (the routing-cell change) and its gate-token count is still asserted by AC-FM-012.
+
+The underlying authoring defect — a requirement whose feasibility against an existing mechanical guard was never measured — is recorded as the fifth shape of **AP-16** in `plan.md` §G.
 
 Shell variables used by several criteria below. `MIRRORS` names the template counterpart of each entry, which is the scope AC-FM-025 is bounded to.
 
@@ -37,6 +46,7 @@ Shell variables used by several criteria below. `MIRRORS` names the template cou
 DOCS=(
   .claude/skills/moai/workflows/moai.md
   .claude/skills/moai/workflows/run.md
+  .claude/skills/moai/workflows/run/mode-orchestration.md
   .claude/skills/moai/workflows/review.md
   .claude/skills/moai/workflows/factory.md
   .claude/skills/moai/workflows/sync/quality-gates-quality.md
@@ -84,38 +94,38 @@ grep -c 'gate-sync-1' .claude/skills/moai/workflows/moai.md                     
 
 Judgement: the first count rises from 0 to at least 1 (the extension relationship is stated, not merely implied). The second count rises from its **measured pre-change baseline of 1** to at least 2 — the pre-existing `gate-sync-1` mention is not the factory clause, so a bare `>= 1` assertion would have passed before any edit was made. A delta of at least 1 proves the factory clause itself names the inherited gate. Record the pre-change count in the §C pre-flight before M1 edits the file; if the measured baseline differs from 1 at implementation time, the post-change threshold is `baseline + 1`, not the literal 2.
 
-**AC-FM-008** — Given the edited `run.md`, When the verify gate section is read, Then the exact invocation string appears verbatim and is positioned at run-phase exit:
+**AC-FM-008** — Given the edited `run/mode-orchestration.md`, When the verify gate section is read, Then the exact invocation string appears verbatim and is positioned at run-phase exit:
 
 ```bash
-grep -c -- '/moai review --security --deep --repo' .claude/skills/moai/workflows/run.md   # >= 1
-grep -c 'exit gate of run-phase' .claude/skills/moai/workflows/run.md                     # >= 1
+grep -c -- '/moai review --security --deep --repo' .claude/skills/moai/workflows/run/mode-orchestration.md   # >= 1
+grep -c 'exit gate of run-phase' .claude/skills/moai/workflows/run/mode-orchestration.md                     # >= 1
 ```
 
-Both counts at least 1. Positive control: the pre-change `run.md` returns 0 for both.
+Both counts at least 1. Positive control: the pre-change `run/mode-orchestration.md` returns 0 for both.
 
-**AC-FM-009** — Given the edited `run.md`, When the CRITICAL/HIGH branch is read, Then the re-entry rule and the non-proceed rule are both stated as literals:
+**AC-FM-009** — Given the edited `run/mode-orchestration.md`, When the CRITICAL/HIGH branch is read, Then the re-entry rule and the non-proceed rule are both stated as literals:
 
 ```bash
-grep -c 're-enter run-phase scoped to the changed surface' .claude/skills/moai/workflows/run.md   # >= 1
-grep -c 'shall not proceed to sync' .claude/skills/moai/workflows/run.md                          # >= 1
+grep -c 're-enter run-phase scoped to the changed surface' .claude/skills/moai/workflows/run/mode-orchestration.md   # >= 1
+grep -c 'shall not proceed to sync' .claude/skills/moai/workflows/run/mode-orchestration.md                          # >= 1
 ```
 
 Positive control: a variant of the section that only says "re-enter run" without the non-proceed clause fails the second grep — the two clauses are independently required because the audit found the first without the second is compatible with proceeding anyway.
 
-**AC-FM-010** — Given the edited `run.md`, When the re-entry ceiling is read, Then:
+**AC-FM-010** — Given the edited `run/mode-orchestration.md`, When the re-entry ceiling is read, Then:
 
 ```bash
-grep -c 'at most two verify re-entries' .claude/skills/moai/workflows/run.md    # >= 1
-grep -c 'Baseline-attribution' .claude/skills/moai/workflows/run.md            # >= 1
+grep -c 'at most two verify re-entries' .claude/skills/moai/workflows/run/mode-orchestration.md    # >= 1
+grep -c 'Baseline-attribution' .claude/skills/moai/workflows/run/mode-orchestration.md            # >= 1
 ```
 
 The second pattern is the discriminating token of the 5-section verdict — a halt clause that omits the verdict format fails it.
 
-**AC-FM-011** — Given the edited `run.md`, When the MEDIUM/LOW branch is read, Then:
+**AC-FM-011** — Given the edited `run/mode-orchestration.md`, When the MEDIUM/LOW branch is read, Then:
 
 ```bash
-grep -c 'inherited sync-phase evidence' .claude/skills/moai/workflows/run.md        # >= 1
-grep -c 'readable result' .claude/skills/moai/workflows/run.md                       # >= 1
+grep -c 'inherited sync-phase evidence' .claude/skills/moai/workflows/run/mode-orchestration.md        # >= 1
+grep -c 'readable result' .claude/skills/moai/workflows/run/mode-orchestration.md                       # >= 1
 ```
 
 The second pattern proves the branch is guarded on readability, so a no-result verify cannot fall into it (the D3 defect).
@@ -141,24 +151,25 @@ Baselines **re-measured at v0.4.0 against the widened pattern** (command above, 
 | File | Baseline (5-token) | Planned `N` | Planned `A` | Expected post-change |
 |---|---:|---:|---:|---:|
 | `moai.md` | 23 | 2 (`gate-sync-1` + `gate-sync-2`, named inside the factory clause) | 0 | 25 |
-| `run.md` | 33 | 1 (`Implementation Kickoff Approval`, in the verify-gate ordering sentence) | 0 | 34 |
+| `run.md` | 33 | 0 (v0.7.0 — the verify-gate block, and with it the `Implementation Kickoff Approval` mention, relocated out of this file per §A.2.1; the routing-cell edit adds no gate token) | 0 | 33 |
+| `run/mode-orchestration.md` | 1 (measured pre-relocation at `7171880a9`: one `AskUserQuestion` in the Error Flow scenario) | 1 (`Implementation Kickoff Approval`, in the verify-gate ordering sentence — the token that arrived with the relocated block) | 0 | 2 |
 | `review.md` | 3 | 0 (the REQ-FM-019 correction adds no gate token) | 0 | 3 |
 | `factory.md` | 0 (file absent) | 4 (`Implementation Kickoff Approval` ×1 in the arming rule, `gate-sync-1` ×1 and `gate-sync-2` ×1 in the inherited-gate list, `HUMAN GATE` ×1 labelling the verify decision) | 1 (the verify decision stated as an orchestrator-issued `AskUserQuestion` round) | 5 |
 | `sync/quality-gates-quality.md` | 2 | 0 (the dedup gate is a suppression condition, not a human gate) | 0 | 2 |
 | `goal-directive.md` | 18 | 0 (the REQ-FM-028 amendment adds no gate token) | 0 | 18 |
 
-For reference, the same files under the v0.3.0 four-token pattern measure 12 / 23 / 0 / absent / 0 / 12 — re-measured at v0.4.0 and unchanged, so the widened figures differ only by the `AskUserQuestion` occurrences. Where the authored text at implementation time carries a different number of `AskUserQuestion` mentions than the planned `A`, re-derive `A` in the pre-flight and record it before editing; an unrecorded `A` is the same evidence-destroying mistake as an unmeasured baseline.
+For reference, the same files under the v0.3.0 four-token pattern measure 12 (`moai.md`) / 23 (`run.md`) / 0 (`run/mode-orchestration.md`, added to the set at v0.7.0) / 0 (`review.md`) / absent (`factory.md`) / 0 (`sync/quality-gates-quality.md`) / 12 (`goal-directive.md`) — re-measured at v0.4.0 and unchanged, so the widened figures differ only by the `AskUserQuestion` occurrences. Where the authored text at implementation time carries a different number of `AskUserQuestion` mentions than the planned `A`, re-derive `A` in the pre-flight and record it before editing; an unrecorded `A` is the same evidence-destroying mistake as an unmeasured baseline.
 
 Judgement, all three required: (a) every file's post-change count equals its recorded baseline plus its planned `N` + `A`; (b) every token contributing to a non-zero `N` or `A` is one of the four gates REQ-FM-012 enumerates — Implementation Kickoff Approval, the verify CRITICAL/HIGH decision, `gate-sync-1`, `gate-sync-2` — verified by reading the `grep -n` context of the new lines only, a bounded set of at most 8 lines rather than ~47 fragments; (c) no file's count exceeds `baseline + N + A`.
 
-**Escape valve on (c).** A per-file excess is a FAIL **unless** the `grep -n` context of every excess line shows it referencing an already-enumerated gate — for example a second, benign mention of `Implementation Kickoff Approval` in `run.md`'s verify-gate ordering prose, or an `AskUserQuestion` token in a sentence describing one of the four gates already counted. The v0.3.0 form hard-FAILed on any excess "whether or not the excess token names a gate a human would recognize as new", which meant a single harmless cross-reference failed the sole criterion for the most safety-relevant requirement here. The valve is narrow by construction: it admits only excess lines that name an **already-enumerated** gate, so an excess naming any new gate — or any excess whose context is ambiguous — remains a FAIL. The context read is bounded to the excess lines themselves.
+**Escape valve on (c).** A per-file excess is a FAIL **unless** the `grep -n` context of every excess line shows it referencing an already-enumerated gate — for example a second, benign mention of `Implementation Kickoff Approval` in `run/mode-orchestration.md`'s verify-gate ordering prose, or an `AskUserQuestion` token in a sentence describing one of the four gates already counted. The v0.3.0 form hard-FAILed on any excess "whether or not the excess token names a gate a human would recognize as new", which meant a single harmless cross-reference failed the sole criterion for the most safety-relevant requirement here. The valve is narrow by construction: it admits only excess lines that name an **already-enumerated** gate, so an excess naming any new gate — or any excess whose context is ambiguous — remains a FAIL. The context read is bounded to the excess lines themselves.
 
-Positive control: the pre-flight baselines are non-zero for five of the six files, proving the pattern fires and the delta is measured against a real, non-empty starting point.
+Positive control: the pre-flight baselines are non-zero for six of the seven files, proving the pattern fires and the delta is measured against a real, non-empty starting point.
 
-**AC-FM-013** — Given the edited `run.md` and `factory.md`, When the DEGRADED handling is read, Then:
+**AC-FM-013** — Given the edited `run/mode-orchestration.md` and `factory.md`, When the DEGRADED handling is read, Then:
 
 ```bash
-grep -c 'DEGRADED' .claude/skills/moai/workflows/run.md                     # >= 1
+grep -c 'DEGRADED' .claude/skills/moai/workflows/run/mode-orchestration.md  # >= 1
 grep -c 'verify_rung' .claude/skills/moai/workflows/factory.md              # >= 1
 ```
 
@@ -286,21 +297,21 @@ grep -c 'EnvMoaiFactorySpec = "MOAI_FACTORY_SPEC"' internal/config/envkeys.go # 
 
 **AC-FM-024** — The verify-gate fail-closed path. Both sub-criteria must PASS.
 
-- **AC-FM-024a (no-result HALTs)** — Given the edited `run.md` and `factory.md`, When the no-result branch is read, Then it halts rather than proceeding:
+- **AC-FM-024a (no-result HALTs)** — Given the edited `run/mode-orchestration.md` and `factory.md`, When the no-result branch is read, Then it halts rather than proceeding:
 
 ```bash
-grep -c 'no readable result' .claude/skills/moai/workflows/run.md   # >= 1
-grep -c 'HALT' .claude/skills/moai/workflows/run.md                 # >= 1
+grep -c 'no readable result' .claude/skills/moai/workflows/run/mode-orchestration.md   # >= 1
+grep -c 'HALT' .claude/skills/moai/workflows/run/mode-orchestration.md                 # >= 1
 ```
 
-  and the matching prose states the attempt does not count against the two-re-entry ceiling. Negative control (falsification of the D3 defect): `grep -c 'no confirmed findings' .claude/skills/moai/workflows/run.md` returns matches ONLY on lines that also carry the word `readable` — an unguarded "no confirmed findings → proceed to sync" line is a FAIL.
+  and the matching prose states the attempt does not count against the two-re-entry ceiling. Negative control (falsification of the D3 defect): `grep -c 'no confirmed findings' .claude/skills/moai/workflows/run/mode-orchestration.md` returns matches ONLY on lines that also carry the word `readable` — an unguarded "no confirmed findings → proceed to sync" line is a FAIL.
 
-- **AC-FM-024b (3-case severity partition × orthogonal rung attribute, with stated precedence)** — Given the edited `run.md`, When the verify-outcome structure is read, Then it presents a **three-case severity partition** and a **separate rung attribute**, and states the precedence between them.
+- **AC-FM-024b (3-case severity partition × orthogonal rung attribute, with stated precedence)** — Given the edited `run/mode-orchestration.md`, When the verify-outcome structure is read, Then it presents a **three-case severity partition** and a **separate rung attribute**, and states the precedence between them.
 
   The v0.2.0 form greped for the literal word `disjoint` and eyeballed four labels — a check a *false* disjointness claim satisfies perfectly, which is exactly what v0.2.0 asserted. The word is no longer evidence and is no longer the judgement. Three independent assertions replace it:
 
 ```bash
-R=.claude/skills/moai/workflows/run.md
+R=.claude/skills/moai/workflows/run/mode-orchestration.md
 # (1) the severity axis names exactly three cases, and readability separates the third
 grep -c 'no readable result' "$R"       # >= 1
 grep -c 'readable result' "$R"          # >= 2  (the S2 guard and the S3 case)
