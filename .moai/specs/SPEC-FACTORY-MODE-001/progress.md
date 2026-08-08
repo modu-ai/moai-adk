@@ -243,6 +243,128 @@ AC-FM-022b judgement by reading: the preset section opens by naming the `stop-go
 - The condition's convergence rests on the orchestrator actually surfacing each named line — the audit verdict, the per-criterion PASS lines, the verify case and rung, the close record. A phase that completes its work without surfacing its line leaves the goal unmet and the chain running to a bound. This is inherent to model conditions and is the same exposure `ac_converge` carries; it is stated rather than mitigated.
 - The four-hour wall clock is an accepted token risk, not a safety bound. It is the only automatic stop between the stagnation guard and chain completion, so a chain that neither converges nor stagnates will spend the full budget.
 
+### M3 — Signal propagation and the state record
+
+All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `598cf280e` (pre-commit; M2 is the parent commit). Commands are quoted verbatim; outputs are the literal command output. M3 is the first Go milestone and ran `cycle_type=tdd`. It touches exactly three paths — `internal/config/envkeys.go`, the new `internal/factory/` package, and this progress record. No `.claude/` file is touched, so M3 carries no mirror obligation and `make build` was deliberately not run (there is no template change for it to embed).
+
+#### RED evidence (E8 — captured before any implementation existed)
+
+Test-first was executed in two observable stages, both before `record.go` carried an implementation.
+
+Stage 1 — `record_test.go` written first, with no `record.go` at all. Command `go test ./internal/factory/...`, verbatim output:
+
+```
+# github.com/modu-ai/moai-adk/internal/factory [github.com/modu-ai/moai-adk/internal/factory.test]
+internal/factory/record_test.go:13:20: undefined: Record
+internal/factory/record_test.go:14:10: undefined: RungPrimary
+internal/factory/record_test.go:15:10: undefined: Record
+internal/factory/record_test.go:18:20: undefined: BackendClaude
+internal/factory/record_test.go:30:12: undefined: Write
+internal/factory/record_test.go:34:14: undefined: Read
+internal/factory/record_test.go:58:41: undefined: RungPrimary
+internal/factory/record_test.go:60:24: undefined: RungPrimary
+internal/factory/record_test.go:61:57: undefined: RungPrimary
+internal/factory/record_test.go:69:12: undefined: RecordPath
+internal/factory/record_test.go:69:12: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/factory [build failed]
+FAIL
+```
+
+Stage 2 — a compiling stub (declarations returning zero values) replaced the build failure with assertion-level RED, so the failure demonstrates the tests exercise behavior rather than merely referencing absent symbols. Command `go test ./internal/factory/...`, verbatim head of output:
+
+```
+--- FAIL: TestWriteThenReadRoundTripsEveryField (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x0 pc=0x100bcfe84]
+...
+github.com/modu-ai/moai-adk/internal/factory.TestWriteThenReadRoundTripsEveryField(0x7dba8d540248)
+	.../internal/factory/record_test.go:39 +0xa4
+...
+FAIL	github.com/modu-ai/moai-adk/internal/factory	0.390s
+FAIL
+```
+
+Line 39 is the `Read` result dereference: the stub returned `nil, nil`, so the round-trip assertion had nothing to read back. No implementation code was written before its failing test, so the delete-and-re-derive obligation did not arise.
+
+#### Per-AC matrix (M3-scoped)
+
+`§C` traceability maps REQ-FM-024 → AC-FM-023a, AC-FM-023b, AC-FM-013. Of those, AC-FM-023b is wholly M3's; AC-FM-023a's record layer is M3's while its launcher half belongs to M5; AC-FM-013 was already satisfied by M1/M2 doctrine and is re-confirmed unchanged.
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-FM-023b (1) | PASS | `grep -c 'EnvMoaiFactory = "MOAI_FACTORY"' internal/config/envkeys.go` | `1` (pre-change baseline `0`, measured before the edit — the positive control holds) |
+| AC-FM-023b (2) | PASS | `grep -c 'EnvMoaiFactorySpec = "MOAI_FACTORY_SPEC"' internal/config/envkeys.go` | `1` (pre-change baseline `0`) |
+| AC-FM-023a (record schema, M3 half) | PASS | `go test -run TestWrittenJSONCarriesTheDocumentedKeys ./internal/factory/...` | `ok` — the written JSON carries `session_id`, `spec_id`, `backend`, `entered_at`, `deepscan_dir`, `verify_rung`, `verify_reentries` |
+| AC-FM-023a (round-trip, M3 half) | PASS | `go test -run TestWriteThenReadRoundTripsEveryField ./internal/factory/...` | `ok` — every field survives write→read |
+| AC-FM-023a (fail-open, M3 half) | PASS | `go test -run TestWriteBestEffortFailsOpenOnUnwritableStateDirectory ./internal/factory/...` | `ok` — `Write` reports the failure, `WriteBestEffort` returns nothing a caller could gate on |
+| AC-FM-023a (launcher half) | DEFERRED to M5 | — | the `moai cc --factory` path that writes the record is M5's deliverable; M3 delivers only the record layer it calls |
+| AC-FM-013 (b) | PASS (unchanged) | `grep -c 'verify_rung' .claude/skills/moai/workflows/factory.md` | `2` — untouched by M3 |
+| Rung round-trip (plan.md §F M3) | PASS | `go test -run TestVerifyRungRoundTripsEveryRung ./internal/factory/...` | all three subtests PASS: `PRIMARY`, `FALLBACK`, `DEGRADED` |
+| Absent-vs-empty rung (design.md §7 / AP-13) | PASS | `go test -run TestAbsentRungIsDistinguishableFromEmptyRung ./internal/factory/...` | both subtests PASS — absent decodes to `nil`, recorded-empty decodes to a non-nil pointer to `""` |
+
+Full verbose suite, command `go test ./internal/factory/... -v`, tail:
+
+```
+--- PASS: TestWriteThenReadRoundTripsEveryField (0.00s)
+--- PASS: TestRecordPathIsSessionKeyedUnderStateFactory (0.00s)
+--- PASS: TestWrittenJSONCarriesTheDocumentedKeys (0.00s)
+--- PASS: TestVerifyRungRoundTripsEveryRung (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/PRIMARY (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/FALLBACK (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/DEGRADED (0.00s)
+--- PASS: TestAbsentRungIsDistinguishableFromEmptyRung (0.00s)
+    --- PASS: TestAbsentRungIsDistinguishableFromEmptyRung/absent (0.00s)
+    --- PASS: TestAbsentRungIsDistinguishableFromEmptyRung/recorded_empty (0.00s)
+--- PASS: TestReadReturnsErrorWhenRecordIsAbsent (0.00s)
+--- PASS: TestReadReturnsErrorOnMalformedJSON (0.00s)
+--- PASS: TestWriteRejectsUnusableSessionIDs (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/empty (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/path_separator (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/parent_escape (0.00s)
+--- PASS: TestWriteBestEffortFailsOpenOnUnwritableStateDirectory (0.00s)
+--- PASS: TestNewRecordStampsAnRFC3339EnteredAt (0.00s)
+--- PASS: TestRecordWithoutSpecIDRoundTrips (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/factory	0.345s
+```
+
+#### Build, coverage, lint, boundary, and suite evidence
+
+| Item | Command | Observed |
+|---|---|---|
+| E2 host build | `go build ./...` | exit 0 |
+| E2 cross build | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 — the record layer uses only `os` / `filepath` / `encoding/json` / `time`, so no build tag is required; verified rather than assumed |
+| E3 coverage | `go test -cover ./internal/factory/...` | `ok github.com/modu-ai/moai-adk/internal/factory 0.392s coverage: 88.2% of statements` — above the 85% target for this package |
+| E4 subagent boundary | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/factory/ \| grep -v '_test.go' \| grep -v '// '` | no output, exit 1 |
+| E5 lint | `golangci-lint run --timeout=2m` | `0 issues.` — no NEW findings; the M2 baseline was also clean |
+| Formatting | `gofmt -l internal/factory internal/config` | neither `internal/factory/*.go` nor `internal/config/envkeys.go` is listed; the six files it does list are pre-existing and untouched by M3 |
+| Regression — config | `go test ./internal/config/...` | `ok internal/config 1.861s`, `ok internal/config/toolpolicy` |
+| Regression — cli | `go test ./internal/cli/...` | all 19 packages `ok` (`internal/cli` 222.300s) |
+| Regression — template guards | `go test ./internal/template/...` | `ok internal/template 36.497s` (mirror-parity + neutrality guards pass, unchanged by M3) |
+| SPEC lint | `moai spec lint .moai/specs/SPEC-FACTORY-MODE-001/spec.md` | `✓ No findings — all SPEC documents are valid` |
+| Template rebuild | (not run) | M3 touches no file under `.claude/` or `internal/template/templates/`, so there is no template change to embed; running `make build` would have been a no-op asserted as evidence |
+| Working-tree hygiene | `git status --porcelain` | exactly ` M internal/config/envkeys.go` and `?? internal/factory/` — no runtime-managed, `.moai/state/`, or unrelated file touched |
+
+#### Design note — why `verify_rung` is a pointer
+
+`design.md` §7 establishes that `deepscan_dir`, `verify_rung`, and `verify_reentries` are written independently on a best-effort record, so a record carrying a scan directory but no rung is reachable through an orchestrator omission, a mid-chain `/clear`, or a partial write. A plain `string` field collapses that state into the same `""` a deliberately-blank rung would produce. The field is therefore `*Rung` with `omitempty`: absent marshals away entirely and decodes to `nil`, while a recorded empty rung decodes to a non-nil pointer to `""`. Both read as "not a recorded `PRIMARY` or `FALLBACK`", so the M4 allow-list reaches the same answer either way — but it reaches it on observed evidence rather than on a coincidence of representation, which is the distinction AP-13 exists to preserve.
+
+#### Gaps (explicitly NOT observed in M3)
+
+- `go test ./...` (the full suite) was NOT run. The three suites most likely to observe M3's change were run instead (`./internal/factory/...`, `./internal/config/...`, `./internal/cli/...`) plus `./internal/template/...` for the mirror guards. The full suite is M6's obligation.
+- `internal/cli` coverage was NOT measured against its 90% target. M3 adds no `internal/cli` code; that target is M5's to meet.
+- AC-FM-023a's launcher half was NOT exercised — no test invokes `moai cc --factory`, because the flag does not exist until M5. What M3 evidences is that the record layer M5 will call round-trips correctly and fails open; that the launcher actually calls it is unverified and out of M3's scope.
+- The fail-open test SKIPS on Windows and when running as root (POSIX directory permissions do not deny the write in either case), so the fail-open path is observed on POSIX-as-non-root only. It was observed here.
+- `WriteBestEffort` is not yet called from any production path, so its fail-open guarantee is verified by unit test but not by a live launch. M5 supplies the caller.
+- No `.moai/state/factory/` directory was created in this repository — every test writes under `t.TempDir()`. This was confirmed by the clean `git status --porcelain` above rather than assumed.
+
+#### Residual risk
+
+- `Write` and `WriteBestEffort` are a deliberate pair: the error-returning form exists for tests and tooling, the no-return form for the launch path. Nothing mechanically stops M5 from calling `Write` and gating the launch on its error, which would reintroduce exactly the blocking behavior the fail-open requirement forbids. The signature makes the safe call available; it does not make the unsafe one unreachable.
+- The `verify_rung` allow-list itself is NOT implemented in M3 — only the schema that makes it expressible. M4 owns the composed suppression decision and must treat a `nil` pointer and a pointer to `""` alike as "no suppression". A `!= DEGRADED` deny-list written over this pointer would still be wrong, and this package cannot prevent it.
+- `EnteredAt` is stored as a preformatted RFC3339 string rather than a `time.Time`. That matches the documented schema and avoids monotonic-clock round-trip surprises, but it also means a malformed timestamp written by a future caller would round-trip silently — nothing validates the format on read.
+- The session-id validation rejects path separators and directory references, which covers the traversal shape reachable from a launcher-supplied identifier. It does not constrain length or character set beyond that, so an exotic-but-separator-free identifier would still produce a filename this package accepts.
+
 ## §F Phase 4 Mode Selection
 
 Input parameters: tier **L**; scope ~14 files (6 doctrine + 6 mirrors + 3 Go source + tests); domain count 3 (workflow doctrine / rules, Go source under `internal/`, template mirrors); file language mix markdown-heavy with a Go minority; concurrency benefit **LOW** (coding-heavy, and the milestones carry declared `Depends on:` edges — M2 depends on M1, M4 on M1+M3, M5 on M3).
