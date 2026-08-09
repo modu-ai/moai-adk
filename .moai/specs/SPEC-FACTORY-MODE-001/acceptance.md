@@ -344,7 +344,16 @@ The existence guard is not decoration. Without it the grep's "no output" PASS co
 
 **Scope bound (v0.3.0).** The v0.2.0 form ran this grep across the entire `internal/template/templates/.claude/` tree, where **8 pre-existing matches** live in files this SPEC never touches — `plan-auditor.md:210`, `askuser-protocol-reference.md:149`, `agent-hooks.md:69`, `worktree-integration.md:307,369,380`, and `worktree-state-guard.md:2,15`. The criterion therefore failed on every run regardless of this SPEC's cleanliness, and the obvious "fix" — scrubbing five unrelated shipped rule files — is a scope-discipline violation with its own mirror-parity blast radius. REQ-FM-025 was already correctly scoped to the files this SPEC mirrors; only the criterion over-reached. Those 8 references are recorded as out of scope in `spec.md` §C.
 
-Positive control: the same pattern applied to the corresponding **live** files (`grep -n 'internal/factory\|internal/cli' $DOCS`) DOES match after M4 and M5 land — the plan and the live doctrine legitimately name `internal/factory` — proving the pattern is capable of firing and the empty `$MIRRORS` result is a real absence rather than a mis-typed pattern.
+**Positive control (re-pointed v0.9.0).** The v0.8.0 form pointed this control at the **live** doctrine set, asserting that `grep -n 'internal/factory\|internal/cli' "${DOCS[@]}"` would match once M4 and M5 landed, on the premise that the live doctrine legitimately names `internal/factory`. Measured, it does not: the grep returns no output and exits 1. The M1 / M4 / M5 doctrine was authored in implementation-neutral prose — "the revision-match predicate", "the session state record" — rather than naming Go packages, so the live files are as free of package paths as their mirrors. That is better authoring for template neutrality, and it falsifies the control's premise rather than the criterion.
+
+The control is therefore re-pointed at `plan.md`, which does name the packages and is the surface where the pattern demonstrably fires:
+
+```bash
+grep -c 'internal/factory' .moai/specs/SPEC-FACTORY-MODE-001/plan.md
+# measured: 8
+```
+
+A non-zero count here proves the pattern is capable of firing, so the empty `"${MIRRORS[@]}"` result is a real absence rather than a mis-typed pattern. The mirror-existence guard above is the second half of that argument and is **not** optional: all seven mirrors exist (verified by `ls` over the mirrored §A.2 set), so the empty grep is a measured absence over files that are actually present, not a vacuous pass over missing paths. The judgement on mirror neutrality is unchanged — no mirrored file this SPEC touches may carry a Go package path.
 
 **Coverage clause (corrected v0.5.0 — AP-16).**
 
@@ -371,14 +380,28 @@ Judgement, all three required: (a) the `internal/cli` package total is at or abo
 
 **Two pre-existing defects (recorded, NEITHER introduced by this SPEC).** The repository carries two distinct defects that this SPEC did not cause and does not repair. Both are named individually below, each justified by its own provenance; neither is justified by a count.
 
-**Defect 1 — `internal/cli` / `TestRunHarnessObserveStop_ProposeChainAutoRuns` (a `--- FAIL`).** It fails on both the current tree and the pre-SPEC baseline tree at `7171880a9`, in the `internal/cli` package. **Its root cause is unidentified.**
+**Defect 1 — `internal/cli` / `TestRunHarnessObserveStop_ProposeChainAutoRuns` (an order-dependent `--- FAIL`, NOT a deterministic one).** It is reproducible at both the current tree and the pre-SPEC baseline tree at `7171880a9`, in the `internal/cli` package, but it is **flaky — order- and parallelism-dependent**, not deterministic. Run in isolation at HEAD it passes; run inside a full-package or full-suite execution it can fail. **Its root cause is unidentified.**
+
+The v0.8.0 form of this block called it a deterministic `--- FAIL` and recorded a red observation at HEAD. That characterisation was wrong, and the SPEC's own record already conceded the underlying fact: the v0.6.0 HISTORY row notes the same package at the same commit observed **green** (`ok … 262.236s`) at run-phase entry and red later, and calls the failure "environment- or time-sensitive, not commit-sensitive". This block simply never absorbed that concession. It is corrected here.
+
+**A bare isolated PASS does not clear the defect — it re-characterises it.** The flaky failure still occurs under full-suite conditions, which is exactly where AC-FM-025's conjunct is judged, so the exclusion below remains necessary. A future verifier who runs the test alone, sees green, and concludes the defect is gone would be reading a single sample of a non-deterministic outcome as a verdict. This also qualifies the targeted run at **STEP 2c** of the decision procedure below: its `measured this tree` annotation records a real red observation captured earlier in this tree's history, and because the failure is order-dependent that same command may now return green. Neither outcome is decisive on its own — the exclusion rests on provenance (a) + (b), not on the targeted run. STEP 2c's command, pattern, and role are otherwise unchanged.
 
 ```bash
-# (a) red at the pre-SPEC baseline — it predates this SPEC
+# (a) reproducible at the pre-SPEC baseline — it predates this SPEC
 git worktree add --detach /tmp/fm-base 7171880a9
 go -C /tmp/fm-base test -count=1 -timeout 300s -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/
 #   observed at 7171880a9: --- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)
-#   observed at HEAD:      --- FAIL ... "proposals dir not created (propose chain did not run)"
+#
+#   observed at HEAD, in isolation, three independent runs — all GREEN:
+#     $ go test -count=1 -timeout 120s -run 'TestRunHarnessObserveStop_ProposeChainAutoRuns' ./internal/cli/
+#       ok  	github.com/modu-ai/moai-adk/internal/cli	0.840s
+#       ok  	github.com/modu-ai/moai-adk/internal/cli	0.701s
+#     $ go test -count=1 -timeout 120s -run 'TestRunHarnessObserveStop' -v ./internal/cli/
+#       --- PASS: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)
+#       ok  	github.com/modu-ai/moai-adk/internal/cli	0.647s
+#   The earlier HEAD failure ("proposals dir not created (propose chain did not run)")
+#   was observed under non-isolated execution. Both outcomes are real; the failure is
+#   order-dependent. An isolated PASS does not clear the defect.
 
 # (b) this SPEC touches no file in the failing test's code path
 git diff --name-only 7171880a9..HEAD -- internal/

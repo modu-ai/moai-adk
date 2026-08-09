@@ -164,7 +164,7 @@ AC-FM-024b judgement (a)/(b)/(c) by reading: `run.md` § Verify Exit Gate enumer
 
 ### M2 — The `factory_chain` goal preset
 
-All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `c0279a8fb` (pre-commit; M1 is the parent commit). Commands are quoted verbatim; counts are the literal command output. M2 touches exactly two files — `.claude/skills/moai/workflows/factory.md` and its template mirror — plus this progress record.
+All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `5b0c37957` (pre-commit; M1 is the parent commit). Commands are quoted verbatim; counts are the literal command output. M2 touches exactly two files — `.claude/skills/moai/workflows/factory.md` and its template mirror — plus this progress record.
 
 #### Post-change gate-token counts vs the M1 post-change values (AC-FM-012)
 
@@ -245,7 +245,7 @@ AC-FM-022b judgement by reading: the preset section opens by naming the `stop-go
 
 ### M3 — Signal propagation and the state record
 
-All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `598cf280e` (pre-commit; M2 is the parent commit). Commands are quoted verbatim; outputs are the literal command output. M3 is the first Go milestone and ran `cycle_type=tdd`. It touches exactly three paths — `internal/config/envkeys.go`, the new `internal/factory/` package, and this progress record. No `.claude/` file is touched, so M3 carries no mirror obligation and `make build` was deliberately not run (there is no template change for it to embed).
+All evidence below was captured in this run, in this worktree, on branch `feat/factory-mode` at HEAD `694ca4f62` (pre-commit; M2 is the parent commit). Commands are quoted verbatim; outputs are the literal command output. M3 is the first Go milestone and ran `cycle_type=tdd`. It touches exactly three paths — `internal/config/envkeys.go`, the new `internal/factory/` package, and this progress record. No `.claude/` file is touched, so M3 carries no mirror obligation and `make build` was deliberately not run (there is no template change for it to embed).
 
 #### RED evidence (E8 — captured before any implementation existed)
 
@@ -367,7 +367,7 @@ ok  	github.com/modu-ai/moai-adk/internal/factory	0.345s
 
 ### M4 — Dedup contract and the `revision.json` reader
 
-Baseline attribution for every row below: **this run, this tree, HEAD `0c8b38ef8`**, branch `feat/factory-mode`. Pre-flight baselines were re-measured before the first M4 edit and matched the recorded §C figures.
+Baseline attribution for every row below: **this run, this tree, HEAD `5e0f67ba4`**, branch `feat/factory-mode`. Pre-flight baselines were re-measured before the first M4 edit and matched the recorded §C figures.
 
 #### Pre-flight baselines (re-measured before any M4 edit)
 
@@ -540,7 +540,7 @@ Both were honored rather than one being chosen: `Matches` ships with the plan-ma
 
 ### M5 — Launcher entry
 
-Baseline attribution for every row below: **this run, this tree, HEAD `003f9555e`**, branch `feat/factory-mode`. `cycle_type=tdd` — the verbatim pre-GREEN failing output is recorded under "RED evidence" and persisted at `.moai/state/verify/factory-m5/red.txt`.
+Baseline attribution for every row below: **this run, this tree, HEAD `2ac569692`**, branch `feat/factory-mode`. `cycle_type=tdd` — the verbatim pre-GREEN failing output is recorded under "RED evidence" and persisted at `.moai/state/verify/factory-m5/red.txt`.
 
 #### Pre-flight baselines (re-measured before the first M5 edit)
 
@@ -718,7 +718,7 @@ M1 inlined the `## Verify Exit Gate (factory contract)` block directly into the 
 
 #### Evidence
 
-(a) command / (b) verbatim output / (c) attribution — all `(this run, this tree, HEAD b56b64353 + working tree)`.
+(a) command / (b) verbatim output / (c) attribution — all `(this run, this tree, HEAD d5f389ac6 + working tree)`.
 
 Guard, before:
 
@@ -849,7 +849,7 @@ The sub-skill's frontmatter `description` was also extended in place to name the
 
 Verification-only milestone. Mirrors were created in the milestone that made each edit (`plan.md` §D); M6 confirms them. One narrow repair was performed under the run-phase repair allowance — see § Repair below.
 
-All evidence in this section was captured in this run, in this worktree, on branch `feat/factory-mode`, at HEAD `5a4546e55` plus the working-tree repair described below. Persisted command output lives under `.moai/state/verify/fm-m6/`.
+All evidence in this section was captured in this run, in this worktree, on branch `feat/factory-mode`, at HEAD `b37739d3d` plus the working-tree repair described below. Persisted command output lives under `.moai/state/verify/fm-m6/`.
 
 #### Claim
 
@@ -857,7 +857,7 @@ Every one of the 36 acceptance-criterion leaves was evaluated. **35 PASS, 0 FAIL
 
 #### Evidence — E1: the per-AC PASS/FAIL matrix (all 36 leaves)
 
-Every row names (a) the command and (b) the observed output; the attribution for every row is `(this run, this tree, HEAD 5a4546e55)`.
+Every row names (a) the command and (b) the observed output; the attribution for every row is `(this run, this tree, HEAD b37739d3d)`.
 
 | # | AC | Status | Command | Observed output |
 |---|---|---|---|---|
@@ -1079,7 +1079,7 @@ Justification: the six milestones carry explicit `Depends on:` edges that forbid
 
 ```yaml
 run_complete_at: 2026-08-09
-run_commit_sha: pending-backfill-m6
+run_commit_sha: cd2b0cfc1
 run_status: audit-ready-with-one-gap
 ac_pass_count: 35
 ac_fail_count: 0
@@ -1100,14 +1100,32 @@ m1_to_mN_commit_strategy: one commit per milestone on feat/factory-mode (M1…M5
 
 | Milestone | Commit | Disposition |
 |---|---|---|
-| M1 — pipeline contract + verify exit gate | `c0279a8fb` | complete; the verify-gate block was later relocated by M5.1 |
-| M2 — `factory_chain` goal preset | `598cf280e` | complete |
-| M3 — signal propagation + state record | `0c8b38ef8` | complete |
-| M4 — dedup contract + `revision.json` reader | `003f9555e` | complete |
-| M5 — launcher entry | `08363698a` | complete |
-| M5.1 — relocate the verify gate out of the `run.md` entry router | `e9aa2c363` | regression repair (defect 3, ours) |
-| SPEC-doc corrections | `d6ceaa605`, `b56b64353`, `9b657fcef`, `5a4546e55` | four correction passes, manager-spec-owned |
-| M6 — full verification | this commit | verification + one narrow cross-reference repair |
+| M1 — pipeline contract + verify exit gate | `5b0c37957` | complete; the verify-gate block was later relocated by M5.1 |
+| M2 — `factory_chain` goal preset | `694ca4f62` | complete |
+| M3 — signal propagation + state record | `5e0f67ba4` | complete |
+| M4 — dedup contract + `revision.json` reader | `2ac569692` | complete |
+| M5 — launcher entry | `ebee44ffb` | complete |
+| M5.1 — relocate the verify gate out of the `run.md` entry router | `c5e93fb10` | regression repair (defect 3, ours) |
+| SPEC-doc corrections | `3695c46f6`, `d5f389ac6`, `16cfb5db2`, `b37739d3d` | four correction passes, manager-spec-owned |
+| M6 — full verification | `cd2b0cfc1` | verification + one narrow cross-reference repair |
+
+**SHA remap after rebase onto `origin/main` (sync-phase, 2026-08-09).** The branch was rebased onto `origin/main` before sync, which rewrote all eleven commits. Every commit SHA in this file — the ledger above and the surrounding §E prose — was remapped from the pre-rebase SHA to its post-rebase equivalent, matched one-to-one by commit subject. Without the remap the cited baselines would no longer be ancestors of `HEAD` (`git merge-base --is-ancestor <old> HEAD` → exit 1) and every §E verification claim resting on them would be unattributable per `verification-claim-integrity.md` §2. The correspondence:
+
+| Milestone / correction | Pre-rebase SHA | Post-rebase SHA |
+|---|---|---|
+| M1 — pipeline contract + verify exit gate | `c0279a8fb` | `5b0c37957` |
+| M2 — `factory_chain` goal preset | `598cf280e` | `694ca4f62` |
+| M3 — signal propagation + state record | `0c8b38ef8` | `5e0f67ba4` |
+| M4 — dedup contract + `revision.json` reader | `003f9555e` | `2ac569692` |
+| M5 — launcher entry | `08363698a` | `ebee44ffb` |
+| M5.1 — relocate the verify gate | `e9aa2c363` | `c5e93fb10` |
+| correction — coverage threshold | `d6ceaa605` | `3695c46f6` |
+| correction — scope-bound full-suite conjunct | `b56b64353` | `d5f389ac6` |
+| correction — re-point verify-gate criteria | `9b657fcef` | `16cfb5db2` |
+| correction — hang-aware decision procedure | `5a4546e55` | `b37739d3d` |
+| M6 — full verification | `02155d25d` | `cd2b0cfc1` |
+
+The pre-SPEC coverage baseline `7171880a9` predates the branch and was NOT rewritten by the rebase — it remains an ancestor of `HEAD` (`git merge-base --is-ancestor 7171880a9 HEAD` → exit 0) and is carried forward unchanged.
 
 ### The three defects and their dispositions
 
@@ -1115,8 +1133,10 @@ m1_to_mN_commit_strategy: one commit per milestone on feat/factory-mode (M1…M5
 |---|---|---|---|---|
 | 1 | `internal/cli` / `TestRunHarnessObserveStop_ProposeChainAutoRuns` — a `--- FAIL`, root cause unidentified | **No** — reproduces at the pre-SPEC baseline `7171880a9`; this SPEC touches no file in its code path | **Deferred by user decision**, excluded from the AC-FM-025 bound *by name* | targeted run at HEAD: `--- FAIL: TestRunHarnessObserveStop_ProposeChainAutoRuns (0.00s)` in `0.984s`, and nothing else |
 | 2 | Real network I/O in `(*usageCollector).fetchUsageFromOAuthAPI` (`internal/statusline/usage.go:572`) — a HANG, not a FAIL; kills both `internal/statusline` and `internal/cli` on timeout | **No** — reproduces at `7171880a9`; this SPEC touches no statusline file | **Deferred by user decision**, excluded *by call site* rather than by test list, because the surfacing test varies with skip order | both isolated timeout dumps carry the `fetchUsageFromOAuthAPI` frame; `internal/statusline` at `90.555s`, `internal/cli` at `481.557s` |
-| 3 | `internal/skills` / `TestEntryRouterLOCCeiling` — M1 pushed `run.md` from 200 to 234 LOC | **Yes** | **Repaired in `e9aa2c363`; deliberately NOT excluded**, so a future regression of it still fails the suite | `go test -count=1 ./internal/skills/` → `ok … 0.323s`; `wc -l run.md` → `200` |
+| 3 | `internal/skills` / `TestEntryRouterLOCCeiling` — M1 pushed `run.md` from 200 to 234 LOC | **Yes** | **Repaired in `c5e93fb10`; deliberately NOT excluded**, so a future regression of it still fails the suite | `go test -count=1 ./internal/skills/` → `ok … 0.323s`; `wc -l run.md` → `200` |
 | 4 | Three prose cross-references to `workflows/run.md` § Verify Exit Gate, a section that has not existed since M5.1 | **Yes** | **Repaired in this milestone** under the run-phase repair allowance; reported explicitly in §E.2 § Repair | post-repair grep returns no output, exit 1, in both trees |
+
+**Defect 2 — measured blast radius (sync-phase correction).** Row 2's exclusion is stated at package granularity, and that granularity is load-bearing: the hang is NOT confined to a single test. Sequential skip measurement reaches **at least three** tests in `internal/cli` — ① `TestRunStatusline_NilDeps`, ② `TestStatuslineCmd_WithDeps` (`internal/cli/integration_test.go:135` → `internal/statusline/builder.go:331` `collectAll` → the live network call), and ③ a `CwdGuard` case surfaced once the two `Statusline` names are skipped — plus the `internal/statusline` `TestBuilder_Build_*` family. The common root is `(*usageCollector).fetchUsageFromOAuthAPI` at `internal/statusline/usage.go:572`, which is reachable through several unrelated call paths, which is exactly why no stable skip set exists and why the exclusion is written *by call site* rather than *by test list*. Any statement that names one surfacing test understates the scope. The provenance argument is unchanged by this correction: all of these reproduce at the pre-SPEC baseline `7171880a9`, and this SPEC touches no file under `internal/statusline`.
 
 The distinction between rows 1-2 and rows 3-4 is what makes the AC-FM-025 bound defensible rather than convenient: this SPEC repaired everything it broke and bounded only what predated it. Neither exclusion rests on a root-cause diagnosis — both rest on provenance (reproduction at `7171880a9` plus `git diff --name-only 7171880a9..HEAD -- internal/` touching neither code path).
 
@@ -1134,4 +1154,39 @@ This section is written on the assumption that a sync-phase auditor treats it as
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-09
+sync_commit_sha: pending-backfill-sync   # a commit cannot know its own hash; backfilled after this commit lands
+sync_status: audit-ready-with-two-gaps
+sync_auditor_verdict: PASS
+sync_auditor_weighted_mean: 0.885        # against a 0.85 threshold
+sync_auditor_unweighted_mean: 0.871
+sync_auditor_critical_count: 0
+sync_auditor_high_count: 0
+status_transition: in-progress -> implemented -> completed   # carried by this single sync commit
+spec_artifacts_touched: 3                # progress.md + spec.md frontmatter + .moai/project/structure.md
+changelog_entry_position: none           # this repository's CHANGELOG.md is release-harness-owned; plan.md declares no CHANGELOG/README/docs-site scope
+```
+
+### Sync-auditor finding dispositions
+
+| Finding | Subject | Disposition |
+|---|---|---|
+| F6 | Milestone-ledger SHAs dead after the rebase onto `origin/main` | **Repaired here** — all eleven SHAs remapped one-to-one by commit subject; correspondence table recorded under § Milestone ledger; `run_commit_sha` populated with `cd2b0cfc1` |
+| F5 | Defect-2 hang scope understated | **Repaired here** — § "Defect 2 — measured blast radius" records the ≥3 reached tests in `internal/cli` plus the `internal/statusline` family, and names the single root call site. Note: `progress.md` did not literally name one test (the §E table already stated the exclusion at package granularity); the repair adds the measured per-test scope rather than correcting a narrower claim |
+| F7 | `.moai/project/structure.md` top-level package count stale | **Repaired here** — `46` corrected to the measured `49`, with the three-package gap attributed |
+| F4 | (manager-spec scope) | Repaired by `manager-spec` in the `acceptance.md` / `spec.md` edits carried by this same commit |
+| F3 | (manager-spec scope) | Repaired by `manager-spec` in the `acceptance.md` / `spec.md` edits carried by this same commit |
+| F1 | Discretionary | **Left open** — not repaired in this sync; no correctness impact recorded |
+| F2 | Discretionary | **Left open** — not repaired in this sync; no correctness impact recorded |
+
+### Gaps carried forward unresolved
+
+Both are the AC-FM-025 Gaps recorded in §E.2, and neither is closed by this sync:
+
+1. **AC-FM-025 coverage clause (1) — the `internal/cli` package total.** Two measurement attempts (600 s, 900 s) both ended in a defect-2 timeout panic, and a killed binary's profile reports a partial `26.9%` that measures nothing. The non-regression against the `76.3%` floor is therefore **unverified**. It is not a FAIL — nothing observed suggests a regression, and the seven functions this SPEC adds are at 100.0% — but it becomes measurable only when defect 2 is fixed.
+2. **AC-FM-025's positive control does not fire.** The criterion asserts that `grep -n 'internal/factory\|internal/cli' $DOCS` over the live doctrine set matches after M4 and M5 land; it returns no output, exit 1. Pattern capability was demonstrated against `plan.md` instead (`grep -c 'internal/factory' plan.md` → `8`), so the empty result is a real absence rather than a mistyped pattern. The criterion's premise is not true of the final tree; correcting the criterion text is `manager-spec`'s call.
+
+### Sync-phase scope note
+
+This sync deliberately touched no `internal/` source, no `.claude/` file, and no `internal/template/templates/` mirror — the sync-phase deliverable for this SPEC is the audit-repair set above plus the 3-phase close. `.moai/project/codemaps/modules.md` was **not** regenerated (out of the approved scope for this sync; tracked separately by the orchestrator).
