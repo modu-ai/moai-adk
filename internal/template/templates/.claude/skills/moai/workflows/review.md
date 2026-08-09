@@ -218,7 +218,7 @@ The mode is inspired by the "lazy senior dev" minimalist-coding review pattern: 
 The --lean mode supports two scopes, mirroring the diff-vs-repo split of the minimalist-coding audit pattern:
 
 - Diff-scope (default): audit ONLY the changed code, reusing the existing Phase 1 scope selection (`--staged` / `--branch BRANCH` / `--file PATH`, or the most recent commit when no scope flag is given). This is the "review the changes" variant.
-- Repo-scope (with --repo): sweep the WHOLE tree. This is the "sweep everything" variant. The `--repo` flag is honored only in --lean mode.
+- Repo-scope (with --repo): sweep the WHOLE tree. This is the "sweep everything" variant. The `--repo` flag is honored in both --lean and --deep modes: in --lean it widens the leanness audit to the whole tree, and in --deep it scopes the deep scan to the whole working tree (see the --deep Mode section below, which reuses the same scope-selection machinery).
 
 Both variants run the identical 5-tag scan and net-reduction summary below; only the set of files scanned differs.
 

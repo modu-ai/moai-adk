@@ -181,3 +181,64 @@ func TestCharacterize_CG_HelpFlag(t *testing.T) {
 		})
 	}
 }
+
+// ── SPEC-FACTORY-MODE-001 M5 ──
+
+// TestCG_FactoryFlagRejected is AC-FM-004: `moai cg` runs a mixed backend
+// (leader Claude, teammates GLM), which contradicts Factory Mode's
+// one-session / one-backend / one-chain premise. The invocation is rejected
+// with the FACTORY_MODE_UNSUPPORTED_BACKEND sentinel and never launches.
+func TestCG_FactoryFlagRejected(t *testing.T) {
+	for _, flag := range []string{"--factory", "-f"} {
+		t.Run(flag, func(t *testing.T) {
+			origLaunch := unifiedLaunchFunc
+			defer func() { unifiedLaunchFunc = origLaunch }()
+
+			launched := false
+			unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+				launched = true
+				return nil
+			}
+
+			buf := new(bytes.Buffer)
+			cgCmd.SetOut(buf)
+			cgCmd.SetErr(buf)
+
+			err := runCG(cgCmd, []string{flag})
+			if err == nil {
+				t.Fatalf("AC-FM-004: runCG(%s) must return an error", flag)
+			}
+			if !strings.Contains(err.Error(), "FACTORY_MODE_UNSUPPORTED_BACKEND") {
+				t.Errorf("AC-FM-004: error must carry the sentinel, got: %v", err)
+			}
+			if launched {
+				t.Error("AC-FM-004: the launcher seam must never be invoked")
+			}
+		})
+	}
+}
+
+// TestCG_WithoutFactoryFlagStillLaunches is the negative control for
+// AC-FM-004: the rejection is scoped to the factory token and does not
+// regress an ordinary cg launch.
+func TestCG_WithoutFactoryFlagStillLaunches(t *testing.T) {
+	origLaunch := unifiedLaunchFunc
+	defer func() { unifiedLaunchFunc = origLaunch }()
+
+	launched := false
+	unifiedLaunchFunc = func(_ string, _ string, _ []string) error {
+		launched = true
+		return nil
+	}
+
+	buf := new(bytes.Buffer)
+	cgCmd.SetOut(buf)
+	cgCmd.SetErr(buf)
+
+	if err := runCG(cgCmd, []string{"-b"}); err != nil {
+		t.Fatalf("runCG(-b) should not error, got: %v", err)
+	}
+	if !launched {
+		t.Error("an ordinary cg launch must still reach the launcher seam")
+	}
+}
