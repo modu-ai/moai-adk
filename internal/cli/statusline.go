@@ -6,12 +6,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
+
+// statuslineRenderBudget bounds the whole statusline build. It sits under Claude Code's
+// render budget so a slow or rate-limited collector cannot stall the status bar.
+const statuslineRenderBudget = 800 * time.Millisecond
 
 // StatuslineCmd is the statusline command.
 var StatuslineCmd = &cobra.Command{
@@ -38,7 +43,14 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	ctx := context.Background()
+
+	// Render-budget guard (issue #646): Claude Code allots a statusline render only a
+	// few hundred milliseconds. The usage collector's OAuth 429 retry honors Retry-After,
+	// which can stall the render for minutes when the endpoint is rate limited. Every
+	// collector swallows its own error, so an expired context drops just that segment
+	// rather than failing the whole render.
+	ctx, cancel := context.WithTimeout(context.Background(), statuslineRenderBudget)
+	defer cancel()
 
 	// Get project root for git and version detection (error ignored: empty root is valid)
 	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
