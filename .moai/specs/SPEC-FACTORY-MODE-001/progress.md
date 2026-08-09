@@ -1127,6 +1127,8 @@ m1_to_mN_commit_strategy: one commit per milestone on feat/factory-mode (M1…M5
 
 The pre-SPEC coverage baseline `7171880a9` predates the branch and was NOT rewritten by the rebase — it remains an ancestor of `HEAD` (`git merge-base --is-ancestor 7171880a9 HEAD` → exit 0) and is carried forward unchanged.
 
+**Where these SHAs resolve after the merge.** PR #1416 landed on `main` as a **squash** commit, `e6b5ccc45` — the repository's configured merge method. Every post-rebase SHA in the ledger above is therefore branch-local: measured, `git merge-base --is-ancestor 4461bc7a4 origin/main` returns exit 1, and `git rev-list --count e6b5ccc45 ^5a929480a` returns `1`, so the twelve branch commits collapsed into one on `main`. This is a structural property of squash merging, not a defect and not a repeat of the rebase drift repaired above: the per-milestone commits are preserved in full on PR #1416, which is where a reader should go to inspect them individually. The single SHA that resolves on `main` is `e6b5ccc45`, and that is the value recorded as `sync_commit_sha` in §E.4 below.
+
 ### The three defects and their dispositions
 
 | # | Defect | Ours? | Disposition | Evidence |
@@ -1156,7 +1158,7 @@ This section is written on the assumption that a sync-phase auditor treats it as
 
 ```yaml
 sync_complete_at: 2026-08-09
-sync_commit_sha: pending-backfill-sync   # a commit cannot know its own hash; backfilled after this commit lands
+sync_commit_sha: e6b5ccc45   # the squash-merge commit on main (PR #1416); backfilled after the merge landed
 sync_status: audit-ready-with-two-gaps
 sync_auditor_verdict: PASS
 sync_auditor_weighted_mean: 0.885        # against a 0.85 threshold

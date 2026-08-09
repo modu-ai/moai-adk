@@ -153,6 +153,12 @@
 **핵심**: `moai goal arm|status|clear`, Condition {Mechanical,Model}, Stop-hook 평가 계약
 **상태**: `.moai/state/goal/<session-id>.json` (세션별)
 
+### internal/factory
+**역할**: Factory 모드 상태 — `moai cc -f` / `moai glm -f`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
+**핵심**: `record.go` (세션 레코드 기록, `validateSessionID`가 경로 조작 차단, 파일 0600), `revision.go` (`Matches`/`RevisionMatch`/`SuppressStep0551` — 모든 실패 모드가 "검사 수행"으로 수렴하는 fail-safe, rung은 allow-list)
+**상태**: 세션 ID 파생 경로의 레코드 파일 + `revision.json`
+**진입점**: `internal/cli/factory.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
+
 ### internal/hook
 **역할**: 컴파일된 훅 시스템 + main-checkout branch-state guard
 **이벤트**: 30개 EventType (SessionStart, PostToolUse, Stop, etc), 35개 `handle-*.sh` 래퍼
