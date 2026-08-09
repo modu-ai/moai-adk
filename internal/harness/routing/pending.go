@@ -67,6 +67,24 @@ func (s *Store) pendingPath(sessionID string) string {
 // FOREIGN rows as abort and (2) rerouting this session's own prior pending row
 // (REQ-HEV-011). Dispatch-time defaults are filled here.
 func (s *Store) Record(row PendingRow) error {
+	s.applyDispatchDefaults(&row)
+
+	// (1) Age-guarded, liveness-guarded stale sweep of FOREIGN rows.
+	if err := s.sweepStale(row.SessionID); err != nil {
+		return err
+	}
+	// (2) Same-session reroute (age-independent — REQ-HEV-010 precedence: the
+	//     current session's own row is ALWAYS rerouted, never swept).
+	if err := s.rerouteSelf(row.SessionID); err != nil {
+		return err
+	}
+	// (3) Persist the fresh pending row.
+	return s.writePending(row)
+}
+
+// applyDispatchDefaults fills the dispatch-time defaults shared by Record and
+// RecordIfAbsent (schema version, timestamps, model class, non-nil slices).
+func (s *Store) applyDispatchDefaults(row *PendingRow) {
 	row.SchemaVersion = SchemaVersion
 	if row.CreatedAt.IsZero() {
 		row.CreatedAt = s.now().UTC()
@@ -83,18 +101,61 @@ func (s *Store) Record(row PendingRow) error {
 	if row.EvidenceRefs == nil {
 		row.EvidenceRefs = []EvidenceRef{}
 	}
+}
 
-	// (1) Age-guarded, liveness-guarded stale sweep of FOREIGN rows.
-	if err := s.sweepStale(row.SessionID); err != nil {
-		return err
+// RecordIfAbsent creates a pending row for row.SessionID only when the session
+// has none; when a row already exists it is a pure no-op that preserves the
+// existing row's content untouched (REQ-HLE-003, REQ-HLE-004).
+//
+// It differs from Record in the two ways that matter, and both are deliberate:
+//
+//   - it never calls rerouteSelf. Record's reroute-on-redispatch is correct for
+//     an explicit re-dispatch, but this operation runs once per user prompt, and
+//     a multi-turn pipeline spans many prompts — rerouting there would close a
+//     row every turn and produce exactly the reroute-only ledger this SPEC exists
+//     to repair (plan.md §G AP-1).
+//   - it never calls sweepStale. The sweep costs an os.ReadDir plus one read per
+//     foreign pending file; on a per-prompt path that converts a once-per-dispatch
+//     directory scan into a once-per-prompt one (REQ-HLE-015, plan.md §G AP-2).
+//     The sweep stays bounded to the dispatch path, where Record still runs it.
+//
+// Record is left untouched, so the dispatch path keeps both sweep guards.
+func (s *Store) RecordIfAbsent(row PendingRow) error {
+	path := s.pendingPath(row.SessionID)
+	existing, ok, err := s.loadPending(path)
+	if err != nil {
+		// A malformed own-pending file is dropped so a fresh row can replace it,
+		// mirroring rerouteSelf's handling — but WITHOUT finalizing anything,
+		// because an unparseable row has no content worth appending to the ledger.
+		_ = os.Remove(path)
+	} else if ok {
+		_ = existing // present -> no-op; content is preserved verbatim.
+		return nil
 	}
-	// (2) Same-session reroute (age-independent — REQ-HEV-010 precedence: the
-	//     current session's own row is ALWAYS rerouted, never swept).
-	if err := s.rerouteSelf(row.SessionID); err != nil {
-		return err
-	}
-	// (3) Persist the fresh pending row.
+	s.applyDispatchDefaults(&row)
 	return s.writePending(row)
+}
+
+// Annotate patches routing metadata onto an existing pending row (REQ-HLE-005).
+// It creates nothing and finalizes nothing: a session with no pending row is a
+// silent no-op, because annotation describes an observation already in flight
+// and fabricating a row for it would invent an observation that never happened.
+// Patch fields that are nil (or empty) leave the existing value untouched.
+func (s *Store) Annotate(sessionID string, patch RoutingPatch) error {
+	if patch.IsEmpty() {
+		return nil
+	}
+	pending, ok, err := s.loadPending(s.pendingPath(sessionID))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if !patch.apply(&pending) {
+		return nil
+	}
+	return s.writePending(pending)
 }
 
 // AppendEvidence appends a machine evidence ref to the session's pending row.

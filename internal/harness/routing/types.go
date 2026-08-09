@@ -90,14 +90,104 @@ type EvidenceRef struct {
 	Terminal bool         `json:"terminal,omitempty"`
 }
 
+// AgentUnattributed is the marker recorded in Delegation.Agent when the stopping
+// subagent supplied no agent identity at all (REQ-HLE-008). It is deliberately
+// NOT the empty string: an unattributed delegation must stay countable, and an
+// empty value is indistinguishable from an attributed one that serialized badly.
+// The angle brackets keep it outside the space of real agent and spawn names, so
+// no consumer can mistake it for one.
+const AgentUnattributed = "<unattributed>"
+
+// OutcomeUnknownDelegation is the marker recorded in Delegation.Outcome when no
+// outcome signal was observable for a stopping subagent (REQ-HLE-009). Absence
+// of a failure signal is not evidence of success, so the seam records this
+// rather than inferring "success" — see plan.md §G AP-3.
+//
+// It is a Delegation-level marker and intentionally distinct from the row-level
+// Outcome enum above: a delegation whose outcome was never observed must not be
+// confusable with a row that terminated.
+const OutcomeUnknownDelegation = "unknown"
+
 // Delegation is one subagent delegation trajectory entry (REQ-HEV-004, design
 // delta A4). Blocker carries the structured blocker category when the delegation
 // returned a blocker report (a structurally observable artifact); null otherwise.
+//
+// Agent holds the hook input's agent_type VERBATIM (REQ-HLE-007) — it is not a
+// validated enum. Two observed shapes make that explicit:
+//
+//   - a named spawn puts the spawn NAME in agent_type, not the agent type, so a
+//     value like "audit-hle" is a legitimate recording of a plan-auditor spawn;
+//   - roughly a third of observed subagent_stop events carry no agent_type, and
+//     those are recorded as AgentUnattributed.
+//
+// Normalizing an unrecognized value onto a catalog name, or dropping the entry,
+// is prohibited at the seam (plan.md §G AP-7): discrimination is the consumer's
+// job, and doing it here would erase the distinction the consumer needs.
 type Delegation struct {
 	Agent     string  `json:"agent"`
 	CycleType string  `json:"cycle_type,omitempty"`
 	Outcome   string  `json:"outcome"`
 	Blocker   *string `json:"blocker"`
+}
+
+// RoutingPatch carries the six annotatable routing-metadata fields as optional
+// values (REQ-HLE-005). A nil field means "leave the existing value untouched";
+// only non-nil fields are written. Pointer-optionality is what makes the
+// distinction expressible at all — a plain string cannot separate "clear this"
+// from "do not touch this".
+type RoutingPatch struct {
+	MatchedSubcommand *string
+	ModeSelected      *string
+	Tier              *string
+	HarnessLevel      *string
+	ClarifyRounds     *int
+	ModelClass        *string
+}
+
+// IsEmpty reports whether the patch would change nothing.
+func (p RoutingPatch) IsEmpty() bool {
+	return p.MatchedSubcommand == nil &&
+		p.ModeSelected == nil &&
+		p.Tier == nil &&
+		p.HarnessLevel == nil &&
+		p.ClarifyRounds == nil &&
+		p.ModelClass == nil
+}
+
+// apply writes the patch's non-nil fields onto row and reports whether anything
+// changed. An empty string in a non-nil field is treated as "unset" and leaves
+// the existing value alone, matching REQ-HLE-005's stated semantics that a
+// supplied empty value is not a clear operation.
+func (p RoutingPatch) apply(row *PendingRow) bool {
+	changed := false
+	if p.MatchedSubcommand != nil && *p.MatchedSubcommand != "" {
+		row.MatchedSubcommand = *p.MatchedSubcommand
+		changed = true
+	}
+	if p.ModeSelected != nil && *p.ModeSelected != "" {
+		v := *p.ModeSelected
+		row.ModeSelected = &v
+		changed = true
+	}
+	if p.Tier != nil && *p.Tier != "" {
+		v := *p.Tier
+		row.Tier = &v
+		changed = true
+	}
+	if p.HarnessLevel != nil && *p.HarnessLevel != "" {
+		v := *p.HarnessLevel
+		row.HarnessLevel = &v
+		changed = true
+	}
+	if p.ClarifyRounds != nil {
+		row.ClarifyRounds = *p.ClarifyRounds
+		changed = true
+	}
+	if p.ModelClass != nil && *p.ModelClass != "" {
+		row.ModelClass = *p.ModelClass
+		changed = true
+	}
+	return changed
 }
 
 // Row is a finalized routing-ledger row (schema v1, spec.md §D.1). Every field
