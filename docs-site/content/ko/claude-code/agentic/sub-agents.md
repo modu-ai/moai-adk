@@ -11,7 +11,7 @@ description: "Claude Code 서브에이전트의 개념과 격리된 컨텍스트
 Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 윈도우에서 처리하고 결과 요약만 메인 대화로 돌려주는 위임 작업자입니다.
 
 {{< callout type="info" title="배경 참조" >}}
-이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [에이전트 가이드](/ko/advanced/agent-guide)에서 다룹니다.
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [에이전트 가이드](/ko/advanced/agent-guide)에서 다루고, 에이전트를 직접 만드는 실전 절차는 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 이어집니다.
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -20,10 +20,6 @@ Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 
 
 {{< callout type="info" title="비유로 이해하기" >}}
 서브에이전트는 **자기 책상을 따로 쓰는 동료**입니다. 내 책상(메인 대화의 컨텍스트)을 어지럽히는 대량의 조사·로그·검색 결과는 동료에게 맡기면, 그는 자기 책상 위에서 그 일을 처리하고 나에게는 **결과 요약 한 장만** 건네줍니다. 덕분에 내 책상은 깨끗하게 유지되고, 나는 핵심 흐름에만 집중할 수 있습니다.
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그(10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 짜고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/ko/advanced/agent-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 깊이 다룹니다.
 {{< /callout >}}
 
 ## 서브에이전트란

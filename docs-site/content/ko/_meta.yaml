@@ -1,6 +1,9 @@
 "getting-started":
   title: "시작하기"
   weight: 10
+resources:
+  title: "리소스"
+  weight: 15
 "core-concepts":
   title: "핵심 개념"
   weight: 20

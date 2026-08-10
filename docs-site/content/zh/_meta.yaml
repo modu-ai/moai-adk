@@ -1,6 +1,9 @@
 "getting-started":
   title: "开始使用"
   weight: 10
+resources:
+  title: "资源"
+  weight: 15
 "core-concepts":
   title: "核心概念"
   weight: 20

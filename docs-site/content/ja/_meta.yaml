@@ -1,6 +1,9 @@
 "getting-started":
   title: "はじめに"
   weight: 10
+resources:
+  title: "リソース"
+  weight: 15
 "core-concepts":
   title: "コア概念"
   weight: 20

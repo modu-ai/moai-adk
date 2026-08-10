@@ -60,7 +60,7 @@ flowchart TD
 ```
 
 {{< callout type="info" >}}
-SPEC 3-Phase 라이프사이클 명령어 (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`)는 [워크플로우 명령어](/ko/workflow-commands/) 섹션을 참조하세요. `/moai` 오케스트레이터가 라우팅하는 전체 15개 서브커맨드 목록도 그 섹션에 있습니다.
+SPEC 3-Phase 라이프사이클 명령어 (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`)는 [워크플로우 명령어](/ko/workflow-commands/) 섹션을 참조하세요. `/moai` 오케스트레이터가 라우팅하는 전체 16개 서브커맨드 목록도 그 섹션에 있습니다.
 {{< /callout >}}
 
 {{< callout type="info" >}}

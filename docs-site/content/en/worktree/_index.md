@@ -125,7 +125,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **Advantages**:
 
 - Completely isolated working environment
-- GLM cost efficiency (roughly 70% savings versus Opus)
+- GLM cost efficiency (for the size of the savings, see [CG Mode](/en/multi-llm/cg-mode))
 - Unlimited parallel development without conflicts
 
 #### Phase 3: Cleanup
