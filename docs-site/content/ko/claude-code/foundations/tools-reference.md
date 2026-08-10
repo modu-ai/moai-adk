@@ -10,6 +10,10 @@ description: "Claude Code 내장 도구의 용도, 읽기/쓰기 구분, setting
 
 Claude Code가 코드베이스를 이해하고 수정할 때 사용하는 내장 도구들과, 각 도구에 권한이 어떻게 연결되는지를 정리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 도구 이름은 권한 규칙, 서브에이전트 도구 목록, hook 매처에서 그대로 쓰이는 식별자이므로 도구의 읽기/쓰기 성격과 권한 동작을 알면 Claude Code의 안전 경계를 직접 설계할 수 있습니다.
 {{< /callout >}}

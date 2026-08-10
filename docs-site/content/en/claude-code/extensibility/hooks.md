@@ -9,6 +9,10 @@ description: "The concept and main events of hooks — shell scripts that run au
 
 A hook is a shell command that runs automatically at specific points in Claude Code's lifecycle, deterministically guaranteeing "actions that must always happen" without depending on the model's judgment.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Hooks Guide](/en/advanced/hooks-guide).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: A hook is an "if-this-then-that" script that fires automatically whenever Claude Code edits a file or finishes a task, enforcing formatting, lint, and security blocks without a human hand.
 {{< /callout >}}

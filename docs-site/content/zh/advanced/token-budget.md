@@ -6,6 +6,10 @@ draft: false
 
 深入讨论代币经济学四层结构中的 D 层 — 预算防御(Budget defense)。涵盖当代理到达上下文窗口极限时会话如何无损停止、保存进度使下一个会话可以接续的正常中止(graceful abort)机制。
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [上下文窗口](/zh/claude-code/context-memory/context-window)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 ## 预算防御的必要性
 
 Anthropic SSE 流在上下文窗口天花板附近会间歇性停顿(`stream_idle_partial`)。这是概率性的但在阈值以上可预测。停顿发生时代理调用可能在流中途失败，从而丢失进度。

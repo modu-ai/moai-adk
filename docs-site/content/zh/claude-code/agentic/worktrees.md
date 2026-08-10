@@ -7,6 +7,10 @@ description: "介绍 Claude Code 如何用 git 工作树隔离并行会话，从
 
 工作树 (worktree) 能在一个 git 仓库里分出多个工作目录，让不同的 Claude Code 会话各改各的文件、互不干扰地并行推进。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [Git Worktree 概述](/zh/worktree)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：工作树在共享同一仓库的同时分离工作目录与分支，让一个终端开发功能、另一个终端修 Bug 的并行工作无冲突地成为可能。
 {{< /callout >}}

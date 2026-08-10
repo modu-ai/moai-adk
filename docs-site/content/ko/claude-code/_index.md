@@ -13,6 +13,10 @@ description: "MoAI-ADK의 세 가지 핵심(토크노믹스·에이전틱 루프
 
 이 섹션은 앤트로픽의 터미널 CLI인 Claude Code를 처음부터 이해하기 위한 학습 경로입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 
 Claude Code는 터미널에서 실행되는 코딩 에이전트로, 코드를 읽고 수정하고 명령을 실행하며 개발자와 대화하면서 일합니다. Claude Code를 막 접한 개발자, 그리고 MoAI-ADK의 동작 기반을 정확히 파악하려는 분을 위한 안내서입니다.
 

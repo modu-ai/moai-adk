@@ -12,6 +12,10 @@ draft: false
   과정을 자동으로** 수행합니다.
 {{< /callout >}}
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [세션 관리](/ko/claude-code/context-memory/sessions)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **슬래시 커맨드 지원**: MoAI의 모든 서브커맨드는 스킬로 래핑되어 있어, `/moai`만 입력하면 사용 가능한 서브커맨드 목록이 표시됩니다. 각 서브커맨드는 `/moai:fix`, `/moai:loop`, `/moai:review` 등의 형식으로 바로 실행할 수도 있습니다.
 {{< /callout >}}

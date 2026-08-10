@@ -7,6 +7,10 @@ description: "スクリプトが数十~数百のサブエージェントをオ�
 
 ダイナミックワークフロー (dynamic workflow) は、Claude 自身が書いた JavaScript スクリプトが、1 回の会話では調律しきれない数十~数百のサブエージェントをバックグラウンドでオーケストレーションする、Claude Code の実行基本要素 (primitive) です。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [動的ワークフローと Ultracode](/ja/advanced/ultracode-workflows) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: サブエージェントとエージェントチームが「計画を Claude の頭の中に」置くなら、ダイナミックワークフローは「計画をスクリプトコードの中に」移し、大規模なファンアウトを一気に回します。
 {{< /callout >}}

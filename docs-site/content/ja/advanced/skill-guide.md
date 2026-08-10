@@ -7,6 +7,10 @@ description: "MoAI-ADKスキルシステム — プログレッシブ・ディ�
 
 MoAI-ADK のスキルシステムを詳しく案内します。スキルはエージェンティックハーネスの知識層であり、「必要な知識だけを必要な瞬間にロードする」という点でトークノミクスが最も具体的に実装された場所でもあります。
 
+{{< callout type="info" title="プラットフォームの基礎" >}}
+プラットフォーム層の背景については [スキル](/ja/claude-code/extensibility/skills) を参照してください。MoAI-ADK としての説明はこのページです。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 
 **スキルとは?**

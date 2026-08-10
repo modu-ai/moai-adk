@@ -14,8 +14,8 @@
   title: "CLI Reference"
   weight: 45
 "claude-code":
-  title: "Claude Code Guide"
-  weight: 55
+  title: "Claude Code Guide (Background Reference)"
+  weight: 130
 "multi-llm":
   title: "Multi-LLM Mode"
   weight: 60

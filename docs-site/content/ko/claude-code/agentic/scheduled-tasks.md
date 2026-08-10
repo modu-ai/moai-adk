@@ -9,6 +9,10 @@ description: "Claude Code의 /loop과 cron 도구로 세션 안에서 프롬프�
 
 Claude Code의 예약 작업(scheduled tasks)은 같은 세션이 열려 있는 동안 프롬프트를 정해진 주기로 다시 실행하게 해 주는 기능입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [자율 연속 루프](/ko/advanced/autonomous-loops)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 배포 폴링, PR 돌보기, 정기 점검을 사람이 매번 입력하지 않고 `/loop`과 cron 도구에 맡기는, 세션에 묶인 가벼운 자동화입니다.
 {{< /callout >}}

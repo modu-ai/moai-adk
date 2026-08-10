@@ -9,6 +9,10 @@ description: "Scheduled tasks in Claude Code — automatically re-running prompt
 
 Scheduled tasks in Claude Code re-run a prompt on a set cadence for as long as the same session stays open.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Autonomous Continuation Loops](/en/advanced/autonomous-loops).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Lightweight, session-bound automation that hands deployment polling, PR babysitting, and periodic checks to `/loop` and the cron tools instead of a human retyping them.
 {{< /callout >}}

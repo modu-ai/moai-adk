@@ -10,6 +10,10 @@ description: "Claude Code サブエージェントの概念と隔離されたコ
 Claude Code のサブエージェントは、脇道の作業を別のコンテキストウィンドウで処理し、結果の要約だけをメイン対話に返す委任ワーカーです。
 
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [エージェントガイド](/ja/advanced/agent-guide) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一行要約**: サブエージェントは探索・検証のような脇道の仕事を自分だけのコンテキストで処理し、要約だけを返して、メイン対話をきれいに保つ委任ワーカーです。
 {{< /callout >}}

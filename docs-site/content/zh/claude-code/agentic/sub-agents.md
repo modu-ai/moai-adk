@@ -9,6 +9,10 @@ description: "在概览层面梳理 Claude Code 子智能体的概念、隔离�
 
 Claude Code 的子智能体是在独立的上下文窗口中处理旁支任务、只把结果摘要返回主对话的委派工作者。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [智能体指南](/zh/advanced/agent-guide)。
+{{< /callout >}}
+
 
 {{< callout type="info" >}}
 **一句话总结**：子智能体在自己的上下文中处理探索·验证这类旁支工作、只返回摘要，是让主对话保持干净的委派帮手。

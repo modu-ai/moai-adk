@@ -9,6 +9,10 @@ description: "Context-narrowing strategies for using Claude Code efficiently in 
 
 Claude Code works well even on large codebases — whether a multi-million-line single repository or a monorepo of many packages. But the defaults assume a small project, so a **strategy of narrowing context to only what each task actually touches** is essential.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Tokenomics Overview](/en/advanced/tokenomics-overview).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: The real problem in a large codebase is not "many files" but **irrelevant guidance and files filling the context**. Irrelevant tokens degrade quality while raising cost — context narrowing IS tokenomics.
 {{< /callout >}}

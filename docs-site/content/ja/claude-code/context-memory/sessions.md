@@ -9,6 +9,10 @@ description: "Claude Code セッションの概念と --resume/--continue での
 
 Claude Code では 1 つの対話がそのまま 1 つのセッションです。このページでは、セッションを開始・再開・整理する方法と、セッションがチェックポイントやハンドオフとどうかみ合うかをまとめます。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [/moai](/ja/utility-commands/moai) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一言でいうと**: セッションは 1 つの **対話の単位**です。続けて作業するときは以前のセッションを呼び戻し (`--resume` / `--continue`)、話題が変わったら `/clear` できれいに空にします。セッションの流れを理解すれば、長い作業を何日にもわたって失わずに続けられます。
 {{< /callout >}}
