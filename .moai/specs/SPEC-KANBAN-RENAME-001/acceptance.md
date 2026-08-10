@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RENAME-001
 title: "Acceptance criteria — Factory Mode to Kanban Mode rename"
-version: "0.5.0"
+version: "0.5.1"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -13,6 +13,12 @@ lifecycle: spec-anchored
 tags: "rename, refactor, cli, template-mirror, behavior-preserving"
 tier: L
 ---
+
+## HISTORY
+
+- **v0.5.1** (2026-08-11) — **Cross-reference correction in `AC-KR-028`'s v0.5.0 rationale. No command, target value, or positive control changes.** That paragraph grounded the preservation of the `SPEC-FACTORY-MODE-001` citation on `REQ-KR-012` and §C, and neither authority reaches this case. `REQ-KR-012` is scoped to `AC-FM-*` acceptance-criterion identifiers "appearing in test comments **and in test function names**" — a SPEC identifier inside a `.moai/project/` prose line is neither. §C excludes the `.moai/specs/` **directory** from scope and says nothing about a citation string in a project document; `.moai/project/` is explicitly **in** scope per `REQ-KR-024` and `plan.md` §B-5, so citing §C here pointed at the one directory boundary that does not apply. The substantive point was sound and is unchanged: the accurate grounding is `REQ-KR-024`, which scopes these two documents to the renamed **package path, flag, and file names** — a SPEC identifier is none of the three, so the rename never asked for it — reinforced by the standalone argument that rewriting the citation would name a SPEC that does not exist and orphan the preserved record. The same miscitation appeared once in `spec.md`'s v0.5.0 HISTORY entry and is corrected there; that entry's "one measurement short" is also corrected to **two**, which is what its own figures (baseline 5 bare-word vs 3 in-scope, post-rename 2 vs a target of 0) already said. `spec.md` moves to `0.5.1` with it; `plan.md` carries no occurrence and stays at `0.5.0`.
+- **v0.5.0** (2026-08-11) — Run-phase amendment to `AC-KR-020` and `AC-KR-028`, both of whose premises were falsified by running them. The full narrative, with the measurements that forced each change, is `spec.md` HISTORY v0.5.0; the per-criterion rationale is inline beside each criterion in §B.
+- **v0.4.0 and earlier** — recorded in `spec.md` HISTORY. This file carried no `## HISTORY` section before v0.5.1; its amendments were recorded inline beside the criteria they changed, and that inline record is preserved rather than migrated here.
 
 ## §A. How these criteria are judged
 
@@ -337,7 +343,7 @@ modules.md:246: … `internal/kanban` 하나만 SPEC-FACTORY-MODE-001이 추가�
 structure.md:139: … `internal/kanban` — belongs to SPEC-FACTORY-MODE-001; …
 ```
 
-The package references are already renamed. What still matches is the substring `FACTORY` **inside the citation** `SPEC-FACTORY-MODE-001` — a reference to the closed SPEC's preserved record, which `REQ-KR-012` protects and §C excludes from every scope this SPEC defines. Driving the unbounded count to `0` would require either inventing a SPEC identifier that does not exist, orphaning `.moai/specs/SPEC-FACTORY-MODE-001/`, or deleting the citation outright; both are prohibited, so the target was unreachable and the defect is in the control rather than in the implementation. The v0.3.0 control counted all five baseline lines as though each carried only the in-scope token, which set the target two measurements short of what the requirement can deliver.
+The package references are already renamed. What still matches is the substring `FACTORY` **inside the citation** `SPEC-FACTORY-MODE-001` — and a SPEC identifier is not something `REQ-KR-024` asks to be changed. That requirement scopes these two documents to "the renamed **package path, flag, and file names**"; a citation to another SPEC is none of the three, so it falls outside what the rename obliges and the unbounded grep counts a line the requirement never asked anyone to touch. The general reason stands on its own merits besides: renaming the citation would name a SPEC that does not exist and orphan the preserved `.moai/specs/SPEC-FACTORY-MODE-001/` record. Driving the unbounded count to `0` therefore requires inventing an identifier or deleting the citation outright — so the target was unreachable, and the defect is in the control rather than in the implementation. The v0.3.0 control counted all five baseline lines as though each carried only the in-scope token, which set the target two measurements short of what the requirement can deliver.
 
 The bound is the narrowest one that separates the two: it drops **only** lines carrying the protected citation, so a stale `internal/factory`, a `factory.go`, or a `moai cc -f` on any other line still counts and still fails. The two dual-token lines are not exempted from scrutiny by it either — their package references are what the first command reads back in renamed form.
 
