@@ -276,6 +276,14 @@ var DefaultCodexReviewGateTimeout = 900 * time.Second
 // constant expression.
 var DefaultMultiReviewGateTimeout = 900 * time.Second
 
+// DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
+// carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
+// lifecycle artifact, not a transcript: the summary exists so an operator can
+// tell one job from another, so an unbounded prompt has no business inflating
+// every read of the record. Redaction (REQ-CX2-005) is a separate concern and
+// runs before this truncation, never instead of it.
+const DefaultCodexJobSummaryMaxLen = 500
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:

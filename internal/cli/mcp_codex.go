@@ -59,6 +59,12 @@ const (
 	codexMethodInitialize  = "initialize"   // mandatory handshake opener
 	codexMethodThreadStart = "thread/start" // opens a thread; its result.thread.id is the review threadId
 
+	// codexNotifyTurnStarted is the server→client notification announcing that a
+	// turn began. Its turn.id is the ONLY source of the turnId that
+	// turn/interrupt requires alongside threadId (REQ-CX2-003; M0 probe,
+	// progress.md §E.2 (a)).
+	codexNotifyTurnStarted = "turn/started"
+
 	// codex client identity sent in the initialize handshake (the server rejects
 	// initialize without a clientInfo {name,version} object).
 	codexClientName    = "moai-codex-gate"
@@ -259,6 +265,24 @@ type codexConn interface {
 	close() error
 }
 
+// codexProcessConn is the OPTIONAL half of codexConn: a connection backed by a
+// real OS process reports the pid of the process the session runner spawned. It
+// is separate from codexConn so the canned test connections stay processless —
+// a job record must never name a pid this server did not spawn (REQ-CX2-012).
+type codexProcessConn interface {
+	pid() int
+}
+
+// codexConnPID reports the pid of the codex process behind conn, or 0 when the
+// connection has no backing process. Zero is the "no process of ours" value the
+// job registry records and the cancel path (M4) refuses to signal.
+func codexConnPID(conn codexConn) int {
+	if p, ok := conn.(codexProcessConn); ok {
+		return p.pid()
+	}
+	return 0
+}
+
 // codexSessionRunner abstracts spawning the codex app-server subprocess so tests
 // inject a canned line exchange without spawning a process. The production
 // runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
@@ -333,6 +357,15 @@ func (c *realCodexConn) recv() (string, bool) {
 	return line, ok
 }
 
+// pid reports the pid of the codex subprocess this connection spawned, or 0
+// once the process is gone (satisfies codexProcessConn).
+func (c *realCodexConn) pid() int {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return 0
+	}
+	return c.cmd.Process.Pid
+}
+
 func (c *realCodexConn) close() error {
 	_ = c.stdin.Close()
 	done := make(chan error, 1)
@@ -385,6 +418,20 @@ type codexSessionHandle struct {
 	conn     codexConn
 	threadID string
 	nextID   int // monotonic JSON-RPC request id; the handshake consumed 1 and 2
+
+	// turnID is the id of the most recent turn the session observed starting,
+	// read from the turn/started notification's turn.id. It is the second
+	// argument turn/interrupt requires alongside threadId (REQ-CX2-003; M0
+	// probe, progress.md §E.2 (a)) — without it a turn cannot be addressed for
+	// cancellation at all.
+	turnID string
+
+	// onTurnStarted, when non-nil, is invoked with the turn id the moment
+	// turn/started is observed — MID-FLIGHT, before the turn completes. It is
+	// the hook a background job goroutine installs so the turnId reaches the
+	// job record while the turn is still running and therefore still
+	// cancellable (plan.md §D M2).
+	onTurnStarted func(turnID string)
 }
 
 // codexSessionError carries the fail-open summary text alongside the underlying
@@ -466,6 +513,27 @@ func (h *codexSessionHandle) close() error {
 	return h.conn.close()
 }
 
+// pid reports the pid of the codex subprocess backing this session, or 0 when
+// the session has no backing process (a canned session, or a closed one).
+func (h *codexSessionHandle) pid() int {
+	if h == nil || h.conn == nil {
+		return 0
+	}
+	return codexConnPID(h.conn)
+}
+
+// noteTurnStarted records an observed turn id on the handle and fans it out to
+// the mid-flight observer, if one is installed.
+func (h *codexSessionHandle) noteTurnStarted(turnID string) {
+	if turnID == "" {
+		return
+	}
+	h.turnID = turnID
+	if h.onTurnStarted != nil {
+		h.onTurnStarted(turnID)
+	}
+}
+
 // allocID hands out the next JSON-RPC request id. Ids must stay unique across
 // the whole session: a reused id would let awaitCodexResponse match an earlier
 // turn's response and return it as this turn's ack.
@@ -492,7 +560,7 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 		return inconclusiveReview("codex " + method + " rejected: " + err.Error()), err
 	}
 
-	reviewText := awaitCodexTurnReview(h.conn, h.threadID, ctx)
+	reviewText := awaitCodexTurnReview(h.conn, h.threadID, ctx, h.noteTurnStarted)
 	if reviewText == "" {
 		return inconclusiveReview("codex review produced no verdict text"), errors.New("codex review produced no verdict text")
 	}
@@ -653,7 +721,12 @@ func coerceCodexReviewTarget(v any) map[string]any {
 // awaitCodexTurnReview reads notifications until turn/completed for threadID,
 // collecting the review prose from the exitedReviewMode item (preferred) or the
 // final agentMessage text (fallback). Returns "" on EOF / deadline (fail-open).
-func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) string {
+//
+// onTurnStarted, when non-nil, is invoked with the turn id carried by the
+// turn/started notification — the ONLY source of the turnId that turn/interrupt
+// requires (REQ-CX2-003). It fires mid-loop, so a background job persists the
+// id while the turn is still running rather than after it completes.
+func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) string {
 	reviewText, agentText := "", ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -674,6 +747,10 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) 
 			continue
 		}
 		switch msg.Method {
+		case codexNotifyTurnStarted:
+			if onTurnStarted != nil {
+				onTurnStarted(codexTurnIDOf(msg.Params))
+			}
 		case "item/completed":
 			var p struct {
 				Item struct {
@@ -702,6 +779,23 @@ func bestCodexReviewText(review, agent string) string {
 		return review
 	}
 	return agent
+}
+
+// codexTurnIDOf reads turn.id from a turn/started notification's params. The
+// generated protocol schema (codex-cli 0.146.1) declares TurnStartedParams as
+// {threadId, turn} with Turn.id required; that id is what turn/interrupt
+// expects as its turnId (M0 probe, progress.md §E.2 (a)).
+func codexTurnIDOf(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		Turn struct {
+			ID string `json:"id"`
+		} `json:"turn"`
+	}
+	_ = json.Unmarshal(params, &p)
+	return p.Turn.ID
 }
 
 // codexThreadIDOf reads threadId from a notification's params.

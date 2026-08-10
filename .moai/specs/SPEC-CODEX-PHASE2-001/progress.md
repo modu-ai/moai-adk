@@ -119,6 +119,62 @@ Supporting non-regression rows (not AC-bound): `TestCodexSession_NonCodexModelNo
 
 **Gaps (M1).** No live codex session was executed; the two-turn reuse (AC-CX2-001) is proven against the canned session runner, so the M0 Gap "(b) is a schema-shape inference — a two-turn live session would settle it" remains open and is carried into M2/M3. The `thread/start.model` and `turn/start.model` destinations are likewise schema-verified and canned-session-verified, not observed against a live codex accepting them.
 
+### M2 — Job registry
+
+REQ-CX2-003, REQ-CX2-004, REQ-CX2-005. Evidence captured against the working tree on top of HEAD `146baf37f` (branch `feat/SPEC-CODEX-PHASE2-001-run`) — the tree the M2 commit lands verbatim. Every row names the command run and the output observed in this run, against this tree.
+
+**What M2 delivers.** `internal/cli/codex_jobs.go` (the record + the registry) and three seams it consumes, added to `internal/cli/mcp_codex.go`: `codexProcessConn` / `codexConnPID` (the pid of the process the session runner spawned), `codexSessionHandle.turnID` + `onTurnStarted` (the mid-flight turnId hook), and `codexTurnIDOf` (reads `turn.id` out of the `turn/started` notification). The record's summary bound is `config.DefaultCodexJobSummaryMaxLen` in `internal/config/defaults.go` (REQ-CX2-015). No tool is registered — `codex_task` is M3 and the `codex_job_*` tools are M4.
+
+**RED evidence (E8, captured before any implementation existed).** `go test ./internal/cli/ -run 'CodexJob|CodexConnPID'`:
+
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/codex_jobs_test.go:48:38: undefined: codexJobRegistry
+internal/cli/codex_jobs_test.go:67:9: undefined: newCodexJobRegistry
+internal/cli/codex_jobs_test.go:76:25: undefined: codexJobSpec
+internal/cli/codex_jobs_test.go:78:26: handle.pid undefined (type *codexSessionHandle has no field or method pid)
+internal/cli/codex_jobs_test.go:88:9: handle.onTurnStarted undefined (type *codexSessionHandle has no field or method onTurnStarted)
+internal/cli/codex_jobs_test.go:103:10: undefined: CodexJobRecord
+internal/cli/codex_jobs_test.go:111:19: undefined: codexJobStatusQueued
+internal/cli/codex_jobs_test.go:112:60: undefined: codexJobStatusQueued
+internal/cli/codex_jobs_test.go:142:9: undefined: newCodexJobRegistry
+internal/cli/codex_jobs_test.go:143:25: undefined: codexJobSpec
+internal/cli/codex_jobs_test.go:143:25: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+**Two design points worth carrying forward.**
+
+- *The turnId is written mid-flight, not after the turn.* `turnIDRecorder` is installed on the session handle before the turn starts and fires from inside the notification loop, so the id lands in the record while the turn is still running — which is the only window in which the id is useful, since M4 cancels a turn that has not finished. The write there is best-effort by construction (the notification loop has no caller to return an error to), and the consequence is stated rather than hidden: the record keeps an empty `turn_id`, and M4's cancel path must treat an empty `turn_id` as "turn not addressable" instead of sending a malformed `turn/interrupt`.
+- *A processless session records pid 0.* `codexProcessConn` is deliberately the optional half of `codexConn`, so a canned session reports no pid at all rather than borrowing one. This keeps REQ-CX2-012's ownership check honest at M4: 0 is "no process of ours", never a pid to signal.
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-CX2-005 (REQ-CX2-003) | PASS | `go test ./internal/cli/ -run TestCodexJobRegistry_RecordShapeAndTurnIDCapture -v` | `--- PASS` — exactly one file under the registry dir; its JSON decodes with a non-empty id, `status: queued`, non-zero `created_at`/`updated_at`, `thread_id` `tid-fake`, `turn_id` `trn-77` (the canned `turn/started` notification's `turn.id`), `pid` 424242 (the pid the spawning connection reports), `mode` `adversarial`, and a non-empty `request_summary` |
+| AC-CX2-006 (REQ-CX2-004) | PASS | `go test ./internal/cli/ -race -run TestCodexJobRegistry_TransitionsAreAtomic -v` | `--- PASS` — a concurrent reader loops over the record across five transitions (`running`→`running`→`completed`→`failed`→`cancelled`); every completed read decoded, carried an in-enum status and the right id, and the read count was non-zero (the test fails rather than passing vacuously when no read lands). Race detector clean. A companion row, `TestCodexJobRegistry_RejectsUnknownStatus`, shows an out-of-enum transition is refused with the on-disk record unchanged |
+| AC-CX2-007 (REQ-CX2-004) | **PASS-WITH-DEBT** | `go test ./internal/cli/ -run TestCodexJobRegistry_UnwritableStateDirStructuredError -v` | `--- PASS` — with `.moai/state` occupied by a regular file, `create` returns a `*codexJobStateError` carrying op + path + wrapped cause; the test process does not panic; removing the obstruction leaves the same registry able to serve the next call. **Debt**: the AC's clause "*the tool* returns a structured error result" cannot be closed at M2 — `codex_task` does not exist until M3. M2 delivers the structured error value and the `toolErr` rendering path it will travel; the tool-level arm is carried into M3 |
+| AC-CX2-008 (REQ-CX2-005) | PASS | `go test ./internal/cli/ -run TestCodexJobRecord_CarriesNoSecrets -v` | `--- PASS` — with credential sentinels seeded into the environment (`CODEX_API_KEY`, `OPENAI_API_KEY`) and into the request text (an `api_key=sk-proj-…` pair, an `Authorization: Bearer …` header, a `password: …` pair), none of the four sentinels appears in the record file, and the record carries no environment block. `TestCodexJobRecord_NoReattachmentMetadata` additionally asserts the serialized record carries no `env` / `argv` / `binary_path` / `server_pid` / `resumable` / `reattach` key |
+
+Supporting non-AC rows: `TestCodexJobRegistry_ConcurrentJobsDoNotCollide` (8 concurrent creates → 8 distinct ids and 8 files, acceptance.md §B), `TestCodexJobRegistry_MalformedRecordIsReported` and `TestCodexJobRegistry_UnknownIDIsNotFound` (§B — a corrupt record and an unknown id are distinguishable structured errors, neither a crash), `TestCodexJobRecord_RequestSummaryBounded`, `TestCodexConnPID_ZeroWithoutProcess`.
+
+**§E verification batch.**
+
+- E2 cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`. `go vet ./internal/cli/` → `VET_EXIT=0`.
+- E3 coverage — `go test -cover ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 233.121s coverage: 76.7% of statements` (log: `.moai/state/verify/m2/cover-v2.txt`), against the M1 level of 76.6% recorded above. Coverage is at or above its pre-change level. **Flake disclosure**: this command was run four times on this tree — 193.668s PASS (76.7%), then `FAIL` at 227.820s, then 217.810s PASS (76.7%), then the 233.121s PASS quoted above. The failing run's per-test detail is **not attributable**: that invocation kept only the last two output lines, so the log naming the failing test was discarded and no claim is made about which test failed or why. The known local `internal/cli` flake predates this milestone; the immediately-following `go test ./...` run in the same batch reported `internal/cli` `ok` at 226.756s, so the failure did not reproduce against the same tree. A subsequent tightening of `TestCodexJobRegistry_TransitionsAreAtomic` (its reader loop now yields between reads instead of hot-spinning) removed one plausible contributor, but no causal claim is made — the two later PASS runs are consistent with the flake simply not firing.
+- E4 subagent boundary — `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go | grep -v '_test.go' | grep -v '//'` → no output (exit 1).
+- E5 lint — `golangci-lint run --timeout=3m` → `0 issues.` An earlier run of the same command reported `internal/cli/codex_jobs.go:109:6: func codexJobTerminal is unused`; that helper was M4 forward-scaffolding with no caller and was deleted rather than suppressed, and the re-run above is the result.
+- Full suite — `go test ./...` → exit 0, 112 packages `ok`, zero `FAIL` / `panic` / `--- FAIL` lines (`internal/cli` `ok` at 233.121s in that run). Run in full rather than affected-packages-only, so the cross-cutting template-mirror guards were exercised. Output at `.moai/state/verify/m2/full-suite-v2.txt`; an earlier identical run against the same tree (before the test-loop yield) is at `.moai/state/verify/m2/full-suite-final.txt`, also exit 0 / 112 `ok` / 0 failures.
+- Template surface — `git status --porcelain internal/template/templates/` → empty.
+- `gofmt -l` on the four touched files (`internal/cli/codex_jobs.go`, `internal/cli/codex_jobs_test.go`, `internal/cli/mcp_codex.go`, `internal/config/defaults.go`) → no output. A repo-wide `gofmt -l .` lists ~35 files, all of them untouched by this SPEC — a pre-existing baseline, not an M2 regression.
+
+**Gaps (M2).**
+
+- No live codex session was executed. The `turn/started` → `turn.id` capture is proven against a canned transcript **that this milestone authored from the M0 schema reading**, so it inherits the M0 gap verbatim: the `Turn.id` → `turnId` correspondence remains a schema inference, and no `turn/interrupt` has ever been issued. A canned transcript cannot falsify a wrong reading of the protocol — only a live two-turn session with a real interrupt can, and that is still owed.
+- Whether codex emits `turn/started` at all on a `review/start` turn (as opposed to a `turn/start` turn) is unobserved. If it does not, the record's `turn_id` stays empty on the review path and M4's cancel degrades to process termination for those jobs.
+- AC-CX2-007's tool-level arm is deferred to M3 (see the PASS-WITH-DEBT row above). The registry half is closed.
+- The atomicity evidence is a same-process concurrent read against the POSIX rename guarantee. The Windows rename-retry path (`renameWithRetry`) is exercised only by the cross-compile build, not by a running Windows reader.
+- `codexJobSummary` redacts credential-*shaped* content. A secret with no recognizable shape and no credential-shaped key beside it would survive into the summary; the record's structural guarantee (no environment block, no argv, no binary path) is the stronger half of REQ-CX2-005, and the redaction is defense in depth on top of it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
