@@ -143,6 +143,12 @@ func newHarnessRouterCmd() *cobra.Command {
 	// observation subject from the usage-log observer (REQ-HEV-009).
 	cmd.AddCommand(newHarnessLedgerCmd())
 
+	// SPEC-HARNESS-LEARNING-EVO-002: the delegation-map analyzer (Loop 1) —
+	// `moai harness delegation analyze` reads the ledger the verb above records
+	// and emits delegation-map amendment proposals. It reads the map read-only
+	// and never writes it; application stays a Tier-4 approval-gate decision.
+	cmd.AddCommand(newHarnessDelegationCmd())
+
 	// AC-HLR-012: derive the Long description from the registered subcommands so
 	// the verb enumeration is a round trip from the command table (no hand-
 	// authored list that can drift from the AddCommand calls).
