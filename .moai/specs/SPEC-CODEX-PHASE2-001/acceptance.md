@@ -96,6 +96,20 @@ git status --porcelain internal/template/templates/
 go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 ```
 
+### M6 — Protocol liveness (amendment, v0.6.0)
+
+**AC-CX2-017** (MUST, REQ-CX2-016) — *Given* a canned session whose server side, mid-turn, emits a client-bound request line carrying both a `method` and an `id` (the `item/fileChange/requestApproval` shape observed in `progress.md` §E.2) **and which withholds `turn/completed` until it has observed a transmitted line whose `id` equals that request's `id`**, *When* `codex_task` drives a turn that did not opt into writes (`workflow.codex.task.allow_write` absent — the distributed default), *Then* the captured transmitted lines contain a response carrying that same `id`, the decoded payload of that response denies the file change rather than approving it, and the turn returns.
+
+The withholding is what makes this criterion non-vacuous: a driver that drops the request produces no id-matched line, the canned server never sends `turn/completed`, and the test fails by exhausting its own bound instead of passing silently. The assertion is stated against the transmitted line and its decoded decision value — not against the presence of a `case` in the dispatch switch, which a code-shape check could satisfy without the response ever being sent, and not against the mere presence of a decision field, which would be unfalsifiable.
+
+*And* (unknown-method arm) *Given* the same withholding canned server emitting a client-bound request whose `method` the driver does not recognize, *Then* a response carrying that `id` is likewise transmitted and the turn returns — a JSON-RPC error response satisfies this arm; being ignored does not.
+
+**AC-CX2-018** (MUST, REQ-CX2-017) — *Given* a canned session that accepts `turn/start` and emits `turn/started` and then emits nothing further — no `turn/completed`, no EOF — *When* `codex_task` is invoked with `context.Background()` as the caller context (no caller deadline, so a pass cannot be produced by the caller's bound) and the REQ-CX2-017 value in `internal/config/defaults.go` overridden to a short test duration `D`, *Then* the call returns after **at least** `D` and **within** a generous ceiling well below any host-imposed bound, the foreground result is a structured result naming the timeout, the background form's job record reaches a terminal status, and the test process does not panic.
+
+The two-sided time bound is the anti-vacuity device: a call that returns immediately for an unrelated reason fails the lower bound, and a call that never returns fails the upper. The override is what keeps the criterion cheap to run, and it is why REQ-CX2-017 requires a test-overridable value rather than a compile-time constant.
+
+*And* (distinctness arm) *Given* the completed tree, *When* `grep -n 'DefaultCodexReviewGateTimeout' internal/cli/codex_task.go` runs, *Then* it produces no output — the task bound is its own named value, not a reuse of the review-gate budget.
+
 ## §B. Edge cases (negative tests, MUST)
 
 - Codex binary absent from PATH: every new tool returns a structured fail-open result; none panics, and none blocks the caller.
@@ -133,3 +147,5 @@ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 | REQ-CX2-013 | AC-CX2-016 |
 | REQ-CX2-014 | AC-CX2-016 |
 | REQ-CX2-015 | AC-CX2-016 |
+| REQ-CX2-016 | AC-CX2-017 |
+| REQ-CX2-017 | AC-CX2-018 |
