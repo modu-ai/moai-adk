@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -142,7 +143,8 @@ func renderSpecMd(c ProposalCandidate, st stamps) string {
 		"- tier: " + c.Tier + "\n" +
 		"- source_ts: " + c.SourceTs.UTC().Format(time.RFC3339) + "\n" +
 		"- generated_at: " + st.generatedAt + "\n" +
-		"- generator_version: " + GeneratorVersion + "\n\n" +
+		"- generator_version: " + GeneratorVersion + "\n" +
+		renderEvidence(c.Evidence) + "\n" +
 		"## §2. Purpose & Background\n\n" +
 		"_TBD by author. Describe the problem context that this proposal is meant " +
 		"to address. The pattern observation above suggests a recurring code " +
@@ -164,6 +166,34 @@ func renderSpecMd(c ProposalCandidate, st stamps) string {
 		"plan-phase pipeline.\n"
 }
 
+// renderEvidence formats a candidate's optional producer-specific evidence as
+// Origin-section bullets. An empty map renders nothing at all, which is what
+// keeps the body byte-identical for producers that supply none.
+//
+// Keys are emitted in sorted order so two runs over the same candidate produce
+// the same bytes — Go's map iteration order is randomized, and without the sort
+// an idempotent re-run would churn the file.
+func renderEvidence(evidence map[string]any) string {
+	if len(evidence) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(evidence))
+	for k := range evidence {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	for _, k := range keys {
+		v, err := json.Marshal(evidence[k])
+		if err != nil {
+			continue // an unencodable value is dropped rather than failing the write
+		}
+		b.WriteString("- " + k + ": " + string(v) + "\n")
+	}
+	return b.String()
+}
+
 // marshalProposalJSON encodes the proposal.json metadata payload.
 func marshalProposalJSON(c ProposalCandidate, st stamps) ([]byte, error) {
 	payload := map[string]any{
@@ -175,6 +205,9 @@ func marshalProposalJSON(c ProposalCandidate, st stamps) ([]byte, error) {
 		"generated_at":      st.generatedAt,
 		"generator_version": GeneratorVersion,
 		"draft_id":          c.DraftID,
+	}
+	if len(c.Evidence) > 0 {
+		payload["evidence"] = c.Evidence
 	}
 	out, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
