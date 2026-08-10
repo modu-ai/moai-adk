@@ -55,13 +55,13 @@ Third probe, recorded so a later reader does not misread an empty capture as a f
 
 | Milestone | Commit | Content |
 |---|---|---|
-| M1 + M2 | `038bcc4fc` | `RecordIfAbsent` / `Annotate` / `RoutingPatch`, identity + outcome markers, `ledger annotate` verb |
-| M3 | `631c9aa1c` | `hook.LogBashEvidence` + the Bash carve-out in `runHarnessObserve` |
-| M4 | `637f9a65f` | the three seams, gate deduplication into package `hook`, handler wiring |
+| M1 + M2 | `710a735b6` | `RecordIfAbsent` / `Annotate` / `RoutingPatch`, identity + outcome markers, `ledger annotate` verb |
+| M3 | `947cee983` | `hook.LogBashEvidence` + the Bash carve-out in `runHarnessObserve` |
+| M4 | `7939997cb` | the three seams, gate deduplication into package `hook`, handler wiring |
 
 ### AC PASS/FAIL matrix
 
-Every row was decided by running its own command in this worktree at `637f9a65f`. `ok <pkg> <t>` is the verbatim `go test` tail.
+Every row was decided by running its own command in this worktree at `7939997cb`. `ok <pkg> <t>` is the verbatim `go test` tail.
 
 | AC | Status | Deciding command | Observed |
 |---|---|---|---|
@@ -111,12 +111,124 @@ Coverage on the touched packages: `internal/harness/routing` 88.5%, `internal/ho
 - The mechanism is a fixed wall-clock deadline in the test's own driver: `execBoundedCmd` (`internal/cli/wizard/unified_form_test.go:60`) waits **50 ms** for a bubbletea command and returns `nil` on timeout, silently dropping the message. Under the contention of a multi-package coverage run a command can exceed 50 ms, a state transition is lost, and the form never reaches `StateCompleted` — exactly the assertion that failed.
 - The same multi-package coverage command run against the pre-SPEC base commit `5a929480a` (extracted via `git archive` into a scratch tree) also reported `FAIL github.com/modu-ai/moai-adk/internal/cli`, so the baseline is not clean under that load either.
 
-The full suite without coverage instrumentation — `go test ./... -count=1`, the §D gate command — exits 0 with zero `FAIL` lines.
+### Two pre-existing statusline hangs — and a correction to the §D gate row
+
+The §D table above records `go test ./... -count=1` as exit 0 with zero `FAIL` lines. **That was observed at `7939997cb`, and a later re-run at `b9202951c` — byte-identical code — came back exit 1.** Both results are real; the suite is non-deterministic on this machine. The correction and its attribution:
+
+```
+FULL_SUITE_EXIT=1
+FAIL  github.com/modu-ai/moai-adk/internal/cli          601.215s
+FAIL  github.com/modu-ai/moai-adk/internal/statusline   605.114s
+
+panic: test timed out after 10m0s
+    running tests:
+        TestRunStatusline_NilDeps (9m50s)      <- internal/cli
+        TestBuilder_Build_FullData (10m0s)     <- internal/statusline
+```
+
+`grep -E "^--- FAIL"` over the whole log returns nothing: **zero assertions failed.** Both are wall-clock hangs, and both hanging tests are statusline tests.
+
+Both legs are proven pre-existing on the untouched base commit `5a929480a`, by two independent measurements:
+
+- **Mine**, `git archive 5a929480a` into a scratch tree, per-package: `internal/cli` timed out with `TestRunStatusline_NilDeps (9m48s)`; `internal/statusline` `FAIL … 600.642s` with `TestBuilder_Build_FullData (10m0s)`.
+- **The orchestrator's**, a dedicated baseline worktree (`.claude/worktrees/hle-baseline`), no coverage instrumentation, `go test ./internal/cli/... ./internal/statusline/...`:
+
+```
+FAIL	github.com/modu-ai/moai-adk/internal/cli          607.369s
+FAIL	github.com/modu-ai/moai-adk/internal/statusline   608.341s
+
+panic: test timed out after 10m0s
+		TestRunStatusline_NilDeps (9m50s)       <- internal/cli
+panic: test timed out after 10m0s
+		TestBuilder_Build_FullData (10m0s)      <- internal/statusline
+```
+
+Evidence file: `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/26bbfcfb-4b2e-4578-b5ef-8391eb56fac1/baseline.txt`.
+
+| Test | At HEAD `b9202951c` | At base `5a929480a` |
+|---|---|---|
+| `internal/cli` `TestRunStatusline_NilDeps` | timeout, hung 9m50s | timeout, hung **9m48s / 9m50s** — same test, both measurements |
+| `internal/statusline` `TestBuilder_Build_FullData` | timeout, hung 10m0s | timeout **600.642s / 608.341s** — same test, both measurements |
+
+The orchestrator also ran the full suite independently at `7939997cb` and got exit 1 with the same two packages timing out — the run I recorded as exit 0. So the non-determinism reproduces on both sides, and the disagreement between a 244s pass and a 601s hang on identical code is that non-determinism, not a discrepancy between observers.
+
+The same code passed both earlier in the same session (`internal/statusline ok 30.847s`, `internal/cli ok 244.804s`), so the variable is the environment, not the tree. The likely mechanism is visible in `internal/statusline/usage.go`: it issues HTTP requests to the Anthropic API and shells out to `security find-generic-password` for the macOS keychain, and `TestBuilder_Build_FullData` calls `Build(context.Background(), …)` with no deadline — so an unavailable network or a prompting keychain blocks indefinitely.
+
+Neither hang is attributable to this SPEC: nothing in the diff touches `internal/statusline`, and this SPEC's own `internal/cli` tests still pass in 1.879s under the very conditions where the package as a whole hangs —
+`go test ./internal/cli/ -count=1 -run 'TestRoutingLedger_TerminalCloseEndToEnd|TestHarnessObserve_Bash|TestHarnessLedgerAnnotateCmd|TestLedgerVerbs|TestHarnessObserveStop'` → `ok …/internal/cli 1.879s`.
+
+**Consequence for the §D gate — stated plainly rather than smoothed over.** The local full suite is **non-deterministic on this machine at a 10-minute timeout**, which means it **cannot distinguish a real regression from a hang**. The §D full-suite row must therefore be read as green-with-caveat, and it would be wrong to report that the local suite passed: it passed once and failed once on identical code, and both observations are recorded above.
+
+**CI is the arbiter for PR #1420**, not this local run. Re-measuring `internal/cli` coverage was blocked by the same hang (`-timeout=20m` → `FAIL … 1200.889s`; a `-skip TestRunStatusline_NilDeps` attempt also exceeded 10 minutes), so the 76.5% figure above is the value observed at `7939997cb` and was not re-confirmed at HEAD.
+
+### R1 discharged — the live dogfood ran
+
+The R1 gap below was closed by the orchestrator after this run-phase report was first written. The check was performed against a throwaway project under the scratchpad — its own `system.yaml` with `hook.opt_in.enabled: true`, a `.claude/settings.json` pointing at this worktree's `bin/moai` by absolute path, and a minimal Go module so a real `go test` would execute — so neither the primary checkout nor the global binary was touched.
+
+Final ledger row from a live `claude -p` session:
+
+```json
+{"session_id":"69f536d5","request_class":"other",
+ "delegations":[{"agent":"Explore","outcome":"unknown","blocker":null}],
+ "outcome":"success",
+ "evidence_refs":[{"kind":"gate_exit","value":"0","ref":"session test evidence","terminal":true}]}
+```
+
+One row, `delegations` populated with the correct agent identity, terminal outcome `success`, pending file cleared. That is precisely the shape the original four-row ledger never produced (`spec.md` §A.1: every row `delegations: []`, outcomes only `abort`/`reroute`).
+
+The M3 fix is confirmed independently of the ledger: the throwaway project's telemetry recorded `{"is_test_pass":true,"outcome":"success"}`. Against a production corpus of 37,107 records containing **zero** such signals (`spec.md` §A.6), this is the first one — the `buildBashRecord` path that §A.6 measured as unreachable now executes under real dispatch.
+
+**What this proves:** seams A, B, C and the M3 Bash-evidence path all fire from real Claude Code hook dispatch, not from a test harness. AC-HLE-014's live-invocation caveat is satisfied.
+
+**What it does not prove:** the anomaly recorded below remains open, and the falsification review still needs 50 rows.
+
+#### Observed hook invocation order — and why the create-if-absent split was load-bearing
+
+Captured by wrapping each hook in a tracing script:
+
+```
+10:15:51 user-prompt-submit    UserPromptSubmit  sid=e7cf92fc
+10:15:55 harness-observe       PostToolUse
+10:16:00 harness-observe-stop  Stop                        <- Stop fires MID-SESSION
+10:16:03 harness-observe       PostToolUse  agent=Explore
+10:16:06 subagent-stop         SubagentStop agent=Explore
+10:16:06 user-prompt-submit    UserPromptSubmit            <- A fires a SECOND time
+10:16:10 harness-observe       PostToolUse
+10:16:13 harness-observe-stop  Stop
+```
+
+A single `claude -p` invocation fires **UserPromptSubmit and Stop twice each**. This is the runtime behavior that decides whether the SPEC works, and it was not known when the design was chosen.
+
+`RecordIfAbsent` absorbed it exactly as intended: the second UserPromptSubmit was a no-op against the existing row, so the `Explore` delegation survived and the second Stop closed one complete row. Had seam A used `Store.Record`, the second UserPromptSubmit would have rerouted the first row closed, dropped the delegation, and opened a fresh one — regenerating the reroute-only ledger this SPEC exists to repair, while row count rose and the failure looked like success. The B1 trap in `plan.md` §B is real at runtime, not merely theoretical, and the refusal to collapse `RecordIfAbsent` back into `Record` is what held under it.
+
+#### Hook wrapper names — a distinction worth stating explicitly
+
+Seam C lives in `runHarnessObserveStop` (`internal/cli/hook.go:733`), which is the **`moai hook harness-observe-stop`** subcommand — **not** `moai hook stop`. Wiring `stop` instead produces a silent no-op: the handler never runs, nothing is written, and no error surfaces. The orchestrator hit exactly this during the dogfood before correcting the wiring.
+
+The four dispatch points, verified against the code:
+
+| Seam | Handler | Dispatched by |
+|---|---|---|
+| A — pending row | `userPromptSubmitHandler.Handle` (`internal/hook/user_prompt_submit.go`) | `moai hook user-prompt-submit` |
+| B — delegation | `subagentStopHandler.Handle` (`internal/hook/subagent_stop.go`) | `moai hook subagent-stop` |
+| C — terminal evidence | `runHarnessObserveStop` (`internal/cli/hook.go`) | `moai hook harness-observe-stop` |
+| M3 — Bash evidence | `runHarnessObserve` (`internal/cli/hook.go`) | `moai hook harness-observe` |
+
+#### Open anomaly — delegation/outcome ordering (new residual risk R8)
+
+An earlier dogfood run (same setup, untraced) produced **two** ledger rows for one session, both with `delegations: []` and `outcome: "success"`. It did **not** reproduce across two subsequent traced runs, each of which produced a single correct row.
+
+Stated as a hypothesis, because it was not reproduced and therefore not confirmed: in that run `go test` executed *before* the `Explore` call, so a terminal signal already existed at the first (mid-session) Stop. The row closed early carrying no delegation, and the later delegation landed on a freshly created row.
+
+If that reading is right, it is an ordering hazard rather than a coding error — every seam did exactly what it is specified to do — but it matters downstream, and it is filed as **R8** in `acceptance.md` §F and cross-referenced into `SPEC-HARNESS-LEARNING-EVO-002` §B. Not fixed in 001, by decision.
 
 ### Gaps — what was NOT verified
 
-- **The live hook-dispatch link (R1).** No CI-runnable assertion covers "Claude Code actually invokes these handlers in a real session". The M0 probe proves the *payload* reaches a matcher-null PostToolUse wrapper; it does not exercise the UserPromptSubmit or SubagentStop wrappers, nor the seams behind them. The manual dogfood check named in `plan.md` §F M5 — enable the opt-in, run one real `/moai` dispatch with a subagent, read the resulting row — was **not performed**, because it requires enabling a fail-closed gate in the primary checkout, which is outside this worktree's write boundary.
-- **A live `is_test_fail` signal end to end.** The failing direction is covered by unit tests driving the production path with a fixture, but no observed live run has produced `is_test_fail` through the restored carve-out.
+- ~~**The live hook-dispatch link (R1).**~~ **DISCHARGED** — see § R1 discharged above. Still true: **no CI-runnable assertion covers this link**, so it remains a manual check rather than a gate.
+
+  Correcting the reason this section originally gave: it stated the dogfood was not performed *because* enabling a fail-closed gate lies outside this worktree's write boundary. That rationale was wrong. The boundary held and was never crossed — the orchestrator ran the check against a throwaway project with its own `system.yaml`, its own `.claude/settings.json` pointing at the worktree's `bin/moai` by absolute path, and a minimal Go module, touching neither the primary checkout nor the global binary. The check was reachable inside the boundary all along; what was missing was the throwaway-project route, not permission. The distinction matters because "blocked by a boundary" would justify leaving R1 permanently open, and it does not.
+- **A live `is_test_fail` signal end to end.** The dogfood observed `is_test_pass` under real dispatch; the **failing** direction was not exercised live. It is covered by unit tests driving the production path with a fixture (`TestHarnessObserve_BashEvidenceTestFail`), but no observed live run has produced `is_test_fail` through the restored carve-out.
+- **The two-row anomaly was not reproduced**, so its stated cause is a hypothesis rather than a diagnosis. Recorded as R8.
 - **The falsification review (`spec.md` §E F1/F2).** Needs 50 finalized rows, which do not exist at merge time. Scheduled, not performed — as `acceptance.md` §E already states.
 
 ### Residual risk
@@ -129,7 +241,7 @@ R1-R6 stand as written in `acceptance.md` §F. One is added by the M0 measuremen
 
 ```yaml
 run_complete_at: 2026-08-10
-run_commit_sha: 637f9a65f
+run_commit_sha: 7939997cb
 run_status: audit-ready
 ac_pass_count: 16
 ac_fail_count: 0
@@ -139,10 +251,16 @@ cross_platform_build:
   darwin_amd64: pass
   windows_amd64: pass
 total_run_phase_files: 15
-m1_to_mN_commit_strategy: "four milestones in three commits — M1+M2 share 038bcc4fc because the identity markers live in the same file as the store types; M3 is 631c9aa1c; M4 is 637f9a65f. M0 produced no commit: it is a probe, and its result is recorded in §E.2 rather than in code."
+m1_to_mN_commit_strategy: "four milestones in three commits — M1+M2 share 710a735b6 because the identity markers live in the same file as the store types; M3 is 947cee983; M4 is 7939997cb. M0 produced no commit: it is a probe, and its result is recorded in §E.2 rather than in code."
 ```
 
 Notes for the auditor:
+
+- **The run-phase code is merged; this documentation is not.** PR #1420 squash-merged to `main` as `8ed9622f3` with all CI checks green. Because it was a squash, none of the branch commits are ancestors of `main`, but the code content did land — verified by `git cat-file -e origin/main:internal/hook/routing_ledger.go` and by `func LogBashEvidence` being present in `origin/main:internal/hook/evidence_writer.go`. What did NOT land is the R1 discharge and the R8 filing: `git diff --name-only origin/main..HEAD` returns only the three SPEC documents, and no code file. So the follow-up carries documentation exclusively — a docs-only delta over the merged implementation.
+
+- **CI settles the local-suite question.** Every check on PR #1420 passed, including builds on five platforms and integration tests on three operating systems. That is independent confirmation that the two statusline timeouts recorded above are a local-environment condition, not a property of the tree — which is what the green-with-caveat §D row already assumed but could not prove from this machine.
+
+- **SHA citations were rewritten once.** The branch was rebased onto `85693f3bf` mid-run (the orchestrator updated it for PR #1420), which rewrote every run-phase commit. The SHAs above and throughout §E.2 are the **post-rebase** values and are all ancestors of the current HEAD; the pre-rebase values cited in earlier reports (`038bcc4fc` / `631c9aa1c` / `637f9a65f` / `f83583d39`) are no longer on the branch. The evidence itself is unaffected — the trees are identical — but a reader chasing an old SHA would find nothing on the branch, so the citations were corrected rather than left dangling.
 
 - **M0 changed nothing in the plan.** The probe confirmed option (c), so the declared option (a) fallback — a `settings.json.tmpl` edit plus `make build`, plus the §25 neutrality re-check — was never entered. No template file, frozen skill, or frozen allowlist was touched.
 - **One deviation from `plan.md` §I's file inventory.** The inventory anticipated edits to `internal/cli/hook_test.go` and `internal/telemetry/recorder_test.go`; the CLI-side tests landed in a new file `internal/cli/hook_routing_ledger_test.go` instead, because `hook_test.go` is a small unrelated file and appending an unrelated 300-line fixture set to it would have obscured both. The telemetry edit landed as planned.
