@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -370,5 +371,297 @@ func TestNoVerbatimInStoreFiles(t *testing.T) {
 		if bytes.Contains(data, []byte(sentinel)) {
 			t.Fatalf("verbatim request text leaked into %s", e.Name())
 		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// SPEC-HARNESS-LEARNING-EVO-001 M1 — create-if-absent + annotate
+// ─────────────────────────────────────────────────────────────
+
+// TestRecordIfAbsent_Lifecycle pins the create-once semantics (AC-HLE-001,
+// REQ-HLE-003/004): the second and third calls are no-ops that must NOT clobber
+// content accumulated in between, and no call ever appends a ledger row.
+func TestRecordIfAbsent_Lifecycle(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	s := NewStore(dir)
+
+	if err := s.RecordIfAbsent(recordRow("sess-L", "plan")); err != nil {
+		t.Fatal(err)
+	}
+	// Second call for the same session: must be a no-op.
+	if err := s.RecordIfAbsent(recordRow("sess-L", "run")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Accumulate content, then call a third time.
+	if err := s.AppendDelegation("sess-L", Delegation{Agent: "manager-develop", Outcome: "success"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendDelegation("sess-L", Delegation{Agent: "plan-auditor", Outcome: "success"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendEvidence("sess-L", EvidenceRef{Kind: KindGateExit, Value: "0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordIfAbsent(recordRow("sess-L", "sync")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Exactly one pending file for the session, content preserved.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pendingCount := 0
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), pendingPrefix) && strings.HasSuffix(e.Name(), pendingSuffix) {
+			pendingCount++
+		}
+	}
+	if pendingCount != 1 {
+		t.Fatalf("got %d pending files, want exactly 1", pendingCount)
+	}
+
+	p, ok, err := s.loadPending(s.pendingPath("sess-L"))
+	if err != nil || !ok {
+		t.Fatalf("load pending: ok=%v err=%v", ok, err)
+	}
+	if len(p.Delegations) != 2 {
+		t.Fatalf("delegations = %d, want 2 (third RecordIfAbsent must not clobber)", len(p.Delegations))
+	}
+	if len(p.EvidenceRefs) != 1 {
+		t.Fatalf("evidence_refs = %d, want 1 (third RecordIfAbsent must not clobber)", len(p.EvidenceRefs))
+	}
+	// The first writer's subcommand survives; later calls do not relabel.
+	if p.MatchedSubcommand != "plan" {
+		t.Fatalf("matched_subcommand = %q, want %q (create-once)", p.MatchedSubcommand, "plan")
+	}
+	if rows := readLedger(t, dir); len(rows) != 0 {
+		t.Fatalf("RecordIfAbsent must never append a ledger row, got %d: %+v", len(rows), rows)
+	}
+}
+
+// TestRecord_StillReroutesSelf pins that the pre-existing dispatch path is
+// unchanged by this SPEC (AC-HLE-001, REQ-HLE-004). RecordIfAbsent must not have
+// been implemented by weakening Record.
+func TestRecord_StillReroutesSelf(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	s := NewStore(dir)
+
+	if err := s.Record(recordRow("sess-R", "plan")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Record(recordRow("sess-R", "run")); err != nil {
+		t.Fatal(err)
+	}
+	rows := readLedger(t, dir)
+	if len(rows) != 1 || rows[0].Outcome != OutcomeReroute {
+		t.Fatalf("Record must still reroute the prior row, got %+v", rows)
+	}
+}
+
+// TestRecordIfAbsent_NoSweepOnCreatePath is the behavioral proxy for
+// REQ-HLE-015 / AC-HLE-002: five stale, dead foreign rows are left completely
+// untouched by RecordIfAbsent, while the same fixture under Record sweeps them.
+// The contrast is what makes this a proof of absence rather than of nothing.
+func TestRecordIfAbsent_NoSweepOnCreatePath(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)
+
+	seed := func(dir string) []string {
+		names := make([]string, 0, 5)
+		for _, id := range []string{"f1", "f2", "f3", "f4", "f5"} {
+			writeForeignPending(t, dir, id, now.Add(-48*time.Hour)) // stale by age
+			names = append(names, id)
+		}
+		return names
+	}
+
+	t.Run("RecordIfAbsent does not sweep", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		foreign := seed(dir)
+		before := make(map[string][]byte, len(foreign))
+		for _, id := range foreign {
+			data, err := os.ReadFile(filepath.Join(dir, pendingPrefix+id+pendingSuffix))
+			if err != nil {
+				t.Fatal(err)
+			}
+			before[id] = data
+		}
+
+		s := NewStore(dir).WithClock(fixedClock(now))
+		if err := s.RecordIfAbsent(recordRow("fresh", "run")); err != nil {
+			t.Fatal(err)
+		}
+
+		for _, id := range foreign {
+			data, err := os.ReadFile(filepath.Join(dir, pendingPrefix+id+pendingSuffix))
+			if err != nil {
+				t.Fatalf("foreign pending %s must not be removed: %v", id, err)
+			}
+			if !bytes.Equal(data, before[id]) {
+				t.Fatalf("foreign pending %s must not be modified", id)
+			}
+		}
+		if rows := readLedger(t, dir); len(rows) != 0 {
+			t.Fatalf("RecordIfAbsent must not append abort rows (sweep did not run), got %d", len(rows))
+		}
+	})
+
+	t.Run("Record still sweeps the same fixture", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		seed(dir)
+		s := NewStore(dir).WithClock(fixedClock(now))
+		if err := s.Record(recordRow("fresh", "run")); err != nil {
+			t.Fatal(err)
+		}
+		rows := readLedger(t, dir)
+		if len(rows) != 5 {
+			t.Fatalf("Record must sweep all 5 stale foreign rows, got %d", len(rows))
+		}
+		for _, r := range rows {
+			if r.Outcome != OutcomeAbort {
+				t.Fatalf("swept row outcome = %q, want abort", r.Outcome)
+			}
+		}
+	})
+}
+
+// TestSweepStale_AgeAndLivenessGuards pins BOTH sweep guards on the dispatch
+// path (AC-HLE-003, REQ-HLE-004). These are what protect a concurrent
+// same-checkout session's in-flight row from a false abort.
+func TestSweepStale_AgeAndLivenessGuards(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	now := time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)
+
+	// Both foreign rows are aged PAST the threshold; only liveness separates them.
+	writeForeignPending(t, dir, "aged-dead", now.Add(-25*time.Hour))
+	writeForeignPending(t, dir, "aged-live", now.Add(-25*time.Hour))
+	if err := os.WriteFile(filepath.Join(dir, activeSessionsFile),
+		[]byte(`[{"session_id":"aged-live","pid":4242}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewStore(dir).WithClock(fixedClock(now))
+	if err := s.Record(recordRow("third", "run")); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := readLedger(t, dir)
+	if len(rows) != 1 {
+		t.Fatalf("exactly one row must be swept, got %d: %+v", len(rows), rows)
+	}
+	if rows[0].SessionID != "aged-dead" || rows[0].Outcome != OutcomeAbort {
+		t.Fatalf("swept row = %+v; want session=aged-dead outcome=abort", rows[0])
+	}
+	if pendingExists(dir, "aged-dead") {
+		t.Fatal("age guard passed + not live -> pending file must be removed")
+	}
+	if !pendingExists(dir, "aged-live") {
+		t.Fatal("liveness guard must protect the live-listed row regardless of age")
+	}
+}
+
+// TestAnnotate covers the patch-only operation (AC-HLE-004, REQ-HLE-005):
+// patches an existing row, leaves empty fields untouched, creates nothing, and
+// finalizes nothing.
+func TestAnnotate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("patches set fields and leaves empty ones untouched", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		s := NewStore(dir)
+		if err := s.RecordIfAbsent(PendingRow{SessionID: "an-1"}); err != nil {
+			t.Fatal(err)
+		}
+		// Seed a mode so the later empty-mode patch has something to preserve.
+		mode := "sub-agent"
+		if err := s.Annotate("an-1", RoutingPatch{ModeSelected: &mode}); err != nil {
+			t.Fatal(err)
+		}
+		sub, tier := "plan", "M"
+		if err := s.Annotate("an-1", RoutingPatch{MatchedSubcommand: &sub, Tier: &tier}); err != nil {
+			t.Fatal(err)
+		}
+
+		p, ok, err := s.loadPending(s.pendingPath("an-1"))
+		if err != nil || !ok {
+			t.Fatalf("load pending: ok=%v err=%v", ok, err)
+		}
+		if p.MatchedSubcommand != "plan" {
+			t.Errorf("matched_subcommand = %q, want plan", p.MatchedSubcommand)
+		}
+		if p.Tier == nil || *p.Tier != "M" {
+			t.Errorf("tier = %v, want M", p.Tier)
+		}
+		if p.ModeSelected == nil || *p.ModeSelected != "sub-agent" {
+			t.Errorf("mode_selected = %v; an unset patch field must leave the existing value untouched", p.ModeSelected)
+		}
+		if rows := readLedger(t, dir); len(rows) != 0 {
+			t.Fatalf("Annotate must not append a ledger row, got %d", len(rows))
+		}
+	})
+
+	t.Run("no pending row is a no-op that creates nothing", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		s := NewStore(dir)
+		sub := "run"
+		if err := s.Annotate("ghost", RoutingPatch{MatchedSubcommand: &sub}); err != nil {
+			t.Fatalf("annotate with no pending row must be a silent no-op, got %v", err)
+		}
+		if pendingExists(dir, "ghost") {
+			t.Fatal("Annotate must not fabricate a pending row")
+		}
+		if rows := readLedger(t, dir); len(rows) != 0 {
+			t.Fatalf("Annotate must not append a ledger row, got %d", len(rows))
+		}
+	})
+}
+
+// TestSchemaVersionStable pins REQ-HLE-014 / AC-HLE-005: this SPEC is additive
+// within schema v1. A ledger fixture written before it still parses, and every
+// row the store writes carries schema_version 1.
+func TestSchemaVersionStable(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// A pre-SPEC ledger fixture (schema v1, no fields from this SPEC).
+	legacy := `{"schema_version":1,"ts":"2026-07-01T00:00:00Z","session_id":"legacy-1","model_class":"unknown",` +
+		`"request_digest":"sha256:abcdef123456","request_class":"feature","matched_subcommand":"plan",` +
+		`"mode_selected":null,"tier":null,"harness_level":null,"clarify_rounds":0,"outcome":"abort",` +
+		`"loop_iterations":0,"goal_converged":null,"convergence_class":null,"delegations":[],"evidence_refs":[]}` + "\n"
+	if err := os.WriteFile(filepath.Join(dir, LedgerFileName), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewStore(dir)
+	if err := s.RecordIfAbsent(recordRow("new-1", "run")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AppendEvidence("new-1", EvidenceRef{Kind: KindGateExit, Value: "0", Terminal: true, Ref: "go test"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinalizeOnStop("new-1", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := readLedger(t, dir)
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2 (legacy + new); a legacy row failing to parse would show here", len(rows))
+	}
+	for _, r := range rows {
+		if r.SchemaVersion != 1 {
+			t.Errorf("row %s schema_version = %d, want 1", r.SessionID, r.SchemaVersion)
+		}
+	}
+	if rows[0].SessionID != "legacy-1" || rows[0].MatchedSubcommand != "plan" {
+		t.Errorf("legacy row did not round-trip: %+v", rows[0])
 	}
 }

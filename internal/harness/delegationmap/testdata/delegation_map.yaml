@@ -1,0 +1,18 @@
+# Fixture delegation map for the delegationmap analyzer tests.
+#
+# It mirrors the designations the live .moai/config/sections/delegation.yaml
+# carries for plan / run / sync, and nothing else. The tests read this instead of
+# the live file deliberately: an acceptance criterion that asserted against the
+# live map would fail the moment someone legitimately edited a designation.
+delegation:
+    version: 1
+    subcommands:
+        plan:
+            agents: [manager-spec, plan-auditor, Explore]
+            skills: [moai-workflow-spec]
+        run:
+            agents: [manager-develop]
+            skills: [moai-workflow-tdd]
+        sync:
+            agents: [manager-docs, sync-auditor]
+            skills: [moai-workflow-project]

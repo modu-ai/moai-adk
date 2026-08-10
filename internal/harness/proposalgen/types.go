@@ -53,6 +53,22 @@ type ProposalCandidate struct {
 	// DraftID is the derived draft identifier
 	// (PROPOSAL-<YYYYMMDD>-<sha256(pattern_key)[:8]>).
 	DraftID string `json:"draft_id"`
+
+	// Evidence carries optional producer-specific fields that a reviewer needs
+	// in order to judge the draft without re-deriving it from the source data.
+	//
+	// The four fixed fields above (observation count, confidence, tier, source
+	// timestamp) describe a promotion; a producer reasoning over a different
+	// subject has different evidence to show. The delegation-map analyzer, for
+	// instance, must surface a support ratio, a qualifying-row count, and an
+	// unattributed share — none of which is a promotion concept, and none of
+	// which belongs as a fixed field here.
+	//
+	// Nil or empty leaves both rendered artifacts byte-identical to a candidate
+	// without it, so every existing producer is unaffected. Keys are rendered in
+	// sorted order in spec.md and encoded by the standard library's sorted map
+	// marshalling in proposal.json, so the output stays deterministic.
+	Evidence map[string]any `json:"evidence,omitempty"`
 }
 
 // GeneratorResult is the structured outcome of a generator run, suitable for

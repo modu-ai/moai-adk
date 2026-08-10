@@ -233,3 +233,61 @@ func TestLedgerRecord_LearningDisabledNoOp(t *testing.T) {
 		t.Fatal("learning-disabled record must not create a pending row")
 	}
 }
+
+// TestHarnessLedgerAnnotateCmd covers the `moai harness ledger annotate` verb
+// (SPEC-HARNESS-LEARNING-EVO-001 AC-HLE-004, REQ-HLE-005): it patches an
+// existing pending row through the live command tree, creates nothing when no
+// row exists, and — like record and evidence — exposes no --outcome flag.
+func TestHarnessLedgerAnnotateCmd(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	// A pending row with an empty matched_subcommand, seeded through the store.
+	store := routing.NewStore(filepath.Join(root, ".moai", "state"))
+	if err := store.RecordIfAbsent(routing.PendingRow{
+		SessionID:     "ann-s1",
+		RequestDigest: routing.RequestDigest("seed"),
+		RequestClass:  "feature",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	an := newHarnessRouterCmd()
+	an.SetArgs([]string{"ledger", "annotate", "--project-root", root, "--session", "ann-s1", "--subcommand", "run", "--tier", "L"})
+	an.SetOut(&bytes.Buffer{})
+	an.SetErr(&bytes.Buffer{})
+	if err := an.Execute(); err != nil {
+		t.Fatalf("ledger annotate: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, ".moai", "state", "routing-pending-ann-s1.json"))
+	if err != nil {
+		t.Fatalf("pending row must still exist after annotate: %v", err)
+	}
+	if !bytes.Contains(data, []byte(`"matched_subcommand":"run"`)) {
+		t.Fatalf("annotate did not patch matched_subcommand: %s", data)
+	}
+	if !bytes.Contains(data, []byte(`"tier":"L"`)) {
+		t.Fatalf("annotate did not patch tier: %s", data)
+	}
+	if ledgerRowCount(t, root) != 0 {
+		t.Fatal("annotate must not finalize anything into the ledger")
+	}
+
+	// No pending row -> silent no-op, nothing created.
+	ghost := newHarnessRouterCmd()
+	ghost.SetArgs([]string{"ledger", "annotate", "--project-root", root, "--session", "ann-ghost", "--subcommand", "plan"})
+	ghost.SetOut(&bytes.Buffer{})
+	ghost.SetErr(&bytes.Buffer{})
+	if err := ghost.Execute(); err != nil {
+		t.Fatalf("annotate with no pending row must be a silent no-op, got %v", err)
+	}
+	if pendingFileExists(root, "ann-ghost") {
+		t.Fatal("annotate must not fabricate a pending row")
+	}
+
+	// The un-fakeable-outcome contract extends to this write surface.
+	if newHarnessLedgerAnnotateCmd().Flags().Lookup("outcome") != nil {
+		t.Error("`ledger annotate` MUST NOT expose an --outcome flag (un-fakeable outcome contract)")
+	}
+}
