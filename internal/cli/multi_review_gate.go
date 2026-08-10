@@ -136,19 +136,26 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 //   - `...enabled: false`                  → false
 //   - `...enabled: true`                   → true
 //
-// The canonical — and only — key path is `multi.review_gate.enabled`. It is
-// what the committed config schema declares (config.MultiConfig →
-// MultiReviewGateConfig, `yaml:"multi"` / `yaml:"review_gate"`) and what
-// config.Load populates, so any other spelling would leave that struct dead.
-// It is also the literal structural mirror of the sibling gate's
+// The canonical — and only — key path is `workflow.multi.review_gate.enabled`,
+// NESTED under the file's `workflow:` root. That is what the committed config
+// schema declares (config.WorkflowConfig → MultiConfig → MultiReviewGateConfig)
+// and what config.Loader.loadWorkflowSection populates via
+// config.workflowFileWrapper, so any other spelling would leave that struct
+// dead. It is the literal structural mirror of the sibling gate's
 // `workflow.codex.review_gate.enabled`, which is the "no new schema shape"
 // requirement AC-AMM-025 states.
 //
-// An earlier draft of AC-AMM-018 / AC-AMM-019 spelled a FLAT
-// `multi_review_gate.enabled`; that wording was corrected to the nested path
-// in this milestone rather than carried as an alias, so users and docs have
-// exactly one spelling to learn. The template NEVER carries `enabled: true`
-// (§25) — the distributed default is OFF.
+// An earlier revision unmarshalled `multi:` at the TOP level of the file, a
+// shape no deployed workflow.yaml carries, so the toggle could never read true.
+// The flat form is NOT accepted as an alias — users and docs get exactly one
+// spelling. The template NEVER carries `enabled: true` (§25) — the distributed
+// default is OFF.
+//
+// Like the codex sibling this is a deliberate small hand-rolled read rather
+// than a config.Loader.Load call: it runs at every turn-end (one file, no
+// defaults/env machinery), and each failure path returns false explicitly
+// instead of collapsing "unreadable" into "configured off". The shape is pinned
+// against the real loader by TestReviewGateReaders_AgreeWithConfigLoader.
 func readMultiReviewGateEnabled(projectDir string) bool {
 	if projectDir == "" {
 		return false
@@ -159,16 +166,18 @@ func readMultiReviewGateEnabled(projectDir string) bool {
 		return false
 	}
 	var doc struct {
-		Multi struct {
-			ReviewGate struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"review_gate"`
-		} `yaml:"multi"`
+		Workflow struct {
+			Multi struct {
+				ReviewGate struct {
+					Enabled bool `yaml:"enabled"`
+				} `yaml:"review_gate"`
+			} `yaml:"multi"`
+		} `yaml:"workflow"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
 	}
-	return doc.Multi.ReviewGate.Enabled
+	return doc.Workflow.Multi.ReviewGate.Enabled
 }
 
 // ─── CLI subcommand wiring ───

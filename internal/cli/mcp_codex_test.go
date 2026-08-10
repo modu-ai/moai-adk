@@ -245,8 +245,8 @@ func TestCodexSetup_GoProbeNoNodeBridge(t *testing.T) {
 	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
 	withCodexRunner(t, &fakeCodexRunner{
 		stdoutByCmd: map[string]string{
-			"--version":      "codex 1.2.3\n",
-			"login status":   "Logged in to ChatGPT via OAuth\n",
+			"--version":    "codex 1.2.3\n",
+			"login status": "Logged in to ChatGPT via OAuth\n",
 		},
 	})
 
@@ -417,6 +417,9 @@ func TestClassifyCodexAuth_Branches(t *testing.T) {
 
 // TestReadCodexReviewGateEnabled_ConfigBranches covers the fail-CLOSED truth
 // table: missing file ⇒ false, explicit true ⇒ true, explicit false ⇒ false.
+// The documents use the deployed NESTED shape (a `workflow:` root); the flat
+// shape this test formerly used is pinned as NOT honoured by
+// TestReviewGateReaders_HonourNestedWorkflowKeyPath.
 func TestReadCodexReviewGateEnabled_ConfigBranches(t *testing.T) {
 	dir := t.TempDir()
 	cfgDir := filepath.Join(dir, ".moai", "config", "sections")
@@ -429,7 +432,7 @@ func TestReadCodexReviewGateEnabled_ConfigBranches(t *testing.T) {
 	}
 	// explicit true ⇒ true
 	if err := os.WriteFile(filepath.Join(cfgDir, "workflow.yaml"),
-		[]byte("codex:\n  review_gate:\n    enabled: true\n"), 0o644); err != nil {
+		[]byte("workflow:\n  codex:\n    review_gate:\n      enabled: true\n"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if !readCodexReviewGateEnabled(dir) {
@@ -437,7 +440,7 @@ func TestReadCodexReviewGateEnabled_ConfigBranches(t *testing.T) {
 	}
 	// explicit false ⇒ false
 	if err := os.WriteFile(filepath.Join(cfgDir, "workflow.yaml"),
-		[]byte("codex:\n  review_gate:\n    enabled: false\n"), 0o644); err != nil {
+		[]byte("workflow:\n  codex:\n    review_gate:\n      enabled: false\n"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if readCodexReviewGateEnabled(dir) {

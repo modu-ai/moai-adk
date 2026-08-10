@@ -53,8 +53,8 @@ const (
 	codexTargetBaseBranch  = "baseBranch"
 
 	// codex_setup auth-provider classification tokens.
-	codexAuthChatGPT = "ChatGPT"
-	codexAuthAPIKey  = "apiKey"
+	codexAuthChatGPT  = "ChatGPT"
+	codexAuthAPIKey   = "apiKey"
 	codexAuthProvider = "provider"
 	codexAuthUnknown  = "unknown"
 )
@@ -301,11 +301,25 @@ func classifyCodexAuth(ctx context.Context, binaryPath string) string {
 // default is OFF, matching the HOI precedent isHookOptInEnabled, NOT the
 // fail-open learning gate):
 //
-//   - file missing / unreadable          → false (default disabled)
-//   - YAML parse error                   → false (default disabled)
-//   - `codex` block absent               → false (Go zero-value default)
-//   - `codex.review_gate.enabled: false` → false
-//   - `codex.review_gate.enabled: true`  → true
+//   - file missing / unreadable                   → false (default disabled)
+//   - YAML parse error                            → false (default disabled)
+//   - `workflow.codex` block absent               → false (Go zero-value default)
+//   - `workflow.codex.review_gate.enabled: false` → false
+//   - `workflow.codex.review_gate.enabled: true`  → true
+//
+// The key path is NESTED under the file's `workflow:` root — the shape
+// config.Loader.loadWorkflowSection expects (config.workflowFileWrapper) and
+// the shape the shipped template deploys. An earlier revision unmarshalled
+// `codex:` at the TOP level, which no deployed file ever carries, so the toggle
+// could never read true. The flat form is NOT accepted as an alias: one
+// spelling only.
+//
+// This stays a small hand-rolled read rather than a config.Loader.Load call on
+// purpose. The gate runs at every turn-end, so it should touch exactly one file
+// and no defaults/env-override machinery; and each failure path here returns
+// false explicitly, whereas Load returns populated defaults plus a nil error
+// and would blur "unreadable" into "configured off". The shape is pinned
+// against the real loader by TestReviewGateReaders_AgreeWithConfigLoader.
 //
 // The distributed default is false (C6 / AC-MCP-010 opt-in). A maintainer opts
 // in via local config; the template NEVER carries `enabled: true` (§25).
@@ -319,14 +333,16 @@ func readCodexReviewGateEnabled(projectDir string) bool {
 		return false
 	}
 	var doc struct {
-		Codex struct {
-			ReviewGate struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"review_gate"`
-		} `yaml:"codex"`
+		Workflow struct {
+			Codex struct {
+				ReviewGate struct {
+					Enabled bool `yaml:"enabled"`
+				} `yaml:"review_gate"`
+			} `yaml:"codex"`
+		} `yaml:"workflow"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return false
 	}
-	return doc.Codex.ReviewGate.Enabled
+	return doc.Workflow.Codex.ReviewGate.Enabled
 }

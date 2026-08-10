@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -165,7 +166,6 @@ func isRuntimeManagedPath(path string) bool {
 	return false
 }
 
-
 // runCodexReviewGate is the cobra RunE for `moai hook codex-review-gate`
 // (SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008). It reads the Stop-hook stdin JSON,
 // resolves the project root, reads the workflow.codex.review_gate.enabled
@@ -216,13 +216,23 @@ func emitHookOutput(w io.Writer, out *hook.HookOutput) error {
 }
 
 // resolveProjectDirFromInput picks the best available project dir from the hook
-// input: ProjectDir first, then Cwd, then empty (the gate self-gates on empty).
+// input: ProjectDir first, then CWD, then the CLAUDE_PROJECT_DIR environment
+// variable, then empty (the gate self-gates on empty).
+//
+// The CWD arm is load-bearing: Claude Code sends `cwd` in the Stop payload and
+// treats `project_dir` as a legacy field (internal/hook/types.go), so a
+// ProjectDir-only resolution returned "" on every real invocation and both gate
+// readers fail-CLOSED to false no matter how the project was configured. The
+// env arm mirrors how the shell wrappers resolve the project root, so the two
+// layers agree on which workflow.yaml they are reading.
 func resolveProjectDirFromInput(input *hook.HookInput) string {
-	if input == nil {
-		return ""
+	if input != nil {
+		if input.ProjectDir != "" {
+			return input.ProjectDir
+		}
+		if input.CWD != "" {
+			return input.CWD
+		}
 	}
-	if input.ProjectDir != "" {
-		return input.ProjectDir
-	}
-	return ""
+	return os.Getenv("CLAUDE_PROJECT_DIR")
 }
