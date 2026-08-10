@@ -121,4 +121,4 @@ scripts/docs-i18n-check.sh
 - [ワークツリーガイド](/ja/worktree/guide) — Git Worktree 完全ガイド
 - [/moai loop](/ja/utility-commands/moai-loop) — 反復修正ループ
 - [/moai fix](/ja/utility-commands/moai-fix) — 自動エラー修正
-- [GitHub 連携ガイド](/ja/guides/multi-llm-ci) — Issue パース・SPEC リンク
+- [GitHub 連携ガイド](/ja/guides/github-integration) — Issue パース・SPEC リンク
