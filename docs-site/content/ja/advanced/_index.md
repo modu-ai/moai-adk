@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 エージェンティック・ループ・エンジニアリング · 🛡️ エージェンティック・ハーネス
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: トークノミクス · エージェンティック・ループ・エンジニアリング · エージェンティック・ハーネス
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

@@ -5,7 +5,7 @@ weight: 85
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 エージェンティック・ループ・エンジニアリング
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: トークノミクス · エージェンティック・ループ・エンジニアリング
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning -->
 

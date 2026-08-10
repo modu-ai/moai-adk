@@ -4,7 +4,7 @@ weight: 60
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 토크노믹스
 {{< /callout >}}
 <!-- @value: tokenomics -->
 

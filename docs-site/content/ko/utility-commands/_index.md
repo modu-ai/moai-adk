@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🧠 에이전틱 루프 엔지니어링 · 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 에이전틱 루프 엔지니어링 · 에이전틱 하네스
 {{< /callout >}}
 <!-- @value: agentic-loop-engineering, agentic-harness -->
 

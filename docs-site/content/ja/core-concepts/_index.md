@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🛡️ エージェント型ハーネス
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: エージェント型ハーネス
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 

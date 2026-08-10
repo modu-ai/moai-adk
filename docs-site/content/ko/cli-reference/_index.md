@@ -5,7 +5,7 @@ draft: false
 description: "터미널에서 실행하는 moai CLI 커맨드의 상세 레퍼런스."
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 에이전틱 루프 엔지니어링 · 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

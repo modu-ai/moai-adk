@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 智能体循环工程 · 🛡️ 智能体 Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 代币经济学 · 智能体循环工程 · 智能体 Harness
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

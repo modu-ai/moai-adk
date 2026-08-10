@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🛡️ 에이전틱 하네스
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 에이전틱 하네스
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
