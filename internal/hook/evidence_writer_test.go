@@ -534,3 +534,60 @@ func TestEvidenceGate_ActivatesInProduction(t *testing.T) {
 		}
 	})
 }
+
+// --- SPEC-HARNESS-LEARNING-EVO-001 M3: Bash carve-out reachability ---
+
+// TestEvidenceRecord_NoDoubleWriteOnEdit is the AC-HLE-013 no-duplicate half.
+//
+// After the Bash carve-out, two handlers observe tool calls: handle-post-tool.sh
+// (Write|Edit|MultiEdit) and handle-harness-observe.sh (every tool). An Edit is
+// seen by both, so the carve-out MUST decline it — otherwise one Edit would
+// produce two telemetry records (plan.md §G AP-8). This drives both sides for a
+// single Edit and asserts the total is exactly one.
+func TestEvidenceRecord_NoDoubleWriteOnEdit(t *testing.T) {
+	root := newMoaiTempRoot(t)
+	in := fileInput("Edit", "sess-nodup", "internal/hook/x.go")
+	in.CWD = root
+
+	// Side 1 — the post-tool handler's evidence path (owns Write/Edit/MultiEdit).
+	logEvidence(in)
+	// Side 2 — the observe channel's carve-out, which sees the same Edit.
+	LogBashEvidence(in)
+
+	recs, err := telemetry.LoadBySession(root, "sess-nodup")
+	if err != nil {
+		t.Fatalf("LoadBySession: %v", err)
+	}
+	if len(recs) != 1 {
+		t.Fatalf("got %d records for one Edit, want exactly 1 (the carve-out must decline non-Bash)", len(recs))
+	}
+}
+
+// TestLogBashEvidence_RecordsBash confirms the exported entry point actually
+// reaches the assembled-record path for Bash — the reachability this SPEC
+// restores. Without this, TestEvidenceRecord_NoDoubleWriteOnEdit would also pass
+// for a function that does nothing at all.
+func TestLogBashEvidence_RecordsBash(t *testing.T) {
+	root := newMoaiTempRoot(t)
+	in := bashInput("sess-carveout", "go test ./...", []byte(`{"stdout":"ok  \tpkg\t0.1s\n"}`))
+	in.CWD = root
+
+	LogBashEvidence(in)
+
+	recs, err := telemetry.LoadBySession(root, "sess-carveout")
+	if err != nil {
+		t.Fatalf("LoadBySession: %v", err)
+	}
+	if len(recs) != 1 {
+		t.Fatalf("got %d records, want 1 (the Bash evidence path must be reachable)", len(recs))
+	}
+	if !recs[0].IsTestPass {
+		t.Errorf("IsTestPass = false; the output-text pass marker must be honored: %+v", recs[0])
+	}
+}
+
+// TestLogBashEvidence_NilInputIsNoOp guards the fail-open contract at the seam
+// boundary: a nil input must not panic the observing hook.
+func TestLogBashEvidence_NilInputIsNoOp(t *testing.T) {
+	LogBashEvidence(nil) // must not panic
+}

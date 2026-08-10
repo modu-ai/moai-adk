@@ -560,24 +560,10 @@ func runSecurityCommit(cmd *cobra.Command, args []string) error {
 // The gate is intentionally fail-open so that a corrupted or missing config
 // does not silently disable the observer. Explicit `false` is required to
 // suppress observation, matching the EARS state-driven semantics of REQ-HRN-FND-009.
+// The truth table above is implemented once, in package hook, so the CLI
+// handlers and the routing seams cannot drift apart on what "enabled" means.
 func isHarnessLearningEnabled(projectRoot string) bool {
-	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "harness.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return true
-	}
-	var doc struct {
-		Learning struct {
-			Enabled *bool `yaml:"enabled,omitempty"`
-		} `yaml:"learning,omitempty"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return true
-	}
-	if doc.Learning.Enabled == nil {
-		return true
-	}
-	return *doc.Learning.Enabled
+	return hook.HarnessLearningEnabled(projectRoot)
 }
 
 // isHookOptInEnabled reports whether the SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001
@@ -598,23 +584,10 @@ func isHarnessLearningEnabled(projectRoot string) bool {
 // Fail-CLOSED semantics intentionally differ from isHarnessLearningEnabled —
 // HOI is an opt-in toggle whose default state is OFF (REQ-HOI-001 default false).
 // See SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 §A.3 cohabitation contract.
+// The truth table above is implemented once, in package hook, so the CLI
+// handlers and the routing seams cannot drift apart on what "enabled" means.
 func isHookOptInEnabled(projectRoot string) bool {
-	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "system.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false
-	}
-	var doc struct {
-		Hook struct {
-			OptIn struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"opt_in"`
-		} `yaml:"hook"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return false
-	}
-	return doc.Hook.OptIn.Enabled
+	return hook.HookObserveOptInEnabled(projectRoot)
 }
 
 // runHarnessObserve reads PostToolUse hook stdin JSON and records event to usage-log.jsonl.
@@ -719,6 +692,26 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe: event recording failed: %v\n", err)
 	}
 
+	// SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-011: Bash evidence carve-out.
+	//
+	// buildBashRecord is unreachable from the shipped hook wiring — its only
+	// caller runs behind handle-post-tool.sh, which is registered for
+	// Write|Edit|MultiEdit only — so the terminal test-pass / test-fail signal
+	// the Stop seam reads was never produced. This wrapper is registered with no
+	// matcher and does receive the full Bash payload, so routing Bash through the
+	// evidence path here restores reachability with no settings.json edit.
+	//
+	// Scoped to Bash: Write/Edit stay owned by handle-post-tool.sh, so no tool
+	// call produces two evidence records.
+	//
+	// Gated on the hook opt-in as well as the learning gate. The usage-log write
+	// above intentionally keeps its pre-existing single-gate behavior; this NEW
+	// write is a distinct emission path and REQ-HLE-013 requires it to stay inert
+	// while either observation gate is closed.
+	if hookInput.ToolName == "Bash" && isHookOptInEnabled(root) {
+		hook.LogBashEvidence(hookInput)
+	}
+
 	return nil
 }
 
@@ -813,6 +806,14 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	// finalizer. Downstream of the EXISTING HOI (gate 0) + learning (gate 1) gates
 	// already applied above. Finalizes a pending routing row into the ledger only
 	// when its machine evidence derives a terminal outcome; no-op otherwise.
+	// Routing-ledger seam C (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-010). Runs
+	// immediately BEFORE the finalizer: when the session evidence path observed a
+	// terminal test pass or fail, it appends the matching terminal gate_exit ref
+	// so the finalizer below can close the row as success or fail rather than
+	// only as reroute or abort. Absence appends nothing, and the finalizer then
+	// leaves the row pending exactly as before.
+	hook.RoutingSeamStopEvidence(root, hookInput.SessionID)
+
 	finalizeRoutingLedgerOnStop(root, hookInput.SessionID, cmd.ErrOrStderr())
 
 	return nil

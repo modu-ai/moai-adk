@@ -240,7 +240,9 @@
 ## 검증
 
 **순환 의존성**: 0개 (검증됨)  
-**패키지 수**: 46 internal 디렉터리 (318 subpackage) + 2 pkg (`models`, `version`) + 1 cmd = 49개 경로
+**패키지 수**: 49 internal 디렉터리 (323 중첩 디렉터리) + 2 pkg (`models`, `version`) + 1 cmd = 52개 경로
+
+> 실측 명령: `ls -d internal/*/ | wc -l` → 49, `find internal -type d -mindepth 2 | wc -l` → 323. 종전 표기(46 / 318)는 갱신이 밀린 값이며, 세 패키지 차이 중 `internal/factory` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 나머지 둘은 그 이전부터 있었다. `structure.md` 71행의 같은 수치도 함께 갱신했다.
 
 ---
 
