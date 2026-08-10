@@ -51,19 +51,6 @@ func (f *fakeCodexRunner) run(_ context.Context, binaryPath string, args []strin
 	return f.stdout, f.err
 }
 
-// rpcResponse builds a JSON-RPC response envelope wrapping result=out. RETAINED
-// for legacy single-shot assertions; the review-gate session path now uses
-// codexSessionScript (the session is async and the verdict arrives as prose, so
-// a single id=1 result envelope no longer models the real exchange).
-func rpcResponse(t *testing.T, out ReviewOutput) string {
-	t.Helper()
-	enc, err := json.Marshal(out)
-	if err != nil {
-		t.Fatalf("marshal review output: %v", err)
-	}
-	return `{"jsonrpc":"2.0","id":1,"result":` + string(enc) + "}\n"
-}
-
 // withCodexRunner swaps the package-level codexRunner seam and restores it on
 // cleanup, so each test is isolated.
 func withCodexRunner(t *testing.T, r codexCommandRunner) {
