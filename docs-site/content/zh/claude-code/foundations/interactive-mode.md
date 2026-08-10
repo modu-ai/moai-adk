@@ -9,6 +9,10 @@ description: "一份纵览 Claude Code 交互式 REPL 会话的输入方式、�
 
 本文整理在终端中运行 Claude Code 时遇到的交互式会话 (REPL) 的输入方式、快捷键与权限模式。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：交互模式是 Claude Code 的**驾驶舱**，从一行提示词到 `/` 命令、`!` bash 执行、`@` 文件引用、粘贴图片，所有输入都汇聚于此。
 {{< /callout >}}

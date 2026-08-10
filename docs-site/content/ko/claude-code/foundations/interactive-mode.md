@@ -9,6 +9,10 @@ description: "Claude Code 대화형 REPL 세션의 입력 방식, 키보드 단�
 
 Claude Code를 터미널에서 실행하면 만나는 대화형 세션(REPL)의 입력 방식과 단축키, 권한 모드를 정리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 대화형 모드는 Claude Code의 **조종석**으로, 프롬프트 한 줄부터 `/` 명령, `!` bash 실행, `@` 파일 참조, 이미지 붙여넣기까지 모든 입력이 모이는 곳입니다.
 {{< /callout >}}

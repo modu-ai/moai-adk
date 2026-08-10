@@ -7,6 +7,10 @@ description: "claude agents 명령으로 여러 백그라운드 세션을 한 �
 
 `claude agents` 명령으로 열리는 에이전트 뷰(agent view)는 여러 Claude Code 세션을 한 화면에서 디스패치하고 지켜보다가, 손이 필요한 세션에만 끼어들게 해 주는 관제 화면입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 트랜스크립트를 일일이 스크롤하는 대신, 실행 중·대기 중·완료된 모든 백그라운드 세션을 하나의 표로 보고 필요한 순간에만 끼어듭니다.
 {{< /callout >}}

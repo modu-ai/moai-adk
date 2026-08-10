@@ -14,8 +14,8 @@
   title: "CLI 레퍼런스"
   weight: 45
 "claude-code":
-  title: "Claude Code 가이드"
-  weight: 55
+  title: "Claude Code 가이드 (배경 참조)"
+  weight: 130
 "multi-llm":
   title: "멀티 LLM"
   weight: 60

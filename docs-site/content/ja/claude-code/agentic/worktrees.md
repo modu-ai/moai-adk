@@ -7,6 +7,10 @@ description: "Claude Code が git ワークツリーで並列セッションを�
 
 ワークツリー (worktree) は、1 つの git リポジトリで複数の作業ツリーを分離し、Claude Code のセッション同士が互いのファイルに触れずに並行して働けるようにする機能です。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [Git Worktree 概要](/ja/worktree) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: ワークツリーは同じリポジトリを共有しながらも作業ディレクトリとブランチを分離し、あるターミナルで機能を作り、別のターミナルでバグを直すという同時作業を、衝突なく可能にします。
 {{< /callout >}}

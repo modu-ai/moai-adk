@@ -7,6 +7,10 @@ description: "MoAI-ADK 스킬 시스템 — 점진적 공개(progressive disclos
 
 MoAI-ADK의 스킬 시스템을 상세히 안내합니다. 스킬은 에이전틱 하네스의 지식 계층이면서, "필요한 지식만 필요한 순간에 로드한다"는 점에서 토크노믹스가 가장 구체적으로 구현되는 곳이기도 합니다.
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [스킬](/ko/claude-code/extensibility/skills)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 
 **스킬이란?**

@@ -9,6 +9,10 @@ description: "The concept of a Claude Code session and continuing it with --resu
 
 In Claude Code, one conversation is one session. This page summarizes how to start, continue, and clean up sessions, and how a session meshes with checkpoints and handoff.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [/moai](/en/utility-commands/moai).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: A session is a single **unit of conversation**. To continue working, you reload a previous session (`--resume` / `--continue`); when the topic changes, you wipe it clean with `/clear`. Understanding how sessions flow lets you carry a long task across several days without losing it.
 {{< /callout >}}

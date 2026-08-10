@@ -10,6 +10,10 @@ draft: false
 **ひと言要約**: 動的ワークフローは JavaScript で書かれた自動化スクリプトで、数十〜数百のエージェントを並列調整します。Ultracode は `/effort ultracode` または `ultracode` キーワードでトリガーされます。
 {{< /callout >}}
 
+{{< callout type="info" title="プラットフォームの基礎" >}}
+プラットフォーム層の背景については [ダイナミックワークフロー](/ja/claude-code/agentic/workflows) を参照してください。MoAI-ADK としての説明はこのページです。
+{{< /callout >}}
+
 ## 3 つのオーケストレーションプリミティブ
 
 MoAI-ADK は **3 つのオーケストレーションプリミティブ** を提供し、選択基準は「計画を誰が持っているか」です。

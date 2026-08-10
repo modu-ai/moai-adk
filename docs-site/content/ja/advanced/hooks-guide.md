@@ -10,6 +10,10 @@ Claude Code の Hooks システムと MoAI-ADK の基本 Hook スクリプトを
 **一行要約**: Hooks は Claude Code の **自動反射神経** です。ファイルを保存すると自動的にフォーマットし、危険なコマンドは自動的に遮断します。
 {{< /callout >}}
 
+{{< callout type="info" title="プラットフォームの基礎" >}}
+プラットフォーム層の背景については [フック (Hooks)](/ja/claude-code/extensibility/hooks) を参照してください。MoAI-ADK としての説明はこのページです。
+{{< /callout >}}
+
 ## Hooks とは?
 
 Hooks は Claude Code の特定のイベントに反応して **自動的に実行されるスクリプト** です。

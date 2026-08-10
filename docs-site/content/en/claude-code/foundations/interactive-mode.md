@@ -9,6 +9,10 @@ description: "An at-a-glance guide to input methods, keyboard shortcuts, and per
 
 This page covers the input methods, shortcuts, and permission modes of the interactive session (REPL) you meet when running Claude Code in the terminal.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Interactive mode is Claude Code's **cockpit** — the place where every input converges, from a one-line prompt to `/` commands, `!` bash execution, `@` file references, and image pasting.
 {{< /callout >}}

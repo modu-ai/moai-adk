@@ -9,6 +9,10 @@ description: "梳理 Claude Code 技能 (SKILL.md) 的概念与 Progressive Disc
 
 Claude Code 的技能 (skill) 是把重复的流程或专业知识汇成一个 `SKILL.md` 文件、加入 Claude 工具箱的扩展机制。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [技能指南](/zh/advanced/skill-guide)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：把每次都要往聊天里粘贴的清单或流程做成一张 `SKILL.md`，Claude 就有了一位只在需要时才掏出内容的"口袋专家"。
 {{< /callout >}}

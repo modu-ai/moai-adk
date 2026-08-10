@@ -402,40 +402,6 @@ main:
         ref: /cli-reference/github
 
   - name:
-      ko: Claude Code 가이드
-      en: Claude Code Guide
-      ja: Claude Code ガイド
-      zh: Claude Code 指南
-    ref: /claude-code
-    icon: star
-    defaultOpen: false
-    sub:
-      - name:
-          ko: 기초 — Claude Code 이해
-          en: Foundations
-          ja: 基礎
-          zh: 基础
-        ref: /claude-code/foundations
-      - name:
-          ko: 컨텍스트와 메모리
-          en: Context & Memory
-          ja: コンテキストとメモリ
-          zh: 上下文与记忆
-        ref: /claude-code/context-memory
-      - name:
-          ko: 확장 — 스킬·훅·MCP·플러그인
-          en: Extensibility
-          ja: 拡張
-          zh: 扩展
-        ref: /claude-code/extensibility
-      - name:
-          ko: 에이전트와 자동화
-          en: Agents & Automation
-          ja: エージェントと自動化
-          zh: 代理与自动化
-        ref: /claude-code/agentic
-
-  - name:
       ko: 멀티 LLM
       en: Multi-LLM Mode
       ja: Multi-LLM Mode
@@ -696,3 +662,37 @@ main:
     icon: tag
     defaultOpen: true
     sub:
+
+  - name:
+      ko: Claude Code 가이드 (배경 참조)
+      en: Claude Code Guide (Background Reference)
+      ja: Claude Code ガイド（背景リファレンス）
+      zh: Claude Code 指南（背景参考）
+    ref: /claude-code
+    icon: school
+    defaultOpen: false
+    sub:
+      - name:
+          ko: 기초 — Claude Code 이해
+          en: Foundations
+          ja: 基礎
+          zh: 基础
+        ref: /claude-code/foundations
+      - name:
+          ko: 컨텍스트와 메모리
+          en: Context & Memory
+          ja: コンテキストとメモリ
+          zh: 上下文与记忆
+        ref: /claude-code/context-memory
+      - name:
+          ko: 확장 — 스킬·훅·MCP·플러그인
+          en: Extensibility
+          ja: 拡張
+          zh: 扩展
+        ref: /claude-code/extensibility
+      - name:
+          ko: 에이전트와 자동화
+          en: Agents & Automation
+          ja: エージェントと自動化
+          zh: 代理与自动化
+        ref: /claude-code/agentic

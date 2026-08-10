@@ -7,6 +7,10 @@ description: "How Claude Code isolates parallel sessions with git worktrees so m
 
 A worktree separates multiple working trees within one git repository, letting Claude Code sessions work in parallel without touching each other's files.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Git Worktree Overview](/en/worktree).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Worktrees share the same repository while separating working directories and branches, making it possible to build a feature in one terminal and fix a bug in another simultaneously, without conflicts.
 {{< /callout >}}

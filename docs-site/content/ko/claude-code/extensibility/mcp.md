@@ -9,6 +9,10 @@ description: "MCP(Model Context Protocol)로 외부 도구와 데이터를 Claud
 
 MCP(Model Context Protocol)는 외부 도구와 데이터 소스를 Claude에 꽂아 쓰기 위한 표준 커넥터입니다. 이 페이지는 그 개념과 등록 방법을 개요 수준에서 정리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: MCP는 AI를 위한 **USB 포트**입니다. 데이터베이스, 이슈 트래커, 브라우저처럼 저마다 다른 외부 도구를 하나의 표준 규격으로 Claude에 연결하면 도구마다 별도의 통합 코드를 짜지 않고도 같은 방식으로 꽂아 쓸 수 있습니다.
 {{< /callout >}}

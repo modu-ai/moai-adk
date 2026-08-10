@@ -14,8 +14,8 @@
   title: "CLIリファレンス"
   weight: 45
 "claude-code":
-  title: "Claude Code ガイド"
-  weight: 55
+  title: "Claude Code ガイド（背景リファレンス）"
+  weight: 130
 "multi-llm":
   title: "Multi-LLM Mode"
   weight: 60

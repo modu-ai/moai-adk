@@ -12,6 +12,10 @@ draft: false
   プロセスを自動的に** 行います。
 {{< /callout >}}
 
+{{< callout type="info" title="プラットフォームの基礎" >}}
+プラットフォーム層の背景については [セッション管理](/ja/claude-code/context-memory/sessions) を参照してください。MoAI-ADK としての説明はこのページです。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **スラッシュコマンド対応**: MoAI のすべてのサブコマンドはスキルでラップされているので、`/moai` だけ入力すると利用可能なサブコマンド一覧が表示されます。各サブコマンドは `/moai:fix`、`/moai:loop`、`/moai:review` などの形式ですぐに実行することもできます。
 {{< /callout >}}

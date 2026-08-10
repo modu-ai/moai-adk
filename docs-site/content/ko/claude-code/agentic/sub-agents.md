@@ -10,6 +10,10 @@ description: "Claude Code 서브에이전트의 개념과 격리된 컨텍스트
 
 Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 윈도우에서 처리하고 결과 요약만 메인 대화로 돌려주는 위임 작업자입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [에이전트 가이드](/ko/advanced/agent-guide)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 서브에이전트는 탐색·검증 같은 곁가지 일을 자기만의 컨텍스트에서 처리하고 요약만 돌려주어, 메인 대화를 깨끗하게 유지하는 위임 일꾼입니다.
 {{< /callout >}}

@@ -7,6 +7,10 @@ description: "Claude Code が繰り返されるプレフィックスをキャッ
 
 Claude Code は毎ターン会話全体を処理し直す代わりに、すでに処理した部分を再利用するプロンプトキャッシュ (prompt caching) を自動で管理します。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [プロンプトキャッシング — 概念と Claude Code での動作](/ja/cost-optimization/prompt-caching) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: 毎回変わらない前半部分 (プレフィックス) をキャッシュからそのまま読み込み、同じ作業を二度処理せず、コストと応答時間を大幅に減らします。
 {{< /callout >}}

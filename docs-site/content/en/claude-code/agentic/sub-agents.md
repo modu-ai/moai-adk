@@ -10,6 +10,10 @@ description: "An overview of Claude Code subagents — the concept, isolated-con
 A Claude Code subagent is a delegated worker that handles side tasks in a separate context window and returns only a summary of the results to the main conversation.
 
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Agent Guide](/en/advanced/agent-guide).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: A subagent is a delegated worker that handles side jobs like exploration and verification in its own context and returns only a summary, keeping the main conversation clean.
 {{< /callout >}}

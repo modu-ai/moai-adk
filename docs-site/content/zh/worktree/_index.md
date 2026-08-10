@@ -11,6 +11,10 @@ draft: false
 Git Worktree 是 MoAI-ADK 并行开发的基石。它为每个 SPEC 创建完全独立的工作
 空间，让不同的 Git 状态和不同的 LLM 配置可以同时运转。
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [工作树](/zh/claude-code/agentic/worktrees)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 
 从三大核心价值中 **智能体 Harness**（品质把控）的角度看，Worktree 是把每个
 SPEC 的工作空间彻底切开的控制装置。智能体并行推进时不会覆盖彼此的工作，只有

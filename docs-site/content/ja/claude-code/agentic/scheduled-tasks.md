@@ -9,6 +9,10 @@ description: "Claude Code の /loop と cron ツールで、セッション内�
 
 Claude Code のスケジュールタスク (scheduled tasks) は、同じセッションが開いている間、プロンプトを決まった周期で再実行できるようにする機能です。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [自律連続ループ](/ja/advanced/autonomous-loops) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: デプロイのポーリング、PR の世話、定期点検を、人が毎回入力せずに `/loop` と cron ツールへ任せる、セッションに紐づいた軽量な自動化です。
 {{< /callout >}}

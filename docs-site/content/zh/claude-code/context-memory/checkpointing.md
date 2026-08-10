@@ -7,6 +7,10 @@ description: "说明如何通过 Claude Code 的检查点与回退，安全地�
 
 检查点 (checkpointing) 是在 Claude Code 开始编辑之前自动为代码状态拍下快照、让您随时可以回到之前节点的安全网。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：即使工作搞砸了，按两次 `Esc` 就能把代码与对话一同回退到之前状态 —— 一张会话级的"撤销"安全网。
 {{< /callout >}}

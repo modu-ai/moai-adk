@@ -7,6 +7,10 @@ description: "스크립트가 수십~수백 개의 서브에이전트를 오케�
 
 다이내믹 워크플로우(dynamic workflow)는 Claude가 직접 작성한 JavaScript 스크립트가 한 번의 대화로는 조율하기 힘든 수십~수백 개의 서브에이전트를 백그라운드에서 오케스트레이션하는 Claude Code의 실행 프리미티브입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [동적 워크플로우와 Ultracode](/ko/advanced/ultracode-workflows)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 서브에이전트와 에이전트 팀이 "계획을 Claude의 머릿속에" 둔다면, 다이내믹 워크플로우는 "계획을 스크립트 코드 안에" 옮겨 대규모 팬아웃을 한 번에 돌립니다.
 {{< /callout >}}

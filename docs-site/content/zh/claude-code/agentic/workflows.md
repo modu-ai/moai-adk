@@ -7,6 +7,10 @@ description: "讲解由脚本编排数十至数百个子智能体的 Claude Code
 
 动态工作流 (dynamic workflow) 是 Claude Code 的执行原语 (primitive)：由 Claude 亲自编写的 JavaScript 脚本在后台编排数十至数百个单次对话难以协调的子智能体。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [动态工作流与 Ultracode](/zh/advanced/ultracode-workflows)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：如果说子智能体和智能体团队把"计划放在 Claude 的脑子里"，那么动态工作流把"计划搬进脚本代码"，一次性运转大规模扇出。
 {{< /callout >}}

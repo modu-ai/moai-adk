@@ -7,6 +7,10 @@ description: "说明 Claude Code 如何通过缓存重复前缀来降低成本�
 
 Claude Code 不在每个回合重新处理整个对话，而是自动管理复用已处理部分的提示缓存 (prompt caching)。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [提示缓存 —— 概念与在 Claude Code 中的行为](/zh/cost-optimization/prompt-caching)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：把每次都不变的前段（前缀）直接从缓存读出，同一份工作不做第二遍，大幅降低成本与响应时间。
 {{< /callout >}}

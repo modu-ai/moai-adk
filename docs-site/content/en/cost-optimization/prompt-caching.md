@@ -12,6 +12,10 @@ instructions, conversation history), the greater the savings. If the "context
 diet" axis of MoAI-ADK Tokenomics is about shrinking the always-loaded
 context, prompt caching is about reusing the remaining context cheaply.
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Prompt Caching](/en/claude-code/context-memory/prompt-caching). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **In plain terms** — on every turn the model rereads the whole conversation
 from the start. Caching is the bookmark that says "the front portion is exactly

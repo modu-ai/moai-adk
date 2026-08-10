@@ -9,6 +9,10 @@ description: "Claude Code コンテキストウィンドウのトークンの概
 
 Claude Code が 1 つのセッションの間に記憶するすべてが収まる空間、コンテキストウィンドウ (context window) と、それを効率的に管理する方法を整理します。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [トークン予算管理と安全な中止](/ja/advanced/token-budget) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: コンテキストウィンドウは Claude の **作業デスク** であり、トークンコストが発生する台帳です。デスクが満杯になる前に自動圧縮 (compaction) と `/clear` で空間を空けることで、長い作業が品質とコストの両面で最後まで滑らかに流れます。
 {{< /callout >}}
