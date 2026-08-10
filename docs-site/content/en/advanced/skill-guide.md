@@ -6,6 +6,10 @@ draft: false
 
 A detailed guide to MoAI-ADK's skill system. Skills are the knowledge layer of the agentic harness — and, in that they "load only the needed knowledge at the needed moment," they are also where tokenomics is most concretely implemented.
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Skills](/en/claude-code/extensibility/skills). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 
 **What is a skill?**

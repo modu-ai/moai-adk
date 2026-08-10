@@ -12,6 +12,10 @@ draft: false
   过程**。
 {{< /callout >}}
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [会话管理](/zh/claude-code/context-memory/sessions)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **斜杠命令支持**: MoAI 的所有子命令都封装为技能,仅输入 `/moai` 即可显示可用子命令列表。各子命令也可以用 `/moai:fix`、`/moai:loop`、`/moai:review` 等形式直接执行。
 {{< /callout >}}

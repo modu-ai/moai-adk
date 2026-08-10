@@ -7,6 +7,10 @@ description: "Claude Code의 체크포인팅과 되감기로 코드와 대화를
 
 체크포인팅(checkpointing)은 Claude Code가 편집을 시작하기 전 코드 상태를 자동으로 찍어 두는 안전망입니다. 덕분에 언제든 이전 지점으로 되돌릴 수 있습니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK 자체 기능은 사이드바 위쪽 섹션에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 작업이 꼬여도 `Esc`를 두 번 누르면 코드와 대화를 함께 이전 상태로 되감을 수 있는, 세션 단위의 "되돌리기" 안전망입니다.
 {{< /callout >}}

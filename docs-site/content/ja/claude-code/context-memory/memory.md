@@ -7,6 +7,10 @@ description: "Claude Code が CLAUDE.md と自動メモリでセッションを�
 
 Claude Code が毎セッション新しいコンテキストウィンドウ (context window) で始まりながらも、プロジェクト知識を失わないよう助けてくれる 2 つのメモリメカニズムを見ていきます。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) で扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: CLAUDE.md は人が書き留める恒久的な指針で、自動メモリは Claude が作業しながら自ら書きためる学習ノートです。どちらも毎セッション開始時にコンテキストとしてロードされます。
 {{< /callout >}}

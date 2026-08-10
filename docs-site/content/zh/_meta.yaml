@@ -14,8 +14,8 @@
   title: "CLI 参考"
   weight: 45
 "claude-code":
-  title: "Claude Code 指南"
-  weight: 55
+  title: "Claude Code 指南（背景参考）"
+  weight: 130
 "multi-llm":
   title: "Multi-LLM Mode"
   weight: 60

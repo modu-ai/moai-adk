@@ -9,6 +9,10 @@ description: "A guide to the token concept behind Claude Code's context window, 
 
 This page covers the context window — the space holding everything Claude Code remembers during a session — and how to manage it efficiently.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Token Budget Management and Graceful Stop](/en/advanced/token-budget).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: The context window is Claude's **workbench** and the ledger where token costs accrue. Clear space with auto-compaction and `/clear` before the desk fills up, and long tasks flow smoothly to the end in both quality and cost.
 {{< /callout >}}

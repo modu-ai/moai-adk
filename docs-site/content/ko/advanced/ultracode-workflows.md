@@ -10,6 +10,10 @@ draft: false
 **한 줄 요약**: 동적 워크플로우는 JavaScript로 작성된 자동화 스크립트로, 수십~수백 개의 에이전트를 병렬 조율합니다. Ultracode는 `/effort ultracode` 또는 `ultracode` 키워드로 트리거됩니다.
 {{< /callout >}}
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [다이내믹 워크플로우](/ko/claude-code/agentic/workflows)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 ## 3가지 오케스트레이션 프리미티브
 
 MoAI-ADK는 **3가지 오케스트레이션 프리미티브**를 제공하며, 선택 기준은 "계획을 누가 들고 있는가"입니다.

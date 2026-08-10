@@ -7,6 +7,10 @@ description: "Claude Code가 반복되는 프리픽스를 캐시해 비용과 �
 
 Claude Code는 매 턴마다 전체 대화를 다시 처리하는 대신, 이미 처리한 부분을 재사용하는 프롬프트 캐싱(prompt caching)을 알아서 관리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [프롬프트 캐싱 — 개념과 Claude Code에서의 동작](/ko/cost-optimization/prompt-caching)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 매번 변하지 않는 앞부분(프리픽스)을 캐시에서 그대로 읽어와, 같은 작업을 두 번 처리하지 않고 비용과 응답 시간을 크게 줄여줍니다.
 {{< /callout >}}

@@ -9,6 +9,10 @@ description: "Claude Code 스킬(SKILL.md)의 개념과 Progressive Disclosure �
 
 Claude Code의 스킬(skill)은 반복되는 절차나 전문 지식을 `SKILL.md` 파일 하나로 묶어 Claude의 도구함에 추가하는 확장 메커니즘입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [스킬 가이드](/ko/advanced/skill-guide)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 채팅에 매번 붙여넣던 체크리스트나 절차를 `SKILL.md` 한 장으로 만들면 Claude가 필요할 때만 그 내용을 꺼내 쓰는 "주머니 속 전문가"가 됩니다.
 {{< /callout >}}

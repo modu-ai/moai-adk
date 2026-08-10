@@ -10,6 +10,10 @@ A detailed guide to Claude Code's Hooks system and MoAI-ADK's default Hook scrip
 **One-line summary**: Hooks are Claude Code's **automatic reflexes**. Save a file and it is formatted automatically; a dangerous command is blocked automatically.
 {{< /callout >}}
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Hooks](/en/claude-code/extensibility/hooks). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 ## What Are Hooks?
 
 Hooks are **scripts that run automatically** in response to specific Claude Code events.

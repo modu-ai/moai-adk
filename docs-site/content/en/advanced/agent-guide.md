@@ -10,6 +10,10 @@ A detailed guide to the catalog of 12 core agents in MoAI-ADK v3.0.
 **One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
 {{< /callout >}}
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Subagents](/en/claude-code/agentic/sub-agents). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 ## What Is an Agent?
 
 An agent is an **AI task performer** specialized in a particular field.

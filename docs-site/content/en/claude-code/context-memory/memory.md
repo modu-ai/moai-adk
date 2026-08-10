@@ -7,6 +7,10 @@ description: "How Claude Code remembers project knowledge across sessions with C
 
 This page looks at the two memory mechanisms that keep Claude Code from losing project knowledge even though every session starts with a fresh context window.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [CLAUDE.md Guide](/en/advanced/claude-md-guide).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: CLAUDE.md is permanent guidance a human writes down, and auto memory is a learning notebook Claude writes for itself while working — both load into context at the start of every session.
 {{< /callout >}}

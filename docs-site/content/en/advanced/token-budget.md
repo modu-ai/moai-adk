@@ -6,6 +6,10 @@ draft: false
 
 This page deep-dives into Layer D — Budget defense — of the 4-layer tokenomics structure. It covers the graceful-abort mechanism that ensures the session stops without data loss when an agent reaches the context-window limit, preserving progress so the next session can continue.
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Context Window](/en/claude-code/context-memory/context-window). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 ## Why Budget Defense
 
 Anthropic SSE streams intermittently stall (`stream_idle_partial`) near the context-window ceiling. This is probabilistic but predictable above the model-specific threshold. When a stall occurs, an agent call may fail mid-stream, potentially losing progress.

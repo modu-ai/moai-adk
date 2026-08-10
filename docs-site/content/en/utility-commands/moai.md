@@ -12,6 +12,10 @@ The fully autonomous automation command. When the user provides a goal, MoAI aut
   from SPEC creation through implementation to documentation.
 {{< /callout >}}
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Session Management](/en/claude-code/context-memory/sessions). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **Slash command support**: all MoAI subcommands are wrapped as skills, so typing just `/moai` shows the list of available subcommands. Each subcommand can also be run directly in the form `/moai:fix`, `/moai:loop`, `/moai:review`, and so on.
 {{< /callout >}}

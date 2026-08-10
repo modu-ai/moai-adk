@@ -10,6 +10,10 @@ description: "The purpose of Claude Code's built-in tools, the read/write distin
 This page covers the built-in tools Claude Code uses to understand and modify a codebase, and how permissions attach to each tool.
 
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Tool names are identifiers used verbatim in permission rules, subagent tool lists, and hook matchers — so knowing each tool's read/write nature and permission behavior lets you design Claude Code's safety boundaries yourself.
 {{< /callout >}}

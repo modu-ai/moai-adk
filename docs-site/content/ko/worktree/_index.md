@@ -12,6 +12,10 @@ Git Worktree는 MoAI-ADK 병렬 개발의 바탕입니다. SPEC마다 완전히 
 공간을 만들어, 서로 다른 Git 상태와 서로 다른 LLM 설정을 동시에 유지할 수 있게
 해 줍니다.
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [워크트리](/ko/claude-code/agentic/worktrees)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 
 세 가지 핵심 가운데 **에이전틱 하네스**(품질 통제) 쪽에서 보면, Worktree는
 SPEC마다 작업 공간을 완전히 갈라 놓는 통제 장치입니다. 에이전트가 병렬로

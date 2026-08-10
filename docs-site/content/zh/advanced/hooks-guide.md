@@ -10,6 +10,10 @@ draft: false
 **一句话总结**：Hooks 是 Claude Code 的 **自动反射神经**。保存文件时自动格式化，危险命令自动拦截。
 {{< /callout >}}
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 ## 什么是 Hooks？
 
 Hooks 是响应 Claude Code 特定事件而 **自动执行的脚本**。

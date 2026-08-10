@@ -9,6 +9,10 @@ description: "Claude Code 컨텍스트 윈도우의 토큰 개념, 자동 압축
 
 Claude Code가 한 세션 동안 기억하는 모든 것이 담기는 공간인 컨텍스트 윈도우(context window)와 이를 효율적으로 관리하는 방법을 정리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [토큰 예산 관리와 안전한 중단](/ko/advanced/token-budget)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 컨텍스트 윈도우는 Claude의 **작업 책상**이자 토큰 비용이 발생하는 장부입니다. 책상이 가득 차기 전에 자동 압축(compaction)과 `/clear`로 공간을 비워야 긴 작업을 품질과 비용 모두에서 끝까지 무리 없이 마칠 수 있습니다.
 {{< /callout >}}
