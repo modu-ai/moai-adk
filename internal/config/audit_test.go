@@ -152,13 +152,18 @@ func TestAuditParity_ExceptionsRespected(t *testing.T) {
 	// YAMLAuditExceptions should not exist yet (RED phase) → will fail to compile.
 	exceptions := GetYAMLAuditExceptions()
 
-	// 5 yaml sections pending MIG-003 loaders should be registered as exceptions
-	expectedExceptions := []string{
-		"constitution", "context", "interview", "design", "harness",
-	}
+	// `harness` is the only remaining loader-related exception: LoadHarnessConfig
+	// is a dedicated entry point outside the Loader.Load chain by design.
+	//
+	// The four MIG-003 sections (constitution, context, interview, design) were
+	// pruned from the exceptions map once their loaders landed and were wired into
+	// Loader.Load — they are registry entries now, and the loader-wiring guard
+	// (audit_loader_wiring_test.go) asserts that wiring. Leaving them here would
+	// have exempted four wired sections from the orphan check for no reason.
+	expectedExceptions := []string{"harness"}
 	for _, name := range expectedExceptions {
 		if _, ok := exceptions[name]; !ok {
-			t.Errorf("GetYAMLAuditExceptions() missing exception entry for %q (pending MIG-003 loader)", name)
+			t.Errorf("GetYAMLAuditExceptions() missing exception entry for %q (loader outside Loader.Load)", name)
 		}
 	}
 
@@ -166,6 +171,17 @@ func TestAuditParity_ExceptionsRespected(t *testing.T) {
 	for _, name := range expectedExceptions {
 		if !IsRegisteredOrException(name) {
 			t.Errorf("IsRegisteredOrException(%q) = false, want true (it's an exception)", name)
+		}
+	}
+
+	// The pruned sections must now be registry entries, not exceptions.
+	registry := GetYAMLToStructRegistry()
+	for _, name := range []string{"constitution", "context", "interview", "design"} {
+		if _, ok := exceptions[name]; ok {
+			t.Errorf("%q is still an exception although its loader is wired into Loader.Load", name)
+		}
+		if _, ok := registry[name]; !ok {
+			t.Errorf("%q has a wired loader but is missing from the yaml→struct registry", name)
 		}
 	}
 }

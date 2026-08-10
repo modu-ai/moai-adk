@@ -40,7 +40,17 @@ var yamlToStructRegistry = map[string]string{
 	"handoff":        "HandoffConfig",  // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
 	"archive":        "ArchiveConfig",  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	"feedback":       "FeedbackConfig", // loaded via Loader.Load → loadFeedbackSection
-	// Additional sections with partial/specialized loaders:
+	// MIG-003 sections: loaders landed (loader_constitution.go / loader_context.go /
+	// loader_interview.go / loader_design.go) and are wired into Loader.Load, so these
+	// belong in the registry rather than in yamlAuditExceptions.
+	"constitution": "ConstitutionConfig",
+	"context":      "ContextConfig", // recorded in LoadedSections as "context_search"
+	"interview":    "InterviewConfig",
+	"design":       "DesignConfig",
+	// Additional sections with partial/specialized loaders. These are consumed
+	// OUTSIDE the Loader.Load chain; the readers are named in
+	// audit_loader_wiring_test.go::partialLoaderExceptions.
+
 	"lsp":      "LSPQualityGates",
 	"mx":       "MXConfig",
 	"security": "SecurityConfig",
@@ -56,16 +66,13 @@ var yamlToStructRegistry = map[string]string{
 // Key: yaml basename without extension.
 // Value: reason string citing the blocking SPEC.
 var yamlAuditExceptions = map[string]string{
-	// MIG-003 loaders LANDED for these 4 sections (loader_constitution.go /
-	// loader_context.go / loader_interview.go / loader_design.go, wired into
-	// Loader.Load); harness has a dedicated entry point (LoadHarnessConfig).
-	// The entries are retained here for compatibility with
-	// TestAuditParity_ExceptionsRespected, with corrected loader-present labels.
-	"constitution": "loader present (loader_constitution.go via Loader.Load) — exception entry retained for compatibility",
-	"context":      "loader present (loader_context.go via Loader.Load) — exception entry retained for compatibility",
-	"interview":    "loader present (loader_interview.go via Loader.Load) — exception entry retained for compatibility",
-	"design":       "loader present (loader_design.go via Loader.Load) — exception entry retained for compatibility",
-	"harness":      "dedicated loader (LoadHarnessConfig, outside Loader.Load by design) — exception entry retained for compatibility",
+	// constitution / context / interview / design were removed from this map: their
+	// MIG-003 loaders landed and are wired into Loader.Load, so they are registry
+	// entries now, asserted by TestAuditParity_EveryRegistryEntryHasLoader. Keeping
+	// them here would have exempted four wired sections from the orphan check for no
+	// reason. `harness` stays: LoadHarnessConfig is a dedicated entry point outside
+	// the Loader.Load chain by design, so the registry's loader contract cannot bind it.
+	"harness": "dedicated loader (LoadHarnessConfig, outside Loader.Load by design)",
 	// Delegation map is consumed by the orchestrator (CLAUDE.md), not by Go code.
 	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
 	// Local-tree sections without a Loader.Load struct mapping (real-tree
