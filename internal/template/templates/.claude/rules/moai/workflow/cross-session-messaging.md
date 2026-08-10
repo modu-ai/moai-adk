@@ -52,9 +52,17 @@ Worktree isolation remains the structural fix for a write conflict. Messaging sh
 
 Conversely, after landing a change that invalidates what a peer is building on — a schema change, a renamed symbol, a merged branch — notifying the affected peer is appropriate without being asked.
 
-## Session naming
+## Addressing, sending, and replying
 
-A session answers to the name set at launch or by rename; unset, the runtime derives one from the working directory, so parallel sessions in one project collide on a shared prefix and are told apart only by a short identifier. Where a launcher starts a session bound to a known unit of work, passing an explicit name makes peers addressable by what they are doing rather than by where they run.
+A session answers to the name set at launch or by rename; unset, the runtime derives one from the working directory, so parallel sessions in one project collide on a shared prefix and are told apart only by a short reference. Where a launcher starts a session bound to a known unit of work, passing an explicit name makes peers addressable by what they are doing rather than by where they run.
+
+Three frictions are observed in practice and are worth expecting rather than rediscovering:
+
+- **A bare name can be refused.** Sending to a peer by name alone may come back asking for the name plus its short reference before it will resolve. Treat the first refusal as routine: re-send with the reference the error supplies, rather than assuming the peer is unreachable. The user-facing peer listing does not show these references — only the discovery tool's output does — so the reference is read from the tool result or from the refusal itself.
+- **A reply address is not guaranteed to route.** A recipient may be unable to answer the sender it was addressed by and fall back to guessing a peer. Consequently a message must carry enough identification for a human or a peer to route the answer manually: name the sending context and what the answer is for. Never assume a reply will land automatically, and never make the sender's identity implicit.
+- **The sender's permission class is disclosed.** An arriving message states whether its sender bypasses permission prompts, and that disclosure is what the receiver's inbound default keys on. A message from a bypassing sender is more likely to be held for approval, so a session that expects to be answered promptly should not assume delivery.
+
+An arriving message identifies its origin by socket address rather than by name. Where a reply is needed, copy the origin exactly as given rather than re-deriving it from a listing.
 
 ## Configuration surface
 
