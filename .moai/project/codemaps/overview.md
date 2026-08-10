@@ -39,7 +39,7 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 - **internal/spec** (24 non-test 파일): SPEC 라이프사이클 — Linter (13+3 규칙), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
 - **internal/workflow**: Plan-Run-Sync 워크트리 오케스트레이션
 - **internal/loop** (18파일): 진단 피드백 루프 — LoopController, DecisionEngine, RalphEngine
-- **internal/harness** (75 non-test 파일): 하네스 자가학습 — Observer, Learner (4-tier), Applier (45KB), v4manifest, routing, 5-phase safety
+- **internal/harness** (80 non-test 파일): 하네스 자가학습 — Observer, Learner (4-tier), Applier (45KB), v4manifest, routing(위임 관측 원장), delegationmap(위임 맵 분석기), 5-phase safety
 - **internal/permission** (18파일): 8-tier 권한 스택, 5 모드, bubble 모드
 - **internal/merge**: 3-way 파일 병합 (ADR-008), 사용자 커스터마이징 보존
 - **internal/constitution**: 동결/진화 구역 모델, 5단계 병합 안전 파이프라인

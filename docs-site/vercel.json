@@ -103,6 +103,26 @@
       "permanent": true
     },
     {
+      "source": "/:locale(ko|en|ja|zh)/changelog",
+      "destination": "https://github.com/modu-ai/moai-adk/releases",
+      "permanent": false
+    },
+    {
+      "source": "/changelog",
+      "destination": "https://github.com/modu-ai/moai-adk/releases",
+      "permanent": false
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/guides/multi-llm-ci",
+      "destination": "/:locale/guides/github-integration",
+      "permanent": true
+    },
+    {
+      "source": "/guides/multi-llm-ci",
+      "destination": "/ko/guides/github-integration",
+      "permanent": true
+    },
+    {
       "source": "/:locale(ko|en|ja|zh)/quality-commands/moai-codemaps",
       "destination": "/:locale/utility-commands/moai-codemaps",
       "permanent": true

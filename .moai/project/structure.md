@@ -87,7 +87,7 @@ moai-adk-go/
 │   ├── foundation/                   # Language registry (16 langs), TRUST 5, errors
 │   ├── git/                          # Label → branch-prefix conventions
 │   ├── goal/                         # Goal engine — `/moai goal` condition-declared loop (4 non-test files)
-│   ├── harness/                      # Harness self-learning subsystem (75 non-test files, 4-tier Learner)
+│   ├── harness/                      # Harness self-learning subsystem (80 non-test files, 4-tier Learner, routing ledger + delegationmap analyzer)
 │   ├── hook/                         # Compiled hook system + main-checkout branch-state guard (30 EventTypes, 35 handle-*.sh)
 │   ├── lockfile/                     # Cross-platform locking (Unix flock / Windows in-process mutex)
 │   ├── loop/                         # Ralph feedback loop (6 non-test files)
