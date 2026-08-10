@@ -364,6 +364,15 @@ full_exit=0        # 112 packages ok, zero --- FAIL / FAIL / panic lines; intern
 
 The `-count=20` run is the load-bearing one: it is what the original single-pass batch lacked, and it is the evidence the earlier claim should have rested on.
 
+**Flake disclosure (unrelated package, observed on this tree).** A later confirmation run of `go test -count=1 ./...` on the committed fix tree returned exit 1 on a package this SPEC does not touch:
+
+```
+--- FAIL: TestBranchGuard_Latency (7.38s)
+    pre_tool_branch_guard_integration_test.go:166: iteration 92: checkBranchState took 754.249958ms, ceiling 500ms (REQ-WBG-010 requires <= the per-OS ceiling per invocation)
+```
+
+It is a wall-clock latency assertion in `internal/hook` belonging to `SPEC-WORKTREE-BRANCH-GUARD-001`, failing on one iteration out of 100 by exceeding a 500 ms ceiling under machine load (the host was running several worktrees concurrently). Attribution: `git diff --stat 3419349c7..cea1f9ce5 -- internal/hook/` is empty — neither M4 commit touches that package, which is confined to `internal/cli` and `internal/config`. `go test -count=3 -run TestBranchGuard_Latency ./internal/hook/` → `ok … 13.928s` (3/3 in isolation), and the immediately-following full-suite run returned exit 0 with 112 `ok` including `internal/hook` `ok` at 73.124s (log: `.moai/state/verify/m4/full-suite-nudge2.txt`; the failing run is preserved at `.moai/state/verify/m4/full-suite-nudge.txt`). Recorded rather than dropped, and deliberately NOT presented as fixed — it is someone else's timing-sensitive ceiling, and a load-dependent latency assertion of that shape will fail again on a busy host.
+
 **Gaps (M4 correction).**
 
 - **`-count=20` bounds the flake, it does not prove its absence.** The race window is narrow; 20 iterations passing is strong evidence the join closed it, not a proof. What makes the fix trustworthy is the mechanism (the goroutine is joined at a point after its last write), not the iteration count.
