@@ -43,3 +43,9 @@ index:
   title: "동적 워크플로우와 Ultracode"
 "mx-tags":
   title: "MX TAG 시스템"
+"analyze-first-routing":
+  title: "Analyze-First 요청 처리 파이프라인"
+  weight: 65
+"moai-web-console":
+  title: "moai web 웹 콘솔"
+  weight: 85

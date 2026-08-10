@@ -9,3 +9,12 @@ ddd:
   title: "MoAI-ADK Development Methodology"
 "trust-5":
   title: "TRUST 5 Quality"
+"verification-claim-integrity":
+  title: "Verification Claim Integrity"
+  weight: 50
+"navigator":
+  title: "Project Navigator"
+  weight: 25
+"book":
+  title: "Book — Pragmatic Agent Coding"
+  weight: 5

@@ -1,0 +1,6 @@
+index:
+  title: "리소스"
+  display: "hidden"
+i18n-docs:
+  title: "다국어 문서 가이드"
+  weight: 10

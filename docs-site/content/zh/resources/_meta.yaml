@@ -1,0 +1,6 @@
+index:
+  title: "资源"
+  display: "hidden"
+i18n-docs:
+  title: "多语言文档指南"
+  weight: 10
