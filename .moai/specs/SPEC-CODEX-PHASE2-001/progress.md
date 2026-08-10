@@ -11,6 +11,8 @@
 
 ## §E.2 Run-phase Evidence
 
+> **How to resolve the SHAs below (added at sync).** Every commit SHA cited in this section — the per-milestone commits, the correction commits, and the HEADs the live probes were run against — lives on the `feat/SPEC-CODEX-PHASE2-001-run` branch ref, which is still on `origin` and was not deleted. PR #1440 was **squash**-merged, so none of them is an ancestor of `main`; on `main` the whole run phase is the single squash commit `ac37c4aea`. The SHAs are left exactly as measured rather than rewritten to `ac37c4aea`, because each one attributes a specific observation to the specific tree it was taken against — overwriting them would falsify that attribution. To inspect one, resolve it against the branch ref (`git fetch origin feat/SPEC-CODEX-PHASE2-001-run`), not against `main`.
+
 ### M0 probe — codex-cli 0.146.1
 
 Observed 2026-08-10 against `codex-cli 0.146.1` (`codex --version`), on the worktree at HEAD `edb519b35`.
@@ -771,7 +773,7 @@ The before/after contrast is the whole point of the milestone, and both numbers 
 
 ```yaml
 run_complete_at: 2026-08-11
-run_commit_sha: bae3e8616          # the last IMPLEMENTATION commit; the docs commit carrying this block lands on top of it
+run_commit_sha: ac37c4aea          # SHA re-attributed at sync: PR #1440 squash-merged the run phase onto main as ac37c4aea, so this is the commit that carries the implementation on main. The pre-squash branch value was bae3e8616 (the last IMPLEMENTATION commit on feat/SPEC-CODEX-PHASE2-001-run), which is NOT an ancestor of main — see the §E.2 header note for how to resolve it.
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
@@ -797,4 +799,27 @@ Notes on the fields above, so a later reader does not have to re-derive them:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-11
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption
+sync_status: complete
+run_phase_merged_as: ac37c4aea           # PR #1440, squash-merged to main 2026-08-10; verified `git merge-base --is-ancestor ac37c4aea origin/main` → exit 0
+b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-PHASE2-001' CHANGELOG.md → 0 (no prior entry; emission proceeds)
+b12_self_test_b: pass                    # acceptance.md distinct AC count → 18 (AC-CX2-001..018); CHANGELOG entry states 18
+b12_self_test_c: pass                    # every path named in the CHANGELOG entry verified present via `ls`
+changelog_entry_position: "[Unreleased] → Added, first bullet (ahead of the SPEC-HARNESS-LEARNING-EVO-001/002 entry)"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed        # merged in-progress → implemented → completed on this single sync commit
+  plan_md: n/a                            # plan.md carries no YAML frontmatter (Tier M artifact authored without one)
+  acceptance_md: n/a                      # acceptance.md carries no YAML frontmatter
+  updated_field: 2026-08-11 (spec.md; already current, unchanged)
+canary_compliance_check: n/a              # this SPEC defines no forward-looking policy that its own sync would test
+docs_surface_changed: none                # see the note below
+```
+
+Notes on the fields above:
+
+- **SHA attribution.** Every SHA this SPEC recorded during the run phase was orphaned by the squash merge. The two verified against `origin/main` at sync time: `ac37c4aea` → ancestor (exit 0); `bae3e8616` and `e5295dee6` → NOT ancestors (exit 1). §E.3's `run_commit_sha` was re-attributed to `ac37c4aea` with its pre-squash value retained inline; §E.2's per-milestone SHAs were deliberately left as measured, with a resolution note added at the section head rather than an overwrite.
+- **No docs-site or README change.** The four tools and the `workflow.codex.task.allow_write` key are a new user-facing surface, but the codex MCP tool surface has no existing documentation page in any locale — `codex_audit` and `codex_setup` shipped without one, and `docs-site/content/*/advanced/autonomous-loops.md` mentions `workflow.codex.review_gate` only in passing as a config-key sibling. Opening a first codex-tool documentation section is a scoped docs task in its own right, and it would carry the 4-locale parity obligation across ko/en/ja/zh. It was not started in this pass rather than started and left partial. The CHANGELOG entry is the user-facing record for this release.
+- **Write gate ships off.** `workflow.codex.task.allow_write` defaults to `false` in `internal/config/defaults.go` and was deliberately NOT added to `internal/template/templates/` (spec.md §C Out of Scope), so a distributed user receives no template key to flip accidentally.
+- **What sync did NOT verify.** No live codex session was run during the sync phase. The four protocol behaviours confirmed live against `codex-cli 0.146.1` during the run phase (thread reuse; `turn.id` → `turnId` with a real `turn/interrupt`; `sandboxPolicy` acceptance and stickiness; `turn/started` on `review/start`) plus the M6 fix confirmation stand as recorded in §E.2; everything else in this SPEC's wire-level reasoning remains a reading of the generated schema, and the §E.2 "did NOT verify" lists are unchanged by sync.
