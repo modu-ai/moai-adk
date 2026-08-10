@@ -379,9 +379,102 @@ It is a wall-clock latency assertion in `internal/hook` belonging to `SPEC-WORKT
 - **The production regression test observes `updated_at`, not the write syscall.** It proves no record write landed after cancel returned. It does not prove the goroutine performs no other side effect after that point — it still reads the record and closes the session, both of which are unobserved by this test.
 - **The gap this correction closes is in my own verification discipline, not only in the code.** A single green run was reported as evidence for a probabilistic property. Repetition (`-count`) is required for any test whose failure mode is a race, and no run in the original M4 batch had it.
 
+### M5 — Registration, boundary, and hardcoding sweep
+
+REQ-CX2-013, REQ-CX2-014, REQ-CX2-015. Evidence captured against the working tree on top of HEAD `cea1f9ce5` (branch `feat/SPEC-CODEX-PHASE2-001-run`) — the tree the two M5 commits land verbatim; the final batch below was re-run on the tree that is now HEAD `bae3e8616`. Every row names the command run and the output observed in this run, against this tree.
+
+**What M5 delivers.** Registration of all four tools in `registerMoaiMCPTools` (`internal/cli/mcp_server.go`), the new `internal/cli/codex_registration_test.go` (the registration-shape check, the four independent per-tool existence assertions, the REQ-CX2-014 static boundary guard, and the §B mid-handshake edge case), and one sweep item in `internal/cli/codex_jobs.go` (`codexJobDirMode`). No handler was modified: M1-M4 wrote the behavior, M5 only declares it to the host.
+
+**Three registration decisions worth stating.**
+
+- *Tool names are quoted literals at the registration site, and that is the AC's own instruction, not a lapse.* `acceptance.md` §A names the "quoted-literal registration shape of `"codex_audit"` / `"codex_setup"`" and its existence check greps for it. The handlers carry the same names as constants (`codexTaskToolName`, `codexJob*ToolName`), so the string exists twice. The two cannot drift: `TestCodexJobTools_RegistrationShape` looks each registered tool up **by the constant**, so a literal that stopped matching its constant fails there rather than silently registering a tool nobody can reach.
+- *The `false` read-only hints are stated explicitly, not inherited.* `mcp.NewTool` already seeds `ReadOnlyHint` to `false`, so `codex_task` and `codex_job_cancel` would carry the right value with no call at all. They are set anyway, because a hint that is correct only by inheriting a library default is indistinguishable from one nobody considered — and REQ-CX2-013 is a statement about what each tool DOES, not about what the constructor happened to leave behind.
+- *The AC's warning about assertion shape was followed literally, and it was load-bearing in both directions.* A nil-check on `ReadOnlyHint` would have passed vacuously (the pointer is never nil), and a "schema is present" check could not fail at all (`Properties` is always a non-nil map). Both are therefore asserted by VALUE: `len(InputSchema.Properties) > 0` per tool, `Properties[job_id]` present on the three job tools, and `*Annotations.ReadOnlyHint == <expected>` per tool. The per-tool existence check is likewise four independent assertions rather than one counting grep, for the reason the AC gives: `grep -c` counts LINES, so four lines naming only `codex_task` would clear a `>= 4` gate with three tools missing.
+
+**RED evidence (E8, captured before the registration existed).** `go test ./internal/cli/ -run 'TestCodexJobTools_RegistrationShape|TestCodexPhase2Tools_RegisteredIndependently|TestCodexPhase2_NoAskUserQuestion' -v`:
+
+```
+=== RUN   TestCodexJobTools_RegistrationShape
+    codex_registration_test.go:53: tool "codex_task" is not registered (REQ-CX2-013)
+    codex_registration_test.go:53: tool "codex_job_status" is not registered (REQ-CX2-013)
+    codex_registration_test.go:53: tool "codex_job_result" is not registered (REQ-CX2-013)
+    codex_registration_test.go:53: tool "codex_job_cancel" is not registered (REQ-CX2-013)
+--- FAIL: TestCodexJobTools_RegistrationShape (0.00s)
+=== RUN   TestCodexPhase2Tools_RegisteredIndependently
+    codex_registration_test.go:101: MISSING codex_task — not registered as a quoted literal in mcp_server.go (REQ-CX2-013)
+    codex_registration_test.go:101: MISSING codex_job_status — not registered as a quoted literal in mcp_server.go (REQ-CX2-013)
+    codex_registration_test.go:101: MISSING codex_job_result — not registered as a quoted literal in mcp_server.go (REQ-CX2-013)
+    codex_registration_test.go:101: MISSING codex_job_cancel — not registered as a quoted literal in mcp_server.go (REQ-CX2-013)
+--- FAIL: TestCodexPhase2Tools_RegisteredIndependently (0.00s)
+=== RUN   TestCodexPhase2_NoAskUserQuestion
+--- PASS: TestCodexPhase2_NoAskUserQuestion (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.756s
+```
+
+The third test PASSED in the RED run, and that is reported rather than hidden: it is a static boundary guard over sources M1-M4 already wrote clean, so there was no failing state for it to start from. Only the two registration tests were genuinely RED. The §B edge-case test added afterwards likewise passed as written — it is coverage closure over an M3 path, not a TDD cycle, and no production change accompanies it.
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-CX2-016 (REQ-CX2-013 registration) | PASS | `for t in codex_task codex_job_status codex_job_result codex_job_cancel; do grep -c "\"$t\"" internal/cli/mcp_server.go; done` | `1` / `1` / `1` / `1` — each name asserted independently, in its own invocation; exactly one quoted-literal occurrence per tool, and no `MISSING` line |
+| AC-CX2-016 (REQ-CX2-013 schema + hints) | PASS | `go test ./internal/cli/ -run TestCodexJobTools_RegistrationShape -v` | `--- PASS` — all four tools present in `srv.ListTools()`; each declares a non-empty `InputSchema.Properties`; `codex_job_status` / `codex_job_result` / `codex_job_cancel` each declare the `job_id` property; `*Annotations.ReadOnlyHint` is `true` for `codex_job_status` and `codex_job_result` and `false` for `codex_task` and `codex_job_cancel` |
+| AC-CX2-016 (REQ-CX2-014 boundary) | PASS | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go \| grep -v '_test.go' \| grep -v '//'` | no output (exit 1). Backed by the static guard `go test -run TestCodexPhase2_NoAskUserQuestion` → `--- PASS` over `codex_task.go`, `codex_job_control.go`, `codex_jobs.go`, `mcp_codex.go` — the `TestNew_NoAskUserQuestion` shape `internal/cli/CLAUDE.md` requires, so the property is enforced on every `go test` rather than only when someone remembers the grep |
+| AC-CX2-016 (REQ-CX2-015 placement) | PASS | `grep -n 'AllowWrite' internal/config/types.go` ; `grep -n 'AllowWrite' internal/config/defaults.go` | `586`/`592` (the doc comment + the typed field `AllowWrite bool \`yaml:"allow_write"\``) ; `684` (`AllowWrite: false`, the distributed default). Thresholds likewise: `DefaultCodexJobSummaryMaxLen` (285), `DefaultCodexJobCancelGrace` (293), `DefaultCodexJobCancelPoll` (299), all in `internal/config/defaults.go` |
+| AC-CX2-016 (template surface) | PASS | `git status --porcelain internal/template/templates/` ; `grep -rn 'allow_write\|codex_job' internal/template/templates/` | empty ; no match (exit 1) — no distributed-surface expansion, and neither the config key nor a job identifier leaked into the template tree |
+| AC-CX2-016 (cross-platform build) | PASS | `go build ./...` ; `GOOS=windows GOARCH=amd64 go build ./...` | `HOST_BUILD_EXIT=0` ; `WIN_BUILD_EXIT=0` |
+
+**Hardcoding sweep (REQ-CX2-015), over M1-M4 as well as M5.** The sweep read every numeric literal, duration, env-var access, and path constant in the four files this SPEC added or touched.
+
+- **Moved**: `os.MkdirAll(r.dir, 0o755)` in `codex_jobs.go` was the one inline literal belonging in a named constant — its 0600 file-mode sibling `codexJobFileMode` was already named two lines away. It is now `codexJobDirMode`, declared beside it so the pair is read and changed together.
+- **Env-var names**: `grep -n 'os.Getenv\|Setenv\|LookupEnv'` over `codex_jobs.go`, `codex_task.go`, `codex_job_control.go`, `mcp_codex.go` → no output. This SPEC introduces no environment variable, so `internal/config/envkeys.go` needed no entry (REQ-CX2-015's env clause is vacuously satisfied, not skipped).
+- **Left in place, deliberately**: the `3 * time.Second` close-wait, the 8 MB scanner buffer, and the 128-line channel in `mcp_codex.go` are pre-existing (PR #1430, `spec.md` §A.1) and outside what this SPEC introduces; touching them would be a drive-by change to PRESERVE-listed code. `filepath.Join(projectDir, ".moai", "state", …)` is the package-wide idiom (`harness_ledger.go`, `doctor.go`, `deps.go` all inline it) — matching the surrounding style is the convention here, and a lone constant would be the odd one out.
+
+**§E verification batch** (final run, against the tree at HEAD `bae3e8616`).
+
+- E2 cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`. `go vet ./internal/cli/ ./internal/config/` → `VET_EXIT=0`.
+- E3 coverage — `go test -cover ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 200.203s coverage: 76.8% of statements` (log: `.moai/state/verify/m5/cover-final.txt`), against the M4 level of 76.8%. Coverage is at its pre-change level. (The pre-SPEC baseline recorded at M1 was 76.5%.)
+- E4 subagent boundary — the grep above, plus the static guard test.
+- E5 lint — `golangci-lint run --timeout=3m` → `0 issues.`
+- Full suite — `go test ./...` → exit 0, 112 packages `ok`, zero `FAIL` / `--- FAIL` / `panic` lines (`internal/cli` `ok` at 211.102s). Run in full rather than affected-packages-only, so the cross-cutting template-mirror guards were exercised. Output at `.moai/state/verify/m5/full-suite-final.txt`; an earlier identical run before the §B edge-case test was added is at `.moai/state/verify/m5/full-suite.txt`, also exit 0 / 112 `ok` / 0 failures.
+- Repetition — `go test -count=20 -run 'Codex|Job|Task|Cancel' ./internal/cli/` → `ok … 13.447s`. Run because the M4 correction established that a single green pass is not evidence for a test whose failure mode is a race; the post-cancel-write regression this SPEC fixed is exactly such a test, and it stays green under repetition on this tree.
+- Race — `go test -race -run 'Codex|Job|Task|Cancel|Register' ./internal/cli/` → `ok … 3.781s`.
+- Targeted — `go test ./internal/cli/... -run 'Codex|MCP|Job|Task|Cancel|Register'` → `ok` across all 17 `internal/cli` packages, zero failures.
+- `gofmt -l` on the three touched files (`internal/cli/mcp_server.go`, `internal/cli/codex_jobs.go`, `internal/cli/codex_registration_test.go`) → no output. A repo-wide `gofmt -l .` still lists the same pre-existing ~33 files, none of them touched by this SPEC.
+- Known local flake — `TestNavigatorEnrich_AtomicWriteBarrier` (an unrelated SPEC's goroutine-timing barrier, disclosed under M3) did NOT fire on any run in this batch: not on either full-suite run, not on the coverage run, not on the `-count=20` run.
+
+**Gaps (M5).**
+
+- **No live codex session was executed, and this is the fifth milestone in a row saying so.** M5 adds no wire interaction of its own — it declares tools whose handlers M1-M4 wrote — so it neither closes nor worsens the inherited gap. But registration is what makes those unverified paths *reachable by an MCP host*: until this milestone the code existed and could not be called, and now it can. The gap is unchanged in substance and larger in consequence. It is restated in full in the run-phase closing report rather than left implicit here.
+- **Registration is verified against the in-process tool table, not against a host.** `srv.ListTools()` reads the server's own registry. The full stdio round-trip (`initialize` → `tools/list` → `tools/call`) is exercised for the pre-existing core surface by `TestMoaiMCPServer_ToolsListDeclaresSchema` and `TestMCPServer_StdioRoundTripSubprocess`, and the four new tools are included in that `tools/list` by construction — but no test calls one of the four new tools *through* the transport. The schema a host actually receives is therefore inferred from the registered `mcp.Tool` value, not observed on the wire.
+- **The read-only hints are declarations, not enforcement.** `ReadOnlyHint` is advisory metadata an MCP host may use to decide what to auto-approve. Nothing in this server refuses a write because a tool declared itself read-only; `codex_job_status` is read-only because of what its handler does, and the annotation merely says so.
+- **§B "two concurrent background tasks" is verified at the registry, not at the tool.** `TestCodexJobRegistry_ConcurrentJobsDoNotCollide` runs 8 concurrent creates and asserts 8 distinct ids and 8 files — the surface where a collision could actually occur. Two concurrent `handleCodexTask` calls are not tested, because the canned session double is a package-level singleton whose recorded-sends slice both calls would share: such a test would race on the test double rather than on production code, and would prove nothing about the registry that the 8-way test does not already prove.
+- **§B "codex binary absent" is verified for `codex_task` only.** `TestCodexTask_FailOpenOnMissingCodex` covers the one new tool that invokes codex. The three job-control tools never spawn it — they read a record file, and cancel operates on a session this process already holds — so codex absence cannot reach them. This is a structural argument, not an observation; no test asserts it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-11
+run_commit_sha: bae3e8616          # the last IMPLEMENTATION commit; the docs commit carrying this block lands on top of it
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 5
+l44_pre_commit_fetch: not-applicable   # run-phase commits stay local on feat/SPEC-CODEX-PHASE2-001-run; no push performed this phase
+l44_post_push_fetch: not-applicable    # no push performed this phase
+new_warnings_or_lints_introduced: 0    # golangci-lint run --timeout=3m → "0 issues."
+cross_platform_build:
+  host: 0                              # go build ./... → exit 0
+  windows_amd64: 0                     # GOOS=windows GOARCH=amd64 go build ./... → exit 0
+total_run_phase_files: 9
+m1_to_mN_commit_strategy: one commit per milestone (M1 146baf37f, M2 628422d8c, M3 3419349c7, M4 2c851678e), plus two follow-ups — cea1f9ce5 (the M4 post-cancel-write correction found by orchestrator re-verification) and bae3e8616 (the §B mid-handshake coverage closure). M5 itself is bf7183101. No amend, no force-push, no squash.
+```
+
+Notes on the fields above, so a later reader does not have to re-derive them:
+
+- `ac_pass_count: 16` covers AC-CX2-001..016, every one MUST. AC-CX2-007 was recorded PASS-WITH-DEBT at M2 (its "*the tool* returns a structured error result" clause needed `codex_task`, which did not exist yet) and closed outright at M3; it is counted once, as PASS.
+- `preserve_list_post_run_count: 5` is the `plan.md` §A.1 PRESERVE list, all five entries intact: `runCodexReviewRPC`'s `(ReviewOutput, error)` contract for both existing callers, the `inconclusiveReview` / `VerdictInconclusive` fail-open semantics, `readCodexReviewGateEnabled`'s nested key path and fail-closed truth table, `TestReviewGateReaders_AgreeWithConfigLoader` + `TestMCPAudit_NoDirectFrontmatterRead`, and every file outside `internal/cli/` and `internal/config/`.
+- `total_run_phase_files: 9` — `internal/cli/mcp_codex.go`, `internal/cli/mcp_server.go`, `internal/cli/codex_jobs.go`, `internal/cli/codex_task.go`, `internal/cli/codex_job_control.go`, `internal/cli/codex_jobs_test.go`, `internal/cli/codex_task_test.go`, `internal/cli/codex_job_control_test.go`, `internal/cli/codex_registration_test.go`; plus `internal/config/types.go` and `internal/config/defaults.go` for the typed key and its default. `internal/template/templates/` is untouched.
+- The `l44_*` fetch fields are `not-applicable` rather than `0`: the run phase commits to a feature branch and pushes nothing, so there was no push boundary at which to fetch. Recording `0` would assert a check that was never run.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
