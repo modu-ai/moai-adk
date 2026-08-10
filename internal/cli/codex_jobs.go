@@ -82,6 +82,12 @@ const (
 	// codexJobFileMode is 0600: a job record names a thread, a turn, and a pid
 	// of a process running on this machine — operator-scoped, not world-readable.
 	codexJobFileMode = 0o600
+
+	// codexJobDirMode is 0755 for the record directory: the operator's own tools
+	// traverse it, and the records inside carry their own 0600 (above). Named
+	// beside its file-mode sibling so the pair is read and changed together
+	// rather than one being an inline literal at a call site (REQ-CX2-015).
+	codexJobDirMode = 0o755
 )
 
 // codexJobStatuses is the enum in declaration order, used by codexJobStatusValid.
@@ -386,7 +392,7 @@ func (r *codexJobRegistry) read(id string) (CodexJobRecord, error) {
 // record or the new one — never a partial write (REQ-CX2-004). The caller holds
 // r.mu.
 func (r *codexJobRegistry) write(rec CodexJobRecord) error {
-	if err := os.MkdirAll(r.dir, 0o755); err != nil {
+	if err := os.MkdirAll(r.dir, codexJobDirMode); err != nil {
 		return &codexJobStateError{Op: "mkdir", Path: r.dir, Err: err}
 	}
 	b, err := json.MarshalIndent(rec, "", "  ")
