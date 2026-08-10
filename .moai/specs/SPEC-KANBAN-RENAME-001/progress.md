@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RENAME-001
 title: "Progress — Factory Mode to Kanban Mode rename"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -106,7 +106,7 @@ Scored **0.848** against the Tier L PASS threshold of **0.85**. The shortfall sa
 | F1 | `AC-KR-020` used a **ref-less** `git diff` on `catalog.yaml`, empty once M3 commits it — so the criterion FAILs at the moment it runs while asserting the file is committed | anchored to `d39e3cdc6..HEAD`; re-checked, no other criterion carries the ref-less form. `plan.md` M3 step 2's bare diff runs pre-commit and stays bare |
 | F2 | `go test -run` with a pattern matching nothing **exits 0 and prints `PASS`** — and `AC-KR-001` / `AC-KR-005` are keyed on post-rename names, so `REQ-KR-011` traced only to criteria that pass when it is not done | each run now pairs with a name-existence `grep` and an absent-`[no tests to run]` assertion; `[no tests to run]` chosen over the `-v`-only warning line because it appears in both renderings. Rule added at acceptance.md §A.1, hazard at plan.md §B-6, anti-pattern AP-11 |
 | F3 | `AC-KR-025` grepped `moai cc --help` for `factory` — **vacuous**: the help string never named the flag, so the check returned zero before the rename too, and the missing positive control concealed it | reduced to the exit-0 smoke it can decide, with the measured baseline stated. Discriminating it would need a new requirement (help text must document `-k`), which the ceiling forbids. Anti-pattern AP-12 |
-| F4 | `AC-KR-012`'s `grep -viE 'kanban|factory'` filter discards **every** assertion line in these tests, so a deleted or weakened assertion was invisible — and `REQ-KR-013`'s other criterion (`AC-KR-011`) stays green on a weakened assertion by construction | added a filter-independent `+`/`-` count-invariance check on `t.Error`/`t.Fatal` lines, against a measured baseline of **226** across the six surface test files |
+| F4 | `AC-KR-012`'s `grep -viE 'kanban|factory'` filter discards ~~**every**~~ **[corrected at v0.4.0: 22 of 226, 9.7% of]** assertion line in these tests, so a deleted or weakened assertion was invisible — and `REQ-KR-013`'s other criterion (`AC-KR-011`) stays green on a weakened assertion by construction | added a filter-independent `+`/`-` count-invariance check on `t.Error`/`t.Fatal` lines, against a measured baseline of **226** across the six surface test files |
 | F5 | `AC-KR-028`'s control said "2 files" but its command counted **lines** (measured **3**), and its mechanical half could not see a partial edit of `modules.md` | `-l` added, control restated as 2 files / 3 lines; the `research.md` §H.4 line-granularity gap **closed** with a bare-word grep bounded to the two named files (baseline **5**) |
 | F6 | five references handed scope and cross-references to `SPEC-KANBAN-MULTISESSION-001`, which is not under `.moai/specs/` — superseded, preserved read-only — while the budget prose already named the three real siblings | each scope assigned to its actual owner across `spec.md` §A/§C/§E and `design.md` §C.2/§G; two mentions retained, both framing it as the retired predecessor |
 | F7 | `NOTICE.md` does not exist anywhere in this tree: §C asserted an attribution living there and §D.1 listed it plus `references/anti-patterns.md` as falsification targets, two of seven returning zero **vacuously** | attribution corrected to `.moai/research/` (five files, measured); the falsification list corrected to five real targets. `research.md` §H.2's disposition revised from *report* to *correct* — a prior score does not immunise a false statement of fact |
@@ -123,6 +123,30 @@ $ grep -cE '^\*\*AC-KR-[0-9]{3}\*\*' acceptance.md
 ```
 
 **Declined, and why.** The auditor listed four optional findings not worth the budget, and they were left open deliberately: the unanalysed split remedy in the overage disclosure, the stale `related_specs:` frontmatter, the three criteria whose missing positive controls are defensible because their baseline is already zero, and the missing `test -f` guards on four criteria. Two figures were also left as they stand — "roughly 110" against a measured 108 (`research.md` §H.3 argues the approximation) and the Go non-test count of 8, which confirms the v0.1.1 correction and is correctly attributed there.
+
+### E.1.5 v0.4.0 audit-delta closure (D1-D4)
+
+Four defects, all in the verification layer; the requirements layer is re-opened at exactly one point (`REQ-KR-012` gains a clause) and no requirement or criterion is added, removed, or renumbered. Counts re-measured below and unchanged.
+
+| ID | Defect | Closure |
+|---|---|---|
+| D1 | `REQ-KR-011` binds **16** test function names; its only criteria (`AC-KR-001`, `AC-KR-005`) reach **7** through their `-run` patterns, and the other **9** carry no `$TOK` token either — so `AC-KR-021` reads `0` with nine test names still announcing the old mode | `AC-KR-001` gains a bare-word grep bounded to the six surface test files (baseline **16** → target **0**), `plan.md` M1 step 6 enumerates the nine by name and line, `design.md` §F.3 records it as the fourth blind spot with the `$TOK`-extension alternative rejected |
+| D2 | §A.1 declares two guards for **every** `-run`-keyed criterion; `AC-KR-002` and `AC-KR-009` carried neither. Worst on `AC-KR-009`, the **sole** criterion for both `REQ-KR-009` and `REQ-KR-010`, where `REQ-KR-010` is covered by an **absence** claim that a run which cannot fail does not decide | both criteria now carry the name-existence grep and the absent-`[no tests to run]` assertion; `AC-KR-009` additionally gains an old-path grep over `internal/kanban/` (baseline **3** lines → target **0**), which is what makes the absence claim falsifiable. §A.1 now names all four `-run`-keyed criteria; `plan.md` §B-6 updated to match |
+| D3 | the v0.3.0 rationale for `AC-KR-012`'s count check claimed the filter discards **every** assertion line — measured, **22 of 226 (9.7%)** — and the check does not answer the hazard that rationale named: a `+`/`-` **count** comparison catches deletion and addition, not a **weakened predicate at constant line count** | figures corrected in `acceptance.md` and in the v0.3.0 F4 row above and item (4) of `spec.md` HISTORY, struck in place rather than silently restated; the predicate-weakening gap recorded as a **residual risk** in `design.md` §D, with the two mechanical alternatives (semantic assertion diff, hand-maintained 226-line inventory) and the reason each was declined |
+| D4 | three names mix an `AC-FM-*` citation with a mode token (`TestACFM022a_Factory…` ×2, `TestACFM023c_Factory…`), so `REQ-KR-011` required renaming what `REQ-KR-012` protected and neither said which prevailed | `REQ-KR-012` gains a clause scoping its protection to the **citation substring** alone; the mode token in the same identifier is still renamed. The two bind different substrings and were never in conflict — `TestACFM022a_KanbanRaisesBlockCapUnconditionally` satisfies both. Restated in `plan.md` M1 step 6 where the implementer meets them |
+
+Counts re-measured after the edits, in this worktree:
+
+```
+$ grep -cE '^\*\*REQ-KR-[0-9]{3}\*\*' spec.md
+25
+$ grep -cE '^\*\*AC-KR-[0-9]{3}\*\*' acceptance.md
+28
+```
+
+**Artifact versions.** `spec.md`, `plan.md`, `acceptance.md`, `design.md`, and this file move to `0.4.0`. `research.md` stays at `0.3.0` because it was not edited — every measurement this revision rests on was taken fresh in the worktree and is recorded here and at the criterion that uses it, and bumping an untouched artifact's version would assert a change that did not happen.
+
+**One premise of the audit brief did not survive re-measurement, and it is recorded rather than quietly absorbed.** The brief stated that six test functions lie outside the `-run` patterns of `AC-KR-001` and `AC-KR-005`. Measured, it is **nine**: the brief's list omits `TestEnterFactoryMode_RestoresPriorValue` (`cc_test.go:546`), `TestEnterFactoryMode_WithoutSpecLeavesSpecVarUntouched` (`cc_test.go:570`), and `TestGLM_FactoryFlagParity` (`glm_test.go:646`) — none of which matches `ParseKanbanFlag|KanbanFlagStripped` or `CG_.*Kanban` post-rename. It also lists `TestRecordPathIsSessionKeyedUnderStateFactory` as uncovered, which is right on the brief's own terms (it is outside both patterns) though `AC-KR-009`'s rename-invariant `-run 'Path'` does select it. The fix is unaffected — a six-file bare-word grep with a baseline of 16 covers all sixteen names regardless of which are individually watched — but the enumeration in `plan.md` M1 step 6 carries nine, not six.
 
 ### Open question carried into run-phase
 

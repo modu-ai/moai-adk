@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RENAME-001
 title: "Implementation plan — Factory Mode to Kanban Mode rename"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -48,11 +48,12 @@ Two of these corrected the working assumptions this plan started from, and both 
 
 **B-5 — two surface files live outside `internal/` and `.claude/`.** `.moai/project/codemaps/modules.md` carries a `### internal/factory` section (heading, a role line documenting `moai cc -f` / `moai glm -f`, an entry-point line naming `internal/cli/factory.go`) and `.moai/project/structure.md` carries a package-count paragraph naming `internal/factory`. The v0.1.0 scope missed both, so the completion grep would have returned 0 while two documents described a deleted package. They are now in scope (REQ-KR-024, AC-KR-028) and the grep scope carries `.moai/project/`. Neither is template-mirrored, so neither joins the six-pair delta comparison.
 
-**B-6 — four command-shape hazards that produce vacuous GREENs.** Recorded here because they are what an implementer copies without noticing:
+**B-6 — five hazards that produce vacuous GREENs — four in command shape, the fifth in what the completion pattern cannot see.** Recorded here because they are what an implementer copies without noticing:
 - `cmd | tail -N; echo "exit=$?"` reports `tail`'s exit code. Redirect to a log, read `$?` first, then grep and tail the log.
 - A bare `git diff` compares the working tree to the index, so once M1-M3 are committed it is empty regardless of what happened. Anchor to `d39e3cdc6..HEAD`.
 - `\|` and `\b` are GNU-only. They work under this machine's `grep` and silently match nothing under BSD `grep`. Use `-E` with a plain `|`.
-- **`go test -run <pattern>` with a pattern matching nothing exits 0 and prints `PASS`.** Measured on `go1.26.4`: `go test ./internal/factory/ -run 'ZZZNoSuchTestName' -v; echo $?` → `testing: warning: no tests to run` / `PASS` / `ok … [no tests to run]` / `0`. Every `-run` here names a **post-rename** test function, so an implementer who renames production code and skips step 6 of M1 selects zero tests and reports green. `AC-KR-001` and `AC-KR-005` therefore pair each run with a name-existence `grep` and an assertion that the literal `[no tests to run]` is absent from the log — that literal, not the `-v`-only warning line, because only it appears in both `-v` and non-`-v` output.
+- **`go test -run <pattern>` with a pattern matching nothing exits 0 and prints `PASS`.** Measured on `go1.26.4`: `go test ./internal/factory/ -run 'ZZZNoSuchTestName' -v; echo $?` → `testing: warning: no tests to run` / `PASS` / `ok … [no tests to run]` / `0`. An implementer who renames production code and skips step 6 of M1 selects zero tests and reports green. All four `-run`-keyed criteria — `AC-KR-001`, `AC-KR-002`, `AC-KR-005`, `AC-KR-009` — therefore pair each run with a name-existence `grep` and an assertion that the literal `[no tests to run]` is absent from the log; that literal, not the `-v`-only warning line, because only it appears in both `-v` and non-`-v` output. Two of the four were left bare until v0.4.0 on the ground that their patterns (`PassThroughBoundary`, `Path`) are rename-invariant and so cannot go vacuous from *this* rename — which is true of the rename and not of a test that is renamed differently, deleted, or moved.
+- **A `$TOK`-clean tree can still carry the old mode in its test function names.** Sixteen test functions name it and the completion grep sees none of them, because a CamelCase identifier matches no `$TOK` alternative. Step 6 of M1 enumerates the nine that no `-run` pattern reaches; `AC-KR-001`'s bare-word grep over the six test files is the mechanical check (baseline 16, target 0).
 
 ---
 
@@ -122,7 +123,23 @@ Priority: **High**. Independent of M2.
 5. Update the `@MX:REASON` comment in the renamed file, which names `MOAI_FACTORY` in prose.
 6. Rename test function names (REQ-KR-011) and mode prose; leave every `AC-FM-*` identifier and every assertion untouched (REQ-KR-012, REQ-KR-013).
 
-**Exit**: `go build ./... && go test ./...` green; `git diff --stat` shows no assertion-line changes beyond renames.
+   > **Sixteen names, and only seven of them are watched by a criterion.** Measured at HEAD `d39e3cdc6` with `grep -nE '^func Test.*[Ff]actory'` over the six surface test files: `cc_test.go` 9, `glm_test.go` 1, `cg_test.go` 2, `launcher_blockcap_infinite_test.go` 3, `factory/record_test.go` 1, `factory/revision_test.go` 0 — **16**. The `-run` patterns of `AC-KR-001` (`ParseKanbanFlag|KanbanFlagStripped`) and `AC-KR-005` (`CG_.*Kanban`) select seven of them. The other **nine carry no `$TOK` token in their names**, so the completion grep of `AC-KR-021` reads `0` whether or not they are renamed. Enumerated here because this step is where they are met:
+   >
+   > - `TestCC_FactoryWritesStateRecord` (`cc_test.go:396`)
+   > - `TestCC_FactoryEnvMutationIsRestored` (`cc_test.go:481`)
+   > - `TestEnterFactoryMode_RestoresPriorValue` (`cc_test.go:546`)
+   > - `TestEnterFactoryMode_WithoutSpecLeavesSpecVarUntouched` (`cc_test.go:570`)
+   > - `TestGLM_FactoryFlagParity` (`glm_test.go:646`)
+   > - `TestACFM022a_FactoryRaisesBlockCapUnconditionally` (`launcher_blockcap_infinite_test.go:118`)
+   > - `TestACFM022a_FactoryCapReplacesPreexistingEntry` (`launcher_blockcap_infinite_test.go:144`)
+   > - `TestACFM023c_FactoryEnvReachesChildEnvironment` (`launcher_blockcap_infinite_test.go:169`)
+   > - `TestRecordPathIsSessionKeyedUnderStateFactory` (`factory/record_test.go:65`)
+   >
+   > The last three of the `launcher_blockcap_infinite_test.go` group are the mixed identifiers of REQ-KR-012: the `ACFM022a` / `ACFM023c` citation prefix is **preserved** and the `Factory` token in the same name is **renamed** — `TestACFM022a_KanbanRaisesBlockCapUnconditionally`, and so on. The two requirements bind different substrings of one identifier.
+   >
+   > `AC-KR-001`'s fourth command is the mechanical check: the same bare-word grep bounded to the six files, target `0` against this baseline of 16.
+
+**Exit**: `go build ./... && go test ./...` green; `git diff --stat` shows no assertion-line changes beyond renames; the bare-word grep of `AC-KR-001` over the six test files returns `0` (baseline 16).
 
 ### M2 — Harness documentation rename
 

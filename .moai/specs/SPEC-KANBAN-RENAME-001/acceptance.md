@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RENAME-001
 title: "Acceptance criteria — Factory Mode to Kanban Mode rename"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -25,7 +25,7 @@ Every criterion below names the command that decides it. A criterion is PASS onl
 - **Never read `$?` after a pipe.** `cmd | tail -20; echo "exit=$?"` reports `tail`'s status, not `cmd`'s — `sh -c 'echo FAIL; exit 1' | tail -20; echo "exit=$?"` prints `exit=0`. A fully red test suite would report PASS. Every command whose exit code decides a criterion writes its output to a file and reads `$?` **before** any pipe; the log is then grepped and tailed separately.
 - **Bounded tails do not substitute for a full-log scan.** `go list ./...` reports 115 packages, so `tail -20` hides roughly 95 lines of a full-suite run. A "no FAIL lines" assertion is made against the whole log file, never against its tail.
 - **A `git diff` that decides a criterion is anchored to a ref.** Bare `git diff` compares the working tree to the index, so after the work is committed it is unconditionally empty — a criterion built on it passes whether or not the excluded path was touched. Every diff-based criterion here is anchored to the baseline `d39e3cdc6..HEAD`.
-- **A `go test -run` pattern that matches nothing exits 0 and prints `PASS`.** Measured on `go1.26.4`: `go test ./internal/factory/ -run 'ZZZNoSuchTestName' -v; echo $?` prints `testing: warning: no tests to run`, then `PASS`, then `ok … [no tests to run]`, and exits **0**. Every criterion keyed on a **post-rename** test name is therefore satisfiable by an implementer who renames the production identifier and leaves the test name alone — the run selects zero tests and reports green. Two guards, both applied to every `-run`-keyed criterion here: a name-existence `grep` on the test file, and an assertion that the literal `[no tests to run]` is **absent** from the run's log. That literal is the load-bearing one because it appears on the `ok` line in **both** `-v` and non-`-v` runs, whereas `testing: warning: no tests to run` is emitted only under `-v`; a criterion keyed on the warning alone would itself be vacuous the moment `-v` were dropped.
+- **A `go test -run` pattern that matches nothing exits 0 and prints `PASS`.** Measured on `go1.26.4`: `go test ./internal/factory/ -run 'ZZZNoSuchTestName' -v; echo $?` prints `testing: warning: no tests to run`, then `PASS`, then `ok … [no tests to run]`, and exits **0**. Every criterion keyed on a **post-rename** test name is therefore satisfiable by an implementer who renames the production identifier and leaves the test name alone — the run selects zero tests and reports green. Two guards, both applied to every `-run`-keyed criterion here: a name-existence `grep` on the test file, and an assertion that the literal `[no tests to run]` is **absent** from the run's log. That literal is the load-bearing one because it appears on the `ok` line in **both** `-v` and non-`-v` runs, whereas `testing: warning: no tests to run` is emitted only under `-v`; a criterion keyed on the warning alone would itself be vacuous the moment `-v` were dropped. **Four criteria are `-run`-keyed — `AC-KR-001`, `AC-KR-002`, `AC-KR-005`, `AC-KR-009` — and all four carry both guards as of v0.4.0.** v0.3.0 applied them to the two keyed on post-rename name patterns and left the two keyed on rename-invariant substrings (`PassThroughBoundary`, `Path`) bare, on the reasoning that those cannot go vacuous *from the rename*. True, and beside the point: this rule is not scoped to rename-induced vacuity, and a rule stated universally while two of its four subjects are exempt is a rule that will be read as satisfied where it is not.
 - **The shipped guard is the authority.** Where a guard already exists (neutrality, namespace leak), the criterion runs the guard. A hand-rolled regex without the guard's exemption list is a false-failure machine.
 - **Negative criteria need a positive control.** A criterion asserting "returns zero" is paired with evidence that the same command returned non-zero at baseline; otherwise a typo in the pattern also returns zero. Every positive control below was measured in this tree, not estimated.
 - **`$TOK` is the token pattern from `spec.md` §D.1**, defined once there and copied byte-identically into AC-KR-021. AC-KR-027 checks the two copies for drift.
@@ -42,13 +42,29 @@ grep -cE '^func TestParseKanbanFlag' internal/cli/cc_test.go
 grep -cE '^func TestCC_KanbanFlagStripped' internal/cli/cc_test.go
 go test ./internal/cli/ -run 'ParseKanbanFlag|KanbanFlagStripped' -v > /tmp/kr-ac001.log 2>&1; echo "exit=$?"
 grep -cF '[no tests to run]' /tmp/kr-ac001.log
+for f in internal/cli/cc_test.go internal/cli/glm_test.go internal/cli/cg_test.go \
+         internal/cli/launcher_blockcap_infinite_test.go \
+         internal/kanban/record_test.go internal/kanban/revision_test.go; do
+  grep -nE '^func Test.*[Ff]actory' "$f"
+done | wc -l
 ```
-→ both name counts ≥ 1, `exit=0`, and the `[no tests to run]` count is `0`.
+→ both name counts ≥ 1, `exit=0`, the `[no tests to run]` count is `0`, **and** the residual-name count is `0`.
 
 The two name greps and the `[no tests to run]` assertion are not redundancy — without them this criterion is **satisfiable by not doing the work** (§A.1). `-run` selects by test-function name, and the pattern here names the **post-rename** functions; an implementer who renames `parseFactoryFlag` → `parseKanbanFlag` but leaves `TestParseFactoryFlag_*` untouched selects zero tests, and the run exits 0 printing `PASS`. That matters beyond this one row: `REQ-KR-011` (rename the test function names) traces **only** to this criterion and `AC-KR-005`, so a vacuous pair here would leave that requirement with no criterion able to fail. Baseline at HEAD `d39e3cdc6` the pre-rename names are `TestParseFactoryFlag_{LongFormWithoutSpec,ShortFormWithSpec,PassThroughBoundary,SpecIsNotStolenFromAFlag}` and `TestCC_FactoryFlagStrippedBeforeLaunch`, all in `internal/cli/cc_test.go`, so both greps return `0` before the rename and non-zero after.
 
+**The fourth command exists because the first three verify five of sixteen names.** `REQ-KR-011` binds every test function naming a renamed production identifier, and there are **sixteen** of them; the two `-run` patterns that decide this requirement reach seven — five here (`ParseKanbanFlag` ×4, `KanbanFlagStripped` ×1) and two under `AC-KR-005` (`CG_.*Kanban`). The remaining **nine** are outside both patterns entirely, so after a production rename the `$TOK` grep of `AC-KR-021` reads `0` — none of the nine carries a `$TOK` token in its name — while nine test functions still announce a mode that no longer exists. Measured at HEAD `d39e3cdc6`, per file: `cc_test.go` 9, `glm_test.go` 1, `cg_test.go` 2, `launcher_blockcap_infinite_test.go` 3, `factory/record_test.go` 1, `factory/revision_test.go` 0 — **baseline 16, target 0**. The nine invisible ones are enumerated in `plan.md` M1 step 6, which is where an implementer meets them.
+
+Two properties of the command's shape are load-bearing. The file list is a literal `for` list rather than a variable, for the zsh word-splitting reason `AC-KR-026` records — an unquoted `$FILES` is passed as a single filename, `grep` writes "No such file or directory" to stderr, and the count returns `0`, which is the PASS value. And the bound is these **six files**, not the tree: a bare-word `[Ff]actory` grep run tree-wide would match the ~110 files of unrelated pattern vocabulary that force `$TOK` to be token-scoped (`spec.md` §D.1), whereas across six named files every baseline match is a Kanban Mode name. That is the same two-file reasoning `AC-KR-028` applies at v0.3.0, at a slightly wider scope. The paths are written in their **post-rename** form — `internal/kanban/` — because the criterion runs after M1; the baseline above was taken at the pre-rename paths.
+
 **AC-KR-002** — Given a launcher invocation carrying `--kanban` after a bare `--`, When the parser runs, Then Kanban Mode is NOT enabled and the tokens are forwarded verbatim.
-`go test ./internal/cli/ -run 'PassThroughBoundary' -v` → PASS.
+```bash
+grep -cE '^func TestParseKanbanFlag_PassThroughBoundary' internal/cli/cc_test.go
+go test ./internal/cli/ -run 'PassThroughBoundary' -v > /tmp/kr-ac002.log 2>&1; echo "exit=$?"
+grep -cF '[no tests to run]' /tmp/kr-ac002.log
+```
+→ the name count is `1`, `exit=0`, and the `[no tests to run]` count is `0`.
+
+Both §A.1 guards are applied here at v0.4.0. The v0.3.0 form was a bare `-run` reading "→ PASS", which §A.1 declares universally guarded and this criterion was not — and a bare `-run` cannot distinguish a passing test from a selected-nothing run, since both exit 0 and print `PASS`. The hazard is milder than `AC-KR-001`'s and the guards are still warranted: `PassThroughBoundary` is a **rename-invariant** substring, so it survives `TestParseFactoryFlag_PassThroughBoundary` → `TestParseKanbanFlag_PassThroughBoundary` and does not go vacuous *from the rename itself*. What it does not survive is the function being renamed to anything else, deleted, or moved — at which point the run selects nothing and reports green. Baseline at HEAD `d39e3cdc6`: the name grep returns `0` (the function is still `TestParseFactoryFlag_PassThroughBoundary`, `internal/cli/cc_test.go:321`) and `1` after the rename; `-run 'PassThroughBoundary'` selects exactly that one function on both sides.
 
 **AC-KR-003** — Given a launcher invocation carrying `--factory` or `-f`, When the parser runs, Then no mode is enabled and no deprecation notice is emitted; the tokens are treated as ordinary pass-through argv.
 ```bash
@@ -100,9 +116,16 @@ grep -rn '"MOAI_KANBAN' --include='*.go' internal/ | grep -v 'internal/config/en
 **AC-KR-009** — Given the state-record package, When the path segments are read, Then the directory is `.moai/state/kanban/`.
 ```bash
 grep -n 'stateDirSegments' internal/kanban/record.go
-go test ./internal/kanban/ -run 'Path' -v
+grep -cE '^func TestRecordPath.*Kanban' internal/kanban/record_test.go
+go test ./internal/kanban/ -run 'Path' -v > /tmp/kr-ac009.log 2>&1; echo "exit=$?"
+grep -cF '[no tests to run]' /tmp/kr-ac009.log
+grep -rniE '"factory"|state/factory' internal/kanban/ | wc -l
 ```
-→ segments show `"kanban"`; the path test PASSes against a `.moai/state/kanban/<session>.json` expectation.
+→ segments show `"kanban"`; the name count is `1`; `exit=0` with a `[no tests to run]` count of `0`; and the old-path count is `0`.
+
+**Both §A.1 guards are applied here at v0.4.0, and the last command is what makes `REQ-KR-010` falsifiable.** The v0.3.0 form was a bare `-run` on a rename-invariant pattern — `Path` selects `TestRecordPathIsSessionKeyedUnderStateFactory` and `TestRevisionMatchHappyPath` before the rename and their post-rename counterparts after, so it never goes vacuous from the rename but would report green if either function were renamed away, deleted, or moved. The name grep is written `TestRecordPath.*Kanban` rather than pinned to one spelling, because `REQ-KR-011` fixes only that the mode token move, not the exact post-rename name.
+
+The old-path command matters more than the guards. This criterion is the **sole** entry for `REQ-KR-010` in §D, where the traceability row reads "no migration asserted; old path simply absent from the code" — an absence claim, and an absence claim decided by a run that cannot fail is not decided at all. The command makes it observable: **baseline 3 lines** at HEAD `d39e3cdc6`, all in the pre-rename package — `record.go:43` (`var stateDirSegments = []string{".moai", "state", "factory"}`), `record.go:49` (the doc comment naming `.moai/state/factory/<session>.json`), and `record_test.go:67` (the `want` path the test builds) — against a target of `0` in `internal/kanban/`. A migration shim, a retained fallback read of the old directory, or a half-renamed segment constant all surface here; none of them surfaces in a `-run` that exits 0.
 
 **AC-KR-010** — Given the renamed package, When `captureEnvState` is searched for, Then it is present and unrenamed.
 ```bash
@@ -132,15 +155,22 @@ git diff --unified=0 d39e3cdc6..HEAD -- '*_test.go' | grep -cE '^-.*(t\.Error|t\
 ```
 → the first command returns zero matches, **and** the two counts are equal. A non-empty first result names an assertion that changed for a reason other than the rename and must be justified or reverted; unequal counts name an assertion that was added or deleted outright.
 
-**Why the second and third commands exist.** The first command's trailing `grep -viE 'kanban|factory'` discards exactly the lines most likely to drift: every assertion in these tests references the flag, the environment variable, or the sentinel, so every assertion line carries one of those two words and the filter removes all of them. A deleted or weakened factory-related assertion is filtered out and invisible. That would be a hole rather than a nuisance, because `REQ-KR-013` (behavior preservation) traces only to this criterion and `AC-KR-011`, and a *weakened* assertion leaves the suite green by construction — so `AC-KR-011` cannot catch it either, and the requirement would have no criterion able to fail. The count comparison is filter-independent: a rename rewrites a line, contributing one `+` and one `-` and leaving the counts equal, while a deletion moves them apart. Measured baseline at HEAD `d39e3cdc6`: **226** `t.Error`/`t.Fatal` lines across the six surface test files (`cc_test.go` 60, `glm_test.go` 70, `record_test.go` 43, `revision_test.go` 22, `cg_test.go` 19, `launcher_blockcap_infinite_test.go` 12), so a net change of even one is a visible delta against a known total.
+**Why the second and third commands exist, restated at v0.4.0 against the measurement.** The v0.3.0 text justified them on the premise that the trailing `grep -viE 'kanban|factory'` "discards every assertion line in these tests, so every assertion line carries one of those two words". That premise is false as stated, and the measured figure is much smaller: of the **226** `t.Error`/`t.Fatal` lines across the six surface test files, **22 carry a `kanban` or `factory` token — 9.7%**. The other 90% pass the filter and are visible to the first command. The filter is a real hole, but a hole in a tenth of the surface rather than all of it, and the correction matters because a rationale claiming total blindness invites an over-broad remedy.
+
+What the count comparison actually buys, stated precisely because the v0.3.0 rationale over-claimed it: it is **filter-independent and count-invariant**. A rename rewrites a line, contributing one `+` and one `-` and leaving the counts equal; an outright deletion or addition moves them apart, including inside the 22 lines the filter hides. What it does **not** catch is a **weakened assertion at constant line count** — an assertion whose predicate is loosened in place (`want` relaxed, a strict comparison softened, a condition inverted to a tautology) contributes one `+` and one `-` exactly as a rename does, so the counts stay equal and the criterion reads clean. That is the precise hazard the v0.3.0 rationale invoked and the check does not answer; it is recorded as a residual risk in `design.md` §D rather than left implied here. A weakened assertion inside the 22 filtered lines is invisible to both halves of this criterion, and `AC-KR-011` cannot reach it either — a weakened assertion leaves the suite green by construction. `REQ-KR-013` traces only to this criterion and `AC-KR-011`, so that intersection is the requirement's uncovered corner, closed by review rather than by command.
+
+Per-file baseline at HEAD `d39e3cdc6`, so a net change of even one is a visible delta against a known total: `cc_test.go` 60, `glm_test.go` 70, `record_test.go` 43, `revision_test.go` 22, `cg_test.go` 19, `launcher_blockcap_infinite_test.go` 12 — **226** in sum, of which 22 carry a filtered token.
 
 Anchored to `d39e3cdc6..HEAD` rather than a bare `git diff`: M1, M2, and M3 are independently committable (plan.md §F), so by the M4 sweep a ref-less diff compares an already-committed tree against itself and returns empty unconditionally — passing whether or not an assertion changed.
 
-**AC-KR-013** — Given the test corpus, When `AC-FM-` identifiers are counted, Then the count equals the pre-rename baseline.
+**AC-KR-013** — Given the test corpus, When `AC-FM-` identifiers are counted in both their hyphenated comment form and their hyphen-less identifier form, Then each count equals the pre-rename baseline.
 ```bash
 grep -rc 'AC-FM-' --include='*_test.go' internal/ | awk -F: '{s+=$2} END{print s}'
+grep -rnE '^func Test.*ACFM' --include='*_test.go' internal/ | wc -l
 ```
-→ equals the M0-recorded baseline. Renaming them is a defect (REQ-KR-012).
+→ the first equals the M0-recorded baseline of **50**; the second is **3**, unchanged. Renaming either is a defect (REQ-KR-012).
+
+**The second command was added at v0.4.0, because the first cannot see three of the citations.** Three test functions in `internal/cli/launcher_blockcap_infinite_test.go` carry the citation **inside the identifier**, where a Go name cannot hold a hyphen: `TestACFM022a_FactoryRaisesBlockCapUnconditionally` (line 118), `TestACFM022a_FactoryCapReplacesPreexistingEntry` (line 144), `TestACFM023c_FactoryEnvReachesChildEnvironment` (line 169). Measured at HEAD `d39e3cdc6`, `grep -rc 'AC-FM-'` sums to **50** and matches none of those three, so the criterion that was `REQ-KR-012`'s only entry in §D was blind to exactly the names where that requirement is hardest to obey — these are the mixed identifiers `REQ-KR-012` now addresses, carrying a protected citation and a renamable mode token in one name. The count is an **invariant, not a target**: it must read `3` after the rename as before, because `TestACFM022a_KanbanRaisesBlockCapUnconditionally` preserves the prefix while `AC-KR-001`'s bare-word grep drives the `Factory` token to zero. A drop to `0` means the citations were rewritten along with the mode token; a value above `3` means a citation was invented.
 
 ### B.4 Harness documentation
 
