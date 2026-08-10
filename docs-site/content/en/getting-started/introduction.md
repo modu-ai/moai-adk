@@ -229,11 +229,13 @@ Declare a completion condition, and the loop works on its own:
 
 ```text
 /moai goal "until all tests pass and lint is clean"   # condition-declared loop
-/moai loop                                            # diagnostic-based iterative fix (up to 100)
+/moai loop                                            # diagnostic-based iterative fix (loop_prevention default 100)
 /moai fix                                             # single-pass auto-fix
 ```
 
 `/moai loop` is a preset on top of the goal engine — it iterates until the issue queue found by the diagnostic tools is drained.
+
+Two distinct settings bound iteration at two different levels. `workflow.loop_prevention.max_iterations` (default **100**) bounds the per-operation diagnostic fix loop, while `workflow.agentic_loop.max_iterations` (default **10**) is the pipeline-level completion-loop ceiling. They are separate settings, so different values are expected rather than contradictory.
 
 ### Recommended workflow chains
 
@@ -301,7 +303,7 @@ If you do not have a GLM account, sign up at [z.ai signup (extra 10% discount)](
 ## Self-improvement — loops work on their own, the harness learns
 
 {{< callout type="info" >}}
-**A practical tool for self-improvement (Agentic Loop Engineering):** Declare a completion condition and the session works on its own until it is met. `/moai goal "<condition>"` is a condition-declared autonomous loop, `/moai loop` keeps fixing until the queue of issues found by LSP diagnostics, AST-grep, and linters is drained (up to 10 iterations by default), and `/moai fix` is a single-pass auto-fix. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate into harness guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update, under the user-approval gate), so the next session does not repeat the previous session's mistakes.
+**A practical tool for self-improvement (Agentic Loop Engineering):** Declare a completion condition and the session works on its own until it is met. `/moai goal "<condition>"` is a condition-declared autonomous loop, `/moai loop` keeps fixing until the queue of issues found by LSP diagnostics, AST-grep, and linters is drained (pipeline completion loop, default 10 — `agentic_loop.max_iterations`), and `/moai fix` is a single-pass auto-fix. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate into harness guidance along the 4-tier learning ladder (observation → heuristic → rule → auto-update, under the user-approval gate), so the next session does not repeat the previous session's mistakes.
 {{< /callout >}}
 
 ## Getting started

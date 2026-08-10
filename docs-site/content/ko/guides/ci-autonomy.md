@@ -120,4 +120,4 @@ scripts/docs-i18n-check.sh
 - [워크트리 가이드](/ko/worktree/guide) — Git Worktree 완벽 가이드
 - [/moai loop](/ko/utility-commands/moai-loop) — 반복 수정 루프
 - [/moai fix](/ko/utility-commands/moai-fix) — 자동 에러 수정
-- [GitHub 연동 가이드](/ko/guides/multi-llm-ci) — 이슈 파싱·SPEC 링크
+- [GitHub 연동 가이드](/ko/guides/github-integration) — 이슈 파싱·SPEC 링크

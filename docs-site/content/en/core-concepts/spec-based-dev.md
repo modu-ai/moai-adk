@@ -36,7 +36,7 @@ the exact same dish.
 | The list of ingredients                  | The list of requirements          | Defines what is needed             |
 | Cooking steps                         | Implementation order              | Defines the order of work        |
 | A photo of the finished dish                         | Acceptance criteria              | Defines what the finished result looks like |
-| No vague phrases like "a pinch of salt" | Clear via the EARS format | Removes ambiguity                      |
+| No vague phrases like "a pinch of salt" | Clear via the GEARS format | Removes ambiguity                      |
 
 ## Why Do You Need a SPEC?
 
@@ -252,7 +252,7 @@ to have, fine without.
 ## SPEC Document Structure
 
 SPEC documents are generated automatically by the **manager-spec agent**. Developers do not need
-to memorize the EARS format — make the request in natural language and the agent converts it.
+to memorize the GEARS format — make the request in natural language and the agent converts it.
 
 Running `/moai plan` generates **3 files** at once inside a single SPEC directory:
 
@@ -383,7 +383,7 @@ Running this command proceeds automatically as follows:
 1. **Requirements analysis:** manager-spec analyzes what "user authentication" means
 2. **Clarifying questions:** if anything is ambiguous, the user is asked (e.g., "Do you prefer JWT
    or sessions?")
-3. **EARS conversion:** the natural language is automatically classified into the 5 EARS types
+3. **GEARS conversion:** the natural language is automatically classified into the 5 requirement types
 4. **3 files generated:** `spec.md`, `plan.md`, and
    `acceptance.md` are created at once in the `.moai/specs/SPEC-AUTH-001/` directory
 5. **Review requested:** the generated SPEC is shown to the user for confirmation
@@ -564,11 +564,11 @@ cycle; existing projects use **DDD** (ANALYZE-PRESERVE-IMPROVE).
 
 ## SPEC Writing Tips
 
-### Converting Natural Language to EARS
+### Converting Natural Language to GEARS
 
-A comparison of how everyday requests turn into the EARS format.
+A comparison of how everyday requests turn into the GEARS format.
 
-| Natural-language request            | EARS format                                                                |
+| Natural-language request            | GEARS format                                                                |
 | ---------------------- | ------------------------------------------------------------------------ |
 | "Build me a login feature" | WHEN the user presents valid credentials, THEN issue an auth token |
 | "Keep passwords safe"  | The system shall not store passwords in plain text (Unwanted)                 |
@@ -577,8 +577,8 @@ A comparison of how everyday requests turn into the EARS format.
 | "Would be nice to have"        | Where possible, the system shall support real-time notifications (Optional)              |
 
 {{< callout type="info" >}}
-  You do not need to write the EARS format yourself. Make a natural-language request to
-  `/moai plan` and the **manager-spec agent converts it into EARS automatically**. The table
+  You do not need to write the GEARS format yourself. Make a natural-language request to
+  `/moai plan` and the **manager-spec agent converts it into GEARS automatically**. The table
   above is reference material for understanding how the conversion works.
 {{< /callout >}}
 

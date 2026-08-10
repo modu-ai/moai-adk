@@ -229,11 +229,13 @@ flowchart TD
 
 ```text
 /moai goal "直到所有测试通过且 lint 干净"     # 条件声明型循环
-/moai loop                                    # 基于诊断的反复修复(最多 100 次)
+/moai loop                                    # 基于诊断的反复修复(loop_prevention 默认 100 次)
 /moai fix                                     # 单次 pass 自动修复
 ```
 
 `/moai loop` 是 goal 引擎之上的预设 —— 反复修复直到清空诊断工具找到的问题队列。
+
+迭代上限由分管不同层级的两个设置各自决定。`workflow.loop_prevention.max_iterations`(默认 **100**)是单个操作的诊断修复循环上限,`workflow.agentic_loop.max_iterations`(默认 **10**)是流水线整体的完成循环上限。两者是彼此独立的设置,取值不同并不矛盾。
 
 ### 推荐的工作流链
 
@@ -301,7 +303,7 @@ moai cg            # CG 混合(Claude 领导 + GLM 队友,需 tmux)
 ## 自我改进 —— 循环自行工作,harness 从中学习
 
 {{< callout type="info" >}}
-**自我改进（智能体循环工程）的实战工具:** 声明完成条件后,会话会自行工作直到条件满足。`/moai goal "<条件>"` 是条件声明型自主循环;`/moai loop` 反复修改直到清空 LSP 诊断·AST-grep·linter 找到的问题队列（默认最多 10 次）;`/moai fix` 是单次 pass 自动修复。循环留下的观察（用户纠正、失败模式、路由决策）沿 4 层学习阶梯（观察 → 启发式 → 规则 → 自动更新,在用户批准门禁之下）沉淀为 harness 指令 —— 下一轮会话不会重复上一轮的失误。
+**自我改进（智能体循环工程）的实战工具:** 声明完成条件后,会话会自行工作直到条件满足。`/moai goal "<条件>"` 是条件声明型自主循环;`/moai loop` 反复修改直到清空 LSP 诊断·AST-grep·linter 找到的问题队列（流水线完成循环默认 10 次 — `agentic_loop.max_iterations`）;`/moai fix` 是单次 pass 自动修复。循环留下的观察（用户纠正、失败模式、路由决策）沿 4 层学习阶梯（观察 → 启发式 → 规则 → 自动更新,在用户批准门禁之下）沉淀为 harness 指令 —— 下一轮会话不会重复上一轮的失误。
 {{< /callout >}}
 
 ## 开始

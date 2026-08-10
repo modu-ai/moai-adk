@@ -117,4 +117,4 @@ scripts/docs-i18n-check.sh
 - [工作树指南](/zh/worktree/guide) —— Git Worktree 完整指南
 - [/moai loop](/zh/utility-commands/moai-loop) —— 迭代修复循环
 - [/moai fix](/zh/utility-commands/moai-fix) —— 自动错误修复
-- [多 LLM CI](/zh/guides/multi-llm-ci) —— Multi-LLM CI 集成
+- [GitHub 集成指南](/zh/guides/github-integration) —— Issue 解析·SPEC 关联

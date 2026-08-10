@@ -46,7 +46,7 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update --reconfigure` —— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
+向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update -c`(`--config`)—— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
 {{< /callout >}}
 
 ## Page 1 —— 基本
