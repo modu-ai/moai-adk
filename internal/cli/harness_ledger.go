@@ -52,8 +52,79 @@ Outcome is never accepted as an input on the write surfaces — it derives from
 machine evidence only (record and evidence carry no outcome-input flag).`,
 	}
 	cmd.AddCommand(newHarnessLedgerRecordCmd())
+	cmd.AddCommand(newHarnessLedgerAnnotateCmd())
 	cmd.AddCommand(newHarnessLedgerEvidenceCmd())
 	cmd.AddCommand(newHarnessLedgerListCmd())
+	return cmd
+}
+
+// newHarnessLedgerAnnotateCmd is `moai harness ledger annotate`
+// (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-005).
+//
+// It patches routing metadata onto an existing pending row. Unlike `record` it
+// creates no row and finalizes none, which is what makes it safe to call from a
+// per-prompt path: `record` reroutes the session's own prior row, so calling it
+// once per turn would close a row every turn.
+//
+// Like `record` and `evidence`, it carries no --outcome flag — outcome derives
+// from machine evidence only.
+func newHarnessLedgerAnnotateCmd() *cobra.Command {
+	var (
+		subcommand string
+		mode       string
+		tier       string
+		level      string
+		clarify    int
+		sessionID  string
+		modelClass string
+	)
+	cmd := &cobra.Command{
+		Use:   "annotate",
+		Short: "Patch routing metadata onto an existing pending row",
+		Long: `Patch routing metadata (subcommand, mode, tier, harness level, clarify
+rounds, model class) onto the session's existing pending routing row.
+
+Creates nothing and finalizes nothing: a session with no pending row is a silent
+no-op. A flag left unset leaves the existing value untouched, so a later
+annotation never erases an earlier one by omission.
+
+Outcome is never accepted as an input here; it derives from machine evidence
+only (the un-fakeable-outcome contract).`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			root, err := resolveProjectRoot(cmd)
+			if err != nil {
+				return err
+			}
+			// Gate 1 (learning, fail-open): explicit disable => no-op.
+			if !isHarnessLearningEnabled(root) {
+				return nil
+			}
+			patch := routing.RoutingPatch{
+				MatchedSubcommand: optStr(subcommand),
+				ModeSelected:      optStr(mode),
+				Tier:              optStr(tier),
+				HarnessLevel:      optStr(level),
+				ModelClass:        optStr(modelClass),
+			}
+			// clarify-rounds is only patched when the flag was explicitly given,
+			// so an unset flag cannot silently reset a recorded count to zero.
+			if cmd.Flags().Changed("clarify-rounds") {
+				patch.ClarifyRounds = &clarify
+			}
+			if err := routing.NewStore(routingStateDir(root)).Annotate(sessionID, patch); err != nil {
+				return fmt.Errorf("ledger annotate: %w", err)
+			}
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&subcommand, "subcommand", "", "matched /moai subcommand (plan|run|sync|...)")
+	f.StringVar(&mode, "mode", "", "Phase 0.95 mode (trivial|background|parallel|sub-agent|workflow)")
+	f.StringVar(&tier, "tier", "", "SPEC tier (S|M|L)")
+	f.StringVar(&level, "level", "", "harness level (minimal|standard|thorough)")
+	f.IntVar(&clarify, "clarify-rounds", 0, "clarification round count (patched only when set)")
+	f.StringVar(&sessionID, "session", "", "session id (empty => degraded single-session key)")
+	f.StringVar(&modelClass, "model-class", "", "model class (opus|fable|sonnet|glm|haiku|unknown)")
 	return cmd
 }
 

@@ -89,6 +89,13 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 		"prompt_preview", preview,
 	)
 
+	// Routing-ledger seam A (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-002).
+	// Ensures a pending routing row exists for the session, derived from hook
+	// input rather than from an orchestrator instruction. Fail-open and inert
+	// while either harness observation gate is closed; it never affects the
+	// output below.
+	RoutingSeamUserPromptSubmit(input)
+
 	// Build session title (errors are silently ignored, falls back to empty title)
 	title := h.buildSessionTitle(ctx, input.CWD, input.TranscriptPath)
 

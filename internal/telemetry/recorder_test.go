@@ -383,3 +383,63 @@ func TestRecordSkillUsage_AllOutcomeTypes(t *testing.T) {
 		}
 	}
 }
+
+// TestLoadBySession_TwoDayWindow pins the bounded read window of the session
+// evidence path (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-015, AC-HLE-002).
+//
+// This is a CHARACTERIZATION test, not a RED-GREEN one: LoadBySession already
+// reads exactly today + yesterday, and this test exists so a later edit cannot
+// widen that window — which would put an unbounded per-day read on the Stop seam
+// path — without a failing test to say so.
+func TestLoadBySession_TwoDayWindow(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "evolution", "telemetry")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	const sessionID = "sess-window"
+	write := func(dayOffset int, marker string) {
+		day := time.Now().UTC().AddDate(0, 0, dayOffset).Format("2006-01-02")
+		rec := UsageRecord{
+			Timestamp: time.Now().UTC().AddDate(0, 0, dayOffset),
+			SessionID: sessionID,
+			SkillID:   marker,
+		}
+		line, err := json.Marshal(rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "usage-"+day+".jsonl")
+		if err := os.WriteFile(path, append(line, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write(0, "today")
+	write(-1, "yesterday")
+	write(-2, "two-days-ago")
+	write(-3, "three-days-ago")
+	write(-4, "four-days-ago")
+
+	got, err := LoadBySession(root, sessionID)
+	if err != nil {
+		t.Fatalf("LoadBySession: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d records, want 2 (today + yesterday only)", len(got))
+	}
+	seen := map[string]bool{}
+	for _, r := range got {
+		seen[r.SkillID] = true
+	}
+	if !seen["today"] || !seen["yesterday"] {
+		t.Fatalf("window must cover today and yesterday, got %v", seen)
+	}
+	for _, beyond := range []string{"two-days-ago", "three-days-ago", "four-days-ago"} {
+		if seen[beyond] {
+			t.Fatalf("read window leaked beyond two days: %s was read", beyond)
+		}
+	}
+}

@@ -446,3 +446,29 @@ func extractTestPackage(command string) string {
 	}
 	return arg
 }
+
+// LogBashEvidence records the evidence for a Bash PostToolUse event from a
+// caller outside this package (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-011).
+//
+// It exists because the assembled-record path was unreachable in production:
+// buildBashRecord is only ever reached from logEvidence, which runs inside the
+// `moai hook post-tool` handler behind handle-post-tool.sh — and that wrapper is
+// registered for Write|Edit|MultiEdit only. The Bash branch there never executes,
+// so the terminal test-pass / test-fail signal population stayed empty. The
+// always-on harness-observe wrapper IS registered for every tool and does receive
+// the full Bash payload; routing it through here restores reachability without
+// editing settings.json or the template it is rendered from.
+//
+// Scoped to Bash on purpose. Write and Edit are already covered by
+// handle-post-tool.sh, so recording them here as well would write two telemetry
+// records for one tool call. A non-Bash input is a silent no-op rather than an
+// error, so the caller needs no tool-name branch of its own.
+//
+// Best-effort and fail-open, matching logEvidence: errors are logged, never
+// returned, and the observing hook is never blocked.
+func LogBashEvidence(input *HookInput) {
+	if input == nil || input.ToolName != "Bash" {
+		return
+	}
+	logEvidence(input)
+}
