@@ -1,0 +1,6 @@
+index:
+  title: "Resources"
+  display: "hidden"
+i18n-docs:
+  title: "I18N Documentation Guide"
+  weight: 10

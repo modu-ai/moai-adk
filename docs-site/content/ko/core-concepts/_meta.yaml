@@ -13,3 +13,12 @@ ddd:
   title: "TRUST 5 품질"
 "constitution":
   title: "Constitution 시스템"
+"verification-claim-integrity":
+  title: "검증 경로 무결성"
+  weight: 50
+"navigator":
+  title: "Project Navigator"
+  weight: 25
+"book":
+  title: "책 — 실전 에이전틱 코딩"
+  weight: 5
