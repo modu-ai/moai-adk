@@ -175,6 +175,48 @@ Supporting non-AC rows: `TestCodexJobRegistry_ConcurrentJobsDoNotCollide` (8 con
 - The atomicity evidence is a same-process concurrent read against the POSIX rename guarantee. The Windows rename-retry path (`renameWithRetry`) is exercised only by the cross-compile build, not by a running Windows reader.
 - `codexJobSummary` redacts credential-*shaped* content. A secret with no recognizable shape and no credential-shaped key beside it would survive into the summary; the record's structural guarantee (no environment block, no argv, no binary path) is the stronger half of REQ-CX2-005, and the redaction is defense in depth on top of it.
 
+#### M2 correction — the atomicity test flaked ~1-10% (found by orchestrator re-verification of `9aa60a014`)
+
+**The original M2 §E claim did not hold under repetition, and this correction records why.** The M2 evidence above reports `TestCodexJobRegistry_TransitionsAreAtomic` PASS against `-race` and against several full-suite runs. Every one of those runs was `-count=1`. Under repetition the test fails: the orchestrator's `-count=60` sweep produced 6 failures across 60 iterations, and an independent reproduction here produced 1 failure across 200 iterations on an idle machine — the rate is load-dependent, which is exactly why single runs never surfaced it.
+
+This is the same sampling error the M4 correction named, committed one milestone earlier and not caught at the time. The M2 §E batch even ran the coverage command four times and disclosed a flake, but attributed it to the pre-existing `internal/cli` flake and explicitly declined to name a cause — while a test *this milestone authored* was flaking in the same package. The disclosure was honest and the inference was wrong.
+
+**Reproduction (pre-fix), against HEAD `9aa60a014`:**
+
+```
+$ go test -count=200 -run 'TestCodexJobRegistry_TransitionsAreAtomic' ./internal/cli/
+--- FAIL: TestCodexJobRegistry_TransitionsAreAtomic (0.00s)
+    codex_jobs_test.go:236: the concurrent reader never completed a read — the assertion proved nothing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.134s
+FAIL
+```
+
+**The guard was right; the test around it was wrong.** The message is the test's own `reads == 0` guard, and it fired truthfully: the writer's five transitions can complete before the reader goroutine's first `os.ReadFile` lands, and the guard then correctly refuses to report a pass for an assertion that observed nothing. Removing the guard, softening it to a warning, gating it on a retry count, or raising the iteration count until green would each have converted a visible flake into a test that passes without asserting — strictly worse. The defect was that the reader's arrival inside the transition window was left to **timing**.
+
+**Fix — the observation is now a rendezvous, not a race.** The writer performs the first transition (to `running`) and then blocks on a channel the reader closes once it has decoded a `running` record; only then does it proceed to the remaining four transitions. While the writer is blocked, the on-disk record *stays* `running`, so the state the reader is waiting for cannot expire before the reader sees it — there is no window to miss. `reads == 0` is therefore unreachable by construction rather than merely unlikely, and the guard is retained unchanged as a defense against a future edit reintroducing the hole.
+
+Two properties keep the rendezvous from trading a flake for a hang: the reader also closes a `readerStopped` channel on exit, and the writer selects on both — so a reader that dies early (a decode failure, an out-of-enum status) fails the test with that reason instead of blocking forever. **There is no deadline anywhere in the path**, so no timing input reaches the pass decision. The reader's former `time.Sleep(50µs)` yield is now `runtime.Gosched()`; with the writer blocked on the reader, a wall-clock sleep has no purpose.
+
+Explicitly not done: no iteration-count tuning, no sleep to widen the window, no `t.Skip`, no retry wrapper, no change to the guard at what is now line 278.
+
+| Claim | Command | Observed output (verbatim) |
+|---|---|---|
+| The flake is gone under heavy repetition | `go test -count=200 -run 'TestCodexJobRegistry_TransitionsAreAtomic' ./internal/cli/` | `ok  	github.com/modu-ai/moai-adk/internal/cli	4.522s` |
+| The wider codex/job surface is stable under repetition | `go test -count=60 -run 'Codex\|Job\|Task\|Cancel' ./internal/cli/` | `ok  	github.com/modu-ai/moai-adk/internal/cli	40.692s` |
+| No data race in the new rendezvous | `go test -race -run 'Codex\|Job\|Task\|Cancel' ./internal/cli/` | `ok  	github.com/modu-ai/moai-adk/internal/cli	10.514s` |
+| No regression package-wide | `go test ./...` | exit 0; 112 packages `ok`; zero `FAIL` / `panic` / `--- FAIL` lines; `ok  	github.com/modu-ai/moai-adk/internal/cli	254.330s` |
+| Both builds | `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` | no output, exit 0 |
+| Lint | `golangci-lint run --timeout=3m` | `0 issues.` |
+
+Baseline attribution: every row above was captured against the working tree on top of HEAD `9aa60a014` — the tree the correction commit lands verbatim. The pre-fix reproduction was captured against `9aa60a014` itself, before any edit.
+
+**Gaps (M2 correction).**
+
+- **The rendezvous proves the reader is inside the sequence; it does not prove it is inside a `rename` call.** What the test now guarantees deterministically is that a concurrent reader observes a mid-sequence record, and that every record it observes is complete and in-enum. Catching a reader *during* the kernel's rename would require injecting a seam into the write path, which this SPEC's scope does not justify — POSIX rename atomicity is the property being relied on, and it is a platform guarantee rather than something this test can demonstrate.
+- **The correction says nothing about the pre-existing `internal/cli` flake.** The M2 §E coverage-run failure disclosed above remains unattributed: its per-test output was discarded at the time and cannot be recovered. It is plausible that it was this test, and it is equally plausible that it was the unrelated `TestNavigatorEnrich_AtomicWriteBarrier`. Both are consistent with the evidence; neither is established, and this correction does not claim to have fixed it.
+- **`-count=200` is a sampling bound, not a proof.** A rendezvous with no deadline makes the failure mode structurally unreachable, which is the actual argument; 200 clean iterations are corroboration, not the basis of the claim.
+
 ### M3 — `codex_task`
 
 REQ-CX2-006, REQ-CX2-007, REQ-CX2-008. Evidence captured against the working tree on top of HEAD `628422d8c` (branch `feat/SPEC-CODEX-PHASE2-001-run`) — the tree the M3 commit lands verbatim. Every row names the command run and the output observed in this run, against this tree.

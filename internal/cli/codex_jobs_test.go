@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -167,6 +167,19 @@ func TestCodexJobRecord_NoReattachmentMetadata(t *testing.T) {
 // AC-CX2-006 (REQ-CX2-004) — every transition writes atomically: a concurrent
 // reader observes a complete record carrying a status from the enum at every
 // read, never a truncated or partially-written file.
+//
+// The reader's arrival inside the transition sequence is a RENDEZVOUS, not a
+// race it might lose. The writer performs the first transition and then blocks
+// until the reader reports having decoded the `running` state; while it blocks,
+// the on-disk record STAYS `running`, so there is no window to miss — the state
+// the reader is waiting for cannot expire until the reader has observed it.
+//
+// This is what makes the `reads == 0` guard below unreachable rather than
+// merely unlikely. The guard was correct and stays: a test that can pass
+// without its reader ever having read proves nothing. Before the rendezvous the
+// writer's five transitions could complete before the reader's first ReadFile
+// landed, and the guard then fired truthfully — roughly 1 run in 200 locally,
+// higher under load.
 func TestCodexJobRegistry_TransitionsAreAtomic(t *testing.T) {
 	reg := newCodexJobRegistry(t.TempDir())
 	rec, err := reg.create(codexJobSpec{ThreadID: "tid", PID: 7, Mode: codexModeNative, RequestSummary: "seed"})
@@ -184,22 +197,29 @@ func TestCodexJobRegistry_TransitionsAreAtomic(t *testing.T) {
 
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
+	// sawRunning closes once the reader has decoded the held-open `running`
+	// record; readerStopped closes whenever the reader goroutine exits, so the
+	// writer's rendezvous can never outlive the reader and hang the test.
+	sawRunning := make(chan struct{})
+	readerStopped := make(chan struct{})
+	var sawRunningOnce sync.Once
 	reads := 0
 	var readErr error
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer close(readerStopped)
 		for {
 			select {
 			case <-stop:
 				return
 			default:
 			}
-			// Yield between reads: the assertion needs many reads across the
-			// rename window, not a hot spin that starves the rest of the
-			// package's tests.
-			time.Sleep(50 * time.Microsecond)
+			// Yield rather than hot-spin: the writer is blocked on this
+			// goroutine at the rendezvous, so burning a core here only slows
+			// the rest of the package down.
+			runtime.Gosched()
 			raw, err := os.ReadFile(reg.pathFor(rec.ID))
 			if err != nil {
 				continue // the rename window is not a read failure the caller sees
@@ -218,12 +238,31 @@ func TestCodexJobRegistry_TransitionsAreAtomic(t *testing.T) {
 				return
 			}
 			reads++
+			if got.Status == codexJobStatusRunning {
+				sawRunningOnce.Do(func() { close(sawRunning) })
+			}
 		}
 	}()
 
-	for _, status := range transitions {
+	for i, status := range transitions {
 		if _, err := reg.update(rec.ID, func(r *CodexJobRecord) { r.Status = status }); err != nil {
 			t.Fatalf("update to %s: %v", status, err)
+		}
+		if i > 0 {
+			continue
+		}
+		// Rendezvous: hold the sequence open at `running` until the reader has
+		// decoded it. Either outcome is decisive — there is no deadline, and
+		// therefore no timing input to the pass path.
+		select {
+		case <-sawRunning:
+		case <-readerStopped:
+			select {
+			case <-sawRunning:
+			default:
+				t.Fatalf("the concurrent reader exited before observing the held-open %q record: %v",
+					codexJobStatusRunning, readErr)
+			}
 		}
 	}
 	close(stop)
@@ -232,6 +271,9 @@ func TestCodexJobRegistry_TransitionsAreAtomic(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("a concurrent read observed a partial or invalid record: %v", readErr)
 	}
+	// Unreachable by construction: the rendezvous above already required a
+	// successful read. Retained because it is what stops a future edit to the
+	// reader from silently turning this into a test that asserts nothing.
 	if reads == 0 {
 		t.Fatal("the concurrent reader never completed a read — the assertion proved nothing")
 	}
