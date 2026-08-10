@@ -118,4 +118,21 @@ m1_to_mN_commit_strategy: "5 commits — M1 contract+fixtures, M2-M3 aggregation
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-08-10
+- **sync_commit_sha**: `pending-backfill-sync` (self-referential-hazard placeholder per `spec-frontmatter-schema.md` D3; backfilled by a follow-up `chore(...)` commit — amend is forbidden)
+- **sync_status**: audit-ready
+- **changelog_entry_position**: `[Unreleased] → ### Added`, first bullet — **shared with `SPEC-HARNESS-LEARNING-EVO-001`**. The two SPECs are one shipped capability (L1 observation + L2 analysis) split only because the combined requirement count exceeded the Tier ceiling; two entries would each have described half a loop. The entry links both `spec.md` files.
+- **frontmatter_status_transitions.spec**: `in-progress → implemented → completed` (single sync commit, merged close per the Status Transition Ownership Matrix)
+- **frontmatter_status_transitions.plan**: n/a — `plan.md` carries no YAML frontmatter and no `Status:` marker (verified by `grep -n '^status:\|^Status:\|Status:'`)
+- **frontmatter_status_transitions.acceptance**: n/a — same, no frontmatter or status marker
+- **frontmatter_status_transitions.progress**: n/a — same, no frontmatter or status marker
+- **frontmatter_status_transitions.updated_refreshed**: 2026-08-10 — `spec.md` `updated:` already held the sync-commit date; no change was required, and none was made for its own sake
+- **b12_self_test_a** (pre-emission grep): `grep -c 'HARNESS-LEARNING-EVO' CHANGELOG.md` returned **0** before emission — no duplicate for either SPEC of the pair
+- **b12_self_test_b** (AC count match): `acceptance.md` holds **16** distinct AC identifiers by both counts that must agree — deduped token grep → 16, heading/row count → 16. §E.3 records `ac_pass_count: 15` + `ac_pass_with_debt_count: 1` = 16, `ac_fail_count: 0`. The CHANGELOG states 32 across both SPECs and names the one PASS-WITH-DEBT rather than rounding it into the pass count.
+- **b12_self_test_c** (file path verification): every path named in the CHANGELOG entry verified to exist before committing — `internal/harness/delegationmap/` (`aggregate.go`, `analyze.go`, `mapreader.go`, `proposal.go`, `types.go`), `internal/cli/harness_delegation.go`, `.moai/config/sections/delegation.yaml`, `.claude/lsel/frozen-allowlist.json`.
+- **canary_compliance_check.body_untouched**: `spec.md` / `plan.md` / `acceptance.md` body content unchanged on this commit. The only `spec.md` edit is the frontmatter `status:` field. In particular, AC-HLA-016's **proposed correction** recorded in §E.2 was NOT applied — amending an acceptance criterion is a `manager-spec` body edit, outside sync-phase ownership, and it is carried forward as an open item rather than silently taken.
+- **canary_compliance_check.frozen_allowlist_untouched**: `.claude/lsel/frozen-allowlist.json` is not in this commit's diff, and its `^\.moai/config/sections/` frozen pattern is intact — the guarantee the CHANGELOG entry makes to the reader ("nothing shipped here can alter routing on its own") is verified rather than asserted.
+- **canary_compliance_check.no_run_phase_section_edits**: `§E.2` and `§E.3` of this file are unmodified — they are owned by `manager-develop`. This includes the `run_commit_sha: pending-backfill-run` placeholder in §E.3, which is still unbackfilled; see the open item below.
+- **mx_tag_validation**: sync-phase MX sub-step performed. The sync commit is documentation-only; it introduces no Go symbol, so no new `@MX` annotation is required and none was added.
+- **project_doc_sync**: `.moai/project/` needed updating and was updated — this SPEC's five `delegationmap` non-test files moved the `internal/harness` count from 75 to 80, a figure stated exactly in `structure.md`, `codemaps/modules.md`, and `codemaps/overview.md`. Measurement and correction are recorded in `SPEC-HARNESS-LEARNING-EVO-001` §E.4 `project_doc_sync`.
+- **open_item.run_commit_sha**: §E.3 still reads `run_commit_sha: pending-backfill-run`. The run-phase code merged as `96bedbfe3` (`feat(SPEC-HARNESS-LEARNING-EVO-002): delegation-map analyzer (L2)`, PR #1424, squash), so the value is known — but §E.3 is `manager-develop`-owned and sync phase does not write it. Flagged for the orchestrator to backfill alongside `sync_commit_sha`, in the same follow-up `chore(...)` commit.

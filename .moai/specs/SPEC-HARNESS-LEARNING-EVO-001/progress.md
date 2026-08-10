@@ -269,4 +269,20 @@ Notes for the auditor:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-08-10
+- **sync_commit_sha**: `pending-backfill-sync` (self-referential-hazard placeholder per `spec-frontmatter-schema.md` D3; backfilled by a follow-up `chore(...)` commit — amend is forbidden)
+- **sync_status**: audit-ready
+- **changelog_entry_position**: `[Unreleased] → ### Added`, first bullet. **One entry covers both this SPEC and `SPEC-HARNESS-LEARNING-EVO-002`** — they are one shipped capability (L1 observation + L2 analysis) split only because the combined requirement count exceeded the Tier ceiling, and two separate entries would have described half a loop each.
+- **frontmatter_status_transitions.spec**: `in-progress → implemented → completed` (single sync commit, merged close per the Status Transition Ownership Matrix)
+- **frontmatter_status_transitions.plan**: n/a — `plan.md` carries no YAML frontmatter and no `Status:` marker (verified by `grep -n '^status:\|^Status:\|Status:'`)
+- **frontmatter_status_transitions.acceptance**: n/a — same, no frontmatter or status marker
+- **frontmatter_status_transitions.progress**: n/a — same, no frontmatter or status marker
+- **frontmatter_status_transitions.updated_refreshed**: 2026-08-10 — `spec.md` `updated:` already held the sync-commit date; no change was required, and none was made for its own sake
+- **b12_self_test_a** (pre-emission grep): `grep -c 'HARNESS-LEARNING-EVO' CHANGELOG.md` returned **0** before emission — no duplicate, and no parallel BATCH-SYNC session had written an entry
+- **b12_self_test_b** (AC count match): `acceptance.md` holds **16** distinct AC identifiers by both counts that must agree — deduped token grep (`grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l` → 16) and heading/row count (`grep -cE '^#{2,4} AC-|^\| AC-'` → 16). §E.3 records `ac_pass_count: 16`, `ac_fail_count: 0`. The CHANGELOG entry states 32 across both SPECs (16 + 16), matching.
+- **b12_self_test_c** (file path verification): every path named in the CHANGELOG entry verified to exist before committing — `internal/harness/delegationmap/` (5 non-test files), `internal/harness/routing/`, `internal/cli/harness_delegation.go`, `.moai/config/sections/delegation.yaml`, `.claude/lsel/frozen-allowlist.json`. The two runtime state paths named (`.moai/state/routing-ledger.jsonl`, telemetry under `.moai/evolution/`) are gitignored and absent from this worktree by design; they are cited as measured facts from the primary checkout (§A.1, §A.6), not as tree contents.
+- **canary_compliance_check.body_untouched**: `spec.md` / `plan.md` / `acceptance.md` body content unchanged on this commit. The only `spec.md` edit is the frontmatter `status:` field.
+- **canary_compliance_check.template_neutrality**: no file under `internal/template/templates/` was touched by the sync commit, so §15 language neutrality and §25 internal-content isolation are trivially preserved. This holds for the run phase too — the M0 probe selected the option that required no `settings.json.tmpl` edit.
+- **canary_compliance_check.no_run_phase_section_edits**: `§E.2` and `§E.3` of this file are unmodified — they are owned by `manager-develop`.
+- **mx_tag_validation**: sync-phase MX sub-step performed. The sync commit is documentation-only (CHANGELOG + frontmatter + this section + `.moai/project` count corrections); it introduces no Go symbol, so no new `@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` annotation is required and none was added.
+- **project_doc_sync**: `.moai/project/` **did** need updating, and was updated. Three sites carried an exact non-test file count for `internal/harness` that this SPEC line invalidated: `structure.md` line 90, `codemaps/modules.md` § internal/harness, and `codemaps/overview.md`. The figure was measured, not assumed — `git ls-tree -r --name-only <sha> internal/harness | grep '\.go$' | grep -v '_test.go$' | wc -l` returns 75 at the pre-SPEC base `85693f3bf`, 75 still after L1 (`8ed9622f3`, which added no file to that tree), and 80 after L2 (`96bedbfe3`, the five `delegationmap` non-test files). All three were corrected to 80 and given a `delegationmap` mention.
