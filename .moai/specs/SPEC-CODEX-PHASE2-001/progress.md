@@ -801,7 +801,7 @@ Notes on the fields above, so a later reader does not have to re-derive them:
 
 ```yaml
 sync_complete_at: 2026-08-11
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption
+sync_commit_sha: e6f7e72b1               # the sync commit carrying the 3-phase close; backfilled in the immediately following commit, per spec-frontmatter-schema.md § SHA placeholder backfill exemption (a commit cannot cite its own hash)
 sync_status: complete
 run_phase_merged_as: ac37c4aea           # PR #1440, squash-merged to main 2026-08-10; verified `git merge-base --is-ancestor ac37c4aea origin/main` → exit 0
 b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-PHASE2-001' CHANGELOG.md → 0 (no prior entry; emission proceeds)
