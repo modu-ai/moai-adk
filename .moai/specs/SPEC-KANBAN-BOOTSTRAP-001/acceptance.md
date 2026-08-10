@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Acceptance criteria — Kanban session topology, bootstrap, and dispatch"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -40,13 +40,17 @@ Criteria AC-KS-011, AC-KS-022, AC-KS-023 and AC-KS-024 each compare an implement
 
 ## §B. Preconditions
 
-**AC-KS-001** — *Given* a working tree at the base branch, *when* the M0 preflight of `plan.md` §C is run, *then* the rename package, the board sibling's card-record holder field, the messaging doctrine and its template mirror are all reported present, the guard-anchor definition count is exactly 1, and `git rev-parse --git-common-dir` resolves to the primary checkout's git directory; and *when* any one of those checks reports absence, *then* the run halts with the absence named and no file is edited. (REQ-KS-002)
+**AC-KS-001** — *Given* a working tree at the base branch, *when* the M0 preflight of `plan.md` §C is run, *then* the rename package, the board sibling's card-record holder field, the messaging doctrine and its template mirror are all reported present, the guard-anchor definition count is exactly 1, and the single-origin discriminant `SPEC-KANBAN-BOARD-001` `REQ-KB-005` prescribes resolves to the primary checkout's git directory **from the checkout the preflight is run in, whichever that is**; and *when* any one of those checks reports absence, *then* the run halts with the absence named and no file is edited. (REQ-KS-002)
+
+The discriminant is named by citation rather than written out, and the "whichever that is" clause is the whole of what this criterion adds. Measured, the bare `git rev-parse --git-common-dir` this criterion carried through v0.3.0 prints `/Users/goos/MoAI/moai-adk-go/.git` from a worktree and `.git` from the primary checkout, so as written it passed from a worktree and failed from the primary — deciding the check on where the preflight happened to run rather than on whether the discriminant works. `REQ-KB-005` owns the probe form; this criterion asserts only that it resolves, and it is run from both checkouts (`spec.md` §A.11).
 
 **AC-KS-002** — *Given* the messaging doctrine as it actually landed, *when* its role-boundary-dispatch clause is diffed against the three conditions `spec.md` §A.9 was authored against, *then* either the clause is unchanged and the diff is empty, or the delta is surfaced as a blocker recorded in `progress.md` before any dispatch-protocol file is created. (REQ-KS-002)
 
-**AC-KS-003** — *Given* the run-phase runtime, *when* the five substrate properties of `spec.md` §A.3 are exercised, *then* each of the five has a recorded result attributed to a command run in this session, and no property is carried forward from the prior session's measurement; and *when* the launcher surface of `spec.md` §A.8 is measured, *then* two further results are recorded — that the selected backend reaches the launched session through the process environment the launcher execs into, and that each launcher additionally mutates project-global state the other undoes — each attributed to a command run in this session. (REQ-KS-003)
+**AC-KS-003** — *Given* the run-phase runtime, *when* the five substrate properties of `spec.md` §A.3 are exercised, *then* each of the five has a recorded result attributed to a command run in this session, and no property is carried forward from the prior session's measurement; and *when* the launcher surface of `spec.md` §A.8 is measured, *then* two further results are recorded — that the selected backend reaches the launched session through the environment the launcher constructs for it, on the launch path the host platform takes, and that each launcher additionally mutates project-global state the other undoes — each attributed to a command run in this session. (REQ-KS-003)
 
 The launcher half is here because its absence is what let the backend decision stand on an unmeasured premise. Both halves are required: recording only the per-session mechanism would re-assert the assumption that the launchers do nothing else, and recording only the project-global mutation would suggest per-worker backends do not work, when measurement says they do (`research.md` §J).
+
+The first result is judged on the **environment guarantee**, not on the name of the call that delivers it. `execOrSpawnClaude` has two build-tagged definitions — `syscall.Exec` on POSIX, an `exec.Command` child with an explicit `child.Env` on Windows — so a criterion satisfied only by observing `syscall.Exec` would be unsatisfiable on Windows against code that meets the requirement exactly (`spec.md` §A.8). What is recorded is that the constructed environment reaches the launched backend on the path this host takes, with the definition that path resolves to named in the record.
 
 ---
 
@@ -89,6 +93,8 @@ Both directions are required, and the write direction is the one that carries th
 ## §F. Bootstrap, quorum, and the emitted command set
 
 **AC-KS-012** — *Given* a topology whose roles all answer within the bound, *when* the bootstrap runs, *then* it proceeds and exits zero; and *given* the same topology with one role deliberately absent and the bound configured short, *when* the bootstrap runs, *then* it exits non-zero, its output names the absent role and the answering roles in separate groups, and no dispatch was sent. The configured bound with the key absent reads 300 seconds, and the bound is not expressible as an entry-switch argument. (REQ-KS-012)
+
+This criterion decides the bound and the expiry behaviour, and deliberately says nothing about **what "answered" is counted over**. That key is REQ-KS-006's — quorum is accounted over declared roles, not over launch labels — and it is decided by the fourth conjunct of `AC-KS-030` (`spec.md` §D.11). The two are kept apart because they fail apart: a bound that never fires and an accounting that counts labels are different defects, and an implementation can pass either while failing the other.
 
 **AC-KS-013** — *Given* a topology configuration naming a backend for two of the four worker roles, *when* the guidance is emitted and parsed into a command set, *then* the `lead` contributes exactly one command in the fixed Claude-backed form; each of the two configured worker roles contributes exactly one command in its configured backend; and each of the two unconfigured worker roles contributes exactly two commands whose backends are exactly the two supported ones. (REQ-KS-013)
 

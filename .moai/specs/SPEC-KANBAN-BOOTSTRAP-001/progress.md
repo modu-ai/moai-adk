@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Progress — Kanban session topology, bootstrap, and dispatch"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -25,6 +25,34 @@ related_specs: [SPEC-KANBAN-MULTISESSION-001, SPEC-FACTORY-MODE-001]
 - Split from the superseded `SPEC-KANBAN-MULTISESSION-001` (59 requirements, plan-audit FAIL 0.87), alongside `SPEC-KANBAN-BOARD-001` and `SPEC-KANBAN-WORKTREE-001`.
 - Three corrections landed with the split and each is argued in `spec.md`: the dead `TestNew_NoAskUserQuestion` guard citation (§A.6), the missing baseline recording window (§A.7), and the rejected `column:` frontmatter field (§A.11).
 - Unresolved `[NEEDS CLARIFICATION]` markers: none.
+
+### v0.4.0 — plan-audit delta repair (D1-D4), under an explicit override
+
+The audit exhausted its three attempts on this SPEC and closed on a must-pass failure (MP-6). The repair proceeds under an explicit user override. Four defects, closed with **no requirement and no criterion added** — the SPEC is at the requirement ceiling and already five criteria over it, so every closure is an amendment in place. Three of the four share one shape: a sibling's rule restated instead of cited, an implementation named instead of the guarantee stated, and a disclaimer written instead of an adjacent criterion read.
+
+| ID | Defect | Closure |
+|---|---|---|
+| D1 (critical) | §A.11 carried its own copy of `REQ-KB-005` — `.moai/state/kanban/` as the store, "the parent of `git rev-parse --git-common-dir`" as the resolution — and the sibling changed both underneath it, moving the store to `.moai/state/kanban-board/` (its §A.3(e)) and forbidding the bare probe standing alone. Measured before the repair: `grep -rc 'kanban-board' .` returned **0** in all six files, so this SPEC was naming `SPEC-KANBAN-RENAME-001` `REQ-KR-009`'s **session-record** path as the board's. The stale probe reached the execution gates, where it fails in the direction that hides — `git rev-parse --git-common-dir` prints an absolute path from a worktree and a repository-relative `.git` from the primary checkout, so `AC-KS-001` passed or failed on where the preflight happened to run | restatement deleted, citation in its place, at `spec.md` §A.11 (rewritten, with the two-checkout measurement recorded), `AC-KS-001` (discriminant named by citation; the "whichever checkout" clause added and the criterion run from both), `plan.md` §C check 5 (probe replaced with the `--path-format=absolute` form `REQ-KB-005` prescribes, run from both checkouts) and constraint C8, and `research.md` §D |
+| D2 (major — the MP-6 must-pass failure) | normative text named `syscall.Exec` as the mechanism by which a per-session backend reaches the launched session. Measured, `launcher.go:791` calls `execOrSpawnClaude`, which is build-tagged two ways: `launch_exec_posix.go` (`//go:build !windows`) calls `syscall.Exec`, and `launch_exec_windows.go` (`//go:build windows`) spawns an `exec.Command` child with `child.Env = env`, its own comment recording that `syscall.Exec` returns `syscall.EWINDOWS` there. The conclusion drawn — the constructed environment reaches the backend, so interleaved launches give each worker its own — holds on both platforms; only the mechanism was wrong, and naming it prescribed on Windows the exact call that file exists to avoid | rewritten on the **environment guarantee** rather than the call: `spec.md` §A.8 (with the platform split measured and recorded), the §A.8 consequence bullet ("already been exec'd" → already been launched), `REQ-KS-003`, and `AC-KS-003` plus a new note explaining why a `syscall.Exec` observation would be unsatisfiable on Windows against conforming code. The POSIX call now appears only as one platform's implementation, beside the Windows one, at `spec.md` §E (new cross-reference for the two build-tagged files), `plan.md` §C check 8 (probes both definitions) and §C's M0 narration, and `research.md` §J.1 |
+| D3 (minor, blocking) | §D.11 stated that quorum accounting "is REQ-KS-012's criterion and is not re-checked here" — wrong twice. `AC-KS-030`'s **fourth conjunct** performs exactly that check, three lines above in the same document; and `AC-KS-012`, the criterion it pointed at, carries no declaration-related clause at all. Reading all three, `AC-KS-012` is **correct as written**: the bound and the expiry are REQ-KS-012's subject, while the accounting *key* (declared roles, not labels) is REQ-KS-006's. The defect is the disclaimer alone | §D.11's third paragraph rewritten to record the split and name `AC-KS-030`'s fourth conjunct as the check; a pointer added beneath `AC-KS-012` stating what it deliberately does not decide and where that is decided. Three surfaces now agree; no criterion changed its subject |
+| D4 (major) | the seventh unowned area. Quorum is bootstrap-scoped — `REQ-KS-007` waits for it, `REQ-KS-012` bounds that wait, neither is evaluated again — while both siblings' §C hand "the quorum bound" to this SPEC by name and this SPEC's §C carried no clause answering that. A session dying after bootstrap leaves its role unoccupied; `REQ-KW-011` releases the card's holder and leaves the column unchanged, `REQ-KW-012` makes a clean orphan "immediately re-dispatchable", and `REQ-KS-019` then dispatches to the session whose declared role owns that column — the dead one. Neither sibling requirement is wrong; the missing step is observing the vacancy | **released explicitly** rather than owned, the ceiling forbidding a new requirement: a `spec.md` §C exclusions entry, headed for the vacated-role case, naming what is unowned, why it cannot be owned here, the symptom a reader will hit (the §A.5 silent stall, arriving after bootstrap instead of at it), the check to run first (resolve `REQ-KS-006` declarations across the launched set), and the operator workaround (§A.5's relaunch-and-re-run); `plan.md` §B.6 out-of-band note with the three-way decision the next revision faces; a §E decision row. Shape matched to `plan.md` §B.4's treatment of the unowned `backlog → plan` admission |
+
+Counts re-measured after the edits, in this worktree:
+
+```
+$ grep -cE '^\*\*REQ-KS-[0-9]{3}\*\*' spec.md
+25
+$ grep -cE '^\*\*AC-KS-[0-9]{3}\*\*' acceptance.md
+30
+```
+
+Against the Tier L ceiling of 25 and 25: **requirements exactly at the ceiling with nothing to spare, criteria five over.** Both figures are unchanged from v0.3.0 — no requirement was added and the criteria overflow was not widened. Both sequences are contiguous with no duplicates (`REQ-KS-001` … `REQ-KS-025`, `AC-KS-001` … `AC-KS-030`), confirmed by the unique-prefix count matching the total in each file. The ceiling is what forced D4 into an exclusion rather than a requirement, and that constraint is stated at the point of release rather than left for a reader to infer.
+
+**One premise of the repair brief was contradicted by measurement and is recorded rather than smoothed.** The brief located `syscall.Exec` in "the normative text of §A.8, `REQ-KS-003`, and `AC-KS-003`". Measured, `grep -rc 'syscall.Exec' .` before the repair returned 6 occurrences distributed as `research.md` 2, `spec.md` 3, `plan.md` 1 — and **zero** in `acceptance.md`. Neither `REQ-KS-003` nor `AC-KS-003` named the call; both said "the process environment it execs into", which is a milder form of the same defect (the verb is still POSIX-shaped and Windows spawns rather than execs) and both were repaired on that ground. The three `spec.md` occurrences were §A.8's normative prose, a §E cross-reference, and the v0.3.0 HISTORY entry. The classification of all six, and the disposition of the HISTORY occurrence, is in the deliverable notes below.
+
+**The v0.3.0 HISTORY entry is left unamended.** Its D2 narration says the launcher "execs into `claude`", which is the POSIX reading this revision corrects. It is a record of what was concluded at v0.3.0 and rewriting it would erase the error rather than close it; the correction is stated in the v0.4.0 entry instead, which is where a reader looking for the current position goes.
+
+**Artifact versions.** `spec.md`, `plan.md`, `acceptance.md`, `research.md` and this file move to `0.4.0`; each was edited. `design.md` stays at `0.3.0` — it was read for both D1 and D2 and needed neither. Its §F describes board state as having "a single origin under the primary checkout, resolved through the common git directory" — a citation-shaped sentence naming neither a path nor a probe form, so D1 does not reach it; `grep -n 'git-common-dir' design.md` returns nothing and `grep -c 'syscall.Exec' design.md` returns **0**, so D2 does not either.
 
 ### v0.3.0 — plan-audit repair (0.857 against a Tier L threshold of 0.85, narrow-delta FAIL)
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Research — Kanban session topology, bootstrap, and dispatch"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -92,16 +92,18 @@ Every one of those tokens — the flag the parser recognizes, both environment-v
 
 ## §D. Board state has one origin, and the discriminant behaves
 
-The predecessor proposed a `column:` field in each SPEC's frontmatter as the board's source of truth. That is rejected; the board sibling owns a single-origin store under the primary checkout's `.moai/state/kanban/`, and `REQ-KB-007` forbids the board from writing SPEC frontmatter at all.
+The predecessor proposed a `column:` field in each SPEC's frontmatter as the board's source of truth. That is rejected; the board sibling owns a single-origin store beneath the primary checkout, and `REQ-KB-007` forbids the board from writing SPEC frontmatter at all. Where that store sits, and how a session resolves it, are `REQ-KB-005`'s and are consumed here by citation.
 
-The resolution rule was measured from inside this worktree:
+**The measurement below is why the citation replaced a restatement.** This section, and `spec.md` §A.11 with it, previously recorded the store as `.moai/state/kanban/` and the resolution as the parent of the bare `git rev-parse --git-common-dir`. Both halves have since moved: the sibling relocated the store to `.moai/state/kanban-board/` to clear a collision with `SPEC-KANBAN-RENAME-001` `REQ-KR-009`, which keeps the former directory for **session records** resolved per-tree, and it forbade the bare probe form. Re-measured in both checkouts:
 
 ```
-git rev-parse --git-common-dir
-# /Users/goos/MoAI/moai-adk-go/.git
+$ git rev-parse --git-common-dir                        # from this worktree
+/Users/goos/MoAI/moai-adk-go/.git
+$ git -C /Users/goos/MoAI/moai-adk-go rev-parse --git-common-dir   # from the primary
+.git
 ```
 
-The parent of that path is the primary checkout root, resolved correctly from a worktree — the same discriminant the repository's branch guard already uses to distinguish a primary checkout from a worktree. So the rule is not novel machinery; it is an existing discriminant applied to a new path.
+The second result is the one that matters: a repository-relative `.git`, whose parent is `.` and not the primary root. The bare form therefore resolves the board correctly from every worktree and incorrectly from the single checkout the design points at — which is why `REQ-KB-005` prescribes the `--path-format=absolute` probe with an older-git fallback, and why nothing in this SPEC writes a probe of its own.
 
 **Why it matters to this SPEC specifically.** This SPEC prints guidance and sends dispatches, and both are places where a careless instruction would tell a session to consult "the board" without saying which copy. A worker resolving board state relative to its own working tree finds a different file, or no file, and the board forks per worktree with no error emitted. The obligation here is negative — emit nothing that contradicts the rule — which is why it appears in `plan.md` §D as constraint C8 rather than as a requirement.
 
@@ -252,15 +254,34 @@ grep -n 'func setGLMEnv' internal/cli/glm.go
 # 229:func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 ```
 
-`setGLMEnv` writes the backend selection into the **process** environment (`os.Setenv` of the auth token, the base URL, and the four model slots, at `glm.go:230-236`). The launcher then replaces the process:
+`setGLMEnv` writes the backend selection into the **process** environment (`os.Setenv` of the auth token, the base URL, and the four model slots, at `glm.go:230-236`). The launcher then hands that constructed environment to `claude`:
 
 ```
-grep -n 'syscall.Exec' internal/cli/launcher.go
+$ grep -n 'execOrSpawnClaude' internal/cli/launcher.go
+791:	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 ```
 
-`launchClaudeDefault`'s own doc comment (`launcher.go:613-616`) records that it "replaces the current process with claude via `syscall.Exec`", which inherits that environment. The backend therefore travels **with the launched session** and not through any shared file — and the GLM path says so deliberately, in a comment at `glm.go:255-260` explaining that `settings.local.json` injection was removed precisely so the GLM environment would not leak into later `claude` invocations.
+**The delivery is build-tagged, and the first version of this section recorded only one side of it.** `execOrSpawnClaude` has two definitions:
 
-So an interleaved launch does give each worker its own backend. The mechanism `spec.md` §A.8 depends on is sound, and this is the half that would have invalidated the design had it failed.
+```
+$ grep -n 'go:build\|syscall.Exec\|child.Env' internal/cli/launch_exec_posix.go internal/cli/launch_exec_windows.go
+internal/cli/launch_exec_windows.go:1://go:build windows
+internal/cli/launch_exec_windows.go:14:// syscall.Exec relies on (it returns syscall.EWINDOWS at runtime), so instead of
+internal/cli/launch_exec_windows.go:19:// Windows rather than failing with EWINDOWS at the unguarded syscall.Exec call.
+internal/cli/launch_exec_windows.go:32:	child.Env = env
+internal/cli/launch_exec_posix.go:1://go:build !windows
+internal/cli/launch_exec_posix.go:8:// syscall.Exec (execve(2)). On POSIX hosts this is the canonical launch path:
+internal/cli/launch_exec_posix.go:12:// REQ-CGH-001: syscall.Exec is POSIX-only. The Windows companion
+internal/cli/launch_exec_posix.go:16:	return syscall.Exec(claudeBin, args, env)
+```
+
+(The two comment hits in each file are the code's own record of the split, and are quoted rather than filtered because they are the evidence: the Windows file names the failure mode — `EWINDOWS` at an unguarded `syscall.Exec` — that a POSIX-only requirement would have prescribed.)
+
+On POSIX the current process *becomes* `claude` and inherits the environment; on Windows a child is spawned and the environment assigned explicitly, the file's own comment recording that Windows has no `execve(2)` and that `syscall.Exec` returns `syscall.EWINDOWS` there. `launchClaudeDefault`'s doc comment (`launcher.go:613-616`) still describes only the POSIX behaviour, which is where the earlier POSIX-only reading came from — the comment predates the split and was read as the contract.
+
+What both paths deliver is the same: the environment the launcher constructed reaches the launched backend, and reaches it without passing through any shared file — which the GLM path says deliberately, in a comment at `glm.go:255-260` explaining that `settings.local.json` injection was removed precisely so the GLM environment would not leak into later `claude` invocations.
+
+So an interleaved launch does give each worker its own backend, on both platforms. The property `spec.md` §A.8 depends on is sound, and this is the half that would have invalidated the design had it failed — but it is a property of the environment, not of `syscall.Exec`, and §A.8 now says so.
 
 ### J.2 The project-global half was assumed away, and the two launchers undo each other
 

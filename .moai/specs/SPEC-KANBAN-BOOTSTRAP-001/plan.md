@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Implementation plan — Kanban session topology, bootstrap, and dispatch"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -46,6 +46,12 @@ This is recorded rather than resolved because it is upstream of everything here:
 
 Per-card worktree naming belongs to `SPEC-KANBAN-WORKTREE-001` `REQ-KW-003`, not here, so this is a note and not a constraint on this plan. It is recorded because the collision is invisible from that sibling's side: the naming decision is made in one SPEC and the removal happens in a launcher neither SPEC's requirements mention, and a card worktree named `worker-<id>` would be deleted by the ordinary bootstrap of a Claude-backed worker with no error and no obvious cause.
 
+**B.6 Out-of-band note — nobody recovers a role vacated after bootstrap.** Quorum is a bootstrap-time property here and nowhere else: REQ-KS-007 waits for it at the entry switch, REQ-KS-012 bounds that wait, and neither is evaluated again. When a worker session dies later, its role has no occupant and nothing in this family notices. Measured, both siblings hand quorum to this SPEC — `SPEC-KANBAN-BOARD-001` §C and `SPEC-KANBAN-WORKTREE-001` §C each name "the quorum bound" among what belongs here — so the temporal gap sits on this side of the seam and is now stated in `spec.md` §C rather than left implied.
+
+The worktree sibling recovers the **card** and, read alongside this SPEC's dispatch rule, aims it back at the vacancy: `REQ-KW-011` releases the holder and leaves the column unchanged, `REQ-KW-012` makes a clean orphan "immediately re-dispatchable", and REQ-KS-019 dispatches to the session whose declared role owns that column — which is the role that just died. Neither sibling requirement is wrong; each does what it says. What no requirement performs is the step before them, observing that the role is unoccupied at all.
+
+It is recorded and not resolved for the same reason as B.4, and the reason is measurable rather than editorial: this SPEC is at the Tier L requirement ceiling of 25 (`grep -cE '^\*\*REQ-KS-[0-9]{3}\*\*' spec.md` → 25), and this is a new runtime-lifecycle obligation rather than a widening of an existing requirement, so there is no in-place shape available for it. The decision the family's next revision faces is a three-way one — re-quorum on vacancy, refuse dispatch into an unoccupied role, or surface the vacancy and stop — and it belongs with whichever SPEC that revision gives the role-lifecycle to; REQ-KS-006 already owns the declaration such an observation would read. Until then the operator recovery is `spec.md` §A.5's: launch the missing session and re-run the entry switch. Whoever implements this plan should expect the symptom as a stalled column with no error, and should check role occupancy before suspecting the board or the dispatch path.
+
 ## §C. Pre-flight (M0 — run these before any edit)
 
 ```bash
@@ -62,8 +68,12 @@ test -f internal/template/templates/.claude/rules/moai/workflow/cross-session-me
 # 4. guard anchor still has exactly one definition (B.3)
 grep -rn '^func TestMCP_NoAskUserQuestion' --include='*_test.go' . | wc -l   # expect 1
 
-# 5. single-origin discriminant behaves as recorded
-git rev-parse --git-common-dir
+# 5. single-origin discriminant behaves — run the form REQ-KB-005 prescribes,
+#    from BOTH checkouts. The bare --git-common-dir form is not used alone:
+#    it returns a repository-relative '.git' in the primary checkout, where
+#    "the parent of it" is not a path (spec.md §A.11, REQ-KB-005).
+git rev-parse --path-format=absolute --git-dir --git-common-dir
+git -C <primary-checkout> rev-parse --path-format=absolute --git-dir --git-common-dir
 
 # 6. the sibling's sole-writer rule is present at the version this SPEC defers to
 grep -c 'REQ-KB-017' .moai/specs/SPEC-KANBAN-BOARD-001/spec.md   # expect >= 1
@@ -73,9 +83,13 @@ grep -cE 'os\.(Setenv|Unsetenv|LookupEnv)\(' internal/cli/factory.go   # expect 
 grep -c 'os.Getenv(' internal/cli/factory.go                          # recorded as 0 at authoring
 
 # 8. the launcher premise the backend decision rests on (REQ-KS-003, spec.md §A.8)
-#    per-session half: the backend goes into the process env, and the launcher execs
+#    per-session half: the backend goes into the constructed env, and the launcher
+#    hands that env to claude. The delivery is build-tagged, so BOTH definitions
+#    are probed — a POSIX-only probe reports nothing on Windows (spec.md §A.8).
 grep -n 'func setGLMEnv' internal/cli/glm.go
-grep -n 'syscall.Exec' internal/cli/launcher.go
+grep -n 'execOrSpawnClaude' internal/cli/launcher.go
+grep -n 'syscall.Exec' internal/cli/launch_exec_posix.go
+grep -n 'child.Env' internal/cli/launch_exec_windows.go
 #    project-global half: each launcher writes state the other undoes
 grep -n 'persistTeamMode(root, "glm")' internal/cli/launcher.go
 grep -nE 'clearTmuxSessionEnv\(\)|removeGLMEnv\(settingsPath\)|resetTeamModeForCC\(root\)|cleanupMoaiWorktrees\(root\)' internal/cli/launcher.go
@@ -104,7 +118,7 @@ Any `*_ABSENT`, or a count other than 1 on check 4, halts per REQ-KS-002 / §B.3
 | C5 | Post-rename identifiers only; zero occurrences of `factory` in anything authored | REQ-KS-001 | all of it |
 | C6 | Env-var names are constants in `internal/config/envkeys.go`; no inlined literals at call sites | REQ-KS-009 | the topology signal, the quorum-bound override if any |
 | C7 | CLI may not call `AskUserQuestion` or `mcp__askuser__*` | REQ-KS-010 | the bootstrap surface specifically, which *wants* to prompt |
-| C8 | Board state is resolved from `git rev-parse --git-common-dir`, never from the session's own tree | `REQ-KB-005`; negative obligation here | no emitted guidance or dispatch tells a session to read its own tree's board copy |
+| C8 | Board state lives where `REQ-KB-005` puts it and is resolved by the probe `REQ-KB-005` prescribes, never from the session's own tree | `REQ-KB-005`; negative obligation here | no emitted guidance or dispatch tells a session to read its own tree's board copy, and none names a board path or probe form of its own |
 | C8a | The `lead` is the **sole writer** of board state; every other session reads it | `REQ-KB-017`; negative obligation here | no dispatch instructs a worker to record progression in board state, and no emitted command gives a worker a board-mutating invocation |
 | C9 | Primary-checkout branch guard: no branch-state mutation in the primary checkout | worktree sibling's `REQ-KW-006` | this SPEC performs none; named so nobody adds one |
 
@@ -126,12 +140,13 @@ C8, C8a and C9 have **no affirmative surface** in this SPEC — all three are ob
 | A session's role is a **declared datum**, not a value derived from its launch label | A second thing to carry at launch and a second thing to keep consistent. Bought: the only alternative — deriving the role from the label — requires either collapsing REQ-KS-014's distinct-label rule or removing the operator's backend choice, since one role corresponds to two-or-more labels. |
 | The declaration's **carrier** is left to run-phase | The SPEC cannot be read to learn where the role lives, and two implementations could differ. Accepted: no measurement here favours the launch command over the registry over the discovery output, and fixing it would be fixing a decision on taste. |
 | Entry into `plan` is an **operator act**, and the mechanism is left unowned | The board cannot be started without a human, and the family still has a hole at its upstream end. Bought: the hole is written down (§B.4) instead of being assumed closed by whichever SPEC the reader happens to be in. |
+| Quorum is scoped to **bootstrap**, and recovering a role vacated later is released rather than owned | A worker that dies mid-run leaves its column unowned and the board stalls silently — the §A.5 failure shape, arriving after bootstrap instead of at it. Bought: the ceiling is reported honestly (25 of 25 requirements, measured) and the gap is named with its symptom and its operator workaround (§B.6, `spec.md` §C) rather than absorbed into a requirement that would not fit. |
 
 ## §F. Milestones
 
 ### M0 — Preflight and prerequisite gates
 
-Run §C. Halt on any absence. Re-read the landed messaging doctrine and diff its role-boundary-dispatch clause against `spec.md` §A.9; surface any delta as a blocker **before M2** (REQ-KS-002). Re-measure the five substrate properties of `spec.md` §A.3 against this runtime and record each result, and re-measure the launcher surface of `spec.md` §A.8 in both halves — the per-session backend reaching the launched session through the exec'd process environment, and the project-global mutations each launcher performs against the other's (REQ-KS-003, checks 8 and 9 of §C).
+Run §C. Halt on any absence. Re-read the landed messaging doctrine and diff its role-boundary-dispatch clause against `spec.md` §A.9; surface any delta as a blocker **before M2** (REQ-KS-002). Re-measure the five substrate properties of `spec.md` §A.3 against this runtime and record each result, and re-measure the launcher surface of `spec.md` §A.8 in both halves — the per-session backend reaching the launched session through the environment the launcher constructs for it — probed on both build-tagged launch paths, not on the POSIX one alone — and the project-global mutations each launcher performs against the other's (REQ-KS-003, checks 8 and 9 of §C).
 
 The launcher measurement is placed at M0 rather than at M3, where the guidance is written, because it is the premise of a decision M3 only implements: where the per-session half did **not** hold, the printed-command mechanism of REQ-KS-013 would not deliver per-worker backends at all, and that is a finding to surface before writing the surface rather than after.
 
