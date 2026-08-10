@@ -39,10 +39,14 @@ func pbv(backend, gate, verdict string) PerBackendVerdict {
 }
 
 // pbvReq returns a required-gate PerBackendVerdict.
-func pbvReq(backend, verdict string) PerBackendVerdict { return pbv(backend, config.AuditGateRequired, verdict) }
+func pbvReq(backend, verdict string) PerBackendVerdict {
+	return pbv(backend, config.AuditGateRequired, verdict)
+}
 
 // pbvAdv returns an advisory-gate PerBackendVerdict.
-func pbvAdv(backend, verdict string) PerBackendVerdict { return pbv(backend, config.AuditGateAdvisory, verdict) }
+func pbvAdv(backend, verdict string) PerBackendVerdict {
+	return pbv(backend, config.AuditGateAdvisory, verdict)
+}
 
 // claudeReview is a reusable in-session claude verdict.
 func claudeReview(verdict string) ReviewOutput {
@@ -575,15 +579,25 @@ func grepRepo(t *testing.T, files []string, needle string) []string {
 
 // fakeCodexRunner is reused from mcp_codex_test.go (same package).
 
-// performCodexAudit reuses the existing codex binary-resolution + JSON-RPC seam:
-// when codex is on PATH and returns a well-formed verdict, the engine passes it
-// through unchanged (NO re-implementation, AP-AMM-1).
+// performCodexAudit reuses the existing codex binary-resolution + JSON-RPC
+// session seam: when codex is on PATH and the session yields a clean review, the
+// engine passes the synthesized verdict through unchanged (NO re-implementation,
+// AP-AMM-1).
 func TestPerformCodexAudit_ReusesExistingCodexHandler_NoReimpl_AP_AMM_1(t *testing.T) {
-	// Swap codex seams (the same ones mcp_codex_test.go swaps).
-	prevLook, prevRun := codexLookPath, codexRunner
+	// Swap codex seams (the same ones mcp_codex_test.go swaps). The adversarial
+	// path (turn/start) emits the verdict as a final agentMessage; a clean review
+	// (no finding bullets) synthesizes to verdict=pass.
+	lines := []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","completedAtMs":1,"item":{"type":"agentMessage","id":"m1","text":"codex:ok, no findings"}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
+	}
+	prevLook, prevSess := codexLookPath, codexSession
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
-	codexRunner = &fakeCodexRunner{stdout: `{"jsonrpc":"2.0","id":1,"result":{"verdict":"pass","summary":"codex:ok","findings":[],"next_steps":[]}}`}
-	t.Cleanup(func() { codexLookPath, codexRunner = prevLook, prevRun })
+	codexSession = &fakeCodexSession{lines: lines}
+	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSess })
 
 	out := performCodexAudit(context.Background(), "uncommittedChanges", "concurrency")
 	if out.Verdict != "pass" {

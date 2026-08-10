@@ -88,6 +88,9 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	defer cancel()
 	out, rpcErr := runCodexReviewRPC(ctx, binaryPath, codexMethodReviewStart, map[string]any{
 		"target": codexTargetUncommitted,
+		// cwd lets codex review the uncommitted changes in THIS project's tree;
+		// without it thread/start reviews the app-server's own cwd, not projectDir.
+		"cwd": projectDir,
 	})
 	if rpcErr != nil {
 		// (5) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
