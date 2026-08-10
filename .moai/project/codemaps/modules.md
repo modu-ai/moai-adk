@@ -71,9 +71,10 @@
 **역할**: Ralph 의사결정 엔진  
 **기능**: `Decide()` (max_iter > perfect_gate > stagnation > human_review)
 
-### internal/harness (75 non-test 파일)
+### internal/harness (80 non-test 파일)
 **역할**: 하네스 학습 서브시스템  
-**기능**: Observer, Learner (4-tier), Applier, 5단계 safety
+**기능**: Observer, Learner (4-tier), Applier, 5단계 safety  
+**하위 패키지**: `routing` — 위임 관측 원장(routing ledger), 훅 입력에서 기계적으로 기록 · `delegationmap` — 관측된 원장 행을 집계해 위임 맵 개정안을 제안(읽기 전용, 적용은 Tier-4 승인 게이트)
 
 ### internal/permission (18파일)
 **역할**: 8-tier 권한 스택  
