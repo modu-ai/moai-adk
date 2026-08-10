@@ -5,7 +5,7 @@ draft: false
 description: "MoAI-ADK の 3 つの核心 (トークノミクス・エージェンティックループエンジニアリング・エージェンティックハーネス) が立脚するプラットフォーム、Claude Code を基礎から理解する 4 グループの学習パス。"
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🛡️ エージェント型ハーネス · 🧠 エージェンティック・ループ・エンジニアリング
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: エージェント型ハーネス · エージェンティック・ループ・エンジニアリング
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 

@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Agentic Loop Engineering · 🛡️ Agentic Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Tokenomics · Agentic Loop Engineering · Agentic Harness
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

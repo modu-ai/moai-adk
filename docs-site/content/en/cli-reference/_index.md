@@ -5,7 +5,7 @@ draft: false
 description: "Detailed reference for the terminal moai CLI commands."
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Agentic Loop Engineering · 🛡️ Agentic Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Tokenomics · Agentic Loop Engineering · Agentic Harness
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 

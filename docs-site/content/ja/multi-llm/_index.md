@@ -4,7 +4,7 @@ weight: 60
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: トークノミクス
 {{< /callout >}}
 <!-- @value: tokenomics -->
 
