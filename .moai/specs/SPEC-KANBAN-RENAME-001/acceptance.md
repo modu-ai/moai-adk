@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RENAME-001
 title: "Acceptance criteria — Factory Mode to Kanban Mode rename"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -239,15 +239,18 @@ tail -20 /tmp/kr-template.log
 ```
 → `exit=0` **and** a `FAIL` count of `0`, both read from the whole log — same reasoning as AC-KR-011: an exit code read after a pipe is `tail`'s, not the test command's. The shipped guard decides this; no re-implemented regex substitutes for it.
 
-**AC-KR-020** — Given `make build` has run, When `catalog.yaml` is diffed, Then the `moai` skill's `hash:` field has changed and the file is committed.
+**AC-KR-020** — Given template source has been edited, When `make build` runs, Then it exits 0, the template guards still pass, and `catalog.yaml` is committed if — and only if — the build changed it.
 ```bash
-make build
-git diff --stat d39e3cdc6..HEAD -- internal/template/catalog.yaml
-git diff d39e3cdc6..HEAD -- internal/template/catalog.yaml | grep -c '^[+-].*hash:'
+make build > /tmp/kr-build-catalog.log 2>&1; echo "make-exit=$?"
+git status --porcelain -- internal/template/catalog.yaml
+go test ./internal/template/... -count=1 > /tmp/kr-template.log 2>&1; echo "tmpl-exit=$?"
+grep -c '^FAIL' /tmp/kr-template.log
 ```
-→ `catalog.yaml` appears in the stat output and the hash-line count is ≥ 2 (one removed, one added). An empty diff means either the build did not run or the rename did not reach template source — both are failures.
+→ `make-exit=0`, a `tmpl-exit=0` with a `FAIL` count of `0`, and — **for this rename** — an **empty** porcelain line, meaning the build produced no catalog delta to commit. A non-empty porcelain line is not a failure; it is the branch where the delta is committed before M4. **Positive controls, measured at HEAD `768024f30`:** `make build` printed `catalog.yaml updated successfully (12403 bytes)` and exited 0 while `git status --porcelain` came back **empty**; `git log --oneline d39e3cdc6..HEAD -- internal/template/catalog.yaml` returns **0** commits; and `go test ./internal/template/... -count=1` reported `ok  github.com/modu-ai/moai-adk/internal/template  20.081s` uncached with `FAIL` count `0`. The exit code is read **before** any pipe, per §A.1.
 
-Anchored to `d39e3cdc6..HEAD` at v0.3.0, for the reason §A.1 already states and this criterion alone had not applied. The v0.2.0 form used a **ref-less** `git diff`, which compares the working tree to the index and is therefore empty the moment `catalog.yaml` is committed — and `plan.md` M3 step 2 instructs exactly that commit. Read at M4 the criterion would report no stat line and a hash count of `0`, i.e. FAIL, while its own text asserts "and the file is committed": the two halves contradicted each other, and the criterion was unsatisfiable by construction at the moment it runs. `AC-KR-012`, `AC-KR-023`, and `AC-KR-024` were anchored for the same hazard at v0.1.1 and this one was skipped; re-checked at v0.3.0, no other criterion carries the ref-less form. The bare `git diff --stat internal/template/catalog.yaml` in `plan.md` M3 step 2 is **not** the same defect and stays as written — it runs immediately after `make build`, before the commit, where the working-tree comparison is the correct one.
+**Amended at v0.5.0 — the prior form expected a delta that cannot occur.** The v0.3.0 criterion asserted that the `moai` skill's `hash:` had changed and required the `d39e3cdc6..HEAD` catalog diff to be **non-empty**. It rests on `plan.md` §B-3's claim that renaming `factory.md` → `kanban.md` inside `.claude/skills/moai/` moves that skill's hash. Read from the generator, it does not: `internal/template/scripts/gen-catalog-hashes.go` `resolveHashSourcePath` stats the catalog entry and, when it is a directory, returns `filepath.Join(absPath, "SKILL.md")` — the **root `SKILL.md` alone** — as the hash source, with no directory walk. One hash *per* skill directory is not one hash *of* that directory, and a rename confined to `workflows/` is invisible to it. Measured, `.claude/skills/moai/SKILL.md` carries **zero** `factory` or `kanban` occurrences on either side of the rename, so no delta was ever available and the criterion was unsatisfiable by construction — the same shape of defect the v0.3.0 anchoring repair addressed, arriving from the opposite direction.
+
+The replacement is keyed on what actually decides `REQ-KR-020`: that the build ran and succeeded, and that the template guards — which are the mechanism the original hazard prose invoked — still pass. It **fails** if `make build` breaks, if a template guard regresses, or if a genuine catalog delta is left uncommitted at M4 (the porcelain line is non-empty there only if step-2's commit was skipped). What it no longer does is fail a correct rename for not producing a delta the generator cannot produce. The hazard the old text warned of does not arise here on independent evidence: `grep -rn 'workflows/factory'` over `.claude/`, `internal/template/templates/`, and `.moai/project/` returns **0**, so no reference dangles at the renamed path.
 
 ### B.6 Completion
 
@@ -322,9 +325,21 @@ diff /tmp/kr-tok-spec.txt /tmp/kr-tok-acc.txt && echo OK
 ```bash
 grep -nE 'internal/kanban|kanban\.go|-k' .moai/project/codemaps/modules.md .moai/project/structure.md
 grep -rlniIE "$TOK" .moai/project/ | wc -l
-grep -niI factory .moai/project/codemaps/modules.md .moai/project/structure.md | wc -l
+grep -niI factory .moai/project/codemaps/modules.md .moai/project/structure.md \
+  | grep -v 'SPEC-FACTORY-MODE-001' | wc -l
 ```
-→ the first command shows the renamed package section and entry-point line; the second and third both return `0`. **Positive controls, all three measured at HEAD `d39e3cdc6`:** the token grep matches **2 files** (`-l`) across **3 lines** (`codemaps/modules.md` 157 and 246, `structure.md` 139), and the bare-word grep over the same two files matches **5 lines** (`modules.md` 157, 158, 161, 246 and `structure.md` 139). Neither file is template-mirrored, so the delta-preservation invariant of AC-KR-017 does not apply to them (REQ-KR-024).
+→ the first command shows the renamed package section and entry-point line; the second and third both return `0`. **Positive controls, measured at HEAD `d39e3cdc6`:** the token grep matches **2 files** (`-l`) across **3 lines** (`codemaps/modules.md` 157 and 246, `structure.md` 139); the bare-word grep over the same two files matches **5 lines** (`modules.md` 157, 158, 161, 246 and `structure.md` 139), of which **three carry only the in-scope token** (157, 158, 161) and **two are dual-token** (`modules.md` 246, `structure.md` 139) — each of those two carrying an in-scope package reference *and* a `SPEC-FACTORY-MODE-001` citation on one line. The bounded third command therefore reads **3** at baseline and **0** after the rename. Neither file is template-mirrored, so the delta-preservation invariant of AC-KR-017 does not apply to them (REQ-KR-024).
+
+**The `grep -v` bound was added at v0.5.0, and the unbounded form must not be restored.** Run after the rename landed at `768024f30`, the unbounded command returns **2**, not `0`, and both matches are this:
+
+```
+modules.md:246: … `internal/kanban` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 …
+structure.md:139: … `internal/kanban` — belongs to SPEC-FACTORY-MODE-001; …
+```
+
+The package references are already renamed. What still matches is the substring `FACTORY` **inside the citation** `SPEC-FACTORY-MODE-001` — a reference to the closed SPEC's preserved record, which `REQ-KR-012` protects and §C excludes from every scope this SPEC defines. Driving the unbounded count to `0` would require either inventing a SPEC identifier that does not exist, orphaning `.moai/specs/SPEC-FACTORY-MODE-001/`, or deleting the citation outright; both are prohibited, so the target was unreachable and the defect is in the control rather than in the implementation. The v0.3.0 control counted all five baseline lines as though each carried only the in-scope token, which set the target two measurements short of what the requirement can deliver.
+
+The bound is the narrowest one that separates the two: it drops **only** lines carrying the protected citation, so a stale `internal/factory`, a `factory.go`, or a `moai cc -f` on any other line still counts and still fails. The two dual-token lines are not exempted from scrutiny by it either — their package references are what the first command reads back in renamed form.
 
 **Two v0.3.0 repairs, and the second closes a gap this SPEC had disclosed rather than fixed.**
 
