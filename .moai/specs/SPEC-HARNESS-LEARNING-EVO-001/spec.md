@@ -2,9 +2,9 @@
 id: SPEC-HARNESS-LEARNING-EVO-001
 title: "Routing-ledger instrumentation repair (L1) — mechanical emission of delegation observations"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-09
-updated: 2026-08-09
+updated: 2026-08-10
 author: manager-spec
 priority: P3
 phase: "v3.2 target"
