@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PHASE2-001
 title: "Codex Phase 2 — task delegation + job lifecycle tools over the delivered app-server JSON-RPC session client"
-version: "0.1.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-10
@@ -19,6 +19,9 @@ depends_on: [SPEC-MOAI-MCP-SERVER-001]
 
 ## HISTORY
 
+- 2026-08-10 (plan-phase, iter-4, v0.4.0) — Advisory polish applied after plan-audit iteration 2 returned **PASS at 0.84** against the Tier M threshold 0.80 (report: `.moai/reports/plan-audit/SPEC-CODEX-PHASE2-001-review-2.md`). The PASS was recorded against v0.3.0; nothing here changes the substance the auditor scored, and no requirement or acceptance criterion was added or removed. Five of the six advisory findings were taken. **N1**: AC-CX2-016's read-only-hint assertion is restated against the *value* of `*Annotations.ReadOnlyHint` rather than its presence — `mcp.NewTool` seeds every tool with `ToBoolPtr(false)` (mcp-go v0.57.0 `mcp/tools.go:856`), so a nil-check would have false-failed a correctly-registered write tool. **N2**: the same AC's schema assertion is restated as per-tool declared properties, because `NewTool` always seeds a non-empty `InputSchema` and the original clause therefore could not fail. **N3**: AC-CX2-010's `codex_setup` arm now states literal expected values per config state instead of deferring to "the gate's own read", removing a self-referential oracle. **N5**: `progress.md`'s stale v0.2.0 line was corrected. **N6**: degrade path (b) now states why AC-CX2-002 is deliberately excluded from REQ-CX2-001's amended AC set, so the partial set is not mistaken for the id-arithmetic error D1 fixed. **N4** (degrade paths (c)/(d) under-specifying their knock-on collapse) was **not** taken — M0's closure criterion already requires the real amendment to land before M1 starts, which makes the degrade text guidance rather than an exhaustive script.
+- 2026-08-10 (plan-phase, iter-3, v0.3.0) — Closes the four MUST-FIX findings of plan-audit iteration 1 (verdict FAIL, 0.73 against the Tier M 0.80 threshold). **D1**: `plan.md` §D M0's interrupt degrade path pointed at AC-CX2-011 (which verifies REQ-CX2-008 `resume_last`); it now points at AC-CX2-014, the AC actually bound to REQ-CX2-011 per the `acceptance.md` §D table, and states the degraded form explicitly. Degrade paths for probe items (b)-(d) were added alongside it. **D2**: the three previously-uncheckable normative clauses gained binary checks — `codex_setup`'s `allow_write` field (a Go-test arm on AC-CX2-010), REQ-CX2-015's typed-field/default placement, and REQ-CX2-013's per-tool JSON Schema + read-only hint (both in AC-CX2-016's batch). **D3**: M0 gained an explicit closure criterion, a pinned probe version (`codex-cli 0.146.1`), and a probe-record destination (`progress.md` §E.2 — no `research.md`, which would breach the Tier M artifact set), plus a matching DoD bullet. **D4**: AC-CX2-016's registration check replaced a line-counting `grep -c` alternation, which could pass with three of four tools missing, with a per-tool existence loop. **S2**: §A.2's "zero matches over Markdown" claim was narrowed to zero *implementation* matches, since three tokens legitimately appear in the predecessor's out-of-scope prose. `REQ-CX2-007`'s `codex_setup` inspectability clause was **kept** (the write-mode fork chose the config key over an env var because the key is visible to `codex_setup`) and is now claimed by M3 and checked by AC-CX2-010. No requirement and no acceptance criterion was added or removed: the set remains REQ-CX2-001..015 and AC-CX2-001..016.
+- 2026-08-10 (plan-phase, iter-2, v0.2.0) — The two open `plan.md` §D M0 design forks were resolved by user decision and recorded as decisions; M0 now carries the protocol probe alone. **Background job execution model** = (i) an in-process goroutine inside the long-lived `moai mcp-server` process, accepting the loss of every in-flight job on server exit and deferring detached-subprocess durability to a later upgrade. **Write-mode opt-in surface** = the config key `workflow.codex.task.allow_write`, following the existing `workflow.codex.review_gate.enabled` shape, read fail-closed with a distributed default of `false` and inspectable via `codex_setup`. REQ-CX2-003 / REQ-CX2-007 / REQ-CX2-015 and risk R2 were amended for consistency with those two decisions; no requirement was added or removed (the set remains REQ-CX2-001..015).
 - 2026-08-10 (plan-phase, iter-1) — Initial Tier M authoring. Picks up the follow-up SPEC that `SPEC-MOAI-MCP-SERVER-001` (status: `completed`) declared in its `spec.md:47` and `design.md:81` Out-of-Scope entries. **The declared deferral list is stale**: one of its four items (the native Go JSON-RPC client for `codex app-server`) was substantially delivered afterwards by PR #1430 (`d39e3cdc6`, `fix(codex-gate): speak the real app-server JSON-RPC protocol so the gate can actually BLOCK`). §A.1 below records the verified delivered/remaining split against `origin/main`; this SPEC scopes only the genuinely-missing remainder.
 
 ## §A. Verified baseline — what already exists
@@ -45,7 +48,7 @@ The transport, the handshake, the framing, the id matching, the error arm, and t
 
 ### §A.2 Not delivered — verified by absence
 
-`git grep` over `origin/main` (Go, Markdown, and JSON sources) returns **zero** matches for every one of: `codex_task`, `codex_job_status`, `codex_job_result`, `codex_job_cancel`, `codex_transfer`, `turn/interrupt`, `resume_last`, `.moai/state/codex-jobs`. Tool registration in `internal/cli/mcp_server.go` `registerMoaiMCPTools` (L105-242) carries exactly two codex tools — `codex_audit` (L191-199) and `codex_setup` (L204-208).
+`git grep` over `origin/main` returns **zero implementation matches** — no Go source, no registration site, no config or JSON surface — for every one of: `codex_task`, `codex_job_status`, `codex_job_result`, `codex_job_cancel`, `codex_transfer`, `turn/interrupt`, `resume_last`, `.moai/state/codex-jobs`. Three of those tokens (`codex_task`, `codex_job_status`, `codex_transfer`) do appear in Markdown, but only inside the predecessor's own out-of-scope prose (`SPEC-MOAI-MCP-SERVER-001/spec.md:47`, `design.md:81`) — the very lines this SPEC cites in §I as the deferral it picks up. Prose naming a deferred tool is not an implementation of it. Tool registration in `internal/cli/mcp_server.go` `registerMoaiMCPTools` (L105-242) carries exactly two codex tools — `codex_audit` (L191-199) and `codex_setup` (L204-208).
 
 ### §A.3 Three verified structural gaps in the delivered client
 
@@ -104,7 +107,7 @@ This SPEC delivers four new MCP tools and the session/job plumbing they require,
 
 ### M2 — Job registry (durable record)
 
-**REQ-CX2-003** (Event-driven) **When** a codex task is started in background mode, the server shall create a job record at `.moai/state/codex-jobs/<job-id>.json` carrying at minimum: job id, status, creation and last-update timestamps, the codex `threadId`, the requested mode, and a summary of the request.
+**REQ-CX2-003** (Event-driven) **When** a codex task is started in background mode, the server shall create a job record at `.moai/state/codex-jobs/<job-id>.json` carrying at minimum: job id, status, creation and last-update timestamps, the codex `threadId`, the pid of the codex process this server spawned for the job, the requested mode, and a summary of the request. The background job runs in-process (a goroutine within the running server), so the recorded pid is one spawned in the current server lifetime; the record shall carry no reattachment metadata for a later server lifetime.
 
 **REQ-CX2-004** (Ubiquitous) A job record's `status` shall be one of `queued`, `running`, `completed`, `failed`, `cancelled`; each transition shall be written atomically, and **where** the state directory is unwritable the tool shall return a structured error result rather than panicking or aborting the server process.
 
@@ -114,7 +117,7 @@ This SPEC delivers four new MCP tools and the session/job plumbing they require,
 
 **REQ-CX2-006** (Event-driven) **When** `codex_task` is invoked, the server shall drive a codex `turn/start` carrying the caller's prompt, returning the completed task output when `background` is false and a job id when `background` is true.
 
-**REQ-CX2-007** (Capability gate) **Where** the caller requests `write`, the tool shall permit codex to modify the working tree only when the project has explicitly opted in; otherwise it shall run the turn in a non-writing mode and shall state in its result that the write request was not honored. The distributed default shall be opt-out (no writes).
+**REQ-CX2-007** (Capability gate) **Where** the caller requests `write`, the tool shall permit codex to modify the working tree only when the project has explicitly opted in via the config key `workflow.codex.task.allow_write`, read fail-closed (a missing file, a parse error, or an absent block all read as not opted in); otherwise it shall run the turn in a non-writing mode and shall state in its result that the write request was not honored. The distributed default shall be opt-out (no writes), and the opt-in's current state shall be inspectable through `codex_setup`'s result as an `allow_write` field, alongside the existing `enable_review_gate` field.
 
 **REQ-CX2-008** (State-driven) **While** `resume_last` is set, `codex_task` shall reuse the most recently recorded `threadId` for the project instead of opening a new thread; **when** no such thread is recorded, it shall open a new thread and report in its result that no prior thread was resumed.
 
@@ -134,7 +137,7 @@ This SPEC delivers four new MCP tools and the session/job plumbing they require,
 
 **REQ-CX2-014** (Unwanted) None of the new tools or their supporting code shall invoke `AskUserQuestion` or emit a free-form user-facing question; a missing input, an unknown job, or a refused write is returned as a structured result for the orchestrator to translate.
 
-**REQ-CX2-015** (Capability gate) **Where** this SPEC introduces a threshold, timeout, or environment-variable name, it shall be defined as a constant in `internal/config/defaults.go` or `internal/config/envkeys.go` respectively, and no file shall be added or modified under `internal/template/templates/`.
+**REQ-CX2-015** (Capability gate) **Where** this SPEC introduces a threshold, timeout, environment-variable name, or config key, it shall be defined in Go — a constant in `internal/config/defaults.go`, an env name in `internal/config/envkeys.go`, or, for the `workflow.codex.task.allow_write` key, a typed field in `internal/config/types.go` with its distributed default (`false`) in `internal/config/defaults.go` — and no file shall be added or modified under `internal/template/templates/`.
 
 ## §E. Acceptance Criteria
 
@@ -159,7 +162,7 @@ Enumerated as `AC-CX2-001..016` in `acceptance.md`, bound to milestones M1-M4 pl
 ## §H. Risks
 
 - **R1 — codex app-server remains experimental and undocumented.** `turn/interrupt`, thread reuse, and any write-mode flag are asserted from the same undocumented surface that PR #1430 had to hand-probe. Mitigation: an M0-style probe against a pinned codex-cli version precedes the requirements that depend on a method name; fail-open covers a method that does not exist.
-- **R2 — a long-lived codex subprocess outliving its caller.** Background jobs hold a subprocess whose lifetime is no longer bounded by a single tool call. Mitigation: a bounded job-level ceiling reusing the `DefaultCodexReviewGateTimeout` precedent, plus REQ-CX2-011 cancellation and REQ-CX2-012 pid ownership.
+- **R2 — a long-lived codex subprocess outliving its caller.** Background jobs hold a subprocess whose lifetime is no longer bounded by a single tool call; under the in-process execution model it is bounded by the `moai mcp-server` process lifetime instead. Mitigation: a bounded job-level ceiling reusing the `DefaultCodexReviewGateTimeout` precedent, plus REQ-CX2-011 cancellation and REQ-CX2-012 pid ownership (a same-lifetime check, since every recorded pid was spawned by the running server).
 - **R3 — write-mode blast radius.** `codex_task` with writes lets an external MCP host mutate the working tree through moai. Mitigation: REQ-CX2-007 opt-in with a distributed default of no writes.
 - **R4 — job-record concurrency.** Two sessions on the same checkout share `.moai/state/codex-jobs/`. Mitigation: per-job files (no shared index), atomic write per REQ-CX2-004.
 
