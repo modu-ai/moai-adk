@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -11,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/harness/routing"
+	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
 
@@ -235,4 +238,109 @@ func TestHarnessObserve_BashEvidenceGated(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRoutingLedger_TerminalCloseEndToEnd — AC-HLE-014 (REQ-HLE-010).
+//
+// Drives the seam sequence in production order — UserPromptSubmit, two
+// SubagentStop invocations, then the Stop path with an observed test signal —
+// and asserts the row closes as success or fail with its delegations intact.
+//
+// Scope caveat, stated rather than implied: this drives the production handler
+// functions against a temp root. It does NOT prove that Claude Code invokes
+// those handlers in a live session — that depends on the runtime's hook
+// dispatch, on settings.json registration, and on the fail-closed opt-in gate
+// being enabled locally. No CI-runnable assertion can cover that link
+// (acceptance.md §F R1); it needs a manual dogfood check.
+func TestRoutingLedger_TerminalCloseEndToEnd(t *testing.T) {
+	cases := []struct {
+		name        string
+		stdout      string
+		wantOutcome routing.Outcome
+	}{
+		{"observed test pass closes success", "ok  \tgithub.com/x/y\t0.42s\n", routing.OutcomeSuccess},
+		{"observed test fail closes fail", "--- FAIL: TestX (0.01s)\nFAIL\n", routing.OutcomeFail},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeConfig(t, root, "system.yaml", "hook:\n  opt_in:\n    enabled: true\n")
+			writeConfig(t, root, "harness.yaml", "learning:\n  enabled: true\n")
+			t.Setenv(config.EnvClaudeProjectDir, root)
+
+			const sessionID = "e2e-sess"
+
+			// Seam A — a prompt creates the pending row.
+			hook.RoutingSeamUserPromptSubmit(&hook.HookInput{
+				SessionID: sessionID, Prompt: "/moai run SPEC-X", CWD: root,
+			})
+
+			// Seam B — two subagents stop.
+			hook.RoutingSeamSubagentStop(&hook.HookInput{SessionID: sessionID, AgentType: "manager-develop", CWD: root})
+			hook.RoutingSeamSubagentStop(&hook.HookInput{SessionID: sessionID, AgentType: "plan-auditor", CWD: root})
+
+			// The terminal machine signal arrives through the restored Bash
+			// evidence path — the same route production uses, not a hand-written
+			// telemetry file.
+			t.Chdir(root)
+			cmd := &cobra.Command{}
+			withStdin(t, bashPostToolPayloadFor(sessionID, "go test ./...", tc.stdout), func() {
+				if err := runHarnessObserve(cmd, nil); err != nil {
+					t.Fatalf("runHarnessObserve: %v", err)
+				}
+			})
+
+			// Seam C + the existing finalizer, in the Stop path's order.
+			hook.RoutingSeamStopEvidence(root, sessionID)
+			finalizeRoutingLedgerOnStop(root, sessionID, &bytes.Buffer{})
+
+			rows, _, err := routing.NewReader(filepath.Join(root, ".moai", "state", routing.LedgerFileName)).Read(routing.Filter{})
+			if err != nil {
+				t.Fatalf("read ledger: %v", err)
+			}
+			if len(rows) != 1 {
+				t.Fatalf("got %d ledger rows, want exactly 1 finalized row", len(rows))
+			}
+			r := rows[0]
+			if r.Outcome != tc.wantOutcome {
+				t.Errorf("outcome = %q, want %q", r.Outcome, tc.wantOutcome)
+			}
+			if len(r.EvidenceRefs) == 0 {
+				t.Error("evidence_refs is empty; the terminal signal must be recorded on the row")
+			}
+			if len(r.Delegations) != 2 {
+				t.Fatalf("delegations = %d, want 2 — this is the field that was empty on every pre-SPEC row", len(r.Delegations))
+			}
+			if r.Delegations[0].Agent != "manager-develop" || r.Delegations[1].Agent != "plan-auditor" {
+				t.Errorf("delegation agents = %q/%q, want manager-develop/plan-auditor",
+					r.Delegations[0].Agent, r.Delegations[1].Agent)
+			}
+			if r.MatchedSubcommand != "run" {
+				t.Errorf("matched_subcommand = %q, want run", r.MatchedSubcommand)
+			}
+			if pendingFileExists(root, sessionID) {
+				t.Error("the finalized pending file must be removed")
+			}
+		})
+	}
+}
+
+// bashPostToolPayloadFor is bashPostToolPayload with a caller-chosen session id,
+// so the evidence record correlates with the routing row under test.
+func bashPostToolPayloadFor(sessionID, command, stdout string) string {
+	payload := map[string]any{
+		"session_id":      sessionID,
+		"hook_event_name": "PostToolUse",
+		"tool_name":       "Bash",
+		"tool_input":      map[string]any{"command": command},
+		"tool_response": map[string]any{
+			"stdout": stdout, "stderr": "", "interrupted": false,
+		},
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
 }

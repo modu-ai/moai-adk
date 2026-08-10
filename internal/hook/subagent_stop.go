@@ -48,6 +48,14 @@ func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// [HARD] This package does not call AskUserQuestion. Errors emit to slog only.
 	h.dispatchCapture(input)
 
+	// Routing-ledger seam B (SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-007).
+	// Appends one delegation entry to the session's pending routing row, taking
+	// the agent identity from agent_type verbatim. Fail-open and inert while
+	// either harness observation gate is closed. Placed before the Windows
+	// early-return below so the observation is platform-independent — the return
+	// there is about tmux cleanup, which has nothing to do with this.
+	RoutingSeamSubagentStop(input)
+
 	// On Windows, tmux is not available - no-op
 	if runtime.GOOS == "windows" {
 		slog.Debug("tmux cleanup skipped on Windows")

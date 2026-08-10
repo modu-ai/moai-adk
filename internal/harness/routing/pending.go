@@ -136,6 +136,18 @@ func (s *Store) RecordIfAbsent(row PendingRow) error {
 	return s.writePending(row)
 }
 
+// LoadPending returns the session's pending row. The bool is false (with a nil
+// error) when the session has no pending row.
+//
+// The seams need to READ current state to decide, not only to write: the
+// first-writer-wins subcommand policy (REQ-HLE-006) asks "is this field still
+// empty?", and that question belongs to the seam rather than to the store —
+// baking the policy into Annotate would make the store the owner of a decision
+// the SPEC deliberately places at the call site.
+func (s *Store) LoadPending(sessionID string) (PendingRow, bool, error) {
+	return s.loadPending(s.pendingPath(sessionID))
+}
+
 // Annotate patches routing metadata onto an existing pending row (REQ-HLE-005).
 // It creates nothing and finalizes nothing: a session with no pending row is a
 // silent no-op, because annotation describes an observation already in flight
