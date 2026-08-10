@@ -38,7 +38,10 @@ func withChangeDetector(t *testing.T, hasChanges bool) {
 // distributed default is OFF per C6 / AC-MCP-010).
 func TestReviewGate_DisabledAllows(t *testing.T) {
 	withChangeDetector(t, true) // even with changes present...
-	withCodexLookPath(t, func(string) (string, error) { t.Fatal("codex must not be consulted when gate disabled"); return "", nil })
+	withCodexLookPath(t, func(string) (string, error) {
+		t.Fatal("codex must not be consulted when gate disabled")
+		return "", nil
+	})
 	runner := &fakeCodexRunner{}
 	withCodexRunner(t, runner)
 
@@ -60,7 +63,10 @@ func TestReviewGate_DisabledAllows(t *testing.T) {
 // ALLOW (mandatory Claude Code loop-prevention protocol; mirrors stopHandler).
 func TestReviewGate_LoopPreventionAllows(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexLookPath(t, func(string) (string, error) { t.Fatal("codex must not be consulted on loop-prevention ALLOW"); return "", nil })
+	withCodexLookPath(t, func(string) (string, error) {
+		t.Fatal("codex must not be consulted on loop-prevention ALLOW")
+		return "", nil
+	})
 	runner := &fakeCodexRunner{}
 	withCodexRunner(t, runner)
 
@@ -93,11 +99,11 @@ func TestReviewGate_NoEditTurnAllows(t *testing.T) {
 }
 
 // TestReviewGate_CodexPassAllows proves an edit turn that codex approves ALLOWs
-// (the gate reviews the uncommitted change, codex returns pass → ALLOW).
+// (the gate reviews the uncommitted change, codex's review prose has no finding
+// bullets ⇒ synthesized pass ⇒ ALLOW).
 func TestReviewGate_CodexPassAllows(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{stdout: rpcResponse(t, ReviewOutput{Verdict: "pass", Summary: "approved"})})
+	withCodexSession(t, codexSessionScript("clean change, approved"))
 
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {
@@ -105,12 +111,12 @@ func TestReviewGate_CodexPassAllows(t *testing.T) {
 	}
 }
 
-// TestReviewGate_CodexFailBlocks proves the BLOCK contract: an edit turn that
-// codex rejects BLOCKS the session end ({decision: block, reason: ...}).
+// TestReviewGate_CodexFailBlocks proves the BLOCK contract: an edit turn whose
+// codex review carries severity-tagged finding bullets synthesizes to fail and
+// BLOCKS the session end ({decision: block, reason: ...}).
 func TestReviewGate_CodexFailBlocks(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{stdout: rpcResponse(t, ReviewOutput{Verdict: "fail", Summary: "found issues", Findings: []Finding{{Severity: "high", Title: "x"}}})})
+	withCodexSession(t, codexSessionScript("- [P1] found issues\n- [P2] more issues"))
 
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil {
@@ -140,12 +146,15 @@ func TestReviewGate_FailOpenOnMissingCodex(t *testing.T) {
 	}
 }
 
-// TestReviewGate_FailOpenOnCodexError proves a codex error / malformed response
+// TestReviewGate_FailOpenOnCodexError proves a codex session-start failure
 // degrades to ALLOW (the gate never hard-blocks on an inconclusive reviewer).
 func TestReviewGate_FailOpenOnCodexError(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{err: errFakeCodexCrash})
+	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
+	codexRunner = stubCodexRunner{}
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}
+	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
 
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {
@@ -153,12 +162,18 @@ func TestReviewGate_FailOpenOnCodexError(t *testing.T) {
 	}
 }
 
-// TestReviewGate_InconclusiveAllows proves a codex inconclusive verdict (the
-// fail-open ReviewOutput shape) does NOT block.
+// TestReviewGate_InconclusiveAllows proves a codex session that completes the
+// review turn but yields no verdict prose (no exitedReviewMode / agentMessage)
+// synthesizes to inconclusive and does NOT block (fail-open).
 func TestReviewGate_InconclusiveAllows(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{stdout: rpcResponse(t, inconclusiveReview("codex timed out"))})
+	// Session reaches turn/completed but carries no review item ⇒ no review text.
+	withCodexSession(t, []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
+	})
 
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {
@@ -223,9 +238,9 @@ func TestCodexReviewGate_SubcommandRegistered(t *testing.T) {
 // trip the gate (the self-gate stays honest under normal session churn).
 func TestHasReviewableChanges_RuntimePathsExcluded(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
+		name      string
 		porcelain string
-		want    bool
+		want      bool
 	}{
 		{"empty", "", false},
 		{"only runtime", " M .moai/state/active-sessions.json\n?? .moai/cache/x\n M .claude/agent-memory/manager-develop/foo.md\n", false},

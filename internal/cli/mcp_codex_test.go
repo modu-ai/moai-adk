@@ -51,16 +51,6 @@ func (f *fakeCodexRunner) run(_ context.Context, binaryPath string, args []strin
 	return f.stdout, f.err
 }
 
-// rpcResponse builds a JSON-RPC response envelope wrapping result=out.
-func rpcResponse(t *testing.T, out ReviewOutput) string {
-	t.Helper()
-	enc, err := json.Marshal(out)
-	if err != nil {
-		t.Fatalf("marshal review output: %v", err)
-	}
-	return `{"jsonrpc":"2.0","id":1,"result":` + string(enc) + "}\n"
-}
-
 // withCodexRunner swaps the package-level codexRunner seam and restores it on
 // cleanup, so each test is isolated.
 func withCodexRunner(t *testing.T, r codexCommandRunner) {
@@ -75,6 +65,78 @@ func withCodexLookPath(t *testing.T, fn func(string) (string, error)) {
 	prev := codexLookPath
 	codexLookPath = fn
 	t.Cleanup(func() { codexLookPath = prev })
+}
+
+// --- session seam doubles (the review-gate JSON-RPC session path) ---
+
+// fakeCodexSession is the session-spawning double: start returns a fakeConn that
+// replays the canned NDJSON lines in order and records every sent request line.
+type fakeCodexSession struct {
+	lines    []string // canned NDJSON lines recv yields, in order
+	startErr error    // if non-nil, start returns this error
+	sent     []string // recorded sent request lines (across the single session)
+}
+
+func (f *fakeCodexSession) start(context.Context, string, []string) (codexConn, error) {
+	if f.startErr != nil {
+		return nil, f.startErr
+	}
+	return &fakeCodexConn{lines: f.lines, sent: &f.sent}, nil
+}
+
+// fakeCodexConn replays canned lines via recv and records sends.
+type fakeCodexConn struct {
+	lines []string
+	idx   int
+	sent  *[]string
+}
+
+func (c *fakeCodexConn) send(line string) error { *c.sent = append(*c.sent, line); return nil }
+func (c *fakeCodexConn) recv() (string, bool) {
+	if c.idx >= len(c.lines) {
+		return "", false
+	}
+	l := c.lines[c.idx]
+	c.idx++
+	return l, true
+}
+func (c *fakeCodexConn) close() error { return nil }
+
+// withCodexSession installs a fake session that replays `lines` and exposes the
+// recorded sent request lines. The single-shot runner + LookPath seams are also
+// pointed at a stub binary so the gate's binary-resolution succeeds.
+func withCodexSession(t *testing.T, lines []string) *fakeCodexSession {
+	t.Helper()
+	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
+	codexRunner = stubCodexRunner{}
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	sess := &fakeCodexSession{lines: lines}
+	codexSession = sess
+	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
+	return sess
+}
+
+// codexSessionScript builds a canned NDJSON session transcript that drives the
+// client through initialize → thread/start → review/start ack → item/completed
+// (exitedReviewMode carrying reviewText) → turn/completed. The reviewText
+// controls the synthesized verdict (severity-tagged finding bullets ⇒ fail).
+func codexSessionScript(reviewText string) []string {
+	return []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","completedAtMs":1,"item":{"type":"exitedReviewMode","id":"e1","review":` + jsonString(reviewText) + `}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
+	}
+}
+
+// jsonString quotes s as a JSON string (handles escapes).
+func jsonString(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return `""`
+	}
+	return string(b)
 }
 
 // --- AC-MCP-007: codex_audit unified modes + schema output ---
@@ -115,13 +177,11 @@ func TestReviewOutputSchemaShape(t *testing.T) {
 	}
 }
 
-// TestCodexAudit_NativeDispatchesReviewStart proves mode=native shells out to
-// codex app-server with the review/start JSON-RPC method and surfaces the
-// returned verdict through the review-output schema.
+// TestCodexAudit_NativeDispatchesReviewStart proves mode=native drives a codex
+// app-server JSON-RPC session whose third request is the review/start method,
+// and surfaces the synthesized pass verdict through the review-output schema.
 func TestCodexAudit_NativeDispatchesReviewStart(t *testing.T) {
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	runner := &fakeCodexRunner{stdout: rpcResponse(t, ReviewOutput{Verdict: "pass", Summary: "clean", Findings: []Finding{}, NextSteps: []string{}})}
-	withCodexRunner(t, runner)
+	sess := withCodexSession(t, codexSessionScript("clean change, no findings"))
 
 	res, err := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{
@@ -135,13 +195,14 @@ func TestCodexAudit_NativeDispatchesReviewStart(t *testing.T) {
 	if res.IsError {
 		t.Fatalf("unexpected IsError result; codex present must not error")
 	}
-	if runner.gotBinary != "/fake/codex" {
-		t.Errorf("binary path: got %q, want /fake/codex", runner.gotBinary)
+	// The session must have sent initialize, thread/start, then review/start (3rd).
+	if len(sess.sent) < 3 {
+		t.Fatalf("expected ≥3 sent requests; got %d (%v)", len(sess.sent), sess.sent)
 	}
-	if !strContains(runner.gotStdin, codexMethodReviewStart) {
-		t.Errorf("native mode must dispatch %q; stdin was:\n%s", codexMethodReviewStart, runner.gotStdin)
+	if !strContains(sess.sent[2], codexMethodReviewStart) {
+		t.Errorf("3rd request must be %q; got %s", codexMethodReviewStart, sess.sent[2])
 	}
-	if strContains(runner.gotStdin, codexMethodTurnStart) {
+	if strContains(sess.sent[2], codexMethodTurnStart) {
 		t.Errorf("native mode must NOT dispatch %q", codexMethodTurnStart)
 	}
 	if !jsonResultHasVerict(res, "pass") {
@@ -149,12 +210,20 @@ func TestCodexAudit_NativeDispatchesReviewStart(t *testing.T) {
 	}
 }
 
-// TestCodexAudit_AdversarialDispatchesTurnStart proves mode=adversarial shells
-// out to codex turn/start (the adversarial-review prompt rides the turn input).
+// TestCodexAudit_AdversarialDispatchesTurnStart proves mode=adversarial drives a
+// session whose third request is turn/start (the adversarial-review prompt rides
+// the UserInput input array) and surfaces the synthesized fail verdict.
 func TestCodexAudit_AdversarialDispatchesTurnStart(t *testing.T) {
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	runner := &fakeCodexRunner{stdout: rpcResponse(t, ReviewOutput{Verdict: "fail", Summary: "issues", Findings: []Finding{{Severity: "high", Title: "x"}}, NextSteps: []string{"fix"}})}
-	withCodexRunner(t, runner)
+	// turn/start is not a review-mode turn, so the transcript carries the verdict
+	// as a final agentMessage rather than exitedReviewMode.
+	lines := []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","completedAtMs":1,"item":{"type":"agentMessage","id":"m1","text":"- [P1] concurrency hazard found"}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
+	}
+	sess := withCodexSession(t, lines)
 
 	res, _ := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{
@@ -163,8 +232,8 @@ func TestCodexAudit_AdversarialDispatchesTurnStart(t *testing.T) {
 			"focus":  "concurrency",
 		}},
 	})
-	if !strContains(runner.gotStdin, codexMethodTurnStart) {
-		t.Errorf("adversarial mode must dispatch %q; stdin:\n%s", codexMethodTurnStart, runner.gotStdin)
+	if !strContains(sess.sent[2], codexMethodTurnStart) {
+		t.Errorf("3rd request must be %q; got %s", codexMethodTurnStart, sess.sent[2])
 	}
 	if !jsonResultHasVerict(res, "fail") {
 		t.Errorf("adversarial result must surface verdict fail")
@@ -176,8 +245,7 @@ func TestCodexAudit_AdversarialDispatchesTurnStart(t *testing.T) {
 // STRUCTURED result (never a Go error, never a hard crash).
 func TestCodexAudit_FailOpenOnMissingCodex(t *testing.T) {
 	withCodexLookPath(t, func(string) (string, error) { return "", errFakeLookPath })
-	runner := &fakeCodexRunner{} // must not be called
-	withCodexRunner(t, runner)
+	withCodexSession(t, nil) // session must not be started (binary missing)
 
 	res, err := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{"mode": codexModeNative}},
@@ -191,16 +259,16 @@ func TestCodexAudit_FailOpenOnMissingCodex(t *testing.T) {
 	if !jsonResultHasVerict(res, VerdictInconclusive) {
 		t.Errorf("missing codex must yield verdict %q", VerdictInconclusive)
 	}
-	if runner.calls != 0 {
-		t.Errorf("missing codex must NOT invoke the runner; got %d calls", runner.calls)
-	}
 }
 
-// TestCodexAudit_FailOpenOnCodexError proves a codex non-zero exit / runtime
-// error degrades to VerdictInconclusive rather than surfacing a hard error.
+// TestCodexAudit_FailOpenOnCodexError proves a codex session-start failure
+// degrades to VerdictInconclusive rather than surfacing a hard error.
 func TestCodexAudit_FailOpenOnCodexError(t *testing.T) {
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{err: errFakeCodexCrash})
+	prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
+	codexRunner = stubCodexRunner{}
+	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}
+	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
 
 	res, err := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{"mode": codexModeNative}},
@@ -213,11 +281,11 @@ func TestCodexAudit_FailOpenOnCodexError(t *testing.T) {
 	}
 }
 
-// TestCodexAudit_FailOpenOnMalformedResponse proves a malformed JSON-RPC
-// response degrades to VerdictInconclusive (no panic, no hard error).
+// TestCodexAudit_FailOpenOnMalformedResponse proves a stream of unparseable
+// NDJSON lines degrades to VerdictInconclusive (no panic, no hard error): the
+// client skips noise and hits EOF without a verdict.
 func TestCodexAudit_FailOpenOnMalformedResponse(t *testing.T) {
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{stdout: "this is not json-rpc\n"})
+	withCodexSession(t, []string{"this is not json-rpc", "still not json"})
 
 	res, err := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{"mode": codexModeNative}},
