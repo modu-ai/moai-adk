@@ -59,6 +59,13 @@ const (
 	codexMethodInitialize  = "initialize"   // mandatory handshake opener
 	codexMethodThreadStart = "thread/start" // opens a thread; its result.thread.id is the review threadId
 
+	// codexMethodThreadResume re-opens an EXISTING thread by id, loading it from
+	// codex's own on-disk store. It is what resume_last uses instead of
+	// thread/start (REQ-CX2-008). ThreadResumeParams requires only {threadId}
+	// and its response carries the same {thread:{id}} shape thread/start returns,
+	// so extractThreadID reads both (codex-cli 0.146.1 generate-json-schema).
+	codexMethodThreadResume = "thread/resume"
+
 	// codexNotifyTurnStarted is the server→client notification announcing that a
 	// turn began. Its turn.id is the ONLY source of the turnId that
 	// turn/interrupt requires alongside threadId (REQ-CX2-003; M0 probe,
@@ -83,6 +90,16 @@ const (
 	codexAuthAPIKey   = "apiKey"
 	codexAuthProvider = "provider"
 	codexAuthUnknown  = "unknown"
+
+	// codex sandbox-policy variants (REQ-CX2-007). SandboxPolicy is an
+	// INTERNALLY-TAGGED UNION object — {"type":"readOnly"} — not a bare string,
+	// exactly like `target` (codex-cli 0.146.1 generate-json-schema, .definitions
+	// .SandboxPolicy: a oneOf of four objects each requiring `type`). A bare
+	// string is rejected with JSON-RPC -32600, which is how the `target` shape
+	// was originally learned. Only the two variants this SPEC transmits are named
+	// here; dangerFullAccess and externalSandbox are deliberately unreachable.
+	codexSandboxReadOnly       = "readOnly"
+	codexSandboxWorkspaceWrite = "workspaceWrite"
 
 	// codexAuditAgentKey is the profile-matrix agent key the codex backend
 	// resolves its model + effort through (REQ-CX2-002). It is the SAME
@@ -464,6 +481,15 @@ func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 // only {delivery, target, threadId} — it has no model field at all — so for the
 // review path the thread is the only place a model can reach codex.
 func openCodexSession(ctx context.Context, binaryPath string, params map[string]any) (*codexSessionHandle, error) {
+	return openCodexSessionOn(ctx, binaryPath, params, "")
+}
+
+// openCodexSessionOn is openCodexSession with an optional EXISTING thread to
+// resume (REQ-CX2-008). When resumeThreadID is empty the handshake opens a new
+// thread with thread/start — the unchanged path both existing callers take.
+// When it is set, thread/resume re-opens that thread instead, so no new thread
+// is started and the recorded id is the one every turn addresses.
+func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
 	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
@@ -480,26 +506,32 @@ func openCodexSession(ctx context.Context, binaryPath string, params map[string]
 		return nil, codexHandshakeFailure(conn, "codex initialize rejected: "+err.Error(), err)
 	}
 
-	// 2. thread/start → obtain threadId (required by review/start + turn/start).
+	// 2. thread/start (or thread/resume) → obtain threadId (required by
+	//    review/start + turn/start).
 	const threadIDReq = 2
+	threadMethod := codexMethodThreadStart
 	threadParams := map[string]any{}
+	if resumeThreadID != "" {
+		threadMethod = codexMethodThreadResume
+		threadParams["threadId"] = resumeThreadID
+	}
 	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
 		threadParams["cwd"] = cwd
 	}
 	if me := resolveCodexModelEffort(params); me.Model != "" {
 		threadParams["model"] = me.Model
 	}
-	if err := writeCodexRequest(conn, threadIDReq, codexMethodThreadStart, threadParams); err != nil {
-		return nil, codexHandshakeFailure(conn, "codex thread/start write failed: "+err.Error(), err)
+	if err := writeCodexRequest(conn, threadIDReq, threadMethod, threadParams); err != nil {
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" write failed: "+err.Error(), err)
 	}
 	thrResp, err := awaitCodexResponse(conn, threadIDReq, ctx)
 	if err != nil {
-		return nil, codexHandshakeFailure(conn, "codex thread/start rejected: "+err.Error(), err)
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" rejected: "+err.Error(), err)
 	}
 	threadID := extractThreadID(thrResp.Result)
 	if threadID == "" {
-		return nil, codexHandshakeFailure(conn, "codex thread/start returned no thread id",
-			errors.New("codex thread/start: no thread id in result"))
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" returned no thread id",
+			errors.New("codex "+threadMethod+": no thread id in result"))
 	}
 
 	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1}, nil
@@ -697,8 +729,34 @@ func buildCodexReviewParams(method string, params map[string]any, threadID strin
 		if me.Effort != "" {
 			out["effort"] = me.Effort
 		}
+		// sandboxPolicy is forwarded ONLY when the caller supplied one, so the
+		// codex_audit / review-gate request stays byte-identical to its pre-M3
+		// shape (C7). codex_task supplies it on EVERY turn — see
+		// codexSandboxPolicy for why the non-writing turn is the one that must.
+		if policy, ok := params["sandboxPolicy"]; ok && policy != nil {
+			out["sandboxPolicy"] = policy
+		}
 	}
 	return out
+}
+
+// codexSandboxPolicy builds the internally-tagged SandboxPolicy object for a
+// turn: workspaceWrite when the write opt-in is granted, readOnly otherwise.
+//
+// It is called for EVERY turn codex_task starts, including the ones that did
+// not ask to write — and that is the whole point rather than a redundancy. The
+// protocol documents sandboxPolicy as overriding the policy "for this turn AND
+// SUBSEQUENT TURNS": the field is sticky on the thread, not scoped to one turn.
+// Under resume_last thread reuse (REQ-CX2-008), omitting the field on a
+// non-writing turn would let it inherit a write-enabled policy left behind by an
+// earlier turn that DID opt in — a route around the allow_write gate, since the
+// gate is read at request time while its effect outlives the request. Sending
+// readOnly explicitly is what closes it (REQ-CX2-007; plan.md §D M3 hazard).
+func codexSandboxPolicy(allowWrite bool) map[string]any {
+	if allowWrite {
+		return map[string]any{"type": codexSandboxWorkspaceWrite}
+	}
+	return map[string]any{"type": codexSandboxReadOnly}
 }
 
 // coerceCodexReviewTarget normalizes the target value to the internally-tagged
@@ -913,10 +971,18 @@ func codexReviewToolResult(out ReviewOutput) *mcp.CallToolResult {
 func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	installed := err == nil && binaryPath != ""
+	projectDir := projectDirResolver()
 	result := map[string]any{
-		"installed":          installed,
-		"auth_provider":      codexAuthUnknown,
-		"enable_review_gate": readCodexReviewGateEnabled(resolveProjectDir()),
+		"installed":     installed,
+		"auth_provider": codexAuthUnknown,
+		// enable_review_gate and allow_write are the two codex opt-ins, reported
+		// through the SAME fail-closed reads the gates themselves perform.
+		// allow_write's inspectability here is load-bearing, not a convenience:
+		// the write-mode opt-in was made a config key rather than an environment
+		// variable precisely BECAUSE the key is visible to codex_setup
+		// (REQ-CX2-007; plan.md §D M0 write-mode decision, rejected alternative).
+		"enable_review_gate": readCodexReviewGateEnabled(projectDir),
+		"allow_write":        readCodexTaskAllowWrite(projectDir),
 		"node_bridge":        false, // explicit: REQ-MCP-007 Go-only reimplementation
 	}
 	if !installed {
@@ -1009,4 +1075,48 @@ func readCodexReviewGateEnabled(projectDir string) bool {
 		return false
 	}
 	return doc.Workflow.Codex.ReviewGate.Enabled
+}
+
+// readCodexTaskAllowWrite reads workflow.codex.task.allow_write from
+// `.moai/config/sections/workflow.yaml` (REQ-CX2-007). It is the sibling of
+// readCodexReviewGateEnabled above and shares its truth table verbatim
+// (fail-CLOSED — the opt-in default is OFF):
+//
+//   - file missing / unreadable                   → false
+//   - YAML parse error                            → false
+//   - `workflow.codex.task` block absent          → false (Go zero-value default)
+//   - `workflow.codex.task.allow_write: false`    → false
+//   - `workflow.codex.task.allow_write: true`     → true
+//
+// The key path is NESTED under the file's `workflow:` root, matching the shape
+// config.Loader expects and the shape the sibling gate reads; the flat form is
+// NOT accepted as an alias. Failing closed here is the difference between a
+// misconfigured project running codex read-only and a misconfigured project
+// handing an external MCP host write access to its working tree (spec.md §H R3).
+//
+// The distributed default is false and lives in internal/config/defaults.go
+// (CodexTaskConfig.AllowWrite); the typed field is internal/config/types.go.
+// No template file carries this key (§25 / REQ-CX2-015).
+func readCodexTaskAllowWrite(projectDir string) bool {
+	if projectDir == "" {
+		return false
+	}
+	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Workflow struct {
+			Codex struct {
+				Task struct {
+					AllowWrite bool `yaml:"allow_write"`
+				} `yaml:"task"`
+			} `yaml:"codex"`
+		} `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Workflow.Codex.Task.AllowWrite
 }

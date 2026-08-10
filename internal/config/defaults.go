@@ -660,6 +660,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			ReviewGate: CodexReviewGateConfig{
 				Enabled: false,
 			},
+			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
+			// write mode ships default-OFF. A local opt-in belongs in local
+			// config, never in this code default — flipping it here would hand
+			// every distributed user a tool that can mutate their working tree.
+			// Template neutrality (§25): no `allow_write: true` under
+			// internal/template/templates/.
+			Task: CodexTaskConfig{
+				AllowWrite: false,
+			},
 		},
 		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the
 		// multi-model review gate ships default-OFF (BranchGuard pattern —

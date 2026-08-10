@@ -175,6 +175,72 @@ Supporting non-AC rows: `TestCodexJobRegistry_ConcurrentJobsDoNotCollide` (8 con
 - The atomicity evidence is a same-process concurrent read against the POSIX rename guarantee. The Windows rename-retry path (`renameWithRetry`) is exercised only by the cross-compile build, not by a running Windows reader.
 - `codexJobSummary` redacts credential-*shaped* content. A secret with no recognizable shape and no credential-shaped key beside it would survive into the summary; the record's structural guarantee (no environment block, no argv, no binary path) is the stronger half of REQ-CX2-005, and the redaction is defense in depth on top of it.
 
+### M3 — `codex_task`
+
+REQ-CX2-006, REQ-CX2-007, REQ-CX2-008. Evidence captured against the working tree on top of HEAD `628422d8c` (branch `feat/SPEC-CODEX-PHASE2-001-run`) — the tree the M3 commit lands verbatim. Every row names the command run and the output observed in this run, against this tree.
+
+**What M3 delivers.** `internal/cli/codex_task.go` (`handleCodexTask`, the background-job goroutine, and the live-session map M4 will read), plus four seams added to `internal/cli/mcp_codex.go`: `codexSandboxPolicy`, `readCodexTaskAllowWrite`, `codexMethodThreadResume` + `openCodexSessionOn`, and the `allow_write` field on `handleCodexSetup`'s result. `codexJobRegistry.latestThreadID` is added to `internal/cli/codex_jobs.go`. The config key is typed at `internal/config/types.go` (`CodexTaskConfig.AllowWrite`) with its distributed default `false` at `internal/config/defaults.go` (REQ-CX2-015). No tool is registered — registration with JSON Schema and read-only hints is M5.
+
+**Protocol re-read (extends the M0 probe; no SPEC amendment forced).** M0 recorded `sandboxPolicy` as a 4-variant union and stopped at the variant names. M3 needed the wire ENVELOPE, so the generated schema was re-read (`codex app-server generate-json-schema --out <dir>`, `codex-cli 0.146.1`, `jq '.definitions.SandboxPolicy' ClientRequest.json`):
+
+- `SandboxPolicy` is a `oneOf` of **four objects**, each with `type` in its `required` list — it is an **internally-tagged object** (`{"type":"readOnly"}`), NOT a bare string. This is the same shape `target` has, and PR #1430 learned that shape by being rejected with JSON-RPC -32600. Transmitting `"sandboxPolicy":"readOnly"` would have been rejected the same way.
+- `AC-CX2-010`'s sticky arm says turn 1's params "carry `sandboxPolicy` `workspaceWrite`" and turn 2's "carry `sandboxPolicy` `readOnly`". The AC names the **variant**, which is what the M0 probe observed; it does not specify the JSON envelope. The implementation sends the variant inside the tagged object the protocol declares, and the test asserts the `type` discriminant equals the literal variant. **No requirement or acceptance criterion needed amending** — a literal bare-string reading would have specified a request codex rejects.
+- `ThreadResumeParams` requires only `{threadId}` and its response carries the same `{thread:{id}}` shape `thread/start` returns, so `extractThreadID` reads both unchanged. `resume_last` therefore sends the real `thread/resume` method rather than silently skipping the handshake step.
+
+**RED evidence (E8, captured before any implementation existed).** `go test ./internal/cli/ -run 'CodexTask|CodexSetup_ReportsAllowWrite'`:
+
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/codex_task_test.go:73:14: undefined: handleCodexTask
+internal/cli/codex_task_test.go:213:30: undefined: codexSandboxReadOnly
+internal/cli/codex_task_test.go:214:89: undefined: codexSandboxReadOnly
+internal/cli/codex_task_test.go:215:68: undefined: codexSandboxReadOnly
+internal/cli/codex_task_test.go:216:54: undefined: codexSandboxReadOnly
+internal/cli/codex_task_test.go:217:51: undefined: codexSandboxWorkspaceWrite
+internal/cli/codex_task_test.go:264:67: undefined: codexTaskMode
+internal/cli/codex_task_test.go:293:21: undefined: codexSandboxWorkspaceWrite
+internal/cli/codex_task_test.go:294:74: undefined: codexSandboxWorkspaceWrite
+internal/cli/codex_task_test.go:300:15: undefined: codexSandboxReadOnly
+internal/cli/codex_task_test.go:300:15: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+**Three design points worth carrying forward.**
+
+- *The non-writing turn is the one that sends the field.* `codexSandboxPolicy` is called on every turn `codex_task` starts, and `buildCodexReviewParams` forwards the value only when the caller supplied one. `codex_task` always supplies it; `codex_audit` and the review gate never do, so their request stays byte-identical to its pre-M3 shape (C7).
+- *`resume_last` resumes the last **recorded** thread, and records are created for background jobs.* A project that has only ever run foreground tasks has no recorded thread, so `resume_last` opens a new one and says so in the result (REQ-CX2-008's second arm). This is the literal reading of "the most recently recorded threadId" — records are the only place a thread is recorded, and REQ-CX2-003 creates them for background jobs. No new state surface was added to widen it.
+- *The background record is created BEFORE the turn is handed off.* An unwritable state directory is therefore reported to the caller as a structured error rather than surfacing later as a job nobody can observe, and the session is torn down on that path so a job that cannot be recorded never leaves a codex process running.
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-CX2-009 (REQ-CX2-006) | PASS | `go test ./internal/cli/ -run 'TestCodexTask_ForegroundReturnsOutput\|TestCodexTask_BackgroundReturnsJobIDResolvingToRecord' -v` | `--- PASS` ×2 — `background:false` ⇒ the result carries `output` "the refactor is complete" and no job id; `background:true` ⇒ the result carries a job id that `registry.load` resolves, with no `output` on the immediate result, and the record reaches `completed` carrying the task output and `turn_id` `trn-bg` (captured mid-flight) |
+| AC-CX2-010 (REQ-CX2-007) | PASS | `go test ./internal/cli/ -run 'TestCodexTask_WriteGateFailClosed\|TestCodexTask_SandboxPolicyResetOnReusedThread\|TestCodexSetup_ReportsAllowWriteState' -v` | `--- PASS` ×3. **Gate arm**: 5 sub-cases (absent-file / absent-key / malformed-YAML / explicit-`false` / explicit-`true`); the first four read as not opted in and transmit `sandboxPolicy.type` `readOnly` with a non-empty note stating the write was not honored, the fifth transmits `workspaceWrite`. **Sticky arm**: two turns on ONE reused thread (`thread/start` sent 0 times, `thread/resume` twice, both turns addressing `tid-fake`) — turn 1 (write, opted in) transmits `workspaceWrite`, turn 2 (no write request) transmits `readOnly` and the field is PRESENT, so the thread's inherited policy cannot outlive the request that opted into it. **`codex_setup` arm**: the decoded result map carries `allow_write` equal to the literal expected value per state — `false` / `false` / `false` / `true` — alongside `enable_review_gate` |
+| AC-CX2-011 (REQ-CX2-008) | PASS | `go test ./internal/cli/ -run 'TestCodexTask_ResumeLastReusesRecordedThread\|TestCodexTask_ResumeLastWithNoRecordedThread' -v` | `--- PASS` ×2 — with a recorded thread, `thread/start` is sent 0 times, `thread/resume` once carrying `threadId` `tid-fake`, the turn addresses `tid-fake`, and the result reports `resumed_thread:true` with `thread_id` `tid-fake`; with none recorded, `thread/start` is sent once and the result reports `resumed_thread:false` with a note stating no prior thread was resumed |
+| AC-CX2-007 (REQ-CX2-004) — **inherited debt, now CLOSED** | PASS | `go test ./internal/cli/ -run TestCodexTask_UnwritableStateDirStructuredError -v` | `--- PASS` — with `.moai/state` occupied by a regular file, a background `codex_task` returns `IsError` (a structured error result, not a Go error and not a panic), and the immediately-following foreground call is still served. M2 recorded this AC as PASS-WITH-DEBT because its "*the tool* returns a structured error result" clause needed `codex_task`; the tool-level arm is now closed and the AC is PASS outright |
+
+Supporting non-AC rows: `TestCodexTaskAllowWriteReader_AgreesWithConfigLoader` (the hand-rolled reader agrees with `config.NewLoader().Load` on on / off / absent-block / absent-file — the parallel of the PRESERVE-listed `TestReviewGateReaders_AgreeWithConfigLoader`, guarding the exact top-level-vs-nested key-path bug that once made the sibling toggle unreadable), `TestCodexTaskAllowWrite_DistributedDefaultIsFalse` (AP-5), `TestCodexTask_FailOpenOnMissingCodex` and `TestCodexTask_MissingPromptIsStructuredError` (acceptance.md §B).
+
+**§E verification batch.**
+
+- E2 cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`. `go vet ./internal/cli/ ./internal/config/` → `VET_EXIT=0`.
+- E3 coverage — `go test -cover ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 177.271s coverage: 76.7% of statements` (log: `.moai/state/verify/m3/cover-v2.txt`), against the M2 level of 76.7%. Coverage is at its pre-change level. **Flake disclosure**: the first coverage run on this tree FAILED at 172.023s, and unlike M2 this failure IS attributable — `--- FAIL: TestNavigatorEnrich_AtomicWriteBarrier (0.05s)` / `navigator_enrich_test.go:91: barrier file not created (goroutine did not reach barrier)` (log: `.moai/state/verify/m3/cover.txt` line 494). That test is a goroutine-timing barrier belonging to `SPEC-PROJECT-NAVIGATOR-003` (`6b0f124d0`); it touches no codex code and this SPEC touches no navigator code. `go test ./internal/cli/ -run TestNavigatorEnrich_AtomicWriteBarrier -count=10` → `ok … 1.176s` (10/10 pass in isolation), and both full-suite runs on this tree reported `internal/cli` `ok`. The failure is a timing flake in an unrelated test, not an M3 regression — but it did fail once on this tree, and that is stated rather than dropped.
+- E4 subagent boundary — `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go | grep -v '_test.go' | grep -v '//'` → no output (exit 1).
+- E5 lint — `golangci-lint run --timeout=3m` → `0 issues.`
+- Full suite — `go test ./...` → exit 0, 112 packages `ok`, zero `FAIL` / `--- FAIL` / `panic` lines (`internal/cli` `ok` at 201.576s). Run in full rather than affected-packages-only, so the cross-cutting template-mirror guards were exercised. Output at `.moai/state/verify/m3/full-suite-final.txt`; an earlier identical run before the two config-agreement tests were added is at `.moai/state/verify/m3/full-suite.txt`, also exit 0 / 112 `ok` / 0 failures.
+- Race — `go test -race -run 'Codex|Job|Task' ./internal/cli/` → `ok … 2.290s`. The background-job goroutine is covered; the test polls the record file and never reads the shared fake session's `sent` slice while the goroutine is appending to it.
+- Template surface — `git status --porcelain internal/template/templates/` → empty. `grep -rln 'allow_write' internal/template/templates/` → no match (exit 1): the new config key does not leak into the distributed surface (§25 / REQ-CX2-015).
+- Constant placement (REQ-CX2-015, an AC-CX2-016 sub-check landing early) — `grep -n 'AllowWrite' internal/config/types.go` → `586`/`592` (the typed field); `grep -n 'AllowWrite' internal/config/defaults.go` → `670` (the distributed default `false`).
+- `gofmt -l` on the six touched files → no output. A repo-wide `gofmt -l .` still lists the same ~35 pre-existing files, none touched by this SPEC.
+
+**Gaps (M3).**
+
+- **No live codex session was executed, and this is now the third milestone in a row saying so.** Every M3 assertion about the wire — that `sandboxPolicy` is accepted as a tagged object, that `thread/resume` re-opens a thread this process did not start, that a turn on a resumed thread is accepted — is verified against the generated protocol schema plus a canned transcript **this milestone authored from that schema**. A canned transcript cannot falsify a wrong reading of the protocol. The M0/M1/M2 gap is inherited verbatim and compounded.
+- **The stickiness itself is unobserved.** The hazard REQ-CX2-007 exists to close is documented in the schema ("for this turn and subsequent turns"), not observed: no live session has demonstrated that a `workspaceWrite` turn actually leaves its thread writable for a subsequent turn. The mitigation is correct whether or not the hazard is real (sending `readOnly` explicitly is harmless if the field turns out to be turn-scoped), so the unobserved premise costs nothing — but the claim "this closes a real route around the gate" rests on the schema's own wording alone.
+- **`resume_last` resumes only a thread recorded by a background job.** A foreground-only project has nothing to resume. This is the literal reading of REQ-CX2-008 against REQ-CX2-003, and the result states the outcome rather than hiding it — but a user who expects `resume_last` to continue their last *foreground* task will get a new thread and a note.
+- **The write gate bounds what moai REQUESTS, not what codex enforces.** `codex_task` transmits `readOnly` when not opted in; whether the codex app-server honors the policy is codex's guarantee, unobserved here. The gate is a request-side control, not a sandbox.
+- **`turn_id` may be empty.** M2's open gap — whether codex emits `turn/started` on a `review/start` turn — is untouched. `codex_task` drives `turn/start`, where the notification is the method's own, so the task path is the better-founded case; the M4 cancel path must still treat an empty `turn_id` as "not addressable".
+- **The live-session map is in-process only.** `codexLiveJobSessions` holds a handle for the lifetime of the server process. A record found `running` with no entry is stale by construction — exactly the case REQ-CX2-012 requires M4 to refuse — but nothing in M3 verifies that M4 does so.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

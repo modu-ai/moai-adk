@@ -574,6 +574,22 @@ type AgentModelGuardConfig struct {
 // sibling of BranchGuard: an opt-in gate whose distributed default is OFF (C6).
 type CodexConfig struct {
 	ReviewGate CodexReviewGateConfig `yaml:"review_gate"`
+	Task       CodexTaskConfig       `yaml:"task"`
+}
+
+// CodexTaskConfig mirrors workflow.codex.task.* — the opt-in surface for the
+// codex_task write mode (SPEC-CODEX-PHASE2-001 REQ-CX2-007 / REQ-CX2-015). It
+// follows the CodexReviewGateConfig shape deliberately: a sibling key under
+// `workflow.codex`, read fail-CLOSED (a missing file, a parse error, or an
+// absent block all read as not opted in).
+type CodexTaskConfig struct {
+	// AllowWrite lets codex_task request a writing sandbox policy. Default
+	// false: the distributed default is opt-out, so an external MCP host cannot
+	// mutate the working tree through moai until a maintainer opts in via local
+	// config (spec.md §H R3). The current state is inspectable through
+	// codex_setup's result, which is why this is a config key rather than an
+	// environment variable.
+	AllowWrite bool `yaml:"allow_write"`
 }
 
 // CodexReviewGateConfig mirrors workflow.codex.review_gate.* — the opt-in

@@ -279,6 +279,54 @@ func (r *codexJobRegistry) turnIDRecorder(jobID string) func(string) {
 	}
 }
 
+// latestThreadID returns the threadId of the most recently updated record that
+// carries one — "the most recently recorded threadId for the project" that
+// resume_last reuses (REQ-CX2-008). The second return is false when no record
+// carries a thread, which is the case the caller must report rather than paper
+// over by silently opening a new thread without saying so.
+//
+// Records are the only place a thread is recorded, and REQ-CX2-003 creates them
+// for BACKGROUND jobs, so this resumes the last background job's thread. A
+// project that has only ever run foreground tasks has nothing to resume, and
+// says so.
+//
+// An unreadable directory or an undecodable record is skipped rather than
+// surfaced: failing to find a thread to resume is a reportable outcome, not an
+// error — the caller opens a new thread either way.
+func (r *codexJobRegistry) latestThreadID() (string, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return "", false
+	}
+	var (
+		bestID string
+		bestAt time.Time
+	)
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(r.dir, e.Name())) //nolint:gosec // registry-owned directory listing
+		if err != nil {
+			continue
+		}
+		var rec CodexJobRecord
+		if err := json.Unmarshal(raw, &rec); err != nil {
+			continue
+		}
+		if rec.ThreadID == "" {
+			continue
+		}
+		if bestID == "" || rec.UpdatedAt.After(bestAt) {
+			bestID, bestAt = rec.ThreadID, rec.UpdatedAt
+		}
+	}
+	return bestID, bestID != ""
+}
+
 // read loads and decodes one record. The caller holds r.mu.
 func (r *codexJobRegistry) read(id string) (CodexJobRecord, error) {
 	path := r.pathFor(id)
