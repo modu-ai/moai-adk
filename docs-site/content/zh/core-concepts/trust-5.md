@@ -448,8 +448,8 @@ TRUST 5 全部通过: 可部署
 
 ## 相关文档
 
-- [什么是 MoAI-ADK?](/core-concepts/what-is-moai-adk) —— 理解 MoAI-ADK 的
+- [什么是 MoAI-ADK?](/zh/core-concepts/what-is-moai-adk) —— 理解 MoAI-ADK 的
   整体结构
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) —— 学习应用 TRUST 5 的 Plan
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) —— 学习应用 TRUST 5 的 Plan
   阶段
-- [领域驱动开发](/core-concepts/ddd) —— 学习应用 TRUST 5 的 Run 阶段
+- [领域驱动开发](/zh/core-concepts/ddd) —— 学习应用 TRUST 5 的 Run 阶段

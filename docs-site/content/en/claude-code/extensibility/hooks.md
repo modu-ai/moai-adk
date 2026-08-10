@@ -18,7 +18,7 @@ This page is background material on **Claude Code itself**, the platform MoAI-AD
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page focuses on the concept. How MoAI-ADK actually registers and operates hooks (the shell-wrapper pattern, per-event behavior, quality-gate integration) is covered in the in-depth MoAI-ADK guides. For hands-on content, see the [Hooks Guide](/advanced/hooks-guide) and the [Hooks Event Reference](/advanced/hooks-reference).
+This page focuses on the concept. How MoAI-ADK actually registers and operates hooks (the shell-wrapper pattern, per-event behavior, quality-gate integration) is covered in the in-depth MoAI-ADK guides. For hands-on content, see the [Hooks Guide](/en/advanced/hooks-guide) and the [Hooks Event Reference](/en/advanced/hooks-reference).
 {{< /callout >}}
 
 ## What Is a Hook
@@ -113,8 +113,8 @@ From a harness-engineering perspective, a hook is the embodiment of the principl
 
 ## Related Documents
 
-- [Hooks Guide](/advanced/hooks-guide)
-- [Hooks Event Reference](/advanced/hooks-reference)
+- [Hooks Guide](/en/advanced/hooks-guide)
+- [Hooks Event Reference](/en/advanced/hooks-reference)
 
 ## References
 

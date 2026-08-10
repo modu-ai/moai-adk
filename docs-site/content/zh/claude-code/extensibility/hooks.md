@@ -18,7 +18,7 @@ description: "整理在 Claude Code 生命周期事件上自动触发执行的 s
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-本页专注于概念介绍。MoAI-ADK 实际如何注册与运营 hook（shell 包装器模式、各事件行为、质量门禁联动）在深入的 MoAI-ADK 指南中讲解。触手可及的实战内容请参考 [Hooks 指南](/advanced/hooks-guide)与 [Hooks 事件参考](/advanced/hooks-reference)。
+本页专注于概念介绍。MoAI-ADK 实际如何注册与运营 hook（shell 包装器模式、各事件行为、质量门禁联动）在深入的 MoAI-ADK 指南中讲解。触手可及的实战内容请参考 [Hooks 指南](/zh/advanced/hooks-guide)与 [Hooks 事件参考](/zh/advanced/hooks-reference)。
 {{< /callout >}}
 
 ## 什么是钩子
@@ -113,8 +113,8 @@ MoAI-ADK 以 shell 脚本包装器调用 `moai hook <event>` 二进制的模式�
 
 ## 相关文档
 
-- [Hooks 指南](/advanced/hooks-guide)
-- [Hooks 事件参考](/advanced/hooks-reference)
+- [Hooks 指南](/zh/advanced/hooks-guide)
+- [Hooks 事件参考](/zh/advanced/hooks-reference)
 
 ## 参考资料
 

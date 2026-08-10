@@ -39,9 +39,9 @@ Start with the Foundations group to learn how Claude Code's agentic loop turns, 
 
 | Document | Description | Connected MoAI core value |
 |------|------|--------------------|
-| [Foundations](/claude-code/foundations) | How Claude Code works and basic usage | Shared foundation of all three core values |
-| [Context and Memory](/claude-code/context-memory) | Managing tokens, context, memory, caching, checkpoints | Tokenomics |
-| [Extensibility](/claude-code/extensibility) | Extending capabilities with skills, hooks, MCP, plugins | Agentic Harness |
-| [Agents and Automation](/claude-code/agentic) | Subagents, teams, workflows, autonomous execution | Agentic Loop Engineering |
+| [Foundations](/en/claude-code/foundations) | How Claude Code works and basic usage | Shared foundation of all three core values |
+| [Context and Memory](/en/claude-code/context-memory) | Managing tokens, context, memory, caching, checkpoints | Tokenomics |
+| [Extensibility](/en/claude-code/extensibility) | Extending capabilities with skills, hooks, MCP, plugins | Agentic Harness |
+| [Agents and Automation](/en/claude-code/agentic) | Subagents, teams, workflows, autonomous execution | Agentic Loop Engineering |
 
 Completing the four groups in order gives you an understanding of the entire Claude Code platform. From there, move on to the MoAI-ADK Core Concepts section to see how SPEC-based development and token-efficient design combine on top of this foundation.

@@ -603,6 +603,6 @@ After fixing, run `/moai sync` again.
 
 ## Related Documents
 
-- [/moai run](/workflow-commands/moai-run) - Previous step: DDD implementation
-- [TRUST 5 Quality System](/core-concepts/trust-5) - Detailed quality gate explanation
-- [Quick Start](/getting-started/quickstart) - Full workflow tutorial
+- [/moai run](/en/workflow-commands/moai-run) - Previous step: DDD implementation
+- [TRUST 5 Quality System](/en/core-concepts/trust-5) - Detailed quality gate explanation
+- [Quick Start](/en/getting-started/quickstart) - Full workflow tutorial

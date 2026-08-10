@@ -562,6 +562,6 @@ MoAI가 `AskUserQuestion`으로 물을 때는 추천을 어디에 놓을지 정�
 
 ## 관련 문서
 
-- [SPEC 기반 개발](/core-concepts/spec-based-dev) - EARS 형식 상세 설명
+- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) - EARS 형식 상세 설명
 - [/moai run](./moai-run) - 다음 단계: DDD 구현
 - [/moai sync](./moai-sync) - 최종 단계: 문서 동기화

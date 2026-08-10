@@ -134,8 +134,8 @@ flowchart TD
 
 ## 相关文档
 
-- [记忆与自动记忆](/claude-code/context-memory/memory)
-- [检查点](/claude-code/context-memory/checkpointing)
+- [记忆与自动记忆](/zh/claude-code/context-memory/memory)
+- [检查点](/zh/claude-code/context-memory/checkpointing)
 
 ## 参考资料
 

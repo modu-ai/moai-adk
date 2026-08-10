@@ -528,7 +528,7 @@ manager-develop 智能体会 **自动保存进度**。执行 `/clear` 后再次�
 
 ## 相关文档
 
-- [领域驱动开发](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 循环详解
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门禁详解
+- [领域驱动开发](/zh/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 循环详解
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5) - 质量门禁详解
 - [/moai plan](./moai-plan) - 上一步: 生成 SPEC 文档
 - [/moai sync](./moai-sync) - 下一步: 文档同步与 PR

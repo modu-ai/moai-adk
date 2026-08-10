@@ -130,6 +130,6 @@ After the report, `AskUserQuestion` presents the following options:
 
 ## Related docs
 
-- [/moai fix](/utility-commands/moai-fix) - auto-fix the issues found
-- [/moai loop](/utility-commands/moai-loop) - iteratively fix a finite issue set
-- [TRUST 5 quality system](/core-concepts/trust-5) - quality criteria in detail
+- [/moai fix](/en/utility-commands/moai-fix) - auto-fix the issues found
+- [/moai loop](/en/utility-commands/moai-loop) - iteratively fix a finite issue set
+- [TRUST 5 quality system](/en/core-concepts/trust-5) - quality criteria in detail

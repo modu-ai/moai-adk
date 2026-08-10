@@ -96,4 +96,4 @@ DesignSync 服务器可能未注册到 `.mcp.json`。D1 会确认可用性：
 
 - [/moai plan](./moai-plan) - 上一阶段：生成 SPEC 文档
 - [/moai run](./moai-run) - 下一阶段：DDD/TDD 实现
-- [子代理目录](/advanced/agent-guide) - manager-design 代理详情
+- [子代理目录](/zh/advanced/agent-guide) - manager-design 代理详情

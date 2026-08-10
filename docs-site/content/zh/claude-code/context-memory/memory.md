@@ -183,7 +183,7 @@ MoAI-ADK 运行在上述 Claude Code 记忆基础之上。它把项目根的 CLA
 
 ## 相关文档
 
-- [CLAUDE.md 指南](/advanced/claude-md-guide)
+- [CLAUDE.md 指南](/zh/advanced/claude-md-guide)
 
 ## 参考资料
 

@@ -150,6 +150,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 ## 関連ドキュメント
 
 - [moai web コンソール](/ja/cli-reference/web) - ブラウザでプロファイルを切り替え・編集
-- [CLI リファレンス](/getting-started/cli) - すべての CLI コマンド
-- [クイックスタート](/getting-started/quickstart) - はじめて始める
-- [初期設定](/getting-started/init-wizard) - プロジェクト初期化
+- [CLI リファレンス](/ja/getting-started/cli) - すべての CLI コマンド
+- [クイックスタート](/ja/getting-started/quickstart) - はじめて始める
+- [初期設定](/ja/getting-started/init-wizard) - プロジェクト初期化

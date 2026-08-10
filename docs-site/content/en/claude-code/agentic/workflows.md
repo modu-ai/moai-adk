@@ -127,8 +127,8 @@ Workflow agents follow the same asymmetric boundary of not questioning the user 
 
 ## Related Documents
 
-- [Subagents](/claude-code/agentic/sub-agents)
-- [Agent Teams](/claude-code/agentic/agent-teams)
+- [Subagents](/en/claude-code/agentic/sub-agents)
+- [Agent Teams](/en/claude-code/agentic/agent-teams)
 
 ## References
 

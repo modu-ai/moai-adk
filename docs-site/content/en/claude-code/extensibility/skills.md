@@ -18,7 +18,7 @@ This page is background material on **Claude Code itself**, the platform MoAI-AD
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This document is a conceptual overview of Claude Code skills. Hands-on procedures for writing skills in MoAI-ADK and auto-generating them with builder agents are covered in detail in the [Skill Guide](/advanced/skill-guide) and the [Builder Agents Guide](/advanced/builder-agents).
+This document is a conceptual overview of Claude Code skills. Hands-on procedures for writing skills in MoAI-ADK and auto-generating them with builder agents are covered in detail in the [Skill Guide](/en/advanced/skill-guide) and the [Builder Agents Guide](/en/advanced/builder-agents).
 {{< /callout >}}
 
 ## What Is a Skill
@@ -145,8 +145,8 @@ From the MoAI-ADK perspective, skills span two core concerns at once. On the **T
 
 ## Related Documents
 
-- [Skill Guide](/advanced/skill-guide)
-- [Builder Agents Guide](/advanced/builder-agents)
+- [Skill Guide](/en/advanced/skill-guide)
+- [Builder Agents Guide](/en/advanced/builder-agents)
 
 ## References
 

@@ -33,12 +33,12 @@ flowchart TD
 
 | 文档 | 说明 |
 |------|------|
-| [工作原理](/claude-code/foundations/how-claude-code-works) | 智能体循环与核心组成要素 |
-| [功能一览](/claude-code/foundations/features-overview) | 完整功能目录与学习路径 |
-| [交互模式](/claude-code/foundations/interactive-mode) | REPL·快捷键·权限模式 |
-| [权限与 Plan 模式](/claude-code/foundations/permissions) | 权限规则·模式与计划批准 |
-| [斜杠命令](/claude-code/foundations/commands) | 内置·自定义命令与 /moai 的关系 |
-| [工具参考](/claude-code/foundations/tools-reference) | 内置工具与权限 |
-| [.claude 目录](/claude-code/foundations/claude-directory) | 配置目录结构与作用域 |
+| [工作原理](/zh/claude-code/foundations/how-claude-code-works) | 智能体循环与核心组成要素 |
+| [功能一览](/zh/claude-code/foundations/features-overview) | 完整功能目录与学习路径 |
+| [交互模式](/zh/claude-code/foundations/interactive-mode) | REPL·快捷键·权限模式 |
+| [权限与 Plan 模式](/zh/claude-code/foundations/permissions) | 权限规则·模式与计划批准 |
+| [斜杠命令](/zh/claude-code/foundations/commands) | 内置·自定义命令与 /moai 的关系 |
+| [工具参考](/zh/claude-code/foundations/tools-reference) | 内置工具与权限 |
+| [.claude 目录](/zh/claude-code/foundations/claude-directory) | 配置目录结构与作用域 |
 
-掌握基本功之后，请进入下一组[上下文与记忆](/claude-code/context-memory)，学习管理令牌成本的方法 —— 这是 MoAI-ADK 代币经济学的起点。
+掌握基本功之后，请进入下一组[上下文与记忆](/zh/claude-code/context-memory)，学习管理令牌成本的方法 —— 这是 MoAI-ADK 代币经济学的起点。

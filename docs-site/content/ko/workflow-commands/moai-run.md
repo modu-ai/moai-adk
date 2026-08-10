@@ -537,7 +537,7 @@ manager-develop 에이전트가 **진행 상황을 알아서 저장해 둡니다
 
 ## 관련 문서
 
-- [도메인 주도 개발](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세 설명
-- [TRUST 5 품질 시스템](/core-concepts/trust-5) - 품질 게이트 상세 설명
+- [도메인 주도 개발](/ko/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세 설명
+- [TRUST 5 품질 시스템](/ko/core-concepts/trust-5) - 품질 게이트 상세 설명
 - [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
 - [/moai sync](./moai-sync) - 다음 단계: 문서 동기화 및 PR

@@ -310,10 +310,10 @@ GLM アカウントがない場合は [z.ai に登録 (追加 10% 割引)](https
 
 MoAI-ADK の旅を始めるには次のステップに従ってください:
 
-1. **[インストール](/getting-started/installation)** - システムに MoAI-ADK をインストール
-2. **[初期設定](/getting-started/init-wizard)** - インタラクティブな設定ウィザードの実行
-3. **[クイックスタート](/getting-started/quickstart)** - 最初のプロジェクトの作成
-4. **[核心概念](/core-concepts/what-is-moai-adk)** - MoAI-ADK の深い理解
+1. **[インストール](/ja/getting-started/installation)** - システムに MoAI-ADK をインストール
+2. **[初期設定](/ja/getting-started/init-wizard)** - インタラクティブな設定ウィザードの実行
+3. **[クイックスタート](/ja/getting-started/quickstart)** - 最初のプロジェクトの作成
+4. **[核心概念](/ja/core-concepts/what-is-moai-adk)** - MoAI-ADK の深い理解
 
 ## 核心的な利点
 

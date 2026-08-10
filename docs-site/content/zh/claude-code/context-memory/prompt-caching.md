@@ -161,7 +161,7 @@ export DISABLE_PROMPT_CACHING_OPUS=1
 
 ## 相关文档
 
-- [提示缓存 —— 盈亏平衡分析](/cost-optimization/prompt-caching)
+- [提示缓存 —— 盈亏平衡分析](/zh/cost-optimization/prompt-caching)
 
 ## 参考资料
 

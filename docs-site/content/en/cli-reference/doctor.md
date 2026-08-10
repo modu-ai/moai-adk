@@ -54,4 +54,4 @@ moai doctor sandbox       # sandbox backend
 
 ---
 
-Related: [Project Status](/cli-reference/status) · [CLI Overview](/getting-started/cli)
+Related: [Project Status](/en/cli-reference/status) · [CLI Overview](/en/getting-started/cli)

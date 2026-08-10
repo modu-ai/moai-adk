@@ -45,4 +45,4 @@ moai doctor hook                       # 钩子覆盖表
 
 ---
 
-相关: [项目状态](/cli-reference/status) · [CLI 概览](/getting-started/cli)
+相关: [项目状态](/zh/cli-reference/status) · [CLI 概览](/zh/getting-started/cli)

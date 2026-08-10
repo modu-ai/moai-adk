@@ -165,9 +165,9 @@ MoAI-ADK 本身不是插件，而是采用 `moai init` 把挽具资产（技能�
 
 ## 相关文档
 
-- [技能](/claude-code/extensibility/skills)
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [MCP 服务器](/claude-code/extensibility/mcp)
+- [技能](/zh/claude-code/extensibility/skills)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [MCP 服务器](/zh/claude-code/extensibility/mcp)
 
 ## 参考资料
 

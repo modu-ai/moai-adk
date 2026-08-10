@@ -60,7 +60,7 @@ flowchart TD
 ```
 
 {{< callout type="info" >}}
-For the SPEC 3-Phase lifecycle commands (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`), see the [workflow commands](/workflow-commands/) section. The full list of 15 subcommands the `/moai` orchestrator routes is also there.
+For the SPEC 3-Phase lifecycle commands (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`), see the [workflow commands](/en/workflow-commands/) section. The full list of 15 subcommands the `/moai` orchestrator routes is also there.
 {{< /callout >}}
 
 {{< callout type="info" >}}

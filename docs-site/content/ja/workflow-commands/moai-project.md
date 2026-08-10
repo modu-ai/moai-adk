@@ -584,8 +584,8 @@ LSP サーバーがなくてもドキュメント生成は進行します。た�
 
 ## 関連ドキュメント
 
-- [クイックスタート](/getting-started/quickstart) - ワークフロー全体のチュートリアル
+- [クイックスタート](/ja/getting-started/quickstart) - ワークフロー全体のチュートリアル
 - [/moai plan](./moai-plan) - 次のステップ: SPEC ドキュメント生成
 - [/moai harness](./moai-harness) - プロジェクト専用ハーネスの生成
-- [SPEC ベース開発](/core-concepts/spec-based-dev) - SPEC 方法論の詳細説明
-- [下位エージェントカタログ](/advanced/agent-guide) - Explore, manager-docs エージェントの詳細
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) - SPEC 方法論の詳細説明
+- [下位エージェントカタログ](/ja/advanced/agent-guide) - Explore, manager-docs エージェントの詳細

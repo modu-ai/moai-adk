@@ -165,9 +165,9 @@ MoAI-ADK itself is not a plugin — `moai init` deploys harness assets (skills, 
 
 ## Related Documents
 
-- [Skills](/claude-code/extensibility/skills)
-- [Hooks](/claude-code/extensibility/hooks)
-- [MCP Servers](/claude-code/extensibility/mcp)
+- [Skills](/en/claude-code/extensibility/skills)
+- [Hooks](/en/claude-code/extensibility/hooks)
+- [MCP Servers](/en/claude-code/extensibility/mcp)
 
 ## References
 

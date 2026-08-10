@@ -223,5 +223,5 @@ MVC, Clean Architecture, Hexagonal, Layered Architecture 등 주요 패턴을 �
 
 ## 관련 문서
 
-- [/moai clean - 데드 코드 제거](/utility-commands/moai-clean)
-- [/moai feedback - 피드백 제출](/utility-commands/moai-feedback)
+- [/moai clean - 데드 코드 제거](/ko/utility-commands/moai-clean)
+- [/moai feedback - 피드백 제출](/ko/utility-commands/moai-feedback)

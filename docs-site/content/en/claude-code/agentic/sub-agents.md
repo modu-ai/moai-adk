@@ -23,7 +23,7 @@ A subagent is a **colleague with their own desk**. Bulky research, logs, and sea
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page is a Claude Code-level conceptual overview. How MoAI-ADK composes and delegates its 11-agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`), and the hands-on way to build your own agents, are covered in depth in the [Agent Guide](/advanced/agent-guide) and the [Builder Agents Guide](/advanced/builder-agents).
+This page is a Claude Code-level conceptual overview. How MoAI-ADK composes and delegates its 11-agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`), and the hands-on way to build your own agents, are covered in depth in the [Agent Guide](/en/advanced/agent-guide) and the [Builder Agents Guide](/en/advanced/builder-agents).
 {{< /callout >}}
 
 ## What Is a Subagent
@@ -165,8 +165,8 @@ That covers the Claude Code-level subagent concept. MoAI-ADK operates an **11-ag
 
 ## Related Documents
 
-- [Agent Guide](/advanced/agent-guide)
-- [Builder Agents Guide](/advanced/builder-agents)
+- [Agent Guide](/en/advanced/agent-guide)
+- [Builder Agents Guide](/en/advanced/builder-agents)
 
 ## References
 

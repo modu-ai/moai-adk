@@ -158,8 +158,8 @@ From the MoAI-ADK perspective, scheduled tasks are one axis of the autonomous-ex
 
 ## Related Documents
 
-- [Hooks](/claude-code/extensibility/hooks)
-- [Goal-Directed Execution (/goal)](/claude-code/agentic/goal)
+- [Hooks](/en/claude-code/extensibility/hooks)
+- [Goal-Directed Execution (/goal)](/en/claude-code/agentic/goal)
 
 ## References
 

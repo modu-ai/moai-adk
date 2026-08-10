@@ -179,8 +179,8 @@ claude respawn <id>         # 保留对话重启会话
 
 ## 相关文档
 
-- [子智能体](/claude-code/agentic/sub-agents)
-- [智能体团队](/claude-code/agentic/agent-teams)
+- [子智能体](/zh/claude-code/agentic/sub-agents)
+- [智能体团队](/zh/claude-code/agentic/agent-teams)
 
 ## 参考资料
 

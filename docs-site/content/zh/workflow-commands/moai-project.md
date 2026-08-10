@@ -601,8 +601,8 @@ flowchart TD
 
 ## 相关文档
 
-- [快速开始](/getting-started/quickstart) - 完整工作流教程
+- [快速开始](/zh/getting-started/quickstart) - 完整工作流教程
 - [/moai plan](./moai-plan) - 下一步: 生成 SPEC 文档
 - [/moai harness](./moai-harness) - 创建项目专属挽具
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - SPEC 方法论详解
-- [子智能体目录](/advanced/agent-guide) - Explore、manager-docs 智能体详解
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) - SPEC 方法论详解
+- [子智能体目录](/zh/advanced/agent-guide) - Explore、manager-docs 智能体详解

@@ -150,6 +150,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 ## 相关文档
 
 - [moai web 控制台](/zh/cli-reference/web) - 在浏览器中切换与编辑配置文件
-- [CLI 参考](/getting-started/cli) - 全部 CLI 命令
-- [快速开始](/getting-started/quickstart) - 从头开始
-- [初始设置](/getting-started/init-wizard) - 项目初始化
+- [CLI 参考](/zh/getting-started/cli) - 全部 CLI 命令
+- [快速开始](/zh/getting-started/quickstart) - 从头开始
+- [初始设置](/zh/getting-started/init-wizard) - 项目初始化

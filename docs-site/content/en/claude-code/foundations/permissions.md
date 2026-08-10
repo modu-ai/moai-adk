@@ -52,7 +52,7 @@ The default posture for the whole session is set by the permission mode. There a
 `bypassPermissions` skips all confirmations, so use it only in a trusted, isolated environment. It can let unvetted code or prompts run dangerous commands without confirmation.
 {{< /callout >}}
 
-Subagents can also declare their own default permission posture via the `permissionMode` field (see [Subagents](/claude-code/agentic/sub-agents) for the exact values).
+Subagents can also declare their own default permission posture via the `permissionMode` field (see [Subagents](/en/claude-code/agentic/sub-agents) for the exact values).
 
 ## Plan Mode
 
@@ -76,9 +76,9 @@ This gate implements Claude Code's Plan-mode approval culture at the SPEC-lifecy
 
 ## Related Documents
 
-- [Interactive Mode](/claude-code/foundations/interactive-mode)
-- [Tools Reference](/claude-code/foundations/tools-reference)
-- [The .claude Directory](/claude-code/foundations/claude-directory)
+- [Interactive Mode](/en/claude-code/foundations/interactive-mode)
+- [Tools Reference](/en/claude-code/foundations/tools-reference)
+- [The .claude Directory](/en/claude-code/foundations/claude-directory)
 
 ## References
 

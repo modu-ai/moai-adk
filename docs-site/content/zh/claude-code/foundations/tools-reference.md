@@ -140,8 +140,8 @@ flowchart TD
 
 ## 相关文档
 
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [.claude 目录](/claude-code/foundations/claude-directory)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [.claude 目录](/zh/claude-code/foundations/claude-directory)
 
 ## 参考资料
 

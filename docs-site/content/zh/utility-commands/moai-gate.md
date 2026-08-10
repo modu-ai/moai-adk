@@ -112,6 +112,6 @@ Total: 18.5s
 
 ## 相关文档
 
-- [/moai fix - 一次性自动修复](/utility-commands/moai-fix)
-- [/moai loop - 反复修复循环](/utility-commands/moai-loop)
-- [TRUST 5 质量系统](/core-concepts/trust-5)
+- [/moai fix - 一次性自动修复](/zh/utility-commands/moai-fix)
+- [/moai loop - 反复修复循环](/zh/utility-commands/moai-loop)
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5)

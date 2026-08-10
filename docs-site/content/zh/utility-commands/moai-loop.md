@@ -349,7 +349,7 @@ AI 连续 N 次未能解决同一失败签名时(停滞检测),会自动中断�
 
 ## 相关文档
 
-- [/moai fix - 一次性自动修复](/utility-commands/moai-fix)
-- [/moai - 完全自主自动化](/utility-commands/moai)
-- [TRUST 5 质量系统](/core-concepts/trust-5)
-- [领域驱动开发](/core-concepts/ddd)
+- [/moai fix - 一次性自动修复](/zh/utility-commands/moai-fix)
+- [/moai - 完全自主自动化](/zh/utility-commands/moai)
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5)
+- [领域驱动开发](/zh/core-concepts/ddd)

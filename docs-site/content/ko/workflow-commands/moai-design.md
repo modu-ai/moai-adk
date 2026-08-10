@@ -96,4 +96,4 @@ DesignSync 서버가 `.mcp.json`에 등록돼 있지 않을 수 있습니다. D1
 
 - [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
 - [/moai run](./moai-run) - 다음 단계: DDD/TDD 구현
-- [하위 에이전트 카탈로그](/advanced/agent-guide) - manager-design 에이전트 상세
+- [하위 에이전트 카탈로그](/ko/advanced/agent-guide) - manager-design 에이전트 상세
