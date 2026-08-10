@@ -100,6 +100,19 @@ Every row was decided by running its own command in this worktree at `637f9a65f`
 
 Coverage on the touched packages: `internal/harness/routing` 88.5%, `internal/hook` 83.9%, `internal/telemetry` 82.7%, `internal/cli` 76.5%. The first three clear the 85% package target or sit near it; `internal/cli` is a large pre-existing package whose baseline this SPEC did not move materially.
 
+`go test -race ./internal/harness/routing/ ./internal/telemetry/ -count=1` also passes, which is the meaningful race surface here — the new store operations are the only concurrency-adjacent code this SPEC adds.
+
+### One observed failure, diagnosed and attributed
+
+`internal/cli/wizard` `TestUnifiedForm_ManualModeSkipsConditionals` failed **once**, during the multi-package coverage run (`go test -cover ./internal/harness/... ./internal/hook/... ./internal/cli/...`). It is not attributable to this SPEC, and the reason is structural rather than a judgement call:
+
+- It does not reproduce. `-count=5`, `-count=20`, and `-race` on the package all pass, as does the package alone under `-cover`.
+- The package is `internal/cli/wizard`, which this SPEC does not touch and which does not reach the routing seams.
+- The mechanism is a fixed wall-clock deadline in the test's own driver: `execBoundedCmd` (`internal/cli/wizard/unified_form_test.go:60`) waits **50 ms** for a bubbletea command and returns `nil` on timeout, silently dropping the message. Under the contention of a multi-package coverage run a command can exceed 50 ms, a state transition is lost, and the form never reaches `StateCompleted` — exactly the assertion that failed.
+- The same multi-package coverage command run against the pre-SPEC base commit `5a929480a` (extracted via `git archive` into a scratch tree) also reported `FAIL github.com/modu-ai/moai-adk/internal/cli`, so the baseline is not clean under that load either.
+
+The full suite without coverage instrumentation — `go test ./... -count=1`, the §D gate command — exits 0 with zero `FAIL` lines.
+
 ### Gaps — what was NOT verified
 
 - **The live hook-dispatch link (R1).** No CI-runnable assertion covers "Claude Code actually invokes these handlers in a real session". The M0 probe proves the *payload* reaches a matcher-null PostToolUse wrapper; it does not exercise the UserPromptSubmit or SubagentStop wrappers, nor the seams behind them. The manual dogfood check named in `plan.md` §F M5 — enable the opt-in, run one real `/moai` dispatch with a subagent, read the resulting row — was **not performed**, because it requires enabling a fail-closed gate in the primary checkout, which is outside this worktree's write boundary.
