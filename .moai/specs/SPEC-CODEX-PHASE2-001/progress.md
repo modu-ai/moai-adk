@@ -733,9 +733,35 @@ This is the third time on this branch that a race-shaped defect survived somethi
 - Formatting — `gofmt -l` over the four touched files → empty. (`gofmt -l .` across the whole repo lists ~140 pre-existing files untouched by this milestone; that condition predates M6 and is not addressed here.)
 - Default-skip proof — `go test ./internal/cli/ -run 'TestCodexLive' -v` → all five live probes `--- SKIP`. The opt-in probe still never runs on `go test ./...` and still spends no quota unasked.
 
+#### Live confirmation of the fix — codex-cli 0.146.1, HEAD `e5295dee6`
+
+Added after the milestone's own §E batch, and attributed to the ORCHESTRATOR's run rather than this agent's: the orchestrator re-ran the probe that originally observed the stall, against the committed fix, and returned the transcript below. It is recorded here because it closes the residual risk this milestone had left standing (see the correction in the next subsection).
+
+```
+$ MOAI_CODEX_LIVE_PROBE=1 MOAI_CODEX_LIVE_BIN=/Users/goos/.nvm/versions/node/v22.14.0/bin/codex \
+    go test ./internal/cli/ -run 'TestCodexLive_ExplicitReadOnlyApprovalStall' -v -timeout 6m
+...
+<-- {"method":"item/completed","params":{"item":{"type":"agentMessage",...,"text":"I couldn’t create `blocked.txt` because write approval was denied.","phase":"final_answer"},"threadId":"019fed4d-ae34-7b80-868f-57be97a290fa","turnId":"019fed4d-b19f-71e2-aeb7-4f5d23fcb8bb",...}}
+<-- {"method":"turn/completed","params":{"threadId":"019fed4d-ae34-7b80-868f-57be97a290fa","turn":{"id":"019fed4d-b19f-71e2-aeb7-4f5d23fcb8bb",...,"status":"completed","error":null,"startedAt":1786392719,"completedAt":1786392730,"durationMs":10605}}}
+--- PASS: TestCodexLive_ExplicitReadOnlyApprovalStall (12.40s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	13.775s
+```
+
+The binary is the functional 0.146.1 install; `MOAI_CODEX_LIVE_BIN` is set because `exec.LookPath` on this host still resolves to the broken bun shim the original probe documented.
+
+Three separate claims land in that one transcript, and it is worth naming them separately because they are not the same claim:
+
+1. **The envelope was ACCEPTED on the wire.** No `-32600` / `-32602` rejection came back for the response line. The schema reading above is now corroborated by the server's own behavior rather than standing alone.
+2. **Codex acted on it as a denial.** The write did not happen, and the agent's final message says why: `"I couldn’t create blocked.txt because write approval was denied."` — so `decline` denied rather than merely being tolerated.
+3. **The turn ENDED.** `turn/completed` with `"status":"completed"`, `"error":null`, `durationMs: 10605`.
+
+The before/after contrast is the whole point of the milestone, and both numbers come from the same test against the same envelope: the pre-fix run of this probe did not return **within 120 s** (§ Live protocol verification, NEW FINDING — the approval request was the last line of that transcript); the post-fix run completed in **10.6 s**. The stall is gone, and `decline` is the reason.
+
 #### What M6 did NOT verify
 
-- **No live session was run against the fix.** The whole milestone is verified against canned conns. The stall was OBSERVED live; the cure is not. A live re-run of `TestCodexLive_ExplicitReadOnlyApprovalStall` would be the direct confirmation that codex accepts `{"decision":"decline"}` and proceeds — it was not performed, so **codex's acceptance of the response envelope is read from the schema, not observed on the wire**. This is the same evidence class M0 operated in, and it is the single largest residual risk of this milestone.
+- ~~**No live session was run against the fix.** The whole milestone is verified against canned conns. The stall was OBSERVED live; the cure is not. A live re-run of `TestCodexLive_ExplicitReadOnlyApprovalStall` would be the direct confirmation that codex accepts `{"decision":"decline"}` and proceeds — it was not performed, so **codex's acceptance of the response envelope is read from the schema, not observed on the wire**. This is the same evidence class M0 operated in, and it is the single largest residual risk of this milestone.~~ **CLOSED** by § Live confirmation of the fix above — the orchestrator ran exactly that test at HEAD `e5295dee6`, and it returned `turn/completed` / `status:"completed"` in 10.6 s with the write denied. Codex's acceptance of the response envelope is now OBSERVED on the wire, not read from the schema. The original wording is struck rather than deleted, matching how the M2 and M4 corrections were recorded: the gap was real when it was written, and a reader tracing how it closed should be able to see what it said.
+- **What that live run does NOT extend to.** One live run of one test closes one inference. It says nothing about the other gaps below, every one of which remains open exactly as written — in particular it does **not** establish anything about `item/commandExecution/requestApproval` or `item/permissions/requestApproval`, which the probe never exercised.
 - **Only `item/fileChange/requestApproval` has a recognized case.** `item/commandExecution/requestApproval` and `item/permissions/requestApproval` exist in the schema and share the `{"decision":...}` shape, but they fall to the `-32601` error arm here. That unblocks the turn (which is what REQ-CX2-016 requires of an unrecognized method) but it is a coarser answer than the `decline` those schemas would accept. Handling them was left out as scope the amendment does not name; whether codex treats a `-32601` on those requests as gracefully as a `decline` is **not established**.
 - **The `-32601` code is a choice, not an observation.** The requirement asks for "a JSON-RPC error response" and cites codex's own `-32600` rejection as precedent. `-32601` (Method not found) was chosen as the semantically accurate code. No probe confirms which codes codex tolerates in a client→server error response.
 - **The abandoned turn goroutine's exit is reasoned, not asserted.** On timeout the reader is left blocked in `recv()` and is released by the caller's session tear-down, which both call sites perform on every exit path. No test asserts the goroutine actually exited (no leak detector is in use here); the argument is structural.
