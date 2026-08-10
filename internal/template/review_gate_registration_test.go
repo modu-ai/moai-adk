@@ -156,7 +156,7 @@ func TestReviewGateWrappersSelfGateBeforeBinaryResolution(t *testing.T) {
 				if resolve < 0 {
 					t.Fatalf("%s: binary-resolution block not found; test needs updating", path)
 				}
-				if !(optIn < earlyExit && earlyExit < resolve) {
+				if optIn >= earlyExit || earlyExit >= resolve {
 					t.Errorf("%s: self-gate must precede binary resolution (opt-in read @%d, early exit @%d, resolve @%d)",
 						path, optIn, earlyExit, resolve)
 				}
