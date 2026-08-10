@@ -79,7 +79,24 @@ REQ-CX2-009, REQ-CX2-010, REQ-CX2-011, REQ-CX2-012. Status, result, and cancel; 
 
 REQ-CX2-013, REQ-CX2-014, REQ-CX2-015. Tool registration with JSON Schema and read-only hints, the AskUserQuestion boundary grep, constants placement, and confirmation that `internal/template/templates/` is untouched.
 
-**Critical path**: M0 → M1 → M2 → M3 → M4 → M5. M2 may proceed in parallel with M1: the execution-model decision is already recorded, so the record shape is fixed and does not depend on the session refactor.
+### M6 — Protocol liveness: answer client-bound requests + bound the task turn (amendment, v0.6.0)
+
+REQ-CX2-016, REQ-CX2-017. Added after M1-M5 completed and verified, by the live protocol probe recorded in `progress.md` §E.2 § Live protocol verification. It closes a gap no existing requirement covered — not a defect against any of REQ-CX2-001..015, none of which is amended.
+
+**What is wrong today.** `awaitCodexTurnReview` (`internal/cli/mcp_codex.go:823`) dispatches on `msg.Method` with cases for `turn/started`, `item/completed`, and `turn/completed` only (switch at `:843`); every other line is read, thread-matched, and dropped. `item/fileChange/requestApproval` carries an `id`, so it is a **request** awaiting a response, and dropping it leaves codex parked at `activeFlags:["waitingOnApproval"]` — observed live, no return within 120 s. The `codex_task` path adds no deadline of its own, so the only bound is whatever context the MCP host supplies.
+
+**Two pieces of work, in this order.**
+
+1. **Answer client-bound requests (REQ-CX2-016).** A line with a non-empty `method` AND a non-empty `id` is a request, not a notification — `rpcMessage` (`mcp_codex.go:420`) already carries both fields, so the discrimination costs nothing. Respond on the same conn. For a file-change approval on a turn that did not opt into writes, the response denies. For an unrecognized request method, respond with a JSON-RPC error. Note the existing writer, `writeCodexRequest` (`:663`), builds a *request* envelope (`method` + `params` + `id`) — a response envelope (`id` + `result`, or `id` + `error`) is a second small writer, not a reuse.
+2. **Bound the task turn (REQ-CX2-017).** A named, test-overridable value in `internal/config/defaults.go` alongside `DefaultCodexJobCancelGrace` / `DefaultCodexJobSummaryMaxLen`, following the `var` form of `DefaultCodexReviewGateTimeout` (`:264`) so a test can shorten it — and distinct from it. Applied on the `codex_task` path (`handleCodexTask` `codex_task.go:119`, `runCodexBackgroundJob` `:239`), not on the review-gate path, which already carries its caller's 900 s.
+
+**M6 hazard — the response wire shape is unobserved.** The probe captured the approval *request* verbatim; it never sent an answer, so the response envelope's decision field is NOT established by any evidence this SPEC carries. Read it from the generated protocol schema against the pinned version — `codex app-server generate-json-schema --out <dir>`, the same source M0 used — and record the schema excerpt in `progress.md` §E.2 as the attribution for the shape chosen. Guessing here is asymmetrically dangerous: a wrong field name most likely reads as *no decision*, but a wrong value could read as **approval**, converting a defense into a write grant. Where the schema does not settle the shape, do not improvise one — leave the request unanswered and let REQ-CX2-017's bound terminate the turn, which is a worse outcome than answering but a strictly better one than guessing.
+
+**M6 hazard — concurrent writes on the conn.** The response is written from inside the read loop while the turn's caller is blocked in it. This is already the established pattern: `sendTurnInterrupt` writes from a second goroutine while the turn's own goroutine sits in `awaitCodexTurnReview`, and the live probe exercised exactly that (`progress.md` §E.2 Item 2). Nothing new is required of `codexConn`; do not add locking on the assumption that it is.
+
+**M6 blast radius.** `awaitCodexTurnReview` is shared with the review gate, so the gate answers these requests too. That path never opts into writes, so its answer is a denial, and its `(ReviewOutput, error)` contract is untouched (C7, AP-2) — the only case whose behavior changes is the one that currently stalls. Re-run the existing codex and review-gate suites unmodified as the regression check, exactly as AC-CX2-002 does for M1.
+
+**Critical path**: M0 → M1 → M2 → M3 → M4 → M5 → M6. M2 may proceed in parallel with M1: the execution-model decision is already recorded, so the record shape is fixed and does not depend on the session refactor.
 
 ## §E. Self-verification
 
@@ -102,6 +119,9 @@ golangci-lint run --timeout=2m
 - **AP-4 — turning cancellation into a process sweep.** Kill only the pid this server spawned for that job (REQ-CX2-012). A pattern-matched `pkill codex` would kill a developer's interactive session.
 - **AP-5 — making the write gate default-on for convenience during development.** The distributed default is false; a local opt-in belongs in local config, not in the code default.
 - **AP-6 — quietly fixing `synthesizeReviewOutput` while nearby.** Findings extraction is out of scope; a verdict-parsing change here would ride into the review gate untested against its own criteria.
+- **AP-7 — turning M6's denial into an approval path.** REQ-CX2-016 answers a request; it does not add a way to say yes. A config key that approves, a per-request approval surface, or an "approve when the model seems to need it" heuristic all reintroduce the blast radius R3 that `allow_write` was chosen to bound — and they do it below the gate, where `codex_setup` cannot show the user what is enabled.
+- **AP-8 — bounding the task turn with `DefaultCodexReviewGateTimeout` or an inline literal.** Reusing the gate's 900 s couples two budgets that are tuned for different callers, so a later change to the gate silently moves the task bound. An inline literal violates REQ-CX2-015 and cannot be shortened by a test, which makes AC-CX2-018 a 900-second test.
+- **AP-9 — inferring the approval-response shape from the request transcript.** The captured lines show what codex *asks*; they show nothing about what it *accepts* as an answer. Read the response schema (M6 hazard above) or leave the request unanswered and let the bound fire — a guessed envelope that happens to read as approval is the one failure mode of this milestone that is worse than the stall it replaces.
 
 ## §G. Cross-references
 
