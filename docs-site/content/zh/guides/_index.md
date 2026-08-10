@@ -5,7 +5,7 @@ weight: 85
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 智能体循环工程
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 代币经济学 · 智能体循环工程
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning -->
 

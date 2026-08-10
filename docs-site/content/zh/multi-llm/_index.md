@@ -4,7 +4,7 @@ weight: 60
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 代币经济学
 {{< /callout >}}
 <!-- @value: tokenomics -->
 

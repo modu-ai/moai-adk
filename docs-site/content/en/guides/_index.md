@@ -5,7 +5,7 @@ weight: 85
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Agentic Loop Engineering
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Tokenomics · Agentic Loop Engineering
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning -->
 

@@ -4,7 +4,7 @@ weight: 70
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Tokenomics
 {{< /callout >}}
 <!-- @value: tokenomics -->
 

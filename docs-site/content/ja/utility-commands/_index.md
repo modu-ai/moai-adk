@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🧠 エージェンティック・ループ・エンジニアリング · 🛡️ エージェント型ハーネス
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: エージェンティック・ループ・エンジニアリング · エージェント型ハーネス
 {{< /callout >}}
 <!-- @value: self-learning, agentic-harness -->
 

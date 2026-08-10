@@ -5,7 +5,7 @@ draft: false
 description: "A 4-group learning path for understanding Claude Code from scratch — the platform on which MoAI-ADK's three core values (Tokenomics, Agentic Loop Engineering, Agentic Harness) stand."
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness · 🧠 Agentic Loop Engineering
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Agentic Harness · Agentic Loop Engineering
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 
