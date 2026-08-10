@@ -69,18 +69,70 @@ const DIMENSIONS = ['Functionality', 'Security', 'Craft', 'Consistency']
 // Schema-forced output: the verdict computation consumes typed fields, so the Context + Judge
 // outputs are schema-shaped (arithmetic needs structure). Explorer narrative in the sibling
 // plan-research-fanout.js is markdown by contrast — that asymmetry is deliberate.
+// These MUST be real JSON Schema. `agent({schema})` validates them under strict mode,
+// where a bare field name at the top level is an unknown keyword and the call throws
+// before any agent runs — so a shape-object sketch here disables the whole fan-out.
 const CONTEXT_SCHEMA = {
-  spec_id: 'string — the audited SPEC id',
-  acceptance_criteria: ['string — one AC statement per entry'],
-  changed_files: ['string — repo-relative path touched by this SPEC'],
-  test_command: 'string — the command that runs this SPEC test suite',
+  type: 'object',
+  properties: {
+    spec_id: { type: 'string', description: 'the audited SPEC id' },
+    acceptance_criteria: {
+      type: 'array',
+      description: 'one AC statement per entry',
+      items: { type: 'string' },
+    },
+    changed_files: {
+      type: 'array',
+      description: 'repo-relative paths this SPEC touches',
+      items: { type: 'string' },
+    },
+    test_command: { type: 'string', description: 'the command that runs this SPEC test suite' },
+  },
+  required: ['spec_id', 'acceptance_criteria', 'changed_files', 'test_command'],
+  additionalProperties: false,
 }
 
+// `score` is nullable on purpose: the judge prompt instructs a judge that cannot evaluate
+// its dimension to return null rather than fabricate a number, and the Verdict phase reads
+// a non-numeric score as a missing judge (INCOMPLETE). A non-nullable number here would
+// force the fabrication the prompt forbids. anyOf rather than a union `type` keeps the
+// range constraint unambiguous under strict validation.
 const JUDGE_SCHEMA = {
-  dimension: 'string — one of Functionality/Security/Craft/Consistency',
-  score: 'number 0..1 — quality score for this dimension (0 = hard fail, 1 = flawless)',
-  findings: [{ severity: 'critical|major|minor', summary: 'string', file: 'string', evidence: 'string — command run + verbatim output' }],
-  evidence_gaps: ['string — a check the judge could NOT run and why (evidence absent != pass)'],
+  type: 'object',
+  properties: {
+    dimension: {
+      type: 'string',
+      enum: ['Functionality', 'Security', 'Craft', 'Consistency'],
+    },
+    score: {
+      anyOf: [
+        { type: 'number', minimum: 0, maximum: 1 },
+        { type: 'null' },
+      ],
+      description: 'quality score for this dimension (0 = hard fail, 1 = flawless); null when the dimension could not be evaluated at all',
+    },
+    findings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          severity: { type: 'string', enum: ['critical', 'major', 'minor'] },
+          summary: { type: 'string' },
+          file: { type: 'string' },
+          evidence: { type: 'string', description: 'the command run PLUS its verbatim output — never a summary' },
+        },
+        required: ['severity', 'summary', 'file', 'evidence'],
+        additionalProperties: false,
+      },
+    },
+    evidence_gaps: {
+      type: 'array',
+      description: 'a check the judge could NOT run, and why (evidence absent != pass)',
+      items: { type: 'string' },
+    },
+  },
+  required: ['dimension', 'score', 'findings', 'evidence_gaps'],
+  additionalProperties: false,
 }
 
 // ---------------------------------------------------------------------------
