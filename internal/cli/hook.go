@@ -719,6 +719,26 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe: event recording failed: %v\n", err)
 	}
 
+	// SPEC-HARNESS-LEARNING-EVO-001 REQ-HLE-011: Bash evidence carve-out.
+	//
+	// buildBashRecord is unreachable from the shipped hook wiring — its only
+	// caller runs behind handle-post-tool.sh, which is registered for
+	// Write|Edit|MultiEdit only — so the terminal test-pass / test-fail signal
+	// the Stop seam reads was never produced. This wrapper is registered with no
+	// matcher and does receive the full Bash payload, so routing Bash through the
+	// evidence path here restores reachability with no settings.json edit.
+	//
+	// Scoped to Bash: Write/Edit stay owned by handle-post-tool.sh, so no tool
+	// call produces two evidence records.
+	//
+	// Gated on the hook opt-in as well as the learning gate. The usage-log write
+	// above intentionally keeps its pre-existing single-gate behavior; this NEW
+	// write is a distinct emission path and REQ-HLE-013 requires it to stay inert
+	// while either observation gate is closed.
+	if hookInput.ToolName == "Bash" && isHookOptInEnabled(root) {
+		hook.LogBashEvidence(hookInput)
+	}
+
 	return nil
 }
 
