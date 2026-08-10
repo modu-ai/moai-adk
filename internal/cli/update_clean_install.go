@@ -544,7 +544,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 // concrete FILE paths that backupDeprecatedPaths can copy (REQ-RIL2-015).
 //
 // scanDeprecatedPaths returns whatever a defs.DeprecatedPaths entry resolves to,
-// and several entries are directories (`.agency`, `.moai/project/brand`).
+// and several entries are directories (`.agency`, `.moai/db`).
 // backupDeprecatedPaths copies file contents, so a directory entry is expanded
 // into its contained files here; files and symlinks pass through unchanged
 // (backupDeprecatedPaths records symlink metadata without following the link).

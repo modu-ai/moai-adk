@@ -302,18 +302,22 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 	// This reverses the one entry added by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001;
 	// the DeprecatedPaths↔template intersection is now empty and guarded by
 	// TestDeprecatedPaths_NoTemplateCollision (internal/cli).
-	// brand + db directories
-	// Both entries below were deprecated by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001,
-	// which is also the DeprecatedBy authority recorded on each. Naming the
-	// authorising SPEC on the group banner keeps the grouping self-describing:
-	// the two entries are a single deprecation decision, not two unrelated ones
-	// that happen to sit next to each other.
-	{
-		Path:            ".moai/project/brand",
-		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		RemovalSchedule: "v3.0.0",
-	},
+	// db directory
+	// NOTE: `.moai/project/brand` was REMOVED from this slice by the issue #1377
+	// residual sweep. Like the `.claude/rules/moai/design` removal above, it was a
+	// stale entry contradicted by the live v3 surface: the shipped template treats
+	// the path as live in six files (CLAUDE.md, .moai/config/sections/design.yaml,
+	// .claude/rules/moai/core/zone-registry.md, .claude/rules/moai/design/constitution.md,
+	// .claude/skills/moai/workflows/design.md and its shadcn-component-catalog
+	// reference), and config defaults resolve BrandContext.Dir to it. Since
+	// REQ-RIL2-010 excludes DeprecatedPaths entries from the PRESERVE inventory,
+	// keeping the entry made the clean reinstall DELETE the user's brand content
+	// for a path the documentation tells them to populate. The template is the
+	// authority here, so the DeprecatedPaths entry is removed rather than the
+	// template files. Guarded by TestDeprecatedPaths_NoTemplateTextReference
+	// (internal/cli), the text-reference companion to the shipped-path collision
+	// guard that could not see a prose-only reference.
+	// `.moai/db` below stays deprecated — re-deprecated by SPEC-DB-RETIRE-001.
 	{
 		Path:            ".moai/db",
 		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
