@@ -35,6 +35,8 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 const (
@@ -57,6 +59,58 @@ const (
 	codexTaskNoPriorThreadNote = "resume_last was requested but no prior thread is recorded for this project; " +
 		"a new thread was opened."
 )
+
+// codexTaskTimeoutMessage names the bound that ended a turn (REQ-CX2-017). It
+// reads the duration at call time rather than baking it in, so a shortened
+// bound reports the value that actually fired.
+func codexTaskTimeoutMessage() string {
+	return "codex_task turn timed out after " + config.DefaultCodexTaskTimeout.String() +
+		" (the bound codex_task imposes on its own turns); the turn was abandoned and the session torn down"
+}
+
+// runCodexTaskTurn drives ONE task turn under a deadline the tool imposes
+// itself (REQ-CX2-017).
+//
+// The bound exists because nothing else provides one on this path: the caller's
+// context is whatever the MCP host supplied and may carry no deadline at all,
+// and a turn can stop advancing for reasons that never close the connection — a
+// live session parked on an unanswered approval request and did not return
+// within 120 s (progress.md §E.2). A deadline on the context alone would not be
+// enough either: the driver blocks in conn.recv(), which returns when the
+// connection ends, so the turn is raced against the timer here instead.
+//
+// On expiry the reader goroutine is left blocked in recv and is unblocked by
+// the caller's session tear-down, which both call sites already perform on
+// every exit path. Nothing is closed here, because closing a live session from
+// two goroutines would put two exec.Cmd.Wait calls in flight on the same
+// process.
+func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params map[string]any) (ReviewOutput, error) {
+	ctx, cancel := context.WithTimeout(ctx, config.DefaultCodexTaskTimeout)
+	defer cancel()
+
+	type turnOutcome struct {
+		out ReviewOutput
+		err error
+	}
+	done := make(chan turnOutcome, 1) // buffered: an abandoned turn must not block on send
+	go func() {
+		out, err := session.runTurn(ctx, codexMethodTurnStart, params)
+		done <- turnOutcome{out: out, err: err}
+	}()
+
+	select {
+	case outcome := <-done:
+		return outcome.out, outcome.err
+	case <-ctx.Done():
+		msg := codexTaskTimeoutMessage()
+		return ReviewOutput{
+			Verdict:   VerdictInconclusive,
+			Summary:   msg,
+			Findings:  []Finding{},
+			NextSteps: []string{"re-run with a narrower prompt, or raise the codex_task bound"},
+		}, errors.New(msg)
+	}
+}
 
 // CodexTaskResult is the structured result codex_task returns. It is a distinct
 // shape from ReviewOutput: a task produces output, not a verdict, and folding it
@@ -182,8 +236,8 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	if !background {
 		defer func() { _ = session.close() }()
-		out, runErr := session.runTurn(ctx, codexMethodTurnStart, turnParams)
-		result.TurnID = session.turnID
+		out, runErr := runCodexTaskTurn(ctx, session, turnParams)
+		result.TurnID = session.currentTurnID()
 		if runErr != nil {
 			result.Status = codexJobStatusFailed
 			result.Error = out.Summary
@@ -212,7 +266,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	// The turnId must land in the record while the turn is still RUNNING, which
 	// is the only window in which it is useful for cancellation.
-	session.onTurnStarted = registry.turnIDRecorder(rec.ID)
+	session.setTurnStartedObserver(registry.turnIDRecorder(rec.ID))
 	codexLiveJobSessions.Store(rec.ID, session)
 
 	if _, err := registry.update(rec.ID, func(r *CodexJobRecord) { r.Status = codexJobStatusRunning }); err != nil {
@@ -242,7 +296,7 @@ func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobI
 		_ = session.close()
 	}()
 
-	out, runErr := session.runTurn(ctx, codexMethodTurnStart, params)
+	out, runErr := runCodexTaskTurn(ctx, session, params)
 
 	// A job cancelled while the turn was in flight keeps its cancelled status:
 	// the turn returning afterwards must not overwrite it with completed or

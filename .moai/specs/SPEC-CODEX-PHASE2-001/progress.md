@@ -615,6 +615,132 @@ Reachability is high rather than exotic: EVERY `codex_task` turn without a write
 - Lint — `golangci-lint run --timeout=3m` → `0 issues.`
 - Default-skip proof — `go test ./internal/cli/ -run TestCodexLive -v` with no opt-in env → all five probe tests `--- SKIP` with `MOAI_CODEX_LIVE_PROBE != 1`.
 
+### M6 — Protocol liveness (amendment, v0.6.0)
+
+REQ-CX2-016 / AC-CX2-017 and REQ-CX2-017 / AC-CX2-018. Implemented against the tree at HEAD `be9eb7e40` (branch `feat/SPEC-CODEX-PHASE2-001-run`, working tree clean at start). This milestone closes the gap the live probe found (§ Live protocol verification, NEW FINDING) and nothing else: no existing requirement was amended, and the M1-M5 suites were re-run unmodified as the regression check.
+
+#### The response wire shape — read from the schema, not inferred
+
+`plan.md` §F AP-9 forbids inferring the answer's shape from the request transcript, because a wrong field name reads as *no decision* while a wrong value could read as **approval**. The shape was therefore read from the generated protocol schema, the same source M0 used:
+
+```
+$ codex --version
+codex-cli 0.146.1
+$ codex app-server generate-json-schema --out <dir>
+```
+
+`FileChangeRequestApprovalResponse.json`, verbatim and complete in its load-bearing part:
+
+```json
+{
+  "title": "FileChangeRequestApprovalResponse",
+  "type": "object",
+  "required": ["decision"],
+  "properties": { "decision": { "$ref": "#/definitions/FileChangeApprovalDecision" } },
+  "definitions": {
+    "FileChangeApprovalDecision": {
+      "oneOf": [
+        { "description": "User approved the file changes.", "enum": ["accept"] },
+        { "description": "User approved the file changes and future changes to the same files should run without prompting.", "enum": ["acceptForSession"] },
+        { "description": "User denied the file changes. The agent will continue the turn.", "enum": ["decline"] },
+        { "description": "User denied the file changes. The turn will also be immediately interrupted.", "enum": ["cancel"] }
+      ]
+    }
+  }
+}
+```
+
+The schema settles the shape outright: the response is `{"decision": "<variant>"}`, and it enumerates exactly two denying variants. **`decline` was chosen over `cancel`** because the schema's own descriptions distinguish them — `decline` denies and lets the agent continue the turn, `cancel` denies and interrupts it. Denial that still lets the turn finish is what returns the caller a turn output stating what could not be done; `cancel` would return an interrupted turn. Both deny; the weaker consequence is the one that preserves the caller's result.
+
+Two sibling requests share the shape and are recorded because they bound the claim: `CommandExecutionRequestApprovalResponse` and `PermissionsRequestApprovalResponse` also require `decision`, with `decline` / `cancel` among their variants. Neither is given a recognized case here — see the Gaps below.
+
+The binary used for the schema is the functional 0.146.1 install (`/Users/goos/.nvm/versions/node/v22.14.0/bin/codex`), not the broken PATH shim the probe documented.
+
+#### What was implemented
+
+- **`internal/cli/mcp_codex.go`** — `awaitCodexTurnReview` gained one branch: a decoded line carrying BOTH a method and a non-null id is a server→client request and is answered via `answerCodexClientRequest`. `item/fileChange/requestApproval` gets `{"decision":"decline"}`; anything else gets a JSON-RPC error arm with code `-32601` (Method not found). Two small writers were added (`writeCodexResponse` / `writeCodexErrorResponse`) rather than reusing `writeCodexRequest`, which builds a request envelope. The branch sits BEFORE the thread filter on purpose: an unrecognized request need not carry a `threadId`, and a request dropped for want of one stalls the turn exactly as surely as one dropped for want of a case.
+- **`internal/config/defaults.go`** — `DefaultCodexTaskTimeout = 600 * time.Second`, a `var` so a test can shorten it, and deliberately distinct in both name and value from `DefaultCodexReviewGateTimeout` (900 s).
+- **`internal/cli/codex_task.go`** — `runCodexTaskTurn` races the turn against that bound and is used by BOTH the foreground handler and `runCodexBackgroundJob`. A context deadline alone would not have sufficed: the driver blocks in `conn.recv()`, which returns when the connection ends, not when a context expires.
+- **The denial is unconditional and no grant path exists** (`plan.md` §F AP-7). `workflow.codex.task.allow_write` remains the sole write opt-in: a turn that opted in already runs `workspaceWrite`, so an approval request that reaches this driver is by construction one that must not be granted.
+
+#### RED evidence
+
+The tests were written first. Verbatim first run, before any production change (the constant the assertions name did not exist):
+
+```
+$ go test ./internal/cli/ -run 'TestCodexTask_Denies|TestCodexTask_AnswersUnrecognized|TestCodexReviewGate_Denies|TestCodexTask_ForegroundTurnBounded|TestCodexTask_BackgroundTurnTimeout|TestCodexTaskTimeout_IsDistinct'
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/codex_protocol_liveness_test.go:268:17: undefined: codexApprovalDecisionDecline
+internal/cli/codex_protocol_liveness_test.go:270:14: undefined: codexApprovalDecisionDecline
+internal/cli/codex_protocol_liveness_test.go:339:61: undefined: codexApprovalDecisionDecline
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+A compile failure is a weak RED — it proves the constant was absent, not that the withholding device works. So the device was **falsified directly**: with the implementation complete and passing, the single dispatch line `answerCodexClientRequest(conn, msg)` was replaced by a bare `continue` and the arms re-run. Verbatim:
+
+```
+--- FAIL: TestCodexTask_DeniesFileChangeApprovalRequest (5.00s)
+    codex_protocol_liveness_test.go:259: the turn did not return cleanly: status=failed result=map[... error:codex_task turn timed out after 5s (the bound codex_task imposes on its own turns); the turn was abandoned and the session torn down ...]
+--- FAIL: TestCodexTask_AnswersUnrecognizedClientRequest (5.00s)
+    codex_protocol_liveness_test.go:298: the turn did not return cleanly: status=failed result=map[... error:codex_task turn timed out after 5s ...]
+```
+
+Both arms fail when the answer is dropped, and they fail by exhausting the bound — so the falsification demonstrates BOTH criteria at once: AC-CX2-017's withholding server really does withhold, and AC-CX2-018's bound really does fire on a turn that stops advancing. The line was restored immediately after.
+
+That falsification also **found a defect in the test this milestone authored**: `TestCodexReviewGate_DeniesFileChangeApprovalRequest` originally called `runCodexReviewRPC` with `context.Background()` and no bound of its own. REQ-CX2-017 binds `codex_task` only, so with the answer removed that test HUNG rather than failing (the run was killed at 126 s). It now drives the call in a goroutine under a 10 s ceiling and closes the conn to release the reader — a regression test that hangs instead of failing is the one outcome such a test must not have.
+
+#### A production data race the milestone introduced, and fixed
+
+`go test -race` failed on the first attempt with a genuine race this change created:
+
+```
+WARNING: DATA RACE
+Read at 0x00c000799750 by goroutine 25:
+  ...cli.handleCodexTask() codex_task.go:240
+Previous write at 0x00c000799750 by goroutine 26:
+  ...cli.(*codexSessionHandle).noteTurnStarted() mcp_codex.go:607
+  ...cli.awaitCodexTurnReview() mcp_codex.go:887
+  ...cli.runCodexTaskTurn.func1() codex_task.go:97
+```
+
+Before M6, `runTurn` was synchronous, so `session.turnID` was always written before it was read. Bounding the turn made the read concurrent with an abandoned turn goroutine still writing it. Fixed at the source rather than papered over in the test: `noteTurnStarted` now writes under the handle's existing mutex (firing the observer OUTSIDE the lock, since it writes a job record), a `currentTurnID()` accessor is the only outside read, and `setTurnStartedObserver` gives the observer field the same discipline. `go test -race` and `-race -count=20` are clean afterwards.
+
+This is the third time on this branch that a race-shaped defect survived something weaker than a repeated run (M2, M4, now M6) — and the first time the repeated-run discipline caught one *at the milestone that introduced it* rather than a milestone later.
+
+#### AC verdicts
+
+| AC | REQ | Verdict | Evidence |
+|---|---|---|---|
+| AC-CX2-017 main arm — approval answered with a denial | REQ-CX2-016 | **PASS** | `TestCodexTask_DeniesFileChangeApprovalRequest` — asserts the transmitted line carrying the request's id decodes to `result.decision == "decline"` and that the turn returned; the canned server withholds `turn/completed` until an id-matched line is observed |
+| AC-CX2-017 unknown-method arm | REQ-CX2-016 | **PASS** | `TestCodexTask_AnswersUnrecognizedClientRequest` — the request carries NO `threadId`, proving the answer precedes the thread filter; asserts a JSON-RPC `error` arm with code and message |
+| AC-CX2-018 foreground arm | REQ-CX2-017 | **PASS** | `TestCodexTask_ForegroundTurnBoundedByOwnDeadline` — `context.Background()` (no caller deadline), bound overridden to 300 ms, two-sided assertion (≥ 300 ms, ≤ 30 s), status `failed`, error names the timeout |
+| AC-CX2-018 background arm | REQ-CX2-017 | **PASS** | `TestCodexTask_BackgroundTurnTimeoutReachesTerminalStatus` — job record reaches `failed` after ≥ the bound, error names the timeout |
+| AC-CX2-018 distinctness arm | REQ-CX2-017 | **PASS** | `grep -n 'DefaultCodexReviewGateTimeout' internal/cli/codex_task.go` → no output (exit 1). Also held as `TestCodexTaskTimeout_IsDistinctFromReviewGateBudget`, so a later edit that collapses the two budgets fails in CI rather than only in a one-off grep |
+| Blast radius — the review gate answers too, contract unchanged (C7) | REQ-CX2-016 | **PASS** | `TestCodexReviewGate_DeniesFileChangeApprovalRequest` — `runCodexReviewRPC` keeps its `(ReviewOutput, error)` shape and returns a verdict; the same denial is transmitted |
+
+**§E verification batch** (against the tree at HEAD `be9eb7e40` plus the M6 change, before commit).
+
+- Targeted — `go test -count=1 ./internal/cli/ -run 'Codex|MCP|Job|Task|Cancel|Approval|Timeout'` → `ok … 1.880s`.
+- Repetition — `go test -count=60 -run 'Codex|Job|Task|Cancel|Approval|Timeout' ./internal/cli/` → `ok … 206.745s`.
+- Race — `go test -race -run 'Codex|Job|Task|Cancel|Approval|Timeout' ./internal/cli/` → `ok … 3.451s`; and repeated, `-race -count=20` → `ok … 26.948s`. A single race run is not evidence for a timing defect, which is why both are recorded.
+- Full suite — `go test ./...` → 112 packages `ok`, zero `FAIL` / `panic` lines. Neither known unrelated flake (`TestNavigatorEnrich_AtomicWriteBarrier`, `TestBranchGuard_Latency`) fired.
+- Cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`; `go vet ./internal/cli/ ./internal/config/` → `VET_EXIT=0`.
+- Coverage — `go test -cover ./internal/cli/` → `ok … 201.245s coverage: 76.9% of statements`, against the M5 level of 76.8%. Above its pre-change level.
+- Lint — `golangci-lint run --timeout=3m` → `0 issues.`
+- Boundary — `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go | grep -v '_test.go' | grep -v '//'` → no matches.
+- Template surface — `git status --porcelain internal/template/templates/` → empty.
+- Formatting — `gofmt -l` over the four touched files → empty. (`gofmt -l .` across the whole repo lists ~140 pre-existing files untouched by this milestone; that condition predates M6 and is not addressed here.)
+- Default-skip proof — `go test ./internal/cli/ -run 'TestCodexLive' -v` → all five live probes `--- SKIP`. The opt-in probe still never runs on `go test ./...` and still spends no quota unasked.
+
+#### What M6 did NOT verify
+
+- **No live session was run against the fix.** The whole milestone is verified against canned conns. The stall was OBSERVED live; the cure is not. A live re-run of `TestCodexLive_ExplicitReadOnlyApprovalStall` would be the direct confirmation that codex accepts `{"decision":"decline"}` and proceeds — it was not performed, so **codex's acceptance of the response envelope is read from the schema, not observed on the wire**. This is the same evidence class M0 operated in, and it is the single largest residual risk of this milestone.
+- **Only `item/fileChange/requestApproval` has a recognized case.** `item/commandExecution/requestApproval` and `item/permissions/requestApproval` exist in the schema and share the `{"decision":...}` shape, but they fall to the `-32601` error arm here. That unblocks the turn (which is what REQ-CX2-016 requires of an unrecognized method) but it is a coarser answer than the `decline` those schemas would accept. Handling them was left out as scope the amendment does not name; whether codex treats a `-32601` on those requests as gracefully as a `decline` is **not established**.
+- **The `-32601` code is a choice, not an observation.** The requirement asks for "a JSON-RPC error response" and cites codex's own `-32600` rejection as precedent. `-32601` (Method not found) was chosen as the semantically accurate code. No probe confirms which codes codex tolerates in a client→server error response.
+- **The abandoned turn goroutine's exit is reasoned, not asserted.** On timeout the reader is left blocked in `recv()` and is released by the caller's session tear-down, which both call sites perform on every exit path. No test asserts the goroutine actually exited (no leak detector is in use here); the argument is structural.
+- **The 600 s value is a judgment, not a measurement.** Nothing was measured to choose it. It is distinct from the gate's 900 s, which is what the requirement demands; whether it is the right length for real task turns is unknown.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -640,6 +766,7 @@ Notes on the fields above, so a later reader does not have to re-derive them:
 - `preserve_list_post_run_count: 5` is the `plan.md` §A.1 PRESERVE list, all five entries intact: `runCodexReviewRPC`'s `(ReviewOutput, error)` contract for both existing callers, the `inconclusiveReview` / `VerdictInconclusive` fail-open semantics, `readCodexReviewGateEnabled`'s nested key path and fail-closed truth table, `TestReviewGateReaders_AgreeWithConfigLoader` + `TestMCPAudit_NoDirectFrontmatterRead`, and every file outside `internal/cli/` and `internal/config/`.
 - `total_run_phase_files: 9` — `internal/cli/mcp_codex.go`, `internal/cli/mcp_server.go`, `internal/cli/codex_jobs.go`, `internal/cli/codex_task.go`, `internal/cli/codex_job_control.go`, `internal/cli/codex_jobs_test.go`, `internal/cli/codex_task_test.go`, `internal/cli/codex_job_control_test.go`, `internal/cli/codex_registration_test.go`; plus `internal/config/types.go` and `internal/config/defaults.go` for the typed key and its default. `internal/template/templates/` is untouched.
 - The `l44_*` fetch fields are `not-applicable` rather than `0`: the run phase commits to a feature branch and pushes nothing, so there was no push boundary at which to fetch. Recording `0` would assert a check that was never run.
+- **M6 (v0.6.0 amendment) restates three of the fields above, and the block is again left as measured rather than overwritten.** With M6 landed: `ac_pass_count` reads **18** (AC-CX2-001..018, AC-CX2-017 and AC-CX2-018 added by the amendment, still `ac_fail_count: 0`); `total_run_phase_files` reads **11** on the branch as a whole, the eleventh being `internal/cli/codex_protocol_liveness_test.go` (M6 modified three files already counted — `mcp_codex.go`, `codex_task.go`, `internal/config/defaults.go` — and added no other); and `new_warnings_or_lints_introduced` stays `0` (`golangci-lint run --timeout=3m` → `0 issues.` on the M6 tree). `preserve_list_post_run_count` stays **5**: M6 touches `awaitCodexTurnReview`, which the review gate shares, but `runCodexReviewRPC`'s `(ReviewOutput, error)` contract, the `inconclusiveReview` / `VerdictInconclusive` fail-open path, `readCodexReviewGateEnabled`, the two named guard tests, and the file boundary are all intact — and the gate's caller-supplied 900 s bound at `codex_review_gate.go:87` was deliberately left where it is (REQ-CX2-017 binds `codex_task` only).
 - The block above describes the run phase as it stood at `bae3e8616` and is left as measured. The later live-protocol probe (§E.2 § Live protocol verification, HEAD `4a059f8b1`) adds a tenth file, `internal/cli/codex_live_protocol_probe_test.go` — test-only, opt-in, no production change — so `total_run_phase_files` reads 10 on the branch as a whole. The figure is noted here rather than overwritten above, so the original measurement stays attributable to the tree it was taken against.
 
 ## §E.4 Sync-phase Audit-Ready Signal

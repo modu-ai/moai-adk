@@ -276,6 +276,23 @@ var DefaultCodexReviewGateTimeout = 900 * time.Second
 // constant expression.
 var DefaultMultiReviewGateTimeout = 900 * time.Second
 
+// DefaultCodexTaskTimeout bounds ONE codex_task turn (SPEC-CODEX-PHASE2-001
+// REQ-CX2-017 / REQ-CX2-015). It exists because the task path has no bound of
+// its own otherwise: the only deadline is whatever context the MCP host
+// supplies, and a host that supplies none leaves a turn free to run forever —
+// which a live probe reached in practice, through a codex request the driver
+// left unanswered (progress.md §E.2 § Live protocol verification).
+//
+// It is deliberately DISTINCT from DefaultCodexReviewGateTimeout rather than a
+// reuse of it: the two bound different callers (a Stop hook that must not stall
+// a commit, versus a task an operator asked for), so coupling them would let a
+// change tuned for one silently move the other.
+//
+// Not a compile-time const, for the same reason DefaultCodexReviewGateTimeout
+// is not — and so a test can shorten it, which is what keeps the criterion that
+// verifies the bound cheap to run instead of a ten-minute test.
+var DefaultCodexTaskTimeout = 600 * time.Second
+
 // DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
 // carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
 // lifecycle artifact, not a transcript: the summary exists so an operator can

@@ -79,6 +79,38 @@ const (
 	// progress.md §E.2 (a)).
 	codexNotifyTurnStarted = "turn/started"
 
+	// codexRequestFileChangeApproval is a server→CLIENT request: it carries an
+	// `id` and the turn does not advance until a response with that id comes
+	// back. A live session (codex-cli 0.146.1) parked at
+	// activeFlags:["waitingOnApproval"] and never returned because this driver
+	// used to read the line and drop it (REQ-CX2-016; progress.md §E.2 § Live
+	// protocol verification).
+	codexRequestFileChangeApproval = "item/fileChange/requestApproval"
+
+	// codexApprovalDecisionDecline is the answer this client always gives.
+	//
+	// The value is READ FROM the generated protocol schema, not inferred from
+	// the request transcript (plan.md §F AP-9): FileChangeRequestApprovalResponse
+	// requires a `decision` field whose FileChangeApprovalDecision variants are
+	// accept | acceptForSession | decline | cancel. `decline` is documented as
+	// "User denied the file changes. The agent will continue the turn"; `cancel`
+	// denies AND interrupts the turn. Declining is the denial that still lets the
+	// turn finish and report what it could not do, which is the outcome the
+	// caller asked for.
+	//
+	// It is deliberately unconditional. REQ-CX2-016 adds no approval-GRANTING
+	// path — workflow.codex.task.allow_write is the sole write opt-in
+	// (REQ-CX2-007), and a turn that did opt in already runs workspaceWrite, so
+	// an approval request reaching this driver is by construction one that must
+	// not be granted (plan.md §F AP-7).
+	codexApprovalDecisionDecline = "decline"
+
+	// codexRPCMethodNotFound is the JSON-RPC 2.0 "Method not found" code. An
+	// unrecognized client-bound request gets this rather than silence, so an
+	// unknown request also unblocks the turn instead of stalling it
+	// (REQ-CX2-016).
+	codexRPCMethodNotFound = -32601
+
 	// codex client identity sent in the initialize handshake (the server rejects
 	// initialize without a clientInfo {name,version} object).
 	codexClientName    = "moai-codex-gate"
@@ -568,14 +600,42 @@ func (h *codexSessionHandle) pid() int {
 
 // noteTurnStarted records an observed turn id on the handle and fans it out to
 // the mid-flight observer, if one is installed.
+//
+// The write is guarded because the turn loop no longer always finishes before
+// its caller reads the id back: a turn abandoned at the REQ-CX2-017 bound keeps
+// running in its own goroutine while codex_task builds a result from the
+// handle. The observer fires OUTSIDE the lock — it writes a job record, which
+// has no business happening under a session mutex.
 func (h *codexSessionHandle) noteTurnStarted(turnID string) {
 	if turnID == "" {
 		return
 	}
+	h.mu.Lock()
 	h.turnID = turnID
-	if h.onTurnStarted != nil {
-		h.onTurnStarted(turnID)
+	observer := h.onTurnStarted
+	h.mu.Unlock()
+
+	if observer != nil {
+		observer(turnID)
 	}
+}
+
+// setTurnStartedObserver installs the mid-flight turn-id observer under the same
+// lock noteTurnStarted reads it through, so the field has one discipline rather
+// than one that happens to be safe because of where it is currently called.
+func (h *codexSessionHandle) setTurnStartedObserver(fn func(string)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onTurnStarted = fn
+}
+
+// currentTurnID reports the turn id observed so far, or "" when no turn/started
+// has arrived. It is the ONLY safe way to read the id from outside the turn
+// loop (see noteTurnStarted).
+func (h *codexSessionHandle) currentTurnID() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.turnID
 }
 
 // allocID hands out the next JSON-RPC request id. Ids must stay unique across
@@ -834,6 +894,15 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, 
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
 			continue
 		}
+		// A line carrying BOTH a method and an id is a server→client REQUEST, and
+		// the turn stops until it is answered (REQ-CX2-016). It is handled before
+		// the thread filter below on purpose: an unrecognized request need not
+		// carry a threadId, and a request dropped for want of one stalls the turn
+		// exactly as surely as one dropped for want of a case.
+		if codexIsClientRequest(msg) {
+			answerCodexClientRequest(conn, msg)
+			continue
+		}
 		if msg.Method == "" { // a response, not a notification
 			continue
 		}
@@ -864,6 +933,73 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, 
 			return bestCodexReviewText(reviewText, agentText)
 		}
 	}
+}
+
+// codexIsClientRequest reports whether a decoded line is a server→client
+// REQUEST: a method AND an id. An explicit `"id":null` is a notification with a
+// noisy encoder, not a request — answering it would address nobody.
+func codexIsClientRequest(msg rpcMessage) bool {
+	if msg.Method == "" || len(msg.ID) == 0 {
+		return false
+	}
+	return strings.TrimSpace(string(msg.ID)) != "null"
+}
+
+// answerCodexClientRequest responds to a server→client request so the turn can
+// advance (REQ-CX2-016). A recognized approval request is DENIED; anything else
+// gets a JSON-RPC error arm, which unblocks the turn just as well as a result
+// would and states plainly that this client does not implement the method.
+//
+// The write happens from inside the read loop while the turn's caller is
+// blocked in it. That is the established shape here, not a new hazard:
+// sendTurnInterrupt already writes from a second goroutine while the turn's own
+// goroutine sits in this loop, and a live session exercised exactly that
+// (progress.md §E.2 Item 2). No locking is added on the assumption it is
+// needed.
+//
+// A write failure is deliberately swallowed: the connection is already broken,
+// the turn will end by EOF, and there is no caller here to hand an error to.
+func answerCodexClientRequest(conn codexConn, msg rpcMessage) {
+	if msg.Method == codexRequestFileChangeApproval {
+		_ = writeCodexResponse(conn, msg.ID, map[string]any{"decision": codexApprovalDecisionDecline})
+		return
+	}
+	_ = writeCodexErrorResponse(conn, msg.ID, codexRPCMethodNotFound,
+		"moai codex client does not implement "+msg.Method)
+}
+
+// writeCodexResponse sends one JSON-RPC RESULT response line, echoing the
+// request's id verbatim. It is a second small writer rather than a reuse of
+// writeCodexRequest, which builds a request envelope (method + params + id);
+// a response carries id + result and no method.
+//
+// The id is echoed as raw JSON so an integer id stays an integer and a string
+// id stays a string — the server matches on the value it sent, and codex sends
+// integer ids from its own counter (id 0 was the observed first one).
+func writeCodexResponse(conn codexConn, id json.RawMessage, result any) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"result":  result,
+	})
+}
+
+// writeCodexErrorResponse sends one JSON-RPC ERROR response line.
+func writeCodexErrorResponse(conn codexConn, id json.RawMessage, code int, message string) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"error":   map[string]any{"code": code, "message": message},
+	})
+}
+
+// writeCodexEnvelope marshals and sends one NDJSON line.
+func writeCodexEnvelope(conn codexConn, envelope map[string]any) error {
+	b, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return conn.send(string(b))
 }
 
 // bestCodexReviewText prefers the structured exitedReviewMode review over the
