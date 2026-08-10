@@ -34,10 +34,27 @@ type FileBackup struct {
 	Data []byte
 }
 
+// UserPatternsMarker delimits the user-owned tail of a merged .gitignore.
+// Everything below it belongs to the user and is carried across a `moai update`
+// verbatim — comments, blank lines, and original order included.
+const UserPatternsMarker = "# User Custom Patterns (preserved by moai update)"
+
 // MergeGitignoreFile reads the newly deployed .gitignore template and merges
-// user-specific patterns from the backup. Template content is kept as-is;
-// user-added lines (not present in the template) are appended under a
-// "User Custom Patterns" header.
+// user-specific patterns from the backup. Template content is kept as-is.
+//
+// Two paths, chosen by whether the backup already carries UserPatternsMarker:
+//
+//   - marker present (the common case after the first update) — everything below
+//     the marker is carried over VERBATIM. Only exact-match non-comment lines the
+//     template already ships are dropped, so comments and ordering survive.
+//   - marker absent (first-time upgrader) — fall back to line-set subtraction and
+//     emit a fresh marker block.
+//
+// The verbatim path exists because the subtraction path regenerated the very
+// block it advertised as preserved: it skipped comments and blank lines when
+// collecting user additions, so user comments were lost and pattern order was
+// destroyed. Order is semantic in gitignore — a `!negation` behaves differently
+// depending on which rule precedes it (issues #1415 / #1377).
 func MergeGitignoreFile(gitignorePath string, userBackup []byte) error {
 	templateContent, err := os.ReadFile(gitignorePath)
 	if err != nil {
@@ -52,6 +69,10 @@ func MergeGitignoreFile(gitignorePath string, userBackup []byte) error {
 		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
 			templateSet[trimmed] = true
 		}
+	}
+
+	if block, ok := extractUserMarkerBlock(string(userBackup)); ok {
+		return writeUserMarkerBlock(gitignorePath, string(templateContent), block, templateSet)
 	}
 
 	// Collect user-specific lines that are not in the new template
@@ -76,10 +97,71 @@ func MergeGitignoreFile(gitignorePath string, userBackup []byte) error {
 	if !strings.HasSuffix(result, "\n") {
 		result += "\n"
 	}
-	result += "\n# User Custom Patterns (preserved by moai update)\n"
+	result += "\n" + UserPatternsMarker + "\n"
 	for _, line := range userAdditions {
 		result += line + "\n"
 	}
+
+	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
+}
+
+// extractUserMarkerBlock returns the lines below UserPatternsMarker in backup,
+// with trailing blank lines trimmed, and reports whether the marker was found.
+// Only the LAST marker occurrence is honoured, so a stray marker inside the
+// user's own block cannot truncate it.
+func extractUserMarkerBlock(backup string) ([]string, bool) {
+	lines := strings.Split(backup, "\n")
+	markerIdx := -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) == UserPatternsMarker {
+			markerIdx = i
+		}
+	}
+	if markerIdx < 0 {
+		return nil, false
+	}
+
+	block := lines[markerIdx+1:]
+	for len(block) > 0 && strings.TrimSpace(block[len(block)-1]) == "" {
+		block = block[:len(block)-1]
+	}
+	return block, true
+}
+
+// writeUserMarkerBlock appends block to templateContent under a single
+// UserPatternsMarker, preserving the block's comments, blank lines, and order.
+//
+// A block line is dropped only when it is a non-comment pattern the template
+// already ships — re-emitting it would duplicate a template rule. Comments and
+// blank lines are never dropped, so the structure around a removed duplicate
+// stays intact. When nothing but blanks survives, the file is left untouched.
+func writeUserMarkerBlock(gitignorePath, templateContent string, block []string, templateSet map[string]bool) error {
+	kept := make([]string, 0, len(block))
+	hasContent := false
+	for _, line := range block {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "#") && templateSet[trimmed] {
+			continue // already shipped by the template
+		}
+		if trimmed != "" {
+			hasContent = true
+		}
+		kept = append(kept, line)
+	}
+	// Trailing blanks can survive the filter above once a duplicate is removed.
+	for len(kept) > 0 && strings.TrimSpace(kept[len(kept)-1]) == "" {
+		kept = kept[:len(kept)-1]
+	}
+	if !hasContent || len(kept) == 0 {
+		return nil // nothing to carry over — leave the deployed template as-is
+	}
+
+	result := templateContent
+	if !strings.HasSuffix(result, "\n") {
+		result += "\n"
+	}
+	result += "\n" + UserPatternsMarker + "\n"
+	result += strings.Join(kept, "\n") + "\n"
 
 	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
 }

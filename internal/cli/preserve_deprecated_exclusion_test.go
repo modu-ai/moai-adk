@@ -4,14 +4,14 @@
 // (SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-010..016, AC-RIL2-005..008).
 //
 // Root cause: `preserveInventoryRoots` (.moai/specs, .moai/project,
-// .claude/commands) intersects `defs.DeprecatedPaths` in 9 entries. The
+// .claude/commands) intersects `defs.DeprecatedPaths` in 8 entries. The
 // clean-reinstall put those paths into the PRESERVE inventory (Step 2), removed
 // them (Step 4), then restored them from the backup (Step 6) — a net-zero
 // removal that keeps the "deprecated path present" v2 signal armed and re-arms
 // the next `moai update`. The log still printed a positive removal count because
 // the post-REMOVE re-scan runs before Step 6 undoes the removal.
 //
-// The 9-entry intersection of DeprecatedPaths and the STATIC preserve roots is
+// The 8-entry intersection of DeprecatedPaths and the STATIC preserve roots is
 // by design (REQ-RIL2-014) — it is exactly the input the exclusion exists to
 // handle. These guards therefore assert over the BUILT inventory, never over
 // the static root prefixes.
@@ -30,9 +30,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-// intersectingPreservePaths is the observed 9-entry intersection of
-// defs.DeprecatedPaths and preserveInventoryRoots. `.moai/project/brand` is a
-// directory entry; the rest are files.
+// intersectingPreservePaths is the observed intersection of
+// defs.DeprecatedPaths and preserveInventoryRoots — 8 file entries under
+// `.claude/commands/agency/`.
+//
+// `.moai/project/brand/tokens.md` was removed from this list by the issue #1377
+// residual sweep: `.moai/project/brand` is no longer a DeprecatedPaths entry
+// (the shipped template and config defaults treat it as live), so it now belongs
+// with the controls below that MUST survive the exclusion.
 var intersectingPreservePaths = []string{
 	".claude/commands/agency/agency.md",
 	".claude/commands/agency/brief.md",
@@ -42,7 +47,6 @@ var intersectingPreservePaths = []string{
 	".claude/commands/agency/profile.md",
 	".claude/commands/agency/resume.md",
 	".claude/commands/agency/review.md",
-	".moai/project/brand/tokens.md", // nested UNDER the `.moai/project/brand` entry
 }
 
 // seedIntersectingProject builds a t.TempDir() project containing every path in
@@ -55,9 +59,11 @@ func seedIntersectingProject(t *testing.T) string {
 		writeTestFile(t, root, rel, "# legacy agency residue\n")
 	}
 	// Controls — none of these is a DeprecatedPaths entry.
-	// `.moai/project/brandX` specifically probes the separator boundary: a naive
-	// strings.HasPrefix against `.moai/project/brand` would wrongly exclude it.
-	writeTestFile(t, root, ".moai/project/brandX/note.md", "# not deprecated\n")
+	// `.moai/project/brand/tokens.md` specifically guards the issue #1377 fix:
+	// the brand directory is live (shipped template + config defaults reference
+	// it), so re-deprecating it would silently drop user brand content from the
+	// PRESERVE inventory and let the clean reinstall delete it.
+	writeTestFile(t, root, ".moai/project/brand/tokens.md", "# brand tokens\n")
 	writeTestFile(t, root, ".moai/project/product.md", "# product\n")
 	writeTestFile(t, root, ".moai/specs/SPEC-X/spec.md", "# spec\n")
 	writeTestFile(t, root, ".claude/commands/mine.md", "# user command\n")
@@ -67,7 +73,7 @@ func seedIntersectingProject(t *testing.T) string {
 // preserveControlPaths are the entries seedIntersectingProject writes that MUST
 // remain in the built inventory (over-exclusion guard).
 var preserveControlPaths = []string{
-	".moai/project/brandX/note.md",
+	".moai/project/brand/tokens.md",
 	".moai/project/product.md",
 	".moai/specs/SPEC-X/spec.md",
 	".claude/commands/mine.md",
@@ -116,14 +122,17 @@ func TestPreserveInventory_GuardDetectsUnexcludedPath(t *testing.T) {
 		".moai/specs/SPEC-X/spec.md",
 		".claude/commands/agency/brief.md", // deliberately un-excluded deprecated entry
 		".claude/commands/mine.md",
-		".moai/project/brand/tokens.md", // nested under the `.moai/project/brand` entry
+		".moai/db/schema.md", // nested under the `.moai/db` directory entry
+		// `.moai/dbX` probes the separator boundary: a naive strings.HasPrefix
+		// against `.moai/db` would wrongly report it as a collision.
+		".moai/dbX/note.md",
 	}
 
 	collisions := deprecatedInventoryCollisions(poisoned)
 
 	for _, want := range []string{
 		".claude/commands/agency/brief.md",
-		".moai/project/brand/tokens.md",
+		".moai/db/schema.md",
 	} {
 		found := false
 		for _, c := range collisions {
@@ -140,7 +149,8 @@ func TestPreserveInventory_GuardDetectsUnexcludedPath(t *testing.T) {
 
 	// The guard must not over-report: non-deprecated entries stay out.
 	for _, c := range collisions {
-		if c == ".moai/specs/SPEC-X/spec.md" || c == ".claude/commands/mine.md" {
+		switch c {
+		case ".moai/specs/SPEC-X/spec.md", ".claude/commands/mine.md", ".moai/dbX/note.md":
 			t.Errorf("guard reported the non-deprecated path %q as a collision", c)
 		}
 	}

@@ -108,7 +108,7 @@ func runV3ResidueCleanup(projectRoot string, dryRun, force bool, out io.Writer) 
 	// (4) REQ-RIL2-019 — back up before deleting.
 	//
 	// expandDeprecatedBackupTargets is required, not optional: scanDeprecatedPaths
-	// returns DIRECTORY entries (.agency, .moai/project/brand) while
+	// returns DIRECTORY entries (.agency, .moai/db) while
 	// backupDeprecatedPaths copies FILES and errors on a directory. Wiring the two
 	// together without the expansion aborts on every tree carrying .agency/.
 	backupTargets, expandErr := expandDeprecatedBackupTargets(projectRoot, sweep)

@@ -839,6 +839,16 @@ func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Wr
 		}
 		return fmt.Errorf("agency migration: %w", runErr)
 	}
+	// classifyTargets may complete a v3-shaped target as a skip rather than
+	// returning ErrMigrateTargetExists (issue #1414). Surface that here so the
+	// already-migrated case prints the same "skipped" summary the error-swallow
+	// path does — otherwise clean-reinstall's "migration completed" line is the
+	// only signal and a no-copy re-run reads as fresh work. The flags stay false
+	// under --force (classifyTargets is skipped), so forced migration is unaffected.
+	if r.skipDesignYAML || r.skipObservations {
+		_, _ = fmt.Fprintln(out,
+			"[clean-reinstall] agency migration skipped: target already migrated")
+	}
 	return nil
 }
 

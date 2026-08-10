@@ -113,12 +113,16 @@ var toolchains = []langToolchain{
 	// Python: pyproject.toml, setup.py, requirements.txt
 	{
 		markerFiles: []string{"pyproject.toml", "setup.py", "requirements.txt"},
+		// changedExts: skip the Python linters when no .py file is staged,
+		// mirroring the .cs scoping on the C#/.NET entry below (issue #1265).
 		lintSteps: []gateStep{
 			{name: "ruff", binary: "ruff", args: []string{"check", "."}, optional: true,
 				configFiles: []string{"ruff.toml", ".ruff.toml", "pyproject.toml"},
+				changedExts: []string{".py"},
 			},
 			{name: "mypy", binary: "mypy", args: []string{"."}, optional: true,
 				configFiles: []string{"mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"},
+				changedExts: []string{".py"},
 			},
 		},
 		testStep: &gateStep{name: "pytest", binary: "pytest", args: nil, optional: true},
@@ -322,11 +326,11 @@ func (g *QualityGate) detectToolchain() *langToolchain {
 				// Glob pattern (e.g., "*.csproj")
 				matches, err := filepath.Glob(filepath.Join(dir, marker))
 				if err == nil && len(matches) > 0 {
-					return resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags)
+					return resolvePythonRunner(resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags), dir)
 				}
 			} else {
 				if fileExists(filepath.Join(dir, marker)) {
-					return resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags)
+					return resolvePythonRunner(resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags), dir)
 				}
 			}
 		}
@@ -387,6 +391,101 @@ func resolveGoBuildTags(tc *langToolchain, tags string) *langToolchain {
 		clone.testStep = &ts
 	}
 	return clone
+}
+
+// resolvePythonRunner returns a Python-toolchain variant whose pytest step is
+// resolved against project-local runners. Non-Python toolchains and toolchains
+// without a test step are returned unchanged. The returned toolchain is a clone
+// (the package-level toolchains slice is never mutated), mirroring
+// resolveDartFlutter and resolveGoBuildTags.
+func resolvePythonRunner(tc *langToolchain, dir string) *langToolchain {
+	if tc == nil || tc.testStep == nil || tc.testStep.name != pytestStepName || dir == "" {
+		return tc
+	}
+	resolved := resolvePytestRunner(*tc.testStep, dir)
+	if resolved.binary == tc.testStep.binary {
+		return tc // no project-local runner found; leave the table entry alone
+	}
+	clone := &langToolchain{
+		markerFiles: tc.markerFiles,
+		vetSteps:    tc.vetSteps,
+		lintSteps:   tc.lintSteps,
+	}
+	clone.testStep = &resolved
+	return clone
+}
+
+// resolvePytestRunner rewrites the pytest step to invoke the runner the project
+// actually owns, in order: an in-venv pytest, `uv run pytest`, `poetry run
+// pytest`, then the bare `pytest` fallback.
+//
+// A bare `pytest` off $PATH is wrong for most modern Python projects: a project
+// using .venv, uv, or poetry has no global pytest, so the optional step silently
+// no-opped — or worse, resolved an interpreter belonging to a different project
+// (issue #1265).
+//
+// The in-venv form is an absolute path we have already proved exists, so the
+// step drops `optional` — the $PATH LookPath skip in executeStep would otherwise
+// discard a runner we know is there. The uv/poetry and bare forms stay optional:
+// those binaries live on $PATH and a missing one must skip, not block a commit.
+// The step name is preserved throughout so runStep's pytest exit-5
+// no-tests-collected handling continues to apply.
+func resolvePytestRunner(step gateStep, dir string) gateStep {
+	if step.name != pytestStepName || dir == "" {
+		return step
+	}
+
+	if venv := venvPytestPath(dir); venv != "" {
+		step.binary = venv
+		step.args = nil
+		step.optional = false
+		return step
+	}
+	if hasUVProject(dir) {
+		step.binary = "uv"
+		step.args = []string{"run", "pytest"}
+		return step
+	}
+	if fileExists(filepath.Join(dir, "poetry.lock")) {
+		step.binary = "poetry"
+		step.args = []string{"run", "pytest"}
+		return step
+	}
+	return step
+}
+
+// venvPytestPath returns the path to an in-venv pytest executable, or "" when
+// none exists. Both the POSIX (.venv/bin) and Windows (.venv/Scripts) layouts
+// are probed so the resolution is not host-specific.
+func venvPytestPath(dir string) string {
+	candidates := []string{
+		filepath.Join(dir, ".venv", "bin", "pytest"),
+		filepath.Join(dir, ".venv", "Scripts", "pytest.exe"),
+	}
+	for _, c := range candidates {
+		if fileExists(c) {
+			return c
+		}
+	}
+	return ""
+}
+
+// hasUVProject reports whether the project is uv-managed: a uv.lock file, or a
+// [tool.uv] section in pyproject.toml.
+func hasUVProject(dir string) bool {
+	if fileExists(filepath.Join(dir, "uv.lock")) {
+		return true
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "pyproject.toml"))
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "[tool.uv") {
+			return true
+		}
+	}
+	return false
 }
 
 // applyGoBuildTags returns a copy of step with the Go build-tags flag injected.
