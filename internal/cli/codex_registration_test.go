@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -119,5 +120,56 @@ func TestCodexPhase2_NoAskUserQuestion(t *testing.T) {
 		"mcp_codex.go",
 	} {
 		assertNoAskUserQuestionInSource(t, f)
+	}
+}
+
+// TestCodexTask_SessionClosesBeforeHandshake covers the acceptance.md §B edge
+// case "codex spawns but the session closes before the handshake completes".
+//
+// It is a coverage closure rather than a TDD cycle: the fail-open path it walks
+// was built in M3, and no production change accompanies it. What was missing was
+// evidence that the path holds when the stream dies MID-handshake rather than
+// when codex is absent entirely (TestCodexTask_FailOpenOnMissingCodex covers
+// the latter).
+//
+// Both arms assert the three properties §B asks for: a structured result naming
+// the failure, no Go error (which would abort the tool call), and no panic. Each
+// additionally asserts no job record is left behind — a session that never
+// reached a turn must not leave an observer a job it can never resolve.
+func TestCodexTask_SessionClosesBeforeHandshake(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		lines []string
+	}{
+		{"closes before the initialize response", nil},
+		{
+			"closes after initialize, before thread/start",
+			[]string{`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			withCodexProjectDir(t, root)
+			withCodexSession(t, tc.lines)
+
+			res := callCodexTask(t, map[string]any{
+				"prompt":     "do the thing",
+				"background": true,
+			})
+
+			m := structuredMap(t, res)
+			if s, _ := m["error"].(string); s == "" {
+				t.Errorf("result carries no error naming the failure: %v", m)
+			}
+			if s, _ := m["job_id"].(string); s != "" {
+				t.Errorf("a job id was handed out for a session that never reached a turn: %q", s)
+			}
+
+			// No record left behind for a caller to poll forever.
+			entries, err := os.ReadDir(filepath.Join(root, ".moai", "state", "codex-jobs"))
+			if err == nil && len(entries) != 0 {
+				t.Errorf("%d job record(s) written for a handshake that never completed", len(entries))
+			}
+		})
 	}
 }
