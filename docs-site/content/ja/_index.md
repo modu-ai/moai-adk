@@ -14,11 +14,11 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 ## MoAI 3.0の3つのコアバリュー
 
-- **🪙 トークノミクス** — コンテキストダイエットとプロンプトキャッシングで推論コストを60-70%削減します。[マルチ LLM](/multi-llm)、[コスト最適化](/cost-optimization)、[高度な使い方/トークノミクス概要](/advanced/tokenomics-overview)を参照してください。
+- {{< icon database primary >}} **トークノミクス** — コンテキストダイエットとプロンプトキャッシングで推論コストを60-70%削減します。[マルチ LLM](/multi-llm)、[コスト最適化](/cost-optimization)、[高度な使い方/トークノミクス概要](/advanced/tokenomics-overview)を参照してください。
 
-- **🧠 エージェンティック・ループ・エンジニアリング** — 意思決定メモリと自律エージェントシステムで自律改善ループを実現します。[自己進化システム](/advanced/self-evolving)、[自律ループ](/advanced/autonomous-loops)、[意思決定メモリ](/advanced/decision-memory)を参照してください。
+- {{< icon rotate primary >}} **エージェンティック・ループ・エンジニアリング** — 意思決定メモリと自律エージェントシステムで自律改善ループを実現します。[自己進化システム](/advanced/self-evolving)、[自律ループ](/advanced/autonomous-loops)、[意思決定メモリ](/advanced/decision-memory)を参照してください。
 
-- **🛡️ エージェント型ハーネス** — スキル、フック、MCPで構成可能な実行環境で拡張可能なエージェントオーケストレーションを提供します。[コアコンセプト](/core-concepts)、[ワークフローコマンド](/workflow-commands)、[エージェントガイド](/advanced/agent-guide)を参照してください。
+- {{< icon package primary >}} **エージェント型ハーネス** — スキル、フック、MCPで構成可能な実行環境で拡張可能なエージェントオーケストレーションを提供します。[コアコンセプト](/core-concepts)、[ワークフローコマンド](/workflow-commands)、[エージェントガイド](/advanced/agent-guide)を参照してください。
 
 ## 主な機能
 

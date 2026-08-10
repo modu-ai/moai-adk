@@ -126,4 +126,4 @@ Guarantees the state integrity of worktrees:
 - [Worktree Guide](/en/worktree/guide) — the complete Git Worktree guide
 - [/moai loop](/en/utility-commands/moai-loop) — the iterative fix loop
 - [/moai fix](/en/utility-commands/moai-fix) — automatic error fixing
-- [GitHub Integration Guide](/en/guides/multi-llm-ci) — issue parsing · SPEC linking
+- [GitHub Integration Guide](/en/guides/github-integration) — issue parsing · SPEC linking

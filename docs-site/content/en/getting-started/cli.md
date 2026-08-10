@@ -159,7 +159,7 @@ moai doctor [OPTIONS]
 |--------|------|
 | `moai doctor sandbox` | Diagnose sandbox backend availability |
 | `moai doctor permission` | Diagnose permission resolution |
-| `moai doctor hook` | Show the 27-hook-event coverage table |
+| `moai doctor hook` | Show the 30-hook-event coverage table |
 | `moai doctor config dump` | Dump the merged configuration with provenance |
 | `moai doctor config diff <tier-a> <tier-b>` | Compare two config tiers |
 
@@ -246,9 +246,11 @@ A dispatcher that handles Claude Code hook events. It is called in the form `moa
 moai hook <event>
 ```
 
-### Supported subcommands (~38)
+### Supported subcommands (42)
 
-The `moai hook` dispatcher provides about 38 subcommands, combining the standard Claude Code hook events and MoAI-specific internal actions. All names are kebab-case. Below are the representative events.
+The `moai hook` dispatcher provides 42 subcommands, combining the standard Claude Code hook events and MoAI-specific internal actions. All names are kebab-case. Below are the representative events.
+
+> **Hook-event count and subcommand count are different numbers.** The 30 reported by `moai doctor hook` are the *hook event* types Claude Code defines; the 42 here are the *subcommands* `moai hook` accepts. They do not match because MoAI-specific internal actions exist as subcommands without a corresponding event.
 
 | Event | Description |
 |-------|------|

@@ -18,4 +18,4 @@ GitHub 연동 가이드는 `moai github` 서브커맨드로 이슈를 파싱해 
 ## 가이드 목록
 
 - [자율 CI/CD](./ci-autonomy) — pre-push 훅부터 auto-fix 루프까지, 8-Tier 품질 자동화
-- [GitHub 연동](./multi-llm-ci) — `moai github` 서브커맨드로 이슈를 파싱하고 SPEC 문서와 연결
+- [GitHub 연동](./github-integration) — `moai github` 서브커맨드로 이슈를 파싱하고 SPEC 문서와 연결

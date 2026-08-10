@@ -159,7 +159,7 @@ moai doctor [OPTIONS]
 |--------|------|
 | `moai doctor sandbox` | 샌드박스 백엔드 가용성 진단 |
 | `moai doctor permission` | 권한 해석 진단 |
-| `moai doctor hook` | 27개 훅 이벤트 커버리지 표 표시 |
+| `moai doctor hook` | 30개 훅 이벤트 커버리지 표 표시 |
 | `moai doctor config dump` | 병합된 설정을 provenance 와 함께 덤프 |
 | `moai doctor config diff <tier-a> <tier-b>` | 두 설정 티어를 비교 |
 
@@ -246,9 +246,11 @@ Claude Code 훅 이벤트를 처리하는 디스패처입니다. `settings.json`
 moai hook <event>
 ```
 
-### 지원 서브커맨드 (약 38개)
+### 지원 서브커맨드 (42개)
 
-`moai hook` 디스패처에는 표준 Claude Code 훅 이벤트와 MoAI 전용 내부 액션을 합쳐 약 38개의 서브커맨드가 있습니다. 이름은 모두 kebab-case 입니다. 아래는 대표적인 이벤트입니다.
+`moai hook` 디스패처에는 표준 Claude Code 훅 이벤트와 MoAI 전용 내부 액션을 합쳐 42개의 서브커맨드가 있습니다. 이름은 모두 kebab-case 입니다. 아래는 대표적인 이벤트입니다.
+
+> **훅 이벤트 수와 서브커맨드 수는 다릅니다.** `moai doctor hook`이 보여 주는 30개는 Claude Code가 정의한 *훅 이벤트* 종류이고, 여기 42개는 `moai hook`이 받는 *서브커맨드* 수입니다. MoAI 전용 내부 액션이 이벤트 없이도 서브커맨드로 존재하기 때문에 두 숫자는 일치하지 않습니다.
 
 | 이벤트 | 설명 |
 |-------|------|
