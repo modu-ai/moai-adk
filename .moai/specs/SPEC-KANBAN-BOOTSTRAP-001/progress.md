@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Progress — Kanban session topology, bootstrap, and dispatch"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -21,9 +21,20 @@ related_specs: [SPEC-KANBAN-MULTISESSION-001, SPEC-FACTORY-MODE-001]
 - Tier: L. Artifacts authored: `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`, `progress.md`.
 - Requirements: 25 (`REQ-KS-001` … `REQ-KS-025`) — at the Tier L cap of 25, unchanged at v0.2.0 and again at v0.3.0. Acceptance criteria: 30 (`AC-KS-001` … `AC-KS-030`) — **five over the Tier L cap of 25**.
 - **Ceiling overflow, reported not absorbed.** Tier L is the top tier, so no promotion is available. The excess is `AC-KS-026` … `AC-KS-028` (three of the seven observations `AC-KS-024` previously reported through a single verdict), `AC-KS-029` (the refusal observation REQ-KS-013 lacked), and `AC-KS-030` (the role-declaration observation added at v0.3.0). Re-bundling them to fit the cap would restore the defects these revisions repair. The disposition — carry the excess, split this SPEC further, or accept a bundled criterion — is the orchestrator's decision, not this document's. Precedent: `SPEC-KANBAN-WORKTREE-001` v0.2.0 carries a two-requirement overflow on the same terms.
-- **The requirement cap bound at v0.3.0 and held.** The role-resolution repair needed a runtime contract that no SPEC in the family owned; with 25 of 25 requirements used, it was authored as a widening of `REQ-KS-006` rather than as a twenty-sixth requirement. Where a widening had not been available the finding would have been reported to the orchestrator instead.
+- **The requirement cap bound at v0.3.0 and held, and bound again at v0.5.0.** The role-resolution repair needed a runtime contract that no SPEC in the family owned; with 25 of 25 requirements used, it was authored as a widening of `REQ-KS-006` rather than as a twenty-sixth requirement. At v0.5.0 the same move closed the vacancy-dispatch gap through `REQ-KS-019`, after v0.4.0 had released it on the ground that no widening was available — a judgement the v0.5.0 entry below re-examines and reverses for half the area. Where a widening is genuinely unavailable the finding is reported to the orchestrator instead, which is what remains true of the recovery half.
 - Split from the superseded `SPEC-KANBAN-MULTISESSION-001` (59 requirements, plan-audit FAIL 0.87), alongside `SPEC-KANBAN-BOARD-001` and `SPEC-KANBAN-WORKTREE-001`.
 - Three corrections landed with the split and each is argued in `spec.md`: the dead `TestNew_NoAskUserQuestion` guard citation (§A.6), the missing baseline recording window (§A.7), and the rejected `column:` frontmatter field (§A.11).
+- Unresolved `[NEEDS CLARIFICATION]` markers: none.
+
+### v0.5.0 — plan-audit delta repair (one finding), no requirement and no criterion added
+
+The confirming audit of v0.4.0 returned PASS-WITH-DEBT 0.885 with MP-6 passing. Its one major finding is that v0.4.0's defect (4) released more of the vacancy area than the ceiling actually forced.
+
+1. **D1 — a widening was available after all, for the dispatch half.** v0.4.0 released the area on the ground that owning it "would need a new obligation, not a widening", because detection is a runtime-lifecycle act with no natural host. That treats detection as separate from selection. It is not, at dispatch time: the lead resolves the owning role's occupant on **every** dispatch, so the vacancy is the null result of the lookup `REQ-KS-019` already governs — same lookup, same moment. `REQ-KS-019` is widened in place with a **where**-clause (no dispatch into a vacancy; surface the unoccupied role and the waiting card), the same in-place move v0.3.0 made on `REQ-KS-006`.
+2. **The criterion judges the report, not the refusal.** The refusal half is entailed by REQ-KS-019's existing "dispatch **only** to the session whose declared role owns the column", so a do-nothing implementation satisfies it — and that do-nothing reading is the failure the clause exists to rule out. `AC-KS-019` gains a conjunct that fails a run in which nothing is addressed **and** nothing is surfaced; the reasoning is at `spec.md` §D.12, including why the neighbouring not-dispatchable refusal correctly carries no surfacing duty (the board reports that verdict itself; it reports a vacancy nowhere).
+3. **The exclusion is narrowed, not deleted.** Still unowned: **recovery** (re-establishing an occupant — re-quorum, targeted relaunch, or an operator act), and **detection independent of a dispatch attempt**. The second is stated as a limit rather than smoothed over: a role vacated while its column holds no dispatchable card goes unreported, and is also not stalling anything, so the reported set and the costly set coincide. `plan.md` §B.6 and its §E decision row are rewritten; the three-way decision recorded there for the next revision is now two-way.
+4. **Budget, re-measured in this worktree after the edit.** `grep -cE '^\*\*REQ-KS-[0-9]{3}\*\*' spec.md` → **25**; `grep -cE '^\*\*AC-KS-[0-9]{3}\*\*' acceptance.md` → **30**. Both unchanged from v0.4.0; the five-criterion overflow remains v0.3.0's and is not widened here.
+5. **Artifact versions.** `spec.md`, `plan.md`, `acceptance.md` and this file move to `0.5.0`; each was edited. `design.md` stays at `0.3.0` and `research.md` at `0.4.0` — neither was edited. Measured: `grep -cin 'vacan' design.md research.md` returns **0** in both. `grep -c 'KS-019'` returns **0** for `design.md` and **1** for `research.md` — the single hit is §D line 112, which quotes REQ-KS-019's declared-role clause ("the session whose **declared role** owns the card's column") while counting the four consumers of a runtime role lookup. That clause is carried through this revision verbatim; the where-clause is appended after it and changes no word of it, so the citation stays exact and the file needs no edit.
 - Unresolved `[NEEDS CLARIFICATION]` markers: none.
 
 ### v0.4.0 — plan-audit delta repair (D1-D4), under an explicit override
