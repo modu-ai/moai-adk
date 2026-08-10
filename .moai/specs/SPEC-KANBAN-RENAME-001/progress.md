@@ -256,7 +256,19 @@ Recorded for the next reader: `internal/cli` takes ~227s and `TestGateCmd_RunE_B
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **Tier**: L, unchanged from plan-phase — the run touched no requirement and added none, so the 25-of-25 requirement ceiling and the disclosed three-criterion acceptance overage (§E.1) stand exactly as audited.
+- **Implemented**: 2026-08-11, in the worktree `/Users/goos/.moai/worktrees/kanban` on branch `spec-kanban`, across five commits — `5cdc8b68d` (M1, Go rename), `0d39be1d4` (M2, harness documentation), `768024f30` (M2b, project documentation), `e8dd51918` (criterion amendment), `f7e1ffdf2` (cross-reference correction) — plus `630eb5c5f` recording this evidence. **None pushed.** Every commit used `SKIP_MOAI_PRECOMMIT=1`, because `.git/hooks/pre-commit` runs `moai gate`, which exits non-zero on pre-existing ast-grep findings unrelated to this SPEC; the bypass is recorded here rather than silently relied on, per `acceptance.md` §C.
+- **Criteria disposition**: 28 of 28 PASS, each decided by its own command from `acceptance.md` §B. The per-criterion evidence, with the HEAD each figure was taken at, is §E.2 — not restated here.
+- **Final verification** at `f7e1ffdf2`: `go build ./...` → 0; `go test ./... -count=1 -timeout 900s` → `test-exit=0`, 112 `ok`, `^FAIL` 0, 115 log lines; `moai spec lint` → `✓ No findings`.
+- **Artifact revisions at run-phase exit**: `spec.md` v0.5.1, `plan.md` v0.5.0, `acceptance.md` v0.5.1. All four artifacts transitioned `draft → in-progress` on `630eb5c5f`; the close to `implemented` and `completed` rides the sync commit and is not this phase's to make.
+- **Defect distribution**: **three plan-phase defects, zero implementation defects.** All three surfaced from *running* criteria that had only been reasoned about at plan time — a misattribution in `plan.md` §F M2 step 3, a false premise in `AC-KR-020`, and an unsatisfiable third criterion in `AC-KR-028` — and none of the three required a change to the implementation. The amendment trail is `e8dd51918` (v0.5.0, both criteria) and `f7e1ffdf2` (v0.5.1, the cross-reference in `AC-KR-028`'s rationale); §E.2 §Claim carries the substance.
+- **Threshold note**: the Tier L plan-audit threshold of 0.85 governed entry to this phase, not its exit. What gates the run is `acceptance.md` §C, whose four conditions are met: all 28 criteria PASS with their commands run in this tree, the §E 5-section report is written into §E.2 with a non-empty Gaps section, no commit touches `/Users/goos/MoAI/moai-adk-go/`, and the `SKIP_MOAI_PRECOMMIT=1` use is recorded above.
+
+### A plan-phase premise that run-phase falsified
+
+**§E.1 "Measured, not assumed" item 3 asserts that "the `moai` skill's directory hash does change", and that premise is false.** `resolveHashSourcePath` in `internal/template/scripts/gen-catalog-hashes.go` resolves a skill directory's hash to its root `SKILL.md` alone, so editing a sibling workflow document under the same skill leaves the hash — and therefore `catalog.yaml` — untouched. Measured at `768024f30`: `make build` exits 0 and prints `catalog.yaml updated successfully (12403 bytes)`, while `git status --porcelain` immediately afterwards is **empty**. The authoritative correction is the v0.5.0 amendment to `AC-KR-020` in `acceptance.md`, which now requires the catalog be committed *if and only if* the build changed it.
+
+§E.1 is deliberately left as written. It is the plan-phase record of what was believed and measured at plan time, `manager-spec` owns it, and overwriting the sentence would erase the fact that the belief was held — which is the part worth keeping. This note is the forward correction; the amended criterion is the authority.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
