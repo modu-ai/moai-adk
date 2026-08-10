@@ -112,6 +112,6 @@ Total: 18.5s
 
 ## 関連ドキュメント
 
-- [/moai fix - 一回限りの自動修正](/utility-commands/moai-fix)
-- [/moai loop - 反復修正ループ](/utility-commands/moai-loop)
-- [TRUST 5 品質システム](/core-concepts/trust-5)
+- [/moai fix - 一回限りの自動修正](/ja/utility-commands/moai-fix)
+- [/moai loop - 反復修正ループ](/ja/utility-commands/moai-loop)
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5)

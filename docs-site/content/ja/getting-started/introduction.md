@@ -58,79 +58,19 @@ MoAI-ADK は **SPEC ベースの TDD/DDD** 方法論を基盤とし、**TRUST 5*
 **一行要約:** 昨日 AI と議論した「JWT 認証 + 1 時間有効期限 + リフレッシュトークン」を今日また説明する必要なく、`/moai run SPEC-AUTH-001` 一行ですぐに実装を開始します!
 {{< /callout >}}
 
-### TDD とは? (やさしく理解する)
+### 方法論と品質基準
 
-**TDD** (Test-Driven Development) は「テストを先に書いて開発する方法」です。
+実装の進め方はプロジェクトの状態に応じて 2 つのうち片方が自動的に割り当てられ、成果物は共通の品質基準で検証されます。
 
-試験問題作りにたとえると:
-
-- **採点基準 (テスト) を先に書きます** — 機能がないので当然失敗
-- **基準を通過する最小限のコードを書きます** — ちょうど必要な分だけ
-- **より良いコードに整えます** — テストが通過する状態を維持しながら改善
-
-MoAI-ADK は **RED-GREEN-REFACTOR** サイクルでこのプロセスを自動化します:
-
-| ステップ | 意味 | やること |
-|------|------|--------|
-| **RED** | 失敗 | まだない機能のテストを先に書く |
-| **GREEN** | 通過 | テストを通過する最小限のコードを書く |
-| **REFACTOR** | 改善 | テストを維持しながらコード品質を向上 |
-
-### DDD とは? (やさしく理解する)
-
-**DDD** (Domain-Driven Development) は「安全なコード改善方法」です。
-
-家のリモデリングにたとえると:
-
-- **既存の家を壊さずに** 部屋を 1 つずつ改善します
-- **リモデリング前に現在の状態を記録します** (= 特性化テスト)
-- **1 部屋ずつ作業し、毎回確認します** (= 段階的な改善)
-
-MoAI-ADK は **ANALYZE-PRESERVE-IMPROVE** サイクルでこのプロセスを自動化します:
-
-| ステップ | 意味 | やること |
-|------|------|--------|
-| **ANALYZE** | 分析 | 現在のコード構造と問題点を把握 |
-| **PRESERVE** | 保存 | テストで現在の動作を記録 (安全網) |
-| **IMPROVE** | 改善 | テストを通過しながら少しずつ改善 |
-
-### 開発方法論の選択
-
-MoAI-ADK はプロジェクトの状態に応じて最適な開発方法論を自動選択します。
-
-```mermaid
-flowchart TD
-    A["プロジェクト分析"] --> B{"新規プロジェクトまたは<br/>10%+ テストカバレッジ?"}
-    B -->|"Yes"| C["TDD デフォルト値"]
-    B -->|"No"| D{"既存プロジェクト<br/>< 10% カバレッジ?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-| 方法論 | 対象 | サイクル |
-|--------|------|--------|
-| **TDD** | 新規プロジェクトまたは 10%+ カバレッジ | RED → GREEN → REFACTOR |
-| **DDD** | 10% 未満カバレッジの既存プロジェクト | ANALYZE → PRESERVE → IMPROVE |
+| 名前 | いつ使うか | 詳しく |
+|------|-----------|--------|
+| **TDD** (Test-Driven Development) | 新規プロジェクトまたはテストカバレッジ 10% 以上 (デフォルト値) | [SPEC ベース開発](/ja/core-concepts/spec-based-dev) |
+| **DDD** (Domain-Driven Development) | テストカバレッジ 10% 未満の既存プロジェクト | [DDD](/ja/core-concepts/ddd) |
+| **TRUST 5** | 方法論に関係なくすべてのコード変更に適用 | [TRUST 5](/ja/core-concepts/trust-5) |
 
 {{< callout type="info" >}}
 MoAI-ADK v2.5.0+ は二値の方法論選択 (TDD または DDD のみ) を使います。明確性と一貫性のため hybrid モードは除去されました。方法論は `moai init` 時に自動選択され、`.moai/config/sections/quality.yaml` の `development_mode` で変更できます。
 {{< /callout >}}
-
-### TRUST 5 品質フレームワーク
-
-TRUST 5 は次の 5 つの核心原則を基盤とします:
-
-| 原則 | 説明 |
-|------|------|
-| **T**ested | 85% カバレッジ、特性化テスト、動作保存 |
-| **R**eadable | 明確な命名規則、一貫したフォーマット |
-| **U**nified | 統合されたスタイルガイド、自動フォーマット |
-| **S**ecured | OWASP 準拠、セキュリティ検証、脆弱性分析 |
-| **T**rackable | 構造化されたコミット、変更履歴の追跡 |
 
 ## Go Edition の特徴
 
@@ -310,10 +250,10 @@ GLM アカウントがない場合は [z.ai に登録 (追加 10% 割引)](https
 
 MoAI-ADK の旅を始めるには次のステップに従ってください:
 
-1. **[インストール](/getting-started/installation)** - システムに MoAI-ADK をインストール
-2. **[初期設定](/getting-started/init-wizard)** - インタラクティブな設定ウィザードの実行
-3. **[クイックスタート](/getting-started/quickstart)** - 最初のプロジェクトの作成
-4. **[核心概念](/core-concepts/what-is-moai-adk)** - MoAI-ADK の深い理解
+1. **[インストール](/ja/getting-started/installation)** - システムに MoAI-ADK をインストール
+2. **[初期設定](/ja/getting-started/init-wizard)** - インタラクティブな設定ウィザードの実行
+3. **[クイックスタート](/ja/getting-started/quickstart)** - 最初のプロジェクトの作成
+4. **[核心概念](/ja/core-concepts/what-is-moai-adk)** - MoAI-ADK の深い理解
 
 ## 核心的な利点
 

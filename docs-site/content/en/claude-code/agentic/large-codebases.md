@@ -104,7 +104,7 @@ Reading a file line by line to locate a symbol definition is the most expensive 
 ```
 
 - Major languages are supported: TypeScript, Python, Go, Rust, and more
-- The language's LSP binary must be installed on the system (see the [plugins document](/claude-code/extensibility/plugins))
+- The language's LSP binary must be installed on the system (see the [plugins document](/en/claude-code/extensibility/plugins))
 
 ## Checking Out Only the Needed Directories with Worktrees
 
@@ -260,9 +260,9 @@ So docs do not go stale after a large change, include a "update docs" item in th
 
 ## Related Documents
 
-- [Context Window](/claude-code/context-memory/context-window)
-- [Worktrees](/claude-code/agentic/worktrees)
-- [Best Practices](/claude-code/agentic/best-practices)
+- [Context Window](/en/claude-code/context-memory/context-window)
+- [Worktrees](/en/claude-code/agentic/worktrees)
+- [Best Practices](/en/claude-code/agentic/best-practices)
 
 ## References
 

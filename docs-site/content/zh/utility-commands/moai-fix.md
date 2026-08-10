@@ -365,6 +365,6 @@ $ ruff check src/
 
 ## 相关文档
 
-- [/moai loop - 迭代修复循环](/utility-commands/moai-loop)
-- [/moai - 完全自主自动化](/utility-commands/moai)
-- [TRUST 5 质量系统](/core-concepts/trust-5)
+- [/moai loop - 迭代修复循环](/zh/utility-commands/moai-loop)
+- [/moai - 完全自主自动化](/zh/utility-commands/moai)
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5)

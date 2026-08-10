@@ -205,40 +205,13 @@ This philosophy is embodied in three principles:
 
 MoAI-ADK automatically selects the optimal development methodology based on the project state.
 
-```mermaid
-flowchart TD
-    A["Project analysis"] --> B{"New project or\n10%+ test coverage?"}
-    B -->|"Yes"| C["TDD (default)"]
-    B -->|"No"| D{"Existing project\n< 10% coverage?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
 ### The TDD Methodology (Default)
 
-The default methodology for new projects and feature development. Write tests first, then implement.
-
-| Phase | Description |
-|------|------|
-| **RED** | Write a failing test that defines the expected behavior |
-| **GREEN** | Write the minimum code that passes the test |
-| **REFACTOR** | Improve code quality while keeping the tests green. |
-
-For brownfield projects (existing codebases), a **pre-RED analysis phase** is added to TDD: read the existing code and understand current behavior before writing tests.
+The default methodology for new projects and new feature development. Because you write the test first and then make it pass, the behavior you intend is settled before the code is. MoAI-ADK makes this the default so that "it's done" is decided by test results rather than by anyone's gut feeling. Each phase of the cycle, and the pre-RED analysis phase for brownfield projects, are covered in [SPEC-Based Development](/en/core-concepts/spec-based-dev).
 
 ### The DDD Methodology (Existing Projects, Under 10% Coverage)
 
-The methodology for safely refactoring existing projects with low test coverage.
-
-```
-ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
-PRESERVE  → Write characterization tests, capture current-behavior snapshots
-IMPROVE   → Improve incrementally under the protection of tests.
-```
+The methodology for safely working on existing code that has almost no tests. Current behavior is pinned down with characterization tests before any improvement, which prevents the refactor from quietly breaking what already worked. That is why MoAI-ADK assigns this methodology to projects under 10% coverage. The step-by-step procedure is covered in [DDD](/en/core-concepts/ddd).
 
 {{< callout type="info" >}}
 The methodology is auto-selected at `moai init` (`--mode <ddd|tdd>`, default: tdd) and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
@@ -547,15 +520,7 @@ If you want to declare the completion condition yourself, use the goal engine:
 
 ## The TRUST 5 Quality Framework
 
-Every code change is verified against five quality criteria:
-
-| Criterion | Meaning | What is verified |
-|------|------|----------|
-| **T**ested | Tested | 85%+ coverage, characterization tests, unit tests passing |
-| **R**eadable | Readable | Clear naming conventions, consistent code style, 0 lint errors |
-| **U**nified | Unified | Consistent formatting, import ordering, project-structure compliance |
-| **S**ecured | Secured | OWASP compliance, input validation, 0 security warnings |
-| **T**rackable | Trackable | Conventional Commits, issue references, structured logging |
+Every code change is verified against five criteria: Tested, Readable, Unified, Secured, and Trackable. The point is to hold code to the same yardstick every time rather than to a reviewer's taste, and each criterion comes with a check a machine can decide — coverage, lint, formatting, security scan, commit convention. The detailed checks behind each criterion are covered in [TRUST 5](/en/core-concepts/trust-5).
 
 ## The @MX Tag System
 

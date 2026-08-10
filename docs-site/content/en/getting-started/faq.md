@@ -173,42 +173,7 @@ External imports:
 
 MoAI-ADK v2.5.0+ lets you choose between two methodologies (TDD or DDD only). The hybrid mode was removed for clarity and consistency.
 
-### Methodology Selection Guide
-
-```mermaid
-flowchart TD
-    A["Analyze project"] --> B{"New project or<br/>10%+ test coverage?"}
-    B -->|"Yes"| C["TDD (default)"]
-    B -->|"No"| D{"Existing project<br/>< 10% coverage?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-### TDD Methodology (Default)
-
-The default methodology recommended for new projects and feature development. Tests are written first.
-
-| Phase | Description |
-|------|------|
-| **RED** | Write a failing test that defines the expected behavior |
-| **GREEN** | Write the minimum code that passes the test |
-| **REFACTOR** | Improve code quality while keeping the tests green |
-
-For brownfield projects (existing codebases), an **analysis phase before RED** is added: read the existing code to understand current behavior before writing tests.
-
-### DDD Methodology (Existing Projects with < 10% Test Coverage)
-
-The methodology for safely refactoring existing projects with minimal test coverage.
-
-```
-ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
-PRESERVE  → Write characterization tests, capture current-behavior snapshots
-IMPROVE   → Improve incrementally while protected by tests
-```
+TDD writes the test first and then makes it pass, which suits new development; DDD pins existing behavior down with characterization tests and then works on it in small steps, which suits code that has almost no tests. The step-by-step procedure for each cycle is covered in [SPEC-Based Development](/en/core-concepts/spec-based-dev) and [DDD](/en/core-concepts/ddd).
 
 ### Methodology Selection Table
 

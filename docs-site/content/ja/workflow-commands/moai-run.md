@@ -530,7 +530,7 @@ manager-develop エージェントが **自動的に進行状況を保存** し�
 
 ## 関連ドキュメント
 
-- [ドメイン駆動開発](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE サイクルの詳細説明
-- [TRUST 5 品質システム](/core-concepts/trust-5) - 品質ゲートの詳細説明
+- [ドメイン駆動開発](/ja/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE サイクルの詳細説明
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5) - 品質ゲートの詳細説明
 - [/moai plan](./moai-plan) - 前のステップ: SPEC ドキュメント生成
 - [/moai sync](./moai-sync) - 次のステップ: ドキュメント同期および PR

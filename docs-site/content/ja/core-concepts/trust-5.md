@@ -448,9 +448,9 @@ TRUST 5 全体通過: デプロイ可能
 
 ## 関連ドキュメント
 
-- [MoAI-ADK とは?](/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を
+- [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を
   理解します
-- [SPEC ベース開発](/core-concepts/spec-based-dev) -- TRUST 5 が適用される Plan
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) -- TRUST 5 が適用される Plan
   ステップを学びます
-- [ドメイン駆動開発](/core-concepts/ddd) -- TRUST 5 が適用される Run ステップを
+- [ドメイン駆動開発](/ja/core-concepts/ddd) -- TRUST 5 が適用される Run ステップを
   学びます

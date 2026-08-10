@@ -188,9 +188,9 @@ MoAI-ADK 提供的 `/moai` 及其子命令（`/moai plan`、`/moai run`、`/moai
 
 ## 相关文档
 
-- [/moai 命令](/utility-commands/moai)
-- [工作流命令](/workflow-commands)
-- [交互模式](/claude-code/foundations/interactive-mode)
+- [/moai 命令](/zh/utility-commands/moai)
+- [工作流命令](/zh/workflow-commands)
+- [交互模式](/zh/claude-code/foundations/interactive-mode)
 
 ## 参考资料
 

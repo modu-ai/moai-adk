@@ -209,6 +209,6 @@ The development team responds with a comment on the issue after review. Complex 
 
 ## Related Documents
 
-- [/moai - fully autonomous automation](/utility-commands/moai)
-- [/moai loop - iterative fix loop](/utility-commands/moai-loop)
-- [/moai fix - one-shot auto-fix](/utility-commands/moai-fix)
+- [/moai - fully autonomous automation](/en/utility-commands/moai)
+- [/moai loop - iterative fix loop](/en/utility-commands/moai-loop)
+- [/moai fix - one-shot auto-fix](/en/utility-commands/moai-fix)

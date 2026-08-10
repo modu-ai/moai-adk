@@ -213,6 +213,6 @@ https://github.com/modu-ai/moai-adk/issues/1234
 
 ## 相关文档
 
-- [/moai - 完全自主自动化](/utility-commands/moai)
-- [/moai loop - 迭代修复循环](/utility-commands/moai-loop)
-- [/moai fix - 一次性自动修复](/utility-commands/moai-fix)
+- [/moai - 完全自主自动化](/zh/utility-commands/moai)
+- [/moai loop - 迭代修复循环](/zh/utility-commands/moai-loop)
+- [/moai fix - 一次性自动修复](/zh/utility-commands/moai-fix)

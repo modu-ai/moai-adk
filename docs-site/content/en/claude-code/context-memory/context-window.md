@@ -134,8 +134,8 @@ Of these, memory and checkpoints connect directly to MoAI-ADK's SPEC workflow an
 
 ## Related Documents
 
-- [Memory and Auto-Memory](/claude-code/context-memory/memory)
-- [Checkpointing](/claude-code/context-memory/checkpointing)
+- [Memory and Auto-Memory](/en/claude-code/context-memory/memory)
+- [Checkpointing](/en/claude-code/context-memory/checkpointing)
 
 ## References
 

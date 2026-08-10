@@ -161,8 +161,8 @@ The agentic loop you saw on this page is the shared foundation of MoAI-ADK's thr
 
 ## Related Documents
 
-- [Features at a Glance](/claude-code/foundations/features-overview)
-- [What is MoAI-ADK?](/core-concepts/what-is-moai-adk)
+- [Features at a Glance](/en/claude-code/foundations/features-overview)
+- [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk)
 
 ## References
 

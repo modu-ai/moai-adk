@@ -10,15 +10,11 @@ description: "An overview of Claude Code skills (SKILL.md) — the concept and h
 A Claude Code skill is an extension mechanism that bundles a repeated procedure or piece of expertise into a single `SKILL.md` file, adding it to Claude's toolbox.
 
 {{< callout type="info" title="Background reference" >}}
-This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Skill Guide](/en/advanced/skill-guide).
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Skill Guide](/en/advanced/skill-guide), and the procedure for auto-generating skills with builder agents continues in [Builder Agents Guide](/en/advanced/builder-agents).
 {{< /callout >}}
 
 {{< callout type="info" >}}
 **One-line summary**: Turn the checklist or procedure you kept pasting into chat into one `SKILL.md`, and it becomes an "expert in your pocket" whose contents Claude pulls out only when needed.
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-This document is a conceptual overview of Claude Code skills. Hands-on procedures for writing skills in MoAI-ADK and auto-generating them with builder agents are covered in detail in the [Skill Guide](/advanced/skill-guide) and the [Builder Agents Guide](/advanced/builder-agents).
 {{< /callout >}}
 
 ## What Is a Skill
@@ -145,8 +141,8 @@ From the MoAI-ADK perspective, skills span two core concerns at once. On the **T
 
 ## Related Documents
 
-- [Skill Guide](/advanced/skill-guide)
-- [Builder Agents Guide](/advanced/builder-agents)
+- [Skill Guide](/en/advanced/skill-guide)
+- [Builder Agents Guide](/en/advanced/builder-agents)
 
 ## References
 

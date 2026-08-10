@@ -180,7 +180,7 @@ claude -p "提示词" --output-format json
 
 ### 多会话并行执行
 
-同时推进多个 SPEC，或并行转换大批文件。为避免文件编辑重叠，用[工作树](/claude-code/agentic/worktrees)隔离才安全。
+同时推进多个 SPEC，或并行转换大批文件。为避免文件编辑重叠，用[工作树](/zh/claude-code/agentic/worktrees)隔离才安全。
 
 ### 用 /goal 自主完成
 
@@ -202,10 +202,10 @@ claude -p "提示词" --output-format json
 
 ## 相关文档
 
-- [上下文窗口](/claude-code/context-memory/context-window)
-- [子智能体](/claude-code/agentic/sub-agents)
-- [目标驱动执行 (/goal)](/claude-code/agentic/goal)
-- [大型代码库](/claude-code/agentic/large-codebases)
+- [上下文窗口](/zh/claude-code/context-memory/context-window)
+- [子智能体](/zh/claude-code/agentic/sub-agents)
+- [目标驱动执行 (/goal)](/zh/claude-code/agentic/goal)
+- [大型代码库](/zh/claude-code/agentic/large-codebases)
 
 ## 参考资料
 

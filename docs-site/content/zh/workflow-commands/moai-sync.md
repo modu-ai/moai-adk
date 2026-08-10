@@ -612,6 +612,6 @@ $ gh pr view 42
 
 ## 相关文档
 
-- [/moai run](/workflow-commands/moai-run) - 上一步: DDD 实现
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门禁详解
-- [快速开始](/getting-started/quickstart) - 完整工作流教程
+- [/moai run](/zh/workflow-commands/moai-run) - 上一步: DDD 实现
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5) - 质量门禁详解
+- [快速开始](/zh/getting-started/quickstart) - 完整工作流教程

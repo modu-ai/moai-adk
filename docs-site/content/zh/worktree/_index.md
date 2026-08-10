@@ -118,7 +118,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **优点**：
 
 - 完全隔离的工作环境
-- GLM 成本高效（相比 Opus 约节省 70%）
+- GLM 成本高效（节省幅度请参考 [CG 模式](/zh/multi-llm/cg-mode)）
 - 无冲突的无限并行开发
 
 #### 第 3 阶段：Cleanup

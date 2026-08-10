@@ -596,6 +596,6 @@ Hybrid Trunk 운영에서 Tier S/M SPEC은 기본적으로 main에 바로 push�
 
 ## 관련 문서
 
-- [/moai run](/workflow-commands/moai-run) - 이전 단계: DDD 구현
-- [TRUST 5 품질 시스템](/core-concepts/trust-5) - 품질 게이트 상세 설명
-- [빠른 시작](/getting-started/quickstart) - 전체 워크플로우 튜토리얼
+- [/moai run](/ko/workflow-commands/moai-run) - 이전 단계: DDD 구현
+- [TRUST 5 품질 시스템](/ko/core-concepts/trust-5) - 품질 게이트 상세 설명
+- [빠른 시작](/ko/getting-started/quickstart) - 전체 워크플로우 튜토리얼

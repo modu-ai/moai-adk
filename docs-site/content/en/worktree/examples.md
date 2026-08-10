@@ -477,8 +477,10 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # Results
 # - All 3 features complete
 # - Parallel development shortened the development flow
-# - 70% cost savings from using GLM
+# - Cost savings from using GLM
 ```
+
+Running the implementation sessions on GLM cut costs noticeably. The size of the savings, and the reasoning behind it, are laid out in [CG Mode](/en/multi-llm/cg-mode).
 
 ---
 

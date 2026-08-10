@@ -37,9 +37,9 @@ flowchart TD
 
 | 文档 | 说明 |
 |------|------|
-| [技能](/claude-code/extensibility/skills) | 专业知识模块与渐进式披露 |
-| [钩子 (Hooks)](/claude-code/extensibility/hooks) | 事件驱动自动化 |
-| [MCP 服务器](/claude-code/extensibility/mcp) | 外部工具连接协议 |
-| [插件与市场](/claude-code/extensibility/plugins) | 扩展包与代码智能 |
+| [技能](/zh/claude-code/extensibility/skills) | 专业知识模块与渐进式披露 |
+| [钩子 (Hooks)](/zh/claude-code/extensibility/hooks) | 事件驱动自动化 |
+| [MCP 服务器](/zh/claude-code/extensibility/mcp) | 外部工具连接协议 |
+| [插件与市场](/zh/claude-code/extensibility/plugins) | 扩展包与代码智能 |
 
-掌握了这四种原材料之后，请到下一组[智能体与自动化](/claude-code/agentic)，看看如何在用这些原材料搭建的挽具上运转智能体循环。
+掌握了这四种原材料之后，请到下一组[智能体与自动化](/zh/claude-code/agentic)，看看如何在用这些原材料搭建的挽具上运转智能体循环。

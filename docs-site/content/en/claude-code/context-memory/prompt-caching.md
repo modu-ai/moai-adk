@@ -161,7 +161,7 @@ A **break-even analysis** of when caching actually pays off cost-wise is covered
 
 ## Related Documents
 
-- [Prompt Caching — Break-Even Analysis](/cost-optimization/prompt-caching)
+- [Prompt Caching — Break-Even Analysis](/en/cost-optimization/prompt-caching)
 
 ## References
 

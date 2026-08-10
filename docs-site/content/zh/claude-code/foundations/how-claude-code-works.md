@@ -161,8 +161,8 @@ Claude Code 与内联代码助手的不同之处有两点。
 
 ## 相关文档
 
-- [功能一览](/claude-code/foundations/features-overview)
-- [什么是 MoAI-ADK？](/core-concepts/what-is-moai-adk)
+- [功能一览](/zh/claude-code/foundations/features-overview)
+- [什么是 MoAI-ADK？](/zh/core-concepts/what-is-moai-adk)
 
 ## 参考资料
 

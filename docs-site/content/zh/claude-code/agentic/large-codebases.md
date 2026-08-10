@@ -104,7 +104,7 @@ API routes are in src/routes/. Never write raw SQL in handlers.
 ```
 
 - 支持 TypeScript、Python、Go、Rust 等主要语言
-- 系统中须已安装对应语言的 LSP 二进制（参考[插件文档](/claude-code/extensibility/plugins)）
+- 系统中须已安装对应语言的 LSP 二进制（参考[插件文档](/zh/claude-code/extensibility/plugins)）
 
 ## 用工作树只检出需要的目录
 
@@ -260,9 +260,9 @@ grep -r "FunctionName" packages/      # 所有包
 
 ## 相关文档
 
-- [上下文窗口](/claude-code/context-memory/context-window)
-- [工作树](/claude-code/agentic/worktrees)
-- [最佳实践](/claude-code/agentic/best-practices)
+- [上下文窗口](/zh/claude-code/context-memory/context-window)
+- [工作树](/zh/claude-code/agentic/worktrees)
+- [最佳实践](/zh/claude-code/agentic/best-practices)
 
 ## 参考资料
 

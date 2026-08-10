@@ -38,14 +38,14 @@ flowchart TD
 
 | 文档 | 说明 |
 |------|------|
-| [子智能体](/claude-code/agentic/sub-agents) | 隔离上下文的委派工作者 |
-| [智能体团队](/claude-code/agentic/agent-teams) | 3-5 人团队协作 |
-| [智能体视图](/claude-code/agentic/agent-view) | 执行观察界面 |
-| [动态工作流](/claude-code/agentic/workflows) | 基于脚本的大规模编排 |
-| [工作树](/claude-code/agentic/worktrees) | 工作树隔离 |
-| [目标驱动执行 (/goal)](/claude-code/agentic/goal) | 自主执行直至条件满足 |
-| [定时任务](/claude-code/agentic/scheduled-tasks) | 周期性后台执行 |
-| [大型代码库](/claude-code/agentic/large-codebases) | 大仓库探索策略 |
-| [最佳实践](/claude-code/agentic/best-practices) | 用好 Claude Code 的方法 |
+| [子智能体](/zh/claude-code/agentic/sub-agents) | 隔离上下文的委派工作者 |
+| [智能体团队](/zh/claude-code/agentic/agent-teams) | 3-5 人团队协作 |
+| [智能体视图](/zh/claude-code/agentic/agent-view) | 执行观察界面 |
+| [动态工作流](/zh/claude-code/agentic/workflows) | 基于脚本的大规模编排 |
+| [工作树](/zh/claude-code/agentic/worktrees) | 工作树隔离 |
+| [目标驱动执行 (/goal)](/zh/claude-code/agentic/goal) | 自主执行直至条件满足 |
+| [定时任务](/zh/claude-code/agentic/scheduled-tasks) | 周期性后台执行 |
+| [大型代码库](/zh/claude-code/agentic/large-codebases) | 大仓库探索策略 |
+| [最佳实践](/zh/claude-code/agentic/best-practices) | 用好 Claude Code 的方法 |
 
-请先从[子智能体](/claude-code/agentic/sub-agents)读起，掌握委派的基本单元后再移步下一篇文档。
+请先从[子智能体](/zh/claude-code/agentic/sub-agents)读起，掌握委派的基本单元后再移步下一篇文档。

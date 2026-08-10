@@ -109,6 +109,6 @@ P1・P2 ファイルのみ精読して関数シグネチャと呼び出しパタ
 
 ## 関連ドキュメント
 
-- [/moai sync - ドキュメント同期](/workflow-commands/moai-sync)
-- [/moai run - DDD/TDD 実装](/workflow-commands/moai-run)
-- [/moai clean - デッドコード除去](/utility-commands/moai-clean)
+- [/moai sync - ドキュメント同期](/ja/workflow-commands/moai-sync)
+- [/moai run - DDD/TDD 実装](/ja/workflow-commands/moai-run)
+- [/moai clean - デッドコード除去](/ja/utility-commands/moai-clean)

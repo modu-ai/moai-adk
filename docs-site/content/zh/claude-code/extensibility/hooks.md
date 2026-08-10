@@ -10,15 +10,11 @@ description: "整理在 Claude Code 生命周期事件上自动触发执行的 s
 钩子 (hook) 是在 Claude Code 生命周期的特定节点自动执行的 shell 命令，它不依赖模型的判断，确定性地保证"必须始终发生的行为"。
 
 {{< callout type="info" title="背景参考" >}}
-本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [Hooks 指南](/zh/advanced/hooks-guide)。
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 如何注册与运营 hook 请见 [Hooks 指南](/zh/advanced/hooks-guide)，各事件的输入 schema 则整理在 [Hooks 事件参考](/zh/advanced/hooks-reference)中。
 {{< /callout >}}
 
 {{< callout type="info" >}}
 **一句话总结**：hook 是在 Claude Code 编辑文件或结束工作时自动触发的 "if-this-then-that" 脚本，无需人手即可强制执行格式化·lint·安全拦截。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-本页专注于概念介绍。MoAI-ADK 实际如何注册与运营 hook（shell 包装器模式、各事件行为、质量门禁联动）在深入的 MoAI-ADK 指南中讲解。触手可及的实战内容请参考 [Hooks 指南](/advanced/hooks-guide)与 [Hooks 事件参考](/advanced/hooks-reference)。
 {{< /callout >}}
 
 ## 什么是钩子
@@ -113,8 +109,8 @@ MoAI-ADK 以 shell 脚本包装器调用 `moai hook <event>` 二进制的模式�
 
 ## 相关文档
 
-- [Hooks 指南](/advanced/hooks-guide)
-- [Hooks 事件参考](/advanced/hooks-reference)
+- [Hooks 指南](/zh/advanced/hooks-guide)
+- [Hooks 事件参考](/zh/advanced/hooks-reference)
 
 ## 参考资料
 

@@ -557,6 +557,6 @@ WHEN input is null is detected, the system shall return an error.
 
 ## 相关文档
 
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详解
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) - EARS 格式详解
 - [/moai run](./moai-run) - 下一步: DDD 实现
 - [/moai sync](./moai-sync) - 最终步骤: 文档同步

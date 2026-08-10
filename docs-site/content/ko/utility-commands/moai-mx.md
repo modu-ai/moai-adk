@@ -109,6 +109,6 @@ P1·P2 파일만 꼼꼼히 읽어 함수 시그니처와 호출 패턴을 살피
 
 ## 관련 문서
 
-- [/moai sync - 문서 동기화](/workflow-commands/moai-sync)
-- [/moai run - DDD/TDD 구현](/workflow-commands/moai-run)
-- [/moai clean - 데드 코드 제거](/utility-commands/moai-clean)
+- [/moai sync - 문서 동기화](/ko/workflow-commands/moai-sync)
+- [/moai run - DDD/TDD 구현](/ko/workflow-commands/moai-run)
+- [/moai clean - 데드 코드 제거](/ko/utility-commands/moai-clean)

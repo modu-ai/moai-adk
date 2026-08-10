@@ -380,8 +380,8 @@ MoAI-ADK가 비용을 줄이는 장치 중 하나입니다. llm.yaml 설정에 �
 
 ## 관련 문서
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC 생성 상세
-- [/moai run](/workflow-commands/moai-run) - DDD 구현 상세
-- [/moai sync](/workflow-commands/moai-sync) - 문서 동기화 상세
-- [/moai loop](/utility-commands/moai-loop) - 반복 수정 루프 상세
-- [/moai fix](/utility-commands/moai-fix) - 일회성 자동 수정 상세
+- [/moai plan](/ko/workflow-commands/moai-plan) - SPEC 생성 상세
+- [/moai run](/ko/workflow-commands/moai-run) - DDD 구현 상세
+- [/moai sync](/ko/workflow-commands/moai-sync) - 문서 동기화 상세
+- [/moai loop](/ko/utility-commands/moai-loop) - 반복 수정 루프 상세
+- [/moai fix](/ko/utility-commands/moai-fix) - 일회성 자동 수정 상세

@@ -130,6 +130,6 @@ git 히스토리를 바뀐 부분만 훑습니다. 마지막으로 스캔한 SHA
 
 ## 관련 문서
 
-- [/moai fix](/utility-commands/moai-fix) - 발견된 이슈 자동 수정
-- [/moai loop](/utility-commands/moai-loop) - 유한 이슈 집합 반복 수정
-- [TRUST 5 품질 시스템](/core-concepts/trust-5) - 품질 기준 상세
+- [/moai fix](/ko/utility-commands/moai-fix) - 발견된 이슈 자동 수정
+- [/moai loop](/ko/utility-commands/moai-loop) - 유한 이슈 집합 반복 수정
+- [TRUST 5 품질 시스템](/ko/core-concepts/trust-5) - 품질 기준 상세

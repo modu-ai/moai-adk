@@ -106,9 +106,9 @@ Claude Code automatically adds `settings.local.json` to `.gitignore` when first 
 
 ## Related Documents
 
-- [settings.json Guide](/advanced/settings-json)
-- [CLAUDE.md Guide](/advanced/claude-md-guide)
-- [Statusline System](/advanced/statusline)
+- [settings.json Guide](/en/advanced/settings-json)
+- [CLAUDE.md Guide](/en/advanced/claude-md-guide)
+- [Statusline System](/en/advanced/statusline)
 
 ## References
 

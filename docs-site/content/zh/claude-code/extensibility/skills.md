@@ -10,15 +10,11 @@ description: "梳理 Claude Code 技能 (SKILL.md) 的概念与 Progressive Disc
 Claude Code 的技能 (skill) 是把重复的流程或专业知识汇成一个 `SKILL.md` 文件、加入 Claude 工具箱的扩展机制。
 
 {{< callout type="info" title="背景参考" >}}
-本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [技能指南](/zh/advanced/skill-guide)。
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [技能指南](/zh/advanced/skill-guide)，用构建者智能体自动生成技能的流程则在[构建者智能体指南](/zh/advanced/builder-agents)中继续展开。
 {{< /callout >}}
 
 {{< callout type="info" >}}
 **一句话总结**：把每次都要往聊天里粘贴的清单或流程做成一张 `SKILL.md`，Claude 就有了一位只在需要时才掏出内容的"口袋专家"。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-本文是 Claude Code 技能的概念概览。在 MoAI-ADK 中亲手编写技能以及用构建者智能体自动生成的实战流程，详见[技能指南](/advanced/skill-guide)与[构建者智能体指南](/advanced/builder-agents)。
 {{< /callout >}}
 
 ## 什么是技能
@@ -145,8 +141,8 @@ MoAI-ADK 运行在这套技能机制之上。`moai-foundation-core`、`moai-work
 
 ## 相关文档
 
-- [技能指南](/advanced/skill-guide)
-- [构建者智能体指南](/advanced/builder-agents)
+- [技能指南](/zh/advanced/skill-guide)
+- [构建者智能体指南](/zh/advanced/builder-agents)
 
 ## 参考资料
 

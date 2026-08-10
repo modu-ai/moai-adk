@@ -179,8 +179,8 @@ Setting `worktree.bgIsolation` above to `"none"` makes background sessions edit 
 
 ## Related Documents
 
-- [Subagents](/claude-code/agentic/sub-agents)
-- [Agent Teams](/claude-code/agentic/agent-teams)
+- [Subagents](/en/claude-code/agentic/sub-agents)
+- [Agent Teams](/en/claude-code/agentic/agent-teams)
 
 ## References
 

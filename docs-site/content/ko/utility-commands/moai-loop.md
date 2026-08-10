@@ -353,7 +353,7 @@ AI가 동일 실패 시그니처를 N회 연속 해결하지 못하면 (정체 �
 
 ## 관련 문서
 
-- [/moai fix - 일회성 자동 수정](/utility-commands/moai-fix)
-- [/moai - 완전 자율 자동화](/utility-commands/moai)
-- [TRUST 5 품질 시스템](/core-concepts/trust-5)
-- [도메인 주도 개발](/core-concepts/ddd)
+- [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)
+- [/moai - 완전 자율 자동화](/ko/utility-commands/moai)
+- [TRUST 5 품질 시스템](/ko/core-concepts/trust-5)
+- [도메인 주도 개발](/ko/core-concepts/ddd)

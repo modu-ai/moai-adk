@@ -84,7 +84,7 @@ moai cg -p team          # 用 team 配置文件运行 CG 模式
 不带 `-p` 运行 `moai cc` 时,会参考 `~/.moai/claude-profiles/launch.yaml` 的记录来挑选配置文件。每次用 `-p` 运行具名配置文件,该记录都会更新。
 
 {{< callout type="note" >}}
-下面说明的按项目记忆将包含在下一个版本中。当前发布的版本只保留一条全局记录(`last_profile`),因此在项目 B 中用 `-p` 指定配置文件时,项目 A 记住的值会被覆盖。
+下面说明的按项目记忆将包含在下一个版本中。当前发布版(v3.0.1)只保留一条全局记录(`last_profile`),因此在项目 B 中用 `-p` 指定配置文件时,项目 A 记住的值会被覆盖。
 {{< /callout >}}
 
 `launch.yaml` 在全局记录之外,还维护一份以项目绝对路径为键的 `projects:` 列表。不带 `-p` 的运行按以下顺序确定配置文件。
@@ -114,7 +114,7 @@ MOAI_NO_PROFILE_FALLBACK=1 moai cc    # 忽略记录,以默认配置文件运行
 新建的配置文件目录中还没有存放 Claude Code 账号状态的 `.claude.json`。账号状态在任何平台上都按设置目录分别管理,因此即便正在使用的会话完好无损,用新配置文件首次运行时仍会出现登录·引导界面。
 
 {{< callout type="note" >}}
-下面的提示消息将包含在下一个版本中。当前发布的版本会在毫无预告的情况下切到登录界面。
+下面的提示消息将包含在下一个版本中。当前发布版(v3.0.1)会在毫无预告的情况下切到登录界面。
 {{< /callout >}}
 
 启动器在拉起 Claude Code 之前,会向标准错误输出以下内容。
@@ -150,6 +150,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 ## 相关文档
 
 - [moai web 控制台](/zh/cli-reference/web) - 在浏览器中切换与编辑配置文件
-- [CLI 参考](/getting-started/cli) - 全部 CLI 命令
-- [快速开始](/getting-started/quickstart) - 从头开始
-- [初始设置](/getting-started/init-wizard) - 项目初始化
+- [CLI 参考](/zh/getting-started/cli) - 全部 CLI 命令
+- [快速开始](/zh/getting-started/quickstart) - 从头开始
+- [初始设置](/zh/getting-started/init-wizard) - 项目初始化

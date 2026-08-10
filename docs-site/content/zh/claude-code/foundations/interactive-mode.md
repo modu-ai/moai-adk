@@ -47,7 +47,7 @@ description: "一份纵览 Claude Code 交互式 REPL 会话的输入方式、�
 
 ### 斜杠命令 (/)
 
-在输入框最前面键入 `/` 会弹出所有可用命令菜单。不只是内置命令，捆绑技能、用户编写的技能、插件与 MCP 服务器贡献的命令都汇集在同一菜单中。在 `/` 后继续输入字符可实时收窄候选。详细列表见[斜杠命令](/claude-code/foundations/commands)文档。
+在输入框最前面键入 `/` 会弹出所有可用命令菜单。不只是内置命令，捆绑技能、用户编写的技能、插件与 MCP 服务器贡献的命令都汇集在同一菜单中。在 `/` 后继续输入字符可实时收窄候选。详细列表见[斜杠命令](/zh/claude-code/foundations/commands)文档。
 
 ### bash 执行 (!)
 
@@ -99,7 +99,7 @@ shell 模式会把命令及其输出加入对话上下文，让您在快速执�
 
 ### 回退 (Esc Esc)
 
-输入框为空时按两次 `Esc` 会打开**回退菜单** (rewind menu)。它可以把代码与对话恢复到之前的时间点或进行摘要，详见[检查点](/claude-code/context-memory/checkpointing)文档。
+输入框为空时按两次 `Esc` 会打开**回退菜单** (rewind menu)。它可以把代码与对话恢复到之前的时间点或进行摘要，详见[检查点](/zh/claude-code/context-memory/checkpointing)文档。
 
 ### 历史搜索 (Ctrl+R)
 
@@ -161,9 +161,9 @@ bypass 模式跳过权限确认，因此只在可信任的隔离环境中使用�
 
 ## 相关文档
 
-- [斜杠命令](/claude-code/foundations/commands)
-- [检查点](/claude-code/context-memory/checkpointing)
-- [快速开始](/getting-started/quickstart)
+- [斜杠命令](/zh/claude-code/foundations/commands)
+- [检查点](/zh/claude-code/context-memory/checkpointing)
+- [快速开始](/zh/getting-started/quickstart)
 
 ## 参考资料
 

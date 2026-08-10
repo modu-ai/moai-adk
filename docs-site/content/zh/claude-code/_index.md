@@ -39,9 +39,9 @@ flowchart TD
 
 | 文档 | 说明 | 对应的 MoAI 核心 |
 |------|------|--------------------|
-| [基础](/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大核心的共同基础 |
-| [上下文与记忆](/claude-code/context-memory) | 令牌·上下文·记忆·缓存·检查点管理 | 代币经济学 |
-| [扩展](/claude-code/extensibility) | 用技能·钩子·MCP·插件扩展功能 | 智能体挽具 |
-| [智能体与自动化](/claude-code/agentic) | 子智能体·团队·工作流·自主执行 | 智能体循环工程 |
+| [基础](/zh/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大核心的共同基础 |
+| [上下文与记忆](/zh/claude-code/context-memory) | 令牌·上下文·记忆·缓存·检查点管理 | 代币经济学 |
+| [扩展](/zh/claude-code/extensibility) | 用技能·钩子·MCP·插件扩展功能 | 智能体挽具 |
+| [智能体与自动化](/zh/claude-code/agentic) | 子智能体·团队·工作流·自主执行 | 智能体循环工程 |
 
 依次完成四组学习后，您将全面理解 Claude Code 平台。之后请移步 MoAI-ADK 的核心概念章节，了解 SPEC 驱动开发与令牌效率设计如何在这一基础上结合。

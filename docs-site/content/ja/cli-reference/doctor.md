@@ -45,4 +45,4 @@ moai doctor hook                       # フックカバレッジ表
 
 ---
 
-関連: [プロジェクト状態](/cli-reference/status) · [CLI 概要](/getting-started/cli)
+関連: [プロジェクト状態](/ja/cli-reference/status) · [CLI 概要](/ja/getting-started/cli)

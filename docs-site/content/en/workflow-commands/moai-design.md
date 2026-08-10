@@ -94,6 +94,6 @@ Design-phase authoring itself does not fail; it waits for the tool.
 
 ## Related docs
 
-- [/moai plan](/workflow-commands/moai-plan) - previous stage: SPEC document generation
-- [/moai run](/workflow-commands/moai-run) - next stage: DDD/TDD implementation
-- [Subagent catalog](/advanced/agent-guide) - manager-design agent details
+- [/moai plan](/en/workflow-commands/moai-plan) - previous stage: SPEC document generation
+- [/moai run](/en/workflow-commands/moai-run) - next stage: DDD/TDD implementation
+- [Subagent catalog](/en/advanced/agent-guide) - manager-design agent details

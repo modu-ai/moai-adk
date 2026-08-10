@@ -130,6 +130,6 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai fix](/utility-commands/moai-fix) - 自动修复所发现的问题
-- [/moai loop](/utility-commands/moai-loop) - 反复修复有限的问题集合
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量基准详情
+- [/moai fix](/zh/utility-commands/moai-fix) - 自动修复所发现的问题
+- [/moai loop](/zh/utility-commands/moai-loop) - 反复修复有限的问题集合
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5) - 质量基准详情

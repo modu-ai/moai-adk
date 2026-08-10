@@ -37,9 +37,9 @@ We recommend reading in this order: start with skills, the lightest extension po
 
 | Document | Description |
 |------|------|
-| [Skills](/claude-code/extensibility/skills) | Expertise modules and progressive disclosure |
-| [Hooks](/claude-code/extensibility/hooks) | Event-driven automation |
-| [MCP Servers](/claude-code/extensibility/mcp) | The external tool connection protocol |
-| [Plugins and Marketplaces](/claude-code/extensibility/plugins) | Extension packages and code intelligence |
+| [Skills](/en/claude-code/extensibility/skills) | Expertise modules and progressive disclosure |
+| [Hooks](/en/claude-code/extensibility/hooks) | Event-driven automation |
+| [MCP Servers](/en/claude-code/extensibility/mcp) | The external tool connection protocol |
+| [Plugins and Marketplaces](/en/claude-code/extensibility/plugins) | Extension packages and code intelligence |
 
-Once you know the four materials, head to the next group, [Agents and Automation](/claude-code/agentic), to see how to run agentic loops on top of the harness built from them.
+Once you know the four materials, head to the next group, [Agents and Automation](/en/claude-code/agentic), to see how to run agentic loops on top of the harness built from them.

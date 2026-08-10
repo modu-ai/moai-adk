@@ -470,8 +470,10 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # 结果
 # - 3 个功能全部完成
 # - 并行开发缩短了开发流程
-# - 使用 GLM 节省 70% 成本
+# - 使用 GLM 节省成本
 ```
+
+把实现阶段的会话交给 GLM 后，成本明显下降。节省幅度及其依据整理在 [CG 模式](/zh/multi-llm/cg-mode)中。
 
 ---
 
