@@ -284,6 +284,20 @@ var DefaultMultiReviewGateTimeout = 900 * time.Second
 // runs before this truncation, never instead of it.
 const DefaultCodexJobSummaryMaxLen = 500
 
+// DefaultCodexJobCancelGrace is how long codex_job_cancel waits for a turn to
+// end on its own after turn/interrupt is sent, before terminating the codex
+// process the server spawned for that job (SPEC-CODEX-PHASE2-001 REQ-CX2-011 /
+// REQ-CX2-015). It is the "bounded grace window" of the requirement, and it is
+// also what bounds the tool call: cancel returns within this window plus one
+// poll, never waiting on the turn itself.
+const DefaultCodexJobCancelGrace = 5 * time.Second
+
+// DefaultCodexJobCancelPoll is the interval at which the cancel path re-checks
+// whether the interrupted job has ended, inside the grace window above. Short
+// enough that a turn yielding promptly is not made to wait out the full window,
+// long enough not to spin.
+const DefaultCodexJobCancelPoll = 25 * time.Millisecond
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:

@@ -103,6 +103,18 @@ func codexJobStatusValid(s string) bool {
 	return false
 }
 
+// codexJobTerminal reports whether s is a status a job never leaves. It is what
+// codex_job_result reads to decide whether an output exists yet, and what
+// codex_job_cancel reads to decide there is nothing left to cancel (REQ-CX2-010,
+// REQ-CX2-011).
+func codexJobTerminal(s string) bool {
+	switch s {
+	case codexJobStatusCompleted, codexJobStatusFailed, codexJobStatusCancelled:
+		return true
+	}
+	return false
+}
+
 // ─── the record ───
 
 // CodexJobRecord is the durable per-job record (REQ-CX2-003). Field names are

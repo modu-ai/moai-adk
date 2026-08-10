@@ -66,6 +66,13 @@ const (
 	// so extractThreadID reads both (codex-cli 0.146.1 generate-json-schema).
 	codexMethodThreadResume = "thread/resume"
 
+	// codexMethodTurnInterrupt cancels an in-flight turn. Its params are
+	// {threadId, turnId} with BOTH required (M0 probe, progress.md §E.2 (a)) —
+	// which is why the job record carries a turnId at all (REQ-CX2-003), and why
+	// a job whose turn/started was never observed cannot be interrupted and
+	// degrades to process termination instead (REQ-CX2-011).
+	codexMethodTurnInterrupt = "turn/interrupt"
+
 	// codexNotifyTurnStarted is the server→client notification announcing that a
 	// turn began. Its turn.id is the ONLY source of the turnId that
 	// turn/interrupt requires alongside threadId (REQ-CX2-003; M0 probe,
@@ -434,7 +441,12 @@ type rpcMessage struct {
 type codexSessionHandle struct {
 	conn     codexConn
 	threadID string
-	nextID   int // monotonic JSON-RPC request id; the handshake consumed 1 and 2
+
+	// mu guards nextID. A background job's goroutine allocates ids for its turn
+	// while the M4 cancel path allocates one for turn/interrupt on the SAME
+	// session from the calling goroutine, so the counter is genuinely shared.
+	mu     sync.Mutex
+	nextID int // monotonic JSON-RPC request id; the handshake consumed 1 and 2
 
 	// turnID is the id of the most recent turn the session observed starting,
 	// read from the turn/started notification's turn.id. It is the second
@@ -570,9 +582,33 @@ func (h *codexSessionHandle) noteTurnStarted(turnID string) {
 // the whole session: a reused id would let awaitCodexResponse match an earlier
 // turn's response and return it as this turn's ack.
 func (h *codexSessionHandle) allocID() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	id := h.nextID
 	h.nextID++
 	return id
+}
+
+// sendTurnInterrupt sends turn/interrupt for the given thread and turn
+// (REQ-CX2-011). Both arguments are required by the method, so the caller must
+// have a recorded turnId — an empty one is a caller error rather than a
+// degradation to be papered over here.
+//
+// The response is deliberately NOT awaited. The job's own goroutine is inside
+// awaitCodexTurnReview draining this connection; a second reader would race it
+// for lines and could swallow the turn/completed notification the turn loop is
+// waiting for. What cancellation needs is the request to reach codex — the
+// outcome is observed as the turn ending, which the caller waits for through the
+// grace window instead.
+func (h *codexSessionHandle) sendTurnInterrupt(threadID, turnID string) error {
+	if threadID == "" || turnID == "" {
+		return fmt.Errorf("%s requires both threadId and turnId (got %q / %q)",
+			codexMethodTurnInterrupt, threadID, turnID)
+	}
+	return writeCodexRequest(h.conn, h.allocID(), codexMethodTurnInterrupt, map[string]any{
+		"threadId": threadID,
+		"turnId":   turnID,
+	})
 }
 
 // runTurn drives ONE turn on the session's existing thread: send the caller's

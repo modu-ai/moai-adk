@@ -241,6 +241,67 @@ Supporting non-AC rows: `TestCodexTaskAllowWriteReader_AgreesWithConfigLoader` (
 - **`turn_id` may be empty.** M2's open gap — whether codex emits `turn/started` on a `review/start` turn — is untouched. `codex_task` drives `turn/start`, where the notification is the method's own, so the task path is the better-founded case; the M4 cancel path must still treat an empty `turn_id` as "not addressable".
 - **The live-session map is in-process only.** `codexLiveJobSessions` holds a handle for the lifetime of the server process. A record found `running` with no entry is stale by construction — exactly the case REQ-CX2-012 requires M4 to refuse — but nothing in M3 verifies that M4 does so.
 
+### M4 — Job control
+
+REQ-CX2-009, REQ-CX2-010, REQ-CX2-011, REQ-CX2-012. Evidence captured against the working tree on top of HEAD `3419349c7` (branch `feat/SPEC-CODEX-PHASE2-001-run`) — the tree the M4 commit lands verbatim. Every row names the command run and the output observed in this run, against this tree.
+
+**What M4 delivers.** `internal/cli/codex_job_control.go` (`handleCodexJobStatus`, `handleCodexJobResult`, `handleCodexJobCancel`, the process-termination seam, and the bounded grace wait), plus three seams: `codexMethodTurnInterrupt` + `codexSessionHandle.sendTurnInterrupt` + a mutex on the handle's request-id counter in `internal/cli/mcp_codex.go`, and `codexJobTerminal` in `internal/cli/codex_jobs.go`. The grace window and its poll interval are `config.DefaultCodexJobCancelGrace` / `config.DefaultCodexJobCancelPoll` in `internal/config/defaults.go` (REQ-CX2-015). No tool is registered — registration with JSON Schema and read-only hints is M5.
+
+**RED evidence (E8, captured before any implementation existed).** `go test ./internal/cli/ -run 'CodexJobStatus|CodexJobResult|CodexJobCancel'`:
+
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/codex_job_control_test.go:136:10: undefined: codexTerminateProcess
+internal/cli/codex_job_control_test.go:137:2: undefined: codexTerminateProcess
+internal/cli/codex_job_control_test.go:143:21: undefined: codexTerminateProcess
+internal/cli/codex_job_control_test.go:155:10: undefined: codexJobCancelGrace
+internal/cli/codex_job_control_test.go:156:2: undefined: codexJobCancelGrace
+internal/cli/codex_job_control_test.go:157:21: undefined: codexJobCancelGrace
+internal/cli/codex_job_control_test.go:228:26: undefined: codexMethodTurnInterrupt
+internal/cli/codex_job_control_test.go:256:29: undefined: handleCodexJobStatus
+internal/cli/codex_job_control_test.go:276:33: undefined: handleCodexJobStatus
+internal/cli/codex_job_control_test.go:284:33: undefined: handleCodexJobStatus
+internal/cli/codex_job_control_test.go:284:33: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+**Four design points worth carrying forward.**
+
+- *Ownership is decided by live-session membership, not by the record's pid.* `codexLiveJobSessions` holds an entry exactly for the jobs this server lifetime started, and `runCodexBackgroundJob` deletes it on every exit path — so its absence on a non-terminal record means the record outlived the process that owned it (REQ-CX2-012). The pid that termination targets is read from the live session's own connection, never from the record file, so a stale or tampered record cannot direct a signal anywhere at all. This is strictly stronger than comparing the recorded pid against a set of spawned pids, and it is why AC-CX2-015's refusal needs no pid comparison.
+- *Termination is one `os.Process.Kill` on one pid, and no escalation.* The graceful stage already happened — `turn/interrupt` was sent and the grace window elapsed — so a SIGTERM-then-SIGKILL ladder would only extend an already-bounded call, and `syscall.SIGTERM` does not exist on Windows, which would have forced a build-tag split for a stage the flow does not need (`plan.md` §B5). No name-matched or pattern-matched kill exists anywhere in the tree (AP-4 sweep below).
+- *`turn/interrupt` is sent and NOT awaited.* The job's own goroutine is inside `awaitCodexTurnReview` draining the connection; a second reader would race it for lines and could swallow the `turn/completed` the turn loop is waiting for. The outcome is observed as the job leaving the live-session map instead, which is why the grace wait polls the map rather than the record file — the entry is removed by the goroutine itself, so its absence means the turn is genuinely done rather than merely marked done.
+- *The cancelled status is written BEFORE the interrupt is sent.* `runCodexBackgroundJob` keeps a `cancelled` status untouched when its turn returns; this ordering is what puts the status there in time for that guard to see it. The test asserts the status still reads `cancelled` after the blocked turn is released.
+
+| AC | Status | Command | Observed output |
+|----|--------|---------|-----------------|
+| AC-CX2-012 (REQ-CX2-009) | PASS | `go test ./internal/cli/ -run 'TestCodexJobStatus_ReturnsRecordAndNotFound\|TestCodexJobStatus_MalformedRecordIsReported' -v` | `--- PASS` ×2 — a known id returns the record with `id` / `status` / `thread_id` `tid-fake` / `turn_id` `trn-status` / `mode` `task` / `pid` 424242; an unknown id returns `IsError` with the id named in the text, not a Go error; a missing `job_id` returns `IsError`; a present-but-malformed record file is reported as an error result rather than decoded into an empty record (acceptance.md §B) |
+| AC-CX2-013 (REQ-CX2-010) | PASS | `go test ./internal/cli/ -run TestCodexJobResult_TerminalReturnsOutputRunningReturnsStatus -v` | `--- PASS` — a `completed` job returns `output` "the refactor is complete" with `terminal:true`; a `running` job returns `status: running`, `terminal:false`, no output, and the call returned in well under the 1s bound the test asserts (measured, not assumed); an unknown id returns `IsError` |
+| AC-CX2-014 (REQ-CX2-011) | PASS | `go test ./internal/cli/ -run TestCodexJobCancel_SendsInterruptAndTerminates -v` | `--- PASS` (0.09s) — against a background job whose turn never completes, the sent lines carry a `turn/interrupt` request whose params include BOTH required arguments, `"threadId":"tid-fake"` and `"turnId":"trn-cancel"`, read from that job's record; the recorded status becomes `cancelled`; the turn does not end within the (shortened) grace window, so termination is attempted on exactly `[424242]` — the pid of the process the live session spawned — and the call returns well inside the asserted 5s bound. Releasing the blocked turn afterwards leaves the status `cancelled`, so a late turn cannot overwrite the cancel |
+| AC-CX2-015 (REQ-CX2-012) | PASS | `go test ./internal/cli/ -run TestCodexJobCancel_RefusesRecordThisServerDidNotSpawn -v` | `--- PASS` — a record in `running` naming thread `tid-stale`, turn `trn-stale`, and pid 999999, with no live-session entry (the shape a previous server lifetime leaves), is refused with a structured `IsError` result naming the job; the recorded termination seam observed **zero** attempts. Asserted by recording signal attempts, never by observing a live process |
+
+Supporting non-AC rows: `TestCodexJobCancel_EmptyTurnIDDegradesToTermination` (the branch M2 and M3 both left open — a record whose `turn/started` was never observed carries an empty `turn_id`, so no `turn/interrupt` is sent at all, a note states why, and the cancel degrades to terminating the spawned process; asserted by the absence of any `turn/interrupt` line), `TestCodexJobCancel_TerminalJobSendsNothing` (acceptance.md §B — an already-terminal job returns its terminal status, sends nothing, signals nothing, and is not an error).
+
+**§E verification batch.**
+
+- E2 cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`. `go vet ./internal/cli/ ./internal/config/` → `VET_OK`.
+- E3 coverage — `go test -cover ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 171.461s coverage: 76.8% of statements` (log: `.moai/state/verify/m4/cover.txt`), against the M3 level of 76.7%. Coverage is above its pre-change level. No flake fired on this run.
+- E4 subagent boundary — `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go | grep -v '_test.go' | grep -v '//'` → no output (exit 1).
+- E5 lint — `golangci-lint run --timeout=3m` → `0 issues.` An earlier run of the same command reported `internal/cli/codex_job_control.go:234:2: QF1002: could use tagged switch on rec.TurnID (staticcheck)`; the tagless `switch` was rewritten as an `if`/`else if` chain and the re-run above is the result.
+- Full suite — `go test ./...` → exit 0, 112 packages `ok`, zero `FAIL` / `panic` lines (`internal/cli` `ok` at 176.555s). Run in full rather than affected-packages-only, so the cross-cutting template-mirror guards were exercised. Output at `.moai/state/verify/m4/full-suite.txt`. The known local flake `TestNavigatorEnrich_AtomicWriteBarrier` (an unrelated SPEC's goroutine-timing barrier, disclosed under M3) did not fire on either the coverage run or the full-suite run of this tree.
+- Race — `go test -race -run 'Codex|Job|Task|Cancel' ./internal/cli/` → `ok … 2.521s`. This milestone introduces genuine cross-goroutine sharing of one session — the job goroutine drives the turn while the cancel path sends an interrupt on the same connection — so the handle's request-id counter gained a mutex and the test's fake connection records sends under one.
+- AP-4 sweep (no process-kill primitive entered the tree) — `grep -rn 'pkill\|killall\|exec.Command("kill"' internal/cli/codex_*.go internal/cli/mcp_codex*.go` → exactly one match, `codex_job_control.go:22`, inside the doc comment naming the anti-pattern it forbids. No name-matched or pattern-matched kill exists in code. `grep -rn 'Process.Kill()\|proc.Kill()'` → `codex_job_control.go:102` (the precise kill on the live session's pid) and the pre-existing `mcp_codex.go:401` (`realCodexConn.close`'s bounded-wait-then-kill of its own subprocess, untouched by this milestone).
+- Template surface — `git status --porcelain internal/template/templates/` → empty.
+- `gofmt -l` on the five touched files (`internal/cli/codex_job_control.go`, `internal/cli/codex_job_control_test.go`, `internal/cli/codex_jobs.go`, `internal/cli/mcp_codex.go`, `internal/config/defaults.go`) → no output. A repo-wide `gofmt -l .` still lists the same ~35 pre-existing files, none touched by this SPEC.
+
+**Gaps (M4).**
+
+- **No live codex session was executed, and this is now the fourth milestone in a row saying so.** The interrupt is asserted against a canned transcript this milestone authored from the M0 schema reading. **No `turn/interrupt` has ever been issued against a real codex**, so whether the server honours it — and in particular whether it honours it mid-turn — remains exactly as unobserved as M0 recorded it. The M0 gap is inherited verbatim and is now load-bearing for a shipped code path rather than for a plan.
+- **The grace window's expiry, not the interrupt's effect, is what the cancel test exercises.** The canned turn never yields, so every cancel test lands on the termination branch. The branch where a real codex honours `turn/interrupt` and the turn ends inside the grace window is covered only by the code path's own structure (`codexAwaitJobExit` returning true), not by an observation.
+- **Termination is recorded, never performed.** `codexTerminateProcess` is swapped for a recorder in every test, so `os.FindProcess` + `Kill` is exercised by no test at all — deliberately, since a test that kills a real process is the test AP-4 warns about. Its cross-platform behaviour rests on the `os` package's contract and the Windows cross-compile, not on a running Windows process.
+- **A killed process is not waited on here.** After termination the job's goroutine observes EOF, updates the record, and closes the session; the cancel call returns before that happens. A caller that reads the record immediately after a cancel sees `cancelled` (written before the interrupt), which is correct — but the underlying process reaping is asynchronous and unobserved by the tool.
+- **The live-session map is the ownership oracle, and it is in-process only.** That is what makes the REQ-CX2-012 refusal sound, and it is also its limit: a record left behind by a crashed server can never be cancelled through this tool, only observed. Nothing cleans such records up; `codex_job_status` will keep reporting them as `running` forever.
+- **`codex_job_result` reports a `failed` job's error text as recorded.** It does not distinguish a codex-side failure from a transport failure, because the record does not — `runCodexBackgroundJob` writes `out.Summary` into `Error` for both.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
