@@ -90,7 +90,12 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 		"target": codexTargetUncommitted,
 	})
 	if rpcErr != nil {
-		return allow, nil // (5) fail-open: inconclusive/error reviewer ⇒ ALLOW
+		// (5) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
+		// rides back with the ALLOW so runCodexReviewGate can log WHY on stderr;
+		// it does not change the decision. Swallowing it here made a gate that
+		// was turned on but structurally unable to reach a verdict look exactly
+		// like a gate that had reviewed the change and found nothing wrong.
+		return allow, rpcErr
 	}
 	if isBlockVerdict(out.Verdict) {
 		return &hook.HookOutput{

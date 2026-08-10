@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -133,10 +134,25 @@ var codexLookPath = exec.LookPath
 
 // ─── low-level codex JSON-RPC client ───
 
-// codexRPCEnvelope is the newline-delimited JSON-RPC response envelope
-// (`{"jsonrpc":"2.0","id":N,"result":<ReviewOutput>}`) the app-server returns.
+// codexRPCEnvelope is the newline-delimited JSON-RPC response envelope the
+// app-server returns — either `{"id":N,"result":<ReviewOutput>}` on success or
+// `{"id":N,"error":{"code":C,"message":M}}` on a protocol-level rejection.
+//
+// The error arm is load-bearing, not decoration. Without it a rejected request
+// decodes into a zero-valued Result, which is indistinguishable from "the
+// reviewer had no opinion" — so a protocol mismatch reads as an inconclusive
+// review and the gate fail-opens silently. An operator who turned the gate on
+// then sees nothing happen, with nothing anywhere saying why.
 type codexRPCEnvelope struct {
-	Result ReviewOutput `json:"result"`
+	Result ReviewOutput   `json:"result"`
+	Error  *codexRPCError `json:"error"`
+}
+
+// codexRPCError is the JSON-RPC error object. Both fields are surfaced verbatim
+// so the operator sees the server's own words rather than our paraphrase.
+type codexRPCError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // runCodexReviewRPC shells out to the codex binary's app-server JSON-RPC mode
@@ -165,6 +181,10 @@ func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params ma
 	var env codexRPCEnvelope
 	if err := json.Unmarshal([]byte(stdout), &env); err != nil {
 		return inconclusiveReview("malformed codex response: " + err.Error()), err
+	}
+	if env.Error != nil {
+		reason := fmt.Sprintf("codex rejected the request (JSON-RPC %d): %s", env.Error.Code, env.Error.Message)
+		return inconclusiveReview(reason), errors.New(reason)
 	}
 	if env.Result.Verdict == "" {
 		return inconclusiveReview("codex response carried no verdict"), fmt.Errorf("codex response carried no verdict")
