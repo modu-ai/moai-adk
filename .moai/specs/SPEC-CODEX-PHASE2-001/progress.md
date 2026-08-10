@@ -440,7 +440,7 @@ The third test PASSED in the RED run, and that is reported rather than hidden: i
 - Race — `go test -race -run 'Codex|Job|Task|Cancel|Register' ./internal/cli/` → `ok … 3.781s`.
 - Targeted — `go test ./internal/cli/... -run 'Codex|MCP|Job|Task|Cancel|Register'` → `ok` across all 17 `internal/cli` packages, zero failures.
 - `gofmt -l` on the three touched files (`internal/cli/mcp_server.go`, `internal/cli/codex_jobs.go`, `internal/cli/codex_registration_test.go`) → no output. A repo-wide `gofmt -l .` still lists the same pre-existing ~33 files, none of them touched by this SPEC.
-- Known local flake — `TestNavigatorEnrich_AtomicWriteBarrier` (an unrelated SPEC's goroutine-timing barrier, disclosed under M3) did NOT fire on any run in this batch: not on either full-suite run, not on the coverage run, not on the `-count=20` run.
+- Known local flakes — neither of the two unrelated timing-sensitive tests disclosed earlier fired on any run in this batch (not on either full-suite run, not on the coverage run, not on the `-count=20` run): `TestNavigatorEnrich_AtomicWriteBarrier` (`internal/cli`, an unrelated SPEC's goroutine-timing barrier, disclosed under M3) and `TestBranchGuard_Latency` (`internal/hook`, a load-dependent 500 ms latency ceiling belonging to `SPEC-WORKTREE-BRANCH-GUARD-001`, disclosed under the M4 correction). Two clean full-suite runs are evidence that neither fired here — not evidence that either is fixed; both remain load-dependent and neither was touched.
 
 **Gaps (M5).**
 
