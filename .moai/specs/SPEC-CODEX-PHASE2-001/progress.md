@@ -487,10 +487,133 @@ The third test PASSED in the RED run, and that is reported rather than hidden: i
 **Gaps (M5).**
 
 - **No live codex session was executed, and this is the fifth milestone in a row saying so.** M5 adds no wire interaction of its own — it declares tools whose handlers M1-M4 wrote — so it neither closes nor worsens the inherited gap. But registration is what makes those unverified paths *reachable by an MCP host*: until this milestone the code existed and could not be called, and now it can. The gap is unchanged in substance and larger in consequence. It is restated in full in the run-phase closing report rather than left implicit here.
+
+  **RESOLVED 2026-08-11** by § Live protocol verification below. A live `codex-cli 0.146.1` session was executed against the production session code path. Now OBSERVED: thread reuse (a second `turn/start` on an existing thread, item 1); `turn/started` arrival and its `turn.id` accepted as `turn/interrupt`'s `turnId`, with the turn ending `"status":"interrupted"` (item 2); the `{"type":"readOnly"}` `sandboxPolicy` envelope accepted on every turn, and policy stickiness reproduced against a fresh-thread baseline (item 3); `turn/started` emitted on the `review/start` path (item 4). Still NOT observed: `thread/resume` re-opening a thread in a new process (the path `resume_last` actually takes), the stall recovery at context expiry, background-job context lifetime through an MCP host, and any codex version or host other than 0.146.1 on darwin/arm64. One NEW finding — an unanswered `item/fileChange/requestApproval` stalls the turn — is recorded there and returned to the orchestrator rather than fixed under this SPEC.
 - **Registration is verified against the in-process tool table, not against a host.** `srv.ListTools()` reads the server's own registry. The full stdio round-trip (`initialize` → `tools/list` → `tools/call`) is exercised for the pre-existing core surface by `TestMoaiMCPServer_ToolsListDeclaresSchema` and `TestMCPServer_StdioRoundTripSubprocess`, and the four new tools are included in that `tools/list` by construction — but no test calls one of the four new tools *through* the transport. The schema a host actually receives is therefore inferred from the registered `mcp.Tool` value, not observed on the wire.
 - **The read-only hints are declarations, not enforcement.** `ReadOnlyHint` is advisory metadata an MCP host may use to decide what to auto-approve. Nothing in this server refuses a write because a tool declared itself read-only; `codex_job_status` is read-only because of what its handler does, and the annotation merely says so.
 - **§B "two concurrent background tasks" is verified at the registry, not at the tool.** `TestCodexJobRegistry_ConcurrentJobsDoNotCollide` runs 8 concurrent creates and asserts 8 distinct ids and 8 files — the surface where a collision could actually occur. Two concurrent `handleCodexTask` calls are not tested, because the canned session double is a package-level singleton whose recorded-sends slice both calls would share: such a test would race on the test double rather than on production code, and would prove nothing about the registry that the 8-way test does not already prove.
 - **§B "codex binary absent" is verified for `codex_task` only.** `TestCodexTask_FailOpenOnMissingCodex` covers the one new tool that invokes codex. The three job-control tools never spawn it — they read a record file, and cancel operates on a session this process already holds — so codex absence cannot reach them. This is a structural argument, not an observation; no test asserts it.
+
+> **The first gap above is now CLOSED for four of its five wire-level claims.** See § Live protocol verification below for what was executed, what it confirmed, and what remains open.
+
+### Live protocol verification — codex-cli 0.146.1
+
+Observed 2026-08-11 against `codex-cli 0.146.1`, on the worktree at HEAD `4a059f8b1` (branch `feat/SPEC-CODEX-PHASE2-001-run`, working tree clean apart from the probe file this section documents). This is the FIRST live codex session executed for this SPEC. Every claim below names the command run and quotes the observed NDJSON verbatim.
+
+**Method.** The probe drives the PRODUCTION session code path — `openCodexSession` → `runTurn` → `sendTurnInterrupt`, the same functions `codex_task` and the review gate call — rather than hand-rolling requests, so what is verified is what ships. The only inserted seam is `probeTap`, a pass-through `codexConn` that records each line in both directions and forwards it unchanged. Harness: `internal/cli/codex_live_protocol_probe_test.go`, opt-in via `MOAI_CODEX_LIVE_PROBE=1` and skipped by default, so it never runs on `go test ./...` and never spends quota unasked.
+
+Transcripts were written to `.moai/state/verify/live-probe/*.ndjson`. **That path is gitignored** (`.gitignore:275` — `.moai/state/`), so the load-bearing lines are inlined here verbatim rather than cited by a path that will not resolve for a later reader.
+
+**Binary resolution — a finding before the protocol was even reached.** `exec.LookPath("codex")` — which is what production uses (`codexLookPath`) — resolves on this host to `/Users/goos/.bun/bin/codex`, a shim whose vendored binary is missing:
+
+```
+Error: spawn /Users/goos/.bun/install/global/node_modules/@openai/codex/vendor/aarch64-apple-darwin/codex/codex ENOENT
+```
+
+The functional 0.146.1 install is `/Users/goos/.nvm/versions/node/v22.14.0/bin/codex`, reachable interactively only through a shell function — which is why `codex --version` succeeds at a prompt while `exec.LookPath` finds a broken binary. This is an environment fact, not an implementation defect (the fail-open path handles it correctly, and it is why the pre-existing `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` skips rather than runs during `go test ./...`). It is recorded because a reader who runs `codex --version` at a shell and concludes "the environment has a working codex for the Go code" would be drawing the wrong inference. The probe takes an explicit `MOAI_CODEX_LIVE_BIN` override.
+
+#### Item 1 — a second `turn/start` on an existing `threadId`: CONFIRMED
+
+M0 recorded this as "STRUCTURALLY SUPPORTED" — a schema-shape inference from `threadId` being required, which proves the method addresses an existing thread, not that a second turn is accepted after the first completes. It is now executed. Command: `MOAI_CODEX_LIVE_PROBE=1 MOAI_CODEX_LIVE_BIN=… go test ./internal/cli/ -run TestCodexLive_ThreadReuseAndTurnInterrupt -v`.
+
+Turn 1 completed, then turn 2 was sent on the same thread and accepted:
+
+```
+--> {"id":4,"jsonrpc":"2.0","method":"turn/start","params":{"input":[{"text":"say ok","type":"text"}],"sandboxPolicy":{"type":"readOnly"},"threadId":"019fecb9-e537-7df0-aa4e-ccfa60eab514"}}
+<-- {"id":4,"result":{"turn":{"id":"019fecba-2671-74f0-b67d-de48510731f6",…,"status":"inProgress",…}}}
+<-- {"method":"turn/completed","params":{"threadId":"019fecb9-e537-7df0-aa4e-ccfa60eab514","turn":{"id":"019fecba-2671-74f0-b67d-de48510731f6",…,"status":"completed",…,"durationMs":1895}}}
+```
+
+Three turns ran on one `initialize` + `thread/start` handshake, each with a distinct `turn.id`. REQ-CX2-001's reusable handle and REQ-CX2-008's `resume_last` premise both hold at the wire, and AC-CX2-001's two-turns-on-one-handshake assertion is now backed by an executed session rather than a canned one. Reproduced on two independent runs.
+
+#### Item 2 — `turn/started` arrival and `turnId` correspondence: CONFIRMED
+
+The sharpest M0 inference: `Turn.id` → `turnId` was read across two schema files by naming and type agreement, and no `turn/interrupt` had ever been issued. Both halves are now observed.
+
+`turn/started` arrives and carries `turn.id`:
+
+```
+<-- {"method":"turn/started","params":{"threadId":"019fecb9-e537-7df0-aa4e-ccfa60eab514","turn":{"id":"019fecba-2ea5-78c2-af90-96670bc587a8",…,"status":"inProgress","startedAt":1786383052,…}}}
+```
+
+That id was then sent back as `turn/interrupt`'s `turnId`, from a second goroutine while the turn's own goroutine was inside `awaitCodexTurnReview` — the production M4 shape — and was ACCEPTED:
+
+```
+--> {"id":6,"jsonrpc":"2.0","method":"turn/interrupt","params":{"threadId":"019fecb9-e537-7df0-aa4e-ccfa60eab514","turnId":"019fecba-2ea5-78c2-af90-96670bc587a8"}}
+<-- {"id":6,"result":{}}
+<-- {"method":"turn/completed","params":{…,"turn":{"id":"019fecba-2ea5-78c2-af90-96670bc587a8",…,"status":"interrupted",…,"durationMs":152}}}
+```
+
+The response is a bare success `result` with no error arm, and the turn ended with `"status":"interrupted"` 152 ms after the request — so the interrupt was honoured mid-flight, not merely accepted and ignored. This closes the M0 gap "no `turn/interrupt` call was actually issued, so its runtime behaviour (in particular whether it is honoured mid-tool-call) is unobserved", and it means M4's cancel path reaches its `turn/interrupt` branch in reality rather than only its grace-expiry branch, which is the one every unit test lands on. Reproduced on two independent runs.
+
+#### Item 3 — `sandboxPolicy`: envelope CONFIRMED, stickiness CONFIRMED
+
+**(a) The envelope M3 sends is accepted.** `{"type":"readOnly"}` — the internally-tagged object, not a bare string — rode every turn above and no turn was rejected. The `-32600` failure mode that taught the `target` shape did not occur.
+
+**(b) Stickiness is real, and REQ-CX2-007's per-turn transmission is load-bearing.** This required disambiguation, because a turn that writes after OMITTING the field has two possible explanations that are not the same claim: inheritance from an earlier turn, or an omitted field simply defaulting to write-capable. Both were tested.
+
+`TestCodexLive_SandboxPolicyStickiness` — turn 1 sent `workspaceWrite` and wrote; turn 2 on the same thread sent NO `sandboxPolicy` and also wrote:
+
+```
+--> {"id":3,…,"method":"turn/start","params":{"input":[{"text":"create a file named first.txt containing the word hi",…}],"sandboxPolicy":{"type":"workspaceWrite"},"threadId":"019fecbb-59b9-7761-805b-24729d97f414"}}
+<-- {"method":"turn/completed",…,"text":"Created [first.txt](…/first.txt) containing `hi`.",…,"status":"completed",…}
+<-- {"method":"turn/completed",…,"text":"Created [second.txt](…/second.txt) containing `hi`.",…,"status":"completed",…}
+```
+
+Zero `requestApproval` lines in that transcript — the policy-omitting turn wrote unchallenged.
+
+`TestCodexLive_OmittedSandboxPolicyBaseline` removes the predecessor: a FIRST turn on a FRESH thread, sending no `sandboxPolicy`. The session default is read-only, and the write attempt was blocked pending approval instead of succeeding:
+
+```
+<-- {"id":2,"result":{"thread":{…},"approvalPolicy":"on-request","sandbox":{"type":"readOnly","networkAccess":false},"activePermissionProfile":{"id":":read-only"},…}}
+<-- {"method":"thread/status/changed","params":{…,"status":{"type":"active","activeFlags":["waitingOnApproval"]}}}
+<-- {"method":"item/fileChange/requestApproval","id":0,"params":{"threadId":"019fecc4-9437-7161-90e0-5afeaff7f843","turnId":"019fecc4-a648-7650-a60c-d1cfe102011f","itemId":"exec-bf72b916-…","startedAtMs":1786383749290,"reason":null,"grantRoot":null}}
+```
+
+Omission alone is therefore NOT write-capable — the session default is `readOnly`. The stickiness probe's turn 2 wrote because it **inherited** turn 1's `workspaceWrite`. This is exactly the hazard REQ-CX2-007 describes, now observed rather than read: a thread reused under `resume_last` WOULD inherit a write-enabled policy from an earlier opted-in turn, and sending `readOnly` explicitly on every turn is what closes it. The M0 schema reading ("for this turn and subsequent turns") was correct, and the amendment it forced was warranted.
+
+#### Item 4 — `turn/started` on a `review/start` turn: CONFIRMED
+
+M2's open question, and the premise behind M4's empty-`turn_id` degradation branch. The probe sends `review/start` and tears the session down the moment the question is answered, so no full review turn was billed (the test ran in 6.66 s):
+
+```
+--> {"id":3,"jsonrpc":"2.0","method":"review/start","params":{"target":{"type":"uncommittedChanges"},"threadId":"019fecbb-12bb-7bd1-87d0-68e37c4e0725"}}
+<-- {"method":"turn/started","params":{"threadId":"019fecbb-12bb-7bd1-87d0-68e37c4e0725","turn":{"id":"019fecbb-266a-75a0-8030-009db340cd67",…,"status":"inProgress","startedAt":1786383115,…}}}
+```
+
+`review/start` DOES emit `turn/started`, so a review-path job records a real `turn_id` and its cancel does NOT degrade to termination-only. The degradation branch M4 implemented remains correct code for the case where `turn/started` is missed (a cancel arriving before the notification), but its premise is not the steady-state behaviour of the review path.
+
+#### NEW FINDING — an unanswered server→client request stalls the turn
+
+Not one of the four items, and not a contradiction of any REQ or AC: nothing in the SPEC claims approval requests are handled. It is an unhandled protocol case that only a live session could surface, and it is reachable through the envelope `codex_task` actually sends.
+
+`item/fileChange/requestApproval` is a server→client **request** — it carries an `"id"` and expects a response. The session driver never answers it: `awaitCodexTurnReview` dispatches on `msg.Method` and has cases only for `turn/started`, `item/completed`, and `turn/completed`, so the line is read, matched to the thread, and dropped. Codex holds the turn at `activeFlags:["waitingOnApproval"]` and neither side moves.
+
+`TestCodexLive_ExplicitReadOnlyApprovalStall` exercises the exact non-write envelope `codex_task` builds (`codexSandboxPolicy(false)` → `{"type":"readOnly"}`) with a prompt that provokes a file write. The turn did not return within 120 s, and the approval request is the last line of the transcript:
+
+```
+<-- {"method":"thread/status/changed","params":{…,"status":{"type":"active","activeFlags":["waitingOnApproval"]}}}
+<-- {"method":"item/fileChange/requestApproval","id":0,"params":{"threadId":"019fecc8-4b47-73e1-8cdd-5eefa94b8ee5","turnId":"019fecc8-5925-7db0-83c0-837a551592ce","itemId":"exec-21c320c3-…","startedAtMs":1786384004385,"reason":null,"grantRoot":null}}
+```
+
+Reachability is high rather than exotic: EVERY `codex_task` turn without a write grant runs `readOnly`, and any such turn where the model decides to edit a file lands here. The stall is bounded only by the context — `exec.CommandContext` kills the subprocess at ctx expiry, which closes stdout and unblocks the reader — and `handleCodexTask` sets no deadline of its own, so the bound is whatever the MCP caller imposes. No fix is applied here: answering a server→client request is new behaviour no requirement covers, so it is returned to the orchestrator as a proposed amendment rather than written in under this SPEC's scope.
+
+#### What this probe did NOT verify
+
+- **The `-count=60` / `-race` batches below cover the canned paths only.** Nothing about the live findings is asserted by a test that runs in CI; the probe is opt-in by design, so a protocol regression in a future codex release will not be caught automatically.
+- **The stall's outer bound is reasoned, not measured.** That `exec.CommandContext` unblocks the reader at ctx expiry follows from the code; the probe cut its own wait at 120 s and never ran a turn to context expiry, so the recovery path was not observed.
+- **Background-job context lifetime is untouched.** `runCodexBackgroundJob` receives the MCP request context and `exec.CommandContext` is keyed to it, so whether a background job survives its tool call returning depends on when the host cancels that context. No live background job was run through an MCP host, and nothing here establishes the answer either way.
+- **One host, one version.** Everything above is `codex-cli 0.146.1` on darwin/arm64 with this account's config (which carries its own MCP servers and hooks — visible as noise in the transcripts). `codex_app_server_protocol.v2.schemas.json` remains unexamined, as M0 recorded.
+- **`resume_last` was not exercised end-to-end.** Item 1 proves a second turn on a held thread; it does not exercise `thread/resume` re-opening a thread from codex's on-disk store in a NEW process, which is the path `resume_last` actually takes.
+
+**§E verification batch** (after adding the probe file, against the tree at HEAD `4a059f8b1`).
+
+- Full suite — `go test ./...` → `FULL_SUITE_EXIT=0`, 112 packages `ok`, zero `FAIL` / `--- FAIL` / `panic` lines. Neither known flake (`TestNavigatorEnrich_AtomicWriteBarrier`, `TestBranchGuard_Latency`) fired.
+- Repetition — `go test -count=60 -run 'Codex|Job|Task|Cancel' ./internal/cli/` → `ok … 47.492s`.
+- Race — `go test -race -run 'Codex|Job|Task|Cancel' ./internal/cli/` → `ok … 3.965s`.
+- Cross-platform build — `go build ./...` → `HOST_BUILD_EXIT=0`; `GOOS=windows GOARCH=amd64 go build ./...` → `WIN_BUILD_EXIT=0`; `go vet ./internal/cli/` → `VET_EXIT=0`.
+- Lint — `golangci-lint run --timeout=3m` → `0 issues.`
+- Default-skip proof — `go test ./internal/cli/ -run TestCodexLive -v` with no opt-in env → all five probe tests `--- SKIP` with `MOAI_CODEX_LIVE_PROBE != 1`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -517,6 +640,7 @@ Notes on the fields above, so a later reader does not have to re-derive them:
 - `preserve_list_post_run_count: 5` is the `plan.md` §A.1 PRESERVE list, all five entries intact: `runCodexReviewRPC`'s `(ReviewOutput, error)` contract for both existing callers, the `inconclusiveReview` / `VerdictInconclusive` fail-open semantics, `readCodexReviewGateEnabled`'s nested key path and fail-closed truth table, `TestReviewGateReaders_AgreeWithConfigLoader` + `TestMCPAudit_NoDirectFrontmatterRead`, and every file outside `internal/cli/` and `internal/config/`.
 - `total_run_phase_files: 9` — `internal/cli/mcp_codex.go`, `internal/cli/mcp_server.go`, `internal/cli/codex_jobs.go`, `internal/cli/codex_task.go`, `internal/cli/codex_job_control.go`, `internal/cli/codex_jobs_test.go`, `internal/cli/codex_task_test.go`, `internal/cli/codex_job_control_test.go`, `internal/cli/codex_registration_test.go`; plus `internal/config/types.go` and `internal/config/defaults.go` for the typed key and its default. `internal/template/templates/` is untouched.
 - The `l44_*` fetch fields are `not-applicable` rather than `0`: the run phase commits to a feature branch and pushes nothing, so there was no push boundary at which to fetch. Recording `0` would assert a check that was never run.
+- The block above describes the run phase as it stood at `bae3e8616` and is left as measured. The later live-protocol probe (§E.2 § Live protocol verification, HEAD `4a059f8b1`) adds a tenth file, `internal/cli/codex_live_protocol_probe_test.go` — test-only, opt-in, no production change — so `total_run_phase_files` reads 10 on the branch as a whole. The figure is noted here rather than overwritten above, so the original measurement stays attributable to the tree it was taken against.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
