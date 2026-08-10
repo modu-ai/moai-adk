@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOARD-001
 title: "Research — measurements underlying the six-column kanban board model"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -452,6 +452,41 @@ The distinction the field turns on is what must **land** first:
 | `REQ-KB-017` → `REQ-KS-006`'s role declaration | contract | no — same |
 
 Only the first imposes an ordering, so only the first is declared. The cycle was found by the sibling's v0.3.0 author, who declined to resolve it by deleting the sibling's own edge — that edge records a real prerequisite — and recorded the analysis in its `spec.md` §A.4.0 and `research.md` §H.2, with `AC-KW-001` written to observe the mutual declaration and noted as **failing** at that time. Reversing the promotion here is what makes that observation pass; `AC-KB-022` carries the mirror observation on this side.
+
+### O.2 How many branches a card actually has
+
+§O establishes that a card's `status` **can** be read from a branch. It does not establish that a card has one branch, and it does not. Measured on the same tree:
+
+```
+$ git branch -a --format='%(refname:short)' | sed 's|^origin/||' | sort -u | wc -l
+158
+```
+
+Matching each of those 158 deduplicated names against every SPEC identifier appearing on a branch, by `REQ-KW-003`'s exact-token rule — the segment after the type prefix begins with the identifier, and the next character is end-of-segment or a hyphen — gives **29 identifiers on branches, of which 3 carry two or more**:
+
+```
+SPEC-CODEX-PHASE2-001: 3   docs/…-fork-resolution, docs/…-m0-close, feat/…-run
+SPEC-NAVIGATOR-SYNC-003: 3 plan/…, feat/…, sync/…
+SPEC-PROJECT-NAVIGATOR-004: 2 fix/…, chore/…-sync-sha-backfill
+```
+
+Their `status` values, read the way §O reads them, and the two facts that decide which one the board should believe:
+
+| Card | Branch `status` values | Live worktree | `origin/main` |
+|---|---|---|---|
+| `SPEC-CODEX-PHASE2-001` | `draft`, `draft`, `in-progress` | **yes** — `feat/…-run` at `~/.moai/worktrees/spec-codex-phase2` | `draft` |
+| `SPEC-NAVIGATOR-SYNC-003` | `draft`, `in-progress`, `completed` | no | `completed` |
+| `SPEC-PROJECT-NAVIGATOR-004` | `completed`, `completed` | no | `completed` |
+
+**What this establishes.** Three things, and the third is the one the requirement rests on.
+
+First, the disagreement is real and permanent: `SPEC-NAVIGATOR-SYNC-003` reads `draft`, `in-progress` and `completed` simultaneously, and nothing will reconcile them, because no rule in this family deletes a card's branches — `REQ-KW-004`'s prohibition is scoped to a *mismatched* branch during a creation refusal, and `REQ-KW-007` removes the worktree only. A grep across the sibling for a branch-deletion rule returns those two and nothing else.
+
+Second, the type prefix is not a stage ladder. Only one of the three cards carries a `plan`/`feat`/`sync` triple; the others carry `docs`/`docs`/`feat` and `fix`/`chore`. A most-advanced-stage tiebreak has nothing to order two of the three cards by, quite apart from `REQ-KW-019` forbidding a tiebreak at all.
+
+Third — and this is what makes worktree liveness the right selector rather than merely a workable one — **the one card whose `origin/main` value is stale is the one card with a live worktree**, and both cards whose `origin/main` value is current have none. `SPEC-CODEX-PHASE2-001` is mid-run: its tree holds `feat/…-run` at `in-progress` while `main` still reads `draft`. The other two are merged, and their `main` value equals their most advanced branch. The interval in which the primary checkout is wrong is exactly the interval in which a worktree exists to be observed, which is what `REQ-KB-020` now keys on.
+
+One further shape is present and is the reason `REQ-KB-024` exists: a worktree can report no branch at all. Measured, `git worktree list` shows `.claude/worktrees/rc-build` in detached `HEAD`. An implementation that falls back to a branch **search** when the report comes back empty lands directly in the multiplicity above.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-BOARD-001
 title: "Design — six-column kanban board model with a single-origin board state store"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-10
 updated: 2026-08-11
@@ -62,7 +62,7 @@ The failure shape is what makes it worth a design entry rather than a typo fix: 
 
 ### B.4 The board reads `status` from the card's branch
 
-**Decided.** A card's `status` is read from the card's **branch**, by blob read and without a checkout; a card with no branch is read from the primary checkout.
+**Decided.** A card's `status` is read from the card's **branch**, by blob read and without a checkout; a card with no live worktree is read from the primary checkout. *Which* branch, where a card has several, is §B.4a — this section decides only that the branch side is read at all, and was written as though the answer were unique.
 
 **Rejected — the primary checkout for every card**, which is what v0.2.0 left implied by saying nothing. It is wrong for the whole interval that matters. `status` transitions ride commits on the card's branch, inside a worktree that `SPEC-KANBAN-WORKTREE-001` `REQ-KW-005` keeps for the card's `run`, `review`, and `sync` sessions and `REQ-KW-007` holds until both pull requests merge. The primary-side copy therefore still reads `draft` while the card sits in `run`, `(run, draft)` is outside the compatibility table, and `REQ-KB-008` refuses to dispatch — **every card, on the normal path**. A safety mechanism firing on the case it was built to permit is worse than no mechanism, because the refusal is indistinguishable from a genuine one.
 
@@ -70,7 +70,19 @@ That this went unstated is not an oversight at the margin: §B.1's third rejecti
 
 **Rejected — reading inside each card's worktree.** It would see uncommitted work, and it is per-tree resolution, which §B.1 rejects for the board and would re-admit here through the read side.
 
-**Rejected — re-deriving the branch name from the SPEC identifier.** `SPEC-KANBAN-WORKTREE-001` `REQ-KW-003` already resolves a card's branch **by observation and by the SPEC identifier the branch carries, never by prefix**, and records that the synthesized prefix diverges from the repository's convention. A second derivation here would disagree with it on exactly the cards where the convention was not followed. The contract is consumed by name, which is why that sibling is now a `dependencies:` entry.
+**Rejected — re-deriving the branch name from the SPEC identifier.** `SPEC-KANBAN-WORKTREE-001` `REQ-KW-003` already resolves a card's branch **by observation and by the SPEC identifier the branch carries, never by prefix**, and records that the synthesized prefix diverges from the repository's convention. A second derivation here would disagree with it on exactly the cards where the convention was not followed. The contract is consumed **by name and by citation**, which is why that sibling stays in `related_specs:` and is deliberately *not* a `dependencies:` entry — the promotion was made and reversed inside v0.3.0, because it closed a cycle against the sibling's own landing dependency on this SPEC (`spec.md` §A.4a, `plan.md` AP-27). The sentence asserting the promotion survived that reversal in this file and is corrected at v0.4.0.
+
+### B.4a Which branch, when the card has several
+
+**Decided.** The branch is the one the card's **worktree reports**; where no worktree is live, the primary checkout. Worktree liveness is the selector, and the board searches the branch set for nothing.
+
+§B.4 said *the card's branch*, and cards have several. Measured, 3 of the 29 SPEC identifiers appearing on branches carry two or more, and `SPEC-NAVIGATOR-SYNC-003` carries `draft`, `in-progress` and `completed` across three of them at once (`research.md` §O.2). Nothing reconciles them, because nothing in this family deletes a card's branches.
+
+**Rejected — the most advanced stage wins.** The reading that arrives first, and it fails three separate ways. It needs the type prefix to be a stage ladder, and measurement says otherwise: only one of the three multi-branch cards carries a `plan`/`feat`/`sync` triple, the others carrying `docs`/`docs`/`feat` and `fix`/`chore`, over which no order exists. It is forbidden at the source — `REQ-KW-019` refuses to select among matching branches and names recency *and any other tiebreak* explicitly — so adopting it here would silently override a sibling's decision rather than make a local choice. And it inverts the live case: `SPEC-CODEX-PHASE2-001`'s worktree holds `feat/…-run` at `in-progress`, so a card mid-`sync` with a `sync/` branch present would be read from a tree its work is not happening in.
+
+**Rejected — falling back when the card has no branch**, which is what §B.4 left standing. Branches are never deleted, so the condition never becomes true, and an implementation keyed on it searches the branch set for every disposed card — resolving `draft` off a retained `plan/` branch for a card sitting in `done`, which pairs outside the compatibility table and is refused. This is the v0.2.0 defect reflected: v0.2.0 read the primary checkout and broke `run`; the branch-existence key breaks `sync` and `done`. Keying on liveness is correct at both ends, because a worktree spans creation to both-pull-requests-merged and the measurement shows the primary-side value stale for exactly the one card that has one.
+
+**The accepted consequence.** Two residuals are refused rather than guessed (`REQ-KB-024`): a worktree reporting no branch — a detached `HEAD`, present in this repository today — and a `REQ-KW-019` refusal reaching the board. Both render the card in its recorded column with `status` **unresolved**, not dispatchable, candidates surfaced. The alternative is a substituted enum member, and the one an implementation acquires for free is the zero value, which reports `draft` and dispatches.
 
 **The accepted consequence.** A branch read observes **committed** state, so an uncommitted transition is not yet a transition. Stated rather than left implicit, because the alternative reading would require the per-tree read just rejected.
 
@@ -126,7 +138,13 @@ The sibling's `REQ-KW-013` card lock is untouched and stays correct for holder a
 
 **Rejected — clearing on age.** A long mutation is indistinguishable from a dead one by elapsed time alone, and the threshold that makes the clear safe makes it useless.
 
-**Rejected — the naive check-then-unlink**, which is the hazard the sibling's audit found in its own version of this operation. Between reading the recorded identity and removing the artifact, the lock may be legitimately released by its owner and **re-acquired by a live process**; the clearer then unlinks a valid lock and two writers enter the critical section — a repair that causes the exact concurrency the lock prevents, with every step correct in isolation. The removal is therefore conditioned on the artifact still being the one inspected, so a recreate in that window aborts the clear.
+**Rejected — the naive check-then-unlink**, which is the hazard the sibling's audit found in its own version of this operation. Between reading the recorded identity and removing the artifact, the lock may be legitimately released by its owner and **re-acquired by a live process**; the clearer then unlinks a valid lock and two writers enter the critical section — a repair that causes the exact concurrency the lock prevents, with every step correct in isolation. The removal is therefore conditioned on a re-read of the recorded identity immediately before the unlink, so a recreate observed at that point aborts the clear.
+
+**Rejected — asserting that the removal happens only if the artifact is unchanged.** This is what v0.3.0's requirement text claimed, and it is not available. `unlink(2)` — and the `os.Remove` wrapping it — takes a **path**, resolves the name at call time, and removes whatever the name then denotes; the descriptor the identity was read through has no bearing on which file is unlinked. There is no portable handle-based form: no POSIX call takes one, `funlinkat(2)` is FreeBSD-only and absent on Linux and Darwin, and the Windows delete-on-close disposition is set by the *holder* at open time — which is the process this operation exists to clean up after and which is by hypothesis gone. An implementer reading a determinism claim writes the two-step code regardless, believes it atomic, and stops looking, so the claim is worse than the gap it papers over.
+
+**Rejected — acquiring the lock exclusively and unlinking beneath that exclusion.** The mechanism that comes closest, and it does not reach either. On the Unix substrate `flock(2)` coordinates only among processes that also take the lock; it does not prevent the path being rebound, so the unlink is unprotected in exactly the way that matters. On Windows the substrate is atomic-create-exclusive, so acquiring the artifact to clear it is indistinguishable from acquiring it to hold it, and a clearer that succeeds has become a second writer. The portability cost is also asymmetric in the wrong direction — the platform where the mechanism is least expressible is the only platform where the defect occurs at all (§C.3a).
+
+**Accepted instead — a time-of-check-to-time-of-use mitigation, named as one.** The re-read narrows the interval from the span of an operator's inspection to two adjacent statements; it does not empty it. Two things make the residual acceptable where the original window was not. It is entered only by a clear already running against an artifact whose recorded owner was observed dead, so the re-acquisition it can race must have begun after that observation. And the operation is explicit, operator-invoked, and reports what it removed, so a rare bad outcome is attributable rather than silent.
 
 ### C.4 Why C.1 and C.3 are not the same decision
 
