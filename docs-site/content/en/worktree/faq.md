@@ -64,7 +64,7 @@ graph TB
 
 2. **Parallel development** — you can run multiple SPECs at once
 3. **Conflict prevention** — separate workspaces mean conflicts almost never happen
-4. **Cost savings** — using GLM at the implementation stage cuts cost by about 70%
+4. **Cost savings** — using GLM at the implementation stage cuts cost. The size of the savings is laid out in [CG Mode](/en/multi-llm/cg-mode)
 
 ```mermaid
 graph TB
@@ -72,7 +72,7 @@ graph TB
     B --> C[High cost<br/>Opus only]
 
     D[With Worktree] --> E[Independent LLM<br/>per Worktree]
-    E --> F[70% cost savings<br/>GLM usable]
+    E --> F[Cost savings<br/>GLM usable]
 ```
 
 ---

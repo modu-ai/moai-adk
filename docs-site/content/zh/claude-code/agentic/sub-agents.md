@@ -10,7 +10,7 @@ description: "在概览层面梳理 Claude Code 子智能体的概念、隔离�
 Claude Code 的子智能体是在独立的上下文窗口中处理旁支任务、只把结果摘要返回主对话的委派工作者。
 
 {{< callout type="info" title="背景参考" >}}
-本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [智能体指南](/zh/advanced/agent-guide)。
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [智能体指南](/zh/advanced/agent-guide)，亲手创建智能体的实战流程则在[构建者智能体指南](/zh/advanced/builder-agents)中继续展开。
 {{< /callout >}}
 
 
@@ -20,10 +20,6 @@ Claude Code 的子智能体是在独立的上下文窗口中处理旁支任务�
 
 {{< callout type="info" title="用比喻理解" >}}
 子智能体是**用自己书桌的同事**。把会弄乱我书桌（主对话上下文）的大量调查·日志·搜索结果交给同事，他会在自己的书桌上处理，只递给我**一页结果摘要**。这样我的书桌保持干净，我也能只专注于核心脉络。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-本页是 Claude Code 层面的概念概览。MoAI-ADK 如何构成与委派 11 个智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`），以及亲手创建智能体的实战方法，在[智能体指南](/zh/advanced/agent-guide)与[构建者智能体指南](/zh/advanced/builder-agents)中深入讲解。
 {{< /callout >}}
 
 ## 什么是子智能体

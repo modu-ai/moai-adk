@@ -10,15 +10,11 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 훅(hook)은 Claude Code의 라이프사이클 특정 지점에서 자동으로 실행되는 셸 명령으로, 모델의 판단에 의존하지 않고 "항상 일어나야 하는 동작"을 결정적으로 보장합니다.
 
 {{< callout type="info" title="배경 참조" >}}
-이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [Hooks 가이드](/ko/advanced/hooks-guide)에서 다룹니다.
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK가 hook을 어떻게 등록하고 운영하는지는 [Hooks 가이드](/ko/advanced/hooks-guide)에서 다루고, 이벤트별 입력 스키마는 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)에 정리되어 있습니다.
 {{< /callout >}}
 
 {{< callout type="info" >}}
 **한 줄 요약**: hook은 Claude Code가 파일을 편집하거나 작업을 끝낼 때마다 자동으로 발동하는 "if-this-then-that" 스크립트로, 포매팅·린트·보안 차단을 사람 손 없이 강제합니다.
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-이 페이지는 개념 소개에 집중합니다. MoAI-ADK가 hook을 실제로 어떻게 등록하고 운영하는지(셸 래퍼 패턴, 이벤트별 동작, 품질 게이트 연동)는 깊이 있는 MoAI-ADK 가이드에서 다룹니다. 손에 잡히는 실전 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)와 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참고하세요.
 {{< /callout >}}
 
 ## 훅이란

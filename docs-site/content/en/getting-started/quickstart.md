@@ -134,72 +134,11 @@ flowchart TD
 
 #### TDD Mode (New Project / Test Coverage 10%+)
 
-{{< callout type="info" >}}
-**What is TDD?**
-
-TDD is like "building a new house" (if DDD is home remodeling, TDD is building a new house):
-- **Write the blueprints and inspection criteria (tests) first** — with no house yet, inspection naturally fails
-- **Build the minimum structure (code) that passes the inspection criteria** — exactly as much as needed
-- **Refine the finishing (code) while keeping inspection passing** — improve it into better code
-
-**Key point:** Tests come before code!
-{{< /callout >}}
-
-**The RED-GREEN-REFACTOR cycle:**
-
-| Phase | Meaning | What happens |
-|------|------|--------|
-| **RED** | Fail | Write tests first for the feature that does not exist yet |
-| **GREEN** | Pass | Write the minimum code that passes the tests |
-| **REFACTOR** | Improve | Raise code quality while keeping the tests green |
-
-```mermaid
-flowchart TD
-    A["RED<br/>Write a failing test"] --> B["GREEN<br/>Pass with minimal code"]
-    B --> C["REFACTOR<br/>Improve code quality"]
-    C --> D{"More features to implement?"}
-    D -->|Yes| A
-    D -->|No| E["Quality gates pass"]
-    style A fill:#f44336,color:#fff
-    style B fill:#4CAF50,color:#fff
-    style C fill:#2196F3,color:#fff
-```
-
----
+Implementation follows the RED-GREEN-REFACTOR cycle: write the test first, then make it pass. What each phase of the cycle means is covered in [SPEC-Based Development](/en/core-concepts/spec-based-dev).
 
 #### DDD Mode (Existing Project / Test Coverage Under 10%)
 
-{{< callout type="info" >}}
-**What is DDD?**
-
-DDD is like "remodeling a house":
-- Improve one room at a time, **without demolishing the house**
-- **Take photos of the current state before remodeling** (= characterization tests)
-- **Work room by room, verifying each time** (= incremental improvement)
-
-**Key point:** Improve safely while preserving existing behavior!
-{{< /callout >}}
-
-**The ANALYZE-PRESERVE-IMPROVE cycle:**
-
-| Phase | Analogy | Actual work |
-|------|------|----------|
-| **ANALYZE** | Inspect the house | Understand the current code structure and problems |
-| **PRESERVE** | Photograph the current state | Record current behavior with characterization tests |
-| **IMPROVE** | Remodel one room at a time | Improve bit by bit while the tests keep passing |
-
-```mermaid
-flowchart TD
-    A["ANALYZE<br/>Analyze the current code"] --> B["Identify problems"]
-    B --> C["PRESERVE<br/>Record current behavior with tests"]
-    C --> D["Safety net in place"]
-    D --> E["IMPROVE<br/>Improve incrementally"]
-    E --> F["Run tests"]
-    F --> G{"Pass?"}
-    G -->|Yes| H["Next improvement"]
-    G -->|No| I["Roll back and retry"]
-    H --> J["Quality gates pass"]
-```
+Work proceeds through the ANALYZE-PRESERVE-IMPROVE cycle: pin the existing behavior down with characterization tests, then improve it bit by bit. The details are covered in [DDD](/en/core-concepts/ddd).
 
 ---
 

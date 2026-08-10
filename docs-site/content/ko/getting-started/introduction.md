@@ -58,79 +58,19 @@ MoAI-ADK는 **SPEC 기반 TDD/DDD** 방법론을 따르며, **TRUST 5** 품질 �
 **한 줄 요약:** 어제 AI와 논의한 "JWT 인증 + 1시간 만료 + 리프레시 토큰"을 오늘 다시 설명할 필요 없이, `/moai run SPEC-AUTH-001` 한 줄로 바로 구현을 시작합니다!
 {{< /callout >}}
 
-### TDD란? (쉽게 이해하기)
+### 방법론과 품질 기준
 
-**TDD**(Test-Driven Development)는 "테스트를 먼저 작성하고 개발하는 방법"입니다.
+구현 방식은 프로젝트 상태에 따라 둘 중 하나가 자동으로 배정되고, 결과물은 공통된 품질 기준으로 검증됩니다.
 
-새 집을 짓는 일에 비유하면 (DDD가 리모델링이라면 TDD는 신축입니다):
-
-- **설계 도면과 검수 기준 (테스트) 을 먼저 작성합니다** — 아직 집이 없으니 당연히 검수 실패
-- **검수 기준을 통과하는 최소한의 구조물을 짓습니다** — 딱 필요한 만큼만
-- **검수를 유지하면서 마감을 다듬습니다** — 테스트가 통과하는 상태를 유지하며 개선
-
-MoAI-ADK는 **RED-GREEN-REFACTOR** 사이클로 이 과정을 자동화합니다:
-
-| 단계 | 의미 | 하는 일 |
-|------|------|--------|
-| **RED** | 실패 | 아직 없는 기능의 테스트를 먼저 작성 |
-| **GREEN** | 통과 | 테스트를 통과하는 최소한의 코드 작성 |
-| **REFACTOR** | 개선 | 테스트를 유지하면서 코드 품질 향상 |
-
-### DDD란? (쉽게 이해하기)
-
-**DDD**(Domain-Driven Development)는 "안전한 코드 개선 방법"입니다.
-
-집 리모델링에 비유하면:
-
-- **기존 집을 부수지 않고** 방 하나씩 개선합니다
-- **리모델링 전에 현재 상태를 기록합니다** (= 특성화 테스트)
-- **한 방씩 작업하고, 매번 확인합니다** (= 점진적 개선)
-
-MoAI-ADK는 **ANALYZE-PRESERVE-IMPROVE** 사이클로 이 과정을 자동화합니다:
-
-| 단계 | 의미 | 하는 일 |
-|------|------|--------|
-| **ANALYZE** | 분석 | 현재 코드 구조와 문제점 파악 |
-| **PRESERVE** | 보존 | 테스트로 현재 동작 기록 (안전망) |
-| **IMPROVE** | 개선 | 테스트 통과하면서 조금씩 개선 |
-
-### 개발 방법론 선택
-
-MoAI-ADK는 프로젝트 상태에 따라 최적의 개발 방법론을 자동 선택합니다.
-
-```mermaid
-flowchart TD
-    A["프로젝트 분석"] --> B{"신규 프로젝트 또는<br/>10%+ 테스트 커버리지?"}
-    B -->|"Yes"| C["TDD 기본값"]
-    B -->|"No"| D{"기존 프로젝트<br/>< 10% 커버리지?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-| 방법론 | 대상 | 사이클 |
-|--------|------|--------|
-| **TDD** | 신규 프로젝트 또는 10%+ 커버리지 | RED → GREEN → REFACTOR |
-| **DDD** | 10% 미만 커버리지 기존 프로젝트 | ANALYZE → PRESERVE → IMPROVE |
+| 이름 | 언제 쓰나 | 자세히 |
+|------|-----------|--------|
+| **TDD** (Test-Driven Development) | 신규 프로젝트 또는 테스트 커버리지 10% 이상 (기본값) | [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) |
+| **DDD** (Domain-Driven Development) | 테스트 커버리지 10% 미만인 기존 프로젝트 | [DDD](/ko/core-concepts/ddd) |
+| **TRUST 5** | 방법론과 무관하게 모든 코드 변경에 적용 | [TRUST 5](/ko/core-concepts/trust-5) |
 
 {{< callout type="info" >}}
 MoAI-ADK v2.5.0+는 TDD와 DDD 중 하나만 고릅니다. 명확성과 일관성을 위해 hybrid 모드는 없앴습니다. 방법론은 `moai init` 시 자동으로 정해지며, `.moai/config/sections/quality.yaml`의 `development_mode`에서 변경할 수 있습니다.
 {{< /callout >}}
-
-### TRUST 5 품질 프레임워크
-
-TRUST 5는 다음 5가지 핵심 원칙으로 이루어집니다:
-
-| 원칙 | 설명 |
-|------|------|
-| **T**ested | 85% 커버리지, 특성화 테스트, 동작 보존 |
-| **R**eadable | 명확한 명명 규칙, 일관된 포맷팅 |
-| **U**nified | 통합된 스타일 가이드, 자동 포맷팅 |
-| **S**ecured | OWASP 준수, 보안 검증, 취약점 분석 |
-| **T**rackable | 구조화된 커밋, 변경 이력 추적 |
 
 ## Go Edition 특징
 

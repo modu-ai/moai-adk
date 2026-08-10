@@ -47,9 +47,9 @@ If you are new, start with `/moai project`. Project documentation must exist for
 `/moai harness` is an auxiliary command for managing the harness learning subsystem — it monitors CLAUDE.md changes and proposes tier-based automatic updates.
 {{< /callout >}}
 
-## All subcommands (15)
+## All subcommands (16)
 
-The `/moai` orchestrator routes 15 subcommands. This (workflow) section covers the SPEC 3-Phase lifecycle commands, and the [utility commands](/en/utility-commands/) section covers automation, fix-loop, code-management, and feedback commands.
+The `/moai` orchestrator routes 16 subcommands. This (workflow) section covers the SPEC 3-Phase lifecycle commands, and the [utility commands](/en/utility-commands/) section covers automation, fix-loop, code-management, and feedback commands.
 
 **Workflow commands (this section):**
 

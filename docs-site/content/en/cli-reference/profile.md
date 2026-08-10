@@ -84,7 +84,7 @@ A profile given with `-p` always takes precedence. To see which profile is used 
 Running `moai cc` without `-p` picks a profile by consulting the record in `~/.moai/claude-profiles/launch.yaml`. That record is updated every time you launch a named profile with `-p`.
 
 {{< callout type="note" >}}
-The per-project memory described below ships in the next release. The currently released version keeps only a single global record (`last_profile`), so specifying a profile with `-p` in project B overwrites the value project A had remembered.
+The per-project memory described below ships in the next release. The current release (v3.0.1) keeps only a single global record (`last_profile`), so specifying a profile with `-p` in project B overwrites the value project A had remembered.
 {{< /callout >}}
 
 Alongside the global record, `launch.yaml` maintains a `projects:` map keyed by the project's absolute path. A launch without `-p` resolves the profile in this order:
@@ -114,7 +114,7 @@ The per-project record is written when you launch with `-p`, and it is updated a
 A newly created profile directory does not yet contain `.claude.json`, the file that holds Claude Code's account state. Account state is kept per configuration directory on every platform, so even when your existing session is perfectly healthy, the first launch with a new profile brings up the login / onboarding screen.
 
 {{< callout type="note" >}}
-The notice below ships in the next release. The currently released version moves to the login screen with no warning at all.
+The notice below ships in the next release. The current release (v3.0.1) moves to the login screen with no warning at all.
 {{< /callout >}}
 
 Before starting Claude Code, the launcher prints the following to standard error:

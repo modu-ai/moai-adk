@@ -206,40 +206,13 @@ MoAI-ADK 不是快速堆出代码的工具。它利用 AI,但目标是做出比�
 
 MoAI-ADK 会依项目状态自动选择最优的开发方法论。
 
-```mermaid
-flowchart TD
-    A["项目分析"] --> B{"新项目或\n10%+ 测试覆盖率?"}
-    B -->|"是"| C["TDD (默认)"]
-    B -->|"否"| D{"既有项目\n< 10% 覆盖率?"}
-    D -->|"是"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
 ### TDD 方法论(默认)
 
-新项目与功能开发的默认方法论。先写测试,然后实现。
-
-| 阶段 | 说明 |
-|------|------|
-| **RED** | 编写定义期望行为的失败测试 |
-| **GREEN** | 编写通过测试的最少代码 |
-| **REFACTOR** | 在保持测试的同时改进代码质量。 |
-
-对于棕地项目(既有代码库),TDD 会追加 **pre-RED 分析阶段**:在写测试前读既有代码以理解当前行为。
+新项目与新功能开发的默认方法论。先写测试、再让测试通过,因此要实现的行为在代码之前就已确定。MoAI-ADK 把它设为默认,是为了让"完成了"由测试结果判定,而不是靠人的感觉。循环的各个阶段以及面向棕地项目的 pre-RED 分析阶段,请见 [SPEC 驱动开发](/zh/core-concepts/spec-based-dev)。
 
 ### DDD 方法论(既有项目,覆盖率不足 10%)
 
-用于安全地重构测试覆盖率低的既有项目的方法论。
-
-```
-ANALYZE   → 分析既有代码与依赖,识别领域边界
-PRESERVE  → 编写特性化测试,捕获当前行为快照
-IMPROVE   → 在受测试保护下渐进式改进。
-```
+用于安全地改动几乎没有测试的既有代码。在着手改进之前,先用特性化测试把当前行为固定下来,从而避免重构悄悄弄坏既有功能。这正是 MoAI-ADK 为覆盖率不足 10% 的项目指派该方法论的原因。分阶段的具体流程请见 [DDD](/zh/core-concepts/ddd)。
 
 {{< callout type="info" >}}
 方法论在 `moai init` 时自动选择(`--mode <ddd|tdd>`,默认: tdd),可在 `.moai/config/sections/quality.yaml` 的 `development_mode` 中更改。
@@ -548,15 +521,7 @@ moai cg
 
 ## TRUST 5 质量框架
 
-所有代码变更都用 5 项质量标准验证:
-
-| 标准 | 含义 | 验证内容 |
-|------|------|----------|
-| **T**ested | 已测试 | 85%+ 覆盖率、特性化测试、单元测试通过 |
-| **R**eadable | 易读 | 明确的命名规则、一致的代码风格、0 lint 错误 |
-| **U**nified | 统一 | 一致的格式化、import 排序、遵循项目结构 |
-| **S**ecured | 安全 | 遵循 OWASP、输入验证、0 安全警告 |
-| **T**rackable | 可追踪 | Conventional Commits、issue 参照、结构化日志 |
+所有代码变更都用 Tested · Readable · Unified · Secured · Trackable 这五项标准验证。目的是每次都对代码用同一把尺子,而不是取决于评审者的口味;每项标准都配有覆盖率、lint、格式化、安全扫描、提交规范这类可由机器判定的检查。各标准的具体验证项请见 [TRUST 5](/zh/core-concepts/trust-5)。
 
 ## @MX 标签系统
 

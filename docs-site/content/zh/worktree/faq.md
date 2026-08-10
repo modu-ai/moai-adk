@@ -63,7 +63,7 @@ graph TB
 
 2. **并行开发** —— 可以同时推进多个 SPEC
 3. **冲突防止** —— 工作空间各自独立,几乎不会起冲突
-4. **成本节约** —— 在实现阶段使用 GLM 可减少约 70% 成本
+4. **成本节约** —— 在实现阶段使用 GLM 可以降低成本。节省幅度整理在 [CG 模式](/zh/multi-llm/cg-mode)中
 
 ```mermaid
 graph TB
@@ -71,7 +71,7 @@ graph TB
     B --> C[高成本<br/>只用 Opus]
 
     D[使用 Worktree] --> E[每个 Worktree<br/>独立 LLM]
-    E --> F[节省 70% 成本<br/>可使用 GLM]
+    E --> F[节省成本<br/>可使用 GLM]
 ```
 
 ---

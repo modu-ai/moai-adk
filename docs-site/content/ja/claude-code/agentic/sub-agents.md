@@ -11,7 +11,7 @@ Claude Code のサブエージェントは、脇道の作業を別のコンテ�
 
 
 {{< callout type="info" title="背景リファレンス" >}}
-このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [エージェントガイド](/ja/advanced/agent-guide) で扱います。
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [エージェントガイド](/ja/advanced/agent-guide) で扱い、エージェントを自分で作る実践手順は [ビルダーエージェントガイド](/ja/advanced/builder-agents) へ続きます。
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -20,10 +20,6 @@ Claude Code のサブエージェントは、脇道の作業を別のコンテ�
 
 {{< callout type="info" title="たとえで理解する" >}}
 サブエージェントは **自分専用のデスクを持つ同僚**です。自分のデスク (メイン対話のコンテキスト) を散らかす大量の調査・ログ・検索結果は同僚に任せれば、彼は自分のデスクの上でその仕事を処理し、こちらには **結果の要約 1 枚だけ**を渡してくれます。おかげで自分のデスクはきれいに保たれ、こちらは核心の流れだけに集中できます。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-このページは Claude Code 次元の概念概要です。MoAI-ADK が 11 個のエージェントカタログ (10 MoAI-custom + 1 Anthropic 内蔵 `Explore`) をどう構成し委任するか、自分でエージェントを作る実践的な方法は [エージェントガイド](/ja/advanced/agent-guide) と [ビルダーエージェントガイド](/ja/advanced/builder-agents) で深く扱います。
 {{< /callout >}}
 
 ## サブエージェントとは
