@@ -1,6 +1,9 @@
 "getting-started":
   title: "Getting Started"
   weight: 10
+resources:
+  title: "Resources"
+  weight: 15
 "core-concepts":
   title: "Core Concepts"
   weight: 20

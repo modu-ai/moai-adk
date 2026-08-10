@@ -173,42 +173,7 @@ External imports:
 
 MoAI-ADK v2.5.0+ 在方法论上**只能二选一**（仅 TDD 或 DDD）。为了清晰与一致性，hybrid 模式已被移除。
 
-### 方法论选择指南
-
-```mermaid
-flowchart TD
-    A["项目分析"] --> B{"新项目或<br/>10%+ 测试覆盖率？"}
-    B -->|"Yes"| C["TDD (默认值)"]
-    B -->|"No"| D{"现有项目<br/>< 10% 覆盖率？"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-### TDD 方法论（默认值）
-
-推荐用于新项目与功能开发的默认方法论。先写测试。
-
-| 阶段 | 说明 |
-|------|------|
-| **RED** | 编写定义预期行为的失败测试 |
-| **GREEN** | 编写通过测试的最少代码 |
-| **REFACTOR** | 在保持测试通过的同时改进代码质量 |
-
-在棕地项目（既有代码库）中会增加 **RED 前分析阶段**：在编写测试之前先阅读现有代码，把握当前行为。
-
-### DDD 方法论（测试覆盖率 < 10% 的现有项目）
-
-用于在测试覆盖率极低的现有项目中安全重构的方法论。
-
-```
-ANALYZE   → 分析既有代码与依赖,识别领域边界
-PRESERVE  → 编写特性化测试,捕获当前行为快照
-IMPROVE   → 在受测试保护的状态下渐进式改进
-```
+TDD 是先写测试、再让测试通过的顺序，因此适合新开发；DDD 则是先用特性测试把现有行为固定下来、再逐步改动，因此适合几乎没有测试的代码。两个循环的分阶段流程请见 [SPEC 驱动开发](/zh/core-concepts/spec-based-dev)与 [DDD](/zh/core-concepts/ddd)。
 
 ### 方法论选择表
 

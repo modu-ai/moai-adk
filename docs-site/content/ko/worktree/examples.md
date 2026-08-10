@@ -473,8 +473,10 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # 결과
 # - 3개의 기능 모두 완료
 # - 병렬 개발으로 개발 흐름 단축
-# - GLM 사용으로 비용 절감 70%
+# - GLM 사용으로 비용 절감
 ```
+
+구현 세션을 GLM으로 돌린 덕에 비용이 눈에 띄게 줄었습니다. 절감 폭과 그 근거는 [CG 모드](/ko/multi-llm/cg-mode)에 정리되어 있습니다.
 
 ---
 

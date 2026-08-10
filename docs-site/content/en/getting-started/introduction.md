@@ -58,79 +58,19 @@ The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 **One-line summary:** Yesterday's "JWT auth + 1-hour expiry + refresh token" that you discussed with the AI does not need re-explaining today — start implementation right away with the single line `/moai run SPEC-AUTH-001`!
 {{< /callout >}}
 
-### What is TDD? (made easy)
+### Methodology and quality criteria
 
-**TDD** (Test-Driven Development) is "a method of writing tests first, then developing."
+One of two implementation methodologies is assigned automatically based on the project state, and the result is verified against a shared set of quality criteria.
 
-Comparing it to building a new house (if DDD is home remodeling, TDD is building a new house):
-
-- **You write the blueprints and inspection criteria (tests) first** — with no house yet, inspection naturally fails
-- **You build the minimum structure that passes the inspection criteria** — just as much as needed
-- **You refine the finishing while keeping inspection passing** — improving while keeping the tests passing
-
-MoAI-ADK automates this process with the **RED-GREEN-REFACTOR** cycle:
-
-| Phase | Meaning | What it does |
-|------|------|--------|
-| **RED** | Fail | Write a test for a not-yet-existing feature first |
-| **GREEN** | Pass | Write the minimum code that passes the test |
-| **REFACTOR** | Improve | Improve code quality while keeping the test passing |
-
-### What is DDD? (made easy)
-
-**DDD** (Domain-Driven Development) is "a safe way to improve code."
-
-Comparing it to home remodeling:
-
-- You improve **one room at a time, without demolishing the existing house**
-- You **record the current state before remodeling** (= characterization tests)
-- You **work one room at a time and verify each time** (= incremental improvement)
-
-MoAI-ADK automates this process with the **ANALYZE-PRESERVE-IMPROVE** cycle:
-
-| Phase | Meaning | What it does |
-|------|------|--------|
-| **ANALYZE** | Analyze | Understand the current code structure and issues |
-| **PRESERVE** | Preserve | Record current behavior with tests (a safety net) |
-| **IMPROVE** | Improve | Improve little by little while keeping tests passing |
-
-### Choosing a development methodology
-
-MoAI-ADK automatically selects the optimal development methodology based on the project state.
-
-```mermaid
-flowchart TD
-    A["Project analysis"] --> B{"New project or<br/>10%+ test coverage?"}
-    B -->|"Yes"| C["TDD default"]
-    B -->|"No"| D{"Existing project<br/>< 10% coverage?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-| Methodology | Target | Cycle |
-|--------|------|--------|
-| **TDD** | New project or 10%+ coverage | RED → GREEN → REFACTOR |
-| **DDD** | Existing project under 10% coverage | ANALYZE → PRESERVE → IMPROVE |
+| Name | When it applies | Details |
+|------|-----------------|---------|
+| **TDD** (Test-Driven Development) | New project, or test coverage of 10% or more (default) | [SPEC-Based Development](/en/core-concepts/spec-based-dev) |
+| **DDD** (Domain-Driven Development) | Existing project with test coverage under 10% | [DDD](/en/core-concepts/ddd) |
+| **TRUST 5** | Applied to every code change, whichever methodology is in use | [TRUST 5](/en/core-concepts/trust-5) |
 
 {{< callout type="info" >}}
 MoAI-ADK v2.5.0+ uses binary methodology selection (TDD or DDD only). For clarity and consistency, the hybrid mode was removed. The methodology is selected automatically at `moai init` and can be changed in `development_mode` in `.moai/config/sections/quality.yaml`.
 {{< /callout >}}
-
-### TRUST 5 quality framework
-
-TRUST 5 is based on the following 5 core principles:
-
-| Principle | Description |
-|------|------|
-| **T**ested | 85% coverage, characterization tests, behavior preservation |
-| **R**eadable | Clear naming conventions, consistent formatting |
-| **U**nified | Unified style guide, automatic formatting |
-| **S**ecured | OWASP compliance, security validation, vulnerability analysis |
-| **T**rackable | Structured commits, change history tracking |
 
 ## Go Edition characteristics
 

@@ -473,8 +473,10 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # 結果
 # - 3 つの機能すべて完了
 # - 並列開発で開発の流れを短縮
-# - GLM の使用でコスト削減 70%
+# - GLM の使用でコスト削減
 ```
+
+実装セッションを GLM で回したおかげで、コストは目に見えて下がりました。削減幅とその根拠は [CG モード](/ja/multi-llm/cg-mode) にまとめてあります。
 
 ---
 

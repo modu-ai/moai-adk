@@ -10,15 +10,11 @@ description: "Claude Code スキル (SKILL.md) の概念と Progressive Disclosu
 Claude Code のスキル (skill) は、繰り返される手順や専門知識を `SKILL.md` ファイル 1 つに束ねて Claude のツールボックスへ追加する拡張メカニズムです。
 
 {{< callout type="info" title="背景リファレンス" >}}
-このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [スキルガイド](/ja/advanced/skill-guide) で扱います。
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK の使い方は [スキルガイド](/ja/advanced/skill-guide) で扱い、ビルダーエージェントでスキルを自動生成する手順は [ビルダーエージェントガイド](/ja/advanced/builder-agents) へ続きます。
 {{< /callout >}}
 
 {{< callout type="info" >}}
 **ひとことで言うと**: チャットに毎回貼り付けていたチェックリストや手順を `SKILL.md` 1 枚にすれば、Claude が必要なときだけその内容を取り出して使う「ポケットの中の専門家」になります。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-このドキュメントは Claude Code スキルの概念概要です。MoAI-ADK でスキルを直接作成し、ビルダーエージェントで自動生成する実践手順は、[スキルガイド](/ja/advanced/skill-guide) と [ビルダーエージェントガイド](/ja/advanced/builder-agents) で詳しく扱います。
 {{< /callout >}}
 
 ## スキルとは
