@@ -21,7 +21,7 @@
 
 ### M2 — Job registry
 
-**AC-CX2-005** (MUST, REQ-CX2-003) — *Given* a writable temporary project root, *When* a background task is started, *Then* exactly one file appears under `.moai/state/codex-jobs/`, and its JSON decodes with a non-empty job id, a status, creation and update timestamps, a `threadId`, the pid of the codex process this server spawned for the job, a mode, and a request summary.
+**AC-CX2-005** (MUST, REQ-CX2-003) — *Given* a writable temporary project root, *When* a background task is started, *Then* exactly one file appears under `.moai/state/codex-jobs/`, and its JSON decodes with a non-empty job id, a status, creation and update timestamps, a `threadId`, a non-empty `turnId` equal to the `turn.id` carried by the canned session's `turn/started` notification, the pid of the codex process this server spawned for the job, a mode, and a request summary.
 
 **AC-CX2-006** (MUST, REQ-CX2-004) — *Given* a job progressing through its lifecycle, *When* each transition is written, *Then* the recorded status is one of `queued`/`running`/`completed`/`failed`/`cancelled` at every read, and no read observes a truncated or partially-written file.
 
@@ -35,6 +35,8 @@
 
 **AC-CX2-010** (MUST, REQ-CX2-007) — *Given* a project whose config carries no `workflow.codex.task.allow_write` key (the distributed default), *When* `codex_task` is invoked with `write` true, *Then* the turn is not run in a writing mode and the result states that the write request was not honored; and *Given* `workflow.codex.task.allow_write: true`, *Then* the writing mode is requested. The absent-key, malformed-YAML, and explicit-`false` cases all read as not opted in (fail-closed). And *Given* each of those config states in turn, *When* `codex_setup` is invoked, *Then* its decoded result map carries an `allow_write` key whose boolean value is the literal expected value for that state — `false` for absent-key, `false` for malformed-YAML, `false` for explicit-`false`, and `true` for explicit-`true` — alongside the pre-existing `enable_review_gate` key. The expected values are stated literally rather than as "whatever the gate reads", so the assertion cannot pass by calling the same read on both sides — asserted by a Go test that decodes the `codex_setup` result rather than by a grep.
 
+*And* (sticky-policy arm, M0-forced) *Given* `workflow.codex.task.allow_write: true` and a canned session capturing every transmitted `turn/start`, *When* two turns are driven on one reused thread — turn 1 invoked with `write` true, turn 2 invoked without a write request — *Then* turn 1's transmitted params carry `sandboxPolicy` `workspaceWrite` and turn 2's transmitted params carry `sandboxPolicy` `readOnly`; turn 2's `sandboxPolicy` field is present rather than omitted, so the thread's inherited write-enabled policy (`sandboxPolicy` applies "for this turn and subsequent turns") cannot outlive the request that opted into it. The enum values are the literal M0-observed variants (`readOnly` | `workspaceWrite` | `dangerFullAccess` | `externalSandbox`).
+
 **AC-CX2-011** (MUST, REQ-CX2-008) — *Given* a recorded prior thread for the project, *When* `codex_task` runs with `resume_last`, *Then* the transmitted `threadId` equals the recorded one and no new `thread/start` is issued; and *Given* no recorded thread, *Then* a new thread is opened and the result states that no prior thread was resumed.
 
 ### M4 — Job control
@@ -43,7 +45,7 @@
 
 **AC-CX2-013** (MUST, REQ-CX2-010) — *Given* a job in a terminal status, *When* `codex_job_result` is invoked, *Then* the recorded output is returned; and *Given* a running job, *Then* the current status is returned and the call completes without waiting for the turn.
 
-**AC-CX2-014** (MUST, REQ-CX2-011) — *Given* a running job backed by a canned session, *When* `codex_job_cancel` is invoked, *Then* the M0-confirmed interrupt request is sent on that job's session, the job's recorded status becomes `cancelled`, and *When* the process does not exit within the grace window, *Then* it is terminated and the call still returns within a bounded time.
+**AC-CX2-014** (MUST, REQ-CX2-011) — *Given* a running job backed by a canned session, *When* `codex_job_cancel` is invoked, *Then* the M0-confirmed `turn/interrupt` request is sent on that job's session carrying both required params — a `threadId` and a `turnId` equal to the values in that job's record — the job's recorded status becomes `cancelled`, and *When* the process does not exit within the grace window, *Then* it is terminated and the call still returns within a bounded time.
 
 **AC-CX2-015** (MUST, REQ-CX2-012) — *Given* a job record naming a pid the running server did not spawn in the current process lifetime (the shape a record left behind by a previous server lifetime takes, since background jobs are in-process and do not survive a restart), *When* `codex_job_cancel` is invoked for it, *Then* no signal is sent to that pid and the tool returns a structured refusal — asserted by a test that records signal attempts rather than by observing a live process.
 

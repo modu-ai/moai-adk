@@ -59,17 +59,21 @@ REQ-CX2-001, REQ-CX2-002. Split `runCodexReviewRPC` so the handshake (`initializ
 
 REQ-CX2-003, REQ-CX2-004, REQ-CX2-005. Per-job JSON files under `.moai/state/codex-jobs/`, atomic write per transition, structured error on an unwritable state directory, no secrets in the record. Follows the `.moai/state/audit-multi/<session>.json` precedent (`internal/cli/mcp_convergence.go:73`).
 
+Per the M0 probe, the record also carries the `turnId` (REQ-CX2-003): `turn/interrupt` requires `{threadId, turnId}` and the value is only obtainable from the `turn/started` notification's `turn.id`, so the job goroutine must read that notification and persist the id into the record before M4's cancel path can address the turn at all.
+
 Per the M0 in-process decision, the record's process reference is the pid of the codex subprocess this server spawned in the current process lifetime. No reattachment metadata is recorded, and the record carries nothing intended to let a later server lifetime adopt the job — a record found in a non-terminal status after a restart is stale by construction, not resumable.
 
 ### M3 — `codex_task`
 
 REQ-CX2-006, REQ-CX2-007, REQ-CX2-008. Foreground and background forms, the write opt-in gate, and `resume_last` thread reuse on top of M1's session handle. The background form is the in-process goroutine of the M0 decision; the write gate reads `workflow.codex.task.allow_write` fail-closed (distributed default `false`).
 
+**M3 hazard — `sandboxPolicy` is sticky on the thread.** The M0 probe found `sandboxPolicy` documented as applying "for this turn **and subsequent turns**". Combined with the in-process reusable session and `resume_last` thread reuse, a turn that opted into writes would leave its thread write-enabled for a later turn that did not — a route around the `allow_write` gate, since the gate is read at request time but the effect outlives the request. REQ-CX2-007 therefore requires `sandboxPolicy` to be transmitted explicitly on every turn (`readOnly` when not opted in); AC-CX2-010's sticky-policy arm is the two-turn check. Do not implement the write mode as "set the policy when the caller asks for writes" — the non-writing turn is the one that must send the field.
+
 **M3 deliverable — `codex_setup` inspectability.** M3 also adds an `allow_write` field to `handleCodexSetup`'s result map (`mcp_codex.go:631`, which today emits `installed` / `auth_provider` / `enable_review_gate` / `node_bridge` plus `binary` / `version`), reporting the same fail-closed read as the gate itself. This is a named M3 deliverable, not incidental prose: the write-mode fork chose the config key over an env var precisely *because* the key is visible to `codex_setup` (see the M0 decision's rejected alternative), so the inspectability is load-bearing to that decision rather than a convenience. It is verified by AC-CX2-010's `codex_setup` arm.
 
 ### M4 — Job control tools
 
-REQ-CX2-009, REQ-CX2-010, REQ-CX2-011, REQ-CX2-012. Status, result, and cancel; cancellation sends the M0-confirmed interrupt method, then terminates the process this server spawned for that job, and only that process. Under the M0 in-process decision that pid is always one spawned in the current process lifetime, so the REQ-CX2-012 ownership check is a same-lifetime comparison — a record naming a pid outside that set (a leftover from a previous server lifetime) is refused rather than signalled. No pid reattachment logic is written.
+REQ-CX2-009, REQ-CX2-010, REQ-CX2-011, REQ-CX2-012. Status, result, and cancel; cancellation sends the M0-confirmed interrupt method — `turn/interrupt` with both required params, `{threadId, turnId}`, read from the job record — then terminates the process this server spawned for that job, and only that process. Under the M0 in-process decision that pid is always one spawned in the current process lifetime, so the REQ-CX2-012 ownership check is a same-lifetime comparison — a record naming a pid outside that set (a leftover from a previous server lifetime) is refused rather than signalled. No pid reattachment logic is written.
 
 ### M5 — Registration, boundary, and hardcoding sweep
 
