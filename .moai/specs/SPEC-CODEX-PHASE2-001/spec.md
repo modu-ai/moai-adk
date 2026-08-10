@@ -2,7 +2,7 @@
 id: SPEC-CODEX-PHASE2-001
 title: "Codex Phase 2 — task delegation + job lifecycle tools over the delivered app-server JSON-RPC session client"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-08-10
 updated: 2026-08-10
 author: manager-spec
