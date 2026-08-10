@@ -4,7 +4,7 @@ weight: 90
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: {{< icon package primary >}} Agentic Harness
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 

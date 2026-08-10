@@ -159,7 +159,7 @@ moai doctor [OPTIONS]
 |--------|------|
 | `moai doctor sandbox` | 诊断沙箱后端可用性 |
 | `moai doctor permission` | 诊断权限解析 |
-| `moai doctor hook` | 显示 27 个钩子事件覆盖率表 |
+| `moai doctor hook` | 显示 30 个钩子事件覆盖率表 |
 | `moai doctor config dump` | 连同 provenance 转储合并后的配置 |
 | `moai doctor config diff <tier-a> <tier-b>` | 对比两个配置层级 |
 
@@ -246,9 +246,11 @@ moai cg -p team       # 用 team 配置文件运行 CG 模式
 moai hook <event>
 ```
 
-### 支持的子命令(约 38 个)
+### 支持的子命令(42 个)
 
-`moai hook` 调度器把标准 Claude Code 钩子事件与 MoAI 专用内部动作合在一起,共提供约 38 个子命令。所有名称均为 kebab-case。下面是有代表性的事件。
+`moai hook` 调度器把标准 Claude Code 钩子事件与 MoAI 专用内部动作合在一起,共提供 42 个子命令。所有名称均为 kebab-case。下面是有代表性的事件。
+
+> **钩子事件数与子命令数是两个不同的数字。** `moai doctor hook` 显示的 30 是 Claude Code 定义的*钩子事件*种类,这里的 42 是 `moai hook` 接受的*子命令*数量。由于 MoAI 专用内部动作没有对应事件也作为子命令存在,两者并不一致。
 
 | 事件 | 说明 |
 |-------|------|

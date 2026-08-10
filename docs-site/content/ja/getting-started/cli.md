@@ -159,7 +159,7 @@ moai doctor [OPTIONS]
 |--------|------|
 | `moai doctor sandbox` | サンドボックスバックエンドの可用性診断 |
 | `moai doctor permission` | 権限解決の診断 |
-| `moai doctor hook` | 27 個のフックイベントカバレッジ表を表示 |
+| `moai doctor hook` | 30 個のフックイベントカバレッジ表を表示 |
 | `moai doctor config dump` | マージ済み設定を provenance とともにダンプ |
 | `moai doctor config diff <tier-a> <tier-b>` | 2 つの設定ティアを比較 |
 
@@ -246,9 +246,11 @@ Claude Code のフックイベントを処理するディスパッチャーで�
 moai hook <event>
 ```
 
-### 対応サブコマンド (約 38 個)
+### 対応サブコマンド (42 個)
 
-`moai hook` ディスパッチャーは、標準の Claude Code フックイベントと MoAI 専用の内部アクションを合わせて約 38 個のサブコマンドを提供します。すべての名前は kebab-case です。以下は代表的なイベントです。
+`moai hook` ディスパッチャーは、標準の Claude Code フックイベントと MoAI 専用の内部アクションを合わせて 42 個のサブコマンドを提供します。すべての名前は kebab-case です。以下は代表的なイベントです。
+
+> **フックイベント数とサブコマンド数は別の数字です。** `moai doctor hook` が表示する 30 は Claude Code が定義する *フックイベント* の種類で、ここでの 42 は `moai hook` が受け取る *サブコマンド* の数です。MoAI 専用の内部アクションが対応するイベントなしでサブコマンドとして存在するため、両者は一致しません。
 
 | イベント | 説明 |
 |-------|------|

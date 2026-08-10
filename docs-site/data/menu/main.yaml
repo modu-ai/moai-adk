@@ -449,11 +449,11 @@ main:
           zh: 自主 CI/CD 指南
         ref: /guides/ci-autonomy
       - name:
-          ko: Multi-LLM CI 가이드
-          en: Multi-LLM CI Guide
-          ja: マルチLLM CIガイド
-          zh: Multi-LLM CI 指南
-        ref: /guides/multi-llm-ci
+          ko: GitHub 연동 가이드
+          en: GitHub Integration Guide
+          ja: GitHub 連携ガイド
+          zh: GitHub 集成指南
+        ref: /guides/github-integration
 
   - name:
       ko: Git Worktree 개요

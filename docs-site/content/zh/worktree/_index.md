@@ -4,7 +4,7 @@ weight: 90
 draft: false
 ---
 
-{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 智能体 Harness
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: {{< icon package primary >}} 智能体 Harness
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
