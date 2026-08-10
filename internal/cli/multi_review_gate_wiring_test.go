@@ -52,9 +52,10 @@ func writeWorkflowYAML(t *testing.T, body string) string {
 // the config reader. Every non-affirmative path (missing file, malformed YAML,
 // absent block, explicit false) MUST read false so the distributed default is
 // OFF — the BranchGuard / codex-review-gate opt-in precedent. The single
-// canonical key path is the nested `multi.review_gate.enabled` (the MultiConfig
-// struct in internal/config/types.go); the flat spelling an earlier AC-AMM-018
-// draft used is NOT accepted, and the "flat spelling ignored" case pins that.
+// canonical key path is `workflow.multi.review_gate.enabled` — the MultiConfig
+// struct in internal/config/types.go, reached through the `workflow:` root the
+// deployed file carries. Neither the top-level `multi:` spelling nor the flat
+// `multi_review_gate:` spelling is accepted, and both are pinned below.
 func TestReadMultiReviewGateEnabled_TruthTable(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -62,10 +63,11 @@ func TestReadMultiReviewGateEnabled_TruthTable(t *testing.T) {
 		want bool
 	}{
 		{"missing file", "", false},
-		{"malformed yaml", "multi:\n\treview_gate: [oops\n", false},
-		{"block absent", "codex:\n  review_gate:\n    enabled: true\n", false},
-		{"nested explicit false", "multi:\n  review_gate:\n    enabled: false\n", false},
-		{"nested explicit true", "multi:\n  review_gate:\n    enabled: true\n", true},
+		{"malformed yaml", "workflow:\n\tmulti:\n\treview_gate: [oops\n", false},
+		{"block absent", "workflow:\n  codex:\n    review_gate:\n      enabled: true\n", false},
+		{"nested explicit false", "workflow:\n  multi:\n    review_gate:\n      enabled: false\n", false},
+		{"nested explicit true", "workflow:\n  multi:\n    review_gate:\n      enabled: true\n", true},
+		{"top-level multi ignored", "multi:\n  review_gate:\n    enabled: true\n", false},
 		{"flat spelling ignored", "multi_review_gate:\n  enabled: true\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -135,7 +137,7 @@ func TestRunMultiReviewGate_EmptyStdinFailsOpen(t *testing.T) {
 // false and the handler ALLOWs. Exercises the full stdin → project-dir resolve
 // → config read → handler → stdout chain.
 func TestRunMultiReviewGate_HappyPathAllow(t *testing.T) {
-	dir := writeWorkflowYAML(t, "multi:\n  review_gate:\n    enabled: false\n")
+	dir := writeWorkflowYAML(t, "workflow:\n  multi:\n    review_gate:\n      enabled: false\n")
 	payload, err := json.Marshal(map[string]any{
 		"session_id":  "sess-happy",
 		"project_dir": dir,
