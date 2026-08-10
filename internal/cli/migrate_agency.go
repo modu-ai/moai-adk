@@ -15,6 +15,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // Migration error codes (REQ-MIGRATE-002/003/006/010/011/013, REQ-DIR-002).
@@ -146,6 +147,14 @@ type migrateAgencyRunner struct {
 
 	// failAtPhase is a test injection hook: if > 0, Run returns an error at that phase.
 	failAtPhase int
+
+	// skipDesignYAML / skipObservations are set by classifyTargets when a target
+	// already holds v3-shaped output — i.e. the project was migrated before. The
+	// corresponding phase is skipped so a re-run is a no-op rather than a
+	// MIGRATE_TARGET_EXISTS failure (issue #1414). Both stay false under --force,
+	// which deliberately overwrites.
+	skipDesignYAML   bool
+	skipObservations bool
 }
 
 func (r *migrateAgencyRunner) getStderr() io.Writer {
@@ -201,7 +210,7 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 	}
 
 	if !r.force {
-		if err := r.checkTargetsAbsent(); err != nil {
+		if err := r.classifyTargets(); err != nil {
 			return nil, err
 		}
 	}
@@ -254,17 +263,23 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 		_ = os.RemoveAll(archiveDir)
 		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 2"}
 	}
-	r.logf("[2/5] Migrating learnings/ → .moai/research/observations/")
-	learningsDir := filepath.Join(agencyDir, "learnings")
-	obsDir := filepath.Join(r.projectRoot, ".moai", "research", "observations")
-	n, err := r.migrateLearnings(learningsDir, obsDir, tx)
-	if err != nil {
-		r.errorf("rollback: %s", ErrMigrateRollbackOK)
-		tx.rollback()
-		_ = os.RemoveAll(archiveDir)
-		return nil, fmt.Errorf("migrate: phase 2 learnings: %w", err)
+	if r.skipObservations {
+		// Already migrated (issue #1414): re-running must not re-copy over the
+		// user's observations.
+		r.logf("[2/5] .moai/research/observations/ already migrated — skipping")
+	} else {
+		r.logf("[2/5] Migrating learnings/ → .moai/research/observations/")
+		learningsDir := filepath.Join(agencyDir, "learnings")
+		obsDir := filepath.Join(r.projectRoot, ".moai", "research", "observations")
+		n, err := r.migrateLearnings(learningsDir, obsDir, tx)
+		if err != nil {
+			r.errorf("rollback: %s", ErrMigrateRollbackOK)
+			tx.rollback()
+			_ = os.RemoveAll(archiveDir)
+			return nil, fmt.Errorf("migrate: phase 2 learnings: %w", err)
+		}
+		result.filesTransferred += n
 	}
-	result.filesTransferred += n
 
 	// Phase 3: convert config.yaml → design.yaml
 	if r.failAtPhase == 3 {
@@ -273,16 +288,23 @@ func (r *migrateAgencyRunner) runFull() (*migrateResult, error) {
 		_ = os.RemoveAll(archiveDir)
 		return nil, &MigrateError{Code: "MIGRATE_PHASE_INJECT", Message: "injected failure at phase 3"}
 	}
-	r.logf("[3/5] Converting config.yaml → design.yaml")
-	configSrc := filepath.Join(agencyDir, "config.yaml")
-	designDst := filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml")
-	if err := r.convertConfig(configSrc, designDst, tx); err != nil {
-		r.errorf("rollback: %s", ErrMigrateRollbackOK)
-		tx.rollback()
-		_ = os.RemoveAll(archiveDir)
-		return nil, fmt.Errorf("migrate: phase 3 config: %w", err)
+	if r.skipDesignYAML {
+		// Already migrated (issue #1414): the existing v3 design.yaml is the
+		// authority — overwriting it with v2-derived content is the data loss
+		// this skip exists to prevent.
+		r.logf("[3/5] design.yaml already migrated — skipping")
+	} else {
+		r.logf("[3/5] Converting config.yaml → design.yaml")
+		configSrc := filepath.Join(agencyDir, "config.yaml")
+		designDst := filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml")
+		if err := r.convertConfig(configSrc, designDst, tx); err != nil {
+			r.errorf("rollback: %s", ErrMigrateRollbackOK)
+			tx.rollback()
+			_ = os.RemoveAll(archiveDir)
+			return nil, fmt.Errorf("migrate: phase 3 config: %w", err)
+		}
+		result.filesTransferred++
 	}
-	result.filesTransferred++
 
 	// Phase 4: archive fork-manifest.yaml (already in archive; just note it)
 	r.logf("[4/5] fork-manifest.yaml archived at .agency.archived/")
@@ -370,21 +392,79 @@ func (r *migrateAgencyRunner) runResume() (*migrateResult, error) {
 	}, nil
 }
 
-// checkTargetsAbsent verifies that destination paths do not already exist.
-func (r *migrateAgencyRunner) checkTargetsAbsent() error {
-	targets := []string{
-		filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml"),
-		filepath.Join(r.projectRoot, ".moai", "research", "observations"),
+// classifyTargets inspects each migration destination and sorts it into one of
+// three states (issue #1414):
+//
+//   - absent               → migrate it (no flag set)
+//   - present, v3-shaped   → already migrated; skip that phase, no error
+//   - present, unrecognised→ MIGRATE_TARGET_EXISTS
+//
+// The middle case is what makes `moai migrate agency` re-runnable. Before this
+// classifier a bare existence test failed every re-run and advised `--force`,
+// which overwrites a v3 design.yaml with v2-derived content — data loss taken on
+// the tool's own recommendation.
+//
+// Callers invoke this only when --force is unset; --force short-circuits the
+// whole check and overwrites deliberately.
+func (r *migrateAgencyRunner) classifyTargets() error {
+	designYAML := filepath.Join(r.projectRoot, ".moai", "config", "sections", "design.yaml")
+	migratedDesign, err := classifyMigrationTarget(designYAML, isV3DesignYAML)
+	if err != nil {
+		return err
 	}
-	for _, t := range targets {
-		if _, err := os.Stat(t); err == nil {
-			return &MigrateError{
-				Code:    ErrMigrateTargetExists,
-				Message: fmt.Sprintf("%s already exists; use --force to overwrite", t),
-			}
-		}
+
+	observations := filepath.Join(r.projectRoot, ".moai", "research", "observations")
+	migratedObs, err := classifyMigrationTarget(observations, isV3ObservationsDir)
+	if err != nil {
+		return err
 	}
+
+	r.skipDesignYAML = migratedDesign
+	r.skipObservations = migratedObs
 	return nil
+}
+
+// classifyMigrationTarget reports whether path already holds v3-shaped migration
+// output. An absent path returns (false, nil) — migrate it. A present path that
+// isV3 rejects returns MIGRATE_TARGET_EXISTS.
+func classifyMigrationTarget(path string, isV3 func(string) bool) (bool, error) {
+	if _, err := os.Stat(path); err != nil {
+		// Absent (or unreadable) — nothing to protect; let the migration proceed
+		// and surface any real failure at write time.
+		return false, nil
+	}
+	if isV3(path) {
+		return true, nil
+	}
+	return false, &MigrateError{
+		Code: ErrMigrateTargetExists,
+		Message: fmt.Sprintf("%s exists but its content is not recognised as v3 migration output; "+
+			"inspect it and move or remove it, then re-run. "+
+			"--force is a last resort only: it overwrites this file with content derived "+
+			"from .agency/, discarding whatever is there now", path),
+	}
+}
+
+// isV3DesignYAML reports whether path parses as YAML carrying a top-level
+// `design:` key — the shape `convertConfig` writes.
+func isV3DesignYAML(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var doc map[string]any
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	_, ok := doc["design"]
+	return ok
+}
+
+// isV3ObservationsDir reports whether path is a directory — the shape
+// `migrateLearnings` writes.
+func isV3ObservationsDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // checkMergeConflict detects tech-preferences.md vs tech.md content conflicts.
@@ -480,10 +560,10 @@ func (r *migrateAgencyRunner) convertConfig(src, dst string, tx *transactionLog)
 // Platform-specific permission logic is in migrate_agency_posix.go / migrate_agency_windows.go.
 //
 // SPEC-CLIFIX-CRITICAL-001:
-// - REQ-CRIT-001-007: uses os.Lstat (not os.Stat) so symlinks are detected and
-//   skipped — os.Stat follows the link, making the ModeSymlink guard dead code.
-// - REQ-CRIT-001-006: snapshots a pre-existing dst so rollback restores it
-//   instead of deleting it; only newly-created files are recorded for removal.
+//   - REQ-CRIT-001-007: uses os.Lstat (not os.Stat) so symlinks are detected and
+//     skipped — os.Stat follows the link, making the ModeSymlink guard dead code.
+//   - REQ-CRIT-001-006: snapshots a pre-existing dst so rollback restores it
+//     instead of deleting it; only newly-created files are recorded for removal.
 func (r *migrateAgencyRunner) copyFile(src, dst string, tx *transactionLog) error {
 	info, err := os.Lstat(src)
 	if err != nil {
