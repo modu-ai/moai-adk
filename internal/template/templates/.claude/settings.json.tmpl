@@ -151,6 +151,18 @@
             "timeout": 5,
             "type": "command",
             "async": true
+          },
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-codex-review-gate.sh"],
+            "timeout": 900,
+            "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-multi-review-gate.sh"],
+            "timeout": 900,
+            "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
             "command": "bash",
