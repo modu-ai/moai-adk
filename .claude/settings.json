@@ -124,6 +124,16 @@
             "async": true
           },
           {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-codex-review-gate.sh\"",
+            "timeout": 900,
+            "type": "command"
+          },
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-multi-review-gate.sh\"",
+            "timeout": 900,
+            "type": "command"
+          },
+          {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
             "timeout": 5,
             "type": "command",
