@@ -195,7 +195,7 @@ func callCodexJobTool(t *testing.T, fn func(context.Context, mcp.CallToolRequest
 func startHangingBackgroundJob(t *testing.T, root, turnID string) (string, *codexJobRegistry) {
 	t.Helper()
 	withCodexProjectDir(t, root)
-	withHangingCodexSession(t, hangingTaskScript(turnID))
+	sess := withHangingCodexSession(t, hangingTaskScript(turnID))
 
 	res := callCodexTask(t, map[string]any{"prompt": "refactor the parser", "background": true})
 	if res.IsError {
@@ -206,6 +206,18 @@ func startHangingBackgroundJob(t *testing.T, root, turnID string) (string, *code
 		t.Fatalf("background codex_task returned no job id: %+v", res)
 	}
 	reg := newCodexJobRegistry(root)
+
+	// This helper starts a goroutine (the background job), so it owns joining it.
+	// Registered AFTER withHangingCodexSession so that LIFO cleanup order runs
+	// this one FIRST: release the blocked turn, then wait for its goroutine to
+	// stop before t.TempDir's RemoveAll runs. Without the join, RemoveAll races
+	// the goroutine's own MkdirAll + record write and the cleanup fails with
+	// "directory not empty" — a test that lets work outlive it (acceptance.md §B
+	// "no goroutine leaks past the test").
+	t.Cleanup(func() {
+		sess.unblock()
+		waitForJobToStop(t, jobID)
+	})
 
 	// The job must be observably running before a cancel is meaningful, and when
 	// a turnId is expected it must have landed in the record first — the cancel
@@ -220,6 +232,22 @@ func startHangingBackgroundJob(t *testing.T, root, turnID string) (string, *code
 	}
 	t.Fatalf("job %s never reached running (turn id %q) before the deadline", jobID, turnID)
 	return "", nil
+}
+
+// waitForJobToStop blocks until the job has left the live-session map, which is
+// the join point for the goroutine runCodexBackgroundJob runs in: that goroutine
+// writes its terminal registry transition BEFORE the deferred Delete, so an
+// absent entry means every write it will ever make has already landed.
+func waitForJobToStop(t *testing.T, jobID string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, live := codexLiveJobSessions.Load(jobID); !live {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Errorf("job %s goroutine did not stop within the deadline; it would outlive the test", jobID)
 }
 
 // sentInterrupt returns the first recorded request line naming turn/interrupt.
@@ -492,6 +520,59 @@ func TestCodexJobCancel_EmptyTurnIDDegradesToTermination(t *testing.T) {
 	}
 	if rec, err := reg.load(jobID); err != nil || rec.Status != codexJobStatusCancelled {
 		t.Errorf("recorded status = %+v (err %v), want %q", rec.Status, err, codexJobStatusCancelled)
+	}
+}
+
+// TestCodexJobCancel_NoRecordWriteAfterCancel pins the production half of the
+// M4 re-verification defect: once a job is recorded cancelled, its goroutine
+// must make NO further write to the record.
+//
+// The status guard in runCodexBackgroundJob prevented the terminal transition
+// from overwriting the cancelled STATUS, but it lived inside the mutator — and a
+// mutator cannot decline a write, because registry.update persists whatever the
+// mutator leaves behind, refreshing updated_at even when nothing changed. So a
+// write still landed after the cancel call had returned. That is observable to a
+// caller as a record mutating after the tool said it was done, and under the
+// in-process execution model the goroutine sits inside the long-lived
+// mcp-server, so it is not a test artifact.
+//
+// updated_at is the witness: it is refreshed on EVERY registry write, so an
+// unchanged value after the turn returns is proof no write occurred.
+func TestCodexJobCancel_NoRecordWriteAfterCancel(t *testing.T) {
+	root := t.TempDir()
+	jobID, reg := startHangingBackgroundJob(t, root, "trn-nowrite")
+	sess, _ := codexSession.(*hangingCodexSession)
+	if sess == nil {
+		t.Fatal("expected the hanging session runner to be installed")
+	}
+	withRecordedCodexTerminator(t)
+	withShortCancelGrace(t, 60*time.Millisecond)
+
+	res := callCodexJobTool(t, handleCodexJobCancel, map[string]any{"job_id": jobID})
+	if res.IsError {
+		t.Fatalf("cancel must succeed: %+v", res)
+	}
+	atCancel, err := reg.load(jobID)
+	if err != nil {
+		t.Fatalf("load record right after cancel: %v", err)
+	}
+
+	// Release the turn the cancel interrupted. Its goroutine now runs its
+	// terminal transition — the write this test forbids.
+	sess.unblock()
+	waitForJobToStop(t, jobID)
+
+	after, err := reg.load(jobID)
+	if err != nil {
+		t.Fatalf("load record after the turn returned: %v", err)
+	}
+	if after.Status != codexJobStatusCancelled {
+		t.Errorf("status = %q, want %q — a late turn must not overwrite a cancel", after.Status, codexJobStatusCancelled)
+	}
+	if !after.UpdatedAt.Equal(atCancel.UpdatedAt) {
+		t.Errorf("updated_at moved from %s to %s: a record write landed AFTER codex_job_cancel returned; "+
+			"a job already recorded cancelled must produce no further write",
+			atCancel.UpdatedAt.Format(time.RFC3339Nano), after.UpdatedAt.Format(time.RFC3339Nano))
 	}
 }
 

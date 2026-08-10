@@ -244,14 +244,13 @@ func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobI
 
 	out, runErr := session.runTurn(ctx, codexMethodTurnStart, params)
 
-	_, _ = registry.update(jobID, func(r *CodexJobRecord) {
-		// A job cancelled while the turn was in flight keeps its cancelled
-		// status: the turn returning afterwards must not overwrite it with
-		// completed or failed (M4 sets that status; this is the guard that makes
-		// it stick).
-		if r.Status == codexJobStatusCancelled {
-			return
-		}
+	// A job cancelled while the turn was in flight keeps its cancelled status:
+	// the turn returning afterwards must not overwrite it with completed or
+	// failed (M4 sets that status). The guard lives in the REGISTRY rather than
+	// in the mutator below, because a mutator can only decline to change the
+	// record — it cannot decline the write, and a write landing after
+	// codex_job_cancel returned is exactly what has to stop.
+	_, _ = registry.updateUnlessCancelled(jobID, func(r *CodexJobRecord) {
 		if runErr != nil {
 			r.Status = codexJobStatusFailed
 			r.Error = out.Summary

@@ -302,6 +302,74 @@ Supporting non-AC rows: `TestCodexJobCancel_EmptyTurnIDDegradesToTermination` (t
 - **The live-session map is the ownership oracle, and it is in-process only.** That is what makes the REQ-CX2-012 refusal sound, and it is also its limit: a record left behind by a crashed server can never be cancelled through this tool, only observed. Nothing cleans such records up; `codex_job_status` will keep reporting them as `running` forever.
 - **`codex_job_result` reports a `failed` job's error text as recorded.** It does not distinguish a codex-side failure from a transport failure, because the record does not — `runCodexBackgroundJob` writes `out.Summary` into `Error` for both.
 
+#### M4 correction — a post-cancel record write (found by orchestrator re-verification of `2c851678e`)
+
+**The earlier §E claim did not hold.** The M4 batch above reports `go test ./...` → exit 0, 112 `ok`, zero failures. On the committed tree at `2c851678e` the orchestrator's independent re-run returned exit 1:
+
+```
+--- FAIL: TestCodexJobCancel_EmptyTurnIDDegradesToTermination (0.08s)
+    testing.go:1464: TempDir RemoveAll cleanup: unlinkat /var/folders/.../TestCodexJobCancel_EmptyTurnIDDegradesToTermination4144156776/001/.moai/state/codex-jobs: directory not empty
+```
+
+**Why the original run missed it.** The claim was true of the run that produced it and false of the tree. The defect is a race between the test's `t.TempDir()` cleanup and a goroutine still writing, so it fires only when the goroutine's write lands inside the `RemoveAll` window — a single `go test ./...` pass samples that window once per test. The evidence was single-sample where the property was probabilistic, and nothing in the batch repeated the affected test. `-count=20` on the single test reproduces it within a handful of iterations; the full suite did not. A green single run was therefore never sufficient evidence for "this test passes", and reporting it as such was the error — not the run itself.
+
+**Root cause — one test defect and one production defect, distinguishable.**
+
+*Proximate (test).* `startHangingBackgroundJob` starts a background job whose turn never completes, and the cleanup released the blocked turn without waiting for its goroutine. `t.TempDir()`'s `RemoveAll` is registered first and so runs last, i.e. after the release: the goroutine's terminal transition calls `write`, whose `os.MkdirAll` recreates `.moai/state/codex-jobs/` while `RemoveAll` is walking it. The distinguishing evidence is the asymmetry between the two cancel tests, which differ in exactly this respect and nothing else:
+
+```
+$ go test -run 'TestCodexJobCancel_EmptyTurnIDDegradesToTermination' -count=20 ./internal/cli/   # does NOT join its goroutine
+--- FAIL: TestCodexJobCancel_EmptyTurnIDDegradesToTermination (0.08s)
+    testing.go:1464: TempDir RemoveAll cleanup: unlinkat ... directory not empty   (2 of 20)
+FAIL
+$ go test -run 'TestCodexJobCancel_SendsInterruptAndTerminates' -count=20 ./internal/cli/        # joins: unblocks + waits in the body
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.164s
+```
+
+*Underlying (production, and NOT in M4).* The race exposed a real write that should not exist. `runCodexBackgroundJob` guarded the cancelled status inside its **mutator**, and a mutator can decline to CHANGE the record but cannot decline the WRITE: `registry.update` persists whatever the mutator leaves behind and refreshes `UpdatedAt` unconditionally. So a job's goroutine finishing after `codex_job_cancel` returned still rewrote the record. The status survived — that guard worked — but the file changed after the tool reported the job cancelled. Under the M0 in-process decision that goroutine sits inside the long-lived `moai mcp-server`, so this is not a test artifact: a caller that cancels and then reads sees a record whose `updated_at` moves under it. Pinned by a new deterministic regression test using `updated_at` as the witness (it is refreshed on every write, so an unchanged value proves no write occurred). RED, 3 of 3 runs before the fix:
+
+```
+--- FAIL: TestCodexJobCancel_NoRecordWriteAfterCancel (0.09s)
+    codex_job_control_test.go:561: updated_at moved from 2026-08-10T16:02:23.851602Z to 2026-08-10T16:02:23.930217Z: a record write landed AFTER codex_job_cancel returned; a job already recorded cancelled must produce no further write
+```
+
+**This is M2 + M3 code, not M4 alone.** The unconditional write is `codexJobRegistry.update` (M2); the guard placed where it could not prevent it is `runCodexBackgroundJob` (M3). M4's cancel path did not introduce either — it was the first caller to make the ordering observable. The fix lands in `internal/cli/codex_jobs.go` and `internal/cli/codex_task.go` accordingly: `updateUnlessCancelled` moves the guard into the registry, the only layer that can skip a write, and the background runner uses it. AC-CX2-006's atomicity evidence is unaffected (the write path itself is unchanged); the M2/M3 §E rows above stand, with this note as the amendment.
+
+**Rejected fix — making cancel wait for the goroutine.** Considered and refused: `codex_job_cancel` would then block until the turn ends, which is precisely what REQ-CX2-011 designs against (the interrupt is deliberately not awaited) and what AC-CX2-014 forbids ("the call still returns within a bounded time"). Waiting on the goroutine is waiting on the turn. The bound is kept; the stray write is removed instead.
+
+Also rejected, per the re-verification instruction and because each hides the signal rather than removing it: a `t.Cleanup` that force-empties the directory, moving the registry out of `t.TempDir()`, a `time.Sleep` to widen the window, and silencing the cleanup error. The test now joins the goroutine it started — the `codexLiveJobSessions` entry is deleted by the goroutine AFTER its terminal write, so its absence is a sound join point — which is what acceptance.md §B ("no goroutine leaks past the test") asked for all along.
+
+**Re-verification (fix tree, on top of HEAD `2c851678e`).**
+
+```
+$ go test -run 'TestCodexJobCancel' -count=20 ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.050s
+exit=0
+
+$ go test -race -run 'Codex|Job|Task|Cancel' ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.608s
+exit=0
+
+$ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
+build_exit=0
+
+$ golangci-lint run --timeout=3m
+0 issues.
+lint_exit=0
+
+$ go test ./...
+full_exit=0        # 112 packages ok, zero --- FAIL / FAIL / panic lines; internal/cli ok at 185.220s
+                   # log: .moai/state/verify/m4/full-suite-fix.txt
+```
+
+The `-count=20` run is the load-bearing one: it is what the original single-pass batch lacked, and it is the evidence the earlier claim should have rested on.
+
+**Gaps (M4 correction).**
+
+- **`-count=20` bounds the flake, it does not prove its absence.** The race window is narrow; 20 iterations passing is strong evidence the join closed it, not a proof. What makes the fix trustworthy is the mechanism (the goroutine is joined at a point after its last write), not the iteration count.
+- **The production regression test observes `updated_at`, not the write syscall.** It proves no record write landed after cancel returned. It does not prove the goroutine performs no other side effect after that point — it still reads the record and closes the session, both of which are unobserved by this test.
+- **The gap this correction closes is in my own verification discipline, not only in the code.** A single green run was reported as evidence for a probabilistic property. Repetition (`-count`) is required for any test whose failure mode is a race, and no run in the original M4 batch had it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

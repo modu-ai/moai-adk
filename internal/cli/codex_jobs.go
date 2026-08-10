@@ -243,12 +243,37 @@ func (r *codexJobRegistry) create(spec codexJobSpec) (CodexJobRecord, error) {
 // atomically. The status is validated AFTER mutation, so a transition to an
 // unrecognized state is refused with the on-disk record left untouched.
 func (r *codexJobRegistry) update(id string, mutate func(*CodexJobRecord)) (CodexJobRecord, error) {
+	return r.mutateRecord(id, mutate, false)
+}
+
+// updateUnlessCancelled is update, except that a record already in the
+// cancelled status is returned untouched and NO write is performed.
+//
+// The distinction is the point rather than an optimization. A mutator can
+// decline to CHANGE anything, but it cannot decline the write: update persists
+// whatever the mutator leaves behind and refreshes UpdatedAt regardless. So a
+// job's goroutine finishing after codex_job_cancel returned still rewrote the
+// record — the status survived (the mutator's own guard saw it), but the file
+// changed after the tool had reported the job cancelled, and a caller watching
+// UpdatedAt would see the record move under it. Only the registry can skip a
+// write, so the guard belongs here (SPEC-CODEX-PHASE2-001 REQ-CX2-004 /
+// REQ-CX2-011).
+func (r *codexJobRegistry) updateUnlessCancelled(id string, mutate func(*CodexJobRecord)) (CodexJobRecord, error) {
+	return r.mutateRecord(id, mutate, true)
+}
+
+// mutateRecord is the locked read-mutate-write body shared by update and
+// updateUnlessCancelled.
+func (r *codexJobRegistry) mutateRecord(id string, mutate func(*CodexJobRecord), skipCancelled bool) (CodexJobRecord, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	rec, err := r.read(id)
 	if err != nil {
 		return CodexJobRecord{}, err
+	}
+	if skipCancelled && rec.Status == codexJobStatusCancelled {
+		return rec, nil
 	}
 	mutate(&rec)
 	if !codexJobStatusValid(rec.Status) {
