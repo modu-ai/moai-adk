@@ -183,7 +183,7 @@ File-based persistent memory is also the raw material for MoAI-ADK's **recursive
 
 ## Related Documents
 
-- [CLAUDE.md Guide](/advanced/claude-md-guide)
+- [CLAUDE.md Guide](/en/advanced/claude-md-guide)
 
 ## References
 

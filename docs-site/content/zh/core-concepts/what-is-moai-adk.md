@@ -668,7 +668,7 @@ MoAI-ADK 支持 4 种语言。用户用韩语请求就用韩语回复,用英语�
 理解了 MoAI-ADK 的全貌后,现在轮到详细了解各核心概念了。
 
 - [harness 工程](/zh/core-concepts/harness-engineering) —— 学习设计智能体工作环境的范式
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) —— 学习如何把需求定义为文档
-- [领域驱动开发](/core-concepts/ddd) —— 学习安全改进既有代码的方法
-- [TRUST 5 质量](/core-concepts/trust-5) —— 学习自动验证代码质量的方法
-- [MoAI Memory](/claude-code/context-memory/memory) —— 学习跨会话如何保存上下文
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) —— 学习如何把需求定义为文档
+- [领域驱动开发](/zh/core-concepts/ddd) —— 学习安全改进既有代码的方法
+- [TRUST 5 质量](/zh/core-concepts/trust-5) —— 学习自动验证代码质量的方法
+- [MoAI Memory](/zh/claude-code/context-memory/memory) —— 学习跨会话如何保存上下文

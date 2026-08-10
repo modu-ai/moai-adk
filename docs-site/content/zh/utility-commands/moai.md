@@ -361,8 +361,8 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC 生成详解
-- [/moai run](/workflow-commands/moai-run) - DDD 实现详解
-- [/moai sync](/workflow-commands/moai-sync) - 文档同步详解
-- [/moai loop](/utility-commands/moai-loop) - 迭代修复循环详解
-- [/moai fix](/utility-commands/moai-fix) - 一次性自动修复详解
+- [/moai plan](/zh/workflow-commands/moai-plan) - SPEC 生成详解
+- [/moai run](/zh/workflow-commands/moai-run) - DDD 实现详解
+- [/moai sync](/zh/workflow-commands/moai-sync) - 文档同步详解
+- [/moai loop](/zh/utility-commands/moai-loop) - 迭代修复循环详解
+- [/moai fix](/zh/utility-commands/moai-fix) - 一次性自动修复详解

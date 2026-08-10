@@ -49,7 +49,7 @@ flowchart TD
 
 ## 전체 서브커맨드 (15개)
 
-`/moai` 오케스트레이터는 15개 서브커맨드를 라우팅합니다. 이 섹션(워크플로우)에서는 SPEC 3-Phase 라이프사이클 명령어를 다루고, 자동화·수정 루프·코드 관리·피드백 명령어는 [유틸리티 명령어](/utility-commands/) 섹션에 있습니다.
+`/moai` 오케스트레이터는 15개 서브커맨드를 라우팅합니다. 이 섹션(워크플로우)에서는 SPEC 3-Phase 라이프사이클 명령어를 다루고, 자동화·수정 루프·코드 관리·피드백 명령어는 [유틸리티 명령어](/ko/utility-commands/) 섹션에 있습니다.
 
 **워크플로우 명령어 (이 섹션):**
 
@@ -62,20 +62,20 @@ flowchart TD
 | [`/moai design`](./moai-design) | 디자인 단계 협업 (manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | 하네스 생성 및 학습 라이프사이클 |
 
-**유틸리티 명령어 ([유틸리티 섹션](/utility-commands/)):**
+**유틸리티 명령어 ([유틸리티 섹션](/ko/utility-commands/)):**
 
 | 서브커맨드 | 목적 |
 |-----------|------|
-| [`/moai fix`](/utility-commands/moai-fix) | 일회성 자동 수정 |
-| [`/moai loop`](/utility-commands/moai-loop) | 반복 수정 루프 |
-| [`/moai mx`](/utility-commands/moai-mx) | @MX 코드 주석 |
-| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub 이슈 피드백 |
-| [`/moai review`](/utility-commands/moai-review) | 다관점 코드 리뷰 (보안·@MX) |
-| [`/moai clean`](/utility-commands/moai-clean) | 데드 코드 제거 |
-| [`/moai codemaps`](/utility-commands/moai-codemaps) | 아키텍처 코드맵 생성 |
-| [`/moai gate`](/utility-commands/moai-gate) | 커밋 전 품질 게이트 |
-| [`/moai e2e`](/utility-commands/moai-e2e) | 멀티 플랫폼 E2E 테스트 |
-| [`/moai goal`](/utility-commands/moai-goal) | 조건 선언형 자율 루프 |
+| [`/moai fix`](/ko/utility-commands/moai-fix) | 일회성 자동 수정 |
+| [`/moai loop`](/ko/utility-commands/moai-loop) | 반복 수정 루프 |
+| [`/moai mx`](/ko/utility-commands/moai-mx) | @MX 코드 주석 |
+| [`/moai feedback`](/ko/utility-commands/moai-feedback) | GitHub 이슈 피드백 |
+| [`/moai review`](/ko/utility-commands/moai-review) | 다관점 코드 리뷰 (보안·@MX) |
+| [`/moai clean`](/ko/utility-commands/moai-clean) | 데드 코드 제거 |
+| [`/moai codemaps`](/ko/utility-commands/moai-codemaps) | 아키텍처 코드맵 생성 |
+| [`/moai gate`](/ko/utility-commands/moai-gate) | 커밋 전 품질 게이트 |
+| [`/moai e2e`](/ko/utility-commands/moai-e2e) | 멀티 플랫폼 E2E 테스트 |
+| [`/moai goal`](/ko/utility-commands/moai-goal) | 조건 선언형 자율 루프 |
 
 ## 빠른 시작
 
@@ -103,8 +103,8 @@ flowchart TD
 
 ## 관련 문서
 
-- [SPEC 기반 개발](/core-concepts/spec-based-dev) - SPEC과 EARS/GEARS 형식 상세 설명
-- [DDD 방법론](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세 설명
-- [TRUST 5 품질 시스템](/core-concepts/trust-5) - 품질 게이트 상세 설명
-- [하네스 엔지니어링](/core-concepts/harness-engineering) - 하네스 학습 서브시스템 개요
-- [빠른 시작](/getting-started/quickstart) - 처음부터 따라하는 튜토리얼
+- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) - SPEC과 EARS/GEARS 형식 상세 설명
+- [DDD 방법론](/ko/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세 설명
+- [TRUST 5 품질 시스템](/ko/core-concepts/trust-5) - 품질 게이트 상세 설명
+- [하네스 엔지니어링](/ko/core-concepts/harness-engineering) - 하네스 학습 서브시스템 개요
+- [빠른 시작](/ko/getting-started/quickstart) - 처음부터 따라하는 튜토리얼

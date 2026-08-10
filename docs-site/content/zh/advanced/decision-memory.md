@@ -212,7 +212,7 @@ Tier M (推荐) — 基于最近选择提示
 
 - [智能体指南](/zh/advanced/agent-guide) - AskUserQuestion 推荐放置规则 (HARD)
 - [Harness v4 Builder 深入指南](/zh/advanced/harness-v4-builder) - Tier 选择与决策
-- [记忆系统](/zh/getting-started/memory) - 用户偏好管理
+- [记忆系统](/zh/claude-code/context-memory/memory) - 用户偏好管理
 
 {{< callout type="info" >}}
 **提示**：决策记忆自动运行，无需显式配置 — 每当你做出决策，系统都会静静地学习。

@@ -76,7 +76,7 @@ Local tools usually use stdio; remote SaaS tools use HTTP.
 
 ## Deferred Loading and Tool Search
 
-Connecting several MCP servers increases the number of tool definitions accordingly. If you keep all tool definitions loaded in context at all times, the [context window](/claude-code/context-memory/context-window) fills up before you even send the first prompt.
+Connecting several MCP servers increases the number of tool definitions accordingly. If you keep all tool definitions loaded in context at all times, the [context window](/en/claude-code/context-memory/context-window) fills up before you even send the first prompt.
 
 That is why Claude Code **defers loading** tool definitions by default. It fetches a tool's full schema only when that tool is actually needed, and otherwise keeps only a short piece of metadata in context. To actually call one of these deferred tools, a preliminary step is required to load its schema into the active context first.
 
@@ -92,7 +92,7 @@ flowchart TD
 
 ## Interaction with Caching
 
-Connecting or disconnecting an MCP server changes the set of tool definitions placed at the front of the context (the prefix). When the prefix changes, [prompt caching](/claude-code/context-memory/prompt-caching) reuse is invalidated from that point on, so it is better for cache efficiency to settle the server configuration early in the session.
+Connecting or disconnecting an MCP server changes the set of tool definitions placed at the front of the context (the prefix). When the prefix changes, [prompt caching](/en/claude-code/context-memory/prompt-caching) reuse is invalidated from that point on, so it is better for cache efficiency to settle the server configuration early in the session.
 
 ## MoAI-ADK's MCP Operation
 
@@ -102,9 +102,9 @@ One exception is backend routing. When running in the GLM panes of `moai glm` or
 
 ## Related Documents
 
-- [Skills](/claude-code/extensibility/skills)
-- [Hooks](/claude-code/extensibility/hooks)
-- [Context Window](/claude-code/context-memory/context-window)
+- [Skills](/en/claude-code/extensibility/skills)
+- [Hooks](/en/claude-code/extensibility/hooks)
+- [Context Window](/en/claude-code/context-memory/context-window)
 
 ## References
 

@@ -112,8 +112,8 @@ flowchart TD
 
 ## 相关文档
 
-- [上下文窗口](/claude-code/context-memory/context-window)
-- [交互模式](/claude-code/foundations/interactive-mode)
+- [上下文窗口](/zh/claude-code/context-memory/context-window)
+- [交互模式](/zh/claude-code/foundations/interactive-mode)
 
 ## 参考资料
 

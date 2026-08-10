@@ -49,7 +49,7 @@ flowchart TD
 
 ## 全サブコマンド (15 個)
 
-`/moai` オーケストレーターは 15 個のサブコマンドをルーティングします。このセクション (ワークフロー) は SPEC 3-Phase ライフサイクルのコマンドを、[ユーティリティコマンド](/utility-commands/) セクションは自動化・修正ループ・コード管理・フィードバックのコマンドを扱います。
+`/moai` オーケストレーターは 15 個のサブコマンドをルーティングします。このセクション (ワークフロー) は SPEC 3-Phase ライフサイクルのコマンドを、[ユーティリティコマンド](/ja/utility-commands/) セクションは自動化・修正ループ・コード管理・フィードバックのコマンドを扱います。
 
 **ワークフローコマンド (このセクション):**
 
@@ -62,20 +62,20 @@ flowchart TD
 | [`/moai design`](./moai-design) | デザイン段階のコラボレーション (manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | ハーネス生成と学習ライフサイクル |
 
-**ユーティリティコマンド ([ユーティリティセクション](/utility-commands/)):**
+**ユーティリティコマンド ([ユーティリティセクション](/ja/utility-commands/)):**
 
 | サブコマンド | 目的 |
 |-----------|------|
-| [`/moai fix`](/utility-commands/moai-fix) | 一回限りの自動修正 |
-| [`/moai loop`](/utility-commands/moai-loop) | 反復修正ループ |
-| [`/moai mx`](/utility-commands/moai-mx) | @MX コード注釈 |
-| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub イシューフィードバック |
-| [`/moai review`](/utility-commands/moai-review) | 多観点コードレビュー (セキュリティ・@MX) |
-| [`/moai clean`](/utility-commands/moai-clean) | デッドコード除去 |
-| [`/moai codemaps`](/utility-commands/moai-codemaps) | アーキテクチャコードマップ生成 |
-| [`/moai gate`](/utility-commands/moai-gate) | コミット前の品質ゲート |
-| [`/moai e2e`](/utility-commands/moai-e2e) | マルチプラットフォーム E2E テスト |
-| [`/moai goal`](/utility-commands/moai-goal) | 条件宣言型の自律ループ |
+| [`/moai fix`](/ja/utility-commands/moai-fix) | 一回限りの自動修正 |
+| [`/moai loop`](/ja/utility-commands/moai-loop) | 反復修正ループ |
+| [`/moai mx`](/ja/utility-commands/moai-mx) | @MX コード注釈 |
+| [`/moai feedback`](/ja/utility-commands/moai-feedback) | GitHub イシューフィードバック |
+| [`/moai review`](/ja/utility-commands/moai-review) | 多観点コードレビュー (セキュリティ・@MX) |
+| [`/moai clean`](/ja/utility-commands/moai-clean) | デッドコード除去 |
+| [`/moai codemaps`](/ja/utility-commands/moai-codemaps) | アーキテクチャコードマップ生成 |
+| [`/moai gate`](/ja/utility-commands/moai-gate) | コミット前の品質ゲート |
+| [`/moai e2e`](/ja/utility-commands/moai-e2e) | マルチプラットフォーム E2E テスト |
+| [`/moai goal`](/ja/utility-commands/moai-goal) | 条件宣言型の自律ループ |
 
 ## クイックスタート
 
@@ -103,8 +103,8 @@ flowchart TD
 
 ## 関連ドキュメント
 
-- [SPEC ベース開発](/core-concepts/spec-based-dev) - SPEC と EARS/GEARS 形式の詳細説明
-- [DDD 方法論](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE サイクルの詳細説明
-- [TRUST 5 品質システム](/core-concepts/trust-5) - 品質ゲートの詳細説明
-- [ハーネスエンジニアリング](/core-concepts/harness-engineering) - ハーネス学習サブシステムの概要
-- [クイックスタート](/getting-started/quickstart) - 最初から追えるチュートリアル
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) - SPEC と EARS/GEARS 形式の詳細説明
+- [DDD 方法論](/ja/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE サイクルの詳細説明
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5) - 品質ゲートの詳細説明
+- [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) - ハーネス学習サブシステムの概要
+- [クイックスタート](/ja/getting-started/quickstart) - 最初から追えるチュートリアル

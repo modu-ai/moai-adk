@@ -224,5 +224,5 @@ Major patterns such as MVC, Clean Architecture, Hexagonal, and Layered Architect
 
 ## Related Documents
 
-- [/moai clean - dead-code removal](/utility-commands/moai-clean)
-- [/moai feedback - submit feedback](/utility-commands/moai-feedback)
+- [/moai clean - dead-code removal](/en/utility-commands/moai-clean)
+- [/moai feedback - submit feedback](/en/utility-commands/moai-feedback)

@@ -310,10 +310,10 @@ moai cg            # CG 混合(Claude 领导 + GLM 队友,需 tmux)
 
 要开始 MoAI-ADK 之旅,请遵循以下步骤:
 
-1. **[安装](/getting-started/installation)** - 在系统中安装 MoAI-ADK
-2. **[初始设置](/getting-started/init-wizard)** - 运行交互式设置向导
-3. **[快速开始](/getting-started/quickstart)** - 创建第一个项目
-4. **[核心概念](/core-concepts/what-is-moai-adk)** - 深入理解 MoAI-ADK
+1. **[安装](/zh/getting-started/installation)** - 在系统中安装 MoAI-ADK
+2. **[初始设置](/zh/getting-started/init-wizard)** - 运行交互式设置向导
+3. **[快速开始](/zh/getting-started/quickstart)** - 创建第一个项目
+4. **[核心概念](/zh/core-concepts/what-is-moai-adk)** - 深入理解 MoAI-ADK
 
 ## 核心优势
 

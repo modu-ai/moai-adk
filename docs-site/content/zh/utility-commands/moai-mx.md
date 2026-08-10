@@ -109,6 +109,6 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai sync - 文档同步](/workflow-commands/moai-sync)
-- [/moai run - DDD/TDD 实现](/workflow-commands/moai-run)
-- [/moai clean - 死代码清除](/utility-commands/moai-clean)
+- [/moai sync - 文档同步](/zh/workflow-commands/moai-sync)
+- [/moai run - DDD/TDD 实现](/zh/workflow-commands/moai-run)
+- [/moai clean - 死代码清除](/zh/utility-commands/moai-clean)

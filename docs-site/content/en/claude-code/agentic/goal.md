@@ -135,8 +135,8 @@ This condition-declared loop is the execution unit of MoAI-ADK's **Agentic Loop 
 
 ## Related Documents
 
-- [Dynamic Workflows](/claude-code/agentic/workflows)
-- [/moai loop](/utility-commands/moai-loop)
+- [Dynamic Workflows](/en/claude-code/agentic/workflows)
+- [/moai loop](/en/utility-commands/moai-loop)
 
 ## References
 

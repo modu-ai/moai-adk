@@ -158,8 +158,8 @@ in 45 minutes, check whether the integration tests passed
 
 ## 相关文档
 
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [目标驱动执行 (/goal)](/claude-code/agentic/goal)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [目标驱动执行 (/goal)](/zh/claude-code/agentic/goal)
 
 ## 参考资料
 

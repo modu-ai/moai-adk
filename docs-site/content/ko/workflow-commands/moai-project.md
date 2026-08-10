@@ -600,8 +600,8 @@ LSP 서버가 없어도 문서는 그대로 만들어집니다. 다만 이후 `/
 
 ## 관련 문서
 
-- [빠른 시작](/getting-started/quickstart) - 전체 워크플로우 튜토리얼
+- [빠른 시작](/ko/getting-started/quickstart) - 전체 워크플로우 튜토리얼
 - [/moai plan](./moai-plan) - 다음 단계: SPEC 문서 생성
 - [/moai harness](./moai-harness) - 프로젝트 전용 하네스 생성
-- [SPEC 기반 개발](/core-concepts/spec-based-dev) - SPEC 방법론 상세 설명
-- [하위 에이전트 카탈로그](/advanced/agent-guide) - Explore, manager-docs 에이전트 상세
+- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) - SPEC 방법론 상세 설명
+- [하위 에이전트 카탈로그](/ko/advanced/agent-guide) - Explore, manager-docs 에이전트 상세

@@ -23,7 +23,7 @@ Claude Code 的子智能体是在独立的上下文窗口中处理旁支任务�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-本页是 Claude Code 层面的概念概览。MoAI-ADK 如何构成与委派 11 个智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`），以及亲手创建智能体的实战方法，在[智能体指南](/advanced/agent-guide)与[构建者智能体指南](/advanced/builder-agents)中深入讲解。
+本页是 Claude Code 层面的概念概览。MoAI-ADK 如何构成与委派 11 个智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`），以及亲手创建智能体的实战方法，在[智能体指南](/zh/advanced/agent-guide)与[构建者智能体指南](/zh/advanced/builder-agents)中深入讲解。
 {{< /callout >}}
 
 ## 什么是子智能体
@@ -165,8 +165,8 @@ model: sonnet
 
 ## 相关文档
 
-- [智能体指南](/advanced/agent-guide)
-- [构建者智能体指南](/advanced/builder-agents)
+- [智能体指南](/zh/advanced/agent-guide)
+- [构建者智能体指南](/zh/advanced/builder-agents)
 
 ## 参考资料
 

@@ -376,8 +376,8 @@ Yes. Analyze-First routing is language-independent intent analysis, so requests 
 
 ## Related Documents
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC creation details
-- [/moai run](/workflow-commands/moai-run) - DDD implementation details
-- [/moai sync](/workflow-commands/moai-sync) - Doc synchronization details
-- [/moai loop](/utility-commands/moai-loop) - Iterative fix loop details
-- [/moai fix](/utility-commands/moai-fix) - One-shot auto-fix details
+- [/moai plan](/en/workflow-commands/moai-plan) - SPEC creation details
+- [/moai run](/en/workflow-commands/moai-run) - DDD implementation details
+- [/moai sync](/en/workflow-commands/moai-sync) - Doc synchronization details
+- [/moai loop](/en/utility-commands/moai-loop) - Iterative fix loop details
+- [/moai fix](/en/utility-commands/moai-fix) - One-shot auto-fix details

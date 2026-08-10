@@ -223,5 +223,5 @@ MVC, Clean Architecture, Hexagonal, Layered Architecture など主要なパタ�
 
 ## 関連ドキュメント
 
-- [/moai clean - デッドコード除去](/utility-commands/moai-clean)
-- [/moai feedback - フィードバック提出](/utility-commands/moai-feedback)
+- [/moai clean - デッドコード除去](/ja/utility-commands/moai-clean)
+- [/moai feedback - フィードバック提出](/ja/utility-commands/moai-feedback)

@@ -49,7 +49,7 @@ flowchart TD
 
 ## 全部子命令(15 个)
 
-`/moai` 编排器路由 15 个子命令。本节(工作流)讲解 SPEC 3-Phase 生命周期命令,[实用命令](/utility-commands/)一节讲解自动化·修复循环·代码管理·反馈命令。
+`/moai` 编排器路由 15 个子命令。本节(工作流)讲解 SPEC 3-Phase 生命周期命令,[实用命令](/zh/utility-commands/)一节讲解自动化·修复循环·代码管理·反馈命令。
 
 **工作流命令(本节)：**
 
@@ -62,20 +62,20 @@ flowchart TD
 | [`/moai design`](./moai-design) | 设计阶段协作(manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | 挽具生成与学习生命周期 |
 
-**实用命令（[实用命令一节](/utility-commands/)）：**
+**实用命令（[实用命令一节](/zh/utility-commands/)）：**
 
 | 子命令 | 目的 |
 |-----------|------|
-| [`/moai fix`](/utility-commands/moai-fix) | 一次性自动修复 |
-| [`/moai loop`](/utility-commands/moai-loop) | 反复修复循环 |
-| [`/moai mx`](/utility-commands/moai-mx) | @MX 代码注释 |
-| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub 问题反馈 |
-| [`/moai review`](/utility-commands/moai-review) | 多视角代码审查(安全·@MX) |
-| [`/moai clean`](/utility-commands/moai-clean) | 死代码移除 |
-| [`/moai codemaps`](/utility-commands/moai-codemaps) | 生成架构代码地图 |
-| [`/moai gate`](/utility-commands/moai-gate) | 提交前质量门禁 |
-| [`/moai e2e`](/utility-commands/moai-e2e) | 多平台 E2E 测试 |
-| [`/moai goal`](/utility-commands/moai-goal) | 条件声明式自主循环 |
+| [`/moai fix`](/zh/utility-commands/moai-fix) | 一次性自动修复 |
+| [`/moai loop`](/zh/utility-commands/moai-loop) | 反复修复循环 |
+| [`/moai mx`](/zh/utility-commands/moai-mx) | @MX 代码注释 |
+| [`/moai feedback`](/zh/utility-commands/moai-feedback) | GitHub 问题反馈 |
+| [`/moai review`](/zh/utility-commands/moai-review) | 多视角代码审查(安全·@MX) |
+| [`/moai clean`](/zh/utility-commands/moai-clean) | 死代码移除 |
+| [`/moai codemaps`](/zh/utility-commands/moai-codemaps) | 生成架构代码地图 |
+| [`/moai gate`](/zh/utility-commands/moai-gate) | 提交前质量门禁 |
+| [`/moai e2e`](/zh/utility-commands/moai-e2e) | 多平台 E2E 测试 |
+| [`/moai goal`](/zh/utility-commands/moai-goal) | 条件声明式自主循环 |
 
 ## 快速开始
 
@@ -103,8 +103,8 @@ flowchart TD
 
 ## 相关文档
 
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - SPEC 与 EARS/GEARS 格式详解
-- [DDD 方法论](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 循环详解
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门禁详解
-- [挽具工程](/core-concepts/harness-engineering) - 挽具学习子系统概览
-- [快速开始](/getting-started/quickstart) - 从零开始的入门教程
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) - SPEC 与 EARS/GEARS 格式详解
+- [DDD 方法论](/zh/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 循环详解
+- [TRUST 5 质量系统](/zh/core-concepts/trust-5) - 质量门禁详解
+- [挽具工程](/zh/core-concepts/harness-engineering) - 挽具学习子系统概览
+- [快速开始](/zh/getting-started/quickstart) - 从零开始的入门教程

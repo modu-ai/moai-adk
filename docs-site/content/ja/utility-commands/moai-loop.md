@@ -348,7 +348,7 @@ AI が同一の失敗シグネチャを N 回連続で解決できないと (停
 
 ## 関連ドキュメント
 
-- [/moai fix - 一回限りの自動修正](/utility-commands/moai-fix)
-- [/moai - 完全自律の自動化](/utility-commands/moai)
-- [TRUST 5 品質システム](/core-concepts/trust-5)
-- [ドメイン駆動開発](/core-concepts/ddd)
+- [/moai fix - 一回限りの自動修正](/ja/utility-commands/moai-fix)
+- [/moai - 完全自律の自動化](/ja/utility-commands/moai)
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5)
+- [ドメイン駆動開発](/ja/core-concepts/ddd)

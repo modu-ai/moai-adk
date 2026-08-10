@@ -18,7 +18,7 @@ Claude Code 的技能 (skill) 是把重复的流程或专业知识汇成一个 `
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-本文是 Claude Code 技能的概念概览。在 MoAI-ADK 中亲手编写技能以及用构建者智能体自动生成的实战流程，详见[技能指南](/advanced/skill-guide)与[构建者智能体指南](/advanced/builder-agents)。
+本文是 Claude Code 技能的概念概览。在 MoAI-ADK 中亲手编写技能以及用构建者智能体自动生成的实战流程，详见[技能指南](/zh/advanced/skill-guide)与[构建者智能体指南](/zh/advanced/builder-agents)。
 {{< /callout >}}
 
 ## 什么是技能
@@ -145,8 +145,8 @@ MoAI-ADK 运行在这套技能机制之上。`moai-foundation-core`、`moai-work
 
 ## 相关文档
 
-- [技能指南](/advanced/skill-guide)
-- [构建者智能体指南](/advanced/builder-agents)
+- [技能指南](/zh/advanced/skill-guide)
+- [构建者智能体指南](/zh/advanced/builder-agents)
 
 ## 参考资料
 

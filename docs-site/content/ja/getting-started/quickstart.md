@@ -441,4 +441,4 @@ graph TD
 
 ## 次のステップ
 
-[コアコンセプト](/core-concepts/what-is-moai-adk) で MoAI-ADK の高度な機能を確認しましょう。
+[コアコンセプト](/ja/core-concepts/what-is-moai-adk) で MoAI-ADK の高度な機能を確認しましょう。

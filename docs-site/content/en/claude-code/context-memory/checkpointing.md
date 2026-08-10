@@ -112,8 +112,8 @@ From the MoAI-ADK perspective, checkpointing is what allows the agentic loop to 
 
 ## Related Documents
 
-- [Context Window](/claude-code/context-memory/context-window)
-- [Interactive Mode](/claude-code/foundations/interactive-mode)
+- [Context Window](/en/claude-code/context-memory/context-window)
+- [Interactive Mode](/en/claude-code/foundations/interactive-mode)
 
 ## References
 

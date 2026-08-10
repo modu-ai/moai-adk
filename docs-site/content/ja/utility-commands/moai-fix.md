@@ -359,6 +359,6 @@ Git で元に戻せます。修正前にコミットするか、`git stash` で�
 
 ## 関連ドキュメント
 
-- [/moai loop - 反復修正ループ](/utility-commands/moai-loop)
-- [/moai - 完全自律の自動化](/utility-commands/moai)
-- [TRUST 5 品質システム](/core-concepts/trust-5)
+- [/moai loop - 反復修正ループ](/ja/utility-commands/moai-loop)
+- [/moai - 完全自律の自動化](/ja/utility-commands/moai)
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5)

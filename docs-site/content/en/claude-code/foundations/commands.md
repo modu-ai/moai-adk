@@ -188,9 +188,9 @@ The behavior of the `/moai` command itself and its subcommands are covered in se
 
 ## Related Documents
 
-- [/moai Command](/utility-commands/moai)
-- [Workflow Commands](/workflow-commands)
-- [Interactive Mode](/claude-code/foundations/interactive-mode)
+- [/moai Command](/en/utility-commands/moai)
+- [Workflow Commands](/en/workflow-commands)
+- [Interactive Mode](/en/claude-code/foundations/interactive-mode)
 
 ## References
 

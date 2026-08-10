@@ -140,8 +140,8 @@ The fact that a tool name is the identifier in permission rules, subagent tool l
 
 ## Related Documents
 
-- [Hooks](/claude-code/extensibility/hooks)
-- [.claude Directory](/claude-code/foundations/claude-directory)
+- [Hooks](/en/claude-code/extensibility/hooks)
+- [.claude Directory](/en/claude-code/foundations/claude-directory)
 
 ## References
 

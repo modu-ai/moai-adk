@@ -17,11 +17,11 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스�
 
 ## MoAI 3.0의 세 가지 핵심 가치
 
-- {{< icon database primary >}} **토크노믹스** — 컨텍스트 다이어트와 프롬프트 캐싱으로 추론 비용을 60-70% 절감합니다. [멀티 LLM](/multi-llm), [비용 최적화](/cost-optimization), [심화 학습/토크노믹스 개요](/advanced/tokenomics-overview)를 참조하세요.
+- {{< icon database primary >}} **토크노믹스** — 컨텍스트 다이어트와 프롬프트 캐싱으로 추론 비용을 60-70% 절감합니다. [멀티 LLM](/ko/multi-llm), [비용 최적화](/ko/cost-optimization), [심화 학습/토크노믹스 개요](/ko/advanced/tokenomics-overview)를 참조하세요.
 
-- {{< icon rotate primary >}} **에이전틱 루프 엔지니어링** — 루프가 스스로 일하고, 그렇게 쌓인 관찰이 하네스 지침을 다시 다듬는 자율 개선 사이클입니다(재귀적 자가 학습). [자가 진화 시스템](/advanced/self-evolving), [자율 루프](/advanced/autonomous-loops), [의사 결정 메모리](/advanced/decision-memory)를 참조하세요.
+- {{< icon rotate primary >}} **에이전틱 루프 엔지니어링** — 루프가 스스로 일하고, 그렇게 쌓인 관찰이 하네스 지침을 다시 다듬는 자율 개선 사이클입니다(재귀적 자가 학습). [자가 진화 시스템](/ko/advanced/self-evolving), [자율 루프](/ko/advanced/autonomous-loops), [의사 결정 메모리](/ko/advanced/decision-memory)를 참조하세요.
 
-- {{< icon package primary >}} **에이전틱 하네스** — 스킬·후크·MCP를 조합해 실행 환경을 직접 짜고, 에이전트 오케스트레이션을 필요한 만큼 넓힙니다. [핵심 개념](/core-concepts), [워크플로우 명령어](/workflow-commands), [에이전트 가이드](/advanced/agent-guide)를 참조하세요.
+- {{< icon package primary >}} **에이전틱 하네스** — 스킬·후크·MCP를 조합해 실행 환경을 직접 짜고, 에이전트 오케스트레이션을 필요한 만큼 넓힙니다. [핵심 개념](/ko/core-concepts), [워크플로우 명령어](/ko/workflow-commands), [에이전트 가이드](/ko/advanced/agent-guide)를 참조하세요.
 
 ## 주요 기능
 
@@ -32,12 +32,12 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스�
 
 ## 시작하기
 
-MoAI-ADK를 시작하려면 [시작하기](/getting-started) 섹션을 참조하세요.
+MoAI-ADK를 시작하려면 [시작하기](/ko/getting-started) 섹션을 참조하세요.
 
 ## 문서 구조
 
-- [시작하기](/getting-started) - 설치, 기본 설정, 빠른 시작
-- [핵심 개념](/core-concepts) - SPEC 포맷, 에이전트, 워크플로우
-- [심화 학습](/advanced) - 고급 패턴, 스킬 활용, 성능 최적화
-- [깃 워크트리](/worktree) - 워크트리 CLI 완벽 가이드
+- [시작하기](/ko/getting-started) - 설치, 기본 설정, 빠른 시작
+- [핵심 개념](/ko/core-concepts) - SPEC 포맷, 에이전트, 워크플로우
+- [심화 학습](/ko/advanced) - 고급 패턴, 스킬 활용, 성능 최적화
+- [깃 워크트리](/ko/worktree) - 워크트리 CLI 완벽 가이드
 - {{< icon book primary >}} [도서: 실전 에이전틱 코딩](/book) - MoAI-ADK로 배우는 실전 에이전틱 코딩 (488쪽 · 추천사 9인)

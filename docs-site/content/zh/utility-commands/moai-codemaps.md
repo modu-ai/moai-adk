@@ -223,5 +223,5 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai clean - 移除死代码](/utility-commands/moai-clean)
-- [/moai feedback - 提交反馈](/utility-commands/moai-feedback)
+- [/moai clean - 移除死代码](/zh/utility-commands/moai-clean)
+- [/moai feedback - 提交反馈](/zh/utility-commands/moai-feedback)

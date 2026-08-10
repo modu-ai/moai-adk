@@ -190,6 +190,6 @@ flowchart TD
 
 ## Related Documents
 
-- [/moai fix - One-shot auto-fix](/utility-commands/moai-fix)
-- [/moai loop - Iterative fix loop](/utility-commands/moai-loop)
-- [/moai - Fully autonomous automation](/utility-commands/moai)
+- [/moai fix - One-shot auto-fix](/en/utility-commands/moai-fix)
+- [/moai loop - Iterative fix loop](/en/utility-commands/moai-loop)
+- [/moai - Fully autonomous automation](/en/utility-commands/moai)

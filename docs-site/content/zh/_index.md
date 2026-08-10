@@ -14,11 +14,11 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 ## MoAI 3.0 的三大核心价值
 
-- {{< icon database primary >}} **代币经济学** — 通过上下文瘦身和提示缓存将推理成本降低60-70%。参见[多 LLM](/multi-llm)、[成本优化](/cost-optimization)和[高级/代币经济学概述](/advanced/tokenomics-overview)。
+- {{< icon database primary >}} **代币经济学** — 通过上下文瘦身和提示缓存将推理成本降低60-70%。参见[多 LLM](/zh/multi-llm)、[成本优化](/zh/cost-optimization)和[高级/代币经济学概述](/zh/advanced/tokenomics-overview)。
 
-- {{< icon rotate primary >}} **智能体循环工程** — 通过决策记忆和自主智能体系统实现自主改进循环。参见[自进化系统](/advanced/self-evolving)、[自主循环](/advanced/autonomous-loops)和[决策记忆](/advanced/decision-memory)。
+- {{< icon rotate primary >}} **智能体循环工程** — 通过决策记忆和自主智能体系统实现自主改进循环。参见[自进化系统](/zh/advanced/self-evolving)、[自主循环](/zh/advanced/autonomous-loops)和[决策记忆](/zh/advanced/decision-memory)。
 
-- {{< icon package primary >}} **代理型线束** — 通过技能、钩子和 MCP 提供可组合的执行环境，实现可扩展的智能体编排。参见[核心概念](/core-concepts)、[工作流命令](/workflow-commands)和[智能体指南](/advanced/agent-guide)。
+- {{< icon package primary >}} **代理型线束** — 通过技能、钩子和 MCP 提供可组合的执行环境，实现可扩展的智能体编排。参见[核心概念](/zh/core-concepts)、[工作流命令](/zh/workflow-commands)和[智能体指南](/zh/advanced/agent-guide)。
 
 ## 主要特性
 
@@ -29,11 +29,11 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 ## 入门指南
 
-要开始使用 MoAI-ADK,请参阅[入门指南](/getting-started)部分。
+要开始使用 MoAI-ADK,请参阅[入门指南](/zh/getting-started)部分。
 
 ## 文档结构
 
-- [入门指南](/getting-started) - 安装、基本设置、快速开始
-- [核心概念](/core-concepts) - SPEC 格式、代理、工作流
-- [高级](/advanced) - 高级模式、技能使用、性能优化
-- [Git Worktree](/worktree) - 完整的 Git Worktree CLI 指南
+- [入门指南](/zh/getting-started) - 安装、基本设置、快速开始
+- [核心概念](/zh/core-concepts) - SPEC 格式、代理、工作流
+- [高级](/zh/advanced) - 高级模式、技能使用、性能优化
+- [Git Worktree](/zh/worktree) - 完整的 Git Worktree CLI 指南

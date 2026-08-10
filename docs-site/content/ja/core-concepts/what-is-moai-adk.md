@@ -673,7 +673,7 @@ MoAI-ADK は 4 言語に対応します。ユーザーが韓国語でリクエ�
 MoAI-ADK の全体像を理解したら、次は各核心概念を詳しく見ていく番です。
 
 - [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) -- エージェントが働く環境を設計するパラダイムを学びます
-- [SPEC ベース開発](/core-concepts/spec-based-dev) -- 要件をどうドキュメントで定義するかを学びます
-- [ドメイン駆動開発](/core-concepts/ddd) -- 既存コードを安全に改善する方法を学びます
-- [TRUST 5 品質](/core-concepts/trust-5) -- コード品質を自動的に検証する方法を学びます
-- [MoAI Memory](/claude-code/context-memory/memory) -- セッション間のコンテキストがどう保存されるかを学びます
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) -- 要件をどうドキュメントで定義するかを学びます
+- [ドメイン駆動開発](/ja/core-concepts/ddd) -- 既存コードを安全に改善する方法を学びます
+- [TRUST 5 品質](/ja/core-concepts/trust-5) -- コード品質を自動的に検証する方法を学びます
+- [MoAI Memory](/ja/claude-code/context-memory/memory) -- セッション間のコンテキストがどう保存されるかを学びます

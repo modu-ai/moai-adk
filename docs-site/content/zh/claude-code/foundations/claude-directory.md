@@ -106,9 +106,9 @@ Claude Code 在首次创建 `settings.local.json` 时会自动把它加入 `.git
 
 ## 相关文档
 
-- [settings.json 指南](/advanced/settings-json)
-- [CLAUDE.md 指南](/advanced/claude-md-guide)
-- [Statusline 系统](/advanced/statusline)
+- [settings.json 指南](/zh/advanced/settings-json)
+- [CLAUDE.md 指南](/zh/advanced/claude-md-guide)
+- [Statusline 系统](/zh/advanced/statusline)
 
 ## 参考资料
 

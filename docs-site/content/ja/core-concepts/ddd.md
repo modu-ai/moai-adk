@@ -536,5 +536,5 @@ constitution:
 
 ## 関連ドキュメント
 
-- [SPEC ベース開発](/core-concepts/spec-based-dev) -- 開発方法論の実行前に SPEC 文書が必要です
-- [TRUST 5 品質](/core-concepts/trust-5) -- 実装完了後の品質検証基準を確認します
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) -- 開発方法論の実行前に SPEC 文書が必要です
+- [TRUST 5 品質](/ja/core-concepts/trust-5) -- 実装完了後の品質検証基準を確認します

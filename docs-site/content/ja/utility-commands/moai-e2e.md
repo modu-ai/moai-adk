@@ -196,6 +196,6 @@ flowchart TD
 
 ## 関連ドキュメント
 
-- [/moai fix - 一回限りの自動修正](/utility-commands/moai-fix)
-- [/moai loop - 反復修正ループ](/utility-commands/moai-loop)
-- [/moai - 完全自律の自動化](/utility-commands/moai)
+- [/moai fix - 一回限りの自動修正](/ja/utility-commands/moai-fix)
+- [/moai loop - 反復修正ループ](/ja/utility-commands/moai-loop)
+- [/moai - 完全自律の自動化](/ja/utility-commands/moai)

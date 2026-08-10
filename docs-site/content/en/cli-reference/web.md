@@ -70,4 +70,4 @@ The resolution order and its limitations are covered in detail in [Profile Manag
 
 ---
 
-Related: [Profile Management](/cli-reference/profile) · [CLI Overview](/getting-started/cli)
+Related: [Profile Management](/en/cli-reference/profile) · [CLI Overview](/en/getting-started/cli)

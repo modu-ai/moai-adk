@@ -127,8 +127,8 @@ MoAI-ADK 把动态工作流认定为区别于 SPEC 驱动 plan/run/sync 生命�
 
 ## 相关文档
 
-- [子智能体](/claude-code/agentic/sub-agents)
-- [智能体团队](/claude-code/agentic/agent-teams)
+- [子智能体](/zh/claude-code/agentic/sub-agents)
+- [智能体团队](/zh/claude-code/agentic/agent-teams)
 
 ## 参考资料
 
