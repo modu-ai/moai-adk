@@ -861,3 +861,53 @@ func TestSentinelErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestSaveSection_PreservesFileMode is the regression test for SPEC-CONFIG-ATOMIC-WRITE-001
+// Defect 1 (mode-narrowing): the pre-fix saveSection used os.CreateTemp (which creates the
+// temp file at 0600) + os.Rename with NO os.Chmod, so the destination file's permission bits
+// were silently narrowed to 0600 regardless of what the caller or the existing file intended.
+//
+// This test exercises the saveSection-level round trip (not the M1 atomicfile.Write helper)
+// and asserts that a pre-existing section file at a non-0600 mode keeps its mode after a
+// saveSection write. Against the unfixed atomicWrite this MUST fail (mode narrowed to 0600).
+func TestSaveSection_PreservesFileMode(t *testing.T) {
+	t.Parallel()
+
+	tempDir := t.TempDir()
+	filename := "language.yaml"
+	path := filepath.Join(tempDir, filename)
+
+	// Seed an existing section file at a deliberately non-0600 mode. 0o750 is group-readable
+	// (not a secret), so it exercises the "preserve existing mode" branch and proves the write
+	// does not narrow it down to CreateTemp's 0600.
+	seed := []byte("language:\n  conversation_language: en\n")
+	if err := os.WriteFile(path, seed, 0o750); err != nil {
+		t.Fatalf("seed write: %v", err)
+	}
+	// Re-assert the on-disk mode because WriteFile's mask can clip it.
+	if err := os.Chmod(path, 0o750); err != nil {
+		t.Fatalf("chmod seed to 0o750: %v", err)
+	}
+
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat seed: %v", err)
+	}
+	if before.Mode().Perm() != 0o750 {
+		t.Fatalf("seed mode setup: got %v, want 0o750", before.Mode().Perm())
+	}
+
+	// saveSection marshals data to YAML and writes it atomically through the helper.
+	data := map[string]any{"language": map[string]any{"conversation_language": "ko"}}
+	if err := saveSection(tempDir, filename, data); err != nil {
+		t.Fatalf("saveSection: %v", err)
+	}
+
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat after saveSection: %v", err)
+	}
+	if got := after.Mode().Perm(); got != 0o750 {
+		t.Fatalf("saveSection narrowed file mode: got %v, want 0o750 (Defect 1 regression)", got)
+	}
+}

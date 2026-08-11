@@ -321,6 +321,38 @@ func TestCmdDisable_SetsEnabledFalse(t *testing.T) {
 	}
 }
 
+// TestCmdDisable_PreservesFileMode (SPEC-CONFIG-ATOMIC-WRITE-001) verifies the
+// harness.yaml disable write routes through atomicfile.Write so a pre-existing
+// non-default mode is preserved across the write rather than narrowed back to
+// the hardcoded 0o644 the legacy os.WriteFile call imposed.
+func TestCmdDisable_PreservesFileMode(t *testing.T) {
+	t.Parallel()
+
+	dir := harnessTestProject(t)
+	harnessPath := filepath.Join(dir, ".moai", "config", "sections", "harness.yaml")
+
+	// Narrow the pre-existing file to a secret-style mode and assert the
+	// disable write does not widen it.
+	if err := os.Chmod(harnessPath, 0o600); err != nil {
+		t.Fatalf("chmod seed: %v", err)
+	}
+
+	cmd := newHarnessCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetArgs([]string{"disable", "--project-root", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("harness disable 실패: %v", err)
+	}
+
+	info, err := os.Stat(harnessPath)
+	if err != nil {
+		t.Fatalf("stat harness.yaml: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Errorf("harness.yaml mode after disable = %v, want 0o600 preserved", got)
+	}
+}
+
 // TestCmdDisable_PreservesComments verifies that YAML comments are preserved after disable.
 // [HARD] YAML round-trip preserves comments and key ordering.
 func TestCmdDisable_PreservesComments(t *testing.T) {

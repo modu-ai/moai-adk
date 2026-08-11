@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // SPEC-AUTONOMY-TIERS-001 M3 — tier → permission-bundle renderer.
@@ -143,7 +146,7 @@ func renderIntoFile(path string, block *PermissionsBlock) error {
 	if err != nil {
 		return fmt.Errorf("render %q: %w", path, err)
 	}
-	if err := os.WriteFile(path, out, 0o644); err != nil {
+	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
 		return fmt.Errorf("write %q: %w", path, err)
 	}
 	return nil
