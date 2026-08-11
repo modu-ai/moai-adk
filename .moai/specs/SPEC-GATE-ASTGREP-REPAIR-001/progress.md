@@ -96,9 +96,112 @@ baseline `internal/template/templates/.moai/config/astgrep-rules/` carries no
 error-wrapping rule; per the user-resolved B1 decision, the refinement is
 dogfood-tree only and MUST NOT propagate to the distributed baseline.
 
+### M2 — D2 path exclusion at the gate layer
+
+**Discovery**: ast-grep 0.40.5 does NOT support a `globs:` exclusion field in
+sgconfig.yml config-mode. Empirically verified: adding `globs: ["!**/*_test.go"]`
+(or any globs entry) silently breaks the scan — every rule returns 0 matches,
+including for non-excluded files. The field appears to be misparsed as rule
+content. The SPEC's primary D2 mechanism (sgconfig.yml globs) is therefore NOT
+viable at this ast-grep version.
+
+**Fallback applied** (per plan.md §D.2 B3/B4): path exclusion filter at the
+gate layer — `filterExcludedPaths` in
+`internal/hook/quality/astgrep_gate.go`. This is NOT in the PRESERVE list
+(scanner.go Scan body is preserved; astgrep_gate.go is the gate entry point
+shared by both the PreToolUse path and the standalone `moai gate` CLI).
+Excluded patterns: `.claude/worktrees/`, `/vendor/`, `/testdata/`, `_test.go`.
+
+**Effect** (measured against the main checkout with the refined rule):
+- `go-error-not-wrapped` in test files (_test.go): 72 → 0 (excluded)
+- `go-error-not-wrapped` in testdata: 0 (already 0 post-M1)
+- `go-error-not-wrapped` non-test non-testdata: 274 (the genuine violations)
+- vendor/: 0 (no vendor dir in this repo)
+- `.claude/worktrees/`: 0 (already excluded by .gitignore; filter makes it
+  authoritative regardless of .gitignore state)
+
+**GREEN evidence**: `go test -run TestGAR_AC004_ExcludedPathsFilteredFromFindings ./internal/hook/quality/...`
+→ PASS. The test stages the same `return err` violation in 5 locations
+(real.go, foo_test.go, testdata/, vendor/, .claude/worktrees/) and asserts
+only real.go surfaces.
+
+### M3 — D3 config wiring (loadGateSection in moai gate CLI)
+
+**Applied change**: `internal/cli/gate.go` runGate now routes through a new
+`loadGateCfgForCLI(projectDir)` helper that calls `config.NewLoader().Load()`
+(the same loader chain that includes `loadGateSection`). The helper maps
+`config.GateConfig → quality.GateConfig` verbatim after the pre_tool.go
+loadGateConfig pattern, including the `disabled_steps` verbatim copy
+(issue #1265) and the `RulesDir` default.
+
+**Fall-back** (AP-GAR-004): on missing/unparseable gate.yaml, the helper
+returns `quality.DefaultGateConfig()` with ProjectDir + GoBuildTags applied —
+the gate still runs, it does NOT silently hard-block.
+
+**GREEN evidence**:
+- `TestGAR_AC008_GateGoLoadsGateYAML` — grep guard: runGate routes through
+  loadGateCfgForCLI, no direct `cfg := quality.DefaultGateConfig()` at the
+  call site.
+- `TestGAR_AC009_WarnOnlyModeReflectedInCLIConfig` — gate.yaml
+  warn_only_mode:true + block_on_error:false is reflected in cfg.
+- `TestGAR_AC010_EnabledFalseSkipsAstGrep` — gate.yaml enabled:false is
+  reflected; ast-grep sub-scan would skip.
+- `TestGAR_D3_FallbackOnMissingGateYAML` — missing gate.yaml → non-nil
+  fallback cfg with correct ProjectDir.
+
+### M4 — Integration verification
+
+**AC-GAR-011** (full test suite): `go test -count=1 ./...` → 0 FAIL.
+**AC-GAR-012** (lint): `golangci-lint run` on changed packages → 0 issues.
+**AC-GAR-013** (cross-platform): `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+
+**Smoke** (`./bin/moai gate` against an isolated temp project with a genuine
+`return err` violation + gate.yaml `warn_only_mode: true`): **exit 0** — the
+ast-grep step finds the violation (confirmed via direct `sg scan`) and the
+gate honors the advisory intent (AC-GAR-009 end-to-end PASS). The standalone
+`moai gate` from the worktree exited 1 on the `go test` sub-gate's 2m timeout
+—a pre-existing characteristic of the full suite size, orthogonal to the
+ast-grep sub-gate (the AC explicitly scopes itself to the ast-grep exit
+contribution).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-11
+run_commit_sha: pending-backfill-m4  # M4 progress-only commit; backfill in sync-phase
+run_status: audit-ready
+ac_pass_count: 12
+ac_fail_count: 0
+ac_deferred:
+  - AC-GAR-007  # SHOULD — (file,line,rule) dedup; satisfied by worktree exclusion (0 worktree paths post-filter), no separate dedup key added
+preserve_list_post_run_count: 4  # scanner.go Scan body, parseSGFindings schema, pre_tool.go, template distributed baseline
+l44_pre_commit_fetch: not-applicable  # worktree, single session
+l44_post_push_fetch: not-applicable   # orchestrator handles push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  linux_darwin: pass  # go build ./... exit 0
+  windows_amd64: pass # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 6  # error-handling.yml, sgconfig.yml, gate.go, astgrep_gate.go + 3 test files + testdata
+m1_to_mN_commit_strategy: per-milestone commits (ff5812b28 M0+M1, c4ca4c74b M2, c2007bc05 M3, <this> M4 progress)
+```
+
+**AC matrix summary** (13 ACs: 12 PASS, 1 deferred-SHOULD):
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-GAR-001 | PASS | TestGAR_AC001 — 0 matches on negative fixture |
+| AC-GAR-002 | PASS | TestGAR_AC002 — exactly 1 match on positive fixture |
+| AC-GAR-003 | PASS | TestGAR_AC003 — autofix leaves negatives byte-identical |
+| AC-GAR-004 | PASS | TestGAR_AC004 — worktree/vendor/test paths filtered |
+| AC-GAR-005 | PASS | covered by AC-GAR-004 (vendor + _test.go excluded by filter) |
+| AC-GAR-006 | PASS | 16,124 → 346 go-error-not-wrapped (97.9% drop); 21,990 → 6,212 total |
+| AC-GAR-007 | DEFERRED (SHOULD) | (file,line,rule) dedup — satisfied by worktree exclusion; no separate dedup key needed since worktrees contribute 0 paths |
+| AC-GAR-008 | PASS | TestGAR_AC008 — gate.go routes through loadGateCfgForCLI |
+| AC-GAR-009 | PASS | TestGAR_AC009 + smoke exit 0 with warn_only_mode |
+| AC-GAR-010 | PASS | TestGAR_AC010 — enabled:false reflected in cfg |
+| AC-GAR-011 | PASS | `go test -count=1 ./...` — 0 FAIL |
+| AC-GAR-012 | PASS | golangci-lint — 0 issues on changed packages |
+| AC-GAR-013 | PASS | GOOS=windows GOARCH=amd64 go build ./... exit 0 |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
