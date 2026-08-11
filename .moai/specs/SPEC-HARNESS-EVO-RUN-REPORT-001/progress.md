@@ -99,7 +99,78 @@ GREEN 후 6 테스트 전부 PASS.
 
 **Gaps**: 없음 (M1 범위 전량 검증 완료). `full suite` (`go test ./...`)는 백그라운드 실행 — cascade 회귀는 v4manifest + cli/harness 타겟 suite로 이미 커버됨 (M1은 v4manifest schema에 국한, 타 패키지 import 변경 없음).
 
-**Residual-risk**: (i) EC-1 부분 블록 기본값 적용 시점이 M2로 연기됐으므로, 부분 블록을 파싱은 하지만 downstream 소비자가 아직 없음 — M2에서 defaults 헬퍼 추가 시 재검증 필요; (ii) `harness.Tier.String()` SSOT 어휘가 future SPEC으로 확장될 경우 `validLearningTiers` + 상수 동기화가 `TestLearningTierVocabularyMatchesHarnessSSOT`에 의해 강제되므로 자동 감지됨.
+**Residual-risk**: (i) EC-1 부분 블록 기본값 적용 시점이 M2로 연기됐으므로, 부분 블록을 파싱은 하지만 downstream 소비자가 아직 없음 — M2에서 defaults 헬퍼 추가 시 재검증 필요; (ii) `harness.Tier.String()` SSOT 어휘가 future SPEC으로 확장될 경우 `validLearningTiers` + 상수 동언성이 `TestLearningTierVocabularyMatchesHarnessSSOT`에 의해 강제되므로 자동 감지됨.
+
+---
+
+### M2 — Runner return-schema `findings` 계약 + harness_run producer 매핑 (REQ-HRR-003, 004, 007) [TDD]
+
+**상태**: PASS — GREEN 달성 (2026-08-12, worktree HEAD `870cdd72a` 위 M2 커밋 대기)
+
+**구현 범위 — M2-a (Runner findings 표준 계약, REQ-HRR-003/004)**:
+
+- `.claude/workflows/hns-release-update-run.js` (dev-only exemplar, §21 격리) — return 객체에 `findings: []` 표준 필드 추가. 본 Runner는 읽기 전용 research sweep 모델이므로 실행 시점 개선 신호가 없고, 빈 배열이 정직한 신호 (REQ-HRR-003: 부재 ≠ 무신호 — 필드 생략 금지, 빈 배열로 구분). 주석에 REQ-HRR-003/004 + `harness_run:` producer routing 명시. AC-HRR-010(b) legacy Runner 호환 (빈 findings = legacy 취급).
+- **v4 Builder GENERATE Runner 템플릿 계약**: `internal/template/templates/`에 Runner 템플릿 **부재** 실측 (`find -path '*harness*run.js' -o -path '*workflows*run.js'` → empty). 따라서 template mirror 불필요 — exemplar 수정만으로 충분 (plan.md §F M2 + §D-D5 소급 범위 확정). forward-note: Builder가 Runner 템플릿을 향후 생성하면 그 시점에 template-managed 표면으로 §25 중립성과 함께 반영.
+
+**구현 범위 — M2-b (`harness_run:` 제3 producer, path A — REQ-HRR-007)**:
+
+- `internal/harness/harnessrun/types.go` (신규 패키지) — `Finding{Surface, Kind, Summary, Confidence, SuggestedTier}` 5-필드 구조체 (REQ-HRR-003 표준 shape); `PatternNamespace = "harness_run"` (reserved namespace, `delegationmap` sibling); kind 어휘 상수 `{KindDrift, KindGap, KindFriction, KindDefect}`; `ConservativeConfidenceFloor = 0.70` (floor-aligned default, REQ-HRR-004 — **learner.go defaultConfidence(1.0) 재사용 금지**, 본 패키지에서 자체 정의).
+- `internal/harness/harnessrun/proposal.go` — `BuildHarnessRunCandidates(findings []Finding) []proposalgen.ProposalCandidate`. `delegationmap.BuildCandidates`(`internal/harness/delegationmap/proposal.go:37`) sibling 패턴 계승: (i) reserved namespace `harness_run:` 사용, (ii) `ProposalCandidate` direct construction (`MapPromotions` 경유 금지 — AP-11), (iii) `Evidence map[string]any` seam에 `{surface, kind, summary, confidence, suggested_tier, approval_gate}` 6-field 전달. pattern-key = `harness_run:<sha256(surface)[:8]>:<kind>` (plan.md §D-D2). `ObservationCount=1` (harness-run 단발 관측). `SourceTs` zero time (dynamic-workflow determinism — clock read 금지, caller가 run 후 stamp).
+- `internal/harness/harnessrun/proposal_test.go` — 8 테스트 (RED→GREEN):
+  - `TestBuildHarnessRunCandidates_MapsFields` (AC-HRR-003/004 매핑) — pattern_key namespace + kind suffix, confidence verbatim (0.75), tier verbatim, ObservationCount=1, DraftID PROPOSAL- prefix, Evidence 6-key
+  - `TestBuildHarnessRunCandidates_EmptyInput` (REQ-HRR-003 no-signal) — nil/empty → non-nil empty slice (field-present/no-signal 구분)
+  - `TestBuildHarnessRunCandidates_DeterministicIdempotent` (sibling of `TestAnalyze_DeterministicIdempotent`) — 동일 findings 2회 호출 → byte-identical candidates (pattern_key, draft_id, SourceTs 동일)
+  - `TestBuildHarnessRunCandidates_DistinctSurfacesDistinctKeys` — surface별 pattern_key 충돌 방지 (sha256 discriminator)
+  - `TestBuildHarnessRunCandidates_DistinctKindsDistinctKeys` — 동일 surface + 다른 kind → 별도 key
+  - `TestPatternNamespace_IsolatedFromMapperSSOT` (residual-risk i 폐쇄, E9) — `harness_run`이 `PatternBearingEventTypes()` 비멤버임 단언 (`delegationmap/proposal_test.go:54-56` 동등 메커니즘, AP-11 기계 강제)
+  - `TestPatternKey_RejectedByExistingMapper` — 모든 emitted `harness_run:` key를 maximally-actionable promotion으로 real `MapPromotions`에 feed → 0 candidates (격리 실증)
+  - `TestNoLearnerDefaultConfidenceReference` (REQ-HRR-004 기계 강제) — `proposal.go`/`types.go` AST walk → `defaultConfidence` code identifier 부재 단언 (prose mention은 허용, `go/ast` + `go/parser`로 comment와 code 식별)
+
+**설계 결정 (격리 vs 재사용 균형, plan §I gap (ii) 폐쇄)**: `harnessrun/` sibling 패키지 신설 채택. 이유: (i) namespace 격리가 `harness_run:` reserved prefix + `PatternBearingEventTypes` SSOT 비추가로 기계적으로 강제되므로, `proposalgen/` 확장이나 `delegationmap/` 내부보다 sibling이 격리 경계를 명확히 함; (ii) `proposalgen.ProposalCandidate`/`WriteProposals` 재사용은 유지 (코드 중복 방지) — sibling이 import 경로로 재사용. 이 균형은 §E 보고에 명시됨 (plan §I gap (ii) 확정).
+
+**@MX tag**: 본 패키지는 신규 + 작은 범위라 `@MX:ANCHOR`(fan_in ≥ 3) 대상 아직 아님. `BuildHarnessRunCandidates`가 향후 3+ caller 확보 시 ANCHOR 추가 예정.
+
+**TDD 증거 (E8 — verbatim RED 출력, GREEN 이전 캡처)**:
+```
+# go test ./internal/harness/harnessrun/...
+# github.com/modu-ai/moai-adk/internal/harness/harnessrun [github.com/modu-ai/moai-adk/internal/harness/harnessrun.test]
+internal/harness/harnessrun/proposal_test.go:26:16: undefined: Finding
+internal/harness/harnessrun/proposal_test.go:29:19: undefined: KindFriction
+internal/harness/harnessrun/proposal_test.go:36:16: undefined: BuildHarnessRunCandidates
+internal/harness/harnessrun/proposal_test.go:44:38: undefined: PatternNamespace
+internal/harness/harnessrun/proposal_test.go:45:81: undefined: PatternNamespace
+internal/harness/harnessrun/proposal_test.go:47:42: undefined: KindFriction
+internal/harness/harnessrun/proposal_test.go:48:82: undefined: KindFriction
+internal/harness/harnessrun/proposal_test.go:94:25: undefined: Finding
+internal/harness/harnessrun/proposal_test.go:95:10: undefined: BuildHarnessRunCandidates
+internal/harness/harnessrun/proposal_test.go:113:16: undefined: Finding
+internal/harness/harnessrun/proposal_test.go:113:16: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/harness/harnessrun [build failed]
+```
+GREEN 후 8 테스트 전부 PASS (`ok ... 0.498s`).
+
+**자체 검증 (이 run, 이 tree, HEAD `870cdd72a` + M2 변경 미커밋)**:
+
+| 항목 | 결과 | 명령 | 관측 출력 |
+|------|------|------|-----------|
+| E1 AC 매트릭스 | AC-HRR-003 PASS (findings 5-field + 빈 배열), AC-HRR-004 PASS (confidence 출처 분리, defaultConfidence 미참조 — AST guard), AC-HRR-010(b) PASS (legacy 빈 findings Runner 호환) | `go test -v ./internal/harness/harnessrun/...` | 8 PASS |
+| E2 cross-platform build | PASS | `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` | 둘 다 exit 0 (syscall 무관 — 순수 변환 헬퍼) |
+| E3 coverage | 100.0% (≥85%) | `go test -cover ./internal/harness/harnessrun/...` | `coverage: 100.0% of statements` |
+| E4 subagent boundary | clean | `grep -rn 'AskUserQuestion' internal/harness/harnessrun/` | exit 1 (0 matches); Runner는 comment 줄만 (AC-HRR-008) |
+| E5 lint | NEW 0 | `golangci-lint run --timeout=3m ./internal/harness/harnessrun/...` | `0 issues.` |
+| E6 HEAD + push | 커밋 대기 (아래 커밋에서 기록) | — | — |
+| E7 blocker | 없음 | — | — |
+| E8 RED 출력 | verbatim 캡처 (위) | GREEN 이전 컴파일 실패 | `FAIL [build failed]` |
+| E9 namespace 격리 live guard | PASS | `go test -run 'TestPatternNamespace_IsolatedFromMapperSSOT\|TestPatternKey_RejectedByExistingMapper' -v ./internal/harness/harnessrun/` | 2 PASS (SSOT 비멤버 + real mapper 0 candidates) |
+| E10 Template-First | PASS (template 미건드림) | `grep -rn 'HARNESS-EVO-RUN-REPORT\|REQ-HRR' internal/template/templates/` + `find internal/template/templates -path '*hns*run.js' -o -path '*agents/harness*'` | 둘 다 0 matches (exemplar dev-only 유지, template 중립성 보존) |
+| 추가: AP-11 SSOT 미확장 | PASS | `grep -n 'harness_run' internal/harness/types.go` | 0 matches (`harness_run` not in PatternBearingEventTypes) |
+| 추가: AP-2 confidence 출처 | PASS | `grep -rn 'defaultConfidence' internal/harness/harnessrun/*.go \| grep -v '// '` | 0 matches (code reference 부재; prose만) |
+| 추가: sibling package 회귀 | PASS | `go test ./internal/harness/v4manifest/... ./internal/harness/delegationmap/... ./internal/harness/proposalgen/...` | 3 ok (M1 + delegationmap + proposalgen 무영향) |
+| 추가: race | PASS | `go test -race ./internal/harness/harnessrun/...` | `ok ... 1.487s` |
+
+**Gaps**: (i) v4 Builder GENERATE Runner 템플릿이 현재 `internal/template/templates/`에 부재하여 template 계약 반영 불가 — 향후 Builder가 Runner 템플릿을 생성하면 그 SPEC에서 `findings` 계약을 template-managed 표면으로 반영 (forward-note); (ii) `full suite` (`go test ./...`) 실행 시 `internal/template`의 `TestTemplateNoInternalContentLeak` + `TestRuleDateProvenance` 2건 FAIL 관측 — 이는 `zone-registry.md` (본 SPEC 미접근)의 pre-existing failure로, clean M1 baseline `870cdd72a` (stash 후 실측)에서 동일 실패 재현됨 → 본 M2 scope 외 (B10 scope discipline).
+
+**Residual-risk**: (i) `BuildHarnessRunCandidates`의 단일 caller가 현재 테스트뿐 — orchestrator post-run push 배선(REQ-HRR-007)은 M4 doctrine 표면 소관으로, 실 caller는 M4에서 연결됨. producer 계약 자체는 M2에서 확정 + 테스트 강제; (ii) 3 producer(tier-ladder/delegation-map/harness-run)가 동일 Tier-4 게이트 rate_limit를 공유할 때 producer간 경합 시맨틱(EC-6)은 M4 doctrine 표면에서 명시 예정.
 
 ---
 
