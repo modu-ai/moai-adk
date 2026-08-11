@@ -25,7 +25,7 @@ Core principles governing the MoAI design production system. These rules define 
 
 ## 1. Identity and Purpose
 
-The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`, `expert-frontend`, `sync-auditor`) to produce high-quality web experiences from natural language briefs.
+The MoAI design production system is a creative production capability built on top of MoAI-ADK. It orchestrates a pipeline of specialized skills and agents (`moai-domain-copywriting` [RETIRED — do not revive without a new SPEC], `moai-domain-brand-design` [RETIRED — do not revive without a new SPEC], `moai-workflow-design` [RETIRED], `moai-workflow-gan-loop` [RETIRED], `expert-frontend` [ARCHIVED], `sync-auditor`) to produce high-quality web experiences from natural language briefs.
 
 The design system is NOT a replacement for MoAI. It is a vertical specialization domain that:
 - Inherits MoAI's orchestration infrastructure, quality gates, and agent runtime
@@ -71,8 +71,8 @@ The following elements can be modified through the graduation protocol:
 Brand context is not optional decoration. It is a constitutional constraint that flows through every phase:
 
 - [ZONE:Frozen] [HARD] manager-spec MUST load brand context before generating BRIEF documents
-- [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
-- [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
+- [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone source for the constitution registry mirror]
+- [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone source for the constitution registry mirror]
 - [ZONE:Frozen] [HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived agent — resolves to Agent(general-purpose) with frontend whitelist per the line 22 carve-out note; historical design-pipeline clause preserved for the constitution registry mirror)
 - [ZONE:Frozen] [HARD] sync-auditor MUST score brand consistency as a must-pass criterion
 
@@ -124,8 +124,8 @@ Each phase produces typed artifacts consumed by downstream phases:
 | Phase | Input | Output | Required |
 |-------|-------|--------|----------|
 | manager-spec | User request + brand context | BRIEF document (Goal/Audience/Brand sections) | Always |
-| moai-domain-copywriting | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
-| moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
+| moai-domain-copywriting [RETIRED] | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
+| moai-domain-brand-design [RETIRED] | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
 | moai-workflow-design | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
 | expert-frontend *(archived — see line 22)* | Copy JSON + design tokens | Working code (pages, components, styles) | Always (historical) |
 | sync-auditor | Built code + BRIEF | Score card + feedback | Always |

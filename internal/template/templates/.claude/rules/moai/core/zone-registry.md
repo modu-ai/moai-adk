@@ -542,7 +542,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md"
+  clause: "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
   canary_gate: true
 
 - id: CONST-V3R2-063
@@ -550,7 +550,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md"
+  clause: "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
   canary_gate: true
 
 - id: CONST-V3R2-064
@@ -626,8 +626,8 @@ moai constitution list --format json
   canary_gate: true
 
 # ============================================================
-# 150-159: session-handoff.md HARD clauses (new workflow rules;
-#          model-specific threshold revision:
+# 150-159: session-handoff.md HARD clauses (new workflow rules, 2026-05-04;
+#          2026-05-09 model-specific threshold revision:
 #          Trigger #1 = 1M context 50% / 200K context 90%; 5 triggers retained)
 # ============================================================
 - id: CONST-V3R2-150
@@ -894,7 +894,7 @@ moai constitution list --format json
 
 # ============================================================
 # CONST-V3R6-NNN: V3R6 modern-era parallel namespace
-# (first V3R6 modern-era entry)
+# (first V3R6 entry: SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001 M3)
 # ============================================================
 # --- runtime-recovery-doctrine.md (1 entry: V3R6-001 anti-death-spiral) ---
 - id: CONST-V3R6-001
@@ -902,6 +902,6 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/workflow/runtime-recovery-doctrine.md
   anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
-  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to a future SPEC)"
+  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to future SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001)"
   canary_gate: true
 ```

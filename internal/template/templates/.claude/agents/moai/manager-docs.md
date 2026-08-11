@@ -46,7 +46,7 @@ OUT OF SCOPE: code implementation, deployment, security audits — route to mana
 2. **Architecture** — build the content hierarchy from module relationships, design the navigation flow for a logical user journey, determine page types (guide / reference / tutorial), identify opportunities for Mermaid diagrams, and optimize the search strategy with proper metadata.
 3. **Content generation** — write pages with progressive disclosure for beginner-friendly content, format code examples with syntax highlighting, create Mermaid diagrams for architecture visualization, and build the navigation and search configuration.
 4. **Validation** — the checks below are independent and read-only, so issue them as ONE single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`):
-   - Apply established documentation best practices (WebSearch / WebFetch for up-to-date standards)
+   - Apply Documentation best practices for documentation standards
    - Run markdown linting rules for consistent formatting
    - Validate Mermaid diagram syntax
    - Check link integrity (internal and external)
@@ -118,6 +118,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When reading SPEC artifacts or performing frontmatter status transitions, invoke Skill("moai-workflow-spec") to load it on demand.
 - When running TRUST 5 quality gate checks on documentation output, invoke Skill("moai-foundation-quality") to load it on demand.
 - When weighing documentation architecture trade-offs, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When a sync-phase artifact (or any report) must be rendered to a single self-contained HTML file, invoke Skill("moai-domain-html-report") to load it on demand.
 
 ## Model/effort escalation
 

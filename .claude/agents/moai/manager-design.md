@@ -196,6 +196,8 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 - When producing a design→implementation handoff or reasoning about component structure, invoke Skill("moai-ref-react-patterns") to load it on demand.
 - When weighing design trade-offs or deep design-direction decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When the deliverable is a static diagram image or architecture infographic (pixel-precise layout, CJK line wrapping, 2x PNG export), invoke Skill("moai-domain-svg-infographic") to load it on demand.
+- When finishing interface-polish / completion work (optical alignment, shadow-vs-border, motion easing, typography smoothing, hit areas), invoke Skill("moai-ref-ui-polish") to load it on demand.
 
 ## Cross-References
 
