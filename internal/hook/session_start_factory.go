@@ -78,6 +78,12 @@ func factoryLeadNotice(runID string) string {
 	if spec := os.Getenv(config.EnvMoaiFactorySpec); spec != "" {
 		fmt.Fprintf(&b, "SPEC: %s", spec)
 	}
+	// (f) Epic Status pointer (SPEC-EPIC-STATUS-001 REQ-ES-012): a single line
+	// pointing at `moai epic status <prefix>` so a factory session can surface
+	// epic context without leaving its current turn. The pointer is informational
+	// only — full factory orchestration is owned by the Factory/Kanban Bootstrap
+	// SPEC family.
+	b.WriteString("Epic context: run `moai epic status <prefix>` for a disk-grounded milestone map.\n")
 	return b.String()
 }
 
