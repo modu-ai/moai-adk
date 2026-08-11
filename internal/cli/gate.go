@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
@@ -54,9 +56,8 @@ func init() {
 // it to the caller (verified by M1.c — git pre-commit stderr reaches the Bash
 // tool result).
 func runGate(cmd *cobra.Command, _ []string) error {
-	cfg := quality.DefaultGateConfig()
-	cfg.ProjectDir = resolveGateProjectDir()
-	cfg.GoBuildTags = readGateGoBuildTags(cfg.ProjectDir)
+	projectDir := resolveGateProjectDir()
+	cfg := loadGateCfgForCLI(projectDir)
 
 	// Overall deadline: vet (30s) + lint (60s) + test (120s) + ast-grep + slack.
 	// Per-step timeouts inside the gate enforce the real ceilings; this outer
@@ -79,6 +80,81 @@ func runGate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), output)
 	}
 	return nil
+}
+
+// loadGateCfgForCLI reads the gate configuration from
+// <projectDir>/.moai/config/sections/gate.yaml via the shared config.loadGateSection
+// loader (SPEC-GATE-ASTGREP-REPAIR-001 M3 / REQ-GAR-006). This is the same
+// loader the PreToolUse path uses (internal/hook/pre_tool.go loadGateConfig),
+// so the standalone `moai gate` CLI and the PreToolUse hook share one SSOT for
+// Enabled/BlockOnError/WarnOnlyMode.
+//
+// Fall-back policy (REQ-GAR-007 / AP-GAR-004): when the config cannot be
+// loaded (file missing, unparseable, or projectDir empty), the function
+// returns quality.DefaultGateConfig() with the project dir + build tags
+// applied. The default is advisory (WarnOnlyMode would be false here but the
+// gate's own block predicate requires BlockOnError && !WarnOnlyMode, and
+// DefaultGateConfig sets BlockOnError=true — so the fallback IS blocking).
+// This matches the pre-M3 behavior so the transition does not silently weaken
+// the gate for projects that relied on the hard default. Projects that want
+// advisory mode set it explicitly in gate.yaml, which IS read after M3.
+//
+// The config.GateConfig → quality.GateConfig mapping mirrors
+// pre_tool.go loadGateConfig verbatim, including the disabled_steps verbatim
+// copy (issue #1265: the runner reads FALSE as "skip") and the RulesDir
+// default (".moai/config/astgrep-rules" when empty).
+func loadGateCfgForCLI(projectDir string) *quality.GateConfig {
+	qcfg := quality.DefaultGateConfig()
+
+	if projectDir != "" {
+		moaiDir := filepath.Join(projectDir, ".moai")
+		loader := config.NewLoader()
+		loaded, err := loader.Load(moaiDir)
+		if err != nil {
+			slog.Warn("moai gate: config load failed, using hardcoded defaults",
+				"moaiDir", moaiDir, "error", err)
+		} else if loaded != nil {
+			qcfg = mapConfigGateToQuality(loaded.Gate)
+		}
+	}
+
+	qcfg.ProjectDir = projectDir
+	qcfg.GoBuildTags = readGateGoBuildTags(projectDir)
+	return qcfg
+}
+
+// mapConfigGateToQuality converts the config-layer GateConfig into the
+// quality-layer GateConfig shape. It mirrors pre_tool.go loadGateConfig's
+// mapping so both paths agree on timeout/disabled_steps/ast-grep field
+// interpretation.
+func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
+	qcfg := &quality.GateConfig{
+		Enabled:     g.Enabled,
+		SkipTests:   g.SkipTests,
+		VetTimeout:  g.VetTimeoutDuration(),
+		LintTimeout: g.LintTimeoutDuration(),
+		TestTimeout: g.TestTimeoutDuration(),
+	}
+	// Map gate.disabled_steps through verbatim (issue #1265): the runner reads
+	// FALSE as "skip this step", so normalising values here would silently stop
+	// the skip from applying.
+	if len(g.DisabledSteps) > 0 {
+		qcfg.DisabledSteps = make(map[string]bool, len(g.DisabledSteps))
+		for k, v := range g.DisabledSteps {
+			qcfg.DisabledSteps[k] = v
+		}
+	}
+	ag := g.AstGrepGate
+	qcfg.AstGrepGate = &quality.AstGrepGateConfig{
+		Enabled:      ag.Enabled,
+		RulesDir:     ag.RulesDir,
+		BlockOnError: ag.BlockOnError,
+		WarnOnlyMode: ag.WarnOnlyMode,
+	}
+	if qcfg.AstGrepGate.RulesDir == "" {
+		qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
+	}
+	return qcfg
 }
 
 // resolveGateProjectDir returns the project directory the gate should run
