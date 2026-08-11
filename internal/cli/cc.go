@@ -17,7 +17,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-- claude-args...]",
+	Use:   "cc [-p profile] [-f [SPEC-ID] | -f --name <role>-<run-id>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -40,6 +40,17 @@ Flags:
                                 replacing the current session (requires tmux)
   --chrome / --no-chrome        Toggle Chrome MCP
 
+Factory Mode:
+  -f, --factory [SPEC-ID]       Enter as the LEAD of a factory run. Seeds a
+                                plan -> run -> verify -> sync chain in this
+                                session. The optional SPEC-ID ties the run to a
+                                SPEC. The lead drives the whole chain; four
+                                companion sessions are launched by hand.
+  -f --name <role>-<run-id>     Enter as a COMPANION of an existing factory run.
+                                Joins the run without seeding a chain. The four
+                                roles are: plan, run, review, sync. The run-id
+                                is the identifier the lead announced at startup.
+
 Permission Modes:
   default            Ask permissions for file edits and commands
   acceptEdits        Auto-accept file edits, ask for commands (project default)
@@ -55,7 +66,10 @@ Examples:
   moai cc -p work -- --print           # Profile + pass-through args to Claude
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
   moai cc -w                           # Launch in auto-named isolated worktree
-  moai cc -w feat-login --spawn        # Teammate session in a new tmux window`,
+  moai cc -w feat-login --spawn        # Teammate session in a new tmux window
+  moai cc -f                           # Factory lead: seeds the plan->run->verify->sync chain
+  moai cc -f SPEC-AUTH-001             # Factory lead tied to SPEC-AUTH-001
+  moai cc -f --name run-abc123         # Factory companion: joins run abc123 as the run worker`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,

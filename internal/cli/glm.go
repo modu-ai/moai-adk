@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-- claude-args...]",
+	Use:   "glm [-p profile] [-f [SPEC-ID] | -f --name <role>-<run-id>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -60,6 +60,17 @@ Flags:
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
+Factory Mode:
+  -f, --factory [SPEC-ID]       Enter as the LEAD of a factory run. Seeds a
+                                plan -> run -> verify -> sync chain in this
+                                session. The optional SPEC-ID ties the run to a
+                                SPEC. The lead drives the whole chain; four
+                                companion sessions are launched by hand.
+  -f --name <role>-<run-id>     Enter as a COMPANION of an existing factory run.
+                                Joins the run without seeding a chain. The four
+                                roles are: plan, run, review, sync. The run-id
+                                is the identifier the lead announced at startup.
+
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
 
@@ -73,6 +84,8 @@ Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
+  moai glm -f              # Factory lead on GLM: seeds the chain
+  moai glm -f --name sync-abc123   # Factory companion on GLM
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
