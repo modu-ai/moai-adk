@@ -88,13 +88,19 @@ func runCC(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-MODE-001: --factory / -f seeds a plan -> run -> verify -> sync
-	// chain in the launched session. Parsed after --spawn is stripped (a spawned
-	// session re-issues this command and must carry the token through) and before
-	// worktree handling (so a factory token can never be mistaken for a -w value).
-	// The environment mutation is restored on every return path, including error.
-	if specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs); factoryEnabled {
-		filteredArgs = factoryArgs
+	// SPEC-FACTORY-BOOTSTRAP-001: -f is factory membership whose role is
+	// disambiguated by --name. Both flags are evaluated together (no short-
+	// circuit), then the combination selects the branch per the §A.2 truth
+	// table (REQ-FB-001, REQ-FB-002). Parsed after --spawn is stripped (a
+	// spawned session re-issues this command and must carry the token through)
+	// and before worktree handling (so a factory token can never be mistaken
+	// for a -w value). The environment mutation is restored on every return
+	// path, including error.
+	specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs)
+	filteredArgs = factoryArgs
+	label, isCompanion := parseCompanionLabel(filteredArgs)
+	switch resolveFactoryBranch(factoryEnabled, isCompanion) {
+	case factoryBranchLead:
 		defer enterFactoryMode(specID)()
 		recordFactorySession(specID, factory.BackendClaude)
 		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
@@ -102,10 +108,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	} else if label, isCompanion := parseCompanionLabel(filteredArgs); isCompanion {
-		// A companion of a factory run: same raised Stop-hook block cap as the
-		// lead, no chain seed. --name belongs to claude, so it is recognized
-		// here and left in filteredArgs.
+	case factoryBranchCompanion:
 		defer enterFactoryCompanionMode(label)()
 		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
 		if len(settingsFlag) > 0 {

@@ -218,3 +218,39 @@ func rejectFactoryOnCG(args []string) error {
 		"which contradicts Factory Mode's one-session / one-backend / one-chain premise; "+
 		"use 'moai cc --factory' or 'moai glm --factory' instead", factoryUnsupportedBackendSentinel)
 }
+
+// factoryBranch enumerates the three dispatch outcomes of the §A.2 truth table.
+type factoryBranch int
+
+const (
+	factoryBranchNone     factoryBranch = iota // no-op — -f absent (regardless of --name shape)
+	factoryBranchLead                          // -f present, --name is NOT companion-shape
+	factoryBranchCompanion                     // -f present, --name IS companion-shape
+)
+
+// resolveFactoryBranch selects the dispatch branch from the combination of -f
+// present and companion-shape --name present.
+//
+// This is the four-row truth table at spec.md §A.2 (REQ-FB-001, REQ-FB-002):
+//
+//	factoryEnabled | isCompanion || branch
+//	---------------++--------------
+//	      true      |    false     || lead       (-f alone, or -f --name <non-companion>)
+//	      true      |    true      || companion  (-f --name <role>-<run-id>)
+//	      false     |    false     || no-op      (--name <non-companion>, or no --name)
+//	      false     |    true      || no-op      (--name <companion-shape> alone — BREAKING from 94025ce0a)
+//
+// The two !factoryEnabled rows collapse to no-op because `isCompanion` is
+// consulted only when -f is present (spec.md §A.2.1 / AC-FB-027): a companion-
+// shape --name alone, which entered companion mode under 94025ce0a, is
+// reclassified as a no-op by REQ-FB-001's no-`-f` clause.
+func resolveFactoryBranch(factoryEnabled, isCompanion bool) factoryBranch {
+	switch {
+	case factoryEnabled && isCompanion:
+		return factoryBranchCompanion
+	case factoryEnabled && !isCompanion:
+		return factoryBranchLead
+	default:
+		return factoryBranchNone
+	}
+}

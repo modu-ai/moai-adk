@@ -163,11 +163,14 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-MODE-001: --factory / -f parity with `moai cc`. Both are
-	// single-backend launchers, so both support the chain. See cc.go for the
-	// ordering rationale and the restore contract.
-	if specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs); factoryEnabled {
-		filteredArgs = factoryArgs
+	// SPEC-FACTORY-BOOTSTRAP-001: -f is factory membership whose role is
+	// disambiguated by --name. See cc.go for the full rationale and truth
+	// table; glm mirrors cc exactly except for the backend constant.
+	specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs)
+	filteredArgs = factoryArgs
+	label, isCompanion := parseCompanionLabel(filteredArgs)
+	switch resolveFactoryBranch(factoryEnabled, isCompanion) {
+	case factoryBranchLead:
 		defer enterFactoryMode(specID)()
 		recordFactorySession(specID, factory.BackendGLM)
 		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
@@ -175,8 +178,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	} else if label, isCompanion := parseCompanionLabel(filteredArgs); isCompanion {
-		// Companion parity with `moai cc`; see cc.go for the rationale.
+	case factoryBranchCompanion:
 		defer enterFactoryCompanionMode(label)()
 		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
 		if len(settingsFlag) > 0 {
