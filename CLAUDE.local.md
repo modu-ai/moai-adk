@@ -219,94 +219,7 @@ test(settings): add TestEnsureGlobalSettingsEnv test cases
 
 ## 5. Version Management
 
-### Single Source of Truth
-
-- [HARD] `go.mod` module version + git tags are the authoritative sources
-- [HARD] `pkg/version/version.go` reads from git tags at build time
-
-**Version Reference:**
-- Authoritative Source: Git tags (e.g., `v1.0.0`)
-- Runtime Access: `pkg/version/version.go` via `git describe`
-- Config Display: `.moai/config/sections/system.yaml` (updated by release process)
-
-### [HARD] Pre-release Versioning — SemVer 2.0.0
-
-Canonical pre-release form: **`vX.Y.Z-rc.N`** (dot before the number, `N` starting at `0`).
-
-```
-v3.1.0-rc.0   v3.1.0-rc.1   ...   v3.1.0-rc.10      → then v3.1.0
-```
-
-The dot is not cosmetic. SemVer splits a pre-release on `.` and compares each
-identifier separately, comparing a purely numeric identifier **numerically**.
-So `rc.9 < rc.10` orders correctly. The older undotted form (`rc9`, `rc10`) is a
-single alphanumeric identifier and compares ASCII-lexically, which puts `rc10`
-*before* `rc9` — the failure surfaces only once a line reaches its tenth
-candidate, which is exactly when a release is least forgiving.
-
-Rules:
-
-- [HARD] New pre-release tags use `-rc.N`. A numeric identifier carries no
-  leading zero (`rc.1`, never `rc.01`) — SemVer forbids it and
-  `scripts/release.sh` rejects it.
-- Legacy undotted tags (`v3.0.0-rc12` and the eleven before it) stay valid and
-  are NOT retagged; `scripts/release.sh` still accepts that form so the existing
-  history remains reproducible. Do not author new tags in it.
-- Enforcement lives in `scripts/release.sh` Validation 1, which implements the
-  official SemVer 2.0.0 grammar (pre-release + optional build metadata).
-- Local testing needs no tag at all — see Build Version Injection below.
-
-### Build Version Injection
-
-Version is injected at build time using ldflags:
-
-```bash
-# Build with version injection
-go build -ldflags="-X github.com/modu-ai/moai-adk/pkg/version.Version=v1.0.0"
-
-# Makefile handles this automatically
-make build VERSION=v1.0.0
-```
-
-**Local pre-release testing needs no git tag.** `VERSION` is injected via ldflags
-at build time, so a release candidate can be built and installed locally without
-tagging, pushing, or invoking `scripts/release.sh`:
-
-```bash
-make build   VERSION=v3.1.0-rc.0   # bin/moai
-make install VERSION=v3.1.0-rc.0   # $GOPATH/bin/moai
-make release-local VERSION=v3.1.0-rc.0   # dist copy + version.json
-```
-
-Tagging is a separate, remote-facing act performed only by the release harness.
-
-### Files Requiring Version Sync
-
-When releasing new version, update:
-
-**Documentation Files:**
-- README.md (Version line)
-- README.ko.md (Version line)
-- CHANGELOG.md (New version entry — **English-only**; Korean lives in `.moai/release-notes/vX.Y.Z.ko.md`, NOT in CHANGELOG.md)
-- .moai/release-notes/vX.Y.Z.ko.md (Korean release notes — consumed by the GitHub release body and the docs-site `ko` changelog page)
-
-**Configuration Files:**
-- .moai/config/sections/system.yaml (moai.version)
-- internal/template/templates/.moai/config/config.yaml (moai.version)
-
-### Release Process
-
-Driven by the `hns-release-specialist` harness (`/harness:release`) under the PR-mandatory regime (`.moai/docs/git-local-workflow-doctrine.md` §18/§23). High-level:
-
-1. Phase 4 — update `CHANGELOG.md` (**English-only**, commit-complete: cross-check `git log vPREV..HEAD`, no user-facing commit omitted; `docs:`/`chore:`/`style:`/`test:`/merge/typo commits excluded).
-2. Phase 4.5 — author `.moai/release-notes/vX.Y.Z.ko.md` (Korean counterpart).
-3. Phase 5 — human gate (release/abort).
-4. Phase 6 — `release/vX.Y.Z` PR → **merge commit (NOT squash)** → `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (annotated tag + provenance trailer, triggers GoReleaser; `verify-provenance` gates GoReleaser).
-5. Phase 7 — GoReleaser publishes a `changelog.use: github` English body; overwrite with English (CHANGELOG) + Korean (`.moai/release-notes/vX.Y.Z.ko.md`) via `gh release edit vX.Y.Z --notes-file <merged>`.
-
-[HARD] `CHANGELOG.md` English-only; GitHub Release English-first then Korean. A manual `git tag` + `make release VERSION=` (the older flow below) is NOT the release path under the PR-mandatory regime — `scripts/release.sh` is; the `make build VERSION=` snippet in §Build Version Injection above remains valid for local build-only injection.
-
-> Legacy (build-only, not release): `make build VERSION=1.0.0` injects the version into a local binary via ldflags; it does NOT tag, push, or publish.
+See: `.moai/docs/version-management.md` — SemVer 2.0.0 pre-release form (`-rc.N`), build version injection via ldflags, files requiring version sync, release process under the PR-mandatory regime.
 
 ---
 
@@ -358,59 +271,7 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 
 ## 7. Hook Development Guidelines
 
-### [HARD] Shell Script Hooks Only
-
-moai-adk-go uses shell scripts for hooks, NOT Python:
-
-**Hook Wrapper Pattern:**
-```bash
-#!/bin/bash
-# .claude/hooks/moai/handle-session-start.sh
-
-# Read stdin JSON from Claude Code
-INPUT=$(cat)
-
-# Call moai binary with hook subcommand
-moai hook session-start <<< "$INPUT"
-```
-
-**Why Shell Scripts:**
-- Faster execution (no Python startup overhead)
-- Always available (no dependency on uv/python)
-- Cross-platform (bash, /bin/sh)
-
-### Hook Command Format
-
-**settings.json hook configuration:**
-```json
-{
-  "hooks": {
-    "SessionStart": [{
-      "hooks": [{
-        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-        "timeout": 5
-      }]
-    }]
-  }
-}
-```
-
-**Key Rules:**
-- [HARD] Always quote `$CLAUDE_PROJECT_DIR`: `"$CLAUDE_PROJECT_DIR"`
-- [HARD] Use full path to hook wrapper script
-- [HARD] Set appropriate timeout. MoAI policy default is 5 seconds (the Claude Code platform default is 10 minutes; MoAI tightens this to 5 seconds to avoid stalling the session).
-
-### Platform Differences
-
-**macOS/Linux:**
-```json
-"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/hook.sh\""
-```
-
-**Windows:**
-```json
-"command": "\"%CLAUDE_PROJECT_DIR%\\.claude\\hooks\\moai\\hook.sh\""
-```
+See: `.moai/docs/hook-development.md` — shell-script-only hook pattern, hook wrapper template, settings.json format, `$CLAUDE_PROJECT_DIR` quoting rules, platform differences, timeout policy.
 
 ---
 
@@ -659,129 +520,19 @@ docs-site는 Claude Warm Editorial 디자인 시스템(코랄 `#cc785c` · Prete
 
 ---
 
-## 18. Git Workflow — Enhanced GitHub Flow
+## References
 
-v2.14.0 릴리스 이후 공식 채택. 5-axis 즉시 개선 (branch protection / label 3축 / merge strategy / Release Drafter / hotfix naming) + Enhanced GitHub Flow 11 branch prefix + Merge strategy 표 + BODP 3-Signal Evaluation + v2.14.0 Case Study + AskUserQuestion Enforcement Protocol 등 전체 doctrine은 외부 파일 참조. **(2026-07-20) branch protection 축이 `enforce_admins: true`로 적용 완료 — main direct push 전면 차단, 모든 tier PR 경유 (§18.7 + §18.3.1 참조). Hybrid Trunk main-direct는 RETIRED.**
+Sections §18-27 were consolidated into external `.moai/docs/` files to reduce launch-time context. Each entry below is the authoritative location for its domain.
 
-See: `.moai/docs/git-workflow-doctrine.md`
-
----
-
-## 19. AskUserQuestion Enforcement Protocol
-
-> **[CANONICAL]** 본 섹션의 모든 enforcement 룰 — deferred tool preload 의무, pre-response self-check 4항목, anti-pattern 카탈로그, recovery protocol — 은 `.claude/rules/moai/core/askuser-protocol.md` 에 단일 진실 공급원(SSOT)으로 존재합니다. 본 §19은 cross-reference만 유지하며, 규칙 갱신 시 canonical 파일을 수정하세요.
-
-### Local Notes
-
-본 incident 기록 (2026-04-24): `~/.claude/projects/{hash}/memory/feedback_askuserquestion_enforcement.md`. v3.4.0부터 enforcement 정책 HARD 운영. 위반 탐지 시 즉시 canonical §Recovery Protocol 적용 + memory 추가 기록.
-
-상위 정책 참조:
-- CLAUDE.md §1 HARD Rules (AskUserQuestion-Only + Deferred Tool Preload)
-- CLAUDE.md §8 User Interaction Architecture
-- `.claude/skills/moai/SKILL.md` § Red Flags + Verification
-
-### §19.1 구현 착수 승인 Mandatory Restoration (REQ-ATR-015 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
-
-[HARD] **구현 착수 승인 (plan-to-implement HUMAN GATE)는 자율 bypass 대상이 아니다.** Plan-phase 산출물이 audit-ready 상태로 PASS 되었더라도, run-phase 진입 직전 orchestrator는 자율 흐름을 중단하고 사용자에게 명시적 진행 승인을 `AskUserQuestion`으로 받아야 한다. 이는 Anthropic Claude Code의 Ctrl+G plan editor mandate (plan-to-implement 경계에서 사용자 개입 의무)와 정합한다.
-
-**skip-eligible 0.90 autonomous bypass 정책의 적용 범위**: `skip-eligible` (score ≥ 0.90) autonomous bypass는 **Phase 0.5 plan-auditor verdict 재실행에만** 적용된다 — CONST-V3R5-026 + `.claude/rules/moai/workflow/spec-workflow.md` § Plan Audit Gate skip policy 참조. **구현 착수 승인 (plan-to-implement HUMAN GATE)에는 적용되지 않는다**. Phase 0.5 SKIP과 구현 착수 승인 SKIP은 서로 다른 결정 — Phase 0.5는 plan-auditor의 verdict 재실행 여부 (자동화 가능), 구현 착수 승인은 사용자가 run-phase 진입을 승인할지 여부 (사용자 결정 필수).
-
-**오케스트레이터 의무 (구현 착수 승인 entry)**:
-1. Plan-phase 산출물 + plan-auditor verdict 요약을 사용자에게 prose로 제시
-2. `ToolSearch(query: "select:AskUserQuestion")` preload
-3. `AskUserQuestion` 으로 "run-phase 진입 / 추가 검토 / 중단" 3-option 제시 (첫 옵션 "(권장)" 라벨)
-4. 사용자 응답 수신 후 run-phase 진입 (또는 중단)
-
-**위반 anti-pattern**: Phase 0.5 verdict가 PASS skip-eligible (≥ 0.90)이라는 이유만으로 사용자 승인 없이 `/moai run`을 자율 시작하는 행위. 구현 착수 승인은 plan-auditor 점수와 무관한 별도 사용자 의지 확인 절차다.
-
-상위 SPEC 참조:
-- `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-015 (구현 착수 승인 restoration)
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (구현 착수 승인 vs Phase 0.5 vs Phase 0.95 boundary)
-
----
-
-## 20. Vercel Build Cost Guard
-
-### [HARD] Build Machine = Elastic 유지
-
-- Vercel Team default + 각 프로젝트 모두 **Elastic** 머신 사용. Turbo($0.126/min) 또는 Standard로 변경 금지 — Elastic은 $0.0035/CPU min로 약 40배 저렴
-- 새 프로젝트 추가 시 Settings → Build and Deployment → Build Machine = Elastic 확인
-- 비용 폭탄 의심 시 **가장 먼저 Build Machine 설정 점검**
-- docs-site는 §17.6 Vercel 프로젝트 바인딩과 함께 운영 — 비용 의심 시 §17.6과 본 정책 동시 점검
-
----
-
-## 21. Dev-Only Commands Isolation (Split Harnesses)
-
-3개 split 메인테이너 하네스 (`/harness:release-update`, `/harness:github`, `/harness:release`) + 산출물은 로컬 moai-adk 개발 전용. `internal/template/templates/` 어디에도 흔적 금지 (CI guard: `internal/template/split_namespace_test.go` `TestSplitHarnessNamespaceNoLeak`, sentinel `SPLIT_HARNESS_NAMESPACE_LEAK`). 구 `97-*`/`98-*`/`99-*` 번호 커맨드는 한때 단일 unified 하네스로 통합되었다가 SPEC-V3R6-DEV-HARNESS-SPLIT-001 에서 3개 독립 하네스로 분리됨 (release-update 만 Runner+manifest 보유; github/release 는 thin command → specialist 직접). 배포 금지 파일 일람, 검증 체크리스트, 위반 시 영향, 신규 dev-only capability 추가 절차 등 전체 doctrine은 외부 파일 참조.
-
-See: `.moai/docs/dev-only-commands-isolation.md`
-
----
-
-## 22. Dev Settings Intent — local settings.json 의도 명문화
-
-[HARD] 로컬 `.claude/settings.json`의 키 의도(defaultMode / enableAllProjectMcpServers / teammateMode / env.PATH / outputStyle / model / worktree auto-toggles / branch_guard.enabled)와 "의도된 격리" 정책 전문은 `See: .moai/docs/local-dev-settings-intent.md` (§22.1-§22.9). 본체 다이어트를 위해 외부 파일로 이관(2026-08-03). settings 키 의도가 변경되면 외부 파일을 갱신할 것. 핵심 원칙만 본체에 잔류: (1) `teammateMode`(`.claude/settings.local.json`, `"tmux"`/`""`) != `llm.yaml team_mode`(`cg`/`glm`/`""`) — 위치·값·용도 상이; (2) `env.PATH`는 Claude Code가 `$HOME`을 expand 안 하므로 `settings.local.json`에 절대경로; (3) 로컬 `model` 키 의도적 미탑재(last-choice 존중, 템플릿 `model: sonnet`은 보존); (4) worktree 세 토글 + branch_guard.enabled 모두 분산 기본 `false` — 감사 시 "결함"으로 되돌리지 말 것.
-
----
-
-## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
-
-[HARD] **(2026-07-20 개정) 1인 OSS PR-mandatory 정책 — `enforce_admins: true`로 main direct push 완전 차단 (admin 포함).** 모든 변경 (daily Tier S/M commit 포함)은 PR 경유; self-merge 허용 (0 approvals, 4개 CI check 통과 시). 종전 "모든 tier(S/M/L) main 직접 push 허용" Hybrid Trunk 정책은 RETIRED. tier는 이제 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향. tag push(`scripts/release.sh`)는 branch protection 무관 → tag flow 무영향. 다루는 주제: pre-push hook 수동 설치(§23.1, main엔 이제 redundant·harmless), GitHub branch protection 현황(§23.2, enforce_admins:true), 운영 오류 패턴 A4/A5/A6 + Late-Branch Phase D 2중 보호(§23.3–§23.6), [HARD] 운영 원칙(§23.7, PR-mandatory), Tier-based PR Routing(§23.9, 모든 tier PR), Multi-Session Race Mitigation 4중 방어(§23.8).
-
-See: `.moai/docs/git-local-workflow-doctrine.md`
-
----
-
-## 24. Harness Namespace 분리 정책
-
-[HARD] Skills/Agents namespace는 "범용 배포" vs "사용자 생성"으로 분리한다. `moai-*` / `moai-harness-*` skill + `.claude/agents/{core,expert,meta}/` = template-managed (sync 시 overwrite) vs `hns-*` skill(정식, SPEC-HNS-PREFIX-RENAME-001) + 레거시 `harness-*`/`my-harness-*` skill + `.claude/agents/harness/` = user-owned (`moai update`가 절대 삭제·수정 금지, 반드시 백업+보존). `internal/template/templates/`에 `hns-*`/`harness-*` skill 또는 `.claude/agents/harness/` 디렉터리 누출 금지. §24.4 `moai update` 동작 contract(delete-vs-preserve 매트릭스) + §24.5 Phase 2 drift entry-condition 포함.
-
-See: `.moai/docs/harness-namespace-doctrine.md`
-
----
-
-## 25. Template Internal-Content Isolation
-
-[HARD] `internal/template/templates/` 산출물은 외부 사용자에게 배포되는 범용 자산이며 moai-adk 내부 개발 흔적을 포함하면 안 된다. 금지 클래스: 내부 SPEC ID, REQ/AC 토큰, audit 인용("Audit N Finding AX"), 내부 작업 날짜, commit SHA, archive/memory 경로. 허용: generic prose, 메커니즘 설명, 공개 자료 인용, 영구 규칙 인용, MoAI-ADK 시스템 식별자. CI guard: `internal/template/internal_content_leak_test.go` + `.github/workflows/template-neutrality-check.yaml`. 5-item pre-commit self-check + Allowed/Forbidden content-class catalogue + anti-pattern catalogue(AP-25.1~25.3)가 포함된다. §15(언어 중립성)·§21(dev-only commands)·§24(harness namespace)와 동일 isolation doctrine 계열.
-
-See: `.moai/docs/template-internal-isolation-doctrine.md`
-
----
-
-## 26. Linear 연동 (개인/로컬 전용)
-
-[ZONE:Local-Only] 개인/로컬 전용. 전문(워크스페이스 매핑 · 2계층 운영 모델 · Linear↔SPEC 상태 매핑 · MCP 도구 지침 · `idea:`/emoji 트리거)은 `See: .moai/docs/local-linear-integration.md`. 본체 다이어트를 위해 외부 파일로 이관(2026-08-03). 핵심만 잔류: 이 리포(moai-adk-go)의 Linear Project에 `Idea` 라벨 + Backlog(Triage) 이슈로 기록; SPEC 저작은 항상 리포 파일에서만(Linear로 옮기지 않음); `CLAUDE.local.md`는 git-tracked 공개 파일이므로 "로컬 전용"은 템플릿 미러 금지를 뜻함(비공유가 아님).
-
----
-
-## 27. 에이전트-스킬 아키텍처 필수 조건 (2026-07-15 채택)
-
-[HARD] 신규/수정되는 모든 에이전트·스킬 개발 시 아래 5개 조건을 필수로 준수한다.
-
-### §27.1 에이전트별 스킬 제공 의무
-
-- 모든 에이전트는 **1개 이상의 스킬 세트**를 제공받아야 하며, 스킬은 다음 4요소로 구성된다:
-  1. **기본 워크플로우 스킬** — 에이전트의 핵심 작업 절차 (예: `moai-workflow-*`)
-  2. **노하우 레퍼런스** — 도메인 지식/패턴 참조 (예: `moai-ref-*`)
-  3. **스크립트 수행** — 실행 가능한 스크립트/검증 레시피 (bundled scripts, verify recipes)
-  4. **호출 트리거** — 언제 이 스킬을 로드할지의 트리거 조건 (frontmatter description + Conditional Skill Loading)
-- 연결 메커니즘: `skills:` frontmatter preload(≤2) + orchestrator 주입 `Skill()` 지시 (`.claude/rules/moai/workflow/skill-routing.md`).
-
-### §27.2 스킬 언어
-
-- [HARD] 모든 스킬 본문(SKILL.md + references + scripts 주석)은 **영어로 작성** (CLAUDE.md §9 "Commands, Agents, Skills Instructions: Always English"와 정합).
-
-### §27.3 /moai:sub-commands 슬래시 래핑 유지
-
-- `/moai:<sub>` 형태의 스킬 래핑 커맨드(deprecated command 기능 활용)를 사용자 편의 UX로 **유지·확장**한다 — `/` 입력 시 커맨드 리스트에 힌트 + 빠른 찾기 제공이 목적.
-- 신규 서브커맨드 추가 시 `/moai:<sub>` 래퍼도 함께 생성한다 (template source 동기화 포함, §2 Template-First).
-
-### §27.4 /moai:harness 메타 하네스
-
-- `/moai:harness <자연어 요청>` 은 moai-adk 에이전트+스킬 자산을 활용한 **메타 하네스**로 동작한다: 스킬 체이닝 + 워크플로우 설계 + 에이전트 체이닝/위임 배정을 한 번에 수행 (v4 Builder: ANALYZE / PLAN / GENERATE / ACTIVATE).
-
-### §27.5 분석-우선 실행 계획 (Analyze-First 강화)
-
-- 사용자가 일반 요청을 하든 `/moai '요청'` 을 하든, 실행 전에 반드시: **요구사항 분석 → 계획 수립 → 스킬·에이전트 호출 계획 명시 → 진행**. 근거: CLAUDE.md §2 Request Processing Pipeline (①~⑤).
-- 실행 계획에는 어떤 스킬을 로드하고 어떤 에이전트를 어떤 순서로 spawn할지가 포함되어야 하며, 사용자에게 제시 후 진행한다 (Rule 1 Approach-First + 구현 착수 승인 gate 유지).
+- **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
+- **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
+- **§18 Git Workflow** (Enhanced GitHub Flow, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
+- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval Mandatory Restoration** (REQ-ATR-015): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (the gate is mandatory and score-independent; plan-auditor PASS never auto-bypasses it)
+- **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
+- **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
+- **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
+- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR): `.moai/docs/git-local-workflow-doctrine.md`
+- **§24 Harness Namespace** (template-managed vs user-owned separation): `.moai/docs/harness-namespace-doctrine.md`
+- **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
+- **§26 Linear 연동** (local-only): `.moai/docs/local-linear-integration.md`
+- **§27 Agent-Skill Architecture** [HARD]: every agent gets ≥1 skill set (4 elements: workflow skill + knowhow reference + scripts + trigger); all skill bodies in English; `/moai:<sub>` slash-wrapping maintained; `/moai:harness` meta-harness (v4 Builder); Analyze-First execution plan before any work
