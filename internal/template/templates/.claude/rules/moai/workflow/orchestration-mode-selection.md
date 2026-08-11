@@ -248,6 +248,12 @@ Every `--mode` value and every scale label corresponds to exactly one catalog mo
 
 ---
 
-Version: 1.3.0 (IGGDA Path B amendment retired — §H/§I/§J removed; Path A Implementation Kickoff Approval restored as the sole plan→run gate; IGGDA hook driver + audit-preservation guard removed from the template tree)
+## §G.2 — `manager-lead` as a Mode-5-shaped delegation target (NOT a Mode 7)
+
+> **Non-regression note (the hierarchical-team SPEC).** Adding `manager-lead` to the retained-agent catalog does NOT alter the Phase 4 execution-mode catalog in §A. `manager-lead` is a Mode-5-shaped delegation target: the orchestrator spawns it sequentially (Mode 5 envelope), and `manager-lead` in turn fans out write-capable leaf workers under the depth-2 seal (the sole Agent-carrier carve-out, depth-2 sealed). This is NOT a Mode 7 — no new mode is introduced. Mode 3 (`agent-team`) stays RETIRED, the `MODE_TEAM_UNAVAILABLE` sentinel is unchanged, and the `--mode` dispatch-axis values (`autopilot` / `loop` / `team` / `pipeline`) are unchanged. The entry predicate for `manager-lead` (≥3 milestones AND ≥10 files AND cross-domain fan-out) is logged in `progress.md §F Mode Selection` before the spawn, exactly as any other Mode-5 delegation; `manager-lead` does not modify the decision tree in §B — it is selectable once the orchestrator's Tier L coordination threshold is met.
+
+---
+
+Version: 1.3.1 (§G.2 added — `manager-lead` non-regression note per the hierarchical-team SPEC; §A mode catalog, §B decision tree, §C capability gates, and the `--mode` dispatch-axis values all unchanged)
 Origin: derived from the canonical agent catalog and IGGDA policies.
 Status: Active — applies to all `/moai run` Phase 4 invocations

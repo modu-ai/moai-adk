@@ -89,7 +89,7 @@ The cadence run SHALL NOT auto-execute any remediation. This is the contract's s
 
 ## When to Schedule vs Event-Driven
 
-Not every discovery pathway belongs on a cadence. A recipe here is appropriate when work needs to be found **without** a triggering event — drift that accumulates silently, over-engineering that creeps in unnoticed, leftovers nobody remembers to re-check. Do NOT cron what should be event-driven: CI failures already have a dedicated event path (the orchestrator hands a failing required check off to the CI auto-fix loop; see `.claude/rules/moai/workflow/ci-autofix-protocol.md`) that activates on the event itself (a failing check), not on a wall-clock interval. Scheduling a cadence recipe to re-poll something that already has an event-driven trigger duplicates effort and adds latency instead of removing it.
+Not every discovery pathway belongs on a cadence. A recipe here is appropriate when work needs to be found **without** a triggering event — drift that accumulates silently, over-engineering that creeps in unnoticed, leftovers nobody remembers to re-check. Do NOT cron what should be event-driven: CI failures already have a dedicated event path (the orchestrator hands a failing required check off to the CI auto-fix loop; see `.claude/rules/moai/workflow/ci-watch-protocol.md` and `.claude/rules/moai/workflow/ci-autofix-protocol.md`) that activates on the event itself (a failing check), not on a wall-clock interval. Scheduling a cadence recipe to re-poll something that already has an event-driven trigger duplicates effort and adds latency instead of removing it.
 
 ## Fallback and Edge Cases
 
@@ -103,8 +103,8 @@ Not every discovery pathway belongs on a cadence. A recipe here is appropriate w
 - `.claude/rules/moai/workflow/goal-directive.md` § Comparing Autonomous-Continuation Approaches — the native-`/loop`-vs-`/moai loop` distinctness note this bridge composes around, without merging.
 - `.claude/skills/moai/workflows/gate.md`, `.claude/skills/moai/workflows/review.md` (`--lean` mode), `.claude/skills/moai/workflows/fix.md` (Level 1 classification) — the cited read-only/advisory/uncommitted-edit-only entry points.
 - `.claude/skills/moai/workflows/loop.md` § Ceiling-Exit Verdict Contract / § Remaining-Issue Persistence — the verdict-file schema recipe 3 reads (consumed here, not defined here).
-- `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the event-driven CI path this catalog deliberately does not duplicate.
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` (header) — the Implementation Kickoff Approval invariant this bridge cites and never weakens.
+- `.claude/rules/moai/workflow/ci-watch-protocol.md`, `.claude/rules/moai/workflow/ci-autofix-protocol.md` — the event-driven CI path this catalog deliberately does not duplicate.
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` (header) — Per the Implementation Kickoff Approval mandatory-restoration invariant (orchestration-mode-selection.md §E); this bridge cites and never weakens it.
 - `.claude/rules/moai/core/askuser-protocol.md` — the AskUserQuestion channel monopoly, unaffected by any cadence recipe (a cadence discovery is input to a human decision, never a decision itself).
 
 ---
