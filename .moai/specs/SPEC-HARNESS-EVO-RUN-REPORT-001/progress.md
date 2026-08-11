@@ -225,8 +225,8 @@ FAIL    github.com/modu-ai/moai-adk/internal/cli/harness    0.432s
 
 ```yaml
 run_complete_at: 2026-08-12
-run_commit_sha: pending-backfill-m4   # M4 commit — SHA backfilled in a follow-up (self-referential hazard)
-run_status: m4-green-m5-pending       # M1-M4 GREEN; M5 = integration batch + close (orchestrator 소관)
+run_commit_sha: e7a6bd496             # M4 commit (HEAD of run-phase lineage); M5 was verification-only (no separate commit)
+run_status: m5-green                  # M1-M5 GREEN; M5 = full-suite verification (this sync commit's pre-flight)
 ac_pass_count: 8                       # AC-HRR-001..008 verified (009/010 = template-neutral + compat, verified in §E.2 + M4 §25 grep)
 ac_fail_count: 0
 preserve_list_post_run_count: 0        # no PRESERVE-list regressions
@@ -292,16 +292,22 @@ build exit 0 (both darwin/arm64 + windows/amd64); E5 lint 0 issues; E10
 `TestSplitHarnessNamespaceNoLeak` PASS; M1-M3 packages (`v4manifest`,
 `harnessrun`, `cli/harness`) all `ok`.
 
-**Gaps:** (i) `run_commit_sha` is a placeholder (self-referential hazard —
-backfilled in a follow-up commit per the SHA placeholder backfill exemption);
-(ii) `l44_post_push_fetch` deferred — push is M5/manager-git 소관 (B9 repo-local
-Route B, main push is not this agent's job); (iii) the pre-existing 2 FAIL in
-`internal/template` (`TestTemplateNoInternalContentLeak`,
+**M5 verification (sync-phase pre-flight, this commit's baseline — HEAD `e7a6bd496`):**
+
+- `go test ./internal/harness/v4manifest/...` → `ok github.com/modu-ai/moai-adk/internal/harness/v4manifest (cached)`
+- `go test ./internal/harness/harnessrun/...` → `ok github.com/modu-ai/moai-adk/internal/harness/harnessrun (cached)`
+- `go test ./internal/cli/harness/...` → `ok github.com/modu-ai/moai-adk/internal/cli/harness 5.983s`
+- Full `go test ./...` → 114 `ok` packages; 2 pre-existing OUT-OF-SCOPE FAILs in `internal/template` (`TestTemplateNoInternalContentLeak`, `TestRuleDateProvenance` on `zone-registry.md`, owned by SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 / SPEC-TEMPLATE-RULES-CLEANUP-001) — NOT regressions introduced by this SPEC. The SPEC's own 3 packages remain green.
+- **Coverage decision (accepted-as-is per GOOS approval):** `internal/cli/harness` at **80.9%** is below the §D.3 DoD 85% threshold. Accepted as-is — `doctor.go` (the code M3/M4 actually touched) is at high coverage (`doctor_learning_test.go` + `doctor_test.go` + `doctor_dormancy_test.go` + `doctor_hns_test.go` all green); the gap is in non-doctor cmd code (legacy `harness.md` cmd wiring) tracked as **separate debt, NOT a doc-only M4 regression**. The M4 deliverable was 3 markdown files (zero Go code change), so no coverage delta on this SPEC's surface is possible from M4.
+
+**Gaps:** (i) `l44_post_push_fetch` deferred — push is manager-git 소관 (B9
+repo-local Route B, main push is not this agent's job); (ii) the pre-existing
+2 FAIL in `internal/template` (`TestTemplateNoInternalContentLeak`,
 `TestRuleDateProvenance` on `zone-registry.md`, owned by
 SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 / SPEC-TEMPLATE-RULES-CLEANUP-001)
-are OUT OF SCOPE (B5) — M4 did not touch them; (iv) `moai harness doctor`
-smoke (§E item 9) is an M5 integration-batch step, not re-run here (M4 is
-doc-only, no manifest/Runner code change).
+are OUT OF SCOPE (B5) — neither M4 nor this sync commit touched them; (iii)
+`moai harness doctor` smoke (§E item 9) remains an integration-batch step
+(M4 was doc-only; the manifest/Runner code is unchanged since M1-M3).
 
 **Residual-risk:** (i) the `moai-harness-learner` skill schema gap (§A.3
 known-interaction) was NOT an obstacle for M4 — harness-run findings route via
@@ -314,7 +320,28 @@ window across 3 producers is a downstream concern, not an M4 deliverable.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+```yaml
+sync_complete_at: 2026-08-12
+sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); backfilled by orchestrator after this sync commit lands
+sync_status: 3-phase-close               # in-progress → implemented → completed merged into this sync commit (V3R6 3-phase close)
+changelog_entry_position: top-of-unreleased-added
+frontmatter_status_transitions:
+  spec_md: in-progress → completed       # sole YAML-frontmatter artifact (acceptance.md + plan.md use markdown-header convention, no frontmatter)
+b12_self_test_a: pass                    # grep -c 'SPEC-HARNESS-EVO-RUN-REPORT-001' CHANGELOG.md = 0 pre-emission (no duplicate)
+b12_self_test_b: pass                    # AC count match: acceptance.md distinct AC identifiers = 10; CHANGELOG entry references the 10-AC set
+b12_self_test_c: pass                    # file paths verified: internal/harness/v4manifest/, internal/harness/harnessrun/, internal/cli/harness/doctor*.go all exist via ls
+canary_compliance_check: deferred-to-manager-git   # push + Route B PR is manager-git 소관 (this agent commits only)
+```
+
+**3-phase close summary (this sync commit carries):**
+- spec.md frontmatter `status:` transition `in-progress → completed` (the `completed` ride-along per the 3-phase close contract — `implemented` is intermediate on a single sync commit).
+- spec.md `updated: 2026-08-12` refreshed.
+- `progress.md` §E.3 `run_commit_sha` backfilled to `e7a6bd496` + M5 verification block recorded.
+- `progress.md` §E.4 (this section) populated.
+- `CHANGELOG.md` `[Unreleased] ### Added` entry appended.
+- Zero code changes (M4 was doc-only; M5 was verification-only). No `make build` (catalog hash unchanged — verified empty diff at M4; harness.md is not a catalog artifact).
+
+**AC recap (10/10 PASS):** AC-HRR-001..008 verified in §E.2/§E.3 (M1-M4); AC-HRR-009 (§25 template neutrality) verified via `grep -rn "HARNESS-EVO-RUN-REPORT\|REQ-HRR" internal/template/templates/` → 0 matches; AC-HRR-010 (backward-compat: legacy 8-field manifest parses with `Learning == nil`) verified in M1 `TestManifestLearningBlock`.
 
 ---
 

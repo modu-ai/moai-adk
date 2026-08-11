@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EVO-RUN-REPORT-001
 title: "하네스 실행→학습 배선 (manifest learning / Runner findings / specialist emission / post-run push) — Epic Harness-Evolution 2/4"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-03
 updated: 2026-08-12
 author: manager-spec
