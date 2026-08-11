@@ -180,7 +180,7 @@ blocker_report: none
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-11
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6da952899be8b2ceafe7bb87aa6af41b8c32dd0c
 run_commit_sha: 89227add0
 changelog_entry_position: top of [Unreleased] → Added (English-only CHANGELOG.md)
 frontmatter_status_transitions:
