@@ -49,3 +49,13 @@ index:
 "moai-web-console":
   title: "moai web 웹 콘솔"
   weight: 85
+# v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
+# 페이지-level frontmatter added_in/new 와 union-combine 된다.
+# slug 가 이 목록에 있으면 사이드바에 자동으로 NEW 배지가 렌더된다.
+# M4 가 페이지를 생성한 뒤 이 슬러그들이 실제 페이지를 가리키게 된다.
+new_items:
+  - factory-mode
+  - bas-navigator
+  - manager-lead
+  - multi-model-audit
+  - autonomy-tier

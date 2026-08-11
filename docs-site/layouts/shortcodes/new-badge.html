@@ -1,0 +1,11 @@
+{{- /* 인라인 NEW 배지 shortcode — v3.1 신규 페이지 표시.
+       사용: {{< new-badge >}} → "NEW"
+            {{< new-badge v3.1 >}} → "NEW · v3.1"
+       버전 인자가 주어지면 캡션 뒤에 " · <version>" 이 붙는다.
+       라이트 단일 토큰 기반 스타일은 FROZEN .cw-side-new 클래스를 그대로
+       재사용한다 (var(--color-primary) 배경, 흰색 텍스트, var(--font-mono),
+       border-radius 4px). 다크 모드 변형은 없다 (CLAUDE.local.md §17.1). */ -}}
+{{- $version := .Get 0 | default "" -}}
+{{- $caption := "NEW" -}}
+{{- if ne $version "" -}}{{- $caption = printf "NEW · %s" $version -}}{{- end -}}
+<span class="cw-side-new cw-new-badge">{{ $caption }}</span>{{- /* trailing-space-safe */ -}}
