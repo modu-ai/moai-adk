@@ -14,9 +14,18 @@ severity: warning
 message: '에러를 반환할 때 컨텍스트 없이 그대로 반환합니다. fmt.Errorf("operation: %w", err) 패턴을 사용하세요.'
 note: 에러 래핑은 스택 트레이스 없이도 에러 경로를 추적하는 데 필수적입니다. errors.Is/As가 올바르게 동작하려면 %w 동사를 사용해야
   합니다.
+# SPEC-GATE-ASTGREP-REPAIR-001 M1: the bare `return $ERR` pattern matched every
+# single-expression return (return nil/0/true/""/f()), producing ~16k false
+# positives and a catastrophic autofix that wrapped non-error returns in
+# fmt.Errorf. The name constraint ($ERR regex ^err(e?|s)$) is the type proxy:
+# Go variables named err/errs are overwhelmingly errors. The fix fires under
+# the SAME guard as the match, so non-matches are never rewritten.
 rule:
   pattern: return $ERR
 fix: 'return fmt.Errorf("TODO: operation: %w", $ERR)'
+constraints:
+  ERR:
+    regex: '^err(e?|s)$'
 ---
 id: go-errors-new-in-var
 language: go
