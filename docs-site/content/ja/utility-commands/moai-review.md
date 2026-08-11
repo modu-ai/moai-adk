@@ -130,6 +130,6 @@ git 履歴を増分スキャンします。最後のスキャン SHA チェッ�
 
 ## 関連ドキュメント
 
-- [/moai fix](/utility-commands/moai-fix) - 見つかったイシューを自動修正
-- [/moai loop](/utility-commands/moai-loop) - 有限イシュー集合の反復修正
-- [TRUST 5 品質システム](/core-concepts/trust-5) - 品質基準の詳細
+- [/moai fix](/ja/utility-commands/moai-fix) - 見つかったイシューを自動修正
+- [/moai loop](/ja/utility-commands/moai-loop) - 有限イシュー集合の反復修正
+- [TRUST 5 品質システム](/ja/core-concepts/trust-5) - 品質基準の詳細

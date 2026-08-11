@@ -7,6 +7,10 @@ description: "How to dispatch multiple background sessions from one screen with 
 
 The agent view, opened by the `claude agents` command, is a single control screen that lets you dispatch and observe multiple Claude Code sessions from one place, intervening only in the sessions that need a hand.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Instead of scrolling transcripts one by one, see every running, waiting, and completed background session in one table and step in only at the moments that matter.
 {{< /callout >}}
@@ -175,8 +179,8 @@ Setting `worktree.bgIsolation` above to `"none"` makes background sessions edit 
 
 ## Related Documents
 
-- [Subagents](/claude-code/agentic/sub-agents)
-- [Agent Teams](/claude-code/agentic/agent-teams)
+- [Subagents](/en/claude-code/agentic/sub-agents)
+- [Agent Teams](/en/claude-code/agentic/agent-teams)
 
 ## References
 

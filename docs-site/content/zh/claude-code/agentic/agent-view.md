@@ -7,6 +7,10 @@ description: "说明如何用 claude agents 命令在同一屏幕上调度多个
 
 由 `claude agents` 命令打开的智能体视图 (agent view)，是在一个屏幕上调度并观察多个 Claude Code 会话、只对需要人手的会话介入的单一管控界面。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：不必逐个滚动转录，而是把运行中·等待中·已完成的所有后台会话看成一张表，只在必要的时刻插手。
 {{< /callout >}}
@@ -175,8 +179,8 @@ claude respawn <id>         # 保留对话重启会话
 
 ## 相关文档
 
-- [子智能体](/claude-code/agentic/sub-agents)
-- [智能体团队](/claude-code/agentic/agent-teams)
+- [子智能体](/zh/claude-code/agentic/sub-agents)
+- [智能体团队](/zh/claude-code/agentic/agent-teams)
 
 ## 参考资料
 

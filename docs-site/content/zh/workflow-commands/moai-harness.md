@@ -337,9 +337,9 @@ Builder 会自动:
 
 ## 相关文档
 
-- [Harness v4 Builder 指南](/advanced/builder-agents) - Builder 4-phase 详解
-- [智能体指南](/advanced/agent-guide) - 理解 11 个智能体目录
-- [基于 SPEC 的开发](/workflow-commands/moai-plan) - SPEC 工作流概览
+- [Harness v4 Builder 指南](/zh/advanced/builder-agents) - Builder 4-phase 详解
+- [智能体指南](/zh/advanced/agent-guide) - 理解 11 个智能体目录
+- [基于 SPEC 的开发](/zh/workflow-commands/moai-plan) - SPEC 工作流概览
 
 {{< callout type="info" >}}
 **提示**: 挽具创建一次后,所有后续工作都会自动使用该团队。也可以随时通过 `/harness:team-name` 命令复用。

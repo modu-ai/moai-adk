@@ -161,7 +161,7 @@ Teammates do not inherit the lead's `/model` selection by default. The model use
 
 ## Quality-Gate Hooks
 
-Using [hooks](/claude-code/extensibility/hooks), you can enforce rules when a teammate finishes work or when tasks are created and completed.
+Using [hooks](/en/claude-code/extensibility/hooks), you can enforce rules when a teammate finishes work or when tasks are created and completed.
 
 | Hook event | When it fires | Meaning of exit code 2 |
 | --- | --- | --- |
@@ -191,8 +191,8 @@ CG mode setup and operations are covered in detail in a separate document — se
 
 ## Related Documents
 
-- [Dynamic Workflows](/claude-code/agentic/workflows)
-- [CG Mode (Claude + GLM)](/multi-llm/cg-mode)
+- [Dynamic Workflows](/en/claude-code/agentic/workflows)
+- [CG Mode (Claude + GLM)](/en/multi-llm/cg-mode)
 
 ## References
 

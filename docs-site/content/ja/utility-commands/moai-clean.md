@@ -204,5 +204,5 @@ Git で元に戻せます。MoAI は依存性の逆順で除去してテスト�
 
 ## 関連ドキュメント
 
-- [/moai fix - 一回限りの自動修正](/utility-commands/moai-fix)
-- [/moai codemaps - アーキテクチャドキュメント生成](/utility-commands/moai-codemaps)
+- [/moai fix - 一回限りの自動修正](/ja/utility-commands/moai-fix)
+- [/moai codemaps - アーキテクチャドキュメント生成](/ja/utility-commands/moai-codemaps)

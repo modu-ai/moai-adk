@@ -148,7 +148,7 @@ flowchart TD
 
 ## 质量门禁 hook
 
-使用 [hook](/claude-code/extensibility/hooks) 可以在队员完成工作、任务被创建·完成时强制执行规则。
+使用 [hook](/zh/claude-code/extensibility/hooks) 可以在队员完成工作、任务被创建·完成时强制执行规则。
 
 | hook 事件 | 触发时机 | 退出码 2 的含义 |
 | --- | --- | --- |
@@ -178,8 +178,8 @@ CG 模式的配置与运营方法在单独文档中详述，请参考下方链�
 
 ## 相关文档
 
-- [动态工作流](/claude-code/agentic/workflows)
-- [CG 模式 (Claude + GLM)](/multi-llm/cg-mode)
+- [动态工作流](/zh/claude-code/agentic/workflows)
+- [CG 模式 (Claude + GLM)](/zh/multi-llm/cg-mode)
 
 ## 参考资料
 

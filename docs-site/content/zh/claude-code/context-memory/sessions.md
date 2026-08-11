@@ -9,6 +9,10 @@ description: "整理 Claude Code 会话的概念、用 --resume/--continue 续�
 
 在 Claude Code 中，一次对话就是一个会话。本页整理如何开始、续接、清理会话，以及会话如何与检查点、交接相互衔接。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [/moai](/zh/utility-commands/moai)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：会话是一个**对话单元**。要接着工作时，重新唤回上一个会话（`--resume` / `--continue`）；话题变了就用 `/clear` 干净地清空。理解会话的流转，就能把长期任务跨越多天而不丢失地延续下去。
 {{< /callout >}}

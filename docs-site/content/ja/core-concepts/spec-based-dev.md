@@ -629,9 +629,9 @@ era 分類は `spec.md` フロントマターの `created:` 日付と `progress.
 
 ## 関連ドキュメント
 
-- [MoAI-ADK とは?](/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を
+- [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を
   理解します
-- [開発方法論 (DDD/TDD)](/core-concepts/ddd) -- SPEC を基に安全にコードを
+- [開発方法論 (DDD/TDD)](/ja/core-concepts/ddd) -- SPEC を基に安全にコードを
   実装する DDD/TDD 方法論を学びます
-- [TRUST 5 品質](/core-concepts/trust-5) -- 実装されたコードの品質を検証する基準を
+- [TRUST 5 品質](/ja/core-concepts/trust-5) -- 実装されたコードの品質を検証する基準を
   学びます

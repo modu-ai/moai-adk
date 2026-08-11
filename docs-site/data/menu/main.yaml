@@ -68,6 +68,34 @@ main:
           ja: よくある質問
           zh: 常见问题
         ref: /getting-started/faq
+      - name:
+          ko: MoAI-ADK vs 기타 도구 비교
+          en: MoAI-ADK vs Other Tools
+          ja: MoAI-ADKと他のツールの比較
+          zh: MoAI-ADK 与其他工具比较
+        ref: /getting-started/comparison
+      - name:
+          ko: MoAI v2에서 v3으로 마이그레이션
+          en: Migration from MoAI v2 to v3
+          ja: MoAI v2からv3への移行
+          zh: 从 MoAI v2 迁移到 v3
+        ref: /getting-started/migration
+
+  - name:
+      ko: 리소스
+      en: Resources
+      ja: リソース
+      zh: 资源
+    ref: /resources
+    icon: tag
+    defaultOpen: true
+    sub:
+      - name:
+          ko: 다국어 문서 가이드
+          en: I18N Documentation Guide
+          ja: 多言語ドキュメントガイド
+          zh: 多语言文档指南
+        ref: /resources/i18n-docs
 
   - name:
       ko: 핵심 개념
@@ -114,6 +142,18 @@ main:
           ja: TRUST 5 品質フレームワーク
           zh: TRUST 5 质量框架
         ref: /core-concepts/trust-5
+      - name:
+          ko: 검증 경로 무결성
+          en: Verification Claim Integrity
+          ja: 検証クレーム完全性
+          zh: 验证声明完整性
+        ref: /core-concepts/verification-claim-integrity
+      - name:
+          ko: Project Navigator
+          en: Project Navigator
+          ja: Project Navigator
+          zh: Project Navigator
+        ref: /core-concepts/navigator
 
   - name:
       ko: 워크플로우 명령어
@@ -362,40 +402,6 @@ main:
         ref: /cli-reference/github
 
   - name:
-      ko: Claude Code 가이드
-      en: Claude Code Guide
-      ja: Claude Code ガイド
-      zh: Claude Code 指南
-    ref: /claude-code
-    icon: star
-    defaultOpen: false
-    sub:
-      - name:
-          ko: 기초 — Claude Code 이해
-          en: Foundations
-          ja: 基礎
-          zh: 基础
-        ref: /claude-code/foundations
-      - name:
-          ko: 컨텍스트와 메모리
-          en: Context & Memory
-          ja: コンテキストとメモリ
-          zh: 上下文与记忆
-        ref: /claude-code/context-memory
-      - name:
-          ko: 확장 — 스킬·훅·MCP·플러그인
-          en: Extensibility
-          ja: 拡張
-          zh: 扩展
-        ref: /claude-code/extensibility
-      - name:
-          ko: 에이전트와 자동화
-          en: Agents & Automation
-          ja: エージェントと自動化
-          zh: 代理与自动化
-        ref: /claude-code/agentic
-
-  - name:
       ko: 멀티 LLM
       en: Multi-LLM Mode
       ja: Multi-LLM Mode
@@ -624,6 +630,18 @@ main:
           ja: CLAUDE.md ガイド
           zh: CLAUDE.md 指南
         ref: /advanced/claude-md-guide
+      - name:
+          ko: Analyze-First 요청 처리 파이프라인
+          en: Analyze-First Request Processing Pipeline
+          ja: Analyze-First リクエスト処理パイプライン
+          zh: Analyze-First 请求处理管道
+        ref: /advanced/analyze-first-routing
+      - name:
+          ko: moai web 웹 콘솔
+          en: moai web Console
+          ja: moai web コンソール
+          zh: moai web 控制台
+        ref: /advanced/moai-web-console
 
   - name:
       ko: 참여하기
@@ -644,3 +662,37 @@ main:
     icon: tag
     defaultOpen: true
     sub:
+
+  - name:
+      ko: Claude Code 가이드 (배경 참조)
+      en: Claude Code Guide (Background Reference)
+      ja: Claude Code ガイド（背景リファレンス）
+      zh: Claude Code 指南（背景参考）
+    ref: /claude-code
+    icon: school
+    defaultOpen: false
+    sub:
+      - name:
+          ko: 기초 — Claude Code 이해
+          en: Foundations
+          ja: 基礎
+          zh: 基础
+        ref: /claude-code/foundations
+      - name:
+          ko: 컨텍스트와 메모리
+          en: Context & Memory
+          ja: コンテキストとメモリ
+          zh: 上下文与记忆
+        ref: /claude-code/context-memory
+      - name:
+          ko: 확장 — 스킬·훅·MCP·플러그인
+          en: Extensibility
+          ja: 拡張
+          zh: 扩展
+        ref: /claude-code/extensibility
+      - name:
+          ko: 에이전트와 자동화
+          en: Agents & Automation
+          ja: エージェントと自動化
+          zh: 代理与自动化
+        ref: /claude-code/agentic

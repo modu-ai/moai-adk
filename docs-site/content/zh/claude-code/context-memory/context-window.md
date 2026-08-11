@@ -9,6 +9,10 @@ description: "整理 Claude Code 上下文窗口的令牌概念、自动压缩�
 
 本文整理承载 Claude Code 单个会话中所记忆一切的空间 —— 上下文窗口 (context window)，以及高效管理它的方法。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [代币预算管理与正常停止](/zh/advanced/token-budget)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：上下文窗口是 Claude 的**工作书桌**，也是产生令牌成本的账本。在书桌被填满之前用自动压缩 (compaction) 和 `/clear` 腾出空间，长任务才能在质量与成本两方面顺畅走到最后。
 {{< /callout >}}
@@ -130,8 +134,8 @@ flowchart TD
 
 ## 相关文档
 
-- [记忆与自动记忆](/claude-code/context-memory/memory)
-- [检查点](/claude-code/context-memory/checkpointing)
+- [记忆与自动记忆](/zh/claude-code/context-memory/memory)
+- [检查点](/zh/claude-code/context-memory/checkpointing)
 
 ## 参考资料
 

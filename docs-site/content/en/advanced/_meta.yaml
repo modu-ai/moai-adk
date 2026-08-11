@@ -43,3 +43,9 @@ index:
   title: "Dynamic Workflows and Ultracode"
 "mx-tags":
   title: "MX TAG System"
+"analyze-first-routing":
+  title: "Analyze-First Request Processing Pipeline"
+  weight: 65
+"moai-web-console":
+  title: "moai web Console"
+  weight: 85

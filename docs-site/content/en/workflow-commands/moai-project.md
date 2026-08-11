@@ -601,8 +601,8 @@ Document generation proceeds even without an LSP server. However, code-quality d
 
 ## Related Documents
 
-- [Quick Start](/getting-started/quickstart) - Full workflow tutorial
+- [Quick Start](/en/getting-started/quickstart) - Full workflow tutorial
 - [/moai plan](./moai-plan) - Next step: SPEC document creation
 - [/moai harness](./moai-harness) - Creating a project-specific harness
-- [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed SPEC methodology
-- [Subagent Catalog](/advanced/agent-guide) - Explore and manager-docs agent details
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) - Detailed SPEC methodology
+- [Subagent Catalog](/en/advanced/agent-guide) - Explore and manager-docs agent details

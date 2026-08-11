@@ -336,9 +336,9 @@ Builder が自動的に:
 
 ## 関連ドキュメント
 
-- [Harness v4 Builder ガイド](/advanced/builder-agents) - Builder 4-phase の詳細
-- [エージェントガイド](/advanced/agent-guide) - 11 個のエージェントカタログの理解
-- [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC ワークフローの概要
+- [Harness v4 Builder ガイド](/ja/advanced/builder-agents) - Builder 4-phase の詳細
+- [エージェントガイド](/ja/advanced/agent-guide) - 11 個のエージェントカタログの理解
+- [SPEC ベース開発](/ja/workflow-commands/moai-plan) - SPEC ワークフローの概要
 
 {{< callout type="info" >}}
 **ヒント**: Harness を一度生成すれば、すべての後続作業でそのチームが自動的に活用されます。`/harness:team-name` コマンドでいつでも再利用できます。

@@ -9,6 +9,10 @@ description: "Claude Code 세션의 개념과 --resume/--continue로 이어가�
 
 Claude Code에서 하나의 대화가 곧 하나의 세션입니다. 이 페이지는 세션을 시작·이어가기·정리하는 방법과, 세션이 체크포인트·핸드오프와 어떻게 맞물리는지를 정리합니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [/moai](/ko/utility-commands/moai)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 세션은 하나의 **대화 단위**입니다. 이어서 작업할 때는 이전 세션을 다시 불러오고(`--resume` / `--continue`), 주제가 바뀌면 `/clear`로 깨끗이 비웁니다. 세션의 흐름만 알아 두면 긴 작업도 여러 날에 걸쳐 놓치지 않고 이어갈 수 있습니다.
 {{< /callout >}}

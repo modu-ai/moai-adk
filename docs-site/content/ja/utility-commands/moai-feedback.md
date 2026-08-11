@@ -213,6 +213,6 @@ GitHub で重複 Issue を確認するため、心配は不要です。すでに
 
 ## 関連ドキュメント
 
-- [/moai - 完全自律自動化](/utility-commands/moai)
-- [/moai loop - 反復修正ループ](/utility-commands/moai-loop)
-- [/moai fix - ワンショット自動修正](/utility-commands/moai-fix)
+- [/moai - 完全自律自動化](/ja/utility-commands/moai)
+- [/moai loop - 反復修正ループ](/ja/utility-commands/moai-loop)
+- [/moai fix - ワンショット自動修正](/ja/utility-commands/moai-fix)

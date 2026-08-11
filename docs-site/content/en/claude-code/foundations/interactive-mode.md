@@ -9,6 +9,10 @@ description: "An at-a-glance guide to input methods, keyboard shortcuts, and per
 
 This page covers the input methods, shortcuts, and permission modes of the interactive session (REPL) you meet when running Claude Code in the terminal.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Interactive mode is Claude Code's **cockpit** — the place where every input converges, from a one-line prompt to `/` commands, `!` bash execution, `@` file references, and image pasting.
 {{< /callout >}}
@@ -43,7 +47,7 @@ The input box in an interactive session is not a plain text field. Its behavior 
 
 ### Slash Commands (/)
 
-Typing `/` at the very start of the input box brings up a menu of all available commands. Built-in commands, bundled skills, user-written skills, and commands contributed by plugins and MCP servers all gather in one menu. Continue typing after `/` and candidates narrow in real time. See the [Slash Commands](/claude-code/foundations/commands) document for the full list.
+Typing `/` at the very start of the input box brings up a menu of all available commands. Built-in commands, bundled skills, user-written skills, and commands contributed by plugins and MCP servers all gather in one menu. Continue typing after `/` and candidates narrow in real time. See the [Slash Commands](/en/claude-code/foundations/commands) document for the full list.
 
 ### Bash Execution (!)
 
@@ -95,7 +99,7 @@ Key shortcuts for the interactive session. Some behaviors may differ by platform
 
 ### Rewind (Esc Esc)
 
-Pressing `Esc` twice with an empty input box opens the **rewind menu**. It restores code and conversation to an earlier point or summarizes them; details are covered in the [Checkpointing](/claude-code/context-memory/checkpointing) document.
+Pressing `Esc` twice with an empty input box opens the **rewind menu**. It restores code and conversation to an earlier point or summarizes them; details are covered in the [Checkpointing](/en/claude-code/context-memory/checkpointing) document.
 
 ### History Search (Ctrl+R)
 
@@ -157,9 +161,9 @@ Adjust the theme, display options, and settings like Session recap in `/config`.
 
 ## Related Documents
 
-- [Slash Commands](/claude-code/foundations/commands)
-- [Checkpointing](/claude-code/context-memory/checkpointing)
-- [Quickstart](/getting-started/quickstart)
+- [Slash Commands](/en/claude-code/foundations/commands)
+- [Checkpointing](/en/claude-code/context-memory/checkpointing)
+- [Quickstart](/en/getting-started/quickstart)
 
 ## References
 

@@ -13,6 +13,10 @@ description: "从零理解 MoAI-ADK 三大核心（代币经济学·智能体循
 
 本节是从零开始理解 Anthropic 终端 CLI —— Claude Code 的学习路径。它面向刚接触 Claude Code 的开发者，以及希望准确掌握 MoAI-ADK 运行基础的读者。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 Claude Code 是在终端中运行的编码智能体，它能读取和修改代码、执行命令，并通过与开发者对话完成工作。MoAI-ADK 是运行在 Claude Code 之上的编排层，其三大核心价值 —— **代币经济学** (Token Economics)、**智能体循环工程**（递归式自我学习）、**智能体挽具** (Agentic Harness) —— 全部建立在本节所讲的 Claude Code 基础机制之上。不了解上下文窗口和提示缓存就无法设计代币经济学，不了解子智能体和 `/goal` 就无法理解智能体循环，不了解技能、钩子和 MCP 就无法搭建挽具。
 
 
@@ -35,9 +39,9 @@ flowchart TD
 
 | 文档 | 说明 | 对应的 MoAI 核心 |
 |------|------|--------------------|
-| [基础](/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大核心的共同基础 |
-| [上下文与记忆](/claude-code/context-memory) | 令牌·上下文·记忆·缓存·检查点管理 | 代币经济学 |
-| [扩展](/claude-code/extensibility) | 用技能·钩子·MCP·插件扩展功能 | 智能体挽具 |
-| [智能体与自动化](/claude-code/agentic) | 子智能体·团队·工作流·自主执行 | 智能体循环工程 |
+| [基础](/zh/claude-code/foundations) | Claude Code 的工作原理与基本用法 | 三大核心的共同基础 |
+| [上下文与记忆](/zh/claude-code/context-memory) | 令牌·上下文·记忆·缓存·检查点管理 | 代币经济学 |
+| [扩展](/zh/claude-code/extensibility) | 用技能·钩子·MCP·插件扩展功能 | 智能体挽具 |
+| [智能体与自动化](/zh/claude-code/agentic) | 子智能体·团队·工作流·自主执行 | 智能体循环工程 |
 
 依次完成四组学习后，您将全面理解 Claude Code 平台。之后请移步 MoAI-ADK 的核心概念章节，了解 SPEC 驱动开发与令牌效率设计如何在这一基础上结合。

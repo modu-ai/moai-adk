@@ -9,13 +9,17 @@ description: "The concept of a Claude Code session and continuing it with --resu
 
 In Claude Code, one conversation is one session. This page summarizes how to start, continue, and clean up sessions, and how a session meshes with checkpoints and handoff.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [/moai](/en/utility-commands/moai).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: A session is a single **unit of conversation**. To continue working, you reload a previous session (`--resume` / `--continue`); when the topic changes, you wipe it clean with `/clear`. Understanding how sessions flow lets you carry a long task across several days without losing it.
 {{< /callout >}}
 
 ## What a Session Is
 
-A session is one continuous conversation you had with Claude Code. Inside it, the messages exchanged, summaries of files read, and execution results accumulate in the [context window](/claude-code/context-memory/context-window). Closing a session preserves the record, so you can reopen and continue it later.
+A session is one continuous conversation you had with Claude Code. Inside it, the messages exchanged, summaries of files read, and execution results accumulate in the [context window](/en/claude-code/context-memory/context-window). Closing a session preserves the record, so you can reopen and continue it later.
 
 ## Continuing and Cleaning Up
 
@@ -42,7 +46,7 @@ flowchart TD
 
 ## Sessions and Checkpoints
 
-Sessions and [checkpointing](/claude-code/context-memory/checkpointing) address different layers.
+Sessions and [checkpointing](/en/claude-code/context-memory/checkpointing) address different layers.
 
 | Concept | What it handles | What it reverts |
 |------|-----------|---------------|
@@ -53,17 +57,17 @@ If a session is "which conversation do I open and continue," a checkpoint is "wi
 
 ## MoAI-ADK's Session Handoff
 
-However far a session continues, the [context window](/claude-code/context-memory/context-window) has limits, and a moment comes when you must wipe it with `/clear`. To avoid losing progress at that moment, you need a mechanism that hands state across the session boundary.
+However far a session continues, the [context window](/en/claude-code/context-memory/context-window) has limits, and a moment comes when you must wipe it with `/clear`. To avoid losing progress at that moment, you need a mechanism that hands state across the session boundary.
 
 MoAI-ADK provides this as **session handoff**. As context usage approaches the per-model threshold, the orchestrator saves the progress state to disk and produces a paste-ready resume message you can paste into the next session to continue as-is. After `/clear`, this single message lets a new session pick up the previous work self-sufficiently.
 
-The 6-block structure of session handoff, the threshold policy, the auto-memory integration, and other details are covered in [Token Budget Management](/advanced/token-budget). Here it is enough to remember the principle: "a session can be wiped at any time, so hand important state across the session boundary to a file."
+The 6-block structure of session handoff, the threshold policy, the auto-memory integration, and other details are covered in [Token Budget Management](/en/advanced/token-budget). Here it is enough to remember the principle: "a session can be wiped at any time, so hand important state across the session boundary to a file."
 
 ## Related Documents
 
-- [Context Window](/claude-code/context-memory/context-window)
-- [Checkpointing](/claude-code/context-memory/checkpointing)
-- [Token Budget Management](/advanced/token-budget)
+- [Context Window](/en/claude-code/context-memory/context-window)
+- [Checkpointing](/en/claude-code/context-memory/checkpointing)
+- [Token Budget Management](/en/advanced/token-budget)
 
 ## References
 

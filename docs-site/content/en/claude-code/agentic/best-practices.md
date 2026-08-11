@@ -180,7 +180,7 @@ Integrate Claude into CI pipelines, pre-commit hooks, and scripts.
 
 ### Parallel Multi-Session Runs
 
-Advance multiple SPECs at once, or transform large batches of files in parallel. Isolating with [worktrees](/claude-code/agentic/worktrees) so file edits never overlap is the safe way.
+Advance multiple SPECs at once, or transform large batches of files in parallel. Isolating with [worktrees](/en/claude-code/agentic/worktrees) so file edits never overlap is the safe way.
 
 ### Autonomous Completion with /goal
 
@@ -202,10 +202,10 @@ Declare the completion condition and Claude iterates automatically, stopping whe
 
 ## Related Documents
 
-- [Context Window](/claude-code/context-memory/context-window)
-- [Subagents](/claude-code/agentic/sub-agents)
-- [Goal-Directed Execution (/goal)](/claude-code/agentic/goal)
-- [Large Codebases](/claude-code/agentic/large-codebases)
+- [Context Window](/en/claude-code/context-memory/context-window)
+- [Subagents](/en/claude-code/agentic/sub-agents)
+- [Goal-Directed Execution (/goal)](/en/claude-code/agentic/goal)
+- [Large Codebases](/en/claude-code/agentic/large-codebases)
 
 ## References
 

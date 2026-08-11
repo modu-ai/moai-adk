@@ -10,6 +10,10 @@ Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세
 **한 줄 요약**: Hooks는 Claude Code의 **자동 반사 신경**입니다. 파일을 저장하면 자동으로 포맷팅하고, 위험한 명령은 자동으로 차단합니다.
 {{< /callout >}}
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [훅 (Hooks)](/ko/claude-code/extensibility/hooks)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 ## Hooks란?
 
 Hooks는 Claude Code의 특정 이벤트에 반응하여 **자동으로 실행되는 스크립트**입니다.

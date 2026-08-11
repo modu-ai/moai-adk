@@ -82,6 +82,6 @@ draft: false
 
 ## 관련 문서
 
-- [/moai loop - 반복 수정 루프](/utility-commands/moai-loop)
-- [/moai fix - 일회성 자동 수정](/utility-commands/moai-fix)
-- [/moai - 완전 자율 자동화](/utility-commands/moai)
+- [/moai loop - 반복 수정 루프](/ko/utility-commands/moai-loop)
+- [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)
+- [/moai - 완전 자율 자동화](/ko/utility-commands/moai)

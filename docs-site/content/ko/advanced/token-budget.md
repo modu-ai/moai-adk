@@ -6,6 +6,10 @@ draft: false
 
 토크노믹스 4-층 구조의 D층인 예산 가드(Budget defense)를 자세히 다룹니다. 에이전트가 컨텍스트 윈도우 한계에 다다랐을 때 세션을 그냥 끊는 대신 진행 상태를 남겨 다음 세션이 이어받게 하는 것이 안전한 중단(graceful abort)입니다. 이 페이지는 그 메커니즘을 설명합니다.
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 ## 예산 가드가 필요한 이유
 
 Anthropic SSE 스트림은 컨텍스트 윈도우 천장에 가까워지면 `stream_idle_partial` 상태로 간헐적인 스톨을 일으킵니다. 간헐적이긴 해도 임계값을 넘어서면 충분히 예측할 수 있는 현상입니다. 스톨이 나면 에이전트 호출이 스트림 도중에 실패해 진행 상태를 잃을 수 있습니다.

@@ -6,6 +6,10 @@ draft: false
 
 详细介绍 MoAI-ADK 的技能系统。技能是智能体 Harness 的知识层，也是"只在需要的时刻加载需要的知识"这一代币经济学最具体的落地之处。
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [技能](/zh/claude-code/extensibility/skills)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 
 **什么是技能？**

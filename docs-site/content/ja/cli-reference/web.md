@@ -70,4 +70,4 @@ LLM タブでは権限モード(Permission mode) とモデル(Model)、推論強
 
 ---
 
-関連: [プロファイル管理](/cli-reference/profile) · [CLI 概要](/getting-started/cli)
+関連: [プロファイル管理](/ja/cli-reference/profile) · [CLI 概要](/ja/getting-started/cli)

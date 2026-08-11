@@ -9,6 +9,10 @@ description: "整理 Claude Code 内置工具的用途、读取/写入的区分�
 
 本文整理 Claude Code 理解与修改代码库时使用的内置工具，以及各工具与权限如何关联。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 
 {{< callout type="info" >}}
 **一句话总结**：工具名称是在权限规则、子智能体工具列表、hook 匹配器中原样使用的标识符，因此了解工具的读/写性质与权限行为，就能亲手设计 Claude Code 的安全边界。
@@ -136,8 +140,8 @@ flowchart TD
 
 ## 相关文档
 
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [.claude 目录](/claude-code/foundations/claude-directory)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [.claude 目录](/zh/claude-code/foundations/claude-directory)
 
 ## 参考资料
 

@@ -70,4 +70,4 @@ Web 控制台可编辑：
 
 ---
 
-相关: [配置文件管理](/cli-reference/profile) · [CLI 概览](/getting-started/cli)
+相关: [配置文件管理](/zh/cli-reference/profile) · [CLI 概览](/zh/getting-started/cli)

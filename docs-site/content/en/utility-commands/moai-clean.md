@@ -206,5 +206,5 @@ In `--safe-only` mode, only "certain dead code" is removed. Code used via reflec
 
 ## Related Documents
 
-- [/moai fix - one-shot auto-fix](/utility-commands/moai-fix)
-- [/moai codemaps - architecture doc generation](/utility-commands/moai-codemaps)
+- [/moai fix - one-shot auto-fix](/en/utility-commands/moai-fix)
+- [/moai codemaps - architecture doc generation](/en/utility-commands/moai-codemaps)

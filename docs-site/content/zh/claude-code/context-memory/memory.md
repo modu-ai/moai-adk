@@ -7,6 +7,10 @@ description: "说明 Claude Code 如何通过 CLAUDE.md 与自动记忆跨会话
 
 本文考察让 Claude Code 在每个会话都以全新的上下文窗口 (context window) 启动的同时、又不丢失项目知识的两种记忆机制。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [CLAUDE.md 指南](/zh/advanced/claude-md-guide)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：CLAUDE.md 是人写下的永久指引，自动记忆是 Claude 在工作中自行记录积累的学习笔记，两者都在每次会话开始时加载为上下文。
 {{< /callout >}}
@@ -179,7 +183,7 @@ MoAI-ADK 运行在上述 Claude Code 记忆基础之上。它把项目根的 CLA
 
 ## 相关文档
 
-- [CLAUDE.md 指南](/advanced/claude-md-guide)
+- [CLAUDE.md 指南](/zh/advanced/claude-md-guide)
 
 ## 参考资料
 

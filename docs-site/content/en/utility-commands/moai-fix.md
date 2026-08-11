@@ -360,6 +360,6 @@ When `/moai fix` exits leaving residual issues (Level 4 manual items, unresolved
 
 ## Related Documents
 
-- [/moai loop - iterative fix loop](/utility-commands/moai-loop)
-- [/moai - fully autonomous automation](/utility-commands/moai)
-- [TRUST 5 Quality System](/core-concepts/trust-5)
+- [/moai loop - iterative fix loop](/en/utility-commands/moai-loop)
+- [/moai - fully autonomous automation](/en/utility-commands/moai)
+- [TRUST 5 Quality System](/en/core-concepts/trust-5)

@@ -58,79 +58,19 @@ MoAI-ADK 以 **基于 SPEC 的 TDD/DDD** 方法论为基础,并通过 **TRUST 5*
 **一句话概括:** 昨天与 AI 讨论的"JWT 认证 + 1 小时过期 + 刷新令牌",今天无需重新说明,用 `/moai run SPEC-AUTH-001` 一行就能立即开始实现!
 {{< /callout >}}
 
-### 什么是 TDD?(轻松理解)
+### 方法论与质量标准
 
-**TDD**(Test-Driven Development)是"先写测试再开发的方法"。
+实现方式会依项目状态自动指派为两者之一,产出则用共同的质量标准来验证。
 
-用出考题来比喻:
-
-- **先写评分标准(测试)** —— 因为功能还不存在,自然失败
-- **写通过标准的最少代码** —— 只写恰好需要的量
-- **打磨成更好的代码** —— 在保持测试通过的状态下改进
-
-MoAI-ADK 用 **RED-GREEN-REFACTOR** 循环自动化这一过程:
-
-| 阶段 | 含义 | 做的事 |
-|------|------|--------|
-| **RED** | 失败 | 先写尚不存在功能的测试 |
-| **GREEN** | 通过 | 写通过测试的最少代码 |
-| **REFACTOR** | 改进 | 在保持测试的同时提升代码质量 |
-
-### 什么是 DDD?(轻松理解)
-
-**DDD**(Domain-Driven Development)是"安全的代码改进方法"。
-
-用房屋翻新来比喻:
-
-- **不拆掉现有房子**,一个房间一个房间地改进
-- **翻新前记录当前状态**(= 特性化测试)
-- **一个房间一个房间地做,每次都确认**(= 渐进式改进)
-
-MoAI-ADK 用 **ANALYZE-PRESERVE-IMPROVE** 循环自动化这一过程:
-
-| 阶段 | 含义 | 做的事 |
-|------|------|--------|
-| **ANALYZE** | 分析 | 把握当前代码结构与问题点 |
-| **PRESERVE** | 保存 | 用测试记录当前行为(安全网) |
-| **IMPROVE** | 改进 | 在保持测试通过的同时逐点改进 |
-
-### 开发方法论选择
-
-MoAI-ADK 会依项目状态自动选择最优的开发方法论。
-
-```mermaid
-flowchart TD
-    A["项目分析"] --> B{"新项目或<br/>10%+ 测试覆盖率?"}
-    B -->|"Yes"| C["TDD 默认值"]
-    B -->|"No"| D{"既有项目<br/>< 10% 覆盖率?"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
-```
-
-| 方法论 | 对象 | 循环 |
-|--------|------|--------|
-| **TDD** | 新项目或 10%+ 覆盖率 | RED → GREEN → REFACTOR |
-| **DDD** | 覆盖率不足 10% 的既有项目 | ANALYZE → PRESERVE → IMPROVE |
+| 名称 | 何时适用 | 详细 |
+|------|----------|--------|
+| **TDD** (Test-Driven Development) | 新项目或测试覆盖率 10% 以上(默认) | [SPEC 驱动开发](/zh/core-concepts/spec-based-dev) |
+| **DDD** (Domain-Driven Development) | 测试覆盖率不足 10% 的既有项目 | [DDD](/zh/core-concepts/ddd) |
+| **TRUST 5** | 与方法论无关,适用于所有代码变更 | [TRUST 5](/zh/core-concepts/trust-5) |
 
 {{< callout type="info" >}}
 MoAI-ADK v2.5.0+ 采用二元方法论选择(仅 TDD 或 DDD)。为明确性与一致性,hybrid 模式已被移除。方法论在 `moai init` 时自动选择,可在 `.moai/config/sections/quality.yaml` 的 `development_mode` 中更改。
 {{< /callout >}}
-
-### TRUST 5 质量框架
-
-TRUST 5 以以下 5 项核心原则为基础:
-
-| 原则 | 说明 |
-|------|------|
-| **T**ested | 85% 覆盖率、特性化测试、行为保存 |
-| **R**eadable | 明确的命名规则、一致的格式化 |
-| **U**nified | 统一的风格指南、自动格式化 |
-| **S**ecured | 遵循 OWASP、安全验证、漏洞分析 |
-| **T**rackable | 结构化提交、变更历史追踪 |
 
 ## Go Edition 特点
 
@@ -310,10 +250,10 @@ moai cg            # CG 混合(Claude 领导 + GLM 队友,需 tmux)
 
 要开始 MoAI-ADK 之旅,请遵循以下步骤:
 
-1. **[安装](/getting-started/installation)** - 在系统中安装 MoAI-ADK
-2. **[初始设置](/getting-started/init-wizard)** - 运行交互式设置向导
-3. **[快速开始](/getting-started/quickstart)** - 创建第一个项目
-4. **[核心概念](/core-concepts/what-is-moai-adk)** - 深入理解 MoAI-ADK
+1. **[安装](/zh/getting-started/installation)** - 在系统中安装 MoAI-ADK
+2. **[初始设置](/zh/getting-started/init-wizard)** - 运行交互式设置向导
+3. **[快速开始](/zh/getting-started/quickstart)** - 创建第一个项目
+4. **[核心概念](/zh/core-concepts/what-is-moai-adk)** - 深入理解 MoAI-ADK
 
 ## 核心优势
 

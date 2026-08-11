@@ -12,6 +12,10 @@ draft: false
   プロセスを自動的に** 行います。
 {{< /callout >}}
 
+{{< callout type="info" title="プラットフォームの基礎" >}}
+プラットフォーム層の背景については [セッション管理](/ja/claude-code/context-memory/sessions) を参照してください。MoAI-ADK としての説明はこのページです。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **スラッシュコマンド対応**: MoAI のすべてのサブコマンドはスキルでラップされているので、`/moai` だけ入力すると利用可能なサブコマンド一覧が表示されます。各サブコマンドは `/moai:fix`、`/moai:loop`、`/moai:review` などの形式ですぐに実行することもできます。
 {{< /callout >}}
@@ -363,8 +367,8 @@ flowchart TD
 
 ## 関連ドキュメント
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC 生成の詳細
-- [/moai run](/workflow-commands/moai-run) - DDD 実装の詳細
-- [/moai sync](/workflow-commands/moai-sync) - ドキュメント同期の詳細
-- [/moai loop](/utility-commands/moai-loop) - 反復修正ループの詳細
-- [/moai fix](/utility-commands/moai-fix) - 一回限りの自動修正の詳細
+- [/moai plan](/ja/workflow-commands/moai-plan) - SPEC 生成の詳細
+- [/moai run](/ja/workflow-commands/moai-run) - DDD 実装の詳細
+- [/moai sync](/ja/workflow-commands/moai-sync) - ドキュメント同期の詳細
+- [/moai loop](/ja/utility-commands/moai-loop) - 反復修正ループの詳細
+- [/moai fix](/ja/utility-commands/moai-fix) - 一回限りの自動修正の詳細

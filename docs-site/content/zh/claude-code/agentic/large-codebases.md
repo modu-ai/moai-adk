@@ -9,6 +9,10 @@ description: "整理在数百万行的单一树或多包 monorepo 中高效使�
 
 无论是数百万行的单一仓库，还是由多个包组成的 monorepo，Claude Code 在大型代码库中同样运转良好。只是默认配置假定的是小项目，因此**把上下文只收窄到每项工作实际触及的部分**的策略必不可少。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [代币经济学概述](/zh/advanced/tokenomics-overview)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：大型代码库的真正问题不是"文件多"，而是**与当前工作无关的指令与文件填满了上下文**。无关的令牌既拉低质量又抬高成本 —— 上下文收窄就是代币经济学。
 {{< /callout >}}
@@ -100,7 +104,7 @@ API routes are in src/routes/. Never write raw SQL in handlers.
 ```
 
 - 支持 TypeScript、Python、Go、Rust 等主要语言
-- 系统中须已安装对应语言的 LSP 二进制（参考[插件文档](/claude-code/extensibility/plugins)）
+- 系统中须已安装对应语言的 LSP 二进制（参考[插件文档](/zh/claude-code/extensibility/plugins)）
 
 ## 用工作树只检出需要的目录
 
@@ -256,9 +260,9 @@ grep -r "FunctionName" packages/      # 所有包
 
 ## 相关文档
 
-- [上下文窗口](/claude-code/context-memory/context-window)
-- [工作树](/claude-code/agentic/worktrees)
-- [最佳实践](/claude-code/agentic/best-practices)
+- [上下文窗口](/zh/claude-code/context-memory/context-window)
+- [工作树](/zh/claude-code/agentic/worktrees)
+- [最佳实践](/zh/claude-code/agentic/best-practices)
 
 ## 参考资料
 

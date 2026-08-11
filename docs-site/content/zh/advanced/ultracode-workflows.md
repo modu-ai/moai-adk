@@ -10,6 +10,10 @@ draft: false
 **一句话总结**：动态工作流是用 JavaScript 编写的自动化脚本，可并行协调数十~数百个智能体。Ultracode 由 `/effort ultracode` 或 `ultracode` 关键字触发。
 {{< /callout >}}
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [动态工作流](/zh/claude-code/agentic/workflows)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 ## 3 种编排原语
 
 MoAI-ADK 提供 **3 种编排原语**，选择标准是"计划握在谁手里"。

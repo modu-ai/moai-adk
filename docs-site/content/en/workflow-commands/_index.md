@@ -47,9 +47,9 @@ If you are new, start with `/moai project`. Project documentation must exist for
 `/moai harness` is an auxiliary command for managing the harness learning subsystem — it monitors CLAUDE.md changes and proposes tier-based automatic updates.
 {{< /callout >}}
 
-## All subcommands (15)
+## All subcommands (16)
 
-The `/moai` orchestrator routes 15 subcommands. This (workflow) section covers the SPEC 3-Phase lifecycle commands, and the [utility commands](/utility-commands/) section covers automation, fix-loop, code-management, and feedback commands.
+The `/moai` orchestrator routes 16 subcommands. This (workflow) section covers the SPEC 3-Phase lifecycle commands, and the [utility commands](/en/utility-commands/) section covers automation, fix-loop, code-management, and feedback commands.
 
 **Workflow commands (this section):**
 
@@ -62,20 +62,20 @@ The `/moai` orchestrator routes 15 subcommands. This (workflow) section covers t
 | [`/moai design`](./moai-design) | Design-phase collaboration (manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | Harness creation and learning lifecycle |
 
-**Utility commands ([utility section](/utility-commands/)):**
+**Utility commands ([utility section](/en/utility-commands/)):**
 
 | Subcommand | Purpose |
 |-----------|------|
-| [`/moai fix`](/utility-commands/moai-fix) | One-shot auto-fix |
-| [`/moai loop`](/utility-commands/moai-loop) | Iterative fix loop |
-| [`/moai mx`](/utility-commands/moai-mx) | @MX code annotations |
-| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub issue feedback |
-| [`/moai review`](/utility-commands/moai-review) | Multi-lens code review (security · @MX) |
-| [`/moai clean`](/utility-commands/moai-clean) | Dead-code removal |
-| [`/moai codemaps`](/utility-commands/moai-codemaps) | Architecture codemap generation |
-| [`/moai gate`](/utility-commands/moai-gate) | Pre-commit quality gate |
-| [`/moai e2e`](/utility-commands/moai-e2e) | Multi-platform E2E testing |
-| [`/moai goal`](/utility-commands/moai-goal) | Condition-declared autonomous loop |
+| [`/moai fix`](/en/utility-commands/moai-fix) | One-shot auto-fix |
+| [`/moai loop`](/en/utility-commands/moai-loop) | Iterative fix loop |
+| [`/moai mx`](/en/utility-commands/moai-mx) | @MX code annotations |
+| [`/moai feedback`](/en/utility-commands/moai-feedback) | GitHub issue feedback |
+| [`/moai review`](/en/utility-commands/moai-review) | Multi-lens code review (security · @MX) |
+| [`/moai clean`](/en/utility-commands/moai-clean) | Dead-code removal |
+| [`/moai codemaps`](/en/utility-commands/moai-codemaps) | Architecture codemap generation |
+| [`/moai gate`](/en/utility-commands/moai-gate) | Pre-commit quality gate |
+| [`/moai e2e`](/en/utility-commands/moai-e2e) | Multi-platform E2E testing |
+| [`/moai goal`](/en/utility-commands/moai-goal) | Condition-declared autonomous loop |
 
 ## Quick Start
 
@@ -103,8 +103,8 @@ You can also make requests in plain natural language. If you type something like
 
 ## Related Documents
 
-- [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed explanation of SPEC and the EARS/GEARS formats
-- [DDD Methodology](/core-concepts/ddd) - Detailed explanation of the ANALYZE-PRESERVE-IMPROVE cycle
-- [TRUST 5 Quality System](/core-concepts/trust-5) - Detailed explanation of quality gates
-- [Harness Engineering](/core-concepts/harness-engineering) - Overview of the harness learning subsystem
-- [Quick Start](/getting-started/quickstart) - Step-by-step tutorial from scratch
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) - Detailed explanation of SPEC and the EARS/GEARS formats
+- [DDD Methodology](/en/core-concepts/ddd) - Detailed explanation of the ANALYZE-PRESERVE-IMPROVE cycle
+- [TRUST 5 Quality System](/en/core-concepts/trust-5) - Detailed explanation of quality gates
+- [Harness Engineering](/en/core-concepts/harness-engineering) - Overview of the harness learning subsystem
+- [Quick Start](/en/getting-started/quickstart) - Step-by-step tutorial from scratch

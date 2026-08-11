@@ -12,6 +12,10 @@ Git Worktree is the foundation of MoAI-ADK parallel development. It gives every
 SPEC a fully independent workspace, so you can keep different Git states and
 different LLM configurations running at the same time.
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Worktrees](/en/claude-code/agentic/worktrees). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 
 Looked at through **the Agentic Harness** — the quality-control one of the three
 core values — Worktree is the control device that splits each SPEC's workspace
@@ -121,7 +125,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **Advantages**:
 
 - Completely isolated working environment
-- GLM cost efficiency (roughly 70% savings versus Opus)
+- GLM cost efficiency (for the size of the savings, see [CG Mode](/en/multi-llm/cg-mode))
 - Unlimited parallel development without conflicts
 
 #### Phase 3: Cleanup

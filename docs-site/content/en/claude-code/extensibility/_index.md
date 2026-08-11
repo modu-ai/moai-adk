@@ -7,6 +7,10 @@ description: "The four extension points that widen Claude Code's capabilities (s
 
 This group covers the four ways to extend Claude Code's behavior beyond its built-in capabilities. It explains, concept-first, the flow of modularizing expertise with skills, attaching automation to events with hooks, connecting external tools with MCP, and shipping all of it as one package with plugins.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 
 These four are exactly the materials for building an **Agentic Harness**. In harness engineering — designing an environment where the agent works well instead of writing the code yourself — skills carry the agent's knowledge, hooks carry deterministic discipline, MCP carries the connection to the outside world, and plugins carry the deployment unit for the combination. What MoAI-ADK deploys with a single `moai init`, and what `/moai project` generates project-specifically, are ultimately combinations of these materials.
 
@@ -33,9 +37,9 @@ We recommend reading in this order: start with skills, the lightest extension po
 
 | Document | Description |
 |------|------|
-| [Skills](/claude-code/extensibility/skills) | Expertise modules and progressive disclosure |
-| [Hooks](/claude-code/extensibility/hooks) | Event-driven automation |
-| [MCP Servers](/claude-code/extensibility/mcp) | The external tool connection protocol |
-| [Plugins and Marketplaces](/claude-code/extensibility/plugins) | Extension packages and code intelligence |
+| [Skills](/en/claude-code/extensibility/skills) | Expertise modules and progressive disclosure |
+| [Hooks](/en/claude-code/extensibility/hooks) | Event-driven automation |
+| [MCP Servers](/en/claude-code/extensibility/mcp) | The external tool connection protocol |
+| [Plugins and Marketplaces](/en/claude-code/extensibility/plugins) | Extension packages and code intelligence |
 
-Once you know the four materials, head to the next group, [Agents and Automation](/claude-code/agentic), to see how to run agentic loops on top of the harness built from them.
+Once you know the four materials, head to the next group, [Agents and Automation](/en/claude-code/agentic), to see how to run agentic loops on top of the harness built from them.

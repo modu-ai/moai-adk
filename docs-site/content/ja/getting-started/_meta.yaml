@@ -13,3 +13,9 @@ cli:
   title: "CLI 概要"
 faq:
   title: "よくある質問"
+comparison:
+  title: "MoAI-ADKと他のツールの比較"
+  weight: 35
+migration:
+  title: "MoAI v2からv3への移行"
+  weight: 25

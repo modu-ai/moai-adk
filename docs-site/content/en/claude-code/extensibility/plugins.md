@@ -7,6 +7,10 @@ description: "How Claude Code plugins bundle commands, agents, skills, hooks, an
 
 A Claude Code plugin is the unit that bundles scattered extensions into one package for distribution to teams and the community, and a marketplace is the catalog where those packages are discovered and installed. Seen through the harness lens, this is the distribution layer that packages the materials from the previous three documents — skills, hooks, MCP — into "one installable piece of harness".
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: A plugin is an "extension bundle" that packs commands, agents, skills, hooks, and MCP into one folder, versioned and distributed — and a marketplace is the app store where you pick those bundles.
 {{< /callout >}}
@@ -161,9 +165,9 @@ MoAI-ADK itself is not a plugin — `moai init` deploys harness assets (skills, 
 
 ## Related Documents
 
-- [Skills](/claude-code/extensibility/skills)
-- [Hooks](/claude-code/extensibility/hooks)
-- [MCP Servers](/claude-code/extensibility/mcp)
+- [Skills](/en/claude-code/extensibility/skills)
+- [Hooks](/en/claude-code/extensibility/hooks)
+- [MCP Servers](/en/claude-code/extensibility/mcp)
 
 ## References
 

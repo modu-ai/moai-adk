@@ -10,6 +10,10 @@ Delegate 100 agents sequentially and your context collapses first. Dynamic workf
 **One-line summary**: Dynamic workflows are automation scripts written in JavaScript that orchestrate dozens to hundreds of agents in parallel. Ultracode is triggered by `/effort ultracode` or the `ultracode` keyword.
 {{< /callout >}}
 
+{{< callout type="info" title="Platform basics" >}}
+Background on the platform layer is in [Dynamic Workflows](/en/claude-code/agentic/workflows). This page is the MoAI-ADK account of it.
+{{< /callout >}}
+
 ## The 3 Orchestration Primitives
 
 MoAI-ADK provides **3 orchestration primitives**, and the selection criterion is "who holds the plan."

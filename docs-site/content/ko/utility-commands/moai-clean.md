@@ -207,5 +207,5 @@ Git으로 되돌리면 됩니다. MoAI는 의존성 역순으로 지운 뒤 테�
 
 ## 관련 문서
 
-- [/moai fix - 일회성 자동 수정](/utility-commands/moai-fix)
-- [/moai codemaps - 아키텍처 문서 생성](/utility-commands/moai-codemaps)
+- [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)
+- [/moai codemaps - 아키텍처 문서 생성](/ko/utility-commands/moai-codemaps)

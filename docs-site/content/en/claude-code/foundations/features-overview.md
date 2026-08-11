@@ -26,22 +26,22 @@ The table below summarizes Claude Code's major features with one-line descriptio
 
 | Feature | One-line description | Learn more |
 | --- | --- | --- |
-| Code editing | The core built-in capability: the model reads and modifies files directly. | [Foundations group](/claude-code/foundations) |
-| Search | Built-in tools for finding patterns, files, and symbols in the codebase. | [Foundations group](/claude-code/foundations) |
-| Command execution | Runs shell commands for builds, tests, and git work. | [Foundations group](/claude-code/foundations) |
-| Slash commands | Commands starting with `/` that instantly invoke skills or built-in behaviors. | [Foundations group](/claude-code/foundations) |
-| Interactive mode | Session modes that change permission handling or working style. | [Foundations group](/claude-code/foundations) |
-| CLAUDE.md / memory | Holds persistent context loaded automatically every session. | [Context and Memory](/claude-code/context-memory) |
-| Context window | The token limit a session can hold and strategies for managing it. | [Context and Memory](/claude-code/context-memory) |
-| Skills | Markdown units carrying reusable knowledge and workflows. | [Extensibility](/claude-code/extensibility) |
-| MCP | The protocol connecting external services and tools to the model. | [Extensibility](/claude-code/extensibility) |
-| Hooks | Automatically run scripts, requests, or prompts on lifecycle events. | [Extensibility](/claude-code/extensibility) |
-| Artifacts store | Structures and shares HTML, markdown, and snippets Claude generates. | [Extensibility](/claude-code/extensibility) |
-| Plugins | Packaging units bundling skills, hooks, subagents, and MCP for distribution. | [Extensibility](/claude-code/extensibility) |
-| Subagents | Workers that execute independently in isolated contexts and return only a summary. | [Agents and Automation](/claude-code/agentic) |
-| Agent teams | Multiple independent sessions collaborating via shared tasks and messages. | [Agents and Automation](/claude-code/agentic) |
-| Worktrees | Parallel development on the same repository in separated working directories. | [Agents and Automation](/claude-code/agentic) |
-| Checkpoints | Save state mid-work so you can go back. | [Agents and Automation](/claude-code/agentic) |
+| Code editing | The core built-in capability: the model reads and modifies files directly. | [Foundations group](/en/claude-code/foundations) |
+| Search | Built-in tools for finding patterns, files, and symbols in the codebase. | [Foundations group](/en/claude-code/foundations) |
+| Command execution | Runs shell commands for builds, tests, and git work. | [Foundations group](/en/claude-code/foundations) |
+| Slash commands | Commands starting with `/` that instantly invoke skills or built-in behaviors. | [Foundations group](/en/claude-code/foundations) |
+| Interactive mode | Session modes that change permission handling or working style. | [Foundations group](/en/claude-code/foundations) |
+| CLAUDE.md / memory | Holds persistent context loaded automatically every session. | [Context and Memory](/en/claude-code/context-memory) |
+| Context window | The token limit a session can hold and strategies for managing it. | [Context and Memory](/en/claude-code/context-memory) |
+| Skills | Markdown units carrying reusable knowledge and workflows. | [Extensibility](/en/claude-code/extensibility) |
+| MCP | The protocol connecting external services and tools to the model. | [Extensibility](/en/claude-code/extensibility) |
+| Hooks | Automatically run scripts, requests, or prompts on lifecycle events. | [Extensibility](/en/claude-code/extensibility) |
+| Artifacts store | Structures and shares HTML, markdown, and snippets Claude generates. | [Extensibility](/en/claude-code/extensibility) |
+| Plugins | Packaging units bundling skills, hooks, subagents, and MCP for distribution. | [Extensibility](/en/claude-code/extensibility) |
+| Subagents | Workers that execute independently in isolated contexts and return only a summary. | [Agents and Automation](/en/claude-code/agentic) |
+| Agent teams | Multiple independent sessions collaborating via shared tasks and messages. | [Agents and Automation](/en/claude-code/agentic) |
+| Worktrees | Parallel development on the same repository in separated working directories. | [Agents and Automation](/en/claude-code/agentic) |
+| Checkpoints | Save state mid-work so you can go back. | [Agents and Automation](/en/claude-code/agentic) |
 
 ### The Built-in Tool Family
 
@@ -100,20 +100,20 @@ flowchart TD
 
 | Order | Group | What you gain |
 | --- | --- | --- |
-| 1 | [Foundations group](/claude-code/foundations) | The core everyday actions — editing, search, execution |
-| 2 | [Context and Memory](/claude-code/context-memory) | How to pin rules with CLAUDE.md and conserve context |
-| 3 | [Extensibility](/claude-code/extensibility) | How to grow capability with skills, MCP, hooks, plugins |
-| 4 | [Agents and Automation](/claude-code/agentic) | How to parallelize work with subagents and agent teams |
+| 1 | [Foundations group](/en/claude-code/foundations) | The core everyday actions — editing, search, execution |
+| 2 | [Context and Memory](/en/claude-code/context-memory) | How to pin rules with CLAUDE.md and conserve context |
+| 3 | [Extensibility](/en/claude-code/extensibility) | How to grow capability with skills, MCP, hooks, plugins |
+| 4 | [Agents and Automation](/en/claude-code/agentic) | How to parallelize work with subagents and agent teams |
 
 The **best practice** the official docs recommend is not to configure every feature from the start. Make the same mistake twice, add a rule to CLAUDE.md; repeat the same prompt, save it as a skill; find an action that must happen automatically every time, write a hook — building up one piece at a time as the need reveals itself. This "one at a time, when needed" principle is also right from a token perspective — unused extensions only occupy context, and context is cost.
 
 ## Related Documents
 
-- [Foundations group](/claude-code/foundations)
-- [Context and Memory](/claude-code/context-memory)
-- [Extensibility](/claude-code/extensibility)
-- [Agents and Automation](/claude-code/agentic)
-- [Quickstart](/getting-started/quickstart)
+- [Foundations group](/en/claude-code/foundations)
+- [Context and Memory](/en/claude-code/context-memory)
+- [Extensibility](/en/claude-code/extensibility)
+- [Agents and Automation](/en/claude-code/agentic)
+- [Quickstart](/en/getting-started/quickstart)
 
 ## References
 

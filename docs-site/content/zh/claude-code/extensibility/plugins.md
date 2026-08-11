@@ -7,6 +7,10 @@ description: "说明 Claude Code 插件如何把命令·智能体·技能·hook�
 
 Claude Code 插件是把散落的扩展功能捆绑成一个包、向团队与社区分发的单元，而市场则是发现并安装这些包的目录。从挽具的视角看，它是把前三篇文档所学的技能·钩子·MCP 这些原材料包装成"一块可安装的挽具零件"的分发层。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 自身的功能在侧边栏上方的章节中介绍。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：插件是把命令·智能体·技能·hook·MCP 装进一个文件夹、带版本管理地分发的"扩展捆绑包"，市场则是挑选这些捆绑包的应用商店。
 {{< /callout >}}
@@ -161,9 +165,9 @@ MoAI-ADK 本身不是插件，而是采用 `moai init` 把挽具资产（技能�
 
 ## 相关文档
 
-- [技能](/claude-code/extensibility/skills)
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [MCP 服务器](/claude-code/extensibility/mcp)
+- [技能](/zh/claude-code/extensibility/skills)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [MCP 服务器](/zh/claude-code/extensibility/mcp)
 
 ## 参考资料
 

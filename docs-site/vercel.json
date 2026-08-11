@@ -93,13 +93,13 @@
       "permanent": true
     },
     {
-      "source": "/book",
-      "destination": "https://book.mo.ai.kr",
+      "source": "/:locale(ko|en|ja|zh)/book",
+      "destination": "/:locale/core-concepts/book",
       "permanent": true
     },
     {
-      "source": "/book/:path*",
-      "destination": "https://book.mo.ai.kr/:path*",
+      "source": "/book",
+      "destination": "/ko/core-concepts/book",
       "permanent": true
     },
     {

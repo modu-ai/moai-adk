@@ -9,6 +9,10 @@ description: "Claude Code の対話型 REPL セッションの入力方式、キ
 
 Claude Code をターミナルで実行すると出会う対話型セッション (REPL) の入力方式とショートカット、権限モードを整理します。
 
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK 自体の機能は、サイドバーの上位セクションで扱います。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **ひとことで言うと**: 対話モードは Claude Code の **コックピット** であり、プロンプト 1 行から `/` コマンド、`!` の bash 実行、`@` のファイル参照、画像の貼り付けまで、すべての入力が集まる場所です。
 {{< /callout >}}

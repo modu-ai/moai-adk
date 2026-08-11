@@ -1,0 +1,151 @@
+# Acceptance — SPEC-CODEX-PHASE2-001
+
+> Every criterion is binary-testable: a Go test, a command exit code, or a grep with a stated expected count. Criteria are written as Given-When-Then; the GEARS requirements they verify live in `spec.md` §D.
+
+## Severity legend
+
+- **MUST** — blocks Definition of Done.
+- **SHOULD** — non-blocking; a miss is recorded as debt with a rationale.
+
+## §A. AC Matrix
+
+### M1 — Reusable session + model/effort SSOT
+
+**AC-CX2-001** (MUST, REQ-CX2-001) — *Given* a canned session runner that answers `initialize`, `thread/start`, and two successive turns, *When* the caller issues a second turn on the returned session handle, *Then* the exchange contains exactly one `initialize` and one `thread/start`, both turns carry the same `threadId`, and both return their result.
+
+**AC-CX2-002** (MUST, REQ-CX2-001) — *Given* the refactored session, *When* `go test ./internal/cli/... -run 'Codex|ReviewGate'` runs, *Then* every pre-existing codex and review-gate test passes unmodified in its assertions, demonstrating the two existing `runCodexReviewRPC` callers are behaviorally unchanged.
+
+**AC-CX2-003** (MUST, REQ-CX2-002) — *Given* a codex request with no explicit model, *When* the request params are captured at the transport seam, *Then* they carry the model resolved by `template.ResolveAgentModelEffort`; and *Given* an explicit `model` argument, *Then* the transmitted params carry that value — the current drop at `buildCodexReviewParams` (`mcp_codex.go:433`) is closed.
+
+**AC-CX2-004** (MUST, REQ-CX2-002) — *Given* the M1 tree, *When* `go test ./internal/cli/ -run TestMCPAudit_NoDirectFrontmatterRead` runs, *Then* it passes, and a companion test asserts the resolver is invoked on the codex path, so the guard can no longer pass vacuously.
+
+### M2 — Job registry
+
+**AC-CX2-005** (MUST, REQ-CX2-003) — *Given* a writable temporary project root, *When* a background task is started, *Then* exactly one file appears under `.moai/state/codex-jobs/`, and its JSON decodes with a non-empty job id, a status, creation and update timestamps, a `threadId`, a non-empty `turnId` equal to the `turn.id` carried by the canned session's `turn/started` notification, the pid of the codex process this server spawned for the job, a mode, and a request summary.
+
+**AC-CX2-006** (MUST, REQ-CX2-004) — *Given* a job progressing through its lifecycle, *When* each transition is written, *Then* the recorded status is one of `queued`/`running`/`completed`/`failed`/`cancelled` at every read, and no read observes a truncated or partially-written file.
+
+**AC-CX2-007** (MUST, REQ-CX2-004) — *Given* a project root whose `.moai/state/` cannot be written, *When* a background task is requested, *Then* the tool returns a structured error result, the test process does not panic, and the server remains able to serve a subsequent tool call.
+
+**AC-CX2-008** (MUST, REQ-CX2-005) — *Given* a job record produced with credential-shaped values present in the environment and in the request, *When* the record file is read, *Then* it contains no API key, no token, and no serialized environment block, verified by asserting the absence of the seeded sentinel values.
+
+### M3 — `codex_task`
+
+**AC-CX2-009** (MUST, REQ-CX2-006) — *Given* a canned codex session that completes a turn, *When* `codex_task` is invoked with `background` false, *Then* the result carries the task output; and *When* invoked with `background` true, *Then* the result carries a job id that resolves to an existing job record.
+
+**AC-CX2-010** (MUST, REQ-CX2-007) — *Given* a project whose config carries no `workflow.codex.task.allow_write` key (the distributed default), *When* `codex_task` is invoked with `write` true, *Then* the turn is not run in a writing mode and the result states that the write request was not honored; and *Given* `workflow.codex.task.allow_write: true`, *Then* the writing mode is requested. The absent-key, malformed-YAML, and explicit-`false` cases all read as not opted in (fail-closed). And *Given* each of those config states in turn, *When* `codex_setup` is invoked, *Then* its decoded result map carries an `allow_write` key whose boolean value is the literal expected value for that state — `false` for absent-key, `false` for malformed-YAML, `false` for explicit-`false`, and `true` for explicit-`true` — alongside the pre-existing `enable_review_gate` key. The expected values are stated literally rather than as "whatever the gate reads", so the assertion cannot pass by calling the same read on both sides — asserted by a Go test that decodes the `codex_setup` result rather than by a grep.
+
+*And* (sticky-policy arm, M0-forced) *Given* `workflow.codex.task.allow_write: true` and a canned session capturing every transmitted `turn/start`, *When* two turns are driven on one reused thread — turn 1 invoked with `write` true, turn 2 invoked without a write request — *Then* turn 1's transmitted params carry `sandboxPolicy` `workspaceWrite` and turn 2's transmitted params carry `sandboxPolicy` `readOnly`; turn 2's `sandboxPolicy` field is present rather than omitted, so the thread's inherited write-enabled policy (`sandboxPolicy` applies "for this turn and subsequent turns") cannot outlive the request that opted into it. The enum values are the literal M0-observed variants (`readOnly` | `workspaceWrite` | `dangerFullAccess` | `externalSandbox`).
+
+**AC-CX2-011** (MUST, REQ-CX2-008) — *Given* a recorded prior thread for the project, *When* `codex_task` runs with `resume_last`, *Then* the transmitted `threadId` equals the recorded one and no new `thread/start` is issued; and *Given* no recorded thread, *Then* a new thread is opened and the result states that no prior thread was resumed.
+
+### M4 — Job control
+
+**AC-CX2-012** (MUST, REQ-CX2-009) — *Given* an existing job, *When* `codex_job_status` is invoked with its id, *Then* the record is returned; and *Given* an unknown id, *Then* a structured not-found result is returned with `IsError` set rather than a Go error that aborts the call.
+
+**AC-CX2-013** (MUST, REQ-CX2-010) — *Given* a job in a terminal status, *When* `codex_job_result` is invoked, *Then* the recorded output is returned; and *Given* a running job, *Then* the current status is returned and the call completes without waiting for the turn.
+
+**AC-CX2-014** (MUST, REQ-CX2-011) — *Given* a running job backed by a canned session, *When* `codex_job_cancel` is invoked, *Then* the M0-confirmed `turn/interrupt` request is sent on that job's session carrying both required params — a `threadId` and a `turnId` equal to the values in that job's record — the job's recorded status becomes `cancelled`, and *When* the process does not exit within the grace window, *Then* it is terminated and the call still returns within a bounded time.
+
+**AC-CX2-015** (MUST, REQ-CX2-012) — *Given* a job record naming a pid the running server did not spawn in the current process lifetime (the shape a record left behind by a previous server lifetime takes, since background jobs are in-process and do not survive a restart), *When* `codex_job_cancel` is invoked for it, *Then* no signal is sent to that pid and the tool returns a structured refusal — asserted by a test that records signal attempts rather than by observing a live process.
+
+### Cross-cutting
+
+**AC-CX2-016** (MUST, REQ-CX2-013/014/015) — *Given* the completed tree, *When* the following batch runs, *Then* every command meets its stated expectation:
+
+```bash
+# tool registration — per-tool existence, expect NO output.
+# A line-counting grep -c over an alternation is NOT used: it counts matching
+# lines, so four lines naming only codex_task would clear a `>= 4` gate with
+# three tools missing. Each name is asserted independently, matching the
+# quoted-literal registration shape of "codex_audit" / "codex_setup"
+# (mcp_server.go:192, :205).
+for t in codex_task codex_job_status codex_job_result codex_job_cancel; do
+  grep -q "\"$t\"" internal/cli/mcp_server.go || echo "MISSING $t"
+done
+
+# JSON Schema + read-only hints (REQ-CX2-013) — expect exit 0.
+go test ./internal/cli/ -run TestCodexJobTools_RegistrationShape
+# This Go test is the binding check for the schema/hint half of REQ-CX2-013 —
+# a grep cannot distinguish per-tool annotation from one annotation anywhere
+# in the file. It reads the registered tool set and asserts, per tool, a
+# declared input schema — len(InputSchema.Properties) > 0 for each of the four,
+# with the three job tools declaring a job-id property — and asserts that
+# *Annotations.ReadOnlyHint is true for codex_job_status and codex_job_result
+# and false for codex_task and codex_job_cancel.
+#
+# Both assertions are stated against the value, not the presence, of the field.
+# mcp.NewTool seeds every tool with Annotations.ReadOnlyHint = ToBoolPtr(false)
+# and with InputSchema.Type "object" plus a non-nil Properties map
+# (mcp-go v0.57.0 mcp/tools.go:846-861), so the pointer is never nil and the
+# schema is never absent. A nil-check would false-fail a correct write tool,
+# and a mere non-empty-schema check could not fail at all.
+
+# config-key + constant placement (REQ-CX2-015) — expect a match in each file
+grep -n 'AllowWrite' internal/config/types.go      # typed field on the codex task config
+grep -n 'AllowWrite' internal/config/defaults.go   # distributed default (false)
+
+# subagent boundary (expect no output)
+grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go internal/cli/codex_*.go \
+  | grep -v '_test.go' | grep -v '//'
+
+# no template surface touched (expect empty)
+git status --porcelain internal/template/templates/
+
+# cross-platform build (expect exit 0 twice)
+go build ./... && GOOS=windows GOARCH=amd64 go build ./...
+```
+
+### M6 — Protocol liveness (amendment, v0.6.0)
+
+**AC-CX2-017** (MUST, REQ-CX2-016) — *Given* a canned session whose server side, mid-turn, emits a client-bound request line carrying both a `method` and an `id` (the `item/fileChange/requestApproval` shape observed in `progress.md` §E.2) **and which withholds `turn/completed` until it has observed a transmitted line whose `id` equals that request's `id`**, *When* `codex_task` drives a turn that did not opt into writes (`workflow.codex.task.allow_write` absent — the distributed default), *Then* the captured transmitted lines contain a response carrying that same `id`, the decoded payload of that response denies the file change rather than approving it, and the turn returns.
+
+The withholding is what makes this criterion non-vacuous: a driver that drops the request produces no id-matched line, the canned server never sends `turn/completed`, and the test fails by exhausting its own bound instead of passing silently. The assertion is stated against the transmitted line and its decoded decision value — not against the presence of a `case` in the dispatch switch, which a code-shape check could satisfy without the response ever being sent, and not against the mere presence of a decision field, which would be unfalsifiable.
+
+*And* (unknown-method arm) *Given* the same withholding canned server emitting a client-bound request whose `method` the driver does not recognize, *Then* a response carrying that `id` is likewise transmitted and the turn returns — a JSON-RPC error response satisfies this arm; being ignored does not.
+
+**AC-CX2-018** (MUST, REQ-CX2-017) — *Given* a canned session that accepts `turn/start` and emits `turn/started` and then emits nothing further — no `turn/completed`, no EOF — *When* `codex_task` is invoked with `context.Background()` as the caller context (no caller deadline, so a pass cannot be produced by the caller's bound) and the REQ-CX2-017 value in `internal/config/defaults.go` overridden to a short test duration `D`, *Then* the call returns after **at least** `D` and **within** a generous ceiling well below any host-imposed bound, the foreground result is a structured result naming the timeout, the background form's job record reaches a terminal status, and the test process does not panic.
+
+The two-sided time bound is the anti-vacuity device: a call that returns immediately for an unrelated reason fails the lower bound, and a call that never returns fails the upper. The override is what keeps the criterion cheap to run, and it is why REQ-CX2-017 requires a test-overridable value rather than a compile-time constant.
+
+*And* (distinctness arm) *Given* the completed tree, *When* `grep -n 'DefaultCodexReviewGateTimeout' internal/cli/codex_task.go` runs, *Then* it produces no output — the task bound is its own named value, not a reuse of the review-gate budget.
+
+## §B. Edge cases (negative tests, MUST)
+
+- Codex binary absent from PATH: every new tool returns a structured fail-open result; none panics, and none blocks the caller.
+- Codex spawns but the session closes before the handshake completes: the tool returns a structured result naming the failure; no goroutine leaks past the test.
+- Two concurrent background tasks in the same project: two distinct job ids, two distinct record files, neither overwriting the other.
+- A job record file that is present but malformed JSON: `codex_job_status` reports it as unreadable rather than crashing the server.
+- Cancel invoked on an already-terminal job: returns the terminal status and sends nothing.
+
+## §C. Definition of Done
+
+- Every MUST criterion above passes with cited command output.
+- `go test ./...` passes; `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` both exit 0.
+- `internal/cli` package coverage is at or above its pre-change level.
+- `golangci-lint run` introduces no new findings against the pre-change baseline.
+- Both `plan.md` §D M0 design forks (background job execution model; write-mode opt-in surface) are resolved and their resolutions recorded before run-phase entry — closed 2026-08-10 by user decision (in-process goroutine; `workflow.codex.task.allow_write`).
+- **M0 is closed before M1 starts**: each of the four probe items (a)-(d) in `plan.md` §D M0 carries, in `progress.md` §E.2 Run-phase Evidence, either a verbatim request/response record or an explicit recorded absence, each attributed to the pinned codex-cli version; and for every item recorded absent, the degrade-path amendment named in `plan.md` §D M0 item 4 has landed in the SPEC artifacts.
+- `git status --porcelain internal/template/templates/` is empty.
+
+## §D. Traceability
+
+| REQ | AC |
+|---|---|
+| REQ-CX2-001 | AC-CX2-001, AC-CX2-002 |
+| REQ-CX2-002 | AC-CX2-003, AC-CX2-004 |
+| REQ-CX2-003 | AC-CX2-005 |
+| REQ-CX2-004 | AC-CX2-006, AC-CX2-007 |
+| REQ-CX2-005 | AC-CX2-008 |
+| REQ-CX2-006 | AC-CX2-009 |
+| REQ-CX2-007 | AC-CX2-010 |
+| REQ-CX2-008 | AC-CX2-011 |
+| REQ-CX2-009 | AC-CX2-012 |
+| REQ-CX2-010 | AC-CX2-013 |
+| REQ-CX2-011 | AC-CX2-014 |
+| REQ-CX2-012 | AC-CX2-015 |
+| REQ-CX2-013 | AC-CX2-016 |
+| REQ-CX2-014 | AC-CX2-016 |
+| REQ-CX2-015 | AC-CX2-016 |
+| REQ-CX2-016 | AC-CX2-017 |
+| REQ-CX2-017 | AC-CX2-018 |

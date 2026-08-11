@@ -9,6 +9,10 @@ description: "梳理 Claude Code 通过 /loop 与 cron 工具在会话内按固�
 
 Claude Code 的定时任务 (scheduled tasks) 是在同一会话保持打开期间、让提示词按既定周期重新执行的功能。
 
+{{< callout type="info" title="背景参考" >}}
+本页是关于 **Claude Code 本身** 的背景资料，也就是 MoAI-ADK 所依托的平台。MoAI-ADK 的使用方法请见 [自主连续循环](/zh/advanced/autonomous-loops)。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **一句话总结**：把部署轮询、照看 PR、定期巡检交给 `/loop` 与 cron 工具而不必每次人工输入 —— 一种绑定于会话的轻量自动化。
 {{< /callout >}}
@@ -154,8 +158,8 @@ in 45 minutes, check whether the integration tests passed
 
 ## 相关文档
 
-- [钩子 (Hooks)](/claude-code/extensibility/hooks)
-- [目标驱动执行 (/goal)](/claude-code/agentic/goal)
+- [钩子 (Hooks)](/zh/claude-code/extensibility/hooks)
+- [目标驱动执行 (/goal)](/zh/claude-code/agentic/goal)
 
 ## 参考资料
 

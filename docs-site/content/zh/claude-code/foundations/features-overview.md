@@ -26,22 +26,22 @@ MoAI-ADK 正是运行在这个 Claude Code 之上的智能体开发套件。此�
 
 | 功能 | 一句话说明 | 详细了解 |
 | --- | --- | --- |
-| 代码编辑 | 模型直接读取并修改文件的核心内置功能。 | [基础组](/claude-code/foundations) |
-| 搜索 | 在代码库中查找模式·文件·符号的内置工具。 | [基础组](/claude-code/foundations) |
-| 命令执行 | 执行 shell 命令，完成构建·测试·git 操作。 | [基础组](/claude-code/foundations) |
-| 斜杠命令 | 以 `/` 开头的命令，即时调用技能或内置动作。 | [基础组](/claude-code/foundations) |
-| 交互模式 | 切换权限处理方式或工作风格的会话模式。 | [基础组](/claude-code/foundations) |
-| CLAUDE.md / 记忆 | 保存每个会话自动加载的持久上下文。 | [上下文与记忆](/claude-code/context-memory) |
-| 上下文窗口 | 单个会话可容纳的令牌上限及其管理策略。 | [上下文与记忆](/claude-code/context-memory) |
-| 技能 | 承载可复用知识·工作流的 Markdown 单元。 | [扩展](/claude-code/extensibility) |
-| MCP | 把外部服务·工具连接到模型的协议。 | [扩展](/claude-code/extensibility) |
-| hook | 在生命周期事件上自动执行脚本·请求·提示。 | [扩展](/claude-code/extensibility) |
-| 产出物仓库 | 结构化并共享 Claude 生成的 HTML·Markdown·代码片段。 | [扩展](/claude-code/extensibility) |
-| 插件 | 把技能·hook·子智能体·MCP 打包分发的单元。 | [扩展](/claude-code/extensibility) |
-| 子智能体 | 在隔离上下文中独立执行后只返回摘要的工作者。 | [智能体与自动化](/claude-code/agentic) |
-| 智能体团队 | 多个独立会话共享任务与消息协同工作。 | [智能体与自动化](/claude-code/agentic) |
-| 工作树 | 将同一仓库以隔离的工作目录并行开发。 | [智能体与自动化](/claude-code/agentic) |
-| 检查点 | 在工作中途保存状态以便回退。 | [智能体与自动化](/claude-code/agentic) |
+| 代码编辑 | 模型直接读取并修改文件的核心内置功能。 | [基础组](/zh/claude-code/foundations) |
+| 搜索 | 在代码库中查找模式·文件·符号的内置工具。 | [基础组](/zh/claude-code/foundations) |
+| 命令执行 | 执行 shell 命令，完成构建·测试·git 操作。 | [基础组](/zh/claude-code/foundations) |
+| 斜杠命令 | 以 `/` 开头的命令，即时调用技能或内置动作。 | [基础组](/zh/claude-code/foundations) |
+| 交互模式 | 切换权限处理方式或工作风格的会话模式。 | [基础组](/zh/claude-code/foundations) |
+| CLAUDE.md / 记忆 | 保存每个会话自动加载的持久上下文。 | [上下文与记忆](/zh/claude-code/context-memory) |
+| 上下文窗口 | 单个会话可容纳的令牌上限及其管理策略。 | [上下文与记忆](/zh/claude-code/context-memory) |
+| 技能 | 承载可复用知识·工作流的 Markdown 单元。 | [扩展](/zh/claude-code/extensibility) |
+| MCP | 把外部服务·工具连接到模型的协议。 | [扩展](/zh/claude-code/extensibility) |
+| hook | 在生命周期事件上自动执行脚本·请求·提示。 | [扩展](/zh/claude-code/extensibility) |
+| 产出物仓库 | 结构化并共享 Claude 生成的 HTML·Markdown·代码片段。 | [扩展](/zh/claude-code/extensibility) |
+| 插件 | 把技能·hook·子智能体·MCP 打包分发的单元。 | [扩展](/zh/claude-code/extensibility) |
+| 子智能体 | 在隔离上下文中独立执行后只返回摘要的工作者。 | [智能体与自动化](/zh/claude-code/agentic) |
+| 智能体团队 | 多个独立会话共享任务与消息协同工作。 | [智能体与自动化](/zh/claude-code/agentic) |
+| 工作树 | 将同一仓库以隔离的工作目录并行开发。 | [智能体与自动化](/zh/claude-code/agentic) |
+| 检查点 | 在工作中途保存状态以便回退。 | [智能体与自动化](/zh/claude-code/agentic) |
 
 ### 内置工具系列
 
@@ -100,20 +100,20 @@ flowchart TD
 
 | 顺序 | 组 | 收获什么 |
 | --- | --- | --- |
-| 1 | [基础组](/claude-code/foundations) | 编辑·搜索·执行等每日使用的核心操作 |
-| 2 | [上下文与记忆](/claude-code/context-memory) | 用 CLAUDE.md 固定规则、节省上下文的方法 |
-| 3 | [扩展](/claude-code/extensibility) | 用技能·MCP·hook·插件增强能力的方法 |
-| 4 | [智能体与自动化](/claude-code/agentic) | 用子智能体·智能体团队并行化工作的方法 |
+| 1 | [基础组](/zh/claude-code/foundations) | 编辑·搜索·执行等每日使用的核心操作 |
+| 2 | [上下文与记忆](/zh/claude-code/context-memory) | 用 CLAUDE.md 固定规则、节省上下文的方法 |
+| 3 | [扩展](/zh/claude-code/extensibility) | 用技能·MCP·hook·插件增强能力的方法 |
+| 4 | [智能体与自动化](/zh/claude-code/agentic) | 用子智能体·智能体团队并行化工作的方法 |
 
 官方文档推荐的**最佳实践** (best practice) 是不要一开始就配置所有功能。同一个错误犯两次就往 CLAUDE.md 加规则，反复输入同一提示就存成技能，出现每次都必须自动发生的动作就写 hook —— 随着需求显现逐一累积。这条"需要时再加一个"的原则在令牌视角下同样正确 —— 用不上的扩展只会占据上下文，而上下文就是成本。
 
 ## 相关文档
 
-- [基础组](/claude-code/foundations)
-- [上下文与记忆](/claude-code/context-memory)
-- [扩展](/claude-code/extensibility)
-- [智能体与自动化](/claude-code/agentic)
-- [快速开始](/getting-started/quickstart)
+- [基础组](/zh/claude-code/foundations)
+- [上下文与记忆](/zh/claude-code/context-memory)
+- [扩展](/zh/claude-code/extensibility)
+- [智能体与自动化](/zh/claude-code/agentic)
+- [快速开始](/zh/getting-started/quickstart)
 
 ## 参考资料
 

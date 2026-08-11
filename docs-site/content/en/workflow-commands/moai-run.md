@@ -535,7 +535,7 @@ The quality issues are reported to the user, and you are asked whether to retry 
 
 ## Related Documents
 
-- [Domain-Driven Development](/core-concepts/ddd) - Detailed ANALYZE-PRESERVE-IMPROVE cycle explanation
-- [TRUST 5 Quality System](/core-concepts/trust-5) - Detailed quality gate explanation
+- [Domain-Driven Development](/en/core-concepts/ddd) - Detailed ANALYZE-PRESERVE-IMPROVE cycle explanation
+- [TRUST 5 Quality System](/en/core-concepts/trust-5) - Detailed quality gate explanation
 - [/moai plan](./moai-plan) - Previous step: SPEC document creation
 - [/moai sync](./moai-sync) - Next step: doc synchronization and PR

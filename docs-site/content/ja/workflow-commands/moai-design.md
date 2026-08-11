@@ -96,4 +96,4 @@ DesignSync サーバーが `.mcp.json` に登録されていない場合があ�
 
 - [/moai plan](./moai-plan) - 前段階: SPEC ドキュメントの生成
 - [/moai run](./moai-run) - 次段階: DDD/TDD 実装
-- [サブエージェントカタログ](/advanced/agent-guide) - manager-design エージェントの詳細
+- [サブエージェントカタログ](/ja/advanced/agent-guide) - manager-design エージェントの詳細

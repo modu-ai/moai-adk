@@ -13,6 +13,10 @@ description: "A 4-group learning path for understanding Claude Code from scratch
 
 This section is a learning path for understanding Claude Code, Anthropic's terminal CLI, from scratch. It is a guide for developers who are new to Claude Code, and for anyone who wants a precise grasp of the foundation MoAI-ADK operates on.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 
 Claude Code is a coding agent that runs in the terminal — it reads and modifies code, executes commands, and works through conversation with the developer. MoAI-ADK is an orchestration layer that runs on top of Claude Code, and its three core values — **Tokenomics** (Token Economics), **Agentic Loop Engineering** (recursive self-learning), and the **Agentic Harness** — are all built on the fundamental Claude Code mechanisms covered in this section. You cannot design tokenomics without knowing the context window and prompt caching, you cannot understand agentic loops without knowing subagents and `/goal`, and you cannot build a harness without knowing skills, hooks, and MCP.
 
@@ -35,9 +39,9 @@ Start with the Foundations group to learn how Claude Code's agentic loop turns, 
 
 | Document | Description | Connected MoAI core value |
 |------|------|--------------------|
-| [Foundations](/claude-code/foundations) | How Claude Code works and basic usage | Shared foundation of all three core values |
-| [Context and Memory](/claude-code/context-memory) | Managing tokens, context, memory, caching, checkpoints | Tokenomics |
-| [Extensibility](/claude-code/extensibility) | Extending capabilities with skills, hooks, MCP, plugins | Agentic Harness |
-| [Agents and Automation](/claude-code/agentic) | Subagents, teams, workflows, autonomous execution | Agentic Loop Engineering |
+| [Foundations](/en/claude-code/foundations) | How Claude Code works and basic usage | Shared foundation of all three core values |
+| [Context and Memory](/en/claude-code/context-memory) | Managing tokens, context, memory, caching, checkpoints | Tokenomics |
+| [Extensibility](/en/claude-code/extensibility) | Extending capabilities with skills, hooks, MCP, plugins | Agentic Harness |
+| [Agents and Automation](/en/claude-code/agentic) | Subagents, teams, workflows, autonomous execution | Agentic Loop Engineering |
 
 Completing the four groups in order gives you an understanding of the entire Claude Code platform. From there, move on to the MoAI-ADK Core Concepts section to see how SPEC-based development and token-efficient design combine on top of this foundation.

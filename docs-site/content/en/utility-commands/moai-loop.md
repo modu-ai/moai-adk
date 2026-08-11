@@ -353,7 +353,7 @@ If the AI fails to resolve the same failure signature N times in a row (stagnati
 
 ## Related Documents
 
-- [/moai fix - one-shot auto-fix](/utility-commands/moai-fix)
-- [/moai - fully autonomous automation](/utility-commands/moai)
-- [TRUST 5 Quality System](/core-concepts/trust-5)
-- [Domain-Driven Development](/core-concepts/ddd)
+- [/moai fix - one-shot auto-fix](/en/utility-commands/moai-fix)
+- [/moai - fully autonomous automation](/en/utility-commands/moai)
+- [TRUST 5 Quality System](/en/core-concepts/trust-5)
+- [Domain-Driven Development](/en/core-concepts/ddd)

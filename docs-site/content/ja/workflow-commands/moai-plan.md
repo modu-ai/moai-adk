@@ -561,6 +561,6 @@ MoAI が `AskUserQuestion` で質問するとき、推奨配置を案内する 5
 
 ## 関連ドキュメント
 
-- [SPEC ベース開発](/core-concepts/spec-based-dev) - EARS 形式の詳細説明
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) - EARS 形式の詳細説明
 - [/moai run](./moai-run) - 次のステップ: DDD 実装
 - [/moai sync](./moai-sync) - 最終ステップ: ドキュメント同期

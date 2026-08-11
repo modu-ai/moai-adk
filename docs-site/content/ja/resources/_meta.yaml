@@ -1,0 +1,6 @@
+index:
+  title: "リソース"
+  display: "hidden"
+i18n-docs:
+  title: "多言語ドキュメントガイド"
+  weight: 10

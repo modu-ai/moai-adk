@@ -7,6 +7,10 @@ description: "How Claude Code dynamic workflows — scripts orchestrating dozens
 
 A dynamic workflow is a Claude Code execution primitive in which a JavaScript script written by Claude itself orchestrates, in the background, dozens to hundreds of subagents that a single conversation could not coordinate.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Dynamic Workflows and Ultracode](/en/advanced/ultracode-workflows).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Where subagents and agent teams keep "the plan in Claude's head," a dynamic workflow moves "the plan into script code," running a large fan-out in one go.
 {{< /callout >}}
@@ -123,8 +127,8 @@ Workflow agents follow the same asymmetric boundary of not questioning the user 
 
 ## Related Documents
 
-- [Subagents](/claude-code/agentic/sub-agents)
-- [Agent Teams](/claude-code/agentic/agent-teams)
+- [Subagents](/en/claude-code/agentic/sub-agents)
+- [Agent Teams](/en/claude-code/agentic/agent-teams)
 
 ## References
 

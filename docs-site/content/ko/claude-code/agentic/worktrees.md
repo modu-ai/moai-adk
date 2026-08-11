@@ -7,6 +7,10 @@ description: "Claude Code가 git 워크트리로 병렬 세션을 격리해 충�
 
 워크트리(worktree)는 git 저장소 하나에서 작업 트리를 여럿으로 갈라, Claude Code 세션들이 서로의 파일을 건드리지 않고 나란히 일하게 해 주는 기능입니다.
 
+{{< callout type="info" title="배경 참조" >}}
+이 문서는 MoAI-ADK가 올라타 있는 플랫폼인 **Claude Code 자체**를 다루는 배경 자료입니다. MoAI-ADK를 쓰는 방법은 [Git Worktree 개요](/ko/worktree)에서 다룹니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **한 줄 요약**: 워크트리는 같은 저장소를 공유하면서도 작업 디렉터리와 브랜치를 분리해, 한 터미널에서 기능을 만들고 다른 터미널에서 버그를 고치는 동시 작업을 충돌 없이 가능하게 합니다.
 {{< /callout >}}

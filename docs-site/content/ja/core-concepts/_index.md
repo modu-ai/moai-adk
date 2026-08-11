@@ -21,9 +21,9 @@ MoAI-ADK v3.0 を理解するために必要なコアコンセプトを紹介し
 
 | 中心要素 | 中心となる問い | 代表ドキュメント |
 |------|----------|----------|
-| **トークノミクス** | 同じ品質をより少ないトークンで得るには? | [MoAI-ADK とは?](/core-concepts/what-is-moai-adk) |
+| **トークノミクス** | 同じ品質をより少ないトークンで得るには? | [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk) |
 | **エージェンティックループエンジニアリング** | ループはどのように自ら働き、学習するのか? | [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) |
-| **エージェンティックハーネス** | エージェントがうまく働ける環境をどう設計するのか? | [SPEC ベース開発](/core-concepts/spec-based-dev) · [TRUST 5](/core-concepts/trust-5) |
+| **エージェンティックハーネス** | エージェントがうまく働ける環境をどう設計するのか? | [SPEC ベース開発](/ja/core-concepts/spec-based-dev) · [TRUST 5](/ja/core-concepts/trust-5) |
 
 ```mermaid
 flowchart TD
@@ -45,11 +45,11 @@ flowchart TD
 
 | 順序 | ドキュメント | 中心となる問い |
 |------|------|----------|
-| 1 | [MoAI-ADK とは?](/core-concepts/what-is-moai-adk) | MoAI-ADK とは何か、なぜトークノミクスを目標とするのか? |
+| 1 | [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk) | MoAI-ADK とは何か、なぜトークノミクスを目標とするのか? |
 | 2 | [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) | コードを直接書く代わりに環境を設計するとはどういう意味か? |
-| 3 | [SPEC ベース開発](/core-concepts/spec-based-dev) | 要件をどのように明確に定義し管理するのか? |
-| 4 | [開発方法論 (DDD/TDD)](/core-concepts/ddd) | 既存のコードを壊さずにどう改善するのか? |
-| 5 | [TRUST 5 品質](/core-concepts/trust-5) | コード品質をどんな基準で保証するのか? |
+| 3 | [SPEC ベース開発](/ja/core-concepts/spec-based-dev) | 要件をどのように明確に定義し管理するのか? |
+| 4 | [開発方法論 (DDD/TDD)](/ja/core-concepts/ddd) | 既存のコードを壊さずにどう改善するのか? |
+| 5 | [TRUST 5 品質](/ja/core-concepts/trust-5) | コード品質をどんな基準で保証するのか? |
 | 6 | [Constitution システム](/ja/core-concepts/constitution) | ハーネスが自ら進化するとき、その進化を何が統制するのか? |
 
 {{< callout type="info" >}}

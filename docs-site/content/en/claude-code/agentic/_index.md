@@ -7,6 +7,10 @@ description: "Orchestration primitives like subagents, agent teams, and dynamic 
 
 This group covers Claude Code's agent orchestration and autonomous execution. It is for developers who want to go beyond a single conversation — delegating to multiple workers, collaborating as a team, and fanning out large-scale work with scripts.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 
 Centered on the three orchestration primitives — subagents, agent teams, and dynamic workflows — it continues through worktree isolation, goal-directed execution, scheduled tasks, large-codebase exploration, and best practices. What MoAI-ADK calls **Agentic Loop Engineering** — designing the loop itself instead of having a human intervene every turn, and training the harness with the observations the loop leaves behind — is built precisely on the mechanisms in this group (`/goal`'s condition-evaluation loop, subagent delegation, workflow fan-out).
 
@@ -34,14 +38,14 @@ We recommend first understanding the three orchestration primitives (subagents �
 
 | Document | Description |
 |------|------|
-| [Subagents](/claude-code/agentic/sub-agents) | Delegated workers in isolated contexts |
-| [Agent Teams](/claude-code/agentic/agent-teams) | 3-5 member team collaboration |
-| [Agent View](/claude-code/agentic/agent-view) | The execution observation screen |
-| [Dynamic Workflows](/claude-code/agentic/workflows) | Script-based large-scale orchestration |
-| [Worktrees](/claude-code/agentic/worktrees) | Isolated working trees |
-| [Goal-Directed Execution (/goal)](/claude-code/agentic/goal) | Autonomous execution until a condition holds |
-| [Scheduled Tasks](/claude-code/agentic/scheduled-tasks) | Recurring background execution |
-| [Large Codebases](/claude-code/agentic/large-codebases) | Strategies for exploring big repositories |
-| [Best Practices](/claude-code/agentic/best-practices) | Using Claude Code well |
+| [Subagents](/en/claude-code/agentic/sub-agents) | Delegated workers in isolated contexts |
+| [Agent Teams](/en/claude-code/agentic/agent-teams) | 3-5 member team collaboration |
+| [Agent View](/en/claude-code/agentic/agent-view) | The execution observation screen |
+| [Dynamic Workflows](/en/claude-code/agentic/workflows) | Script-based large-scale orchestration |
+| [Worktrees](/en/claude-code/agentic/worktrees) | Isolated working trees |
+| [Goal-Directed Execution (/goal)](/en/claude-code/agentic/goal) | Autonomous execution until a condition holds |
+| [Scheduled Tasks](/en/claude-code/agentic/scheduled-tasks) | Recurring background execution |
+| [Large Codebases](/en/claude-code/agentic/large-codebases) | Strategies for exploring big repositories |
+| [Best Practices](/en/claude-code/agentic/best-practices) | Using Claude Code well |
 
-Start with [Subagents](/claude-code/agentic/sub-agents) to learn the basic unit of delegation, then move on to the next documents.
+Start with [Subagents](/en/claude-code/agentic/sub-agents) to learn the basic unit of delegation, then move on to the next documents.

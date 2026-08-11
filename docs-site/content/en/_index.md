@@ -16,11 +16,11 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 ## Three Core Values of MoAI 3.0
 
-- {{< icon database primary >}} **Tokenomics** — Reduces inference costs by 60-70% through context dieting and prompt caching. See [Multi-LLM](/multi-llm), [Cost Optimization](/cost-optimization), and [Advanced/Tokenomics Overview](/advanced/tokenomics-overview).
+- {{< icon database primary >}} **Tokenomics** — Reduces inference costs by 60-70% through context dieting and prompt caching. See [Multi-LLM](/en/multi-llm), [Cost Optimization](/en/cost-optimization), and [Advanced/Tokenomics Overview](/en/advanced/tokenomics-overview).
 
-- {{< icon rotate primary >}} **Agentic Loop Engineering** — An autonomous improvement cycle where loops work on their own and observations accumulate so harness guidance evolves (recursive self-learning). See [Self-Evolving Systems](/advanced/self-evolving), [Autonomous Loops](/advanced/autonomous-loops), and [Decision Memory](/advanced/decision-memory).
+- {{< icon rotate primary >}} **Agentic Loop Engineering** — An autonomous improvement cycle where loops work on their own and observations accumulate so harness guidance evolves (recursive self-learning). See [Self-Evolving Systems](/en/advanced/self-evolving), [Autonomous Loops](/en/advanced/autonomous-loops), and [Decision Memory](/en/advanced/decision-memory).
 
-- {{< icon package primary >}} **Agentic Harness** — Composable execution environment with skills, hooks, and MCP for extensible agent orchestration. See [Core Concepts](/core-concepts), [Workflow Commands](/workflow-commands), and [Agent Guide](/advanced/agent-guide).
+- {{< icon package primary >}} **Agentic Harness** — Composable execution environment with skills, hooks, and MCP for extensible agent orchestration. See [Core Concepts](/en/core-concepts), [Workflow Commands](/en/workflow-commands), and [Agent Guide](/en/advanced/agent-guide).
 
 ## Key Features
 
@@ -31,12 +31,12 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 ## Getting Started
 
-To start with MoAI-ADK, see the [Getting Started](/getting-started) section.
+To start with MoAI-ADK, see the [Getting Started](/en/getting-started) section.
 
 ## Documentation Structure
 
-- [Getting Started](/getting-started) - Installation, basic setup, quick start
-- [Core Concepts](/core-concepts) - SPEC format, agents, workflows
-- [Advanced](/advanced) - Advanced patterns, skill usage, performance optimization
-- [Git Worktree](/worktree) - Complete Git Worktree CLI guide
+- [Getting Started](/en/getting-started) - Installation, basic setup, quick start
+- [Core Concepts](/en/core-concepts) - SPEC format, agents, workflows
+- [Advanced](/en/advanced) - Advanced patterns, skill usage, performance optimization
+- [Git Worktree](/en/worktree) - Complete Git Worktree CLI guide
 - {{< icon book primary >}} [Book: Practical Agentic Coding](/book) - Master agentic coding with MoAI-ADK (488 pages · endorsed by 9 experts)

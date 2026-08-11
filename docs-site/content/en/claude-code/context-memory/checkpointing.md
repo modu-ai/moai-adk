@@ -7,6 +7,10 @@ description: "How Claude Code's checkpointing and rewind safely restore code and
 
 Checkpointing is a safety net: Claude Code automatically snapshots the state of your code before it starts editing, so you can return to an earlier point at any time.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Even when work goes sideways, pressing `Esc` twice rewinds code and conversation together to an earlier state — a session-scoped "undo" safety net.
 {{< /callout >}}
@@ -108,8 +112,8 @@ From the MoAI-ADK perspective, checkpointing is what allows the agentic loop to 
 
 ## Related Documents
 
-- [Context Window](/claude-code/context-memory/context-window)
-- [Interactive Mode](/claude-code/foundations/interactive-mode)
+- [Context Window](/en/claude-code/context-memory/context-window)
+- [Interactive Mode](/en/claude-code/foundations/interactive-mode)
 
 ## References
 

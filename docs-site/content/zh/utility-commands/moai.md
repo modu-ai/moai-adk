@@ -12,6 +12,10 @@ draft: false
   过程**。
 {{< /callout >}}
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [会话管理](/zh/claude-code/context-memory/sessions)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **斜杠命令支持**: MoAI 的所有子命令都封装为技能,仅输入 `/moai` 即可显示可用子命令列表。各子命令也可以用 `/moai:fix`、`/moai:loop`、`/moai:review` 等形式直接执行。
 {{< /callout >}}
@@ -357,8 +361,8 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC 生成详解
-- [/moai run](/workflow-commands/moai-run) - DDD 实现详解
-- [/moai sync](/workflow-commands/moai-sync) - 文档同步详解
-- [/moai loop](/utility-commands/moai-loop) - 迭代修复循环详解
-- [/moai fix](/utility-commands/moai-fix) - 一次性自动修复详解
+- [/moai plan](/zh/workflow-commands/moai-plan) - SPEC 生成详解
+- [/moai run](/zh/workflow-commands/moai-run) - DDD 实现详解
+- [/moai sync](/zh/workflow-commands/moai-sync) - 文档同步详解
+- [/moai loop](/zh/utility-commands/moai-loop) - 迭代修复循环详解
+- [/moai fix](/zh/utility-commands/moai-fix) - 一次性自动修复详解

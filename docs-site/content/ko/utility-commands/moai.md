@@ -12,6 +12,10 @@ draft: false
   과정을 자동으로** 수행합니다.
 {{< /callout >}}
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [세션 관리](/ko/claude-code/context-memory/sessions)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **슬래시 커맨드 지원**: MoAI의 모든 서브커맨드는 스킬로 래핑되어 있어, `/moai`만 입력하면 사용 가능한 서브커맨드 목록이 표시됩니다. 각 서브커맨드는 `/moai:fix`, `/moai:loop`, `/moai:review` 등의 형식으로 바로 실행할 수도 있습니다.
 {{< /callout >}}
@@ -376,8 +380,8 @@ MoAI-ADK가 비용을 줄이는 장치 중 하나입니다. llm.yaml 설정에 �
 
 ## 관련 문서
 
-- [/moai plan](/workflow-commands/moai-plan) - SPEC 생성 상세
-- [/moai run](/workflow-commands/moai-run) - DDD 구현 상세
-- [/moai sync](/workflow-commands/moai-sync) - 문서 동기화 상세
-- [/moai loop](/utility-commands/moai-loop) - 반복 수정 루프 상세
-- [/moai fix](/utility-commands/moai-fix) - 일회성 자동 수정 상세
+- [/moai plan](/ko/workflow-commands/moai-plan) - SPEC 생성 상세
+- [/moai run](/ko/workflow-commands/moai-run) - DDD 구현 상세
+- [/moai sync](/ko/workflow-commands/moai-sync) - 문서 동기화 상세
+- [/moai loop](/ko/utility-commands/moai-loop) - 반복 수정 루프 상세
+- [/moai fix](/ko/utility-commands/moai-fix) - 일회성 자동 수정 상세

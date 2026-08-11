@@ -10,6 +10,10 @@ This group covers the context window, memory, prompt caching, and checkpointing 
 
 In agentic development, what determines cost is not the model price sheet but **how you operate tokens**. What and how much you put in context, whether you reuse the unchanging parts via cache, whether you persist knowledge to files across sessions — these four mechanisms are the technical foundation of what MoAI-ADK calls **Tokenomics** (Token Economics).
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Secure both the stability and the economics of long tasks through four mechanisms — managing token usage (context window), persisting information (memory), cutting cost (prompt caching), and rewinding safely (checkpointing).
 {{< /callout >}}
@@ -29,10 +33,10 @@ We recommend reading in this order: first understand the context window's limits
 
 | Document | Description |
 |------|------|
-| [Context Window](/claude-code/context-memory/context-window) | Tokens, auto-compaction, usage management |
-| [Memory and Auto-Memory](/claude-code/context-memory/memory) | The CLAUDE.md hierarchy and auto-memory |
-| [Prompt Caching](/claude-code/context-memory/prompt-caching) | Cutting cost and latency with caching |
-| [Checkpointing](/claude-code/context-memory/checkpointing) | Experimenting safely with rewind |
-| [Session Management](/claude-code/context-memory/sessions) | Resume, rename, clear — and MoAI session handoff |
+| [Context Window](/en/claude-code/context-memory/context-window) | Tokens, auto-compaction, usage management |
+| [Memory and Auto-Memory](/en/claude-code/context-memory/memory) | The CLAUDE.md hierarchy and auto-memory |
+| [Prompt Caching](/en/claude-code/context-memory/prompt-caching) | Cutting cost and latency with caching |
+| [Checkpointing](/en/claude-code/context-memory/checkpointing) | Experimenting safely with rewind |
+| [Session Management](/en/claude-code/context-memory/sessions) | Resume, rename, clear — and MoAI session handoff |
 
-After finishing this group, move on to the next group, [Extensibility](/claude-code/extensibility) — skills, hooks, MCP, and plugins, the materials for building a harness.
+After finishing this group, move on to the next group, [Extensibility](/en/claude-code/extensibility) — skills, hooks, MCP, and plugins, the materials for building a harness.

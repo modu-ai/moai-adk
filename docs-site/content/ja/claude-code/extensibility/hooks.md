@@ -9,12 +9,12 @@ description: "Claude Code のライフサイクルイベントに反応して自
 
 フック (hook) は、Claude Code のライフサイクルの特定地点で自動的に実行されるシェルコマンドで、モデルの判断に依存せず「常に起きるべき動作」を決定論的に保証します。
 
-{{< callout type="info" >}}
-**ひとことで言うと**: hook は Claude Code がファイルを編集したり作業を終えたりするたびに自動発動する「if-this-then-that」スクリプトで、フォーマット・リント・セキュリティブロックを人手なしに強制します。
+{{< callout type="info" title="背景リファレンス" >}}
+このページは、MoAI-ADK が動作する基盤である **Claude Code そのもの** を解説する背景資料です。MoAI-ADK が hook をどう登録・運用するかは [Hooks ガイド](/ja/advanced/hooks-guide) で扱い、イベントごとの入力スキーマは [Hooks イベントリファレンス](/ja/advanced/hooks-reference) にまとめてあります。
 {{< /callout >}}
 
-{{< callout type="tip" >}}
-このページは概念紹介に集中します。MoAI-ADK が hook を実際にどう登録・運用するか (シェルラッパーのパターン、イベントごとの動作、品質ゲート連携) は、掘り下げた MoAI-ADK ガイドで扱います。手を動かす実践的な内容は [Hooks ガイド](/ja/advanced/hooks-guide) と [Hooks イベントリファレンス](/ja/advanced/hooks-reference) を参照してください。
+{{< callout type="info" >}}
+**ひとことで言うと**: hook は Claude Code がファイルを編集したり作業を終えたりするたびに自動発動する「if-this-then-that」スクリプトで、フォーマット・リント・セキュリティブロックを人手なしに強制します。
 {{< /callout >}}
 
 ## フックとは

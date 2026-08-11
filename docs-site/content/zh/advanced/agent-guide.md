@@ -10,6 +10,10 @@ draft: false
 **一句话总结**：智能体是各领域的 **专家团队**。MoAI 作为团队负责人把任务分派给合适的专家 — 并且制定计划的智能体与审计它的智能体必须分离。
 {{< /callout >}}
 
+{{< callout type="info" title="平台基础" >}}
+平台层的背景说明见 [子智能体](/zh/claude-code/agentic/sub-agents)。本页是 MoAI-ADK 视角的说明。
+{{< /callout >}}
+
 ## 什么是智能体？
 
 智能体是专注于特定领域的 **AI 任务执行者**。

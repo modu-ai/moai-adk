@@ -14,11 +14,11 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 ## MoAI 3.0の3つのコアバリュー
 
-- {{< icon database primary >}} **トークノミクス** — コンテキストダイエットとプロンプトキャッシングで推論コストを60-70%削減します。[マルチ LLM](/multi-llm)、[コスト最適化](/cost-optimization)、[高度な使い方/トークノミクス概要](/advanced/tokenomics-overview)を参照してください。
+- {{< icon database primary >}} **トークノミクス** — コンテキストダイエットとプロンプトキャッシングで推論コストを60-70%削減します。[マルチ LLM](/ja/multi-llm)、[コスト最適化](/ja/cost-optimization)、[高度な使い方/トークノミクス概要](/ja/advanced/tokenomics-overview)を参照してください。
 
-- {{< icon rotate primary >}} **エージェンティック・ループ・エンジニアリング** — 意思決定メモリと自律エージェントシステムで自律改善ループを実現します。[自己進化システム](/advanced/self-evolving)、[自律ループ](/advanced/autonomous-loops)、[意思決定メモリ](/advanced/decision-memory)を参照してください。
+- {{< icon rotate primary >}} **エージェンティック・ループ・エンジニアリング** — 意思決定メモリと自律エージェントシステムで自律改善ループを実現します。[自己進化システム](/ja/advanced/self-evolving)、[自律ループ](/ja/advanced/autonomous-loops)、[意思決定メモリ](/ja/advanced/decision-memory)を参照してください。
 
-- {{< icon package primary >}} **エージェント型ハーネス** — スキル、フック、MCPで構成可能な実行環境で拡張可能なエージェントオーケストレーションを提供します。[コアコンセプト](/core-concepts)、[ワークフローコマンド](/workflow-commands)、[エージェントガイド](/advanced/agent-guide)を参照してください。
+- {{< icon package primary >}} **エージェント型ハーネス** — スキル、フック、MCPで構成可能な実行環境で拡張可能なエージェントオーケストレーションを提供します。[コアコンセプト](/ja/core-concepts)、[ワークフローコマンド](/ja/workflow-commands)、[エージェントガイド](/ja/advanced/agent-guide)を参照してください。
 
 ## 主な機能
 
@@ -29,11 +29,11 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 ## はじめに
 
-MoAI-ADK を始めるには、[はじめに](/getting-started)セクションを参照してください。
+MoAI-ADK を始めるには、[はじめに](/ja/getting-started)セクションを参照してください。
 
 ## ドキュメント構成
 
-- [はじめに](/getting-started) - インストール、基本設定、クイックスタート
-- [コアコンセプト](/core-concepts) - SPEC 形式、エージェント、ワークフロー
-- [高度な使い方](/advanced) - 高度なパターン、スキルの使用、パフォーマンス最適化
-- [Git Worktree](/worktree) - Git Worktree CLI 完全ガイド
+- [はじめに](/ja/getting-started) - インストール、基本設定、クイックスタート
+- [コアコンセプト](/ja/core-concepts) - SPEC 形式、エージェント、ワークフロー
+- [高度な使い方](/ja/advanced) - 高度なパターン、スキルの使用、パフォーマンス最適化
+- [Git Worktree](/ja/worktree) - Git Worktree CLI 完全ガイド

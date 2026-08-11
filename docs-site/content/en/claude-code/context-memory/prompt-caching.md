@@ -7,6 +7,10 @@ description: "How prompt caching, which Claude Code uses to cache repeated prefi
 
 Instead of reprocessing the entire conversation every turn, Claude Code automatically manages prompt caching, which reuses the parts already processed.
 
+{{< callout type="info" title="Background reference" >}}
+This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Prompt Caching — The Concept and How Claude Code Uses It](/en/cost-optimization/prompt-caching).
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **One-line summary**: The unchanging front portion (the prefix) is read straight from the cache each time, so the same work is never processed twice — dramatically reducing cost and response time.
 {{< /callout >}}
@@ -157,7 +161,7 @@ A **break-even analysis** of when caching actually pays off cost-wise is covered
 
 ## Related Documents
 
-- [Prompt Caching — Break-Even Analysis](/cost-optimization/prompt-caching)
+- [Prompt Caching — Break-Even Analysis](/en/cost-optimization/prompt-caching)
 
 ## References
 

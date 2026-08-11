@@ -11,6 +11,10 @@ draft: false
 토크노믹스의 "컨텍스트 다이어트"가 항상 로드되는 컨텍스트를 덜어 내는
 쪽이라면, 프롬프트 캐싱은 남은 컨텍스트를 싼값에 다시 쓰는 쪽입니다.
 
+{{< callout type="info" title="플랫폼 기초" >}}
+플랫폼 계층의 배경 설명은 [프롬프트 캐싱](/ko/claude-code/context-memory/prompt-caching)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+{{< /callout >}}
+
 {{< callout type="info" >}}
 **쉬운 비유** — 모델은 턴마다 대화 전체를 처음부터 다시 읽습니다.
 캐싱은 "앞부분은 아까 읽은 그대로네요" 하고 건너뛰는 책갈피입니다.
