@@ -207,7 +207,7 @@ m1_to_mN_commit_strategy: per-milestone commits (ff5812b28 M0+M1, c4ca4c74b M2, 
 
 ```yaml
 sync_complete_at: 2026-08-11
-sync_commit_sha: pending-backfill-sync  # self-referential-hazard — a commit cannot reference its own SHA; backfilled in a follow-up commit after the sync PR merges (per spec-frontmatter-schema.md D3)
+sync_commit_sha: 4d0d7ebb8  # self-referential-hazard — a commit cannot reference its own SHA; backfilled in a follow-up commit after the sync PR merges (per spec-frontmatter-schema.md D3)
 sync_status: audit-ready
 changelog_entry_position: CHANGELOG.md [Unreleased] > ### Fixed  # single entry, top of Fixed section
 frontmatter_status_transitions:
