@@ -49,6 +49,10 @@ preserve_list_post_run_count: 8
 l44_pre_commit_fetch: n/a (worktree isolated, no push)
 l44_post_push_fetch: n/a (no push — repo-local Route B, manager-git owns push+PR)
 new_warnings_or_lints_introduced: 0
+baseline_test_failures:
+  - internal/template TestTemplateNoInternalContentLeak — zone-registry.md SPEC-ID leaks (SPEC-V3R6-HARNESS-RUNTIME-RECOVERY-001, SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001); confirmed present at base 0e24dde06; this SPEC touched neither zone-registry.md nor this test.
+  - internal/template TestRuleDateProvenance — zone-registry.md date leaks (2026-05-04, 2026-05-09 at lines 629-630); confirmed present at base 0e24dde06.
+  - internal/astgrep TestRuleSeed — dogfood-experimental language stubs (csharp/elixir/php empty rule dirs, CLAUDE.local.md §2.2); this SPEC touched no astgrep code or config.
 cross_platform_build:
   darwin: PASS (go build ./... exit 0)
   linux: PASS (GOOS=linux GOARCH=amd64 go build ./... exit 0)
