@@ -1,10 +1,10 @@
 ---
 id: SPEC-MOAI-MCP-SERVER-001
 title: "moai self-hosted MCP server — thin stdio JSON-RPC wrapper over the internal/ core (3-way audit backends + status/trend tools)"
-version: "0.1.0"
+version: "0.2.0"
 status: completed
 created: 2026-08-05
-updated: 2026-08-06
+updated: 2026-08-12
 author: manager-spec
 priority: P2
 phase: "v3.2 target"
@@ -17,6 +17,15 @@ tags: "mcp, json-rpc, audit, codex, glm, template-first, fail-open, ssot"
 # SPEC-MOAI-MCP-SERVER-001 — moai self-hosted MCP server (autonomy·speed Epic, P2 foundation)
 
 ## HISTORY
+
+### Amendments
+
+- **2026-08-12 (in-place amendment, v0.1.0 → v0.2.0)** — **REQ-MCP-002 opt-in precondition inverted to default-on**, and REQ-MCP-015 restated so the wizard surfaces an opt-OUT rather than an opt-IN. `status: completed` is deliberately unchanged: this is an amendment to a closed SPEC, not a reopening, and no run-phase work is re-entered under this SPEC ID.
+  - **Cause**: the project owner directed that the self-hosted `moai` MCP server become a **first-class default** of MoAI-ADK rather than an opt-in capability. The 17 tools registered by `registerMoaiMCPTools` (`internal/cli/mcp_server.go:105`) are the intended agent-facing surface for every distributed project, so gating them behind a default-off wizard confirm withheld the harness's own capabilities from the users it was built for.
+  - **Why a completed MUST requirement is being inverted**: REQ-MCP-002's opt-in clause encoded a *risk posture* ("provision nothing the user did not ask for"), not a technical constraint. The risk it guarded — an unsolicited process launched by the Claude Code runtime at session start — is now accepted deliberately, because the launched process is the user's own already-installed `moai` binary running a fixed subcommand with no network egress, no credentials, and no third-party code. The requirement's **load-bearing** clauses (exactly one neutral entry; `${VAR}`-literal secret hygiene; §25 template neutrality) are preserved verbatim in the amended text — only the gate flips.
+  - **Scope**: `spec.md` REQ-MCP-002 + REQ-MCP-015; `acceptance.md` AC-MCP-002 + AC-MCP-006. No other requirement, AC, or artifact is touched. Prior completed version: `v0.1.0`.
+  - **Implementing SPEC**: `SPEC-MCP-DEFAULT-ON-001` (REQ-A-3). The amendment records the contract change; that SPEC lands the code, tests, and documentation.
+  - **Schema note**: the canonical `completed → in-progress (amendment)` transition (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) pairs `amendment_of:` with a status change to `in-progress`. That status change is deliberately NOT performed here per the owner's direction, so `amendment_of:` is likewise omitted and this HISTORY sub-section is the amendment record.
 
 - 2026-08-05 (plan-phase, iter-1) — Initial Tier L authoring. Operationalizes §3.4 (Codex 감사 위임 — moai-mcp 내장) + §3.6 (moai 자체 MCP 서버) of `.moai/reports/moai-autonomy-workflow-redesign-20260803.html`. This SPEC is the **foundation**: a thin stdio JSON-RPC MCP server (`moai mcp-server`) wrapping the SAME `internal/` core functions the CLI Cobra handlers call. It **unblocks** the future SPEC-AUDIT-MULTI-MODEL (multi-model convergence orchestration); convergence logic itself is explicitly out of scope. Design source: report §3.4 + §3.6 (IN scope); §3.5 (audit speed optimizations A1-A11), §3.7 (trend MCP tools) are OUT of scope.
 
@@ -62,7 +71,7 @@ The server is a **thin wrapper**: every tool handler calls an existing `internal
 
 **REQ-MCP-001** (Ubiquitous) The `moai mcp-server` subcommand shall expose a long-running stdio JSON-RPC MCP server built on the `mark3labs/mcp-go` SDK, attached via `root.go` `AddCommand` and modeled on the `goal.go` blocking-`RunE` stdio pattern.
 
-**REQ-MCP-002** (Capability gate) **Where** the user has not opted in, the `moai mcp-server` server and its `.mcp.json` provisioning shall remain OFF by default (opt-in), provisioning exactly one neutral local entry `{"mcpServers":{"moai":{"command":"moai","args":["mcp-server"]}}}` and no third-party entries.
+**REQ-MCP-002** (Capability gate) **[AMENDED 2026-08-12 — see HISTORY § Amendments]** **Where** the user has not explicitly opted OUT, the `moai mcp-server` `.mcp.json` provisioning shall be ON by default, provisioning exactly one neutral local entry `{"mcpServers":{"moai":{"command":"moai","args":["mcp-server"]}}}` with no resolved secrets serialized. The original clause read "**Where** the user has not opted in, … shall remain OFF by default (opt-in)"; the gate direction is inverted, and the neutral-single-entry and secret-hygiene clauses are unchanged. The original trailing clause "and no third-party entries" was already reconciled by SPEC-TREND-MCP-001 REQ-TMC-002 to mean "no secret-bearing / credential-requiring / non-neutral third-party entries", and that reconciled reading is preserved.
 
 **REQ-MCP-003** (Ubiquitous) Each MCP tool handler shall be a thin wrapper that calls the SAME `internal/` function the corresponding CLI Cobra handler calls, so the CLI and MCP surfaces share one source of truth and can never diverge.
 
@@ -94,7 +103,7 @@ The server is a **thin wrapper**: every tool handler calls an existing `internal
 
 ### M4 — init/web selection UI + Template-First reversal
 
-**REQ-MCP-015** (Event-driven) **When** the user runs `moai init` or uses `moai web`, the wizard (`internal/cli/wizard/questions.go` `Page3Questions`) and the web console shall surface `audit_model` selection, per-auditor `audit_gate` selection, a `codex_audit_enabled` flag, and an `mcp_tools_opt_in` flag, applied through `applyWizardPage3ToOpts` (`internal/cli/init.go`) and the web handler's identical interpreter.
+**REQ-MCP-015** (Event-driven) **When** the user runs `moai init` or uses `moai web`, the wizard (`internal/cli/wizard/questions.go` `Page3Questions`) and the web console shall surface `audit_model` selection, per-auditor `audit_gate` selection, a `codex_audit_enabled` flag, and an MCP-provisioning flag, applied through `applyWizardPage3ToOpts` (`internal/cli/init.go`) and the web handler's identical interpreter. **[AMENDED 2026-08-12 — see HISTORY § Amendments]** The flag was originally named `mcp_tools_opt_in` and defaulted to `false`; under the amended REQ-MCP-002 it is an opt-OUT whose default is provisioning-ON. The flag's identifier, its wizard default, and the three locale strings that describe it are re-specified by SPEC-MCP-DEFAULT-ON-001 REQ-A-3 / REQ-A-5.
 
 **REQ-MCP-016** (Ubiquitous) The Template-First reversal shall reverse the `.claude/rules/moai/core/settings-management.md` (line 33) statement "MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`" to provision exactly ONE local server (`moai mcp-server`), and the reversal SHALL be made generically/neutral (no SPEC-ID, no commit SHA, no internal date, no macOS-bias path) so it passes §25 template-neutrality, updating the template source `internal/template/templates/` AND the CI guard (`template-neutrality-check.yaml` / `internal_content_leak_test.go`) in the SAME change with `make build`.
 

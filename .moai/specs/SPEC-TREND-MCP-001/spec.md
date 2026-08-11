@@ -1,10 +1,10 @@
 ---
 id: SPEC-TREND-MCP-001
 title: "Trend MCP tooling — Playwright + ast-grep bundle, opt-in recipes, generic atomic-RMW entry management"
-version: "0.1.1"
+version: "0.2.0"
 status: completed
 created: 2026-08-07
-updated: 2026-08-07
+updated: 2026-08-12
 author: manager-spec
 priority: P2
 phase: "v3.2 target"
@@ -20,6 +20,16 @@ related_specs: [SPEC-HARNESS-MCP-PROVISION-001, SPEC-GLM-MCP-001]
 # SPEC-TREND-MCP-001 — Trend MCP tooling (autonomy·speed Epic, §3.7, P2)
 
 ## HISTORY
+
+### Amendments
+
+- **2026-08-12 (in-place amendment, v0.1.1 → v0.2.0)** — **REQ-TMC-003 inverted**: the `moai` entry becomes the distributed default, and the three bundled third-party entries (`context7`, `chrome-devtools`, `playwright`) leave the distributed template. REQ-TMC-001's "exactly three active entries" count is restated as "exactly one active entry (`moai`)". `status: completed` is deliberately unchanged: this amends a closed SPEC's contract, it does not reopen it.
+  - **Cause**: the project owner directed that the self-hosted `moai` MCP server become a **first-class default** of MoAI-ADK. That inverts REQ-TMC-003, which existed solely to preserve SPEC-MOAI-MCP-SERVER-001 REQ-MCP-002's opt-in property — and REQ-MCP-002 is itself amended on the same date for the same cause (see that SPEC's HISTORY § Amendments). REQ-TMC-003 was downstream of a premise that no longer holds.
+  - **Why a completed MUST AC is being inverted**: AC-TMC-001's "exactly three" was never a value judgment about those three tools; it was a **structural assertion** that the distributed active map matches the documented catalogue exactly, so no entry can be smuggled in undocumented. The amended AC asserts the same structural property against a one-entry map. The three third-party entries are not deleted from the world — they remain in the repo-root `.mcp.json` for maintainer use, and users activate them with the `moai mcp add` CLI this SPEC delivered (REQ-TMC-005), which is precisely the activation path REQ-TMC-004 already specified for `ast-grep`. In other words, the third-party bundle moves from *default-on* to *documented-and-one-command-away* — the same tier `ast-grep` has always occupied.
+  - **Explicitly preserved, unchanged**: **REQ-TMC-002** (no secrets, no resolved API keys, `${VAR}` literals only, §25 template neutrality) and **REQ-TMC-004**'s `$comment`-free requirement. Both survive the change intact and the amended AC-TMC-001 still asserts them — they are the clauses that make the template safe to distribute, and nothing about the entry count touches them.
+  - **Scope**: `spec.md` REQ-TMC-001 + REQ-TMC-003; `acceptance.md` AC-TMC-001 + AC-TMC-004. REQ-TMC-002, REQ-TMC-004 (`$comment` clause), REQ-TMC-005+ and every other AC are untouched. Prior completed version: `v0.1.1`.
+  - **Implementing SPEC**: `SPEC-MCP-DEFAULT-ON-001` (REQ-A-1, REQ-A-2).
+  - **Schema note**: the canonical `completed → in-progress (amendment)` transition pairs `amendment_of:` with a status change to `in-progress`. Per the owner's direction that status stays `completed`, so `amendment_of:` is likewise omitted and this sub-section is the amendment record.
 
 - 2026-08-07 (plan-phase, iter-1) — Initial Tier M authoring. Operationalizes §3.7 "트렌드 MCP 도구 — 번들·opt-in·스킵 (R2)" of `.moai/reports/moai-autonomy-workflow-redesign-20260803.html`. Depends on the completed foundation SPEC-MOAI-MCP-SERVER-001 (the `moai mcp-server` thin stdio wrapper is live at `internal/cli/mcp_server.go`, registered via `newMCPServerCmd()` at `internal/cli/root.go:214`). This SPEC reverses the MOAI-MCP-SERVER-001 REQ-MCP-002 "no third-party entries" clause in the narrow sense (no third-party LOCAL-STDIO-WITH-SECRETS entries) while preserving its load-bearing intent (no secret-bearing, non-neutral, or credential-requiring servers in the template `.mcp.json`). All bundled third-party entries (context7, chrome-devtools, Playwright, ast-grep) are secret-free neutral HTTP/npx surfaces that pass §25 template-neutrality.
 
@@ -61,11 +71,11 @@ This SPEC delivers the §3.7 trend-MCP layer: a template-managed `.mcp.json` (th
 
 ### M1 — Template-managed .mcp.json + bundled neutral entries
 
-**REQ-TMC-001** (Ubiquitous) The template source SHALL establish `internal/template/templates/.mcp.json` as the template-managed MCP provisioning surface, carrying exactly five structural neutral entries: three active at the distributed default (`context7`, `chrome-devtools`, `playwright`) plus two documented-but-disabled (`ast-grep` opt-in per REQ-TMC-004, `moai` opt-in per REQ-TMC-003). The active-vs-structural distinction is explicit: exactly 3 entries in the active `mcpServers` map at the distributed default, and 5 entries documented in the template/recipe catalogue (3 active + 2 disabled).
+**REQ-TMC-001** (Ubiquitous) **[AMENDED 2026-08-12 — see HISTORY § Amendments]** The template source SHALL establish `internal/template/templates/.mcp.json` as the template-managed MCP provisioning surface, carrying exactly five structural neutral entries: **one** active at the distributed default (`moai`, per the amended REQ-TMC-003) plus four documented-but-disabled (`context7`, `chrome-devtools`, `playwright`, and `ast-grep` per REQ-TMC-004), each activated via `moai mcp add <name> ...`. The active-vs-structural distinction is unchanged in kind: exactly **1** entry in the active `mcpServers` map at the distributed default, and 5 entries documented in the template/recipe catalogue (1 active + 4 disabled). Original counts (v0.1.1, superseded): 3 active (`context7`, `chrome-devtools`, `playwright`) + 2 disabled (`ast-grep`, `moai`).
 
 **REQ-TMC-002** (Unwanted) The template `.mcp.json` SHALL NOT carry any secret, any resolved API key, any SPEC ID, any commit SHA, any macOS-bias path, any `CLAUDE.local.md` reference, or any `PR #N` reference — every entry is either secret-free npx/uvx stdio OR HTTP-with-`${VAR}`-literal expanded by the Claude Code runtime at load, and every entry passes the §25 CI guard (`template-neutrality-check.yaml` + `internal_content_leak_test.go`).
 
-**REQ-TMC-003** (Capability gate) **Where** the user has not opted into the `moai mcp-server` local server, the template provisioning SHALL leave the `moai` entry OFF in the distributed default (the entry is opt-in per SPEC-MOAI-MCP-SERVER-001 REQ-MCP-002; this SPEC does not change that single-server opt-in property — only widens the third-party-neutral-entry surface around it).
+**REQ-TMC-003** (Capability gate) **[AMENDED 2026-08-12 — see HISTORY § Amendments]** **Where** the user has not explicitly opted OUT, the template provisioning SHALL carry the `moai` entry ON in the distributed default, tracking SPEC-MOAI-MCP-SERVER-001 REQ-MCP-002 as amended on the same date. Correspondingly, the three third-party entries (`context7`, `chrome-devtools`, `playwright`) move from default-on to documented-and-disabled — the same tier `ast-grep` already occupies under REQ-TMC-004 — and are activated by the `moai mcp add` CLI this SPEC delivers (REQ-TMC-005). Original (v0.1.1, superseded): "**Where** the user has not opted into the `moai mcp-server` local server, the template provisioning SHALL leave the `moai` entry OFF in the distributed default."
 
 **REQ-TMC-004** (State-driven) **While** the `ast-grep` tool is documented in the recipe catalogue, the template `.mcp.json` SHALL ship it default-DISABLED via omission from the active `mcpServers` map — the entry is documented in the recipe catalogue with a one-line `moai mcp add ast-grep ...` activation command, and NO JSONC/`$comment`-anchored disable form is used in the template (the active distributed map carries only the three default-on entries: `context7`, `chrome-devtools`, `playwright`).
 

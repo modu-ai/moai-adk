@@ -17,10 +17,13 @@
 - **When** a JSON-RPC `initialize` request is sent over stdio, followed by `tools/list`,
 - **Then** the server returns a valid `initialize` response and a non-empty `tools/list` array, and the process stays alive (long-running, blocking `RunE`) until the stdio stream closes.
 
-**AC-MCP-002** (MUST) — opt-in default-off
-- **Given** a fresh project with no user opt-in,
-- **When** `moai init` / `moai update` runs without the MCP opt-in flag,
-- **Then** no `moai` entry is written to `.mcp.json`, and the `mcp-server` subcommand is not provisioned into any distributed template by default. (REQ-MCP-002, C6)
+> **Amendment notice (2026-08-12, v0.1.0 → v0.2.0).** AC-MCP-002 and AC-MCP-006 below are amended in place. Both traced to REQ-MCP-002, whose opt-in precondition the project owner inverted to default-on so the self-hosted `moai` MCP server becomes a first-class default of MoAI-ADK. An auditor asking "why is a completed MUST AC being inverted?" should read this: the original opt-in clause encoded a **risk posture**, not a technical constraint, and the risk it guarded (an unsolicited process started by the runtime at session start) is now accepted deliberately — the process is the user's own already-installed `moai` binary running a fixed subcommand, with no credentials and no third-party code. Every other clause of both ACs — exactly one neutral entry, written through `mutateClaudeJSONAtomic` + `resolveConfigPath` + `buildMoaiMCPServerEntry`, with no secret values serialized — is preserved verbatim, because those clauses are what actually made the original AC load-bearing. The implementing SPEC is `SPEC-MCP-DEFAULT-ON-001`; full rationale and scope live in `spec.md` HISTORY § Amendments.
+
+**AC-MCP-002** (MUST) — **[AMENDED]** default-on provisioning, explicit opt-out honored
+- **Given** a fresh project and a user who did NOT decline MCP provisioning,
+- **When** `moai init` runs,
+- **Then** exactly one `moai` entry IS written to the project's `.mcp.json`. **And given** a user who explicitly declined, **when** `moai init` runs, **then** no `moai` entry is written and the decline is silent. (REQ-MCP-002 as amended, C6)
+- Original (v0.1.0, superseded): "**Given** a fresh project with no user opt-in, **When** `moai init` / `moai update` runs without the MCP opt-in flag, **Then** no `moai` entry is written to `.mcp.json`, and the `mcp-server` subcommand is not provisioned into any distributed template by default."
 
 **AC-MCP-003** (MUST) — thin-wrapper parity with the CLI
 - **Given** a core tool (e.g. `session_list`, `spec_audit`) and the equivalent CLI invocation,
@@ -37,8 +40,8 @@
 - **When** each is invoked against representative project state,
 - **Then** `session_list` returns `session.QueryActiveWork` output, `goal_status` returns `goal.LoadGoal` output, `goal_arm` arms via `goal.NewGoal`+`goal.SaveGoal`, `spec_progress` returns the SPEC scanner output, `verify_snapshot`/`verify_trend` consume `verify.Load`+`verify.RecordCheck`, `spec_audit`/`spec_drift` return `spec.Audit` output, and `audit_cache` reads `runtime.AuditCache`. Each handler's source cites the verified file:line from `research.md`. (REQ-MCP-005)
 
-**AC-MCP-006** (MUST) — `.mcp.json` single neutral entry via atomic-config helpers
-- **Given** the user opts in to MCP provisioning,
+**AC-MCP-006** (MUST) — **[AMENDED]** `.mcp.json` single neutral entry via atomic-config helpers
+- **Given** MCP provisioning is enabled — which, per the amended REQ-MCP-002, is the default state absent an explicit opt-out (original precondition: "the user opts in to MCP provisioning"),
 - **When** provisioning runs,
 - **Then** exactly one `moai` entry `{"command":"moai","args":["mcp-server"]}` is written through `mutateClaudeJSONAtomic` + `resolveConfigPath` + a NEW `buildMoaiMCPServerEntry` (modeled on `buildZAIMCPEntry`), no third-party entries are added, and no secret values are serialized. (REQ-MCP-002)
 
