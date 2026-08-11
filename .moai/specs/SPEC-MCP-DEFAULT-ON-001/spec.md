@@ -2,7 +2,7 @@
 id: SPEC-MCP-DEFAULT-ON-001
 title: "moai MCP server as a first-class default — template single-entry, default-on provisioning, update-merge safety"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-12
 updated: 2026-08-12
 author: manager-spec
