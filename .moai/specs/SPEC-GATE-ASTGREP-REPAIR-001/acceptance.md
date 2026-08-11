@@ -2,7 +2,7 @@
 id: SPEC-GATE-ASTGREP-REPAIR-001
 title: "Narrow the Over-Broad ast-grep Error-Wrapping Rule and Scope the moai gate ast-grep Scan — Acceptance"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-11
 updated: 2026-08-11
 author: GOOS

@@ -162,6 +162,14 @@ var astGrepExcludedPathPatterns = []string{
 	"_test.go",
 }
 
+// @MX:NOTE: filterExcludedPaths is the authoritative path-exclusion boundary
+// for ast-grep scan findings, applied at the gate layer (NOT in scanner.go,
+// whose Scan body is preserved by REQ-GAR-010). The filter exists because
+// ast-grep 0.40.5 has no viable globs exclusion in sgconfig.yml config-mode,
+// so the exclusion must live downstream of the scan. Shared by both the
+// PreToolUse path and the standalone `moai gate` CLI — both call
+// RunAstGrepGateV2, which calls this filter (SPEC-GATE-ASTGREP-REPAIR-001 M2 / D2).
+//
 // filterExcludedPaths returns findings whose file paths do NOT fall under any
 // excluded root. It is case-sensitive and uses substring containment on the
 // finding's File field as-returned by the scanner.

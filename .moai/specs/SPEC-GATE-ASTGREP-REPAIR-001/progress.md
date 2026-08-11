@@ -205,7 +205,45 @@ m1_to_mN_commit_strategy: per-milestone commits (ff5812b28 M0+M1, c4ca4c74b M2, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-11
+sync_commit_sha: pending-backfill-sync  # self-referential-hazard — a commit cannot reference its own SHA; backfilled in a follow-up commit after the sync PR merges (per spec-frontmatter-schema.md D3)
+sync_status: audit-ready
+changelog_entry_position: CHANGELOG.md [Unreleased] > ### Fixed  # single entry, top of Fixed section
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed  # 3-phase close merged into the single sync commit
+  plan_md: in-progress -> implemented -> completed
+  acceptance_md: in-progress -> implemented -> completed
+  progress_md: n/a  # progress.md carries no frontmatter
+frontmatter_updated_refreshed: 2026-08-11  # all 3 artifacts (spec/plan/acceptance) refreshed to sync commit date
+b12_self_test_a: pass  # pre-emission grep: `grep -c 'SPEC-GATE-ASTGREP-REPAIR-001' CHANGELOG.md` == 0 before emission → no duplicate from parallel BATCH-SYNC
+b12_self_test_b: pass  # AC count match: acceptance.md distinct AC IDs = 13 (AC-GAR-001..013); CHANGELOG entry references the SPEC (13 ACs covered: 12 PASS + AC-GAR-007 SHOULD deferred) — non-zero, non-vacuous
+b12_self_test_c: pass  # file paths verified: internal/cli/gate.go, internal/hook/quality/astgrep_gate.go, .moai/config/astgrep-rules/go/error-handling.yml all exist via ls
+canary_compliance_check:
+  distributed_baseline_untouched: true  # B1 decision — D1 refinement is dogfood-only; internal/template/templates/.moai/config/astgrep-rules/ carries no error-wrapping rule
+  template_mirrorTouches: 0  # `git diff origin/main..HEAD -- internal/template/templates/` shows ONLY pre-existing #1443 content
+ac_summary:
+  total: 13
+  pass: 12
+  fail: 0
+  deferred: 1  # AC-GAR-007 (SHOULD — (file,line,rule) dedup; satisfied by worktree exclusion, no separate dedup key added)
+sync_artifacts_touched:
+  - CHANGELOG.md  # English-only entry under [Unreleased] > ### Fixed
+  - .moai/specs/SPEC-GATE-ASTGREP-REPAIR-001/spec.md  # frontmatter only (status + updated)
+  - .moai/specs/SPEC-GATE-ASTGREP-REPAIR-001/plan.md  # frontmatter only
+  - .moai/specs/SPEC-GATE-ASTGREP-REPAIR-001/acceptance.md  # frontmatter only
+  - .moai/specs/SPEC-GATE-ASTGREP-REPAIR-001/progress.md  # this §E.4 block
+  - internal/cli/gate.go  # @MX:NOTE annotation on loadGateCfgForCLI (comment-only)
+  - internal/hook/quality/astgrep_gate.go  # @MX:NOTE annotation on filterExcludedPaths (comment-only)
+readme_updated: false  # README has no moai-gate ast-grep advisory/blocking section that would imply the old behavior; only generic /moai loop AST-grep mentions exist — no edit needed
+docs_site_4locale_sync: not-applicable  # internal gate mechanism + dogfood-tree ast-grep rule, not a user-facing docs-site surface
+mx_tag_validation:
+  new_surfaces_annotated:
+    - internal/cli/gate.go loadGateCfgForCLI  # @MX:NOTE added (intent: SSOT config loader reuse so moai gate and PreToolUse share one gate.yaml source)
+    - internal/hook/quality/astgrep_gate.go filterExcludedPaths  # @MX:NOTE added (intent: authoritative path-exclusion boundary at the gate layer, NOT in scanner.go which is preserved)
+  scanner_go_untouched: true  # explicit constraint — scanner.go Scan body preserved (REQ-GAR-010)
+  pre_tool_go_untouched: true  # explicit constraint — PreToolUse path unchanged beyond shared loader reuse
+```
 
 ## §F Phase 4 Mode Selection
 

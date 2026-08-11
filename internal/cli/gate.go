@@ -82,6 +82,12 @@ func runGate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// @MX:NOTE: loadGateCfgForCLI is the SSOT seam that routes the standalone
+// `moai gate` CLI through the same config.loadGateSection loader as the
+// PreToolUse path (internal/hook/pre_tool.go loadGateConfig), so the CLI and
+// the hook share one gate.yaml source for Enabled/BlockOnError/WarnOnlyMode
+// (SPEC-GATE-ASTGREP-REPAIR-001 M3 / REQ-GAR-006 / D3 config-behavior-consistency fix).
+//
 // loadGateCfgForCLI reads the gate configuration from
 // <projectDir>/.moai/config/sections/gate.yaml via the shared config.loadGateSection
 // loader (SPEC-GATE-ASTGREP-REPAIR-001 M3 / REQ-GAR-006). This is the same
