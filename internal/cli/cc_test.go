@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -281,31 +281,31 @@ func TestCharacterize_CC_LaunchError(t *testing.T) {
 	}
 }
 
-// ── SPEC-FACTORY-MODE-001 M5: Kanban Mode entry surface ──
+// ── SPEC-FACTORY-MODE-001 M5: Factory Mode entry surface ──
 
-// TestParseKanbanFlag_LongFormWithoutSpec asserts the bare --kanban form
-// enables Kanban Mode, reports no SPEC identifier (REQ-FM-005: absence means
+// TestParseFactoryFlag_LongFormWithoutSpec asserts the bare --factory form
+// enables Factory Mode, reports no SPEC identifier (REQ-FM-005: absence means
 // the chain heads at plan-phase), and strips the token from the forwarded args.
-func TestParseKanbanFlag_LongFormWithoutSpec(t *testing.T) {
-	spec, enabled, rest := parseKanbanFlag([]string{"--kanban", "-b"})
+func TestParseFactoryFlag_LongFormWithoutSpec(t *testing.T) {
+	spec, enabled, rest := parseFactoryFlag([]string{"--factory", "-b"})
 	if !enabled {
-		t.Error("--kanban must enable Kanban Mode")
+		t.Error("--factory must enable Factory Mode")
 	}
 	if spec != "" {
-		t.Errorf("bare --kanban carries no SPEC identifier, got %q", spec)
+		t.Errorf("bare --factory carries no SPEC identifier, got %q", spec)
 	}
 	if !slices.Equal(rest, []string{"-b"}) {
-		t.Errorf("--kanban must be stripped from the forwarded args, got %v", rest)
+		t.Errorf("--factory must be stripped from the forwarded args, got %v", rest)
 	}
 }
 
-// TestParseKanbanFlag_ShortFormWithSpec is AC-FM-002: `moai cc -k
+// TestParseFactoryFlag_ShortFormWithSpec is AC-FM-002: `moai cc -f
 // SPEC-PLACEHOLDER` yields the identifier, enables the mode, and removes both
 // tokens from the forwarded args.
-func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
-	spec, enabled, rest := parseKanbanFlag([]string{"-k", "SPEC-PLACEHOLDER", "--print"})
+func TestParseFactoryFlag_ShortFormWithSpec(t *testing.T) {
+	spec, enabled, rest := parseFactoryFlag([]string{"-f", "SPEC-PLACEHOLDER", "--print"})
 	if !enabled {
-		t.Error("AC-FM-002: -k must enable Kanban Mode")
+		t.Error("AC-FM-002: -f must enable Factory Mode")
 	}
 	if spec != "SPEC-PLACEHOLDER" {
 		t.Errorf("AC-FM-002: expected spec %q, got %q", "SPEC-PLACEHOLDER", spec)
@@ -315,28 +315,28 @@ func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
 	}
 }
 
-// TestParseKanbanFlag_PassThroughBoundary is AC-FM-003: a --kanban token at
+// TestParseFactoryFlag_PassThroughBoundary is AC-FM-003: a --factory token at
 // or after the -- pass-through marker belongs to the child process, not to
 // this parser. Mirrors stripSpawnFlag's boundary discipline exactly.
-func TestParseKanbanFlag_PassThroughBoundary(t *testing.T) {
-	spec, enabled, rest := parseKanbanFlag([]string{"--", "--kanban"})
+func TestParseFactoryFlag_PassThroughBoundary(t *testing.T) {
+	spec, enabled, rest := parseFactoryFlag([]string{"--", "--factory"})
 	if enabled {
-		t.Error("AC-FM-003: --kanban after -- must NOT enable Kanban Mode")
+		t.Error("AC-FM-003: --factory after -- must NOT enable Factory Mode")
 	}
 	if spec != "" {
 		t.Errorf("AC-FM-003: no SPEC identifier is consumed past --, got %q", spec)
 	}
-	if !slices.Equal(rest, []string{"--", "--kanban"}) {
+	if !slices.Equal(rest, []string{"--", "--factory"}) {
 		t.Errorf("AC-FM-003: tokens past -- are forwarded verbatim, got %v", rest)
 	}
 }
 
-// TestParseKanbanFlag_SpecIsNotStolenFromAFlag guards the optional-positional
+// TestParseFactoryFlag_SpecIsNotStolenFromAFlag guards the optional-positional
 // parse: a following flag token is a separate argument, never the SPEC value.
-func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
-	spec, enabled, rest := parseKanbanFlag([]string{"--kanban", "--print"})
+func TestParseFactoryFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
+	spec, enabled, rest := parseFactoryFlag([]string{"--factory", "--print"})
 	if !enabled {
-		t.Error("--kanban must enable Kanban Mode")
+		t.Error("--factory must enable Factory Mode")
 	}
 	if spec != "" {
 		t.Errorf("a flag token must not be consumed as the SPEC identifier, got %q", spec)
@@ -346,19 +346,19 @@ func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
 	}
 }
 
-// TestCC_KanbanFlagStrippedBeforeLaunch is AC-FM-001: the seam sees neither
-// --kanban nor -k, and the process environment carries the kanban signal at
+// TestCC_FactoryFlagStrippedBeforeLaunch is AC-FM-001: the seam sees neither
+// --factory nor -f, and the process environment carries the factory signal at
 // the moment the launch happens (the signal REQ-FM-023 transports).
-func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
+func TestCC_FactoryFlagStrippedBeforeLaunch(t *testing.T) {
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 
 	var capturedArgs []string
-	var kanbanAtLaunch, specAtLaunch string
+	var factoryAtLaunch, specAtLaunch string
 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
 		capturedArgs = args
-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
+		factoryAtLaunch = os.Getenv(config.EnvMoaiFactory)
+		specAtLaunch = os.Getenv(config.EnvMoaiFactorySpec)
 		return nil
 	}
 
@@ -374,28 +374,28 @@ func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
 
-	if err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
-		t.Fatalf("AC-FM-001: runCC(--kanban) should not error, got: %v", err)
+	if err := runCC(ccCmd, []string{"--factory", "SPEC-PLACEHOLDER"}); err != nil {
+		t.Fatalf("AC-FM-001: runCC(--factory) should not error, got: %v", err)
 	}
 	for _, a := range capturedArgs {
-		if a == "--kanban" || a == "-k" {
-			t.Errorf("AC-FM-001: kanban token must not reach the launcher, got %v", capturedArgs)
+		if a == "--factory" || a == "-f" {
+			t.Errorf("AC-FM-001: factory token must not reach the launcher, got %v", capturedArgs)
 		}
 	}
-	if kanbanAtLaunch != "1" {
-		t.Errorf("AC-FM-001: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
+	if factoryAtLaunch != "1" {
+		t.Errorf("AC-FM-001: %s must be set at launch, got %q", config.EnvMoaiFactory, factoryAtLaunch)
 	}
 	if specAtLaunch != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-001: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
+		t.Errorf("AC-FM-001: %s must carry the identifier at launch, got %q", config.EnvMoaiFactorySpec, specAtLaunch)
 	}
 }
 
-// TestCC_KanbanWritesStateRecord is AC-FM-023a: entering Kanban Mode leaves a
-// session-keyed record under .moai/state/kanban/, and a state directory that
+// TestCC_FactoryWritesStateRecord is AC-FM-023a: entering Factory Mode leaves a
+// session-keyed record under .moai/state/factory/, and a state directory that
 // cannot be written never blocks the launch (fail-open).
-func TestCC_KanbanWritesStateRecord(t *testing.T) {
+func TestCC_FactoryWritesStateRecord(t *testing.T) {
 	tmp := t.TempDir()
-	sessionID := "kanban-record-session"
+	sessionID := "factory-record-session"
 	sidecar := filepath.Join(tmp, session.CurrentSideChannelFile)
 	if err := os.MkdirAll(filepath.Dir(sidecar), 0o755); err != nil {
 		t.Fatal(err)
@@ -421,13 +421,13 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
 
-	if err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
+	if err := runCC(ccCmd, []string{"--factory", "SPEC-PLACEHOLDER"}); err != nil {
 		t.Fatalf("AC-FM-023a: runCC should not error, got: %v", err)
 	}
 
-	rec, err := kanban.Read(tmp, sessionID)
+	rec, err := factory.Read(tmp, sessionID)
 	if err != nil {
-		t.Fatalf("AC-FM-023a: kanban record not readable: %v", err)
+		t.Fatalf("AC-FM-023a: factory record not readable: %v", err)
 	}
 	if rec.SessionID != sessionID {
 		t.Errorf("AC-FM-023a: session_id = %q, want %q", rec.SessionID, sessionID)
@@ -435,8 +435,8 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 	if rec.SpecID != "SPEC-PLACEHOLDER" {
 		t.Errorf("AC-FM-023a: spec_id = %q, want %q", rec.SpecID, "SPEC-PLACEHOLDER")
 	}
-	if rec.Backend != kanban.BackendClaude {
-		t.Errorf("AC-FM-023a: backend = %q, want %q", rec.Backend, kanban.BackendClaude)
+	if rec.Backend != factory.BackendClaude {
+		t.Errorf("AC-FM-023a: backend = %q, want %q", rec.Backend, factory.BackendClaude)
 	}
 	if rec.EnteredAt == "" {
 		t.Error("AC-FM-023a: entered_at must be stamped at launch")
@@ -465,20 +465,20 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
 
 	t.Setenv("CLAUDE_PROJECT_DIR", blocked)
-	if err := runCC(ccCmd, []string{"--kanban"}); err != nil {
+	if err := runCC(ccCmd, []string{"--factory"}); err != nil {
 		t.Errorf("AC-FM-023a: an unwritable state directory must not block the launch, got: %v", err)
 	}
-	if _, err := kanban.Read(blocked, "blocked-session"); err == nil {
+	if _, err := factory.Read(blocked, "blocked-session"); err == nil {
 		t.Error("AC-FM-023a fail-open control: the record must genuinely be absent, otherwise the case is vacuous")
 	}
 }
 
-// TestCC_KanbanEnvMutationIsRestored is AC-FM-023d: the process-environment
+// TestCC_FactoryEnvMutationIsRestored is AC-FM-023d: the process-environment
 // mutation is scoped to the call. Both the success path and the error path are
 // asserted — a defer that only runs on success is the same leak with a
 // narrower trigger — and an initially-absent variable is restored to ABSENT,
 // not to the empty string.
-func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
+func TestCC_FactoryEnvMutationIsRestored(t *testing.T) {
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
 	defer func() { findProjectRootFn = origFn }()
@@ -495,8 +495,8 @@ func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
 	ccCmd.SetErr(buf)
 
 	// Baseline: neither variable is set in this process.
-	_ = os.Unsetenv(config.EnvMoaiKanban)
-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
+	_ = os.Unsetenv(config.EnvMoaiFactory)
+	_ = os.Unsetenv(config.EnvMoaiFactorySpec)
 
 	cases := []struct {
 		name    string
@@ -508,11 +508,11 @@ func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			beforeKanban, beforeKanbanSet := os.LookupEnv(config.EnvMoaiKanban)
-			beforeSpec, beforeSpecSet := os.LookupEnv(config.EnvMoaiKanbanSpec)
+			beforeFactory, beforeFactorySet := os.LookupEnv(config.EnvMoaiFactory)
+			beforeSpec, beforeSpecSet := os.LookupEnv(config.EnvMoaiFactorySpec)
 
 			unifiedLaunchFunc = tc.launch
-			err := runCC(ccCmd, []string{"--kanban", "SPEC-PLACEHOLDER"})
+			err := runCC(ccCmd, []string{"--factory", "SPEC-PLACEHOLDER"})
 			if tc.wantErr && err == nil {
 				t.Fatal("AC-FM-023d: expected the seam error to propagate")
 			}
@@ -522,8 +522,8 @@ func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
 				val    string
 				wasSet bool
 			}{
-				{config.EnvMoaiKanban, beforeKanban, beforeKanbanSet},
-				{config.EnvMoaiKanbanSpec, beforeSpec, beforeSpecSet},
+				{config.EnvMoaiFactory, beforeFactory, beforeFactorySet},
+				{config.EnvMoaiFactorySpec, beforeSpec, beforeSpecSet},
 			} {
 				got, gotSet := os.LookupEnv(pair.key)
 				if gotSet != pair.wasSet {
@@ -538,45 +538,45 @@ func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
 	}
 }
 
-// TestEnterKanbanMode_RestoresPriorValue covers the other half of the restore
+// TestEnterFactoryMode_RestoresPriorValue covers the other half of the restore
 // contract: when a variable was ALREADY set before entry, the restore returns
 // its prior value rather than unsetting it. Absence-restoration is asserted by
-// TestCC_KanbanEnvMutationIsRestored; both branches must hold for the restore
+// TestCC_FactoryEnvMutationIsRestored; both branches must hold for the restore
 // to be a genuine round-trip.
-func TestEnterKanbanMode_RestoresPriorValue(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "prior-kanban")
-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PRIOR")
+func TestEnterFactoryMode_RestoresPriorValue(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactory, "prior-factory")
+	t.Setenv(config.EnvMoaiFactorySpec, "SPEC-PRIOR")
 
-	restore := enterKanbanMode("SPEC-PLACEHOLDER")
-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanban, got, "1")
+	restore := enterFactoryMode("SPEC-PLACEHOLDER")
+	if got := os.Getenv(config.EnvMoaiFactory); got != "1" {
+		t.Errorf("inside Factory Mode %s = %q, want %q", config.EnvMoaiFactory, got, "1")
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanSpec); got != "SPEC-PLACEHOLDER" {
-		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanbanSpec, got, "SPEC-PLACEHOLDER")
+	if got := os.Getenv(config.EnvMoaiFactorySpec); got != "SPEC-PLACEHOLDER" {
+		t.Errorf("inside Factory Mode %s = %q, want %q", config.EnvMoaiFactorySpec, got, "SPEC-PLACEHOLDER")
 	}
 
 	restore()
-	if got, ok := os.LookupEnv(config.EnvMoaiKanban); !ok || got != "prior-kanban" {
-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanban, got, ok, "prior-kanban")
+	if got, ok := os.LookupEnv(config.EnvMoaiFactory); !ok || got != "prior-factory" {
+		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiFactory, got, ok, "prior-factory")
 	}
-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); !ok || got != "SPEC-PRIOR" {
-		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiKanbanSpec, got, ok, "SPEC-PRIOR")
+	if got, ok := os.LookupEnv(config.EnvMoaiFactorySpec); !ok || got != "SPEC-PRIOR" {
+		t.Errorf("%s = (%q, %v) after restore, want (%q, true)", config.EnvMoaiFactorySpec, got, ok, "SPEC-PRIOR")
 	}
 }
 
-// TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched asserts the optional
-// identifier is genuinely optional: a bare --kanban publishes the mode signal
+// TestEnterFactoryMode_WithoutSpecLeavesSpecVarUntouched asserts the optional
+// identifier is genuinely optional: a bare --factory publishes the mode signal
 // without inventing a SPEC identifier the operator never supplied.
-func TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched(t *testing.T) {
-	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
-	restore := enterKanbanMode("")
+func TestEnterFactoryMode_WithoutSpecLeavesSpecVarUntouched(t *testing.T) {
+	_ = os.Unsetenv(config.EnvMoaiFactorySpec)
+	restore := enterFactoryMode("")
 	defer restore()
 
-	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanban, got, "1")
+	if got := os.Getenv(config.EnvMoaiFactory); got != "1" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiFactory, got, "1")
 	}
-	if got, ok := os.LookupEnv(config.EnvMoaiKanbanSpec); ok {
-		t.Errorf("%s must stay unset when no identifier was supplied, got %q", config.EnvMoaiKanbanSpec, got)
+	if got, ok := os.LookupEnv(config.EnvMoaiFactorySpec); ok {
+		t.Errorf("%s must stay unset when no identifier was supplied, got %q", config.EnvMoaiFactorySpec, got)
 	}
 }
 

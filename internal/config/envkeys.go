@@ -127,24 +127,24 @@ const (
 	// file loader; the managed layer injects this env var instead.
 	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
 
-	// EnvMoaiKanban carries the Kanban Mode signal from the launcher entry
+	// EnvMoaiFactory carries the Factory Mode signal from the launcher entry
 	// point to the block-cap inject further down the launch chain. The launcher
 	// sets it on the process environment before launching (restoring the prior
 	// value and prior presence afterwards) rather than threading a parameter
 	// through the chain, because the launch environment is already derived from
 	// os.Environ() at the inject's call site — so the variable reaches both the
 	// inject and the child session without a signature change. A non-empty
-	// value means the session is a kanban session.
+	// value means the session is a factory session.
 	//
 	// This variable is load-bearing: removing or renaming it silently disables
 	// the raised Stop-hook block cap, and the failure is quiet — the chain
 	// simply stops after the default number of consecutive blocks.
-	EnvMoaiKanban = "MOAI_KANBAN"
+	EnvMoaiFactory = "MOAI_FACTORY"
 
-	// EnvMoaiKanbanSpec names the SPEC a kanban chain targets. It is set only
+	// EnvMoaiFactorySpec names the SPEC a factory chain targets. It is set only
 	// when the operator supplied an identifier; its absence means the chain
 	// begins at plan-phase from the operator's first prompt.
-	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
+	EnvMoaiFactorySpec = "MOAI_FACTORY_SPEC"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

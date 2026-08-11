@@ -17,8 +17,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -163,13 +163,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-MODE-001: --kanban / -k parity with `moai cc`. Both are
+	// SPEC-FACTORY-MODE-001: --factory / -f parity with `moai cc`. Both are
 	// single-backend launchers, so both support the chain. See cc.go for the
 	// ordering rationale and the restore contract.
-	if specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs); kanbanEnabled {
-		filteredArgs = kanbanArgs
-		defer enterKanbanMode(specID)()
-		recordKanbanSession(specID, kanban.BackendGLM)
+	if specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs); factoryEnabled {
+		filteredArgs = factoryArgs
+		defer enterFactoryMode(specID)()
+		recordFactorySession(specID, factory.BackendGLM)
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {

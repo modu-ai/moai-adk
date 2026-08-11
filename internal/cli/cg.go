@@ -69,10 +69,10 @@ func runCG(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// SPEC-FACTORY-MODE-001 REQ-FM-004: Kanban Mode is unavailable on cg. The
-	// rejection precedes --spawn so `moai cg --kanban --spawn` fails here
+	// SPEC-FACTORY-MODE-001 REQ-FM-004: Factory Mode is unavailable on cg. The
+	// rejection precedes --spawn so `moai cg --factory --spawn` fails here
 	// rather than in the spawned window, where the operator would not see it.
-	if err := rejectKanbanOnCG(args); err != nil {
+	if err := rejectFactoryOnCG(args); err != nil {
 		return err
 	}
 

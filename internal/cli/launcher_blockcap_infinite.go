@@ -38,12 +38,12 @@ const DefaultRaisedStopHookBlockCap = 200
 // (the launch must never block on a goal-state read).
 func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRoot, sessionID string) []string {
 	_ = ctx
-	// SPEC-FACTORY-MODE-001 REQ-FM-023: the kanban branch is UNCONDITIONAL and
+	// SPEC-FACTORY-MODE-001 REQ-FM-023: the factory branch is UNCONDITIONAL and
 	// sits ahead of the goal read. The goal-conditional branch below reads goal
-	// state at launch time; a kanban chain arms its goal mid-session, so that
+	// state at launch time; a factory chain arms its goal mid-session, so that
 	// predicate is structurally unable to see it and the chain would otherwise
 	// stay capped at the runtime default of 8.
-	if os.Getenv(config.EnvMoaiKanban) != "" {
+	if os.Getenv(config.EnvMoaiFactory) != "" {
 		return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
 	}
 	if projectRoot == "" || sessionID == "" {

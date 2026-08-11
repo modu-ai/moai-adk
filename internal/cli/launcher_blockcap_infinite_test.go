@@ -108,41 +108,41 @@ func armInfiniteGoalFixture(t *testing.T, projectRoot, sessionID string, maxTurn
 
 // ── SPEC-FACTORY-MODE-001 M5 ──
 
-// TestACFM022a_KanbanRaisesBlockCapUnconditionally is AC-FM-022a. The
+// TestACFM022a_FactoryRaisesBlockCapUnconditionally is AC-FM-022a. The
 // pre-existing inject is goal-conditional and reads goal state at LAUNCH time;
-// a kanban chain arms its goal mid-session, so that predicate is structurally
-// unable to see it. The kanban branch is therefore unconditional on the
+// a factory chain arms its goal mid-session, so that predicate is structurally
+// unable to see it. The factory branch is therefore unconditional on the
 // process-environment signal, ahead of the goal read.
 //
 // Non-parallel by construction: t.Setenv mutates process-global state.
-func TestACFM022a_KanbanRaisesBlockCapUnconditionally(t *testing.T) {
+func TestACFM022a_FactoryRaisesBlockCapUnconditionally(t *testing.T) {
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
 	want := config.EnvClaudeCodeStopHookBlockCap + "=" + strconv.Itoa(DefaultRaisedStopHookBlockCap)
 
-	// Negative control FIRST, so a leaked MOAI_KANBAN from an earlier test in
-	// this binary fails here loudly rather than silently validating the kanban
+	// Negative control FIRST, so a leaked MOAI_FACTORY from an earlier test in
+	// this binary fails here loudly rather than silently validating the factory
 	// branch (the ordering hazard AC-FM-023d exists to close).
 	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
 		t.Errorf("AC-FM-022a negative control: with %s unset and no armed goal the env must be unchanged, got %v",
-			config.EnvMoaiKanban, got)
+			config.EnvMoaiFactory, got)
 	}
 
-	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiFactory, "1")
 	// No armed goal, and an empty sessionID — the pre-existing branch cannot
-	// fire here, so a match proves the kanban branch supplied the entry.
+	// fire here, so a match proves the factory branch supplied the entry.
 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
 	if !slices.Contains(got, want) {
 		t.Errorf("AC-FM-022a: expected %q in the launch env, got %v", want, got)
 	}
 }
 
-// TestACFM022a_KanbanCapReplacesPreexistingEntry asserts the kanban branch
+// TestACFM022a_FactoryCapReplacesPreexistingEntry asserts the factory branch
 // reuses the replace-in-place discipline of the goal branch rather than
 // appending a duplicate key, which a child process would resolve ambiguously.
-func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "1")
+func TestACFM022a_FactoryCapReplacesPreexistingEntry(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactory, "1")
 	key := config.EnvClaudeCodeStopHookBlockCap
 	base := []string{"PATH=/usr/bin", key + "=8"}
 
@@ -161,20 +161,20 @@ func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
 	}
 }
 
-// TestACFM023c_KanbanEnvReachesChildEnvironment is AC-FM-023c: the load-bearing
+// TestACFM023c_FactoryEnvReachesChildEnvironment is AC-FM-023c: the load-bearing
 // link. The cap raise of AC-FM-022a is reachable in production only if the
-// kanban variables survive into the os.Environ()-derived launch env that
+// factory variables survive into the os.Environ()-derived launch env that
 // launchClaudeDefault builds immediately above the inject call. A unit test of
 // the inject alone would stay green through that failure.
-func TestACFM023c_KanbanEnvReachesChildEnvironment(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanban, "1")
-	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PLACEHOLDER")
+func TestACFM023c_FactoryEnvReachesChildEnvironment(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactorySpec, "SPEC-PLACEHOLDER")
 
 	launchEnv := buildEnvForLaunch("high", os.Environ())
 
 	for _, want := range []string{
-		config.EnvMoaiKanban + "=1",
-		config.EnvMoaiKanbanSpec + "=SPEC-PLACEHOLDER",
+		config.EnvMoaiFactory + "=1",
+		config.EnvMoaiFactorySpec + "=SPEC-PLACEHOLDER",
 	} {
 		if !slices.Contains(launchEnv, want) {
 			t.Errorf("AC-FM-023c: %q missing from the child environment", want)
