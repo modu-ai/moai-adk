@@ -27,15 +27,21 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
-    # Worktree automation settings (per the canonical worktree contract)
-    # auto_create: false (aligned with worktree-autonomous user policy).
-    # L1 worktree is Claude Code runtime autonomous — MoAI orchestrator does not auto-create it.
-    # auto_merge/auto_cleanup only take effect when the user manually creates a worktree.
+    # Worktree automation settings (per the canonical worktree contract).
+    # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+    # three auto-* toggles default false — the EnterWorktree-first policy.
+    # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+    # advisory wording; it does not gate worktree creation.
+    # auto_merge / auto_cleanup: declared but not read — no code path consumes
+    # them (reserved). Kept aligned with defaults.go so the shipped file does
+    # not state the opposite of the recorded policy.
     worktree:
         auto_create: false
-        auto_merge: true
-        auto_cleanup: true
+        auto_merge: false
+        auto_cleanup: false
         tmux_preferred: true
+        # session_name_pattern: declared but not read — no code builds a session
+        # name from this value (reserved). Retained as a placeholder only.
         session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
         # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
         # Uncomment and customize to speed up worktree creation

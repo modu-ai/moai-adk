@@ -539,6 +539,12 @@ type TokenBudgetConfig struct {
 
 // WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
+//
+// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — it does
+// not gate worktree creation. AutoCleanup and AutoMerge have no production
+// reader (declared but not read). SessionNamePattern has no production reader
+// (no code builds a session name from it).
 type WorkflowWorktreeConfig struct {
 	AutoCleanup        bool   `yaml:"auto_cleanup"`
 	AutoCreate         bool   `yaml:"auto_create"`
@@ -1227,6 +1233,13 @@ type DesignEvolution struct {
 	AutoEvolveThreshold     int                      `yaml:"auto_evolve_threshold"`
 	CooldownHours           int                      `yaml:"cooldown_hours"`
 	GraduationCriteria      DesignGraduationCriteria `yaml:"graduation_criteria"`
+	// MaxActiveLearnings is declared but NOT read by any production code path.
+	// The actual ceiling on active learnings is enforced by two independent
+	// hardcoded constants: internal/evolution/types.go MaxActiveLearnings (= 50)
+	// and internal/constitution/rate_limiter.go rateLimitMaxActiveLearnings (= 50).
+	// Wiring this config field to those sites is out of scope (a refactor beyond
+	// SPEC-CONFIG-KEY-HONESTY-001). Treat this field as documentation of the
+	// intended value, not the lever.
 	MaxActiveLearnings      int                      `yaml:"max_active_learnings"`
 	MaxEvolutionRatePerWeek int                      `yaml:"max_evolution_rate_per_week"`
 	RequireApproval         bool                     `yaml:"require_approval"`

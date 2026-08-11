@@ -192,6 +192,93 @@ commits and are unchanged by M4 (B10 PRESERVE). `github.*` (3 keys) and
 `document_management.*` (18 keys) are classified **R** in the M1 inventory —
 M4 did not need to reclassify them.
 
+### M5 — Documented-but-unenforced reconciliation (REQ-CKH-009, REQ-CKH-010)
+
+M5 resolves the three documented-but-unenforced findings: the §A.8
+contradiction (template shipped `true` while Go defaults `false`), the F4
+dual-hardcode (`max_active_learnings` unwired; enforcement in two independent
+`= 50` constants), and F7 (`SessionNamePattern` with zero production readers).
+M5 is a documentation-correction milestone — it does NOT delete keys (that is
+M6's domain under REQ-CKH-011) and does NOT wire the unwired keys (out of
+scope per spec §C). The M1 inventory classes for the five keys are unchanged
+(B10 PRESERVE): `max_active_learnings` D, `auto_cleanup` P, `auto_create` W,
+`auto_merge` D, `session_name_pattern` D.
+
+**§A.8 resolution (REQ-CKH-009 — auto_merge / auto_cleanup / auto_create).**
+The shipped template `internal/template/templates/.moai/config/sections/workflow.yaml`
+previously shipped `auto_merge: true` and `auto_cleanup: true` while
+`internal/config/defaults.go` sets all three `WorkflowWorktreeConfig` toggles
+to `false`. The template now ships `auto_create: false`, `auto_merge: false`,
+`auto_cleanup: false` — matching `defaults.go:665-667` exactly. Each toggle
+now carries an honest comment: `auto_create` is read once
+(`internal/cli/worktree_advisory.go`) only to select advisory wording (does
+not gate creation); `auto_merge` / `auto_cleanup` are declared but not read.
+`CLAUDE.local.md` §22.8 (materialized at `.moai/docs/local-dev-settings-intent.md`)
+is corrected to state each toggle's real reader status precisely rather than
+describing all three as governing web-console worktree automation.
+
+**F4 documentation (REQ-CKH-010 — max_active_learnings).** The config
+declaration (`internal/config/types.go` `DesignEvolution.MaxActiveLearnings`)
+and the default (`internal/config/defaults.go:935`) now carry comments naming
+the two real enforcement sites: `internal/evolution/types.go` `MaxActiveLearnings`
+(= 50) and `internal/constitution/rate_limiter.go` `rateLimitMaxActiveLearnings`
+(= 50). Both literals appear within the comment context so a reader of the
+config cannot mistake the key for the lever. Wiring remains out of scope
+(spec §C — a refactor beyond this SPEC).
+
+**F7 marker (REQ-CKH-009 — session_name_pattern).** The shipped
+`session_name_pattern` value is retained (the M2 guard enumerates shipped
+keys; removing it would change the key set) but now carries a generic reserved
+marker: "declared but not read — no code builds a session name from this value
+(reserved)." The shipped file no longer presents the pattern as an active
+setting.
+
+**Observed verification (against HEAD of this worktree, post-M5):**
+
+```
+# AC-CKH-009 — enforcement-site comments at both Go sites
+$ grep -n -B3 -A1 'MaxActiveLearnings' internal/config/types.go internal/config/defaults.go
+types.go:1236: // MaxActiveLearnings is declared but NOT read ...
+defaults.go:930: // MaxActiveLearnings mirrors the value enforced by two ...
+# Both internal/evolution/types.go and internal/constitution/rate_limiter.go
+# appear within the printed context.
+
+# AC-CKH-010 Part A — shipped toggle values match defaults.go
+$ grep -n 'auto_create\|auto_merge\|auto_cleanup' .../workflow.yaml
+auto_create: false
+auto_merge: false
+auto_cleanup: false
+$ grep -n 'AutoCleanup\|AutoCreate\|AutoMerge' internal/config/defaults.go | head -3
+AutoCleanup:        false,
+AutoCreate:         false,
+AutoMerge:          false,
+
+# AC-CKH-010 Part B — §22.8 states real reader status (count >= 3)
+$ sed -n '/§22.8/,/§22.9/p' .moai/docs/local-dev-settings-intent.md | grep -cE 'auto_cleanup|auto_merge|auto_create'
+3
+
+# AC-CKH-011 — session_name_pattern reserved marker
+$ grep -n -A2 'session_name_pattern' .../workflow.yaml
+# session_name_pattern: declared but not read — no code builds a session
+# name from this value (reserved). Retained as a placeholder only.
+session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+
+# M2 guard unaffected (template values changed; guard reads keys, not values)
+$ go test -count=1 ./internal/config/...
+ok  github.com/modu-ai/moai-adk/internal/config  5.672s
+```
+
+Baseline at HEAD `b58f5c371` (pre-M5): `workflow.yaml:36-37` shipped
+`auto_merge: true` / `auto_cleanup: true`; neither Go site carried an
+enforcement-constant comment; `session_name_pattern` carried no reserved
+marker; §22.8 described all three toggles as governing web-console worktree
+automation. All four are corrected by this milestone.
+
+REQ-CKH-009 nuance respected: `auto_cleanup` is NOT deleted (it was introduced
+as a gate role via REQ-SW-022 and is classified P in the M1 inventory). Its
+M5 deliverable is value-correction + honest documentation, consistent with
+AC-CKH-010 which verifies value alignment, not deletion.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
