@@ -150,11 +150,11 @@ m1_to_mN_commit_strategy: per-milestone commits not yet staged; orchestrator hol
 
 ```yaml
 sync_complete_at: 2026-08-11
-sync_commit_sha: pending-backfill
+sync_commit_sha: 6422046bb
 sync_status: audit-ready
 changelog_entry_position: CHANGELOG.md [Unreleased] ### Changed
 frontmatter_status_transitions:
-  spec_md: draft -> implemented
+  spec_md: draft -> implemented -> completed
   plan_md: no frontmatter (Tier M authoring choice; only spec.md carries frontmatter per FrontmatterSchemaRule)
   acceptance_md: no frontmatter (Tier M authoring choice)
   progress_md: §E.4 populated by manager-docs (this commit)
