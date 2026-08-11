@@ -32,3 +32,23 @@ _(pending run-phase — manager-develop populates this section on run-phase comp
 _(pending sync-phase — manager-docs populates `sync_commit_sha` on the single sync commit carrying the `implemented → completed` transition)_
 
 sync_commit_sha: pending-backfill-sync
+
+## §F Phase 4 Mode Selection
+
+- tier: L
+- scope: 10+ new files (internal/navigator/fix/{types,scope,request,apply}.go + internal/cli/navigator_fix.go + 3 test files + testdata/fix-corpus/ fixtures)
+- domain count: 1 (Go navigator engine + CLI registration — single-domain Go, NOT cross-domain fan-out)
+- file language mix: 100% Go (+ Go test fixtures)
+- concurrency benefit: LOW (coding-heavy — Anthropic coding-task parallelism caveat)
+- Agent Teams prereqs: N/A (Mode 3 retired)
+
+Mode evaluation:
+- Mode 1 (trivial): not selected — Tier L, 500+ LOC new code
+- Mode 2 (background): not selected — write-capable implementation
+- Mode 3 (agent-team): RETIRED — tombstone
+- Mode 4 (parallel): not selected — coding-heavy + single-domain (violates parallelism caveat)
+- Mode 5 (sub-agent): SELECTED — sequential manager-develop per milestone is the Anthropic-recommended default for coding-heavy work
+- Mode 6 (workflow): not selected — new-code semantic work, not a mechanical uniform transform
+
+Decision: sub-agent (Mode 5)
+Justification: Tier L coding-heavy implementation. Per Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research"), sequential sub-agent delegation (manager-develop, one milestone at a time) is the safe default. Single Go domain (navigator/fix + CLI) — no cross-domain fan-out warranting manager-lead. Progression mode: semi-autonomous — orchestrator checks in per milestone (M3.1~M3.6), no /moai goal arming (GLM-backend goal-evaluator reliability concern per prior lessons). Phase 1 audit was self-conducted (plan-auditor agent failed to run on GLM backend) — verdict PASS-WITH-DEBT ~0.88, independent re-audit recommended from a Claude (non-GLM) session.
