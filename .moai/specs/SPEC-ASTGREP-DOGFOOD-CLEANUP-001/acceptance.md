@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-DOGFOOD-CLEANUP-001
 title: "Local Dogfood ast-grep Ruleset Curated-Baseline Cleanup — Acceptance"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-08-12
 author: GOOS
