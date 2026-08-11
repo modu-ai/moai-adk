@@ -6,7 +6,7 @@ status: completed
 created: 2026-08-12
 updated: 2026-08-12
 run_commit_sha: 78acfb714
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 67c264888
 author: manager-spec
 priority: P0
 phase: "v3.0.2 target"
