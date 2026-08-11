@@ -7,6 +7,24 @@
 <nav class="cw-side cw-side--v3">
   {{- /* 검색은 헤더에 있으므로 사이드바 안 별도 검색박스 출력 안 함 */ -}}
   {{- $current := .RelPermalink -}}
+
+  {{- /* ── v3.1 NEW-badge section-level precompute (SPEC-DESIGN-DOCS-V31-001 M3).
+         각 섹션의 _meta.yaml 을 읽어 new_items: 슬러그 목록과 (선택) new: true
+         섹션-플래그를 미리 맵에 캐시한다. 페이지-level frontmatter(new/added_in)
+         과 union-combine 되며, 페이지가 명시적으로 플래그를 가지지 않아도
+         섹션 선언만으로 사이드바 NEW 배지가 렌더된다. */ -}}
+  {{- $sectionMetaCache := dict -}}
+  {{- range hugo.Data.menu.main.main -}}
+    {{- if and .ref (not .external) -}}
+      {{- $sectionSlugForCache := trim .ref "/" -}}
+      {{- $metaPath := printf "content/%s/%s/_meta.yaml" $.Site.Language.Lang $sectionSlugForCache -}}
+      {{- if fileExists $metaPath -}}
+        {{- $metaMap := transform.Unmarshal (readFile $metaPath) -}}
+        {{- $sectionMetaCache = merge $sectionMetaCache (dict $sectionSlugForCache $metaMap) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- range hugo.Data.menu.main.main }}
     {{- /* skip a section whose own index page is absent for this language
            (draft-only multi-llm/contributing in en/ja/zh production); book is external */ -}}
@@ -19,6 +37,11 @@
       {{- end -}}
     {{- end -}}
     {{- $open := or .defaultOpen $hasCurrent -}}
+    {{- /* v3.1 NEW-badge: 이 섹션의 _meta.yaml new_items / new 플래그 조회. */ -}}
+    {{- $sectionSlug := trim .ref "/" -}}
+    {{- $sectionMeta := index $sectionMetaCache $sectionSlug | default dict -}}
+    {{- $sectionNewItems := index $sectionMeta "new_items" | default slice -}}
+    {{- $sectionIsNew := index $sectionMeta "new" | default false -}}
     <details class="cw-side-section" {{ if $open }}open{{ end }}>
       <summary class="cw-side-head">
         <span class="cw-side-title">
@@ -45,7 +68,7 @@
               {{- end -}}
             </svg>
           {{- end -}}
-          <span>{{ partial "menu/name" .name }}</span>
+          <span>{{ partial "menu/name" .name }}{{- if $sectionIsNew }} <span class="cw-side-new">NEW</span>{{- end }}</span>
         </span>
         <svg class="cw-side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
       </summary>
@@ -54,12 +77,28 @@
           {{- if or .external (site.GetPage .ref) -}}
           {{- $href := partial "menu/href" . -}}
           {{- $isActive := and .ref (eq (printf "%s/" (trim $href "/")) (trim $current "/" | printf "%s/")) -}}
+          {{- /* v3.1 NEW-badge (dual-source union, REQ-NB-001):
+                 (a) main.yaml 의 기존 isNew 필드 — backward-compat 보존
+                 (b) 페이지 frontmatter new: true 또는 added_in: "<version>" — 자동 sunset 지원
+                 (c) 이 섹션 _meta.yaml 의 new_items: 슬러그 목록 — 페이지가 플래그를
+                     가지지 않아도 섹션 선언만으로 배지 렌더.
+                 셋 중 하나라도 참이면 NEW 배지가 렌더된다. */ -}}
+          {{- $isNew := false -}}
+          {{- if .isNew }}{{- $isNew = true -}}{{- end -}}
+          {{- if and .ref (not .external) -}}
+            {{- $subPage := site.GetPage .ref -}}
+            {{- if $subPage -}}
+              {{- if or $subPage.Params.new $subPage.Params.added_in }}{{- $isNew = true -}}{{- end -}}
+            {{- end -}}
+            {{- $subSlug := path.Base (trim .ref "/") -}}
+            {{- if in $sectionNewItems $subSlug }}{{- $isNew = true -}}{{- end -}}
+          {{- end -}}
           <li>
             <a class="cw-side-link{{ if $isActive }} active{{ end }}" href="{{ $href }}"{{ if .external }} target="_blank" rel="noopener noreferrer"{{ end }}>
               <span class="cw-side-link-name">
                 <span class="cw-side-link-text">{{ partial "menu/name" .name }}{{- if .count }} <span class="cw-side-count">({{ .count }})</span>{{ end }}</span>
                 {{- if .badge }}<span class="cw-side-badge">{{ .badge }}</span>{{ end }}
-                {{- if .isNew }}<span class="cw-side-new">NEW</span>{{ end }}
+                {{- if $isNew }}<span class="cw-side-new">NEW</span>{{ end }}
               </span>
             </a>
           </li>
