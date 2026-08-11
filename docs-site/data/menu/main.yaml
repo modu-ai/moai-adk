@@ -422,6 +422,12 @@ main:
           ja: Model Policy
           zh: Model Policy
         ref: /multi-llm/model-policy
+      - name:
+          ko: 팩토리 모드
+          en: Factory Mode
+          ja: ファクトリーモード
+          zh: 工厂模式
+        ref: /multi-llm/factory-mode
 
   - name:
       ko: 비용 최적화
