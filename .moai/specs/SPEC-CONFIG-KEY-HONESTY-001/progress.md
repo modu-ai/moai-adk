@@ -279,6 +279,131 @@ as a gate role via REQ-SW-022 and is classified P in the M1 inventory). Its
 M5 deliverable is value-correction + honest documentation, consistent with
 AC-CKH-010 which verifies value alignment, not deletion.
 
+### M6 — Neutrality leak removal + E5 handoff (REQ-CKH-011, REQ-CKH-012, REQ-CKH-013)
+
+M6 is the final run-phase milestone. It removes the three template-neutrality
+leaks (finding F6, spec.md §A.9) by rewriting the leaking comments to drop the
+internal citation while preserving the mechanism description, records the
+pattern-coverage gaps for sibling E5, and pins the report-once/delete-never
+posture over the merge engine for keys M1 classified D.
+
+**Origin-vs-HEAD check (B8 honesty).** The task brief flagged that origin/main
+recently landed `9fb2ffd75` (zone-registry neutralization). The three F6 leaks
+were re-verified at worktree HEAD `3f8f8458a` AND at origin/main:
+
+```
+$ grep -n 'SPEC-AGENT-ARCH-V2-001' internal/template/templates/.moai/config/sections/workflow.yaml   # HEAD
+88:    # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
+108:    # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
+$ git show origin/main:internal/template/templates/.moai/config/sections/workflow.yaml | grep -n 'SPEC-AGENT-ARCH-V2-001'
+82:    # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
+102:    # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
+$ grep -n 'issue #653' internal/template/templates/.moai/config/sections/llm.yaml   # HEAD
+179:    # (issue #653). Claude Code reports context_window_size based on the
+$ git show origin/main:internal/template/templates/.moai/config/sections/llm.yaml | grep -n 'issue #653'
+179:    # (issue #653). Claude Code reports context_window_size based on the
+```
+
+All three leaks are present at BOTH HEAD and origin/main — M6 is a real fix,
+not a no-op. (HEAD line numbers for workflow.yaml shifted from 82/102 to 88/108
+because the M5 milestone added reserved-marker comment lines above; the leak
+content is identical.)
+
+**Neutrality fix (REQ-CKH-012 — comment rewrite, mechanism preserved).**
+- `workflow.yaml:88`: dropped `(plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b)`
+  from the `model_routing` deprecation note; the backward-compat-alias
+  mechanism description ("retained as a `medium` profile alias for one
+  backward-compat cycle") is preserved verbatim.
+- `workflow.yaml:108`: dropped `(SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5)`
+  from the `model_routing_profiles` note; the No-Haiku 3-tier policy
+  mechanism ("perfTier -> (Tier x Phase) -> {model, effort}") is preserved.
+- `llm.yaml:179`: dropped `(issue #653)` from the GLM context-window comment;
+  the upstream-misreport explanation ("Claude Code reports context_window_size
+  based on the Claude slot ... regardless of provider") is preserved.
+
+**E5 handoff (REQ-CKH-013 — pattern-coverage gap recorded, guard NOT edited).**
+The handoff note at `.moai/specs/SPEC-UPDATE-CI-GUARD-001/research-ckh-f6-handoff.md`
+records the three measured evidence points for sibling E5: (1)
+`SPEC-AGENT-ARCH-V2-001` matches no registered C1/C1c family; (2) C6 matches
+`PR #N` but not `issue #N`; (3) no class covers `plan.md §D D6`-shaped artifact
+citations. `internal/template/internal_content_leak_test.go` is unmodified
+(verified: `git diff --stat ed70e4354 HEAD -- internal/template/internal_content_leak_test.go` returns empty).
+
+**Report-once / delete-never posture (REQ-CKH-011 — AC-CKH-014).**
+`TestTemplateRemovedKeySurvivesUserConfig` (`internal/config/template_removed_key_test.go`,
+`package config_test`) builds a `t.TempDir()` project carrying the M1-D key
+`design.evolution.max_active_learnings` with a user-set value (200), simulates
+a future template that removed it, runs `backup.MergeYAML3Way`, and asserts:
+(a) the key + user value survive (delete-never); (b) the retained-key advisory
+names the key (reported at least once); (c) a hand-added unrelated user key is
+also retained (no-other-key-dropped). The merge engine is owned by sibling
+SPEC-UPDATE-YAML-PRESERVE-001 (plan §D3); M6 adds only the posture assertion
+over that engine plus a minimal exported sink-setter
+(`backup.SetRetainedKeySinkForTest`) so the cross-package test can capture the
+advisory. The setter is test infrastructure only — no merge semantics changed.
+
+**Deferred sub-clause (AC-CKH-014 part b literal).** The literal "emits no
+further report on a second merge over the same tree" sub-clause requires
+cross-call report-once idempotency in the merge engine. The current engine
+emits the retained-key advisory on every call that finds an old-only key and
+keeps no cross-call state, so a second merge over the same tree re-emits. This
+idempotency is a merge-engine behaviour owned by SPEC-UPDATE-YAML-PRESERVE-001
+and is out of scope for M6 (plan §F M6 = template-neutrality + E5 handoff, NOT
+merge-engine modification). M6 pins the load-bearing delete-never +
+reported-at-least-once posture; the cross-call idempotency is left to the
+sibling SPEC. Surfaced here as a deferred gap rather than silently weakening
+the assertion.
+
+**Observed verification (against HEAD of this worktree, post-M6):**
+
+```
+# AC-CKH-012 Part A — the three leaks gone (only placeholders remain)
+$ grep -rnE 'SPEC-[A-Z0-9]' internal/template/templates/.moai/config/
+.../sections/workflow.yaml:45:        session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+.../sections/statusline.yaml:28:    # "📋 [<command> <SPEC-ID>-<stage>]" only when
+.../sections/cache.yaml:6:# `/moai run SPEC-XXX`.
+.../sections/cache.yaml:18:  # Per-SPEC breakpoint TTL applied on `/moai run SPEC-XXX`. Enum: "5m" | "off".
+$ grep -rn 'issue #' internal/template/templates/.moai/config/      # (no output, exit 1)
+$ grep -rn 'plan\.md §' internal/template/templates/.moai/config/   # (no output, exit 1)
+# All four hits above are generic placeholders ({SPEC-ID}, <SPEC-ID>, SPEC-XXX); zero real SPEC IDs / issue refs / artifact citations.
+
+# AC-CKH-012 Part B — the existing guard passes and was not edited
+$ go test -run 'TestTemplateNoInternalContentLeak' -count=1 -v ./internal/template/
+=== RUN   TestTemplateNoInternalContentLeak
+--- PASS: TestTemplateNoInternalContentLeak (0.87s)
+ok  	github.com/modu-ai/moai-adk/internal/template	1.855s
+$ git diff --stat ed70e4354 HEAD -- internal/template/internal_content_leak_test.go
+# (empty — REQ-CKH-013 honored)
+
+# AC-CKH-013 — the E5 handoff note records the three measured gaps
+$ grep -cE 'SPEC-AGENT-ARCH-V2-001|issue #N|plan\.md §' \
+    .moai/specs/SPEC-UPDATE-CI-GUARD-001/research-ckh-f6-handoff.md
+16
+
+# AC-CKH-014 — report-once / delete-never posture over the merge engine
+$ go test -run 'TestTemplateRemovedKeySurvivesUserConfig' -count=1 -v ./internal/config/
+=== RUN   TestTemplateRemovedKeySurvivesUserConfig
+--- PASS: TestTemplateRemovedKeySurvivesUserConfig (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/config  1.050s
+
+# Template-First: make build regenerated catalog.yaml after the template edits
+$ make build 2>&1 | tail -1
+go build -ldflags "..." -o bin/moai ./cmd/moai   # exit 0; catalog.yaml updated
+
+# Cross-cutting: build + vet + full config suite green
+$ go build ./...   # exit 0
+$ go vet ./internal/config/ ./internal/cli/update/backup/ ./internal/template/   # clean
+$ go test -count=1 ./internal/config/...
+ok  github.com/modu-ai/moai-adk/internal/config  2.474s
+ok  github.com/modu-ai/moai-adk/internal/config/toolpolicy  0.719s
+```
+
+**Run-phase status after M6.** M1, M2, M4, M5, M6 are landed. M3 remains HELD
+pending SPEC-CONFIG-TIER-PERSIST-001 (E3). All active ACs are satisfied except
+M3's (AC-CKH-005, AC-CKH-006 — held) and the deferred cross-call-idempotency
+sub-clause of AC-CKH-014 part (b) documented above. Run-phase evidence is
+complete for the active milestone set.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 

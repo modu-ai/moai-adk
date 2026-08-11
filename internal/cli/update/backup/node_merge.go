@@ -36,6 +36,19 @@ var systemFields = map[string]bool{
 // swap it for a bytes.Buffer to assert on the advisory text.
 var retainedKeySink io.Writer = os.Stderr
 
+// SetRetainedKeySinkForTest sets the writer that receives retained-key
+// advisories, returning a restore function that resets it to the prior value.
+// It is intended for cross-package tests (e.g. SPEC-CONFIG-KEY-HONESTY-001
+// AC-CKH-014) that assert over the advisory from outside this package; the
+// default sink is os.Stderr. Calling the returned restore function is required
+// so concurrent tests do not observe the swapped sink. This is test
+// infrastructure only — it changes no merge semantics.
+func SetRetainedKeySinkForTest(w io.Writer) (restore func()) {
+	prev := retainedKeySink
+	retainedKeySink = w
+	return func() { retainedKeySink = prev }
+}
+
 // encodeNode serializes a node tree with the project's canonical 2-space block
 // indentation (REQ-UYP-004). The encoder is closed explicitly so the trailing
 // document marker is written.

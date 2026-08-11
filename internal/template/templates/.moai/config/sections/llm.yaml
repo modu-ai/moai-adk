@@ -175,8 +175,8 @@ llm:
     # Wire state: the overlay is implemented and wired; live validation of z.ai
     # wire-effectiveness is pending.
 
-    # Optional: override the statusline context window gauge per GLM model
-    # (issue #653). Claude Code reports context_window_size based on the
+    # Optional: override the statusline context window gauge per GLM model.
+    # Claude Code reports context_window_size based on the
     # Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so
     # the statusline over-reports headroom in GLM mode.
     #

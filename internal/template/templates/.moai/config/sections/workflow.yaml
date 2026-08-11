@@ -85,7 +85,7 @@ workflow:
         design-architecture: { model: opus, effort: high }
     # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
     # DEPRECATED — retained as a `medium` profile alias for one backward-compat
-    # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
+    # cycle. Values mirror the
     # `medium` profile below. New code reads `model_routing_profiles` via
     # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
     # the 3-arg accessor. Existing external readers continue to work.
@@ -105,8 +105,7 @@ workflow:
         L-run: { model: opus, effort: medium }
         L-sync: { model: opus, effort: medium }
         L-mx: { model: sonnet, effort: low }
-    # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
-    # M3, design.md §D.5) — perfTier -> (Tier x Phase) -> {model, effort}.
+    # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
     # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
     # entries. The orchestrator consults RouteModelFor(specTier, phase,
     # perfTier) at spawn time. `medium` is the default performance tier
