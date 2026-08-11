@@ -168,8 +168,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Description: "기본 비활성화. 활성화하면 Stop 훅이 미커밋 변경 사항에 대해 codex를 실행합니다.",
 		},
 		"mcp_provision": {
-			Title:       "MCP 도구 프로비저닝에 옵트인할까요?",
-			Description: "기본 비활성화 (REQ-MCP-002).",
+			Title:       "moai MCP 서버를 프로비저닝할까요?",
+			Description: "기본 활성화. 건너뛰려면 아니요를 선택하세요.",
 		},
 	},
 	"ja": {
@@ -310,8 +310,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Description: "デフォルト無効。有効化すると Stop フックが未コミット変更に codex を実行します。",
 		},
 		"mcp_provision": {
-			Title:       "MCP ツール プロビジョニングをオプトインしますか?",
-			Description: "デフォルト無効 (REQ-MCP-002)。",
+			Title:       "moai MCP サーバーをプロビジョニングしますか?",
+			Description: "デフォルト有効。スキップする場合はいいえを選択してください。",
 		},
 	},
 	"zh": {
@@ -452,8 +452,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Description: "默认关闭。启用后 Stop 钩子对未提交变更运行 codex。",
 		},
 		"mcp_provision": {
-			Title:       "是否 opt-in MCP 工具供应?",
-			Description: "默认关闭 (REQ-MCP-002)。",
+			Title:       "是否供应 moai MCP 服务器?",
+			Description: "默认开启。如需跳过请选择否。",
 		},
 	},
 }
