@@ -127,9 +127,31 @@ _(pending run-phase — manager-develop populates this section on run-phase comp
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — manager-docs populates `sync_commit_sha` on the single sync commit carrying the `implemented → completed` transition)_
-
+sync_complete_at: 2026-08-12
 sync_commit_sha: pending-backfill-sync
+sync_status: completed
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (3-phase close on this sync commit)"
+  plan_md: "n/a (markdown-header convention, no YAML frontmatter)"
+  acceptance_md: "n/a (markdown-header convention, no YAML frontmatter)"
+b12_self_test:
+  b12_a_pre_emission grep: "PASS — grep -c 'SPEC-NAVIGATOR-SYNC-005' CHANGELOG.md returned 0 before this entry was added (no duplicate)"
+  b12_b_ac_count_match: "PASS — acceptance.md §B traceability matrix carries 20 distinct AC identifiers (AC-NS5-001a..013 with sub-variants); CHANGELOG entry states '20 AC'"
+  b12_c_file_path_verification: "PASS — ls internal/navigator/fix/{types,scope,request,apply,preview}.go + ls internal/cli/navigator_fix.go all resolve"
+changelog_entry_position: "top of [Unreleased] ### Added section (above SPEC-CONFIG-ATOMIC-WRITE-001)"
+codemaps: "out of scope (no navigator codemap configured — codemaps/ directory does not exist in this worktree)"
+mx_tag_validation:
+  tags_added_this_commit:
+    - "internal/navigator/fix/request.go — @MX:NOTE [AUTO] on Run (layer-1 entry point / public API boundary)"
+    - "internal/navigator/fix/scope.go — @MX:NOTE [AUTO] on ComputeScope (REQ-NS5-003 UNION-semantics diff-scope)"
+  tags_pre_existing_from_run_phase:
+    - "internal/navigator/fix/scope.go:266 — @MX:ANCHOR [AUTO] on ConformDraftToScope (REQ-NS5-013 load-bearing partition)"
+    - "internal/navigator/fix/apply.go:100 — @MX:ANCHOR [AUTO] on ComputeApprovalToken (REQ-NS5-008 c4 deterministic derivation)"
+    - "internal/navigator/fix/apply.go:136 — @MX:ANCHOR [AUTO] on Apply (AC-NS5-008c/008d sole live-doc write surface)"
+  fan_in_note: "No exported func in internal/navigator/fix/ reaches fan_in >= 3 external callers — fix.Run + fix.Apply each have 1 external caller (internal/cli/navigator_fix.go); the 3 @MX:ANCHOR tags above are invariant-boundary anchors (REQ-NS5-013 / REQ-NS5-008 c4 / AC-NS5-008c-d safety), not fan_in-based"
+notes:
+  - "sync_commit_sha placeholder per spec-frontmatter-schema.md D3 self-referential-hazard exemption — a commit cannot know its own SHA until after it lands; the real SHA is backfilled in a follow-up commit after the sync PR merges"
+  - "progress.md §E.3 Run-phase Audit-Ready Signal was NOT populated by manager-develop (heading still reads 'pending run-phase'); this is a §E.3 gap noted here per sync-phase discipline — manager-docs did NOT rewrite manager-develop's evidence (§E.2 run-phase evidence IS fully populated and was left untouched)"
 
 ## §F Phase 4 Mode Selection
 

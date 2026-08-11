@@ -93,6 +93,13 @@ func (r Result) SignalJSON() ([]byte, error) {
 // assembles the draft-request, and atomic-writes request.json. It NEVER
 // returns an error and NEVER lets a panic escape — every failure mode degrades
 // to exit-0 behavior with a Result describing the outcome.
+//
+// @MX:NOTE [AUTO]: layer-1 deterministic producer entry point + public API
+// boundary for the fix package. Consumed by internal/cli/navigator_fix.go
+// (sole external caller) and the orchestrator's /moai project surface. Emits
+// the design.md §A.4 handoff contract (request.json + stdout signal) that the
+// orchestrator consumes to spawn the AI draft (layer 2). The Go CLI does NOT
+// call an LLM — AC-NS5-007a grep guard enforces this.
 func Run(opts Options) (res Result) {
 	defer func() {
 		if r := recover(); r != nil {

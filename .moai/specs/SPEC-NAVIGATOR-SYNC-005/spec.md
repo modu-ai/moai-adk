@@ -2,7 +2,7 @@
 id: SPEC-NAVIGATOR-SYNC-005
 title: "Navigator Sync (BAS M3) — Falconer Fix: AI-drafted incremental regen of changed doc subtrees (CodeWiki --compare-to pattern)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-12
 updated: 2026-08-12
 author: manager-spec

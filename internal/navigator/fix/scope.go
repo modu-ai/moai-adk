@@ -61,6 +61,13 @@ func ResolveBaseline(compareTo, graphProvenanceSHA, headTilde1Fallback string) (
 // Pure function: no I/O, no side effects, deterministic. The caller owns
 // input loading (git diff, detect JSONL, work-items.json, nav-graph.json)
 // and fail-open policy (REQ-NS5-009).
+//
+// @MX:NOTE [AUTO], REQ-NS5-003: diff-scope = UNION(git-diff stale subtrees,
+// M1 detect subtrees, M2 owner-path subtrees) ∩ graph-bound nodes. The UNION
+// semantics unify three earlier-artifact scopes into one diff-scope; the
+// graph-bound filter excludes paths the M0 nav-graph doesn't cover. The
+// output feeds draft-request assembly (in scope.go's sibling Run) AND the
+// REQ-NS5-013 scope-conformance partition (ConformDraftToScope below).
 func ComputeScope(
 	gitDiffPaths []string,
 	m1ChangedPaths []string,
