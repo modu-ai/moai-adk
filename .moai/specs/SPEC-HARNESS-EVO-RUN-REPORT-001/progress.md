@@ -172,6 +172,53 @@ GREEN 후 8 테스트 전부 PASS (`ok ... 0.498s`).
 
 **Residual-risk**: (i) `BuildHarnessRunCandidates`의 단일 caller가 현재 테스트뿐 — orchestrator post-run push 배선(REQ-HRR-007)은 M4 doctrine 표면 소관으로, 실 caller는 M4에서 연결됨. producer 계약 자체는 M2에서 확정 + 테스트 강제; (ii) 3 producer(tier-ladder/delegation-map/harness-run)가 동일 Tier-4 게이트 rate_limit를 공유할 때 producer간 경합 시맨틱(EC-6)은 M4 doctrine 표면에서 명시 예정.
 
+### M3 — doctor learning 축 (REQ-HRR-005) [TDD]
+
+**상태**: PASS — GREEN 달성 (2026-08-12, worktree HEAD `cd88275fe` 위 M3 커밋 대기)
+
+**Claim**: `checkHarness`에 learning 축 2-검사(confidence_floor 범위 + enabled/findings 선언 정합)를 추가했다. tier 어휘 검사는 M1 `v4manifest.Validate`가 schema 수준에서 이미 소관(axis="manifest" ERROR) — doctor에서 재검하지 않는다(double-reporting 회피, M1 `LearningBlock.Tier` godoc + AP-1 정합). learning 블록 부재는 무보과(ERROR 아님, REQ-HRR-010/AP-6).
+
+**Evidence** (이 run, 이 tree, HEAD `cd88275fe` + M3 변경 미커밋):
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-HRR-005 (tier 오타 → ERROR) | PASS | `go test -run TestDoctor_LearningAxis_TierTypo ./internal/cli/harness/` | `--- PASS: TestDoctor_LearningAxis_TierTypo` (schema Validate 경로, axis="manifest") |
+| AC-HRR-005 (floor 범위밖 → ERROR) | PASS | `go test -run TestDoctor_LearningAxis_ConfidenceFloorOutOfRange ./internal/cli/harness/` | `--- PASS` (doctor learning 축, axis="learning") |
+| AC-HRR-005 (enabled+findings 미선언 → ERROR) | PASS | `go test -run TestDoctor_LearningAxis_EnabledButNoFindingsDeclaration ./internal/cli/harness/` | `--- PASS` (doctor learning 축, axis="learning") |
+| AC-HRR-005 (learning 부재 → exit 0) | PASS | `go test -run TestDoctor_LearningAxis_AbsentNotError ./internal/cli/harness/` | `--- PASS` (ErrorCount=0, 무보과) |
+| AC-HRR-010(c) (legacy 회귀) | PASS | `go test -run TestDoctor_ValidHarness_Passes ./internal/cli/harness/` | `--- PASS` (기존 4축 무회귀, learning 블록 없는 manifest 정상) |
+
+**RED verbatim (GREEN 이전 캡처)**:
+```
+$ go test -run TestDoctor_LearningAxis ./internal/cli/harness/
+--- FAIL: TestDoctor_LearningAxis_TierTypo (0.01s)
+    doctor_learning_test.go:90: expected a learning-axis ERROR for invalid tier; findings=[{Harness:badtier Axis:manifest Severity:ERROR ...}]
+--- FAIL: TestDoctor_LearningAxis_EnabledButNoFindingsDeclaration (0.01s)
+    doctor_learning_test.go:134: expected a learning-axis ERROR for enabled+no-findings-declaration; findings=[]
+    doctor_learning_test.go:137: error_count = 0, want >= 1 (enabled harness must declare findings)
+--- FAIL: TestDoctor_LearningAxis_ConfidenceFloorOutOfRange (0.01s)
+    doctor_learning_test.go:111: expected a learning-axis ERROR for confidence_floor > 1; findings=[]
+    doctor_learning_test.go:114: error_count = 0, want >= 1 (out-of-range floor must fail the gate)
+FAIL    github.com/modu-ai/moai-adk/internal/cli/harness    0.432s
+```
+
+**자체 검증 (이 run, 이 tree, HEAD `cd88275fe` + M3 변경 미커밋)**:
+
+- (a) command + (b) observed output + (c) baseline-attribution:
+  - `go test ./internal/cli/harness/...` → `ok github.com/modu-ai/moai-adk/internal/cli/harness 4.874s` (전량 PASS, 4축 + learning 축 + dormancy + hns 회귀)
+  - `go test -race ./internal/cli/harness/...` → `ok ... 6.292s` (race clean)
+  - `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (cross-platform)
+  - `go test -coverprofile=/tmp/cover_m3.out ./internal/cli/harness/...` → touched file doctor.go: `checkLearningAxis 100.0%`, `checkHarness 90.6%`, `Doctor 92.3%`, `NewHarnessDoctorCmd 84.0%` (모든 M3 touched function ≥ 84%; `checkLearningAxis` 100%)
+  - `golangci-lint run --timeout=2m ./internal/cli/harness/...` → `0 issues.`
+  - subagent boundary: `grep -rn 'AskUserQuestion' internal/cli/harness/ | grep -v _test` → 0 실제 호출 (comment/prose만, `TestDoctor_NoAskUserQuestion` static guard PASS)
+- **설계 결정**: `max_findings_per_run` 범위 검사는 M3에서 추가하지 않았다 — M1 `LearningBlock.MaxFindingsPerRun` godoc가 명시적으로 "truncation policy is applied downstream in the M2 findings→proposal mapping (EC-2)"로 위임하므로, doctor에서 중복 검사는 scope 침범. AC-HRR-005가 요구하는 3-검사(tier/floor/findings)는 tier(schema 경로) + floor(doctor) + findings(doctor)로 모두 충족.
+
+**@MX tag 변경**: `runnerFindingsKeyRE` 변수에 `@MX:ANCHOR` + `@MX:REASON`(fan_in ≥ 2: `checkLearningAxis` + `doctor_learning_test.go`; AP-3 JS AST 금지 — regex가 정규 heuristic) 추가.
+
+**Gaps**: (i) `max_findings_per_run` 음수/0 범위 검사가 doctor에 없음 — 의도적 (M2 EC-2 downstream truncation 소관, 위 설계 결정). 향후 M2 mapping 구현 시 음수 처리가 드러나면 그 SPEC에서 재검; (ii) `full suite` (`go test ./...`)는 M2 evidence와 동일하게 `internal/template` 2건 pre-existing FAIL(zone-registry.md, 본 SPEC 미접근) — 본 M3 scope 외 (B10 scope discipline).
+
+**Residual-risk**: (i) `findings` 키 감지가 정규식 heuristic(`\bfindings\s*:\s*\[`)이므로, Runner가 `findings`를 비-배열 원시 값으로 선언하는 변형은 감지 못함 — 단 REQ-HRR-003 계약이 배열을 규정하므로 계약 위반은 별도 검증 단계에서 잡힘; (ii) learning 축이 runner file이 읽힌 후에만 동작하므로, runner file 부재(ERROR) 시 learning 결함이 동시에 존재해도 manifest/runner ERROR가 우선 보고됨 — 이는 의도적 (더 근본적인 결함 우선, noise 회피).
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
