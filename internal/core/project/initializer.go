@@ -62,13 +62,13 @@ type InitOptions struct {
 	// false on the zero value so a non-interactive / flag-absent init leaves the
 	// deployed template default untouched (distributed default-off). An explicit
 	// --flag=false flips the tracker true so the value is persisted.
-	BranchGuardSet        bool
-	BranchGuardEnabled    bool
-	WorktreeAutoCreateSet bool
-	WorktreeAutoMergeSet  bool
-	WorktreeAutoMerge     bool
+	BranchGuardSet         bool
+	BranchGuardEnabled     bool
+	WorktreeAutoCreateSet  bool
+	WorktreeAutoMergeSet   bool
+	WorktreeAutoMerge      bool
 	WorktreeAutoCleanupSet bool
-	WorktreeAutoCleanup   bool
+	WorktreeAutoCleanup    bool
 
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when unset; the
@@ -85,7 +85,7 @@ type InitOptions struct {
 	AuditGateCodex    string // audit.gates.codex: off|advisory|required
 	AuditGateGLM      string // audit.gates.glm: off|advisory|required
 	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
-	MCPToolsOptIn     bool   // mcp tools opt-in (provisioning gate)
+	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
 
 // InitResult summarizes the outcome of project initialization.

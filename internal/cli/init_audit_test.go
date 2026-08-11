@@ -32,7 +32,7 @@ func TestApplyWizardPage3ToOpts_AuditSelection(t *testing.T) {
 		AuditGateCodex:    config.AuditGateOff,
 		AuditGateGLM:      config.AuditGateRequired,
 		CodexAuditEnabled: true,
-		MCPToolsOptIn:     true,
+		MCPProvision:     true,
 	}, &opts)
 
 	if opts.AuditModel != config.AuditModelGLM {
@@ -50,8 +50,8 @@ func TestApplyWizardPage3ToOpts_AuditSelection(t *testing.T) {
 	if !opts.CodexAuditEnabled {
 		t.Error("CodexAuditEnabled = false, want true")
 	}
-	if !opts.MCPToolsOptIn {
-		t.Error("MCPToolsOptIn = false, want true")
+	if !opts.MCPProvision {
+		t.Error("MCPProvision = false, want true")
 	}
 	if !opts.AuditConfigSet {
 		t.Error("AuditConfigSet = false, want true (wizard ran → writer must persist the audit block)")

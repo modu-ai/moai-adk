@@ -167,7 +167,7 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "Codex 검토 게이트 Stop 훅을 활성화할까요?",
 			Description: "기본 비활성화. 활성화하면 Stop 훅이 미커밋 변경 사항에 대해 codex를 실행합니다.",
 		},
-		"mcp_tools_opt_in": {
+		"mcp_provision": {
 			Title:       "MCP 도구 프로비저닝에 옵트인할까요?",
 			Description: "기본 비활성화 (REQ-MCP-002).",
 		},
@@ -309,7 +309,7 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "Codex レビューゲート Stop フックを有効にしますか?",
 			Description: "デフォルト無効。有効化すると Stop フックが未コミット変更に codex を実行します。",
 		},
-		"mcp_tools_opt_in": {
+		"mcp_provision": {
 			Title:       "MCP ツール プロビジョニングをオプトインしますか?",
 			Description: "デフォルト無効 (REQ-MCP-002)。",
 		},
@@ -451,7 +451,7 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "是否启用 Codex 审查关卡 Stop 钩子?",
 			Description: "默认关闭。启用后 Stop 钩子对未提交变更运行 codex。",
 		},
-		"mcp_tools_opt_in": {
+		"mcp_provision": {
 			Title:       "是否 opt-in MCP 工具供应?",
 			Description: "默认关闭 (REQ-MCP-002)。",
 		},

@@ -68,7 +68,7 @@ type WizardResult struct {
 	AuditGateCodex    string // audit.gates.codex: off|advisory|required
 	AuditGateGLM      string // audit.gates.glm: off|advisory|required
 	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
-	MCPToolsOptIn     bool   // mcp tools opt-in (provisioning gate)
+	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
 
 // QuestionType represents the type of wizard question.

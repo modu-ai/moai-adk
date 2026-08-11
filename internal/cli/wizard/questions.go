@@ -437,12 +437,12 @@ func Page3Questions(projectRoot string) []Question {
 			Default:     "false",
 		},
 		{
-			ID:          "mcp_tools_opt_in",
+			ID:          "mcp_provision",
 			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
-			Title:       "Opt in to MCP tools provisioning?",
-			Description: "Opt-in default-off (REQ-MCP-002).",
-			Default:     "false",
+			Title:       "Provision the moai MCP server?",
+			Description: "Default-on. Decline to skip.",
+			Default:     "true",
 		},
 		// SPEC-AUTONOMY-TIERS-001 M7 — interactive autonomy-tier selector.
 		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
