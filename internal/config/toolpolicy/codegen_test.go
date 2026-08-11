@@ -161,6 +161,47 @@ func TestRoundTripEquivalence_JSON(t *testing.T) {
 	}
 }
 
+// TestBuildInto_PreservesExistingFileMode (SPEC-CONFIG-ATOMIC-WRITE-001)
+// verifies the codegen write call-site routes through atomicfile.Write so
+// that an EXISTING file's pre-existing permission bits are preserved across
+// the write (the core Defect-2/3 regression: os.WriteFile with a hardcoded
+// mode used to narrow a 0o600 file back to 0o644). BuildInto requires a
+// pre-existing file (it reads-then-modifies); the new-file-default path is
+// owned by the atomicfile helper's own M1 tests.
+func TestBuildInto_PreservesExistingFileMode(t *testing.T) {
+	t.Parallel()
+	doc := sampleDoc()
+
+	cases := []struct {
+		name string
+		mode os.FileMode
+	}{
+		{"default_0644", 0o644},
+		{"secret_0600", 0o600},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "settings.json")
+			if err := os.WriteFile(path, []byte(sampleSettingsJSON), tc.mode); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+			if _, err := BuildInto(path, doc, TargetJSON, ""); err != nil {
+				t.Fatalf("BuildInto: %v", err)
+			}
+			info, err := os.Stat(path)
+			if err != nil {
+				t.Fatalf("stat: %v", err)
+			}
+			if got := info.Mode().Perm(); got != tc.mode {
+				t.Errorf("mode after write = %v, want %v preserved", got, tc.mode)
+			}
+		})
+	}
+}
+
 // TestDriftPrevention_YamlSettingsRoundTrip (AC-TPS-005) verifies the
 // by-construction drift-prevention property: a YAML edit propagates to the
 // settings.json permissions block in one codegen pass. Flip Bash(git push:*)

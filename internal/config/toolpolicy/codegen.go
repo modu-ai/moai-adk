@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // CodegenResult reports the outcome of a BuildInto call: which target file
@@ -241,7 +244,7 @@ func BuildInto(path string, doc *PolicyDocument, targetKind TargetKind, defaultM
 		return nil, fmt.Errorf("codegen render %q: %w", path, err)
 	}
 
-	if err := os.WriteFile(path, out, 0o644); err != nil {
+	if err := atomicfile.Write(path, out, defs.FilePerm); err != nil {
 		return nil, fmt.Errorf("codegen write %q: %w", path, err)
 	}
 	res.Path = path

@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
@@ -1001,7 +1002,7 @@ func ensureGlobalSettingsEnv() error {
 		return fmt.Errorf("marshal global settings: %w", err)
 	}
 
-	if err := os.WriteFile(globalSettingsPath, append(jsonContent, '\n'), defs.FilePerm); err != nil {
+	if err := atomicfile.Write(globalSettingsPath, append(jsonContent, '\n'), defs.FilePerm); err != nil {
 		return fmt.Errorf("write global settings: %w", err)
 	}
 

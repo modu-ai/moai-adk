@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
@@ -240,7 +241,7 @@ func backupDeprecatedPaths(projectRoot string, paths []string, mgr manifest.Mana
 			if err != nil {
 				return "", fmt.Errorf("backup read %q: %w", rel, err)
 			}
-			if err := os.WriteFile(destPath, data, 0o644); err != nil {
+			if err := atomicfile.Write(destPath, data, defs.FilePerm); err != nil {
 				return "", fmt.Errorf("backup write %q: %w", rel, err)
 			}
 			entry.Hash = manifest2hashBytes(data)
@@ -255,7 +256,7 @@ func backupDeprecatedPaths(projectRoot string, paths []string, mgr manifest.Mana
 		return "", fmt.Errorf("marshal MANIFEST.json: %w", err)
 	}
 	manifestPath := filepath.Join(backupDir, "MANIFEST.json")
-	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
+	if err := atomicfile.Write(manifestPath, manifestData, defs.FilePerm); err != nil {
 		return "", fmt.Errorf("write MANIFEST.json: %w", err)
 	}
 
@@ -443,7 +444,7 @@ func emitCleanupTelemetry(projectRoot string, event CleanupEvent, stderr io.Writ
 
 	ts := time.Now().UTC().Format("2006-01-02T15-04-05Z")
 	logPath := filepath.Join(logsDir, "update-cleanup-"+ts+".jsonl")
-	if err := os.WriteFile(logPath, []byte(line), 0o644); err != nil {
+	if err := atomicfile.Write(logPath, []byte(line), defs.FilePerm); err != nil {
 		_, _ = fmt.Fprintf(stderr, "[WARN] telemetry persistence skipped: %v\n", err)
 		return nil // not a fatal error
 	}
