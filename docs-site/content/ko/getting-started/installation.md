@@ -59,6 +59,18 @@ Git이 설치되어 있지 않다면:
 
 ## 설치 방법
 
+MoAI-ADK 는 두 가지 경로로 설치할 수 있습니다. 대부분의 사용자는 한 줄 설치 스크립트로 충분하고, Go 개발 환경이 이미 있거나 특정 버전을 직접 빌드해야 하는 경우에는 소스 빌드를 씁니다.
+
+```mermaid
+flowchart TD
+    A["설치 시작"] --> B{"Go 환경이 있고<br>특정 빌드가 필요?"}
+    B -->|아니오| C["방법 1: 빠른 설치<br>(install.sh / install.ps1)"]
+    B -->|예| D["방법 2: 소스 빌드<br>(make build)"]
+    C --> E["moai version 으로 확인"]
+    D --> E
+    style C fill:#cc785c,color:#fff
+```
+
 ### 방법 1: 빠른 설치 (권장)
 
 하나의 명령어로 최신 버전을 자동 설치합니다.
@@ -132,7 +144,7 @@ cp ./bin/moai ~/.local/bin/
 1.x와 2.x는 같은 `moai` 명령어를 쓰기 때문에, 기존 버전이 남아 있으면 서로 충돌합니다.
 {{< /callout >}}
 
-### 1단계: 기존 1.x 제거
+## 1단계 — 기존 1.x 제거
 
 ```bash
 # uv로 설치한 경우
@@ -142,20 +154,20 @@ uv tool uninstall moai-adk
 pip uninstall moai-adk
 ```
 
-### 2단계: 기존 설정 백업 (선택)
+## 2단계 — 기존 설정 백업 (선택)
 
 ```bash
 # 기존 설정을 백업하고 싶다면
 cp -r ~/.moai ~/.moai-v1-backup
 ```
 
-### 3단계: 2.x 설치
+## 3단계 — 2.x 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-### 4단계: 설치 확인
+## 4단계 — 설치 확인
 
 ```bash
 moai version

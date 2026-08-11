@@ -7,6 +7,8 @@ draft: false
 
 MoAI-ADK 는 두 번의 큰 전환을 거쳤습니다. (1) 1.x(Python) 에서 2.x(Go 단일 바이너리), (2) 2.x 에서 3.0(토크노믹스 우선 에이전트 워크플로우). 이 페이지는 두 전환을 한 흐름으로 정리합니다. 어디서 왔는지에 따라 해당 단락으로 건너뛰세요.
 
+마이그레이션의 큰 원칙은 "사용자가 만든 자산은 보존하고, 하네스가 제공하는 자산은 교체한다" 입니다. `.claude/` 와 `.moai/project/`, `.moai/specs/` 아래 사용자가 직접 쓴 내용은 업그레이드를 거쳐도 자동으로 남습니다. 반면 하네스가 배포한 템플릿·규칙·에이전트 정의는 최신 버전으로 덮어쓰기 때문에, 사용자가 손으로 고친 템플릿이 있다면 `moai update` 가 백업을 남기므로 그 백업에서 복구할 수 있습니다.
+
 ## 전체 흐름
 
 ```mermaid
@@ -24,7 +26,7 @@ flowchart TD
 **MoAI-ADK 1.x (Python 버전) 사용자는 반드시 먼저 기존 버전을 제거하세요.** 1.x 와 2.x 는 같은 `moai` 명령어를 쓰기 때문에, 기존 버전이 남아 있으면 서로 충돌합니다.
 {{< /callout >}}
 
-### 1단계: 기존 1.x 제거
+## 1단계 — 기존 1.x 제거
 
 ```bash
 # uv 로 설치한 경우
@@ -34,20 +36,20 @@ uv tool uninstall moai-adk
 pip uninstall moai-adk
 ```
 
-### 2단계: 기존 설정 백업 (선택)
+## 2단계 — 기존 설정 백업 (선택)
 
 ```bash
 # 기존 설정을 백업하고 싶다면
 cp -r ~/.moai ~/.moai-v1-backup
 ```
 
-### 3단계: 2.x 설치
+## 3단계 — 2.x 설치
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-### 4단계: 설치 확인
+## 4단계 — 설치 확인
 
 ```bash
 moai version
