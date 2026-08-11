@@ -1,10 +1,12 @@
 ---
 id: SPEC-CONFIG-ATOMIC-WRITE-001
 title: "atomic, mode-preserving writes for .moai/config and CLI persistence"
-version: "0.2.0"
-status: draft
+version: "1.0.0"
+status: completed
 created: 2026-08-12
 updated: 2026-08-12
+run_commit_sha: 78acfb714
+sync_commit_sha: pending-backfill-sync
 author: manager-spec
 priority: P0
 phase: "v3.0.2 target"
