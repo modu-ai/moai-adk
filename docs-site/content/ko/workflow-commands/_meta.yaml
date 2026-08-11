@@ -13,3 +13,7 @@ index:
   title: "/moai design"
 "moai-harness":
   title: "/moai harness"
+# v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
+# 페이지-level frontmatter added_in/new 와 union-combine 된다.
+new_items:
+  - moai-goal

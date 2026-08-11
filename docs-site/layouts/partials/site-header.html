@@ -7,12 +7,12 @@
        (.cw-hdr* selectors). */ -}}
 <header class="gdoc-header docs-nav cw-hdr" role="banner">
   <div class="cw-hdr-inner">
-    {{- /* 브랜드 — 마스코트 로고 + 워드마크 + DOCS mono chip */ -}}
+    {{- /* 브랜드 — 가로형 로고(M1_onboarded /logos/moai-logo-4.png per handoff 01 Docs Home)
+           + DOCS mono chip. 워드마크는 handoff 통제상 로고+chip 두 요소만 표시. */ -}}
     <a class="cw-hdr-brand" href="{{ "/" | relLangURL }}">
       <img class="cw-hdr-logo" loading="lazy" decoding="async"
-           src="{{ "mascots/mascot-coding.png" | relURL }}"
-           width="30" alt="MoAI-ADK" />
-      <span class="cw-hdr-name">MoAI-ADK</span>
+           src="{{ "logos/moai-logo-4.png" | relURL }}"
+           height="26" alt="MoAI-ADK" />
       <span class="cw-hdr-chip">DOCS</span>
     </a>
 

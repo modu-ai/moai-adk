@@ -660,16 +660,6 @@ main:
     sub:
 
   - name:
-      ko: 릴리스 노트
-      en: Release Notes
-      ja: リリースノート
-      zh: 发布说明
-    ref: /changelog
-    icon: tag
-    defaultOpen: true
-    sub:
-
-  - name:
       ko: Claude Code 가이드 (배경 참조)
       en: Claude Code Guide (Background Reference)
       ja: Claude Code ガイド（背景リファレンス）

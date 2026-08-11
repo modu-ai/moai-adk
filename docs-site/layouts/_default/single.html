@@ -22,7 +22,20 @@
           <span class="cur">{{ .Title }}</span>
         </nav>
 
-        <h1 class="doc-h1">{{ .Title }}</h1>
+        {{- /* v3.1 NEW-badge (dual-source union, REQ-NB-001 / AC-M3-001):
+               (a) 페이지 frontmatter new: true 또는 added_in: "<version>" — 자동 sunset
+               (b) 이 섹션 _meta.yaml 의 new_items: 슬러그 목록에 현재 페이지 slug 포함
+               어느 하나라도 참이면 h1 옆에 NEW 배지를 렌더한다.
+               사이드바(menu.html)와 동일한 union 조건이므로 양쪽에 일관되게 표시된다. */ -}}
+        {{- $isNew := or .Params.new .Params.added_in -}}
+        {{- $metaPath := printf "content/%s/%s/_meta.yaml" .Site.Language.Lang .Section -}}
+        {{- if fileExists $metaPath -}}
+          {{- $metaMap := transform.Unmarshal (readFile $metaPath) -}}
+          {{- $sectionNewItems := index $metaMap "new_items" | default slice -}}
+          {{- $pageSlug := .File.ContentBaseName -}}
+          {{- if in $sectionNewItems $pageSlug }}{{- $isNew = true -}}{{- end -}}
+        {{- end -}}
+        <h1 class="doc-h1">{{ .Title }}{{- if $isNew }} <span class="cw-side-new cw-new-badge">NEW</span>{{- end }}</h1>
 
         {{- with .Description }}
         <p class="doc-lede">{{ . }}</p>

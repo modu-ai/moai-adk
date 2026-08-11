@@ -37,6 +37,3 @@ advanced:
 contributing:
   title: "참여하기"
   weight: 110
-changelog:
-  title: "릴리스 노트"
-  weight: 120
