@@ -4,14 +4,19 @@
 // The doctrine has been silently reverted twice by working-tree sweeps that
 // restored a stale copy of the file: the shipped rule went back to claiming
 // MoAI-ADK "no longer ships or provisions MCP servers", contradicting both the
-// template-managed `.mcp.json` and the opt-in `moai mcp-server` entry the CLI
+// template-managed `.mcp.json` and the `moai mcp-server` entry the CLI
 // actually writes. A user reading the reverted rule would conclude the MCP
 // surface does not exist.
+//
+// SPEC-MCP-DEFAULT-ON-001 (2026-08-12) inverted the provisioning contract from
+// opt-in default-off to default-on: the `moai` entry is now provisioned by
+// `moai init` unless explicitly declined. This guard was updated in the same
+// change to pin the new default-on contract instead of the old opt-in wording.
 //
 // The two copies are intentionally NOT byte-identical (the template is the
 // neutralized variant), so this guard asserts the load-bearing claims rather
 // than parity: the retired sentence is absent, and the provisioning behaviour
-// plus the opt-in local server are described, in BOTH trees.
+// plus the default-on local server are described, in BOTH trees.
 package template_test
 
 import (
@@ -50,17 +55,17 @@ func TestMCPConfigurationDoctrine(t *testing.T) {
 
 			if strings.Contains(body, retiredMCPSentence) {
 				t.Errorf("MCP_DOCTRINE_REGRESSION: %s still carries the retired claim %q; "+
-					"MoAI-ADK ships a template-managed .mcp.json and provisions the opt-in "+
+					"MoAI-ADK ships a template-managed .mcp.json and provisions the "+
 					"`moai mcp-server` entry, so this sentence is false", path, retiredMCPSentence)
 			}
 			for _, want := range []string{
 				"mcp-server",   // the local stdio server is named
 				"moai mcp add", // the activation path for the catalogued entries
-				"opt-in",       // the default-off contract
+				"default-on",   // the SPEC-MCP-DEFAULT-ON-001 provisioning contract
 			} {
 				if !strings.Contains(body, want) {
 					t.Errorf("MCP_DOCTRINE_REGRESSION: %s does not mention %q; the MCP Configuration "+
-						"section must describe the provisioned surface and its opt-in contract", path, want)
+						"section must describe the provisioned surface and its default-on contract", path, want)
 				}
 			}
 		})
