@@ -154,11 +154,11 @@
 **핵심**: `moai goal arm|status|clear`, Condition {Mechanical,Model}, Stop-hook 평가 계약
 **상태**: `.moai/state/goal/<session-id>.json` (세션별)
 
-### internal/factory
-**역할**: Factory 모드 상태 — `moai cc -f` / `moai glm -f`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
+### internal/kanban
+**역할**: Kanban 모드 상태 — `moai cc -k` / `moai glm -k`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
 **핵심**: `record.go` (세션 레코드 기록, `validateSessionID`가 경로 조작 차단, 파일 0600), `revision.go` (`Matches`/`RevisionMatch`/`SuppressStep0551` — 모든 실패 모드가 "검사 수행"으로 수렴하는 fail-safe, rung은 allow-list)
 **상태**: 세션 ID 파생 경로의 레코드 파일 + `revision.json`
-**진입점**: `internal/cli/factory.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
+**진입점**: `internal/cli/kanban.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
 
 ### internal/hook
 **역할**: 컴파일된 훅 시스템 + main-checkout branch-state guard
@@ -243,7 +243,7 @@
 **순환 의존성**: 0개 (검증됨)  
 **패키지 수**: 49 internal 디렉터리 (323 중첩 디렉터리) + 2 pkg (`models`, `version`) + 1 cmd = 52개 경로
 
-> 실측 명령: `ls -d internal/*/ | wc -l` → 49, `find internal -type d -mindepth 2 | wc -l` → 323. 종전 표기(46 / 318)는 갱신이 밀린 값이며, 세 패키지 차이 중 `internal/factory` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 나머지 둘은 그 이전부터 있었다. `structure.md` 71행의 같은 수치도 함께 갱신했다.
+> 실측 명령: `ls -d internal/*/ | wc -l` → 49, `find internal -type d -mindepth 2 | wc -l` → 323. 종전 표기(46 / 318)는 갱신이 밀린 값이며, 세 패키지 차이 중 `internal/kanban` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 나머지 둘은 그 이전부터 있었다. `structure.md` 71행의 같은 수치도 함께 갱신했다.
 
 ---
 

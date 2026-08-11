@@ -1,12 +1,12 @@
-// Package factory implements the state record that carries Factory Mode's
-// session-scoped signal between the launcher that opens a factory session and
+// Package kanban implements the state record that carries Kanban Mode's
+// session-scoped signal between the launcher that opens a kanban session and
 // the orchestrator that drives the chain inside it.
 //
 // The record is best-effort by design: a launch never depends on it. A session
 // whose record could not be written is simply a session with no record, which
 // downstream reads as "no evidence" and resolves in the safe direction — run
 // the check rather than skip it.
-package factory
+package kanban
 
 import (
 	"encoding/json"
@@ -17,8 +17,8 @@ import (
 	"time"
 )
 
-// Session backends a factory chain can run on. A mixed-backend session is not a
-// factory session, so no third value exists.
+// Session backends a kanban chain can run on. A mixed-backend session is not a
+// kanban session, so no third value exists.
 const (
 	BackendClaude = "claude"
 	BackendGLM    = "glm"
@@ -40,13 +40,13 @@ const (
 
 // stateDirSegments is the record's home beneath the project root, matching the
 // per-subsystem layout the rest of .moai/state/ already uses.
-var stateDirSegments = []string{".moai", "state", "factory"}
+var stateDirSegments = []string{".moai", "state", "kanban"}
 
-// @MX:ANCHOR: [AUTO] Factory state record schema — the cross-actor contract for a factory session
+// @MX:ANCHOR: [AUTO] Kanban state record schema — the cross-actor contract for a kanban session
 // @MX:REASON: the launcher writes SessionID/SpecID/Backend/EnteredAt at launch while the orchestrator fills DeepScanDir/VerifyRung/VerifyReentries later; both sides plus the sync-phase dedup gate bind to these JSON keys, so a renamed key breaks readers this package cannot see
 //
-// Record is the per-session factory state record persisted at
-// .moai/state/factory/<session>.json.
+// Record is the per-session kanban state record persisted at
+// .moai/state/kanban/<session>.json.
 //
 // The three orchestrator-written fields (DeepScanDir, VerifyRung,
 // VerifyReentries) are filled in independently as the chain progresses, so a
@@ -63,7 +63,7 @@ type Record struct {
 	// Backend is BackendClaude or BackendGLM.
 	Backend string `json:"backend"`
 
-	// EnteredAt is the RFC3339 instant the session entered Factory Mode.
+	// EnteredAt is the RFC3339 instant the session entered Kanban Mode.
 	EnteredAt string `json:"entered_at"`
 
 	// DeepScanDir is the verify stage's results directory, written by the
@@ -87,7 +87,7 @@ type Record struct {
 	VerifyReentries int `json:"verify_reentries"`
 }
 
-// NewRecord builds a record for a session entering Factory Mode, stamping
+// NewRecord builds a record for a session entering Kanban Mode, stamping
 // EnteredAt with the current UTC instant in RFC3339. The three
 // orchestrator-written fields are deliberately left at their zero values —
 // VerifyRung nil rather than empty — so a reader can tell they have not been
@@ -114,25 +114,25 @@ func RecordPath(projectRoot, sessionID string) string {
 // signature makes gating impossible.
 func Write(projectRoot string, rec *Record) error {
 	if rec == nil {
-		return fmt.Errorf("write factory record: record is nil")
+		return fmt.Errorf("write kanban record: record is nil")
 	}
 	if err := validateSessionID(rec.SessionID); err != nil {
-		return fmt.Errorf("write factory record: %w", err)
+		return fmt.Errorf("write kanban record: %w", err)
 	}
 
 	path := RecordPath(projectRoot, rec.SessionID)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("write factory record: creating state directory: %w", err)
+		return fmt.Errorf("write kanban record: creating state directory: %w", err)
 	}
 
 	encoded, err := json.MarshalIndent(rec, "", "  ")
 	if err != nil {
-		return fmt.Errorf("write factory record: encoding: %w", err)
+		return fmt.Errorf("write kanban record: encoding: %w", err)
 	}
 	encoded = append(encoded, '\n')
 
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
-		return fmt.Errorf("write factory record: %w", err)
+		return fmt.Errorf("write kanban record: %w", err)
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func Write(projectRoot string, rec *Record) error {
 // WriteBestEffort persists rec and discards every failure. It is the call the
 // launcher makes: a record is an aid to the chain, never a precondition for
 // starting one, and a session that launches without a record degrades to a
-// non-factory session rather than failing to launch.
+// non-kanban session rather than failing to launch.
 func WriteBestEffort(projectRoot string, rec *Record) {
 	_ = Write(projectRoot, rec)
 }
@@ -152,17 +152,17 @@ func WriteBestEffort(projectRoot string, rec *Record) {
 // record" from "a record that says nothing".
 func Read(projectRoot, sessionID string) (*Record, error) {
 	if err := validateSessionID(sessionID); err != nil {
-		return nil, fmt.Errorf("read factory record: %w", err)
+		return nil, fmt.Errorf("read kanban record: %w", err)
 	}
 
 	raw, err := os.ReadFile(RecordPath(projectRoot, sessionID))
 	if err != nil {
-		return nil, fmt.Errorf("read factory record: %w", err)
+		return nil, fmt.Errorf("read kanban record: %w", err)
 	}
 
 	var rec Record
 	if err := json.Unmarshal(raw, &rec); err != nil {
-		return nil, fmt.Errorf("read factory record: decoding: %w", err)
+		return nil, fmt.Errorf("read kanban record: decoding: %w", err)
 	}
 	return &rec, nil
 }
