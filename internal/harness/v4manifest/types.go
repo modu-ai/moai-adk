@@ -53,6 +53,57 @@ type Manifest struct {
 	// key is emitted). When present, all three sub-fields are required and
 	// Mode MUST be the exact literal "discovery-only" (see Schedule godoc).
 	Schedule *Schedule `json:"schedule,omitempty"`
+
+	// Learning is the OPTIONAL harness-run → learning-subsystem wiring
+	// declaration (REQ-HRR-001). Nil means the harness does NOT emit
+	// improvement findings from its runs — the manifest is shape-identical to
+	// the pre-learning baseline (omitempty: no empty/null key is emitted) and
+	// the harness is treated as a valid legacy harness (REQ-HRR-010). When
+	// present, the block declares that this harness's Runner/specialist emit
+	// structured findings that route to the learning subsystem's Tier-4
+	// proposal gate via the reserved-namespace `harness_run:` producer.
+	Learning *LearningBlock `json:"learning,omitempty"`
+}
+
+// LearningBlock declares that a harness emits structured improvement findings
+// from its runs and how those findings route into the learning subsystem
+// (REQ-HRR-001). The block is OPTIONAL on Manifest; a nil *LearningBlock means
+// "this harness does not participate in the run→learning wiring" and is a
+// valid legacy harness (REQ-HRR-010).
+//
+// The 4 fields are the minimal shape agreed in plan.md §D-D1 (minimal-shape
+// principle, Enforce Simplicity). The Tier vocabulary is DERIVED from
+// harness.Tier.String() (REQ-HRR-002) — see the LearningTier* constants in
+// schema.go. Validate does not reject a partially-populated block: zero-value
+// fields are accepted at schema level and defaults are applied downstream in
+// the M2 findings→proposal mapping (EC-1 policy). The only hard schema-level
+// rejection is a non-empty Tier value outside the SSOT vocabulary (parallel
+// vocabulary re-introduction, AP-1).
+type LearningBlock struct {
+	// Enabled reports whether this harness emits improvement findings from
+	// its runs. When false, the Runner/specialist findings path is inert.
+	Enabled bool `json:"enabled"`
+
+	// Tier is the proposal tier findings from this harness are promoted into.
+	// Valid values are the harness.Tier.String() vocabulary
+	// {observation, heuristic, rule, auto_update} (REQ-HRR-002). The empty
+	// string is accepted as "unset" and defaulted downstream (EC-1). A
+	// non-empty value outside the SSOT vocabulary is rejected by Validate
+	// (AP-1: no parallel vocabulary like "recommendation"/"approval_required").
+	Tier string `json:"tier"`
+
+	// ConfidenceFloor is the minimum confidence a finding must carry to
+	// qualify as a proposal candidate. The confidence_floor boundary aligns
+	// with the learning subsystem's confidenceThreshold=0.70
+	// (plan.md §D-D1). Schema-level Validate does NOT range-check this field
+	// — range validation is the doctor's responsibility (REQ-HRR-005, M3).
+	ConfidenceFloor float64 `json:"confidence_floor"`
+
+	// MaxFindingsPerRun caps the number of findings emitted per run (noise
+	// prevention, plan.md §D-D1). Schema-level Validate does NOT range-check
+	// this field; truncation policy is applied downstream in the M2
+	// findings→proposal mapping (EC-2).
+	MaxFindingsPerRun int `json:"max_findings_per_run"`
 }
 
 // Schedule declares an optional recurring schedule for a harness. Scheduled

@@ -46,7 +46,60 @@ _다음 단계: v0.2.0 REFRESH에 대한 plan-auditor 독립 재감사 게이트
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관>_
+### M1 — manifest `learning` 블록 스키마 (REQ-HRR-001, REQ-HRR-002) [TDD]
+
+**상태**: PASS — GREEN 달성 (2026-08-12, worktree HEAD `8d9612655` 위 M1 커밋 대기)
+
+**구현 범위 (AC-HRR-001, AC-HRR-002, AC-HRR-010 legacy 케이스)**:
+
+- `internal/harness/v4manifest/types.go` — `Manifest.Learning *LearningBlock` 옵션 필드 추가 (포인터 → 부재 시 nil = legacy 하위 호환, REQ-HRR-001/010); `LearningBlock` 구조체 정의 (`Enabled bool` / `Tier string` / `ConfidenceFloor float64` / `MaxFindingsPerRun int`). `Schedule *Schedule`에 이은 두 번째 optional 필드 (D1 plan-auditor MINOR 실측 반영 — Schedule 존재가 Learning 추가를 막지 않음)
+- `internal/harness/v4manifest/schema.go` — `LearningTier{Observation,Heuristic,Rule,AutoUpdate}` 상수 + `validLearningTiers` 맵 추가. 어휘는 `harness.Tier.String()` SSOT(`internal/harness/types.go:245-258`)에서 파생 (REQ-HRR-002). 별도 병렬 어휘 정의 금지 (AP-1). SSOT 파생은 test-only import로 기계 강제 (`TestLearningTierVocabularyMatchesHarnessSSOT`).
+- `internal/harness/v4manifest/validate.go` — `Validate`에 learning.tier 어휘 검증 분기 추가. nil `Learning` = legacy harness 정상 (REQ-HRR-010). 부분 필드(zero-value)는 schema 수준에서 허용 (EC-1 정책: defaults는 M2 findings→proposal mapping에서 적용). `confidence_floor`/`max_findings_per_run` 범위 검증은 doctor(M3, REQ-HRR-005) 소관 — M1 Validate는 tier 어휘만 강제.
+- `internal/harness/v4manifest/learning_test.go` — 6 테스트 (RED→GREEN):
+  - `TestManifestLearningBlockParsing` (AC-HRR-001) — learning 블록 JSON → 4필드 파싱
+  - `TestManifestLearningBlockLegacyNil` (AC-HRR-001/010) — legacy 8-필드 JSON → `Learning == nil` + Validate 통과
+  - `TestLearningTierVocabulary` (AC-HRR-002) — 4 유효 tier PASS + 병렬 어휘(`recommendation`/`approval_required`/`auto`/`RULE`) 거부 + empty(unset) 허용
+  - `TestLearningTierVocabularyMatchesHarnessSSOT` (AC-HRR-002 기계 강제) — `harness.Tier.String()` SSOT와 `validLearningTiers` 집합 동일성 단언 (test-only import, parallel vocabulary drift 방지)
+  - `TestValidate_LearningAbsentRegression` — nil `Learning` baseline 회귀 없음
+  - `TestValidate_LearningBlockValid` — fully-populated learning 블록 happy path
+
+**EC-1 (partial block) 정책 채택**: 부분 필드(`enabled`만, 혹은 `tier`만 등)는 schema 수준에서 유효. zero-value 필드는 defaults가 M2 findings→proposal mapping에서 적용 (예상 기본값: tier=observation, confidence_floor=0.70, max_findings_per_run=합리적 기본). M1 `Validate`는 non-empty `tier`가 SSOT 어휘 밖일 때만 거부. 이 정책은 acceptance.md §D.2 EC-1과 plan.md §F M1에 명시됨.
+
+**@MX tag 변경**: `validLearningTiers` 맵에 `@MX:ANCHOR` + `@MX:REASON`(fan_in ≥ 3 candidate) + `@MX:SPEC`(SPEC-HARNESS-EVO-RUN-REPORT-001 M1 / REQ-HRR-002) 추가.
+
+**TDD 증거 (E8 — verbatim RED 출력, GREEN 이전 캡처)**:
+```
+# go test -run "TestManifestLearningBlock|TestLearningTierVocabulary|TestValidate_Learning" ./internal/harness/v4manifest/
+# github.com/modu-ai/moai-adk/internal/harness/v4manifest [github.com/modu-ai/moai-adk/internal/harness/v4manifest.test]
+internal/harness/v4manifest/learning_test.go:20:4: m.Learning undefined (type Manifest has no field or method Learning)
+internal/harness/v4manifest/learning_test.go:20:16: undefined: LearningBlock
+internal/harness/v4manifest/learning_test.go:22:23: undefined: LearningTierAutoUpdate
+internal/harness/v4manifest/learning_test.go:65:7: m.Learning undefined (type Manifest has no field or method Learning)
+...
+internal/harness/v4manifest/learning_test.go:77:7: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/harness/v4manifest [build failed]
+```
+GREEN 후 6 테스트 전부 PASS.
+
+**자체 검증 (이 run, 이 tree, HEAD `8d9612655`)**:
+
+| 항목 | 결과 | 명령 | 관측 출력 |
+|------|------|------|-----------|
+| E1 AC 매트릭스 | AC-HRR-001/002/010 PASS | `go test -run "TestManifestLearningBlock\|TestLearningTierVocabulary\|TestValidate_Learning" -v ./internal/harness/v4manifest/` | 6 PASS (유효 tier 4 + 무효 4 + legacy nil + parsing + SSOT 동일성 + 회귀) |
+| E2 cross-platform build | PASS | `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` | 둘 다 exit 0 (syscall 무관 — 순수 struct/validate) |
+| E3 coverage | 100.0% (≥85%) | `go test -cover ./internal/harness/v4manifest/...` | `coverage: 100.0% of statements` |
+| E4 subagent boundary | clean | `grep -rn 'AskUserQuestion' internal/harness/v4manifest/ \| grep -v _test.go` | exit 1 (0 matches) |
+| E5 lint | NEW 0 | `golangci-lint run --timeout=2m` | `0 issues` (baseline 동일) |
+| E6 HEAD + push | 커밋 대기 (아래 커밋에서 기록) | — | — |
+| E7 blocker | 없음 | — | — |
+| E8 RED 출력 | verbatim 캡처 (위) | GREEN 이전 컴파일 실패 | `FAIL [build failed]` |
+| 추가: v4manifest full suite | PASS | `go test ./internal/harness/v4manifest/...` | `ok ... 0.332s` |
+| 추가: cli/harness 회귀 (PIPE-REPAIR doctor) | PASS | `go test ./internal/cli/harness/...` | `ok ... 4.911s` |
+| 추가: race (touched + sibling) | PASS | `go test -race ./internal/harness/v4manifest/... ./internal/cli/harness/...` | 둘 다 ok |
+
+**Gaps**: 없음 (M1 범위 전량 검증 완료). `full suite` (`go test ./...`)는 백그라운드 실행 — cascade 회귀는 v4manifest + cli/harness 타겟 suite로 이미 커버됨 (M1은 v4manifest schema에 국한, 타 패키지 import 변경 없음).
+
+**Residual-risk**: (i) EC-1 부분 블록 기본값 적용 시점이 M2로 연기됐으므로, 부분 블록을 파싱은 하지만 downstream 소비자가 아직 없음 — M2에서 defaults 헬퍼 추가 시 재검증 필요; (ii) `harness.Tier.String()` SSOT 어휘가 future SPEC으로 확장될 경우 `validLearningTiers` + 상수 동기화가 `TestLearningTierVocabularyMatchesHarnessSSOT`에 의해 강제되므로 자동 감지됨.
 
 ---
 
