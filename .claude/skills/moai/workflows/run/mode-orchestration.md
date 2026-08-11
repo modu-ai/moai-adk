@@ -79,9 +79,9 @@ All of the following must be verified:
 
 ---
 
-## Verify Exit Gate (kanban contract)
+## Verify Exit Gate (factory contract)
 
-The `kanban` pipeline contract (`workflows/moai.md` § run→sync chaining policy) adds exactly one stage to run-phase: a security verify stage that is the **exit gate of run-phase**. It is not a sync-phase stage and it is not a new subcommand. Ordering: the gate fires after acceptance-criterion convergence and BEFORE the inherited run→sync auto-chain, and the whole of run-phase — this gate included — is downstream of Implementation Kickoff Approval.
+The `factory` pipeline contract (`workflows/moai.md` § run→sync chaining policy) adds exactly one stage to run-phase: a security verify stage that is the **exit gate of run-phase**. It is not a sync-phase stage and it is not a new subcommand. Ordering: the gate fires after acceptance-criterion convergence and BEFORE the inherited run→sync auto-chain, and the whole of run-phase — this gate included — is downstream of Implementation Kickoff Approval.
 
 Invocation, verbatim:
 
@@ -105,7 +105,7 @@ The chain permits **at most two verify re-entries**. When a third would be requi
 
 ### Rung attribute — orthogonal to the severity partition
 
-The rigor rung (`PRIMARY`, `FALLBACK`, or `DEGRADED`, as self-labelled by the review degradation ladder) is an **attribute of** an S1 or S2 result, recorded on the kanban state record. It is not a fourth case standing beside S1/S2/S3: a readable result with no confirmed findings at the `DEGRADED` rung is S2 *and* `DEGRADED` simultaneously. S3 produced no result and therefore carries no rung at all.
+The rigor rung (`PRIMARY`, `FALLBACK`, or `DEGRADED`, as self-labelled by the review degradation ladder) is an **attribute of** an S1 or S2 result, recorded on the factory state record. It is not a fourth case standing beside S1/S2/S3: a readable result with no confirmed findings at the `DEGRADED` rung is S2 *and* `DEGRADED` simultaneously. S3 produced no result and therefore carries no rung at all.
 
 A `DEGRADED` rung (single-pass, no voter panel) is surfaced both in the chain transcript and in the sync report, and forces the sync-phase security-analysis suppression OFF, so the independent adversarial analysis of the same surface still runs.
 

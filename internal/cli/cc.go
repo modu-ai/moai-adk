@@ -8,7 +8,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // findProjectRootFn is the function used to locate the project root.
@@ -17,7 +17,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-- claude-args...]",
+	Use:   "cc [-p profile] [-f [SPEC-ID] | -f --name <role>-<run-id>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -40,6 +40,17 @@ Flags:
                                 replacing the current session (requires tmux)
   --chrome / --no-chrome        Toggle Chrome MCP
 
+Factory Mode:
+  -f, --factory [SPEC-ID]       Enter as the LEAD of a factory run. Seeds a
+                                plan -> run -> verify -> sync chain in this
+                                session. The optional SPEC-ID ties the run to a
+                                SPEC. The lead drives the whole chain; four
+                                companion sessions are launched by hand.
+  -f --name <role>-<run-id>     Enter as a COMPANION of an existing factory run.
+                                Joins the run without seeding a chain. The four
+                                roles are: plan, run, review, sync. The run-id
+                                is the identifier the lead announced at startup.
+
 Permission Modes:
   default            Ask permissions for file edits and commands
   acceptEdits        Auto-accept file edits, ask for commands (project default)
@@ -55,7 +66,10 @@ Examples:
   moai cc -p work -- --print           # Profile + pass-through args to Claude
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
   moai cc -w                           # Launch in auto-named isolated worktree
-  moai cc -w feat-login --spawn        # Teammate session in a new tmux window`,
+  moai cc -w feat-login --spawn        # Teammate session in a new tmux window
+  moai cc -f                           # Factory lead: seeds the plan->run->verify->sync chain
+  moai cc -f SPEC-AUTH-001             # Factory lead tied to SPEC-AUTH-001
+  moai cc -f --name run-abc123         # Factory companion: joins run abc123 as the run worker`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -88,15 +102,33 @@ func runCC(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-MODE-001: --kanban / -k seeds a plan -> run -> verify -> sync
-	// chain in the launched session. Parsed after --spawn is stripped (a spawned
-	// session re-issues this command and must carry the token through) and before
-	// worktree handling (so a kanban token can never be mistaken for a -w value).
-	// The environment mutation is restored on every return path, including error.
-	if specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs); kanbanEnabled {
-		filteredArgs = kanbanArgs
-		defer enterKanbanMode(specID)()
-		recordKanbanSession(specID, kanban.BackendClaude)
+	// SPEC-FACTORY-BOOTSTRAP-001: -f is factory membership whose role is
+	// disambiguated by --name. Both flags are evaluated together (no short-
+	// circuit), then the combination selects the branch per the §A.2 truth
+	// table (REQ-FB-001, REQ-FB-002). Parsed after --spawn is stripped (a
+	// spawned session re-issues this command and must carry the token through)
+	// and before worktree handling (so a factory token can never be mistaken
+	// for a -w value). The environment mutation is restored on every return
+	// path, including error.
+	specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs)
+	filteredArgs = factoryArgs
+	label, isCompanion := parseCompanionLabel(filteredArgs)
+	switch resolveFactoryBranch(factoryEnabled, isCompanion) {
+	case factoryBranchLead:
+		defer enterFactoryMode(specID)()
+		recordFactorySession(specID, factory.BackendClaude)
+		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+		if len(settingsFlag) > 0 {
+			filteredArgs = append(filteredArgs, settingsFlag...)
+		}
+		defer settingsCleanup()
+	case factoryBranchCompanion:
+		defer enterFactoryCompanionMode(label)()
+		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+		if len(settingsFlag) > 0 {
+			filteredArgs = append(filteredArgs, settingsFlag...)
+		}
+		defer settingsCleanup()
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a

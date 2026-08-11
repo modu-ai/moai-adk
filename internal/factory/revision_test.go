@@ -1,4 +1,4 @@
-package kanban
+package factory
 
 import (
 	"encoding/json"

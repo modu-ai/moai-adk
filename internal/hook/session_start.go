@@ -338,6 +338,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Factory Mode bootstrap announcement. The launcher cannot deliver this —
+	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
+	// takes the screen. Non-factory sessions get "" and nothing is injected.
+	if notice := factoryBootstrapNotice(); notice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = notice
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+	}
+
 	return out, nil
 }
 

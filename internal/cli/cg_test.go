@@ -184,12 +184,12 @@ func TestCharacterize_CG_HelpFlag(t *testing.T) {
 
 // ── SPEC-FACTORY-MODE-001 M5 ──
 
-// TestCG_KanbanFlagRejected is AC-FM-004: `moai cg` runs a mixed backend
-// (leader Claude, teammates GLM), which contradicts Kanban Mode's
+// TestCG_FactoryFlagRejected is AC-FM-004: `moai cg` runs a mixed backend
+// (leader Claude, teammates GLM), which contradicts Factory Mode's
 // one-session / one-backend / one-chain premise. The invocation is rejected
-// with the KANBAN_MODE_UNSUPPORTED_BACKEND sentinel and never launches.
-func TestCG_KanbanFlagRejected(t *testing.T) {
-	for _, flag := range []string{"--kanban", "-k"} {
+// with the FACTORY_MODE_UNSUPPORTED_BACKEND sentinel and never launches.
+func TestCG_FactoryFlagRejected(t *testing.T) {
+	for _, flag := range []string{"--factory", "-f"} {
 		t.Run(flag, func(t *testing.T) {
 			origLaunch := unifiedLaunchFunc
 			defer func() { unifiedLaunchFunc = origLaunch }()
@@ -208,7 +208,7 @@ func TestCG_KanbanFlagRejected(t *testing.T) {
 			if err == nil {
 				t.Fatalf("AC-FM-004: runCG(%s) must return an error", flag)
 			}
-			if !strings.Contains(err.Error(), "KANBAN_MODE_UNSUPPORTED_BACKEND") {
+			if !strings.Contains(err.Error(), "FACTORY_MODE_UNSUPPORTED_BACKEND") {
 				t.Errorf("AC-FM-004: error must carry the sentinel, got: %v", err)
 			}
 			if launched {
@@ -218,10 +218,10 @@ func TestCG_KanbanFlagRejected(t *testing.T) {
 	}
 }
 
-// TestCG_WithoutKanbanFlagStillLaunches is the negative control for
-// AC-FM-004: the rejection is scoped to the kanban token and does not
+// TestCG_WithoutFactoryFlagStillLaunches is the negative control for
+// AC-FM-004: the rejection is scoped to the factory token and does not
 // regress an ordinary cg launch.
-func TestCG_WithoutKanbanFlagStillLaunches(t *testing.T) {
+func TestCG_WithoutFactoryFlagStillLaunches(t *testing.T) {
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 

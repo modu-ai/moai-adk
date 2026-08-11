@@ -136,7 +136,7 @@ moai-adk-go/
 └── .goreleaser.yml
 ```
 
-> **`internal/` package count.** Measured `49` top-level packages (`ls -d internal/*/ | wc -l`) against a previously-documented `46`. Exactly one of the three-package gap — `internal/kanban` — belongs to SPEC-FACTORY-MODE-001; the other two predate it (`origin/main` already carries `48`, and `internal/kanban` is absent there). The nested-directory figure is `323` (`find internal -type d -mindepth 2 | wc -l`), re-measured rather than carried forward from the prior `318`, which was recorded under an unstated counting method.
+> **`internal/` package count.** Measured `49` top-level packages (`ls -d internal/*/ | wc -l`) against a previously-documented `46`. Exactly one of the three-package gap — `internal/factory` — belongs to SPEC-FACTORY-MODE-001; the other two predate it (`origin/main` already carries `48`, and `internal/factory` is absent there). The nested-directory figure is `323` (`find internal -type d -mindepth 2 | wc -l`), re-measured rather than carried forward from the prior `318`, which was recorded under an unstated counting method.
 
 ---
 
