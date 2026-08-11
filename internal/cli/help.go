@@ -53,6 +53,7 @@ func rootHelpGroups() []helpGroup {
 			rows: [][2]string{
 				{"moai loop", "Spec→Plan→Impl→Sync loop"},
 				{"moai spec", "Manage spec cards"},
+				{"moai epic", "Epic milestone progress"},
 				{"moai worktree", "Isolated worktree work"},
 			},
 		},
