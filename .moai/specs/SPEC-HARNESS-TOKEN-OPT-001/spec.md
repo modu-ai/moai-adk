@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-TOKEN-OPT-001
 title: "Harness Token/Time Optimization — paths-scoping, SSOT consolidation, and A9 default inversion"
 version: "1.0.0"
-status: implemented
+status: completed
 created: "2026-08-11"
 updated: "2026-08-11"
 author: GOOS
