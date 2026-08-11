@@ -100,19 +100,78 @@ blocker_report: none
 
 ## §E.2 Run-phase Evidence
 
-| AC | Status | Milestone | Evidence |
+| AC | Status | Milestone | Verification command + result |
 |---|---|---|---|
-| AC-FB-010 | PASS | M1 | `go test ./internal/cli/ -run TestPrepareFactorySettingsWritesTransientFile` → ok; writes `moai-factory-<pid>-<ns>.json` under `os.TempDir()` containing `{"crossSessionInbound":"accept"}` |
-| AC-FB-011 | PASS | M1 | `go test ./internal/cli/ -run TestPrepareFactorySettingsHonorsOperatorSupplied` → ok; operator `--settings` suppresses injection in long, equals, and pre-marker forms |
-| AC-FB-012 | PASS | M1 | `go test ./internal/hook/ -run TestFactoryLeadNoticeOperatorSettingsAdvisory` → ok; notice contains `verify`/`crossSessionInbound`/`accept` when `MOAI_FACTORY_SETTINGS_INJECTED` unset |
-| AC-FB-013(d) | PASS | M1 | `go test ./internal/hook/ -run TestFactoryLeadNoticeInjectedSettingsAutoAccept` → ok; notice contains `auto-accept` when `MOAI_FACTORY_SETTINGS_INJECTED=1` |
-| (others) | pending | M2-M6 | — |
+| AC-FB-001 | PASS | M2 | `go test ./internal/cli/ -run TestDispatchOutcome_LeadEnvState` → ok |
+| AC-FB-002 | PASS | M2 | `go test ./internal/cli/ -run TestDispatchOutcome_CompanionEnvState` → ok |
+| AC-FB-003 | PASS | M2 | `go test ./internal/cli/ -run TestResolveFactoryBranchTruthTable/row3` → ok |
+| AC-FB-004 | PASS | M2 | `go test ./internal/cli/ -run TestResolveFactoryBranchTruthTable/row4` → ok |
+| AC-FB-005 | PASS | M2 | `grep -nE 'else if .*parseCompanionLabel' cc.go glm.go` → 0 matches; both functions called unconditionally |
+| AC-FB-006 | PASS | M2 | `TestDispatchOutcome_CompanionEnvState` asserts MOAI_FACTORY unset |
+| AC-FB-007 | PASS | M2 | `TestDispatchOutcome_LeadEnvState` asserts MOAI_FACTORY set |
+| AC-FB-008 | PASS | M2 | `go test ./internal/cli/ -run AC003` → both tests PASS |
+| AC-FB-009 | PASS | pre-existing | `TestFactoryCompanionRaisesBlockCap` + `TestACFM022a` PASS (block-cap OR-branch untouched) |
+| AC-FB-010 | PASS | M1 | `TestPrepareFactorySettingsWritesTransientFile` → ok |
+| AC-FB-011 | PASS | M1 | `TestPrepareFactorySettingsHonorsOperatorSupplied` → ok |
+| AC-FB-012 | PASS | M1/M3 | `TestFactoryLeadNoticeOperatorSettingsAdvisory` → ok |
+| AC-FB-013 | PASS | M3 | `TestFactoryLeadNoticeFullContent` → ok (run id, 4 lines with -f, socket path, auto-accept, SPEC id) |
+| AC-FB-014 | PASS | M3 | `TestFactoryLeadNoticeOmitsSPECWhenUnset` → ok |
+| AC-FB-015 | PASS | M3 | `TestFactoryLeadNoticeCompanionLinesCarryF` → ok |
+| AC-FB-016 | PASS | M3 | `TestFactoryCompanionNoticeRoleless` → ok |
+| AC-FB-016a | PASS | M3 | `TestFactoryCompanionNoticeFailOpen` → ok (empty/malformed/non-companion → empty string) |
+| AC-FB-017 | PASS | M3 | `TestFactoryCompanionNoticeJoinOnly` → ok |
+| AC-FB-018 | PASS | M4 | `TestACFB018_HelpDocumentsLeadEntry` → ok (cc + glm) |
+| AC-FB-019 | PASS | M4 | `TestACFB019_HelpDocumentsCompanionEntry` → ok (cc + glm) |
+| AC-FB-020 | PASS | M4 | `grep -nE 'cmd\.Flags\(\).*factory' cc.go glm.go` → 0 matches |
+| AC-FB-021 | PASS | M5 | `ls docs-site/content/{en,ko,ja,zh}/multi-llm/factory-mode.md` → all 4 exist with title/weight/draft:false |
+| AC-FB-022 | PASS | M5 | `grep factory-mode docs-site/data/menu/main.yaml` → in multi-llm sub: with 4-locale name map + ref |
+| AC-FB-023 | PASS | M5 | no _meta.yaml / menu.html change (sub:-level entry only) |
+| AC-FB-024 | PASS | M6 | `grep -rnE 'SPEC-FACTORY-BOOTSTRAP-001\|REQ-FB-\|94025ce0a' internal/template/templates/` → 0 matches |
+| AC-FB-025 | PASS | M6 | `git diff --name-only 24c4674b5..HEAD -- .moai/specs/SPEC-KANBAN-` → 0 matches |
+| AC-FB-026 | PASS | M6 | 6 artifacts present in worktree; primary checkout has no such dir |
+| AC-FB-027 | PASS | M2 | `TestResolveFactoryBranchTruthTable/row5` → ok (BREAKING: companion-shape --name alone → no-op) |
+
+**Summary**: 27/27 AC PASS (25 MUST + 1 SHOULD + 1 meta). 0 FAIL.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — populated by manager-develop>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-11
+run_commit_sha: a87e6174b
+ac_pass_count: 27
+ac_fail_count: 0
+preserve_list_post_run_count: 2
+preserve_list_post_run:
+  - "internal/cli/launcher_blockcap_infinite_test.go::TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal"
+  - "internal/cli/launcher_blockcap_infinite_test.go::TestAC003_BlockCapDoctrineClauseSpecific"
+l44_pre_commit_fetch: n/a
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  native: PASS
+  windows_amd64: PASS
+total_run_phase_files: 12
+m1_to_mN_commit_strategy: per-milestone Conventional Commits (M1-M5 committed; M6 verification-only)
+run_phase_commits:
+  - "d3f8ffcda: M1 crossSessionInbound injection via transient --settings"
+  - "1b02bcf80: M2 -f redefinition + flat dispatch selection"
+  - "884e8e2dc: M3 SessionStart notice revision"
+  - "c346682a2: M4 CLI help text for -f lead and companion"
+  - "a87e6174b: M5 Factory Mode docs-site 4-locale page"
+  - "M6: verification only (make build exit 0; AC-FB-024/025/026 grep PASS)"
+coverage_note: "internal/cli 77.0% (package-wide); factory/bootstrap/settings-dispatch files fully covered by new + prior-art tests"
+baseline_attribution:
+  worktree: "/Users/goos/.moai/worktrees/kanban"
+  branch: "feat/factory-bootstrap-guidance"
+  head: "a87e6174b"
+  base: "24c4674b5"
+  pre_existing_failures: "internal/statusline TestBuilderNormalizesMode (rolling-window flake); internal/hook TestBranchGuard_Latency (timing-sensitive under parallel load) — both pass in isolation, unrelated to Factory Mode"
+push_state: "NOT pushed (C5: commits only, no push, no PR)"
+blocker_report: none
+```
 
 ---
 
