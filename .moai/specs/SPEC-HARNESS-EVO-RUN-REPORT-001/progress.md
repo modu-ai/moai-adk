@@ -225,7 +225,7 @@ FAIL    github.com/modu-ai/moai-adk/internal/cli/harness    0.432s
 
 ```yaml
 run_complete_at: 2026-08-12
-run_commit_sha: e7a6bd496             # M4 commit (HEAD of run-phase lineage); M5 was verification-only (no separate commit)
+run_commit_sha: 873ad03ac             # PR #1454 squash-merge on main (run M1-M4 collapsed into single main commit; feature-branch M4 e7a6bd496 orphaned by rebase+squash)
 run_status: m5-green                  # M1-M5 GREEN; M5 = full-suite verification (this sync commit's pre-flight)
 ac_pass_count: 8                       # AC-HRR-001..008 verified (009/010 = template-neutral + compat, verified in §E.2 + M4 §25 grep)
 ac_fail_count: 0
@@ -322,7 +322,7 @@ window across 3 producers is a downstream concern, not an M4 deliverable.
 
 ```yaml
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); backfilled by orchestrator after this sync commit lands
+sync_commit_sha: 873ad03ac              # PR #1454 squash-merge on main; backfilled post-merge (spec-frontmatter-schema.md D3 self-reference exemption — feature-branch SHA f516d7ea3 orphaned by squash)
 sync_status: 3-phase-close               # in-progress → implemented → completed merged into this sync commit (V3R6 3-phase close)
 changelog_entry_position: top-of-unreleased-added
 frontmatter_status_transitions:
@@ -336,7 +336,7 @@ canary_compliance_check: deferred-to-manager-git   # push + Route B PR is manage
 **3-phase close summary (this sync commit carries):**
 - spec.md frontmatter `status:` transition `in-progress → completed` (the `completed` ride-along per the 3-phase close contract — `implemented` is intermediate on a single sync commit).
 - spec.md `updated: 2026-08-12` refreshed.
-- `progress.md` §E.3 `run_commit_sha` backfilled to `e7a6bd496` + M5 verification block recorded.
+- `progress.md` §E.3 `run_commit_sha` backfilled to `873ad03ac` (squash-merge SHA; feature-branch e7a6bd496 orphaned by rebase+squash) + M5 verification block recorded.
 - `progress.md` §E.4 (this section) populated.
 - `CHANGELOG.md` `[Unreleased] ### Added` entry appended.
 - Zero code changes (M4 was doc-only; M5 was verification-only). No `make build` (catalog hash unchanged — verified empty diff at M4; harness.md is not a catalog artifact).
