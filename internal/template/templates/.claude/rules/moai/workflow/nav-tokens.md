@@ -1,3 +1,8 @@
+---
+description: "Author-facing NAV:DEC / NAV:SYM binding-token reference for the BAS integration layer"
+paths: "**/.moai/project/*.md,**/.moai/docs/**/*.md,**/*.go,**/nav-tokens.md"
+---
+
 # Navigator Binding Tokens
 
 > Author-facing token reference for the BAS (Blueprint-Anchored Synchronization)

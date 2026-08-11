@@ -181,6 +181,11 @@ func init() {
 	// additive tiers.json overlay (fail-open, byte-identical re-run).
 	rootCmd.AddCommand(newNavigatorTiersCmd())
 
+	// SPEC-NAVIGATOR-SYNC-004 M2: BAS Route step. Sibling of the sync and
+	// tiers steps — promotes audit + detect findings into owner-bound work
+	// items (fail-open, byte-identical re-run).
+	rootCmd.AddCommand(newNavigatorRouteCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 

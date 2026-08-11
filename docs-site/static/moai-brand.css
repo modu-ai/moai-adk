@@ -1,44 +1,50 @@
 /* MoAI Design System — Hugo/Geekdoc Override
- * FROZEN (re-stamped at sync-phase close, SPEC-DESIGN-DOCSV2-001, 2026-07-16):
- *   the v2 token vocabulary below (neutral canvas #f4f4f4 + solid green accent
- *   #3d7d5f) is now the frozen baseline. Do not reintroduce the superseded
- *   warm-cream Ver 1.0 tokens (--color-bg #faf9f5, 135deg gradient, warm
- *   neutral ramp) without a new unfreeze authorization (see spec.md §G).
- * Source: v2 token SSOT (neutral canvas + green accent) — SPEC-DESIGN-DOCSV2-001
- *         Ver 1.0 Notion baseline superseded by v2 unfreeze (per SPEC §G, 2026-07-16)
- * Single source of truth: this file (v2 raw tokens)
+ * FROZEN (re-stamped at v2-renewal token refresh, SPEC-DESIGN-DOCS-V31-001, 2026-08-11):
+ *   the v2-renewal token vocabulary below (neutral canvas #f4f4f4 + solid green
+ *   accent #3d7d5f, mascot-derived neutral ramp) is the frozen baseline.
+ *   Do not reintroduce the superseded warm-cream Ver 1.0 tokens (--color-bg
+ *   #faf9f5, 135deg gradient, warm neutral ramp) without a new unfreeze
+ *   authorization (see spec.md §G).
+ * Predecessor: SPEC-DESIGN-DOCSV2-001 (2026-07-16, v2 baseline freeze).
+ * v2 renewal (this stamp): micro-shifted the neutral ramp toward mascot gray
+ *   (#9fa0a0 mid-gray namesake per research.md §D.2) and refreshed the four
+ *   semantic status tokens to the handoff values. PRIMARY/INK/BG trio unchanged
+ *   from the v2 baseline — no drift introduced. Light-only (REQ-DS-003); the
+ *   handoff's [data-theme="dark"] block is NOT ported.
+ * Source: v2-renewal token SSOT — SPEC-DESIGN-DOCS-V31-001 M1 (handoff
+ *         colors_and_type.css :root, dark block discarded)
+ * Single source of truth: this file (v2-renewal raw tokens)
  * (assets/css/moai-brand.scss는 빌드 파이프라인에서 사용되지 않는 참고용 사본)
  */
 
-/* ── CSS Custom Properties (v2 SSOT tokens — SPEC-DESIGN-DOCSV2-001 §G unfreeze) ── */
+/* ── CSS Custom Properties (v2-renewal SSOT tokens — SPEC-DESIGN-DOCS-V31-001 M1) ── */
 :root {
-  /* ── Brand Color — 시그니처 녹색 (v2 SSOT: neutral canvas + green accent) ── */
-  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) */
+  /* ── Brand Color — 시그니처 녹색 (v2 baseline 유지: neutral canvas + green accent) ── */
+  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) — unchanged from v2 */
   --color-primary-hover: #316750;
   --color-primary-active: #265240;
-  --color-ink: #060606;              /* 본문 텍스트 (#000 대체) */
-  --color-bg: #f4f4f4;               /* v2 neutral canvas (#fff 대체 금지) */
-  --color-surface: #ffffff;          /* 카드/모달 */
+  --color-ink: #060606;              /* 본문 텍스트 (#000 대체) — unchanged */
+  --color-bg: #f4f4f4;               /* neutral canvas (#fff 대체 금지) — unchanged */
+  --color-surface: #ffffff;          /* 카드/모달 — unchanged */
 
-  /* ── Neutral Scale (v2 — pure neutral, warm cream 제거) ── */
-  --neutral-50:  #f7f7f7;            /* surface-soft */
-  --neutral-100: #f0f0f0;            /* surface-card */
-  --neutral-200: #e4e4e4;            /* hairline */
-  --neutral-300: #d4d4d4;
-  --neutral-400: #a3a3a3;            /* muted-soft */
-  --neutral-500: #737373;            /* muted */
-  --neutral-600: #525252;            /* body */
-  --neutral-700: #262626;            /* body-strong */
-  --neutral-800: #171717;            /* surface-dark-elevated */
-  --neutral-900: #141414;            /* surface-dark */
-  --neutral-950: #060606;            /* ink */
+  /* ── Neutral Scale (v2-renewal — mascot-derived ramp per research.md §D.2) ── */
+  --neutral-50:  #f4f4f4;            /* = bg (collapsed from v2 #f7f7f7) */
+  --neutral-100: #e6e6e6;            /* mascot-light gray (was #f0f0f0) */
+  --neutral-200: #d1d1d1;            /* hairline (was #e4e4e4) */
+  --neutral-300: #b5b5b5;            /* was #d4d4d4 */
+  --neutral-400: #9fa0a0;            /* mascot mid-gray namesake (was #a3a3a3) */
+  --neutral-500: #757575;            /* muted (was #737373) */
+  --neutral-600: #565656;            /* body (was #525252) */
+  --neutral-700: #3a3a3a;            /* body-strong (was #262626) */
+  --neutral-800: #242424;            /* surface-dark-elevated (was #171717) */
+  --neutral-900: #141414;            /* surface-dark (unchanged) */
+  --neutral-950: #060606;            /* ink (unchanged) */
 
-  /* ── Semantic (status) ── */
-  --color-success: #5db872;
-  --color-warning: #d4a017;
-  --color-danger:  #c64545;
-  --color-info:    #5db8a6;          /* accent-teal */
-  --color-accent-amber: #e8a55a;
+  /* ── Semantic (status) — v2-renewal handoff values ── */
+  --color-success: #2e8a63;          /* was #5db872 */
+  --color-warning: #c47b2a;          /* was #d4a017 */
+  --color-danger:  #c44a3a;          /* was #c64545 */
+  --color-info:    #2a8a8c;          /* was #5db8a6 accent-teal */
 
   /* ── Foreground roles (v2 neutral) ── */
   --fg-1: var(--color-ink);

@@ -276,6 +276,45 @@ var DefaultCodexReviewGateTimeout = 900 * time.Second
 // constant expression.
 var DefaultMultiReviewGateTimeout = 900 * time.Second
 
+// DefaultCodexTaskTimeout bounds ONE codex_task turn (SPEC-CODEX-PHASE2-001
+// REQ-CX2-017 / REQ-CX2-015). It exists because the task path has no bound of
+// its own otherwise: the only deadline is whatever context the MCP host
+// supplies, and a host that supplies none leaves a turn free to run forever —
+// which a live probe reached in practice, through a codex request the driver
+// left unanswered (progress.md §E.2 § Live protocol verification).
+//
+// It is deliberately DISTINCT from DefaultCodexReviewGateTimeout rather than a
+// reuse of it: the two bound different callers (a Stop hook that must not stall
+// a commit, versus a task an operator asked for), so coupling them would let a
+// change tuned for one silently move the other.
+//
+// Not a compile-time const, for the same reason DefaultCodexReviewGateTimeout
+// is not — and so a test can shorten it, which is what keeps the criterion that
+// verifies the bound cheap to run instead of a ten-minute test.
+var DefaultCodexTaskTimeout = 600 * time.Second
+
+// DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
+// carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
+// lifecycle artifact, not a transcript: the summary exists so an operator can
+// tell one job from another, so an unbounded prompt has no business inflating
+// every read of the record. Redaction (REQ-CX2-005) is a separate concern and
+// runs before this truncation, never instead of it.
+const DefaultCodexJobSummaryMaxLen = 500
+
+// DefaultCodexJobCancelGrace is how long codex_job_cancel waits for a turn to
+// end on its own after turn/interrupt is sent, before terminating the codex
+// process the server spawned for that job (SPEC-CODEX-PHASE2-001 REQ-CX2-011 /
+// REQ-CX2-015). It is the "bounded grace window" of the requirement, and it is
+// also what bounds the tool call: cancel returns within this window plus one
+// poll, never waiting on the turn itself.
+const DefaultCodexJobCancelGrace = 5 * time.Second
+
+// DefaultCodexJobCancelPoll is the interval at which the cancel path re-checks
+// whether the interrupted job has ended, inside the grace window above. Short
+// enough that a turn yielding promptly is not made to wait out the full window,
+// long enough not to spin.
+const DefaultCodexJobCancelPoll = 25 * time.Millisecond
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
@@ -651,6 +690,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
 				Enabled: false,
+			},
+			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
+			// write mode ships default-OFF. A local opt-in belongs in local
+			// config, never in this code default — flipping it here would hand
+			// every distributed user a tool that can mutate their working tree.
+			// Template neutrality (§25): no `allow_write: true` under
+			// internal/template/templates/.
+			Task: CodexTaskConfig{
+				AllowWrite: false,
 			},
 		},
 		// SPEC-AUDIT-MULTI-MODEL-001 M5 (REQ-AMM-013 / AC-AMM-018 / C6): the

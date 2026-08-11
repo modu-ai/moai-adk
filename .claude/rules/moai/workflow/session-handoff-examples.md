@@ -310,3 +310,69 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
 > **Example**: see `session-handoff-examples.md` § Example (Illustrative; substitute project-specific values when adapting).
+
+---
+
+## Diet Constraints (Full Catalogue)
+
+> Relocated from `session-handoff.md` § Diet Constraints to shrink the always-loaded footprint. The always-loaded file retains a 2-example inline summary + 1-line pointer; this section holds the full AP-D-001..005 catalogue, the 9-item pre-emit checklist, and the applicable-scope statement. Content unchanged.
+
+[ZONE:Evolvable] [HARD] A paste-ready resume message is "next session minimum executable context" — it is NOT an audit trail, history record, or ceremonial commitment record. Accumulating history/lesson/directive-escalation prose in the body via append-only across retry iterations is an empirically proven anti-pattern.
+
+### Block 2 applied-lessons constraint
+
+- At most **4 references** (memory file slug or lesson identifier)
+- Each reference is a **single-line identifier** (e.g. `<lesson-id>` — full prose history is prohibited)
+- Five or more is an anti-pattern → move the surplus into the memory file body
+
+### Block 4 precondition constraint
+
+- Each precondition targets **≤ 200 chars** (practical readability limit)
+- Format: `N) <verifiable command> → <expected outcome>`
+- History tracking / lesson narrative / cumulative-pattern prose is prohibited
+- Multi sub-command (V0a/V0b/V0c) may be folded into a single precondition, keeping only the STRICT criterion on one line
+
+### Block 5 run constraint
+
+- **Single primary action** (typically a one-line command, e.g. `/moai run SPEC-ID`)
+- Sub-detail (agent scope, AC bindings, file path line numbers) lives inside SPEC artifacts (plan.md / acceptance.md) — inline in the paste-ready is prohibited
+- Ceremonial reminders ("exact reference", "observe discipline", "self-verify") are prohibited — those belong inside the agent body
+
+### Block 6 follow-up constraint
+
+- **≤ 2 lines** (next concrete SPEC ID or next phase command)
+- Multi-step follow-ups (M4→M5→M6→sync→Mx→close) are managed via the SPEC plan.md milestones — inline in the paste-ready is prohibited
+
+### Doctrine reference pattern
+
+- N-th-iteration sustained 1st→2nd→3rd→4th→5th style history belongs ONLY in lesson memory files
+- In the paste-ready, use a single one-line reference: `per session-handoff.md § <Doctrine Section>`
+
+### Anti-pattern catalogue (AP-D-001..005)
+
+> See also: § Anti-Patterns (general resume hygiene) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This catalogue covers paste-ready budget violations (AP-D-001..005).
+
+- **AP-D-001**: Block 2 lessons 5+ references → trim to 4 or fewer, move the rest into the memory file body
+- **AP-D-002**: precondition body prose (history/lesson narrative/cumulative pattern) → keep only a one-line verifiable command + STRICT criterion
+- **AP-D-003**: Block 5 sub-step nesting (Phase 0 + Phase 1 + Phase 1B style multi-phase 11-substep) → compress into a single primary action; sub-detail belongs in SPEC artifacts
+- **AP-D-004**: directive escalation embedded in body (N-th "stronger directive", N+1-th "even-stronger directive", N+2-th "documentation-level codification entry-condition") → codify in a rule file; the paste-ready keeps only the reference
+- **AP-D-005**: ceremonial reminder ("B8/B15 observe discipline", "manager-develop must exactly reference plan.md §F.3 line 130-143") → keep inside SPEC artifacts; the paste-ready relies on trust delegation
+
+### Pre-emit self-check (paste-ready budget) — 9 items
+
+- [ ] Block 2 ≤ 4 references
+- [ ] Block 2 each reference is a single-line identifier (full history prohibited)
+- [ ] Block 4 each precondition ≤ 200 chars
+- [ ] Block 4 precondition prose has no embedded history
+- [ ] Block 5 single primary action (command + one-line context max)
+- [ ] Block 6 ≤ 2 lines
+- [ ] Doctrine history not embedded → rule-file reference only
+- [ ] No ceremonial reminder
+- [ ] Block 1 fan-out steering phrase (`fan out subagents (<read-only investigation scope>)`) present iff mode = parallel-subagents — phrase locale-verbatim (English preserved), scope qualifier translated
+
+### Applicable scope
+
+- All new paste-ready resume messages
+- Retry-iteration paste-ready messages (diet vs body-accumulation choice → diet is the default)
+- Applied consistently across the line (all SPEC lines)
+

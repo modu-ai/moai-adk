@@ -6,6 +6,16 @@
 # 16-언어 룰셋 정식화 백로그가 정리하기 전까지 제외한다.
 # (루트 go-hardcoding.yml은 템플릿 배포용 non-config 경로 전용; config-mode는
 #  동일 규칙을 포함하는 go/ 큐레이션 세트를 로드한다.)
+#
+# SPEC-GATE-ASTGREP-REPAIR-001 M2 note (2026-08-11):
+# ast-grep 0.40.5 does NOT support a `globs:` exclusion field in sgconfig.yml
+# config-mode — adding it silently breaks the scan (0 matches for every rule,
+# including non-excluded files). Path exclusion for worktree duplicates,
+# vendor/, *_test.go, and testdata/ is therefore applied at the gate layer
+# (internal/hook/quality/astgrep_gate.go filterExcludedPaths), after the
+# scanner returns findings. When a future ast-grep release adds config-mode
+# globs support, these exclusions MAY migrate back here; until then, do NOT
+# add a `globs:` key to this file.
 ruleDirs:
   - go
   - security

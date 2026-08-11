@@ -161,6 +161,32 @@ func TestACFM022a_FactoryCapReplacesPreexistingEntry(t *testing.T) {
 	}
 }
 
+// TestFactoryCompanionRaisesBlockCap asserts a COMPANION takes the same raise
+// as the lead. A companion arms its own goal mid-session, so the
+// goal-conditional branch is structurally unable to see it — exactly the lead's
+// problem — and without the raise it would stop after the runtime default of 8
+// consecutive blocks.
+//
+// Non-parallel by construction: t.Setenv mutates process-global state.
+func TestFactoryCompanionRaisesBlockCap(t *testing.T) {
+	tmp := t.TempDir()
+	ctx := context.Background()
+	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
+	want := config.EnvClaudeCodeStopHookBlockCap + "=" + strconv.Itoa(DefaultRaisedStopHookBlockCap)
+
+	// Negative control first: a leaked variable from an earlier test in this
+	// binary must fail loudly here rather than silently validate the branch.
+	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
+		t.Errorf("negative control: env must be unchanged with no factory signal and no armed goal, got %v", got)
+	}
+
+	t.Setenv(config.EnvMoaiFactoryLabel, "run-tjlgt1")
+	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
+	if !slices.Contains(got, want) {
+		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)
+	}
+}
+
 // TestACFM023c_FactoryEnvReachesChildEnvironment is AC-FM-023c: the load-bearing
 // link. The cap raise of AC-FM-022a is reachable in production only if the
 // factory variables survive into the os.Environ()-derived launch env that

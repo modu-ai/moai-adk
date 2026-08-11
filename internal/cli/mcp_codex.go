@@ -36,6 +36,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // codex domain constants (§14 hardcoding prevention — domain identifiers live
@@ -56,6 +59,58 @@ const (
 	codexMethodInitialize  = "initialize"   // mandatory handshake opener
 	codexMethodThreadStart = "thread/start" // opens a thread; its result.thread.id is the review threadId
 
+	// codexMethodThreadResume re-opens an EXISTING thread by id, loading it from
+	// codex's own on-disk store. It is what resume_last uses instead of
+	// thread/start (REQ-CX2-008). ThreadResumeParams requires only {threadId}
+	// and its response carries the same {thread:{id}} shape thread/start returns,
+	// so extractThreadID reads both (codex-cli 0.146.1 generate-json-schema).
+	codexMethodThreadResume = "thread/resume"
+
+	// codexMethodTurnInterrupt cancels an in-flight turn. Its params are
+	// {threadId, turnId} with BOTH required (M0 probe, progress.md §E.2 (a)) —
+	// which is why the job record carries a turnId at all (REQ-CX2-003), and why
+	// a job whose turn/started was never observed cannot be interrupted and
+	// degrades to process termination instead (REQ-CX2-011).
+	codexMethodTurnInterrupt = "turn/interrupt"
+
+	// codexNotifyTurnStarted is the server→client notification announcing that a
+	// turn began. Its turn.id is the ONLY source of the turnId that
+	// turn/interrupt requires alongside threadId (REQ-CX2-003; M0 probe,
+	// progress.md §E.2 (a)).
+	codexNotifyTurnStarted = "turn/started"
+
+	// codexRequestFileChangeApproval is a server→CLIENT request: it carries an
+	// `id` and the turn does not advance until a response with that id comes
+	// back. A live session (codex-cli 0.146.1) parked at
+	// activeFlags:["waitingOnApproval"] and never returned because this driver
+	// used to read the line and drop it (REQ-CX2-016; progress.md §E.2 § Live
+	// protocol verification).
+	codexRequestFileChangeApproval = "item/fileChange/requestApproval"
+
+	// codexApprovalDecisionDecline is the answer this client always gives.
+	//
+	// The value is READ FROM the generated protocol schema, not inferred from
+	// the request transcript (plan.md §F AP-9): FileChangeRequestApprovalResponse
+	// requires a `decision` field whose FileChangeApprovalDecision variants are
+	// accept | acceptForSession | decline | cancel. `decline` is documented as
+	// "User denied the file changes. The agent will continue the turn"; `cancel`
+	// denies AND interrupts the turn. Declining is the denial that still lets the
+	// turn finish and report what it could not do, which is the outcome the
+	// caller asked for.
+	//
+	// It is deliberately unconditional. REQ-CX2-016 adds no approval-GRANTING
+	// path — workflow.codex.task.allow_write is the sole write opt-in
+	// (REQ-CX2-007), and a turn that did opt in already runs workspaceWrite, so
+	// an approval request reaching this driver is by construction one that must
+	// not be granted (plan.md §F AP-7).
+	codexApprovalDecisionDecline = "decline"
+
+	// codexRPCMethodNotFound is the JSON-RPC 2.0 "Method not found" code. An
+	// unrecognized client-bound request gets this rather than silence, so an
+	// unknown request also unblocks the turn instead of stalling it
+	// (REQ-CX2-016).
+	codexRPCMethodNotFound = -32601
+
 	// codex client identity sent in the initialize handshake (the server rejects
 	// initialize without a clientInfo {name,version} object).
 	codexClientName    = "moai-codex-gate"
@@ -74,7 +129,92 @@ const (
 	codexAuthAPIKey   = "apiKey"
 	codexAuthProvider = "provider"
 	codexAuthUnknown  = "unknown"
+
+	// codex sandbox-policy variants (REQ-CX2-007). SandboxPolicy is an
+	// INTERNALLY-TAGGED UNION object — {"type":"readOnly"} — not a bare string,
+	// exactly like `target` (codex-cli 0.146.1 generate-json-schema, .definitions
+	// .SandboxPolicy: a oneOf of four objects each requiring `type`). A bare
+	// string is rejected with JSON-RPC -32600, which is how the `target` shape
+	// was originally learned. Only the two variants this SPEC transmits are named
+	// here; dangerFullAccess and externalSandbox are deliberately unreachable.
+	codexSandboxReadOnly       = "readOnly"
+	codexSandboxWorkspaceWrite = "workspaceWrite"
+
+	// codexAuditAgentKey is the profile-matrix agent key the codex backend
+	// resolves its model + effort through (REQ-CX2-002). It is the SAME
+	// auditor-shaped key the GLM sibling uses (mcp_glm.go glmAuditAgentKey), so
+	// both backends read the single interpreter rather than forking a lookup.
+	codexAuditAgentKey = "sync-auditor"
 )
+
+// codexServableModelPrefixes are the model-id families the codex app-server can
+// actually serve (§14 — the families live here as a named constant rather than
+// inline). The profile matrix is Claude-centric: its default cell for
+// codexAuditAgentKey is {opus, high}, and handing "opus" to codex would break
+// the review gate for every project that never opted in. A resolved model
+// outside these families is therefore dropped, leaving the request byte-identical
+// to the pre-M1 shape (C7 no-regression). This mirrors the GLM sibling, which
+// filters its own SSOT result through IsGLMBackend before using it.
+var codexServableModelPrefixes = []string{"gpt-", "o1", "o3", "o4", "codex"}
+
+// codexServableModel reports whether a model id can plausibly be served by the
+// codex app-server. An empty id is never servable (the field is then omitted so
+// codex applies its own configured default).
+func codexServableModel(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	if m == "" {
+		return false
+	}
+	for _, p := range codexServableModelPrefixes {
+		if strings.HasPrefix(m, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// codexSSOTModelEffort resolves the codex model + effort through the model/effort
+// SSOT (template.ResolveAgentModelEffort, REQ-CX2-002) ONLY — it NEVER reads
+// agent frontmatter or the per-agent override map directly (C4; the negative
+// guard is TestMCPAudit_NoDirectFrontmatterRead, the positive one is
+// TestCodexSession_ResolvedModelReachesTransmittedParams).
+//
+// The cell is returned whole or not at all: when the resolved model is not
+// codex-servable the paired effort is dropped with it, because an effort value
+// from another backend's vocabulary is no more transmittable than its model id
+// (ReasoningEffort is documented as "a non-empty reasoning effort value
+// advertised by the model").
+//
+// projectDir is the tree being reviewed (the review gate passes the hook's
+// project root, which need not equal the server's own cwd); an empty value falls
+// back to the resolver seam.
+func codexSSOTModelEffort(projectDir string) config.ModelEffort {
+	if strings.TrimSpace(projectDir) == "" {
+		projectDir = projectDirResolver()
+	}
+	llm, err := loadLLMSectionOnly(filepath.Join(projectDir, ".moai", "config", "sections"))
+	if err != nil {
+		return config.ModelEffort{}
+	}
+	me, mapped := template.ResolveAgentModelEffort(llm, codexAuditAgentKey)
+	if !mapped || !codexServableModel(me.Model) {
+		return config.ModelEffort{}
+	}
+	return me
+}
+
+// resolveCodexModelEffort resolves the model + effort for one codex request. An
+// explicit caller-supplied `model` wins over the SSOT-resolved value and is sent
+// verbatim — the caller opted into it deliberately, so the servability filter
+// (which exists to protect callers who did NOT choose) does not apply.
+func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
+	cwd, _ := params["cwd"].(string)
+	me := codexSSOTModelEffort(cwd)
+	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		me.Model = strings.TrimSpace(explicit)
+	}
+	return me
+}
 
 // VerdictInconclusive is the fail-open verdict value. It rides the same
 // `verdict` field as codex's native verdicts, as a STRUCTURED (non-error)
@@ -181,6 +321,24 @@ type codexConn interface {
 	close() error
 }
 
+// codexProcessConn is the OPTIONAL half of codexConn: a connection backed by a
+// real OS process reports the pid of the process the session runner spawned. It
+// is separate from codexConn so the canned test connections stay processless —
+// a job record must never name a pid this server did not spawn (REQ-CX2-012).
+type codexProcessConn interface {
+	pid() int
+}
+
+// codexConnPID reports the pid of the codex process behind conn, or 0 when the
+// connection has no backing process. Zero is the "no process of ours" value the
+// job registry records and the cancel path (M4) refuses to signal.
+func codexConnPID(conn codexConn) int {
+	if p, ok := conn.(codexProcessConn); ok {
+		return p.pid()
+	}
+	return 0
+}
+
 // codexSessionRunner abstracts spawning the codex app-server subprocess so tests
 // inject a canned line exchange without spawning a process. The production
 // runner (realCodexSessionRunner) pipes stdin/stdout and reads stdout
@@ -255,6 +413,15 @@ func (c *realCodexConn) recv() (string, bool) {
 	return line, ok
 }
 
+// pid reports the pid of the codex subprocess this connection spawned, or 0
+// once the process is gone (satisfies codexProcessConn).
+func (c *realCodexConn) pid() int {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return 0
+	}
+	return c.cmd.Process.Pid
+}
+
 func (c *realCodexConn) close() error {
 	_ = c.stdin.Close()
 	done := make(chan error, 1)
@@ -290,72 +457,266 @@ type rpcMessage struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
-// runCodexReviewRPC drives a full codex app-server JSON-RPC session: the
-// initialize handshake → thread/start (obtain threadId) → the caller's review
-// or turn method with the corrected request shape → await the asynchronous turn
-// result → synthesize a ReviewOutput from codex's review prose. On ANY error
-// (spawn failure, deadline, JSON-RPC rejection, no verdict text) it returns an
-// inconclusive ReviewOutput AND the error, so the caller always has a
-// fail-open-usable struct while still seeing the cause (fail-open is the gate's
-// invariant; the #1421 error-surfacing invariant is preserved by the error arm
-// in awaitResponse).
+// codexSessionHandle is a REUSABLE codex app-server session (REQ-CX2-001): it
+// retains the threadId obtained from thread/start so a second turn can be issued
+// on the same thread without repeating the initialize + thread/start handshake.
 //
-// The caller passes the FINAL review/turn method; the handshake (initialize +
-// thread/start) is owned by this function. params may carry "cwd" (string),
-// which is threaded into thread/start so codex reviews the right working tree.
-func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
+// Before M1 the handshake was inlined in runCodexReviewRPC, which opened a
+// session, drove exactly one turn, and tore the subprocess down on return — the
+// threadId was a local variable discarded on return (spec.md §A.3 G1). Splitting
+// it out changes nothing for the two existing consumers (runCodexReviewRPC is
+// retained below as a thin caller) and gives the later job surface a session it
+// can hold across turns.
+//
+// The handle owns the connection once openCodexSession returns successfully; the
+// caller MUST close it.
+type codexSessionHandle struct {
+	conn     codexConn
+	threadID string
+
+	// mu guards nextID. A background job's goroutine allocates ids for its turn
+	// while the M4 cancel path allocates one for turn/interrupt on the SAME
+	// session from the calling goroutine, so the counter is genuinely shared.
+	mu     sync.Mutex
+	nextID int // monotonic JSON-RPC request id; the handshake consumed 1 and 2
+
+	// turnID is the id of the most recent turn the session observed starting,
+	// read from the turn/started notification's turn.id. It is the second
+	// argument turn/interrupt requires alongside threadId (REQ-CX2-003; M0
+	// probe, progress.md §E.2 (a)) — without it a turn cannot be addressed for
+	// cancellation at all.
+	turnID string
+
+	// onTurnStarted, when non-nil, is invoked with the turn id the moment
+	// turn/started is observed — MID-FLIGHT, before the turn completes. It is
+	// the hook a background job goroutine installs so the turnId reaches the
+	// job record while the turn is still running and therefore still
+	// cancellable (plan.md §D M2).
+	onTurnStarted func(turnID string)
+}
+
+// codexSessionError carries the fail-open summary text alongside the underlying
+// cause. The handshake's failure paths each have their own operator-facing
+// summary; returning them through this type lets openCodexSession be split out
+// while runCodexReviewRPC keeps emitting the exact same ReviewOutput.Summary and
+// the exact same error value it did before.
+type codexSessionError struct {
+	summary string
+	cause   error
+}
+
+func (e *codexSessionError) Error() string { return e.cause.Error() }
+func (e *codexSessionError) Unwrap() error { return e.cause }
+
+// codexHandshakeFailure closes the half-open connection and wraps the cause with
+// its fail-open summary.
+func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
+	_ = conn.close()
+	return &codexSessionError{summary: summary, cause: cause}
+}
+
+// openCodexSession spawns a codex app-server subprocess and completes the
+// mandatory handshake — initialize (with clientInfo) → thread/start → threadId —
+// returning a handle further turns can be issued on.
+//
+// params may carry "cwd" (string), threaded into thread/start so codex reviews
+// the right working tree, and "model" (string). thread/start is the SESSION-level
+// destination for the resolved model (REQ-CX2-002): ReviewStartParams declares
+// only {delivery, target, threadId} — it has no model field at all — so for the
+// review path the thread is the only place a model can reach codex.
+func openCodexSession(ctx context.Context, binaryPath string, params map[string]any) (*codexSessionHandle, error) {
+	return openCodexSessionOn(ctx, binaryPath, params, "")
+}
+
+// openCodexSessionOn is openCodexSession with an optional EXISTING thread to
+// resume (REQ-CX2-008). When resumeThreadID is empty the handshake opens a new
+// thread with thread/start — the unchanged path both existing callers take.
+// When it is set, thread/resume re-opens that thread instead, so no new thread
+// is started and the recorded id is the one every turn addresses.
+func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
 	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
 	if err != nil {
-		return inconclusiveReview("codex session start failed: " + err.Error()), err
+		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
 	}
-	defer func() { _ = conn.close() }()
 
 	// 1. initialize handshake (mandatory; clientInfo {name,version} required).
 	const initID = 1
 	if err := writeCodexRequest(conn, initID, codexMethodInitialize, map[string]any{
 		"clientInfo": map[string]any{"name": codexClientName, "version": codexClientVersion},
 	}); err != nil {
-		return inconclusiveReview("codex initialize write failed: " + err.Error()), err
+		return nil, codexHandshakeFailure(conn, "codex initialize write failed: "+err.Error(), err)
 	}
 	if _, err := awaitCodexResponse(conn, initID, ctx); err != nil {
-		return inconclusiveReview("codex initialize rejected: " + err.Error()), err
+		return nil, codexHandshakeFailure(conn, "codex initialize rejected: "+err.Error(), err)
 	}
 
-	// 2. thread/start → obtain threadId (required by review/start + turn/start).
+	// 2. thread/start (or thread/resume) → obtain threadId (required by
+	//    review/start + turn/start).
 	const threadIDReq = 2
+	threadMethod := codexMethodThreadStart
 	threadParams := map[string]any{}
+	if resumeThreadID != "" {
+		threadMethod = codexMethodThreadResume
+		threadParams["threadId"] = resumeThreadID
+	}
 	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
 		threadParams["cwd"] = cwd
 	}
-	if err := writeCodexRequest(conn, threadIDReq, codexMethodThreadStart, threadParams); err != nil {
-		return inconclusiveReview("codex thread/start write failed: " + err.Error()), err
+	if me := resolveCodexModelEffort(params); me.Model != "" {
+		threadParams["model"] = me.Model
+	}
+	if err := writeCodexRequest(conn, threadIDReq, threadMethod, threadParams); err != nil {
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" write failed: "+err.Error(), err)
 	}
 	thrResp, err := awaitCodexResponse(conn, threadIDReq, ctx)
 	if err != nil {
-		return inconclusiveReview("codex thread/start rejected: " + err.Error()), err
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" rejected: "+err.Error(), err)
 	}
 	threadID := extractThreadID(thrResp.Result)
 	if threadID == "" {
-		return inconclusiveReview("codex thread/start returned no thread id"), errors.New("codex thread/start: no thread id in result")
+		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" returned no thread id",
+			errors.New("codex "+threadMethod+": no thread id in result"))
 	}
 
-	// 3. caller's review/turn method with the corrected request shape.
-	const reviewID = 3
-	finalParams := buildCodexReviewParams(method, params, threadID)
-	if err := writeCodexRequest(conn, reviewID, method, finalParams); err != nil {
+	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1}, nil
+}
+
+// close tears the session's subprocess down (stdin close, bounded wait, kill).
+func (h *codexSessionHandle) close() error {
+	if h == nil || h.conn == nil {
+		return nil
+	}
+	return h.conn.close()
+}
+
+// pid reports the pid of the codex subprocess backing this session, or 0 when
+// the session has no backing process (a canned session, or a closed one).
+func (h *codexSessionHandle) pid() int {
+	if h == nil || h.conn == nil {
+		return 0
+	}
+	return codexConnPID(h.conn)
+}
+
+// noteTurnStarted records an observed turn id on the handle and fans it out to
+// the mid-flight observer, if one is installed.
+//
+// The write is guarded because the turn loop no longer always finishes before
+// its caller reads the id back: a turn abandoned at the REQ-CX2-017 bound keeps
+// running in its own goroutine while codex_task builds a result from the
+// handle. The observer fires OUTSIDE the lock — it writes a job record, which
+// has no business happening under a session mutex.
+func (h *codexSessionHandle) noteTurnStarted(turnID string) {
+	if turnID == "" {
+		return
+	}
+	h.mu.Lock()
+	h.turnID = turnID
+	observer := h.onTurnStarted
+	h.mu.Unlock()
+
+	if observer != nil {
+		observer(turnID)
+	}
+}
+
+// setTurnStartedObserver installs the mid-flight turn-id observer under the same
+// lock noteTurnStarted reads it through, so the field has one discipline rather
+// than one that happens to be safe because of where it is currently called.
+func (h *codexSessionHandle) setTurnStartedObserver(fn func(string)) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.onTurnStarted = fn
+}
+
+// currentTurnID reports the turn id observed so far, or "" when no turn/started
+// has arrived. It is the ONLY safe way to read the id from outside the turn
+// loop (see noteTurnStarted).
+func (h *codexSessionHandle) currentTurnID() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.turnID
+}
+
+// allocID hands out the next JSON-RPC request id. Ids must stay unique across
+// the whole session: a reused id would let awaitCodexResponse match an earlier
+// turn's response and return it as this turn's ack.
+func (h *codexSessionHandle) allocID() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	id := h.nextID
+	h.nextID++
+	return id
+}
+
+// sendTurnInterrupt sends turn/interrupt for the given thread and turn
+// (REQ-CX2-011). Both arguments are required by the method, so the caller must
+// have a recorded turnId — an empty one is a caller error rather than a
+// degradation to be papered over here.
+//
+// The response is deliberately NOT awaited. The job's own goroutine is inside
+// awaitCodexTurnReview draining this connection; a second reader would race it
+// for lines and could swallow the turn/completed notification the turn loop is
+// waiting for. What cancellation needs is the request to reach codex — the
+// outcome is observed as the turn ending, which the caller waits for through the
+// grace window instead.
+func (h *codexSessionHandle) sendTurnInterrupt(threadID, turnID string) error {
+	if threadID == "" || turnID == "" {
+		return fmt.Errorf("%s requires both threadId and turnId (got %q / %q)",
+			codexMethodTurnInterrupt, threadID, turnID)
+	}
+	return writeCodexRequest(h.conn, h.allocID(), codexMethodTurnInterrupt, map[string]any{
+		"threadId": threadID,
+		"turnId":   turnID,
+	})
+}
+
+// runTurn drives ONE turn on the session's existing thread: send the caller's
+// review/turn method with the corrected request shape → await the ack → await the
+// asynchronous turn completion → synthesize a ReviewOutput from codex's review
+// prose. On ANY error it returns an inconclusive ReviewOutput AND the error, so
+// the caller always has a fail-open-usable struct while still seeing the cause
+// (the error arm in awaitCodexResponse surfaces a JSON-RPC rejection verbatim).
+func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params map[string]any) (ReviewOutput, error) {
+	id := h.allocID()
+	finalParams := buildCodexReviewParams(method, params, h.threadID)
+	if err := writeCodexRequest(h.conn, id, method, finalParams); err != nil {
 		return inconclusiveReview("codex " + method + " write failed: " + err.Error()), err
 	}
 	// The review/start ack only confirms the turn started; the verdict comes later.
-	if _, err := awaitCodexResponse(conn, reviewID, ctx); err != nil {
+	if _, err := awaitCodexResponse(h.conn, id, ctx); err != nil {
 		return inconclusiveReview("codex " + method + " rejected: " + err.Error()), err
 	}
 
-	// 4. await the asynchronous turn completion and synthesize the verdict.
-	reviewText := awaitCodexTurnReview(conn, threadID, ctx)
+	reviewText := awaitCodexTurnReview(h.conn, h.threadID, ctx, h.noteTurnStarted)
 	if reviewText == "" {
 		return inconclusiveReview("codex review produced no verdict text"), errors.New("codex review produced no verdict text")
 	}
 	return synthesizeReviewOutput(reviewText), nil
+}
+
+// runCodexReviewRPC drives a full single-turn codex app-server JSON-RPC session:
+// the handshake (openCodexSession) → one turn (runTurn) → tear-down. It is
+// RETAINED as a thin caller over the reusable session so both existing consumers
+// — handleCodexAudit and the Stop-hook gate HandleCodexReviewGate — keep their
+// current behavior and signature semantics unchanged (C7 / plan.md §F AP-2: the
+// gate's fail-open depends on the (ReviewOutput, error) pair where the output is
+// always usable).
+//
+// The caller passes the FINAL review/turn method; the handshake is owned by
+// openCodexSession.
+func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
+	sess, err := openCodexSession(ctx, binaryPath, params)
+	if err != nil {
+		var sErr *codexSessionError
+		if errors.As(err, &sErr) {
+			return inconclusiveReview(sErr.summary), sErr.cause
+		}
+		return inconclusiveReview(err.Error()), err
+	}
+	defer func() { _ = sess.close() }()
+
+	return sess.runTurn(ctx, method, params)
 }
 
 // writeCodexRequest marshals and sends one JSON-RPC request line.
@@ -429,7 +790,23 @@ func extractThreadID(result json.RawMessage) string {
 // buildCodexReviewParams shapes the final review/turn request params with the
 // corrected protocol envelope: threadId is always added; review/start's target
 // is coerced to the internally-tagged object; turn/start's prompt is wrapped in
-// the input array the UserInput schema requires.
+// the input array the UserInput schema requires, and carries the resolved model
+// + effort.
+//
+// The model/effort destination is method-specific, and NOT a matter of taste —
+// it is what the protocol declares (codex-cli 0.146.1 `codex app-server
+// generate-json-schema`):
+//
+//   - TurnStartParams declares BOTH `model` (string|null) and `effort`
+//     (ReasoningEffort|null), so a turn carries them directly.
+//   - ReviewStartParams declares ONLY {delivery, target, threadId} — neither
+//     field exists. Injecting them would put unknown fields on the Stop-hook
+//     gate's own request path, so review/start carries neither and the session
+//     model rides thread/start instead (see openCodexSession).
+//
+// Before M1 this function built a fresh map that dropped the caller's `model`
+// entirely, so the `model` parameter advertised by codex_audit never reached
+// codex (spec.md §A.3 G3 — a live defect, not a missing feature).
 func buildCodexReviewParams(method string, params map[string]any, threadID string) map[string]any {
 	out := map[string]any{"threadId": threadID}
 	switch method {
@@ -441,8 +818,41 @@ func buildCodexReviewParams(method string, params map[string]any, threadID strin
 			prompt = codexAdversarialReviewPrompt("")
 		}
 		out["input"] = []map[string]any{{"type": "text", "text": prompt}}
+		me := resolveCodexModelEffort(params)
+		if me.Model != "" {
+			out["model"] = me.Model
+		}
+		if me.Effort != "" {
+			out["effort"] = me.Effort
+		}
+		// sandboxPolicy is forwarded ONLY when the caller supplied one, so the
+		// codex_audit / review-gate request stays byte-identical to its pre-M3
+		// shape (C7). codex_task supplies it on EVERY turn — see
+		// codexSandboxPolicy for why the non-writing turn is the one that must.
+		if policy, ok := params["sandboxPolicy"]; ok && policy != nil {
+			out["sandboxPolicy"] = policy
+		}
 	}
 	return out
+}
+
+// codexSandboxPolicy builds the internally-tagged SandboxPolicy object for a
+// turn: workspaceWrite when the write opt-in is granted, readOnly otherwise.
+//
+// It is called for EVERY turn codex_task starts, including the ones that did
+// not ask to write — and that is the whole point rather than a redundancy. The
+// protocol documents sandboxPolicy as overriding the policy "for this turn AND
+// SUBSEQUENT TURNS": the field is sticky on the thread, not scoped to one turn.
+// Under resume_last thread reuse (REQ-CX2-008), omitting the field on a
+// non-writing turn would let it inherit a write-enabled policy left behind by an
+// earlier turn that DID opt in — a route around the allow_write gate, since the
+// gate is read at request time while its effect outlives the request. Sending
+// readOnly explicitly is what closes it (REQ-CX2-007; plan.md §D M3 hazard).
+func codexSandboxPolicy(allowWrite bool) map[string]any {
+	if allowWrite {
+		return map[string]any{"type": codexSandboxWorkspaceWrite}
+	}
+	return map[string]any{"type": codexSandboxReadOnly}
 }
 
 // coerceCodexReviewTarget normalizes the target value to the internally-tagged
@@ -465,7 +875,12 @@ func coerceCodexReviewTarget(v any) map[string]any {
 // awaitCodexTurnReview reads notifications until turn/completed for threadID,
 // collecting the review prose from the exitedReviewMode item (preferred) or the
 // final agentMessage text (fallback). Returns "" on EOF / deadline (fail-open).
-func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) string {
+//
+// onTurnStarted, when non-nil, is invoked with the turn id carried by the
+// turn/started notification — the ONLY source of the turnId that turn/interrupt
+// requires (REQ-CX2-003). It fires mid-loop, so a background job persists the
+// id while the turn is still running rather than after it completes.
+func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) string {
 	reviewText, agentText := "", ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -479,6 +894,15 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) 
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
 			continue
 		}
+		// A line carrying BOTH a method and an id is a server→client REQUEST, and
+		// the turn stops until it is answered (REQ-CX2-016). It is handled before
+		// the thread filter below on purpose: an unrecognized request need not
+		// carry a threadId, and a request dropped for want of one stalls the turn
+		// exactly as surely as one dropped for want of a case.
+		if codexIsClientRequest(msg) {
+			answerCodexClientRequest(conn, msg)
+			continue
+		}
 		if msg.Method == "" { // a response, not a notification
 			continue
 		}
@@ -486,6 +910,10 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) 
 			continue
 		}
 		switch msg.Method {
+		case codexNotifyTurnStarted:
+			if onTurnStarted != nil {
+				onTurnStarted(codexTurnIDOf(msg.Params))
+			}
 		case "item/completed":
 			var p struct {
 				Item struct {
@@ -507,6 +935,73 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context) 
 	}
 }
 
+// codexIsClientRequest reports whether a decoded line is a server→client
+// REQUEST: a method AND an id. An explicit `"id":null` is a notification with a
+// noisy encoder, not a request — answering it would address nobody.
+func codexIsClientRequest(msg rpcMessage) bool {
+	if msg.Method == "" || len(msg.ID) == 0 {
+		return false
+	}
+	return strings.TrimSpace(string(msg.ID)) != "null"
+}
+
+// answerCodexClientRequest responds to a server→client request so the turn can
+// advance (REQ-CX2-016). A recognized approval request is DENIED; anything else
+// gets a JSON-RPC error arm, which unblocks the turn just as well as a result
+// would and states plainly that this client does not implement the method.
+//
+// The write happens from inside the read loop while the turn's caller is
+// blocked in it. That is the established shape here, not a new hazard:
+// sendTurnInterrupt already writes from a second goroutine while the turn's own
+// goroutine sits in this loop, and a live session exercised exactly that
+// (progress.md §E.2 Item 2). No locking is added on the assumption it is
+// needed.
+//
+// A write failure is deliberately swallowed: the connection is already broken,
+// the turn will end by EOF, and there is no caller here to hand an error to.
+func answerCodexClientRequest(conn codexConn, msg rpcMessage) {
+	if msg.Method == codexRequestFileChangeApproval {
+		_ = writeCodexResponse(conn, msg.ID, map[string]any{"decision": codexApprovalDecisionDecline})
+		return
+	}
+	_ = writeCodexErrorResponse(conn, msg.ID, codexRPCMethodNotFound,
+		"moai codex client does not implement "+msg.Method)
+}
+
+// writeCodexResponse sends one JSON-RPC RESULT response line, echoing the
+// request's id verbatim. It is a second small writer rather than a reuse of
+// writeCodexRequest, which builds a request envelope (method + params + id);
+// a response carries id + result and no method.
+//
+// The id is echoed as raw JSON so an integer id stays an integer and a string
+// id stays a string — the server matches on the value it sent, and codex sends
+// integer ids from its own counter (id 0 was the observed first one).
+func writeCodexResponse(conn codexConn, id json.RawMessage, result any) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"result":  result,
+	})
+}
+
+// writeCodexErrorResponse sends one JSON-RPC ERROR response line.
+func writeCodexErrorResponse(conn codexConn, id json.RawMessage, code int, message string) error {
+	return writeCodexEnvelope(conn, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"error":   map[string]any{"code": code, "message": message},
+	})
+}
+
+// writeCodexEnvelope marshals and sends one NDJSON line.
+func writeCodexEnvelope(conn codexConn, envelope map[string]any) error {
+	b, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return conn.send(string(b))
+}
+
 // bestCodexReviewText prefers the structured exitedReviewMode review over the
 // free-form agentMessage text (both carry the same prose in practice).
 func bestCodexReviewText(review, agent string) string {
@@ -514,6 +1009,23 @@ func bestCodexReviewText(review, agent string) string {
 		return review
 	}
 	return agent
+}
+
+// codexTurnIDOf reads turn.id from a turn/started notification's params. The
+// generated protocol schema (codex-cli 0.146.1) declares TurnStartedParams as
+// {threadId, turn} with Turn.id required; that id is what turn/interrupt
+// expects as its turnId (M0 probe, progress.md §E.2 (a)).
+func codexTurnIDOf(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		Turn struct {
+			ID string `json:"id"`
+		} `json:"turn"`
+	}
+	_ = json.Unmarshal(params, &p)
+	return p.Turn.ID
 }
 
 // codexThreadIDOf reads threadId from a notification's params.
@@ -631,10 +1143,18 @@ func codexReviewToolResult(out ReviewOutput) *mcp.CallToolResult {
 func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	installed := err == nil && binaryPath != ""
+	projectDir := projectDirResolver()
 	result := map[string]any{
-		"installed":          installed,
-		"auth_provider":      codexAuthUnknown,
-		"enable_review_gate": readCodexReviewGateEnabled(resolveProjectDir()),
+		"installed":     installed,
+		"auth_provider": codexAuthUnknown,
+		// enable_review_gate and allow_write are the two codex opt-ins, reported
+		// through the SAME fail-closed reads the gates themselves perform.
+		// allow_write's inspectability here is load-bearing, not a convenience:
+		// the write-mode opt-in was made a config key rather than an environment
+		// variable precisely BECAUSE the key is visible to codex_setup
+		// (REQ-CX2-007; plan.md §D M0 write-mode decision, rejected alternative).
+		"enable_review_gate": readCodexReviewGateEnabled(projectDir),
+		"allow_write":        readCodexTaskAllowWrite(projectDir),
 		"node_bridge":        false, // explicit: REQ-MCP-007 Go-only reimplementation
 	}
 	if !installed {
@@ -727,4 +1247,48 @@ func readCodexReviewGateEnabled(projectDir string) bool {
 		return false
 	}
 	return doc.Workflow.Codex.ReviewGate.Enabled
+}
+
+// readCodexTaskAllowWrite reads workflow.codex.task.allow_write from
+// `.moai/config/sections/workflow.yaml` (REQ-CX2-007). It is the sibling of
+// readCodexReviewGateEnabled above and shares its truth table verbatim
+// (fail-CLOSED — the opt-in default is OFF):
+//
+//   - file missing / unreadable                   → false
+//   - YAML parse error                            → false
+//   - `workflow.codex.task` block absent          → false (Go zero-value default)
+//   - `workflow.codex.task.allow_write: false`    → false
+//   - `workflow.codex.task.allow_write: true`     → true
+//
+// The key path is NESTED under the file's `workflow:` root, matching the shape
+// config.Loader expects and the shape the sibling gate reads; the flat form is
+// NOT accepted as an alias. Failing closed here is the difference between a
+// misconfigured project running codex read-only and a misconfigured project
+// handing an external MCP host write access to its working tree (spec.md §H R3).
+//
+// The distributed default is false and lives in internal/config/defaults.go
+// (CodexTaskConfig.AllowWrite); the typed field is internal/config/types.go.
+// No template file carries this key (§25 / REQ-CX2-015).
+func readCodexTaskAllowWrite(projectDir string) bool {
+	if projectDir == "" {
+		return false
+	}
+	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return false
+	}
+	var doc struct {
+		Workflow struct {
+			Codex struct {
+				Task struct {
+					AllowWrite bool `yaml:"allow_write"`
+				} `yaml:"task"`
+			} `yaml:"codex"`
+		} `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return false
+	}
+	return doc.Workflow.Codex.Task.AllowWrite
 }

@@ -1,3 +1,8 @@
+---
+description: "Read-only verification batching rationale + class taxonomy (loads at run/sync-phase completion)"
+paths: "**/.moai/specs/**,**/.claude/skills/moai/workflows/run.md,**/.claude/skills/moai/workflows/sync/**,**/verification-batch-pattern.md,**/agent-common-protocol.md"
+---
+
 # Verification Batch Pattern
 
 Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Motivation: reduces serial-verification round-trip latency at run-phase completion.
@@ -57,33 +62,7 @@ The orchestrator's response contains multiple Bash tool calls within a single as
 
 ## Attributable diff-check pattern (SPEC-SYNC-PARALLEL-DOCS-001 A9)
 
-The canonical 7-command batch defaults to RE-EXECUTION. The A9 attributable diff-check is an opt-in composition path that SUBSTITUTES re-execution with a diff-check against the shared diagnostic snapshot + the manager-develop §E evidence — without weakening the `verification-claim-integrity.md` §1.1 invariant. This section owns the pattern + the fallback contract; the doctrinal switch that selects the path lives in `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch.
-
-### Diff-check predicate (all-three attribution match)
-
-For each verification dimension (test / lint / vet / cover / subagent-boundary / sentinel-key / CLI-smoke), the orchestrator SHALL evaluate the following three-way match BEFORE re-executing the corresponding command:
-
-| Match axis | Predicate | On failure |
-|---|---|---|
-| **(1) Snapshot key** | `moai verify check --key-current` key == §E-cited HEAD SHA | `snapshot_key_drift` → fallback |
-| **(2) Command** | snapshot-recorded command == §E-cited command (a) | `command_drift` → fallback |
-| **(3) Output** | snapshot-recorded output == §E-cited observed output (b) | `missing_section_e` → fallback (if §E missing) OR `output_drift` → fallback |
-
-When all three hold, the orchestrator CONSUMES the §E evidence for that dimension and DOES NOT re-execute. The batch row is marked `PASS-attributed` with baseline-attribution = `(snapshot key, §E evidence path)` per VCI §2. When any axis fails, the orchestrator FALLS BACK to re-execution for that dimension and logs the mismatch reason.
-
-### Fallback-to-re-execution contract (SPEC-SYNC-PARALLEL-DOCS-001 A9 — the safety boundary)
-
-The fallback is the safety boundary A9 exists to preserve. Omitting it turns the diff-check into a verification bypass that violates `verification-claim-integrity.md` §1.1 (the named anti-pattern AP-SPD-001 in `SPEC-SYNC-PARALLEL-DOCS-001/plan.md` §G). The fallback contract binds three properties:
-
-1. **Any-mismatch → re-execution, NOT silent skip.** A snapshot-key drift, command drift, OR missing-§E evidence MUST restore re-execution of the affected dimension. The batch NEVER marks a dimension PASS without either (a) a fresh re-executed output OR (b) a fully-matched attributable §E evidence triple.
-2. **Mismatch reason logged.** The batch records the mismatch reason (`snapshot_key_drift` / `command_drift` / `missing_section_e` / `output_drift`) in the verification report so a later audit can reconstruct which path was taken per dimension.
-3. **VCI §1.1 invariant holds on every path.** Both the consume-path (b) and the fallback-path (a) produce attributable evidence satisfying VCI §1.1 surface 1 (orchestrator self-report); there is NO third "silent skip" path.
-
-The diff-check is strictly additive: it collapses wall-time on the happy path (all-three match → no re-execution) while preserving the verification invariant on every path. A regression that silently drops the fallback re-introduces AP-SPD-001 (the named anti-pattern in `SPEC-SYNC-PARALLEL-DOCS-001/plan.md` §G).
-
-### When the diff-check does NOT apply
-
-The diff-check predicates on the shared diagnostic snapshot (`moai verify check --key-current`), so it applies ONLY where the snapshot interface is reachable. When the snapshot CLI is absent, returns stale, or the §E evidence was recorded against a different tree, the orchestrator proceeds directly to re-execution — the diff-check is opt-in per-dimension, never mandatory. This is the SPEC-SYNC-PARALLEL-DOCS-001 A9 fallback operating at the composition layer, identical to the per-mismatch fallback but at coarser granularity.
+> Thin pointer — the SSOT for the attributable diff-check doctrinal switch + its fallback contract lives in `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch. That section owns: the three-way attribution predicate (snapshot key / command / output), the CONSUME-vs-re-execute default-inversion, the mismatch-reason enum (`snapshot_key_drift` / `command_drift` / `missing_section_e` / `output_drift`), and the fallback-to-re-execution safety boundary. This file owns only the *why* (grouping rationale + class taxonomy above).
 
 ## Cross-references
 

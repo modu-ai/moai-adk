@@ -89,15 +89,52 @@ func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) 
 func enterFactoryMode(specID string) func() {
 	restoreFactory := captureEnvState(config.EnvMoaiFactory)
 	restoreSpec := captureEnvState(config.EnvMoaiFactorySpec)
+	restoreID := captureEnvState(config.EnvMoaiFactoryID)
+	restoreAddr := captureEnvState(config.EnvMoaiFactoryLeadAddr)
 
 	_ = os.Setenv(config.EnvMoaiFactory, "1")
+	runID := factory.NewRunID()
+	_ = os.Setenv(config.EnvMoaiFactoryID, runID)
 	if specID != "" {
 		_ = os.Setenv(config.EnvMoaiFactorySpec, specID)
 	}
+	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
+	// SessionStart hook to print. The actual messaging-substrate address is a
+	// run-phase concern; this conventional path-shaped value gives the notice
+	// a non-empty, grep-friendly address line.
+	_ = os.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-"+runID)
 
 	return func() {
+		restoreAddr()
+		restoreID()
 		restoreSpec()
 		restoreFactory()
+	}
+}
+
+// enterFactoryCompanionMode publishes the companion signal for a `<role>-<id>`
+// label and returns the function that puts the environment back, on the same
+// prior-presence contract as enterFactoryMode.
+//
+// It deliberately does NOT set config.EnvMoaiFactory: that variable seeds the
+// chain, and only the lead drives the chain. What the companion shares with the
+// lead is the raised Stop-hook block cap, which the inject reads from either
+// variable.
+//
+// The run id is derived from the label rather than carried separately, so the
+// two can never disagree.
+func enterFactoryCompanionMode(label string) func() {
+	restoreLabel := captureEnvState(config.EnvMoaiFactoryLabel)
+	restoreID := captureEnvState(config.EnvMoaiFactoryID)
+
+	_ = os.Setenv(config.EnvMoaiFactoryLabel, label)
+	if _, runID, ok := factory.SplitCompanionLabel(label); ok {
+		_ = os.Setenv(config.EnvMoaiFactoryID, runID)
+	}
+
+	return func() {
+		restoreID()
+		restoreLabel()
 	}
 }
 
@@ -131,6 +168,54 @@ func recordFactorySession(specID, backend string) {
 	factory.WriteBestEffort(projectRoot, factory.NewRecord(sessionID, specID, backend))
 }
 
+// The tokens claude uses to name a session. moai RECOGNIZES them; it never
+// consumes them — the value has to reach claude unchanged.
+const (
+	nameFlagLong  = "--name"
+	nameFlagShort = "-n"
+)
+
+// parseCompanionLabel reports the companion label in args, if any.
+//
+// It matches only the companion SHAPE (factory.SplitCompanionLabel) because the
+// alternative discriminators are worse. Treating every named session as a
+// companion would
+// silently raise the Stop-hook block cap from 8 to 200 for unrelated work, and a
+// state file the lead writes and companions read buys nothing here beyond one
+// more file to keep consistent.
+//
+// The `--` discipline matches parseFactoryFlag, stripSpawnFlag, parseProfileFlag
+// and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
+// nothing beyond it. args is returned to the caller untouched.
+func parseCompanionLabel(args []string) (label string, ok bool) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			break
+		}
+
+		var candidate string
+		switch {
+		case arg == nameFlagLong || arg == nameFlagShort:
+			if next := i + 1; next < len(args) {
+				candidate = args[next]
+				i = next
+			}
+		case strings.HasPrefix(arg, nameFlagLong+"="):
+			candidate = strings.TrimPrefix(arg, nameFlagLong+"=")
+		case strings.HasPrefix(arg, nameFlagShort+"="):
+			candidate = strings.TrimPrefix(arg, nameFlagShort+"=")
+		default:
+			continue
+		}
+
+		if _, _, isCompanion := factory.SplitCompanionLabel(candidate); isCompanion {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
 // rejectFactoryOnCG returns the sentinel-bearing error when a factory token
 // appears in a `moai cg` invocation, and nil otherwise.
 func rejectFactoryOnCG(args []string) error {
@@ -140,4 +225,40 @@ func rejectFactoryOnCG(args []string) error {
 	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+
 		"which contradicts Factory Mode's one-session / one-backend / one-chain premise; "+
 		"use 'moai cc --factory' or 'moai glm --factory' instead", factoryUnsupportedBackendSentinel)
+}
+
+// factoryBranch enumerates the three dispatch outcomes of the §A.2 truth table.
+type factoryBranch int
+
+const (
+	factoryBranchNone     factoryBranch = iota // no-op — -f absent (regardless of --name shape)
+	factoryBranchLead                          // -f present, --name is NOT companion-shape
+	factoryBranchCompanion                     // -f present, --name IS companion-shape
+)
+
+// resolveFactoryBranch selects the dispatch branch from the combination of -f
+// present and companion-shape --name present.
+//
+// This is the four-row truth table at spec.md §A.2 (REQ-FB-001, REQ-FB-002):
+//
+//	factoryEnabled | isCompanion || branch
+//	---------------++--------------
+//	      true      |    false     || lead       (-f alone, or -f --name <non-companion>)
+//	      true      |    true      || companion  (-f --name <role>-<run-id>)
+//	      false     |    false     || no-op      (--name <non-companion>, or no --name)
+//	      false     |    true      || no-op      (--name <companion-shape> alone — BREAKING from 94025ce0a)
+//
+// The two !factoryEnabled rows collapse to no-op because `isCompanion` is
+// consulted only when -f is present (spec.md §A.2.1 / AC-FB-027): a companion-
+// shape --name alone, which entered companion mode under 94025ce0a, is
+// reclassified as a no-op by REQ-FB-001's no-`-f` clause.
+func resolveFactoryBranch(factoryEnabled, isCompanion bool) factoryBranch {
+	switch {
+	case factoryEnabled && isCompanion:
+		return factoryBranchCompanion
+	case factoryEnabled && !isCompanion:
+		return factoryBranchLead
+	default:
+		return factoryBranchNone
+	}
 }
