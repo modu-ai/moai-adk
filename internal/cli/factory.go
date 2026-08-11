@@ -90,14 +90,22 @@ func enterFactoryMode(specID string) func() {
 	restoreFactory := captureEnvState(config.EnvMoaiFactory)
 	restoreSpec := captureEnvState(config.EnvMoaiFactorySpec)
 	restoreID := captureEnvState(config.EnvMoaiFactoryID)
+	restoreAddr := captureEnvState(config.EnvMoaiFactoryLeadAddr)
 
 	_ = os.Setenv(config.EnvMoaiFactory, "1")
-	_ = os.Setenv(config.EnvMoaiFactoryID, factory.NewRunID())
+	runID := factory.NewRunID()
+	_ = os.Setenv(config.EnvMoaiFactoryID, runID)
 	if specID != "" {
 		_ = os.Setenv(config.EnvMoaiFactorySpec, specID)
 	}
+	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
+	// SessionStart hook to print. The actual messaging-substrate address is a
+	// run-phase concern; this conventional path-shaped value gives the notice
+	// a non-empty, grep-friendly address line.
+	_ = os.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-"+runID)
 
 	return func() {
+		restoreAddr()
 		restoreID()
 		restoreSpec()
 		restoreFactory()

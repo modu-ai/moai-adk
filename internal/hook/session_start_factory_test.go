@@ -2,6 +2,7 @@ package hook
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -14,7 +15,14 @@ import (
 // returned to its prior value when the test ends.
 func clearFactoryEnv(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{config.EnvMoaiFactory, config.EnvMoaiFactoryID, config.EnvMoaiFactoryLabel} {
+	for _, key := range []string{
+		config.EnvMoaiFactory,
+		config.EnvMoaiFactoryID,
+		config.EnvMoaiFactorySpec,
+		config.EnvMoaiFactoryLabel,
+		config.EnvMoaiFactorySettingsInjected,
+		config.EnvMoaiFactoryLeadAddr,
+	} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
@@ -32,11 +40,14 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 }
 
 // TestFactoryBootstrapNoticeLead asserts the lead branch names the run and
-// carries one launch command per companion role.
+// carries one launch command per companion role, each now carrying -f
+// (AC-FB-015: the companion launch lines are factory-membership commands, not
+// the bare --name form the prior-art notice printed).
 func TestFactoryBootstrapNoticeLead(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactory, "1")
 	t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-tjlgt1")
 
 	got := factoryBootstrapNotice()
 	if got == "" {
@@ -46,7 +57,7 @@ func TestFactoryBootstrapNoticeLead(t *testing.T) {
 		t.Errorf("notice omits the run id: %q", got)
 	}
 	for _, role := range factory.CompanionRoles {
-		want := "moai cc --name " + role + "-tjlgt1"
+		want := "moai cc -f --name " + role + "-tjlgt1"
 		if !strings.Contains(got, want) {
 			t.Errorf("notice omits %q:\n%s", want, got)
 		}
@@ -59,31 +70,32 @@ func TestFactoryBootstrapNoticeLead(t *testing.T) {
 	if strings.Count(got, "moai glm") != 1 {
 		t.Errorf("expected exactly one 'moai glm' line:\n%s", got)
 	}
-	// No companion may carry the factory token; the notice must not suggest it.
-	if strings.Contains(got, "--factory") || strings.Contains(got, "moai cc -f") {
-		t.Errorf("notice invites a companion to carry the chain seed:\n%s", got)
-	}
 }
 
-// TestFactoryBootstrapNoticeCompanion asserts the companion branch confirms its
-// role and run — and, critically, never prints the launch block, which would
-// have four sessions each inviting four more.
+// TestFactoryBootstrapNoticeCompanion asserts the companion branch is role-less
+// (AC-FB-016): it names the run, does NOT name the role, and never prints the
+// launch block.
 func TestFactoryBootstrapNoticeCompanion(t *testing.T) {
 	for _, role := range factory.CompanionRoles {
 		t.Run(role, func(t *testing.T) {
 			clearFactoryEnv(t)
 			t.Setenv(config.EnvMoaiFactoryLabel, factory.CompanionLabel(role, "tjlgt1"))
-			t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
 
 			got := factoryBootstrapNotice()
-			if !strings.Contains(got, role) || !strings.Contains(got, "tjlgt1") {
-				t.Errorf("companion notice = %q, want it to name role %q and run %q", got, role, "tjlgt1")
+			if !strings.Contains(got, "tjlgt1") {
+				t.Errorf("companion notice = %q, want it to name run %q", got, "tjlgt1")
+			}
+			// AC-FB-016: the prior-art role clause ("as the X companion") and the
+			// word "companion" must NOT appear. (A role name like "run" can appear
+			// as part of "joined run <id>" — that is the allowed exception.)
+			if strings.Contains(got, "as the ") {
+				t.Errorf("companion notice carries the prior-art role clause:\n%s", got)
+			}
+			if strings.Contains(got, "companion") {
+				t.Errorf("companion notice contains the word \"companion\" (role-less per AC-FB-016):\n%s", got)
 			}
 			if strings.Contains(got, "--name") {
 				t.Errorf("companion printed the launch block (recursive bootstrap):\n%s", got)
-			}
-			if strings.Count(got, "\n") != 0 {
-				t.Errorf("companion notice should be a single line, got:\n%s", got)
 			}
 		})
 	}
@@ -125,8 +137,161 @@ func TestFactoryBootstrapNoticeLabelWinsOverFactory(t *testing.T) {
 	if strings.Contains(got, "--name") {
 		t.Errorf("a labelled session printed the launch block:\n%s", got)
 	}
-	if !strings.Contains(got, "companion") {
-		t.Errorf("expected the companion notice, got: %q", got)
+	if !strings.Contains(got, "tjlgt1") {
+		t.Errorf("expected the companion notice to name the run, got: %q", got)
+	}
+}
+
+// ── M3 ACs ──
+
+// TestFactoryLeadNoticeFullContent is AC-FB-013: the lead notice carries, in
+// order: (a) run id; (b) four companion lines each matching
+// `moai cc -f --name (plan|run|review|sync)-<run-id>`; (c) a non-empty leader
+// socket path line; (d) an inbound-automation notice; (e) the SPEC identifier.
+func TestFactoryLeadNoticeFullContent(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactoryID, "abc123")
+	t.Setenv(config.EnvMoaiFactorySpec, "SPEC-FOO-001")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-abc123")
+	t.Setenv(config.EnvMoaiFactorySettingsInjected, "1")
+
+	got := factoryLeadNotice("abc123")
+
+	// (a) run id
+	if !strings.Contains(got, "abc123") {
+		t.Errorf("notice omits run id abc123:\n%s", got)
+	}
+
+	// (b) four companion lines carrying -f
+	lineRe := regexp.MustCompile(`(?m)^moai cc -f --name (plan|run|review|sync)-abc123$`)
+	matches := lineRe.FindAllString(got, -1)
+	if len(matches) != 4 {
+		t.Errorf("expected 4 companion lines matching the regex, got %d:\n%s", len(matches), got)
+	}
+
+	// (c) leader socket path — a non-empty path-shaped line
+	if !strings.Contains(got, "/tmp/moai-factory-abc123") {
+		t.Errorf("notice omits the leader socket path:\n%s", got)
+	}
+
+	// (d) inbound-automation notice
+	if !strings.Contains(strings.ToLower(got), "auto-accept") {
+		t.Errorf("notice lacks the inbound-automation line:\n%s", got)
+	}
+
+	// (e) SPEC identifier
+	if !strings.Contains(got, "SPEC-FOO-001") {
+		t.Errorf("notice omits the SPEC identifier:\n%s", got)
+	}
+
+	// Ordering: run id must appear before the companion lines, which must
+	// appear before the SPEC identifier.
+	runIDIdx := strings.Index(got, "abc123")
+	specIdx := strings.Index(got, "SPEC-FOO-001")
+	if runIDIdx < 0 || specIdx < 0 || runIDIdx >= specIdx {
+		t.Errorf("ordering: run id must precede SPEC id (runIDIdx=%d, specIdx=%d):\n%s", runIDIdx, specIdx, got)
+	}
+}
+
+// TestFactoryLeadNoticeOmitsSPECWhenUnset is AC-FB-014: the SPEC line is
+// omitted entirely when MOAI_FACTORY_SPEC is unset (not printed as an empty
+// placeholder).
+func TestFactoryLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactoryID, "abc123")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-abc123")
+
+	got := factoryLeadNotice("abc123")
+	// No line should contain a SPEC- prefixed identifier.
+	if strings.Contains(got, "SPEC-") {
+		t.Errorf("notice contains a SPEC- identifier when MOAI_FACTORY_SPEC is unset:\n%s", got)
+	}
+}
+
+// TestFactoryLeadNoticeCompanionLinesCarryF is AC-FB-015: each companion line
+// matches `^moai (cc|glm) -f --name (plan|run|review|sync)-<run-id>$`.
+func TestFactoryLeadNoticeCompanionLinesCarryF(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactoryID, "xyz789")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-xyz789")
+
+	got := factoryLeadNotice("xyz789")
+	re := regexp.MustCompile(`(?m)^moai (cc|glm) -f --name (plan|run|review|sync)-xyz789$`)
+	matches := re.FindAllString(got, -1)
+	if len(matches) < 4 {
+		t.Errorf("expected ≥4 lines matching the companion-launch regex, got %d:\n%s", len(matches), got)
+	}
+	// The bare --name form (no -f) must NOT appear.
+	bareRe := regexp.MustCompile(`(?m)^moai cc --name (plan|run|review|sync)-xyz789$`)
+	if bareRe.FindString(got) != "" {
+		t.Errorf("bare --name companion line found (prior-art form; must carry -f):\n%s", got)
+	}
+}
+
+// TestFactoryCompanionNoticeRoleless is AC-FB-016: the companion notice is
+// join-only and role-less — it names the run and does NOT contain the word
+// "companion" or the prior-art "as the X companion" clause. (A role name like
+// "run" can appear as part of "joined run <id>" — the allowed exception per
+// AC-FB-016's "other than as part of the run id" qualifier.)
+func TestFactoryCompanionNoticeRoleless(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryLabel, "run-abc123")
+
+	got := factoryCompanionNotice("run-abc123")
+	if !strings.Contains(got, "abc123") {
+		t.Errorf("companion notice does not name the run: %q", got)
+	}
+	if strings.Contains(got, "companion") {
+		t.Errorf("companion notice contains \"companion\": %q", got)
+	}
+	if strings.Contains(got, "as the ") {
+		t.Errorf("companion notice carries the prior-art role clause: %q", got)
+	}
+}
+
+// TestFactoryCompanionNoticeFailOpen is AC-FB-016a: when MOAI_FACTORY_LABEL is
+// unset OR SplitCompanionLabel returns ok=false, the notice is the empty
+// string (no notice emitted, no error raised, the launch proceeds).
+func TestFactoryCompanionNoticeFailOpen(t *testing.T) {
+	t.Run("empty label", func(t *testing.T) {
+		clearFactoryEnv(t)
+		if got := factoryCompanionNotice(""); got != "" {
+			t.Errorf("empty label produced a notice: %q", got)
+		}
+	})
+	t.Run("malformed label (empty run-id portion)", func(t *testing.T) {
+		clearFactoryEnv(t)
+		if got := factoryCompanionNotice("run-"); got != "" {
+			t.Errorf("malformed label produced a notice: %q", got)
+		}
+	})
+	t.Run("non-companion label", func(t *testing.T) {
+		clearFactoryEnv(t)
+		if got := factoryCompanionNotice("oauth-migration"); got != "" {
+			t.Errorf("non-companion label produced a notice: %q", got)
+		}
+	})
+}
+
+// TestFactoryCompanionNoticeJoinOnly is AC-FB-017: the companion notice is a
+// single line acknowledging the join (matching "joined run <id>") and does NOT
+// print the four-companion launch block.
+func TestFactoryCompanionNoticeJoinOnly(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactoryLabel, "run-abc123")
+
+	got := factoryCompanionNotice("run-abc123")
+	if !strings.Contains(got, "joined run abc123") {
+		t.Errorf("companion notice does not match \"joined run <id>\": %q", got)
+	}
+	if strings.Contains(got, "--name") {
+		t.Errorf("companion notice printed the launch block: %q", got)
+	}
+	if strings.Count(got, "\n") != 0 {
+		t.Errorf("companion notice should be a single line, got:\n%s", got)
 	}
 }
 
@@ -138,6 +303,7 @@ func TestFactoryLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactory, "1")
 	t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-tjlgt1")
 	// EnvMoaiFactorySettingsInjected is UNSET → the launcher did not inject.
 	t.Setenv(config.EnvMoaiFactorySettingsInjected, "")
 	_ = os.Unsetenv(config.EnvMoaiFactorySettingsInjected)
@@ -160,6 +326,7 @@ func TestFactoryLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
 	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactory, "1")
 	t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
+	t.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-tjlgt1")
 	t.Setenv(config.EnvMoaiFactorySettingsInjected, "1")
 
 	got := factoryLeadNotice("tjlgt1")

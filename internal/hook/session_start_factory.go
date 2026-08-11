@@ -34,11 +34,19 @@ func factoryBootstrapNotice() string {
 	return factoryLeadNotice(os.Getenv(config.EnvMoaiFactoryID))
 }
 
-// factoryLeadNotice is the lead branch: the run id and the four commands that
-// bring the companions up.
+// factoryLeadNotice is the lead branch. It carries, in order: (a) the run id;
+// (b) the four companion launch lines, each carrying -f; (c) the leader socket
+// path; (d) an inbound-automation notice; (e) the SPEC identifier (only when
+// MOAI_FACTORY_SPEC is set).
 //
 // Bootstrap is manual because a session cannot launch another session, and the
 // notice says so rather than leaving the operator to discover it.
+//
+// The companion launch lines carry -f (AC-FB-015) so the operator copies a
+// factory-membership command, not the bare --name form the prior-art notice
+// printed. The role-name clause is removed from the companion notice
+// (AC-FB-016) to avoid colliding with the role-declaration contract owned by
+// SPEC-KANBAN-BOOTSTRAP-001 REQ-KS-006 (spec.md §A.6).
 func factoryLeadNotice(runID string) string {
 	if runID == "" {
 		return ""
@@ -49,31 +57,41 @@ func factoryLeadNotice(runID string) string {
 	b.WriteString("This session drives the chain; the four companions below are launched by hand, " +
 		"one per new terminal, because a session cannot launch another session.\n")
 	for _, role := range factory.CompanionRoles {
-		fmt.Fprintf(&b, "  moai cc --name %s\n", factory.CompanionLabel(role, runID))
+		fmt.Fprintf(&b, "moai cc -f --name %s\n", factory.CompanionLabel(role, runID))
 	}
-	b.WriteString("Substitute 'moai glm' for 'moai cc' on any companion to run it on the GLM backend.\n")
-	// Inbound-automation notice: the line printed depends on whether the launcher
-	// injected a transient settings file (auto-accept is active) or whether the
-	// operator supplied their own --settings / a write failure degraded to
-	// fail-open (the operator must verify the field themselves).
+	b.WriteString("Substitute 'moai glm -f --name ...' for 'moai cc -f --name ...' on any companion to run it on the GLM backend.\n")
+	// (c) leader socket path — printed only when the launcher captured one.
+	if addr := os.Getenv(config.EnvMoaiFactoryLeadAddr); addr != "" {
+		fmt.Fprintf(&b, "Leader socket: %s\n", addr)
+	}
+	// (d) inbound-automation notice: the line printed depends on whether the
+	// launcher injected a transient settings file (auto-accept is active) or
+	// whether the operator supplied their own --settings / a write failure
+	// degraded to fail-open (the operator must verify the field themselves).
 	if os.Getenv(config.EnvMoaiFactorySettingsInjected) == "1" {
-		b.WriteString("Cross-session messages are auto-accepted via the injected --settings.")
+		b.WriteString("Cross-session messages are auto-accepted via the injected --settings.\n")
 	} else {
 		b.WriteString("Verify \"crossSessionInbound\": \"accept\" is present in your --settings file " +
-			"so cross-session messages are accepted.")
+			"so cross-session messages are accepted.\n")
+	}
+	// (e) SPEC identifier — printed ONLY when MOAI_FACTORY_SPEC is set.
+	if spec := os.Getenv(config.EnvMoaiFactorySpec); spec != "" {
+		fmt.Fprintf(&b, "SPEC: %s", spec)
 	}
 	return b.String()
 }
 
-// factoryCompanionNotice is the companion branch: one line naming the role and
-// the run it joined.
+// factoryCompanionNotice is the companion branch: a single role-less line
+// acknowledging the join. It does NOT print the launch block (four sessions
+// each inviting four more is the failure this separation exists to prevent).
 //
-// It must never print the launch block — four sessions each inviting four more
-// is the failure this separation exists to prevent.
+// AC-FB-016 / AC-FB-016a: the notice names the run id and is role-less. When
+// the label does not parse (ok=false) the notice is the empty string
+// (fail-open, C8) — no notice emitted, no error raised, the launch proceeds.
 func factoryCompanionNotice(label string) string {
-	role, runID, ok := factory.SplitCompanionLabel(label)
+	_, runID, ok := factory.SplitCompanionLabel(label)
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("Factory Mode: joined run %s as the %s companion.", runID, role)
+	return fmt.Sprintf("Factory Mode: joined run %s.", runID)
 }
