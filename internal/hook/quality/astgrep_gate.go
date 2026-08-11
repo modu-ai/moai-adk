@@ -86,6 +86,21 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 		return true, ""
 	}
 
+	// SPEC-GATE-ASTGREP-REPAIR-001 M2 (REQ-GAR-004/005): exclude findings whose
+	// file paths fall under roots ast-grep should not surface. The primary
+	// mechanism (sgconfig.yml `globs:`) is NOT supported by ast-grep 0.40.5 in
+	// config-mode (empirically verified — the field silently breaks the scan).
+	// .gitignore already excludes .claude/worktrees/ for the default scan, but
+	// test files, testdata, and vendor are not gitignored, so this filter is the
+	// authoritative exclusion boundary. Applied at the gate layer (NOT in
+	// scanner.go, whose Scan body is preserved by REQ-GAR-010) so both the
+	// PreToolUse path and the standalone `moai gate` CLI path share one filter.
+	findings = filterExcludedPaths(findings)
+
+	if len(findings) == 0 {
+		return true, ""
+	}
+
 	// Format results
 	var sb strings.Builder
 	sb.WriteString("ast-grep domain rule scan results:\n\n")
@@ -128,6 +143,51 @@ func DefaultAstGrepGateConfig() *AstGrepGateConfig {
 }
 
 const astGrepScanTimeout = 30 * time.Second
+
+// astGrepExcludedPathPatterns lists path substrings that mark a finding's file
+// as out-of-scope for the ast-grep gate. SPEC-GATE-ASTGREP-REPAIR-001 M2
+// (REQ-GAR-004/005): worktree duplicates, vendored code, test sources, and
+// test fixtures do not represent project quality regressions and are filtered
+// out at the gate layer before reporting/blocking.
+//
+// Substring match on the FORWARD-SLASH path keeps the filter cross-platform
+// and resolution-free: ast-grep emits forward-slash paths in its JSON output
+// regardless of OS, so no filepath.ToSlash conversion is needed at the call
+// site. The `_test.go` entry is suffix-shaped (no leading slash) so it catches
+// both top-level and nested test files.
+var astGrepExcludedPathPatterns = []string{
+	".claude/worktrees/",
+	"/vendor/",
+	"/testdata/",
+	"_test.go",
+}
+
+// filterExcludedPaths returns findings whose file paths do NOT fall under any
+// excluded root. It is case-sensitive and uses substring containment on the
+// finding's File field as-returned by the scanner.
+func filterExcludedPaths(findings []astgrep.Finding) []astgrep.Finding {
+	if len(findings) == 0 {
+		return findings
+	}
+	out := make([]astgrep.Finding, 0, len(findings))
+	for _, f := range findings {
+		if isExcludedPath(f.File) {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// isExcludedPath reports whether the given path matches any excluded pattern.
+func isExcludedPath(path string) bool {
+	for _, p := range astGrepExcludedPathPatterns {
+		if strings.Contains(path, p) {
+			return true
+		}
+	}
+	return false
+}
 
 // SuppressionViolation represents a case where an ast-grep-ignore comment is not paired with @MX:REASON.
 // REQ-UTIL-002-010/011
