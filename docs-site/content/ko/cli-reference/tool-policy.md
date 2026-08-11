@@ -6,6 +6,8 @@ draft: false
 
 `moai tool-policy` 는 도구/권한 정책 SSOT를 관리합니다. `.moai/config/sections/tool-policy.yaml` 이 단일 진실 공급원이며, 여기서 `settings.json` 의 permissions 블록을 생성(codegen)하고 정책 항목을 조회합니다.
 
+에이전트(스스로 일하는 AI) 가 터미널 명령을 실행할 때 허용·거부·질문 중 어느 쪽으로 반응할지가 YAML 한 줄로 결정되기 때문에, 이 SSOT 가 깨지면 하네스(harness) 의 안전 경계가 무너집니다. 그래서 이 커맨드는 단일 YAML 을 코드가 읽는 `settings.json` permissions 블록으로 재생성해, 사람은 정책을 고르고 기계는 일관된 코드젠 결과를 받아 쓰는 분업을 만들어 줍니다. 따라서 SPEC 단위로 권한을 조정할 때 직접 JSON 을 고치는 대신 이 커맨드를 거치는 것이 권장됩니다.
+
 ## 하위 명령어
 
 | 명령어 | 설명 |

@@ -6,6 +6,8 @@ draft: false
 
 `moai web` 은 브라우저 기반 설정 편집기인 **MoAI Web Console** 을 실행합니다. 터미널 프로필 마법사(`moai profile`)와 같은 검증·저장 로직을 그대로 쓰며, 프로필 선호도와 프로젝트의 user / language / statusline 섹션을 웹 UI에서 편집합니다.
 
+프로필과 `settings.json` 항목이 늘어나면 터미널 마법사로 모든 값을 한 번에 들여다 보기 어렵기 때문에, 이 커맨드는 같은 저장 로직을 브라우저 폼으로 옮겨 놓습니다. 따라서 관리자 에이전트나 하네스(harness) 가 읽는 같은 YAML 을 더 빠르게 살펴 보고 고치는 보조 진입점 역할을 합니다.
+
 ## 개요
 
 ```bash
