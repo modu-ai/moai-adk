@@ -1,6 +1,7 @@
 package fix
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -241,4 +242,75 @@ func smallestM2Ref(refs []WorkItemRef) *WorkItemRef {
 // surface to export it.
 func nodeKeyStr(et navsync.EntityType, id string) string {
 	return string(et) + ":" + id
+}
+
+// --- Scope-conformance validation (REQ-NS5-013 / AC-NS5-013) ---
+//
+// plan.md §C.6: before the gate preview AND before the apply, the draft's
+// subtree IDs are validated against diff_scope[]. An over-produced subtree
+// (drafted by manager-develop OUTSIDE the stale set — "produce ONLY diff_scope[]
+// subtrees" violated) is excluded from the gate preview + the apply + logged
+// as a warning. This validates the draft OUTPUT, closing the gap between the
+// spawn-prompt instruction and mechanical enforcement.
+
+// ConformDraftToScope partitions draft subtree IDs against the request's
+// diff_scope[] allowed-subtree set (REQ-NS5-013). A draft subtree ID present in
+// diff_scope[] is in-scope (returned in inScope); an ID NOT in diff_scope[]
+// (simulating manager-develop over-production) is excluded (returned in
+// excluded). Both outputs are sorted lexicographically and deduplicated for
+// byte-stable, deterministic behavior across runs on identical inputs.
+//
+// Pure function — no I/O, no side effects. The caller owns the warning-logging
+// (LogScopeExclusion) and the downstream gate-preview / apply filtering.
+//
+// @MX:ANCHOR: [AUTO] scope-conformance partition for draft-vs-diff_scope validation
+// @MX:REASON: REQ-NS5-013 load-bearing invariant — the draft OUTPUT must conform to diff_scope[], not just the Go engine source; the approval gate + apply both depend on this partition
+func ConformDraftToScope(draftSubtreeIDs []string, diffScope []DiffScopeEntry) (inScope, excluded []string) {
+	allowed := make(map[string]bool, len(diffScope))
+	for _, e := range diffScope {
+		allowed[e.SubtreeID] = true
+	}
+	seenIn := make(map[string]bool, len(draftSubtreeIDs))
+	seenOut := make(map[string]bool, len(draftSubtreeIDs))
+	for _, id := range draftSubtreeIDs {
+		if allowed[id] {
+			if !seenIn[id] {
+				seenIn[id] = true
+				inScope = append(inScope, id)
+			}
+		} else {
+			if !seenOut[id] {
+				seenOut[id] = true
+				excluded = append(excluded, id)
+			}
+		}
+	}
+	sort.Strings(inScope)
+	sort.Strings(excluded)
+	return inScope, excluded
+}
+
+// LogScopeExclusion writes one warning line per excluded subtree ID to the
+// navigator-sync log (AC-NS5-013 — "A warning naming the excluded subtree ID +
+// the diff_scope[] it is not in is logged to .moai/logs/navigator-sync.log").
+// Each line carries the scope-conformance marker + the excluded ID + the
+// diff_scope subtree-ID set, so a reader sees exactly what the excluded ID is
+// NOT in. Fail-open: a write error is swallowed (reuses logFix). No-op when
+// excluded is empty.
+func LogScopeExclusion(root string, excludedIDs []string, diffScope []DiffScopeEntry) {
+	if len(excludedIDs) == 0 {
+		return
+	}
+	// The diff_scope representation: sorted subtree IDs the excluded ID is not
+	// in. Sorted for byte-stable log output across runs.
+	scopeIDs := make([]string, 0, len(diffScope))
+	for _, e := range diffScope {
+		scopeIDs = append(scopeIDs, e.SubtreeID)
+	}
+	sort.Strings(scopeIDs)
+	scopeRepr := "[" + strings.Join(scopeIDs, ",") + "]"
+	for _, id := range excludedIDs {
+		msg := fmt.Sprintf("navigator-fix: scope-conformance excluded out-of-scope subtree %s (not in diff_scope: %s)", id, scopeRepr)
+		logFix(root, msg)
+	}
 }

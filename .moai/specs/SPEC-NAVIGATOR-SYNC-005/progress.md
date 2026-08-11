@@ -21,7 +21,41 @@
 
 ## §E.2 Run-phase Evidence
 
-_(pending run-phase — manager-develop populates this section with per-milestone evidence per the 5-section evidence-bearing report format)_
+### M3.1 — Split-architecture scaffold + diff-scope contract
+
+- AC-NS5-003 (diff-scope identifies stale subtrees, UNION semantics): PASS — `go test ./internal/navigator/fix/ -run TestComputeScope -v -count=1` exit 0
+- AC-NS5-004a/004b (draft-request schema + provenance + idempotence): PASS — `go test ./internal/navigator/fix/ -run TestRun -v -count=1` exit 0
+
+### M3.2 — Draft-request emission + Hidden CLI subcommand
+
+- AC-NS5-001a/001b (on-demand CLI, no PostToolUse): PASS — `go test ./internal/cli/ -run TestNavigatorFix -v -count=1` exit 0
+- AC-NS5-011 (Hidden cobra subcommand): PASS — `go test ./internal/cli/ -run TestNavigatorFixHidden -v -count=1` exit 0
+
+### M3.3 — AI draft delegation wiring (orchestrator → manager-develop)
+
+- AC-NS5-007a (zero LLM-client imports): PASS — `go test ./internal/navigator/fix/ -run TestFixNoLLMClient -count=1` exit 0 (the split-architecture grep guard)
+- AC-NS5-007b (stdout handoff signal): PASS — `go test ./internal/navigator/fix/ -run TestRun_StdoutHandoff -v -count=1` exit 0
+
+### M3.4 — Approval surface (scope-conformance + patch preview)
+
+**Claim**: AC-NS5-013 (draft scope-conformance: out-of-scope subtree excluded) + AC-NS5-008b Go-half (*.patch preview generation) PASS.
+
+**Evidence**:
+- AC-NS5-013 — `go test ./internal/navigator/fix/ -run TestDraftScopeConformance -v -count=1`:
+  - `--- PASS: TestDraftScopeConformance` — 3 draft subtree IDs (2 in-scope + 1 out-of-scope) → inScope=[in-scope-A,in-scope-B], excluded=[out-of-scope-X]
+  - `--- PASS: TestLogScopeExclusion_Warning` — `.moai/logs/navigator-sync.log` carries the excluded ID + the diff_scope representation + the `scope-conformance` marker
+  - `--- PASS: TestConformDraftToScope_AllInScope` + `TestConformDraftToScope_EmptyInputs` — degenerate cases
+- AC-NS5-008b Go-half — `go test ./internal/navigator/fix/ -run 'TestUnifiedDiff|TestGeneratePreviews' -v -count=1`:
+  - `--- PASS: TestUnifiedDiff_Structure` — `--- a/`, `+++ b/`, `@@` hunk header, `-`/`+`/context lines present
+  - `--- PASS: TestUnifiedDiff_IdenticalReturnsEmpty` — no-op case
+  - `--- PASS: TestGeneratePreviews_WritesPatchFiles` — 2 `<doc-surface>.patch` files written with valid unified-diff structure
+  - `--- PASS: TestGeneratePreviews_MissingLiveDocSkipped` — fail-open skip on missing live doc
+
+**Baseline-attribution**: `(this run, this tree)` against HEAD pre-commit on branch `worktree-bas-m2-route`. Full package `go test ./internal/navigator/fix/ -count=1` → `ok ... 5.169s`. Coverage `go test -cover ./internal/navigator/fix/` → `coverage: 88.0%` (≥85% target). Cross-platform `GOOS=windows GOARCH=amd64 go build ./...` → exit 0. Race `go test -race ./internal/navigator/fix/` → `ok ... 6.086s`. Lint `golangci-lint run ./internal/navigator/fix/... ./internal/cli/...` → `0 issues.`
+
+**Gaps**: AC-NS5-008b orchestrator-side (the AskUserQuestion 4-option gate rendering) is NOT in this package (orchestrator-integration level per acceptance.md) — verified absent via subagent-boundary grep: `grep -rn 'AskUserQuestion' internal/navigator/fix/*.go internal/cli/navigator_fix.go | grep -v _test.go | grep -v "// "` → 0 matches.
+
+**Residual-risk**: the LCS-based UnifiedDiff is O(n*m) — acceptable for the doc surfaces M3 diffs (hundreds to low-thousands of lines); a future Myers optimization is out of scope for M3.4.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
