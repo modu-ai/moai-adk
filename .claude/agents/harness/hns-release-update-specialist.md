@@ -167,6 +167,51 @@ Step 7b — Delegate to manager-git (`run_in_background: false`):
 
 Skip if `--dry`/`--report-only`.
 
+### Phase 7.5 — Improvement-Findings Emission (mandatory, REQ-HRR-006)
+
+As the harness run's final act BEFORE the completion summary, emit the
+structured improvement findings discovered during Phases 1-7. This step is
+mandatory for every run (including `--dry`); it is the active signal source
+that feeds the post-run push doctrine (see
+`.claude/skills/moai/workflows/harness.md` § post-run push).
+
+Each finding MUST conform to the REQ-HRR-003 5-field shape:
+
+```jsonc
+"findings": [
+  {
+    "surface": ".claude/commands/harness/<name>.md",  // improvement target
+    "kind": "friction",                                // drift | gap | friction | defect
+    "summary": "<one-line description of the friction>", // string
+    "confidence": 0.75,                                // conservative run-time estimate
+    "suggested_tier": "auto_update"                    // rule | auto_update
+  }
+]
+```
+
+- **Kind vocabulary** — reuse the `internal/harness/harnessrun/types.go` constants
+  (`KindDrift` / `KindGap` / `KindFriction` / `KindDefect` → `drift` / `gap` /
+  `friction` / `defect`). Do NOT invent parallel vocabulary.
+- **Confidence sourcing (REQ-HRR-004)** — `confidence` is a conservative run-time
+  estimate grounded in the manifest `learning.confidence_floor` (0.70). It MUST
+  NOT reuse `learner.go`'s `defaultConfidence` (1.0) — that constant is
+  tier-ladder specific and its reuse would disguise an unmeasured value as a
+  measured one (verification-claim-integrity §1). With no supporting evidence,
+  emit the floor value (0.70) and flag the finding as an estimate.
+- **Empty findings** — when no improvement signal exists, emit `"findings": []`
+  (an empty array). Field presence is mandatory: it distinguishes "no signal"
+  from "signal absent" (REQ-HRR-003). NEVER omit the field.
+- **Truncation** — if findings exceed `learning.max_findings_per_run`, truncate
+  to the limit and note the truncation in the summary.
+
+[HARD] Subagent boundary (REQ-HRR-008): this specialist returns ONLY the
+structured findings (or a blocker report if a user decision is needed). It
+MUST NOT call `AskUserQuestion` directly — the orchestrator collects the
+findings, drives the `harness_run:` reserved-namespace producer, and runs the
+Tier-4 Application Gate `AskUserQuestion` round. Reuse the existing Phase 1/5
+blocker-report pattern (return a structured `## Missing Inputs` report; the
+orchestrator surfaces the user-decision prompt and re-delegates).
+
 ### Phase 8 — Completion
 
 State completion. Print summary (analysis range, plan file path, PR url, next

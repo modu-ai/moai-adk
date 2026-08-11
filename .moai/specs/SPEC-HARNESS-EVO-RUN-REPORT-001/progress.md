@@ -223,7 +223,92 @@ FAIL    github.com/modu-ai/moai-adk/internal/cli/harness    0.432s
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소관>_
+```yaml
+run_complete_at: 2026-08-12
+run_commit_sha: pending-backfill-m4   # M4 commit — SHA backfilled in a follow-up (self-referential hazard)
+run_status: m4-green-m5-pending       # M1-M4 GREEN; M5 = integration batch + close (orchestrator 소관)
+ac_pass_count: 8                       # AC-HRR-001..008 verified (009/010 = template-neutral + compat, verified in §E.2 + M4 §25 grep)
+ac_fail_count: 0
+preserve_list_post_run_count: 0        # no PRESERVE-list regressions
+l44_pre_commit_fetch: verified-clean   # git status: 3 M4 files only, no foreign session
+l44_post_push_fetch: deferred-to-m5    # push is M5 / manager-git 소관
+new_warnings_or_lints_introduced: 0    # golangci-lint run → 0 issues
+cross_platform_build:
+  darwin_arm64: exit-0
+  windows_amd64: exit-0                # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 4               # M1-M3 Go (v4manifest, harnessrun, cli/harness) + M4 doc trio
+m1_to_mN_commit_strategy: per-milestone pathspec-limited commits; M4 stacks on 4f22d97a6 (M3)
+```
+
+**M4 contribution (doc-only, REQ-HRR-006/007/008):**
+
+- **AC-HRR-006** — specialist improvement-findings emission step added as
+  `Phase 7.5` in `.claude/agents/harness/hns-release-update-specialist.md`
+  (lines 170-213): mandatory emission before completion; 5-field shape
+  `{surface, kind, summary, confidence, suggested_tier}`; kind vocabulary
+  reuses `harnessrun/types.go` (`drift|gap|friction|defect`); confidence
+  grounded in `confidence_floor` (0.70), MUST NOT reuse `learner.go`
+  `defaultConfidence` (1.0); empty → `findings: []`; HARD boundary — returns
+  structured findings or blocker report only, no direct AskUserQuestion.
+  - verification: `grep -n "findings" ...specialist.md` → 6 matches (emission
+    step present); `AskUserQuestion` references are all "MUST NOT call"
+    boundary prose (lines 209, 211), not invocations.
+- **AC-HRR-007** — post-run push doctrine added as `### 2.5 post-run push` in
+  `.claude/skills/moai/workflows/harness.md` (live) and its template mirror
+  (byte-identical except the REQ-HRR-008 tag omitted from the mirror per §25):
+  trigger (non-empty findings) → orchestrator collects → `harness_run:`
+  producer (`BuildHarnessRunCandidates`) → `ProposalCandidate` → Tier-4
+  Application Gate AskUserQuestion; pull `apply` verb preserved (pull-only →
+  push-first); empty findings → no AskUserQuestion (silent proceed).
+  - verification: `grep -n "post-run\|findings\|push" harness.md` →
+    `2.5 post-run push` heading + 8 content matches; empty-findings no-fire
+    clause at lines 241-243.
+- **AC-HRR-008** — asymmetric boundary preserved across the new emission +
+  push surfaces: specialists/Runners MUST NOT call AskUserQuestion; findings
+  flow specialist/Runner → orchestrator-collect → orchestrator-AskUserQuestion.
+  EC-6 (3-producer rate-limit sharing) + namespace coexistence documented in
+  the new subsection.
+  - verification: `grep -rn "AskUserQuestion" .claude/agents/harness/
+    .claude/workflows/hns-*.js` → only "MUST NOT call/invoke" boundary
+    declarations, zero direct invocations; `grep -n "rate_limit\|max_per_week"
+    harness.md` → existing Rate-Limit Enforcement (line 94, 180) + new EC-6
+    references (lines 254-261).
+
+**§25 neutrality + isolation (AC-HRR-009):** `grep -rn
+"HARNESS-EVO-RUN-REPORT\|REQ-HRR" internal/template/templates/` → 0 matches
+(neutrality preserved — REQ-HRR-008 tag stripped from mirror point 6);
+`find internal/template/templates -path '*hns*run.js' -o -path
+'*agents/harness*'` → empty (dev-only/user-owned NOT leaked).
+
+**Template-First mirror:** `internal/template/catalog.yaml` regenerated via
+`make build` — no hash change (catalog tracks SKILL.md entries, not nested
+workflow files like `harness.md`; harness.md is not a catalog artifact).
+`git diff --stat internal/template/catalog.yaml` → empty. No catalog commit
+required.
+
+**Attribution:** (this run, this tree, HEAD `4f22d97a6` pre-M4-commit).
+M4 is doc-only (3 markdown files); no Go code changed. E2 cross-platform
+build exit 0 (both darwin/arm64 + windows/amd64); E5 lint 0 issues; E10
+`TestSplitHarnessNamespaceNoLeak` PASS; M1-M3 packages (`v4manifest`,
+`harnessrun`, `cli/harness`) all `ok`.
+
+**Gaps:** (i) `run_commit_sha` is a placeholder (self-referential hazard —
+backfilled in a follow-up commit per the SHA placeholder backfill exemption);
+(ii) `l44_post_push_fetch` deferred — push is M5/manager-git 소관 (B9 repo-local
+Route B, main push is not this agent's job); (iii) the pre-existing 2 FAIL in
+`internal/template` (`TestTemplateNoInternalContentLeak`,
+`TestRuleDateProvenance` on `zone-registry.md`, owned by
+SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001 / SPEC-TEMPLATE-RULES-CLEANUP-001)
+are OUT OF SCOPE (B5) — M4 did not touch them; (iv) `moai harness doctor`
+smoke (§E item 9) is an M5 integration-batch step, not re-run here (M4 is
+doc-only, no manifest/Runner code change).
+
+**Residual-risk:** (i) the `moai-harness-learner` skill schema gap (§A.3
+known-interaction) was NOT an obstacle for M4 — harness-run findings route via
+`ProposalCandidate` → Tier-4 gate, not the learner skill's 8-field flat schema;
+(ii) EC-6 shared-quota semantics are stated as the plan-phase direction
+(shared quota, independent namespaces) — runtime enforcement of the shared
+window across 3 producers is a downstream concern, not an M4 deliverable.
 
 ---
 
