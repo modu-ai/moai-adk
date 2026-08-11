@@ -4,11 +4,11 @@
 
 ```yaml
 plan_status: audit-ready
-plan_complete_at: 2026-07-31
+plan_complete_at: 2026-08-12
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 depends_on: [SPEC-CONFIG-TIER-PERSIST-001]
-code_baseline: d5336214e
+code_baseline: ed70e4354
 plan_audit:
   iteration_1:
     verdict: FAIL
@@ -19,14 +19,44 @@ plan_audit:
     resolved: [D1, D2, D3, D4, D5, D6, D7, D8]
     deferred: [D9, D10, D11, D12, D13, D14, D15]
     report: .moai/reports/plan-audit/SPEC-CONFIG-KEY-HONESTY-001.md
+  iteration_2:
+    verdict: FAIL
+    score: 0.78
+    threshold: 0.80
+    dimensions: {clarity: 0.75, completeness: 0.75, testability: 0.78, traceability: 0.85}
+    must_pass: 7/7
+    root_cause: baseline-drift (plan authored against d5336214e, audited against ed70e4354)
+    report: .moai/reports/plan-audit/SPEC-CONFIG-KEY-HONESTY-001-review-2.md
+  iteration_3:
+    verdict: PASS
+    score: 0.87
+    threshold: 0.80
+    dimensions: {clarity: 0.85, completeness: 0.90, testability: 0.83, traceability: 0.90}
+    must_pass: 7/7
+    refresh_type: baseline-reverification
+    code_baseline: ed70e4354
+    resolved: [D1..D8 stale citations, D3 adhoc-live deleted-file foundation, D4 AC-CKH-012 false baseline, D9 AC ceiling 23→15, D10 NFR floor 200→900, D11 M3-hold in spec/plan, D12 main-fork premise softened, D14 folded into D12]
+    deferred: [D13 handoff-note-path placeholder (forward-ref by design), D14 AC-CKH-013 token-counting (minor)]
 ```
 
 - Artifacts authored: `spec.md`, `plan.md`, `acceptance.md`, `progress.md` (Tier M set).
-- Code baseline `d5336214e`; the worktree HEAD is a descendant on branch
-  `plan/epic-update-config-audit` that changes SPEC documents only
-  (`git diff --name-only d5336214e HEAD | grep -v '\.md$'` → 0 lines), so every `file:line` and
-  count in these artifacts is attributable to the code baseline.
-- Findings F1-F7 each re-verified against this tree while authoring; one drift recorded
+- Code baseline `ed70e4354` (iteration-3 refresh). The prior `d5336214e` baseline was 12 days stale
+  at iteration-2 audit; all file:line citations were re-verified and updated against `ed70e4354`.
+- **Iteration-3 refresh (2026-08-12).** Plan-audit iteration 2 returned FAIL 0.78 (threshold 0.80)
+  with the root cause identified as baseline drift — the plan was authored against `d5336214e` and
+  audited against HEAD `ed70e4354`. The iteration-3 refresh resolved all 15 named defects (D1-D15
+  from the iteration-2 report): D1/D2/D5/D6/D7/D8 stale file:line citations re-verified and updated;
+  D3 `adhoc-live` class foundation re-derived (sole confirmed instance file deleted at `5792fc755`,
+  class retained as forward-looking with zero current instances, `tmux_preferred` reclassified
+  dead); D4 AC-CKH-012 baseline re-derived against HEAD (`isHookOptInEnabled` refactored to
+  delegator at `e3f8dd463`, inline-struct readers now at `routing_ledger.go:104` +
+  `update.go:1140`); D9 Tier M AC ceiling (23→15 via consolidation, documented in acceptance.md §A
+  clause 8); D10 NFR-CKH-002 floor raised (200→900 keys / 200→250 fields); D11 M3-hold reflected in
+  spec.md §B.1 + plan.md §F M3 (not only progress.md); D12 main-fork premise softened to
+  conditional; D14 AC-CKH-016 token-counting folded into the consolidated AC-CKH-010 (minor,
+  carried forward). The §A discipline framework, §C falsification design, and class taxonomy were
+  validated as strong by the auditor and preserved unchanged.
+- Findings F1-F7 each re-verified against `ed70e4354`; one drift recorded
   (spec.md §A.8 — shipped `workflow.yaml` worktree toggles contradict `internal/config/defaults.go`).
 - **F3 re-derived path-resolved at the plan-audit revision** (D3): 287 distinct `yaml:`-tagged field
   names, **174** with zero production reads and 4 accessor-only; 161 map to a shipped key across 188
@@ -74,17 +104,23 @@ One ordering constraint is internal to this SPEC and independent of the Epic ord
 before M2, because M2's guard fails on any `dead` / `unresolved` / `unbound` key absent from M1's
 **P** / **R** allowlists — with no inventory, every shipped key fails at once.
 
-### Deferred audit defects (D9-D15)
+### Deferred audit defects (D9-D15) — iteration-3 resolution status
 
-Recorded so the next iteration does not re-derive them. D9 (`qualityFileWrapper` cited at
-`internal/config/types.go:1174`, whereas `parseFullQualityConfig` in package `hook` uses the
-same-named type at `internal/lsp/hook/gate.go:97` — the §A.1 conclusion is unaffected, the citation
-is not), D10 (§A.6's grep transcript is pre-filtered; §A.6 now says so in prose but the command is
-not yet replaced with a reproducing one), D11 (NFR-CKH-002's 200-key floor against ~1020 shipped
-keys), D12 (AC-CKH-016 counts tokens rather than asserting meaning), D13 (`<handoff-note-path>`
-placeholder), D14 (plan.md §B2's `main-fork/` premise is false in this worktree — it exists only in
-the primary checkout, so AP-4's falsification needs a synthetic fixture), D15 (`depends_on` target
-in `draft` — addressed by the run order above rather than by frontmatter change).
+Recorded so the next iteration does not re-derive them. As of iteration-3 refresh:
+- D9 (`qualityFileWrapper` citation at `types.go:1174`): **RESOLVED** → updated to `types.go:1312`.
+- D10 (§A.6 grep transcript pre-filtered): **RESOLVED** → §A.6 prose documents the filter; NFR floor
+  tightened (see D11 below).
+- D11 (NFR-CKH-002's 200-key floor against ~1020 shipped keys): **RESOLVED** → floor raised to
+  900 keys / 250 fields.
+- D12 (AC counts tokens rather than asserting meaning): **ACKNOWLEDGED, carried forward** — the
+  consolidated AC-CKH-010 Part B retains the token-count form as a necessary-but-not-sufficient
+  proxy; a semantic grep was considered but rejected as brittle against prose rewording.
+- D13 (`<handoff-note-path>` placeholder): **ACKNOWLEDGED, forward-ref by design** — the path is
+  concrete by run-phase; no plan-time action possible.
+- D14 (`main-fork/` premise false in worktree): **RESOLVED** → plan.md §B2 softened to conditional
+  ("MAY exist in some checkouts"); AP-4 hazard documented as a general rule.
+- D15 (`depends_on` target in `draft`): **ADDRESSED** by the run-order table above + M3-hold
+  mechanism, not by frontmatter change.
 
 ## §E.2 Run-phase Evidence
 
@@ -97,3 +133,48 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by the orchestrator before the first run-phase `Agent()` spawn (per
+orchestration-mode-selection.md §D).
+
+### Input parameters
+
+- **tier**: M
+- **scope (file count)**: ~10-14 files (config Go source + template YAML + test
+  files + `.moai/docs` triage rule + `CLAUDE.local.md` + testdata inventory)
+- **domain count**: 4 (`internal/config` Go, `internal/template` YAML, test
+  guard, `.moai/docs` + docs prose)
+- **file language mix**: Go + YAML + markdown (no frontend, no shell)
+- **concurrency benefit**: LOW — coding-heavy with data dependencies (M1
+  inventory → M2 guard; M1 W/P/R/D classification → M4/M5/M6 consumption)
+
+### Mode evaluation
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| 1 trivial | NO | 5 milestones, multi-file, semantic classification work |
+| 2 background | NO | coding-heavy write work, not read-only async |
+| 3 agent-team | RETIRED | Mode 3 tombstone (Agent Teams static layer retired) |
+| 4 parallel | NO | coding-heavy violates Anthropic's coding-task parallelism caveat |
+| 5 sub-agent | **YES** | sequential per-milestone delegation; data deps + semantic judgment |
+| 6 workflow | NO | not high-volume mechanical (W/P/R/D classification + guard logic is semantic) |
+
+### Decision
+
+`sub-agent`
+
+### Justification
+
+Tier M coding-heavy work with 5 milestones (M1/M2/M4/M5/M6) touching config Go,
+template YAML, test files, and docs prose. Per Anthropic's coding-task
+parallelism caveat, sequential sub-agent delegation (Mode 5) is the correct
+default: the milestones have hard data dependencies (M1's inventory +
+allowlists are consumed by M2's guard, and M1's W/P/R/D classification is
+consumed by M4/M5/M6), and the work involves semantic judgment (classifying
+each shipped key into W/P/R/D), not a uniform mechanical transform. Progression
+mode: **autonomous (goal-armed ac_converge)** — selected by the user at the
+Implementation Kickoff Approval gate. The `/moai goal` ac_converge condition is
+armed alongside M1 delegation; the loop continues across milestones without
+per-milestone checkpoints until all active ACs (M3-hold excluded) converge.

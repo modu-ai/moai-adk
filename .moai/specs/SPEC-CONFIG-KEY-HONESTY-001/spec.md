@@ -1,10 +1,10 @@
 ---
 id: SPEC-CONFIG-KEY-HONESTY-001
 title: "config surface honesty: every key shipped to a user must be parsed, read, and enforced by the thing it claims to control — or be explicitly marked as not"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: in-progress
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-12
 author: manager-spec
 priority: P1
 phase: "v3.0.2"
@@ -25,6 +25,7 @@ depends_on: [SPEC-CONFIG-TIER-PERSIST-001]
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 4 of 6 from the four-lens audit of `moai update` / `.moai/config`. Findings F1-F7 each re-verified against code baseline `d5336214e` (branch `plan/epic-update-config-audit`, merged with `origin/main`) while authoring; F3 independently re-derived; one drift recorded (§A.8). |
 | 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D8; D9-D15 deferred and recorded in `progress.md` §E.1). D3: §A.3's headline baseline re-derived **path-resolved** — 122/121 superseded by 174 dead field names, 161 mapping to shipped keys across 188 occurrences, family table replaced; the prior figure had been produced by the bare-field-name method this SPEC forbids as AP-3, which is why §A.3 and §A.6 disagreed about `auto_merge`. They now agree. D4: REQ-CKH-008 gains a fifth `unbound` class so the 25 `github.*` / `document_management.*` keys — the SPEC's own §A.2 headline case — can be classified rather than silently skipped. D1/D2/D7/D8: four ACs rewritten that could not observe their own expectations (a `-run` naming a nonexistent test, a map-membership check blind to which map, a `grep` window excluding its target line, a `grep` with no context flags). D5: falsification C-3/C-4 expressed as runnable `go test -overlay` mutations with no-op guards, replacing the scratch-worktree form whose mutation was a comment and whose cleanup deleted the path C-4 needed. D6: REQ-CKH-011 bound to M6 with AC-CKH-023; NFR-CKH-003 absorbed into AC-CKH-021. |
+| 0.3.0 | 2026-08-12 | Iteration-3 baseline refresh against HEAD `ed70e4354` (was `d5336214e`, 12 days stale). All file:line citations in §A re-verified and updated. D3 resolved: `internal/cli/worktree/new.go` (the `adhoc-live` class's sole confirmed instance) was deleted at `5792fc755` (PR #1278); the `adhoc-live` class is retained as a forward-looking category with zero confirmed instances at HEAD baseline (the shape persists — §A.3a's survey bound and two spot-checks survive), and `tmux_preferred` is reclassified from `adhoc-live` to dead. D4 resolved: `isHookOptInEnabled` was refactored to a one-line delegator (`e3f8dd463`, SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 M2); the inline-struct system.yaml readers for `hook.*` are now at `internal/hook/routing_ledger.go:104` and `internal/cli/update.go:1140`. D6 resolved: `internal/cli/update.go:1011` is now `cleanLegacyHooks`, not a system.yaml parser; the reader site is `:1140`. D9 resolved (Tier M ceiling): 23 ACs consolidated to 15 by merging near-duplicate ACs that share a deliverable (documented in `acceptance.md` §A clause 8). D10 resolved: NFR-CKH-002 floor raised from 200 to 900 keys/fields (~5× below the ~1020 measured). D11 resolved: M3-hold reflected in §B.1 and plan.md §F M3, not only progress.md. |
 
 ## §A Problem / Motivation
 
@@ -55,7 +56,7 @@ type FullQualityConfig struct {
 }
 ```
 
-It is never instantiated. Verified against code baseline `d5336214e`:
+It is never instantiated. Verified against code baseline `ed70e4354`:
 
 ```
 $ grep -rn 'FullQualityConfig' --include='*.go' internal pkg cmd | grep -v '_test.go'
@@ -67,7 +68,7 @@ pkg/models/config.go:199:type FullQualityConfig struct {
 ```
 
 The only two production hits are the *type declaration* and a *comment*. The function named for it
-parses a narrower wrapper (`qualityFileWrapper`, `internal/config/types.go:1174`) and returns the
+parses a narrower wrapper (`qualityFileWrapper`, `internal/config/types.go:1312`) and returns the
 constitution block alone:
 
 ```go
@@ -99,7 +100,7 @@ $ grep -rn 'loadSystemSection' internal/config/
 (no output)
 ```
 
-`SystemConfig` (`internal/config/types.go:219-228`) declares `version`, `log_level`, `log_format`,
+`SystemConfig` (`internal/config/types.go:220-229`) declares `version`, `log_level`, `log_format`,
 `no_color`, `non_interactive`, `migrations`, `hook`. The shipped
 `internal/template/templates/.moai/config/sections/system.yaml.tmpl` declares four different
 top-level blocks:
@@ -115,8 +116,11 @@ $ grep -nE '^[a-z_]+:' internal/template/templates/.moai/config/sections/system.
 Only `hook` overlaps, and even that is not bound through the struct, because `Loader.Load()` never
 reads this file at all. `cfg.System` is populated solely from `internal/config/defaults.go` plus
 the env overrides in `internal/config/manager.go`. The file *is* read — by ad-hoc parsers that
-bypass the struct entirely: `internal/cli/hook.go:508` (`isHookOptInEnabled`, an inline anonymous
-struct) and `internal/cli/update.go:1011`.
+bypass the struct entirely: `internal/hook/routing_ledger.go:104` (`HookObserveOptInEnabled`, an
+inline anonymous struct) and `internal/cli/update.go:1140` (`readHookOptInEnabled`, same shape).
+The former is reached through `internal/cli/hook.go:589` (`isHookOptInEnabled`), which was
+refactored at `e3f8dd463` (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 M2) from its own inline struct into a
+one-line delegator `return hook.HookObserveOptInEnabled(projectRoot)`.
 
 Roughly 25 keys under `github.*` and `document_management.*` therefore have no implementation.
 `document_management` is the sharpest case: it states a retention policy, which is a promise about
@@ -135,7 +139,7 @@ require reader lookup to key on the resolved struct-field path, precisely becaus
 sharing a field name make one field's liveness leak onto the other. The bare-name figure is
 therefore a **lower bound on deadness**, biased toward calling keys live, and it is superseded here.
 
-The measurement was re-derived at code baseline `d5336214e` by the **path-resolved** method the
+The measurement was re-derived at code baseline `ed70e4354` by the **path-resolved** method the
 guard is required to use: every `X.F` selector in the production build is resolved to its receiver
 type via `go/types`, and a read is counted only when the receiver is a struct declared in
 `internal/config/types.go`. Test files and `main-fork/` are excluded; the whole module type-checks
@@ -153,10 +157,12 @@ their only `.F` selectors belong to unrelated structs. `WorkflowWorktreeConfig.A
 confirmed instance (its only production selectors resolve to `internal/github.MergeOptions`), which
 is why §A.6 could report `AutoMerge` as unread while the old 121-key set omitted `auto_merge`. Under
 path resolution the two agree. `TmuxPreferred` and `AutoEnabled` flip the same way — but note that
-this is a statement about the **field name**, not about the shipped key. `TmuxPreferred` is
-field-dead and key-**live**: the key `workflow.worktree.tmux_preferred` is read through an ad-hoc
-inline struct that the analyzer cannot see. See §A.3a; the key is `adhoc-live` per REQ-CKH-008 and
-is not a deletion candidate.
+this is a statement about the **field name**, not about the shipped key. At HEAD `ed70e4354`,
+`TmuxPreferred` is both field-dead **and** key-dead: its former ad-hoc inline-struct reader
+(`internal/cli/worktree/new.go`) was deleted at `5792fc755` (PR #1278). See §A.3a for the
+disposition of the `adhoc-live` class (retained as forward-looking, zero confirmed instances at
+baseline); the key `workflow.worktree.tmux_preferred` is classified **D** or **R** under M1's triage
+rule, not `adhoc-live`.
 
 Mapping the 174 back onto the shipped template YAMLs gives **161 dead field names that surface as a
 key in at least one shipped section file**, across **188 (file, key) occurrences**:
@@ -206,38 +212,16 @@ the selector's receiver resolves to a struct declared in `internal/config/types.
 through a *package-local* struct — same `yaml:` tags, declared outside `types.go`, unmarshalled
 directly from the section file — is invisible to it and lands in the 174.
 
-`workflow.worktree.tmux_preferred` is the confirmed instance, and the reason the sentence above
-about `TmuxPreferred` flipping live→dead is a statement about the **field**, not the key:
-
-```
-$ sed -n '468,486p' internal/cli/worktree/new.go
-type workflowTmuxConfig struct {
-    Workflow struct {
-        Worktree struct {
-            TmuxPreferred bool `yaml:"tmux_preferred"`
-        } `yaml:"worktree"`
-    } `yaml:"workflow"`
-}
-...
-func parseTmuxPreferred(data []byte) bool {
-    var cfg workflowTmuxConfig
-    if err := yaml.Unmarshal(data, &cfg); err != nil { return false }
-    return cfg.Workflow.Worktree.TmuxPreferred
-}
-
-$ sed -n '193,194p' internal/cli/worktree/new.go
-    tmuxFlag, _ := cmd.Flags().GetBool("tmux")
-    if tmuxFlag || isTmuxPreferred() {
-
-$ grep -n 'tmux_preferred' internal/template/templates/.moai/config/sections/workflow.yaml
-38:        tmux_preferred: true
-```
-
-`isTmuxPreferred()` reads the shipped key through `parseTmuxPreferred`, and its result decides the
-tmux-session branch at `new.go:194`. Classifying this key **D** and deleting it would silently
-disable tmux preference for every user who has it set — a behavior change with no failing test.
-`CLAUDE.local.md` §22.8 additionally declares `TmuxPreferred: true` explicitly OUT OF SCOPE, so the
-deletion would also contradict a standing decision. Hence the `adhoc-live` class in REQ-CKH-008.
+**The `adhoc-live` class is retained as a forward-looking category with zero confirmed instances at
+HEAD `ed70e4354`.** The prior confirmed instance (`internal/cli/worktree/new.go:468-486`,
+`workflowTmuxConfig`/`parseTmuxPreferred`/`isTmuxPreferred` reading `workflow.worktree.tmux_preferred`)
+was deleted at `5792fc755` (PR #1278 "refactor(worktree): redesign the worktree surface"). The key
+`workflow.worktree.tmux_preferred` still ships (`workflow.yaml:38`) and its field
+`WorkflowWorktreeConfig.TmuxPreferred` is still declared (`internal/config/types.go:547`) and defaulted
+(`internal/config/defaults.go:669`), but no production reader of any shape remains — neither a
+`types.go`-struct read nor an ad-hoc inline-struct read. Under M1's triage rule it is therefore
+classified **D** or **R** (per the prose probe), not `adhoc-live`. The class is retained because the
+shape it names is general and its population is unchanged:
 
 **How widespread is the shape? — bounded above, not counted.** The population at risk is measurable
 today; the defect count is not. Files that declare a package-local `yaml:`-tagged struct, read a
@@ -251,19 +235,22 @@ $ for f in $(grep -rln 'yaml:"' --include='*.go' internal/ pkg/ cmd/ \
 20
 ```
 
-Two spot-checks confirm the shape is not unique to `tmux_preferred`: `internal/tmux/cg_detect.go:150`
-declares `llmSectionMin` reading `llm.team_mode`, which also resolves to `types.go:250`; and
-`internal/statusline/memory.go:53` declares a local struct reading `llm.glm.context_windows`, which
-also resolves to `types.go:308`. Both are the same shape — a shipped key with both a `types.go` field
-and an ad-hoc reader.
+Two spot-checks at HEAD `ed70e4354` confirm the shape persists: `internal/tmux/cg_detect.go:150`
+declares `llmSectionMin` reading `llm.team_mode`, which also resolves to a `types.go` field; and
+`internal/statusline/memory.go:52` declares `llmYAMLShape` reading `llm.glm.context_windows`, which
+also resolves to a `types.go` field. Both are the same shape — a shipped key with both a `types.go`
+field and an ad-hoc reader — and are the evidence that `adhoc-live` is a live category even though
+no key's field is currently read-dead.
 
 **What this bound does NOT establish.** These 20 files are the *population at risk*, not a defect
 count. A file only produces an `adhoc-live` key when its `types.go` field is **also** read-dead; a
 key whose field has a live struct-based read is simply live and classified correctly by the existing
 partition. Determining which of the 20 yield a field-dead-but-key-live key requires the M1 inventory
 cross-referenced against the M2 analyzer, neither of which exists at plan time. The honest statement
-is: **the shape is general and its population is at most 20 files; the number of keys actually
-misclassified is unmeasured and must be produced by M1.** M1 shall report that count.
+is: **the shape is general and its population is at most 20 files; at HEAD baseline zero keys are
+confirmed `adhoc-live` (the prior instance was retired with its file); the number of keys that may
+become `adhoc-live` under future refactors is unmeasured and must be produced by M1.** M1 shall
+report that count.
 
 ### A.4 "No Go code reads this" is not "dead" (the honesty constraint)
 
@@ -273,7 +260,7 @@ Go code touches the key. The audit lens attempted a word-match over the shipped 
 discarded the result, because bare leaf keys like `search`, `performance`, `evolution`, and
 `escalation` have unusable signal-to-noise.
 
-Probing at code baseline `d5336214e` shows the discarded method failed for a fixable reason — it matched the
+Probing at code baseline `ed70e4354` shows the discarded method failed for a fixable reason — it matched the
 wrong token. Fixed-string search for the **fully-qualified dotted key path** across
 `.claude/agents`, `.claude/skills`, `.claude/rules`:
 
@@ -299,8 +286,8 @@ the reason the mechanical guard must never delete a key merely because Go does n
 
 ### A.5 A key whose documented effect is decided by two constants (F4)
 
-`design.evolution.max_active_learnings` is declared at `internal/config/types.go:1092` and
-defaulted to 50 at `internal/config/defaults.go:753`. Enforcement lives elsewhere, twice:
+`design.evolution.max_active_learnings` is declared at `internal/config/types.go:1230` and
+defaulted to 50 at `internal/config/defaults.go:930`. Enforcement lives elsewhere, twice:
 
 ```
 internal/evolution/types.go:170:      MaxActiveLearnings = 50
@@ -318,8 +305,8 @@ twice, in two packages, with no shared constant.
 ```
 $ grep -rn 'AutoCleanup\|AutoMerge\|AutoCreate' --include='*.go' internal cmd pkg \
     | grep -v '_test.go' | grep -v main-fork
-internal/config/types.go:485-487        (declarations)
-internal/config/defaults.go:545-547     (defaults)
+internal/config/types.go:543-545        (declarations)
+internal/config/defaults.go:665-667     (defaults)
 internal/cli/worktree_advisory.go:29    (readWorktreeAutoCreate)
 ```
 
@@ -340,14 +327,14 @@ classified `auto_merge` live on the strength of `MergeOptions.AutoMerge`.
 
 `internal/template/templates/.moai/config/sections/workflow.yaml:39` ships
 `session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"`. `WorkflowWorktreeConfig.SessionNamePattern`
-(`internal/config/types.go:488`) has no production reader — its only non-default hits are three
+(`internal/config/types.go:546`) has no production reader — its only non-default hits are three
 test files asserting the default value. No code builds a session name from it.
 
 ### A.8 Drift recorded while authoring
 
 The audit did not note this: the shipped template and the Go defaults **disagree** on the worktree
 toggles. `internal/template/templates/.moai/config/sections/workflow.yaml:36-37` ships
-`auto_merge: true` and `auto_cleanup: true`, while `internal/config/defaults.go:545-547` sets all
+`auto_merge: true` and `auto_cleanup: true`, while `internal/config/defaults.go:665-667` sets all
 three to `false` per the EnterWorktree-first policy recorded in `CLAUDE.local.md` §22.8. Because
 neither key is read, the contradiction has no runtime effect today — but it means the shipped file
 states the opposite of the recorded policy, and any future wiring would inherit the wrong value.
@@ -358,8 +345,8 @@ This SPEC folds the contradiction into REQ-CKH-009.
 ```
 $ grep -rnE 'SPEC-[A-Z0-9]' internal/template/templates/.moai/config/
 .../sections/workflow.yaml:39:  session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
-.../sections/workflow.yaml:65:  # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
-.../sections/workflow.yaml:85:  # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
+.../sections/workflow.yaml:82:  # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
+.../sections/workflow.yaml:102:  # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
 .../sections/statusline.yaml:28:  # "📋 [<command> <SPEC-ID>-<stage>]" only when
 .../sections/cache.yaml:6:# `/moai run SPEC-XXX`.
 .../sections/cache.yaml:18:  # Per-SPEC breakpoint TTL applied on `/moai run SPEC-XXX`. Enum: "5m" | "off".
@@ -368,7 +355,7 @@ $ grep -rn 'issue #' internal/template/templates/.moai/config/
 ```
 
 `{SPEC-ID}`, `<SPEC-ID>`, and `SPEC-XXX` are generic placeholders and are not leaks. The three
-genuine leaks are `workflow.yaml:65`, `workflow.yaml:85` (both citing the internal SPEC ID
+genuine leaks are `workflow.yaml:82`, `workflow.yaml:102` (both citing the internal SPEC ID
 `SPEC-AGENT-ARCH-V2-001`, one of them alongside the internal artifact citation `plan.md §D D6`),
 and `llm.yaml:179` (`issue #653`).
 
@@ -386,6 +373,13 @@ ISO dates, and commit SHAs are all zero across `internal/template/templates/.moa
 ## §B Requirements (GEARS)
 
 ### B.1 Parse-reachability
+
+> **M3 HELD OPEN.** REQ-CKH-001, REQ-CKH-002, and REQ-CKH-003 are the quality.yaml parse path, which
+> is the sole consumer of E3's tier-resolution contract (`SPEC-CONFIG-TIER-PERSIST-001`). E3 is
+> `status: draft` at this writing. M3 is therefore **HELD — pending
+> `SPEC-CONFIG-TIER-PERSIST-001` completion** — and the current execution set is M1, M2, M4, M5, M6.
+> A run-phase agent reading this spec MUST NOT attempt M3 until E3 reaches `status: completed`. See
+> plan.md §F M3 for the held-milestone marker and progress.md §E.1 for the Epic run-order table.
 
 **REQ-CKH-001** — The `moai` binary shall parse every top-level block declared in the shipped
 `quality.yaml` into a Go value that at least one production code path can read, or shall not ship
@@ -452,7 +446,9 @@ explicit reserved marker. The guard shall:
   section file — as `adhoc-live`, and shall **not** treat an `adhoc-live` key as a deletion
   candidate. The class passes on M1 evidence recording the reader site, exactly as `unbound` does.
   A key classified `adhoc-live` is live in production regardless of its field-level read count;
-  deleting it silently changes behavior. See §A.3a for the confirmed instance and the survey bound;
+  deleting it silently changes behavior. See §A.3a for the survey bound and the surviving
+  spot-checks; at HEAD `ed70e4354` the class has zero confirmed instances (the prior instance was
+  retired with its file), and is retained as forward-looking because the shape persists;
 - assert a non-empty, plausible inventory (see NFR-CKH-002) so that an inventory of zero fails
   rather than passes.
 
@@ -464,7 +460,7 @@ would otherwise fall through to `dead`.
 
 The `moai.*` block (6 keys) is a third shape and is **not** `unbound` in the same sense: it also has
 no `SystemConfig` field, but it is read by three ad-hoc inline structs
-(`internal/statusline/version.go:31`, `internal/cli/v2_detection.go:153`,
+(`internal/statusline/version.go:31`, `internal/cli/v2_detection.go:155`,
 `internal/cli/update/plan/plan.go:313`). The guard classifies it `unbound` on the struct-path test
 and the M1 inventory records those readers as its **P**-equivalent evidence, so it does not fail.
 
@@ -502,8 +498,11 @@ with the measured evidence; this SPEC shall not modify
 
 **NFR-CKH-001** — Every test added by this SPEC shall confine its filesystem writes to `t.TempDir()`.
 
-**NFR-CKH-002** — The REQ-CKH-008 guard shall assert its inventory contains at least 200 shipped
-keys and at least 200 struct fields, so a silently-empty inventory fails.
+**NFR-CKH-002** — The REQ-CKH-008 guard shall assert its inventory contains at least 900 shipped
+keys and at least 250 struct fields, so a silently-empty inventory fails. (The measured inventory at
+HEAD `ed70e4354` is ~1020 shipped keys and 287 distinct yaml-tagged field names; a floor of 200 was
+~5× below actual and would pass on a half-truncated inventory. The 900/250 floor catches
+catastrophic collapse while accommodating nominal growth without re-derivation.)
 
 **NFR-CKH-003** — Go sources added by this SPEC shall use `snake_case.go` filenames, wrap errors
 with `fmt.Errorf("...: %w", err)`, and carry English comments and godoc.
