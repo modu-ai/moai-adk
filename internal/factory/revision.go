@@ -1,4 +1,4 @@
-package kanban
+package factory
 
 import (
 	"bufio"
@@ -31,7 +31,7 @@ type Revision struct {
 	// EffortTier is the scan's effort level. It is deliberately NOT part of any
 	// predicate here: an effort level is not a rigor rung, and a max-effort
 	// single-pass scan would clear any effort floor while still being
-	// rigor-reduced. The rung travels on the kanban state record instead.
+	// rigor-reduced. The rung travels on the factory state record instead.
 	EffortTier string `json:"effort_tier"`
 
 	// WorkingTreeIncluded reports whether uncommitted edits were scanned.
@@ -162,7 +162,7 @@ func isASCIISpace(c byte) bool {
 }
 
 // @MX:ANCHOR: [AUTO] composed suppression decision — an allow-list, never a deny-list
-// @MX:REASON: the kanban state record is best-effort and its rung field lands independently of the results directory, so a record carrying a results directory but no rung is reachable; a "not DEGRADED" deny-list would treat that absent rung as permission to suppress, which is the fail-open shape this allow-list exists to prevent
+// @MX:REASON: the factory state record is best-effort and its rung field lands independently of the results directory, so a record carrying a results directory but no rung is reachable; a "not DEGRADED" deny-list would treat that absent rung as permission to suppress, which is the fail-open shape this allow-list exists to prevent
 //
 // SuppressStep0551 reports whether the sync-phase security analysis may be
 // suppressed and its findings inherited.

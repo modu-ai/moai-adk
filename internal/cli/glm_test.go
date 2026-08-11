@@ -640,21 +640,21 @@ func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
 
 // ── SPEC-FACTORY-MODE-001 M5 ──
 
-// TestGLM_KanbanFlagParity is AC-FM-005: `moai glm --kanban` reaches the
-// launcher in glm mode with the kanban signal published, confirming parity
+// TestGLM_FactoryFlagParity is AC-FM-005: `moai glm --factory` reaches the
+// launcher in glm mode with the factory signal published, confirming parity
 // with `moai cc`. Both launchers are single-backend, so both support the mode.
-func TestGLM_KanbanFlagParity(t *testing.T) {
+func TestGLM_FactoryFlagParity(t *testing.T) {
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 
 	var capturedMode string
 	var capturedArgs []string
-	var kanbanAtLaunch, specAtLaunch string
+	var factoryAtLaunch, specAtLaunch string
 	unifiedLaunchFunc = func(_ string, mode string, args []string) error {
 		capturedMode = mode
 		capturedArgs = args
-		kanbanAtLaunch = os.Getenv(config.EnvMoaiKanban)
-		specAtLaunch = os.Getenv(config.EnvMoaiKanbanSpec)
+		factoryAtLaunch = os.Getenv(config.EnvMoaiFactory)
+		specAtLaunch = os.Getenv(config.EnvMoaiFactorySpec)
 		return nil
 	}
 
@@ -666,21 +666,21 @@ func TestGLM_KanbanFlagParity(t *testing.T) {
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
 
-	if err := runGLM(glmCmd, []string{"--kanban", "SPEC-PLACEHOLDER"}); err != nil {
-		t.Fatalf("AC-FM-005: runGLM(--kanban) should not error, got: %v", err)
+	if err := runGLM(glmCmd, []string{"--factory", "SPEC-PLACEHOLDER"}); err != nil {
+		t.Fatalf("AC-FM-005: runGLM(--factory) should not error, got: %v", err)
 	}
 	if capturedMode != "glm" {
 		t.Errorf("AC-FM-005: mode = %q, want %q", capturedMode, "glm")
 	}
 	for _, a := range capturedArgs {
-		if a == "--kanban" || a == "-k" {
-			t.Errorf("AC-FM-005: kanban token must not reach the launcher, got %v", capturedArgs)
+		if a == "--factory" || a == "-f" {
+			t.Errorf("AC-FM-005: factory token must not reach the launcher, got %v", capturedArgs)
 		}
 	}
-	if kanbanAtLaunch != "1" {
-		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiKanban, kanbanAtLaunch)
+	if factoryAtLaunch != "1" {
+		t.Errorf("AC-FM-005: %s must be set at launch, got %q", config.EnvMoaiFactory, factoryAtLaunch)
 	}
 	if specAtLaunch != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiKanbanSpec, specAtLaunch)
+		t.Errorf("AC-FM-005: %s must carry the identifier at launch, got %q", config.EnvMoaiFactorySpec, specAtLaunch)
 	}
 }

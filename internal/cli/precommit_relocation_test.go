@@ -271,7 +271,10 @@ func TestPreCommitRelocation_RejectionSurfacedToCaller(t *testing.T) {
 // reachability gate for the relocated heavy gate — if the verb is unregistered,
 // the pre-commit hook's `moai gate` invocation would fail.
 func TestPreCommitRelocation_GateVerbReachable(t *testing.T) {
-	t.Parallel()
+	// Sequential (not t.Parallel): pure variable check with no side effects.
+	// t.Parallel() here previously waited ~2 min on the parallel-burst barrier
+	// under the full internal/cli suite (pre-existing scheduling deadlock,
+	// SPEC-unrelated). Running sequentially sidesteps the burst wait.
 
 	// gateCmd is registered via init() in gate.go. Assert it is non-nil and
 	// has the expected Use string.
