@@ -230,6 +230,47 @@ Operations:
 
 Observer no-op contract: When `learning.enabled: false`, the PostToolUse observer hook MUST be a complete no-op — it does not read, write, or append to `.moai/harness/usage-log.jsonl`. Existing log entries MUST NOT be deleted.
 
+### 2.5 post-run push (findings collection → Tier-4 Application Gate)
+
+When a harness run (Runner + specialist) terminates having emitted NON-EMPTY
+improvement findings, the orchestrator collects them and converges them at the
+Tier-4 Application Gate. This is the PUSH path; it coexists with the pull
+`apply` verb above — the run shifts from pull-only to push-first, but both
+paths remain available.
+
+1. **Trigger**: the Runner and/or specialist returns a non-empty `findings`
+   array (each element `{surface, kind, summary, confidence, suggested_tier}`).
+   Empty findings (`findings: []`) do NOT trigger this step — the orchestrator
+   proceeds silently without invoking `AskUserQuestion` (decision-fatigue
+   avoidance).
+2. **Producer**: the orchestrator drives the `harness_run:` reserved-namespace
+   producer (`internal/harness/harnessrun.BuildHarnessRunCandidates`), which
+   maps each finding to a `ProposalCandidate` (`confidence` →
+   `ProposalCandidate.Confidence`, `suggested_tier` → `ProposalCandidate.Tier`,
+   `surface`/`kind`/`summary` → `ProposalCandidate.Evidence`). The resulting
+   candidate set is surfaced via the existing Tier-4 Application Gate
+   `AskUserQuestion` (the Canonical Four-Option Pattern documented above).
+3. **Rate-limit SSOT**: actionable findings (`suggested_tier ∈ {rule,
+   auto_update}`) are subject to the `harness.yaml` `rate_limit` SSOT
+   (`max_per_week` / `cooldown_hours`) at the Tier-4 gate — see
+   `### Rate-Limit Enforcement` above.
+4. **EC-6 (3-producer rate-limit sharing)**: the three producers
+   (tier-ladder / delegation-map / harness-run) share the SAME Tier-4 gate
+   `rate_limit` window (single `harness.yaml` SSOT). Pattern-key namespaces
+   are independent — one namespace's keys do not consume another's — but the
+   `rate_limit` quota is SHARED across all three: a tier-ladder promotion
+   that consumes the weekly budget pushes a harness-run finding past the same
+   window.
+5. **Namespace coexistence**: harness-run findings are confined to the
+   `harness_run:` namespace; tier-ladder promotions (`proposalgen.MapPromotions`)
+   and delegation-map amendments (`delegationmap.BuildCandidates`) keep their
+   existing routes. The three converge at the same Tier-4 gate, distinguished
+   by pattern-key namespace.
+6. **Asymmetric boundary**: specialists and Runners MUST NOT
+   call `AskUserQuestion`. Findings flow specialist/Runner → orchestrator-collect
+   → orchestrator-AskUserQuestion, per the Tier-4 Application Gate boundary
+   above.
+
 ---
 
 ## Phase 3: Post-Execution Summary

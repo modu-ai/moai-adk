@@ -1,10 +1,10 @@
 ---
 id: SPEC-ASTGREP-DOGFOOD-CLEANUP-001
 title: "Local Dogfood ast-grep Ruleset Curated-Baseline Cleanup — Plan"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-07-08
-updated: 2026-07-08
+updated: 2026-08-12
 author: GOOS
 priority: P3
 phase: "maintainer-tooling"
@@ -17,9 +17,16 @@ tags: "astgrep, dogfood, cleanup, tooling, local"
 
 ## §A 맥락 (Context)
 
-Tier **M (standard)**. 로컬 dogfood ast-grep 트리를 완료된 템플릿 `[go, security]` curated
-baseline으로 정렬하는 단일 관심사 위생 작업. 런타임 동작 변경 없음(gate OFF). 로컬 전용,
-git-tracked, 완전 되돌림 가능.
+Tier **M (standard)** — v0.2.0 refresh 후에도 유지 (3 산출물: spec/plan/acceptance, ~30개 tracked
+파일 삭제 + sgconfig 편집 + `sg` config-mode 검증 게이트). 로컬 dogfood ast-grep 트리를
+완료된 템플릿 `[go, security]` curated baseline으로 정렬하는 단일 관심사 위생 작업.
+**런타임 동작 변경 없음** (gate는 #1142 이후 warn-only ON이지만 blocking은 opt-in이므로 정리가
+동작에 영향을 주지 않는다 — spec.md §A.3 참조). 로컬 전용, git-tracked, 완전 되돌림 가능.
+
+> **v0.2.0 scope 축소**: 원본 10 REQ 중 REQ-002/003은 `SPEC-CONFIG-AUDIT-REPAIR-001` M2 (#1142) 가
+> 이미 해소했다 (ruleDirs `[go, security]` 정렬 + phantom utils 제거). 잔여 정리 대상은
+> **4개 REQ** (REQ-001 orphan / REQ-004 빈 stub 10개 / REQ-005 데모 stub 5개 / REQ-006 sgconfig
+> SPEC-ID strip) + 검증·가드 4개 (REQ-007~010). 순수 파일/설정 위생, Go 코드 무접촉.
 
 ### Tier 판정 근거 (S/M/L)
 
@@ -30,10 +37,14 @@ git-tracked, 완전 되돌림 가능.
 
 ## §B 알려진 이슈 / 제약 (Known Issues & Constraints)
 
-- **[CRITICAL] 병렬 세션 레이스**: `go/`·`security/`가 오늘(2026-07-08 02:29) 수정됨 +
-  `security/credentials.yml` untracked(in-flight). 다른 세션이 astgrep 보안 룰을 동시 작업 중일
-  가능성. run-phase는 spawn 전 반드시 Pre-Spawn Sync Check + 로컬 dirty 상태 확인 필수. go/security
-  **내용은 무접촉** (REQ-ADC-009).
+- **[B1] dogfood-only 원칙 (유지)**: 본 SPEC이 건드리는 `.moai/config/astgrep-rules/` 트리는
+  local-only (CLAUDE.local.md §2.2). 배포 대상 `internal/template/templates/`와 분리되므로, 본
+  정리는 어떤 사용자에게도 영향을 주지 않는다. 템플릿 트리는 REQ-008/010으로 무접촉 보장.
+- **[CRITICAL] 병렬 세션 레이스 (standing precaution)**: v0.1.0 시점(2026-07-08)엔 `go/`·`security/`가
+  활발히 수정 중 + `security/credentials.yml` untracked(in-flight) 였다. 이후 `SPEC-GATE-ASTGREP-REPAIR-001`
+  (#1445) 가 `go/error-handling.yml`을 정교화했다. run-phase는 spawn 전 반드시 Pre-Spawn Sync Check +
+  `git status --porcelain .moai/config/astgrep-rules/` 로 go/security dirty·untracked 여부를 **재실측**해야
+  한다 (과거 신호에 의존 금지). go/security **내용은 무접촉** (REQ-ADC-009).
 - **`sg` 실행 금지 (plan-phase)**: 본 plan-phase에서는 sg를 실행하지 않는다. REQ-ADC-007의
   "sg가 누락 ruleDir 오류를 낸다"는 아직 **가설**이며 run-phase에서 기계적으로 검증한다
   (verification-claim-integrity: 도구로 관측하기 전엔 defect 단언 금지).
@@ -53,22 +64,23 @@ git-tracked, 완전 되돌림 가능.
 ### D.1 삭제 (git rm — tracked 파일)
 
 - orphan root: `.moai/config/astgrep-rules/go-hardcoding.yml` (REQ-ADC-001)
-- 빈 stub 디렉터리 9개 (`.gitkeep`): cpp, flutter, java, javascript, python, r, rust, scala, swift (REQ-ADC-004)
+- 빈 stub 디렉터리 **10개** (`.gitkeep`): cpp, flutter, java, javascript, python, r, rust, scala, swift, **typescript** (REQ-ADC-004)
 - 데모 stub 디렉터리 5개: csharp, elixir, kotlin, php, ruby (각 `.gitkeep` + 3 boilerplate .yml) (REQ-ADC-005)
 
-> 삭제는 `git rm`(tracked) 사용. `git add -A` 금지 — untracked `credentials.yml` in-flight
+> 삭제는 `git rm`(tracked) 사용. `git add -A` 금지 — untracked `credentials.yml` 등 in-flight
 > 파일이 실수로 staged/삭제되지 않도록 **경로 한정 삭제**만 수행. (병렬 레이스 방어 lesson 적용.)
 
 ### D.2 편집 (Edit — sgconfig.yml)
 
-- `ruleDirs`를 `[go, security]`로 축소 (템플릿 미러) → REQ-ADC-002, REQ-ADC-003 (utils 제거)
-- 주석의 `SPEC-ASTG-UPGRADE-001` 내부 ID 제거 → REQ-ADC-006
+- ~~`ruleDirs`를 `[go, security]`로 축소~~ → **이미 #1142로 완료** (REQ-002/003 해소). run-phase는 현행 유지만 확인.
+- 주석의 내부 SPEC-ID 참조(`SPEC-GATE-ASTGREP-REPAIR-001`, line 10) **접두만 strip** → REQ-ADC-006.
+  기술 노트 본문(ast-grep config-mode globs 미지원 설명)은 **보존** — 단 SPEC-ID 토큰만 제거.
 - (선택) 주석 문안을 템플릿 sgconfig.yml의 curated 설명 톤으로 정렬 — 로컬이므로 필수 아님
 
 ### D.3 무접촉 (보존)
 
 - `go/` 5파일, `security/` 5파일 내용 → REQ-ADC-009 (무접촉)
-- untracked `security/credentials.yml` → REQ-ADC-009 (무접촉)
+- untracked `security/credentials.yml` → REQ-ADC-009 (무접촉; run-phase 재실측)
 - 템플릿 트리 전체 → REQ-ADC-008 (무접촉)
 
 ### D.4 검증 (sg config-mode — run-phase)
@@ -80,7 +92,7 @@ git-tracked, 완전 되돌림 가능.
 
 plan-phase 산출물 완결성 체크:
 - [ ] 12-필드 canonical frontmatter (4개 산출물 전부 status: draft)
-- [ ] GEARS 요구사항 10개 (REQ-ADC-001..010), 각 기계 검증 가능
+- [ ] GEARS 요구사항: 활성 8개 (REQ-ADC-001/004/005/006/007/008/009/010) + 해소 2개 (REQ-002/003, #1142), 각 기계 검증 가능
 - [ ] Out of Scope 섹션 4개 `### Out of Scope —` H3 + `-` bullet
 - [ ] acceptance.md에 mechanically-verifiable AC + 최소 2 Given-When-Then
 - [ ] progress.md §E.1~§E.4 skeleton (§E.2~§E.4 placeholder)
@@ -88,16 +100,20 @@ plan-phase 산출물 완결성 체크:
 
 ## §F 마일스톤 (Milestones — 우선순위 기반, 시간 추정 없음)
 
-- **M1 (Priority High)**: Pre-flight 레이스 점검 + 삭제 대상 실측 재확인. go/security dirty면 STOP.
-- **M2 (Priority High)**: orphan + 14개 stub/demo 디렉터리 경로-한정 `git rm`. (REQ-ADC-001/004/005)
-- **M3 (Priority High)**: sgconfig.yml 편집 — ruleDirs `[go, security]` + SPEC-ID strip. (REQ-ADC-002/003/006)
+> v0.2.0 refresh: M3의 ruleDirs/utils 작업은 #1142로 이관 완료. 잔여 run-phase는 M1→M4.
+
+- **M1 (Priority High)**: Pre-flight 레이스 점검 + 삭제 대상 실측 재확인. go/security dirty이거나
+  credentials.yml untracked면 STOP → 사용자 surface.
+- **M2 (Priority High)**: orphan 1 + 15개 stub/demo 디렉터리(빈 10 + 데모 5) 경로-한정 `git rm`. (REQ-ADC-001/004/005)
+- **M3 (Priority High)**: sgconfig.yml 편집 — `SPEC-GATE-ASTGREP-REPAIR-001` SPEC-ID 접두 strip
+  (기술 노트 본문 보존). (REQ-ADC-006). ※ ruleDirs/utils는 #1142 완료이므로 본 M 제외.
 - **M4 (Priority Medium)**: `sg scan` config-mode 검증 — 누락 ruleDir 오류 부재. (REQ-ADC-007)
 - **M5 (Priority Medium)**: 무접촉 검증 — go/security 내용 + untracked + 템플릿 diff 0. (REQ-ADC-008/009/010)
 
 ## §G 안티패턴 (Anti-Patterns — 하지 말 것)
 
 - `git add -A` / `git add .` — untracked in-flight `credentials.yml`을 삼킴. 경로-한정만.
-- `rm -rf`로 go/ 또는 security/ 전체 삭제 — 실제 vetted 룰 유실. 삭제는 명시 경로 14개 + orphan 1개만.
+- `rm -rf`로 go/ 또는 security/ 전체 삭제 — 실제 vetted 룰 유실. 삭제는 명시 경로 15개 디렉터리(빈 stub 10 + 데모 stub 5) + orphan 파일 1개만.
 - 템플릿 트리 수정 — REQ-ADC-008 위반.
 - go/security 메시지 영어화 착수 — 본 SPEC out-of-scope + 레이스 위험.
 - plan-phase에서 sg 실행 — 사용자 제약 위반.
