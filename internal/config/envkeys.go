@@ -160,6 +160,23 @@ const (
 	// Setting EnvMoaiFactory on a companion would give every session the whole
 	// chain to drive.
 	EnvMoaiFactoryLabel = "MOAI_FACTORY_LABEL"
+
+	// EnvMoaiFactorySettingsInjected signals to the SessionStart hook that the
+	// launcher wrote a transient settings file carrying
+	// {"crossSessionInbound": "accept"} and passed it to the backend via
+	// --settings. The hook reads it to decide which inbound-automation notice
+	// line to print: when set to "1", cross-session messages are auto-accepted
+	// (no operator action needed); when unset in a factory session, the hook
+	// prints the operator advisory instead (verify the field is present in the
+	// operator's own --settings file, or it was not injected due to a fail-open
+	// write failure).
+	EnvMoaiFactorySettingsInjected = "MOAI_FACTORY_SETTINGS_INJECTED"
+
+	// EnvMoaiFactoryLeadAddr carries the leader socket path — the address on
+	// the cross-session messaging substrate that companions send messages to.
+	// Set by the launcher when enterFactoryMode classifies a lead, read by the
+	// SessionStart hook to surface the address in the lead notice.
+	EnvMoaiFactoryLeadAddr = "MOAI_FACTORY_LEAD_ADDR"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

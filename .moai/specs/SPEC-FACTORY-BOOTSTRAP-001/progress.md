@@ -100,7 +100,13 @@ blocker_report: none
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+| AC | Status | Milestone | Evidence |
+|---|---|---|---|
+| AC-FB-010 | PASS | M1 | `go test ./internal/cli/ -run TestPrepareFactorySettingsWritesTransientFile` → ok; writes `moai-factory-<pid>-<ns>.json` under `os.TempDir()` containing `{"crossSessionInbound":"accept"}` |
+| AC-FB-011 | PASS | M1 | `go test ./internal/cli/ -run TestPrepareFactorySettingsHonorsOperatorSupplied` → ok; operator `--settings` suppresses injection in long, equals, and pre-marker forms |
+| AC-FB-012 | PASS | M1 | `go test ./internal/hook/ -run TestFactoryLeadNoticeOperatorSettingsAdvisory` → ok; notice contains `verify`/`crossSessionInbound`/`accept` when `MOAI_FACTORY_SETTINGS_INJECTED` unset |
+| AC-FB-013(d) | PASS | M1 | `go test ./internal/hook/ -run TestFactoryLeadNoticeInjectedSettingsAutoAccept` → ok; notice contains `auto-accept` when `MOAI_FACTORY_SETTINGS_INJECTED=1` |
+| (others) | pending | M2-M6 | — |
 
 ---
 
@@ -113,3 +119,35 @@ _<pending run-phase — populated by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — populated by manager-docs>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+### Input parameters
+
+- **tier**: L (18 REQ / 27 AC, >15 files affected)
+- **scope (file count)**: ~14-15 — Go source (`internal/cli/factory.go`, `cc.go`, `glm.go`, `internal/hook/session_start_factory.go`, new settings-injection helper; `launcher_blockcap_infinite.go` read-only) + Go tests (`factory_bootstrap_test.go`, `session_start_factory_test.go`, `launcher_blockcap_infinite_test.go` extended, +companion-combo test) + docs-site 4-locale `factory-mode.md` + `data/menu/main.yaml`
+- **domain count**: 3 (`internal/cli` dispatch + env, `internal/hook` SessionStart notice, docs-site 4-locale publishing)
+- **file language mix**: Go source (~6) + Go tests (~4) + markdown docs-site (4) + YAML (1) — mixed, Go-majority
+- **concurrency benefit**: LOW — the milestones repeatedly edit the SAME Go files (`factory.go`, `cc.go`, `glm.go` are touched by both M2 and M4; `session_start_factory.go` by M3), so parallel fan-out would race on shared write targets
+- **Agent Teams prereqs**: n/a (Mode 3 retired)
+
+### Mode evaluation table
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | Tier L, 6 milestones, multi-file semantic change |
+| 2 background | no | not a single async read-only task; multi-milestone write work |
+| 3 agent-team | no | RETIRED (tombstone) |
+| 4 parallel | no | coding-heavy + shared-file milestones → Anthropic coding-task parallelism caveat; concurrent edits to `cc.go`/`glm.go`/`factory.go` would race |
+| 5 sub-agent | **yes** | sequential manager-develop delegation; plan.md provides per-milestone implementation guidance; same-Go-file recurrence demands serialization |
+| 6 workflow | no | not a ≥30-file single-uniform-transform; milestones carry distinct semantic changes (dispatch rewrite, notice revision, settings injection, help text, docs pages) |
+
+### Decision
+
+`sub-agent`
+
+### Justification
+
+Mode 5 (sequential sub-agent) is selected per Anthropic's coding-task parallelism caveat: most coding tasks involve fewer truly parallelizable tasks than research, and the six milestones here repeatedly modify the same Go source files (`internal/cli/factory.go`, `cc.go`, `glm.go` by both M2 and M4; `internal/hook/session_start_factory.go` by M3). Parallel fan-out (Mode 4) would race on those shared write targets. plan.md §B already orders the milestones by decision-reversibility (M0 decision → M1 new surface → M2 core semantic → M3 notice → M4 help → M5 docs → M6 verify) and provides concrete implementation guidance per milestone, so a single sequential manager-develop delegation with the Tier L Section A-E template carries the full scope. Implementation Kickoff Approval was obtained in this session; plan-audit review-2 verdict is PASS 1.00 (Tier L threshold 0.85), D1-D5 closed, D6 non-blocking.

@@ -129,3 +129,42 @@ func TestFactoryBootstrapNoticeLabelWinsOverFactory(t *testing.T) {
 		t.Errorf("expected the companion notice, got: %q", got)
 	}
 }
+
+// TestFactoryLeadNoticeOperatorSettingsAdvisory is AC-FB-012. When the launcher
+// did NOT inject its own settings (the operator supplied --settings, or a write
+// failure degraded to fail-open), the lead notice prints an advisory instructing
+// the operator to verify crossSessionInbound: accept is present.
+func TestFactoryLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
+	// EnvMoaiFactorySettingsInjected is UNSET → the launcher did not inject.
+	t.Setenv(config.EnvMoaiFactorySettingsInjected, "")
+	_ = os.Unsetenv(config.EnvMoaiFactorySettingsInjected)
+
+	got := factoryLeadNotice("tjlgt1")
+	if got == "" {
+		t.Fatal("expected a lead notice, got empty string")
+	}
+	lowered := strings.ToLower(got)
+	if !strings.Contains(lowered, "verify") || !strings.Contains(lowered, "crosssessioninbound") || !strings.Contains(lowered, "accept") {
+		t.Errorf("lead notice lacks the verify-crossSessionInbound-accept advisory:\n%s", got)
+	}
+}
+
+// TestFactoryLeadNoticeInjectedSettingsAutoAccept is the complementary case to
+// AC-FB-012: when the launcher DID inject (EnvMoaiFactorySettingsInjected=1),
+// the notice states cross-session messages are auto-accepted (not a verify
+// advisory). This is AC-FB-013(d).
+func TestFactoryLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
+	clearFactoryEnv(t)
+	t.Setenv(config.EnvMoaiFactory, "1")
+	t.Setenv(config.EnvMoaiFactoryID, "tjlgt1")
+	t.Setenv(config.EnvMoaiFactorySettingsInjected, "1")
+
+	got := factoryLeadNotice("tjlgt1")
+	lowered := strings.ToLower(got)
+	if !strings.Contains(lowered, "auto-accept") {
+		t.Errorf("lead notice lacks the auto-accept notice:\n%s", got)
+	}
+}

@@ -51,7 +51,17 @@ func factoryLeadNotice(runID string) string {
 	for _, role := range factory.CompanionRoles {
 		fmt.Fprintf(&b, "  moai cc --name %s\n", factory.CompanionLabel(role, runID))
 	}
-	b.WriteString("Substitute 'moai glm' for 'moai cc' on any companion to run it on the GLM backend.")
+	b.WriteString("Substitute 'moai glm' for 'moai cc' on any companion to run it on the GLM backend.\n")
+	// Inbound-automation notice: the line printed depends on whether the launcher
+	// injected a transient settings file (auto-accept is active) or whether the
+	// operator supplied their own --settings / a write failure degraded to
+	// fail-open (the operator must verify the field themselves).
+	if os.Getenv(config.EnvMoaiFactorySettingsInjected) == "1" {
+		b.WriteString("Cross-session messages are auto-accepted via the injected --settings.")
+	} else {
+		b.WriteString("Verify \"crossSessionInbound\": \"accept\" is present in your --settings file " +
+			"so cross-session messages are accepted.")
+	}
 	return b.String()
 }
 

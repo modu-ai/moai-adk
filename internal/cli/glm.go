@@ -170,9 +170,19 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		filteredArgs = factoryArgs
 		defer enterFactoryMode(specID)()
 		recordFactorySession(specID, factory.BackendGLM)
+		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+		if len(settingsFlag) > 0 {
+			filteredArgs = append(filteredArgs, settingsFlag...)
+		}
+		defer settingsCleanup()
 	} else if label, isCompanion := parseCompanionLabel(filteredArgs); isCompanion {
 		// Companion parity with `moai cc`; see cc.go for the rationale.
 		defer enterFactoryCompanionMode(label)()
+		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+		if len(settingsFlag) > 0 {
+			filteredArgs = append(filteredArgs, settingsFlag...)
+		}
+		defer settingsCleanup()
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {

@@ -1,6 +1,8 @@
 # plan.md — SPEC-FACTORY-BOOTSTRAP-001
 
 > Implementation plan. Order of milestones is by **decision-reversibility** (most-likely-to-change first), not by execution sequence — execution sequence is decided at run-phase. Each milestone carries priority, not time estimates (CLAUDE.md §7, agent-common-protocol.md § Time Estimation).
+>
+> **Run-phase status**: M1 complete (crossSessionInbound injection via transient --settings).
 
 ---
 
