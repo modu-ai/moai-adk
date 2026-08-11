@@ -75,6 +75,17 @@ var runnerManifestPathRE = regexp.MustCompile("MANIFEST_PATH\\s*=\\s*[\"'`]([^\"
 // from the manifest runner_workflow value via a prefix-agnostic path join.
 var runnerSpecialistRE = regexp.MustCompile(`(harness|hns)-[a-z0-9-]+-specialist`)
 
+// runnerFindingsKeyRE detects the `findings: [` return-schema array key in a
+// Runner JS source. This is a regex heuristic, NOT a JS AST parse (AP-3,
+// inheriting PIPE-REPAIR AP-2): the array-key form `findings\s*:\s*\[` matches
+// the contract return object literal, while NOT matching prose mentions such as
+// a `// findings: the standard...` comment line (no `[` follows the colon). The
+// gate's purpose is contract-presence detection, not full JS parsing.
+//
+// @MX:ANCHOR: [AUTO] runner findings-declaration detector — REQ-HRR-005 check 3
+// @MX:REASON: [AUTO] fan_in >= 2 (checkLearningAxis + doctor_learning_test.go); AP-3 forbids JS AST — the regex is the canonical heuristic.
+var runnerFindingsKeyRE = regexp.MustCompile(`\bfindings\s*:\s*\[`)
+
 // Doctor runs the v4 harness reference-integrity smoke gate over projectRoot.
 //
 // @MX:ANCHOR: [AUTO] Doctor is the smoke-gate entry consumed by the CLI command
@@ -183,6 +194,62 @@ func checkHarness(projectRoot string, e HarnessEntry) []DoctorFinding {
 				Message: fmt.Sprintf("Runner references specialist agent %q but %s does not exist", ref, filepath.Join(v4AgentsDir, ref+".md")),
 			})
 		}
+	}
+
+	// Axis 5 (learning): when a learning block is declared, validate the two
+	// fields whose range/coherence checks M1 schema-Validate explicitly defers
+	// to the doctor (REQ-HRR-005, M3). The tier-vocabulary check is OWNED by
+	// v4manifest.Validate (M1, AP-1) and surfaces as a manifest-axis ERROR —
+	// the doctor does NOT re-check it here (double-reporting avoidance). A nil
+	// Learning block is a valid legacy harness (REQ-HRR-010) and produces no
+	// finding (무보거; AP-6: learning-absent is never an ERROR).
+	if m.Learning != nil {
+		findings = append(findings, checkLearningAxis(e.Name, m.Learning, runnerSrc)...)
+	}
+
+	return findings
+}
+
+// checkLearningAxis validates the two doctor-owned fields of the optional
+// learning block (REQ-HRR-005). The checks are:
+//
+//  1. confidence_floor ∈ [0,1] — schema Validate does NOT range-check this
+//     field (M1 LearningBlock.ConfidenceFloor godoc: "range validation is the
+//     doctor's responsibility, REQ-HRR-005, M3").
+//  2. enabled && Runner does not declare a `findings` return-schema array key
+//     — the findings-declaration coherence is a cross-file contract (manifest
+//     ↔ Runner) that schema validation cannot express.
+//
+// The tier-vocabulary check (plan §D-D3 check 1) is intentionally ABSENT here:
+// it is owned by v4manifest.Validate at the schema level (M1 LearningBlock.Tier
+// godoc + AP-1) and already surfaces as a manifest-axis ERROR. Re-checking it
+// here would double-report the same defect under two axes.
+//
+// runnerSrc is the Runner JS source (needed for the findings-declaration grep);
+// the caller guarantees it is non-empty (the runner file was read successfully).
+func checkLearningAxis(harnessName string, lb *v4manifest.LearningBlock, runnerSrc string) []DoctorFinding {
+	var findings []DoctorFinding
+
+	// Check: confidence_floor range [0,1].
+	if lb.ConfidenceFloor < 0 || lb.ConfidenceFloor > 1 {
+		findings = append(findings, DoctorFinding{
+			Harness:  harnessName,
+			Axis:     "learning",
+			Severity: SeverityError,
+			Message:  fmt.Sprintf("learning.confidence_floor %v is out of range [0,1] (REQ-HRR-005)", lb.ConfidenceFloor),
+		})
+	}
+
+	// Check: enabled && Runner declares a findings return-schema array key.
+	// When enabled is false, the findings path is inert (LearningBlock.Enabled
+	// godoc) — the coherence check is skipped (EC: disabled = inert).
+	if lb.Enabled && !runnerFindingsKeyRE.MatchString(runnerSrc) {
+		findings = append(findings, DoctorFinding{
+			Harness:  harnessName,
+			Axis:     "learning",
+			Severity: SeverityError,
+			Message:  "learning.enabled is true but the Runner does not declare a `findings: [...]` return-schema key (REQ-HRR-003/005)",
+		})
 	}
 
 	return findings
