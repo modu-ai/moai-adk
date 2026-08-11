@@ -57,6 +57,37 @@
 
 **Residual-risk**: the LCS-based UnifiedDiff is O(n*m) — acceptable for the doc surfaces M3 diffs (hundreds to low-thousands of lines); a future Myers optimization is out of scope for M3.4.
 
+### M3.5 — Apply-on-approval + non-overlap enforcement
+
+**Claim**: AC-NS5-008a (no live-doc mutation without approval) + AC-NS5-008c (apply atomic-rename + applied.json ledger) + AC-NS5-008d (approval_token refusal — both branches) + AC-NS5-005a/005b (consumer-only) + AC-NS5-006 (non-overlap) PASS.
+
+**Evidence**:
+- AC-NS5-008d — `go test ./internal/navigator/fix/ -run TestApplyTokenRefusal -v -count=1`:
+  - `--- PASS: TestApplyTokenRefusal_NoToken` — no approval.json → Apply returns ErrApprovalTokenMissing (wrapped), live doc SHAs unchanged, applied.json NOT written
+  - `--- PASS: TestApplyTokenRefusal_InvalidToken` — tampered token → ErrApprovalTokenInvalid, live doc unchanged
+  - `--- PASS: TestApplyTokenRefusal_ValidToken` — valid token → live docs mutated to draft content, applied.json written with Approver + git-committer-date ApprovalTimestamp + 2 AppliedSubtreeIDs + ResultingLiveDocSHA
+  - `--- PASS: TestApplyTokenRefusal` (combined: NoToken + InvalidToken + ValidToken subtests)
+- AC-NS5-008c — `go test ./internal/navigator/fix/ -run TestApply_AtomicRenameAndLedger -v -count=1`:
+  - `--- PASS: TestApply_AtomicRenameAndLedger` — atomic-rename via `.tmp` + os.Rename (no stale .tmp left behind); applied.json ledger carries ResultingLiveDocSHA
+- AC-NS5-008a + REQ-NS5-013 — `go test ./internal/navigator/fix/ -run TestApply_OnlyApprovedSubtreesTouched -v -count=1`:
+  - `--- PASS: TestApply_OnlyApprovedSubtreesTouched` — out-of-scope draft subtree (over-produced, REQ-NS5-013) excluded from apply; live capability-symbols.json SHA unchanged
+- DBT-2 idempotence — `go test ./internal/navigator/fix/ -run TestApply_Idempotence -v -count=1`:
+  - `--- PASS: TestApply_Idempotence` — second Apply after re-written draft content is a no-op (live doc SHA unchanged), ledger does not grow (no duplicate IDs)
+- AC-NS5-005a (PRESERVE) — `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/(sync|detect|route|tiers)|hook/navigator_detect|mx)/'` → grep exit 1 (no matches = PASS — M0/M1/M2/M4 + mx byte-unchanged)
+- AC-NS5-005b (consumer-only writes) — `grep -rn 'os.WriteFile\|os.Rename' internal/navigator/fix/*.go` excluding apply.go → only the atomicWriteFile helper in request.go (generic `<path>.tmp`, call site = request.json staging write); apply.go post-approval live-doc writes are the AC-NS5-008c intended exception
+- AC-NS5-006 (non-overlap) — `go test ./internal/navigator/fix/ -run TestNonOverlap -v -count=1`:
+  - `--- PASS: TestNonOverlap_ReadSurfacesAreReadOnly` — read-surface literals only in READ context (apply.go live-doc writes are the AC-NS5-008c exception via isLiveDocSurface)
+  - `--- PASS: TestNonOverlap_NoForbiddenWriteTargets` — zero writes to tiers.json / blueprint/ / decisions/ / work-items.md
+  - `--- PASS: TestNonOverlap_ProducerChainScriptsUntouched` — Fix layer does not exec the 3 predecessor chain scripts (reads outputs directly)
+- ComputeApprovalToken determinism — `go test ./internal/navigator/fix/ -run TestComputeApprovalToken_Deterministic -v -count=1`:
+  - `--- PASS: TestComputeApprovalToken_Deterministic` — token = 64-char hex SHA-256(draft-id + option + provenance), matches a direct sha256 re-derivation (orchestrator can re-derive)
+
+**Baseline-attribution**: `(this run, this tree)` against HEAD pre-commit on branch `worktree-bas-m2-route`. Full package `go test ./internal/navigator/fix/ -count=1` → `ok ... 7.706s`. Coverage `go test -cover ./internal/navigator/fix/` → `coverage: 87.1% of statements` (≥85% target). Cross-platform: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0. Race `go test -race ./internal/navigator/fix/` → `ok ... 6.953s`. Lint `golangci-lint run ./internal/navigator/fix/... ./internal/cli/...` → `0 issues.`. Vet `go vet ./internal/navigator/fix/... ./internal/cli/...` → exit 0. Subagent boundary `grep -rn 'AskUserQuestion' internal/navigator/fix/*.go internal/cli/navigator_fix.go | grep -v _test.go | grep -v "// "` → 0 matches.
+
+**Gaps**: none for M3.5 scope. The fail-open degraded paths (REQ-NS5-009, AC-NS5-009, exit-0) land in M3.6 — they MUST NOT share the token-refusal exit-non-zero contract (plan.md §F M3.5 last bullet).
+
+**Residual-risk**: the approval.json token is a deterministic hash, not a cryptographically-signed artifact — it binds the apply to a prior orchestrator gate approval recorded in approval.json, NOT to an external secret. A compromised staging dir (attacker can write approval.json) could forge a token; this is acceptable because the staging dir lives under `.moai/project/` (project-local, not distributed) and the approval is a human-gate artifact, not a privilege boundary. The orchestrator owns the only legitimate approval.json writer.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop populates this section on run-phase completion)_
