@@ -145,6 +145,21 @@ const (
 	// when the operator supplied an identifier; its absence means the chain
 	// begins at plan-phase from the operator's first prompt.
 	EnvMoaiFactorySpec = "MOAI_FACTORY_SPEC"
+
+	// EnvMoaiFactoryID carries the run identifier that distinguishes one factory
+	// run from another on the same machine. The lead session generates it once at
+	// launch; the SessionStart hook reads it to name the companion sessions the
+	// operator must bring up. A companion inherits the same id through its label.
+	EnvMoaiFactoryID = "MOAI_FACTORY_ID"
+
+	// EnvMoaiFactoryLabel marks a session as a COMPANION of a factory run, and
+	// carries its `<role>-<run-id>` label. It is deliberately distinct from
+	// EnvMoaiFactory: a companion needs the raised Stop-hook block cap (it arms
+	// its own goal mid-session, exactly like the lead) but must NOT be seeded
+	// with the plan -> run -> verify -> sync chain, which only the lead drives.
+	// Setting EnvMoaiFactory on a companion would give every session the whole
+	// chain to drive.
+	EnvMoaiFactoryLabel = "MOAI_FACTORY_LABEL"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

@@ -89,15 +89,44 @@ func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) 
 func enterFactoryMode(specID string) func() {
 	restoreFactory := captureEnvState(config.EnvMoaiFactory)
 	restoreSpec := captureEnvState(config.EnvMoaiFactorySpec)
+	restoreID := captureEnvState(config.EnvMoaiFactoryID)
 
 	_ = os.Setenv(config.EnvMoaiFactory, "1")
+	_ = os.Setenv(config.EnvMoaiFactoryID, factory.NewRunID())
 	if specID != "" {
 		_ = os.Setenv(config.EnvMoaiFactorySpec, specID)
 	}
 
 	return func() {
+		restoreID()
 		restoreSpec()
 		restoreFactory()
+	}
+}
+
+// enterFactoryCompanionMode publishes the companion signal for a `<role>-<id>`
+// label and returns the function that puts the environment back, on the same
+// prior-presence contract as enterFactoryMode.
+//
+// It deliberately does NOT set config.EnvMoaiFactory: that variable seeds the
+// chain, and only the lead drives the chain. What the companion shares with the
+// lead is the raised Stop-hook block cap, which the inject reads from either
+// variable.
+//
+// The run id is derived from the label rather than carried separately, so the
+// two can never disagree.
+func enterFactoryCompanionMode(label string) func() {
+	restoreLabel := captureEnvState(config.EnvMoaiFactoryLabel)
+	restoreID := captureEnvState(config.EnvMoaiFactoryID)
+
+	_ = os.Setenv(config.EnvMoaiFactoryLabel, label)
+	if _, runID, ok := factory.SplitCompanionLabel(label); ok {
+		_ = os.Setenv(config.EnvMoaiFactoryID, runID)
+	}
+
+	return func() {
+		restoreID()
+		restoreLabel()
 	}
 }
 
@@ -129,6 +158,54 @@ func recordFactorySession(specID, backend string) {
 		return
 	}
 	factory.WriteBestEffort(projectRoot, factory.NewRecord(sessionID, specID, backend))
+}
+
+// The tokens claude uses to name a session. moai RECOGNIZES them; it never
+// consumes them — the value has to reach claude unchanged.
+const (
+	nameFlagLong  = "--name"
+	nameFlagShort = "-n"
+)
+
+// parseCompanionLabel reports the companion label in args, if any.
+//
+// It matches only the companion SHAPE (factory.SplitCompanionLabel) because the
+// alternative discriminators are worse. Treating every named session as a
+// companion would
+// silently raise the Stop-hook block cap from 8 to 200 for unrelated work, and a
+// state file the lead writes and companions read buys nothing here beyond one
+// more file to keep consistent.
+//
+// The `--` discipline matches parseFactoryFlag, stripSpawnFlag, parseProfileFlag
+// and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
+// nothing beyond it. args is returned to the caller untouched.
+func parseCompanionLabel(args []string) (label string, ok bool) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			break
+		}
+
+		var candidate string
+		switch {
+		case arg == nameFlagLong || arg == nameFlagShort:
+			if next := i + 1; next < len(args) {
+				candidate = args[next]
+				i = next
+			}
+		case strings.HasPrefix(arg, nameFlagLong+"="):
+			candidate = strings.TrimPrefix(arg, nameFlagLong+"=")
+		case strings.HasPrefix(arg, nameFlagShort+"="):
+			candidate = strings.TrimPrefix(arg, nameFlagShort+"=")
+		default:
+			continue
+		}
+
+		if _, _, isCompanion := factory.SplitCompanionLabel(candidate); isCompanion {
+			return candidate, true
+		}
+	}
+	return "", false
 }
 
 // rejectFactoryOnCG returns the sentinel-bearing error when a factory token

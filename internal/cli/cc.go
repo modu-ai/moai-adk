@@ -97,6 +97,11 @@ func runCC(cmd *cobra.Command, args []string) error {
 		filteredArgs = factoryArgs
 		defer enterFactoryMode(specID)()
 		recordFactorySession(specID, factory.BackendClaude)
+	} else if label, isCompanion := parseCompanionLabel(filteredArgs); isCompanion {
+		// A companion of a factory run: same raised Stop-hook block cap as the
+		// lead, no chain seed. --name belongs to claude, so it is recognized
+		// here and left in filteredArgs.
+		defer enterFactoryCompanionMode(label)()
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
