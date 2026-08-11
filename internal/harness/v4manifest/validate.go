@@ -95,6 +95,20 @@ func Validate(m Manifest) error {
 		}
 	}
 
+	// learning: OPTIONAL — nil is valid (legacy harness, REQ-HRR-010). When
+	// declared, the only schema-level hard rejection is a non-empty tier
+	// value outside the harness.Tier.String() SSOT vocabulary (REQ-HRR-002 /
+	// AP-1: no parallel vocabulary). Partial blocks (zero-value fields) are
+	// accepted at schema level; defaults are applied downstream in the M2
+	// findings→proposal mapping (EC-1 policy). Range checks on
+	// confidence_floor and max_findings_per_run are the doctor's
+	// responsibility (REQ-HRR-005, M3), NOT this Validate.
+	if m.Learning != nil {
+		if t := m.Learning.Tier; t != "" && !validLearningTiers[t] {
+			return fmt.Errorf("v4manifest: learning.tier %q is not in the harness.Tier.String() vocabulary {observation, heuristic, rule, auto_update} (REQ-HRR-002: no parallel vocabulary)", t)
+		}
+	}
+
 	return nil
 }
 
