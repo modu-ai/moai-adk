@@ -89,10 +89,30 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits `feat(SPEC-EPIC-STA
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section on the single sync commit carrying the `implemented → completed` transition. The `sync_commit_sha:` field below is populated by manager-docs with the sync commit's SHA (with the established pending-backfill pattern for the self-referential-hazard case).>_
-
 ```yaml
-sync_commit_sha: pending-backfill
+sync_complete_at: 2026-08-12
+sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); backfilled in a follow-up commit
+sync_status: audit-ready
+run_commit_sha: 4aa9178c3                # final run-phase commit (M5 factory-notice touchpoint)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"   # merged close on this single sync commit (manager-docs owns the ride)
+  plan_md: "(no status: field — plan.md carries no frontmatter)"
+  acceptance_md: "(no status: field — acceptance.md carries no frontmatter)"
+  progress_md: "(no frontmatter — §E.4 lives in the body, not in frontmatter)"
+b12_self_test:
+  a_pre_emission_grep: 0           # grep -c 'SPEC-EPIC-STATUS-001' CHANGELOG.md BEFORE edit → 0 (no duplicate; PASS)
+  b_ac_count_match: 15             # acceptance.md §D AC-ES-001..015 distinct count == CHANGELOG-referenced AC count (15)
+  c_file_path_verification: PASS   # ls internal/epic/{discover,designreport,status,render,git}.go + internal/cli/epic.go + internal/cli/epic_test.go + internal/hook/session_start_factory.go → all exist
+changelog_entry_position: "top of [Unreleased] > Added (newest first — above the SPEC-FACTORY-BOOTSTRAP-001 entry landed by main #1447)"
+canary_compliance_check:
+  zero_go_files_in_sync_commit: true   # markdown-only — CHANGELOG.md + spec.md frontmatter + progress.md §E.4
+  moai_gate_bypass_rationale: "0 .go files — sync markdown only (SKIP_MOAI_PRECOMMIT=1 if the pre-commit gate false-positives)"
+  push_performed: false                # C5 user instruction — commit to feat/factory-bootstrap-guidance ONLY; no `git push`
+  pr_created: false                    # C5 user instruction — no `gh pr create`
+mx_tag_validation:
+  present_count: 0                    # grep -rn '@MX:' internal/epic/ internal/cli/epic.go → 0 matches
+  gaps: "BuildEpicStatus + DiscoverEpic fan_in = 1 (CLI only), below the @MX:ANCHOR threshold (≥3 callers); tags deferred to a future /moai mx scan when fan_in grows"
+  status: not-warranted-at-current-fan-in
 ```
 
 ---
