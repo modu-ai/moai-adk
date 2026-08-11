@@ -88,7 +88,7 @@ The producer computes an `EpicCandidates` set + an `EpicStatus` view-model in th
 
 `DiscoverDesignReport(epicToken, reportsDir)` looks for `.moai/reports/<*>-<epic-token-lower>-*.html` (case-insensitive). The naming rule is documented in §4 below. If found, `ParseDesignReport(path)` extracts the M0..Mx canonical list + labels.
 
-- The canonical list is the ONLY basis for `orphan_mx` (REQ-ES-005). Without a design report, `orphan_mx` is omitted (or null — see §5 JSON shape).
+- The canonical list is the ONLY basis for `orphan_mx` (REQ-ES-005). Without a design report, `orphan_mx` is omitted (omit-when-empty, per REQ-ES-005 + §5 JSON shape).
 - Orphan = canonical Mx NOT covered by any SPEC's marker.
 - Extra = SPEC's marker Mx NOT in the canonical list.
 
