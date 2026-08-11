@@ -109,9 +109,9 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 **Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 9. Log: "Security scan skipped: no security-sensitive files changed."
 
-#### Step 0.55.0: Factory dedup gate (conditional suppression of Step 0.55.1)
+#### Step 0.55.0: Kanban dedup gate (conditional suppression of Step 0.55.1)
 
-Applies only to a sync entered from a factory chain, whose run-phase verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
+Applies only to a sync entered from a kanban chain, whose run-phase verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
 
 **Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest audit below is a separate mechanism serving a separate purpose — detecting transitive-vulnerability drift unrelated to the current SPEC — and a source-code deep scan does not substitute for it, so it continues to run unconditionally whether or not this gate passes. Skipping the whole of Phase 8 would remove the only check for that drift.
 
@@ -126,7 +126,7 @@ Then call the **revision-match predicate** with the results directory recorded f
 
 **Rung allow-list.** A passing predicate is only half the condition. Suppression additionally requires the verify stage's rigor rung to have been **recorded** on the session state record and to equal `PRIMARY` or `FALLBACK`. Every other value yields no suppression: `DEGRADED` (a single-pass, rigor-reduced scan, which must never suppress the independent adversarial analysis of the same surface), an unrecognized value, an empty value, and a rung that was never recorded at all. State this as an allow-list, never as a "not `DEGRADED`" exclusion — the state record is best-effort and its fields land independently, so a record carrying a results directory but no rung is reachable, and a deny-list would read that absence as permission to suppress. The scan's effort tier is deliberately not part of this condition: an effort level is not a rigor rung, so a maximum-effort single-pass scan would clear an effort floor while still being rigor-reduced.
 
-**Disclosure.** When the gate suppresses Step 0.55.1, the sync report MUST record the inheritance explicitly — naming the results directory and the matched `scanned_commit`, and stating that the findings were inherited from the factory verify stage. A suppressed scan must never be indistinguishable from a clean one.
+**Disclosure.** When the gate suppresses Step 0.55.1, the sync report MUST record the inheritance explicitly — naming the results directory and the matched `scanned_commit`, and stating that the findings were inherited from the kanban verify stage. A suppressed scan must never be indistinguishable from a clean one.
 
 #### Step 0.55.1: Security Analysis
 

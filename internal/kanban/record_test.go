@@ -1,4 +1,4 @@
-package factory
+package kanban
 
 import (
 	"encoding/json"
@@ -62,9 +62,9 @@ func TestWriteThenReadRoundTripsEveryField(t *testing.T) {
 	}
 }
 
-func TestRecordPathIsSessionKeyedUnderStateFactory(t *testing.T) {
+func TestRecordPathIsSessionKeyedUnderStateKanban(t *testing.T) {
 	root := t.TempDir()
-	want := filepath.Join(root, ".moai", "state", "factory", "session-abc123.json")
+	want := filepath.Join(root, ".moai", "state", "kanban", "session-abc123.json")
 
 	if got := RecordPath(root, "session-abc123"); got != want {
 		t.Errorf("RecordPath = %q, want %q", got, want)
