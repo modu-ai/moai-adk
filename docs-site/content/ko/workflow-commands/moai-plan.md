@@ -565,3 +565,4 @@ MoAI가 `AskUserQuestion`으로 물을 때는 추천을 어디에 놓을지 정�
 - [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) - EARS 형식 상세 설명
 - [/moai run](./moai-run) - 다음 단계: DDD 구현
 - [/moai sync](./moai-sync) - 최종 단계: 문서 동기화
+- [/moai goal](./moai-goal) - plan→run→sync 체인을 자동으로 이어 붙이는 자율 루프 (v3.1)
