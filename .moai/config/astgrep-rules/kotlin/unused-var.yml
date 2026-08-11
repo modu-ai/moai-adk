@@ -1,9 +1,0 @@
-id: kotlin-unused-var
-language: kotlin
-severity: warning
-message: "Variable initialized to null. Explicit null initialization with val creates a potential null reference if the value is accessed before assignment."
-note: "In Kotlin, val x = null declares a variable of inferred type Nothing? which is rarely useful. If a nullable type is needed, declare it explicitly as val x: String? = null and use safe calls (?.) or the Elvis operator (?:) on all access sites. Prefer lazy initialization or non-null types where possible."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-476"
-pattern: val $_ = null

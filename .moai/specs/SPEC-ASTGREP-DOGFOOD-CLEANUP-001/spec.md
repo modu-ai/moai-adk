@@ -1,10 +1,10 @@
 ---
 id: SPEC-ASTGREP-DOGFOOD-CLEANUP-001
 title: "Local Dogfood ast-grep Ruleset Curated-Baseline Cleanup"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: in-progress
 created: 2026-07-08
-updated: 2026-07-08
+updated: 2026-08-12
 author: GOOS
 priority: P3
 phase: "maintainer-tooling"
@@ -20,6 +20,7 @@ tags: "astgrep, dogfood, cleanup, tooling, local"
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-08 | GOOS | 최초 초안 (draft). CLAUDE.local.md §2.2가 후속 SPEC 소관으로 명시적 지연한 로컬 dogfood 트리 정리 작업의 착수 SPEC. |
+| 0.2.0 | 2026-08-12 | GOOS | plan refresh. REQ-ADC-002/003 은 `SPEC-CONFIG-AUDIT-REPAIR-001` M2 (commit 6e70a29fd, PR #1142, 2026-07-25) 가 해소 → 제거. 잔여 REQ-001/004/005/006 (순수 위생) 으로 축소. REQ-006 제거 대상을 현재 누출 `SPEC-GATE-ASTGREP-REPAIR-001` (sgconfig.yml:10, #1445 체인이 추가) 로 갱신. REQ-004 빈 stub 개수 9→10 (typescript 누락 정정). §A.3 gate 프레이밍을 #1142 이후 실제(warn-only ON)로 정정. |
 
 ## §A 배경 (Context / Why)
 
@@ -46,18 +47,21 @@ curated production baseline)이 이를 확정했다. 템플릿 트리의 검증�
 dogfood 트리 `.moai/config/astgrep-rules/`에만 작용한다. 템플릿의 `[go, security]` curated
 접근을 로컬 트리에 **미러(정렬)**하는 것이 본 SPEC의 패턴 원천이다.
 
-### §A.2 실측된 로컬 dogfood 트리 현재 상태 (2026-07-08 검증)
+### §A.2 실측된 로컬 dogfood 트리 현재 상태 (2026-08-12 재검증)
 
-manager-spec가 저작 전 실측한 상태 (git ls-files 41개 tracked + 1개 untracked):
+> **v0.2.0 refresh (2026-08-12)**: 최초 실측(2026-07-08) 이후 `SPEC-CONFIG-AUDIT-REPAIR-001` M2
+> (#1142)가 sgconfig `ruleDirs` 정렬 + phantom `utils` 제거를 이미 수행했다. 본 테이블은 현재 상태를
+> 반영하며, 이미 해소된 항목은 ✅로 표시한다.
 
-| 항목 | 실측 상태 | 정리 성격 |
-|------|-----------|-----------|
-| `go-hardcoding.yml` (root, 1008B) | ORPHAN. SPEC-SLQG-001 provenance. 3룰 중 `go-no-raw-getenv`은 no-op. `go/hardcoding.yml`(1425B)가 대체(supersede)함 | 제거 대상 |
-| `sgconfig.yml` (503B) | `ruleDirs` 18개 항목 — 존재하지 않는 `utils` 포함 + 15개 언어 디렉터리(대부분 stub) + 주석에 `SPEC-ASTG-UPGRADE-001` 내부 ID | ruleDirs 정렬 + SPEC-ID strip |
-| `go/` (5 파일) | 실제 vetted 룰 (idioms, resource-safety, error-handling, hardcoding, concurrency). **메시지 한국어**. **오늘(02:29) 수정됨** | 유지 (내용 무접촉) |
-| `security/` (5 파일) | 실제 vetted 룰 (secrets, injection, web, credentials, crypto). **메시지 한국어**. **오늘 수정 + `credentials.yml` untracked(in-flight)** | 유지 (내용 무접촉) |
-| 빈 stub 디렉터리 9개 | cpp, flutter, java, javascript, python, r, rust, scala, swift — `.gitkeep`만 존재 | 제거 대상 |
-| 데모 stub 디렉터리 5개 | csharp, elixir, kotlin, php, ruby — 동일 3룰명(null-deref/unused-var/todo-marker) 반복되는 미검증 boilerplate. **메시지 영어** | 제거 대상 |
+| 항목 | 실측 상태 (2026-08-12) | 정리 성격 |
+|------|------------------------|-----------|
+| `go-hardcoding.yml` (root) | ORPHAN. Go 코드·config 어디서도 참조 안 함(grep 검증). `go/hardcoding.yml`이 동일 규칙을 큐레이션 세트로 대체. sgconfig.yml:7 주석만이 존재를 언급 | 제거 대상 (REQ-001) |
+| `sgconfig.yml` ruleDirs | ✅ **이미 `[go, security]`로 정렬됨** (#1142). phantom `utils` 제거됨. → REQ-002/003 해소 | (해소됨) |
+| `sgconfig.yml` 주석 | 주석에 `SPEC-GATE-ASTGREP-REPAIR-001` 내부 ID 잔존 (line 10, #1445 체인이 추가). 원본 `SPEC-ASTG-UPGRADE-001`은 #1142로 제거됐으나 새 ID가 추가됨 → AC-006 여전히 FAIL | SPEC-ID strip (REQ-006) |
+| `go/` (5 파일) | 실제 vetted 룰 (idioms, resource-safety, error-handling, hardcoding, concurrency). **메시지 한국어** | 유지 (내용 무접촉, REQ-009) |
+| `security/` (5 파일) | 실제 vetted 룰 (secrets, injection, web, credentials, crypto). **메시지 한국어** | 유지 (내용 무접촉, REQ-009) |
+| 빈 stub 디렉터리 10개 | cpp, flutter, java, javascript, python, r, rust, scala, swift, **typescript** — `.gitkeep`만 존재. (v0.1.0의 9개 목록에서 `typescript`가 누락됐었음 — 정정) | 제거 대상 (REQ-004) |
+| 데모 stub 디렉터리 5개 | csharp, elixir, kotlin, php, ruby — 동일 3룰명(null-deref/unused-var/todo-marker) 반복되는 미검증 boilerplate. **메시지 영어** | 제거 대상 (REQ-005) |
 
 **§2.2 기술과의 실측 차이 (교정)**: §2.2는 "메시지 언어 혼재 ko/en"이라 기술하나, 실측 결과
 언어 분포는 반대다 — 삭제 대상 데모 stub은 **영어**, 유지 대상 go/security 실제 룰은 **한국어**.
@@ -66,10 +70,16 @@ manager-spec가 저작 전 실측한 상태 (git ls-files 41개 tracked + 1개 u
 
 ### §A.3 위험 프레이밍 — 런타임 영향 없음 (low-risk hygiene)
 
-ast-grep pre-tool gate는 기본 OFF (`AstGrepGate.Enabled` 컴파일 기본값 false; gate 로더 부재).
-따라서 본 정리는 **런타임 동작 변경이 전혀 없다** — 순수 위생(hygiene) 작업이다. 실제 영향은
-명시적 `moai ast-grep` CLI 경로 + `sg` 설치 + config-mode 실행 시에만 발생한다.
-로컬 트리는 git-tracked이므로 모든 변경은 되돌릴 수 있다.
+> **v0.2.0 정정**: v0.1.0은 "gate 기본 OFF (`AstGrepGate.Enabled` 컴파일 기본값 false; gate 로더 부재)"라
+> 기술했으나, `SPEC-CONFIG-AUDIT-REPAIR-001` M2 (#1142)가 gate 로더(`loader_gate.go`)를 추가하면서
+> 이 전제가 바뀌었다. 현재 기본값은 `AstGrepGate{Enabled: true, BlockOnError: false, WarnOnlyMode: true}`
+> (`internal/config/defaults.go`) — 즉 **차단 없는 권고 모드로 켜져 있고**, 차단(blocking)만이
+> `gate.yaml` opt-in이다. (CLAUDE.local.md §2.2 2026-08-01 정정 참조.)
+
+결론은 동일하다: gate가 warn-only 모드이므로 본 정리는 **런타임 동작 변경이 전혀 없다** — 순수
+위생(hygiene) 작업이다. 오히려 invalid rule을 가진 빈/데모 stub 디렉터리를 제거하면 config-mode
+스캔 파싱이 더 안정적이 된다(grep 검증: ruleDirs는 이미 `[go, security]`로 축소돼 stub는 sg scan이
+무시하지만, orphan root 파일은 여전히 잡음). 로컬 트리는 git-tracked이므로 모든 변경은 되돌릴 수 있다.
 
 ## §B GEARS 요구사항 (Requirements)
 
@@ -77,23 +87,29 @@ ast-grep pre-tool gate는 기본 OFF (`AstGrepGate.Enabled` 컴파일 기본값 
 
 ### 정리 대상 (하이진 defect 해소)
 
+> **v0.2.0**: REQ-ADC-002 (ruleDirs `[go, security]` 정렬) 와 REQ-ADC-003 (phantom `utils`
+> 제거) 은 `SPEC-CONFIG-AUDIT-REPAIR-001` M2 (commit 6e70a29fd, PR #1142, 2026-07-25) 가
+> 이미 해소했다. 본 SPEC에서 제거하며, 번호 공간은 추적성 보존을 위해 비워둔다 (재번호화 없음).
+> 잔여 정리 대상은 아래 REQ-001/004/005/006 의 4개.
+
 - **REQ-ADC-001** (Ubiquitous): 로컬 dogfood ast-grep 룰셋은 하위 디렉터리 룰 파일에 의해
   대체(supersede)된 orphan root 룰 파일(`go-hardcoding.yml`)을 포함하지 **않아야 한다(shall not)**.
 
-- **REQ-ADC-002** (Ubiquitous): `sgconfig.yml`의 `ruleDirs` 목록은 실제 vetted 룰을 최소 1개
-  담은 디렉터리(`go`, `security`)만 선언해야 하며(shall), 완료된 템플릿 baseline을 미러해야 한다.
+- ~~**REQ-ADC-002**~~ (RESOLVED by #1142): `sgconfig.yml`의 `ruleDirs`는 이미 `[go, security]`로 정렬됨.
 
-- **REQ-ADC-003** (Unwanted): `sgconfig.yml`은 디렉터리로 존재하지 않는 ruleDir(`utils`)를
-  선언하지 **않아야 한다(shall not)**.
+- ~~**REQ-ADC-003**~~ (RESOLVED by #1142): phantom `utils` ruleDir는 이미 제거됨.
 
 - **REQ-ADC-004** (Ubiquitous): 로컬 dogfood 트리는 `.gitkeep`만 담은 빈 언어 stub 디렉터리
-  (cpp, flutter, java, javascript, python, r, rust, scala, swift)를 포함하지 **않아야 한다(shall not)**.
+  (cpp, flutter, java, javascript, python, r, rust, scala, swift, **typescript**)를 포함하지
+  **않아야 한다(shall not)**. (v0.2.0 정정: `typescript`가 v0.1.0 목록에서 누락됐었음.)
 
 - **REQ-ADC-005** (Ubiquitous): 로컬 dogfood 트리는 미검증 데모 stub 언어 디렉터리
   (csharp, elixir, kotlin, php, ruby)를 포함하지 **않아야 한다(shall not)**.
 
-- **REQ-ADC-006** (Unwanted): `sgconfig.yml`은 주석에 내부 SPEC-ID 참조
-  (`SPEC-ASTG-UPGRADE-001`)를 포함하지 **않아야 한다(shall not)**.
+- **REQ-ADC-006** (Unwanted): `sgconfig.yml`은 주석에 내부 SPEC-ID 참조를 포함하지
+  **않아야 한다(shall not)**. (v0.2.0 갱신: 원본 누출 `SPEC-ASTG-UPGRADE-001`은 #1142로
+  제거됐으나, `SPEC-GATE-ASTGREP-REPAIR-001` (line 10, #1445 체인이 2026-08-11 추가) 가 새로
+  잔존한다. run-phase는 이 접두사를 strip하되 기술 노트 본문은 보존한다.)
 
 ### 검증 (verification)
 
@@ -136,16 +152,18 @@ ast-grep pre-tool gate는 기본 OFF (`AstGrepGate.Enabled` 컴파일 기본값 
   (2) 해당 디렉터리가 오늘 활발히 수정 중(untracked `credentials.yml` in-flight)이라 병렬 세션
   레이스 위험이 있음. 영어화는 이 룰들이 템플릿으로 승격될 때 배포 SPEC이 처리한다.
 
-### Out of Scope — ast-grep gate 활성화 및 Go 코드
-- `AstGrepGate.Enabled` 활성화, gate 로더 추가, `moai ast-grep` CLI 동작 변경 등 Go 코드
-  (`internal/`/`pkg/`/`cmd/`) 변경은 본 SPEC 범위 밖이다. 본 SPEC은 순수 파일/설정 위생 작업이다.
+### Out of Scope — ast-grep gate blocking 활성화 및 Go 코드
+- gate 로더 자체는 `SPEC-CONFIG-AUDIT-REPAIR-001` M2 (#1142) 가 이미 추가했다(`loader_gate.go`).
+  본 SPEC 범위 밖인 것은: gate **차단(blocking) 활성화**(`gate.yaml` opt-in), `moai ast-grep` CLI 동작
+  변경 등 Go 코드 (`internal/`/`pkg/`/`cmd/`) 변경. 본 SPEC은 순수 파일/설정 위생 작업이다.
 
 ## §D 성공 기준 (Success Criteria)
 
-- 로컬 dogfood 트리가 `[go, security]` curated baseline으로 정렬됨 (템플릿 접근 미러).
-- orphan / 빈 stub / 데모 stub / 존재하지 않는 ruleDir / 내부 SPEC-ID가 모두 제거됨.
+- ✅ (이미 달성) 로컬 dogfood 트리의 `sgconfig.yml` `ruleDirs`가 `[go, security]`로 정렬됨 — #1142.
+- orphan root 파일(`go-hardcoding.yml`) / 빈 stub 10개 / 데모 stub 5개 디렉터리가 모두 제거됨.
+- `sgconfig.yml` 주석의 내부 SPEC-ID 참조가 제거됨 (기술 노트 본문은 보존).
 - `sg scan --config .../sgconfig.yml`이 누락 ruleDir 오류 없이 파싱됨.
-- go/security 실제 룰 내용과 in-flight untracked 파일이 보존됨.
+- go/security 실제 룰 내용이 보존됨 (무접촉).
 - 템플릿 트리 무접촉 + template-neutrality CI 미트리거 확인.
 
 ## §E 교차 참조 (Cross-References)
@@ -153,5 +171,9 @@ ast-grep pre-tool gate는 기본 OFF (`AstGrepGate.Enabled` 컴파일 기본값 
 - `CLAUDE.local.md §2.2` — 로컬 dogfood 트리 격리 정책 + 본 정리 작업의 지연 명시(원천).
 - `CLAUDE.local.md §15/§25` — 언어 중립성 / template-internal-isolation (템플릿에만 바인딩; 로컬 예외).
 - `SPEC-ASTGREP-MULTILANG-001` (completed) — 템플릿 `[go, security]` curated baseline (미러 패턴 원천).
+- `SPEC-CONFIG-AUDIT-REPAIR-001` (M2, #1142, commit 6e70a29fd) — REQ-ADC-002/003 해소 원천
+  (ruleDirs 정렬 + phantom utils 제거 + gate 로더 추가). 본 SPEC의 §A.3 gate 프레이밍 정정 근거.
+- `SPEC-GATE-ASTGREP-REPAIR-001` (#1445) — go/error-handling.yml 정교화 + sgconfig.yml:10 기술 노트
+  추가 (REQ-006의 새 SPEC-ID 누출 발생원).
 - `internal/template/split_namespace_test.go` / `internal_content_leak_test.go` — 템플릿 격리 CI 가드
   (로컬 트리는 이 가드 범위 밖 — 위반 없음 확인용).

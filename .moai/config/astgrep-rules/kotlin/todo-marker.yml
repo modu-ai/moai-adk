@@ -1,9 +1,0 @@
-id: kotlin-todo-marker
-language: kotlin
-severity: info
-message: "TODO() stub detected. Implement the function body before shipping to production."
-note: "TODO() in Kotlin throws a NotImplementedError at runtime. While useful during early development, any code path reaching TODO() will crash in production. Replace with a proper implementation. If the feature is blocked, track it as a GitHub issue and ensure it is resolved before merging to main."
-metadata:
-  owasp: "A05:2021 - Security Misconfiguration"
-  cwe: "CWE-710"
-pattern: TODO()
