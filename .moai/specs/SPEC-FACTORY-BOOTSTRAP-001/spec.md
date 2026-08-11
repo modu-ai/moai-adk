@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-BOOTSTRAP-001
 title: "Factory Mode multi-session bootstrap guidance and companion entry"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-11
 updated: 2026-08-11
 author: manager-spec

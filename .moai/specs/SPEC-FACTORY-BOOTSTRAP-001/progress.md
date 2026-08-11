@@ -177,7 +177,58 @@ blocker_report: none
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-11
+sync_commit_sha: pending-backfill-sync
+run_commit_sha: 89227add0
+changelog_entry_position: top of [Unreleased] → Added (English-only CHANGELOG.md)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (single sync commit)"
+  updated_field_refreshed: true
+b12_self_test_a:
+  pre_emission_grep: "grep -c 'SPEC-FACTORY-BOOTSTRAP-001' CHANGELOG.md → 0 (pre-edit)"
+  outcome: pass
+b12_self_test_b:
+  ac_count_match: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 27"
+  changelog_references_ac: true
+  outcome: pass
+b12_self_test_c:
+  file_path_verification: "ls internal/cli/factory.go internal/cli/factory_settings.go internal/cli/cc.go internal/cli/glm.go internal/hook/session_start_factory.go docs-site/content/{en,ko,ja,zh}/multi-llm/factory-mode.md → all 9 paths exist"
+  outcome: pass
+docs_site_4locale_parity:
+  files_exist: true
+  frontmatter_complete: true  # title + weight:30 + draft:false in all 4 locales
+  menu_entry_present: true    # data/menu/main.yaml multi-llm sub: factory-mode, 4-locale name map + ref
+mx_tag_status:
+  present_count: 4
+  locations:
+    - "internal/cli/factory.go:8 @MX:NOTE [AUTO] (process-env signal)"
+    - "internal/cli/factory.go:76-77 @MX:ANCHOR [AUTO] + @MX:REASON (deferred restore correctness)"
+    - "internal/cli/factory_settings.go:14 @MX:NOTE [AUTO] (session-private transient file)"
+  gaps: "resolveFactoryBranch / prepareFactorySettings / operatorSuppliedSettings / revised notice functions carry no @MX tag — all below fan_in>=3 ANCHOR threshold (2,2,1,1 callers respectively); thorough doc comments already carry the context. No autonomous tag addition warranted (would be mechanical inflation)."
+canary_compliance_check:
+  sibling_off_limits: "git diff --name-only 24c4674b5..HEAD -- .moai/specs/SPEC-KANBAN- → 0 matches (C3 held)"
+  template_neutrality: "grep -rnE 'SPEC-FACTORY-BOOTSTRAP-001|REQ-FB-|94025ce0a' internal/template/templates/ → 0 matches (C2 held)"
+  worktree_isolation: "all artifacts under .moai/specs/SPEC-FACTORY-BOOTSTRAP-001/ in this worktree (C6 held)"
+  ac003_preserve: "TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal + TestAC003_BlockCapDoctrineClauseSpecific green (REQ-FB-018 held)"
+baseline_attribution:
+  worktree: "/Users/goos/.moai/worktrees/kanban"
+  branch: "feat/factory-bootstrap-guidance"
+  head_pre_sync: "24b401a3a"
+  run_head: "89227add0"
+  base: "24c4674b5"
+push_state: "NOT pushed (C5: commits only, no push, no PR — per user instruction)"
+blocker_report: none
+```
+
+### Sync-phase Verification Evidence
+
+- **CHANGELOG entry**: `grep -c 'SPEC-FACTORY-BOOTSTRAP-001' CHANGELOG.md` → `1` (post-edit, the new entry; pre-edit count was 0).
+- **docs-site 4-locale parity**: `ls docs-site/content/{en,ko,ja,zh}/multi-llm/factory-mode.md` → all 4 files exist; each carries `title:` + `weight: 30` + `draft: false`.
+- **Menu entry**: `grep -nE 'factory-mode' docs-site/data/menu/main.yaml` → `430:        ref: /multi-llm/factory-mode` inside the `multi-llm` section's `sub:` list, with a 4-locale `name:` map (ko/en/ja/zh).
+- **Frontmatter transition**: `spec.md` status `in-progress` → `completed` in this sync commit; `updated:` refreshed.
+- **Push NOT performed**: `git rev-parse --abbrev-ref @{u}` → fatal (no upstream) — no push, no PR (C5 held).
 
 ---
 
