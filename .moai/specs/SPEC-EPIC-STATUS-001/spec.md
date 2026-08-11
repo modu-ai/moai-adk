@@ -2,7 +2,7 @@
 id: SPEC-EPIC-STATUS-001
 title: "Epic Status producer (moai epic status <prefix>) — disk-grounded epic progress map + banner SSOT data feed"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-11
 updated: 2026-08-12
 author: manager-spec

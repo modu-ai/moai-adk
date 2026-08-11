@@ -41,13 +41,49 @@ Plan-phase self-check (per `moai-workflow-spec` SKILL.md § Verification):
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates this section on the first run-phase commit (M0). Evidence rows cite the verbatim command + observed output + baseline HEAD SHA per `verification-claim-integrity.md` §2.>_
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-ES-001 (disk-grounded) | PASS | `go test ./internal/epic/ -run TestBuildEpicStatus_BASFixture` | `--- PASS: TestBuildEpicStatus_BASFixture (0.00s)` |
+| AC-ES-002 (reuse path, no fork) | PASS | `grep -c 'spec.ListDocs' internal/epic/discover.go` | `1` (composed, not forked) + `grep -c 'os.WriteFile\|os.Create' internal/epic/*.go` → `0` |
+| AC-ES-003 (prefix glob) | PASS | `go test ./internal/epic/ -run TestDiscoverEpic_PrefixGlob` | `--- PASS: TestDiscoverEpic_PrefixGlob (0.00s)` |
+| AC-ES-003b (empty match clean) | PASS | `go test ./internal/epic/ -run TestBuildEpicStatus_EmptyPrefix` + CLI smoke `go run ./cmd/moai epic status NONEXIST --json` | exit 0, `{"epic":"NONEXIST",...,"total":0,"pct":0}` |
+| AC-ES-004 (Mx extraction) | PASS | `go test ./internal/epic/ -run TestExtractMx_BASMarker` | `--- PASS: TestExtractMx_BASMarker (0.00s)` |
+| AC-ES-004b (generic token) | PASS | `go test ./internal/epic/ -run TestExtractMx_GenericToken` | `--- PASS: TestExtractMx_GenericToken (0.00s)` |
+| AC-ES-005 (orphan-Mx detection) | PASS | `go run ./cmd/moai epic status NAVIGATOR-SYNC --json` | `"orphan_mx": ["M2","M3","M5"]` + 3 absent milestones with `"covered": false` |
+| AC-ES-005b (omit orphan when no report) | PASS | `go test ./internal/epic/ -run TestBuildEpicStatus_NoDesignReport_OmitsOrphan` | `--- PASS: ... OmitsOrphan (0.00s)` |
+| AC-ES-006 (status join) | PASS | `go test ./internal/epic/ -run TestJoinStatus_Classification` | `--- PASS: TestJoinStatus_Classification (0.00s)` |
+| AC-ES-007 (divide-by-zero) | PASS | `go test ./internal/epic/ -run TestComputePct_DivideByZero` | `--- PASS: TestComputePct_DivideByZero (0.00s)` |
+| AC-ES-008 (JSON shape) | PASS | `go test ./internal/epic/ -run TestRenderJSON_FrozenShape` + CLI smoke | byte-stable JSON with all frozen keys present |
+| AC-ES-008b (human grammar) | PASS | `go test ./internal/epic/ -run TestRenderHuman_ProgressBoardGrammar` + `go run ./cmd/moai epic status NAVIGATOR-SYNC` | first line `🎯 NAVIGATOR-SYNC ▓▓▓▓▓░░░░░ 3/6 (50%)` |
+| AC-ES-009 (forward-compat) | PASS | `go test ./internal/epic/ -run TestRenderJSON_ForwardCompat` | `--- PASS: TestRenderJSON_ForwardCompat (0.00s)` |
+| AC-ES-010 (CLI registration) | PASS | `go run ./cmd/moai epic --help` + `go run ./cmd/moai epic status --help` + `go run ./cmd/moai --help | grep epic` | status subcommand listed; flags --json/--design-report/--marker present; epic in root --help |
+| AC-ES-011 (non-interactive) | PASS | `go test ./internal/cli/ -run TestNewEpicCmd_NoAskUserQuestion` | `--- PASS: TestNewEpicCmd_NoAskUserQuestion (0.00s)` |
+| AC-ES-012 (template neutrality) | PASS | `grep -rn 'SPEC-EPIC-STATUS\|REQ-ES-' internal/template/templates/ 2>/dev/null` | (no matches — no mirror created; producer Go source not under templates/) |
+| AC-ES-013 (no persisted store) | PASS | `go test ./internal/cli/ -run TestEpicStatusCmd_NoPersistedStore` + `grep -c 'os.WriteFile\|os.Create' internal/epic/*.go` | PASS; grep returns 0 |
+| AC-ES-014 (factory touchpoint) | PASS | `grep -c 'moai epic status' internal/hook/session_start_factory.go` | `1` (single pointer line added to factoryLeadNotice) |
+| AC-ES-015 (baseline attribution) | PASS | `go run ./cmd/moai epic status NAVIGATOR-SYNC --json | grep baseline_attribution` | `"baseline_attribution": "87c685b099b011b8d43d0e15b37ced14c2bccebb"` |
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates this section when M0..M5 complete and all MUST ACs PASS with attributable evidence.>_
+```yaml
+run_complete_at: 2026-08-12
+run_commit_sha: 87c685b099b011b8d43d0e15b37ced14c2bccebb   # worktree HEAD at run-phase completion
+run_status: audit-ready
+ac_pass_count: 18          # AC-ES-001..015 + AC-ES-003b + AC-ES-004b + AC-ES-005b + AC-ES-008b all PASS
+ac_fail_count: 0
+must_ac_count: 17          # 15 MUST + 2 MUST sub-IDs (003b, 004b, 005b, 008b — see acceptance.md §B)
+should_ac_count: 1         # AC-ES-014 (SHOULD) — PASS (factory touchpoint shipped)
+coverage_internal_epic: 87.6%   # go test -cover ./internal/epic/ (≥85% threshold met)
+coverage_internal_cli: measured via full package suite (producer code paths covered by TestEpic* + TestNewEpicCmd_NoAskUserQuestion)
+new_warnings_or_lints_introduced: 0   # golangci-lint run --timeout=2m: "0 issues" on touched packages
+cross_platform_build:
+  go_build_default: PASS   # exit 0
+  goos_windows_goarch_amd64: PASS   # exit 0
+total_run_phase_files: 11   # internal/epic/{discover,designreport,status,render,git}.go + internal/epic/{discover,designreport,status,render}_test.go + internal/cli/epic.go + internal/cli/epic_test.go + internal/hook/session_start_factory.go touchpoint + internal/cli/help.go help-row
+m1_to_mN_commit_strategy: per-milestone Conventional Commits `feat(SPEC-EPIC-STATUS-001): M{N} <subject>` + 🗿 MoAI trailer; no push, no PR (per user instruction)
+```
 
 ---
 
@@ -63,7 +99,17 @@ sync_commit_sha: pending-backfill
 
 ## §F Phase 4 Mode Selection
 
-_<pending run-phase — orchestrator records the Phase 4 orchestration mode selection (solo-sequential / parallel-subagents / agent-team / dynamic-workflow) before the first implementation `Agent()` spawn, per the plan→run boundary.>_
+- **tier**: L
+- **scope**: ~7 files (internal/epic/{discover,designreport,status,render}.go + internal/epic/*_test.go + internal/cli/epic.go + internal/cli/epic_test.go + internal/hook/session_start_factory.go touchpoint)
+- **domain count**: 2 (Go producer library + CLI wiring)
+- **file language mix**: 100% Go source
+- **concurrency benefit**: LOW (coding-heavy, single-author producer library)
+
+**Decision**: solo-sequential (Mode 5)
+
+**Justification**: This is coding-heavy new-feature work (a producer library + thin CLI wiring) executed by a single manager-develop delegation in a worktree. Per Anthropic's coding-task parallelism caveat and the §B decision tree, Mode 5 (sequential sub-agent) is the correct default — the work has no genuinely-parallel independent tracks and no high-volume mechanical transform that would justify Mode 4 / Mode 6. Mode 3 is retired. Mode 1/2 do not apply (non-trivial, write-capable).
+
+**Implementation Kickoff Approval**: obtained this session before run-phase entry (plan-audit iter-2 PASS 0.97, Tier L threshold 0.85 met).
 
 ---
 
