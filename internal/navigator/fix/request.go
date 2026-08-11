@@ -182,6 +182,12 @@ func Run(opts Options) (res Result) {
 		logFix(root, "navigator-fix: 0 stale subtrees, doc map consistent")
 	} else {
 		res.Status = "ready"
+		// 009h: layer 1 (request.json) is complete; layer 2 (AI draft) is the
+		// orchestrator's job — the Go CLI cannot fire it by construction
+		// (design.md §A.5). This guidance is logged on every ready run so a
+		// bare-shell caller (no Claude Code session) sees the next step. It is
+		// the fail-open no-LLM-runtime message, NOT an error.
+		logFix(root, "navigator-fix: draft-request produced; run inside /moai project to generate the AI draft")
 	}
 	return res
 }
@@ -195,7 +201,11 @@ func Run(opts Options) (res Result) {
 func loadGraph(root string) (*navsync.Graph, string) {
 	raw, err := os.ReadFile(filepath.Join(root, navGraphRelPath))
 	if err != nil {
-		return nil, "" // absent — fail-open
+		// 009c: nav-graph absent → subtree resolution degrades to file-path
+		// heuristic (ComputeScope returns empty for a nil graph), baseline
+		// degrades to HEAD~1 (caller logs the degraded baseline separately).
+		logFix(root, "navigator-fix: nav-graph.json absent, subtree resolution degraded (no graph-bound paths)")
+		return nil, ""
 	}
 	var g navsync.Graph
 	if err := json.Unmarshal(raw, &g); err != nil {
@@ -231,12 +241,22 @@ func loadWorkItems(root string) (m2Refs []WorkItemRef, workItemRefs []WorkItemRe
 	workItemRefs = []WorkItemRef{}
 	raw, err := os.ReadFile(filepath.Join(root, workItemsRelPath))
 	if err != nil {
-		return nil, workItemRefs // absent — fail-open (009a)
+		// 009a: work-items.json absent (M2 not yet run) → degrade (diff-scope
+		// from M1 detect + git-diff only, no action hints).
+		logFix(root, "navigator-fix: work-items.json absent (M2 not run), degraded to detect + git-diff only")
+		return nil, workItemRefs
 	}
 	var f workItemsFile
 	if err := json.Unmarshal(raw, &f); err != nil {
 		logFix(root, fmt.Sprintf("navigator-fix: work-items.json unparseable, skipped: %v", err))
 		return nil, workItemRefs // 009e
+	}
+	if f.WorkItems == nil {
+		// 009f: valid JSON but the work_items[] key is absent → schema-invalid.
+		// (A present-but-empty work_items:[] is the legitimate "M2 found no
+		// drift" case — that is NOT schema-invalid and is not logged here.)
+		logFix(root, "navigator-fix: work-items.json schema-invalid (no work_items[] key), degraded to detect + git-diff only")
+		return nil, workItemRefs
 	}
 	seen := make(map[string]bool, len(f.WorkItems))
 	for _, ref := range f.WorkItems {
@@ -270,7 +290,10 @@ func loadDetect(root string) []string {
 	pattern := filepath.Join(root, detectStateDir, "*.jsonl")
 	files, err := filepath.Glob(pattern)
 	if err != nil || len(files) == 0 {
-		return nil // absent or empty — fail-open (009b)
+		// 009b: detect state dir absent or no *.jsonl → degrade (diff-scope from
+		// M2 owner_paths + git-diff only).
+		logFix(root, "navigator-fix: detect state absent/empty, degraded to work-items + git-diff only")
+		return nil
 	}
 	// Dedup by changed_path: latest changed_at wins.
 	latest := make(map[string]string)

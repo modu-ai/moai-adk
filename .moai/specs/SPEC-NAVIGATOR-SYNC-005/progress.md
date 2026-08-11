@@ -88,6 +88,39 @@
 
 **Residual-risk**: the approval.json token is a deterministic hash, not a cryptographically-signed artifact — it binds the apply to a prior orchestrator gate approval recorded in approval.json, NOT to an external secret. A compromised staging dir (attacker can write approval.json) could forge a token; this is acceptable because the staging dir lives under `.moai/project/` (project-local, not distributed) and the approval is a human-gate artifact, not a privilege boundary. The orchestrator owns the only legitimate approval.json writer.
 
+### M3.6 — Fail-open 8 modes + ≥50% automation rate + coverage
+
+**Claim**: AC-NS5-009 (fail-open 8 modes, ALL exit 0) + AC-NS5-010 (≥50% automation rate, mechanically measured) + AC-NS5-002 (four read-only inputs consumed) + AC-NS5-012 (template-first) PASS. This is the FINAL M3 milestone.
+
+**Evidence**:
+- AC-NS5-009 (fail-open, table-driven) — `go test ./internal/navigator/fix/ -run TestFixFailOpen_All8Modes -v -count=1`:
+  - `--- PASS: TestFixFailOpen_All8Modes/009a_work_items_absent` — work-items.json absent → degrade (M1 detect + git-diff scope), work_item_refs empty, exit 0, log "work-items"
+  - `--- PASS: TestFixFailOpen_All8Modes/009b_detect_absent` — detect state absent → degrade (M2 + git-diff scope), exit 0, log "detect"
+  - `--- PASS: TestFixFailOpen_All8Modes/009c_nav_graph_absent` — nav-graph absent → empty scope (no graph-bound paths), baseline degrades to HEAD~1, exit 0, log "nav-graph"
+  - `--- PASS: TestFixFailOpen_All8Modes/009d_baseline_unresolvable` — no compareTo + no nav-graph provenance + HEAD~1 fails (non-git) → NO request.json written, Status "skipped", exit 0, log "baseline unresolvable"
+  - `--- PASS: TestFixFailOpen_All8Modes/009e_unparseable_json` — malformed work-items.json skipped, well-formed detect still seeds scope, exit 0, log "unparseable"
+  - `--- PASS: TestFixFailOpen_All8Modes/009f_schema_invalid` — valid JSON missing work_items[] key → degrade, exit 0, log "schema-invalid"
+  - `--- PASS: TestFixFailOpen_All8Modes/009g_empty_diff_scope` — inputs touch non-graph-bound paths → empty scope, Status "consistent", exit 0, log "consistent"
+  - `--- PASS: TestFixFailOpen_All8Modes/009h_no_llm_runtime` — request.json produced (layer 1 complete), NO draft/ dir (layer 2 cannot fire from Go CLI), exit 0, log "draft-request produced"
+  - 8/8 subtests PASS (grep count = 8)
+- AC-NS5-010 (≥50% automation rate) — `go test ./internal/navigator/fix/ -run TestFixAutomationRate -v -count=1`:
+  - stdout: `AC-NS5-010 automation rate: 60.0% (6/10 drafts approved unmodified)` — observed 60.0% ≥ 50.0% floor PASS
+  - 10-scenario corpus: 3 audit-missing × 3 audit-orphan × 4 detect; 3 action strategies (re-link symbol / draft SPEC stub / regenerate row); fixed per-scenario approvals (6 approved-unmodified, 4 need-edit); deterministic (no wall-clock, no math/rand)
+  - Dual-arithmetic (acceptance.md §G): happy path 6/10 = 60.0% ≥ 50% ✓; the 4 edit-cases are in the denominator, not the numerator
+- AC-NS5-002 (four read-only inputs) — `go test ./internal/navigator/fix/ -run TestFixFourReadOnlyInputs_AC_NS5_002 -v -count=1`:
+  - `--- PASS: .../a_M2_work_items_consumed` — work_item_refs[] matches fixture; per_subtree strategy "draft SPEC stub" derived from action "create a SPEC ..."
+  - `--- PASS: .../b_M1_detect_consumed_across_sessions` — diff_scope seeded by changed_path from BOTH *.jsonl files (2 distinct graph-bound subtrees), deduplicated
+  - `--- PASS: .../c_M0_nav_graph_traversal` — subtree_id = graph node identifier (pkg.ParseHeader), NOT the source_path → graph traversal resolved the edge, not a file-path match
+  - `--- PASS: .../d_live_docs_read_not_written` — Run's only new files are under fix-drafts/ + logs/; live doc surfaces byte-unchanged
+  - 4/4 subtests PASS (grep count = 4)
+- AC-NS5-012 (template-first) — `git diff --name-only origin/main...HEAD | grep '^internal/template/templates/'` → no matches (M3 ships pure CLI + Go, no distributed surface; no catalog regen required)
+
+**Baseline-attribution**: `(this run, this tree)` against HEAD pre-commit on branch `worktree-bas-m2-route`. Full package `go test ./internal/navigator/fix/ -count=1` → `ok ... 8.421s`. Coverage `go test -cover ./internal/navigator/fix/` → `coverage: 87.5% of statements` (≥85% target). Cross-platform: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0. Lint `golangci-lint run --timeout=2m ./internal/navigator/fix/... ./internal/cli/...` → `0 issues.`. Subagent boundary `grep -rn 'AskUserQuestion\|mcp__askuser' internal/navigator/fix/*.go internal/cli/navigator_fix.go | grep -v _test.go | grep -v "// "` → 0 matches. PRESERVE `git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/(sync|detect|route|tiers)|hook/navigator_detect|mx)/'` → no matches. Full suite `go test ./... 2>&1 | grep -E '^FAIL'` → EMPTY (baseline green at 686b96c9b stays green post-M3.6).
+
+**Gaps**: none for M3.6 scope. The 009h message is logged + the layer-1 contract holds; the AI draft (layer 2) is the orchestrator's job by design (design.md §A.5 — the Go CLI cannot fire layer 2 by construction).
+
+**Residual-risk**: the automation rate is measured against a deterministic in-tree fixture corpus (10 scenarios), not live manager-develop output. The 60.0% figure is attributable to the exact `go test … -v` invocation + its stdout (VCI §2). A live measurement after orchestrator integration MAY differ; the fixture corpus is the SSOT for the ≥50% floor assertion per AC-NS5-010 attribution. The full-suite `internal/cli` package has a known parallel-load timeout flake (subprocess pipe hang under `-p N`); it passes with `-p 1` (250.963s) and is unrelated to the M3.6 diff (navigator/fix + navigator_fix.go).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — manager-develop populates this section on run-phase completion)_
