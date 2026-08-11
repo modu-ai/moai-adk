@@ -542,7 +542,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md"
+  clause: "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
   canary_gate: true
 
 - id: CONST-V3R2-063
@@ -550,7 +550,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md"
+  clause: "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
   canary_gate: true
 
 - id: CONST-V3R2-064

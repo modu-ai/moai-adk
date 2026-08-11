@@ -118,6 +118,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When reading SPEC artifacts or performing frontmatter status transitions, invoke Skill("moai-workflow-spec") to load it on demand.
 - When running TRUST 5 quality gate checks on documentation output, invoke Skill("moai-foundation-quality") to load it on demand.
 - When weighing documentation architecture trade-offs, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When a sync-phase artifact (or any report) must be rendered to a single self-contained HTML file, invoke Skill("moai-domain-html-report") to load it on demand.
 
 ## Model/effort escalation
 

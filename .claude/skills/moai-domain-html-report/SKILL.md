@@ -12,11 +12,8 @@ description: >
 
 when_to_use: >
   Use when a markdown report must be rendered into a single self-contained
-  HTML file. Trigger phrases include "render this report as HTML", "weekly
-  status report as one HTML file", "convert the financial statements to an
-  HTML report", "incident report as HTML", "printable business plan HTML",
-  "email-ready HTML report", and "explain this as an HTML report with
-  diagrams".
+  HTML file; mode is selected by report type and audience tier is derived
+  from the active output style.
 
 license: Apache-2.0
 compatibility: Designed for Claude Code

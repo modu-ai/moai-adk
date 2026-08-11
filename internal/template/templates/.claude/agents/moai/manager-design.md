@@ -196,10 +196,12 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 - When producing a design→implementation handoff or reasoning about component structure, invoke Skill("moai-ref-react-patterns") to load it on demand.
 - When weighing design trade-offs or deep design-direction decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When the deliverable is a static diagram image or architecture infographic (pixel-precise layout, CJK line wrapping, 2x PNG export), invoke Skill("moai-domain-svg-infographic") to load it on demand.
+- When finishing interface-polish / completion work (optical alignment, shadow-vs-border, motion easing, typography smoothing, hit areas), invoke Skill("moai-ref-ui-polish") to load it on demand.
 
 ## Cross-References
 
-- **Design authority**: the D1-D5 pipeline definition in `.claude/skills/moai/workflows/design.md`.
+- **Design authority**: `.moai/reports/agent-architecture-redesign-v2-20260709.html` §04.
 - **Design pipeline skill**: `.claude/skills/moai/workflows/design.md` (D1-D5).
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (plan → design → run for UI-surfaced SPECs).
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
