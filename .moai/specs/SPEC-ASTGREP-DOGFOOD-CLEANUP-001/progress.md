@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-DOGFOOD-CLEANUP-001
 title: "Local Dogfood ast-grep Ruleset Curated-Baseline Cleanup — Progress"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-08
 updated: 2026-08-12
 author: GOOS
@@ -74,4 +74,12 @@ findings가 많아 stdout을 suppress했으나, config PARSE 오류(ruleDir)는 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+- **3-phase close 완료**: PR #1453 squash-merged on origin/main (2026-08-11T19:19Z). 본 SPEC의
+  plan + run + close가 단일 PR로 병합됨 (Route B, repo-local-pr-policy §23; collapsed 3-phase).
+- **CI**: required 5개(Test ubuntu·Lint·Build linux-amd64·Analyze Go·Release PR Multi-OS Gate) green;
+  `claude-review`(비required) action 인프라 실패 — 머지 무관 (리포 Auto Merge가 required green에 자동 머지).
+- **MX**: 파일/설정 위생이라 @MX 태깅 대상 아님 (Go 코드 0).
+- **CHANGELOG**: 미작성 — local-only dogfood 트리(`.moai/config/astgrep-rules/`) 정리로 배포/사용자 가시 변경 없음.
+- **sync_commit_sha**: PR #1453 squash merge 커밋 = 본 close의 기준 SHA.
+
+sync_commit_sha: 0e24dde06
