@@ -2,9 +2,9 @@
 id: SPEC-NAVIGATOR-SYNC-004
 title: "Navigator Sync (BAS M2) — Falconer Route: audit advisory → actionable work item promotion with code-path-bound owner"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 author: manager-spec
 priority: P1
 phase: "v3.3 target"

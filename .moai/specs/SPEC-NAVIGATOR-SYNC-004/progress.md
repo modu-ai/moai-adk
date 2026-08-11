@@ -28,4 +28,21 @@ _(pending run-phase — manager-develop populates this section when all MUST ACs
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — manager-docs populates sync_commit_sha on the single sync commit carrying the implemented → completed transition)_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-12
+sync_commit_sha: pending-backfill-after-merge  # D3 self-referential-hazard workaround — backfilled in a follow-up commit after the sync PR merges
+run_commit_sha: 73650aa44                       # feat(SPEC-NAVIGATOR-SYNC-004) run commit on worktree-bas-m2-route
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"  # merged into the single sync commit (3-phase close)
+  updated_field_refreshed: "2026-08-12"
+changelog_entry_position: "[Unreleased] / Added"   # SPEC-NAVIGATOR-SYNC-004 entry appended
+readme_decision: skip                              # M2 is a Hidden CLI + runtime Go; no distributed .claude/ template surface (AC-NS4-012 confirmed git diff template = 0)
+docs_site_decision: skip                           # internal Navigator subsystem; navigator-route is Hidden, no user-facing command surface (consistent with NS1/NS2/NS3 predecessor precedent)
+mx_tag_validation: sub-step-complete               # MX tag validation is a sync sub-step (no separate Mx-phase commit)
+ac_pass_count_final: 15                            # AC-NS4-001a..012 — all PASS (15 ACs including sub-variants)
+ac_fail_count_final: 0
+route_coverage_pct: 85.8                           # internal/navigator/route/... coverage >= 85% target MET
+route_accuracy_pct: 83.3                           # 25/30 actionable work items >= 70% target MET (happy path)
+open_blockers: 0
+```
