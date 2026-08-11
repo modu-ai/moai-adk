@@ -125,7 +125,7 @@ The shape (spec.md §B.1) is locked at v0.1.0. The rationale per field:
 | `milestones[].covered` (bool) | Banner's `done` counter keys on `status == "done" && covered` | Never change semantics |
 | `milestones[].spec_id`, `spec_status`, `sync_commit_sha` | Banner click-through target + attribution | Add optional fields (e.g. `spec_tier`); never remove |
 | `done`, `total`, `pct` | Banner's aggregate bar keys on these | Computation rule (REQ-ES-006, REQ-ES-013) never changes |
-| `orphan_mx`, `extra_mx`, `untracked_specs` | Orphan detection output | May be null when no canonical list; field name stable |
+| `orphan_mx`, `extra_mx`, `untracked_specs` | Orphan detection output | Omitted when no canonical list (per REQ-ES-005); field name stable |
 | `design_report` (path or empty) | Provenance for the canonical list | Type stable (string) |
 | `baseline_attribution` (HEAD SHA) | `verification-claim-integrity.md` §2 contract | Type stable (string, possibly empty in non-git) |
 

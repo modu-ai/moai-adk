@@ -147,7 +147,7 @@ These negative findings are recorded so the run-phase implementation does NOT wa
 - **No `epic.json` or `epic-state.json`** anywhere under `.moai/` or `internal/`. Confirmed by `find . -name 'epic*.json'` returning zero hits.
 - **No `internal/epic/` package**. Confirmed by `ls internal/ | grep epic` returning zero hits.
 - **No `moai epic` CLI verb**. Confirmed by `grep -rn 'newEpicCmd\|"epic"' internal/cli/` returning zero hits.
-- **No `nav-graph.json` on disk**. Confirmed by `find . -name 'nav-graph.json'` returning zero hits in either the primary checkout or this worktree.
+- **No production `nav-graph.json` on disk** outside test fixtures. Confirmed by `find . -name 'nav-graph.json'` returning only `./internal/hook/testdata/navigator-detect-corpus/nav-graph.json` (a navigator-detect test fixture); no production nav-graph.json exists in either the primary checkout or this worktree.
 - **No `epic`/`milestone` node type in the navigator schema**. The schema (`.claude/rules/moai/workflow/nav-tokens.md` § Output) carries only `decision | spec | symbol`.
 
 ---

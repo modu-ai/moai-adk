@@ -82,7 +82,7 @@
 
 **Given** an epic with no discoverable design report
 **When** `moai epic status <prefix> --json` is invoked
-**Then** the JSON output either omits the `orphan_mx` field OR emits it as `null` (design.md §5 locks which — the chosen form is documented); the producer does NOT report orphans it cannot ground in a canonical list.
+**Then** the JSON output omits the `orphan_mx` field entirely (REQ-ES-005 + design.md §5 lock the omit-when-empty form); the producer does NOT report orphans it cannot ground in a canonical list.
 
 ### AC-ES-006 — Status join per SPEC (done / in-progress / planned / absent)
 

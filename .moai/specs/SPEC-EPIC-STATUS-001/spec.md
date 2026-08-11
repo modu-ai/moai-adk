@@ -1,10 +1,10 @@
 ---
 id: SPEC-EPIC-STATUS-001
 title: "Epic Status producer (moai epic status <prefix>) — disk-grounded epic progress map + banner SSOT data feed"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 author: manager-spec
 priority: High
 phase: "v3.2.0 target"
@@ -16,6 +16,8 @@ related_specs: [SPEC-FACTORY-MODE-001, SPEC-FACTORY-BOOTSTRAP-001, SPEC-KANBAN-B
 ---
 
 ## HISTORY
+
+- **v0.2.0** (2026-08-12) — Plan-audit iteration-1 revision. Closed 4 blocking defects (D1: REQ-ES-011 rewritten with shall as the lead sentence, justification moved into a parenthetical; D2: REQ-ES-012 "MAY" converted to the GEARS-canonical "shall"; D3: REQ-ES-008 §B.1 `orphan_mx` JSON example corrected from `["M2","M5"]` to `["M2","M3","M5"]` to match AC-ES-005 + design report §7; D4: `orphan_mx` null-vs-omit locked to the omit-when-empty form across REQ-ES-005 / design.md §5 / AC-ES-005b). Tightened 2 optional findings (D5: `nav-graph.json` negative-finding scoped to "no production nav-graph.json outside test fixtures" across research.md §3 + spec.md §C; D6: REQ-ES-008 §B.1 example now carries an inline `covered: false` orphan entry so the orphan shape is visible in the frozen contract without cross-referencing REQ-ES-005). All citation + audit-clean dimensions preserved (MP-1/3/5/6/7, traceability, testability, completeness).
 
 - **v0.1.0** (2026-08-11) — Initial plan-phase authoring. This SPEC is the first concrete step toward making Factory Mode a real epic orchestrator rather than a chain-seed + manual-launch notification. Two parallel read-only Explore audits (Factory Mode gap + visibility-machinery gap, conducted 2026-08-11 against HEAD `9fa242ddae3e5c7e9a80c2b47bd03d38b4c1b5ed`) established that:
   - Factory Mode today is a chain-seed + companion-entry notification, NOT an epic orchestrator (backlog ingest / milestone management / cross-/clear epic continuity all MISSING — owned by the KANBAN BOARD / WORKTREE / BOOTSTRAP SPECs).
@@ -126,12 +128,21 @@ The `--json` output shall conform to the following shape (additive-only forward-
       "spec_id": "SPEC-NAVIGATOR-SYNC-001",
       "spec_status": "completed",
       "sync_commit_sha": "<sha or empty>"
+    },
+    {
+      "id": "M2",
+      "label": "<label from design report, or Mx if unavailable>",
+      "status": "absent",
+      "covered": false,
+      "spec_id": "",
+      "spec_status": "",
+      "sync_commit_sha": ""
     }
   ],
   "done": 3,
   "total": 6,
   "pct": 50,
-  "orphan_mx": ["M2", "M5"],
+  "orphan_mx": ["M2", "M3", "M5"],
   "extra_mx": [],
   "untracked_specs": ["SPEC-NAVIGATOR-SYNC-EXTRA-001"],
   "design_report": ".moai/reports/navigator-redesign-bas-20260805.html",
@@ -149,11 +160,11 @@ The `moai epic status` CLI shall be non-interactive: read-only scan + print to s
 
 ### REQ-ES-011 (Ubiquitous) — Template-neutrality (no SPEC-ID/SHA leak)
 
-The producer source code under `internal/epic/` and `internal/cli/epic.go` is Go code (not template source) and is therefore NOT subject to the template-neutrality CI guard (`internal/template/internal_content_leak_test.go`, scope: `internal/template/templates/**`). However, ANY change to `.moai/specs/SPEC-EPIC-STATUS-001/**` that is mirrored to `internal/template/templates/.moai/specs/` (none planned in this SPEC) shall strip SPEC IDs, REQ tokens, audit citations, internal dates, and commit SHAs per CLAUDE.local.md §2.1 / §25. This SPEC's plan-phase commits are markdown-only under `.moai/specs/SPEC-EPIC-STATUS-001/` and are NOT mirrored.
+The producer source under `internal/epic/` and `internal/cli/epic.go` shall NOT carry SPEC-EPIC-STATUS-001 identifiers, REQ-ES tokens, audit citations, internal dates, or commit SHAs into `internal/template/templates/`. (Rationale: the producer source is Go code, not template source, so the template-neutrality CI guard at `internal/template/internal_content_leak_test.go` — scope `internal/template/templates/**` — does not apply to it; this requirement enforces neutrality defensively for any future mirror of `.moai/specs/SPEC-EPIC-STATUS-001/**` into the template tree.) This SPEC's plan-phase commits are markdown-only under `.moai/specs/SPEC-EPIC-STATUS-001/` and create no mirror.
 
 ### REQ-ES-012 (Capability-gate) — Factory integration touchpoint (light)
 
-**Where** a Factory Mode lead/companion SessionStart notice is being composed and the project has at least one prefix-matched epic, the notice MAY include a single pointer line `moai epic status <prefix>` so a factory session can surface epic context without leaving its current turn. The producer itself does NOT wire this notice; the wiring is owned by the Factory Bootstrap / Kanban Bootstrap SPEC family (the touchpoint is named here only to lock the producer's CLI surface so the wiring SPEC has a stable invocation target).
+**Where** a Factory Mode lead/companion SessionStart notice is being composed and the project has at least one prefix-matched epic, the notice shall include a single pointer line `moai epic status <prefix>` so a factory session can surface epic context without leaving its current turn. The producer itself does NOT wire this notice; the wiring is owned by the Factory Bootstrap / Kanban Bootstrap SPEC family (the touchpoint is named here only to lock the producer's CLI surface so the wiring SPEC has a stable invocation target).
 
 ### REQ-ES-013 (Unwanted) — No persisted epic store
 
@@ -181,7 +192,7 @@ The producer shall NOT create, write, or require any new persisted epic store (`
 
 ### Out of Scope — Navigator graph routing
 
-- The navigator graph (`nav-graph.json`) does NOT exist on disk in either the primary checkout or this worktree at HEAD `9fa242dda`, and its schema (per `.claude/rules/moai/workflow/nav-tokens.md`) has no `epic` or `milestone` node type. The producer MUST read SPEC dirs + design reports directly via `spec.ListDocs` + `spec.Audit`, NOT route through the navigator graph. Adding an `epic`/`milestone` node type to the navigator graph is a separate concern owned by a future Navigator-Sync SPEC.
+- The navigator graph (`nav-graph.json`) does NOT exist as a production artifact on disk in either the primary checkout or this worktree at HEAD `9fa242dda` (the only on-disk `nav-graph.json` is the test fixture at `./internal/hook/testdata/navigator-detect-corpus/nav-graph.json`), and its schema (per `.claude/rules/moai/workflow/nav-tokens.md`) has no `epic` or `milestone` node type. The producer MUST read SPEC dirs + design reports directly via `spec.ListDocs` + `spec.Audit`, NOT route through the navigator graph. Adding an `epic`/`milestone` node type to the navigator graph is a separate concern owned by a future Navigator-Sync SPEC.
 
 ### Out of Scope — Auto-emitting the banner from every turn
 
