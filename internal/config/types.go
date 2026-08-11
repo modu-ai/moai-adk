@@ -1379,6 +1379,19 @@ type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
 }
 
+// systemFileWrapper handles the system.yaml section file.
+//
+// system.yaml ships four top-level blocks (moai / github / hook /
+// document_management), but only `hook` maps to a SystemConfig sub-struct.
+// The wrapper therefore binds only the Hook field; the other three blocks have
+// no SystemConfig field and are intentionally ignored by the loader (they are
+// classified R in the M1 inventory and read, where read at all, by ad-hoc
+// inline structs elsewhere). Seeding Hook with cfg.System.Hook preserves the
+// partial-override contract parallel to loadGateSection / loadHandoffSection.
+type systemFileWrapper struct {
+	Hook SystemHookConfig `yaml:"hook"`
+}
+
 // ralphFileWrapper handles the ralph.yaml section file.
 // stale_seconds lives under the ralph: key in ralph.yaml and is injected into Config.Session.StaleSeconds.
 // SPEC-V3R2-RT-004 REQ-022: source of the STALE_SECONDS setting.

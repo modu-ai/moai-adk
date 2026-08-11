@@ -124,7 +124,74 @@ Recorded so the next iteration does not re-derive them. As of iteration-3 refres
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M4 — system.yaml resolution (REQ-CKH-004)
+
+M4 unblinds the parity guard for the `"system"` registry entry and consolidates
+the two inline-struct readers of `system.yaml`'s `hook.*` block onto a single
+shared parse path.
+
+**Mechanism (AC branch 2 — real binding).** A narrow `loadSystemSection`
+(`internal/config/loader_system.go`) reads `system.yaml` via a
+`systemFileWrapper{Hook SystemHookConfig}` and binds the `hook` block into
+`cfg.System.Hook`, wired into `Loader.Load` (`loader.go:92`). The shared helper
+`config.LoadSystemHookOptInEnabled(projectRoot)` reads the same file through the
+same wrapper, replacing the inline anonymous structs in
+`internal/hook/routing_ledger.go::HookObserveOptInEnabled` and
+`internal/cli/update.go::readHookOptInEnabled` (both now one-line delegators).
+The `moai` / `github` / `document_management` blocks have no `SystemConfig`
+field and are intentionally ignored by the loader; they remain classified **R**
+in the M1 inventory (`document_management.*` promises file deletion that
+nothing performs — the sharpest reserved case).
+
+**Branch choice (E5 judgment call).** plan.md §F M4 names two decisions — (1)
+move `"system"` to `yamlAuditExceptions` and (2) add `loadSystemSection`. These
+are mutually exclusive under D5 once (2) lands: a real loader makes the
+exception reason "Loader.Load does not read the file" false, so keeping the
+entry in `yamlAuditExceptions` would convert an unbound lie into a different
+lie. AC-CKH-007 Part A encodes the two as an either/or; branch 2 (registry=1,
+real loader) is the D5-honest state and is implemented here. Decision 1 is
+preempted by decision 2 — the real loader IS the "real reason" the exception
+would later be retired for.
+
+**Observed verification (against HEAD of this worktree, post-M4):**
+
+```
+$ awk '/^var yamlAuditExceptions/,/^}/'  internal/config/audit_registry.go | grep -c '"system"'
+0
+$ awk '/^var yamlToStructRegistry/,/^}/' internal/config/audit_registry.go | grep -c '"system"'
+1
+$ grep -rn 'loadSystemSection' internal/config/
+internal/config/loader_system.go:31:func (l *Loader) loadSystemSection(dir string, cfg *Config) {
+internal/config/loader.go:92:	l.loadSystemSection(sectionsDir, cfg)
+$ grep -rn 'var doc struct' internal/hook/routing_ledger.go internal/cli/update.go | grep -c 'Hook struct'
+0
+$ go test -run 'TestAuditParity' -count=1 ./internal/config/
+ok  github.com/modu-ai/moai-adk/internal/config  0.325s
+$ go test -run 'TestSystemHookOptInLoadsViaLoader' -count=1 ./internal/config/
+ok  github.com/modu-ai/moai-adk/internal/config  2.191s
+```
+
+Baseline at HEAD `0c494e9e1` (pre-M4, the concealed state) for the same greps:
+`yamlAuditExceptions` count 0, `yamlToStructRegistry` count 1, no
+`loadSystemSection`, inline-struct count 2 — and `TestAuditParity` passing
+anyway (the false-positive the M4 parity-guard unblinding targets).
+
+Reader-site verification: the iteration-3 refresh cited
+`routing_ledger.go:104` and `update.go:1140` as the inline-struct sites at code
+baseline `ed70e4354`. Both confirmed present at worktree HEAD `0c494e9e1`
+(`HookObserveOptInEnabled` at `routing_ledger.go:104`, `readHookOptInEnabled`
+at `update.go:1143`); both are now one-line delegators to
+`config.LoadSystemHookOptInEnabled`. No drift.
+
+### M1 + M2 evidence (prior milestones, summarized)
+
+M1 (triage rule `.moai/docs/config-key-triage-rule.md` + 952-entry inventory
+`internal/config/testdata/shipped_key_inventory.yaml`) and M2 (anti-rot guard
+`internal/config/shipped_key_reader_test.go`) landed on earlier worktree
+commits and are unchanged by M4 (B10 PRESERVE). `github.*` (3 keys) and
+`document_management.*` (18 keys) are classified **R** in the M1 inventory —
+M4 did not need to reclassify them.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
