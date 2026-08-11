@@ -91,7 +91,7 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits `feat(SPEC-EPIC-STA
 
 ```yaml
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-sync   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); backfilled in a follow-up commit
+sync_commit_sha: 6da952899be8b2ceafe7bb87aa6af41b8c32dd0c   # self-referential-hazard workaround (spec-frontmatter-schema.md D3); backfilled in a follow-up commit
 sync_status: audit-ready
 run_commit_sha: 4aa9178c3                # final run-phase commit (M5 factory-notice touchpoint)
 frontmatter_status_transitions:
