@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 **비용 · 자기 개선 · 품질 통제** 세 가지로 Claude Code를 감싸는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로 뽑아내고 (비용, 토크노믹스), 세션이 한 번 돌 때마다 관찰을 규칙으로 쌓아 하네스가 점점 나아지게 하며 (자기 개선, 에이전틱 루프 엔지니어링), SPEC 3단계와 TRUST 5 게이트로 재작업을 막아 '끝'을 증거로 판정합니다 (품질 통제, 에이전틱 하네스). 모델 선택과 추론 깊이, 컨텍스트 사용량은 시스템이 바깥에서 강제합니다. 11개의 전문 AI 에이전트와 31개의 스킬이 함께 일하고, 새 프로젝트에는 TDD (기본값) 를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
+MoAI-ADK는 **비용 · 자기 개선 · 품질 통제** 세 가지로 Claude Code를 감싸는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로 뽑아내고 (비용, 토크노믹스), 세션이 한 번 돌 때마다 관찰을 규칙으로 쌓아 하네스가 점점 나아지게 하며 (자기 개선, 에이전틱 루프 엔지니어링), SPEC 3단계와 TRUST 5 게이트로 재작업을 막아 '끝'을 증거로 판정합니다 (품질 통제, 에이전틱 하네스). 모델 선택과 추론 깊이, 컨텍스트 사용량은 시스템이 바깥에서 강제합니다. 12개의 전문 AI 에이전트와 31개의 스킬이 함께 일하고, 새 프로젝트에는 TDD (기본값) 를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -22,7 +22,7 @@ MoAI-ADK는 **Claude Code 안에서 에이전트들이 서로 협력하며 에�
 | AI 개발팀 | MoAI-ADK | 역할 |
 |----------|----------|------|
 | 프로덕트 오너 | 사용자 (개발자) | 무엇을 만들지 결정합니다 |
-| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 11개 에이전트에게 위임합니다 |
+| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 12개 에이전트에게 위임합니다 |
 | 기획자 / Spec Writer | manager-spec | 요구사항을 SPEC 문서로 정리합니다 |
 | 개발자 / Engineers | manager-develop (도메인 컨텍스트 주입) | 실제 코드를 DDD/TDD로 구현합니다 |
 | QA / 코드 리뷰어 | plan-auditor · sync-auditor | 계획과 결과물을 독립적으로 감사합니다 |
@@ -41,7 +41,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 에이전틱 하네스 (Agentic Harness)
 
-코드를 직접 쓰는 대신 에이전트가 잘 일할 환경을 설계합니다. 11개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 핵심입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
+코드를 직접 쓰는 대신 에이전트가 잘 일할 환경을 설계합니다. 12개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 핵심입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
 
 ## 왜 이 세 가지인가
 
@@ -63,7 +63,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 품질 통제 — 에이전틱 하네스
 
-코드를 직접 쓰는 대신 에이전트가 일할 환경을 설계합니다. 11개 에이전트 카탈로그는 계획과 감사를 설계 단계부터 분리해 작성한 쪽이 자기 작업에 점수를 매기지 않게 하고, SPEC 3단계 (plan → run → sync) 와 TRUST 5 게이트, worktree 격리가 '된 것 같다'가 아니라 증거로 완료를 판정합니다.
+코드를 직접 쓰는 대신 에이전트가 일할 환경을 설계합니다. 12개 에이전트 카탈로그는 계획과 감사를 설계 단계부터 분리해 작성한 쪽이 자기 작업에 점수를 매기지 않게 하고, SPEC 3단계 (plan → run → sync) 와 TRUST 5 게이트, worktree 격리가 '된 것 같다'가 아니라 증거로 완료를 판정합니다.
 
 ## 왜 MoAI-ADK인가?
 
@@ -82,7 +82,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ### 핵심 수치 (v3.0 기준)
 
-- **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
+- **12개** 에이전트 카탈로그 (11 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **31개** 스킬 (template-managed)
 - **36개** CLI 명령 · **16종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
@@ -241,9 +241,9 @@ MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 
 
 ## AI 에이전트 오케스트레이션
 
-MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 않고 11개 에이전트 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 넘깁니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 쪽이 검사하지 않습니다.
+MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 않고 12개 에이전트 (11 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 넘깁니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 쪽이 검사하지 않습니다.
 
-### 11개 에이전트 카탈로그
+### 12개 에이전트 카탈로그
 
 | 분류 | 에이전트 | 비용 | 역할 |
 |------|---------|------|------|
@@ -252,6 +252,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | | manager-docs | 🔵 | Sync 단계: 문서화 및 PR 생성 |
 | | manager-git | 🩵 | Git 워크플로우 및 Tier 기반 PR 라우팅 |
 | | manager-design | 🟠 | Design 단계: Claude Design 협업 |
+| | manager-lead | ⚪ | Tier L 다중 마일스톤 조율 (worktree 격리 leaf-worker 팬아웃 · 카탈로그 유일 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 계획의 독립적 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
 | **Builder** | builder-harness | 🟠 | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
@@ -259,18 +260,19 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (`manager-lead` `model: inherit`, 사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
 
 ```mermaid
 flowchart TD
     MoAI["MoAI 오케스트레이터\n사용자 요청 분석 및 위임"]
 
-    subgraph Managers["Manager 에이전트 (5개)"]
+    subgraph Managers["Manager 에이전트 (6개)"]
         M1["manager-spec\nPlan 단계: SPEC 생성"]
         M2["manager-develop\nRun 단계: DDD/TDD 구현"]
         M3["manager-docs\nSync 단계: 문서화"]
         M4["manager-git\nPR 생성, Git 작업"]
         M5["manager-design\nDesign 협업"]
+        M6["manager-lead\nTier L 다중 마일스톤 조율"]
     end
 
     subgraph Evaluators["평가 에이전트 (2개)"]
