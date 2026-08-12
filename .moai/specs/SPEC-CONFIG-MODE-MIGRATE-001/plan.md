@@ -14,7 +14,7 @@
 - **SPEC artifacts**: `.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/{spec,plan,progress}.md`.
 - **Tier**: S (2 counted artifacts: spec.md + plan.md; progress.md emitted at every
   Tier per the §E skeleton rule, not counted in the Tier total).
-- **REQ/AC budget**: 2 REQs + 1 NFR + 6 ACs (Tier S ceiling 8 each — well within).
+- **REQ/AC budget**: 2 REQs + 1 NFR + 7 ACs (Tier S ceiling 8 each — well within).
 - **User-locked design decision**: candidate C — **dry-run-first + operator approval
   (`--apply` flag)**. NOT blind-widen, NOT announce-then-auto-widen. The operator is
   the only entity that can decide "deliberately restricted vs accidentally narrowed"
@@ -125,6 +125,7 @@ command + observed output + baseline HEAD SHA per the attribution discipline.
 | AC-MIG-004 (scope .moai/config/) | _pending_ | `go test -run TestModeMigrateScope ./internal/cli/config/...` | _pending_ |
 | AC-MIG-005 (idempotent) | _pending_ | `go test -run TestModeMigrateIdempotent ./internal/cli/config/...` | _pending_ |
 | AC-MIG-006 (helper routing) | _pending_ | `grep -n "atomicfile.Write" internal/cli/config/mode_migrate.go` | _pending_ |
+| AC-MIG-007 (0700 only-widen edge case) | _pending_ | `go test -run TestModeMigrateNonSubsetMode ./internal/cli/config/...` | _pending_ |
 
 Cross-platform build: `go build ./...` AND `GOOS=windows GOARCH=amd64 go build ./...`
 must both exit 0.
@@ -143,35 +144,18 @@ twice. M1 locks:
 - The CLI verb (`moai config mode-migrate` — or the established naming convention in
   `internal/cli/config/`; confirm against siblings before locking).
 - The candidate record struct (`path`, `currentMode`, `targetMode`).
-- The scan predicate: "permission bits narrower than `defs.FilePerm`" — i.e. a file
-  whose mode is not a superset of `defs.FilePerm`'s bits (a file at 0600 is narrower;
-  a file at 0644 is not; a file at 0640 is narrower because it drops the group-read
-  that `defs.FilePerm` carries — confirm the exact predicate at M1: "narrower than"
-  is defined as `mode.Perm() != defs.FilePerm.Perm()` AND the file would be widened,
-  which means any mode whose bits are not identical to `defs.FilePerm`. A file at 0600
-  → widen to 0644; a file at 0644 → not a candidate; a file at 0700 → widen to 0644
-  only if "widen toward" means clamp-to-`defs.FilePerm`, not "add bits". Lock this
-  semantics at M1: the migration sets the candidate's mode to `defs.FilePerm`
-  verbatim, which is a SET, not an OR — "only-widen" is the guarantee that the SET
-  target (`0o644`) is never narrower than the current mode. A file deliberately at
-  0600 is being widened (0600 → 0644 adds group/other read); a file deliberately at
-  0700 would be *narrowed* by a set to 0644 (drops execute) — so the predicate MUST
-  exclude files whose current mode is not a subset of `defs.FilePerm`. The exact
-  predicate: "candidate iff `currentMode.Perm()` is a proper subset of
-  `defs.FilePerm.Perm()` OR equal — wait, equal is not a candidate. Candidate iff
-  widening toward `defs.FilePerm` would ADD bits without removing any, i.e.
+- The scan predicate is **pinned at the SPEC level** per `spec.md §D.2 Predicate
+  definition`: a file is a widening candidate iff
   `(currentMode.Perm() | defs.FilePerm.Perm()) == defs.FilePerm.Perm()` AND
-  `currentMode.Perm() != defs.FilePerm.Perm()`. This is the precise "only-widen"
-  predicate. Lock at M1.)
-
-  **[NEEDS CLARIFICATION: exact candidate predicate for files at modes that are NOT a
-  subset of `defs.FilePerm` (e.g. 0700, 0660)]** — the "only-widen" predicate above
-  (candidate iff current bits are a subset of `defs.FilePerm` bits AND not equal)
-  excludes a file at 0700 from the candidate set (it would be narrowed by a set to
-  0644). This is consistent with REQ-MIG-002's "shall never narrow a file below its
-  current mode". Confirm with the operator at run-phase Kickoff whether this is the
-  intended semantics, or whether a file at 0700 should be flagged in the dry-run
-  output as "not a candidate (would require narrowing)" for operator awareness.
+  `currentMode.Perm() != defs.FilePerm.Perm()` — i.e. the file's permission bits are a
+  **proper subset** of `defs.FilePerm`'s bits. The `spec.md §D.2` enumeration spells
+  out the load-bearing cases (`0600` and `0640` → candidate; `0700`, `0660`, `0664`,
+  `0666` → not a candidate). M1 implements that predicate verbatim; it does NOT
+  re-derive "narrower than" from prose. The non-subset files (`0700`, `0660`) MUST be
+  excluded from the candidate set, and the dry-run output SHOULD flag them as
+  "would-require-narrowing — skipped" for operator awareness (this is consistent with
+  REQ-MIG-002's "shall never narrow" and is exercised mechanically by AC-MIG-007).
+  No clarification marker remains — the predicate is normative in `spec.md §D.2`.
 
 - The dry-run output format (path + current mode + target mode, human-readable, with
   the "N candidate(s) found. Re-run with --apply to widen." footer).
@@ -209,7 +193,8 @@ Once M1's API is locked, the apply path is mechanical:
   no-op. No separate "already-applied" marker file is needed.
 
 **Deliverable**: `--apply` path complete; AC-MIG-002 (apply widens), AC-MIG-003
-(only-widen), AC-MIG-005 (idempotent), AC-MIG-006 (helper routing) green.
+(only-widen), AC-MIG-005 (idempotent), AC-MIG-006 (helper routing), AC-MIG-007
+(0700 non-subset mode left unchanged) green.
 
 ### M3 — Subcommand wiring + docs pointer (mechanical)
 
