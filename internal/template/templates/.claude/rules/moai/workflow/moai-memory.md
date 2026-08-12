@@ -66,6 +66,7 @@ When resuming work across sessions:
 - Auto memory should store stable patterns, not session-specific state
 - Maximum 5,000 tokens for injected context from previous sessions
 - Prefer referencing files over copying content into context
+- All auto-memory files (the `MEMORY.md` index AND every topic file) MUST be authored in English only — never the conversation language. CJK costs ~3× the UTF-8 bytes per character vs English for the same information, wasting the context window; LLMs process English with higher adherence and reasoning fidelity; memory is read by the model, not humans. User-facing chat replies still use the conversation language; only the stored memory file is English.
 
 ---
 
