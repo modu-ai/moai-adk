@@ -27,12 +27,25 @@ the CLI form reads more naturally inline.
 | `mcp__moai__spec_audit` | SPEC lifecycle audit (era + drift) | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
 | `mcp__moai__spec_drift` | Modern-era V3R6 drift findings | manager-spec, plan-auditor | `moai spec audit` (drift view) |
 
+Reach for these in **plan-phase** (manager-spec authoring a new SPEC, checking era
+classification + drift) and **sync-phase** (manager-docs verifying lifecycle
+closure). `spec_progress` enumerates existing SPECs + frontmatter; `spec_audit`
+classifies era and detects drift across the catalog; `spec_drift` is the focused
+modern-era V3R6 drift slice. plan-auditor uses `spec_audit`/`spec_drift` for
+plan-phase skeptical review.
+
 ### Verification snapshots
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
 | `mcp__moai__verify_snapshot` | Read/record per-key verification snapshot | manager-develop | `moai verify check` |
 | `mcp__moai__verify_trend` | Per-key verification check history | manager-develop, sync-auditor, super-advisor | `moai verify check` |
+
+Used by **manager-develop** during run-phase self-verification (§E), and by
+sync-auditor / super-advisor for trend review. `verify_snapshot` reads or records
+the per-key snapshot keyed by HEAD digest; `verify_trend` surfaces the check
+history to judge convergence over time. The orchestrator's attributable diff-check
+consults the current snapshot key before re-executing tests.
 
 ### Goal + session (autonomous loop)
 
@@ -41,6 +54,12 @@ the CLI form reads more naturally inline.
 | `mcp__moai__goal_arm` | Arm a condition-declared goal | **orchestrator main session ONLY** — wired to NO agent (arming an autonomous loop is an orchestrator concern) | `moai goal arm` / `/moai goal` |
 | `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-lead | `moai goal status` |
 | `mcp__moai__session_list` | List active moai sessions | manager-lead | `moai session list` |
+
+`goal_arm` is orchestrator-only and arms an autonomous loop — never inside an
+agent (preserves the flat-hierarchy arming surface). `goal_status` lets
+manager-develop / manager-lead read the armed condition's progress; `session_list`
+lets manager-lead detect concurrent sessions on the same checkout for race
+mitigation before fan-out.
 
 ### Cross-model audit (second opinion)
 

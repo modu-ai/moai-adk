@@ -152,28 +152,64 @@ check — radial layouts overflow the canvas more often than grid layouts do.
 
 ## 3. Palette and type scale
 
-Self-contained: this palette belongs to the skill and is not read from any
-project design system. Substitute a project's own tokens freely, but substitute
-the whole set so contrast relationships survive.
+This palette is aligned to the project design system (`moai-domain-html-report`
+tokens): warm ivory paper, clay terracotta accent, slate ink. The skill keeps
+its own copy of the values (it does not read a runtime token file), so the
+diagram renders offline; substitute a project's own tokens freely, but
+substitute the whole set so contrast relationships survive.
 
 | Role | Value | Use |
 |------|-------|-----|
-| ink | `#1f2328` | Primary text |
-| ink-muted | `#57606a` | Captions, secondary text |
-| surface | `#ffffff` | Canvas |
-| surface-alt | `#f6f8fa` | Card fill, zebra band |
-| border | `#d0d7de` | Card and divider strokes |
-| accent | `#2563eb` | Primary emphasis, active path |
-| accent-soft | `#dbeafe` | Accent fill behind accent text |
+| ink | `#141413` | Primary text (warm black) |
+| ink-muted | `#6B6359` | Captions, secondary text |
+| surface | `#FAF9F5` | Canvas (ivory) |
+| surface-alt | `#F3EFE6` | Band fill, warm tone |
+| border | `#D9CDBE` | Hairline card and divider strokes |
+| accent | `#D97757` | Focal / active path (clay terracotta) |
+| accent-soft | `#FBE9DF` | Focal fill (clay-tint) |
+| accent-strong | `#B85C3E` | Clay hover state, eyebrow text |
 | positive | `#1a7f37` | Success, allowed |
 | caution | `#9a6700` | Warning, degraded |
 | negative | `#cf222e` | Failure, forbidden |
+
+### 3.1 Typography — language-aware font stacks
+
+Headings use a serif (the editorial register); body uses a CJK-first sans that
+resolves Hangul/Kana/Han before any Latin fallback. Map the heading serif per
+locale; the body stack is shared across locales and is already CJK-first.
+
+| Locale | Heading serif | Body sans |
+|--------|---------------|-----------|
+| `ko` | MaruBuri | Pretendard |
+| `en` | Noto Serif | Noto Sans |
+| `ja` | Noto Serif JP | Noto Sans JP |
+| `zh` | Noto Serif SC | Noto Sans SC |
+
+Heading `font-family`, pick one by locale:
+
+- `ko`: `MaruBuri, 'Noto Serif KR', Georgia, serif`
+- `en`: `'Noto Serif', Georgia, serif`
+- `ja`: `'Noto Serif JP', serif`
+- `zh`: `'Noto Serif SC', serif`
+
+Body `font-family` (CJK-first, same for every locale — CJK glyphs resolve
+before the Latin fallback, so a translated diagram keeps the same measured
+widths):
+
+```
+font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC',
+             'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei',
+             system-ui, sans-serif"
+```
+
+Mono (eyebrows, port numbers, field types, sublabels):
+`'JetBrains Mono', ui-monospace, monospace`.
 
 Type scale, in user units:
 
 | Role | Size | Weight |
 |------|------|--------|
-| Diagram title | 34 | 700 |
+| Diagram title (serif) | 34 | 600 |
 | Section or layer label | 20 | 600 |
 | Card title | 17 | 600 |
 | Body | 14 | 400 |
@@ -181,6 +217,24 @@ Type scale, in user units:
 
 Keep body text at or above 14 so the 2x PNG stays legible when a slide is
 projected. If a label only fits below 14, the label is too long.
+
+### 3.2 Focal discipline — single accent, signalled by colour
+
+One diagram carries **one focal element** (two at the absolute most). Reserve
+the `accent` token for that focal node and the active path that leads into it;
+every other node stays `ink` / `muted` on `paper`. The focal is signalled by
+colour, never by a floating callout:
+
+- **focal node** — `accent-soft` (`#FBE9DF`) fill + `accent` (`#D97757`) border
+  at 1.6px + a small uppercase `★ FOCAL` eyebrow in `accent-strong`
+- **active-path arrow** entering the focal node — `accent` stroke
+- **non-focal nodes** — `paper` fill + `border` hairline (1px)
+
+Scattering `accent` across several "important" nodes erases the signal. A
+floating editorial callout (dashed leader + italic serif) belongs to the sparse
+small-node layouts of editorial diagrams; in this skill's dense banded layouts
+a leader will cross the orthogonal connectors, so do not add one — let the
+colour and the `★ FOCAL` eyebrow carry the emphasis.
 
 ---
 
