@@ -123,12 +123,24 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase — manager-develop populates this section on run-phase completion)_
+- run_status: complete
+- run_complete_at: 2026-08-12
+- milestones_complete: 6/6 (M3.1 split-arch scaffold; M3.2 draft-request + Hidden CLI; M3.3 LLM-client guard; M3.4 approval surface; M3.5 apply + non-overlap + approval_token; M3.6 fail-open + coverage)
+- ac_results: 20/20 PASS (AC-NS5-001a through AC-NS5-013, every MUST AC binary-verified)
+- coverage: 87.5% (internal/navigator/fix, ≥85% target)
+- automation_rate: 60.0% (6/10 drafts approved unmodified) — AC-NS5-010, the ≥50% floor mechanically measured
+- build: linux + GOOS=windows/amd64 exit 0 (cross-platform clean)
+- lint: golangci-lint run 0 issues (./internal/navigator/fix/... ./internal/cli/...)
+- preserve: M0/M1/M2/M4 + mx byte-unchanged — AC-NS5-005a grep 0 matches; AC-NS5-006 nonoverlap guard PASS
+- subagent_boundary: 0 AskUserQuestion/mcp__askuser matches in fix/*.go + cli/navigator_fix.go — AC-NS5-007 (split-architecture mechanically enforced by llm_client_guard_test.go)
+- full_suite: green (the 2 origin/main merges during run-phase absorbed #1456, resolving the pre-existing zone-registry + astgrep FAIL)
+- verification_method: orchestrator trust-but-verify — each milestone independently re-measured (build/test/coverage/lint/grep attributed to the milestone HEAD SHA), not carried over from manager-develop self-report
+- gap: none (the original §E.3 placeholder was a manager-develop omission on M3 completion; populated here from orchestrator-verified evidence)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7207f2e7a  # PR #1461 squash-merge onto main (BAS Epic M3, merged 2026-08-12) — durable main commit representing the merged SPEC work (D3 self-referential-hazard backfill)
 sync_status: completed
 frontmatter_status_transitions:
   spec_md: "in-progress -> implemented -> completed (3-phase close on this sync commit)"
