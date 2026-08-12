@@ -59,7 +59,7 @@ MoAI-ADK 使用 **12 个核心智能体**（11 个 MoAI 自定义 + 1 个 Anthro
 | `plan-auditor` | Plan 阶段独立审计、GEARS 遵循、偏差防范 | SPEC 完成度 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
 | `sync-auditor` | Sync 阶段质量评分（4 维：Functionality、Security、Craft、Consistency） | 实现质量 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
-核心在于计划与审计是分离的 — 做的人不检查自己的工作。
+核心在于计划与审计是分离的 — 做的人不检查自己的工作。审计智能体以怀疑立场（fresh-judgment）介入，分数按调和平均而非简单平均计算，一个维度塌了整体分数就跟着掉——这种设计正是 TRUST 5 质量框架所支撑的信任。
 
 ### Builder 智能体（1 个）
 
