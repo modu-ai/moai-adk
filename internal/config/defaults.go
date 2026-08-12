@@ -927,6 +927,11 @@ func defaultDesignConfig() DesignConfig {
 				MinimumObservations: 5,
 				StalenessWindowDays: 30,
 			},
+			// MaxActiveLearnings mirrors the value enforced by two independent
+			// hardcoded constants (internal/evolution/types.go MaxActiveLearnings
+			// and internal/constitution/rate_limiter.go rateLimitMaxActiveLearnings,
+			// both = 50). This default is NOT read by those packages — they use
+			// their own constants. Wiring is out of scope (SPEC-CONFIG-KEY-HONESTY-001).
 			MaxActiveLearnings:      50,
 			MaxEvolutionRatePerWeek: 3,
 			RequireApproval:         true,

@@ -57,8 +57,12 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
 
 ### §22.8 web worktree auto-toggles default OFF (EnterWorktree-first policy, 2026-07-28)
 
-- **목적 (intent)**: `internal/config/defaults.go`의 `WorkflowWorktreeConfig` 세 토글 — `AutoCleanup`, `AutoCreate`, `AutoMerge` — 모두 **기본 `false`**. 웹 콘솔의 worktree 자동화는 사용자의 **명시적 opt-in** (웹 토글 ON 또는 `.moai/config/sections/workflow.yaml`의 `workflow.worktree.*` 키 `true` 설정)이 있을 때만 동작한다.
-- **Why**: SPEC-WORKTREE-ENTRY-STRATEGY-001 M1 (commit `2fdf77714`)에서 `AutoCleanup: true → false`, `AutoMerge: true → false`로 mutated. 배경 — worktree 자동 정리/자동 병합은 사용자가 의도하지 않은 sprawl을 조장하고, EnterWorktree-first policy (`.claude/rules/moai/workflow/worktree-integration.md` § `EnterWorktree` / `ExitWorktree` Tools)와 충돌한다. 기본 OFF는 "worktree 자동화는 사용자 선택" 원칙을 코드로 정합시킨다.
+- **목적 (intent)**: `internal/config/defaults.go`의 `WorkflowWorktreeConfig` 세 토글 — `AutoCleanup`, `AutoCreate`, `AutoMerge` — 모두 **기본 `false`**. 템플릿(`internal/template/templates/.moai/config/sections/workflow.yaml`)의 출고값 역시 세 토글 모두 `false`로 정합(SPEC-CONFIG-KEY-HONESTY-001 M5 §A.8 해소 — 과거 템플릿은 `auto_merge`/`auto_cleanup`을 `true`로 출고하여 `defaults.go`와 모순되었음).
+- **리더 상태 (reader status, 정확한 기술)**:
+  - `auto_create`: 프로덕션 리더가 **있다** — `internal/cli/worktree_advisory.go::readWorktreeAutoCreate`가 읽는다. 단, 이 리더는 두 `fmt.Fprintln` 문구 중 하나를 고르는 용도일 뿐 worktree 생성 자체를 게이트하지는 않는다(advisory wording only).
+  - `auto_merge` / `auto_cleanup`: 프로덕션 리더가 **없다** (declared but not read). 어떤 코드 경로도 이 값을 소비하지 않는다.
+  - `session_name_pattern`: 프로덕션 리더가 **없다** — 이 값으로 세션 이름을 조립하는 코드가 없다(선언만 된 placeholder).
+- **Why**: SPEC-WORKTREE-ENTRY-STRATEGY-001 M1 (commit `2fdf77714`)에서 `AutoCleanup: true → false`, `AutoMerge: true → false`로 mutated. 배경 — worktree 자동 정리/자동 병합은 사용자가 의도하지 않은 sprawl을 조장하고, EnterWorktree-first policy (`.claude/rules/moai/workflow/worktree-integration.md` § `EnterWorktree` / `ExitWorktree` Tools)와 충돌한다. 기본 OFF는 "worktree 자동화는 사용자 선택" 원칙을 코드로 정합시킨다. M5(SPEC-CONFIG-KEY-HONESTY-001)는 출고 템플릿값을 `defaults.go`와 일치시키고 각 토글의 실제 리더 상태를 본 절에 정확히 기록한다.
 - **제품(템플릿) 기본값과 동일**: 템플릿 `defaults.go` 또한 세 토글 모두 `false` (CLAUDE.local.md §2 [HARD] Template-First Rule 정합). 배포 사용자에게도 동일한 기본 OFF가 적용된다.
 - **`TmuxPreferred: true`는 본 절 범위 밖**: `defaults.go`의 `TmuxPreferred: true`는 SPEC-WORKTREE-ENTRY-STRATEGY-001 OQ-4 결정에 따라 명시적으로 OUT OF SCOPE — 변경 없음 (§22 운영 원칙 §22.5 참조).
 - [HARD] `defaults.go`의 세 토글 기본 `false`는 **의도된 정책**. 감사/동기화 시 "결함"으로 되돌리지 말 것. 기본값 토글은 별도 SPEC 통해서만.

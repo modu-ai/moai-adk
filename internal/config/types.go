@@ -539,6 +539,12 @@ type TokenBudgetConfig struct {
 
 // WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
+//
+// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — it does
+// not gate worktree creation. AutoCleanup and AutoMerge have no production
+// reader (declared but not read). SessionNamePattern has no production reader
+// (no code builds a session name from it).
 type WorkflowWorktreeConfig struct {
 	AutoCleanup        bool   `yaml:"auto_cleanup"`
 	AutoCreate         bool   `yaml:"auto_create"`
@@ -1227,6 +1233,13 @@ type DesignEvolution struct {
 	AutoEvolveThreshold     int                      `yaml:"auto_evolve_threshold"`
 	CooldownHours           int                      `yaml:"cooldown_hours"`
 	GraduationCriteria      DesignGraduationCriteria `yaml:"graduation_criteria"`
+	// MaxActiveLearnings is declared but NOT read by any production code path.
+	// The actual ceiling on active learnings is enforced by two independent
+	// hardcoded constants: internal/evolution/types.go MaxActiveLearnings (= 50)
+	// and internal/constitution/rate_limiter.go rateLimitMaxActiveLearnings (= 50).
+	// Wiring this config field to those sites is out of scope (a refactor beyond
+	// SPEC-CONFIG-KEY-HONESTY-001). Treat this field as documentation of the
+	// intended value, not the lever.
 	MaxActiveLearnings      int                      `yaml:"max_active_learnings"`
 	MaxEvolutionRatePerWeek int                      `yaml:"max_evolution_rate_per_week"`
 	RequireApproval         bool                     `yaml:"require_approval"`
@@ -1377,6 +1390,19 @@ type archiveFileWrapper struct {
 // gateFileWrapper handles the gate.yaml section file.
 type gateFileWrapper struct {
 	Gate GateConfig `yaml:"gate"`
+}
+
+// systemFileWrapper handles the system.yaml section file.
+//
+// system.yaml ships four top-level blocks (moai / github / hook /
+// document_management), but only `hook` maps to a SystemConfig sub-struct.
+// The wrapper therefore binds only the Hook field; the other three blocks have
+// no SystemConfig field and are intentionally ignored by the loader (they are
+// classified R in the M1 inventory and read, where read at all, by ad-hoc
+// inline structs elsewhere). Seeding Hook with cfg.System.Hook preserves the
+// partial-override contract parallel to loadGateSection / loadHandoffSection.
+type systemFileWrapper struct {
+	Hook SystemHookConfig `yaml:"hook"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.
