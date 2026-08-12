@@ -10,7 +10,7 @@ description: |
   second opinion before an irreversible delegation or escalation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
-tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend
+tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend, mcp__moai__codex_task, mcp__moai__codex_setup, mcp__moai__codex_job_status, mcp__moai__codex_job_result, mcp__moai__codex_job_cancel
 model: inherit
 effort: high
 color: yellow
@@ -93,6 +93,25 @@ A super-advisor prescription is structured:
 
 The orchestrator reads the prescription, may accept / modify / reject it, and owns the
 resulting decision.
+
+## MCP Tools
+
+This agent carries SPEC, verification, and codex-delegation MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
+
+- `mcp__moai__spec_audit` — SPEC lifecycle audit (era + drift). Call to ground a prescription in the SPEC's actual lifecycle state.
+- `mcp__moai__verify_trend` — per-key verification check history. Call to see whether a verification dimension is improving or regressing.
+
+### Codex delegation (background second opinion)
+
+This agent is the natural consumer of the codex delegation family — background cross-model delegation for a high-reasoning second opinion:
+
+- `mcp__moai__codex_setup` — probe the local codex install (LookPath + version + auth provider). Call FIRST to confirm codex is available before delegating.
+- `mcp__moai__codex_task` — delegate a coding or investigation task to codex (sync or background). Use for a second opinion the orchestrator folds into its prescription.
+- `mcp__moai__codex_job_status` — read a background codex job's status/record. Poll until terminal.
+- `mcp__moai__codex_job_result` — read a background codex job's completed output.
+- `mcp__moai__codex_job_cancel` — stop a running background codex job (turn/interrupt, then terminate if needed).
+
+codex is OPTIONAL and fail-open: when unavailable, `codex_setup` reports absent and `codex_task` yields `inconclusive` (never a Go error). Never block a prescription on codex availability.
 
 ## Conditional Skill Loading
 

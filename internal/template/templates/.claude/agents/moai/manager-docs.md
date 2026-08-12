@@ -110,6 +110,13 @@ When sync-phase reveals a need to modify SPEC body content — for example: a sc
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
 
+## MCP Tools
+
+This agent carries SPEC-lifecycle MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
+
+- `mcp__moai__spec_progress` — list SPEC documents + frontmatter under the project root. Call to inventory the SPEC catalog before sync.
+- `mcp__moai__spec_audit` — run the SPEC lifecycle audit (era classification + drift detection). Call to confirm drift-clean before closing a SPEC.
+
 ## Conditional Skill Loading
 
 Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:

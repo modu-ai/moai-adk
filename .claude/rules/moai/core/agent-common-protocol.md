@@ -270,6 +270,8 @@ Avoid:
 | Run system commands | Bash | — |
 | Explore codebase | Agent(Explore) | Multiple sequential Grep calls |
 
+**MCP-over-CLI preference**: where an `mcp__moai__*` tool exists for a capability already in the agent's `tools:` list (e.g. `mcp__moai__spec_audit`, `mcp__moai__verify_snapshot`, `mcp__moai__session_list`), the agent SHOULD prefer the MCP tool over the equivalent Bash CLI (`moai spec audit`, `moai verify check`, `moai session list`). Both back the same implementation; the MCP path returns structured output, avoids shell-quoting hazards, and is lower-latency inside a subagent where Bash may be restricted. Use the Bash CLI only when the MCP tool is absent or the capability is not in the agent's `tools:` list. Full tool catalogue + consumers: `.claude/rules/moai/core/moai-mcp-tools.md`.
+
 ### Bash Timeout
 
 The Bash tool supports an optional `timeout` parameter (milliseconds):
