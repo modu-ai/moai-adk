@@ -25,3 +25,26 @@ _<pending run-phase — manager-develop populates run-phase completion signal he
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — manager-docs populates sync_commit_sha on the single sync commit carrying the implemented → completed transition>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters:
+- tier: M
+- scope (files): ~6 (internal/hook/branch_guard.go, internal/hook/pre_tool.go, internal/hook/branch_guard_test.go + a new worktree-fixture test, .claude/rules/moai/workflow/main-checkout-branch-guard.md source + template mirror, progress.md)
+- domain count: 2 (hook Go code + doctrine markdown / sanitized-pair mirror)
+- file language mix: Go + markdown
+- concurrency benefit: LOW (coding-heavy; M2 doctrine bump finalizes against M1's chosen seam → sequential dependency)
+
+Mode evaluation:
+- trivial: not selected (semantic multi-file change, 2 milestones)
+- background: not selected (write-capable work, not read-only)
+- agent-team: RETIRED (tombstone — never selected)
+- parallel: not selected (coding-heavy per Anthropic's coding-task parallelism caveat; only 2 domains, well under ≥3)
+- workflow: not selected (scope <30 files, not a single uniform mechanical transform)
+- sub-agent: SELECTED
+
+Decision: sub-agent (Mode 5)
+
+Justification: Tier M coding-heavy bug fix with a sequential M1→M2 dependency (M2 doctrine prose is finalized against M1's implemented seam). Per Anthropic's coding-task parallelism caveat, the sequential sub-agent path is the safe default for coding work. Implementation Kickoff Approval PASSED before this log entry (user selected "승인 — Seam A 표준 진행").
+
+Boundary case: none (clearly coding-heavy, well under Mode 4/6 thresholds).
