@@ -40,6 +40,34 @@ open_clarifications: 0 — both resolved 2026-08-12 via owner decision (D1: `.mo
 
 AC-C-001/002/003 (console rendering), AC-C-006..009 (codex auth), AC-C-010/011 (GLM key), AC-C-012/013/014 (secret hygiene + i18n + no-fork) — all M2-M5 scope, not touched by M1.
 
+### M3 — codex authentication surface (REQ-C-4, REQ-C-5, REQ-C-6)
+
+**What landed:**
+
+- MODIFIED `internal/cli/mcp_codex.go` — extracted `ProbeCodexSetup(ctx)` returning a typed `CodexSetupResult` struct; `handleCodexSetup` now delegates to it. The classification logic (`classifyCodexAuth`) is untouched — consumed, not forked (AC-C-006). Both the MCP tool handler and the web console share one probe entry point.
+- NEW `internal/web/codex_state.go` — `CodexStateView` view model + display-layer auth-provider constants + `defaultCodexStateProbe` (fail-open zero view for bare test apps).
+- MODIFIED `internal/web/app.go` — added `codexStateProbe func(ctx) CodexStateView` DI field; wired default in `newApp`.
+- MODIFIED `internal/web/server.go` — added `Config.CodexStateProbe` field; `NewServer` wires it into the app when provided.
+- MODIFIED `internal/web/handlers.go` — `pageView` gains `CodexState`; `buildIndexView` calls the injected probe.
+- MODIFIED `internal/web/schemaform.go` — `codexAuthProviderLabel` display helper; `partitionWorkflowFields` excludes codex toggle fields (rendered in MCP section, not workflow tabs); `isCodexToggleFieldName` predicate.
+- MODIFIED `internal/web/fieldsets.templ` (+ regenerated `fieldsets_templ.go`) — `codexAuthBlock` renders the probe state (installed/binary/version/auth_provider) + login remediation (AC-C-007) + not-installed state (AC-C-008) + two opt-in toggles via the schema seam.
+- MODIFIED `internal/settings/schema_sections.go` — two new SectionWorkflow seam fields: `workflow.codex.review_gate.enabled` and `workflow.codex.task.allow_write` (AC-C-009 — same path the fail-closed readers consume).
+- MODIFIED `internal/cli/web.go` — wires `Config.CodexStateProbe` to a wrapper around `ProbeCodexSetup` (the DI adapter that lets web consume the probe without importing internal/cli).
+- MODIFIED `internal/web/assets/i18n.js` — 10 new keys × 4 locales (en/ko/ja/zh) for codex auth display + toggle field labels.
+- NEW `internal/web/mcp_codex_surface_test.go` — AC-C-006/007/008 tests.
+- NEW `internal/cli/mcp_codex_consoletest_test.go` — AC-C-009 toggle round-trip test.
+
+**TDD cycle:** RED (AC-C-006 probe-state-missing FAIL, AC-C-006 grep-guard FAIL on comment literal, AC-C-007 login-command-missing FAIL, AC-C-008 not-installed-missing FAIL, AC-C-009 yamlpatch-nil-parent FAIL) → GREEN (all 7 M3 tests PASS) → fix (partition exclusion for double-render, lint nil-context).
+
+### AC PASS/FAIL matrix (M3 scope)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-C-006 (probe state displayed, not recomputed) | PASS | `TestAC_C_006_ProbeStateDisplayed` + `TestAC_C_006_NoSecondClassifierInWeb`; grep guard: `grep -rn 'classifyCodexAuth\|codex login status' internal/web/ --include=*.go \| grep -v _test.go` → 0 matches |
+| AC-C-007 (unauthenticated → names command, no login) | PASS | `TestAC_C_007_UnauthenticatedNamesCommand` + `TestAC_C_007_NoAuthRouteInApp` |
+| AC-C-008 (codex absent → graceful) | PASS | `TestAC_C_008_CodexAbsentGraceful` + `TestAC_C_008_DefaultProbeIsFailOpen` |
+| AC-C-009 (toggles write the seam the gates read) | PASS | `TestAC_C_009_TogglesWriteTheSeamThatGatesRead` + `TestAC_C_009_ToggleOffRoundTrips` — ApplySchemaEdits → readCodexReviewGateEnabled/readCodexTaskAllowWrite round-trip |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

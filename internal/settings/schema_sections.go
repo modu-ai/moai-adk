@@ -344,6 +344,13 @@ func seamSectionFields() []FieldDef {
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "codex"),
 		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
+		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
+		// through the SAME seam the fail-closed readers consume. The path
+		// workflow.codex.review_gate.enabled / workflow.codex.task.allow_write in
+		// workflow.yaml is exactly what readCodexReviewGateEnabled /
+		// readCodexTaskAllowWrite read — one source of truth, no parallel key.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "review_gate", "enabled"),
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "task", "allow_write"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",

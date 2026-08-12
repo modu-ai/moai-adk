@@ -661,8 +661,84 @@ templ fieldsetMCP(view pageView) {
 					@mcpToolRow(f, view.SchemaValues[f.Name] != "false")
 				}
 			</div>
+			// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4/5/6): codex authentication surface.
+			// The probe state is CONSUMED from the injected probe (AC-C-006 — not
+			// recomputed here). Unauthenticated → names the command (AC-C-007);
+			// absent → graceful not-installed state (AC-C-008).
+			@codexAuthBlock(view)
 		</div>
 	</fieldset>
+}
+
+// codexAuthBlock renders the codex authentication + opt-in toggle surface inside
+// the MCP section. It reads the probe state from view.CodexState (injected by
+// the CLI layer — no classification logic in internal/web, AC-C-006) and renders
+// the two opt-in toggles through the schema seam (AC-C-009 — same path the
+// fail-closed readers consume).
+templ codexAuthBlock(view pageView) {
+	<div class="codex-auth">
+		<div class="codex-auth__head">
+			<span class="codex-auth__title" data-i18n="sec.mcp.codex.title">Codex authentication</span>
+		</div>
+		if view.CodexState.Installed {
+			<dl class="codex-auth__state codex-auth__state--installed">
+				<div class="codex-auth__row">
+					<dt data-i18n="f.mcp.codex.binary">Binary</dt>
+					<dd><code>{ view.CodexState.Binary }</code></dd>
+				</div>
+				if view.CodexState.Version != "" {
+					<div class="codex-auth__row">
+						<dt data-i18n="f.mcp.codex.version">Version</dt>
+						<dd>{ view.CodexState.Version }</dd>
+					</div>
+				}
+				<div class="codex-auth__row">
+					<dt data-i18n="f.mcp.codex.auth_provider">Auth provider</dt>
+					<dd>{ codexAuthProviderLabel(view.CodexState.AuthProvider) }</dd>
+				</div>
+			</dl>
+			if view.CodexState.AuthProvider == "unknown" {
+				<p class="codex-auth__hint codex-auth__hint--unauthenticated" data-i18n="f.mcp.codex.login_hint">
+					Run <code>codex login</code> to authenticate.
+				</p>
+			}
+		} else {
+			<p class="codex-auth__state codex-auth__state--not-installed" data-i18n="f.mcp.codex.not_installed">
+				codex is not installed.
+			</p>
+		}
+		// Opt-in toggles (REQ-C-6 / AC-C-009): these write through the schema seam
+		// to workflow.yaml at the exact path the fail-closed readers consume.
+		<div class="codex-auth__toggles">
+			@codexToggleRow("workflow.codex.review_gate.enabled", view.SchemaValues["workflow.codex.review_gate.enabled"] == "true")
+			@codexToggleRow("workflow.codex.task.allow_write", view.SchemaValues["workflow.codex.task.allow_write"] == "true")
+		</div>
+	</div>
+}
+
+// codexToggleRow renders one codex opt-in toggle using the same hidden-companion
+// + radio pattern the MCP tool rows use, so parseSchemaForm + ApplySchemaEdits
+// write it through the schema seam unchanged.
+templ codexToggleRow(fieldName string, checked bool) {
+	<div class="field field--codex-toggle">
+		<span class="field__label">
+			<span class="field__title" data-i18n={ "f." + fieldName + ".title" }>{ fieldName }</span>
+		</span>
+		<span class="field__desc" data-i18n={ "f." + fieldName + ".desc" }></span>
+		<input type="hidden" name={ fieldName + "__present" } value="1"/>
+		<div class="radio-group">
+			<label class="radio">
+				<input type="radio" id={ fieldName + "--on" } name={ fieldName } value="1" checked?={ checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+			<label class="radio">
+				<input type="radio" id={ fieldName + "--off" } name={ fieldName } value="" checked?={ !checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.disabled">Not used</span>
+			</label>
+		</div>
+	</div>
 }
 
 // mcpToolRow renders one MCP tool's enablement toggle plus, for write-capable

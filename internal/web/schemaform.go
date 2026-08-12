@@ -97,6 +97,23 @@ func mcpToolIsWriteCapable(fieldName string) bool {
 	return false
 }
 
+// codexAuthProviderLabel maps the auth-provider token the probe emitted to a
+// display string. It is NOT a classification — the token was already produced
+// by the probe's classifier (AC-C-006); this helper only chooses the display
+// spelling.
+func codexAuthProviderLabel(provider string) string {
+	switch provider {
+	case codexAuthChatGPT:
+		return "ChatGPT"
+	case codexAuthAPIKey:
+		return "API key"
+	case codexAuthProvider:
+		return "Provider"
+	default:
+		return provider // "unknown" or any future token renders verbatim
+	}
+}
+
 // schemaSectionMeta는 제네릭 fieldset의 패널 표시 메타다. Title/Desc는 영어
 // baseline이고 TitleKey/DescKey의 data-i18n 키가 4-locale 렌더를 담당한다.
 // 필드 자체의 라벨은 기술 식별자(key chip)로 렌더하며 번역하지 않는다 —
@@ -139,10 +156,23 @@ func isAuditFieldName(name string) bool {
 	return strings.HasPrefix(name, "workflow.audit.")
 }
 
+// isCodexToggleFieldName은 workflow 섹션 필드 중 MCP 콘솔의 codex 인증 서피스로
+// 배치되는 것을 판정한다 (SPEC-MCP-CONSOLE-001 M3). 이 필드들은 workflow 탭이
+// 아닌 MCP 탭의 codexAuthBlock 에서 렌더되므로 workflow 파티션에서 제외한다 —
+// 중복 렌더(입력 4개)를 방지한다. 영속화 경로는 그대로다 (SectionWorkflow seam).
+func isCodexToggleFieldName(name string) bool {
+	return name == "workflow.codex.review_gate.enabled" ||
+		name == "workflow.codex.task.allow_write"
+}
+
 // partitionWorkflowFields는 workflow 섹션 필드를 3개 탭으로 가른다: 워크플로우
-// 잔여 / Git·워크트리 / 감사. 섹션 필드 순서를 보존한다.
+// 잔여 / Git·워크트리 / 감사. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
+// workflow 탭에도 배치하지 않는다. 섹션 필드 순서를 보존한다.
 func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
 	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
+		if isCodexToggleFieldName(f.Name) {
+			continue // MCP 탭의 codexAuthBlock 에서 렌더 — workflow 탭 제외
+		}
 		switch {
 		case isWorktreeFieldName(f.Name):
 			worktree = append(worktree, f)

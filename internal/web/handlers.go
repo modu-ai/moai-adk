@@ -114,6 +114,11 @@ type pageView struct {
 	// (SPEC-GLM-KEY-INPUT-001 D-2 / REQ-GKI-004-001..004, plan §G AP-2/AP-2b).
 	GLMKeyConfigured bool
 	GLMKeyHint       string
+
+	// CodexState carries the codex_setup probe result for the MCP console
+	// section's codex authentication surface (SPEC-MCP-CONSOLE-001 M3 REQ-C-4).
+	// It is a read-only view model — the probe is consumed, not recomputed.
+	CodexState CodexStateView
 }
 
 // newPageView assembles a view-model with the canonical option lists populated.
@@ -263,6 +268,13 @@ func (a *app) buildIndexView(selected string) (view pageView, errMsg string) {
 	if err := a.applySchemaCurrent(&view); err != nil {
 		return pageView{}, "could not read section config: " + err.Error()
 	}
+
+	// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4): populate the codex probe state. The
+	// probe is consumed via injection (AC-C-006 — no second classification in
+	// internal/web). context.Background is safe here: the probe runs local
+	// exec.LookPath + a version check + an auth-status check — fast, bounded
+	// commands with no HTTP request context dependency.
+	view.CodexState = a.codexStateProbe(context.Background())
 	return view, ""
 }
 
