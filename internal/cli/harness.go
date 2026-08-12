@@ -28,6 +28,8 @@ import (
 
 	harnesscli "github.com/modu-ai/moai-adk/internal/cli/harness"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 )
@@ -387,7 +389,7 @@ func runHarnessDisable(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("disable: YAML serialization failed: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, newData, 0o644); err != nil {
+	if err := atomicfile.Write(configPath, newData, defs.FilePerm); err != nil {
 		return fmt.Errorf("disable: failed to write harness.yaml: %w", err)
 	}
 

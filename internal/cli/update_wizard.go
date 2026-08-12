@@ -12,6 +12,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
@@ -179,7 +180,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal user.yaml: %w", err)
 		}
-		if err := os.WriteFile(userPath, updatedData, defs.FilePerm); err != nil {
+		if err := atomicfile.Write(userPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write user.yaml: %w", err)
 		}
 	}
@@ -219,7 +220,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal language.yaml: %w", err)
 		}
-		if err := os.WriteFile(langPath, updatedData, defs.FilePerm); err != nil {
+		if err := atomicfile.Write(langPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write language.yaml: %w", err)
 		}
 	}
@@ -274,7 +275,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal git-strategy.yaml: %w", err)
 		}
-		if err := os.WriteFile(gitStratPath, updatedData, defs.FilePerm); err != nil {
+		if err := atomicfile.Write(gitStratPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write git-strategy.yaml: %w", err)
 		}
 	}
@@ -306,7 +307,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			moaiSection["model_policy"] = string(policy)
 			sys["moai"] = moaiSection
 			if updatedData, err := yaml.Marshal(sys); err == nil {
-				_ = os.WriteFile(systemPath, updatedData, defs.FilePerm)
+				_ = atomicfile.Write(systemPath, updatedData, defs.FilePerm)
 			}
 		}
 	}
@@ -343,7 +344,7 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		if err != nil {
 			return fmt.Errorf("marshal quality.yaml: %w", err)
 		}
-		if err := os.WriteFile(qualityPath, updatedData, defs.FilePerm); err != nil {
+		if err := atomicfile.Write(qualityPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write quality.yaml: %w", err)
 		}
 	}
