@@ -14,6 +14,10 @@ draft: false
 **프로그래매틱 명령어**: 네이티브 Claude Code `/goal`은 사용자만 입력할 수 있는 (HUMAN-ONLY) TUI 커맨드입니다. `/moai goal`은 같은 동작을 **파이프라인 안에서 프로그래매틱하게** 다시 구현한 MoAI 소유 명령어로, `moai` 스킬 라우팅과 `moai goal` CLI로 진입합니다.
 {{< /callout >}}
 
+{{< callout type="info" >}}
+이 페이지는 `/moai goal`의 **명령어 레퍼런스**(동사·플래그·안전 불변식)를 다룹니다. 조건 선언형 루프의 개념·설계·진행 모드 이야기는 [워크플로우 — /moai goal](/ko/workflow-commands/moai-goal) 페이지에 있습니다. 두 페이지는 역할이 다릅니다 — 이쪽은 "어떤 동사와 플래그가 있는지", 저쪽은 "언제 쓰고 왜 효과적인지"를 다룹니다.
+{{< /callout >}}
+
 ## 개요
 
 에이전트에게 "이 조건이 만족될 때까지 알아서 계속 일해줘"라고 시키고 싶을 때 씁니다. 조건은 두 종류를 섞어 쓸 수 있습니다.
@@ -82,6 +86,7 @@ draft: false
 
 ## 관련 문서
 
+- [/moai goal (워크플로우) - 조건 선언형 루프 개념과 설계](/ko/workflow-commands/moai-goal)
 - [/moai loop - 반복 수정 루프](/ko/utility-commands/moai-loop)
 - [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)
 - [/moai - 완전 자율 자동화](/ko/utility-commands/moai)

@@ -600,8 +600,8 @@ body {
    ============================================================ */
 .gdoc-footer.cw-footer,
 footer.cw-footer {
-  background: var(--bg-page) !important;
-  border-top: 1.5px solid var(--border-subtle) !important;
+  background: #265240 !important;
+  border-top: 0 !important;
 }
 
 /* ============================================================
@@ -889,8 +889,8 @@ html { scrollbar-color: rgba(61, 125, 95, 0.4) transparent; scrollbar-width: thi
 /* 푸터 — 녹색 gradient 배경 */
 .gdoc-footer.cw-footer,
 footer.cw-footer {
-  background: linear-gradient(180deg, rgba(61, 125, 95, 0.10) 0%, rgba(61, 125, 95, 0.22) 100%) !important;
-  border-top: 1.5px solid rgba(61, 125, 95, 0.40) !important;
+  background: #265240 !important;
+  border-top: 0 !important;
 }
 /* 푸터 브랜드 — 모두의AI 로고 + copyleft */
 .cw-footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }

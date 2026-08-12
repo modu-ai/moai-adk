@@ -30,7 +30,7 @@ WSL は Windows 上で Linux 環境を提供し、MoAI-ADK のすべての機能
 wsl --install
 
 # WSL 内で MoAI-ADK をインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
+curl -fsSL https://adk.mo.ai.kr/install.sh \
   | bash
 ```
 
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
 > **参考**: 最適な体験のために WSL の利用を推奨します。
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 ## 非 ASCII ユーザー名のパスエラー

@@ -4,7 +4,7 @@ title: "docs-site v3.1-rc.1 renewal — IA redesign, design-system overhaul, Kor
 version: 0.2.0
 status: in-progress
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-12
 author: manager-spec
 priority: High
 phase: "v3.1-rc.1 target"
@@ -180,8 +180,9 @@ This SPEC governs the simultaneous renewal of all four surfaces: information arc
 | Stop-chain / per-edit hook consolidation | SPEC-STOPCHAIN-TRIM-001 | completed | YES (behavioral) | advanced (autonomy-tier page mentions) |
 | Agent body diet + parallel batching | SPEC-AGENT-PARALLEL-OPT-001 | completed | YES (indirect) | claude-code (mention) |
 | CC 2.1.219 upstream alignment | SPEC-CC2219-UPSTREAM-ALIGN-001 | completed | YES | claude-code (rewrite) |
+| Harness learning surface (LSEL pipeline internals excluded) | SPEC-HARNESS-LEARNING-EVO 001/002 | completed | YES (surface only) | advanced (new page: harness-learning.md) |
 
-**Excluded from catalog** (internal, not user-facing): `moai web` console redesign (PR #1410), harness learning Tier-Ladder internals (the *surface* is user-facing — a `harness learning` mention page is permitted, but the LSEL pipeline internals are not), any in-flight SPEC not yet at `completed` by this SPEC's authoring date (except SPEC-AGENT-MODEL-ENFORCE-001, which is listed because it is user-visible and near completion).
+**Excluded from catalog** (internal, not user-facing): `moai web` console redesign (PR #1410), harness learning LSEL pipeline internals (the user-facing surface is now cataloged above; only the internal Tier-Ladder pipeline mechanics remain excluded), any in-flight SPEC not yet at `completed` by this SPEC's authoring date (except SPEC-AGENT-MODEL-ENFORCE-001, which is listed because it is user-visible and near completion).
 
 ### §F.2 Predecessor SPECs
 

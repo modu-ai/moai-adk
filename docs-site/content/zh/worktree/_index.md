@@ -38,7 +38,7 @@ worktree 都可以单独指定 LLM 运行模式，计划终端用高推理的 Cl
 使用 Git Worktree 后，每个 SPEC 都拥有**独立的 Git 状态和 LLM 配置**：
 
 ```mermaid
-graph TB
+graph TD
     A[Main Repository] --> B[Worktree 1<br/>SPEC-AUTH-001<br/>Claude Opus]
     A --> C[Worktree 2<br/>SPEC-AUTH-002<br/>GLM 5]
     A --> D[Worktree 3<br/>SPEC-AUTH-003<br/>Claude Sonnet]
@@ -159,7 +159,7 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 清理 + 删除本
 每个 SPEC 都维持独立的 Git 状态：
 
 ```mermaid
-graph TB
+graph TD
     subgraph Main["Main Repository (main)"]
         M1[.moai/specs/]
         M2[与远程仓库同步]
@@ -246,7 +246,7 @@ $ moai cc -w SPEC-AUTH-004
 只有完成的 SPEC 才会合并到 main 分支：
 
 ```mermaid
-flowchart TB
+flowchart TD
     subgraph Development["开发中的 Worktrees"]
         D1[SPEC-AUTH-001<br/>进行中]
         D2[SPEC-AUTH-002<br/>进行中]
@@ -269,7 +269,7 @@ flowchart TB
 代币经济学好处：
 
 ```mermaid
-graph TB
+graph TD
     subgraph Terminal1["Terminal 1: Planning"]
         T1A[/moai plan/]
         T1B[Claude Opus<br/>高成本/高质量]

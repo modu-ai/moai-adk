@@ -75,7 +75,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 3. **可能是临时性 GitHub CDN 故障** —— 稍后重试
 4. **手动安装二进制**(永久阻断时):
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   curl -fsSL https://adk.mo.ai.kr/install.sh | bash
    ```
    手动安装时建议另行确认 GitHub Release 的 `checksums.txt`。
 
@@ -307,7 +307,7 @@ MoAI-ADK 仅在以下文件夹中管理文件:
 moai update --version <release-tag>
 
 # 引导路径(moai 安装前):使用安装脚本
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <release-tag>
 
 # 从备份恢复配置
 cp -r .moai/config.bak .moai/config
@@ -326,7 +326,7 @@ cp -r .moai/config.bak .moai/config
 curl -I https://github.com/modu-ai/moai-adk/releases/latest
 
 # 手动重新安装
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 配置迁移错误

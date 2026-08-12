@@ -24,7 +24,7 @@ one place.
 **A**: Git Worktree lets you work in a **physically separate directory**:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["Regular branch approach"]
         T1[Single directory]
         T2[Switch branches with<br/>git checkout]
@@ -67,7 +67,7 @@ graph TB
 4. **Cost savings** — using GLM at the implementation stage cuts cost. The size of the savings is laid out in [CG Mode](/en/multi-llm/cg-mode)
 
 ```mermaid
-graph TB
+graph TD
     A[Without Worktree] --> B[Same LLM applied<br/>to every session]
     B --> C[High cost<br/>Opus only]
 
@@ -190,7 +190,7 @@ moai glm -w SPEC-API-003 --spawn
 **Parallel-work visualization**:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Time["Elapsed time"]
         T1[09:00]
         T2[10:00]
@@ -564,7 +564,7 @@ echo "Worktree cleanup done — review the --stale list and handle it yourself w
 **A**: The following workflow is recommended:
 
 ```mermaid
-graph TB
+graph TD
     subgraph DevA["Developer A"]
         A1[Enter Worktree]
         A2[Develop]

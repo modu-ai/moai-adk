@@ -4,7 +4,11 @@ weight: 100
 draft: false
 ---
 
-MoAI-ADK 사용 중 자주 묻는 질문과 답변입니다.
+MoAI-ADK 를 처음 쓰면서 자주 겪는 혼동 포인트를 모았습니다. 대부분은 "두 가지를 헷갈렸다" 에서 출발합니다 — 터미널 명령과 슬래시 명령을 바꿔 쓰거나, statusline 표시의 의미를 잘못 읽거나, 설정 파일이 어디에 저장되는지 몰라 헤매는 식입니다. 이 페이지는 그런 첫 질문들을 한자리에 둡니다.
+
+각 질문은 독립적으로 읽어도 이해되도록 답을 썼습니다. 위에서부터 순서대로 읽지 않아도 됩니다 — 필요한 질문으로 바로 건너뛰세요. 더 깊은 배경이 필요한 답에는 관련 페이지 링크를 달아 두었습니다.
+
+MoAI-ADK 의 설계는 "세 가지 핵심(토크노믹스 · 에이전틱 루프 엔지니어링 · 에이전틱 하네스)이 하나의 계통 안에서만 작동한다" 는 전제 위에 서 있습니다. 이 아래의 질문들도 결국 이 세 가지 중 하나로 돌아갑니다 — 비용 통제는 토크노믹스의 결과이고, 설정 보존과 학습 축적은 루프 엔지니어링의 재료이며, 품질 게이트는 하네스가 책임지는 영역입니다.
 
 
 ---
@@ -223,6 +227,5 @@ development_mode: tdd         # 또는 ddd
 
 ## 더 많은 질문이 있으신가요?
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 피드백
-- [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 질문, 아이디어, 버그 리포트, 기능 요청
 - [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

@@ -26,7 +26,7 @@ Git Worktree は **1 つの Git リポジトリを複数のディレクトリで
 入れ替える代わりに、ブランチごとにディレクトリを 1 つずつ開いておきます。
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["従来の方式"]
         T1[単一の作業ディレクトリ]
         T2[ブランチ切替が必要]
@@ -478,7 +478,7 @@ flowchart TD
 実装ステップは安価なモデル (GLM) で複数に分散させます:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Planning["Planning Phase (Opus)"]
         P1[/moai plan<br/>SPEC-001/]
         P2[/moai plan<br/>SPEC-002/]

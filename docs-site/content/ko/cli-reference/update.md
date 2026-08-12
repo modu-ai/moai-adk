@@ -75,7 +75,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 3. **일시적 GitHub CDN 장애 가능성** — 잠시 후 재시도
 4. **수동 바이너리 설치** (영구 차단 시):
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   curl -fsSL https://adk.mo.ai.kr/install.sh | bash
    ```
    수동 설치 시 GitHub Release 의 `checksums.txt` 를 별도로 확인하는 것을 권장합니다.
 
@@ -307,7 +307,7 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 moai update --version <릴리스-태그>
 
 # 부트스트랩 경로 (moai 설치 전): 설치 스크립트 사용
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <릴리스-태그>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <릴리스-태그>
 
 # 백업에서 설정 복원
 cp -r .moai/config.bak .moai/config
@@ -326,7 +326,7 @@ cp -r .moai/config.bak .moai/config
 curl -I https://github.com/modu-ai/moai-adk/releases/latest
 
 # 수동 재설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 설정 마이그레이션 오류
@@ -357,4 +357,4 @@ moai update --force
 
 1. **[변경 로그 확인](https://github.com/modu-ai/moai-adk/releases)** — 새 기능 살펴보기
 2. **[핵심 개념](/ko/core-concepts/what-is-moai-adk)** — 새 에이전트와 기능 익히기
-3. **[빠른 시작](./quickstart)** — 새 기능을 프로젝트에 적용하기
+3. **[빠른 시작](/ko/getting-started/quickstart)** — 새 기능을 프로젝트에 적용하기

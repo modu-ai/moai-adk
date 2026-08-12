@@ -23,7 +23,7 @@ Git Worktree を使っていて出会う質問と問題を 1 か所に整理し�
 **A**: Git Worktree を使うと **物理的に分離されたディレクトリ** で作業できます:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["一般的なブランチ方式"]
         T1[単一のディレクトリ]
         T2[git checkout で<br/>ブランチ切替]
@@ -66,7 +66,7 @@ graph TB
 4. **コスト削減** — 実装ステップに GLM を使うとコストが減ります。削減幅は [CG モード](/ja/multi-llm/cg-mode) にまとめてあります
 
 ```mermaid
-graph TB
+graph TD
     A[Worktree 未使用] --> B[すべてのセッションに<br/>同じ LLM を適用]
     B --> C[高いコスト<br/>Opus のみ使用]
 
@@ -185,7 +185,7 @@ moai glm -w SPEC-API-003 --spawn
 **並列作業の可視化**:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Time["時間経過"]
         T1[09:00]
         T2[10:00]
@@ -555,7 +555,7 @@ echo "Worktree 整理完了 — --stale の一覧は確認のうえ自分で --y
 **A**: 次のワークフローを推奨します:
 
 ```mermaid
-graph TB
+graph TD
     subgraph DevA["開発者 A"]
         A1[Worktree へ進入]
         A2[開発]

@@ -4,745 +4,223 @@ weight: 50
 draft: false
 ---
 
-Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다. 에이전틱 하네스에서 프롬프트가 "따라야 할 지침"이라면 훅은 "반드시 실행되는 코드"입니다. 품질 게이트와 보안 방어선을 확률이 아니라 결정론 위에 세우는 계층이 바로 이 훅입니다.
+훅 (hook, 특정 이벤트에 반응해 자동으로 실행되는 갈고리) 은 Claude Code가 파일을 고치거나 명령을 내릴 때마다 끼어드는 자동 반사 신경입니다. 에이전트 (스스로 일하는 AI 도우미) 가 받아 적은 지침은 "따라야 할 권고"지만, 훅이 내놓는 결과는 "반드시 지켜야 하는 결정"입니다. MoAI-ADK가 품질 게이트와 보안 방어선을 확률이 아니라 결정론 위에 세우는 층이 바로 이 훅입니다.
+
+이 가이드는 훅의 구조를 이해하고 (Step 1), settings.json에 연결하고 (Step 2), 보안 가드가 지키는 것을 살피고 (Step 3), 직접 커스텀 훅을 짜는 (Step 4) 네 단계로 안내합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: Hooks는 Claude Code의 **자동 반사 신경**입니다. 파일을 저장하면 자동으로 포맷팅하고, 위험한 명령은 자동으로 차단합니다.
+**한 줄 요약**: 훅은 Claude Code의 자동 반사 신경입니다. 파일이 바뀌면 포맷터를 돌리고, 위험한 명령은 코드가 실행되기 전에 차단합니다.
 {{< /callout >}}
 
 {{< callout type="info" title="플랫폼 기초" >}}
-플랫폼 계층의 배경 설명은 [훅 (Hooks)](/ko/claude-code/extensibility/hooks)에 있습니다. MoAI-ADK 기준 설명은 이 문서입니다.
+Claude Code가 제공하는 훅의 기본 동작은 [훅 (Hooks)](/ko/claude-code/extensibility/hooks) 에 있습니다. 이 문서는 그 위에 MoAI-ADK가 얹는 규칙과 실전 사용법을 다룹니다.
 {{< /callout >}}
 
-## Hooks란?
+## 훅은 왜 '반사 신경'인가
 
-Hooks는 Claude Code의 특정 이벤트에 반응하여 **자동으로 실행되는 스크립트**입니다.
+무릎을 두드리면 다리가 올라가는 반사 신경을 생각해 봅시다. 뇌가 "다리를 올려라"라고 지시하지 않아도, 무릎이라는 자극에 반응해 다리가 알아서 움직입니다. 훅도 같습니다. Claude Code가 "파일을 저장했다"는 이벤트 (PostToolUse) 가 발생하면, 에이전트가 따로 지시하지 않아도 포맷터가 알아서 코드를 정리합니다.
 
-의사의 반사 신경 검사에 비유하면, 무릎을 두드리면 다리가 자동으로 올라가듯, Claude Code가 파일을 수정하면(PostToolUse 이벤트) 포맷터가 자동으로 실행되어 코드를 정리합니다.
+지침 (CLAUDE.md, 규칙 파일) 만으로는 부족한 이유가 여기에 있습니다. 에이전트는 지침을 "읽고 반영하려 노력"할 뿐, 그것이 매번 실행된다고 보장할 수 없습니다. 반면 훅은 Claude Code가 도구를 부를 때마다 기계적으로 끼어들어, 결과를 강제로 바꿉니다. SPEC (요구사항 명세서) 이 "무엇을 만들 것인가"를 정한다면, 훅은 "그것을 만드는 과정에서 무엇을 한 번도 허용하지 않을 것인가"를 코드로 강제합니다.
 
 ```mermaid
 flowchart TD
-    EVENT["Claude Code 이벤트 발생"] --> MATCH{매처 확인}
-
-    MATCH -->|매칭됨| HOOK["Hook 스크립트 실행"]
-    MATCH -->|매칭 안됨| SKIP["통과"]
-
-    HOOK --> RESULT{실행 결과}
-    RESULT -->|성공| CONTINUE["작업 계속"]
-    RESULT -->|차단| BLOCK["작업 중단"]
-    RESULT -->|경고| WARN["경고 후 계속"]
+    A["Claude Code 이벤트 발생<br/>(예: 파일 저장)"] --> B{"매처<br/>(이벤트 거름)"}
+    B -->|매칭됨| C["handle-이벤트.sh<br/>(셸 래퍼)"]
+    B -->|매칭 안 됨| SKIP["그냥 통과"]
+    C --> D["moai hook 이벤트<br/>(Go 바이너리)"]
+    D --> R{"실행 결과"}
+    R -->|exit 0| E["작업 계속"]
+    R -->|exit 2 / JSON deny| F["작업 차단"]
+    R -->|exit 0 + 경고| G["경고만 띄우고 계속"]
 ```
 
-## Hook 이벤트 유형
+하네스 (harness, 품질 검증 자동 장치) 관점에서 보면, 훅은 에이전틱 루프의 "피드백 절반"을 담당합니다. 에이전트가 코드를 쓰고, 훅이 그 코드를 검사하고, 문제가 있으면 다음 턴의 수정 입력이 됩니다. 이 고리가 없으면 에이전트는 자기가 쓴 코드의 품질을 스스로 증명해야 하는데, 그것은 만든 쪽이 자기 결과를 채점하는 편향 구조입니다. 그래서 MoAI-ADK는 검사를 에이전트 밖으로 빼내, 훅이라는 기계적 층에 올려둡니다.
 
-이 가이드에서는 자주 쓰는 핵심 이벤트를 다룹니다. (Claude Code의 30개 이벤트 타입 전체 카탈로그는 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참조하세요.)
+## Step 1. 훅 아키텍처 한눈에 보기
 
-### 주요 이벤트 목록
+MoAI-ADK의 훅은 **셸 래퍼** (shell wrapper, 명령을 전달만 하는 얇은 스크립트) 와 **Go 바이너리** 두 겹으로 이루어집니다. settings.json이 가리키는 것은 `.claude/hooks/moai/handle-<event>.sh` 셸 래퍼이고, 이 래퍼가 표준 입력으로 받은 JSON을 `moai hook <event>` 서브커맨드에 넘겨 실제 로직을 실행합니다.
 
-| 이벤트 | 실행 시점 | 주요 용도 |
-|--------|-----------|----------|
-| `Setup` | `--init`, `--init-only`, `--maintenance` 플래그로 시작 시 | 초기 설정, 환경 점검 |
-| `SessionStart` | 세션이 시작될 때 | 프로젝트 정보 표시, 환경 초기화 |
-| `SessionEnd` | 세션이 종료될 때 | 정리 작업, 컨텍스트 저장 |
-| `PostSession` | 세션 종료 후 (self-hosted runner, CC 2.1.169+) | 세션 뒷정리와 텔레메트리. 세션이 완전히 내려간 다음, `SessionEnd`보다 늦게 발화합니다. MoAI-ADK는 아직 이 훅을 연결하지 않습니다. self-hosted 배포에서 쓸 수 있는 선택지로만 적어 둡니다. |
-| `PreCompact` | 컨텍스트 압축 전 (`/clear` 등) | 중요 컨텍스트 백업 |
-| `PreToolUse` | 도구 사용 전 | 보안 검증, 위험 명령 차단 |
-| **`PermissionRequest`** | 권한 대화상자 표시 시 | 자동 허용/거부 결정 |
-| `PostToolUse` | 도구 사용 후 | 코드 포맷팅, 린트 검사, LSP 진단 |
-| **`UserPromptSubmit`** | 사용자가 프롬프트 제출 시 | 프롬프트 전처리, 검증 |
-| **`Notification`** | Claude Code가 알림 전송 시 | 데스크톱 알림 커스터마이징 |
-| `Stop` | 응답 완료 후 | 루프 제어, 완료 조건 확인 |
-| **`SubagentStop`** | 하위 에이전트 작업 완료 후 | 하위 작업 결과 처리 |
+Python 런타임도, `uv` 패키지 매니저도, 가상환경도 필요 없습니다. 단일 Go 바이너리 (`moai`) 하나만 PATH에 있으면 열세 종류의 이벤트 훅이 모두 동작합니다. 바이너리가 없으면 래퍼는 조용히 종료 (exit 0) 하므로, Claude Code의 흐름을 막지 않습니다. 이것을 "fail-open" 설계라고 부릅니다 — 훅이 깨져도 세션은 멈추지 않는다는 약속입니다.
 
-### 이벤트 상세 설명
+| 구성 요소 | 역할 | 예시 |
+|-----------|------|------|
+| settings.json `hooks` 절 | 이벤트와 셸 래퍼를 연결 | `PreToolUse → handle-pre-tool.sh` |
+| `handle-<event>.sh` | stdin JSON을 받아 Go 바이너리에 전달 | `moai hook pre-tool <<< "$INPUT"` |
+| `moai hook <event>` | 실제 로직 (보안 검사, 포맷팅, 린트) | Go 바이너리 안에 컴파일됨 |
 
-#### 1. Setup
-Claude Code가 `--init`, `--init-only`, 또는 `--maintenance` 플래그로 시작될 때 실행됩니다. 초기 설정 작업과 환경 점검에 사용합니다.
+MoAI-ADK가 기본으로 연결하는 열세 개 이벤트와 역할은 다음과 같습니다. (Go 바이너리는 이 외에도 총 서른여덟 개의 서브커맨드를 구현합니다. 전체 목록은 `moai hook --help`로 확인하세요.)
 
-#### 2. SessionStart
-세션이 시작되거나 기존 세션을 재개할 때 실행됩니다. 프로젝트 상태 표시, 환경 초기화에 사용합니다.
+| 이벤트 | 실행 시점 | 대표 역할 |
+|--------|-----------|-----------|
+| `SessionStart` | 세션 시작 / 재개 시 | 프로젝트 상태 표시, 업데이트 확인 |
+| `PreToolUse` | 도구 호출 직전 | 위험 파일·명령 차단 (보안 가드) |
+| `PostToolUse` | 도구 호출 직후 | 포맷팅, 린트, AST-grep 스캔, LSP 진단 |
+| `PreCompact` | `/clear` 직전 | 현재 컨텍스트를 파일로 저장 |
+| `SessionEnd` | 세션 종료 시 | 메트릭 저장, 미커밋 변경 경고 |
+| `Stop` | 응답 완료 후 | 루프·goal 완료 조건 판정 |
+| `SubagentStop` | 하위 에이전트 완료 후 | 하위 작업 결과 처리 |
+| `PermissionRequest` | 권한 대화상자 표시 시 | 자동 허용/거부 결정 |
 
-#### 3. SessionEnd
-Claude Code 세션이 종료될 때 실행됩니다. 정리 작업, 컨텍스트 저장, 메트릭 수집에 사용합니다.
+나머지 다섯 개 (`UserPromptSubmit`, `Notification`, `TeammateIdle`, `TaskCompleted`, `SubagentStart`) 도 같은 패턴으로 연결됩니다. `Stop` 훅은 `/moai loop`와 `/moai goal`이 "끝났는가"를 매 턴 끝마다 기계적으로 판정하는 자리이기도 합니다 — 선언한 완료 조건이 충족될 때까지 세션이 계속 일하도록 만드는 장치가 이 훅 위에서 돕니다.
 
-#### 4. PreCompact
-Claude Code가 컨텍스트 압축 작업 (`/clear` 명령 등)을 수행하기 전에 실행됩니다. 중요한 컨텍스트를 백업하는 데 사용합니다.
+## Step 2. settings.json에 훅 연결하기
 
-#### 5. PreToolUse
-도구가 호출되기 **전**에 실행됩니다. 도구 호출을 차단하거나 수정할 수 있습니다. 보안 검증, 위험 명령 차단에 사용합니다.
-
-#### 6. PermissionRequest
-권한 대화상자가 사용자에게 표시될 때 실행됩니다. 자동으로 허용하거나 거부할 수 있습니다.
-
-#### 7. PostToolUse
-도구 호출이 **완료된 후**에 실행됩니다. 코드 포맷팅, 린트 검사, LSP 진단 수집에 사용합니다.
-
-#### 8. UserPromptSubmit
-사용자가 프롬프트를 제출할 때 실행되며, Claude가 처리하기 **전**입니다. 프롬프트 전처리, 검증에 사용합니다.
-
-#### 9. Notification
-Claude Code가 알림을 보낼 때 실행됩니다. 데스크톱 알림, 소리 알림 등으로 커스터마이징할 수 있습니다.
-
-#### 10. Stop
-Claude Code가 응답을 마쳤을 때 실행됩니다. 루프 제어, 완료 조건 확인에 사용합니다 — `/moai loop`와 goal 엔진이 이 이벤트 위에서 동작합니다.
-
-#### 11. SubagentStop
-하위 에이전트 작업이 완료되었을 때 실행됩니다. 하위 작업 결과를 처리하는 데 사용합니다.
-
-### MoAI-ADK에서 구현된 이벤트
-
-MoAI-ADK는 **셸 래퍼 스크립트 + Go 바이너리** 아키텍처로 훅을 구현합니다. settings.json의 `command`는 `.claude/hooks/moai/handle-<event>.sh` 셸 래퍼를 가리키고, 이 래퍼가 stdin JSON을 `moai hook <event>` Go 서브커맨드로 전달하여 실제 로직을 실행합니다. Python이나 `uv run` 의존성이 없습니다 — 셸 스크립트와 단일 Go 바이너리만으로 동작합니다.
-
-| 이벤트 | 상태 | 셸 래퍼 | Go 서브커맨드 |
-|--------|------|---------|---------------|
-| `SessionStart` | {{< icon check ok >}} | `handle-session-start.sh` | `moai hook session-start` |
-| `PreToolUse` | {{< icon check ok >}} | `handle-pre-tool.sh` | `moai hook pre-tool` |
-| `PostToolUse` | {{< icon check ok >}} | `handle-post-tool.sh` | `moai hook post-tool` |
-| `PreCompact` | {{< icon check ok >}} | `handle-compact.sh` | `moai hook compact` |
-| `SessionEnd` | {{< icon check ok >}} | `handle-session-end.sh` | `moai hook session-end` |
-| `Stop` | {{< icon check ok >}} | `handle-stop.sh` | `moai hook stop` |
-| `SubagentStart` | {{< icon check ok >}} | `handle-subagent-start.sh` | `moai hook subagent-start` |
-| `SubagentStop` | {{< icon check ok >}} | `handle-subagent-stop.sh` | `moai hook subagent-stop` |
-| `PermissionRequest` | {{< icon check ok >}} | `handle-permission-request.sh` | `moai hook permission-request` |
-| `UserPromptSubmit` | {{< icon check ok >}} | `handle-user-prompt-submit.sh` | `moai hook user-prompt-submit` |
-| `Notification` | {{< icon check ok >}} | `handle-notification.sh` | `moai hook notification` |
-| `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
-| `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
-
-Go 바이너리는 위 13종 외에도 `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult` 등 총 38개 서브커맨드를 구현합니다. (전체 목록은 `moai hook --help`로 확인할 수 있습니다.)
-
-### 팀원 협업 이벤트
-
-MoAI의 정적 Agent Teams 오케스트레이션 계층은 퇴역(RETIRED)했지만, Claude Code의 네이티브 팀원 런타임(tmux pane 기반)은 그대로 쓸 수 있고 `TeammateIdle`·`TaskCompleted` 훅 이벤트도 정상 동작합니다.
-
-#### TeammateIdle 이벤트
-팀원이 작업을 완료하고 idle 상태로 진입할 때 실행됩니다.
-
-- `continue: false` (exit code 2) → idle 거부, 팀원이 추가 작업 수행
-- `continue: true` (기본값) → idle 승인
-
-#### TaskCompleted 이벤트
-팀원이 태스크를 완료했을 때 실행됩니다.
-
-- Exit code 2 → 완료 거부 (수정 필요)
-- Exit code 0 (기본값) → 완료 승인
-
-#### Team Shutdown Sequence [HARD]
-
-팀 종료 시 다음 순서를 **반드시** 따르세요.
-
-1. **shutdown_request 전송**: 각 팀원에게 `SendMessage(shutdown_request)` 전송
-2. **응답 대기**: 각 팀원으로부터 `shutdown_response approve:true` 수신
-3. **[HARD] tmux pane 정리**: tmux pane 명시적 종료
-   - `~/.claude/teams/{team-name}/config.json` 읽기
-   - 각 멤버의 `tmuxPaneId` 추출 (예: "%184")
-   - `tmux kill-pane -t {paneId}` 실행 (높은 인덱스부터)
-
-팀 디렉토리 정리는 세션이 끝날 때 자동으로 이루어지므로 teardown을 따로 호출할 필요가 없습니다(명시적 팀 teardown 도구는 Claude Code v2.1.178에서 제거됐습니다. 세션마다 암묵적 팀이 하나씩 있고 정리는 자동입니다).
-
-{{< callout type="warning" >}}
-**왜 tmux pane 정리가 필수인가?** `shutdown_response`는 팀원을 논리적으로 완료 처리할 뿐, tmux pane 프로세스까지 끝내지는 않습니다. 세션이 끝날 때 팀 디렉토리는 자동으로 정리되지만 여기서도 pane 프로세스는 그대로 남습니다. pane을 직접 종료하지 않으면 pane이 계속 살아 있고, Leader는 "Drain" 상태에서 멈춥니다.
-{{< /callout >}}
-
-### 이벤트 실행 순서
-
-일반적인 파일 수정 작업에서 Hook이 실행되는 순서입니다.
-
-```mermaid
-flowchart TD
-    A["Claude Code가<br>파일 수정 시도"] --> B["PreToolUse<br>handle-pre-tool.sh"]
-
-    B -->|허용| C["Write/Edit<br>파일 수정 실행"]
-    B -->|차단| BLOCK["작업 중단<br>위험 파일 보호"]
-
-    C --> D["PostToolUse<br>handle-post-tool.sh"]
-    D --> D1["Go 바이너리 내부<br>포맷터 + 린터 + AST-grep + LSP"]
-
-    D1 --> H{결과}
-    H -->|깨끗함| I["작업 완료"]
-    H -->|문제 발견| J["Claude Code에<br>피드백 전달"]
-    J --> K["자동 수정 시도"]
-```
-
-이 파이프라인이 에이전틱 루프의 피드백 절반을 담당합니다 — 에이전트가 쓰고, 훅이 검사하고, 문제가 있으면 다음 턴의 수정 입력이 됩니다.
-
-## Claude Code 공식 예시
-
-이 예시들은 Claude Code 공식 문서에서 제공하는 표준 패턴입니다.
-
-### Bash 명령 로깅 Hook
-
-모든 Bash 명령을 로그 파일에 기록합니다.
+훅은 `.claude/settings.json` 파일의 `hooks` 절에서 연결합니다. 각 이벤트 아래에 **매처** (matcher, 도구 이름을 거르는 정규식) 를 두고, 그 아래에 실행할 셸 래퍼 경로와 타임아웃을 적습니다. 아래는 MoAI-ADK가 프로젝트에 까는 기본 `hooks` 절로, 그대로 복사해 쓸 수 있는 실행 가능한 설정입니다.
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '\"\\(.tool_input.command) - \\(.tool_input.description // \"No description\")\"' >> ~/.claude/bash-command-log.txt"
-          }
-        ]
-      }
-    ]
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+        "timeout": 30
+      }]
+    }],
+    "PreToolUse": [{
+      "matcher": "Write|Edit|Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+        "timeout": 5
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+        "timeout": 10
+      }]
+    }],
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\""
+      }]
+    }]
   }
 }
 ```
 
-### TypeScript 포맷팅 Hook
+두 가지 규칙이 강제 (HARD) 적용됩니다. 첫째, `$CLAUDE_PROJECT_DIR`은 반드시 큰따옴표로 감싸야 합니다. 경로에 빈칸이 들어 있어도 깨지지 않습니다. 둘째, 각 훅마다 타임아웃을 현실적으로 잡아야 합니다. Claude Code의 플랫폼 기본값은 10분이라 방치하면 세션이 멈출 수 있고, MoAI-ADK는 이를 5초까지 줄여 달라고 권합니다.
 
-TypeScript 파일을 편집한 후 자동으로 Prettier를 실행합니다.
+| 매처 패턴 | 의미 |
+|-----------|------|
+| `""` (빈 문자열) | 모든 도구에 발화 |
+| `"Write"` | Write 도구에만 |
+| `"Write\|Edit"` | Write 또는 Edit |
+| `"Bash"` | Bash 도구에만 |
 
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '.tool_input.file_path' | { read file_path; if echo \"$file_path\" | grep -q '\\.ts$'; then npx prettier --write \"$file_path\"; fi; }"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+권장 타임아웃은 훅이 하는 일에 따라 다릅니다. 보안 가드 (PreToolUse) 는 5초, 포맷터·린트 (PostToolUse) 는 10초, 세션 시작과 컨텍스트 저장 (SessionStart·PreCompact) 은 30초까지 허용됩니다. `PreCompact`는 `/clear` 직전에 현재 진행 중이던 SPEC 상태와 수정 파일 목록, 핵심 결정을 `.moai/state/` 아래에 저장해, 세션이 끊겨도 다음 세션이 하던 자리에서 이어 가게 만드는 안전망입니다.
 
-### Markdown 포맷터 Hook
+## Step 3. 보안 가드가 지키는 것들
 
-Markdown 파일의 언어 태그를 자동으로 감지하고 추가합니다.
+`PreToolUse` 훅이 실행하는 보안 가드는 파일이 수정되거나 명령이 실행되기 **직전**에 끼어들어, 되돌릴 수 없는 작업을 막습니다. 매칭되면 JSON으로 `"permissionDecision": "deny"`를 돌려주고, Claude Code는 해당 도구 호출을 중단합니다.
 
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/markdown_formatter.sh\""
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-`.claude/hooks/markdown_formatter.sh` 파일:
-
-```bash
-#!/bin/bash
-# Markdown 포맷터: 코드 펜스 언어 태그 누락 수정, 과도한 빈 줄 정리
-
-input_data=$(cat)
-file_path=$(echo "$input_data" | jq -r '.tool_input.file_path // ""')
-
-# Markdown 파일이 아니면 통과
-case "$file_path" in
-  *.md|*.mdx) ;;
-  *) exit 0 ;;
-esac
-
-[ -f "$file_path" ] || exit 0
-
-# 과도한 빈 줄 정리 (3줄 이상 → 2줄)
-content=$(cat "$file_path")
-formatted=$(echo "$content" | awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print; next} {blank=0; print}')
-
-if [ "$formatted" != "$content" ]; then
-  echo "$formatted" > "$file_path"
-  echo "Markdown 포맷팅 수정: $file_path" >&2
-fi
-```
-
-### 데스크톱 알림 Hook
-
-Claude가 입력을 기다릴 때 데스크톱 알림을 표시합니다.
-
-```json
-{
-  "hooks": {
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "notify-send 'Claude Code' 'Awaiting your input'"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 파일 보호 Hook
-
-민감한 파일의 수정을 차단합니다.
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // \"\"'); case \"$f\" in *.env|*package-lock.json|*.git/*) exit 2;; esac"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-## MoAI 기본 Hooks
-
-MoAI-ADK는 **셸 래퍼 + Go 바이너리** 아키텍처로 Hook을 제공합니다. 각 `handle-<event>.sh` 래퍼는 stdin JSON을 `moai hook <event>` 서브커맨드로 전달하며, 포맷팅·린트·보안 스캔·LSP 진단 등의 실제 로직은 모두 Go 바이너리 내부에서 실행됩니다. Python 런타임이나 `uv` 의존성이 필요하지 않습니다.
-
-### Hook 목록
-
-| 셸 래퍼 | Go 서브커맨드 | 이벤트 | 매처 | 역할 | 타임아웃 |
-|---------|---------------|--------|------|------|----------|
-| `handle-session-start.sh` | `session-start` | SessionStart | 전체 | 프로젝트 상태 표시, 업데이트 확인 | 30초 |
-| `handle-pre-tool.sh` | `pre-tool` | PreToolUse | `Write\|Edit\|Bash` | 위험 파일 수정/명령 차단 | 5초 |
-| `handle-post-tool.sh` | `post-tool` | PostToolUse | `Write\|Edit` | 코드 포맷팅, 린트, AST-grep 스캔, LSP 진단 | 10초 |
-| `handle-compact.sh` | `compact` | PreCompact | 전체 | `/clear` 전 컨텍스트 저장 | 30초 |
-| `handle-session-end.sh` | `session-end` | SessionEnd | 전체 | 세션 종료 시 정리 작업 | 10초 |
-| `handle-stop.sh` | `stop` | Stop | 전체 | 루프 제어 및 완료 확인 | 기본값 |
-| `handle-subagent-stop.sh` | `subagent-stop` | SubagentStop | 전체 | 하위 에이전트 작업 결과 처리 | 기본값 |
-| `handle-permission-request.sh` | `permission-request` | PermissionRequest | 전체 | 권한 자동 허용/거부 결정 | 5초 |
-
-### SessionStart: 프로젝트 정보 표시
-
-세션이 시작될 때 프로젝트의 현재 상태를 보여줍니다.
-
-**표시 정보:**
-- MoAI-ADK 버전 및 업데이트 여부
-- 현재 프로젝트 이름과 기술 스택
-- Git 브랜치, 변경 사항, 마지막 커밋
-- Git 전략 (Github-Flow 모드, Auto Branch 설정)
-- 언어 설정 (대화 언어)
-- 이전 세션 컨텍스트 (SPEC 상태, 작업 목록)
-- 개인화된 환영 메시지 또는 설정 가이드
-
-### PreToolUse: Security Guard (보안 가드)
-
-파일 수정/명령 실행 전에 **위험한 작업을 보호**합니다.
-
-**보호 대상 파일:**
-
-| 카테고리 | 보호 파일 | 이유 |
-|----------|-----------|------|
-| 비밀 저장소 | `secrets/`, `*.secrets.*`, `*.credentials.*` | 민감 정보 보호 |
+| 범주 | 보호 대상 | 이유 |
+|------|-----------|------|
+| 비밀 저장소 | `secrets/`, `*.secrets.*`, `*.credentials.*` | 민감 정보 유출 차단 |
 | SSH 키 | `~/.ssh/*`, `id_rsa*`, `id_ed25519*` | 서버 접근 키 보호 |
 | 인증서 | `*.pem`, `*.key`, `*.crt` | 인증서 파일 보호 |
 | 클라우드 자격증명 | `~/.aws/*`, `~/.gcloud/*`, `~/.azure/*`, `~/.kube/*` | 클라우드 계정 보호 |
-| Git 내부 | `.git/*` | Git 저장소 무결성 |
+| Git 내부 | `.git/*` | 저장소 무결성 유지 |
 | 토큰 파일 | `*.token`, `.tokens/*`, `auth.json` | 인증 토큰 보호 |
 
-**주의:** `.env` 파일은 보호하지 않습니다. 개발자가 환경 변수를 편집할 수 있도록 허용합니다.
+한 가지 주의할 점이 있습니다. `.env` 파일은 보호 대상이 아닙니다. 개발자가 환경 변수를 직접 편집할 수 있도록 열어 둔 의도적 설계입니다. 비밀은 비밀 저장소에, 설정은 `.env`에 둔다는 구분입니다. 보안 가드는 위험한 Bash 명령도 차단합니다 — `rm -rf /`, `rm -rf .git`, `git push --force origin main`, `docker system prune -a`, `terraform destroy`, `supabase db reset` 따위가 여기에 속합니다. 차단 응답의 형태는 다음과 같습니다.
 
-**차단 동작:**
-- 보호 대상 파일에 대한 Write/Edit 시도를 감지
-- JSON 형태로 `"permissionDecision": "deny"` 응답 반환
-- Claude Code가 해당 파일 수정을 중단
-
-**위험한 Bash 명령 차단:**
-- 데이터베이스 삭제: `supabase db reset`, `neon database delete`
-- 위험한 파일 삭제: `rm -rf /`, `rm -rf .git`
-- Docker 전체 삭제: `docker system prune -a`
-- 강제 푸시: `git push --force origin main`
-- Terraform 파괴: `terraform destroy`
-
-### PostToolUse: Code Formatter (코드 포맷터)
-
-파일 수정 후 **자동으로 코드를 정리**합니다.
-
-**지원 언어 및 포맷터:**
-
-| 언어 | 포맷터 (우선순위) | 설정 파일 |
-|------|------------------|----------|
-| Python | `ruff format`, `black` | `pyproject.toml` |
-| TypeScript/JavaScript | `biome`, `prettier`, `eslint_d` | `.prettierrc`, `biome.json` |
-| Go | `gofmt`, `goimports` | 기본값 |
-| Rust | `rustfmt` | `rustfmt.toml` |
-| Ruby | `prettier` | `.prettierrc` |
-| PHP | `prettier` | `.prettierrc` |
-| Java | `prettier` | `.prettierrc` |
-| Kotlin | `prettier` | `.prettierrc` |
-| Swift | `swiftformat` | `.swiftformat` |
-| C# | `prettier` | `.prettierrc` |
-
-**제외 대상:**
-- `.json`, `.lock`, `.min.js`, `.svg` 등
-- `node_modules`, `.git`, `dist`, `build` 디렉토리
-
-### PostToolUse: Linter (린터)
-
-파일 수정 후 **코드 품질을 자동 검사**합니다.
-
-**지원 언어 및 린터:**
-
-| 언어 | 린터 (우선순위) | 검사 항목 |
-|------|----------------|----------|
-| Python | `ruff check`, `flake8` | PEP 8, 타입 힌트, 복잡도 |
-| TypeScript/JavaScript | `eslint`, `biome lint`, `eslint_d` | 코딩 표준, 잠재적 버그 |
-| Go | `golangci-lint` | 코드 품질, 성능 |
-| Rust | `clippy` | Rust 관용성, 성능 |
-
-### PostToolUse: AST-grep 스캔
-
-파일 수정 후 **구조적 보안 취약점을 스캔**합니다.
-
-**지원 언어:**
-Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
-
-**스캔 패턴 예시:**
-- SQL Injection 취약점 (문자열 연결 쿼리)
-- 하드코딩된 비밀키 (API 키, 토큰)
-- 안전하지 않은 함수 호출
-- 미사용 임포트
-
-**설정:** `.moai/config/astgrep-rules/`(기본 배포 룰셋은 `go-hardcoding.yml`)
-
-### PostToolUse: LSP 진단
-
-파일 수정 후 **LSP(Language Server Protocol) 진단 정보를 수집**합니다.
-
-**지원 언어:**
-Python, TypeScript/JavaScript, Go, Rust, Java, Kotlin, Ruby, PHP, C/C++
-
-**Fallback 진단:**
-LSP를 사용할 수 없는 경우 명령행 도구를 사용합니다:
-- Python: `ruff check --output-format=json`
-- TypeScript: `tsc --noEmit`
-
-**설정:** `.moai/config/sections/ralph.yaml`
-
-```yaml
-ralph:
-  enabled: true
-  hooks:
-    post_tool_lsp:
-      enabled: true
-      severity_threshold: error  # error | warning | info
-```
-
-### PreCompact: 컨텍스트 저장
-
-`/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다. 컨텍스트가 한계에 다다랐을 때 세션을 끊고 다음 세션으로 이어 가는 핸드오프의 안전망입니다.
-
-**저장 위치:** `.moai/state/session-memo.md`
-
-**저장 내용:**
-- 현재 활성 SPEC 상태 (ID, 단계, 진행률)
-- 진행 중인 작업 목록 (TodoWrite)
-- 완료된 작업 목록
-- 수정된 파일 목록
-- Git 상태 정보 (브랜치, 커밋되지 않은 변경)
-- 핵심 결정 사항
-
-**상태 파일:** 활성 워크트리·세션 상태는 `.moai/state/`(예: `worktrees.json`, `active-sessions.json`)에 기록됩니다.
-
-### SessionEnd: 자동 정리
-
-세션 종료 시 다음 작업을 수행합니다.
-
-**P0 작업 (필수):**
-- 세션 메트릭 저장 (수정 파일 수, 커밋 수, 작업한 SPEC)
-- 작업 상태 스냅샷 저장 (`~/.moai/state/last-session-state.json`)
-- 커밋되지 않은 변경 경고
-
-**P1 작업 (선택):**
-- 임시 파일 정리 (7일 이상 된 파일)
-- 캐시 파일 정리
-- 루트 디렉토리 문서 관리 위반 스캔
-- 세션 요약 생성
-
-### Stop: 루프 제어기
-
-Ralph Engine 피드백 루프를 제어합니다. `/moai loop`가 "다 고칠 때까지 반복"할 수 있는 것은 이 훅이 매 턴 종료 시점에 완료 조건을 기계적으로 판정하기 때문입니다.
-
-**완료 조건 확인:**
-- LSP 오류 수 (0 오류 목표)
-- LSP 경고 수
-- 테스트 통과 여부
-- 커버리지 목표 (기본 85%)
-- 완료 문장 감지 (자연어 루프 종료 신호)
-
-**상태 파일:** `.moai/cache/.moai_loop_state.json`
-
-**설정:** `.moai/config/sections/ralph.yaml`
-
-```yaml
-ralph:
-  enabled: true
-  loop:
-    max_iterations: 10
-    auto_fix: false
-    completion:
-      zero_errors: true
-      zero_warnings: false
-      tests_pass: true
-      coverage_threshold: 85
-```
-
-### Quality Gate with LSP
-
-LSP 진단을 사용하여 품질 게이트를 검증합니다.
-
-**품질 기준:**
-- 최대 오류 수: 0 (기본값)
-- 최대 경고 수: 10 (기본값)
-- 타입 오류: 0 허용
-- 린트 오류: 0 허용
-
-**설정:** `.moai/config/sections/quality.yaml`
-
-```yaml
-constitution:
-  quality_gate:
-    max_errors: 0
-    max_warnings: 10
-    enabled: true
-```
-
-**결과 예시:**
 ```json
 {
-  "lsp_errors": 0,
-  "lsp_warnings": 2,
-  "type_errors": 0,
-  "lint_errors": 0,
-  "passed": true,
-  "reason": "Quality gate passed: LSP diagnostics clean"
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "보호 대상 파일 수정 차단: ~/.ssh/id_rsa"
+  }
 }
 ```
 
-## Go 바이너리 아키텍처
+파일이 바뀐 직후에는 `PostToolUse` 훅이 들어옵니다. 이 훅은 프로젝트 언어를 알아서 감지해 (`go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml` 따위의 표식을 봅니다) 그 언어에 맞는 포맷터와 린터를 돌리고, AST-grep으로 구조적 취약점 (SQL 주입, 하드코딩된 비밀키) 을 스캔하며, LSP 진단을 모아 다음 턴의 피드백으로 돌려줍니다. 열여덟 개가 넘는 언어를 같은 흐름으로 지원합니다. 아래 그림은 보안 가드와 포맷터가 도구 호출을 앞뒤로 감싸는 모습을 보여 줍니다.
 
-MoAI Hooks의 공유 로직은 Python `lib/` 디렉토리가 아닌 **`moai` Go 바이너리 내부**에 컴파일됩니다. 셸 래퍼(`handle-<event>.sh`)는 얇은 전달 계층일 뿐이며, 다음 기능들이 모두 Go 바이너리 안에 구현되어 있습니다:
+```mermaid
+flowchart TD
+    A["에이전트가 파일 수정 시도"] --> B["PreToolUse<br/>보안 가드"]
+    B -->|허용| C["Write/Edit 실행"]
+    B -->|deny| F["작업 중단<br/>위험 파일 보호"]
+    C --> D["PostToolUse<br/>포맷터 + 린터 + AST-grep + LSP"]
+    D --> R{"결과"}
+    R -->|깨끗함| E["작업 완료"]
+    R -->|문제 발견| G["다음 턴에<br/>피드백 전달"]
+```
 
-- **16개 언어 포맷터/린터 레지스트리**: 프로젝트 언어 자동 감지 후 해당 도구 체인 실행 (Go: gofmt/golangci-lint, Python: ruff/black, Rust: cargo fmt/clippy 등)
-- **Git 데이터 수집**: 브랜치·변경 사항·커밋 정보를 캐싱해 같은 쿼리를 반복하지 않음
-- **통합 타임아웃 관리**: 훅 이벤트마다 타임아웃을 걸고, 실패해도 흐름을 끊지 않고 축소 동작
-- **컨텍스트 스냅샷**: `/clear` 전 컨텍스트 아카이브, 메모리 페이로드 생성
-- **LSP 진단 수집**: 언어 서버 프로토콜 기반 진단 결과 집계
+이 앞뒤 감싸기가 에이전틱 루프의 피드백 고리입니다 — 에이전트가 쓰고, 훅이 검사하고, 문제가 돌아오면 에이전트가 고칩니다. LSP 임계값과 품질 게이트 기준은 `.moai/config/sections/lsp.yaml`과 `quality.yaml`이 함께 들고 있습니다.
 
-이 구조 덕분에 Python 런타임(`uv`, 가상환경)을 설치할 필요가 없고, 단일 바이너리(`moai`)만 PATH에 있으면 모든 훅이 동작합니다. 바이너리가 없으면 래퍼는 그대로 종료(exit 0)하므로 Claude Code 흐름을 막지 않습니다.
+## Step 4. 커스텀 훅 직접 짜기
 
-## settings.json에서 Hook 설정
+프로젝트에 맞는 자동화가 필요하면 커스텀 훅을 직접 짤 수 있습니다. 훅은 bash 셸 스크립트로 작성합니다. Claude Code가 stdin으로 JSON을 넘겨 주고, 훅이 stdout으로 JSON을 돌려주는 단순한 규약입니다. `jq` 하나면 JSON 파싱은 끝납니다.
 
-Hooks는 `.claude/settings.json` 파일의 `hooks` 섹션에서 설정합니다.
+아래는 파일이 수정된 직후 `.env` 파일이 건드려졌는지 확인해, 건드려졌으면 경고를 에이전트에게 돌려주는 PostToolUse 훅입니다. `.claude/hooks/moai/check-env.sh`로 저장하면 바로 실행할 수 있습니다.
+
+```bash
+#!/bin/bash
+# .claude/hooks/moai/check-env.sh
+# 커스텀 PostToolUse 훅: .env 파일 수정 시 비밀 노출 경고
+
+# Claude Code가 넘겨주는 JSON을 표준 입력으로 읽기
+input_data=$(cat)
+file_path=$(echo "$input_data" | jq -r '.tool_input.file_path // ""')
+
+# .env 파일이 아니면 그냥 통과
+case "$file_path" in
+  *.env) ;;
+  *) exit 0 ;;
+esac
+
+# .env가 건드려졌다면 에이전트에게 맥락을 돌려줌
+jq -n --arg msg ".env 파일이 수정되었습니다. 민감 정보가 노출되지 않았는지 확인하세요." \
+  '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+exit 0
+```
+
+이 훅을 가동하려면 settings.json의 `PostToolUse` 절에 한 줄 추가하면 됩니다. 기존 MoAI 훅과 나란히 두어도 충돌하지 않습니다 — Claude Code는 같은 이벤트에 묶인 훅들을 차례로 실행합니다.
 
 ```json
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
+        "hooks": [{
+          "type": "command",
+          "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+          "timeout": 10
+        }]
+      },
       {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\""
-          }
-        ]
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/check-env.sh\"",
+          "timeout": 5
+        }]
       }
     ]
   }
 }
 ```
 
-### 설정 구조
+훅 응답은 용도에 따라 네 가지로 나뉩니다. `suppressOutput: true`는 아무것도 표시하지 않는 것, `hookSpecificOutput` 객체는 에이전트에게 추가 맥락을 주는 것, `permissionDecision: "allow|deny|ask"`는 PreToolUse에서 허용·차단·확인 요청을 결정하는 것입니다. exit 코드도 의미가 있습니다 — exit 0은 통과, exit 2는 차단, 그 외는 무시됩니다. 훅을 짤 때는 이 네 가지 응답 형태 가운데 목적에 맞는 하나를 골라 쓰면 됩니다.
 
-| 필드 | 설명 | 예시 |
-|------|------|------|
-| `matcher` | 도구 이름 매칭 패턴 (정규식) | `"Write\|Edit"` |
-| `type` | Hook 유형 | `"command"` |
-| `command` | 실행할 명령어 | Shell 스크립트 경로 |
-| `timeout` | 실행 제한 시간 (초) | `5` (5초) |
-
-### 매처 패턴
-
-| 패턴 | 설명 |
-|------|------|
-| `""` (빈 문자열) | 모든 도구에 매칭 |
-| `"Write"` | Write 도구에만 매칭 |
-| `"Write\|Edit"` | Write 또는 Edit 도구에 매칭 |
-| `"Bash"` | Bash 도구에만 매칭 |
-
-## 커스텀 Hook 작성법
-
-### 기본 템플릿
-
-커스텀 Hook 스크립트는 셸 스크립트(bash)로 작성할 수 있습니다. Claude Code는 stdin으로 JSON 데이터를 전달하고, stdout으로 JSON 응답을 기대합니다. `jq`를 사용하면 JSON 파싱이 간단합니다.
-
-```bash
-#!/bin/bash
-# 커스텀 PostToolUse Hook: 파일 수정 후 특정 검사 수행
-
-# stdin에서 Hook 입력 데이터 읽기
-input_data=$(cat)
-file_path=$(echo "$input_data" | jq -r '.tool_input.file_path // ""')
-
-# 검사 로직
-if [[ "$file_path" == *.env ]]; then
-  # 위험 파일 감지 시 Claude Code에 피드백 전달
-  jq -n --arg msg ".env 파일이 수정되었습니다. 민감 정보가 노출되지 않았는지 확인하세요." \
-    '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
-  exit 0
-fi
-
-# 문제 없으면 출력 억제
-echo '{"suppressOutput": true}'
-```
-
-### Hook 응답 형식
-
-| 필드 | 값 | 동작 |
-|------|-----|------|
-| `suppressOutput` | `true` | 아무것도 표시 안 함 |
-| `hookSpecificOutput` | 객체 | 추가 컨텍스트 제공 |
-| `permissionDecision` | `"allow"` | 작업 허용 (PreToolUse) |
-| `permissionDecision` | `"deny"` | 작업 차단 (PreToolUse) |
-| `permissionDecision` | `"ask"` | 사용자 확인 요청 (PreToolUse) |
-
-### Hook 입력 데이터
-
-Hook 스크립트는 표준 입력 (stdin)으로 JSON 데이터를 받습니다.
-
-```json
-{
-  "tool_name": "Write",
-  "tool_input": {
-    "file_path": "/path/to/file.py",
-    "content": "파일 내용..."
-  },
-  "tool_output": "파일 출력 결과 (PostToolUse에서만)"
-}
-```
-
-## Hook 디렉토리 구조
-
-```
-.claude/hooks/moai/
-├── handle-session-start.sh          # SessionStart → moai hook session-start
-├── handle-pre-tool.sh               # PreToolUse → moai hook pre-tool
-├── handle-post-tool.sh              # PostToolUse → moai hook post-tool
-├── handle-compact.sh                # PreCompact → moai hook compact
-├── handle-post-compact.sh           # PostCompact → moai hook post-compact
-├── handle-session-end.sh            # SessionEnd → moai hook session-end
-├── handle-stop.sh                   # Stop → moai hook stop
-├── handle-stop-goal.sh              # Stop (goal 엔진) → moai hook stop-goal
-├── handle-stop-failure.sh           # StopFailure → moai hook stop-failure
-├── handle-subagent-start.sh         # SubagentStart → moai hook subagent-start
-├── handle-subagent-stop.sh          # SubagentStop → moai hook subagent-stop
-├── handle-notification.sh           # Notification → moai hook notification
-├── handle-user-prompt-submit.sh     # UserPromptSubmit → moai hook user-prompt-submit
-├── handle-permission-request.sh     # PermissionRequest → moai hook permission-request
-├── handle-permission-denied.sh      # PermissionDenied → moai hook permission-denied
-├── handle-teammate-idle.sh          # TeammateIdle → moai hook teammate-idle
-├── handle-task-completed.sh         # TaskCompleted → moai hook task-completed
-├── handle-task-created.sh           # TaskCreated → moai hook task-created
-├── handle-config-change.sh          # ConfigChange → moai hook config-change
-├── handle-cwd-changed.sh            # CwdChanged → moai hook cwd-changed
-├── handle-file-changed.sh           # FileChanged → moai hook file-changed
-├── handle-instructions-loaded.sh    # InstructionsLoaded → moai hook instructions-loaded
-├── handle-worktree-create.sh        # WorktreeCreate → moai hook worktree-create
-├── handle-worktree-remove.sh        # WorktreeRemove → moai hook worktree-remove
-├── handle-elicitation.sh            # Elicitation → moai hook elicitation
-├── handle-elicitation-result.sh     # ElicitationResult → moai hook elicitation-result
-├── handle-post-tool-failure.sh      # PostToolUseFailure → moai hook post-tool-failure
-├── handle-agent-hook.sh             # Agent 훅 범용 래퍼
-├── status-transition-ownership.sh    # SPEC 상태 전환 감사 (PostToolUse)
-├── handle-harness-observe-stop.sh   # 하네스 관찰 (Stop)
-├── handle-harness-observe-subagent-stop.sh  # 하네스 관찰 (SubagentStop)
-└── handle-harness-observe-user-prompt-submit.sh  # 하네스 관찰 (UserPromptSubmit)
-```
+## 훅 작성 규칙 요약
 
 {{< callout type="warning" >}}
-**주의**: Hook 스크립트의 타임아웃을 너무 길게 설정하면 Claude Code의 응답이 느려집니다. 보안 가드(pre-tool)는 5초, 포맷터·린트(post-tool)는 10초 이내를 권장합니다. SessionStart와 PreCompact는 컨텍스트 로딩을 위해 30초까지 허용됩니다.
+**훅을 짤 때 지킬 세 가지.** (1) `$CLAUDE_PROJECT_DIR`은 항상 큰따옴표로 감쌀 것. (2) 타임아웃을 현실적으로 잡을 것 — 보안 가드 5초, 포맷터 10초, 세션 시작 30초. (3) 바이너리가 없거나 실패해도 흐름을 끊지 않게, exit 0으로 조용히 빠질 것 (fail-open).
 {{< /callout >}}
 
 ## 관련 문서
 
-- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference) - Claude Code 30개 이벤트 타입 전체 레퍼런스
-- [settings.json 가이드](/ko/advanced/settings-json) - Hook 설정 방법
-- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 관리
-- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트와 Hook 연동
-
-{{< callout type="info" >}}
-**팁**: Hook은 MoAI-ADK의 품질 보장 핵심입니다. 코드 포맷팅과 린트 검사를 자동화하여 개발자가 로직에만 집중할 수 있게 합니다. 커스텀 Hook을 추가하여 프로젝트에 맞는 자동화를 구축하세요.
-{{< /callout >}}
+- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference) {{< icon arrow-right >}} Claude Code 이벤트 타입 전체 카탈로그
+- [settings.json 가이드](/ko/advanced/settings-json) {{< icon arrow-right >}} 훅 설정 방법 상세
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) {{< icon arrow-right >}} 프로젝트 지침 관리
+- [에이전트 가이드](/ko/advanced/agent-guide) {{< icon arrow-right >}} 에이전트와 훅의 연동

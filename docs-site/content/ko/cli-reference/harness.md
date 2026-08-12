@@ -6,6 +6,8 @@ draft: false
 
 `moai harness` 은 SPEC 복잡도 라우팅과 하네스 학습 서브시스템을 관리하는 통합 커맨드 트리입니다. 라우팅, 검증, 라이프사이클, 제안 관리, v4 하네스 라이프사이클, 관찰 기록(ledger) 하위 명령어를 제공합니다.
 
+SPEC 규모에 따라 어느 정도의 하네스(harness) 게이트가 필요한지를 판정하는 일은 관리자 에이전트가 매번 반복해야 하는 결정이기 때문에, 이 커맨드는 관찰 기록(ledger) 을 누적하면서 라우팅 규칙이 실제로 어떻게 쓰이는지를 추적합니다. 따라서 라우팅 부정확이 반복될 때 원인을 추적할 수 있는 단일 근거가 됩니다.
+
 공통 플래그로 `--project-root <path>` (기본: 현재 디렉터리)를 받습니다.
 
 ## 라우팅 verb
@@ -53,10 +55,19 @@ draft: false
 | 명령어 | 설명 |
 |--------|------|
 | `moai harness ledger record` | dispatch 시점 라우팅 결정 기록 (pending row) |
+| `moai harness ledger annotate` | 이미 존재하는 pending row 에 라우팅 메타데이터를 패치 |
 | `moai harness ledger evidence` | pending row에 기계 증거 ref (또는 위임 항목) 추가 |
 | `moai harness ledger list` | 필터로 최종 원장 row 나열 |
 
 > `ledger record` 와 `ledger evidence` 는 결과(outcome)를 위조할 수 없도록 `--outcome` 플래그를 노출하지 않습니다. 결과는 기계 증거에서 도출됩니다.
+
+## 위임 맵 분석 (delegation)
+
+`moai harness delegation` 은 관찰된 라우팅 기록으로부터 위임 맵(delegation map) 분석을 다룹니다.
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai harness delegation analyze` | 관찰된 위임 내역을 분석해 위임 맵 제안 생성 |
 
 ## 관련 문서
 

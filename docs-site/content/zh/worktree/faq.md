@@ -23,7 +23,7 @@ draft: false
 **A**: Git Worktree 让你能在**物理上分离的目录**中工作:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["普通分支方式"]
         T1[单一目录]
         T2[用 git checkout<br/>切换分支]
@@ -66,7 +66,7 @@ graph TB
 4. **成本节约** —— 在实现阶段使用 GLM 可以降低成本。节省幅度整理在 [CG 模式](/zh/multi-llm/cg-mode)中
 
 ```mermaid
-graph TB
+graph TD
     A[不使用 Worktree] --> B[所有会话<br/>应用同一 LLM]
     B --> C[高成本<br/>只用 Opus]
 
@@ -185,7 +185,7 @@ moai glm -w SPEC-API-003 --spawn
 **并行工作可视化**:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Time["时间经过"]
         T1[09:00]
         T2[10:00]
@@ -553,7 +553,7 @@ echo "Worktree 清理完成 —— --stale 的清单请确认后自行用 --yes 
 **A**: 推荐以下工作流程:
 
 ```mermaid
-graph TB
+graph TD
     subgraph DevA["开发者 A"]
         A1[进入 Worktree]
         A2[开发]

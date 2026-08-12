@@ -31,7 +31,7 @@ MoAI-ADK は **ハーネスエンジニアリング** (Harness Engineering) パ�
 ## 7つのコアコンポーネント
 
 ```mermaid
-graph TB
+graph TD
     subgraph Harness["ハーネスエンジニアリング"]
         direction TB
         SF["Scaffolding First<br/>空ファイルのスタブ生成"] --> FC["Failing Checklist<br/>受け入れ基準のタスク登録"]

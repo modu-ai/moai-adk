@@ -178,7 +178,7 @@ flowchart TD
 - 중복 SPEC 확인 (.moai/specs/)
 - GEARS 구조 설계 (EARS 레거시 형식도 허용)
 - 구현 계획 및 기술 제약조건 식별
-- 라이브러리 버전 확인 (안정버전만, beta/alpha 제외)
+- 라이브러리 버전 확인 (안정 버전만, beta/alpha 제외)
 
 ### Decision Point 1: 사용자 승인 게이트 (HUMAN GATE)
 
@@ -565,3 +565,4 @@ MoAI가 `AskUserQuestion`으로 물을 때는 추천을 어디에 놓을지 정�
 - [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) - EARS 형식 상세 설명
 - [/moai run](./moai-run) - 다음 단계: DDD 구현
 - [/moai sync](./moai-sync) - 최종 단계: 문서 동기화
+- [/moai goal](./moai-goal) - plan→run→sync 체인을 자동으로 이어 붙이는 자율 루프 (v3.1)

@@ -125,7 +125,7 @@ $ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 计划在一个终端用推理强的模型 (Opus) 集中做完,实现则换成 GLM 分散到三个终端:
 
 ```mermaid
-graph TB
+graph TD
     subgraph T1["Terminal 1: Planning (Opus)"]
         P1[/moai plan<br/>AUTH-001/]
         P2[/moai plan<br/>LOG-002/]
@@ -220,7 +220,7 @@ $ git -C .claude/worktrees/SPEC-AUTH-001 log --oneline -5
 ### 场景: 2 名开发者协作
 
 ```mermaid
-graph TB
+graph TD
     subgraph Dev1["开发者 A (Frontend)"]
         F1[SPEC-FE-001<br/>登录 UI]
         F2[SPEC-FE-002<br/>仪表盘]

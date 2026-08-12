@@ -44,7 +44,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### Step 3: Install 2.x
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### Step 4: Verify installation
@@ -72,7 +72,7 @@ pip uninstall moai-adk -y 2>/dev/null || true
 which moai && rm $(which moai) 2>/dev/null || true
 
 # 3. Reinstall
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. Verify
 moai version
@@ -100,7 +100,7 @@ moai version    # Should report v3.0.0
 For new projects or clean environments, the installation script alone is sufficient.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 If Go is already installed, `go install` also works.
@@ -161,7 +161,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 cp -r ~/.moai ~/.moai-v1-backup 2>/dev/null || true
 
 # 3. Install 3.0
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. Verify
 moai version

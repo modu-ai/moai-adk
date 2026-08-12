@@ -25,7 +25,7 @@ Git Worktree 是 Git 内置功能,让你能**在多个目录中同时对同一�
 不必每次切换分支都用 `git checkout` 换掉上下文,而是为每个分支各开一个目录。
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["传统方式"]
         T1[单一工作目录]
         T2[需要切换分支]
@@ -472,7 +472,7 @@ flowchart TD
 便宜的模型 (GLM) 分成几路并行跑:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Planning["Planning Phase (Opus)"]
         P1[/moai plan<br/>SPEC-001/]
         P2[/moai plan<br/>SPEC-002/]

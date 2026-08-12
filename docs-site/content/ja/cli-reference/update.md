@@ -75,7 +75,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 3. **一時的な GitHub CDN 障害の可能性** — しばらくして再試行
 4. **手動 binary インストール** (永久遮断時):
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   curl -fsSL https://adk.mo.ai.kr/install.sh | bash
    ```
    手動インストール時は GitHub Release の `checksums.txt` を別途確認することを推奨します。
 
@@ -307,7 +307,7 @@ MoAI-ADK は次のフォルダでのみファイルを管理します:
 moai update --version <リリースタグ>
 
 # ブートストラップ経路 (moai インストール前): インストールスクリプトを使用
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <リリースタグ>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <リリースタグ>
 
 # バックアップから設定を復元
 cp -r .moai/config.bak .moai/config
@@ -326,7 +326,7 @@ cp -r .moai/config.bak .moai/config
 curl -I https://github.com/modu-ai/moai-adk/releases/latest
 
 # 手動再インストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 設定マイグレーションエラー

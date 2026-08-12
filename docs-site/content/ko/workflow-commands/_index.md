@@ -1,6 +1,7 @@
 ---
 title: 워크플로우 명령어
 weight: 30
+description: "/moai plan·run·sync 3단계 워크플로우와 goal·loop·fix 같은 반복·자율 커맨드."
 draft: false
 ---
 
@@ -37,9 +38,11 @@ flowchart TD
 | [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC 문서 생성 |
 | [`/moai run`](./moai-run) | Phase 2 | manager-develop | 180K | DDD/TDD 방식 구현 |
 | [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | 문서 동기화 및 PR 생성 |
+| [`/moai goal`](./moai-goal) {{< icon flash primary >}} | 자율 연속 | stop-goal 평가기 | - | 조건 선언형 자율 루프 (v3.1) |
+| [`/moai design`](./moai-design) | 조건부 | manager-design | - | UI SPEC을 위한 디자인 단계 협업 |
 | [`/moai harness`](./moai-harness) | 보조 | builder-harness | - | 하네스 생성 및 학습 라이프사이클 관리 |
 
-단계마다 토큰 예산이 다른 것도 v3의 비용 절감(토크노믹스) 설계에서 나온 결과입니다. 계획은 추론이 깊게 들어가는 대신 산출물이 작고 (30K), 구현은 코드량이 많아 예산을 넉넉히 잡아야 하며 (180K), 문서 동기화는 그 중간쯤 (40K)입니다. 단계 사이에 `/clear`로 컨텍스트를 비우는 관행도 같은 이유에서 나왔습니다. 앞 단계의 대화를 뒤로 끌고 가지 않아야 각 단계가 제 예산을 온전히 씁니다.
+단계마다 토큰 예산이 다른 것도 v3의 비용 절감(토크노믹스) 설계에서 나온 결과입니다. 계획은 추론이 깊게 들어가는 대신 산출물이 작고 (30K), 구현은 코드량이 많아 예산을 넉넉히 잡아야 하며 (180K), 문서 동기화는 그 중간쯤 (40K)입니다. 단계 사이에 `/clear`로 컨텍스트를 비우는 관행도 같은 이유에서 나왔습니다. 앞 단계의 대화를 뒤로 끌고 가지 않아야 각 단계가 제 예산을 온전히 씁니다. 그래서 페이즈 경계에서 `/clear`를 하는 것은 단순한 관행이 아니라 토크노믹스 설계의 일부입니다.
 
 {{< callout type="info" >}}
 처음 사용하신다면 `/moai project`부터 시작하세요. 프로젝트 문서가 있어야 이후 단계에서 AI가 프로젝트를 정확히 이해하고 작업할 수 있습니다.
@@ -59,6 +62,7 @@ flowchart TD
 | [`/moai run`](./moai-run) | DDD/TDD 구현 |
 | [`/moai sync`](./moai-sync) | 문서 동기화 및 PR |
 | [`/moai project`](./moai-project) | 프로젝트 문서 생성 |
+| [`/moai goal`](./moai-goal) | 조건 선언형 자율 루프 (v3.1) |
 | [`/moai design`](./moai-design) | 디자인 단계 협업 (manager-design D1-D5) |
 | [`/moai harness`](./moai-harness) | 하네스 생성 및 학습 라이프사이클 |
 
@@ -75,7 +79,6 @@ flowchart TD
 | [`/moai codemaps`](/ko/utility-commands/moai-codemaps) | 아키텍처 코드맵 생성 |
 | [`/moai gate`](/ko/utility-commands/moai-gate) | 커밋 전 품질 게이트 |
 | [`/moai e2e`](/ko/utility-commands/moai-e2e) | 멀티 플랫폼 E2E 테스트 |
-| [`/moai goal`](/ko/utility-commands/moai-goal) | 조건 선언형 자율 루프 |
 
 ## 빠른 시작
 

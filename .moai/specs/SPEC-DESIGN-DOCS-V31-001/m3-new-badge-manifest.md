@@ -8,7 +8,7 @@
 > (Korean content rewrite) consumes the same target slugs to know where to
 > author.
 >
-> **Source of truth.** `spec.md` §F.1 (12 v3.1 features). Verified against
+> **Source of truth.** `spec.md` §F.1 (13 v3.1 features). Verified against
 > `docs-site/content/ko/` actual page inventory at M0 execution time
 > (2026-08-11).
 >
@@ -19,7 +19,7 @@
 
 ---
 
-## §A. The 12 v3.1 features — target slug map
+## §A. The 13 v3.1 features — target slug map
 
 Page status legend:
 - **NEW** — page does not exist; M4 authors it from scratch.
@@ -48,6 +48,7 @@ Badge scope legend:
 | 10 | Stop-chain / per-edit hook consolidation | `advanced` (autonomy-tier page mentions) | `advanced/autonomy-tier.md` (shared with #6) | **NEW** (shared) | page + section (same page as #6) | The autonomy-tier page is the single home for BOTH `MOAI_AUTONOMY_TIER` (feature #6) AND the stop-chain/per-edit-hook consolidation narrative — they are co-located because autonomy tiers and the stop-chain semantics are inseparable at the user-facing level. M4 authors one page, lists it once in `new_items:`. |
 | 11 | Agent body diet + parallel batching | `claude-code` (mention) | `claude-code/agentic/*.md` (TBD subpage) | **MENTION** | none (no badge — indirect user-facing change surfaces as claude-code narrative, not a discrete v3.1 feature page) | M4 decides which claude-code subpage carries the narrative; no dedicated page. |
 | 12 | CC 2.1.219 upstream alignment | `claude-code` (rewrite) | `claude-code/foundations/*.md` + section-wide | **REWRITE** | section (badge applies at section level — multi-page rewrite, not one page) | M4 rewrites the claude-code section for CC 2.1.219 (nesting enabled by default, subagent depth semantics, deprecated `mode` parameter, etc.). Badge scope is section-level because the change spans the section. |
+| 13 | Harness learning surface (LSEL pipeline internals excluded) | `advanced` | `advanced/harness-learning.md` | **NEW** | page | User-facing surface of the harness-learning subsystem (concept, usage, observable behavior) — NEW page authored by M4. The LSEL Tier-Ladder pipeline internals stay excluded per spec.md §F.1 "Excluded from catalog" note (only the surface is cataloged). Badge scope is page-level frontmatter `added_in: "v3.1"`. |
 
 ---
 
@@ -57,7 +58,7 @@ M3 reads this section to know: "where do I add `added_in: "v3.1"` frontmatter, a
 
 ### §B.1 Page-level frontmatter targets (`added_in: "v3.1"`)
 
-8 pages — M3 adds `added_in: "v3.1"` to the frontmatter of each, M4 authors/rewrites the body:
+9 pages — M3 adds `added_in: "v3.1"` to the frontmatter of each, M4 authors/rewrites the body:
 
 1. `content/<locale>/workflow-commands/moai-goal.md` (NEW)
 2. `content/<locale>/advanced/factory-mode.md` (NEW)
@@ -66,6 +67,7 @@ M3 reads this section to know: "where do I add `added_in: "v3.1"` frontmatter, a
 5. `content/<locale>/advanced/multi-model-audit.md` (NEW)
 6. `content/<locale>/advanced/autonomy-tier.md` (NEW — shared by features #6 + #10)
 7. `content/<locale>/advanced/ultracode-workflows.md` (REWRITE — existing page)
+8. `content/<locale>/advanced/harness-learning.md` (NEW — feature #13, surface only)
 
 (`profile-matrix.md` is intentionally absent from this list — see §A row 7 rationale.)
 
@@ -73,7 +75,7 @@ M3 reads this section to know: "where do I add `added_in: "v3.1"` frontmatter, a
 
 M3 populates these after M4 creates the pages. M0 leaves these UNPOPULATED — `new_items:` lists require the target pages to exist before they can be referenced, and page creation is M4 work.
 
-**`advanced/_meta.yaml`** (5 new items — the largest delta):
+**`advanced/_meta.yaml`** (6 new items — the largest delta):
 ```yaml
 new_items:
   - factory-mode
@@ -81,6 +83,7 @@ new_items:
   - manager-lead
   - multi-model-audit
   - autonomy-tier
+  - harness-learning
 ```
 
 **`workflow-commands/_meta.yaml`** (1 new item):
@@ -167,7 +170,7 @@ This manifest satisfies M0 plan.md exit criterion (3): "spec.md §F.1 v3.1
 feature catalog table cross-checked: every row's 'New IA home' column
 resolves to a real section in the frozen IA."
 
-Cross-check result: **12/12 rows resolve**. The frozen IA has 12 sections
+Cross-check result: **13/13 rows resolve**. The frozen IA has 12 sections
 (getting-started, core-concepts, workflow-commands, utility-commands,
 cli-reference, claude-code, multi-llm, cost-optimization, guides, worktree,
 advanced, contributing); every §F.1 row's target section is in this set.
