@@ -4,6 +4,8 @@ weight: 2
 draft: false
 ---
 
+# Token Budget Management and Graceful Stop
+
 This page deep-dives into Layer D — Budget defense — of the 4-layer tokenomics structure. It covers the graceful-abort mechanism that ensures the session stops without data loss when an agent reaches the context-window limit, preserving progress so the next session can continue.
 
 {{< callout type="info" title="Platform basics" >}}

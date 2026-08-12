@@ -4,6 +4,8 @@ weight: 50
 draft: false
 ---
 
+# Decision Memory System
+
 The starting point of agentic loop engineering is observation — every time the loop runs, observations accumulate, and the accumulated observations become the raw material of learning. Decision memory is the layer that extends the observation target from code to the **user's choices**.
 
 {{< callout type="info" >}}

@@ -4,6 +4,8 @@ weight: 62
 draft: false
 ---
 
+# MX Scanner Internals
+
 The `moai mx` scanner reads the codebase, builds an index keyed on `@MX:` tags, and runs validation across several points in time. This document explains — grounded in the codebase — the four behaviors hidden behind the tag syntax: the rotRisk score, the LSP fan-in engine selection, the CGO-gated complexity measurement, and the scan automation timing. For tag authoring see [MX Tags](/en/advanced/mx-tags); for the command form see [`moai mx`](/en/utility-commands/moai-mx).
 
 ## rotRisk Score

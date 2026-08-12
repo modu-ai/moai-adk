@@ -4,6 +4,8 @@ weight: 6
 draft: false
 ---
 
+# Autonomous Continuation Loops
+
 The core question of agentic loops is "when to stop and when to continue." MoAI-ADK provides two continuation-loop primitives, `/moai goal` and `/moai loop`; Claude Code provides a third of its own, the native goal command. This page distinguishes all three, and explains each one's ownership, implementation status, and safety guardrails.
 
 ## When to Stop, When to Continue

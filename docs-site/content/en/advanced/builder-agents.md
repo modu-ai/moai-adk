@@ -14,7 +14,7 @@ The last piece of the agentic harness is recursion — the harness builds the ha
 
 The Harness v4 Builder **dynamically generates a project-specific specialist team** via `/moai:harness <natural-language request>`.
 
-While the general-purpose agent catalog (11 agents) is common to all projects, the harness the Builder creates is a custom team that exists only in your project.
+MoAI-ADK ships with a general-purpose agent catalog (11 agents) common to all projects, while the harness the Builder creates is a custom team that exists only in your project.
 
 ### Differences from Previous Versions
 
