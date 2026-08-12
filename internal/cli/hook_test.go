@@ -68,8 +68,9 @@ func TestHookCmd_SubcommandCount(t *testing.T) {
 	// +1 "session-start-compact" (SPEC-INFINITE-GOAL-001 REQ-5) = 40.
 	// +1 "codex-review-gate" (SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008) = 41.
 	// +1 "multi-review-gate" (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013) = 42.
-	if count != 42 {
-		t.Errorf("hook should have 42 subcommands, got %d", count)
+	// +1 "chain-event" (SPEC-CHAIN-CORE-001 REQ-CHAIN-012) = 43.
+	if count != 43 {
+		t.Errorf("hook should have 43 subcommands, got %d", count)
 	}
 }
 

@@ -231,6 +231,18 @@ fail-open).`,
 		SilenceUsage: true,
 		RunE:         runMultiReviewGate,
 	})
+
+	// SPEC-CHAIN-CORE-001 REQ-CHAIN-012: chain-event hook. Fires on
+	// SubagentStop, appends a completion edge to the chain ledger. Fail-open,
+	// non-blocking. No leaf-agent cooperation required.
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "chain-event",
+		Short:        "Append completion edge to chain ledger on SubagentStop",
+		SilenceUsage: true,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return hook.RunChainEvent(os.Stdin)
+		},
+	})
 }
 
 // registryShutdowner is the optional teardown capability the concrete hook
