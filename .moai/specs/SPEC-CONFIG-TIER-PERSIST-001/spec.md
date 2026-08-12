@@ -4,7 +4,7 @@ title: "config resolution and persistence: explicit falsey values must win their
 version: "0.2.0"
 status: draft
 created: 2026-07-31
-updated: 2026-07-31
+updated: 2026-08-12
 author: manager-spec
 priority: P0
 phase: "v3.0.2"
@@ -591,3 +591,40 @@ The information has to arrive unasked at least once.
   already cleared (REQ-CTP-014 is a regression guard, not a work item).
 - `.claude/rules/moai/workflow/main-checkout-branch-guard.md` — the hook fail-open norm that
   REQ-CTP-018 preserves.
+
+## §L Split Branches
+
+> **Split status: in-progress** (2026-08-12). The parent SPEC's `status:` remains `draft` — the
+> split does NOT transition the parent's lifecycle state. The slice below has been carved out so it
+> can ship independently of the parent's other concerns.
+
+`SPEC-CONFIG-TIER-PERSIST-001` was an over-large (35-REQ, Tier-M-exceeding) SPEC. Per the 3-way
+split recommendation, the parent is divided into three independently-shippable slices. This section
+records which slice has been extracted, into which new SPEC, and which parent REQs it owns.
+
+### Extracted — slice (b) → `SPEC-CONFIG-ATOMIC-WRITE-001`
+
+| Attribute | Value |
+|-----------|-------|
+| **Date** | 2026-08-12 |
+| **Child SPEC** | `SPEC-CONFIG-ATOMIC-WRITE-001` (status: draft, Tier M, era V3R6) |
+| **Slice** | (b) — atomic, mode-preserving writes for `.moai/config` + CLI persistence |
+| **Rationale** | Independently shippable. Carved out of a 35-REQ over-large SPEC per the 3-way split recommendation; the atomic-write + mode-preservation invariant is self-contained, has no dependency on tier resolution (slice a) or on malformed-section writeback / gitignore merge (slice c), and is the highest-priority shippable slice (live mode-narrowing defect at `manager.go:420-438` + non-atomic hardcoded write at `harness.go:390`). |
+| **REQ mapping** | Parent `REQ-CTP-021/022/023/024/027` → child `REQ-CAW-001..007` (atomicity, mode preservation, shared helper, call-site remediation, no-literal rule, temp cleanup, regression guard). Parent `REQ-CTP-025/026` (mode-widening migration) DEFERRED to follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (not yet authored) — out of scope for the atomic-write slice per user pre-decision; the child's scope is the write-path invariant only. |
+| **Lineage carrier** | Child `spec.md` `related_specs: [SPEC-CONFIG-TIER-PERSIST-001]` + this section (bi-directional link). |
+
+### Still resident in the parent
+
+| Slice | Topic | Status |
+|-------|-------|--------|
+| **(a)** | config tier resolution, explicit-falsey-wins-tier semantics, `SrcLocal` ordering, typed-Loader / resolver disconnect, branch-guard local-tier opt-in reachability | Resident in `SPEC-CONFIG-TIER-PERSIST-001`. No child SPEC yet. |
+| **(c)** | malformed-section writeback-as-defaults handling (refuse-to-writeback-a-failed-section contract), `MergeGitignoreFile` header parsing, dropped-pattern migration, reinstall-loop, template-base-snapshot; writers in `internal/cli/update/backup/restore.go`, `internal/cli/update/merge/merge.go`, `internal/core/project/initializer.go` | Resident in the parent and where applicable in sibling SPECs (`SPEC-UPDATE-REINSTALL-LOOP-002`, `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`). No child SPEC yet. |
+
+The slice-(b) child SPEC extracts a shared atomic-write helper with a public-enough API that
+slice-(c) writers MAY adopt it in a follow-up SPEC; slice (c) does NOT need to re-derive the helper.
+The helper's API (signature + `defaultMode os.FileMode` parameter) is locked at slice-(b)
+`plan.md` M1 so slice (c) is unblocked from the moment slice (b) lands.
+
+Slice (a) is entirely orthogonal — it concerns *which* tier wins when sources disagree, not *how*
+the result is written to disk — so slice (a) MAY proceed in parallel with slice (b) without
+conflict.

@@ -37,6 +37,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -347,7 +348,7 @@ func snapshotPreserveInventory(projectRoot string, inv PreserveInventory, backup
 	// Atomicity marker (REQ-VVCR-003 echo).
 	markerPath := filepath.Join(backupDir, ".complete")
 	markerContent := fmt.Sprintf("inventory=%d\n", len(inv.Files))
-	if markerErr := os.WriteFile(markerPath, []byte(markerContent), 0o644); markerErr != nil {
+	if markerErr := atomicfile.Write(markerPath, []byte(markerContent), defs.FilePerm); markerErr != nil {
 		return fmt.Errorf("write .complete marker: %w", markerErr)
 	}
 

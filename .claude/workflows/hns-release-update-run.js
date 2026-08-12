@@ -86,11 +86,23 @@ async function run({ agent, args }) {
   // Aggregate (synthesis-only; no interactive surface). The orchestrator and the
   // release-update specialist consume this aggregate to drive the human-gated
   // sign-off + docs-sync + pull-request steps OUTSIDE this Runner.
+  //
+  // findings: the standard improvement-signal contract (REQ-HRR-003,
+  // SPEC-HARNESS-EVO-RUN-REPORT-001). This Runner models a read-only research
+  // sweep and surfaces no run-time improvement signal of its own, so the field
+  // is present as an empty array — NOT omitted — so the orchestrator can
+  // distinguish "field absent" (pre-contract Runner) from "no signal this
+  // run" (REQ-HRR-003). Findings confidence, when emitted by another Runner,
+  // is a run-time measured/estimated value and MUST NOT reuse learner.go's
+  // defaultConfidence (REQ-HRR-004). The orchestrator routes non-empty
+  // findings to the reserved-namespace harness_run: producer
+  // (internal/harness/harnessrun) and the Tier-4 approval gate.
   return {
     manifest: MANIFEST_PATH,
     capability: "release-update",
     sweep_target_count: sweepTargets.length,
     impact_tables: sweepResults,
+    findings: [],
     note:
       "Non-interactive research sweep only. Human-gated work (user sign-off, " +
       "docs-site 4-locale sync, pull-request creation) is delegated to " +

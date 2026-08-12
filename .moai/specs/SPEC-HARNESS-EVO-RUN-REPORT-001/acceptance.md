@@ -36,7 +36,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **And Given** 개선 신호가 없는 실행
 - **When** Runner가 반환하면
 - **Then** `findings: []`(빈 배열) — 필드 생략 없음
-- **검증**: exemplar Runner 반환 스모크 — `node -e "const {run}=require('./.claude/workflows/harness-release-update-run.js'); ..."` 또는 계약 grep: `grep -n "findings" .claude/workflows/harness-release-update-run.js` → return object에 `findings` 키 존재
+- **검증**: exemplar Runner 반환 스모크 — `node -e "const {run}=require('./.claude/workflows/hns-release-update-run.js'); ..."` 또는 계약 grep: `grep -n "findings" .claude/workflows/hns-release-update-run.js` → return object에 `findings` 키 존재 (축 ①: `harness-release-update-run.js` → `hns-` 개명 반영)
 
 ### AC-HRR-004 — findings confidence 출처 분리 (REQ-HRR-004)
 
@@ -46,7 +46,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **And Given** 근거 없는 confidence 산출 상황
 - **When** Runner가 보수 기본값을 방출하면
 - **Then** 값이 `confidence_floor` 경계(0.70) + 추정임을 구분 가능
-- **검증**: `grep -n "defaultConfidence\|learner" .claude/workflows/harness-*-run.js` → learner.go 상수 참조 부재; findings confidence가 하드코딩 1.0이 아님 확인
+- **검증**: `grep -n "defaultConfidence\|learner" .claude/workflows/hns-*-run.js` → learner.go 상수 참조 부재; findings confidence가 하드코딩 1.0이 아님 확인 (축 ①: 파일명 `harness-*-run.js` → `hns-*-run.js` 개명 반영)
 
 ### AC-HRR-005 — doctor learning 축 검증 (REQ-HRR-005)
 
@@ -64,7 +64,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **When** specialist 워크플로우를 검사하면
 - **Then** 종료 직전 필수 improvement-findings 방출 단계가 존재하고, 방출 findings shape가 REQ-HRR-003(`{surface, kind, summary, confidence, suggested_tier}`)과 정합
 - **And** 해당 단계가 AskUserQuestion 직접 호출 없이 구조화 출력(structured findings)만 반환하도록 명시
-- **검증**: `grep -n "improvement.findings\|findings" .claude/agents/harness/harness-release-update-specialist.md` → 필수 방출 단계 존재; `grep -n "AskUserQuestion" .claude/agents/harness/harness-release-update-specialist.md | grep -v "blocker\|<!--"` → 직접 호출 부재
+- **검증**: `grep -n "improvement.findings\|findings" .claude/agents/harness/hns-release-update-specialist.md` → 필수 방출 단계 존재; `grep -n "AskUserQuestion" .claude/agents/harness/hns-release-update-specialist.md | grep -v "blocker\|<!--"` → 직접 호출 부재 (축 ①: `harness-release-update-specialist.md` → `hns-` 개명 반영; 디렉터리 `.claude/agents/harness/` 보존)
 
 ### AC-HRR-007 — post-run findings 수집 → push (REQ-HRR-007)
 
@@ -83,7 +83,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **Then** specialist/Runner는 AskUserQuestion 미호출; findings 방출 → 오케스트레이터 수집 → 오케스트레이터 AskUserQuestion의 비대칭 경계 준수
 - **And Given** actionable(`{rule, auto_update}`) findings를 push하는 경우
 - **Then** doctrine이 `harness.yaml` `rate_limit`(max_per_week/cooldown_hours SSOT) 준수를 규정
-- **검증**: `grep -rn "AskUserQuestion" .claude/agents/harness/ .claude/workflows/harness-*.js` → subagent/Runner 직접 호출 부재; post-run doctrine에 `grep -n "rate_limit\|max_per_week"` → rate-limit SSOT 참조 존재
+- **검증**: `grep -rn "AskUserQuestion" .claude/agents/harness/ .claude/workflows/hns-*.js` → subagent/Runner 직접 호출 부재; post-run doctrine에 `grep -n "rate_limit\|max_per_week"` → rate-limit SSOT 참조 존재 (축 ①: Runner 파일명 `harness-*.js` → `hns-*.js` 개명 반영; specialist 디렉터리 `.claude/agents/harness/` 보존)
 
 ### AC-HRR-009 — Template-First + §25 중립성 + 격리 (REQ-HRR-009)
 
@@ -91,7 +91,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **When** run-phase 완료 후 검증하면
 - **Then** template mirror가 live와 정합(`make build` 실행됨) + template content에 SPEC ID/REQ-HRR/감사 인용 부재
 - **And** dev-only(exemplar Runner)/user-owned(specialist) 아티팩트가 template로 미유출
-- **검증**: `grep -rn "HARNESS-EVO-RUN-REPORT\|REQ-HRR" internal/template/templates/` → 0 matches; `find internal/template/templates -path '*harness*run.js' -o -path '*agents/harness*'` → empty; `go test -run TestSplitHarnessNamespaceNoLeak ./internal/template/` → PASS
+- **검증**: `grep -rn "HARNESS-EVO-RUN-REPORT\|REQ-HRR" internal/template/templates/` → 0 matches; `find internal/template/templates -path '*hns*run.js' -o -path '*agents/harness*'` → empty (축 ①: 파일명 `harness-*` → `hns-*` 개명 반영; legacy `*harness*run.js` 패턴도 보조 확인); `go test -run TestSplitHarnessNamespaceNoLeak ./internal/template/` → PASS
 
 ### AC-HRR-010 — 하위 호환 (기존 하네스 무영향) (REQ-HRR-010)
 
@@ -128,6 +128,7 @@ Tier: **M** · development_mode: **tdd** · 총 AC: **10** (AC-HRR-001 ~ AC-HRR-
 - **EC-3 (confidence < confidence_floor)**: findings confidence가 floor 미만 — proposal 후보 부적격(non-actionable)으로 분류, push는 하되 actionable 표기 제외
 - **EC-4 (Runner 없는 thin 하네스 findings)**: github/release(Runner 없음) — Runner findings 경로 부재. specialist findings 방출(REQ-HRR-006)만으로 push 성립하는지 run-phase 확정(§F 재검증)
 - **EC-5 (legacy specialist push)**: improvement-findings 단계 없는 legacy specialist 실행 — findings 빈 목록으로 간주, push 미발화(AC-HRR-007 빈 findings 경로)
+- **EC-6 (3-producer rate-limit 경합, 축 ② 신규)**: tier-ladder producer가 주간 rate_limit 한도(`max_per_week`)를 소진한 상태에서 harness-run findings가 도달 — 3 producer(tier-ladder/delegation-map/harness-run)가 동일 Tier-4 게이트 rate_limit SSOT를 공유하므로, 한 producer의 소진이 다른 producer의 push를 밀어낸다. run-phase M4 doctrine 표면에서 경합 시맨틱(producer별 독립 quota vs 공유 quota) 확정. 본 plan-phase 방향: namespace가 다르므로 pattern-key는 독립이나, rate_limit window는 `harness.yaml` SSOT 단일 — 공유 quota 가정하되 run-phase 재확정.
 
 ---
 

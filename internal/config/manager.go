@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/pkg/models"
 	"gopkg.in/yaml.v3"
@@ -405,7 +406,11 @@ func applyEnvOverrides(cfg *Config) {
 	}
 }
 
-// saveSection marshals data to YAML and writes it atomically.
+// saveSection marshals data to YAML and writes it atomically through the
+// shared, mode-preserving atomicfile.Write helper. The helper preserves the
+// destination's pre-existing permission bits on overwrite and applies
+// defs.FilePerm to brand-new section files; it never narrows an existing file
+// to os.CreateTemp's 0600 (SPEC-CONFIG-ATOMIC-WRITE-001 Defect 1 fix).
 func saveSection(dir, filename string, data any) error {
 	yamlData, err := yaml.Marshal(data)
 	if err != nil {
@@ -413,26 +418,5 @@ func saveSection(dir, filename string, data any) error {
 	}
 
 	path := filepath.Join(dir, filename)
-	return atomicWrite(path, yamlData)
-}
-
-// atomicWrite writes data to a file atomically using temp file + os.Rename.
-func atomicWrite(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".moai-config-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // cleanup on error path
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
-	}
-
-	return os.Rename(tmpName, path)
+	return atomicfile.Write(path, yamlData, defs.FilePerm)
 }

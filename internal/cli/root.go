@@ -186,6 +186,11 @@ func init() {
 	// items (fail-open, byte-identical re-run).
 	rootCmd.AddCommand(newNavigatorRouteCmd())
 
+	// SPEC-NAVIGATOR-SYNC-005 M3.2: BAS Fix layer-1 producer. Sibling of the
+	// sync / route / tiers steps — on-demand draft-request manifest emitter
+	// (no PostToolUse hook, fail-open, byte-identical re-run).
+	rootCmd.AddCommand(newNavigatorFixCmd())
+
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
