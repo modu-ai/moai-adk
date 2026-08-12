@@ -177,6 +177,14 @@ const (
 	// Set by the launcher when enterFactoryMode classifies a lead, read by the
 	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiFactoryLeadAddr = "MOAI_FACTORY_LEAD_ADDR"
+
+	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
+	// context to the child process. Set by the spawner (moai cc -w,
+	// EnterWorktree, Agent isolation:worktree) on the child environment before
+	// exec'ing into Claude Code; read by the child's SessionStart handler to
+	// re-inject after /clear env loss (REQ-CHAIN-013).
+	// SPEC-CHAIN-CORE-001 REQ-CHAIN-006.
+	EnvChainNodeID = "MOAI_CHAIN_NODE_ID"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering
