@@ -127,7 +127,7 @@ $ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 切り替えて 3 つのターミナルに分散します:
 
 ```mermaid
-graph TB
+graph TD
     subgraph T1["Terminal 1: Planning (Opus)"]
         P1[/moai plan<br/>AUTH-001/]
         P2[/moai plan<br/>LOG-002/]
@@ -223,7 +223,7 @@ $ git -C .claude/worktrees/SPEC-AUTH-001 log --oneline -5
 ### シナリオ: 2 名の開発者の協業
 
 ```mermaid
-graph TB
+graph TD
     subgraph Dev1["開発者 A (Frontend)"]
         F1[SPEC-FE-001<br/>ログイン UI]
         F2[SPEC-FE-002<br/>ダッシュボード]

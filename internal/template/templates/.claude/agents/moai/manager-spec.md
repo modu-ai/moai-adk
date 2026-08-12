@@ -216,6 +216,14 @@ See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 - Intermediate: Balanced explanations, confirm complex decisions only
 - Expert: Concise responses, auto-proceed with standard patterns
 
+## MCP Tools
+
+This agent carries SPEC-lifecycle MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
+
+- `mcp__moai__spec_progress` — list SPEC documents + frontmatter. Call to inventory the catalog and pick the next SPEC.
+- `mcp__moai__spec_audit` — run the SPEC lifecycle audit (era classification + drift). Call to confirm a SPEC's era and close-debt status before authoring.
+- `mcp__moai__spec_drift` — read modern-era V3R6 drift findings. Call to confirm zero MUST-FIX drift before close.
+
 ## Conditional Skill Loading
 
 Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:

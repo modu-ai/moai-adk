@@ -409,7 +409,7 @@ func TestAppendBranchGuardAdvisory_UnwritableDir(t *testing.T) {
 	}
 	input := &HookInput{SessionID: "sess-advisory"}
 	// Must not panic; the error is swallowed at debug log level.
-	appendBranchGuardAdvisory(input, filePath, "git switch -c x", fmt.Errorf("simulated rev-parse failure"))
+	appendBranchGuardAdvisory(input, filePath, "git switch -c x", fmt.Errorf("simulated rev-parse failure"), filePath)
 	// No audit log should have been created under the file-as-dir path.
 	if _, err := os.Stat(filepath.Join(filePath, branchGuardAuditRelPath)); err == nil {
 		t.Fatalf("audit log unexpectedly created under a file path")
@@ -518,7 +518,7 @@ func TestAppendBranchGuardAdvisory_WriteFailure(t *testing.T) {
 
 	input := &HookInput{SessionID: "sess-write-fail"}
 	// Must not panic; the error is swallowed at debug log level.
-	appendBranchGuardAdvisory(input, dir, "git switch -c x", fmt.Errorf("simulated"))
+	appendBranchGuardAdvisory(input, dir, "git switch -c x", fmt.Errorf("simulated"), dir)
 	// No audit log file should have been created (OpenFile failed).
 	if _, err := os.Stat(filepath.Join(dir, branchGuardAuditRelPath)); err == nil {
 		t.Fatalf("audit log unexpectedly created under read-only dir")

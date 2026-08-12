@@ -132,6 +132,7 @@ func TestBranchGuard_Latency(t *testing.T) {
 		HookEventName: "PreToolUse",
 		ToolName:      "Bash",
 		AgentType:     "manager-develop",
+		CWD:           repo,
 		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/perf"}`),
 	}
 
@@ -206,6 +207,7 @@ func TestBranchGuard_CheckBranchStateOrigin(t *testing.T) {
 		HookEventName: "PreToolUse",
 		ToolName:      "Bash",
 		AgentType:     "manager-develop",
+		CWD:           repo,
 		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/origin"}`),
 	}
 

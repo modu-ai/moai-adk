@@ -30,7 +30,7 @@ WSL 在 Windows 上提供 Linux 环境，可完整支持 MoAI-ADK 的全部功�
 wsl --install
 
 # 在 WSL 内安装 MoAI-ADK
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
+curl -fsSL https://adk.mo.ai.kr/install.sh \
   | bash
 ```
 
@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
 > **提示**：为获得最佳体验，建议使用 WSL。
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 ## 非 ASCII 用户名路径错误

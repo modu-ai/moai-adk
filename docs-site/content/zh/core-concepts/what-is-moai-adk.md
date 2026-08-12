@@ -146,7 +146,7 @@ flowchart TD
 #### macOS / Linux / WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 #### Windows(PowerShell 7.x+)
@@ -154,7 +154,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 > **推荐**:用上面的 Linux 安装命令搭配 WSL 可获得最佳体验。
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 > 需要先安装 [Git for Windows](https://gitforwindows.org/)。

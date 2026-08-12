@@ -14,7 +14,7 @@ draft: false
 
 `/moai sync`는 MoAI-ADK 워크플로우의 **Phase 3 (Sync)** 명령어입니다. Phase 2에서 구현을 마친 코드를 훑어 문서를 만들고, Git 커밋과 PR (Pull Request)까지 붙여 배포 준비를 끝냅니다. 안에서는 **manager-docs** 에이전트가 전 과정을 챙깁니다.
 
-동기화 결과물은 **sync-auditor**가 따로 평가합니다. 문서를 만든 에이전트와 검사하는 에이전트가 나뉘어 있으니, "동기화했다"는 말이 아니라 확인된 증거로 단계가 닫힙니다.
+동기화 결과물은 **sync-auditor**가 따로 평가합니다. 문서를 만든 에이전트와 검사하는 에이전트가 나뉘어 있으니, "동기화했다"는 말이 아니라 확인된 증거로 단계가 닫힙니다. 그래서 만든 쪽이 스스로 채점하는 편향이 구조적으로 차단됩니다 — TRUST 5의 Secured·Trackable 축이 이 분리 위에서 현실로 돌아와요.
 
 {{< callout type="info" >}}
 **왜 문서 동기화가 필요한가요?**
@@ -181,7 +181,7 @@ flowchart TD
 | JavaScript          | package.json (no tsconfig)                 |
 | Go                  | go.mod, go.sum                             |
 | Rust                | Cargo.toml, Cargo.lock                     |
-| 기타 11개 언어 지원 |
+| 기타 11개 언어 | 프로젝트 마커 자동 감지 (개별 파일 없음) |
 
 **Step 2 - 병렬 진단:**
 
@@ -599,3 +599,4 @@ Hybrid Trunk 운영에서 Tier S/M SPEC은 기본적으로 main에 바로 push�
 - [/moai run](/ko/workflow-commands/moai-run) - 이전 단계: DDD 구현
 - [TRUST 5 품질 시스템](/ko/core-concepts/trust-5) - 품질 게이트 상세 설명
 - [빠른 시작](/ko/getting-started/quickstart) - 전체 워크플로우 튜토리얼
+- [/moai goal](./moai-goal) - 체인의 끝을 조건으로 선언해 sync 종료까지 자율 진행 (v3.1)

@@ -17,6 +17,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/hook/perf"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
@@ -68,11 +69,22 @@ type Dependencies struct {
 	UpdateOrch     update.Orchestrator
 	LoopController *loop.LoopController
 	Logger         *slog.Logger
+	// PerfTiming is the env-gated per-phase timing collector for hook
+	// invocations (SPEC-HOOK-PRETOOL-PERF-001 M0). nil when
+	// MOAI_HOOK_PERF_TIMING is unset — zero hot-path overhead in production.
+	PerfTiming *perf.TimingCollector
 }
 
 // deps is the global dependencies instance, initialized by InitDependencies.
 // CLI commands access this through the package-level variable.
 var deps *Dependencies
+
+// procStartTime captures the earliest timestamp available to Go code, used by
+// the env-gated per-phase timing collector (SPEC-HOOK-PRETOOL-PERF-001 M0) to
+// measure the fork+exec phase (process creation + Go runtime init + cobra
+// setup). Captured at package init so it precedes main(). Zero overhead when
+// MOAI_HOOK_PERF_TIMING is unset — perf.Enabled() gates all collection.
+var procStartTime = time.Now()
 
 // @MX:ANCHOR: [AUTO] InitDependencies is the Composition Root that wires all domain modules
 // @MX:REASON: [AUTO] fan_in=5, called from root.go, deps_test.go, integration_test.go, hook_e2e_test.go, deps.go
@@ -85,6 +97,11 @@ var deps *Dependencies
 // ConfigManager.Get() returns nil and every handler that reads config
 // silently falls back (handoff-inject → mode=manual → no-op auto-resume).
 func InitDependencies() {
+	// SPEC-HOOK-PRETOOL-PERF-001 M0: env-gated per-phase timing collector.
+	// When MOAI_HOOK_PERF_TIMING is unset, NewTimingCollector returns a no-op
+	// collector — zero hot-path overhead in production.
+	timing := perf.NewTimingCollector(procStartTime)
+	timing.MarkForkExec(time.Now())
 	// Inherit the process default logger; do NOT install one here.
 	//
 	// This function used to replace the default with a discarding handler so that
@@ -139,17 +156,20 @@ func InitDependencies() {
 		HookProtocol:   hook.NewProtocol(),
 		LoopController: loopCtrl,
 		Logger:         logger,
+		PerfTiming:     timing,
 	}
 
 	// Eagerly load the project config (see InitDependencies godoc). Fail-open:
 	// a load error logs a warning and leaves Get() returning nil, so handlers
 	// fall back to defaults and glm.go's nil-safe path stays compatible.
+	cfgLoadStart := time.Now()
 	if _, err := deps.Config.Load(cwd); err != nil {
 		logger.Warn("config load failed; config-dependent handlers fall back to defaults",
 			"cwd", cwd,
 			"error", err,
 		)
 	}
+	timing.MarkConfigLoad(cfgLoadStart, time.Now())
 
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	reg := hook.NewRegistry(deps.Config)

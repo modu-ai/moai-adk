@@ -44,7 +44,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### ステップ3: 2.xのインストール
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### ステップ4: インストール確認
@@ -72,7 +72,7 @@ pip uninstall moai-adk -y 2>/dev/null || true
 which moai && rm $(which moai) 2>/dev/null || true
 
 # 3. 再インストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 確認
 moai version
@@ -100,7 +100,7 @@ moai version    # v3.0.0を報告
 新規プロジェクトやきれいな環境ではインストールスクリプト1行で十分です。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 Goが既にインストールされているなら`go install`も可能です。
@@ -161,7 +161,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 cp -r ~/.moai ~/.moai-v1-backup 2>/dev/null || true
 
 # 3. 3.0のインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 確認
 moai version

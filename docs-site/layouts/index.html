@@ -40,8 +40,11 @@
             </div>
             <div class="cw-home-install">
               <span class="dollar">$</span>
-              <code>curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash</code>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9fa0a0" stroke-width="1.75" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <code id="cw-install-cmd">curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash</code>
+              <button type="button" class="cw-home-copy" data-copy-target="#cw-install-cmd" aria-label="설치 명령 복사">
+                <svg class="cw-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg class="cw-copy-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M20 6L9 17l-5-5"/></svg>
+              </button>
             </div>
           </div>
           <div class="cw-home-hero-aside">
@@ -105,10 +108,7 @@
           <div class="cw-sec-grid">
             {{- range $secs }}
             <a class="cw-sec-card" href="{{ .href }}">
-              <div class="cw-sec-card-top">
-                <span class="cw-sec-card-title">{{ .title }}</span>
-                <span class="cw-sec-card-en">{{ .en }}</span>
-              </div>
+              <span class="cw-sec-card-title">{{ .title }}</span>
               {{- with .desc }}<span class="cw-sec-card-desc">{{ . }}</span>{{ end }}
             </a>
             {{- end }}
@@ -132,5 +132,26 @@
 
       {{ partial "site-footer" . }}
     </div>
+    <script>
+    (function(){
+      var btn = document.querySelector('.cw-home-copy[data-copy-target]');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        var target = document.querySelector(btn.getAttribute('data-copy-target'));
+        if (!target) return;
+        var text = target.textContent.trim();
+        var done = function(){
+          btn.classList.add('copied');
+          var ci = btn.querySelector('.cw-copy-icon'), ck = btn.querySelector('.cw-copy-check');
+          if (ci) ci.hidden = true; if (ck) ck.hidden = false;
+          setTimeout(function(){ btn.classList.remove('copied'); if (ci) ci.hidden = false; if (ck) ck.hidden = true; }, 1500);
+        };
+        var fallback = function(t, cb){ var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); cb(); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(text, done); });
+        } else { fallback(text, done); }
+      });
+    })();
+    </script>
   </body>
 </html>

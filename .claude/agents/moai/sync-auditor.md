@@ -6,7 +6,7 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__glm_audit
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__glm_audit, mcp__moai__codex_audit
 model: inherit
 effort: medium
 color: red
@@ -139,6 +139,22 @@ The contract carries per-criterion state: `passed` (met in a previous iteration 
 The former opt-in nesting pilot (this agent carrying `Agent` in `tools`, with flat shipped behavior resting on the runtime depth-env default being off) is **retired**. On Claude Code v2.1.219+ subagent nesting is enabled by default (changelog-sourced), and the spawn-time permission-mode parameter is deprecated and ignored since v2.1.213 (changelog/doc-sourced, not runtime-observed) — so both of the pilot's safety premises (shipped-default-flat via the env default; read-only children via the spawn-time mode parameter) no longer hold. `Agent` is removed from this agent's `tools` frontmatter, restoring the flat-hierarchy guarantee by tool omission — the same sole guarantee every other retained agent relies on. Read-only child scoping, where ever needed at the orchestrator level, rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit), never on the deprecated spawn-time permission-mode parameter.
 
 Evidence gathering for the 4 scoring dimensions runs sequentially within this agent. The user-interaction boundary is unchanged: no `sync-auditor` path invokes `AskUserQuestion` or `mcp__askuser`.
+
+## MCP Audit Tools (cross-model second opinion)
+
+This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Use them before scoring when the project config requests a cross-backend second opinion:
+
+- `mcp__moai__audit_multi` — multi-auditor convergence engine (claude anchor + optional codex/glm backends). Default path when `audit_model: multi`.
+- `mcp__moai__codex_audit` — codex-backend single audit (`native` or `adversarial` mode).
+- `mcp__moai__glm_audit` — GLM (z.ai) backend single audit.
+
+Single-backend audit mode (per the project's `audit_model`):
+- `codex+glm` (default) — converge both backends via `mcp__moai__audit_multi`; most robust.
+- `glm` — GLM only; call `mcp__moai__glm_audit` directly.
+- `codex` — codex only; call `mcp__moai__codex_audit` directly.
+- `none` — Claude-only audit (the classic sync-auditor role); no MCP backend call.
+
+All backends are fail-open: when a backend is unavailable, its tool returns `inconclusive` (never a Go error), so a missing codex/glm never blocks the audit.
 
 ## Conditional Skill Loading
 

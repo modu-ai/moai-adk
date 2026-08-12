@@ -82,6 +82,10 @@
   color: "d876e3"
   description: "Test addition or improvement"
 
+- name: "type:performance"
+  color: "16b863"
+  description: "Performance improvement"
+
 # ============================================================================
 # priority:*
 # ============================================================================

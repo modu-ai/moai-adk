@@ -44,7 +44,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### 第 3 步:安装 2.x
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 第 4 步:确认安装
@@ -72,7 +72,7 @@ pip uninstall moai-adk -y 2>/dev/null || true
 which moai && rm $(which moai) 2>/dev/null || true
 
 # 3. 重新安装
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 确认
 moai version
@@ -100,7 +100,7 @@ moai version    # 报告 v3.0.0
 新项目或干净环境下一行安装脚本就够了。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 如果已经安装了 Go,也可以用 `go install`。
@@ -161,7 +161,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 cp -r ~/.moai ~/.moai-v1-backup 2>/dev/null || true
 
 # 3. 安装 3.0
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 确认
 moai version

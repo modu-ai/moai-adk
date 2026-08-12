@@ -43,7 +43,7 @@ moai init
 该命令会分析项目并自动生成以下 3 个文件：
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["项目分析"] --> B["product.md<br>项目信息"]
     A --> C["structure.md<br>目录结构"]
     A --> D["tech.md<br>技术栈"]
@@ -95,7 +95,7 @@ flowchart TB
 该命令执行以下操作：
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["输入需求"] --> B["EARS 格式分析"]
     B --> C["生成 SPEC 文档"]
     C --> D["保存 SPEC-001"]
@@ -229,7 +229,7 @@ sequenceDiagram
 请求会经过 **Analyze-First** 路由 — 无论用哪种语言发出请求，都先分析意图，上下文不足时通过提问补全，然后自动执行 Plan → Run → Sync 流水线。
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["/moai '自然语言请求'"] --> B["意图分析<br>Analyze-First"]
     B --> C{"上下文充分？"}
     C -->|"不足"| D["澄清提问"]

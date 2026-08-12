@@ -195,7 +195,7 @@ moai update
 
 ```bash
 # 手动安装 (由用户自行校验完整性)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 详情：[更新](/zh/cli-reference/update/)

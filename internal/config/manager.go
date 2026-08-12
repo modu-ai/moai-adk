@@ -52,10 +52,14 @@ func NewConfigManager() *ConfigManager {
 	}
 }
 
-// @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory.
+// @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory. Uses disk cache (SPEC-HOOK-PRETOOL-PERF-001) to skip ~20 per-section reads on cache hit.
 // Load reads configuration from the project root's .moai/ directory.
 // It merges file values with compiled defaults and applies environment
 // variable overrides. The configuration is validated before being stored.
+// When a valid disk cache exists (SPEC-HOOK-PRETOOL-PERF-001 M1), the
+// per-section read+parse+merge is skipped — the cached merged config is
+// served directly. On a cache miss, the full load path runs and a fresh
+// cache is written.
 func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -67,7 +71,7 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 		configDir = filepath.Clean(envDir)
 	}
 
-	cfg, err := m.loader.Load(configDir)
+	cfg, err := m.loader.LoadWithCache(configDir)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}

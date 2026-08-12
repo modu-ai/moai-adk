@@ -7,7 +7,7 @@ draft: false
 
 ## 하네스 엔지니어링이란?
 
-MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 구현합니다. 개발자가 직접 코드를 작성하는 대신, **AI 에이전트가 최적의 코드를 생산할 수 있는 환경 (하네스) 을 설계**하는 접근 방식입니다.
+MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 구현합니다. 개발자가 직접 코드를 작성하는 대신, **AI 에이전트가 최적의 코드를 생산할 수 있는 환경 (하네스) 을 설계**하는 접근 방식입니다. **왜냐하면** 에이전트의 출력 품질이 모델 자체의 능력만큼이나 그 에이전트를 감싼 환경에 달려 있기 **때문입니다**. 그래서 **harness** 설계가 곧 코드 품질 설계가 되고, 여기서 **SPEC** 3-단계 워크플로우와 **TRUST 5** 게이트가 매 단계마다 에이전트의 출력을 검사합니다.
 
 > "Human steers, agents execute."
 > — 엔지니어의 역할은 코드 작성에서 하네스 설계로 전환됩니다: SPEC, 품질 게이트, 피드백 루프.
@@ -31,7 +31,7 @@ MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 
 ## 7가지 핵심 컴포넌트
 
 ```mermaid
-graph TB
+graph TD
     subgraph Harness["하네스 엔지니어링"]
         direction TB
         SF["Scaffolding First<br/>빈 파일 스텁 생성"] --> FC["Failing Checklist<br/>수락 기준 태스크 등록"]

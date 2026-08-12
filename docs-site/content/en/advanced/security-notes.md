@@ -195,7 +195,7 @@ For persistent blockage, manual binary installation is recommended.
 
 ```bash
 # Manual installation (verify integrity yourself)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 Details: [Updating](/en/cli-reference/update/)

@@ -31,7 +31,7 @@ MoAI-ADK 实现了 **挽具工程** (Harness Engineering) 范式。开发者不�
 ## 7 大核心组件
 
 ```mermaid
-graph TB
+graph TD
     subgraph Harness["挽具工程"]
         direction TB
         SF["Scaffolding First<br/>生成空文件桩"] --> FC["Failing Checklist<br/>注册验收标准任务"]

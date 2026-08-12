@@ -43,7 +43,7 @@ With Git Worktree, each SPEC's **Git state and LLM configuration move
 independently**:
 
 ```mermaid
-graph TB
+graph TD
     A[Main Repository] --> B[Worktree 1<br/>SPEC-AUTH-001<br/>Claude Opus]
     A --> C[Worktree 2<br/>SPEC-AUTH-002<br/>GLM 5]
     A --> D[Worktree 3<br/>SPEC-AUTH-003<br/>Claude Sonnet]
@@ -166,7 +166,7 @@ The launcher handles entry; git handles listing:
 Each SPEC keeps an independent Git state:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Main["Main Repository (main)"]
         M1[.moai/specs/]
         M2[Synced with remote]
@@ -253,7 +253,7 @@ $ moai cc -w SPEC-AUTH-004
 Only completed SPECs are merged into the main branch:
 
 ```mermaid
-flowchart TB
+flowchart TD
     subgraph Development["Worktrees in development"]
         D1[SPEC-AUTH-001<br/>In progress]
         D2[SPEC-AUTH-002<br/>In progress]
@@ -277,7 +277,7 @@ of the Agentic Harness. The ability to assign the right model to each phase is
 the Tokenomics benefit that comes with it:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Terminal1["Terminal 1: Planning"]
         T1A[/moai plan/]
         T1B[Claude Opus<br/>high cost / high quality]

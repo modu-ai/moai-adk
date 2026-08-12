@@ -66,13 +66,13 @@ Git がインストールされていない場合:
 **macOS / Linux / WSL / Git Bash:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
@@ -89,10 +89,10 @@ moai version
 
 ```bash
 # 特定バージョンのインストール (希望するリリースタグを指定)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <リリースタグ>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <リリースタグ>
 
 # カスタムディレクトリにインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
 {{< callout type="info" >}}
@@ -152,7 +152,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### ステップ 3: 2.x のインストール
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### ステップ 4: インストール確認
@@ -185,7 +185,7 @@ wsl --install
 WSL ターミナルで Linux と同じコマンドを使います:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### パス処理
@@ -268,7 +268,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
 # 3. 2.x のインストール
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 確認
 moai version

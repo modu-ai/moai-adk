@@ -114,10 +114,19 @@ flows. The hook applies the doctrine conditionally.
   source without parsing the full reason string.
 - **Discriminant (primary vs worktree)**: the hook compares the absolute
   `git rev-parse --git-dir` against the absolute `git rev-parse
-  --git-common-dir`; equal paths classify as the primary checkout, differing
-  paths as a worktree. Primary path uses `--path-format=absolute` (git 2.31+,
-  March 2021); older git or Apple Git that rejects the flag falls back to
-  `git rev-parse --absolute-git-dir` + cwd-normalized `--git-common-dir`.
+  --git-common-dir` **at the command's actual cwd**; equal paths classify as
+  the primary checkout, differing paths as a worktree. The cwd is resolved
+  from `input.CWD` (via `resolveProjectRootFromInputOrEnv`: `input.CWD`, then
+  `$CLAUDE_PROJECT_DIR`, then `os.Getwd()`), NOT from `$CLAUDE_PROJECT_DIR`
+  alone — querying the primary checkout about itself always answered
+  "primary", which misclassified a worktree-resident agent's branch-state
+  command as a primary-checkout violation (discriminant directory correction,
+  v1.2.0). The audit-log project directory stays pinned to
+  `$CLAUDE_PROJECT_DIR` → `os.Getwd()` for central logging, independent of
+  which directory the git-context discriminant queries. Primary path uses
+  `--path-format=absolute` (git 2.31+, March 2021); older git or Apple Git
+  that rejects the flag falls back to `git rev-parse --absolute-git-dir` +
+  cwd-normalized `--git-common-dir`.
 - **Exemption mechanism**: the deny is suppressed when EITHER the invoking
   agent identity is the trusted git agent (`HookInput.AgentType ==
   "manager-git"`, populated on main-thread `claude --agent manager-git`) OR
@@ -135,7 +144,8 @@ flows. The hook applies the doctrine conditionally.
 
 Origin: the run-phase SPEC that landed the v1.1.0 mechanical enforcer. The
 v1.2.0 opt-in gate and pattern refinement landed in a follow-up behavior-tuning
-SPEC.
+SPEC; the v1.2.0 discriminant directory correction (query the command cwd, not
+$CLAUDE_PROJECT_DIR) landed in a second follow-up SPEC.
 
 ## Cross-references
 
@@ -146,5 +156,5 @@ SPEC.
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

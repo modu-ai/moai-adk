@@ -66,13 +66,13 @@ git --version
 **macOS / Linux / WSL / Git Bash:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 **Windows(PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
@@ -89,10 +89,10 @@ moai version
 
 ```bash
 # 安装特定版本(指定所需的 release 标签)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <release-tag>
 
 # 安装到自定义目录
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
 {{< callout type="info" >}}
@@ -152,7 +152,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### 第 3 步:安装 2.x
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 第 4 步:确认安装
@@ -194,7 +194,7 @@ wsl --install
 在 WSL 终端中使用与 Linux 相同的命令:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 路径处理
@@ -277,7 +277,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
 # 3. 安装 2.x
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 确认
 moai version

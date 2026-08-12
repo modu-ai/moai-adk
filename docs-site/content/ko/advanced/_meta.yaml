@@ -11,14 +11,22 @@ index:
   title: "프로필 매트릭스"
 "self-evolving":
   title: "하네스 자가 진화"
+"harness-learning":
+  title: "하네스 학습 시스템"
 "autonomous-loops":
   title: "자율 연속 루프"
+"autonomy-tier":
+  title: "자율성 티어 (MOAI_AUTONOMY_TIER)"
+"factory-mode":
+  title: "Factory Mode"
 "skill-guide":
   title: "스킬 가이드"
 "agent-guide":
   title: "에이전트 가이드"
 "builder-agents":
   title: "빌더 에이전트 가이드"
+"manager-lead":
+  title: "manager-lead 계층형 팀"
 "hooks-guide":
   title: "Hooks 가이드"
 "hooks-reference":
@@ -33,8 +41,12 @@ index:
   title: "CLAUDE.md 가이드"
 "harness-profiles":
   title: "하네스 프로필과 평가"
+"multi-model-audit":
+  title: "다중 모델 감사 수렴"
 "catalog-system":
   title: "카탈로그 시스템"
+"bas-navigator":
+  title: "BAS Navigator 3-tier 동기화"
 "decision-memory":
   title: "의사결정 메모리 시스템"
 "harness-v4-builder":

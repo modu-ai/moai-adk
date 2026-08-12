@@ -15,6 +15,15 @@ const (
 	// EnvConfigDir overrides the MoAI configuration directory path.
 	EnvConfigDir = "MOAI_CONFIG_DIR"
 
+	// EnvConfigCacheDisabled disables the disk config cache layer
+	// (LoadWithCache → full Load path, no cache read or write). Set to "1" or
+	// "true" to opt out. This is a debug / test escape hatch: the cache is an
+	// optimization whose write side effect (creating <configDir>/state/) can
+	// pollute tests that assert on filesystem state (e.g. doctor golden
+	// snapshots). Production config values are unaffected — only the cache
+	// optimization is bypassed (SPEC-HOOK-PRETOOL-PERF-001).
+	EnvConfigCacheDisabled = "MOAI_CONFIG_CACHE_DISABLED"
+
 	// EnvDevelopmentMode overrides the development methodology (ddd or tdd).
 	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
 

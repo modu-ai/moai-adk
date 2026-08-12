@@ -85,13 +85,13 @@ flowchart TD
 #### macOS / Linux / WSL
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 #### Windows (PowerShell 7.x+)
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 #### 소스에서 빌드 (Go 1.26+)

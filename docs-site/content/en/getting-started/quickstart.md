@@ -43,7 +43,7 @@ Generate the project's foundational documents. This step is essential for Claude
 This command analyzes the project and automatically generates these 3 files:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["Project analysis"] --> B["product.md<br>Project info"]
     A --> C["structure.md<br>Directory structure"]
     A --> D["tech.md<br>Tech stack"]
@@ -95,7 +95,7 @@ The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 This command does the following:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["Requirements input"] --> B["EARS-format analysis"]
     B --> C["SPEC document generation"]
     C --> D["SPEC-AUTH-001 saved"]
@@ -229,7 +229,7 @@ To run every phase automatically at once, make a natural-language request:
 The request goes through **Analyze-First** routing — whatever language you use, intent is analyzed first, missing context is filled in with questions, and then the Plan → Run → Sync pipeline runs automatically.
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["/moai 'natural-language request'"] --> B["Intent analysis<br>Analyze-First"]
     B --> C{"Enough context?"}
     C -->|"Insufficient"| D["Clarifying questions"]

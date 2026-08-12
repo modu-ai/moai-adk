@@ -115,10 +115,19 @@ flows. The hook applies the doctrine conditionally.
   source without parsing the full reason string.
 - **Discriminant (primary vs worktree)**: the hook compares the absolute
   `git rev-parse --git-dir` against the absolute `git rev-parse
-  --git-common-dir`; equal paths classify as the primary checkout, differing
-  paths as a worktree. Primary path uses `--path-format=absolute` (git 2.31+,
-  March 2021); older git or Apple Git that rejects the flag falls back to
-  `git rev-parse --absolute-git-dir` + cwd-normalized `--git-common-dir`.
+  --git-common-dir` **at the command's actual cwd**; equal paths classify as
+  the primary checkout, differing paths as a worktree. The cwd is resolved
+  from `input.CWD` (via `resolveProjectRootFromInputOrEnv`: `input.CWD`, then
+  `$CLAUDE_PROJECT_DIR`, then `os.Getwd()`), NOT from `$CLAUDE_PROJECT_DIR`
+  alone — querying the primary checkout about itself always answered
+  "primary", which misclassified a worktree-resident agent's branch-state
+  command as a primary-checkout violation (discriminant directory correction,
+  v1.2.0). The audit-log project directory stays pinned to
+  `$CLAUDE_PROJECT_DIR` → `os.Getwd()` for central logging, independent of
+  which directory the git-context discriminant queries. Primary path uses
+  `--path-format=absolute` (git 2.31+, March 2021); older git or Apple Git
+  that rejects the flag falls back to `git rev-parse --absolute-git-dir` +
+  cwd-normalized `--git-common-dir`.
 - **Exemption mechanism**: the deny is suppressed when EITHER the invoking
   agent identity is the trusted git agent (`HookInput.AgentType ==
   "manager-git"`, populated on main-thread `claude --agent manager-git`) OR
@@ -137,6 +146,8 @@ flows. The hook applies the doctrine conditionally.
 Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
 Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
 (REQ-1 through REQ-6).
+Discriminant directory correction: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
+(REQ-WBG-D-001 through REQ-WBG-D-008).
 
 ## Cross-references
 
@@ -145,8 +156,9 @@ Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
 - `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why an unobserved "no concurrent session" claim is a defect claim
 - SPEC-WORKTREE-BRANCH-GUARD-001 — the run-phase SPEC that landed the v1.1.0 mechanical enforcer
+- SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001 — the discriminant directory correction (query input.CWD, not $CLAUDE_PROJECT_DIR)
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

@@ -39,7 +39,7 @@ Worktree なしに `moai glm` や `moai cc` で LLM バックエンドを変え�
 Git Worktree を使うと、SPEC ごとに **Git 状態と LLM 設定が互いに独立して動きます**:
 
 ```mermaid
-graph TB
+graph TD
     A[Main Repository] --> B[Worktree 1<br/>SPEC-AUTH-001<br/>Claude Opus]
     A --> C[Worktree 2<br/>SPEC-AUTH-002<br/>GLM 5]
     A --> D[Worktree 3<br/>SPEC-AUTH-003<br/>Claude Sonnet]
@@ -161,7 +161,7 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 整理 + ローカ
 SPEC ごとに Git 状態が別々に管理されます:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Main["Main Repository (main)"]
         M1[.moai/specs/]
         M2[リモートリポジトリと同期]
@@ -248,7 +248,7 @@ $ moai cc -w SPEC-AUTH-004
 完了した SPEC だけが main ブランチへマージされます:
 
 ```mermaid
-flowchart TB
+flowchart TD
     subgraph Development["開発中の Worktrees"]
         D1[SPEC-AUTH-001<br/>進行中]
         D2[SPEC-AUTH-002<br/>進行中]
@@ -271,7 +271,7 @@ flowchart TB
 割り当てられるのは、そこについてくるトークノミクスの利点です:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Terminal1["Terminal 1: Planning"]
         T1A[/moai plan/]
         T1B[Claude Opus<br/>高コスト/高品質]
