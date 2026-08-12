@@ -73,7 +73,33 @@ m1_to_mN_commit_strategy: single-feature-branch
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-13
+run_commit_sha: 3b6ea0677
+sync_commit_sha: pending-backfill-sync-SPEC-HOOK-PRETOOL-PERF-001
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] / Added
+ac_count_in_changelog: 10
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed
+  plan_md: n/a (markdown-header convention, no frontmatter)
+  acceptance_md: n/a (markdown-header convention, no frontmatter)
+  progress_md: n/a (this file)
+canary_compliance_check:
+  spec_lint: pending (sync is markdown-only; spec body untouched)
+  changelog_single_entry: grep -c 'SPEC-HOOK-PRETOOL-PERF-001' CHANGELOG.md == 1
+  ac_count_match: 10 (9 MUST + 1 SHOULD deferred AC-PERF-005)
+```
+
+### Sync-phase attribution
+
+- **Frontmatter transition carried by this sync commit**: single `in-progress -> implemented -> completed` merged close on `spec.md` per the 3-phase close contract. The `draft -> in-progress` intermediate was consolidated into the terminal transition (run-phase began from `draft`; the SPEC was authored at `draft` and never carried a separate `draft -> in-progress` commit — the sync commit carries the full terminal close per the same pragmatic pattern used by sibling SPECs in this repo).
+- **CHANGELOG emission discipline (B12)**: pre-emission `grep -c 'SPEC-HOOK-PRETOOL-PERF-001' CHANGELOG.md` == 0 (no duplicate from a parallel session); AC count in CHANGELOG entry == 10 (matches `acceptance.md`); every file path cited in the CHANGELOG verified via `ls` before commit.
+- **AC-PERF-005 (SHOULD) DEFERRED**: recorded transparently in the CHANGELOG entry AND in §E.2 M2-WIRING (not a silent PASS). M2 is implemented + unit-tested (`internal/config/slice.go`) but NOT production-wired; M1 (`LoadWithCache`) is the wired optimization and delivers the measured 93% max-tail reduction.
+- **Plan correction B5-CORR**: plan.md B-5 + C-PRE-4 referenced `internal/hook/observer.go` (does NOT exist); the actual `$CLAUDE_PROJECT_DIR`-first helper is `internal/hook/path_resolve.go`. The run used `path_resolve.go`. Reference in CHANGELOG body for operator visibility.
+- **AC-PERF-010 (timeout narrowing) NOT in scope**: the 10s PreToolUse timeout remains. Narrowing toward 5s is gated on REQ-PERF-010 production telemetry and is a separate follow-up.
+- **README / docs-site**: unchanged — this is internal (`internal/config` + `internal/hook`) with no user-facing command or surface change.
+- **`sync_commit_sha` placeholder**: `pending-backfill-sync-SPEC-HOOK-PRETOOL-PERF-001` per the D3 self-referential-hazard exemption (`spec-frontmatter-schema.md` § Status Transition Ownership Matrix → SHA placeholder backfill exemption — a commit cannot know its own SHA until after it lands). The real SHA is backfilled in a follow-up commit once the sync PR merges (Route B squash).
 
 ## §F Phase 4 Mode Selection
 
