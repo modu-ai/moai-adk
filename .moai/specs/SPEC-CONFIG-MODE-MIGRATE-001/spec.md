@@ -2,9 +2,9 @@
 id: SPEC-CONFIG-MODE-MIGRATE-001
 title: "dry-run-first, approval-gated mode-widening migration for .moai/config"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-12
-updated: 2026-08-12
+updated: 2026-08-13
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -240,7 +240,19 @@ Given-When-Then scenarios (binary-testable). Each AC maps to one or more REQs.
   lands, **Then** the write goes through the shared `atomicfile.Write` helper (shipped
   by `SPEC-CONFIG-ATOMIC-WRITE-001`), verifiable by a grep/test asserting the
   migration's apply function calls `atomicfile.Write` and does not call a bare
-  `os.WriteFile` or `os.Chmod` directly on the destination path.
+  `os.WriteFile` directly on the destination path. Exactly one `os.Chmod(path,
+  defs.FilePerm)` site on the destination path is PERMITTED after the atomic write —
+  the chmod MUST reference the named constant `defs.FilePerm` (NOT a numeric literal
+  like `0o644`), and any chmod carrying a hardcoded literal is a violation.
+  **Exemption rationale**: the atomic-write helper preserves the pre-existing
+  destination mode (`internal/config/atomicfile/write.go:46-48` — `if info, err :=
+  os.Stat(path); err == nil { mode = info.Mode().Perm() }`), so widening a narrowed
+  file toward `defs.FilePerm` CANNOT be achieved by the write alone — a post-write
+  chmod via the named constant is the mechanism that widens. This chmod is atomic on
+  POSIX (a single `chmod(2)` syscall operating on mode, not content), so it does NOT
+  reintroduce the truncate-then-write window that `SPEC-CONFIG-ATOMIC-WRITE-001`
+  eliminated. The relaxation is scoped: it permits only this one named-constant
+  chmod site; bare `os.WriteFile` and hardcoded-literal chmod remain prohibited.
 
 - **AC-MIG-007** (only-widen on a non-subset mode — REQ-MIG-002, §D.2 Predicate
   definition) — **Given** a `.moai/config/` tree containing a file at mode `0700`
@@ -253,6 +265,20 @@ Given-When-Then scenarios (binary-testable). Each AC maps to one or more REQs.
   (or flags it as "would-require-narrowing — skipped"). This AC makes REQ-MIG-002's
   only-widen guarantee mechanically testable on the axis where it is actually
   load-bearing: a mode whose widening-to-`defs.FilePerm` would also narrow.
+
+- **AC-MIG-008** (symlink scope-leak — REQ-MIG-002) — **Given** a `.moai/config/` tree
+  containing a symlink under `.moai/config/**` whose target resolves OUTSIDE the
+  `.moai/config/` directory tree (e.g. `sections/link.yaml` → `/tmp/outside.yaml`),
+  **When** the operator runs the migration in either dry-run or `--apply` mode,
+  **Then** the migration Lstat-detects the symlink (i.e. uses `os.Lstat`, not
+  `os.Stat`, on candidate paths so the symlink is NOT followed), excludes it from the
+  candidate set (no `os.Chmod` lands on the out-of-scope target), AND reports it as
+  "skipped (symlink)" in the dry-run output. This AC closes the scope-leak vector in
+  REQ-MIG-002's "shall never alter any file outside the `.moai/config/` directory
+  tree" guarantee: `os.Stat` follows symlinks, so a symlink under `.moai/config/**`
+  pointing at an external target would otherwise let `os.Chmod` chmod the TARGET — a
+  hole in the only-widen / scoped invariant. The Lstat-based detection ensures the
+  migration operates on the symlink entry itself, never on its out-of-scope target.
 
 ### Dry-run preview example (illustrative — based on this checkout's real evidence)
 

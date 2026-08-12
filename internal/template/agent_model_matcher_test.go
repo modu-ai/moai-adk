@@ -9,7 +9,7 @@
 //     quality gate) on every Agent spawn and spread any regression's blast
 //     radius across Write/Edit as well.
 //  2. The new block follows the house hook convention: shell wrapper,
-//     quoted/braced $CLAUDE_PROJECT_DIR, timeout 5.
+//     quoted/braced $CLAUDE_PROJECT_DIR, timeout 10.
 package template_test
 
 import (
@@ -193,9 +193,9 @@ func TestHookWrapperConventions(t *testing.T) {
 		if !strings.Contains(arg, "${CLAUDE_PROJECT_DIR}") {
 			t.Errorf("hook arg %q does not use ${CLAUDE_PROJECT_DIR}", arg)
 		}
-		// (c) the MoAI 5s timeout budget.
-		if h.Timeout != 5 {
-			t.Errorf("hook timeout: got %d, want 5", h.Timeout)
+		// (c) the MoAI 10s timeout budget (#1473 widened PreToolUse 5→10).
+		if h.Timeout != 10 {
+			t.Errorf("hook timeout: got %d, want 10", h.Timeout)
 		}
 	}
 }

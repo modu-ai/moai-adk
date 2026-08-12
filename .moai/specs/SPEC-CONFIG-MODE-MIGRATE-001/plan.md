@@ -14,7 +14,9 @@
 - **SPEC artifacts**: `.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/{spec,plan,progress}.md`.
 - **Tier**: S (2 counted artifacts: spec.md + plan.md; progress.md emitted at every
   Tier per the §E skeleton rule, not counted in the Tier total).
-- **REQ/AC budget**: 2 REQs + 1 NFR + 7 ACs (Tier S ceiling 8 each — well within).
+- **REQ/AC budget**: 2 REQs + 1 NFR + 8 ACs (Tier S ceiling 8 each — at ceiling on ACs;
+  the 8th AC, AC-MIG-008, was added by the D5 amendment to close the symlink scope-leak
+  vector in REQ-MIG-002).
 - **User-locked design decision**: candidate C — **dry-run-first + operator approval
   (`--apply` flag)**. NOT blind-widen, NOT announce-then-auto-widen. The operator is
   the only entity that can decide "deliberately restricted vs accidentally narrowed"
@@ -126,6 +128,7 @@ command + observed output + baseline HEAD SHA per the attribution discipline.
 | AC-MIG-005 (idempotent) | _pending_ | `go test -run TestModeMigrateIdempotent ./internal/cli/config/...` | _pending_ |
 | AC-MIG-006 (helper routing) | _pending_ | `grep -n "atomicfile.Write" internal/cli/config/mode_migrate.go` | _pending_ |
 | AC-MIG-007 (0700 only-widen edge case) | _pending_ | `go test -run TestModeMigrateNonSubsetMode ./internal/cli/config/...` | _pending_ |
+| AC-MIG-008 (symlink scope-leak) | _pending_ | `go test -run TestModeMigrateSymlinkSkip ./internal/cli/config/...` | _pending_ |
 
 Cross-platform build: `go build ./...` AND `GOOS=windows GOARCH=amd64 go build ./...`
 must both exit 0.
@@ -181,12 +184,15 @@ Once M1's API is locked, the apply path is mechanical:
   `os.Chmod(path, defs.FilePerm)`. The chmod-after-rename is itself atomic on
   POSIX (a single `chmod(2)` syscall), so the atomic-write guarantee is preserved.
 
-  **Open question for M2**: is `os.Chmod` after `atomicfile.Write` acceptable given
-  the sibling SPEC's `REQ-CAW-007` guard against bare `os.Chmod` to config paths?
-  The guard targets `os.WriteFile` calls (truncate-then-write window) and
-  hardcoded-mode literals; `os.Chmod(path, defs.FilePerm)` uses the named constant
-  (not a literal) and does not truncate. Confirm at M2 that the guard's exemption
-  list includes this one `os.Chmod` site, or restructure to avoid it.
+  **Closed resolution (was "Open question for M2")**: `os.Chmod(path, defs.FilePerm)`
+  after `atomicfile.Write` is ACCEPTABLE and requires NO exemption-list entry under
+  the sibling SPEC's `REQ-CAW-007` guard. `internal/config/atomicfile/guard_test.go:109`
+  defines the guard's regex as `var writeFileCallRe = regexp.MustCompile(`os\.WriteFile\(\s*([^,]+),`)`
+  — the regex matches ONLY the literal token `os.WriteFile(`. It does NOT scan for
+  `os.Chmod(` at all, so `os.Chmod(path, defs.FilePerm)` passes REQ-CAW-007 by
+  construction regardless of the exemption list. The chmod still references the named
+  constant `defs.FilePerm` (not a hardcoded literal), satisfying CLAUDE.local.md §14.
+  This is now a closed plan-phase decision; no M2-time confirmation is needed.
 
 - Idempotency: the scan is the source of truth — if the scan produces an empty
   candidate list (because every file is already at `defs.FilePerm`), apply is a
@@ -217,8 +223,11 @@ Once M1's API is locked, the apply path is mechanical:
   violates REQ-MIG-001 and the explicit design decision.
 - **AP-MIG-002 — Widening via bare `os.WriteFile` or `os.Chmod` with a hardcoded
   literal.** REQ-MIG-001 + AC-MIG-006 require routing through `atomicfile.Write`;
-  CLAUDE.local.md §14 forbids hardcoded mode literals. The `os.Chmod` site (if used
-  in M2) MUST reference `defs.FilePerm`.
+  CLAUDE.local.md §14 forbids hardcoded mode literals. The single permitted
+  `os.Chmod(path, defs.FilePerm)` site after the atomic write (M2 locked path, per
+  AC-MIG-006's scoped exemption) MUST reference the named `defs.FilePerm` constant;
+  a chmod carrying a numeric literal like `0o644` is a violation. Bare `os.WriteFile`
+  on the destination path is never permitted.
 - **AP-MIG-003 — Modifying the sibling helper.** `internal/config/atomicfile/*.go` is
   owned by `SPEC-CONFIG-ATOMIC-WRITE-001` (CLOSED) and is a PRESERVE target. The
   migration consumes the helper; it does not extend or fork it.
