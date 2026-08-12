@@ -93,4 +93,23 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M0-M6, 7 commits)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates this section>_
+```yaml
+sync_complete_at: 2026-08-13
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-CHAIN-CORE-001' CHANGELOG.md → 0 before emission)
+b12_self_test_b_ac_count_match: PASS (24 distinct AC in acceptance.md; CHANGELOG entry references 24 AC)
+b12_self_test_c_file_path_verification: PASS (10/10 implementation file paths verified via ls before commit)
+changelog_entry_position: "[Unreleased] ### Added (top entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (single sync commit)"
+  plan_md: "n/a (markdown-header convention)"
+  acceptance_md: "n/a (markdown-header convention)"
+  progress_md: "§E.4 populated"
+canary_compliance_check:
+  go_build: PASS
+  cross_platform_build: PASS (darwin_arm64 + windows_amd64)
+  coverage: 87.4% (≥85% threshold)
+  ac_pass: 24/24
+mx_tag_validation: "3 @MX:ANCHOR added (WorktreeNode, NewStore, ResolveCurrentNode) — sync sub-step"
+```

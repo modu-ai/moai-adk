@@ -23,6 +23,9 @@ type Store struct {
 // NewStore creates a Store bound to the given JSONL file path. The directory
 // is created if it does not exist. The file itself is NOT created here — it
 // is created lazily on the first Append (O_APPEND|O_CREATE).
+//
+// @MX:ANCHOR [AUTO]: NewStore — chain ledger public API boundary
+// @MX:REASON: 3 cross-package callers (cli/chain.go, hook/chain_event.go, hook/chain_banner.go)
 func NewStore(path string) (*Store, error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {

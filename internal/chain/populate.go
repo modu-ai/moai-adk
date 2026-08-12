@@ -147,6 +147,9 @@ func (p *Populator) AppendCompletionEdge(parentNode, childNode, completedMilesto
 // (post-/clear), it resolves via (worktreePath, sessionID) from the ledger.
 //
 // SPEC-CHAIN-CORE-001 REQ-CHAIN-013 (re-injection after /clear).
+//
+// @MX:ANCHOR [AUTO]: ResolveCurrentNode — chain node resolution entry point
+// @MX:REASON: 5 cross-package callers (cli chain status/lineage/back + hook chain_event/chain_banner)
 func (p *Populator) ResolveCurrentNode(worktreePath, sessionID string) (*WorktreeNode, error) {
 	// Fast path: env has the node ID.
 	if envID := os.Getenv(config.EnvChainNodeID); envID != "" {

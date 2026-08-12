@@ -36,6 +36,9 @@ const (
 //
 // All 13 named fields are populated from node-enter and node-update events.
 // Fields not yet backfilled carry their zero value.
+//
+// @MX:ANCHOR [AUTO]: WorktreeNode — 13-field invariant contract (REQ-CHAIN-001)
+// @MX:REASON: central data structure consumed by CLI, hook, and banner; struct shape frozen by SPEC
 type WorktreeNode struct {
 	// NodeID is the unique identifier of this node (ULID for monotonic
 	// ordering).

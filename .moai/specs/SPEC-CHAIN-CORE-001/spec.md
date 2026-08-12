@@ -2,7 +2,7 @@
 id: SPEC-CHAIN-CORE-001
 title: "Worktree Session Origin-Trail Chain — Record, Query, and Completion Hook"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-13
 updated: 2026-08-13
 author: spec-chain-core
