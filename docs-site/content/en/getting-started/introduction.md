@@ -4,6 +4,8 @@ weight: 20
 draft: false
 ---
 
+# Introduction
+
 MoAI-ADK is an Agentic Development Kit built around three core values that augment Claude Code: **cost** (Tokenomics), **self-improvement** (Agentic Loop Engineering), and **quality control** (Agentic Harness). It delivers the same code quality for fewer tokens. Declare a completion condition and the loop works on its own, accumulating observations the harness learns from. SPEC 3-phase and TRUST 5 gates judge 'done' by evidence. Model selection, reasoning depth, and context usage are all managed by the system. It ships as a single Go binary with no dependencies, so it runs immediately.
 
 
@@ -32,6 +34,16 @@ MoAI-ADK v3.0's value is summarized in three core values.
 | **Agentic harness** | Design an environment for agents to work in, instead of writing code directly | 11 agents · SPEC 3-phase · TRUST 5 |
 
 Each core value is covered in detail in the [Core Concepts](/en/core-concepts/) section. This document looks at only as much as you need to get started.
+
+## What got more convenient in v3.1
+
+- **`/moai goal`** — declare a completion condition in one line and the session runs autonomously.
+- **Factory Mode** — runs multiple sessions at once.
+- **BAS Navigator** — auto-syncs the 3-tier codemap.
+- **manager-lead** — coordinates large-scale work via Tier L parallel fan-out.
+- **multi-model audit** — cross-validates with multiple models to catch bias.
+- **autonomy tier** — dials the autonomy level so things run safely.
+- **profile matrix** — assigns models across 12 agents × 3 profiles.
 
 ## Core concepts
 
