@@ -48,6 +48,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/sync/errgroup"
 )
@@ -403,7 +404,7 @@ func performGLMAudit(ctx context.Context, focus string) ReviewOutput {
 	if key == "" {
 		return glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")
 	}
-	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus)
+	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus, nil)
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool
@@ -419,7 +420,7 @@ func performGLMAudit(ctx context.Context, focus string) ReviewOutput {
 // It NEVER returns a hard error — every path produces a structured
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
 // inconclusive condition through its own AskUserQuestion channel (C5).
-func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig) ConvergenceResult {
+func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig, token mcp.ProgressToken) ConvergenceResult {
 	// ── DQ-2: claude_verdict anchor presence ──
 	if strings.TrimSpace(claudeVerdict.Verdict) == "" {
 		// REFUSE: claude_verdict is the always-available anchor per the fail-open
@@ -480,7 +481,9 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			// is structurally excluded by the backendCaller signature. Any error
 			// inside defaultBackendCaller is already fail-opened to a
 			// VerdictInconclusive ReviewOutput, so this never returns a hard error.
+			notifyMCPProgress(gctx, token, 0.3, s.name+" 백엔드 리뷰 실행 중...")
 			out := backendCall(gctx, s.name, target, focus)
+			notifyMCPProgress(gctx, token, 0.7, s.name+" 백엔드 응답 수신")
 			mu.Lock()
 			parts = append(parts, secondaryResult{backend: s.name, gate: s.gate, out: out})
 			mu.Unlock()

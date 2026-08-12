@@ -65,7 +65,10 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		SessionID: req.GetString("session_id", ""),
 	}
 
-	result := runMultiAudit(ctx, claudeVerdict, target, focus, cfg)
+	token := extractProgressToken(req)
+	notifyMCPProgress(ctx, token, 0, "audit_multi 시작 — claude/codex/glm 백엔드 수렴 준비 중...")
+	result := runMultiAudit(ctx, claudeVerdict, target, focus, cfg, token)
+	notifyMCPProgress(ctx, token, 1, "audit_multi 완료 — 수렴 결과 조립됨")
 	return convergenceToolResult(result)
 }
 
