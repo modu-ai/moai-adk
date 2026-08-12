@@ -1,6 +1,7 @@
 ---
 title: 워크플로우 명령어
 weight: 30
+description: "/moai plan·run·sync 3단계 워크플로우와 goal·loop·fix 같은 반복·자율 커맨드."
 draft: false
 ---
 

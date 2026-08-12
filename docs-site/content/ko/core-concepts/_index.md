@@ -1,6 +1,7 @@
 ---
 title: 핵심 개념
 weight: 20
+description: "MoAI-ADK를 떠받치는 기본 원리 — SPEC-First 개발, DDD/TDD, TRUST 5 품질 프레임워크, 전담 에이전트."
 draft: false
 ---
 

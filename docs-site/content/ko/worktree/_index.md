@@ -1,6 +1,7 @@
 ---
 title: Git Worktree 개요
 weight: 90
+description: "Git Worktree로 완전히 격리된 환경에서 여러 SPEC 작업을 병렬로 안전하게 진행."
 draft: false
 ---
 

@@ -1290,10 +1290,10 @@ main.docs-main .doc-layout--2col {
 }
 .cw-home-h1 {
   margin: 0 0 18px;
-  font-size: clamp(38px, 5.4vw, 56px);
+  font-size: clamp(34px, 4.6vw, 48px);
   font-weight: 900;
   letter-spacing: -0.05em;
-  line-height: 1.05;
+  line-height: 1.1;
   color: #060606;
 }
 .cw-home-h1 .clay,

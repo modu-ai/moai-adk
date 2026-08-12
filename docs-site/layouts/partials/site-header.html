@@ -11,7 +11,7 @@
            + DOCS mono chip. 워드마크는 handoff 통제상 로고+chip 두 요소만 표시. */ -}}
     <a class="cw-hdr-brand" href="{{ "/" | relLangURL }}">
       <img class="cw-hdr-logo" loading="lazy" decoding="async"
-           src="{{ "logos/moai-logo-4.png" | relURL }}"
+           src="{{ "logos/moai-logo-4-WH.png" | relURL }}"
            height="26" alt="MoAI-ADK" />
       <span class="cw-hdr-chip">DOCS</span>
     </a>
@@ -55,6 +55,7 @@
 
       <a class="cw-hdr-gh" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="{{ i18n "github_aria" }}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+        <span class="cw-hdr-stars" data-github-stars></span>
       </a>
     </div>
   </div>
@@ -168,5 +169,26 @@
     clearTimeout(t);
     t = setTimeout(() => search(input.value.trim()), 80);
   });
+})();
+
+// GitHub 스타 개수 — 방문자 브라우저에서 fetch, 1시간 localStorage 캐시(rate limit 회피)
+(function(){
+  var el = document.querySelector('[data-github-stars]');
+  if (!el) return;
+  var now = Date.now();
+  var cached = localStorage.getItem('moai-gh-stars');
+  var cachedT = parseInt(localStorage.getItem('moai-gh-stars-t') || '0', 10);
+  var render = function(v){ el.textContent = v ? ('★ ' + v) : ''; };
+  if (cached && (now - cachedT) < 3600000) { render(cached); return; }
+  fetch('https://api.github.com/repos/modu-ai/moai-adk')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if (!d) return;
+      var c = d.stargazers_count || 0;
+      var v = c >= 1000 ? (c/1000).toFixed(1).replace(/\.0$/,'') + 'k' : String(c);
+      render(v);
+      localStorage.setItem('moai-gh-stars', v);
+      localStorage.setItem('moai-gh-stars-t', String(now));
+    }).catch(function(){});
 })();
 </script>
