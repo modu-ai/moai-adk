@@ -142,7 +142,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1..M4 already committed at 913
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-13
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 4389caffd
 sync_status: ready
 b12_self_test_a:
   changelog_duplicate_guard: PASS (`grep -c 'SPEC-MCP-CONSOLE-001' CHANGELOG.md` → 0 pre-emission, 1 post-emission)
