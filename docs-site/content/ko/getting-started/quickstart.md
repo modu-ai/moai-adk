@@ -43,7 +43,7 @@ moai init
 이 명령은 프로젝트를 분석하여 다음 3개 파일을 자동 생성합니다:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["프로젝트 분석"] --> B["product.md<br>프로젝트 정보"]
     A --> C["structure.md<br>디렉토리 구조"]
     A --> D["tech.md<br>기술 스택"]
@@ -95,7 +95,7 @@ flowchart TB
 이 명령은 다음을 수행합니다:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["요구사항 입력"] --> B["EARS 형식 분석"]
     B --> C["SPEC 문서 생성"]
     C --> D["SPEC-AUTH-001 저장"]
@@ -132,11 +132,11 @@ flowchart TD
 
 ---
 
-#### TDD 모드 (신규 프로젝트 / 테스트 커버리지 10%+)
+### TDD 모드 (신규 프로젝트 / 테스트 커버리지 10%+)
 
 테스트를 먼저 쓰고 그 테스트를 통과시키는 RED-GREEN-REFACTOR 사이클로 구현합니다. 사이클의 각 단계가 무엇을 뜻하는지는 [SPEC 기반 개발](/ko/core-concepts/spec-based-dev)에서 다룹니다.
 
-#### DDD 모드 (기존 프로젝트 / 테스트 커버리지 10% 미만)
+### DDD 모드 (기존 프로젝트 / 테스트 커버리지 10% 미만)
 
 기존 동작을 특성화 테스트로 붙잡아 둔 뒤 조금씩 개선하는 ANALYZE-PRESERVE-IMPROVE 사이클로 진행합니다. 자세한 내용은 [DDD](/ko/core-concepts/ddd)에서 다룹니다.
 
@@ -229,7 +229,7 @@ sequenceDiagram
 요청은 **Analyze-First** 라우팅을 거칩니다. 어떤 언어로 요청하든 의도부터 분석하고, 컨텍스트가 부족하면 되물어 채웁니다. 그런 다음 Plan → Run → Sync 파이프라인을 자동으로 실행합니다.
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["/moai '자연어 요청'"] --> B["의도 분석<br>Analyze-First"]
     B --> C{"컨텍스트 충분?"}
     C -->|"부족"| D["명확화 질문"]

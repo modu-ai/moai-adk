@@ -33,7 +33,7 @@ Worktree는 SPEC마다 작업 공간을 완전히 갈라 놓는 통제 장치입
 LLM(대형 언어 모델) 실행 모드를 따로 지정할 수 있으니, 계획 터미널에서는
 추론이 강한 Claude 모델을, 구현 터미널에서는 저비용 GLM(z.ai의 다국어 언어
 모델)을 쓰는 식으로 단계마다 모델을 나눠 배정할 수 있습니다. 비용이 비싼
-자리와 단순한 자리를 구분해 사람이하듯 모델을 배치하는 셈입니다.
+자리와 단순한 자리를 구분해 사람이 하듯 모델을 배치하는 셈입니다.
 
 ## 왜 Worktree가 필요한가요?
 
@@ -55,7 +55,7 @@ Git Worktree를 쓰면 SPEC마다 **Git 상태와 LLM 설정이 서로 독립적
 결제 작업을 GLM으로 돌려도 두 설정이 서로에게 닿지 않습니다.
 
 ```mermaid
-graph TB
+graph TD
     A[Main Repository] --> B[Worktree 1<br/>SPEC-AUTH-001<br/>Claude Opus]
     A --> C[Worktree 2<br/>SPEC-AUTH-002<br/>GLM 5]
     A --> D[Worktree 3<br/>SPEC-AUTH-003<br/>Claude Sonnet]
@@ -220,7 +220,7 @@ SPEC마다 Git 상태가 따로 관리됩니다. 곧 한 SPEC에서 커밋해도
 거느리고, 각 worktree는 자기 브랜치와 자기 `.moai/` 설정을 따로 가집니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Main["Main Repository (main)"]
         M1[.moai/specs/]
         M2[원격 저장소와 동기화]
@@ -312,7 +312,7 @@ $ moai cc -w SPEC-AUTH-004
 뜻이고, 이것이 에이전틱 하네스가 보장하는 안전망입니다.
 
 ```mermaid
-flowchart TB
+flowchart TD
     subgraph Development["개발 중인 Worktrees"]
         D1[SPEC-AUTH-001<br/>진행중]
         D2[SPEC-AUTH-002<br/>진행중]
@@ -337,7 +337,7 @@ flowchart TB
 흘러가는 모습을 보여 줍니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Terminal1["Terminal 1: Planning"]
         T1A[/moai plan/]
         T1B[Claude Opus<br/>고비용/고품질]

@@ -116,6 +116,6 @@ D4에서 완성된 화면과 주석이 `.moai/design/` 예약 경로에 붙여�
 
 ## 관련 문서
 
-- [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
+- [/moai plan](./moai-plan) — 이전 단계: SPEC 문서 생성
 - [/moai run](./moai-run) - 다음 단계: DDD/TDD 구현
 - [하위 에이전트 카탈로그](/ko/advanced/agent-guide) - manager-design 에이전트 상세

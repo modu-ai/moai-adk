@@ -13,7 +13,7 @@ MoAI-ADK의 SPEC 기반 개발 방법론을 자세히 안내합니다. SPEC은 �
 {{< /callout >}}
 
 {{< callout type="info" >}}
-  **SPEC은 Agent를 위한 것입니다:** SPEC은 개발자가 외우라고 있는 문서가
+  **SPEC은 Agent를 위한 것입니다:** SPEC은 개발자가 외워야 하는 문서가
   아닙니다. Agent가 작업할 때 들여다보는 문서입니다. 원리와 쓰임새만 개념적으로
   알고 있으면 충분합니다.
 {{< /callout >}}

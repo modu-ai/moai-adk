@@ -43,7 +43,7 @@ moai init
 このコマンドはプロジェクトを分析し、次の3ファイルを自動生成します:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["プロジェクト分析"] --> B["product.md<br>プロジェクト情報"]
     A --> C["structure.md<br>ディレクトリ構造"]
     A --> D["tech.md<br>技術スタック"]
@@ -95,7 +95,7 @@ flowchart TB
 このコマンドは次を実行します:
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["要件の入力"] --> B["EARS 形式の分析"]
     B --> C["SPEC 文書の生成"]
     C --> D["SPEC-001 の保存"]
@@ -229,7 +229,7 @@ sequenceDiagram
 リクエストは **Analyze-First** ルーティングを経ます。どの言語でリクエストしても、まず意図を分析し、コンテキストが不足していれば質問で補完した後、Plan → Run → Sync パイプラインを自動的に実行します。
 
 ```mermaid
-flowchart TB
+flowchart TD
     A["/moai '自然言語のリクエスト'"] --> B["意図分析<br>Analyze-First"]
     B --> C{"コンテキストは十分?"}
     C -->|"不足"| D["明確化の質問"]

@@ -31,7 +31,7 @@ MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 
 ## 7가지 핵심 컴포넌트
 
 ```mermaid
-graph TB
+graph TD
     subgraph Harness["하네스 엔지니어링"]
         direction TB
         SF["Scaffolding First<br/>빈 파일 스텁 생성"] --> FC["Failing Checklist<br/>수락 기준 태스크 등록"]

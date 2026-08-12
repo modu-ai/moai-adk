@@ -28,7 +28,7 @@ repository in multiple directories at once**. Instead of swapping context with
 open per branch.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["Traditional approach"]
         T1[Single working directory]
         T2[Branch switch required]
@@ -491,7 +491,7 @@ high-reasoning model (Opus), and spread the implementation stage across several
 tracks with a cheap model (GLM):
 
 ```mermaid
-graph TB
+graph TD
     subgraph Planning["Planning Phase (Opus)"]
         P1[/moai plan<br/>SPEC-001/]
         P2[/moai plan<br/>SPEC-002/]

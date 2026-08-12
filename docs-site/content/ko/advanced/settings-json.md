@@ -254,7 +254,7 @@ MoAI-ADK 템플릿이 `settings.json`에 미리 넣어 두는 값에는 이런 �
 }
 ```
 
-훅 `timeout`의 단위는 **초**입니다 (밀리초가 아닙니다). 훭을 더 추가하고 싶거나 각 이벤트(`SessionStart`, `PreToolUse`, `Stop` 등)의 의미가 궁금하다면 [훅 가이드](/ko/advanced/hooks-guide)에서 이어서 다룹니다.
+훅 `timeout`의 단위는 **초**입니다 (밀리초가 아닙니다). 훅을 더 추가하고 싶거나 각 이벤트(`SessionStart`, `PreToolUse`, `Stop` 등)의 의미가 궁금하다면 [훅 가이드](/ko/advanced/hooks-guide)에서 이어서 다룹니다.
 
 ### 샌드박스와 환경 변수
 

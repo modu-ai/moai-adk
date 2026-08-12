@@ -30,7 +30,7 @@ MoAI-ADK는 이 기능 위에 **SPEC(단위 작업 명세서) 단위의 격리 �
 잠시 치워야 합니다. 워크트리는 브랜치마다 폴더를 하나씩 만들어 이 부담을 없앱니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["전통적인 방식"]
         T1[단일 작업 디렉토리]
         T2[브랜치 전환 필요]
@@ -93,7 +93,7 @@ flowchart TD
 "만드는 명령어가 따로 없다"는 점입니다. `moai worktree`에는 생성 명령이 없고,
 런처의 `-w` 플래그가 생성과 진입을 한 번에 처리합니다.
 
-#### 문법
+### 문법
 
 ```bash
 moai cc  -w [이름] [--spawn]
@@ -104,7 +104,7 @@ moai cg  -w [이름] [--spawn]
 #### `-w` 값이 해석되는 방식
 
 `-w`에 무엇을 넣느냐에 따라 동작이 세 가지로 갈립니다. 처음에는 "짧은 이름을
-주면된다"만 기억해도 충분합니다. 나머지 두 가지는 이전에 만들어둔 워크트리에
+주면 된다"만 기억해도 충분합니다. 나머지 두 가지는 이전에 만들어둔 워크트리에
 다시 들어가거나, 이름을 자동으로 지을 때 쓰입니다.
 
 - **짧은 이름** (`feat-auth`) — `.claude/worktrees/feat-auth/` 아래에서
@@ -545,7 +545,7 @@ moai worktree restore --snapshot .moai/state/snap.json --dry-run
 있습니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Planning["Planning Phase (Opus)"]
         P1[/moai plan<br/>SPEC-001/]
         P2[/moai plan<br/>SPEC-002/]

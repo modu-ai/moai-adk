@@ -181,7 +181,7 @@ flowchart TD
 | JavaScript          | package.json (no tsconfig)                 |
 | Go                  | go.mod, go.sum                             |
 | Rust                | Cargo.toml, Cargo.lock                     |
-| 기타 11개 언어 지원 |
+| 기타 11개 언어 | 프로젝트 마커 자동 감지 (개별 파일 없음) |
 
 **Step 2 - 병렬 진단:**
 

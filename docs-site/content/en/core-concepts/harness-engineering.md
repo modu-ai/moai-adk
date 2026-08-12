@@ -31,7 +31,7 @@ The second core value in particular is the key innovation. The realistic near-te
 ## The 7 Core Components
 
 ```mermaid
-graph TB
+graph TD
     subgraph Harness["Harness Engineering"]
         direction TB
         SF["Scaffolding First<br/>Generate empty file stubs"] --> FC["Failing Checklist<br/>Register acceptance-criteria tasks"]

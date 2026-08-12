@@ -31,7 +31,7 @@ MoAI-ADK에서 워크트리는 "혼자 쓸 때는 선택, 여러 SPEC(작업 단
 반면 Git Worktree는 **책상을 여러 개 놓는 것**과 같습니다. 각 책상(디렉토리)에는 서로 다른 브랜치가 이미 펼쳐져 있어서, 디렉토리만 옮기면 그 브랜치의 작업을 그대로 이어갈 수 있습니다. 체크아웃 비용이 0에 가깝고, 여러 브랜치를 동시에 열어둔 채로 왔다 갔다 할 수 있습니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Traditional["일반 브랜치 방식"]
         T1[단일 디렉토리]
         T2[git checkout으로<br/>브랜치 전환]
@@ -76,7 +76,7 @@ graph TB
 왜 이런 분리가 가능한지 한 줄로 요약하면, 워크트리마다 `.moai/config/`가 따로 존재하기 때문입니다. 그래서 한 워크트리에서 GLM을 켜도 다른 워크트리의 Claude 설정은 흔들리지 않습니다.
 
 ```mermaid
-graph TB
+graph TD
     A[Worktree 미사용] --> B[모든 세션에<br/>동일 LLM 적용]
     B --> C[높은 비용<br/>Opus만 사용]
 
@@ -191,7 +191,7 @@ moai glm -w SPEC-API-003 --spawn
 **병렬 작업 시각화**:
 
 ```mermaid
-graph TB
+graph TD
     subgraph Time["시간 경과"]
         T1[09:00]
         T2[10:00]
@@ -549,7 +549,7 @@ echo "Worktree 정리 완료 — --stale 목록은 확인 후 직접 --yes 로 �
 **A**: 팀원 각자가 자기 워크트리에서 작업하고, 완료하면 원격 `main`으로 PR을 보내는 흐름이 가장 흔합니다. 워크트리는 로컬 격리 수단이므로, 원격 저장소에서는 일반 브랜치/PR 흐름과 다를 게 없습니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph DevA["개발자 A"]
         A1[Worktree 진입]
         A2[개발]

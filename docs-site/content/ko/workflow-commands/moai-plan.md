@@ -178,7 +178,7 @@ flowchart TD
 - 중복 SPEC 확인 (.moai/specs/)
 - GEARS 구조 설계 (EARS 레거시 형식도 허용)
 - 구현 계획 및 기술 제약조건 식별
-- 라이브러리 버전 확인 (안정버전만, beta/alpha 제외)
+- 라이브러리 버전 확인 (안정 버전만, beta/alpha 제외)
 
 ### Decision Point 1: 사용자 승인 게이트 (HUMAN GATE)
 

@@ -184,7 +184,7 @@ GLM으로 바꿔 세 터미널에 나눠 돌립니다. 각 구현 세션은 각�
 갇혀 있으므로, 파일 편집이 서로 섞일 일이 없습니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph T1["Terminal 1: Planning (Opus)"]
         P1[/moai plan<br/>AUTH-001/]
         P2[/moai plan<br/>LOG-002/]
@@ -283,7 +283,7 @@ $ git -C .claude/worktrees/SPEC-AUTH-001 log --oneline -5
 동기화는 여전히 git push와 PR이 맡습니다.
 
 ```mermaid
-graph TB
+graph TD
     subgraph Dev1["개발자 A (Frontend)"]
         F1[SPEC-FE-001<br/>로그인 UI]
         F2[SPEC-FE-002<br/>대시보드]

@@ -74,7 +74,7 @@ flowchart TD
 
 ### 시크릿 스캔 (증분 + 체크포인트)
 
-git 히스토리를 바뀐 부분만 훑습니다. 마지막으로 스캔한 SHA를 `.moai/state/secrets-scan-checkpoint.txt`에 체크포인트로 남기고, 체크포인트가 있으면 그 뒤의 커밋 범위와 워킹 트리만 훑은 다음 체크포인트를 현재 HEAD로 옮깁니다. 처음 돌리거나 full-scan을 따로 지시했을 때는 `--all`로 히스토리 전체를 훑습니다.
+git 히스토리 중 바뀐 부분만 훑습니다. 마지막으로 스캔한 SHA를 `.moai/state/secrets-scan-checkpoint.txt`에 체크포인트로 남기고, 체크포인트가 있으면 그 뒤의 커밋 범위와 워킹 트리만 훑은 다음 체크포인트를 현재 HEAD로 옮깁니다. 처음 돌리거나 full-scan을 따로 지시했을 때는 `--all`로 히스토리 전체를 훑습니다.
 
 ### 데이터 격리 점검
 

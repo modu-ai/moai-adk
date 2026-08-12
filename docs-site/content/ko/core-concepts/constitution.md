@@ -127,7 +127,7 @@ flowchart TD
 ### Layer 2: Canary Check
 
 제안된 변경을 메모리에만 적용해 보고 최근 프로젝트 3개를 다시 평가합니다. 점수가
-0.10 넘게 떨어지면 그 변경을 물립니다.
+0.10 넘게 떨어지면 그 변경을 보류합니다.
 
 ### Layer 3: Contradiction Detector
 
