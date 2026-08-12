@@ -2,9 +2,9 @@
 id: SPEC-HOOK-PRETOOL-PERF-001
 title: "PreToolUse hook path lightweighting: collapse the fork+exec+full-config-per-invocation cost via config disk caching and a lazy config slice"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-12
-updated: 2026-08-12
+updated: 2026-08-13
 author: manager-spec
 priority: P1
 phase: "v3.0.2 target"

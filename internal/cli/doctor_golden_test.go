@@ -8,14 +8,27 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
 var updateDoctorGolden = os.Getenv("UPDATE_GOLDEN") == "1"
 
-// doctorGoldenPath returns the path to a golden snapshot file under testdata/.
+// goldenBaseDir is the package working directory captured at init, before any
+// test calls t.Chdir. doctorGoldenPath resolves testdata/ against this absolute
+// base so golden comparison still works after captureDoctorCmd changes the
+// working directory to an isolated temp dir (SPEC-HOOK-PRETOOL-PERF-001).
+var goldenBaseDir = func() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "testdata"
+	}
+	return filepath.Join(wd, "testdata")
+}()
+
+// doctorGoldenPath returns the absolute path to a golden snapshot file under testdata/.
 func doctorGoldenPath(name string) string {
-	return filepath.Join("testdata", name+".golden")
+	return filepath.Join(goldenBaseDir, name+".golden")
 }
 
 // checkDoctorGolden compares got to a golden file, regenerating it if UPDATE_GOLDEN=1.
@@ -45,8 +58,22 @@ func checkDoctorGolden(t *testing.T, name, got string) {
 // separate strings. Split capture per SPEC-CLI-TUX-V3-004 M4c: stdout carries
 // the result surface (golden subject), stderr carries the live progress step
 // lines (REQ-TUX4-001 channel discipline) which are asserted separately.
+//
+// Isolation (SPEC-HOOK-PRETOOL-PERF-001): the doctor command runs from an
+// empty temp dir with the config cache disabled. The golden snapshots encode
+// the "clean project" baseline (every .moai/state/, .moai/config/sections/
+// check reports "not found"). Without isolation, a prior test's config load
+// writes <cwd>/.moai/state/config-cache.json (the cache's MkdirAll side
+// effect), which makes checkWorktreeState report "found" and diverge from the
+// golden. t.Chdir + the cache-disable env keep the cwd empty for the run.
 func captureDoctorCmd(t *testing.T) (string, string) {
 	t.Helper()
+	// Disable the config cache so ConfigManager.Load (if reached during the
+	// doctor run) does not create .moai/state/ as a write side effect.
+	t.Setenv(config.EnvConfigCacheDisabled, "1")
+	// Run the doctor command from an empty temp dir so every workspace
+	// filesystem check sees a clean baseline matching the golden snapshots.
+	t.Chdir(t.TempDir())
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
 	doctorCmd.SetOut(outBuf)
