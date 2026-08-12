@@ -42,26 +42,12 @@ jobs:
     timeout-minutes: 5
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
-      docs_only: ${{ steps.f.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: f
         with:
           filters: |
-            docs_only:
-              - '**.md'
-              - '.github/**'
-              - '.moai/specs/**'
-              - '.moai/docs/**'
-              - '.moai/reports/**'
-              - '.moai/research/**'
-              - '.claude/rules/**'
-              - '.claude/skills/**'
-              - 'docs-site/**'
-              - 'CHANGELOG.md'
-              - 'LICENSE'
-              - 'NOTICE'
             go_code:
               - '**/*.go'
               - 'go.mod'
