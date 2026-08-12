@@ -60,12 +60,11 @@ func matchesCredentialFragment(name string) bool {
 // fragment. This is the structural proof that M3 did not smuggle a credential
 // field (e.g. an OAuth token) into the view model (REQ-C-4 / AC-C-012).
 func TestAC_C_012_NoCredentialFieldInCodexStateView(t *testing.T) {
-	typ := reflect.TypeOf(CodexStateView{})
+	typ := reflect.TypeFor[CodexStateView]()
 	if typ.Kind() != reflect.Struct {
 		t.Fatalf("CodexStateView is not a struct (kind=%s) — reflect audit cannot proceed", typ.Kind())
 	}
-	for i := 0; i < typ.NumField(); i++ {
-		f := typ.Field(i)
+	for f := range typ.Fields() {
 		if matchesCredentialFragment(f.Name) {
 			t.Errorf("AC-C-012: CodexStateView.%s %s matches a credential-name fragment — the codex view model must carry state/enum/hint only, never a credential value", f.Name, f.Type)
 		}
@@ -80,7 +79,7 @@ func TestAC_C_012_NoCredentialFieldInCodexStateView(t *testing.T) {
 // third GLM field fails here even if its name dodges the fragment denylist
 // (REQ-C-7 / AC-C-011 / AC-C-012).
 func TestAC_C_012_GLMViewModelIsBoundedPairOnly(t *testing.T) {
-	typ := reflect.TypeOf(pageView{})
+	typ := reflect.TypeFor[pageView]()
 	if typ.Kind() != reflect.Struct {
 		t.Fatalf("pageView is not a struct (kind=%s) — reflect audit cannot proceed", typ.Kind())
 	}
@@ -90,8 +89,7 @@ func TestAC_C_012_GLMViewModelIsBoundedPairOnly(t *testing.T) {
 		"GLMKeyConfigured": true, // bool — configured/not-configured only
 		"GLMKeyHint":       true, // string — bounded to <=4 trailing chars by computeGLMKeyHint
 	}
-	for i := 0; i < typ.NumField(); i++ {
-		f := typ.Field(i)
+	for f := range typ.Fields() {
 		if !strings.HasPrefix(f.Name, "GLM") {
 			continue
 		}
