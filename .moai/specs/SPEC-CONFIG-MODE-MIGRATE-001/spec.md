@@ -2,7 +2,7 @@
 id: SPEC-CONFIG-MODE-MIGRATE-001
 title: "dry-run-first, approval-gated mode-widening migration for .moai/config"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-12
 updated: 2026-08-13
 author: manager-spec

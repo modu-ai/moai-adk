@@ -91,8 +91,23 @@ m1_to_mN_commit_strategy: "single M1 commit carries spec.md status draft→in-pr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase — `sync_commit_sha:` field is populated by the single sync commit
-at sync-phase close (manager-docs)._
+```yaml
+sync_complete_at: "2026-08-13"
+sync_commit_sha: "pending-backfill-sync"   # self-referential-hazard workaround (spec-frontmatter-schema.md D3);
+                                            # a commit cannot know its own SHA until after it lands.
+                                            # Backfilled to the real SHA in a follow-up commit.
+sync_status: "audit-ready"
+changelog_entry_position: "top of [Unreleased] ### Added (above SPEC-MCP-AGENT-WIRING-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (single sync commit, 3-phase close)"
+  plan_md: "n/a (markdown-header convention, no YAML frontmatter)"
+  acceptance_md: "n/a (Tier S — no acceptance.md; ACs inline in spec.md §3)"
+  progress_md: "n/a (this file; §E.4 is the sync signal itself)"
+canary_compliance_check:
+  b12_pre_emission_changelog_duplicate: "PASS — grep -c 'SPEC-CONFIG-MODE-MIGRATE-001' CHANGELOG.md returned 1, but the single match is a forward reference inside the sibling SPEC-CONFIG-ATOMIC-WRITE-001 entry (line 55: 'deferred to follow-up sibling SPEC-CONFIG-MODE-MIGRATE-001'); NO **[SPEC-CONFIG-MODE-MIGRATE-001](...)** entry header pre-existed. Anti-duplicate intent satisfied."
+  b12_ac_count_match: "PASS — 8 distinct AC identifiers (AC-MIG-001..AC-MIG-008) in spec.md §3 (Tier S inline; no acceptance.md); CHANGELOG entry references 8 ACs. Non-zero on both sides."
+  b12_file_path_verification: "PASS — ls internal/cli/mode_migrate.go internal/cli/mode_migrate_test.go confirmed both exist at the real path (NOT internal/cli/config/)."
+```
 
 ## §F Phase 4 Mode Selection
 
