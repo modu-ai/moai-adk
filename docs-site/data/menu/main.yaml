@@ -13,7 +13,7 @@ main:
     ko_only: true
     sub:
       - name:
-          ko: 랜딩 페이지
+          ko: 책 상세 보기
         ref: https://book.mo.ai.kr
         external: true
 

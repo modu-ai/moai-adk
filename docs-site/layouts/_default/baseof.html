@@ -142,7 +142,7 @@
           var codeEl = card.querySelector('.lntable .lntd:last-child pre')
                      || card.querySelector('.chroma > code')
                      || card.querySelector('pre');
-          var text = codeEl ? codeEl.innerText.replace(/\n+$/, '') : '';
+          var text = codeEl ? codeEl.innerText.replace(/\n+$/, '').replace(/^[$>]\s+/gm, '') : '';
           if (!text) return;
           var label = btn.querySelector('.copy-label');
           var done = btn.getAttribute('data-label-copied') || 'Copied';
