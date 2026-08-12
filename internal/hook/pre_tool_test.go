@@ -1574,6 +1574,7 @@ func TestBranchGuard_AllowsInWorktree(t *testing.T) {
 		HookEventName: "PreToolUse",
 		ToolName:      "Bash",
 		AgentType:     "manager-develop",
+		CWD:           wt,
 		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/test"}`),
 	}
 	out, err := handler.Handle(context.Background(), input)
