@@ -116,17 +116,18 @@ func (s *Store) BuildNodes() []WorktreeNode {
 		switch ev.EventType {
 		case EventNodeEnter:
 			n := &WorktreeNode{
-				NodeID:         ev.NodeID,
-				ParentNodeID:   ev.ParentNodeID,
-				Depth:          ev.Depth,
-				OriginChain:    ev.OriginChain,
-				WorktreePath:   ev.WorktreePath,
-				SessionID:      ev.SessionID,
-				SpecID:         ev.SpecID,
-				Milestone:      ev.Milestone,
-				EnteredAt:      ev.EnteredAt,
-				ResumeTarget:   ev.ResumeTarget,
-				ResumeCommand:  ev.ResumeCommand,
+				NodeID:                 ev.NodeID,
+				ParentNodeID:           ev.ParentNodeID,
+				Depth:                  ev.Depth,
+				OriginChain:            ev.OriginChain,
+				WorktreePath:           ev.WorktreePath,
+				SessionID:              ev.SessionID,
+				SpecID:                 ev.SpecID,
+				Milestone:              ev.Milestone,
+				EnteredAt:              ev.EnteredAt,
+				LastCompletedMilestone: ev.LastCompletedMilestone,
+				ResumeTarget:           ev.ResumeTarget,
+				ResumeCommand:          ev.ResumeCommand,
 			}
 			index[ev.NodeID] = n
 			order = append(order, ev.NodeID)
