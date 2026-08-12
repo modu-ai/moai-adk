@@ -163,7 +163,8 @@ func (s *Store) BuildNodes() []WorktreeNode {
 // ResolveByCWD resolves the current node for a given (worktreePath, sessionID)
 // pair. This is the CWD-collision resolution path (REQ-CHAIN-004):
 //
-//  1. Primary key: (worktree_path, session_id) pair.
+//  1. Primary key: (worktree_path, session_id) pair. If multiple nodes match,
+//     the most recently entered (highest depth, last in first-seen order) wins.
 //  2. If session_id is empty, fall back to the most recently entered node for
 //     that worktree_path.
 //
@@ -171,29 +172,32 @@ func (s *Store) BuildNodes() []WorktreeNode {
 func (s *Store) ResolveByCWD(worktreePath, sessionID string) (*WorktreeNode, error) {
 	nodes := s.BuildNodes()
 
+	var bestMatch *WorktreeNode
 	var fallback *WorktreeNode
 	for i := range nodes {
 		n := &nodes[i]
 		if n.WorktreePath != worktreePath {
 			continue
 		}
-		// Primary match: (worktree_path, session_id) pair.
-		if sessionID != "" && n.SessionID == sessionID {
-			return n, nil
-		}
 		// Track most recent entry as fallback (BuildNodes is first-seen
 		// ordered, so later nodes with the same path are more recent).
 		fallback = n
+		// Primary match: (worktree_path, session_id) pair. Prefer the most
+		// recent match (higher depth / later in order).
+		if sessionID != "" && n.SessionID == sessionID {
+			bestMatch = n
+		}
+	}
+
+	if bestMatch != nil {
+		return bestMatch, nil
 	}
 
 	if fallback != nil {
-		// session_id was empty or no exact match — return the most recent
-		// node for this worktree_path.
 		if sessionID == "" {
 			return fallback, nil
 		}
-		// session_id provided but no match — fall back to most recent as a
-		// fail-open measure, logging the ambiguity.
+		// session_id provided but no exact match — fall back to most recent.
 		slog.Warn("chain: CWD-collision session_id mismatch, using most recent",
 			"worktree_path", worktreePath,
 			"requested_session_id", sessionID,
