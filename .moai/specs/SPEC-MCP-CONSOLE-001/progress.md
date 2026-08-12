@@ -93,9 +93,51 @@ AC-C-001/002/003 (console rendering), AC-C-006..009 (codex auth), AC-C-010/011 (
 
 AC-C-012 (no credential in git-tracked file — full secret-hygiene sweep), AC-C-013 (4-locale governance re-assertion — the 5 M4 keys already pass), AC-C-014 (no-forked interpreter guards re-asserted) — M5 scope. (Note: the 5 new M4 i18n keys already pass the governance suite `TestI18n`, and the no-fork guards `mcp_audit_surface_test.go` are untouched.)
 
+### M5 — i18n + secret-hygiene sweep + no-fork re-assertion (REQ-C-8, REQ-C-9, REQ-C-10)
+
+**REQ/AC label correction.** The delegation prompt's REQ mapping (REQ-C-8=i18n, REQ-C-9=secret-hygiene, REQ-C-10=no-fork) does NOT match the acceptance.md §D.1 traceability table, which is authoritative: REQ-C-8 → AC-C-012 (secret-hygiene), REQ-C-9 → AC-C-013 (i18n), REQ-C-10 → AC-C-014 (no-fork). M5 proceeded against the ACs (the SSOT), which are unaffected by the label mix-up.
+
+**What landed:**
+
+- NEW `internal/web/mcp_secret_hygiene_test.go` — the consolidated AC-C-012 cross-surface secret-hygiene sweep (4 tests). Characterization test (DDD PRESERVE) over an invariant that already holds: M3/M4 were designed around the no-credential-in-view-model rule and C-C-2 keeps the GLM credential out of `AllFields()`. The sweep exists so a future change that smuggles a credential field into a view model, re-introduces the credential into the schema, or interpolates a credential reader directly inside a template fails here rather than leaking at render time.
+  - `TestAC_C_012_NoCredentialFieldInCodexStateView` — reflect-walks `CodexStateView`; no field matches a credential-name fragment (token/secret/credential/password/rawkey/fullkey/apikey). Proves M3's view model carries state/enum/hint only.
+  - `TestAC_C_012_GLMViewModelIsBoundedPairOnly` — reflect-walks `pageView`'s GLM-prefixed fields; asserts they are exactly the bounded pair `{GLMKeyConfigured bool, GLMKeyHint string}` (allowlist, not just denylist — a smuggled third GLM field fails even if its name dodges the fragment denylist).
+  - `TestAC_C_012_GLMCredentialAbsentFromAllFields` — `settings.AllFields()` contains no `glm_api_key` / `apikey`-named field; the C-C-2 structural anti-leak guarantee, consolidated at the M5 cross-surface level (TestGLMKeyField_AbsentFromSchema remains as the SPEC-GLM-KEY-INPUT-001 anchor).
+  - `TestAC_C_012_NoTemplateInterpolatesCredentialReader` — no `.templ` source references the `glmcred` package; templates must consume the bounded view model, never read the credential directly (closes the template-surface bypass of the no-second-path guard).
+
+**i18n (AC-C-013) — no key fills needed.** M2 (17 controls), M3 (10 codex keys), M4 (5 GLM keys) each added all 4 locales (en/ko/ja/zh) in the same change, avoiding AP-C-5. The full 14-test governance suite (`TestI18nKeySetParity`, `TestI18nKeyCoverageForward`/`Reverse`, `TestI18nUntranslatedValues`, `TestI18nAllowlistNoOrphans`, `TestI18nEndonymInvariants`, ...) PASS — 4-locale coverage was already complete at M5 entry. M5 re-asserts it (the verification command in acceptance.md `go test ./internal/web/... -run 'TestI18n'` → PASS).
+
+**No-fork guards (AC-C-014) — still PASS.** M2/M3/M4 were designed around the guards at `mcp_audit_surface_test.go:47-95`. Re-asserted at M5: `TestWebConsole_AuditNoForkedInterpreter`, `TestWebConsole_ResolveAgentModelEffortSSOTShared`, `TestSchemaSurfaces_AuditSelection` all PASS. The codex no-second-classifier guard (`grep -rn 'classifyCodexAuth\|codex login status' internal/web/ --include=*.go | grep -v _test.go`) returns 0 matches.
+
+**TDD discipline (E9).** No RED applies: M5 is a pure-sweep characterization of an invariant that already holds (DDD PRESERVE, not TDD RED-GREEN). The 4 new AC-C-012 tests PASS on first run because M3/M4 never leaked a credential — the tests characterize that correct existing behavior so a future regression fails loudly. No new behavior was introduced that could have a failing-RED state.
+
+### AC PASS/FAIL matrix (M5 scope)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-C-012 (no credential in git-tracked file) | PASS | `TestAC_C_012_*` (4/4 PASS); `grep -rEc '(sk-\|ghp_\|Bearer [A-Za-z0-9])' .mcp.json internal/template/templates/.mcp.json` → `0` / `0`; `TestMCPNeutralityTemplateShape` PASS; `glmcred.Load(` confined to glmkey.go; codex no-second-classifier grep 0 matches |
+| AC-C-013 (4-locale coverage complete) | PASS | all 14 `TestI18n*` governance tests PASS (key-set parity en=ko=ja=zh; no orphan; endonym invariants hold); no M5 key fills needed (M2/M3/M4 added all 4 locales together) |
+| AC-C-014 (no forked interpreter) | PASS | `TestWebConsole_AuditNoForkedInterpreter` + `TestWebConsole_ResolveAgentModelEffortSSOTShared` + `TestSchemaSurfaces_AuditSelection` PASS; guards at `mcp_audit_surface_test.go:47-95` untouched |
+
+### Run-phase regression (M1-M4 ACs re-asserted at M5)
+
+AC-C-001..011 all still PASS: M1 (`TestAC_C_004_*` 3/3, `TestAC_C_005_*`, `TestMoaiMCPTools_*` 4/4, `TestMCPConsoleRendersAllTools`/`_ToolCountMatchesCatalog`/`_WriteCapableTextDistinction`), M3 (`TestAC_C_006..009_*`), M4 (`TestAC_C_010..011_*`, `TestGLMKeyHint_*`, `TestGLMKeyField_AbsentFromSchema`). No regression.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-08-13
+run_commit_sha: pending-backfill-m5
+run_status: ready
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: clean (worktree HEAD 9136c9345 → M5 commit; no parallel session race — worktree-isolated)
+l44_post_push_fetch: deferred (Route B — push is manager-git's sync-phase job)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues; baseline 0 → M5 0)
+cross_platform_build.linux: PASS (go build ./... exit 0)
+cross_platform_build.windows: PASS (GOOS=windows GOARCH=amd64 go build ./... exit 0)
+total_run_phase_files: NEW internal/web/mcp_secret_hygiene_test.go (1 file); 0 production-code changes (M5 is test-only)
+m1_to_mN_commit_strategy: per-milestone commits (M1..M4 already committed at 9136c9345); M5 = single M5 commit on plan/spec-mcp-console
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
