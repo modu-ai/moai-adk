@@ -78,13 +78,13 @@ flowchart TD
 **macOS / Linux / WSL / Git Bash:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
@@ -101,10 +101,10 @@ moai version
 
 ```bash
 # 특정 버전 설치 (원하는 릴리스 태그 지정)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <릴리스-태그>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <릴리스-태그>
 
 # 커스텀 디렉터리에 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
 {{< callout type="info" >}}
@@ -164,7 +164,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ## 3단계 — 2.x 설치
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ## 4단계 — 설치 확인
@@ -206,7 +206,7 @@ wsl --install
 WSL 터미널에서 Linux와 동일한 명령어를 사용합니다:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### 경로 처리
@@ -289,7 +289,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
 # 3. 2.x 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 확인
 moai version
@@ -419,7 +419,7 @@ moai update --yes
 **자동 보존 항목**: 사용자 설정, 커스텀 에이전트, 커스텀 명령어, 커스텀 스킬, 커스텀 훅, SPEC 문서, 보고서는 업데이트 시 자동으로 보존됩니다. 사용자가 수정한 템플릿 파일은 백업 후 3-way 병합됩니다.
 {{< /callout >}}
 
-자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/cli-reference/update)를 참조하세요.
+자세한 내용은 [업데이트 가이드](/ko/cli-reference/update)를 참조하세요.
 
 ## 제거
 

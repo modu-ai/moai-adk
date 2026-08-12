@@ -75,7 +75,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
 3. **Possible temporary GitHub CDN outage** — retry after a while
 4. **Manual binary install** (if permanently blocked):
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+   curl -fsSL https://adk.mo.ai.kr/install.sh | bash
    ```
    For a manual install, it is recommended to verify the release's `checksums.txt` separately.
 
@@ -320,7 +320,7 @@ If a problem occurs after an update, you can roll back to a previous version:
 moai update --version <release-tag>
 
 # Bootstrap path (before moai is installed): use the install script
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <release-tag>
 
 # Restore the config from backup
 cp -r .moai/config.bak .moai/config
@@ -339,7 +339,7 @@ Commit your current work before rolling back.
 curl -I https://github.com/modu-ai/moai-adk/releases/latest
 
 # Manual reinstall
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### Config migration error

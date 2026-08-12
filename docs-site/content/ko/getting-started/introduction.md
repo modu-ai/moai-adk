@@ -20,20 +20,36 @@ MoAI-ADK는 **비용 (토크노믹스) · 자기 개선 (에이전틱 루프 엔
 
 - **터미널** (Terminal)에서 입력하는 명령어
   ```bash
-  moai init my-project
+  $ moai init my-project
   ```
 
 ## 세 가지 핵심 가치
 
-MoAI-ADK v3.0이 내세우는 가치는 다음 세 가지로 요약됩니다.
+MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit입니다 — 비용 · 자기 개선 · 품질 통제. 한 축만 밀면 나머지가 무너집니다. 비용만 줄이면 품질이 삭막해지고, 품질 게이트만 세우면 같은 실수가 매 세션 반복되며, 자율 루프만 돌리면 한 번의 과금이 한도를 태웁니다. 세 축이 서로를 지탱합니다.
 
-| 핵심 | 한 줄 설명 | 대표 도구 |
-|------|-----------|----------|
-| **토크노믹스** | 비용 대비 품질을 극대화하는 지능적 자원 분배 | 3-계층 모델 정책 · CG 모드 · Token Circuit Breaker |
-| **에이전틱 루프 엔지니어링** | 루프가 스스로 일하고, 관찰이 쌓여 하네스가 학습 | `/moai goal` · `/moai loop` · Analyze-First 라우팅 |
-| **에이전틱 하네스** | 코드를 직접 쓰는 대신 에이전트가 일할 환경을 설계 | 11개 에이전트 · SPEC 3-phase · TRUST 5 |
+### 비용 — 토크노믹스
 
-각 핵심의 자세한 내용은 [핵심 개념](/ko/core-concepts/) 섹션에서 다룹니다. 이 문서에서는 시작에 필요한 만큼만 살펴봅니다.
+같은 품질을 더 적은 토큰으로. 비용은 단가가 아니라 **모델 배정**이 정합니다 — DeepSWE 벤치마크에서 Opus 최저 추론이 Sonnet 최고 추론보다 점수가 높으면서 16분의 1 비용이었어요. 3-계층 모델 정책 · CG 모드 · 프롬프트 캐싱 · Token Circuit Breaker가 예산을 시스템이 관리합니다.
+
+### 자기 개선 — 에이전틱 루프 엔지니어링
+
+하네스가 돌수록 더 똑똑해집니다. 완료 조건을 선언하면 루프가 알아서 일하고(`/moai goal` · `/moai loop`), 관찰이 규칙으로 쌓여 다음 세션이 같은 실수를 반복하지 않습니다.
+
+### 품질 통제 — 에이전틱 하네스
+
+'끝'을 증거로 판정합니다. SPEC 3단계 라이프사이클 + TRUST 5 게이트 + worktree 격리로 재작업(가장 큰 토큰 낭비)을 막고, 만든 사람이 검사하지 않게 계획과 감사를 분리합니다.
+
+각 핵심의 자세한 내용은 [핵심 개념](/ko/core-concepts/) 섹션에서 다룹니다.
+
+## v3.1에서 더 편리해진 점
+
+- **`/moai goal`** — 완료 조건 선언 한 줄로 세션이 자율 진행합니다.
+- **Factory 모드** — 여러 세션을 동시에 실행합니다.
+- **BAS Navigator** — 3단계 코드맵을 자동 동기화합니다.
+- **manager-lead** — Tier L 병렬 팬아웃으로 대규모 작업을 조율합니다.
+- **multi-model audit** — 다중 모델 교차 검증으로 편향을 잡습니다.
+- **autonomy tier** — 자율성 단계를 조절해 안전하게 돌립니다.
+- **profile matrix** — 12 에이전트 × 3 프로필로 모델을 배정합니다.
 
 ## 핵심 개념
 
@@ -271,7 +287,7 @@ MoAI-ADK를 시작하려면 다음 순서로 진행하세요:
 
 - [GitHub 저장소](https://github.com/modu-ai/moai-adk)
 - [문서 사이트](https://adk.mo.ai.kr)
-- [커뮤니티 포럼](https://github.com/modu-ai/moai-adk/discussions)
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues)
 
 ---
 

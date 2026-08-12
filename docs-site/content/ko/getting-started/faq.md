@@ -227,6 +227,5 @@ development_mode: tdd         # 또는 ddd
 
 ## 더 많은 질문이 있으신가요?
 
-- [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 피드백
-- [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 질문, 아이디어, 버그 리포트, 기능 요청
 - [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

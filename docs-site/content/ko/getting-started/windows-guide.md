@@ -57,7 +57,7 @@ WSL 터미널(Ubuntu) 을 열고 설치 스크립트를 실행합니다. macOS/L
 
 ```bash
 # WSL 내에서 MoAI-ADK 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
+curl -fsSL https://adk.mo.ai.kr/install.sh \
   | bash
 ```
 
@@ -70,7 +70,7 @@ moai version
 PowerShell 7.x+ 만 쓰는 경우에는 전용 설치 스크립트를 씁니다. PowerShell 경로는 WSL 과 달리 Windows 파일시스템 위에 설치되므로, 한글 사용자명 경로나 권한 문제를 만날 가능성이 조금 더 높습니다.
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 > **참고**: 되도록 WSL 을 쓰는 편이 좋습니다. PowerShell 경로는 셸 스크립트 호환성에서 더 자주 함정을 만납니다 — install.ps1 은 install.sh 의 Windows 대안이지, 동일한 동작을 보장하는 것은 아닙니다.

@@ -66,13 +66,13 @@ Automatically installs the latest version with a single command.
 **macOS / Linux / WSL / Git Bash:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
+irm https://adk.mo.ai.kr/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
@@ -89,10 +89,10 @@ moai version
 
 ```bash
 # Install a specific version (specify the desired release tag)
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --version <release-tag>
 
 # Install to a custom directory
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
 {{< callout type="info" >}}
@@ -154,7 +154,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ### Step 3: install 2.x
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### Step 4: verify the installation
@@ -196,7 +196,7 @@ After installing and restarting Windows, Ubuntu is installed automatically.
 In the WSL terminal, use the same command as Linux:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ### Path handling
@@ -279,7 +279,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
 # 3. Install 2.x
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. Verify
 moai version

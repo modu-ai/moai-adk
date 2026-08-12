@@ -18,7 +18,7 @@ flowchart TD
     A -->|건너뛰기 가능| C
 ```
 
-1.x 사용자는 2.x 를 거치지 않고 바로 3.0 으로 올 수 있습니다. 아래 1.x 단락의 제거 절차를 밟은 뒤, [3.0 설치](#3-0-설치) 단락으로 바로 가면 됩니다.
+1.x 사용자는 2.x 를 거치지 않고 바로 3.0 으로 올 수 있습니다. 아래 1.x 단락의 제거 절차를 밟은 뒤, [3.0 설치](#30-설치) 단락으로 바로 가면 됩니다.
 
 ## 1.x (Python) 사용자 — 2.x 로
 
@@ -46,7 +46,7 @@ cp -r ~/.moai ~/.moai-v1-backup
 ## 3단계 — 2.x 설치
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 ## 4단계 — 설치 확인
@@ -74,7 +74,7 @@ pip uninstall moai-adk -y 2>/dev/null || true
 which moai && rm $(which moai) 2>/dev/null || true
 
 # 3. 재설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 확인
 moai version
@@ -102,7 +102,7 @@ moai version    # v3.0.0 보고
 새 프로젝트나 깨끗한 환경에서는 설치 스크립트 한 줄이면 충분합니다.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 ```
 
 Go 가 이미 설치되어 있다면 `go install` 도 가능합니다.
@@ -163,7 +163,7 @@ which moai && rm $(which moai) 2>/dev/null || true
 cp -r ~/.moai ~/.moai-v1-backup 2>/dev/null || true
 
 # 3. 3.0 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
+curl -fsSL https://adk.mo.ai.kr/install.sh | bash
 
 # 4. 확인
 moai version
