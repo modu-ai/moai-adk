@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -51,7 +52,49 @@ func consoleTabs() []consoleTab {
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
+		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
+		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
+		// tools carry a text-bearing distinction (REQ-C-3). Rendered by the
+		// dedicated fieldsetMCP component (not the generic schemaSectionMeta path)
+		// so the write-capable badge can be sourced from the shared catalog.
+		{ID: "mcp", LabelKey: "sec.mcp.title", Baseline: "MCP"},
 	}
+}
+
+// mcpToolNameFromField extracts the tool identifier from an MCP enablement
+// field name of the form mcp.tools.<name>.enabled. It returns ("", false) for
+// a field that does not match that shape, so a caller cannot mistake an
+// unrelated field for an MCP tool (SPEC-MCP-CONSOLE-001 M2, REQ-C-3).
+func mcpToolNameFromField(fieldName string) (string, bool) {
+	const prefix = "mcp.tools."
+	const suffix = ".enabled"
+	if !strings.HasPrefix(fieldName, prefix) || !strings.HasSuffix(fieldName, suffix) {
+		return "", false
+	}
+	name := strings.TrimSuffix(strings.TrimPrefix(fieldName, prefix), suffix)
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
+// mcpToolIsWriteCapable reports whether the MCP enablement field's tool is
+// write-capable, by looking the tool name up in the shared catalog
+// (internal/mcp MoaiMCPTools — the single declaration, AP-C-4). A field whose
+// tool name is not in the catalog returns false; the schema/catalog parity is
+// pinned separately by the settings-layer tests, so a stale field here degrades
+// to read-only marking rather than panicking the render.
+func mcpToolIsWriteCapable(fieldName string) bool {
+	name, ok := mcpToolNameFromField(fieldName)
+	if !ok {
+		return false
+	}
+	for _, t := range mcpcat.MoaiMCPTools() {
+		if t.Name == name {
+			return t.WriteCapable
+		}
+	}
+	return false
 }
 
 // schemaSectionMeta는 제네릭 fieldset의 패널 표시 메타다. Title/Desc는 영어

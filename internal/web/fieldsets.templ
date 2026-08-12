@@ -630,3 +630,67 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 		</div>
 	}
 }
+
+// ─── SPEC-MCP-CONSOLE-001 M2: per-tool MCP enablement fieldset ───────────────
+//
+// fieldsetMCP renders the MCP section: one enablement toggle per tool declared
+// in the shared catalog (settings.SectionFields(SectionMCP) derives from
+// internal/mcp MoaiMCPTools — single declaration, AP-C-4). The four
+// write-capable tools carry a TEXT-bearing badge the thirteen read-only tools
+// do not (REQ-C-3 / AC-C-003): the distinction rides on the literal string
+// "Write-capable", not on colour alone, so it survives a monochrome or
+// screen-reader pass. The toggle itself reuses the schemaToggleRow shape
+// (hidden __present companion + on/off radio pair) so the existing
+// parseSchemaForm + ApplySchemaEdits seam writes the value unchanged.
+
+templ fieldsetMCP(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("plug")</span><span data-i18n="sec.mcp.title">MCP</span></legend>
+				@sectionCount(len(settings.SectionFields(settings.SectionMCP)))
+			</div>
+			<p class="section__desc" data-i18n="sec.mcp.desc">Per-tool enablement for the self-hosted moai MCP server. A disabled tool is absent from tools/list.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				for _, f := range settings.SectionFields(settings.SectionMCP) {
+					// All-enabled default (owner decision 2026-08-12): an unset
+					// key reads as "" and displays as checked; only an explicit
+					// "false" turns the toggle off.
+					@mcpToolRow(f, view.SchemaValues[f.Name] != "false")
+				}
+			</div>
+		</div>
+	</fieldset>
+}
+
+// mcpToolRow renders one MCP tool's enablement toggle plus, for write-capable
+// tools, the text write-capable badge. checked defaults to true (all-enabled
+// default per owner decision): an unset key reads as enabled, and only an
+// explicit "false" value turns the toggle off.
+templ mcpToolRow(f settings.FieldDef, checked bool) {
+	<div class={ "field", templ.KV("field--mcp-write", mcpToolIsWriteCapable(f.Name)) }>
+		<span class="field__label">
+			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+			if mcpToolIsWriteCapable(f.Name) {
+				<span class="badge badge--warn" data-i18n="f.mcp.write_capable.badge">Write-capable</span>
+			}
+			<code class="field__key">{ f.Name }</code>
+		</span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
+		<input type="hidden" name={ f.Name + "__present" } value="1"/>
+		<div class="radio-group">
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--on" } name={ f.Name } value="1" checked?={ checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--off" } name={ f.Name } value="" checked?={ !checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.disabled">Not used</span>
+			</label>
+		</div>
+	</div>
+}
