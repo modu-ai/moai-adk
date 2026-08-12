@@ -600,7 +600,7 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
 		"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
-		"handoff", "cache", "report") // SPEC-WEB-CONSOLE-013 M2 신규 seam 섹션
+		"handoff", "cache", "report", "mcp") // SPEC-WEB-CONSOLE-013 M2 + SPEC-MCP-CONSOLE-001 M1
 
 	edits := map[string]string{}
 	for _, f := range AllFields() {

@@ -84,7 +84,6 @@ func TestI18nKeySetParity(t *testing.T) {
 	for _, f := range settings.SectionFields(settings.SectionGitStrategy) {
 		webRemovedFields[f.Name] = true
 	}
-
 	for _, f := range settings.AllFields() {
 		// M5-b D3: PersistSeam / PersistTypedSection 필드도 이제 field__title /
 		// field__desc data-i18n 을 방출한다 (과거 key-chip 전용에서 승격). 따라서

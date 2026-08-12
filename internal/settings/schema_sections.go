@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
+	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -343,6 +344,13 @@ func seamSectionFields() []FieldDef {
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "codex"),
 		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
+		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
+		// through the SAME seam the fail-closed readers consume. The path
+		// workflow.codex.review_gate.enabled / workflow.codex.task.allow_write in
+		// workflow.yaml is exactly what readCodexReviewGateEnabled /
+		// readCodexTaskAllowWrite read — one source of truth, no parallel key.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "review_gate", "enabled"),
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "task", "allow_write"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",
@@ -483,6 +491,23 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, cacheFields()...)   // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
+	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
+	return fields
+}
+
+// mcpFields generates one enablement bool per MCP tool declared in the shared
+// catalog (internal/mcp MoaiMCPTools), each persisted as a seam field at the
+// path `mcp.tools.<name>.enabled` in `mcp.yaml` (SPEC-MCP-CONSOLE-001 REQ-C-1 /
+// C-C-5 / AC-C-005). The list is DERIVED from the single catalog declaration —
+// no second tool list lives here — so a tool added to registration cannot go
+// unrepresented in the schema (AP-C-4). Default enabled (owner decision).
+func mcpFields() []FieldDef {
+	tools := mcpcat.MoaiMCPTools()
+	fields := make([]FieldDef, 0, len(tools))
+	for _, t := range tools {
+		fields = append(fields, seamField(SectionMCP, "mcp", TypeBool,
+			"mcp", "tools", t.Name, "enabled"))
+	}
 	return fields
 }
 

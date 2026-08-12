@@ -1,0 +1,6 @@
+# MCP per-tool enablement (SPEC-MCP-CONSOLE-001). Default all-enabled; a tool
+# is disabled only by setting mcp.tools.<name>.enabled: false explicitly.
+mcp:
+    tools:
+        session_list:
+            enabled: true

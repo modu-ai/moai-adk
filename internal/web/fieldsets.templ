@@ -630,3 +630,185 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 		</div>
 	}
 }
+
+// ─── SPEC-MCP-CONSOLE-001 M2: per-tool MCP enablement fieldset ───────────────
+//
+// fieldsetMCP renders the MCP section: one enablement toggle per tool declared
+// in the shared catalog (settings.SectionFields(SectionMCP) derives from
+// internal/mcp MoaiMCPTools — single declaration, AP-C-4). The four
+// write-capable tools carry a TEXT-bearing badge the thirteen read-only tools
+// do not (REQ-C-3 / AC-C-003): the distinction rides on the literal string
+// "Write-capable", not on colour alone, so it survives a monochrome or
+// screen-reader pass. The toggle itself reuses the schemaToggleRow shape
+// (hidden __present companion + on/off radio pair) so the existing
+// parseSchemaForm + ApplySchemaEdits seam writes the value unchanged.
+
+templ fieldsetMCP(view pageView) {
+	<fieldset class="section">
+		<div class="section__head">
+			<div class="section__head-row">
+				<legend class="section__legend"><span class="section__ico">@icon("plug")</span><span data-i18n="sec.mcp.title">MCP</span></legend>
+				@sectionCount(len(settings.SectionFields(settings.SectionMCP)))
+			</div>
+			<p class="section__desc" data-i18n="sec.mcp.desc">Per-tool enablement for the self-hosted moai MCP server. A disabled tool is absent from tools/list.</p>
+		</div>
+		<div class="section__body">
+			<div class="grid">
+				for _, f := range settings.SectionFields(settings.SectionMCP) {
+					// All-enabled default (owner decision 2026-08-12): an unset
+					// key reads as "" and displays as checked; only an explicit
+					// "false" turns the toggle off.
+					@mcpToolRow(f, view.SchemaValues[f.Name] != "false")
+				}
+			</div>
+			// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4/5/6): codex authentication surface.
+			// The probe state is CONSUMED from the injected probe (AC-C-006 — not
+			// recomputed here). Unauthenticated → names the command (AC-C-007);
+			// absent → graceful not-installed state (AC-C-008).
+			@codexAuthBlock(view)
+			// SPEC-MCP-CONSOLE-001 M4 (REQ-C-7): GLM key state surface. The state
+			// is REUSED from the existing view model (view.GLMKeyConfigured /
+			// GLMKeyHint, populated by populateGLMKeyHint -> computeGLMKeyHint in
+			// glmkey.go — AC-C-010: no second credential path). Only the configured
+			// boolean and the bounded trailing-four hint cross in (AC-C-011); no
+			// key value, no submit, no reveal (those live in the 3rd Party LLM
+			// section).
+			@glmKeyStateBlock(view)
+		</div>
+	</fieldset>
+}
+
+// glmKeyStateBlock renders the GLM API key STATE inside the MCP section — a
+// read-only configured/not-configured indicator plus the bounded trailing-four
+// hint. It is state-only by design (REQ-C-7): the credential input + reveal
+// surface stays in the 3rd Party LLM section (fieldsetGLMKey); this block does
+// not duplicate that path. The hint is already truncated to the final four
+// characters (or empty for a key of four characters or fewer) by the time it
+// reaches the view model — computeGLMKeyHint enforces that bound before the
+// pageView is built, so this template renders only what it is given (AC-C-011).
+templ glmKeyStateBlock(view pageView) {
+	<div class="glm-key">
+		<div class="glm-key__head">
+			<span class="glm-key__title" data-i18n="sec.mcp.glm_key.title">GLM API key</span>
+		</div>
+		if view.GLMKeyConfigured {
+			<dl class="glm-key__state glm-key__state--configured">
+				<div class="glm-key__row">
+					<dt data-i18n="f.mcp.glm_key.status">Status</dt>
+					<dd data-i18n="f.mcp.glm_key.configured">Configured</dd>
+				</div>
+				if view.GLMKeyHint != "" {
+					<div class="glm-key__row">
+						<dt data-i18n="f.mcp.glm_key.hint">Last four</dt>
+						<dd><code class="field__hint-key">…{ view.GLMKeyHint }</code></dd>
+					</div>
+				}
+			</dl>
+		} else {
+			<p class="glm-key__state glm-key__state--not-configured" data-i18n="f.mcp.glm_key.not_configured">
+				No GLM API key is configured.
+			</p>
+		}
+	</div>
+}
+
+// codexAuthBlock renders the codex authentication + opt-in toggle surface inside
+// the MCP section. It reads the probe state from view.CodexState (injected by
+// the CLI layer — no classification logic in internal/web, AC-C-006) and renders
+// the two opt-in toggles through the schema seam (AC-C-009 — same path the
+// fail-closed readers consume).
+templ codexAuthBlock(view pageView) {
+	<div class="codex-auth">
+		<div class="codex-auth__head">
+			<span class="codex-auth__title" data-i18n="sec.mcp.codex.title">Codex authentication</span>
+		</div>
+		if view.CodexState.Installed {
+			<dl class="codex-auth__state codex-auth__state--installed">
+				<div class="codex-auth__row">
+					<dt data-i18n="f.mcp.codex.binary">Binary</dt>
+					<dd><code>{ view.CodexState.Binary }</code></dd>
+				</div>
+				if view.CodexState.Version != "" {
+					<div class="codex-auth__row">
+						<dt data-i18n="f.mcp.codex.version">Version</dt>
+						<dd>{ view.CodexState.Version }</dd>
+					</div>
+				}
+				<div class="codex-auth__row">
+					<dt data-i18n="f.mcp.codex.auth_provider">Auth provider</dt>
+					<dd>{ codexAuthProviderLabel(view.CodexState.AuthProvider) }</dd>
+				</div>
+			</dl>
+			if view.CodexState.AuthProvider == "unknown" {
+				<p class="codex-auth__hint codex-auth__hint--unauthenticated" data-i18n="f.mcp.codex.login_hint">
+					Run <code>codex login</code> to authenticate.
+				</p>
+			}
+		} else {
+			<p class="codex-auth__state codex-auth__state--not-installed" data-i18n="f.mcp.codex.not_installed">
+				codex is not installed.
+			</p>
+		}
+		// Opt-in toggles (REQ-C-6 / AC-C-009): these write through the schema seam
+		// to workflow.yaml at the exact path the fail-closed readers consume.
+		<div class="codex-auth__toggles">
+			@codexToggleRow("workflow.codex.review_gate.enabled", view.SchemaValues["workflow.codex.review_gate.enabled"] == "true")
+			@codexToggleRow("workflow.codex.task.allow_write", view.SchemaValues["workflow.codex.task.allow_write"] == "true")
+		</div>
+	</div>
+}
+
+// codexToggleRow renders one codex opt-in toggle using the same hidden-companion
+// + radio pattern the MCP tool rows use, so parseSchemaForm + ApplySchemaEdits
+// write it through the schema seam unchanged.
+templ codexToggleRow(fieldName string, checked bool) {
+	<div class="field field--codex-toggle">
+		<span class="field__label">
+			<span class="field__title" data-i18n={ "f." + fieldName + ".title" }>{ fieldName }</span>
+		</span>
+		<span class="field__desc" data-i18n={ "f." + fieldName + ".desc" }></span>
+		<input type="hidden" name={ fieldName + "__present" } value="1"/>
+		<div class="radio-group">
+			<label class="radio">
+				<input type="radio" id={ fieldName + "--on" } name={ fieldName } value="1" checked?={ checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+			<label class="radio">
+				<input type="radio" id={ fieldName + "--off" } name={ fieldName } value="" checked?={ !checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.disabled">Not used</span>
+			</label>
+		</div>
+	</div>
+}
+
+// mcpToolRow renders one MCP tool's enablement toggle plus, for write-capable
+// tools, the text write-capable badge. checked defaults to true (all-enabled
+// default per owner decision): an unset key reads as enabled, and only an
+// explicit "false" value turns the toggle off.
+templ mcpToolRow(f settings.FieldDef, checked bool) {
+	<div class={ "field", templ.KV("field--mcp-write", mcpToolIsWriteCapable(f.Name)) }>
+		<span class="field__label">
+			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+			if mcpToolIsWriteCapable(f.Name) {
+				<span class="badge badge--warn" data-i18n="f.mcp.write_capable.badge">Write-capable</span>
+			}
+			<code class="field__key">{ f.Name }</code>
+		</span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
+		<input type="hidden" name={ f.Name + "__present" } value="1"/>
+		<div class="radio-group">
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--on" } name={ f.Name } value="1" checked?={ checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+			<label class="radio">
+				<input type="radio" id={ f.Name + "--off" } name={ f.Name } value="" checked?={ !checked }/>
+				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+				<span data-i18n="opt.disabled">Not used</span>
+			</label>
+		</div>
+	</div>
+}

@@ -214,6 +214,13 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonAcronym,
 		Justification: "LLM is a locale-invariant initialism.",
 	},
+	// SPEC-MCP-CONSOLE-001 M2: MCP section title — Model Context Protocol is a
+	// locale-invariant initialism identical across locales.
+	{
+		Key:           "sec.mcp.title",
+		Reason:        reasonAcronym,
+		Justification: "MCP (Model Context Protocol) is a locale-invariant initialism, identical across locales.",
+	},
 	// Product feature name.
 	{
 		Key:           "sec.ralph.title",

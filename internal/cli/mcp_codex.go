@@ -1135,42 +1135,78 @@ func codexReviewToolResult(out ReviewOutput) *mcp.CallToolResult {
 
 // ─── codex_setup handler (AC-MCP-008) ───
 
-// handleCodexSetup is the thin-wrapper handler for the `codex_setup` MCP tool.
-// It is a pure Go probe — exec.LookPath("codex") + codex --version + an
-// auth-provider classification + the current enable_review_gate config state.
-// NO Node bridge of any kind (REQ-MCP-007). Read-only: it REPORTS the toggle
-// state; mutating it is a heavier, wizard-owned concern (M4).
-func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// CodexSetupResult is the plain-Go view of the codex_setup probe state. It is
+// shared by the MCP codex_setup tool handler and the web console (via
+// internal/cli/web.go injection) so the console CONSUMES the probe rather than
+// reimplementing the classification (SPEC-MCP-CONSOLE-001 AC-C-006 — no second
+// auth-classification in internal/web).
+type CodexSetupResult struct {
+	Installed        bool
+	Binary           string
+	Version          string
+	AuthProvider     string
+	EnableReviewGate bool
+	AllowWrite       bool
+}
+
+// ProbeCodexSetup runs the same probe handleCodexSetup runs and returns the
+// state as a typed struct. It is the single entry point both the MCP tool
+// handler and the web console consume — the auth classification
+// (classifyCodexAuth) is defined ONCE here and never forked into internal/web.
+// The fail-closed readers (readCodexReviewGateEnabled / readCodexTaskAllowWrite)
+// supply the toggle state through their shared workflow.yaml seam.
+func ProbeCodexSetup(ctx context.Context) CodexSetupResult {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	installed := err == nil && binaryPath != ""
 	projectDir := projectDirResolver()
+	result := CodexSetupResult{
+		Installed:        installed,
+		AuthProvider:     codexAuthUnknown,
+		EnableReviewGate: readCodexReviewGateEnabled(projectDir),
+		AllowWrite:       readCodexTaskAllowWrite(projectDir),
+	}
+	if !installed {
+		return result
+	}
+	result.Binary = binaryPath
+
+	// codex --version (best-effort; failure leaves version empty, not an error).
+	if ver, vErr := codexRunner.run(ctx, binaryPath, []string{"--version"}, ""); vErr == nil {
+		result.Version = strings.TrimSpace(ver)
+	}
+
+	// Auth-provider classification (heuristic — codex's auth surface is
+	// undocumented per R1; fail-open to "unknown" on any uncertainty).
+	result.AuthProvider = classifyCodexAuth(ctx, binaryPath)
+	return result
+}
+
+// handleCodexSetup is the thin-wrapper handler for the `codex_setup` MCP tool.
+// It delegates to ProbeCodexSetup (the shared probe) and maps the typed result
+// to the MCP tool's JSON output. NO Node bridge of any kind (REQ-MCP-007).
+// Read-only: it REPORTS the toggle state; mutating it is a heavier,
+// wizard-owned concern (M4).
+func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	s := ProbeCodexSetup(ctx)
 	result := map[string]any{
-		"installed":     installed,
-		"auth_provider": codexAuthUnknown,
+		"installed":     s.Installed,
+		"auth_provider": s.AuthProvider,
 		// enable_review_gate and allow_write are the two codex opt-ins, reported
 		// through the SAME fail-closed reads the gates themselves perform.
 		// allow_write's inspectability here is load-bearing, not a convenience:
 		// the write-mode opt-in was made a config key rather than an environment
 		// variable precisely BECAUSE the key is visible to codex_setup
 		// (REQ-CX2-007; plan.md §D M0 write-mode decision, rejected alternative).
-		"enable_review_gate": readCodexReviewGateEnabled(projectDir),
-		"allow_write":        readCodexTaskAllowWrite(projectDir),
+		"enable_review_gate": s.EnableReviewGate,
+		"allow_write":        s.AllowWrite,
 		"node_bridge":        false, // explicit: REQ-MCP-007 Go-only reimplementation
 	}
-	if !installed {
-		return toolJSON("codex_setup", result), nil
+	if s.Installed {
+		result["binary"] = s.Binary
+		if s.Version != "" {
+			result["version"] = s.Version
+		}
 	}
-	result["binary"] = binaryPath
-
-	// codex --version (best-effort; failure leaves version empty, not an error).
-	if ver, vErr := codexRunner.run(ctx, binaryPath, []string{"--version"}, ""); vErr == nil {
-		result["version"] = strings.TrimSpace(ver)
-	}
-
-	// Auth-provider classification (heuristic — codex's auth surface is
-	// undocumented per R1; fail-open to "unknown" on any uncertainty).
-	result["auth_provider"] = classifyCodexAuth(ctx, binaryPath)
-
 	return toolJSON("codex_setup", result), nil
 }
 

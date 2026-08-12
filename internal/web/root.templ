@@ -142,6 +142,8 @@ templ page(view pageView) {
 									@fieldsetLaunch(view)
 								case "agentfm":
 									@fieldsetAgentFrontmatter(view)
+								case "mcp":
+									@fieldsetMCP(view)
 								default:
 									@fieldsetSchemaSection(view, schemaPanelMeta(tab.ID))
 							}

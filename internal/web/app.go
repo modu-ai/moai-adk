@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"net"
@@ -85,6 +86,13 @@ type app struct {
 	// failure without touching the filesystem.
 	renameProfile func(oldName, newName string) error
 
+	// codexStateProbe returns the codex setup probe state for the MCP console
+	// section (SPEC-MCP-CONSOLE-001 M3 REQ-C-4). Injected by the CLI layer so
+	// internal/web consumes the probe without importing internal/cli (AC-C-006 —
+	// no second auth-classification). When nil (bare test app), the default
+	// returns a zero view (not-installed), matching the probe's fail-open.
+	codexStateProbe func(ctx context.Context) CodexStateView
+
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
 	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
@@ -117,6 +125,8 @@ func newApp(cfg Config) *app {
 
 		readProjectNestedConfig:  readProjectNestedConfig,
 		writeProjectNestedConfig: writeProjectNestedConfig,
+
+		codexStateProbe: defaultCodexStateProbe,
 
 		schemaCurrentValues: settings.SchemaCurrentValues,
 		rawBlockValues:      settings.RawBlockValues,
