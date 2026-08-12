@@ -18,13 +18,17 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
@@ -88,13 +92,17 @@ func runMCPServer() error {
 
 // newMoaiMCPServer constructs the MCP server instance, advertises the moai
 // identity + version, and registers the core tool handlers. REQ-MCP-001/004/005.
+//
+// The per-tool enablement map is read ONCE at construction (SPEC-MCP-CONSOLE-001
+// REQ-C-2) from `.moai/config/sections/mcp.yaml` (default all-enabled) and a
+// disabled tool is not registered at all, so it never appears in tools/list.
 func newMoaiMCPServer() *server.MCPServer {
 	s := server.NewMCPServer(
 		moaiMCPServerName,
 		version.GetVersion(),
 		server.WithToolCapabilities(true),
 	)
-	registerMoaiMCPTools(s)
+	registerMoaiMCPTools(s, resolveProjectDir())
 	return s
 }
 
@@ -102,9 +110,24 @@ func newMoaiMCPServer() *server.MCPServer {
 // (design.md §3). Each tool declares its JSON Schema (REQ-MCP-004) and registers
 // a thin-wrapper handler that calls the verified internal/ integration point
 // (REQ-MCP-005). Read-only tools carry the read-only hint annotation (§G.2).
-func registerMoaiMCPTools(s *server.MCPServer) {
+func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
+	// SPEC-MCP-CONSOLE-001 M1 (REQ-C-2): per-tool enablement consulted at
+	// registration time. A disabled tool is NOT registered and does NOT appear
+	// in tools/list. Default all-enabled (owner decision 2026-08-12) — a
+	// missing/unreadable/absent mcp.yaml registers every tool.
+	enabled := readMCPToolEnablement(projectDir)
+	// add gates one tool registration on the per-tool enablement map. The name
+	// argument MUST match both the mcp.NewTool name and the catalog
+	// (internal/mcp MoaiMCPTools) — the guard test
+	// TestMoaiMCPServer_RegistrationMatchesCatalog enforces set equality.
+	add := func(name string, tool mcp.Tool, handler server.ToolHandlerFunc) {
+		if enabled[name] {
+			s.AddTool(tool, handler)
+		}
+	}
+
 	// --- session_list → session.QueryActiveWork (registry.go:254) ---
-	s.AddTool(mcp.NewTool(
+	add("session_list", mcp.NewTool(
 		"session_list",
 		mcp.WithDescription("List active moai sessions (optional spec_id filter). Wraps session.QueryActiveWork."),
 		mcp.WithString("spec_id", mcp.Description("Optional SPEC-ID filter; empty lists all active sessions.")),
@@ -112,7 +135,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleSessionList)
 
 	// --- goal_status → goal.LoadGoal (state.go:57) ---
-	s.AddTool(mcp.NewTool(
+	add("goal_status", mcp.NewTool(
 		"goal_status",
 		mcp.WithDescription("Read the armed-goal state for a session. Wraps goal.LoadGoal."),
 		mcp.WithString("session_id", mcp.Required(), mcp.Description("Session id whose goal state is read.")),
@@ -120,7 +143,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleGoalStatus)
 
 	// --- goal_arm → goal.NewGoal (schema.go:115) + goal.SaveGoal (state.go:76) ---
-	s.AddTool(mcp.NewTool(
+	add("goal_arm", mcp.NewTool(
 		"goal_arm",
 		mcp.WithDescription("Arm a condition-declared goal for a session. Wraps the goal.NewGoal + goal.SaveGoal composition (same internal/goal core the `moai goal arm` CLI uses)."),
 		mcp.WithString("condition", mcp.Required(), mcp.Description("Goal condition text (a shell command optionally suffixed 'exits <N>', or a transcript-referencing model claim).")),
@@ -130,14 +153,14 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleGoalArm)
 
 	// --- spec_progress → spec.ListDocs (listdocs.go:36) — the SPEC scanner ---
-	s.AddTool(mcp.NewTool(
+	add("spec_progress", mcp.NewTool(
 		"spec_progress",
 		mcp.WithDescription("List SPEC documents + frontmatter under a project root (SPEC lifecycle distribution source). Wraps spec.ListDocs."),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecProgress)
 
 	// --- verify_snapshot → verify.Load (store.go:38) + verify.RecordCheck (store.go:107) ---
-	s.AddTool(mcp.NewTool(
+	add("verify_snapshot", mcp.NewTool(
 		"verify_snapshot",
 		mcp.WithDescription("Read (or record into) the per-key verification snapshot. Wraps verify.Load (+ verify.RecordCheck when a check is supplied). First CLI/MCP surface for verify."),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key (HEAD:digest form).")),
@@ -146,7 +169,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleVerifySnapshot)
 
 	// --- verify_trend → verify.Load (store.go:38) — the per-key check history ---
-	s.AddTool(mcp.NewTool(
+	add("verify_trend", mcp.NewTool(
 		"verify_trend",
 		mcp.WithDescription("Read the per-key verification check history (trend). Wraps verify.Load, surfacing the Checks sequence."),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key whose check trend is read.")),
@@ -154,7 +177,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleVerifyTrend)
 
 	// --- spec_audit → spec.Audit (audit.go:156) ---
-	s.AddTool(mcp.NewTool(
+	add("spec_audit", mcp.NewTool(
 		"spec_audit",
 		mcp.WithDescription("Run the SPEC lifecycle audit (era classification + drift detection). Wraps spec.Audit."),
 		mcp.WithString("filter_spec", mcp.Description("Optional SPEC-ID filter (exact match).")),
@@ -164,14 +187,14 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleSpecAudit)
 
 	// --- spec_drift → spec.Audit (audit.go:156), modern-era drift view ---
-	s.AddTool(mcp.NewTool(
+	add("spec_drift", mcp.NewTool(
 		"spec_drift",
 		mcp.WithDescription("Read SPEC lifecycle drift (modern-era V3R6 drift findings only). Wraps spec.Audit, filtered to drift."),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecDrift)
 
 	// --- audit_cache → runtime.AuditCache (audit_cache.go:50) ---
-	s.AddTool(mcp.NewTool(
+	add("audit_cache", mcp.NewTool(
 		"audit_cache",
 		mcp.WithDescription("Operate the plan-audit PASS cache (read-only reuse): compute_hash a SPEC dir, or lookup a cached verdict. Wraps runtime.AuditCache ComputeHash/Lookup."),
 		mcp.WithString("op", mcp.Required(), mcp.Description("Operation: 'compute_hash' or 'lookup'.")),
@@ -188,7 +211,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// adversarial-review prompt. Output adopts review-output.schema.json (§G.4).
 	// Fail-open on missing codex (VerdictInconclusive). The codex binary is
 	// OPTIONAL + experimental (R1).
-	s.AddTool(mcp.NewTool(
+	add("codex_audit", mcp.NewTool(
 		"codex_audit",
 		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
@@ -201,7 +224,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// codex_setup → Go probe (REQ-MCP-007 / AC-MCP-008): exec.LookPath("codex")
 	// + codex --version + auth-provider classification + the enable_review_gate
 	// toggle. NO Node bridge. Read-only.
-	s.AddTool(mcp.NewTool(
+	add("codex_setup", mcp.NewTool(
 		"codex_setup",
 		mcp.WithDescription("Probe the local codex installation: exec.LookPath + codex --version + auth-provider classification (ChatGPT / apiKey / provider / unknown) + the current enable_review_gate toggle state. Pure Go — no Node bridge."),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -225,7 +248,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// with the caller's prompt. NOT read-only: it starts a turn, and with the
 	// project opted in via workflow.codex.task.allow_write it can modify the
 	// working tree. Fail-open on a missing codex.
-	s.AddTool(mcp.NewTool(
+	add("codex_task", mcp.NewTool(
 		"codex_task",
 		mcp.WithDescription("Delegate a coding or investigation task to codex. Returns the completed output when background is false, or a job id (observable via codex_job_status / codex_job_result, stoppable via codex_job_cancel) when background is true. Writing the working tree requires the project opt-in workflow.codex.task.allow_write; without it the turn runs read-only and the result says the write was not honored. codex is OPTIONAL; a missing or unavailable codex yields a structured fail-open result."),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give codex.")),
@@ -236,7 +259,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	), handleCodexTask)
 
 	// codex_job_status → handleCodexJobStatus (REQ-CX2-009). Reads one record.
-	s.AddTool(mcp.NewTool(
+	add("codex_job_status", mcp.NewTool(
 		"codex_job_status",
 		mcp.WithDescription("Read a codex job's record (status, timestamps, thread id, turn id, pid, mode, request summary). An unknown or unreadable job is a structured result, not a failed call."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
@@ -245,7 +268,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 
 	// codex_job_result → handleCodexJobResult (REQ-CX2-010). Reads one record;
 	// never waits for the turn.
-	s.AddTool(mcp.NewTool(
+	add("codex_job_result", mcp.NewTool(
 		"codex_job_result",
 		mcp.WithDescription("Read a codex job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
@@ -256,7 +279,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// it interrupts a turn and may terminate the process this server spawned for
 	// the job. It signals ONLY that process — a record this server lifetime did
 	// not start is refused rather than signalled.
-	s.AddTool(mcp.NewTool(
+	add("codex_job_cancel", mcp.NewTool(
 		"codex_job_cancel",
 		mcp.WithDescription("Stop a running codex job: sends turn/interrupt on that job's own session and, if the turn does not end within a bounded grace window, terminates the codex process this server spawned for it. A job this server lifetime did not start is refused rather than signalled; an already-terminal job returns its status and sends nothing."),
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
@@ -272,7 +295,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// missing/unauthenticated/erroring/malformed GLM (VerdictInconclusive →
 	// claude fallback, REQ-MCP-012). Model/effort resolved via the SSOT
 	// (ResolveAgentModelEffort, REQ-MCP-013) when no explicit model is given.
-	s.AddTool(mcp.NewTool(
+	add("glm_audit", mcp.NewTool(
 		"glm_audit",
 		mcp.WithDescription("Run a GLM (z.ai) code review. Calls the z.ai Anthropic-compatible endpoint directly and returns a review-output schema (verdict/summary/findings/next_steps). GLM is OPTIONAL; a missing/unauthenticated/erroring GLM yields verdict 'inconclusive' (fail-open → fall back to the active auditor)."),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
@@ -286,7 +309,7 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 	// codex/glm backends (C1). The claude_verdict argument is the always-available
 	// anchor; gates is an optional per-auditor override (defaults: claude+codex
 	// required, glm advisory).
-	s.AddTool(mcp.NewTool(
+	add(auditMultiToolName, mcp.NewTool(
 		auditMultiToolName,
 		mcp.WithDescription("Run the multi-auditor convergence engine over a claude_verdict anchor + optional codex/glm backend verdicts. Returns a ConvergenceResult (overall verdict + per-auditor verdicts + residual_risk_note). Backend fan-out reuses the existing codex/glm handlers — no re-implementation."),
 		mcp.WithObject("claude_verdict", mcp.Description("The always-available claude anchor verdict (review-output schema: verdict/summary/findings/next_steps).")),
@@ -295,6 +318,72 @@ func registerMoaiMCPTools(s *server.MCPServer) {
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
 		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
 	), handleAuditMulti)
+}
+
+// readMCPToolEnablement reads the per-tool enablement map from
+// `.moai/config/sections/mcp.yaml` (SPEC-MCP-CONSOLE-001 REQ-C-2). The default
+// is ALL-ENABLED (owner decision 2026-08-12), so the truth table is fail-OPEN —
+// the opposite of the codex gates' fail-CLOSED posture:
+//
+//   - projectDir empty                      → all enabled (empty map ⇒ every key absent ⇒ enabled)
+//   - file missing / unreadable             → all enabled
+//   - YAML parse error                      → all enabled
+//   - `mcp.tools` block absent              → all enabled
+//   - `mcp.tools.<name>.enabled: false`     → that tool DISABLED
+//   - `mcp.tools.<name>.enabled: true`      → that tool enabled
+//   - `<name>` key absent entirely          → that tool enabled (default)
+//
+// The key path is NESTED under the file's `mcp:` root, matching the shape the
+// schema seam (settings.mcpFields) writes via yamlpatch and the shape the
+// shipped template deploys. Only the literal `enabled:` bool is read; unknown
+// keys under `mcp.tools.<name>` are ignored.
+//
+// This stays a small hand-rolled read rather than a config.Loader.Load call for
+// the same reason readCodexReviewGateEnabled does: registration runs once at
+// server construction and should touch exactly one file with no
+// defaults/env-override machinery, and each failure path here returns the
+// all-enabled default explicitly rather than blurring "unreadable" into a
+// populated default. The shape is pinned against the real loader by
+// TestReadMCPToolEnablement_AgreesWithConfigLoader (deferred to a follow-up;
+// the codex reader's TestReviewGateReaders_AgreeWithConfigLoader is the
+// precedent shape).
+//
+// @MX:NOTE: [AUTO] fail-OPEN default (all-enabled) — the inverse posture of the
+// codex review-gate / task-allow-write readers, which fail CLOSED. The owner
+// decision (2026-08-12) chose all-enabled so SPEC-B agent grants stay functional
+// out of the box; a too-permissive default is surfaceable via REQ-C-3's
+// write-capable distinction, which is a better failure mode than silent inert tools.
+// @MX:SPEC: SPEC-MCP-CONSOLE-001
+func readMCPToolEnablement(projectDir string) map[string]bool {
+	enabled := make(map[string]bool, 17)
+	// Default: every catalog tool enabled. Keys absent from mcp.yaml stay true.
+	for _, name := range mcpcat.MoaiMCPToolNames() {
+		enabled[name] = true
+	}
+	if projectDir == "" {
+		return enabled
+	}
+	configPath := filepath.Join(projectDir, ".moai", "config", "sections", "mcp.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return enabled // file missing/unreadable → all enabled (default)
+	}
+	var doc struct {
+		MCP struct {
+			Tools map[string]struct {
+				Enabled *bool `yaml:"enabled"`
+			} `yaml:"tools"`
+		} `yaml:"mcp"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return enabled // parse error → all enabled (default)
+	}
+	for name, t := range doc.MCP.Tools {
+		if t.Enabled != nil {
+			enabled[name] = *t.Enabled
+		}
+	}
+	return enabled
 }
 
 // ─── thin-wrapper handlers (C1: each calls the SAME internal/ fn the CLI calls) ───

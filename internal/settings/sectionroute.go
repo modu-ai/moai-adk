@@ -69,6 +69,11 @@ var sectionRoutes = map[string]SectionRoute{
 	// report — seam-writable (report.format select, moai-domain-html-report output).
 	"report": RouteSeam,
 
+	// SPEC-MCP-CONSOLE-001 M1: mcp — seam-writable (per-tool enablement bools,
+	// mcp.tools.<name>.enabled, written through the yamlpatch seam the same way
+	// branch_guard.enabled and report.format are).
+	"mcp": RouteSeam,
+
 	// workflow — seam-writable (restored, Issue 3 / SPEC-WEBCONF-SIMPLIFY-001 M3
 	// partial reversal). The worktree auto-create toggle + the workflow scalar
 	// fields persist through the yamlpatch seam. The other 7 former seam sections

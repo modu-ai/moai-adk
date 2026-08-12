@@ -84,6 +84,14 @@ func TestI18nKeySetParity(t *testing.T) {
 	for _, f := range settings.SectionFields(settings.SectionGitStrategy) {
 		webRemovedFields[f.Name] = true
 	}
+	// SPEC-MCP-CONSOLE-001 M1: the MCP section's per-tool enablement fields exist
+	// in the schema (the gating seam) but are not yet rendered by the web console
+	// (M2 adds the console section + the 4-locale i18n keys and un-exempts this).
+	// Same effective state as statusline/git_strategy above: schema-preserved,
+	// web-i18n-pending.
+	for _, f := range settings.SectionFields(settings.SectionMCP) {
+		webRemovedFields[f.Name] = true
+	}
 
 	for _, f := range settings.AllFields() {
 		// M5-b D3: PersistSeam / PersistTypedSection 필드도 이제 field__title /

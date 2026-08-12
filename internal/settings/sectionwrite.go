@@ -41,6 +41,8 @@ var sectionRootKeys = map[string]map[string]bool{
 	"cache":   {"cacheStrategy": true},
 	// report — moai-domain-html-report skill 출력 포맷 (launch tab select).
 	"report": {"report": true},
+	// SPEC-MCP-CONSOLE-001 M1: mcp.yaml top-level key is `mcp`.
+	"mcp": {"mcp": true},
 }
 
 // WriteSectionViaSeam은 projectRoot의 .moai/config/sections/<section>.yaml에

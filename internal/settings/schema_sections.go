@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
+	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -483,6 +484,23 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, cacheFields()...)   // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
+	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
+	return fields
+}
+
+// mcpFields generates one enablement bool per MCP tool declared in the shared
+// catalog (internal/mcp MoaiMCPTools), each persisted as a seam field at the
+// path `mcp.tools.<name>.enabled` in `mcp.yaml` (SPEC-MCP-CONSOLE-001 REQ-C-1 /
+// C-C-5 / AC-C-005). The list is DERIVED from the single catalog declaration —
+// no second tool list lives here — so a tool added to registration cannot go
+// unrepresented in the schema (AP-C-4). Default enabled (owner decision).
+func mcpFields() []FieldDef {
+	tools := mcpcat.MoaiMCPTools()
+	fields := make([]FieldDef, 0, len(tools))
+	for _, t := range tools {
+		fields = append(fields, seamField(SectionMCP, "mcp", TypeBool,
+			"mcp", "tools", t.Name, "enabled"))
+	}
 	return fields
 }
 

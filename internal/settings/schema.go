@@ -48,6 +48,13 @@ const (
 	// report 섹션 — moai-domain-html-report skill 출력 포맷 (seam 전용, launch tab).
 	SectionReport SectionID = "report" // seam 전용 (report.format select)
 
+	// SPEC-MCP-CONSOLE-001 M1: MCP per-tool enablement. Each of the 17 tools
+	// registered by registerMoaiMCPTools carries an `mcp.tools.<name>.enabled`
+	// bool seam field (REQ-C-1 / C-C-5). The field list is derived from the
+	// shared catalog (internal/mcp MoaiMCPTools) so the schema and the server
+	// read one declaration. Default enabled (owner decision 2026-08-12).
+	SectionMCP SectionID = "mcp" // seam 전용 (per-tool enablement bools)
+
 	// SPEC-WEB-CONSOLE-014 M4: mx는 편집 필드 0개의 raw-only 렌더 그룹이다 (mx는
 	// RouteExcluded — 쓰기 경로 없음). SchemaSectionIDs()에는 포함되지 않으며(편집
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
@@ -80,6 +87,7 @@ func AllSections() []SectionID {
 		SectionHandoff,
 		SectionCache,
 		SectionReport,
+		SectionMCP,
 	}
 }
 

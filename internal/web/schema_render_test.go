@@ -84,6 +84,10 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 		// schema-preserved but web-not-rendered (editable via yaml config / CLI).
 		settings.SectionQuality:       true,
 		settings.SectionGitConvention: true,
+		// SPEC-MCP-CONSOLE-001 M1: the MCP section's per-tool enablement fields
+		// exist in the schema (the gating seam) but are not yet rendered by the
+		// web console (M2 adds the console section and un-exempts this).
+		settings.SectionMCP: true,
 	}
 	m3RemovedFields := map[string]bool{}
 	for _, f := range settings.AllFields() {

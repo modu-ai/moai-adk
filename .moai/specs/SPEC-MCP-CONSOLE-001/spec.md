@@ -2,7 +2,7 @@
 id: SPEC-MCP-CONSOLE-001
 title: "moai web MCP console — per-tool settings surface, codex auth configuration, GLM key reuse, 4-locale coverage"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-12
 updated: 2026-08-12
 author: manager-spec
