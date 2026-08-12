@@ -141,7 +141,26 @@ m1_to_mN_commit_strategy: per-milestone commits (M1..M4 already committed at 913
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-08-13
+sync_commit_sha: pending-backfill-sync
+sync_status: ready
+b12_self_test_a:
+  changelog_duplicate_guard: PASS (`grep -c 'SPEC-MCP-CONSOLE-001' CHANGELOG.md` → 0 pre-emission, 1 post-emission)
+b12_self_test_b:
+  ac_count_match: PASS (14 distinct `AC-C-NNN` in acceptance.md == 14 referenced in CHANGELOG entry)
+b12_self_test_c:
+  file_path_verification: PASS (all 6 cited implementation paths verified via `ls` pre-emission: internal/mcp/catalog.go, internal/web/codex_state.go, internal/web/mcp_codex_surface_test.go, internal/web/mcp_glmkey_surface_test.go, internal/web/mcp_secret_hygiene_test.go, internal/settings/testdata/sections/mcp.yaml)
+changelog_entry_position: top of `## [Unreleased] ### Added` (most-recent first, above SPEC-MCP-AGENT-WIRING-001)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed" (sole YAML-frontmatter artifact; acceptance.md / plan.md use markdown-header convention — no frontmatter)
+  updated_refreshed: "2026-08-12 → 2026-08-13"
+  body_content_modified: false (frontmatter status + updated only; spec/plan/acceptance body untouched per ownership matrix)
+canary_compliance_check:
+  go_files_in_sync_commit: 0 (markdown/yaml-only: CHANGELOG.md, spec.md frontmatter, progress.md §E.4)
+  moai_gate_escape: SKIP_MOAI_PRECOMMIT=1 (justified — Go-files-in-commit = 0 proven)
+  go_build_post_commit: PASS (exit 0, sanity — no accidental code change)
+
+> **SHA backfill caveat (D3).** A commit cannot reference its own SHA — `sync_commit_sha` is written as `pending-backfill-sync` within this sync commit and MUST be backfilled with the real SHA in a follow-up commit. The placeholder is the self-referential-hazard workaround per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings → SHA placeholder backfill exemption (D3).
 
 ## §F Phase 4 Mode Selection
 
