@@ -203,6 +203,7 @@ Language rules:
 - Internal Agent Communication: English
 - Code Comments: Per code_comments setting (default: English)
 - Commands, Agents, Skills Instructions: Always English
+- Memory files (MEMORY.md + topic files): Always English — see `.claude/rules/moai/workflow/moai-memory.md` § Rules
 
 ---
 
