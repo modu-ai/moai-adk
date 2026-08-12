@@ -75,6 +75,13 @@ type Config struct {
 	// real default-browser opener is used. It MUST NOT be fatal on failure
 	// (REQ-WC-004): a returned error is logged and the server continues.
 	openBrowser func(url string) error
+
+	// CodexStateProbe returns the codex setup probe state for the MCP console
+	// section (SPEC-MCP-CONSOLE-001 M3 REQ-C-4). When nil, the app uses the
+	// default zero-view (not-installed) — matching the probe's fail-open. The
+	// CLI layer sets this to a wrapper around internal/cli.ProbeCodexSetup so
+	// internal/web consumes the probe without importing internal/cli (AC-C-006).
+	CodexStateProbe func(ctx context.Context) CodexStateView
 }
 
 // @MX:ANCHOR: [AUTO] Console HTTP 서버 엔트리 포인트 — 루프백 바인드 + graceful shutdown 불변식을 보장한다.
@@ -127,6 +134,12 @@ func NewServer(cfg Config) (*Server, error) {
 	// bound (including a random :0 test port) the indicator shows the real
 	// 127.0.0.1:<port> address rather than a hardcoded placeholder.
 	a.bindAddr = srv.displayBindAddr
+	// SPEC-MCP-CONSOLE-001 M3: wire the codex probe injection. When the CLI
+	// layer provides a probe, it replaces the default zero-view so the console
+	// renders the real codex state (AC-C-006 — consume, don't fork).
+	if cfg.CodexStateProbe != nil {
+		a.codexStateProbe = cfg.CodexStateProbe
+	}
 	return srv, nil
 }
 

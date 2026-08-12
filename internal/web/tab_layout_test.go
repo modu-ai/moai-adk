@@ -11,11 +11,12 @@ import (
 // restructure (AC-WCR-010..013). Tab placement is a RENDER concern; the
 // persistence section of every moved field is unchanged (AP-4).
 
-// wantTabOrder is the canonical 9-tab order. It is asserted as a SEQUENCE, not
+// wantTabOrder is the canonical tab order. It is asserted as a SEQUENCE, not
 // a set — the tab nav and the tabpanel sequence must both follow it.
+// SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (10th tab).
 var wantTabOrder = []string{
 	"identity", "language", "launch", "llm", "workflow",
-	"git-worktree", "audit", "agentfm", "report",
+	"git-worktree", "audit", "agentfm", "report", "mcp",
 }
 
 // TestConsoleTabsOrder verifies AC-WCR-010.

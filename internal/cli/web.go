@@ -6,6 +6,7 @@ package cli
 // C-HRA-008 / internal/cli/CLAUDE.md).
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -147,6 +148,21 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		// when set, so a console launched inside a `moai cc -p X` session is
 		// unaffected; this only decides the bare-launch case.
 		ProfileName: profile.GetCurrentNameForProject(projectRoot),
+		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4 / AC-C-006): inject the codex probe so
+		// the web console consumes the existing codex_setup classification rather
+		// than reimplementing it. The adapter maps the typed CodexSetupResult to
+		// the web-layer CodexStateView — no classification logic crosses into web.
+		CodexStateProbe: func(ctx context.Context) web.CodexStateView {
+			s := ProbeCodexSetup(ctx)
+			return web.CodexStateView{
+				Installed:        s.Installed,
+				Binary:           s.Binary,
+				Version:          s.Version,
+				AuthProvider:     s.AuthProvider,
+				EnableReviewGate: s.EnableReviewGate,
+				AllowWrite:       s.AllowWrite,
+			}
+		},
 	})
 }
 

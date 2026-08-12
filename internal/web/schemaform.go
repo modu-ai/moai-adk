@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -51,6 +52,65 @@ func consoleTabs() []consoleTab {
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
+		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
+		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
+		// tools carry a text-bearing distinction (REQ-C-3). Rendered by the
+		// dedicated fieldsetMCP component (not the generic schemaSectionMeta path)
+		// so the write-capable badge can be sourced from the shared catalog.
+		{ID: "mcp", LabelKey: "sec.mcp.title", Baseline: "MCP"},
+	}
+}
+
+// mcpToolNameFromField extracts the tool identifier from an MCP enablement
+// field name of the form mcp.tools.<name>.enabled. It returns ("", false) for
+// a field that does not match that shape, so a caller cannot mistake an
+// unrelated field for an MCP tool (SPEC-MCP-CONSOLE-001 M2, REQ-C-3).
+func mcpToolNameFromField(fieldName string) (string, bool) {
+	const prefix = "mcp.tools."
+	const suffix = ".enabled"
+	if !strings.HasPrefix(fieldName, prefix) || !strings.HasSuffix(fieldName, suffix) {
+		return "", false
+	}
+	name := strings.TrimSuffix(strings.TrimPrefix(fieldName, prefix), suffix)
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
+// mcpToolIsWriteCapable reports whether the MCP enablement field's tool is
+// write-capable, by looking the tool name up in the shared catalog
+// (internal/mcp MoaiMCPTools — the single declaration, AP-C-4). A field whose
+// tool name is not in the catalog returns false; the schema/catalog parity is
+// pinned separately by the settings-layer tests, so a stale field here degrades
+// to read-only marking rather than panicking the render.
+func mcpToolIsWriteCapable(fieldName string) bool {
+	name, ok := mcpToolNameFromField(fieldName)
+	if !ok {
+		return false
+	}
+	for _, t := range mcpcat.MoaiMCPTools() {
+		if t.Name == name {
+			return t.WriteCapable
+		}
+	}
+	return false
+}
+
+// codexAuthProviderLabel maps the auth-provider token the probe emitted to a
+// display string. It is NOT a classification — the token was already produced
+// by the probe's classifier (AC-C-006); this helper only chooses the display
+// spelling.
+func codexAuthProviderLabel(provider string) string {
+	switch provider {
+	case codexAuthChatGPT:
+		return "ChatGPT"
+	case codexAuthAPIKey:
+		return "API key"
+	case codexAuthProvider:
+		return "Provider"
+	default:
+		return provider // "unknown" or any future token renders verbatim
 	}
 }
 
@@ -96,10 +156,23 @@ func isAuditFieldName(name string) bool {
 	return strings.HasPrefix(name, "workflow.audit.")
 }
 
+// isCodexToggleFieldName은 workflow 섹션 필드 중 MCP 콘솔의 codex 인증 서피스로
+// 배치되는 것을 판정한다 (SPEC-MCP-CONSOLE-001 M3). 이 필드들은 workflow 탭이
+// 아닌 MCP 탭의 codexAuthBlock 에서 렌더되므로 workflow 파티션에서 제외한다 —
+// 중복 렌더(입력 4개)를 방지한다. 영속화 경로는 그대로다 (SectionWorkflow seam).
+func isCodexToggleFieldName(name string) bool {
+	return name == "workflow.codex.review_gate.enabled" ||
+		name == "workflow.codex.task.allow_write"
+}
+
 // partitionWorkflowFields는 workflow 섹션 필드를 3개 탭으로 가른다: 워크플로우
-// 잔여 / Git·워크트리 / 감사. 섹션 필드 순서를 보존한다.
+// 잔여 / Git·워크트리 / 감사. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
+// workflow 탭에도 배치하지 않는다. 섹션 필드 순서를 보존한다.
 func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
 	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
+		if isCodexToggleFieldName(f.Name) {
+			continue // MCP 탭의 codexAuthBlock 에서 렌더 — workflow 탭 제외
+		}
 		switch {
 		case isWorktreeFieldName(f.Name):
 			worktree = append(worktree, f)
