@@ -128,45 +128,45 @@ func runChainStatus(out interface{ Write([]byte) (int, error) }) error {
 	cwd := resolveCWD()
 
 	if isRemoteCWD(cwd) {
-		fmt.Fprintf(out, "chain: single-host v1 limitation — CWD %q appears remote\n", cwd)
-		fmt.Fprintln(out, "chain: cross-machine lineage is not supported in v1")
+		_, _ = fmt.Fprintf(out, "chain: single-host v1 limitation — CWD %q appears remote\n", cwd)
+		_, _ = fmt.Fprintln(out, "chain: cross-machine lineage is not supported in v1")
 		return nil
 	}
 
 	store, err := resolveChainStore()
 	if err != nil {
-		fmt.Fprintln(out, "no chain context (state dir not found)")
+		_, _ = fmt.Fprintln(out, "no chain context (state dir not found)")
 		return nil
 	}
 
 	pop := chain.NewPopulator(store)
 	node, err := pop.ResolveCurrentNode(cwd, os.Getenv("CLAUDE_SESSION_ID"))
 	if err != nil {
-		fmt.Fprintln(out, "no chain context (no matching node)")
+		_, _ = fmt.Fprintln(out, "no chain context (no matching node)")
 		return nil
 	}
 
-	fmt.Fprintf(out, "depth:     %d\n", node.Depth)
-	fmt.Fprintf(out, "node:      %s\n", node.NodeID)
+	_, _ = fmt.Fprintf(out, "depth:     %d\n", node.Depth)
+	_, _ = fmt.Fprintf(out, "node:      %s\n", node.NodeID)
 	if node.ParentNodeID != "" {
-		fmt.Fprintf(out, "parent:    %s\n", node.ParentNodeID)
+		_, _ = fmt.Fprintf(out, "parent:    %s\n", node.ParentNodeID)
 	}
 	if node.SpecID != "" {
-		fmt.Fprintf(out, "spec:      %s\n", node.SpecID)
+		_, _ = fmt.Fprintf(out, "spec:      %s\n", node.SpecID)
 	}
 	if node.Milestone != "" {
-		fmt.Fprintf(out, "milestone: %s\n", node.Milestone)
+		_, _ = fmt.Fprintf(out, "milestone: %s\n", node.Milestone)
 	}
 	if node.LastCompletedMilestone != "" {
-		fmt.Fprintf(out, "completed: %s\n", node.LastCompletedMilestone)
+		_, _ = fmt.Fprintf(out, "completed: %s\n", node.LastCompletedMilestone)
 	}
 	if node.ResumeTarget != "" {
-		fmt.Fprintf(out, "resume:    %s\n", node.ResumeTarget)
+		_, _ = fmt.Fprintf(out, "resume:    %s\n", node.ResumeTarget)
 	}
 	if node.SessionID != "" {
-		fmt.Fprintf(out, "session:   %s\n", node.SessionID)
+		_, _ = fmt.Fprintf(out, "session:   %s\n", node.SessionID)
 	}
-	fmt.Fprintf(out, "worktree:  %s\n", node.WorktreePath)
+	_, _ = fmt.Fprintf(out, "worktree:  %s\n", node.WorktreePath)
 
 	return nil
 }
@@ -187,19 +187,19 @@ func runChainLineage(out interface{ Write([]byte) (int, error) }) error {
 	cwd := resolveCWD()
 	store, err := resolveChainStore()
 	if err != nil {
-		fmt.Fprintln(out, "no chain context")
+		_, _ = fmt.Fprintln(out, "no chain context")
 		return nil
 	}
 
 	pop := chain.NewPopulator(store)
 	node, err := pop.ResolveCurrentNode(cwd, os.Getenv("CLAUDE_SESSION_ID"))
 	if err != nil {
-		fmt.Fprintln(out, "no chain context (no matching node)")
+		_, _ = fmt.Fprintln(out, "no chain context (no matching node)")
 		return nil
 	}
 
 	if len(node.OriginChain) == 0 {
-		fmt.Fprintln(out, "at root — no ancestors")
+		_, _ = fmt.Fprintln(out, "at root — no ancestors")
 		return nil
 	}
 
@@ -209,7 +209,7 @@ func runChainLineage(out interface{ Write([]byte) (int, error) }) error {
 		nodeMap[nodes[i].NodeID] = &nodes[i]
 	}
 
-	fmt.Fprintf(out, "origin chain (%d nodes):\n", len(node.OriginChain))
+	_, _ = fmt.Fprintf(out, "origin chain (%d nodes):\n", len(node.OriginChain))
 	for i, id := range node.OriginChain {
 		n := nodeMap[id]
 		prefix := "  "
@@ -217,21 +217,21 @@ func runChainLineage(out interface{ Write([]byte) (int, error) }) error {
 			prefix = "> "
 		}
 		if n != nil {
-			fmt.Fprintf(out, "%s[%d] %s\n", prefix, n.Depth, id)
+			_, _ = fmt.Fprintf(out, "%s[%d] %s\n", prefix, n.Depth, id)
 			if n.WorktreePath != "" {
-				fmt.Fprintf(out, "     path: %s\n", n.WorktreePath)
+				_, _ = fmt.Fprintf(out, "     path: %s\n", n.WorktreePath)
 			}
 			if n.SpecID != "" {
-				fmt.Fprintf(out, "     spec: %s\n", n.SpecID)
+				_, _ = fmt.Fprintf(out, "     spec: %s\n", n.SpecID)
 			}
 			if n.Milestone != "" {
-				fmt.Fprintf(out, "     ms:   %s\n", n.Milestone)
+				_, _ = fmt.Fprintf(out, "     ms:   %s\n", n.Milestone)
 			}
 			if n.EnteredAt != "" {
-				fmt.Fprintf(out, "     at:   %s\n", n.EnteredAt)
+				_, _ = fmt.Fprintf(out, "     at:   %s\n", n.EnteredAt)
 			}
 		} else {
-			fmt.Fprintf(out, "%s[?] %s (not in ledger)\n", prefix, id)
+			_, _ = fmt.Fprintf(out, "%s[?] %s (not in ledger)\n", prefix, id)
 		}
 		_ = i
 	}
@@ -255,40 +255,40 @@ func runChainBack(out interface{ Write([]byte) (int, error) }) error {
 	cwd := resolveCWD()
 	store, err := resolveChainStore()
 	if err != nil {
-		fmt.Fprintln(out, "no chain context")
+		_, _ = fmt.Fprintln(out, "no chain context")
 		return nil
 	}
 
 	pop := chain.NewPopulator(store)
 	node, err := pop.ResolveCurrentNode(cwd, os.Getenv("CLAUDE_SESSION_ID"))
 	if err != nil {
-		fmt.Fprintln(out, "no chain context (no matching node)")
+		_, _ = fmt.Fprintln(out, "no chain context (no matching node)")
 		return nil
 	}
 
 	if node.ParentNodeID == "" {
-		fmt.Fprintln(out, "at root — no parent")
+		_, _ = fmt.Fprintln(out, "at root — no parent")
 		return nil
 	}
 
 	nodes := store.BuildNodes()
 	for _, n := range nodes {
 		if n.NodeID == node.ParentNodeID {
-			fmt.Fprintf(out, "parent: %s\n", n.NodeID)
+			_, _ = fmt.Fprintf(out, "parent: %s\n", n.NodeID)
 			if n.ResumeTarget != "" {
-				fmt.Fprintf(out, "resume target: %s\n", n.ResumeTarget)
+				_, _ = fmt.Fprintf(out, "resume target: %s\n", n.ResumeTarget)
 			}
 			if n.ResumeCommand != "" {
-				fmt.Fprintf(out, "resume cmd:    %s\n", n.ResumeCommand)
+				_, _ = fmt.Fprintf(out, "resume cmd:    %s\n", n.ResumeCommand)
 			}
 			if n.WorktreePath != "" {
-				fmt.Fprintf(out, "worktree:      %s\n", n.WorktreePath)
+				_, _ = fmt.Fprintf(out, "worktree:      %s\n", n.WorktreePath)
 			}
 			return nil
 		}
 	}
 
-	fmt.Fprintf(out, "parent node %s not found in ledger\n", node.ParentNodeID)
+	_, _ = fmt.Fprintf(out, "parent node %s not found in ledger\n", node.ParentNodeID)
 	return nil
 }
 
@@ -317,20 +317,20 @@ func newChainListCmd() *cobra.Command {
 func runChainList(out interface{ Write([]byte) (int, error) }) error {
 	store, err := resolveChainStore()
 	if err != nil {
-		fmt.Fprintln(out, "no chain context")
+		_, _ = fmt.Fprintln(out, "no chain context")
 		return nil
 	}
 
 	nodes := store.BuildNodes()
 	if len(nodes) == 0 {
-		fmt.Fprintln(out, "no chain nodes in ledger")
+		_, _ = fmt.Fprintln(out, "no chain nodes in ledger")
 		return nil
 	}
 
 	// Overlay join: read registry entries for staleness classification.
 	registryEntries := loadRegistryForOverlay()
 
-	fmt.Fprintf(out, "%-20s %-5s %-12s %-12s %s\n", "NODE", "DEPTH", "SESSION", "STATUS", "WORKTREE")
+	_, _ = fmt.Fprintf(out, "%-20s %-5s %-12s %-12s %s\n", "NODE", "DEPTH", "SESSION", "STATUS", "WORKTREE")
 	for _, n := range nodes {
 		status := classifyStaleness(n.SessionID, registryEntries)
 		sess := n.SessionID
@@ -341,7 +341,7 @@ func runChainList(out interface{ Write([]byte) (int, error) }) error {
 		if len(wt) > 40 {
 			wt = "..." + wt[len(wt)-37:]
 		}
-		fmt.Fprintf(out, "%-20s %-5d %-12s %-12s %s\n", truncateID(n.NodeID), n.Depth, sess, status, wt)
+		_, _ = fmt.Fprintf(out, "%-20s %-5d %-12s %-12s %s\n", truncateID(n.NodeID), n.Depth, sess, status, wt)
 	}
 
 	return nil
@@ -403,37 +403,37 @@ func newChainPruneCmd() *cobra.Command {
 func runChainPrune(out interface{ Write([]byte) (int, error) }, dryRun bool) error {
 	store, err := resolveChainStore()
 	if err != nil {
-		fmt.Fprintln(out, "no chain context")
+		_, _ = fmt.Fprintln(out, "no chain context")
 		return nil
 	}
 
 	threshold := chain.DefaultPruneThreshold()
 	result, err := store.Prune(threshold, time.Now().UTC(), dryRun)
 	if err != nil {
-		fmt.Fprintf(out, "prune error: %v\n", err)
+		_, _ = fmt.Fprintf(out, "prune error: %v\n", err)
 		return nil
 	}
 
 	if result.ArchivedNodes == 0 {
-		fmt.Fprintln(out, "no nodes eligible for pruning")
+		_, _ = fmt.Fprintln(out, "no nodes eligible for pruning")
 		return nil
 	}
 
 	if dryRun {
-		fmt.Fprintf(out, "[dry-run] %d nodes would be archived (%d kept)\n",
+		_, _ = fmt.Fprintf(out, "[dry-run] %d nodes would be archived (%d kept)\n",
 			result.ArchivedNodes, result.KeptNodes)
 	} else {
-		fmt.Fprintf(out, "archived %d nodes (%d kept)\n",
+		_, _ = fmt.Fprintf(out, "archived %d nodes (%d kept)\n",
 			result.ArchivedNodes, result.KeptNodes)
-		fmt.Fprintf(out, "  original size: %d bytes → compacted: %d bytes\n",
+		_, _ = fmt.Fprintf(out, "  original size: %d bytes → compacted: %d bytes\n",
 			result.OriginalSize, result.CompactedSize)
 		if result.ArchivedPath != "" {
-			fmt.Fprintf(out, "  archive: %s\n", result.ArchivedPath)
+			_, _ = fmt.Fprintf(out, "  archive: %s\n", result.ArchivedPath)
 		}
 	}
 
 	for _, id := range result.ArchivedNodeIDs {
-		fmt.Fprintf(out, "  %s\n", truncateID(id))
+		_, _ = fmt.Fprintf(out, "  %s\n", truncateID(id))
 	}
 
 	return nil
