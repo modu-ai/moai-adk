@@ -14,8 +14,8 @@ func TestResolveByCWDEmptySessionID(t *testing.T) {
 	s := newTestStore(t)
 	wtPath := "/tmp/wt-fallback"
 
-	s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "old", WorktreePath: wtPath, SessionID: "s1"})
-	s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "new", WorktreePath: wtPath, SessionID: "s2"})
+	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "old", WorktreePath: wtPath, SessionID: "s1"})
+	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "new", WorktreePath: wtPath, SessionID: "s2"})
 
 	node, err := s.ResolveByCWD(wtPath, "")
 	if err != nil {
@@ -31,7 +31,7 @@ func TestResolveByCWDEmptySessionID(t *testing.T) {
 func TestResolveByCWDNotFound(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", WorktreePath: "/tmp/a"})
+	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", WorktreePath: "/tmp/a"})
 
 	_, err := s.ResolveByCWD("/nonexistent", "sess")
 	if err == nil {
@@ -50,7 +50,7 @@ func TestResolveByCWDMismatchFallback(t *testing.T) {
 	s := newTestStore(t)
 	wtPath := "/tmp/wt-mismatch"
 
-	s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", WorktreePath: wtPath, SessionID: "s1"})
+	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", WorktreePath: wtPath, SessionID: "s1"})
 
 	node, err := s.ResolveByCWD(wtPath, "nonexistent-session")
 	if err != nil {
@@ -81,7 +81,7 @@ func TestBuildNodesUpdateNoOp(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
 	// node-update for a node that was never created by node-enter.
-	s.Append(ChainEvent{EventType: EventNodeUpdate, NodeID: "phantom", SessionID: "s"})
+	_ = s.Append(ChainEvent{EventType: EventNodeUpdate, NodeID: "phantom", SessionID: "s"})
 
 	nodes := s.BuildNodes()
 	if len(nodes) != 0 {
@@ -94,8 +94,8 @@ func TestBuildNodesUpdateNoOp(t *testing.T) {
 func TestBuildNodesMilestoneUpdate(t *testing.T) {
 	t.Parallel()
 	s := newTestStore(t)
-	s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", Milestone: "M0"})
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", Milestone: "M0"})
+	_ = s.Append(ChainEvent{
 		EventType:             EventNodeUpdate,
 		NodeID:                "N1",
 		Milestone:             "M1",

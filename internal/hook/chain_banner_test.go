@@ -49,7 +49,7 @@ func TestSessionStartLineageBanner(t *testing.T) {
 	})
 
 	// Simulate post-/clear: env is absent.
-	os.Unsetenv(config.EnvChainNodeID)
+	_ = os.Unsetenv(config.EnvChainNodeID)
 
 	banner := chainLineageBanner(projDir, wtPath, "sess-test")
 	if banner == "" {
@@ -110,7 +110,7 @@ func TestSessionStartBannerBackfill(t *testing.T) {
 // banner returns empty string (fail-open, no crash).
 func TestSessionStartBannerNoContext(t *testing.T) {
 	dir := t.TempDir()
-	os.Unsetenv(config.EnvChainNodeID)
+	_ = os.Unsetenv(config.EnvChainNodeID)
 
 	banner := chainLineageBanner(dir, "/tmp/nonexistent", "")
 	if banner != "" {
@@ -135,7 +135,7 @@ func TestSessionStartBannerAtRoot(t *testing.T) {
 		{EventType: chain.EventNodeEnter, NodeID: "N0", WorktreePath: wtPath, Depth: 0, OriginChain: []string{"N0"}, EnteredAt: "2026-08-13T09:00:00Z"},
 	})
 
-	os.Unsetenv(config.EnvChainNodeID)
+	_ = os.Unsetenv(config.EnvChainNodeID)
 	banner := chainLineageBanner(projDir, wtPath, "")
 	// Root node with no session_id and no env — may not resolve if session_id
 	// is empty. But with fallback to most-recent, it should resolve.

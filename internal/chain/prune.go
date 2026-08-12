@@ -212,7 +212,7 @@ func (s *Store) rewriteEvents(events []ChainEvent) error {
 	if err != nil {
 		return fmt.Errorf("create events file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	enc := json.NewEncoder(f)
 	for _, ev := range events {
@@ -288,7 +288,9 @@ func loadExistingSummaries(path string) []ArchivedNodeSummary {
 		return nil
 	}
 	var summaries []ArchivedNodeSummary
-	json.Unmarshal(data, &summaries)
+	if err := json.Unmarshal(data, &summaries); err != nil {
+		return nil
+	}
 	return summaries
 }
 

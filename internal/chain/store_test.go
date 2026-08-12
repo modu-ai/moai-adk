@@ -83,10 +83,10 @@ func TestCorruptLineTolerance(t *testing.T) {
 		t.Fatalf("open for corrupt inject: %v", err)
 	}
 	if _, err := f.Write(corrupt); err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatalf("write corrupt: %v", err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Write 2 more valid events after the corrupt line.
 	for _, id := range []string{"v4", "v5"} {
@@ -114,14 +114,14 @@ func TestCWDCollisionResolution(t *testing.T) {
 
 	wtPath := "/tmp/wt-collision"
 	// Two nodes, same worktree_path, different session_id.
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType:   EventNodeEnter,
 		NodeID:      "node-A",
 		WorktreePath: wtPath,
 		SessionID:   "sess-A",
 		Depth:       1,
 	})
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType:   EventNodeEnter,
 		NodeID:      "node-B",
 		WorktreePath: wtPath,
@@ -198,7 +198,7 @@ func TestSpawnBoundaryNodeCreation(t *testing.T) {
 
 	// Parent at depth 1.
 	parentChain := []string{"N0", "N1"}
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType:   EventNodeEnter,
 		NodeID:      "N1",
 		ParentNodeID: "N0",
@@ -209,7 +209,7 @@ func TestSpawnBoundaryNodeCreation(t *testing.T) {
 	// Spawn child N2 from N1.
 	childChain := append([]string{}, parentChain...)
 	childChain = append(childChain, "N2")
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType:   EventNodeEnter,
 		NodeID:      "N2",
 		ParentNodeID: "N1",
@@ -249,7 +249,7 @@ func TestSessionIDBackfill(t *testing.T) {
 	s := newTestStore(t)
 
 	// Phase 1: skeleton node-enter with session_id="".
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType:   EventNodeEnter,
 		NodeID:      "N1",
 		SessionID:   "",
@@ -258,7 +258,7 @@ func TestSessionIDBackfill(t *testing.T) {
 	})
 
 	// Phase 2: node-update backfills session_id.
-	s.Append(ChainEvent{
+	_ = s.Append(ChainEvent{
 		EventType: EventNodeUpdate,
 		NodeID:    "N1",
 		SessionID: "real-session-123",

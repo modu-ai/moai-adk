@@ -50,7 +50,7 @@ func (s *Store) Append(event ChainEvent) error {
 	if err != nil {
 		return fmt.Errorf("chain store: open %s: %w", s.path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.Write(line); err != nil {
 		return fmt.Errorf("chain store: write %s: %w", s.path, err)
@@ -72,7 +72,7 @@ func (s *Store) ReadAll() ([]ChainEvent, error) {
 		}
 		return nil, fmt.Errorf("chain store: open %s for read: %w", s.path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var events []ChainEvent
 	scanner := bufio.NewScanner(f)

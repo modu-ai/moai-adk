@@ -16,12 +16,12 @@ import (
 func TestChainEventHook(t *testing.T) {
 	dir := t.TempDir()
 	chainDir := filepath.Join(dir, ".moai", "state", "chain")
-	os.MkdirAll(chainDir, 0o755)
+	_ = os.MkdirAll(chainDir, 0o755)
 
 	// Populate ledger with a node that has a known session_id.
 	storePath := filepath.Join(chainDir, "events.jsonl")
 	store, _ := chain.NewStore(storePath)
-	store.Append(chain.ChainEvent{
+	_ = store.Append(chain.ChainEvent{
 		EventType:   chain.EventNodeEnter,
 		NodeID:      "N1",
 		WorktreePath: "/tmp/wt-1",
@@ -84,7 +84,7 @@ func TestChainEventHookNoChainContext(t *testing.T) {
 	}
 	payloadJSON, _ := json.Marshal(payload)
 
-	os.Unsetenv(config.EnvChainNodeID)
+	_ = os.Unsetenv(config.EnvChainNodeID)
 
 	err := RunChainEvent(strings.NewReader(string(payloadJSON)))
 	if err != nil {
@@ -111,7 +111,7 @@ func TestChainEventHookEmptyInput(t *testing.T) {
 // TestChainEventHookNoProjectDir verifies fail-open when no project dir is
 // resolvable.
 func TestChainEventHookNoProjectDir(t *testing.T) {
-	os.Unsetenv(config.EnvClaudeProjectDir)
+	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	payload := chainEventPayload{
 		SessionID: "sess",
 	}
@@ -128,11 +128,11 @@ func TestChainEventHookNoProjectDir(t *testing.T) {
 func TestChainEventHookUsesLastCompletedMilestone(t *testing.T) {
 	dir := t.TempDir()
 	chainDir := filepath.Join(dir, ".moai", "state", "chain")
-	os.MkdirAll(chainDir, 0o755)
+	_ = os.MkdirAll(chainDir, 0o755)
 
 	storePath := filepath.Join(chainDir, "events.jsonl")
 	store, _ := chain.NewStore(storePath)
-	store.Append(chain.ChainEvent{
+	_ = store.Append(chain.ChainEvent{
 		EventType:              chain.EventNodeEnter,
 		NodeID:                 "N1",
 		WorktreePath:           "/tmp/wt-ms",
@@ -150,7 +150,7 @@ func TestChainEventHookUsesLastCompletedMilestone(t *testing.T) {
 	payloadJSON, _ := json.Marshal(payload)
 	t.Setenv(config.EnvChainNodeID, "N1")
 
-	RunChainEvent(strings.NewReader(string(payloadJSON)))
+	_ = RunChainEvent(strings.NewReader(string(payloadJSON)))
 
 	events, _ := store.ReadAll()
 	for _, ev := range events {

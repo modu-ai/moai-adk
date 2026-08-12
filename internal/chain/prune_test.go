@@ -18,7 +18,7 @@ func TestChainPruneAgeThreshold(t *testing.T) {
 	oldTime := now.AddDate(0, 0, -31) // 31 days ago — exceeds 30-day threshold
 
 	// Old exited node (no session_id backfill → exited).
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType:  EventNodeEnter,
 		NodeID:     "old-node",
 		Depth:      1,
@@ -26,13 +26,13 @@ func TestChainPruneAgeThreshold(t *testing.T) {
 	})
 
 	// Active node (has session_id).
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeEnter,
 		NodeID:    "active-node",
 		Depth:     1,
 		EnteredAt: now.Format(time.RFC3339),
 	})
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeUpdate,
 		NodeID:    "active-node",
 		SessionID: "sess-active",
@@ -77,7 +77,7 @@ func TestChainPruneDryRun(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 	oldTime := now.AddDate(0, 0, -31)
 
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeEnter,
 		NodeID:    "old-node",
 		Depth:     1,
@@ -119,7 +119,7 @@ func TestChainPruneNoEligibleNodes(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 
 	// Active node only.
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeEnter,
 		NodeID:    "active",
 		Depth:     1,
@@ -145,7 +145,7 @@ func TestChainPruneSizeThreshold(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 
 	// Exited node (no session_id).
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeEnter,
 		NodeID:    "exited",
 		Depth:     1,
@@ -182,7 +182,7 @@ func TestChainPrunePreservesAuditTrail(t *testing.T) {
 	now := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
 	oldTime := now.AddDate(0, 0, -31)
 
-	store.Append(ChainEvent{
+	_ = store.Append(ChainEvent{
 		EventType: EventNodeEnter,
 		NodeID:    "old-node",
 		Depth:     1,
@@ -229,7 +229,7 @@ func TestChainPruneMultipleOldNodes(t *testing.T) {
 
 	// 10 old exited nodes.
 	for i := 0; i < 10; i++ {
-		store.Append(ChainEvent{
+		_ = store.Append(ChainEvent{
 			EventType: EventNodeEnter,
 			NodeID:    "old-" + string(rune('A'+i)),
 			Depth:     1,
@@ -239,7 +239,7 @@ func TestChainPruneMultipleOldNodes(t *testing.T) {
 
 	// 5 active nodes.
 	for i := 0; i < 5; i++ {
-		store.Append(ChainEvent{
+		_ = store.Append(ChainEvent{
 			EventType: EventNodeEnter,
 			NodeID:    "act-" + string(rune('A'+i)),
 			Depth:     1,

@@ -175,10 +175,10 @@ func TestResolveCurrentNodeFromLedger(t *testing.T) {
 
 	t.Setenv(config.EnvChainNodeID, "")
 	nodeID, _ := pop.CreateNodeAtSpawn("/tmp/wt-ledger", "", "")
-	pop.BackfillSessionID(nodeID, "sess-ledger")
+	_ = pop.BackfillSessionID(nodeID, "sess-ledger")
 
 	// Simulate /clear: unset env.
-	os.Unsetenv(config.EnvChainNodeID)
+	_ = os.Unsetenv(config.EnvChainNodeID)
 
 	node, err := pop.ResolveCurrentNode("/tmp/wt-ledger", "sess-ledger")
 	if err != nil {

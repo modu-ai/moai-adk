@@ -13,12 +13,10 @@ package hook
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/chain"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -117,14 +115,3 @@ func RunChainEvent(stdin io.Reader) error {
 
 	return nil
 }
-
-// nowChainTime returns the current time in UTC, for testability.
-var nowChainTime = func() time.Time { return time.Now().UTC() }
-
-// formatChainTimestamp returns an RFC 3339 timestamp for chain events.
-func formatChainTimestamp() string {
-	return nowChainTime().Format(time.RFC3339)
-}
-
-// _ ensures fmt is used (for potential future diagnostic output).
-var _ = fmt.Sprintf
