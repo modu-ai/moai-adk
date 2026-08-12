@@ -4,7 +4,7 @@
 
 `internal/hook` implements the Claude Code hook event handlers — `SessionStart`, `SessionEnd`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`, `Notification`, `UserPromptSubmit`, `PreCompact`, `TeammateIdle`, `TaskCompleted`. Each event reads JSON from stdin (per Claude Code spec) and writes structured response to stdout. Hooks are invoked by Claude Code via the wrapper scripts in `.claude/hooks/moai/handle-*.sh`, which `exec moai hook <event>` and pipe stdin through.
 
-This package is the runtime observation + control plane. Hook handlers run with a ≤5s timeout under MoAI policy (the Claude Code platform default is 10 min; MoAI tightens it to 5s) — exceeding the MoAI 5s budget stalls the user's Claude Code session.
+This package is the runtime observation + control plane. Hook handlers run with a ≤5s timeout under MoAI policy (PreToolUse is configured to 10s to absorb intermittent fork+exec+config-load spikes that exceed the 5s default; the Claude Code platform default is 10 min). Exceeding the per-event budget stalls the user's Claude Code session.
 
 ## Conventions
 
@@ -13,7 +13,7 @@ This package is the runtime observation + control plane. Hook handlers run with 
 - **Subagent boundary (C-HRA-008)**: Hook handlers MUST NOT call `AskUserQuestion` or `mcp__askuser__*`. Hooks run in subagent context with no user interaction channel. Use stderr for diagnostics, structured stdout for hook response. Static guard: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/ | grep -v _test.go` MUST return 0 matches.
 - **Background agent write restriction (CLAUDE.md §14 [HARD])**: Hook handlers that mutate files (`PostToolUse` cache update, `SessionEnd` state persistence) MUST NOT be invoked with `run_in_background: true` from upstream. Background subagents auto-deny Write/Edit. Read-only hooks (`Notification`, `UserPromptSubmit` observers) are safe to background.
 - **OpenTelemetry env var safety in tests (CLAUDE.local.md §2 [WARN])**: NEVER `t.Setenv("OTEL_EXPORTER_*", ...)` in parallel tests. The OTEL SDK initializes global state from env on first use — concurrent tests cause data races. Use a fake exporter (`sdktrace.NewTracerProvider(sdktrace.WithSyncer(testExporter))`) instead.
-- **Timeout discipline**: MoAI policy default is 5s per hook event (the Claude Code platform default is 10 min; MoAI tightens it to 5s). If a hook needs >5s (large repo scan, network call), the hook config in `settings.json` MUST specify `"timeout": <ms>`. Hardcoded sleeps inside a hook are forbidden — use `context.WithTimeout` and return early on cancellation.
+- **Timeout discipline**: MoAI policy default is 5s per hook event (PreToolUse is configured to 10s — each PreToolUse invocation forks a fresh `moai` process plus a full config load, and that fork+exec+config cost spikes intermittently past 5s under system load; the 10s budget absorbs the spike while the root-cause lightweight-path work is tracked separately). The Claude Code platform default is 10 min. If a hook needs >5s (large repo scan, network call), the hook config in `settings.json` MUST specify `"timeout": <ms>`. Hardcoded sleeps inside a hook are forbidden — use `context.WithTimeout` and return early on cancellation.
 
 ## Key Patterns
 
