@@ -10,6 +10,19 @@ import (
 	"time"
 )
 
+// requireCacheEnabled pins the config-cache escape hatch (EnvConfigCacheDisabled)
+// OFF for the duration of a test. Every cache-feature test below exercises
+// LoadWithCache's read/write path directly and therefore MUST run with the
+// cache layer active, regardless of any ambient MOAI_CONFIG_CACHE_DISABLED set
+// in the environment (e.g. when the whole package is run under that env to
+// verify the disabled path does not break non-cache tests). Without this pin,
+// the escape hatch would silently bypass the cache and the assertions would
+// observe a cache-miss on every call.
+func requireCacheEnabled(t *testing.T) {
+	t.Helper()
+	t.Setenv(EnvConfigCacheDisabled, "")
+}
+
 // TestCache_HitSkipsSectionParse (AC-PERF-001) verifies that a cache hit
 // serves the cached config WITHOUT re-reading section files. The proof: we
 // overwrite the section file's content (changing the effective config value)
@@ -17,6 +30,7 @@ import (
 // cache hit path reads the file, it would return the new value; if it serves
 // from cache, it returns the old (cached) value.
 func TestCache_HitSkipsSectionParse(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -57,6 +71,7 @@ func TestCache_HitSkipsSectionParse(t *testing.T) {
 // TestCache_MtimeChangeInvalidates (AC-PERF-002) verifies that advancing a
 // section file's mtime invalidates the cache.
 func TestCache_MtimeChangeInvalidates(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -91,6 +106,7 @@ func TestCache_MtimeChangeInvalidates(t *testing.T) {
 // TestCache_SectionDeletionInvalidates (AC-PERF-003) verifies that deleting a
 // section file invalidates the cache.
 func TestCache_SectionDeletionInvalidates(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -124,6 +140,7 @@ func TestCache_SectionDeletionInvalidates(t *testing.T) {
 // TestCache_CorruptFailsOpen (AC-PERF-004) verifies that a corrupt cache file
 // fails open silently — falls back to full re-merge, no user-facing error.
 func TestCache_CorruptFailsOpen(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -163,6 +180,7 @@ func TestCache_CorruptFailsOpen(t *testing.T) {
 // TestCache_SchemaVersionMismatchFailsOpen (AC-PERF-004, C-EDGE-001) verifies
 // that a schema-version mismatch triggers the fail-open re-merge path.
 func TestCache_SchemaVersionMismatchFailsOpen(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -200,6 +218,7 @@ func TestCache_SchemaVersionMismatchFailsOpen(t *testing.T) {
 // TestCache_AtomicConcurrentWrite (AC-PERF-008) verifies that concurrent
 // cache writes never produce a partially-written file visible to readers.
 func TestCache_AtomicConcurrentWrite(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -251,6 +270,7 @@ func TestCache_AtomicConcurrentWrite(t *testing.T) {
 // TestCache_LocationUnderStateDir (AC-PERF-009) verifies the cache file lives
 // under .moai/state/ and has the fixed name config-cache.json.
 func TestCache_LocationUnderStateDir(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)
@@ -280,6 +300,7 @@ func TestCache_LocationUnderStateDir(t *testing.T) {
 // TestCache_SizeChangeInvalidates (AP-2 defense) verifies that a file whose
 // mtime did NOT change but whose size DID is treated as invalid.
 func TestCache_SizeChangeInvalidates(t *testing.T) {
+	requireCacheEnabled(t)
 	dir := t.TempDir()
 	sectionsDir := filepath.Join(dir, "config", "sections")
 	mustMkdir(t, sectionsDir)

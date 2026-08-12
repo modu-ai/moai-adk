@@ -64,6 +64,17 @@ func cacheFilePath(configDir string) string {
 // file, schema mismatch, filesystem error — falls back to the full Load
 // path silently. The cache is an optimization, never a correctness dependency.
 func (l *Loader) LoadWithCache(configDir string) (*Config, error) {
+	// Escape hatch (SPEC-HOOK-PRETOOL-PERF-001): when
+	// MOAI_CONFIG_CACHE_DISABLED is set to a truthy value, bypass the cache
+	// layer entirely and fall through to the full Load path — no cache read,
+	// no cache write, and therefore no <configDir>/state/ creation side
+	// effect. Config values are unaffected (the cache is an optimization
+	// only). Used by tests that assert on filesystem state and as a debug
+	// opt-out; the production path (env unset) is unchanged.
+	if v := os.Getenv(EnvConfigCacheDisabled); v == "1" || v == "true" {
+		return l.Load(configDir)
+	}
+
 	configDir = filepath.Clean(configDir)
 	cachePath := cacheFilePath(configDir)
 	sectionsDir := filepath.Join(configDir, "config", "sections")
