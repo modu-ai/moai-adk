@@ -414,7 +414,7 @@ _<pending run-phase>_
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-after-merge  # D3 self-referential-hazard workaround — backfilled in a follow-up commit after the sync PR merges
+sync_commit_sha: 4d3e1d669  # D3 self-referential-hazard workaround — backfilled in a follow-up commit after the sync PR merges
 run_commit_shas:                                # 5 run-phase milestone commits (M3 intentionally skipped — held for SPEC-CONFIG-TIER-PERSIST-001 / E3)
   M1: 3186a65d8     # feat(SPEC-CONFIG-KEY-HONESTY-001): M1 triage rule + shipped key inventory
   M2: 0c494e9e1     # feat(SPEC-CONFIG-KEY-HONESTY-001): M2 path-resolved anti-rot guard (REQ-CKH-008)
