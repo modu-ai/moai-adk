@@ -98,14 +98,24 @@ jobs:
         if: steps.checks.outputs.should_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           PR_NUMBER="${{ steps.pr.outputs.number }}"
-          echo "Auto-merging PR #$PR_NUMBER..."
+          echo "Auto-merging PR #$PR_NUMBER ($PR_BRANCH)..."
 
-          # Try squash merge first
-          if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+          # Release/hotfix PRs preserve individual SPEC history via --merge.
+          # All other branches use --squash (Enhanced GitHub Flow §18.3).
+          if [[ "$PR_BRANCH" == release/* || "$PR_BRANCH" == hotfix/* ]]; then
+            MERGE_FLAG="--merge"
+            echo "Using --merge (release/hotfix branch — preserve history)"
+          else
+            MERGE_FLAG="--squash"
+            echo "Using --squash (feature branch — squash WIP commits)"
+          fi
+
+          if gh pr merge "$PR_NUMBER" $MERGE_FLAG --delete-branch; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
             echo "Merge failed, trying with --auto for deferred merge..."
-            gh pr merge "$PR_NUMBER" --squash --delete-branch --auto || true
+            gh pr merge "$PR_NUMBER" $MERGE_FLAG --delete-branch --auto || true
           fi
