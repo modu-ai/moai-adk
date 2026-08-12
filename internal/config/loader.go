@@ -88,6 +88,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load gate section (pre-commit quality gate + opt-in ast-grep sub-gate)
 	l.loadGateSection(sectionsDir, cfg)
 
+	// Load system section (SPEC-CONFIG-KEY-HONESTY-001 M4: narrow hook.* binding)
+	l.loadSystemSection(sectionsDir, cfg)
+
 	// Load constitution section (REQ-MIG003-001/002)
 	l.loadConstitutionSection(sectionsDir, cfg)
 

@@ -28,7 +28,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // symProgress was retired by SPEC-V3R6-UPDATE-PROGRESS-001 M1. All former
@@ -1141,21 +1140,11 @@ func resolveMoaiExecutable() string {
 // toggle from .moai/config/sections/system.yaml at the given project root.
 // Returns false on any error (file missing, parse error, key absent) — fail-CLOSED
 // per R3 mitigation. Used by `moai update` to render settings.json conditionally.
+//
+// SPEC-CONFIG-KEY-HONESTY-001 M4: delegates to the shared
+// config.LoadSystemHookOptInEnabled helper so the hook opt-in value is read
+// through the same systemFileWrapper path that loadSystemSection binds into
+// Loader.Load, instead of a private inline anonymous struct.
 func readHookOptInEnabled(projectRoot string) bool {
-	configPath := filepath.Join(projectRoot, ".moai", "config", "sections", "system.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false
-	}
-	var doc struct {
-		Hook struct {
-			OptIn struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"opt_in"`
-		} `yaml:"hook"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return false
-	}
-	return doc.Hook.OptIn.Enabled
+	return config.LoadSystemHookOptInEnabled(projectRoot)
 }

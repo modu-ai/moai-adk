@@ -31,7 +31,7 @@ _(pending run-phase — manager-develop populates this section when all MUST ACs
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-after-merge  # D3 self-referential-hazard workaround — backfilled in a follow-up commit after the sync PR merges
+sync_commit_sha: f7a0ed023  # PR #1450 squash-merge onto main (BAS Epic M2, merged 2026-08-06) — durable main commit representing the merged SPEC work (D3 self-referential-hazard backfill)
 run_commit_sha: 73650aa44                       # feat(SPEC-NAVIGATOR-SYNC-004) run commit on worktree-bas-m2-route
 frontmatter_status_transitions:
   spec_md: "in-progress → implemented → completed"  # merged into the single sync commit (3-phase close)

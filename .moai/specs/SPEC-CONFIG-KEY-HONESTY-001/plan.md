@@ -6,12 +6,12 @@ mechanical edits that consume them come last.
 
 ## §A Context
 
-Code baseline `d5336214e`, branch `plan/epic-update-config-audit` (merged with `origin/main`); the
-worktree HEAD is a descendant that changes SPEC documents only. All `file:line` references in `spec.md` §A were
-re-verified against this tree while authoring; one drift was found and recorded (spec.md §A.8 — the
-shipped `workflow.yaml` worktree toggles contradict `internal/config/defaults.go`).
+Code baseline `ed70e4354` (HEAD at iteration-3 refresh; the prior `d5336214e` baseline was 12 days
+stale and multiple citations drifted — all re-verified against HEAD). The worktree HEAD changes SPEC
+documents only. All `file:line` references in `spec.md` §A were re-verified against `ed70e4354`;
+drifts found and corrected are recorded in HISTORY 0.3.0.
 
-Two measurements this plan depends on, both re-derived at code baseline `d5336214e`:
+Two measurements this plan depends on, both re-derived at code baseline `ed70e4354`:
 
 - 287 distinct `yaml:`-tagged Go field names in `internal/config/types.go`; **174** with zero
   production reads and 4 read only through a `types.go` accessor, measured **path-resolved** (every
@@ -34,15 +34,18 @@ adjust the SPEC to match.
 1. The parity guard (`TestAuditParity`) checks name registration, not binding reachability, and
    therefore currently reports the `"system"` mapping GREEN while no loader exists. Any new guard
    must not repeat this shape — see M2 D3.
-2. `main-fork/` exists on disk and is untracked (`git ls-files main-fork` → 0). Every inventory step
-   must walk git-tracked paths.
+2. `main-fork/` MAY exist on disk in some checkouts and is untracked when present
+   (`git ls-files main-fork` → 0 in the primary checkout; absent in worktrees). Every inventory step
+   must walk git-tracked paths regardless, because a filesystem walk over a checkout that happens to
+   contain `main-fork/` falsely marks its fields live. AP-4's falsification needs a synthetic fixture
+   when `main-fork/` is absent (as in this worktree).
 3. This checkout is shared with concurrent sessions. `git stash` is prohibited; falsification uses
    `go test -overlay` or a scratch worktree driven by `go -C` (acceptance.md §C).
 
 ## §C Pre-flight
 
 ```bash
-git rev-parse --short HEAD                       # expect d5336214e or a recorded successor
+git rev-parse --short HEAD                       # expect ed70e4354 or a recorded successor
 go build ./... && go vet ./internal/config/...
 go test -count=1 ./internal/config/... ./internal/template/... ./internal/lsp/...
 ```
@@ -92,7 +95,7 @@ shipped, so it may cite SPEC IDs):
 — `.claude/agents`, `.claude/skills`, `.claude/rules`, `.claude/commands`, plus their
 `internal/template/templates/` mirrors — with `grep -rF` for the **dotted key path**
 (`<section>.<parent>.<leaf>`). A bare leaf-key match is a **homonym and is not evidence**: measured
-at code baseline `d5336214e`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
+at code baseline `ed70e4354`, bare `escalation` matches 46 prose files while `harness.escalation` matches 0.
 A second filter requires the matching file to also contain the literal `.moai/config`, so a passing
 mention of the concept does not qualify as an instruction to read the key.
 
@@ -144,7 +147,13 @@ The second contract decision: what the guard treats as evidence of liveness.
 Falsification (acceptance.md §C): remove one **R** marker via `go test -overlay` and observe the
 guard FAIL naming that key.
 
-### M3 — `quality.yaml` resolution (REQ-CKH-001, REQ-CKH-002, REQ-CKH-003)
+### M3 — `quality.yaml` resolution (REQ-CKH-001, REQ-CKH-002, REQ-CKH-003) — **HELD**
+
+> **HELD — pending `SPEC-CONFIG-TIER-PERSIST-001` (E3) completion.** M3's quality.yaml parse path is
+> the sole consumer of E3's tier-resolution contract: which tier resolves a `quality.yaml` block
+> changes the answer M3 produces. E3 is `status: draft` at this writing. A run-phase agent MUST NOT
+> attempt M3 until E3 reaches `status: completed`. The current execution set is M1, M2, M4, M5, M6.
+> See spec.md §B.1 for the hold annotation and progress.md §E.1 for the Epic run-order table.
 
 1. Decide per key group using the M1 rule. Expected outcome, subject to the prose probe:
    `session_effort_default` → **W** (a cost lever with a real consumer in model routing) or **D**;
@@ -160,12 +169,15 @@ The registry must stop asserting a binding that does not exist. Chosen decision,
 recorded here for review:
 
 - **Move `"system"` from `yamlToStructRegistry` to `yamlAuditExceptions`**, with a reason naming the
-  two real readers (`internal/cli/hook.go:508` `isHookOptInEnabled`, `internal/cli/update.go:1011`)
-  and stating that `Loader.Load()` does not read the file. This is the honest description of today's
-  code and immediately unblinds the parity guard.
+  two real readers (`internal/hook/routing_ledger.go:104` `HookObserveOptInEnabled` and
+  `internal/cli/update.go:1140` `readHookOptInEnabled`) and stating that `Loader.Load()` does not
+  read the file. This is the honest description of today's code and immediately unblinds the parity
+  guard. (`internal/cli/hook.go:589` `isHookOptInEnabled` is a one-line delegator to
+  `HookObserveOptInEnabled`, refactored at `e3f8dd463`; `internal/cli/update.go:1011` is
+  `cleanLegacyHooks`, not a system.yaml reader.)
 - **Add a narrow `loadSystemSection`** binding the one block with a genuine consumer (`hook.*`), and
-  replace `isHookOptInEnabled`'s inline anonymous struct with it — so the exception can later be
-  retired for a real reason rather than a paperwork one.
+  replace the two inline anonymous structs (`routing_ledger.go:104`, `update.go:1140`) with it — so
+  the exception can later be retired for a real reason rather than a paperwork one.
 - **Classify `github.*` and `document_management.*` through M1.** `document_management` retention is
   the sharpest case: it promises file deletion that nothing performs, so it is **R** with an
   explicit marker at minimum. Implementing retention is out of scope (spec.md §C).
@@ -178,10 +190,10 @@ still no code reads — converting an unbound lie into a bound one, with more co
 
 - `design.evolution.max_active_learnings`: not wired (two independent constants in two packages, a
   refactor beyond this SPEC's scope). Document the real enforcement sites at the config declaration
-  (`internal/config/types.go:1092`) and at `internal/config/defaults.go:753` per REQ-CKH-010, and
+  (`internal/config/types.go:1230`) and at `internal/config/defaults.go:930` per REQ-CKH-010, and
   classify the key **R** or **D**.
 - `workflow.worktree.auto_cleanup` / `auto_merge`: unwired. Correct the shipped template to match
-  `internal/config/defaults.go:545-547` (resolving the §A.8 contradiction: shipped `true` vs
+  `internal/config/defaults.go:665-667` (resolving the §A.8 contradiction: shipped `true` vs
   default `false`) and correct `CLAUDE.local.md` §22.8 to state that these two toggles are declared
   but not read.
 - `workflow.worktree.auto_create`: read, but only for advisory wording. `CLAUDE.local.md` §22.8 is
@@ -199,7 +211,7 @@ after the merge and be reported exactly once. The merge engine itself stays owne
 `SPEC-UPDATE-YAML-PRESERVE-001` (§D3); what M6 adds is the **report-once, delete-never** assertion
 over that engine's behaviour for keys this SPEC removes.
 
-- Rewrite `internal/template/templates/.moai/config/sections/workflow.yaml:65` and `:85` to drop
+- Rewrite `internal/template/templates/.moai/config/sections/workflow.yaml:82` and `:102` to drop
   `SPEC-AGENT-ARCH-V2-001` and `plan.md §D D6`, preserving the mechanism description.
 - Rewrite `llm.yaml:179` to drop `issue #653`, preserving the upstream-misreport explanation.
 - `make build`; confirm the §A.9 greps return only the generic `{SPEC-ID}` / `<SPEC-ID>` /

@@ -32,6 +32,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/routing"
 	"github.com/modu-ai/moai-adk/internal/telemetry"
 )
@@ -101,22 +102,13 @@ func HarnessLearningEnabled(projectRoot string) bool {
 // opt-in toggle whose default state is OFF, so a missing file, an unreadable
 // file, a parse error, or an absent key all yield false. Every L1 emission path
 // therefore ships inert to distributed users.
+//
+// SPEC-CONFIG-KEY-HONESTY-001 M4: the parse is delegated to the shared
+// config.LoadSystemHookOptInEnabled helper so the hook opt-in value is read
+// through the same systemFileWrapper path that loadSystemSection binds into
+// Loader.Load, instead of a private inline anonymous struct.
 func HookObserveOptInEnabled(projectRoot string) bool {
-	data, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "system.yaml"))
-	if err != nil {
-		return false
-	}
-	var doc struct {
-		Hook struct {
-			OptIn struct {
-				Enabled bool `yaml:"enabled"`
-			} `yaml:"opt_in"`
-		} `yaml:"hook"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return false
-	}
-	return doc.Hook.OptIn.Enabled
+	return config.LoadSystemHookOptInEnabled(projectRoot)
 }
 
 // routingSeamStoreAt applies both gates for an already-resolved project root and
