@@ -894,7 +894,7 @@ moai constitution list --format json
 
 # ============================================================
 # CONST-V3R6-NNN: V3R6 modern-era parallel namespace
-# (first V3R6 entry: runtime recovery doctrine M3)
+# (first V3R6 entry: a runtime-recovery predecessor SPEC, M3)
 # ============================================================
 # --- runtime-recovery-doctrine.md (1 entry: V3R6-001 anti-death-spiral) ---
 - id: CONST-V3R6-001
@@ -902,6 +902,6 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/workflow/runtime-recovery-doctrine.md
   anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
-  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to a future runtime-layer hook SPEC)"
+  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to a future recovery-signal SPEC)"
   canary_gate: true
 ```
