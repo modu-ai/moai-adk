@@ -295,7 +295,12 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		defer rs.Shutdown()
 	}
 
+	// SPEC-HOOK-PRETOOL-PERF-001 M0: env-gated dispatch timing.
+	dispatchStart := time.Now()
 	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
+	if deps.PerfTiming != nil {
+		deps.PerfTiming.MarkDispatch(dispatchStart, time.Now())
+	}
 	if err != nil {
 		return fmt.Errorf("dispatch hook: %w", err)
 	}
@@ -315,6 +320,12 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	// deny lives in hookSpecificOutput (permissionDecision / decision.behavior),
 	// never in the top-level Decision field, and per the official spec a JSON
 	// deny exits 0 (on exit 2 stdout JSON is IGNORED and the deny would be lost).
+
+	// SPEC-HOOK-PRETOOL-PERF-001 M0: emit per-phase timing to stderr if
+	// MOAI_HOOK_PERF_TIMING is set. No-op otherwise.
+	if deps.PerfTiming != nil {
+		deps.PerfTiming.Emit(time.Now())
+	}
 
 	return nil
 }
