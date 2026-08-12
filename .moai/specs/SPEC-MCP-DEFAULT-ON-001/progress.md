@@ -62,7 +62,24 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M2 2b380941e, M3 b
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-08-12
+sync_commit_sha: pending-backfill-sync  # self-referential-hazard placeholder per spec-frontmatter-schema.md D3 — a commit cannot know its own SHA until after it lands; backfilled in a follow-up chore(specs) commit
+sync_status: audit-ready
+run_baseline_squash_sha: ac3e38a0b  # PR #1455 squash onto main (2026-08-12) — durable main commit representing the merged plan+amendment+run work this sync commit closes
+changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Added` (SPEC-MCP-DEFAULT-ON-001 bullet)
+frontmatter_status_transitions:
+  spec.md: in-progress → implemented → completed (single sync commit, 3-phase close merged per spec-frontmatter-schema.md § Status Transition Ownership Matrix — the `completed` transition rides the sync commit, no separate Mx chore)
+  acceptance.md: n/a (markdown-header convention — no YAML frontmatter to transition)
+  plan.md: n/a (markdown-header convention — no YAML frontmatter to transition)
+b12_self_test_a: PASS  # pre-emission grep: `grep -c 'SPEC-MCP-DEFAULT-ON-001' CHANGELOG.md` → 0 before this commit (no duplicate entry from parallel BATCH-SYNC)
+b12_self_test_b: PASS  # AC count match: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 14 distinct AC identifiers (AC-A-001..014); this sync report references the same 14
+b12_self_test_c: PASS  # file-path verification: every path cited in the CHANGELOG entry (spec.md, progress.md, CHANGELOG.md, acceptance.md, plan.md, internal/template/templates/.mcp.json, internal/cli/init.go, internal/cli/update_template_sync.go, internal/cli/wizard/questions.go, internal/cli/wizard/translations.go, internal/cli/init_mcp_provision_test.go, internal/cli/update_mcp_merge_test.go, internal/template/mcp_template_neutrality_test.go, internal/template/mcp_doctrine_parity_test.go) verified to exist via `ls` before commit
+canary_compliance_check:
+  reversed_specs_untouched: PASS  # the two owner-amended SPECs (SPEC-MOAI-MCP-SERVER-001, SPEC-TREND-MCP-001) are off-limits to manager-docs; `git diff HEAD~1..HEAD --name-only | grep -E 'MOAI-MCP-SERVER|TREND-MCP'` → empty
+  template_first: PASS  # no template source edited in this sync commit (`git diff HEAD~1..HEAD --name-only | grep '^internal/template/templates/'` → empty); `make build` NOT required — this is a docs sync, PR #1455 already shipped the template-shape change and rebuilt catalog.yaml
+  go_files_in_commit: 0  # pure docs sync — `git diff HEAD~1..HEAD --name-only | grep -c '\.go$'` → 0
+  readme_scope_decision: skipped-with-rationale  # English README.md carries no MCP-defaults section (canonical-locale-first: nothing to derive); stale "trend MCP tools" paragraphs in README.ja.md / README.zh.md and the docs-site mcp.md "does not provision by default" line are adjacent docs debt OUTSIDE REQ-A-5's enumerated surfaces (wizard locale strings, settings-management.md + mirror, template CLAUDE.md §12) — flagged for a follow-up 4-locale README/docs-site sweep, NOT this single-SPEC sync commit
+  docs_site_scope_decision: not-touched  # docs-site `/claude-code/extensibility/mcp.md` carries a stale line 99 ("does not provision MCP servers by default") now partially contradicted by the default-on moai contract; touching it triggers the 4-locale same-PR obligation — a docs-site sweep explicitly deferred per single-SPEC sync scope discipline
 
 ## §F Phase 4 Mode Selection
 
