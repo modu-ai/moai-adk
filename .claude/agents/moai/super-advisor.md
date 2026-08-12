@@ -10,7 +10,7 @@ description: |
   second opinion before an irreversible delegation or escalation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
-tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet
+tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend
 model: inherit
 effort: high
 color: yellow

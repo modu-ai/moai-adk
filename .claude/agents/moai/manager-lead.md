@@ -5,7 +5,7 @@ description: |
   Use PROACTIVELY when a SPEC crosses the Tier L coordination threshold and the orchestrator delegates Mode-5-shaped fan-out rather than driving milestones serially itself.
   Match intent language-independently — do not require literal keyword matches.
   NOT for: writing code itself (delegated to leaf workers), Tier S/M single-milestone runs (orchestrator-direct Mode 5 is simpler), reviving the retired Agent Teams static layer (Mode 3 tombstone stays; `MODE_TEAM_UNAVAILABLE` unchanged), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
-tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status
 model: inherit
 effort: xhigh
 color: violet
