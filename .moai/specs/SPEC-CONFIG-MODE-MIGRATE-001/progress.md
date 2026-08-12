@@ -93,7 +93,7 @@ m1_to_mN_commit_strategy: "single M1 commit carries spec.md status draft→in-pr
 
 ```yaml
 sync_complete_at: "2026-08-13"
-sync_commit_sha: "pending-backfill-sync"   # self-referential-hazard workaround (spec-frontmatter-schema.md D3);
+sync_commit_sha: "882e62a84"   # backfilled from pending-backfill-sync (spec-frontmatter-schema.md D3 self-referential-hazard exemption);
                                             # a commit cannot know its own SHA until after it lands.
                                             # Backfilled to the real SHA in a follow-up commit.
 sync_status: "audit-ready"
