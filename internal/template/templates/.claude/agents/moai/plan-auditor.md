@@ -4,7 +4,7 @@ description: |
   Independent plan-phase document auditor. Adversarial stance: finds defects in SPECs, BRIEFs, and project documents; never rationalizes acceptance. Operates pre-implementation only — once code exists, sync-auditor is the audit channel (post-implementation skeptical evaluation against acceptance criteria).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
-tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi
+tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__spec_audit, mcp__moai__spec_drift, mcp__moai__codex_audit
 model: inherit
 effort: medium
 color: red

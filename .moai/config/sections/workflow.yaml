@@ -126,3 +126,11 @@ workflow:
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
         tmux_preferred: true
+    # branch_guard: primary checkout protection against branch-state mutations
+    # (git switch, checkout, reset --hard, stash, rebase). Local opt-in for
+    # multi-session shared checkouts; shipped default-false in template
+    # (internal/config/defaults.go enforces this). The manager-git agent is
+    # exempt via agent identity, allowing it to create worktrees even when
+    # the guard is active.
+    branch_guard:
+        enabled: true
