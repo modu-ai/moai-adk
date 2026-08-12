@@ -38,8 +38,8 @@ verification_shaped_req: REQ-B-6 (SSOT already complete at base; no Go test adde
 
 sync_status: audit-ready
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-sync
-sync_pr_number: pending
+sync_commit_sha: 54588d947
+sync_pr_number: 1470
 changelog_entry_position: [Unreleased] / Added (top of section)
 frontmatter_status_transitions:
   spec_md: "draft → completed (pragmatic direct close — the draft→in-progress intermediate was not recorded as a separate commit; manager-develop merged the run while SPEC-B sat at draft, so this sync commit carries the terminal completed transition directly)"
@@ -54,4 +54,4 @@ canary_compliance_check:
   markdown_only_commit: true
   moai_pre_commit_gate: bypassed via SKIP_MOAI_PRECOMMIT=1 (rationale: 0 Go source files staged; markdown-only commit — spec.md frontmatter + progress.md + CHANGELOG.md)
 
-sync_commit_sha carries the `pending-backfill-sync` placeholder per `.claude/rules/moai/development/spec-frontmatter-schema.md` § SHA placeholder backfill exemption (D3): this sync commit cannot reference its own SHA — a commit does not know its own hash until after it lands — so the established pattern writes a `pending-backfill-*` placeholder here and backfills the real SHA in a follow-up backfill PR once the orchestrator has the merged SHA in hand.
+sync_commit_sha backfilled to `54588d947` (sync PR #1470 squash merge) in this backfill commit. The prior `pending-backfill-sync` placeholder followed the D3 self-referential exemption (spec-frontmatter-schema § SHA placeholder backfill exemption): the sync commit cannot reference its own SHA until it lands.
