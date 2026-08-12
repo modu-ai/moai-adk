@@ -101,6 +101,7 @@ func TestPreTool_BranchGuard_ConfigGate_FlagFlips(t *testing.T) {
 		HookEventName: "PreToolUse",
 		ToolName:      "Bash",
 		AgentType:     "manager-develop",
+		CWD:           repo,
 		ToolInput:     json.RawMessage(`{"command": "` + command + `"}`),
 	}
 

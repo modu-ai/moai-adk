@@ -16,11 +16,30 @@ manager-docs for §E.4). manager-spec does NOT populate evidence content beyond
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop populates this section with attributable evidence per verification-claim-integrity §3 + manager-develop-prompt-template §E attribution triple>_
+Run-phase M1 (Seam A discriminant directory correction). NOTE: M1 was implemented
+directly by the orchestrator after the manager-develop M1 delegation hit a
+transient 429 rate limit — the agent had authored the RED test file
+`branch_guard_worktree_test.go` (committed nothing) before terminating. The
+orchestrator then completed Seam A + the existing-test CWD-contract updates.
+
+(a) commands run (this tree, this run) + (b) verbatim observed output:
+- E1: `go test ./internal/hook/ -run 'BranchGuard|IsPrimaryCheckout|CheckBranchState|AppendBranchGuard' -count=1` → `ok github.com/modu-ai/moai-adk/internal/hook 12.961s`. New tests PASS: TestBranchGuard_Worktree_Allow, _Primary_Still_Denies, _AuditLog_Placement, _FailOpen_NonGitCwd, _Exempt, TestIsPrimaryCheckout_Worktree. Existing branch-guard tests PASS after `input.CWD` was added to match the Seam A contract (Latency, CheckBranchStateOrigin, DeniesGitSwitchInPrimary, FailOpenOnGitError, ConfigGate_FlagFlips).
+- E2: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go tool cover -func` for internal/hook/branch_guard.go — checkBranchState 100.0%, isPrimaryCheckout 94.1%, appendBranchGuardAdvisory 94.4%, matchBranchStateCommand 100%, isExemptAgent 100%, runGitRevParse 100%, extractBranchStateCommand 80.0% (affected-files ≥85% bar met). Package total 84.3% (pre-existing baseline, unaffected by this change).
+- E4: `grep -rn 'AskUserQuestion|mcp__askuser' internal/hook/ | grep -v _test.go | grep -v '//'` → 0 matches (clean).
+- E5: `golangci-lint run --timeout=3m ./internal/hook/...` → 0 issues.
+- E7 (blocker): NONE. `resolveProjectRootFromInputOrEnv` (path_resolve.go:88) confirmed to prefer input.CWD exactly as plan.md §C claims — no third seam. input.CWD IS reliably populated by Claude Code for PreToolUse Bash events (proven by the passing TestBranchGuard_Worktree_Allow).
+
+(c) baseline-attribution: this run, this tree (worktree-branch-guard-discrim), HEAD = M1 commit SHA (pending-backfill below).
+
+E8 (RED pre-GREEN): GAP — the verbatim pre-GREEN failing-test output was NOT captured. The 429 rate limit terminated manager-develop after it authored `branch_guard_worktree_test.go` but before it ran the test against the pre-fix code; the orchestrator then implemented Seam A directly (GREEN-first). The RED driver — `TestBranchGuard_Worktree_Allow` fails against pre-fix `checkBranchState` because `isPrimaryCheckout` was queried at the primary checkout (via `h.projectRoot()`), not the worktree cwd — is documented in that test's doc comment. Residual-risk: without a captured RED, test-first falsifiability rests on the test's stated logic rather than an observed pre-fix failure output.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop populates run-phase completion signal here>_
+- run_status: audit-ready (M1 complete; M2 doctrine bump pending)
+- run_complete_at: 2026-08-13
+- M1: Seam A discriminant queries input.CWD (not $CLAUDE_PROJECT_DIR); audit-log dir stays pinned to primary (REQ-WBG-D-004). All branch-guard tests green; build (3 OS) / lint / subagent-boundary clean; affected-file coverage ≥85%.
+- M2 (pending): doctrine v1.1.0 → v1.2.0 + sanitized-pair mirror parity.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
