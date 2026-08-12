@@ -411,7 +411,40 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-12
+sync_commit_sha: pending-backfill-after-merge  # D3 self-referential-hazard workaround — backfilled in a follow-up commit after the sync PR merges
+run_commit_shas:                                # 5 run-phase milestone commits (M3 intentionally skipped — held for SPEC-CONFIG-TIER-PERSIST-001 / E3)
+  M1: 3186a65d8     # feat(SPEC-CONFIG-KEY-HONESTY-001): M1 triage rule + shipped key inventory
+  M2: 0c494e9e1     # feat(SPEC-CONFIG-KEY-HONESTY-001): M2 path-resolved anti-rot guard (REQ-CKH-008)
+  M4: b58f5c371     # feat(SPEC-CONFIG-KEY-HONESTY-001): M4 system.yaml resolution — unblind parity guard + loadSystemSection (REQ-CKH-004)
+  M5: 3f8f8458a     # feat(SPEC-CONFIG-KEY-HONESTY-001): M5 documented-but-unenforced reconciliation (REQ-CKH-009/010)
+  M6: 785947555     # feat(SPEC-CONFIG-KEY-HONESTY-001): M6 neutrality leak removal + E5 handoff (REQ-CKH-011/012/013)
+  M3: HELD          # deferred to SPEC-CONFIG-TIER-PERSIST-001 (E3) — NOT executed in this SPEC; do NOT attempt until E3 reaches status: completed (spec.md §A "M3 HELD" clause + plan.md §A M3-on-hold rationale)
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed"  # merged into the single sync commit (3-phase close); plan.md/acceptance.md carry no frontmatter (markdown-header convention)
+  updated_field_refreshed: "2026-08-12"
+changelog_entry_position: "[Unreleased] / Added"   # SPEC-CONFIG-KEY-HONESTY-001 entry appended at the top of the Added section
+readme_decision: skip                              # internal-tooling config-honesty fix — no user-facing command or behavior change
+docs_site_decision: skip                           # internal-tooling; no docs-site surface touched
+mx_tag_validation: sub-step-complete               # MX tag validation is a sync sub-step (no separate Mx-phase commit); no new @MX tags warranted in this SPEC's diff (guards live under test-tree paths; the loader_system.go addition carries no high-fan-in anchor)
+ac_pass_count_final: 22                            # AC-CKH-001..013, AC-CKH-015..023 — 22 MUST ACs PASS
+ac_pass_with_debt_count_final: 1                   # AC-CKH-014 — PASS-WITH-DEBT (see debt_note below)
+ac_fail_count_final: 0
+ac_held_count_final: 2                             # AC-CKH-005, AC-CKH-006 — held with M3 (deferred to SPEC-CONFIG-TIER-PERSIST-001)
+debt_note: |
+  AC-CKH-014 PASS-WITH-DEBT — the delete-never clause (template-removed D-class key +
+    user-set value survive backup.MergeYAML3Way) AND the reported-once clause (retained-key
+    advisory names the key at least once) ARE secured by TestTemplateRemovedKeySurvivesUserConfig
+    (internal/config/template_removed_key_test.go). Only the cross-call report-once sub-clause
+    (a second merge over the same tree emits no further advisory) is deferred to
+    SPEC-UPDATE-YAML-PRESERVE-001, which owns the merge engine. Recorded as a deferred gap,
+    NOT silently weakened. See progress.md §E.2 M6 "Deferred sub-clause (AC-CKH-014 part b literal)".
+template_first_mirror_check: no-gap                # zone-registry.md / llm.yaml / workflow.yaml ARE the template source under internal/template/templates/; .moai/docs/config-key-triage-rule.md + .moai/docs/local-dev-settings-intent.md are dev-internal (explicitly NOT shipped per the local-only docs/ set)
+build_verification: "go build ./... exit 0 (sync-phase light verification; full go test ./... deferred to sync-auditor)"
+open_blockers: 0
+```
 
 ## §F Phase 4 Mode Selection
 

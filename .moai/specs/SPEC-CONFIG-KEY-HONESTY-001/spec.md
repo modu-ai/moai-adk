@@ -2,7 +2,7 @@
 id: SPEC-CONFIG-KEY-HONESTY-001
 title: "config surface honesty: every key shipped to a user must be parsed, read, and enforced by the thing it claims to control — or be explicitly marked as not"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-31
 updated: 2026-08-12
 author: manager-spec
