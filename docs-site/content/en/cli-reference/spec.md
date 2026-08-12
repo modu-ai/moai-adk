@@ -4,8 +4,6 @@ weight: 35
 draft: false
 ---
 
-# moai spec Document Management
-
 `moai spec` manages the SPEC documents in the `.moai/specs/` directory. It provides subcommands for status updates, drift detection, acceptance-criteria viewing, EARS/GEARS linting, atomic closure, era auditing, and archiving.
 
 A SPEC is both the unit a harness receives work in and the single record a manager agent tracks progress against, so when its status diverges between frontmatter and the actual git history, the entire workflow's signal breaks. This command provides mechanical checks — drift detection, era audits, atomic closure — to keep that consistency across the SPEC lifecycle. Routing through this command is recommended over hand-editing the frontmatter.

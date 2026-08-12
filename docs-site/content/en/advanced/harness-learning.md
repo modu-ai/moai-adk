@@ -8,8 +8,6 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# Harness Learning Surface
-
 A harness (the automated quality-verification apparatus surrounding an agent) improves across sessions not because model weights change, but because harness code and instructions change. This page covers the **learning surface** — the touchpoint where observations accumulated by the harness are surfaced as rules, and which the user directly observes and approves. The pipeline internals (the ACE role model, the 3-Loop, the promotion engine) are placed on a separate [Harness Self-Evolution](/en/advanced/self-evolving/) page; here we cover only "what accumulates as observations, how far it changes automatically, and where the user intervenes."
 
 ## What the Learning Surface Is

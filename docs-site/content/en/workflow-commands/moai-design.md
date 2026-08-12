@@ -4,8 +4,6 @@ weight: 45
 draft: false
 ---
 
-# /moai design
-
 The design-phase collaboration workflow for UI-surfacing SPECs. A conditional path between plan and run, it bidirectionally synchronizes the design system and screen artifacts with Claude Design.
 
 {{< callout type="info" >}}

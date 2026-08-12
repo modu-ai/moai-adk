@@ -7,8 +7,6 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# manager-lead Hierarchical Team
-
 {{< callout type="info" >}}
 {{< icon target primary >}} <strong>Value home</strong>: agentic loop engineering · agentic harness
 {{< /callout >}}

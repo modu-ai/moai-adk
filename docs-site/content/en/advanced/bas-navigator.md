@@ -5,8 +5,6 @@ draft: false
 added_in: "v3.1"
 ---
 
-# BAS Navigator 3-Stage Codemap Synchronization
-
 Many projects have code that keeps moving while the documentation stands still. BAS Navigator (a synchronization layer that anchors codemaps to the blueprint) is the device that closes this gap. This page is a tutorial that follows how BAS Navigator synchronizes a codemap (a map that summarizes project structure in symbol units) across three stages. You can read it while running each command yourself.
 
 {{< callout type="info" >}}

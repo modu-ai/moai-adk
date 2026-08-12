@@ -4,8 +4,6 @@ weight: 10
 draft: false
 ---
 
-# moai inventory Command
-
 A guide to the `moai inventory` command, which shows the current project's active sessions, worktrees, and harnesses at a glance.
 
 In workflows that run multiple SPECs in parallel, it is hard to see at a glance which session is using which harness and worktree, so this command gathers all three resources into a single read-only view. That makes it well suited as the first step a manager agent takes to check for contention before spawning new work.

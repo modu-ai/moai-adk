@@ -4,8 +4,6 @@ weight: 20
 draft: false
 ---
 
-# Introduction
-
 MoAI-ADK is an Agentic Development Kit built around three core values that augment Claude Code: **cost** (Tokenomics), **self-improvement** (Agentic Loop Engineering), and **quality control** (Agentic Harness). It delivers the same code quality for fewer tokens. Declare a completion condition and the loop works on its own, accumulating observations the harness learns from. SPEC 3-phase and TRUST 5 gates judge 'done' by evidence. Model selection, reasoning depth, and context usage are all managed by the system. It ships as a single Go binary with no dependencies, so it runs immediately.
 
 

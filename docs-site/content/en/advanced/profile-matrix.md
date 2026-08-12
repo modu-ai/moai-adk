@@ -4,8 +4,6 @@ weight: 4
 draft: false
 ---
 
-# Profile Matrix
-
 MoAI-ADK maps each of the 11 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **33 cells** keyed by agent name (11 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
 
 ## Profile axis

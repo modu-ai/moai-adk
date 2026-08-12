@@ -4,8 +4,6 @@ weight: 75
 draft: false
 ---
 
-# Harness Profiles and Evaluation System
-
 Applying the same depth of verification to every change wastes tokens, and flattening verification to a uniformly shallow level lets quality leak. MoAI-ADK's answer is **adaptive verification** — automatically adjusting verification depth to the complexity of the SPEC, and entrusting evaluation to an independent evaluator rather than the party that built the change.
 
 ## Overview

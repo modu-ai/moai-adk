@@ -5,8 +5,6 @@ draft: false
 description: "How prompt caching — which Claude Code uses to cache the repeating prefix every turn and cut cost and latency — works, the 5-minute idle-based lifetime, what invalidates the cache, and cache-aware execution principles."
 ---
 
-# Prompt Caching
-
 Claude Code does not resend the whole conversation from scratch every turn. Instead it takes the part it has already processed right before and reuses it from the cache, and processes only the newly-added tail. This mechanism is **prompt caching**, and Claude Code turns it on automatically.
 
 {{< callout type="info" title="Background reference" >}}

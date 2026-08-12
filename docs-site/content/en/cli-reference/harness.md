@@ -4,8 +4,6 @@ weight: 80
 draft: false
 ---
 
-# moai harness Harness
-
 `moai harness` is a unified command tree that manages SPEC-complexity routing and the harness learning subsystem. It provides subcommands for routing, validation, lifecycle, proposal management, the v4 harness lifecycle, and the observation ledger.
 
 Deciding how much harness gating a SPEC needs based on its scope is a decision manager agents must repeat every time, so this command accumulates the observation ledger to track how the routing rules are actually used. That makes it the single source of truth when routing inaccuracies recur and you need to trace the cause.

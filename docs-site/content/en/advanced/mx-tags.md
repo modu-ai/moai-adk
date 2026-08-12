@@ -4,8 +4,6 @@ weight: 61
 draft: false
 ---
 
-# @MX TAG System
-
 @MX TAG is a code-level annotation that serves as the standard means for AI agents to convey **context · invariants · danger zones** across development sessions. Prompts can be ignored, but comments inscribed in code survive alongside the code, so the next agent can immediately grasp the intent and constraints the moment it first reads the code.
 
 > The operations (scanning · adding · querying) of @MX TAG are performed via the `/moai mx` command. This page covers the protocol and lifecycle of the tag system itself.

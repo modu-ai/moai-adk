@@ -8,8 +8,6 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# /moai goal
-
 A **condition-declared autonomous loop**: declare only the completion condition, and the session keeps taking turns until that condition holds. At the end of every turn the evaluator checks the condition, and once the condition is met the loop stops on its own. You no longer have to press "continue" at every step.
 
 {{< callout type="info" >}}

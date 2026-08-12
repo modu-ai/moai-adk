@@ -4,8 +4,6 @@ weight: 1
 draft: false
 ---
 
-# Tokenomics Overview
-
 Tokenomics (Token Economics) is the first pillar of MoAI-ADK v3.0. Even as per-token prices fall, agentic development consumes tokens at scale, so what determines cost is not the model price but how tokens are managed. This page overviews the tokenomics architecture and links to the deep-dive pages for each sub-topic.
 
 ## Why Tokenomics

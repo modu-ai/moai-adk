@@ -7,8 +7,6 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# Multi-model Audit Convergence
-
 {{< callout type="info" >}}
 {{< icon target primary >}} <strong>Value home</strong>: agentic harness · agentic loop engineering
 {{< /callout >}}

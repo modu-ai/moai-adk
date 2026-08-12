@@ -4,8 +4,6 @@ weight: 3
 draft: false
 ---
 
-# 3-Tier Agent Architecture (No-Haiku)
-
 MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character. This design is grounded in empirical data from the DeepSWE leaderboard. This page explains why Haiku is excluded, how the 3 tiers are configured, and distinguishes design intent from implemented behavior.
 
 ## Why Haiku Is Excluded

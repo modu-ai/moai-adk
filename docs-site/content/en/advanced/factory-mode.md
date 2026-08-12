@@ -8,8 +8,6 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# Factory Mode
-
 {{< callout type="info" >}}
 {{< icon flash primary >}} <strong>Value home</strong>: agentic loop engineering · agentic harness
 {{< /callout >}}

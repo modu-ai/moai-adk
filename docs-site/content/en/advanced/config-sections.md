@@ -5,8 +5,6 @@ draft: false
 description: "Key configuration file keys in .moai/config/sections/ (handoff/delegation/llm/statusline/security)."
 ---
 
-# Configuration Sections Reference
-
 MoAI-ADK project settings are split into several YAML files under `.moai/config/sections/`. While the [settings.json guide](/en/advanced/settings-json) covers Claude Code runtime settings, this page documents the keys of the main section files that control MoAI-ADK's own behavior.
 
 {{< callout type="info" >}}

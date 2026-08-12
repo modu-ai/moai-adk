@@ -5,8 +5,6 @@ draft: false
 added_in: "v3.1"
 ---
 
-# Autonomy Tier (MOAI_AUTONOMY_TIER)
-
 MoAI-ADK offers three autonomy tiers — from a semi-autonomous mode where the user confirms turn by turn, to a fully autonomous mode where, when the conditions are met, the agent drives a task to completion without human intervention. Each tier is expressed as a value of the `MOAI_AUTONOMY_TIER` environment-variable token, and decides — across the full lifecycle of a SPEC (requirements document), from plan through implementation, documentation, and audit — where user approval is required and where the flow proceeds automatically.
 
 This page walks through the structure of the three tiers, the permission surface each tier touches, and the safety mechanisms that must harden as autonomy rises.

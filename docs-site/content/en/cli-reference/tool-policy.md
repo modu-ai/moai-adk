@@ -4,8 +4,6 @@ weight: 88
 draft: false
 ---
 
-# moai tool-policy Tool Policy
-
 `moai tool-policy` manages the tool/permission policy SSOT. `.moai/config/sections/tool-policy.yaml` is the single source of truth; from it, the permissions block of `settings.json` is generated (codegen) and policy entries are queried.
 
 Because a single YAML line decides whether an agent reacts to a terminal command with allow, deny, or ask, breaking this SSOT tears down the harness safety boundary. So this command regenerates the single YAML into the `settings.json` permissions block that the code reads, giving humans the policy to choose and machines a consistent codegen result to consume. Routing through this command is recommended over editing the JSON directly when adjusting permissions per SPEC.

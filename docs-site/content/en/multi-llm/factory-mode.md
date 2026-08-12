@@ -4,8 +4,6 @@ weight: 30
 draft: false
 ---
 
-# Factory Mode
-
 ## What is Factory Mode?
 
 Factory Mode lets one **lead** session drive a `plan -> run -> verify -> sync`
