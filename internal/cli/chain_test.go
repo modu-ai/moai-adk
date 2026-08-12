@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/chain"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -195,9 +196,11 @@ func TestChainRemoteCWD(t *testing.T) {
 // TestChainPruneDryRun verifies prune dry-run identifies exited nodes.
 func TestChainPruneDryRun(t *testing.T) {
 	dir := setupChainTestDir(t)
+	// Create old exited nodes (31 days ago, no session_id = exited).
+	oldTime := time.Now().UTC().AddDate(0, 0, -31).Format(time.RFC3339)
 	populateChainLedger(t, dir, []chain.ChainEvent{
-		{EventType: chain.EventNodeEnter, NodeID: "N0", WorktreePath: "/p", SessionID: "", Depth: 0},
-		{EventType: chain.EventNodeEnter, NodeID: "N1", WorktreePath: "/w", SessionID: "", Depth: 1},
+		{EventType: chain.EventNodeEnter, NodeID: "N0", WorktreePath: "/p", SessionID: "", Depth: 0, EnteredAt: oldTime},
+		{EventType: chain.EventNodeEnter, NodeID: "N1", WorktreePath: "/w", SessionID: "", Depth: 1, EnteredAt: oldTime},
 	})
 
 	var buf bytes.Buffer

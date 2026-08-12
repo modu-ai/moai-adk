@@ -407,31 +407,35 @@ func runChainPrune(out interface{ Write([]byte) (int, error) }, dryRun bool) err
 		return nil
 	}
 
-	nodes := store.BuildNodes()
-	registryEntries := loadRegistryForOverlay()
-
-	var exited []chain.WorktreeNode
-	for _, n := range nodes {
-		if classifyStaleness(n.SessionID, registryEntries) == stalenessExited {
-			exited = append(exited, n)
-		}
+	threshold := chain.DefaultPruneThreshold()
+	result, err := store.Prune(threshold, time.Now().UTC(), dryRun)
+	if err != nil {
+		fmt.Fprintf(out, "prune error: %v\n", err)
+		return nil
 	}
 
-	if len(exited) == 0 {
-		fmt.Fprintln(out, "no exited nodes to prune")
+	if result.ArchivedNodes == 0 {
+		fmt.Fprintln(out, "no nodes eligible for pruning")
 		return nil
 	}
 
 	if dryRun {
-		fmt.Fprintf(out, "[dry-run] %d exited nodes would be archived\n", len(exited))
-		for _, n := range exited {
-			fmt.Fprintf(out, "  %s (depth %d, %s)\n", truncateID(n.NodeID), n.Depth, n.WorktreePath)
+		fmt.Fprintf(out, "[dry-run] %d nodes would be archived (%d kept)\n",
+			result.ArchivedNodes, result.KeptNodes)
+	} else {
+		fmt.Fprintf(out, "archived %d nodes (%d kept)\n",
+			result.ArchivedNodes, result.KeptNodes)
+		fmt.Fprintf(out, "  original size: %d bytes → compacted: %d bytes\n",
+			result.OriginalSize, result.CompactedSize)
+		if result.ArchivedPath != "" {
+			fmt.Fprintf(out, "  archive: %s\n", result.ArchivedPath)
 		}
-		return nil
 	}
 
-	// Full prune implementation: M5.
-	fmt.Fprintf(out, "prune: %d exited nodes identified (archival not yet implemented)\n", len(exited))
+	for _, id := range result.ArchivedNodeIDs {
+		fmt.Fprintf(out, "  %s\n", truncateID(id))
+	}
+
 	return nil
 }
 
