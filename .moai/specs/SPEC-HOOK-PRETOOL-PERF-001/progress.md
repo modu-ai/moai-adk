@@ -76,7 +76,7 @@ m1_to_mN_commit_strategy: single-feature-branch
 ```yaml
 sync_complete_at: 2026-08-13
 run_commit_sha: 3b6ea0677
-sync_commit_sha: pending-backfill-sync-SPEC-HOOK-PRETOOL-PERF-001
+sync_commit_sha: c4d8135a6c75c20d7502759bf174c8f3362bdc78
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] / Added
 ac_count_in_changelog: 10
@@ -99,7 +99,7 @@ canary_compliance_check:
 - **Plan correction B5-CORR**: plan.md B-5 + C-PRE-4 referenced `internal/hook/observer.go` (does NOT exist); the actual `$CLAUDE_PROJECT_DIR`-first helper is `internal/hook/path_resolve.go`. The run used `path_resolve.go`. Reference in CHANGELOG body for operator visibility.
 - **AC-PERF-010 (timeout narrowing) NOT in scope**: the 10s PreToolUse timeout remains. Narrowing toward 5s is gated on REQ-PERF-010 production telemetry and is a separate follow-up.
 - **README / docs-site**: unchanged — this is internal (`internal/config` + `internal/hook`) with no user-facing command or surface change.
-- **`sync_commit_sha` placeholder**: `pending-backfill-sync-SPEC-HOOK-PRETOOL-PERF-001` per the D3 self-referential-hazard exemption (`spec-frontmatter-schema.md` § Status Transition Ownership Matrix → SHA placeholder backfill exemption — a commit cannot know its own SHA until after it lands). The real SHA is backfilled in a follow-up commit once the sync PR merges (Route B squash).
+- **`sync_commit_sha` backfill**: real SHA `c4d8135a6` (PR #1476 squash merge) backfilled per D3 self-referential-hazard exemption (`spec-frontmatter-schema.md` § Status Transition Ownership Matrix → SHA placeholder backfill exemption — a commit cannot know its own SHA until after it lands).
 
 ## §F Phase 4 Mode Selection
 
