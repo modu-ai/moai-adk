@@ -1,17 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json",
   "mcpServers": {
-    "context7": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
-    },
-    "chrome-devtools": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y chrome-devtools-mcp@latest --headless"]
-    },
-    "playwright": {
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @playwright/mcp@latest"]
+    "moai": {
+      "command": "moai",
+      "args": ["mcp-server"]
     }
   },
   "staggeredStartup": {

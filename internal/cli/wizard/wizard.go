@@ -462,8 +462,8 @@ func saveBoolAnswer(id string, value bool, result *WizardResult) {
 		result.WorktreeAutoCreate = value
 	case "codex_audit_enabled":
 		result.CodexAuditEnabled = value
-	case "mcp_tools_opt_in":
-		result.MCPToolsOptIn = value
+	case "mcp_provision":
+		result.MCPProvision = value
 	}
 }
 

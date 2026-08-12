@@ -30,7 +30,7 @@ func TestPage3QuestionsStructure(t *testing.T) {
 		{"audit_gate_codex", QuestionTypeSelect, true, false},
 		{"audit_gate_glm", QuestionTypeSelect, true, false},
 		{"codex_audit_enabled", QuestionTypeConfirm, false, false},
-		{"mcp_tools_opt_in", QuestionTypeConfirm, false, false},
+		{"mcp_provision", QuestionTypeConfirm, false, false},
 		{"autonomy_tier", QuestionTypeSelect, true, false},
 	}
 

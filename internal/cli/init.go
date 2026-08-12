@@ -143,9 +143,9 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 	return val
 }
 
-// provisionMCPEntryIfOptedIn writes the single neutral `moai` entry into the
-// project's .mcp.json when the user opted in through the wizard's
-// mcp_tools_opt_in question, and does nothing otherwise (opt-in default-off).
+// provisionMCPEntryUnlessDeclined writes the single neutral `moai` entry into
+// the project's .mcp.json unless the user explicitly declined through the
+// wizard's mcp_provision question (default-on per SPEC-MCP-DEFAULT-ON-001).
 //
 // It is the call site that makes the MCP server reachable at runtime: without
 // it the wizard answer is collected into opts and then dropped, leaving the
@@ -155,9 +155,10 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
 // same lock + backup + idempotent-skip behaviour the other entry writers use.
 // Provisioning is best-effort: a failure warns and is swallowed, so a broken or
-// unwritable config can never fail an init.
-func provisionMCPEntryIfOptedIn(out, errOut io.Writer, projectRoot string, optedIn bool) {
-	if !optedIn {
+// unwritable config can never fail an init. The user's explicit decline is
+// honored absolutely (C-A-5): default-on is a default, not a mandate.
+func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, declined bool) {
+	if declined {
 		return
 	}
 	configPath := filepath.Join(projectRoot, ".mcp.json")
@@ -165,7 +166,7 @@ func provisionMCPEntryIfOptedIn(out, errOut io.Writer, projectRoot string, opted
 		_, _ = fmt.Fprintf(errOut, "warning: MCP server entry provisioning failed: %v\n", err)
 		return
 	}
-	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (opt-in).")
+	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
 }
 
 // applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
@@ -218,7 +219,7 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	opts.AuditGateCodex = result.AuditGateCodex
 	opts.AuditGateGLM = result.AuditGateGLM
 	opts.CodexAuditEnabled = result.CodexAuditEnabled
-	opts.MCPToolsOptIn = result.MCPToolsOptIn
+	opts.MCPProvision = result.MCPProvision
 	opts.AuditConfigSet = true
 }
 
@@ -412,7 +413,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	defer func() {
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
-
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
@@ -777,9 +777,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
 
-	// REQ-MCP-015 (opt-in, C6): turn the wizard's mcp_tools_opt_in answer into
-	// the single neutral .mcp.json entry. A project that declined ships inert.
-	provisionMCPEntryIfOptedIn(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, opts.MCPToolsOptIn)
+	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn the wizard's
+	// mcp_provision answer into the single neutral .mcp.json entry. Default is
+	// provision (true); an explicit decline is honored silently.
+	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, !opts.MCPProvision)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

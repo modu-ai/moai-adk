@@ -66,7 +66,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 ### Selection Decision Tree
 
 1. Read-only codebase exploration? Use the `Explore` subagent (Anthropic built-in)
-2. External documentation or API research? Use WebSearch, WebFetch, Context7 MCP tools
+2. External documentation or API research? Use WebSearch, WebFetch, Context7 MCP tools (Context7 available via `moai mcp add context7`)
 3. SPEC plan-phase authoring? Use the `manager-spec` subagent
 4. Run-phase implementation (DDD/TDD/autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`
 5. Sync-phase documentation? Use the `manager-docs` subagent
@@ -231,9 +231,9 @@ Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and cont
 
 MoAI-ADK integrates MCP servers and deep-analysis modes:
 
+- **moai MCP server** (default-on): the self-hosted local stdio server (`moai mcp-server`), provisioned into `.mcp.json` by `moai init` unless explicitly declined. Exposes the harness's own tools (spec audit, verify, session list, etc.) directly to the session. An explicit decline is honored; `moai mcp add moai` re-provisions it.
 - **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including Opus 5 and 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-foundation-thinking").
-- **Context7**: Up-to-date library documentation lookup (resolve-library-id, get-library-docs).
-- **claude-in-chrome**: Browser automation for web-based tasks.
+- **Optional MCP servers** (one-command activation via `moai mcp add <name>`): **Context7** (up-to-date library documentation lookup), **claude-in-chrome** (browser automation), **chrome-devtools**, **playwright**, **ast-grep**. These are documented in the recipe catalogue but NOT shipped in the distributed default — activate the ones you need.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.
 
 For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-management.md.

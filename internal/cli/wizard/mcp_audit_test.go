@@ -1,8 +1,9 @@
 package wizard
 
-// mcp_audit_test.go — SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020).
+// mcp_audit_test.go — SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020),
+// amended 2026-08-12 by SPEC-MCP-DEFAULT-ON-001 (mcp_provision default-on).
 //
-// These tests pin the audit + MCP opt-in selection surfaced on page 3 of the
+// These tests pin the audit + MCP provisioning selection surfaced on page 3 of the
 // `moai init` wizard. The selection reuses the M3 typed config vocabulary
 // (AuditModel* / AuditGate* constants from internal/config) so the wizard and
 // the audit backend share one interpreter — no fork (AC-MCP-021 shares the
@@ -16,7 +17,7 @@ import (
 
 // TestPage3Questions_AuditSelectionSurfaced verifies AC-MCP-020: page 3
 // presents audit_model, per-auditor audit_gate (claude/codex/glm),
-// codex_audit_enabled, and mcp_tools_opt_in.
+// codex_audit_enabled, and mcp_provision.
 func TestPage3Questions_AuditSelectionSurfaced(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
@@ -28,7 +29,7 @@ func TestPage3Questions_AuditSelectionSurfaced(t *testing.T) {
 		"audit_gate_codex",
 		"audit_gate_glm",
 		"codex_audit_enabled",
-		"mcp_tools_opt_in",
+		"mcp_provision",
 	}
 	for _, id := range wantIDs {
 		q := QuestionByID(questions, id)
@@ -139,22 +140,32 @@ func TestAuditGateQuestions_DefaultProfile(t *testing.T) {
 	}
 }
 
-// TestOptInFlags_DefaultOff verifies codex_audit_enabled + mcp_tools_opt_in
-// default to false (C6 opt-in default-off — REQ-MCP-002). A fresh project that
-// accepts the wizard defaults ships BOTH surfaces inert.
-func TestOptInFlags_DefaultOff(t *testing.T) {
+// TestOptInFlags_Defaults verifies the distributed defaults of the two
+// page-3 Confirm questions: codex_audit_enabled stays default-off (C6 opt-in),
+// while mcp_provision is default-on per SPEC-MCP-DEFAULT-ON-001 (REQ-A-3).
+func TestOptInFlags_Defaults(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	for _, id := range []string{"codex_audit_enabled", "mcp_tools_opt_in"} {
-		q := QuestionByID(Page3Questions(tmpDir), id)
-		if q == nil {
-			t.Fatalf("%s question missing", id)
-		}
-		if q.Type != QuestionTypeConfirm {
-			t.Errorf("%s type = %v, want Confirm", id, q.Type)
-		}
-		if q.Default != "false" {
-			t.Errorf("%s default = %q, want \"false\" (opt-in default-off, C6)", id, q.Default)
-		}
+	// codex_audit_enabled stays opt-in default-off.
+	codex := QuestionByID(Page3Questions(tmpDir), "codex_audit_enabled")
+	if codex == nil {
+		t.Fatal("codex_audit_enabled question missing")
+	}
+	if codex.Type != QuestionTypeConfirm {
+		t.Errorf("codex_audit_enabled type = %v, want Confirm", codex.Type)
+	}
+	if codex.Default != "false" {
+		t.Errorf("codex_audit_enabled default = %q, want \"false\" (opt-in default-off, C6)", codex.Default)
+	}
+	// mcp_provision is default-on after SPEC-MCP-DEFAULT-ON-001.
+	mcp := QuestionByID(Page3Questions(tmpDir), "mcp_provision")
+	if mcp == nil {
+		t.Fatal("mcp_provision question missing")
+	}
+	if mcp.Type != QuestionTypeConfirm {
+		t.Errorf("mcp_provision type = %v, want Confirm", mcp.Type)
+	}
+	if mcp.Default != "true" {
+		t.Errorf("mcp_provision default = %q, want \"true\" (default-on, SPEC-MCP-DEFAULT-ON-001)", mcp.Default)
 	}
 }

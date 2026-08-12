@@ -1,5 +1,6 @@
 // mcp_template_neutrality_test.go: SPEC-TREND-MCP-001 M1 AC-TMC-002 / AC-TMC-003
-// regression guard for the new template-managed `.mcp.json` surface.
+// (amended 2026-08-12 per SPEC-MCP-DEFAULT-ON-001) — regression guard for the
+// template-managed `.mcp.json` surface.
 //
 // The distributed `.mcp.json` is the FIRST template file whose primary content
 // is JSON entries referencing external package names. This test asserts the
@@ -7,9 +8,10 @@
 // SPEC-ID/commit-SHA/date leak) do not specifically frame for an MCP package
 // list:
 //
-//   - the active mcpServers map carries EXACTLY 3 default-on entries
-//     (context7, chrome-devtools, playwright) — ast-grep and moai stay opt-in
-//     via `moai mcp add`, NEVER in the distributed default;
+//   - the active mcpServers map carries EXACTLY 1 default-on entry (`moai`)
+//     after the SPEC-MCP-DEFAULT-ON-001 inversion; context7, chrome-devtools,
+//     playwright, and ast-grep stay documented-but-disabled, activated via
+//     `moai mcp add`, NEVER in the distributed default;
 //   - no `$comment` JSONC form appears (standard JSON only);
 //   - no entry carries a resolved secret (every env value is a ${VAR} literal);
 //   - no SPEC-ID, commit SHA, macOS-bias absolute path, CLAUDE.local.md
@@ -30,12 +32,12 @@ import (
 )
 
 // mcpAllowedActiveKeys is the exact set of active mcpServers keys permitted in
-// the distributed default. ast-grep + moai stay opt-in (omitted from the active
-// map, activated via `moai mcp add ...`).
+// the distributed default. After SPEC-MCP-DEFAULT-ON-001, the sole default-on
+// entry is `moai`; context7, chrome-devtools, playwright, and ast-grep stay
+// documented-but-disabled (omitted from the active map, activated via
+// `moai mcp add ...`).
 var mcpAllowedActiveKeys = map[string]struct{}{
-	"context7":        {},
-	"chrome-devtools": {},
-	"playwright":      {},
+	"moai": {},
 }
 
 // mcpForbiddenTokenRes are the leak-class regexes the broader neutrality / leak
@@ -70,7 +72,7 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 		}
 	}
 
-	// AC-TMC-001: structural shape — exactly the 3 default-on active entries.
+	// AC-TMC-001 (amended): structural shape — exactly the 1 default-on active entry.
 	var doc struct {
 		Schema         string         `json:"$schema"`
 		McpServers     map[string]any `json:"mcpServers"`
@@ -79,15 +81,15 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 	if err := json.Unmarshal(data, &doc); err != nil {
 		t.Fatalf("template .mcp.json is not valid JSON: %v", err)
 	}
-	if len(doc.McpServers) != 3 {
-		t.Errorf("template .mcp.json mcpServers count = %d, want exactly 3 (context7 + chrome-devtools + playwright)", len(doc.McpServers))
+	if len(doc.McpServers) != 1 {
+		t.Errorf("template .mcp.json mcpServers count = %d, want exactly 1 (moai)", len(doc.McpServers))
 	}
 	for k := range doc.McpServers {
 		if _, ok := mcpAllowedActiveKeys[k]; !ok {
-			t.Errorf("template .mcp.json carries non-default-on entry %q (only context7/chrome-devtools/playwright are permitted in the distributed default)", k)
+			t.Errorf("template .mcp.json carries non-default-on entry %q (only moai is permitted in the distributed default)", k)
 		}
 	}
-	for _, required := range []string{"context7", "chrome-devtools", "playwright"} {
+	for _, required := range []string{"moai"} {
 		if _, ok := doc.McpServers[required]; !ok {
 			t.Errorf("template .mcp.json is missing required default-on entry %q", required)
 		}

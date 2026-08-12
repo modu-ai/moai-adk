@@ -8,11 +8,14 @@
 
 ### M1 — Template-managed .mcp.json + bundled neutral entries
 
-**AC-TMC-001** (Given-When-Then; traces to REQ-TMC-001, REQ-TMC-004)
+> **Amendment notice (2026-08-12, v0.1.1 → v0.2.0).** AC-TMC-001 and AC-TMC-004 below are amended in place: the distributed active `mcpServers` map inverts from the three third-party entries to the single `moai` entry. An auditor asking "why is a completed MUST AC being inverted?" should read this: AC-TMC-001's "exactly three" was never a judgment about *which* tools belong — it was a **structural assertion** that the active map matches the documented catalogue exactly, so no undocumented entry can be smuggled in. The amended AC asserts that same structural property against a one-entry map. The three third-party entries are not withdrawn; they move to the documented-and-disabled tier `ast-grep` already occupies, one `moai mcp add` away (REQ-TMC-005). **Secret hygiene (REQ-TMC-002 — `${VAR}` literals only, no resolved keys, §25 neutrality) and the `$comment`-free requirement (REQ-TMC-004) are untouched and are still asserted below.** Cause and full scope live in `spec.md` HISTORY § Amendments; the implementing SPEC is `SPEC-MCP-DEFAULT-ON-001`.
+
+**AC-TMC-001** (Given-When-Then; traces to REQ-TMC-001, REQ-TMC-004) **[AMENDED]**
 - **Given** the template source at `internal/template/templates/.mcp.json` is authored and `make build` is run,
 - **When** an auditor reads the regenerated catalog and the resulting `.mcp.json`,
-- **Then** exactly three entries are active in the distributed default `mcpServers` map (`context7`, `chrome-devtools`, `playwright`); `moai` is opt-in (absent from the distributed default per REQ-TMC-003) and `ast-grep` is documented in the recipe catalogue but absent from the active map (default-disabled per REQ-TMC-004, activated via `moai mcp add ast-grep ...`). No JSONC/`$comment` form appears in the template.
-- Verification: `jq '.mcpServers | keys' internal/template/templates/.mcp.json` → `["chrome-devtools", "context7", "playwright"]` (exactly 3); `grep -c "ast-grep" .moai/docs/mcp-recipes.md` → `≥1`; `grep -c '\\$comment' internal/template/templates/.mcp.json` → `0`.
+- **Then** exactly ONE entry is active in the distributed default `mcpServers` map (`moai`, per the amended REQ-TMC-003); `context7`, `chrome-devtools`, `playwright`, and `ast-grep` are each documented in the recipe catalogue but absent from the active map (default-disabled, activated via `moai mcp add <name> ...`). No JSONC/`$comment` form appears in the template.
+- Verification: `jq -c '.mcpServers | keys' internal/template/templates/.mcp.json` → `["moai"]` (exactly 1); `grep -c "ast-grep" .moai/docs/mcp-recipes.md` → `≥1`; `grep -c '\$comment' internal/template/templates/.mcp.json` → `0`.
+- Original (v0.1.1, superseded): "**Then** exactly three entries are active in the distributed default `mcpServers` map (`context7`, `chrome-devtools`, `playwright`); `moai` is opt-in (absent from the distributed default per REQ-TMC-003) …" with verification `→ ["chrome-devtools", "context7", "playwright"]` (exactly 3).
 
 **AC-TMC-002** (Given-When-Then; traces to REQ-TMC-002)
 - **Given** the template `.mcp.json` is committed,
@@ -26,11 +29,12 @@
 - **Then** the test PASSES — the SPEC-ID / commit-SHA / date-literal leak detector finds zero violations in the new `.mcp.json`.
 - Verification: `go test -run TestInternalContentLeak -v ./internal/template/... 2>&1 | grep -E "PASS|FAIL"` → `PASS`.
 
-**AC-TMC-004** (Given-When-Then; traces to REQ-TMC-003)
+**AC-TMC-004** (Given-When-Then; traces to REQ-TMC-003) **[AMENDED]**
 - **Given** the distributed template `.mcp.json`,
 - **When** an auditor reads the `moai` entry,
-- **Then** the entry is opt-in — it ships in a form that does NOT auto-start the local stdio server unless the user explicitly enables it (omitted-from-active-map, documented in the recipe catalogue), preserving MOAI-MCP-SERVER-001 REQ-MCP-002's single-server opt-in property.
-- Verification: the active `mcpServers` map at distributed default does NOT include a runnable `moai` entry whose `command: "moai"` would be executed by the Claude Code runtime at session start without user action. Per plan.md §B.B4, the omitted-from-active-map rendering choice applies to both `ast-grep` and `moai` — both are documented-only at the distributed default, and the user runs `moai mcp add ...` to activate. The active distributed map is exactly `context7 + chrome-devtools + playwright` (3 entries).
+- **Then** the entry is present in the active map and runnable — `{"command":"moai","args":["mcp-server"]}`, PATH-resolved, carrying no `env` block and therefore no secret — tracking MOAI-MCP-SERVER-001 REQ-MCP-002's amended default-on property. The three third-party entries are absent from the active map and documented in the recipe catalogue instead.
+- Verification: `jq -c '.mcpServers.moai' internal/template/templates/.mcp.json` → `{"command":"moai","args":["mcp-server"]}`; `jq '.mcpServers.moai | has("env")' …` → `false`; `jq -c '.mcpServers | keys' …` → `["moai"]`. The plan.md §B.B4 omitted-from-active-map rendering choice now applies to `ast-grep`, `context7`, `chrome-devtools`, and `playwright`; the user runs `moai mcp add <name> ...` to activate any of them.
+- Original (v0.1.1, superseded): "**Then** the entry is opt-in — it ships in a form that does NOT auto-start the local stdio server unless the user explicitly enables it (omitted-from-active-map, documented in the recipe catalogue) … The active distributed map is exactly `context7 + chrome-devtools + playwright` (3 entries)."
 
 ### M2 — Generic atomic-RMW entry-management CLI
 

@@ -205,7 +205,7 @@ func TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset(t *testing.T) {
 		ProjectRoot:     root,
 		AuditConfigSet:  false,
 		AuditModel:      config.AuditModelMulti,
-		MCPToolsOptIn:   true,
+		MCPProvision:   true,
 	}
 	if err := writeWorkflowAuditYAML(sectionsDir, opts, &InitResult{}); err != nil {
 		t.Fatalf("writeWorkflowAuditYAML: %v", err)
