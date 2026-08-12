@@ -68,6 +68,31 @@ AC-C-001/002/003 (console rendering), AC-C-006..009 (codex auth), AC-C-010/011 (
 | AC-C-008 (codex absent → graceful) | PASS | `TestAC_C_008_CodexAbsentGraceful` + `TestAC_C_008_DefaultProbeIsFailOpen` |
 | AC-C-009 (toggles write the seam the gates read) | PASS | `TestAC_C_009_TogglesWriteTheSeamThatGatesRead` + `TestAC_C_009_ToggleOffRoundTrips` — ApplySchemaEdits → readCodexReviewGateEnabled/readCodexTaskAllowWrite round-trip |
 
+### M4 — GLM key surface (REQ-C-7)
+
+**What landed:**
+
+- MODIFIED `internal/web/fieldsets.templ` (+ regenerated `fieldsets_templ.go`) — NEW `glmKeyStateBlock` templ component rendered inside the MCP console section (`fieldsetMCP`) after `codexAuthBlock`. The block surfaces the GLM key STATE only: configured/not-configured boolean + the bounded trailing-four hint. It consumes `view.GLMKeyConfigured` / `view.GLMKeyHint` (already populated by the pre-existing `populateGLMKeyHint` → `computeGLMKeyHint` path authored by SPEC-GLM-KEY-INPUT-001). No second credential path, no submit, no reveal — those live in the 3rd Party LLM section (`fieldsetGLMKey`); M4 is state-only (REQ-C-7).
+- MODIFIED `internal/web/assets/i18n.js` — 5 new keys × 4 locales (en/ko/ja/zh) for the GLM key state block (`sec.mcp.glm_key.title`, `f.mcp.glm_key.{status,configured,hint,not_configured}`).
+- NEW `internal/web/mcp_glmkey_surface_test.go` — AC-C-010/011 tests.
+
+**Key finding (SPEC SSOT over task assumption):** the task description assumed the GLM key classifier lives in `internal/cli/` and needs a probe extraction mirroring M3's `ProbeCodexSetup`. The code and plan.md §M4 say otherwise: `glmkey.go` is in `internal/web/` (not `internal/cli/`), and `computeGLMKeyHint()` already lives there, authored by SPEC-GLM-KEY-INPUT-001. plan.md §M4 ("Reuse glmkey.go as-is") and AC-C-010 (`git diff ed70e4354 -- internal/web/glmkey.go` shows no logic change) govern. No probe extraction, no new DI seam — M4 surfaces the existing view-model state in the MCP section.
+
+**TDD cycle:** RED (`undefined: glmKeyStateBlock` — 6 new tests fail to compile) → GREEN (templ component + i18n keys + generated code; all 6 M4 tests PASS) → fix (no-fork guard test refined to exclude generated `_templ.go` comment leakage; `glmcred.Load(` confined to glmkey.go).
+
+**Reuse proof (AC-C-010):** `git diff ed70e4354 -- internal/web/glmkey.go` → 0 lines changed (byte-identical). `TestGLMKeyField_AbsentFromSchema` still PASSes (field absent from `settings.AllFields()`). `TestGLMKeyHint_TrailingFourOnly` + `TestGLMKeyHint_ShortKeyDisclosesNothing` still PASS (AC-C-011 disclosure bounded — both branches).
+
+### AC PASS/FAIL matrix (M4 scope)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-C-010 (GLM credential path reused unchanged) | PASS | `git diff ed70e4354 -- internal/web/glmkey.go` → 0 lines; `TestGLMKeyField_AbsentFromSchema` PASS; `TestAC_C_010_GLMKeyStateSurfacedInMCPSection` + `_RenderedViaRoute` + `_NoSecondCredentialPathInWeb` — `glmcred.Load(` confined to glmkey.go |
+| AC-C-011 (disclosure stays bounded) | PASS | `TestGLMKeyHint_TrailingFourOnly` + `TestGLMKeyHint_ShortKeyDisclosesNothing` (unchanged) PASS; `TestAC_C_011_HintShownWhenConfiguredAndLong` + `_NoCharactersForShortKey` + `_NotConfiguredState` PASS |
+
+### Out-of-M4 (deferred to M5)
+
+AC-C-012 (no credential in git-tracked file — full secret-hygiene sweep), AC-C-013 (4-locale governance re-assertion — the 5 M4 keys already pass), AC-C-014 (no-forked interpreter guards re-asserted) — M5 scope. (Note: the 5 new M4 i18n keys already pass the governance suite `TestI18n`, and the no-fork guards `mcp_audit_surface_test.go` are untouched.)
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

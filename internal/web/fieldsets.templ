@@ -666,8 +666,50 @@ templ fieldsetMCP(view pageView) {
 			// recomputed here). Unauthenticated → names the command (AC-C-007);
 			// absent → graceful not-installed state (AC-C-008).
 			@codexAuthBlock(view)
+			// SPEC-MCP-CONSOLE-001 M4 (REQ-C-7): GLM key state surface. The state
+			// is REUSED from the existing view model (view.GLMKeyConfigured /
+			// GLMKeyHint, populated by populateGLMKeyHint -> computeGLMKeyHint in
+			// glmkey.go — AC-C-010: no second credential path). Only the configured
+			// boolean and the bounded trailing-four hint cross in (AC-C-011); no
+			// key value, no submit, no reveal (those live in the 3rd Party LLM
+			// section).
+			@glmKeyStateBlock(view)
 		</div>
 	</fieldset>
+}
+
+// glmKeyStateBlock renders the GLM API key STATE inside the MCP section — a
+// read-only configured/not-configured indicator plus the bounded trailing-four
+// hint. It is state-only by design (REQ-C-7): the credential input + reveal
+// surface stays in the 3rd Party LLM section (fieldsetGLMKey); this block does
+// not duplicate that path. The hint is already truncated to the final four
+// characters (or empty for a key of four characters or fewer) by the time it
+// reaches the view model — computeGLMKeyHint enforces that bound before the
+// pageView is built, so this template renders only what it is given (AC-C-011).
+templ glmKeyStateBlock(view pageView) {
+	<div class="glm-key">
+		<div class="glm-key__head">
+			<span class="glm-key__title" data-i18n="sec.mcp.glm_key.title">GLM API key</span>
+		</div>
+		if view.GLMKeyConfigured {
+			<dl class="glm-key__state glm-key__state--configured">
+				<div class="glm-key__row">
+					<dt data-i18n="f.mcp.glm_key.status">Status</dt>
+					<dd data-i18n="f.mcp.glm_key.configured">Configured</dd>
+				</div>
+				if view.GLMKeyHint != "" {
+					<div class="glm-key__row">
+						<dt data-i18n="f.mcp.glm_key.hint">Last four</dt>
+						<dd><code class="field__hint-key">…{ view.GLMKeyHint }</code></dd>
+					</div>
+				}
+			</dl>
+		} else {
+			<p class="glm-key__state glm-key__state--not-configured" data-i18n="f.mcp.glm_key.not_configured">
+				No GLM API key is configured.
+			</p>
+		}
+	</div>
 }
 
 // codexAuthBlock renders the codex authentication + opt-in toggle surface inside
