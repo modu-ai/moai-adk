@@ -63,7 +63,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M2 2b380941e, M3 b
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-12
-sync_commit_sha: pending-backfill-sync  # self-referential-hazard placeholder per spec-frontmatter-schema.md D3 — a commit cannot know its own SHA until after it lands; backfilled in a follow-up chore(specs) commit
+sync_commit_sha: d21b76ebb  # PR #1464 squash-merge onto main (SPEC-MCP-DEFAULT-ON-001 sync-phase, merged 2026-08-12) — durable main commit representing the merged SPEC work (D3 self-referential-hazard backfill)
 sync_status: audit-ready
 run_baseline_squash_sha: ac3e38a0b  # PR #1455 squash onto main (2026-08-12) — durable main commit representing the merged plan+amendment+run work this sync commit closes
 changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Added` (SPEC-MCP-DEFAULT-ON-001 bullet)
