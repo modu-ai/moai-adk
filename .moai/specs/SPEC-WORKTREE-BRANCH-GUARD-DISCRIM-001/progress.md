@@ -43,7 +43,12 @@ E8 (RED pre-GREEN): GAP — the verbatim pre-GREEN failing-test output was NOT c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates sync_commit_sha on the single sync commit carrying the implemented → completed transition>_
+- sync_commit_sha: "61e2c3bc0"
+- sync_status: audit-ready
+- sync_complete_at: 2026-08-13
+- close_type: 3-phase close (plan->run->sync); the in-progress -> implemented -> completed transition is merged into this single sync commit per spec-frontmatter-schema.md Status Transition Ownership Matrix
+- run_baseline: PR #1488 squash 61e2c3bc0 on origin/main (run-phase Seam A discriminant directory correction + existing-test CWD-contract updates)
+- scope: frontmatter status:/updated: on spec.md + this E.4 block + CHANGELOG [Unreleased] entry; zero code changes (sync is markdown-only)
 
 ## §F Phase 4 Mode Selection
 

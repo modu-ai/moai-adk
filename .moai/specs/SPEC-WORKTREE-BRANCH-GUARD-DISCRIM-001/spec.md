@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
 title: "Main-Checkout Branch-State Guard — Worktree Discriminant Directory Correction"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-13
 updated: 2026-08-13
 author: manager-spec
