@@ -4,6 +4,8 @@ weight: 55
 draft: false
 ---
 
+# /moai harness
+
 Creates a project-specific specialist set (harness) and manages the harness learning lifecycle.
 
 {{< callout type="info" >}}

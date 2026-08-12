@@ -4,6 +4,8 @@ weight: 45
 draft: false
 ---
 
+# /moai review
+
 Reviews code across four lenses — security, performance, quality, and UX — checks `@MX` tag compliance, and produces a prioritized consolidated report.
 
 {{< callout type="info" >}}

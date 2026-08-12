@@ -53,6 +53,26 @@ graph TD
     D --> G[Independent work]
 ```
 
+## The two layers of workspace: L1 and L2
+
+The worktrees MoAI-ADK deals with come in two layers. Both ultimately ride on top of git worktree (the underlying mechanism by which one git repository owns multiple working directories), but **who creates them, where they live, and how long they last** differ. Knowing this difference keeps "which worktree am I working in right now?" from getting confused.
+
+1. **L1 — `.claude/worktrees/`**: lives inside the project directory. The Claude Code runtime creates it on its own, and when the session ends a clean-state tree is cleaned up automatically. Think of it as a session-scoped temporary space.
+2. **L2 — `~/.moai/worktrees/`**: lives outside the project, under the user's home directory. The user opts in and MoAI creates it for SPEC-scoped parallel development, reusing the same tree across the run and sync phases. Disposal requires the user to run `moai worktree done` explicitly.
+
+The short diagram below captures the location and the actor behind each layer at a glance. The deeper create/dispose lifecycle and the `isolation: worktree` behavior are covered in the [platform-basics worktree doc](/en/claude-code/agentic/worktrees).
+
+```mermaid
+flowchart TD
+    Repo[One git repository<br/>shared .git object database]
+    Repo --> L1[L1 — .claude/worktrees/<br/>inside the project, session-scoped temporary]
+    Repo --> L2[L2 — ~/.moai/worktrees/<br/>outside the project, SPEC-scoped persistent]
+    L1 --> Who1[Created autonomously by the Claude Code runtime]
+    L2 --> Who2[Created by MoAI on user opt-in]
+```
+
+The key is **the separation of sharing and isolation**. The repository's history and remote are managed together in one place, while the working directory and the LLM configuration tied to it are split completely per tree. So no matter which worktree you commit in, the other worktrees recognize that commit immediately, and branches do not tangle. On top of that, MoAI-ADK layers an entry switch (`moai cc` · `moai glm` · `moai cg`) that bundles "which worktree to enter" and "which LLM mode to run" into a single action.
+
 ## Core workflow
 
 ### 3-phase development process

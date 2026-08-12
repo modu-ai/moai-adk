@@ -4,6 +4,8 @@ weight: 25
 draft: false
 ---
 
+# /moai goal
+
 A **condition-declared autonomous loop** command: declare a completion condition and the session works on its own until that condition holds. When you arm a completion condition with `/moai goal "<condition>"`, the `stop-goal` Stop hook evaluates whether the condition is met at the end of every turn and automatically starts the next turn until it is satisfied.
 
 {{< callout type="info" >}}
