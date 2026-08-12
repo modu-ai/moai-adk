@@ -8,7 +8,7 @@ updated: 2026-08-13
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
-module: "internal/config"
+module: "internal/cli"
 lifecycle: spec-anchored
 era: V3R6
 tier: S
