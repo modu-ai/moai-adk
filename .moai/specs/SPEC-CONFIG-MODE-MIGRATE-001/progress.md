@@ -74,7 +74,7 @@ GREEN then implemented `IsWideningCandidate` / `ScanConfigDir` / `FormatDryRun` 
 
 ```yaml
 run_complete_at: "2026-08-13"
-run_commit_sha: "pending-backfill-m1"   # self-referential — backfilled post-commit
+run_commit_sha: "5817e9173"   # backfilled post-commit (D3 self-referential-hazard exemption)
 run_status: "audit-ready"
 ac_pass_count: 8
 ac_fail_count: 0
