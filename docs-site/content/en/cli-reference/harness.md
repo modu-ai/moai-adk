@@ -4,7 +4,11 @@ weight: 80
 draft: false
 ---
 
+# moai harness Harness
+
 `moai harness` is a unified command tree that manages SPEC-complexity routing and the harness learning subsystem. It provides subcommands for routing, validation, lifecycle, proposal management, the v4 harness lifecycle, and the observation ledger.
+
+Deciding how much harness gating a SPEC needs based on its scope is a decision manager agents must repeat every time, so this command accumulates the observation ledger to track how the routing rules are actually used. That makes it the single source of truth when routing inaccuracies recur and you need to trace the cause.
 
 It accepts the common flag `--project-root <path>` (default: current directory).
 
@@ -53,10 +57,19 @@ It accepts the common flag `--project-root <path>` (default: current directory).
 | Command | Description |
 |--------|------|
 | `moai harness ledger record` | Record the routing decision at dispatch time (pending row) |
+| `moai harness ledger annotate` | Patch routing metadata into an already-existing pending row |
 | `moai harness ledger evidence` | Add a machine-evidence ref (or delegation entry) to a pending row |
 | `moai harness ledger list` | List final ledger rows with filters |
 
 > `ledger record` and `ledger evidence` do not expose an `--outcome` flag, so the outcome cannot be forged. The outcome is derived from the machine evidence.
+
+## Delegation map analysis (delegation)
+
+`moai harness delegation` covers delegation map analysis built from the observed routing record.
+
+| Command | Description |
+|--------|------|
+| `moai harness delegation analyze` | Analyze observed delegation history and produce a delegation-map proposal |
 
 ## Related documents
 

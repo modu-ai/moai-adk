@@ -4,7 +4,11 @@ weight: 40
 draft: false
 ---
 
+# Profile Management
+
 MoAI-ADK's profile system lets you manage multiple Claude Code configurations in isolation. Separate work vs. personal setups, or high-quality vs. cost-saving sessions, into one profile each, and you no longer need to change model, language, and display settings every time.
+
+Since one profile is one `CLAUDE_CONFIG_DIR`, a profile becomes a conflict-free isolation unit in harness scenarios where multiple agents need different models, effort levels, and output styles. So for a manager agent that switches between work and experimental setups on the same machine, a profile is effectively an independent working environment.
 
 ## What is a Profile?
 

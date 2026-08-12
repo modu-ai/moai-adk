@@ -4,7 +4,11 @@ weight: 50
 draft: false
 ---
 
+# moai web Console
+
 `moai web` launches the **MoAI Web Console**, a browser-based settings editor. It reuses the same validation and persistence logic as the terminal profile wizard (`moai profile`), letting you edit profile preferences and the project's user / language / statusline sections from a web UI.
+
+As the number of profile and `settings.json` entries grows, taking them all in through the terminal wizard gets harder, so this command moves the same persistence logic into a browser form. It serves as an auxiliary entry point for reviewing and editing the same YAML that manager agents and the harness read, only faster.
 
 ## Overview
 

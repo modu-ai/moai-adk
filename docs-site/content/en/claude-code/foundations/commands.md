@@ -2,35 +2,34 @@
 title: Slash Commands
 weight: 40
 draft: false
-description: "Claude Code's slash commands — built-in commands, custom commands defined in markdown, scopes, and plugin commands."
+description: "Claude Code's slash commands — built-in commands, custom commands defined in markdown, scopes, plugin commands, and the use of core commands like /model, /agents, and /context at a beginner level."
 ---
 
 # Slash Commands
 
-A slash command — a single line starting with `/` inside a session — is the fastest way to operate Claude Code directly.
-
+Type a single `/` in the session window and a menu unfolds — switch the model, clear the context, or run a workflow you built yourself, all at once. A slash command is the fastest way to operate Claude Code directly from one line starting with `/`.
 
 {{< callout type="info" >}}
 **One-line summary**: A single line of input starting with `/` puts session control at your fingertips — from switching models to clearing context to running workflows you built yourself.
 {{< /callout >}}
 
-## What Is a Slash Command
+## Why a One-Line Command Is Needed
 
-Slash commands control Claude Code from inside a session. Switching models, managing permissions, clearing context, running workflows — all handled in one line. Type just `/` in the input box to list every available command; keep typing after `/` to filter.
+Once an agent receives a request, it digs through files, edits code, and runs commands on its own. So you often need to "control the session itself" — things that are not what the model does but rather what the session does. Things like "switch to a different model this turn", "summarize the conversation so far", or "run the deploy workflow I built". Instead of spelling those out in long natural language every time, slash commands let you call them with a single word.
 
-There is exactly one core rule: **commands are recognized only at the very start of a message.** Text following the command name is passed to that command as arguments.
+Type just `/` in the input box to list every available command; keep typing after `/` to filter candidates in real time. The single core rule is — **commands are recognized only at the very start of a message**, and the text following the command name is passed as arguments to that command.
 
 Commands fall into three broad classes.
 
 | Class | Where defined | How it works |
 | :--- | :--- | :--- |
 | Built-in commands | Coded into the CLI | Executes fixed logic directly |
-| Bundled skills | Skills shipped with Claude Code | Hands instructions to the model, which coordinates work with tools |
+| Bundled skill | Skills shipped with Claude Code | Hands instructions to the model, which coordinates work with tools |
 | Custom commands | `.claude/commands/` or `.claude/skills/` | Defined by users in markdown |
 
-## Built-in Slash Commands and Skills
+## Frequently Used Commands at a Glance
 
-Slash commands come in three kinds. Frequently used commands are summarized below. See the full list by typing `/` in the input box; the official command reference is at [code.claude.com/docs/en/commands](https://code.claude.com/docs/en/commands).
+Frequently used commands by category. The full list is available by typing `/` in the input box; the official command reference is at [code.claude.com/docs/en/commands](https://code.claude.com/docs/en/commands). The use of the core commands below is covered in more depth in the next section.
 
 ### Built-in Commands
 
@@ -60,7 +59,7 @@ Slash commands come in three kinds. Frequently used commands are summarized belo
 
 | Command | Purpose |
 | :--- | :--- |
-| `/loop` (alias: `/proactive`) | Run an iterative fix loop (Ralph/interval-based) |
+| `/loop` (alias: `/proactive`) | Run an iterative fix loop (interval-based) |
 | `/batch` | Run batch operations |
 | `/simplify` | Simplify code (v2.1.154+) |
 | `/code-review` | Review code |
@@ -77,6 +76,66 @@ Slash commands come in three kinds. Frequently used commands are summarized belo
 - The same functionality often goes by multiple names (aliases).
 - Some commands are exposed differently depending on platform, plan, and environment.
 - `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and simultaneously an `/effort` level.
+
+## Diving into the Core Commands
+
+The table above is for quick reference. This section covers five commands most confusing on first use, starting from the concept.
+
+### /model — Which Model to Work With
+
+`/model` picks the AI model to use in this session. The lineup currently selectable in Claude Code is:
+
+| Model | Characteristics |
+| :--- | :--- |
+| Fable 5 (`claude-fable-5`) | Currently top-tier (Mythos-tier). Deepest reasoning |
+| Opus 5 | Next-tier. Complex coding and design |
+| Sonnet 5 | Balanced. Everyday work |
+| Haiku 4.5 | Light, fast, lightweight work |
+
+Each model has a different reasoning depth, speed, and cost. Hand heavy design work to Fable or Opus, and fast repetitive work to Sonnet or Haiku — pick by the weight of the task. The shortcut `Option+P` (macOS) or `Alt+P` also switches quickly.
+
+{{< callout type="tip" title="Stating the model per spawn is more accurate" >}}
+When invoking a subagent, also state which model it runs on, and the model best suited to each task is reliably applied. If you do not specify the model at spawn time, the subagent simply inherits the parent session's model.
+{{< /callout >}}
+
+### Three Commands for Context: /context · /compact · /clear
+
+There is a limit to the conversation context a model can hold at once. This limit is called the **context window**, and as a session grows long, past conversation and file contents accumulate toward the limit. Claude Code provides three commands to manage this context. Here is a side-by-side:
+
+| Command | What it does | When to use |
+| :--- | :--- | :--- |
+| `/context [all]` | Analyzes how much of the context window is in use | "I want to check how full the context is" |
+| `/compact` | Summarizes the contents so far, keeping the same dialogue, to reclaim space | "I want to keep the conversation going but the context is tight" |
+| `/clear` | Empties the context completely and starts a new conversation | "I want to change topics or start over" |
+
+`/context` is a status-checking command. Append `[all]` to extend the analysis to a wider range. `/compact` is for when you want to continue the flow with a summarized context — a way to reclaim space when the prior context is needed but no longer line by line. `/clear` is for when an entirely fresh start is needed. Keep in mind it also discards the prompt cache, so it is a heavy restart.
+
+```mermaid
+flowchart TD
+    A["Session grows long<br>context is full"] --> B["/context to<br>check usage"]
+    B --> C{"Keep the<br>conversation going?"}
+    C -- "Yes" --> D["/compact to<br>summarize and reclaim space"]
+    C -- "No" --> E["/clear to<br>start a brand-new conversation"]
+    D --> F["Keep working<br>in the same flow"]
+    E --> G["From scratch<br>with a new topic"]
+```
+
+### /agents — Managing Subagents
+
+`/agents` is a command to inspect the **subagents** you call within a session. As of v2.1.198, the interactive wizard that used to create new subagents has been removed — there are now two ways to create a new subagent.
+
+1. Ask Claude in natural language, like "make me a code-review subagent"
+2. Create a markdown file directly under `.claude/agents/`
+
+One subagent definition file equals one subagent. The structure of the definition file (frontmatter fields, tool restrictions, etc.) is covered in the [Subagents](/en/claude-code/agentic/sub-agents) document.
+
+It is also worth touching on how subagents run inside a session. Since v2.1.198 subagents run in the background by default, so the main session does not have to stop and wait, and permission prompts appear in the main session. And since v2.1.219, **nested spawning** — a subagent calling another subagent — is allowed up to depth 3 by default; set the environment variable `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable.
+
+### /effort and ultrathink — Adjusting Reasoning Depth
+
+`/effort` sets the model's reasoning intensity. Levels are `low` · `medium` · `high` · `xhigh` · `max`, plus `auto`, and `ultracode`, which turns on workflow orchestration. For thought-heavy work like coding, `xhigh` is generally recommended.
+
+Writing the keyword `ultrathink` in the chat has the same effect. `ultrathink` raises `effort` to `xhigh` and also turns on **Adaptive Thinking** (where the model itself decides how many tokens to spend on reasoning). The old way of specifying a fixed thinking budget with `budget_tokens` is no longer recommended — Opus 4.7 and above reject fixed budgets.
 
 ## Custom Slash Commands
 
@@ -174,7 +233,7 @@ flowchart TD
 
 A plugin can ship commands in its own `skills/` directory. Plugin skills use the `plugin-name:skill-name` namespace, so their names never collide with commands at other levels. For example, `my-plugin/skills/review/SKILL.md` is invoked as `/my-plugin:review`. Plugins themselves are managed with the `/plugin` command.
 
-## Relationship to MoAI-ADK's /moai Command
+## Where the /moai Command Sits
 
 MoAI-ADK's `/moai` and its subcommands (`/moai plan`, `/moai run`, `/moai sync`, and so on) are implemented as skills on exactly this slash-command mechanism. In other words, MoAI-ADK uses Claude Code's custom-command standard as-is, exposing the SPEC-based workflow as one-line commands. Send a natural-language request without a subcommand, like `/moai "fix the login bug"`, and it routes to the right workflow through intent analysis (Analyze-First) — semantic classification that works regardless of language.
 
@@ -198,5 +257,5 @@ The behavior of the `/moai` command itself and its subcommands are covered in se
 - [Extend Claude with skills (official docs)](https://code.claude.com/docs/en/skills)
 
 {{< callout type="tip" >}}
-For commands with side effects (deploys, commits, external sends), add `disable-model-invocation: true` so the model cannot run them arbitrarily — keep the execution timing in your own hands.
+For commands with side effects (deploys, commits, external sends), add `disable-model-invocation: true` so the model cannot run them arbitrarily — keep the execution timing in your own hands. {{< icon arrow-right primary >}}
 {{< /callout >}}

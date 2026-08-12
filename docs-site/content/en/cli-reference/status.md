@@ -4,7 +4,11 @@ weight: 20
 draft: false
 ---
 
+# Project Status
+
 The `moai status` command shows the current project's initialization state, SPEC count, and configuration files at a glance. It is a read-only command with no flags.
+
+For the harness to work correctly, both `.moai/` and `.claude/` must be initialized, and when that condition is broken other `moai` commands emit obscure errors, so this command is the quick first check to run. It is the default entry point for confirming state before starting a new SPEC or entering a debugging session.
 
 ## Usage
 
@@ -50,6 +54,6 @@ The notice is printed automatically, and is silently skipped when Git is not ins
 
 ## See also
 
-- [CLI Reference](./cli) — full CLI commands
-- [moai inventory](./inventory) — unified view of active resources
-- [Initial Setup](./init-wizard) — project initialization wizard
+- [CLI Reference](/en/cli-reference) — full CLI commands
+- [moai inventory](/en/cli-reference/inventory) — unified view of active resources
+- [Initial Setup](/en/getting-started/init-wizard) — project initialization wizard

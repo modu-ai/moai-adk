@@ -4,6 +4,8 @@ weight: 15
 draft: false
 ---
 
+# moai cc / cg / glm Launchers
+
 `moai cc`, `moai cg`, and `moai glm` are three launchers that run Claude Code with different backend configurations. All three adjust settings and then `exec` to replace the current process with Claude Code. Since which model does which work is what drives cost, the launcher choice is the first tokenomics decision.
 
 ## The three launchers compared
