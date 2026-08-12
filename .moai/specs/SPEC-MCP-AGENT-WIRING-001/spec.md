@@ -2,7 +2,7 @@
 id: SPEC-MCP-AGENT-WIRING-001
 title: "Agent MCP tool wiring — phase-scoped mcp__moai__* grants across the 12 retained agents"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-08-12
 updated: 2026-08-12
 author: manager-spec
