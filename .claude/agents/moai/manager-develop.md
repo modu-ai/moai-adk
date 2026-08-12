@@ -211,6 +211,14 @@ When run-phase reveals a need to modify SPEC body content (e.g., a REQ wording i
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
 
+## MCP Tools
+
+This agent carries verification + goal MCP tools in its `tools:` list. Prefer the MCP tool over the equivalent Bash CLI (`moai verify check`, `moai goal status`):
+
+- `mcp__moai__verify_snapshot` — read or record the per-key verification snapshot (the evidence baseline for a claim). Call AFTER running a verification command to persist the observed output, keyed by HEAD:digest.
+- `mcp__moai__verify_trend` — read the per-key verification check history (the trend). Call to compare the current run vs prior runs.
+- `mcp__moai__goal_status` — read the armed-goal state for this session. Call to check whether an autonomous goal is armed and how close it is to convergence.
+
 ## Conditional Skill Loading
 
 Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:

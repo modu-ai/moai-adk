@@ -140,6 +140,13 @@ OUT OF SCOPE:
 - Domain consultation (backend / frontend / devops) → leaf worker spawned as `Agent(general-purpose)` with domain whitelist per `archived-agent-rejection.md` §C rows 7-10.
 - E1-E4 escalation → orchestrator spawns `super-advisor`; manager-lead returns its spawn-context to the orchestrator rather than self-escalating.
 
+## MCP Tools
+
+This agent carries session + goal MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
+
+- `mcp__moai__session_list` — list active moai sessions (optionally filtered by SPEC). Call to detect concurrent sessions on the same SPEC before fanning out leaf workers (race avoidance).
+- `mcp__moai__goal_status` — read the armed-goal state. Call to check convergence status of an autonomous goal driving the multi-milestone run.
+
 ## Conditional Skill Loading
 
 Static `skills:` preload is kept to a minimum (token diet). Load on demand with the `Skill` tool:
