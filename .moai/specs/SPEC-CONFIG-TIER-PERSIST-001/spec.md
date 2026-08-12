@@ -612,7 +612,7 @@ slice, the child SPEC that owns it, and the parent REQs it carries.
 | **Child SPEC** | `SPEC-CONFIG-ATOMIC-WRITE-001` (status: draft, Tier M, era V3R6) |
 | **Slice** | (b) — atomic, mode-preserving writes for `.moai/config` + CLI persistence |
 | **Rationale** | Independently shippable. Carved out of a 35-REQ over-large SPEC per the 3-way split recommendation; the atomic-write + mode-preservation invariant is self-contained, has no dependency on tier resolution (slice a) or on malformed-section writeback / gitignore merge (slice c), and is the highest-priority shippable slice (live mode-narrowing defect at `manager.go:420-438` + non-atomic hardcoded write at `harness.go:390`). |
-| **REQ mapping** | Parent `REQ-CTP-021/022/023/024/027` → child `REQ-CAW-001..007` (atomicity, mode preservation, shared helper, call-site remediation, no-literal rule, temp cleanup, regression guard). Parent `REQ-CTP-025/026` (mode-widening migration) DEFERRED to follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (not yet authored) — out of scope for the atomic-write slice per user pre-decision; the child's scope is the write-path invariant only. |
+| **REQ mapping** | Parent `REQ-CTP-021/022/023/024/027` → child `REQ-CAW-001..007` (atomicity, mode preservation, shared helper, call-site remediation, no-literal rule, temp cleanup, regression guard). Parent `REQ-CTP-025/026` (mode-widening migration) extracted into follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (status: draft, Tier S, commit `4c2b998ea`, 2026-08-12) — carries `REQ-MIG-001/002` (dry-run-first widening + only-widen/never-narrow scope); the child's scope is the one-time migration, complementing this slice's write-path invariant. |
 | **Lineage carrier** | Child `spec.md` `related_specs: [SPEC-CONFIG-TIER-PERSIST-001]` + this section (bi-directional link). |
 
 ### Extracted — slice (a) → `SPEC-CONFIG-TIER-RESOLVE-001`
@@ -641,8 +641,8 @@ slice, the child SPEC that owns it, and the parent REQs it carries.
 
 | Slice / REQ | Disposition |
 |-------------|-------------|
-| `REQ-CTP-025/026` (mode-widening migration) | Deferred to follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (not yet authored) — out of scope for the atomic-write slice per user pre-decision. |
+| `REQ-CTP-025/026` (mode-widening migration) | **Extracted** into child `SPEC-CONFIG-MODE-MIGRATE-001` (status: draft, Tier S, commit `4c2b998ea`, 2026-08-12) — carries `REQ-MIG-001/002` (dry-run-first widening + only-widen/never-narrow scope). No longer deferred. |
 
-No slice remains resident in the parent — all three (a)/(b)/(c) have been extracted into independent
+No slice remains resident in the parent — all three primary slices (a)/(b)/(c) plus the deferred mode-migration slice (d) have been extracted into independent
 child SPECs. The parent is retained as the lineage carrier and the §G/§K risk-and-reconciliation
 provenance of record; its own `status:` stays `draft`.

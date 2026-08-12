@@ -11,6 +11,16 @@ llm:
   # Absent or empty resolves to medium (backward compatible). The superseded
   # top-column name "max" is still READ as an alias for "high", but is never
   # written back.
+  #
+  # Under a GLM backend (team_mode: glm/cg), z.ai exposes only a 3-state
+  # reasoning control (no "medium" level). The agent effort from the profile
+  # column above collapses onto it:
+  #   effort low          -> thinking off (fastest, no reasoning)
+  #   effort medium/high  -> reasoning_effort=high
+  #   effort xhigh/max    -> reasoning_effort=max
+  # So under GLM, profile "medium" and "high" converge (both reach
+  # reasoning_effort=high); the code-producing run-phase agent runs at
+  # reasoning_effort=max regardless (coding-task recommendation).
   profile: "medium"
 
   # Legacy performance tier (read-time alias only — `profile` supersedes it).

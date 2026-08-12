@@ -59,14 +59,16 @@ Default (natural language): Routes to autonomous workflow (plan -> run -> sync p
 
 ## 4. Agent Catalog
 
-The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents — historical default; see the Watch note below for the v2.1.172 nesting update), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
+The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents — historical default; see the Watch note below for the v2.1.219 nesting update), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
-> **Watch (Claude Code 2.1.219)**: Subagent nesting is **enabled by default** on v2.1.219+ — the changelog states subagents can spawn nested subagents up to depth 3 by default; set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable nesting. The former "defaults to off" claim applied only to v2.1.217–2.1.218. Caveat: the depth-3 ceiling and env-propagation behavior are changelog-sourced, not observed — the empirical evidence covers a single depth-1 nested spawn with the depth env unset. For an `Agent`-carrying subagent, **omitting the `Agent` tool from its `tools` list is the sole remaining flat-hierarchy guarantee**; every retained MoAI agent (including `sync-auditor`, whose former read-only nesting pilot is retired) omits `Agent`, so the flat hierarchy holds by tool omission. The `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature — inside a subagent definition it is ignored. Separately, the Task/Agent spawn-time `mode` parameter is deprecated and **ignored** since v2.1.213 (changelog/doc-sourced, not runtime-observed): subagents inherit the parent session's permission mode, and a parent in `bypassPermissions`/`acceptEdits` takes precedence and cannot be overridden — a spawned child's read-only scoping therefore rests on **tool restriction** (the inherently read-only `Explore`, or a `tools:` list omitting Write/Edit/NotebookEdit), never on the deprecated spawn-time permission-mode parameter. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
+> **Watch (Claude Code 2.1.219)**: Subagent nesting is **enabled by default** on v2.1.219+ — the changelog states subagents can spawn nested subagents up to depth 3 by default; set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable nesting. The former "defaults to off" claim applied only to v2.1.217–2.1.218. Caveat: the depth-3 ceiling and env-propagation behavior are changelog-sourced, not observed — the empirical evidence covers a single depth-1 nested spawn with the depth env unset. For an `Agent`-carrying subagent, **omitting the `Agent` tool from its `tools` list is the sole remaining flat-hierarchy guarantee**; every retained MoAI agent except `manager-lead` (including `sync-auditor`, whose former read-only nesting pilot is retired) omits `Agent`, so the flat hierarchy holds by tool omission. `manager-lead` is the sole Agent-carrier among retained agents — the flat hierarchy is opened exactly one layer deep there, and the depth-2 seal (leaf workers `manager-lead` spawns omit `Agent` from their own `tools:` lists, enforced by the `manager_lead_depth_test.go` CI guard per SPEC-HIERARCHICAL-TEAM-001 REQ-DEPTH-001) is the active flat-hierarchy guarantee for that single carve-out. The `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature — inside a subagent definition it is ignored. Separately, the Task/Agent spawn-time `mode` parameter is deprecated and **ignored** since v2.1.213 (changelog/doc-sourced, not runtime-observed): subagents inherit the parent session's permission mode, and a parent in `bypassPermissions`/`acceptEdits` takes precedence and cannot be overridden — a spawned child's read-only scoping therefore rests on **tool restriction** (the inherently read-only `Explore`, or a `tools:` list omitting Write/Edit/NotebookEdit), never on the deprecated spawn-time permission-mode parameter. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
+>
+> **Supersession note (amended for SPEC-HIERARCHICAL-TEAM-001)**: the paragraph above partially supersedes the nesting encoding of SPEC-SUBAGENT-NESTING-DOCTRINE-001 (its "shipped default stays flat via the runtime env-default-off" premise is stale as of v2.1.219); that SPEC's own artifacts are not rewritten. The active flat-hierarchy guarantee for the single `manager-lead` Agent-carrier carve-out is the depth-2 seal established by SPEC-HIERARCHICAL-TEAM-001 REQ-LEAD-001 / REQ-DEPTH-001 (leaf workers omit `Agent`; CI guard at `internal/template/manager_lead_depth_test.go`).
 
 ### Selection Decision Tree
 
 1. Read-only codebase exploration? Use the `Explore` subagent (Anthropic built-in)
-2. External documentation or API research? Use WebSearch, WebFetch, Context7 MCP tools (Context7 available via `moai mcp add context7`)
+2. External documentation or API research? Use WebSearch, WebFetch, Context7 MCP tools
 3. SPEC plan-phase authoring? Use the `manager-spec` subagent
 4. Run-phase implementation (DDD/TDD/autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`
 5. Sync-phase documentation? Use the `manager-docs` subagent
@@ -77,8 +79,9 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 10. On-demand high-reasoning consultation / second opinion (E1-E4 escalation)? Use the `super-advisor` subagent
 11. Design-phase collaboration (Claude Design bidirectional sync, UI-surfaced SPECs)? Use the `manager-design` subagent
 12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-tester` subagent
+13. Multi-milestone Tier L coordination (≥3 milestones AND ≥10 files AND cross-domain fan-out)? Use the `manager-lead` subagent (the sole Agent-carrier among retained agents; depth-2 sealed per SPEC-HIERARCHICAL-TEAM-001 REQ-DEPTH-001)
 
-### Retained Agents (11 total)
+### Retained Agents (12 total)
 
 | Agent | Class | Phase scope | Reference |
 |-------|-------|-------------|-----------|
@@ -92,19 +95,20 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 | `super-advisor` | meta/advisor | On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation) | `.claude/agents/moai/super-advisor.md` |
 | `manager-design` | core/manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) | `.claude/agents/moai/manager-design.md` |
 | `e2e-tester` | core/specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) | `.claude/agents/moai/e2e-tester.md` |
+| `manager-lead` | core/manager | Hierarchical-team Tier L coordination (worktree-isolated leaf-worker fan-out + per-milestone Context-Folding + peer cross-validation + schema-driven fan-out reduce; sole Agent-carrier, depth-2 sealed) | `.claude/agents/moai/manager-lead.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
 ### Archived Agents (legacy references rejected at spawn)
 
 The following agent names are **archived** and MUST NOT be spawned: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`.
 
-When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 11 retained agents above) is documented there. For migration of references to the 12 archived agents, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
+When a paste-ready resume message or `Agent()` invocation references one of these archived agents, the orchestrator MUST reject the spawn and consult the migration table at `.claude/rules/moai/workflow/archived-agent-rejection.md`. The retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with domain-specific instructions, or routing to one of the 12 retained agents above) is documented there. For migration of references to the 12 archived agents, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 
 Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom agent file of that name. It is distinct from the official Claude Code built-in helper agent that is also named `claude-code-guide` and ships with the runtime — that built-in is a separate, valid agent and invoking it does NOT trigger archived-agent rejection. The rejection binds only the MoAI-custom file.
 
 ### Dynamic Team Generation (RETIRED)
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name> --spawn`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 For agent creation guidelines, use the `builder-harness` subagent or see `.claude/rules/moai/development/agent-authoring.md`.
 
@@ -199,6 +203,7 @@ Language rules:
 - Internal Agent Communication: English
 - Code Comments: Per code_comments setting (default: English)
 - Commands, Agents, Skills Instructions: Always English
+- Memory files (MEMORY.md + topic files): Always English — see `.claude/rules/moai/workflow/moai-memory.md` § Rules
 
 ---
 
@@ -231,9 +236,9 @@ Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and cont
 
 MoAI-ADK integrates MCP servers and deep-analysis modes:
 
-- **moai MCP server** (default-on): the self-hosted local stdio server (`moai mcp-server`), provisioned into `.mcp.json` by `moai init` unless explicitly declined. Exposes the harness's own tools (spec audit, verify, session list, etc.) directly to the session. An explicit decline is honored; `moai mcp add moai` re-provisions it.
 - **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including Opus 5 and 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-foundation-thinking").
-- **Optional MCP servers** (one-command activation via `moai mcp add <name>`): **Context7** (up-to-date library documentation lookup), **claude-in-chrome** (browser automation), **chrome-devtools**, **playwright**, **ast-grep**. These are documented in the recipe catalogue but NOT shipped in the distributed default — activate the ones you need.
+- **Context7**: Up-to-date library documentation lookup (resolve-library-id, get-library-docs).
+- **claude-in-chrome**: Browser automation for web-based tasks.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.
 
 For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-management.md.
@@ -258,7 +263,7 @@ Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(i
 
 ## 15. Agent Teams (RETIRED) + CG Mode
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The former team role-profile config and env-var gate were removed. The practical multi-agent surface is covered by Mode 4 (parallel fan-out) for research/review and Mode 5 (sequential sub-agent) for coding. See `.claude/rules/moai/workflow/spec-workflow.md` § Agent Teams Variant — RETIRED. The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name> --spawn`) is unaffected — the CG Mode subsection below is preserved.
+The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The former team role-profile config and env-var gate were removed. The practical multi-agent surface is covered by Mode 4 (parallel fan-out) for research/review and Mode 5 (sequential sub-agent) for coding. See `.claude/rules/moai/workflow/spec-workflow.md` § Agent Teams Variant — RETIRED. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected — the CG Mode subsection below is preserved.
 
 ### CG Mode (Claude + GLM Cost Optimization)
 
@@ -304,8 +309,6 @@ When compacting, always preserve: the full list of modified and created files; e
 These items are load-bearing rather than merely useful. A verification claim is valid only while its command and observed output remain attributable (`.claude/rules/moai/core/verification-claim-integrity.md` §2) — once compaction drops the evidence, a claim that survives in summary form is no longer attributable and must be re-verified rather than restated. Preserving the evidence pointer is what keeps the claim alive across a compaction boundary.
 
 The reduction ladder that governs when compaction happens at all is `.claude/rules/moai/workflow/context-window-management.md` § Reduction Ladder.
-
----
 
 ---
 
