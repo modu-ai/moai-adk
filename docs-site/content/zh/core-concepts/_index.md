@@ -2,6 +2,7 @@
 title: 核心概念
 weight: 20
 draft: false
+description: "支撑 MoAI-ADK 的基本原理 — SPEC-First 开发、DDD/TDD、TRUST 5 质量框架、专职智能体。"
 ---
 
 {{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 代理型线束
