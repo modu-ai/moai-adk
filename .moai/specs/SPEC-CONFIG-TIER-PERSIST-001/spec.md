@@ -594,13 +594,15 @@ The information has to arrive unasked at least once.
 
 ## §L Split Branches
 
-> **Split status: in-progress** (2026-08-12). The parent SPEC's `status:` remains `draft` — the
-> split does NOT transition the parent's lifecycle state. The slice below has been carved out so it
-> can ship independently of the parent's other concerns.
+> **Split status: complete — all three slices extracted** (2026-08-12). The parent SPEC's `status:`
+> remains `draft` — the split does NOT transition the parent's lifecycle state. Each slice ships as an
+> independent child SPEC; the parent is retained as the lineage carrier and the §G/§K
+> risk-and-reconciliation provenance of record.
 
 `SPEC-CONFIG-TIER-PERSIST-001` was an over-large (35-REQ, Tier-M-exceeding) SPEC. Per the 3-way
-split recommendation, the parent is divided into three independently-shippable slices. This section
-records which slice has been extracted, into which new SPEC, and which parent REQs it owns.
+split recommendation, the parent is divided into three independently-shippable slices. All three
+slices have now been extracted into independent child SPECs; the subsections below record each
+slice, the child SPEC that owns it, and the parent REQs it carries.
 
 ### Extracted — slice (b) → `SPEC-CONFIG-ATOMIC-WRITE-001`
 
@@ -613,18 +615,34 @@ records which slice has been extracted, into which new SPEC, and which parent RE
 | **REQ mapping** | Parent `REQ-CTP-021/022/023/024/027` → child `REQ-CAW-001..007` (atomicity, mode preservation, shared helper, call-site remediation, no-literal rule, temp cleanup, regression guard). Parent `REQ-CTP-025/026` (mode-widening migration) DEFERRED to follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (not yet authored) — out of scope for the atomic-write slice per user pre-decision; the child's scope is the write-path invariant only. |
 | **Lineage carrier** | Child `spec.md` `related_specs: [SPEC-CONFIG-TIER-PERSIST-001]` + this section (bi-directional link). |
 
-### Still resident in the parent
+### Extracted — slice (a) → `SPEC-CONFIG-TIER-RESOLVE-001`
 
-| Slice | Topic | Status |
-|-------|-------|--------|
-| **(a)** | config tier resolution, explicit-falsey-wins-tier semantics, `SrcLocal` ordering, typed-Loader / resolver disconnect, branch-guard local-tier opt-in reachability | Resident in `SPEC-CONFIG-TIER-PERSIST-001`. No child SPEC yet. |
-| **(c)** | malformed-section writeback-as-defaults handling (refuse-to-writeback-a-failed-section contract), `MergeGitignoreFile` header parsing, dropped-pattern migration, reinstall-loop, template-base-snapshot; writers in `internal/cli/update/backup/restore.go`, `internal/cli/update/merge/merge.go`, `internal/core/project/initializer.go` | Resident in the parent and where applicable in sibling SPECs (`SPEC-UPDATE-REINSTALL-LOOP-002`, `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`). No child SPEC yet. |
+| Attribute | Value |
+|-----------|-------|
+| **Date** | 2026-08-12 |
+| **Child SPEC** | `SPEC-CONFIG-TIER-RESOLVE-001` (status: draft, Tier M, era V3R6) |
+| **Slice** | (a) — tier resolution: explicit-falsey-wins-tier semantics, `SrcLocal` above `SrcProject` at all three ordering sites, typed-Loader / resolver disconnect, local-tier reachability |
+| **Rationale** | Independently shippable. Carved out of the 35-REQ parent per the 3-way split. Slice (a) is entirely orthogonal to the write path (slices b/c) — it concerns *which* tier wins when sources disagree, not *how* the result is written to disk — so it proceeds in parallel with the write-path slices without conflict. |
+| **REQ mapping** | Parent `REQ-CTP-001..014` (§D.1 tier merge semantics + §D.2 tier ordering / local-tier reachability, including the two already-satisfied regression guards 013/014) → child `REQ-CTR-001..014`. The three parent-measured facts carry verbatim: `Priority()` has zero non-test consumers (an iota-only reorder is inert); `resolver.go:225-234` carries its own literal `tiers` slice (the REQ-CTR-009 assertion is load-bearing, not confirmatory); the `isZero` disposition is a caller-count decision, not a blanket delete. |
+| **Lineage carrier** | Bi-directional: child `related_specs: [SPEC-CONFIG-TIER-PERSIST-001, SPEC-CONFIG-ATOMIC-WRITE-001]` + this section. |
 
-The slice-(b) child SPEC extracts a shared atomic-write helper with a public-enough API that
-slice-(c) writers MAY adopt it in a follow-up SPEC; slice (c) does NOT need to re-derive the helper.
-The helper's API (signature + `defaultMode os.FileMode` parameter) is locked at slice-(b)
-`plan.md` M1 so slice (c) is unblocked from the moment slice (b) lands.
+### Extracted — slice (c) → `SPEC-CONFIG-SECTION-INTEGRITY-001`
 
-Slice (a) is entirely orthogonal — it concerns *which* tier wins when sources disagree, not *how*
-the result is written to disk — so slice (a) MAY proceed in parallel with slice (b) without
-conflict.
+| Attribute | Value |
+|-----------|-------|
+| **Date** | 2026-08-12 |
+| **Child SPEC** | `SPEC-CONFIG-SECTION-INTEGRITY-001` (status: draft, Tier M, era V3R6) |
+| **Slice** | (c) — malformed-section writeback-as-defaults prevention, `MergeGitignoreFile` header-based correctness, dropped-pattern migration, 3-way→2-way fallback visibility |
+| **Rationale** | Independently shippable. Carries the parent's §K reconciliation (REQ-CTP-033's declared supersession of `SPEC-V3R6-UPDATE-NOISE-001` `REQ-UN-007`) verbatim into the child §K — landing the fallback-visibility REQ without that reconciliation is prohibited. The malformed/gitignore writers MAY adopt the slice-(b) shared atomic-write helper (API locked at slice-(b) `plan.md` M1) without re-deriving it. |
+| **REQ mapping** | Parent `REQ-CTP-015..020` (§D.3 malformed-configuration contract) + `REQ-CTP-028..032` (§D.5 .gitignore merge correctness) + `REQ-CTP-033..035` (§D.6 fallback visibility) → child `REQ-CSI-001..014`. The §K reconciliation content (REQ-UN-007 supersession, rejected `--verbose` alternative, surviving REQ-UN-* clauses, commit-body obligation) is migrated into the child §K. |
+| **Lineage carrier** | Bi-directional: child `related_specs: [SPEC-CONFIG-TIER-PERSIST-001, SPEC-CONFIG-ATOMIC-WRITE-001, SPEC-CONFIG-TIER-RESOLVE-001, SPEC-UPDATE-REINSTALL-LOOP-002, SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001, SPEC-V3R6-UPDATE-NOISE-001]` + this section. |
+
+### Deferred
+
+| Slice / REQ | Disposition |
+|-------------|-------------|
+| `REQ-CTP-025/026` (mode-widening migration) | Deferred to follow-up sibling `SPEC-CONFIG-MODE-MIGRATE-001` (not yet authored) — out of scope for the atomic-write slice per user pre-decision. |
+
+No slice remains resident in the parent — all three (a)/(b)/(c) have been extracted into independent
+child SPECs. The parent is retained as the lineage carrier and the §G/§K risk-and-reconciliation
+provenance of record; its own `status:` stays `draft`.
