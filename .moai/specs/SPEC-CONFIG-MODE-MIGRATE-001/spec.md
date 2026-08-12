@@ -123,21 +123,59 @@ this SPEC's `REQ-MIG-001` / `REQ-MIG-002`. The atomic-write write-path invariant
 
 - **REQ-MIG-001** — **When** the operator invokes the mode-widening migration without
   the explicit apply flag, the migration step shall enumerate every file under
-  `.moai/config/**` whose current permission bits are narrower than `defs.FilePerm`
-  (`0o644`), and for each candidate shall report the path, the current mode, and the
-  target mode (`defs.FilePerm`), WITHOUT modifying any file; and **When** the operator
-  invokes the migration with the explicit apply flag, the migration step shall widen
-  each enumerated candidate's permission bits toward `defs.FilePerm` via the shared
+  `.moai/config/**` that is a widening candidate per the §D.2 Predicate definition
+  (i.e. whose current permission bits are a proper subset of `defs.FilePerm`'s bits),
+  and for each candidate shall report the path, the current mode, and the target mode
+  (`defs.FilePerm`), WITHOUT modifying any file; and **When** the operator invokes the
+  migration with the explicit apply flag, the migration step shall widen each
+  enumerated candidate's permission bits toward `defs.FilePerm` via the shared
   atomic-write helper shipped by `SPEC-CONFIG-ATOMIC-WRITE-001`.
 
 ### D.2 Only-widen, scoped, preserve-deliberately-restricted (REQ-CTP-026 → REQ-MIG-002)
 
 - **REQ-MIG-002** — The mode-widening migration shall widen only: it shall never narrow
-  a file's permission bits below the file's current mode, shall never alter any file
-  outside the `.moai/config/` directory tree, and shall delegate the
+  a file's permission bits below the file's current mode (a file whose bits are not a
+  proper subset of `defs.FilePerm` is excluded by the §D.2 Predicate definition, so
+  widening toward `defs.FilePerm` can only ADD bits, never remove any), shall never
+  alter any file outside the `.moai/config/` directory tree, and shall delegate the
   deliberately-restricted-vs-accidentally-narrowed judgment to the operator via the
   dry-run preview plus explicit apply-flag approval gate, so that a file the operator
   chooses not to widen is left unchanged.
+
+#### Predicate definition
+
+A file under `.moai/config/**` is a **widening candidate** if and only if BOTH of the
+following hold:
+
+1. `(currentMode.Perm() | defs.FilePerm.Perm()) == defs.FilePerm.Perm()` — the file's
+   permission bits are a **subset** of `defs.FilePerm`'s bits (`0o644`); AND
+2. `currentMode.Perm() != defs.FilePerm.Perm()` — the file is not already at the
+   canonical mode (an already-canonical file would be a no-op).
+
+Equivalently: the file's permission bits are a **proper subset** of `defs.FilePerm`'s
+bits. Widening such a file to `defs.FilePerm` only ADDS bits; it never removes any. This
+is the precise "only-widen" predicate — load-bearing for REQ-MIG-002's "shall never
+narrow" guarantee, because a file whose bits are NOT a subset of `defs.FilePerm` (e.g.
+one carrying an exec bit or a group-write bit) would be *narrowed* by a set to
+`defs.FilePerm`, and is therefore excluded from the candidate set.
+
+Explicit enumeration (dissolves all ambiguity for an implementer reading only spec.md):
+
+| Current mode | Candidate? | Reason |
+|--------------|------------|--------|
+| `0600` | **YES** | proper subset of 0644; widen to 0644 adds group-read + other-read |
+| `0640` | **YES** | proper subset of 0644; widen to 0644 adds other-read |
+| `0700` | **NO** | owner-exec bit `0100` is NOT in 0644 (0644 = 0600\|0040\|0004); setting to 0644 would drop owner-exec — a narrow, forbidden by REQ-MIG-002 |
+| `0660` | **NO** | group-write bit `0020` is NOT in 0644; setting to 0644 would drop group-write — a narrow, forbidden by REQ-MIG-002 |
+| `0644` | NO | already canonical (`==` `defs.FilePerm`) — clause 2 excludes |
+| `0664` / `0666` | NO | bits are a superset of 0644, not a subset (clause 1 fails); never touched |
+
+General rule (the predicate is normative; the table is illustrative): any mode carrying
+a bit not present in `defs.FilePerm` — exec bits (`0100`/`0010`/`0001`), group-write
+(`0020`), set-uid/gid, sticky — is excluded by clause 1, regardless of whether the
+human-readable form "looks narrower". The mechanical subset test in clause 1 reaches
+the correct answer for every mode, including modes not enumerated above (e.g. `0500`,
+which is NOT a candidate because its owner-exec bit `0100` is absent from 0644).
 
 ## §E Non-Functional Constraints
 
@@ -203,6 +241,18 @@ Given-When-Then scenarios (binary-testable). Each AC maps to one or more REQs.
   by `SPEC-CONFIG-ATOMIC-WRITE-001`), verifiable by a grep/test asserting the
   migration's apply function calls `atomicfile.Write` and does not call a bare
   `os.WriteFile` or `os.Chmod` directly on the destination path.
+
+- **AC-MIG-007** (only-widen on a non-subset mode — REQ-MIG-002, §D.2 Predicate
+  definition) — **Given** a `.moai/config/` tree containing a file at mode `0700`
+  (owner-exec bit `0100` is NOT in `defs.FilePerm` `0o644`, so this file is NOT a
+  candidate per the §D.2 Predicate definition — widening to 0644 would drop owner-exec,
+  a narrow), **When** the operator runs the migration with `--apply`, **Then** (a) the
+  `0700` file's mode on disk is UNCHANGED after the run (verifiable by `os.Stat`
+  before and after, asserting the modes are equal), AND (b) the dry-run output (re-run
+  without `--apply` on the same tree) excludes the `0700` file from the candidate list
+  (or flags it as "would-require-narrowing — skipped"). This AC makes REQ-MIG-002's
+  only-widen guarantee mechanically testable on the axis where it is actually
+  load-bearing: a mode whose widening-to-`defs.FilePerm` would also narrow.
 
 ### Dry-run preview example (illustrative — based on this checkout's real evidence)
 
