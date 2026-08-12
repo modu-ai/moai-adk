@@ -220,14 +220,25 @@ func runGitRevParse(projectDir string, args ...string) (string, error) {
 }
 
 // checkBranchState returns DecisionDeny + a "BRANCH_GUARD_VIOLATION: <suffix>
-// in primary checkout (...)" reason when ALL THREE hold: (a) primary checkout,
-// (b) command matches a branch-state pattern, (c) invoking agent is not exempt.
-// Otherwise it returns ("", "") (allow fall-through). On git-context
-// uncertainty it fails OPEN: returns ("", "") AND writes an advisory to stderr
-// plus appends a structured entry to .moai/logs/branch-guard-audit.log
-// (REQ-WBG-012).
+// in primary checkout (...)" reason when ALL THREE hold: (a) primary checkout
+// AT THE COMMAND'S ACTUAL CWD, (b) command matches a branch-state pattern,
+// (c) invoking agent is not exempt. Otherwise it returns ("", "") (allow
+// fall-through). On git-context uncertainty it fails OPEN: returns ("", "")
+// AND writes an advisory to stderr plus appends a structured entry to
+// .moai/logs/branch-guard-audit.log (REQ-WBG-012).
 //
 // The deny fires ONLY on positive evidence; uncertainty never denies.
+//
+// The projectDir argument is the AUDIT-LOG project directory — resolved by the
+// caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
+// primary checkout for central logging (REQ-WBG-D-004). It is NOT the
+// git-context directory. The git-context cwd — the directory the Bash command
+// will actually execute in — is resolved HERE from input.CWD via
+// resolveProjectRootFromInputOrEnv (SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
+// REQ-WBG-D-001, Seam A). The two were a single variable before this SPEC and
+// MUST stay separate: querying the primary checkout about itself always
+// answered "primary", misclassifying a worktree-resident agent's command as a
+// primary-checkout violation.
 func checkBranchState(input *HookInput, projectDir string) (decision string, reason string) {
 	if input == nil || len(input.ToolInput) == 0 {
 		return "", ""
@@ -243,11 +254,20 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if isExemptAgent(input) {
 		return "", ""
 	}
-	isPrimary, err := isPrimaryCheckout(projectDir)
+	// Seam A (SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001 REQ-WBG-D-001): query the
+	// git context at the command's actual cwd (input.CWD, falling back through
+	// the CLAUDE_PROJECT_DIR → os.Getwd() chain), NOT the audit-log project
+	// dir. This is the one-line correction that fixes the worktree
+	// misclassification — isPrimaryCheckout stays a pure function of its
+	// argument; only which directory the caller asks it to query changes.
+	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isPrimary, err := isPrimaryCheckout(gitContextCwd)
 	if err != nil {
 		// Fail OPEN with advisory (REQ-WBG-012). The deny requires positive
-		// evidence of a primary checkout; an error is NOT evidence.
-		appendBranchGuardAdvisory(input, projectDir, command, err)
+		// evidence of a primary checkout; an error is NOT evidence. The
+		// resolved cwd is recorded in the advisory so a silent
+		// $CLAUDE_PROJECT_DIR fallback cannot re-introduce the bug (AP-D-003).
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
 		return "", ""
 	}
 	if !isPrimary {
@@ -271,18 +291,24 @@ func extractBranchStateCommand(toolInput json.RawMessage) string {
 
 // appendBranchGuardAdvisory writes a fail-open advisory to stderr and appends a
 // structured entry to <projectDir>/.moai/logs/branch-guard-audit.log
-// (REQ-WBG-012). Errors during logging are debug-level only — fail-open must
-// never block the hook's allow decision.
-func appendBranchGuardAdvisory(input *HookInput, projectDir, command string, cause error) {
+// (REQ-WBG-012). projectDir is the audit-log project directory (the primary
+// checkout, per REQ-WBG-D-004 — central logging MUST stay on the primary even
+// when the command cwd is a worktree). resolvedCwd is the git-context directory
+// the discriminant queried (input.CWD-resolved); it is recorded in the entry
+// (AP-D-003) so a silent $CLAUDE_PROJECT_DIR fallback that re-introduced the
+// discriminant bug would be observable in the audit trail. Errors during
+// logging are debug-level only — fail-open must never block the hook's allow
+// decision.
+func appendBranchGuardAdvisory(input *HookInput, projectDir, command string, cause error, resolvedCwd string) {
 	sessionID := ""
 	if input != nil {
 		sessionID = input.SessionID
 	}
-	msg := fmt.Sprintf("branch_guard: fail-open for command %q in %q: %v", command, projectDir, cause)
+	msg := fmt.Sprintf("branch_guard: fail-open for command %q at cwd %q (audit-log dir %q): %v", command, resolvedCwd, projectDir, cause)
 	fmt.Fprintln(os.Stderr, msg)
 
-	entry := fmt.Sprintf("[%s] session=%s command=%q cause=%v\n",
-		time.Now().UTC().Format(time.RFC3339), sessionID, command, cause)
+	entry := fmt.Sprintf("[%s] session=%s command=%q cwd=%q cause=%v\n",
+		time.Now().UTC().Format(time.RFC3339), sessionID, command, resolvedCwd, cause)
 	logPath := filepath.Join(projectDir, branchGuardAuditRelPath)
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		slog.Debug("branch_guard: could not create audit log dir", "path", logPath, "error", err)
