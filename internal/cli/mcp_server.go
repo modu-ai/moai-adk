@@ -196,12 +196,13 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- audit_cache → runtime.AuditCache (audit_cache.go:50) ---
 	add("audit_cache", mcp.NewTool(
 		"audit_cache",
-		mcp.WithDescription("Operate the plan-audit PASS cache (read-only reuse): compute_hash a SPEC dir, or lookup a cached verdict. Wraps runtime.AuditCache ComputeHash/Lookup."),
-		mcp.WithString("op", mcp.Required(), mcp.Description("Operation: 'compute_hash' or 'lookup'.")),
+		mcp.WithDescription("Operate the plan-audit PASS cache (process-shared): compute_hash a SPEC dir, lookup a cached verdict, or store a PASS verdict. Wraps runtime.AuditCache ComputeHash/Lookup/Store. NOTE: cache is in-memory per moai mcp-server process; the plan-audit gate (separate process) does not populate it."),
+		mcp.WithString("op", mcp.Required(), mcp.Description("Operation: 'compute_hash', 'lookup', or 'store'.")),
 		mcp.WithString("spec_dir", mcp.Description("SPEC directory (for op=compute_hash).")),
-		mcp.WithString("spec_id", mcp.Description("SPEC id (for op=lookup).")),
-		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup).")),
-		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithString("spec_id", mcp.Description("SPEC id (for op=lookup, op=store).")),
+		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup, op=store).")),
+		mcp.WithString("auditor_version", mcp.Description("Auditor identifier (for op=store).")),
+		mcp.WithString("report_path", mcp.Description("Audit report path (for op=store).")),
 	), handleAuditCache)
 
 	// --- M2 codex backend (design.md §3 M2) ---
@@ -550,10 +551,23 @@ func handleSpecDrift(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolRes
 	}), nil
 }
 
-// handleAuditCache wraps runtime.AuditCache ComputeHash/Lookup (audit_cache.go).
-// The cache is in-memory, per server process (read-only reuse — design.md §3).
+// moaiAuditCache is the process-shared AuditCache backing the audit_cache MCP
+// tool. It persists across calls within ONE moai mcp-server process so that a
+// store in one call is visible to a lookup in a later call (the prior per-call
+// NewInMemoryCache made lookup ALWAYS return hit:false).
+//
+// @MX:DEBT: single-process in-memory cache only
+// @MX:CEILING: single moai mcp-server process lifetime, sequential calls
+// @MX:UPGRADE: the plan-audit gate (audit_gate.go) runs in a separate /moai run
+//   process and does NOT populate this cache; true cross-process verdict reuse
+//   requires lookup to read the durable daily-report cache (AuditReporter).
+// @MX:REASON: [AUTO] fan_in >= 3 (compute_hash/lookup/store ops + tests)
+var moaiAuditCache = runtime.NewInMemoryCache()
+
+// handleAuditCache wraps runtime.AuditCache ComputeHash/Lookup/Store over the
+// process-shared moaiAuditCache. The store op lets a caller record a PASS
+// verdict that a later lookup (same moai mcp-server process) returns as a hit.
 func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	cache := runtime.NewInMemoryCache()
 	op := req.GetString("op", "")
 	switch op {
 	case "compute_hash":
@@ -561,7 +575,7 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		if specDir == "" {
 			return toolErr("audit_cache", fmt.Errorf("op=compute_hash requires spec_dir")), nil
 		}
-		hash, err := cache.ComputeHash(specDir)
+		hash, err := moaiAuditCache.ComputeHash(specDir)
 		if err != nil {
 			return toolErr("audit_cache", err), nil
 		}
@@ -569,10 +583,25 @@ func handleAuditCache(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	case "lookup":
 		specID := req.GetString("spec_id", "")
 		hash := req.GetString("hash", "")
-		entry, ok := cache.Lookup(specID, hash, time.Now())
+		entry, ok := moaiAuditCache.Lookup(specID, hash, time.Now())
 		return toolJSON("audit_cache", map[string]any{"op": op, "hit": ok, "entry": entry}), nil
+	case "store":
+		// Record a PASS verdict so a later lookup (same process) returns a hit.
+		// Only PASS verdicts are cached (audit_cache.go Store guards on VerdictPass).
+		specID := req.GetString("spec_id", "")
+		hash := req.GetString("hash", "")
+		if specID == "" || hash == "" {
+			return toolErr("audit_cache", fmt.Errorf("op=store requires spec_id and hash")), nil
+		}
+		moaiAuditCache.Store(specID, hash, &runtime.AuditResult{
+			Verdict:        runtime.VerdictPass,
+			AuditAt:        time.Now(),
+			AuditorVersion: req.GetString("auditor_version", ""),
+			ReportPath:     req.GetString("report_path", ""),
+		})
+		return toolJSON("audit_cache", map[string]any{"op": op, "stored": true, "spec_id": specID, "hash": hash}), nil
 	default:
-		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup)", op)), nil
+		return toolErr("audit_cache", fmt.Errorf("unknown op %q (want compute_hash|lookup|store)", op)), nil
 	}
 }
 

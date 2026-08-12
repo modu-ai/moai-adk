@@ -350,6 +350,76 @@ func TestMoaiMCPServer_ErrorPaths(t *testing.T) {
 	}
 }
 
+// TestMoaiMCPServer_AuditCacheStoreLookup proves the process-shared cache works
+// end-to-end: lookup before store misses, store records a PASS verdict, and
+// lookup after store hits. This is the regression guard for the prior defect
+// where handleAuditCache created a fresh InMemoryCache per call and lookup
+// ALWAYS returned hit:false (CODE-01).
+func TestMoaiMCPServer_AuditCacheStoreLookup(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+
+	srv := newMoaiMCPServer()
+	ctx := context.Background()
+	c, err := client.NewInProcessClient(srv)
+	if err != nil {
+		t.Fatalf("NewInProcessClient: %v", err)
+	}
+	defer closeInProcessClient(c)
+	if _, err := c.Initialize(ctx, mcp.InitializeRequest{}); err != nil {
+		t.Fatalf("initialize: %v", err)
+	}
+
+	// Unique key so the process-shared cache is not polluted by other tests.
+	const sid, h = "SPEC-HIT-DEMO-001", "deadbeef"
+
+	// lookup before store → must miss (no stale PASS recorded).
+	resMiss, err := c.CallTool(ctx, mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "lookup", "spec_id": sid, "hash": h}},
+	})
+	if err != nil || resMiss == nil || resMiss.IsError {
+		t.Fatalf("lookup-before-store: err=%v res=%v", err, resMiss)
+	}
+	if m := auditCacheJSON(t, resMiss); m["hit"] != false {
+		t.Errorf("lookup before store: expected hit=false, got %v", m["hit"])
+	}
+
+	// store a PASS verdict.
+	resStore, err := c.CallTool(ctx, mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "store", "spec_id": sid, "hash": h, "auditor_version": "plan-auditor", "report_path": "/tmp/r.md"}},
+	})
+	if err != nil || resStore == nil || resStore.IsError {
+		t.Fatalf("store: err=%v res=%v", err, resStore)
+	}
+
+	// lookup after store → must HIT (proves the shared cache works end-to-end).
+	resHit, err := c.CallTool(ctx, mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Name: "audit_cache", Arguments: map[string]any{"op": "lookup", "spec_id": sid, "hash": h}},
+	})
+	if err != nil || resHit == nil || resHit.IsError {
+		t.Fatalf("lookup-after-store: err=%v res=%v", err, resHit)
+	}
+	if m := auditCacheJSON(t, resHit); m["hit"] != true {
+		t.Errorf("lookup after store: expected hit=true (shared cache broken), got %v", m["hit"])
+	}
+}
+
+// auditCacheJSON extracts the structured object an audit_cache handler returned.
+// toolJSON uses mcp.NewToolResultStructured, so the payload lives in
+// StructuredContent (the text Content is just a "<tool>: ok" fallback).
+func auditCacheJSON(t *testing.T, res *mcp.CallToolResult) map[string]any {
+	t.Helper()
+	b, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("audit_cache: marshal structured %v: %v", res.StructuredContent, err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatalf("audit_cache: unmarshal %s: %v", string(b), err)
+	}
+	return m
+}
+
 // TestMoaiMCPServer_BranchCoverage closes the remaining handler branches toward
 // the mcp_server.go ≥85% coverage target (E3): the verify_snapshot record path,
 // the goal_arm error/reject branches, and the goal_status empty-session fallback.
