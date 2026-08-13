@@ -2,7 +2,7 @@
 id: SPEC-CONFIG-DEAD-SWEEP-001
 title: "Re-remove dead non-ralph config (research.yaml, state.state_dir) reverted by the build-recovery commit"
 version: 0.2.0
-status: draft
+status: in-progress
 created: 2026-08-04
 updated: 2026-08-14
 author: manager-spec
