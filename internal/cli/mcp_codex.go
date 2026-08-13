@@ -1096,11 +1096,14 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	target := req.GetString("target", codexTargetUncommitted)
 	focus := req.GetString("focus", "")
 	model := req.GetString("model", "")
+	token := extractProgressToken(req)
 
+	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		return codexReviewToolResult(inconclusiveReview("codex binary not found in PATH")), nil
 	}
+	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
 	method := codexMethodReviewStart
 	params := map[string]any{
@@ -1116,7 +1119,9 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		}
 	}
 
+	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := runCodexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }
 
