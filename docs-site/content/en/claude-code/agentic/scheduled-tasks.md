@@ -2,12 +2,12 @@
 title: Scheduled Tasks
 weight: 70
 draft: false
-description: "Scheduled tasks in Claude Code — automatically re-running prompts on a set cadence within a session using /loop and the cron tools."
+description: "Scheduled tasks in Claude Code — automatically re-running prompts on a set cadence within a session using /loop and the cron tools. Background execution, headless pairing, and where it sits on the autonomous-execution spectrum at a beginner level."
 ---
 
 # Scheduled Tasks
 
-Scheduled tasks in Claude Code re-run a prompt on a set cadence for as long as the same session stays open.
+Scheduled tasks in Claude Code re-run a prompt on a set cadence for as long as the same session stays open. Tell it once — "check whether the deployment finished every 5 minutes" — and Claude looks in on it on its own afterwards, without you retyping the prompt.
 
 {{< callout type="info" title="Background reference" >}}
 This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. How to use MoAI-ADK is covered in [Autonomous Continuation Loops](/en/advanced/autonomous-loops).
@@ -17,11 +17,15 @@ This page is background material on **Claude Code itself**, the platform MoAI-AD
 **One-line summary**: Lightweight, session-bound automation that hands deployment polling, PR babysitting, and periodic checks to `/loop` and the cron tools instead of a human retyping them.
 {{< /callout >}}
 
+{{< callout type="info" title="Understand it by analogy" >}}
+A scheduled task is like handing Claude an **alarm clock**. Reserve "look at this every so often" and Claude rings the alarm during its idle time (between Claude's turns) to pull the work out and show it to you. The alarm rings only inside your room (the current session), so starting a new conversation (changing rooms) silences them all.
+{{< /callout >}}
+
 Scheduled tasks are available on Claude Code **v2.1.72** or later. Check your version with `claude --version`.
 
 ## What Are Scheduled Tasks
 
-A scheduled task automatically re-runs a prompt at a fixed cadence. Use it to poll whether a deployment finished, babysit a PR, re-check a long build, or remind yourself of something later.
+A scheduled task automatically re-runs a prompt at a fixed cadence. Use it to poll whether a deployment finished, babysit a PR, re-check a long build, or remind yourself of something later. The core value is moving the fatigue of "typing the same thing over and over" onto the machine side.
 
 The most important property is that they are **session-scoped**. Tasks live only within the current conversation, and starting a new conversation removes them all. Reopening a session with `--resume` or `--continue` restores tasks that have not yet expired.
 
@@ -34,7 +38,7 @@ The most important property is that they are **session-scoped**. Tasks live only
 | Minimum interval | **1 minute** (cron granularity) |
 | Maximum tasks | 50 per session |
 
-This feature covers session-scoped lightweight polling. Compared with the other scheduling options:
+This feature covers session-scoped lightweight polling. Claude Code has other scheduling options that differ in where they run and whether the machine must be on.
 
 | Option | Runs where | Minimum interval | Session required | Machine must be on |
 | --- | --- | --- | --- | --- |
@@ -42,7 +46,7 @@ This feature covers session-scoped lightweight polling. Compared with the other 
 | Cloud Routines | Anthropic cloud | 1 hour | No | No |
 | Desktop scheduled tasks | Your machine | 1 minute | No | Yes |
 
-If you need to react the moment an event happens, use Channels to have CI push failures directly into the session instead of polling; if you want Claude to keep working every turn until a condition holds, use `/goal` instead of periodic runs.
+If you need to react the moment an event happens, use Channels to have CI push failures directly into the session instead of polling. Conversely, if you want Claude to keep working every turn until a condition holds, [Goal-Directed Execution (`/goal`)](/en/claude-code/agentic/goal) is the right tool, not periodic runs — `/loop` is time-driven ("it is time, look again"), while `/goal` is condition-driven ("do not stop until the condition holds").
 
 ## Use Cases
 
@@ -57,9 +61,7 @@ Scheduled tasks fit short, repeated work best, for as long as the session is ope
 
 You can also re-run a packaged workflow on every iteration — pass another command in the prompt slot, like `/loop 20m /review-pr 1234`.
 
-## Creating and Managing — Overview
-
-### Repeating with /loop
+## Repeating with `/loop`
 
 `/loop` is a bundled **skill** — the fastest way to re-run a prompt while keeping the session open. Both the interval and the prompt are optional, and behavior differs by what you give.
 
@@ -71,7 +73,7 @@ You can also re-run a packaged workflow on every iteration — pass another comm
 
 Give an interval and Claude converts it to a cron expression, registers the task, and confirms the cadence and task ID. The interval can lead (`30m`) or trail (`every 2 hours`). Supported units are `s` (seconds), `m` (minutes), `h` (hours), `d` (days). Cron is minute-granular, so seconds round up, and awkward intervals like `7m` or `90m` are rounded to the nearest unit with a note of what was chosen.
 
-Omit the interval and Claude dynamically picks a delay between 1 minute and 1 hour on each iteration instead of a fixed cron — short when a build is finishing or a PR is active, long when nothing is pending.
+Omit the interval and Claude dynamically picks a delay between 1 minute and 1 hour on each iteration instead of a fixed cron — short when a build is finishing or a PR is active, long when nothing is pending. It is the economy instinct of "if it is not busy right now, slow down a bit" turned into code.
 
 ```text
 /loop check whether CI passed and address any review comments
@@ -91,7 +93,7 @@ flowchart TD
 
 Bare `/loop` runs this prompt on a dynamic interval; adding an interval like `/loop 15m` runs it on a fixed cadence.
 
-### Replacing the Default Prompt with loop.md
+### Replacing the Default Prompt with `loop.md`
 
 Placing a `loop.md` file replaces the built-in maintenance prompt with your instructions. The file defines a single default prompt for bare `/loop`, and is ignored when a prompt is given directly on the command line.
 
@@ -129,7 +131,7 @@ Task inspection and cancellation are also natural-language requests. Internally,
 | `CronList` | List all scheduled tasks with IDs, schedules, and prompts |
 | `CronDelete` | Cancel a task by ID |
 
-Each task has an 8-character ID you can pass to `CronDelete`, and a session can hold up to 50 tasks. Press `Esc` to stop a pending `/loop`. Tasks scheduled via natural language are unaffected by `Esc` and remain until deleted.
+Each task has an 8-character ID you can pass to `CronDelete`, and a session can hold up to 50 tasks. Press `Esc` to stop a pending `/loop`. Tasks scheduled via natural language are unaffected by `Esc` and remain until deleted directly with `CronDelete`.
 
 ### Mechanics and Constraints
 
@@ -140,6 +142,12 @@ The scheduler checks for due tasks every second and queues them at low priority,
 - **No missed-run catch-up**: if a scheduled time passes while Claude is busy with a long request, it fires once upon going idle rather than catching up on the missed count.
 
 To turn the scheduler off entirely, set the environment variable `CLAUDE_CODE_DISABLE_CRON=1`. The cron tools and `/loop` become unavailable, and already-scheduled tasks stop firing.
+
+## Background Execution and Between-Turn Firing
+
+The fact that scheduled tasks fire "between turns, not mid-response" ties into Claude Code's **background execution** model. As background became the default for subagents in v2.1.198, scheduled tasks are also pulled from the queue only when the main conversation is idle. If Claude is busy with a long tool call, the scheduled time passes and the task waits, firing once when the turn ends and the session finally goes idle.
+
+This property is why scheduled tasks are **unsuited as real-time triggers**. Channels exist precisely to fill that gap — instead of waiting for events like CI failures via polling, push them directly into the session. In short, "look in on it every interval" is `/loop`'s job; "react the moment an event arrives" is Channels' job.
 
 ## Pairing with Headless Execution
 
@@ -154,17 +162,28 @@ Scheduled tasks fire only when the session is open and idle. So they are not sui
 
 Invoking `claude -p` non-interactively via a CI pipeline or a GitHub Actions `schedule` trigger builds cron automation untied to a session. In short: `/loop` for fast in-session polling, Desktop scheduled tasks for unattended work needing local file/tool access, and Routines for work that must run reliably regardless of your machine.
 
-From the MoAI-ADK perspective, scheduled tasks are one axis of the autonomous-execution spectrum — working every turn until a condition holds belongs to `/goal` (and MoAI's `/moai goal`), while re-checking on a set cadence belongs to `/loop`. In practice, the best pattern is to use `/loop` lightly for PR checks and CI-status tracking during SPEC implementation, and split unattended work like regular release tracking off to GitHub Actions-side scheduling. Do not forget that periodic runs consume tokens every iteration — the polling interval is a cost dial.
+## Position on the Autonomous-Execution Spectrum
+
+From the MoAI-ADK perspective, scheduled tasks are one axis of the autonomous-execution spectrum. The same "no human intervention every turn" autonomy can come from different mechanisms.
+
+| Mode | Trigger | Stop condition | Representative tool |
+| --- | --- | --- | --- |
+| Goal-directed | Evaluate each turn whether the condition holds | When the condition is satisfied | `/goal`, `/moai goal` |
+| Periodic | Time is up | Direct cancel or expiry | `/loop` |
+| Event-triggered | Pushed from outside | When the events are drained | Channels |
+
+In practice, the best pattern is to use `/loop` lightly for PR checks and CI-status tracking during SPEC implementation, and split unattended work like regular release tracking off to GitHub Actions-side scheduling. One thing not to forget: periodic runs **consume tokens every iteration** — the polling interval is a cost dial. A loop running every 5 minutes costs one-fifth of a loop running every minute.
 
 ## Related Documents
 
+- [Goal-Directed Execution (`/goal`)](/en/claude-code/agentic/goal) — condition-driven autonomous execution, the counterpart to time-driven `/loop`
+- [Dynamic Workflows](/en/claude-code/agentic/workflows) — large-scale orchestration where a script coordinates dozens to hundreds of agents at once
 - [Hooks](/en/claude-code/extensibility/hooks)
-- [Goal-Directed Execution (/goal)](/en/claude-code/agentic/goal)
 
 ## References
 
 - [Scheduled tasks — Claude Code official docs](https://code.claude.com/docs/en/scheduled-tasks)
 
 {{< callout type="tip" >}}
-A fixed-cadence `/loop` auto-expires after 7 days, so if it must run longer, re-register before expiry — or choose a persistent scheduler like Routines or Desktop scheduled tasks from the start.
+A fixed-cadence `/loop` auto-expires after 7 days, so if it must run longer, re-register before expiry — or choose a persistent scheduler like Routines or Desktop scheduled tasks from the start. And when setting the polling interval, asking "is this cadence really necessary?" once more cuts token cost significantly.
 {{< /callout >}}

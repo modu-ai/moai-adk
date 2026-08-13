@@ -2,6 +2,7 @@
 title: コアコンセプト
 weight: 20
 draft: false
+description: "MoAI-ADK を支える基本原則 — SPEC-First 開発、DDD/TDD、TRUST 5 品質フレームワーク、専任エージェント。"
 ---
 
 {{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: エージェント型ハーネス

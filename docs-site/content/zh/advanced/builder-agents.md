@@ -14,7 +14,7 @@ draft: false
 
 Harness v4 Builder 通过 `/moai:harness <自然语言请求>` **动态生成项目专属的专家团队**。
 
-通用智能体目录（11 个）对所有项目通用，而 Builder 生成的 Harness 是只存在于你项目中的定制团队。
+MoAI-ADK 的通用智能体目录（11 个）对所有项目通用，而 Builder 生成的 Harness 是只存在于你项目中的定制团队。
 
 ### 与旧版本的差异
 

@@ -6,6 +6,8 @@ draft: false
 
 A guide to the `moai inventory` command, which shows the current project's active sessions, worktrees, and harnesses at a glance.
 
+In workflows that run multiple SPECs in parallel, it is hard to see at a glance which session is using which harness and worktree, so this command gathers all three resources into a single read-only view. That makes it well suited as the first step a manager agent takes to check for contention before spawning new work.
+
 {{< callout type="info" >}}
 **One-line summary**: `moai inventory` shows the current project's active resources (sessions, worktrees, harnesses) read-only. With `--json` you get structured output for use in scripts.
 {{< /callout >}}
@@ -173,8 +175,8 @@ moai inventory --json | jq '[.sessions.entries[].phase] | group_by(.) | map({pha
 
 ## Related documents
 
-- [CLI Reference](./cli) — full CLI commands
-- [Project Status](./status) — the `moai status` command
+- [CLI Reference](/en/cli-reference) — full CLI commands
+- [Project Status](/en/cli-reference/status) — the `moai status` command
 - [SPEC-based Development](/en/workflow-commands/moai-plan) — the SPEC lifecycle
 
 {{< callout type="info" >}}

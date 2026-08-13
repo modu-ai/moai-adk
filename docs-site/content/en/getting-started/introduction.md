@@ -33,6 +33,16 @@ MoAI-ADK v3.0's value is summarized in three core values.
 
 Each core value is covered in detail in the [Core Concepts](/en/core-concepts/) section. This document looks at only as much as you need to get started.
 
+## What got more convenient in v3.1
+
+- **`/moai goal`** — declare a completion condition in one line and the session runs autonomously.
+- **Factory Mode** — runs multiple sessions at once.
+- **BAS Navigator** — auto-syncs the 3-tier codemap.
+- **manager-lead** — coordinates large-scale work via Tier L parallel fan-out.
+- **multi-model audit** — cross-validates with multiple models to catch bias.
+- **autonomy tier** — dials the autonomy level so things run safely.
+- **profile matrix** — assigns models across 12 agents × 3 profiles.
+
 ## Core concepts
 
 MoAI-ADK is based on the **SPEC-based TDD/DDD** methodology, and it ensures code quality through the **TRUST 5** quality framework.

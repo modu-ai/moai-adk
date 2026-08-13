@@ -60,7 +60,7 @@ MoAI-ADK は **12 個のコアエージェント** (11 個の MoAI カスタム 
 | `plan-auditor` | Plan フェーズの独立監査、GEARS 準拠、バイアス防止 | SPEC 完成度 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
 | `sync-auditor` | Sync フェーズの品質スコア (4 次元: Functionality, Security, Craft, Consistency) | 実装品質 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
-計画と監査が分離されている点が核心です — 作った本人が自分の仕事を検査することはありません。
+計画と監査が分離されている点が核心です — 作った本人が自分の仕事を検査することはありません。この分離設計が **TRUST 5** 品質フレームワークの信頼性を支えています。
 
 ### Builder エージェント (1 個)
 

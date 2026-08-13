@@ -92,6 +92,28 @@ The DesignSync server may not be registered in `.mcp.json`. D1 checks availabili
 
 Design-phase authoring itself does not fail; it waits for the tool.
 
+## Concrete usage example
+
+Imagine a SPEC with UI exposure. For example, after taking `SPEC-PROFILE-001` "Redesign the user profile page" through the plan phase, suppose Implementation Kickoff Approval is granted.
+
+```bash
+# Already past plan-audit PASS and Implementation Kickoff Approval
+> /moai design
+```
+
+In D1, the manager-design agent checks the Claude Design login state and secures a writable design-system project. In D2, it pushes the `.moai/project/brand/` tokens (coral color, Pretendard font) into the design-system project. At this point **the code-side files stay on disk as they are** — only the bundle data moves to the canvas, and because it never passes through the model context, the token values are not distorted.
+
+In D3, it builds the profile-page screens from the actually-imported tokens and components. The key point is that **the screens drawn on the canvas come directly from the code-side design system** — not redrawn by hand by a designer — so no drift occurs. The user refines the layout and attaches implementation annotations in the WYSIWYG editor.
+
+In D4, the completed screens and annotations are pasted into the `.moai/design/` reserved paths. In D5, manager-design packs this material into a Section A-E delegation package, hands it to manager-develop, and withdraws — from here on, the standard `plan → run → sync` path resumes.
+
+## What this command does not do (scope boundary)
+
+- **It does not intrude on SPECs with no UI exposure** — backend-only SPECs or CLI-tool SPECs skip this workflow entirely and follow the standard `plan → run → sync`.
+- **It does not design on your behalf** — the agent only drives bidirectional sync and the handoff contract; the visual decisions of the screens belong to the user and the designer.
+- **It does not replace Implementation Kickoff Approval** — the design phase runs within the already-approved run scope, before the first M1 implementation commit. It never crosses ahead of the human gate.
+- **It does not stay in the run-phase** — it withdraws after the D5 re-delegation and does not co-pilot the implementation. After implementation, sync-auditor judges brand consistency as a must-pass item.
+
 ## Related docs
 
 - [/moai plan](/en/workflow-commands/moai-plan) - previous stage: SPEC document generation
