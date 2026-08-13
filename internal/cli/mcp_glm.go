@@ -226,7 +226,11 @@ func parseGLMReview(raw []byte) ReviewOutput {
 		return glmInconclusive("z.ai response carried no content")
 	}
 	var out ReviewOutput
-	if err := json.Unmarshal([]byte(env.Content[0].Text), &out); err != nil {
+	// z.ai occasionally wraps the JSON in a markdown code fence despite the
+	// prompt's "no code fences" constraint; strip fences + surrounding prose so
+	// the Unmarshal sees a bare object.
+	jsonBody := extractJSONObject(env.Content[0].Text)
+	if err := json.Unmarshal([]byte(jsonBody), &out); err != nil {
 		return glmInconclusive("z.ai content was not a ReviewOutput JSON: " + err.Error())
 	}
 	if strings.TrimSpace(out.Verdict) == "" {
@@ -239,6 +243,35 @@ func parseGLMReview(raw []byte) ReviewOutput {
 		out.NextSteps = []string{}
 	}
 	return out
+}
+
+// extractJSONObject strips a leading markdown code fence and any surrounding
+// prose from a model's text response, returning the substring spanning the
+// first '{' to the last '}'. z.ai occasionally wraps the JSON object in
+// ```json ... ``` despite the prompt's "no code fences" constraint; this
+// recovers the bare object so json.Unmarshal succeeds. Returns the input
+// unchanged when no brace boundary is found (the caller's Unmarshal then
+// reports the original error — no silent masking).
+func extractJSONObject(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		// Drop the opening fence line (``` or ```json).
+		if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+			s = s[nl+1:]
+		}
+		s = strings.TrimSpace(s)
+		// Drop a trailing closing fence.
+		if idx := strings.LastIndex(s, "```"); idx >= 0 {
+			s = s[:idx]
+		}
+		s = strings.TrimSpace(s)
+	}
+	start := strings.IndexByte(s, '{')
+	end := strings.LastIndexByte(s, '}')
+	if start >= 0 && end > start {
+		return s[start : end+1]
+	}
+	return s
 }
 
 // glmAuditSystemPrompt constrains the GLM model to emit ONLY a ReviewOutput
