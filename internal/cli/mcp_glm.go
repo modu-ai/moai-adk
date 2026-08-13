@@ -93,10 +93,10 @@ var projectDirResolver = resolveProjectDir
 // glmMessagesRequest is the Anthropic-compatible Messages API request body
 // posted to z.ai.
 type glmMessagesRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system"`
-	Messages  []glmMessage       `json:"messages"`
+	Model     string       `json:"model"`
+	MaxTokens int          `json:"max_tokens"`
+	System    string       `json:"system"`
+	Messages  []glmMessage `json:"messages"`
 }
 
 type glmMessage struct {
@@ -163,15 +163,17 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		model = resolveGLMAuditModel() // SSOT (REQ-MCP-013)
 	}
 	focus := req.GetString("focus", "")
+	token := extractProgressToken(req)
 
-	out := callGLMAudit(ctx, key, model, focus)
+	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — z.ai 요청 준비 중...")
+	out := callGLMAudit(ctx, key, model, focus, token)
 	return reviewToolResult(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a
 // ReviewOutput. Every error path fails open to a VerdictInconclusive — the
 // caller always receives a usable structured result.
-func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
+func callGLMAudit(ctx context.Context, key, model, focus string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
 		MaxTokens: glmAuditMaxTokens,
@@ -191,6 +193,7 @@ func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
+	notifyMCPProgress(ctx, token, 0.1, "z.ai에 감사 요청 전송 중...")
 	resp, err := glmHTTPClient.Do(httpReq)
 	if err != nil {
 		return glmInconclusive("z.ai request failed: " + err.Error())
@@ -207,6 +210,7 @@ func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
 	if err != nil {
 		return glmInconclusive("cannot read z.ai response: " + err.Error())
 	}
+	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — ReviewOutput 파싱 중...")
 	return parseGLMReview(raw)
 }
 

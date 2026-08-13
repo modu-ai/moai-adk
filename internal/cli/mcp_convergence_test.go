@@ -292,7 +292,7 @@ func TestRunMultiAudit_DQ2_MissingClaudeAnchor_Refuses(t *testing.T) {
 		},
 	}
 	// No claude verdict provided — Verdict field empty.
-	r := runMultiAudit(context.Background(), ReviewOutput{}, "uncommittedChanges", "concurrency", cfg)
+	r := runMultiAudit(context.Background(), ReviewOutput{}, "uncommittedChanges", "concurrency", cfg, nil)
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail (missing claude anchor refuses to synthesize)", r.OverallVerdict)
 	}
@@ -332,7 +332,7 @@ func TestRunMultiAudit_Independence_ClaudeVerdictNotInSecondaryPayload_AC_AMM_00
 			GLM:    config.AuditGateRequired,
 		},
 	}
-	runMultiAudit(context.Background(), claude, "uncommittedChanges", "concurrency", cfg)
+	runMultiAudit(context.Background(), claude, "uncommittedChanges", "concurrency", cfg, nil)
 
 	if len(rc.calls) == 0 {
 		t.Fatal("no backend calls recorded; codex+glm should have been invoked (all gates required)")
@@ -385,7 +385,7 @@ func TestRunMultiAudit_ParallelFanOut_AC_AMM_002(t *testing.T) {
 	// Run in a goroutine so we can coordinate the release timing.
 	done := make(chan ConvergenceResult, 1)
 	go func() {
-		done <- runMultiAudit(context.Background(), claudeReview("pass"), "uncommittedChanges", "", cfg)
+		done <- runMultiAudit(context.Background(), claudeReview("pass"), "uncommittedChanges", "", cfg, nil)
 	}()
 
 	// Wait for BOTH backends to have started (proves they ran concurrently).
@@ -428,7 +428,7 @@ func TestRunMultiAudit_AuditGateOff_SkipsBackend_AC_AMM_014(t *testing.T) {
 			GLM:    config.AuditGateAdvisory,
 		},
 	}
-	r := runMultiAudit(context.Background(), claudeReview("pass"), "uncommittedChanges", "", cfg)
+	r := runMultiAudit(context.Background(), claudeReview("pass"), "uncommittedChanges", "", cfg, nil)
 	for _, c := range rc.calls {
 		if c.Backend == BackendCodex {
 			t.Error("codex was invoked despite audit_gate == off")
