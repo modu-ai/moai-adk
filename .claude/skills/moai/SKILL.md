@@ -3,8 +3,8 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, e2e, harness, goal) to specialized
-  agents.
+  feedback, review, clean, codemaps, gate, e2e, harness, goal, todo) to
+  specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -78,6 +78,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
+- **todo** (aliases: backlog): Backlog queue — add an item (`/moai todo "<description>"`), list the queue, pick the next card (`next`), or remove one (`done <n>`); the operator's entry point into the kanban board
 
 ### Priority 2: SPEC-ID Detection
 
@@ -101,6 +102,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Architecture-map language (architecture map, code maps, dependency graph, structure documentation) routes to **codemaps**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
+- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **todo** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -160,6 +162,14 @@ Purpose: Arm a completion condition (mechanical commands + model claims); the `s
 Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
+
+### todo - Backlog Queue
+
+Purpose: Hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
+Verbs: `/moai todo "<description>"` (append), bare `/moai todo` (list), `next` (pick via AskUserQuestion), `done <n>` (remove).
+State: `.moai/state/kanban/backlog.json` — project-local, not committed, atomic writes.
+The pick is the operator's: never preselect, never reorder by inferred priority, never auto-populate from TODO comments or issues.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
 
 ### fix - Auto-Fix Errors
 

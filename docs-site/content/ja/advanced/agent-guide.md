@@ -51,7 +51,7 @@ MoAI-ADK は **12 個のコアエージェント** (11 個の MoAI カスタム 
 | `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-lead` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
+| `manager-kanban` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator エージェント (2 個)
 
@@ -124,15 +124,15 @@ flowchart TD
     Q5 -->|いいえ| DIRECT["MoAI 直接処理<br>簡単な作業"]
 ```
 
-## 階層型チーム — manager-lead の仕組み
+## 階層型チーム — manager-kanban の仕組み
 
-`manager-lead` は Tier L 規模の run フェーズを調整する専用エージェントです。自分でコードを書くことはなく、作業をマイルストーンに分割してリーフワーカー (leaf worker) に委ね、各マイルストーンの境界でコンテキストを畳み、検証を交差させて実行します。リーフワーカーは `Agent(general-purpose)` で必要に応じて生成され、互いの書き込み範囲が重ならないよう worktree で隔離されたブランチ上で動作します。
+`manager-kanban` は Tier L 規模の run フェーズを調整する専用エージェントです。自分でコードを書くことはなく、作業をマイルストーンに分割してリーフワーカー (leaf worker) に委ね、各マイルストーンの境界でコンテキストを畳み、検証を交差させて実行します。リーフワーカーは `Agent(general-purpose)` で必要に応じて生成され、互いの書き込み範囲が重ならないよう worktree で隔離されたブランチ上で動作します。
 
 この委譲経路は Mode 5 (順次サブエージェント) の変種であり、新しい実行モードではありません。引退した Agent Teams 静的階層とも無関係です — Mode 3 の tombstone と `MODE_TEAM_UNAVAILABLE` の挙動は変わりません。
 
 ### 進入条件 — 3 つすべてを満たす場合のみ
 
-オーケストレーターは、以下の 3 条件が **すべて** 成立する場合にのみ `manager-lead` を生成します。1 つでも欠ける場合は、オーケストレーター自身が Mode 5 でマイルストーンを順次処理します。条件を満たさない作業に `manager-lead` を付けても、回収されない調整コストが増えるだけだからです。
+オーケストレーターは、以下の 3 条件が **すべて** 成立する場合にのみ `manager-kanban` を生成します。1 つでも欠ける場合は、オーケストレーター自身が Mode 5 でマイルストーンを順次処理します。条件を満たさない作業に `manager-kanban` を付けても、回収されない調整コストが増えるだけだからです。
 
 | 軸 | 基準 |
 |----|------|
@@ -150,14 +150,14 @@ flowchart TD
     Q2 -->|"いいえ"| MODE5
     Q2 -->|"はい"| Q3{"ドメイン 3 個以上?"}
     Q3 -->|"いいえ"| MODE5
-    Q3 -->|"はい"| LEAD["manager-lead を生成<br>リーフワーカーのファンアウトを調整"]
+    Q3 -->|"はい"| LEAD["manager-kanban を生成<br>リーフワーカーのファンアウトを調整"]
 ```
 
 ### depth-2 の封印
 
-`manager-lead` は、カタログエージェントの中で `tools:` 一覧に `Agent` を含む **唯一** のエージェントです。他のエージェントはすべて `Agent` を除外することでフラットな階層を維持しており、その例外をちょうど 1 層だけ開く場所がここです。したがってオーケストレーター → `manager-lead` が depth 1、`manager-lead` → リーフワーカーが depth 2 であり、depth 3 が生まれることはありません。
+`manager-kanban` は、カタログエージェントの中で `tools:` 一覧に `Agent` を含む **唯一** のエージェントです。他のエージェントはすべて `Agent` を除外することでフラットな階層を維持しており、その例外をちょうど 1 層だけ開く場所がここです。したがってオーケストレーター → `manager-kanban` が depth 1、`manager-kanban` → リーフワーカーが depth 2 であり、depth 3 が生まれることはありません。
 
-リーフワーカーは生成時点で `tools:` 一覧を受け取り、そこから `Agent` は常に除外されます。今後リーフワーカーをファイルとして定義する場合でも、frontmatter の `leaf_of: manager-lead` または本文マーカー `<!-- manager-lead leaf-worker -->` で自らを宣言すれば、`internal/template/manager_lead_depth_test.go` の CI ガードがそのファイルの `tools:` に `Agent` があるかを検査し、存在すればビルドを失敗させます。
+リーフワーカーは生成時点で `tools:` 一覧を受け取り、そこから `Agent` は常に除外されます。今後リーフワーカーをファイルとして定義する場合でも、frontmatter の `leaf_of: manager-kanban` または本文マーカー `<!-- manager-kanban leaf-worker -->` で自らを宣言すれば、`internal/template/manager_kanban_depth_test.go` の CI ガードがそのファイルの `tools:` に `Agent` があるかを検査し、存在すればビルドを失敗させます。
 
 {{< callout type="warning" >}}
 この封印は **MoAI のポリシー不変条件であり、ランタイムの不変条件ではありません**。Claude Code ランタイム自体はより深い再帰を許可しています — v2.1.219 からネストした生成がデフォルトで有効になり、デフォルトの深さ上限は 3 です。ランタイムが止めてくれない以上、深さを実際に押さえているのは `tools:` から `Agent` を外す運用と上記の CI ガードの 2 つだけです。
@@ -165,17 +165,17 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    ORCH["オーケストレーター"] -->|"depth 1"| LEAD["manager-lead<br>tools に Agent を含む (唯一)"]
+    ORCH["オーケストレーター"] -->|"depth 1"| LEAD["manager-kanban<br>tools に Agent を含む (唯一)"]
     LEAD -->|"depth 2"| W1["リーフワーカー A<br>tools に Agent なし"]
     LEAD -->|"depth 2"| W2["リーフワーカー B<br>tools に Agent なし"]
     W1 -.->|"ブロック"| X["depth 3 の再帰"]
     W2 -.->|"ブロック"| X
-    GUARD["manager_lead_depth_test.go<br>CI ガード"] -.->|"ビルド失敗で検出"| X
+    GUARD["manager_kanban_depth_test.go<br>CI ガード"] -.->|"ビルド失敗で検出"| X
 ```
 
 ### コンテキストフォールディングの 3 ステップ
 
-マイルストーン Mn の AC 行がすべて PASS になり、それらの行の交差検証も PASS で返ってきたら、`manager-lead` は次のマイルストーンに進む前に 3 つのステップを踏みます。この手順は **既存のツールだけを組み合わせます** — 新しい Go コードも、新しいフックも、新しい CLI サブコマンドも作りません。
+マイルストーン Mn の AC 行がすべて PASS になり、それらの行の交差検証も PASS で返ってきたら、`manager-kanban` は次のマイルストーンに進む前に 3 つのステップを踏みます。この手順は **既存のツールだけを組み合わせます** — 新しい Go コードも、新しいフックも、新しい CLI サブコマンドも作りません。
 
 1. **証拠の永続化** — 各 AC の検証コマンド出力を `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` にリダイレクトします。`/tmp` は OS が消去するため使いません。監査時点でそのパスが実際に開けて初めて、引用された根拠が有効になります。証拠を取得できなかった AC は `PASS` ではなく `GAP` と表記します。
 2. **フォールド行の追加** — `progress.md` §E.2 に既存の行フォーマットのまま 1 行を追記します: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`。`M<n>:` という接頭辞は `internal/spec/era.go` の §E 見出しマッチャーと衝突しないよう選んだ形であり、マッチャーに手を入れずに共存できます。
@@ -195,11 +195,11 @@ flowchart TD
 
 ### peer 交差検証
 
-リーフワーカーがある AC を PASS と表記すると、`manager-lead` は **その作業を行っていない** 2 番目の `Agent(general-purpose)` を読み取り専用で生成します。読み取り専用は `tools:` から Write/Edit/NotebookEdit を除外することで強制します。このワーカーは `acceptance.md` §D の Given-When-Then コマンドをそのまま再実行し、`PASS` / `PARTIAL` / `FAIL` のいずれかを返します。
+リーフワーカーがある AC を PASS と表記すると、`manager-kanban` は **その作業を行っていない** 2 番目の `Agent(general-purpose)` を読み取り専用で生成します。読み取り専用は `tools:` から Write/Edit/NotebookEdit を除外することで強制します。このワーカーは `acceptance.md` §D の Given-When-Then コマンドをそのまま再実行し、`PASS` / `PARTIAL` / `FAIL` のいずれかを返します。
 
 2 番目のワーカーは著者の主張に何の利害も持ちません。だからこそ、grep の結果を数え違える、古い baseline を引用する、検証コマンドを 1 つ飛ばすといった自己報告の失敗がそのまま露呈します。
 
-`FAIL` または `PARTIAL` が出た場合、`manager-lead` は次のマイルストーンに進みません。代わりに AC ID、著者が提示した根拠、交差検証ワーカーの根拠、両者が食い違った箇所を含む blocker レポートをオーケストレーターに返します。ユーザーに問い合わせるのはオーケストレーターの役割です — サブエージェントはユーザー窓口を使いません。Tier S は交差検証を省略します (範囲が小さく、検証コストが得られるものを上回るため)。
+`FAIL` または `PARTIAL` が出た場合、`manager-kanban` は次のマイルストーンに進みません。代わりに AC ID、著者が提示した根拠、交差検証ワーカーの根拠、両者が食い違った箇所を含む blocker レポートをオーケストレーターに返します。ユーザーに問い合わせるのはオーケストレーターの役割です — サブエージェントはユーザー窓口を使いません。Tier S は交差検証を省略します (範囲が小さく、検証コストが得られるものを上回るため)。
 
 sync フェーズの `sync-auditor` とは役割が異なります。`sync-auditor` は実装完了後に 4 次元のスコアを付ける最終的な懐疑的判読であり、peer 交差検証は実装の途中で AC 一つひとつに付く二値判定です。両者は互いの代わりにはなりません。
 

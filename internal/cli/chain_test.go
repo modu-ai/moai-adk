@@ -228,7 +228,7 @@ func TestNoAskUserQuestionInChain(t *testing.T) {
 	}
 }
 
-// TestChainFlagAgnostic verifies AC-CHAIN-018: no -k/-f/manager-lead
+// TestChainFlagAgnostic verifies AC-CHAIN-018: no -k/-f/manager-kanban
 // dependency in chain source.
 func TestChainFlagAgnostic(t *testing.T) {
 	data, err := os.ReadFile("chain.go")

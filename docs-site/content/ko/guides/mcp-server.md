@@ -121,10 +121,10 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 조건 선언 골 무장 | **오케스트레이터 메인 세션 전용** (어떤 에이전트에도 배선되지 않음) | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 무장된 골 상태 읽기 | manager-develop, manager-lead | `moai goal status` |
-| `mcp__moai__session_list` | 활성 moai 세션 목록 | manager-lead | `moai session list` |
+| `mcp__moai__goal_status` | 무장된 골 상태 읽기 | manager-develop, manager-kanban | `moai goal status` |
+| `mcp__moai__session_list` | 활성 moai 세션 목록 | manager-kanban | `moai session list` |
 
-`goal_arm`은 오케스트레이터 전용입니다 — 자율 루프 무장은 오케스트레이터 관심사이므로 에이전트 안에서 호출하지 않습니다. 평면 계층 무장 표면을 보존하기 위한 설계입니다. `goal_status`는 manager-develop / manager-lead가 무장된 조건의 진행을 읽는 채널이고, `session_list`는 manager-lead가 팬아웃 전 동일 체크아웃의 동시 세션을 감지하는 경쟁 완화 수단입니다.
+`goal_arm`은 오케스트레이터 전용입니다 — 자율 루프 무장은 오케스트레이터 관심사이므로 에이전트 안에서 호출하지 않습니다. 평면 계층 무장 표면을 보존하기 위한 설계입니다. `goal_status`는 manager-develop / manager-kanban가 무장된 조건의 진행을 읽는 채널이고, `session_list`는 manager-kanban가 팬아웃 전 동일 체크아웃의 동시 세션을 감지하는 경쟁 완화 수단입니다.
 
 ### 교차 모델 감사 (제2의 의견)
 

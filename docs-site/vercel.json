@@ -191,6 +191,16 @@
       "source": "/multi-llm/factory-mode",
       "destination": "/ko/multi-llm/kanban-mode",
       "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/advanced/manager-lead",
+      "destination": "/:locale/advanced/manager-kanban",
+      "permanent": true
+    },
+    {
+      "source": "/advanced/manager-lead",
+      "destination": "/ko/advanced/manager-kanban",
+      "permanent": true
     }
   ],
   "headers": [
