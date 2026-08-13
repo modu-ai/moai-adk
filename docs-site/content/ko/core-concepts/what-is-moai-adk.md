@@ -252,7 +252,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | | manager-docs | 🔵 | Sync 단계: 문서화 및 PR 생성 |
 | | manager-git | 🩵 | Git 워크플로우 및 Tier 기반 PR 라우팅 |
 | | manager-design | 🟠 | Design 단계: Claude Design 협업 |
-| | manager-lead | ⚪ | Tier L 다중 마일스톤 조율 (worktree 격리 leaf-worker 팬아웃 · 카탈로그 유일 Agent-carrier) |
+| | manager-kanban | ⚪ | Tier L 다중 마일스톤 조율 (worktree 격리 leaf-worker 팬아웃 · 카탈로그 유일 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 계획의 독립적 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
 | **Builder** | builder-harness | 🟠 | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
@@ -260,7 +260,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (`manager-lead` `model: inherit`, 사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (`manager-kanban` `model: inherit`, 사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
 
 ```mermaid
 flowchart TD
@@ -272,7 +272,7 @@ flowchart TD
         M3["manager-docs\nSync 단계: 문서화"]
         M4["manager-git\nPR 생성, Git 작업"]
         M5["manager-design\nDesign 협업"]
-        M6["manager-lead\nTier L 다중 마일스톤 조율"]
+        M6["manager-kanban\nTier L 다중 마일스톤 조율"]
     end
 
     subgraph Evaluators["평가 에이전트 (2개)"]

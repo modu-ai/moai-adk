@@ -309,7 +309,7 @@ claude        # launch Claude Code inside the project
 | | manager-docs | 🔵 | Sync-phase 文档化 |
 | | manager-git | 🩵 | PR 创建和路由 |
 | | manager-design | 🟠 | Design-phase 协作（Claude Design） |
-| | manager-lead | 🔴 | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） |
+| | manager-kanban | 🔴 | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） |
 | **Evaluator** | plan-auditor | 🔴 | 独立计划审计（偏见防止） |
 | | sync-auditor | 🔴 | 4 维质量评分（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
 | **Builder** | builder-harness | 🟠 | 项目专用 agent·skill·command·hook 脚手架 |

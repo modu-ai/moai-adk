@@ -78,7 +78,7 @@ MoAI-ADK가 배포하는 `CLAUDE.md`는 열일곱 개 섹션으로 이루어져 
 
 ### 4. 에이전트 카탈로그 — 12개 전문가 팀
 
-MoAI-ADK는 12개의 보존 에이전트 (11개 MoAI 커스텀 + 1개 Anthropic 빌트인 `Explore`) 로 구성됩니다. `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-lead` 같은 관리자 에이전트가 라이프사이클 단계를 맡고, `plan-auditor`, `sync-auditor`가 독립 평가를, `builder-harness`가 동적 하네스 생성을, `super-advisor`가 고추론 자문을 담당합니다. 과거 `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project` 등 12개 에이전트는 archived 됐고 그 자리는 도메인별 per-spawn 위임이 대신합니다. 카탈로그가 명시적인 이유는 오케스트레이터가 "어떤 전문가에게 맡길 것인가"를 매번 같은 기준으로 판단하게 하기 위해서입니다.
+MoAI-ADK는 12개의 보존 에이전트 (11개 MoAI 커스텀 + 1개 Anthropic 빌트인 `Explore`) 로 구성됩니다. `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-kanban` 같은 관리자 에이전트가 라이프사이클 단계를 맡고, `plan-auditor`, `sync-auditor`가 독립 평가를, `builder-harness`가 동적 하네스 생성을, `super-advisor`가 고추론 자문을 담당합니다. 과거 `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project` 등 12개 에이전트는 archived 됐고 그 자리는 도메인별 per-spawn 위임이 대신합니다. 카탈로그가 명시적인 이유는 오케스트레이터가 "어떤 전문가에게 맡길 것인가"를 매번 같은 기준으로 판단하게 하기 위해서입니다.
 
 ### 5. SPEC 워크플로우 — 3단계 개발 파이프라인
 
