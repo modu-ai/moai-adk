@@ -1,7 +1,7 @@
 name: CI
 
 # Template Internal-Content Isolation Policy:
-# The 'Run tests with race detector and coverage' step below executes
+# The 'Run tests with coverage' step in the `test` job below executes
 # `go test ./...` which includes TestTemplateNoInternalContentLeak in
 # internal/template/internal_content_leak_test.go. This test enforces
 # CLAUDE.local.md §25 (Template Internal-Content Isolation): the template
@@ -42,26 +42,12 @@ jobs:
     timeout-minutes: 5
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
-      docs_only: ${{ steps.f.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: f
         with:
           filters: |
-            docs_only:
-              - '**.md'
-              - '.github/**'
-              - '.moai/specs/**'
-              - '.moai/docs/**'
-              - '.moai/reports/**'
-              - '.moai/research/**'
-              - '.claude/rules/**'
-              - '.claude/skills/**'
-              - 'docs-site/**'
-              - 'CHANGELOG.md'
-              - 'LICENSE'
-              - 'NOTICE'
             go_code:
               - '**/*.go'
               - 'go.mod'
@@ -71,7 +57,12 @@ jobs:
               - '.github/workflows/codeql.yml'
 
   # ---------------------------------------------------------------------------
-  # Test: Run tests on all platforms with race detector and coverage
+  # Test: Run tests with coverage (fast — NO race detector). The race
+  # detector moved to the separate `test-race` job (advisory, non-required):
+  # the ~9-min race runtime was dominated by internal/cli exec.Command tests
+  # + internal/hook/mx ast-grep scans, which -race amplifies. This job keeps
+  # ast-grep/vet/MX-assertion/coverage and remains the merge gate; it runs
+  # WITHOUT -race (~2-3 min) for faster PR feedback.
   # Gated by detect: only runs when go_code changes are present
   # ---------------------------------------------------------------------------
   # SPEC-V3R6-CI-PR-SPEEDUP-001 — PR-scope test matrix is ubuntu-only.
@@ -160,9 +151,9 @@ jobs:
       # Moved to release-pr-multi-os.yml's windows leg at release time
       # (SPEC-V3R6-CI-PR-SPEEDUP-001).
 
-      - name: Run tests with race detector and coverage
+      - name: Run tests with coverage (fast — no race detector)
         shell: bash
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
@@ -170,6 +161,48 @@ jobs:
           files: coverage.out
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Race Test: race detector in a separate advisory, non-required job.
+  # Split from the required `test` job so the ~9-min race runtime no longer
+  # blocks the PR feedback loop. NOT continue-on-error: a race failure must
+  # surface as a visible failure on the PR. This is non-blocking because
+  # "Race Test" is a NEW check name NOT in branch-protection required checks
+  # (required: Test (ubuntu-latest), Lint, Build (linux/amd64), Analyze (Go),
+  # Release PR Multi-OS Gate) — those stay green-mergeable regardless of this
+  # job's result. (continue-on-error:true would HIDE race failures by forcing
+  # success — the opposite of advisory+visible.)
+  # ---------------------------------------------------------------------------
+  test-race:
+    name: Race Test
+    needs: detect
+    if: needs.detect.outputs.go_code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      # ast-grep is needed because internal/cli rewrite-guard tests shell out
+      # to `sg`; without it those tests skip and the race run misses the very
+      # exec.Command paths that dominate race runtime (internal/cli ~379s/70%).
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      - name: Run race detector across all packages
+        shell: bash
+        run: go test -race -count=1 ./...
 
   # ---------------------------------------------------------------------------
   # Test Skip-Marker: For docs-only PRs, emit SUCCESS for required check names

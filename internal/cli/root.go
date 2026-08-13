@@ -194,6 +194,9 @@ func init() {
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
 
+	// SPEC-CHAIN-CORE-001: register chain subcommand group
+	rootCmd.AddCommand(newChainCmd())
+
 	// NOTE: newHarnessCmd is a superseded factory and is intentionally NOT
 	// registered here. It remains compilable only as a deprecation marker
 	// (see TestHarnessFactoryStillCompiles in harness_retirement_test.go).

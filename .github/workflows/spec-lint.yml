@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Version alignment with ci.yml: actions/checkout@v5, actions/setup-go@v6.
+      # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:

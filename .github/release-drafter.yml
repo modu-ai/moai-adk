@@ -144,6 +144,11 @@ autolabeler:
       - '/^test(\(.+\))?!?:/i'
     files:
       - '**/*_test.go'
+  - label: 'type:performance'
+    title:
+      - '/^perf(\(.+\))?!?:/i'
+    branch:
+      - '/^perf\/.+/'
   - label: 'breaking'
     title:
       - '/^[a-z]+(\(.+\))?!:/i'
