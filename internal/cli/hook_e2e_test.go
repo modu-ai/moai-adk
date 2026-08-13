@@ -373,6 +373,7 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"session-start-compact":              true, // SPEC-INFINITE-GOAL-001 REQ-5: isolated-invocation domain hook (shares EventSessionStart; production firing via deps.go registration)
 		"codex-review-gate":                  true, // SPEC-MOAI-MCP-SERVER-001 M2 REQ-MCP-008: Stop-hook domain gate (shares EventStop; opt-in via workflow.codex.review_gate.enabled)
 		"multi-review-gate":                  true, // SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013: Stop-hook domain gate (shares EventStop; opt-in via workflow.multi.review_gate.enabled)
+		"chain-event":                        true, // SPEC-CHAIN-CORE-001 REQ-CHAIN-012: SubagentStop domain hook (shares EventSubagentStop; appends completion-edge to chain ledger)
 	}
 
 	for _, cmd := range hookCmd.Commands() {

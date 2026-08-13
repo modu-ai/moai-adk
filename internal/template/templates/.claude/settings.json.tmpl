@@ -189,7 +189,13 @@
             "timeout": 5,
             "type": "command",
             "async": true
-          }{{ end }}
+          }{{ end }},
+          {
+            "command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/chain-event.sh"],
+            "timeout": 5,
+            "type": "command"
+          }
         ]
       }
     ],
