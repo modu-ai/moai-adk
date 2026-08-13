@@ -693,9 +693,18 @@ func validatePreconditions(state *closeState, opts CloseOptions) []string {
 		failed = append(failed, "missing §E.2 sync-phase audit-ready signal in progress.md")
 	}
 
-	// Precondition 2: §E.5 mx section present
-	if !state.HasMxSection {
-		failed = append(failed, "missing §E.5 Mx-phase audit-ready signal in progress.md")
+	// Precondition 2: §E.5 mx section present (legacy) OR the 3-phase close
+	// predicate (§E.4 sync marker + non-empty sync_commit_sha). The schema
+	// (spec-frontmatter-schema.md) retired §E.5 — folded into §E.4 — so a
+	// 3-phase SPEC honors the schema by omitting §E.5 and must still close.
+	// The legacy §E.5 path stays accepted for grandfather-era SPECs (OR, not
+	// a replacement). Modeled on transitions.go closeInfixMatch dual-acceptance.
+	threePhaseReady := hasProgressMarker(state.ProgressMDContent, "§E.4") &&
+		state.SyncCommitSHA != ""
+	if !state.HasMxSection && !threePhaseReady {
+		failed = append(failed,
+			"missing Mx-phase audit-ready signal in progress.md "+
+				"(legacy §E.5 section absent AND 3-phase §E.4+sync_commit_sha predicate not satisfied)")
 	}
 
 	// Precondition 3: all MUST-PASS AC PASS

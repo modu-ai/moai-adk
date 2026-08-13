@@ -44,44 +44,79 @@ func buildCloseFixture(t *testing.T, fixture closeFixtureSpec) string {
 	return tempDir
 }
 
-// AC-LSG-006 — Precondition matrix validation: missing §E.5 Mx section.
-func TestClose_PreconditionMissingMx(t *testing.T) {
+// AC-LSG-001 (SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001) — 3-phase progress.md
+// passes Precondition 2 even with §E.5 absent: the §E.4 sync marker + a
+// non-empty sync_commit_sha satisfy the 3-phase path. Close proceeds (returns
+// ErrDryRun under --dry-run, NOT ErrPreconditionMissing).
+func TestClose_ThreePhasePreconditionPass(t *testing.T) {
 	t.Parallel()
 
 	fixture := closeFixtureSpec{
-		id:     "SPEC-TEST-MX-001",
-		specMD: makeSpecMD("SPEC-TEST-MX-001", "implemented", "V3R6", "2026-05-25"),
-		progressMD: `## §E.2 Sync-phase
-sync_commit_sha: abc1234
+		id:     "SPEC-TEST-3PHASE-001",
+		specMD: makeSpecMD("SPEC-TEST-3PHASE-001", "implemented", "V3R6", "2026-05-25"),
+		progressMD: `## §E.2 Run-phase Evidence
+## §E.4 Sync-phase Audit-Ready Signal
+sync_commit_sha: abc123def4567
 `,
-		// no §E.5 Mx section
+			// intentionally NO §E.5 Mx section — the 3-phase relaxation must accept this
 	}
 	baseDir := buildCloseFixture(t, fixture)
 
-	result, err := Close("SPEC-TEST-MX-001", CloseOptions{BaseDir: baseDir})
-	if err == nil {
-		t.Fatal("expected ErrPreconditionMissing, got nil")
+	result, err := Close("SPEC-TEST-3PHASE-001", CloseOptions{BaseDir: baseDir, DryRun: true})
+	if errors.Is(err, ErrPreconditionMissing) {
+		t.Fatalf("Precondition 2 should PASS for a 3-phase SPEC; got ErrPreconditionMissing: %v\nPreconditionsFailed=%v",
+			err, result.PreconditionsFailed)
 	}
-	if !errors.Is(err, ErrPreconditionMissing) {
-		t.Errorf("error = %v, want ErrPreconditionMissing", err)
+	// DryRun path returns ErrDryRun (preconditions passed → close proceeded to the preview).
+	if !errors.Is(err, ErrDryRun) {
+		t.Fatalf("expected ErrDryRun (preconditions passed under --dry-run), got %v", err)
 	}
 	if result == nil {
-		t.Fatal("result should not be nil even on precondition failure")
+		t.Fatal("result should not be nil on dry-run success")
 	}
-	if len(result.PreconditionsFailed) == 0 {
-		t.Error("PreconditionsFailed should list the missing precondition")
+	if result.Result != "success" {
+		t.Errorf("Result = %q, want success (dry-run previews as success)", result.Result)
 	}
-	found := false
+	// No §E.5-related failure should appear in PreconditionsFailed.
 	for _, p := range result.PreconditionsFailed {
-		if strings.Contains(strings.ToLower(p), "§e.5") || strings.Contains(strings.ToLower(p), "mx") {
-			found = true
+		low := strings.ToLower(p)
+		if strings.Contains(low, "§e.5") || strings.Contains(low, "mx") {
+			t.Errorf("Precondition 2 should not flag §E.5/Mx for a 3-phase SPEC; unexpected failure: %q", p)
 		}
 	}
-	if !found {
-		t.Errorf("PreconditionsFailed should mention §E.5 Mx; got %v", result.PreconditionsFailed)
+}
+
+// AC-LSG-002 (SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001) — Legacy §E.5
+// progress.md still passes Precondition 2 (backward-compat). Grandfather-era
+// SPECs that still carry §E.5 must continue to close; the relaxation is an OR,
+// not a replacement of the §E.5 path.
+func TestClose_LegacyMxSectionStillAccepted(t *testing.T) {
+	t.Parallel()
+
+	fixture := closeFixtureSpec{
+		id:     "SPEC-TEST-LEGACY-001",
+		specMD: makeSpecMD("SPEC-TEST-LEGACY-001", "implemented", "V3R6", "2026-05-25"),
+		progressMD: `## §E.2 Run-phase Evidence
+## §E.5 Mx-phase Audit-Ready Signal
+mx_commit_sha: abc123def4567
+`,
+			// legacy §E.5 present — the §E.5 path must still be accepted
 	}
-	if result.Result != "failure" {
-		t.Errorf("Result = %q, want failure", result.Result)
+	baseDir := buildCloseFixture(t, fixture)
+
+	result, err := Close("SPEC-TEST-LEGACY-001", CloseOptions{BaseDir: baseDir, DryRun: true})
+	if errors.Is(err, ErrPreconditionMissing) {
+		t.Fatalf("Precondition 2 should PASS for a legacy §E.5 SPEC (backward-compat); got ErrPreconditionMissing: %v\nPreconditionsFailed=%v",
+			err, result.PreconditionsFailed)
+	}
+	if !errors.Is(err, ErrDryRun) {
+		t.Fatalf("expected ErrDryRun (preconditions passed under --dry-run), got %v", err)
+	}
+	if result == nil {
+		t.Fatal("result should not be nil on dry-run success")
+	}
+	if result.Result != "success" {
+		t.Errorf("Result = %q, want success", result.Result)
 	}
 }
 
