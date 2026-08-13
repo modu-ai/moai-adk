@@ -421,9 +421,9 @@ func TestLoaderLoadStateSection(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if cfg.State.StateDir != ".moai/custom-state" {
-		t.Errorf("State.StateDir: got %q, want %q", cfg.State.StateDir, ".moai/custom-state")
-	}
+	// state_dir was removed as a dead key; an unknown key must be ignored rather
+	// than fail the load, and the section must still register as loaded.
+	_ = cfg
 
 	sections := loader.LoadedSections()
 	if !sections["state"] {
@@ -444,9 +444,8 @@ func TestLoaderStateDefaults(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if cfg.State.StateDir != DefaultStateDir {
-		t.Errorf("State.StateDir: got %q, want default %q", cfg.State.StateDir, DefaultStateDir)
-	}
+	// StateConfig carries no loadable directory field; the path is a hardcoded literal.
+	_ = cfg
 
 	sections := loader.LoadedSections()
 	if sections["state"] {

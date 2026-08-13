@@ -1,5 +1,6 @@
 # State Configuration
 # Session state directory for Claude Code sessions (diagnostics baseline, coverage, etc.)
+# The directory path is not configurable: ".moai/state" is a hardcoded literal in the
+# state-path resolver and the worktree state guard, which are its single source of truth.
 
-state:
-  state_dir: ".moai/state"
+state: {}

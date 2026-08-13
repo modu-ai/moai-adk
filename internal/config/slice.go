@@ -28,7 +28,6 @@ var sectionLoaders = map[string]sectionLoaderFunc{
 	"state":         (*Loader).loadStateSection,
 	"workflow":      (*Loader).loadWorkflowSection,
 	"statusline":    (*Loader).loadStatuslineSection,
-	"research":      (*Loader).loadResearchSection,
 	"feedback":      (*Loader).loadFeedbackSection,
 	"handoff":       (*Loader).loadHandoffSection,
 	"archive":       (*Loader).loadArchiveSection,
