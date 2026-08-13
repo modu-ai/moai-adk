@@ -4,9 +4,15 @@
 // The announcement is emitted HERE rather than by the launcher because the
 // launcher syscall.Exec's into claude (internal/cli/launch_exec_posix.go), so
 // anything it writes to stdout is overwritten the moment the TUI takes the
-// screen. The hook's output lands inside the session, where both the operator
-// and the orchestrator can read it — and the orchestrator needs the labels,
-// because it is what will address the companions later.
+// screen.
+//
+// The notice has two audiences on two different surfaces, and the caller
+// (session_start.go) emits it on both. The orchestrator reads
+// hookSpecificOutput.additionalContext and needs the labels, because it is what
+// will address the companions later. The operator reads systemMessage and needs
+// the launch lines, because a session cannot launch another session — those four
+// terminals are opened by hand. additionalContext alone is invisible to the
+// operator, which is the failure this dual emission exists to prevent.
 package hook
 
 import (

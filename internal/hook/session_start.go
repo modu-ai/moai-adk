@@ -341,6 +341,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
 	// takes the screen. Non-kanban sessions get "" and nothing is injected.
+	//
+	// The notice rides BOTH channels because it has two audiences and they read
+	// different surfaces. additionalContext reaches the orchestrator, which needs
+	// the companion labels to address them later; systemMessage reaches the
+	// operator, who must type the four launch lines by hand into new terminals.
+	// Emitting only additionalContext delivered a human-addressed instruction to
+	// the model alone, so the operator saw nothing at all.
 	if notice := kanbanBootstrapNotice(); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
@@ -351,6 +358,11 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext = notice
 		} else {
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+		if out.SystemMessage == "" {
+			out.SystemMessage = notice
+		} else {
+			out.SystemMessage += "\n\n" + notice
 		}
 	}
 
