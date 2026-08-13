@@ -354,6 +354,23 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-CHAIN-CORE-001 REQ-CHAIN-013: lineage banner. Resolves the current
+	// chain node (from env or ledger), backfills session_id (REQ-CHAIN-021),
+	// and emits a depth + parent-chain + resume system-reminder. Time-boxed
+	// and fail-open (empty string = no banner injected).
+	if banner := chainLineageBanner(input.ProjectDir, input.CWD, input.SessionID); banner != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = banner
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + banner
+		}
+	}
+
 	return out, nil
 }
 
