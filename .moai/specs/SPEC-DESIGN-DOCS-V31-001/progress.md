@@ -188,6 +188,6 @@ Last run-phase output: M7, merged as `7bdf1503b` (PR #1509).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-v31-sync-close
+sync_commit_sha: 0adc1f7b8bcc0e294ff2b32695d52178d56aadef
 
 This is the single sync commit closing SPEC-DESIGN-DOCS-V31-001 (tier L, 3-phase close: plan → run → sync). The `in-progress → implemented → completed` transition rides this commit (spec.md frontmatter `status` + `updated` only; SPEC body content untouched per the ownership matrix). A commit cannot know its own hash, so the real squash SHA of this sync commit is backfilled in a follow-up commit (D3 placeholder exemption).
