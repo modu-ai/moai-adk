@@ -2,6 +2,7 @@
 title: Dynamic Workflows and Ultracode
 weight: 42
 draft: false
+added_in: "v3.1"
 ---
 
 Delegate 100 agents sequentially and your context collapses first. Dynamic workflows solve this by keeping the plan in **script variables** rather than in Claude's context — intermediate results stay in the script, and only the final result returns to the session. It is where tokenomics meets loop engineering: enabling massive fan-out while containing context cost.
