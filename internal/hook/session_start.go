@@ -348,7 +348,12 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// operator, who must type the four launch lines by hand into new terminals.
 	// Emitting only additionalContext delivered a human-addressed instruction to
 	// the model alone, so the operator saw nothing at all.
-	if notice := kanbanBootstrapNotice(); notice != "" {
+	//
+	// Each copy is rendered in its audience's language, the split language.yaml
+	// already draws: agent_prompt_language (English) for the agent-facing copy,
+	// conversation_language for the operator-facing one. The two copies differ
+	// only in prose — commands, run id, and socket path are identical in both.
+	if notice := kanbanBootstrapNotice(langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -359,10 +364,12 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		} else {
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
+
+		operatorNotice := kanbanBootstrapNotice(operatorLang(h.cfg))
 		if out.SystemMessage == "" {
-			out.SystemMessage = notice
+			out.SystemMessage = operatorNotice
 		} else {
-			out.SystemMessage += "\n\n" + notice
+			out.SystemMessage += "\n\n" + operatorNotice
 		}
 	}
 
