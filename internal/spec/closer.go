@@ -87,8 +87,10 @@ type CloseResult struct {
 //   - ErrDryRun              → exit 0 (informational, --dry-run requested)
 var (
 	// ErrPreconditionMissing is returned when one or more close preconditions
-	// are not met (e.g., missing §E.5 Mx section in progress.md). The
-	// PreconditionsFailed field on CloseResult names the specific failure.
+	// are not met (e.g., the Mx-phase audit-ready signal is absent — neither a
+	// legacy §E.5 section nor the 3-phase §E.4+sync_commit_sha predicate is
+	// satisfied). The PreconditionsFailed field on CloseResult names the
+	// specific failure.
 	ErrPreconditionMissing = errors.New("close precondition not met")
 
 	// ErrDryRun is returned when opts.DryRun is set. It signals "preview only".
@@ -104,7 +106,7 @@ var (
 // @MX:ANCHOR: [AUTO] Close는 `moai spec close`의 단일 진입점 — CLI(spec_close.go) + 단위/통합 테스트가 호출(fan_in=3)
 // @MX:REASON: [AUTO] no-op 판정 불변식(--backfill-only 모드에서 spec.md status=="completed"면 mx_commit_sha 백필 형태와 무관하게 무조건 no-op, 0 commit)이 AC-LSG-018/022 진실표에 묶여 있다. 이 술어를 변경하면 5개 이미-종료 SPEC의 dogfood가 깨진다.
 //
-// Close orchestrates the atomic 4-phase close transition for a SPEC.
+// Close orchestrates the atomic 3-phase close transition for a SPEC.
 //
 // M1 implementation (this milestone): precondition matrix + lock + dry-run +
 // no-op detection. M3 will add the atomic git commit transaction.
@@ -347,7 +349,7 @@ func performAtomicClose(baseDir, specID string, state *closeState) (commitSHA st
 	}
 
 	// Step 6 — commit and capture the new SHA.
-	subject := fmt.Sprintf("chore(%s): Mx-phase audit-ready signal + 4-phase close", specID)
+	subject := fmt.Sprintf("chore(%s): Mx-phase audit-ready signal + 3-phase close", specID)
 	body := "Authored-By-Agent: orchestrator-direct"
 	if err := runGitInDir(baseDir, "commit", "-m", subject, "-m", body); err != nil {
 		return rollback(fmt.Errorf("git commit: %w", err))
@@ -680,7 +682,7 @@ func hasGenuinePassWithDebtVerdict(acBody string) bool {
 		passWithDebtBoldVerdict.MatchString(acBody)
 }
 
-// validatePreconditions checks the 4-phase precondition matrix per AC-LSG-006.
+// validatePreconditions checks the 3-phase precondition matrix per AC-LSG-006.
 // Returns a slice of failing precondition names (empty slice = all pass).
 //
 // Backfill-only mode relaxes the spec.md status requirement (allows implemented
@@ -693,9 +695,18 @@ func validatePreconditions(state *closeState, opts CloseOptions) []string {
 		failed = append(failed, "missing §E.2 sync-phase audit-ready signal in progress.md")
 	}
 
-	// Precondition 2: §E.5 mx section present
-	if !state.HasMxSection {
-		failed = append(failed, "missing §E.5 Mx-phase audit-ready signal in progress.md")
+	// Precondition 2: §E.5 mx section present (legacy) OR the 3-phase close
+	// predicate (§E.4 sync marker + non-empty sync_commit_sha). The schema
+	// (spec-frontmatter-schema.md) retired §E.5 — folded into §E.4 — so a
+	// 3-phase SPEC honors the schema by omitting §E.5 and must still close.
+	// The legacy §E.5 path stays accepted for grandfather-era SPECs (OR, not
+	// a replacement). Modeled on transitions.go closeInfixMatch dual-acceptance.
+	threePhaseReady := hasProgressMarker(state.ProgressMDContent, "§E.4") &&
+		state.SyncCommitSHA != ""
+	if !state.HasMxSection && !threePhaseReady {
+		failed = append(failed,
+			"missing Mx-phase audit-ready signal in progress.md "+
+				"(legacy §E.5 section absent AND 3-phase §E.4+sync_commit_sha predicate not satisfied)")
 	}
 
 	// Precondition 3: all MUST-PASS AC PASS
