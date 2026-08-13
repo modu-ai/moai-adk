@@ -37,6 +37,7 @@ go run ./cmd/moai --version > /tmp/moai-verify/5-cli.log 2>&1; echo "exit=$?"; t
 go test -bench=. -benchmem -run=^$ ./internal/<pkg>/... > /tmp/moai-verify/6-bench.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/6-bench.log
 
 # 7. Lint baseline (golangci-lint)
+# Linter set + default timeout governed by root .golangci.yml; the --timeout=2m flag here overrides it for the quick-check budget.
 golangci-lint run --timeout=2m > /tmp/moai-verify/7-lint.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/7-lint.log
 ```
 
