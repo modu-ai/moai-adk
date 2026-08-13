@@ -1,4 +1,4 @@
-package factory
+package kanban
 
 import (
 	"strings"
@@ -85,7 +85,7 @@ func TestCompanionRolesAreTheFourWorkers(t *testing.T) {
 			t.Errorf("CompanionRoles[%d] = %q, want %q", i, CompanionRoles[i], want[i])
 		}
 	}
-	// The lead is not a companion: it is the only session carrying the factory
+	// The lead is not a companion: it is the only session carrying the kanban
 	// token, and listing it here would invite a second chain driver.
 	if isCompanionRole("lead") {
 		t.Error("lead must not be a companion role")

@@ -17,7 +17,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-f [SPEC-ID] | -f --name <role>-<run-id>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -60,13 +60,13 @@ Flags:
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
-Factory Mode:
-  -f, --factory [SPEC-ID]       Enter as the LEAD of a factory run. Seeds a
+Kanban Mode:
+  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
                                 plan -> run -> verify -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
                                 SPEC. The lead drives the whole chain; four
                                 companion sessions are launched by hand.
-  -f --name <role>-<run-id>     Enter as a COMPANION of an existing factory run.
+  -k --name <role>-<run-id>     Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The four
                                 roles are: plan, run, review, sync. The run-id
                                 is the identifier the lead announced at startup.
@@ -84,8 +84,8 @@ Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
-  moai glm -f              # Factory lead on GLM: seeds the chain
-  moai glm -f --name sync-abc123   # Factory companion on GLM
+  moai glm -k              # Kanban lead on GLM: seeds the chain
+  moai glm -k --name sync-abc123   # Kanban companion on GLM
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -176,24 +176,24 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-BOOTSTRAP-001: -f is factory membership whose role is
+	// SPEC-FACTORY-BOOTSTRAP-001: -k is kanban membership whose role is
 	// disambiguated by --name. See cc.go for the full rationale and truth
 	// table; glm mirrors cc exactly except for the backend constant.
-	specID, factoryEnabled, factoryArgs := parseFactoryFlag(filteredArgs)
-	filteredArgs = factoryArgs
+	specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs)
+	filteredArgs = kanbanArgs
 	label, isCompanion := parseCompanionLabel(filteredArgs)
-	switch resolveFactoryBranch(factoryEnabled, isCompanion) {
-	case factoryBranchLead:
-		defer enterFactoryMode(specID)()
-		recordFactorySession(specID, factory.BackendGLM)
-		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
+	case kanbanBranchLead:
+		defer enterKanbanMode(specID)()
+		recordKanbanSession(specID, kanban.BackendGLM)
+		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchCompanion:
-		defer enterFactoryCompanionMode(label)()
-		settingsFlag, settingsCleanup := prepareFactorySettings(filteredArgs)
+	case kanbanBranchCompanion:
+		defer enterKanbanCompanionMode(label)()
+		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}

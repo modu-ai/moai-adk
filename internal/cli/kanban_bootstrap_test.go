@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestParseCompanionLabelRecognizesWithoutConsuming is the load-bearing property
@@ -51,7 +51,7 @@ func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
 }
 
 // TestParseCompanionLabelStopsAtPassThroughMarker asserts the `--` discipline
-// shared with parseFactoryFlag, stripSpawnFlag, parseProfileFlag and
+// shared with parseKanbanFlag, stripSpawnFlag, parseProfileFlag and
 // normalizeWorktreeFlag: nothing past the marker is read.
 func TestParseCompanionLabelStopsAtPassThroughMarker(t *testing.T) {
 	t.Parallel()
@@ -65,62 +65,62 @@ func TestParseCompanionLabelStopsAtPassThroughMarker(t *testing.T) {
 	}
 }
 
-// TestEnterFactoryModeSetsRunID asserts the lead mints a run id, and that the
+// TestEnterKanbanModeSetsRunID asserts the lead mints a run id, and that the
 // restore returns every variable to its PRIOR PRESENCE — an unset variable is
 // unset again, not set to "".
 //
 // Non-parallel by construction: os.Setenv mutates process-global state.
-func TestEnterFactoryModeSetsRunID(t *testing.T) {
-	for _, key := range []string{config.EnvMoaiFactory, config.EnvMoaiFactoryID, config.EnvMoaiFactorySpec} {
+func TestEnterKanbanModeSetsRunID(t *testing.T) {
+	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanSpec} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterFactoryMode("SPEC-EXAMPLE-001")
+	restore := enterKanbanMode("SPEC-EXAMPLE-001")
 
-	runID := os.Getenv(config.EnvMoaiFactoryID)
+	runID := os.Getenv(config.EnvMoaiKanbanID)
 	if runID == "" {
-		t.Fatalf("%s not set by enterFactoryMode", config.EnvMoaiFactoryID)
+		t.Fatalf("%s not set by enterKanbanMode", config.EnvMoaiKanbanID)
 	}
-	if _, _, ok := factory.SplitCompanionLabel(factory.CompanionLabel("plan", runID)); !ok {
+	if _, _, ok := kanban.SplitCompanionLabel(kanban.CompanionLabel("plan", runID)); !ok {
 		t.Errorf("run id %q does not produce a parseable companion label", runID)
 	}
-	if os.Getenv(config.EnvMoaiFactory) != "1" {
-		t.Errorf("%s not set", config.EnvMoaiFactory)
+	if os.Getenv(config.EnvMoaiKanban) != "1" {
+		t.Errorf("%s not set", config.EnvMoaiKanban)
 	}
 
 	restore()
-	for _, key := range []string{config.EnvMoaiFactory, config.EnvMoaiFactoryID, config.EnvMoaiFactorySpec} {
+	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanSpec} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s still present after restore (prior presence not restored)", key)
 		}
 	}
 }
 
-// TestEnterFactoryCompanionModeSetsLabelNotFactory is the separation this whole
+// TestEnterKanbanCompanionModeSetsLabelNotKanban is the separation this whole
 // change rests on: a companion takes the raised block cap but must NOT be seeded
 // with the chain, or four sessions each drive the whole chain.
-func TestEnterFactoryCompanionModeSetsLabelNotFactory(t *testing.T) {
-	for _, key := range []string{config.EnvMoaiFactory, config.EnvMoaiFactoryID, config.EnvMoaiFactoryLabel} {
+func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
+	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterFactoryCompanionMode("review-tjlgt1")
+	restore := enterKanbanCompanionMode("review-tjlgt1")
 
-	if got := os.Getenv(config.EnvMoaiFactoryLabel); got != "review-tjlgt1" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiFactoryLabel, got, "review-tjlgt1")
+	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "review-tjlgt1" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "review-tjlgt1")
 	}
-	if got := os.Getenv(config.EnvMoaiFactoryID); got != "tjlgt1" {
+	if got := os.Getenv(config.EnvMoaiKanbanID); got != "tjlgt1" {
 		t.Errorf("%s = %q, want %q (derived from the label, never carried separately)",
-			config.EnvMoaiFactoryID, got, "tjlgt1")
+			config.EnvMoaiKanbanID, got, "tjlgt1")
 	}
-	if _, present := os.LookupEnv(config.EnvMoaiFactory); present {
-		t.Errorf("%s must NOT be set on a companion (it seeds the chain)", config.EnvMoaiFactory)
+	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
+		t.Errorf("%s must NOT be set on a companion (it seeds the chain)", config.EnvMoaiKanban)
 	}
 
 	restore()
-	for _, key := range []string{config.EnvMoaiFactoryID, config.EnvMoaiFactoryLabel} {
+	for _, key := range []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s still present after restore", key)
 		}

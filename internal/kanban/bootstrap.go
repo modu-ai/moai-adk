@@ -1,6 +1,6 @@
-package factory
+package kanban
 
-// bootstrap.go holds the vocabulary of a factory run's multi-session bootstrap:
+// bootstrap.go holds the vocabulary of a kanban run's multi-session bootstrap:
 // the run identifier, the companion roles, and the `<role>-<run-id>` label that
 // joins the two.
 //
@@ -15,11 +15,11 @@ import (
 	"time"
 )
 
-// CompanionRoles are the four companion roles of a factory run, in the order
+// CompanionRoles are the four companion roles of a kanban run, in the order
 // the lead announces them.
 //
 // The lead is deliberately absent from this list. It is the only session that
-// carries the factory token, because that token seeds a session whose
+// carries the kanban token, because that token seeds a session whose
 // orchestrator drives the whole plan -> run -> verify -> sync chain; giving it
 // to a companion would produce four sessions each driving the whole chain.
 var CompanionRoles = []string{"plan", "run", "review", "sync"}
@@ -27,7 +27,7 @@ var CompanionRoles = []string{"plan", "run", "review", "sync"}
 // base36Digits is the alphabet of NewRunID.
 const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-// NewRunID returns the identifier for one factory run: the current Unix second
+// NewRunID returns the identifier for one kanban run: the current Unix second
 // in lowercase base36, unpadded — six characters at the present epoch.
 //
 // Monotonic by construction, so a later run sorts after an earlier one, and it

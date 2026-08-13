@@ -338,10 +338,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
-	// Factory Mode bootstrap announcement. The launcher cannot deliver this —
+	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
-	// takes the screen. Non-factory sessions get "" and nothing is injected.
-	if notice := factoryBootstrapNotice(); notice != "" {
+	// takes the screen. Non-kanban sessions get "" and nothing is injected.
+	if notice := kanbanBootstrapNotice(); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
