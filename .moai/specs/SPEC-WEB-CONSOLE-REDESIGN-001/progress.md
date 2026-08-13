@@ -152,7 +152,7 @@ full_suite: `go test ./...` → `internal/template` 3건 실패
 
 sync_status: ready
 sync_complete_at: 2026-08-13
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 2c70346ab55feed17a4bba3a29de731509230770
   (self-referential-hazard workaround per spec-frontmatter-schema.md § Status Transition
   Ownership Matrix D3 — a commit cannot know its own SHA until after it lands. manager-git
   backfills the real SHA in the Late-Branch follow-up commit after the sync PR merges.)
