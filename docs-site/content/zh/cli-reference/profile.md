@@ -8,7 +8,7 @@ draft: false
 
 ## 什么是配置文件?
 
-配置文件是 **隔离的 Claude Code 设置目录**(`CLAUDE_CONFIG_DIR`)。可为每个配置文件维护独立的设置、模型选择、语言环境。
+配置文件是 **隔离的 Claude Code 设置目录** (`CLAUDE_CONFIG_DIR`)。可为每个配置文件维护独立的设置、模型选择、语言环境。
 
 ```
 ~/.moai/claude-profiles/

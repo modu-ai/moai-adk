@@ -120,7 +120,7 @@ statusline:
 
 ## security.yaml — 보안 강화
 
-내장 `DefaultSecurityPolicy` 패턴을 **덧붙이는**(교체가 아닌) 추가 보안 설정입니다. SOLID의 개방-폐쇄 원칙에 따라 core를 건드리지 않고 config만으로 확장합니다.
+내장 `DefaultSecurityPolicy` 패턴을 **덧붙이는** (교체가 아닌) 추가 보안 설정입니다. SOLID의 개방-폐쇄 원칙에 따라 core를 건드리지 않고 config만으로 확장합니다.
 
 ```yaml
 security:

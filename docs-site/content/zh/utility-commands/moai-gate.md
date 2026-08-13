@@ -108,7 +108,7 @@ Total: 18.5s
 
 ## 与其他命令的关系
 
-`/moai gate` 是只验证、不修改文件的 **轻量级检查站**(仅在给出 `--fix` 时修正 lint、格式化)。若需更深的解决,可转向 `/moai fix`(单次)或 `/moai loop`(反复);PR 前的综合评审使用 `/moai review`。`--fresh` 模式用于 `/moai loop` 的独立最终验证 pass 调用本门禁以获取无自引用的证据时。
+`/moai gate` 是只验证、不修改文件的 **轻量级检查站** (仅在给出 `--fix` 时修正 lint、格式化)。若需更深的解决,可转向 `/moai fix`(单次)或 `/moai loop`(反复);PR 前的综合评审使用 `/moai review`。`--fresh` 模式用于 `/moai loop` 的独立最终验证 pass 调用本门禁以获取无自引用的证据时。
 
 ## 相关文档
 

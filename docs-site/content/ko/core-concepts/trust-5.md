@@ -336,7 +336,7 @@ flowchart TD
 3. 수정 후 다시 LSP 진단을 실행하여 통과 여부를 확인합니다
 4. 통과할 때까지 반복합니다 (연산당 최대 3회 재시도)
 
-> 여기서 "3회"는 **개별 연산당 재시도 상한**(`workflow.yaml`의
+> 여기서 "3회"는 **개별 연산당 재시도 상한** (`workflow.yaml`의
 > `loop_prevention.max_retries_per_operation`)입니다. 이는 **루프 반복 상한**과
 > 별개의 개념입니다 — 진단 기반 수정 루프의 상한은
 > `workflow.yaml`의 `loop_prevention.max_iterations`(기본 100), `/moai fix` 루프
@@ -388,9 +388,9 @@ constitution:
     timeout_seconds: 3 # LSP 진단 타임아웃
 ```
 
-> **설정 파일 위치 구분**: 위에 보이는 LSP **품질 게이트 임계값**(`max_errors`,
+> **설정 파일 위치 구분**: 위에 보이는 LSP **품질 게이트 임계값** (`max_errors`,
 > `max_warnings` 등)은 `quality.yaml`의 `lsp_quality_gates` 아래에 있습니다.
-> 반면 LSP **클라이언트 런타임 설정**(LSP 활성화 스위치, 언어별 서버 구성)은
+> 반면 LSP **클라이언트 런타임 설정** (LSP 활성화 스위치, 언어별 서버 구성)은
 > 별도 파일인 `.moai/config/sections/lsp.yaml`에서 관리됩니다.
 
 ### 설정 커스터마이즈 팁

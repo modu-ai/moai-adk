@@ -283,7 +283,7 @@ $ git commit -m "security(db): 用参数化查询防止 SQL Injection"
 
 ## LSP 质量门禁
 
-MoAI-ADK 利用 **LSP**(Language Server Protocol)实时
+MoAI-ADK 利用 **LSP** (Language Server Protocol)实时
 验证代码质量。LSP 就是在 IDE 中用红色下划线标示错误的那个系统。
 
 ### 分阶段 LSP 阈值

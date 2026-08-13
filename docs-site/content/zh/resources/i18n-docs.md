@@ -47,7 +47,7 @@ flowchart TD
 
 ## 什么被保留,什么被翻译
 
-翻译**不变**(跨 locale 的共同规则):
+翻译**不变** (跨 locale 的共同规则):
 
 - **Mermaid 图方向** — 只允许 `flowchart TD` / `graph TB`。`LR`/`RL` 方向被禁止,翻译不改变方向。
 - **代码块** — 命令·代码·标志保持原样。只翻译注释中的自然语言。
@@ -88,8 +88,8 @@ Issue 在 [github.com/modu-ai/moai-adk/issues](https://github.com/modu-ai/moai-a
 
 不仅这个文档站点,GitHub 仓库的 README 也提供四种语言。但 README 与站点相反**英语(en)是正则**,韩语·日语·中文派生。注意文档站点(ko 正则)和 README(en 正则)的正规 locale 不同。
 
-- **文档站点**(这个站点) — ko 正则,en·ja·zh 派生。
-- **README**(GitHub 仓库) — `README.md`(en) 正则,`README.ko.md` / `README.ja.md` / `README.zh.md` 派生。
+- **文档站点** (这个站点) — ko 正则,en·ja·zh 派生。
+- **README** (GitHub 仓库) — `README.md`(en) 正则,`README.ko.md` / `README.ja.md` / `README.zh.md` 派生。
 
 两个表面都是四个 locale 在一个变更束中更新的规则相同。
 

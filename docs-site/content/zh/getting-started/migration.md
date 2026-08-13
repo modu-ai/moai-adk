@@ -131,7 +131,7 @@ archived 代理名称(`manager-strategy`、`expert-backend`、`researcher` 等)�
 
 #### 引入配置文件矩阵(3.0.1)
 
-`plan_type × performance_tier` 双轴设计改为**代理组单一配置文件矩阵**(`max`/`medium`/`low`)。`moai init --plan-type` 退休,由 `moai init --profile <max|medium|low>` 替代。现有 `llm.yaml`(`plan_type` + `claude_models` + `performance_tier`) 无错误加载并归结为正确的配置文件 — 下次保存时清理退休的键。
+`plan_type × performance_tier` 双轴设计改为**代理组单一配置文件矩阵** (`max`/`medium`/`low`)。`moai init --plan-type` 退休,由 `moai init --profile <max|medium|low>` 替代。现有 `llm.yaml`(`plan_type` + `claude_models` + `performance_tier`) 无错误加载并归结为正确的配置文件 — 下次保存时清理退休的键。
 
 {{< callout type="info" >}}
 **配置迁移自动完成。** legacy `llm.yaml` 照原样读取并转换为正确的配置文件,不需要手动修改配置文件。

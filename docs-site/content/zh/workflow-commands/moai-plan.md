@@ -369,7 +369,7 @@ flowchart TD
 > /moai plan "基于 JWT 的用户认证系统: 注册、登录、令牌刷新"
 ```
 
-**第 2 步: manager-spec 提问**(必要时)
+**第 2 步: manager-spec 提问** (必要时)
 
 manager-spec 智能体可能会为确认细节而提问:
 
@@ -460,9 +460,9 @@ plan 没有创建 worktree 的标志。请先用启动器进入(`moai cc -w <名
 
 ## GEARS 表示法 (v3.0.0+) {#gears-notation}
 
-从 MoAI-ADK v3.0.0 起,引入 **GEARS**(Generalized Expression for AI-Ready Specs)作为撰写 SPEC 的推荐表示法。既有的 EARS 表示法在 **6 个月** 内保持向后兼容,期间可以逐步迁移到 GEARS。建议新 SPEC 从一开始就遵循 GEARS 模式。
+从 MoAI-ADK v3.0.0 起,引入 **GEARS** (Generalized Expression for AI-Ready Specs)作为撰写 SPEC 的推荐表示法。既有的 EARS 表示法在 **6 个月** 内保持向后兼容,期间可以逐步迁移到 GEARS。建议新 SPEC 从一开始就遵循 GEARS 模式。
 
-GEARS 保留了 EARS 的 5 种核心模式,同时打磨了语义边界,使 AI 编程智能体能够更清晰地解读。核心变更是 **废弃 IF/THEN 模式**(归一化为 WHEN)以及 **重新定义 WHERE 的语义**(静态前提条件/配置/功能开关)。
+GEARS 保留了 EARS 的 5 种核心模式,同时打磨了语义边界,使 AI 编程智能体能够更清晰地解读。核心变更是 **废弃 IF/THEN 模式** (归一化为 WHEN)以及 **重新定义 WHERE 的语义** (静态前提条件/配置/功能开关)。
 
 参考资料: Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
 
@@ -537,9 +537,9 @@ WHEN input is null is detected, the system shall return an error.
 4. **公开前提条件** — 每个推荐选项以 *"Recommended when <precondition>"* 格式明示成立的前提条件,便于立即评估权衡。
 
 5. **基于熟练度的自适应强度** — 推荐强度按会话计数调节:
-   - **专家**(20+ 会话): 弱强度 — 仅公开 inferred preference,不使用 `(推荐)` override(info-centric,尊重自主性)
-   - **一般用户**(5-19 会话): 强强度 — `(推荐)` + 透明的依据说明
-   - **Cold-start**(<5 会话): 中立强度 — 无 override,应用系统默认值
+   - **专家** (20+ 会话): 弱强度 — 仅公开 inferred preference,不使用 `(推荐)` override(info-centric,尊重自主性)
+   - **一般用户** (5-19 会话): 强强度 — `(推荐)` + 透明的依据说明
+   - **Cold-start** (<5 会话): 中立强度 — 无 override,应用系统默认值
 
 ### 隐私与安全
 

@@ -45,7 +45,7 @@ AI 智能体绝对不能修改的规则，只有人类开发者可以更改。
 
 ## Zone Registry
 
-枚举所有 HARD 条款的**单一事实来源**(Single Source of Truth)。
+枚举所有 HARD 条款的**单一事实来源** (Single Source of Truth)。
 
 ### ID 分配规则
 

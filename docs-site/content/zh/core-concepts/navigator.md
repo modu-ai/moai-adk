@@ -5,7 +5,7 @@ draft: false
 ---
 # 导航器绑定令牌
 
-让代码和文档互相指向,代理修改一方时就能立即拉起另一方的上下文。**导航器绑定令牌**(Navigator Binding Tokens)是三个编写用令牌,将设计决策·代码符号·SPEC 连接成一个可寻址的图。这些令牌聚在一起形成单个产出物 `.moai/project/navigator/nav-graph.json`。
+让代码和文档互相指向,代理修改一方时就能立即拉起另一方的上下文。**导航器绑定令牌** (Navigator Binding Tokens)是三个编写用令牌,将设计决策·代码符号·SPEC 连接成一个可寻址的图。这些令牌聚在一起形成单个产出物 `.moai/project/navigator/nav-graph.json`。
 
 ## 三个令牌
 
@@ -49,7 +49,7 @@ draft: false
 导航器集成层扫描以下表面。
 
 - **设计文档** — `.moai/project/{product,structure,tech}.md` 和 `.moai/docs/**/*.md`。
-- **代码**(仅 `@NAV:SYM`) — 排除 `*_test.go` 和 `vendor/` 的 Go `*.go` 文件。设计文档表面也一起。
+- **代码** (仅 `@NAV:SYM`) — 排除 `*_test.go` 和 `vendor/` 的 Go `*.go` 文件。设计文档表面也一起。
 
 以下**不扫描**。
 

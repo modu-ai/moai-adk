@@ -10,7 +10,7 @@ MoAI-ADK의 프로필 시스템은 여러 Claude Code 설정을 격리해 관리
 
 ## 프로필이란?
 
-프로필은 **격리된 Claude Code 설정 디렉터리**(`CLAUDE_CONFIG_DIR`)입니다. 프로필마다 설정, 모델 선택, 언어 환경을 따로 유지할 수 있습니다.
+프로필은 **격리된 Claude Code 설정 디렉터리** (`CLAUDE_CONFIG_DIR`)입니다. 프로필마다 설정, 모델 선택, 언어 환경을 따로 유지할 수 있습니다.
 
 ```
 ~/.moai/claude-profiles/

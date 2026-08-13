@@ -85,7 +85,7 @@ After merge: <次のアクションまたはSPEC>
 
 検証コマンドの長文出力をディスクにリダイレクトしコンテキストには要約のみ残すファイルリダイレクト契約(file-redirect contract)です。
 
-ルール: 検証コマンドのverbatim出力が**bounded-tail ceiling**(デフォルト50行または2KBのいずれか小さい方)を超えると、出力をファイルにリダイレクトしコンテキストにはexit code + bounded tailのみ表示します。
+ルール: 検証コマンドのverbatim出力が**bounded-tail ceiling** (デフォルト50行または2KBのいずれか小さい方)を超えると、出力をファイルにリダイレクトしコンテキストにはexit code + bounded tailのみ表示します。
 
 ```bash
 go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
