@@ -55,7 +55,7 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// optional-pack:frontend), net +1 = 42.
 	// moai-workflow-ci-loop retired from distribution (its CI watch/auto-fix
 	// shell scripts are development-repo-only and never shipped), net -1 = 41.
-	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-lead agent
+	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-kanban agent
 	// (core.agents, hierarchical-team coordinator) + moai-ref-cross-model-audit
 	// skill (optional-pack:devops), net +2 = 43.
 	const wantTotal = 43

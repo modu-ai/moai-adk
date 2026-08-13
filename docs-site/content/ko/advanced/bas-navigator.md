@@ -149,4 +149,4 @@ cat .moai/project/navigator/audit-report.json | jq '.summary'
 | Step 3 | tree-sitter AST로 기호 보강   | `capability-symbols.json`       |
 | Step 4 | 감사로 차이 잡고 사이클 닫기  | `audit-report.json`             |
 
-BAS Navigator는 단일 원천 그래프 하나에 세 동기화 축을 얹어, 코드가 바뀌어도 문서가 뒤처지지 않게 만듭니다. 명령어 사양이 궁금하면 `utility-commands/moai-codemaps.md`를, 설계 배경이 궁금하면 각 단계를 정의한 SPEC(SPEC-NAVIGATOR-SYNC-001, 002, 003)을 참고하세요. 다음으로 읽기 좋은 페이지는 같은 고급 섹션의 `manager-lead.md`와 `autonomy-tier.md`입니다. 둘 다 이 코드맵 위에서 움직이는 에이전트 조직과 자율 등급을 다룹니다.
+BAS Navigator는 단일 원천 그래프 하나에 세 동기화 축을 얹어, 코드가 바뀌어도 문서가 뒤처지지 않게 만듭니다. 명령어 사양이 궁금하면 `utility-commands/moai-codemaps.md`를, 설계 배경이 궁금하면 각 단계를 정의한 SPEC(SPEC-NAVIGATOR-SYNC-001, 002, 003)을 참고하세요. 다음으로 읽기 좋은 페이지는 같은 고급 섹션의 `manager-kanban.md`와 `autonomy-tier.md`입니다. 둘 다 이 코드맵 위에서 움직이는 에이전트 조직과 자율 등급을 다룹니다.

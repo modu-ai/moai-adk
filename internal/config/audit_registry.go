@@ -36,7 +36,6 @@ var yamlToStructRegistry = map[string]string{
 	"statusline":     "StatuslineConfig",
 	"gate":           "GateConfig",
 	"sunset":         "SunsetConfig",
-	"research":       "ResearchConfig",
 	"handoff":        "HandoffConfig",  // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
 	"archive":        "ArchiveConfig",  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	"feedback":       "FeedbackConfig", // loaded via Loader.Load → loadFeedbackSection
@@ -79,7 +78,7 @@ var yamlAuditExceptions = map[string]string{
 	// parity reconciliation):
 	"cache":         "settings-seam only (cacheStrategy.enabled / session_ttl editable via internal/settings); the cache_control injector, doctor metric, and PostToolUse telemetry it once fed were all removed as unreachable — prompt caching is performed by Claude Code, and the live signal is the statusline ♻️ segment",
 	"mcp-matrix":    "maintainer-only prompt-consumed inventory (dev-only, not distributed; zero Go consumers)",
-	"observability": "observability config — no Go loader yet (separate SPEC)",
+	"observability": "partial direct-read — internal/config/observability_master.go reads the `enabled` key live; no aggregate Loader.Load struct binding",
 	"report":        "settings-seam only (report.format select persisted via internal/settings) — not in the Loader.Load chain",
 	"tool-policy":   "maintainer-only codegen SSOT (internal/config/toolpolicy dedicated loader; dev-only, not distributed)",
 }

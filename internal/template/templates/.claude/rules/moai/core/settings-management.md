@@ -98,7 +98,6 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 | state.yaml | `state` | `cfg.State` |
 | workflow.yaml | `workflow` | `cfg.Workflow` |
 | statusline.yaml | `statusline` | `cfg.Statusline` |
-| research.yaml | `research` | `cfg.Research` |
 | constitution.yaml | `constitution` | `cfg.Constitution` |
 | context.yaml | `context_search` | `cfg.ContextSearch` |
 | interview.yaml | `interview` | `cfg.Interview` |

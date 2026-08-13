@@ -45,7 +45,12 @@ import (
 var shippedKeyInventoryYAML []byte
 
 // minimumShippedKeys is the NFR-CKH-002 non-vacuity floor for shipped keys.
-const minimumShippedKeys = 900
+// The floor is a magnitude sanity check (catch an enumeration that silently
+// collapses), not a pin on the exact surface size. It was lowered from 900 to
+// 875 when the dead research section (24 keys) and the dead state.state_dir key
+// were removed from the shipped template, taking the real surface from 914 to
+// 889; a 900 floor would have failed on a deliberate, complete removal.
+const minimumShippedKeys = 875
 
 // minimumStructFields is the NFR-CKH-002 non-vacuity floor for struct fields.
 const minimumStructFields = 250

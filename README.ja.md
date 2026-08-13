@@ -303,7 +303,7 @@ claude        # launch Claude Code inside the project
 | | manager-docs | 🔵 | Sync フェーズ ドキュメント化 |
 | | manager-git | 🩵 | PR 作成とルーティング |
 | | manager-design | 🟠 | Design フェーズ協業（Claude Design） |
-| | manager-lead | 🔴 | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） |
+| | manager-kanban | 🔴 | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） |
 | **Evaluator** | plan-auditor | 🔴 | 独立計画監査（バイアス防止） |
 | | sync-auditor | 🔴 | 4 次元品質スコアリング（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
 | **Builder** | builder-harness | 🟠 | プロジェクト専用エージェント・スキル・コマンド・フックの足場作り |

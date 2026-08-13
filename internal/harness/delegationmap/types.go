@@ -84,7 +84,7 @@ var retainedCatalog = map[string]struct{}{
 	"manager-docs":    {},
 	"manager-git":     {},
 	"manager-design":  {},
-	"manager-lead":    {},
+	"manager-kanban":    {},
 	"plan-auditor":    {},
 	"sync-auditor":    {},
 	"builder-harness": {},
