@@ -1,5 +1,10 @@
 # SPEC-UPDATE-DOC-DRIFT-001 — Acceptance Criteria
 
+Rewritten at v0.3.0 against worktree HEAD **`7f61332ef`** (branch `docs/spec-doc-drift-rewrite`,
+based on `origin/main`). The v0.2.0 baseline `d5336214e` is **not an ancestor of this tree** —
+`git merge-base --is-ancestor d5336214e HEAD` exits `1` — so no v0.2.0 figure was carried over.
+Every baseline below was observed by running the stated command on this tree.
+
 ## §A Discipline
 
 1. **Every AC states a command runnable as written from the repository root, and its expected
@@ -9,246 +14,301 @@
 2. **Every documentation AC is paired with a code-fact AC.** This SPEC's subject is documentation
    correctness, which makes the vacuity hazard acute: a criterion phrased as "the file no longer
    contains string X" is satisfied by *deleting a sentence* without correcting anything. Each
-   documentation criterion below is therefore accompanied by a sibling criterion asserting the code
-   fact the corrected prose must now agree with, and each pair states its **falsification** — what
-   would have to be true for the criterion to fail.
+   documentation criterion is therefore accompanied by a sibling criterion asserting the code fact
+   the corrected prose must agree with, and each pair states its **falsification** — what would have
+   to be true for the criterion to fail.
 
-3. **`go test -run <pattern>` exits 0 on zero matches.** Every `-run` AC therefore additionally
-   requires the verbatim `--- PASS: <exact test name>` line. Vacuity baseline recorded at HEAD
-   `d5336214e`:
+3. **Absence is never asserted alone.** Every removal count (`expect 0`) is paired, in the same
+   criterion, with a replacement count (`expect >= 1`) over the same scope. A tree where both are `0`
+   fails: that is deletion, not correction.
 
-   ```
-   $ go test -run 'TestUpdateDryRunHelpTextMatchesBehavior' ./internal/cli/ ; echo "exit=$?"
-   ok  	github.com/modu-ai/moai-adk/internal/cli	4.690s [no tests to run]
-   exit=0
-   ```
-
-   An AC whose only assertion is `exit 0` would pass against a tree with no test at all, and is
-   rejected.
-
-4. **Baselines are observed, and attributed to the code baseline `d5336214e`.** Every baseline in §B
-   was produced by running the stated command in the worktree `.claude/worktrees/epic-update-config`,
-   branch `plan/epic-update-config-audit`. The worktree HEAD at the plan-audit revision is
-   **`145e601c9`** — a descendant of `d5336214e` that changes SPEC documents only:
-   `git merge-base --is-ancestor d5336214e HEAD` exits `0`,
-   `git diff --name-only d5336214e HEAD | grep -cv '\.md$'` prints `0`, and
-   `git diff --stat d5336214e HEAD -- '*.go'` is empty. No Go source differs between the two, so
-   every `file:line` and count below is attributable to `d5336214e`. Authoring happened at
-   `7225a8b7a` on the same branch; the sibling SPECs' recorded `main` HEAD `1d4e4f7da` was a stale
-   divergent branch (spec.md §A.6 drift 1). Each AC carries its observed pre-change baseline so a
-   reviewer can distinguish a real change from a no-op.
+4. **Baselines are observed and attributed to `7f61332ef`.** Each AC carries its measured
+   pre-change baseline so a reviewer can distinguish a real change from a no-op. Criteria whose
+   baseline already equals the expected value are labelled **preservation guards** and never counted
+   as change detectors.
 
 5. **`git stash` is prohibited.** This checkout is shared with concurrent sessions and `git stash` is
-   repository-global. Falsification uses a scratch copy under `/tmp` or `t.TempDir()`, never a tree
-   mutation.
+   repository-global. Falsification uses a scratch copy under `/tmp`, never a tree mutation.
 
-6. **All fixtures use `t.TempDir()`** and touch no path outside it (NFR-UDD-001).
+6. **A command that cannot observe its own expectation is not an AC.** Clause 1 requires a command;
+   this clause requires the command to be *capable of seeing* what the criterion claims. Five failure
+   shapes are excluded by construction, four inherited from the v0.2.0 plan-audit and one added here:
+   arithmetically unsatisfiable counts (`grep -c` over one line cannot exceed `1`); a printed line
+   paired with a prose judgment and no predicate; an expectation outside the command's window; a
+   guard that goes inert once its change is committed; and — new at v0.3.0 — a predicate defeated by
+   quotation (clause 8).
 
-7. **A command that cannot observe its own expectation is not an AC.** Clause 1 requires a command;
-   this clause requires the command to be *capable of seeing* what the criterion claims. It is the
-   clause the sibling SPECs carry (`SPEC-CONFIG-KEY-HONESTY-001` §A clause 7;
-   `SPEC-UPDATE-REINSTALL-LOOP-002` §A clause 5) and it is the one this SPEC most needed: the
-   plan-audit found 13 of 23 criteria non-discriminating, of which 5 are the intentional code-fact
-   pairings of clause 2 — leaving 8 genuine defects plus one unobserved baseline. Three failure
-   shapes were found and each is now excluded by construction:
+7. **`go test -run <pattern>` exits 0 on zero matches.** Any `-run` criterion therefore additionally
+   requires the verbatim `--- PASS: <exact test name>` line. This SPEC adds no test of its own
+   (§B M1 is retired), so the rule binds only AC-UDD-001's regression guard.
 
-   - **Arithmetically unsatisfiable** — `grep -c` over a one-line input cannot print `>= 2`
-     (AC-UDD-020). Counting *distinct tokens* (`grep -o | sort -u | wc -l`) is the form that can.
-   - **No predicate** — a command that prints a line and an expectation phrased as a prose judgment
-     about that line asserts nothing mechanically (AC-UDD-009, AC-UDD-010). Every such criterion now
-     uses the AC-UDD-007 pattern: removal-count `0` **and** replacement-count `>= 1`, so neither
-     deletion nor omission passes.
-   - **Expectation outside the command's window** — an expected fact at `:79` cannot be observed by a
-     command that prints `:41-70` (AC-UDD-019). The window is widened, or the fact gets its own
-     command.
+8. **Corrections state the current truth; they do not quote the retracted claim** *(new at v0.3.0)*.
+   This clause exists because the tree demonstrated the hazard. The 2026-08-01 in-place correction to
+   `CLAUDE.local.md` §2.2 retracts its predecessor **by quoting it** — "종전 이 절은 `…로더 부재 →
+   … 항상 컴파일 기본값 false`라고 적었으나 두 주장 모두 현재 main에서 거짓이다". The retraction is
+   correct prose and a defeated predicate: `grep -c '로더 부재' CLAUDE.local.md` still prints `1`, so
+   the v0.2.0 criterion expecting `0` fails against a tree where the requirement is satisfied. An
+   absence-grep cannot distinguish an assertion from its quoted retraction.
 
-   Two further shapes are excluded: a criterion whose predicate cannot distinguish the SPEC's own
-   edits from the effect it measures (AC-UDD-023 — a delta, not an absolute), and a criterion that
-   becomes inert once the change is committed (AC-UDD-021 — a baseline-relative diff, not an
-   unstaged-only one).
-
-   **Known residue, recorded rather than silently carried.** AC-UDD-006's `E4` token remains loose
-   (a two-character match), and its "no proposal to implement/deprecate/delete" half is unverified
-   prose. That is the residue of plan-audit defect D14, deferred to the next revision along with D13,
-   D15 and D17; it is named here so the clause is not read as claiming coverage it does not have.
+   The resolution is a constraint on the edit, not a cleverer regex — §2.2 is a single physical line,
+   so every line-scoped carve-out is degenerate on it. The M5 rewrite therefore **removes the
+   quotation** and states the mechanism directly, keeping only the dated marker and the
+   `v3.0.1`-vs-`main` release-version distinction (which is a substantive fact, not a quotation).
+   With the quotation gone, the removal counts in AC-UDD-014 are decidable again.
 
 ## §B Acceptance criteria
 
-### M1 — `--dry-run` contract
+### M5 — `CLAUDE.local.md` §2.2 ast-grep gate (REQ-UDD-002, REQ-UDD-003)
 
-> **The A-vs-B decision is settled: option B — preserve non-mutation and make the renderer
-> reachable.** The three criteria below are written against that decision, not against an open
-> choice. See spec.md §A.5 and plan.md §F.1 for the measured basis: the non-mutating plan renderer
-> already exists (`internal/cli/update_clean_install.go:186-198`) and is already wired
-> (`internal/cli/update.go:360`); the remaining work narrows an early return, it does not build a
-> renderer.
+> **Section-range anchor.** All §2.2 criteria extract the section by content anchor, never by line
+> number (`:141` at v0.2.0 is `:146` today — the consolidation moved it):
+>
+> ```bash
+> R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
+> ```
+>
+> Observed at `7f61332ef`: the range resolves to 3 lines (the section body, a blank line, and the
+> terminating heading). Residual coupling, recorded not hidden: if §2.2 is ever moved out from under
+> the `### [HARD] settings.local.json` heading, this anchor must move with it.
 
-#### AC-UDD-001 (documentation) — the help text keeps its install promise, and the promise is now met
-
-```bash
-sed -n '69p' internal/cli/update.go | grep -c 'install'
-sed -n '69p' internal/cli/update.go | grep -c 'archive'
-```
-
-Expected: both counts `1`. Under option B the registered description retains **both** words because
-the flag now previews both halves; AC-UDD-002 is what makes the retained promise true.
-
-Baseline at HEAD `d5336214e`: both counts are already `1` —
-
-```
-$ sed -n '69p' internal/cli/update.go
-	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
-```
-
-This criterion is therefore a **preservation guard**, not a change detector, and it is deliberately
-paired: it fails if a future implementer resolves the mismatch by silently reverting to option A
-(dropping `install` from the text) after option B was chosen. The change detection lives in
-AC-UDD-002; the two must both hold.
-
-**Falsification**: fails if either word is removed from the description, or if the flag is deleted —
-removal is not in scope.
-
-#### AC-UDD-002 (code fact) — the dry-run branch reaches the plan renderer, and still mutates nothing
+#### AC-UDD-014 (documentation) — §2.2 states the default without quoting the retracted claim
 
 ```bash
-go test -run 'TestUpdateDryRunRendersCleanReinstallPlan' -count=1 -v ./internal/cli/
-go test -run 'TestUpdateDryRunNoMutation' -count=1 -v ./internal/cli/
-grep -n -A2 'Placement is deliberate' internal/cli/update.go
+R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
+grep -c '로더 부재' CLAUDE.local.md
+grep -c '항상 컴파일 기본값 false' CLAUDE.local.md
+sed -n "$R" CLAUDE.local.md | grep -cE '권고 모드|advisory|WarnOnlyMode'
 ```
 
-Expected, all three:
+Expected: `0`, `0`, `>= 1`. The first two enforce §A clause 8 — the retracted claim is not quoted —
+and the third is the replacement assertion: the section still states the gate's actual default. A
+tree where all three are `0` fails.
 
-1. A verbatim `--- PASS: TestUpdateDryRunRendersCleanReinstallPlan` line, from a test that runs
-   `moai update --dry-run` against a `t.TempDir()` fixture carrying a v2 fingerprint and asserts the
-   captured output contains the literal `[clean-reinstall] DRY-RUN — no filesystem mutations performed`
-   emitted at `update_clean_install.go:187`. This is the reachability assertion: at baseline the line
-   is never printed because `update.go:294` returns first.
-2. A verbatim `--- PASS: TestUpdateDryRunNoMutation` line, from a test that snapshots the fixture
-   tree (path set **and** per-file content hash), runs the same dry-run, and asserts the snapshot is
-   unchanged. This is the criterion that proves the renderer's own prologue —
-   `buildPreserveInventory` / `computeInventoryHashes` at `update_clean_install.go:179` and
-   `scanDeprecatedPaths` at `:189` — writes nothing, which the plan-audit explicitly left unverified
-   (its §4 gap 1).
-3. The placement-rationale comment survives, anchored on its content token rather than a line number:
+Baseline at `7f61332ef`: `1`, `1`, `1`. The first two are the quotation inside the 2026-08-01
+retraction; the third is already satisfied and is a **preservation guard** (§A clause 4) — it fails
+only if the M5 rewrite deletes the default statement while removing the quotation.
 
-   ```
-   312:	// Placement is deliberate: after the --binary / --dry-run early-returns (so
-   313-	// a dry run never mutates) but BEFORE the version-match short-circuit
-   ```
+**Falsification**: fails if the quotation survives (counts stay `1`), or if the rewrite removes the
+quotation *and* the default statement together, leaving the gate's existence unmentioned (plan.md
+AP-1).
 
-Baseline at HEAD `d5336214e`: neither test exists — both `-run` selectors match nothing, which §A
-clause 3 rejects as a pass, and the `--- PASS:` requirement is what converts that into a failure. The
-comment grep already prints the two lines above.
-
-**Falsification**: assertion 2 fails if the plan-construction path writes anything inside the fixture
-— a temp file, a lock file, a cache entry, a backup directory. Assertion 1 fails if the
-reachability fix is omitted or reverted. Assertion 3 fails if an implementer relocates the early
-return past `update.go:306-326` (`stripRetiredV2DenyEntries`, which rewrites `settings.json`) —
-the option the sibling `SPEC-UPDATE-REINSTALL-LOOP-002` plan.md §E M4 records as a **confirmed
-defect**. The two SPECs must not push this early return in opposite directions.
-
-#### AC-UDD-003 — the settled decision and its basis are recorded
+#### AC-UDD-015 (code fact) — loader present, `gate.yaml` shipped, default enabled
 
 ```bash
-P=.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/progress.md
-sed -n '/^## §E.2 Run-phase Evidence/,/^## §E.3/p' "$P" | grep -cE 'option B|reachab'
-sed -n '/^## §E.2 Run-phase Evidence/,/^## §E.3/p' "$P" | grep -c 'update_clean_install.go'
+grep -rn 'loadGateSection' internal/config/ | grep -c 'loader\.go\|loader_gate\.go'
+ls internal/template/templates/.moai/config/sections/gate.yaml .moai/config/sections/gate.yaml
+grep -n -A5 'AstGrepGate: AstGrepGateConfig' internal/config/defaults.go
 ```
 
-Expected: both counts `>= 1`, with the surrounding `progress.md` §E.2 text naming the chosen option
-(B), the rejected option (A — narrow the text), the reason (the renderer already exists and is
-already wired, so B's cost is a local re-ordering rather than new construction), and the run-phase
-observation that the reachability change landed.
+Expected: the first prints `>= 2` (declaration + call site), `ls` succeeds on both paths, and the
+default block shows `Enabled: true`.
 
-**The `sed` window is load-bearing.** The decision is *also* recorded at plan-phase in §E.1 and in
-plan.md §F.1, so an unscoped whole-file `grep` over `progress.md` would print `>= 1` before
-run-phase does anything — the criterion would pass against an empty §E.2. Extracting §E.2 is what
-makes the count discriminating (§A clause 7).
+Baseline (verbatim, `7f61332ef`):
 
-Baseline at HEAD `145e601c9`: §E.2 is the placeholder `_<pending run-phase>_`, so both scoped counts
-are `0`, while the unscoped counts are already non-zero — which is the failure this window avoids.
+```
+$ grep -rn 'loadGateSection' internal/config/ | grep -c 'loader\.go\|loader_gate\.go'
+3
+$ ls internal/template/templates/.moai/config/sections/gate.yaml .moai/config/sections/gate.yaml
+.moai/config/sections/gate.yaml
+internal/template/templates/.moai/config/sections/gate.yaml
+$ grep -n -A5 'AstGrepGate: AstGrepGateConfig' internal/config/defaults.go
+438:		AstGrepGate: AstGrepGateConfig{
+439-			Enabled:      true,
+440-			BlockOnError: false,
+441-			WarnOnlyMode: true,
+```
 
-### M2 — §22.8 worktree toggles
+This is a **regression guard** for the discharged half of REQ-UDD-002, retained at v0.3.0 rather than
+retired with it: it fails if `loadGateSection` is removed, `gate.yaml` is unshipped, or the default
+flips to `false` — any of which would make the *original* §2.2 text correct again and this SPEC's
+whole M5 direction wrong.
 
-#### AC-UDD-004 (documentation) — §22.8 states per-toggle reader status
+#### AC-UDD-016 (documentation) — §2.2 states the gate's invocation scope
 
 ```bash
-sed -n '/§22.8 web worktree/,/§22.9/p' CLAUDE.local.md \
-  | grep -cE 'auto_cleanup|auto_merge|auto_create|AutoCleanup|AutoMerge|AutoCreate'
-sed -n '/§22.8 web worktree/,/§22.9/p' CLAUDE.local.md | grep -c 'worktree_advisory'
+R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
+sed -n "$R" CLAUDE.local.md | grep -cE 'git commit|IsGitCommit'
+sed -n "$R" CLAUDE.local.md | grep -cE 'IsAutonomyTierCommitGateOff|autonomy|자율성 티어'
 ```
 
-Expected: the first count `>= 2` (unchanged — the toggles are still named), and the second count
-`>= 1`, with the surrounding prose stating that `auto_cleanup` and `auto_merge` have no production
-reader and that `auto_create` is read only at `internal/cli/worktree_advisory.go` to select advisory
-wording.
+Expected: both `>= 1`. The corrected text names both conjuncts of the trigger condition — `git commit`
+Bash invocations, and the autonomy-tier opt-out — so a reader can bound a default-on gate's blast
+radius.
 
-Baseline at HEAD `d5336214e`: the first count is `2`; the second is `0`. The section describes all
-three as governing web-console worktree automation and gives no reader status.
+Baseline at `7f61332ef`: `0` and `0`. §2.2 gives no invocation scope at all.
 
-**Falsification**: fails if §22.8 still asserts that setting any of the three to `true` enables
-behaviour, or if the toggles are simply removed from the section (which would satisfy an
-absence-only grep while destroying the `[HARD]` protection on the `false` defaults — plan.md §F.2).
+**Falsification**: fails if the correction states default-on without the scope qualifier (plan.md
+AP-2), or if it names only `git commit` and omits the autonomy-tier conjunct that spec.md §A.8 drift
+2 records as new since v0.2.0.
 
-#### AC-UDD-005 (code fact) — the reader inventory §22.8 now states is the measured one
-
-The load-bearing assertion is **mechanical**, because the previous "exactly the following sites"
-enumeration was incomplete and therefore already failed at baseline (it omitted
-`internal/cli/worktree/errors.go`, the `defaults.go:543-544` comment lines, and several
-`worktree/new.go`, `worktree_advisory.go` and `internal/github/*` lines). Asserting field *reads*
-directly is both shorter and exhaustive:
+#### AC-UDD-017 (code fact) — the gate is invoked only under the two-conjunct condition
 
 ```bash
-grep -rn 'Worktree\.AutoCleanup\|Worktree\.AutoMerge' --include='*.go' internal cmd pkg \
-  | grep -v '_test.go' | wc -l
-grep -rn 'Worktree\.AutoCreate' --include='*.go' internal cmd pkg | grep -v '_test.go'
+grep -n -A2 'IsGitCommit(command)' internal/hook/pre_tool.go
 ```
 
-Expected: the first prints `0` — no production code reads `Workflow.Worktree.AutoCleanup` or
-`Workflow.Worktree.AutoMerge` through the config struct, which is precisely the claim §22.8's
-corrected text makes. The second prints exactly one line,
-`internal/cli/worktree_advisory.go:60:	return cfg.Workflow.Worktree.AutoCreate`, the single
-production read, reached from `:29` to select advisory wording.
+Expected: the quality gate is constructed inside a branch conditioned on **both**
+`quality.IsGitCommit(command)` and `!config.IsAutonomyTierCommitGateOff(...)`, so the scope AC-UDD-016
+asserts is the scope the code implements.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline (verbatim, `7f61332ef`):
 
 ```
-$ grep -rn 'Worktree\.AutoCleanup\|Worktree\.AutoMerge' --include='*.go' internal cmd pkg | grep -v '_test.go' | wc -l
+447:		if quality.IsGitCommit(command) && !config.IsAutonomyTierCommitGateOff(config.AutonomyTier()) {
+448:			gate := quality.NewQualityGate(h.loadGateConfig())
+449-			passed, output := gate.Run(ctx)
+```
+
+**Falsification**: fails if either conjunct is removed, which would make AC-UDD-016's required text
+an overstatement or an understatement of the real trigger.
+
+#### AC-UDD-018 (documentation) — §2.2 records that the suppression check blocks unconditionally
+
+```bash
+R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
+sed -n "$R" CLAUDE.local.md | grep -cE 'suppression|sg-independent|억제 정책'
+sed -n "$R" CLAUDE.local.md | grep -cE 'WarnOnlyMode와 무관|WarnOnlyMode 와 무관|무관하게 차단|unconditional'
+sed -n "$R" CLAUDE.local.md | grep -c '차단(blocking)만이'
+```
+
+Expected: `>= 1`, `>= 1`, `0`. The first two are the replacement assertions — the section names the
+sg-independent suppression-policy check and states that its block does not depend on `WarnOnlyMode`.
+The third removes the false claim that blocking is reachable only via a `gate.yaml` opt-in. Under
+§A clause 8 the third is decidable because the rewrite does not quote what it retracts.
+
+Baseline at `7f61332ef`: `0`, `0`, `1`.
+
+**Falsification**: fails if §2.2 keeps "차단(blocking)만이 `gate.yaml` opt-in이다" (third count stays
+`1`); fails if that clause is deleted without stating what *can* block (first two stay `0`); and
+fails if the correction claims the whole gate blocks unconditionally, since the required token pairs
+the unconditional block with the named suppression check rather than with the gate as a whole.
+
+#### AC-UDD-019 (code fact) — the suppression check is sg-independent, blocks, and is not gated by `WarnOnlyMode`
+
+```bash
+sed -n '41,90p' internal/hook/quality/astgrep_gate.go \
+  | grep -nE 'Suppression policy check|ast-grep scan|WarnOnlyMode|ErrScannerUnavailable|return false'
+```
+
+Expected, in this relative order: the step-1 banner, a `return false` path, the step-2 banner, the
+`WarnOnlyMode` field assignment, and the `ErrScannerUnavailable` branch. The **ordering is the
+assertion**: `return false` precedes every appearance of `WarnOnlyMode`, which is what makes "the
+suppression block is not gated by `WarnOnlyMode`" a measured fact rather than a reading.
+
+Baseline (verbatim, `7f61332ef`):
+
+```
+$ sed -n '41,90p' internal/hook/quality/astgrep_gate.go \
+    | grep -nE 'Suppression policy check|ast-grep scan|WarnOnlyMode|ErrScannerUnavailable|return false'
+6:	// ── 1. Suppression policy check (sg-independent, pure-Go) ─────────────────
+20:		return false, strings.TrimSpace(sb.String())
+23:	// ── 2. ast-grep scan (depends on sg CLI) ─────────────────────────────────
+28:		WarnOnlyMode: cfg.WarnOnlyMode,
+39:		if errors.Is(err, astgrep.ErrScannerUnavailable) {
+```
+
+Relative lines 6/20/23/28/39 are absolute 46/60/63/68/79. The window `41,90` is chosen to contain the
+`ErrScannerUnavailable` branch at `:79`; the v0.2.0 window `41,70` could not see it, which §A clause 6
+rejects.
+
+**Falsification**: fails if `WarnOnlyMode` appears before the `return false` hit — i.e. the
+suppression block becomes conditional — in which case §2.2's "blocking is opt-in" text would be true
+and AC-UDD-018's correction wrong. Also fails if step 1 is removed or made sg-dependent.
+
+#### AC-UDD-020 — §2.2's unaffected content is preserved
+
+```bash
+R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
+sed -n "$R" CLAUDE.local.md | grep -oE 'dogfood|sgconfig\.yml|utils' | sort -u | wc -l
+```
+
+Expected: `3` — all three preserved topics survive the rewrite: the dogfood-experimental rationale
+for not mirroring the language subdirectory tree, the `sgconfig.yml` `utils` ruleDir issue, and the
+deferral of the 16-language ruleset. None of the findings touches them.
+
+Baseline at `7f61332ef`: `3` — a **preservation guard**.
+
+Counting *distinct matched tokens* rather than matching lines is required: §2.2 is one physical line,
+so `grep -c` is bounded above by `1` and any threshold above that is unreachable in every possible
+tree (§A clause 6).
+
+**Falsification**: fails at `2` or below if the rewrite drops any of the three topics. §C.2 exercises
+this against a deleted copy.
+
+### M2 — `.moai/docs/local-dev-settings-intent.md` §22.8 worktree toggles (REQ-UDD-004)
+
+> **Re-anchored at v0.3.0.** `CLAUDE.local.md` has no §22: `grep -n '§22' CLAUDE.local.md` returns
+> one line, `:506`, the References entry. The content lives at
+> `.moai/docs/local-dev-settings-intent.md:58`, still under its `### §22.8 …` heading.
+>
+> ```bash
+> W='/§22.8 web worktree/,/^### §22\.9/p'
+> ```
+>
+> Observed at `7f61332ef`: the range resolves to 13 lines.
+
+#### AC-UDD-004 (documentation) — §22.8 states the measured reader status of each toggle
+
+```bash
+W='/§22.8 web worktree/,/^### §22\.9/p'
+F=.moai/docs/local-dev-settings-intent.md
+sed -n "$W" "$F" | grep 'auto_cleanup' | grep -c '없다'
+sed -n "$W" "$F" | grep -c 'session_worktree'
+sed -n "$W" "$F" | grep -cE 'auto_cleanup|auto_merge|auto_create'
+```
+
+Expected: `0`, `>= 1`, `>= 2`. The first removes the false claim — no line may name `auto_cleanup`
+and assert it has no reader. The second is the replacement assertion: the section cites the actual
+reader site (`internal/cli/session_worktree.go`, and/or `session_worktree_prmerge.go`). The third is
+a preservation guard: all three toggles are still named, so the correction is not a deletion.
+
+Baseline at `7f61332ef`: `1`, `0`, `3`.
+
+**Falsification**: fails if `auto_cleanup` is still described as unread; fails if the correction
+removes the `auto_cleanup` bullet instead of correcting it (second count stays `0`); and fails if the
+section is trimmed to fewer than two named toggles, which would destroy the `[HARD]` protection the
+section places on the `false` defaults.
+
+#### AC-UDD-005 (code fact) — the reader inventory §22.8 must state
+
+```bash
+grep -rn 'Worktree\.AutoCleanup' --include='*.go' internal cmd pkg | grep -v '_test.go'
+grep -rn 'Worktree\.AutoMerge'   --include='*.go' internal cmd pkg | grep -v '_test.go' | wc -l
+grep -rn 'Worktree\.AutoCreate'  --include='*.go' internal cmd pkg | grep -v '_test.go'
+```
+
+Expected: the first prints **two** lines (`session_worktree.go`, `session_worktree_prmerge.go`), the
+second prints `0`, and the third prints exactly one line (`worktree_advisory.go`).
+
+Baseline (verbatim, `7f61332ef`):
+
+```
+$ grep -rn 'Worktree\.AutoCleanup' --include='*.go' internal cmd pkg | grep -v '_test.go'
+internal/cli/session_worktree.go:584:	if cfg == nil || !cfg.Workflow.Worktree.AutoCleanup {
+internal/cli/session_worktree_prmerge.go:122:	if cfg == nil || !cfg.Workflow.Worktree.AutoCleanup {
+$ grep -rn 'Worktree\.AutoMerge' --include='*.go' internal cmd pkg | grep -v '_test.go' | wc -l
 0
 $ grep -rn 'Worktree\.AutoCreate' --include='*.go' internal cmd pkg | grep -v '_test.go'
 internal/cli/worktree_advisory.go:60:	return cfg.Workflow.Worktree.AutoCreate
 ```
 
-The selector prefix `Worktree.` is what makes this discriminating: a bare `AutoMerge` match is a
-homonym — `internal/github/pr_merger.go` carries an unrelated `AutoMerge` PR-merge option, and
-`internal/cli/worktree/errors.go:56,60` carries `NewAutoMergeBlockedError`. Neither touches the
-config key, and neither should make this criterion fail.
+The `Worktree.` selector prefix is what makes this discriminating: bare `AutoMerge` is a homonym
+(`internal/github/pr_merger.go` PR-merge options, `internal/cli/worktree/errors.go`
+`NewAutoMergeBlockedError`), and none of those touch the config key.
 
-The broad survey grep is retained as a **context command**, not as a criterion — its output is
-recorded in spec.md §A.2 as an abbreviated extract, and the abbreviation is now declared there:
+**Falsification**: fails if the `AutoCleanup` count returns to `0` — the state the v0.2.0 baseline
+recorded — in which case §22.8's *original* text was right and REQ-UDD-004's inverted correction is
+wrong. This is the criterion that keeps the polarity inversion measured rather than assumed. It also
+fails if `AutoMerge` gains a reader, which would make the surviving half of the sentence false too.
 
-```bash
-grep -rn 'AutoCleanup\|AutoCreate\|AutoMerge' --include='*.go' internal cmd pkg \
-  | grep -v '_test.go' | grep -v main-fork
-```
+#### AC-UDD-006 — **RETIRED at v0.3.0** (REQ-UDD-005 retired)
 
-**Falsification**: fails if a production reader for `AutoCleanup` or `AutoMerge` has appeared — the
-first count moves off `0` — which would mean `SPEC-CONFIG-KEY-HONESTY-001` wired them and §22.8's
-corrected text is already stale, exactly the reconciliation REQ-UDD-005 exists to catch. It also
-fails if the `AutoCreate` read is removed, leaving §22.8 asserting a reader that no longer exists.
+The E4 cross-reference this criterion required is present:
+`grep -c 'CONFIG-KEY-HONESTY' .moai/docs/local-dev-settings-intent.md` → `2` (`:60`, `:65`), and
+`SPEC-CONFIG-KEY-HONESTY-001` is `status: completed`. The obligation is discharged; the criterion is
+retained here as a record, not as an open gate.
 
-#### AC-UDD-006 — the correction proposes no triage and records the E4 dependency
-
-```bash
-sed -n '/§22.8 web worktree/,/§22.9/p' CLAUDE.local.md | grep -cE 'CONFIG-KEY-HONESTY|E4'
-```
-
-Expected: a count `>= 1` — §22.8 cross-references the sibling SPEC that owns the triage — and the
-section contains no proposal to implement, deprecate, or delete the keys (spec.md §C).
-
-Baseline: count `0`; the section carries no cross-reference to the owning SPEC.
-
-### M3 — `internal/config/CLAUDE.md` env overrides
+### M3 — `internal/config/CLAUDE.md` env overrides (REQ-UDD-008, REQ-UDD-009, REQ-UDD-010)
 
 #### AC-UDD-007 (documentation) — the priority order names only implemented overrides
 
@@ -257,11 +317,9 @@ grep -c 'MOAI_USER_NAME\|MOAI_CONVERSATION_LANG' internal/config/CLAUDE.md
 grep -cE 'MOAI_DEVELOPMENT_MODE|MOAI_LOG_LEVEL|MOAI_LOG_FORMAT|MOAI_NO_COLOR' internal/config/CLAUDE.md
 ```
 
-Expected: the first count is `0` (the two unimplemented names are gone), and the second is `>= 1`
-(the implemented set is named in their place). A tree where both counts are `0` fails — that is
-deletion, not correction.
+Expected: `0`, then `>= 1`. A tree where both are `0` fails — that is deletion, not correction.
 
-Baseline at HEAD `d5336214e`: first count `2`, second count `0`.
+Baseline at `7f61332ef`: `2`, `0`.
 
 **Falsification**: fails if the two names are removed without the implemented set replacing them, or
 if the file still asserts a priority order the code does not implement.
@@ -269,23 +327,22 @@ if the file still asserts a priority order the code does not implement.
 #### AC-UDD-008 (code fact) — `applyEnvOverrides` reads exactly the documented set
 
 ```bash
-grep -n -A14 'func applyEnvOverrides' internal/config/manager.go
+grep -n -A13 'func applyEnvOverrides' internal/config/manager.go
 grep -c 'MOAI_USER_NAME\|MOAI_CONVERSATION_LANG' internal/config/envkeys.go
 ```
 
 Expected: `applyEnvOverrides` reads exactly `EnvDevelopmentMode`, `EnvLogLevel`, `EnvLogFormat`,
-`EnvNoColor` — four overrides, no more — and the `grep -c` over `envkeys.go` prints `0` (exit 1),
-confirming neither name is declared.
+`EnvNoColor` — four, no more — and the `envkeys.go` count prints `0` (exit 1).
 
-Baseline (verbatim, HEAD `d5336214e`):
+Baseline (verbatim, `7f61332ef`):
 
 ```
-393:func applyEnvOverrides(cfg *Config) {
-394-	if mode := os.Getenv(EnvDevelopmentMode); mode != "" { ... }
-397-	if level := os.Getenv(EnvLogLevel); level != "" { ... }
-400-	if format := os.Getenv(EnvLogFormat); format != "" { ... }
-403-	if noColor := os.Getenv(EnvNoColor); noColor == "true" || noColor == "1" { ... }
-406-}
+398:func applyEnvOverrides(cfg *Config) {
+399-	if mode := os.Getenv(EnvDevelopmentMode); mode != "" { … }
+402-	if level := os.Getenv(EnvLogLevel); level != "" { … }
+405-	if format := os.Getenv(EnvLogFormat); format != "" { … }
+408-	if noColor := os.Getenv(EnvNoColor); noColor == "true" || noColor == "1" { … }
+411-}
 
 $ grep -c 'MOAI_USER_NAME\|MOAI_CONVERSATION_LANG' internal/config/envkeys.go
 0
@@ -293,45 +350,25 @@ exit=1
 ```
 
 **Falsification**: fails if `envkeys.go` gains either constant — which would mean the correction
-direction was wrong and `internal/config/CLAUDE.md` was right after all. This is the criterion that
-makes the F4 resolution measured rather than assumed-by-recency (plan.md §G AP-3).
+direction is inverted and `internal/config/CLAUDE.md` was right. This is what makes the contradiction
+resolved by measurement rather than by recency (plan.md AP-3).
 
-#### AC-UDD-009 (code fact) — the `envkeys.go` convention example names a real constant
+#### AC-UDD-009 (documentation) — the `envkeys.go` convention example names a real constant
 
 ```bash
 grep -c 'EnvUserName' internal/config/CLAUDE.md
 grep -c 'EnvDevelopmentMode' internal/config/CLAUDE.md
-grep -c 'EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"' internal/config/envkeys.go
+grep -c 'EnvDevelopmentMode *= *"MOAI_DEVELOPMENT_MODE"' internal/config/envkeys.go
 ```
 
-Expected: `0`, then `>= 1`, then `1`. The convention bullet no longer cites the constant `envkeys.go`
-does not declare, **and** it cites one it does, **and** that citation is confirmed against the
-declaration site. A tree where the first two are both `0` fails — that is deletion of the example,
-not correction of it.
+Expected: `0`, `>= 1`, `1`. The bullet stops citing a constant `envkeys.go` does not declare, cites
+one it does, and that citation is confirmed at the declaration site. A tree where the first two are
+both `0` fails — that is deletion of the example, not correction of it.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline at `7f61332ef`: `1`, `0`, `1`.
 
-```
-$ grep -c 'EnvUserName' internal/config/CLAUDE.md
-1
-$ grep -c 'EnvDevelopmentMode' internal/config/CLAUDE.md
-0
-$ grep -c 'EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"' internal/config/envkeys.go
-1
-```
-
-**Why this replaces the previous form.** The earlier criterion ran `grep -n 'envkeys.go'` (which
-merely prints the bullet, asserting nothing) paired with the `envkeys.go` declaration count (already
-`1` at baseline). Both halves were satisfied by the *uncorrected* file, so `internal/config/CLAUDE.md:13`
-could keep citing `EnvUserName = "MOAI_USER_NAME"` forever and the criterion would still pass. The
-removal/replacement pair above is the AC-UDD-007 pattern, which cannot pass without the edit
-(§A clause 7).
-
-The `envkeys.go` convention itself — constants live in `envkeys.go`; no inline `os.Getenv("MOAI_*")`
-— is correct and is preserved; only the worked example changes.
-
-**Falsification**: fails if the example is deleted rather than replaced (first count `0`, second
-count `0`), or if `EnvUserName` survives anywhere in the file.
+**Falsification**: fails if the example is deleted rather than replaced, or if `EnvUserName` survives
+anywhere in the file.
 
 #### AC-UDD-010 (documentation) — the test instruction is scoped to implemented overrides
 
@@ -342,79 +379,43 @@ sed -n "${L}p" internal/config/CLAUDE.md | grep -c 'MOAI_USER_NAME\|MOAI_CONVERS
 sed -n "${L}p" internal/config/CLAUDE.md | grep -cE 'MOAI_DEVELOPMENT_MODE|MOAI_LOG_LEVEL|MOAI_LOG_FORMAT|MOAI_NO_COLOR'
 ```
 
-Expected: `$L` resolves to a single line number, the second count is `0`, and the third is `>= 1` —
-the bullet carrying the `t.Setenv` instruction no longer names an unimplemented variable, and does
-name the implemented set the instruction's "this priority" now refers to. An agent following the
-instruction literally therefore writes a test that can pass.
+Expected: `$L` resolves to a single line number, the second count is `0`, the third is `>= 1`. The
+bullet carrying the `t.Setenv` instruction no longer names an unimplemented variable and does name
+the implemented set that "this priority" now refers to, so an agent following the instruction
+literally writes a test that can pass.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline at `7f61332ef`: `line=12`, `1`, `0`. The instruction shares line 12 with the priority
+sentence, so the antecedent of "this priority" is an unimplemented behaviour.
 
-```
-line=12
-1
-0
-```
+**Falsification**: fails if the two unimplemented names leave the file but the `t.Setenv` bullet is
+left pointing at "this priority" with no implemented antecedent (third count stays `0`). Also fails
+if `$L` resolves to more than one line, meaning the instruction was duplicated and the scoping is
+ambiguous.
 
-The instruction shares line 12 with the priority-order sentence naming `MOAI_USER_NAME` /
-`MOAI_CONVERSATION_LANG`, so the antecedent of "this priority" is an unimplemented behaviour.
+### M4 — nonexistent paths: `config.yaml` and `.agency/` (REQ-UDD-006, REQ-UDD-007)
 
-**Why this replaces the previous form.** The earlier criterion ran `grep -n -B2 -A2 't.Setenv'` and
-expected the prose judgment "the instruction is scoped to the implemented override set". A command
-that prints the unmodified line can be reported as having produced its expected output, because the
-expectation was never mechanical (§A clause 7). Resolving the line number and asserting the
-removal/replacement counts *on that line* is what makes REQ-UDD-010 enforceable.
-
-**Falsification**: fails if the two unimplemented names are removed from the file but the
-`t.Setenv` bullet is left pointing at "this priority" with no implemented antecedent — the third
-count stays `0`. It also fails if `$L` resolves to more than one line, which would mean the
-instruction was duplicated and the scoping is ambiguous.
-
-### M4 — nonexistent `config.yaml`
-
-#### AC-UDD-011 (documentation) — no instruction file names the nonexistent path
+#### AC-UDD-011 (documentation) — no instruction file names the nonexistent `config.yaml`
 
 ```bash
-grep -n 'config/config.yaml' CLAUDE.local.md
-grep -nE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' internal/config/CLAUDE.md
+grep -c 'config/config.yaml' CLAUDE.local.md
+grep -cE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' internal/config/CLAUDE.md
+sed -n '/^## 9\. Configuration System/,/^## 10\./p' CLAUDE.local.md | grep -c 'sections/\*.yaml'
 ```
 
-Expected: both produce no output (each exits 1). `CLAUDE.local.md` §9 describes the actual
-`sections/*.yaml` layout, and `internal/config/CLAUDE.md` no longer asserts an aggregating main file
-**at either of its two sites**.
+Expected: `0`, `0`, `>= 1`. The two removals are paired with the replacement assertion that §9 still
+describes the actual `sections/*.yaml` layout.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline at `7f61332ef`: `1`, `2`, `2`. The `CLAUDE.local.md` count dropped from the v0.2.0 figure of
+`2` because the §5 site left with the consolidation — it is now AC-UDD-013's target, not this one's.
+The third is a **preservation guard**.
 
-```
-$ grep -c 'config/config.yaml' CLAUDE.local.md
-2                    # :250 (§5 release checklist), :415 (§9 "Main configuration file")
-$ grep -cE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' internal/config/CLAUDE.md
-2                    # :5 and :11
-```
+The `internal/config/CLAUDE.md` regex is deliberately wide (`.{0,2}` for code-span backticks): `:5`
+writes the claim as `` `config.yaml` (main) ``, which a pattern assuming a bare adjacent token cannot
+see, and REQ-UDD-006 names both `:5` and `:11`. Narrowing the regex would silently re-exempt `:5`.
 
-**Two corrections are folded into this criterion, and the second reverses the first.**
-
-The originally-recorded second figure of `2` was mis-attributed: it was never observed, and the
-narrow regex `config\.yaml \(main\)` genuinely prints `1`, because
-`internal/config/CLAUDE.md:5` writes the claim as `` `config.yaml` (main) `` — with backticks — so a
-pattern assuming a bare token adjacent to a space does not match it. Correcting the *number* to `1`
-was accurate for that regex.
-
-But correcting the number silently narrowed the *criterion*: REQ-UDD-006 and plan.md §F.4 both name
-`internal/config/CLAUDE.md:5` **and** `:11`, so a criterion that can only see `:11` verifies half the
-requirement, and `:5` could stay uncorrected while this AC passed. The regex is therefore widened to
-tolerate the backticks (`.{0,2}` for the code-span delimiters, `.?` for the leading one), which
-restores the criterion to the scope its requirement states — and the correct observed baseline for
-the widened form is `2`:
-
-```
-$ grep -nE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' internal/config/CLAUDE.md
-5:...the layered configuration tree under `.moai/config/` — `config.yaml` (main) plus `sections/*.yaml`...
-11:- **Section-file layout (CLAUDE.local.md §9)**: ... Main `config.yaml` aggregates references. ...
-```
-
-**Falsification**: fails if either site survives. It also fails if a future author reverts to the
-narrow regex, which would silently re-exempt `:5` — the widened pattern is the criterion, not an
-implementation detail of it.
+**Falsification**: fails if any of the three sites survives, if §9's layout description is deleted
+along with the wrong sentence, or if a future author narrows the regex — the wide pattern is the
+criterion, not an implementation detail of it.
 
 #### AC-UDD-012 (code fact) — the path is absent at both the local and the template location
 
@@ -424,487 +425,364 @@ ls internal/template/templates/.moai/config/config.yaml ; echo "template exit=$?
 ls .moai/config/
 ```
 
-Expected: both `ls` commands print `No such file or directory` and exit non-zero, and
-`ls .moai/config/` lists exactly `astgrep-rules`, `evaluator-profiles`, `sections`.
+Expected: both `ls` print `No such file or directory` and exit non-zero, and `ls .moai/config/` lists
+exactly `astgrep-rules`, `evaluator-profiles`, `sections`.
 
-Baseline (verbatim, HEAD `d5336214e`) — this is the measured fact the corrected prose must agree with,
-and the template-path half is spec.md §A.6 drift 3:
+Baseline (verbatim, `7f61332ef`):
 
 ```
 ls: .moai/config/config.yaml: No such file or directory
+local exit=1
 ls: internal/template/templates/.moai/config/config.yaml: No such file or directory
+template exit=1
 astgrep-rules  evaluator-profiles  sections
 ```
 
 **Falsification**: fails if either file has since been created — in which case the documentation was
-right and the fix direction is inverted. The criterion is what prevents "the docs were wrong" from
-being assumed rather than measured.
+right and the fix direction is inverted.
 
-#### AC-UDD-013 (documentation) — the §5 release checklist entry is performable
-
-```bash
-sed -n '/Files Requiring Version Sync/,/Release Process/p' CLAUDE.local.md \
-  | grep -E '^\-' | while read -r _ p _; do ls "$p" >/dev/null 2>&1 || echo "MISSING: $p"; done
-```
-
-Expected: no `MISSING:` line — every path the §5 checklist names resolves to an existing file, so
-every checklist line is performable by a releaser.
-
-Baseline: the loop prints `MISSING: internal/template/templates/.moai/config/config.yaml`. This is the
-release-process consequence of §A.3, distinct from the §9 documentation inaccuracy.
-
-**Falsification**: fails if the entry is deleted without determining what does carry the shipped
-version (plan.md §F.4 note) — a checklist that silently stops covering the version-bearing file is a
-regression, not a fix.
-
-### M5 — §2.2 ast-grep gate
-
-> **Section-range anchor (replaces `sed -n '141p'` in AC-UDD-014c / 016 / 018 / 020).** The four
-> criteria below previously used `sed -n '141p' CLAUDE.local.md` as their **sole** locator, which
-> plan.md D6 forbids ("use `file:line` only as a locating aid, never as the sole matcher") and which
-> M5 itself breaks: M5 is the largest text rewrite in the SPEC and is required to state five distinct
-> facts, so the corrected §2.2 will almost certainly span more than one line — at which point a
-> single-line extractor silently stops seeing most of the section. All four now extract the section
-> by content anchor:
->
-> ```bash
-> sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md
-> ```
->
-> Observed at HEAD `145e601c9`: `grep -n '§2.2 astgrep-rules' CLAUDE.local.md` → `141:`, and the
-> terminating anchor `### [HARD] settings.local.json Separation` is at `:143`, so the range currently
-> resolves to lines 141-143 (the section body, a blank line, and the next heading) and yields the
-> same counts as the retired single-line form — while remaining correct after a multi-line rewrite.
-> Line numbers below are retained as locating aids only.
->
-> Residual coupling, recorded not hidden: the range's terminating anchor is still bound to the
-> document's structure. If §2.2 is ever moved out from under the `### [HARD] settings.local.json`
-> heading, the anchor must move with it.
-
-#### AC-UDD-014 (documentation) — §2.2 states the gate's actual default
+#### AC-UDD-025 (documentation, new at v0.3.0) — the `.agency/` template-source instruction is removed
 
 ```bash
-grep -c '로더 부재' CLAUDE.local.md
-grep -c '항상 컴파일 기본값 false' CLAUDE.local.md
-sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md \
-  | grep -cE 'advisory|기본 ON|warn_only'
+grep -c 'internal/template/templates/.agency' CLAUDE.local.md
+grep -c '\.agency' CLAUDE.local.md
+grep -cE 'migrate agency|레거시|legacy' CLAUDE.local.md
 ```
 
-Expected: the first two counts are `0` (the two false mechanism claims are gone) and the third is
-`>= 1` (the corrected text states the gate is on by default in advisory mode). A tree where all three
-are `0` fails — that is deletion, not correction.
+Expected: `0`, `>= 1`, `>= 1`. The nonexistent template-source path is gone; `.agency/` is still
+mentioned (it is live in the code); and the surviving mention describes it in the direction the code
+implements — a legacy layout read *out of* a user project by `moai migrate agency` — rather than as a
+template-managed output directory.
 
-Baseline (observed at HEAD `145e601c9`, code baseline `d5336214e`): `1`, `1`, `0` respectively.
+Baseline at `7f61332ef`: `1`, `4`, `0`.
 
-**Falsification**: fails if the false mechanism parenthetical is removed while the section still
-concludes the gate is off by default, or if the whole gate discussion is deleted from §2.2 (the
-dogfood-mirroring rationale that §2.2 legitimately owns would be lost — AC-UDD-020).
+The second count is a **deletion guard**, not a change detector: silently dropping every `.agency/`
+mention would satisfy the first count while removing a fact contributors still need.
 
-#### AC-UDD-015 (code fact) — loader present, `gate.yaml` shipped, default enabled
+**Falsification**: fails if `:88` keeps naming `internal/template/templates/.agency/`; fails if the
+`[HARD]` Template-First rule keeps instructing that new `.agency/` files be mirrored (first count
+non-zero); and fails if `.agency/` is scrubbed entirely (second count `0`) or retained without the
+directional correction (third count `0`).
+
+#### AC-UDD-026 (code fact, new at v0.3.0) — `.agency/` is inbound-only and has no template source
 
 ```bash
-grep -rn 'loadGateSection' internal/config/
-ls internal/template/templates/.moai/config/sections/gate.yaml .moai/config/sections/gate.yaml
-grep -n -A5 'AstGrepGate: AstGrepGateConfig' internal/config/defaults.go
+ls -d .agency internal/template/templates/.agency
+grep -rn '"\.agency"' --include='*.go' internal | grep -v '_test.go' | wc -l
+grep -rn '"\.agency"' --include='*.go' internal | grep -v '_test.go'
 ```
 
-Expected: all three of §2.2's false claims are contradicted by the tree — `loadGateSection` is
-declared and called; both `gate.yaml` files exist; the compiled default is `Enabled: true`.
+Expected: both `ls` fail; the count is `>= 3`; and every printed site is a *read* of a path inside a
+user project — migration source, v2 fingerprint detection, residue cleanup — with no write into a
+template tree.
 
-Baseline (verbatim, HEAD `d5336214e`):
+Baseline (verbatim, `7f61332ef`):
 
 ```
-internal/config/loader_gate.go:20:func (l *Loader) loadGateSection(dir string, cfg *Config) {
-internal/config/loader.go:89:	l.loadGateSection(sectionsDir, cfg)
-
-internal/template/templates/.moai/config/sections/gate.yaml
-.moai/config/sections/gate.yaml
-
-318:		AstGrepGate: AstGrepGateConfig{
-319-			Enabled:      true,
-320-			BlockOnError: false,
-321-			WarnOnlyMode: true,
+ls: .agency: No such file or directory
+ls: internal/template/templates/.agency: No such file or directory
+       5
+internal/cli/update_residue_cleanup.go:84:	if _, agencyStatErr := os.Stat(filepath.Join(projectRoot, ".agency")); agencyStatErr == nil {
+internal/cli/v2_detection.go:282:	agencyDir := filepath.Join(projectRoot, ".agency")
+internal/cli/migrate_agency.go:200:	agencyDir := filepath.Join(r.projectRoot, ".agency")
+internal/cli/migrate_agency.go:472:	techPrefPath := filepath.Join(r.projectRoot, ".agency", "context", "tech-preferences.md")
+internal/defs/dirs.go:134:		Path:            ".agency",
 ```
 
-The shipped `gate.yaml` sets `ast_grep_gate.enabled: true` explicitly, so the default holds via two
-independent paths.
+The threshold is `>= 3` rather than `== 5` deliberately: the criterion asserts that `.agency/` is
+read from user projects in several places, not that exactly five call sites exist. Pinning the exact
+count would make an unrelated refactor fail a documentation criterion.
 
-**Falsification**: fails if `loadGateSection` is removed, `gate.yaml` is unshipped, or the default
-flips to `false` — any of which would make §2.2's original text correct and this SPEC's correction
-wrong. This is the pairing that prevents "the doc is stale" from being asserted rather than measured.
+**Falsification**: fails if `internal/template/templates/.agency/` is created — in which case the
+Template-First rule was right and AC-UDD-025's correction is wrong. This is the pairing that keeps
+"the instruction is unperformable" measured rather than asserted.
 
-#### AC-UDD-016 (documentation) — §2.2 states the gate's invocation scope
+#### AC-UDD-013 (documentation) — the version-sync checklist entry is performable
 
 ```bash
-sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md \
-  | grep -cE 'git commit|IsGitCommit'
+F=.moai/docs/version-management.md
+grep -c 'internal/template/templates/.moai/config/config.yaml' "$F"
+grep -c '\.moai/config/sections/system.yaml' "$F"
+grep -cE '\{\{\.Version\}\}|render-time|렌더' "$F"
 ```
 
-Expected: count `>= 1` — the corrected text names the gate's narrow trigger (`git commit` Bash
-invocations), so the correction does not imply the gate fires on every tool call.
+Expected: `0`, `>= 1`, `>= 1`. The unperformable entry is removed; the entry that *is* performable
+(`.moai/config/sections/system.yaml`, which exists and carries `version: v3.1.0-rc.2`) is preserved;
+and a note records that the template side needs no manual bump because it is render-time-injected.
 
-Baseline (observed at HEAD `145e601c9`): count `0`; §2.2 gives no invocation scope at all.
+Baseline at `7f61332ef`: `1`, `2`, `0`.
 
-**Falsification**: fails if the correction states default-on without the scope qualifier, which
-trades one wrong instruction for another (plan.md §G AP-2).
+**Falsification**: fails if the entry is deleted with no note, leaving a reader to assume the
+template version is unmanaged (third count `0`); fails if the `system.yaml` line is removed with it
+(second count `0`); and fails if the entry is replaced by another template path rather than removed —
+which is caught by AC-UDD-027, since no such path exists.
 
-#### AC-UDD-017 (code fact) — the gate is invoked only on `git commit`
+#### AC-UDD-027 (code fact, new at v0.3.0) — the template version is render-time-injected
 
 ```bash
-grep -n -B2 -A2 'IsGitCommit' internal/hook/pre_tool.go
+ls internal/template/templates/.moai/config/sections/system.yaml
+grep -n -A2 '^moai:' internal/template/templates/.moai/config/sections/system.yaml.tmpl
 ```
 
-Expected: the quality gate is constructed inside an `if quality.IsGitCommit(command)` branch, so the
-scope the corrected §2.2 asserts is the scope the code implements.
+Expected: the `ls` fails — there is no hand-bumped template `system.yaml` — and the `.tmpl` shows
+`version: "{{.Version}}"`, confirming the value is substituted when the template is rendered.
 
-Baseline (HEAD `d5336214e`):
+Baseline (verbatim, `7f61332ef`):
 
 ```
-430:		if quality.IsGitCommit(command) {
-431:			gate := quality.NewQualityGate(h.loadGateConfig())
+ls: internal/template/templates/.moai/config/sections/system.yaml: No such file or directory
+4:moai:
+5-  # MoAI-ADK version
+6-  version: "{{.Version}}"
 ```
 
-#### AC-UDD-018 (documentation) — §2.2 records the sg-independent blocking path
+**Falsification**: fails if a literal template `system.yaml` appears, or if the `.tmpl` stops using
+the `{{.Version}}` substitution — either of which would mean a template-side manual bump *is*
+required and AC-UDD-013's removal is wrong. This is the measurement plan.md AP-6 demands before any
+replacement path is asserted.
+
+### M1 — `--dry-run` contract (REQ-UDD-011, REQ-UDD-012, REQ-UDD-013 — all retired)
+
+#### AC-UDD-001 (regression guard) — the flag's promise is kept and still met
 
 ```bash
-sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md \
-  | grep -cE 'suppression|sg-independent|sg 없이'
+grep -n 'Show planned archive and install operations' internal/cli/update.go
+grep -c 'emitDryRunReinstallPlan' internal/cli/update.go
+go test -run 'TestUpdateDryRun_EmitsCleanReinstallPlan' -count=1 -v ./internal/cli/ 2>&1 | grep -E '^--- (PASS|FAIL)'
 ```
 
-Expected: count `>= 1`, with the surrounding text stating that the suppression-policy check runs in
-pure Go and can return a blocking result even when `sg` is absent, and that the sg-dependent scan
-degrades gracefully.
+Expected: the help text still promises both halves; `emitDryRunReinstallPlan` is referenced `>= 2`
+times (definition + the call inside the dry-run branch); and the sibling SPEC's reachability test
+prints a verbatim `--- PASS: TestUpdateDryRun_EmitsCleanReinstallPlan` line. Per §A clause 7 the
+`--- PASS:` line is required, because `-run` exits `0` on zero matches.
 
-Baseline (observed at HEAD `145e601c9`): count `0`; §2.2 asserts the opposite — that impact requires
-an explicit `moai ast-grep` invocation with `sg` installed.
-
-**Falsification**: fails if §2.2 retains the "sg 설치 시에만" claim, or if it drops the claim without
-stating what can actually block.
-
-#### AC-UDD-019 (code fact) — the suppression check is sg-independent and can block
-
-```bash
-sed -n '41,85p' internal/hook/quality/astgrep_gate.go \
-  | grep -nE 'Suppression policy check|ast-grep scan|ErrScannerUnavailable|return false'
-grep -n -A2 'ErrScannerUnavailable' internal/hook/quality/astgrep_gate.go
-```
-
-Expected, from the first command: four relative-line hits in this order — the step-1 banner, a
-`return false, ...` path, the step-2 banner, and the `ErrScannerUnavailable` branch. The ordering is
-the assertion: step 1 (`checkSuppressionPairing` over `walkSourceFiles`) executes and can block
-*before* any `sg` invocation. From the second: the `ErrScannerUnavailable` branch returns `true`
-(graceful degradation, not a block).
-
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline (verbatim, `7f61332ef`):
 
 ```
-$ sed -n '41,85p' internal/hook/quality/astgrep_gate.go \
-    | grep -nE 'Suppression policy check|ast-grep scan|ErrScannerUnavailable|return false'
-6:	// ── 1. Suppression policy check (sg-independent, pure-Go) ─────────────────
-20:		return false, strings.TrimSpace(sb.String())
-23:	// ── 2. ast-grep scan (depends on sg CLI) ─────────────────────────────────
-39:		if errors.Is(err, astgrep.ErrScannerUnavailable) {
-```
-
-Relative line 39 is absolute line **79**.
-
-**Why the window moved from `41,70` to `41,85`.** The retired command printed `:41-70`, but half of
-its stated expectation — "step 2 returns `true` on `ErrScannerUnavailable`" — lives at `:79`, outside
-that window. The command could not observe what the criterion claimed (§A clause 7), and the
-"baseline" block recorded beneath it was not the command's output: it was an edited composite that
-included the `ErrScannerUnavailable` line the command never printed, which §A clause 4 forbids. The
-window is widened to cover `:79`, the baseline is replaced with the actual observed output, and the
-`ErrScannerUnavailable` branch additionally gets its own command so the `return true` half is
-asserted rather than inferred.
-
-**Falsification**: fails if step 1 is removed or made sg-dependent — the step-1 banner or the
-`return false` hit disappears, or their order inverts relative to the step-2 banner — in which case
-§2.2's original impact claim becomes true and AC-UDD-018's correction is wrong. It also fails if the
-`ErrScannerUnavailable` branch starts returning `false`, which would make the sg-dependent scan
-blocking and contradict AC-UDD-018's "degrades gracefully" half.
-
-#### AC-UDD-020 — §2.2's unaffected content is preserved
-
-```bash
-sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md \
-  | grep -oE 'dogfood|sgconfig\.yml|utils' | sort -u | wc -l
-```
-
-Expected: `3` — all three preserved topics are still named: the dogfood-experimental rationale for
-not mirroring the language subdirectory tree, the `sgconfig.yml` `utils` ruleDir issue, and (via the
-same sentence) the deferral of the 16-language ruleset. None of the five findings touches them, so
-all three must survive the M5 rewrite.
-
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
-
-```
-$ sed -n '/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p' CLAUDE.local.md \
-    | grep -oE 'dogfood|sgconfig\.yml|utils' | sort -u | wc -l
+$ grep -n 'Show planned archive and install operations' internal/cli/update.go
+81:	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
+$ grep -c 'emitDryRunReinstallPlan' internal/cli/update.go
 3
+$ grep -n 'func TestUpdateDryRun_EmitsCleanReinstallPlan' internal/cli/update_dry_run_reach_test.go
+186:func TestUpdateDryRun_EmitsCleanReinstallPlan(t *testing.T) {
 ```
 
-**This criterion was previously impossible to satisfy, and its recorded baseline was false.** The
-retired form was `sed -n '141p' … | grep -cE 'dogfood|sgconfig\.yml|utils'` expecting `>= 2`.
-`grep -c` counts *matching lines*, not matches; its input was exactly one line, so its output is
-bounded above by `1` and the expectation `>= 2` is unreachable in every possible tree — including a
-perfectly corrected one. The recorded baseline "count `>= 2` at HEAD `d5336214e` (present today)"
-was therefore never observed; the command actually prints `1`:
+All three already hold — this is a **preservation guard** for a retired requirement, not a change
+detector. It fails if a future change drops `install` from the help text (reverting to option A), or
+removes the reachability wiring the sibling landed.
 
-```
-$ sed -n '141p' CLAUDE.local.md | grep -cE 'dogfood|sgconfig\.yml|utils'
-1
-```
+#### AC-UDD-002, AC-UDD-003 — **RETIRED at v0.3.0**
 
-Counting **distinct matched tokens** (`grep -o | sort -u | wc -l`) is the form that expresses the
-intent — three topics preserved — and it is satisfiable, discriminating, and independent of how many
-lines the rewritten section occupies. This is the §A clause 7 arithmetically-unsatisfiable shape.
-
-**Falsification**: fails at `2` or below if the M5 rewrite drops any of the three topics — which is
-the deletion hazard plan.md AP-1 names. §C.2 exercises exactly this against a deleted copy.
+AC-UDD-002 specified two bespoke tests (`TestUpdateDryRunRendersCleanReinstallPlan`,
+`TestUpdateDryRunNoMutation`) for an implementation this SPEC no longer performs. The reachability
+half is covered by AC-UDD-001's use of the sibling's existing test; the no-mutation half is the
+sibling's own guarantee, recorded at `internal/cli/update.go:551-555`. AC-UDD-003 required
+`progress.md` §E.2 to record the option-B execution — the execution happened in
+`SPEC-UPDATE-REINSTALL-LOOP-002`, whose `progress.md` carries it, so requiring a second record here
+would be a claim about work this SPEC did not do.
 
 ### Cross-cutting
+
+#### AC-UDD-024 (new at v0.3.0) — the duplicate ownership is resolved on both sides
+
+```bash
+grep -c 'SPEC-UPDATE-DOC-DRIFT-001' .moai/specs/SPEC-INTERNAL-ARCH-001/spec.md
+grep -c 'REQ-ARCH-006' .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md
+```
+
+Expected: both `>= 1`. This SPEC records the resolution (spec.md §A.7) and `SPEC-INTERNAL-ARCH-001`
+carries the reciprocal cross-reference marking REQ-ARCH-006 superseded.
+
+Baseline at `7f61332ef`: `0` and `>= 1` after this rewrite — the first count is the open half.
+
+**This criterion is expected to fail until the owner of `SPEC-INTERNAL-ARCH-001` applies the
+cross-reference.** That is the intended state, not a defect in the criterion: this rewrite
+deliberately does not edit that SPEC (spec.md §A.7, §C), and a criterion that passed anyway would
+assume away the very thing it exists to detect. It is the only AC in this SPEC that is red by
+construction at plan-phase.
+
+**Falsification**: fails if either side lacks the cross-reference. Passes only when both SPECs agree
+on who owns the `internal/config/CLAUDE.md` env-var fix.
 
 #### AC-UDD-021 — no template-tree file is modified
 
 ```bash
-git diff --stat d5336214e..HEAD -- internal/template/templates/
-git log --oneline d5336214e..HEAD -- internal/template/templates/ | wc -l
+git diff --stat 7f61332ef..HEAD -- internal/template/templates/
+git log --oneline 7f61332ef..HEAD -- internal/template/templates/ | wc -l
 git diff --stat -- internal/template/templates/
 ```
 
-Expected: the first produces **no output**, the second prints `0`, and the third produces no output.
-`internal/template/templates/**` is untouched relative to the code baseline (NFR-UDD-002). Both
-target files are repo-local maintainer documentation and are never mirrored.
+Expected: the first produces no output, the second prints `0`, the third produces no output
+(NFR-UDD-002). The baseline-relative form is required because the run-phase workflow commits its
+edits — an unstaged-only check falls silent at exactly the moment the constraint is violated.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline at `7f61332ef` (the baseline commit itself): all three empty / `0`.
 
-```
-$ git diff --stat d5336214e..HEAD -- internal/template/templates/
-$ git log --oneline d5336214e..HEAD -- internal/template/templates/ | wc -l
-0
-$ git diff --stat -- internal/template/templates/
-```
-
-**Why the baseline-relative form was added.** The retired criterion ran only
-`git diff --stat -- internal/template/templates/`, which sees **unstaged** changes. The run-phase
-workflow commits its edits, so an implementer who modified a template file and committed it would
-leave that command printing nothing — the guard would fall silent at exactly the moment
-NFR-UDD-002 was violated. Comparing against `d5336214e` (and counting commits that touched the
-path) closes the window; the unstaged check is retained as the third command so an in-flight
-modification is caught before it is committed.
-
-The supporting fact that neither target file ships is unchanged:
+Supporting fact, that none of the four target files is mirrored:
 
 ```
+$ ls internal/template/templates/.moai/docs/
+agent-lint.md  generic-patterns-guide.md
 $ find internal/template/templates -name 'CLAUDE.md'
 internal/template/templates/CLAUDE.md
 $ ls internal/template/templates/internal
 ls: internal/template/templates/internal: No such file or directory
 ```
 
-**Falsification**: fails if any template-tree file is modified, whether the change is committed or
-not.
+**Falsification**: fails if any template-tree file is modified, committed or not.
 
-#### AC-UDD-022 — the build is clean and this SPEC's change surface is green
+#### AC-UDD-022 — the module still builds and vets clean
 
 ```bash
 go build ./... && echo "build=0"
 go vet ./... && echo "vet=0"
-go test -count=1 ./internal/cli/ ./internal/config/ ./internal/hook/quality/
 ```
 
-Expected: `build=0`, `vet=0`, and three `ok` lines.
+Expected: `build=0` and `vet=0`.
 
-Baseline (verbatim, observed at HEAD `145e601c9`, code baseline `d5336214e`):
+Baseline (observed, `7f61332ef`): `build=0`, `vet=0`.
 
-```
-build=0
-vet=0
-ok  	github.com/modu-ai/moai-adk/internal/cli	156.762s
-ok  	github.com/modu-ai/moai-adk/internal/config	1.884s
-ok  	github.com/modu-ai/moai-adk/internal/hook/quality	4.174s
-```
+The v0.2.0 form also ran three test packages. That scope is dropped at v0.3.0 because this SPEC now
+edits **no Go file at all** — every code-touching requirement (REQ-UDD-011/012/013) is retired — so
+binding a documentation SPEC's Definition of Done to any test suite would gate closure on conditions
+unrelated to it. `go build` / `go vet` are retained as the cheap whole-module guard that a markdown
+edit did not somehow break the tree. AC-UDD-023 is the criterion that makes "edits no Go file"
+mechanical rather than asserted.
 
-**The recorded "green" of the retired form was never observed, and the full suite is not green.**
-The retired criterion was `go build ./... && go vet ./... && go test -count=1 ./...` with the
-baseline "green at HEAD `d5336214e` (plan.md §C pre-flight)". Run, the full suite exits **1**:
+Recorded as known and out of scope, carried forward from v0.2.0 so it is not rediscovered as new:
+`TestBranchGuard_Latency` in `internal/hook` is load-sensitive and fails under a parallel full-suite
+run while passing alone. It is not diagnosed here.
 
-```
-FAIL	github.com/modu-ai/moai-adk/internal/hook	32.712s
---- FAIL: TestBranchGuard_Latency (1.84s)
-    pre_tool_branch_guard_integration_test.go:166: iteration 4: checkBranchState took 515.368334ms, ceiling 500ms
-```
-
-Re-run alone, the same test passes (`ok … 1.554s`) — it is a **load-sensitive performance test**,
-failing only under the parallel full-suite run. Since `d5336214e`→HEAD changes SPEC documents only,
-it was equally flaky at `d5336214e`, so the recorded baseline could not have been observed.
-
-The scope is narrowed to the three packages this SPEC's change surface touches, which keeps the
-criterion deterministic. `internal/hook` is deliberately **excluded** from the test scope while
-`go build ./...` and `go vet ./...` still cover it — this SPEC edits no Go file in that package, and
-binding a documentation SPEC's Definition of Done to an unrelated timing flake would make closure
-non-deterministic for reasons that have nothing to do with the SPEC.
-
-Recorded as known, not silently dropped: `TestBranchGuard_Latency`'s load sensitivity is a
-pre-existing condition outside this SPEC's scope (spec.md §C names no `internal/hook` Go change). It
-is not diagnosed here — see the residual-risk note in `progress.md` §E.1.
-
-**Falsification**: fails if any of the three packages regresses, or if `go build` / `go vet` breaks
-anywhere in the module — the two whole-module commands are retained precisely so narrowing the test
-scope does not narrow the build/vet scope.
-
-#### AC-UDD-023 — the test run itself creates and modifies nothing
+#### AC-UDD-023 (rewritten at v0.3.0) — this SPEC modifies no Go file
 
 ```bash
-mkdir -p /tmp/udd-verify
-git status --porcelain > /tmp/udd-verify/before.txt
-go test -count=1 ./internal/cli/ ./internal/config/
-git status --porcelain > /tmp/udd-verify/after.txt
-diff /tmp/udd-verify/before.txt /tmp/udd-verify/after.txt
+git diff --name-only 7f61332ef..HEAD | grep -c '\.go$'
+git diff --name-only 7f61332ef..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
 ```
 
-Expected: the tests pass and `diff` produces **no output** and exits `0` — the test run added,
-removed, or modified no tracked or untracked path (NFR-UDD-001).
+Expected: `0` and `0`. No Go file differs from the baseline, and every changed path lies inside this
+SPEC's declared write surface: its own SPEC directory, the two always-loaded instruction files, and
+the two re-anchored `.moai/docs/` targets.
 
-Baseline (observed at HEAD `145e601c9`): `diff` exits `0` with no output.
+Baseline at `7f61332ef` (the baseline commit itself): `0` and `0`.
 
-**Why a delta replaces the absolute check.** The retired criterion asserted that
-`git status --porcelain` "reports no files created or modified by the test run", but the command it
-ran was a bare `git status --porcelain` — an **absolute** emptiness check. This SPEC's run-phase
-edits `CLAUDE.local.md`, `internal/config/CLAUDE.md`, and `progress.md` by definition, so at the
-moment the criterion is evaluated the working tree is necessarily non-empty and the criterion would
-fail for a reason entirely unrelated to NFR-UDD-001. The predicate could not distinguish "a test
-wrote a file" from "the SPEC edited a file" — the very quantities it exists to separate. The
-before/after difference measures only the test run's own effect and is unaffected by the SPEC's
-edits (§A clause 7).
+**Why this replaces the v0.2.0 form.** That criterion snapshotted `git status --porcelain` before and
+after a test run to prove tests wrote nothing outside `t.TempDir()`. With no tests added, it measures
+nothing. The scope constraint — a documentation SPEC that touches only documentation — is the
+property actually worth asserting, and a baseline-relative name-diff asserts it without depending on
+whether the edits are committed yet.
 
-**Falsification**: fails if any test writes outside `t.TempDir()` — a stray fixture, a cache entry,
-or a modified tracked file appears in `after.txt` and not in `before.txt`.
+**Falsification**: fails if any Go file is edited, or if the SPEC's edits reach a path outside the
+five declared prefixes.
 
 ## §C Falsification procedures
 
-Each new guard must be shown to FAIL against uncorrected content. `git stash` is prohibited
-(§A clause 5); falsification uses a scratch copy under `/tmp`.
+Each guard must be shown to FAIL against uncorrected content. `git stash` is prohibited (§A clause 5);
+falsification uses a scratch copy under `/tmp`.
 
 ### C-1 — the documentation criteria actually fail against the current text
 
 ```bash
 mkdir -p /tmp/udd-falsify
-cp CLAUDE.local.md internal/config/CLAUDE.md /tmp/udd-falsify/
-# AC-UDD-014a / AC-UDD-007 / AC-UDD-011 (local half) against the UNCORRECTED copies
-grep -c '로더 부재' /tmp/udd-falsify/CLAUDE.local.md
-grep -c 'MOAI_USER_NAME\|MOAI_CONVERSATION_LANG' /tmp/udd-falsify/CLAUDE.md
-grep -c 'config/config.yaml' /tmp/udd-falsify/CLAUDE.local.md
-# AC-UDD-011 (widened regex, D5) and AC-UDD-009 (removal half, D3)
-grep -cE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' /tmp/udd-falsify/CLAUDE.md
-grep -c 'EnvUserName' /tmp/udd-falsify/CLAUDE.md
+cp CLAUDE.local.md /tmp/udd-falsify/CLAUDE.local.md
+cp internal/config/CLAUDE.md /tmp/udd-falsify/config-CLAUDE.md
+cp .moai/docs/version-management.md .moai/docs/local-dev-settings-intent.md /tmp/udd-falsify/
+grep -c '로더 부재' /tmp/udd-falsify/CLAUDE.local.md                                      # AC-UDD-014
+grep -c 'config/config.yaml' /tmp/udd-falsify/CLAUDE.local.md                             # AC-UDD-011
+grep -c 'internal/template/templates/.agency' /tmp/udd-falsify/CLAUDE.local.md            # AC-UDD-025
+grep -c 'MOAI_USER_NAME\|MOAI_CONVERSATION_LANG' /tmp/udd-falsify/config-CLAUDE.md        # AC-UDD-007
+grep -c 'EnvUserName' /tmp/udd-falsify/config-CLAUDE.md                                   # AC-UDD-009
+grep -cE 'config\.yaml.{0,2} \(main\)|Main .?config\.yaml' /tmp/udd-falsify/config-CLAUDE.md  # AC-UDD-011
+grep -c 'internal/template/templates/.moai/config/config.yaml' /tmp/udd-falsify/version-management.md  # AC-UDD-013
+grep 'auto_cleanup' /tmp/udd-falsify/local-dev-settings-intent.md | grep -c '없다'        # AC-UDD-004
 ```
 
-Expected: `1`, `2`, `2`, `2`, `1` — each criterion's expected post-fix value (`0`) is contradicted,
-proving the criteria are load-bearing rather than trivially satisfied. A run producing `0` on any
-line would mean that criterion passes against the defective tree and detects nothing.
+Expected: `1`, `1`, `1`, `2`, `1`, `2`, `1`, `1` — every criterion's expected post-fix value (`0`) is
+contradicted, proving each is load-bearing rather than trivially satisfied. Any line printing `0`
+would mean that criterion passes against the defective tree and detects nothing.
 
-Observed at HEAD `145e601c9`: `1`, `2`, `2`, `2`, `1`.
+Observed at `7f61332ef`: `1`, `1`, `1`, `2`, `1`, `2`, `1`, `1`.
 
-The last two lines were added with the criteria they falsify. The fourth exercises AC-UDD-011's
-**widened** regex, whose whole purpose is to see `internal/config/CLAUDE.md:5` — the narrow form
-returns `1` here and would leave `:5`'s falsification unproven. The fifth exercises AC-UDD-009's
-removal half, which did not previously have a falsifiable command at all.
+The `internal/config/CLAUDE.md` copy is renamed to `config-CLAUDE.md` in the scratch directory so it
+cannot collide with `CLAUDE.local.md`'s basename or with a stray `CLAUDE.md`; the v0.2.0 procedure
+copied both into one directory and then grepped `/tmp/udd-falsify/CLAUDE.md`, whose provenance was
+ambiguous.
 
 ### C-2 — the deletion-vacuity hazard is actually excluded
 
 ```bash
 mkdir -p /tmp/udd-falsify
-sed '141s/.*/> **§2.2 astgrep-rules 로컬 전용 예외**: (removed)/' CLAUDE.local.md \
-  > /tmp/udd-falsify/deleted.md
+L=$(grep -n '§2.2 astgrep-rules' CLAUDE.local.md | cut -d: -f1)
+sed "${L}s|.*|> **§2.2 astgrep-rules 로컬 전용 예외**: (removed)|" CLAUDE.local.md > /tmp/udd-falsify/deleted.md
 R='/§2.2 astgrep-rules/,/^### \[HARD\] settings.local.json/p'
-sed -n "$R" /tmp/udd-falsify/deleted.md | grep -cE 'advisory|기본 ON|warn_only'
+sed -n "$R" /tmp/udd-falsify/deleted.md | grep -cE '권고 모드|advisory|WarnOnlyMode'
+sed -n "$R" /tmp/udd-falsify/deleted.md | grep -cE 'suppression|sg-independent|억제 정책'
 sed -n "$R" /tmp/udd-falsify/deleted.md | grep -oE 'dogfood|sgconfig\.yml|utils' | sort -u | wc -l
 ```
 
-Expected: `0` and `0` — a deletion-only "fix" fails AC-UDD-014's positive half (which requires
-`>= 1`) and AC-UDD-020 (which requires `3`) simultaneously. A run where AC-UDD-014 passes against
-this deleted copy means the criterion is an absence-only grep and the vacuity hazard is unguarded
-(plan.md §G AP-8).
+Expected: `0`, `0`, `0` — a deletion-only "fix" simultaneously fails AC-UDD-014's positive half
+(`>= 1`), AC-UDD-018's positive half (`>= 1`), and AC-UDD-020 (`3`). If AC-UDD-014 passed against
+this deleted copy, it would be an absence-only grep and the vacuity hazard would be unguarded
+(plan.md AP-8).
 
-Observed at HEAD `145e601c9`:
-
-```
-$ sed -n "$R" /tmp/udd-falsify/deleted.md | grep -cE 'advisory|기본 ON|warn_only'
-0
-$ sed -n "$R" /tmp/udd-falsify/deleted.md | grep -oE 'dogfood|sgconfig\.yml|utils' | sort -u | wc -l
-0
-```
-
-**The extractor was updated with the criteria it falsifies.** This procedure previously used
-`sed -n '141p'`, matching the criteria's retired single-line locator. Now that AC-UDD-014c and
-AC-UDD-020 anchor on the section range, the falsification must use the same range — otherwise it
-would demonstrate a contradiction against commands no criterion runs. The `sed` deletion preserves
-the `§2.2 astgrep-rules` start anchor and leaves the `### [HARD] settings.local.json` terminator in
-place, so the range still resolves (3 lines) on the mutated copy and the counts are genuine
-observations rather than extraction failures.
+The line number is resolved by `grep` rather than hardcoded, so the procedure survives the next time
+the file is consolidated — the hardcoded `141` in the v0.2.0 form now points at an unrelated line.
 
 ### C-3 — the code-fact pairing catches an inverted fix direction
 
 ```bash
-# in a scratch copy only: simulate envkeys.go gaining the constant
 cp internal/config/envkeys.go /tmp/udd-falsify/envkeys.go
 printf '\nconst EnvUserName = "MOAI_USER_NAME"\n' >> /tmp/udd-falsify/envkeys.go
 grep -c 'MOAI_USER_NAME' /tmp/udd-falsify/envkeys.go
 ```
 
 Expected: `1` — AC-UDD-008's expected `0` is contradicted, so the criterion would fail and flag that
-`internal/config/CLAUDE.md` was right after all. This proves the F4 resolution rests on the
-measurement rather than on which file is more recent.
+`internal/config/CLAUDE.md` was right after all. This proves the contradiction is resolved by
+measurement, not by which file is more recent (plan.md AP-3).
 
-### C-4 — the dry-run no-mutation guard is load-bearing
-
-Two runs against a scratch copy carrying a deliberately-mutating dry-run stub (one that writes a
-single file inside the fixture before returning). `git stash` is prohibited (§A clause 5); use a
-scratch `git worktree` or `go test -overlay`.
+### C-4 (new at v0.3.0) — the polarity inversion is measured, not assumed
 
 ```bash
-# Run 1 — the real guard (tree-snapshot comparison) against the mutating stub
-go test -run 'TestUpdateDryRunNoMutation' -count=1 -v ./internal/cli/ 2>&1 | grep -E '^--- (FAIL|PASS)'
-
-# Run 2 — the guard weakened to a bare `err == nil` check, same mutating stub
-go test -run 'TestUpdateDryRunNoMutation' -count=1 -v ./internal/cli/ 2>&1 | grep -E '^--- (FAIL|PASS)'
+grep -rn 'Worktree\.AutoCleanup' --include='*.go' internal cmd pkg | grep -v '_test.go' | wc -l
+sed -n '578,590p' internal/cli/session_worktree.go
 ```
 
-Expected, stated as two separate observed lines rather than as a negated sentence:
+Expected: the count is `2`, and the printed context shows the read gating disposal — an early
+`return` when the toggle is `false` — rather than selecting between two advisory strings.
 
-| Run | Guard | Expected line |
-|---|---|---|
-| 1 | real (tree-snapshot comparison) | `--- FAIL: TestUpdateDryRunNoMutation` |
-| 2 | weakened (`err == nil` only) | `--- PASS: TestUpdateDryRunNoMutation` |
+Observed at `7f61332ef`:
 
-The pair is what proves the load-bearing assertion is the tree comparison: the real guard catches
-the mutating stub, and removing *that specific assertion* is sufficient to let it through. If run 2
-also prints `--- FAIL`, some other assertion is doing the work and the tree comparison is not the
-guard it is claimed to be. If run 1 prints `--- PASS`, the stub is not actually mutating and the
-procedure proves nothing — check the stub first.
+```
+2
+	if cfg == nil || !cfg.Workflow.Worktree.AutoCleanup {
+		// REQ-SW-008: default-manual — auto_cleanup is OFF (the distributed
+		// default per CLAUDE.local.md §22.8). The worktree PERSISTS after exit;
+		// the user disposes explicitly via `moai worktree done` / `remove`.
+		return
+	}
+```
 
-**Why this replaces the previous wording.** The retired form read "**FAIL** is no longer produced …
-i.e. the weakened guard passes where the real guard fails" — a double negative over an unstated
-second run, from which the pass/fail direction of either run could not be read off directly. It also
-named no observable line, so at plan-phase the command prints `no tests to run` and exits `0`
-(§A clause 3), which is neither of the two outcomes the procedure distinguishes.
-
-**Precondition**: both runs require `TestUpdateDryRunNoMutation` to exist (AC-UDD-002 assertion 2).
-Until run-phase creates it, C-4 is not executable — that is expected, not a pass.
+This is the procedure that justifies inverting REQ-UDD-004 rather than executing it as v0.2.0 wrote
+it. Had the count been `0`, the v0.2.0 correction would have been right and the inversion wrong. It
+is run *before* the M2 edit, not after.
 
 ## §D Definition of Done
 
-- All of AC-UDD-001 through AC-UDD-023 produce their stated observable output.
-- All four falsification procedures C-1 through C-4 produce their stated contradiction against
-  uncorrected content — C-4 as the two-run pair, both lines observed.
+- AC-UDD-004, 005, 007, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018, 019, 020, 021, 022,
+  023, 025, 026, 027 produce their stated observable output.
+- AC-UDD-001 holds as a preservation guard (the retired M1 has not regressed).
+- AC-UDD-024 is **expected red at plan-phase** and closes only when the owner of
+  `SPEC-INTERNAL-ARCH-001` applies the reciprocal cross-reference. Closing this SPEC with AC-UDD-024
+  red is permitted, provided the open half is named in `progress.md` §E.1 rather than silently
+  passed.
+- AC-UDD-002, AC-UDD-003, AC-UDD-006 are retired; their retirement evidence is recorded above and
+  is not re-litigated.
+- Falsification procedures C-1 through C-4 produce their stated contradictions.
 - Every documentation correction cites the `file:line` or content-anchored symbol it was verified
   against (NFR-UDD-004).
-- `internal/template/templates/**` is unmodified relative to `d5336214e` (AC-UDD-021).
-- The M1 `--dry-run` resolution is **option B** (settled at plan-phase; see spec.md §A.5, plan.md
-  §F.1). §E.2 records its execution and the observed reachability evidence — not a re-litigation of
-  the choice. The M2 `[HARD]`-marker decision remains open and MUST be recorded in `progress.md`
-  §E.2 with its rationale, not resolved implicitly.
-- No criterion is closed on a command that cannot observe its own expectation (§A clause 7).
+- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified relative to
+  `7f61332ef` (AC-UDD-021).
+- No criterion is closed on a command that cannot observe its own expectation (§A clause 6), and no
+  correction retracts a claim by quoting it (§A clause 8).
 - `progress.md` §E.2 cites the observed command output for every claim, per
   `.claude/rules/moai/core/verification-claim-integrity.md`.
