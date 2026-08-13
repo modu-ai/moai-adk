@@ -150,4 +150,112 @@ full_suite: `go test ./...` → `internal/template` 3건 실패
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: ready
+sync_complete_at: 2026-08-13
+sync_commit_sha: pending-backfill-sync
+  (self-referential-hazard workaround per spec-frontmatter-schema.md § Status Transition
+  Ownership Matrix D3 — a commit cannot know its own SHA until after it lands. manager-git
+  backfills the real SHA in the Late-Branch follow-up commit after the sync PR merges.)
+changelog_entry_position: top of `## [Unreleased] ### Added` in CHANGELOG.md
+  (SPEC-WEB-CONSOLE-REDESIGN-001, immediately above SPEC-CHAIN-CORE-001)
+
+frontmatter_status_transitions:
+  spec.md: in-progress → completed (single sync-commit transition; the
+    `implemented` intermediate is merged into the same sync commit per the
+    3-phase close contract). `updated:` refreshed 2026-08-08 → 2026-08-13.
+    This is the ONLY YAML-frontmatter artifact — acceptance.md / plan.md use
+    the markdown-header convention (no YAML frontmatter).
+  acceptance.md: no frontmatter (markdown-header convention). Body change
+    LIMITED to the AC-WCR-063 PASS-WITH-DEBT marker + §E.2.3 rationale pointer
+    (no other body content touched, per Status Transition Ownership Matrix
+    forbidden-ownership-crossings).
+  plan.md: no frontmatter (markdown-header convention). Body UNCHANGED.
+
+canary_compliance_check:
+  b12_self_test_a_pre_emission_grep: PASS — `grep -c 'SPEC-WEB-CONSOLE-REDESIGN-001' CHANGELOG.md`
+    returned 0 before emission (no duplicate entry from parallel BATCH-SYNC sessions).
+  b12_self_test_b_ac_count_match: N/A — acceptance.md uses markdown-header AC markers
+    (no `### AC-XXX` headings / no `| AC-XXX |` table cells); the AC set is referenced by
+    the explicit enumeration in §E.3 below. The CHANGELOG entry cites 28 AC identifiers
+    (25 numbered, 23 PASS / 1 FAIL→PASS-WITH-DEBT / 2 PASS-WITH-DEBT / 2 vacuous).
+  b12_self_test_c_file_path_verification: PASS — every path claimed in the CHANGELOG entry
+    exists (`ls .moai/specs/SPEC-WEB-CONSOLE-REDESIGN-001/{spec,plan,acceptance,progress}.md`
+    + `ls docs-site/content/{en,ko,ja,zh}/{advanced/moai-web-console,cli-reference/web}.md`
+    + `ls CHANGELOG.md` + `ls internal/web/...` tree).
+
+sync_artifacts_authored:
+  - CHANGELOG.md — SPEC entry added under `## [Unreleased] ### Added`, en per
+    `git_commit_messages: en`. Covers M1-M6 + execution-mode correction + AC-WCR-063
+    PASS-WITH-DEBT + docs-site 4-locale refresh.
+  - docs-site/content/{en,ko,ja,zh}/advanced/moai-web-console.md — 6-tab → 9-tab
+    structure, profile-card → profile-bar dedup, widget policy + GLM honesty badge
+    summarized (4-locale same-PR obligation per docs-site i18n rules).
+  - docs-site/content/{en,ko,ja,zh}/cli-reference/web.md — 6-tab → 9-tab refresh in the
+    Console Screens section (4-locale).
+  - spec.md frontmatter — `status: in-progress → completed`, `updated: 2026-08-13`.
+  - acceptance.md body — AC-WCR-063 PASS-WITH-DEBT marker + §E.2.3 pointer (sole body
+    change; everything else forbidden per ownership matrix).
+  - progress.md §E.4 — this section.
+
+ac_disposition_sync:
+  ac_pass_count: 23 (unchanged from §E.3)
+  ac_pass_with_debt_count: 3 (AC-WCR-023 + AC-WCR-030 from §E.3 + AC-WCR-063 newly
+    marked PASS-WITH-DEBT in this sync per user approval 2026-08-13)
+  ac_fail_count: 0 (AC-WCR-063 moved from FAIL → PASS-WITH-DEBT)
+  ac_vacuous_count: 2 (AC-WCR-061 / AC-WCR-062 — unchanged)
+
+evidence_quality_gate:
+  source: orchestrator trust-but-verify (this tree, this run), NOT re-executed by
+    manager-docs — the orchestrator already ran the commands; sync-phase consumes the
+    §E.3 attribution per the attributable diff-check doctrinal switch
+    (SPEC-SYNC-PARALLEL-DOCS-001 A9 — snapshot-key attribution, no re-execution).
+  go_build: `go build ./internal/web/... ./internal/cli/...` → exit 0 (orchestrator).
+  go_vet: `go vet ./internal/web/...` → exit 0 (orchestrator).
+  go_test_internal_web: `go test ./internal/web/...` → `ok 1.728s` (orchestrator).
+  go_test_repo_wide: `go test ./...` → 3 PRE-EXISTING failures in `internal/template`
+    (`TestLateBranchTemplateMirror/spec-assembly.md`,
+    `TestRuleTemplateMirrorDrift/spec-workflow.md`,
+    `TestSanitizedPairParity/main-checkout-branch-guard.md`). All three are
+    PRE-EXISTING on the baseline and unrelated to this SPEC — the same three fail
+    on the pre-PR-#1410 baseline (`git diff 36f9bfea4..HEAD` 0 lines on those
+    fixtures + their template mirrors). NOT a SPEC regression; attributed, not
+    re-executed.
+  coverage: AC-WCR-063 PASS-WITH-DEBT — 73.5% measured, structural ceiling 80.7%,
+    hand-written 91.1%. See §E.2.3 for the full coverage-analysis evidence.
+
+docs_site_audit:
+  moai_web_console_md: 4-locale refresh applied (en/ko/ja/zh). Pre-sync state described
+    "six tabs: Identity · Language · LLM · 3rd Party LLM · Agents · Report" + a standalone
+    Profiles card. Both surfaces were STALE: the redesign shipped a 9-tab structure
+    (Identity · Language · LLM · 3rd Party LLM · Workflow · Git & Worktree · Audit ·
+    Agents · Report) and moved add/rename/delete into the profile bar (REQ-WCR-040).
+    Each locale's native register preserved (no calques); code identifiers verbatim.
+  cli_reference_web_md: 4-locale refresh applied — "six tabs" → "nine tabs" in the
+    Console Screens section, profile-bar dedup noted.
+  nav_config_untouched: _meta.yaml / main.yaml / menu.html NOT modified (no page moved;
+    the page paths and weights are unchanged).
+  images: NOT refreshed in this sync — the existing screenshots (`web-console-overview.png`,
+    `web-console-switch.png`, `web-console-llm-tab.png`) still show the pre-redesign
+    6-tab layout. This is recorded as adjacent docs debt for a follow-up screenshot
+    refresh (image production is out of scope for a markdown-only sync commit).
+
+debt_recorded:
+  - AC-WCR-063 denominator redefinition — SPEC-body change, manager-spec's domain.
+    Recorded here and in the CHANGELOG entry; the AC marker in acceptance.md carries
+    the §E.2.3 pointer. NOT resolved in this sync.
+  - docs-site screenshots — pre-redesign 6-tab images still shipped. Adjacent docs
+    debt for a follow-up image refresh (out of scope for sync-phase).
+
+repo_local_pr_policy: Route B (PR-mandatory, this repo's `enforce_admins: true`
+  branch-protection override). manager-git creates the branch + opens the PR;
+  this sync-phase authored only the working-tree artifacts above (uncommitted).
+
+working_tree_hygiene_preserved:
+  - `.moai/config/sections/llm.yaml` — locally MODIFIED (`team_mode: glm`, a
+    factory-mode runtime value). PR #1499 (origin/main, `54d748ddf`) already
+    untracks + gitignores it. NOT staged, NOT committed, NOT modified by this
+    sync-phase.
+  - `.moai/reports/diagram-i18n-demo.html` and `.moai/reports/diagram-styles-gallery-v2.html`
+    — untracked report artifacts. NOT staged, NOT committed.
+  - The orchestrator's behind-resolution (manager-git) handles the PR #1499
+    llm.yaml untracking; manager-docs operates on the doc surface only.

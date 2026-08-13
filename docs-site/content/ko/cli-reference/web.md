@@ -46,11 +46,11 @@ moai web --no-reuse      # 포트가 사용 중이면 회수 대신 실패
 
 콘솔의 인터페이스 언어는 헤더 오른쪽 선택기에서 English · 한국어 · 日本語 · 中文 가운데 고릅니다. 아래 화면은 English 로 둔 모습이라, 이 절에서는 화면에 보이는 영어 표기를 괄호에 함께 적습니다.
 
-헤더에는 프로젝트 이름과 현재 프로필, 주요 설정 요약(`lang · model · effort · dev`)이 나란히 놓입니다. 그 아래로 프로필 선택기와 프로필(Profiles) 카드가 오고, 사용자 정보(Identity) · 언어(Language) · LLM · 서드파티 LLM(3rd Party LLM) · 에이전트(Agents) · 리포트(Report) 여섯 개 탭이 이어집니다. 고친 값은 맨 아래 설정 저장(Save settings) 버튼으로 기록합니다.
+헤더에는 프로젝트 이름과 현재 프로필, 주요 설정 요약(`lang · model · effort · dev`)이 나란히 놓입니다. 그 아래로 프로필 바가 오는데, 프로필 선택기 바로 옆에 추가·이름변경·삭제 컨트롤이 있어 프로필 생애주기 전체가 한 줄에 들어갑니다 (별도의 프로필 카드는 없습니다). 프로필 바 아래에 사용자 정보(Identity) · 언어(Language) · LLM · 서드파티 LLM(3rd Party LLM) · 워크플로우(Workflow) · Git·워크트리(Git & Worktree) · 감사(Audit) · 에이전트(Agents) · 리포트(Report) 아홉 개 탭이 이어집니다. 고친 값은 맨 아래 설정 저장(Save settings) 버튼으로 기록합니다.
 
-![MoAI Web Console 첫 화면. 헤더의 프로젝트 이름과 프로필, 프로필(Profiles) 카드, 여섯 개 탭, 사용자 정보(Identity) 탭의 표시 이름(Display name) 입력란, 설정 저장(Save settings) 버튼](/images/profile/web-console-overview.png)
+![MoAI Web Console 첫 화면. 헤더의 프로젝트 이름과 프로필, 프로필 바, 아홉 개 탭, 사용자 정보(Identity) 탭의 표시 이름(Display name) 입력란, 설정 저장(Save settings) 버튼](/images/profile/web-console-overview.png)
 
-프로필(Profiles) 카드에서 프로필을 전환하고, 삭제(Delete)하고, 새 프로필 이름(New profile name)을 적어 프로필 생성(Create profile)으로 새로 만들 수 있습니다. 다른 프로필을 고르면 헤더의 프로필 표시도 함께 바뀝니다. 아래는 `moai-cowork` 프로필로 전환한 뒤 언어(Language) 탭을 연 모습입니다.
+프로필 바에서 프로필을 전환하고, 이름을 바꾸고, 삭제(Delete)하고, 새 프로필 이름(New profile name)을 적어 프로필 생성(Create profile)으로 새로 만들 수 있습니다. 다른 프로필을 고르면 헤더의 프로필 표시도 함께 바뀝니다. 아래는 `moai-cowork` 프로필로 전환한 뒤 언어(Language) 탭을 연 모습입니다.
 
 ![moai-cowork 프로필로 전환한 콘솔의 언어(Language) 탭. 대화 언어(Conversation language), 커밋 메시지 언어(Commit message language), 코드 주석 언어(Code comment language), 문서 언어(Documentation language) 네 항목](/images/profile/web-console-switch.png)
 
