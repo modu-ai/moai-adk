@@ -2,7 +2,7 @@
 id: SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001
 title: "Close-Tool 3-Phase Precondition Relaxation — close the last §E.5 gap in the 3-phase lifecycle"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-13
 updated: 2026-08-13
 author: manager-spec
