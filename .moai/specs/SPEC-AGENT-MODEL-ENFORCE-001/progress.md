@@ -114,4 +114,41 @@ AC 명령의 측정 대상을 "추가된 절"로 정정하는 것은 manager-spe
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-14
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+run_status_carried_forward: PASS-WITH-DEBT   # §E.3 verdict carried verbatim — NOT laundered into a clean PASS
+b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-AGENT-MODEL-ENFORCE-001' CHANGELOG.md → 0 before emission)
+b12_self_test_b_ac_count_match: PASS (31 distinct AC in acceptance.md = 28 PASS + 1 FAIL + 2 PASS-WITH-DEBT per §E.3)
+b12_self_test_c_file_path_verification: PASS (3/3 SPEC paths cited in the CHANGELOG entry verified via ls before commit)
+changelog_entry_position: "[Unreleased] ### Changed (lifecycle-hygiene entry, covers this SPEC + 2 siblings)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit; updated: → 2026-08-14)"
+  plan_md: "n/a (markdown-header convention)"
+  acceptance_md: "n/a (markdown-header convention)"
+  progress_md: "§E.4 populated"
+canary_compliance_check:
+  implementation_provenance: "landed at b0d3b61f8 (PR #1410, issue #1376) — NOT in this sync commit; this sync commit is documentation-only (SPEC lifecycle close)"
+  go_build: PASS (measured in this worktree at 7f61332ef — post-merge verification, not attributable to this sync commit)
+  cross_platform_build: PASS (GOOS=windows/amd64 exit 0, GOOS=darwin/arm64 exit 0 — measured in this worktree)
+  coverage: "84.0% internal/hook measured in this worktree at 7f61332ef, against the SPEC's 90% bar — still FAIL, and still the pre-existing gap §E.3 named (84.1% at run-phase HEAD 4fc632280; the 0.1pp delta is subsequent-commit drift, not a regression from this SPEC)"
+  ac_pass: "28/31 PASS + 1 FAIL + 2 PASS-WITH-DEBT per §E.3 — carried forward, NOT re-executed in sync-phase"
+  implementation_surface_verified:
+    - "internal/hook/agent_model_guard.go + agent_model_guard_test.go present (ls)"
+    - "internal/config/types.go:404 AgentModelGuard field + :574 AgentModelGuardConfig struct (grep)"
+    - "internal/config/defaults.go:683-685 AgentModelGuard{Enabled: false} default block (grep)"
+    - "internal/hook/pre_tool.go:552 h.checkAgentModel(input) call site (grep)"
+open_debt_carried_into_close:
+  - id: AC-AME-053
+    disposition: FAIL
+    summary: "internal/hook coverage 84.0% against a 90% bar. Pre-existing gap outside this SPEC's scope envelope — run-phase baseline 83.9%, this SPEC moved it +0.2pp. Closing this SPEC does NOT close this gap; it remains open against internal/hook at large."
+  - id: AC-AME-041
+    disposition: PASS-WITH-DEBT
+    summary: "Measurement-target mismatch. The AC command targets a standalone stub file; orchestrator decision D4(b) instead inserted the content as a section of the always-loaded agent-common-protocol.md. Measured against the added section: 1,595 bytes ≤ 2048 (requirement intent met). Correcting the AC's measurement target is a manager-spec re-delegation, not a manager-docs edit."
+  - id: AC-AME-042
+    disposition: PASS-WITH-DEBT
+    summary: "Same D4(b) measurement-target mismatch. Measured against the added section: 0 alias literals (bar: 0), 1 model-policy.md cross-reference (bar: ≥1), 13 'model' mentions (bar: ≥1). Requirement intent met; the AC text still points at the superseded stub-file target."
+debt_closure_note: "This SPEC closes as completed with the three items above OPEN and named. The close records that run-phase finished with declared debt; it does not assert the debt was resolved. AC-AME-053 is an internal/hook-wide coverage gap; AC-AME-041/042 need a manager-spec amendment to re-point their measurement commands."
+mx_tag_validation: "no @MX tag changes — this sync commit touches only .moai/specs/ and CHANGELOG.md"
+```

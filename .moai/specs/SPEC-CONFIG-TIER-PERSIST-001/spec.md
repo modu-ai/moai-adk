@@ -1,10 +1,11 @@
 ---
 id: SPEC-CONFIG-TIER-PERSIST-001
 title: "config resolution and persistence: explicit falsey values must win their tier, the local tier must be reachable, every config write must be atomic and mode-preserving, and a malformed section must never be silently written back as defaults"
-version: "0.2.0"
-status: draft
+version: "0.3.0"
+status: superseded
+superseded_by: SPEC-CONFIG-TIER-RESOLVE-001
 created: 2026-07-31
-updated: 2026-08-12
+updated: 2026-08-14
 author: manager-spec
 priority: P0
 phase: "v3.0.2"
@@ -24,6 +25,7 @@ depends_on: [SPEC-UPDATE-DATA-SURVIVAL-001]
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-07-31 | Initial draft. Four-lens audit of `moai update` / `.moai/config`; Epic SPEC 3 of 6. Findings F1-F8 each reproduced by a runnable probe against HEAD `d5336214e`. |
+| 0.3.0 | 2026-08-14 | **`status: draft` → `superseded`.** The 3-way split completed 2026-08-12 left **zero resident requirements** in this document — all 35 `REQ-CTP-*` were reassigned to four independent child SPECs, so nothing here is implementable and `draft` no longer describes the document's state. Reassignment: slice (a) `REQ-CTP-001..014` → `SPEC-CONFIG-TIER-RESOLVE-001` (status draft, pending); slice (b) `REQ-CTP-021/022/023/024/027` → `SPEC-CONFIG-ATOMIC-WRITE-001` (status completed); slice (c) `REQ-CTP-015..020` + `028..035` → `SPEC-CONFIG-SECTION-INTEGRITY-001` (status draft, pending); slice (d) `REQ-CTP-025/026` → `SPEC-CONFIG-MODE-MIGRATE-001` (status completed). Each child status verified by reading its own frontmatter on this date. `superseded_by:` names `SPEC-CONFIG-TIER-RESOLVE-001` as the lead successor — it carries the parent's title clause and the `TIER` name lineage — but the field is scalar by repo convention (all 6 prior uses) and cannot express the full 1→4 fan-out, which is why all four are enumerated here. The directory is **retained, not deleted**: this SPEC remains the lineage carrier and the §G/§K risk-and-reconciliation provenance of record, which the children cite bi-directionally. Supersession is a lifecycle correction only — no requirement, criterion, or measured figure changes. §L's "the parent's `status:` remains `draft`" assertion is corrected in place by the same edit. |
 | 0.2.0 | 2026-07-31 | Plan-audit revision (D1-D10 + D15). REQ-CTP-006 re-scoped from an `iota`-only reorder to a three-site reorder after `Priority()` was measured to have zero non-test consumers. REQ-CTP-033's reversal of `SPEC-V3R6-UPDATE-NOISE-001` `REQ-UN-007` declared explicitly in the new §K. REQ-CTP-013/014 marked already-landed at `b9fc75016`. REQ-CTP-005 split into two non-contradictory clauses. F1's file-mode evidence re-attributed to the primary checkout. |
 
 ## §A Problem / Motivation
@@ -594,10 +596,20 @@ The information has to arrive unasked at least once.
 
 ## §L Split Branches
 
-> **Split status: complete — all three slices extracted** (2026-08-12). The parent SPEC's `status:`
-> remains `draft` — the split does NOT transition the parent's lifecycle state. Each slice ships as an
+> **Split status: complete — all three slices extracted** (2026-08-12). Each slice ships as an
 > independent child SPEC; the parent is retained as the lineage carrier and the §G/§K
 > risk-and-reconciliation provenance of record.
+>
+> **Parent lifecycle: `superseded`** (2026-08-14, v0.3.0). An earlier revision of this note asserted
+> that the parent's `status:` "remains `draft` — the split does NOT transition the parent's lifecycle
+> state." That was accurate as a statement about the *split itself* — extracting a slice is not a
+> lifecycle transition — but it was wrong as a description of where the document ended up. With all
+> 35 `REQ-CTP-*` reassigned, zero requirements remain resident here; `draft` denotes a document
+> awaiting implementation, and there is nothing left in this one to implement. The parent therefore
+> carries `status: superseded` with `superseded_by: SPEC-CONFIG-TIER-RESOLVE-001` (the lead successor;
+> the full four-way reassignment is enumerated in the v0.3.0 HISTORY entry, since the scalar field
+> cannot express a 1→4 fan-out). Supersession changes no requirement, criterion, or measured figure,
+> and does **not** delete the directory — retention as lineage carrier is the point.
 
 `SPEC-CONFIG-TIER-PERSIST-001` was an over-large (35-REQ, Tier-M-exceeding) SPEC. Per the 3-way
 split recommendation, the parent is divided into three independently-shippable slices. All three
