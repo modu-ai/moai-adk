@@ -1,7 +1,7 @@
 package cli
 
-// factory_settings.go implements the transient --settings injection that lets
-// cross-session messages flow between factory companions without the operator
+// kanban_settings.go implements the transient --settings injection that lets
+// cross-session messages flow between kanban companions without the operator
 // having to relax their project/local settings.
 //
 // The accept/hold/refuse ladder for `crossSessionInbound` cannot be satisfied
@@ -31,7 +31,7 @@ const settingsFlagLong = "--settings"
 // <file> on the command line (before the pass-through marker). The operator's
 // intent wins: moai does NOT inject its own settings file in that case.
 //
-// The `--` discipline matches parseFactoryFlag and parseCompanionLabel: nothing
+// The `--` discipline matches parseKanbanFlag and parseCompanionLabel: nothing
 // past the marker is read — a `--settings` after `--` is a passthrough arg to
 // the backend, not a moai-level flag.
 func operatorSuppliedSettings(args []string) bool {
@@ -50,7 +50,7 @@ func operatorSuppliedSettings(args []string) bool {
 	return false
 }
 
-// prepareFactorySettings writes a transient settings file carrying
+// prepareKanbanSettings writes a transient settings file carrying
 // {"crossSessionInbound": "accept"} to a session-private path under
 // os.TempDir(), and returns the --settings flag pair to append to the backend's
 // argv, plus a cleanup function that removes the file and restores the signal
@@ -58,13 +58,13 @@ func operatorSuppliedSettings(args []string) bool {
 //
 // When the operator supplied their own --settings (REQ-FB-007), OR when the
 // write fails (fail-open, C8/EC-4), no flag is returned and cleanup is a no-op.
-// In both cases the signal env var EnvMoaiFactorySettingsInjected stays unset,
+// In both cases the signal env var EnvMoaiKanbanSettingsInjected stays unset,
 // which tells the SessionStart hook to print the operator advisory instead of
 // the auto-accept notice.
 //
 // The signal env var is set via os.Setenv (restored on cleanup) so it reaches
-// the child process through os.Environ(), matching the enterFactoryMode pattern.
-func prepareFactorySettings(args []string) (flag []string, cleanup func()) {
+// the child process through os.Environ(), matching the enterKanbanMode pattern.
+func prepareKanbanSettings(args []string) (flag []string, cleanup func()) {
 	if operatorSuppliedSettings(args) {
 		return nil, func() {}
 	}
@@ -72,13 +72,13 @@ func prepareFactorySettings(args []string) (flag []string, cleanup func()) {
 	path, err := writeTransientSettingsFile()
 	if err != nil {
 		// Fail-open (C8/EC-4): launch without the injected --settings. The hook
-		// will print the verify advisory because EnvMoaiFactorySettingsInjected
+		// will print the verify advisory because EnvMoaiKanbanSettingsInjected
 		// is unset.
 		return nil, func() {}
 	}
 
-	restoreInjected := captureEnvState(config.EnvMoaiFactorySettingsInjected)
-	_ = os.Setenv(config.EnvMoaiFactorySettingsInjected, "1")
+	restoreInjected := captureEnvState(config.EnvMoaiKanbanSettingsInjected)
+	_ = os.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
 	return []string{settingsFlagLong, path}, func() {
 		_ = os.Remove(path)
@@ -93,7 +93,7 @@ func writeTransientSettingsFile() (string, error) {
 	// Session-private by PID + nanosecond; two concurrent launches in the same
 	// PID (impossible) and same nanosecond (implausible) is the only collision
 	// path, and the cost of a collision is a benign shared file.
-	name := fmt.Sprintf("moai-factory-%d-%d.json", os.Getpid(), time.Now().UnixNano())
+	name := fmt.Sprintf("moai-kanban-%d-%d.json", os.Getpid(), time.Now().UnixNano())
 	path := filepath.Join(dir, name)
 
 	data, err := json.Marshal(map[string]string{"crossSessionInbound": "accept"})

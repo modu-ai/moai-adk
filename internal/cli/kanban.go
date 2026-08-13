@@ -1,13 +1,13 @@
 package cli
 
-// factory.go is the Factory Mode entry surface on the two single-backend
-// launchers. Factory Mode adds no runtime: it seeds a session whose
+// kanban.go is the Kanban Mode entry surface on the two single-backend
+// launchers. Kanban Mode adds no runtime: it seeds a session whose
 // orchestrator drives a plan -> run -> verify -> sync chain, and everything in
 // this file exists to get that signal into the session.
 //
-// @MX:NOTE: [AUTO] the factory signal travels through the PROCESS environment, not a threaded parameter
+// @MX:NOTE: [AUTO] the kanban signal travels through the PROCESS environment, not a threaded parameter
 // The one production consumer of the signal is the block-cap inject, five hops
-// below runCC and reached with the factory token already stripped from args.
+// below runCC and reached with the kanban token already stripped from args.
 // Threading a parameter there would change four signatures plus two test seams
 // to carry something the environment already delivers to the same line — and
 // the child process needs the variables anyway.
@@ -18,24 +18,24 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// The entry tokens. `-f` is unbound on cc / glm / cg; the commands that do bind
+// The entry tokens. `-k` is unbound on cc / glm / cg; the commands that do bind
 // it (`doctor config dump`, `state`) are distinct and unaffected.
 const (
-	factoryFlagLong  = "--factory"
-	factoryFlagShort = "-f"
+	kanbanFlagLong  = "--kanban"
+	kanbanFlagShort = "-k"
 )
 
-// factoryUnsupportedBackendSentinel is the machine-greppable marker on the
+// kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
 // `moai cg` rejection. A mixed leader/teammate backend contradicts the
 // one-session / one-backend / one-chain premise, so the invocation is rejected
 // rather than adapted.
-const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
+const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 
-// parseFactoryFlag extracts --factory / -f and its optional SPEC identifier
-// from args, returning the identifier, whether Factory Mode was requested, and
+// parseKanbanFlag extracts --kanban / -k and its optional SPEC identifier
+// from args, returning the identifier, whether Kanban Mode was requested, and
 // the remaining args with the consumed tokens removed.
 //
 // The SPEC identifier is optional: its absence means the chain begins at
@@ -47,7 +47,7 @@ const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 // forward everything from that marker onward verbatim. Both commands set
 // DisableFlagParsing, so a cobra flag registration would be silently inert —
 // this manual parser is the only mechanism available.
-func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) {
+func parseKanbanFlag(args []string) (spec string, enabled bool, rest []string) {
 	filtered := make([]string, 0, len(args))
 
 	for i := 0; i < len(args); i++ {
@@ -56,7 +56,7 @@ func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) 
 			filtered = append(filtered, args[i:]...)
 			break
 		}
-		if arg != factoryFlagLong && arg != factoryFlagShort {
+		if arg != kanbanFlagLong && arg != kanbanFlagShort {
 			filtered = append(filtered, arg)
 			continue
 		}
@@ -74,9 +74,9 @@ func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) 
 }
 
 // @MX:ANCHOR: [AUTO] the deferred restore is a correctness requirement, not hygiene
-// @MX:REASON: os.Setenv is process-global; an unrestored mutation leaves MOAI_FACTORY set for every later test in the internal/cli binary (making the block-cap negative control pass or fail by execution order) and lets a later production re-exec inherit factory semantics it was never given
+// @MX:REASON: os.Setenv is process-global; an unrestored mutation leaves MOAI_KANBAN set for every later test in the internal/cli binary (making the block-cap negative control pass or fail by execution order) and lets a later production re-exec inherit kanban semantics it was never given
 //
-// enterFactoryMode publishes the factory signal into the process environment
+// enterKanbanMode publishes the kanban signal into the process environment
 // and returns the function that puts the environment back.
 //
 // The restore returns each variable to its PRIOR PRESENCE, not merely its prior
@@ -86,50 +86,50 @@ func parseFactoryFlag(args []string) (spec string, enabled bool, rest []string) 
 //
 // Callers must defer the returned function so it also runs on the error path; a
 // restore that only runs on success is the same leak with a narrower trigger.
-func enterFactoryMode(specID string) func() {
-	restoreFactory := captureEnvState(config.EnvMoaiFactory)
-	restoreSpec := captureEnvState(config.EnvMoaiFactorySpec)
-	restoreID := captureEnvState(config.EnvMoaiFactoryID)
-	restoreAddr := captureEnvState(config.EnvMoaiFactoryLeadAddr)
+func enterKanbanMode(specID string) func() {
+	restoreKanban := captureEnvState(config.EnvMoaiKanban)
+	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
+	restoreID := captureEnvState(config.EnvMoaiKanbanID)
+	restoreAddr := captureEnvState(config.EnvMoaiKanbanLeadAddr)
 
-	_ = os.Setenv(config.EnvMoaiFactory, "1")
-	runID := factory.NewRunID()
-	_ = os.Setenv(config.EnvMoaiFactoryID, runID)
+	_ = os.Setenv(config.EnvMoaiKanban, "1")
+	runID := kanban.NewRunID()
+	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	if specID != "" {
-		_ = os.Setenv(config.EnvMoaiFactorySpec, specID)
+		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
 	}
 	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
 	// SessionStart hook to print. The actual messaging-substrate address is a
 	// run-phase concern; this conventional path-shaped value gives the notice
 	// a non-empty, grep-friendly address line.
-	_ = os.Setenv(config.EnvMoaiFactoryLeadAddr, "/tmp/moai-factory-"+runID)
+	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-"+runID)
 
 	return func() {
 		restoreAddr()
 		restoreID()
 		restoreSpec()
-		restoreFactory()
+		restoreKanban()
 	}
 }
 
-// enterFactoryCompanionMode publishes the companion signal for a `<role>-<id>`
+// enterKanbanCompanionMode publishes the companion signal for a `<role>-<id>`
 // label and returns the function that puts the environment back, on the same
-// prior-presence contract as enterFactoryMode.
+// prior-presence contract as enterKanbanMode.
 //
-// It deliberately does NOT set config.EnvMoaiFactory: that variable seeds the
+// It deliberately does NOT set config.EnvMoaiKanban: that variable seeds the
 // chain, and only the lead drives the chain. What the companion shares with the
 // lead is the raised Stop-hook block cap, which the inject reads from either
 // variable.
 //
 // The run id is derived from the label rather than carried separately, so the
 // two can never disagree.
-func enterFactoryCompanionMode(label string) func() {
-	restoreLabel := captureEnvState(config.EnvMoaiFactoryLabel)
-	restoreID := captureEnvState(config.EnvMoaiFactoryID)
+func enterKanbanCompanionMode(label string) func() {
+	restoreLabel := captureEnvState(config.EnvMoaiKanbanLabel)
+	restoreID := captureEnvState(config.EnvMoaiKanbanID)
 
-	_ = os.Setenv(config.EnvMoaiFactoryLabel, label)
-	if _, runID, ok := factory.SplitCompanionLabel(label); ok {
-		_ = os.Setenv(config.EnvMoaiFactoryID, runID)
+	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
+	if _, runID, ok := kanban.SplitCompanionLabel(label); ok {
+		_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	}
 
 	return func() {
@@ -151,7 +151,7 @@ func captureEnvState(key string) func() {
 	}
 }
 
-// recordFactorySession persists the session-scoped factory state record the
+// recordKanbanSession persists the session-scoped kanban state record the
 // orchestrator later fills in as the chain progresses.
 //
 // Best-effort throughout: an unresolvable session, an unwritable state
@@ -159,13 +159,13 @@ func captureEnvState(key string) func() {
 // That is a launch the chain drives without stored state, and downstream the
 // missing record reads as "no evidence" — which resolves in the safe direction,
 // running the sync-phase check rather than skipping it.
-func recordFactorySession(specID, backend string) {
+func recordKanbanSession(specID, backend string) {
 	projectRoot := launchProjectRoot()
 	sessionID := resolveLaunchSessionID("")
 	if projectRoot == "" || sessionID == "" {
 		return
 	}
-	factory.WriteBestEffort(projectRoot, factory.NewRecord(sessionID, specID, backend))
+	kanban.WriteBestEffort(projectRoot, kanban.NewRecord(sessionID, specID, backend))
 }
 
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never
@@ -177,14 +177,14 @@ const (
 
 // parseCompanionLabel reports the companion label in args, if any.
 //
-// It matches only the companion SHAPE (factory.SplitCompanionLabel) because the
+// It matches only the companion SHAPE (kanban.SplitCompanionLabel) because the
 // alternative discriminators are worse. Treating every named session as a
 // companion would
 // silently raise the Stop-hook block cap from 8 to 200 for unrelated work, and a
 // state file the lead writes and companions read buys nothing here beyond one
 // more file to keep consistent.
 //
-// The `--` discipline matches parseFactoryFlag, stripSpawnFlag, parseProfileFlag
+// The `--` discipline matches parseKanbanFlag, stripSpawnFlag, parseProfileFlag
 // and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
 // nothing beyond it. args is returned to the caller untouched.
 func parseCompanionLabel(args []string) (label string, ok bool) {
@@ -209,56 +209,56 @@ func parseCompanionLabel(args []string) (label string, ok bool) {
 			continue
 		}
 
-		if _, _, isCompanion := factory.SplitCompanionLabel(candidate); isCompanion {
+		if _, _, isCompanion := kanban.SplitCompanionLabel(candidate); isCompanion {
 			return candidate, true
 		}
 	}
 	return "", false
 }
 
-// rejectFactoryOnCG returns the sentinel-bearing error when a factory token
+// rejectKanbanOnCG returns the sentinel-bearing error when a kanban token
 // appears in a `moai cg` invocation, and nil otherwise.
-func rejectFactoryOnCG(args []string) error {
-	if _, enabled, _ := parseFactoryFlag(args); !enabled {
+func rejectKanbanOnCG(args []string) error {
+	if _, enabled, _ := parseKanbanFlag(args); !enabled {
 		return nil
 	}
 	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+
-		"which contradicts Factory Mode's one-session / one-backend / one-chain premise; "+
-		"use 'moai cc --factory' or 'moai glm --factory' instead", factoryUnsupportedBackendSentinel)
+		"which contradicts Kanban Mode's one-session / one-backend / one-chain premise; "+
+		"use 'moai cc --kanban' or 'moai glm --kanban' instead", kanbanUnsupportedBackendSentinel)
 }
 
-// factoryBranch enumerates the three dispatch outcomes of the §A.2 truth table.
-type factoryBranch int
+// kanbanBranch enumerates the three dispatch outcomes of the §A.2 truth table.
+type kanbanBranch int
 
 const (
-	factoryBranchNone     factoryBranch = iota // no-op — -f absent (regardless of --name shape)
-	factoryBranchLead                          // -f present, --name is NOT companion-shape
-	factoryBranchCompanion                     // -f present, --name IS companion-shape
+	kanbanBranchNone     kanbanBranch = iota // no-op — -k absent (regardless of --name shape)
+	kanbanBranchLead                          // -k present, --name is NOT companion-shape
+	kanbanBranchCompanion                     // -k present, --name IS companion-shape
 )
 
-// resolveFactoryBranch selects the dispatch branch from the combination of -f
+// resolveKanbanBranch selects the dispatch branch from the combination of -k
 // present and companion-shape --name present.
 //
 // This is the four-row truth table at spec.md §A.2 (REQ-FB-001, REQ-FB-002):
 //
-//	factoryEnabled | isCompanion || branch
+//	kanbanEnabled | isCompanion || branch
 //	---------------++--------------
-//	      true      |    false     || lead       (-f alone, or -f --name <non-companion>)
-//	      true      |    true      || companion  (-f --name <role>-<run-id>)
+//	      true      |    false     || lead       (-k alone, or -k --name <non-companion>)
+//	      true      |    true      || companion  (-k --name <role>-<run-id>)
 //	      false     |    false     || no-op      (--name <non-companion>, or no --name)
 //	      false     |    true      || no-op      (--name <companion-shape> alone — BREAKING from 94025ce0a)
 //
-// The two !factoryEnabled rows collapse to no-op because `isCompanion` is
-// consulted only when -f is present (spec.md §A.2.1 / AC-FB-027): a companion-
+// The two !kanbanEnabled rows collapse to no-op because `isCompanion` is
+// consulted only when -k is present (spec.md §A.2.1 / AC-FB-027): a companion-
 // shape --name alone, which entered companion mode under 94025ce0a, is
-// reclassified as a no-op by REQ-FB-001's no-`-f` clause.
-func resolveFactoryBranch(factoryEnabled, isCompanion bool) factoryBranch {
+// reclassified as a no-op by REQ-FB-001's no-`-k` clause.
+func resolveKanbanBranch(kanbanEnabled, isCompanion bool) kanbanBranch {
 	switch {
-	case factoryEnabled && isCompanion:
-		return factoryBranchCompanion
-	case factoryEnabled && !isCompanion:
-		return factoryBranchLead
+	case kanbanEnabled && isCompanion:
+		return kanbanBranchCompanion
+	case kanbanEnabled && !isCompanion:
+		return kanbanBranchLead
 	default:
-		return factoryBranchNone
+		return kanbanBranchNone
 	}
 }

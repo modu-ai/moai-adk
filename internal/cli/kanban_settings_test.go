@@ -10,17 +10,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestPrepareFactorySettingsWritesTransientFile is AC-FB-010. When the operator
+// TestPrepareKanbanSettingsWritesTransientFile is AC-FB-010. When the operator
 // did NOT pass --settings, the launcher writes a session-private file to
 // os.TempDir() containing {"crossSessionInbound": "accept"} and returns the
 // --settings flag pair pointing at it.
-func TestPrepareFactorySettingsWritesTransientFile(t *testing.T) {
-	for _, key := range []string{config.EnvMoaiFactorySettingsInjected} {
+func TestPrepareKanbanSettingsWritesTransientFile(t *testing.T) {
+	for _, key := range []string{config.EnvMoaiKanbanSettingsInjected} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
-	flag, cleanup := prepareFactorySettings([]string{"-p", "dev"})
+	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
 	t.Cleanup(cleanup)
 
 	if len(flag) != 2 || flag[0] != "--settings" {
@@ -36,8 +36,8 @@ func TestPrepareFactorySettingsWritesTransientFile(t *testing.T) {
 		t.Errorf("settings file in %q, want os.TempDir() = %q", dir, wantDir)
 	}
 	base := filepath.Base(path)
-	if !strings.HasPrefix(base, "moai-factory-") || !strings.HasSuffix(base, ".json") {
-		t.Errorf("settings filename %q does not match moai-factory-*.json", base)
+	if !strings.HasPrefix(base, "moai-kanban-") || !strings.HasSuffix(base, ".json") {
+		t.Errorf("settings filename %q does not match moai-kanban-*.json", base)
 	}
 
 	data, err := os.ReadFile(path)
@@ -53,8 +53,8 @@ func TestPrepareFactorySettingsWritesTransientFile(t *testing.T) {
 	}
 
 	// The injected signal env var MUST be set so the hook knows auto-accept is active.
-	if os.Getenv(config.EnvMoaiFactorySettingsInjected) != "1" {
-		t.Errorf("%s not set after injection", config.EnvMoaiFactorySettingsInjected)
+	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) != "1" {
+		t.Errorf("%s not set after injection", config.EnvMoaiKanbanSettingsInjected)
 	}
 
 	// Cleanup removes the file and restores the env var.
@@ -62,40 +62,40 @@ func TestPrepareFactorySettingsWritesTransientFile(t *testing.T) {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Errorf("settings file survived cleanup: %v", err)
 	}
-	if _, present := os.LookupEnv(config.EnvMoaiFactorySettingsInjected); present {
-		t.Errorf("%s still present after cleanup", config.EnvMoaiFactorySettingsInjected)
+	if _, present := os.LookupEnv(config.EnvMoaiKanbanSettingsInjected); present {
+		t.Errorf("%s still present after cleanup", config.EnvMoaiKanbanSettingsInjected)
 	}
 }
 
-// TestPrepareFactorySettingsHonorsOperatorSupplied is AC-FB-011. When the
+// TestPrepareKanbanSettingsHonorsOperatorSupplied is AC-FB-011. When the
 // operator passed --settings <file> on the command line, the launcher SHALL NOT
 // inject its own — no transient file is created, no flag is returned, and the
 // injected env var stays unset (the hook will print the verify advisory).
-func TestPrepareFactorySettingsHonorsOperatorSupplied(t *testing.T) {
-	for _, key := range []string{config.EnvMoaiFactorySettingsInjected} {
+func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
+	for _, key := range []string{config.EnvMoaiKanbanSettingsInjected} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
 	// Long form.
-	flag, cleanup := prepareFactorySettings([]string{"--settings", "/tmp/operator.json"})
+	flag, cleanup := prepareKanbanSettings([]string{"--settings", "/tmp/operator.json"})
 	t.Cleanup(cleanup)
 	if len(flag) != 0 {
 		t.Errorf("long form: expected no injection, got %v", flag)
 	}
-	if os.Getenv(config.EnvMoaiFactorySettingsInjected) == "1" {
+	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
 		t.Errorf("long form: injected env var set despite operator --settings")
 	}
 
 	// Equals form.
-	flag2, cleanup2 := prepareFactorySettings([]string{"--settings=/tmp/op2.json"})
+	flag2, cleanup2 := prepareKanbanSettings([]string{"--settings=/tmp/op2.json"})
 	t.Cleanup(cleanup2)
 	if len(flag2) != 0 {
 		t.Errorf("equals form: expected no injection, got %v", flag2)
 	}
 
 	// --settings before the pass-through marker is honored.
-	flag3, cleanup3 := prepareFactorySettings([]string{"--settings", "/tmp/op3.json", "--", "--settings", "/tmp/decoy.json"})
+	flag3, cleanup3 := prepareKanbanSettings([]string{"--settings", "/tmp/op3.json", "--", "--settings", "/tmp/decoy.json"})
 	t.Cleanup(cleanup3)
 	if len(flag3) != 0 {
 		t.Errorf("pre-marker form: expected no injection, got %v", flag3)
@@ -105,17 +105,17 @@ func TestPrepareFactorySettingsHonorsOperatorSupplied(t *testing.T) {
 	// a passthrough arg to claude, not a moai-level flag). The launcher DOES
 	// inject here — the operator's intent to supply --settings to moai's
 	// launcher is expressed before the marker only.
-	flag4, cleanup4 := prepareFactorySettings([]string{"--", "--settings", "/tmp/post.json"})
+	flag4, cleanup4 := prepareKanbanSettings([]string{"--", "--settings", "/tmp/post.json"})
 	t.Cleanup(cleanup4)
 	if len(flag4) != 2 {
 		t.Errorf("post-marker form: expected injection (operator --settings is passthrough), got %v", flag4)
 	}
 }
 
-// TestPrepareFactorySettingsFailsOpenOnWriteError is EC-4. When the transient
+// TestPrepareKanbanSettingsFailsOpenOnWriteError is EC-4. When the transient
 // file write fails, the launcher degrades to launching without the injected
 // --settings (never blocks the launch). The flag is empty and cleanup is safe.
-func TestPrepareFactorySettingsFailsOpenOnWriteError(t *testing.T) {
+func TestPrepareKanbanSettingsFailsOpenOnWriteError(t *testing.T) {
 	// Drive TempDir to an unwritable location by setting TMPDIR to a path under
 	// a read-only directory we create.
 	roDir := t.TempDir()
@@ -125,7 +125,7 @@ func TestPrepareFactorySettingsFailsOpenOnWriteError(t *testing.T) {
 	}
 	t.Setenv("TMPDIR", unwritable)
 
-	flag, cleanup := prepareFactorySettings([]string{"-p", "dev"})
+	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
 	t.Cleanup(cleanup)
 
 	if len(flag) != 0 {
