@@ -44,11 +44,11 @@ Web コンソールは次を編集します。
 
 コンソールのインターフェース言語は、ヘッダー右側のセレクタで English · 한국어 · 日本語 · 中文 の中から選びます。以下の画面は English にした状態のため、この節では画面に表示される英語表記を括弧に併記します。
 
-ヘッダーにはプロジェクト名と現在のプロファイル、主要な設定の要約 (`lang · model · effort · dev`) が横に並びます。その下にプロファイルセレクタとプロファイル(Profiles) カードが続き、ユーザー情報(Identity) · 言語(Language) · LLM · サードパーティ LLM(3rd Party LLM) · エージェント(Agents) · レポート(Report) の 6 つのタブが並びます。変更した値は最下部の設定を保存(Save settings) ボタンで記録します。
+ヘッダーにはプロジェクト名と現在のプロファイル、主要な設定の要約 (`lang · model · effort · dev`) が横に並びます。その下にプロファイルバーが続き、プロファイルセレクタのすぐ隣に追加・名称変更・削除コントロールがあるため、プロファイルの全ライフサイクルが1行に収まります（独立したプロファイルカードはありません）。プロファイルバーの下に、ユーザー情報(Identity) · 言語(Language) · LLM · サードパーティ LLM(3rd Party LLM) · ワークフロー(Workflow) · Git・ワークツリー(Git & Worktree) · 監査(Audit) · エージェント(Agents) · レポート(Report) の 9 つのタブが並びます。変更した値は最下部の設定を保存(Save settings) ボタンで記録します。
 
-![MoAI Web Console の初期画面。ヘッダーのプロジェクト名とプロファイル、プロファイル(Profiles) カード、6 つのタブ、ユーザー情報(Identity) タブの表示名(Display name) 入力欄、設定を保存(Save settings) ボタン](/images/profile/web-console-overview.png)
+![MoAI Web Console の初期画面。ヘッダーのプロジェクト名とプロファイル、プロファイルバー、9 つのタブ、ユーザー情報(Identity) タブの表示名(Display name) 入力欄、設定を保存(Save settings) ボタン](/images/profile/web-console-overview.png)
 
-プロファイル(Profiles) カードではプロファイルを切り替え、削除(Delete)し、新しいプロファイル名(New profile name) を入力してプロファイルを作成(Create profile) で新規作成できます。別のプロファイルを選ぶとヘッダーのプロファイル表示も一緒に変わります。以下は `moai-cowork` プロファイルに切り替えたあとに言語(Language) タブを開いた状態です。
+プロファイルバーではプロファイルを切り替え、名称変更し、削除(Delete)し、新しいプロファイル名(New profile name) を入力してプロファイルを作成(Create profile) で新規作成できます。別のプロファイルを選ぶとヘッダーのプロファイル表示も一緒に変わります。以下は `moai-cowork` プロファイルに切り替えたあとに言語(Language) タブを開いた状態です。
 
 ![moai-cowork プロファイルに切り替えたコンソールの言語(Language) タブ。会話言語(Conversation language)、コミットメッセージ言語(Commit message language)、コードコメント言語(Code comment language)、ドキュメント言語(Documentation language) の 4 項目](/images/profile/web-console-switch.png)
 
