@@ -102,8 +102,8 @@ the guard returned green. The committed tree contains no intermediate red state.
 
 ### Deviation — NFR-CKH-002 non-vacuity floor lowered (not anticipated by the SPEC)
 
-Removing the shipped `research` section (24 leaf keys) and `state.state_dir` (1 key) dropped the
-shipped-key surface from **914 to 889**, below the `minimumShippedKeys = 900` non-vacuity floor in
+Removing the shipped `research` section and `state.state_dir` dropped the shipped-key surface from
+**908 to 889**, below the `minimumShippedKeys = 900` non-vacuity floor in
 `internal/config/shipped_key_reader_test.go`, failing
 `TestShippedConfigKeysHaveReaders/non_vacuous_inventory`:
 
@@ -111,16 +111,41 @@ shipped-key surface from **914 to 889**, below the `minimumShippedKeys = 900` no
 shipped_key_reader_test.go:127: NFR-CKH-002: shipped-key enumeration has 889 entries, need >= 900
 ```
 
-The floor was lowered to `875` with an explanatory comment. Rationale: the floor is a magnitude
+The floor was lowered to `881` with an explanatory comment. Rationale: the floor is a magnitude
 sanity check against an enumeration that silently collapses, not a pin on the exact surface size,
-and 875 preserves a margin comparable to the original (914 − 900 = 14; 889 − 875 = 14). This is
-**not** an AC-CDS-012 suppression: no `research` allowlist or exception entry was added, and the
-AC-CDS-012 grep returns zero matches. It is nonetheless a guard-threshold relaxation the SPEC did
-not foresee, and is flagged here for auditor review.
+and 881 preserves the original margin exactly — 908 − 900 = 8, and 889 − 881 = 8. This is **not** an
+AC-CDS-012 suppression: no `research` allowlist or exception entry was added, and the AC-CDS-012
+grep returns zero matches. It is nonetheless a guard-threshold relaxation the SPEC did not foresee,
+and is flagged here for auditor review.
 
-The delta was verified as fully attributable rather than a symptom of an incomplete removal: with
-both files transiently restored the count read 890, and with the Go metadata also restored the
-surface is 914 — matching 889 + 24 + 1 exactly.
+The delta is fully attributable rather than a symptom of an incomplete removal. Both endpoint counts
+were measured directly, by raising the floor to an unreachable value so the assertion prints the
+observed count, then restoring the file:
+
+```
+# pre-removal tree (7f61332ef)
+shipped_key_reader_test.go:127: NFR-CKH-002: shipped-key enumeration has 908 entries, need >= 99999
+# post-removal tree (this branch)
+shipped_key_reader_test.go:132: NFR-CKH-002: shipped-key enumeration has 889 entries, need >= 99999
+```
+
+908 − 889 = **19**. The enumeration counts **leaf** keys only: `research.yaml` carried 24 non-root
+keys but only 18 leaves (`enabled`; `passive.enabled`, `passive.correction_window_seconds`;
+`pattern_thresholds.{heuristic,rule,high_confidence}`; `active.*` ×5; `safety.{worktree_isolation,
+canary_regression_threshold}`; `rate_limits.*` ×3; `dashboard.*` ×2), and 18 + `state_dir` = 19
+accounts for the delta with nothing left over.
+
+The other half of the assertion was never at risk: `inventoryCount` reads **952 on both trees**,
+unchanged by this removal, so only the `shippedKeys` comparison ever crossed the floor.
+
+> **Correction (orchestrator verification).** An earlier revision of this section reported the
+> pre-removal surface as **914**, the delta as **25 keys**, and the preserved margin as **14**. None
+> of the three was measured: 914 was reconstructed arithmetically as `889 + 24 + 1`, the 24 counted
+> branch nodes the enumeration does not count, and the original margin was 8 rather than 14 — which
+> made the `875` floor looser than the one it replaced, not equivalent to it. The figures above
+> replace them and were each observed by the commands shown. The conclusion those figures were
+> offered to support — that the removal is complete rather than partially masked — survives the
+> correction, and is in fact established more cleanly by the leaf-count arithmetic.
 
 ### Verification commands (post-change)
 
