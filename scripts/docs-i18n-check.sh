@@ -178,6 +178,17 @@ section "Check 3: H1 heading existence"
 
 check_h1() {
   local file="$1"
+  # geekdoc renders the frontmatter `title:` field as the page <h1>, so a
+  # body-level `#` H1 is redundant when a title is present. Treat a non-empty
+  # frontmatter title as satisfying the H1 requirement; only pages WITHOUT a
+  # frontmatter title must carry a body H1.
+  local fm_block fm_title
+  fm_block=$(awk '/^---[[:space:]]*$/{c++; if(c==1){f=1;next}; if(c==2)exit} f' "${file}" 2>/dev/null)
+  fm_title=$(printf '%s\n' "${fm_block}" | sed -n 's/^title:[[:space:]]*//p' | head -n1)
+  fm_title="${fm_title%\"}"; fm_title="${fm_title#\"}"; fm_title="${fm_title%\'}"; fm_title="${fm_title#\'}"
+  fm_title="${fm_title## }"; fm_title="${fm_title%% }"
+  [[ -n "${fm_title}" ]] && return
+  # No frontmatter title: require a body H1.
   # Skip frontmatter, then look for first non-empty H1.
   if ! awk '
     BEGIN { in_fm = 0; fm_done = 0 }

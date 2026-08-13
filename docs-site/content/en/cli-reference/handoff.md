@@ -6,6 +6,8 @@ draft: false
 
 `moai handoff` manages the auto-resume handoff pending record. It saves or clears the paste-ready resume body used to continue work across a session boundary (`/clear`). When `handoff.mode: auto` is set, the saved record is auto-injected at the next session start.
 
+When a single SPEC spans multiple sessions, the next session has to reassemble context from scratch if the previous session's progress is lost, wasting both tokens and time. So this command uses the orchestrator's 6-block resume body as the medium to carry the previous SPEC step's preconditions, verifications, and execution commands into the next session. It is what gives manager agents an unbroken re-entry point when driving long epics back-to-back.
+
 ## Subcommands
 
 | Command | Description |

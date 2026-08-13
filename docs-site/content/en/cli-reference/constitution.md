@@ -6,6 +6,8 @@ draft: false
 
 `moai constitution` queries and validates the zone registry (the codification of FROZEN/EVOLVABLE zones). It is a command tree that governs which parts of the rules are FROZEN and cannot be casually changed, and which parts are EVOLVABLE.
 
+When a single SPEC flows through multiple manager agents and harness rules, accidentally touching a core invariant breaks the consistency of the entire system. So this command tags each rule with its zone and mechanically verifies whether the FROZEN area has drifted from the source files. Hanging `moai constitution guard` off the CI pipeline catches violations before merge, which is why it serves as the safety net during large-scale rule overhauls.
+
 ## Subcommands
 
 | Command | Description |

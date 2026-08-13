@@ -48,6 +48,36 @@ graph TD
     D --> G[独立工作]
 ```
 
+## 工作空间的两层：L1 与 L2
+
+MoAI-ADK 处理的 worktree 分为两层。两者都构建在 git worktree（一个 git 仓库
+管理多个工作目录的根本机制）之上，但 **谁创建、住在哪里、存活多久** 各不相同。
+弄清这个差别，就不会再困惑"我现在到底在哪个 worktree 里工作？"。
+
+1. **L1 — `.claude/worktrees/`**：位于项目目录内部。由 Claude Code 运行时自行
+   创建，会话结束后处于干净状态的树会自动清理。可以把它理解成会话级的临时空间。
+2. **L2 — `~/.moai/worktrees/`**：位于项目之外、用户主目录之下。由 MoAI 为
+   SPEC 级并行开发经用户 opt-in 后创建，在 run 与 sync 阶段期间复用同一棵树。
+   废弃需要用户通过 `moai worktree done` 显式执行。
+
+下面用一张简图把两层的方位与主体一眼看清。更深入的创建/废弃生命周期以及
+`isolation: worktree` 行为，请参阅 [平台基础 worktree 文档](/zh/claude-code/agentic/worktrees)。
+
+```mermaid
+flowchart TD
+    Repo[一个 git 仓库<br/>共享 .git 对象数据库]
+    Repo --> L1[L1 — .claude/worktrees/<br/>项目内，会话级临时]
+    Repo --> L2[L2 — ~/.moai/worktrees/<br/>项目外，SPEC 级持久]
+    L1 --> Who1[Claude Code 运行时自行创建]
+    L2 --> Who2[MoAI 经用户 opt-in 创建]
+```
+
+关键在于 **共享与隔离的分离**。仓库的历史与远程（remote）在一处统一管理，而
+工作目录和绑定其上的 LLM 配置按树彻底分开。因此无论在哪个 worktree 中提交，
+其他 worktree 都能立刻识别该提交，分支不会互相缠绕。MoAI-ADK 在此之上叠加了
+把"进入哪个 worktree"和"以哪种 LLM 模式运行"一次性捆绑的启动器（`moai cc` ·
+`moai glm` · `moai cg`）。
+
 ## 核心工作流
 
 ### 三阶段开发流程

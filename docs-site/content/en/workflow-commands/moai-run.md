@@ -533,9 +533,22 @@ The quality issues are reported to the user, and you are asked whether to retry 
 
 `/moai run` performs **implementation only, based on an already-created SPEC**. `/moai` automatically runs the **entire workflow** from SPEC creation through implementation to documentation.
 
+## Factory Mode — run a SPEC all the way through (v3.1)
+
+`/moai run` drives a single phase. The verify and sync steps after it require the user to issue another command. **Factory Mode** is the entry switch that automates this "chaining". Start the session launcher with `--factory`, and the four phases — `plan → run → verify → sync` — are chained automatically on top of a single goal preset (`factory_chain`).
+
+```bash
+# Enter one SPEC in Factory Mode — all the way through to completion
+$ claude --factory SPEC-AUTH-001
+```
+
+The four human gates (implementation kickoff approval, the verify CRITICAL/HIGH decision, and two sync gates) still fire as-is. Factory Mode does not "skip human gates"; it automates the "round-trip between phases". It is rejected by the mixed-backend launcher (`moai cg`), and it runs within a four-hour wall-clock ceiling. The detailed contract and the four-phase flow are covered in [Factory Mode](/en/advanced/factory-mode).
+
 ## Related Documents
 
 - [Domain-Driven Development](/en/core-concepts/ddd) - Detailed ANALYZE-PRESERVE-IMPROVE cycle explanation
 - [TRUST 5 Quality System](/en/core-concepts/trust-5) - Detailed quality gate explanation
 - [/moai plan](./moai-plan) - Previous step: SPEC document creation
 - [/moai sync](./moai-sync) - Next step: doc synchronization and PR
+- [/moai goal](./moai-goal) - the `ac_converge` goal for run-phase autonomy (v3.1)
+- [Factory Mode](/en/advanced/factory-mode) - the entry switch that chains run→verify→sync automatically (v3.1)
