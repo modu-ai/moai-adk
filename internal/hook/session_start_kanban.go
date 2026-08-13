@@ -60,43 +60,65 @@ func kanbanBootstrapNotice(lang string) string {
 // printed. The role-name clause is removed from the companion notice
 // (AC-FB-016) to avoid colliding with the role-declaration contract owned by
 // SPEC-KANBAN-BOOTSTRAP-001 REQ-KS-006 (spec.md §A.6).
+// The notice is assembled as five blank-separated blocks so the launch commands
+// stand apart from the prose that frames them — the operator is scanning for the
+// four lines to copy, not reading top to bottom. Blocks are built here rather
+// than baked into the message table, so every locale lays out identically and a
+// missing terminator cannot weld two lines together.
 func kanbanLeadNotice(runID, lang string) string {
 	if runID == "" {
 		return ""
 	}
 	m := kanbanMessagesFor(lang)
 
-	var b strings.Builder
-	fmt.Fprintf(&b, m.leadHeader, runID)
-	b.WriteString(m.leadManual)
+	// (a) run id, and (b) why bootstrap is manual — stated rather than left to
+	// be discovered.
+	blocks := []string{
+		fmt.Sprintf(m.leadHeader, runID),
+		m.leadManual,
+	}
+
+	// (c) the four companion launch lines, each carrying -k (AC-FB-015) so the
+	// operator copies a kanban-membership command, not the bare --name form the
+	// prior-art notice printed.
+	launch := make([]string, 0, len(kanban.CompanionRoles))
 	for _, role := range kanban.CompanionRoles {
-		fmt.Fprintf(&b, "moai cc -k --name %s\n", kanban.CompanionLabel(role, runID))
+		launch = append(launch, "moai cc -k --name "+kanban.CompanionLabel(role, runID))
 	}
-	b.WriteString(m.glmSubstitute)
-	// (c) leader socket path — printed only when the launcher captured one.
+	blocks = append(blocks, strings.Join(launch, "\n"))
+
+	// (d) how to move a companion to the GLM backend, plus the leader socket
+	// path when the launcher captured one.
+	backend := []string{m.glmSubstitute}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
-		fmt.Fprintf(&b, m.leaderSocket, addr)
+		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}
-	// (d) inbound-automation notice: the line printed depends on whether the
-	// launcher injected a transient settings file (auto-accept is active) or
-	// whether the operator supplied their own --settings / a write failure
-	// degraded to fail-open (the operator must verify the field themselves).
+	blocks = append(blocks, strings.Join(backend, "\n"))
+
+	// (e) the inbound-automation notice, the SPEC identifier, and the Epic Status
+	// pointer — the run's standing context.
+	//
+	// The automation line printed depends on whether the launcher injected a
+	// transient settings file (auto-accept is active) or whether the operator
+	// supplied their own --settings / a write failure degraded to fail-open (the
+	// operator must verify the field themselves). The SPEC line appears ONLY when
+	// MOAI_KANBAN_SPEC is set. The Epic Status pointer (SPEC-EPIC-STATUS-001
+	// REQ-ES-012) lets a kanban session surface epic context without leaving its
+	// current turn; it is informational only — full kanban orchestration is owned
+	// by the Kanban/Kanban Bootstrap SPEC family.
+	var context []string
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
-		b.WriteString(m.settingsAuto)
+		context = append(context, m.settingsAuto)
 	} else {
-		b.WriteString(m.settingsVerify)
+		context = append(context, m.settingsVerify)
 	}
-	// (e) SPEC identifier — printed ONLY when MOAI_KANBAN_SPEC is set.
 	if spec := os.Getenv(config.EnvMoaiKanbanSpec); spec != "" {
-		fmt.Fprintf(&b, m.specLine, spec)
+		context = append(context, fmt.Sprintf(m.specLine, spec))
 	}
-	// (f) Epic Status pointer (SPEC-EPIC-STATUS-001 REQ-ES-012): a single line
-	// pointing at `moai epic status <prefix>` so a kanban session can surface
-	// epic context without leaving its current turn. The pointer is informational
-	// only — full kanban orchestration is owned by the Kanban/Kanban Bootstrap
-	// SPEC family.
-	b.WriteString(m.epicPointer)
-	return b.String()
+	context = append(context, m.epicPointer)
+	blocks = append(blocks, strings.Join(context, "\n"))
+
+	return strings.Join(blocks, "\n\n") + "\n"
 }
 
 // kanbanCompanionNotice is the companion branch: a single role-less line

@@ -135,6 +135,70 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 	}
 }
 
+// TestKanbanLeadNoticeBlockLayout pins the five-block layout. The operator is
+// scanning for the four lines to copy, so the launch commands must stand apart
+// as their own blank-separated block — in every locale, since the builder owns
+// the layout and the message table carries no spacing of its own.
+func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
+	for lang := range kanbanLocales {
+		t.Run(lang, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
+			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjq2bd")
+			t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
+
+			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice(lang), "\n"), "\n\n")
+			if len(blocks) != 5 {
+				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
+			}
+			// Block 3 is the launch block: exactly the four commands, nothing else.
+			launch := strings.Split(blocks[2], "\n")
+			if len(launch) != 4 {
+				t.Errorf("launch block holds %d lines, want 4:\n%q", len(launch), launch)
+			}
+			for _, line := range launch {
+				if !strings.HasPrefix(line, "moai cc -k --name ") {
+					t.Errorf("launch block carries a non-command line: %q", line)
+				}
+			}
+			// No block may be empty, and no line may be blank inside a block.
+			for i, b := range blocks {
+				if strings.TrimSpace(b) == "" {
+					t.Errorf("block %d is empty", i)
+				}
+			}
+		})
+	}
+}
+
+// TestKanbanLeadNoticeSPECKeepsItsOwnLine is the regression case for a defect the
+// message table's trailing-newline convention used to invite: the SPEC line had
+// no terminator, so with MOAI_KANBAN_SPEC set the Epic pointer welded itself onto
+// the same line ("SPEC: SPEC-FOO-001Epic context: run ..."). Layout now belongs
+// to the builder, so the two cannot share a line.
+func TestKanbanLeadNoticeSPECKeepsItsOwnLine(t *testing.T) {
+	for lang := range kanbanLocales {
+		t.Run(lang, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
+			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
+
+			for _, line := range strings.Split(kanbanBootstrapNotice(lang), "\n") {
+				if !strings.Contains(line, "SPEC-FOO-001") {
+					continue
+				}
+				if !strings.HasSuffix(strings.TrimSpace(line), "SPEC-FOO-001") {
+					t.Errorf("locale %q: the SPEC line carries trailing content: %q", lang, line)
+				}
+				return
+			}
+			t.Errorf("locale %q: notice omits the SPEC identifier", lang)
+		})
+	}
+}
+
 // TestSessionStartKanbanChannelsCarryTheirOwnLanguage is the acceptance case for
 // the split: the operator-facing systemMessage is rendered in
 // conversation_language while the agent-facing additionalContext stays English,

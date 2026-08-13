@@ -8,6 +8,12 @@ package hook
 // a terminal — translating them would break the paste, so they stay in the
 // builder (session_start_kanban.go) and never enter this table.
 //
+// Layout is not here either. No field carries a leading or trailing newline: the
+// builder joins lines within a block and blank-separates the blocks, so the
+// notice is laid out identically in every locale by construction. A locale
+// cannot drift into its own spacing, and a field cannot silently weld itself to
+// the next line by forgetting a terminator.
+//
 // Which locale applies is decided by the channel, not by preference. The notice
 // has two audiences reading two different surfaces, and .moai/config/sections/
 // language.yaml already draws that line: `agent_prompt_language` (English) for
@@ -21,8 +27,11 @@ package hook
 // instruction at all.
 const langEnglish = "en"
 
-// kanbanMessages is the operator-facing prose of one locale. Fields carrying a
-// %s are format strings; the verb is applied by the builder.
+// kanbanMessages is the operator-facing prose of one locale.
+//
+// Fields carrying a %s are format strings. No field carries a trailing newline;
+// leadManual carries one internal newline because it is two sentences the
+// operator reads as separate lines.
 type kanbanMessages struct {
 	leadHeader     string // run id
 	leadManual     string
@@ -43,51 +52,52 @@ type kanbanMessages struct {
 // configuration, not for some population of unsupported locales.
 var kanbanLocales = map[string]kanbanMessages{
 	langEnglish: {
-		leadHeader: "Kanban Mode: run %s, lead session.\n",
-		leadManual: "This session drives the chain; the four companions below are launched by hand, " +
-			"one per new terminal, because a session cannot launch another session.\n",
-		glmSubstitute:  "Substitute 'moai glm -k --name ...' for 'moai cc -k --name ...' on any companion to run it on the GLM backend.\n",
-		leaderSocket:   "Leader socket: %s\n",
-		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.\n",
-		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.\n",
+		leadHeader: "Kanban Mode: run %s, lead session.",
+		leadManual: "This session drives the kanban chain.\n" +
+			"The four companions below are launched by hand, one per new terminal, " +
+			"because a session cannot launch another session.",
+		glmSubstitute:  "Substitute 'moai glm -k --name ...' for 'moai cc -k --name ...' on any companion to run it on the GLM backend.",
+		leaderSocket:   "Leader socket: %s",
+		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.",
+		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic context: run `moai epic status <prefix>` for a disk-grounded milestone map.\n",
+		epicPointer:    "Epic context: run `moai epic status <prefix>` for a disk-grounded milestone progress view.",
 		companionJoin:  "Kanban Mode: joined run %s.",
 	},
 	"ko": {
-		leadHeader: "칸반 모드: run %s, 리더 세션.\n",
-		leadManual: "이 세션이 체인을 주도합니다. 아래 네 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — " +
-			"세션은 다른 세션을 띄울 수 없습니다.\n",
-		glmSubstitute:  "동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.\n",
-		leaderSocket:   "리더 소켓: %s\n",
-		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.\n",
-		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.\n",
+		leadHeader: "칸반 모드: run %s, 리더 세션.",
+		leadManual: "이 세션이 칸반 체인을 주도합니다.\n" +
+			"아래 네 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
+		glmSubstitute:  "동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
+		leaderSocket:   "리더 소켓: %s",
+		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
+		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
 		specLine:       "SPEC: %s",
-		epicPointer:    "에픽 맥락: `moai epic status <prefix>` 를 실행하면 디스크 기반 마일스톤 지도를 볼 수 있습니다.\n",
+		epicPointer:    "에픽 맥락: `moai epic status <prefix>` 를 실행하면 디스크 기반 마일스톤 진행 상태를 볼 수 있습니다.",
 		companionJoin:  "칸반 모드: run %s 에 합류했습니다.",
 	},
 	"ja": {
-		leadHeader: "かんばんモード: run %s、リーダーセッション。\n",
-		leadManual: "このセッションがチェーンを進行します。以下の 4 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — " +
-			"セッションが別のセッションを起動することはできません。\n",
-		glmSubstitute:  "併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。\n",
-		leaderSocket:   "リーダーソケット: %s\n",
-		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。\n",
-		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。\n",
+		leadHeader: "かんばんモード: run %s、リーダーセッション。",
+		leadManual: "このセッションがかんばんチェーンを進行します。\n" +
+			"以下の 4 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。",
+		glmSubstitute:  "併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
+		leaderSocket:   "リーダーソケット: %s",
+		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。",
+		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic の文脈: `moai epic status <prefix>` を実行すると、ディスク上の情報に基づくマイルストーン一覧が得られます。\n",
+		epicPointer:    "Epic の文脈: `moai epic status <prefix>` を実行すると、ディスク上の情報に基づくマイルストーンの進捗が得られます。",
 		companionJoin:  "かんばんモード: run %s に参加しました。",
 	},
 	"zh": {
-		leadHeader: "看板模式：run %s，主导会话。\n",
-		leadManual: "本会话负责推进整条链路。下面四个协同会话需要各自新开一个终端手动启动 —— " +
-			"会话无法启动另一个会话。\n",
-		glmSubstitute:  "如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。\n",
-		leaderSocket:   "主导会话套接字：%s\n",
-		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。\n",
-		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。\n",
+		leadHeader: "看板模式：run %s，主导会话。",
+		leadManual: "本会话负责推进整条看板链路。\n" +
+			"下面四个协同会话需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。",
+		glmSubstitute:  "如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",
+		leaderSocket:   "主导会话套接字：%s",
+		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。",
+		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic 上下文：运行 `moai epic status <prefix>` 可获取基于磁盘的里程碑视图。\n",
+		epicPointer:    "Epic 上下文：运行 `moai epic status <prefix>` 可查看基于磁盘的里程碑进展。",
 		companionJoin:  "看板模式：已加入 run %s。",
 	},
 }
