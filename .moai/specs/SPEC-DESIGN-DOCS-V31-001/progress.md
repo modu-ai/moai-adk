@@ -152,14 +152,42 @@
 
 **M3 status: PASS.** All 3 MUST ACs PASS. Badge mechanism (shortcode + sidebar dual-source union + page-header dual-source union) + translation manifest delivered. M4 page creation will activate the section-level badges for the pre-populated `new_items:` slugs.
 
+### M4–M5 — Korean book-depth rewrite + ko gate (merged `b50c4de71`, PR #1490)
+
+KO SSOT pages rewritten to introductory-book depth; ko-gate passed 4/4 (142-page set: frontmatter / H1 / glossary / parity) at the M5 boundary. Evidence: PR #1490 and the M4/M5 session records.
+
+### M6 — en/ja/zh derivation (merged `734ede821`, PR #1498)
+
+4-locale parity gate 0 (en/ja/zh each fully verified against the frozen ko source at that boundary; 141 pages per locale pre-M6.5).
+
+### M6.5 — MCP server + kanban-mode docs (merged `413029011`, PR #1507)
+
+4-locale 142 pages each; `DOCS_I18N_STRICT=1` gate 0 errors / 0 warnings; forbidden-term grep ("factory", excluding `ExecutionFactory`/`_meta`) = 0; README 4-file sync in the same PR.
+
+### Pre-M7 debt cleanup (merged `aa650dd08`, PR #1508)
+
+Emphasis-marker spacing canonicalized (`**X**(Y)` → `**X** (Y)`) across 173 sites / 69 files (ko 96 / ja 9 / zh 68; en already clean); README.ja subcommand table dropped the retired `/moai design` (aligning with en/zh; zh verified clean). Verified: violation grep 0, i18n gate 0/0, hugo build exit 0 zero warnings.
+
+### M7 — final build, version bump, badge inventory (merged `7bdf1503b`, PR #1509)
+
+hugo.toml [params] SSOT bumped: version `v3.0.2` → `v3.1-rc.1`, releaseDate `2026-07-16` → `2026-08-13`. NEW-badge inventory aligned: `added_in: "v3.1"` propagated to en/ja/zh `ultracode-workflows.md` + `claude-code/_index.md` (9 files × 4 locales). Exit criteria verified: (1) `hugo --gc --minify` exit 0 zero warnings; (2) version bumped; (3) `added_in` inventory 9/9/9/9 matching the M3 manifest catalog 1:1 (no missing, no extra); (4) i18n gate 0/0 + `new_items` hash-identical across locales; (5) mermaid LR/RL grep 0.
+
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Last run-phase output: M7, merged as `7bdf1503b` (PR #1509).
+
+- Final docs gates at the M7 boundary (this tree, this run):
+  - `hugo -s docs-site --gc --minify --renderToMemory --quiet` → exit 0 (zero warnings)
+  - `DOCS_I18N_STRICT=1 scripts/docs-i18n-check.sh` → Errors 0 / Warnings 0, all 4 locales × 142 pages
+  - Violation greps (emphasis-paren / factory-term / mermaid LR-RL) → 0 matches each
+- Milestone ladder on main: `77dc2043a` (M0–M3 entry-prep, PR #1447) → `b50c4de71` (M1–M5 KO SSOT, PR #1490) → `734ede821` (M6, PR #1498) → `413029011` (M6.5, PR #1507) → `aa650dd08` (pre-M7 debt cleanup, PR #1508) → `7bdf1503b` (M7, PR #1509).
 
 ---
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: pending-backfill-v31-sync-close
+
+This is the single sync commit closing SPEC-DESIGN-DOCS-V31-001 (tier L, 3-phase close: plan → run → sync). The `in-progress → implemented → completed` transition rides this commit (spec.md frontmatter `status` + `updated` only; SPEC body content untouched per the ownership matrix). A commit cannot know its own hash, so the real squash SHA of this sync commit is backfilled in a follow-up commit (D3 placeholder exemption).
