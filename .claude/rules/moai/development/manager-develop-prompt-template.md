@@ -145,6 +145,7 @@ go build ./...
 GOOS=windows GOARCH=amd64 go build ./...
 
 # 3. Measure the existing lint baseline (to distinguish NEW vs pre-existing)
+# Linter set + default timeout governed by root .golangci.yml; the --timeout=2m flag here overrides it for the quick-check budget.
 golangci-lint run --timeout=2m 2>&1 | tail -5
 
 # 4. Print the list of PRESERVE target files
@@ -201,6 +202,7 @@ $ grep -rn 'AskUserQuestion' <pkg> | grep -v "_test.go" | grep -v "// "
 **E5. Lint Status (distinguish NEW vs baseline)**
 ```
 $ golangci-lint run --timeout=2m
+# Linter set + default timeout governed by root .golangci.yml; the --timeout=2m flag here overrides it for the quick-check budget.
 # On NEW issues, report explicitly; mark pre-existing baseline separately
 ```
 
