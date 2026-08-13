@@ -116,7 +116,7 @@ AC 명령의 측정 대상을 "추가된 절"로 정정하는 것은 manager-spe
 
 ```yaml
 sync_complete_at: 2026-08-14
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 144573336d07da19f4b8a50aa26c38db2704afb5
 sync_status: audit-ready
 run_status_carried_forward: PASS-WITH-DEBT   # §E.3 verdict carried verbatim — NOT laundered into a clean PASS
 b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-AGENT-MODEL-ENFORCE-001' CHANGELOG.md → 0 before emission)

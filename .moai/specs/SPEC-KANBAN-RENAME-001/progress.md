@@ -274,7 +274,7 @@ Recorded for the next reader: `internal/cli` takes ~227s and `TestGateCmd_RunE_B
 
 ```yaml
 sync_complete_at: 2026-08-14
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 144573336d07da19f4b8a50aa26c38db2704afb5
 sync_status: audit-ready
 b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-KANBAN-RENAME-001' CHANGELOG.md → 0 before emission)
 b12_self_test_b_ac_count_match: PASS (28 distinct AC in acceptance.md; CHANGELOG entry references 28 AC — matches §E.3 28/28 PASS)
