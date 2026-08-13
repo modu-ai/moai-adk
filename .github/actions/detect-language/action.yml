@@ -20,16 +20,16 @@ runs:
         LANG_FILE=$(find . \( \
             -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" \
             -o -name "*.rs" -o -name "*.java" -o -name "*.kt" -o -name "*.cs" \
-            -o -name "*.rb" -o -name "*.php" -o -name "*.ex" -o -name "*.cpp" \
+            -o -name "*.rb" -o -name "*.php" -o -name "*.ex" -o -name "*.exs" -o -name "*.cpp" \
             -o -name "*.scala" -o -name "*.r" -o -name "*.dart" -o -name "*.swift" \
           \) \
           -not -path './node_modules/*' \
           -not -path './vendor/*' \
           -not -path './.git/*' \
           -print -quit 2>/dev/null)
-        LANG_COUNT="${LANG_FILE##*.}"
+        LANG_EXT="${LANG_FILE##*.}"
 
-        case "$LANG_COUNT" in
+        case "$LANG_EXT" in
           go) echo "language=go" >> $GITHUB_OUTPUT ;;
           py) echo "language=python" >> $GITHUB_OUTPUT ;;
           ts) echo "language=typescript" >> $GITHUB_OUTPUT ;;

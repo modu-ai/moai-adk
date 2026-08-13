@@ -10,8 +10,10 @@ name: docs i18n parity check
 #     job log, and produces a sticky comment summary — but does NOT block
 #     the merge. This gives contributors visibility into the 35 existing
 #     drifts without blocking routine work.
-#   Phase 2 (after baseline is cleared): flip DOCS_I18N_STRICT=1 to block
-#     further regressions.
+#   Phase 2 (flip trigger: scripts/docs-i18n-check.sh reports 0 ERROR drifts
+#     on main — track via the check-output.txt "❌ ERROR" count): set the PR
+#     and push `strict` decisions to `true` in the "Determine strictness" step
+#     below, enforcing DOCS_I18N_STRICT=1 to block further regressions.
 #
 # Manual runs are always strict so maintainers can validate a fix set
 # before flipping the env flag globally.
