@@ -170,7 +170,7 @@ The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and t
 ### Decision Tree
 
 ```
-Is this a parallel write workers within a hierarchical team (e.g., manager-lead fan-out)?
+Is this a parallel write workers within a hierarchical team (e.g., manager-kanban fan-out)?
   YES → Use Agent(isolation: "worktree") for write agents
         Do NOT use isolation for read-only agents
   NO ↓
@@ -191,7 +191,7 @@ Is this a one-shot sub-agent task?
 
 ### HARD Rules
 
-- [ZONE:Evolvable] [HARD] Implementation leaf workers spawned in parallel by `manager-lead` (or any parallel-write fan-out shape) MUST use `isolation: "worktree"` when spawned via Agent()
+- [ZONE:Evolvable] [HARD] Implementation leaf workers spawned in parallel by `manager-kanban` (or any parallel-write fan-out shape) MUST use `isolation: "worktree"` when spawned via Agent()
 - [ZONE:Evolvable] [HARD] Read-only teammates (read-only research/review roles: researcher / analyst / reviewer) MUST NOT use `isolation: "worktree"` — read-only enforcement rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit); the spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213, so a teammate is read-only only when its tools cannot write
 - [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy retained agents (manager-develop), per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist (e.g. backend / frontend / devops / refactoring), and team-mode role profiles (implementer, tester, designer).
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->

@@ -25,8 +25,8 @@ index:
   title: "에이전트 가이드"
 "builder-agents":
   title: "빌더 에이전트 가이드"
-"manager-lead":
-  title: "manager-lead 계층형 팀"
+"manager-kanban":
+  title: "manager-kanban 계층형 팀"
 "hooks-guide":
   title: "Hooks 가이드"
 "hooks-reference":
@@ -68,6 +68,6 @@ index:
 new_items:
   - kanban-mode
   - bas-navigator
-  - manager-lead
+  - manager-kanban
   - multi-model-audit
   - autonomy-tier

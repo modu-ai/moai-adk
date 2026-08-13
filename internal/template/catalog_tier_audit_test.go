@@ -248,7 +248,7 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester added (10th MoAI-custom
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
-	// SPEC-NAVIGATOR-SYNC hierarchical-team (2026-08): manager-lead added
+	// SPEC-NAVIGATOR-SYNC hierarchical-team (2026-08): manager-kanban added
 	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator);
 	// net +1 = 11.
 	const expectedAgentCount = 11

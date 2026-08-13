@@ -121,10 +121,10 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 条件声明目标武装 | **编排器主会话专用**（未连线到任何智能体） | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 读取已武装的目标状态 | manager-develop, manager-lead | `moai goal status` |
-| `mcp__moai__session_list` | 活跃 moai 会话列表 | manager-lead | `moai session list` |
+| `mcp__moai__goal_status` | 读取已武装的目标状态 | manager-develop, manager-kanban | `moai goal status` |
+| `mcp__moai__session_list` | 活跃 moai 会话列表 | manager-kanban | `moai session list` |
 
-`goal_arm` 是编排器专用的——自治循环武装是编排器关注的事，所以不在智能体内调用。这是为了保留平面层级武装表面而做的设计。`goal_status` 是 manager-develop / manager-lead 读取已武装条件进度的通道，`session_list` 是 manager-lead 在 fan-out 前检测同一检出上并发会话的竞争缓解手段。
+`goal_arm` 是编排器专用的——自治循环武装是编排器关注的事，所以不在智能体内调用。这是为了保留平面层级武装表面而做的设计。`goal_status` 是 manager-develop / manager-kanban 读取已武装条件进度的通道，`session_list` 是 manager-kanban 在 fan-out 前检测同一检出上并发会话的竞争缓解手段。
 
 ### 跨模型审计（第二意见）
 

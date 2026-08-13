@@ -121,10 +121,10 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 条件宣言ゴール武装 | **オーケストレータ メインセッション専用**（いかなるエージェントにも配線されない） | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 武装されたゴール状態読み取り | manager-develop, manager-lead | `moai goal status` |
-| `mcp__moai__session_list` | アクティブな moai セッション一覧 | manager-lead | `moai session list` |
+| `mcp__moai__goal_status` | 武装されたゴール状態読み取り | manager-develop, manager-kanban | `moai goal status` |
+| `mcp__moai__session_list` | アクティブな moai セッション一覧 | manager-kanban | `moai session list` |
 
-`goal_arm` はオーケストレータ専用です — 自律ループの武装はオーケストレータの関心事なので、エージェントの中からは呼び出しません。平坦階層の武装表面を保つための設計です。`goal_status` は manager-develop / manager-lead が武装された条件の進行を読むチャネルで、`session_list` は manager-lead がファンアウト前に同一チェックアウトの同時セッションを検出する競合緩和の手段です。
+`goal_arm` はオーケストレータ専用です — 自律ループの武装はオーケストレータの関心事なので、エージェントの中からは呼び出しません。平坦階層の武装表面を保つための設計です。`goal_status` は manager-develop / manager-kanban が武装された条件の進行を読むチャネルで、`session_list` は manager-kanban がファンアウト前に同一チェックアウトの同時セッションを検出する競合緩和の手段です。
 
 ### クロスモデル監査（第二の意見）
 

@@ -36,7 +36,7 @@ Report: consolidate agent results in the user's `conversation_language`.
 
 ### Unified Skill: /moai
 
-Single entry point for all MoAI development workflows. Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, e2e, harness, goal. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). `/moai loop` (bounded project-wide improvement sweep → goal engine) and `/moai fix` (one-shot turn-based) are goal-preset siblings built on the goal engine.
+Single entry point for all MoAI development workflows. Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, e2e, harness, goal, todo. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). `/moai loop` (bounded project-wide improvement sweep → goal engine) and `/moai fix` (one-shot turn-based) are goal-preset siblings built on the goal engine.
 
 ---
 
@@ -44,7 +44,7 @@ Single entry point for all MoAI development workflows. Subcommands: plan, run, s
 
 The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with Anthropic's best practices (sub-agents, agent-teams, best-practices docs).
 
-> **Watch (Claude Code 2.1.219)**: subagent nesting is enabled by default (depth 3; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables). MoAI's flat hierarchy holds by configuration — every retained agent except `manager-lead` omits the `Agent` tool. `manager-lead` is the sole Agent-carrier, opened one layer deep and depth-2 sealed (its leaf workers omit `Agent`, enforced by `manager_lead_depth_test.go`). The spawn-time `mode` parameter is deprecated/ignored since v2.1.213 (subagents inherit the parent's permission mode). Full nesting note + nesting-doctrine supersession: `.claude/rules/moai/development/agent-authoring.md` + `agent-patterns.md`.
+> **Watch (Claude Code 2.1.219)**: subagent nesting is enabled by default (depth 3; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables). MoAI's flat hierarchy holds by configuration — every retained agent except `manager-kanban` omits the `Agent` tool. `manager-kanban` is the sole Agent-carrier, opened one layer deep and depth-2 sealed (its leaf workers omit `Agent`, enforced by `manager_kanban_depth_test.go`). The spawn-time `mode` parameter is deprecated/ignored since v2.1.213 (subagents inherit the parent's permission mode). Full nesting note + nesting-doctrine supersession: `.claude/rules/moai/development/agent-authoring.md` + `agent-patterns.md`.
 
 ### Selection Decision Tree
 
@@ -54,9 +54,9 @@ The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custo
 4. Independent audit: plan-phase / sync-quality → `plan-auditor` / `sync-auditor`
 5. Harness specialist → `builder-harness`; high-reasoning consult (E1-E4) → `super-advisor`
 6. Design collaboration → `manager-design`; E2E tests → `e2e-tester`
-7. Multi-milestone Tier L (≥3 milestones AND ≥10 files) → `manager-lead` (sole Agent-carrier, depth-2 sealed)
+7. Multi-milestone Tier L (≥3 milestones AND ≥10 files) → `manager-kanban` (sole Agent-carrier, depth-2 sealed)
 
-**Retained agents (12)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, `manager-design`, `e2e-tester`, `manager-lead` (11 MoAI-custom) + Anthropic built-in `Explore`. Class / phase scope / reference per agent: `.claude/agents/moai/*.md` + `.moai/config/sections/delegation.yaml`. Archived names (`manager-strategy`, `manager-quality`, `expert-*`, etc.) MUST NOT be spawned — reject and consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C (the built-in `claude-code-guide` is distinct, NOT rejected). Agent Teams static orchestration is RETIRED (Mode 3 tombstone; `--team` → `MODE_TEAM_UNAVAILABLE` → sub-agent fallback; native `moai cg`/`worktree --team` unaffected). Agent authoring: `.claude/rules/moai/development/agent-authoring.md`.
+**Retained agents (12)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, `manager-design`, `e2e-tester`, `manager-kanban` (11 MoAI-custom) + Anthropic built-in `Explore`. Class / phase scope / reference per agent: `.claude/agents/moai/*.md` + `.moai/config/sections/delegation.yaml`. Archived names (`manager-strategy`, `manager-quality`, `expert-*`, etc.) MUST NOT be spawned — reject and consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C (the built-in `claude-code-guide` is distinct, NOT rejected). Agent Teams static orchestration is RETIRED (Mode 3 tombstone; `--team` → `MODE_TEAM_UNAVAILABLE` → sub-agent fallback; native `moai cg`/`worktree --team` unaffected). Agent authoring: `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 

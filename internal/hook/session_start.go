@@ -341,7 +341,19 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
 	// takes the screen. Non-kanban sessions get "" and nothing is injected.
-	if notice := kanbanBootstrapNotice(); notice != "" {
+	//
+	// The notice rides BOTH channels because it has two audiences and they read
+	// different surfaces. additionalContext reaches the orchestrator, which needs
+	// the companion labels to address them later; systemMessage reaches the
+	// operator, who must type the four launch lines by hand into new terminals.
+	// Emitting only additionalContext delivered a human-addressed instruction to
+	// the model alone, so the operator saw nothing at all.
+	//
+	// Each copy is rendered in its audience's language, the split language.yaml
+	// already draws: agent_prompt_language (English) for the agent-facing copy,
+	// conversation_language for the operator-facing one. The two copies differ
+	// only in prose — commands, run id, and socket path are identical in both.
+	if notice := kanbanBootstrapNotice(langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -351,6 +363,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext = notice
 		} else {
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+
+		operatorNotice := kanbanBootstrapNotice(operatorLang(h.cfg))
+		if out.SystemMessage == "" {
+			out.SystemMessage = operatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + operatorNotice
 		}
 	}
 

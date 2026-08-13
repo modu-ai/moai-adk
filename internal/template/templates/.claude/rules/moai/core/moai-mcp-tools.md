@@ -52,13 +52,13 @@ consults the current snapshot key before re-executing tests.
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
 | `mcp__moai__goal_arm` | Arm a condition-declared goal | **orchestrator main session ONLY** — wired to NO agent (arming an autonomous loop is an orchestrator concern) | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-lead | `moai goal status` |
-| `mcp__moai__session_list` | List active moai sessions | manager-lead | `moai session list` |
+| `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-kanban | `moai goal status` |
+| `mcp__moai__session_list` | List active moai sessions | manager-kanban | `moai session list` |
 
 `goal_arm` is orchestrator-only and arms an autonomous loop — never inside an
 agent (preserves the flat-hierarchy arming surface). `goal_status` lets
-manager-develop / manager-lead read the armed condition's progress; `session_list`
-lets manager-lead detect concurrent sessions on the same checkout for race
+manager-develop / manager-kanban read the armed condition's progress; `session_list`
+lets manager-kanban detect concurrent sessions on the same checkout for race
 mitigation before fan-out.
 
 ### Cross-model audit (second opinion)
