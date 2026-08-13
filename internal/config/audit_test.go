@@ -26,6 +26,10 @@ func TestAuditParity(t *testing.T) {
 	}
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	sectionsDir := filepath.Join(repoRoot, ".moai", "config", "sections")
+	// templateSectionsDir is the SSOT for shipped section defaults. Per-machine
+	// sections whose tracked runtime copy was removed (llm.yaml, #1499) live here,
+	// so the orphan-struct check accepts the template source as a fallback presence.
+	templateSectionsDir := filepath.Join(repoRoot, "internal", "template", "templates", ".moai", "config", "sections")
 
 	if _, err := os.Stat(sectionsDir); os.IsNotExist(err) {
 		t.Fatalf("sections dir %s not found — the tracked project config tree is missing", sectionsDir)
@@ -41,8 +45,10 @@ func TestAuditParity(t *testing.T) {
 		t.Errorf("orphan yaml file (no Go struct mapping): %s (add to audit_registry.go or YAMLAuditExceptions)", base+".yaml")
 	}
 
-	// 2. Check for orphan structs (registry entries with no yaml on disk)
-	orphanStructs := ScanOrphanStructs(sectionsDir, registry)
+	// 2. Check for orphan structs (registry entries with no yaml on disk).
+	// Pass both the runtime sections dir and the template source: per-machine
+	// sections (llm.yaml, #1499) are satisfied by the template default.
+	orphanStructs := ScanOrphanStructs([]string{sectionsDir, templateSectionsDir}, registry)
 	for _, orphan := range orphanStructs {
 		t.Errorf("registry maps %s → struct but no %s.yaml found in %s", orphan, orphan, sectionsDir)
 	}
@@ -132,7 +138,7 @@ func TestAuditParity_OrphanStructFails(t *testing.T) {
 	}
 	// No yaml files in sectionsDir — all registry entries should be reported as orphan structs
 
-	orphans := ScanOrphanStructs(sectionsDir, GetYAMLToStructRegistry())
+	orphans := ScanOrphanStructs([]string{sectionsDir}, GetYAMLToStructRegistry())
 	// At least some orphan structs expected when yaml dir is empty
 	if len(orphans) == 0 {
 		t.Errorf("ScanOrphanStructs() returned no orphans for empty sections dir, expected at least one registered section to be reported")
