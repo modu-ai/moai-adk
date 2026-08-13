@@ -171,6 +171,26 @@
       "source": "/quality-commands",
       "destination": "/ko/utility-commands",
       "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/advanced/factory-mode",
+      "destination": "/:locale/advanced/kanban-mode",
+      "permanent": true
+    },
+    {
+      "source": "/advanced/factory-mode",
+      "destination": "/ko/advanced/kanban-mode",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/multi-llm/factory-mode",
+      "destination": "/:locale/multi-llm/kanban-mode",
+      "permanent": true
+    },
+    {
+      "source": "/multi-llm/factory-mode",
+      "destination": "/ko/multi-llm/kanban-mode",
+      "permanent": true
     }
   ],
   "headers": [

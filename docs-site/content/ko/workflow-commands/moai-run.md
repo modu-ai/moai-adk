@@ -535,16 +535,16 @@ manager-develop 에이전트가 **진행 상황을 알아서 저장해 둡니다
 
 `/moai run`은 **이미 생성된 SPEC을 바탕으로 구현만** 수행합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
-## 팩토리 모드 — 한 번에 끝까지 (v3.1)
+## 칸반 모드 — 한 번에 끝까지 (v3.1)
 
-`/moai run`은 한 페이즈만 돌립니다. 그 뒤의 verify, sync는 사용자가 다시 명령을 넣어야 이어집니다. **팩토리 모드** (Factory Mode)는 이 "이어 붙이기"를 자동화하는 진입 스위치입니다. 세션 런처에 `--factory`를 붙여 시작하면, `plan → run → verify → sync` 네 단계가 하나의 골 프리셋(`factory_chain`) 위에서 자동으로 이어 붙여집니다.
+`/moai run`은 한 페이즈만 돌립니다. 그 뒤의 verify, sync는 사용자가 다시 명령을 넣어야 이어집니다. **칸반 모드** (Kanban Mode)는 이 "이어 붙이기"를 자동화하는 진입 스위치입니다. 세션 런처에 `--kanban`을 붙여 시작하면, `plan → run → verify → sync` 네 단계가 하나의 골 프리셋(`kanban_chain`) 위에서 자동으로 이어 붙여집니다.
 
 ```bash
-# SPEC 한 건을 팩토리 모드로 진입 — 종료까지 한 번에
-$ claude --factory SPEC-AUTH-001
+# SPEC 한 건을 칸반 모드로 진입 — 종료까지 한 번에
+$ claude --kanban SPEC-AUTH-001
 ```
 
-네 개의 휴먼 게이트(구현 착수 승인, verify CRITICAL/HIGH 결정, sync 게이트 2개)는 그대로 발화합니다. 팩토리 모드가 "휴먼 게이트를 건너뛰는" 것이 아니라 "페이즈 사이의 왕복"을 자동화하는 것입니다. 혼합 백엔드 런처(`moai cg`)에서는 거부되고, 4시간 벽시계 상한 안에서 굴러갑니다. 자세한 계약과 네 단계의 흐름은 [팩토리 모드](/ko/advanced/factory-mode)에서 다룹니다.
+네 개의 휴먼 게이트(구현 착수 승인, verify CRITICAL/HIGH 결정, sync 게이트 2개)는 그대로 발화합니다. 칸반 모드가 "휴먼 게이트를 건너뛰는" 것이 아니라 "페이즈 사이의 왕복"을 자동화하는 것입니다. 혼합 백엔드 런처(`moai cg`)에서는 거부되고, 4시간 벽시계 상한 안에서 굴러갑니다. 자세한 계약과 네 단계의 흐름은 [칸반 모드](/ko/advanced/kanban-mode)에서 다룹니다.
 
 ## 관련 문서
 
@@ -553,4 +553,4 @@ $ claude --factory SPEC-AUTH-001
 - [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
 - [/moai sync](./moai-sync) - 다음 단계: 문서 동기화 및 PR
 - [/moai goal](./moai-goal) - run-phase 자율성의 `ac_converge` 골 (v3.1)
-- [팩토리 모드](/ko/advanced/factory-mode) - run→verify→sync 체인을 자동으로 묶는 진입 스위치 (v3.1)
+- [칸반 모드](/ko/advanced/kanban-mode) - run→verify→sync 체인을 자동으로 묶는 진입 스위치 (v3.1)

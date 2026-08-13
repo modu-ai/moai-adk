@@ -51,7 +51,7 @@ index:
   weight: 85
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 new_items:
-  - factory-mode
+  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

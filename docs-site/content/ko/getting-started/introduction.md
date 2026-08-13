@@ -44,7 +44,7 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 ## v3.1에서 더 편리해진 점
 
 - **`/moai goal`** — 완료 조건 선언 한 줄로 세션이 자율 진행합니다.
-- **Factory 모드** — 여러 세션을 동시에 실행합니다.
+- **칸반 모드** — 여러 세션을 동시에 실행합니다.
 - **BAS Navigator** — 3단계 코드맵을 자동 동기화합니다.
 - **manager-lead** — Tier L 병렬 팬아웃으로 대규모 작업을 조율합니다.
 - **multi-model audit** — 다중 모델 교차 검증으로 편향을 잡습니다.

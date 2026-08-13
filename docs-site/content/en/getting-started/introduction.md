@@ -36,7 +36,7 @@ Each core value is covered in detail in the [Core Concepts](/en/core-concepts/) 
 ## What got more convenient in v3.1
 
 - **`/moai goal`** — declare a completion condition in one line and the session runs autonomously.
-- **Factory Mode** — runs multiple sessions at once.
+- **Kanban Mode** — runs multiple sessions at once.
 - **BAS Navigator** — auto-syncs the 3-tier codemap.
 - **manager-lead** — coordinates large-scale work via Tier L parallel fan-out.
 - **multi-model audit** — cross-validates with multiple models to catch bias.

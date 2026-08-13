@@ -116,4 +116,4 @@ flowchart TD
 - [3ティアエージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — モデルティア(単発・エージェンティック・ピーク)。自律性ティアと直交する「どのモデル」の軸
 - [プロファイルマトリクス](/ja/advanced/profile-matrix/) — エージェント別の `{model, effort}` を選ぶ単一マトリクス
 - [自律ループ](/ja/advanced/autonomous-loops/) — ゴールエンジンに基づく無人連続実行
-- [ファクトリモード](/ja/advanced/factory-mode/) — 複数セッションのファクトリで自律性ティアを並列に運用
+- [カンバンモード](/ja/advanced/kanban-mode/) — マルチセッションのカンバンで自律性ティアを並列に運用

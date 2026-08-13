@@ -1,0 +1,8 @@
+index:
+  title: "ガイド"
+"ci-autonomy":
+  title: "自律 CI/CD ガイド"
+"github-integration":
+  title: "GitHub 連携ガイド"
+"mcp-server":
+  title: "MCP サーバー"
