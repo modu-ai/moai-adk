@@ -2,9 +2,9 @@
 id: SPEC-WEB-CONSOLE-REDESIGN-001
 title: "moai web 설정 콘솔 재설계 — 죽은 설정 제거 · 9탭 재편 · 위젯 정책 · GLM 정직 표면 · 프로필 UI 통합"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-13
 author: manager-spec
 priority: P1
 phase: "v3.1.0"
