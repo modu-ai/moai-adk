@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -166,12 +165,15 @@ func writeUserMarkerBlock(gitignorePath, templateContent string, block []string,
 	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
 }
 
-// MergeUserFiles performs 3-way merge for user-customized files after template deployment.
-// It uses the manifest's TemplateHash as the base, user's backed-up content as current,
-// and the newly deployed template as updated. This preserves user customizations while
-// incorporating template changes.
+// MergeUserFiles performs 3-way merge for user-customized files after template
+// deployment: the user's backed-up content is the current side, the freshly
+// deployed template is the updated side, and the base is derived per file by
+// deriveTemplateBase. This preserves user customizations while letting keys the
+// template newly introduces actually reach an existing project.
 func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) error {
-	// Load embedded templates to get original template content for base version
+	// The embedded templates answer one question here — whether a path is one
+	// the template ships — so a file the user created themselves is never merged
+	// against template content it was not deployed from.
 	embedded, err := template.EmbeddedTemplates()
 	if err != nil {
 		return fmt.Errorf("load embedded templates: %w", err)
@@ -202,25 +204,17 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 			continue
 		}
 
-		// Get original template content from embedded filesystem for base version
-		// Try both with and without leading dot
-		possiblePaths := []string{fb.Path, strings.TrimPrefix(fb.Path, ".")}
-		var baseContent []byte
-		for _, p := range possiblePaths {
-			if data, readErr := fs.ReadFile(embedded, p); readErr == nil {
-				baseContent = data
-				break
-			}
+		if string(fb.Data) == string(updatedContent) {
+			continue // No change needed
 		}
 
-		// Perform 3-way merge: base (original template), current (user's backup), updated (new template)
-		// If base is not available, treat as new file - preserve user content
-		if baseContent == nil {
-			// No base available - this might be a user-created file
-			// Prefer user's content but merge if compatible
-			if string(fb.Data) == string(updatedContent) {
-				continue // No change needed
-			}
+		// Derive the merge base from the user's content and the newly deployed
+		// template. It is only meaningful for a path the template actually
+		// ships and whose format the merge engine compares by key; anything
+		// else — a file the user created, a rendered script — keeps the user's
+		// content untouched.
+		baseContent, derived := deriveTemplateBase(fb.Path, fb.Data, updatedContent)
+		if !derived || !templateManaged(embedded, fb.Path) {
 			// Keep user's version as-is
 			if err := os.WriteFile(destPath, fb.Data, defs.FilePerm); err != nil {
 				return fmt.Errorf("restore user file %s: %w", fb.Path, err)
