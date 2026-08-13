@@ -146,7 +146,7 @@ the catalog indexes agents and skills, not config section files.
 
 ```yaml
 run_complete_at: 2026-08-14
-run_commit_sha: "<this commit>"
+run_commit_sha: "505a00a37"
 run_status: complete
 ac_pass_count: 15          # AC-CDS-003,004,005,008,009,010,011,012,013,014,015,016,017,018 + 007 (PASS-WITH-DEBT)
 ac_fail_count: 0
