@@ -1,0 +1,8 @@
+index:
+  title: "Guides"
+"ci-autonomy":
+  title: "Autonomous CI/CD Guide"
+"github-integration":
+  title: "GitHub Integration Guide"
+"mcp-server":
+  title: "MCP Server"

@@ -423,11 +423,11 @@ main:
           zh: Model Policy
         ref: /multi-llm/model-policy
       - name:
-          ko: 팩토리 모드
-          en: Factory Mode
-          ja: ファクトリーモード
-          zh: 工厂模式
-        ref: /multi-llm/factory-mode
+          ko: 칸반 모드
+          en: Kanban Mode
+          ja: カンバンモード
+          zh: 看板模式
+        ref: /multi-llm/kanban-mode
 
   - name:
       ko: 비용 최적화
@@ -466,6 +466,12 @@ main:
           ja: GitHub 連携ガイド
           zh: GitHub 集成指南
         ref: /guides/github-integration
+      - name:
+          ko: MCP 서버
+          en: MCP Server
+          ja: MCP サーバー
+          zh: MCP 服务器
+        ref: /guides/mcp-server
 
   - name:
       ko: Git Worktree 개요

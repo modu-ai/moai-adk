@@ -148,6 +148,22 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 자연어와 15개 서브커맨드가 같은 파이프라인으로 들어간다. `/moai plan`, `/moai run`, `/moai sync`가 SPEC 파이프라인의 주축이고, `goal`, `loop`, `fix`, `review`, `gate`, `clean`, `codemaps`, `e2e`, `mx`, `feedback`, `project`, `harness`가 주변을 채운다.
 
+### MCP 서버
+
+`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깝니다 — 자체 `moai mcp-server`(로컬 stdio 서버)입니다. 이 서버가 다섯 그룹으로 묶인 17개 MoAI 도구를 Claude Code에 노출합니다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켭니다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없습니다.
+
+| 그룹 | 도구 | 목적 |
+|------|------|------|
+| SPEC 라이프사이클 | `spec_progress`, `spec_audit`, `spec_drift` | 시대 분류 + 드리프트 감지 |
+| 검증 | `verify_snapshot`, `verify_trend` | 키별 증거 스냅샷 |
+| 골 + 세션 | `goal_arm`, `goal_status`, `session_list` | 자율 루프 + 다중 세션 조율 |
+| 교차 모델 감사 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
+| codex 위임 | `codex_task`, `codex_setup`, `codex_job_*` | 백그라운드 교차 모델 작업 |
+
+모든 백엔드는 fail-open입니다 — GLM(`~/.moai/.env.glm`)과 codex(`~/.codex/auth.json`)는 선택적이며, 사용 불가 백엔드는 `inconclusive`를 반환할 뿐 hard error가 아닙니다.
+
+> 자세히: [MCP 서버 가이드](https://adk.mo.ai.kr/ko/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ko/claude-code/extensibility/mcp)
+
 ### goal 엔진 — 진짜 경계가 있는 자율 루프
 
 완료 조건을 선언하면 세션이 조건을 채울 때까지 알아서 일한다. 턴 한도, 정체 가드, 벽시계 예산, 사전 승인 게이트가 묶여 있어 무한 루프에 빠지지 않는다. 기계적 조건(명령 종료 코드)과 모델 조건(대화 기록의 주장)을 같이 쓴다.
@@ -155,6 +171,21 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 ### 병렬 worktree
 
 SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입하고, `--spawn`을 붙이면 현재 세션을 유지한 채 새 창에서 연다. 브랜치 상태 가드가 주 체크아웃에서 실수로 브랜치를 바꾸는 것을 막는다.
+
+### 칸반 모드
+
+`--kanban`(짧게 `-k`)은 세션 런처 스위치로, `kanban_chain` 골 프리셋을 무장해 하나의 SPEC을 `plan → run → verify → sync`로 밀고 가며 다중 세션 보드로 조율합니다. 보드의 뼈대가 **Origin-Trail Chain**입니다 — append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트 부실로 죽은 리더 세션을 감지합니다.
+
+| 개념 | 하는 일 |
+|------|--------|
+| Origin-Trail Chain | `.moai/state/chain/events.jsonl`의 append-only JSONL 이벤트 스트림 |
+| WorktreeNode (13 필드) | 세션별 상태: ID, 부모, 깊이, origin 체인, 마일스톤, 재개 목표 |
+| CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
+| 깊이 상한 | 중첩 복잡도를 제한 |
+
+> **현재 상태**: Origin-Trail Chain은 **Phase 1**(`internal/chain/` — append-only 저장소 계층)에 머물러 있습니다. `--kanban`/`-k` 런처 스위치, `moai chain` CLI, 다중 세션 보드 컬럼은 후속 phase 예정입니다.
+
+> 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
 ### CG 모드 — Claude 리더 + GLM 워커
 

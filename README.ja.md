@@ -278,6 +278,22 @@ claude        # launch Claude Code inside the project
 
 > 全 36 コマンド: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
 
+### MCP サーバー
+
+`moai init` はデフォルトで**正確に1つの**アクティブ MCP エントリをプロビジョニングします — セルフホストの `moai mcp-server`（ローカル stdio サーバー）です。これは MoAI 固有の17個のツールを5つのグループにわたって公開します。4つの documented-but-disabled エントリ（`context7`, `chrome-devtools`, `playwright`, `ast-grep`）は `moai mcp add <name>` で有効化します。汎用の `moai mcp add|remove|list` CLI が atomic-RWM シームでエントリを管理し、ユーザーが `.mcp.json` を手編集することはありません。
+
+| グループ | ツール | 目的 |
+|-------|-------|---------|
+| SPEC ライフサイクル | `spec_progress`, `spec_audit`, `spec_drift` | 時代分類 + ドリフト検出 |
+| 検証 | `verify_snapshot`, `verify_trend` | キーごとの証拠スナップショット |
+| ゴール + セッション | `goal_arm`, `goal_status`, `session_list` | 自律ループ + マルチセッション調整 |
+| クロスモデル監査 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多重監査者収束 |
+| codex 委任 | `codex_task`, `codex_setup`, `codex_job_*` | バックグラウンドクロスモデルジョブ |
+
+すべてのバックエンドは fail-open です: GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）は任意であり — 利用不可なバックエンドは `inconclusive` を返し、hard error にはなりません。
+
+> 詳細: [MCP サーバーガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ja/claude-code/extensibility/mcp)
+
 ### 12 エージェントカタログ
 
 | カテゴリ | エージェント | コスト | 役割 |
@@ -322,6 +338,21 @@ flowchart TD
 |-------------|-------|-----|
 | **TDD** (デフォルト) | RED → GREEN → REFACTOR | 新規プロジェクトと機能作業 |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | カバレッジ 10% 未満の既存コード |
+
+### カンバンモード
+
+`--kanban`（短縮 `-k`）は、`kanban_chain` ゴールプリセットを武装するセッションランチャースイッチです — 1つの SPEC をマルチセッションボード調整とともに `plan → run → verify → sync` で駆動します。ボードの骨格は **Origin-Trail Chain** です: append-only の JSONL 系譜ツリーで、worktree の祖先を追跡し、深さ健忘（`/clear` 後のルートからリーフまでのチェーン復元）を解決し、ハートビート古びで dead leader セッションを検出します。
+
+| 概念 | 役割 |
+|---------|-------------|
+| Origin-Trail Chain | `.moai/state/chain/events.jsonl` の append-only JSONL イベントストリーム |
+| WorktreeNode（13フィールド） | セッションごとの状態: ID、親、深さ、origin chain、マイルストーン、再開ターゲット |
+| CWD 衝突解決 | `(worktree_path, session_id)` の組が再利用パスを区別 |
+| 深さ上限（depth ceiling） | ネスト複雑度を制限 |
+
+> **現在の状態**: Origin-Trail Chain は **Phase 1**（`internal/chain/` — append-only ストア層）です。`--kanban`/`-k` ランチャースイッチ、`moai chain` CLI、マルチセッションボードカラムは後続フェーズで計画されています。
+
+> 詳細: [カンバンモードガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
 ---
 

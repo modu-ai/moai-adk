@@ -1,0 +1,8 @@
+index:
+  title: "指南"
+"ci-autonomy":
+  title: "自主 CI/CD 指南"
+"github-integration":
+  title: "GitHub 集成指南"
+"mcp-server":
+  title: "MCP 服务器"

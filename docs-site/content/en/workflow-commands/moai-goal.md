@@ -81,7 +81,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 > /moai goal "<condition>" --max-turns 0 --max-duration 14400
 ```
 
-From v3.1, arming with `moai goal arm --max-turns 0` or entering factory mode has the launcher inject this cap at 200 automatically. So users do not have to touch the environment variable themselves for a 4-hour chain not to break mid-way.
+From v3.1, arming with `moai goal arm --max-turns 0` or entering kanban mode has the launcher inject this cap at 200 automatically. So users do not have to touch the environment variable themselves for a 4-hour chain not to break mid-way.
 
 ## arm-only and the safety boundary
 
@@ -119,7 +119,7 @@ At every turn end the evaluator runs the mechanical-condition command. So the co
 
 - **`/moai loop`** — a diagnostics-driven decisive loop. The difference is that the tooling decides what to fix. [`/moai loop`](/en/utility-commands/moai-loop) lives in the utility-commands section.
 - **`/moai run`** — the work-starting command. Written paired with goal. [`/moai run`](./moai-run).
-- **Factory mode** — an entry switch that bundles `/moai goal`'s infinite-duration goal into a `plan → run → verify → sync` chain. Covered in [Factory mode](/en/advanced/factory-mode).
+- **Kanban mode** — an entry switch that bundles `/moai goal`'s infinite-duration goal into a `plan → run → verify → sync` chain. Covered in [Kanban mode](/en/advanced/kanban-mode).
 
 ## What this command does not do (scope boundary)
 
@@ -131,6 +131,6 @@ At every turn end the evaluator runs the mechanical-condition command. So the co
 ## Related docs
 
 - [Autonomous continuation loop](/en/advanced/autonomous-loops) — the goal engine's stagnation guard and ceiling semantics
-- [Factory mode](/en/advanced/factory-mode) — the 4-stage chain tied by the `factory_chain` goal preset
+- [Kanban mode](/en/advanced/kanban-mode) — the 4-stage chain tied by the `kanban_chain` goal preset
 - [`/moai loop`](/en/utility-commands/moai-loop) — the diagnostics-driven decisive loop (sibling command)
 - [Harness engineering](/en/core-concepts/harness-engineering) — the path by which loops and observation flow into harness learning

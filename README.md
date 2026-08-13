@@ -280,6 +280,22 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 > Full 36 commands: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
 
+### MCP Server
+
+`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 17 MoAI-specific tools across five groups. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The generic `moai mcp add|remove|list` CLI manages entries via an atomic-RMW seam — users never hand-edit `.mcp.json`.
+
+| Group | Tools | Purpose |
+|-------|-------|---------|
+| SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | Era classification + drift detection |
+| Verification | `verify_snapshot`, `verify_trend` | Per-key evidence snapshots |
+| Goal + session | `goal_arm`, `goal_status`, `session_list` | Autonomous loop + multi-session coordination |
+| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
+| Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | Background cross-model jobs |
+
+All backends are fail-open: GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional — an unavailable backend returns `inconclusive`, never a hard error.
+
+> Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
+
 ### 12-Agent Catalog
 
 | Category | Agent | Cost | Role |
@@ -324,6 +340,21 @@ flowchart TD
 |-------------|-------|-----|
 | **TDD** (default) | RED → GREEN → REFACTOR | New projects and feature work |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | Existing code with <10% coverage |
+
+### Kanban Mode
+
+`--kanban` (short `-k`) is a session-launcher switch that arms a `kanban_chain` goal preset — driving a single SPEC through `plan → run → verify → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
+
+| Concept | What it does |
+|---------|-------------|
+| Origin-Trail Chain | Append-only JSONL event stream at `.moai/state/chain/events.jsonl` |
+| WorktreeNode (13 fields) | Per-session state: ID, parent, depth, origin chain, milestone, resume target |
+| CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
+| Depth ceiling | Caps nesting complexity |
+
+> **Current status**: Origin-Trail Chain is at **Phase 1** (`internal/chain/` — append-only store layer). The `--kanban`/`-k` launcher switch, `moai chain` CLI, and multi-session board columns are planned for later phases.
+
+> Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
 ---
 

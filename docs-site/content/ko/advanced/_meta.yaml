@@ -17,8 +17,8 @@ index:
   title: "자율 연속 루프"
 "autonomy-tier":
   title: "자율성 티어 (MOAI_AUTONOMY_TIER)"
-"factory-mode":
-  title: "Factory Mode"
+"kanban-mode":
+  title: "칸반 모드"
 "skill-guide":
   title: "스킬 가이드"
 "agent-guide":
@@ -66,7 +66,7 @@ index:
 # slug 가 이 목록에 있으면 사이드바에 자동으로 NEW 배지가 렌더된다.
 # M4 가 페이지를 생성한 뒤 이 슬러그들이 실제 페이지를 가리키게 된다.
 new_items:
-  - factory-mode
+  - kanban-mode
   - bas-navigator
   - manager-lead
   - multi-model-audit

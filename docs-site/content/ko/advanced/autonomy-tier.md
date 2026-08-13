@@ -116,4 +116,4 @@ flowchart TD
 - [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — 모델 티어(단발·에이전틱·피크). 자율성 티어와 직교하는 "어떤 모델" 축
 - [프로필 매트릭스](/ko/advanced/profile-matrix/) — 에이전트별 `{model, effort}`를 고르는 단일 매트릭스
 - [자율 루프](/ko/advanced/autonomous-loops/) — 골 엔진 기반의 무인 연속 실행
-- [팩토리 모드](/ko/advanced/factory-mode/) — 다중 세션 팩토리로 자율성 티어를 병렬로 운용
+- [칸반 모드](/ko/advanced/kanban-mode/) — 다중 세션 칸반으로 자율성 티어를 병렬로 운용

@@ -284,6 +284,22 @@ claude        # launch Claude Code inside the project
 
 > 全部 36 个命令：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)
 
+### MCP 服务器
+
+`moai init` 默认只配置**一个**活跃 MCP 条目——自托管的 `moai mcp-server`（一个本地 stdio 服务器）。它跨五个组暴露 17 个 MoAI 专用工具。四个 documented-but-disabled 条目（`context7`、`chrome-devtools`、`playwright`、`ast-grep`）通过 `moai mcp add <名称>` 激活。通用的 `moai mcp add|remove|list` CLI 通过 atomic-RWM seam 管理条目——用户绝不手编 `.mcp.json`。
+
+| 组 | 工具 | 用途 |
+|-------|-------|---------|
+| SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | 时代分类 + 漂移检测 |
+| Verification | `verify_snapshot`, `verify_trend` | 按键证据快照 |
+| Goal + session | `goal_arm`, `goal_status`, `session_list` | 自治循环 + 多会话协调 |
+| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多审计者收敛 |
+| Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | 后台跨模型任务 |
+
+所有后端都 fail-open：GLM（`~/.moai/.env.glm`）和 codex（`~/.codex/auth.json`）是可选的——不可用的后端返回 `inconclusive`，绝不会引发 hard error。
+
+> 详情：[MCP 服务器指南](https://adk.mo.ai.kr/zh/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/zh/claude-code/extensibility/mcp)
+
 ### 12-Agent 目录
 
 | 分类 | Agent | 成本 | 职责 |
@@ -328,6 +344,21 @@ flowchart TD
 |-------------|-------|-----|
 | **TDD**（默认） | RED → GREEN → REFACTOR | 新项目和功能工作 |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | 覆盖率 <10% 的现有代码 |
+
+### 看板模式
+
+`--kanban`（简写 `-k`）是一个会话启动器开关，武装一个 `kanban_chain` 目标预设——以多会话看板协调驱动单个 SPEC 走完 `plan → run → verify → sync`。看板的骨架是 **Origin-Trail Chain**：一个 append-only JSONL 谱系树，追踪 worktree 祖先，解决深度遗忘（`/clear` 后的根到叶链恢复），并通过心跳过期检测 dead leader 会话。
+
+| 概念 | 作用 |
+|---------|-------------|
+| Origin-Trail Chain | `.moai/state/chain/events.jsonl` 处的 append-only JSONL 事件流 |
+| WorktreeNode（13 字段） | 每会话状态：ID、父节点、深度、origin 链、里程碑、恢复目标 |
+| CWD 冲突解决 | `(worktree_path, session_id)` 对消除复用路径的歧义 |
+| 深度上限 | 限制嵌套复杂度 |
+
+> **当前状态**：Origin-Trail Chain 处于 **Phase 1**（`internal/chain/` — append-only 存储层）。`--kanban`/`-k` 启动器开关、`moai chain` CLI 和多会话看板列计划在后续阶段实现。
+
+> 详情：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
 ---
 
