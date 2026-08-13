@@ -154,15 +154,26 @@ func ScanYAMLOrphans(sectionsDir string, registry map[string]string, exceptions 
 }
 
 // ScanOrphanStructs returns a list of registry keys whose yaml files are absent
-// from the given sectionsDir. This detects registry entries that have no matching
-// yaml file on disk (the "orphan struct" direction of the parity check).
+// from ALL of the given section directories (the union of on-disk yaml basenames
+// across every dir is treated as "present"). This detects registry entries that
+// have no matching yaml file on disk (the "orphan struct" direction of the parity
+// check).
+//
+// Callers pass the runtime sections dir first, then fallback sources. A per-machine
+// section (e.g. llm.yaml, whose tracked runtime copy was removed by #1499 and whose
+// template default lives at internal/template/templates/.moai/config/sections/) is
+// passed as a second dir so the registry entry is satisfied by the template source
+// rather than flagged as an orphan against a runtime tree that no longer carries it.
 //
 // REQ-V3R2-RT-005-008, REQ-V3R2-RT-005-021
-func ScanOrphanStructs(sectionsDir string, registry map[string]string) []string {
-	// Build set of yaml basenames present on disk
-	entries, err := os.ReadDir(sectionsDir)
+func ScanOrphanStructs(sectionsDirs []string, registry map[string]string) []string {
+	// Build set of yaml basenames present across ALL given dirs (union).
 	present := map[string]bool{}
-	if err == nil {
+	for _, dir := range sectionsDirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
 		for _, entry := range entries {
 			if entry.IsDir() {
 				continue

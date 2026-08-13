@@ -1,0 +1,40 @@
+# golangci-lint v2 configuration.
+#
+# This config is committed so that local development and CI lint the SAME
+# linter set deterministically despite a version skew between the two:
+#   - CI installs v2.1.6  (see .github/workflows/ci.yml, lint job)
+#   - local devs run v2.10.1 (current homebrew release at time of writing)
+#
+# The enabled set below is the long-standing golangci-lint default that has
+# shipped unchanged since v1.x; it exists identically in both v2.1.6 and
+# v2.10.1, so pinning it removes the risk of a newer version silently
+# expanding (or shrinking) the active linters. Prefer this safe intersection
+# over broader coverage; widening the set is a deliberate future decision,
+# not a side-effect of a version bump.
+#
+# `run.timeout: 5m` mirrors CI intent; a `--timeout` CLI flag overrides it
+# (the agent quick-check invocations use --timeout=2m, which still applies).
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      # Explicit so an errcheck default flip cannot drift local vs CI.
+      check-type-assertions: false
+      check-blank: false
+
+issues:
+  # Use the linter defaults; no custom exclusions.
+  max-issues-per-linter: 0
+  max-same-issues: 0
