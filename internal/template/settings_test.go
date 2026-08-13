@@ -258,9 +258,11 @@ func TestSettingsTemplateHookExecForm(t *testing.T) {
 			if strings.Contains(output, `"command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks`) {
 				t.Error("hook command still uses the shell-form quoted path")
 			}
-			// The exec form is present for a representative hook.
-			if !strings.Contains(output, `"args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"]`) {
-				t.Error("session-start hook is missing the exec-form args array")
+			// The guarded exec form carries the session-start script path as
+			// the final args element: args = ["-c", "<missing-script guard>",
+			// "<path>"]. The path still ends the array, anchored by "]".
+			if !strings.Contains(output, `"${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"]`) {
+				t.Error("session-start hook is missing the exec-form script path in args")
 			}
 		})
 	}
@@ -289,13 +291,25 @@ func TestSettingsTemplateHookExecForm(t *testing.T) {
 					count++
 					if h.Command != "bash" {
 						t.Errorf("%s: command = %q, want \"bash\" (exec form)", event, h.Command)
-					}
-					if len(h.Args) != 1 {
-						t.Errorf("%s: args = %v, want exactly one script path", event, h.Args)
 						continue
 					}
-					if !strings.HasPrefix(h.Args[0], "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/") {
-						t.Errorf("%s: args[0] = %q, want a ${CLAUDE_PROJECT_DIR}-rooted hook path", event, h.Args[0])
+					// Guarded exec form: args = ["-c", "<missing-script guard>",
+					// "<script-path>"]. The guard lets a hook degrade to a silent
+					// exit 0 (with an optional trace appended to
+					// .moai/logs/hook-missing.log) when its script has vanished —
+					// e.g. the session's worktree was removed mid-session — instead
+					// of producing a noisy "No such file or directory" on every
+					// hook fire.
+					if len(h.Args) != 3 || h.Args[0] != "-c" {
+						t.Errorf("%s: args = %v, want guarded exec form [\"-c\", guard, path]", event, h.Args)
+						continue
+					}
+					if !strings.Contains(h.Args[1], "hook missing") {
+						t.Errorf("%s: args[1] = %q, want a missing-script guard", event, h.Args[1])
+					}
+					path := h.Args[2]
+					if !strings.HasPrefix(path, "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/") {
+						t.Errorf("%s: args[2] = %q, want a ${CLAUDE_PROJECT_DIR}-rooted hook path", event, path)
 					}
 				}
 			}
@@ -628,7 +642,8 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 				t.Fatalf("%q: hook entry is not an object, got %T", ne.event, hooksArr[0])
 			}
 
-			// Exec form: command is the interpreter, the script path is args[0].
+			// Exec form: command is the interpreter. The script path rides as
+			// the final args element in the guarded form (args[2]).
 			command, ok := hookEntry["command"].(string)
 			if !ok {
 				t.Fatalf("%q: missing or non-string 'command' field", ne.event)
@@ -637,11 +652,11 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 				t.Errorf("%q: command = %q, want \"bash\" (exec form)", ne.event, command)
 			}
 			rawArgs, ok := hookEntry["args"].([]any)
-			if !ok || len(rawArgs) != 1 {
-				t.Fatalf("%q: args = %v, want exactly one script path", ne.event, hookEntry["args"])
+			if !ok || len(rawArgs) != 3 {
+				t.Fatalf("%q: args = %v, want guarded exec form [\"-c\", guard, path]", ne.event, hookEntry["args"])
 			}
-			if arg, _ := rawArgs[0].(string); !strings.Contains(arg, ne.scriptName) {
-				t.Errorf("%q: args[0] %q does not contain expected script name %q", ne.event, arg, ne.scriptName)
+			if arg, _ := rawArgs[2].(string); !strings.Contains(arg, ne.scriptName) {
+				t.Errorf("%q: args[2] %q does not contain expected script name %q", ne.event, arg, ne.scriptName)
 			}
 
 			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
@@ -726,18 +741,18 @@ func TestSettingsTemplateNewHooksPlatformCompatibility(t *testing.T) {
 
 					// Exec form renders identically on every platform: the
 					// command is the bash interpreter and the script path rides
-					// in args, so there is no per-OS branch to assert.
+					// as the final args element, so there is no per-OS branch.
 					if command != "bash" {
 						t.Errorf("%s/%s: command = %q, want \"bash\" (exec form)", platform, ne.event, command)
 					}
 					rawArgs, ok := hookEntry["args"].([]any)
-					if !ok || len(rawArgs) != 1 {
-						t.Fatalf("%s/%s: args = %v, want exactly one script path", platform, ne.event, hookEntry["args"])
+					if !ok || len(rawArgs) != 3 {
+						t.Fatalf("%s/%s: args = %v, want guarded exec form [\"-c\", guard, path]", platform, ne.event, hookEntry["args"])
 					}
-					arg := rawArgs[0].(string)
+					arg := rawArgs[2].(string)
 					expected := "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/" + ne.scriptName
 					if arg != expected {
-						t.Errorf("%s/%s: args[0] = %q, want %q", platform, ne.event, arg, expected)
+						t.Errorf("%s/%s: args[2] = %q, want %q", platform, ne.event, arg, expected)
 					}
 				})
 			}

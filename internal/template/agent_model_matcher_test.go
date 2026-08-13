@@ -181,10 +181,12 @@ func TestHookWrapperConventions(t *testing.T) {
 		if h.Type != "command" || h.Command != "bash" {
 			t.Errorf("hook invocation: got type=%q command=%q, want type=command command=bash", h.Type, h.Command)
 		}
-		if len(h.Args) != 1 {
-			t.Fatalf("hook args: got %d, want 1", len(h.Args))
+		// Guarded exec form: args = ["-c", "<missing-script guard>", "<wrapper>"].
+		// The wrapper path is the final args element.
+		if len(h.Args) != 3 || h.Args[0] != "-c" {
+			t.Fatalf("hook args: got %v, want guarded exec form [\"-c\", guard, path]", h.Args)
 		}
-		arg := h.Args[0]
+		arg := h.Args[2]
 		// (a) points at a shell wrapper under the moai hook directory.
 		if !strings.HasSuffix(arg, ".sh") || !strings.Contains(arg, "/.claude/hooks/moai/") {
 			t.Errorf("hook arg %q does not point at a .claude/hooks/moai/*.sh wrapper", arg)
