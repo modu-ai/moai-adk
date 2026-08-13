@@ -69,7 +69,7 @@ moai init myproject --autonomy-tier semi-auto
 
 ## Step 3 — 티어가 권한 묶음을 어떻게 바꾸는지 추적한다
 
-선택한 티어는 설정 렌더러(권한 묶음을 실제 파일로 만들어내는 장치)를 거쳐 두 영역에 쓰입니다. `defaultMode`는 **사용자 영역**(USER scope, 개인 설정)에, `deny`/`ask` 규칙은 **프로젝트 영역**(PROJECT scope, 팀 공유 설정)에 내려옵니다. 이 분리는 한 명이 자율성을 올리더라도 팀 전체가 공유하는 안전 규칙은 흔들리지 않게 합니다.
+선택한 티어는 설정 렌더러(권한 묶음을 실제 파일로 만들어내는 장치)를 거쳐 두 영역에 쓰입니다. `defaultMode`는 **사용자 영역** (USER scope, 개인 설정)에, `deny`/`ask` 규칙은 **프로젝트 영역** (PROJECT scope, 팀 공유 설정)에 내려옵니다. 이 분리는 한 명이 자율성을 올리더라도 팀 전체가 공유하는 안전 규칙은 흔들리지 않게 합니다.
 
 ```bash
 # 렌더러가 각 티어별로 내놓은 deny/ask 규칙이 정확히 같은지 확인한다
@@ -83,7 +83,7 @@ diff <(grep -A20 'deny:' .claude/settings.json) \
 
 ## Step 4 — Implementation Kickoff Approval과 Stop-chain의 관계를 짚는다
 
-자율성 티어를 올리더라도 절대 건너뛸 수 없는 게이트가 하나 있습니다. **Implementation Kickoff Approval**(계획에서 구현으로 넘어가는 사람 승인 게이트)입니다. 이 게이트는 자율성 티어와 무관하게 항상 필수이며, plan-auditor(계획 검토 에이전트)의 통과 판정이나 높은 점수가 이 게이트를 자동으로 넘겨주지 않습니다.
+자율성 티어를 올리더라도 절대 건너뛸 수 없는 게이트가 하나 있습니다. **Implementation Kickoff Approval** (계획에서 구현으로 넘어가는 사람 승인 게이트)입니다. 이 게이트는 자율성 티어와 무관하게 항상 필수이며, plan-auditor(계획 검토 에이전트)의 통과 판정이나 높은 점수가 이 게이트를 자동으로 넘겨주지 않습니다.
 
 ```mermaid
 flowchart TD

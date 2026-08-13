@@ -69,7 +69,7 @@ moai init myproject --autonomy-tier semi-auto
 
 ## Step 3 — ティアが権限の束をどう変えるか追跡する
 
-選んだティアは設定レンダラ(権限の束を実際のファイルとして書き出す装置)を経て、2つの領域に書き込まれます。`defaultMode`は**ユーザー領域**(USER scope、個人設定)に、`deny`/`ask`ルールは**プロジェクト領域**(PROJECT scope、チーム共有設定)に降ろされます。この分離は、1人が自律性を上げてもチーム全体が共有する安全ルールは揺るがないようにします。
+選んだティアは設定レンダラ(権限の束を実際のファイルとして書き出す装置)を経て、2つの領域に書き込まれます。`defaultMode`は**ユーザー領域** (USER scope、個人設定)に、`deny`/`ask`ルールは**プロジェクト領域** (PROJECT scope、チーム共有設定)に降ろされます。この分離は、1人が自律性を上げてもチーム全体が共有する安全ルールは揺るがないようにします。
 
 ```bash
 # レンダラが各ティア別に出力した deny/ask ルールが正確に一致するか確認する
@@ -83,7 +83,7 @@ diff <(grep -A20 'deny:' .claude/settings.json) \
 
 ## Step 4 — Implementation Kickoff ApprovalとStop-chainの関係を辿る
 
-自律性ティアを上げても絶対に飛ばせないゲートが1つあります。**Implementation Kickoff Approval**(計画から実装へと移る人の承認ゲート)です。このゲートは自律性ティアに関わりなく常に必須で、plan-auditor(計画査察エージェント)の合格判定や高い点数がこのゲートを自動的に通すことはありません。
+自律性ティアを上げても絶対に飛ばせないゲートが1つあります。**Implementation Kickoff Approval** (計画から実装へと移る人の承認ゲート)です。このゲートは自律性ティアに関わりなく常に必須で、plan-auditor(計画査察エージェント)の合格判定や高い点数がこのゲートを自動的に通すことはありません。
 
 ```mermaid
 flowchart TD

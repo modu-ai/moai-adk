@@ -128,7 +128,7 @@ moai init my-project
 
 选择是否强制 TRUST 5 质量门禁。
 
-- **Enforce quality gates**(默认: Yes)—— 质量门禁失败时阻断实现推进
+- **Enforce quality gates** (默认: Yes)—— 质量门禁失败时阻断实现推进
 
 该设置保存到 `.moai/config/sections/quality.yaml` 的 `constitution.enforce_quality` 字段。
 
@@ -148,8 +148,8 @@ moai init my-project
 
 选择是否启用 MoAI 设计流水线与 Claude Design 联动。
 
-- **Enable design workflow**(默认: Yes)
-- **Enable Claude Design integration**(默认: Yes,仅在启用 design 时显示)
+- **Enable design workflow** (默认: Yes)
+- **Enable Claude Design integration** (默认: Yes,仅在启用 design 时显示)
 
 这些设置保存到 `.moai/config/sections/design.yaml` 的 `design.enabled` / `design.claude_design.enabled` 字段。
 

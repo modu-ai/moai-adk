@@ -85,7 +85,7 @@ After merge: <下一个动作或 SPEC>
 
 将验证命令的长输出重定向到磁盘并在上下文中只留摘要的文件重定向契约(file-redirect contract)。
 
-规则: 当验证命令的 verbatim 输出超过 **bounded-tail ceiling**(默认 50 行或 2KB，取较小者)时，输出被重定向到文件，上下文中只显示 exit code + bounded tail。
+规则: 当验证命令的 verbatim 输出超过 **bounded-tail ceiling** (默认 50 行或 2KB，取较小者)时，输出被重定向到文件，上下文中只显示 exit code + bounded tail。
 
 ```bash
 go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log

@@ -16,7 +16,7 @@ MoAI-ADK 是用 **成本**（代币经济学）· **自我改进**（智能体�
   > /moai plan "功能描述"
   ```
 
-- 在 **终端**(Terminal)输入的命令
+- 在 **终端** (Terminal)输入的命令
   ```bash
   moai init my-project
   ```
@@ -39,9 +39,9 @@ MoAI-ADK 以 **基于 SPEC 的 TDD/DDD** 方法论为基础,并通过 **TRUST 5*
 
 ### 什么是 SPEC?(轻松理解)
 
-**SPEC**(Specification)就是"把与 AI 的对话作为文档留存下来"。
+**SPEC** (Specification)就是"把与 AI 的对话作为文档留存下来"。
 
-**氛围编程**(Vibe Coding)最大的问题是 **上下文丢失**:
+**氛围编程** (Vibe Coding)最大的问题是 **上下文丢失**:
 
 - 与 AI 讨论 1 小时的内容,会话一断就 **消失**
 - 第二天想接着工作,得 **从头重新说明**
@@ -82,7 +82,7 @@ MoAI-ADK 将 Python Edition 完全用 Go 重写,以最大化性能与效率。
 | 启动时间 | ~800ms 解释器启动 | **~5ms** 原生执行 |
 | 并发 | asyncio / threading | **原生 goroutines** |
 | 类型安全 | 运行时(mypy 可选) | **编译期强制** |
-| 跨平台 | 需要 Python 运行时 | **预构建二进制**(macOS, Linux, Windows) |
+| 跨平台 | 需要 Python 运行时 | **预构建二进制** (macOS, Linux, Windows) |
 
 ### 核心数字(以 v3.0 为准)
 
@@ -126,7 +126,7 @@ MoAI-ADK 依 Claude Code 订阅套餐为智能体分配最优 AI 模型。在套
 | 层级 | 特点 |
 |------|------|
 | **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
-| **medium**(默认) | 质量与成本的平衡 |
+| **medium** (默认) | 质量与成本的平衡 |
 | **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
 
 {{< callout type="info" >}}
@@ -203,16 +203,16 @@ flowchart TD
 
 MoAI-ADK 支持以下 4 种语言:
 
-- **韩语**(Korean)
-- **英语**(English)
-- **日语**(Japanese)
-- **中文**(Chinese)
+- **韩语** (Korean)
+- **英语** (English)
+- **日语** (Japanese)
+- **中文** (Chinese)
 
 在安装向导中选择偏好语言,或在配置文件中直接更改。
 
 ## LSP 集成
 
-**LSP**(Language Server Protocol)是代码编辑器与语言工具之间的标准通信协议。它实时检测代码错误、类型错误、lint 结果以提供即时反馈。
+**LSP** (Language Server Protocol)是代码编辑器与语言工具之间的标准通信协议。它实时检测代码错误、类型错误、lint 结果以提供即时反馈。
 
 **Ralph-Loop Style** 是把 LSP 诊断结果用作反馈循环的自主工作流。检测到质量问题时自动调用修复智能体,反复直到达成质量标准。
 

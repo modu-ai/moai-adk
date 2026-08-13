@@ -458,7 +458,7 @@ sync-auditor 判定为 FAIL/INCONCLUSIVE 或门禁阻断时链条会中断。不
 | 标志 | v2.8 之前 | v2.9.0 之后 |
 |--------|----------|------------|
 | (无) | 不合并 | 在 worktree 上下文中 **自动合并** |
-| `--merge` | 自动合并 | **Deprecated**(显示警告) |
+| `--merge` | 自动合并 | **Deprecated** (显示警告) |
 | `--no-merge` | N/A | 跳过自动合并 |
 
 **Auto-merge 执行条件:**

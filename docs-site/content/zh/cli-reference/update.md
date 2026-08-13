@@ -63,7 +63,7 @@ moai update --check
 error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
-**不存在 `--skip-checksum` 之类的绕过选项**(CWE-345 有意的策略)。
+**不存在 `--skip-checksum` 之类的绕过选项** (CWE-345 有意的策略)。
 
 #### 失败时的恢复流程
 
@@ -73,7 +73,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
    ```
 2. **确认 Proxy / firewall** —— 是否允许 GitHub release asset 域名(`github.com`, `objects.githubusercontent.com`)
 3. **可能是临时性 GitHub CDN 故障** —— 稍后重试
-4. **手动安装二进制**(永久阻断时):
+4. **手动安装二进制** (永久阻断时):
    ```bash
    curl -fsSL https://adk.mo.ai.kr/install.sh | bash
    ```

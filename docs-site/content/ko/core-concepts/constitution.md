@@ -61,7 +61,7 @@ flowchart TD
 
 ## Zone Registry
 
-모든 HARD 조항을 열거하는 **단일 진실 공급원**(Single Source of Truth)입니다.
+모든 HARD 조항을 열거하는 **단일 진실 공급원** (Single Source of Truth)입니다.
 
 ### ID 할당 규칙
 

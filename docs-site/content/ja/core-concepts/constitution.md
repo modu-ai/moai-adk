@@ -45,7 +45,7 @@ AI エージェントが絶対に修正できないルールです。人間の�
 
 ## Zone Registry
 
-すべての HARD 条項を列挙する **単一の信頼できる情報源**(Single Source of Truth)です。
+すべての HARD 条項を列挙する **単一の信頼できる情報源** (Single Source of Truth)です。
 
 ### ID 割り当てルール
 

@@ -17,7 +17,7 @@ draft: false
 
 MoAI-ADK v3 的核心价值之一是 **智能体挽具** (Agentic Harness)。它的含义是:与其直接编写代码,不如设计一个让智能体高效工作的环境 — SPEC 文档、质量门禁、反馈循环。工作流命令执行这一挽具的中枢 — **plan → run → sync** 流水线。
 
-每个阶段由专门的智能体负责,并且 **计划与审计相分离**,确保创建者不自行检查自己的产出。plan 阶段的产出由 plan-auditor 独立审计,sync 阶段的成果由 sync-auditor 从 4 个维度(Functionality·Security·Craft·Consistency)进行评估。在进入 run 阶段之前,**实现启动批准**(人工门禁)始终交还给用户决定。
+每个阶段由专门的智能体负责,并且 **计划与审计相分离**,确保创建者不自行检查自己的产出。plan 阶段的产出由 plan-auditor 独立审计,sync 阶段的成果由 sync-auditor 从 4 个维度(Functionality·Security·Craft·Consistency)进行评估。在进入 run 阶段之前,**实现启动批准** (人工门禁)始终交还给用户决定。
 
 ```mermaid
 flowchart TD

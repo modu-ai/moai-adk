@@ -9,7 +9,7 @@ description: Claude 리더와 GLM 팀원을 한 tmux 세션에 함께 두어, �
 
 CG 모드는 한마디로 "생각은 Claude가 하고, 손은 GLM이 움직이게" 하는
 실행 방식입니다. 전략과 품질 판단이 중요한 일은 **Claude** 리더가 맡고,
-코드를 직접 짜는 구현 중심의 일은 더 저렴한 **GLM**(z.ai) 팀원에게
+코드를 직접 짜는 구현 중심의 일은 더 저렴한 **GLM** (z.ai) 팀원에게
 맡겨, 한 세션 안에서 비용을 약 60-70% 줄입니다.
 
 이름의 **CG**는 **Claude + GLM**을 뜻합니다. 두 모델을 번갈아 쓰는 게
@@ -205,8 +205,8 @@ Claude Code가 제공하고, `teammateMode`는 화면에 어떻게 띄울지만 
 ## tmux 환경 변수 주입 보안 모델 {#tmux-env-security}
 
 v3.0.0부터 `moai cg`는 GLM token(`ANTHROPIC_AUTH_TOKEN`)을 tmux 세션
-환경 변수에 주입할 때 **argv 채널**(`tmux set-environment <KEY> <VALUE>`) 대신
-**source-file 채널**(`tmux source-file <tmp>`)을 씁니다. 덕분에 token이
+환경 변수에 주입할 때 **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신
+**source-file 채널** (`tmux source-file <tmp>`)을 씁니다. 덕분에 token이
 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에
 평문으로 드러나지 않습니다(CWE-214).
 

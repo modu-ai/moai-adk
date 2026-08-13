@@ -133,7 +133,7 @@ archived 에이전트 이름(`manager-strategy`, `expert-backend`, `researcher` 
 
 #### 프로필 매트릭스 도입 (3.0.1)
 
-`plan_type × performance_tier` 두 축 설계가 **에이전트 그룹별 단일 프로필 매트릭스**(`max`/`medium`/`low`) 로 바뀌었습니다. `moai init --plan-type` 은 은퇴하고 `moai init --profile <max|medium|low>` 로 대체되었습니다. 기존 `llm.yaml`(`plan_type` + `claude_models` + `performance_tier`) 은 오류 없이 로드되고 올바른 프로필로 귀결됩니다 — 다음 저장 시 은퇴한 키가 정리됩니다.
+`plan_type × performance_tier` 두 축 설계가 **에이전트 그룹별 단일 프로필 매트릭스** (`max`/`medium`/`low`) 로 바뀌었습니다. `moai init --plan-type` 은 은퇴하고 `moai init --profile <max|medium|low>` 로 대체되었습니다. 기존 `llm.yaml`(`plan_type` + `claude_models` + `performance_tier`) 은 오류 없이 로드되고 올바른 프로필로 귀결됩니다 — 다음 저장 시 은퇴한 키가 정리됩니다.
 
 {{< callout type="info" >}}
 **설정 마이그레이션은 자동입니다.** legacy `llm.yaml` 이 그대로 읽혀 올바른 프로필로 변환되므로, 설정 파일을 손으로 고칠 필요가 없습니다.

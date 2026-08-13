@@ -233,7 +233,7 @@ MoAI-ADK 템플릿은 **32개 스킬**을 제공합니다. 요청을 알맞은 �
 
 Claude Code는 프로젝트 루트뿐 아니라 하위 디렉터리로 내려가면서도 `.claude/skills/`를 찾아냅니다(parent-walk). 그래서 모노레포에서는 패키지마다 자체 `.claude/skills/`를 두고 패키지 전용 스킬을 둘 수 있습니다. 그 디렉터리 안에서 작업하는 동안에는 그 스킬이 루트 수준 스킬과 함께 로드됩니다.
 
-둘 이상의 `.claude/skills/`에 같은 이름의 스킬이 있으면 **가장 가까운 디렉터리가 이긴다**(closest-directory-wins)는 규칙으로 충돌을 정리합니다. 현재 작업 디렉터리에서 가장 가까운 `.claude/skills/`가 위쪽 트리의 같은 이름 스킬을 가립니다(shadow). 루트 스킬을 일부러 재정의하려는 패키지 전용 스킬은 이름을 똑같이 맞춰야 합니다 — 이름을 바꾸면 재정의가 아니라 별개 스킬이 하나 더 생깁니다.
+둘 이상의 `.claude/skills/`에 같은 이름의 스킬이 있으면 **가장 가까운 디렉터리가 이긴다** (closest-directory-wins)는 규칙으로 충돌을 정리합니다. 현재 작업 디렉터리에서 가장 가까운 `.claude/skills/`가 위쪽 트리의 같은 이름 스킬을 가립니다(shadow). 루트 스킬을 일부러 재정의하려는 패키지 전용 스킬은 이름을 똑같이 맞춰야 합니다 — 이름을 바꾸면 재정의가 아니라 별개 스킬이 하나 더 생깁니다.
 
 한 가지 더. `disableBundledSkills`(settings.json 불리언) 토글을 켜면 Claude Code 번들 스킬과 번들 워크플로우가 발견에서 빠지고, enterprise + personal + project + plugin 스킬만 남습니다. 번들 스킬을 빼고 직접 고른 스킬만 노출하고 싶을 때 씁니다. MoAI-ADK 생성기가 이 토글을 만들지는 않지만, 필요하면 쓸 수 있는 선택지입니다. 함께 쓰는 `--safe-mode` 실행 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 정리돼 있습니다.
 

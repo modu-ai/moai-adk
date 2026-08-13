@@ -62,8 +62,8 @@ moai cg [-p profile]
 
 CG 是 "Claude + GLM" 的缩写,是成本优化的团队组合。
 
-- **领导者**(当前 tmux pane):使用 Claude 模型(opus/sonnet)
-- **队员**(新 tmux pane):经 Z.AI 代理使用 GLM 模型
+- **领导者** (当前 tmux pane):使用 Claude 模型(opus/sonnet)
+- **队员** (新 tmux pane):经 Z.AI 代理使用 GLM 模型
 
 执行时会验证 tmux 会话,在领导者 pane 中移除 GLM 环境(Claude),向 tmux 会话注入 GLM 环境(队员),并设置 `teammateMode=tmux` 与 `team_mode: cg`。
 

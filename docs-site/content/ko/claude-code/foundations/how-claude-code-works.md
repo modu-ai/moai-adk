@@ -67,7 +67,7 @@ Claude Code는 Claude 모델로 코드를 이해하고 작업을 추론합니다
 세션 중에는 `/model` 명령으로, 시작할 때는 `claude --model <name>`으로 모델을 바꿉니다.
 
 {{< callout type="tip" >}}
-모델마다 **effort**(추론 깊이) 수준을 `low` · `medium` · `high` · `xhigh` · `max`로 조절할 수 있습니다. `ultrathink` 같은 키워드는 곧 `effort: xhigh`와 **Adaptive Thinking**(모델이 스스로 추론 토큰을 할당하는 방식)으로 이어집니다. 과거처럼 고정된 토큰 예산(`budget_tokens`)을 직접 지정하는 방식은 더 이상 권장하지 않습니다.
+모델마다 **effort** (추론 깊이) 수준을 `low` · `medium` · `high` · `xhigh` · `max`로 조절할 수 있습니다. `ultrathink` 같은 키워드는 곧 `effort: xhigh`와 **Adaptive Thinking** (모델이 스스로 추론 토큰을 할당하는 방식)으로 이어집니다. 과거처럼 고정된 토큰 예산(`budget_tokens`)을 직접 지정하는 방식은 더 이상 권장하지 않습니다.
 {{< /callout >}}
 
 서브에이전트를 띄울 때는 부모 세션의 모델을 그대로 물려받기 때문에, 작업 성격에 맞춰 다른 모델이 필요하면 스폰할 때 `model` 값으로 명시하는 것이 좋습니다.

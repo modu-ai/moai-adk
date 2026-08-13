@@ -4,7 +4,7 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK 通过单一的 **配置矩阵**将保留的 11 个代理各自映射到 `{model, effort}` 对。活动的 **配置文件**(`high` / `medium` / `low`)选择矩阵的一列(column)，该列的值应用于所有子代理 spawn。矩阵以代理名为单位共 **33 格**(11 个代理 × 3 个配置文件)，同时取代了此前的分组抽象与 `plan_type × tier` 轴。
+MoAI-ADK 通过单一的 **配置矩阵**将保留的 11 个代理各自映射到 `{model, effort}` 对。活动的 **配置文件** (`high` / `medium` / `low`)选择矩阵的一列(column)，该列的值应用于所有子代理 spawn。矩阵以代理名为单位共 **33 格** (11 个代理 × 3 个配置文件)，同时取代了此前的分组抽象与 `plan_type × tier` 轴。
 
 ## 配置文件轴
 

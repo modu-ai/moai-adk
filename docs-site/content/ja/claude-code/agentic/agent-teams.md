@@ -15,7 +15,7 @@ description: "複数の Claude Code セッションが共有 TaskList で協業�
 {{< /callout >}}
 
 {{< callout type="warning" >}}
-**「エージェントチーム」の 2 つを区別してください。** このページが扱うのは **Claude Code ネイティブの Agent Teams ランタイム**(tmux/iTerm2 ペイン、共有 TaskList、`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`)で、これは有効であり `moai cg` ハイブリッドモードがそのまま活用します。一方、MoAI の **静的 agent-team オーケストレーション階層**(旧 `workflow.team.*` 設定、`--team` 強制フラグ)は **引退** しました — `--team` を強制すると `MODE_TEAM_UNAVAILABLE` とともにサブエージェントモードへフォールバックします。つまりネイティブランタイムは生きており、MoAI 自身のワークフローオーケストレーションの静的チーム階層だけが消えたのです。
+**「エージェントチーム」の 2 つを区別してください。** このページが扱うのは **Claude Code ネイティブの Agent Teams ランタイム** (tmux/iTerm2 ペイン、共有 TaskList、`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`)で、これは有効であり `moai cg` ハイブリッドモードがそのまま活用します。一方、MoAI の **静的 agent-team オーケストレーション階層** (旧 `workflow.team.*` 設定、`--team` 強制フラグ)は **引退** しました — `--team` を強制すると `MODE_TEAM_UNAVAILABLE` とともにサブエージェントモードへフォールバックします。つまりネイティブランタイムは生きており、MoAI 自身のワークフローオーケストレーションの静的チーム階層だけが消えたのです。
 {{< /callout >}}
 
 ## エージェントチームとは

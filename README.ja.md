@@ -247,7 +247,7 @@ claude        # launch Claude Code inside the project
 | サブコマンド | 役割 |
 |------------|------|
 | `plan` / `run` / `sync` | SPEC 3フェーズパイプライン |
-| `project` / `harness` / `design` | プロジェクト docs+harness 生成 · harness ライフサイクル · Design-phase 協業 |
+| `project` / `harness` | プロジェクト docs+harness 生成 · harness ライフサイクル |
 | `goal` / `loop` / `fix` | 宣言的 goal ループ · 反復修正 · シングルパス修正 |
 | `review` / `gate` / `clean` | コードレビュー（`--deep`でマルチエージェントの敵対的脆弱性スキャン） · pre-commit 品質ゲート · デッドコード削除 |
 | `mx` / `codemaps` / `feedback` | @MX アノテーション · アーキテクチャ docs · GitHub issue 報告 |

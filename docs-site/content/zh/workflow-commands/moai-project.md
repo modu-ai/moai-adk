@@ -142,7 +142,7 @@ flowchart TD
 
 ### Phase 2: 深度访谈(新项目)
 
-选择新项目时,进行两阶段 **深度访谈**(Deep Interview)—— 基于清晰度评分的 Stage A(Vision-Domain / Technology-Constraints / Scope,可变轮次直到 `project.max_rounds`)+ 必需的 Stage B 扩展轴轮次。收集以下信息:
+选择新项目时,进行两阶段 **深度访谈** (Deep Interview)—— 基于清晰度评分的 Stage A(Vision-Domain / Technology-Constraints / Scope,可变轮次直到 `project.max_rounds`)+ 必需的 Stage B 扩展轴轮次。收集以下信息:
 
 **问题 1 - 项目目的**:
 
@@ -158,7 +158,7 @@ flowchart TD
 - **Go**: 高性能服务、CLI 工具
 - **Other**: Rust、Java、Ruby 等(详细追问)
 
-**问题 3 - 项目描述**(自由输入):
+**问题 3 - 项目描述** (自由输入):
 
 - 项目名称
 - 主要功能或目标
@@ -243,7 +243,7 @@ Explore + manager-docs 在 `.moai/project/codemaps/` 生成架构代码地图。
 
 确认是否安装了与检测到的技术栈匹配的 LSP 服务器。
 
-**各语言 LSP 映射**(支持 16 种语言):
+**各语言 LSP 映射** (支持 16 种语言):
 
 | 语言                  | LSP 服务器                   | 确认命令                        |
 | --------------------- | -------------------------- | ---------------------------------- |
