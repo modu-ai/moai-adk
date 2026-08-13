@@ -2,9 +2,9 @@
 id: SPEC-DESIGN-DOCS-V31-001
 title: "docs-site v3.1-rc.1 renewal — IA redesign, design-system overhaul, Korean book-depth content, sequential 4-locale i18n"
 version: 0.2.0
-status: in-progress
+status: completed
 created: 2026-08-11
-updated: 2026-08-12
+updated: 2026-08-13
 author: manager-spec
 priority: High
 phase: "v3.1-rc.1 target"
