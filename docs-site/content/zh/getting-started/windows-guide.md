@@ -6,6 +6,10 @@ draft: false
 
 本文整理了在 Windows 上使用 MoAI-ADK 时需要了解的环境要求与常见陷阱。先说结论：**WSL 最省心** — 原生 Windows 环境中遇到的大部分路径·权限问题在 WSL 中都不会出现。
 
+MoAI-ADK 是单一 Go 二进制文件，在 Windows 上也能直接运行，但 Claude Code 所处理的 shell 脚本、路径分隔符与字符编码遵循 Linux/macOS 惯例。因此在 Windows 命令提示符(cmd.exe)或旧版 PowerShell 5.x 中，容易出现路径处理错位或 hook 脚本失败的情况。WSL 在 Windows 内直接提供 Linux 环境，一次性消除这些差距。
+
+本页将以一个完整流程引导你完成 WSL 安装、打开项目以及（可选）CG 模式配置。若已在用 WSL，可直接跳到 [WSL 设置指南](#wsl-设置指南) 开始安装 moai-adk。
+
 ## 支持的环境
 
 | 环境 | 是否支持 | 备注 |

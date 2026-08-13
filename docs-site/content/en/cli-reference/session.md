@@ -6,6 +6,8 @@ draft: false
 
 `moai session` manages the multi-session coordination registry in `.moai/state/active-sessions.json`. It is a tool for mitigating the races that arise when multiple Claude Code sessions work on the same project simultaneously.
 
+When manager agents working in SPEC-sized units edit the same files at the same time, the result is a fatal race where one overwrites the other's changes, so this registry provides a single coordination point that surfaces the presence of active sessions. The harness pre-spawn check then reads this data to decide whether it is safe to spawn the next agent.
+
 ## Subcommands
 
 | Command | Description |

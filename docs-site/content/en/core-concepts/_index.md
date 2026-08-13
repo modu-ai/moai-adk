@@ -2,6 +2,7 @@
 title: Core Concepts
 weight: 20
 draft: false
+description: "The foundational principles behind MoAI-ADK — SPEC-First development, DDD/TDD, the TRUST 5 quality framework, and dedicated agents."
 ---
 
 {{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: Agentic Harness

@@ -2,10 +2,10 @@
 title: Agent View
 weight: 30
 draft: false
-description: "How to dispatch multiple background sessions from one screen with the claude agents command, observe their status, and intervene only when needed."
+description: "How to dispatch multiple background sessions from one screen with the claude agents command, observe their status, and intervene only when needed — beginner level."
 ---
 
-The agent view, opened by the `claude agents` command, is a single control screen that lets you dispatch and observe multiple Claude Code sessions from one place, intervening only in the sessions that need a hand.
+The agent view, opened by the `claude agents` command, is a single control screen that lets you put several Claude Code sessions on one table, watch how they are doing, and step in only in the sessions that need a hand. Toss a bug fix, a PR review, and a flaky-test investigation each onto its own row, do other work, and come back only when a row is waiting for input or has produced a result.
 
 {{< callout type="info" title="Background reference" >}}
 This page is background material on **Claude Code itself**, the platform MoAI-ADK runs on. MoAI-ADK's own features are covered in the sections above it in the sidebar.
@@ -17,11 +17,11 @@ This page is background material on **Claude Code itself**, the platform MoAI-AD
 
 ## What Is the Agent View
 
-The agent view is an interface for managing **background sessions** — sessions that keep running without being tied to a terminal — from one screen. Each background session is a complete Claude Code conversation in its own right, and a separate supervisor process keeps it running even if you close the terminal. So you can toss a bug fix, a PR review, and a flaky-test investigation each onto its own row, go do other work, and come back when a row is waiting for input or has produced a result.
+The agent view is an interface for managing **background sessions** — sessions that keep running without being tied to one terminal — from one screen. Each background session is a complete Claude Code conversation in its own right, and a separate supervisor process keeps it running even if you close the terminal. So you can toss a bug fix, a PR review, and a flaky-test investigation each onto its own row, go do other work, and come back when a row is waiting for input or has produced a result.
 
-> The agent view is in research preview and works on Claude Code v2.1.139 or later. Check your version with `claude --version`. The interface and shortcuts may change as the feature evolves.
+The agent view is in **research preview** and works on Claude Code v2.1.139 or later. Check your version with `claude --version`. The interface and shortcuts may change as the feature evolves.
 
-Here is where it sits among the parallel-execution options.
+Claude Code has several means of running work in parallel — the agent view occupies the "dispatch several unrelated full sessions and collect only results" seat among them.
 
 | Option | Characteristics | Best for |
 | :--- | :--- | :--- |
@@ -29,6 +29,12 @@ Here is where it sits among the parallel-execution options.
 | Subagents | Helper workers invoked within one session | Decomposing a single task into substeps |
 | Agent teams | Multi-session collaboration with mutual messaging | Collaborative work needing coordination |
 | Worktrees | Git workspaces isolating file edits | Conflict-free parallel editing on the same checkout |
+
+## Why Background (v2.1.198)
+
+The agent view exists because **background execution became the default** in Claude Code v2.1.198. The runtime puts sessions that do not need their results right away into the background and lifts them to the foreground only at the moment the result is needed. The agent view is precisely the control window for watching those background sessions in one place.
+
+When a background session hits a tool that needs permission (e.g., Bash, WebFetch), the prompt is **displayed on the main session screen**. Since v2.1.186 the prompt even carries the name of which subagent is asking, and `Esc` can deny just that one call. Pre-listing frequently-used tools in the `settings.json` allow list before starting a long background task cuts the prompt frequency substantially.
 
 ## What It Shows
 
@@ -59,7 +65,7 @@ The icon at the front of each row indicates the session status through color and
 | Completed | Green | The work finished successfully |
 | Failed | Red | The work ended with an error |
 | Stopped | Gray | Stopped via `Ctrl+X` or `claude stop` |
-| Needs attention | Orange | A session that stalled and needs a look (e.g. no stream events for a while); floated to the top (CC 2.1.196) |
+| Needs attention | Orange | A session that stalled and needs a look (e.g., no stream events for a while); floated to the top (CC 2.1.196) |
 
 Separately, the icon **shape** indicates whether the underlying process is alive. `✻` (or animated `✽`) means the process is alive and responds instantly; `∙` means the process has exited (you can still peek, reply, or attach, and Claude resumes from where it stopped); `✢` means a `/loop` session is waiting between iterations.
 
@@ -78,19 +84,21 @@ When a session opens a PR, a label like `PR #1234` appears at the right end of t
 
 For most work, this column is where you collect results — when a PR number turns green, review and merge. You can also dispatch a shell command as a background task by prefixing the input with `!`, like `! pytest -x`; in that case no model is invoked, only the command runs on one row, and the latest output line is shown as its status.
 
-### Subagent Output
+### Subagent and Teammate Output
 
 **Subagents** or **agent-team** teammates spawned by a session are not listed as separate rows. Their output and progress merge into the parent session's row summary and output. To see the details, peek into or attach to that session and view the full conversation.
 
+For reference, since v2.1.219 subagent nesting is re-enabled by default, so one background session can fan out nested spawns up to depth 3 (disable with `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`). The agent view does not expand this nested structure row by row — it shows status by the outermost session.
+
 ## Usage Scenarios
 
-The agent view is useful when you have several mutually independent tasks Claude can advance without you watching every step.
+The agent view shines when you have several mutually independent tasks Claude can advance without you watching every step.
 
 - **Monitoring long-running work**: toss a long task like a flaky-test investigation onto a row, work in another window, and return when the row flips to needs-input or a result. Background sessions keep running even if you close the terminal or shell, thanks to the supervisor process.
 - **Tracking parallel work**: dispatch a bug fix, a PR review, and a test investigation as three rows at once and compare states at a glance. File edits are isolated per session in **worktrees** under `.claude/worktrees/`, so all rows read the same checkout but each writes separately.
 - **Managing multiple projects on one screen**: by default, background sessions from all projects appear in one table. To narrow to one project, specify the directory, e.g. `claude agents --cwd ~/projects/my-app`.
 
-Each session consumes subscription usage independently. Running 10 agents in parallel burns your quota roughly 10x faster, so keep usage limits in mind before dispatching many at once. Parallelization is a trade — buying time by paying tokens. This cost structure, alongside safety, is why MoAI-ADK prioritizes parallel fan-out for read-only investigation and review while running write work sequentially.
+Each session consumes subscription usage independently. Running 10 agents in parallel burns your quota roughly 10x faster, so keep usage limits in mind before dispatching many at once. Parallelization is a trade — buying time by paying tokens. The reason MoAI-ADK prioritizes parallel fan-out for read-only investigation and review while running write work sequentially takes this cost structure into account alongside safety.
 
 ## Access and Controls
 
@@ -123,6 +131,8 @@ claude --agent code-reviewer --bg "address review comments on PR 1234"
 
 Every prompt entered in the agent view input starts a new session (it does not append to an existing one). To send an ongoing conversation to the background, run `/background` or its alias `/bg` inside the session, or press `←` on an empty input.
 
+When you designate a subagent definition as the main agent like the third route, you can fix the model per session via that agent file's `model` field (the default `inherit` simply uses the main session's model). For cost-sensitive collection work, set a cheaper model in advance; for reasoning-heavy work, set a higher-tier model — the model will not drift at dispatch time.
+
 ### Peek and Attach
 
 | Action | Key | Effect |
@@ -149,7 +159,9 @@ Press `?` to view all shortcuts on screen. The most-used ones:
 | `Ctrl+X` | Stop the session. Press again within 2 seconds to delete |
 | `Esc` | Close the panel, clear the input, or exit |
 
-> Worktrees Claude created for a session are removed along with it when deleting via double `Ctrl+X`, and uncommitted changes are lost. Push or commit first to preserve them.
+{{< callout type="warning" >}}
+Worktrees Claude created for a session are removed along with it when deleting via double `Ctrl+X`, and uncommitted changes are lost. Push or commit first to preserve them.
+{{< /callout >}}
 
 ### Managing from the Shell
 
@@ -181,6 +193,7 @@ Setting `worktree.bgIsolation` above to `"none"` makes background sessions edit 
 
 - [Subagents](/en/claude-code/agentic/sub-agents)
 - [Agent Teams](/en/claude-code/agentic/agent-teams)
+- [Worktrees](/en/claude-code/agentic/worktrees)
 
 ## References
 

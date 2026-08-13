@@ -59,7 +59,7 @@ MoAI-ADK uses **12 core agents** (11 MoAI custom + 1 Anthropic built-in).
 | `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
 | `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
-The key point is that planning and auditing are separated — the one who built it does not inspect their own work.
+The key point is that planning and auditing are separated — the one who built it does not inspect their own work. Audit agents approach with a skeptical (fresh-judgment) stance — doubting every claim until evidence appears, and accepting only reproducible results rather than "it seems to pass." Scores are computed as the harmonic mean rather than the simple average, so if one dimension collapses, the overall score falls with it. This design upholds the reliability of the TRUST 5 quality framework.
 
 ### Builder Agent (1)
 

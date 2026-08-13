@@ -10,6 +10,20 @@ quality gates — the quality bar for contributions (coverage, lint,
 conventional commits) follows those same standards.
 
 
+## Contribution flow at a glance
+
+The contribution flow has five steps. Naming why each step exists makes the procedure below fall into place naturally.
+
+1. **Explore** — Look over the repository structure and existing issues.
+2. **Branch** — Create a working branch to isolate your changes from the main code.
+3. **Implement** — Make the change and verify it with tests.
+4. **Submit** — Open a PR following the Conventional Commits message format.
+5. **Review** — Reflect feedback and iterate until the change is merged into main.
+
+{{< icon bulb muted >}} First-time contributors may want to start with issues labeled
+"good first issue". Their scope is small and bounded, so the entry is gentle.
+
+
 ## Quick start
 
 1. **Fork** the repository
@@ -102,9 +116,15 @@ make clean        # Clean build artifacts
 - [ ] Commit messages follow Conventional Commits
 - [ ] Documentation updated (if needed)
 
+
+## Create an issue right from the session
+
+When you find a bug or want to propose a feature while using MoAI-ADK, you do not have to leave for the GitHub web. Type `/moai feedback` inside the session, and an issue draft that reflects the current conversation context is composed and submitted to the repository's issue tracker automatically. Bug-reproduction steps and environment info are attached, so the back-and-forth is reduced.
+
+
 ## Community
 
-- **Issue tracker**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — bug reports, feature requests. If you are already using MoAI-ADK, you can file an issue right from a session with `/moai feedback`
+- **Issue tracker**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — bug reports and feature requests.
 - **Discord**: [Discord Community](https://discord.gg/Z7E7Mdc5aN) — real-time chat, tips
 - **Official docs**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 

@@ -52,7 +52,7 @@ flowchart TD
 
 ### Layer C — 验证节食 (Verify-diet)
 
-{{< icon wrench >}} 将验证命令的长输出重定向到磁盘文件，上下文中只保留 exit code 和 bounded tail(最多 50 行)。这个文件重定向契约(file-redirect contract)在保持验证证据完整性的同时减少上下文消耗。详细机制见[代币预算管理与正常停止](/zh/advanced/token-budget/)页面。
+{{< icon wrench >}} 将验证命令的长输出重定向到磁盘文件，上下文中只保留 exit code 和 bounded tail(最多 50 行)。这个文件重定向契约(file-redirect contract)在保持验证证据完整性的同时减少上下文消耗。这层还关联到提示缓存——Anthropic 的提示缓存对渲染请求的前缀(tools → system → messages)做前缀匹配，首次写入付 1.25 倍成本，此后复用同一前缀的回合以 0.1 倍成本读取。缩短常驻指令、提高缓存命中率，也属于这一层。详细机制见[代币预算管理与正常停止](/zh/advanced/token-budget/)页面。
 
 ### Layer D — 预算防御 (Budget defense)
 
@@ -69,7 +69,7 @@ flowchart TD
 
 `moai cg` 是结合 Claude 领导者和 GLM 工作进程的混合模式。战略、规划、审计由 Claude 担当，大规模实现工作由 GLM 担当。在实现密集型任务上可实现 60-70% 的成本削减。
 
-GLM-5.2 是 1M 上下文的单一模型，定价为输入 $2 / 输出 $8 (每 1M 代币)，自动应用 z.ai 隐式提示缓存。CG 模式和 GLM 独立会话(`moai glm`)的详情请参阅 Multi-LLM 部分。
+GLM-5.2 是 1M 上下文的单一模型，定价为输入 $2 / 输出 $8 (每 1M 代币)，自动应用 z.ai 隐式提示缓存。Claude Code 报告的 `context_window_size` 按 Claude 槽位为准，所以 GLM 会话中原始值显示为 ~180K，但 MoAI 把它纠正为 1M、按 50% 阈值运作。请信任 statusline 的 CW% 表盘。CG 模式和 GLM 独立会话(`moai glm`)的详情请参阅 Multi-LLM 部分。
 
 ## 已验证的事实与路线图
 
