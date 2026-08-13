@@ -181,6 +181,11 @@ secret-*.*
 .claude/.env.local*
 .claude/local/
 .moai/config/local/
+# Per-machine runtime LLM backend config (provider/model profile matrix).
+# Expanded + modified at runtime by moai glm/cg; the tracked template default
+# lives at internal/template/templates/.moai/config/sections/llm.yaml (deployed
+# to this path by moai init/update, so a fresh checkout still gets the default).
+.moai/config/sections/llm.yaml
 .claude/plans/
 .claude/agent-memory/
 .claude/worktrees/

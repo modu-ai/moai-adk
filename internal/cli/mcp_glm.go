@@ -93,10 +93,10 @@ var projectDirResolver = resolveProjectDir
 // glmMessagesRequest is the Anthropic-compatible Messages API request body
 // posted to z.ai.
 type glmMessagesRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system"`
-	Messages  []glmMessage       `json:"messages"`
+	Model     string       `json:"model"`
+	MaxTokens int          `json:"max_tokens"`
+	System    string       `json:"system"`
+	Messages  []glmMessage `json:"messages"`
 }
 
 type glmMessage struct {
@@ -163,15 +163,17 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		model = resolveGLMAuditModel() // SSOT (REQ-MCP-013)
 	}
 	focus := req.GetString("focus", "")
+	token := extractProgressToken(req)
 
-	out := callGLMAudit(ctx, key, model, focus)
+	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — z.ai 요청 준비 중...")
+	out := callGLMAudit(ctx, key, model, focus, token)
 	return reviewToolResult(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a
 // ReviewOutput. Every error path fails open to a VerdictInconclusive — the
 // caller always receives a usable structured result.
-func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
+func callGLMAudit(ctx context.Context, key, model, focus string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
 		MaxTokens: glmAuditMaxTokens,
@@ -191,6 +193,7 @@ func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
+	notifyMCPProgress(ctx, token, 0.1, "z.ai에 감사 요청 전송 중...")
 	resp, err := glmHTTPClient.Do(httpReq)
 	if err != nil {
 		return glmInconclusive("z.ai request failed: " + err.Error())
@@ -207,6 +210,7 @@ func callGLMAudit(ctx context.Context, key, model, focus string) ReviewOutput {
 	if err != nil {
 		return glmInconclusive("cannot read z.ai response: " + err.Error())
 	}
+	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — ReviewOutput 파싱 중...")
 	return parseGLMReview(raw)
 }
 
@@ -222,7 +226,11 @@ func parseGLMReview(raw []byte) ReviewOutput {
 		return glmInconclusive("z.ai response carried no content")
 	}
 	var out ReviewOutput
-	if err := json.Unmarshal([]byte(env.Content[0].Text), &out); err != nil {
+	// z.ai occasionally wraps the JSON in a markdown code fence despite the
+	// prompt's "no code fences" constraint; strip fences + surrounding prose so
+	// the Unmarshal sees a bare object.
+	jsonBody := extractJSONObject(env.Content[0].Text)
+	if err := json.Unmarshal([]byte(jsonBody), &out); err != nil {
 		return glmInconclusive("z.ai content was not a ReviewOutput JSON: " + err.Error())
 	}
 	if strings.TrimSpace(out.Verdict) == "" {
@@ -235,6 +243,35 @@ func parseGLMReview(raw []byte) ReviewOutput {
 		out.NextSteps = []string{}
 	}
 	return out
+}
+
+// extractJSONObject strips a leading markdown code fence and any surrounding
+// prose from a model's text response, returning the substring spanning the
+// first '{' to the last '}'. z.ai occasionally wraps the JSON object in
+// ```json ... ``` despite the prompt's "no code fences" constraint; this
+// recovers the bare object so json.Unmarshal succeeds. Returns the input
+// unchanged when no brace boundary is found (the caller's Unmarshal then
+// reports the original error — no silent masking).
+func extractJSONObject(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		// Drop the opening fence line (``` or ```json).
+		if nl := strings.IndexByte(s, '\n'); nl >= 0 {
+			s = s[nl+1:]
+		}
+		s = strings.TrimSpace(s)
+		// Drop a trailing closing fence.
+		if idx := strings.LastIndex(s, "```"); idx >= 0 {
+			s = s[:idx]
+		}
+		s = strings.TrimSpace(s)
+	}
+	start := strings.IndexByte(s, '{')
+	end := strings.LastIndexByte(s, '}')
+	if start >= 0 && end > start {
+		return s[start : end+1]
+	}
+	return s
 }
 
 // glmAuditSystemPrompt constrains the GLM model to emit ONLY a ReviewOutput

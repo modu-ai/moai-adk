@@ -175,6 +175,8 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	background := req.GetBool("background", false)
 	writeRequested := req.GetBool("write", false)
 	resumeLast := req.GetBool("resume_last", false)
+	token := extractProgressToken(req)
+	notifyMCPProgress(ctx, token, 0, "codex task 시작 — 프롬프트 접수")
 
 	if prompt == "" {
 		return toolErr(codexTaskToolName, errors.New("prompt is required")), nil
@@ -192,6 +194,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		result.Note = codexTaskWriteRefusedNote
 	}
 
+	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 세션 준비 중...")
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		result.Status = codexJobStatusFailed
@@ -219,6 +222,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
 
+	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
 	session, err := openCodexSessionOn(ctx, binaryPath, turnParams, resumeThreadID)
 	if err != nil {
 		var sErr *codexSessionError

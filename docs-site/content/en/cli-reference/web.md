@@ -46,11 +46,11 @@ Saves go through the same validation as the terminal wizard, so results are cons
 
 The Console's interface language is chosen from the selector at the right of the header, among English · 한국어 · 日本語 · 中文. The screens below were captured with it set to English.
 
-The header places the project name, the current profile, and a summary of the main settings (`lang · model · effort · dev`) side by side. Below it come the profile selector and the Profiles card, followed by six tabs: Identity · Language · LLM · 3rd Party LLM · Agents · Report. Edited values are written with the Save settings button at the bottom.
+The header places the project name, the current profile, and a summary of the main settings (`lang · model · effort · dev`) side by side. Below it comes the profile bar — the profile selector sits next to its own add / rename / delete controls, so the full profile lifecycle is on one row (there is no separate Profiles card). Below the profile bar are nine tabs: Identity · Language · LLM · 3rd Party LLM · Workflow · Git & Worktree · Audit · Agents · Report. Edited values are written with the Save settings button at the bottom.
 
-![MoAI Web Console initial screen: the project name and profile in the header, the Profiles card, the six tabs, the Display name field on the Identity tab, and the Save settings button](/images/profile/web-console-overview.png)
+![MoAI Web Console initial screen: the project name and profile in the header, the profile bar, the nine tabs, the Display name field on the Identity tab, and the Save settings button](/images/profile/web-console-overview.png)
 
-From the Profiles card you can switch profiles, Delete one, and create a new one by entering a New profile name and pressing Create profile. Choosing a different profile also changes the profile shown in the header. Below is the Language tab opened after switching to the `moai-cowork` profile.
+From the profile bar you can switch profiles, rename one, delete one, and create a new one by entering a New profile name and pressing Create profile. Choosing a different profile also changes the profile shown in the header. Below is the Language tab opened after switching to the `moai-cowork` profile.
 
 ![The Language tab of the Console after switching to the moai-cowork profile, with four fields: Conversation language, Commit message language, Code comment language, and Documentation language](/images/profile/web-console-switch.png)
 

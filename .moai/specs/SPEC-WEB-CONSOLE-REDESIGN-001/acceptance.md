@@ -324,7 +324,7 @@ go test ./internal/template/ -run 'TestInternalContentLeak|TestSplitHarnessNames
 # 기존 가드 실행이 권위 (§A.1 규칙 4 — 정규식 재구현 금지)
 ```
 
-**AC-WCR-063** (REQ-WCR-063)
+**AC-WCR-063** (REQ-WCR-063) — **PASS-WITH-DEBT (사용자 승인 2026-08-13)**
 *Given* 구현이 완료된 상태에서,
 *When* `internal/web` 패키지 커버리지를 측정하면,
 *Then* 90.0% 이상이다.
@@ -332,6 +332,17 @@ go test ./internal/template/ -run 'TestInternalContentLeak|TestSplitHarnessNames
 ```bash
 go test -cover ./internal/web/... 2>&1 | grep -E 'coverage: [0-9.]+%'
 ```
+
+**실측**: 73.5% — 90% 기준 미달, 그러나 **구조적 상한 80.7%**이므로 90%는 도달 불가. 패키지
+구문의 83%(4323/5208)가 `templ generate` 산출물이며, 그중 927구문(패키지 전체의 17.8%)은
+templ이 모든 write 뒤에 기계적으로 붙이는 `if templ_err != nil { return }` / `ctx.Err()` /
+`NopComponent` 보일러플레이트로 `strings.Builder`·`httptest` 버퍼 렌더에서 도달 불가하다.
+손으로 쓴 코드만 **91.1%**(이미 90% hand-written-code 기준 충족). 상세한 실측과 권고는
+`progress.md §E.2.3`에 있다. **DEBT**: AC-WCR-063의 분모 재정의(`*_templ.go` 제외 또는
+hand-written-code ≥ 90%로 재정의)는 SPEC 본문 변경이므로 manager-spec 소관이며, 본
+sync-phase에서는 사용자 승인된 PASS-WITH-DEBT로 기록한다. 본 sync에서 코드를 추가하지
+않는다 — 이 판정은 이미 merged된 run-phase 코드(`b0d3b61f8`)와 orchestrator의
+`go test ./internal/web/...` 실측 결과에 기반한 것이다.
 
 ---
 

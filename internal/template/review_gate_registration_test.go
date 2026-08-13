@@ -36,11 +36,14 @@ type stopHookEntry struct {
 	Timeout float64  `json:"timeout"`
 }
 
-// script returns the hook script basename this entry invokes.
+// script returns the hook script basename this entry invokes. It reads the
+// LAST args element so the same extraction covers: the guarded exec form
+// (args = ["-c", "<guard>", "<path>"] — path is last), the legacy exec form
+// (args = ["<path>"]), and the shell form (args empty → fall back to command).
 func (e stopHookEntry) script() string {
 	target := e.Command
 	if len(e.Args) > 0 {
-		target = e.Args[0]
+		target = e.Args[len(e.Args)-1]
 	}
 	target = strings.Trim(target, `"`)
 	return filepath.Base(target)

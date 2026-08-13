@@ -44,11 +44,11 @@ Web 控制台可编辑：
 
 控制台的界面语言可在页眉右侧的选择器中从 English · 한국어 · 日本語 · 中文 中选择。下面的界面是设为 English 时的状态，因此本节在括号中一并标注界面上显示的英文表述。
 
-页眉中并排显示项目名称、当前配置文件以及主要设置摘要(`lang · model · effort · dev`)。其下是配置文件选择器和配置文件(Profiles) 卡片，接着是用户信息(Identity) · 语言(Language) · LLM · 第三方 LLM(3rd Party LLM) · 智能体(Agents) · 报告(Report) 六个标签页。修改后的值通过底部的保存设置(Save settings) 按钮写入。
+页眉中并排显示项目名称、当前配置文件以及主要设置摘要(`lang · model · effort · dev`)。其下是配置文件条(profile bar) — 配置文件选择器旁边就是添加·重命名·删除控件,整个配置文件生命周期集中在一行(没有独立的配置文件卡片)。配置文件条下方依次是用户信息(Identity) · 语言(Language) · LLM · 第三方 LLM(3rd Party LLM) · 工作流(Workflow) · Git·工作树(Git & Worktree) · 审计(Audit) · 智能体(Agents) · 报告(Report) 九个标签页。修改后的值通过底部的保存设置(Save settings) 按钮写入。
 
-![MoAI Web Console 初始界面。页眉的项目名称与配置文件、配置文件(Profiles) 卡片、六个标签页、用户信息(Identity) 标签页的显示名称(Display name) 输入框、保存设置(Save settings) 按钮](/images/profile/web-console-overview.png)
+![MoAI Web Console 初始界面。页眉的项目名称与配置文件、配置文件条、九个标签页、用户信息(Identity) 标签页的显示名称(Display name) 输入框、保存设置(Save settings) 按钮](/images/profile/web-console-overview.png)
 
-在配置文件(Profiles) 卡片中可以切换配置文件、删除(Delete)，也可以填写新配置文件名称(New profile name) 后用创建配置文件(Create profile) 新建。选择其他配置文件时，页眉中的配置文件显示也会随之变化。下面是切换到 `moai-cowork` 配置文件后打开语言(Language) 标签页的样子。
+在配置文件条中可以切换配置文件、重命名、删除(Delete)，也可以填写新配置文件名称(New profile name) 后用创建配置文件(Create profile) 新建。选择其他配置文件时，页眉中的配置文件显示也会随之变化。下面是切换到 `moai-cowork` 配置文件后打开语言(Language) 标签页的样子。
 
 ![切换到 moai-cowork 配置文件后控制台的语言(Language) 标签页。对话语言(Conversation language)、提交信息语言(Commit message language)、代码注释语言(Code comment language)、文档语言(Documentation language) 四个项目](/images/profile/web-console-switch.png)
 
