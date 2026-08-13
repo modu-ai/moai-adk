@@ -95,7 +95,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M0-M6, 7 commits)
 
 ```yaml
 sync_complete_at: 2026-08-13
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 435bc2bbd47253b0d6029e88d9640a56bc12db7b
 sync_status: audit-ready
 b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-CHAIN-CORE-001' CHANGELOG.md → 0 before emission)
 b12_self_test_b_ac_count_match: PASS (24 distinct AC in acceptance.md; CHANGELOG entry references 24 AC)
