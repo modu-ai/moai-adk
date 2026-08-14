@@ -29,7 +29,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 )
+
+// branchProbe is the package-level indirection over exec.Command used by
+// reportedBranch, so a test can inject a genuine tool failure (a missing
+// binary) and prove it propagates as an error rather than laundering into
+// the detached-HEAD signal (review finding F3b).
+var branchProbe = exec.Command
 
 // Status source tags recorded on CardStatus.Source.
 const (
@@ -88,8 +96,17 @@ type CardStatus struct {
 // (REQ-KB-020), reporting unresolved where the source resolves to no single
 // tree (REQ-KB-024).
 func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatus, error) {
+	// The spec identifier is interpolated into a worktree path, a git-show
+	// ref, and the primary-checkout spec.md path. A traversal-shaped value
+	// (`..`, separator, absolute) must be refused at this boundary rather
+	// than reach any join — the same sanitizer the CLI applies at its
+	// SPEC-ID boundaries (internal/cli/specid.ValidateSpecID, the repo's
+	// shared guard from SPEC-SEC-HARDEN-002).
 	if specID == "" {
 		return nil, fmt.Errorf("read card status: empty spec id")
+	}
+	if err := specid.ValidateSpecID(specID); err != nil {
+		return nil, fmt.Errorf("read card status: %w", err)
 	}
 
 	// The live-worktree observation, over both scanned bases. The path's
@@ -105,17 +122,15 @@ func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatu
 		}
 		branch, err := reportedBranch(wtPath)
 		if err != nil {
-			// The worktree exists but its HEAD cannot be read as a branch
-			// reference — reporting no branch, the unresolved case.
-			return &CardStatus{
-				Status:          StatusUnresolved,
-				Source:          StatusSourceUnresolved,
-				SpecFilePresent: true,
-				WorktreePath:    wtPath,
-			}, nil
+			// A genuine tool failure (missing binary, corrupt worktree) —
+			// propagate, do not launder it into the detached-HEAD signal
+			// (review finding F3b: a missing git binary must not produce
+			// "worktree reports no branch").
+			return nil, fmt.Errorf("read card status: worktree %s: %w", wtPath, err)
 		}
 		if branch == "" {
-			// Detached HEAD: a worktree existing but reporting no branch.
+			// Detached HEAD: a worktree existing but reporting no branch —
+			// the genuine unresolved case (REQ-KB-024).
 			return &CardStatus{
 				Status:          StatusUnresolved,
 				Source:          StatusSourceUnresolved,
@@ -158,19 +173,33 @@ func branchNamesSpec(branch, specID string) bool {
 // reportedBranch returns the branch the worktree at wtPath reports, or ""
 // for a detached HEAD. An unreadable HEAD reference is an error.
 func reportedBranch(wtPath string) (string, error) {
-	cmd := exec.Command("git", "-C", wtPath, "symbolic-ref", "--quiet", "--short", "HEAD")
+	cmd := branchProbe("git", "-C", wtPath, "symbolic-ref", "--quiet", "--short", "HEAD")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		// symbolic-ref exits non-zero on a detached HEAD: the worktree
-		// reports no branch, which is not an error condition.
-		if strings.Contains(errBuf.String(), "not a symbolic ref") || strings.Contains(strings.ToLower(err.Error()), "symbolic") {
+		// Detached HEAD: symbolic-ref --quiet exits 1 with EMPTY stderr (the
+		// --quiet flag suppresses the "not a symbolic ref" message), and that
+		// exact shape is the genuine detachment signal. Anything else — a
+		// missing git binary (a non-ExitError), a corrupt repo, an unexpected
+		// exit code — is a TOOL failure, propagated as an error rather than
+		// laundered into "no branch".
+		if isExitStatusOne(err) && errBuf.Len() == 0 {
 			return "", nil
 		}
 		return "", fmt.Errorf("reported branch of %s: %w (%s)", wtPath, err, strings.TrimSpace(errBuf.String()))
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+// isExitStatusOne reports whether err is an *exec.ExitError whose process
+// exited with code 1 — the precise shape of `symbolic-ref --quiet` on a
+// detached HEAD.
+func isExitStatusOne(err error) bool {
+	if ee, ok := err.(*exec.ExitError); ok {
+		return ee.ExitCode() == 1
+	}
+	return false
 }
 
 // readBranchStatus performs the blob read against the branch, without
@@ -183,15 +212,24 @@ func readBranchStatus(primaryRoot, specID, branch, wtPath string) (*CardStatus, 
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		// The branch exists but carries no spec.md for the card: the
-		// no-file case read from the branch side.
-		return &CardStatus{
-			Status:          "",
-			Source:          StatusSourceBranch,
-			SpecFilePresent: false,
-			WorktreePath:    wtPath,
-			WorktreeBranch:  branch,
-		}, nil
+		// The genuine no-file case is git-show exiting 128 with
+		// "path ... does not exist in ..." — a real branch whose tree lacks
+		// the card's spec.md, the pre-planning state. Every OTHER failure
+		// (deleted ref, ambiguous ref, missing binary, unreadable repo) is a
+		// distinct condition and must propagate, not collapse into the
+		// affirmative no-file case pairingConsistent would then treat as
+		// legitimately pre-planning (review finding F4).
+		if isNoSuchPath(err, errBuf.String()) {
+			return &CardStatus{
+				Status:          "",
+				Source:          StatusSourceBranch,
+				SpecFilePresent: false,
+				WorktreePath:    wtPath,
+				WorktreeBranch:  branch,
+			}, nil
+		}
+		return nil, fmt.Errorf("read branch status (branch %s, card %s): %w (%s)",
+			branch, specID, err, strings.TrimSpace(errBuf.String()))
 	}
 	status, ok := parseFrontmatterStatus(out.Bytes())
 	return &CardStatus{
@@ -215,6 +253,23 @@ func readPrimaryStatus(primaryRoot, specID string) (*CardStatus, error) {
 	}
 	status, ok := parseFrontmatterStatus(raw)
 	return &CardStatus{Status: status, Source: StatusSourcePrimary, SpecFilePresent: ok}, nil
+}
+
+// isNoSuchPath reports whether a git-show failure is the genuine no-file
+// case (the path does not exist in the named tree) — separable from an
+// invocation failure, a deleted or ambiguous ref, or a missing binary.
+func isNoSuchPath(err error, stderr string) bool {
+	if !isExitStatusOne(err) && !isExitFailure(err) {
+		return false
+	}
+	return strings.Contains(stderr, "does not exist in") || strings.Contains(stderr, "exists on disk, but not in")
+}
+
+// isExitFailure reports whether err is any *exec.ExitError (non-zero exit),
+// used to distinguish a git exit-code failure from a binary-not-found error.
+func isExitFailure(err error) bool {
+	_, ok := err.(*exec.ExitError)
+	return ok
 }
 
 // frontmatterStatusLine matches the frontmatter `status:` key.

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 )
 
 // ErrNotSoleWriter is returned when a session whose declared role is not
@@ -214,8 +215,15 @@ func TransitionIntoRun(root, sessionID, specID string) error {
 // admitted with no session free is recorded UNHELD and that is a legal
 // steady state, not an error or a stall.
 func TransitionIntoRunOpts(root, sessionID, specID string, opts BoardOptions) error {
+	// A traversal-shaped specID is not persistable: it would land in the
+	// board state file as the card's identity and later reach a status-read
+	// path join. Refuse at the write boundary, matching ReadCardStatus. An
+	// empty id is its own named refusal (ValidateSpecID passes "").
 	if specID == "" {
 		return fmt.Errorf("transition into run: empty spec id")
+	}
+	if err := specid.ValidateSpecID(specID); err != nil {
+		return fmt.Errorf("transition into run: %w", err)
 	}
 	return WriteBoardState(root, sessionID, func(st *BoardState) error {
 		limit := opts.runLimit()

@@ -860,6 +860,175 @@ AP-32; the backlog column-vs-queue statement remains open for the queue's
 owner; the binary-lag and BOOTSTRAP-adoption items are other sessions'
 concerns).
 
+### M3-fix — review findings F1–F5 (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`, card returned run←review; TDD RED-probe → GREEN per finding)
+
+Review report: `.moai/reports/review-SPEC-KANBAN-BOARD-001.md` (lenses: --deep + --security; findings 1-3 probe-confirmed by the reviewer).
+
+**F1 — specID path traversal (HIGH, security). RED observed, then GREEN.**
+
+RED (my probe, against the unfixed tree — `f1_traversal_test.go`, now a permanent regression test):
+
+```
+$ go test ./internal/kanban/ -run 'TestReadCardStatus_RejectsTraversalSpecID|TestTransitionIntoRun_RejectsTraversalSpecID' -count=1 -v
+    f1_traversal_test.go:29: ReadCardStatus("../sibling") err = nil, want refusal — a traversal specID must not reach a path or ref join
+    f1_traversal_test.go:29: ReadCardStatus("..") err = nil, want refusal ...
+    f1_traversal_test.go:29: ReadCardStatus("foo/../bar") err = nil ... ("foo/bar", `foo\bar`, "/etc/passwd" likewise)
+--- FAIL: TestReadCardStatus_RejectsTraversalSpecID (0.00s)
+    f1_traversal_test.go:44: TransitionIntoRun("../sibling") err = nil, want refusal — a traversal specID must not be persisted
+--- FAIL: TestTransitionIntoRun_RejectsTraversalSpecID (0.00s)
+```
+
+GREEN: both entry points now route specID through the repo's shared sanitizer
+`internal/cli/specid.ValidateSpecID` (SPEC-SEC-HARDEN-002's leaf package —
+imports neither cli-consumers nor kanban/core-git, no cycle), keeping the
+empty-id named refusal (ValidateSpecID passes ""):
+
+```
+$ go test ./internal/kanban/ -run 'TestReadCardStatus_RejectsTraversalSpecID|TestTransitionIntoRun_RejectsTraversalSpecID|TestReadCardStatus_AcceptsCanonicalSpecID' -count=1 -v
+--- PASS: TestReadCardStatus_RejectsTraversalSpecID (0.00s)
+--- PASS: TestReadCardStatus_AcceptsCanonicalSpecID (0.00s)      # conditional on shape, never unconditional
+--- PASS: TestTransitionIntoRun_RejectsTraversalSpecID (0.00s)
+```
+
+The reviewer's own probe (`ReadCardStatus(root, "../../../002/secret/spec")`
+→ `status="implemented" source="primary"`) FAILS TO REPRODUCE: the call now
+returns a validation error and no out-of-tree read occurs. **Operator
+decision #1 applied**: AC-KB-022 amended IN PLACE with the traversal-refusal
+conjunct (acceptance.md, the paragraph after the four observations); counts
+re-measured — `grep -cE '^\*\*REQ-KB-[0-9]{3}\*\*' spec.md` = **25**,
+`grep -cE '^\*\*AC-KB-[0-9]{3}\*\*' acceptance.md` = **25**. No
+criterion added, no requirement added, no split.
+
+**F2 — unresolved verdict keyed on the status STRING (MEDIUM). RED observed, then GREEN.**
+
+RED (my probe — `f2_unresolved_test.go`, permanent):
+
+```
+--- PASS: TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved (0.00s)
+    f2_unresolved_test.go:26: Unresolved = true for a cleanly-resolved primary source — the verdict must key on Source, not on the status string
+--- FAIL: TestReconcileCard_UnresolvedLiteralIsInconsistent (0.00s)
+```
+
+GREEN: `ReconcileCard` branches on the structural discriminator
+`cs.Source == StatusSourceUnresolved` (with the rationale documented at the
+branch); a frontmatter literally carrying `status: unresolved` whose source
+resolved cleanly now reaches the compatibility table and is reported as the
+outside-every-row INCONSISTENCY it is; the detail line no longer claims a
+worktree observation that never failed ("observed worktree %q reported no
+branch" only in the genuine arm). Both probes PASS plus the existing
+AC-KB-025 integration test unchanged (`ok`).
+
+**F3 — detached-HEAD arm unreachable; git failures laundered (MEDIUM). RED (reviewer's probe, verbatim from the report) + my discriminating probe, then GREEN.**
+
+Reviewer's RED observation against the unfixed tree:
+
+```
+reportedBranch(detached) -> branch="" err=... exit status 1 ()    → F3 confirmed
+$ git symbolic-ref --quiet --short HEAD   # detached HEAD
+exit=1 ; stderr bytes: 0                                          → the real signal
+```
+
+GREEN: `reportedBranch` classifies detachment by the OBSERVED signal — exit
+status 1 with EMPTY stderr (the `--quiet` flag suppresses the message the
+old string-match looked for) — and now runs through a `branchProbe`
+indirection so a tool failure is injectable. Everything else (missing git
+binary = non-ExitError, corrupt repo, unexpected exit) propagates as an
+error; `ReadCardStatus` no longer launders that error into unresolved — only
+the genuine `branch == ""` arm produces the unresolved verdict, and my
+discriminating probes hold:
+
+```
+$ go test ./internal/kanban/ -run 'TestReportedBranch_DetachedHEADReturnsEmptyCleanly|TestReportedBranch_GitToolFailureIsAnError' -count=1
+ok   (detached → ("", nil) through the genuine empty-string arm;
+     /this-binary-does-not-exist-anywhere → error, NOT "no branch")
+```
+
+**F4 — every git-show failure collapsed to "no spec.md" (LOW-MED). Probe GREEN post-fix; RED form recorded.**
+
+`readBranchStatus` now matches `readPrimaryStatus`'s shape: the genuine
+no-file case is `git show` failing with "path ... does not exist in" (exit
+128 class); every other failure — deleted ref, ambiguous ref, missing
+binary — propagates as an error instead of collapsing into the affirmative
+`SpecFilePresent=false` that `pairingConsistent` would treat as
+legitimately pre-planning. Probe:
+
+```
+$ go test ./internal/kanban/ -run 'TestReadBranchStatus_DeletedRefIsAnErrorNotNoFile' -count=1
+ok   (readBranchStatus(root, "SPEC-F4-001", "no-such-branch", "") → error)
+```
+
+(RED form: the probe was authored alongside F3's in one file that first
+failed to compile against the unfixed tree — `undefined: branchProbe` — and
+the reviewer's report records the pre-fix behavior it targets verbatim; the
+probe's assertion is the negation of that behavior.)
+
+**F5 — acquire-records-identity-after-flock window (LOW, security). Containment per the lead's choice: gate the clear to Windows.**
+
+`ClearStaleBoardLock` split behind build tags:
+`board_lock_clear_windows.go` carries the full bounded clear (re-read
+mitigation intact, AP-29 residual stated, `parseLockOwner` moved with it);
+`board_lock_clear_unix.go` returns a not-applicable no-op report — the Unix
+substrate's own header records that the kernel releases flock on descriptor
+close, so an orphaned artifact blocks nothing there and the
+acquire-then-record gap the reviewer identified cannot arise. This removes
+the Unix-side window outright and touches the documented Windows residual
+not at all. The four clear-behavior tests (dead-owner cleared, live-owner
+refused, re-acquire race aborts, unparseable refused) moved to
+`board_lock_clear_windows_test.go` behind the same tag — exercised on a
+Windows runner, compile-verified by the GOOS=windows build here; the Unix
+side now asserts the gate:
+
+```
+$ go test ./internal/kanban/ -run 'TestClearStaleBoardLock_UnixGatedOut' -count=1 -v
+--- PASS: TestClearStaleBoardLock_UnixGatedOut (0.02s)   # stale artifact present → Removed=false, not-applicable reason, artifact untouched
+```
+
+**NOT FINDINGS — recorded, unchanged:** the four inherited debts stay
+reportable and untouched (incl. `kanban-dispatch.md`'s column re-derivation,
+contra REQ-KB-006/AP-32). The **self-attested sole-writer seam** is recorded
+here per the lead's instruction: `DeclareRole` is unguarded — any session
+can write `{"role":"lead"}` under its own id and pass `requireLeadRole`;
+REQ-KB-017's runtime guarantee is therefore bounded by an unauthenticated
+self-declaration until SPEC-KANBAN-BOOTSTRAP-001 lands the declaration
+contract's owning surface (REQ-KS-006), at which point the carrier here is
+the thing that sibling's widened adoption obligation adopts. Nothing
+changed in role.go.
+
+**CORRECTION alignment check:** this file's M1 full-suite note attributes
+the cli/hook failures to "WHERE the suite ran, not WHAT changed" (inherited
+kanban env) — it never claimed the failures were pre-existing on a clean
+base, so nothing to withdraw here; the lead's correction is noted and this
+wording stands as the env-attribution form.
+
+**Verification gate (lead's, after all five fixes):**
+
+```
+$ env -u MOAI_KANBAN -u MOAI_KANBAN_ID -u MOAI_KANBAN_LABEL \
+      -u MOAI_KANBAN_SETTINGS_INJECTED -u MOAI_KANBAN_LEAD_ADDR \
+      go test ./... -count=1 > /tmp/kanban-board-fix-test.log 2>&1
+rc=1   # ONE test failure: TestNavigatorEnrich_AtomicWriteBarrier in internal/cli
+fails(lines matching ^--- FAIL)=1
+```
+
+The single `--- FAIL` is `TestNavigatorEnrich_AtomicWriteBarrier` (internal/cli,
+navigator codemaps) - "barrier file not created (goroutine did not reach
+barrier)", a goroutine-timing flake. **Attribution:** that test's package
+imports none of the packages this fix touches (internal/kanban,
+internal/core/git, internal/cli/specid), and isolated re-run passes 3/3
+(`go test ./internal/cli/ -run TestNavigatorEnrich_AtomicWriteBarrier -count=3`
+-> `ok`). The kanban/core/git/hook packages - everything this fix modified -
+are green in the full run. Not a fix-pass regression.
+
+(Intermediate gates: `go build ./...` rc=0;
+`GOOS=windows GOARCH=amd64 go build ./...` rc=0 (both clear files compile
+on their target);
+`go test -cover ./internal/kanban/... ./internal/core/git/...` → 86.8% /
+86.7%; `golangci-lint run` → `0 issues.` (one transient unused-finding on
+`parseLockOwner` during the split, fixed by moving the function with its
+only caller); boundary grep `AskUserQuestion` over kanban + core/git →
+zero; per-file `spec lint` 6/6 rc=0 after the AC-KB-022 amendment; REQ/AC
+counts 25/25.)
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal

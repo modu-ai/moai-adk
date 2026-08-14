@@ -100,9 +100,18 @@ func ReconcileCard(card Card, cs *CardStatus) CardView {
 	// status was read, so the table is not reached, no enum member is
 	// substituted, and the card is NOT reported inconsistent. It keeps its
 	// recorded column, is not dispatchable, and every candidate surfaces.
-	if cs != nil && cs.Status == StatusUnresolved {
+	//
+	// The verdict keys on the SOURCE discriminator, never on the status
+	// STRING: a frontmatter literally carrying `status: unresolved` is not a
+	// member of the canonical enum, but parseFrontmatterStatus returns it
+	// verbatim — keying on cs.Status would misfile such a card as a
+	// resolution failure when its source resolved cleanly, and would hide
+	// the pairing violation behind an unrelated detail line. Keying on
+	// cs.Source routes the literal to the table, where it is the
+	// outside-every-row inconsistency it actually is.
+	if cs != nil && cs.Source == StatusSourceUnresolved {
 		view.Unresolved = true
-		view.Details = fmt.Sprintf("status source unresolved (worktree %q reports no branch); recorded column %q stands; candidates: %v",
+		view.Details = fmt.Sprintf("status source unresolved (observed worktree %q reported no branch); recorded column %q stands; candidates: %v",
 			cs.WorktreePath, card.Column, cs.Candidates)
 		return view
 	}

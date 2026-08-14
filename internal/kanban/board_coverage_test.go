@@ -154,27 +154,27 @@ func TestLoadBoard_NullCardsNormalized(t *testing.T) {
 	}
 }
 
-// TestClearStaleBoardLock_UnreadableArtifact — a read failure on the artifact
-// (as distinct from absence) surfaces as an error, never as a removal.
-func TestClearStaleBoardLock_UnreadableArtifact(t *testing.T) {
+// TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact — on Unix the
+// clear is a no-op (finding F5), so even an unreadable artifact yields the
+// not-applicable report rather than the Windows-substrate unreadable refusal
+// (which lives in the windows-tagged suite).
+func TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact(t *testing.T) {
 	if runtimeIsWindows() {
-		t.Skip("chmod-based denial skipped on windows")
+		t.Skip("unix-only gate observation")
 	}
 	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(BoardDir(root), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	// A DIRECTORY at the lock path makes ReadFile fail with a non-NotExist
-	// error on every platform.
 	if err := os.MkdirAll(boardLockPath(root), 0o755); err != nil {
 		t.Fatalf("mkdir lock path: %v", err)
 	}
 	report, err := ClearStaleBoardLock(root)
-	if err == nil {
-		t.Fatalf("ClearStaleBoardLock(unreadable) err = nil, report=%+v — a read failure is not evidence of absence", report)
+	if err != nil {
+		t.Fatalf("ClearStaleBoardLock(unix) error = %v, want nil no-op", err)
 	}
-	if report != nil && report.Removed {
-		t.Fatal("unreadable artifact was removed")
+	if report == nil || report.Removed {
+		t.Fatalf("report = %+v, want Removed=false not-applicable on unix", report)
 	}
 }
