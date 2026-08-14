@@ -347,8 +347,8 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
 // The High slot (Opus equivalent) and the legacy Opus field both map to
 // glm-5.3 (the z.ai-accepted id); 1M context activation is driven by the
-// resolved context window, not a model-id suffix. Medium/Low and the legacy
-// Sonnet/Haiku fields remain unchanged on their existing GLM models.
+// resolved context window, not a model-id suffix. Every Claude slot defaults
+// to the same model so auto-compact window sizing stays coherent.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
@@ -375,6 +375,9 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	}
 	if cfg.GLM.Models.Haiku != "glm-5.3" {
 		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3")
+	}
+	if cfg.GLM.Models.Fable != "glm-5.3" {
+		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3")
 	}
 }
 

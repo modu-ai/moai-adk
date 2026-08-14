@@ -46,7 +46,7 @@ MoAI-ADK points all four Claude tiers at the same GLM model, through the
 > own limit with compaction still waiting for a ceiling it never reaches — which is why all four
 > slots hold the same 1M model. Tier differentiation moves to the effort axis, where z.ai
 > actually implements it.
-> This per-tier differentiated mapping is configured via `glm.models` (high/medium/low/fable) in
+> This slot mapping is configured via `glm.models` (high/medium/low/fable) in
 > `llm.yaml`, each injected through the environment variables above. The Fable environment variable
 > is officially supported since Claude Code v2.1.202.
 
