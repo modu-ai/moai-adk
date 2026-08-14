@@ -92,6 +92,29 @@ Where the next phase reuses a session that has just been cleared, the lead re-se
 
 The lead's own session is cleared the same way, between cards rather than between phases: once a card reaches `done`, the lead asks the operator to `/clear` the lead session, and the next turn begins by presenting the backlog queue again.
 
+## Isolation is entered, never provisioned
+
+[HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare `git worktree add`.
+
+| Need | Form |
+|---|---|
+| Work inside the worktree in this session | `moai cc -w <name>` |
+| Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
+| Re-enter one from the current session | `EnterWorktree(<path>)` |
+| Leave it | `ExitWorktree` |
+| Dispose it once the card's pull requests have merged | `moai worktree done` |
+
+`moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close, and orphaned trees accumulate until someone reconciles them by hand.
+
+The lead dispatches this rather than assuming it. Each instruction names the worktree the companion is to work in and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command changes the directory for that invocation only, so the next command silently reads the wrong tree.
+
+Two properties make the shared checkout the wrong place for a card:
+
+- Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit that was never meant to carry it.
+- A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
+
+Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
+
 ## Boundaries — what this protocol does not do
 
 - **No board state store.** The queue is a plain file; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent six-column state, per-card worktree lifecycle, WIP limits, and card/frontmatter consistency reconciliation are separate work and are not assumed here.
@@ -105,6 +128,7 @@ The lead's own session is cleared the same way, between cards rather than betwee
 - `.claude/rules/moai/core/askuser-protocol.md` — the question channel the lead uses for card selection and `/clear` prompts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
 - `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format — what a companion returns when it cannot proceed
+- `.claude/rules/moai/workflow/worktree-integration.md` — the L1/L2 worktree tiers, their lifetimes, and the disposal contract
 - `.claude/skills/moai/workflows/todo.md` — the backlog queue surface
 - `.claude/agents/moai/manager-kanban.md` — the coordination agent, including its kanban-lead role
 
