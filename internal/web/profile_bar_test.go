@@ -32,10 +32,10 @@ func TestProfileManagerCardAbsent(t *testing.T) {
 			t.Errorf("rendered console still carries the profileManager card marker %q", marker)
 		}
 	}
-	// The bar itself must survive — removing the card must not remove the
-	// profile UI altogether.
-	if !strings.Contains(body, "profilebar") {
-		t.Error("the profile bar is gone — M5 consolidates onto the bar, it does not delete the surface")
+	// 표면 자체는 살아 있어야 한다 — 카드를 없앤 것이 프로필 UI 전체를 없앤 게
+	// 되면 안 된다. 재설계에서 그 하나의 표면은 레일의 팝오버다.
+	if !strings.Contains(body, `data-pop-panel="profile"`) {
+		t.Error("the profile surface is gone — consolidation moves it to the rail popover, it does not delete it")
 	}
 }
 
@@ -101,7 +101,7 @@ func renderBarWithModifiableProfile(t *testing.T) string {
 			{Name: "scratch"},
 		}
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
 	}
@@ -289,7 +289,7 @@ func TestProfileBarMarksCurrentAndSelected(t *testing.T) {
 			{Name: "scratch", Current: false},
 		}
 	}
-	body := serveGet(t, a.routes(), "/").Body.String()
+	body := serveGet(t, a.routes(), "/settings").Body.String()
 
 	// The launch-current profile is annotated; the others are not.
 	if !strings.Contains(body, `>work (current)<`) {
@@ -301,9 +301,15 @@ func TestProfileBarMarksCurrentAndSelected(t *testing.T) {
 		}
 	}
 
-	// Exactly one option is preselected — the profile being edited.
-	if n := strings.Count(body, `<option value="default" selected>`); n != 1 {
-		t.Errorf("the edited profile is preselected %d times, want 1", n)
+	// 편집 중인 프로필은 팝오버 안에서 정확히 한 줄만 표시된다. "지금 편집 중"과
+	// "세션 시작 시 활성"은 다른 표식으로 나른다 (aria-current 대 "(current)").
+	// 레일 내비게이션도 aria-current 를 쓰므로 팝오버로 범위를 좁힌다.
+	pop := body[strings.Index(body, `data-pop-panel="profile"`):]
+	if n := strings.Count(pop, `aria-current="page"`); n != 1 {
+		t.Errorf("the profile being edited is marked %d times in the popover, want 1", n)
+	}
+	if !strings.Contains(pop, `href="/settings?profile=default" aria-current="page"`) {
+		t.Errorf("the profile being edited is not the one marked:\n%s", pop)
 	}
 
 	// The current profile is excluded from the rename/delete targets, matching

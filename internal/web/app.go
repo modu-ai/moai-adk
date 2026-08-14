@@ -24,6 +24,11 @@ import (
 type app struct {
 	cfg Config
 
+	// hub fans SSE change-signals out to open browser connections. It carries no
+	// payload — the browser re-fetches the affected screen itself, so rendering
+	// truth stays on the server.
+	hub *Hub
+
 	// bindAddr returns the real bound loopback address (127.0.0.1:<port>) for
 	// the appbar loopback indicator (REQ-WC4-005). NewServer wires it to the
 	// server's listener accessor; when nil (bare app in a unit test) the view
@@ -107,6 +112,7 @@ type app struct {
 func newApp(cfg Config) *app {
 	return &app{
 		cfg:              cfg,
+		hub:              NewHub(),
 		readPreferences:  profile.ReadPreferences,
 		writePreferences: profile.WritePreferences,
 		syncToProject:    profile.SyncToProjectConfig,
@@ -145,13 +151,24 @@ func newApp(cfg Config) *app {
 // whole mux (the middleware itself only gates mutating methods — REQ-WC-009).
 func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", a.handleIndex)
+	// 재설계본 라우트. "/" 는 개요로 올라가고, 설정 편집기는 /settings 로 내려간다
+	// — 세션을 열었을 때 먼저 보고 싶은 것은 설정값이 아니라 현재 상태이기 때문이다.
+	// 모니터링 라우트(개요·칸반·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
+	mux.HandleFunc("/", a.handleOverview)
+	mux.HandleFunc("/kanban", a.handleKanban)
+	mux.HandleFunc("/monitor", a.handleMonitor)
+	mux.HandleFunc("/settings", a.handleIndex)
+	// SSE — 값을 나르지 않고 "이 영역이 바뀌었다"는 신호만 흘린다.
+	mux.HandleFunc("/events", a.hub.ServeEvents)
 	mux.HandleFunc("/save", a.handleSave)
 	// SPEC-WEB-CONSOLE-011 M5: /specs 는 READ-ONLY SPEC 보드다. handleBoard 가
 	// GET 이외 메서드를 405 로 거부하며 쓰기 경로·명령 실행·status 전이가 전혀 없다
 	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
 	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
-	mux.HandleFunc("/specs", a.handleBoard)
+	// 종료 부채 목록과 MUST-FIX 조치 명령은 이 화면 안의 패널이다. 예전에는
+	// /specs/board 라는 별도 라우트였는데, 어느 화면도 링크하지 않아 주소를 직접
+	// 쳐야만 닿았다.
+	mux.HandleFunc("/specs", a.handleSpecs)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

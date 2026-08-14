@@ -39,7 +39,7 @@ func agentEffortSelect(t *testing.T, body, agent string) string {
 	return body[open : open+end]
 }
 
-// agentRowMarkup returns the markup of one agent's whole .agentfm-row container
+// agentRowMarkup returns the markup of one agent's whole [data-agent-row] container
 // (from the row open tag through to the next row / end), so per-row assertions on
 // the muted hint are scoped to the correct agent.
 func agentRowMarkup(t *testing.T, body, agent string) string {
@@ -49,12 +49,12 @@ func agentRowMarkup(t *testing.T, body, agent string) string {
 	if at < 0 {
 		t.Fatalf("no row rendered for agent %q", agent)
 	}
-	rowOpen := strings.LastIndex(body[:at], `<div class="agentfm-row">`)
+	rowOpen := strings.LastIndex(body[:at], `data-agent-row="`)
 	if rowOpen < 0 {
-		t.Fatalf("no .agentfm-row container found for agent %q", agent)
+		t.Fatalf("no [data-agent-row] container found for agent %q", agent)
 	}
 	end := len(body)
-	if next := strings.Index(body[at:], `<div class="agentfm-row">`); next >= 0 {
+	if next := strings.Index(body[at:], `data-agent-row="`); next >= 0 {
 		end = at + next
 	}
 	return body[rowOpen:end]
@@ -90,7 +90,7 @@ func TestNonHaikuEffortSelectNotDisabled(t *testing.T) {
 }
 
 // TestHaikuHintRenderedVisibleForHaiku verifies the muted note renders in the
-// haiku row and is NOT hidden (no is-hidden class → shown on load).
+// haiku row and is NOT hidden (shown on load, no hidden attribute).
 func TestHaikuHintRenderedVisibleForHaiku(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-spec", "", "")
@@ -100,16 +100,16 @@ func TestHaikuHintRenderedVisibleForHaiku(t *testing.T) {
 	if !strings.Contains(row, `data-i18n="hint.effort.haiku_na"`) {
 		t.Errorf("haiku row does not render the effort-N/A hint; row was:\n%s", row)
 	}
-	if !strings.Contains(row, "agentfm-haiku-hint") {
-		t.Errorf("haiku row hint missing the .agentfm-haiku-hint class; row was:\n%s", row)
+	if !strings.Contains(row, "data-haiku-hint") {
+		t.Errorf("haiku row hint missing the data-haiku-hint hook; row was:\n%s", row)
 	}
-	if strings.Contains(row, "agentfm-haiku-hint is-hidden") {
-		t.Errorf("haiku row hint must be VISIBLE (no is-hidden), was hidden; row was:\n%s", row)
+	if strings.Contains(row, `hint.effort.haiku_na" hidden>`) {
+		t.Errorf("haiku row hint must be VISIBLE (not hidden), was hidden; row was:\n%s", row)
 	}
 }
 
 // TestNonHaikuHintHiddenOnRender verifies the hint still exists in the DOM for a
-// non-haiku agent (so JS can toggle it live) but carries the is-hidden class.
+// non-haiku agent (so JS can toggle it live) but carries the hidden attribute.
 func TestNonHaikuHintHiddenOnRender(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-spec", "", "")
@@ -119,8 +119,8 @@ func TestNonHaikuHintHiddenOnRender(t *testing.T) {
 	if !strings.Contains(row, `data-i18n="hint.effort.haiku_na"`) {
 		t.Errorf("non-haiku row should still render the hint (client-toggled); row was:\n%s", row)
 	}
-	if !strings.Contains(row, "agentfm-haiku-hint is-hidden") {
-		t.Errorf("non-haiku row hint must be hidden (is-hidden class); row was:\n%s", row)
+	if !strings.Contains(row, `hint.effort.haiku_na" hidden>`) {
+		t.Errorf("non-haiku row hint must be hidden (hidden attribute); row was:\n%s", row)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestAppJSHaikuEffortLockWired(t *testing.T) {
 	js := readEmbeddedAsset(t, "app.js")
 	for _, marker := range []string{
 		"function applyHaikuEffortLock", // the per-select lock routine
-		`closest(".agentfm-row")`,       // row-scoped pairing (not a global name match)
+		`closest("[data-agent-row]")`,   // row-scoped pairing (not a global name match)
 		`select[name$=".effort"]`,       // finds the paired effort select
 		"function wireHaikuEffortLock",  // the initial wiring
 		"wireHaikuEffortLock();",        // called from initConsole

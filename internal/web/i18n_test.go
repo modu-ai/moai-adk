@@ -208,20 +208,24 @@ func TestI18nGoEmbedEnumeratesDictionary(t *testing.T) {
 
 // TestDataI18nWiring verifies AC-WC5-002: translatable chrome elements carry
 // data-i18n attributes (>= 25), a representative key set is present, and the
-// <code class="field__key"> code chips carry NO data-i18n.
+// <code class="key"> code chips carry NO data-i18n.
 func TestDataI18nWiring(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "jline"})
 
 	// Representative data-i18n keys present on the chrome.
 	for _, key := range []string{
-		`data-i18n="app.subtitle"`,
 		`data-i18n="sec.identity.title"`,
 		`data-i18n="sec.identity.desc"`,
 		`data-i18n="f.user_name.title"`,
 		`data-i18n="f.user_name.desc"`,
 		// seg.title / seg.note removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
 		// the statusline segment grid is gone.
-		`data-i18n="actions.save"`,
+		//
+		// app.subtitle 은 히어로 밴드와 함께, actions.save 는 하단 저장 바와 함께
+		// 사라졌다. 저장 버튼은 상단바의 저장 클러스터로 올라가면서 save.action
+		// 키를 쓴다 — 크롬이 옮겨간 것이지 번역 표식을 잃은 게 아니다.
+		`data-i18n="save.action"`,
+		`data-i18n="nav.settings"`,
 	} {
 		if !strings.Contains(body, key) {
 			t.Errorf("rendered page missing data-i18n marker %q", key)
@@ -234,9 +238,9 @@ func TestDataI18nWiring(t *testing.T) {
 		t.Errorf("rendered page has %d data-i18n attributes, want >= 25", count)
 	}
 
-	// Code chips (<code class="field__key">) must NOT carry data-i18n — they stay
+	// Code chips (<code class="key">) must NOT carry data-i18n — they stay
 	// English code tokens. Assert no data-i18n appears inside a field__key element.
-	chipRe := regexp.MustCompile(`<code class="field__key"[^>]*data-i18n`)
+	chipRe := regexp.MustCompile(`<code class="key"[^>]*data-i18n`)
 	if chipRe.MatchString(body) {
 		t.Error("a field__key code chip carries data-i18n (code tokens must not be translated)")
 	}
@@ -564,16 +568,16 @@ func TestServerContractPreserved(t *testing.T) {
 	// .FieldErrors are server-side rendered: an errored render carries the per-field
 	// error span (the Templ equivalent of the {{with index .FieldErrors}} block).
 	errored := renderErroredBody(t)
-	if !strings.Contains(errored, `class="field-error"`) {
+	if !strings.Contains(errored, `class="field__err"`) {
 		t.Error("server-side field-error render removed (the {{with index .FieldErrors}} equivalent)")
 	}
 	// The langSelect/optSelect helpers are present (retargeted from the retired
 	// pageTemplate parse-entry Lookup): the language select carries select--lang, the
 	// opt selects the plain select chrome.
-	if !strings.Contains(body, `class="select select--lang"`) {
+	if !strings.Contains(body, `class="sel"`) {
 		t.Error("langSelect helper chrome (select--lang) removed")
 	}
-	if !strings.Contains(body, `class="select"`) {
+	if !strings.Contains(body, `class="sel"`) {
 		t.Error("optSelect helper chrome (plain select) removed")
 	}
 }

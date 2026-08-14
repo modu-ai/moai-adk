@@ -21,8 +21,8 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 		"git_convention.auto_detection.confidence_threshold": "0.88",
 		"git_convention.auto_detection.enabled__present":     "1", // companion + checkbox absent → false
 		"git_convention.auto_detection.sample_size":          "200",
-		"git_convention.validation.enforce_on_push__present":  "1",
-		"git_convention.validation.enforce_on_push":           "1",
+		"git_convention.validation.enforce_on_push__present": "1",
+		"git_convention.validation.enforce_on_push":          "1",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {
@@ -108,7 +108,7 @@ func TestProjectNestedReadFailureRendersInlineError(t *testing.T) {
 	a.readProjectNestedConfig = func(string) (projectNestedCurrent, error) {
 		return projectNestedCurrent{}, errors.New("nested disk read boom")
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code < 400 {
 		t.Errorf("nested read failure status = %d, want >= 400", rec.Code)
 	}

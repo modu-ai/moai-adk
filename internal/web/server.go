@@ -233,6 +233,17 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// stop 은 idempotent 하므로 버튼 중복 클릭 / signal 경쟁에도 안전하다.
 	s.app.triggerShutdown = func() { stop() }
 
+	// 파일 감시 — 상태 파일이 바뀌면 열려 있는 브라우저에 신호를 흘린다.
+	// 실패해도 치명적이지 않다: 감시가 서지 않으면 브라우저가 폴백 폴링으로
+	// 내려가고 화면에 끊김 사실이 남는다. 그래서 서버 기동을 막지 않는다.
+	watchStop := make(chan struct{})
+	defer close(watchStop)
+	go func() {
+		if err := s.app.hub.Watch(s.app.cfg.ProjectRoot, watchStop); err != nil {
+			fmt.Fprintf(os.Stderr, "web: file watch unavailable (browser falls back to polling): %v\n", err)
+		}
+	}()
+
 	serveErr := make(chan error, 1)
 	go func() {
 		err := httpSrv.Serve(ln)

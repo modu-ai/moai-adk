@@ -130,9 +130,9 @@ func i18nNormalize(s string) string {
 
 // i18nViolation is one untranslated-value finding.
 type i18nViolation struct {
-	Key        string
-	Locale     string
-	EnValue    string
+	Key         string
+	Locale      string
+	EnValue     string
 	LocaleValue string
 }
 
@@ -236,7 +236,7 @@ func TestI18nUntranslatedDetectorNegativeControl(t *testing.T) {
 		"  },",
 		"  ko: {",
 		`    "syn.placeholder.key": "Refresh",`, // identical to en — not allowlisted → violation
-		`    "syn.word.save": "저장",`,           // genuinely translated → no violation
+		`    "syn.word.save": "저장",`,            // genuinely translated → no violation
 		"  },",
 		"  ja: {",
 		`    "syn.placeholder.key": "Refresh",`,
