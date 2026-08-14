@@ -14,6 +14,15 @@ import (
 	"os"
 )
 
+// processAlive is the liveness probe the Windows clear conditions on. It is
+// a package-level indirection so the release-and-reacquire interleaving can
+// be constructed in tests AT THE PROBE — the step the clear runs immediately
+// before its pre-removal re-read (AC-KB-023 observation 3). It lives behind
+// the windows tag with its only consumer: the unix clear is gated out (the
+// kernel drops flock on exit), so a unix-side probe would be dead code
+// (re-review ITEM 4).
+var processAlive = defaultProcessAlive
+
 // parseLockOwner decodes a lock artifact's recorded owner identity.
 func parseLockOwner(raw []byte) (*BoardLockOwner, error) {
 	var owner BoardLockOwner

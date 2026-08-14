@@ -155,6 +155,23 @@ func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) err
 		return fmt.Errorf("write board state: mutation refused: %w", err)
 	}
 
+	// Post-mutate SpecID sweep — re-review ITEM 1: this is the exported
+	// mutation anchor (every board mutator funnels through here), so the
+	// identity guard must hold HERE, not only at one caller's argument. A
+	// traversal-shaped SpecID reaching board.json would be an identity the
+	// board can never subsequently read (the read boundary refuses it), and
+	// since ReadCardStatus propagates errors, one such card can fail a
+	// board-wide read. Refuse before the atomic write; the empty id is its
+	// own named refusal (ValidateSpecID passes "").
+	for i, card := range st.Cards {
+		if card.SpecID == "" {
+			return fmt.Errorf("write board state: card[%d] carries an empty spec id", i)
+		}
+		if err := specid.ValidateSpecID(card.SpecID); err != nil {
+			return fmt.Errorf("write board state: card[%d] spec id: %w", i, err)
+		}
+	}
+
 	return writeBoardAtomic(root, st)
 }
 

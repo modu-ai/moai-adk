@@ -174,6 +174,13 @@ func branchNamesSpec(branch, specID string) bool {
 // for a detached HEAD. An unreadable HEAD reference is an error.
 func reportedBranch(wtPath string) (string, error) {
 	cmd := branchProbe("git", "-C", wtPath, "symbolic-ref", "--quiet", "--short", "HEAD")
+	// Pin the C locale: git localizes its messages through gettext when
+	// catalogs are installed, and the no-file classification below matches
+	// git's phrasing — a localized message would invert it. LC_ALL=C forces
+	// the canonical English output regardless of the host locale (re-review
+	// ITEM 2; a described mechanism, not a reproduced defect — this host
+	// ships no catalogs).
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -208,6 +215,9 @@ func isExitStatusOne(err error) bool {
 func readBranchStatus(primaryRoot, specID, branch, wtPath string) (*CardStatus, error) {
 	rel := fmt.Sprintf(".moai/specs/%s/spec.md", specID)
 	cmd := exec.Command("git", "-C", primaryRoot, "show", fmt.Sprintf("%s:%s", branch, rel))
+	// Same locale pin as reportedBranch: isNoSuchPath matches git's English
+	// phrasing, so the classification must not depend on the host locale.
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -259,10 +269,13 @@ func readPrimaryStatus(primaryRoot, specID string) (*CardStatus, error) {
 // case (the path does not exist in the named tree) — separable from an
 // invocation failure, a deleted or ambiguous ref, or a missing binary.
 func isNoSuchPath(err error, stderr string) bool {
-	if !isExitStatusOne(err) && !isExitFailure(err) {
-		return false
-	}
-	return strings.Contains(stderr, "does not exist in") || strings.Contains(stderr, "exists on disk, but not in")
+	// Any git exit-code failure plus the canonical no-path phrasing. (The
+	// earlier form also called isExitStatusOne here, but isExitFailure is
+	// true for ANY *exec.ExitError, so that call could never change the
+	// outcome — re-review ITEM 3 simplified the guard to what it actually
+	// asks: did git itself exit non-zero, and did it say the path is absent?)
+	return isExitFailure(err) &&
+		(strings.Contains(stderr, "does not exist in") || strings.Contains(stderr, "exists on disk, but not in"))
 }
 
 // isExitFailure reports whether err is any *exec.ExitError (non-zero exit),

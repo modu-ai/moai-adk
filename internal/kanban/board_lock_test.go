@@ -130,9 +130,8 @@ func deadPID(t *testing.T) int {
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("wait sacrificial process: %v", err)
 	}
-	if processAlive(pid) {
-		t.Fatalf("sacrificial pid %d still observed live", pid)
-	}
+	// Wait reaped the child, so the pid is positively terminated (the
+	// liveness probe itself now lives behind the windows tag with the clear).
 	return pid
 }
 

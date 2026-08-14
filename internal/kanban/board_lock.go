@@ -65,12 +65,6 @@ type boardLockImpl interface {
 	release() error
 }
 
-// processAlive is the liveness probe the clear conditions on. It is a
-// package-level indirection so the release-and-reacquire interleaving can be
-// constructed in tests AT THE PROBE — the step the clear runs immediately
-// before its pre-removal re-read (AC-KB-023 observation 3).
-var processAlive = defaultProcessAlive
-
 // AcquireBoardLock acquires the board-wide lock at
 // <root>/.moai/state/kanban-board/board.lock, creating the board directory if
 // absent. Returns ErrBoardLockHeld on contention; the caller retries or

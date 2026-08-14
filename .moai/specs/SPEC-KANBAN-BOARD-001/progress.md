@@ -1029,6 +1029,83 @@ only caller); boundary grep `AskUserQuestion` over kanban + core/git →
 zero; per-file `spec lint` 6/6 rc=0 after the AC-KB-022 amendment; REQ/AC
 counts 25/25.)
 
+### M3-fix2 — re-review items 1–4 (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`; third fix pass, card run←review again)
+
+Re-review report: `.moai/reports/rereview-SPEC-KANBAN-BOARD-001.md`. Verdict carried in: all five original mechanisms CLOSED (F3 proven by mutation). Four items fixed below, all inside existing requirement surfaces — no new REQ, no new AC; counts re-measured 25/25.
+
+**ITEM 1 — WriteBoardState did not validate SpecID (HIGH-adjacent, CONFIRMED). RED → GREEN.**
+
+RED (my probe `fix2_probe_test.go`, reproducing the reviewer's measurement):
+
+```
+$ go test ./internal/kanban/ -run TestWriteBoardState_RejectsTraversalSpecIDFromMutate -count=1 -v
+    fix2_probe_test.go:28: WriteBoardState(mutate injects traversal SpecID) err = nil, want validation refusal
+--- FAIL: TestWriteBoardState_RejectsTraversalSpecIDFromMutate (0.00s)
+```
+
+GREEN: a post-mutate SpecID sweep INSIDE WriteBoardState, before writeBoardAtomic — every card in the resulting state through `internal/cli/specid.ValidateSpecID`, empty id its own named refusal. The anchor's own guard now holds for every current and future caller of the one exported mutation path. Reviewer's probe re-run: REFUSES with the validation error; the canonical-id positive control from the same closure path still lands.
+
+```
+--- PASS: TestWriteBoardState_RejectsTraversalSpecIDFromMutate (0.01s)   # traversal refused, canonical lands
+```
+
+**ITEM 2 — isNoSuchPath matched localized git text (LOW; DESCRIBED MECHANISM, NOT REPRODUCED — recorded as such).**
+
+The reviewer could not reproduce on this host (no gettext catalogs; LC_ALL=ko_KR.UTF-8 still English). Recorded here honestly: git localizes through gettext where catalogs are installed, and the no-file classification matches git's English phrasing — on such a host a non-English locale would invert the classification for the genuine pre-planning case. Containment applied as directed: the `git show` and `git symbolic-ref` commands now pin `LC_ALL=C` on `exec.Cmd.Env`, forcing canonical English output regardless of host locale. Inside REQ-KB-020's surface.
+
+**ITEM 3 — a guard clause that could not change the result.** `isNoSuchPath`'s `!isExitStatusOne(err) && !isExitFailure(err)` subsumed the first call (isExitFailure is true for ANY *exec.ExitError). Simplified to what it actually asks — `isExitFailure(err) && <phrasing>` — with the simplification documented at the function. `isExitStatusOne` remains in use by reportedBranch (the detached-HEAD signal), where it is load-bearing.
+
+**ITEM 4 — dead code left by the F5 containment.** `var processAlive = defaultProcessAlive` and `lock_alive_unix.go` were Unix-dead after the clear moved behind the windows tag (Go does not flag unused package-level vars). The indirection now lives behind the windows tag with its only consumer (`board_lock_clear_windows.go`); `lock_alive_unix.go` is deleted; `lock_alive_windows.go` stays for the Windows substrate. The Unix-side `deadPID` test helper no longer references the probe (Wait reaped the child — positively terminated) and the Unix gate test still passes.
+
+**PRESERVED verbatim (reviewer's recorded reasoning, not re-litigated):** F5's containment is correct for the right reason — the Unix window is unreachable because the OPERATION no longer exists there, not because the race got harder; Windows was never exposed to that gap (O_CREATE|O_EXCL creates then the holder writes; a clear landing in the gap reads an empty artifact and aborts "identity unparseable" — fails safe by construction). The navigator flake did not reproduce in re-review (internal/cli ok 324s); neither side inherits a conclusion about it.
+
+**Scope note:** `TestBranchGuard_Latency` is OUT OF SCOPE per the operator (one 504.9ms-vs-500ms miss in a loaded run; passes 3/3 in isolation; classified test hygiene → backlog). Not touched.
+
+**Verification gate (all commands kanban-env-unset):**
+
+```
+$ go test ./internal/kanban/ -run '<all nine F1-F5+ITEM1 probes>' -count=1
+--- PASS: TestReportedBranch_DetachedHEADReturnsEmptyCleanly (0.62s)
+--- PASS: TestReportedBranch_GitToolFailureIsAnError (0.00s)
+--- PASS: TestReadBranchStatus_DeletedRefIsAnErrorNotNoFile (0.52s)
+--- PASS: TestReconcileCard_UnresolvedLiteralIsInconsistent (0.00s)
+--- PASS: TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved (0.00s)
+--- PASS: TestReadCardStatus_RejectsTraversalSpecID (0.00s)
+--- PASS: TestReadCardStatus_AcceptsCanonicalSpecID (0.00s)
+--- PASS: TestTransitionIntoRun_RejectsTraversalSpecID (0.01s)
+--- PASS: TestWriteBoardState_RejectsTraversalSpecIDFromMutate (0.01s)
+ok  github.com/modu-ai/moai-adk/internal/kanban
+
+$ go test ./internal/kanban/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/kanban	16.396s        # full-package regression green
+
+$ go test -cover ./internal/kanban/... ./internal/core/git/...
+ok  .../internal/kanban	26.469s	coverage: 88.2% of statements
+ok  .../internal/core/git	(cached)	coverage: 86.7% of statements
+
+$ golangci-lint run --timeout=5m        → 0 issues.
+$ grep -cE '^\*\*REQ-KB-[0-9]{3}\*\*' .moai/specs/SPEC-KANBAN-BOARD-001/spec.md         → 25
+$ grep -cE '^\*\*AC-KB-[0-9]{3}\*\*' .moai/specs/SPEC-KANBAN-BOARD-001/acceptance.md   → 25
+$ per-file spec lint (6 files)          → 6/6 rc=0
+$ grep -rn 'AskUserQuestion' internal/kanban internal/core/git | grep -v _test.go   → zero
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./...    → rc=0 / rc=0
+```
+
+Full suite (env-unset incl. MOAI_PROJECT_DIR) at close:
+
+```
+$ env -u MOAI_KANBAN -u MOAI_KANBAN_ID -u MOAI_KANBAN_LABEL \
+      -u MOAI_KANBAN_SETTINGS_INJECTED -u MOAI_KANBAN_LEAD_ADDR -u MOAI_PROJECT_DIR \
+      go test ./... -count=1
+rc=1
+fails(--- FAIL)=1: TestBranchGuard_Latency (10.61s) — the test the operator
+marked OUT OF SCOPE for this pass (500ms ceiling; one miss in a loaded run).
+Observation reported per instruction, not a blocker: isolated re-run passes
+3/3 (`go test ./internal/hook/ -run TestBranchGuard_Latency -count=3` → ok,
+12.122s). Every other package green; kanban/core/git/hook-modified surfaces
+green in-suite.
+```
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -1048,7 +1125,8 @@ run_phase_commits:
   - 4ae37e617   # M2 card model, columns, branch-side read, table, admission
   - dba5af978   # M2 evidence SHA backfill
   - b12e891ad   # M3 verification sweep + audit-ready signal
-  - 92065a1e4   # M3-fix review findings F1-F5 (specID traversal, unresolved-key, detached-head, git-show swallow, clear-gate-to-windows)
+  - 92065a1e4   # M3-fix review findings F1-F5
+  - <FIX2_SHA>  # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
@@ -1060,7 +1138,7 @@ cross_platform_build:
   darwin_arm64: pass
   windows_amd64: pass
 coverage:
-  internal_kanban: 86.9
+  internal_kanban: 88.2
   internal_core_git: 86.7
 full_suite:
   rc: 0   # post-M3 base; M3-fix pass had one unrelated internal/cli navigator flake (isolated re-run 3/3 ok)
