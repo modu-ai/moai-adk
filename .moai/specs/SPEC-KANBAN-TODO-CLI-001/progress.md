@@ -187,6 +187,45 @@ $ go tool cover -func=… | grep -E 'todo\.go:|backlog_store\.go:'
 
 **Residual-risk.** (1) The 8-process test's uniqueness assertion parses each helper's stdout (`t<n> <pos>`); a future output-format change to `add` needs the test's parser kept in step. (2) `resolveProjectDir()` (CLAUDE_PROJECT_DIR → cwd) is the path anchor; a caller invoking `moai todo` from outside the project without CLAUDE_PROJECT_DIR will target that outside directory's `.moai/state` — same behavior as the session/goal commands, noted not changed.
 
+### M3 — Skill shrink + template mirror (COMPLETE; orchestrator-direct)
+
+Lead verdict on M2: **PASS** (2026-08-14; lead filled the binary-smoke gap personally: built binary `moai todo add "첫 카드"` → `t1 1` exit 0; 12 OS processes concurrent add → 12/12 items, 12 unique gapless ids, `last_seq: 12`; high-water live check `t1 t2 t3` → `done 3` → add → `t1 t2 t4` — no t3 reuse). M3 instruction: same-direct treatment, with the explicit warning NOT to `cp` the template twin (neutralized-variant hazard — CI catches SPEC-IDs/dates but not internal-vocabulary leaks).
+
+**Pre-edit state (measured before writing)**: `diff .claude/skills/moai/workflows/todo.md internal/template/templates/.claude/skills/moai/workflows/todo.md` → **byte-identical twins** (105 lines each). With no neutralized variant to preserve in THIS tree, applying the same rewrite to both files IS the same delta; the no-cp rule is honored in its substance (the variant check was performed, not assumed — research.md §8's claim re-verified on the actual M3 tree).
+
+**The delta (REQ-TODO-015 / D-h)**: shrink to "run the command" form. Preserved: queue philosophy ("one line of intent", "deliberately thin"), the operator-act header + kanban-dispatch cross-reference, the record-shape explanation (now framed as reading `list --json` output, with `last_seq` documented), the [HARD] operator-selection rule verbatim in intent, Boundaries, Outside-Kanban-Mode, all three cross-references. Removed: the direct file-manipulation instructions (the verbs table's model-driven Read→Write semantics, "Write the file atomically (write a sibling temp file, then rename)…"), and the obsolete "any other argument form is treated as a description" rule (the real CLI takes explicit subcommands). Added: the mapping table of the five real CLI invocations and the "do not read or write the file directly" instruction (the whole point of M1+M2). 105 → 119 lines.
+
+**AC-TODO-015 verification (each command + output)**:
+
+```
+$ diff .claude/skills/moai/workflows/todo.md internal/template/templates/.claude/skills/moai/workflows/todo.md && echo TWINS_STILL_IDENTICAL
+TWINS_STILL_IDENTICAL                                    ← same delta on both twins
+
+$ grep -n 'SPEC-KANBAN\|SPEC-TODO\|2026-' <both twins>
+(no matches; exit 1)                                     ← no SPEC ids, no internal dates
+
+$ grep -nE 'Write the file|temp file|then rename|Read.*backlog\.json.*Write' <both twins>
+(no matches; exit 1)                                     ← removed instruction tokens absent (grep-for-removals clause)
+
+$ make build → "catalog.yaml updated successfully (12407 bytes)", MAKE_EXIT=0
+$ git status --porcelain internal/template/catalog.yaml
+(no output)                                              ← regenerated catalog is byte-identical: the catalog's
+                                                           hash subject set does not include workflow skills (grep 'todo'
+                                                           in catalog.yaml → no entry). B5's hazard does not arise this
+                                                           time; recorded as verified-absent, not assumed-absent.
+
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	44.167s  ← neutrality gate (CI-equivalent strict mode) exit 0
+```
+
+Docs-vs-verbs cross-check (lead checklist item 5): cobra `Use:` strings in todo.go (`add <text>`, `list`, `done <n>`, `next [<n>]`) vs the skill's command table — all five documented invocations match the implemented surface (grep output captured above).
+
+**Working-tree hygiene note**: the full-suite runs from M2 verification had rewritten `SPEC-HOOK-PRETOOL-PERF-001/{baseline,postchange}.md` in place (the known fixture-rewrite side effect); both were `git checkout --`-restored before the M3 commit — only the intended paths are in it.
+
+**Gaps.** (1) The shrunk skill's behavioral effect (the model actually running `moai todo` instead of Read→Write) is verified by document inspection, not by an A/B model run — the skill-ab-testing methodology was out of M3's milestone scope (plan.md §F keeps M3 a documentation delta). (2) No 4-locale surface touched: the todo skill exists only in English (verified — no `todo.*.md` locale twins exist to mirror).
+
+**Residual-risk.** The catalog-parity conclusion holds for THIS template state; if a future change adds workflow skills to the catalog's hash subject set, the B5 commit obligation revives for future edits of this file.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

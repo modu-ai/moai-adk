@@ -14,27 +14,35 @@ it and the lead dispatches it to the `plan` session.
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
 
-State lives at `.moai/state/kanban/backlog.json`. It is project-local and is not
-committed.
+State lives at `.moai/state/kanban/backlog.json` (project-local, not committed).
+Do not read or write that file directly — run the `moai todo` commands: they
+hold a cross-process lock across every mutation, so concurrent sessions cannot
+lose cards or collide ids.
 
-## Verbs
+## Commands
 
-| Invocation | Effect |
+When the operator says `/moai todo "<description>"`, run
+`moai todo add "<description>"`; a bare `/moai todo` runs `moai todo list`.
+
+| Command | Effect |
 |---|---|
-| `/moai todo "<description>"` | Append an item to the queue. Prints the item and its position. |
-| `/moai todo` | List the queue, in order, with positions. |
-| `/moai todo done <n>` | Remove item `n` (it was completed elsewhere, or is no longer wanted). Prints what was removed. |
-| `/moai todo next` | Present the queue through `AskUserQuestion` so the operator picks the next card. |
+| `moai todo add "<text>"` | Append an item under the lock. Prints the issued id (`t<n>`) and its queue position. |
+| `moai todo list` | Render the queue, lock-free. `--json` emits the structured records. |
+| `moai todo done <n>` | Remove the addressed row under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai todo done t3`) is the preferred form because positions move. |
+| `moai todo next` | Print the queued items oldest-first — read-only candidates. |
+| `moai todo next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
 
-Any other argument form is treated as a description — `/moai todo fix the flaky
-CI cache` adds an item rather than erroring, because the cost of a wrong guess
-here is one line the operator can delete.
+The queue is never mutated through any other surface. A missing backlog file is
+an empty queue, never an error; a malformed file is reported and left untouched.
 
-## Record shape
+## Reading the records
+
+`moai todo list --json` emits the file's records:
 
 ```json
 {
   "version": 1,
+  "last_seq": 12,
   "items": [
     {
       "id": "t1",
@@ -47,25 +55,20 @@ here is one line the operator can delete.
 }
 ```
 
-- `id` — short, stable, assigned on append. Never reused after removal.
-- `spec_id` — filled in when the item is picked and a SPEC is authored for it.
-  Until then it is `null`, which is what distinguishes a backlog item from a card
-  already on the board.
+- `id` — assigned on append, never reused after removal (`last_seq` is the
+  persisted high-water mark that guarantees it).
+- `spec_id` — filled in when the item is picked; until then it is `null`, which
+  is what distinguishes a backlog item from a card already on the board.
 - `state` — `queued` | `picked` | `dropped`. A picked item stays in the file so
   the operator can see what is in flight; it is removed when its card reaches
   `done`.
 
-Write the file atomically (write a sibling temp file, then rename) so a crash
-mid-write cannot truncate the queue. A missing file is an empty queue, not an
-error. A malformed file is reported and left untouched — never silently reset,
-because the operator's intent is the one thing here that cannot be regenerated.
-
 ## Picking the next card
 
-`/moai todo next` (and the lead's own post-`/clear` opening move) presents the
-queue through `AskUserQuestion` — one option per queued item, capped at the four
-the tool allows, oldest first, with the remainder summarized in the response body
-so nothing is hidden behind the cap.
+`moai todo next` (and the lead's own post-`/clear` opening move) presents the
+queued items through `AskUserQuestion` — one option per queued item, capped at
+the four the tool allows, oldest first, with the remainder summarized in the
+response body so nothing is hidden behind the cap.
 
 [HARD] The pick is the operator's. Do not preselect, do not reorder by inferred
 priority, and do not append a "start the top one" default. Where the queue is
@@ -81,14 +84,13 @@ authorization never covered. See `kanban-dispatch.md` § Batch admission.
 
 Once picked:
 
-1. Mark the item `picked`.
+1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
 2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters the
    `plan` column, and SPEC authoring happens there, not here.
-3. Record the SPEC ID onto the item as soon as the plan session reports one.
 
 ## Outside Kanban Mode
 
-`/moai todo` works in an ordinary session too — it is just a queue. What it will
+`moai todo` works in an ordinary session too — it is just a queue. What it will
 not do is dispatch: with no companion sessions there is nobody to instruct, so
 the queue is read and written and the operator drives the work themselves.
 
