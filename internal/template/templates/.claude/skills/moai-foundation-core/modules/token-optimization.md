@@ -12,7 +12,7 @@
 > **The hard-coded "200K token budget" / "Phase 2: DDD 180K" /
 > `clear_threshold = 150000` figures below are ILLUSTRATIVE DEFAULTS for a
 > 200K-context model class.** Real budgets are **model-specific**: 1M-context
-> models (Opus 5, Opus 4.8, GLM-5.2) hand off at **50%** (~500K tokens);
+> models (Opus 5, Opus 4.8, GLM-5.3) hand off at **50%** (~500K tokens);
 > 200K/256K models (Sonnet/Haiku/Fable) hand off at **90%** (~180K/~230K).
 > The authoritative per-model threshold table is
 > `.claude/rules/moai/workflow/context-window-management.md` § Context
@@ -33,7 +33,7 @@ Version: 1.0.0
 ## Quick Reference (30 seconds)
 
 > The figures below assume a 200K-context model class. For 1M-context
-> models (Opus 5 / Opus 4.8 / GLM-5.2) the handoff threshold is 50%
+> models (Opus 5 / Opus 4.8 / GLM-5.3) the handoff threshold is 50%
 > (~500K tokens), NOT 90% — see context-window-management.md § Context
 > Window Targets for the authoritative per-model table.
 

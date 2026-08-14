@@ -390,7 +390,7 @@ MoAI-ADK は Claude Code のバックエンドとして **z.ai GLM** も使え�
 |---|---|
 | GLM Coding Plan | 月額 **$10** から（[申し込み](https://z.ai/subscribe?ic=1NDV03BGWU)） |
 | 互換性 | Claude Code にそのまま差し替えられる — コード変更なし |
-| モデル | glm-5.2、glm-4.7、glm-4.5-air、および無料モデル |
+| モデル | glm-5.3、glm-4.7、glm-4.5-air、および無料モデル |
 
 ### 3 つの実行モード
 
@@ -413,10 +413,10 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通して G
 
 | Claude ティア | GLM モデル | コンテキスト |
 |---|---|---|
-| Opus | glm-5.2 | 1M |
-| Sonnet | glm-4.7 | 202K |
-| Haiku | glm-4.5-air | 128K |
-| Fable | glm-5.2 | 1M |
+| Opus | glm-5.3 | 1M |
+| Sonnet | glm-5.3 | 1M |
+| Haiku | glm-5.3 | 1M |
+| Fable | glm-5.3 | 1M |
 
 > 無料モデル（GLM-4.7-Flash、GLM-4.5-Flash）も使える。一覧は [z.ai の料金表](https://docs.z.ai/guides/overview/pricing) を参照。
 >

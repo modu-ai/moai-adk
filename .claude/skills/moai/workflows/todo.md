@@ -72,6 +72,13 @@ priority, and do not append a "start the top one" default. Where the queue is
 empty, say so and stop — an empty backlog is a legitimate state, not a prompt to
 invent work.
 
+An operator may authorize several cards at once — naming them, or saying to work
+the queue in order until it empties. That is still their pick, made once instead
+of one at a time, and the lead then admits those cards in the authorized order
+without asking again. It grants nothing else: no additions to the queue, no
+reordering, and no cover for a card that turns out to need a decision the
+authorization never covered. See `kanban-dispatch.md` § Batch admission.
+
 Once picked:
 
 1. Mark the item `picked`.

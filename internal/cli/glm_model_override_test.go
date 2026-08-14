@@ -229,15 +229,14 @@ func TestSaveLLMSection_PopulatesDefaultGLMModels(t *testing.T) {
 
 	content := string(data)
 
-	// Verify that default values were populated, not empty strings
-	if !strings.Contains(content, "glm-5.2") {
-		t.Errorf("llm.yaml should contain glm-5.2 as default high model, got:\n%s", content)
-	}
-	if !strings.Contains(content, "glm-4.7") {
-		t.Errorf("llm.yaml should contain glm-4.7 as default medium model, got:\n%s", content)
-	}
-	if !strings.Contains(content, "glm-4.5-air") {
-		t.Errorf("llm.yaml should contain glm-4.5-air as default low model, got:\n%s", content)
+	// Verify that default values were populated, not empty strings. Every slot
+	// carries the same model: Claude Code sizes the auto-compact window once from
+	// the high slot, so a smaller model elsewhere would inherit a window it cannot
+	// hold. Tier differentiation lives on the effort axis instead.
+	for _, slot := range []string{"high", "medium", "low", "fable"} {
+		if !strings.Contains(content, slot+": glm-5.3") {
+			t.Errorf("llm.yaml should contain glm-5.3 as the default %s model, got:\n%s", slot, content)
+		}
 	}
 
 	// Verify base URL is populated
@@ -314,11 +313,11 @@ func TestSaveLLMSection_PreservesCustomGLMModels(t *testing.T) {
 	// Verify defaults are NOT present when custom values are used
 	// Note: Legacy fields (opus, sonnet, haiku) are separate from primary fields
 	// (high, medium, low) and are populated with defaults unless explicitly set
-	if strings.Contains(content, "opus: glm-5.2") && strings.Contains(content, "high: custom-glm-opus") {
+	if strings.Contains(content, "opus: glm-5.3") && strings.Contains(content, "high: custom-glm-opus") {
 		// This is acceptable - high field has custom value, opus field has default
 		// User can override opus separately if needed
-	} else if strings.Contains(content, "high: glm-5.2") {
-		t.Errorf("llm.yaml should NOT contain default glm-5.2 in high field when custom model is set, got:\n%s", content)
+	} else if strings.Contains(content, "high: glm-5.3") {
+		t.Errorf("llm.yaml should NOT contain the default glm-5.3 in high field when custom model is set, got:\n%s", content)
 	}
 	if strings.Contains(content, "https://api.z.ai/api/anthropic") {
 		t.Errorf("llm.yaml should NOT contain default base URL when custom URL is set, got:\n%s", content)

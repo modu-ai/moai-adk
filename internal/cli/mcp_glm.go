@@ -52,7 +52,14 @@ const (
 	// glmAuditDefaultModel is the fallback GLM model id when the SSOT returns
 	// mapped=false (no llm.yaml) or the resolved model is a Claude id the
 	// z.ai endpoint cannot serve (non-GLM session). Named constant per §14.
-	glmAuditDefaultModel = "glm-4.6"
+	//
+	// DERIVED from the tier default rather than restated as its own literal. A
+	// second literal drifts: this fallback sat on a two-generation-old id while
+	// the tier defaults moved on, and the non-GLM path — a Claude session calling
+	// glm_audit for a cross-model second opinion, which is the common case — got
+	// that stale model every time. Deriving keeps the fallback on whatever the
+	// launcher actually injects.
+	glmAuditDefaultModel = config.DefaultGLMHigh
 
 	// glmMessagesPath is appended to config.DefaultGLMBaseURL to form the
 	// Anthropic-compatible /v1/messages endpoint (z.ai accepts Anthropic

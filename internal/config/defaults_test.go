@@ -346,32 +346,38 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
 // The High slot (Opus equivalent) and the legacy Opus field both map to
-// glm-5.2 (the z.ai-accepted id); 1M context activation is driven by the
-// resolved context window, not a model-id suffix. Medium/Low and the legacy
-// Sonnet/Haiku fields remain unchanged on their existing GLM models.
+// glm-5.3 (the z.ai-accepted id); 1M context activation is driven by the
+// resolved context window, not a model-id suffix. Every Claude slot defaults
+// to the same model so auto-compact window sizing stays coherent.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultLLMConfig()
 
-	if cfg.GLM.Models.High != "glm-5.2" {
-		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.2")
+	if cfg.GLM.Models.High != "glm-5.3" {
+		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.3")
 	}
-	if cfg.GLM.Models.Opus != "glm-5.2" {
-		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.2")
+	if cfg.GLM.Models.Opus != "glm-5.3" {
+		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.3")
 	}
-	// Medium/Low and legacy Sonnet/Haiku remain unchanged.
-	if cfg.GLM.Models.Medium != "glm-4.7" {
-		t.Errorf("GLM.Models.Medium: got %q, want %q (unchanged)", cfg.GLM.Models.Medium, "glm-4.7")
+	// Every slot resolves to the same model. Claude Code sizes the auto-compact
+	// window once from the High slot; a smaller model in any other slot would
+	// inherit a window larger than it can hold. Tier differentiation lives on
+	// the effort axis (glm_effort_overlay.go), not here.
+	if cfg.GLM.Models.Medium != "glm-5.3" {
+		t.Errorf("GLM.Models.Medium: got %q, want %q (unified)", cfg.GLM.Models.Medium, "glm-5.3")
 	}
-	if cfg.GLM.Models.Low != "glm-4.5-air" {
-		t.Errorf("GLM.Models.Low: got %q, want %q (unchanged)", cfg.GLM.Models.Low, "glm-4.5-air")
+	if cfg.GLM.Models.Low != "glm-5.3" {
+		t.Errorf("GLM.Models.Low: got %q, want %q (unified)", cfg.GLM.Models.Low, "glm-5.3")
 	}
-	if cfg.GLM.Models.Sonnet != "glm-4.7" {
-		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unchanged)", cfg.GLM.Models.Sonnet, "glm-4.7")
+	if cfg.GLM.Models.Sonnet != "glm-5.3" {
+		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unified)", cfg.GLM.Models.Sonnet, "glm-5.3")
 	}
-	if cfg.GLM.Models.Haiku != "glm-4.5-air" {
-		t.Errorf("GLM.Models.Haiku: got %q, want %q (unchanged)", cfg.GLM.Models.Haiku, "glm-4.5-air")
+	if cfg.GLM.Models.Haiku != "glm-5.3" {
+		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3")
+	}
+	if cfg.GLM.Models.Fable != "glm-5.3" {
+		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3")
 	}
 }
 
@@ -380,17 +386,25 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
-	if DefaultGLMHigh != "glm-5.2" {
-		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.2")
+	if DefaultGLMHigh != "glm-5.3" {
+		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.3")
 	}
-	if DefaultGLMOpus != "glm-5.2" {
-		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.2")
+	if DefaultGLMOpus != "glm-5.3" {
+		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.3")
 	}
-	if DefaultGLMMedium != "glm-4.7" {
-		t.Errorf("DefaultGLMMedium: got %q, want %q (unchanged)", DefaultGLMMedium, "glm-4.7")
+	if DefaultGLMMedium != "glm-5.3" {
+		t.Errorf("DefaultGLMMedium: got %q, want %q (unified)", DefaultGLMMedium, "glm-5.3")
 	}
-	if DefaultGLMLow != "glm-4.5-air" {
-		t.Errorf("DefaultGLMLow: got %q, want %q (unchanged)", DefaultGLMLow, "glm-4.5-air")
+	if DefaultGLMLow != "glm-5.3" {
+		t.Errorf("DefaultGLMLow: got %q, want %q (unified)", DefaultGLMLow, "glm-5.3")
+	}
+	// The smaller models stay reachable as tier-slot choices even though no
+	// slot defaults to them — the closed set, not the default, is their home.
+	if DefaultGLM47 != "glm-4.7" {
+		t.Errorf("DefaultGLM47: got %q, want %q", DefaultGLM47, "glm-4.7")
+	}
+	if DefaultGLM45Air != "glm-4.5-air" {
+		t.Errorf("DefaultGLM45Air: got %q, want %q", DefaultGLM45Air, "glm-4.5-air")
 	}
 	// glm-5.1 preserved as a still-available model (not orphaned).
 	if DefaultGLM51 != "glm-5.1" {

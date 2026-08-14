@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"          # 1M context — Opus 插槽
-      medium: "glm-4.7"        # 202K context — Sonnet 插槽
-      low: "glm-4.5-air"       # 128K context — 轻量插槽
-      fable: "glm-5.2"
+      high: "glm-5.3"          # 1M context — Opus 插槽
+      medium: "glm-5.3"        # 1M context   — Sonnet 插槽
+      low: "glm-5.3"          # 1M context   — 轻量插槽
+      fable: "glm-5.3"
 ```
 
 | 键 | 说明 |

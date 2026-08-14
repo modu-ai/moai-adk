@@ -119,7 +119,7 @@ moai model profile --json   # 机器可读
 
 在 GLM 后端(`moai glm` / `moai cg` 的 GLM 面板)上，会在配置矩阵之上应用一层覆盖:
 
-- 模型槽位映射: `fable` → `glm-5.2`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
+- 模型槽位映射: `fable` → `glm-5.3`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
 - 将 Claude 的 5 级 effort collapse 到 z.ai 可达的 3-state:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

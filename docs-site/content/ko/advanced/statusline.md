@@ -79,7 +79,7 @@ CW 바 옆에 붙는 마커는 statusline이 주는 가장 중요한 권고입�
 ```mermaid
 flowchart TD
     A["컨텍스트 사용률 측정<br/>(raw 사용량 기준)"] --> B{"창 크기 클래스"}
-    B -- "1M 컨텍스트<br/>(Opus 5, GLM-5.2)" --> C{"사용률 50% 이상?"}
+    B -- "1M 컨텍스트<br/>(Opus 5, GLM-5.3)" --> C{"사용률 50% 이상?"}
     B -- "200K / 256K 표준<br/>(Sonnet, Haiku, Fable)" --> D{"사용률 90% 이상?"}
     C -- "아니오" --> N["마커 없음<br/>(안전 구간)"]
     D -- "아니오" --> N
@@ -98,7 +98,7 @@ flowchart TD
 
 ### GLM 컨텍스트 게이지 보정 (Issue #653)
 
-한 가지 주의할 점이 있습니다. GLM-5.2는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 이 값을 바로잡습니다. `glm-5.2`는 1,000,000으로 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
+한 가지 주의할 점이 있습니다. GLM-5.3는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 이 값을 바로잡습니다. `glm-5.3`는 1,000,000으로 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
 
 ## 컨텍스트 사용량 스냅샷 — 다음 세션을 위해
 

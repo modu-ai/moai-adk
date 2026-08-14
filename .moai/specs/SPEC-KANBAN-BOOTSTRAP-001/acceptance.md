@@ -1,10 +1,10 @@
 ---
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Acceptance criteria — Kanban session topology, bootstrap, and dispatch"
-version: "0.5.0"
+version: "0.7.1"
 status: draft
 created: 2026-08-10
-updated: 2026-08-11
+updated: 2026-08-14
 author: manager-spec
 priority: High
 phase: "v3.1.0 target"
@@ -62,7 +62,11 @@ The first result is judged on the **environment guarantee**, not on the name of 
 
 **AC-KS-006** (REQ-KS-006, label half) — *Given* a bootstrap run over a five-role topology, *when* the emitted guidance is parsed, *then* every emitted launch command carries a label argument, and the label set across all emitted commands has no duplicate.
 
-**AC-KS-030** (REQ-KS-006, role-declaration half) — *Given* a launched session, *when* its declared role is resolved **from the lead**, *then* it resolves to exactly one of the five roles; *when* the same declaration is resolved **from a session that is not the lead**, *then* it resolves to the same value; *given* an unconfigured worker role whose two emitted commands were each launched in turn, *when* the declaration is resolved for each, *then* the declared role is identical across both while the labels differ; and *given* the launched set, *when* the lead accounts for quorum, *then* the accounting is over declared roles and a role is reported answered only where a session declares it. All four hold, or the criterion fails.
+**AC-KS-030** (REQ-KS-006, role-declaration half) — *Given* a launched session, *when* its declared role is resolved **from the lead**, *then* it resolves to exactly one of the five roles; *when* the same declaration is resolved **from a session that is not the lead**, *then* it resolves to the same value; *given* an unconfigured worker role whose two emitted commands were each launched in turn, *when* the declaration is resolved for each, *then* the declared role is identical across both while the labels differ; and *given* the launched set, *when* the lead accounts for quorum, *then* the accounting is over declared roles and a role is reported answered only where a session declares it; and — the **adoption conjunct**, added at v0.7.0 — *given* a tree in which `SPEC-KANBAN-BOARD-001`'s run-phase has already established a carrier for this declaration under its `REQ-KB-025`, *when* this SPEC's implementation is scanned for declaration surfaces, *then* exactly one is found and it is that carrier: no second declaration is defined, and the four observations above resolve through the adopted carrier rather than through one introduced here. All five hold, or the criterion fails.
+
+**Why the adoption conjunct is here and not on the consuming SPEC.** That SPEC asserts the same uniqueness and cannot decide it: this SPEC is named in its `dependencies:`, so its own uniqueness scan runs at its M1 — before this SPEC exists — and can only ever find the one declaration it wrote itself, while its adopt-if-landed branch is unreachable for the same reason. The fork it guards against can only be introduced from this side, by an implementer reading this document, so the observation belongs on this side. **Positive control**: an implementation that defines its own declaration alongside an already-established carrier is reported by this conjunct and by none of the other four, run once and recorded — the other four are all satisfied by a second declaration that agrees, which is precisely the failure being guarded.
+
+The conjunct costs no criterion: it is an in-place widening of `AC-KS-030`, the same move `AC-KS-019` took at v0.5.0, and this SPEC's count stays at 30.
 
 Separate from AC-KS-006 rather than folded into it, because the content of the repair is that the declaration and the label are different data (`spec.md` §A.13). One verdict over both would let the declaration half break while the label half passed — which is the bundling defect the v0.2.0 pass removed from `AC-KS-024`, reintroduced at a different slot.
 

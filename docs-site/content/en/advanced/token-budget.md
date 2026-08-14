@@ -23,12 +23,12 @@ The operational threshold is model-specific. Larger windows tolerate higher perc
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| GLM-5.2 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Opus / Fable (256K) | 256,000 tokens | 90% | ~230,000 tokens |
 | Sonnet / Opus standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
-GLM-5.2 (via `moai glm` / `moai cg` GLM panels) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
+GLM-5.3 (via `moai glm` / `moai cg` GLM panels) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
 
 ## Two-Stage Handoff Marker
 

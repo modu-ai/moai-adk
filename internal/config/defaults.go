@@ -110,26 +110,49 @@ const (
 
 	DefaultGLMEnvVar  = "GLM_API_KEY"
 	DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"
-	// GLM model tiers
-	// High maps to glm-5.2 — the model id z.ai accepts. The [1m] suffix was
-	// previously appended to activate Claude Code's 1M context mode, but Claude
-	// Code forwards the suffix verbatim to the z.ai endpoint, which rejects it as
-	// an unknown model — so the suffix is NOT used. The 1M auto-compact window is
-	// now driven by the High slot model's resolved context window (see
-	// glmAutoCompactWindow), not by a model-id suffix.
-	DefaultGLMHigh   = "glm-5.2"
-	DefaultGLMMedium = "glm-4.7"
-	DefaultGLMLow    = "glm-4.5-air"
-	DefaultGLMFable  = "glm-5.2"
-	// Additional GLM models (available but not default-mapped)
+	// GLM model tiers — all four Claude slots resolve to ONE model.
+	//
+	// The slots differ in Claude's world; under GLM they must not. Claude Code
+	// sizes a session's auto-compact window once, from the High slot, and every
+	// agent spawned into a Sonnet or Haiku slot inherits that window. Give those
+	// slots smaller models and the window overstates what they can actually hold:
+	// the spawn runs past its real limit with compaction still waiting for a
+	// ceiling it will never reach. Pointing every slot at the same 1M model is
+	// what makes the single window true for all of them.
+	//
+	// Tier differentiation does not disappear — it moves to the effort axis,
+	// which is where z.ai actually implements it. See glm_effort_overlay.go: the
+	// overlay collapses Claude's five effort levels onto z.ai's three reasoning
+	// states and deliberately never touches model.
+	//
+	// The model id is bare. The [1m] suffix was once appended to request Claude
+	// Code's 1M mode, but Claude Code forwards it verbatim and z.ai rejects the
+	// suffixed id as unknown, so the window comes from the resolved context
+	// window (glmAutoCompactWindow) instead.
+	//
+	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
+	// It is not granted on the native paas surface for every account, so a key
+	// that works here can still be refused there — the two surfaces carry
+	// different model grants.
+	DefaultGLMHigh   = "glm-5.3"
+	DefaultGLMMedium = "glm-5.3"
+	DefaultGLMLow    = "glm-5.3"
+	DefaultGLMFable  = "glm-5.3"
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.2,
+	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots;
+	// glm-4.5, glm-4.6, and glm-5-turbo are named constants with no config
+	// surface.
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
+	DefaultGLM47     = "glm-4.7"
+	DefaultGLM45Air  = "glm-4.5-air"
 	DefaultGLM51     = "glm-5.1"
+	DefaultGLM52     = "glm-5.2"
 	DefaultGLM5Turbo = "glm-5-turbo"
 	// Legacy GLM model names (map to tiers)
-	DefaultGLMHaiku  = "glm-4.5-air"
-	DefaultGLMSonnet = "glm-4.7"
-	DefaultGLMOpus   = "glm-5.2"
+	DefaultGLMHaiku  = "glm-5.3"
+	DefaultGLMSonnet = "glm-5.3"
+	DefaultGLMOpus   = "glm-5.3"
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.

@@ -122,7 +122,7 @@ catalog:
             - name: manager-kanban
               tier: core
               path: templates/.claude/agents/moai/manager-kanban.md
-              hash: 7d2e601ffdd40e511c249c2d84824027645388411f0ddaf0fb73dc6a174ec643
+              hash: b57454e1489da9ff0f10e6155b90eaea5d4d2ae0a1fd81501e1685017db072d9
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -137,7 +137,7 @@ catalog:
             - name: super-advisor
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
-              hash: 22c2f7df94abe0dfd3935b2db793703acc16c1f0d5673b4d28b8edbd5f0652af
+              hash: 4b7ef63ce67db8c75eb63de1e58f1595164dcd2ea470cf5b6e05126843e941c8
               version: 1.0.0
             - name: manager-design
               tier: core

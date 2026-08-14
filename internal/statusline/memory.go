@@ -25,7 +25,8 @@ const defaultAutoCompactPct = 85
 // Add entries here when a new GLM model ships; users can also override per
 // invocation via MOAI_STATUSLINE_CONTEXT_SIZE.
 var glmContextWindows = map[string]int{
-	"glm-5.2":     1_000_000, // GLM-5.2 (z.ai 1M-context model; drives Claude Code 1M auto-compact)
+	"glm-5.3":     1_000_000, // GLM-5.3 (z.ai 1M-context model; drives Claude Code 1M auto-compact)
+	"glm-5.2":     1_000_000, // GLM-5.2 (z.ai 1M-context model)
 	"glm-5.1":     200_000,   // GLM-5.1 (z.ai) — actual ~230K, leave headroom
 	"glm-5":       128_000,
 	"glm-4.7":     128_000,

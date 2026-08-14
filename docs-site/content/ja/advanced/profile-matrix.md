@@ -119,7 +119,7 @@ moai model profile --json   # 機械可読
 
 GLM バックエンド（`moai glm` / `moai cg` の GLM ペイン）では、プロファイルマトリクスの上にオーバーレイが適用されます:
 
-- モデルスロットのマッピング: `fable` → `glm-5.2`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
+- モデルスロットのマッピング: `fable` → `glm-5.3`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
 - Claude の 5 段 effort を z.ai が到達可能な 3-state に collapse:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

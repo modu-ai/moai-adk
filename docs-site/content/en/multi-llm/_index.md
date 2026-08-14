@@ -27,23 +27,26 @@ alone — no code changes.
 |------|------|
 | **GLM Coding Plan** | From **$10**/month ([sign-up link](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | **Compatibility** | Compatible with Claude Code — no code changes |
-| **Models** | glm-5.2, GLM-4.7, GLM-4.5-Air, free models |
+| **Models** | glm-5.3, GLM-4.7, GLM-4.5-Air, free models |
 
 ## Default model mapping
 
-MoAI-ADK assigns a different GLM model per Claude tier. It is implemented via the
+MoAI-ADK points all four Claude tiers at the same GLM model, through the
 4 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
 
 | Claude tier | Environment variable | GLM model | Context |
 |-------------|----------|----------|----------|
-| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.2 | 1M |
-| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-4.7 | 202K |
-| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-4.5-air | 128K |
-| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.2 | 1M |
+| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.3 | 1M |
+| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-5.3 | 1M |
+| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-5.3 | 1M |
+| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.3 | 1M |
 
-> The Opus slot (main session + inheriting agents) and the Fable slot use the 1M-context `glm-5.2`,
-> the Sonnet slot uses the 202K `glm-4.7`, and the Haiku slot uses the 128K `glm-4.5-air`.
-> This per-tier differentiated mapping is configured via `glm.models` (high/medium/low/fable) in
+> Claude Code sizes the auto-compact window once, from the Opus slot, and every agent spawned
+> into another slot inherits it. A smaller model in the Sonnet or Haiku slot would run past its
+> own limit with compaction still waiting for a ceiling it never reaches — which is why all four
+> slots hold the same 1M model. Tier differentiation moves to the effort axis, where z.ai
+> actually implements it.
+> This slot mapping is configured via `glm.models` (high/medium/low/fable) in
 > `llm.yaml`, each injected through the environment variables above. The Fable environment variable
 > is officially supported since Claude Code v2.1.202.
 
