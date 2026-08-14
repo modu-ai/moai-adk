@@ -1,10 +1,10 @@
 ---
 id: SPEC-KANBAN-BOARD-001
 title: "Research — measurements underlying the six-column kanban board model"
-version: "0.4.0"
+version: "0.6.0"
 status: draft
 created: 2026-08-10
-updated: 2026-08-11
+updated: 2026-08-14
 author: manager-spec
 priority: High
 phase: "v3.1.0 target"
@@ -489,6 +489,112 @@ Third — and this is what makes worktree liveness the right selector rather tha
 One further shape is present and is the reason `REQ-KB-024` exists: a worktree can report no branch at all. Measured, `git worktree list` shows `.claude/worktrees/rc-build` in detached `HEAD`. An implementation that falls back to a branch **search** when the report comes back empty lands directly in the multiplicity above.
 
 ---
+
+## §P. Re-measurement at v0.5.0 — three figures that changed
+
+Every measurement in this file carries a re-measurement discipline: a figure is trusted only until the tree moves under it. Three did, between v0.4.0 and v0.5.0. The earlier sections are **preserved verbatim** rather than rewritten — a transcript edited to look current stops being evidence of anything — and this section records what the same commands report now, at `origin/main` = `c55c61aa5`.
+
+### P.1 The rename prerequisite landed, and the gate inverted
+
+```
+$ git ls-tree -d --name-only origin/main internal/kanban
+internal/kanban
+
+$ git ls-tree -d --name-only origin/main internal/factory
+$ ls internal/kanban/
+bootstrap.go  bootstrap_test.go  record.go  record_test.go  revision.go  revision_test.go
+```
+
+The pair `AC-KB-001` requires: the renamed path present on the base branch, the old one absent. `plan.md` §B.1 read "has not landed… exists in this worktree as an untracked directory" through v0.4.0, which was true when written; §C command 1 expected the gate to **halt**, and it now **passes**.
+
+One thing that did *not* change, and it is the reason the base-branch query is the authority rather than a convenience:
+
+```
+$ grep -nE '^(id|status|version):' .moai/specs/SPEC-KANBAN-RENAME-001/spec.md
+2:id: SPEC-KANBAN-RENAME-001
+4:version: "0.5.1"
+5:status: in-progress
+```
+
+The prerequisite SPEC still reads `status: in-progress` while its code is on `main`. That is lifecycle bookkeeping lagging a merge, and it is exactly the divergence `acceptance.md` §A.1 rule 6 exists for: a status field and a working-tree predicate can each be satisfied by something that has not landed, and each can equally fail on something that has. Only the base-branch query answers the question `REQ-KB-002` asks.
+
+### P.2 The session-record constant moved, and the value it names changed
+
+```
+$ grep -n 'stateDirSegments' internal/kanban/record.go
+41:// stateDirSegments is the record's home beneath the project root, matching the
+43:var stateDirSegments = []string{".moai", "state", "kanban"}
+106:	segments := append([]string{projectRoot}, stateDirSegments...)
+```
+
+§N measured this at `internal/factory/record.go` with the value `{".moai", "state", "factory"}`. Both are now stale, and the change is not cosmetic: at §N's measurement the two names did not yet coincide, so the collision §A.3(e) resolves was a **projection** of what the rename would produce. It is now an **observation**. The resolution rule is unchanged — `projectRoot`, which in a worktree is that worktree's own root — so the decision §N forced stands unaltered; only its evidentiary status improved.
+
+### P.3 `.moai/state/kanban/` exists and holds two per-tree occupants; `kanban-board` still does not
+
+```
+$ ls -1 .moai/state/ | grep -E '^kanban(-board)?$'
+kanban
+
+$ ls -1 .moai/state/kanban/
+65766920-d5d7-44b0-83e5-482ecd8cec30.json
+8d930c6a-f211-4f41-8414-90b720d2b2c7.json
+b656696e-2b75-4f4a-8075-abbfaba8552a.json
+backlog.json
+bc5bf5ef-5c78-4dbc-8cb6-beb8b291b910.json
+c18ceca8-3510-49b5-a977-05a8af67c367.json
+s.json
+verify-i18n-001.json
+
+$ test -d .moai/state/kanban-board && echo present || echo absent
+absent
+```
+
+§N recorded "`.moai/state/` carries no entry named `kanban` or `kanban-board`". Half of that is now false. The directory holds the per-tree session records **and** `backlog.json`, the queue `/moai todo` writes (`.claude/skills/moai/workflows/todo.md`: "State lives at `.moai/state/kanban/backlog.json`").
+
+The direction of the change is worth stating, because a reader could take it either way. It **strengthens** the separation §A.3(e) decided rather than undermining it: two occupants now share the per-tree resolution rule under that name, so a primary-resolved board placed among them would be harder to distinguish, not easier. The name this SPEC takes still collides with nothing.
+
+### P.4 Two surfaces landed that state part of this SPEC's model
+
+```
+$ ls .claude/rules/moai/workflow/kanban-dispatch.md \
+     .claude/skills/moai/workflows/todo.md \
+     .claude/commands/moai/todo.md
+.claude/commands/moai/todo.md
+.claude/rules/moai/workflow/kanban-dispatch.md
+.claude/skills/moai/workflows/todo.md
+
+$ ls .claude/agents/moai/manager-kanban.md .claude/agents/moai/manager-lead.md
+ls: .claude/agents/moai/manager-lead.md: No such file or directory
+.claude/agents/moai/manager-kanban.md
+```
+
+`kanban-dispatch.md` is always-loaded, so it reaches every session regardless of what has been read. `spec.md` §A.9 tabulates the points on which it agrees with this SPEC — cited rather than restated — and the **one** on which it does not.
+
+**Re-measured at v0.6.0, because §P.4 as written at v0.5.0 said "the two on which it does not" and that count was wrong.** Two attributions were checked directly:
+
+```
+$ grep -rin 'not a board' .claude/rules/moai/workflow/kanban-dispatch.md \
+                          .claude/skills/moai/workflows/todo.md
+.claude/skills/moai/workflows/todo.md:94:- **Not a board.** Column position lives with the lead and the SPEC status, not
+
+$ grep -n 'backlog' .claude/rules/moai/workflow/kanban-dispatch.md | head -3
+18:backlog → plan → run → review → sync → done
+21:`backlog` and `done` have no owning session. …
+25:| `backlog` | *none* — a queue | Work waits. Entry is an operator act (see below). |
+```
+
+The "Not a board" text is `/moai todo`'s and appears nowhere in the rule; the rule's own column table lists `backlog` as a row, so on the single point v0.5.0 cited it as disagreeing on, it **agrees**. The rule carries one disagreement (column derivation) and `/moai todo` carries the other (what the backlog is). The substantive analysis of the second is unchanged — the correction is to which file it is filed against, which matters because a disagreement with an always-loaded rule reaches every session and one with a queue surface does not.
+
+A third claim was checked at the same time and also failed:
+
+```
+$ grep -in 'write authority\|only the lead' .claude/rules/moai/workflow/kanban-dispatch.md
+(no matches)
+```
+
+v0.5.0's agreement table cited the rule as independently corroborating "only the lead records a transition; a dispatch confers no write authority". It states neither phrase. Its nearest support is line 56 — "the lead reads the sync session's completion evidence and records the terminal transition itself" — which is one instance, scoped to `sync → done`, and supplies no statement about any other session. The row is narrowed to what the rule says, and the sole-writer property is marked **inferred** from the rule's silence rather than cited from its text. The agent rename (`manager-lead` → `manager-kanban`) touches nothing here: this SPEC's `lead` is a session role in a topology, never an agent definition, and no measurement in this file named the old agent.
+
+**Not measured, and named as a gap rather than left silent**: whether any carrier for the role declaration of `REQ-KS-006` exists. `plan.md` §C command 11c asks the question, and it is deliberately answered at M1 rather than here, because the answer is time-varying in the one direction that matters — `REQ-KB-025` branches on it, and a plan-time reading of "no carrier" would authorize defining one that a run-phase reading might find already present.
 
 ## §J. Out of Scope
 
