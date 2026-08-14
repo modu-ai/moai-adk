@@ -125,11 +125,6 @@ func (r *Record) WithRole(role string) *Record {
 	return r
 }
 
-// RoleLead names the session that elected the run. The four companion roles
-// live in CompanionRoles (bootstrap.go); lead is not one of them because no
-// companion session occupies it.
-const RoleLead = "lead"
-
 // RecordPath returns the on-disk path of a session's record.
 func RecordPath(projectRoot, sessionID string) string {
 	segments := append([]string{projectRoot}, stateDirSegments...)
