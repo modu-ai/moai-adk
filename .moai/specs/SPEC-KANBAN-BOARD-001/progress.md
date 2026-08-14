@@ -1126,7 +1126,7 @@ run_phase_commits:
   - dba5af978   # M2 evidence SHA backfill
   - b12e891ad   # M3 verification sweep + audit-ready signal
   - 92065a1e4   # M3-fix review findings F1-F5
-  - <FIX2_SHA>  # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
+  - f0ca483d0   # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
