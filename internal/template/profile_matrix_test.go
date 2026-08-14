@@ -203,13 +203,13 @@ func TestDefaultProfileMatrix_Monotone(t *testing.T) {
 func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	// Derived: effort borrowed from the class row, model always pinned.
 	want := map[string]string{
-		HarnessClassReadOnlyExtract:     EffortLevelLow,    // Explore row
-		HarnessClassMechanicalTransform: EffortLevelLow,    // manager-git row
-		HarnessClassSynthesize:          EffortLevelLow,    // manager-docs row
-		HarnessClassResearch:            EffortLevelHigh,   // plan-auditor row
-		HarnessClassVerifyJudge:         EffortLevelHigh,   // sync-auditor row
-		HarnessClassImplement:           EffortLevelMax,    // manager-develop row
-		HarnessClassDesignArchitecture:  EffortLevelHigh,   // manager-design row
+		HarnessClassReadOnlyExtract:     EffortLevelLow,  // Explore row
+		HarnessClassMechanicalTransform: EffortLevelLow,  // manager-git row
+		HarnessClassSynthesize:          EffortLevelLow,  // manager-docs row
+		HarnessClassResearch:            EffortLevelHigh, // plan-auditor row
+		HarnessClassVerifyJudge:         EffortLevelHigh, // sync-auditor row
+		HarnessClassImplement:           EffortLevelMax,  // manager-develop row
+		HarnessClassDesignArchitecture:  EffortLevelHigh, // manager-design row
 	}
 	cfg := config.LLMConfig{Profile: "high"}
 	for class, exp := range want {
