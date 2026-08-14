@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 )
 
@@ -30,6 +31,14 @@ func TestAutonomyTierReader(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.set {
 				t.Setenv(EnvAutonomyTier, tc.env)
+			} else {
+				// The kanban launcher exports MOAI_AUTONOMY_TIER into the
+				// sessions it starts, so on a Kanban Mode developer machine
+				// the ambient env would otherwise make the "unset" case read
+				// a real tier. t.Setenv registers the restore; the unset
+				// makes "not set" distinct from "set to empty".
+				t.Setenv(EnvAutonomyTier, "")
+				_ = os.Unsetenv(EnvAutonomyTier)
 			}
 			got := AutonomyTier()
 			if got != tc.want {

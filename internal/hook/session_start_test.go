@@ -66,6 +66,14 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 	// isolate the env, not weaken the SUT.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
+	// Isolate the kanban PROCESS env as well: a session launched by the
+	// kanban launcher carries MOAI_KANBAN_* variables, and
+	// kanbanBootstrapNotice() injects its notice into AdditionalContext even
+	// when SessionID/ProjectDir is empty — breaking the "nil config" and
+	// "empty project config" subtests below. Same isolation as the kanban
+	// notice tests in session_start_kanban_test.go.
+	clearKanbanEnv(t)
+
 	tests := []struct {
 		name         string
 		cfg          *config.Config

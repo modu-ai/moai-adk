@@ -47,11 +47,37 @@ func TestAC003_BlockCapDoctrineClauseSpecific(t *testing.T) {
 	}
 }
 
+// clearKanbanLauncherEnv unsets every kanban signal variable plus the runtime
+// block-cap key so the inject's negative controls below start from a
+// known-absent state. A session running these tests inside Kanban Mode carries
+// the launcher-injected MOAI_KANBAN* variables in its ambient env, and the
+// inject's kanban branch is unconditional on them — without this isolation the
+// "no signal → env unchanged" controls fail on the developer's own machine.
+// t.Setenv registers the restore, so the process env is returned to its prior
+// value when the test ends. Same pattern as clearKanbanEnv in
+// internal/hook/session_start_kanban_test.go.
+func clearKanbanLauncherEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		config.EnvMoaiKanban,
+		config.EnvMoaiKanbanID,
+		config.EnvMoaiKanbanSpec,
+		config.EnvMoaiKanbanLabel,
+		config.EnvMoaiKanbanSettingsInjected,
+		config.EnvMoaiKanbanLeadAddr,
+		config.EnvClaudeCodeStopHookBlockCap,
+	} {
+		t.Setenv(key, "")
+		_ = os.Unsetenv(key)
+	}
+}
+
 // TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal asserts the launcher
 // env builder injects CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=<raised> when an armed
 // MaxTurns==0 goal exists for the resolving session, and leaves the env
 // unchanged when no such goal exists (backward compat).
 func TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal(t *testing.T) {
+	clearKanbanLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 
@@ -116,6 +142,7 @@ func armInfiniteGoalFixture(t *testing.T, projectRoot, sessionID string, maxTurn
 //
 // Non-parallel by construction: t.Setenv mutates process-global state.
 func TestACFM022a_KanbanRaisesBlockCapUnconditionally(t *testing.T) {
+	clearKanbanLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
@@ -169,6 +196,7 @@ func TestACFM022a_KanbanCapReplacesPreexistingEntry(t *testing.T) {
 //
 // Non-parallel by construction: t.Setenv mutates process-global state.
 func TestKanbanCompanionRaisesBlockCap(t *testing.T) {
+	clearKanbanLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
