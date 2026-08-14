@@ -223,7 +223,7 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	a.listProfiles = func() []profile.ProfileEntry {
 		return []profile.ProfileEntry{{Name: "default", Current: true}}
 	}
-	body := serveGet(t, a.routes(), "/").Body.String()
+	body := serveGet(t, a.routes(), "/settings").Body.String()
 
 	// model_policy must NOT render (G3-5 removal).
 	if strings.Contains(body, `name="model_policy"`) {

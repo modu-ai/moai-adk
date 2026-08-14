@@ -59,7 +59,7 @@ func boardFixtureRoot(t *testing.T) string {
 func getBoard(t *testing.T, root string) *httptest.ResponseRecorder {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
-	req := httptest.NewRequest(http.MethodGet, "/specs", nil)
+	req := httptest.NewRequest(http.MethodGet, "/specs/board", nil)
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)
 	return rec
@@ -168,7 +168,7 @@ func TestBoard_GETOnly(t *testing.T) {
 		}
 	}
 	// GET is allowed.
-	req := httptest.NewRequest(http.MethodGet, "/specs", nil)
+	req := httptest.NewRequest(http.MethodGet, "/specs/board", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

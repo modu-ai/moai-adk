@@ -38,7 +38,7 @@ func renderIndexBody(t *testing.T, prefs profile.ProfilePreferences) string {
 	a.listProfiles = func() []profile.ProfileEntry {
 		return []profile.ProfileEntry{{Name: "default", Current: true}}
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
 	}
@@ -63,17 +63,23 @@ func readEmbeddedAsset(t *testing.T, path string) string {
 func TestConsoleCSSEmbedded(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	// Brand tokens present (AC-WC4-001). The former [data-theme="dark"] entry is
-	// INVERTED by SPEC-DESIGN-MOAIWEBV2-002 (light-only) — see TestDarkThemeAbsence.
+	// 토큰 체계 교체 (콘솔 재설계): 브랜드 녹색 + 시그니처 그라디언트를 쓰던
+	// 이전 체계는 무채색 단일 체계로 대체됐다. 주 액션은 --ink, 판은 --bg,
+	// 유일한 유채색은 --danger 다. 이전 이름(--color-primary 등)은 미이행
+	// 마크업이 남아 있는 동안만 별칭으로 유지되므로, 값이 아니라 새 토큰의
+	// 존재를 검증한다.
 	for _, want := range []string{
-		"--color-primary: #3d7d5f",
-		// SPEC-DESIGN-MOAIWEBV2-001 M3: bg de-tinted to the v2 achromatic canon.
-		"--color-bg: #f4f4f4",
-		"--gradient-signature:",
+		"--ink:#1d1d1f",
+		"--bg:#ffffff",
+		"--danger:#c5261d",
 	} {
 		if !strings.Contains(css, want) {
-			t.Errorf("console.css missing brand token %q", want)
+			t.Errorf("console.css missing achromatic token %q", want)
 		}
+	}
+	// 폐기된 시그니처 그라디언트가 되살아나지 않았는지 확인한다.
+	if strings.Contains(css, "--gradient-signature") {
+		t.Error("console.css reintroduced --gradient-signature (retired by the achromatic system)")
 	}
 
 	// No external font/style fetch (offline invariant, AC-WC4-001).
@@ -246,7 +252,7 @@ func TestLoopbackIndicatorShowsRealBindAddr(t *testing.T) {
 	// Inject a known non-default bind address.
 	a.bindAddr = func() string { return "127.0.0.1:7777" }
 
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	body := rec.Body.String()
 
 	if !strings.Contains(body, "127.0.0.1:7777") {
@@ -342,7 +348,7 @@ func TestProfileSwitchNameAttrPreserved(t *testing.T) {
 	a.listProfiles = func() []profile.ProfileEntry {
 		return []profile.ProfileEntry{{Name: "default", Current: true}, {Name: "work"}}
 	}
-	body := serveGet(t, a.routes(), "/").Body.String()
+	body := serveGet(t, a.routes(), "/settings").Body.String()
 	if !strings.Contains(body, `name="__profile_select"`) {
 		t.Error("profile switcher dropped name=\"__profile_select\" under restyle")
 	}
@@ -547,38 +553,40 @@ func TestAccessibilityCues(t *testing.T) {
 // baseline (L37-40), and the contrast-failing status-TEXT usages consume the
 // usage-scoped color-mix darkening toward --color-ink — the token bytes
 // themselves never darken (token-vs-usage separation, REQ-MWA-005/006).
-func TestStatusTokensDocsSiteParity(t *testing.T) {
+func TestAchromaticSingleColourSystem(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	// (1) Token bytes equal to docs-site moai-brand.css.
-	for _, want := range []string{
-		"--color-success: #5db872",
-		"--color-warning: #d4a017",
-		"--color-danger:  #c64545",
-		"--color-info:    #5db8a6",
+	// 목적 교체 (콘솔 재설계 — 무채색 단일 체계 채택):
+	// 이전 테스트는 docs-site 와 같은 4색 상태 토큰(success/warning/info/danger)을
+	// 고정했다. 재설계는 "색으로 상태를 나르지 않는다"를 채택했으므로, 그 4색
+	// 체계 자체가 사라졌다. 이제 검증할 불변식은 "유채색은 --danger 하나뿐"이다.
+	//
+	// 상태는 색이 아니라 모양(점 채움/테두리, 파선, 글리프)으로 구분한다 —
+	// 색각 이상이나 흑백 인쇄에서도 읽히게 하기 위한 선택이다.
+	for _, retired := range []string{
+		"--color-success",
+		"--color-warning",
+		"--color-info",
+		"--status-text-success",
+		"--status-text-danger",
 	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("console.css missing docs-site status token %q", want)
+		if strings.Contains(css, retired) {
+			t.Errorf("console.css still declares retired status token %q (the achromatic system carries --danger only)", retired)
 		}
 	}
 
-	// (2) Usage-scoped AA carve-out: derived text tokens darken via color-mix
-	// toward the ink token, and the pre-measured failing text usages
-	// (.banner--success / .banner--error / has-error danger text) consume them.
-	for _, want := range []string{
-		"--status-text-success: color-mix(in srgb, var(--color-success), var(--color-ink)",
-		"--status-text-danger: color-mix(in srgb, var(--color-danger), var(--color-ink)",
-	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("console.css missing usage-scoped AA carve-out token %q", want)
-		}
+	// 유일한 유채색은 --danger 다.
+	if !strings.Contains(css, "--danger:#c5261d") {
+		t.Error("console.css missing the single chromatic token --danger")
 	}
-	for _, usage := range []string{
-		".banner--success",
-		".banner--error",
+
+	// 상태 어휘가 모양으로 구분되는지 — 점 채움 대 테두리, 파선 추정 표시.
+	for _, shape := range []string{
+		".state--idle .state__dot",
+		".est",
 	} {
-		if !regexp.MustCompile(regexp.QuoteMeta(usage) + `[^}]*color: var\(--status-text-`).MatchString(css) {
-			t.Errorf("%s text color does not consume the --status-text-* AA carve-out", usage)
+		if !strings.Contains(css, shape) {
+			t.Errorf("console.css missing shape-based state marker %q (colour alone must not carry state)", shape)
 		}
 	}
 }

@@ -111,7 +111,7 @@ func TestM5AgentFMRenderBadgeAndSelects(t *testing.T) {
 	a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
 	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)

@@ -91,7 +91,7 @@ func readSectionFile(t *testing.T, root, name string) string {
 // input 없이 렌더 + read-only 표시 렌더.
 func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	a, _ := newSchemaTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)

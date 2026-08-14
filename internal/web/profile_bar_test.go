@@ -101,7 +101,7 @@ func renderBarWithModifiableProfile(t *testing.T) string {
 			{Name: "scratch"},
 		}
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
 	}
@@ -289,7 +289,7 @@ func TestProfileBarMarksCurrentAndSelected(t *testing.T) {
 			{Name: "scratch", Current: false},
 		}
 	}
-	body := serveGet(t, a.routes(), "/").Body.String()
+	body := serveGet(t, a.routes(), "/settings").Body.String()
 
 	// The launch-current profile is annotated; the others are not.
 	if !strings.Contains(body, `>work (current)<`) {

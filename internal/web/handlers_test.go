@@ -92,7 +92,7 @@ func TestIndexRendersPopulatedForm(t *testing.T) {
 	}
 	h := a.routes()
 
-	rec := serveGet(t, h, "/")
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
 	}
@@ -127,7 +127,7 @@ func TestIndexNeutralDefaultsForZeroValueProfile(t *testing.T) {
 	}
 	h := a.routes()
 
-	rec := serveGet(t, h, "/")
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / on zero-value profile status = %d, want 200", rec.Code)
 	}
@@ -151,7 +151,7 @@ func TestIndexReadErrorRendersInlineError(t *testing.T) {
 	}
 	h := a.routes()
 
-	rec := serveGet(t, h, "/")
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("read error status = %d, want 500", rec.Code)
 	}
@@ -180,7 +180,7 @@ func TestIndexProfileSelectionShownForMultipleProfiles(t *testing.T) {
 				{Name: "work", Current: false},
 			}
 		}
-		rec := serveGet(t, a.routes(), "/")
+		rec := serveGet(t, a.routes(), "/settings")
 		body := rec.Body.String()
 		if !strings.Contains(body, `name="__profile_select"`) {
 			t.Error("profile selector not shown for multiple profiles")
@@ -197,7 +197,7 @@ func TestIndexProfileSelectionShownForMultipleProfiles(t *testing.T) {
 		a.listProfiles = func() []profile.ProfileEntry {
 			return []profile.ProfileEntry{{Name: "default", Current: true}}
 		}
-		rec := serveGet(t, a.routes(), "/")
+		rec := serveGet(t, a.routes(), "/settings")
 		if strings.Contains(rec.Body.String(), `name="__profile_select"`) {
 			t.Error("profile selector should be omitted when only default exists")
 		}
@@ -216,7 +216,7 @@ func TestIndexProfileQueryParamSelectsProfile(t *testing.T) {
 	a.listProfiles = func() []profile.ProfileEntry {
 		return []profile.ProfileEntry{{Name: "default", Current: true}, {Name: "work"}}
 	}
-	serveGet(t, a.routes(), "/?profile=work")
+	serveGet(t, a.routes(), "/settings?profile=work")
 	if readName != "work" {
 		t.Errorf("ReadPreferences called with %q, want \"work\"", readName)
 	}
@@ -493,7 +493,7 @@ func TestHostCheckDoesNotGateGet(t *testing.T) {
 	}
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "attacker.example.com"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

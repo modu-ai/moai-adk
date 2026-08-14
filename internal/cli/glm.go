@@ -185,7 +185,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
 	case kanbanBranchLead:
 		defer enterKanbanMode(specID)()
-		recordKanbanSession(specID, kanban.BackendGLM)
+		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -193,6 +193,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		defer settingsCleanup()
 	case kanbanBranchCompanion:
 		defer enterKanbanCompanionMode(label)()
+		recordKanbanSession(specID, kanban.BackendGLM, companionRole(label))
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

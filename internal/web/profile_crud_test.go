@@ -62,7 +62,7 @@ func TestProfileCRUDFlow(t *testing.T) {
 	}
 
 	// --- LIST (GET /) reflects the new profile ---
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "work") {
@@ -70,7 +70,7 @@ func TestProfileCRUDFlow(t *testing.T) {
 	}
 
 	// --- SWITCH (GET /?profile=work reuses the existing load path) ---
-	req = httptest.NewRequest(http.MethodGet, "/?profile=work", nil)
+	req = httptest.NewRequest(http.MethodGet, "/settings?profile=work", nil)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

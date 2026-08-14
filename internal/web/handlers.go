@@ -208,7 +208,10 @@ func (a *app) render(w http.ResponseWriter, status int, view pageView) {
 // (zero-value → neutral defaults, not an error) and renders the pre-populated
 // editable form. A read error produces a readable inline error.
 func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
+	// 설정 편집기는 재설계에서 "/settings" 로 내려갔다. "/" 는 개요가 가져간다.
+	// 이 가드는 미등록 경로가 설정 화면으로 새는 것을 막는 용도이므로, 등록된
+	// 두 경로만 통과시킨다 — "/" 는 mux 의 catch-all 이라 여전히 좁혀야 한다.
+	if r.URL.Path != "/settings" && r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}

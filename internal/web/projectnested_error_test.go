@@ -108,7 +108,7 @@ func TestProjectNestedReadFailureRendersInlineError(t *testing.T) {
 	a.readProjectNestedConfig = func(string) (projectNestedCurrent, error) {
 		return projectNestedCurrent{}, errors.New("nested disk read boom")
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code < 400 {
 		t.Errorf("nested read failure status = %d, want >= 400", rec.Code)
 	}

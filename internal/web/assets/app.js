@@ -518,3 +518,112 @@
     copyToClipboard(text, btn);
   });
 })();
+
+/* ────────────────────────────────────────────────────────────────────────────
+   실시간 갱신 (SSE) — 재설계본에서 추가.
+
+   번들된 htmx 는 2.0.4 코어이고 SSE 확장이 없으므로(EventSource 0건),
+   hx-ext="sse" 대신 EventSource 를 직접 배선한다. 이벤트는 값을 나르지 않고
+   "이 영역이 바뀌었다"는 신호만 오므로, 브라우저가 현재 URL 을 다시 받아
+   본문(.body)만 갈아끼운다 — 렌더링 진실은 서버 한 곳에 남는다.
+
+   조용히 멈추는 것이 최악의 실패 모드다. 연결이 끊기면 폴백 폴링으로 내려가고
+   상단바에 끊김 사실을 남긴다.
+   ──────────────────────────────────────────────────────────────────────────── */
+(function () {
+  "use strict";
+
+  var EVENTS = ["spec", "session", "goal", "verify", "kanban", "config"];
+  var POLL_MS = 30000;
+  var pollTimer = null;
+  var failures = 0;
+  var refreshing = false;
+
+  function hasArea(area) {
+    return document.querySelector('[data-live="' + area + '"]') !== null;
+  }
+
+  /* 본문만 다시 받아 갈아끼운다. 스크롤 위치는 브라우저가 유지한다. */
+  function refresh(area) {
+    if (!hasArea(area) || refreshing) return;
+    if (!window.htmx) return;
+    refreshing = true;
+    window.htmx
+      .ajax("GET", window.location.href, {
+        target: ".body",
+        select: ".body",
+        swap: "outerHTML",
+      })
+      .finally(function () {
+        refreshing = false;
+      });
+  }
+
+  function setLive(on) {
+    var el = document.querySelector("[data-live-indicator]");
+    if (!el) return;
+    el.setAttribute("data-live-indicator", on ? "on" : "off");
+    el.classList.toggle("live--off", !on);
+    var label = el.querySelector("span[data-i18n]");
+    if (label) label.setAttribute("data-i18n", on ? "live.on" : "live.off");
+  }
+
+  /* 설정 화면은 편집 중에 밑에서 바뀌면 안 된다 — config 이벤트는 알리기만 한다. */
+  function configBanner() {
+    var slot = document.querySelector("[data-config-banner]");
+    if (!slot || slot.dataset.shown === "1") return;
+    slot.hidden = false;
+    slot.dataset.shown = "1";
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(function () {
+      EVENTS.forEach(function (e) {
+        if (e !== "config") refresh(e);
+      });
+    }, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function connect() {
+    if (!window.EventSource) {
+      startPolling();
+      setLive(false);
+      return;
+    }
+    var es = new EventSource("/events");
+
+    es.addEventListener("ready", function () {
+      failures = 0;
+      stopPolling();
+      setLive(true);
+    });
+
+    EVENTS.forEach(function (name) {
+      es.addEventListener(name, function () {
+        if (name === "config") {
+          configBanner();
+          return;
+        }
+        refresh(name);
+      });
+    });
+
+    es.onerror = function () {
+      failures += 1;
+      setLive(false);
+      /* 브라우저가 자동 재연결한다. 반복 실패하면 폴링으로 내려간다. */
+      if (failures >= 3) startPolling();
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (document.querySelector("[data-live]")) connect();
+  });
+})();

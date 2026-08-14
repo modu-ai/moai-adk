@@ -61,7 +61,7 @@ func TestProjectReadSeamFailureRendersInlineError(t *testing.T) {
 	a.readProjectConfig = func(string) (string, string, error) {
 		return "", "", errors.New("disk read boom")
 	}
-	rec := serveGet(t, a.routes(), "/")
+	rec := serveGet(t, a.routes(), "/settings")
 	if rec.Code < 400 {
 		t.Errorf("read failure status = %d, want >= 400", rec.Code)
 	}

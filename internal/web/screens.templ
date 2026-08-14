@@ -1,0 +1,389 @@
+// 개요(/) · 칸반(/kanban) · SPEC(/specs) · 모니터(/monitor)
+// 전부 읽기 전용. 실시간 갱신은 [data-live] 조각 단위로 htmx 가 다시 가져온다.
+//
+// handoff 원본 대비 로컬 보정: `@icon(name, size)` → `@iconAt(...)`,
+// `@banner(...)` → `@noteBanner(...)` (이름 충돌 회피 — widgets.templ 주석 참조).
+package web
+
+/* ── 개요 ───────────────────────────────────────────── */
+
+templ Overview(vm ShellVM, o OverviewVM) {
+	@Shell(vm) {
+		<div class="stats" data-live="spec">
+			for _, s := range o.Stats {
+				<div class="stat">
+					<span class="stat__l">{ s.Label }</span>
+					<span class="stat__v">{ s.Value }</span>
+					<span class="stat__n">{ s.Note }</span>
+				</div>
+			}
+		</div>
+		if o.Chain.Present {
+			<section class="chainbar" data-live="kanban">
+				<div class="chainbar__h">
+					<span class="panel__meta" data-i18n="chain.title">Kanban chain</span>
+					if o.Chain.CardID != "" {
+						<span class="mono">{ o.Chain.CardID }</span>
+					}
+					if o.Chain.IdleRole != "" {
+						<span class="warn">
+							@iconAt("alert", 13)
+							<span>{ o.Chain.IdleRole }</span>
+							<span data-i18n="chain.stopped">— the chain stops here</span>
+						</span>
+					}
+					<a class="panel__meta" href="/kanban" style="margin-left:auto">
+						<span data-i18n="chain.open">Open in Kanban</span>
+						@iconAt("chevron", 13)
+					</a>
+				</div>
+				<ol class="chainbar__l">
+					for _, r := range o.Chain.Roles {
+						<li class={ "cpill", templ.KV("cpill--idle", r.State == "idle") }>
+							<span class="cpill__r">{ r.Role }</span>
+							@stateMark(r.State, stateLabel(r.State))
+						</li>
+					}
+				</ol>
+			</section>
+		}
+		<div class="two">
+			<div class="col">
+				@panel("In-progress SPECs", itoa(len(o.InProgress)), "", "roomy") {
+					<div class="rows" data-live="spec">
+						for _, s := range o.InProgress {
+							@specRowLink(s)
+						}
+					</div>
+				}
+				@panel("Needs attention", itoa(len(o.Attention)), "MUST-FIX drift · failed verification · stalled goals · idle roles only.", "roomy") {
+					<div class="rows">
+						for _, a := range o.Attention {
+							<a class="row-link" href={ templ.SafeURL(a.Href) }>
+								@iconAt(a.Icon, 14)
+								<span class="mono" style="flex:0 0 190px">{ a.Source }</span>
+								<span style="flex:1 1 auto;min-width:0">{ a.Text }</span>
+								@badge(a.BadgeKind, a.Badge)
+							</a>
+						}
+					</div>
+				}
+			</div>
+			<aside class="rail2">
+				@panel("Sessions", "registry "+itoa(len(o.Sessions)), "", "roomy") {
+					@noteBanner("info", "The registry can hold entries whose process has exited. Only PID-confirmed sessions are marked active.")
+					<div class="rows" data-live="session">
+						for _, s := range o.Sessions {
+							<div class="sess">
+								<span class="mono" style="display:flex;align-items:center;gap:7px">
+									@stateMark(s.State, "")
+									{ s.ID }
+								</span>
+								<span class="panel__meta" style="display:flex;align-items:center;gap:6px">
+									@backendBadge(s.Backend)
+									{ " · " + s.Heartbeat }
+								</span>
+							</div>
+						}
+					</div>
+				}
+			</aside>
+		</div>
+	}
+}
+
+templ specRowLink(s SpecRowVM) {
+	<a class="row-link" href={ templ.SafeURL("/specs?id=" + s.ID) }>
+		<span class="mono" style="flex:0 0 210px;font-size:11.5px">{ s.ID }</span>
+		<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{ s.Title }</span>
+		if s.Drift != "" {
+			@badge("danger", s.Drift)
+		}
+		if s.Tier != "" {
+			@badge("outline", s.Tier)
+		}
+		<span class="panel__meta" style="flex:0 0 82px;text-align:right">{ s.Updated }</span>
+	</a>
+}
+
+/* ── 칸반 ───────────────────────────────────────────────
+   뷰 A(체인 세션 보드)가 주, 뷰 B(SPEC 파이프라인 4컬럼)가 보조.
+   뷰 A의 모델·effort·CW는 기록이 없으면 채우지 않고 비운다.
+   ---------------------------------------------------- */
+
+templ Kanban(vm ShellVM, k KanbanVM) {
+	@Shell(vm) {
+		<section data-live="kanban">
+			<div class="panel__head" style="border-bottom-color:var(--line)">
+				<h2 class="panel__title" data-i18n="kanban.viewA">Chain session board</h2>
+				<span class="panel__meta" data-i18n="kanban.card">Current card</span>
+				<span class="mono">{ k.CardID }</span>
+				if k.IdleRole != "" {
+					<span class="warn" style="margin-left:auto">
+						@iconAt("alert", 13)
+						<span>{ k.IdleRole }</span>
+						<span data-i18n="chain.stopped">— the chain stops here</span>
+					</span>
+				}
+			</div>
+			<div class="roles">
+				for i, r := range k.Roles {
+					<article class={ "role", templ.KV("role--idle", r.State == "idle") }>
+						<header class="role__h">
+							<span class="role__n">
+								<span class="mono panel__meta">{ itoa(i) }</span>
+								{ r.Role }
+							</span>
+							@stageMark(r.Stage, r.StageEstimated)
+						</header>
+						<div class="role__b">
+							@stateMark(r.State, stateLabel(r.State))
+							if r.Session != "" {
+								<span class="role__s">{ r.Session }</span>
+							} else {
+								<span class="role__s warn" data-i18n="kanban.noSession">No session</span>
+							}
+							<div class="role__kv">
+								<span data-i18n="kanban.backend">Backend</span>
+								@backendBadge(r.Backend)
+								<span data-i18n="kanban.model">Model</span>
+								if r.Model != "" {
+									<span class="mono">{ r.Model }</span>
+								} else {
+									@missing()
+								}
+								<span>effort</span>
+								if r.Effort != "" {
+									<span class="mono">{ r.Effort }</span>
+								} else {
+									@missing()
+								}
+							</div>
+							@gauge("CW", r.ContextPct)
+							<span class="role__f">
+								if r.Heartbeat != "" {
+									{ r.Heartbeat }
+								} else {
+									<span class="warn" data-i18n="kanban.noStart">No start record</span>
+								}
+							</span>
+						</div>
+					</article>
+					if i < len(k.Roles)-1 {
+						<span class="arrow" aria-hidden="true">→</span>
+					}
+				}
+			</div>
+			@noteBanner("info", "Stage is estimated from heartbeat. Model, effort and context usage are not recorded yet, so they are left blank — they fill in once kanban.Record is extended.")
+		</section>
+		<section data-live="spec">
+			<div class="panel__head" style="border-bottom-color:var(--line)">
+				<h2 class="panel__title" data-i18n="kanban.viewB">SPEC pipeline</h2>
+				<span class="panel__meta">{ "4 status columns · " + itoa(k.Total) }</span>
+				<span class="panel__meta" style="margin-left:auto" data-i18n="kanban.terminal">superseded · archived · rejected via filter only</span>
+			</div>
+			<div class="board">
+				for _, c := range k.Columns {
+					<section class="kcol">
+						<header class="kcol__h">
+							<span class="kcol__n">{ c.ID }</span>
+							<span class="count">{ itoa(len(c.Cards)) }</span>
+							<span class="kcol__s">{ "status: " + c.Status }</span>
+						</header>
+						<div class="kcol__b">
+							for _, s := range c.Cards {
+								<a class="kcard" href={ templ.SafeURL("/specs?id=" + s.ID) }>
+									<span class="kcard__id">{ s.ID }</span>
+									<span class="kcard__t">{ s.Title }</span>
+									<span class="kcard__f">
+										if s.Tier != "" {
+											@badge("outline", s.Tier)
+										}
+										if s.Drift != "" {
+											@badge("danger", s.Drift)
+										}
+										<span class="panel__meta" style="margin-left:auto">{ s.Updated }</span>
+									</span>
+								</a>
+							}
+						</div>
+					</section>
+				}
+			</div>
+		</section>
+	}
+}
+
+/* ── SPEC 목록 + 슬라이드 패널 ─────────────────────────── */
+
+templ Specs(vm ShellVM, l SpecListVM) {
+	@Shell(vm) {
+		<div class="toolbar">
+			<form class="search" action="/specs" method="get" role="search">
+				@iconAt("search", 15)
+				<input class="in" type="search" name="q" value={ l.Query } placeholder="Search ID or title" data-i18n-placeholder="specs.search"/>
+			</form>
+			<div class="chips" role="group" aria-label="Status filter">
+				for _, f := range l.Filters {
+					<a class="chip" href={ templ.SafeURL(f.Href) } aria-pressed={ attrBool(f.Active) }>{ f.Label + " " + itoa(f.Count) }</a>
+				}
+			</div>
+		</div>
+		<div class="splitpane">
+			<div class="tbl" data-live="spec">
+				<div class="tr tr--head" style="grid-template-columns:230px minmax(0,1fr) 118px 44px 54px 92px 92px">
+					<span>ID</span><span data-i18n="specs.title">Title</span><span>status</span><span>Tier</span><span>era</span>
+					<span data-i18n="specs.updated">Updated</span><span data-i18n="specs.drift">Drift</span>
+				</div>
+				for _, s := range l.Rows {
+					<a
+						class={ "tr", "tr--link", templ.KV("tr--sel", s.ID == l.SelectedID) }
+						href={ templ.SafeURL("/specs?id=" + s.ID) }
+						style="grid-template-columns:230px minmax(0,1fr) 118px 44px 54px 92px 92px"
+					>
+						<span class="tr__name">{ s.ID }</span>
+						<span class="tr__desc">{ s.Title }</span>
+						<span class="mono" style="font-size:11.5px;display:flex;align-items:center;gap:6px">
+							@stateMark(specDotState(s.Status), "")
+							{ s.Status }
+						</span>
+						<span>
+							if s.Tier != "" {
+								@badge("outline", s.Tier)
+							}
+						</span>
+						<span class="mono panel__meta">{ s.Era }</span>
+						<span class="mono panel__meta">{ s.Updated }</span>
+						<span>
+							if s.Drift != "" {
+								@badge(driftKind(s.Drift), s.Drift)
+							} else {
+								<span class="panel__meta">—</span>
+							}
+						</span>
+					</a>
+				}
+			</div>
+			if l.Detail != nil {
+				@specDetail(*l.Detail)
+			}
+		</div>
+	}
+}
+
+templ specDetail(d SpecDetailVM) {
+	<aside class="slide" aria-label="SPEC detail">
+		<div class="slide__h">
+			<div>
+				<span class="mono panel__meta">{ d.ID }</span>
+				<h2 class="panel__title">{ d.Title }</h2>
+			</div>
+			<a class="icon-btn" href="/specs" aria-label="Close">@iconAt("close", 13)</a>
+		</div>
+		<div class="slide__b">
+			<ul class="kv">
+				<li><span>status</span><b class="mono">{ d.Status }</b></li>
+				<li><span>tier</span><b class="mono">{ d.Tier }</b></li>
+				<li><span>era</span><b class="mono">{ d.Era }</b></li>
+			</ul>
+			<div>
+				<span class="slide__st" data-i18n="specs.docs">Documents</span>
+				<div class="docs">
+					for _, f := range d.Docs {
+						<span class="doc"><span>{ f }</span>@iconAt("external", 13)</span>
+					}
+				</div>
+				<p class="mono panel__meta">{ d.Path }</p>
+			</div>
+			if len(d.Findings) > 0 {
+				<div>
+					<span class="slide__st">{ "drift " + itoa(len(d.Findings)) }</span>
+					for _, f := range d.Findings {
+						<div class="sess">
+							@badge(driftKind(f.Severity), f.Severity)
+							<p style="margin:6px 0 0">{ f.Message }</p>
+							<span class="mono panel__meta">{ f.File }</span>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	</aside>
+}
+
+/* ── 모니터 ─────────────────────────────────────────── */
+
+templ Monitor(vm ShellVM, m MonitorVM) {
+	@Shell(vm) {
+		<div class="quad">
+			@panel("Sessions", "registry "+itoa(len(m.Sessions)), "Only PID-confirmed entries are marked active.", "roomy") {
+				<div class="tbl" data-live="session">
+					<div class="tr tr--head" style="grid-template-columns:110px minmax(0,1fr) 86px 130px">
+						<span data-i18n="monitor.session">Session</span><span>SPEC</span>
+						<span data-i18n="kanban.backend">Backend</span><span data-i18n="monitor.heartbeat">Heartbeat</span>
+					</div>
+					for _, s := range m.Sessions {
+						<div class="tr" style="grid-template-columns:110px minmax(0,1fr) 86px 130px">
+							<span class="mono" style="display:flex;align-items:center;gap:6px">
+								@stateMark(s.State, "")
+								{ s.ID }
+							</span>
+							<span class="mono panel__meta">{ s.SpecID }</span>
+							<span>@backendBadge(s.Backend)</span>
+							<span class="panel__meta">{ s.Heartbeat }</span>
+						</div>
+					}
+				</div>
+				<p class="panel__help">{ "cwd " + m.Cwd }</p>
+			}
+			@panel("Goals", "armed "+itoa(len(m.Goals)), ".moai/state/goal/<session>.json", "roomy") {
+				<div data-live="goal">
+					for _, g := range m.Goals {
+						<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
+							<div style="display:flex;align-items:center;gap:10px">
+								<span class="mono">{ g.Session }</span>
+								if g.Stalled {
+									@badge("outline", "stalled")
+								}
+							</div>
+							<p style="margin:0">{ g.Condition }</p>
+							<div class="vrow" style="border:0;padding:0">
+								<span class="panel__meta" data-i18n="monitor.turns">Turns</span>
+								<span class="bar"><span style={ "width:" + itoa(g.TurnPct) + "%" }></span></span>
+								<span class="mono panel__meta">{ itoa(g.Turns) }</span>
+							</div>
+							<p class="panel__meta">{ g.Verdict }</p>
+						</div>
+					}
+				</div>
+			}
+			@panel("Verification", itoa(m.VerifyKeys)+" keys", "", "roomy") {
+				<div class="vlist" data-live="verify">
+					for _, v := range m.Verify {
+						<div class="vrow">
+							<span class="mono">{ v.Key }</span>
+							@spark(v.History)
+							if v.OK {
+								<span class="panel__meta" data-i18n="monitor.pass">Pass</span>
+							} else {
+								<span class="warn" data-i18n="monitor.fail">Fail</span>
+							}
+							<span class="panel__meta">{ v.When }</span>
+						</div>
+					}
+				</div>
+			}
+			@panel("Epics", "moai epic status", "", "roomy") {
+				<div class="vlist">
+					for _, e := range m.Epics {
+						<div class="vrow">
+							<span class="mono">{ e.Prefix }</span>
+							<span class="bar"><span style={ "width:" + itoa(e.Pct) + "%" }></span></span>
+							<span class="mono panel__meta">{ e.Progress }</span>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	}
+}

@@ -1,0 +1,258 @@
+// 재설계본 셸 — 좌측 레일(5영역 + 설정 탭) + 상단바(문맥 칩 · 실시간 · 저장) + 본문.
+//
+// handoff 원본 대비 로컬 보정:
+//   1) profilePop 의 폼 계약을 실제 서버 라우트에 맞췄다. 원본은 존재하지 않는
+//      `/profile/select` 라우트와 `name="name"` / `name="profile"` 필드를 썼다.
+//      실제 계약은 create/rename/delete 모두 `name="profile_name"`(+ rename 은
+//      `new_name`)이고, 프로필 전환은 전용 라우트 없이 `GET ?profile=<name>`
+//      로드 경로를 재사용한다 (C5 — 폼 계약 무변경).
+//   2) 아이콘 호출을 `iconAt(name, size)` 로 바꿨다 (기존 1-arg icon 유지).
+//   3) 브랜드는 `brandMark()` — 원본의 `<use href="#moai-wordmark">` 는 문서에
+//      해당 심볼이 없어 아무것도 그리지 않는다 (C1/C3 인라인 SVG).
+package web
+
+// ShellVM 은 모든 화면이 공유하는 셸 상태다.
+type ShellVM struct {
+	Area       string // overview | kanban | specs | monitor | settings
+	Tab        string // 설정 탭 id (Area=settings 일 때만)
+	Title      string
+	Crumb      string
+	Host       string // 127.0.0.1:3041
+	Profile    string
+	Project    string
+	Lang       string // ko | en | ja | zh
+	Ctx        []KV   // lang / model / effort / dev
+	Live       string // on | off
+	SaveState  string // clean | dirty | saving | saved | error
+	DirtyCount int
+	SavedAt    string
+	Tabs       []TabVM
+	Profiles   []string
+}
+
+type KV struct{ K, V string }
+
+type TabVM struct {
+	ID     string
+	Label  string
+	Fields int
+	HasErr bool
+}
+
+templ Shell(vm ShellVM) {
+	<!DOCTYPE html>
+	<html lang={ vm.Lang }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>MoAI Web Console</title>
+			<link rel="stylesheet" href="/static/console.css"/>
+			<script src="/static/htmx.min.js" defer></script>
+			<script src="/static/i18n.js" defer></script>
+			<script src="/static/app.js" defer></script>
+		</head>
+		<body>
+			<div class="app">
+				@rail(vm)
+				<div class="main">
+					@topbar(vm)
+					<div class="body">
+						{ children... }
+					</div>
+				</div>
+			</div>
+			@profilePop(vm.Profile, vm.Profiles)
+		</body>
+	</html>
+}
+
+templ rail(vm ShellVM) {
+	<nav class="rail" aria-label="Main navigation" data-i18n-aria="nav.main">
+		<div class="rail__brand">
+			@brandMark()
+			<span class="rail__qual">ADK</span>
+		</div>
+		<div class="host">
+			<span class="dot" aria-hidden="true"></span>
+			<span>{ vm.Host }</span>
+		</div>
+		<ul class="nav">
+			@navRow(vm, "overview", "Overview", "/")
+			@navRow(vm, "kanban", "Kanban", "/kanban")
+			@navRow(vm, "specs", "Specs", "/specs")
+			@navRow(vm, "monitor", "Monitor", "/monitor")
+			@navRow(vm, "settings", "Settings", "/settings")
+			if vm.Area == "settings" && len(vm.Tabs) > 0 {
+				<li>
+					// 탭 순서는 schemaform.go consoleTabs() 가 소유한다 (C6).
+					// 가로 → 세로로 바뀌었을 뿐 role/aria 계약은 유지한다.
+					<ul class="subnav" role="tablist" aria-orientation="vertical" aria-label="Settings tabs">
+						for _, t := range vm.Tabs {
+							<li role="presentation">
+								<a
+									class="subnav__row"
+									role="tab"
+									href={ templ.SafeURL("/settings?tab=" + t.ID) }
+									aria-selected={ attrBool(t.ID == vm.Tab) }
+									aria-controls={ "panel-" + t.ID }
+									id={ "tab-" + t.ID }
+								>
+									<span data-i18n={ "tab." + t.ID }>{ t.Label }</span>
+									if t.HasErr {
+										<span class="warn" aria-label="has error">@iconAt("alert", 12)</span>
+									} else {
+										<span class="count">{ itoa(t.Fields) }</span>
+									}
+								</a>
+							</li>
+						}
+					</ul>
+				</li>
+			}
+		</ul>
+		<div class="rail__foot">
+			<button type="button" class="ctx-btn" aria-haspopup="dialog" aria-expanded="false" data-pop="profile">
+				<span class="ctx-btn__k" data-i18n="rail.profile">Profile</span>
+				<span class="ctx-btn__v">{ vm.Profile }</span>
+				@iconAt("chevron-down", 14)
+			</button>
+			<div class="ctx-btn">
+				<span class="ctx-btn__k" data-i18n="rail.project">Project</span>
+				<span class="ctx-btn__v" title={ vm.Project }>{ vm.Project }</span>
+			</div>
+			<div class="rail__utils">
+				<span class="select-wrap">
+					<select class="util langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
+						<option value="en">English</option>
+						<option value="ko">한국어</option>
+						<option value="ja">日本語</option>
+						<option value="zh">中文</option>
+					</select>
+				</span>
+				<form action="/__shutdown__" method="post">
+					<button type="submit" class="util util--icon" id="serverShutdown" aria-label="Shut down server" data-i18n-aria="rail.shutdown">
+						@iconAt("power", 15)
+					</button>
+				</form>
+			</div>
+		</div>
+	</nav>
+}
+
+templ navRow(vm ShellVM, id, en, href string) {
+	<li>
+		<a class="nav__row" href={ templ.SafeURL(href) } aria-current={ attrCurrent(vm.Area == id) }>
+			@iconAt(id, 16)
+			<span data-i18n={ "nav." + id }>{ en }</span>
+		</a>
+	</li>
+}
+
+templ topbar(vm ShellVM) {
+	<header class="top">
+		<div class="top__title">
+			if vm.Crumb != "" {
+				<span class="top__crumb">{ vm.Crumb }</span>
+			}
+			<h1 class="top__h">{ vm.Title }</h1>
+		</div>
+		<div class="top__ctx">
+			for _, c := range vm.Ctx {
+				<span class="chip-kv">
+					<span class="chip-kv__k">{ c.K }</span>
+					<span class="chip-kv__v">{ c.V }</span>
+				</span>
+			}
+		</div>
+		<div class="top__right">
+			if vm.Area == "settings" {
+				@saveCluster(vm)
+			} else {
+				@liveState(vm.Live)
+			}
+		</div>
+	</header>
+}
+
+// 실시간 상태 — 조용히 멈추지 않는다. 끊기면 폴백 사실을 적는다.
+templ liveState(state string) {
+	if state == "on" {
+		<span class="live" data-live-indicator="on">
+			<span class="dot" aria-hidden="true"></span>
+			<span data-i18n="live.on">Live</span>
+		</span>
+	} else {
+		<span class="live live--off" data-live-indicator="off" role="status">
+			<span class="dot" aria-hidden="true"></span>
+			<span data-i18n="live.off">Live lost · polling every 30s</span>
+		</span>
+	}
+}
+
+// 저장 클러스터 — 상단바에 고정. form 은 본문의 #settings-form 을 가리킨다.
+templ saveCluster(vm ShellVM) {
+	<span class="save" data-save-state={ vm.SaveState }>
+		switch vm.SaveState {
+			case "dirty":
+				<span class="save__msg save__msg--dirty" role="status">
+					<span data-i18n="save.dirty">Changed</span>
+					{ " · " + itoa(vm.DirtyCount) }
+					<span data-i18n="save.fields"> field(s)</span>
+				</span>
+			case "saving":
+				<span class="save__msg" role="status" data-i18n="save.saving">Saving…</span>
+			case "saved":
+				<span class="save__msg" role="status">
+					@iconAt("check", 13)
+					{ vm.SavedAt }
+					<span data-i18n="save.saved">saved</span>
+				</span>
+			case "error":
+				<span class="save__msg save__msg--error" role="alert">
+					@iconAt("alert", 13)
+					<span data-i18n="save.error">Some fields could not be saved</span>
+				</span>
+			default:
+				<span class="save__msg" data-i18n="save.clean">No changes</span>
+		}
+		<button
+			type="submit"
+			form="settings-form"
+			class={ "btn", saveBtnVariant(vm.SaveState) }
+			disabled?={ vm.SaveState == "saving" }
+		>
+			@iconAt("save", 14)
+			<span data-i18n="save.action">Save settings</span>
+		</button>
+	</span>
+}
+
+// 프로필 팝오버 — 상시 노출 대신 접어 둔다. POST 라우트와 필드명은 기존 그대로다.
+templ profilePop(current string, profiles []string) {
+	<div class="pop" role="dialog" aria-label="Profile" data-pop-panel="profile" hidden>
+		<div class="pop__head">
+			<span class="panel__title" data-i18n="profile.title">Profile</span>
+			<button type="button" class="icon-btn" data-pop-close aria-label="Close">@iconAt("close", 13)</button>
+		</div>
+		<ul class="pop__list">
+			for _, p := range profiles {
+				<li>
+					<a class="pop__row" href={ templ.SafeURL("/settings?profile=" + p) } aria-current={ attrCurrent(p == current) }>
+						<span>{ p }</span>
+						if p == current {
+							@iconAt("check", 14)
+						}
+					</a>
+				</li>
+			}
+		</ul>
+		<form class="pop__foot" method="POST" action={ templ.SafeURL(profileCreateAction()) }>
+			<input class="in in--sm" type="text" name="profile_name" placeholder="New profile name" data-i18n-placeholder="profile.newName" autocomplete="off"/>
+			<button type="submit" class="btn btn--outline" data-i18n="profile.create">Create</button>
+		</form>
+		<form class="pop__foot pop__foot--split" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
+			<input type="hidden" name="profile_name" value={ current }/>
+			<button type="submit" class="btn btn--ghost warn" data-i18n="profile.delete">Delete profile</button>
+		</form>
+	</div>
+}

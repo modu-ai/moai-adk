@@ -67,7 +67,7 @@ func TestAC_C_010_GLMKeyStateSurfacedInMCPSection(t *testing.T) {
 func TestAC_C_010_GLMKeyStateRenderedViaRoute(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

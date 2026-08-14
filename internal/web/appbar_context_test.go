@@ -39,7 +39,7 @@ func TestAppbarContextBadge(t *testing.T) {
 	}
 
 	h := a.routes()
-	rec := serveGet(t, h, "/")
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200", rec.Code)
 	}

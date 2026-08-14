@@ -24,7 +24,7 @@ import (
 func renderAppBody(t *testing.T, a *app) string {
 	t.Helper()
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -158,7 +158,7 @@ func TestAC_C_008_CodexAbsentGraceful(t *testing.T) {
 	}
 	a := codexTestApp(t, state)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

@@ -62,7 +62,7 @@ func postGLMSave(a *app, form url.Values) *httptest.ResponseRecorder {
 // renderSettingsGET fetches the rendered settings page.
 func renderSettingsGET(a *app) string {
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
