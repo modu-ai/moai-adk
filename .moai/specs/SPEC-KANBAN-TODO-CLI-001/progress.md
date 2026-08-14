@@ -132,6 +132,61 @@ Baseline was also `0 issues.` — zero NEW findings.
 
 **Residual-risk.** (1) The `internal/cli`/`internal/config`/`internal/hook` baseline failures were verified in THIS worktree; CI on the eventual PR runs on a clean runner where worktree-cwd-dependent behavior may differ. (2) M2's CLI verbs will exercise the store through real process concurrency (8-process `add`), a stronger test than the in-process concurrency test here.
 
+### M2 — CLI verbs (COMPLETE; orchestrator-direct per lead instruction after M1 PASS)
+
+Lead verdict on M1: **PASS** (2026-08-14, lead re-measured independently: the 3 evidence-test cluster green, coverage 87.3% reproduced, `GOOS=windows go vet` exit 0, and the source-level check that `rec.LastSeq++` exists only inside the `Mutate` callback — no issuance path outside the lock). M2 instruction: **implement directly, do not delegate** (2/2 manager-develop autocompact deaths vs. the surviving orchestrator-finished tail; M2 is low-uncertainty wiring over the finished store API).
+
+Deliverables: `internal/cli/todo.go` (226 lines — `newTodoCmd` + `add`/`list --json`/`done <n>`/`next [<n>] [--spec]`, registered via `init()`; exit 0/1; stdout structured, stderr human), `internal/cli/todo_test.go` (13 tests + re-exec helper).
+
+**E8 — RED (TDD, verbatim pre-GREEN).** Test file written first; captured against the no-implementation tree:
+
+```
+$ unset MOAI_KANBAN … && go vet ./internal/cli/
+internal/cli/todo_test.go:15:2: "path/filepath" imported and not used
+internal/cli/todo_test.go:29:9: undefined: newTodoCmd
+internal/cli/todo_test.go:44:33: undefined: todoBacklogPath
+…
+```
+
+One behavioral test fix mid-green: the 8-process helper initially reported ids via `t.Logf`, whose output the non-`-v` helper run drops — the id-parse assertion failed (`distinct issued ids printed = 0`); fixed by printing to process stdout. The helper then runs the FULL cobra verb (not `store.Add` directly), so AC-TODO-001's "concurrent `moai todo add` processes" is exercised on the binary's own code path.
+
+**E1 — M2 test matrix.**
+
+```
+$ unset MOAI_KANBAN … && go test ./internal/cli/ -run 'TestTodo' -count=3
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.086s
+```
+
+13/13 pass ×3 consecutive runs: AC-TODO-001 (`TestTodoConcurrentAdd_8Processes` — 8 OS processes through the cobra `add` verb; `list --json` then reports 8 items with all texts, 8 distinct ids), AC-TODO-003 (`TestTodoList_LockFreeWhileForeignProcessHoldsLock` — foreign process parks inside `Mutate` holding `backlog.lock`; `list` succeeds; `TestTodoList_JSONStructured` — valid JSON, full record shape), AC-TODO-004 (`TestTodoDone_RemovesByID`, `TestTodoDone_MissReportedFileUntouched` — byte-identical on miss), AC-TODO-005 (`TestTodoNextBare_ReadOnlyOldestFirst` — oldest-first, file byte-identical), AC-TODO-006 (`TestTodoNextPick_OneLockedWrite` — exactly t2 `picked` + `spec_id: SPEC-X-001`, others untouched), AC-TODO-014 (`TestTodoCmd_NoAskUserQuestion` — static grep guard + negative control asserting the detector flags a synthetic violation), plus the acceptance §C edges: empty-text add rejected with no file write, out-of-range `done`/`next` miss reported + file byte-identical. M3/M4 ACs (015 skill/mirror, 016 full cross-platform sweep) remain pending.
+
+**E2 — Cross-platform.**
+
+```
+$ go build ./...                                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                → exit 0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/cli/... ./internal/kanban/... → exit 0 (BUILDS_VET_OK)
+```
+
+**E3 — Coverage (per AC §D "new store and CLI files").**
+
+```
+$ go test ./internal/cli/ ./internal/kanban/ -coverprofile=/tmp/t12-m2-cover.out
+$ go tool cover -func=… | grep -E 'todo\.go:|backlog_store\.go:'
+→ new-file avg: 94.1% over 20 funcs (todo.go: 75–100% per func incl. todoBacklogPath/done/normalize/init at 100%; backlog_store.go: Load/Add/acquireLock/normalize at 100%, Mutate 92.3%)
+```
+
+(internal/cli package-level shows 77.0% — the package aggregate over hundreds of pre-existing files; the AC's target is the new files, which the per-func profile above measures.)
+
+**E4 — Suite.** `./internal/kanban/...` ok (87.3%); `./internal/cli` fails only on the known pre-existing `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` (M1-attributed baseline; lead notes PR #1527/t20 addresses it). No other failures.
+
+**E5 — Lint.** `golangci-lint run --timeout=2m` → `0 issues.` (unchanged baseline).
+
+**E6 — Commit.** M2 commit on `worktree-kanban-todo-cli` (this progress update rides it). Not pushed — awaiting lead M2 verdict per semi-autonomous progression.
+
+**Gaps.** (1) No built-binary smoke run (`moai todo` via the compiled binary) — the cobra surface is exercised in-process and through re-exec helpers of the same test binary; the binary wiring is init()-registration verified by compile. (2) `internal/cli` package-level coverage (77.0%) is below 85% but that aggregate is dominated by pre-existing files outside this SPEC's scope.
+
+**Residual-risk.** (1) The 8-process test's uniqueness assertion parses each helper's stdout (`t<n> <pos>`); a future output-format change to `add` needs the test's parser kept in step. (2) `resolveProjectDir()` (CLAUDE_PROJECT_DIR → cwd) is the path anchor; a caller invoking `moai todo` from outside the project without CLAUDE_PROJECT_DIR will target that outside directory's `.moai/state` — same behavior as the session/goal commands, noted not changed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
