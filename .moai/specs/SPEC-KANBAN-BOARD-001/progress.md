@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-BOARD-001
 title: "Progress — six-column kanban board model with a single-origin board state store"
 version: "0.6.2"
-status: draft
+status: completed
 created: 2026-08-10
 updated: 2026-08-14
 author: manager-spec
@@ -1275,7 +1275,50 @@ residual_risk:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: completed
+sync_complete_at: 2026-08-14
+spec_id: SPEC-KANBAN-BOARD-001
+branch: feat/SPEC-KANBAN-BOARD-001
+worktree: ~/.moai/worktrees/kanban-board
+sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up commit below
+run_phase_head: 81e9fd41f
+sync_audit:
+  phase1_verdict: FAIL 0.786   # report: .moai/reports/sync-audit-SPEC-KANBAN-BOARD-001.md (4 Windows-substrate blockers F1-F4 + F5 optional)
+  fix_pass: M3-fix4 (431ce5071) + SHA backfill (81e9fd41f)
+  reaudit_verdict: PASS 0.882   # Functionality 88 / Security 88 / Craft 87 / Consistency 90, harmonic mean, threshold 0.85
+  cross_model: codex surfaced Windows findings (auditor re-verified); GLM inconclusive (fail-open)
+evidence_snapshot: 81e9fd41f72f-028d56f974788a4a   # test/lint/type(=GOOS=windows go vet)/coverage recorded fresh
+verification:
+  full_suite_rc: 0            # env-unset, TestBranchGuard_Latency passed (backlog t2, no observation)
+  lint_issues: 0
+  host_vet_rc: 0
+  windows_vet_rc: 0           # THE cross-compile gate for the test layer, adopted M3-fix4
+  windows_build_rc: 0
+  coverage: { internal_kanban: 88.0, internal_core_git: 86.7 }
+frontmatter_status_transitions:
+  spec: in-progress -> completed            # + sync_commit_sha: pending-backfill-sync added to frontmatter, backfilled next commit
+  plan: draft -> completed
+  acceptance: draft -> completed
+  progress: draft -> completed
+  updated_field: 2026-08-14 (all four; already current pre-sync)
+b12_self_test:
+  a_pre_emission_grep: 0                  # grep -c 'SPEC-KANBAN-BOARD-001' CHANGELOG.md before emission
+  b_ac_count_match: 25/25                 # owned AC-KB-001..025; acceptance.md token grep returns 27 (2 foreign cross-refs AC-KS-030 / AC-KW-001 excluded)
+  c_file_paths_verified: true             # internal/kanban, internal/core/git, internal/atomicfile, sync-audit report path all exist
+docs_scope:
+  changelog: true
+  readme_docs_site: skipped-with-reason   # no user-facing surface changed (0 template files, no CLI/rule/skill)
+  project_docs_codemaps: skipped-with-reason   # no new directory / dependency / module reorganization
+gaps:
+  - "G1: Windows test layer compiles (vet gate) and asserts intended shapes but has NOT executed on a real Windows host; first runtime execution is the release multi-os gate (sync-audit binding disposition: PASS with gap recorded)"
+residual_risk:
+  - "F3 grace window + STILL_ACTIVE(259) wart — fail-safe direction, stated in code (sync-audit residuals)"
+  - "AP-29 TOCTOU residual unchanged; four inherited debts unchanged; writeBoardAtomic unswept recover-caller recorded-not-closed; sole-writer seam bounded by BOOTSTRAP REQ-KS-006"
+delivery:
+  route: B (PR-mandatory all tiers, enforce_admins)
+  auto_merge: false   # merge decision belongs to operator/lead
+```
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-BOARD-001
 title: "Six-column kanban board model with a single-origin board state store (KANBAN M3)"
 version: "0.6.2"
-status: in-progress
+status: completed
 created: 2026-08-10
 updated: 2026-08-14
 author: manager-spec
@@ -14,6 +14,7 @@ tags: "kanban, board, column, wip-limit, state-store, single-origin, worktree-sa
 tier: L
 dependencies: [SPEC-KANBAN-RENAME-001]
 related_specs: [SPEC-KANBAN-WORKTREE-001, SPEC-KANBAN-BOOTSTRAP-001, SPEC-FACTORY-MODE-001]
+sync_commit_sha: pending-backfill-sync
 ---
 
 ## HISTORY
