@@ -506,7 +506,7 @@ $ grep -rn 'AskUserQuestion' internal/kanban internal/core/git | grep -v _test.g
 
 **E6 — commits (worktree `feat/SPEC-KANBAN-BOARD-001`).**
 - `dc03459bf` — extraction + hook re-point + status flip (draft → in-progress)
-- `<this commit>` — board store, carrier, lock, recovery, tests, scans, evidence
+- `5c2a942d1` — board store, carrier, lock, recovery, tests, scans, evidence (SHA backfilled by this follow-up commit)
 
 Nothing outside the worktree was touched: all file operations used
 `/Users/goos/.moai/worktrees/kanban-board` paths; the shared primary
