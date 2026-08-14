@@ -878,7 +878,7 @@ run_phase_commits:
   - f0786d16f   # M1 evidence SHA backfill
   - 4ae37e617   # M2 card model, columns, branch-side read, table, admission
   - dba5af978   # M2 evidence SHA backfill
-  - <M3_COMMIT> # M3 verification sweep + audit-ready signal (backfilled below)
+  - b12e891ad   # M3 verification sweep + audit-ready signal (backfilled by follow-up)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
