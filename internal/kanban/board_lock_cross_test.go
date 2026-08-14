@@ -15,7 +15,9 @@ package kanban
 import (
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
+	"time"
 )
 
 // countRunCards loads the board and counts cards in the run column.
@@ -121,4 +123,51 @@ func runTransitionHelperUnfatal(t *testing.T, root, session, spec string) error 
 	}
 	t.Logf("transition-run helper for %s: %v: %s", spec, err, string(out))
 	return err
+}
+
+// TestWriteBoardState_ConcurrentReaderSeparateProcess — AC-KB-018's dynamic
+// half in the §A.4 form the Definition of Done names: the READER is a
+// separate OS process observing writes this process performs. Every read
+// must yield a whole board — a parse failure or an unknown result inside the
+// reader is a torn write; the writer cannot observe its own.
+func TestWriteBoardState_ConcurrentReaderSeparateProcess(t *testing.T) {
+	if runtimeIsWindows() {
+		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
+	}
+	root := t.TempDir()
+	seedLead(t, root, "lead-sess")
+	// A prior well-formed board so the reader's first observations are whole.
+	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{}})
+
+	readerDone := make(chan string, 1)
+	go func() {
+		readerDone <- runHelperProcess(t, "reader-loop", map[string]string{
+			"HELPER_ROOT":     root,
+			"HELPER_DURATION": "3",
+		})
+	}()
+
+	// Writes proceed while the subprocess reads.
+	deadline := time.Now().Add(3 * time.Second)
+	i := 0
+	for time.Now().Before(deadline) {
+		spec := "SPEC-RD-" + string(rune('A'+i%26)) + time.Now().Format("150405.000000000")
+		if err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+			st.Cards = append(st.Cards, Card{SpecID: spec, Column: ColumnPlan})
+			return nil
+		}); err != nil {
+			t.Fatalf("concurrent write %d: %v", i, err)
+		}
+		i++
+	}
+
+	out := <-readerDone
+	// The helper prints "READS=<n> FAILURES=<m>"; m must be 0 and n > 0.
+	if !strings.Contains(out, "FAILURES=0") {
+		t.Fatalf("separate-process reader observed torn boards: %s", strings.TrimSpace(out))
+	}
+	if strings.Fields(strings.TrimSpace(out))[0] == "READS=0" {
+		t.Fatalf("separate-process reader performed no reads: %s", strings.TrimSpace(out))
+	}
+	t.Logf("reader report: %s (writes=%d)", strings.TrimSpace(out), i)
 }

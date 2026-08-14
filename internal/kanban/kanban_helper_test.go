@@ -71,6 +71,28 @@ func TestKanbanHelperProcess(t *testing.T) {
 		}
 		_ = lock.Release()
 		os.Exit(0)
+	case "reader-loop":
+		// A separate-process board reader (AC-KB-018's §A.4 form): read the
+		// board repeatedly for HELPER_DURATION seconds; every read must be a
+		// whole board. Prints "READS=<n> FAILURES=<m>" and exits 8 on any
+		// torn observation.
+		duration, _ := time.ParseDuration(os.Getenv("HELPER_DURATION") + "s")
+		root := os.Getenv("HELPER_ROOT")
+		reads, failures := 0, 0
+		deadline := time.Now().Add(duration)
+		for time.Now().Before(deadline) {
+			_, err := LoadBoard(root)
+			reads++
+			if err != nil {
+				failures++
+				fmt.Fprintf(os.Stderr, "reader-loop: torn read: %v\n", err)
+			}
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "READS=%d FAILURES=%d\n", reads, failures)
+		if failures > 0 {
+			os.Exit(8)
+		}
+		os.Exit(0)
 	case "transition-run":
 		// TransitionIntoRun as the declared lead; exit 3 on the WIP refusal
 		// so the parent can distinguish outcomes.

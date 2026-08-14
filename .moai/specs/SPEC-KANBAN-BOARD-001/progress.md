@@ -677,11 +677,236 @@ ok  github.com/modu-ai/moai-adk/internal/core/git  (cached) coverage: 86.7% of s
 
 **E7 — blockers: none.** The full-suite environmental note from M1 still applies to any whole-repo run from this session's shell (unset the five kanban-session variables first).
 
+### M3 — verification sweep: template surface, neutrality, full suite, lint, AC-KB-001 completion (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`)
+
+**AC-KB-015 (REQ-KB-014/015) — PASS.** Measured: this SPEC touches no
+template-managed surface — every changed file is a Go model/test file under
+`internal/` (30 files) plus the SPEC's own `.moai/specs/` documents:
+
+```
+$ git diff --name-only origin/main...HEAD -- internal/template/ | wc -l
+0
+```
+
+The catalog-parity conjunct holds vacuously — no commit touches
+`internal/template/templates/`, so no `catalog.yaml` regeneration is owed and
+the existing parity guard stays green by construction. No template edit was
+invented to satisfy the criterion (scope discipline). The repository's own
+guards were run anyway and their exit codes are the verdict
+(§A.1 rule 5 — run the guard, never reimplement its regex):
+
+```
+$ env -u MOAI_KANBAN_LABEL -u MOAI_KANBAN_ID -u MOAI_KANBAN_SETTINGS_INJECTED \
+      -u CLAUDE_CODE_STOP_HOOK_BLOCK_CAP -u MOAI_PROJECT_DIR \
+      go test ./internal/template/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/template	51.595s   (rc=0, ^FAIL count 0)
+?   github.com/modu-ai/moai-adk/internal/template/scripts [no test files]
+```
+
+(The neutrality suite — `internal_content_leak_test.go` — and the catalog
+checks ride in that package's tests; both green.)
+
+**AC-KB-016 (REQ-KB-016) — PASS.** Full suite with the session's inherited
+kanban context cleaned, output redirected, rc read from the command, and the
+FAIL count taken over the WHOLE log (§C.1(a) — never `$?` after a pipe,
+never a tail-truncated count):
+
+```
+$ env -u MOAI_KANBAN_LABEL -u MOAI_KANBAN_ID -u MOAI_KANBAN_SETTINGS_INJECTED \
+      -u CLAUDE_CODE_STOP_HOOK_BLOCK_CAP -u MOAI_PROJECT_DIR \
+      go test ./... -count=1 > /tmp/kanban-board-test.log 2>&1
+rc=0
+fails=0
+```
+
+Per-file `spec lint` over the literal six-file Tier L artifact list (§C.1(b)
+— never a glob):
+
+```
+$ for f in spec.md plan.md acceptance.md design.md research.md progress.md; do
+    moai spec lint ".moai/specs/SPEC-KANBAN-BOARD-001/$f"; echo rc=$?
+  done
+spec.md        rc=0  "No findings — all SPEC documents are valid"
+plan.md        rc=0  "No findings — all SPEC documents are valid"
+acceptance.md  rc=0  "No findings — all SPEC documents are valid"
+design.md      rc=0  "No findings — all SPEC documents are valid"
+research.md    rc=0  "No findings — all SPEC documents are valid"
+progress.md    rc=0  0 error(s), 1 warning(s) — MissingExclusions "Out of Scope
+               section has no items", downgraded [grandfathered era]: structural
+               (progress.md carries §E evidence, not a scope section); the gate
+               is 0 errors and it holds.
+```
+
+**AC-KB-001 — full run-phase record completed.**
+
+(a) Rename gate against the BASE BRANCH (§A.1 rule 6 — a working-tree
+predicate observes no branch):
+
+```
+$ git ls-tree -d --name-only origin/main internal/kanban
+internal/kanban
+$ git ls-tree -d --name-only origin/main internal/factory
+(no output)
+```
+
+(b) `factory` token in this SPEC's added lines, paths under `.moai/specs/`
+excluded. A naive line-filter (`grep -v '.moai/specs/'`) reports 22 — every
+one of them a QUOTATION inside the SPEC documents themselves (spec.md/plan.md
+citing the pre-rename `internal/factory/record.go` as historical fact, which
+REQ-KB-001 binds against prose the implementation AUTHORS, not against the
+SPEC documents' own citations). The criterion's exclusion is by PATH, and
+the path-excluded scan is the deciding form:
+
+```
+$ git diff origin/main...HEAD -- . ':(exclude).moai/specs/' | grep -iE '^\+.*factory' | wc -l
+0
+```
+
+The implementation's own authored lines (30 files under internal/) carry
+zero `factory` occurrences — verified directly in M1/M2 and again by the
+path-excluded scan above.
+
+(c) Positive control, re-run once at run-phase close against the revision
+predating the rename — the same two queries report the OPPOSITE:
+
+```
+$ git ls-tree -d --name-only 7f61332ef~1 internal/kanban
+(no output)
+$ git ls-tree -d --name-only 7f61332ef~1 internal/factory
+internal/factory
+```
+
+**AC-KB-018 — the Definition of Done's separate-process form, added this
+milestone.** The DoD requires all three concurrency criteria in §A.4 form;
+M1's AC-KB-018 reader was an in-process goroutine. A separate-OS-process
+reader now observes writes this process performs:
+
+```
+$ go test ./internal/kanban/ -run TestWriteBoardState_ConcurrentReaderSeparateProcess -count=1 -v
+    board_lock_cross_test.go:172: reader report: READS=4995 FAILURES=0 (writes=1966)
+--- PASS: TestWriteBoardState_ConcurrentReaderSeparateProcess (3.01s)
+```
+
+4,995 subprocess reads against 1,966 concurrent writes, zero torn
+observations. (The final-tree kanban package was re-verified after this
+addition — `ok ... 11.432s coverage: 86.9%` — and lint re-ran `0 issues.`;
+the full-suite log's kanban rows predate the addition by minutes, both
+states green.)
+
+**Consolidated 25-AC matrix (every DEFERRED resolved — nothing remains):**
+
+| AC | verdict | milestone | section |
+|---|---|---|---|
+| AC-KB-001 | PASS | M0 gate + M3 record | M3 above |
+| AC-KB-002 | PASS | M1 | §E.2 M1 |
+| AC-KB-003 | PASS | M1 | §E.2 M1 |
+| AC-KB-004 | PASS | M1 | §E.2 M1 |
+| AC-KB-005 | PASS | M1 | §E.2 M1 |
+| AC-KB-006 | PASS | M1 | §E.2 M1 |
+| AC-KB-007 | PASS | M2 | §E.2 M2 |
+| AC-KB-008 | PASS | M2 | §E.2 M2 |
+| AC-KB-009 | PASS | M2 | §E.2 M2 |
+| AC-KB-010 | PASS | M2 | §E.2 M2 |
+| AC-KB-011 | PASS | M1+M2 | §E.2 M1/M2 |
+| AC-KB-012 | PASS | M2 | §E.2 M2 |
+| AC-KB-013 | PASS | M2 | §E.2 M2 |
+| AC-KB-014 | PASS | M2 | §E.2 M2 |
+| AC-KB-015 | PASS | M3 | M3 above |
+| AC-KB-016 | PASS | M3 | M3 above |
+| AC-KB-017 | PASS | M1 | §E.2 M1 |
+| AC-KB-018 | PASS | M1 + M3 §A.4 form | §E.2 M1 + M3 above |
+| AC-KB-019 | PASS | M1 (separate processes) | §E.2 M1 |
+| AC-KB-020 | PASS | M1 | §E.2 M1 |
+| AC-KB-021 | PASS | M2 | §E.2 M2 |
+| AC-KB-022 | PASS | M2 | §E.2 M2 |
+| AC-KB-023 | PASS | M1 (separate processes, platform recorded) | §E.2 M1 |
+| AC-KB-024 | PASS | M1 | §E.2 M1 |
+| AC-KB-025 | PASS | M2 | §E.2 M2 |
+
+**§I Definition of Done — confirmed line by line.**
+- All 25 criteria executed with command + verbatim output recorded (this
+  section completes the set; the M1/M2 sections carry their own blocks).
+- Full suite green per AC-KB-016 (rc=0, fails=0); `spec lint` clean per
+  AC-KB-016 (6/6 rc=0, one structural warning on progress.md); neutrality
+  and catalog guards green per AC-KB-015.
+- Every positive control run once and recorded: AC-KB-001(c) pre-rename
+  queries; AC-KB-002 record.go name-scan control + primary-checkout run +
+  fallback-forced third run; AC-KB-003/005/017 introduced-violation controls;
+  AC-KB-006 same-size well-formed row; AC-KB-011 one-card success control;
+  AC-KB-012 both halves (text scan + table-driven clamp); AC-KB-013 third
+  admission control; AC-KB-014 plan-card control; AC-KB-019 zero-baseline
+  control; AC-KB-022 primary-read-would-be-inconsistent control; AC-KB-025
+  zero-value-draft exclusion assertion.
+- The three concurrency criteria in separate-OS-process form: AC-KB-019 and
+  AC-KB-023 ran that way from M1; AC-KB-018's separate-process reader was
+  added this milestone (4,995 reads / 1,966 writes / 0 torn).
+- AC-KB-002's fallback-forced half ran through the extracted
+  `gitcore.ExecCommand` indirection, never by invoking the fallback directly.
+- The five settled decisions (D1 single-origin store, D2 unheld-in-run, D3
+  sole writer + atomic + board-wide lock, D4 branch-side read by worktree
+  liveness, D5 stale-lock clear + bounded recovery, D6 the conditional
+  carrier) implemented as decided — **no decision re-opened** (had one been,
+  a blocker report would have been filed, not an in-place choice).
+
+**E7 — blockers: none.** Residual-risk (not defects): AC-KB-023
+observation 1 is trivially satisfiable on this Unix host (flock releases on
+exit) — the Windows substrate is the requirement's reason and is covered by
+the `GOOS=windows` build plus the substrate code path, not by a live Windows
+test run; the TOCTOU residual between re-read and unlink is stated in
+`ClearStaleBoardLock`'s doc comment and inherited by design (AP-29). The
+four inherited debts are unchanged by this run-phase (kanban-dispatch.md's
+column-derivation disagreement remains a reported finding, untouched per
+AP-32; the backlog column-vs-queue statement remains open for the queue's
+owner; the binary-lag and BOOTSTRAP-adoption items are other sessions'
+concerns).
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-14
+spec_id: SPEC-KANBAN-BOARD-001
+branch: feat/SPEC-KANBAN-BOARD-001
+worktree: ~/.moai/worktrees/kanban-board
+base: origin/main = a301ef6f8 (plan-phase base)
+plan_phase_commit: 217848659
+run_phase_commits:
+  - dc03459bf   # M1 extraction + hook re-point + status draft->in-progress
+  - 5c2a942d1   # M1 board store, carrier, lock, recovery, evidence
+  - f0786d16f   # M1 evidence SHA backfill
+  - 4ae37e617   # M2 card model, columns, branch-side read, table, admission
+  - dba5af978   # M2 evidence SHA backfill
+  - <M3_COMMIT> # M3 verification sweep + audit-ready signal (backfilled below)
+ac_pass_count: 25
+ac_fail_count: 0
+deferred_remaining: 0
+preserve_list_post_run_count: 0   # record.go/bootstrap.go/revision.go + branch_guard exported behavior + atomicfile + spec/lock family: all intact, verified by regression runs
+l44_pre_commit_fetch: true        # branch divergence checked before each commit; worktree branch only, primary untouched
+l44_post_push_fetch: n/a          # not pushed — branch awaits orchestrator
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (baseline 0)
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+coverage:
+  internal_kanban: 86.9
+  internal_core_git: 86.7
+full_suite:
+  rc: 0
+  fail_lines: 0
+  env_note: "run with this session's inherited kanban env unset (5 vars); attribution recorded in §E.2 M1"
+spec_lint:
+  files: 6
+  errors: 0
+  warnings: 1   # progress.md MissingExclusions — structural, grandfathered-era downgrade
+m1_to_mN_commit_strategy: one-conventional-commit-per-unit-of-change (6 commits, explicit pathspecs, no add -A, no amend, no force)
+residual_risk:
+  - "AC-KB-023 observation 1 trivially satisfiable on darwin (flock exits with process); Windows substrate covered by GOOS=windows build only"
+  - "TOCTOU residual between ClearStaleBoardLock's re-read and unlink — narrowed, stated in code, inherited by design (AP-29)"
+  - "four inherited debts unchanged (kanban-dispatch.md disagreement, backlog column-vs-queue, binary lag, BOOTSTRAP adoption)"
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
