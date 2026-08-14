@@ -69,6 +69,10 @@ func TestRunDecayScan_EndToEnd(t *testing.T) {
 	// Cannot run in parallel because it mutates $CLAUDE_PROJECT_DIR.
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join. Without it the derivation
+	// writes into the developer's real ~/.claude/projects, one permanent dir per
+	// random temp-dir name, on every run.
+	t.Setenv("HOME", tmp)
 
 	// Seed entries via the public Store API so the memory-dir layout is real.
 	memDir, err := resolveMemoryDirOverride("")
@@ -151,6 +155,10 @@ func (e *stringError) Error() string { return e.s }
 func TestRunDecayScan_CadenceGateSkips(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join. Without it the derivation
+	// writes into the developer's real ~/.claude/projects, one permanent dir per
+	// random temp-dir name, on every run.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -257,6 +265,10 @@ func TestPreferenceCmd_HasToggleChild(t *testing.T) {
 func TestRunDecayScan_JSONOutput(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join. Without it the derivation
+	// writes into the developer's real ~/.claude/projects, one permanent dir per
+	// random temp-dir name, on every run.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -312,6 +324,10 @@ func TestRunDecayScan_InvalidNowFlag(t *testing.T) {
 func TestRunDecayScan_EmptyMemoryDirResolvedFromEnv(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join. Without it the derivation
+	// writes into the developer's real ~/.claude/projects, one permanent dir per
+	// random temp-dir name, on every run.
+	t.Setenv("HOME", tmp)
 
 	var stdout, stderr bytes.Buffer
 	flags := &decayScanFlags{

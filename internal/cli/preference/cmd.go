@@ -132,7 +132,7 @@ func resolveMemoryDirOverride(flagValue string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("preference: user home dir: %w", err)
 	}
@@ -145,6 +145,26 @@ func resolveMemoryDirOverride(flagValue string) (string, error) {
 		return "", fmt.Errorf("preference: absolutize project root: %w", err)
 	}
 	return filepath.Join(home, ".claude", "projects", memorySlug(absRoot), "memory"), nil
+}
+
+// userHomeDir mirrors internal/cli/homedir.go userHomeDir: resolve the home
+// directory from the HOME environment variable first, falling back to
+// os.UserHomeDir. Duplicated here for the same reason memorySlug is (below):
+// this package must not import internal/cli.
+//
+// The HOME-first order is what makes the memory-dir derivation testable. A test
+// that points CLAUDE_PROJECT_DIR at t.TempDir() but leaves the home resolving to
+// the real user home writes a permanent project directory into the developer's
+// own ~/.claude/projects on every run, one per random temp-dir name. Reading
+// HOME first lets a test isolate both halves of the join.
+//
+// It also matters on Windows, where os.UserHomeDir ignores HOME in favour of
+// USERPROFILE/HOMEPATH/HOMEDRIVE.
+func userHomeDir() (string, error) {
+	if h := os.Getenv("HOME"); h != "" {
+		return h, nil
+	}
+	return os.UserHomeDir()
 }
 
 // memorySlug mirrors internal/hook/session_end.go projectSlug: encode an
