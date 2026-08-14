@@ -2,9 +2,9 @@
 id: SPEC-AGENT-MODEL-ENFORCE-001
 title: "서브에이전트 spawn 시 per-agent 모델 프로파일 기계적 관측·집행 — 침묵 폴백 종식"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-14
 author: manager-spec
 priority: P1
 phase: "v3.1.0"
