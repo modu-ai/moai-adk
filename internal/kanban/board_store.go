@@ -161,12 +161,18 @@ func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) err
 	// traversal-shaped SpecID reaching board.json would be an identity the
 	// board can never subsequently read (the read boundary refuses it), and
 	// since ReadCardStatus propagates errors, one such card can fail a
-	// board-wide read. Refuse before the atomic write; the empty id is its
-	// own named refusal (ValidateSpecID passes "").
+	// board-wide read. Refuse before the atomic write.
+	//
+	// The sweep is SHAPE-CONDITIONAL and only shape-conditional (rereview2,
+	// operator decision — minimal fix): an earlier form also refused an EMPTY
+	// spec id here, an addition beyond AC-KB-022's conjunct ("conditional on
+	// shape, never unconditional") with no traversal shape at all — and it
+	// WEDGED a readable board, because a state document carrying one empty id
+	// (reachable from this branch's own earlier history) then refused every
+	// mutation, including one that would repair the bad card, while
+	// RecoverBoard correctly reported the board readable. An empty id stays
+	// useless (ReadCardStatus refuses one); it no longer freezes the board.
 	for i, card := range st.Cards {
-		if card.SpecID == "" {
-			return fmt.Errorf("write board state: card[%d] carries an empty spec id", i)
-		}
 		if err := specid.ValidateSpecID(card.SpecID); err != nil {
 			return fmt.Errorf("write board state: card[%d] spec id: %w", i, err)
 		}

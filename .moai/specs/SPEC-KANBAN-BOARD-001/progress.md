@@ -1106,6 +1106,67 @@ Observation reported per instruction, not a blocker: isolated re-run passes
 green in-suite.
 ```
 
+### M3-fix3 — the empty-id wedge (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`; fourth fix pass, one item from rereview2)
+
+Re-review 2: `.moai/reports/rereview2-SPEC-KANBAN-BOARD-001.md`. All four fix2 items CLOSED (the sweep's placement measured better than asked: iterating the RESULTING state covers append AND rename-in-place). The single new finding came from the part of the ITEM-1 fix no criterion asked for.
+
+**THE FINDING — the empty-id refusal wedged a board that loads fine, with no exit.** Reviewer's measurement: `board.json = {"cards":[{"spec_id":"","column":"backlog"}]}` → LoadBoard ok (readable); WriteBoardState refused EVERY mutation ("card[0] carries an empty spec id"), including one that would repair the bad card; RecoverBoard returned verdict=recovered for the readable board (correct by its own contract); WriteBoardState after recovery STILL refused. The wedge fell in the gap between "readable" and "writable", which no path covered. The lead verified both load-bearing facts: AC-KB-022's amended conjunct governs traversal SHAPE and says "conditional on shape, never unconditional" — an empty id has no traversal shape, so the empty-id refusal was an addition beyond the criterion, and it was the addition that wedged; and the shape was reachable from this branch's own history (92065a1e4 accepted arbitrary cards — unreleased, no field impact).
+
+**OPERATOR DECISION — MINIMAL FIX: drop the empty-spec-id refusal from WriteBoardState; keep the traversal sweep exactly as is.** Pure removal inside REQ-KB-017; no new REQ, no new AC; counts 25/25 re-measured. An empty id stays useless (ReadCardStatus still refuses one); it just no longer freezes the board. The durable fix — a recovery exit for a readable-but-unwritable board — was considered and NOT taken (outside REQ-KB-022's unknown-board definition; would need a new observation = ceiling decision).
+
+RED (my probe `fix3_wedge_test.go`, reproducing the wedge on the then-current code):
+
+```
+$ go test ./internal/kanban/ -run 'TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard' -count=1 -v
+    fix3_wedge_test.go:53: unrelated mutation refused on a readable board
+        (write board state: card[0] carries an empty spec id) — one empty id must not wedge the whole board
+--- FAIL: TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard (0.19s)
+--- PASS: TestWriteBoardState_TraversalRenameInPlaceStillRefused (0.19s)   # the sweep half already held
+```
+
+GREEN (removal; the rationale recorded at the sweep):
+
+```
+--- PASS: TestWriteBoardState_TraversalRenameInPlaceStillRefused (0.07s)   # rename-in-place "../../../escape" still refused, nothing persisted
+--- PASS: TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard (0.07s)         # unrelated AND repairing mutations succeed on the wedged board
+```
+
+**STRUCTURAL NOTE — recorded, NOT fixed (reviewer + lead both non-findings):** `writeBoardAtomic` has two production callers and only one sweeps — `board_store.go` (swept) and `board_recover.go` (`&BoardState{Cards: []Card{}}`, not swept). Benign today: the replace path writes zero cards, the sweep would no-op, nothing invalid can land. It matters because it is the pass-2 finding's shape one level down — the invariant enforced at a CALLER of the write primitive rather than at the primitive — and if recovery ever gains reconstruction (which REQ-KB-022's wording gestures at), cards would go through the unswept door. Recording is the deliverable.
+
+**ITEM-2 technical note preserved (rereview2):** gettext lets LANGUAGE outrank LC_ALL normally, but LANGUAGE is documented to be IGNORED when the locale is C/POSIX — exactly what the fix2 containment pins — so the pin is sufficient BY THAT DOCUMENTED RULE (still not demonstrated on this catalog-less host; framed as documented behaviour, not measurement).
+
+**Verification gate (kanban env unset on every command):**
+
+```
+$ go test ./internal/kanban/ -run '<all eleven probes>' -count=1
+ok  github.com/modu-ai/moai-adk/internal/kanban	1.936s      # zero regressions
+$ go test ./internal/kanban/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/kanban	18.050s
+$ go test -cover ./internal/kanban/... ./internal/core/git/...
+ok  .../internal/kanban	24.842s	coverage: 88.4% of statements
+ok  .../internal/core/git	(cached)	coverage: 86.7% of statements
+$ golangci-lint run            → 0 issues.
+$ grep -cE REQ / AC            → 25 / 25
+$ per-file spec lint (6 files) → 6/6 rc=0
+$ go build ./... ; GOOS=windows GOARCH=amd64 go build ./...  → rc=0 / rc=0
+$ boundary grep                → zero
+
+# DIFF CAVEAT (origin/main advanced past the base with #1521/#1522, the
+# latter editing kanban-dispatch.md ON MAIN) — diffed against the MERGE-BASE:
+$ git diff a301ef6f8...HEAD --name-only | grep -c 'kanban-dispatch.md'
+0        # the file is absent from this branch's diff; AP-32 intact
+```
+
+Full suite (env-unset incl. MOAI_PROJECT_DIR) at close:
+
+```
+$ env -u MOAI_KANBAN -u MOAI_KANBAN_ID -u MOAI_KANBAN_LABEL \
+      -u MOAI_KANBAN_SETTINGS_INJECTED -u MOAI_KANBAN_LEAD_ADDR -u MOAI_PROJECT_DIR \
+      go test ./... -count=1
+rc=0
+fails=0        # TestBranchGuard_Latency PASSED in this run too — no observation to report
+```
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -1127,6 +1188,7 @@ run_phase_commits:
   - b12e891ad   # M3 verification sweep + audit-ready signal
   - 92065a1e4   # M3-fix review findings F1-F5
   - f0ca483d0   # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
+  - <FIX3_SHA>  # M3-fix3 empty-id wedge removed (traversal sweep unchanged, shape-conditional only)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
@@ -1138,7 +1200,7 @@ cross_platform_build:
   darwin_arm64: pass
   windows_amd64: pass
 coverage:
-  internal_kanban: 88.2
+  internal_kanban: 88.4
   internal_core_git: 86.7
 full_suite:
   rc: 0   # post-M3 base; M3-fix pass had one unrelated internal/cli navigator flake (isolated re-run 3/3 ok)
