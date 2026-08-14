@@ -1,16 +1,16 @@
 ---
 id: SPEC-KANBAN-BOARD-001
 title: "Design — six-column kanban board model with a single-origin board state store"
-version: "0.4.0"
+version: "0.6.0"
 status: draft
 created: 2026-08-10
-updated: 2026-08-11
+updated: 2026-08-14
 author: manager-spec
 priority: High
 phase: "v3.1.0 target"
 module: internal/kanban
 lifecycle: spec-anchored
-tags: "kanban, board, design, decisions, rejected-alternatives, sole-writer, atomicity"
+tags: "kanban, board, design, decisions, rejected-alternatives, sole-writer, atomicity, role-carrier"
 tier: L
 ---
 
@@ -28,7 +28,7 @@ A decision recorded without its rejected alternative is not a decision — it is
 
 **Decided.** The board state lives in a single file beneath the primary checkout's `.moai/state/kanban-board/`. Every session, in whatever worktree, resolves that one path.
 
-**Rejected — `.moai/state/kanban/`, which is v0.2.0's own choice and is already occupied.** `SPEC-KANBAN-RENAME-001` `REQ-KR-009` puts the **session record** there, resolved beneath each tree's own root — measured, `internal/factory/record.go` carries `stateDirSegments = []string{".moai", "state", "factory"}` joined beneath `projectRoot`. Per-tree is correct for a session record and wrong for a board, so the two occupants would have shared a name while differing by an invisible resolution rule, and an implementer following `REQ-KR-009`'s instruction to reuse the existing path constant would land the board in each worktree — AP-1 through the front door. The board moved rather than the record: the record's constant, its per-tree semantics, and its migration decision are all correct for what it stores, so amending the sibling would have traded a correct design for a name.
+**Rejected — `.moai/state/kanban/`, which is v0.2.0's own choice and is already occupied twice over.** `SPEC-KANBAN-RENAME-001` `REQ-KR-009` puts the **session record** there, resolved beneath each tree's own root — re-measured at v0.5.0 after that rename landed, `internal/kanban/record.go` carries `stateDirSegments = []string{".moai", "state", "kanban"}` joined beneath `projectRoot`. (v0.2.0 through v0.4.0 measured the pre-rename file, `internal/factory/record.go` carrying `{".moai", "state", "factory"}`; the collision they reasoned about was therefore a projection of what the rename would produce, and it is now an observation of what it did. A second per-tree occupant, `backlog.json`, arrived with `/moai todo` and shares the directory on the same resolution rule — which makes the rejection stronger, not weaker: a primary-resolved board would now sit among two per-tree stores rather than one.) Per-tree is correct for a session record and wrong for a board, so the two occupants would have shared a name while differing by an invisible resolution rule, and an implementer following `REQ-KR-009`'s instruction to reuse the existing path constant would land the board in each worktree — AP-1 through the front door. The board moved rather than the record: the record's constant, its per-tree semantics, and its migration decision are all correct for what it stores, so amending the sibling would have traded a correct design for a name.
 
 **Rejected — the column in SPEC frontmatter** (the predecessor's design), on three measured grounds:
 
@@ -102,7 +102,27 @@ Four decisions, deliberately separate — the writer, the write, the exclusion, 
 
 **Rejected — documenting the rule instead of enforcing it.** A rule that lives only in prose is the rule that was already lost once. `AC-KB-017` demands both an enumeration of write call sites and a runtime refusal, because an enumeration establishes what the code contains, not what it refuses.
 
-**The runtime half needs a readable role, and that contract is now supplied.** Refusing a write from a non-`lead` session presupposes the board can ask what role the caller occupies — a runtime value, which `REQ-KB-004`'s *session identifier* is not. At v0.2.0 no SPEC in the family owned it; two auditors reached the gap from opposite ends. `SPEC-KANBAN-BOOTSTRAP-001` `REQ-KS-006` now carries it, widened at that SPEC's v0.3.0 into a **role declaration** distinct from the launch label and resolvable from a session that is not the `lead`. This design **consumes** it by name and decides nothing about it — not its carrier, not its derivation, not its lifetime. **Rejected — deriving the role from the session identifier or the launch label**: the sibling's own text rules the label out (one role maps to two-or-more possible labels, chosen by the operator at launch), and a derivation here would silently re-open the question that sibling just closed.
+**The runtime half needs a readable role, and that contract is now supplied.** Refusing a write from a non-`lead` session presupposes the board can ask what role the caller occupies — a runtime value, which `REQ-KB-004`'s *session identifier* is not. At v0.2.0 no SPEC in the family owned it; two auditors reached the gap from opposite ends. `SPEC-KANBAN-BOOTSTRAP-001` `REQ-KS-006` now carries it, widened at that SPEC's v0.3.0 from addressability into a **role declaration** — read that requirement for what the declaration is; this file states none of its properties, per §C.1a's rule that a partial list is how the borrow forks. This design **consumes** it by name and decides nothing about the contract — not its content, not its derivation, not its lifetime. (Its *carrier* became this design's at v0.5.0, conditionally, when that sibling left the scope; §C.1a records why and what the borrow does not take.) **Rejected — deriving the role from the session identifier or the launch label**: the sibling's own text rules the label out (one role maps to two-or-more possible labels, chosen by the operator at launch), and a derivation here would silently re-open the question that sibling just closed.
+
+### C.1a The carrier of that role, borrowed because the contract's owner left the scope
+
+**Decided at v0.5.0.** The contract stays `REQ-KS-006`'s; the **carrier** is established here where that sibling has not landed, adopted from it where it has, and there is exactly one declaration in the system either way (`REQ-KB-025`, `spec.md` §A.8).
+
+**What forced the decision was a scope change, not a defect.** §C.1's closing paragraph says this design "consumes it by name and decides nothing about it — not its carrier". That was the right call while `SPEC-KANBAN-BOOTSTRAP-001` was in scope. It stopped being one when that sibling left: `REQ-KS-006` fixes no carrier by its own terms, so with the sibling undated the carrier was owned by nobody, and a runtime refusal reading a declaration that does not exist does not refuse — it admits every write. The same shape as the loss §C.1 restores, reached by pointing a rule at an absent one instead of by deleting it.
+
+**Rejected — waiting for the sibling.** It is the honest-looking option and it ships a fail-open guard in the meantime. `REQ-KB-017` would read as enforced while nothing enforced it, which is the exact state `AC-KB-017`'s positive controls were made mandatory to prevent.
+
+**Rejected — restating the contract here.** Two definitions of one datum, drifting from the day the second is written. What makes the borrow safe is precisely that it takes only the half `REQ-KS-006` declines to fix.
+
+**Rejected — a session-private carrier, which is what the board alone would justify.** The board asks one question — *what role does my caller occupy?* — and a declaration readable only by its own session answers it completely. Every board-side observation passes. It breaks `SPEC-KANBAN-WORKTREE-001` `REQ-KW-007` and `REQ-KW-011`, which resolve the `lead`'s occupant from sessions that are not the lead, and it breaks them in another SPEC's criteria — the sibling's own research rejected this alternative on that ground, and the rejection is adopted rather than re-derived.
+
+**Rejected — a lead-only carrier, which is what the *first form of this decision* would have justified, and which is subtler.** v0.5.0 bound the carrier with a single clause, `REQ-KS-006`'s **resolvable-from-a-non-`lead`-session**, and `REQ-KB-025` enumerated three properties around it. A carrier exposing only the `lead`'s own declaration satisfies that clause, satisfies the board, and satisfies both worktree-sibling gates — so it passes every observation the three SPECs then contributed. It cannot serve the direction `REQ-KS-006` also requires and the enumeration omitted: the declaration is *the key on which the lead selects a dispatch target* (`REQ-KS-019`) and *over which quorum is accounted* (`REQ-KS-012`), which is the lead reading a **worker's** declaration. The two directions are independent, and binding one is not binding the contract.
+
+The correction is structural rather than additive: the decision now consumes `REQ-KS-006` **whole and by reference** and carries no enumeration at all, here or in the requirement. An enumeration is a second definition of a contract whose own closing clause reserves that role to itself — "shall be the sole place the declaration contract is defined" — and a three-of-four summary is exactly how a borrow forks without anyone adding a second datum. What the anti-fork mechanism actually is: satisfy the whole contract, cite it rather than restate it, and check both cross-session directions.
+
+**Rejected — fixing which carrier.** The launch command, the session registry, and the peer-discovery output are all candidates and nothing measured favours one; `REQ-KS-006` declined to choose for that reason and this design declines for the same one. Fixing it here would also break the adoption path, since a later landing of that sibling would then have to satisfy a choice made in a SPEC that does not own the contract.
+
+**Rejected — asserting the adoption obligation on this side.** v0.5.0 stated in `spec.md` §A.8 that a later-landing `SPEC-KANBAN-BOOTSTRAP-001` adopts this carrier rather than defining a parallel one, and placed nothing behind it. Nothing on this side *can* be placed behind it: that sibling declares this SPEC in its own `dependencies:`, so `REQ-KB-025`'s adopt-if-landed branch is unreachable at this SPEC's run-phase and `AC-KB-017`'s uniqueness scan runs before the sibling exists. An obligation stated where it cannot be enforced, binding a party that is not reading, is the shape `spec.md` §C names and this family has now produced four times. The obligation is landed on `REQ-KS-006` instead — widened in place, decided by `AC-KS-030`'s adoption conjunct, at no requirement or criterion cost to that SPEC. The unreachable branch and the scan are kept, because a future re-ordering would make them live; they are simply not the guard.
 
 ### C.2 Atomic writes: same-directory temp, then rename
 
