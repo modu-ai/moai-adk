@@ -54,13 +54,8 @@
 
 /* 콘솔 전용 (--wc-*) */
 --wc-rail:240px;--wc-rail-min:64px;--wc-top:52px;
---wc-row:40px;--wc-col-label:260px;--wc-pad-x:32px;
+--wc-row:40px;--wc-col-label:300px;--wc-pad-x:32px;
 --wc-measure-help:44rem;--wc-tap:44px;
-
-/* 이전 이름 별칭 — 미이행 마크업이 남아 있는 동안만 유지하고 제거한다 */
---color-primary:var(--ink);--color-ink:var(--fg-1);--color-bg:var(--bg-2);
---color-surface:var(--surface);--color-danger:var(--danger);
---fg-on-primary:var(--ink-fg);--border-1:var(--line);--border-strong:var(--line-strong);
 }
 @media (max-width:1200px){:root{--wc-rail:var(--wc-rail-min);--wc-pad-x:20px}}
 
@@ -138,6 +133,10 @@ h1,h2,h3{margin:0}
 .chip-kv__v{font-family:var(--font-mono);font-size:11.5px}
 .top__right{display:flex;align-items:center;gap:14px;flex:0 0 auto}
 .body{padding:18px var(--wc-pad-x) 24px;display:flex;flex-direction:column;gap:14px}
+/* 설정 탭 패널 — 비활성 패널은 감추기만 하고 DOM 에서 빼지 않는다. 빼면 그 탭의
+   필드가 제출되지 않아 "값 보존"으로 읽히고, 원자적 저장 계약이 조용히 깨진다. */
+.form{display:flex;flex-direction:column;gap:14px}
+.tabpanel:not(.is-active){display:none}
 
 /* 저장 클러스터 — 스크롤과 무관하게 상시 노출 (§5-6) */
 .save{display:inline-flex;align-items:center;gap:12px}
@@ -182,6 +181,7 @@ h1,h2,h3{margin:0}
 .panel__meta{font:var(--text-caption);color:var(--fg-3)}
 .panel__act{margin-left:auto}
 .panel__help{margin:10px 0 0;font:var(--text-help);color:var(--fg-3);max-width:var(--wc-measure-help)}
+.panel__ico{display:inline-flex;color:var(--fg-3);margin-right:7px}
 
 /* roomy — 필드 6개 이하 탭 */
 .field{padding-top:14px}
@@ -189,9 +189,22 @@ h1,h2,h3{margin:0}
 .field__label{font:var(--text-label);letter-spacing:var(--ls-label)}
 .field__help{margin:0 0 9px;font:var(--text-help);color:var(--fg-3);max-width:var(--wc-measure-help)}
 .field__err{display:flex;align-items:center;gap:5px;margin:7px 0 0;font-size:12px;color:var(--danger)}
+/* 읽기 전용 행 — 폼 컨트롤이 아예 없다. 제출이 구조적으로 불가능하다는 사실을
+   비활성 컨트롤 흉내가 아니라 "컨트롤 없음"으로 드러낸다. */
+.field--ro .field__head{color:var(--fg-3)}
+.in--ro{display:block;background:var(--bg-2);color:var(--fg-2);border-style:dashed;line-height:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.in--sm{min-height:30px;max-width:200px;font-size:13px}
+/* raw 뷰 — 폼으로 옮길 수 없는 map/list 하위 블록. 표시 전용, 입력 0. */
+.raw{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-2);padding:8px 11px;margin-top:12px}
+.raw>summary{cursor:pointer;font:var(--text-help);color:var(--fg-2);display:flex;align-items:center;gap:7px}
+.raw__pre{margin:9px 0 0;padding:10px;background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:11.5px;color:var(--fg-2);overflow-x:auto}
 /* dense — 필드 7개 이상 탭: 라벨 좌측 고정, 카드 없음 */
 [data-density="dense"] .field{display:grid;grid-template-columns:var(--wc-col-label) minmax(0,1fr);align-items:center;gap:0 14px;min-height:var(--wc-row);padding:0;border-top:1px solid var(--line-soft)}
-[data-density="dense"] .field__head{margin:0}
+/* 조밀 배치의 라벨 칸은 사람이 읽는 제목 + 설정 키 칩 + 배지를 함께 담는다.
+   키 이름이 길면 한 줄에 다 못 들어가므로 줄바꿈을 허용하고, 그래도 넘치면
+   칩 안에서 잘라 낸다 — 넘친 칩이 오른쪽 컨트롤 위로 올라타지 않게. */
+[data-density="dense"] .field__head{margin:0;flex-wrap:wrap;min-width:0;padding-right:14px}
+[data-density="dense"] .field__head .key{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 [data-density="dense"] .field__help{grid-column:1;margin:0;font-size:11.5px}
 [data-density="dense"] .field__ctl{grid-column:2;grid-row:1 / span 2}
 [data-density="dense"] .field__err{grid-column:2}
@@ -210,8 +223,20 @@ h1,h2,h3{margin:0}
 .toggle[aria-checked="true"] .toggle__track{background:var(--ink)}
 .toggle[aria-checked="true"] .toggle__knob{margin-left:16px;border-color:transparent}
 .seg{display:inline-flex;gap:2px;padding:2px;background:var(--bg-2);border-radius:var(--r-sm)}
-.seg__b{min-height:26px;padding:0 12px;border:0;border-radius:5px;background:none;color:var(--fg-2);font-size:12.5px;cursor:pointer}
+.seg__b{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:26px;padding:0 12px;border:0;border-radius:5px;background:none;color:var(--fg-2);font-size:12.5px;cursor:pointer}
 .seg__b[aria-selected="true"]{background:var(--ink);color:var(--ink-fg);font-weight:600}
+/* 라디오를 실은 세그먼트. 체크박스는 "체크 안 함"과 "이 필드를 못 봤음"을 화면상
+   구분해 주지 못한다 — 세그먼트는 언제나 한 칸이 채워져 있어 둘을 갈라 보인다.
+   입력 자체는 남겨 두고(제출 계약 무변경) 시각적으로만 숨긴다. */
+.seg__b>input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.seg__b:has(input:checked){background:var(--ink);color:var(--ink-fg);font-weight:600}
+.seg__b:has(input:focus-visible){box-shadow:var(--focus)}
+.seg__b:has(input:disabled){opacity:.36;cursor:default}
+/* 옵션마다 설명이 붙는 경우에만 세로로 편다 (report.format 형태). */
+.seg--stacked{flex-direction:column;align-items:stretch}
+.seg--stacked .seg__b{justify-content:flex-start;gap:8px;min-height:auto;padding:7px 12px;text-align:left}
+.seg__d{font:var(--text-help);color:var(--fg-3)}
+.seg--stacked .seg__b:has(input:checked) .seg__d{color:var(--ink-fg);opacity:.72}
 
 /* ── §7 표 (dense) ────────────────────────────────────── */
 .tbl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
@@ -225,6 +250,16 @@ h1,h2,h3{margin:0}
 .tr--error{box-shadow:inset 2px 0 0 var(--danger)}
 .tr__name{font-family:var(--font-mono);font-size:12.5px;display:flex;align-items:center;gap:7px}
 .tr__desc{color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 에이전트 frontmatter 표 — 이름+설명 / 모델 / effort 3열. 행 높이를 셀렉트에
+   맞춰 늘린다. */
+.tr--afm{grid-template-columns:minmax(0,1fr) 200px 136px;min-height:44px}
+.tr--afm .sel{width:100%}
+.tr__sub{display:flex;flex-direction:column;gap:2px;min-width:0}
+/* 자격증명 상태 블록 — 값이 아니라 상태만 읽는 자리다. 입력도 제출도 없다. */
+.cred{border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg-2);padding:11px 14px;margin-top:14px}
+.cred__t{font:var(--text-label);letter-spacing:var(--ls-label);display:block}
+.cred .kv{margin-top:8px}
+.cred .kv li:last-child{border-bottom:0}
 
 /* ── §8 §5.5 어휘 — 생존 · 백엔드 · 단계 · 게이지 · 추정 ── */
 .state{display:inline-flex;align-items:center;gap:5px;font:var(--text-caption);color:var(--fg-2)}
@@ -336,93 +371,17 @@ h1,h2,h3{margin:0}
 .pop__row{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:32px;padding:0 10px;border:0;border-radius:var(--r-sm);background:none;font-family:var(--font-mono);font-size:12.5px;cursor:pointer}
 .pop__row:hover{background:var(--fill)}
 .pop__row[aria-current]{background:var(--bg-2);font-weight:600}
-.pop__foot{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line-soft)}
+.pop__foot{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line-soft)}
 .pop__foot--split{justify-content:space-between}
+.pop__foot .in,.pop__foot .sel{min-width:0;flex:1 1 auto}
+/* 이름 변경은 컨트롤이 셋(대상 선택 · 새 이름 · 실행)이라 한 줄에 들어가지
+   않는다. 줄을 접어 각 컨트롤이 제 너비를 갖게 한다 — 좁혀 넣으면 새 이름
+   입력칸이 글자 두어 개 폭으로 찌그러져 못 쓰게 된다. */
+.pop__foot--stack{flex-wrap:wrap}
+.pop__foot--stack .in,.pop__foot--stack .sel{flex:1 1 100%;max-width:100%}
+.pop__foot--stack .btn{margin-left:auto}
 
 /* ── §11 모션 — 짧고 한 방향 ──────────────────────────── */
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 .fade-in{animation:fade var(--dur-2) var(--ease) both}
 @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
-
-/* ── §12 레거시 설정 마크업 호환 층 (과도기) ───────────────
-   설정 화면(root.templ + page.templ + fieldsets.templ)은 아직 재설계 마크업으로
-   옮기지 않았다. 이 층은 그 화면이 새 토큰 위에서 정상적으로 읽히도록 옛 클래스
-   이름을 최소한으로 되살린다 — 새 디자인의 재현이 아니라 "깨져 보이지 않게"가
-   목적이다.
-
-   설정 화면 마크업을 §4-§7 어휘로 옮기고 나면 이 절 전체를 지운다. 그때까지는
-   지우지 말 것: 지우면 설정 화면이 스타일 없는 HTML 로 떨어진다.
-   ------------------------------------------------------- */
-.page{margin:0 auto;padding:18px var(--wc-pad-x) 40px;display:flex;flex-direction:column;gap:14px}
-.pagehead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-.pagehead h1{font:var(--text-title);letter-spacing:var(--ls-title)}
-.pagehead__sub{margin:4px 0 0;font:var(--text-help);color:var(--fg-3)}
-.pagehead__mascot{display:none}
-.accent{color:var(--fg-2)}
-
-.appbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;min-height:var(--wc-top);padding:0 var(--wc-pad-x);background:var(--surface);border-bottom:1px solid var(--line)}
-.brand{display:inline-flex;align-items:center;gap:8px;font-weight:600}
-/* 배지는 마스코트를 그대로 얹는 flex 앵커다 — 채움/그림자/둥근 상자 없음 */
-.brand__badge {width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
-.brand__badge img.brand__mascot {width:28px;height:28px;display:block}
-.brand__name{font-size:14px;letter-spacing:-.02em}
-.appbar__divider{width:1px;height:18px;background:var(--line)}
-.appbar__badge,.loopback{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:0 9px;border:1px solid var(--line);border-radius:var(--r-sm);font-family:var(--font-mono);font-size:11.5px;color:var(--fg-2)}
-.loopback__dot{width:6px;height:6px;border-radius:50%;background:var(--fg-1)}
-.appbar__context{min-width:0;overflow-x:auto;scrollbar-width:none}
-.appbar__context-text{font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3);white-space:nowrap}
-.appbar__spacer{flex:1 1 auto}
-.iconbtn{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--fg-2);cursor:pointer}
-.iconbtn:hover{color:var(--fg-1);border-color:var(--line-strong)}
-
-.profilebar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
-.profilebar__row{display:flex;align-items:center;gap:10px}
-.profilebar__label,.profilebar__form-label{font:var(--text-caption);color:var(--fg-3)}
-.profilebar__meta{font:var(--text-caption);color:var(--fg-3)}
-.profilebar__actions{display:flex;flex-wrap:wrap;gap:10px;margin-left:auto}
-.profilebar__form{display:flex;align-items:center;gap:6px}
-
-.tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line);padding-bottom:0}
-.tab{min-height:32px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--fg-2);font-size:13.5px;cursor:pointer}
-.tab:hover{color:var(--fg-1)}
-.tab.is-active{color:var(--fg-1);font-weight:600;border-bottom-color:var(--ink)}
-.tabpanel:not(.is-active){display:none}
-
-.section{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:16px 18px;margin-top:12px}
-.section__head{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line-soft)}
-.section__title{font:var(--text-headline);letter-spacing:var(--ls-headline)}
-.section__icon{color:var(--fg-3);display:inline-flex}
-.section__count{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--fg-3)}
-.section__desc{margin:8px 0 0;font:var(--text-help);color:var(--fg-3);max-width:var(--wc-measure-help)}
-
-.field{padding-top:14px}
-.field__title{font:var(--text-label);letter-spacing:var(--ls-label)}
-.field__key{font-family:var(--font-mono);font-size:11px;background:var(--fill);color:var(--fg-2);border-radius:4px;padding:2px 6px;margin-left:6px}
-.field__desc{margin:3px 0 8px;font:var(--text-help);color:var(--fg-3);max-width:var(--wc-measure-help)}
-.field__error,.error{color:var(--danger);font-size:12px}
-.has-error .input,.has-error .select{border-color:var(--danger)}
-
-.input{min-height:34px;width:100%;max-width:420px;padding:0 11px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface)}
-.input:focus{outline:none;border-color:var(--ink);box-shadow:var(--focus)}
-.input--sm{min-height:30px;max-width:200px;font-size:13px}
-.select-wrap{position:relative;display:inline-flex;align-items:center}
-.select{min-height:32px;padding:0 30px 0 10px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%236e6e73' stroke-width='1.4'%3E%3Cpath d='M4.5 7 9 11.5 13.5 7'/%3E%3C/svg%3E") right 8px center/16px no-repeat;appearance:none;font-family:var(--font-mono);font-size:12.5px;cursor:pointer}
-.select:focus{outline:none;border-color:var(--ink);box-shadow:var(--focus)}
-.select--sm{min-height:28px;font-size:12px}
-
-.actions{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);margin-top:14px}
-.actions__meta{font:var(--text-caption);color:var(--fg-3)}
-.form{display:flex;flex-direction:column;gap:0}
-
-.banner--success{background:var(--bg-2);color:var(--fg-1)}
-.banner--error{background:var(--danger-bg);color:var(--danger)}
-
-.board-summary,.board-section{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:14px 16px;margin-top:12px}
-.board-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.board-badge,.board-tier{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:var(--r-sm);background:var(--fill);font:var(--text-caption)}
-.board-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
-.board-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
-.board-item__id{font-family:var(--font-mono);font-size:11.5px}
-.board-item__meta,.board-section__desc,.board-empty{font:var(--text-caption);color:var(--fg-3)}
-.board-mustfix{background:var(--danger-bg);color:var(--danger)}
-.board-remedy{font-family:var(--font-mono);font-size:11.5px;background:var(--fill);border-radius:4px;padding:2px 6px}

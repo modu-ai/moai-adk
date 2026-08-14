@@ -92,12 +92,15 @@ func modelOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("m
 // effortOptionDefs returns the OptionDef slice for the effort_level select.
 func effortOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("effort_level") }
 
-
 // permissionModeOptionDefs returns the OptionDef slice for permission_mode.
-func permissionModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("permission_mode") }
+func permissionModeOptionDefs() []settings.OptionDef {
+	return settings.FieldOptionDefs("permission_mode")
+}
 
 // developmentModeOptionDefs returns the OptionDef slice for development_mode.
-func developmentModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("development_mode") }
+func developmentModeOptionDefs() []settings.OptionDef {
+	return settings.FieldOptionDefs("development_mode")
+}
 
 // conventionOptionDefs returns the OptionDef slice for git_convention.
 func conventionOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("git_convention") }

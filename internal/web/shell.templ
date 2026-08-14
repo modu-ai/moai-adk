@@ -19,7 +19,10 @@ type ShellVM struct {
 	Crumb      string
 	Host       string // 127.0.0.1:3041
 	Profile    string
-	Project    string
+	Project    string // 표시용 basename
+	// ProjectPath 는 툴팁에 붙는 전체 경로다. basename 만으로는 같은 이름의
+	// 체크아웃이 여럿일 때 어느 것인지 알 수 없다.
+	ProjectPath string
 	Lang       string // ko | en | ja | zh
 	Ctx        []KV   // lang / model / effort / dev
 	Live       string // on | off
@@ -27,16 +30,56 @@ type ShellVM struct {
 	DirtyCount int
 	SavedAt    string
 	Tabs       []TabVM
-	Profiles   []string
+	// Profiles 는 전환 가능한 프로필 전체다. Current 는 "이 세션이 시작될 때
+	// 활성이던 프로필"이고, ShellVM.Profile 은 "지금 화면이 편집 중인 프로필"이다.
+	// 둘은 다를 수 있어서 따로 표시한다 — 합치면 편집 중인 값이 곧 적용 중인
+	// 값처럼 읽힌다.
+	Profiles []ProfileVM
+	// RenameTargets 는 이름 변경 · 삭제가 손댈 수 있는 프로필만 담는다. 비어
+	// 있으면 그 컨트롤 자체를 렌더하지 않는다 — 서버가 거절할 대상을 화면이
+	// 먼저 제안하지 않는다.
+	RenameTargets []string
+	// SaveMessage 는 저장 실패 시 서버가 준 설명이다. 비어 있으면 저장 클러스터가
+	// 일반 오류 문구로 떨어진다.
+	SaveMessage string
 }
 
 type KV struct{ K, V string }
 
+// ProfileVM 은 팝오버의 프로필 한 줄이다.
+type ProfileVM struct {
+	Name    string
+	Current bool // 세션 시작 시점의 활성 프로필
+}
+
+// foucHeadScript 는 첫 페인트 전에 저장된 인터페이스 언어를 적용하는 <head>
+// 스니펫이다. <html lang> 을 미리 세워야 ja/zh 의 CJK @font-face 스택이 첫
+// 렌더부터 활성화된다 (REQ-WC5-005) — 그러지 않으면 system-ui 로 한 번 그려진 뒤
+// 웹폰트로 다시 그려진다.
+//
+// 컴파일 타임 상수이고 사용자 데이터가 흘러들지 않으므로 templ.Raw 로 내보내도
+// 주입 표면이 없다 (REQ-WC6-017). <script> 안쪽은 templ 이 리터럴로 다루므로
+// 요소 전체를 head 수준에서 Raw 로 내보낸다.
+const foucHeadScript = `<script>
+    (function () {
+      try {
+        var l = localStorage.getItem("moai-console-lang");
+        if (l === "en" || l === "ko" || l === "ja" || l === "zh") {
+          document.documentElement.setAttribute("lang", l);
+        }
+      } catch (e) { /* localStorage unavailable — keep the default en interface */ }
+    })();
+  </script>`
+
 type TabVM struct {
-	ID     string
-	Label  string
-	Fields int
-	HasErr bool
+	ID string
+	// LabelKey 는 이 탭 라벨의 i18n 키다. ID 에서 "tab."+ID 로 지어내지 않는다 —
+	// 탭 대부분은 자기 섹션의 기존 sec.<x>.title 키를 재사용하고, 지어낸 키는
+	// 사전에 없어서 4개 로케일 전부에서 빈 라벨로 떨어진다.
+	LabelKey string
+	Label    string
+	Fields   int
+	HasErr   bool
 }
 
 templ Shell(vm ShellVM) {
@@ -47,7 +90,8 @@ templ Shell(vm ShellVM) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>MoAI Web Console</title>
 			<link rel="stylesheet" href="/static/console.css"/>
-			<script src="/static/htmx.min.js" defer></script>
+			@templ.Raw(foucHeadScript)
+				<script src="/static/htmx.min.js" defer></script>
 			<script src="/static/i18n.js" defer></script>
 			<script src="/static/app.js" defer></script>
 		</head>
@@ -61,7 +105,7 @@ templ Shell(vm ShellVM) {
 					</div>
 				</div>
 			</div>
-			@profilePop(vm.Profile, vm.Profiles)
+			@profilePop(vm)
 		</body>
 	</html>
 }
@@ -93,11 +137,12 @@ templ rail(vm ShellVM) {
 									class="subnav__row"
 									role="tab"
 									href={ templ.SafeURL("/settings?tab=" + t.ID) }
+									data-tab={ t.ID }
 									aria-selected={ attrBool(t.ID == vm.Tab) }
 									aria-controls={ "panel-" + t.ID }
 									id={ "tab-" + t.ID }
 								>
-									<span data-i18n={ "tab." + t.ID }>{ t.Label }</span>
+									<span data-i18n={ t.LabelKey }>{ t.Label }</span>
 									if t.HasErr {
 										<span class="warn" aria-label="has error">@iconAt("alert", 12)</span>
 									} else {
@@ -118,17 +163,15 @@ templ rail(vm ShellVM) {
 			</button>
 			<div class="ctx-btn">
 				<span class="ctx-btn__k" data-i18n="rail.project">Project</span>
-				<span class="ctx-btn__v" title={ vm.Project }>{ vm.Project }</span>
+				<span class="ctx-btn__v" title={ vm.ProjectPath }>{ vm.Project }</span>
 			</div>
 			<div class="rail__utils">
-				<span class="select-wrap">
-					<select class="util langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
-						<option value="en">English</option>
-						<option value="ko">한국어</option>
-						<option value="ja">日本語</option>
-						<option value="zh">中文</option>
-					</select>
-				</span>
+				<select class="util langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
+					<option value="en">English</option>
+					<option value="ko">한국어</option>
+					<option value="ja">日本語</option>
+					<option value="zh">中文</option>
+				</select>
 				<form action="/__shutdown__" method="post">
 					<button type="submit" class="util util--icon" id="serverShutdown" aria-label="Shut down server" data-i18n-aria="rail.shutdown">
 						@iconAt("power", 15)
@@ -210,7 +253,11 @@ templ saveCluster(vm ShellVM) {
 			case "error":
 				<span class="save__msg save__msg--error" role="alert">
 					@iconAt("alert", 13)
-					<span data-i18n="save.error">Some fields could not be saved</span>
+					if vm.SaveMessage != "" {
+							<span>{ vm.SaveMessage }</span>
+						} else {
+							<span data-i18n="save.error">Some fields could not be saved</span>
+						}
 				</span>
 			default:
 				<span class="save__msg" data-i18n="save.clean">No changes</span>
@@ -228,18 +275,30 @@ templ saveCluster(vm ShellVM) {
 }
 
 // 프로필 팝오버 — 상시 노출 대신 접어 둔다. POST 라우트와 필드명은 기존 그대로다.
-templ profilePop(current string, profiles []string) {
-	<div class="pop" role="dialog" aria-label="Profile" data-pop-panel="profile" hidden>
+//
+// 설정 화면의 별도 프로필 바(profilebar)를 흡수했다. 전환 · 생성 · 이름 변경 ·
+// 삭제가 한 자리에 모이고, 모든 화면에서 같은 곳을 연다 — 프로필 표면은 하나다
+// (REQ-WCR-040 의 "하나의 프로필 표면" 을 셸 차원으로 옮긴 것).
+//
+// 각 컨트롤은 자기 POST 대상을 가진 독립 <form> 이다. 폼 안에 폼을 넣으면
+// 브라우저가 안쪽 시작 태그를 조용히 버리므로 나란히 둔다. 필드 이름(profile_name /
+// new_name)과 라우트는 그대로다.
+templ profilePop(vm ShellVM) {
+	<div class="pop" role="dialog" aria-label="Profile" data-pop-panel="profile" hx-boost="true" hidden>
 		<div class="pop__head">
 			<span class="panel__title" data-i18n="profile.title">Profile</span>
 			<button type="button" class="icon-btn" data-pop-close aria-label="Close">@iconAt("close", 13)</button>
 		</div>
 		<ul class="pop__list">
-			for _, p := range profiles {
+			for _, p := range vm.Profiles {
 				<li>
-					<a class="pop__row" href={ templ.SafeURL("/settings?profile=" + p) } aria-current={ attrCurrent(p == current) }>
-						<span>{ p }</span>
-						if p == current {
+					<a class="pop__row" href={ templ.SafeURL("/settings?profile=" + p.Name) } aria-current={ attrCurrent(p.Name == vm.Profile) }>
+						if p.Current {
+							<span>{ p.Name } (current)</span>
+						} else {
+							<span>{ p.Name }</span>
+						}
+						if p.Name == vm.Profile {
 							@iconAt("check", 14)
 						}
 					</a>
@@ -247,12 +306,30 @@ templ profilePop(current string, profiles []string) {
 			}
 		</ul>
 		<form class="pop__foot" method="POST" action={ templ.SafeURL(profileCreateAction()) }>
-			<input class="in in--sm" type="text" name="profile_name" placeholder="New profile name" data-i18n-placeholder="profile.newName" autocomplete="off"/>
+			<label class="sr-only" for="profile_name_new" data-i18n="profile.create.label">New profile name</label>
+			<input class="in in--sm" type="text" id="profile_name_new" name="profile_name" placeholder="New profile name" data-i18n-placeholder="profile.newName" autocomplete="off"/>
 			<button type="submit" class="btn btn--outline" data-i18n="profile.create">Create</button>
 		</form>
-		<form class="pop__foot pop__foot--split" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
-			<input type="hidden" name="profile_name" value={ current }/>
-			<button type="submit" class="btn btn--ghost warn" data-i18n="profile.delete">Delete profile</button>
-		</form>
+		if len(vm.RenameTargets) > 0 {
+			<form class="pop__foot pop__foot--stack" method="POST" action={ templ.SafeURL(profileRenameAction()) }>
+				<label class="sr-only" for="profile_rename_target" data-i18n="profile.rename.label">Rename profile</label>
+				<select class="sel" id="profile_rename_target" name="profile_name" aria-label="Profile to rename">
+					for _, p := range vm.RenameTargets {
+						<option value={ p }>{ p }</option>
+					}
+				</select>
+				<input class="in in--sm" type="text" id="profile_rename_new" name="new_name" placeholder="new name" autocomplete="off" aria-label="New profile name"/>
+				<button type="submit" class="btn btn--ghost" data-i18n="profile.rename.button">Rename</button>
+			</form>
+			<form class="pop__foot pop__foot--split" method="POST" action={ templ.SafeURL(profileDeleteAction()) }>
+				<label class="sr-only" for="profile_delete_target" data-i18n="profile.delete.label">Delete profile</label>
+				<select class="sel" id="profile_delete_target" name="profile_name" aria-label="Profile to delete">
+					for _, p := range vm.RenameTargets {
+						<option value={ p }>{ p }</option>
+					}
+				</select>
+				<button type="submit" class="btn btn--ghost warn" data-i18n="profile.delete.button">Delete</button>
+			</form>
+		}
 	</div>
 }

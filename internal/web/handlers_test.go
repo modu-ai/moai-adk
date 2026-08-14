@@ -182,24 +182,27 @@ func TestIndexProfileSelectionShownForMultipleProfiles(t *testing.T) {
 		}
 		rec := serveGet(t, a.routes(), "/settings")
 		body := rec.Body.String()
-		if !strings.Contains(body, `name="__profile_select"`) {
-			t.Error("profile selector not shown for multiple profiles")
-		}
-		if !strings.Contains(body, "work") {
-			t.Error("profile list missing the 'work' profile")
+		if !strings.Contains(body, `href="/settings?profile=work"`) {
+			t.Error("profile switch link not shown for multiple profiles")
 		}
 		if !strings.Contains(body, "(current)") {
 			t.Error("current profile not marked")
 		}
 	})
 
-	t.Run("single profile → selector omitted", func(t *testing.T) {
+	// 프로필이 하나뿐이면 전환할 대상이 없으므로 다른 프로필로 가는 링크도 없다.
+	// 목록 자체는 남는다 — 팝오버 안에 생성 폼이 같이 있어서, 목록을 통째로
+	// 감추면 두 번째 프로필을 만들 길이 사라진다.
+	t.Run("single profile → no switch target", func(t *testing.T) {
 		a.listProfiles = func() []profile.ProfileEntry {
 			return []profile.ProfileEntry{{Name: "default", Current: true}}
 		}
-		rec := serveGet(t, a.routes(), "/settings")
-		if strings.Contains(rec.Body.String(), `name="__profile_select"`) {
-			t.Error("profile selector should be omitted when only default exists")
+		body := serveGet(t, a.routes(), "/settings").Body.String()
+		if strings.Contains(body, `href="/settings?profile=work"`) {
+			t.Error("a switch link appeared for a profile that does not exist")
+		}
+		if !strings.Contains(body, `action="/profile/create"`) {
+			t.Error("the create form must stay reachable when only default exists")
 		}
 	})
 }

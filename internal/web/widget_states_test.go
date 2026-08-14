@@ -91,7 +91,7 @@ func TestSchemaSelectRowSurfacesFieldError(t *testing.T) {
 		return schemaSelectRow(f, "bogus", map[string]string{f.Name: "invalid option"}).
 			Render(context.Background(), sb)
 	})
-	if !strings.Contains(html, "has-error") || !strings.Contains(html, "invalid option") {
+	if !strings.Contains(html, "field__err") || !strings.Contains(html, "invalid option") {
 		t.Errorf("select row did not surface the field error:\n%s", html)
 	}
 }
@@ -127,10 +127,10 @@ func TestSchemaRadioRowStackedLayoutOptIn(t *testing.T) {
 		return schemaRadioRow(radioFixture(true, ""), "manual", nil).Render(context.Background(), sb)
 	})
 
-	if strings.Contains(plain, "radio-group--stacked") {
+	if strings.Contains(plain, "seg--stacked") {
 		t.Error("a group with no option descriptions used the stacked layout")
 	}
-	if !strings.Contains(stacked, "radio-group--stacked") {
+	if !strings.Contains(stacked, "seg--stacked") {
 		t.Errorf("a group WITH option descriptions did not opt into the stacked layout:\n%s", stacked)
 	}
 }
@@ -150,7 +150,7 @@ func TestSchemaRadioRowEmptyOptionAndError(t *testing.T) {
 		return schemaRadioRow(f, "team", map[string]string{f.Name: "not allowed here"}).
 			Render(context.Background(), sb)
 	})
-	if !strings.Contains(withErr, "has-error") || !strings.Contains(withErr, "not allowed here") {
+	if !strings.Contains(withErr, "field__err") || !strings.Contains(withErr, "not allowed here") {
 		t.Errorf("radio row did not surface the field error:\n%s", withErr)
 	}
 	if !strings.Contains(withErr, `value="team" checked`) {
@@ -188,7 +188,7 @@ func TestSchemaNumberRowStatesAndStep(t *testing.T) {
 		return schemaNumberRow(f, "abc", "1", map[string]string{f.Name: "must be an integer"}).
 			Render(context.Background(), sb)
 	})
-	if !strings.Contains(errRow, "has-error") || !strings.Contains(errRow, "must be an integer") {
+	if !strings.Contains(errRow, "field__err") || !strings.Contains(errRow, "must be an integer") {
 		t.Errorf("number row did not surface the field error:\n%s", errRow)
 	}
 }

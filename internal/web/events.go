@@ -87,7 +87,9 @@ func (h *Hub) ServeEvents(w http.ResponseWriter, r *http.Request) {
 	defer h.remove(ch)
 
 	// 연결 직후 한 번 — 브라우저가 "실시간 켜짐"을 확정할 수 있게.
-	fmt.Fprint(w, "event: ready\ndata: 1\n\n")
+	// 쓰기 실패는 곧 연결이 끊겼다는 뜻이다. 다음 Flush 와 r.Context().Done()
+	// 이 그 사실을 받아 루프를 끝내므로, 여기서는 무시하고 흘려보낸다.
+	_, _ = fmt.Fprint(w, "event: ready\ndata: 1\n\n")
 	flusher.Flush()
 
 	keepalive := time.NewTicker(25 * time.Second)
@@ -101,10 +103,10 @@ func (h *Hub) ServeEvents(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			fmt.Fprintf(w, "event: %s\ndata: 1\n\n", ev)
+			_, _ = fmt.Fprintf(w, "event: %s\ndata: 1\n\n", ev)
 			flusher.Flush()
 		case <-keepalive.C:
-			fmt.Fprint(w, ": keepalive\n\n")
+			_, _ = fmt.Fprint(w, ": keepalive\n\n")
 			flusher.Flush()
 		}
 	}

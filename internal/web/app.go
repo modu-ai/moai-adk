@@ -165,10 +165,10 @@ func (a *app) routes() http.Handler {
 	// GET 이외 메서드를 405 로 거부하며 쓰기 경로·명령 실행·status 전이가 전혀 없다
 	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
 	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
+	// 종료 부채 목록과 MUST-FIX 조치 명령은 이 화면 안의 패널이다. 예전에는
+	// /specs/board 라는 별도 라우트였는데, 어느 화면도 링크하지 않아 주소를 직접
+	// 쳐야만 닿았다.
 	mux.HandleFunc("/specs", a.handleSpecs)
-	// 종료 부채 목록 + MUST-FIX 조치 명령(복사 버튼)은 아직 새 SPEC 화면으로
-	// 옮기지 않았다. 기능을 잃지 않도록 기존 보드를 이 경로에 남겨 둔다.
-	mux.HandleFunc("/specs/board", a.handleBoard)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

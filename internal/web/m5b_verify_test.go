@@ -26,9 +26,10 @@ func TestM5bD1_AtomicSave_AllPanelsInDOM(t *testing.T) {
 		t.Errorf("expected >= 6 data-tab buttons (6-tab console — M3), found %d", tabCount)
 	}
 
-	// 3. First tab + first panel are active.
-	if !strings.Contains(body, `class="tab is-active"`) {
-		t.Error("no active tab button found")
+	// 3. First tab + first panel are active. 탭은 레일의 세로 subnav 링크이므로
+	// 활성 표시는 클래스가 아니라 aria-selected 가 나른다.
+	if !strings.Contains(body, `aria-selected="true"`) {
+		t.Error("no active tab found in the rail subnav")
 	}
 	if !strings.Contains(body, `class="tabpanel is-active"`) {
 		t.Error("no active tabpanel found")
@@ -65,7 +66,7 @@ func TestM5bD1_AtomicSave_AllPanelsInDOM(t *testing.T) {
 // translated). Uses the same regex as TestDataI18nWiring.
 func TestM5bD3D4_NoCodeChipDataI18n(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "test"})
-	chipRe := regexp.MustCompile(`<code class="field__key"[^>]*data-i18n`)
+	chipRe := regexp.MustCompile(`<code class="key"[^>]*data-i18n`)
 	if chipRe.MatchString(body) {
 		t.Error("a field__key code chip carries data-i18n (code tokens must not be translated)")
 	}

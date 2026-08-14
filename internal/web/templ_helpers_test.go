@@ -22,7 +22,7 @@ func renderTempl(t *testing.T, c templ.Component) string {
 
 // TestLangSelectHelperMarkupParity verifies the ported langSelect Templ component
 // emits the exact markup contract from the retired page.html.tmpl langSelect
-// helper: field chrome, select--lang, (unset) empty option, name=/id=, data-i18n,
+// helper: field chrome, the sel control, (unset) empty option, name=/id=, data-i18n,
 // the {{range}}->for option loop with `selected` on the current value, and the
 // error span only when an error is present (REQ-WC6-002).
 func TestLangSelectHelperMarkupParity(t *testing.T) {
@@ -38,12 +38,11 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 	}))
 
 	for _, want := range []string{
-		`class="field"`, // no has-error
-		`class="field__title" data-i18n="f.conversation_lang.title"`,
-		`<code class="field__key">conversation_lang</code>`,
-		`class="field__desc" data-i18n="f.conversation_lang.desc"`,
-		`class="select-wrap"`,
-		`class="select select--lang"`,
+		`class="field"`,
+		`class="field__label" data-i18n="f.conversation_lang.title"`,
+		`<code class="key">conversation_lang</code>`,
+		`class="field__help" data-i18n="f.conversation_lang.desc"`,
+		`class="sel"`,
 		`id="conversation_lang"`,
 		`name="conversation_lang"`,
 		`<option value="" data-i18n="opt.unset">(unset)</option>`, // not selected (value=ko)
@@ -58,7 +57,7 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 	if strings.Contains(clean, "aria-invalid") {
 		t.Errorf("langSelect clean render unexpectedly carries aria-invalid:\n%s", clean)
 	}
-	if strings.Contains(clean, "field-error") {
+	if strings.Contains(clean, "field__err") {
 		t.Errorf("langSelect clean render unexpectedly carries a field-error span:\n%s", clean)
 	}
 
@@ -73,12 +72,12 @@ func TestLangSelectHelperMarkupParity(t *testing.T) {
 		Errors:  map[string]string{"conversation_lang": "unrecognized language: xx"},
 	}))
 	for _, want := range []string{
-		`class="field has-error"`,
+		`class="field"`,
 		`aria-invalid="true"`,
 		`<option value="" selected data-i18n="opt.unset">(unset)</option>`, // unset value selected
-		`class="field-error"`,
+		`class="field__err"`,
 		`unrecognized language: xx`,
-		`class="icon-alert-circle"`, // error icon
+		`<svg`, // 오류 아이콘 (iconAt 은 클래스 없이 인라인 SVG 를 낸다)
 	} {
 		if !strings.Contains(errored, want) {
 			t.Errorf("langSelect errored render missing %q\n--- rendered ---\n%s", want, errored)
@@ -104,9 +103,9 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 	}))
 	for _, want := range []string{
 		`class="field"`,
-		`class="field__title" data-i18n="f.model.title"`,
-		`<code class="field__key">model</code>`,
-		`class="select"`, // plain select chrome (no select--lang)
+		`class="field__label" data-i18n="f.model.title"`,
+		`<code class="key">model</code>`,
+		`class="sel"`,
 		`id="model"`,
 		`name="model"`,
 		`<option value="" data-i18n="opt.project_default">(project default)</option>`,
@@ -117,9 +116,10 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 			t.Errorf("optSelect clean render missing %q\n--- rendered ---\n%s", want, clean)
 		}
 	}
-	// optSelect must NOT carry the select--lang modifier.
+	// 재설계에서 language 전용 select 변형(select--lang)은 사라졌다 — 두 헬퍼가
+	// 같은 .sel 컨트롤을 쓴다. 남아 있으면 §6 에 규칙 없는 클래스가 방출된다.
 	if strings.Contains(clean, "select--lang") {
-		t.Errorf("optSelect render unexpectedly carries select--lang:\n%s", clean)
+		t.Errorf("optSelect render carries the retired select--lang modifier:\n%s", clean)
 	}
 }
 
@@ -139,10 +139,10 @@ func TestToggleHelperMarkupParity(t *testing.T) {
 		Errors: map[string]string{},
 	}))
 	for _, want := range []string{
-		`class="field"`, // no has-error
-		`class="field__title" data-i18n="f.quality.enforce_quality.title"`,
-		`<code class="field__key">quality.enforce_quality</code>`,
-		`class="field__desc" data-i18n="f.quality.enforce_quality.desc"`,
+		`class="field"`,
+		`class="field__label" data-i18n="f.quality.enforce_quality.title"`,
+		`<code class="key">quality.enforce_quality</code>`,
+		`class="field__help" data-i18n="f.quality.enforce_quality.desc"`,
 		`<input type="hidden" name="quality.enforce_quality__present" value="1"`,
 		`type="checkbox"`,
 		`id="quality.enforce_quality"`,
@@ -153,14 +153,14 @@ func TestToggleHelperMarkupParity(t *testing.T) {
 			t.Errorf("toggle unchecked render missing %q\n--- rendered ---\n%s", want, unchecked)
 		}
 	}
-	// Unchecked render must NOT carry `checked`, has-error, or a field-error span.
+	// Unchecked render must NOT carry `checked` or a field-error element.
 	if strings.Contains(unchecked, " checked") {
 		t.Errorf("toggle unchecked render unexpectedly carries `checked`:\n%s", unchecked)
 	}
-	if strings.Contains(unchecked, "has-error") {
-		t.Errorf("toggle clean render unexpectedly carries has-error:\n%s", unchecked)
+	if strings.Contains(unchecked, "field__err") {
+		t.Errorf("toggle clean render unexpectedly carries field__err:\n%s", unchecked)
 	}
-	if strings.Contains(unchecked, "field-error") {
+	if strings.Contains(unchecked, "field__err") {
 		t.Errorf("toggle clean render unexpectedly carries a field-error span:\n%s", unchecked)
 	}
 
@@ -177,7 +177,7 @@ func TestToggleHelperMarkupParity(t *testing.T) {
 		t.Errorf("toggle checked render missing `value=\"1\" checked`:\n%s", checked)
 	}
 
-	// Errored render carries has-error + field-error span + alert-circle icon.
+	// Errored render carries field__err + field-error span + alert-circle icon.
 	errored := renderTempl(t, toggle(toggleArgs{
 		Name:   "quality.enforce_quality",
 		Title:  "Enforce quality gate",
@@ -186,10 +186,10 @@ func TestToggleHelperMarkupParity(t *testing.T) {
 		Errors: map[string]string{"quality.enforce_quality": "boom"},
 	}))
 	for _, want := range []string{
-		`class="field has-error"`,
-		`class="field-error"`,
+		`class="field"`,
+		`class="field__err"`,
 		`boom`,
-		`class="icon-alert-circle"`,
+		`<svg`,
 	} {
 		if !strings.Contains(errored, want) {
 			t.Errorf("toggle errored render missing %q\n--- rendered ---\n%s", want, errored)
@@ -215,8 +215,8 @@ func TestNumberFieldHelperMarkupParity(t *testing.T) {
 	}))
 	for _, want := range []string{
 		`class="field"`,
-		`class="field__title" data-i18n="f.quality.test_coverage_target.title"`,
-		`<code class="field__key">quality.test_coverage_target</code>`,
+		`class="field__label" data-i18n="f.quality.test_coverage_target.title"`,
+		`<code class="key">quality.test_coverage_target</code>`,
 		`type="number"`,
 		`id="quality.test_coverage_target"`,
 		`name="quality.test_coverage_target"`,
@@ -232,7 +232,7 @@ func TestNumberFieldHelperMarkupParity(t *testing.T) {
 	if strings.Contains(clean, "aria-invalid") {
 		t.Errorf("numberField clean render unexpectedly carries aria-invalid:\n%s", clean)
 	}
-	if strings.Contains(clean, "field-error") {
+	if strings.Contains(clean, "field__err") {
 		t.Errorf("numberField clean render unexpectedly carries a field-error span:\n%s", clean)
 	}
 
@@ -248,12 +248,12 @@ func TestNumberFieldHelperMarkupParity(t *testing.T) {
 		Errors: map[string]string{"quality.test_coverage_target": "must be between 0 and 100"},
 	}))
 	for _, want := range []string{
-		`class="field has-error"`,
+		`class="field"`,
 		`aria-invalid="true"`,
 		`aria-describedby="err_quality.test_coverage_target"`,
-		`class="field-error"`,
+		`class="field__err"`,
 		`must be between 0 and 100`,
-		`class="icon-alert-circle"`,
+		`<svg`,
 	} {
 		if !strings.Contains(errored, want) {
 			t.Errorf("numberField errored render missing %q\n--- rendered ---\n%s", want, errored)

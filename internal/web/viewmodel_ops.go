@@ -131,9 +131,9 @@ type FindingVM struct{ Severity, Message, File string }
 
 type SpecDetailVM struct {
 	ID, Title, Status, Tier, Era, SHA, Path, VerifyNote string
-	Docs                                               []string
-	Findings                                           []FindingVM
-	Verify                                             []bool
+	Docs                                                []string
+	Findings                                            []FindingVM
+	Verify                                              []bool
 }
 
 type SpecListVM struct {
@@ -143,6 +143,22 @@ type SpecListVM struct {
 	Sorts      []SortVM
 	Rows       []SpecRowVM
 	Detail     *SpecDetailVM
+
+	// CloseDebt 는 구현은 끝났지만(status: implemented) lifecycle 이 completed 로
+	// 닫히지 않은 SPEC 이다. 필터와 무관하게 카탈로그 전체에서 모은다 — 지금 보고
+	// 있는 필터 결과가 아니라 "아직 닫지 않은 것 전부"가 알고 싶은 값이기 때문이다.
+	CloseDebt []SpecRowVM
+
+	// MustFix 는 조치 명령을 가진 MUST-FIX drift 다. 명령은 화면이 실행하지 않는다
+	// — 복사만 하고 실행은 사람이 자기 터미널에서 한다.
+	MustFix []MustFixVM
+}
+
+// MustFixVM 은 조치 명령을 동반한 MUST-FIX drift 하나다.
+type MustFixVM struct {
+	SpecID      string
+	FindingType string
+	Remediation string
 }
 
 type GoalVM struct {
@@ -291,6 +307,55 @@ func humanSince(t time.Time, now time.Time) string {
 
 // loadSpecRows 는 SPEC 목록과 SPEC별 드리프트 findings 를 함께 만든다.
 // board.go 와 같은 원천(spec.ListDocs + spec.Audit)을 쓰고 git 경로는 건드리지 않는다.
+// closeDebtShown 은 종료 부채 패널이 한 번에 보여 주는 최대 줄 수다. 카탈로그가
+// 큰 저장소에서는 이 목록이 수백 줄까지 자라, 패널을 접지 않으면 그 아래 표가
+// 화면 밖으로 밀려난다. 잘린 사실과 전체 수는 패널이 함께 적는다.
+const closeDebtShown = 10
+
+// closeDebtRows 는 status: implemented 인 SPEC 을 최근 갱신 순으로 모은다.
+// 구현이 끝났다는 표시는 있는데 lifecycle 을 닫은 표시는 없는 상태다.
+func closeDebtRows(rows []SpecRowVM) []SpecRowVM {
+	var out []SpecRowVM
+	for _, r := range rows {
+		if r.Status == "implemented" {
+			out = append(out, r)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Updated > out[j].Updated })
+	return out
+}
+
+// boundedRows 는 패널에 실제로 그릴 앞부분만 잘라 준다.
+func boundedRows(rows []SpecRowVM) []SpecRowVM {
+	if len(rows) > closeDebtShown {
+		return rows[:closeDebtShown]
+	}
+	return rows
+}
+
+// mustFixFindings 는 MUST-FIX drift 를 SPEC 행 순서대로 펼친다. loadSpecRows 가
+// 이미 채운 findings 맵을 재사용한다 — 감사 스캔을 두 번 돌리지 않는다.
+//
+// FindingVM 은 감사 결과를 담을 때 Message 에 Remediation 을, File 에
+// FindingType 을 실어 둔다 (loadSpecRows 참조). 이름과 내용이 어긋나 있어
+// 여기서 제자리 이름으로 되돌려 담는다.
+func mustFixFindings(rows []SpecRowVM, findings map[string][]FindingVM) []MustFixVM {
+	var out []MustFixVM
+	for _, r := range rows {
+		for _, f := range findings[r.ID] {
+			if f.Severity != "MUST-FIX" {
+				continue
+			}
+			out = append(out, MustFixVM{
+				SpecID:      r.ID,
+				FindingType: f.File,
+				Remediation: f.Message,
+			})
+		}
+	}
+	return out
+}
+
 func loadSpecRows(root string) ([]SpecRowVM, map[string][]FindingVM, error) {
 	records, err := spec.ListDocs(root)
 	if err != nil {
@@ -646,6 +711,8 @@ func (a *app) buildSpecList(query, status, selected string) (SpecListVM, error) 
 		SelectedID: selected,
 		Rows:       filtered,
 		Filters:    buildFilters(counts, status, query, len(rows)),
+		CloseDebt:  closeDebtRows(rows),
+		MustFix:    mustFixFindings(rows, findings),
 	}
 	if selected != "" {
 		for _, r := range rows {

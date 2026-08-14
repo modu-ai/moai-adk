@@ -126,8 +126,8 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 	}
 	body := renderAgentFMBody(t, root)
 
-	if !strings.Contains(body, `class="agentfm-desc"`) {
-		t.Error(`missing agentfm-desc span for the description`)
+	if !strings.Contains(body, `class="tr__desc"`) {
+		t.Error(`missing tr__desc span for the description`)
 	}
 	if !strings.Contains(body, "SPEC creation specialist") {
 		t.Error(`agent description text not rendered in the row`)
@@ -144,8 +144,9 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 //
 // Under the medium profile: manager-git=sonnet/low, manager-docs=opus/low,
 // manager-spec=opus/medium, plan-auditor=opus/medium. Expected order:
-//   core group: manager-git (sonnet/low) → manager-docs (opus/low) → manager-spec (opus/medium)
-//   meta group: plan-auditor (opus/medium)
+//
+//	core group: manager-git (sonnet/low) → manager-docs (opus/low) → manager-spec (opus/medium)
+//	meta group: plan-auditor (opus/medium)
 func TestAgentFMTierSortOrder(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "")

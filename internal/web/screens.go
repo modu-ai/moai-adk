@@ -20,19 +20,26 @@ import (
 // shellVM 은 모든 화면이 공유하는 셸 상태를 만든다.
 func (a *app) shellVM(r *http.Request, area, title, crumb string) ShellVM {
 	vm := ShellVM{
-		Area:    area,
-		Title:   title,
-		Crumb:   crumb,
-		Host:    a.resolveBindAddr(),
-		Project: filepath.Base(a.cfg.ProjectRoot),
-		Lang:    "en",
-		Live:    "on",
+		Area:        area,
+		Title:       title,
+		Crumb:       crumb,
+		Host:        a.resolveBindAddr(),
+		Project:     filepath.Base(a.cfg.ProjectRoot),
+		ProjectPath: a.cfg.ProjectRoot,
+		Lang:        "en",
+		Live:        "on",
 	}
 	if a.listProfiles != nil {
 		for _, p := range a.listProfiles() {
-			vm.Profiles = append(vm.Profiles, p.Name)
+			vm.Profiles = append(vm.Profiles, ProfileVM{Name: p.Name, Current: p.Current})
 			if p.Current {
 				vm.Profile = p.Name
+			}
+		}
+		// 이름 변경 · 삭제 대상은 서버 가드와 같은 조건으로 추린다.
+		for _, p := range vm.Profiles {
+			if p.Name != "default" && !p.Current && p.Name != vm.Profile {
+				vm.RenameTargets = append(vm.RenameTargets, p.Name)
 			}
 		}
 	}

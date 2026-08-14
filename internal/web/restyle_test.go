@@ -170,26 +170,26 @@ func TestComponentChromePresent(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "jline"})
 
 	for _, marker := range []string{
-		`class="section"`,           // section card per fieldset
-		`class="section__head"`,     // section header chrome
-		`class="field__title"`,      // per-field title
-		`<code class="field__key">`, // key chip
-		`class="field__desc"`,       // field description
-		`class="select-wrap"`,       // styled select chevron affordance
-		`class="btn btn--primary"`,  // signature-gradient primary button
+		`class="panel"`,        // 패널 카드 (구 .section)
+		`class="panel__head"`,  // 패널 머리글
+		`class="field__label"`, // 필드 제목
+		`<code class="key">`,   // 설정 키 칩
+		`class="field__help"`,  // 필드 설명
+		`class="sel"`,          // select 컨트롤
+		`class="in"`,           // text/number 입력
 	} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("rendered page missing component chrome marker %q", marker)
 		}
 	}
 
-	// The langSelect/optSelect helpers still produce the lang/opt select chrome in
-	// the render (retargeted from the retired pageTemplate parse-entry Lookup check).
-	if !strings.Contains(body, `class="select select--lang"`) {
-		t.Error("langSelect helper did not render the language select chrome")
+	// 저장 버튼은 폼 안이 아니라 상단바에 있다. 폼 바깥에서도 같은 폼을 제출하도록
+	// form= 로 묶여 있어야 한다 — 이게 끊기면 버튼이 조용히 아무것도 안 한다.
+	if !strings.Contains(body, `form="settings-form"`) {
+		t.Error("the top-bar save button is not bound to the settings form (form=\"settings-form\")")
 	}
-	if !strings.Contains(body, `class="select"`) {
-		t.Error("optSelect helper did not render the plain select chrome")
+	if !strings.Contains(body, `id="settings-form"`) {
+		t.Error("the settings form lost the id the top-bar save button targets")
 	}
 }
 
@@ -211,13 +211,17 @@ func TestAppbarRendered(t *testing.T) {
 
 	// The former id="themeToggle" expected marker is INVERTED by
 	// SPEC-DESIGN-MOAIWEBV2-002 (light-only) — see TestDarkThemeAbsence.
+	// 재설계에서 가로 appbar 는 좌측 레일 + 상단바로 갈라졌다. 브랜드와 접속
+	// 주소는 레일 머리에, 문맥 칩과 저장 클러스터는 상단바에 있다. 아래 표식은
+	// 그 새 자리에서 같은 정보를 확인한다.
 	for _, marker := range []string{
-		`class="appbar"`,       // appbar present
-		`class="brand__badge"`, // brand badge (bare mascot — no fill/rounded box)
-		`MoAI-ADK`,             // brand name (mascot green theme rebrand)
-		`class="loopback"`,     // loopback indicator
-		`id="uiLangSelect"`,    // S3 langpick (the non-colliding interface id)
-		`data-i18n`,            // S3 chrome translation markers
+		`class="rail"`,       // 좌측 레일
+		`class="rail__logo"`, // 브랜드 마크 (인라인 SVG)
+		`MoAI-ADK`,           // 브랜드 이름
+		`class="host"`,       // 접속 주소 표시 (구 loopback)
+		`class="top"`,        // 상단바
+		`id="uiLangSelect"`,  // 인터페이스 언어 선택기
+		`data-i18n`,          // 크롬 번역 표식
 	} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("appbar/body missing expected marker %q", marker)
@@ -333,14 +337,18 @@ func TestNameAttributesPreserved(t *testing.T) {
 	// an invalid submission re-renders the form with a per-field `field-error` span
 	// (the Templ equivalent of the {{with index .FieldErrors}} block).
 	errored := renderErroredBody(t)
-	if !strings.Contains(errored, `class="field-error"`) {
+	if !strings.Contains(errored, `class="field__err"`) {
 		t.Errorf("errored render missing the server-rendered per-field error span:\n%s", errored)
 	}
 }
 
-// TestProfileSwitchNameAttrPreserved verifies the profile switcher keeps its
-// name="__profile_select" POST attribute under the restyle (AC-WC4-009a).
-func TestProfileSwitchNameAttrPreserved(t *testing.T) {
+// TestProfileSwitchTargetsTheLoadPath verifies the profile switcher still uses
+// the GET ?profile=<name> load path (AC-WC4-009a).
+//
+// 재설계에서 전환 컨트롤이 auto-submit select 에서 팝오버 안의 링크로 바뀌었다.
+// 지켜야 할 계약은 컨트롤의 모양이 아니라 목적지다 — 전용 라우트를 새로 만들지
+// 않고 기존 로드 경로를 그대로 쓴다.
+func TestProfileSwitchTargetsTheLoadPath(t *testing.T) {
 	a := newTestApp(t)
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{}, nil
@@ -349,17 +357,25 @@ func TestProfileSwitchNameAttrPreserved(t *testing.T) {
 		return []profile.ProfileEntry{{Name: "default", Current: true}, {Name: "work"}}
 	}
 	body := serveGet(t, a.routes(), "/settings").Body.String()
-	if !strings.Contains(body, `name="__profile_select"`) {
-		t.Error("profile switcher dropped name=\"__profile_select\" under restyle")
+	if !strings.Contains(body, `href="/settings?profile=work"`) {
+		t.Errorf("the profile switcher does not link to the ?profile= load path:\n%s", body)
+	}
+	// 전용 전환 라우트는 없어야 한다 — 있으면 로드 경로가 둘로 갈라진다.
+	if strings.Contains(body, `/profile/select`) {
+		t.Error("a dedicated profile-select route appeared; switching must reuse the GET load path")
 	}
 }
 
 // TestBannerKindMapping verifies AC-WC4-010: server-set .BannerKind ok/error maps
-// to banner--success/banner--error chrome; the server kind values are unchanged.
+// to distinct banner chrome; the server kind values are unchanged.
+//
+// 재설계의 유채색은 danger 하나뿐이라 성공 배너에는 고유 변형이 없다 — 성공은
+// 중립 배너(.banner)이고 오류만 .banner--warn 을 얹는다. 여전히 두 상태는
+// 눈으로 갈라지며, 서버가 내보내는 kind 값("ok"/"error")은 그대로다.
 func TestBannerKindMapping(t *testing.T) {
 	a := newTestApp(t)
 
-	t.Run("error → banner--error", func(t *testing.T) {
+	t.Run("error → banner--warn", func(t *testing.T) {
 		var got profile.ProfilePreferences
 		_ = got
 		a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
@@ -368,15 +384,12 @@ func TestBannerKindMapping(t *testing.T) {
 		form := url.Values{"__profile": {"default"}, "permission_mode": {"bogus-mode"}}
 		rec := servePost(t, a.routes(), "/save", form)
 		body := rec.Body.String()
-		if !strings.Contains(body, "banner--error") {
-			t.Errorf("error banner not mapped to banner--error chrome:\n%s", body)
-		}
-		if strings.Contains(body, "banner--success") {
-			t.Error("error banner incorrectly rendered banner--success chrome")
+		if !strings.Contains(body, "banner--warn") {
+			t.Errorf("error banner not mapped to banner--warn chrome:\n%s", body)
 		}
 	})
 
-	t.Run("ok → banner--success", func(t *testing.T) {
+	t.Run("ok → neutral banner", func(t *testing.T) {
 		a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
 		a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
 		a.writeProjectConfig = func(string, string, string) error { return nil }
@@ -386,8 +399,13 @@ func TestBannerKindMapping(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("valid save status = %d, want 200", rec.Code)
 		}
-		if !strings.Contains(body, "banner--success") {
-			t.Errorf("success banner not mapped to banner--success chrome:\n%s", body)
+		if !strings.Contains(body, `class="banner" role="status"`) {
+			t.Errorf("success banner not rendered with the neutral banner chrome:\n%s", body)
+		}
+		// agentfm 패널이 자체 주의 배너를 들고 있으므로 페이지 전역 검색으로는
+		// 갈라낼 수 없다. 상태 배너(role="status")만 좁혀서 본다.
+		if strings.Contains(body, `class="banner banner--warn" role="status"`) {
+			t.Error("a successful save rendered the warning banner variant")
 		}
 	})
 
@@ -454,23 +472,24 @@ func TestDarkThemeAbsence(t *testing.T) {
 		t.Error("i18n.js still carries the theme.aria key (must be removed from all 4 locales)")
 	}
 
-	// (6) Board page source (board.templ:15 lineage): the server-rendered
-	// data-theme attribute and the board theme toggle are gone; lang="en" stays.
-	boardSrc := readGoSource(t, "board.templ")
-	if strings.Contains(boardSrc, "data-theme") || strings.Contains(boardSrc, "themeToggle") {
-		t.Error("board.templ still carries data-theme / themeToggle (dark theme must be fully retired)")
+	// (6) 셸 소스: 모든 화면이 같은 <html> 셸을 쓴다 (구 board.templ 계보를 흡수).
+	// 서버가 내보내는 data-theme 속성과 테마 토글은 없고, lang 속성은 남는다.
+	shellSrc := readGoSource(t, "shell.templ")
+	if strings.Contains(shellSrc, "data-theme") || strings.Contains(shellSrc, "themeToggle") {
+		t.Error("shell.templ still carries data-theme / themeToggle (dark theme must be fully retired)")
 	}
-	if !strings.Contains(boardSrc, `lang="en"`) {
-		t.Error(`board.templ <html> lost its lang="en" attribute (must be preserved)`)
+	if !strings.Contains(shellSrc, `<html lang={ vm.Lang }>`) {
+		t.Error("shell.templ <html> lost its lang attribute (must be preserved)")
 	}
 
-	// (7) Settings page source: theme markers gone, language branch present.
+	// (7) Settings page source: theme markers gone. The FOUC language branch now
+	// lives in the shell <head>, shared by every screen, so it is asserted there.
 	rootSrc := readGoSource(t, "root.templ")
 	if strings.Contains(rootSrc, "data-theme") || strings.Contains(rootSrc, "moai-console-theme") || strings.Contains(rootSrc, "themeToggle") {
 		t.Error("root.templ still carries theme markers (dark theme must be fully retired)")
 	}
-	if !strings.Contains(rootSrc, "moai-console-lang") {
-		t.Error("root.templ FOUC language branch (moai-console-lang) missing — AC-MWA-003b")
+	if !strings.Contains(shellSrc, "moai-console-lang") {
+		t.Error("shell.templ FOUC language branch (moai-console-lang) missing — AC-MWA-003b")
 	}
 
 	// (8) No theme field on the server persistence path (negative guard kept
@@ -531,10 +550,10 @@ func TestAccessibilityCues(t *testing.T) {
 	// Error cue is non-color: an errored render carries the field-error icon+text
 	// span and the has-error border class.
 	errored := renderErroredBody(t)
-	if !strings.Contains(errored, `class="field-error"`) {
+	if !strings.Contains(errored, `class="field__err"`) {
 		t.Error("non-color error cue (.field-error icon+text span) missing")
 	}
-	if !strings.Contains(errored, "has-error") {
+	if !strings.Contains(errored, "field__err") {
 		t.Error("error border cue (.has-error) missing")
 	}
 	// An errored field renders aria-invalid + aria-describedby association.

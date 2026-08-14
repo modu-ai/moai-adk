@@ -118,8 +118,8 @@ func TestM5AgentFMRenderBadgeAndSelects(t *testing.T) {
 	body := rec.Body.String()
 
 	// Tier badge renders (🔴 for manager-spec — display-only, from the name table).
-	if !strings.Contains(body, `class="agentfm-badge"`) {
-		t.Error(`rendered page missing .agentfm-badge element (REQ-WC-006 tier badge)`)
+	if !strings.Contains(body, `class="badge"`) {
+		t.Error(`rendered page missing .badge element (REQ-WC-006 tier badge)`)
 	}
 	if !strings.Contains(body, "🔴") {
 		t.Error(`rendered page missing the 🔴 tier glyph for manager-spec`)

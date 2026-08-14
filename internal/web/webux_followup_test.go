@@ -70,7 +70,7 @@ func agentModelSelect(t *testing.T, body, agent string) string {
 	return body[open : open+close]
 }
 
-// agentDescSpan extracts the markup of one agent's agentfm-desc <span> — the
+// agentDescSpan extracts the markup of one agent's tr__desc <span> — the
 // element carrying the data-i18n="agentdesc.<name>" key and the server-side
 // English baseline text — so baseline-attribute assertions cannot be satisfied
 // by an unrelated span elsewhere on the page.
@@ -79,21 +79,21 @@ func agentDescSpan(t *testing.T, body, agent string) string {
 	needle := `data-i18n="agentdesc.` + agent + `"`
 	open := strings.Index(body, needle)
 	if open < 0 {
-		t.Fatalf("no agentfm-desc span rendered for agent %q (does its .md frontmatter carry a description?)", agent)
+		t.Fatalf("no tr__desc span rendered for agent %q (does its .md frontmatter carry a description?)", agent)
 	}
 	// Walk back to the <span that opens this attribute.
 	spanStart := strings.LastIndex(body[:open], "<span")
 	if spanStart < 0 {
-		t.Fatalf("agentfm-desc data-i18n attribute for %q has no opening <span", agent)
+		t.Fatalf("tr__desc data-i18n attribute for %q has no opening <span", agent)
 	}
 	end := strings.Index(body[open:], "</span>")
 	if end < 0 {
-		t.Fatalf("unterminated agentfm-desc span for agent %q", agent)
+		t.Fatalf("unterminated tr__desc span for agent %q", agent)
 	}
 	return body[spanStart : open+end+len("</span>")]
 }
 
-// TestD3AgentDescBaselineAttr verifies the agentfm-desc span emits a
+// TestD3AgentDescBaselineAttr verifies the tr__desc span emits a
 // data-i18n-baseline attribute carrying the server-side English description.
 // applyI18n (app.js) restores this baseline when the active locale's dictionary
 // lacks the agentdesc.<name> key — en has none by design (the .md frontmatter is
@@ -101,7 +101,7 @@ func agentDescSpan(t *testing.T, body, agent string) string {
 // stuck on the row.
 func TestD3AgentDescBaselineAttr(t *testing.T) {
 	root := t.TempDir()
-	// seedAgentFMFile writes no description; the agentfm-desc span renders only
+	// seedAgentFMFile writes no description; the tr__desc span renders only
 	// when the frontmatter carries one, so seed the file directly here.
 	agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 	if err := os.MkdirAll(agentsDir, 0o755); err != nil {
@@ -118,10 +118,10 @@ func TestD3AgentDescBaselineAttr(t *testing.T) {
 	span := agentDescSpan(t, body, "manager-spec")
 
 	if !strings.Contains(span, `data-i18n="agentdesc.manager-spec"`) {
-		t.Errorf("agentfm-desc span missing data-i18n key:\n%s", span)
+		t.Errorf("tr__desc span missing data-i18n key:\n%s", span)
 	}
 	if !strings.Contains(span, `data-i18n-baseline=`) {
-		t.Errorf("agentfm-desc span missing data-i18n-baseline attribute — without it applyI18n cannot restore the English text on a KO→EN switch (the previous locale's text stays stuck):\n%s", span)
+		t.Errorf("tr__desc span missing data-i18n-baseline attribute — without it applyI18n cannot restore the English text on a KO→EN switch (the previous locale's text stays stuck):\n%s", span)
 	}
 }
 
@@ -323,9 +323,9 @@ func TestD3DescriptionCarriesI18nKeyWithEnglishBaseline(t *testing.T) {
 		t.Error("the English .md baseline text is no longer rendered server-side")
 	}
 	// The i18n binding must sit on the description span itself.
-	spanRe := regexp.MustCompile(`<span class="agentfm-desc"[^>]*data-i18n="agentdesc\.manager-spec"[^>]*>`)
+	spanRe := regexp.MustCompile(`<span class="tr__desc"[^>]*data-i18n="agentdesc\.manager-spec"[^>]*>`)
 	if !spanRe.MatchString(body) {
-		t.Error("data-i18n is not bound to the .agentfm-desc span")
+		t.Error("data-i18n is not bound to the .tr__desc span")
 	}
 }
 

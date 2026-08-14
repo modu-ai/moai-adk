@@ -5,7 +5,6 @@ package web
 // exercised by the happy-path render tests.
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -83,32 +82,12 @@ func TestOverlaySchemaEditsInitializesNilMap(t *testing.T) {
 	}
 }
 
-// TestBoardBannerRendersErrorOnly pins the board's banner: the SPEC board is
-// read-only, so its only banner is an error. A success banner there would
-// suggest a write happened.
-func TestBoardBannerRendersErrorOnly(t *testing.T) {
-	var sb strings.Builder
-	if err := boardBanner(boardView{Banner: "could not read .moai/specs"}).
-		Render(context.Background(), &sb); err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	html := sb.String()
-	if !strings.Contains(html, "banner--error") {
-		t.Errorf("board banner is not styled as an error:\n%s", html)
-	}
-	if strings.Contains(html, "banner--success") {
-		t.Error("the read-only board rendered a success banner")
-	}
-	if !strings.Contains(html, "could not read .moai/specs") {
-		t.Error("board banner did not render the message")
-	}
-}
-
-// TestBoardSurfacesReadFailure is the end-to-end half: a board read failure
-// reaches the user as a banner on a 200 page rather than a blank or a 500.
-func TestBoardSurfacesReadFailure(t *testing.T) {
+// TestSpecsScreenSurvivesUnreadableRoot: an unreadable project root must not
+// blank the SPEC screen. It renders with empty lists rather than failing —
+// "nothing to show" and "could not look" are both survivable, and neither is a
+// reason to hand the user a blank page.
+func TestSpecsScreenSurvivesUnreadableRoot(t *testing.T) {
 	a := newTestApp(t)
-	// Point the board at a path that cannot be a spec directory.
 	a.cfg.ProjectRoot = "/nonexistent-root-for-board-test"
 	h := a.routes()
 
@@ -117,11 +96,16 @@ func TestBoardSurfacesReadFailure(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /specs status = %d, want 200 (a read failure is reported inline, not as an error page)", rec.Code)
+		t.Fatalf("GET /specs status = %d, want 200 (an unreadable root renders empty, not as an error page)", rec.Code)
 	}
 	body := rec.Body.String()
-	if strings.Contains(body, "<html") && len(strings.TrimSpace(body)) == 0 {
-		t.Error("board rendered an empty page for an unreadable root")
+	if len(strings.TrimSpace(body)) == 0 {
+		t.Fatal("/specs rendered an empty page for an unreadable root")
+	}
+	// The empty-state keys are the positive signal that the panels rendered at
+	// all — a page that merely contains <html> could still have lost them.
+	if !strings.Contains(body, "board.closedebt.empty") {
+		t.Error("/specs lost the close-debt panel for an unreadable root")
 	}
 }
 

@@ -9,116 +9,130 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
-// sectionCount renders a section field-count label DERIVED from the schema
-// length (SPEC-WEB-CONSOLE-011 B11 — no hardcoded "N fields" literals; the
-// unit suffix is i18n-keyed so 4-locale rendering is preserved).
+// 설정 패널과 행 위젯. 재설계에서 마크업 어휘가 §4-§7 로 옮겨졌다:
+// .section → .panel · .field__title → .field__label · .field__desc → .field__help ·
+// .field-error → .field__err · .input → .in · .select → .sel · .radio-group → .seg ·
+// .field__key → .key. 옮긴 것은 클래스 이름과 요소 배치뿐이고, name 속성 ·
+// id · data-i18n 키 · option value · hidden companion 은 전부 그대로다 — 저장
+// 경로는 이 파일 바깥(handlers.go / schemaform.go)이 소유한다.
+//
+// 필드 라벨은 사람이 읽는 제목 + 기술 식별자 칩(.key)의 쌍이다. 칩은 번역하지
+// 않는다 (i18n.js 계약: "Field identifiers stay in English as code chips").
+
+// panelChrome 은 설정 패널 하나의 머리글 정보다. Count 는 필드 수이고, 밀도는
+// 여기서 파생된다 — 필드가 많은 탭은 라벨을 좌측에 고정한 조밀 배치로 접힌다
+// (§6 의 밀도 2종).
+type panelChrome struct {
+	Icon     string
+	TitleKey string
+	Title    string
+	DescKey  string
+	Desc     string
+	Count    int
+}
+
+// panelDensity 는 필드 수로 밀도를 고른다. 경계값 7 은 §6 이 정한 값이다.
+func panelDensity(count int) string {
+	if count >= 7 {
+		return "dense"
+	}
+	return "roomy"
+}
+
+templ settingsPanel(p panelChrome) {
+	<section class="panel" data-density={ panelDensity(p.Count) }>
+		<div class="panel__head">
+			<h2 class="panel__title">
+				<span class="panel__ico">@icon(p.Icon)</span>
+				<span data-i18n={ p.TitleKey }>{ p.Title }</span>
+			</h2>
+			@sectionCount(p.Count)
+		</div>
+		<p class="panel__help" data-i18n={ p.DescKey }>{ p.Desc }</p>
+		{ children... }
+	</section>
+}
+
+// sectionCount renders a panel field-count label DERIVED from the schema length
+// (SPEC-WEB-CONSOLE-011 B11 — no hardcoded "N fields" literals; the unit suffix
+// is i18n-keyed so 4-locale rendering is preserved).
 templ sectionCount(n int) {
-	<span class="section__count">{ strconv.Itoa(n) } <span data-i18n="count.fields">field(s)</span></span>
+	<span class="panel__meta">{ strconv.Itoa(n) } <span data-i18n="count.fields">field(s)</span></span>
 }
 
-// The fieldsets are typed Templ components taking the pageView; the Language
-// fieldset reuses langSelect; Launch/Project reuse optSelect; permission_mode is
-// rendered inline. Every empty-option label is single-sourced from the settings
-// schema (settings.EmptyLabelFor) so the web and TUI render identical canonical
-// labels per field. The Statusline section is NOT rendered here (M3 redesign) —
-// the statusline schema + statusline.yaml remain consumed by the TUI /
-// profile_setup CLI path.
-
-// fieldsetIdentity ports the Identity fieldset (user_name text input, ~109-128).
+// fieldsetIdentity ports the Identity panel (user_name text input).
 templ fieldsetIdentity(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.identity.title">Identity</span></legend>
-				@sectionCount(len(settings.SectionFields(settings.SectionIdentity)))
+	@settingsPanel(panelChrome{
+		Icon: "user-round", TitleKey: "sec.identity.title", Title: "Identity",
+		DescKey: "sec.identity.desc", Desc: "Who you are in commits and sessions.",
+		Count: len(settings.SectionFields(settings.SectionIdentity)),
+	}) {
+		<div class="field">
+			@fieldHead("user_name", "Display name", "user_name")
+			<p class="field__help" data-i18n="f.user_name.desc">The name shown in commits and session headers.</p>
+			<div class="field__ctl">
+				if hasFieldError(view.FieldErrors, "user_name") {
+					<input class="in" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off" aria-invalid="true" aria-describedby="err_user_name"/>
+				} else {
+					<input class="in" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off"/>
+				}
 			</div>
-			<p class="section__desc" data-i18n="sec.identity.desc">Who you are in commits and sessions.</p>
+			@fieldErr(view.FieldErrors, "user_name")
 		</div>
-		<div class="section__body">
-			<div class="grid grid--1">
-				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "user_name")) }>
-					<span class="field__label"><span class="field__title" data-i18n="f.user_name.title">Display name</span><code class="field__key">user_name</code></span>
-					<span class="field__desc" data-i18n="f.user_name.desc">The name shown in commits and session headers.</span>
-					if hasFieldError(view.FieldErrors, "user_name") {
-						<input class="input" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off" aria-invalid="true" aria-describedby="err_user_name"/>
-						<span class="field-error" id="err_user_name">@icon("alert-circle")<span>{ fieldErrorMsg(view.FieldErrors, "user_name") }</span></span>
-					} else {
-						<input class="input" type="text" id="user_name" name="user_name" value={ view.Prefs.UserName } placeholder="e.g. jline" autocomplete="off"/>
-					}
-				</div>
-			</div>
-		</div>
-	</fieldset>
+	}
 }
 
-// fieldsetLanguage ports the Language fieldset (4x langSelect, ~130-147).
+// fieldsetLanguage ports the Language panel (4x langSelect).
 templ fieldsetLanguage(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("languages")</span><span data-i18n="sec.language.title">Language</span></legend>
-				@sectionCount(len(settings.SectionFields(settings.SectionLanguage)))
-			</div>
-			<p class="section__desc" data-i18n="sec.language.desc">Languages used across conversation, commits, comments, and docs.</p>
-		</div>
-		<div class="section__body">
-			<div class="grid">
-				@langSelect(langSelectArgs{Name: "conversation_lang", Title: "Conversation language", Key: "conversation_lang", Desc: "Language the assistant replies in during chat.", Value: view.Prefs.ConversationLang, Options: view.LangOptions, Errors: view.FieldErrors})
-				@langSelect(langSelectArgs{Name: "git_commit_lang", Title: "Commit message language", Key: "git_commit_lang", Desc: "Language used when writing git commit messages.", Value: view.Prefs.GitCommitLang, Options: view.LangOptions, Errors: view.FieldErrors})
-				@langSelect(langSelectArgs{Name: "code_comment_lang", Title: "Code comment language", Key: "code_comment_lang", Desc: "Language for comments written into your code.", Value: view.Prefs.CodeCommentLang, Options: view.LangOptions, Errors: view.FieldErrors})
-				@langSelect(langSelectArgs{Name: "doc_lang", Title: "Documentation language", Key: "doc_lang", Desc: "Language for generated docs and READMEs.", Value: view.Prefs.DocLang, Options: view.LangOptions, Errors: view.FieldErrors})
-			</div>
-		</div>
-	</fieldset>
+	@settingsPanel(panelChrome{
+		Icon: "languages", TitleKey: "sec.language.title", Title: "Language",
+		DescKey: "sec.language.desc", Desc: "Languages used across conversation, commits, comments, and docs.",
+		Count: len(settings.SectionFields(settings.SectionLanguage)),
+	}) {
+		@langSelect(langSelectArgs{Name: "conversation_lang", Title: "Conversation language", Key: "conversation_lang", Desc: "Language the assistant replies in during chat.", Value: view.Prefs.ConversationLang, Options: view.LangOptions, Errors: view.FieldErrors})
+		@langSelect(langSelectArgs{Name: "git_commit_lang", Title: "Commit message language", Key: "git_commit_lang", Desc: "Language used when writing git commit messages.", Value: view.Prefs.GitCommitLang, Options: view.LangOptions, Errors: view.FieldErrors})
+		@langSelect(langSelectArgs{Name: "code_comment_lang", Title: "Code comment language", Key: "code_comment_lang", Desc: "Language for comments written into your code.", Value: view.Prefs.CodeCommentLang, Options: view.LangOptions, Errors: view.FieldErrors})
+		@langSelect(langSelectArgs{Name: "doc_lang", Title: "Documentation language", Key: "doc_lang", Desc: "Language for generated docs and READMEs.", Value: view.Prefs.DocLang, Options: view.LangOptions, Errors: view.FieldErrors})
+	}
 }
 
-// fieldsetLaunch ports the Launch fieldset (~149-177): an inline permission_mode
-// select (with the "(project default)" empty-option-when-blank logic) + 2x
-// optSelect (model / effort_level). model_policy was removed (G3-5).
+// fieldsetLaunch ports the Launch panel: an inline permission_mode select (with
+// the "(project default)" empty-option-when-blank logic) + 2x optSelect
+// (model / effort_level).
 templ fieldsetLaunch(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("rocket")</span><span data-i18n="sec.launch.title">LLM</span></legend>
-				@sectionCount(len(settings.SectionFields(settings.SectionLaunch)))
-			</div>
-			<p class="section__desc" data-i18n="sec.launch.desc">How sessions start — permissions, model, and reasoning effort.</p>
-		</div>
-		<div class="section__body">
-			<div class="grid">
-				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "permission_mode")) }>
-					<span class="field__label"><span class="field__title" data-i18n="f.permission_mode.title">Permission mode</span><code class="field__key">permission_mode</code></span>
-					<span class="field__desc" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</span>
-					<span class="select-wrap">
-						<select
-							class="select"
-							id="permission_mode"
-							name="permission_mode"
-							if hasFieldError(view.FieldErrors, "permission_mode") {
-								aria-invalid="true"
-								aria-describedby="err_permission_mode"
-							}
-						>
-							for _, m := range view.PermissionModes {
-								@permissionOption(m, view.Prefs.PermissionMode)
-							}
-						</select>
-					</span>
-					if msg := fieldErrorMsg(view.FieldErrors, "permission_mode"); msg != "" {
-						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
+	@settingsPanel(panelChrome{
+		Icon: "rocket", TitleKey: "sec.launch.title", Title: "LLM",
+		DescKey: "sec.launch.desc", Desc: "How sessions start — permissions, model, and reasoning effort.",
+		Count: len(settings.SectionFields(settings.SectionLaunch)),
+	}) {
+		<div class="field">
+			@fieldHead("permission_mode", "Permission mode", "permission_mode")
+			<p class="field__help" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</p>
+			<div class="field__ctl">
+				<select
+					class="sel"
+					id="permission_mode"
+					name="permission_mode"
+					if hasFieldError(view.FieldErrors, "permission_mode") {
+						aria-invalid="true"
+						aria-describedby="err_permission_mode"
 					}
-				</div>
-				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
+				>
+					for _, m := range view.PermissionModes {
+						@permissionOption(m, view.Prefs.PermissionMode)
+					}
+				</select>
 			</div>
+			@fieldErr(view.FieldErrors, "permission_mode")
 		</div>
-	</fieldset>
+		@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+		@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
+	}
 }
 
 // permissionOption ports the permission_mode option rendering: an empty value
 // renders "(project default)", otherwise the value itself; the current value is
-// marked selected (page.html.tmpl ~165-167). M5-b D4: OptionDef 를 받아
-// data-i18n 키를 방출한다. 빈 값은 opt.project_default 키를 쓴다.
+// marked selected. M5-b D4: OptionDef 를 받아 data-i18n 키를 방출한다.
 templ permissionOption(opt settings.OptionDef, current string) {
 	if opt.Value == current {
 		if opt.Value == "" {
@@ -135,67 +149,42 @@ templ permissionOption(opt settings.OptionDef, current string) {
 	}
 }
 
-// SPEC-DESIGN-MOAIWEBV2-001 M1: fieldsetProject and its detectionField helper
-// were removed (REQ-MWV2-020/021). The `project` tabpanel was unreachable (no
-// navigable data-tab), so its render surface is deleted. The server-side parse
-// seam (parseProjectNestedForm in projectconfig.go, wired in handlers.go) and the
-// pageView.Cur* fields it consumes are PRESERVED (REQ-MWV2-031 zero server-contract
-// change) — development_mode / git_convention / quality.* stay editable via yaml
-// config files / CLI. Those view-model fields are now inert (seeded but not
-// rendered); they are deliberately NOT pruned because handlers.go + its tests still
-// reference them (deletion would cascade into the preserved server contract).
-
-// ─── SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장의 제네릭 스키마 fieldset ───────────
-//
-// 필드 라벨은 기술 식별자(key chip)로 렌더하며 data-i18n을 방출하지 않는다 —
-// i18n.js 계약("Field identifiers stay in English as code chips and are NOT
-// translated")과 정합. 섹션 title/desc와 공용 라벨(count.fields / ro.note /
-// raw.note)만 i18n 키를 갖는다 (REQ-WC11-061 — 신규 prose 문자열 전부 4-locale).
+// ─── SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장의 제네릭 스키마 패널 ───────────────
 
 // fieldsetSchemaSection은 확장 섹션 하나를 스키마 주도로 렌더한다: 편집 스칼라
 // 필드(REQ-WC11-016) + read-only 표시 키(REQ-WC11-013/019) + collapsed raw view
 // 서브블록(REQ-WC11-062).
 templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon(meta.Icon)</span><span data-i18n={ meta.TitleKey }>{ meta.Title }</span></legend>
-				@sectionCount(len(meta.Fields))
-			</div>
-			<p class="section__desc" data-i18n={ meta.DescKey }>{ meta.Desc }</p>
-			// SPEC-WEB-CONSOLE-REDESIGN-001 M4: panel-level note, rendered once.
-			// A fact that holds for every field in a panel belongs at the header,
-			// not repeated on each row.
-			if meta.NoteKey != "" {
-				<p class="section__note" data-i18n={ meta.NoteKey }>{ meta.Note }</p>
+	@settingsPanel(panelChrome{
+		Icon: meta.Icon, TitleKey: meta.TitleKey, Title: meta.Title,
+		DescKey: meta.DescKey, Desc: meta.Desc, Count: len(meta.Fields),
+	}) {
+		// 패널 단위 주의 문구는 머리글에 한 번만 쓴다. 패널의 모든 필드에 공통으로
+		// 걸리는 사실을 필드마다 되풀이하지 않는다 (REQ-WCR M4).
+		if meta.NoteKey != "" {
+			<p class="panel__help" data-i18n={ meta.NoteKey }>{ meta.Note }</p>
+		}
+		for _, f := range meta.Fields {
+			@schemaFieldWidget(view, f)
+		}
+		for _, ro := range settings.ReadOnlyDisplayFields() {
+			if meta.Extras && ro.Section == meta.ID {
+				@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
 			}
-		</div>
-		<div class="section__body">
-			<div class="grid">
-				for _, f := range meta.Fields {
-					@schemaFieldWidget(view, f)
-				}
-				for _, ro := range settings.ReadOnlyDisplayFields() {
-					if meta.Extras && ro.Section == meta.ID {
-						@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
-					}
-				}
-				// SPEC-GLM-KEY-INPUT-001 M3: the GLM API key control is a
-				// hand-built secret-class field rendered inside the 3rd Party
-				// LLM section, adjacent to the GLM model tier fields. It is NOT
-				// a settings.FieldDef — D-2 keeps it out of AllFields() so no
-				// generic schema loop can ever pick it up (R-1 / REQ-GKI-003-003).
-				if glmKeyFieldBelongsToLLMSection(meta.ID) {
-					@fieldsetGLMKey(view)
-				}
-			</div>
-			for _, rb := range settings.RawViewBlocks() {
-				if meta.Extras && rb.Section == meta.ID {
-					@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
-				}
+		}
+		// SPEC-GLM-KEY-INPUT-001 M3: the GLM API key control is a hand-built
+		// secret-class field rendered inside the 3rd Party LLM section, adjacent to
+		// the GLM model tier fields. It is NOT a settings.FieldDef — D-2 keeps it
+		// out of AllFields() so no generic schema loop can ever pick it up.
+		if glmKeyFieldBelongsToLLMSection(meta.ID) {
+			@fieldsetGLMKey(view)
+		}
+		for _, rb := range settings.RawViewBlocks() {
+			if meta.Extras && rb.Section == meta.ID {
+				@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
 			}
-		</div>
-	</fieldset>
+		}
+	}
 }
 
 // fieldsetGLMKey renders the GLM API key control. It is a secret-class input:
@@ -206,51 +195,51 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 // stored key (REQ-GKI-004-002), and nothing for a key of four characters or
 // fewer (REQ-GKI-004-004 / plan §G AP-2c).
 templ fieldsetGLMKey(view pageView) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, glmAPIKeyFormField)) }>
-		<span class="field__label">
-			<span class="field__title" data-i18n="f.glm_api_key.title">GLM API key</span>
-			<code class="field__key">~/.moai/.env.glm</code>
-		</span>
-		<span class="field__desc" data-i18n="f.glm_api_key.desc">Credential for the GLM backend. Stored at mode 0600 outside the project tree; never echoed back.</span>
-		<input
-			class="input"
-			type="password"
-			id={ glmAPIKeyFormField }
-			name={ glmAPIKeyFormField }
-			autocomplete="off"
-			value=""
-			if hasFieldError(view.FieldErrors, glmAPIKeyFormField) {
-				aria-invalid="true"
-				aria-describedby={ "err_" + glmAPIKeyFormField }
-			}
-		/>
-		if view.GLMKeyConfigured {
-			<span class="field__hint">
-				@icon("check")
-				<span data-i18n="f.glm_api_key.configured">Configured</span>
-				if view.GLMKeyHint != "" {
-					<code class="field__hint-key">…{ view.GLMKeyHint }</code>
+	<div class="field">
+		<div class="field__head">
+			<span class="field__label" data-i18n="f.glm_api_key.title">GLM API key</span>
+			<code class="key">~/.moai/.env.glm</code>
+		</div>
+		<p class="field__help" data-i18n="f.glm_api_key.desc">Credential for the GLM backend. Stored at mode 0600 outside the project tree; never echoed back.</p>
+		<div class="field__ctl">
+			<input
+				class="in"
+				type="password"
+				id={ glmAPIKeyFormField }
+				name={ glmAPIKeyFormField }
+				autocomplete="off"
+				value=""
+				if hasFieldError(view.FieldErrors, glmAPIKeyFormField) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + glmAPIKeyFormField }
 				}
-			</span>
-			// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-034): explicit reveal.
-			// The default render still carries value="" above — this control
-			// fetches the plaintext from the server only when clicked, so the
-			// never-echo contract on the page itself is untouched. Rendered only
-			// when a key is actually stored; there is nothing to reveal otherwise.
-			<span class="field__reveal">
-				<button
-					class="btn btn--ghost btn--sm"
-					type="button"
-					id="glmKeyReveal"
-					data-reveal-url={ glmKeyRevealPath }
-					data-i18n="f.glm_api_key.reveal"
-				>Show stored key</button>
-				<code class="field__revealed" id="glmKeyRevealed" hidden></code>
-			</span>
-		}
-		if msg := fieldErrorMsg(view.FieldErrors, glmAPIKeyFormField); msg != "" {
-			<span class="field-error" id={ "err_" + glmAPIKeyFormField }>@icon("alert-circle")<span>{ msg }</span></span>
-		}
+			/>
+			if view.GLMKeyConfigured {
+				<p class="field__help">
+					@iconAt("check", 13)
+					<span data-i18n="f.glm_api_key.configured">Configured</span>
+					if view.GLMKeyHint != "" {
+						<code class="key">…{ view.GLMKeyHint }</code>
+					}
+				</p>
+				// REQ-WCR-034: explicit reveal. The default render still carries
+				// value="" above — this control fetches the plaintext from the server
+				// only when clicked, so the never-echo contract on the page itself is
+				// untouched. Rendered only when a key is actually stored; there is
+				// nothing to reveal otherwise.
+				<p class="field__help">
+					<button
+						class="btn btn--ghost"
+						type="button"
+						id="glmKeyReveal"
+						data-reveal-url={ glmKeyRevealPath }
+						data-i18n="f.glm_api_key.reveal"
+					>Show stored key</button>
+					<code class="key" id="glmKeyRevealed" hidden></code>
+				</p>
+			}
+		</div>
+		@fieldErr(view.FieldErrors, glmAPIKeyFormField)
 	</div>
 }
 
@@ -272,47 +261,85 @@ templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 	}
 }
 
-// fieldDescription renders the REQ-WC-015 field-level description (design.md §H.1
-// option (a)): a muted helper paragraph below the label, resolved client-side from
-// the FieldDef.Description i18n key (fieldDesc.<sectionID>.<fieldID> convention).
-// Empty Description = no description rendered. SPEC-WEBCONF-SIMPLIFY-001 M4.
+// fieldDescription renders the REQ-WC-015 field-level description: a muted
+// helper line below the control, resolved client-side from the
+// FieldDef.Description i18n key. Empty Description = nothing rendered.
 templ fieldDescription(f settings.FieldDef) {
 	if f.Description != "" {
-		<p class="field-description" data-i18n={ f.Description }></p>
+		<p class="field__help" data-i18n={ f.Description }></p>
 	}
 }
 
+// schemaFieldHead 는 스키마 필드의 라벨 줄이다. 배지 두 종(선언적 힌트 ·
+// 저장만 되고 적용되지 않음)이 붙을 수 있다.
+templ schemaFieldHead(f settings.FieldDef) {
+	<div class="field__head">
+		<span class="field__label" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+		<code class="key">{ f.Name }</code>
+		// REQ-WCR-033: 값이 저장은 되지만 어떤 런타임 경로도 읽지 않는 필드는 행에서
+		// 그렇다고 말한다. 이름 매칭이 아니라 FieldDef.StoreOnly 로 구동하므로
+		// 위젯은 필드에 무지한 채로 남는다.
+		if f.StoreOnly {
+			<span class="badge badge--outline" data-store-only={ f.Name } data-i18n="badge.store_only">Stored only — not applied at runtime</span>
+		}
+	</div>
+}
+
 // schemaTextRow — 자유 텍스트. EmptyLabel이 있으면 placeholder로 렌더한다
-// (빈 값의 "(runtime default)" 시맨틱 — REQ-WC11-014/EC-4. M4 다이어트로
-// claude_models tier는 제거되었고, EmptyLabel 메커니즘은 generic placeholder로
-// 잔류한다.) M5-b D3: field__title + field__desc data-i18n 훅 추가 (key chip 은
-// data-i18n 없이 영문 코드 토큰 유지).
+// (빈 값의 "(runtime default)" 시맨틱 — REQ-WC11-014/EC-4).
 templ schemaTextRow(f settings.FieldDef, value string, errs map[string]string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<input class="input" type="text" id={ f.Name } name={ f.Name } value={ value } placeholder={ f.EmptyLabel } autocomplete="off"/>
-		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+	<div class="field">
+		@schemaFieldHead(f)
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		<div class="field__ctl">
+			// aria-invalid 는 접근성 표식이면서 동시에 오류 테두리의 스타일 훅이다
+			// (§6 의 .in[aria-invalid="true"]). 둘을 한 속성에 묶어 두면 "보이는
+			// 오류"와 "읽히는 오류"가 갈라질 수 없다.
+			<input
+				class="in"
+				type="text"
+				id={ f.Name }
+				name={ f.Name }
+				value={ value }
+				placeholder={ f.EmptyLabel }
+				autocomplete="off"
+				if hasFieldError(errs, f.Name) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + f.Name }
+				}
+			/>
+		</div>
+		@fieldErr(errs, f.Name)
 	</div>
 }
 
-// schemaNumberRow — 정수/실수 입력. M5-b D3: field__title + field__desc 추가.
+// schemaNumberRow — 정수/실수 입력.
 templ schemaNumberRow(f settings.FieldDef, value, step string, errs map[string]string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<input class="input" type="number" id={ f.Name } name={ f.Name } value={ value } step={ step } autocomplete="off"/>
-		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+	<div class="field">
+		@schemaFieldHead(f)
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		<div class="field__ctl">
+			<input
+				class="in"
+				type="number"
+				id={ f.Name }
+				name={ f.Name }
+				value={ value }
+				step={ step }
+				autocomplete="off"
+				if hasFieldError(errs, f.Name) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + f.Name }
+				}
+			/>
+		</div>
+		@fieldErr(errs, f.Name)
 	</div>
 }
 
-// schemaToggleRow — bool 필드. 2옵션 라디오 그룹(사용 / 미사용)으로 렌더한다
-// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-020). 체크박스는 "체크 안 함"과 "이 필드를
-// 못 봤음"을 화면상 구분해 주지 못했다 — 라디오는 두 상태를 눈에 보이게 만든다.
+// schemaToggleRow — bool 필드. 사용 / 미사용 2분할 세그먼트로 렌더한다
+// (REQ-WCR-020). 체크박스는 "체크 안 함"과 "이 필드를 못 봤음"을 화면상 구분해
+// 주지 못했다 — 세그먼트는 언제나 한 칸이 채워져 있어 두 상태를 눈에 보이게 만든다.
 //
 // hidden __present companion은 그대로 유지된다 (REQ-WCR-021): "미사용" 옵션의
 // value가 빈 문자열이라 PostFormValue가 ""를 돌려주고, parseSchemaForm의 기존
@@ -320,53 +347,56 @@ templ schemaNumberRow(f settings.FieldDef, value, step string, errs map[string]s
 // 없으므로 "값 보존"으로 읽힌다.
 //
 // 부작용(의도적으로 수용): 지금까지 키 부재였던 bool 필드는 첫 저장 시 명시적
-// true/false로 기록된다 — 라디오는 언제나 하나가 선택되기 때문이다. 배포 기본이
-// 키 부재인 workflow.branch_guard.enabled 같은 필드가 여기 해당한다.
+// true/false로 기록된다 — 세그먼트는 언제나 하나가 선택되기 때문이다.
 templ schemaToggleRow(f settings.FieldDef, checked bool) {
 	<div class="field">
-		<span class="field__label"><span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span><code class="field__key">{ f.Name }</code></span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<input type="hidden" name={ f.Name + "__present" } value="1"/>
-		<div class="radio-group">
-			<label class="radio">
-				<input type="radio" id={ f.Name + "--on" } name={ f.Name } value="1" checked?={ checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.enabled">Used</span>
-			</label>
-			<label class="radio">
-				<input type="radio" id={ f.Name + "--off" } name={ f.Name } value="" checked?={ !checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.disabled">Not used</span>
-			</label>
+		@schemaFieldHead(f)
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		<div class="field__ctl">
+			@boolSegment(f.Name, checked)
 		</div>
 		@fieldDescription(f)
 	</div>
 }
 
+// boolSegment 는 사용 / 미사용 2분할 세그먼트다. bool 필드를 쓰는 세 자리
+// (스키마 필드 · MCP 도구 · codex 옵트인)가 같은 제출 계약을 공유하도록 한 곳에
+// 모았다: hidden companion + value="1" / value="" 라디오 쌍.
+templ boolSegment(name string, checked bool) {
+	<input type="hidden" name={ name + "__present" } value="1"/>
+	<div class="seg">
+		<label class="seg__b">
+			<input type="radio" id={ name + "--on" } name={ name } value="1" checked?={ checked }/>
+			<span data-i18n="opt.enabled">Used</span>
+		</label>
+		<label class="seg__b">
+			<input type="radio" id={ name + "--off" } name={ name } value="" checked?={ !checked }/>
+			<span data-i18n="opt.disabled">Not used</span>
+		</label>
+	</div>
+}
+
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
-// effort 필드에는 declarative 배지를 표시한다 — Go 런타임이 행동적으로 바인딩하지
-// 않는 선언적 힌트임을 사용자에게 알린다 (M5-a B5). M5-b D3: field__title +
-// field__desc 추가. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행 렌더에서
-// 모든 로케일에 한국어를 노출했다.
+// effort 필드에는 선언적 힌트를 덧붙인다 — Go 런타임이 행동적으로 바인딩하지
+// 않는 값임을 알린다. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행
+// 렌더에서 모든 로케일에 한국어를 노출했다.
 templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label">
-			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
-			<code class="field__key">{ f.Name }</code>
-			if strings.HasSuffix(f.Name, ".effort") {
-				<span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span>
-			}
-			// SPEC-WEB-CONSOLE-REDESIGN-001 M4 (REQ-WCR-033): a field whose value
-			// is persisted but never read by any runtime path says so on the row.
-			// Driven by FieldDef.StoreOnly, not by a name match — the widget stays
-			// field-agnostic.
-			if f.StoreOnly {
-				<span class="field__badge" data-store-only={ f.Name } data-i18n="badge.store_only">Stored only — not applied at runtime</span>
-			}
-		</span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<span class="select-wrap">
-			<select class="select" id={ f.Name } name={ f.Name }>
+	<div class="field">
+		@schemaFieldHead(f)
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		if strings.HasSuffix(f.Name, ".effort") {
+			<p class="field__help" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</p>
+		}
+		<div class="field__ctl">
+			<select
+				class="sel"
+				id={ f.Name }
+				name={ f.Name }
+				if hasFieldError(errs, f.Name) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + f.Name }
+				}
+			>
 				if f.EmptyLabel != "" {
 					if value == "" {
 						<option value="" selected data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</option>
@@ -382,197 +412,185 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 					}
 				}
 			</select>
-		</span>
+		</div>
 		@fieldDescription(f)
-		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+		@fieldErr(errs, f.Name)
 	</div>
 }
 
-// schemaRadioRow — 닫힌 옵션 라디오 버튼 그룹. EmptyLabel이 있으면 빈 옵션을 렌더한다.
-// M5-b D3: field__title + field__desc 추가.
+// schemaRadioRow — 닫힌 옵션 세그먼트. EmptyLabel이 있으면 빈 옵션을 렌더한다.
 //
 // Layout opt-in: when ANY option carries a per-option description
-// (OptionDef.OptionDesc), the group renders VERTICAL with the description to
-// the right of each option (radio-group--stacked / radio--withdesc). This is
-// the report.format shape only — every other radio (merge_method etc.) leaves
-// OptionDesc empty and stays on the default horizontal card-style group. The
-// branch is value-driven (no flag field), so unrelated radios are untouched.
+// (OptionDef.OptionDesc), the segment renders VERTICAL with the description
+// beside each option (seg--stacked). This is the report.format shape only —
+// every other radio (merge_method etc.) leaves OptionDesc empty and stays on the
+// default horizontal segment. The branch is value-driven (no flag field), so
+// unrelated fields are untouched.
 templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
-		<span class="field__label">
-			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
-			<code class="field__key">{ f.Name }</code>
-		</span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		if hasRadioOptionDesc(f.Options) {
-			<div class="radio-group radio-group--stacked">
-				for _, opt := range f.Options {
-					<label class="radio radio--withdesc">
-						if opt.Value == value {
-							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
-						} else {
-							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
-						}
-						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-						<span class="radio__label" data-i18n={ opt.I18nKey }>{ opt.Value }</span>
-						<span class="radio__desc" data-i18n={ opt.OptionDesc }></span>
-					</label>
-				}
-			</div>
-		} else {
-			<div class="radio-group">
-				if f.EmptyLabel != "" {
-					<label class="radio">
-						if value == "" {
-							<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
-						} else {
-							<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
-						}
-						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-						<span data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</span>
-					</label>
-				}
-				for _, opt := range f.Options {
-					<label class="radio">
-						if opt.Value == value {
-							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
-						} else {
-							<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
-						}
-						<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-						<span data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</span>
-					</label>
-				}
-			</div>
-		}
+	<div class="field">
+		@schemaFieldHead(f)
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		<div class="field__ctl">
+			if hasRadioOptionDesc(f.Options) {
+				<div class="seg seg--stacked">
+					for _, opt := range f.Options {
+						<label class="seg__b">
+							if opt.Value == value {
+								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
+							} else {
+								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
+							}
+							<span data-i18n={ opt.I18nKey }>{ opt.Value }</span>
+							<span class="seg__d" data-i18n={ opt.OptionDesc }></span>
+						</label>
+					}
+				</div>
+			} else {
+				<div class="seg">
+					if f.EmptyLabel != "" {
+						<label class="seg__b">
+							if value == "" {
+								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
+							} else {
+								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
+							}
+							<span data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</span>
+						</label>
+					}
+					for _, opt := range f.Options {
+						<label class="seg__b">
+							if opt.Value == value {
+								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
+							} else {
+								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
+							}
+							<span data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</span>
+						</label>
+					}
+				</div>
+			}
+		</div>
 		@fieldDescription(f)
-		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+		@fieldErr(errs, f.Name)
 	</div>
 }
 
 // schemaReadOnlyRow — read-only 표시 키 (REQ-WC11-013/019). form 컨트롤을 일절
-// 렌더하지 않으므로 제출 자체가 불가능하다 — 파일 값 불변이 구조적으로 보장.
-// noteKey가 비어 있으면 제네릭 "ro.note"를, 아니면 정직한 설명 라벨 키를 방출한다
-// (SPEC-WEB-CONSOLE-014 M2 — governance FROZEN / dead-config 강등, REQ-WC14-001/040).
+// 렌더하지 않으므로 제출 자체가 불가능하다 — 파일 값 불변이 구조적으로 보장된다.
+// noteKey가 비어 있으면 제네릭 "ro.note"를, 아니면 정직한 설명 라벨 키를 방출한다.
 templ schemaReadOnlyRow(name, value, noteKey string) {
-	<div class="field field--readonly">
-		<span class="field__label"><code class="field__key">{ name }</code><span class="field__ro" data-i18n={ roNoteKey(noteKey) }>{ roNoteBaseline(noteKey) }</span></span>
-		<span class="input input--ro">{ value }</span>
+	<div class="field field--ro">
+		<div class="field__head">
+			<code class="key">{ name }</code>
+			<span class="field__label" data-i18n={ roNoteKey(noteKey) }>{ roNoteBaseline(noteKey) }</span>
+		</div>
+		<div class="field__ctl">
+			<span class="in in--ro">{ value }</span>
+		</div>
 	</div>
 }
 
 // schemaRawBlock — form UI에 맞지 않는 map/list 서브블록의 collapsed raw view
-// (REQ-WC11-062). input 컨트롤 0 — <pre> 텍스트 표시만. noteKey가 비어 있으면
-// 제네릭 "raw.note"를, 아니면 정보성 정직 라벨 키를 방출한다 (SPEC-WEB-CONSOLE-014
-// — enforcement 컴파일 상수 / config-미배선 scaffold, REQ-WC14-003/020).
+// (REQ-WC11-062). input 컨트롤 0 — <pre> 텍스트 표시만.
 templ schemaRawBlock(name, content, noteKey string) {
-	<details class="rawview">
-		<summary><code class="field__key">{ name }</code> <span data-i18n={ rawNoteKey(noteKey) }>{ rawNoteBaseline(noteKey) }</span></summary>
-		<pre class="rawview__pre">{ content }</pre>
+	<details class="raw">
+		<summary>
+			<code class="key">{ name }</code>
+			<span data-i18n={ rawNoteKey(noteKey) }>{ rawNoteBaseline(noteKey) }</span>
+		</summary>
+		<pre class="raw__pre">{ content }</pre>
 	</details>
 }
 
-// ─── SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 카드 ────────────────
-//
-// 4표면 agent-settings 뷰의 (c) 표면 (REQ-WC11-020/025/027..029). (a) llm tiers는
-// LLM 섹션에서 편집(교차 참조 노트), (b) role_profiles + (d) workflow_agents는
-// 제네릭 Agent Settings fieldset(SectionAgentSettings)이 렌더한다.
+// ─── SPEC-WEB-CONSOLE-011 M3: sub-agent frontmatter 편집 표 ──────────────────
 
 // fieldsetAgentFrontmatter는 .claude/agents/moai/ sub-agent의 model/effort
 // frontmatter 편집 표를 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음",
 // REQ-WC11-028) + llm 교차 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를
 // 포함한다. effort의 "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
 //
-// 구 "하네스 에이전트" sub-tab은 제거됐다: harness 행은 렌더하지 않는다. 스캔
-// 자체는 그대로라 미렌더 agent는 폼 값을 제출하지 않고, parseAgentFMForm이 이를
-// "preserve"로 읽으므로 harness frontmatter는 기록되지 않는다.
+// harness 행은 렌더하지 않는다. 스캔 자체는 그대로라 미렌더 agent는 폼 값을
+// 제출하지 않고, parseAgentFMForm이 이를 "preserve"로 읽으므로 harness
+// frontmatter는 기록되지 않는다.
 templ fieldsetAgentFrontmatter(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.agentfm.title">Agents</span></legend>
-				@sectionCount(agentFMRenderCount(view.AgentFMs))
+	@settingsPanel(panelChrome{
+		Icon: "user-round", TitleKey: "sec.agentfm.title", Title: "Agents",
+		DescKey: "sec.agentfm.desc",
+		Desc:    "Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).",
+		Count:   agentFMRenderCount(view.AgentFMs),
+	}) {
+		<p class="banner banner--warn" role="alert">
+			@iconAt("alert", 14)
+			<span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span>
+		</p>
+		<p class="panel__help" data-i18n="agentfm.llmnote">Per-agent model/effort here follows the performance tier above. GLM backend tiers are in the 3rd Party LLM section.</p>
+		<p class="panel__help">
+			<span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span>
+			<code class="key">.claude/rules/moai/workflow/dynamic-workflows.md</code>
+		</p>
+		<div class="field">
+			<div class="field__head">
+				<span class="field__label" data-i18n="agentfm.tier.title">Performance tier</span>
+				<code class="key">llm.performance_tier</code>
 			</div>
-			<p class="section__desc" data-i18n="sec.agentfm.desc">Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).</p>
-			<p class="section__desc agentfm-warn">@icon("alert-circle") <span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span></p>
-			<p class="section__desc"><span data-i18n="agentfm.llmnote">Per-agent model/effort here follows the performance tier above. GLM backend tiers are in the 3rd Party LLM section.</span></p>
-			<p class="section__desc"><span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span> <code class="field__key">.claude/rules/moai/workflow/dynamic-workflows.md</code></p>
-		</div>
-		<div class="section__body">
-			<div class="agentfm-tierbar">
-				<div class={ "field", "agentfm-tierfield", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
-					<span class="field__label"><span class="field__title" data-i18n="agentfm.tier.title">Performance tier</span><code class="field__key">llm.performance_tier</code></span>
-					<span class="field__desc" data-i18n="agentfm.tier.desc">Sets each sub-agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</span>
-					<div class="radio-group tier-segments">
-						for _, opt := range agentFMPerfTierOptions() {
-							<label class="radio">
-								if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium")) {
-									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
-								} else {
-									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
-								}
-								<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-								<span>{ opt }</span>
-							</label>
-						}
-						<label class="radio">
-							if view.PerfTierCustom {
-								<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom" checked/>
+			<p class="field__help" data-i18n="agentfm.tier.desc">Sets each sub-agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</p>
+			<div class="field__ctl">
+				<div class="seg">
+					for _, opt := range agentFMPerfTierOptions() {
+						<label class="seg__b">
+							if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium")) {
+								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
 							} else {
-								<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom"/>
+								<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
 							}
-							<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-							<span data-i18n="agentfm.tier.custom">Custom</span>
+							<span>{ opt }</span>
 						</label>
-					</div>
-					if view.PerfTierIsEmpty {
-						<span class="field__hint" data-i18n="agentfm.tier.default">(runtime default: medium)</span>
 					}
-					if msg := fieldErrorMsg(view.FieldErrors, "performance_tier"); msg != "" {
-						<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-					}
+					<label class="seg__b">
+						if view.PerfTierCustom {
+							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom" checked/>
+						} else {
+							<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom"/>
+						}
+						<span data-i18n="agentfm.tier.custom">Custom</span>
+					</label>
 				</div>
 			</div>
-			@templ.JSONScript("moai-profile-matrix", profileMatrixData())
-			// Single consolidated per-agent explanation (was repeated under every
-			// agent row before the density redesign — moved here so it renders ONCE
-			// at the grid head). schemaSelectRow keeps the second baseline for its
-			// dormant `.effort` field branch (source count stays 2).
-			<p class="agentfm-gridnote"><span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span></p>
-			<div class="agentfm-grid">
-				// Group header rows: emit a small-caps divider when the current
-				// agent's catalog-class group differs from the previous rendered
-				// row's. agentGroupLabel returns "" for the "other" bucket, but
-				// those rows (harness specialists) are filtered by agentIsMoaiCore
-				// and never reach this loop, so every rendered row carries a label.
-				// The render rows (with group-change flags) are precomputed in Go
-				// (agentFMGridRows) so the templ loop stays state-free.
-				for _, r := range agentFMGridRows(view.AgentFMs) {
-					if r.GroupHead != "" {
-						<div class="agentfm-grouphead">{ r.GroupHead }</div>
-					}
-					@agentFMRow(r.Agent, view.LLM, view.FieldErrors)
-				}
-			</div>
+			if view.PerfTierIsEmpty {
+				<p class="field__help" data-i18n="agentfm.tier.default">(runtime default: medium)</p>
+			}
+			@fieldErr(view.FieldErrors, "performance_tier")
 		</div>
-	</fieldset>
+		@templ.JSONScript("moai-profile-matrix", profileMatrixData())
+		// Single consolidated per-agent explanation, at the table head rather than
+		// repeated under every row.
+		<p class="panel__help" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</p>
+		<div class="tbl">
+			// Group header rows: emit a divider when the current agent's
+			// catalog-class group differs from the previous rendered row's. The
+			// render rows (with group-change flags) are precomputed in Go
+			// (agentFMGridRows) so the templ loop stays state-free.
+			for _, r := range agentFMGridRows(view.AgentFMs) {
+				if r.GroupHead != "" {
+					<div class="tr tr--group"><span>{ r.GroupHead }</span></div>
+				}
+				@agentFMRow(r.Agent, view.LLM, view.FieldErrors)
+			}
+		</div>
+	}
 }
 
 // agentFMRow는 agent 1종의 model/effort select 쌍이다. 빈 옵션 = 현재값 유지
 // (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1).
 templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]string) {
 	if agent.ParseOK {
-		<div class="agentfm-row">
-			<div class="agentfm-row__id">
-				<span class="agentfm-row__name">
+		<div class="tr tr--afm" data-agent-row={ agent.Name }>
+			<div class="tr__sub">
+				<span class="tr__name">
 					if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
-						<span class={ "agentfm-badge", templ.KV("agentfm-badge--custom", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
+						<span class={ "badge", templ.KV("badge--strong", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
 					}
-					<code class="field__key agentfm-name">{ agent.Name }</code>
+					<code class="key">{ agent.Name }</code>
 				</span>
 				// The English text is the SERVER-SIDE BASELINE, read from the agent
 				// .md frontmatter (the SSOT). agentdesc.<name> carries only the
@@ -581,101 +599,84 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 				// dictionary lacks the key — otherwise a KO→EN switch leaves the
 				// previous locale's text stuck on the row.
 				if short := agentDescriptionShort(agent.Description); short != "" {
-					<span class="agentfm-desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
+					<span class="tr__desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
 				}
 			</div>
-			<div class="agentfm-row__ctrl">
-				<span class="select-wrap">
-					<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
-						for _, m := range agentFMModelValues() {
-							if m == agentSelectedModel(llm, agent) {
-								<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-							} else {
-								<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-							}
+			<select class="sel" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
+				for _, m := range agentFMModelValues() {
+					if m == agentSelectedModel(llm, agent) {
+						<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+					} else {
+						<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+					}
+				}
+			</select>
+			<div>
+				// Haiku does not honor reasoning effort — disable the effort select
+				// (initial render, so the no-JS page is correct too). app.js re-toggles
+				// this live when the paired model select changes. A disabled select does
+				// not submit; parseAgentFMForm backfills the unsubmitted effort.
+				<select class="sel" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
+					for _, e := range agentFMEffortValues() {
+						if e == agentSelectedEffort(llm, agent) {
+							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+						} else {
+							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						}
-					</select>
-				</span>
+					}
+				</select>
+				// Muted note explaining the disabled effort — present in the DOM always
+				// so app.js can toggle it client-side; hidden until the model is haiku.
+				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
 			</div>
-			<div class="agentfm-row__ctrl">
-				<span class="select-wrap">
-					// Haiku does not honor reasoning effort — disable the effort select
-					// (initial render, so the no-JS page is correct too). app.js re-toggles
-					// this live when the paired model select changes. A disabled select does
-					// not submit; parseAgentFMForm backfills the unsubmitted effort.
-					<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
-						for _, e := range agentFMEffortValues() {
-							if e == agentSelectedEffort(llm, agent) {
-								<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
-							} else {
-								<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
-							}
-						}
-					</select>
-				</span>
-			</div>
-			// Muted note explaining the disabled effort — visible only when the model is
-			// haiku; present in the DOM always so app.js can toggle it client-side.
-			<span class={ "field__hint", "agentfm-haiku-hint", templ.KV("is-hidden", !agentModelIsHaiku(llm, agent)) } data-i18n="hint.effort.haiku_na">Effort N/A for Haiku</span>
-			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
-				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-			}
-			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".effort"); msg != "" {
-				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-			}
+			@fieldErr(errs, "agentfm."+agent.Name+".model")
+			@fieldErr(errs, "agentfm."+agent.Name+".effort")
 		</div>
 	} else {
-		<div class="field field--readonly agentfm-row--unavailable">
-			<span class="field__label"><code class="field__key">{ agent.Name }</code><span class="field__ro" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span></span>
+		<div class="tr tr--afm">
+			<div class="tr__sub">
+				<span class="tr__name"><code class="key">{ agent.Name }</code></span>
+				<span class="tr__desc" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span>
+			</div>
 		</div>
 	}
 }
 
-// ─── SPEC-MCP-CONSOLE-001 M2: per-tool MCP enablement fieldset ───────────────
+// ─── SPEC-MCP-CONSOLE-001 M2: per-tool MCP enablement panel ──────────────────
 //
 // fieldsetMCP renders the MCP section: one enablement toggle per tool declared
 // in the shared catalog (settings.SectionFields(SectionMCP) derives from
 // internal/mcp MoaiMCPTools — single declaration, AP-C-4). The four
-// write-capable tools carry a TEXT-bearing badge the thirteen read-only tools
-// do not (REQ-C-3 / AC-C-003): the distinction rides on the literal string
+// write-capable tools carry a TEXT-bearing badge the thirteen read-only tools do
+// not (REQ-C-3 / AC-C-003): the distinction rides on the literal string
 // "Write-capable", not on colour alone, so it survives a monochrome or
-// screen-reader pass. The toggle itself reuses the schemaToggleRow shape
-// (hidden __present companion + on/off radio pair) so the existing
-// parseSchemaForm + ApplySchemaEdits seam writes the value unchanged.
+// screen-reader pass.
 
 templ fieldsetMCP(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("plug")</span><span data-i18n="sec.mcp.title">MCP</span></legend>
-				@sectionCount(len(settings.SectionFields(settings.SectionMCP)))
-			</div>
-			<p class="section__desc" data-i18n="sec.mcp.desc">Per-tool enablement for the self-hosted moai MCP server. A disabled tool is absent from tools/list.</p>
-		</div>
-		<div class="section__body">
-			<div class="grid">
-				for _, f := range settings.SectionFields(settings.SectionMCP) {
-					// All-enabled default (owner decision 2026-08-12): an unset
-					// key reads as "" and displays as checked; only an explicit
-					// "false" turns the toggle off.
-					@mcpToolRow(f, view.SchemaValues[f.Name] != "false")
-				}
-			</div>
-			// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4/5/6): codex authentication surface.
-			// The probe state is CONSUMED from the injected probe (AC-C-006 — not
-			// recomputed here). Unauthenticated → names the command (AC-C-007);
-			// absent → graceful not-installed state (AC-C-008).
-			@codexAuthBlock(view)
-			// SPEC-MCP-CONSOLE-001 M4 (REQ-C-7): GLM key state surface. The state
-			// is REUSED from the existing view model (view.GLMKeyConfigured /
-			// GLMKeyHint, populated by populateGLMKeyHint -> computeGLMKeyHint in
-			// glmkey.go — AC-C-010: no second credential path). Only the configured
-			// boolean and the bounded trailing-four hint cross in (AC-C-011); no
-			// key value, no submit, no reveal (those live in the 3rd Party LLM
-			// section).
-			@glmKeyStateBlock(view)
-		</div>
-	</fieldset>
+	@settingsPanel(panelChrome{
+		Icon: "plug", TitleKey: "sec.mcp.title", Title: "MCP",
+		DescKey: "sec.mcp.desc",
+		Desc:    "Per-tool enablement for the self-hosted moai MCP server. A disabled tool is absent from tools/list.",
+		Count:   len(settings.SectionFields(settings.SectionMCP)),
+	}) {
+		for _, f := range settings.SectionFields(settings.SectionMCP) {
+			// All-enabled default (owner decision 2026-08-12): an unset key reads as
+			// "" and displays as enabled; only an explicit "false" turns it off.
+			@mcpToolRow(f, view.SchemaValues[f.Name] != "false")
+		}
+		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-4/5/6): codex authentication surface. The
+		// probe state is CONSUMED from the injected probe (AC-C-006 — not recomputed
+		// here). Unauthenticated → names the command (AC-C-007); absent → graceful
+		// not-installed state (AC-C-008).
+		@codexAuthBlock(view)
+		// SPEC-MCP-CONSOLE-001 M4 (REQ-C-7): GLM key state surface. The state is
+		// REUSED from the existing view model (view.GLMKeyConfigured / GLMKeyHint,
+		// populated by populateGLMKeyHint -> computeGLMKeyHint in glmkey.go —
+		// AC-C-010: no second credential path). Only the configured boolean and the
+		// bounded trailing-four hint cross in (AC-C-011); no key value, no submit, no
+		// reveal (those live in the 3rd Party LLM section).
+		@glmKeyStateBlock(view)
+	}
 }
 
 // glmKeyStateBlock renders the GLM API key STATE inside the MCP section — a
@@ -687,27 +688,23 @@ templ fieldsetMCP(view pageView) {
 // reaches the view model — computeGLMKeyHint enforces that bound before the
 // pageView is built, so this template renders only what it is given (AC-C-011).
 templ glmKeyStateBlock(view pageView) {
-	<div class="glm-key">
-		<div class="glm-key__head">
-			<span class="glm-key__title" data-i18n="sec.mcp.glm_key.title">GLM API key</span>
-		</div>
+	<div class="cred">
+		<span class="cred__t" data-i18n="sec.mcp.glm_key.title">GLM API key</span>
 		if view.GLMKeyConfigured {
-			<dl class="glm-key__state glm-key__state--configured">
-				<div class="glm-key__row">
-					<dt data-i18n="f.mcp.glm_key.status">Status</dt>
-					<dd data-i18n="f.mcp.glm_key.configured">Configured</dd>
-				</div>
+			<ul class="kv">
+				<li>
+					<span data-i18n="f.mcp.glm_key.status">Status</span>
+					<b data-i18n="f.mcp.glm_key.configured">Configured</b>
+				</li>
 				if view.GLMKeyHint != "" {
-					<div class="glm-key__row">
-						<dt data-i18n="f.mcp.glm_key.hint">Last four</dt>
-						<dd><code class="field__hint-key">…{ view.GLMKeyHint }</code></dd>
-					</div>
+					<li>
+						<span data-i18n="f.mcp.glm_key.hint">Last four</span>
+						<b><code class="key">…{ view.GLMKeyHint }</code></b>
+					</li>
 				}
-			</dl>
+			</ul>
 		} else {
-			<p class="glm-key__state glm-key__state--not-configured" data-i18n="f.mcp.glm_key.not_configured">
-				No GLM API key is configured.
-			</p>
+			<p class="panel__help" data-i18n="f.mcp.glm_key.not_configured">No GLM API key is configured.</p>
 		}
 	</div>
 }
@@ -718,67 +715,49 @@ templ glmKeyStateBlock(view pageView) {
 // the two opt-in toggles through the schema seam (AC-C-009 — same path the
 // fail-closed readers consume).
 templ codexAuthBlock(view pageView) {
-	<div class="codex-auth">
-		<div class="codex-auth__head">
-			<span class="codex-auth__title" data-i18n="sec.mcp.codex.title">Codex authentication</span>
-		</div>
+	<div class="cred">
+		<span class="cred__t" data-i18n="sec.mcp.codex.title">Codex authentication</span>
 		if view.CodexState.Installed {
-			<dl class="codex-auth__state codex-auth__state--installed">
-				<div class="codex-auth__row">
-					<dt data-i18n="f.mcp.codex.binary">Binary</dt>
-					<dd><code>{ view.CodexState.Binary }</code></dd>
-				</div>
+			<ul class="kv">
+				<li>
+					<span data-i18n="f.mcp.codex.binary">Binary</span>
+					<b><code class="mono">{ view.CodexState.Binary }</code></b>
+				</li>
 				if view.CodexState.Version != "" {
-					<div class="codex-auth__row">
-						<dt data-i18n="f.mcp.codex.version">Version</dt>
-						<dd>{ view.CodexState.Version }</dd>
-					</div>
+					<li>
+						<span data-i18n="f.mcp.codex.version">Version</span>
+						<b>{ view.CodexState.Version }</b>
+					</li>
 				}
-				<div class="codex-auth__row">
-					<dt data-i18n="f.mcp.codex.auth_provider">Auth provider</dt>
-					<dd>{ codexAuthProviderLabel(view.CodexState.AuthProvider) }</dd>
-				</div>
-			</dl>
+				<li>
+					<span data-i18n="f.mcp.codex.auth_provider">Auth provider</span>
+					<b>{ codexAuthProviderLabel(view.CodexState.AuthProvider) }</b>
+				</li>
+			</ul>
 			if view.CodexState.AuthProvider == "unknown" {
-				<p class="codex-auth__hint codex-auth__hint--unauthenticated" data-i18n="f.mcp.codex.login_hint">
-					Run <code>codex login</code> to authenticate.
-				</p>
+				<p class="panel__help" data-i18n="f.mcp.codex.login_hint">Run <code class="key">codex login</code> to authenticate.</p>
 			}
 		} else {
-			<p class="codex-auth__state codex-auth__state--not-installed" data-i18n="f.mcp.codex.not_installed">
-				codex is not installed.
-			</p>
+			<p class="panel__help" data-i18n="f.mcp.codex.not_installed">codex is not installed.</p>
 		}
 		// Opt-in toggles (REQ-C-6 / AC-C-009): these write through the schema seam
 		// to workflow.yaml at the exact path the fail-closed readers consume.
-		<div class="codex-auth__toggles">
-			@codexToggleRow("workflow.codex.review_gate.enabled", view.SchemaValues["workflow.codex.review_gate.enabled"] == "true")
-			@codexToggleRow("workflow.codex.task.allow_write", view.SchemaValues["workflow.codex.task.allow_write"] == "true")
-		</div>
+		@codexToggleRow("workflow.codex.review_gate.enabled", view.SchemaValues["workflow.codex.review_gate.enabled"] == "true")
+		@codexToggleRow("workflow.codex.task.allow_write", view.SchemaValues["workflow.codex.task.allow_write"] == "true")
 	</div>
 }
 
 // codexToggleRow renders one codex opt-in toggle using the same hidden-companion
-// + radio pattern the MCP tool rows use, so parseSchemaForm + ApplySchemaEdits
+// + segment pattern the MCP tool rows use, so parseSchemaForm + ApplySchemaEdits
 // write it through the schema seam unchanged.
 templ codexToggleRow(fieldName string, checked bool) {
-	<div class="field field--codex-toggle">
-		<span class="field__label">
-			<span class="field__title" data-i18n={ "f." + fieldName + ".title" }>{ fieldName }</span>
-		</span>
-		<span class="field__desc" data-i18n={ "f." + fieldName + ".desc" }></span>
-		<input type="hidden" name={ fieldName + "__present" } value="1"/>
-		<div class="radio-group">
-			<label class="radio">
-				<input type="radio" id={ fieldName + "--on" } name={ fieldName } value="1" checked?={ checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.enabled">Used</span>
-			</label>
-			<label class="radio">
-				<input type="radio" id={ fieldName + "--off" } name={ fieldName } value="" checked?={ !checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.disabled">Not used</span>
-			</label>
+	<div class="field">
+		<div class="field__head">
+			<span class="field__label" data-i18n={ "f." + fieldName + ".title" }>{ fieldName }</span>
+		</div>
+		<p class="field__help" data-i18n={ "f." + fieldName + ".desc" }></p>
+		<div class="field__ctl">
+			@boolSegment(fieldName, checked)
 		</div>
 	</div>
 }
@@ -788,27 +767,17 @@ templ codexToggleRow(fieldName string, checked bool) {
 // default per owner decision): an unset key reads as enabled, and only an
 // explicit "false" value turns the toggle off.
 templ mcpToolRow(f settings.FieldDef, checked bool) {
-	<div class={ "field", templ.KV("field--mcp-write", mcpToolIsWriteCapable(f.Name)) }>
-		<span class="field__label">
-			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+	<div class="field">
+		<div class="field__head">
+			<span class="field__label" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+			<code class="key">{ f.Name }</code>
 			if mcpToolIsWriteCapable(f.Name) {
-				<span class="badge badge--warn" data-i18n="f.mcp.write_capable.badge">Write-capable</span>
+				<span class="badge badge--outline" data-i18n="f.mcp.write_capable.badge">Write-capable</span>
 			}
-			<code class="field__key">{ f.Name }</code>
-		</span>
-		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
-		<input type="hidden" name={ f.Name + "__present" } value="1"/>
-		<div class="radio-group">
-			<label class="radio">
-				<input type="radio" id={ f.Name + "--on" } name={ f.Name } value="1" checked?={ checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.enabled">Used</span>
-			</label>
-			<label class="radio">
-				<input type="radio" id={ f.Name + "--off" } name={ f.Name } value="" checked?={ !checked }/>
-				<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
-				<span data-i18n="opt.disabled">Not used</span>
-			</label>
+		</div>
+		<p class="field__help" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</p>
+		<div class="field__ctl">
+			@boolSegment(f.Name, checked)
 		</div>
 	</div>
 }

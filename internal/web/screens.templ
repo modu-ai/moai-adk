@@ -229,6 +229,10 @@ templ Specs(vm ShellVM, l SpecListVM) {
 				}
 			</div>
 		</div>
+		// 주의가 필요한 것부터 위에 둔다. 목록 아래에 두면 카탈로그가 수백 줄일 때
+		// 화면 3만 픽셀 아래로 밀려나 사실상 없는 것과 같아진다.
+		@closeDebtPanel(l.CloseDebt)
+		@mustFixPanel(l.MustFix)
 		<div class="splitpane">
 			<div class="tbl" data-live="spec">
 				<div class="tr tr--head" style="grid-template-columns:230px minmax(0,1fr) 118px 44px 54px 92px 92px">
@@ -268,6 +272,59 @@ templ Specs(vm ShellVM, l SpecListVM) {
 				@specDetail(*l.Detail)
 			}
 		</div>
+	}
+}
+
+// closeDebtPanel — 구현은 끝났는데 lifecycle 이 닫히지 않은 SPEC. 구 /specs/board
+// 페이지가 하던 일이며, 별도 라우트로 두면 어디서도 링크되지 않아 주소를 직접
+// 쳐야만 닿았다.
+//
+// 목록이 비어 있으면 "없다"고 적는다 — 빈 패널을 그대로 두면 "아직 못 읽었다"로
+// 읽힌다. 반대로 길면 앞의 몇 건만 보이고, 잘랐다는 사실과 전체 수를 함께
+// 적는다: 조용히 자르면 "이게 전부"로 읽힌다.
+templ closeDebtPanel(rows []SpecRowVM) {
+	@panel("Close debt", itoa(len(rows)), "Implementation landed; the lifecycle was never closed to completed.", "roomy") {
+		if len(rows) == 0 {
+			<p class="panel__meta" data-i18n="board.closedebt.empty">No close-debt SPECs.</p>
+		} else {
+			<div class="rows">
+				for _, s := range boundedRows(rows) {
+					@specRowLink(s)
+				}
+			</div>
+			if len(rows) > closeDebtShown {
+				<p class="panel__meta">
+					{ "Showing the " + itoa(closeDebtShown) + " most recently updated of " + itoa(len(rows)) + ". " }
+					<a href="/specs?status=implemented" data-i18n="board.closedebt.all">See all</a>
+				</p>
+			}
+		}
+	}
+}
+
+// mustFixPanel — 조치 명령을 동반한 MUST-FIX drift. 명령은 복사만 한다.
+// 콘솔은 서버에서 아무 명령도 실행하지 않는다 (REQ-WC11-043/044).
+templ mustFixPanel(findings []MustFixVM) {
+	@panel("Must-fix drift", itoa(len(findings)), "Copy the command and run it in your own terminal — the console never executes it.", "roomy") {
+		if len(findings) == 0 {
+			<p class="panel__meta" data-i18n="board.mustfix.empty">No must-fix drift.</p>
+		} else {
+			<div class="rows">
+				for _, f := range findings {
+					<div class="row-link">
+						@badge("danger", "MUST-FIX")
+						<a class="mono" style="flex:0 0 210px;font-size:11.5px" href={ templ.SafeURL("/specs?id=" + f.SpecID) }>{ f.SpecID }</a>
+						<span class="panel__meta" style="flex:0 0 150px">{ f.FindingType }</span>
+						if f.Remediation != "" {
+							<code class="key" style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{ f.Remediation }</code>
+							<button class="btn btn--outline" type="button" data-copy={ f.Remediation } aria-label="Copy remediation command">
+								<span data-i18n="board.copy">Copy</span>
+							</button>
+						}
+					</div>
+				}
+			</div>
+		}
 	}
 }
 

@@ -51,14 +51,81 @@
     segments.style.display = preset.value === "custom" ? "" : "none";
   }
 
-  function wireProfileSwitch() {
-    var sel = document.querySelector('select[name="__profile_select"]');
-    if (!sel) {
+  // ── Rail popovers (프로필) ──
+
+  // wirePopovers 는 레일 하단의 접힌 패널을 연다. 트리거는 data-pop="<name>",
+  // 패널은 data-pop-panel="<name>" 으로 짝지어지고, 패널 안의 data-pop-close 가
+  // 닫는다. 열림 상태는 hidden 속성 하나로만 표현한다 — 보조 기술이 읽는 상태와
+  // 화면에 보이는 상태를 갈라놓지 않기 위해서다.
+  //
+  // 프로필 전환·생성·이름 변경·삭제가 전부 이 패널 안에 있다. 배선이 없으면
+  // 패널이 열리지 않아 그 네 가지가 통째로 닿을 수 없게 되므로, 이 함수는
+  // 선택적 장식이 아니라 기능의 일부다.
+  function wirePopovers() {
+    var triggers = document.querySelectorAll("[data-pop]");
+    for (var i = 0; i < triggers.length; i++) {
+      (function (trigger) {
+        var name = trigger.getAttribute("data-pop");
+        var panel = document.querySelector('[data-pop-panel="' + name + '"]');
+        if (!panel) {
+          return;
+        }
+        trigger.addEventListener("click", function () {
+          var opening = panel.hidden;
+          panel.hidden = !opening;
+          trigger.setAttribute("aria-expanded", opening ? "true" : "false");
+          if (opening) {
+            positionPopover(trigger, panel);
+          }
+        });
+        var closers = panel.querySelectorAll("[data-pop-close]");
+        for (var c = 0; c < closers.length; c++) {
+          closers[c].addEventListener("click", function () {
+            panel.hidden = true;
+            trigger.setAttribute("aria-expanded", "false");
+          });
+        }
+      })(triggers[i]);
+    }
+  }
+
+  // 바깥 클릭 / Esc 로 닫는 것은 document 위임으로 "한 번만" 등록한다. initConsole
+  // 은 htmx boost swap 마다 다시 불리므로, document 리스너를 그 안에서 달면 swap
+  // 횟수만큼 쌓인다 (복사 버튼 리스너가 IIFE 최상위에 있는 것과 같은 이유).
+  function closeAllPopovers(focusTrigger) {
+    var panels = document.querySelectorAll("[data-pop-panel]");
+    for (var i = 0; i < panels.length; i++) {
+      if (panels[i].hidden) continue;
+      panels[i].hidden = true;
+      var name = panels[i].getAttribute("data-pop-panel");
+      var trigger = document.querySelector('[data-pop="' + name + '"]');
+      if (trigger) {
+        trigger.setAttribute("aria-expanded", "false");
+        if (focusTrigger) trigger.focus();
+      }
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    if (e.target.closest && (e.target.closest("[data-pop-panel]") || e.target.closest("[data-pop]"))) {
       return;
     }
-    sel.addEventListener("change", function () {
-      window.location.search = "?profile=" + encodeURIComponent(sel.value);
-    });
+    closeAllPopovers(false);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeAllPopovers(true);
+  });
+
+  // positionPopover 는 패널을 트리거 바로 위에 붙인다. 패널이 position:absolute
+  // 라 좌표를 주지 않으면 문서 좌상단에 뜬다.
+  function positionPopover(trigger, panel) {
+    var r = trigger.getBoundingClientRect();
+    var top = r.top + window.scrollY - panel.offsetHeight - 8;
+    if (top < window.scrollY + 8) {
+      top = r.bottom + window.scrollY + 8; // 위가 좁으면 아래로 편다.
+    }
+    panel.style.top = top + "px";
+    panel.style.left = r.left + window.scrollX + "px";
   }
 
   // ── Server shutdown button (in-page graceful stop) ──
@@ -246,34 +313,48 @@
 
   // ── M5-b D1 — Tab navigation (CSS show/hide) ──
 
-  // wireTabs 배선: 탭 버튼 클릭 시 .is-active 클래스를 토글한다. 패널은 DOM
-  // 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의 폼 필드도
-  // 그대로 제출된다 (atomic Save contract). 첫 탭이 기본 활성 탭이다(서버가
-  // is-active 클래스를 렌더 시 부여한다).
+  // wireTabs 는 좌측 레일의 세로 탭 링크를 클라이언트 전환으로 승격한다.
+  //
+  // 링크 자체는 `/settings?tab=<id>` 를 가리키고 서버도 그 값을 읽어 활성 패널을
+  // 고른다 — JS 가 없으면 링크가 그대로 동작한다. JS 가 있으면 여기서 기본
+  // 동작을 막고 클래스만 토글한다. 전체 재요청을 막는 것은 속도 때문이 아니라
+  // 저장하지 않은 입력을 잃지 않기 위해서다: 모든 패널이 한 폼 안에 있으므로
+  // 탭을 옮기다 페이지가 다시 로드되면 그때까지의 편집이 사라진다.
+  //
+  // 패널은 DOM 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의
+  // 폼 필드도 그대로 제출된다 (atomic Save contract).
   function wireTabs() {
-    var tabBtns = document.querySelectorAll(".tabs .tab[data-tab]");
-    if (tabBtns.length === 0) {
+    var tabLinks = document.querySelectorAll('.subnav__row[role="tab"]');
+    if (tabLinks.length === 0) {
       return;
     }
-    for (var i = 0; i < tabBtns.length; i++) {
-      tabBtns[i].addEventListener("click", function () {
-        var tabId = this.getAttribute("data-tab");
-        // 모든 탭/패널에서 is-active 제거.
-        var allBtns = document.querySelectorAll(".tabs .tab[data-tab]");
-        var allPanels = document.querySelectorAll(".tabpanel[data-panel]");
-        for (var j = 0; j < allBtns.length; j++) {
-          allBtns[j].classList.remove("is-active");
-          allBtns[j].setAttribute("aria-selected", "false");
+    for (var i = 0; i < tabLinks.length; i++) {
+      tabLinks[i].addEventListener("click", function (e) {
+        var panelId = this.getAttribute("aria-controls");
+        var panel = panelId ? document.getElementById(panelId) : null;
+        if (!panel) {
+          return; // 대응 패널이 없으면 링크의 기본 동작(전체 로드)에 맡긴다.
         }
+        e.preventDefault();
+        for (var j = 0; j < tabLinks.length; j++) {
+          tabLinks[j].setAttribute("aria-selected", "false");
+        }
+        var allPanels = document.querySelectorAll(".tabpanel[data-panel]");
         for (var k = 0; k < allPanels.length; k++) {
           allPanels[k].classList.remove("is-active");
         }
-        // 클릭한 탭과 대응 패널에 is-active 추가.
-        this.classList.add("is-active");
         this.setAttribute("aria-selected", "true");
-        var panel = document.querySelector('.tabpanel[data-panel="' + tabId + '"]');
-        if (panel) {
-          panel.classList.add("is-active");
+        panel.classList.add("is-active");
+        // 새로고침해도 같은 탭으로 돌아오도록 주소만 맞춰 둔다. 히스토리에는
+        // 쌓지 않는다 — 탭 전환은 뒤로 가기로 되돌릴 일이 아니다.
+        var href = this.getAttribute("href");
+        if (href && window.history && window.history.replaceState) {
+          window.history.replaceState(null, "", href);
+        }
+        // 저장 시 돌아올 탭도 함께 갱신한다 (root.templ 의 hidden __tab).
+        var carrier = document.querySelector('input[name="__tab"]');
+        if (carrier) {
+          carrier.value = panel.getAttribute("data-panel") || carrier.value;
         }
       });
     }
@@ -339,23 +420,20 @@
 
   // ── Haiku → effort-select lock ──
 
-  // applyHaikuEffortLock 은 한 model select 값이 "haiku" 이면 같은 행(.agentfm-row)
-  // 의 effort select 를 비활성화하고, "Effort N/A for Haiku" 힌트를 노출한다. haiku 가
-  // 아니면 되돌린다. 행 단위 페어링은 name 매칭이 아니라 공유 컨테이너(.agentfm-row)
-  // 로 스코프하므로 다른 에이전트 행에 새지 않는다. disabled select 는 제출되지
-  // 않으며(서버 save 경로가 미제출 effort 를 resolved 값으로 backfill), 프로그램적
-  // 값 설정(wireProfileMatrix)에는 영향이 없다.
+  // applyHaikuEffortLock 은 한 model select 값이 "haiku" 이면 같은 행
+  // ([data-agent-row]) 의 effort select 를 비활성화하고, "Effort N/A for Haiku"
+  // 힌트를 노출한다. haiku 가 아니면 되돌린다. 행 단위 페어링은 name 매칭이 아니라
+  // 공유 컨테이너로 스코프하므로 다른 에이전트 행에 새지 않는다. disabled select 는
+  // 제출되지 않으며(서버 save 경로가 미제출 effort 를 resolved 값으로 backfill),
+  // 프로그램적 값 설정(wireProfileMatrix)에는 영향이 없다.
   function applyHaikuEffortLock(modelSel) {
-    var row = modelSel.closest ? modelSel.closest(".agentfm-row") : null;
+    var row = modelSel.closest ? modelSel.closest("[data-agent-row]") : null;
     if (!row) return;
     var effort = row.querySelector('select[name$=".effort"]');
-    var hint = row.querySelector(".agentfm-haiku-hint");
+    var hint = row.querySelector("[data-haiku-hint]");
     var isHaiku = modelSel.value === "haiku";
     if (effort) effort.disabled = isHaiku;
-    if (hint) {
-      if (isHaiku) hint.classList.remove("is-hidden");
-      else hint.classList.add("is-hidden");
-    }
+    if (hint) hint.hidden = !isHaiku;
   }
 
   // reapplyHaikuLocks 는 리스너를 건드리지 않고 현재 값 기준으로 모든 행의 잠금을
@@ -391,7 +469,7 @@
     if (preset) {
       preset.addEventListener("change", syncSegmentsVisibility);
     }
-    wireProfileSwitch();
+    wirePopovers();
     // wireLangpick 내부의 applyI18n(readPersistedLang()) 가 새 body 의 [data-i18n]
     // 요소에 persisted 언어(예: 한국어)를 재적용한다.
     wireLangpick();

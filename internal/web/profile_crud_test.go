@@ -76,9 +76,9 @@ func TestProfileCRUDFlow(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("switch GET /?profile=work status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "selected: <strong>work</strong>") &&
-		!strings.Contains(rec.Body.String(), "profilemgr__name--active") {
-		t.Errorf("switch did not select 'work' in the view")
+	// 팝오버의 'work' 줄이 지금 편집 중인 프로필로 표시돼야 한다.
+	if !strings.Contains(rec.Body.String(), `href="/settings?profile=work" aria-current="page"`) {
+		t.Errorf("switch did not mark 'work' as the profile being edited")
 	}
 
 	// --- DELETE (work is not active → allowed) ---
@@ -298,20 +298,22 @@ func TestProfileResultDegradesOnReadError(t *testing.T) {
 	}
 }
 
-// TestProfileBarRendered verifies the consolidated profile bar renders on GET /
-// with all three CRUD targets and their i18n-keyed controls
-// (SPEC-WEB-CONSOLE-REDESIGN-001 REQ-WCR-040/041).
-func TestProfileBarRendered(t *testing.T) {
+// TestProfilePopoverRendered verifies the single profile surface renders with its
+// CRUD targets and i18n-keyed controls (SPEC-WEB-CONSOLE-REDESIGN-001
+// REQ-WCR-040/041). The surface moved from a bar inside the settings page to the
+// rail popover, so it is now reachable from every screen rather than one.
+func TestProfilePopoverRendered(t *testing.T) {
 	body := renderConsolePage(t)
 	for _, marker := range []string{
-		`class="profilebar`,
+		`data-pop-panel="profile"`,
+		`data-pop="profile"`,
 		`action="/profile/create"`,
 		`name="profile_name"`,
-		`data-i18n="profile.create.button"`,
-		`data-i18n="profile.label"`,
+		`data-i18n="profile.create"`,
+		`data-i18n="profile.title"`,
 	} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("rendered page missing profile bar marker %q", marker)
+			t.Errorf("rendered page missing profile popover marker %q", marker)
 		}
 	}
 }

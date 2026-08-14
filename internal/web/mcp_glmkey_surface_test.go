@@ -52,8 +52,8 @@ func renderGlmKeyStateBlock(t *testing.T, view pageView) string {
 func TestAC_C_010_GLMKeyStateSurfacedInMCPSection(t *testing.T) {
 	view := pageView{GLMKeyConfigured: true, GLMKeyHint: "abcd"}
 	body := renderGlmKeyStateBlock(t, view)
-	if !strings.Contains(body, "glm-key") {
-		t.Error("AC-C-010: GLM key state block not rendered in MCP section (missing glm-key anchor)")
+	if !strings.Contains(body, "sec.mcp.glm_key.title") {
+		t.Error("AC-C-010: GLM key state block not rendered in MCP section (missing the sec.mcp.glm_key.title anchor)")
 	}
 	if !strings.Contains(body, "Configured") && !strings.Contains(body, "configured") {
 		t.Error("AC-C-010: configured state must be surfaced")
