@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-BOARD-001
 title: "Six-column kanban board model with a single-origin board state store (KANBAN M3)"
 version: "0.6.2"
-status: draft
+status: in-progress
 created: 2026-08-10
 updated: 2026-08-14
 author: manager-spec
