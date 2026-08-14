@@ -1047,7 +1047,8 @@ run_phase_commits:
   - f0786d16f   # M1 evidence SHA backfill
   - 4ae37e617   # M2 card model, columns, branch-side read, table, admission
   - dba5af978   # M2 evidence SHA backfill
-  - b12e891ad   # M3 verification sweep + audit-ready signal (backfilled by follow-up)
+  - b12e891ad   # M3 verification sweep + audit-ready signal
+  - 92065a1e4   # M3-fix review findings F1-F5 (specID traversal, unresolved-key, detached-head, git-show swallow, clear-gate-to-windows)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
@@ -1062,7 +1063,7 @@ coverage:
   internal_kanban: 86.9
   internal_core_git: 86.7
 full_suite:
-  rc: 0
+  rc: 0   # post-M3 base; M3-fix pass had one unrelated internal/cli navigator flake (isolated re-run 3/3 ok)
   fail_lines: 0
   env_note: "run with this session's inherited kanban env unset (5 vars); attribution recorded in §E.2 M1"
 spec_lint:
