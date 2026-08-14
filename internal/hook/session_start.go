@@ -356,10 +356,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	//
 	// The notice is a BOOTSTRAP announcement, so it belongs to a genuinely new
 	// session and nothing else. SessionStart also fires on resume, clear, and
-	// compact, where the kanban env is still set and the notice would therefore
-	// re-emit — telling the operator to open four terminals they already opened,
-	// for a run already under way. Those three sources are skipped; see
-	// kanbanBootstrapNoticeForSource for the empty-source case.
+	// compact, where the kanban environment is still set and the notice would
+	// therefore re-emit — telling the operator to open four terminals they
+	// already opened, for a run already under way. Those three sources are
+	// skipped; an empty source is treated as startup (see the helper).
 	if notice := kanbanBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{

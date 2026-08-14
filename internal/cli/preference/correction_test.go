@@ -24,6 +24,8 @@ func TestCorrectInferred_ObservedUpsertAndInferredDemoted(t *testing.T) {
 	// Cannot run in parallel: mutates a real fileStore under t.TempDir().
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join — see cmd_test.go.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -90,6 +92,8 @@ func TestCorrectInferred_ObservedUpsertAndInferredDemoted(t *testing.T) {
 func TestCorrectInferred_PriorInferredWeightReducedAndArchived(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join — see cmd_test.go.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -149,6 +153,8 @@ func TestCorrectInferred_PriorInferredWeightReducedAndArchived(t *testing.T) {
 func TestCorrectInferred_NoPriorEntryStillUpserts(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join — see cmd_test.go.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -184,6 +190,8 @@ func TestCorrectInferred_NoPriorEntryStillUpserts(t *testing.T) {
 func TestCorrectInferred_ObservedPriorIsIdempotent(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join — see cmd_test.go.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
@@ -233,6 +241,8 @@ func TestCorrectInferred_ObservedPriorIsIdempotent(t *testing.T) {
 func TestCorrectInferred_EmptyArgsRejected(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
+	// HOME is the other half of the memory-dir join — see cmd_test.go.
+	t.Setenv("HOME", tmp)
 
 	memDir, err := resolveMemoryDirOverride("")
 	if err != nil {
