@@ -161,14 +161,21 @@ func TestSessionStartKanbanNoticeOnlyOnNewSession(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Handle: %v", err)
 			}
-			got := strings.Contains(out.SystemMessage, "tjpyre")
+			got := strings.Contains(out.SystemMessage, "Kanban Mode")
 			if got != tc.want {
-				verb := "did not emit"
-				if got {
-					verb = "emitted"
-				}
-				t.Errorf("source=%q %s the bootstrap notice; want emitted=%v\nSystemMessage=%q",
-					tc.source, verb, tc.want, out.SystemMessage)
+				t.Errorf("source %q: notice emitted = %v, want %v.\nSystemMessage: %q",
+					tc.source, got, tc.want, out.SystemMessage)
+			}
+
+			// The model-facing channel is gated by the same predicate; a
+			// suppressed notice must not survive on either surface.
+			ac := ""
+			if out.HookSpecificOutput != nil {
+				ac = out.HookSpecificOutput.AdditionalContext
+			}
+			if gotAC := strings.Contains(ac, "Kanban Mode"); gotAC != tc.want {
+				t.Errorf("source %q: AdditionalContext carried notice = %v, want %v",
+					tc.source, gotAC, tc.want)
 			}
 		})
 	}

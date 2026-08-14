@@ -94,10 +94,10 @@ func TestAgentFMDefaultShowsProfileMatrixValue(t *testing.T) {
 	writeLLMProfileYAML(t, root, "medium", nil)
 	body := renderAgentFMBody(t, root)
 
-	// medium/manager-develop → opus/medium (profile matrix). No cell in the medium
+	// medium/manager-develop → opus/high (profile matrix). No cell in the medium
 	// column carries xhigh, so its absence proves the read path is matrix-derived.
-	if !strings.Contains(body, `<option value="medium" selected`) {
-		t.Error(`no-override agent (manager-develop) should show the medium-profile develop cell (medium) as selected`)
+	if !strings.Contains(body, `<option value="high" selected`) {
+		t.Error(`no-override agent (manager-develop) should show the medium-profile develop cell (high) as selected`)
 	}
 	if strings.Contains(body, `<option value="xhigh" selected`) {
 		t.Error(`an xhigh cell rendered under the medium profile — read path must derive from the profile matrix (high under medium)`)

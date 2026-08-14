@@ -8,7 +8,7 @@ description: |
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit
 model: inherit
-effort: low
+effort: high
 color: cyan
 permissionMode: bypassPermissions
 memory: project
