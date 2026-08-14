@@ -322,6 +322,232 @@ $ git -C $P rev-parse --path-format=absolute --git-dir --git-common-dir
 
 **Bootstrap-sibling artifact state (measured, affects nothing in this run-phase):** the primary checkout's BOOTSTRAP spec/plan/acceptance carry uncommitted v0.7.x edits — the D2 adoption widening progress.md v0.6.0 records. `grep -c 'REQ-KB-025'` over **origin/main's** BOOTSTRAP `spec.md` → 0, i.e. the widening is uncommitted. The BOARD run-phase consumes only the REQ-KS-006 **contract body**, which the v0.7.0 widening extends as a verbatim prefix (old text unchanged, per the v0.6.1 re-audit) — the unmodified origin/main text is therefore the whole contract for this SPEC's purposes, and the adoption obligation itself is BOOTSTRAP's run-phase concern (debt table, row 4).
 
+### M1 — state store, resolution, sole writer, board-wide lock, bounded recovery (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`, TDD RED-GREEN-REFACTOR)
+
+**Implemented** (all beneath `internal/`, worktree-local):
+
+| file | content |
+|---|---|
+| `core/git/checkout.go` (+`checkout_test.go`) | REQ-KB-005 extraction: `ResolveGitDirs`/`IsPrimaryCheckout` returning the resolved PATHS; older-git fallback intact; exported `ExecCommand` indirection preserved so the fallback is forced through the dispatcher |
+| `hook/branch_guard.go` (+ both test files) | re-point: `isPrimaryCheckout` keeps its boolean contract and delegates to the extraction; the hook fallback suite swaps `gitcore.ExecCommand` (the indirection moved WITH the logic) |
+| `kanban/board.go` (+test) | board root/dir/path via the board's OWN `boardDirSegments = {".moai","state","kanban-board"}` (AP-24: record.go's `stateDirSegments` untouched); minimal Card/BoardState schema with the column as a RECORDED value (REQ-KB-006); absent-vs-unreadable `LoadBoard` (REQ-KB-021/013 detection) |
+| `kanban/role.go` (+test) | REQ-KB-025 carrier: `DeclareRole`/`ResolveDeclaredRole` at the board root (single origin), label recorded as a separate datum, both cross-session directions resolvable |
+| `kanban/board_store.go` (+test) | THE guarded write entry `WriteBoardState`: lead-role guard (fail-closed) → board-wide lock across the whole read-modify-write → same-directory temp + `atomicfile.Replace` (REQ-KB-017/018/019); minimal WIP-2 `TransitionIntoRun` with named refusal (REQ-KB-009 minimal form, for AC-KB-019) |
+| `kanban/board_lock.go` + `_unix`/`_windows` + `lock_alive_*` (+tests) | REQ-KB-019 substrate reusing the `internal/spec/lock.go` pattern (flock / atomic-create; `internal/lockfile` untouched); owner identity recorded IN the artifact; REQ-KB-023 bounded `ClearStaleBoardLock` with pre-unlink re-read, TOCTOU residual stated in the doc comment (AP-29) |
+| `kanban/board_recover.go` (+test) | REQ-KB-013/022 bounded recovery: sole writer + board-wide lock; readable board recovered in place (no card moved); unreadable board's raw content preserved in a durable sidecar BEFORE the empty replacement; one invocation, one verdict |
+
+**E1 — AC binary matrix (M1-executable criteria).** Verbatim `-run` outputs below; `ok github.com/modu-ai/moai-adk/internal/kanban` on every run.
+
+| AC | verdict | deciding observation |
+|---|---|---|
+| AC-KB-002 | PASS | `TestBoardRoot_SingleOrigin` (worktree AND primary-checkout runs, the primary being the load-bearing control) + `TestBoardRoot_FallbackForcedThroughIndirection` (third run, primary probe forced to fail via `gitcore.ExecCommand`, non-fallback calls delegated to real git) — all PASS; property scan + positive control below |
+| AC-KB-003 | PASS | absence scan over the five board files: `grep -n 'os\.Getwd\|filepath.Join("."' board*.go role.go` → rc=1 (zero); positive control below |
+| AC-KB-004 | PASS | `TestLoadBoard_ColumnRecordedNotDerived` — recorded `review` read as `review`; mutating ONLY the recorded column to `run` changes the answer |
+| AC-KB-005 | PASS | scan (frontmatter writes + status literals) → rc=1 zero matches over board files; positive control below; no `factory` token in any authored line (AC-KB-001 standing, checked at commit) |
+| AC-KB-006 | PASS | `TestLoadBoard_AbsentVsUnreadable` truncated row → unknown, no board returned; same-size well-formed row reads (conditional-on-content control) |
+| AC-KB-017 | PASS | static half: `BoardPath` write sites enumerate to exactly `board_store.go:172` (inside `writeBoardAtomic`, reachable only from the two guarded entries); runtime half: non-lead refused + byte-unchanged, lead succeeds, undeclared refused (fail-closed); carrier half: workers-read-lead + lead-reads-workers + cross-process resolution + label-distinctness all PASS; uniqueness scan below |
+| AC-KB-018 | PASS | static dir-equality: `os.CreateTemp(dir, ...)` where `dir == filepath.Dir(target)` (`board_store.go:167`, self-evident in code); dynamic: `TestWriteBoardState_ConcurrentReaderSeesWholeBoards` — 60 concurrent writes, reader never observed a parse failure or a shrinking board; no temp leftovers |
+| AC-KB-019 | PASS | `TestBoardMutation_SerializedAcrossProcesses` — two separate OS processes (helper re-exec), two DIFFERENT cards, board holding one: exactly 1 success + 1 WIP refusal, final run count 2; positive control `TestBoardMutation_ConcurrencyPositiveControl` — zero-baseline, both succeed, count 2 |
+| AC-KB-020 | PASS | `TestRecoverBoard_ReadPathNeverRepairs` (5 reads, all unknown, bytes unchanged) + `TestRecoverBoard_BoundedRecovery` (verdict `replaced`, sidecar preserves the lost raw content, roles carrier untouched, second invocation yields `recovered` and modifies nothing) + readable-board and non-lead-refused rows |
+| AC-KB-023 | PASS | three observations in separate processes: dead owner cleared (report carries the PID), live owner refused (age irrelevant), release-and-reacquire interleaving ahead of the re-read → `ErrBoardLockChangedHands`, artifact survives. Platform recorded in test output: **darwin (Unix substrate)** — flock releases on exit, so observation 1 is trivially satisfiable here; the Windows substrate is the requirement's reason, covered by `GOOS=windows` build. TOCTOU residual stated in `ClearStaleBoardLock`'s doc comment, not claimed closed |
+| AC-KB-024 | PASS | ONE table-driven test, both rows: absent → empty board + success; unreadable (truncated, permission-denied) → unknown. The pairing is the criterion; the same-size well-formed row is the conditional control |
+| AC-KB-021 (structural) | PASS (M1 half) | absent-row + sole-writer-creates-directory both exercised (`TestWriteBoardState_CreatesStateDirectory`); the full no-recovery-required reading rides AC-KB-024's absent row |
+| DEFERRED to M2 | — | AC-KB-007/008/009/010/011/012/013/014/021(full)/022/025 — column enum, full card model, compatibility table, unheld state, status-source selection all structurally wait on M2's model (traceability table assigns them M2) |
+
+**Verbatim outputs (per-AC `-run`, exit 0 each):**
+
+```
+$ go test ./internal/kanban/ -run 'TestBoardRoot_SingleOrigin|TestBoardRoot_FallbackForcedThroughIndirection' -count=1 -v | grep -E '^--- '
+--- PASS: TestBoardRoot_FallbackForcedThroughIndirection (0.16s)
+--- PASS: TestBoardRoot_SingleOrigin (0.41s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	7.344s
+
+$ go test ./internal/kanban/ -run 'TestLoadBoard_AbsentVsUnreadable' -count=1 -v | grep -E '^(--- |    --- )'
+--- PASS: TestLoadBoard_AbsentVsUnreadable (0.00s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/absent_file_is_legitimately_empty_board (0.00s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/truncated_json_is_unknown (0.00s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/well_formed_same_size_reads_successfully (0.00s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/permission_denied_is_unknown (0.00s)
+
+$ go test ./internal/kanban/ -run 'TestWriteBoardState_NonLeadRefused|TestWriteBoardState_LeadSucceeds|TestWriteBoardState_UndeclaredSessionRefused|TestRoleDeclaration_' -count=1 -v | grep -E '^--- '
+--- PASS: TestRoleDeclaration_CrossProcessResolution (0.05s)
+--- PASS: TestWriteBoardState_UndeclaredSessionRefused (0.00s)
+--- PASS: TestRoleDeclaration_LabelDistinct (0.02s)
+--- PASS: TestRoleDeclaration_WorkersReadLead (0.03s)
+--- PASS: TestWriteBoardState_NonLeadRefused_BoardUnchanged (0.05s)
+--- PASS: TestRoleDeclaration_LeadReadsWorkers (0.05s)
+--- PASS: TestWriteBoardState_LeadSucceeds (0.07s)
+
+$ go test ./internal/kanban/ -run 'TestBoardMutation_|TestBoardLock_ExcludesAcrossProcesses' -count=1 -v | grep -E '^--- '
+--- PASS: TestBoardMutation_SerializedAcrossProcesses (0.01s)
+--- PASS: TestBoardMutation_ConcurrencyPositiveControl (0.02s)
+--- PASS: TestBoardLock_ExcludesAcrossProcesses (0.04s)
+
+$ go test ./internal/kanban/ -run 'TestClearStaleBoardLock' -count=1 -v | grep -E '^(--- |    board_lock)'
+    board_lock_test.go:149: platform: darwin-or-linux — Unix substrate releases flock(2) on exit, so this observation is trivially satisfiable here; the Windows substrate is the reason REQ-KB-023 exists
+--- PASS: TestClearStaleBoardLock_DeadOwnerCleared (0.03s)
+--- PASS: TestClearStaleBoardLock_LiveOwnerRefused (0.02s)
+--- PASS: TestClearStaleBoardLock_ReacquireRaceAborts (0.07s)
+--- PASS: TestClearStaleBoardLock_UnreadableArtifact (0.03s)
+--- PASS: TestClearStaleBoardLock_NoArtifactAndUnparseable (0.06s)
+
+$ go test ./internal/kanban/ -run 'TestRecoverBoard' -count=1 -v | grep -E '^--- '
+--- PASS: TestRecoverBoard_ReadPathNeverRepairs (0.04s)
+--- PASS: TestRecoverBoard_AbsentNeedsNoRecovery (0.06s)
+--- PASS: TestRecoverBoard_NonLeadRefused (0.09s)
+--- PASS: TestRecoverBoard_ReadableBoardRecoveredUnchanged (0.09s)
+--- PASS: TestRecoverBoard_BoundedRecovery (0.09s)
+```
+
+**Static scans + positive controls (each run once and recorded):**
+
+```
+# AC-KB-002 property scan — no board-state path constructed from the record's constant.
+# Form chosen: name scan scoped to the board's own files, code lines only
+# (board.go's AP-24 COMMENT mentions stateDirSegments; a mention is not a use).
+$ grep -n 'stateDirSegments' internal/kanban/board.go board_store.go board_lock.go board_recover.go role.go | grep -vE ':[0-9]+:\s*//'
+(no output; rc=1 — zero code-line matches)
+$ grep -c 'stateDirSegments' internal/kanban/record.go
+3
+# positive control: the SAME scan over the constant's real user reports 3 —
+# the scan demonstrably fires.
+
+# AC-KB-003 — no tree-relative anchor.
+$ grep -n 'os\.Getwd\|filepath.Join("."' internal/kanban/{board,board_store,board_lock,board_recover,role}.go
+(no output; rc=1)
+# positive control: a deliberate os.Getwd()-anchored board path added in a
+# temp file is REPORTED by the same scan (zz_positive_control_tmp.go:10), then removed.
+
+# AC-KB-005 — no frontmatter write, no status literal.
+$ grep -nE '\.moai.{0,3}specs|"status"|status:' internal/kanban/{board,board_store,board_lock,board_recover,role}.go
+(no output; rc=1)
+# positive control: a deliberate "status: in-progress" write is REPORTED by
+# the same scan, then removed.
+
+# AC-KB-017 static half — every write site reaches the file through one entry.
+$ grep -n 'BoardPath' internal/kanban/{board,board_store,board_recover,role}.go
+board.go:99:   os.ReadFile(BoardPath(root))                 # read
+board_store.go:172: atomicfile.Replace(tmpName, BoardPath(root))  # THE write (writeBoardAtomic)
+board_recover.go:78: os.ReadFile(BoardPath(root))           # read
+# writeBoardAtomic is unexported, called only by WriteBoardState and
+# RecoverBoard — both guarded entry points.
+# positive control: a deliberate direct os.WriteFile(BoardPath(...)) in a
+# temp file is REPORTED by the same enumeration, then removed.
+
+# AC-KB-017 carrier uniqueness — exactly one declaration surface.
+$ grep -rn 'func DeclareRole\|func ResolveDeclaredRole' internal/ | grep -v _test.go
+internal/kanban/role.go:63:func DeclareRole(...)
+internal/kanban/role.go:104:func ResolveDeclaredRole(...)
+# one surface (the roles/ carrier beneath the board root); no other
+# declaration mechanism exists in internal/ (M0 cmd 11c re-verified below).
+# Clears THIS SPEC's implementation only; the cross-SPEC half is AC-KS-030's.
+
+# REQ-KB-025 branch re-check (plan §C cmd 11c, re-run before authoring):
+$ grep -rln 'declared role\|role declaration' internal/ 2>/dev/null
+internal/kanban/board.go internal/kanban/board_store.go internal/kanban/role.go   # all M1-authored
+# no pre-existing carrier — the establish branch applied.
+```
+
+**E8 — TDD RED evidence (verbatim, captured BEFORE each green):**
+
+```
+$ go test ./internal/core/git/ -run 'TestResolveGitDirs|TestIsPrimaryCheckout'   # before checkout.go
+internal/core/git/checkout_test.go:39:15: undefined: ResolveGitDirs
+internal/core/git/checkout_test.go:127:10: undefined: ExecCommand
+FAIL github.com/modu-ai/moai-adk/internal/core/git [build failed]
+
+$ go vet ./internal/kanban/   # before board.go
+vet: internal/kanban/board_test.go:308:51: undefined: BoardState
+
+$ go vet ./internal/kanban/   # before role.go
+vet: internal/kanban/kanban_helper_test.go:26:16: undefined: ResolveDeclaredRole
+
+$ go vet ./internal/kanban/   # before board_lock.go
+vet: internal/kanban/board_lock_test.go:109:15: undefined: AcquireBoardLock
+
+$ go vet ./internal/kanban/   # before board_store.go
+vet: internal/kanban/board_lock_cross_test.go:37:10: undefined: ErrWipLimitExceeded
+
+$ go vet ./internal/kanban/   # before board_recover.go
+vet: internal/kanban/board_recover_test.go:77:14: undefined: RecoverBoard
+```
+
+Mid-green failures also observed and fixed (not smoothed): the worktree-fixture
+symlink mismatch (`/var` vs `/private/var`), the two cross-process transitions
+bouncing off the non-blocking lock (fixed by a bounded acquisition retry so
+both processes reach the WIP decision in turn — the AC-KB-019 outcome), and
+the unwritable-dir test being defeated by an earlier MkdirAll.
+
+**E2 — builds.**
+
+```
+$ go build ./...            ; echo rc=$?
+rc=0
+$ GOOS=windows GOARCH=amd64 go build ./... ; echo rc=$?
+rc=0
+```
+
+**E3 — coverage (this run, this tree, HEAD after M1 commits).**
+
+```
+$ go test -cover ./internal/kanban/... ./internal/core/git/...
+ok  github.com/modu-ai/moai-adk/internal/kanban    1.047s  coverage: 86.0% of statements
+ok  github.com/modu-ai/moai-adk/internal/core/git  78.428s coverage: 86.7% of statements
+```
+
+**E4 — subagent boundary.**
+
+```
+$ grep -rn 'AskUserQuestion' internal/kanban internal/core/git | grep -v _test.go
+(no output; rc=1)
+```
+
+**E5 — lint.** Baseline captured BEFORE any edit: `golangci-lint run` → `0 issues.` After M1: `0 issues.` — NEW findings: zero.
+
+**E6 — commits (worktree `feat/SPEC-KANBAN-BOARD-001`).**
+- `dc03459bf` — extraction + hook re-point + status flip (draft → in-progress)
+- `<this commit>` — board store, carrier, lock, recovery, tests, scans, evidence
+
+Nothing outside the worktree was touched: all file operations used
+`/Users/goos/.moai/worktrees/kanban-board` paths; the shared primary
+checkout (`/Users/goos/MoAI/moai-adk-go`) was never written, staged, or
+committed to.
+
+
+**Full suite (REQ-KB-016 discipline, run at M1 close).**
+
+```
+$ go test ./... -count=1 > /tmp/kb-fullsuite.log 2>&1
+rc=1 — two packages FAIL: internal/cli, internal/hook
+```
+
+Both failures attribute to ENVIRONMENT contamination, not to this change —
+proven by rerun with the contaminating variables removed:
+
+```
+$ env -u MOAI_KANBAN_LABEL -u MOAI_KANBAN_ID -u MOAI_KANBAN_SETTINGS_INJECTED \
+      -u CLAUDE_CODE_STOP_HOOK_BLOCK_CAP \
+      go test ./internal/hook/ ./internal/cli/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli	212.015s
+ok  github.com/modu-ai/moai-adk/internal/hook	17.133s
+```
+
+Root cause: this run-phase executes INSIDE a Kanban Mode session, whose
+launcher exports `MOAI_KANBAN_LABEL`/`MOAI_KANBAN_ID`/`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`
+into the process environment. The hook's session-start kanban notice reads
+`MOAI_KANBAN_ID` (so the "AdditionalContext must be empty" negative controls
+saw a live "Kanban Mode: joined run tjqim9" notice) and the launcher's
+block-cap tests see the pre-set `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200`. The
+same tests pass once the inherited env is unset — the failures are a property
+of WHERE the suite ran, not of WHAT changed (the same environment-dependence
+class this repository has recorded before for the local cli suite). Every
+other package in the full run was `ok`. No new lint findings; gofmt clean.
+
+**E7 — blockers: none.** Four inherited debts left as recorded (not fixed):
+kanban-dispatch.md column-derivation disagreement (AP-32 — reported finding,
+rule untouched), the backlog column-vs-queue statement, the v3.1.0-rc binary
+lag, and the BOOTSTRAP adoption obligation (sibling's run-phase concern).
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
