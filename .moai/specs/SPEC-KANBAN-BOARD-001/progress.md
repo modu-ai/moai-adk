@@ -548,6 +548,135 @@ kanban-dispatch.md column-derivation disagreement (AP-32 — reported finding,
 rule untouched), the backlog column-vs-queue statement, the v3.1.0-rc binary
 lag, and the BOOTSTRAP adoption obligation (sibling's run-phase concern).
 
+### M2 — the card, the columns, the branch-side status read, the table, and admission (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`, TDD RED-GREEN-REFACTOR)
+
+**Implemented** (extending the M1 store; no restructuring):
+
+| file | content |
+|---|---|
+| `kanban/column.go` (+`column_test.go`) | REQ-KB-003 closed six-column enumeration: ordered `Columns()`, `ParseColumn` constructor refusing every outside value (incl. `test`, `blocked`), `HasOwningSession` predicate (backlog/done ownerless, REQ-KB-012) |
+| `kanban/status.go` | canonical 8-value status constants mirrored from `spec-frontmatter-schema.md` § Status Enum (SSOT named in the comment — no parallel vocabulary invented); `StatusUnresolved` explicitly NOT a member (REQ-KB-024) |
+| `kanban/board.go` (amended) | `Card.Column` promoted from string to the `Column` type (JSON shape unchanged); an out-of-set value still loads and reconciles inconsistent rather than bricking the board |
+| `kanban/status_read.go` (+`status_read_test.go`) | REQ-KB-020 branch-side read: source selected by worktree LIVENESS over REQ-KW-003's two scanned bases (path final segment = card identity), branch recognized by the exact-token rule read verbatim from the sibling, blob read `git show <branch>:.moai/specs/<id>/spec.md` with no checkout and no fetch; detached/unreadable-HEAD worktree → `StatusUnresolved` (REQ-KB-024); no live worktree → primary copy; committed state only |
+| `kanban/reconcile.go` (+`reconcile_test.go`) | REQ-KB-008 compatibility table (§A.4 as revised at v0.2.0) over EVERY pairing; illegal → inconsistent + not dispatchable + both values surfaced + byte-unchanged (AP-4); `ShouldCreateCard` — terminals produce NO card (absence, not a report); collision statuses reported ambiguous, never resolved (AC-KB-010); unresolved kept distinct from inconsistent (REQ-KB-024 ordering: no status read → table not reached) |
+| `kanban/board_store.go` (amended) | `BoardOptions.RunWIPLimit` — the board's own input, varied by AC-KB-012, default 2 (REQ-KB-009/010); `TransitionIntoRunOpts`; admission ungated on session availability (REQ-KB-011) |
+
+**E1 — AC binary matrix (M2-executable criteria).**
+
+| AC | verdict | deciding observation |
+|---|---|---|
+| AC-KB-007 | PASS | `go test ./internal/kanban/ -run Column` — 6 values ordered, ParseColumn rejects `test`/`blocked`/arbitrary strings, accepts every declared value |
+| AC-KB-008 | PASS | `TestCardRecord_RoundTrip` — all four fields round-trip; unheld cards carry an empty holder, never a synthesized one |
+| AC-KB-009 | PASS | `TestCompatibilityTable_EveryPairing` — 48 pairings (6 columns × 8 statuses) table-driven, legal AND illegal both decided; the four called-out rows land correctly: (sync,completed) legal, (backlog/plan,planned) legal, (run,planned) illegal; `TestCompatibilityTable_IllegalPairRepairsNothing` — board + spec.md byte-unchanged |
+| AC-KB-010 | PASS | `TestReconcileCard_CollisionsAreAmbiguousNotResolved` — draft/planned report the backlog-vs-plan collision, in-progress the run-vs-review collision; recorded column stands; implemented/completed not reported ambiguous |
+| AC-KB-011 | PASS | M1's `TestTransitionIntoRun_WipBound` (named refusal, byte-unchanged, positive control with one card) + `TestAdmission_WipDefaultsToTwo` |
+| AC-KB-012 | PASS | forward: `TestAdmission_WipKnobVaries` over limits 1/2/3 — admitted count tracks the knob; reverse: code-line absence scan zero (scan + controls below) |
+| AC-KB-013 | PASS | `TestAdmission_UnheldInRunIsLegalSteadyState` — second admission with no session free succeeds, holder empty, steady state; THIRD admission refused by WIP (bounded by WIP, not sessions) |
+| AC-KB-014 | PASS | `TestAdmission_BacklogDoneNotDispatchable` — backlog/done refused, plan dispatchable (incl. no-spec.md plan card); the refusal is column-conditional |
+| AC-KB-021 | PASS | `TestReconcileCard_PlannedAdmittedOnlyInBacklogAndPlan` + `TestShouldCreateCard_TerminalsProduceNoCard` — terminals observed as card ABSENCE, not an inconsistency report; no-spec.md is a backlog admission, not a terminal |
+| AC-KB-022 | PASS | four observations over ONE three-branch fixture (plan/draft, feat/in-progress, sync/completed; primary completed): live worktree on the in-progress branch → exactly in-progress (not completed from the more advanced branch, not draft, not primary); identical branch set with no worktree → primary completed; no-branch card → primary; uncommitted worktree edit → invisible. Positive control: (run, completed-primary) is an illegal row in the EveryPairing table — a primary-side read would pair the run card inconsistent |
+| AC-KB-025 | PASS | `TestReadCardStatus_DetachedWorktreeIsUnresolved` + `TestUnresolvedCard_OutcomeDistinctAndByteUnchanged` — detached-HEAD fixture, status exactly `unresolved` (no enum member substituted; the zero-value draft that would pair legally and dispatch is excluded), recorded column stands, NOT reported inconsistent (outcome observed, not just the refusal), board + spec.md byte-unchanged |
+| DEFERRED to M3 | — | AC-KB-015/016 (template mirror, neutrality, full-suite + per-file spec lint) — the M3 mechanical milestone |
+
+**Verbatim outputs (per-AC `-run`, exit 0 each):**
+
+```
+$ go test ./internal/kanban/ -run Column -count=1 -v | grep -E '^(--- |ok)'
+--- PASS: TestColumn_ParseAcceptsEveryDeclaredValue (0.00s)
+--- PASS: TestReconcileCard_InvalidRecordedColumn (0.00s)
+--- PASS: TestColumn_DispatchableColumnConditional (0.00s)
+--- PASS: TestColumn_ParseRejectsOutsideSet (0.00s)
+--- PASS: TestColumn_EnumerationExactlySixOrdered (0.00s)
+--- PASS: TestLoadBoard_ColumnRecordedNotDerived (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.172s
+
+$ go test ./internal/kanban/ -run 'TestReadCardStatus|TestBranchNamesSpec|TestUnresolvedCard' -count=1 -v | grep -E '^(--- |ok)'
+--- PASS: TestReadCardStatus_LiveWorktreeSuppliesStatus (1.08s)
+--- PASS: TestReadCardStatus_NoLiveWorktreeReadsPrimary (0.84s)
+--- PASS: TestReadCardStatus_NoBranchAtAllReadsPrimary (1.29s)
+--- PASS: TestReadCardStatus_CommittedStateOnly (1.82s)
+--- PASS: TestReadCardStatus_DetachedWorktreeIsUnresolved (1.66s)
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (0.95s)
+--- PASS: TestBranchNamesSpec_ExactTokenRule (0.00s)
+--- PASS: TestUnresolvedCard_OutcomeDistinctAndByteUnchanged (1.40s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	7.998s
+
+$ go test ./internal/kanban/ -run 'TestCompatibilityTable|TestReconcileCard|TestShouldCreateCard' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.381s   (48 subtests + named tests green)
+
+$ go test ./internal/kanban/ -run 'TestCardRecord|TestAdmission' -count=1 -v | grep -E '^(--- |    --- |ok)'
+--- PASS: TestAdmission_BacklogDoneNotDispatchable (0.00s)
+--- PASS: TestCardRecord_RoundTrip (0.05s)
+--- PASS: TestAdmission_WipDefaultsToTwo (0.15s)
+--- PASS: TestAdmission_UnheldInRunIsLegalSteadyState (0.15s)
+--- PASS: TestAdmission_WipKnobVaries (0.00s)
+    --- PASS: TestAdmission_WipKnobVaries/wip1 (0.05s)
+    --- PASS: TestAdmission_WipKnobVaries/wip3 (0.15s)
+    --- PASS: TestAdmission_WipKnobVaries/wip2 (0.15s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.664s
+```
+
+**E8 — TDD RED evidence (verbatim, captured BEFORE each green):**
+
+```
+$ go vet ./internal/kanban/   # before column.go
+vet: internal/kanban/column_test.go:18:12: undefined: Column
+
+$ go vet ./internal/kanban/   # before status_read.go
+vet: internal/kanban/status_read_test.go:60:33: undefined: WorktreeBases
+
+$ go vet ./internal/kanban/   # before reconcile.go
+vet: internal/kanban/reconcile_test.go:53:13: undefined: ReconcileCard
+```
+
+Mid-green corrections, recorded rather than smoothed: the EveryPairing and
+collision tests initially expected `Dispatchable` for legal pairings in
+backlog/done — wrong against REQ-KB-012 (an ownerless column never
+dispatches); the expectations were corrected to separate the
+legal/consistent dimension from the dispatch verdict, which is exactly the
+column-conditional refusal AC-KB-014 asserts. `CardStatus.Candidates` was
+added when reconcile.go first referenced it (compile-time RED).
+
+**AC-KB-012 scans + positive controls (run once and recorded):**
+
+```
+# Reverse half — the admission path reads no session-count value.
+$ grep -rniE 'session[_ ]?count|deployed|numsessions|sessions\(\)' \
+    internal/kanban/{board,board_store,column,reconcile}.go | grep -viE ':[0-9]+:\s*//'
+(no output; rc=1 — zero CODE-line matches; the 5 raw hits are comments
+ naming the independence requirement itself)
+
+# Positive control A (text): a deliberately introduced
+# admittedFromSessionCountHack is REPORTED by the same scan (2 hits), then removed.
+# Positive control B (table-driven): runLimit() temporarily clamped to a fixed
+# session count of 1 —
+$ go test ./internal/kanban/ -run 'TestAdmission_WipKnobVaries' -count=1
+--- FAIL: TestAdmission_WipKnopVaries (0.00s)
+    --- FAIL: TestAdmission_WipKnobVaries/wip2 (0.01s)
+    --- FAIL: TestAdmission_WipKnobVaries/wip3 (0.01s)
+# (typo in the captured run label aside: the subtests wip2/wip3 FAILED — the
+# admitted count stopped tracking the knob, which is the report) — reverted,
+# rerun green.
+```
+
+**E2 — builds.** `go build ./...` rc=0; `GOOS=windows GOARCH=amd64 go build ./...` rc=0.
+
+**E3 — coverage.**
+
+```
+$ go test -cover ./internal/kanban/... ./internal/core/git/...
+ok  github.com/modu-ai/moai-adk/internal/kanban    9.298s  coverage: 86.9% of statements
+ok  github.com/modu-ai/moai-adk/internal/core/git  (cached) coverage: 86.7% of statements
+```
+
+**E4 — subagent boundary.** `grep -rn 'AskUserQuestion' internal/kanban internal/core/git | grep -v _test.go` → rc=1, zero matches.
+
+**E5 — lint.** `golangci-lint run --timeout=5m` → `0 issues.` — NEW findings zero (baseline remains 0).
+
+**E6 — commits.** This milestone: `<this commit>` — column enum, status vocabulary, branch-side read, reconcile, admission (SHA backfill follows if displaced). The M1-M2 regression check ran the FULL kanban package after the Column promotion and again at milestone close: `ok ... 8.529s` both times. Primary checkout untouched throughout.
+
+**E7 — blockers: none.** The full-suite environmental note from M1 still applies to any whole-repo run from this session's shell (unset the five kanban-session variables first).
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal

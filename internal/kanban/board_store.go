@@ -41,20 +41,31 @@ func IsWipLimitExceeded(err error) bool {
 	return errors.Is(err, ErrWipLimitExceeded)
 }
 
-// wipLimitRun is the board's `run` concurrency bound (REQ-KB-009): at most
-// two cards occupy `run` at once. It is a property of the BOARD and is
-// deliberately independent of the deployed coder-session count (REQ-KB-010)
-// — nothing here reads a session count.
+// runWIPLimitDefault is the board's `run` concurrency bound (REQ-KB-009):
+// at most two cards occupy `run` at once. It is a property of the BOARD and
+// is deliberately independent of the deployed coder-session count
+// (REQ-KB-010) — nothing here reads a session count.
 //
 // The bound is enforceable only beneath the board-wide lock: two concurrent
 // transitions of two different cards each holding only their own card's lock
 // would each observe the bound satisfied and each write, landing at WIP 3.
-const wipLimitRun = 2
+const runWIPLimitDefault = 2
 
-// columnRun names the `run` column this file's minimal transition targets.
-// The closed six-column enumeration is M2's (REQ-KB-003); M1 carries the
-// column as a recorded value only, and nothing derives it (REQ-KB-006).
-const columnRun = "run"
+// BoardOptions carries the board's OWN inputs (REQ-KB-010): the WIP bound is
+// one of them, and the deployed coder-session count is deliberately NOT —
+// the admission path reads no session-count value from configuration,
+// topology, or any observable. A zero RunWIPLimit selects the default.
+type BoardOptions struct {
+	RunWIPLimit int
+}
+
+// runLimit resolves the effective `run` WIP bound.
+func (o BoardOptions) runLimit() int {
+	if o.RunWIPLimit > 0 {
+		return o.RunWIPLimit
+	}
+	return runWIPLimitDefault
+}
 
 // Board-lock acquisition is non-blocking at the substrate, so a mutation
 // racing the current holder retries for a bounded window rather than failing
@@ -190,19 +201,28 @@ func writeBoardAtomic(root string, st *BoardState) error {
 }
 
 // TransitionIntoRun moves the card for specID into the `run` column beneath
-// the board-wide lock, refusing with ErrWipLimitExceeded — the board
-// unchanged — when the transition would make the third concurrent card
-// (REQ-KB-009's minimal M1 form; M2 completes the column model and the
-// admission rules around it).
+// the board-wide lock with the board's default options, refusing with
+// ErrWipLimitExceeded — the board unchanged — when the transition would
+// exceed the bound (REQ-KB-009).
 func TransitionIntoRun(root, sessionID, specID string) error {
+	return TransitionIntoRunOpts(root, sessionID, specID, BoardOptions{})
+}
+
+// TransitionIntoRunOpts is TransitionIntoRun with explicit board options —
+// the knob AC-KB-012 varies while holding every other input fixed. The
+// admission is never gated on session availability (REQ-KB-011): a card
+// admitted with no session free is recorded UNHELD and that is a legal
+// steady state, not an error or a stall.
+func TransitionIntoRunOpts(root, sessionID, specID string, opts BoardOptions) error {
 	if specID == "" {
 		return fmt.Errorf("transition into run: empty spec id")
 	}
 	return WriteBoardState(root, sessionID, func(st *BoardState) error {
+		limit := opts.runLimit()
 		inRun := 0
 		existing := -1
 		for i := range st.Cards {
-			if st.Cards[i].Column == columnRun {
+			if st.Cards[i].Column == ColumnRun {
 				inRun++
 			}
 			if st.Cards[i].SpecID == specID {
@@ -212,19 +232,19 @@ func TransitionIntoRun(root, sessionID, specID string) error {
 		// A card already in run re-enters idempotently; a card elsewhere
 		// moving in occupies one more run slot, so the bound is checked
 		// before any move.
-		if existing >= 0 && st.Cards[existing].Column == columnRun {
+		if existing >= 0 && st.Cards[existing].Column == ColumnRun {
 			return nil
 		}
-		if inRun >= wipLimitRun {
-			return fmt.Errorf("%w: %d cards already occupy run", ErrWipLimitExceeded, inRun)
+		if inRun >= limit {
+			return fmt.Errorf("%w: %d cards already occupy run (bound %d)", ErrWipLimitExceeded, inRun, limit)
 		}
 		moved := time.Now().UTC().Format(time.RFC3339)
 		if existing >= 0 {
-			st.Cards[existing].Column = columnRun
+			st.Cards[existing].Column = ColumnRun
 			st.Cards[existing].LastMovedAt = moved
 			return nil
 		}
-		st.Cards = append(st.Cards, Card{SpecID: specID, Column: columnRun, LastMovedAt: moved})
+		st.Cards = append(st.Cards, Card{SpecID: specID, Column: ColumnRun, LastMovedAt: moved})
 		return nil
 	})
 }

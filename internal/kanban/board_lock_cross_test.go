@@ -27,7 +27,7 @@ func countRunCards(t *testing.T, root string) int {
 	}
 	n := 0
 	for _, c := range st.Cards {
-		if c.Column == "run" {
+		if c.Column == ColumnRun {
 			n++
 		}
 	}

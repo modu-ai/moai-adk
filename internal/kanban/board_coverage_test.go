@@ -64,7 +64,7 @@ func TestTransitionIntoRun_Branches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadBoard: %v", err)
 	}
-	found := map[string]string{}
+	found := map[string]Column{}
 	for _, c := range st.Cards {
 		found[c.SpecID] = c.Column
 	}

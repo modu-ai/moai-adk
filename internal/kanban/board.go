@@ -45,14 +45,16 @@ func IsBoardUnknown(err error) bool {
 // Card is one board card's persisted record. The column is a RECORDED value
 // (REQ-KB-006): the board reads it and computes nothing — no helper recovers
 // or derives a column from a status, a progress marker, or any other
-// observable. M2 completes the model (closed column enumeration, consistency
-// table); M1 carries the recorded field with no derivation path anywhere.
+// observable.
 //
 // Holder is empty for an unheld card rather than a synthesized value; the
-// last-transition instant is RFC3339.
+// last-transition instant is RFC3339. The column field is typed as the
+// closed six-column enumeration; a state document carrying a value outside
+// the set still loads (the file is readable), and the reconciliation marks
+// such a card inconsistent rather than the whole board becoming unknown.
 type Card struct {
 	SpecID      string `json:"spec_id"`
-	Column      string `json:"column"`
+	Column      Column `json:"column"`
 	Holder      string `json:"holder,omitempty"`
 	LastMovedAt string `json:"last_transition_at"`
 }
