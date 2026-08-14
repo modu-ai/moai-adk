@@ -204,12 +204,22 @@ func ProfileMatrixAgents() []string {
 //     model for every multi-turn agentic row.
 //   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
 //     `high` while costing materially more, so it is strictly dominated. `max`
-//     is reserved for rows whose invocation is rare AND whose marginal quality
-//     is decision-critical (run-phase implementation and the escalation
-//     advisor, high column only).
-//   - `medium` is the knee of the Opus 5 cost/score curve — marginal cost per
-//     point rises several-fold above it — so manager-develop at `medium` is
-//     the default-profile anchor the rest of the matrix is derived from.
+//     is the only level above `high`, so a row that wants more than `high`
+//     takes `max`.
+//   - The phase-weighted override: the benchmark-derived cost anchor put
+//     manager-develop at `medium` and derived the rest from it. That anchor is
+//     superseded by an operator policy weighting the phase that decides what
+//     gets built over the phase that types it out — plan (manager-spec,
+//     plan-auditor) takes `max`, while run (manager-develop), review
+//     (sync-auditor) and sync (manager-docs) take `high`. `medium` remains the
+//     knee of the Opus 5 cost/score curve; the policy knowingly spends past it,
+//     so this matrix is NOT the cost-minimal derivation and must not be
+//     re-derived back onto the anchor.
+//   - Under a GLM backend only part of this is observable: z.ai's 3-state
+//     reasoning control collapses {medium, high} onto one state and
+//     {xhigh, max} onto another, so the run row is unchanged (its coding-max
+//     override already forced the ceiling) and so is review. Plan and sync do
+//     move. See glm_effort_overlay.go.
 //   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
 //     rows (Explore search, manager-git mechanics) where the multi-step
 //     completion failure does not apply and the lower input price does.
@@ -223,28 +233,28 @@ func ProfileMatrixAgents() []string {
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierHigh: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelHigh},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMax},
+		"plan-auditor":    {Model: "opus", Effort: EffortLevelMax},
 		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
 		"manager-develop": {Model: "opus", Effort: EffortLevelMax},
 		"super-advisor":   {Model: "opus", Effort: EffortLevelMax},
 		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
 		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
 		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "opus", Effort: EffortLevelMedium},
+		"manager-docs":    {Model: "opus", Effort: EffortLevelHigh},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMax},
+		"plan-auditor":    {Model: "opus", Effort: EffortLevelMax},
+		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop": {Model: "opus", Effort: EffortLevelHigh},
 		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
 		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
 		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
 		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":    {Model: "opus", Effort: EffortLevelHigh},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},

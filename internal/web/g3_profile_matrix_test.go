@@ -53,8 +53,8 @@ func writeLLMProfileYAML(t *testing.T, root, profile string, overrides map[strin
 // the seeded frontmatter (sonnet/medium) — proving the read path repointed off
 // frontmatter onto the profile matrix. The seeded profile is the superseded
 // "max", so this also exercises the max -> high read alias. The frontmatter
-// effort is "medium" because no cell in the high column carries it, which keeps
-// the negative assertion below discriminating.
+// effort is "medium" while the seeded agent's high-column cell is "max", which
+// keeps the negative assertion below discriminating.
 func TestG3ReadPathDerivesFromProfileMatrix(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-spec", "sonnet", "medium") // frontmatter deliberately divergent
@@ -65,8 +65,8 @@ func TestG3ReadPathDerivesFromProfileMatrix(t *testing.T) {
 	if !strings.Contains(body, `<option value="opus" selected`) {
 		t.Error("manager-spec model select did not select the high-profile cell (opus) — read path still reads frontmatter/badge-tier")
 	}
-	if !strings.Contains(body, `<option value="high" selected`) {
-		t.Error("manager-spec effort select did not select the high-profile cell (high)")
+	if !strings.Contains(body, `<option value="max" selected`) {
+		t.Error("manager-spec effort select did not select the high-profile cell (max)")
 	}
 	if strings.Contains(body, `<option value="medium" selected`) {
 		t.Error("manager-spec effort select shows the FRONTMATTER value (medium) — read path must derive from the profile matrix")
@@ -139,9 +139,9 @@ func TestG3SaveDefaultValueClearsOverride(t *testing.T) {
 	a := newPolicyTestApp(root)
 	form := baseSaveForm()
 	form.Set("performance_tier", "medium")
-	// medium/manager-spec default = opus/medium → submitting it clears the override.
+	// medium/manager-spec default = opus/max → submitting it clears the override.
 	form.Set("agentfm.manager-spec.model", "opus")
-	form.Set("agentfm.manager-spec.effort", "medium")
+	form.Set("agentfm.manager-spec.effort", "max")
 
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {
