@@ -348,8 +348,16 @@ func TestRunUpdate_V3Path_StripsRetiredDenyEntries(t *testing.T) {
 
 // TestRunUpdate_V3Path_CleanSettingsUntouched pins the no-op half of the
 // contract: a v3 project whose settings.json carries no retired entries must
-// come out byte-identical, so adding the call site to the always-run path
-// cannot churn an already-clean file.
+// come through the update path with the migration silent and the user's own
+// entries intact.
+//
+// Byte-identity is no longer the assertion. settings.json is a merge target, and
+// the merge now derives its base so keys the template introduces actually reach
+// an existing project — a partial file like this fixture legitimately comes out
+// carrying the template defaults it was missing. What must not happen is the
+// migration reporting work on a clean file, or the user's entries being
+// disturbed, and a second update must leave the file alone (see below): that is
+// the churn this test was written to catch.
 func TestRunUpdate_V3Path_CleanSettingsUntouched(t *testing.T) {
 	const v3Clean = `{
   "outputStyle": "MoAI-Easy",
@@ -370,11 +378,44 @@ func TestRunUpdate_V3Path_CleanSettingsUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != v3Clean {
-		t.Errorf("clean v3 settings.json was rewritten by the update path:\n--- got ---\n%s\n--- want ---\n%s",
-			got, v3Clean)
-	}
 	if strings.Contains(out, "[settings] Removed") {
 		t.Errorf("migration logged a removal on a clean file; output:\n%s", out)
 	}
+
+	var merged map[string]any
+	if err := json.Unmarshal(got, &merged); err != nil {
+		t.Fatalf("settings.json is not valid JSON after update: %v\n%s", err, got)
+	}
+	if merged["outputStyle"] != "MoAI-Easy" {
+		t.Errorf("user's outputStyle was disturbed: %v", merged["outputStyle"])
+	}
+	perms, _ := merged["permissions"].(map[string]any)
+	deny, _ := perms["deny"].([]any)
+	if len(deny) != 2 {
+		t.Errorf("user's permissions.deny was disturbed: %v", perms["deny"])
+	}
+	if _, ok := merged["hooks"]; !ok {
+		t.Errorf("template defaults did not reach the project; got keys: %v", keysOf(merged))
+	}
+
+	// No churn on the way back through: once the file carries the template's
+	// keys, a further update must leave it byte-identical.
+	runUpdateInFixture(t, root)
+	again, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != string(got) {
+		t.Errorf("a second update churned settings.json:\n--- first ---\n%s\n--- second ---\n%s", got, again)
+	}
+}
+
+// keysOf returns m's keys for failure messages.
+func keysOf(m map[string]any) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
 }

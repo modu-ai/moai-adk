@@ -6,7 +6,7 @@ description: |
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__spec_audit, mcp__moai__spec_drift, mcp__moai__codex_audit, mcp__moai__glm_audit
 model: inherit
-effort: medium
+effort: max
 color: red
 permissionMode: default
 memory: project

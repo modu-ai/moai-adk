@@ -34,7 +34,7 @@ func clearKanbanEnv(t *testing.T) {
 func TestKanbanBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 	clearKanbanEnv(t)
 
-	if got := kanbanBootstrapNotice(); got != "" {
+	if got := kanbanBootstrapNotice(langEnglish); got != "" {
 		t.Errorf("non-kanban session got a notice: %q", got)
 	}
 }
@@ -49,7 +49,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
 
-	got := kanbanBootstrapNotice()
+	got := kanbanBootstrapNotice(langEnglish)
 	if got == "" {
 		t.Fatal("lead session got no notice")
 	}
@@ -81,7 +81,7 @@ func TestKanbanBootstrapNoticeCompanion(t *testing.T) {
 			clearKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanbanLabel, kanban.CompanionLabel(role, "tjlgt1"))
 
-			got := kanbanBootstrapNotice()
+			got := kanbanBootstrapNotice(langEnglish)
 			if !strings.Contains(got, "tjlgt1") {
 				t.Errorf("companion notice = %q, want it to name run %q", got, "tjlgt1")
 			}
@@ -109,7 +109,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 
-		if got := kanbanBootstrapNotice(); got != "" {
+		if got := kanbanBootstrapNotice(langEnglish); got != "" {
 			t.Errorf("emitted a notice with no run id: %q", got)
 		}
 	})
@@ -118,7 +118,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanbanLabel, "oauth-migration")
 
-		if got := kanbanBootstrapNotice(); got != "" {
+		if got := kanbanBootstrapNotice(langEnglish); got != "" {
 			t.Errorf("emitted a notice for a non-companion label: %q", got)
 		}
 	})
@@ -133,7 +133,7 @@ func TestKanbanBootstrapNoticeLabelWinsOverKanban(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLabel, "plan-tjlgt1")
 
-	got := kanbanBootstrapNotice()
+	got := kanbanBootstrapNotice(langEnglish)
 	if strings.Contains(got, "--name") {
 		t.Errorf("a labelled session printed the launch block:\n%s", got)
 	}
@@ -156,7 +156,7 @@ func TestKanbanLeadNoticeFullContent(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("abc123")
+	got := kanbanLeadNotice("abc123", langEnglish)
 
 	// (a) run id
 	if !strings.Contains(got, "abc123") {
@@ -203,7 +203,7 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
 
-	got := kanbanLeadNotice("abc123")
+	got := kanbanLeadNotice("abc123", langEnglish)
 	// No line should contain a SPEC- prefixed identifier.
 	if strings.Contains(got, "SPEC-") {
 		t.Errorf("notice contains a SPEC- identifier when MOAI_KANBAN_SPEC is unset:\n%s", got)
@@ -218,7 +218,7 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-xyz789")
 
-	got := kanbanLeadNotice("xyz789")
+	got := kanbanLeadNotice("xyz789", langEnglish)
 	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|review|sync)-xyz789$`)
 	matches := re.FindAllString(got, -1)
 	if len(matches) < 4 {
@@ -240,7 +240,7 @@ func TestKanbanCompanionNoticeRoleless(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
 
-	got := kanbanCompanionNotice("run-abc123")
+	got := kanbanCompanionNotice("run-abc123", langEnglish)
 	if !strings.Contains(got, "abc123") {
 		t.Errorf("companion notice does not name the run: %q", got)
 	}
@@ -258,19 +258,19 @@ func TestKanbanCompanionNoticeRoleless(t *testing.T) {
 func TestKanbanCompanionNoticeFailOpen(t *testing.T) {
 	t.Run("empty label", func(t *testing.T) {
 		clearKanbanEnv(t)
-		if got := kanbanCompanionNotice(""); got != "" {
+		if got := kanbanCompanionNotice("", langEnglish); got != "" {
 			t.Errorf("empty label produced a notice: %q", got)
 		}
 	})
 	t.Run("malformed label (empty run-id portion)", func(t *testing.T) {
 		clearKanbanEnv(t)
-		if got := kanbanCompanionNotice("run-"); got != "" {
+		if got := kanbanCompanionNotice("run-", langEnglish); got != "" {
 			t.Errorf("malformed label produced a notice: %q", got)
 		}
 	})
 	t.Run("non-companion label", func(t *testing.T) {
 		clearKanbanEnv(t)
-		if got := kanbanCompanionNotice("oauth-migration"); got != "" {
+		if got := kanbanCompanionNotice("oauth-migration", langEnglish); got != "" {
 			t.Errorf("non-companion label produced a notice: %q", got)
 		}
 	})
@@ -283,7 +283,7 @@ func TestKanbanCompanionNoticeJoinOnly(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
 
-	got := kanbanCompanionNotice("run-abc123")
+	got := kanbanCompanionNotice("run-abc123", langEnglish)
 	if !strings.Contains(got, "joined run abc123") {
 		t.Errorf("companion notice does not match \"joined run <id>\": %q", got)
 	}
@@ -308,7 +308,7 @@ func TestKanbanLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "")
 	_ = os.Unsetenv(config.EnvMoaiKanbanSettingsInjected)
 
-	got := kanbanLeadNotice("tjlgt1")
+	got := kanbanLeadNotice("tjlgt1", langEnglish)
 	if got == "" {
 		t.Fatal("expected a lead notice, got empty string")
 	}
@@ -329,7 +329,7 @@ func TestKanbanLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("tjlgt1")
+	got := kanbanLeadNotice("tjlgt1", langEnglish)
 	lowered := strings.ToLower(got)
 	if !strings.Contains(lowered, "auto-accept") {
 		t.Errorf("lead notice lacks the auto-accept notice:\n%s", got)

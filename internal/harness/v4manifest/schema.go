@@ -273,9 +273,9 @@ var tierSuggestions = map[Tier]struct {
 var agentTiers = map[string]Tier{
 	// 🔴 — deep reasoning (×5): plan-phase authoring, independent audit,
 	// high-reasoning consultation, skeptical 4-dimension scoring, hierarchical-team
-	// coordination (manager-lead carries the depth-1 Agent fan-out seam).
+	// coordination (manager-kanban carries the depth-1 Agent fan-out seam).
 	"manager-spec":  TierRed,
-	"manager-lead":  TierRed,
+	"manager-kanban":  TierRed,
 	"plan-auditor":  TierRed,
 	"super-advisor": TierRed,
 	"sync-auditor":  TierRed,

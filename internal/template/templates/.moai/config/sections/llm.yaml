@@ -37,12 +37,16 @@ llm:
   # stay model: inherit and are never injected.
   #
   # Column intent (anchored on a long-horizon coding-agent benchmark measuring
-  # score, cost per task, output tokens, and agent steps at every effort level):
-  #   high   - quality first. Opus `max` only where invocation is rare and the
-  #            marginal quality is decision-critical; `high` elsewhere.
-  #   medium - the balanced default. manager-develop at Opus `medium` is the
-  #            anchor: `medium` is the knee of the Opus cost/score curve, and
-  #            the marginal cost per point rises several-fold above it.
+  # score, cost per task, output tokens, and agent steps at every effort level,
+  # then overridden by the phase-weighted policy below):
+  #   high   - quality first. `max` on the plan rows and on the two rare-but-
+  #            decision-critical rows (run implementation, escalation advisor).
+  #   medium - the working default. NOT the cost-minimal derivation: the
+  #            benchmark anchor put manager-develop at `medium` and derived the
+  #            rest from it, but the phase-weighted policy spends past that knee
+  #            deliberately — plan (manager-spec, plan-auditor) takes `max`,
+  #            while run (manager-develop), review (sync-auditor) and sync
+  #            (manager-docs) take `high`. Do not re-derive back onto the anchor.
   #   low    - economical. Opus `low` still outscores Sonnet at any effort and
   #            costs less per task, so it is the floor for agentic rows.
   #
@@ -56,7 +60,13 @@ llm:
   #     failure does not apply and the lower input price does.
   #
   # `xhigh` is absent from the matrix on purpose: on Opus it scores the same as
-  # `high` at materially higher cost, so it is strictly dominated.
+  # `high` at materially higher cost, so it is strictly dominated. `max` is the
+  # only level above `high`, so a row wanting more than `high` takes `max`.
+  #
+  # Under a GLM backend only part of this matrix is observable: z.ai's 3-state
+  # reasoning control collapses {medium, high} onto one state and {xhigh, max}
+  # onto another, and manager-develop is forced to the ceiling by the coding-max
+  # override regardless. Plan and sync move; run and review do not.
   #
   # manager-git / Explore are profile-invariant.
   #
@@ -66,27 +76,27 @@ llm:
   # no agent file, so its effort is stated at call time, never persisted.
   profiles:
     high:
-      manager-spec:    { model: opus,   effort: high }
-      plan-auditor:    { model: opus,   effort: high }
+      manager-spec:    { model: opus,   effort: max }
+      plan-auditor:    { model: opus,   effort: max }
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: max }
       super-advisor:   { model: opus,   effort: max }
       manager-design:  { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: high }
       e2e-tester:      { model: opus,   effort: medium }
-      manager-docs:    { model: opus,   effort: medium }
+      manager-docs:    { model: opus,   effort: high }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     medium:
-      manager-spec:    { model: opus,   effort: medium }
-      plan-auditor:    { model: opus,   effort: medium }
-      sync-auditor:    { model: opus,   effort: medium }
-      manager-develop: { model: opus,   effort: medium }
+      manager-spec:    { model: opus,   effort: max }
+      plan-auditor:    { model: opus,   effort: max }
+      sync-auditor:    { model: opus,   effort: high }
+      manager-develop: { model: opus,   effort: high }
       super-advisor:   { model: opus,   effort: high }
       manager-design:  { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: medium }
       e2e-tester:      { model: opus,   effort: low }
-      manager-docs:    { model: opus,   effort: low }
+      manager-docs:    { model: opus,   effort: high }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     low:
@@ -116,22 +126,27 @@ llm:
   # workflow.yaml, so the two surfaces share one vocabulary. Each effort is
   # derived from the profile-matrix row named in the comment; an absent cell
   # falls through to that row's effort.
+  #
+  # Keep these cells equal to the row they name. The resolver reads a cell here
+  # FIRST and only falls through to the row when the cell is absent, so a stale
+  # cell silently splits the two paths: a project carrying this file would get
+  # the stale value while one without it got the row's current value.
   harness_agents:
     high:
       read-only-extract:    { effort: low }     # <- Explore row
       mechanical-transform: { effort: low }     # <- manager-git row
-      synthesize:           { effort: medium }  # <- manager-docs row
-      research:             { effort: high }    # <- plan-auditor row
+      synthesize:           { effort: high }    # <- manager-docs row
+      research:             { effort: max }     # <- plan-auditor row
       verify-judge:         { effort: high }    # <- sync-auditor row
       implement:            { effort: max }     # <- manager-develop row
       design-architecture:  { effort: high }    # <- manager-design row
     medium:
       read-only-extract:    { effort: low }
       mechanical-transform: { effort: low }
-      synthesize:           { effort: low }
-      research:             { effort: medium }
-      verify-judge:         { effort: medium }
-      implement:            { effort: medium }
+      synthesize:           { effort: high }
+      research:             { effort: max }
+      verify-judge:         { effort: high }
+      implement:            { effort: high }
       design-architecture:  { effort: medium }
     low:
       read-only-extract:    { effort: low }

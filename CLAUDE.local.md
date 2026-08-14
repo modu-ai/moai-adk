@@ -362,10 +362,11 @@ moai-adk-go uses YAML for configuration:
 
 ## 11. Frequent Issues and Solutions
 
-자주 발생 3건 — 상세는 각 섹션 참조:
+자주 발생 4건 — 상세는 각 섹션 참조:
 - **Templates not updated after editing** → §2 Embedded Template System (`make build` 필수, `//go:embed all:templates`).
 - **Tests modify ~/.claude/settings.json** → §6 `t.TempDir()` 격리 위반. 테스트가 project root에 파일 만드는지 확인.
 - **Hook timeout** → settings.json `{"timeout": 60}` (기본 5초).
+- **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`(Makefile:9)를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고, 그러면 `strings ~/go/bin/moai | grep <sha>` 기반 binary lag 검증 자체가 불가능해진다. `make install`(Makefile:38)은 `go install $(LDFLAGS) ./cmd/moai`라 안전. 직후 `~/go/bin/moai version; echo $?`로 exit 0 확인(137이면 rm+cp 재시도). 진단 징후: `bin/moai version`=0인데 `~/go/bin/moai version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
 
 ---
 

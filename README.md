@@ -305,7 +305,7 @@ All backends are fail-open: GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.j
 | | manager-docs | 🔵 | Sync-phase documentation |
 | | manager-git | 🩵 | PR creation and routing |
 | | manager-design | 🟠 | Design-phase collaboration (Claude Design) |
-| | manager-lead | 🔴 | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) |
+| | manager-kanban | 🔴 | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) |
 | **Evaluator** | plan-auditor | 🔴 | Independent plan audit (bias prevention) |
 | | sync-auditor | 🔴 | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |

@@ -10,23 +10,16 @@
 package hook
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
-)
 
-// execCommand is the package-level indirection over exec.Command. Tests inject
-// a mock runner here (AC-WBG-005: simulates an older-git host rejecting
-// --path-format=absolute so the dispatcher's fallback path is exercised).
-// Restore via t.Cleanup in every test that swaps it.
-var execCommand = exec.Command
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+)
 
 // branchGuardExemptEnv is the sentinel env var the orchestrator sets when
 // spawning Agent(manager-git, ...) for Late-Branch closure work. Closes the
@@ -159,64 +152,13 @@ func isExemptAgent(input *HookInput) bool {
 // uncertainty (non-git dir, missing git binary, rev-parse non-zero with no
 // fallback resolution) so the caller fails OPEN per REQ-WBG-012.
 //
-// Primary path (git 2.31+, March 2021): --path-format=absolute for both
-// rev-parse invocations. Fallback (older git / Apple Git rejecting the flag):
-// --absolute-git-dir + cwd-normalized --git-common-dir. The fallback decision
-// lives INSIDE this dispatcher — callers do not invoke the fallback directly
-// (direct invocation is a vacuous pass per AC-WBG-005).
+// The resolution itself lives in internal/core/git (ResolveGitDirs, extracted
+// per SPEC-KANBAN-BOARD-001 REQ-KB-005 taking the REQ-KW-018 extraction
+// disposition) — this caller keeps its boolean contract and delegates. The
+// fallback decision lives INSIDE that dispatcher; callers do not invoke the
+// fallback directly (direct invocation is a vacuous pass per AC-WBG-005).
 func isPrimaryCheckout(projectDir string) (bool, error) {
-	if projectDir == "" {
-		return false, fmt.Errorf("branch_guard: empty projectDir")
-	}
-
-	// Primary path: a SINGLE rev-parse call emits both absolute paths, halving
-	// the git-spawn cost versus two separate calls. This keeps the per-invocation
-	// latency under the AC-WBG-010 ceiling on Windows, where each git.exe spawn
-	// is expensive (issue #1225 — TestBranchGuard_Latency). `--path-format=absolute`
-	// applies to every following path flag, so --git-dir and --git-common-dir
-	// each print one absolute line, in argument order.
-	out, err := runGitRevParse(projectDir, "--path-format=absolute", "--git-dir", "--git-common-dir")
-	if err == nil {
-		lines := strings.Split(out, "\n")
-		if len(lines) >= 2 {
-			return strings.TrimSpace(lines[0]) == strings.TrimSpace(lines[1]), nil
-		}
-		// Unexpected output shape; fall through to the fallback below.
-	}
-
-	// Fallback: --absolute-git-dir + cwd-normalized --git-common-dir. The bare
-	// --git-common-dir form returns a repo-relative path (.git) on older git,
-	// so it is normalized against projectDir before comparison.
-	absGitDir, err := runGitRevParse(projectDir, "--absolute-git-dir")
-	if err != nil {
-		return false, fmt.Errorf("branch_guard: --absolute-git-dir failed: %w", err)
-	}
-	relCommon, err := runGitRevParse(projectDir, "--git-common-dir")
-	if err != nil {
-		return false, fmt.Errorf("branch_guard: --git-common-dir failed: %w", err)
-	}
-	absCommon := relCommon
-	if !filepath.IsAbs(absCommon) {
-		absCommon = filepath.Join(projectDir, relCommon)
-	}
-	return filepath.Clean(absGitDir) == filepath.Clean(absCommon), nil
-}
-
-// runGitRevParse runs `git -C projectDir rev-parse <args...>` via the
-// package-level execCommand indirection and returns the trimmed stdout. Returns
-// an error on non-zero exit (covers missing git binary, non-git directory, and
-// unknown-flag rejection by older git).
-func runGitRevParse(projectDir string, args ...string) (string, error) {
-	full := append([]string{"-C", projectDir, "rev-parse"}, args...)
-	cmd := execCommand("git", full...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git rev-parse %s: %w (%s)",
-			strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
-	}
-	return strings.TrimSpace(stdout.String()), nil
+	return gitcore.IsPrimaryCheckout(projectDir)
 }
 
 // checkBranchState returns DecisionDeny + a "BRANCH_GUARD_VIOLATION: <suffix>

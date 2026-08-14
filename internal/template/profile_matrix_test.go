@@ -81,15 +81,15 @@ func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
 func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "high"}
 	want := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "opus", Effort: "high"},
-		"plan-auditor":    {Model: "opus", Effort: "high"},
+		"manager-spec":    {Model: "opus", Effort: "max"},
+		"plan-auditor":    {Model: "opus", Effort: "max"},
 		"sync-auditor":    {Model: "opus", Effort: "high"},
 		"manager-develop": {Model: "opus", Effort: "max"},
 		"super-advisor":   {Model: "opus", Effort: "max"},
 		"manager-design":  {Model: "opus", Effort: "high"},
 		"builder-harness": {Model: "opus", Effort: "high"},
 		"e2e-tester":      {Model: "opus", Effort: "medium"},
-		"manager-docs":    {Model: "opus", Effort: "medium"},
+		"manager-docs":    {Model: "opus", Effort: "high"},
 		"manager-git":     {Model: "sonnet", Effort: "low"},
 		"Explore":         {Model: "sonnet", Effort: "low"},
 	}
@@ -205,8 +205,8 @@ func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	want := map[string]string{
 		HarnessClassReadOnlyExtract:     EffortLevelLow,    // Explore row
 		HarnessClassMechanicalTransform: EffortLevelLow,    // manager-git row
-		HarnessClassSynthesize:          EffortLevelMedium, // manager-docs row
-		HarnessClassResearch:            EffortLevelHigh,   // plan-auditor row
+		HarnessClassSynthesize:          EffortLevelHigh,   // manager-docs row
+		HarnessClassResearch:            EffortLevelMax,    // plan-auditor row
 		HarnessClassVerifyJudge:         EffortLevelHigh,   // sync-auditor row
 		HarnessClassImplement:           EffortLevelMax,    // manager-develop row
 		HarnessClassDesignArchitecture:  EffortLevelHigh,   // manager-design row
@@ -263,9 +263,11 @@ func TestResolveAgentModelEffort_OverridePrecedence(t *testing.T) {
 	if (got != config.ModelEffort{Model: "opus", Effort: "xhigh"}) {
 		t.Errorf("override should win: got %+v", got)
 	}
-	// plan-auditor shares spec_auditors but is unaffected → medium group cell.
+	// plan-auditor shares spec_auditors but is unaffected → its own medium cell,
+	// which the phase-weighted policy sets to max (distinct from the xhigh
+	// override above, so the assertion still discriminates).
 	got, _ = ResolveAgentModelEffort(cfg, "plan-auditor")
-	if (got != config.ModelEffort{Model: "opus", Effort: "medium"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "max"}) {
 		t.Errorf("plan-auditor medium cell should be unaffected: got %+v", got)
 	}
 }
@@ -333,14 +335,16 @@ func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
 	cfg := config.LLMConfig{
 		Profile: "high",
 		Profiles: map[string]map[string]config.ModelEffort{
-			"high": {GroupDocs: {Model: "opus", Effort: "high"}},
+			// Deliberately unequal to the Go default high cell for manager-docs
+			// (opus/high) so honoring the stale group key would be observable.
+			"high": {GroupDocs: {Model: "sonnet", Effort: "low"}},
 		},
 	}
 	got, mapped := ResolveAgentModelEffort(cfg, "manager-docs")
 	if !mapped {
 		t.Fatalf("manager-docs should still resolve")
 	}
-	if (got != config.ModelEffort{Model: "opus", Effort: "medium"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
 		t.Errorf("stale group-keyed cell should be ignored, Go default used: got %+v", got)
 	}
 }
