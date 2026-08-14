@@ -191,9 +191,11 @@ $ go tool cover -func=… | grep -E 'todo\.go:|backlog_store\.go:'
 
 Lead verdict on M2: **PASS** (2026-08-14; lead filled the binary-smoke gap personally: built binary `moai todo add "첫 카드"` → `t1 1` exit 0; 12 OS processes concurrent add → 12/12 items, 12 unique gapless ids, `last_seq: 12`; high-water live check `t1 t2 t3` → `done 3` → add → `t1 t2 t4` — no t3 reuse). M3 instruction: same-direct treatment, with the explicit warning NOT to `cp` the template twin (neutralized-variant hazard — CI catches SPEC-IDs/dates but not internal-vocabulary leaks).
 
-**Pre-edit state (measured before writing)**: `diff .claude/skills/moai/workflows/todo.md internal/template/templates/.claude/skills/moai/workflows/todo.md` → **byte-identical twins** (105 lines each). With no neutralized variant to preserve in THIS tree, applying the same rewrite to both files IS the same delta; the no-cp rule is honored in its substance (the variant check was performed, not assumed — research.md §8's claim re-verified on the actual M3 tree).
+**Pre-edit state (measured before writing)**: `diff .claude/skills/moai/workflows/todo.md internal/template/templates/.claude/skills/moai/workflows/todo.md` → **byte-identical twins**. With no neutralized variant to preserve in THIS tree, applying the same rewrite to both files IS the same delta; the no-cp rule is honored in its substance (the variant check was performed, not assumed — research.md §8's claim re-verified on the actual M3 tree).
 
-**The delta (REQ-TODO-015 / D-h)**: shrink to "run the command" form. Preserved: queue philosophy ("one line of intent", "deliberately thin"), the operator-act header + kanban-dispatch cross-reference, the record-shape explanation (now framed as reading `list --json` output, with `last_seq` documented), the [HARD] operator-selection rule verbatim in intent, Boundaries, Outside-Kanban-Mode, all three cross-references. Removed: the direct file-manipulation instructions (the verbs table's model-driven Read→Write semantics, "Write the file atomically (write a sibling temp file, then rename)…"), and the obsolete "any other argument form is treated as a description" rule (the real CLI takes explicit subcommands). Added: the mapping table of the five real CLI invocations and the "do not read or write the file directly" instruction (the whole point of M1+M2). 105 → 119 lines.
+**Line-count correction (M4, lead-requested)**: the original M3 report's "105 → 119 lines" mixed a measured pre-edit value with an UNMEASURED post-edit estimate — the 119 was never observed and is wrong. The measured three-point facts (each attributed to its tree, `wc -l`): worktree base `b73c81ab5` todo.md = **105**; post-M3 twins = **107**; origin/main at M4 time = **112** (main advanced past this branch's base and touched todo.md, +7 vs base). Net: **112 → 107 (−5) against current origin/main** (the merge-relevant frame); 105 → 107 (+2) against this branch's base. The shrink direction holds — the earlier "grew to 119" claim is retracted. The upstream todo.md change also means the twins may conflict at PR-merge time; flagged to the lead at M4.
+
+**The delta (REQ-TODO-015 / D-h)**: shrink to "run the command" form. Preserved: queue philosophy ("one line of intent", "deliberately thin"), the operator-act header + kanban-dispatch cross-reference, the record-shape explanation (now framed as reading `list --json` output, with `last_seq` documented), the [HARD] operator-selection rule verbatim in intent, Boundaries, Outside-Kanban-Mode, all three cross-references. Removed: the direct file-manipulation instructions (the verbs table's model-driven Read→Write semantics, "Write the file atomically (write a sibling temp file, then rename)…"), and the obsolete "any other argument form is treated as a description" rule (the real CLI takes explicit subcommands). Added: the mapping table of the five real CLI invocations and the "do not read or write the file directly" instruction (the whole point of M1+M2). Line counts: see the M4 correction above (112 → 107 against origin/main).
 
 **AC-TODO-015 verification (each command + output)**:
 
@@ -225,6 +227,42 @@ Docs-vs-verbs cross-check (lead checklist item 5): cobra `Use:` strings in todo.
 **Gaps.** (1) The shrunk skill's behavioral effect (the model actually running `moai todo` instead of Read→Write) is verified by document inspection, not by an A/B model run — the skill-ab-testing methodology was out of M3's milestone scope (plan.md §F keeps M3 a documentation delta). (2) No 4-locale surface touched: the todo skill exists only in English (verified — no `todo.*.md` locale twins exist to mirror).
 
 **Residual-risk.** The catalog-parity conclusion holds for THIS template state; if a future change adds workflow skills to the catalog's hash subject set, the B5 commit obligation revives for future edits of this file.
+
+### M4 — Cross-platform + full-suite verification (COMPLETE; orchestrator-direct)
+
+Lead verdict on M3: **PASS** (2026-08-14; lead re-measured: `cmp -s` twins identical at 107 lines, SPEC-ID regex `SPEC-[A-Z0-9-]+-[0-9]{3}` → 0 matches — the `<SPEC-ID>` placeholder in command syntax is not a violation —, catalog workflows-path entries 0, docs↔verbs match). One numeric correction requested and applied above (the unmeasured "119" line-count claim retracted; three-point measured values recorded with tree attribution).
+
+**E2 — Cross-platform (exit codes cited verbatim; note the vet gate is FULL-REPO this time, stronger than M2's package-scoped run):**
+
+```
+$ go build ./...                          → BUILD_UNIX_EXIT=0
+$ GOOS=windows GOARCH=amd64 go build ./... → BUILD_WIN_EXIT=0
+$ GOOS=windows GOARCH=amd64 go vet ./...   → VET_WIN_EXIT=0
+```
+
+**E4 — Full suite** (`unset MOAI_KANBAN … && go test ./... -count=1`):
+
+Exactly three failing tests, all previously A/B-attributed to baseline in M1 (files-removed reruns: each fails identically with the M1/M2 files absent):
+
+- `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` (internal/cli) — the lead-declared known origin/main failure (t20; PR #1527 addresses it per lead).
+- `TestAutonomyTierReader` (internal/config) — A/B'd in M1.
+- `TestPreTool_AstGrepSkipReasonSurfaces` (internal/hook) — A/B'd in M1.
+
+`internal/spec` (flaky in one M1 run) passed this run. **Zero NEW failures** — the lead's "A/B any failure beyond the known one" instruction did not trigger. All other packages green.
+
+**E5 — Lint.**
+
+```
+$ golangci-lint run --timeout=5m → "0 issues." LINT_EXIT=0
+```
+
+Baseline (pre-M1, same tree family) was also "0 issues." — zero NEW findings across the entire SPEC's diff.
+
+**E6 — Commit.** This M4 correction+evidence commit rides the same branch; push remains withheld for the lead's push/PR instruction.
+
+**Gaps.** (1) The upstream todo.md change (origin/main advanced +7 lines past this branch's base) means a PR merge may conflict on the twins — resolution belongs to the merge step, flagged to the lead. (2) The M1 A/B attributions for the config/hook failures were performed against THIS worktree's base; the lead's note that #1527 addresses the cli one (and likely the config one, `TestAutonomyTierReader`, per the lead's M2 message) is their attribution on main — not re-measured here.
+
+**Residual-risk.** CI on the eventual PR runs on a clean runner against current origin/main: the 3 known failures' behavior there is governed by main's state (post-#1527), not this branch's base.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
