@@ -341,12 +341,12 @@ The values below are the **medium (default) profile column** of the `llm.profile
 
 | Agent | Default effort (medium column) | Rationale |
 |-------|-------------------------------|-----------|
-| `manager-spec` | medium | plan-phase GEARS/EARS authoring; Opus `medium` is the knee of the cost/score curve |
+| `manager-spec` | high | plan-phase GEARS/EARS authoring; the `high` profile holds it at Opus `high` |
 | `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — the `high` profile raises it to `max` |
 | `manager-design` | medium | design pipeline; the `high` profile raises this to Opus `high` |
 | `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
 | `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution) |
-| `plan-auditor` | medium | adversarial plan audit, bias prevention; `high` profile raises to Opus `high` |
+| `plan-auditor` | high | adversarial plan audit, bias prevention; the `high` profile holds it at Opus `high` |
 | `sync-auditor` | medium | skeptical 4-dimension quality scoring; `high` profile raises to Opus `high` |
 | `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and the `high` profile raises it to Opus `max` |
 | `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks) |

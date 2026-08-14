@@ -2,7 +2,7 @@
 id: SPEC-GLM-EFFORT-REBALANCE-001
 title: "Plan/sync effort rebalance + GLM session reasoning-state step-down"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-14
 updated: 2026-08-14
 author: manager-spec

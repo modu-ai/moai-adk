@@ -153,25 +153,30 @@ func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 // SessionGLMReasoningState derives the SESSION-GLOBAL GLM reasoning state for the
 // Branch-B explicit-write delivery (REQ-MTP-030). Env vars and the
 // settings.local.json env block are session-global (no per-agent reasoning-control
-// channel through the z.ai shim), so the per-agent overlay collapses to one
-// session value: the coding-max override level (reasoning-max), because
-// manager-develop (the singleton override-set member post SPEC-GLM-EFFORT-TUNE-001
-// P1) is the representative code-producing active spawn under a GLM-backed MoAI
-// session. The per-agent collapse+override logic (ResolveGLMReasoning) remains
-// defined and unit-tested; the wire carries this session-level derived value (the
-// documented delivery-granularity limitation, research.md §D).
+// channel through the z.ai shim), so the per-agent overlay collapses to ONE session
+// value. That value is reasoning-high: an operator cost policy sets the session
+// floor at the thinking-enabled `high` state rather than the `max` ceiling, since a
+// session-global value is paid by every spawn in the session, not only by the
+// code-producing one. The per-agent collapse+override logic (ResolveGLMReasoning)
+// remains defined and unit-tested — manager-develop still resolves to reasoning-max
+// there — but the wire carries this session-level derived value (the documented
+// delivery-granularity limitation, research.md §D).
+//
+// Whether z.ai's Anthropic-compat shim actually consumes ANTHROPIC_REASONING_EFFORT
+// (versus requiring reasoning_effort in the request body) remains UNVERIFIED; see
+// internal/cli/glm.go. No claim is made here about delivered spend.
 func SessionGLMReasoningState() GLMReasoningState {
-	return glmReasoningMax
+	return glmReasoningHigh
 }
 
 // SessionGLMReasoningStateForEffort derives the MAIN-SESSION GLM reasoning state
 // from the web-set effort preference. It is the prefs-driven counterpart to
-// SessionGLMReasoningState() (the coding-max session default used for sub-agents
-// and the empty-effort fallback): when effort is non-empty it collapses the
+// SessionGLMReasoningState() (the session default used for sub-agents and the
+// empty-effort fallback): when effort is non-empty it collapses the
 // Claude effort onto z.ai's reasoning control, so a web-set effort actually
 // reaches z.ai instead of being silently dropped (z.ai does NOT implement
 // Claude's 5-level effort). When effort is empty it falls back to
-// SessionGLMReasoningState() (the coding-max default), preserving the sub-agent
+// SessionGLMReasoningState() (the session default), preserving the sub-agent
 // / empty-effort behavior and existing tests.
 func SessionGLMReasoningStateForEffort(effort string) GLMReasoningState {
 	if effort != "" {

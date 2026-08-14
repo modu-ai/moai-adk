@@ -144,21 +144,22 @@ func TestGLMCodingMaxOverrideAgents_ExactlyOne(t *testing.T) {
 }
 
 // TestSessionGLMReasoningState confirms the Branch-B session-global delivery
-// value derives from the coding-max override (reasoning-max), per the
-// delivery-granularity limitation (research.md §D).
+// value is the thinking-enabled reasoning-high floor (an operator cost policy —
+// a session-global value is paid by every spawn, not only the coding one), per
+// the delivery-granularity limitation (research.md §D).
 func TestSessionGLMReasoningState(t *testing.T) {
 	got := SessionGLMReasoningState()
-	if got.Name != GLMStateReasoningMax {
-		t.Errorf("SessionGLMReasoningState().Name = %q, want %q (coding-max session default)", got.Name, GLMStateReasoningMax)
+	if got.Name != GLMStateReasoningHigh {
+		t.Errorf("SessionGLMReasoningState().Name = %q, want %q (session default)", got.Name, GLMStateReasoningHigh)
 	}
-	if !got.ThinkingEnabled || got.ReasoningEffort != GLMReasoningEffortMax {
-		t.Errorf("SessionGLMReasoningState() = %+v, want thinking enabled + reasoning_effort=max", got)
+	if !got.ThinkingEnabled || got.ReasoningEffort != GLMReasoningEffortHigh {
+		t.Errorf("SessionGLMReasoningState() = %+v, want thinking enabled + reasoning_effort=high", got)
 	}
 }
 
 // TestSessionGLMReasoningStateForEffort verifies the MAIN-SESSION reasoning
 // derivation that is driven by the web-set effort preference. Distinct from
-// SessionGLMReasoningState() (the coding-max session default used for sub-agents
+// SessionGLMReasoningState() (the session default used for sub-agents
 // and the empty-effort fallback), this helper collapses the user's prefs.EffortLevel
 // onto z.ai's 3-state reasoning control so a web-set effort actually reaches z.ai.
 func TestSessionGLMReasoningStateForEffort(t *testing.T) {
@@ -174,7 +175,7 @@ func TestSessionGLMReasoningStateForEffort(t *testing.T) {
 		{"high → reasoning high", EffortLevelHigh, GLMStateReasoningHigh, true, GLMReasoningEffortHigh},
 		{"xhigh → reasoning max", EffortLevelXHigh, GLMStateReasoningMax, true, GLMReasoningEffortMax},
 		{"max → reasoning max", EffortLevelMax, GLMStateReasoningMax, true, GLMReasoningEffortMax},
-		{"empty falls back to session default", "", GLMStateReasoningMax, true, GLMReasoningEffortMax},
+		{"empty falls back to session default", "", GLMStateReasoningHigh, true, GLMReasoningEffortHigh},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

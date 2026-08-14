@@ -15,18 +15,18 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestGLMReasoningEnvVars_SessionMax asserts the shared overlay wire point injects
-// the session-global reasoning-control value (reasoning-max) derived from the
+// TestGLMReasoningEnvVars_SessionHigh asserts the shared overlay wire point injects
+// the session-global reasoning-control value (reasoning-high) derived from the
 // effort overlay (REQ-MTP-030 Branch-B).
-func TestGLMReasoningEnvVars_SessionMax(t *testing.T) {
+func TestGLMReasoningEnvVars_SessionHigh(t *testing.T) {
 	got := glmReasoningEnvVars()
 	val, ok := got[config.EnvAnthropicReasoningEffort]
 	if !ok {
 		t.Fatalf("glmReasoningEnvVars() missing %q; got %v", config.EnvAnthropicReasoningEffort, got)
 	}
-	if val != "max" {
-		t.Errorf("glmReasoningEnvVars()[%q] = %q, want %q (coding-max session default)",
-			config.EnvAnthropicReasoningEffort, val, "max")
+	if val != "high" {
+		t.Errorf("glmReasoningEnvVars()[%q] = %q, want %q (session default)",
+			config.EnvAnthropicReasoningEffort, val, "high")
 	}
 }
 

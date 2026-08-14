@@ -604,7 +604,7 @@ func TestRemoveGLMEnv_DropsStatuslineContextSize(t *testing.T) {
 // env injection for the main session. It is the main-session wire point that
 // derives ANTHROPIC_REASONING_EFFORT from the web-set effort (z.ai honors
 // reasoning_effort, NOT Claude's 5-step CLAUDE_CODE_EFFORT_LEVEL). Distinct from
-// glmReasoningEnvVars() (the hardcoded coding-max session default used for
+// glmReasoningEnvVars() (the hardcoded session default used for
 // sub-agents / empty-effort fallback), this helper carries prefs.EffortLevel
 // through to z.ai.
 func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
@@ -619,7 +619,7 @@ func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
 		{"high → reasoning high", template.EffortLevelHigh, true, template.GLMReasoningEffortHigh},
 		{"xhigh → reasoning max", template.EffortLevelXHigh, true, template.GLMReasoningEffortMax},
 		{"max → reasoning max", template.EffortLevelMax, true, template.GLMReasoningEffortMax},
-		{"empty → session default (reasoning max)", "", true, template.GLMReasoningEffortMax},
+		{"empty → session default (reasoning high)", "", true, template.GLMReasoningEffortHigh},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
