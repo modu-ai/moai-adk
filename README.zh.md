@@ -396,7 +396,7 @@ MoAI-ADK 支持把 **z.ai GLM** 作为 Claude Code 的替代后端。切换只�
 |---|---|
 | GLM Coding Plan | 每月 **$10** 起（[订阅](https://z.ai/subscribe?ic=1NDV03BGWU)） |
 | 兼容性 | 与 Claude Code 直接对接 —— 无需改代码 |
-| 模型 | glm-5.2、glm-4.7、glm-4.5-air，另有免费模型 |
+| 模型 | glm-5.3、glm-4.7、glm-4.5-air，另有免费模型 |
 
 ### 三种执行模式
 
@@ -419,10 +419,10 @@ moai cg                        # 进入 CG 模式（Claude 领队 + GLM 执行�
 
 | Claude 层级 | GLM 模型 | 上下文 |
 |---|---|---|
-| Opus | glm-5.2 | 1M |
-| Sonnet | glm-4.7 | 202K |
-| Haiku | glm-4.5-air | 128K |
-| Fable | glm-5.2 | 1M |
+| Opus | glm-5.3 | 1M |
+| Sonnet | glm-5.3 | 1M |
+| Haiku | glm-5.3 | 1M |
+| Fable | glm-5.3 | 1M |
 
 > 另有免费模型可用（GLM-4.7-Flash、GLM-4.5-Flash）。完整列表见 [z.ai 定价](https://docs.z.ai/guides/overview/pricing)。
 >

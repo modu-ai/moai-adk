@@ -107,7 +107,7 @@ The retain instructions MUST include:
 - retain-fold-rows (all prior fold rows in `progress.md` §E.2 — the audit trail of what was verified)
 - retain-armed-goal (if any `/moai goal` is armed, the condition MUST survive the compact — `.claude/rules/moai/workflow/context-window-management.md` § Compaction Preservation)
 
-Post-fold invariant: post-fold token usage < pre-fold usage AND < the model-specific handoff threshold (50% on 1M / GLM-5.2; 90% on 200K/256K). If the compact did not reduce live context, treat it as a failed fold and re-plan.
+Post-fold invariant: post-fold token usage < pre-fold usage AND < the model-specific handoff threshold (50% on 1M / GLM-5.3; 90% on 200K/256K). If the compact did not reduce live context, treat it as a failed fold and re-plan.
 
 ## Peer Cross-Validation
 

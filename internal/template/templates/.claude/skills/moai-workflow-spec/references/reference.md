@@ -631,7 +631,7 @@ Full Stack Feature Complete
 
 ### Token Budget Management
 
-The per-phase token shares below are fractions of the model's context window. The window is **model-class-dependent** — 200K for Sonnet/Opus-standard and Haiku, 256K for Fable, 1M for Opus 5 / Opus 4.8 / GLM-5.2. Treat "the budget" as the model-class threshold from `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets, NOT a fixed 200K. A 1M-context model tolerates a proportionally larger absolute spend before the `/clear` handoff threshold fires.
+The per-phase token shares below are fractions of the model's context window. The window is **model-class-dependent** — 200K for Sonnet/Opus-standard and Haiku, 256K for Fable, 1M for Opus 5 / Opus 4.8 / GLM-5.3. Treat "the budget" as the model-class threshold from `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets, NOT a fixed 200K. A 1M-context model tolerates a proportionally larger absolute spend before the `/clear` handoff threshold fires.
 
 **PLAN Phase Token Usage** (~30% of the active window):
 - User input analysis: 5K tokens

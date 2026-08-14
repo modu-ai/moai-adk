@@ -392,7 +392,7 @@ MoAI-ADK supports **z.ai GLM** as an alternative backend for Claude Code. Switch
 |---|---|
 | GLM Coding Plan | From **$10**/month ([sign-up](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | Compatibility | Drop-in with Claude Code — no code changes |
-| Models | glm-5.2, glm-4.7, glm-4.5-air, plus free models |
+| Models | glm-5.3, glm-4.7, glm-4.5-air, plus free models |
 
 ### Three execution modes
 
@@ -415,10 +415,10 @@ Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` env
 
 | Claude tier | GLM model | Context |
 |---|---|---|
-| Opus | glm-5.2 | 1M |
-| Sonnet | glm-4.7 | 202K |
-| Haiku | glm-4.5-air | 128K |
-| Fable | glm-5.2 | 1M |
+| Opus | glm-5.3 | 1M |
+| Sonnet | glm-5.3 | 1M |
+| Haiku | glm-5.3 | 1M |
+| Fable | glm-5.3 | 1M |
 
 > Free models are also available (GLM-4.7-Flash, GLM-4.5-Flash). See [z.ai pricing](https://docs.z.ai/guides/overview/pricing) for the full table.
 >

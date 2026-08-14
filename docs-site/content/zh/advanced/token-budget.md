@@ -23,12 +23,12 @@ Anthropic SSE 流在上下文窗口天花板附近会间歇性停顿(`stream_idl
 | 模型类别 | 窗口 | 交接阈值 | 绝对天花板 |
 |---------|------|---------|-----------|
 | Opus 5 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
-| GLM-5.2 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
+| GLM-5.3 (1M) | 1,000,000 代币 | 50% | ~500,000 代币 |
 | Opus / Fable (256K) | 256,000 代币 | 90% | ~230,000 代币 |
 | Sonnet / Opus 标准 (200K) | 200,000 代币 | 90% | ~180,000 代币 |
 | Haiku (200K) | 200,000 代币 | 90% | ~180,000 代币 |
 
-GLM-5.2(通过 `moai glm` / `moai cg` GLM 面板)是 1M 上下文模型，以 50% 阈值运作。Claude Code 根据 Claude 插槽(Opus=1M, Sonnet/Haiku=200K)报告 `context_window_size`，因此 GLM 会话中原始 telemetry 可能显示 ~180K；MoAI 将其校正为 1M。请信任 statusline 的 CW% 表盘。
+GLM-5.3(通过 `moai glm` / `moai cg` GLM 面板)是 1M 上下文模型，以 50% 阈值运作。Claude Code 根据 Claude 插槽(Opus=1M, Sonnet/Haiku=200K)报告 `context_window_size`，因此 GLM 会话中原始 telemetry 可能显示 ~180K；MoAI 将其校正为 1M。请信任 statusline 的 CW% 表盘。
 
 ## 两阶段交接标记
 

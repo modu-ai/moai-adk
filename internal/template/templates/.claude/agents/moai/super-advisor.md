@@ -74,7 +74,7 @@ super-advisor natively captures two concerns from the superseded advisor-rung de
 
 - **GLM carve-out**: under `moai glm` / `moai cg` GLM panes, super-advisor's
   Opus injection does NOT apply (the session runs on GLM models). The spawn falls back to
-  the session's effective GLM reasoning model (glm-5.2) with the resolved effort preserved
+  the session's effective GLM reasoning model (glm-5.3) with the resolved effort preserved
   (the profile-matrix row, not a fixed `xhigh`).
   This is the natural consequence of `model: inherit` — the runtime resolves the session
   model.

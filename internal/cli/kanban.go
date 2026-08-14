@@ -91,6 +91,7 @@ func enterKanbanMode(specID string) func() {
 	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
 	restoreID := captureEnvState(config.EnvMoaiKanbanID)
 	restoreAddr := captureEnvState(config.EnvMoaiKanbanLeadAddr)
+	restoreTier := seedAutonomyTier()
 
 	_ = os.Setenv(config.EnvMoaiKanban, "1")
 	runID := kanban.NewRunID()
@@ -105,11 +106,42 @@ func enterKanbanMode(specID string) func() {
 	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-"+runID)
 
 	return func() {
+		restoreTier()
 		restoreAddr()
 		restoreID()
 		restoreSpec()
 		restoreKanban()
 	}
+}
+
+// seedAutonomyTier publishes the autonomy tier Kanban Mode runs at, and returns
+// the function that puts it back on the same prior-presence contract as the
+// other kanban variables.
+//
+// Kanban Mode exists to run unattended: the operator launches the sessions once
+// and the board advances without being asked at every step. The tier is what
+// makes that true. At fully-autonomous the synchronous vet+lint+test commit gate
+// and the SubagentStop / TeammateIdle / TaskCompleted lifecycle hooks stand
+// down, so a card crosses a column without stopping for a verification tax the
+// operator already accepted when they launched the board. Leaving the variable
+// unset resolves to semi-auto — config.AutonomyTier fails safe — which is the
+// most-interrupted tier and the opposite of what -k asks for.
+//
+// What the tier does NOT reach: the destructive-pattern denylist in
+// internal/hook/pre_tool.go is tier-invariant, and Implementation Kickoff
+// Approval is a gate the tier has no bearing on. Autonomy here buys fewer
+// interruptions, never a weaker refusal.
+//
+// An operator who sets the variable themselves keeps it. Only an absent or
+// blank value is filled in, and blank counts as absent because that is how
+// config.AutonomyTier already reads it — a wrapper that exports the name with
+// no value has not made a choice.
+func seedAutonomyTier() func() {
+	restore := captureEnvState(config.EnvAutonomyTier)
+	if strings.TrimSpace(os.Getenv(config.EnvAutonomyTier)) == "" {
+		_ = os.Setenv(config.EnvAutonomyTier, config.AutonomyTierFullyAutonomous)
+	}
+	return restore
 }
 
 // enterKanbanCompanionMode publishes the companion signal for a `<role>-<id>`
@@ -126,6 +158,11 @@ func enterKanbanMode(specID string) func() {
 func enterKanbanCompanionMode(label string) func() {
 	restoreLabel := captureEnvState(config.EnvMoaiKanbanLabel)
 	restoreID := captureEnvState(config.EnvMoaiKanbanID)
+	// A companion is where the work actually lands — it plans, implements,
+	// reviews, and commits. Seeding the tier on the lead alone would leave every
+	// interruption exactly where it already was, because the lead does not
+	// commit code.
+	restoreTier := seedAutonomyTier()
 
 	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
 	if _, runID, ok := kanban.SplitCompanionLabel(label); ok {
@@ -133,6 +170,7 @@ func enterKanbanCompanionMode(label string) func() {
 	}
 
 	return func() {
+		restoreTier()
 		restoreID()
 		restoreLabel()
 	}

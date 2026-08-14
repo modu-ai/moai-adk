@@ -154,9 +154,9 @@ Code의 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 주입되는 짝은 이렇�
 
 | Claude 슬롯 | GLM 모델 | 컨텍스트 |
 |-------------|----------|----------|
-| Opus / Fable | `glm-5.2` | 1M |
-| Sonnet | `glm-4.7` | 202K |
-| Haiku | `glm-4.5-air` | 128K |
+| Opus / Fable | `glm-5.3` | 1M |
+| Sonnet | `glm-5.3` | 1M |
+| Haiku | `glm-5.3` | 1M |
 
 ### 세 가지 실행 모드
 

@@ -203,3 +203,33 @@ func TestRenderHuman_EmptyEpic(t *testing.T) {
 		t.Errorf("empty epic output lacks 'no SPECs matched':\n%s", out)
 	}
 }
+
+// TestRenderHuman_MatchedButNoMarkers verifies that Total == 0 with a non-empty
+// UntrackedSpecs set is NOT reported as "no SPECs matched" — the prefix did
+// match; only the `(TOKEN Mx)` title markers are absent.
+func TestRenderHuman_MatchedButNoMarkers(t *testing.T) {
+	status := &EpicStatus{
+		Epic:      "KANBAN",
+		EpicToken: "",
+		Done:      0,
+		Total:     0,
+		Pct:       0,
+		UntrackedSpecs: []string{
+			"SPEC-KANBAN-BOARD-001",
+			"SPEC-KANBAN-RENAME-001",
+		},
+	}
+	out, err := RenderHuman(status, "en")
+	if err != nil {
+		t.Fatalf("RenderHuman: %v", err)
+	}
+	if strings.Contains(out, "no SPECs matched") {
+		t.Errorf("marker-less epic misreported as an unmatched prefix:\n%s", out)
+	}
+	if !strings.Contains(out, "2 SPEC(s) matched") {
+		t.Errorf("output lacks the matched count:\n%s", out)
+	}
+	if !strings.Contains(out, "SPEC-KANBAN-BOARD-001") {
+		t.Errorf("output lacks the untracked SPEC list:\n%s", out)
+	}
+}

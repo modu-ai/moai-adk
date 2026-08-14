@@ -69,7 +69,7 @@ flowchart TD
 
 `moai cg` 是结合 Claude 领导者和 GLM 工作进程的混合模式。战略、规划、审计由 Claude 担当，大规模实现工作由 GLM 担当。在实现密集型任务上可实现 60-70% 的成本削减。
 
-GLM-5.2 是 1M 上下文的单一模型，定价为输入 $2 / 输出 $8 (每 1M 代币)，自动应用 z.ai 隐式提示缓存。Claude Code 报告的 `context_window_size` 按 Claude 槽位为准，所以 GLM 会话中原始值显示为 ~180K，但 MoAI 把它纠正为 1M、按 50% 阈值运作。请信任 statusline 的 CW% 表盘。CG 模式和 GLM 独立会话(`moai glm`)的详情请参阅 Multi-LLM 部分。
+GLM-5.3 是 1M 上下文的单一模型，自动应用 z.ai 隐式提示缓存。z.ai 尚未公布其按量单价；上一代 GLM-5.2 为每 1M 代币输入 $2 / 输出 $8。在定额 Coding Plan 下使用时，该单价不会左右账单。Claude Code 报告的 `context_window_size` 按 Claude 槽位为准，所以 GLM 会话中原始值显示为 ~180K，但 MoAI 把它纠正为 1M、按 50% 阈值运作。请信任 statusline 的 CW% 表盘。CG 模式和 GLM 独立会话(`moai glm`)的详情请参阅 Multi-LLM 部分。
 
 ## 已验证的事实与路线图
 

@@ -87,8 +87,18 @@ func RenderHuman(s *EpicStatus, locale string) (string, error) {
 	label := localeProgressLabel(locale)
 
 	if s.Total == 0 {
-		// AC-ES-003b: empty epic — "no SPECs matched prefix". Still emit the
-		// locale label so a non-English session sees its own script.
+		// AC-ES-003b: empty epic. Two distinct causes share Total == 0 and must
+		// not be conflated: no SPEC carries the prefix at all, versus SPECs
+		// matched but none carries a `(TOKEN Mx)` title marker to count. The
+		// latter is reported with the matched count so the caller sees that the
+		// prefix was right and only the markers are missing.
+		if n := len(s.UntrackedSpecs); n > 0 {
+			fmt.Fprintf(&b, "🎯 %s — %d SPEC(s) matched, none carrying a (TOKEN Mx) milestone marker\n", s.Epic, n)
+			fmt.Fprintf(&b, "%s:   %s\n", label, s.Epic)
+			fmt.Fprintf(&b, "untracked_specs: %s\n", strings.Join(s.UntrackedSpecs, ", "))
+			return b.String(), nil
+		}
+		// Still emit the locale label so a non-English session sees its own script.
 		fmt.Fprintf(&b, "🎯 %s — no SPECs matched prefix '%s'\n", s.Epic, s.Epic)
 		fmt.Fprintf(&b, "%s:   %s\n", label, s.Epic)
 		return b.String(), nil

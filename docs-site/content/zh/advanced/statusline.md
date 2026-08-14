@@ -124,7 +124,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫`（显示百分比 > 70%）
   - bar 本身按块着以绿 → 黄 → 红的连续渐变色（与电量阈值无关）
 - **`(⚠️/clear)` / `(🛑/clear!)` handoff 后缀**：
-  - 1M context 模型 (Opus 5, GLM-5.2)：used_percentage ≥50%（基于 raw context_window_size）
+  - 1M context 模型 (Opus 5, GLM-5.3)：used_percentage ≥50%（基于 raw context_window_size）
   - 200K context 模型 (Sonnet/Haiku)：used_percentage ≥90%
   - 含义：建议在下一个 turn 开始前 `/clear` + 使用 paste-ready resume message
 - **示例**：`🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -309,7 +309,7 @@ CW bar 的 handoff 后缀在上下文使用量超过按模型的阈值时激活�
 
 ### GLM 上下文仪表校正 (Issue #653)
 
-GLM-5.2 是真正的 1M 上下文模型，但 Claude Code 与 provider 无关地按 Claude 槽位报告 `context_window_size`，因此在 GLM 会话中 raw telemetry(`effectiveWindow`)可能被错误显示为 ~180K。MoAI 用 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)对此进行校正 —— 从 `MOAI_STATUSLINE_CONTEXT_SIZE` 环境变量（显式覆盖）或 `llm.yaml` 的 `glm.context_windows` 表(glm-5.2 → 1,000,000)解析。在 GLM 会话中，请信任 MoAI statusline 的 CW%，而非 raw `effectiveWindow`。
+GLM-5.3 是真正的 1M 上下文模型，但 Claude Code 与 provider 无关地按 Claude 槽位报告 `context_window_size`，因此在 GLM 会话中 raw telemetry(`effectiveWindow`)可能被错误显示为 ~180K。MoAI 用 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)对此进行校正 —— 从 `MOAI_STATUSLINE_CONTEXT_SIZE` 环境变量（显式覆盖）或 `llm.yaml` 的 `glm.context_windows` 表(glm-5.3 → 1,000,000)解析。在 GLM 会话中，请信任 MoAI statusline 的 CW%，而非 raw `effectiveWindow`。
 
 激活时的用户流程如下。
 

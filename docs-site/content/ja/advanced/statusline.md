@@ -124,7 +124,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫` (表示パーセンテージ > 70%)
   - bar 自体はブロックごとに緑 → 黄 → 赤の連続グラデーション色を付けます (バッテリー閾値とは別)
 - **`(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M context モデル (Opus 5, GLM-5.2): used_percentage ≥50% (raw context_window_size 基準)
+  - 1M context モデル (Opus 5, GLM-5.3): used_percentage ≥50% (raw context_window_size 基準)
   - 200K context モデル (Sonnet/Haiku): used_percentage ≥90%
   - 意味: 次の turn 開始前に `/clear` を勧告 + paste-ready resume message の活用
 - **例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -309,7 +309,7 @@ CW bar の handoff suffix はコンテキスト使用量がモデル別の閾値
 
 ### GLM コンテキストゲージ補正 (Issue #653)
 
-GLM-5.2 は実際の 1M コンテキストモデルですが、Claude Code は provider と無関係に Claude スロット基準で `context_window_size` を報告するため、GLM セッションで raw telemetry (`effectiveWindow`) が ~180K と誤って表示されることがあります。MoAI はこれを `ResolveGLMContextWindow` (`internal/statusline/memory.go`) で補正します。`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数 (明示的オーバーライド) または `llm.yaml` の `glm.context_windows` テーブル (glm-5.2 → 1,000,000) から値を解釈します。GLM セッションでは raw `effectiveWindow` ではなく MoAI statusline の CW% を信頼してください。
+GLM-5.3 は実際の 1M コンテキストモデルですが、Claude Code は provider と無関係に Claude スロット基準で `context_window_size` を報告するため、GLM セッションで raw telemetry (`effectiveWindow`) が ~180K と誤って表示されることがあります。MoAI はこれを `ResolveGLMContextWindow` (`internal/statusline/memory.go`) で補正します。`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数 (明示的オーバーライド) または `llm.yaml` の `glm.context_windows` テーブル (glm-5.3 → 1,000,000) から値を解釈します。GLM セッションでは raw `effectiveWindow` ではなく MoAI statusline の CW% を信頼してください。
 
 有効化時のユーザーフローは次のとおりです。
 

@@ -119,7 +119,7 @@ This command changes nothing — it exposes exactly the values the orchestrator 
 
 On the GLM backend (`moai glm` / `moai cg` GLM panes), an overlay is applied on top of the profile matrix:
 
-- Model slot mapping: `fable` → `glm-5.2` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
+- Model slot mapping: `fable` → `glm-5.3` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
 - Claude's 5-step effort collapses into the 3-state z.ai can reach:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

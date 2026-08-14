@@ -46,7 +46,7 @@ Plan ステップで生成された SPEC ID を引数として渡します:
 {{< callout type="warning" >}}
   `/moai run` 実行前に必ず `/clear` を実行してください。Plan ステップで使った
   トークンを整理しないと Run ステップでコンテキストウィンドウを十分に活用できません。
-  GLM-5.2 および Opus 5 は 1M コンテキスト (推奨使用量 50%)、Sonnet/Haiku 系列は
+  GLM-5.3 および Opus 5 は 1M コンテキスト (推奨使用量 50%)、Sonnet/Haiku 系列は
   200K コンテキスト (推奨使用量 90%) です。
 {{< /callout >}}
 

@@ -95,11 +95,11 @@ The operational threshold at which the budget guard stops is model-specific. Lar
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
 | Opus 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| GLM-5.2 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Fable (256K) | 256,000 tokens | 90% | ~230,000 tokens |
 | Sonnet / Opus standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
-The 1M-context models (Opus 5, GLM-5.2) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
+The 1M-context models (Opus 5, GLM-5.3) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
 
 ## Model Tier Routing
 
@@ -112,7 +112,7 @@ What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 ex
 
 `moai cg` is a hybrid mode combining a Claude leader with GLM workers. Strategy, planning, and audit are handled by Claude, while high-volume implementation work is handled by GLM. This yields a 60-70% cost reduction on implementation-heavy tasks.
 
-GLM-5.2 is a 1M-context single model priced at $2 input / $8 output (per 1M tokens), with z.ai implicit prompt caching applied automatically. Although Claude Code reports `context_window_size` based on the Claude slot (so a GLM session's raw value may show ~180K), MoAI corrects it to 1M and operates at the 50% threshold. Trust the statusline CW% gauge. For details on CG mode and standalone GLM sessions (`moai glm`), see the [Multi-Model Audit](/en/advanced/multi-model-audit/) page.
+GLM-5.3 is a 1M-context single model, with z.ai implicit prompt caching applied automatically. z.ai has not published per-token pricing for it yet; the previous generation, GLM-5.2, was listed at $2 input / $8 output per 1M tokens. Under the flat-fee Coding Plan the per-token rate does not drive the bill. Although Claude Code reports `context_window_size` based on the Claude slot (so a GLM session's raw value may show ~180K), MoAI corrects it to 1M and operates at the 50% threshold. Trust the statusline CW% gauge. For details on CG mode and standalone GLM sessions (`moai glm`), see the [Multi-Model Audit](/en/advanced/multi-model-audit/) page.
 
 ## Verified Facts and Roadmap
 

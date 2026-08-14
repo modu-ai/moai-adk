@@ -90,10 +90,10 @@ Detection steps: read `llm.yaml`; `cg` → activate CG mode (this section); `glm
 |----------|-------|---------|
 | `ANTHROPIC_AUTH_TOKEN` | GLM API key | z.ai authentication |
 | `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` | z.ai endpoint (the GLM-backed detection substring `api.z.ai`) |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `glm-5.2` | Opus model override |
-| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `glm-5.2` | Sonnet model override |
-| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `glm-5.2` | Haiku model override |
-| `ANTHROPIC_DEFAULT_FABLE_MODEL` | `glm-5.2` | Fable model override |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `glm-5.3` | Opus model override |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `glm-5.3` | Sonnet model override |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `glm-5.3` | Haiku model override |
+| `ANTHROPIC_DEFAULT_FABLE_MODEL` | `glm-5.3` | Fable model override |
 
 ### Error recovery
 

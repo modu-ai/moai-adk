@@ -124,7 +124,7 @@ effort는 목적 클래스마다 대응하는 유지 에이전트 행에서 빌�
 
 {{< icon warning warn >}} **정직성 고지**: GLM 백엔드 effort 오버레이는 구현과 배선은 끝났지만, 실제 GLM 세션에서의 유효성은 검증 예정입니다 — "동작 보장"으로 서술하지 않습니다.
 
-GLM 백엔드(`moai glm` 전환, 또는 `moai cg`의 GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 얹힙니다. Fable 슬롯이 `glm-5.2`에 묶이고(z.ai가 도달 가능한 모델), Claude의 5단 effort가 z.ai가 받는 세 단계로 모아집니다: `low`는 추론을 끄고(thinking-off), `medium`과 `high`는 reasoning-high로, `xhigh`와 `max`(legacy effort 값)는 reasoning-max로. 인식하지 못하는 값은 과소 추론을 막기 위해 reasoning-max로 빠집니다. 구현 에이전트인 `manager-develop`은 이 모아짐 결과와 무관하게 reasoning-max로 강제하고, `manager-git`은 `low` effort에서 thinking-off가 됩니다.
+GLM 백엔드(`moai glm` 전환, 또는 `moai cg`의 GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 얹힙니다. Fable 슬롯이 `glm-5.3`에 묶이고(z.ai가 도달 가능한 모델), Claude의 5단 effort가 z.ai가 받는 세 단계로 모아집니다: `low`는 추론을 끄고(thinking-off), `medium`과 `high`는 reasoning-high로, `xhigh`와 `max`(legacy effort 값)는 reasoning-max로. 인식하지 못하는 값은 과소 추론을 막기 위해 reasoning-max로 빠집니다. 구현 에이전트인 `manager-develop`은 이 모아짐 결과와 무관하게 reasoning-max로 강제하고, `manager-git`은 `low` effort에서 thinking-off가 됩니다.
 
 z.ai가 호환 shim을 통해 `ANTHROPIC_REASONING_EFFORT` 값을 실제로 소비하는지는 라이브 GLM 세션의 아웃바운드 관측이 필요한 실증 과제입니다. 런타임의 단일 원천은 `internal/template/glm_effort_overlay.go`입니다.
 

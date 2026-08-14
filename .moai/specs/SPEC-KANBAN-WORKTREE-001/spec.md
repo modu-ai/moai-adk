@@ -1,6 +1,6 @@
 ---
 id: SPEC-KANBAN-WORKTREE-001
-title: "Per-card worktree lifecycle with holder liveness and mutual exclusion"
+title: "Per-card worktree lifecycle with holder liveness and mutual exclusion (KANBAN M2)"
 version: "0.3.0"
 status: draft
 created: 2026-08-10

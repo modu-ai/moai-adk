@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"          # 1M context — Opus slot
-      medium: "glm-4.7"        # 202K context — Sonnet slot
-      low: "glm-4.5-air"       # 128K context — lightweight slot
-      fable: "glm-5.2"
+      high: "glm-5.3"          # 1M context — Opus slot
+      medium: "glm-5.3"        # 1M context   — Sonnet slot
+      low: "glm-5.3"          # 1M context   — lightweight slot
+      fable: "glm-5.3"
 ```
 
 | Key | Description |

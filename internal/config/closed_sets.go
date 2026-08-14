@@ -67,7 +67,7 @@ func ValidWorkflowDefaultModes() []string {
 // they are the SSOT for "which model may a tier slot hold", which is what this
 // set answers.
 func ValidGLMModels() []string {
-	return []string{DefaultGLMHigh, DefaultGLM51, DefaultGLMMedium, DefaultGLMLow}
+	return []string{DefaultGLMHigh, DefaultGLM52, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived

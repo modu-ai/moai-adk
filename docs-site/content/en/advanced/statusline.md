@@ -124,7 +124,7 @@ The cache hit rate is the effect meter of the context diet — trim the always-l
   - `🪫` (displayed percentage > 70%)
   - the bar itself is colored per block with a continuous green → yellow → red gradient (separate from the battery threshold)
 - **The `(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M-context models (Opus 5, GLM-5.2): used_percentage ≥50% (based on raw context_window_size)
+  - 1M-context models (Opus 5, GLM-5.3): used_percentage ≥50% (based on raw context_window_size)
   - 200K-context models (Sonnet/Haiku): used_percentage ≥90%
   - Meaning: recommend `/clear` before the next turn + use the paste-ready resume message
 - **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -309,7 +309,7 @@ The handoff suffix on the CW bar activates when context usage crosses the model-
 
 ### GLM Context Gauge Correction (Issue #653)
 
-GLM-5.2 is a genuine 1M-context model, but Claude Code reports `context_window_size` based on the Claude slot regardless of provider, so raw telemetry (`effectiveWindow`) can be misreported as ~180K in a GLM session. MoAI corrects this with `ResolveGLMContextWindow` (`internal/statusline/memory.go`) — resolving it from the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable (explicit override) or the `glm.context_windows` table in `llm.yaml` (glm-5.2 → 1,000,000). In a GLM session, trust the MoAI statusline's CW%, not the raw `effectiveWindow`.
+GLM-5.3 is a genuine 1M-context model, but Claude Code reports `context_window_size` based on the Claude slot regardless of provider, so raw telemetry (`effectiveWindow`) can be misreported as ~180K in a GLM session. MoAI corrects this with `ResolveGLMContextWindow` (`internal/statusline/memory.go`) — resolving it from the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable (explicit override) or the `glm.context_windows` table in `llm.yaml` (glm-5.3 → 1,000,000). In a GLM session, trust the MoAI statusline's CW%, not the raw `effectiveWindow`.
 
 The user flow when activated is as follows.
 

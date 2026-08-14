@@ -48,9 +48,9 @@ func optionValues(f settings.FieldDef) []string {
 }
 
 // TestGLMModelSelectOptions verifies AC-WCR-030: the four tier fields are
-// closed-set selects over exactly {glm-5.2, glm-5.1, glm-4.7, glm-4.5-air}.
+// closed-set selects over exactly {glm-5.3, glm-5.2, glm-5.1, glm-4.7, glm-4.5-air}.
 func TestGLMModelSelectOptions(t *testing.T) {
-	want := []string{"glm-5.2", "glm-5.1", "glm-4.7", "glm-4.5-air"}
+	want := []string{"glm-5.3", "glm-5.2", "glm-5.1", "glm-4.7", "glm-4.5-air"}
 
 	// The set the schema renders is derived, not re-declared. Assert the derived
 	// accessor equals the SPEC set first, so a drift in the underlying constants
