@@ -60,7 +60,7 @@ type RecoveryResult struct {
 // prior content cannot be reconstructed, what was lost is recorded durably
 // in a sidecar beneath the board directory and surfaced in the result —
 // never presented as the board that was lost.
-func RecoverBoard(root, sessionID string) (*RecoveryResult, error) {
+func RecoverBoard(root, sessionID string) (result *RecoveryResult, err error) {
 	// Recovery IS a board write, so the sole-writer guard binds it too.
 	if err := requireLeadRole(root, sessionID); err != nil {
 		return nil, err
@@ -70,7 +70,12 @@ func RecoverBoard(root, sessionID string) (*RecoveryResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("recover board: %w", err)
 	}
-	defer func() { _ = lock.Release() }()
+	// See WriteBoardState: release errors are joined, not discarded (F5).
+	defer func() {
+		if relErr := lock.Release(); relErr != nil && err == nil {
+			err = fmt.Errorf("recover board: verdict delivered but lock release failed: %w", relErr)
+		}
+	}()
 
 	raw, err := os.ReadFile(BoardPath(root))
 	if err != nil {

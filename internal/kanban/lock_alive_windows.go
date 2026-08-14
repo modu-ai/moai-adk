@@ -1,29 +1,52 @@
 //go:build windows
 
-// lock_alive_windows.go — the default liveness probe for the stale-lock clear
-// (REQ-KB-023) on Windows. Windows process-existence probing without opening
-// a handle is best-effort: os.FindProcess succeeds without validating, and
-// Signal(0) reports only permission/existence errors the kernel surfaces.
-// A false "absent" here cannot silently remove a live lock, because the
-// Windows substrate's lock artifact is itself exclusive — the clear's unlink
-// would only follow this probe when the artifact exists, and the pre-removal
-// re-read still guards a changed identity.
+// lock_alive_windows.go — the default liveness probe for the stale-lock
+// clear (REQ-KB-023) on Windows.
+//
+// The earlier form ended in proc.Signal(syscall.Signal(0)), which the stdlib
+// supports for Kill only — Signal returns EWINDOWS for every other signal,
+// so the probe reported DEAD for every pid and the clear's live-owner
+// refusal was dead code: it would unlink a LIVE holder's lock while
+// reporting "terminated pid" (sync-audit F1). The Windows-valid shape is
+// OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION) + GetExitCodeProcess, with
+// STILL_ACTIVE (259) meaning live.
+//
+// Indeterminate observations resolve to LIVE — guessing "dead" is precisely
+// what unlinks a live holder's lock. The one positively-dead signal is
+// ERROR_INVALID_PARAMETER from OpenProcess (no such process); access-denied
+// and every other open failure mean the process MAY be alive (other session,
+// protected process), so they read as live.
 package kanban
 
 import (
-	"os"
-	"syscall"
+	"golang.org/x/sys/windows"
 )
 
-// defaultProcessAlive reports whether pid names a live process on this host,
-// best-effort on Windows.
+// stillActiveExitCode is Windows' STILL_ACTIVE sentinel: the exit code a
+// handle reports while the process has not terminated.
+const stillActiveExitCode = 259
+
+// defaultProcessAlive reports whether pid names a live process on Windows.
 func defaultProcessAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
-	proc, err := os.FindProcess(pid)
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
-		return false
+		if err == windows.ERROR_INVALID_PARAMETER {
+			// No such process — positively dead.
+			return false
+		}
+		// Access denied / protected process / anything else: the process may
+		// well be alive. Indeterminate resolves to LIVE.
+		return true
 	}
-	return proc.Signal(syscall.Signal(0)) == nil
+	defer func() { _ = windows.CloseHandle(h) }()
+
+	var code uint32
+	if err := windows.GetExitCodeProcess(h, &code); err != nil {
+		// Could not read the exit code: indeterminate, resolve to LIVE.
+		return true
+	}
+	return code == stillActiveExitCode
 }

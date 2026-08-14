@@ -134,7 +134,7 @@ func requireLeadRole(root, sessionID string) error {
 // cross a device boundary and degrade into the partially-observable write
 // this exists to prevent. On the absent-file path the sole writer creates
 // the state directory (REQ-KB-021 — it is gitignored and cannot ship).
-func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) error {
+func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) (err error) {
 	if err := requireLeadRole(root, sessionID); err != nil {
 		return err
 	}
@@ -143,7 +143,16 @@ func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) err
 	if err != nil {
 		return fmt.Errorf("write board state: %w", err)
 	}
-	defer func() { _ = lock.Release() }()
+	// Release errors are JOINED into the result rather than discarded: on
+	// Windows release removes the artifact, so a failed removal after a
+	// successful write would silently block every later writer (sync-audit
+	// F5). The mutation has landed; surfacing the release failure keeps the
+	// block visible instead of quiet.
+	defer func() {
+		if relErr := lock.Release(); relErr != nil && err == nil {
+			err = fmt.Errorf("write board state: mutation landed but lock release failed: %w", relErr)
+		}
+	}()
 
 	st, err := LoadBoard(root)
 	if err != nil {

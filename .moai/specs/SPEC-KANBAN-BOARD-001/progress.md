@@ -975,8 +975,14 @@ the Unix-side window outright and touches the documented Windows residual
 not at all. The four clear-behavior tests (dead-owner cleared, live-owner
 refused, re-acquire race aborts, unparseable refused) moved to
 `board_lock_clear_windows_test.go` behind the same tag — exercised on a
-Windows runner, compile-verified by the GOOS=windows build here; the Unix
-side now asserts the gate:
+Windows runner. **CORRECTED at M3-fix4 (sync-audit F2):** this passage
+originally claimed the file was "compile-verified by the GOOS=windows build
+here" — an unobserved claim: `go build` never compiles `_test.go` files, and
+in fact the windows test layer did NOT compile at that commit (`deadPID`
+redeclared). The corrected process, adopted from this pass on, is
+**`GOOS=windows go vet ./...`** — vet compiles the test layer and is the
+cross-compile gate for tests; a bare cross-build verifies only non-test
+sources. The compile errors are fixed and the vet gate passes (rc=0).
 
 ```
 $ go test ./internal/kanban/ -run 'TestClearStaleBoardLock_UnixGatedOut' -count=1 -v
@@ -1167,6 +1173,53 @@ rc=0
 fails=0        # TestBranchGuard_Latency PASSED in this run too — no observation to report
 ```
 
+### M3-fix4 — sync-audit findings F1–F4, F5 disposition (run 2026-08-14, worktree `~/.moai/worktrees/kanban-board`; fifth fix pass, card run←sync-audit)
+
+Sync-audit report: `.moai/reports/sync-audit-SPEC-KANBAN-BOARD-001.md` — VERDICT FAIL 0.786; the shape of the miss: all four blocking findings on the Windows substrate, while every accumulated verification ran on darwin. The decisive pair (lead-verified): `GOOS=windows go vet ./internal/kanban/` → rc=1 (deadPID redeclared) while `GOOS=windows go build` → rc=0, because **go build never compiles _test.go files** — a cross-build is not compile verification of tests. The earlier "compile-verified" claim at this file's M3-fix section is CORRECTED in place above; the process change adopted from this pass is **`GOOS=windows go vet ./...` as the cross-compile gate for the test layer**.
+
+**F1 [High] — Windows liveness probe was constant-false. FIXED (reasoned on darwin, not runtime-measured — stated plainly).** The old probe ended in `proc.Signal(syscall.Signal(0))`; the stdlib supports Kill only and returns EWINDOWS for everything else, so it reported DEAD for every pid — the clear's live-owner refusal was dead code and would unlink a LIVE holder's lock. Rewritten to the Windows-valid shape: `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` + `GetExitCodeProcess`, STILL_ACTIVE (259) = live; **indeterminate resolves to LIVE** (the one positively-dead signal is ERROR_INVALID_PARAMETER from OpenProcess; access-denied and every other open failure read as live — guessing "dead" is what unlinks a live holder's lock). The file's incorrect doc comment is rewritten. **What is and is not observed:** the probe compiles under the windows-tag (vet rc=0) and its logic is asserted by reasoning over the documented OpenProcess/GetExitCodeProcess contract; its runtime behaviour is NOT measured on this host (no Windows runtime here) — recorded as reasoned, not measured, per the LC_ALL precedent.
+
+**F2 [Med] — Windows test layer did not compile. FIXED, RED measured on darwin.** RED: `GOOS=windows go vet ./internal/kanban/` → `vet: internal/kanban/board_lock_test.go:120:6: deadPID redeclared in this block` (rc=1) while `GOOS=windows go build` → rc=0 — the gap itself. Fixes: the windows-file helpers renamed (`deadPIDWin`, `writeLockArtifactWin`); `deadPIDWin` is now a Windows implementation (`cmd /c exit 0` spawn+reap), not a skip, since the file compiles only under GOOS=windows; missing imports (os/exec, path/filepath, encoding/json) added — each was another uncompiled-reference the vet gate then surfaced. GREEN (the gate):
+
+```
+$ GOOS=windows go vet ./... > /tmp/kbf4-winvet3.log 2>&1; echo $?
+0
+```
+
+**F3 [Med] — interrupted Windows acquisition left an unexitable brick. FIXED (option chosen: an emptiness rule in the bounded clear; reasoned, not runtime-measured).** A process killed between the O_EXCL create and the owner-write leaves an EMPTY artifact; the clear refused it (parseLockOwner fails) and nothing removed it → every subsequent Windows board mutation blocked forever — the M3-fix3 wedge shape again, and AC-KB-023 obs 1 governs it. Chosen rule (of the auditor's two options, both recorded): an artifact EMPTY at the first read is the never-published-identity shape — after a 100ms grace covering the create-to-write interval, the pre-removal re-read observes emptiness again → clearable as the interrupted-acquisition case (emptiness observed at the same point IS the identity observation; composes with the existing re-read); content appearing during the grace → a live acquirer is publishing → abort with ErrBoardLockChangedHands. The alternative (pid encoded in the artifact name, making publication atomic with creation) was NOT taken: it changes the artifact format every concurrent reader of the lock directory would need to agree on, a wider surface than the clear-local rule. **Recorded residual:** an acquirer whose create-to-write interval spans the grace AND whose write lands between the re-read and the remove would lose its artifact — the same narrowed-not-closed shape as the AP-29 residual, operator-visible because the clear reports what it removed.
+
+**F4 [Med] — the reader half of AC-KB-018 exposed on Windows. FIXED; darwin regression measured green.** `LoadBoard` now reads through `internal/atomicfile.ReadFile` — the read-side mirror of the write boundary's mandated family; its Windows substrate absorbs the delete-pending/sharing-violation window a concurrent Replace opens, so a racing reader never misreports ErrBoardUnknown from two valid states. On POSIX it is a plain read (missing file still NotExist for the absent-file case). All existing darwin reader tests (absent/unreadable table, concurrent reader in both forms) pass unchanged in the full suite below — that regression IS measured.
+
+**F5 [Low] — TAKEN.** The discarded `lock.Release()` errors at both guarded entries are joined into the named return: on Windows release removes the artifact, so a failed removal after a successful write now surfaces ("mutation landed but lock release failed") instead of silently blocking every later writer.
+
+**CEILING honored:** no new REQ, no new AC — F1/F3 inside AC-KB-023's observations, F4 inside AC-KB-018's reader half, F2 inside AC-KB-016's suite-green obligation; counts re-measured **25/25**.
+
+**Verification gate (kanban env unset on every command):**
+
+```
+$ GOOS=windows go vet ./...                          → rc=0   (THE F2 gate)
+$ go build ./...                                     → rc=0
+$ GOOS=windows GOARCH=amd64 go build ./...           → rc=0
+$ go test -cover ./internal/kanban/... ./internal/core/git/...
+ok  .../internal/kanban	50.950s	coverage: 88.0% of statements
+ok  .../internal/core/git	(cached)	coverage: 86.7% of statements
+$ golangci-lint run                                  → 0 issues.
+$ grep -cE REQ / AC                                  → 25 / 25
+$ boundary grep                                      → zero
+```
+
+Full darwin suite (env-unset) at close:
+
+```
+$ env -u MOAI_KANBAN -u MOAI_KANBAN_ID -u MOAI_KANBAN_LABEL \
+      -u MOAI_KANBAN_SETTINGS_INJECTED -u MOAI_KANBAN_LEAD_ADDR -u MOAI_PROJECT_DIR \
+      go test ./... -count=1
+rc=0
+fails=0        # TestBranchGuard_Latency PASSED this run — no observation to report
+```
+
+Diff discipline: merge-base a301ef6f8 only; kanban-dispatch.md absent from the branch diff (re-verified); foreign SPEC-HOOK-PRETOOL-PERF pair untouched.
+
 _<M1–M3 evidence appended below as milestones complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -1189,6 +1242,7 @@ run_phase_commits:
   - 92065a1e4   # M3-fix review findings F1-F5
   - f0ca483d0   # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
   - 640321877   # M3-fix3 empty-id wedge removed (traversal sweep unchanged, shape-conditional only)
+  - <FIX4_SHA>  # M3-fix4 sync-audit F1-F5 (windows probe, vet gate, empty-artifact rule, atomicfile.ReadFile, release-error join)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
@@ -1200,7 +1254,8 @@ cross_platform_build:
   darwin_arm64: pass
   windows_amd64: pass
 coverage:
-  internal_kanban: 88.4
+  internal_kanban: 88.0   # fix4 pass figure; fix3's 88.4 was the pre-fix4 tree
+cross_compile_test_gate: "GOOS=windows go vet ./... rc=0 (adopted at fix4; a bare GOOS=windows build does NOT compile _test.go)"
   internal_core_git: 86.7
 full_suite:
   rc: 0   # post-M3 base; M3-fix pass had one unrelated internal/cli navigator flake (isolated re-run 3/3 ok)

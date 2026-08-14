@@ -12,7 +12,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 )
+
+// interruptedAcquisitionGrace is how long the clear waits, when it finds an
+// EMPTY lock artifact, before the pre-removal re-read — long enough to
+// cover the create-to-write interval of a live acquirer mid-publication, so
+// emptiness observed twice across the grace is evidence the writer is gone
+// rather than merely slow (sync-audit F3).
+const interruptedAcquisitionGrace = 100 * time.Millisecond
+
+// isEmptyLockArtifact reports whether the artifact carries no bytes at all
+// (whitespace aside): the shape a process killed between the O_EXCL create
+// and the owner-write leaves behind — an identity that was never published.
+func isEmptyLockArtifact(raw []byte) bool {
+	return len(strings.TrimSpace(string(raw))) == 0
+}
 
 // processAlive is the liveness probe the Windows clear conditions on. It is
 // a package-level indirection so the release-and-reacquire interleaving can
@@ -68,7 +84,38 @@ func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
 	}
 	ownerFirst, err := parseLockOwner(rawFirst)
 	if err != nil {
-		return nil, fmt.Errorf("clear stale board lock: artifact identity unparseable — cannot positively observe an unknown owner absent: %w", err)
+		// A PUBLISHED-but-broken identity cannot be proven absent — refuse.
+		// An EMPTY artifact is different: it is the interrupted-acquisition
+		// shape (the creating process died between the O_EXCL create and the
+		// owner-write), no identity was ever published, and there is no pid
+		// to probe. AC-KB-023 observation 1 governs the shape — an artifact
+		// left behind by a terminated process is removed — and the
+		// pre-removal re-read provides the observation: after a grace
+		// covering the create-to-write interval, emptiness observed AGAIN
+		// means no live acquirer is publishing; content appearing in the
+		// meantime means one is, and the clear aborts as changed hands
+		// (sync-audit F3).
+		if !isEmptyLockArtifact(rawFirst) {
+			return nil, fmt.Errorf("clear stale board lock: artifact identity unparseable — cannot positively observe an unknown owner absent: %w", err)
+		}
+		time.Sleep(interruptedAcquisitionGrace)
+		rawSecond, rerr := os.ReadFile(path)
+		if rerr != nil {
+			if os.IsNotExist(rerr) {
+				return &ClearStaleReport{Removed: false, Reason: "artifact disappeared before removal"}, nil
+			}
+			return nil, fmt.Errorf("clear stale board lock: re-reading empty artifact: %w", rerr)
+		}
+		if !isEmptyLockArtifact(rawSecond) {
+			return nil, fmt.Errorf("%w: an identity appeared in the empty artifact during the grace — a live acquirer is publishing", ErrBoardLockChangedHands)
+		}
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("clear stale board lock: removing interrupted-acquisition artifact: %w", err)
+		}
+		return &ClearStaleReport{
+			Removed: true,
+			Reason:  "removed empty lock artifact of an interrupted acquisition (no identity was ever published)",
+		}, nil
 	}
 
 	if processAlive(ownerFirst.PID) {

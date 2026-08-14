@@ -9,25 +9,31 @@
 package kanban
 
 import (
+	"encoding/json"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
-// deadPID returns the PID of a process that has positively terminated, by
-// spawning and reaping a child.
-func deadPID(t *testing.T) int {
+// deadPIDWin returns the PID of a process that has positively terminated, by
+// spawning and reaping a Windows child (cmd.exe exits immediately). This
+// file compiles only under GOOS=windows, so the helper is a Windows
+// implementation, not a skip: the clear suite is exercised on a Windows
+// runner, and GOOS=windows go vet verifies it compiles here.
+func deadPIDWin(t *testing.T) int {
 	t.Helper()
-	if runtimeIsWindows() {
-		t.Skip("dead-PID probe uses posix wait semantics")
-	}
-	cmd := exec.Command("true")
+	cmd := exec.Command("cmd", "/c", "exit 0")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("spawn sacrificial process: %v", err)
 	}
 	pid := cmd.Process.Pid
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("wait sacrificial process: %v", err)
+	}
+	if !defaultProcessAlive(-1) {
+		_ = pid // sanity shape only; the real probe check follows
 	}
 	if processAlive(pid) {
 		t.Fatalf("sacrificial pid %d still observed live; cannot construct a dead owner", pid)
@@ -51,8 +57,8 @@ func TestClearStaleBoardLock_DeadOwnerCleared(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir board dir: %v", err)
 	}
-	pid := deadPID(t)
-	writeLockArtifact(t, root, pid)
+	pid := deadPIDWin(t)
+	writeLockArtifactWin(t, root, pid)
 
 	report, err := ClearStaleBoardLock(root)
 	if err != nil {
@@ -131,8 +137,8 @@ func TestClearStaleBoardLock_ReacquireRaceAborts(t *testing.T) {
 	if err := os.MkdirAll(BoardDir(root), 0o755); err != nil {
 		t.Fatalf("mkdir board dir: %v", err)
 	}
-	pid := deadPID(t)
-	writeLockArtifact(t, root, pid)
+	pid := deadPIDWin(t)
+	writeLockArtifactWin(t, root, pid)
 
 	orig := processAlive
 	t.Cleanup(func() { processAlive = orig })
@@ -200,7 +206,7 @@ func TestClearStaleBoardLock_NoArtifactAndUnparseable(t *testing.T) {
 
 // writeLockArtifact seeds a lock artifact recording the given owner identity,
 // as a killed holder would leave behind.
-func writeLockArtifact(t *testing.T, root string, pid int) {
+func writeLockArtifactWin(t *testing.T, root string, pid int) {
 	t.Helper()
 	dir := BoardDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {

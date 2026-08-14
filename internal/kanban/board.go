@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
@@ -101,7 +102,13 @@ func BoardPath(root string) string {
 // read path performs no repair — recovery is an explicit operator-visible
 // act, never a fallback a read takes (AP-21).
 func LoadBoard(root string) (*BoardState, error) {
-	raw, err := os.ReadFile(BoardPath(root))
+	// atomicfile.ReadFile absorbs the transient window a concurrent Replace
+	// opens on Windows (delete-pending / sharing violation) — the read-side
+	// mirror of the write boundary's mandated same-family primitive, so a
+	// racing reader never misreports ErrBoardUnknown from two valid states
+	// (AC-KB-018's reader half, sync-audit F4). On POSIX it is a plain read;
+	// a missing file still returns NotExist for the absent-file case.
+	raw, err := atomicfile.ReadFile(BoardPath(root))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Absent: the operating system's own answer that the file does
