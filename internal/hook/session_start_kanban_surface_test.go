@@ -110,3 +110,57 @@ func TestSessionStartNonKanbanSystemMessageUnaffected(t *testing.T) {
 		t.Errorf("non-kanban session got a kanban SystemMessage: %q", out.SystemMessage)
 	}
 }
+
+// TestSessionStartKanbanNoticeOnlyOnNewSession pins the bootstrap notice to a
+// genuinely new session.
+//
+// SessionStart fires on four sources, and the kanban environment survives all of
+// them, so an ungated notice re-announced the bootstrap on every resume: the
+// operator was told to open four companion terminals that were already open, for
+// a run already under way. The instruction is only actionable at startup.
+//
+// The empty source is asserted to still emit. Claude Code always populates the
+// field, so an empty value means a caller that predates it — including the other
+// cases in this file, which construct HookInput without one.
+func TestSessionStartKanbanNoticeOnlyOnNewSession(t *testing.T) {
+	for _, tc := range []struct {
+		source string
+		want   bool
+	}{
+		{source: "startup", want: true},
+		{source: "", want: true},
+		{source: "resume", want: false},
+		{source: "clear", want: false},
+		{source: "compact", want: false},
+	} {
+		name := tc.source
+		if name == "" {
+			name = "empty"
+		}
+		t.Run(name, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "tjpyre")
+
+			projectDir := newKanbanProjectDir(t)
+			out, err := NewSessionStartHandler(nil).Handle(context.Background(), &HookInput{
+				SessionID:  "uuid-kanban-source-" + name,
+				CWD:        projectDir,
+				ProjectDir: projectDir,
+				Source:     tc.source,
+			})
+			if err != nil {
+				t.Fatalf("Handle: %v", err)
+			}
+			got := strings.Contains(out.SystemMessage, "tjpyre")
+			if got != tc.want {
+				verb := "did not emit"
+				if got {
+					verb = "emitted"
+				}
+				t.Errorf("source=%q %s the bootstrap notice; want emitted=%v\nSystemMessage=%q",
+					tc.source, verb, tc.want, out.SystemMessage)
+			}
+		})
+	}
+}

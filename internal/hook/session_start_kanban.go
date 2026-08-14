@@ -47,6 +47,28 @@ func kanbanBootstrapNotice(lang string) string {
 	return kanbanLeadNotice(os.Getenv(config.EnvMoaiKanbanID), lang)
 }
 
+// kanbanBootstrapNoticeForSource returns the announcement only for a genuinely
+// new session, and "" for every SessionStart that merely re-enters an existing
+// one.
+//
+// SessionStart fires on four sources: startup, resume, clear, and compact. The
+// kanban environment survives all four, so an ungated notice re-announces the
+// bootstrap on every resume — instructing the operator to open four companion
+// terminals that are already open, for a run already under way. Only startup is
+// the moment that instruction is actionable.
+//
+// An empty source is treated as startup. Claude Code always populates the field,
+// so an empty value means a caller that predates it or a test constructing the
+// input by hand; emitting there keeps the prior behaviour rather than silently
+// suppressing the notice for them.
+func kanbanBootstrapNoticeForSource(source, lang string) string {
+	switch source {
+	case "resume", "clear", "compact":
+		return ""
+	}
+	return kanbanBootstrapNotice(lang)
+}
+
 // kanbanLeadNotice is the lead branch. It carries, in order: (a) the run id;
 // (b) the four companion launch lines, each carrying -k; (c) the leader socket
 // path; (d) an inbound-automation notice; (e) the SPEC identifier (only when
