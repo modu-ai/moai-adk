@@ -73,8 +73,43 @@ func TestAC_C_010_GLMKeyStateRenderedViaRoute(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("AC-C-010: GET / status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "glm-key") {
+	// 상태 블록의 제목은 키가 저장돼 있든 없든 항상 렌더된다. 예전 앵커였던
+	// "glm-key" 문자열은 이제 키가 실제로 저장된 호스트에서만 나타난다 —
+	// glmKeyRevealPath("/glm-key/reveal")가 유일한 출처이고, 그 컨트롤은
+	// 저장된 키가 있을 때만 그려지기 때문이다. 그 문자열로 판정하면 개발자
+	// 기계에서는 통과하고 CI 에서는 실패하는, 호스트에 따라 답이 갈리는
+	// 테스트가 된다.
+	if !strings.Contains(rec.Body.String(), "sec.mcp.glm_key.title") {
 		t.Error("AC-C-010: full page render missing the GLM key state block")
+	}
+}
+
+// TestAC_C_010_GLMKeyAnchorIsCredentialStateIndependent pins the anchor the two
+// tests above assert on: it must render whether or not a key is stored.
+//
+// 이 가드가 없어서 놓친 적이 있다. 이전 앵커 문자열("glm-key")의 유일한 출처가
+// glmKeyRevealPath("/glm-key/reveal")였고, 그 컨트롤은 저장된 키가 있을 때만
+// 그려진다. 그래서 키를 가진 개발자 기계에서는 통과하고 CI 에서는 실패했다 —
+// 테스트가 코드가 아니라 호스트의 상태를 물어보고 있었던 것이다.
+func TestAC_C_010_GLMKeyAnchorIsCredentialStateIndependent(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		view pageView
+	}{
+		{"configured", pageView{GLMKeyConfigured: true, GLMKeyHint: "abcd"}},
+		{"not configured", pageView{GLMKeyConfigured: false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := renderGlmKeyStateBlock(t, tc.view)
+			if !strings.Contains(body, "sec.mcp.glm_key.title") {
+				t.Errorf("the GLM key state anchor is missing when the key is %s — the anchor must not depend on whether a credential is stored:\n%s", tc.name, body)
+			}
+			// The reveal path is NOT a usable anchor: it appears only in the
+			// configured branch, and only from the 3rd Party LLM section.
+			if !tc.view.GLMKeyConfigured && strings.Contains(body, glmKeyRevealPath) {
+				t.Error("the state block leaked the reveal control while no key is stored")
+			}
+		})
 	}
 }
 
