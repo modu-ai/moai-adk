@@ -264,6 +264,24 @@ Baseline (pre-M1, same tree family) was also "0 issues." — zero NEW findings a
 
 **Residual-risk.** CI on the eventual PR runs on a clean runner against current origin/main: the 3 known failures' behavior there is governed by main's state (post-#1527), not this branch's base.
 
+### Post-M4 — rebase + push + draft PR (lead-instructed)
+
+M4 verdict: **PASS**. Lead approved option (b): rebase onto origin/main, with the upstream +7-line todo.md change identified as `b689f492c` (#1526) — a batch-admission policy clause appended after the [HARD] block, which must SURVIVE the M3 shrink (it is queue policy, not file-manipulation guidance).
+
+**Rebase (measured)**: `git rebase origin/main` (24e2bd402) completed with NO manual conflicts — git's 3-way merge produced the intended union: the M3 rewrite WITH the upstream batch-admission paragraph (lines 78–83) and its `kanban-dispatch.md` § Batch admission cross-reference intact on both twins. Neither side was wholesale-adopted; both survive. New chain: `c839a9a4e`(M1) `99dc73916`(M2) `4deaf395c`(M3) `1f591cbeb`(M4).
+
+```
+$ cmp -s <local twin> <template twin> && echo TWINS_IDENTICAL   → TWINS_IDENTICAL (114 lines = 107 + upstream 7)
+$ go build ./...                                                 → BUILD_OK
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...    → ok 24.176s
+$ unset … && go test ./... -count=1 → --- FAIL ×2 (TestHandleCodexReviewGate…, TestPreTool_AstGrepSkipReasonSurfaces)
+$ go build / GOOS=windows build / GOOS=windows go vet ./...      → 0 / 0 / 0
+```
+
+**TestAutonomyTierReader resolved by #1527** exactly as the lead predicted — known failures 3 → 2 at rebase. Zero NEW failures on the rebased tree.
+
+**Push + PR**: branch `worktree-kanban-todo-cli` pushed; **draft PR #1529** opened (per the repo's draft-first discipline so auto-merge does not decide timing). PR body carries the milestone evidence summary + the known-failure table with per-failure attribution. Awaiting the lead's verification + undraft verdict. CodeRabbit review-limit caveat noted (row state ≠ verdict; read the comment body).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
