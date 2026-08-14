@@ -1188,7 +1188,7 @@ run_phase_commits:
   - b12e891ad   # M3 verification sweep + audit-ready signal
   - 92065a1e4   # M3-fix review findings F1-F5
   - f0ca483d0   # M3-fix2 re-review items 1-4 (anchor-level SpecID sweep, LC_ALL=C pin, guard simplification, dead-probe removal)
-  - <FIX3_SHA>  # M3-fix3 empty-id wedge removed (traversal sweep unchanged, shape-conditional only)
+  - 640321877   # M3-fix3 empty-id wedge removed (traversal sweep unchanged, shape-conditional only)
 ac_pass_count: 25
 ac_fail_count: 0
 deferred_remaining: 0
