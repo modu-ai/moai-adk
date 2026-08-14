@@ -2,9 +2,9 @@
 id: SPEC-KANBAN-RENAME-001
 title: "Rename Factory Mode to Kanban Mode across the moai-adk-go surface (KANBAN M0)"
 version: "0.5.1"
-status: in-progress
+status: completed
 created: 2026-08-10
-updated: 2026-08-11
+updated: 2026-08-14
 author: manager-spec
 priority: Medium
 phase: "v3.1.0 target"

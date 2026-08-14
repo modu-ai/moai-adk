@@ -58,7 +58,7 @@ func newAgentTestApp(t *testing.T) (*app, string) {
 
 func getIndex(t *testing.T, a *app) string {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)

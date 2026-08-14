@@ -64,15 +64,18 @@ func TestMascotRetiredAssetsRemoved(t *testing.T) {
 	}
 }
 
-// TestHeaderBrandBadgeUsesThinkingPose verifies AC-MWV2-012: the settings page
-// header brand badge references mascot-thinking.png (the confirmed v2 header pose)
-// and no longer references the removed mascot-coding.png.
-func TestHeaderBrandBadgeUsesThinkingPose(t *testing.T) {
+// TestRailBrandIsInlineMark: 재설계 셸의 브랜드 자리는 마스코트 PNG 가 아니라
+// 인라인 SVG 로고 마크다. 마스코트는 화면 장식으로 남지 않는다 — 무채색 단일
+// 체계에서 컬러 PNG 는 유일한 유채색 규칙(danger 하나)을 깨기 때문이다.
+//
+// AC-MWV2-012 의 원래 의도(브랜드 자리가 폐기된 mascot-coding.png 를 참조하지
+// 않는다)는 그대로 지킨다.
+func TestRailBrandIsInlineMark(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{UserName: "test"})
-	if !strings.Contains(body, "/static/mascots/mascot-thinking.png") {
-		t.Error("header brand badge missing the mascot-thinking.png reference")
+	if !strings.Contains(body, `class="rail__logo"`) {
+		t.Error("the rail brand mark is missing")
 	}
-	if strings.Contains(body, "/static/mascots/mascot-coding.png") {
-		t.Error("header brand badge still references the removed mascot-coding.png")
+	if strings.Contains(body, "/static/mascots/") {
+		t.Error("the settings screen still references a mascot image — the redesigned shell uses the inline brand mark")
 	}
 }

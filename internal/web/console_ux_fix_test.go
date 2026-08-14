@@ -21,13 +21,20 @@ import (
 
 // cssRuleBlock returns the declaration block of the FIRST rule whose selector
 // text matches sel exactly (the text between "sel {" and the closing "}").
+// 재설계본 CSS 는 선택자와 여는 중괄호 사이에 공백을 두지 않는다. 두 형태를
+// 모두 받아들여, 포맷 차이 때문에 규칙을 "없다"고 잘못 말하지 않게 한다.
 func cssRuleBlock(t *testing.T, css, sel string) string {
 	t.Helper()
-	start := strings.Index(css, sel+" {")
+	start := strings.Index(css, sel+"{")
+	open := len(sel) + 1
+	if start < 0 {
+		start = strings.Index(css, sel+" {")
+		open = len(sel) + 2
+	}
 	if start < 0 {
 		t.Fatalf("css rule %q not found", sel)
 	}
-	body := css[start+len(sel)+2:]
+	body := css[start+open:]
 	end := strings.Index(body, "}")
 	if end < 0 {
 		t.Fatalf("css rule %q is unclosed", sel)
@@ -38,31 +45,25 @@ func cssRuleBlock(t *testing.T, css, sel string) string {
 // TestBrandBadgeHasNoFill verifies G1-1: the top-left nav brand badge renders the
 // (alpha-transparent) mascot bare — no gradient fill, no shadow, no rounded box —
 // while the .brand__badge element itself stays in the DOM as the flex anchor.
-func TestBrandBadgeHasNoFill(t *testing.T) {
+// 재설계에서 브랜드 자리는 마스코트 PNG 배지에서 인라인 SVG 로고 마크로 바뀌었다.
+// 지켜야 할 성질은 그대로다: 채움도 그림자도 둥근 상자도 없이 마크만 놓인다.
+func TestBrandMarkHasNoFill(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	badge := cssRuleBlock(t, css, ".brand__badge")
+	logo := cssRuleBlock(t, css, ".rail__logo")
 	for _, banned := range []string{"background", "box-shadow", "border-radius"} {
-		if strings.Contains(badge, banned+":") {
-			t.Errorf(".brand__badge still declares %q (the badge must render the mascot with no fill/rounded box):\n%s", banned, badge)
+		if strings.Contains(logo, banned+":") {
+			t.Errorf(".rail__logo declares %q — the brand mark carries no fill/rounded box:\n%s", banned, logo)
 		}
 	}
-	// Layout anchoring is preserved (sizing + flex centering).
-	for _, kept := range []string{"width", "height", "align-items", "justify-content"} {
-		if !strings.Contains(badge, kept+":") {
-			t.Errorf(".brand__badge lost layout declaration %q — the appbar layout must be unchanged:\n%s", kept, badge)
-		}
+	// 마크는 무채색 체계를 따른다 — 원본 브랜드 녹색이 화면에 나오지 않는다.
+	if !strings.Contains(logo, "grayscale") {
+		t.Errorf(".rail__logo lost its grayscale filter — the brand green would break the achromatic system:\n%s", logo)
 	}
 
-	mascot := cssRuleBlock(t, css, ".brand__badge img.brand__mascot")
-	if strings.Contains(mascot, "border-radius:") {
-		t.Errorf(".brand__badge img.brand__mascot still declares border-radius (the PNG is alpha-transparent):\n%s", mascot)
-	}
-
-	// The element itself must survive — this is a CSS-only change.
 	body := renderIndexBody(t, profile.ProfilePreferences{})
-	if !strings.Contains(body, `class="brand__badge"`) {
-		t.Error("brand__badge element disappeared from the appbar (G1-1 is CSS-only)")
+	if !strings.Contains(body, `class="rail__logo"`) {
+		t.Error("the brand mark disappeared from the rail")
 	}
 }
 
@@ -260,28 +261,28 @@ func TestAgentFMSinglePanel(t *testing.T) {
 	}
 }
 
-// agentFMSectionCount extracts the numeric section__count rendered next to the
-// agentfm legend. sec.agentfm.title appears twice — first in the tab strip, then
-// in the fieldset legend — so the LAST occurrence is the legend.
+// agentFMSectionCount extracts the numeric field count rendered next to the
+// agentfm panel title. sec.agentfm.title appears twice — first in the rail's tab
+// list, then in the panel heading — so the LAST occurrence is the heading.
 func agentFMSectionCount(t *testing.T, body string) int {
 	t.Helper()
-	legend := strings.LastIndex(body, `data-i18n="sec.agentfm.title"`)
-	if legend < 0 {
-		t.Fatal("agentfm legend not found in render")
+	heading := strings.LastIndex(body, `data-i18n="sec.agentfm.title"`)
+	if heading < 0 {
+		t.Fatal("agentfm panel heading not found in render")
 	}
-	if !strings.HasPrefix(body[legend:], `data-i18n="sec.agentfm.title">Agents</span></legend>`) {
-		t.Fatalf("expected the agentfm legend at the last sec.agentfm.title occurrence, got: %.80q", body[legend:])
+	if !strings.HasPrefix(body[heading:], `data-i18n="sec.agentfm.title">Agents</span></h2>`) {
+		t.Fatalf("expected the agentfm panel heading at the last sec.agentfm.title occurrence, got: %.80q", body[heading:])
 	}
-	rest := body[legend:]
-	marker := `class="section__count">`
+	rest := body[heading:]
+	marker := `class="panel__meta">`
 	at := strings.Index(rest, marker)
 	if at < 0 {
-		t.Fatal("agentfm section__count not found in render")
+		t.Fatal("agentfm panel field count not found in render")
 	}
 	rest = rest[at+len(marker):]
 	digits := regexp.MustCompile(`^\s*(\d+)`).FindStringSubmatch(rest)
 	if digits == nil {
-		t.Fatalf("agentfm section__count is not numeric: %.40q", rest)
+		t.Fatalf("agentfm panel field count is not numeric: %.40q", rest)
 	}
 	n, err := strconv.Atoi(digits[1])
 	if err != nil {

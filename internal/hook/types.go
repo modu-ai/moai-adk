@@ -221,7 +221,11 @@ type HookInput struct {
 	ToolUseID    string          `json:"tool_use_id,omitempty"`
 
 	// SessionStart fields
-	Source    string `json:"source,omitempty"`     // startup, resume, clear, compact
+	// Source is how a SessionStart began: startup, resume, clear, compact, or
+	// fork. The set grows — fork arrived in Claude Code v2.1.214, and before
+	// that a forked session reported resume — so gate on the value you want
+	// rather than on the ones you want to exclude.
+	Source    string `json:"source,omitempty"`
 	Model     string `json:"model,omitempty"`      // Model identifier
 	AgentType string `json:"agent_type,omitempty"` // Custom agent name if --agent flag used
 

@@ -197,13 +197,29 @@ func captureEnvState(key string) func() {
 // That is a launch the chain drives without stored state, and downstream the
 // missing record reads as "no evidence" — which resolves in the safe direction,
 // running the sync-phase check rather than skipping it.
-func recordKanbanSession(specID, backend string) {
+// role names the chain position this session occupies (kanban.RoleLead for the
+// lead, or the companion role parsed from the `<role>-<run-id>` label). It is
+// recorded so a reader can tell WHICH session is which — without it the five
+// records are indistinguishable and any chain view can only report "unknown".
+// An unrecognized role is dropped by WithRole rather than stored.
+func recordKanbanSession(specID, backend, role string) {
 	projectRoot := launchProjectRoot()
 	sessionID := resolveLaunchSessionID("")
 	if projectRoot == "" || sessionID == "" {
 		return
 	}
-	kanban.WriteBestEffort(projectRoot, kanban.NewRecord(sessionID, specID, backend))
+	kanban.WriteBestEffort(projectRoot, kanban.NewRecord(sessionID, specID, backend).WithRole(role))
+}
+
+// companionRole extracts the role from a `<role>-<run-id>` label, returning ""
+// when the label is absent or malformed — the caller records no role rather
+// than guessing one.
+func companionRole(label string) string {
+	role, _, ok := kanban.SplitCompanionLabel(label)
+	if !ok {
+		return ""
+	}
+	return role
 }
 
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never

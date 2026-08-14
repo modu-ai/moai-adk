@@ -14,7 +14,7 @@ func renderConsolePage(t *testing.T) string {
 	t.Helper()
 	a := newTestApp(t)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

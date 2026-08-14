@@ -24,7 +24,7 @@ import (
 func renderAppBody(t *testing.T, a *app) string {
 	t.Helper()
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -158,7 +158,7 @@ func TestAC_C_008_CodexAbsentGraceful(t *testing.T) {
 	}
 	a := codexTestApp(t, state)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -167,7 +167,7 @@ func TestAC_C_008_CodexAbsentGraceful(t *testing.T) {
 	body := rec.Body.String()
 	// The not-installed indicator must be present. We check for a data attribute
 	// or i18n key that the template emits for the not-installed branch.
-	if !strings.Contains(body, "codex-not-installed") && !strings.Contains(body, "Not installed") && !strings.Contains(body, "not-installed") {
+	if !strings.Contains(body, "f.mcp.codex.not_installed") && !strings.Contains(body, "codex is not installed") {
 		t.Error("AC-C-008: codex-absent page must show the not-installed state")
 	}
 }

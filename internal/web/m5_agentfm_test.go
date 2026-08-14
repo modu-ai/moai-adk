@@ -111,15 +111,15 @@ func TestM5AgentFMRenderBadgeAndSelects(t *testing.T) {
 	a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
 	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, req)
 	body := rec.Body.String()
 
 	// Tier badge renders (🔴 for manager-spec — display-only, from the name table).
-	if !strings.Contains(body, `class="agentfm-badge"`) {
-		t.Error(`rendered page missing .agentfm-badge element (REQ-WC-006 tier badge)`)
+	if !strings.Contains(body, `class="badge"`) {
+		t.Error(`rendered page missing .badge element (REQ-WC-006 tier badge)`)
 	}
 	if !strings.Contains(body, "🔴") {
 		t.Error(`rendered page missing the 🔴 tier glyph for manager-spec`)

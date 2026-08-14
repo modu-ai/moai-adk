@@ -20,7 +20,7 @@ func TestServer_HandlerAccessor(t *testing.T) {
 		t.Fatal("Handler() returned nil")
 	}
 	// The handler routes GET / without error.
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)

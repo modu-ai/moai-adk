@@ -60,6 +60,16 @@ type Record struct {
 	// the chain heads at plan-phase from the operator's first prompt.
 	SpecID string `json:"spec_id"`
 
+	// Role is the chain role this session occupies: lead | plan | run | review
+	// | sync. It is derived from the companion label (`<role>-<run-id>`) at
+	// launch, or "lead" for the session that elected the run.
+	//
+	// Empty is legitimate and load-bearing: a record written before this field
+	// existed, or a launch whose label could not be parsed, leaves it blank —
+	// and a consumer MUST render that as "not recorded" rather than guessing a
+	// role. omitempty keeps pre-existing records byte-identical on rewrite.
+	Role string `json:"role,omitempty"`
+
 	// Backend is BackendClaude or BackendGLM.
 	Backend string `json:"backend"`
 
@@ -99,6 +109,20 @@ func NewRecord(sessionID, specID, backend string) *Record {
 		Backend:   backend,
 		EnteredAt: time.Now().UTC().Format(time.RFC3339),
 	}
+}
+
+// WithRole returns rec with the chain role attached. A role outside the known
+// set is discarded rather than stored, so a consumer never has to defend
+// against an arbitrary string arriving from a launch label.
+func (r *Record) WithRole(role string) *Record {
+	if r == nil {
+		return nil
+	}
+	role = strings.ToLower(strings.TrimSpace(role))
+	if role == RoleLead || isCompanionRole(role) {
+		r.Role = role
+	}
+	return r
 }
 
 // RecordPath returns the on-disk path of a session's record.

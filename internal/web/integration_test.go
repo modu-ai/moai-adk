@@ -108,7 +108,7 @@ func TestGoldenPath_ReadWriteRoundTrip(t *testing.T) {
 	client := &http.Client{}
 
 	// --- READ: GET / renders current values (REQ-WC-006) ---
-	resp, err := client.Get(base + "/")
+	resp, err := client.Get(base + "/settings")
 	if err != nil {
 		t.Fatalf("GET /: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestGoldenPath_EmptyStateNeutralDefaults(t *testing.T) {
 		ProfileName: "default", // no preferences.yaml seeded → zero-value
 	})
 
-	resp, err := http.Get(base + "/")
+	resp, err := http.Get(base + "/settings")
 	if err != nil {
 		t.Fatalf("GET /: %v", err)
 	}

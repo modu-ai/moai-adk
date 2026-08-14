@@ -59,8 +59,8 @@ func TestSchemaTextRowContract(t *testing.T) {
 			t.Errorf("schemaTextRow output missing %s\ngot: %s", want, html)
 		}
 	}
-	if strings.Contains(html, "has-error") {
-		t.Error("schemaTextRow marked has-error with no error supplied")
+	if strings.Contains(html, "field__err") {
+		t.Error("schemaTextRow marked as errored with no error supplied")
 	}
 }
 
@@ -75,8 +75,8 @@ func TestSchemaTextRowSurfacesFieldError(t *testing.T) {
 		t.Fatalf("render: %v", err)
 	}
 	html := sb.String()
-	if !strings.Contains(html, "has-error") {
-		t.Error("a field with an error did not carry the has-error class")
+	if !strings.Contains(html, "field__err") {
+		t.Error("a field with an error did not carry the field__err element")
 	}
 	if !strings.Contains(html, "must be an absolute path") {
 		t.Error("the field error message was not rendered")

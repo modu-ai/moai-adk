@@ -10,7 +10,6 @@ import (
 
 	"path/filepath"
 
-
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -115,6 +114,12 @@ type pageView struct {
 	GLMKeyConfigured bool
 	GLMKeyHint       string
 
+	// ActiveTab is the settings tab the request asked for (`?tab=<id>`). It
+	// selects which panel renders visible; every panel stays in the DOM so the
+	// atomic Save contract holds. An empty or unknown value falls back to the
+	// first tab (activeSettingsTab).
+	ActiveTab string
+
 	// CodexState carries the codex_setup probe result for the MCP console
 	// section's codex authentication surface (SPEC-MCP-CONSOLE-001 M3 REQ-C-4).
 	// It is a read-only view model — the probe is consumed, not recomputed.
@@ -187,7 +192,7 @@ func (a *app) resolveBindAddr() string {
 // component; the render-into-buffer-first error discipline is preserved.
 func (a *app) render(w http.ResponseWriter, status int, view pageView) {
 	var buf bytes.Buffer
-	if err := page(view).Render(context.Background(), &buf); err != nil {
+	if err := page(a.settingsShellVM(view), view).Render(context.Background(), &buf); err != nil {
 		a.renderError(w, http.StatusInternalServerError, "internal error: render failed: "+err.Error())
 		return
 	}
@@ -208,7 +213,10 @@ func (a *app) render(w http.ResponseWriter, status int, view pageView) {
 // (zero-value → neutral defaults, not an error) and renders the pre-populated
 // editable form. A read error produces a readable inline error.
 func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
+	// 설정 편집기는 재설계에서 "/settings" 로 내려갔다. "/" 는 개요가 가져간다.
+	// 이 가드는 미등록 경로가 설정 화면으로 새는 것을 막는 용도이므로, 등록된
+	// 두 경로만 통과시킨다 — "/" 는 mux 의 catch-all 이라 여전히 좁혀야 한다.
+	if r.URL.Path != "/settings" && r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
@@ -229,6 +237,9 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		a.renderError(w, http.StatusInternalServerError, errMsg)
 		return
 	}
+	// 레일의 세로 subnav 가 `/settings?tab=<id>` 로 링크한다. 모르는 값은
+	// activeSettingsTab 이 첫 탭으로 떨어뜨리므로 여기서 거절하지 않는다.
+	view.ActiveTab = r.URL.Query().Get("tab")
 	a.render(w, http.StatusOK, view)
 }
 
@@ -438,6 +449,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
 		overlaySchemaEdits(&view, schemaEdits)
 		view.FieldErrors = fieldErrs
+		view.ActiveTab = r.PostFormValue("__tab")
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
 		a.render(w, http.StatusBadRequest, view)
@@ -534,6 +546,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := a.successProjectView(prefs, selected, devMode, convention)
+	view.ActiveTab = r.PostFormValue("__tab")
 	view.Banner = "Settings saved."
 	view.BannerKind = "ok"
 	a.render(w, http.StatusOK, view)

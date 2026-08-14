@@ -116,7 +116,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
 	case kanbanBranchLead:
 		defer enterKanbanMode(specID)()
-		recordKanbanSession(specID, kanban.BackendClaude)
+		recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleLead)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -124,6 +124,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 		defer settingsCleanup()
 	case kanbanBranchCompanion:
 		defer enterKanbanCompanionMode(label)()
+		recordKanbanSession(specID, kanban.BackendClaude, companionRole(label))
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

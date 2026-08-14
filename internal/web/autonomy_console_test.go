@@ -29,7 +29,7 @@ func TestAutonomyStubResolved(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 

@@ -86,4 +86,222 @@ func icon(name string) templ.Component {
 	})
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 재설계본 아이콘 세트 (iconAt) — 크기를 호출부가 정한다.
+//
+// 기존 icon(name) 은 39개 호출부가 쓰고 있어 시그니처를 바꾸지 않는다. 재설계
+// 화면은 크기 인자가 필요하므로 별도 이름으로 나란히 둔다. 스트로크는
+// currentColor · 1.4 · round, viewBox 18. 인라인 SVG 만 쓴다 (C3).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// iconAt emits the named icon at the requested pixel size. An unknown name
+// renders nothing — the caller never gets a broken glyph box.
+func iconAt(name string, size int) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var2 == nil {
+			templ_7745c5c3_Var2 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		switch name {
+		case "overview":
+			templ_7745c5c3_Err = iconPath("M3 3h5.2v5.2H3zM10.8 3H16v5.2h-5.2zM3 10.8h5.2V16H3zM10.8 10.8H16V16h-5.2z", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "kanban":
+			templ_7745c5c3_Err = iconPath("M3.5 3v13M9.5 3v8M15 3v11", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "specs":
+			templ_7745c5c3_Err = iconPath("M4 2.5h6l3.5 3.5v11h-9.5zM10 2.5V6h3.5M6.5 9.5h5M6.5 12.5h5", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "monitor":
+			templ_7745c5c3_Err = iconPath("M2 10h3l2-5 2.6 10L12 10h4", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "settings":
+			templ_7745c5c3_Err = iconPath("M3 5.5h10M3 12.5h6M11.5 3.6v3.8M6.5 10.6v3.8M15 12.5h1.5M15.5 5.5H17", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "chevron":
+			templ_7745c5c3_Err = iconPath("M6.5 4.5 11 9l-4.5 4.5", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "chevron-down":
+			templ_7745c5c3_Err = iconPath("M4.5 7 9 11.5 13.5 7", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "search":
+			templ_7745c5c3_Err = iconPath("M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12.2 12.2 16 16", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "save":
+			templ_7745c5c3_Err = iconPath("M3.5 3.5h8L15 7v9.5h-11zM6 3.5v4h5M6 11h6", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "power":
+			templ_7745c5c3_Err = iconPath("M9 2.5v6M5.2 5.2a5.4 5.4 0 1 0 7.6 0", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "check":
+			templ_7745c5c3_Err = iconPath("M3.5 9.5 7 13l7.5-8", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "alert":
+			templ_7745c5c3_Err = iconPath("M9 2.8 16.2 15.5H1.8zM9 7v4M9 13.2v.6", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "close":
+			templ_7745c5c3_Err = iconPath("M4 4l10 10M14 4L4 14", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "clock":
+			templ_7745c5c3_Err = iconPath("M9 2.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 9 2.6zM9 5.6V9l2.6 1.6", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "note":
+			templ_7745c5c3_Err = iconPath("M9 3v5.5M9 8.5 4.5 15h9z", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "external":
+			templ_7745c5c3_Err = iconPath("M10 3h4v4M14 3 8.5 8.5M13 10.5V14H4V5h3.5", size).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		return nil
+	})
+}
+
+func iconPath(d string, size int) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var3 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var3 == nil {
+			templ_7745c5c3_Var3 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<svg viewBox=\"0 0 18 18\" width=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var4 string
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(size))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `icons.templ`, Line: 104, Col: 44}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" height=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(size))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `icons.templ`, Line: 104, Col: 66}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(d)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `icons.templ`, Line: 105, Col: 13}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></path></svg>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// brandMark 은 docs-site/static/images/logo.svg 의 원본 path 를 그대로 인라인한
+// 것이다. fill="currentColor" 라 색은 CSS(.rail__logo)가 정하고, 원본 브랜드
+// 녹색은 마크업에 남기지 않는다 — 무채색 단일 체계(§1)를 깨지 않기 위해서다.
+// 외부 스프라이트·<use href> 참조를 쓰지 않는다 (C1/C3).
+func brandMark() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var7 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var7 == nil {
+			templ_7745c5c3_Var7 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<svg class=\"rail__logo\" viewBox=\"0 0 180 180\" role=\"img\" aria-label=\"MoAI-ADK\" fill=\"currentColor\"><title>MoAI-ADK</title><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"m 105.50024,22.224647 c -9.59169,-5.537563 -21.40871,-5.537563 -31.000093,0 L 39.054693,42.689119 C 29.463353,48.226675 23.55484,58.460531 23.55484,69.535642 v 40.928918 c 0,11.07542 5.908513,21.3092 15.499853,26.84652 l 35.445453,20.46446 c 9.591313,5.53732 21.408404,5.53732 31.000094,0 l 35.44507,-20.46446 c 9.59131,-5.53732 15.49985,-15.7711 15.49985,-26.84652 V 69.535642 c 0,-11.075111 -5.90854,-21.308967 -15.49985,-26.846523 z M 34.112797,85.737639 c -1.384445,2.397827 -1.384445,5.352099 0,7.749927 l 24.781554,42.922974 c 1.38437,2.39783 3.942853,3.87496 6.711592,3.87496 h 49.563107 c 2.76905,0 5.3273,-1.47713 6.71144,-3.87496 l 24.78194,-42.922974 c 1.38414,-2.397828 1.38414,-5.3521 0,-7.749927 L 121.88049,42.814746 c -1.38414,-2.397828 -3.94239,-3.874964 -6.71144,-3.874964 H 65.605944 c -2.768739,0 -5.327223,1.477059 -6.711592,3.874964 z\" style=\"stroke-width:0.774993\"></path></svg>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
 var _ = templruntime.GeneratedTemplate

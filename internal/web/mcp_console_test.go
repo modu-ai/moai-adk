@@ -104,7 +104,7 @@ func TestMCPConsoleWriteCapableTextDistinction(t *testing.T) {
 		// mcpToolRow's emit order (title → badge → key chip). A bidirectional
 		// window around the code chip captures the badge (which precedes it)
 		// without spilling into the next tool's row.
-		chip := `<code class="field__key">mcp.tools.` + tool.Name + `.enabled</code>`
+		chip := `<code class="key">mcp.tools.` + tool.Name + `.enabled</code>`
 		idx := strings.Index(body, chip)
 		if idx < 0 {
 			t.Fatalf("rendered page missing key chip for tool %q — TestMCPConsoleRendersAllTools should have caught this", tool.Name)

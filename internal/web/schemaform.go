@@ -23,9 +23,9 @@ import (
 // sec.<section>.title i18n 키를 재사용한다 — 신규 sec.* 키 없음. ID 는 탭과
 // 패널을 매칭하는 data-tab/data-panel 식별자다.
 type consoleTab struct {
-	ID        string
-	LabelKey  string // 기존 sec.<section>.title 재사용 (0 NEW sec.* keys)
-	Baseline  string // data-i18n 미실행 시 표시될 영문 fallback
+	ID       string
+	LabelKey string // 기존 sec.<section>.title 재사용 (0 NEW sec.* keys)
+	Baseline string // data-i18n 미실행 시 표시될 영문 fallback
 }
 
 // consoleTabs 는 탭 nav 의 정렬된 탭 목록을 반환한다. 각 탭의 label 은 기존

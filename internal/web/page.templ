@@ -74,12 +74,12 @@ func hasFieldError(errs map[string]string, name string) bool {
 // langSelect ports {{define "langSelect"}} (page.html.tmpl ~274-288). Emits the
 // field chrome + a `select select--lang` with the fixed `(unset)` empty option.
 templ langSelect(a langSelectArgs) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
-		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
-		<span class="select-wrap">
+	<div class="field">
+		@fieldHead(a.Name, a.Title, a.Key)
+		<p class="field__help" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</p>
+		<div class="field__ctl">
 			<select
-				class="select select--lang"
+				class="sel"
 				id={ a.Name }
 				name={ a.Name }
 				if hasFieldError(a.Errors, a.Name) {
@@ -88,11 +88,28 @@ templ langSelect(a langSelectArgs) {
 			>
 				@langOptionTags(a.Value, a.Options)
 			</select>
-		</span>
-		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+		</div>
+		@fieldErr(a.Errors, a.Name)
 	</div>
+}
+
+// fieldHead 는 모든 필드가 공유하는 라벨 줄이다: 사람이 읽는 제목 + 기술
+// 식별자 칩. 칩은 번역하지 않는다 — 설정 키는 코드 토큰이지 문장이 아니다.
+templ fieldHead(name, title, key string) {
+	<div class="field__head">
+		<span class="field__label" data-i18n={ "f." + name + ".title" }>{ title }</span>
+		<code class="key">{ key }</code>
+	</div>
+}
+
+// fieldErr 는 필드별 검증 메시지다. 오류가 없으면 아무것도 그리지 않는다.
+templ fieldErr(errs map[string]string, name string) {
+	if msg := fieldErrorMsg(errs, name); msg != "" {
+		<p class="field__err" id={ "err_" + name }>
+			@iconAt("alert", 13)
+			<span>{ msg }</span>
+		</p>
+	}
 }
 
 // langOptionTags emits the `(unset)` empty option followed by the canonical
@@ -117,12 +134,12 @@ templ langOptionTags(value string, options []settings.OptionDef) {
 // optSelect ports {{define "optSelect"}} (page.html.tmpl ~290-304). Emits the
 // field chrome + a `select` with a caller-supplied `.Empty` empty option label.
 templ optSelect(a optSelectArgs) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
-		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
-		<span class="select-wrap">
+	<div class="field">
+		@fieldHead(a.Name, a.Title, a.Key)
+		<p class="field__help" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</p>
+		<div class="field__ctl">
 			<select
-				class="select"
+				class="sel"
 				id={ a.Name }
 				name={ a.Name }
 				if hasFieldError(a.Errors, a.Name) {
@@ -131,10 +148,8 @@ templ optSelect(a optSelectArgs) {
 			>
 				@optOptionTags(a.Value, a.Empty, a.EmptyKey, a.Options)
 			</select>
-		</span>
-		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+		</div>
+		@fieldErr(a.Errors, a.Name)
 	</div>
 }
 
@@ -165,39 +180,41 @@ templ optOptionTags(value, empty, emptyKey string, options []settings.OptionDef)
 // can tell "unchecked" (companion present, checkbox absent → false) from "not
 // submitted" (companion absent → preserve, EC-1 bool, design.md §D.2).
 templ toggle(a toggleArgs) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
-		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
-		<label class="seg">
+	<div class="field">
+		@fieldHead(a.Name, a.Title, a.Key)
+		<p class="field__help" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</p>
+		<div class="field__ctl">
 			<input type="hidden" name={ a.Name + "__present" } value="1"/>
-			if a.Checked {
-				<input type="checkbox" id={ a.Name } name={ a.Name } value="1" checked/>
-			} else {
-				<input type="checkbox" id={ a.Name } name={ a.Name } value="1"/>
-			}
-			<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
-		</label>
-		if msg := fieldErrorMsg(a.Errors, a.Name); msg != "" {
-			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-		}
+			<label class="seg__b seg">
+				if a.Checked {
+					<input type="checkbox" id={ a.Name } name={ a.Name } value="1" checked/>
+				} else {
+					<input type="checkbox" id={ a.Name } name={ a.Name } value="1"/>
+				}
+				<span data-i18n="opt.enabled">Used</span>
+			</label>
+		</div>
+		@fieldErr(a.Errors, a.Name)
 	</div>
 }
 
 // numberField renders an int/float nested config field as <input type="number">
 // (SPEC-WEB-CONSOLE-007 §D). Reuses the field chrome + the fieldsetIdentity text
-// input pattern (class="input"). Min/Max/Step are client hints only — the
+// input pattern. Min/Max/Step are client hints only — the
 // server-canonical validator is authoritative (HARD-3): a value submitted past
 // the browser hint is still rejected server-side. Errored render adds
 // aria-invalid + an aria-describedby field-error span.
 templ numberField(a numberFieldArgs) {
-	<div class={ "field", templ.KV("has-error", hasFieldError(a.Errors, a.Name)) }>
-		<span class="field__label"><span class="field__title" data-i18n={ "f." + a.Name + ".title" }>{ a.Title }</span><code class="field__key">{ a.Key }</code></span>
-		<span class="field__desc" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</span>
-		if hasFieldError(a.Errors, a.Name) {
-			<input class="input" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step } aria-invalid="true" aria-describedby={ "err_" + a.Name }/>
-			<span class="field-error" id={ "err_" + a.Name }>@icon("alert-circle")<span>{ fieldErrorMsg(a.Errors, a.Name) }</span></span>
-		} else {
-			<input class="input" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step }/>
-		}
+	<div class="field">
+		@fieldHead(a.Name, a.Title, a.Key)
+		<p class="field__help" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</p>
+		<div class="field__ctl">
+			if hasFieldError(a.Errors, a.Name) {
+				<input class="in" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step } aria-invalid="true" aria-describedby={ "err_" + a.Name }/>
+			} else {
+				<input class="in" type="number" id={ a.Name } name={ a.Name } value={ a.Value } min={ a.Min } max={ a.Max } step={ a.Step }/>
+			}
+		</div>
+		@fieldErr(a.Errors, a.Name)
 	</div>
 }

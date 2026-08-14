@@ -1,0 +1,124 @@
+// 재설계본 표시 위젯 — §5.5 어휘(생존 · 백엔드 · 단계 · 게이지 · 추정)와
+// 패널/배너/배지.
+//
+// handoff 원본 대비 로컬 보정:
+//   1) `banner` → `noteBanner` 로 개명했다. root.templ 이 이미 `banner(view
+//      pageView)` 를 정의하고 있어 이름이 충돌한다.
+//   2) 원본의 폼 위젯(field/textInput/selectInput/toggleInput/segInput)은
+//      가져오지 않았다. 설정 화면의 폼 마크업은 page.templ + fieldsets.templ
+//      이 소유하고, 그 안에 `name` 속성과 저장 키가 들어 있다 (C5). 시그니처가
+//      다른 위젯을 나란히 두면 어느 쪽이 실제 렌더인지 알 수 없어진다.
+//   3) 아이콘은 `iconAt(name, size)` 를 쓴다 — 기존 `icon(name)` 1-arg 호출부
+//      39곳을 건드리지 않기 위해서다.
+package web
+
+// panel 은 화면 구획 하나. density 는 roomy | dense 로 필드 밀도를 정한다.
+templ panel(title, meta, help, density string) {
+	<section class="panel" data-density={ density }>
+		<div class="panel__head">
+			<h2 class="panel__title">{ title }</h2>
+			if meta != "" {
+				<span class="panel__meta">{ meta }</span>
+			}
+		</div>
+		if help != "" {
+			<p class="panel__help">{ help }</p>
+		}
+		{ children... }
+	</section>
+}
+
+// noteBanner 는 화면 안내문. kind == "warn" 이면 주의 배너가 된다.
+templ noteBanner(kind, text string) {
+	<p class={ "banner", templ.KV("banner--warn", kind == "warn") } role={ bannerRole(kind) }>
+		if kind == "warn" {
+			@iconAt("alert", 14)
+		} else {
+			@iconAt("note", 14)
+		}
+		<span>{ text }</span>
+	</p>
+}
+
+/* ── §5.5 어휘 위젯 ─────────────────────────────────────
+   확정 / 추정 / 기록 없음을 모양으로 가른다.
+   state: live(PID 확인됨) | stale(하트비트 낡음) | idle(미기동)
+   ------------------------------------------------------ */
+
+templ stateMark(state string, label string) {
+	<span class={ "state", "state--" + state }>
+		<span class="state__dot" aria-hidden="true"></span>
+		if label != "" {
+			<span data-i18n={ "state." + state }>{ label }</span>
+		}
+	</span>
+}
+
+templ backendBadge(backend string) {
+	if backend == "" {
+		@missing()
+	} else {
+		<span class={ "backend", templ.KV("backend--metered", backend == "glm") }>
+			<b>{ backend }</b>
+			if backend == "glm" {
+				<span data-i18n="backend.metered">metered</span>
+			} else {
+				<span data-i18n="backend.flat">flat rate</span>
+			}
+		</span>
+	}
+}
+
+// stageMark — 추정일 때는 est 로 감싼다. 단정하지 않는다.
+templ stageMark(stage string, estimated bool) {
+	if estimated {
+		<span class="est" title="estimated from last_heartbeat — no transition record exists">
+			@stageInner(stage)
+			<span class="est__tag" data-i18n="mark.estimated">estimate</span>
+		</span>
+	} else {
+		@stageInner(stage)
+	}
+}
+
+templ stageInner(stage string) {
+	<span class={ "stage", "stage--" + stage }>
+		<span class="stage__g" aria-hidden="true">{ stageGlyph(stage) }</span>
+		<span data-i18n={ "stage." + stage }>{ stageLabel(stage) }</span>
+	</span>
+}
+
+// gauge — pct < 0 은 "기록 없음"이다. 0% 로 그리지 않는다.
+templ gauge(label string, pct int) {
+	if pct < 0 {
+		<span class="gauge">
+			<span class="gauge__l">{ label }</span>
+			@missing()
+		</span>
+	} else {
+		<span class="gauge">
+			<span class="gauge__l">{ label }</span>
+			<span class="gauge__t" role="meter" aria-valuenow={ itoa(pct) } aria-valuemin="0" aria-valuemax="100">
+				<span style={ "width:" + itoa(pct) + "%" }></span>
+			</span>
+			<span class="gauge__v">{ itoa(pct) + "%" }</span>
+		</span>
+	}
+}
+
+// missing — 그럴듯한 값을 채우지 않는다. 왜 없는지는 title 에 남긴다.
+templ missing() {
+	<span class="missing" title="not recorded anywhere yet (kanban.Record extension required)" aria-label="not recorded">—</span>
+}
+
+templ badge(kind, text string) {
+	<span class={ "badge", templ.KV("badge--danger", kind == "danger"), templ.KV("badge--outline", kind == "outline"), templ.KV("badge--strong", kind == "strong") }>{ text }</span>
+}
+
+templ spark(history []bool) {
+	<span class="spark" aria-hidden="true">
+		for _, ok := range history {
+			<span class={ "spark__b", templ.KV("spark__b--on", ok) }></span>
+		}
+	</span>
+}
