@@ -51,19 +51,30 @@ func kanbanBootstrapNotice(lang string) string {
 // new session, and "" for every SessionStart that merely re-enters an existing
 // one.
 //
-// SessionStart fires on four sources: startup, resume, clear, and compact. The
-// kanban environment survives all four, so an ungated notice re-announces the
-// bootstrap on every resume — instructing the operator to open four companion
-// terminals that are already open, for a run already under way. Only startup is
-// the moment that instruction is actionable.
+// SessionStart fires on five documented sources — startup, resume, clear,
+// compact, and fork — and the kanban environment survives all of them, so an
+// ungated notice re-announces the bootstrap every time a lead session comes
+// back: the operator is told to open four companion terminals that are already
+// open, for a run already under way. Only startup is the moment that
+// instruction is actionable.
 //
-// An empty source is treated as startup. Claude Code always populates the field,
-// so an empty value means a caller that predates it or a test constructing the
-// input by hand; emitting there keeps the prior behaviour rather than silently
-// suppressing the notice for them.
+// The test is an allowlist rather than a denylist of the re-entry sources,
+// because the source set grows. `fork` was added in Claude Code v2.1.214; a
+// forked session reported `resume` before that, so a denylist written against
+// the four older values silently started emitting again when the fifth
+// appeared. An allowlist suppresses any sixth value by default, which is the
+// safe direction for an announcement that is only ever correct once.
+//
+// An empty source is the one exception, and it is treated as startup. Claude
+// Code always populates the field, so an empty value means a caller that
+// predates it or a test constructing the input by hand — and for a notice whose
+// whole purpose is to hand the operator four commands they cannot obtain
+// elsewhere, failing to emit costs more than emitting twice. The same
+// safer-to-emit reasoning is recorded in SPEC-HOOK-SESSIONSTART-PROBE-001
+// (AC-HOOK-004), which gates on startup and treats an absent source the same
+// way.
 func kanbanBootstrapNoticeForSource(source, lang string) string {
-	switch source {
-	case "resume", "clear", "compact":
+	if source != "" && source != "startup" {
 		return ""
 	}
 	return kanbanBootstrapNotice(lang)

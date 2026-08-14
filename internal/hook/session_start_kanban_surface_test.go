@@ -114,10 +114,17 @@ func TestSessionStartNonKanbanSystemMessageUnaffected(t *testing.T) {
 // TestSessionStartKanbanNoticeOnlyOnNewSession pins the bootstrap notice to a
 // genuinely new session.
 //
-// SessionStart fires on four sources, and the kanban environment survives all of
-// them, so an ungated notice re-announced the bootstrap on every resume: the
-// operator was told to open four companion terminals that were already open, for
-// a run already under way. The instruction is only actionable at startup.
+// SessionStart fires on five documented sources, and the kanban environment
+// survives all of them, so an ungated notice re-announced the bootstrap every
+// time a lead session came back: the operator was told to open four companion
+// terminals that were already open, for a run already under way. The
+// instruction is only actionable at startup.
+//
+// The table carries all five, plus an undocumented value. The last row is the
+// one that matters for the future: `fork` did not exist before Claude Code
+// v2.1.214 (a forked session reported `resume`), so a denylist of the four
+// older sources silently resumed emitting when the fifth appeared. Asserting an
+// unknown value is suppressed pins the allowlist shape, not just today's set.
 //
 // The empty source is asserted to still emit. Claude Code always populates the
 // field, so an empty value means a caller that predates it — including the other
@@ -132,6 +139,8 @@ func TestSessionStartKanbanNoticeOnlyOnNewSession(t *testing.T) {
 		{source: "resume", want: false},
 		{source: "clear", want: false},
 		{source: "compact", want: false},
+		{source: "fork", want: false},
+		{source: "some-future-source", want: false},
 	} {
 		name := tc.source
 		if name == "" {
