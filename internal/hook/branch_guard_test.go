@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // requireGit skips the test when the git binary is unavailable. The real-git
@@ -105,7 +107,8 @@ func TestIsPrimaryCheckout(t *testing.T) {
 // --path-format=absolute code path exits non-zero (older-git host), the
 // dispatcher INSIDE isPrimaryCheckout falls back to --absolute-git-dir +
 // cwd-normalized --git-common-dir. The mock is injected via the package-level
-// execCommand indirection — direct invocation of the fallback is INSUFFICIENT
+// gitcore.ExecCommand indirection (extracted from this package by
+// SPEC-KANBAN-BOARD-001 REQ-KB-005) — direct invocation of the fallback is INSUFFICIENT
 // (vacuous pass; bypasses the dispatcher). The mock inspects the joined args
 // to simulate the older-git rejection and to return canned paths.
 func TestIsPrimaryCheckout_Fallback(t *testing.T) {
@@ -136,12 +139,12 @@ func TestIsPrimaryCheckout_Fallback(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			orig := execCommand
-			t.Cleanup(func() { execCommand = orig })
+			orig := gitcore.ExecCommand
+			t.Cleanup(func() { gitcore.ExecCommand = orig })
 
 			gitDirOut := tc.gitDirOut
 			commonOut := tc.commonOut
-			execCommand = func(name string, args ...string) *exec.Cmd {
+			gitcore.ExecCommand = func(name string, args ...string) *exec.Cmd {
 				joined := strings.Join(args, " ")
 				switch {
 				case strings.Contains(joined, "--path-format=absolute"):
@@ -464,10 +467,10 @@ func TestIsPrimaryCheckout_PartialPrimaryPath(t *testing.T) {
 	}
 	requireGit(t)
 
-	orig := execCommand
-	t.Cleanup(func() { execCommand = orig })
+	orig := gitcore.ExecCommand
+	t.Cleanup(func() { gitcore.ExecCommand = orig })
 
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	gitcore.ExecCommand = func(name string, args ...string) *exec.Cmd {
 		joined := strings.Join(args, " ")
 		switch {
 		case strings.Contains(joined, "--path-format=absolute") && strings.Contains(joined, "--git-common-dir"):
@@ -535,9 +538,9 @@ func TestIsPrimaryCheckout_FallbackAbsoluteGitDirFail(t *testing.T) {
 		t.Skip("fallback mock uses sh -c; skip on windows")
 	}
 	requireGit(t)
-	orig := execCommand
-	t.Cleanup(func() { execCommand = orig })
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	orig := gitcore.ExecCommand
+	t.Cleanup(func() { gitcore.ExecCommand = orig })
+	gitcore.ExecCommand = func(name string, args ...string) *exec.Cmd {
 		joined := strings.Join(args, " ")
 		switch {
 		case strings.Contains(joined, "--path-format=absolute"):
@@ -562,9 +565,9 @@ func TestIsPrimaryCheckout_FallbackCommonDirFail(t *testing.T) {
 		t.Skip("fallback mock uses sh -c; skip on windows")
 	}
 	requireGit(t)
-	orig := execCommand
-	t.Cleanup(func() { execCommand = orig })
-	execCommand = func(name string, args ...string) *exec.Cmd {
+	orig := gitcore.ExecCommand
+	t.Cleanup(func() { gitcore.ExecCommand = orig })
+	gitcore.ExecCommand = func(name string, args ...string) *exec.Cmd {
 		joined := strings.Join(args, " ")
 		switch {
 		case strings.Contains(joined, "--path-format=absolute"):

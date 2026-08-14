@@ -6,7 +6,8 @@ package hook
 // query MUST resolve input.CWD (the command's actual cwd), NOT the audit-log
 // project dir (the primary checkout). The headline worktree-classification
 // tests use a REAL git worktree fixture (t.TempDir + git init + git worktree
-// add); the execCommand indirection is used ONLY for the fail-open fallback
+// add); the gitcore.ExecCommand indirection (internal/core/git, extracted by
+// SPEC-KANBAN-BOARD-001 REQ-KB-005) is used ONLY for the fail-open fallback
 // path (AC-WBG-D-005), per AP-D-006 (no mocked discriminant for the headline
 // AC).
 //
@@ -19,9 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
-// failingRevParseMock is a package-level execCommand replacement that makes
+// failingRevParseMock is a gitcore.ExecCommand replacement that makes
 // every `git ... rev-parse ...` invocation exit non-zero, forcing the
 // isPrimaryCheckout fail-open path. Used ONLY by AC-WBG-D-004 (audit-log
 // placement) — the headline worktree-classification tests use real git
@@ -123,7 +126,7 @@ func TestBranchGuard_Primary_Still_Denies(t *testing.T) {
 
 // TestBranchGuard_AuditLog_Placement is the AC-WBG-D-004 invariant: when the
 // command cwd is a worktree but rev-parse fails (simulated via the
-// execCommand indirection), the fail-open advisory MUST be appended to
+// gitcore.ExecCommand indirection), the fail-open advisory MUST be appended to
 // <primary>/.moai/logs/branch-guard-audit.log and NO file created at
 // <worktree>/.moai/logs/. AP-D-003: the resolved cwd MUST be observable in
 // the audit entry.
@@ -132,9 +135,9 @@ func TestBranchGuard_AuditLog_Placement(t *testing.T) {
 
 	// Simulate rev-parse failure at the worktree cwd so the fail-open path
 	// fires. The mock rejects every git invocation.
-	orig := execCommand
-	t.Cleanup(func() { execCommand = orig })
-	execCommand = failingRevParseMock
+	orig := gitcore.ExecCommand
+	t.Cleanup(func() { gitcore.ExecCommand = orig })
+	gitcore.ExecCommand = failingRevParseMock
 
 	input := &HookInput{
 		ToolName:  "Bash",

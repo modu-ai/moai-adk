@@ -272,4 +272,26 @@ Recorded for the next reader: `internal/cli` takes ~227s and `TestGateCmd_RunE_B
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-14
+sync_commit_sha: 144573336d07da19f4b8a50aa26c38db2704afb5
+sync_status: audit-ready
+b12_self_test_a_changelog_duplicate_check: PASS (grep -c 'SPEC-KANBAN-RENAME-001' CHANGELOG.md → 0 before emission)
+b12_self_test_b_ac_count_match: PASS (28 distinct AC in acceptance.md; CHANGELOG entry references 28 AC — matches §E.3 28/28 PASS)
+b12_self_test_c_file_path_verification: PASS (3/3 SPEC paths cited in the CHANGELOG entry verified via ls before commit)
+changelog_entry_position: "[Unreleased] ### Changed (lifecycle-hygiene entry, covers this SPEC + 2 siblings)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit; updated: → 2026-08-14)"
+  plan_md: "n/a (markdown-header convention)"
+  acceptance_md: "n/a (markdown-header convention)"
+  progress_md: "§E.4 populated"
+canary_compliance_check:
+  implementation_provenance: "landed at 7f61332ef (PR #1513) — NOT in this sync commit; this sync commit is documentation-only (SPEC lifecycle close)"
+  go_build: PASS (measured in this worktree at 7f61332ef — post-merge verification, not attributable to this sync commit)
+  cross_platform_build: PASS (GOOS=windows/amd64 exit 0, GOOS=darwin/arm64 exit 0 — measured in this worktree)
+  coverage: "92.8% internal/kanban (measured in this worktree; not a run-phase figure — §E.2 owns the run-phase measurement)"
+  ac_pass: "28/28 per §E.3 — carried forward, NOT re-executed in sync-phase"
+  rename_completeness: PASS (internal/factory absent, internal/kanban present — verified via ls in this worktree)
+mx_tag_validation: "no @MX tag changes — this sync commit touches only .moai/specs/ and CHANGELOG.md; the rename's MX surface was settled in the run-phase commits under PR #1513"
+test_environment_note: "internal/hook carries 2 env-leak test failures (TestSessionStartAdditionalContextSkippedOnEmptySessionID, TestSessionStartHandler_Handle) when MOAI_KANBAN* is set in the ambient shell. Pre-existing test-isolation gap, unrelated to this SPEC; both pass with the 4 MOAI_KANBAN* vars unset. Reported, not fixed — out of sync-phase scope."
+```
