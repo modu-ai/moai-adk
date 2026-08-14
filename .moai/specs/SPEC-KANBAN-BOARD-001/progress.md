@@ -1281,7 +1281,7 @@ sync_complete_at: 2026-08-14
 spec_id: SPEC-KANBAN-BOARD-001
 branch: feat/SPEC-KANBAN-BOARD-001
 worktree: ~/.moai/worktrees/kanban-board
-sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up commit below
+sync_commit_sha: 36fae00f5   # backfilled in the follow-up commit below
 run_phase_head: 81e9fd41f
 sync_audit:
   phase1_verdict: FAIL 0.786   # report: .moai/reports/sync-audit-SPEC-KANBAN-BOARD-001.md (4 Windows-substrate blockers F1-F4 + F5 optional)

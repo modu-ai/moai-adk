@@ -14,7 +14,7 @@ tags: "kanban, board, column, wip-limit, state-store, single-origin, worktree-sa
 tier: L
 dependencies: [SPEC-KANBAN-RENAME-001]
 related_specs: [SPEC-KANBAN-WORKTREE-001, SPEC-KANBAN-BOOTSTRAP-001, SPEC-FACTORY-MODE-001]
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 36fae00f5
 ---
 
 ## HISTORY
