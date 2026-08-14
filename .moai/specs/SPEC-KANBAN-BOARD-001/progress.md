@@ -673,7 +673,7 @@ ok  github.com/modu-ai/moai-adk/internal/core/git  (cached) coverage: 86.7% of s
 
 **E5 — lint.** `golangci-lint run --timeout=5m` → `0 issues.` — NEW findings zero (baseline remains 0).
 
-**E6 — commits.** This milestone: `<this commit>` — column enum, status vocabulary, branch-side read, reconcile, admission (SHA backfill follows if displaced). The M1-M2 regression check ran the FULL kanban package after the Column promotion and again at milestone close: `ok ... 8.529s` both times. Primary checkout untouched throughout.
+**E6 — commits.** This milestone: `4ae37e617` — column enum, status vocabulary, branch-side read, reconcile, admission (SHA backfilled by this follow-up). The M1-M2 regression check ran the FULL kanban package after the Column promotion and again at milestone close: `ok ... 8.529s` both times. Primary checkout untouched throughout.
 
 **E7 — blockers: none.** The full-suite environmental note from M1 still applies to any whole-repo run from this session's shell (unset the five kanban-session variables first).
 
