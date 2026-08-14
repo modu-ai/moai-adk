@@ -185,6 +185,24 @@ func runNavigatorDetectSafe(ctx context.Context, input *HookInput) (result *dete
 		ch <- outcome{runNavigatorDetect(input)}
 	}()
 
+	// An already-expired deadline is answered before the worker is consulted.
+	// Both arms of the select below can be ready at once — a pre-cancelled ctx
+	// makes dctx.Done() ready immediately, and a fast scan makes ch ready soon
+	// after — and Go chooses uniformly at random between ready cases. The
+	// wrapper would then return a live Result for a context that was cancelled
+	// before it was ever called, on roughly half the runs where the scan wins.
+	// That is what made TestRunNavigatorDetectSafe_PreCancelledContext fail
+	// intermittently under -race while passing in isolation: the flake was in
+	// the select, not in the test.
+	//
+	// The worker goroutine is left running; ch is buffered, so it delivers into
+	// the buffer and exits rather than leaking on a blocked send.
+	select {
+	case <-dctx.Done():
+		return nil
+	default:
+	}
+
 	select {
 	case <-dctx.Done():
 		// Timeout / parent cancellation — silent partial (possibly empty).
@@ -384,10 +402,10 @@ func formatNavigatorDetectSystemMessage(changedPath string, result *detect.Resul
 // Forward-compatible (additive only): later milestones MAY add fields; the
 // five named keys keep their names and shapes.
 type impactRecord struct {
-	ChangedPath    string                `json:"changed_path"`
-	ChangedAt      string                `json:"changed_at"`
-	AffectedNodes  []impactNode          `json:"affected_nodes"`
-	AffectedEdges  []navsync.Edge        `json:"affected_edges"`
+	ChangedPath   string         `json:"changed_path"`
+	ChangedAt     string         `json:"changed_at"`
+	AffectedNodes []impactNode   `json:"affected_nodes"`
+	AffectedEdges []navsync.Edge `json:"affected_edges"`
 }
 
 // impactNode is the per-node entry inside an impactRecord's affected_nodes
