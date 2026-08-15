@@ -99,6 +99,18 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonTechnicalIdentifier,
 		Justification: "the MUST-FIX Severity value emitted by internal/spec/audit.go and matched by internal/web/board.go and internal/cli/spec_audit.go; the console badge must read the same token a user greps from `moai spec audit --json`.",
 	},
+	// Overview stat card — the same two tokens, in the stat strip rather than
+	// the board badge.
+	{
+		Key:           "stat.spec",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "the SPEC document-type identifier; the directory name, the CLI subcommand, and the audit JSON all spell it this way, so translating the stat label would name a thing the user cannot then find.",
+	},
+	{
+		Key:           "statNote.must-fix",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "same MUST-FIX Severity token as board.badge.mustfix above; the overview stat and the board badge count the same findings and must read alike.",
+	},
 	// session_ttl duration / sentinel literals (config enum values).
 	{
 		Key:           "f.cacheStrategy.session_ttl.opt.1h",

@@ -487,6 +487,9 @@
   // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
   // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
   document.addEventListener("htmx:afterSettle", initConsole);
+  // Fires only after a swap actually landed, so a rejected refresh leaves the
+  // clock reading its last real value instead of claiming a fetch that failed.
+  document.addEventListener("htmx:afterSettle", stampRefreshed);
 
   // SPEC-WEB-CONSOLE-011 M5 — SPEC 보드의 remediation 명령 복사 버튼.
   // document 레벨 위임 리스너를 IIFE 최상위에서 "한 번만" 등록한다(initConsole
@@ -635,6 +638,26 @@
       .finally(function () {
         refreshing = false;
       });
+  }
+
+  /* The swap above replaces .body only, so the topbar — and the timestamp in it
+     — survives untouched. Without this the clock would freeze at initial load
+     while the data beside it kept updating, which reads as fresher than it is.
+     Stamped client-side because this marks when the browser received the swap;
+     the server value is only correct for the first paint.
+
+     Driven by htmx:afterSettle rather than the ajax promise: .finally() also
+     runs when the fetch is rejected, which would advance the clock on a refresh
+     that never arrived — the one case where a stale reading is the honest one. */
+  function stampRefreshed() {
+    var el = document.querySelector("[data-live-rendered-at]");
+    if (!el) return;
+    var d = new Date();
+    var pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    el.textContent =
+      pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
   }
 
   function setLive(on) {

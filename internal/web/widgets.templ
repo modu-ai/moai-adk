@@ -16,13 +16,13 @@ package web
 templ panel(title, meta, help, density string) {
 	<section class="panel" data-density={ density }>
 		<div class="panel__head">
-			<h2 class="panel__title">{ title }</h2>
+			<h2 class="panel__title" data-i18n={ "panel." + i18nSlug(title) }>{ title }</h2>
 			if meta != "" {
 				<span class="panel__meta">{ meta }</span>
 			}
 		</div>
 		if help != "" {
-			<p class="panel__help">{ help }</p>
+			<p class="panel__help" data-i18n={ "panelHelp." + i18nSlug(title) }>{ help }</p>
 		}
 		{ children... }
 	</section>

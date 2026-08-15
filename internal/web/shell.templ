@@ -26,6 +26,11 @@ type ShellVM struct {
 	Lang       string // ko | en | ja | zh
 	Ctx        []KV   // lang / model / effort / dev
 	Live       string // on | off
+	// RenderedAt is the wall-clock time this page was built, shown beside the
+	// live indicator. A bare "Live" dot says the stream is open but not when the
+	// numbers on screen were read — and on these screens the two differ, because
+	// the page re-fetches rather than streaming values.
+	RenderedAt string
 	SaveState  string // clean | dirty | saving | saved | error
 	DirtyCount int
 	SavedAt    string
@@ -114,6 +119,7 @@ templ rail(vm ShellVM) {
 	<nav class="rail" aria-label="Main navigation" data-i18n-aria="nav.main">
 		<div class="rail__brand">
 			@brandMark()
+			<span class="rail__word">모두의AI</span>
 			<span class="rail__qual">ADK</span>
 		</div>
 		<div class="host">
@@ -182,11 +188,17 @@ templ rail(vm ShellVM) {
 	</nav>
 }
 
+// navRow carries the label twice: the primary span is translated by i18n.js,
+// the trailing one stays English so a reader can map a translated rail back to
+// the English route names the docs and CLI use. CSS hides the English echo when
+// the interface is already in English (html[lang="en"]) — otherwise the row
+// would read "Overview Overview".
 templ navRow(vm ShellVM, id, en, href string) {
 	<li>
 		<a class="nav__row" href={ templ.SafeURL(href) } aria-current={ attrCurrent(vm.Area == id) }>
 			@iconAt(id, 16)
 			<span data-i18n={ "nav." + id }>{ en }</span>
+			<span class="nav__en" aria-hidden="true">{ en }</span>
 		</a>
 	</li>
 }
@@ -197,7 +209,9 @@ templ topbar(vm ShellVM) {
 			if vm.Crumb != "" {
 				<span class="top__crumb">{ vm.Crumb }</span>
 			}
-			<h1 class="top__h">{ vm.Title }</h1>
+			// The page title was the one rail label with no translated twin: the
+			// nav row read 개요 while the heading beside it still read Overview.
+			<h1 class="top__h" data-i18n={ "screen." + vm.Area }>{ vm.Title }</h1>
 		</div>
 		<div class="top__ctx">
 			for _, c := range vm.Ctx {
@@ -211,18 +225,21 @@ templ topbar(vm ShellVM) {
 			if vm.Area == "settings" {
 				@saveCluster(vm)
 			} else {
-				@liveState(vm.Live)
+				@liveState(vm.Live, vm.RenderedAt)
 			}
 		</div>
 	</header>
 }
 
 // 실시간 상태 — 조용히 멈추지 않는다. 끊기면 폴백 사실을 적는다.
-templ liveState(state string) {
+templ liveState(state, renderedAt string) {
 	if state == "on" {
 		<span class="live" data-live-indicator="on">
 			<span class="dot" aria-hidden="true"></span>
 			<span data-i18n="live.on">Live</span>
+			if renderedAt != "" {
+				<span class="live__ts" data-live-rendered-at={ renderedAt }>{ renderedAt }</span>
+			}
 		</span>
 	} else {
 		<span class="live live--off" data-live-indicator="off" role="status">
