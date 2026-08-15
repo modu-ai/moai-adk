@@ -15,7 +15,7 @@ added_in: "v3.1"
 {{< /callout >}}
 <!-- @value: self-learning, multi-session-orchestration -->
 
-看板模式标志着从"一次一个 SPEC、单一会话推进"的旧模型，向**多会话看板**进化的方向。看板的一个主导会话负责指挥，多个 run 会话在各自的 worktree 中同时工作，完成的卡片在看板上流动。这块看板的骨架就是 Origin-Trail Chain。
+看板模式把"一次一个 SPEC、单一会话推进"的旧模型改造成**多会话看板**。一个主导会话负责指挥，多个伴随会话在各自的 worktree 中同时工作，完成的卡片在看板上流动。这块看板的骨架就是 Origin-Trail Chain。
 
 在会话启动器上加上 `--kanban`（简写 `-k`）开关即可启动。它不是新的子命令，也不是新的运行时——只是一个让看板链（`kanban_chain`，即预设了完成条件的目标预设）搭上去的进入契约。链的四个阶段（plan → run → verify → sync）和人工关卡，都直接继承现有的 `/moai goal` 引擎和 `full-pipeline` 链接规则。
 
@@ -29,7 +29,7 @@ added_in: "v3.1"
 
 在旧模型中，一个 SPEC 从头到尾由一个会话包揽——写 plan、用 run 实现、用 verify 审查、用 sync 整理文档。SPEC 变大时一个会话难以承受，撞到上下文窗口极限就得切分会话。
 
-看板模式将这个结构改为**看板视角**:
+看板模式把这个结构改成**看板视角**:
 
 - **一个主导会话**写 plan 并协调进度。
 - **多个 run 会话**在各自的 worktree 中并行实现。
@@ -120,24 +120,30 @@ spawn worktree 的时刻还不知道会话 ID——因为 Claude Code 运行时�
 
 ## 当前实现状态
 
-{{< callout type="info" title="路线图" >}}
-Origin-Trail Chain 目前已合并到 **Phase 1**（internal/chain/ 包——append-only JSONL 存储层）。
+v3.1 中，看板模式的进入路径已经完整接通。不过各表面的完成度不同，下面区分哪些现在就能用命令触及、哪些还只存在于库层。
 
-`moai chain` / `moai kanban` CLI 表面和多会话看板的主导/run 列将在后续 phase 引入。本文档描述的是 rename 之后的目标状态——不把尚不工作的功能叙述为"已经在工作"。
-{{< /callout >}}
+### 现在就能用命令触及的
 
-Phase 1 提供的:
+- **`-k` / `--kanban` 启动器开关** — 已在 `moai cc` 和 `moai glm` 两边接线。不带参数（或带上 SPEC 标识符）就以主导身份进入；以 `-k --name <角色>-<run-id>` 形式给出，则作为伴随会话加入已经打开的 run。混合后端启动器 `moai cg` 会带着拒绝哨兵拒绝进入。
+- **引导提示** — 主导会话打开后，SessionStart 钩子会以用户语言输出 run 标识符和四个伴随会话的启动命令（`moai cc -k --name plan-<run-id>` 等）。伴随会话会被告知自己以哪个角色加入。
+- **会话记录** — 进入的会话的角色、后端、目标 SPEC 会被记录下来。
+- **`moai chain` CLI** — `status`（当前节点摘要）、`lineage`（从根到叶的谱系）、`back`（父节点的恢复目标与命令）、`list`（所有节点及其新鲜度）、`prune`（把已结束的陈旧节点折叠进归档）五个子命令可用。其底层就是下文的 `internal/chain/` 存储层。
+- **调度** — 把卡片在列之间移动的主体是主导会话的编排器。规约位于 `.claude/rules/moai/workflow/kanban-dispatch.md`，伴随会话由人分别在各个终端手动启动。不存在一个会话拉起另一个会话的路径。
 
-- `internal/chain/store.go` — append-only JSONL writer/reader。用 `O_APPEND` 逐行追加，以 skip + warn 跳过 corrupt line。
+### 链存储层
+
+- `internal/chain/store.go` — append-only JSONL writer/reader。用 `O_APPEND` 逐行追加，损坏行以 skip + warn 跳过。
 - `internal/chain/node.go` — `WorktreeNode`（13 字段）+ `ChainEvent` 类型定义。
 - `internal/chain/populate.go` — `Populator`: spawn 时节点创建、会话 ID 回填、里程碑更新、completion-edge 记录、当前节点解析。
 - `GenerateNodeID` — 用单调时间戳 + 随机数在无外部依赖的情况下生成 ID。
 
-Phase 1 尚未提供的:
+### 尚无调用方的部分
 
-- `moai chain status` / `moai chain lineage` / `moai kanban` CLI 命令
-- 多会话看板的主导/run 列表面
-- `--kanban` / `-k` 启动器开关的实际连线
+`internal/kanban/` 的**看板状态存储**在代码层面已经完成——六列闭合枚举（backlog → plan → run → review → sync → done）、收敛到 primary checkout 一处的单一起点状态文件、文件锁、损坏恢复、与 SPEC frontmatter 状态的协调（只标记不一致而不修复）都有了。但目前还没有任何生产调用方读写它。也就是说，卡片所在的列由主导会话的记忆和 SPEC 状态维护，并不存在查看看板或移动卡片的 CLI 动词。
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} **不存在 `moai kanban` 这个命令。** 看板模式的 CLI 表面只有启动器开关 `-k` 和谱系查询命令 `moai chain`。
+{{< /callout >}}
 
 ## 用看板模式打开会话
 
@@ -145,20 +151,30 @@ Phase 1 尚未提供的:
 **不是斜杠命令**: 看板模式不是 Claude Code 对话框中的 `/` 命令，而是打开会话本身的开关。在终端启动会话时附加上。
 {{< /callout >}}
 
-在终端的会话启动器上加上 `--kanban` 启动。同时给出 SPEC 标识符就以该 SPEC 为目标，省略则在第一个 prompt 中开始 plan-phase。
+在终端的 MoAI 启动器（`moai cc` 或 `moai glm`）上加上 `--kanban`（简写 `-k`）启动。同时给出 SPEC 标识符就以该 SPEC 为目标，省略则在第一个 prompt 中开始 plan-phase。
 
 ```bash
-# 以 SPEC 为目标进入看板链
-$ claude --kanban SPEC-AUTH-001
+# 以主导身份进入 — 以 SPEC 为目标启动看板链
+$ moai cc --kanban SPEC-AUTH-001
 
 # 简短形式
-$ claude -k SPEC-AUTH-001
+$ moai cc -k SPEC-AUTH-001
 
 # 无目标 SPEC — 在第一个 prompt 中开始 plan
-$ claude --kanban
+$ moai cc -k
 
-# 用 moai cc 启动器进入
-$ moai cc -k SPEC-AUTH-001
+# GLM 后端同样进入
+$ moai glm -k SPEC-AUTH-001
+```
+
+主导会话打开后，会输出 run 标识符和四个伴随会话的启动命令。每一条都由**人在单独的终端中**手动运行，把看板填满。
+
+```bash
+# 伴随会话 — 用主导给出的 run-id 加入
+$ moai cc -k --name plan-<run-id>
+$ moai cc -k --name run-<run-id>
+$ moai cc -k --name review-<run-id>
+$ moai cc -k --name sync-<run-id>
 ```
 
 进入成功后，启动器会在会话中武装 `kanban_chain` 目标预设（在实现启动审批通过之后）。目标预设是 `stop-goal` Stop-钩子评估器在每个回合结束时评估的完成条件——不是新的运行时或新的钩子，而是在已有的机器上搭了一个条件。
@@ -190,7 +206,7 @@ flowchart TD
 ## 何时用，何时不用
 
 {{< callout type="info" >}}
-**一个 SPEC、一个会话（当前），多会话看板（目标）。** 看板模式的设计方向是多会话看板，但当前实现停留在 Phase 1（存储层）。
+**一个主导，四个伴随。** 进入与调度在 v3.1 已经工作。只是把卡片列位置固化为文件的状态存储目前还没有调用方，卡片当前位置由主导会话和 SPEC 状态维护。
 {{< /callout >}}
 
 **用的时候** — 用多个 worktree 会话同时推进一个（或多个）SPEC 时。需要用 Origin-Trail Chain 追踪会话谱系时。要把一个 SPEC 一口气推到终结时。
@@ -208,6 +224,7 @@ flowchart TD
 ## 相关文档
 
 - [`/moai` 统一命令](/zh/workflow-commands/) — 工作流命令视角的简短介绍
+- [`/moai todo`](/zh/utility-commands/moai-todo) — 把卡片送入看板的 backlog 队列
 - [`/moai goal`](/zh/workflow-commands/moai-goal) — 驱动看板链的目标引擎
 - [自治连续循环](/zh/advanced/autonomous-loops) — `/moai goal`、`/moai loop`、原生 `/goal` 的所有权与 guardrail 对比
 - [`/moai run`](/zh/workflow-commands/moai-run) — run-phase 自治性接线，看板链的 run 阶段继承的规则
