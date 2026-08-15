@@ -97,8 +97,13 @@ get_latest_version() {
             --connect-timeout 5 --max-time 10 "$latest_url" 2>/dev/null || true)
     elif command -v wget &> /dev/null; then
         # wget reports the redirect chain on stderr; the last Location wins.
+        # Matched case-insensitively on the field rather than by a fixed-indent
+        # prefix: HTTP header names are case-insensitive, wget's -S indentation
+        # is not contractual, and a CRLF response leaves a trailing \r glued to
+        # the URL that would otherwise travel into the version string.
         resolved=$(wget --max-redirect=10 --spider -S --timeout=5 --tries=1 "$latest_url" 2>&1 \
-            | awk '/^  Location: /{print $2}' | tail -n 1 || true)
+            | awk 'tolower($1) == "location:" { u = $2; sub(/\r$/, "", u); print u }' \
+            | tail -n 1 || true)
         [ -n "$resolved" ] || resolved="$latest_url"
     else
         print_error "Neither curl nor wget found. Please install one of them."
