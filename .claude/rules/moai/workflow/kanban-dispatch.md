@@ -41,6 +41,28 @@ The mechanism is `/moai todo`:
 
 The lead never picks for the operator, and never silently promotes a backlog item.
 
+## Card classes — not every card needs four columns
+
+Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → review → sync` costs more in ceremony than the change is worth. The lead classifies each card as it leaves `backlog` and names the class in the dispatch.
+
+| Class | Shape | Path |
+|---|---|---|
+| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` and `review` are skipped |
+| B — defect, cause unknown | Something is wrong and the cause has not been established | `run → review → sync`; `plan` is skipped, so no SPEC exists |
+| C — design change | The change contains a decision, or spans subsystems | All four columns |
+
+[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column.
+
+This is the same shape as the CodeRabbit section below. A class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
+
+The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
+
+**Class B skips `plan`, not `review`** — an unestablished cause is precisely what review catches, so it is the last column to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the evidence that established the cause — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
+
+**Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch.
+
+For Class A this inverts where the parallelism comes from. Handing four sessions a whole card each puts four cards in flight; pipelining one card through four columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason.
+
 ## The dispatch cycle
 
 Each arrow below is one dispatch from the lead to one companion session:
@@ -62,6 +84,29 @@ Each instruction carries, at minimum: the card, the SPEC ID once one exists, the
 Before moving a card out of a working column, the lead reads the card's `progress.md` (and, where the phase declares one, the verification evidence path it cites) and confirms the phase actually closed. A missing, unreadable, or stale evidence file is a **gap** — the card stays where it is and the lead reports why. Absence of a failure signal is not a pass.
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
+
+### CodeRabbit is not read from `gh pr checks`
+
+[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened. CodeRabbit reports through a commit status whose `state` is `success` **even when no review ran**, so the row prints `pass` in both cases and is byte-identical between them. The only field that separates a reviewed pull request from an unreviewed one is the status description.
+
+A CodeRabbit row counts as evidence only when BOTH of these hold:
+
+1. The status is `success` **and** its description reads `Review completed`:
+
+    ```bash
+    gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+      --jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .description'
+    ```
+
+    Both halves are required, and neither is sufficient alone. `success` is not sufficient — that is this whole section's point, since it appears on unreviewed heads too. But it is still necessary: without the state filter a `failure` or `error` status carrying a `Review completed` description would read as a pass, which inverts the same mistake in the other direction.
+
+    This predicate assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
+
+1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
+
+Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`.
+
+Branch protection is not the lever here. The status state is `success` in precisely the failing case, so adding CodeRabbit to the required contexts would admit the unreviewed pull request just as readily. The distinction lives in the description, and only a read of the description surfaces it — which is why an automated merge gate closing this hole does not close it on the path a human merges by hand.
 
 ## Review lens selection
 
@@ -114,6 +159,25 @@ Two properties make the shared checkout the wrong place for a card:
 - A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
 
 Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
+
+### The env-isolated verification form
+
+[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation:
+
+```bash
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
+```
+
+The `env -u VAR <command>` form is rejected. The guard doing the rejecting lives in the Claude Code binary rather than in MoAI, and the rejection is an argument-boundary misparse rather than a rule against `-u`: when `argv[0]` is `env`, the guard scans the whole remaining argv as env's own flags, so a flag belonging to the **inner** command — `-run`, `-count`, `-race` — is reported as an unmodelled `env` flag. `unset` is not in the guard's wrapper set, so no flag scan opens and the inner command's flags are never inspected.
+
+Two properties of the form are load-bearing, and both are easy to "simplify" away:
+
+- **One invocation.** Each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command. The scrub and the command travel together or the scrub does nothing.
+- **No subshell.** Wrapping it as `( unset …; <command> )` trips the guard's "too complex to verify" refusal instead — a different rejection with the same effect.
+
+Moving the command into a script file is not a workaround — not as a standing pattern and not as a one-off. The guard cannot read inside a script, so the entire check set is bypassed for that payload, including the git-redirect checks that are the guard's actual purpose and the part worth keeping.
+
+Reading the script first does not restore them. A human read is not the guard running: the checks stay bypassed however carefully the file was reviewed, and a review performed once says nothing about what the file contains the next time it is invoked. Where a verification cannot be expressed as one compound invocation, that is a signal to reduce the verification, not to route it around the guard.
 
 ## Boundaries — what this protocol does not do
 
