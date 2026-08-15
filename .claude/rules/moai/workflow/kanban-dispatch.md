@@ -41,6 +41,22 @@ The mechanism is `/moai todo`:
 
 The lead never picks for the operator, and never silently promotes a backlog item.
 
+## Card classes — not every card needs four columns
+
+Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → review → sync` costs more in ceremony than the change is worth. The lead classifies each card as it leaves `backlog` and names the class in the dispatch.
+
+| Class | Shape | Path |
+|---|---|---|
+| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` and `review` are skipped |
+| B — defect, cause unknown | Something is wrong and the cause has not been established | Investigate → fix → pull request; the SPEC is skipped, but the evidence that established the cause is recorded in `progress.md` |
+| C — design change | The change contains a decision, or spans subsystems | All four columns |
+
+[HARD] The justification written down for a Class A card is the three properties above — one file, no design judgement, CI covers the regression. It is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
+
+**Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch.
+
+For Class A this inverts where the parallelism comes from. Handing four sessions a whole card each puts four cards in flight; pipelining one card through four columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason.
+
 ## The dispatch cycle
 
 Each arrow below is one dispatch from the lead to one companion session:
@@ -62,6 +78,25 @@ Each instruction carries, at minimum: the card, the SPEC ID once one exists, the
 Before moving a card out of a working column, the lead reads the card's `progress.md` (and, where the phase declares one, the verification evidence path it cites) and confirms the phase actually closed. A missing, unreadable, or stale evidence file is a **gap** — the card stays where it is and the lead reports why. Absence of a failure signal is not a pass.
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
+
+### CodeRabbit is not read from `gh pr checks`
+
+[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened. CodeRabbit reports through a commit status whose `state` is `success` **even when no review ran**, so the row prints `pass` in both cases and is byte-identical between them. The only field that separates a reviewed pull request from an unreviewed one is the status description.
+
+A CodeRabbit row counts as evidence only when BOTH of these hold:
+
+1. The commit status description reads `Review completed`:
+
+```bash
+gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+  --jq '[.statuses[] | select(.context == "CodeRabbit")] | last | .description'
+```
+
+2. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
+
+Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`.
+
+Branch protection is not the lever here. The status state is `success` in precisely the failing case, so adding CodeRabbit to the required contexts would admit the unreviewed pull request just as readily. The distinction lives in the description, and only a read of the description surfaces it — which is why an automated merge gate closing this hole does not close it on the path a human merges by hand.
 
 ## Review lens selection
 
@@ -114,6 +149,23 @@ Two properties make the shared checkout the wrong place for a card:
 - A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
 
 Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
+
+### The env-isolated verification form
+
+[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation:
+
+```bash
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
+```
+
+The `env -u VAR <command>` form is rejected. The guard doing the rejecting lives in the Claude Code binary rather than in MoAI, and the rejection is an argument-boundary misparse rather than a rule against `-u`: when `argv[0]` is `env`, the guard scans the whole remaining argv as env's own flags, so a flag belonging to the **inner** command — `-run`, `-count`, `-race` — is reported as an unmodelled `env` flag. `unset` is not in the guard's wrapper set, so no flag scan opens and the inner command's flags are never inspected.
+
+Two properties of the form are load-bearing, and both are easy to "simplify" away:
+
+- **One invocation.** Each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command. The scrub and the command travel together or the scrub does nothing.
+- **No subshell.** Wrapping it as `( unset …; <command> )` trips the guard's "too complex to verify" refusal instead — a different rejection with the same effect.
+
+Moving the command into a script file is not a standing workaround. The guard cannot read inside a script, so the whole check set is bypassed for that payload — including the git-redirect checks that are the guard's actual purpose and the part worth keeping. A script is acceptable only as a deliberate one-off whose contents were read first.
 
 ## Boundaries — what this protocol does not do
 
