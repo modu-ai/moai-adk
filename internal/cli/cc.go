@@ -117,6 +117,9 @@ func runCC(cmd *cobra.Command, args []string) error {
 	case kanbanBranchLead:
 		defer enterKanbanMode(specID)()
 		recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleLead)
+		// A lead launched bare has only an AI-generated title, which claude
+		// discards on /clear; naming it explicitly is what survives.
+		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

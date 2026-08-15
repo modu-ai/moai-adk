@@ -143,3 +143,19 @@ func TestCompanionLabelRoundTrips(t *testing.T) {
 		}
 	}
 }
+
+// TestLeadLabelIsNotACompanion pins the property the launcher's name injection
+// relies on: the lead label shares the `<role>-<run-id>` form but is never
+// recognized as a companion, because RoleLead is absent from CompanionRoles.
+func TestLeadLabelIsNotACompanion(t *testing.T) {
+	t.Parallel()
+
+	runID := NewRunID()
+	label := LeadLabel(runID)
+	if want := RoleLead + "-" + runID; label != want {
+		t.Errorf("LeadLabel(%q) = %q, want %q", runID, label, want)
+	}
+	if _, _, ok := SplitCompanionLabel(label); ok {
+		t.Errorf("LeadLabel(%q) = %q reads as a companion label", runID, label)
+	}
+}
