@@ -90,11 +90,14 @@ get_latest_version() {
     local latest_url="https://github.com/modu-ai/moai-adk/releases/latest"
     local resolved=""
 
+    # Bounded: a lookup that hangs is indistinguishable to the user from an
+    # installer that has crashed, and this step only reads a redirect header.
     if command -v curl &> /dev/null; then
-        resolved=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$latest_url" 2>/dev/null || true)
+        resolved=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            --connect-timeout 5 --max-time 10 "$latest_url" 2>/dev/null || true)
     elif command -v wget &> /dev/null; then
         # wget reports the redirect chain on stderr; the last Location wins.
-        resolved=$(wget --max-redirect=10 --spider -S "$latest_url" 2>&1 \
+        resolved=$(wget --max-redirect=10 --spider -S --timeout=5 --tries=1 "$latest_url" 2>&1 \
             | awk '/^  Location: /{print $2}' | tail -n 1 || true)
         [ -n "$resolved" ] || resolved="$latest_url"
     else
@@ -113,7 +116,7 @@ get_latest_version() {
     if [ -z "$VERSION" ]; then
         print_error "Could not determine the latest version from GitHub"
         print_info "GitHub may be unreachable from this network. You can:"
-        echo "  1. Install a specific version: $0 3.1.0"
+        echo "  1. Install a specific version: $0 --version 3.1.0"
         echo "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
         exit 1
     fi
