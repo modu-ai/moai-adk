@@ -29,6 +29,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 // baselineProjectMCP is the distributed 3-entry default seeded into each test
@@ -420,9 +422,12 @@ func TestMCP_Add_HTTPType(t *testing.T) {
 	}
 }
 
-// TestNewMCPCmd_Registered verifies the cobra command tree wiring. The
-// `moai mcp` parent + add/remove/list children MUST all be registered.
-func TestNewMCPCmd_Registered(t *testing.T) {
+// TestNewMCPCmd_FactoryChildren verifies that the factory attaches its three
+// children. It builds the command directly, so it says NOTHING about whether
+// root ever registers it — that gap is what let `moai mcp` ship unreachable
+// while this test passed. TestMCPCmdRegisteredOnRoot below covers the wiring;
+// keep both, they answer different questions.
+func TestNewMCPCmd_FactoryChildren(t *testing.T) {
 	t.Parallel()
 	cmd := newMCPCmd()
 	subs := cmd.Commands()
@@ -444,6 +449,47 @@ func TestNewMCPCmd_Registered(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("subcommand %q not registered under moai mcp: %v", required, names)
+		}
+	}
+}
+
+// TestMCPCmdRegisteredOnRoot walks the real root command tree and asserts that
+// `moai mcp` is reachable from it with its three verbs.
+//
+// This is the guard the package was missing. newMCPCmd() existed and was fully
+// tested, but nothing added it to rootCmd, so `moai mcp` answered
+// `Unknown command "mcp" for "moai"` while README and the docs-site told users
+// to activate MCP entries with `moai mcp add <name>`. A factory-only test
+// cannot see that, because it never asks who calls the factory. Deleting the
+// AddCommand line in root.go must fail this test.
+func TestMCPCmdRegisteredOnRoot(t *testing.T) {
+	t.Parallel()
+
+	var mcp *cobra.Command
+	for _, c := range rootCmd.Commands() {
+		if c.Name() == "mcp" {
+			mcp = c
+			break
+		}
+	}
+	if mcp == nil {
+		names := make([]string, 0, len(rootCmd.Commands()))
+		for _, c := range rootCmd.Commands() {
+			names = append(names, c.Name())
+		}
+		t.Fatalf("`moai mcp` is not registered on rootCmd — README and docs-site "+
+			"document `moai mcp add <name>` as the way to enable MCP entries, so an "+
+			"unregistered factory makes a documented surface unreachable. "+
+			"Add newMCPCmd() in root.go next to newMCPServerCmd(). Registered: %v", names)
+	}
+
+	registered := map[string]bool{}
+	for _, sub := range mcp.Commands() {
+		registered[sub.Name()] = true
+	}
+	for _, verb := range []string{"add", "remove", "list"} {
+		if !registered[verb] {
+			t.Errorf("verb %q missing from the registered `moai mcp` tree: %v", verb, registered)
 		}
 	}
 }
