@@ -70,23 +70,58 @@ detect_platform() {
 }
 
 # Get latest Go edition version from GitHub
+#
+# Resolved from the /releases/latest redirect rather than the REST API. Two
+# reasons, both of which bit real installs:
+#
+#   1. api.github.com allows 60 unauthenticated requests per hour per IP. Behind
+#      a shared address — an office, a CI runner, a developer who has been
+#      working with `gh` — that budget is routinely spent, and the API then
+#      answers with a JSON error carrying no tag_name. The old code read the
+#      empty result as "no releases exist" and told the user the project had
+#      never shipped. The redirect is not part of the API and is not rate
+#      limited.
+#
+#   2. The old code asked for /releases (the list) and took the first entry,
+#      which is the most recently *created* release — a draft or a release
+#      candidate, if one exists. /releases/latest is the endpoint that actually
+#      means "latest stable": GitHub excludes drafts and prereleases from it.
 get_latest_version() {
-    local version_url="https://api.github.com/repos/modu-ai/moai-adk/releases"
+    local latest_url="https://github.com/modu-ai/moai-adk/releases/latest"
+    local resolved=""
 
+    # Bounded: a lookup that hangs is indistinguishable to the user from an
+    # installer that has crashed, and this step only reads a redirect header.
     if command -v curl &> /dev/null; then
-        # Try go-v* tags first, then fall back to v* tags
-        VERSION=$(curl -s "$version_url" | grep -o '"tag_name":\s*"[^"]*"' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^go-//' | sed 's/^v//')
+        resolved=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            --connect-timeout 5 --max-time 10 "$latest_url" 2>/dev/null || true)
     elif command -v wget &> /dev/null; then
-        VERSION=$(wget -qO- "$version_url" | grep -o '"tag_name":\s*"[^"]*"' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^go-//' | sed 's/^v//')
+        # wget reports the redirect chain on stderr; the last Location wins.
+        # Matched case-insensitively on the field rather than by a fixed-indent
+        # prefix: HTTP header names are case-insensitive, wget's -S indentation
+        # is not contractual, and a CRLF response leaves a trailing \r glued to
+        # the URL that would otherwise travel into the version string.
+        resolved=$(wget --max-redirect=10 --spider -S --timeout=5 --tries=1 "$latest_url" 2>&1 \
+            | awk 'tolower($1) == "location:" { u = $2; sub(/\r$/, "", u); print u }' \
+            | tail -n 1 || true)
+        [ -n "$resolved" ] || resolved="$latest_url"
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
 
+    # .../releases/tag/v3.1.0 -> 3.1.0
+    case "$resolved" in
+        */tag/*) VERSION="${resolved##*/tag/}" ;;
+        *)       VERSION="" ;;
+    esac
+    VERSION="${VERSION#go-}"
+    VERSION="${VERSION#v}"
+
     if [ -z "$VERSION" ]; then
-        print_error "Failed to fetch latest Go edition version from GitHub"
-        print_info "No releases found. You can:"
-        echo "  1. Install a specific version: $0 --version 2.0.0"
+        print_error "Could not determine the latest version from GitHub"
+        print_info "GitHub may be unreachable from this network. You can:"
+        echo "  1. Install a specific version: $0 --version 3.1.0"
         echo "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
         exit 1
     fi
