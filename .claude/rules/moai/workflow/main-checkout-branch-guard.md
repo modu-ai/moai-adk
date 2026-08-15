@@ -130,9 +130,36 @@ flows. The hook applies the doctrine conditionally.
   cwd-normalized `--git-common-dir`.
 - **Exemption mechanism**: the deny is suppressed when EITHER the invoking
   agent identity is the trusted git agent (`HookInput.AgentType ==
-  "manager-git"`, populated on main-thread `claude --agent manager-git`) OR
-  the sentinel environment variable `MOAI_BRANCH_GUARD_EXEMPT=1` is set by
-  the orchestrator when spawning that agent for Late-Branch closure.
+  "manager-git"`) OR the sentinel environment variable
+  `MOAI_BRANCH_GUARD_EXEMPT=1` is present. Both axes are implemented and each
+  fires on its own — but each is read from a different place, and **neither is
+  reachable from inside a tool-spawned subagent**:
+  - `AgentType` arrives in the hook payload, and Claude Code populates
+    `agent_type` for a main-thread `claude --agent manager-git` launch. A
+    subagent spawned through the Agent tool sends no `agent_type` on
+    PreToolUse, so the identity axis cannot fire for it.
+  - The sentinel is read from the hook process's own environment. The hook
+    runs as a separate process spawned **before** the guarded command executes,
+    so an `export MOAI_BRANCH_GUARD_EXEMPT=1` inside that command never reaches
+    it. The variable must be present in the environment Claude Code itself was
+    launched with.
+
+  Exporting the sentinel inside the command being guarded is therefore a no-op.
+  A `manager-git` subagent that needs to mutate branch state has two working
+  routes: do the work in a worktree (`git -C <worktree>`, which the discriminant
+  correctly classifies as non-primary), or have the operator launch the session
+  with the sentinel already in its environment. Reading a `BRANCH_GUARD_VIOLATION`
+  as "the exemption is broken" is a misdiagnosis — the axes work; the values were
+  never delivered.
+
+- **Scan scope**: the pattern set is matched against the command with quoted
+  spans collapsed to a placeholder word, so a match reflects the command being
+  invoked rather than text carried as data. `moai todo add "… git switch …"` is
+  allowed because the command being run is `moai todo add`; `git switch main`
+  and `git checkout -b "feat/x"` both still deny, the latter because the
+  placeholder preserves the operand after `-b`. A git invocation hidden inside a
+  shell wrapper (`bash -c "git switch main"`) is not matched — under-matching an
+  obfuscated form is the correct direction to err for a fail-open guard.
 - **Fail-open norm**: the deny fires ONLY on positive evidence (primary
   checkout confirmed AND a branch-state pattern matched AND the agent is not
   exempt). Any uncertainty — not a git repo, missing git binary, `git
@@ -160,5 +187,5 @@ Discriminant directory correction: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
 
 ---
 
-Version: 1.2.0
+Version: 1.3.0
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.
