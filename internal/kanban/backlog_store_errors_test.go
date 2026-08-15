@@ -7,8 +7,10 @@
 package kanban
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -147,5 +149,53 @@ func TestParseBacklogSeq_Refusals(t *testing.T) {
 	}
 	if n, ok := parseBacklogSeq("t42"); !ok || n != 42 {
 		t.Fatalf("parseBacklogSeq(t42) = %d, %v; want 42, true", n, ok)
+	}
+}
+
+// TestJoinBacklogReleaseErr_BothFailuresSurvive — the regression this exists
+// for: when the mutation fails AND the lock release fails, BOTH must reach the
+// caller. The prior guard (`relErr != nil && err == nil`) dropped the release
+// error in exactly that case, so a wedged lock — the artifact that blocks every
+// later writer on Windows — surfaced as an ordinary mutation fault.
+func TestJoinBacklogReleaseErr_BothFailuresSurvive(t *testing.T) {
+	t.Parallel()
+	mutErr := errors.New("mutation refused")
+	relErr := errors.New("close: bad file descriptor")
+
+	got := joinBacklogReleaseErr(mutErr, relErr, "/tmp/backlog.json")
+	if got == nil {
+		t.Fatal("joinBacklogReleaseErr(mut, rel) = nil; want both errors")
+	}
+	if !errors.Is(got, mutErr) {
+		t.Errorf("mutation error did not survive the join: %v", got)
+	}
+	if !errors.Is(got, relErr) {
+		t.Errorf("release error did not survive the join: %v", got)
+	}
+	if !strings.Contains(got.Error(), "lock release failed") {
+		t.Errorf("joined error does not name the release failure: %v", got)
+	}
+}
+
+// TestJoinBacklogReleaseErr_SingleAndCleanPaths — the other three combinations.
+// A clean release must not manufacture an error, and either failure alone must
+// pass through identifiably.
+func TestJoinBacklogReleaseErr_SingleAndCleanPaths(t *testing.T) {
+	t.Parallel()
+	mutErr := errors.New("mutation refused")
+	relErr := errors.New("close: bad file descriptor")
+
+	if got := joinBacklogReleaseErr(nil, nil, "/tmp/backlog.json"); got != nil {
+		t.Errorf("both-clean returned %v; want nil", got)
+	}
+	if got := joinBacklogReleaseErr(mutErr, nil, "/tmp/backlog.json"); !errors.Is(got, mutErr) {
+		t.Errorf("mutation-only returned %v; want the mutation error", got)
+	}
+	got := joinBacklogReleaseErr(nil, relErr, "/tmp/backlog.json")
+	if !errors.Is(got, relErr) {
+		t.Errorf("release-only returned %v; want the release error", got)
+	}
+	if !strings.Contains(got.Error(), "lock release failed") {
+		t.Errorf("release-only error does not name the failure: %v", got)
 	}
 }

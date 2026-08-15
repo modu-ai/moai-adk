@@ -141,9 +141,7 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 		return err
 	}
 	defer func() {
-		if relErr := lock.Release(); relErr != nil && err == nil {
-			err = fmt.Errorf("mutate backlog %s: mutation landed but lock release failed: %w", s.path, relErr)
-		}
+		err = joinBacklogReleaseErr(err, lock.Release(), s.path)
 	}()
 
 	rec, err := s.load()
@@ -157,6 +155,23 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	// the written high-water mark must clear every present id.
 	normalizeBacklogRecord(rec)
 	return s.writeAtomic(rec)
+}
+
+// joinBacklogReleaseErr folds a lock-release failure into the mutation's own
+// result. It JOINS rather than overwrites, and joins in both directions: a
+// release failure that arrives alongside a mutation failure is the dangerous
+// case, not the harmless one. Reporting only the mutation error there hides a
+// wedged lock behind an unrelated message — on Windows release removes the
+// artifact, so the survivor blocks every later writer while the operator
+// retries against what looks like a transient mutation fault.
+//
+// Returns nil only when both are nil, so the caller's `err` stays clean on the
+// success path.
+func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
+	if relErr == nil {
+		return mutErr
+	}
+	return errors.Join(mutErr, fmt.Errorf("mutate backlog %s: lock release failed: %w", path, relErr))
 }
 
 // @MX:ANCHOR: [AUTO] Add — the id-issuing append every add-path verb calls
