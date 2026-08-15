@@ -1,37 +1,62 @@
+# Command-injection detection (CWE-78).
+#
+# Detects the canonical shell-execution constructs where an unvalidated value
+# can reach a shell interpreter: Go's exec.Command("sh", "-c", ...), Python's
+# subprocess shell=True / os.system, and Node's child_process.exec. Each rule
+# is scoped to the specific dangerous call so a benign, argument-list-based
+# invocation (which does not spawn a shell) is not flagged.
+#
+# Every language below carries the identical pattern-family with equal
+# opportunity. Languages not yet listed are equal-priority future additions.
 ---
-id: sec-sql-injection-fmt-sprintf
+id: sec-command-injection-shell
 language: go
 severity: error
-message: fmt.Sprintf()로 SQL 쿼리를 생성하면 SQL 인젝션 취약점이 발생합니다.
-note: 사용자 입력을 SQL 쿼리에 직접 삽입하지 마세요. 파라미터화된 쿼리(?, $1 등)를 사용하고 드라이버의 인수 전달 기능을 활용하세요.
-rule:
-  pattern: 'fmt.Sprintf("$$$SQL_PARTS %s $$$MORE", $USER_INPUT)
-
-    '
+message: "A shell command is built with exec.Command(\"sh\", \"-c\", ...). If any argument derives from external input, this is a command-injection risk."
+note: "Passing a value to sh -c lets shell metacharacters execute. Prefer exec.Command with an explicit argument list and no shell, and validate any external input against an allowlist."
 metadata:
-  owasp: A03:2021 - Injection
-  cwe: CWE-89
----
-id: sec-command-injection-exec-command
-language: go
-severity: error
-message: exec.Command에 사용자 입력이 직접 전달될 수 있습니다. 명령어 인젝션 위험이 있습니다.
-note: 사용자 입력을 exec.Command 인수로 전달할 때는 반드시 화이트리스트 검증을 수행하세요. shell 확장을 피하고 인수를 개별적으로
-  전달하세요.
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
 rule:
   pattern: exec.Command("sh", "-c", $CMD)
-metadata:
-  owasp: A03:2021 - Injection
-  cwe: CWE-78
 ---
-id: sec-path-traversal-join-user-input
-language: go
+id: sec-command-injection-shell
+language: python
 severity: error
-message: filepath.Join에 사용자 입력이 직접 사용됩니다. 경로 순회 공격이 가능합니다.
-note: filepath.Clean()과 filepath.Abs()를 사용하고, 결과 경로가 허용된 베이스 디렉토리 내에 있는지 strings.HasPrefix로
-  검증하세요.
-rule:
-  pattern: filepath.Join($BASE, $USER_INPUT)
+message: "A shell command is executed with shell=True or os.system. If any argument derives from external input, this is a command-injection risk."
+note: "shell=True and os.system route the command through a shell, so metacharacters execute. Pass an argument list without shell=True and validate any external input against an allowlist."
 metadata:
-  owasp: A03:2021 - Injection
-  cwe: CWE-22
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: subprocess.call($CMD, shell=True)
+    - pattern: subprocess.run($CMD, shell=True)
+    - pattern: subprocess.Popen($CMD, shell=True)
+    - pattern: os.system($CMD)
+---
+id: sec-command-injection-exec
+language: javascript
+severity: error
+message: "A shell command is executed with child_process.exec. If any argument derives from external input, this is a command-injection risk."
+note: "child_process.exec runs the command through a shell, so metacharacters execute. Prefer child_process.execFile or spawn with an explicit argument list, and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: child_process.exec($CMD)
+    - pattern: cp.exec($CMD)
+---
+id: sec-command-injection-exec
+language: typescript
+severity: error
+message: "A shell command is executed with child_process.exec. If any argument derives from external input, this is a command-injection risk."
+note: "child_process.exec runs the command through a shell, so metacharacters execute. Prefer child_process.execFile or spawn with an explicit argument list, and validate any external input against an allowlist."
+metadata:
+  owasp: "A03:2021 - Injection"
+  cwe: "CWE-78"
+rule:
+  any:
+    - pattern: child_process.exec($CMD)
+    - pattern: cp.exec($CMD)

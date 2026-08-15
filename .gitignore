@@ -295,6 +295,20 @@ docs-site.hextra.backup/
 # run and must not be tracked. The journey scripts themselves (e2e/cli/*.sh) are.
 e2e/.runs/
 
+# Browser-driven output: screenshots the e2e suite captures, the page bundles it
+# writes under e2e/web/, and the Playwright MCP server's scratch directory.
+# 21 MB of it accumulated by 2026-08-15, all of it re-derivable by re-running the
+# suite, and all of it one `git add -A` away from a commit nobody intended.
+# Deliberately narrow: e2e/cli/*.sh and any curated fixture stay tracked.
+e2e/screenshots/
+e2e/web/
+.playwright-mcp/
+
+# Ad-hoc screenshots dropped at the repository root by a capture tool. A curated
+# image belongs under assets/images/ or docs-site/static/, both of which stay
+# tracked; a stray PNG at the root is a leftover.
+/*.png
+
 # Local-only sibling checkout + prompt-theme dir (never committed)
 main-fork/
 .omp/

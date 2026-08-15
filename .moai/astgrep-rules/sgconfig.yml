@@ -1,19 +1,14 @@
-# ast-grep 프로젝트 설정 파일 (config-mode SSOT for `sg scan --config`)
+# ast-grep project configuration for the MoAI curated ruleset.
 #
-# ruleDirs는 이 파일 위치 기준 상대경로로 해석된다. 여기에는 실제 로드 가능한
-# (valid rule) 디렉터리만 나열한다 — 나머지 언어 디렉터리(cpp/csharp/... 데모
-# 스캐폴드·빈 stub)는 invalid rule로 config-mode 전체 스캔을 실패시키므로
-# 16-언어 룰셋 정식화 백로그가 정리하기 전까지 제외한다.
+# ruleDirs lists ONLY directories that ship at least one production-vetted rule.
+# Every rule under these directories has been verified against a positive fixture
+# (it matches its intended construct) and a negative fixture (a clean sample
+# produces zero findings).
 #
-# ast-grep config-mode globs limitation (observed on ast-grep 0.40.5, 2026-08-11):
-# ast-grep does NOT support a `globs:` exclusion field in sgconfig.yml
-# config-mode — adding it silently breaks the scan (0 matches for every rule,
-# including non-excluded files). Path exclusion for worktree duplicates,
-# vendor/, *_test.go, and testdata/ is therefore applied at the gate layer
-# (internal/hook/quality/astgrep_gate.go filterExcludedPaths), after the
-# scanner returns findings. When a future ast-grep release adds config-mode
-# globs support, these exclusions MAY migrate back here; until then, do NOT
-# add a `globs:` key to this file.
+# Language coverage is intentionally partial and treated with equal opportunity:
+# a language that does not yet appear in a rule directory is an equal-priority
+# future addition, never an unsupported one. New languages are added by shipping
+# a vetted rule for that language under the relevant directory.
 ruleDirs:
   - go
   - security

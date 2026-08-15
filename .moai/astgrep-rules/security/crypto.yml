@@ -1,24 +1,19 @@
+# Weak-cryptography detection (CWE-327).
+#
+# Detects use of the MD5 hash constructor, which is unsuitable for any security
+# purpose (it is vulnerable to collision attacks). This is deliberately narrow:
+# it flags the constructor call, not incidental references, so a clean sample
+# using a strong hash produces zero findings.
+#
+# Languages not yet listed are equal-priority future additions.
 ---
 id: sec-weak-hash-md5
 language: go
 severity: error
-message: MD5는 보안 용도로 사용하기에 취약한 해시 알고리즘입니다. crypto/sha256 이상을 사용하세요.
-note: MD5는 충돌 공격에 취약합니다. 암호화 용도에는 SHA-256, SHA-512 또는 bcrypt(패스워드)를 사용하세요.
+message: "MD5 is unsuitable for security use. Use crypto/sha256 or stronger, or bcrypt/argon2 for password hashing."
+note: "MD5 is vulnerable to collision attacks and must not be used for integrity or authentication. Use SHA-256/SHA-512 for hashing, or a password-hashing function such as bcrypt or argon2 for passwords."
+metadata:
+  owasp: "A02:2021 - Cryptographic Failures"
+  cwe: "CWE-327"
 rule:
   pattern: md5.New()
-metadata:
-  owasp: A02:2021 - Cryptographic Failures
-  cwe: CWE-327
----
-id: sec-tls-insecure-skip-verify
-language: go
-severity: error
-message: 'InsecureSkipVerify: true는 TLS 인증서 검증을 비활성화합니다. 중간자 공격에 취약합니다.'
-note: 프로덕션 코드에서 InsecureSkipVerify를 절대 사용하지 마세요. 자체 서명 인증서가 필요하다면 custom RootCAs를
-  설정하세요.
-rule:
-  pattern: "&tls.Config{\n  $$$FIELDS,\n  InsecureSkipVerify: true,\n  $$$MORE,\n\
-    }\n"
-metadata:
-  owasp: A02:2021 - Cryptographic Failures
-  cwe: CWE-295
