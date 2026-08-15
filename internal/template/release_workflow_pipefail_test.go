@@ -8,11 +8,22 @@
 // pipeline reports 141 even though the match SUCCEEDED, and the surrounding
 // `if ! <pipeline>; then fail ...` fires on a passing check.
 //
-// The hazard is size-dependent: it stays invisible while the producer's output
-// fits the ~64KB pipe buffer, and becomes deterministic once it does not.
-// CHANGELOG.md crossed that line (416KB at the time of writing), which is why
-// check 5 was the one that broke — but checks 2 and 6 had the identical shape
-// and would have broken as soon as their inputs grew.
+// What decides whether it fires is NOT the total input size — it is how much
+// the producer still has left to write at the moment grep exits. If that
+// remainder fits the ~64KB pipe buffer the producer completes and exits 0; if
+// it does not, the producer blocks on a pipe that is about to close and dies.
+//
+// Measured on the v3.1.0 release, which is where this was found:
+//
+//	check 5  CHANGELOG.md, 416,407 B, match at line 8      -> ~416KB left  -> 141
+//	check 2  tag annotation, 271,034 B, match at line 288  -> 82 B left    -> 0
+//	check 6  system.yaml, 1,894 B                          -> < 1 KB left  -> 0
+//
+// So check 2 survives a 271KB input purely because its provenance trailer sits
+// three lines from the end. That is a property of the data, not of the code:
+// move the trailer earlier — or let anything grow below the match — and the
+// same line fails the same way. Checks 2 and 6 are fixed here for that reason,
+// not because they were observed failing.
 //
 // Sentinel on failure: PIPEFAIL_SIGPIPE_HAZARD
 //
@@ -124,6 +135,14 @@ func TestPipefailSigpipeMechanism(t *testing.T) {
 			script:   "set -o pipefail; " + producer + " | grep '^no-such-line$' >/dev/null",
 			wantExit: 1,
 			why:      "the fix must not turn every check into a pass",
+		},
+		{
+			name:     "quiet grep survives when the match is near the end",
+			script:   "set -o pipefail; " + producer + " | grep -q '^500000$'",
+			wantExit: 0,
+			why: "this is why check 2 passed on a 271KB tag annotation: its trailer sits 82 bytes " +
+				"from the end, so the producer had nothing left to block on. Total input size is " +
+				"not the variable — what is left to write after the match is",
 		},
 	}
 
