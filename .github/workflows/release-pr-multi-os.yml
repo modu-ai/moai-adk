@@ -100,9 +100,15 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      # -timeout raised above Go's 10m per-package default. internal/cli spends
+      # most of its time in exec.Command tests, which the race detector and the
+      # slower windows runner together push to ~10m — it panicked at 603s on a
+      # run whose only other change was test-portability skips. The ceiling is
+      # the job's own timeout-minutes; this value exists to stop a package from
+      # being killed just under it.
       - name: Run tests with race detector
         shell: bash
-        run: go test -race ./...
+        run: go test -race -timeout 25m ./...
 
   # ---------------------------------------------------------------------------
   # Release Range Verify (Wave 3 2026-06-24): for release/* → main PRs, confirm
@@ -185,11 +191,12 @@ jobs:
           set -euo pipefail
           go build ./...
 
+      # Same -timeout rationale as the per-OS leg above.
       - name: Run go test with race detector (release range)
         shell: bash
         run: |
           set -euo pipefail
-          go test -race ./...
+          go test -race -timeout 25m ./...
 
   # ---------------------------------------------------------------------------
   # Summary gate: ensures all OS jobs + release range verify passed (or were

@@ -1,6 +1,7 @@
 package route
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -253,7 +254,10 @@ func TestPromoteWorkItemFields(t *testing.T) {
 		if item.OwnerPath == "" {
 			t.Errorf("item[%d]: empty owner_path", i)
 		}
-		if !strings.HasPrefix(item.OwnerPath, "/") {
+		// filepath.IsAbs rather than a "/" prefix: an absolute Windows path
+		// begins with a drive letter, so the prefix test reports every correct
+		// path there as relative.
+		if !filepath.IsAbs(item.OwnerPath) {
 			t.Errorf("item[%d]: owner_path %q is not absolute", i, item.OwnerPath)
 		}
 		if item.Action == "" {
