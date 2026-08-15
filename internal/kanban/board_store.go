@@ -143,15 +143,14 @@ func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) (er
 	if err != nil {
 		return fmt.Errorf("write board state: %w", err)
 	}
-	// Release errors are JOINED into the result rather than discarded: on
-	// Windows release removes the artifact, so a failed removal after a
-	// successful write would silently block every later writer (sync-audit
-	// F5). The mutation has landed; surfacing the release failure keeps the
-	// block visible instead of quiet.
+	// Release errors are JOINED into the result rather than discarded (see
+	// joinBoardReleaseErr): on Windows release removes the artifact, so a
+	// failed removal would silently block every later writer (sync-audit F5).
+	// The join runs in BOTH directions — a release failure arriving alongside
+	// a mutation failure must survive too, or the wedged lock hides behind an
+	// unrelated refusal message.
 	defer func() {
-		if relErr := lock.Release(); relErr != nil && err == nil {
-			err = fmt.Errorf("write board state: mutation landed but lock release failed: %w", relErr)
-		}
+		err = joinBoardReleaseErr(err, lock.Release(), "write board state")
 	}()
 
 	st, err := LoadBoard(root)
@@ -188,6 +187,26 @@ func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) (er
 	}
 
 	return writeBoardAtomic(root, st)
+}
+
+// joinBoardReleaseErr folds a board-lock release failure into the mutation's
+// own result. It JOINS rather than overwrites, and joins in both directions: a
+// release failure that arrives alongside a mutation failure is the dangerous
+// case, not the harmless one. Reporting only the mutation error there hides a
+// wedged lock behind an unrelated message — on Windows release removes the
+// artifact, so the survivor blocks every later writer while the operator
+// retries against what looks like a transient mutation fault.
+//
+// op names the calling entry point ("write board state" / "recover board") so
+// the joined release error reads as that site's own.
+//
+// Returns nil only when both are nil, so the caller's `err` stays clean on the
+// success path.
+func joinBoardReleaseErr(mutErr, relErr error, op string) error {
+	if relErr == nil {
+		return mutErr
+	}
+	return errors.Join(mutErr, fmt.Errorf("%s: lock release failed: %w", op, relErr))
 }
 
 // writeBoardAtomic persists st through the same-directory temp + atomic

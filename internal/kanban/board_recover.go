@@ -70,11 +70,11 @@ func RecoverBoard(root, sessionID string) (result *RecoveryResult, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("recover board: %w", err)
 	}
-	// See WriteBoardState: release errors are joined, not discarded (F5).
+	// See WriteBoardState: release errors are joined, not discarded (F5) —
+	// including a release failure arriving alongside a recovery failure, which
+	// is the dangerous case, not the harmless one.
 	defer func() {
-		if relErr := lock.Release(); relErr != nil && err == nil {
-			err = fmt.Errorf("recover board: verdict delivered but lock release failed: %w", relErr)
-		}
+		err = joinBoardReleaseErr(err, lock.Release(), "recover board")
 	}()
 
 	raw, err := os.ReadFile(BoardPath(root))
