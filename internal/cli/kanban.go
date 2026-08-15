@@ -86,7 +86,10 @@ func parseKanbanFlag(args []string) (spec string, enabled bool, rest []string) {
 //
 // Callers must defer the returned function so it also runs on the error path; a
 // restore that only runs on success is the same leak with a narrower trigger.
-func enterKanbanMode(specID string) func() {
+// leadLabel is the operator-supplied `lead-<run-id>` name for this session when
+// there is one, and "" otherwise. Its run id is ADOPTED rather than replaced —
+// see leadRunID.
+func enterKanbanMode(specID, leadLabel string) func() {
 	restoreKanban := captureEnvState(config.EnvMoaiKanban)
 	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
 	restoreID := captureEnvState(config.EnvMoaiKanbanID)
@@ -94,7 +97,7 @@ func enterKanbanMode(specID string) func() {
 	restoreTier := seedAutonomyTier()
 
 	_ = os.Setenv(config.EnvMoaiKanban, "1")
-	runID := kanban.NewRunID()
+	runID := leadRunID(leadLabel)
 	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	if specID != "" {
 		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
@@ -112,6 +115,30 @@ func enterKanbanMode(specID string) func() {
 		restoreSpec()
 		restoreKanban()
 	}
+}
+
+// leadRunID resolves the run id a lead session publishes: the one embedded in
+// an operator-supplied `lead-<run-id>` name when there is one, a fresh mint
+// otherwise.
+//
+// Adoption is what makes the lead branch symmetric with the companion branch,
+// which derives its id from its label for exactly this reason. Minting
+// unconditionally left the session's name and MOAI_KANBAN_ID free to disagree,
+// and the SessionStart notice reads only the latter — so a session the operator
+// named `lead-X` announced companion commands for a freshly minted run Y, and a
+// copied command opened a companion that no lead was listening to.
+//
+// The shape guard is kanban.SplitLeadLabel and it admits exactly what the
+// companion side admits: a name like `lead-notarunid` is adopted, because
+// `notarunid` is a well-shaped run id as far as the id grammar is concerned.
+// Anything that is not — `board-watch`, `lead-`, `lead-ABC`, `lead-a-b` — falls
+// back to minting rather than publishing a malformed id. Tightening the lead
+// side alone would reintroduce an asymmetry of its own.
+func leadRunID(leadLabel string) string {
+	if runID, ok := kanban.SplitLeadLabel(leadLabel); ok {
+		return runID
+	}
+	return kanban.NewRunID()
 }
 
 // seedAutonomyTier publishes the autonomy tier Kanban Mode runs at, and returns
@@ -242,6 +269,38 @@ const (
 // and normalizeWorktreeFlag: iterate, break at the pass-through marker, and read
 // nothing beyond it. args is returned to the caller untouched.
 func parseCompanionLabel(args []string) (label string, ok bool) {
+	return parseNamedLabel(args, func(candidate string) bool {
+		_, _, isCompanion := kanban.SplitCompanionLabel(candidate)
+		return isCompanion
+	})
+}
+
+// parseLeadLabel reports the `lead-<run-id>` label in args, if any.
+//
+// It is parseCompanionLabel's counterpart and exists for the launcher to read
+// back a run id the operator embedded in the session name, so the lead branch
+// can adopt it instead of minting a second one (see leadRunID).
+//
+// A lead label never satisfies the companion discriminator — RoleLead is absent
+// from kanban.CompanionRoles — so the two parsers can never both match the same
+// name, and recognizing a lead name here cannot reroute the session down the
+// companion branch.
+func parseLeadLabel(args []string) (label string, ok bool) {
+	return parseNamedLabel(args, func(candidate string) bool {
+		_, isLead := kanban.SplitLeadLabel(candidate)
+		return isLead
+	})
+}
+
+// parseNamedLabel returns the first `--name` / `-n` value before the
+// pass-through marker that accept admits.
+//
+// The scan is shared by parseCompanionLabel and parseLeadLabel because the two
+// differ only in which shape they admit. The four name forms claude accepts and
+// the `--` discipline are identical for both, and keeping one copy per role is
+// how the two would drift — which is the class of defect this whole change is
+// repairing.
+func parseNamedLabel(args []string, accept func(candidate string) bool) (label string, ok bool) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
@@ -263,7 +322,7 @@ func parseCompanionLabel(args []string) (label string, ok bool) {
 			continue
 		}
 
-		if _, _, isCompanion := kanban.SplitCompanionLabel(candidate); isCompanion {
+		if accept(candidate) {
 			return candidate, true
 		}
 	}

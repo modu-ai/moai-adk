@@ -547,7 +547,7 @@ func TestEnterKanbanMode_RestoresPriorValue(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanban, "prior-kanban")
 	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PRIOR")
 
-	restore := enterKanbanMode("SPEC-PLACEHOLDER")
+	restore := enterKanbanMode("SPEC-PLACEHOLDER", "")
 	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {
 		t.Errorf("inside Kanban Mode %s = %q, want %q", config.EnvMoaiKanban, got, "1")
 	}
@@ -569,7 +569,7 @@ func TestEnterKanbanMode_RestoresPriorValue(t *testing.T) {
 // without inventing a SPEC identifier the operator never supplied.
 func TestEnterKanbanMode_WithoutSpecLeavesSpecVarUntouched(t *testing.T) {
 	_ = os.Unsetenv(config.EnvMoaiKanbanSpec)
-	restore := enterKanbanMode("")
+	restore := enterKanbanMode("", "")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiKanban); got != "1" {

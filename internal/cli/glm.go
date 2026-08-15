@@ -183,7 +183,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
 	case kanbanBranchLead:
-		defer enterKanbanMode(specID)()
+		// See cc.go: the operator's lead run id is adopted rather than replaced.
+		leadLabel, _ := parseLeadLabel(filteredArgs)
+		defer enterKanbanMode(specID, leadLabel)()
 		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
 		// See cc.go: glm mirrors the lead branch exactly.
 		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)

@@ -89,6 +89,26 @@ func SplitCompanionLabel(label string) (role, runID string, ok bool) {
 	return role, runID, true
 }
 
+// SplitLeadLabel splits a `lead-<run-id>` label into its run id and reports
+// whether the value has the lead shape at all. It is the lead-side counterpart
+// of SplitCompanionLabel, and admits exactly the same run-id shape.
+//
+// It exists so the launcher can ADOPT the run id an operator embedded in a name
+// it was handed, rather than minting a second one beside it. A lead has two
+// id-bearing surfaces — the session name and MOAI_KANBAN_ID — and without this
+// splitter nothing joins them: the SessionStart notice composes its companion
+// launch commands from the environment id, so a session named `lead-X` can
+// print commands belonging to run Y, and anyone who copies one opens an orphan.
+// The companion branch already derives its id from its label and states that it
+// does so precisely so the two can never disagree; this restores the symmetry.
+func SplitLeadLabel(label string) (runID string, ok bool) {
+	role, runID, found := strings.Cut(label, "-")
+	if !found || role != RoleLead || !isRunIDShape(runID) {
+		return "", false
+	}
+	return runID, true
+}
+
 func isCompanionRole(role string) bool {
 	for _, r := range CompanionRoles {
 		if role == r {

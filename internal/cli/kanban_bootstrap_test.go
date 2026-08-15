@@ -76,7 +76,7 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterKanbanMode("SPEC-EXAMPLE-001")
+	restore := enterKanbanMode("SPEC-EXAMPLE-001", "")
 
 	runID := os.Getenv(config.EnvMoaiKanbanID)
 	if runID == "" {

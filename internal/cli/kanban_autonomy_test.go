@@ -20,7 +20,7 @@ func TestKanbanModeSeedsFullyAutonomousTier(t *testing.T) {
 		name  string
 		enter func() func()
 	}{
-		{"lead", func() func() { return enterKanbanMode("SPEC-KANBAN-001") }},
+		{"lead", func() func() { return enterKanbanMode("SPEC-KANBAN-001", "") }},
 		{"companion", func() func() { return enterKanbanCompanionMode("plan-tjlgt1") }},
 	}
 
@@ -57,7 +57,7 @@ func TestKanbanModePreservesExplicitTier(t *testing.T) {
 		t.Run(tier, func(t *testing.T) {
 			t.Setenv(config.EnvAutonomyTier, tier)
 
-			restore := enterKanbanMode("")
+			restore := enterKanbanMode("", "")
 			if got := os.Getenv(config.EnvAutonomyTier); got != tier {
 				t.Errorf("explicit tier %q was overwritten with %q", tier, got)
 			}
@@ -79,7 +79,7 @@ func TestKanbanModeTreatsBlankTierAsUnset(t *testing.T) {
 		t.Run("blank="+blank, func(t *testing.T) {
 			t.Setenv(config.EnvAutonomyTier, blank)
 
-			restore := enterKanbanMode("")
+			restore := enterKanbanMode("", "")
 			if got := os.Getenv(config.EnvAutonomyTier); got != config.AutonomyTierFullyAutonomous {
 				t.Errorf("blank tier %q left as %q, want it filled in with %q", blank, got, config.AutonomyTierFullyAutonomous)
 			}

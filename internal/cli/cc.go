@@ -115,7 +115,13 @@ func runCC(cmd *cobra.Command, args []string) error {
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
 	case kanbanBranchLead:
-		defer enterKanbanMode(specID)()
+		// An operator-supplied `lead-<run-id>` name carries the run id this
+		// session already belongs to — a relaunch of an existing lead, or a
+		// board whose companions are already open. Adopting it is what keeps
+		// the session name, MOAI_KANBAN_ID, the leader socket path, and the
+		// companion commands the SessionStart notice prints on one run.
+		leadLabel, _ := parseLeadLabel(filteredArgs)
+		defer enterKanbanMode(specID, leadLabel)()
 		recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleLead)
 		// A lead launched bare has only an AI-generated title, which claude
 		// discards on /clear; naming it explicitly is what survives.

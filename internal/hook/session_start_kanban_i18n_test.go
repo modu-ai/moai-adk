@@ -24,6 +24,7 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 	for lang, m := range kanbanLocales {
 		fields := map[string]string{
 			"leadHeader":     m.leadHeader,
+			"leadIdentity":   m.leadIdentity,
 			"leadManual":     m.leadManual,
 			"glmSubstitute":  m.glmSubstitute,
 			"leaderSocket":   m.leaderSocket,
@@ -38,10 +39,12 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 				t.Errorf("locale %q: field %s is empty", lang, name)
 			}
 		}
-		// The three format-bearing fields must keep their verb, or the run id
-		// and socket path silently vanish from that locale's notice.
+		// The format-bearing fields must keep their verb, or the run id, the
+		// lead label, and the socket path silently vanish from that locale's
+		// notice.
 		for name, value := range map[string]string{
 			"leadHeader":    m.leadHeader,
+			"leadIdentity":  m.leadIdentity,
 			"leaderSocket":  m.leaderSocket,
 			"specLine":      m.specLine,
 			"companionJoin": m.companionJoin,
