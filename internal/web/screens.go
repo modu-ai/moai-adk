@@ -28,6 +28,7 @@ func (a *app) shellVM(r *http.Request, area, title, crumb string) ShellVM {
 		ProjectPath: a.cfg.ProjectRoot,
 		Lang:        "en",
 		Live:        "on",
+		RenderedAt:  time.Now().Format("15:04:05"),
 	}
 	if a.listProfiles != nil {
 		for _, p := range a.listProfiles() {
@@ -52,7 +53,41 @@ func (a *app) shellVM(r *http.Request, area, title, crumb string) ShellVM {
 	if vm.Profile == "" {
 		vm.Profile = "default"
 	}
+	// The context chips were reaching only /settings, which built them from its
+	// own pageView. These four screens never assemble a pageView, so the topbar
+	// loop had nothing to render and the chips were absent — not by design, just
+	// unwired. Build them from the same seams settings reads.
+	vm.Ctx = a.screenCtxChips(vm.Profile)
 	return vm
+}
+
+// screenCtxChips mirrors settingsCtxChips for the screens that carry no
+// pageView. An unreadable profile or project config yields no chips rather than
+// an error: these screens are read-only status views, and failing a whole page
+// over a missing chip would trade a small gap for a blank screen.
+func (a *app) screenCtxChips(profileName string) []KV {
+	pairs := make([]KV, 0, 4)
+	if a.readPreferences != nil {
+		if prefs, err := a.readPreferences(profileName); err == nil {
+			pairs = append(pairs,
+				KV{K: "lang", V: prefs.ConversationLang},
+				KV{K: "model", V: prefs.Model},
+				KV{K: "effort", V: prefs.EffortLevel},
+			)
+		}
+	}
+	if a.readProjectConfig != nil {
+		if devMode, _, err := a.readProjectConfig(a.cfg.ProjectRoot); err == nil {
+			pairs = append(pairs, KV{K: "dev", V: devMode})
+		}
+	}
+	out := make([]KV, 0, len(pairs))
+	for _, p := range pairs {
+		if p.V != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // readOnly 는 GET 이외를 405 로 거부하고, ?profile= 이 붙어 있으면 handleIndex
@@ -86,7 +121,9 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "overview unavailable: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	vm := a.shellVM(r, "overview", "Overview", "")
+	// The other three screens carry a descriptive crumb; overview carried none,
+	// so it was the one screen that never named the project it was reporting on.
+	vm := a.shellVM(r, "overview", "Overview", filepath.Base(a.cfg.ProjectRoot))
 	a.renderPage(w, Overview(vm, o))
 }
 
