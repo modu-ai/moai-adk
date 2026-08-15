@@ -40,7 +40,7 @@
             </div>
             <div class="cw-home-install">
               <span class="dollar">$</span>
-              <code id="cw-install-cmd">curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash</code>
+              <code id="cw-install-cmd">curl -fsSL https://adk.mo.ai.kr/install.sh | bash</code>
               <button type="button" class="cw-home-copy" data-copy-target="#cw-install-cmd" aria-label="설치 명령 복사">
                 <svg class="cw-copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 <svg class="cw-copy-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M20 6L9 17l-5-5"/></svg>
@@ -51,6 +51,29 @@
             {{ partial "mascot.html" (dict "pose" "explaining" "size" "260") }}
             <div class="cw-home-cap">SINGLE BINARY · GO · APACHE-2.0</div>
           </div>
+        </section>
+
+        {{- /* 1.5 v3.1 RELEASE BANNER — 칸반 모드. 스킨은 .cw-home-kanban
+               (moai-docs-layout.css). 링크는 site.GetPage 로 실제 페이지가 있을 때만
+               렌더 — 누락 로케일에서 깨진 링크가 생기지 않는다. */ -}}
+        <section class="cw-home-kanban">
+          <div>
+            <div class="cw-home-kanban-eyebrow">
+              <div class="cw-feat-idx">NEW · KANBAN MODE</div>
+              <span class="cw-side-new cw-new-badge">v3.1</span>
+            </div>
+            <h2>{{ i18n "home_kanban_title" }}</h2>
+            <p>{{ i18n "home_kanban_body" }}</p>
+            <div class="cw-feat-tags">
+              {{- with site.GetPage "/advanced/kanban-mode" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/advanced/manager-kanban" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/utility-commands/moai-todo" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+            </div>
+          </div>
+          <img class="cw-home-kanban-shot"
+               src="{{ "images/profile/kanban-five-sessions.png" | relURL }}"
+               alt="{{ i18n "home_kanban_shot_alt" }}"
+               loading="lazy" decoding="async" width="1600" height="1000">
         </section>
 
         {{- /* 2. 3 FEATURE CARDS — MoAI 3.0 세 기둥. 태그는 실제 섹션 페이지로(로컬라이즈 타이틀). */ -}}

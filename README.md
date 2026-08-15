@@ -59,6 +59,51 @@ It does not replace Claude Code. It wraps, in structure, the parts Claude Code l
 
 ---
 
+## New in v3.1 — Kanban Mode
+
+A session holds one context window, and a long SPEC fills it. Everything that comes after pays for everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
+
+Kanban Mode splits one unit of work across **five terminals instead of one**. A lead session drives the chain; four companion sessions each own a single column — `plan`, `run`, `review`, `sync` — and carry only that column's context. Nothing is uncapped: each session still has its own limit. What changes is that no session carries four phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
+
+<p align="center">
+  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: a lead session and four companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
+</p>
+
+Each lane is also free to run a different backend and effort level — the run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2, because the reasoning a lane needs is not the same in every column.
+
+### Getting started
+
+```bash
+moai cc -k                          # lead — announces a run-id, seeds the chain
+moai cc -k --name plan-<run-id>     # companion, in its own terminal
+moai cc -k --name run-<run-id>
+moai cc -k --name review-<run-id>
+moai cc -k --name sync-<run-id>
+```
+
+Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
+
+The board has six columns, `backlog → plan → run → review → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
+
+```text
+/moai todo "fix the stale rename hint"   # append a card
+/moai todo                               # list the queue
+```
+
+Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And between phases the lead asks you to `/clear` the named session, since `/clear` is user-typed and cannot be sent as an instruction.
+
+### Watching the board
+
+`moai web` serves a local console with a live Kanban screen — the five-session chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings.
+
+<p align="center">
+  <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
+</p>
+
+Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
+
+---
+
 ## Why Three Axes
 
 Optimizing only cost is a trap. Push the cost axis alone and quality silently erodes — rework and debug loops follow, and rework is the most expensive token spend of all. Build quality gates with no learning loop and the same mistakes recur every session. Run an autonomous loop with no cost ceiling and a single runaway task drains the quota. The three axes hold each other up: **cost stays economical because quality prevents rework, quality stays enforceable because the loop captures what worked, and the loop stays affordable because cost gates stop it before overage.**
@@ -276,7 +321,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
-| `moai web` | Web Console — 6-tab settings console |
+| `moai web` | Web Console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 10-tab settings |
 
 > Full 36 commands: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
 

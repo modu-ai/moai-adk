@@ -33,6 +33,53 @@
 
 ---
 
+## v3.1 새 기능 — 칸반 모드
+
+> v3.1은 광복절인 8월 15일에 맞춰 내놓는다. 한 세션이 컨텍스트 한도에 묶인 채 일하던 방식에서 풀려난다는 뜻을 담았다. 다만 한도 자체가 없어지는 것은 아니다 — 실제로 달라지는 지점은 아래에 그대로 적는다.
+
+세션 하나는 컨텍스트 창 하나를 쓴다. 긴 SPEC은 그 창을 채우고, 뒤에 오는 작업은 앞의 것을 전부 지고 간다. 계획은 이미 끝났는데도 리뷰하는 내내 창에 남아 있고, 그 리뷰는 문서를 쓰는 내내 또 남아 있다. 흔한 탈출구인 `/clear`는 짐과 함께 맥락까지 버린다.
+
+칸반 모드는 작업 하나를 **터미널 한 개가 아니라 다섯 개로** 나눈다. 리드 세션이 체인을 몰고, 네 개의 동반 세션이 `plan`·`run`·`review`·`sync` 한 칸씩을 맡아 **자기 칸의 맥락만** 진다. 무제한이 되는 것이 아니다 — 세션마다 한도는 그대로 있다. 달라지는 것은 어느 세션도 네 단계치 이력을 짊어지지 않는다는 점이고, 그래서 같은 예산이 훨씬 멀리 가며, 끝난 단계는 카드를 잃지 않고 비울 수 있다.
+
+<p align="center">
+  <img src="./assets/images/kanban-five-sessions.png" alt="칸반 모드 한 런 — 리드 세션과 네 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다" width="100%">
+</p>
+
+칸마다 백엔드와 추론 강도를 다르게 둘 수 있다. 위 화면은 Plan을 Opus 5 high로, Run을 GLM 5.2 xhigh로, Sync를 GLM 5.2로 돌린다. 칸마다 필요한 추론의 깊이가 같지 않기 때문이다.
+
+### 시작하기
+
+```bash
+moai cc -k                          # 리드 — run-id를 알려주고 체인을 깐다
+moai cc -k --name plan-<run-id>     # 동반 세션, 각자 별도 터미널에서
+moai cc -k --name run-<run-id>
+moai cc -k --name review-<run-id>
+moai cc -k --name sync-<run-id>
+```
+
+동반 세션은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. 어느 칸이든 `moai cc` 대신 `moai glm`을 쓰면 그 칸만 GLM 백엔드로 돈다.
+
+보드는 `backlog → plan → run → review → sync → done` 여섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
+
+```text
+/moai todo "rename 힌트가 낡았다"   # 카드 추가
+/moai todo                          # 큐 확인
+```
+
+보드를 정직하게 유지하는 규칙이 둘 있다. 리드는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 단계가 끝나면 리드가 해당 세션을 `/clear` 해달라고 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다.
+
+### 보드를 눈으로 보기
+
+`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 다섯 세션 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings 화면이 함께 붙는다.
+
+<p align="center">
+  <img src="./assets/images/moai-web-overview.png" alt="moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리" width="90%">
+</p>
+
+자세한 안내: [칸반 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
+
+---
+
 ## 왜 moai-adk인가요?
 
 에이전트가 코드를 쓰는 시대가 왔지만, 에이전트가 내놓은 결과를 그대로 믿을 수는 없다. "테스트가 통과했습니다"라는 말이 진짜 테스트를 돌린 결과인지, 그냥 에이전트의 추측인지를 구분하는 것이 처음부터 가장 큰 문제다. moai-adk는 바로 그 지점에서 출발한다 — **검증하지 않은 완료 선언을 시스템 차원에서 금지**하고, 모든 완료 주장에 실제로 돌린 명령과 그 출력을 증거로 묶는다.
@@ -226,10 +273,10 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 ### moai web 콘솔
 
 <p align="center">
-  <img src="./assets/moai-web-console.png" alt="moai web 콘솔 — 브라우저에서 쓰는 6-탭 설정 편집기">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 10개 설정 탭" width="90%">
 </p>
 
-`moai web`이 브라우저에서 쓰는 6-탭 로컬 설정 콘솔을 띄운다 — 에이전트·스킬·훅·게이트·프로파일·언어 설정을 터미널 밖에서 편집한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings 다섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP 열 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
@@ -455,7 +502,7 @@ GLM Coding Plan은 월 $10부터다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)
 | `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
 | `moai handoff <save\|list>` | 세션 핸드오프 기록 |
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
-| `moai web` | Web Console — 6-탭 설정 콘솔 |
+| `moai web` | 웹 콘솔 — 5개 화면(Overview · Kanban · Specs · Monitor · Settings), 10-탭 설정 |
 
 > 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 

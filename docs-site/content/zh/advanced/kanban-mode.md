@@ -193,6 +193,14 @@ $ moai cc -k --name sync-<run-id>
 
 截图中状态栏里显示的模型标签反映的是截图时某一位操作者的会话配置，并不是发行默认值。
 
+## 在浏览器里看板
+
+与其用眼睛扫五个终端，`moai web` 能把同样的状态放在一个页面上。看板页面把 5 会话链看板与 SPEC 流水线并排展示，旁边还有 Overview、Specs、Monitor、Settings 页面。
+
+![moai web 控制台 Overview 页面 —— SPEC 统计、进行中 SPEC 列表、会话注册表](/images/profile/web-console-v31-overview.png)
+
+控制台只绑定回环地址。完整用法参见 [moai web 控制台](/zh/advanced/moai-web-console)。
+
 ## 链的阶段
 
 看板链扩展了 `full-pipeline` 契约（对单个 SPEC 约定自动链接 run → sync）。四个阶段按顺序进行:

@@ -59,6 +59,51 @@ Claude Codeを置き換えるものではない。Claude Codeがユーザーに�
 
 ---
 
+## v3.1 の新機能 — カンバンモード
+
+セッションはコンテキストウィンドウを1つしか持たない。長いSPECはそれを埋め尽くし、後に続く作業は先行したすべてを背負ったまま進む。もう不要になった計画がレビュー中もウィンドウに残り、そのレビューがドキュメント作成中もまだ残っている。よくある逃げ道である`/clear`は、その重荷と一緒に文脈まで捨ててしまう。
+
+カンバンモードは1つの作業を**ターミナル1つではなく5つ**に分ける。リードセッションがチェーンを進め、4つの同伴セッションが`plan`・`run`・`review`・`sync`を1列ずつ受け持ち、**自分の列の文脈だけ**を背負う。上限がなくなるわけではない — 各セッションの上限はそのままだ。変わるのは、どのセッションも4フェーズ分の履歴を抱え込まないという点であり、同じ予算がはるかに遠くまで届き、終わったフェーズはカードを失わずに片付けられる。
+
+<p align="center">
+  <img src="./assets/images/kanban-five-sessions.png" alt="カンバンモードのひとつのラン — リードセッションと4つの同伴セッションが、それぞれのターミナルで、それぞれのモデルとeffortで動いている" width="100%">
+</p>
+
+列ごとにバックエンドとeffortを変えられる。上の画面ではPlanをOpus 5のhighで、RunをGLM 5.2のxhighで、SyncをGLM 5.2で動かしている。列ごとに必要な推論の深さが同じではないからだ。
+
+### はじめかた
+
+```bash
+moai cc -k                          # リード — run-id を知らせ、チェーンを敷く
+moai cc -k --name plan-<run-id>     # 同伴セッション、それぞれ別のターミナルで
+moai cc -k --name run-<run-id>
+moai cc -k --name review-<run-id>
+moai cc -k --name sync-<run-id>
+```
+
+同伴セッションは**ターミナルを1つずつ新しく開いて手で**起動する。セッションが別のセッションを立ち上げることはない。どの列でも`moai cc`を`moai glm`に替えれば、その列だけGLMバックエンドで動く。
+
+ボードは`backlog → plan → run → review → sync → done`の6列だ。`backlog`には意図的に担当セッションを置いていない。だから作業は人が入れたときにだけボードに入る。
+
+```text
+/moai todo "rename のヒントが古い"   # カードを追加
+/moai todo                           # キューを確認
+```
+
+ボードを正直に保つ規則が2つある。リードはカードの`progress.md`から**自分で読んだ証拠だけ**でカードを進める — 同伴セッションの返信では進めない。返信は観測ではなく主張であり、セッション間の到達も保証されていないからだ。そしてフェーズが終わるとリードは該当セッションの`/clear`を依頼する。`/clear`は人が直接打つコマンドで、指示として送れないためである。
+
+### ボードを目で見る
+
+`moai web`はローカルコンソールを立ち上げる。カンバン画面では5セッションのチェーンとSPECパイプラインを並べて見られ、Overview・Specs・Monitor・Settingsの画面も付く。
+
+<p align="center">
+  <img src="./assets/images/moai-web-overview.png" alt="moai web コンソールのOverview画面 — SPEC集計、進行中SPEC一覧、セッションレジストリ" width="90%">
+</p>
+
+詳しい案内: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
+
+---
+
 ## なぜ3つが揃っていなければならないのか
 
 コストだけを最適化するのは罠である。コストだけを押し進めると、品質は知らずのうちに損なわれ、手戻りとデバッグのループが続く。そして手戻りこそ、すべてのトークン支出の中で最も高くつく。学習ループのない品質ゲートだけを立てれば、毎セッション同じ失敗が再発する。コスト上限のない自律ループを回せば、暴走したタスク1つがクォータを食い潰す。3つは互いを支え合う: **コストは品質が手戻りを防ぐことで経済的に保たれ、品質はループが機能したパターンを取り込むことで強制可能に保たれ、ループはコストゲートが超過前に止めることで手頃な価格に保たれる。**
@@ -274,7 +319,7 @@ claude        # launch Claude Code inside the project
 | `moai harness <status\|apply\|rollback\|disable>` | harness 学習ライフサイクル |
 | `moai handoff <save\|list>` | セッションハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
-| `moai web` | Web Console — 6 タブ設定コンソール |
+| `moai web` | Web Console — 5 画面（Overview · Kanban · Specs · Monitor · Settings）、10 タブ設定 |
 
 > 全 36 コマンド: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
 

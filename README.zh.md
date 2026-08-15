@@ -59,6 +59,51 @@ MoAI-ADK（Agentic Development Kit）让 Claude Code 生成代码，再让这些
 
 ---
 
+## v3.1 新功能 —— 看板模式
+
+一个会话只有一个上下文窗口。长 SPEC 会把它填满，之后的每一步都背着前面的全部内容前进：早已用不上的计划在评审时仍占着窗口，而那次评审在写文档时还留在那里。常见的出路是 `/clear`，但它把包袱和上下文一起丢掉了。
+
+看板模式把一项工作拆到**5 个终端而不是 1 个**。主导会话推动整条链，4 个伴随会话各自负责 `plan`、`run`、`review`、`sync` 中的一列，**只背自己那一列的上下文**。这并不是取消上限 —— 每个会话的上限依旧存在。真正改变的是：没有任何一个会话再扛四个阶段的历史，因此同样的预算能走得远得多，做完的阶段也可以在不丢卡片的前提下清空。
+
+<p align="center">
+  <img src="./assets/images/kanban-five-sessions.png" alt="看板模式的一次 run —— 主导会话与四个伴随会话各自在自己的终端中，使用各自的模型与推理强度运行" width="100%">
+</p>
+
+每一列都可以用不同的后端和推理强度。上图中 Plan 跑在 Opus 5 high，Run 跑在 GLM 5.2 xhigh，Sync 跑在 GLM 5.2 —— 因为各列需要的推理深度本就不同。
+
+### 快速上手
+
+```bash
+moai cc -k                          # 主导 —— announce run-id 并铺好链
+moai cc -k --name plan-<run-id>     # 伴随会话，各开一个终端
+moai cc -k --name run-<run-id>
+moai cc -k --name review-<run-id>
+moai cc -k --name sync-<run-id>
+```
+
+伴随会话要**逐个新开终端、手动启动**。会话不会替你启动另一个会话。任意一列把 `moai cc` 换成 `moai glm`，那一列就跑在 GLM 后端。
+
+看板有 `backlog → plan → run → review → sync → done` 六列。`backlog` 刻意不设归属会话，所以只有人主动放入时，工作才会进入看板。
+
+```text
+/moai todo "rename 提示已经过时"   # 添加卡片
+/moai todo                          # 查看队列
+```
+
+有两条规则让看板保持诚实。主导只依据自己从卡片 `progress.md` 中**读到的证据**推进卡片 —— 不依据伴随会话的回复，因为回复是主张而非观测，而且跨会话送达本身也没有保证。阶段结束后，主导会请你对相应会话执行 `/clear`：`/clear` 由人亲手输入，无法作为指令发送。
+
+### 用眼睛看板
+
+`moai web` 会启动一个本地控制台。看板页面把 5 会话链与 SPEC 流水线并排展示，另有 Overview、Specs、Monitor、Settings 页面。
+
+<p align="center">
+  <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 页面 —— SPEC 统计、进行中 SPEC 列表、会话注册表" width="90%">
+</p>
+
+详细说明：[看板模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
+
+---
+
 ## 为什么这三者必须同时具备
 
 只优化成本是一个陷阱。只顾压低成本，质量会悄然下滑，紧接着是返工和调试循环 —— 而返工是所有 Token 支出中最贵的。只立质量门而没有学习循环，每个会话都会重犯同样的错误。跑没有成本上限的自主循环，一个失控任务就会耗尽额度。三者相互支撑：**成本因质量防止返工而保持经济，质量因循环捕获有效模式而保持可强制，循环因成本门在超额前停止而保持可负担。**
@@ -280,7 +325,7 @@ claude        # launch Claude Code inside the project
 | `moai harness <status\|apply\|rollback\|disable>` | Harness 学习生命周期 |
 | `moai handoff <save\|list>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
-| `moai web` | Web Console — 6 标签设置控制台 |
+| `moai web` | Web 控制台 —— 5 个页面（Overview · Kanban · Specs · Monitor · Settings）、10 个设置标签 |
 
 > 全部 36 个命令：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)
 
