@@ -175,6 +175,8 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 //   - updatedInput / updatedToolOutput / updatedMCPToolOutput: last-non-nil wins.
 //   - continue:false (the only meaningful value) + stopReason propagate once set.
 //   - retry propagates when any handler sets it.
+//   - permissionDecision follows a precedence ladder (deny > ask > allow), NOT
+//     a last-writer-wins copy — see mergePermissionDecision.
 func mergeHandlerOutput(merged, output *HookOutput) {
 	if output == nil {
 		return
@@ -233,6 +235,58 @@ func mergeHandlerOutput(merged, output *HookOutput) {
 	}
 	if len(src.MxTags) > 0 {
 		dst.MxTags = append(dst.MxTags, src.MxTags...)
+	}
+
+	mergePermissionDecision(dst, src)
+}
+
+// permissionDecisionRank orders permission decisions by how restrictive they
+// are, so the merge can keep the most restrictive one a handler produced.
+// An unset decision ranks below every explicit decision.
+func permissionDecisionRank(decision string) int {
+	switch decision {
+	case DecisionDeny:
+		return 3
+	case DecisionAsk:
+		return 2
+	case DecisionAllow:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// mergePermissionDecision folds a handler's permission verdict into the merged
+// output using a precedence ladder rather than a field copy:
+//
+//	deny > ask > allow > unset
+//
+// A blind copy would be wrong here in both directions. Dispatch pre-seeds the
+// merged output with the event default — already "allow" for PreToolUse under
+// the autonomous permission modes — so without an explicit ladder a handler's
+// "ask" is discarded and the pre-seeded "allow" reaches the wire. Conversely,
+// copying unconditionally would let a later handler's "allow" clobber an
+// earlier handler's "ask" or "deny".
+//
+// The reason travels with the decision: an "ask" whose
+// permissionDecisionReason was dropped shows the user a confirmation dialog
+// that explains nothing.
+//
+// The PermissionRequest decision object (decision.behavior, which has no "ask"
+// behavior) follows the same ladder so a second handler cannot silently
+// downgrade an earlier "deny".
+func mergePermissionDecision(dst, src *HookSpecificOutput) {
+	if permissionDecisionRank(src.PermissionDecision) > permissionDecisionRank(dst.PermissionDecision) {
+		dst.PermissionDecision = src.PermissionDecision
+		dst.PermissionDecisionReason = src.PermissionDecisionReason
+	}
+
+	if src.Decision == nil {
+		return
+	}
+	if dst.Decision == nil ||
+		permissionDecisionRank(src.Decision.Behavior) > permissionDecisionRank(dst.Decision.Behavior) {
+		dst.Decision = src.Decision
 	}
 }
 
