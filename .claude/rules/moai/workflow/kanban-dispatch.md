@@ -91,16 +91,18 @@ This applies equally to the operator: when the lead reports a column advanced, i
 
 A CodeRabbit row counts as evidence only when BOTH of these hold:
 
-1. The commit status description reads `Review completed`:
+1. The status is `success` **and** its description reads `Review completed`:
 
     ```bash
     gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-      --jq '.statuses[] | select(.context == "CodeRabbit") | .description'
+      --jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .description'
     ```
+
+    Both halves are required, and neither is sufficient alone. `success` is not sufficient — that is this whole section's point, since it appears on unreviewed heads too. But it is still necessary: without the state filter a `failure` or `error` status carrying a `Review completed` description would read as a pass, which inverts the same mistake in the other direction.
 
     This predicate assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
 
-2. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
+1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
 Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`.
 
