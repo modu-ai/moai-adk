@@ -77,6 +77,19 @@ Each instruction carries, at minimum: the card, the SPEC ID once one exists, the
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself.
 
+### Dispatch language
+
+[HARD] A dispatch is written in the operator's `conversation_language`. The operator watches it scroll past, which makes it user-facing output rather than internal agent traffic.
+
+This is a classification, not an exemption from the language rules, and it needs no change to either of them:
+
+- `agent-common-protocol.md` § Language Handling already opens with the opposite of an English default — agents receive and respond in the configured `conversation_language`. What it fixes to English is code, identifiers, and names. A dispatch is prose, so the rule was never against it; it simply did not name cross-session messages in its list.
+- `moai-constitution.md` § Response Language reserves English for internal agent communication, but the axis that clause sits on is stated one line above it: user-facing responses go in the operator's language. A message a human reads is user-facing by that rule's own criterion, so putting a dispatch in the operator's language applies the constitution rather than carving an exception out of it.
+
+The carve-out is narrow, and the boundary is **who reads it**. An `Agent()` subagent prompt reaches no human and stays English.
+
+What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. Those are addresses rather than prose, and a translated address does not resolve.
+
 ## Completion is read, never trusted
 
 [HARD] The lead advances a card on **evidence it read**, not on a companion's reply. Reply routing between sessions is not guaranteed to arrive, and a reply is a claim rather than an observation.
@@ -159,6 +172,22 @@ Two properties make the shared checkout the wrong place for a card:
 - A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
 
 Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
+
+## Verification load is lane-local
+
+Sessions share one machine as surely as they share one checkout, and verification is where that sharing goes wrong. Measured on a day when it did: load average reached 413, a neighbouring workspace's build took two and a half minutes, and its browser tests timed out — not because anything was wrong with them, but because four lanes were each running the full test suite at once and a full suite there takes five to ten minutes.
+
+[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite.
+
+CI is not the fallback here; it is the better evidence. It runs the full suite in a clean environment against the actual pull-request head. A full-suite run on a loaded developer machine measures the machine — a test that fails in a crowded batch and passes alone has told you about contention, not about the code, and reading it as a code signal sends the lane chasing a defect that is not there.
+
+[HARD] **Never spawn background load.** The same incident had a second cause: a verification recipe started eight spin loops to test behaviour under CPU contention and placed its kill line *after* the long test command. The agent finished before reaching it, and twelve spinners ran orphaned for thirty-seven minutes.
+
+Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A trailing `kill` is not cleanup; it is a line the process may never reach, and every path that ends early leaves the load running.
+
+**A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault above belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given — a lane executing an approved recipe is doing what it was told, and a rule that blames the executor teaches the wrong actor to be careful.
+
+The same day supplied the reason contention and flakiness feed each other: a failing test left an unbounded spin-loop goroutine running, which burned a core for the remainder of that package's run and slowed every test after it. Load makes tests fail; failing tests can generate load.
 
 ### The env-isolated verification form
 

@@ -122,6 +122,7 @@ The **ledger-closure invariant** (externally grounded in `github.com/wquguru/har
 
 Output language rules:
 - Analysis, documentation, reports: User's conversation_language
+- Cross-session messages a human observes (a kanban dispatch the operator watches): User's conversation_language; identifiers, paths, commands, and flags stay verbatim. An `Agent()` subagent prompt reaches no human and stays English
 - Code examples and syntax: Always English
 - Code comments: Per code_comments setting in language.yaml (default: English)
 - Commit messages: Per git_commit_messages setting in language.yaml
