@@ -74,7 +74,7 @@ The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the pr
 |------|------|
 | `id` | A short, stable identifier assigned at add time. Never reused after removal. |
 | `spec_id` | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state. |
-| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible; it is removed when the card reaches `done`. |
+| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item leaves the queue is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. (`dropped` is a value defined in the record schema; no command sets it.) |
 
 The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
 
@@ -92,7 +92,7 @@ After a card is picked, it continues like this:
 
 1. The picked item is marked `picked` with one locked write: `moai todo next <n> [--spec <SPEC-ID>]`. When the identifier is already known, it is attached right here.
 2. It is handed to the `plan` session per the kanban dispatch protocol. The card enters the `plan` column, and SPEC authorship happens there, not here.
-3. When the id was not known at pick time, it is attached to the item as the plan session reports it.
+3. When the id was not known at pick time, re-run `moai todo next <n> --spec <SPEC-ID>` once it is known to attach it. Nothing automates the later attachment — both the dispatch and this follow-up are instructions the lead session performs, not things the queue does on its own.
 
 ## Outside Kanban Mode
 
