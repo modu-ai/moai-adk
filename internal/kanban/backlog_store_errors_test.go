@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -82,6 +83,9 @@ func TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError(t *testing.T) {
 // file creation while the lock is already held: the error surfaces and no
 // residue is left beyond the lock artifact.
 func TestBacklogWrite_UnwritableDirFailsTempCreation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a read-only directory does not block file creation on Windows; temp creation succeeds and the error branch is never reached")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("read-only directory does not block the root user")
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -116,6 +117,9 @@ func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
 // file write fails, the launcher degrades to launching without the injected
 // --settings (never blocks the launch). The flag is empty and cleanup is safe.
 func TestPrepareKanbanSettingsFailsOpenOnWriteError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("cannot force the write failure on Windows: a 0444 directory still accepts file creation, and os.TempDir reads TMP/TEMP rather than TMPDIR")
+	}
 	// Drive TempDir to an unwritable location by setting TMPDIR to a path under
 	// a read-only directory we create.
 	roDir := t.TempDir()

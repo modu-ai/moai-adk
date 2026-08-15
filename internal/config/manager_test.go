@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -871,6 +872,9 @@ func TestSentinelErrors(t *testing.T) {
 // and asserts that a pre-existing section file at a non-0600 mode keeps its mode after a
 // saveSection write. Against the unfixed atomicWrite this MUST fail (mode narrowed to 0600).
 func TestSaveSection_PreservesFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows; os.Chmod only toggles the read-only flag, so the seeded mode drifts before saveSection is called")
+	}
 	t.Parallel()
 
 	tempDir := t.TempDir()

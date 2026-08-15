@@ -35,6 +35,11 @@ func TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 	t.Setenv("HOME", tmp)
+	// os.UserHomeDir reads USERPROFILE on Windows and HOME elsewhere, so both
+	// have to be redirected for the isolation to hold on every platform.
+	// Setting only HOME leaves the derivation pointing at the real home on
+	// Windows — precisely the leak this test exists to catch.
+	t.Setenv("USERPROFILE", tmp)
 
 	got, err := resolveCaptureMemoryDir(&HookInput{CWD: tmp})
 	if err != nil {

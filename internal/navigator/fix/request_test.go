@@ -569,10 +569,15 @@ func TestLoadGraph_Absent(t *testing.T) {
 // TestResolveRoot_Fallbacks covers the B7 path-resolution priority: explicit
 // flag > $CLAUDE_PROJECT_DIR > CWD.
 func TestResolveRoot_Fallbacks(t *testing.T) {
-	// Explicit flag wins.
-	t.Setenv("CLAUDE_PROJECT_DIR", "/should/be/ignored")
-	if got := resolveRoot("/explicit/path"); got != "/explicit/path" {
-		t.Errorf("explicit flag should win: got %q", got)
+	// Explicit flag wins. Both paths are real absolute directories rather than
+	// POSIX-shaped literals: resolveRoot runs its result through filepath.Abs,
+	// which on Windows rewrites a rooted-but-driveless "/explicit/path" to
+	// "C:\explicit\path" and would fail the comparison on the fixture rather
+	// than on the behavior.
+	explicit := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	if got := resolveRoot(explicit); got != explicit {
+		t.Errorf("explicit flag should win: got %q, want %q", got, explicit)
 	}
 	// CLAUDE_PROJECT_DIR fallback when no flag.
 	fallback := t.TempDir()

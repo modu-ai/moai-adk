@@ -125,8 +125,12 @@ func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
 	if got == "" {
 		t.Fatal("env=1 should force ON and materialize a worktree")
 	}
-	if !strings.HasPrefix(got, "/repo/.claude/worktrees/") {
-		t.Fatalf("unexpected worktree path %q", got)
+	// The prefix is built with filepath.Join so it carries the host's
+	// separators: the product derives the path from the seam's "/repo/.git"
+	// via filepath, which yields backslashes on Windows.
+	wantPrefix := filepath.Join("/repo", sessionWorktreeSubdir) + string(filepath.Separator)
+	if !strings.HasPrefix(got, wantPrefix) {
+		t.Fatalf("worktree path %q does not start with %q", got, wantPrefix)
 	}
 }
 

@@ -60,6 +60,8 @@ func TestPR1338Regression(t *testing.T) {
 	mustRunGit(t, repo, "branch", "feat/A")
 	wt := filepath.Join(repo, "wt-A")
 	mustRunGit(t, repo, "worktree", "add", wt, "feat/A")
+	// Key the worktree by the same canonical form worktreeBranchMap produces.
+	wt = canonWorktreePath(wt)
 
 	// Sanity: at T0, primary=main, wt-A=feat/A.
 	t0 := worktreeBranchMap(t, repo)
@@ -172,7 +174,7 @@ func worktreeBranchMap(t *testing.T, repo string) map[string]string {
 		line = strings.TrimRight(line, "\r")
 		switch {
 		case strings.HasPrefix(line, "worktree "):
-			curPath = strings.TrimPrefix(line, "worktree ")
+			curPath = canonWorktreePath(strings.TrimPrefix(line, "worktree "))
 			m[curPath] = ""
 		case strings.HasPrefix(line, "branch "):
 			if curPath != "" {
@@ -186,6 +188,22 @@ func worktreeBranchMap(t *testing.T, repo string) map[string]string {
 		}
 	}
 	return m
+}
+
+// canonWorktreePath normalizes a path reported by `git worktree list
+// --porcelain` into the same vocabulary the test's own fixture paths use, so
+// the two can be compared as map keys. git reports forward slashes on Windows
+// (C:/Users/...) where the fixture holds native separators, and either side
+// may carry an 8.3 short component (RUNNER~1); resolving through the
+// filesystem collapses both differences as well as the macOS /var → /private/var
+// symlink. Falls back to a plain separator normalization when the path cannot
+// be resolved (a pruned worktree entry), which keeps the parse total.
+func canonWorktreePath(p string) string {
+	native := filepath.FromSlash(p)
+	if resolved, err := filepath.EvalSymlinks(native); err == nil {
+		return resolved
+	}
+	return filepath.Clean(native)
 }
 
 // pickPrimaryPathFromSnapshot returns the worktree the snapshot believes is

@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -81,7 +82,14 @@ func TestHookCommandFlushesLastHandlerEntry(t *testing.T) {
 	}
 
 	root := repoRootFromCLITest(t)
-	bin := filepath.Join(t.TempDir(), "moai")
+	// Windows will not exec a file without the .exe suffix, so the built
+	// binary has to carry it or the later invocations fail with
+	// "executable file not found in %PATH%".
+	binName := "moai"
+	if runtime.GOOS == "windows" {
+		binName += ".exe"
+	}
+	bin := filepath.Join(t.TempDir(), binName)
 	// The binary is stamped with a dev version so the SessionStart auto-update
 	// handler (buildAutoUpdateFunc) takes its isDevBuild early-return and never
 	// reaches the network. Without this, the binary reports the hardcoded

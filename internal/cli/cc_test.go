@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -451,26 +452,33 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 	// Fail-open: a state directory that cannot be written into must not block
 	// the launch. The sidecar is written first, then the directory is sealed,
 	// so session resolution still succeeds and only the record write fails.
-	blocked := t.TempDir()
-	stateDir := filepath.Join(blocked, ".moai", "state")
-	if err := os.MkdirAll(stateDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(blocked, session.CurrentSideChannelFile), []byte("blocked-session"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(stateDir, 0o500); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
+	// Scoped to a subtest so the record-contract assertions above still run on
+	// Windows, where the seal cannot be applied.
+	t.Run("fail_open_unwritable_state_dir", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a 0500 directory does not deny writes on Windows; the record would be written and the fail-open control asserts it is genuinely absent")
+		}
+		blocked := t.TempDir()
+		stateDir := filepath.Join(blocked, ".moai", "state")
+		if err := os.MkdirAll(stateDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(blocked, session.CurrentSideChannelFile), []byte("blocked-session"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(stateDir, 0o500); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
 
-	t.Setenv("CLAUDE_PROJECT_DIR", blocked)
-	if err := runCC(ccCmd, []string{"--kanban"}); err != nil {
-		t.Errorf("AC-FM-023a: an unwritable state directory must not block the launch, got: %v", err)
-	}
-	if _, err := kanban.Read(blocked, "blocked-session"); err == nil {
-		t.Error("AC-FM-023a fail-open control: the record must genuinely be absent, otherwise the case is vacuous")
-	}
+		t.Setenv("CLAUDE_PROJECT_DIR", blocked)
+		if err := runCC(ccCmd, []string{"--kanban"}); err != nil {
+			t.Errorf("AC-FM-023a: an unwritable state directory must not block the launch, got: %v", err)
+		}
+		if _, err := kanban.Read(blocked, "blocked-session"); err == nil {
+			t.Error("AC-FM-023a fail-open control: the record must genuinely be absent, otherwise the case is vacuous")
+		}
+	})
 }
 
 // TestCC_KanbanEnvMutationIsRestored is AC-FM-023d: the process-environment

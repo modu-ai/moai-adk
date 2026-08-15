@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -11,6 +12,18 @@ import (
 )
 
 // --- test helpers ---
+
+// requirePOSIXModeBits skips the calling test on Windows, which does not store
+// Unix permission bits: os.Chmod there only toggles a read-only flag and every
+// mode reads back as 0666. Tests that seed an exact mode or assert one against
+// os.Stat cannot express their fixture at all on that platform — the drift
+// happens during setup, before the code under test runs.
+func requirePOSIXModeBits(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows; os.Chmod only toggles the read-only flag")
+	}
+}
 
 // mkdirConfigTree creates <tmp>/.moai/config/sections and returns the project
 // root (tmp). Every AC test builds its fixture underneath this root.
@@ -55,6 +68,7 @@ func assertMode(t *testing.T, label string, p string, want os.FileMode) {
 // --- AC-MIG-001: dry-run default lists candidates, modes unchanged ---
 
 func TestModeMigrateDryRun_NoOp_OnDisk(t *testing.T) {
+	requirePOSIXModeBits(t)
 	// A narrowed file (0600) and a canonical file (0644) both under .moai/config.
 	root := mkdirConfigTree(t)
 	narrowed := filepath.Join(root, ".moai", "config", "sections", "narrowed.yaml")
@@ -94,6 +108,7 @@ func TestModeMigrateDryRun_NoOp_OnDisk(t *testing.T) {
 // --- AC-MIG-002: apply widens 0600 → defs.FilePerm ---
 
 func TestModeMigrateApply_WidensNarrowed(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	narrowed := filepath.Join(root, ".moai", "config", "sections", "llm.yaml")
 	writeFileAt(t, root, ".moai/config/sections/llm.yaml", 0o600)
@@ -111,6 +126,7 @@ func TestModeMigrateApply_WidensNarrowed(t *testing.T) {
 // --- AC-MIG-003: only-widen — 0644 unchanged, 0600 → 0644 ---
 
 func TestModeMigrateApply_OnlyWidens(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	canonical := filepath.Join(root, ".moai", "config", "sections", "canonical.yaml")
 	narrowed := filepath.Join(root, ".moai", "config", "sections", "narrowed.yaml")
@@ -132,6 +148,7 @@ func TestModeMigrateApply_OnlyWidens(t *testing.T) {
 // --- AC-MIG-004: scope — a file OUTSIDE .moai/config is never touched ---
 
 func TestModeMigrateApply_ScopeConfigOnly(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	// An outside-config file at 0600 (simulates .claude/settings.json or /tmp file).
 	outside := filepath.Join(root, ".claude", "settings.json")
@@ -152,6 +169,7 @@ func TestModeMigrateApply_ScopeConfigOnly(t *testing.T) {
 // --- AC-MIG-005: idempotent — already-canonical tree → empty list, apply no-op ---
 
 func TestModeMigrate_Idempotent(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	// Every file already at defs.FilePerm — migration has "already been applied".
 	writeFileAt(t, root, ".moai/config/sections/a.yaml", defs.FilePerm)
@@ -215,6 +233,7 @@ func TestModeMigrate_HelperRouting(t *testing.T) {
 // --- AC-MIG-007: 0700 (non-subset) is excluded — never narrowed ---
 
 func TestModeMigrateApply_NonSubsetMode_Unchanged(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	// 0700 carries owner-exec (0100) which is NOT in 0644 → not a subset → excluded.
 	execFile := filepath.Join(root, ".moai", "config", "sections", "exec.yaml")
@@ -261,6 +280,7 @@ func TestModeMigrateApply_NonSubsetMode_Unchanged(t *testing.T) {
 // --- AC-MIG-008: symlink under .moai/config is Lstat-detected + skipped ---
 
 func TestModeMigrate_SymlinkSkipped(t *testing.T) {
+	requirePOSIXModeBits(t)
 	root := mkdirConfigTree(t)
 	// External target OUTSIDE .moai/config, held at 0600.
 	outsideTarget := filepath.Join(root, "outside", "target.yaml")

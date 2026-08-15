@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -192,6 +193,9 @@ func TestSaveTemplateBase_SnapshotMkdirFails(t *testing.T) {
 // TestSaveTemplateBase_SnapshotCopyError covers SaveTemplateBase's
 // per-file copy error path (a snapshot source file that is unreadable).
 func TestSaveTemplateBase_SnapshotCopyError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod-based unreadability does not deny access on Windows; os.ReadFile still succeeds and the copy-error branch is never reached")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("chmod-based unreadability is ineffective when running as root")
 	}

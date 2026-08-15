@@ -1,6 +1,7 @@
 package route
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestPromoteAuditOrphan(t *testing.T) {
 		},
 	}
 
-	items := Promote(audit, nil, nil, "/test-project")
+	items := Promote(audit, nil, nil, testProjectRoot)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 work items, got %d", len(items))
@@ -53,8 +54,8 @@ func TestPromoteAuditOrphan(t *testing.T) {
 	if highItem == nil {
 		t.Fatal("no high-confidence orphan found")
 	}
-	if highItem.OwnerPath != "/test-project/internal/a.go" {
-		t.Errorf("orphan with impl_path: owner = %q, want /test-project/internal/a.go", highItem.OwnerPath)
+	if highItem.OwnerPath != tp("internal/a.go") {
+		t.Errorf("orphan with impl_path: owner = %q, want %q", highItem.OwnerPath, tp("internal/a.go"))
 	}
 
 	if lowItem == nil {
@@ -78,14 +79,14 @@ func TestPromoteAuditMissing(t *testing.T) {
 				EdgeType:   navsync.EdgeSym,
 				SourceNode: "symbol:auth.ParseBearer",
 				TargetNode: "symbol:auth.ParseBearer",
-				SourcePath: "/test-project/.moai/project/tech.md",
+				SourcePath: tp(".moai/project/tech.md"),
 				LineNumber: 10,
 			},
 			{
 				EdgeType:   navsync.EdgeSym,
 				SourceNode: "symbol:auth.ParseBearer",
 				TargetNode: "symbol:auth.ParseBearer",
-				SourcePath: "/test-project/internal/auth/login.go",
+				SourcePath: tp("internal/auth/login.go"),
 				LineNumber: 5,
 			},
 		},
@@ -104,7 +105,7 @@ func TestPromoteAuditMissing(t *testing.T) {
 		},
 	}
 
-	items := Promote(audit, nil, graph, "/test-project")
+	items := Promote(audit, nil, graph, testProjectRoot)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 work items, got %d", len(items))
@@ -135,7 +136,7 @@ func TestPromoteAuditMissing(t *testing.T) {
 	if medItem == nil {
 		t.Fatal("no medium-confidence missing found")
 	}
-	if medItem.OwnerPath != "/test-project/internal/auth/login.go" {
+	if medItem.OwnerPath != tp("internal/auth/login.go") {
 		t.Errorf("missing with symbol: owner = %q, want login.go path", medItem.OwnerPath)
 	}
 
@@ -155,11 +156,11 @@ func TestPromoteDetect(t *testing.T) {
 	t.Parallel()
 
 	detectRows := []DetectRecord{
-		{ChangedPath: "/test-project/internal/a.go", ChangedAt: "2026-01-01T00:00:00Z"},
-		{ChangedPath: "/test-project/internal/b.go", ChangedAt: "2026-01-02T00:00:00Z"},
+		{ChangedPath: tp("internal/a.go"), ChangedAt: "2026-01-01T00:00:00Z"},
+		{ChangedPath: tp("internal/b.go"), ChangedAt: "2026-01-02T00:00:00Z"},
 	}
 
-	items := Promote(nil, detectRows, nil, "/test-project")
+	items := Promote(nil, detectRows, nil, testProjectRoot)
 
 	if len(items) != 2 {
 		t.Fatalf("expected 2 work items, got %d", len(items))
@@ -192,10 +193,10 @@ func TestPromoteAllThreeInputs(t *testing.T) {
 		},
 	}
 	detectRows := []DetectRecord{
-		{ChangedPath: "/test-project/internal/y.go", ChangedAt: "2026-01-01T00:00:00Z"},
+		{ChangedPath: tp("internal/y.go"), ChangedAt: "2026-01-01T00:00:00Z"},
 	}
 
-	items := Promote(audit, detectRows, nil, "/test-project")
+	items := Promote(audit, detectRows, nil, testProjectRoot)
 
 	if len(items) != 3 {
 		t.Fatalf("expected 3 work items (1 orphan + 1 missing + 1 detect), got %d", len(items))
@@ -227,10 +228,10 @@ func TestPromoteWorkItemFields(t *testing.T) {
 		},
 	}
 	detectRows := []DetectRecord{
-		{ChangedPath: "/test-project/internal/y.go", ChangedAt: "2026-01-01T00:00:00Z"},
+		{ChangedPath: tp("internal/y.go"), ChangedAt: "2026-01-01T00:00:00Z"},
 	}
 
-	items := Promote(audit, detectRows, nil, "/test-project")
+	items := Promote(audit, detectRows, nil, testProjectRoot)
 
 	validKinds := map[SourceKind]bool{
 		SourceAuditMissing: true,
@@ -253,7 +254,10 @@ func TestPromoteWorkItemFields(t *testing.T) {
 		if item.OwnerPath == "" {
 			t.Errorf("item[%d]: empty owner_path", i)
 		}
-		if !strings.HasPrefix(item.OwnerPath, "/") {
+		// filepath.IsAbs rather than a "/" prefix: an absolute Windows path
+		// begins with a drive letter, so the prefix test reports every correct
+		// path there as relative.
+		if !filepath.IsAbs(item.OwnerPath) {
 			t.Errorf("item[%d]: owner_path %q is not absolute", i, item.OwnerPath)
 		}
 		if item.Action == "" {
@@ -280,7 +284,7 @@ func TestPromoteDedupAndSort(t *testing.T) {
 		},
 	}
 
-	items := Promote(audit, nil, nil, "/test-project")
+	items := Promote(audit, nil, nil, testProjectRoot)
 
 	// 2 unique orphans (SPEC-A-001 and SPEC-B-002; the third is a dup).
 	if len(items) != 2 {
@@ -288,11 +292,11 @@ func TestPromoteDedupAndSort(t *testing.T) {
 	}
 
 	// Sorted: SPEC-A-001 (internal/a.go) before SPEC-B-002 (internal/b.go).
-	if items[0].OwnerPath != "/test-project/internal/a.go" {
-		t.Errorf("first item owner = %q, want /test-project/internal/a.go", items[0].OwnerPath)
+	if items[0].OwnerPath != tp("internal/a.go") {
+		t.Errorf("first item owner = %q, want %q", items[0].OwnerPath, tp("internal/a.go"))
 	}
-	if items[1].OwnerPath != "/test-project/internal/b.go" {
-		t.Errorf("second item owner = %q, want /test-project/internal/b.go", items[1].OwnerPath)
+	if items[1].OwnerPath != tp("internal/b.go") {
+		t.Errorf("second item owner = %q, want %q", items[1].OwnerPath, tp("internal/b.go"))
 	}
 }
 
@@ -302,7 +306,7 @@ func TestPromoteDedupAndSort(t *testing.T) {
 func TestPromoteEmptyInputs(t *testing.T) {
 	t.Parallel()
 
-	items := Promote(nil, nil, nil, "/test-project")
+	items := Promote(nil, nil, nil, testProjectRoot)
 
 	if len(items) != 0 {
 		t.Errorf("expected 0 items for empty inputs, got %d", len(items))

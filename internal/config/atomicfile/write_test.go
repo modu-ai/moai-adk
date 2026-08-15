@@ -51,6 +51,9 @@ func TestWrite_ReplacesContentAtomically(t *testing.T) {
 // mode MUST survive the write unchanged (not narrowed to 0600, not widened to
 // 0644). Table-driven over the three modes acceptance.md requires.
 func TestWrite_PreservesExistingMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows; os.Chmod only toggles the read-only flag, so the seeded mode drifts before Write is called")
+	}
 	t.Parallel()
 
 	cases := []struct {
@@ -99,6 +102,9 @@ func TestWrite_PreservesExistingMode(t *testing.T) {
 // exist, the helper creates it at the caller-supplied defaultMode (or the
 // canonical default defs.FilePerm) — never at os.CreateTemp's 0600.
 func TestWrite_NewFileUsesDefaultMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows; a fresh file reads back as 0666 regardless of the requested mode")
+	}
 	t.Parallel()
 
 	t.Run("defs.FilePerm default", func(t *testing.T) {

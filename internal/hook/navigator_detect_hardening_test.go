@@ -179,7 +179,7 @@ func TestRunNavigatorDetectSafe_PreCancelledContext(t *testing.T) {
 	input := &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path": "` + specPath + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(specPath) + `}`),
 	}
 
 	start := time.Now()
@@ -214,7 +214,7 @@ func TestRunNavigatorDetectSafe_RecoversFromPanic(t *testing.T) {
 	got := runNavigatorDetectSafe(nil, &HookInput{ //nolint:staticcheck // intentional nil context — verifies the recover path
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path":"` + filepath.Join(tmpDir, "x.go") + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(filepath.Join(tmpDir, "x.go")) + `}`),
 	})
 	if got != nil {
 		t.Errorf("expected nil Result after panic recovery (REQ-NS2-012); got %+v", got)
@@ -232,7 +232,7 @@ func TestRunNavigatorDetectSafe_PassesThroughNonCancel(t *testing.T) {
 	got := runNavigatorDetectSafe(context.Background(), &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path":"` + specPath + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(specPath) + `}`),
 	})
 	if got == nil {
 		t.Fatal("expected non-nil Result for healthy-context pass-through; got nil")

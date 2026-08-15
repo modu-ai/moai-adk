@@ -1,11 +1,34 @@
 package route
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	navsync "github.com/modu-ai/moai-adk/internal/navigator/sync"
 )
+
+// testProjectRoot is the fake project root the route fixtures are written
+// against, made absolute on every platform. A bare "/test-project" is NOT
+// absolute on Windows — filepath.IsAbs requires a volume there — so the owner
+// resolver would take its relative-path branch and join the root onto a path
+// that already carries it. filepath.Abs yields "/test-project" on POSIX and
+// "<volume>:\test-project" on Windows.
+var testProjectRoot = mustAbsTestRoot("/test-project")
+
+func mustAbsTestRoot(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		panic("resolve test project root: " + err.Error())
+	}
+	return abs
+}
+
+// tp joins slash-separated components under testProjectRoot, yielding the
+// native form the code under test produces via filepath.Join.
+func tp(rel string) string {
+	return filepath.Join(testProjectRoot, filepath.FromSlash(rel))
+}
 
 // TestOwnerResolution exercises the three owner-resolution paths × confidence
 // levels (AC-NS4-004, table-driven 004a-004e). Every owner_path MUST be an
@@ -13,7 +36,7 @@ import (
 func TestOwnerResolution(t *testing.T) {
 	t.Parallel()
 
-	const root = "/test-project"
+	root := testProjectRoot
 
 	// Graph fixture for 004c (missing-via-symbol): the design doc tech.md
 	// references @NAV:SYM:auth.ParseBearer, and the symbol is declared in
@@ -28,7 +51,7 @@ func TestOwnerResolution(t *testing.T) {
 				EdgeType:   navsync.EdgeSym,
 				SourceNode: "decision:AUTH",
 				TargetNode: "symbol:auth.ParseBearer",
-				SourcePath: "/test-project/.moai/project/tech.md",
+				SourcePath: tp(".moai/project/tech.md"),
 				LineNumber: 42,
 			},
 			// Code → symbol (the @NAV:SYM declaration in login.go).
@@ -36,7 +59,7 @@ func TestOwnerResolution(t *testing.T) {
 				EdgeType:   navsync.EdgeSym,
 				SourceNode: "symbol:auth.ParseBearer",
 				TargetNode: "symbol:auth.ParseBearer",
-				SourcePath: "/test-project/internal/auth/login.go",
+				SourcePath: tp("internal/auth/login.go"),
 				LineNumber: 15,
 			},
 		},
@@ -56,35 +79,35 @@ func TestOwnerResolution(t *testing.T) {
 		{
 			name:       "004a orphan-direct",
 			sourceKind: SourceAuditOrphan,
-			ownerPath:  "/test-project/internal/foo.go",
+			ownerPath:  tp("internal/foo.go"),
 			confidence: ConfidenceHigh,
 		},
 		// 004b — orphan-empty-impl: empty implementation_path → SPEC-dir, low.
 		{
 			name:       "004b orphan-empty-impl",
 			sourceKind: SourceAuditOrphan,
-			ownerPath:  "/test-project/.moai/specs/SPEC-FOO-002/",
+			ownerPath:  tp(".moai/specs/SPEC-FOO-002") + string(filepath.Separator),
 			confidence: ConfidenceLow,
 		},
 		// 004c — missing-via-symbol: @NAV:SYM resolves via graph → medium.
 		{
 			name:       "004c missing-via-symbol",
 			sourceKind: SourceAuditMissing,
-			ownerPath:  "/test-project/internal/auth/login.go",
+			ownerPath:  tp("internal/auth/login.go"),
 			confidence: ConfidenceMedium,
 		},
 		// 004d — missing-doc-fallback: no symbol → source.file, low.
 		{
 			name:       "004d missing-doc-fallback",
 			sourceKind: SourceAuditMissing,
-			ownerPath:  "/test-project/.moai/project/tech.md",
+			ownerPath:  tp(".moai/project/tech.md"),
 			confidence: ConfidenceLow,
 		},
 		// 004e — detect-direct: changed_path → high.
 		{
 			name:       "004e detect-direct",
 			sourceKind: SourceDetect,
-			ownerPath:  "/test-project/internal/auth/login.go",
+			ownerPath:  tp("internal/auth/login.go"),
 			confidence: ConfidenceHigh,
 		},
 	}
@@ -125,7 +148,7 @@ func TestOwnerResolution(t *testing.T) {
 				}
 			case SourceDetect:
 				gotOwner, gotConf = resolveDetectOwner(DetectRecord{
-					ChangedPath: "/test-project/internal/auth/login.go",
+					ChangedPath: tp("internal/auth/login.go"),
 					ChangedAt:   "2026-01-01T00:00:00Z",
 				}, root)
 			}
@@ -136,7 +159,9 @@ func TestOwnerResolution(t *testing.T) {
 			if gotConf != tc.confidence {
 				t.Errorf("confidence: got %q, want %q", gotConf, tc.confidence)
 			}
-			if !strings.HasPrefix(gotOwner, "/") {
+			// Absoluteness is asked of the host's path grammar rather than a
+			// leading "/", which is not what absolute means on Windows.
+			if !filepath.IsAbs(gotOwner) {
 				t.Errorf("owner_path %q is not absolute", gotOwner)
 			}
 			// Owner-is-path invariant: no person patterns (AC-NS4-004).
@@ -159,12 +184,12 @@ func TestOwnerNilGraph(t *testing.T) {
 	owner, conf := resolveMissingOwner(MissingEntry{
 		DesignName: "Some feature",
 		Source:     AuditSource{File: ".moai/project/tech.md"},
-	}, nil, "/test-project")
+	}, nil, testProjectRoot)
 
 	if conf != ConfidenceLow {
 		t.Errorf("nil graph: confidence = %q, want low", conf)
 	}
-	if owner != "/test-project/.moai/project/tech.md" {
+	if owner != tp(".moai/project/tech.md") {
 		t.Errorf("nil graph: owner = %q, want design-doc path", owner)
 	}
 }
