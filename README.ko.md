@@ -230,7 +230,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있습니다**: `moai cc -k` / `moai glm -k`로 리드와 네 개의 동반 세션을 띄우고, `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo <add|list|next|done>`으로 `backlog` 컬럼을 운영합니다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있습니다.
+> **지금 쓸 수 있습니다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>-<run-id>`로 동반 세션을 하나씩 붙입니다 — 터미널당 하나씩 손으로 띄웁니다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo <add|list|next|done>`으로 `backlog` 컬럼을 운영합니다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있습니다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 

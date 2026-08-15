@@ -399,7 +399,7 @@ flowchart TD
 | CWD 冲突解决 | `(worktree_path, session_id)` 对消除复用路径的歧义 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现已可用**：`moai cc -k` / `moai glm -k` 启动主导会话与四个伴随会话，`moai chain <status|lineage|back|list|prune>` 读取谱系，`moai todo <add|list|next|done>` 操作 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现已可用**：`moai cc -k`（或 `moai glm -k`）启动主导会话，`-k --name <role>-<run-id>` 逐个加入伴随会话 —— 每个终端一个，由人手动启动。`moai chain <status|lineage|back|list|prune>` 读取谱系，`moai todo <add|list|next|done>` 操作 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详情：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 

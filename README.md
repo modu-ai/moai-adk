@@ -397,7 +397,7 @@ flowchart TD
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` / `moai glm -k` launch the lead and the four companion sessions, `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>-<run-id>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
