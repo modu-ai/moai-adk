@@ -12,9 +12,12 @@ templ Overview(vm ShellVM, o OverviewVM) {
 		<div class="stats" data-live="spec">
 			for _, s := range o.Stats {
 				<div class="stat">
-					<span class="stat__l">{ s.Label }</span>
+					<span class="stat__l" data-i18n={ "stat." + i18nSlug(s.Label) }>{ s.Label }</span>
 					<span class="stat__v">{ s.Value }</span>
-					<span class="stat__n">{ s.Note }</span>
+					// The note is left untranslated on purpose where it composes a
+					// count with a word ("4 in-progress"): a flat key cannot carry
+					// the number, and splitting it is a larger change than this one.
+					<span class="stat__n" data-i18n={ "statNote." + i18nSlug(s.Note) }>{ s.Note }</span>
 				</div>
 			}
 		</div>

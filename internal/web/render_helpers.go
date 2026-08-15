@@ -7,6 +7,36 @@ import (
 	"syscall"
 )
 
+// i18nSlug turns a rendered English string into the dictionary key suffix used
+// by the [data-i18n] attribute — "In-progress SPECs" becomes "in-progress-specs".
+//
+// Deriving the key from the text rather than threading one through every call
+// site is what keeps this change small: the panel and stat components each gain
+// one attribute, and the eight call sites stay untouched. The cost is that a
+// heading's wording and its key are coupled, so renaming a heading orphans its
+// translation. app.js leaves an element unchanged when the key is missing, so an
+// orphaned key degrades to the English text rather than blanking the heading.
+func i18nSlug(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	prevDash := false
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevDash = false
+		default:
+			// Collapse every run of punctuation or space into a single dash so
+			// "Must-fix drift" and "Must fix  drift" cannot key differently.
+			if !prevDash && b.Len() > 0 {
+				b.WriteByte('-')
+				prevDash = true
+			}
+		}
+	}
+	return strings.TrimSuffix(b.String(), "-")
+}
+
 // processAlive 가 쓰는 시그널 0 (프로세스를 건드리지 않고 존재만 확인).
 const syscallZero = syscall.Signal(0)
 

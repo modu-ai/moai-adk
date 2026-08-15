@@ -634,7 +634,24 @@
       })
       .finally(function () {
         refreshing = false;
+        stampRefreshed();
       });
+  }
+
+  /* The swap above replaces .body only, so the topbar — and the timestamp in it
+     — survives untouched. Without this the clock would freeze at initial load
+     while the data beside it kept updating, which reads as fresher than it is.
+     Stamped client-side because this marks when the browser received the swap;
+     the server value is only correct for the first paint. */
+  function stampRefreshed() {
+    var el = document.querySelector("[data-live-rendered-at]");
+    if (!el) return;
+    var d = new Date();
+    var pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    el.textContent =
+      pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
   }
 
   function setLive(on) {

@@ -209,7 +209,9 @@ templ topbar(vm ShellVM) {
 			if vm.Crumb != "" {
 				<span class="top__crumb">{ vm.Crumb }</span>
 			}
-			<h1 class="top__h">{ vm.Title }</h1>
+			// The page title was the one rail label with no translated twin: the
+			// nav row read 개요 while the heading beside it still read Overview.
+			<h1 class="top__h" data-i18n={ "screen." + vm.Area }>{ vm.Title }</h1>
 		</div>
 		<div class="top__ctx">
 			for _, c := range vm.Ctx {

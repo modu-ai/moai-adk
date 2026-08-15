@@ -105,11 +105,11 @@ h1,h2,h3{margin:0}
 .nav__row{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 10px;border-radius:var(--r-sm);color:var(--fg-2);font-size:13.5px}
 .nav__row:hover{background:var(--fill);color:var(--fg-1);text-decoration:none}
 .nav__row[aria-current]{background:var(--surface);border:1px solid var(--line);color:var(--fg-1);font-weight:600}
-/* The English echo of a translated rail label. Redundant when the interface is
-   already English, so it is hidden there rather than rendered twice. */
-.nav__en{margin-left:auto;font:var(--text-caption);color:var(--fg-3);font-weight:400}
-html[lang="en"] .nav__en{display:none}
+/* .nav__en was already styled here for an echo no template rendered. Only the
+   hide rule is new: the echo is redundant when the interface is already English,
+   so the row does not read "Overview Overview". */
 .nav__en{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--fg-3)}
+html[lang="en"] .nav__en{display:none}
 .subnav{list-style:none;margin:4px 0 8px;padding:0 0 0 8px;display:flex;flex-direction:column;gap:1px;border-left:1px solid var(--line)}
 .subnav__row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px;padding:0 10px;border-radius:var(--r-sm);color:var(--fg-3);font-size:12.5px}
 .subnav__row:hover{background:var(--fill);color:var(--fg-1);text-decoration:none}
