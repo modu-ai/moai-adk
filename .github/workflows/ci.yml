@@ -72,8 +72,10 @@ jobs:
   # hour, blocking any caller holding a `gh pr checks --watch`.
   # Cross-platform runtime coverage (macOS + Windows race + MX validator) moved
   # to release time via .github/workflows/release-pr-multi-os.yml (full 3-OS
-  # matrix on `release/*` → main PRs). Cross-compilation build coverage stays on
-  # every PR via the `build` job below.
+  # matrix on `release/*` → main PRs). Cross-compilation coverage stays on every
+  # PR via the `build` job below, which both builds the binary and vets the
+  # packages (the vet step is what compiles _test.go for each target platform —
+  # `go build ./cmd/moai/` does not).
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -347,6 +349,20 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      # `go build ./cmd/moai/` below does NOT compile _test.go files, so before
+      # this step the test tier compiled for NO platform on a PR: the test job
+      # is ubuntu-only, and cross-compilation coverage stopped at non-test
+      # sources. A test file that only builds on POSIX therefore reached main
+      # green and broke the Windows leg at release time.
+      # `go vet` type-checks the test files too, and cross-compiles on this same
+      # ubuntu runner in seconds — no extra runner, no runtime execution.
+      - name: Vet cross-platform (compiles _test.go, which `go build` does not)
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: go vet ./...
 
       - name: Cross-compile binary
         env:
