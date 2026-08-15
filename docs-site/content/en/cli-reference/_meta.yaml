@@ -41,3 +41,5 @@ github:
   title: "moai github GitHub Integration"
 "ast-grep":
   title: "moai ast-grep / ast-edit structural search"
+epic:
+  title: "moai epic Epic Progress"

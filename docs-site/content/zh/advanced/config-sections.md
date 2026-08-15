@@ -151,6 +151,29 @@ security:
 
 相关: [安全说明](/zh/advanced/security-notes), [settings.json指南](/zh/advanced/settings-json).
 
+## workflow.yaml — branch_guard
+
+守护主检出（primary checkout）分支状态的可选加入式防护。当多个会话共用一个检出时，其中一方执行的 `git switch` · `git checkout` · `git reset --hard` · `git stash` · `git rebase` 会在毫无提示的情况下改变另一个会话的工作树。该防护只在主检出中拒绝这些命令。
+
+```yaml
+workflow:
+    branch_guard:
+        enabled: false   # 发布默认值
+```
+
+| 键 | 值 | 说明 |
+|----|-----|------|
+| `enabled` | `false`（默认） | 防护完全处于惰性状态。连用于判定的 `git rev-parse` 都不会执行，因此没有附带开销 |
+| `enabled` | `true` | 在主检出中拒绝改变分支状态的命令。在工作树内部照常允许 |
+
+**默认关闭的原因。** 该防护所应对的风险只在多个会话共用一个检出时才会出现。单人使用的仓库不会遇到这个问题，因此发布版本以关闭状态出厂。同时运行多个会话的仓库维护者自行写入上面的键将其开启。
+
+**作用范围。** 防护会区分主检出与工作树，不会阻拦工作树内部的分支操作。`git status` · `git log` · `git diff` · `git fetch` 这类只读命令，以及 `git stash list` · `git merge-base`，即使在开启时也会通过。
+
+**例外与失败方向。** 需要创建分支的 git 负责代理按身份获得豁免，也可以通过 `MOAI_BRANCH_GUARD_EXEMPT=1` 环境变量绕过。判定不确定时（不是仓库、`git rev-parse` 执行失败等）不做拒绝而是放行，只写入审计日志 — 只有在证据确凿时才拒绝。
+
+需要切换分支的工作，正统做法是移到工作树而不是让它被拒绝。具体步骤请参阅 [moai worktree](/zh/cli-reference/worktree/)。
+
 ## 相关文档
 
 - [settings.json指南](/zh/advanced/settings-json) — Claude Code运行时设置

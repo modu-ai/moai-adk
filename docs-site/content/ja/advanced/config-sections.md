@@ -151,6 +151,29 @@ security:
 
 関連: [セキュリティノート](/ja/advanced/security-notes), [settings.jsonガイド](/ja/advanced/settings-json).
 
+## workflow.yaml — branch_guard
+
+主チェックアウト（primary checkout）のブランチ状態を守る opt-in ガードです。1 つのチェックアウトを複数のセッションが同時に使うとき、片方が実行した `git switch` · `git checkout` · `git reset --hard` · `git stash` · `git rebase` は、もう一方のセッションの作業ツリーを何の合図もなく変えてしまいます。このガードはそれらのコマンドを主チェックアウトでのみ拒否します。
+
+```yaml
+workflow:
+    branch_guard:
+        enabled: false   # 配布時の既定値
+```
+
+| キー | 値 | 説明 |
+|------|-----|------|
+| `enabled` | `false`（既定） | ガードは完全に不活性です。判定のための `git rev-parse` すら実行しないため、付随コストがありません |
+| `enabled` | `true` | 主チェックアウトでブランチ状態を変えるコマンドを拒否します。ワークツリー内ではこれまでどおり許可されます |
+
+**既定が無効な理由。** このガードが防ぐ危険は、1 つのチェックアウトを複数セッションで共有するときにだけ生じます。1 人で使うリポジトリでは起こらない問題なので、配布版はガードを無効にしたまま出荷されます。複数セッションを同時に動かすリポジトリの管理者が、上のキーを自分で書いて有効にします。
+
+**適用範囲。** ガードは主チェックアウトとワークツリーを区別し、ワークツリー内のブランチ操作は妨げません。`git status` · `git log` · `git diff` · `git fetch` のような読み取りコマンドと、`git stash list` · `git merge-base` は有効時でも通過します。
+
+**例外と失敗の向き。** ブランチを作る必要のある git 担当エージェントは識別子で例外扱いされ、`MOAI_BRANCH_GUARD_EXEMPT=1` 環境変数でも回避できます。判定が不確実なとき（リポジトリでない、`git rev-parse` の失敗など）は拒否せず通し、監査ログだけを残します — 確かな根拠があるときにのみ拒否します。
+
+ブランチを変える必要のある作業は、拒否させるのではなくワークツリーに移すのが定石です。手順は [moai worktree](/ja/cli-reference/worktree/) を参照してください。
+
 ## 関連ドキュメント
 
 - [settings.jsonガイド](/ja/advanced/settings-json) — Claude Codeランタイム設定

@@ -151,6 +151,29 @@ security:
 
 Related: [Security Notes](/en/advanced/security-notes), [settings.json Guide](/en/advanced/settings-json).
 
+## workflow.yaml — branch_guard
+
+An opt-in guard that protects branch state in the primary checkout. When several sessions share one checkout, a `git switch`, `git checkout`, `git reset --hard`, `git stash` or `git rebase` run by one of them changes another session's working tree with no signal to either side. This guard refuses those commands, and only in the primary checkout.
+
+```yaml
+workflow:
+    branch_guard:
+        enabled: false   # distributed default
+```
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `enabled` | `false` (default) | The guard is fully inert. It does not even run the `git rev-parse` needed to classify the checkout, so it costs nothing |
+| `enabled` | `true` | Branch-state-changing commands are refused in the primary checkout. Inside a worktree they are allowed as before |
+
+**Why it ships off.** The hazard this guard addresses only exists when several sessions share one checkout. It does not arise in a single-developer repository, so the distributed build ships with the guard disabled. A maintainer running several sessions at once writes the key above to turn it on.
+
+**Scope.** The guard distinguishes the primary checkout from a worktree and does not block branch operations inside a worktree. Read-only commands such as `git status`, `git log`, `git diff` and `git fetch`, along with `git stash list` and `git merge-base`, pass even while it is enabled.
+
+**Exemptions and failure direction.** The git agent that has to create branches is exempted by identity, and the `MOAI_BRANCH_GUARD_EXEMPT=1` environment variable also bypasses it. When classification is uncertain (not a git repository, `git rev-parse` failing, and so on) the command is allowed through and only an audit-log entry is written — the guard refuses only on positive evidence.
+
+Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
+
 ## Related Documentation
 
 - [settings.json Guide](/en/advanced/settings-json) — Claude Code runtime settings

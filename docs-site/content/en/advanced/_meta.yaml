@@ -43,6 +43,22 @@ index:
   title: "Dynamic Workflows and Ultracode"
 "mx-tags":
   title: "MX TAG System"
+"mx-scanner-internals":
+  title: "MX Scanner Internals"
+"config-sections":
+  title: "Configuration Sections Reference"
+"harness-learning":
+  title: "Harness Learning Surface"
+"autonomy-tier":
+  title: "Autonomy Tier (MOAI_AUTONOMY_TIER)"
+"kanban-mode":
+  title: "Kanban Mode"
+"manager-kanban":
+  title: "manager-kanban Hierarchical Team"
+"multi-model-audit":
+  title: "Multi-model Audit Convergence"
+"bas-navigator":
+  title: "BAS Navigator 3-Stage Codemap Synchronization"
 "analyze-first-routing":
   title: "Analyze-First Request Processing Pipeline"
   weight: 65

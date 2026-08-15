@@ -66,13 +66,52 @@ cd docs-site/content && for f in $(cd ko && find . -name '*.md'); do
 done
 ```
 
-Section-count parity per locale tree (compare totals):
+Section-count parity **per page**, ratcheted against a checked-in baseline.
+
+Comparing tree totals is not a parity check: per-page divergences in opposite
+directions cancel, so a page where ko leads en nets out against a page where
+en leads ko and the total looks healthy. Compare each page against its own
+three counterparts instead.
+
+The gate is a **ratchet**, not an absolute check. `docs-site/.locale-parity-baseline`
+lists the pages that already diverge; the gate fails on any divergent page NOT
+in that list. An absolute check would fail on every baselined page from the
+first run, and a gate that fails on day one gets switched off — which is worse
+than the weak check it replaces. Ratcheting means the debt is explicit and
+auditable, and it can only shrink.
 
 ```bash
-for loc in ko en ja zh; do
-  printf '%s: %s\n' "$loc" "$(grep -rc '^## ' docs-site/content/$loc --include='*.md' | awk -F: '{s+=$2} END {print s}')"
-done
+cd docs-site/content
+
+# Current divergence set: pages whose ko/en/ja/zh H2-and-deeper counts disagree.
+# One grep pass over the whole tree — a per-file loop over 143x4 files does not
+# finish inside a 2-minute budget.
+grep -rc '^#\{2,\} ' ko en ja zh --include='*.md' \
+| awk -F: '
+    { i=index($1,"/"); loc=substr($1,1,i-1); page=substr($1,i+1)
+      n[page,loc]=$2; pages[page]=1 }
+    END { for (p in pages)
+            if (n[p,"en"]!=n[p,"ko"] || n[p,"ja"]!=n[p,"ko"] || n[p,"zh"]!=n[p,"ko"])
+              print p }' \
+| sort > /tmp/parity-now.txt
+
+grep -v '^#' ../.locale-parity-baseline | grep -v '^[[:space:]]*$' | sort > /tmp/parity-base.txt
+
+comm -23 /tmp/parity-now.txt /tmp/parity-base.txt   # NEW divergence  -> FAIL
+comm -13 /tmp/parity-now.txt /tmp/parity-base.txt   # converged pages -> prune baseline
 ```
+
+**Failure condition (explicit):** the first `comm` prints one or more page
+paths. Any output there is a FAIL — a page that was previously in parity has
+lost it, or a newly added page landed unbalanced. Fix the page, or (only with a
+deliberate decision) add it to the baseline; adding a line is admitting new debt.
+
+The second `comm` is informational: those pages have converged and should be
+pruned from the baseline so the ratchet tightens. Not pruning is not a failure.
+
+A missing counterpart file also surfaces here (its count reads as empty and
+therefore disagrees), which overlaps with the file-existence check above — that
+redundancy is intentional.
 
 README 4-file heading-count parity:
 
@@ -98,7 +137,7 @@ grep -rnP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' docs-site/co
 
 | Dimension | Checks | Threshold |
 |-----------|--------|-----------|
-| `locale-parity` | §4 (all parity checks clean = 1.0) | 1.0 (must_pass) |
+| `locale-parity` | §4 (file existence clean + zero NEW section-count divergence + README parity = 1.0) | 1.0 (must_pass) |
 | `build-clean` | §1 (build warning-free + sitemap = 1.0) | 1.0 (must_pass) |
 | `style-compliance` | §3 + §5 (proportion of clean checks) | 0.95 |
 | `content-fidelity` | §2 + facts/figures preserved vs canonical | 0.9 |
