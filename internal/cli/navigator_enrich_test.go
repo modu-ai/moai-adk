@@ -78,17 +78,26 @@ func TestNavigatorEnrich_AtomicWriteBarrier(t *testing.T) {
 
 	// While the barrier exists, the .tmp file should be present and the final
 	// file absent (rename blocked).
-	// Wait briefly for the goroutine to reach the barrier.
-	tmp := filepath.Join(root, ".moai", "project", "codemaps", "capability-symbols.md.tmp")
+	// Poll the barrier flag itself — the goroutine's own "I reached the
+	// barrier" signal, written AFTER the .tmp file — so the unsynchronized
+	// window between .tmp creation and barrier creation cannot be observed.
+	// Polling the .tmp file instead raced the goroutine's schedule and failed
+	// ~5-7% of isolated runs (t24 investigation).
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if _, err := os.Stat(tmp); err == nil {
+		if _, err := os.Stat(barrier); err == nil {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
 	if _, err := os.Stat(barrier); err != nil {
-		t.Fatalf("barrier file not created (goroutine did not reach barrier)")
+		t.Fatalf("barrier flag not created within 2s deadline (goroutine did not reach barrier): %v", err)
+	}
+	// The .tmp file is written before the barrier flag, so it provably exists
+	// while the barrier is held (rename blocked).
+	tmp := filepath.Join(root, ".moai", "project", "codemaps", "capability-symbols.md.tmp")
+	if _, err := os.Stat(tmp); err != nil {
+		t.Errorf("tmp file missing while barrier held: %v", err)
 	}
 	// Final file must NOT exist yet (rename blocked on barrier).
 	if _, err := os.Stat(filepath.Join(root, ".moai", "project", "codemaps", "capability-symbols.md")); err == nil {

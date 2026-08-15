@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -132,16 +133,25 @@ func atomicWrite(path string, data []byte) error {
 	}
 
 	// Test hook: synchronized barrier for the atomic-rename fixture
-	// (mirrors 001's NAVIGATOR_PRE_RENAME_BARRIER pattern). The barrier is
-	// consumed on first use so only the first output file blocks; subsequent
-	// files in the same run skip it.
+	// (mirrors 001's NAVIGATOR_PRE_RENAME_BARRIER pattern). The barrier is a
+	// process-global one-shot latch: os.Unsetenv consumes it, so only the
+	// first output file blocks and any second concurrent caller would
+	// silently skip it (single-caller today, test-only).
 	if barrier := os.Getenv("NAVIGATOR_PRE_RENAME_BARRIER"); barrier != "" {
 		_ = os.Unsetenv("NAVIGATOR_PRE_RENAME_BARRIER")
 		_ = os.WriteFile(barrier, []byte("ready"), 0o644)
-		for {
+		// Bounded wait: sleep per iteration plus an overall ceiling so a
+		// test that fails before removing the barrier cannot strand a
+		// CPU-burning goroutine (and race t.TempDir cleanup) for the rest
+		// of the package run. Passing runs remove the barrier within
+		// milliseconds; the 5s ceiling only fires on an already-failing
+		// test, after which the rename proceeds and the goroutine exits.
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
 			if _, err := os.Stat(barrier); err != nil {
 				break // barrier removed → proceed to rename
 			}
+			time.Sleep(time.Millisecond)
 		}
 	}
 
