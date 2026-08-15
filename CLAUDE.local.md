@@ -117,17 +117,17 @@ Never add files directly to the local project directories without also adding th
 .claude/settings.json          # Rendered from .json.tmpl
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
-.claude/rules/moai/workflow/lifecycle-sync-gate.md         # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
-.claude/rules/moai/workflow/repo-local-pr-policy.md        # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
+.claude/rules/local/lifecycle-sync-gate.md                 # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
+.claude/rules/local/repo-local-pr-policy.md               # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
 .claude/agents/harness/hns-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
 scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
 scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
-.claude/skills/moai-workflow-ci-loop/                      # Dev-only: CI watch+autofix skill (removed from template; mirror kept)
-.claude/rules/moai/workflow/ci-watch-protocol.md           # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
-.claude/rules/moai/workflow/ci-autofix-protocol.md         # Dev-only original form: governs scripts/ci-autofix (template rewritten script-free)
+.claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
+.claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
+.claude/rules/local/ci-autofix-protocol.md                 # Dev-only original form: governs scripts/ci-autofix (template rewritten script-free). §2.3 경로 충돌 유형 — 템플릿과 달라야 하는 파일이 템플릿 경로에 있으면 매 update마다 덮어써진다(2026-08-15 실제 발생). 주의: 다음 update가 `.claude/rules/moai/workflow/`에 템플릿판(script-free)을 다시 깔면 두 판본이 함께 로드되므로, 어느 쪽을 살릴지 정리 필요
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
@@ -139,9 +139,53 @@ CLAUDE.local.md                # This file
 .moai/reports/                 # Generated reports
 .moai/manifest.json            # Generated at runtime
 .moai/status_line.sh           # Rendered from .sh.tmpl
-.moai/config/astgrep-rules/sgconfig.yml                                    # Dogfood-only: experimental multi-lang ast-grep config (SPEC-ID 포함, mirror 시 §25 위반)
-.moai/config/astgrep-rules/{cpp,csharp,elixir,flutter,go,java,javascript,kotlin,php,python,r,ruby,rust,scala,security,swift,typescript}/  # Dogfood-only: 실험적 언어별 ast-grep 룰(10/17 빈 stub); 배포 룰셋은 root go-hardcoding.yml만. 16-언어 룰셋 정식 배포는 후속 SPEC
+.moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: `moai ast-grep` CLI의 `--rules-dir` 기본값은 여전히 구 경로라 CLI 직접 호출 시 경로를 명시할 것
 ```
+
+### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
+
+**위 Local-Only 목록에 적혀 있다는 사실만으로는 파일이 보호되지 않는다.** 2026-08-15 `moai update --yes` 실행에서 이 목록에 명시된 파일 12개가 실제로 삭제됐다 — 목록은 사람과 AI가 읽는 문서일 뿐, 삭제를 수행하는 Go 코드는 이 파일을 읽지 않는다.
+
+**삭제 주체**: `CleanMoaiManagedPaths` (`internal/cli/update/deploy/deploy.go:29`). diff 기반이 아니다. 템플릿 재배포 **전에** 아래 뿌리를 `os.RemoveAll`로 **통째 삭제**한 뒤 임베드 템플릿에 있는 것만 다시 깐다. 템플릿에 대응 파일이 없으면 복구되지 않는다.
+
+```
+.claude/settings.json      .claude/commands/moai     .claude/agents/moai
+.claude/skills/moai*(글롭) .claude/rules/moai         .claude/output-styles/moai
+.claude/hooks/moai         .moai/config              (deploy.go:122)
+```
+
+`.moai-skip-cleanup` 마커는 이 함수가 **참조하지 않는다**(참조 0회 — v2→v3 clean-reinstall 경로 전용). 사용자가 편집할 수 있는 보호 목록 설정은 **존재하지 않는다**.
+
+**[HARD] 규율 — 로컬 전용 파일을 위 뿌리 안에 두지 않는다.** 새 로컬 전용 파일을 만들 때 위치부터 정한다:
+
+| 용도 | 금지 (삭제됨) | 안전 |
+|---|---|---|
+| 룰 | `.claude/rules/moai/**` | `.claude/rules/` 하위의 **비-moai** 디렉터리 |
+| 스킬 | `.claude/skills/moai*` | `moai`로 **시작하지 않는** 이름 (글롭 회피) |
+| ast-grep 룰셋 | `.moai/config/astgrep-rules/` | `.moai/` 하위 **`config/` 밖** + `gate.yaml`의 `ast_grep_gate.rules_dir` 지정 (빈 값일 때만 기본 경로 폴백 — `internal/cli/gate.go:160-161`) |
+| 하네스 | — | `.claude/skills/hns-*`, `.claude/agents/harness/`, `.claude/commands/harness/`, `.moai/harness/` (`IsUserOwnedNamespace` 백업 대상) |
+
+**[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 0이어야 diff 귀속이 가능하다.
+
+```bash
+git status --porcelain | grep -v '^??' | wc -l        # 실제 변경 수
+git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0이어야 정상
+# 삭제가 있으면 (전부 추적 파일이므로 git이 안전망):
+git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
+```
+
+**[HARD] 보고된 파일 수를 믿지 않는다.** `Updated N files`의 N은 관리 대상 뿌리 **밖** 파일만 센다(`internal/cli/update/plan/plan.go:73` `if IsMoaiManaged(...) { continue }`). 2026-08-15 실측: 보고 32, 실제 175. **삭제는 이 요약에 전혀 나타나지 않는다.**
+
+**삭제만이 손실이 아니다 — 덮어쓰기 2종** (2026-08-15 실측):
+
+- **경로 충돌**: 템플릿과 **내용이 달라야 하는** 로컬 파일이 템플릿 경로에 있으면, 삭제가 아니라 템플릿판으로 **덮어써진다**. `ci-autofix-protocol.md`(dev 원본 vs 템플릿 script-free판)가 그렇게 유실됐다. 파일이 남아 있어 삭제 검사(`git status | grep '^ D'`)로는 안 잡힌다 — **내용이 달라야 하는 파일은 반드시 관리 대상 밖에 둔다.**
+- **`.sh` / `.sh.tmpl` 쌍 드리프트**: 배포되는 것은 `.tmpl` 쪽인데 편집이 `.sh` 쪽에만 들어가면, update가 배포본을 **구버전으로 되돌린다**. 실측: `handle-{agent-hook,task-completed,teammate-idle,stop-goal}.sh` 4쌍에서 `.sh`에만 있던 SPEC-STOPCHAIN-TRIM-001 가드(41줄)가 사라짐. `sync-phase-quality-gate.sh`는 `.tmpl`이 없어 무사. **훅 래퍼를 고칠 때는 `.sh`와 `.sh.tmpl`을 함께 고친다.**
+  ```bash
+  # 쌍 존재 확인 + 드리프트 점검
+  for f in internal/template/templates/.claude/hooks/moai/*.tmpl; do b=${f%.tmpl}; [ -f "$b" ] && diff -q "$b" "$f" >/dev/null || echo "DRIFT $(basename $b)"; done
+  ```
+
+**참고 — 관련 결함 3건** (별도 카드 소관): ① `CleanMoaiManagedPaths`에 보호 목록 부재(근본 원인) ② `archiveLegacySkills`가 wipe **이후**(`update.go:513`)에 호출돼 원본이 이미 없어 `0 archived`로 조용히 통과 ③ `--dry-run`이 `CleanMoaiManagedPaths` 삭제 예정 목록을 미리보기하지 않음.
 
 > **§2.2 astgrep-rules 로컬 전용 예외 (2026-07-02)**: 로컬 `.moai/config/astgrep-rules/`의 언어별 서브디렉터리 트리 + `sgconfig.yml`은 dogfood-experimental(10/17 빈 `.gitkeep` stub, 나머지는 데모성 스캐폴드, 메시지 언어 혼재 ko/en, `sgconfig.yml`이 존재하지 않는 `utils` ruleDir 참조 + SPEC-ID 포함)이라 템플릿에 미러하지 않는다. 배포 사용자는 template-managed `go-hardcoding.yml`(root, SPEC-ID stripped) 1개를 baseline으로 받는다. **(2026-08-01 정정)** 종전 이 절은 "`gate.yaml`/`gate` 로더 부재 → `AstGrepGate.Enabled` 항상 컴파일 기본값 false"라고 적었으나 **두 주장 모두 현재 main에서 거짓**이다: 로더는 `internal/config/loader_gate.go` 에 존재하며 `internal/config/loader.go` 의 `Loader.Load` 에서 호출된다(SPEC-CONFIG-AUDIT-REPAIR-001 M2, PR #1142). 실제 기본값은 `internal/config/defaults.go` 의 `AstGrepGate{Enabled: true, BlockOnError: false, WarnOnlyMode: true}` — 즉 **차단 없는 권고 모드로 켜져 있고**, 차단(blocking)만이 `gate.yaml` opt-in이다. 단, **릴리스된 `v3.0.1` 에는 로더가 없어**(`loadGateSection` 호출 0회) 해당 버전 사용자에게는 종전 서술이 여전히 사실이다 — 이것이 이슈 #1265 의 내용이며, 해결책은 코드 수정이 아니라 릴리스다. 16-언어 정식 룰셋 배포(메시지 영어 통일 + 데모 stub → 실제 패턴 + `utils` 정리 + SPEC-ID strip + `sg` config-mode 검증)는 별도 후속 SPEC 소관.
 
@@ -188,7 +232,7 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 ### Before Commit
 - [ ] Code in English
-- [ ] Tests passing (`go test ./...`)
+- [ ] 변경 대상 패키지 테스트 통과 (`go test ./internal/<pkg>/...`) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 통합 검증 — 그때는 **직렬로 1건씩**
 - [ ] Linting passing (`golangci-lint run`)
 - [ ] Templates regenerated (`make build`)
 
@@ -214,6 +258,53 @@ feat(template): add SessionEnd hook to settings.json generator
 fix(cli): prevent race condition in hook execution
 test(settings): add TestEnsureGlobalSettingsEnv test cases
 ```
+
+### §4.1 로컬 통합 레인 (develop)
+
+카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다.
+
+```
+main (primary 체크아웃, 읽기 전용 — BranchGuard가 지킴)
+ └─ develop (로컬 전용·일회용 시험대, 원격 push 금지)
+      ↑ merge — 합쳐서 돌려보는 자리
+      ├─ worktree: 카드A ─┐
+      ├─ worktree: 카드B ─┼→ main에서 분기, PR도 각자 main으로
+      └─ worktree: 카드C ─┘        ↓
+                              CI 전 매트릭스 = 최종 판정
+```
+
+**[HARD] 다섯 가지 규율**
+
+1. **`develop`은 원격에 올리지 않는다.** push 금지, upstream 설정 금지. 원격에 없으므로 `.github/workflows/` 13개의 `branches: [main]` 트리거도, Vercel 프로덕션 브랜치도 건드릴 필요가 없다 — 이것이 2026-08-14에 기각된 GitFlow 안과 갈리는 지점이다.
+2. **카드 브랜치는 `develop`이 아니라 `main`에서 판다.** PR이 develop의 병합 이력을 끌고 들어가지 않게 한다.
+3. **`develop`은 일회용이다.** 라운드가 끝나면 버리고 main에서 다시 만든다. 상설로 두면 어제 기각 사유("develop도 main처럼 뒤처진다")를 그대로 재현한다.
+4. **PR은 카드별로 main에 낸다.** N개를 develop에 모아 한 PR로 내면 리뷰 품질이 떨어지고 CodeRabbit rate limit이 악화된다(2026-08-15 실측 사례 t26).
+5. **통합 검증은 직렬로 1건씩.** 로컬 develop의 "통과"는 조기 신호일 뿐 CI급 근거가 아니다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. **판정은 언제나 main PR의 CI.**
+
+**운영 절차**
+
+```bash
+# 라운드 시작 — develop을 main 기준으로 재생성 (BranchGuard 때문에 manager-git 위임 필요)
+#   git branch -D develop && git branch develop main
+# 통합 워크트리 진입 (raw `git worktree add` 금지 — 런처 경유)
+moai cc -w develop
+
+# 워크트리 안에서 카드 브랜치를 합쳐 시험
+git -C <worktree> merge --no-ff <카드브랜치>
+go build ./... && go vet ./... && go test ./internal/<영향패키지>/...
+
+# 통과하면 카드 브랜치를 push하고 main PR — develop은 push하지 않는다
+# 라운드 종료 후 워크트리 폐기
+moai worktree done develop
+```
+
+**로컬 CI를 두지 않는 이유** — 검토 후 기각(2026-08-15):
+
+- **self-hosted runner**: job을 보내는 주체가 GitHub이라 **원격에 없는 ref에는 애초에 job이 오지 않는다** — 로컬 develop 검증에 무용하다. 게다가 `modu-ai/moai-adk`는 **공개 저장소**라, 러너를 붙이면 누구나 포크 PR로 이 머신에서 임의 코드를 실행할 수 있다. 공개 저장소에 권장되지 않는 구성이다.
+- **`act`**: 리눅스 컨테이너 한정이라 이 리포의 darwin×2 / windows 빌드와 macOS·Windows 통합 테스트를 재현하지 못한다. 실제 CI와 어긋나면 진단이 틀어진다.
+- **비용 근거 없음**: GitHub 공식 문서 — *"GitHub Actions usage is free for self-hosted runners and for public repositories that use standard GitHub-hosted runners."* 공개 저장소는 **분 수 제한 없이 무료**다. CI를 아낄 이유가 없다.
+
+**알려진 마찰** — BranchGuard가 읽기 전용 `git branch --list` / `git branch -vv`까지 막는다(패턴 `\bgit\s+branch\b`가 조회를 구분하지 않음). §18 독트린은 `git branch -vv`를 허용 조회로 명시하므로 과다 매칭이다(`git merge-base`는 제외 처리돼 있는 것과 대비). 우회: `git show-ref --verify refs/heads/<name>`.
 
 ---
 
