@@ -48,10 +48,16 @@ Most of what accumulates in the backlog is chores: a one-line fix, a stale refer
 | Class | Shape | Path |
 |---|---|---|
 | A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` and `review` are skipped |
-| B — defect, cause unknown | Something is wrong and the cause has not been established | Investigate → fix → pull request; the SPEC is skipped, but the evidence that established the cause is recorded in `progress.md` |
+| B — defect, cause unknown | Something is wrong and the cause has not been established | `run → review → sync`; `plan` is skipped, so no SPEC exists |
 | C — design change | The change contains a decision, or spans subsystems | All four columns |
 
-[HARD] The justification written down for a Class A card is the three properties above — one file, no design judgement, CI covers the regression. It is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
+[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column.
+
+This is the same shape as the CodeRabbit section below. A class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
+
+The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
+
+**Class B skips `plan`, not `review`** — an unestablished cause is precisely what review catches, so it is the last column to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the evidence that established the cause — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
 
 **Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch.
 
@@ -87,10 +93,12 @@ A CodeRabbit row counts as evidence only when BOTH of these hold:
 
 1. The commit status description reads `Review completed`:
 
-```bash
-gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-  --jq '[.statuses[] | select(.context == "CodeRabbit")] | last | .description'
-```
+    ```bash
+    gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+      --jq '.statuses[] | select(.context == "CodeRabbit") | .description'
+    ```
+
+    This predicate assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
 
 2. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
@@ -165,7 +173,9 @@ Two properties of the form are load-bearing, and both are easy to "simplify" awa
 - **One invocation.** Each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command. The scrub and the command travel together or the scrub does nothing.
 - **No subshell.** Wrapping it as `( unset …; <command> )` trips the guard's "too complex to verify" refusal instead — a different rejection with the same effect.
 
-Moving the command into a script file is not a standing workaround. The guard cannot read inside a script, so the whole check set is bypassed for that payload — including the git-redirect checks that are the guard's actual purpose and the part worth keeping. A script is acceptable only as a deliberate one-off whose contents were read first.
+Moving the command into a script file is not a workaround — not as a standing pattern and not as a one-off. The guard cannot read inside a script, so the entire check set is bypassed for that payload, including the git-redirect checks that are the guard's actual purpose and the part worth keeping.
+
+Reading the script first does not restore them. A human read is not the guard running: the checks stay bypassed however carefully the file was reviewed, and a review performed once says nothing about what the file contains the next time it is invoked. Where a verification cannot be expressed as one compound invocation, that is a signal to reduce the verification, not to route it around the guard.
 
 ## Boundaries — what this protocol does not do
 
