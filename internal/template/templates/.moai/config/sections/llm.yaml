@@ -39,14 +39,15 @@ llm:
   # Column intent (anchored on a long-horizon coding-agent benchmark measuring
   # score, cost per task, output tokens, and agent steps at every effort level,
   # then overridden by the phase-weighted policy below):
-  #   high   - quality first. `max` on the plan rows and on the two rare-but-
+  #   high   - quality first. `max` is reserved for the two rare-but-
   #            decision-critical rows (run implementation, escalation advisor).
   #   medium - the working default. NOT the cost-minimal derivation: the
   #            benchmark anchor put manager-develop at `medium` and derived the
-  #            rest from it, but the phase-weighted policy spends past that knee
-  #            deliberately — plan (manager-spec, plan-auditor) takes `max`,
-  #            while run (manager-develop), review (sync-auditor) and sync
-  #            (manager-docs) take `high`. Do not re-derive back onto the anchor.
+  #            rest from it, but the phase-weighted policy departs from that knee
+  #            deliberately — run (manager-develop) and review (sync-auditor)
+  #            take `high`, plan (manager-spec, plan-auditor) steps down to
+  #            `high`, and sync (manager-docs) steps down to `low`. Do not
+  #            re-derive back onto the anchor.
   #   low    - economical. Opus `low` still outscores Sonnet at any effort and
   #            costs less per task, so it is the floor for agentic rows.
   #
@@ -63,10 +64,13 @@ llm:
   # `high` at materially higher cost, so it is strictly dominated. `max` is the
   # only level above `high`, so a row wanting more than `high` takes `max`.
   #
-  # Under a GLM backend only part of this matrix is observable: z.ai's 3-state
+  # Under a GLM backend these cells are NOT what reaches the wire: z.ai's 3-state
   # reasoning control collapses {medium, high} onto one state and {xhigh, max}
-  # onto another, and manager-develop is forced to the ceiling by the coding-max
-  # override regardless. Plan and sync move; run and review do not.
+  # onto another, but the delivery channel is session-global — one
+  # ANTHROPIC_REASONING_EFFORT value per session, never a per-agent one. These
+  # cells record per-agent intent and take effect on Claude-backed sessions,
+  # where agent frontmatter carries the effort; they do not by themselves change
+  # delivered GLM behavior.
   #
   # manager-git / Explore are profile-invariant.
   #
@@ -76,27 +80,27 @@ llm:
   # no agent file, so its effort is stated at call time, never persisted.
   profiles:
     high:
-      manager-spec:    { model: opus,   effort: max }
-      plan-auditor:    { model: opus,   effort: max }
+      manager-spec:    { model: opus,   effort: high }
+      plan-auditor:    { model: opus,   effort: high }
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: max }
       super-advisor:   { model: opus,   effort: max }
       manager-design:  { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: high }
       e2e-tester:      { model: opus,   effort: medium }
-      manager-docs:    { model: opus,   effort: high }
+      manager-docs:    { model: opus,   effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     medium:
-      manager-spec:    { model: opus,   effort: max }
-      plan-auditor:    { model: opus,   effort: max }
+      manager-spec:    { model: opus,   effort: high }
+      plan-auditor:    { model: opus,   effort: high }
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: high }
       super-advisor:   { model: opus,   effort: high }
       manager-design:  { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: medium }
       e2e-tester:      { model: opus,   effort: low }
-      manager-docs:    { model: opus,   effort: high }
+      manager-docs:    { model: opus,   effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     low:
@@ -135,16 +139,16 @@ llm:
     high:
       read-only-extract:    { effort: low }     # <- Explore row
       mechanical-transform: { effort: low }     # <- manager-git row
-      synthesize:           { effort: high }    # <- manager-docs row
-      research:             { effort: max }     # <- plan-auditor row
+      synthesize:           { effort: low }     # <- manager-docs row
+      research:             { effort: high }    # <- plan-auditor row
       verify-judge:         { effort: high }    # <- sync-auditor row
       implement:            { effort: max }     # <- manager-develop row
       design-architecture:  { effort: high }    # <- manager-design row
     medium:
       read-only-extract:    { effort: low }
       mechanical-transform: { effort: low }
-      synthesize:           { effort: high }
-      research:             { effort: max }
+      synthesize:           { effort: low }
+      research:             { effort: high }
       verify-judge:         { effort: high }
       implement:            { effort: high }
       design-architecture:  { effort: medium }

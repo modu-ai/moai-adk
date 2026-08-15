@@ -15,7 +15,7 @@ added_in: "v3.1"
 {{< /callout >}}
 <!-- @value: self-learning, multi-session-orchestration -->
 
-칸반 모드는 한 번에 한 SPEC을 단일 세션으로 밀고 가던 구 모델에서, **다중 세션 보드**로 진화하는 방향을 제시합니다. 보드의 리드 세션 하나가 지휘하고, 여러 run 세션이 각자의 worktree에서 동시에 일하며, 완료된 카드가 보드를 타고 흘러갑니다. 그 보드의 뼈대가 Origin-Trail Chain입니다.
+칸반 모드는 한 번에 한 SPEC을 단일 세션으로 밀고 가던 구 모델을 **다중 세션 보드**로 바꿉니다. 리드 세션 하나가 지휘하고, 동반 세션들이 각자의 worktree에서 동시에 일하며, 완료된 카드가 보드를 타고 흘러갑니다. 그 보드의 뼈대가 Origin-Trail Chain입니다.
 
 세션 런처에 `--kanban`(짧게 `-k`) 스위치를 붙여 시작합니다. 새 하위 명령도, 새 런타임도 아닙니다 — 칸반 체인(`kanban_chain`)이라는 골 프리셋(완료 조건을 미리 정해 둔 묶음)이 올라타는 진입 계약일 뿐입니다. 체인의 네 단계(plan → run → verify → sync)와 휴먼 게이트는 기존 `/moai goal` 엔진과 `full-pipeline` 체이닝 규칙을 그대로 상속합니다.
 
@@ -120,24 +120,30 @@ worktree를 스폰하는 시점에는 아직 세션 ID를 모릅니다 — Claud
 
 ## 현재 구현 상태
 
-{{< callout type="info" title="로드맵" >}}
-Origin-Trail Chain은 현재 **Phase 1** (internal/chain/ 패키지 — append-only JSONL 저장소 계층)까지 머지되었습니다.
+v3.1에서 칸반 모드의 진입 경로는 끝까지 이어져 있습니다. 다만 표면마다 완성도가 다르므로, 무엇을 지금 쓸 수 있고 무엇이 아직 라이브러리 계층에만 있는지를 구분해 둡니다.
 
-`moai chain` / `moai kanban` CLI 표면과 다중 세션 보드 리드/런 컬럼은 후속 phase에서 도입 예정입니다. 이 문서는 rename 이후의 목표 상태를 설명합니다 — 아직 동작하지 않는 기능을 "이미 동작한다"고 서술하지 않습니다.
-{{< /callout >}}
+### 지금 명령으로 닿는 것
 
-Phase 1이 제공하는 것:
+- **`-k` / `--kanban` 런처 스위치** — `moai cc`와 `moai glm` 양쪽에 배선되어 있습니다. 인자 없이(또는 SPEC 식별자와 함께) 주면 리드로 진입하고, `-k --name <역할>-<run-id>` 형태로 주면 이미 열린 런에 동반 세션으로 합류합니다. 혼합 백엔드 런처인 `moai cg`는 센티널과 함께 거부합니다.
+- **부트스트랩 안내** — 리드 세션이 열리면 SessionStart 훅이 런 식별자와 네 개의 동반 세션 실행 명령(`moai cc -k --name plan-<run-id>` 등)을 사용자 언어로 출력합니다. 동반 세션에 닿는 안내는 어느 런에 합류했는지만 알립니다. 합류한 역할은 안내에 없고 세션 레코드에 따로 기록됩니다.
+- **세션 레코드** — 진입한 세션의 역할·백엔드·대상 SPEC이 기록됩니다.
+- **`moai chain` CLI** — `status`(현재 노드 요약), `lineage`(루트에서 리프까지의 계보), `back`(부모 노드의 재개 목표와 명령), `list`(모든 노드와 신선도), `prune`(종료된 오래된 노드를 아카이브로 접기) 다섯 하위 명령이 동작합니다. 아래의 `internal/chain/` 저장 계층이 그 뒷단입니다.
+- **디스패치** — 카드를 컬럼 사이로 옮기는 주체는 리드 세션의 오케스트레이터입니다. 규약은 `.claude/rules/moai/workflow/kanban-dispatch.md`에 있고, 동반 세션은 사람이 각 터미널에서 직접 실행합니다. 세션이 다른 세션을 띄우는 경로는 없습니다.
 
-- `internal/chain/store.go` — append-only JSONL writer/reader. `O_APPEND`로 한 줄씩 덧붙이며, corrupt line을 skip + warn으로 건너뜁니다.
+### 체인 저장 계층
+
+- `internal/chain/store.go` — append-only JSONL writer/reader. `O_APPEND`로 한 줄씩 덧붙이며, 깨진 줄은 skip + warn으로 건너뜁니다.
 - `internal/chain/node.go` — `WorktreeNode`(13 필드) + `ChainEvent` 타입 정의.
 - `internal/chain/populate.go` — `Populator`: 스폰 시점 노드 생성, 세션 ID backfill, 마일스톤 갱신, completion-edge 기록, 현재 노드 해석.
 - `GenerateNodeID` — 단조 타임스탬프 + 난수로 외부 의존성 없이 ID 생성.
 
-Phase 1이 아직 제공하지 않는 것:
+### 아직 호출자가 없는 것
 
-- `moai chain status` / `moai chain lineage` / `moai kanban` CLI 명령
-- 다중 세션 보드의 리드/런 컬럼 표면
-- `--kanban` / `-k` 런처 스위치의 실제 배선
+`internal/kanban/`의 **보드 상태 저장소**는 코드로는 완성되어 있습니다 — 여섯 컬럼 닫힌 열거(backlog → plan → run → review → sync → done), primary checkout 한 곳으로 수렴하는 단일 원점 상태 파일, 파일 락, 손상 복구, SPEC 프론트매터 상태와의 조정(불일치를 고치지 않고 표시만 함)까지 있습니다. 그러나 이를 읽거나 쓰는 프로덕션 호출자가 아직 없습니다. 즉 컬럼 위치는 파일이 아니라 리드 세션의 기억과 SPEC 상태로 유지되며, 보드를 조회하거나 카드를 옮기는 CLI 동사는 존재하지 않습니다.
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} **`moai kanban`이라는 명령은 없습니다.** 칸반 모드의 CLI 표면은 런처 스위치 `-k`와 계보 조회 명령 `moai chain`뿐입니다.
+{{< /callout >}}
 
 ## 칸반 모드로 세션 열기
 
@@ -145,23 +151,47 @@ Phase 1이 아직 제공하지 않는 것:
 **슬래시 커맨드가 아닙니다**: 칸반 모드는 Claude Code 대화창의 `/` 명령이 아니라 세션 자체를 여는 스위치입니다. 터미널에서 세션을 시작할 때 붙입니다.
 {{< /callout >}}
 
-터미널에서 세션 런처에 `--kanban`을 붙여 시작합니다. SPEC 식별자를 함께 주면 그 SPEC을 목표로 하고, 빠뜨리면 첫 프롬프트에서 plan-phase를 시작합니다.
+터미널에서 MoAI 런처(`moai cc` 또는 `moai glm`)에 `--kanban`(짧게 `-k`)을 붙여 시작합니다. SPEC 식별자를 함께 주면 그 SPEC을 목표로 하고, 빠뜨리면 첫 프롬프트에서 plan-phase를 시작합니다.
 
 ```bash
-# SPEC을 목표로 칸반 체인 진입
-$ claude --kanban SPEC-AUTH-001
+# 리드로 진입 — SPEC을 목표로 칸반 체인 시작
+$ moai cc --kanban SPEC-AUTH-001
 
 # 짧은 형태
-$ claude -k SPEC-AUTH-001
+$ moai cc -k SPEC-AUTH-001
 
 # 목표 SPEC 없이 — 첫 프롬프트에서 plan 시작
-$ claude --kanban
+$ moai cc -k
 
-# moai cc 런처로 같은 진입
-$ moai cc -k SPEC-AUTH-001
+# GLM 백엔드에서도 같은 진입
+$ moai glm -k SPEC-AUTH-001
+```
+
+리드 세션이 열리면 런 식별자와 함께 네 개의 동반 세션 실행 명령이 출력됩니다. 각각을 **사람이 별도 터미널에서** 직접 실행해 보드를 채웁니다.
+
+```bash
+# 동반 세션 — 리드가 알려 준 run-id로 합류
+$ moai cc -k --name plan-<run-id>
+$ moai cc -k --name run-<run-id>
+$ moai cc -k --name review-<run-id>
+$ moai cc -k --name sync-<run-id>
 ```
 
 진입이 성공하면 런처는 세션 안에 `kanban_chain` 골 프리셋을 (구현 착수 승인이 난 뒤에) 무장합니다. 골 프리셋은 `stop-goal` Stop-훅 평가기가 매 턴 끝마다 평가하는 완료 조건입니다 — 새 런타임이나 새 훅이 아니라, 이미 있는 기계 위에 조건 하나를 얹은 것입니다.
+
+## 다섯 터미널로 굴리는 한 런
+
+리드를 `moai cc -k`로 열면 런 식별자와 함께 동반 세션마다 실행 명령을 하나씩 알려 줍니다. 운영자는 그 명령들을 **각자 자기 터미널에서** 직접 열어 다섯 세션의 런을 완성합니다 — 리드가 지시하고, plan · run · review · sync가 각자의 worktree에서 일합니다.
+
+![칸반 모드 한 런: 리드와 네 동반 세션이 각자의 터미널에서 열려 있다](/images/profile/kanban-five-sessions.png)
+
+카드는 이렇게 흐릅니다. 리드가 `plan` 세션에 저작을 지시하고, `run` 세션이 그 계획에서 구현을 이어 받아 일하고, `review` 세션이 구현을 검사하고, `sync` 세션이 코드를 SPEC과 대조해 정리하고 커밋합니다. 각 디스패치는 리드가 진행 증거를 읽어 확인한 뒤에 일어납니다.
+
+{{< callout type="info" >}}
+**왜 이 모양인가 — 역할별 백엔드.** 설계와 지휘는 Opus에서, 구현은 GLM에서 돌립니다. 동반 세션을 열 때 `moai cc -k --name ...` 대신 `moai glm -k --name ...`를 쓰면 해당 세션이 GLM 백엔드로 합류합니다. 비싼 모델은 판단이 필요한 자리에만 두고 구현 몫은 저렴한 백엔드로 보내는 이 분배가, 다중 세션 런의 토큰 비용을 지속 가능하게 만드는 핵심입니다. 세션끼리는 서로 메시지를 주고받으며, 교차 세션 메시징은 주입된 `--settings`를 통해 자동으로 허용돼 있습니다.
+{{< /callout >}}
+
+스크린샷의 상태 표시줄에 보이는 모델 라벨은 촬영 당시 한 운영자 세션의 구성을 반영한 것이지 배포 기본값은 아닙니다.
 
 ## 체인 단계
 
@@ -190,7 +220,7 @@ flowchart TD
 ## 언제 쓰나, 언제 쓰지 않나
 
 {{< callout type="info" >}}
-**한 SPEC, 한 세션(현재), 다중 세션 보드(목표).** 칸반 모드의 설계 방향은 다중 세션 보드이지만, 현재 구현은 Phase 1(저장소 계층)에 머물러 있습니다.
+**리드 하나, 동반 넷.** 진입과 디스패치는 v3.1에서 동작합니다. 다만 컬럼 위치를 파일로 붙잡아 두는 보드 상태 저장소에는 아직 호출자가 없어, 카드의 현재 위치는 리드 세션과 SPEC 상태가 유지합니다.
 {{< /callout >}}
 
 **쓸 때** — 여러 worktree 세션으로 한 SPEC(또는 여러 SPEC)을 동시에 진행할 때. Origin-Trail Chain으로 세션 계보를 추적해야 할 때. 한 SPEC을 종료까지 한 번에 밀고 갈 때.
@@ -208,6 +238,7 @@ flowchart TD
 ## 관련 문서
 
 - [`/moai` 통합 명령](/ko/workflow-commands/) — 워크플로우 명령 관점의 짧은 소개
+- [`/moai todo`](/ko/utility-commands/moai-todo) — 보드에 카드를 들이는 백로그 대기열
 - [`/moai goal`](/ko/workflow-commands/moai-goal) — 칸반 체인을 모는 골 엔진
 - [자율 연속 루프](/ko/advanced/autonomous-loops) — `/moai goal`, `/moai loop`, 네이티브 `/goal`의 소유권과 가드레일 비교
 - [`/moai run`](/ko/workflow-commands/moai-run) — run-phase 자율성 배선, 칸반 체인의 run 단계가 상속하는 규칙

@@ -8,7 +8,7 @@ description: |
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__spec_drift
 model: inherit
-effort: max
+effort: high
 color: blue
 permissionMode: bypassPermissions
 memory: project
