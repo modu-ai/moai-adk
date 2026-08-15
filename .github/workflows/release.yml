@@ -78,7 +78,11 @@ jobs:
           ANNOTATION="$(git for-each-ref "refs/tags/${TAG}" --format='%(contents)')"
 
           # Check 2 — provenance trailer written by scripts/release.sh.
-          if ! printf '%s\n' "${ANNOTATION}" | grep -qxF 'Released-via: harness:release'; then
+          # No `grep -q` in any pipeline below: -q exits on first match and
+          # closes the pipe, the producer dies of SIGPIPE (141), and pipefail
+          # then reports failure for a check that MATCHED. Redirect instead so
+          # grep consumes all of its input.
+          if ! printf '%s\n' "${ANNOTATION}" | grep -xF 'Released-via: harness:release' >/dev/null; then
             fail "check 2 (provenance trailer): tag annotation has no 'Released-via: harness:release' line."
           fi
 
@@ -97,14 +101,14 @@ jobs:
 
           # Check 5 — CHANGELOG.md at the tagged commit has this version's section.
           VERSION_NO_V="${TAG#v}"
-          if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -qE "^## \[${VERSION_NO_V}\]"; then
+          if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -E "^## \[${VERSION_NO_V}\]" >/dev/null; then
             fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' section."
           fi
 
           # Check 6 — version SSOT (.moai/config/sections/system.yaml stores the
           # v-prefixed form, e.g. `version: v3.0.1`).
           SSOT_PATH='.moai/config/sections/system.yaml'
-          if ! git show "${TAG_COMMIT}:${SSOT_PATH}" | grep -qE "^[[:space:]]*version:[[:space:]]*${TAG}[[:space:]]*$"; then
+          if ! git show "${TAG_COMMIT}:${SSOT_PATH}" | grep -E "^[[:space:]]*version:[[:space:]]*${TAG}[[:space:]]*$" >/dev/null; then
             ACTUAL="$(git show "${TAG_COMMIT}:${SSOT_PATH}" | sed -n 's/^[[:space:]]*version:[[:space:]]*//p' | head -n1)"
             fail "check 6 (version SSOT): ${SSOT_PATH} at ${TAG_COMMIT} has version='${ACTUAL}', expected '${TAG}'."
           fi
