@@ -259,7 +259,6 @@ func applyGLMMode(root, profileName string) error {
 	// `claude`. Writing to settings.local.json (as previous behavior) would leak
 	// GLM env to subsequent `claude` invocations after `moai glm` exits.
 	// Tmux team panes still receive env via injectTmuxSessionEnv below (moai cg path).
-	// For persistent settings.local.json injection used by `moai --team`, see enableTeamMode().
 
 	if err := persistTeamMode(root, "glm"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to persist team mode: %v\n", err)

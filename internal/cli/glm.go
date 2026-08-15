@@ -3,7 +3,7 @@ package cli
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
 // @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2)
-// @MX:NOTE: [AUTO] M6-S2 DDD: uikit.RenderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
+// @MX:NOTE: [AUTO] WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
 	"bufio"
@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/kanban"
@@ -359,140 +358,6 @@ func maskAPIKey(key string) string {
 		return "****"
 	}
 	return key[:4] + "****" + key[len(key)-4:]
-}
-
-// enableTeamMode enables GLM Team mode with settings.local.json configuration.
-// isHybrid: false = all agents use GLM, true = lead uses Claude, agents use GLM
-// Note: teammateMode is forced to "tmux" to ensure GLM env var inheritance (#468)
-func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
-	out := cmd.OutOrStdout()
-
-	root, err := findProjectRootFn()
-	if err != nil {
-		return fmt.Errorf("find project root: %w", err)
-	}
-
-	// Load GLM config for environment variable injection
-	glmConfig, err := loadGLMConfig(root)
-	if err != nil {
-		return fmt.Errorf("load GLM config: %w", err)
-	}
-
-	// Get API key
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		if isHybrid {
-			return fmt.Errorf("GLM API key not found\n\n"+
-				"Set up your API key first, then enable CG mode:\n"+
-				"  1. moai glm setup <api-key>   (saves key to ~/.moai/.env.glm)\n"+
-				"  2. moai cg                     (enable hybrid mode)\n\n"+
-				"Or set the %s environment variable", glmConfig.EnvVar)
-		}
-		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
-	}
-
-	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-
-	// Check whether we are inside a tmux session
-	inTmux := tmux.NewDetector().InTmuxSession()
-
-	// CG mode requires tmux for pane-level environment isolation.
-	// Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg
-	// injects GLM credentials into teammate panes via tmux session-level env
-	// (set-environment); iTerm2 has no session-level env, so Leader=Claude /
-	// Teammates=GLM isolation requires tmux.
-	if isHybrid && !inTmux && os.Getenv(config.EnvTestMode) != "1" {
-		return fmt.Errorf("CG mode requires a tmux session: Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg injects GLM credentials into teammate panes via tmux session-level env (set-environment); iTerm2 has no session-level env, so Leader=Claude / Teammates=GLM isolation requires tmux. Leader (this pane) uses Claude API; teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
-	}
-
-	// Inject GLM environment variables into tmux session (if available)
-	if inTmux {
-		if err := injectTmuxSessionEnv(glmConfig, apiKey); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to inject tmux session env: %v\n", err)
-			if isHybrid {
-				return fmt.Errorf("failed to inject GLM env into tmux session: %w (CG mode relies on tmux session env for teammate isolation, try restarting your tmux session)", err)
-			}
-		}
-	}
-
-	if isHybrid {
-		if err := persistTeamMode(root, "cg"); err != nil {
-			return fmt.Errorf("persist team mode: %w", err)
-		}
-
-		if err := removeGLMEnv(settingsPath); err != nil {
-			return fmt.Errorf("clean up GLM env for CG mode: %w", err)
-		}
-
-		if err := ensureSettingsLocalJSON(settingsPath); err != nil {
-			return fmt.Errorf("ensure settings.local.json: %w", err)
-		}
-
-		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
-			"CG mode enabled (Claude + GLM)",
-			"",
-			"Architecture: Lead (Claude) + Teammates (GLM)",
-			"Isolation: tmux pane-level environment variables",
-			"tmux session: active (GLM env vars injected for new panes)",
-			"Config saved to: .moai/config/sections/llm.yaml",
-			"",
-			"How it works:",
-			"  - This pane: No Z.AI env -> Claude models (lead)",
-			"  - New panes: Inherit Z.AI env -> GLM models (teammates)",
-			"",
-			"IMPORTANT: Start Claude Code in THIS pane (not a new one).",
-			"Opening a new tmux pane for the lead will cause it to use GLM.",
-			"",
-			"Next steps:",
-			"  1. Start Claude Code in this pane: claude",
-			"  2. Run workflow: /moai --team \"your task\"",
-			"",
-			"Run 'moai cc' to disable CG/GLM team mode.",
-		))
-	} else {
-		if err := persistTeamMode(root, "glm"); err != nil {
-			return fmt.Errorf("persist team mode: %w", err)
-		}
-
-		if err := injectGLMEnvForTeam(settingsPath, glmConfig, apiKey); err != nil {
-			return fmt.Errorf("inject GLM env for team: %w", err)
-		}
-
-		tmuxStatus := "tmux session: active (env vars injected)"
-		if !inTmux {
-			tmuxStatus = "Warning: tmux session NOT DETECTED. GLM teammates require tmux for env propagation.\n" +
-				"  Recommended steps:\n" +
-				"    1. tmux new -s moai\n" +
-				"    2. moai glm                # (re-run inside tmux to configure session env)\n" +
-				"    3. claude\n" +
-				"    4. /moai --team \"task\""
-		}
-
-		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
-			"GLM Team mode enabled",
-			"",
-			"Architecture: All agents use GLM models",
-			"Display mode: tmux (split panes)",
-			tmuxStatus,
-			"Config saved to: .moai/config/sections/llm.yaml",
-			"",
-			"Model mapping: all four Claude slots resolve to glm-5.3 (1M context).",
-			"  Claude Code sizes the auto-compact window once from the Opus slot and",
-			"  every other slot inherits it, so a smaller model there would run past",
-			"  its own limit. Depth is set by reasoning effort, not by model tier.",
-			"",
-			"Available models: glm-5.3, glm-5.2, glm-5.1, glm-5-turbo, glm-5, glm-4.7, glm-4.6, glm-4.5, glm-4.5-air",
-			"",
-			"Next steps:",
-			"  1. Ensure you're in a tmux session (tmux new -s moai)",
-			"  2. Start Claude Code: claude",
-			"  3. Run workflow: /moai --team \"your task\"",
-			"",
-			"Run 'moai cc' to disable GLM team mode.",
-		))
-	}
-
-	return nil
 }
 
 // injectTmuxSessionEnv sets GLM environment variables at the tmux session level.
