@@ -7,21 +7,37 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
-	"sync"
 	"testing"
 	"time"
 )
 
-// TestAsyncRecorder_NonBlockingUnderLoad verifies that Record() returns quickly
-// even under heavy parallel load, and that all records are persisted after Close.
-func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
-	// On Windows CI runners the goroutine scheduler granularity is much coarser
-	// than on Linux/macOS, so latency-based assertions fail consistently.
-	// Verify the non-blocking invariant on other OSes instead.
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on Windows: scheduler granularity causes flaky latency assertions")
-	}
+// TestAsyncRecorder_RecordReturnsFastSequential verifies the caller-path
+// contract of Record(): it is a select/default channel send (async_recorder.go)
+// — microseconds, never disk I/O — and every call returns either nil or
+// ErrRecordDropped. Persistence after Close is asserted on the same run.
+//
+// What was wrong with the earlier form (TestAsyncRecorder_NonBlockingUnderLoad):
+// it spawned 1000 concurrent goroutines and counted calls exceeding 100ms —
+// measuring the Go scheduler under self-induced load, not the recorder. The
+// recorder's own cost (a channel send) is nanoseconds; the scheduler storm was
+// the entire signal, which is why it passed alone and failed on a loaded box.
+//
+// The sequential shape below catches the real regression class — Record
+// growing synchronous work (a disk write per call, a mutex-held flush, a
+// network call): 2000 sequential channel sends complete in well under 10ms
+// even on a loaded box, while 2000 synchronous disk writes take seconds. The
+// 2s total bound therefore sits ~3 orders of magnitude above healthy cost —
+// too far for load noise to bridge, close enough that the regression class
+// trips it. This is an absolute bound stated as an average; there is no
+// natural budget to make it relative to.
+//
+// What it deliberately does NOT catch: a blocking send (`r.ch <- rec` without
+// the select/default) — with a live consumer goroutine a blocking send still
+// makes progress, so only a stalled consumer exposes it, and stalling the
+// consumer deterministically needs an injection seam the recorder does not
+// expose. If that invariant ever matters enough to test, add the seam first;
+// a goroutine storm does not test it either.
+func TestAsyncRecorder_RecordReturnsFastSequential(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -29,45 +45,44 @@ func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const bufSize = 200
-	const numRecords = 1000
+	// Small buffer so both return paths (accepted / dropped) are likely
+	// exercised across the run; drops are permitted, blocking is not.
+	const bufSize = 8
+	const numRecords = 2000
+	// 1ms average per call. A channel send costs ~100ns; synchronous disk
+	// writes cost ~ms each. The bound separates the two by ~3 orders of
+	// magnitude on both sides.
+	const totalBound = 2 * time.Second
 
 	rec := NewAsyncRecorder(dir, bufSize)
 
 	ts := time.Date(2026, 4, 15, 10, 0, 0, 0, time.UTC)
-
-	var wg sync.WaitGroup
-	slowCalls := 0
-	var slowMu sync.Mutex
-
-	for i := 0; i < numRecords; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			r := UsageRecord{
-				Timestamp: ts,
-				SkillID:   "test-skill",
-				SessionID: "sess-load-test",
-				Outcome:   OutcomeUnknown,
-			}
-			start := time.Now()
-			_ = rec.Record(r)
-			elapsed := time.Since(start)
-			// Threshold set to 100ms to accommodate goroutine scheduling latency in CI (especially Windows).
-			// Core invariant: Record() returns immediately without waiting for disk I/O (channel send or drop).
-			if elapsed > 100*time.Millisecond {
-				slowMu.Lock()
-				slowCalls++
-				slowMu.Unlock()
-			}
-		}()
+	r := UsageRecord{
+		Timestamp: ts,
+		SkillID:   "test-skill",
+		SessionID: "sess-sequential-test",
+		Outcome:   OutcomeUnknown,
 	}
-	wg.Wait()
 
-	// More records than the buffer size, so some may be dropped — but blocking must not occur.
-	// Slow calls must be <= 5% of total (allows CI scheduling jitter).
-	if slowCalls > numRecords*5/100 {
-		t.Errorf("too many slow calls: %d/%d (>100ms)", slowCalls, numRecords)
+	start := time.Now()
+	dropped := 0
+	for i := range numRecords {
+		if err := rec.Record(r); err != nil {
+			if !errors.Is(err, ErrRecordDropped) {
+				t.Fatalf("Record %d returned unexpected error: %v", i, err)
+			}
+			dropped++
+		}
+	}
+	elapsed := time.Since(start)
+	t.Logf("%d sequential Record calls: total=%v avg=%s dropped=%d/%d",
+		numRecords, elapsed, elapsed/time.Duration(numRecords), dropped, numRecords)
+
+	if elapsed > totalBound {
+		t.Errorf("%d sequential Record calls took %v (> %v, ~1ms/call average) — "+
+			"Record() must be a channel send, not synchronous work; "+
+			"this indicates Record grew disk I/O or a lock on the caller path",
+			numRecords, elapsed, totalBound)
 	}
 
 	// Close after all records are processed.
@@ -78,7 +93,7 @@ func TestAsyncRecorder_NonBlockingUnderLoad(t *testing.T) {
 		t.Fatalf("Close: %v", err)
 	}
 
-	// Verify that some records were written to file (drop policy may keep less than total).
+	// Verify that records were written to file (drop policy may keep less than total).
 	telDir := filepath.Join(dir, ".moai", "evolution", "telemetry")
 	entries, err := os.ReadDir(telDir)
 	if err != nil {
