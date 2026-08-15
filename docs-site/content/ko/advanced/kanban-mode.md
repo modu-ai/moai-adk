@@ -193,6 +193,14 @@ $ moai cc -k --name sync-<run-id>
 
 스크린샷의 상태 표시줄에 보이는 모델 라벨은 촬영 당시 한 운영자 세션의 구성을 반영한 것이지 배포 기본값은 아닙니다.
 
+## 보드를 브라우저에서 보기
+
+터미널 다섯 개를 눈으로 훑는 대신, `moai web`으로 같은 상태를 한 화면에서 볼 수 있습니다. 칸반 화면은 다섯 세션 체인 보드와 SPEC 파이프라인을 함께 보여 주고, Overview·Specs·Monitor·Settings 화면이 함께 붙습니다.
+
+![moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리](/images/profile/web-console-v31-overview.png)
+
+콘솔은 로컬호스트에만 열립니다. 자세한 사용법은 [moai web 콘솔](/ko/advanced/moai-web-console)을 참고하세요.
+
 ## 체인 단계
 
 칸반 체인은 `full-pipeline` 계약(하나의 SPEC에 대해 run → sync 자동 체인을 맺는 약정)을 확장합니다. 네 단계가 순서대로 진행됩니다:

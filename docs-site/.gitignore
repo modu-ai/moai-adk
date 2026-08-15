@@ -19,3 +19,4 @@ static/og-original.png
 .vscode/
 .idea/
 *.swp
+.vercel

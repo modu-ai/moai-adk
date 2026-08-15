@@ -1452,6 +1452,52 @@ main.docs-main .doc-layout--2col {
 .cw-feat-tags a { color: #3d7d5f; }
 .cw-feat-tags a:hover { color: #316750; text-decoration: none; }
 
+/* v3.1 release banner — Kanban Mode. Full-width card between hero and feats.
+   Reuses the .cw-feat-card visual language (white / 1px #d1d1d1 / radius 16)
+   so no new design token is introduced. LIGHT theme only, per §17.1. */
+.cw-home-kanban {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 28px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 8px 0 24px;
+}
+.cw-home-kanban-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cw-home-kanban-eyebrow .cw-feat-idx { margin-bottom: 0; }
+.cw-home-kanban h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #060606;
+}
+.cw-home-kanban p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  letter-spacing: -0.025em;
+  color: #565656;
+}
+.cw-home-kanban-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+}
+@media (max-width: 860px) {
+  .cw-home-kanban { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}
+
 /* Section grid — real menu-driven doc structure */
 .cw-home-sections { padding: 16px 0 0; }
 .cw-sec-head {
