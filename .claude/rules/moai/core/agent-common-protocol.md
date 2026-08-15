@@ -442,24 +442,65 @@ Resume Pattern (L2/L3 worktree as race-elimination alternative).
 
 ### Pre-Edit Sync Check (Direct-Edit Race Mitigation)
 
-[ZONE:Evolvable] [HARD] The Pre-Spawn Sync Check above binds only the spawn boundary. **Direct main-session edits to shared working-tree paths (Edit/Write/Bash in the orchestrator session — the MoAI-Easy hands-on style and any direct edit) bypass the spawn gate**, so a foreign active session goes undetected and a concurrent `git add -A && commit` can sweep the orchestrator's uncommitted work into another session's commit (observed in a production incident: staged files absorbed into a parallel session's auto-merged commit, landing on `main` entangled). To close that gap, the orchestrator MUST run the same parallel-session detection **before a non-trivial direct edit** to shared paths, not only before a write-agent spawn.
+[ZONE:Evolvable] [HARD] The Pre-Spawn Sync Check above binds only the spawn boundary. **Direct main-session edits to shared working-tree paths (Edit/Write/Bash in the orchestrator session — the MoAI-Easy hands-on style and any direct edit) bypass the spawn gate**, so a foreign active session goes undetected while the orchestrator's uncommitted work sits in a tree that every concurrent session can mutate. To close that gap, the orchestrator MUST run the parallel-session detection **before a non-trivial direct edit** to shared paths, not only before a write-agent spawn.
 
-**"Non-trivial direct edit" trigger** — an Edit/Write/Bash mutation touching shared paths another session could also mutate: `.claude/`, `.moai/`, `internal/`, `pkg/`, `cmd/`, or repo-root config. Exempt: edits under an already-isolated worktree, `/tmp`, or a session-private scratch dir.
+**Incident record (why this rule is binding).** On 2026-08-15, five Claude sessions worked the same shared primary checkout simultaneously. 104 uncommitted files accumulated there; **73 of them existed on no branch at all** and had to be rescued into PR #1526 by hand. The destructive mechanism is ordinary: a concurrent `git add -A && commit` in one session sweeps another session's uncommitted work into a commit that was never meant to carry it; a branch switch or stash strands it outright. A rule without the incident attached gets skipped; this one has the receipts.
 
-**Procedure** — before the first such edit of a task (and re-run if the task spans a long wall-clock window where a session may have started):
+#### Why the previous version of this check failed
+
+Two distinct failure modes — they need different fixes:
+
+1. **Nothing executed it.** The check was procedural prose in this rule file. No hook fires it, no tool result reminds the agent of it, and a "run three probes before your first edit" instruction competes with task momentum — and loses. This was the dominant failure on 2026-08-15: the procedure was directionally correct and was simply never run.
+2. **It sampled at the wrong moment.** Even perfectly executed, a once-per-task check cannot see a session that starts mid-task, and the destruction mechanism is not the edit — it is the OTHER session's `git add -A` at commit time. The previous text placed all discipline on the editor and none on the sweeper.
+
+The rewrite below addresses both: the decision procedure is compressed into a moment-of-edit gate an agent can actually run (§ The rule, at the moment of the edit), and a sweep prohibition binds the commit-side primitive that does the damage (§ The sweep prohibition).
+
+#### The rule, at the moment of the edit
+
+**TRIGGER** — the gate fires when ALL three hold:
+
+| Condition | Test |
+|---|---|
+| Tool | an `Edit`, `Write`, or file-mutating `Bash` call |
+| Target | a shared path another session could also mutate: `.claude/`, `.moai/`, `internal/`, `pkg/`, `cmd/`, or repo-root config files |
+| Location | CWD is the primary checkout. Exempt: an already-isolated worktree, `/tmp`, or a session-private scratch dir |
+
+**CHECK** — before the FIRST triggered edit of a task, as one parallel batch:
 ```bash
-# 1. active foreign sessions (own session filtered out)
+# 1. live foreign sessions (own session filtered out; then liveness-probe each PID)
 moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'
 # 2. divergence vs origin/main
 git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
 ```
-Interpretation reuses the Pre-Spawn Sync Check matrix: `0 N` / `0 0` → proceed; `N 0` / `N M` → STOP (origin ahead or diverged — parallel session race); ≥1 foreign active session → the orchestrator SHALL isolate to a worktree (`moai cc -w` / `EnterWorktree` / `Agent(isolation: "worktree")`) OR surface via `AskUserQuestion` (isolate / wait / abort) before editing the shared tree. The conservative predicate (ANY foreign entry ⇒ isolate) is reused from the auto-isolation procedure in `.claude/rules/moai/workflow/worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation.
 
-> **Stale-registry caveat**: the active-sessions registry can hold dead-PID entries (the session registry is not a reliable emptiness signal). A foreign entry's liveness MAY be probed with `kill -0 <pid>`; a confirmed-dead entry is ignored. When liveness is indeterminate, the conservative predicate isolates anyway (false positive is cheap; false negative corrupts the tree).
+**DECIDE and ACT** — no outcome permits "proceed in the shared checkout anyway":
 
-This is **procedural enforcement** (same trust model as the Pre-Spawn Sync Check). A mechanical PreToolUse-on-Edit advisory hook is the companion nudge (evaluated separately); the procedure is the load-bearing rule.
+| Probe result | Required action |
+|---|---|
+| 0 live foreign sessions AND `0 0` / `0 N` | Proceed in the shared checkout |
+| ≥1 live foreign session | **ISOLATE before editing**: `moai cc -w <name>` / `EnterWorktree(<path>)` / `Agent(isolation: "worktree")`. If isolation is impossible, surface via `AskUserQuestion` (isolate / wait / abort) |
+| `N 0` / `N M` divergence | STOP; `AskUserQuestion` (rebase / inspect / abort) per the Pre-Spawn Sync Check matrix |
 
-**Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is therefore satisfied without additional code; the PreToolUse-on-Edit advisory above adds per-edit awareness on top of that session-start baseline.
+> **Stale-registry caveat**: the active-sessions registry can hold dead-PID entries (the session registry is not a reliable emptiness signal). A foreign entry's liveness is probed with `kill -0 <pid>`; a confirmed-dead entry is ignored. When liveness is indeterminate, treat it as live and isolate anyway (false positive is cheap; false negative corrupts the tree). The conservative predicate (ANY live-or-indeterminate foreign entry ⇒ isolate) is reused from `.claude/rules/moai/workflow/worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation.
+
+**RE-CHECK** — the probe decays. Re-run it before ANY commit in the shared checkout, and after any long pause in the task (a session that starts mid-task is invisible to a task-start probe).
+
+#### The sweep prohibition
+
+[ZONE:Evolvable] [HARD] In the primary checkout, NEVER `git add -A`, `git add .`, or `git commit -a`. Stage by explicit pathspec (`git add <path> …`), and re-read `git status --short` immediately before staging so another session's files are visible and excluded. This binds the actual destruction primitive from the incident record; it is the commit-side half of this rule and applies **even when the pre-edit probe found no foreign session** — a session can arrive after the probe, and the sweep is what turns its presence into lost work.
+
+#### Enforcement assessment — why there is no PreToolUse-on-Edit/Write advisory hook
+
+A per-edit advisory hook was considered and declined (2026-08-15):
+
+- **Measured cost**: the branch-guard PreToolUse hook — the closest comparable, it spawns git subprocesses — averages 135-256ms per invocation. `Edit`/`Write` is the most frequent mutation in a coding session; a per-edit advisory multiplies that tax across every edit of every concurrent session — the exact multi-session load pattern that pushed the box over during the incident day.
+- **Wrong sampling rate**: the probe's answer changes on the scale of minutes (sessions start and stop), not edits. Paying per-edit for a per-task answer taxes the wrong frequency.
+- **Wrong target**: the edit is not the destructive primitive; the sweep is. If mechanical enforcement is ever wanted, the cheap and mechanism-adjacent placement is the commit-time Bash surface — extend the branch-guard hook family to warn on `git add -A` / `git add .` / `git commit -a` in the primary checkout (rare, once per task) — not on every Edit/Write.
+- **Detection is already ambient**: the SessionStart signal below carries foreign-session awareness to every session at zero per-edit cost; this procedure is the decision layer on top of it.
+
+If a per-edit nudge is ever re-proposed, the only defensible variant is stateful: fire the probe on the FIRST `Edit`/`Write` of a session (or serve it from a short-TTL cache), never per edit.
+
+**Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is the always-on detection layer; this Pre-Edit Sync Check is the decision layer that turns detection into isolation.
 
 ## Time Estimation
 
