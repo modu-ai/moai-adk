@@ -59,7 +59,64 @@ Below this threshold the orchestrator drives Mode 5 directly (single sequential 
 - **Per-milestone Context-Folding** — REUSE existing primitives. No new Go mechanism, hook, or CLI. The fold procedure composes `/compact` (existing slash command) + file-redirect to `.moai/state/verify/` (existing convention) + `progress.md` §E.2 fold-row append (existing row format). See § Context-Folding Procedure below.
 - **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-kanban spawns a second read-only `Agent(general-purpose)` (NOT the author, with `tools:` omitting Write/Edit/NotebookEdit) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
 - **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of milestone M1), consume the existing `plan-research-fanout` skill's fixed-heading markdown schema verbatim (do NOT re-derive per spawn, do NOT author a parallel schema). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
-- **Blocker-report returns** — manager-kanban NEVER invokes the orchestrator-exclusive user-question tool. On unresolved input, on peer FAIL/PARTIAL that the author contests, or on `/compact` unavailable in subagent context, return a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format; the orchestrator runs the AskUser round and re-delegates.
+- **Blocker-report returns** — manager-kanban NEVER invokes the orchestrator-exclusive user-question tool. On unresolved input, on peer FAIL/PARTIAL that the author contests, on `/compact` unavailable in subagent context, or when **the delegated work satisfies neither role's entry conditions** (below), return a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format; the orchestrator runs the AskUser round and re-delegates.
+
+  The neither-role case: the delegation meets neither Role A's three-part threshold (§ Condition-Triggered Entry — ≥3 milestones AND ≥10 files AND cross-domain) nor Role B's entry (a SessionStart context declaring Kanban Mode with the `lead` role). Name in the blocker report what was delegated, which of Role A's three predicates it fails, and that Role B's entry is unavailable — a subagent spawn carries no SessionStart context, so Role B's condition cannot be satisfied from one. Returning that blocker report IS the correct outcome here; proceeding under a role whose entry was not met, and ending the turn with nothing, are both wrong.
+
+## Output Format
+
+Every invocation ends in one of the shapes below. Ending a turn with an empty response is not one of them — produce the applicable shape before the turn ends.
+
+This contract is modelled on `plan-auditor.md` (a named output path, plus a mandated string for the cannot-proceed path) rather than on `sync-auditor.md` (a response-body skeleton). sync-auditor returns a body because it carries no Write tool and must not attempt a file write; that reason does not apply here. This agent carries Write, and it is the only retained agent carrying `Agent` — a result that exists only in a response body can take an entire leaf-worker sub-tree with it. A file is the artifact that outlives the turn, so Role A's deliverable is a file wherever one is possible.
+
+### Role A — in-session fan-out
+
+Write the consolidated report to `.moai/reports/kanban/<SPEC-ID>-M<n>.md` at each milestone boundary, **before** the fold's `/compact` step (Step 3 of § Context-Folding Procedure). A compact that runs first takes an unwritten report with it.
+
+```
+# Kanban Milestone Report: <SPEC-ID> M<n>
+
+## AC Matrix
+| AC-id | Verdict | Peer verdict | Evidence path |
+|-------|---------|--------------|---------------|
+| <id>  | PASS | FAIL | GAP | PASS | PARTIAL | FAIL | n/a | .moai/state/verify/<session>/M<n>.<AC-id>.log |
+
+## Leaf Workers
+| Worker | Scope | Worktree branch | Outcome |
+
+## Contradictions
+<the named section from § Schema-Driven Fan-Out Reduce, or "none">
+
+## Gaps
+<what was NOT verified — an AC whose evidence could not be populated is GAP, never PASS>
+```
+
+Return in the response body: the report path, the milestone, and one line per AC carrying its verdict. The file is the deliverable; the body is the pointer to it.
+
+### Role B — cross-session dispatch
+
+Role B writes no report file, and this is by construction rather than by omission: `kanban-dispatch.md` § Boundaries states that no board state store exists — column position is held by the lead within a card's run and re-derived from SPEC status after a `/clear`. The deliverable is the dispatch itself plus what was read to justify it.
+
+Return in the response body, per card acted on:
+
+```
+card: <id> | <from-column> -> <to-column>
+dispatched to: <session-name>   (or: not dispatched — <reason>)
+evidence read: <path>, <what it showed>
+operator action requested: /clear <session-name>   (or: none)
+```
+
+A card that did NOT advance is reported with the same shape and the reason it stayed — a column that did not move is a result, not silence.
+
+### Cannot proceed
+
+Return a structured blocker report per § Core Capabilities → Blocker-report returns. When even that is not possible — the SPEC directory is absent, or the delegation named no work — return the single line:
+
+```
+KANBAN BLOCKED: <one-line reason>
+```
+
+and stop. A blocker report and this line are both complete outcomes; an empty response is not.
 
 ## Depth-2 Seal (LOAD-BEARING)
 
