@@ -154,3 +154,33 @@ turn where deferred tools may be needed. See
 - `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware
   ordering (stagger-spawn for parallel same-type agents, gate placement,
   session-loaded file edit timing).
+
+---
+
+## Pre-Edit Sync Check — rationale and enforcement record
+
+> Relocated verbatim from `agent-common-protocol.md` § Pre-Edit Sync Check (Direct-Edit Race Mitigation) to keep the always-loaded file within its size budget. The binding gate (TRIGGER / CHECK / DECIDE / RE-CHECK) and the sweep prohibition remain inline there; this section carries the incident record, the failure analysis of the previous version, and the enforcement-placement assessment.
+
+### Incident record (why the rule is binding)
+
+In the recorded incident, five Claude sessions worked the same shared primary checkout simultaneously. 104 uncommitted files accumulated there; **73 of them existed on no branch at all** and had to be rescued into a pull request by hand. The destructive mechanism is ordinary: a concurrent `git add -A && commit` in one session sweeps another session's uncommitted work into a commit that was never meant to carry it; a branch switch or stash strands it outright. A rule without the incident attached gets skipped; this one has the receipts.
+
+### Why the previous version of this check failed
+
+Two distinct failure modes — they need different fixes:
+
+1. **Nothing executed it.** The check was procedural prose in this rule file. No hook fires it, no tool result reminds the agent of it, and a "run three probes before your first edit" instruction competes with task momentum — and loses. This was the dominant failure in the recorded incident: the procedure was directionally correct and was simply never run.
+2. **It sampled at the wrong moment.** Even perfectly executed, a once-per-task check cannot see a session that starts mid-task, and the destruction mechanism is not the edit — it is the OTHER session's `git add -A` at commit time. The previous text placed all discipline on the editor and none on the sweeper.
+
+The rewrite addresses both: the decision procedure is compressed into a moment-of-edit gate an agent can actually run, and a sweep prohibition binds the commit-side primitive that does the damage.
+
+### Enforcement assessment — why there is no PreToolUse-on-Edit/Write advisory hook
+
+A per-edit advisory hook was considered and declined:
+
+- **Measured cost**: the branch-guard PreToolUse hook — the closest comparable, it spawns git subprocesses — averages 135-256ms per invocation. `Edit`/`Write` is the most frequent mutation in a coding session; a per-edit advisory multiplies that tax across every edit of every concurrent session — the exact multi-session load pattern that pushed the box over during the incident day.
+- **Wrong sampling rate**: the probe's answer changes on the scale of minutes (sessions start and stop), not edits. Paying per-edit for a per-task answer taxes the wrong frequency.
+- **Wrong target**: the edit is not the destructive primitive; the sweep is. If mechanical enforcement is ever wanted, the cheap and mechanism-adjacent placement is the commit-time Bash surface — extend the branch-guard hook family to warn on `git add -A` / `git add .` / `git commit -a` in the primary checkout (rare, once per task) — not on every Edit/Write.
+- **Detection is already ambient**: the SessionStart signal carries foreign-session awareness to every session at zero per-edit cost; the procedure is the decision layer on top of it.
+
+If a per-edit nudge is ever re-proposed, the only defensible variant is stateful: fire the probe on the FIRST `Edit`/`Write` of a session (or serve it from a short-TTL cache), never per edit.

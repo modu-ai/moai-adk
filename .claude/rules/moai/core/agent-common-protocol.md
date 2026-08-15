@@ -65,15 +65,7 @@ The `sync-phase-quality-gate.sh` row above describes the Stop hook in the sync-p
 
 **Recovery-Signal Carve-Out** — anti-death-spiral policy guidance for Stop/PostToolUse hooks. The canonical doctrine lives at `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §4 (SSOT); this subsection is the render surface.
 
-[ZONE:Evolvable] **While** a turn's `stopReason` or surrounding context indicates the turn is itself a **recovery signal** — i.e., the turn is recovering from a sync failure, a compact, a `prompt_too_long` (PTL), a `max_output_tokens` exhaustion, or a `media_size` / `compact-failure` — Stop/PostToolUse hooks SHOULD exit 0 (allow the turn to end / the tool call to proceed) rather than exit 2 (block), so that recovery turns are NOT placed into the `error → stop-hook-blocks → retry → error` loop that book1 ch06 names the **death-spiral**.
-
-This carve-out is **policy guidance** (a SHOULD recommendation), NOT a mechanically-enforced gate:
-
-- The current `sync-phase-quality-gate.sh` (Stop) and `status-transition-ownership.sh` (PostToolUse) hooks receive PostToolUse/Stop JSON but do not parse a recovery signal from `stopReason` or turn context; they therefore cannot mechanically distinguish a recovery turn from a normal turn.
-- Mechanical enforcement of this carve-out is deferred to a future runtime-layer SPEC that would add `stopReason` parsing.
-- The carve-out does NOT weaken the hooks' gate function on non-recovery turns — the gates still exit 2 (block) on genuine gate failures during normal turns. The carve-out only says recovery turns SHOULD defer to the recovery.
-
-Determining "is this a recovery turn?" is the mechanical step the current hooks cannot take. See the SSOT doctrine (`runtime-recovery-doctrine.md` §4) for the full scope binding, the named-hook list (`sync-phase-quality-gate.sh`, `status-transition-ownership.sh`), and the reason this is documentation-only at this layer.
+[ZONE:Evolvable] **While** a turn's `stopReason` or surrounding context indicates the turn is itself a **recovery signal** (recovering from a sync failure, a compact, a `prompt_too_long` (PTL), a `max_output_tokens` exhaustion, or a `media_size` / `compact-failure`), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so recovery turns are NOT placed into the `error → stop-hook-blocks → retry → error` **death-spiral** loop. This is a SHOULD (policy guidance), not a mechanical gate — the current hooks do not parse `stopReason`, enforcement is deferred to a future runtime-layer SPEC, and the gates still block normally on non-recovery turns. Full scope binding and named-hook list: `runtime-recovery-doctrine.md` §4.
 
 ### Blocker Report Format
 
@@ -445,16 +437,7 @@ Resume Pattern (L2/L3 worktree as race-elimination alternative).
 
 [ZONE:Evolvable] [HARD] The Pre-Spawn Sync Check above binds only the spawn boundary. **Direct main-session edits to shared working-tree paths (Edit/Write/Bash in the orchestrator session — the MoAI-Easy hands-on style and any direct edit) bypass the spawn gate**, so a foreign active session goes undetected while the orchestrator's uncommitted work sits in a tree that every concurrent session can mutate. To close that gap, the orchestrator MUST run the parallel-session detection **before a non-trivial direct edit** to shared paths, not only before a write-agent spawn.
 
-**Incident record (why this rule is binding).** On 2026-08-15, five Claude sessions worked the same shared primary checkout simultaneously. 104 uncommitted files accumulated there; **73 of them existed on no branch at all** and had to be rescued into PR #1526 by hand. The destructive mechanism is ordinary: a concurrent `git add -A && commit` in one session sweeps another session's uncommitted work into a commit that was never meant to carry it; a branch switch or stash strands it outright. A rule without the incident attached gets skipped; this one has the receipts.
-
-#### Why the previous version of this check failed
-
-Two distinct failure modes — they need different fixes:
-
-1. **Nothing executed it.** The check was procedural prose in this rule file. No hook fires it, no tool result reminds the agent of it, and a "run three probes before your first edit" instruction competes with task momentum — and loses. This was the dominant failure on 2026-08-15: the procedure was directionally correct and was simply never run.
-2. **It sampled at the wrong moment.** Even perfectly executed, a once-per-task check cannot see a session that starts mid-task, and the destruction mechanism is not the edit — it is the OTHER session's `git add -A` at commit time. The previous text placed all discipline on the editor and none on the sweeper.
-
-The rewrite below addresses both: the decision procedure is compressed into a moment-of-edit gate an agent can actually run (§ The rule, at the moment of the edit), and a sweep prohibition binds the commit-side primitive that does the damage (§ The sweep prohibition).
+The incident record (the multi-session shared-checkout loss that made this rule binding), the failure analysis of the previous version, and the enforcement-placement assessment live in `agent-common-protocol-reference.md` § Pre-Edit Sync Check — rationale and enforcement record. Inline here: the binding gate (below) and the sweep prohibition — the moment-of-edit gate an agent can actually run, plus the commit-side primitive that does the damage.
 
 #### The rule, at the moment of the edit
 
@@ -482,7 +465,7 @@ git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
 | ≥1 live foreign session | **ISOLATE before editing**: `moai cc -w <name>` / `EnterWorktree(<path>)` / `Agent(isolation: "worktree")`. If isolation is impossible, surface via `AskUserQuestion` (isolate / wait / abort) |
 | `N 0` / `N M` divergence | STOP; `AskUserQuestion` (rebase / inspect / abort) per the Pre-Spawn Sync Check matrix |
 
-> **Stale-registry caveat**: the active-sessions registry can hold dead-PID entries (the session registry is not a reliable emptiness signal). A foreign entry's liveness is probed with `kill -0 <pid>`; a confirmed-dead entry is ignored. When liveness is indeterminate, treat it as live and isolate anyway (false positive is cheap; false negative corrupts the tree). The conservative predicate (ANY live-or-indeterminate foreign entry ⇒ isolate) is reused from `.claude/rules/moai/workflow/worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation.
+> **Stale-registry caveat**: registry entries can hold dead PIDs (the registry is not a reliable emptiness signal). Probe each foreign entry's liveness with `kill -0 <pid>`; ignore confirmed-dead, treat indeterminate as live and isolate anyway. ANY live-or-indeterminate foreign entry ⇒ isolate (`worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation).
 
 **RE-CHECK** — the probe decays. Re-run it before ANY commit in the shared checkout, and after any long pause in the task (a session that starts mid-task is invisible to a task-start probe).
 
@@ -490,18 +473,7 @@ git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
 
 [ZONE:Evolvable] [HARD] In the primary checkout, NEVER `git add -A`, `git add .`, or `git commit -a`. Stage by explicit pathspec (`git add <path> …`), and re-read `git status --short` immediately before staging so another session's files are visible and excluded. This binds the actual destruction primitive from the incident record; it is the commit-side half of this rule and applies **even when the pre-edit probe found no foreign session** — a session can arrive after the probe, and the sweep is what turns its presence into lost work.
 
-#### Enforcement assessment — why there is no PreToolUse-on-Edit/Write advisory hook
-
-A per-edit advisory hook was considered and declined (2026-08-15):
-
-- **Measured cost**: the branch-guard PreToolUse hook — the closest comparable, it spawns git subprocesses — averages 135-256ms per invocation. `Edit`/`Write` is the most frequent mutation in a coding session; a per-edit advisory multiplies that tax across every edit of every concurrent session — the exact multi-session load pattern that pushed the box over during the incident day.
-- **Wrong sampling rate**: the probe's answer changes on the scale of minutes (sessions start and stop), not edits. Paying per-edit for a per-task answer taxes the wrong frequency.
-- **Wrong target**: the edit is not the destructive primitive; the sweep is. If mechanical enforcement is ever wanted, the cheap and mechanism-adjacent placement is the commit-time Bash surface — extend the branch-guard hook family to warn on `git add -A` / `git add .` / `git commit -a` in the primary checkout (rare, once per task) — not on every Edit/Write.
-- **Detection is already ambient**: the SessionStart signal below carries foreign-session awareness to every session at zero per-edit cost; this procedure is the decision layer on top of it.
-
-If a per-edit nudge is ever re-proposed, the only defensible variant is stateful: fire the probe on the FIRST `Edit`/`Write` of a session (or serve it from a short-TTL cache), never per edit.
-
-**Ambient signal.** The SessionStart hook already provides ambient foreign-session awareness: `internal/hook/session_start.go` Step 3 reads the registry (`session.QueryActiveWork`) and emits a `<system-reminder>` listing foreign active sessions via `session.FormatStderrReminder`. The session-start ambient signal is the always-on detection layer; this Pre-Edit Sync Check is the decision layer that turns detection into isolation.
+**Ambient signal.** The SessionStart hook already lists foreign active sessions via a `<system-reminder>` (`internal/hook/session_start.go` Step 3) — that is the always-on detection layer; this Pre-Edit Sync Check is the decision layer that turns detection into isolation.
 
 ## Time Estimation
 
