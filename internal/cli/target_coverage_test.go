@@ -1205,40 +1205,6 @@ func TestGetProjectConfigVersion_WithValidSystemYAML(t *testing.T) {
 }
 
 // =============================================================================
-// ensureSettingsLocalJSON — covers the path where the file is created fresh
-// (glm.go:312 — at 80.0%)
-// =============================================================================
-
-func TestEnsureSettingsLocalJSON_CreatesNew(t *testing.T) {
-	// Cannot use t.Parallel() — test depends on HOME via underlying code
-	tmpDir := t.TempDir()
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	// File doesn't exist yet
-	if _, err := os.Stat(settingsPath); !os.IsNotExist(err) {
-		t.Fatal("settings file should not exist before test")
-	}
-
-	err := ensureSettingsLocalJSON(settingsPath)
-	if err != nil {
-		t.Fatalf("ensureSettingsLocalJSON error: %v", err)
-	}
-
-	// File should now exist with valid JSON
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(data) == 0 {
-		t.Error("settings file should not be empty after ensureSettingsLocalJSON")
-	}
-}
-
-// =============================================================================
 // cleanupMoaiWorktrees — with a .claude/worktrees/worker-X in git output
 // Simulates the path at cc.go:188 that checks worktree paths
 // =============================================================================

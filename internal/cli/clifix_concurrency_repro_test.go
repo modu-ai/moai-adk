@@ -5,12 +5,9 @@ package cli
 // Two reproduction tests written BEFORE the M1 fix (TDD RED-GREEN-REFACTOR):
 //
 //   1. TestSettingsLocalConcurrentWrites — N-goroutine concurrent writers hit
-//      two production functions (ensureSettingsLocalJSON + syncPermissionModeTo-
-//      SettingsLocal) that currently call writeSettingsMap (plain os.WriteFile,
-//      no lock, no temp+rename). The un-serialized read-modify-write loses one
-//      writer's keys or produces a truncated file. FAILS pre-M1; PASSES post-M1
-//      (both functions re-routed through the locked+atomic mutateSettingsLocal
-//      seam).
+//      the locked+atomic mutateSettingsLocal seam (writer A sets teammateMode;
+//      writer B is syncPermissionModeToSettingsLocal, which routes through the
+//      same seam). FAILS pre-M1 (plain os.WriteFile, no lock); PASSES post-M1.
 //
 //   2. TestRemoveGLMEnvComplete — removeGLMEnv's delete set is missing
 //      CLAUDE_CODE_AUTO_COMPACT_WINDOW (config.EnvClaudeCodeAutoCompactWindow),
@@ -38,12 +35,13 @@ import (
 // operations on settings.local.json through the production launch-path helpers
 // do not lose updates or produce truncated output.
 //
-// Pre-M1: ensureSettingsLocalJSON and syncPermissionModeToSettingsLocal both
-// call writeSettingsMap (plain os.WriteFile, no lock). Concurrent RMW loses the
-// last-loser's top-level keys — this test FAILS.
+// Pre-M1: the launch-path writers called writeSettingsMap (plain os.WriteFile,
+// no lock). Concurrent RMW loses the last-loser's top-level keys — FAILS.
 //
-// Post-M1: both helpers route through mutateSettingsLocal (flock + temp+rename),
-// serializing the RMW so every key survives — this test PASSES.
+// Post-M1: the writers route through mutateSettingsLocal (flock + temp+rename),
+// serializing the RMW so every key survives — this test PASSES. Writer A was
+// re-pointed from the removed ensureSettingsLocalJSON (#1531) to the seam
+// directly; the concurrency contract binds the seam, not the removed vehicle.
 func TestSettingsLocalConcurrentWrites(t *testing.T) {
 	tmp := t.TempDir()
 	settingsPath := filepath.Join(tmp, "settings.local.json")
@@ -57,12 +55,15 @@ func TestSettingsLocalConcurrentWrites(t *testing.T) {
 	start := make(chan struct{})
 	var firstErr sync.Map // keyed by goroutine index; stores error
 
-	// Writer family A: ensureSettingsLocalJSON sets teammateMode="tmux".
+	// Writer family A: a direct mutateSettingsLocal mutation sets
+	// teammateMode="tmux" (previously the removed ensureSettingsLocalJSON).
 	for i := 0; i < N; i++ {
 		go func(i int) {
 			defer wg.Done()
 			<-start
-			if err := ensureSettingsLocalJSON(settingsPath); err != nil {
+			if err := mutateSettingsLocal(settingsPath, func(m map[string]any) {
+				m["teammateMode"] = "tmux"
+			}); err != nil {
 				firstErr.Store(i, err)
 			}
 		}(i)
