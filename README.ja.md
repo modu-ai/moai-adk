@@ -393,7 +393,7 @@ flowchart TD
 | CWD 衝突解決 | `(worktree_path, session_id)` の組が再利用パスを区別 |
 | 深さ上限（depth ceiling） | ネスト複雑度を制限 |
 
-> **現在利用可能**: `moai cc -k` / `moai glm -k` がリードと4つの同伴セッションを起動し、`moai chain <status|lineage|back|list|prune>` が系譜を読み、`moai todo <add|list|next|done>` が `backlog` カラムを操作します。起動手順は上の「v3.1 の新機能 — カンバンモード」節にあります。
+> **現在利用可能**: `moai cc -k`（または `moai glm -k`）がリードを起動し、`-k --name <role>-<run-id>` で同伴セッションを1つずつ参加させます — ターミナルごとに1つ、手で起動します。`moai chain <status|lineage|back|list|prune>` が系譜を読み、`moai todo <add|list|next|done>` が `backlog` カラムを操作します。起動手順は上の「v3.1 の新機能 — カンバンモード」節にあります。
 
 > 詳細: [カンバンモードガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
