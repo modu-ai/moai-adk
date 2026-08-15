@@ -40,8 +40,17 @@ jobs:
         run: echo "proceed=true" >> $GITHUB_OUTPUT
 
   # ---------------------------------------------------------------------------
-  # Full 3-OS matrix test: macOS + Windows (ubuntu already covered by main CI)
-  # Only runs for release/* branch PRs or manual workflow_dispatch
+  # Full 3-OS matrix test. Only runs for release/* branch PRs or manual
+  # workflow_dispatch.
+  #
+  # ubuntu-latest stays in the matrix even though ci.yml also runs the race
+  # detector on ubuntu. ci.yml's `Race Test` job is advisory by construction —
+  # its check name is deliberately absent from branch protection, so a race
+  # failure there is visible but does not block a merge. This job reports
+  # through `Release PR Multi-OS Gate`, which IS a required check, so the
+  # ubuntu leg here is the only ubuntu race run that can stop a release.
+  # Dropping it would silently demote ubuntu race coverage to advisory at
+  # exactly the moment it matters most.
   # ---------------------------------------------------------------------------
   full-matrix-test:
     name: Release Verify (${{ matrix.os }})
@@ -86,10 +95,18 @@ jobs:
       # Ubuntu and Debian ship /usr/bin/sg as a newgrp alternative, so `sg`
       # being on PATH proves nothing about what it is. Assert the binary is
       # ast-grep — a silent substitution is the failure this step prevents.
+      #
+      # `grep -i ... >/dev/null` rather than `grep -qi`: `shell: bash` runs the
+      # step under `-eo pipefail`, and `grep -q` closes the pipe at the first
+      # match, so a producer with more to write dies of SIGPIPE and the
+      # pipeline resolves to 141 even though the match succeeded. Redirecting
+      # instead keeps grep reading to EOF, so the exit status means what it
+      # reads as. `sg --version` prints one short line and so does not trip
+      # this today; the form is fixed because the next producer might.
       - name: Verify `sg` resolves to ast-grep
         shell: bash
         run: |
-          if ! sg --version 2>&1 | grep -qi 'ast-grep'; then
+          if ! sg --version 2>&1 | grep -i 'ast-grep' >/dev/null; then
             echo "FAIL: 'sg' on PATH is not ast-grep — the rewrite guards cannot run."
             echo "resolved to: $(command -v sg || echo '<not found>')"
             sg --version 2>&1 || true
@@ -111,113 +128,21 @@ jobs:
         run: go test -race -timeout 25m ./...
 
   # ---------------------------------------------------------------------------
-  # Release Range Verify (Wave 3 2026-06-24): for release/* → main PRs, confirm
-  # the accumulated release range (since the last tag) builds and tests green —
-  # NOT just the tip commit. ci.yml/test verify the PR diff; this job verifies
-  # the full release window so a mid-range regression is not hidden by a clean
-  # tip.
-  # ---------------------------------------------------------------------------
-  release-range-verify:
-    name: Release Range Verify
-    needs: detect-release
-    if: needs.detect-release.outputs.proceed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0  # need full history for git describe + range log
-
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      # Same ast-grep dependency as the per-OS leg above: this job runs the
-      # full `go test -race ./...` over the release range, which includes the
-      # guards that shell out to `sg`.
-      - name: Install ast-grep (provides `sg`)
-        run: npm install -g @ast-grep/cli@0.40.5
-
-      - name: Verify `sg` resolves to ast-grep
-        shell: bash
-        run: |
-          if ! sg --version 2>&1 | grep -qi 'ast-grep'; then
-            echo "FAIL: 'sg' on PATH is not ast-grep — the rewrite guards cannot run."
-            echo "resolved to: $(command -v sg || echo '<not found>')"
-            sg --version 2>&1 || true
-            exit 1
-          fi
-          echo "PASS: $(sg --version)"
-
-      - name: Print commit range since last tag
-        id: range
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Resolve the most recent tag. If no tag exists yet (early repo),
-          # git describe exits 128 — fall back to full history.
-          RANGE=""
-          if LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null); then
-            RANGE="${LAST_TAG}..HEAD"
-            echo "Last tag: ${LAST_TAG}"
-          else
-            echo "No previous tag found — using full history as the release range."
-            # Empty RANGE base → git log with empty range degrades to full HEAD history
-            # when we pass just the rev range; use --all alternative below for safety.
-            RANGE=""
-          fi
-
-          echo "::group::Commit range (${RANGE:-full history})"
-          if [ -n "${RANGE}" ]; then
-            git log "${RANGE}" --oneline
-            COMMIT_COUNT=$(git rev-list --count "${RANGE}")
-          else
-            git log --oneline
-            COMMIT_COUNT=$(git rev-list --count HEAD)
-          fi
-          echo "::endgroup::"
-
-          echo "Commit count in release range: ${COMMIT_COUNT}"
-          echo "commit_count=${COMMIT_COUNT}" >> $GITHUB_OUTPUT
-          echo "last_tag=${LAST_TAG:-none}" >> $GITHUB_OUTPUT
-
-      - name: Run go build (release range)
-        shell: bash
-        run: |
-          set -euo pipefail
-          go build ./...
-
-      # Same -timeout rationale as the per-OS leg above.
-      - name: Run go test with race detector (release range)
-        shell: bash
-        run: |
-          set -euo pipefail
-          go test -race -timeout 25m ./...
-
-  # ---------------------------------------------------------------------------
-  # Summary gate: ensures all OS jobs + release range verify passed (or were
-  # skipped for non-release PRs).
+  # Summary gate: ensures all OS legs passed (or were skipped for non-release
+  # PRs). This is the required check that branch protection gates a release PR
+  # on, so the OS matrix above is what actually blocks a bad release.
   # ---------------------------------------------------------------------------
   release-pr-gate:
     name: Release PR Multi-OS Gate
-    needs: [full-matrix-test, release-range-verify]
+    needs: [full-matrix-test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify all OS + release range passed
+      - name: Verify all OS legs passed
         run: |
           if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
             echo "::error::Release PR multi-OS verification FAILED on at least one OS"
             exit 1
           fi
-          if [ "${{ needs.release-range-verify.result }}" = "failure" ]; then
-            echo "::error::Release Range Verify FAILED (build or tests broke inside the release window)"
-            exit 1
-          fi
           echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release PR)"
-          echo "✓ Release Range Verify PASSED (or skipped for non-release PR)"
