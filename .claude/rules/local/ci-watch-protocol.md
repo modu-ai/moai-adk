@@ -1,12 +1,12 @@
 ---
-description: CI watch loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (watch phase). Auto-loaded on /moai sync and moai pr watch invocations.
-paths: ".claude/skills/moai-workflow-ci-loop/SKILL.md,scripts/ci-watch/run.sh"
+description: CI watch loop protocol — HARD invocation contract for hns-workflow-ci-loop skill (watch phase). Auto-loaded on /moai sync and moai pr watch invocations.
+paths: ".claude/skills/hns-workflow-ci-loop/SKILL.md,scripts/ci-watch/run.sh"
 ---
 
 # CI Watch Protocol Rule
 
 > This file is the single source of truth for CI watch loop invocation rules.
-> Cross-referenced by: SKILL.md, moai-workflow-ci-loop (unified watch + autofix skill).
+> Cross-referenced by: SKILL.md, hns-workflow-ci-loop (unified watch + autofix skill).
 
 ---
 
@@ -101,7 +101,7 @@ The `(권장)` label MUST be on the first option per `.claude/rules/moai/core/as
 
 ## T3 Handoff Format
 
-On exit 2, stdout contains JSON (see `.claude/skills/moai-workflow-ci-loop/SKILL.md` (the **Handoff schema on exit 2** marker)):
+On exit 2, stdout contains JSON (see `.claude/skills/hns-workflow-ci-loop/SKILL.md` (the **Handoff schema on exit 2** marker)):
 
 ```json
 {

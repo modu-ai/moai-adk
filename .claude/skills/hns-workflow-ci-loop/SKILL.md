@@ -1,5 +1,5 @@
 ---
-name: moai-workflow-ci-loop
+name: hns-workflow-ci-loop
 description: >
   Unified CI watch + auto-fix loop skill. Polls gh pr checks after /moai sync PR creation,
   classifies required vs auxiliary failures, attempts safe automated patches (max 3 iterations),
@@ -29,7 +29,7 @@ progressive_disclosure:
   level2_tokens: 5000
 ---
 
-# CI Loop (`moai-workflow-ci-loop`)
+# CI Loop (`hns-workflow-ci-loop`)
 
 Unified CI watch + auto-fix loop. The orchestrator invokes this skill after `/moai sync`
 Phase 4 (`gh pr create`) returns a PR number. The skill polls required checks, classifies
