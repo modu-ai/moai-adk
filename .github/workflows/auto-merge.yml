@@ -147,8 +147,9 @@ jobs:
           HEAD_SHA: ${{ steps.head.outputs.sha }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           REPO: ${{ github.repository }}
-          # Highest risk level still allowed to auto-merge: low | moderate | high.
-          # Defaults to the conservative "low"; set the repository variable
+          # Highest risk level still allowed to auto-merge, on CodeRabbit's
+          # ladder: minimal | low | moderate | high. Defaults to "low", which
+          # admits minimal and low. Set the repository variable
           # AUTOMERGE_MAX_MERGE_RISK to widen it without editing this workflow.
           MAX_RISK: ${{ vars.AUTOMERGE_MAX_MERGE_RISK || 'low' }}
         run: |
@@ -220,9 +221,12 @@ jobs:
                 exit 0 ;;
           esac
 
+          # Observed ladder across PRs #1524-#1535: minimal, low, moderate, high.
+          # Anything outside it ranks 0 and withholds the merge, so a level this
+          # workflow has never seen is treated as unsafe rather than assumed low.
           rank() {
             case "$1" in
-              low) echo 1 ;; moderate) echo 2 ;; high) echo 3 ;; *) echo 0 ;;
+              minimal) echo 1 ;; low) echo 2 ;; moderate) echo 3 ;; high) echo 4 ;; *) echo 0 ;;
             esac
           }
 
