@@ -21,10 +21,24 @@ import (
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
-// branchGuardExemptEnv is the sentinel env var the orchestrator sets when
-// spawning Agent(manager-git, ...) for Late-Branch closure work. Closes the
-// gap that HookInput.AgentType is populated only for main-thread `claude
-// --agent` invocations (REQ-WBG-011b).
+// branchGuardExemptEnv is the sentinel env var that exempts a session from the
+// guard, complementing the AgentType identity axis (REQ-WBG-011b).
+//
+// Reachability — both axes are read from what arrives at THIS process, and a
+// tool-spawned subagent can supply neither:
+//
+//   - AgentType arrives only in the hook payload, and Claude Code populates
+//     agent_type for a main-thread `claude --agent <name>` launch. A subagent
+//     spawned through the Agent tool sends no agent_type on PreToolUse, so the
+//     identity axis cannot fire for it.
+//   - This env var is read from the hook process's own environment. The hook
+//     runs as a separate process spawned BEFORE the guarded command executes,
+//     so an `export` inside that command cannot reach it. The variable must be
+//     present in the environment Claude Code itself was launched with.
+//
+// Exporting the sentinel inside the command being guarded is therefore a no-op,
+// and was mistaken for a broken exemption. Neither axis is defective; both are
+// simply unreachable from inside a guarded command.
 const branchGuardExemptEnv = "MOAI_BRANCH_GUARD_EXEMPT"
 
 // branchGuardAuditRelPath is the fail-open advisory log path, relative to the
@@ -117,12 +131,52 @@ var branchStatePatterns = func() []branchStatePattern {
 	return out
 }()
 
+// quotedArgumentPattern matches a single- or double-quoted span in a shell
+// command. Leftmost-first alternation handles the nested case correctly: in
+// `echo "it's fine"` the double-quoted span starts first and swallows the
+// apostrophe, so the trailing text is not mistaken for an open single quote.
+var quotedArgumentPattern = regexp.MustCompile(`'[^']*'|"[^"]*"`)
+
+// quotedArgumentPlaceholder is what a quoted span collapses to. It is a single
+// non-flag word surrounded by spaces, chosen so the substitution preserves the
+// SHAPE of the command while discarding the span's contents:
+//
+//   - non-flag, so `git checkout -b "feat/x"` still presents an operand after
+//     `-b` and keeps matching. Blanking the span outright would have silently
+//     un-guarded every branch-state command whose branch name was quoted;
+//   - surrounded by spaces, so the tokens on either side cannot fuse into a new
+//     word that matches by accident.
+const quotedArgumentPlaceholder = " X "
+
+// substituteQuotedArguments replaces every quoted span with a placeholder word
+// so branch-state patterns match the command being RUN rather than text carried
+// as data inside an argument.
+//
+// Without this, the pattern scan matched anywhere in the command string. A
+// `moai todo add "… git switch …"` call was denied because the guarded text sat
+// inside a quoted argument that would never execute — the command actually
+// being run was `moai todo add`. Any command whose arguments quoted git prose
+// was refused the same way.
+//
+// Residual (accepted): a command that passes git through a shell wrapper —
+// `bash -c "git switch main"` — no longer matches, because the git invocation
+// is inside the discarded span. The guard is opt-in, advisory in spirit, and
+// fails open on every uncertainty, so under-matching a deliberately obfuscated
+// form is the correct direction to err. The Claude Code worktree isolation
+// guard refuses that same shape independently.
+func substituteQuotedArguments(command string) string {
+	return quotedArgumentPattern.ReplaceAllString(command, quotedArgumentPlaceholder)
+}
+
 // matchBranchStateCommand returns the deny-reason suffix of the first
 // branch-state pattern matching command, and a bool indicating whether any
-// pattern matched. Used by checkBranchState (M2) and by M1 pattern-set tests.
+// pattern matched. Quoted arguments collapse to a placeholder first
+// (substituteQuotedArguments) so a match reflects the command being invoked,
+// not its data. Used by checkBranchState (M2) and by M1 pattern-set tests.
 func matchBranchStateCommand(command string) (string, bool) {
+	scanned := substituteQuotedArguments(command)
 	for _, p := range branchStatePatterns {
-		if p.re.MatchString(command) {
+		if p.re.MatchString(scanned) {
 			return p.suffix, true
 		}
 	}
@@ -266,4 +320,3 @@ func appendBranchGuardAdvisory(input *HookInput, projectDir, command string, cau
 		slog.Debug("branch_guard: could not write audit log entry", "path", logPath, "error", err)
 	}
 }
-
