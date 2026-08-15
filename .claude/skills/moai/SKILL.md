@@ -78,7 +78,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
-- **todo** (aliases: backlog): Backlog queue — add an item (`/moai todo "<description>"`), list the queue, pick the next card (`next`), or remove one (`done <n>`); the operator's entry point into the kanban board
+- **todo** (aliases: backlog): Backlog queue — the slash surface covers two acts: add an item (`/moai todo "<description>"`) and list the queue (bare `/moai todo`). Picking the next card and removing one are CLI-only verbs, run as `moai todo next [<n>]` and `moai todo done <n>`; the operator's entry point into the kanban board
 
 ### Priority 2: SPEC-ID Detection
 
@@ -166,7 +166,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 ### todo - Backlog Queue
 
 Purpose: Hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
-Verbs: `/moai todo "<description>"` (append), bare `/moai todo` (list), `next` (pick via AskUserQuestion), `done <n>` (remove).
+Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
 State: `.moai/state/kanban/backlog.json` — project-local, not committed, atomic writes.
 The pick is the operator's: never preselect, never reorder by inferred priority, never auto-populate from TODO comments or issues.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
