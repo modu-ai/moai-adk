@@ -193,6 +193,14 @@ Cards flow like this: the lead instructs the `plan` session to author, the `run`
 
 The model labels visible in the screenshot's statuslines reflect one operator's session at capture time, not the shipped default.
 
+## Watching the board in a browser
+
+Rather than scanning five terminals by eye, `moai web` shows the same state on one screen. The Kanban screen carries the five-session chain board alongside the SPEC pipeline, with Overview, Specs, Monitor, and Settings screens beside it.
+
+![moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry](/images/profile/web-console-v31-overview.png)
+
+The console binds to loopback only. See [moai web console](/en/advanced/moai-web-console) for the full guide.
+
 ## Chain phases
 
 The kanban chain extends the `full-pipeline` contract (an agreement that auto-chains run → sync for one SPEC). Four phases proceed in order:

@@ -193,6 +193,14 @@ $ moai cc -k --name sync-<run-id>
 
 スクリーンショットのステータスラインに見えるモデルラベルは、撮影時のひとりの運営者のセッション構成を反映したもので、配布既定値ではありません。
 
+## ボードをブラウザで見る
+
+5つのターミナルを目で追う代わりに、`moai web`なら同じ状態を1画面で見られます。カンバン画面は5セッションのチェーンボードとSPECパイプラインを並べて表示し、Overview・Specs・Monitor・Settingsの画面も付きます。
+
+![moai web コンソールのOverview画面 — SPEC集計、進行中SPEC一覧、セッションレジストリ](/images/profile/web-console-v31-overview.png)
+
+コンソールはループバックにのみバインドされます。詳しい使い方は[moai web コンソール](/ja/advanced/moai-web-console)を参照してください。
+
 ## チェーンの段階
 
 カンバンチェーンは `full-pipeline` 契約(ひとつの SPEC に対して run → sync の自動チェーンを結ぶ約定)を拡張します。4段階が順に進みます:

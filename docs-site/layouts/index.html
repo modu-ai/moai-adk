@@ -53,6 +53,29 @@
           </div>
         </section>
 
+        {{- /* 1.5 v3.1 RELEASE BANNER — 칸반 모드. 스킨은 .cw-home-kanban
+               (moai-docs-layout.css). 링크는 site.GetPage 로 실제 페이지가 있을 때만
+               렌더 — 누락 로케일에서 깨진 링크가 생기지 않는다. */ -}}
+        <section class="cw-home-kanban">
+          <div>
+            <div class="cw-home-kanban-eyebrow">
+              <div class="cw-feat-idx">NEW · KANBAN MODE</div>
+              <span class="cw-side-new cw-new-badge">v3.1</span>
+            </div>
+            <h2>{{ i18n "home_kanban_title" }}</h2>
+            <p>{{ i18n "home_kanban_body" }}</p>
+            <div class="cw-feat-tags">
+              {{- with site.GetPage "/advanced/kanban-mode" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/advanced/manager-kanban" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/utility-commands/moai-todo" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+            </div>
+          </div>
+          <img class="cw-home-kanban-shot"
+               src="{{ "images/profile/kanban-five-sessions.png" | relURL }}"
+               alt="{{ i18n "home_kanban_shot_alt" }}"
+               loading="lazy" decoding="async" width="1600" height="1000">
+        </section>
+
         {{- /* 2. 3 FEATURE CARDS — MoAI 3.0 세 기둥. 태그는 실제 섹션 페이지로(로컬라이즈 타이틀). */ -}}
         <section class="cw-home-feats">
           <div class="cw-feat-card">

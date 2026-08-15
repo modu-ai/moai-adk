@@ -5,6 +5,12 @@
   "outputDirectory": "public",
   "devCommand": "hugo server",
   "installCommand": "hugo mod get -u",
+  "build": {
+    "env": {
+      "HUGO_VERSION": "0.160.1",
+      "VERCEL_DEEP_CLONE": "true"
+    }
+  },
   "cleanUrls": true,
   "trailingSlash": false,
   "github": {

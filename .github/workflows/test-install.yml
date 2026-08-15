@@ -7,6 +7,8 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - 'install.bat'
+      - 'docs-site/static/install.sh'
+      - 'docs-site/static/install.ps1'
       - '.github/workflows/test-install.yml'
   pull_request:
     branches: [main]
@@ -14,6 +16,8 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - 'install.bat'
+      - 'docs-site/static/install.sh'
+      - 'docs-site/static/install.ps1'
       - '.github/workflows/test-install.yml'
   workflow_dispatch:
 
@@ -29,6 +33,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Job 0: the docs-site copies must stay byte-identical to the repo-root
+  # originals. adk.mo.ai.kr serves the docs-site copies (Hugo static/), while
+  # the READMEs and the raw.githubusercontent URL serve the root originals —
+  # a drift between them would hand two different installers to users
+  # depending on which command they copied.
+  install-script-parity:
+    name: docs-site install-script parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: install.sh copy matches root original
+        run: diff -u install.sh docs-site/static/install.sh
+
+      - name: install.ps1 copy matches root original
+        run: diff -u install.ps1 docs-site/static/install.ps1
+
   # Job 1: Test install.sh on Unix-like systems
   test-sh:
     name: Test install.sh (${{ matrix.os }})
