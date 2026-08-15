@@ -3,6 +3,7 @@ package backup
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -300,6 +301,9 @@ func TestWriteSnapshot_ConfigSectionsIsFile(t *testing.T) {
 // TestHasSnapshot_ReadDirError covers the ReadDir error branch (the sections
 // dir exists but is unreadable).
 func TestHasSnapshot_ReadDirError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod-based unreadability does not deny access on Windows; ReadDir still succeeds and the error branch is never reached")
+	}
 	if os.Geteuid() == 0 {
 		t.Skip("chmod-based unreadability is ineffective when running as root")
 	}

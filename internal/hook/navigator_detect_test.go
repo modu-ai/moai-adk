@@ -66,9 +66,9 @@ func TestRunNavigatorDetect_Write_FiresTraverse(t *testing.T) {
 	_, specPath, _ := writeNavGraphFixture(t, tmpDir)
 
 	input := &HookInput{
-		CWD:           tmpDir,
-		ToolName:      "Write",
-		ToolInput:     json.RawMessage(`{"file_path": "` + specPath + `"}`),
+		CWD:       tmpDir,
+		ToolName:  "Write",
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(specPath) + `}`),
 	}
 	got := runNavigatorDetect(input)
 	if got == nil {
@@ -99,7 +99,7 @@ func TestRunNavigatorDetect_Edit_FiresTraverse(t *testing.T) {
 	input := &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "Edit",
-		ToolInput: json.RawMessage(`{"file_path": "` + decPath + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(decPath) + `}`),
 	}
 	got := runNavigatorDetect(input)
 	if got == nil {
@@ -129,7 +129,7 @@ func TestRunNavigatorDetect_NotebookEdit_FiresTraverse(t *testing.T) {
 	input := &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "NotebookEdit",
-		ToolInput: json.RawMessage(`{"notebook_path": "` + specPath + `"}`),
+		ToolInput: json.RawMessage(`{"notebook_path":` + mustJSON(specPath) + `}`),
 	}
 	got := runNavigatorDetect(input)
 	if got == nil {
@@ -183,7 +183,7 @@ func TestRunNavigatorDetect_GraphAbsent_FailOpen(t *testing.T) {
 	input := &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path": "` + filepath.Join(tmpDir, "x.go") + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(filepath.Join(tmpDir, "x.go")) + `}`),
 	}
 	if got := runNavigatorDetect(input); got != nil {
 		t.Errorf("expected nil Result on absent graph (fail-open); got %+v", got)
@@ -204,7 +204,7 @@ func TestRunNavigatorDetect_GraphUnparseable_FailOpen(t *testing.T) {
 	input := &HookInput{
 		CWD:       tmpDir,
 		ToolName:  "Write",
-		ToolInput: json.RawMessage(`{"file_path": "` + filepath.Join(tmpDir, "x.go") + `"}`),
+		ToolInput: json.RawMessage(`{"file_path":` + mustJSON(filepath.Join(tmpDir, "x.go")) + `}`),
 	}
 	if got := runNavigatorDetect(input); got != nil {
 		t.Errorf("expected nil Result on unparseable graph (fail-open); got %+v", got)
@@ -279,7 +279,7 @@ func TestPostToolHandler_NavigatorDetect_WriteDispatch(t *testing.T) {
 		SessionID:     "sess-nd-001",
 		HookEventName: "PostToolUse",
 		ToolName:      "Write",
-		ToolInput:     json.RawMessage(`{"file_path": "` + specPath + `"}`),
+		ToolInput:     json.RawMessage(`{"file_path":` + mustJSON(specPath) + `}`),
 	}
 	h := NewPostToolHandler()
 	out, err := h.Handle(context.Background(), input)
@@ -330,7 +330,7 @@ func TestPostToolHandler_NavigatorDetect_NotebookEditDispatch(t *testing.T) {
 		SessionID:     "sess-nd-003",
 		HookEventName: "PostToolUse",
 		ToolName:      "NotebookEdit",
-		ToolInput:     json.RawMessage(`{"notebook_path": "` + specPath + `"}`),
+		ToolInput:     json.RawMessage(`{"notebook_path":` + mustJSON(specPath) + `}`),
 	}
 	h := NewPostToolHandler()
 	out, err := h.Handle(context.Background(), input)
@@ -640,7 +640,7 @@ func TestPostToolHandler_NavigatorDetect_AdvisoryOutput(t *testing.T) {
 		SessionID:     "sess-nd-advisory-001",
 		HookEventName: "PostToolUse",
 		ToolName:      "Write",
-		ToolInput:     json.RawMessage(`{"file_path": "` + specPath + `"}`),
+		ToolInput:     json.RawMessage(`{"file_path":` + mustJSON(specPath) + `}`),
 	}
 	h := NewPostToolHandler()
 	out, err := h.Handle(context.Background(), input)

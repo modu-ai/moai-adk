@@ -71,6 +71,21 @@ func runGit(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// samePath reports whether two paths name the same location, ignoring the
+// separator flavor. `git rev-parse --path-format=absolute` emits forward
+// slashes on Windows while filepath.Join produces backslashes, so comparing
+// the two byte-for-byte fails there even when both denote the same directory.
+// Both sides already have symlinks resolved by the fixture helpers, so the
+// separator is the only remaining difference.
+func samePath(a, b string) bool {
+	return filepath.ToSlash(a) == filepath.ToSlash(b)
+}
+
+// hasPathPrefix reports whether path lies under dir, separator-agnostically.
+func hasPathPrefix(path, dir string) bool {
+	return strings.HasPrefix(filepath.ToSlash(path), filepath.ToSlash(dir)+"/")
+}
+
 // writeTestFile creates a file with the given content, creating parent directories as needed.
 func writeTestFile(t *testing.T, path, content string) {
 	t.Helper()

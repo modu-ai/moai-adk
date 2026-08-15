@@ -42,16 +42,16 @@ func TestResolveGitDirs_PrimaryCheckout(t *testing.T) {
 		t.Fatalf("ResolveGitDirs(primary) error = %v", err)
 	}
 	wantGit := filepath.Join(primary, ".git")
-	if dirs.GitDir != wantGit {
+	if !samePath(dirs.GitDir, wantGit) {
 		t.Errorf("GitDir = %q, want %q", dirs.GitDir, wantGit)
 	}
-	if dirs.CommonDir != wantGit {
+	if !samePath(dirs.CommonDir, wantGit) {
 		t.Errorf("CommonDir = %q, want %q (equal in primary)", dirs.CommonDir, wantGit)
 	}
 	if !filepath.IsAbs(dirs.CommonDir) {
 		t.Errorf("CommonDir = %q is not absolute", dirs.CommonDir)
 	}
-	if got := filepath.Dir(dirs.CommonDir); got != primary {
+	if got := filepath.Dir(dirs.CommonDir); !samePath(got, primary) {
 		t.Errorf("parent of CommonDir = %q, want primary root %q", got, primary)
 	}
 }
@@ -69,16 +69,16 @@ func TestResolveGitDirs_Worktree(t *testing.T) {
 		t.Fatalf("ResolveGitDirs(worktree) error = %v", err)
 	}
 	wantCommon := filepath.Join(primary, ".git")
-	if dirs.CommonDir != wantCommon {
+	if !samePath(dirs.CommonDir, wantCommon) {
 		t.Errorf("CommonDir = %q, want %q", dirs.CommonDir, wantCommon)
 	}
-	if dirs.GitDir == dirs.CommonDir {
+	if samePath(dirs.GitDir, dirs.CommonDir) {
 		t.Errorf("GitDir = CommonDir = %q; in a worktree they must differ", dirs.GitDir)
 	}
-	if !strings.HasPrefix(dirs.GitDir, wantCommon+string(filepath.Separator)) {
+	if !hasPathPrefix(dirs.GitDir, wantCommon) {
 		t.Errorf("GitDir = %q, want under %q", dirs.GitDir, wantCommon)
 	}
-	if got := filepath.Dir(dirs.CommonDir); got != primary {
+	if got := filepath.Dir(dirs.CommonDir); !samePath(got, primary) {
 		t.Errorf("parent of CommonDir = %q, want primary root %q", got, primary)
 	}
 }

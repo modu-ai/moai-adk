@@ -23,6 +23,26 @@ func writeFixture(t *testing.T, root, relPath, content string) {
 	}
 }
 
+// detectLine renders one detect-fixture JSONL row for a changed path. The path
+// is marshaled rather than concatenated into the literal: on Windows a temp
+// path contains backslashes (C:\Users\RUNNER~1\...), and "\U" inside a JSON
+// string is an invalid escape, so a concatenated line fails to parse and the
+// changed path silently reads back as empty.
+func detectLine(t *testing.T, changedPath, changedAt string) string {
+	t.Helper()
+	row := map[string]any{
+		"changed_path":   changedPath,
+		"changed_at":     changedAt,
+		"affected_nodes": []any{},
+		"affected_edges": []any{},
+	}
+	b, err := json.Marshal(row)
+	if err != nil {
+		t.Fatalf("marshal detect line: %v", err)
+	}
+	return string(b)
+}
+
 // readWorkItemsJSON reads and parses the work-items.json output.
 func readWorkItemsJSON(t *testing.T, root string) WorkItemsArtifact {
 	t.Helper()
@@ -46,7 +66,7 @@ func TestFailOpen_009a_AuditAbsent(t *testing.T) {
 
 	// No audit-report.json. Provide detect + graph.
 	writeDetectFixture(t, root, "session-a",
-		`{"changed_path":"`+filepath.Join(root, "internal/x.go")+`","changed_at":"2026-01-01T00:00:00Z","affected_nodes":[],"affected_edges":[]}`)
+		detectLine(t, filepath.Join(root, "internal/x.go"), "2026-01-01T00:00:00Z"))
 
 	if err := RunDefault(root); err != nil {
 		t.Fatalf("RunDefault returned non-nil: %v", err)
@@ -123,7 +143,7 @@ func TestFailOpen_009d_UnparseableJSON(t *testing.T) {
 	writeFixture(t, root, auditReportRelPath, `{not valid json`)
 	// Valid detect.
 	writeDetectFixture(t, root, "session-a",
-		`{"changed_path":"`+filepath.Join(root, "internal/y.go")+`","changed_at":"2026-01-01T00:00:00Z","affected_nodes":[],"affected_edges":[]}`)
+		detectLine(t, filepath.Join(root, "internal/y.go"), "2026-01-01T00:00:00Z"))
 
 	if err := RunDefault(root); err != nil {
 		t.Fatalf("RunDefault returned non-nil: %v", err)
@@ -151,7 +171,7 @@ func TestFailOpen_009e_SchemaInvalid(t *testing.T) {
 	writeFixture(t, root, auditReportRelPath, `{"audit_at":"2026-01-01","audit_commit":"abc"}`)
 	// Valid detect.
 	writeDetectFixture(t, root, "session-a",
-		`{"changed_path":"`+filepath.Join(root, "internal/z.go")+`","changed_at":"2026-01-01T00:00:00Z","affected_nodes":[],"affected_edges":[]}`)
+		detectLine(t, filepath.Join(root, "internal/z.go"), "2026-01-01T00:00:00Z"))
 
 	if err := RunDefault(root); err != nil {
 		t.Fatalf("RunDefault returned non-nil: %v", err)

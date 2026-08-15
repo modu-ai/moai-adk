@@ -15,6 +15,7 @@ package hook
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,10 +37,12 @@ var failingRevParseMock = func(name string, args ...string) *exec.Cmd {
 // containsCwdToken reports whether the audit-log body records the resolved
 // cwd. AP-D-003 requires the resolved cwd to be observable in the advisory so
 // a silent $CLAUDE_PROJECT_DIR fallback cannot re-introduce the bug. The check
-// matches either a `cwd="<path>"` structured token or the bare path substring
-// (robust to the exact format string).
+// matches the `cwd="<path>"` structured token. The path is compared in its
+// %q-quoted form because the advisory writes it with %q: on Windows that
+// escapes every separator (C:\\Users\\...), so a bare substring match against
+// the unescaped path would miss.
 func containsCwdToken(body, cwd string) bool {
-	return strings.Contains(body, "cwd=") && strings.Contains(body, cwd)
+	return strings.Contains(body, fmt.Sprintf("cwd=%q", cwd))
 }
 
 // worktreeFixture builds a primary git repo plus a real git worktree under

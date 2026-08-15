@@ -86,6 +86,15 @@ func TestNavigatorDetectCoverage(t *testing.T) {
 	if graph.Edges == nil {
 		t.Fatalf("fixture graph %s has no edges array — the corpus is malformed", graphPath)
 	}
+	// The committed fixture records POSIX-separated paths, but Traverse
+	// classifies a directory-prefix input with filepath.Separator. On Windows
+	// the fixture's trailing "/" is not the native separator, so the three
+	// directory-prefix cases would silently degrade to exact-equality misses
+	// and depress the ratio. Convert both sides of the comparison to native
+	// separators — a no-op on POSIX, correctness-preserving on Windows.
+	for i := range graph.Edges {
+		graph.Edges[i].SourcePath = filepath.FromSlash(graph.Edges[i].SourcePath)
+	}
 
 	manifestPath := filepath.Join(corpusDir, "corpus_cases.json")
 	mraw, err := os.ReadFile(manifestPath)
@@ -104,9 +113,10 @@ func TestNavigatorDetectCoverage(t *testing.T) {
 	var mapped, unmapped, outOfScope int
 	var unmappedPaths []string
 	for _, c := range manifest.Cases {
-		result, err := detect.Traverse(&graph, c.ChangedPath)
+		changedPath := filepath.FromSlash(c.ChangedPath)
+		result, err := detect.Traverse(&graph, changedPath)
 		if err != nil {
-			t.Fatalf("Traverse(%q) returned error: %v", c.ChangedPath, err)
+			t.Fatalf("Traverse(%q) returned error: %v", changedPath, err)
 		}
 		hasRows := result != nil && (len(result.Nodes) > 0 || len(result.Edges) > 0)
 		switch c.Class {

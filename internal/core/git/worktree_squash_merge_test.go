@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -647,6 +648,9 @@ func TestIsBranchMerged_NonASCIIPathRemoved(t *testing.T) {
 }
 
 func TestIsBranchMerged_ColonPathRemovedFromBase(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture filename \":note.txt\" is not a legal Windows filename (the colon is reserved for alternate data streams), so the case cannot be constructed there")
+	}
 	assertMerged(t, "SC-13 leading-colon path removed", buildSC13ColonPath, false)
 }
 
@@ -659,6 +663,9 @@ func TestIsBranchMerged_SubmoduleIgnoreDirective(t *testing.T) {
 }
 
 func TestIsBranchMerged_ModeOnlyDivergence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows, so the fixture's chmod 0755/0644 records no mode change in git and the mode-only divergence under judgement never exists")
+	}
 	assertMerged(t, "P3c mode-only divergence", buildP3cModeOnly, false)
 }
 

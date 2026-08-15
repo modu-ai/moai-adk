@@ -326,6 +326,7 @@ func TestCmdDisable_SetsEnabledFalse(t *testing.T) {
 // non-default mode is preserved across the write rather than narrowed back to
 // the hardcoded 0o644 the legacy os.WriteFile call imposed.
 func TestCmdDisable_PreservesFileMode(t *testing.T) {
+	requirePOSIXModeBits(t)
 	t.Parallel()
 
 	dir := harnessTestProject(t)

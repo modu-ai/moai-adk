@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -169,6 +170,9 @@ func TestRoundTripEquivalence_JSON(t *testing.T) {
 // pre-existing file (it reads-then-modifies); the new-file-default path is
 // owned by the atomicfile helper's own M1 tests.
 func TestBuildInto_PreservesExistingFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX mode bits are not stored on Windows; os.Chmod only toggles the read-only flag, so the seeded mode drifts before BuildInto is called")
+	}
 	t.Parallel()
 	doc := sampleDoc()
 
