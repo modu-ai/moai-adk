@@ -159,3 +159,73 @@ func TestLeadLabelIsNotACompanion(t *testing.T) {
 		t.Errorf("LeadLabel(%q) = %q reads as a companion label", runID, label)
 	}
 }
+
+// TestSplitLeadLabelRoundTrip pins the property the launcher's run-id adoption
+// relies on: whatever LeadLabel writes, SplitLeadLabel reads back unchanged.
+func TestSplitLeadLabelRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	runID := NewRunID()
+	got, ok := SplitLeadLabel(LeadLabel(runID))
+	if !ok || got != runID {
+		t.Errorf("SplitLeadLabel(LeadLabel(%q)) = %q/%v, want %q/true", runID, got, ok, runID)
+	}
+}
+
+// TestSplitLeadLabelRejectsNonLeadShapes covers what must NOT be adopted as a
+// lead run id. The admitted shape is deliberately identical to the companion
+// side's: `lead-notarunid` IS accepted, because `notarunid` is a well-formed
+// run id as far as the grammar is concerned, exactly as `run-notarunid` is
+// accepted as a companion. Tightening one side alone is how the two branches
+// drift apart.
+func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		label string
+		want  string // "" means reject
+	}{
+		{"lead-abc123", "abc123"},
+		{"lead-notarunid", "notarunid"},
+		{"", ""},
+		{"lead", ""},
+		{"lead-", ""},
+		{"lead-ABC123", ""},
+		{"lead-a-b", ""},
+		{"lead-a_b", ""},
+		{"leader-abc123", ""},
+		{"run-abc123", ""},
+		{"board-watch", ""},
+	} {
+		got, ok := SplitLeadLabel(c.label)
+		if c.want == "" {
+			if ok {
+				t.Errorf("SplitLeadLabel(%q) = %q, want reject", c.label, got)
+			}
+			continue
+		}
+		if !ok || got != c.want {
+			t.Errorf("SplitLeadLabel(%q) = %q/%v, want %q/true", c.label, got, ok, c.want)
+		}
+	}
+}
+
+// TestSplitLeadLabelAndCompanionAreDisjoint is the branch-safety property: no
+// label can satisfy both discriminators, so recognizing a lead name can never
+// reroute a lead session down the companion branch.
+func TestSplitLeadLabelAndCompanionAreDisjoint(t *testing.T) {
+	t.Parallel()
+
+	runID := NewRunID()
+	labels := []string{LeadLabel(runID)}
+	for _, role := range CompanionRoles {
+		labels = append(labels, CompanionLabel(role, runID))
+	}
+	for _, label := range labels {
+		_, isLead := SplitLeadLabel(label)
+		_, _, isCompanion := SplitCompanionLabel(label)
+		if isLead && isCompanion {
+			t.Errorf("label %q satisfies both discriminators", label)
+		}
+	}
+}

@@ -34,6 +34,7 @@ const langEnglish = "en"
 // operator reads as separate lines.
 type kanbanMessages struct {
 	leadHeader     string // run id
+	leadIdentity   string // lead label
 	leadManual     string
 	glmSubstitute  string
 	leaderSocket   string // socket path
@@ -52,7 +53,8 @@ type kanbanMessages struct {
 // configuration, not for some population of unsupported locales.
 var kanbanLocales = map[string]kanbanMessages{
 	langEnglish: {
-		leadHeader: "Kanban Mode: run %s, lead session.",
+		leadHeader:   "Kanban Mode: run %s, lead session.",
+		leadIdentity: "This session should be named %s. If its name differs, the launch commands below belong to another run — relaunch with that name rather than copying them.",
 		leadManual: "This session drives the kanban chain.\n" +
 			"The four companions below are launched by hand, one per new terminal, " +
 			"because a session cannot launch another session.",
@@ -65,7 +67,8 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "Kanban Mode: joined run %s.",
 	},
 	"ko": {
-		leadHeader: "칸반 모드: run %s, 리더 세션.",
+		leadHeader:   "칸반 모드: run %s, 리더 세션.",
+		leadIdentity: "이 세션의 이름은 %s 여야 합니다. 이름이 다르면 아래 실행 명령은 다른 run 의 것이니, 복사하지 말고 해당 이름으로 다시 띄우세요.",
 		leadManual: "이 세션이 칸반 체인을 주도합니다.\n" +
 			"아래 네 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
 		glmSubstitute:  "동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
@@ -77,7 +80,8 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "칸반 모드: run %s 에 합류했습니다.",
 	},
 	"ja": {
-		leadHeader: "かんばんモード: run %s、リーダーセッション。",
+		leadHeader:   "かんばんモード: run %s、リーダーセッション。",
+		leadIdentity: "このセッションの名前は %s である必要があります。名前が異なる場合、以下の起動コマンドは別の run のものなので、コピーせずにその名前で起動し直してください。",
 		leadManual: "このセッションがかんばんチェーンを進行します。\n" +
 			"以下の 4 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。",
 		glmSubstitute:  "併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
@@ -89,7 +93,8 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "かんばんモード: run %s に参加しました。",
 	},
 	"zh": {
-		leadHeader: "看板模式：run %s，主导会话。",
+		leadHeader:   "看板模式：run %s，主导会话。",
+		leadIdentity: "本会话的名称应为 %s。若名称不同，下面的启动命令属于另一个 run，请不要复制，改用该名称重新启动。",
 		leadManual: "本会话负责推进整条看板链路。\n" +
 			"下面四个协同会话需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。",
 		glmSubstitute:  "如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",

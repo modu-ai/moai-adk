@@ -104,10 +104,21 @@ func kanbanLeadNotice(runID, lang string) string {
 	}
 	m := kanbanMessagesFor(lang)
 
-	// (a) run id, and (b) why bootstrap is manual — stated rather than left to
-	// be discovered.
-	blocks := []string{
+	// (a) the run id and the session name that must accompany it, printed
+	// together so a disagreement between them is visible HERE — at the moment
+	// the notice is emitted — rather than later, when a copied command opens a
+	// companion on a run no lead is listening to. The launcher now adopts an
+	// operator-supplied `lead-<run-id>` name (internal/cli/kanban.go leadRunID)
+	// so the two agree by construction; this line is what makes a residual
+	// disagreement self-announcing instead of silent.
+	identity := []string{
 		fmt.Sprintf(m.leadHeader, runID),
+		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel(runID)),
+	}
+
+	// (b) why bootstrap is manual — stated rather than left to be discovered.
+	blocks := []string{
+		strings.Join(identity, "\n"),
 		m.leadManual,
 	}
 

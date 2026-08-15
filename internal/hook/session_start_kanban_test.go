@@ -231,6 +231,30 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	}
 }
 
+// TestKanbanLeadNoticeNamesTheLeadSession is the self-announcing property: the
+// notice prints the session name that belongs to the run it is announcing, so
+// an operator whose terminal carries a different name sees the disagreement at
+// the moment the notice appears — rather than discovering it later, when a
+// copied companion command opens a session no lead is listening to.
+//
+// The launcher now adopts an operator-supplied `lead-<run-id>` name, so the two
+// agree by construction; this line is the residual backstop, and it is printed
+// in every locale because the label is a protocol token, not prose.
+func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
+	for _, lang := range []string{langEnglish, "ko", "ja", "zh"} {
+		t.Run(lang, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "xyz789")
+
+			got := kanbanLeadNotice("xyz789", lang)
+			if want := kanban.LeadLabel("xyz789"); !strings.Contains(got, want) {
+				t.Errorf("lead notice does not name the lead session %q:\n%s", want, got)
+			}
+		})
+	}
+}
+
 // TestKanbanCompanionNoticeRoleless is AC-FB-016: the companion notice is
 // join-only and role-less — it names the run and does NOT contain the word
 // "companion" or the prior-art "as the X companion" clause. (A role name like

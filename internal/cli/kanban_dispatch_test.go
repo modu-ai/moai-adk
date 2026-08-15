@@ -66,7 +66,7 @@ func TestDispatchOutcome_LeadEnvState(t *testing.T) {
 	if resolveKanbanBranch(true, false) != kanbanBranchLead {
 		t.Fatal("expected lead branch")
 	}
-	restore := enterKanbanMode("SPEC-FOO-001")
+	restore := enterKanbanMode("SPEC-FOO-001", "")
 	defer restore()
 
 	if os.Getenv(config.EnvMoaiKanban) == "" {
