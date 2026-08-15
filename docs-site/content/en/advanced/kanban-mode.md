@@ -125,7 +125,7 @@ In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs 
 ### Reachable from the command line today
 
 - **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>-<run-id>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
-- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the four companion launch commands (`moai cc -k --name plan-<run-id>` and so on) in the user's language. Companion sessions are told which role they joined as.
+- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the four companion launch commands (`moai cc -k --name plan-<run-id>` and so on) in the user's language. The notice a companion session receives identifies only the run it joined; the joined role is not in the notice — it is recorded separately in the session record.
 - **Session record** — the entered session's role, backend, and target SPEC are recorded.
 - **`moai chain` CLI** — five subcommands work: `status` (current-node summary), `lineage` (root-to-leaf lineage), `back` (parent node's resume target and command), `list` (all nodes with freshness), `prune` (folding terminated old nodes into an archive). The `internal/chain/` storage layer below backs them.
 - **Dispatch** — the actor moving cards between columns is the lead session's orchestrator. The protocol lives in `.claude/rules/moai/workflow/kanban-dispatch.md`, and companion sessions are launched by hand, one per terminal. There is no path by which a session launches another session.
@@ -178,6 +178,20 @@ $ moai cc -k --name sync-<run-id>
 ```
 
 On successful entry the launcher arms the `kanban_chain` goal preset inside the session (after Implementation Kickoff Approval passes). The goal preset is a completion condition that the `stop-goal` Stop-hook evaluator evaluates at every turn end — it is not a new runtime or hook, but one condition laid on top of existing machinery.
+
+## Running one chain across five terminals
+
+Opening the lead with `moai cc -k` prints one launch command per companion session alongside the run identifier. The operator opens each of them **in its own terminal** to complete the five-session run — the lead instructs, and plan · run · review · sync each work in their own worktree.
+
+![One Kanban Mode run: a lead and four companion sessions open in their own terminals](/images/profile/kanban-five-sessions.png)
+
+Cards flow like this: the lead instructs the `plan` session to author, the `run` session implements from that plan, the `review` session checks the implementation, and the `sync` session reconciles the code with the SPEC and commits. Each dispatch happens only after the lead has read the phase's progress evidence.
+
+{{< callout type="info" >}}
+**Why this shape — a backend per role.** Design and leading run on Opus; implementation runs on GLM. When opening companions, `moai glm -k --name ...` instead of `moai cc -k --name ...` joins that session on the GLM backend. Keeping the expensive model where judgment is needed and routing the implementation load to the cheaper backend is what makes the token cost of a multi-session run sustainable. Sessions message each other, and cross-session messaging is auto-permitted through the injected `--settings`.
+{{< /callout >}}
+
+The model labels visible in the screenshot's statuslines reflect one operator's session at capture time, not the shipped default.
 
 ## Chain phases
 

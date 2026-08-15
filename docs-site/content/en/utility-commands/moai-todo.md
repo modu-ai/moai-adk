@@ -27,7 +27,7 @@ The queue is deliberately thin. It holds nothing that a SPEC, git history, or th
 ```mermaid
 flowchart TD
     Add["/moai todo description<br/>add an item"] --> Queue["backlog queue"]
-    Queue --> Pick["/moai todo next<br/>a human picks one"]
+    Queue --> Pick["via the lead question channel<br/>a human picks one"]
     Pick --> Plan["dispatch to the plan session<br/>SPEC is authored there"]
     Plan --> Spec["SPEC ID recorded on the item"]
 ```
@@ -40,20 +40,14 @@ flowchart TD
 
 # View the queue
 > /moai todo
-
-# Remove item 3
-> /moai todo done 3
-
-# Pick the next item to start
-> /moai todo next
 ```
 
 | Invocation | Behavior |
 |------|------|
 | `/moai todo "<description>"` | Appends an item to the end of the queue and shows the added item and its position. |
 | `/moai todo` | Shows the queue in order, with position numbers. |
-| `/moai todo done <n>` | Removes item `n` (finished elsewhere, or no longer needed). Shows what was removed. |
-| `/moai todo next` | Presents the queue as choices so a human picks the next card. |
+
+Removing an item and picking the next card are not verbs on the slash surface. Those two belong to the terminal CLI below (`moai todo done`, `moai todo next`) or to the pick made through the lead session.
 
 Any other argument shape is treated as a description. `/moai todo fix flaky CI cache` is not an error but an item add — the cost of a misunderstanding is a human deleting one line.
 
@@ -79,14 +73,14 @@ The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the pr
 | Field | Meaning |
 |------|------|
 | `id` | A short, stable identifier assigned at add time. Never reused after removal. |
-| `spec_id` | Filled in after the item is picked and a SPEC is authored. Until then it is `null`, and its presence is what separates "still a backlog item" from "already a card on the board". |
-| `state` | `queued` · `picked` · `dropped`. A picked item stays in the file so ongoing work is visible; it is removed when the card reaches `done`. |
+| `spec_id` | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state. |
+| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible; it is removed when the card reaches `done`. |
 
 The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
 
 ## Picking the next card
 
-`/moai todo next` presents the queue as choices. One item at a time, oldest first, up to the four the tooling allows, with the rest summarized in the body so nothing is hidden. The lead session presents the queue the same way as the first move after a `/clear`.
+The pick is made by a human through the lead session's question channel. The lead presents the queue as choices — one item at a time, oldest first, up to the four the tooling allows, with the rest summarized in the body so nothing is hidden — the same way it presents the queue as the first move after a `/clear`. From the terminal, a bare `moai todo next` prints the same list read-only when you just want to see the candidates.
 
 {{< callout type="warning" >}}
 {{< icon warning warn >}} **A human does the picking.** Nothing is pre-selected, no estimated priority reorders the queue, and "just start from the top" is never a default. If the queue is empty, it says so and stops — an empty backlog is a normal state, not a signal to invent work.
@@ -96,9 +90,9 @@ You can also approve several cards at once — by pointing at the cards, or by s
 
 After a card is picked, it continues like this:
 
-1. The item is marked `picked`.
+1. The picked item is marked `picked` with one locked write: `moai todo next <n> [--spec <SPEC-ID>]`. When the identifier is already known, it is attached right here.
 2. It is handed to the `plan` session per the kanban dispatch protocol. The card enters the `plan` column, and SPEC authorship happens there, not here.
-3. As the plan session reports the SPEC identifier, it is recorded on the item.
+3. When the id was not known at pick time, it is attached to the item as the plan session reports it.
 
 ## Outside Kanban Mode
 
