@@ -65,8 +65,13 @@ func TestSettingsLocalPreserve_Repro(t *testing.T) {
 }`
 	mustWriteFile(t, settingsPath, original)
 
-	if err := ensureSettingsLocalJSON(settingsPath); err != nil {
-		t.Fatalf("ensureSettingsLocalJSON: %v", err)
+	// Re-pointed to the seam directly (the vehicle helper ensureSettingsLocalJSON
+	// was removed with its dead caller enableTeamMode in #1531): the defect being
+	// guarded is the RMW round-trip itself, which lives in mutateSettingsLocal.
+	if err := mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		m["teammateMode"] = "tmux"
+	}); err != nil {
+		t.Fatalf("mutateSettingsLocal: %v", err)
 	}
 
 	after := readFileStr(t, settingsPath)
