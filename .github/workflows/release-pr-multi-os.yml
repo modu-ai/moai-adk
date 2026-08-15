@@ -74,6 +74,29 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      # ast-grep supplies the `sg` binary that the internal/astgrep and
+      # internal/hook/quality guards shell out to. Without it those guards
+      # fail here rather than skipping, because they assert a match count
+      # the scan can only produce when the real binary is present.
+      # Mirrors ci.yml — keep the pinned version in step with it, since the
+      # rewrite path parses sg's output.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Ubuntu and Debian ship /usr/bin/sg as a newgrp alternative, so `sg`
+      # being on PATH proves nothing about what it is. Assert the binary is
+      # ast-grep — a silent substitution is the failure this step prevents.
+      - name: Verify `sg` resolves to ast-grep
+        shell: bash
+        run: |
+          if ! sg --version 2>&1 | grep -qi 'ast-grep'; then
+            echo "FAIL: 'sg' on PATH is not ast-grep — the rewrite guards cannot run."
+            echo "resolved to: $(command -v sg || echo '<not found>')"
+            sg --version 2>&1 || true
+            exit 1
+          fi
+          echo "PASS: $(sg --version)"
+
       - name: Run go vet
         run: go vet ./...
 
@@ -106,6 +129,23 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      # Same ast-grep dependency as the per-OS leg above: this job runs the
+      # full `go test -race ./...` over the release range, which includes the
+      # guards that shell out to `sg`.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      - name: Verify `sg` resolves to ast-grep
+        shell: bash
+        run: |
+          if ! sg --version 2>&1 | grep -qi 'ast-grep'; then
+            echo "FAIL: 'sg' on PATH is not ast-grep — the rewrite guards cannot run."
+            echo "resolved to: $(command -v sg || echo '<not found>')"
+            sg --version 2>&1 || true
+            exit 1
+          fi
+          echo "PASS: $(sg --version)"
 
       - name: Print commit range since last tag
         id: range
