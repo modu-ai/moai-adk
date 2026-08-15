@@ -51,7 +51,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      # Guard (a) — head SHA re-verification.
+      # workflow_run carries the commit CI actually ran against. If the PR head
+      # moved since then, that CI result no longer describes what we would be
+      # merging, and merging anyway strands the newer commit outside main.
+      # Any uncertainty (API failure, empty value) withholds the merge.
+      - name: Verify PR head still matches the CI-tested commit
+        id: head
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          CURRENT_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid' 2>/dev/null || true)"
+
+          echo "CI tested : ${TESTED_SHA:-<empty>}"
+          echo "PR head   : ${CURRENT_SHA:-<empty>}"
+
+          if [ -z "$TESTED_SHA" ] || [ -z "$CURRENT_SHA" ]; then
+            echo "::warning::Could not resolve both SHAs - withholding merge"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$TESTED_SHA" != "$CURRENT_SHA" ]; then
+            echo "::notice::PR head moved after CI ran - withholding merge"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "sha=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
       - name: Check all required CI checks passed
+        if: steps.head.outputs.ok == 'true'
         id: checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,8 +127,131 @@ jobs:
           echo "Timeout waiting for checks, skipping auto-merge"
           echo "should_merge=false" >> "$GITHUB_OUTPUT"
 
+      # Guard (b)+(c) — CodeRabbit gate.
+      # CodeRabbit reports through a commit status named "CodeRabbit" and writes
+      # its verdict into the walkthrough comment, between the
+      # final_review_risk_start/end markers, in the shape:
+      #   **Merge Risk:** _<emoji> Moderate_ - up to `<head sha prefix>`
+      # The trailing prefix says which commit the verdict covers, so a verdict
+      # left over from an earlier push can be told apart from a current one.
+      #
+      # Merge proceeds only when the verdict is present, current, and no worse
+      # than AUTOMERGE_MAX_MERGE_RISK. Every other outcome - status still
+      # pending at timeout, comment missing, marker block absent, unparseable
+      # level, stale prefix, API error - withholds the merge.
+      - name: Wait for CodeRabbit and read its Merge Risk verdict
+        id: coderabbit
+        if: steps.head.outputs.ok == 'true' && steps.checks.outputs.should_merge == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+          # Highest risk level still allowed to auto-merge, on CodeRabbit's
+          # ladder: minimal | low | moderate | high. Defaults to "low", which
+          # admits minimal and low. Set the repository variable
+          # AUTOMERGE_MAX_MERGE_RISK to widen it without editing this workflow.
+          MAX_RISK: ${{ vars.AUTOMERGE_MAX_MERGE_RISK || 'low' }}
+        run: |
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+
+          # --- (b) wait for the CodeRabbit commit status to settle -----------
+          MAX_WAIT=60   # 60 x 15s = 15 minutes
+          WAIT=0
+          STATE=""
+
+          while [ "$WAIT" -lt "$MAX_WAIT" ]; do
+            STATE="$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+              --jq '[.statuses[] | select(.context == "CodeRabbit")] | last | .state // ""' \
+              2>/dev/null || true)"
+
+            case "$STATE" in
+              success)          echo "CodeRabbit status: success"; break ;;
+              failure|error)    echo "::notice::CodeRabbit status is '$STATE' - withholding merge"; exit 0 ;;
+              *)                echo "CodeRabbit status: '${STATE:-<absent>}' - waiting ($WAIT/$MAX_WAIT)" ;;
+            esac
+
+            sleep 15
+            WAIT=$((WAIT + 1))
+          done
+
+          if [ "$STATE" != "success" ]; then
+            echo "::notice::Timed out waiting for CodeRabbit - withholding merge"
+            exit 0
+          fi
+
+          # --- (c) read the verdict out of the walkthrough comment -----------
+          BODY="$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '[ .[]
+                    | select(.user.login | ascii_downcase | startswith("coderabbitai"))
+                    | .body
+                    | select(contains("final_review_risk_start")) ] | last // ""' \
+            2>/dev/null || true)"
+
+          if [ -z "$BODY" ]; then
+            echo "::notice::No CodeRabbit verdict comment found - withholding merge"
+            exit 0
+          fi
+
+          RISK_LINE="$(printf '%s\n' "$BODY" \
+            | sed -n '/final_review_risk_start/,/final_review_risk_end/p' \
+            | grep -m1 'Merge Risk:' || true)"
+
+          if [ -z "$RISK_LINE" ]; then
+            echo "::notice::Verdict block present but no Merge Risk line - withholding merge"
+            exit 0
+          fi
+
+          echo "Verdict line: $RISK_LINE"
+
+          LEVEL="$(printf '%s\n' "$RISK_LINE" \
+            | sed -E 's/.*Merge Risk:[^_]*_[^A-Za-z]*([A-Za-z]+).*/\1/' \
+            | tr '[:upper:]' '[:lower:]')"
+          COVERED="$(printf '%s\n' "$RISK_LINE" \
+            | sed -nE 's/.*up to `([0-9a-f]+)`.*/\1/p')"
+
+          # Freshness: the verdict must cover the commit we are about to merge.
+          if [ -z "$COVERED" ]; then
+            echo "::notice::Verdict carries no covered-commit prefix - withholding merge"
+            exit 0
+          fi
+          case "$HEAD_SHA" in
+            "$COVERED"*) echo "Verdict covers $COVERED - current" ;;
+            *)  echo "::notice::Verdict covers $COVERED but head is $HEAD_SHA - stale, withholding merge"
+                exit 0 ;;
+          esac
+
+          # Observed ladder across PRs #1524-#1535: minimal, low, moderate, high.
+          # Anything outside it ranks 0 and withholds the merge, so a level this
+          # workflow has never seen is treated as unsafe rather than assumed low.
+          rank() {
+            case "$1" in
+              minimal) echo 1 ;; low) echo 2 ;; moderate) echo 3 ;; high) echo 4 ;; *) echo 0 ;;
+            esac
+          }
+
+          LEVEL_RANK="$(rank "$LEVEL")"
+          MAX_RANK="$(rank "$MAX_RISK")"
+
+          if [ "$LEVEL_RANK" -eq 0 ] || [ "$MAX_RANK" -eq 0 ]; then
+            echo "::notice::Unrecognised risk level (verdict='$LEVEL', ceiling='$MAX_RISK') - withholding merge"
+            exit 0
+          fi
+
+          echo "Merge Risk: $LEVEL (ceiling: $MAX_RISK)"
+
+          if [ "$LEVEL_RANK" -gt "$MAX_RANK" ]; then
+            echo "::notice::Risk '$LEVEL' exceeds ceiling '$MAX_RISK' - withholding merge"
+            exit 0
+          fi
+
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
       - name: Auto merge PR
-        if: steps.checks.outputs.should_merge == 'true'
+        if: >
+          steps.checks.outputs.should_merge == 'true' &&
+          steps.head.outputs.ok == 'true' &&
+          steps.coderabbit.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_BRANCH: ${{ steps.pr.outputs.branch }}
@@ -113,9 +269,11 @@ jobs:
             echo "Using --squash (feature branch — squash WIP commits)"
           fi
 
+          # No --auto fallback: a deferred merge lands at a later moment, against
+          # whatever the head is by then, without re-running the guards above.
+          # A failed merge here is left for a human rather than deferred.
           if gh pr merge "$PR_NUMBER" $MERGE_FLAG --delete-branch; then
             echo "Successfully merged PR #$PR_NUMBER"
           else
-            echo "Merge failed, trying with --auto for deferred merge..."
-            gh pr merge "$PR_NUMBER" $MERGE_FLAG --delete-branch --auto || true
+            echo "::notice::Merge command failed - leaving PR #$PR_NUMBER open for review"
           fi
