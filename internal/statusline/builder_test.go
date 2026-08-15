@@ -419,20 +419,30 @@ func TestBuilderNormalizesMode(t *testing.T) {
 		ContextWindow: &ContextWindowInfo{Used: 50000, Total: 200000},
 	}
 
+	// Inject a no-usage stub: without it New() auto-creates a usage collector
+	// pointed at the real home directory, which reads the host's keychain and
+	// issues a live OAuth API call with a deadline-less context — the hang in
+	// issue #1467 (readOAuthToken tries the macOS keychain first, so a temp
+	// HomeDir does not isolate it).
+	noUsage := &mockUsageProvider{data: nil}
+
 	// Builder created with "minimal" should behave as ModeDefault
 	builderMinimal := New(Options{
-		Mode:    "minimal",
-		NoColor: true,
+		Mode:          "minimal",
+		NoColor:       true,
+		UsageProvider: noUsage,
 	})
 	// Builder created with "compact" should also behave as ModeDefault
 	builderCompact := New(Options{
-		Mode:    ModeCompact,
-		NoColor: true,
+		Mode:          ModeCompact,
+		NoColor:       true,
+		UsageProvider: noUsage,
 	})
 	// Builder created with "default"
 	builderDefault := New(Options{
-		Mode:    ModeDefault,
-		NoColor: true,
+		Mode:          ModeDefault,
+		NoColor:       true,
+		UsageProvider: noUsage,
 	})
 
 	gotMinimal, err := builderMinimal.Build(context.Background(), makeStdinJSON(input))
@@ -460,13 +470,15 @@ func TestBuilderNormalizesMode(t *testing.T) {
 
 	// Builder created with "verbose" should behave as ModeFull("full")
 	builderVerbose := New(Options{
-		Mode:    "verbose",
-		NoColor: true,
+		Mode:          "verbose",
+		NoColor:       true,
+		UsageProvider: noUsage,
 	})
 	// Builder created with "full"
 	builderFull := New(Options{
-		Mode:    ModeFull,
-		NoColor: true,
+		Mode:          ModeFull,
+		NoColor:       true,
+		UsageProvider: noUsage,
 	})
 
 	gotVerbose, err := builderVerbose.Build(context.Background(), makeStdinJSON(input))

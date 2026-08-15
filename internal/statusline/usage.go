@@ -28,6 +28,14 @@ const (
 
 	// haikuProbeModel is the cheapest model used for rate-limit header probing.
 	haikuProbeModel = "claude-haiku-4-5-20251001"
+
+	// usageFetchTimeout bounds the entire usage network phase (Haiku probe +
+	// OAuth endpoint fallback, including 429 retries). Without it a deadline-less
+	// caller context lets the retry loop honor a server-controlled Retry-After
+	// of arbitrary length (issue #1467). The production statusline sits under a
+	// tighter render budget (internal/cli statuslineRenderBudget); this bound
+	// protects every other caller.
+	usageFetchTimeout = 3 * time.Second
 )
 
 // UsageProvider collects API usage information (REQ-V3-API-001).
@@ -45,7 +53,8 @@ type usageCacheFile struct {
 }
 
 // usageCollector collects and caches Anthropic API usage.
-// 5-minute TTL, 300ms timeout, graceful degradation (REQ-V3-API-002~005, REQ-V3-API-009).
+// 5-minute TTL, usageFetchTimeout-bounded network phase, graceful degradation
+// (REQ-V3-API-002~005, REQ-V3-API-009).
 type usageCollector struct {
 	mu                  sync.RWMutex
 	cache               *usageCacheFile
@@ -56,6 +65,10 @@ type usageCollector struct {
 	client              *http.Client
 	homeDir             string
 	keychainReaderFn    func() (string, error) // Override for testing
+	// messagesURL and oauthURL override the production API endpoints for
+	// testing (zero value falls back to the constants above).
+	messagesURL string
+	oauthURL    string
 }
 
 // NewUsageCollector creates a new UsageProvider.
@@ -109,11 +122,17 @@ func (u *usageCollector) CollectUsage(ctx context.Context) (*UsageResult, error)
 	// Strategy: Try Haiku probe (response headers) first, fall back to OAuth endpoint.
 	// The OAuth /api/oauth/usage endpoint has a known persistent 429 issue (Issue #31021),
 	// so we prefer extracting rate limit data from Messages API response headers.
-	apiResp, err := u.fetchUsageFromHeaders(ctx, token)
+	// The whole network phase is bounded by usageFetchTimeout: the 429 retry loop
+	// honors server-controlled Retry-After values, which must never outlive this
+	// deadline even when the caller passed a deadline-less context (issue #1467).
+	fetchCtx, cancelFetch := context.WithTimeout(ctx, usageFetchTimeout)
+	defer cancelFetch()
+
+	apiResp, err := u.fetchUsageFromHeaders(fetchCtx, token)
 	if err != nil {
 		slog.Debug("haiku probe failed, trying oauth endpoint", "error", err)
 		// Fallback: try the OAuth usage endpoint
-		apiResp, err = u.fetchUsageFromOAuthAPI(ctx, token)
+		apiResp, err = u.fetchUsageFromOAuthAPI(fetchCtx, token)
 	}
 	if err != nil {
 		slog.Debug("all usage fetch methods failed", "error", err)
@@ -439,7 +458,11 @@ type usagePeriodData struct {
 //	anthropic-ratelimit-unified-5h-reset: 2026-03-10T20:00:00Z (ISO 8601)
 //	anthropic-ratelimit-unified-7d-reset: 2026-03-15T07:00:00Z (ISO 8601)
 func (u *usageCollector) fetchUsageFromHeaders(ctx context.Context, token string) (*oauthUsageResponse, error) {
-	return u.fetchUsageFromHeadersWithURL(ctx, anthropicMessagesURL, token)
+	apiURL := u.messagesURL
+	if apiURL == "" {
+		apiURL = anthropicMessagesURL
+	}
+	return u.fetchUsageFromHeadersWithURL(ctx, apiURL, token)
 }
 
 // fetchUsageFromHeadersWithURL extracts 5H/7D usage from Messages API response headers.
@@ -525,8 +548,13 @@ func (u *usageCollector) fetchUsageFromOAuthAPI(ctx context.Context, token strin
 	var lastErr error
 	backoff := 2 * time.Second
 
+	oauthURL := u.oauthURL
+	if oauthURL == "" {
+		oauthURL = anthropicOAuthUsageURL
+	}
+
 	for attempt := range maxRetries {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, anthropicOAuthUsageURL, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, oauthURL, nil)
 		if err != nil {
 			return nil, err
 		}

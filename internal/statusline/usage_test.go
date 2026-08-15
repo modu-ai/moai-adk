@@ -1143,3 +1143,47 @@ func TestExponentialBackoff_ProgressiveCooldown(t *testing.T) {
 		t.Error("should not be in cooldown (count=5 → 16m, elapsed=20m)")
 	}
 }
+
+// TestCollectUsage_BoundedWithoutCallerDeadline reproduces issue #1467: with a
+// deadline-less context (context.Background(), as passed by builder tests), the
+// OAuth 429 retry loop used to honor a server-controlled Retry-After of
+// arbitrary length. CollectUsage must bound its own network phase and degrade
+// gracefully regardless of the caller's context.
+func TestCollectUsage_BoundedWithoutCallerDeadline(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// Every endpoint is rate-limited with an absurd Retry-After and no
+		// rate-limit headers: the Haiku probe fails and the OAuth fallback
+		// enters its retry loop.
+		w.Header().Set("Retry-After", "3600")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	collector := &usageCollector{
+		cachePath:           filepath.Join(t.TempDir(), "usage.json"),
+		client:              server.Client(),
+		ttl:                 time.Minute,
+		failureCooldownBase: time.Minute,
+		failureCooldownMax:  time.Minute,
+		keychainReaderFn:    func() (string, error) { return "test-token", nil },
+		messagesURL:         server.URL,
+		oauthURL:            server.URL,
+	}
+
+	start := time.Now()
+	result, err := collector.CollectUsage(context.Background())
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("CollectUsage should degrade gracefully (nil, nil), got error: %v", err)
+	}
+	if result != nil {
+		t.Errorf("result = %+v, want nil (no usage available)", result)
+	}
+	if elapsed >= usageFetchTimeout+2*time.Second {
+		t.Errorf("CollectUsage took %v, want bounded under %v (unbounded Retry-After wait, issue #1467)",
+			elapsed, usageFetchTimeout)
+	}
+}
