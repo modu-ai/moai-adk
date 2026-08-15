@@ -55,6 +55,10 @@ index:
   title: "동적 워크플로우와 Ultracode"
 "mx-tags":
   title: "MX TAG 시스템"
+"mx-scanner-internals":
+  title: "MX 스캐너 내부 구조"
+"config-sections":
+  title: "config 섹션 레퍼런스"
 "analyze-first-routing":
   title: "Analyze-First 요청 처리 파이프라인"
   weight: 65

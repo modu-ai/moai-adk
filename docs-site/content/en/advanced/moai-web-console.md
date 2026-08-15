@@ -2,113 +2,177 @@
 title: MoAI Web Console
 weight: 85
 draft: false
+description: "The local operations console — five areas (Overview, Kanban, Specs, Monitor, Settings), live updates, read-only observation, settings editing."
 ---
 # MoAI Web Console
 
-**MoAI Web Console** is the browser-based way to edit the same profile·project settings that the terminal wizard edits. One `moai web` command opens the console, and changing values with the mouse passes through the same validation as the terminal wizard before saving. It's faster and less error-prone than hand-editing YAML files directly.
+**MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the Kanban chain, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
 
-![MoAI Web Console — project name and profile in header, profile bar with add/rename/delete, nine setting tabs](/img/moai-web-console.png)
+{{< callout type="info" >}}
+**In one line:** the console is an operations shell that groups four observation areas and one settings area behind a left rail. The observation areas only read; the settings area uses the same validation and persistence layer as the terminal wizard.
+{{< /callout >}}
 
-## What It's For
+## The operations shell — left rail and appbar
 
-The web console edits two kinds of settings.
+The screen has three parts. The **rail** on the left stacks the five areas vertically, the **appbar** across the top carries the current title and status, and the rest is the **body**. The rail and the appbar stay in place whichever area you are in.
 
-### Profile preference editing
+| Area | Route | What it does |
+|------|-------|--------------|
+| Overview | `/` | Whole-project summary — stat tiles, Kanban chain, in-progress SPECs, attention list, sessions |
+| Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
+| Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
+| Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
+| Settings | `/settings` | Profile preferences and project sections across nine tabs |
 
-Edit per-profile values like model·inference strength·language·display settings. When using multiple profiles in one project — for example `medium` normally, `max` for difficult work — switch profiles in the profile bar and adjust each profile's detailed values in the tabs. The add / rename / delete controls sit next to the profile selector itself, so the full profile lifecycle is on one row — no separate profile-management card.
+What sits at the right of the appbar depends on the area. The four observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
 
-### Project section editing
+The foot of the rail gathers the profile button, the project name, the interface-language picker and the shutdown button. Pressing the profile button opens a popover where switching, creating, renaming and deleting all happen in one place. It is the same popover from every screen, so the console has exactly one surface for handling profiles.
 
-Edit user / language / statusline sections under `.moai/config/sections/` in the web UI. No need to open YAML in an editor from the terminal.
+```mermaid
+flowchart TD
+    Rail["Left rail<br/>Overview · Kanban · Specs · Monitor · Settings"]
+    Top["Appbar<br/>title · live indicator / save cluster"]
+    Body["Body<br/>per-area screen"]
+    Read["Read-only areas<br/>Overview · Kanban · Specs · Monitor"]
+    Write["Settings area<br/>through the validation · persistence layer"]
+    Files["Project files<br/>state and settings under .moai/"]
 
-When you save, changes pass through the same validation as the terminal wizard (`moai profile`), so results are identical whichever way you edit. Wizard users who prefer it can stay with the wizard; users who prefer a visual overview can use the console — both edit the same settings files.
+    Rail --> Body
+    Top --> Body
+    Body --> Read
+    Body --> Write
+    Read -->|read only| Files
+    Write -->|save| Files
 
-## Console Structure — 9 Tabs
+    style Read fill:#E3F2FD,stroke:#1565C0
+    style Write fill:#FFF3E0,stroke:#E65100
+```
 
-The console is organized into nine tabs, in this order:
+## Overview — what state is the project in right now
+
+Overview opens with four stat tiles: **SPEC** (total count and how many are in progress), **drift** (MUST-FIX count), **session** (PID-confirmed count / registry count), and **verify** (the last verification result and the number of keys).
+
+Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the five roles `lead → plan → run → review → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
+
+## Kanban — two boards
+
+The Kanban area stacks two boards of different character.
+
+The **chain session board** lays the five roles out as cards and records each one's session id, backend, model, effort level, context usage and last heartbeat. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context are not recorded yet, so they are left blank — not filling them in is the discipline.
+
+The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this board; you see them through the filter in the Specs area.
+
+## Specs — the catalog and two warning panels
+
+The Specs area starts with a search box and status filter chips. Two warning panels then come **before** the list.
+
+- **Close debt** — SPECs whose implementation landed (`implemented`) but whose lifecycle was never closed to `completed`. When there are many, only the most recently updated few are shown, along with the fact that the list was truncated and the total count.
+- **MUST-FIX drift** — drift that carries a remediation command. The command is **copied only**. The console never runs any command on the server — you copy it and run it yourself in your own terminal.
+
+The reason both panels sit above the list is simple. When the catalog runs to hundreds of rows, anything placed below it is pushed so far down the page that it is effectively absent.
+
+The list has columns for ID, title, status, Tier, era, updated date and drift. Selecting a row opens a detail panel on the right with the document list, the file path and the drift detail.
+
+## Monitor — four observation panels
+
+| Panel | What it reads |
+|-------|---------------|
+| Sessions | Session id, SPEC, backend, heartbeat, working directory |
+| Goals | The armed goal's condition, turns taken, whether it has stalled, and the verdict |
+| Verification | A per-key recent-history sparkline and whether it passed |
+| Epics | Per-epic progress as computed by `moai epic status` |
+
+## Live updates — send a signal, then re-fetch
+
+The observation areas refresh themselves when files change. The server holds an SSE (Server-Sent Events — the standard for streaming one-way events from server to browser) stream open at `GET /events`, watches under `.moai/`, and emits changes coalesced into 250-millisecond batches.
+
+The key property is that **the event carries no data**. The server sends only the name of the area that changed; the browser takes that signal, re-fetches the current page and swaps the body. The truth about rendering stays in exactly one place — the server — so the screen and the files can never tell different stories.
+
+| Event | What is watched |
+|-------|-----------------|
+| `spec` | `.moai/specs` |
+| `session` | `.moai/state` |
+| `goal` | `.moai/state/goal` |
+| `verify` | `.moai/state/verify` |
+| `kanban` | `.moai/state/kanban` |
+| `config` | `.moai/config/sections` |
+
+Only the `config` event is handled differently. If the screen changed underneath you while you were editing settings, the values you were typing would disappear — so instead of refreshing, it raises a banner saying the config files changed.
+
+A lost connection does not fail silently. The appbar indicator flips to the disconnected state, and if the browser's reconnection attempts fail three times it falls back to polling every 30 seconds. The indicator keeps showing that polling is what is happening.
+
+## Never write down what it does not know
+
+One discipline shows up all over the screen.
+
+- **Session liveness** is raised to active only where the process was confirmed alive. A registry entry can outlive its process, so anything unconfirmed is marked stale.
+- **Stage state** is estimated from the heartbeat, and the fact that it is an estimate is written alongside it.
+- **Unrecorded values** (per-role model, effort and context usage) are left blank rather than filled in with something plausible.
+- **Empty lists** are not left empty; they say so. An empty panel otherwise reads as "not read yet".
+
+## Settings — same checks, same files
+
+The settings area is the only place in the console that writes files. It defines no validation rules of its own and calls the **same validation and persistence layer** as the terminal wizard (`moai profile`, `moai update -c`). That is why editing from either side produces the same result.
+
+Choosing Settings in the rail unfolds nine tabs below it as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
-2. **Language** — conversation / commit-message / code-comment / documentation language
-3. **LLM** — permission mode, model, reasoning effort (the session-level "how sessions start" trio)
-4. **3rd Party LLM** — GLM model selection per tier, reasoning effort per tier, and the GLM API key
-5. **Workflow** — execution mode, default mode, agentic-loop and loop-prevention knobs
-6. **Git & Worktree** — `git_strategy.mode`, the three per-profile `merge_method` values, and the worktree / branch-guard toggles
-7. **Audit** — audit model and the per-backend gates (claude / codex / glm)
-8. **Agents** — per-agent profile/model assignment
+2. **Language** — conversation, commit message, code comment and documentation language
+3. **LLM** — permission mode, model, effort level
+4. **3rd Party LLM** — per-tier GLM models, per-tier effort, GLM API key
+5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
+6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
+7. **Audit** — the audit model and the per-backend gates
+8. **Agents** — per-agent profile and model assignment
 9. **Report** — report format and output preferences
 
-The tab list is the single source of panel order — what you see across the top matches what renders below, and the workflow / git-worktree / audit split keeps any one tab from overcrowding. Two earlier tabs (Workflow, Git & Worktree, Audit) replace what used to be a single overloaded Workflow tab plus a `git_strategy` section that had fields but no UI; restoring that surface is part of the redesign.
+The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
 
 ### Widget honesty
 
-Every field renders a widget that matches its real value domain:
-
-- **Bool fields** render as a two-option radio group (used / not-used), not a checkbox. A checkbox communicates "off and on" implicitly; the radio pair makes the active choice visible.
-- **Closed-set fields** (e.g. `execution_mode`, `audit.model`, the `harness.*` selectors) render as a select or radio group, and the apply layer rejects any value outside the declared set on save. A free-text box over a closed set invites invalid input — the console no longer presents that invitation.
-- **Open-value fields** (repository paths, output directories, the GLM API key) remain free text, because their domain genuinely is open.
+Fields render with the widget that matches the value's real domain. A bool field is drawn as a two-option radio group rather than a checkbox — a checkbox hides the current choice, a radio pair reveals it. Closed sets such as `execution_mode` or `audit.model` are select boxes or radio groups, and values outside the set are rejected on save. Only genuinely open domains, such as repository paths or API keys, stay free text.
 
 ### GLM honesty badge
 
-On the 3rd Party LLM tab, the reasoning-effort runtime channel is a single session-level env var — there is no per-tier delivery path. The per-tier effort values you set are therefore **store-only**: they persist in your config, but the runtime reads only the session-level effort collapsed to z.ai's three states. The tab carries a badge naming the **applied source** (the session-level effort) so the store-only nature of the per-tier values is stated, not implied.
+The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The 3rd Party LLM tab carries a badge naming the source that actually applies, so this is stated rather than implied.
 
-## 4-Locale UI
+### Editing scope
 
-The console's interface language is chosen from the selector at the upper right of the header: **English · 한국어 · 日本語 · 中文**. The same four languages MoAI-ADK supports. When you choose Korean, menus·labels·help text all switch to Korean. It's the same language set as the docs-site's [4-locale documentation](/en/resources/i18n-docs/), so you can review settings in your native language.
+What can be edited is fixed by a single source of truth, and the console writes only inside it. `user`, `language`, `quality`, `git-convention`, `git-strategy` and `llm` save through the typed validation path; `workflow` and `report` save through a seam that preserves the comments and line order inside the file. Machine and state sections and the large policy files are excluded, and a new section is refused by default until it is explicitly listed. The keys in each section are covered in the [configuration sections reference](/en/advanced/config-sections/).
 
-## Getting Started
+## Security model
 
-From the project directory, one command opens the console.
+**Loopback only.** The console binds to `127.0.0.1` alone. Another account on the same machine, or a remote host, cannot reach it.
 
-```bash
-moai web
-```
+**No database.** Nothing extra is started. Everything it reads and writes lives in files under the current project's `.moai/`.
 
-By default it binds to `127.0.0.1:3041` and the browser opens automatically. If the port is already in use by another moai instance, that instance is terminated before rebinding. If an external process (not moai) is using the port, it doesn't terminate and errors instead — in that case, use `--port` for a different port.
+**No authentication.** Loopback-only is the premise, so there is no login or token layer.
 
-```bash
-moai web --port 9000     # Bind to a different port
-moai web --no-open       # Start without opening browser
-```
-
-Detailed flags and behavior are in [CLI reference — moai web](/en/cli-reference/web/).
-
-## Security Model
-
-The web console is built for local development convenience, with security designed accordingly.
-
-### Loopback-only
-
-The console binds **only to `127.0.0.1`**. It's NOT exposed to external network interfaces. Other user accounts on the same machine or remote hosts cannot reach it.
-
-### No database (no-DB)
-
-No separate database server is started. Values the console reads and writes are only the current project's config files (`.moai/config/sections/`) and profile files. When you close the console, only the config file changes you saved remain.
-
-### No authentication (no-auth)
-
-Because only the local user can reach it (loopback-only), there's no authentication layer like login or tokens. Use it immediately without complex credential management.
+**No command execution.** The observation areas refuse any method other than GET, and no screen runs a command on the server. The console does not perform SPEC status transitions either — those belong to each phase's manager agent.
 
 {{< callout type="info" >}}
-**Loopback-only is the premise of no-auth.** Exposing the console via reverse proxy or `0.0.0.0` binding to external networks is NOT officially supported. If you need remote editing, forward the local port safely via SSH tunnel.
+Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel.
 {{< /callout >}}
 
-## Profile Recording Scope
+## Four-locale interface
 
-When you switch profiles in the console, that selection is recorded to `~/.moai/claude-profiles/launch.yaml` as the current project's record. When you run `moai cc` without `-p` in the same project, this value is used. Because both the value the console reads and writes are based on the current project, the profile shown on screen and the profile actually recorded are always the same.
+The interface language is chosen from the picker at the foot of the rail: **English · 한국어 · 日本語 · 中文**. The choice persists in the browser and applies from the first paint the next time you open it. It is the same language set as the docs-site [four-locale documentation](/en/resources/i18n-docs/), so you can read the screen and the docs in the same language.
 
-Selection order and constraints are covered in detail in [Profile management](/en/cli-reference/profile/).
+## Starting and stopping
 
-## When to Use Terminal Wizard vs. Console
+Running `moai web` in a project directory binds `127.0.0.1:3041` and opens a browser automatically.
 
-Both handle the same settings files, but which is more convenient depends on your workflow.
+| Flag | Default | Behavior |
+|------|---------|----------|
+| `--port <int>` | `3041` | The loopback port to bind |
+| `--no-open` | `false` | Do not open the browser automatically |
+| `--no-reuse` | `false` | Do not reclaim the port from a stale moai instance; fail on a conflict instead |
 
-- **Terminal wizard** (`moai profile`, `moai update -c`) — Initial setup changing one value at a time, scripted settings run in CI, when interactive guidance is needed.
-- **Web console** (`moai web`) — When comparing and editing multiple sections on one screen, when switching profiles frequently to compare values, when you want fast edits without worrying about YAML indentation.
+To stop it, press `Ctrl+C` in the terminal or use the shutdown button at the foot of the rail. For the details see the [CLI reference — moai web](/en/cli-reference/web/).
 
-Save results are identical. Choose whichever feels right.
+## Related documents
 
-## Related Documents
-
-- [CLI reference — moai web](/en/cli-reference/web/) — Flag and behavior details
-- [Profile management](/en/cli-reference/profile/) — Profile auto-selection and recording scope
-- [Harness profiles and evaluation](/en/advanced/harness-profiles/) — Profile matrix and model·inference-strength assignment
+- [CLI reference — moai web](/en/cli-reference/web/) — flags and route detail
+- [Kanban Mode](/en/advanced/kanban-mode/) — the source contract for the chain the console draws
+- [Configuration sections reference](/en/advanced/config-sections/) — the keys the settings area handles
+- [moai epic status](/en/cli-reference/epic/) — the producer behind Monitor's epic panel

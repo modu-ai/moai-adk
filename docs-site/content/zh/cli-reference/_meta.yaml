@@ -41,3 +41,5 @@ github:
   title: "moai github GitHub 集成"
 "ast-grep":
   title: "moai ast-grep / ast-edit 结构化搜索"
+epic:
+  title: "moai epic 史诗进度"

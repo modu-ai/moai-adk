@@ -43,6 +43,22 @@ index:
   title: "動的ワークフローと Ultracode"
 "mx-tags":
   title: "MX TAG システム"
+"mx-scanner-internals":
+  title: "MX スキャナ内部構造"
+"config-sections":
+  title: "設定セクションリファレンス"
+"harness-learning":
+  title: "ハーネス学習表面"
+"autonomy-tier":
+  title: "自律性ティア (MOAI_AUTONOMY_TIER)"
+"kanban-mode":
+  title: "カンバンモード"
+"manager-kanban":
+  title: "manager-kanban 階層型チーム"
+"multi-model-audit":
+  title: "マルチモデル監査収束"
+"bas-navigator":
+  title: "BAS Navigator 3段階コードマップ同期化"
 "analyze-first-routing":
   title: "Analyze-First リクエスト処理パイプライン"
   weight: 65

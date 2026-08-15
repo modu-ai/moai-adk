@@ -406,6 +406,12 @@ main:
           ja: moai github GitHub連携
           zh: moai github GitHub 集成
         ref: /cli-reference/github
+      - name:
+          ko: moai epic 에픽 진행률
+          en: moai epic Epic Progress
+          ja: moai epic エピック進捗
+          zh: moai epic 史诗进度
+        ref: /cli-reference/epic
 
   - name:
       ko: 멀티 LLM
@@ -660,6 +666,48 @@ main:
           ja: moai web コンソール
           zh: moai web 控制台
         ref: /advanced/moai-web-console
+      - name:
+          ko: 칸반 모드
+          en: Kanban Mode
+          ja: カンバンモード
+          zh: 看板模式
+        ref: /advanced/kanban-mode
+      - name:
+          ko: manager-kanban 계층형 팀
+          en: manager-kanban Hierarchical Team
+          ja: manager-kanban 階層型チーム
+          zh: manager-kanban 层级团队
+        ref: /advanced/manager-kanban
+      - name:
+          ko: BAS Navigator 3단계 코드맵 동기화
+          en: BAS Navigator 3-Stage Codemap Synchronization
+          ja: BAS Navigator 3段階コードマップ同期化
+          zh: BAS Navigator 三阶段代码地图同步
+        ref: /advanced/bas-navigator
+      - name:
+          ko: 다중 모델 감사 수렴
+          en: Multi-model Audit Convergence
+          ja: マルチモデル監査収束
+          zh: 多模型审计收敛
+        ref: /advanced/multi-model-audit
+      - name:
+          ko: 자율성 티어 (MOAI_AUTONOMY_TIER)
+          en: Autonomy Tier (MOAI_AUTONOMY_TIER)
+          ja: 自律性ティア (MOAI_AUTONOMY_TIER)
+          zh: 自主级别 (MOAI_AUTONOMY_TIER)
+        ref: /advanced/autonomy-tier
+      - name:
+          ko: 하네스 학습 표면
+          en: Harness Learning Surface
+          ja: ハーネス学習表面
+          zh: 线束学习面
+        ref: /advanced/harness-learning
+      - name:
+          ko: MX 스캐너 내부 구조
+          en: MX Scanner Internals
+          ja: MX スキャナ内部構造
+          zh: MX 扫描器内部结构
+        ref: /advanced/mx-scanner-internals
 
   - name:
       ko: 참여하기

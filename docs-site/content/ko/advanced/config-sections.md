@@ -151,6 +151,29 @@ security:
 
 관련: [보안 노트](/ko/advanced/security-notes), [settings.json 가이드](/ko/advanced/settings-json).
 
+## workflow.yaml — branch_guard
+
+주 체크아웃(primary checkout)의 브랜치 상태를 지키는 opt-in 가드입니다. 한 체크아웃을 여러 세션이 동시에 쓸 때, 한쪽에서 실행한 `git switch` · `git checkout` · `git reset --hard` · `git stash` · `git rebase` 는 다른 세션의 작업 트리를 아무 신호 없이 바꿔 놓습니다. 이 가드는 그 명령들을 주 체크아웃에서만 거부합니다.
+
+```yaml
+workflow:
+    branch_guard:
+        enabled: false   # 배포 기본값
+```
+
+| 키 | 값 | 설명 |
+|----|-----|------|
+| `enabled` | `false` (기본) | 가드가 완전히 비활성입니다. 판정을 위한 `git rev-parse` 조차 실행하지 않으므로 부가 비용이 없습니다 |
+| `enabled` | `true` | 주 체크아웃에서 브랜치 상태를 바꾸는 명령을 거부합니다. 워크트리 안에서는 그대로 허용됩니다 |
+
+**기본값이 꺼짐인 이유.** 이 가드가 막는 위험은 한 체크아웃을 여러 세션이 공유할 때만 생깁니다. 혼자 쓰는 저장소에서는 발생하지 않는 문제이므로, 배포판은 가드를 끈 채로 나갑니다. 여러 세션을 동시에 굴리는 저장소의 관리자가 위 키를 직접 적어 켭니다.
+
+**동작 범위.** 가드는 주 체크아웃과 워크트리를 구분해서, 워크트리 안의 브랜치 조작은 막지 않습니다. `git status` · `git log` · `git diff` · `git fetch` 같은 읽기 명령과 `git stash list` · `git merge-base` 는 켜져 있어도 통과합니다.
+
+**예외와 실패 방향.** 브랜치를 만들어야 하는 git 담당 에이전트는 신원으로 예외 처리되며, `MOAI_BRANCH_GUARD_EXEMPT=1` 환경변수로도 우회할 수 있습니다. 판정이 불확실할 때(저장소가 아님, git 실행 실패 등)는 막지 않고 통과시킨 뒤 감사 로그만 남깁니다 — 확실한 근거가 있을 때만 거부합니다.
+
+브랜치를 바꿔야 하는 작업은 막는 대신 워크트리로 옮기는 것이 정석입니다. 자세한 절차는 [moai worktree](/ko/cli-reference/worktree/) 를 참조하세요.
+
 ## 관련 문서
 
 - [settings.json 가이드](/ko/advanced/settings-json) — Claude Code 런타임 설정

@@ -43,6 +43,22 @@ index:
   title: "动态工作流和 Ultracode"
 "mx-tags":
   title: "MX TAG 系统"
+"mx-scanner-internals":
+  title: "MX 扫描器内部结构"
+"config-sections":
+  title: "配置章节参考"
+"harness-learning":
+  title: "线束学习面"
+"autonomy-tier":
+  title: "自主级别 (MOAI_AUTONOMY_TIER)"
+"kanban-mode":
+  title: "看板模式"
+"manager-kanban":
+  title: "manager-kanban 层级团队"
+"multi-model-audit":
+  title: "多模型审计收敛"
+"bas-navigator":
+  title: "BAS Navigator 三阶段代码地图同步"
 "analyze-first-routing":
   title: "Analyze-First 请求处理管道"
   weight: 65
