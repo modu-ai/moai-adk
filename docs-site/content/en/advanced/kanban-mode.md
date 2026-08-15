@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 Kanban Mode replaces the old model — driving one SPEC at a time in a single session — with a **multi-session board**. One lead session conducts, companion sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
 
-You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract on which a goal preset of the chain (`kanban_chain`, a bundle that predeclares a completion condition) rides. The four phases of the chain (plan → run → verify → sync) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
+You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract on which a goal preset of the chain (`kanban_chain`, a bundle that predeclares a completion condition) rides. The four phases of the chain (plan → run → review → sync) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
 
 This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain design, the chain phases, and "what is _not_ automated." For a short introduction from the workflow-command viewpoint, see [`/moai` unified command](/en/workflow-commands/) first.
 
@@ -27,7 +27,7 @@ This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain des
 **Analogy**: each card on a kanban board is one worktree session. As cards flow across the board, sessions flow along the chain.
 {{< /callout >}}
 
-In the old model, a single session owned one SPEC end to end — writing the plan, implementing in run, reviewing in verify, and tidying docs in sync. As a SPEC grows large, one session struggles to handle it, and when it hits the context-window limit, the session must be split.
+In the old model, a single session owned one SPEC end to end — writing the plan, implementing in run, reviewing in review, and tidying docs in sync. As a SPEC grows large, one session struggles to handle it, and when it hits the context-window limit, the session must be split.
 
 Kanban Mode reframes this structure from a **board viewpoint**:
 
@@ -203,8 +203,8 @@ flowchart TD
     Plan --> Gate1{"Implementation Kickoff Approval<br/>(human gate)"}
     Gate1 -->|"approved"| Run["run<br/>implementation cycle → AC convergence"]
     Gate1 -->|"declined"| Stop1["Stop"]
-    Run --> Verify["verify<br/>security review"]
-    Verify --> Sync["sync<br/>docs · changelog · closure"]
+    Run --> Review["review<br/>security review"]
+    Review --> Sync["sync<br/>docs · changelog · closure"]
     Sync --> Done["Chain complete"]
 ```
 
@@ -212,7 +212,7 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 - **plan** — authors the SPEC document, and an independent audit (plan-auditor) verifies its contents. See [`/moai plan`](/en/workflow-commands/moai-plan).
 - **run** — the implementation cycle (TDD or DDD) implements code until it converges on the Acceptance Criteria (AC). See [`/moai run`](/en/workflow-commands/moai-run).
-- **verify** — produces a security review result with `/moai review --security --deep --repo`. By severity it returns to run or proceeds to sync.
+- **review** — produces a security review result with `/moai review --security --deep --repo`. By severity it returns to run or proceeds to sync.
 - **sync** — updates docs, writes the changelog, and closes the phase. See [`/moai sync`](/en/workflow-commands/moai-sync).
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.

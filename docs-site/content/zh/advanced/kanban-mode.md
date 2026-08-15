@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 看板模式把"一次一个 SPEC、单一会话推进"的旧模型改造成**多会话看板**。一个主导会话负责指挥，多个伴随会话在各自的 worktree 中同时工作，完成的卡片在看板上流动。这块看板的骨架就是 Origin-Trail Chain。
 
-在会话启动器上加上 `--kanban`（简写 `-k`）开关即可启动。它不是新的子命令，也不是新的运行时——只是一个让看板链（`kanban_chain`，即预设了完成条件的目标预设）搭上去的进入契约。链的四个阶段（plan → run → verify → sync）和人工关卡，都直接继承现有的 `/moai goal` 引擎和 `full-pipeline` 链接规则。
+在会话启动器上加上 `--kanban`（简写 `-k`）开关即可启动。它不是新的子命令，也不是新的运行时——只是一个让看板链（`kanban_chain`，即预设了完成条件的目标预设）搭上去的进入契约。链的四个阶段（plan → run → review → sync）和人工关卡，都直接继承现有的 `/moai goal` 引擎和 `full-pipeline` 链接规则。
 
 本页涵盖看板模式的进入条件、Origin-Trail Chain 设计、链的阶段，以及"什么没有被自动化"。从工作流命令视角的简短介绍请先看 [`/moai` 统一命令](/zh/workflow-commands/)。
 
@@ -27,7 +27,7 @@ added_in: "v3.1"
 **比喻**: 看板上的每张卡片就是一个 worktree 会话。卡片在板上流动，就像会话在链上流动。
 {{< /callout >}}
 
-在旧模型中，一个 SPEC 从头到尾由一个会话包揽——写 plan、用 run 实现、用 verify 审查、用 sync 整理文档。SPEC 变大时一个会话难以承受，撞到上下文窗口极限就得切分会话。
+在旧模型中，一个 SPEC 从头到尾由一个会话包揽——写 plan、用 run 实现、用 review 审查、用 sync 整理文档。SPEC 变大时一个会话难以承受，撞到上下文窗口极限就得切分会话。
 
 看板模式把这个结构改成**看板视角**:
 
@@ -203,8 +203,8 @@ flowchart TD
     Plan --> Gate1{"实现启动审批<br/>(人工关卡)"}
     Gate1 -->|"批准"| Run["run<br/>实现循环 → AC 收敛"]
     Gate1 -->|"拒绝"| Stop1["中断"]
-    Run --> Verify["verify<br/>安全审查"]
-    Verify --> Sync["sync<br/>文档 · 变更日志 · 终结"]
+    Run --> Review["review<br/>安全审查"]
+    Review --> Sync["sync<br/>文档 · 变更日志 · 终结"]
     Sync --> Done["链完成"]
 ```
 
@@ -212,7 +212,7 @@ flowchart TD
 
 - **plan** — 编写 SPEC 文档，独立审计（plan-auditor）验证内容。参考 [`/moai plan`](/zh/workflow-commands/moai-plan)。
 - **run** — 实现循环（TDD 或 DDD）向验收标准（AC）收敛，实现代码。参考 [`/moai run`](/zh/workflow-commands/moai-run)。
-- **verify** — 用 `/moai review --security --deep --repo` 给出安全审查结果。根据严重度返回 run 或进入 sync。
+- **review** — 用 `/moai review --security --deep --repo` 给出安全审查结果。根据严重度返回 run 或进入 sync。
 - **sync** — 更新文档、写变更日志、终结 phase。参考 [`/moai sync`](/zh/workflow-commands/moai-sync)。
 
 看板模式新加上的是**多会话看板视角**——主导会话协调，run 会话并行工作，Origin-Trail Chain 追踪谱系。链阶段本身的详细规则请参考 `/moai` 统一命令和 `/moai goal`。

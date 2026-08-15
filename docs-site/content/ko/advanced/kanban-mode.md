@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 칸반 모드는 한 번에 한 SPEC을 단일 세션으로 밀고 가던 구 모델을 **다중 세션 보드**로 바꿉니다. 리드 세션 하나가 지휘하고, 동반 세션들이 각자의 worktree에서 동시에 일하며, 완료된 카드가 보드를 타고 흘러갑니다. 그 보드의 뼈대가 Origin-Trail Chain입니다.
 
-세션 런처에 `--kanban`(짧게 `-k`) 스위치를 붙여 시작합니다. 새 하위 명령도, 새 런타임도 아닙니다 — 칸반 체인(`kanban_chain`)이라는 골 프리셋(완료 조건을 미리 정해 둔 묶음)이 올라타는 진입 계약일 뿐입니다. 체인의 네 단계(plan → run → verify → sync)와 휴먼 게이트는 기존 `/moai goal` 엔진과 `full-pipeline` 체이닝 규칙을 그대로 상속합니다.
+세션 런처에 `--kanban`(짧게 `-k`) 스위치를 붙여 시작합니다. 새 하위 명령도, 새 런타임도 아닙니다 — 칸반 체인(`kanban_chain`)이라는 골 프리셋(완료 조건을 미리 정해 둔 묶음)이 올라타는 진입 계약일 뿐입니다. 체인의 네 단계(plan → run → review → sync)와 휴먼 게이트는 기존 `/moai goal` 엔진과 `full-pipeline` 체이닝 규칙을 그대로 상속합니다.
 
 이 페이지는 칸반 모드의 진입 조건, Origin-Trail Chain 설계, 체인 단계, 그리고 "무엇이 자동화되지 않는가"까지를 다룹니다. 워크플로우 명령 관점의 짧은 소개는 [`/moai` 통합 명령](/ko/workflow-commands/)을 먼저 보세요.
 
@@ -27,7 +27,7 @@ added_in: "v3.1"
 **비유**: 칸반 보드의 각 카드는 하나의 worktree 세션입니다. 카드가 보드 위를 흐르듯, 세션이 체인을 타고 흐릅니다.
 {{< /callout >}}
 
-구 모델에서는 한 SPEC을 한 세션이 처음부터 끝까지 도맡았습니다 — plan을 쓰고, run으로 구현하고, verify로 검토하고, sync로 문서를 정리합니다. SPEC이 커지면 한 세션이 감당하기 어렵고, 컨텍스트 윈도우 한계에 부딪히면 세션을 나눠야 합니다.
+구 모델에서는 한 SPEC을 한 세션이 처음부터 끝까지 도맡았습니다 — plan을 쓰고, run으로 구현하고, review로 검토하고, sync로 문서를 정리합니다. SPEC이 커지면 한 세션이 감당하기 어렵고, 컨텍스트 윈도우 한계에 부딪히면 세션을 나눠야 합니다.
 
 칸반 모드는 이 구조를 **보드 관점**으로 바꿉니다:
 
@@ -203,8 +203,8 @@ flowchart TD
     Plan --> Gate1{"구현 착수 승인<br/>(휴먼 게이트)"}
     Gate1 -->|"승인"| Run["run<br/>구현 사이클 → AC 수렴"]
     Gate1 -->|"거절"| Stop1["중단"]
-    Run --> Verify["verify<br/>보안 검토"]
-    Verify --> Sync["sync<br/>문서·체인지로그·종결"]
+    Run --> Review["review<br/>보안 검토"]
+    Review --> Sync["sync<br/>문서·체인지로그·종결"]
     Sync --> Done["체인 완료"]
 ```
 
@@ -212,7 +212,7 @@ flowchart TD
 
 - **plan** — SPEC 문서를 저작하고, 독립 감사(plan-auditor)가 내용을 검증합니다. [`/moai plan`](/ko/workflow-commands/moai-plan) 참조.
 - **run** — 구현 사이클(TDD 또는 DDD)이 수용 기준(AC)에 수렴할 때까지 코드를 구현합니다. [`/moai run`](/ko/workflow-commands/moai-run) 참조.
-- **verify** — `/moai review --security --deep --repo`로 보안 검토 결과를 냅니다. 심각도에 따라 run으로 되돌아가거나 sync로 넘어갑니다.
+- **review** — `/moai review --security --deep --repo`로 보안 검토 결과를 냅니다. 심각도에 따라 run으로 되돌아가거나 sync로 넘어갑니다.
 - **sync** — 문서를 갱신하고, 체인지로그를 쓰고, 페이즈를 종결합니다. [`/moai sync`](/ko/workflow-commands/moai-sync) 참조.
 
 칸반 모드가 새로 얹는 것은 **다중 세션 보드 관점**입니다 — 리드 세션이 조율하고, run 세션이 병렬로 일하며, Origin-Trail Chain이 그 계보를 추적합니다. 체인 단계 자체의 상세한 규칙은 `/moai` 통합 명령과 `/moai goal`을 참조하세요.
