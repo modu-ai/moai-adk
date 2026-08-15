@@ -185,6 +185,8 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	case kanbanBranchLead:
 		defer enterKanbanMode(specID)()
 		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
+		// See cc.go: glm mirrors the lead branch exactly.
+		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

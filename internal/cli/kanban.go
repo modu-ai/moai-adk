@@ -270,6 +270,60 @@ func parseCompanionLabel(args []string) (label string, ok bool) {
 	return "", false
 }
 
+// operatorSuppliedName reports whether the operator named this session
+// themselves, in any of the four forms claude accepts (`--name v`, `--name=v`,
+// `-n v`, `-n=v`), before the pass-through marker.
+//
+// It is deliberately NOT parseCompanionLabel: that function matches the
+// companion SHAPE, so a lead the operator named `board-watch` reads as "no
+// name present" there. The question here is only whether a name exists at all,
+// because the operator's choice wins over any moai-supplied one.
+//
+// The `--` discipline matches operatorSuppliedSettings and parseKanbanFlag:
+// nothing past the marker is read — a `--name` after `--` is the backend's
+// argument, already destined for claude unchanged.
+func operatorSuppliedName(args []string) bool {
+	for _, arg := range args {
+		switch {
+		case arg == "--":
+			return false
+		case arg == nameFlagLong || arg == nameFlagShort:
+			return true
+		case strings.HasPrefix(arg, nameFlagLong+"="):
+			return true
+		case strings.HasPrefix(arg, nameFlagShort+"="):
+			return true
+		}
+	}
+	return false
+}
+
+// leadNameArgs returns the `--name lead-<run-id>` pair to append to a lead
+// session's argv, or nil when the lead should carry no injected name.
+//
+// The injection exists because claude keeps an EXPLICIT name across /clear and
+// discards an AI-generated title. A companion is already explicitly named — the
+// SessionStart notice prints `--name <role>-<run-id>` and the operator pastes
+// it — so only the lead, launched as a bare `moai cc -k`, loses its identity on
+// every clear and has to be renamed by hand.
+//
+// The run id is read from the environment enterKanbanMode has just published,
+// which is this file's established carrier for the kanban signal; callers
+// therefore invoke this AFTER entering kanban mode. Two self-gates make the
+// call site unconditional: an operator-supplied name wins (nothing is
+// injected), and an absent run id yields nothing rather than the nonsense name
+// `lead-`.
+func leadNameArgs(args []string) []string {
+	if operatorSuppliedName(args) {
+		return nil
+	}
+	runID := os.Getenv(config.EnvMoaiKanbanID)
+	if runID == "" {
+		return nil
+	}
+	return []string{nameFlagLong, kanban.LeadLabel(runID)}
+}
+
 // rejectKanbanOnCG returns the sentinel-bearing error when a kanban token
 // appears in a `moai cg` invocation, and nil otherwise.
 func rejectKanbanOnCG(args []string) error {

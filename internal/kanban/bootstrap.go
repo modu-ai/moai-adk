@@ -64,6 +64,16 @@ func CompanionLabel(role, runID string) string {
 	return role + "-" + runID
 }
 
+// LeadLabel joins the lead role and a run id into the label a lead session is
+// launched under, in the same `<role>-<run-id>` form CompanionLabel produces.
+//
+// The label deliberately never satisfies SplitCompanionLabel: RoleLead is
+// absent from CompanionRoles, so a session launched under this name is never
+// reclassified as a companion by the shape discriminator.
+func LeadLabel(runID string) string {
+	return RoleLead + "-" + runID
+}
+
 // SplitCompanionLabel splits a `<role>-<run-id>` label into its parts and
 // reports whether the value has the companion shape at all.
 //
