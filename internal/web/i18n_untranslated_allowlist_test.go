@@ -103,7 +103,7 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 	// the board badge.
 	{
 		Key:           "stat.spec",
-		Reason:        reasonProperNoun,
+		Reason:        reasonTechnicalIdentifier,
 		Justification: "the SPEC document-type identifier; the directory name, the CLI subcommand, and the audit JSON all spell it this way, so translating the stat label would name a thing the user cannot then find.",
 	},
 	{
