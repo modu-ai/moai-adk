@@ -1394,6 +1394,13 @@ main.docs-main .doc-layout--2col {
   font-family: inherit;
   font-size: inherit;
   padding: 0;
+  /* The global `code` rule in moai-brand.css (FROZEN) paints a 1px border and
+     a radius, which renders as a pill drawn around the install command inside
+     the dark chip. background and padding were already reset here; the border
+     was not. moai-docs-layout.css loads after moai-brand.css, so clearing it
+     here leaves the frozen file untouched. */
+  border: 0;
+  border-radius: 0;
 }
 .cw-home-install svg { flex: none; }
 .cw-home-copy { flex: none; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: #9fa0a0; cursor: pointer; padding: 2px; border-radius: 4px; transition: color 150ms; }
