@@ -276,6 +276,12 @@ main:
           ja: /moai e2e
           zh: /moai e2e
         ref: /utility-commands/moai-e2e
+      - name:
+          ko: /moai todo
+          en: /moai todo
+          ja: /moai todo
+          zh: /moai todo
+        ref: /utility-commands/moai-todo
 
   - name:
       ko: CLI 레퍼런스

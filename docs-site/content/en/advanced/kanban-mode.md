@@ -15,7 +15,7 @@ added_in: "v3.1"
 {{< /callout >}}
 <!-- @value: self-learning, multi-session-orchestration -->
 
-Kanban Mode charts the direction in which the old model — driving one SPEC at a time in a single session — evolves into a **multi-session board**. One lead session on the board conducts, several run sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
+Kanban Mode replaces the old model — driving one SPEC at a time in a single session — with a **multi-session board**. One lead session conducts, companion sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
 
 You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract on which a goal preset of the chain (`kanban_chain`, a bundle that predeclares a completion condition) rides. The four phases of the chain (plan → run → verify → sync) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
 
@@ -120,24 +120,30 @@ This protocol bridges the gap between spawn time and session-ID assignment time.
 
 ## Current implementation status
 
-{{< callout type="info" title="Roadmap" >}}
-The Origin-Trail Chain has currently been merged up to **Phase 1** (the `internal/chain/` package — the append-only JSONL storage layer).
+In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs in completeness, though, so it is worth separating what you can use from the command line today from what still lives only in the library layer.
 
-The `moai chain` / `moai kanban` CLI surface and the multi-session board lead/run columns are planned for later phases. This document describes the target state after the rename — it does not describe features that do not yet work as "already working."
-{{< /callout >}}
+### Reachable from the command line today
 
-What Phase 1 provides:
+- **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>-<run-id>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
+- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the four companion launch commands (`moai cc -k --name plan-<run-id>` and so on) in the user's language. Companion sessions are told which role they joined as.
+- **Session record** — the entered session's role, backend, and target SPEC are recorded.
+- **`moai chain` CLI** — five subcommands work: `status` (current-node summary), `lineage` (root-to-leaf lineage), `back` (parent node's resume target and command), `list` (all nodes with freshness), `prune` (folding terminated old nodes into an archive). The `internal/chain/` storage layer below backs them.
+- **Dispatch** — the actor moving cards between columns is the lead session's orchestrator. The protocol lives in `.claude/rules/moai/workflow/kanban-dispatch.md`, and companion sessions are launched by hand, one per terminal. There is no path by which a session launches another session.
+
+### Chain storage layer
 
 - `internal/chain/store.go` — append-only JSONL writer/reader. Appends one line at a time via `O_APPEND`, and skips corrupt lines with skip + warn.
 - `internal/chain/node.go` — `WorktreeNode` (13 fields) + `ChainEvent` type definitions.
 - `internal/chain/populate.go` — `Populator`: node creation at spawn time, session ID backfill, milestone update, completion-edge recording, current-node interpretation.
 - `GenerateNodeID` — generates IDs with a monotonic timestamp + random, with no external dependencies.
 
-What Phase 1 does not yet provide:
+### Not yet called by anyone
 
-- `moai chain status` / `moai chain lineage` / `moai kanban` CLI commands
-- The lead/run column surface of the multi-session board
-- The actual wiring of the `--kanban` / `-k` launcher switch
+The **board state store** in `internal/kanban/` is complete as code — a closed six-column enumeration (backlog → plan → run → review → sync → done), a single-origin state file converging on one primary checkout, file locking, corruption recovery, and reconciliation with SPEC frontmatter status (it marks mismatches rather than fixing them). But no production caller reads or writes it yet. That means column position is held by the lead session's memory and the SPEC status, not by a file, and no CLI verbs exist to view the board or move a card.
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} **There is no `moai kanban` command.** The CLI surface of Kanban Mode is the launcher switch `-k` and the lineage query command `moai chain`, nothing else.
+{{< /callout >}}
 
 ## Opening a session in Kanban Mode
 
@@ -145,23 +151,33 @@ What Phase 1 does not yet provide:
 **Not a slash command**: Kanban Mode is not a `/` command in the Claude Code chat window; it is a switch that opens the session itself. You attach it in the terminal when starting the session.
 {{< /callout >}}
 
-Start in the terminal by attaching `--kanban` to the session launcher. If you also pass a SPEC identifier, that SPEC is the target; if you omit it, plan-phase begins from the first prompt.
+Start in the terminal by attaching `--kanban` (short `-k`) to the MoAI launcher (`moai cc` or `moai glm`). If you also pass a SPEC identifier, that SPEC is the target; if you omit it, plan-phase begins from the first prompt.
 
 ```bash
-# Enter the kanban chain targeting a SPEC
-$ claude --kanban SPEC-AUTH-001
+# Enter as the lead — start the kanban chain targeting a SPEC
+$ moai cc --kanban SPEC-AUTH-001
 
 # Short form
-$ claude -k SPEC-AUTH-001
+$ moai cc -k SPEC-AUTH-001
 
 # Without a target SPEC — start plan from the first prompt
-$ claude --kanban
+$ moai cc -k
 
-# Same entry via the moai cc launcher
-$ moai cc -k SPEC-AUTH-001
+# Same entry on the GLM backend
+$ moai glm -k SPEC-AUTH-001
 ```
 
-On successful entry, the launcher arms the `kanban_chain` goal preset inside the session (after Implementation Kickoff Approval passes). The goal preset is a completion condition that the `stop-goal` Stop-hook evaluator evaluates at every turn end — it is not a new runtime or hook, but one condition laid on top of existing machinery.
+When the lead session opens, it prints the run identifier together with the four companion launch commands. A human runs each one **in a separate terminal** to populate the board.
+
+```bash
+# Companion sessions — join with the run-id the lead reported
+$ moai cc -k --name plan-<run-id>
+$ moai cc -k --name run-<run-id>
+$ moai cc -k --name review-<run-id>
+$ moai cc -k --name sync-<run-id>
+```
+
+On successful entry the launcher arms the `kanban_chain` goal preset inside the session (after Implementation Kickoff Approval passes). The goal preset is a completion condition that the `stop-goal` Stop-hook evaluator evaluates at every turn end — it is not a new runtime or hook, but one condition laid on top of existing machinery.
 
 ## Chain phases
 
@@ -190,7 +206,7 @@ What Kanban Mode adds on top is the **multi-session board viewpoint** — the le
 ## When to use it, when not to
 
 {{< callout type="info" >}}
-**One SPEC, one session (current), multi-session board (target).** The design direction of Kanban Mode is the multi-session board, but the current implementation remains at Phase 1 (the storage layer).
+**One lead, four companions.** Entry and dispatch work in v3.1. The board state store that would pin column positions to a file has no callers yet, so the current position of a card is held by the lead session and the SPEC status.
 {{< /callout >}}
 
 **When to use** — when advancing one SPEC (or several SPECs) simultaneously across multiple worktree sessions. When you need to track session lineage with the Origin-Trail Chain. When you want to drive one SPEC all the way to closure in one go.
@@ -208,6 +224,7 @@ This page states explicitly what it does not do:
 ## Related docs
 
 - [`/moai` unified command](/en/workflow-commands/) — a short introduction from the workflow-command viewpoint
+- [`/moai todo`](/en/utility-commands/moai-todo) — the backlog queue that admits cards onto the board
 - [`/moai goal`](/en/workflow-commands/moai-goal) — the goal engine that drives the kanban chain
 - [Autonomous continuation loop](/en/advanced/autonomous-loops) — ownership and guardrail comparison of `/moai goal`, `/moai loop`, and the native `/goal`
 - [`/moai run`](/en/workflow-commands/moai-run) — run-phase autonomy wiring, the rules the kanban chain's run phase inherits
