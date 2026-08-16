@@ -40,7 +40,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 	nameAt := strings.Index(got, "Team-A-Lead")
 	agentAt := strings.Index(got, "manager-kanban")
 	boardAt := strings.Index(got, "🔄 ")
-	if !(nameAt < agentAt && agentAt < boardAt) {
+	if nameAt >= agentAt || agentAt >= boardAt {
 		t.Errorf("want name < agent < backlog, got %d/%d/%d in %q", nameAt, agentAt, boardAt, got)
 	}
 }
