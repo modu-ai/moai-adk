@@ -62,9 +62,9 @@ type Record struct {
 
 	// Role is the chain role this session occupies: lead | plan | run | review
 	// | sync, or "worker" for a factory run's numbered lane. It is derived
-	// from the companion label (`<role>-<run-id>`) or the factory worker
-	// label (`worker-<n>`) at launch, or "lead" for the session that elected
-	// the run.
+	// from the companion label (the bare role name, or its bumped
+	// `<role>-<n>` form) or the factory worker label (`worker-<n>`) at
+	// launch, or "lead" for the session that elected the run.
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
 	// existed, or a launch whose label could not be parsed, leaves it blank —

@@ -17,7 +17,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id> | -f <N>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f <N>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -46,10 +46,11 @@ Kanban Mode:
                                 session. The optional SPEC-ID ties the run to a
                                 SPEC. The lead drives the whole chain; four
                                 companion sessions are launched by hand.
-  -k --name <role>-<run-id>     Enter as a COMPANION of an existing kanban run.
+  -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The four
-                                roles are: plan, run, review, sync. The run-id
-                                is the identifier the lead announced at startup.
+                                roles are: plan, run, review, sync. A role name
+                                held by a live session is bumped to the next
+                                free number (plan-1, plan-2, ...).
 
 Factory Mode:
   -f, --factory <N>             Enter as the LEAD of a factory run with N
@@ -84,7 +85,7 @@ Examples:
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
   moai cc -k                           # Kanban lead: seeds the plan->run->verify->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
-  moai cc -k --name run-abc123         # Kanban companion: joins run abc123 as the run worker
+  moai cc -k --name run               # Kanban companion: joins as the run worker
   moai cc -f 4                         # Factory lead: announces worker-1..worker-4
   moai cc -f 4 --name worker-2         # Factory worker 2 of a 4-worker run
   moai glm -f 4 --name worker-3        # Same lane on the GLM backend`,
@@ -194,8 +195,13 @@ func runCC(cmd *cobra.Command, args []string) error {
 			}
 			defer settingsCleanup()
 		case kanbanBranchCompanion:
-			defer enterKanbanCompanionMode(label)()
-			recordKanbanSession(specID, kanban.BackendClaude, companionRole(label))
+			// A label held by a live session is bumped to the next free number
+			// for the role, and the bumped value must reach the backend argv —
+			// the session name is the address the lead dispatches to.
+			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
+			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
+			defer enterKanbanCompanionMode(finalLabel)()
+			recordKanbanSession(specID, kanban.BackendClaude, companionRole(finalLabel))
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)

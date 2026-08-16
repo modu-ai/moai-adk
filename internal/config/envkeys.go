@@ -166,12 +166,15 @@ const (
 
 	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
 	// run from another on the same machine. The lead session generates it once at
-	// launch; the SessionStart hook reads it to name the companion sessions the
-	// operator must bring up. A companion inherits the same id through its label.
+	// launch; the SessionStart hook reads it to name itself and the leader
+	// socket. It is lead-owned state: a companion neither carries nor publishes
+	// it (companion names are bare roles, so no companion surface holds a run id
+	// that could disagree with the lead's).
 	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
 
 	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
-	// carries its `<role>-<run-id>` label. It is deliberately distinct from
+	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
+	// collision produces. It is deliberately distinct from
 	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
 	// its own goal mid-session, exactly like the lead) but must NOT be seeded
 	// with the plan -> run -> verify -> sync chain, which only the lead drives.

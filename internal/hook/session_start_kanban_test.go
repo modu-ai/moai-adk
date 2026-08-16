@@ -62,7 +62,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 		t.Errorf("notice omits the run id: %q", got)
 	}
 	for _, role := range kanban.CompanionRoles {
-		want := "moai cc -k --name " + role + "-tjlgt1"
+		want := "moai cc -k --name " + role
 		if !strings.Contains(got, want) {
 			t.Errorf("notice omits %q:\n%s", want, got)
 		}
@@ -84,11 +84,11 @@ func TestKanbanBootstrapNoticeCompanion(t *testing.T) {
 	for _, role := range kanban.CompanionRoles {
 		t.Run(role, func(t *testing.T) {
 			clearKanbanEnv(t)
-			t.Setenv(config.EnvMoaiKanbanLabel, kanban.CompanionLabel(role, "tjlgt1"))
+			t.Setenv(config.EnvMoaiKanbanLabel, kanban.CompanionLabel(role))
 
 			got := kanbanBootstrapNotice("", langEnglish)
-			if !strings.Contains(got, "tjlgt1") {
-				t.Errorf("companion notice = %q, want it to name run %q", got, "tjlgt1")
+			if !strings.Contains(got, role) {
+				t.Errorf("companion notice = %q, want it to name label %q", got, role)
 			}
 			// AC-FB-016: the prior-art role clause ("as the X companion") and the
 			// word "companion" must NOT appear. (A role name like "run" can appear
@@ -168,8 +168,8 @@ func TestKanbanLeadNoticeFullContent(t *testing.T) {
 		t.Errorf("notice omits run id abc123:\n%s", got)
 	}
 
-	// (b) four companion lines carrying -k
-	lineRe := regexp.MustCompile(`(?m)^moai cc -k --name (plan|run|review|sync)-abc123$`)
+	// (b) four companion lines carrying -k, named by the bare role
+	lineRe := regexp.MustCompile(`(?m)^moai cc -k --name (plan|run|review|sync)$`)
 	matches := lineRe.FindAllString(got, -1)
 	if len(matches) != 4 {
 		t.Errorf("expected 4 companion lines matching the regex, got %d:\n%s", len(matches), got)
@@ -216,7 +216,8 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 }
 
 // TestKanbanLeadNoticeCompanionLinesCarryF is AC-FB-015: each companion line
-// matches `^moai (cc|glm) -k --name (plan|run|review|sync)-<run-id>$`.
+// matches `^moai (cc|glm) -k --name (plan|run|review|sync)$` — the bare role,
+// with no run-id suffix under the one-machine-one-run naming policy.
 func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
@@ -224,15 +225,21 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-xyz789")
 
 	got := kanbanLeadNotice("xyz789", "", langEnglish)
-	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|review|sync)-xyz789$`)
+	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|review|sync)$`)
 	matches := re.FindAllString(got, -1)
 	if len(matches) < 4 {
 		t.Errorf("expected ≥4 lines matching the companion-launch regex, got %d:\n%s", len(matches), got)
 	}
 	// The bare --name form (no -k) must NOT appear.
-	bareRe := regexp.MustCompile(`(?m)^moai cc --name (plan|run|review|sync)-xyz789$`)
+	bareRe := regexp.MustCompile(`(?m)^moai cc --name (plan|run|review|sync)$`)
 	if bareRe.FindString(got) != "" {
 		t.Errorf("bare --name companion line found (prior-art form; must carry -k):\n%s", got)
+	}
+	// No suffixed companion line either — a run id in a copyable command is
+	// the t21 mismatch surface this policy removes.
+	suffixedRe := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|review|sync)-`)
+	if suffixedRe.FindString(got) != "" {
+		t.Errorf("suffixed companion line found (run-id form; the announced names are bare roles):\n%s", got)
 	}
 }
 
@@ -261,23 +268,28 @@ func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
 }
 
 // TestKanbanCompanionNoticeRoleless is AC-FB-016: the companion notice is
-// join-only and role-less — it names the run and does NOT contain the word
-// "companion" or the prior-art "as the X companion" clause. (A role name like
-// "run" can appear as part of "joined run <id>" — the allowed exception per
-// AC-FB-016's "other than as part of the run id" qualifier.)
+// join-only and role-less — it names the label the session launched under
+// (which may be a bumped number) and does NOT contain the word "companion" or
+// the prior-art "as the X companion" clause. The label is data the lead
+// addresses, not a role declaration.
 func TestKanbanCompanionNoticeRoleless(t *testing.T) {
 	clearKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
+	t.Setenv(config.EnvMoaiKanbanLabel, "review")
 
-	got := kanbanCompanionNotice("run-abc123", langEnglish)
-	if !strings.Contains(got, "abc123") {
-		t.Errorf("companion notice does not name the run: %q", got)
+	got := kanbanCompanionNotice("review", langEnglish)
+	if !strings.Contains(got, "review") {
+		t.Errorf("companion notice does not name the label: %q", got)
 	}
 	if strings.Contains(got, "companion") {
 		t.Errorf("companion notice contains \"companion\": %q", got)
 	}
 	if strings.Contains(got, "as the ") {
 		t.Errorf("companion notice carries the prior-art role clause: %q", got)
+	}
+	// A bumped label reaches the operator here — the launch-time stderr note
+	// is gone by the time the TUI takes the screen.
+	if got := kanbanCompanionNotice("review-1", langEnglish); !strings.Contains(got, "review-1") {
+		t.Errorf("companion notice does not name the bumped label: %q", got)
 	}
 }
 
@@ -306,15 +318,15 @@ func TestKanbanCompanionNoticeFailOpen(t *testing.T) {
 }
 
 // TestKanbanCompanionNoticeJoinOnly is AC-FB-017: the companion notice is a
-// single line acknowledging the join (matching "joined run <id>") and does NOT
-// print the four-companion launch block.
+// single line acknowledging the join (naming the label) and does NOT print the
+// four-companion launch block.
 func TestKanbanCompanionNoticeJoinOnly(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
 
 	got := kanbanCompanionNotice("run-abc123", langEnglish)
-	if !strings.Contains(got, "joined run abc123") {
-		t.Errorf("companion notice does not match \"joined run <id>\": %q", got)
+	if !strings.Contains(got, "joined the kanban run as run-abc123") {
+		t.Errorf("companion notice does not match \"joined the kanban run as <label>\": %q", got)
 	}
 	if strings.Contains(got, "--name") {
 		t.Errorf("companion notice printed the launch block: %q", got)

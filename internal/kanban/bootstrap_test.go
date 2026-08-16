@@ -1,6 +1,7 @@
 package kanban
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -107,10 +108,20 @@ func TestSplitCompanionLabel(t *testing.T) {
 		{"sync-tjlgt1", "sync", "tjlgt1", true},
 		{"sync-0", "sync", "0", true},
 
+		// The bare role is the launch form the lead announces (one machine,
+		// one run — the run id no longer travels in companion names).
+		{"plan", "plan", "", true},
+		{"run", "run", "", true},
+		{"review", "review", "", true},
+		{"sync", "sync", "", true},
+
+		// A collision bump number parses back with the role intact.
+		{"plan-1", "plan", "1", true},
+		{"sync-12", "sync", "12", true},
+
 		// Not companion-shaped: an unrelated named session must never be
 		// mistaken for one, or its Stop-hook block cap changes silently.
 		{"", "", "", false},
-		{"plan", "", "", false},
 		{"plan-", "", "", false},
 		{"-tjlgt1", "", "", false},
 		{"lead-tjlgt1", "", "", false},
@@ -131,22 +142,45 @@ func TestSplitCompanionLabel(t *testing.T) {
 
 // TestCompanionLabelRoundTrips asserts the two halves of the label vocabulary
 // agree — every label the lead announces must parse back on the companion side.
+// The announced form is the bare role; the suffixed forms below cover the
+// collision bump (a number the launcher produces) and the legacy run-id shape
+// (still parsed rather than rejected, so a stale muscle-memory launch joins as
+// the right worker instead of being silently rerouted to the lead branch).
 func TestCompanionLabelRoundTrips(t *testing.T) {
 	t.Parallel()
 
-	runID := NewRunID()
 	for _, want := range CompanionRoles {
-		label := CompanionLabel(want, runID)
-		role, gotID, ok := SplitCompanionLabel(label)
-		if !ok || role != want || gotID != runID {
-			t.Errorf("round trip failed for %q: (%q, %q, %v)", label, role, gotID, ok)
+		label := CompanionLabel(want)
+		role, suffix, ok := SplitCompanionLabel(label)
+		if !ok || role != want || suffix != "" {
+			t.Errorf("bare round trip failed for %q: (%q, %q, %v)", label, role, suffix, ok)
+		}
+	}
+}
+
+// TestCompanionNumberLabelRoundTrips: the launcher's collision bump composes
+// `<role>-<n>`, and every such label must parse back with its role intact —
+// the bumped name is the address the lead dispatches to.
+func TestCompanionNumberLabelRoundTrips(t *testing.T) {
+	t.Parallel()
+
+	for _, want := range CompanionRoles {
+		for n := 1; n <= 3; n++ {
+			label := CompanionNumberLabel(want, n)
+			role, suffix, ok := SplitCompanionLabel(label)
+			wantSuffix := strconv.Itoa(n)
+			if !ok || role != want || suffix != wantSuffix {
+				t.Errorf("bump round trip failed for %q: (%q, %q, %v), want (%q, %q, true)",
+					label, role, suffix, ok, want, wantSuffix)
+			}
 		}
 	}
 }
 
 // TestLeadLabelIsNotACompanion pins the property the launcher's name injection
-// relies on: the lead label shares the `<role>-<run-id>` form but is never
-// recognized as a companion, because RoleLead is absent from CompanionRoles.
+// relies on: the lead label is hyphen-suffixed like a bumped companion label
+// but is never recognized as a companion, because RoleLead is absent from
+// CompanionRoles.
 func TestLeadLabelIsNotACompanion(t *testing.T) {
 	t.Parallel()
 
@@ -219,7 +253,7 @@ func TestSplitLeadLabelAndCompanionAreDisjoint(t *testing.T) {
 	runID := NewRunID()
 	labels := []string{LeadLabel(runID)}
 	for _, role := range CompanionRoles {
-		labels = append(labels, CompanionLabel(role, runID))
+		labels = append(labels, CompanionLabel(role), CompanionNumberLabel(role, 1))
 	}
 	for _, label := range labels {
 		_, isLead := SplitLeadLabel(label)

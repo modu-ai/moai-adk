@@ -126,10 +126,10 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 
 			got := kanbanBootstrapNotice("", lang)
 			for _, want := range []string{
-				"moai cc -k --name plan-tjpzpl",
-				"moai cc -k --name run-tjpzpl",
-				"moai cc -k --name review-tjpzpl",
-				"moai cc -k --name sync-tjpzpl",
+				"moai cc -k --name plan",
+				"moai cc -k --name run",
+				"moai cc -k --name review",
+				"moai cc -k --name sync",
 				"moai glm -k --name",
 				"/tmp/moai-kanban-tjpzpl",
 				"SPEC-FOO-001",
@@ -245,7 +245,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 	}
 
 	// Both channels carry the same launch lines.
-	for _, want := range []string{"moai cc -k --name plan-tjpzpl", "moai cc -k --name sync-tjpzpl"} {
+	for _, want := range []string{"moai cc -k --name plan", "moai cc -k --name sync"} {
 		if !strings.Contains(out.SystemMessage, want) || !strings.Contains(ac, want) {
 			t.Errorf("launch line %q missing from one of the two channels", want)
 		}
