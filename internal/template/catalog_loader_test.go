@@ -67,7 +67,9 @@ func TestLoadCatalog(t *testing.T) {
 	// SPEC-NAVIGATOR-SYNC + SPEC-AUDIT-MULTI-MODEL (2026-08): manager-kanban agent
 	// (core.agents, hierarchical-team coordinator) + moai-ref-cross-model-audit
 	// skill (optional-pack:devops), net +2 = 43.
-	const expectedTotal = 43
+	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
+	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
+	const expectedTotal = 44
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
