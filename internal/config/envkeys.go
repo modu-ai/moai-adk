@@ -12,6 +12,15 @@ package config
 
 // MoAI configuration environment variables.
 const (
+	// EnvHome overrides the ~/.moai root directory: when set to a non-empty
+	// absolute path, the entire MoAI state tree (state/, cache/, releases/,
+	// worktrees/, claude-profiles/, .env.glm, user-tier settings) resolves
+	// under it instead of the user's home. An empty value equals unset and
+	// relative values are disregarded (XDG semantics). Resolved exclusively
+	// via internal/paths (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-001/004);
+	// internal/paths mirrors this constant locally to stay stdlib-only.
+	EnvHome = "MOAI_HOME"
+
 	// EnvConfigDir overrides the MoAI configuration directory path.
 	EnvConfigDir = "MOAI_CONFIG_DIR"
 

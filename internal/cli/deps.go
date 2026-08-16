@@ -16,12 +16,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/perf"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -115,11 +117,13 @@ func InitDependencies() {
 	// Initialize Ralph engine and loop controller.
 	ralphCfg := config.NewDefaultRalphConfig()
 	ralphEngine := ralph.NewRalphEngine(ralphCfg)
-	homeDir, err := os.UserHomeDir()
+	loopState, err := paths.StateDir()
 	if err != nil {
-		homeDir = os.TempDir()
+		// Preserve the pre-migration degradation: loop state falls back to
+		// the OS temp directory when the home cannot be resolved.
+		loopState = filepath.Join(os.TempDir(), defs.MoAIDir, defs.StateSubdir)
 	}
-	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
+	loopStorage := loop.NewFileStorage(filepath.Join(loopState, "loop"))
 	// Use GoFeedbackGenerator for real test/lint feedback collection.
 	// Falls back gracefully: if go test/vet fail or timeout, feedback is partial.
 	cwd, _ := os.Getwd()

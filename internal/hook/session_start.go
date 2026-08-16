@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/mx"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -1173,12 +1174,10 @@ func injectCLAUDEEnvFile(projectRoot string) string {
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.
 func loadGLMKeyFromEnvFile() string {
-	home, err := os.UserHomeDir()
+	envPath, err := paths.GlmEnvFile()
 	if err != nil {
 		return ""
 	}
-
-	envPath := filepath.Join(home, ".moai", ".env.glm")
 	file, err := os.Open(envPath)
 	if err != nil {
 		return ""
