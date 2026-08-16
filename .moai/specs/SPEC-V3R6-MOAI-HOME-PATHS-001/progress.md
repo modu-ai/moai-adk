@@ -141,7 +141,7 @@ m1_to_mN_commit_strategy: "per-milestone Conventional Commits on worktree branch
 
 ```yaml
 sync_complete_at: 2026-08-17T01:20:00+09:00
-sync_commit_sha: pending-backfill-SPEC-V3R6-MOAI-HOME-PATHS-001
+sync_commit_sha: 796394d7d
 sync_status: audit-ready
 b12_self_test_a: "pre-emission grep -c 'SPEC-V3R6-MOAI-HOME-PATHS-001' CHANGELOG.md → 0 (duplicate guard PASS; [Unreleased] section created fresh — release-prep renames it per house lifecycle)"
 b12_self_test_b: "AC count match: acceptance.md SSOT = 16 (AC-MHP-001..016, at the Tier M ceiling); canonical grep returns 19 raw tokens of which AC-001/AC-002/AC-013 are in-file prose shorthand aliases of the AC-MHP family — CHANGELOG entry cites 16"
