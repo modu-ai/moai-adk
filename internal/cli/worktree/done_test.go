@@ -56,7 +56,7 @@ func TestRunDoneWithAutoMode_AfterMerge(t *testing.T) {
 			// We need to resolve the specID to branch name first
 			branchName := resolveSpecBranch(tt.specID)
 
-			success, err := runDoneWithAutoMode(branchName, false, false, true)
+			success, err := runDoneWorktreeCleanup(branchName, false, false)
 
 			// Assert
 			if err != nil {
@@ -72,7 +72,9 @@ func TestRunDoneWithAutoMode_AfterMerge(t *testing.T) {
 	}
 }
 
-// TestRunDoneWithAutoMode_NoProvider tests graceful degradation when provider is nil.
+// TestRunDoneWithAutoMode_NoProvider tests the nil-provider failure.
+// t41 c: auto mode no longer swallows this into (false, nil) — a missing
+// provider is a real failure and must surface as an error (honest exit code).
 func TestRunDoneWithAutoMode_NoProvider(t *testing.T) {
 	// Setup: nil provider
 	origProvider := WorktreeProvider
@@ -80,15 +82,14 @@ func TestRunDoneWithAutoMode_NoProvider(t *testing.T) {
 	defer func() { WorktreeProvider = origProvider }()
 
 	// Act
-	success, err := runDoneWithAutoMode("SPEC-TEST-001", false, false, true)
+	success, err := runDoneWorktreeCleanup("SPEC-TEST-001", false, false)
 
-	// Assert: auto mode should return gracefully with false (not success)
-	if err != nil {
-		t.Errorf("runDoneWithAutoMode() should not error in auto mode, got = %v", err)
+	// Assert: nil provider must be reported, not swallowed.
+	if err == nil {
+		t.Error("runDoneWorktreeCleanup() must error when provider is nil (t41 c: honest auto exit)")
 	}
-	// In auto mode with nil provider, we return (false, nil) for graceful degradation
 	if success {
-		t.Errorf("runDoneWithAutoMode() should return false when provider is nil, got true")
+		t.Errorf("runDoneWorktreeCleanup() should return false when provider is nil, got true")
 	}
 }
 
@@ -106,7 +107,7 @@ func TestRunDoneWithAutoMode_DeleteBranch(t *testing.T) {
 
 	// Act with deleteBranch=true - use resolved branch name
 	branchName := resolveSpecBranch("SPEC-TEST-001")
-	_, err := runDoneWithAutoMode(branchName, false, true, true)
+	_, err := runDoneWorktreeCleanup(branchName, false, true)
 
 	// Assert
 	if err != nil {

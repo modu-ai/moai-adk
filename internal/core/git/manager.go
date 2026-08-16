@@ -266,15 +266,52 @@ func execGit(ctx context.Context, dir string, args ...string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
+	if runErr := cmd.Run(); runErr != nil {
 		stderrStr := strings.TrimSpace(stderr.String())
-		if len(args) > 0 {
-			return "", fmt.Errorf("git %s: %s: %w", args[0], stderrStr, err)
+		op := firstArg(args)
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			// Non-zero git exit. Deliberately NOT %w-chained through
+			// *exec.ExitError: its ExitCode() method structurally satisfies
+			// the CLI's ExitCoder interface (cmd/moai/main.go and
+			// internal/cli/fang.go match `ExitCode() int` with errors.As),
+			// which silences the error text and passes git's raw exit code
+			// through — the silent `moai worktree done` failure measured
+			// 2026-08-15 (rc=128, 0 lines of stderr). CommandError keeps the
+			// stderr text printable and the exit status readable as data.
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				// Deadline kills arrive as a killed process with empty
+				// stderr; name the deadline so a retry (or the raw command,
+				// which has no deadline) is recognisable as the remedy.
+				stderrStr = strings.TrimSpace(stderrStr + fmt.Sprintf(" (git killed: %v)", ctxErr))
+			}
+			return "", &CommandError{Op: op, Stderr: stderrStr, ExitStatus: exitErr.ExitCode()}
 		}
-		return "", fmt.Errorf("git: %s: %w", stderrStr, err)
+		return "", fmt.Errorf("git %s: %w", op, runErr)
 	}
 
 	return strings.TrimRight(stdout.String(), "\n\r"), nil
+}
+
+// CommandError reports a git subprocess that exited non-zero. It exists so
+// the failure carries git's stderr text WITHOUT exposing *exec.ExitError in
+// the wrap chain (see execGit for why that matters). Callers that need the
+// exit status read ExitStatus; errors.As for *exec.ExitError deliberately
+// finds nothing here.
+//
+// @MX:NOTE: t41 — git subprocess failures stay printable and exit non-zero
+// through the CLI boundary instead of passing git's raw code silently.
+type CommandError struct {
+	Op         string // git subcommand (first argv element)
+	Stderr     string // trimmed stderr output, verbatim
+	ExitStatus int
+}
+
+func (e *CommandError) Error() string {
+	if e.Stderr == "" {
+		return fmt.Sprintf("git %s: exited with status %d (no stderr)", e.Op, e.ExitStatus)
+	}
+	return fmt.Sprintf("git %s: %s", e.Op, e.Stderr)
 }
 
 // gitResult holds the result of a git subprocess whose exit code is itself a
