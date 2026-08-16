@@ -1,7 +1,10 @@
 package hook
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -36,7 +39,7 @@ func clearKanbanEnv(t *testing.T) {
 func TestKanbanBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 	clearKanbanEnv(t)
 
-	if got := kanbanBootstrapNotice(langEnglish); got != "" {
+	if got := kanbanBootstrapNotice("", langEnglish); got != "" {
 		t.Errorf("non-kanban session got a notice: %q", got)
 	}
 }
@@ -51,7 +54,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
 
-	got := kanbanBootstrapNotice(langEnglish)
+	got := kanbanBootstrapNotice("", langEnglish)
 	if got == "" {
 		t.Fatal("lead session got no notice")
 	}
@@ -83,7 +86,7 @@ func TestKanbanBootstrapNoticeCompanion(t *testing.T) {
 			clearKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanbanLabel, kanban.CompanionLabel(role, "tjlgt1"))
 
-			got := kanbanBootstrapNotice(langEnglish)
+			got := kanbanBootstrapNotice("", langEnglish)
 			if !strings.Contains(got, "tjlgt1") {
 				t.Errorf("companion notice = %q, want it to name run %q", got, "tjlgt1")
 			}
@@ -111,7 +114,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 
-		if got := kanbanBootstrapNotice(langEnglish); got != "" {
+		if got := kanbanBootstrapNotice("", langEnglish); got != "" {
 			t.Errorf("emitted a notice with no run id: %q", got)
 		}
 	})
@@ -120,7 +123,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanbanLabel, "oauth-migration")
 
-		if got := kanbanBootstrapNotice(langEnglish); got != "" {
+		if got := kanbanBootstrapNotice("", langEnglish); got != "" {
 			t.Errorf("emitted a notice for a non-companion label: %q", got)
 		}
 	})
@@ -135,7 +138,7 @@ func TestKanbanBootstrapNoticeLabelWinsOverKanban(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLabel, "plan-tjlgt1")
 
-	got := kanbanBootstrapNotice(langEnglish)
+	got := kanbanBootstrapNotice("", langEnglish)
 	if strings.Contains(got, "--name") {
 		t.Errorf("a labelled session printed the launch block:\n%s", got)
 	}
@@ -158,7 +161,7 @@ func TestKanbanLeadNoticeFullContent(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("abc123", langEnglish)
+	got := kanbanLeadNotice("abc123", "", langEnglish)
 
 	// (a) run id
 	if !strings.Contains(got, "abc123") {
@@ -205,7 +208,7 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
 
-	got := kanbanLeadNotice("abc123", langEnglish)
+	got := kanbanLeadNotice("abc123", "", langEnglish)
 	// No line should contain a SPEC- prefixed identifier.
 	if strings.Contains(got, "SPEC-") {
 		t.Errorf("notice contains a SPEC- identifier when MOAI_KANBAN_SPEC is unset:\n%s", got)
@@ -220,7 +223,7 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-xyz789")
 
-	got := kanbanLeadNotice("xyz789", langEnglish)
+	got := kanbanLeadNotice("xyz789", "", langEnglish)
 	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|review|sync)-xyz789$`)
 	matches := re.FindAllString(got, -1)
 	if len(matches) < 4 {
@@ -249,7 +252,7 @@ func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 
-			got := kanbanLeadNotice("xyz789", lang)
+			got := kanbanLeadNotice("xyz789", "", lang)
 			if want := kanban.LeadLabel("xyz789"); !strings.Contains(got, want) {
 				t.Errorf("lead notice does not name the lead session %q:\n%s", want, got)
 			}
@@ -334,7 +337,7 @@ func TestKanbanLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "")
 	_ = os.Unsetenv(config.EnvMoaiKanbanSettingsInjected)
 
-	got := kanbanLeadNotice("tjlgt1", langEnglish)
+	got := kanbanLeadNotice("tjlgt1", "", langEnglish)
 	if got == "" {
 		t.Fatal("expected a lead notice, got empty string")
 	}
@@ -355,9 +358,147 @@ func TestKanbanLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("tjlgt1", langEnglish)
+	got := kanbanLeadNotice("tjlgt1", "", langEnglish)
 	lowered := strings.ToLower(got)
 	if !strings.Contains(lowered, "auto-accept") {
 		t.Errorf("lead notice lacks the auto-accept notice:\n%s", got)
 	}
+}
+
+// writeKanbanBacklog writes a backlog file under root at the location the
+// `moai todo` CLI operates (.moai/state/kanban/backlog.json), so the notice
+// builder is exercised against the same on-disk shape the command reads and
+// writes.
+func writeKanbanBacklog(t *testing.T, root string, items []kanban.BacklogItem) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "state", "kanban")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	data, err := json.Marshal(kanban.BacklogRecord{Version: 1, Items: items})
+	if err != nil {
+		t.Fatalf("marshal backlog: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "backlog.json"), data, 0o644); err != nil {
+		t.Fatalf("write backlog: %v", err)
+	}
+}
+
+// TestKanbanLeadNoticeBacklogSummaryCountsQueuedOnly pins the counting rule:
+// "waiting" means state "queued" and nothing else. A picked card is already in
+// flight on another lane, a dropped card was discarded, and a finished card is
+// removed from the file outright (`moai todo done` deletes the row), so none of
+// the three may inflate the number the operator reads. The retired epic
+// pointer must not survive anywhere in the notice.
+func TestKanbanLeadNoticeBacklogSummaryCountsQueuedOnly(t *testing.T) {
+	clearKanbanEnv(t)
+	t.Setenv(config.EnvMoaiKanban, "1")
+	t.Setenv(config.EnvMoaiKanbanID, "t55cnt")
+
+	root := t.TempDir()
+	writeKanbanBacklog(t, root, []kanban.BacklogItem{
+		{ID: "t1", Text: "queued one", State: kanban.BacklogStateQueued},
+		{ID: "t2", Text: "queued two", State: kanban.BacklogStateQueued},
+		{ID: "t3", Text: "picked", State: kanban.BacklogStatePicked},
+		{ID: "t4", Text: "dropped", State: kanban.BacklogStateDropped},
+	})
+
+	got := kanbanLeadNotice("t55cnt", root, langEnglish)
+	if want := "Kanban backlog: 2 waiting"; !strings.Contains(got, want) {
+		t.Errorf("notice omits the queued count line %q:\n%s", want, got)
+	}
+	if !strings.Contains(got, "`moai todo`") {
+		t.Errorf("notice omits the `moai todo` command:\n%s", got)
+	}
+	if strings.Contains(strings.ToLower(got), "epic") {
+		t.Errorf("notice still carries the retired epic pointer:\n%s", got)
+	}
+}
+
+// TestKanbanLeadNoticeBacklogSummaryEveryLocale asserts each locale renders its
+// own summary prose with the queued count and keeps the `moai todo` command
+// verbatim — a protocol token the operator copies, not prose to translate.
+func TestKanbanLeadNoticeBacklogSummaryEveryLocale(t *testing.T) {
+	for lang := range kanbanLocales {
+		t.Run(lang, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "t55loc")
+
+			root := t.TempDir()
+			writeKanbanBacklog(t, root, []kanban.BacklogItem{
+				{ID: "t1", Text: "only card", State: kanban.BacklogStateQueued},
+			})
+
+			got := kanbanBootstrapNotice(root, lang)
+			want := fmt.Sprintf(kanbanMessagesFor(lang).backlogSummary, 1)
+			if !strings.Contains(got, want) {
+				t.Errorf("locale %q: notice omits its backlog summary %q:\n%s", lang, want, got)
+			}
+			if !strings.Contains(got, "`moai todo`") {
+				t.Errorf("locale %q: notice omits the verbatim `moai todo` command:\n%s", lang, got)
+			}
+		})
+	}
+}
+
+// TestKanbanLeadNoticeBacklogSummaryFailsOpen pins the degradation contract:
+// a missing, empty, or malformed backlog file — and an unresolvable project
+// root — must render a sensible zero-count line without failing the session
+// start. The notice is informational; an empty-looking queue costs less than a
+// session that cannot boot.
+func TestKanbanLeadNoticeBacklogSummaryFailsOpen(t *testing.T) {
+	setLeadEnv := func(t *testing.T) {
+		t.Helper()
+		clearKanbanEnv(t)
+		t.Setenv(config.EnvMoaiKanban, "1")
+		t.Setenv(config.EnvMoaiKanbanID, "t55fo")
+	}
+
+	t.Run("missing backlog file renders zero", func(t *testing.T) {
+		setLeadEnv(t)
+		root := t.TempDir() // no backlog.json anywhere under it
+
+		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
+			t.Errorf("missing backlog did not render the zero line %q:\n%s", want, got)
+		}
+	})
+
+	t.Run("empty backlog renders zero", func(t *testing.T) {
+		setLeadEnv(t)
+		root := t.TempDir()
+		writeKanbanBacklog(t, root, nil)
+
+		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
+			t.Errorf("empty backlog did not render the zero line %q:\n%s", want, got)
+		}
+	})
+
+	t.Run("malformed backlog renders zero", func(t *testing.T) {
+		setLeadEnv(t)
+		root := t.TempDir()
+		dir := filepath.Join(root, ".moai", "state", "kanban")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "backlog.json"), []byte("{not json"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+
+		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
+			t.Errorf("malformed backlog did not render the zero line %q:\n%s", want, got)
+		}
+	})
+
+	t.Run("empty root renders zero", func(t *testing.T) {
+		setLeadEnv(t)
+
+		got := kanbanLeadNotice("t55fo", "", langEnglish)
+		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
+			t.Errorf("empty root did not render the zero line %q:\n%s", want, got)
+		}
+	})
 }
