@@ -49,6 +49,17 @@ var claudeCodePassthroughTokens = []string{
 	"$LANG_COUNT",
 	// Hook wrapper stderr log path (resolved at shell runtime)
 	"$MOAI_HOOK_STDERR_LOG",
+	// Shell builtin variable (current working directory, resolved by the shell)
+	"$PWD",
+	// Hook wrapper shell-local variables (lifecycle dormant guards and the
+	// stop-goal shell-layer precondition — assigned and consumed inside the
+	// generated wrapper scripts, resolved at shell runtime)
+	"$ACTION",
+	"$AUTONOMY_TIER_DORMANT",
+	"$INPUT",
+	"$PROJECT_ROOT",
+	"$SESSION_ID",
+	"$STATE_FILE",
 }
 
 // Renderer renders Go text/template files with strict mode enabled.
