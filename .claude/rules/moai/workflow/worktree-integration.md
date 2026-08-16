@@ -41,13 +41,17 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per the opt-in policy) |
-| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered with `moai cc -w <name>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
+| **L1** | Claude-native session worktree | Session-scoped isolation owned by a Claude Code session. Entered by short name — `moai cc -w <name>` (the launcher passes `-w` straight through to `claude`), `claude -w <name>`, or the in-session `EnterWorktree(<name>)` tool — or materialized autonomously for a subagent spawned with `Agent(isolation: "worktree")` (auto-named; the runtime decides whether to materialize it). | `.claude/worktrees/<name>/` on branch `worktree-<name>` (auto-named subagent trees use the runtime's generated name); base per `worktree.baseRef` (`fresh` = remote default branch by default) | Session-scoped — the running session holds a `git worktree lock` on the tree; disposed via the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done | Claude Code runtime. `moai worktree` does NOT manage these trees — they are never in its registry, so `done` / `clean` / `recover` have nothing to close on them |
+| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** — `moai cc -w ~/.moai/worktrees/<project>/<SPEC>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`, `remove`, `clean`, `recover`, `done`, plus the guard trio `snapshot` / `verify` / `restore`); disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
-- An **L2** persistent worktree is created by entering one with `moai cc -w <name>` (the former `/moai plan --worktree` launch action and `moai worktree new` command are both retired).
+- A **short name** passed to `-w` (`moai cc -w <name>`) resolves against `.claude/worktrees/<name>/` and creates an **L1** tree, not an L2 one; an **L2** persistent worktree is entered by absolute path (`moai cc -w <abs-path>`). `moai worktree` deliberately carries no creation verb — entering is the launcher's job (the former `/moai plan --worktree` launch action and `moai worktree new` command are both retired).
 - An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2 and may occur inside either the main checkout or an L2 worktree.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
+
+[HARD] **`moai worktree` verbs are L2-only.** An L1 tree under `.claude/worktrees/` is never registered with `moai worktree`, so `done`, `clean`, and `recover` cannot act on it — `moai worktree done` on an L1 tree is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock.
+
+[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work.
 
 ## Claude Code 2.1.50+ Worktree Features
 
@@ -425,4 +429,4 @@ Worktree usage is user opt-in; the default flow runs all phases on a `feat/SPEC-
 
 ---
 
-Version: 4.1.0 (Team Protocol section removed — Agent Teams static layer retired)
+Version: 4.2.0 (L1/L2 boundary codified — moai worktree verbs are L2-only; unpushed-branch disposal ban)
