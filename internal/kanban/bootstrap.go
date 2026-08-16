@@ -11,6 +11,7 @@ package kanban
 // dependency can only run in that direction.
 
 import (
+	"strconv"
 	"strings"
 	"time"
 )
@@ -111,11 +112,51 @@ func SplitLeadLabel(label string) (runID string, ok bool) {
 
 func isCompanionRole(role string) bool {
 	for _, r := range CompanionRoles {
-		if role == r {
+		if r == role {
 			return true
 		}
 	}
 	return false
+}
+
+// factoryWorkerRole is the label prefix of a factory run's numbered workers.
+// It is deliberately absent from CompanionRoles: a factory worker is not a
+// kanban companion, so the companion shape discriminator must not admit the
+// `worker-<n>` label (and by the same construction a kanban role is never
+// mistaken for a worker number).
+const factoryWorkerRole = "worker"
+
+// FactoryWorkerLabel joins the worker prefix and a worker number into the
+// label a factory worker session is launched under (`worker-3`).
+//
+// The label deliberately never satisfies SplitCompanionLabel or
+// SplitLeadLabel: factory workers neither occupy the four-role kanban chain
+// nor the lead position, so a factory name is never reclassified by the
+// kanban shape discriminators. Unlike the kanban labels it carries no run id
+// — a factory worker is addressed by name alone (the run's lead dispatches
+// cards over cross-session messages), which is why the launcher maintains a
+// separate liveness-checked registry to keep the numbered names unique.
+func FactoryWorkerLabel(n int) string {
+	return factoryWorkerRole + "-" + strconv.Itoa(n)
+}
+
+// SplitFactoryWorkerLabel splits a `worker-<n>` label into its number and
+// reports whether the value has the worker shape at all. The shape is the
+// discriminator for factory worker recognition, exactly as
+// SplitCompanionLabel is for kanban companions: a number of 1 or more
+// following the `worker-` prefix, nothing else. A suffix that does not parse
+// as such a number (`worker-`, `worker-a`, `worker-3-extra`, `worker--3`)
+// reads as "not a worker", never as an error.
+func SplitFactoryWorkerLabel(label string) (n int, ok bool) {
+	role, suffix, found := strings.Cut(label, "-")
+	if !found || role != factoryWorkerRole {
+		return 0, false
+	}
+	n, err := strconv.Atoi(suffix)
+	if err != nil || n < 1 {
+		return 0, false
+	}
+	return n, true
 }
 
 // isRunIDShape reports whether s is one or more lowercase alphanumerics — the

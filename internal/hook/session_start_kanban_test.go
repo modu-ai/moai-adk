@@ -22,6 +22,8 @@ func clearKanbanEnv(t *testing.T) {
 		config.EnvMoaiKanbanLabel,
 		config.EnvMoaiKanbanSettingsInjected,
 		config.EnvMoaiKanbanLeadAddr,
+		config.EnvMoaiFactoryWorkers,
+		config.EnvMoaiFactoryWorker,
 	} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)

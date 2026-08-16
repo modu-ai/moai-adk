@@ -16,8 +16,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -36,7 +36,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id> | -f <N>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -70,6 +70,21 @@ Kanban Mode:
                                 roles are: plan, run, review, sync. The run-id
                                 is the identifier the lead announced at startup.
 
+Factory Mode:
+  -f, --factory <N>             Enter as the LEAD of a factory run with N
+                                numbered workers. The lead dispatches cards to
+                                the workers over cross-session messages; the
+                                workers are launched by hand, one per terminal,
+                                each as: moai glm -f <N> --name worker-<i>
+  -f <N> --name worker-<i>      Enter as WORKER <i> of an existing factory run.
+                                A worker number whose label is held by a live
+                                session is bumped to the next free number.
+
+  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
+  -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban chain
+  above. Today's -f is a NEW feature — a numbered worker fan-out — and shares
+  nothing with that predecessor beyond the recycled letter.
+
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
 
@@ -85,6 +100,8 @@ Examples:
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
   moai glm -k --name sync-abc123   # Kanban companion on GLM
+  moai glm -f 4            # Factory lead on GLM: announces worker-1..worker-4
+  moai glm -f 4 --name worker-2    # Factory worker 2 of a 4-worker run
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -180,28 +197,66 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// table; glm mirrors cc exactly except for the backend constant.
 	specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs)
 	filteredArgs = kanbanArgs
+	// SPEC-FACTORY-WORKER-FANOUT-001: -f <N> is factory membership. See cc.go
+	// for the full rationale; glm mirrors cc exactly except for the backend
+	// constant, including the -k/-f mutual exclusion.
+	factoryWorkers, factoryEnabled, factoryArgs, err := parseFactoryFlag(filteredArgs)
+	if err != nil {
+		return err
+	}
+	filteredArgs = factoryArgs
+	if err := rejectConflictingModes(kanbanEnabled, factoryEnabled); err != nil {
+		return err
+	}
 	label, isCompanion := parseCompanionLabel(filteredArgs)
-	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
-	case kanbanBranchLead:
-		// See cc.go: the operator's lead run id is adopted rather than replaced.
+	factoryLabel, isFactoryWorker := parseFactoryWorkerLabel(filteredArgs)
+	switch resolveFactoryBranch(factoryEnabled, isFactoryWorker) {
+	case factoryBranchLead:
 		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterKanbanMode(specID, leadLabel)()
+		defer enterFactoryLeadMode(factoryWorkers, leadLabel)()
 		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
-		// See cc.go: glm mirrors the lead branch exactly.
 		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case kanbanBranchCompanion:
-		defer enterKanbanCompanionMode(label)()
-		recordKanbanSession(specID, kanban.BackendGLM, companionRole(label))
+	case factoryBranchWorker:
+		// See cc.go: a live-held worker number is bumped, and the bumped value
+		// must reach the backend argv.
+		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
+		defer enterFactoryWorkerMode(finalLabel, factoryWorkers)()
+		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleWorker)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
+	}
+	if !factoryEnabled {
+		switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
+		case kanbanBranchLead:
+			// See cc.go: the operator's lead run id is adopted rather than replaced.
+			leadLabel, _ := parseLeadLabel(filteredArgs)
+			defer enterKanbanMode(specID, leadLabel)()
+			recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
+			// See cc.go: glm mirrors the lead branch exactly.
+			filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			defer settingsCleanup()
+		case kanbanBranchCompanion:
+			defer enterKanbanCompanionMode(label)()
+			recordKanbanSession(specID, kanban.BackendGLM, companionRole(label))
+			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			defer settingsCleanup()
+		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
