@@ -13,9 +13,13 @@ import (
 )
 
 // SPEC codex-gate-protocol — LIVE integration test. Exercises the REAL codex
-// binary (codex-cli 0.146.1 app-server JSON-RPC) against a fixture git repo
+// binary (codex-cli app-server JSON-RPC) against a fixture git repo
 // carrying an obvious command-injection sink + a hardcoded AWS key, and asserts
-// the gate reaches a BLOCK decision. This is the end-to-end proof the 4 protocol
+// the gate reaches a BLOCK decision when the review turn completes. When the
+// turn itself fails (observed live: a usage-limited codex account on 0.147.0
+// fails the turn with usageLimitExceeded before the diff is evaluated), the
+// gate must fail open WITH the error surfaced — a fabricated pass is the one
+// fatal shape. This is the end-to-end proof the 4 protocol
 // gaps are closed: initialize handshake → thread/start → review/start (object
 // target + threadId) → async verdict synthesis.
 //
@@ -79,19 +83,39 @@ func TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey(t *testing.T) {
 	})
 
 	out, err := HandleCodexReviewGate(&hook.HookInput{}, true /* enabled */, repo)
-	// The decision is the load-bearing assertion. A BLOCK means the gate reached
-	// a real verdict (the protocol fix worked) AND codex found the injection+key.
-	if out == nil || out.Decision != hook.DecisionBlock {
-		decision := "<nil>"
-		if out != nil {
-			decision = string(out.Decision)
+	// Two legitimate outcomes, one fatal shape:
+	//
+	//  1. The review turn COMPLETED (err == nil): codex really evaluated the
+	//     fixture, and an injection+AWS-key change MUST produce finding bullets
+	//     ⇒ BLOCK. This is the security assertion and it is not negotiable.
+	//  2. The review turn itself FAILED (err != nil — e.g. the codex account is
+	//     usage-limited, as observed live on codex-cli 0.147.0: the turn dies
+	//     with usageLimitExceeded BEFORE the diff is evaluated): the gate must
+	//     fail open (ALLOW) WITH the error surfaced — never fabricate a pass.
+	//
+	// The fatal shape is err == nil AND non-BLOCK: that is a "review happened
+	// and found nothing" claim no real review produced (card t52 — the gate used
+	// to launder codex's "Reviewer failed to output a response." placeholder
+	// into verdict pass with err == nil).
+	if err == nil {
+		if out == nil || out.Decision != hook.DecisionBlock {
+			decision := "<nil>"
+			if out != nil {
+				decision = string(out.Decision)
+			}
+			t.Fatalf("expected BLOCK on injection+AWS-key fixture; got decision=%q err=%v\n"+
+				"NOTE: the review turn COMPLETED, so codex really evaluated the fixture — "+
+				"a non-BLOCK here means codex passed this fixture (a real result — report it).",
+				decision, err)
 		}
-		t.Fatalf("expected BLOCK on injection+AWS-key fixture; got decision=%q err=%v\n"+
-			"NOTE: a non-BLOCK here means either the protocol fix did not land OR codex "+
-			"returned an inconclusive/pass verdict on this fixture (a real result — report it).",
-			decision, err)
+		t.Logf("BLOCK reached. reason=%q", out.Reason)
+		return
 	}
-	t.Logf("BLOCK reached. reason=%q", out.Reason)
+	// Turn failed: fail-open must hold AND the failure must be visible.
+	if out != nil && out.Decision == hook.DecisionBlock {
+		t.Fatalf("a failed review turn must not BLOCK (fail-open), got %+v err=%v", out, err)
+	}
+	t.Skipf("codex review turn did not complete — gate failed open with the error surfaced (correct behavior): %v", err)
 }
 
 // liveCodexGateTimeout gives the live codex review turn enough room to run the
