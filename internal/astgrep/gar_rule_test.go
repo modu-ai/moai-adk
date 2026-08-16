@@ -14,7 +14,7 @@ import (
 
 // This file is the SPEC-GATE-ASTGREP-REPAIR-001 regression guard for the
 // refined `go-error-not-wrapped` ast-grep rule. It exercises the REAL shipped
-// rule file (.moai/config/astgrep-rules/go/error-handling.yml) via the same
+// rule file (.moai/astgrep-rules/go/error-handling.yml) via the same
 // `sg scan --config` path the quality gate uses at commit time, and asserts
 // the three D1 acceptance criteria (AC-GAR-001/002/003).
 //
@@ -32,7 +32,9 @@ func requireSG(t *testing.T) {
 
 // projectRoot returns the repository root (the directory containing go.mod).
 // The testdata fixtures live under the astgrep package directory; the rule
-// file lives at <repo-root>/.moai/config/astgrep-rules/go/error-handling.yml.
+// file lives at <repo-root>/.moai/astgrep-rules/go/error-handling.yml — it
+// moved out of .moai/config/ in #1557, because `moai update` wipes
+// .moai/config/ wholesale and was deleting the local-only rules on every run.
 func projectRoot(t *testing.T) string {
 	t.Helper()
 	wd, err := os.Getwd()
@@ -61,7 +63,7 @@ func projectRoot(t *testing.T) string {
 func realRuleFile(t *testing.T) string {
 	t.Helper()
 	root := projectRoot(t)
-	p := filepath.Join(root, ".moai", "config", "astgrep-rules", "go", "error-handling.yml")
+	p := filepath.Join(root, ".moai", "astgrep-rules", "go", "error-handling.yml")
 	if _, err := os.Stat(p); err != nil {
 		t.Fatalf("shipped rule file not found: %s", p)
 	}
