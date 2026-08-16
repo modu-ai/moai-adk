@@ -232,7 +232,14 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	// own directory: `.moai/state/` is gitignored, so a worktree session would
 	// otherwise find nothing. Fail-open — an unreadable backlog renders nothing.
 	if input != nil {
-		data.Backlog = resolveBacklogCounts(resolveBoardRoot(input))
+		boardRoot := resolveBoardRoot(input)
+		data.Backlog = resolveBacklogCounts(boardRoot)
+
+		// GitHub counts are read from cache only — the render path never calls
+		// the network. When the cache has aged out, a detached child is asked
+		// to refresh it and this render proceeds with the previous value.
+		data.GitHub = resolveGitHubCounts(boardRoot)
+		maybeRefreshGitHubCounts(boardRoot)
 	}
 
 	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for

@@ -28,7 +28,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 
 	got := NewRenderer("default", true, nil).renderSessionLine(namedData())
 
-	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "📋 ▶12 ⏸26"} {
+	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 12 / ⤵️ 26"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
 		}
@@ -39,7 +39,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 	// you know whose it is.
 	nameAt := strings.Index(got, "Team-A-Lead")
 	agentAt := strings.Index(got, "manager-kanban")
-	boardAt := strings.Index(got, "📋")
+	boardAt := strings.Index(got, "🔄 ")
 	if !(nameAt < agentAt && agentAt < boardAt) {
 		t.Errorf("want name < agent < backlog, got %d/%d/%d in %q", nameAt, agentAt, boardAt, got)
 	}
@@ -63,7 +63,7 @@ func TestRenderSessionLine_UnreadableBacklogRendersNoCounts(t *testing.T) {
 
 	got := NewRenderer("default", true, nil).renderSessionLine(d)
 
-	if strings.Contains(got, "📋") {
+	if strings.Contains(got, "🔄 ") {
 		t.Errorf("unavailable backlog must render no counts, got %q", got)
 	}
 	if !strings.Contains(got, "🏷️ Team-A-Lead") {
@@ -79,13 +79,13 @@ func TestRenderSessionLine_SegmentsDisablable(t *testing.T) {
 	if strings.Contains(got, "Team-A-Lead") || strings.Contains(got, "manager-kanban") {
 		t.Errorf("disabled session segment still rendered: %q", got)
 	}
-	if !strings.Contains(got, "📋") {
+	if !strings.Contains(got, "🔄 ") {
 		t.Errorf("backlog must survive disabling the identity segment: %q", got)
 	}
 
 	cfg = map[string]bool{SegmentBacklog: false}
 	got = NewRenderer("default", true, cfg).renderSessionLine(namedData())
-	if strings.Contains(got, "📋") {
+	if strings.Contains(got, "🔄 ") {
 		t.Errorf("disabled backlog segment still rendered: %q", got)
 	}
 	if !strings.Contains(got, "🏷️ Team-A-Lead") {

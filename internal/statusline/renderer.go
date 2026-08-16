@@ -170,10 +170,16 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		}
 	}
 
-	// Backlog: ▶ in flight, ⏸ waiting to be picked. Symbols rather than words
+	// Backlog: 🔄 in flight, ⤵️ waiting in the queue. Symbols rather than words
 	// because this binary ships to users of every supported language.
 	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("📋 ▶%d ⏸%d", data.Backlog.Picked, data.Backlog.Queued))
+		segs = append(segs, fmt.Sprintf("🔄 %d / ⤵️ %d", data.Backlog.Picked, data.Backlog.Queued))
+	}
+
+	// GitHub: 🐛 open issues, 📥 open pull requests. Served from cache, so this
+	// is a file read even when the network is down.
+	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
+		segs = append(segs, fmt.Sprintf("🐛 %d / 📥 %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
 	}
 
 	return r.joinSegments(segs)
