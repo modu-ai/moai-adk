@@ -118,21 +118,21 @@ func TestIsPrimaryCheckout_Fallback(t *testing.T) {
 	requireGit(t)
 
 	cases := []struct {
-		name       string
-		gitDirOut  string
-		commonOut  string
+		name        string
+		gitDirOut   string
+		commonOut   string
 		wantPrimary bool
 	}{
 		{
-			name:       "FallbackResolvesPrimary",
-			gitDirOut:  "/fake/repo/.git",
-			commonOut:  "/fake/repo/.git",
+			name:        "FallbackResolvesPrimary",
+			gitDirOut:   "/fake/repo/.git",
+			commonOut:   "/fake/repo/.git",
 			wantPrimary: true,
 		},
 		{
-			name:       "FallbackResolvesWorktree",
-			gitDirOut:  "/fake/repo/.git/worktrees/wt",
-			commonOut:  "/fake/repo/.git",
+			name:        "FallbackResolvesWorktree",
+			gitDirOut:   "/fake/repo/.git/worktrees/wt",
+			commonOut:   "/fake/repo/.git",
 			wantPrimary: false,
 		},
 	}
@@ -235,6 +235,14 @@ func TestBranchStatePatterns_TruePositives(t *testing.T) {
 		{"git branch -d old", true},
 		{"git branch -D old", true},
 		{"git branch -m renamed", true},
+		{"git branch -M renamed", true},
+		// Copy flags (git 2.23+) are mutating — they create a new ref:
+		// kanban card t42 completes the flag set alongside the read-only
+		// refinement below.
+		{"git branch -c copied", true},
+		{"git branch -C copied", true},
+		// Branch creation at an explicit start point is also creation.
+		{"git branch newbranch oldstart", true},
 		{"git reset --hard origin/main", true},
 		{"git stash", true},
 		{"git stash push", true},
@@ -300,6 +308,16 @@ func TestBranchStatePatterns_TrueNegatives(t *testing.T) {
 		{"git branch -v"},             // list-only
 		{"git branch -a"},             // list-only
 		{"git branch --list"},         // list-only
+		// Read-only branch inquiries (kanban card t42, measured 2026-08-15:
+		// `git branch --list develop -v` was denied in the primary checkout by
+		// a deployed binary predating the flag-discriminating pattern). These
+		// pins keep every read-only branch form excluded:
+		{"git branch --list develop -v"}, // the measured incident command
+		{"git branch -vv"},               // list-only (doctrine-permitted inquiry)
+		{"git branch -r"},                // list-only (remote branches)
+		{"git branch"},                   // bare inquiry (no operand)
+		{"git branch --show-current"},    // list-only
+		{"git branch --contains HEAD"},   // list-only
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-2 read-only exclusions:
 		{"git stash list"},                   // AC-REQ-2a — read-only
 		{"git stash show"},                   // AC-REQ-2a/2b — read-only
@@ -583,4 +601,62 @@ func TestIsPrimaryCheckout_FallbackCommonDirFail(t *testing.T) {
 	if err == nil {
 		t.Fatalf("isPrimaryCheckout(fallback --git-common-dir fail) err = nil, want non-nil (fail-open signal)")
 	}
+}
+
+// TestBranchGuard_BranchInquiryFormsInPrimary is the kanban-card-t42 end-to-end
+// matrix, exercised at the checkBranchState layer in a REAL primary checkout
+// (the context the incident was measured in, 2026-08-15):
+//
+//   - `git branch --list develop -v` — a pure inquiry creating no refs — MUST
+//     be allowed (allow fall-through, empty decision + reason).
+//   - `git branch -d foo` and bare-name creation `git branch newbranch` MUST
+//     be denied with the BRANCH_GUARD_VIOLATION sentinel and the `git branch`
+//     deny-reason suffix, so the deny-reason contract stays observable on the
+//     branch pattern after the refinement.
+//
+// Non-parallel: t.Setenv mutates the process-global exemption env var.
+func TestBranchGuard_BranchInquiryFormsInPrimary(t *testing.T) {
+	requireGit(t)
+	repo := newBranchGuardRepoFixture(t)
+	t.Setenv(branchGuardExemptEnv, "")
+
+	t.Run("readonly_list_inquiry_allowed", func(t *testing.T) {
+		input := &HookInput{
+			ToolName:  "Bash",
+			CWD:       repo,
+			ToolInput: json.RawMessage(`{"command": "git branch --list develop -v"}`),
+		}
+		decision, reason := checkBranchState(input, repo)
+		if decision != "" || reason != "" {
+			t.Fatalf("checkBranchState(read-only branch inquiry) = (%q, %q), want (\"\", \"\") — a pure inquiry creating no refs must not be denied", decision, reason)
+		}
+	})
+
+	t.Run("delete_flag_denies_with_sentinel", func(t *testing.T) {
+		input := &HookInput{
+			ToolName:  "Bash",
+			CWD:       repo,
+			ToolInput: json.RawMessage(`{"command": "git branch -d feature/x"}`),
+		}
+		decision, reason := checkBranchState(input, repo)
+		if decision != DecisionDeny {
+			t.Fatalf("checkBranchState(git branch -d) decision = %q, want %q", decision, DecisionDeny)
+		}
+		const wantPrefix = "BRANCH_GUARD_VIOLATION: git branch"
+		if len(reason) < len(wantPrefix) || reason[:len(wantPrefix)] != wantPrefix {
+			t.Fatalf("checkBranchState(git branch -d) reason = %q, want prefix %q", reason, wantPrefix)
+		}
+	})
+
+	t.Run("bare_name_creation_denies", func(t *testing.T) {
+		input := &HookInput{
+			ToolName:  "Bash",
+			CWD:       repo,
+			ToolInput: json.RawMessage(`{"command": "git branch newbranch"}`),
+		}
+		decision, _ := checkBranchState(input, repo)
+		if decision != DecisionDeny {
+			t.Fatalf("checkBranchState(git branch newbranch) decision = %q, want %q", decision, DecisionDeny)
+		}
+	})
 }
