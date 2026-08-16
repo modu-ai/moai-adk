@@ -58,6 +58,7 @@ jobs:
               - 'go.sum'
               - 'Makefile'
               - '.github/workflows/release-pr-multi-os.yml'
+              - '.github/workflows/codeql.yml'
       - id: gate
         run: echo "proceed=true" >> $GITHUB_OUTPUT
 
@@ -158,17 +159,26 @@ jobs:
   # Summary gate: ensures all OS legs passed (or were skipped for non-release
   # or docs-only PRs). This is the required check that branch protection
   # gates a release PR on, so the OS matrix above is what actually blocks a
-  # bad release.
+  # bad release. A detect-release hard FAILURE also fails this gate: the job
+  # now carries failable steps (checkout, paths-filter consumer), and a failed
+  # detection would otherwise skip the matrix and reach this `if: always()`
+  # aggregation as a mere 'skipped' — a required gate passing with zero
+  # verification. detect-release SKIPPED (ordinary PR flow) still passes:
+  # only a hard 'failure' blocks, never 'skipped'.
   # ---------------------------------------------------------------------------
   release-pr-gate:
     name: Release PR Multi-OS Gate
-    needs: [full-matrix-test]
+    needs: [full-matrix-test, detect-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Verify all OS legs passed
         run: |
+          if [ "${{ needs.detect-release.result }}" = "failure" ]; then
+            echo "::error::Release PR detection FAILED before the matrix could run — not treating a skipped matrix as verification"
+            exit 1
+          fi
           if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
             echo "::error::Release PR multi-OS verification FAILED on at least one OS"
             exit 1

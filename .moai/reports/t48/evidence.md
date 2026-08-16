@@ -15,7 +15,7 @@ gh api repos/modu-ai/moai-adk/branches/main/protection --jq '.required_status_ch
 Observed output (2026-08-17, re-run at final state after both edits):
 
 ```
-["Test (ubuntu-latest)","Lint","Build (linux-amd64)","Analyze (Go) (go)","Release PR Multi-OS Gate"]
+["Test (ubuntu-latest)","Lint","Build (linux/amd64)","Analyze (Go) (go)","Release PR Multi-OS Gate"]
 ```
 
 Asymmetry check demanded by the card:
@@ -114,7 +114,7 @@ actionlint exit: 0
 
 ```
 $ gh api repos/modu-ai/moai-adk/branches/main/protection --jq '.required_status_checks.contexts'
-["Test (ubuntu-latest)","Lint","Build (linux-amd64)","Analyze (Go) (go)","Release PR Multi-OS Gate"]
+["Test (ubuntu-latest)","Lint","Build (linux/amd64)","Analyze (Go) (go)","Release PR Multi-OS Gate"]
 ```
 
 ```
@@ -173,3 +173,96 @@ card's conditional. Item (2) mirrors ci.yml's paths-filter idiom (same action,
 same pin, same `go_code` filter shape) adapted to this workflow's existing
 gating job, with a fail-safe comparison and a dispatch bypass as described in
 (b).
+
+## Rework round 1 (review verdict FAIL — F1/F2/F4 addressed)
+
+### F1 [BLOCKING] — required gate could pass with zero verification (FIXED)
+
+Reviewer-confirmed failure chain in my round-1 YAML: `detect-release` gained
+failable steps (`actions/checkout@v7` without continue-on-error) → a checkout
+failure fails `detect-release` → `full-matrix-test` (no status function in its
+`if`) is skipped → `release-pr-gate` (`if: always()`) aggregated only
+`full-matrix-test.result == "failure"`, and a skipped dependency reads as
+SUCCESS. This contradicted my own comment claiming an abnormal filter can
+never silently skip a required-gate verification. The path did not exist
+before round 1 (detect-release previously had only the gate-echo step).
+
+Fix applied exactly as prescribed (minimal):
+
+1. `release-pr-gate.needs` is now `[full-matrix-test, detect-release]`.
+2. Aggregation extended: `needs.detect-release.result == 'failure'` fails the
+   gate with its own `::error` message, checked before the matrix check.
+3. Normal-PR path preserved: only a hard `failure` blocks; `skipped`
+   (ordinary PR flow, where detect-release's own `if` is false) still passes.
+   Gate comment documents the skipped-vs-failed distinction.
+
+```diff
+   release-pr-gate:
+     name: Release PR Multi-OS Gate
+-    needs: [full-matrix-test]
++    needs: [full-matrix-test, detect-release]
+     if: always()
+       - name: Verify all OS legs passed
+         run: |
++          if [ "${{ needs.detect-release.result }}" = "failure" ]; then
++            echo "::error::Release PR detection FAILED before the matrix could run — not treating a skipped matrix as verification"
++            exit 1
++          fi
+           if [ "${{ needs.full-matrix-test.result }}" = "failure" ]; then
+```
+
+### F2 — filter parity claim (FIXED by adding)
+
+`.github/workflows/codeql.yml` added to the `go_code` filter, so it now
+exactly mirrors ci.yml's filter with only the workflow self-reference swapped
+(`release-pr-multi-os.yml` for `ci.yml`). The round-1 "mirrors ci.yml's filter"
+claim is now true rather than corrected-away.
+
+### F4 — evidence typo (FIXED)
+
+Two occurrences of `Build (linux-amd64)` corrected to `Build (linux/amd64)`
+(job-name form, matching the actually observed gh api output).
+
+### Rework verification — commands + verbatim output
+
+```
+$ actionlint .github/workflows/ci.yml .github/workflows/release-pr-multi-os.yml
+actionlint exit: 0
+```
+
+Extended scenario matrix (models need-propagation, `full-matrix-test`'s `if`,
+and the gate's two-check aggregation):
+
+```
+gate needs -> ['full-matrix-test', 'detect-release'] | gate if -> 'always()'
+
+scenario matrix (F1 cases included):
+  matrix=skipped  gate=SUCCESS                            1  normal PR (detect-release skipped)
+  matrix=success  gate=SUCCESS                            2  release PR, go-code diff, matrix passes
+  matrix=failure  gate=FAILURE (matrix failed)            3  release PR, go-code diff, matrix FAILS
+  matrix=skipped  gate=SUCCESS                            4  release PR, docs-only diff
+  matrix=success  gate=SUCCESS                            5  release PR, filter unevaluable (go_code empty)
+  matrix=skipped  gate=FAILURE (detect-release failed)    6  release PR, detect-release CHECKOUT FAILURE
+  matrix=success  gate=SUCCESS                            7  manual workflow_dispatch
+
+all 8 assertions PASS
+```
+
+New-case verdicts demanded by the rework instruction:
+
+- (a) detect-release checkout failure → gate **FAILS** (case 6; was SUCCESS
+  before the fix).
+- (b) detect-release skipped (normal PR) → gate **SUCCESS preserved** (case 1).
+
+All five round-1 scenarios are unchanged (cases 1-5, 7), so no regression in
+the round-1 behavior. Note: the round-1 scenario table simulated only
+`full-matrix-test`'s `if`; the rework table simulates the full pipeline
+through the gate aggregation — the round-1 table alone could not have caught
+F1, which is why the reviewer's chain analysis in the YAML was the decisive
+evidence.
+
+Gaps: the pipeline model is a simulation of GitHub Actions need-propagation
+semantics, not an executed workflow run; live confirmation lands on the first
+release PR + the first detect-release infra failure (unobservable on demand).
+No local `go test ./...` (lane discipline).
+
