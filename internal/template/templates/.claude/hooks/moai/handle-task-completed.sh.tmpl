@@ -21,6 +21,21 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
+# SPEC-STOPCHAIN-TRIM-001 REQ-006 (A11 / AC-006b): at MOAI_AUTONOMY_TIER=
+# fully-autonomous the subagent-lifecycle hooks are DORMANT (observe-only —
+# audit-log written, NO block/reject/AskUserQuestion translation). Runs BEFORE
+# any moai-binary resolution so the dormant path pays zero cold-starts. Shell-
+# layer tier read (no moai binary — the token is an env-key per OQ-1/REQ-003).
+# The deny/ask denylist in pre_tool.go is tier-INVARIANT (REQ-007) and is NOT
+# affected by this guard; only the lifecycle interrupt is suppressed.
+AUTONOMY_TIER_DORMANT=$(printf '%s' "${MOAI_AUTONOMY_TIER:-}" | tr '[:upper:]' '[:lower:]')
+if [ "$AUTONOMY_TIER_DORMANT" = "fully-autonomous" ]; then
+    mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs" 2>/dev/null || true
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [task-completed] DORMANT (tier=fully-autonomous) — observe-only, no reject" \
+        >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/lifecycle-dormant.log"
+    exit 0
+fi
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
     exec moai hook task-completed 2>>"$MOAI_HOOK_STDERR_LOG"

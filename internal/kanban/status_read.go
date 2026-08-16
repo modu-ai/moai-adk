@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // branchProbe is the package-level indirection over exec.Command used by
@@ -59,8 +60,8 @@ type WorktreeBases struct {
 // DefaultWorktreeBases resolves the scanned bases for production callers.
 func DefaultWorktreeBases(primaryRoot string) WorktreeBases {
 	bases := WorktreeBases{Claude: filepath.Join(primaryRoot, ".claude", "worktrees")}
-	if home, err := os.UserHomeDir(); err == nil {
-		bases.MoAI = filepath.Join(home, ".moai", "worktrees")
+	if moaiBase, err := paths.WorktreesDir(); err == nil {
+		bases.MoAI = moaiBase
 	}
 	return bases
 }

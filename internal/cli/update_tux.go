@@ -144,9 +144,43 @@ func renderDeployProgress(done, total int, th tui.Theme) string {
 // backup path and recover command survive verbatim (presentation-only,
 // REQ-TUXIU-044); only the styling (solid pill + dim note vs one outline pill)
 // changes.
-func renderUpdateOutcome(w io.Writer, fileCount int, backupPath string, th tui.Theme) {
-	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount, "")
+// updateOutcomeDetail carries the managed-path accounting the outcome note
+// renders alongside the merged/added file count. Without it the pill counted
+// only the non-managed files AnalyzeFiles reports, silently dropping every
+// managed re-deployment and every removal the run performed.
+type updateOutcomeDetail struct {
+	// ManagedRedeployed counts template files the deploy writes under
+	// MoAI-managed roots (skills, rules, commands, agents, output-styles,
+	// hooks, config).
+	ManagedRedeployed int
+	// RemovedManaged counts files the Clean Managed Paths step removed.
+	RemovedManaged int
+	// RemovedLocalOnly counts removed files the embedded templates do not
+	// restore — the local-only losses the summary must not hide.
+	RemovedLocalOnly int
+}
+
+func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail, backupPath string, th tui.Theme) {
+	header := report.RenderOutcome(report.OutcomeUpdatedFiles, fileCount+detail.ManagedRedeployed, "")
 	_, _ = fmt.Fprintln(w, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: true, Label: header, Theme: &th}))
+	if detail.ManagedRedeployed > 0 || detail.RemovedManaged > 0 {
+		var breakdown string
+		if detail.ManagedRedeployed > 0 {
+			breakdown = fmt.Sprintf("%d merged/added + %d managed re-deployed", fileCount, detail.ManagedRedeployed)
+		}
+		if detail.RemovedManaged > 0 {
+			sep := " · "
+			if breakdown == "" {
+				sep = ""
+			}
+			if detail.RemovedLocalOnly > 0 {
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (%d not restored — local-only)", sep, detail.RemovedManaged, detail.RemovedLocalOnly)
+			} else {
+				breakdown += fmt.Sprintf("%sremoved %d under managed paths (all re-deployed)", sep, detail.RemovedManaged)
+			}
+		}
+		_, _ = fmt.Fprintln(w, paintToken(breakdown, th.Dim, false))
+	}
 	if backupPath != "" {
 		note := "Backup: " + backupPath + "\nRecover: moai update --restore-config " + backupPath
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))

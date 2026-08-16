@@ -68,8 +68,28 @@ type observabilityYAMLFile struct {
 // current working directory. Tests can override via
 // SetObservabilityMasterForTesting.
 func IsObservabilityEnabled() bool {
+	return isObservabilityEnabled(true)
+}
+
+// IsObservabilityEnabledForCLI is the operator-CLI entry point of the same
+// cached toggle (t62): identical result, but the cwd_fallback resolution
+// logs at Debug instead of Warn, because a CLI process legitimately lacks
+// CLAUDE_PROJECT_DIR and cwd is the right answer there. initDependencies
+// (the caller on every non-trivial subcommand) uses this variant so the
+// fallback line stops topping every `moai` invocation.
+func IsObservabilityEnabledForCLI() bool {
+	return isObservabilityEnabled(false)
+}
+
+// isObservabilityEnabled loads and caches the toggle once per process. The
+// hookRuntime flag only picks the fallback-log level of the single load;
+// whichever entry point runs first wins that level (in practice: CLI
+// processes go through initDependencies first, hook processes resolve from
+// the event handlers when the observability.yaml Stat gate skipped the
+// initDependencies read).
+func isObservabilityEnabled(hookRuntime bool) bool {
 	observabilityMasterOnce.Do(func() {
-		observabilityMasterEnabled = loadObservabilityMaster()
+		observabilityMasterEnabled = loadObservabilityMaster(hookRuntime)
 	})
 	return observabilityMasterEnabled
 }
@@ -77,13 +97,18 @@ func IsObservabilityEnabled() bool {
 // loadObservabilityMaster does the actual file read. Separated for
 // testability via SetObservabilityMasterForTesting.
 //
-// Resolves project root via resolveProjectRootFromEnv: CLAUDE_PROJECT_DIR env
-// var first, then os.Getwd() fallback with slog.Warn cwd_fallback:true marker
-// (REQ-HCWA-006, REQ-HCWA-008). The .moai/ existence guard is NOT applied here
-// because the function reads from a path that may not include
-// observability.yaml (the file is the toggle target itself).
-func loadObservabilityMaster() bool {
-	root := resolveProjectRootFromEnv("loadObservabilityMaster")
+// Resolves project root via resolveProjectRootFromEnvAt: CLAUDE_PROJECT_DIR
+// env var first, then os.Getwd() fallback with a cwd_fallback marker at the
+// context-chosen level (REQ-HCWA-006, REQ-HCWA-008) — WARN in the hook
+// runtime, Debug on operator CLI paths (t62). The .moai/ existence guard is
+// NOT applied here because the function reads from a path that may not
+// include observability.yaml (the file is the toggle target itself).
+func loadObservabilityMaster(hookRuntime bool) bool {
+	fallbackLevel := slog.LevelWarn
+	if !hookRuntime {
+		fallbackLevel = slog.LevelDebug
+	}
+	root := resolveProjectRootFromEnvAt("loadObservabilityMaster", fallbackLevel)
 	if root == "" {
 		// resolveProjectRootFromEnv already logged the failure.
 		return false

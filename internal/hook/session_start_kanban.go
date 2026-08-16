@@ -38,6 +38,13 @@ import (
 // emitting something wrong or failing the session start. An unknown lang
 // degrades to English (kanbanMessagesFor), never to an empty notice.
 func kanbanBootstrapNotice(lang string) string {
+	// A factory session reads the factory notice, never this one. The
+	// launcher never sets the kanban variables on a factory branch, so this
+	// guard is insurance against a hand-exported environment, not a branch the
+	// normal launch path can reach.
+	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+		return ""
+	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
 		return kanbanCompanionNotice(label, lang)
 	}

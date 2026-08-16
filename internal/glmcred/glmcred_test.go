@@ -171,3 +171,33 @@ func TestEscapeRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// The MOAI_HOME tests below are non-parallel: t.Setenv mutates process-wide
+// state (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-011).
+
+func TestPath_MoaiHomeOverride(t *testing.T) {
+	// Site #16: an absolute MOAI_HOME replaces the ~/.moai root, so the
+	// credential file follows the override even while the HomeDirFn seam
+	// points elsewhere.
+	withTempHome(t)
+	override := t.TempDir()
+	t.Setenv("MOAI_HOME", override)
+
+	got := Path()
+	want := filepath.Join(override, ".env.glm")
+	if got != want {
+		t.Fatalf("Path() under MOAI_HOME = %q, want %q", got, want)
+	}
+}
+
+func TestPath_MoaiHomeRelativeDisregarded(t *testing.T) {
+	// A relative MOAI_HOME is disregarded (REQ-MHP-001): the seam resolves.
+	dir := withTempHome(t)
+	t.Setenv("MOAI_HOME", "relative/root")
+
+	got := Path()
+	want := filepath.Join(dir, ".moai", ".env.glm")
+	if got != want {
+		t.Fatalf("Path() with relative MOAI_HOME = %q, want %q", got, want)
+	}
+}

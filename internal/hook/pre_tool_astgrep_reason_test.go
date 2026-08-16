@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
@@ -28,10 +29,21 @@ import (
 //   - no ast-grep-ignore anywhere, so the suppression sweep cannot deny first.
 //   - SkipTests, so the test step after the ast-grep step never runs.
 //   - t.Setenv PATH strips sg, which is the condition under test.
+//   - t.Setenv pins MOAI_AUTONOMY_TIER to semi-auto. The commit-gate branch
+//     hosting the ast-grep step is tier-gated OFF at automatic /
+//     fully-autonomous (SPEC-STOPCHAIN-TRIM-001 REQ-005), and the kanban
+//     launcher exports the tier into companion sessions — so the ambient
+//     value is not neutral on a developer machine the way it is on CI,
+//     where the key is unset and AutonomyTier fails safe to semi-auto.
 //
 // Non-parallel: t.Setenv is incompatible with t.Parallel().
 func TestPreTool_AstGrepSkipReasonSurfaces(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
+	// Without this pin the tier branch in pre_tool.go skips the whole
+	// commit-gate block whenever the test runs inside a kanban companion
+	// session (MOAI_AUTONOMY_TIER is exported there), and no notice — not
+	// even an empty one — can reach the handler's output.
+	t.Setenv(config.EnvAutonomyTier, config.AutonomyTierSemiAuto)
 
 	projectDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(projectDir, "build.zig"), []byte("// zig build marker\n"), 0o644); err != nil {
