@@ -190,7 +190,7 @@ run_phase_commits:
   - a203a7c3a   # M1 kanban-dispatch.md split (stub + domain-keyed detail companion)
   - 6d701d26c   # M2 cache-aware-execution.md directives 6-10 + self-keyed reference companion
   - fcc07d1bc   # M3 rule-authoring.md recurrence control (paths-scoped, 4-slot)
-  - PENDING-M4-BACKFILL   # M4 template mirror (5 files) + rebuild + final measurement
+  - 9269a5e56   # M4 template mirror (5 files) + rebuild + final measurement
 ac_pass_count: 16
 ac_fail_count: 0
 final_headroom_tokens: 2757   # observed post-M4, both measurement forms agree; baseline 1239; D4-1 budget-ratchet card input
