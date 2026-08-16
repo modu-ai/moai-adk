@@ -243,6 +243,14 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 //
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
+// The deny reason's remediation directs the caller to a worktree and
+// deliberately does NOT suggest delegating to a manager-git subagent: both
+// exemption axes are unreachable from tool-spawned subagents (see the
+// branchGuardExemptEnv reachability note above), so such a delegation
+// reproduces the same deny. Kanban card t43: the old "(use a worktree or
+// invoke via manager-git)" wording sent orchestrator sessions down that dead
+// end — one wasted turn per session, observed in two sessions.
+//
 // The projectDir argument is the AUDIT-LOG project directory — resolved by the
 // caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
 // primary checkout for central logging (REQ-WBG-D-004). It is NOT the
@@ -287,8 +295,8 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if !isPrimary {
 		return "", ""
 	}
-	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree or invoke via manager-git)",
-		branchGuardViolationPrefix, suffix)
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; the manager-git identity and %s exemptions fire only for main-thread launches, not for tool-spawned subagents)",
+		branchGuardViolationPrefix, suffix, branchGuardExemptEnv)
 	return DecisionDeny, reason
 }
 
