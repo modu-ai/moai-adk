@@ -124,21 +124,30 @@ type glmMessagesResponse struct {
 // resolveGLMAuditModel resolves the GLM audit model id via the model/effort
 // SSOT (template.ResolveAgentModelEffort, REQ-MCP-013 / AC-MCP-015) ONLY. It
 // NEVER reads agent frontmatter or llm.agent_overrides directly.
+func resolveGLMAuditModel() string {
+	return resolveGLMModelForAgent(glmAuditAgentKey)
+}
+
+// resolveGLMModelForAgent resolves a GLM model id for the given profile-matrix
+// agent key via the model/effort SSOT (template.ResolveAgentModelEffort). It is
+// the shared body behind resolveGLMAuditModel and the glm_task resolver: the
+// audit path keys on the auditor-shaped cell, the task path on its consumer
+// (super-advisor), and the resolution rule is otherwise identical.
 //
 // Resolution rule:
 //  1. Load llm.yaml through the SAME loadLLMSectionOnly helper the launcher uses.
-//  2. Resolve via ResolveAgentModelEffort(glmAuditAgentKey).
+//  2. Resolve via ResolveAgentModelEffort(agentKey).
 //  3. If the session backend is GLM (template.IsGLMBackend) and the SSOT returned
 //     a non-empty mapped model, use it (the matrix carries a GLM model id).
 //  4. Otherwise fall back to glmAuditDefaultModel — a Claude id cannot be served
 //     by the z.ai endpoint, and a missing llm.yaml has nothing to resolve.
-func resolveGLMAuditModel() string {
+func resolveGLMModelForAgent(agentKey string) string {
 	sectionsDir := filepath.Join(projectDirResolver(), ".moai", "config", "sections")
 	llm, err := loadLLMSectionOnly(sectionsDir)
 	if err != nil {
 		return glmAuditDefaultModel
 	}
-	me, mapped := template.ResolveAgentModelEffort(llm, glmAuditAgentKey)
+	me, mapped := template.ResolveAgentModelEffort(llm, agentKey)
 	if !mapped || me.Model == "" {
 		return glmAuditDefaultModel
 	}
@@ -146,8 +155,8 @@ func resolveGLMAuditModel() string {
 		return me.Model // GLM session ⇒ a GLM model id from the matrix.
 	}
 	// Non-GLM session: the SSOT returned a Claude id the z.ai endpoint cannot
-	// serve. Fall back to the canonical GLM audit model so the tool is still
-	// callable directly (the caller opted into glm_audit explicitly).
+	// serve. Fall back to the canonical GLM model so the tool is still callable
+	// directly (the caller opted into the GLM tool explicitly).
 	return glmAuditDefaultModel
 }
 

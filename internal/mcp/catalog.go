@@ -19,10 +19,11 @@ type ToolDef struct {
 	// console's per-tool enablement key is derived from
 	// (mcp.tools.<name>.enabled).
 	Name string
-	// WriteCapable is true for the four tools whose handler may mutate state
-	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel) and false for
-	// the thirteen read-only tools. The console renders this distinction
-	// (REQ-C-3 / AC-C-003); M1 carries it so the declaration is complete.
+	// WriteCapable is true for the six tools whose handler may mutate state
+	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
+	// glm_job_cancel) and false for the fifteen read-only tools. The console
+	// renders this distinction (REQ-C-3 / AC-C-003); M1 carries it so the
+	// declaration is complete.
 	WriteCapable bool
 }
 
@@ -50,6 +51,10 @@ var moaiMCPTools = []ToolDef{
 	{Name: "codex_job_status", WriteCapable: false},
 	{Name: "codex_job_result", WriteCapable: false},
 	{Name: "codex_job_cancel", WriteCapable: true},
+	{Name: "glm_task", WriteCapable: true},
+	{Name: "glm_job_status", WriteCapable: false},
+	{Name: "glm_job_result", WriteCapable: false},
+	{Name: "glm_job_cancel", WriteCapable: true},
 	{Name: "glm_audit", WriteCapable: false},
 	{Name: "audit_multi", WriteCapable: false},
 }

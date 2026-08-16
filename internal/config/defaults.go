@@ -349,6 +349,32 @@ const DefaultCodexJobCancelGrace = 5 * time.Second
 // long enough not to spin.
 const DefaultCodexJobCancelPoll = 25 * time.Millisecond
 
+// DefaultGLMTaskTimeout bounds ONE glm_task call — sync or background. It
+// mirrors DefaultCodexTaskTimeout for the GLM (z.ai) delegation family: the
+// per-request HTTP ceiling (glmAuditHTTPTimeout) bounds a single connection,
+// but a background job's outer context carries no bound of its own otherwise,
+// and the MCP host's context is whatever it supplied. Deliberately distinct
+// from the audit path's timeout so a change tuned for one family cannot
+// silently move the other.
+//
+// Not a compile-time const, for the same reason DefaultCodexTaskTimeout is
+// not — and so a test can shorten it.
+var DefaultGLMTaskTimeout = 600 * time.Second
+
+// DefaultGLMTaskMaxTokens bounds a single glm_task response. A task is an
+// open-ended generation (unlike the focused audit pass, which is bounded by
+// glmAuditMaxTokens), so the ceiling is wider — but still bounded, so a
+// runaway generation cannot consume the job's whole budget.
+const DefaultGLMTaskMaxTokens = 8192
+
+// DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
+// job's in-flight HTTP call to end on its own. Derived from
+// DefaultCodexJobCancelGrace rather than restated: both windows bound the same
+// caller experience (how long a cancel call takes in the worst case), so a
+// retune of one should be a deliberate decision about both — restating the
+// literal would let them drift silently.
+const DefaultGLMJobCancelGrace = DefaultCodexJobCancelGrace
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
