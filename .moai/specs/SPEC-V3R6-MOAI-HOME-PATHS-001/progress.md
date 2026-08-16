@@ -136,3 +136,22 @@ cross_platform_build:
 total_run_phase_files: 31
 m1_to_mN_commit_strategy: "per-milestone Conventional Commits on worktree branch worktree-moai-home-paths (M1 6600bfd8e incl. spec.md draft->in-progress flip + plan artifacts, M2 da85d179c, M3 51a587bb0, M4 2a598a877, M5 d50a54ba9, M6 = evidence commit backfilling run_commit_sha)"
 ```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-08-17T01:20:00+09:00
+sync_commit_sha: pending-backfill-SPEC-V3R6-MOAI-HOME-PATHS-001
+sync_status: audit-ready
+b12_self_test_a: "pre-emission grep -c 'SPEC-V3R6-MOAI-HOME-PATHS-001' CHANGELOG.md → 0 (duplicate guard PASS; [Unreleased] section created fresh — release-prep renames it per house lifecycle)"
+b12_self_test_b: "AC count match: acceptance.md SSOT = 16 (AC-MHP-001..016, at the Tier M ceiling); canonical grep returns 19 raw tokens of which AC-001/AC-002/AC-013 are in-file prose shorthand aliases of the AC-MHP family — CHANGELOG entry cites 16"
+b12_self_test_c: "all 7 implementation paths named in the entry verified via ls (paths.go, envkeys.go, homedir.go, defs/dirs.go, glmcred.go, pre_tool.go, model_cache.go)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added — first entry (section created by this sync; top of file above [3.1.0])"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (this sync commit; updated: already 2026-08-17)"
+  acceptance_plan: "markdown-header convention — no frontmatter status to transition"
+mx_debt_check: "moai mx query --kind DEBT --json → empty output, exit 0 (no dangling DEBT markers; paths.go carries @MX:ANCHOR ×2 + @MX:NOTE ×1 — fine)"
+lane_routing: "release/v3.1.1 integration lane per user directive — run merged at e518fc897; sync commits on this branch, no per-phase PR, no push (lane push owned by another session)"
+close_summary: "3-phase close complete — CHANGELOG [Unreleased] entry emitted (incl. AC-MHP-014 §4 .env.glm shell/Go split hazard note + AC-MHP-013 supersession linkage), spec.md frontmatter in-progress → completed, §E.4 recorded; AC 16/16 discharged (14 run-phase PASS + 2 doc-check PASS in this commit)"
+```
+

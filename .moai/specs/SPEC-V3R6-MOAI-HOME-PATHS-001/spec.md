@@ -2,7 +2,7 @@
 id: SPEC-V3R6-MOAI-HOME-PATHS-001
 title: "internal/paths single source of truth for ~/.moai resolution (MoaiHome() + MOAI_HOME)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-16
 updated: 2026-08-17
 author: MoAI orchestrator
