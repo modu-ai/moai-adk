@@ -119,7 +119,7 @@ Command: `grep -rn 'AskUserQuestion' internal/paths internal/defs | grep -v "_te
 
 ```yaml
 run_complete_at: 2026-08-17T00:00:00+09:00
-run_commit_sha: pending-backfill-m6
+run_commit_sha: d50725c85
 run_status: audit-ready
 ac_pass_count: 14
 ac_fail_count: 0
