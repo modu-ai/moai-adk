@@ -25,14 +25,16 @@ import (
 	"time"
 )
 
-// CompanionRoles are the four companion roles of a kanban run, in the order
-// the lead announces them.
+// CompanionRoles are the three companion roles of a kanban run, in the order
+// the lead announces them. D1 (card t97) retired the review role: the chain
+// is the three phases plan -> run -> sync, and reviewing gates integration
+// from the hub instead of occupying a companion session.
 //
 // The lead is deliberately absent from this list. It is the only session that
 // carries the kanban token, because that token seeds a session whose
-// orchestrator drives the whole plan -> run -> verify -> sync chain; giving it
-// to a companion would produce four sessions each driving the whole chain.
-var CompanionRoles = []string{"plan", "run", "review", "sync"}
+// orchestrator drives the whole plan -> run -> sync chain; giving it
+// to a companion would produce three sessions each driving the whole chain.
+var CompanionRoles = []string{"plan", "run", "sync"}
 
 // base36Digits is the alphabet of NewRunID.
 const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -167,7 +169,7 @@ const factoryWorkerRole = "worker"
 // label a factory worker session is launched under (`worker-3`).
 //
 // The label deliberately never satisfies SplitCompanionLabel or
-// SplitLeadLabel: factory workers neither occupy the four-role kanban chain
+// SplitLeadLabel: factory workers neither occupy the three-role kanban chain
 // nor the lead position, so a factory name is never reclassified by the
 // kanban shape discriminators. Like the companion labels it carries no run id
 // — every lane is addressed by name alone (the run's lead dispatches cards

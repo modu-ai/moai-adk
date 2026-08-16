@@ -372,7 +372,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// The notice rides BOTH channels because it has two audiences and they read
 	// different surfaces. additionalContext reaches the orchestrator, which needs
 	// the companion labels to address them later; systemMessage reaches the
-	// operator, who must type the four launch lines by hand into new terminals.
+	// operator, who must type the three launch lines by hand into new terminals.
 	// Emitting only additionalContext delivered a human-addressed instruction to
 	// the model alone, so the operator saw nothing at all.
 	//

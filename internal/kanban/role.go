@@ -34,7 +34,7 @@ const RoleLead = "lead"
 // RoleWorker names a factory run's numbered worker (the `worker-<n>` lanes of
 // `moai cc -f <N>`, SPEC-FACTORY-WORKER-FANOUT-001). It is deliberately NOT a
 // CompanionRoles member: factory workers are dispatched cards by their lead
-// over cross-session messages and never occupy the four-role kanban chain, so
+// over cross-session messages and never occupy the three-role kanban chain, so
 // the companion shape discriminators must not admit their labels.
 const RoleWorker = "worker"
 

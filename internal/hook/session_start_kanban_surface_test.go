@@ -22,7 +22,7 @@ func newKanbanProjectDir(t *testing.T) string {
 }
 
 // TestSessionStartKanbanNoticeReachesOperator is the regression case for the
-// defect this dual emission exists to prevent: the lead notice carries four
+// defect this dual emission exists to prevent: the lead notice carries three
 // launch commands the OPERATOR must type by hand into new terminals, but it was
 // emitted only on hookSpecificOutput.additionalContext — a model-facing channel.
 // The operator's terminal stayed empty, so the run appeared not to start at all.
@@ -57,7 +57,6 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 		"Kanban Mode: run tjpyre",
 		"moai cc -k --name plan",
 		"moai cc -k --name run",
-		"moai cc -k --name review",
 		"moai cc -k --name sync",
 	} {
 		if !strings.Contains(out.SystemMessage, want) {
@@ -116,7 +115,7 @@ func TestSessionStartNonKanbanSystemMessageUnaffected(t *testing.T) {
 //
 // SessionStart fires on five documented sources, and the kanban environment
 // survives all of them, so an ungated notice re-announced the bootstrap every
-// time a lead session came back: the operator was told to open four companion
+// time a lead session came back: the operator was told to open three companion
 // terminals that were already open, for a run already under way. The
 // instruction is only actionable at startup.
 //

@@ -120,7 +120,7 @@ func TestFactoryBootstrapNoticeStartupOnly(t *testing.T) {
 
 // TestKanbanNoticeSuppressedUnderFactoryEnv asserts the insurance guard: a
 // hand-exported kanban environment on top of a factory session must not stack
-// the four-role kanban notice under the factory one.
+// the three-role kanban notice under the factory one.
 func TestKanbanNoticeSuppressedUnderFactoryEnv(t *testing.T) {
 	clearKanbanEnv(t)
 

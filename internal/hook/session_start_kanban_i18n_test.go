@@ -27,6 +27,7 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 			"leadIdentity":   m.leadIdentity,
 			"leadManual":     m.leadManual,
 			"glmSubstitute":  m.glmSubstitute,
+			"nameChoices":    m.nameChoices,
 			"leaderSocket":   m.leaderSocket,
 			"settingsAuto":   m.settingsAuto,
 			"settingsVerify": m.settingsVerify,
@@ -128,9 +129,10 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 			for _, want := range []string{
 				"moai cc -k --name plan",
 				"moai cc -k --name run",
-				"moai cc -k --name review",
 				"moai cc -k --name sync",
 				"moai glm -k --name",
+				"`judge`",
+				"`worker-N`",
 				"/tmp/moai-kanban-tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",
@@ -160,10 +162,10 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 			if len(blocks) != 5 {
 				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
 			}
-			// Block 3 is the launch block: exactly the four commands, nothing else.
+			// Block 3 is the launch block: exactly the three commands, nothing else.
 			launch := strings.Split(blocks[2], "\n")
-			if len(launch) != 4 {
-				t.Errorf("launch block holds %d lines, want 4:\n%q", len(launch), launch)
+			if len(launch) != 3 {
+				t.Errorf("launch block holds %d lines, want 3:\n%q", len(launch), launch)
 			}
 			for _, line := range launch {
 				if !strings.HasPrefix(line, "moai cc -k --name ") {

@@ -42,13 +42,13 @@ Flags:
 
 Kanban Mode:
   -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
-                                plan -> run -> verify -> sync chain in this
+                                plan -> run -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; four
+                                SPEC. The lead drives the whole chain; three
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
-                                Joins the run without seeding a chain. The four
-                                roles are: plan, run, review, sync. A role name
+                                Joins the run without seeding a chain. The three
+                                roles are: plan, run, sync. A role name
                                 held by a live session is bumped to the next
                                 free number (plan-1, plan-2, ...).
 
@@ -63,7 +63,7 @@ Factory Mode:
                                 session is bumped to the next free number.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban chain
+  -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
   above. Today's -f is a NEW feature — a numbered worker fan-out — and shares
   nothing with that predecessor beyond the recycled letter.
 
@@ -83,7 +83,7 @@ Examples:
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
   moai cc -w                           # Launch in auto-named isolated worktree
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
-  moai cc -k                           # Kanban lead: seeds the plan->run->verify->sync chain
+  moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
   moai cc -k --name run               # Kanban companion: joins as the run worker
   moai cc -f 4                         # Factory lead: announces worker-1..worker-4
@@ -134,7 +134,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 	// SPEC-FACTORY-WORKER-FANOUT-001: -f <N> is factory membership, the
 	// kanban token's sibling, with the same parse placement and the same
 	// --name-shape disambiguation. The two modes are mutually exclusive — a
-	// session seeds either the four-role chain or the numbered fan-out, never
+	// session seeds either the three-role chain or the numbered fan-out, never
 	// both — and the conflict is rejected before any environment mutation.
 	factoryWorkers, factoryEnabled, factoryArgs, err := parseFactoryFlag(filteredArgs)
 	if err != nil {
