@@ -7,6 +7,10 @@
 // operator): `add` and `done` mutate, `list` and bare `next` observe, and
 // `next <n> [--spec]` records the operator's pick as one locked write.
 //
+// Queue residence (t106): the backlog file hangs from the PRIMARY checkout
+// of the repository, never from the working tree the command happens to
+// run in — see resolveTodoQueueRoot.
+//
 // Pick-marking race hardening (t71): `add --pick` folds the add and the
 // pick into ONE locked write (no queued window for a guessed id to slip
 // into), `unpick <n>` is the picked→queued recovery verb, and every pick
@@ -19,6 +23,7 @@
 package cli
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -27,14 +32,79 @@ import (
 
 	"github.com/spf13/cobra"
 
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // todoBacklogPath returns the backlog file location under root — the same
 // .moai/state/kanban/backlog.json the todo skill and the dispatch protocol
-// name (REQ-TODO-001).
+// name (REQ-TODO-001). The root itself is resolved by resolveTodoQueueRoot.
 func todoBacklogPath(root string) string {
 	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+}
+
+// resolveTodoQueueRoot returns the directory the backlog queue hangs from:
+// the PRIMARY checkout of the repository the launch context sits in, or a
+// home-based fallback when git cannot answer.
+//
+// The queue is the delegation channel between sessions — the lead, the
+// foreman loop, and the operator's picks all read and write one queue. A
+// linked worktree holding its own .moai/state would fork that channel: an
+// `add` from inside a card worktree lands in a queue file the primary
+// checkout never sees (measured 2026-08-17: 30 queued cards on the
+// primary, "queue is empty" from a linked worktree). The primary is
+// therefore resolved through the repository itself: git's common directory
+// is shared by every checkout and its parent IS the primary checkout's
+// root, from any worktree and from the primary alike (internal/core/git
+// checkout.go) — the same discrimination branch_guard.go applies, with no
+// file moving.
+//
+// Fail-open direction: an unresolvable git context (no git binary, not a
+// repository) keeps the queue usable via the home-based fallback rather
+// than erroring — a project without git metadata still gets exactly one
+// queue, keyed under ~/.moai/kanban/ so two such projects cannot collide.
+func resolveTodoQueueRoot() string {
+	base := resolveProjectDir()
+	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
+		return filepath.Dir(dirs.CommonDir)
+	}
+	return fallbackTodoQueueRoot(base)
+}
+
+// fallbackTodoQueueRoot returns the home-based queue root for a launch
+// context git could not resolve to a primary checkout. userHomeDirFn is the
+// package's existing test-injection seam, so tests override the home
+// lookup instead of mutating the real HOME.
+func fallbackTodoQueueRoot(base string) string {
+	if base == "" {
+		base = "."
+	}
+	home, err := userHomeDirFn()
+	if err != nil {
+		// No home resolvable either: keep the queue inside the project
+		// directory rather than failing the command outright.
+		return filepath.Join(base, ".moai", "state", "kanban")
+	}
+	return filepath.Join(home, ".moai", "kanban", todoQueueProjectKey(base))
+}
+
+// todoQueueProjectKey derives the fallback queue's directory name from the
+// launch directory: a readable base name plus a short digest of the
+// absolute path. Two distinct projects sharing a base name still occupy
+// two keys, and the mapping is deterministic across runs.
+func todoQueueProjectKey(base string) string {
+	abs, err := filepath.Abs(base)
+	if err != nil {
+		abs = filepath.Clean(base)
+	}
+	sum := sha256.Sum256([]byte(abs))
+	return fmt.Sprintf("%s-%x", filepath.Base(abs), sum[:4])
+}
+
+// newTodoStore is the single constructor every todo verb goes through, so
+// every verb resolves — and sees — the same queue file.
+func newTodoStore() *kanban.BacklogStore {
+	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
 // newTodoCmd creates the `moai todo` parent command.
@@ -43,6 +113,12 @@ func newTodoCmd() *cobra.Command {
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
 		Long: `Operate the kanban backlog queue at .moai/state/kanban/backlog.json.
+
+The queue resolves against the PRIMARY checkout even when this command runs
+inside a linked worktree — one repository, one queue; a card worktree adds
+to and reads the same file the lead and the foreman loop see. A project
+without git metadata keeps its queue at ~/.moai/kanban/<project-key>/backlog.json
+instead.
 
 The backlog is the operator's queue: entry into the board is the operator's
 act (add), and picking the next card is the operator's act too (next <n>).
@@ -76,7 +152,7 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
-			store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+			store := newTodoStore()
 			if pick {
 				return runTodoAddPick(cmd, store, text)
 			}
@@ -128,7 +204,7 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string)
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
 // drift apart in output.
 func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
-	store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+	store := newTodoStore()
 	rec, err := store.Load()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -181,7 +257,7 @@ func newTodoDoneCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
-			store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+			store := newTodoStore()
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i, it := range rec.Items {
 					if it.ID == id {
@@ -223,7 +299,7 @@ locked write, confirming with the card text prefix. ` + "`--expect <prefix>`" + 
 refuses the pick unless the addressed card's text starts with the prefix.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+			store := newTodoStore()
 			out := cmd.OutOrStdout()
 
 			if len(args) == 0 {
@@ -296,7 +372,7 @@ func newTodoUnpickCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
-			store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+			store := newTodoStore()
 			var text string
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i := range rec.Items {

@@ -42,10 +42,14 @@ func runTodo(t *testing.T, args ...string) (string, string, error) {
 
 // todoFixture prepares a project dir whose backlog the command resolves via
 // CLAUDE_PROJECT_DIR, and returns the store for seeding/verification.
+// The dir is a committed git repository (t106): queue-root resolution goes
+// through git, so the fixture must look like a real primary checkout for
+// the command's file and the verification store to be the same file.
 func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
 	t.Helper()
 	root = t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	initGitRepo(t, root)
 	store = kanban.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }
