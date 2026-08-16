@@ -5,11 +5,15 @@ package astgrep_test
 // byte-identical to the template copy at
 // internal/template/templates/.moai/config/astgrep-rules/).
 //
-// History (t50): this test previously targeted the never-landed 5-language
-// seeding of SPEC-UTIL-002 (ruby/php/elixir/csharp/kotlin under the OLD
-// .moai/config/astgrep-rules path). Those directories were retired without ever
-// being populated, so every subtest silently skipped. The per-language cases
-// are gone; the invariants now pin the surviving surface:
+// History (t50): this test previously targeted the 5-language seeding of
+// SPEC-UTIL-002 (ruby/php/elixir/csharp/kotlin under the OLD
+// .moai/config/astgrep-rules path). Those directories once held demo stub
+// rules (3 per language, with note/owasp/cwe) until PR #1453 (0e24dde06,
+// 2026-08-12, SPEC-ASTGREP-DOGFOOD-CLEANUP-001 REQ-ADC-005) deleted them
+// deliberately in the curated-baseline cleanup; PR #1456 (9fb2ffd75) then
+// converted the failing t.Fatalf into an interim t.Skipf. t50 inherited
+// that days-old interim skip and replaces it with coverage of the surviving
+// curated surface:
 //
 //   (a) Every shipped rule loads without error; each directory holds ≥3 rules.
 //   (b) Every rule declares a non-empty note. Security rules additionally

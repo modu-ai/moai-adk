@@ -20,7 +20,7 @@
 
 ## 1. 주장 (Claim)
 
-1. 결함 (1): `rule_seed_test.go`의 5개 언어 케이스(ruby/php/elixir/csharp/kotlin)는 **한 번도 채워진 적 없는** 디렉터리를 가리켰고, `LoadFromDir`이 존재하지 않는 디렉터리에 `([]Rule{}, nil)`을 반환하므로(REQ-ASTG-UPG-011) 전 서브테스트가 수년째 `t.Skipf`로 통과해왔다. 해당 언어 룰은 어디에도 존재하지 않아 폐기됐고, 생존 표면은 `.moai/astgrep-rules/{go,security}`(추적 파일, 템플릿 사본과 byte-identical — `diff -r` 실측)뿐이다. 테스트를 이 표면에 재구조화하면 스킵 없이 실제 커버리지가 회복된다.
+1. 결함 (1): `rule_seed_test.go`의 5개 언어 케이스(ruby/php/elixir/csharp/kotlin)가 가리키던 `.moai/config/astgrep-rules/<lang>` 디렉터리는 **한 때 데모 스텁 룰(언어당 3개, note+owasp+cwe 포함)이 채워져 있었으나** #1453(`0e24dde06`, 2026-08-12, SPEC-ASTGREP-DOGFOOD-CLEANUP-001 REQ-ADC-005 curated-baseline cleanup)이 의도적으로 삭제했고, 이어 #1456(`9fb2ffd75`)이 그때 깨지던 `t.Fatalf`를 interim `t.Skipf`로 전환했다. t50이 인계받은 스킵은 이 **5일 된 interim 상태**다. 현재 생존 표면은 `.moai/astgrep-rules/{go,security}`(추적 파일, 템플릿 사본과 byte-identical — `diff -r` 실측)뿐이므로, 테스트를 이 표면에 재구조화하면 스킵 없이 실제 커버리지가 회복된다. (역사 서술은 rework에서 `git show`로 직접 검증 후 정정 — §2-6 참조.)
 2. 결함 (2): `DefaultScannerConfig().RulesDir`의 하드코딩 `.moai/config/astgrep-rules`는 이 저장소에 존재하지 않는 경로라, `--rules-dir` 미지정 `moai ast-grep`이 룰 0개로 동작했다(CLAUDE.local.md §2.2가 이미 문서화한 결함). SSOT 통합(코드 폴백 제거 + CLI가 gate.yaml 해석 + 템플릿 gate.yaml 명시값)으로 dogfood CLI는 26개 룰을 찾고, 템플릿 사용자는 배포 룰을 계속 찾는다.
 
 ## 2. 증거 (Evidence) — 명령 + verbatim 출력
@@ -119,6 +119,67 @@ violation.go  -> 3 findings ['go-interface-empty-not-any', 'sec-log-injection-un
 suppressed.go -> 0 findings   (주: 억제 마커가 대상 코드와 인접해야 함 — prose에 마커 문구가 들어가면 unused-suppression 진단 3건 발생, 실측으로 배치 확정)
 ```
 
+### 2-6. Rework 증거 (review-tjv7iy FAIL → F1/F2 수정)
+
+역사 서술 정정(addendum) — 직접 검증:
+
+```
+$ git show 0e24dde06^:.moai/config/astgrep-rules/ruby/todo-marker.yml
+id: ruby-todo-marker
+language: ruby
+severity: info
+message: "Stub implementation detected. ..."
+note: "raise 'TODO' is a placeholder that will crash at runtime. ..."
+metadata:
+  owasp: "A05:2021 - Security Misconfiguration"
+  cwe: "CWE-710"
+pattern: raise "TODO"
+
+$ git show 9fb2ffd75 -- internal/astgrep/rule_seed_test.go
+-				t.Fatalf("no rules loaded from %s; expected at least 3", rulesDir)
++				t.Skipf("rules dir %s not populated (expected ≥3 rules); skipped pending SPEC-UTIL-002 rule seeding", rulesDir)
+
+$ git show -s --format="%h %ad %s" --date=short 0e24dde06 9fb2ffd75
+0e24dde06 2026-08-12 chore(astgrep-rules): curated-baseline cleanup + SPEC-ASTGREP-DOGFOOD-CLEANUP-001 run-phase (#1453)
+9fb2ffd75 2026-08-12 fix(ci): unblock main red — neutralize zone-registry leaks + skip unpopulated astgrep langs (#1456)
+```
+
+F1/F2 RED (게이트 가드 구현 전 — 상수만 선주입한 상태에서의 행위 RED):
+
+```
+$ go test ./internal/hook/quality/ -run 'TestRunAstGrepGateV2_UnconfiguredRulesDir|TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim' -count=1 -v
+--- FAIL: TestRunAstGrepGateV2_UnconfiguredRulesDir (0.00s)
+    astgrep_gate_v2_test.go:481: output should name the unconfigured rules dir, want "ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); ...", got "ast-grep scan skipped: the sg CLI was not found, so no rules ran (install from ...)"
+        ← F2 재현: 빈 값이 가드 없이 스캐너 단계까지 흘러감(트리 순회 설정 후)
+--- FAIL: TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim (0.00s)
+    astgrep_gate_v2_test.go:536: output should contain the finding from the absolute rules dir (used verbatim), got: ""
+        ← F1 재현: Join(projectDir, 절대경로) 오염 → 존재하지 않는 경로 → 룰 0개 정상 통과처럼 조용히 통과
+```
+
+F1/F2 GREEN (가드 + 공유 헬퍼 `quality.ResolveRulesDirPath` 적용 후):
+
+```
+$ go test ./internal/hook/quality/ -run 'TestRunAstGrepGateV2_UnconfiguredRulesDir|TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim' -count=1 -v
+--- PASS: TestRunAstGrepGateV2_UnconfiguredRulesDir (0.00s)
+--- PASS: TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim (0.37s)
+```
+
+CLI 의존화 확인(같은 해석 규칙 공유):
+
+```
+$ go test ./internal/cli/ -run 'TestResolveRulesDir|TestAstGrepCmdRulesDirFlagNoDefault' -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli
+```
+
+의미가 이동한 기존 게이트 테스트 4건(`NoSgCLI`/`EmptyRulesDir`/`ProjectDirPathVariants`/`ContextCancellation`)은 각자의 원래 의도를 보존하는 명시적 `RulesDir`를 설정하도록 갱신했다(Default의 빈 값이 이제 "미설정" 조기 판정이므로).
+
+## 6. Rework 기록 (review-tjv7iy 1차 FAIL)
+
+- **F2 (blocking)**: `RunAstGrepGateV2`의 `filepath.Join(projectDir, cfg.RulesDir)`에 빈 값 가드가 없어 `Join(projectDir,"")` = 프로젝트 루트 → 전 트리 재귀 순회 + 우연한 YAML의 룰 적재(성능·오차단 위험). → `quality.ResolveRulesDirPath` 공유 헬퍼 도입 + 빈 값 조기 판정(`astGrepReasonRulesDirUnconfigured` 이유와 함께 통과, 스캐너 미도달). §5 서술도 정정.
+- **F1 (blocking)**: 게이트가 절대경로를 join해 오염(↔ CLI는 통과) — 소비자마다 한 설정값이 다른 디렉터리를 뜻하는 분기. → 헬퍼의 절대경로 통과로 게이트·CLI 일치; CLI `resolveRulesDir`는 헬퍼에 위임(분기 중복 제거).
+- **Addendum(역사 서술)**: "한 번도 채워진 적 없음/수년째 스킵"은 부정확 — 데모 스텁 존재 → #1453 의도적 삭제 → #1456 interim 스킵(5일). `git show`로 검증(§2-6) 후 보고서 §1·테스트 헤더 정정.
+- 범위 외(F3-F5 + addendum optional 3건)는 후속 카드 후보로 미착수.
+
 ## 3. Baseline 귀속
 
 - base: `release/v3.1.1` @ `051a2fa94` (merge-fast-forward, `git merge-base --is-ancestor release/v3.1.1 HEAD` 통과). 병합 직전 release가 전진했으나(동시 레인 CLEAN-HOME M1) 해당 1커밋도 반영 완료.
@@ -140,7 +201,7 @@ suppressed.go -> 0 findings   (주: 억제 마커가 대상 코드와 인접해�
 
 ## 5. 잔여 위험 (Residual-risk)
 
-- **혼합 배포 전이 상태**: 구 템플릿(`rules_dir: ""`) + 신규 바이너리 조합에서는 gate.yaml이 빈 값으로 흘러 어드바이저리 게이트가 룰 없이 통과한다. `moai update` 한 번으로 자치되는 1-릴리스 전이 상태다(바이너리와 템플릿은 릴리스 단위로 함께 배포 — #1265 전례와 동일 취급). 발견 가능성은 CLI 측 stderr 안내로 완화.
+- **혼합 배포 전이 상태**: 구 템플릿(`rules_dir: ""`) + 신규 바이너리 조합에서 gate.yaml이 빈 값으로 흘러든다. 초판 보고서는 "룰 없이 통과"라고 적었으나 이는 방향이 틀렸었다 — 실제 형태는 `Join(projectDir, "")` = 프로젝트 루트가 통째로 룰 디렉터리가 되어 **전 트리를 재귀 순회하며 우연한 YAML을 룰로 적재**하는 것이었다(성능 + 의도치 않은 룰 활성화; 설정 로드 실패 폴백의 `DefaultAstGrepGateConfig`는 `BlockOnError:true`라 우연한 error-severity 룰이 커밋을 오차단할 수 있음). **rework F2 가드가 이 형태를 제거했다**: 빈 값은 "미설정"으로 조기 판정되어 게이트가 이유를 남기고 통과하며 스캐너 자체에 도달하지 않는다(§2-6). 전이 상태는 `moai update` 한 번으로 자치된다(바이너리와 템플릿은 릴리스 단위로 함께 배포 — #1265 전례와 동일 취급).
 - dogfood `moai update` 후에는 템플릿 gate.yaml이 `.moai/config/astgrep-rules`(배포 룰 — 작동하는 기본값)로 되돌린다. dogfood 룰셋 재연결은 로컬 gate.yaml 복원 필요 — 파일 내 주석에 이제 이 규칙이 문서화돼 있다(§2.3 wipe 결함은 별도 카드).
 - 스킵 회복된 seed 테스트가 저장소 추적 룰셋(`.moai/astgrep-rules`)에 하드 의존한다. 룰셋 축소(디렉터리당 <3)는 이제 테스트 실패로 표면화된다 — 의도된 변화다.
 - go/ 12룰에 metadata(owasp/cwe)가 없는 비대칭은 현행 설계로 테스트에 문서화만 했다(가짜 매핑 제조 금지). security/ 14룰에만 metadata 불변식을 걸었다.
@@ -150,16 +211,17 @@ suppressed.go -> 0 findings   (주: 억제 마커가 대상 코드와 인접해�
 | 파일 | 변경 |
 |---|---|
 | `internal/astgrep/scanner.go` | `DefaultScannerConfig().RulesDir` -> `""` (+규약 주석) |
-| `internal/astgrep/rule_seed_test.go` | 5개 언어 케이스 -> 생존 표면(go/security 로더 불변식 + 공유 Go 픽스처 sgconfig 스캔) 재구조화 |
+| `internal/astgrep/rule_seed_test.go` | 5개 언어 케이스 -> 생존 표면(go/security 로더 불변식 + 공유 Go 픽스처 sgconfig 스캔) 재구조화; rework에서 역사 서술 #1453/#1456 실측 기준으로 정정 |
 | `internal/astgrep/testdata/fixtures/go/{valid,violation,suppressed}.go` | 신규 픽스처 (sg 0.40.5 실측 발화 검증) |
 | `internal/astgrep/scanner_test.go` | 기본값 핀 갱신 ("" 기대) |
 | `internal/cli/gate.go` | `mapConfigGateToQuality` 빈값->구경로 폴백 제거 |
-| `internal/cli/astgrep.go` | `--rules-dir` 기본 "" + `resolveRulesDir`(플래그 > gate.yaml > 빈, 상대경로 프로젝트 루트 결합) + 미설정 stderr 안내 |
+| `internal/cli/astgrep.go` | `--rules-dir` 기본 "" + `resolveRulesDir`(플래그 > gate.yaml > 빈) + 미설정 stderr 안내; rework에서 결합 분기를 `quality.ResolveRulesDirPath` 공유 헬퍼로 위임 |
 | `internal/cli/astedit.go` | `--rules-dir` 기본 "" + 룰 모드에서 동일 해석 |
-| `internal/cli/astgrep_rulesdir_test.go` | 신규 — 해석 규칙·플래그 기본값 핀 |
+| `internal/cli/astgrep_rulesdir_test.go` | 신규 — 해석 규칙·플래그 기본값 핀 (결합·절대경로 통과 포함) |
 | `internal/hook/pre_tool.go` | 미러 폴백 제거 (gate.go와 대칭) |
 | `internal/hook/pre_tool_test.go` | 폴백 핀 -> "" 기대 |
-| `internal/hook/quality/astgrep_gate.go` | `DefaultAstGrepGateConfig().RulesDir` -> `""` |
+| `internal/hook/quality/astgrep_gate.go` | `DefaultAstGrepGateConfig().RulesDir` -> `""`; rework: `ResolveRulesDirPath` 공유 헬퍼 + 빈 값 조기 판정(`astGrepReasonRulesDirUnconfigured`) + 절대경로 통과 |
 | `internal/hook/quality/astgrep_gate_test.go` | 기본값 핀 -> "" 기대 |
+| `internal/hook/quality/astgrep_gate_v2_test.go` | rework: 신규 핀 2종(빈 값→미설정 사유 통과 / 절대경로 verbatim 사용) + Default 설정 테스트 4건 명시적 RulesDir 설정 |
 | `internal/template/templates/.moai/config/sections/gate.yaml` | `rules_dir: ".moai/config/astgrep-rules"` 명시 (+`make build` 재임베드) |
 | `.moai/config/sections/gate.yaml` | 주석 갱신 (SSOT 규칙·update 후 재연결 안내; 값 불변) |
