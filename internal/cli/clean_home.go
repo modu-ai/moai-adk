@@ -17,9 +17,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // carveOutDirNames are directory-segment names that are never deletable, at
@@ -353,4 +355,55 @@ func walkHomeSize(path string) (int64, int, error) {
 		return nil
 	})
 	return total, files, err
+}
+
+// runCleanHome implements `moai clean --home` (REQ-MCH-003/004/007): dry-run
+// by default, --force deletes, scope is the ~/.moai home only (~/.claude is
+// never touched). Candidates come exclusively from scanHomeCleanable — the
+// allowlist scan and the isCarvedOut guard already ran inside it, in this
+// same call.
+//
+// @MX:WARN: [AUTO] home-level deletion path — os.RemoveAll fires only on scanner-produced candidates, never on a caller-assembled path
+// @MX:REASON: [AUTO] bypassing the scanner for any home path is the highest-blast-radius mistake available in this SPEC (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-003/005)
+func runCleanHome(p printer.Printer, force bool) error {
+	root, err := paths.MoaiHome()
+	if err != nil {
+		return fmt.Errorf("resolve ~/.moai home: %w", err)
+	}
+	if _, statErr := os.Stat(root); statErr != nil {
+		p.Info("no ~/.moai home at %s; nothing to clean", root)
+		return nil
+	}
+	retention, err := loadHomeRetentionDays()
+	if err != nil {
+		return fmt.Errorf("load home retention: %w", err)
+	}
+	if retention <= 0 {
+		p.Info("home cleaning disabled (state.home_retention_days=0); nothing to clean")
+		return nil
+	}
+	candidates := scanHomeCleanable(root, retention, config.DefaultReleaseKeep, version.GetVersion(), time.Now())
+	if len(candidates) == 0 {
+		p.Info("nothing to clean under %s (retention %dd)", root, retention)
+		return nil
+	}
+	var total int64
+	for _, c := range candidates {
+		total += c.Size
+		if force {
+			if err := os.RemoveAll(c.AbsPath); err != nil {
+				p.Warn("failed to remove %s: %v", c.RelPath, err)
+			} else {
+				p.Info("Deleted [%s] %s (%s)", c.Category, c.RelPath, formatDiskBytes(c.Size))
+			}
+		} else {
+			p.Info("[dry-run] Would delete [%s] %s (%s)", c.Category, c.RelPath, formatDiskBytes(c.Size))
+		}
+	}
+	if force {
+		p.Success("Deleted %d path(s), %s reclaimed (retention %dd)", len(candidates), formatDiskBytes(total), retention)
+	} else {
+		p.Info("%d path(s), %s eligible under %dd retention. Run with --force to delete.", len(candidates), formatDiskBytes(total), retention)
+	}
+	return nil
 }
