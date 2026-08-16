@@ -7,7 +7,7 @@
 1. **명령을 표 셀에 넣지 않는다.** 마크다운 표 셀 안의 `\|` 는 `grep -E` 에서 리터럴 파이프로 해석돼 패턴이 조용히 아무 것도 매치하지 않는다. 이 문서의 모든 명령은 펜스 코드블록에 있다.
 2. **패턴 언어와 파일 언어를 맞춘다.** `.claude/rules/`, `.claude/agents/`, `.claude/skills/` 본문은 **영어 전용**이다. 이 SPEC 본문은 한국어지만, 규칙 파일을 겨냥한 grep 패턴은 반드시 영어여야 한다.
 3. **부재(absence) 판정은 양성 대조를 먼저 세운다.** "0건이면 통과" 형태의 AC는 패턴 자체가 고장나도 0건을 낸다. 부재 AC마다 같은 패턴이 분리 이전 파일에서는 매치되는지를 먼저 확인한다.
-4. **가드 정규식을 면제 목록 없이 재구현하지 않는다.** `go test ./internal/config/ -run TestAlwaysLoaded` 의 실행 결과가 권위다. §A의 `grep -rL '^paths:'` 스니펫은 델타 관측용 보조 계측이며, 둘이 어긋나면 **가드가 맞다**.
+4. **가드 정규식을 면제 목록 없이 재구현하지 않는다.** `go test ./internal/config/ -run TestAlwaysLoaded` 의 실행 결과가 권위다. §A의 `headroom` 스니펫은 `fm()` 을 통과시켜 `paths:` 판정을 frontmatter 블록에 한정한다(가드의 `alwaysLoadedSurface` 계약과 동일한 스코프). 종전의 `grep -rL '^paths:'` 형태는 본문 어디든 `paths:` 로 시작하는 줄이 있으면 scoped 로 잘못 빼서 가드와 어긋날 수 있었다(CodeRabbit #1576 Major 1). 그래도 이 스니펫은 보조 계측이며, 둘이 어긋나면 **가드가 맞다**.
 5. **`--strict` 는 severity 문자열이 아니라 exit code 를 바꾼다.** spec-lint 판정은 exit code 로 한다.
 6. **부재 판정 앞에 존재 단언을 세운다.** `grep` 계열은 대상 파일이 없으면 에러를 stderr 로만 내고 stdout 에 아무 것도 출력하지 않는다. 그래서 "출력이 없으면 통과" 형태의 AC 는 **파일을 만들지 않은 것만으로** GREEN 이 되고, `grep -c` 는 `0` 이 아니라 **빈 문자열**을 내어 기계 판정을 미정의로 만든다. 파일을 다루는 AC 는 전부 `test -f` 를 먼저 통과시킨다.
 7. **줄 위치로 필드를 뽑지 않는다.** `sed -n '2p'` 같은 위치 기반 추출은 frontmatter 키 순서가 조금만 달라도 무너진다. 실측: 기존 컴패니언 4개는 **전부** 2행이 `description:` 이다. 키는 이름으로 뽑는다(아래 `fm()`).
@@ -20,17 +20,20 @@ fm() { awk '/^---$/{c++; if(c==2) exit; next} c==1' "$1"; }
 # 양성 대조(2026-08-16 실측): 기존 컴패니언 4개 전부 `fm "$f" | grep -c '^paths:'` = 1,
 #   always-loaded 파일(kanban-dispatch.md)은 0.
 
-# 이 문서 전반에서 쓰는 계측 함수
+# 이 문서 전반에서 쓰는 계측 함수 — scoped 판정은 fm() 결과에서만 한다(가드 계약 준수)
 headroom() {
-  tot=0
-  for f in $(grep -rL '^paths:' .claude/rules/moai --include='*.md'); do tot=$((tot+$(wc -c < "$f"))); done
+  tot=0; n=0
+  for f in $(find .claude/rules/moai -type f -name '*.md' | sort); do
+    fm "$f" | grep -q '^paths:' && continue
+    tot=$((tot+$(wc -c < "$f"))); n=$((n+1))
+  done
   for f in CLAUDE.md .claude/output-styles/moai/moai.md; do tot=$((tot+$(wc -c < "$f"))); done
   [ -f MEMORY.md ] && tot=$((tot+$(head -200 MEMORY.md | head -c 25600 | wc -c)))
-  echo "files=$(grep -rL '^paths:' .claude/rules/moai --include='*.md' | wc -l) bytes=$tot tokens=$((tot/4)) headroom=$((75000 - tot/4))"
+  echo "files=$n bytes=$tot tokens=$((tot/4)) headroom=$((75000 - tot/4))"
 }
 ```
 
-Baseline (2026-08-16 실측): `files=14 bytes=295044 tokens=73761 headroom=1239`
+Baseline (2026-08-16 실측; 2026-08-17 에 frontmatter-aware 형태로 재실행해 동일 출력 확인): `files=14 bytes=295044 tokens=73761 headroom=1239`
 
 ---
 
@@ -169,11 +172,13 @@ done
 c=.claude/rules/moai/workflow/kanban-dispatch-detail.md
 test -f "$c" || { echo "MISSING $c"; exit 1; }   # §A 함정 6 — 가드가 없으면 분리 이전에도
                                                   # missing_lines=0 으로 통과한다(감사 iter2 D2)
-git show HEAD:.claude/rules/moai/workflow/kanban-dispatch.md \
-  | grep -v '^[[:space:]]*$' | sort -u > /tmp/ald-orig.txt
+BASE_REF=be1958a4d   # 분리 이전(plan-phase) 커밋 — HEAD 는 구현 착지 후 post-split 상태다
+git show "${BASE_REF}:.claude/rules/moai/workflow/kanban-dispatch.md" \
+  | grep -v '^[[:space:]]*$' | sort > /tmp/ald-orig.txt
 cat .claude/rules/moai/workflow/kanban-dispatch.md \
     .claude/rules/moai/workflow/kanban-dispatch-detail.md \
-  | grep -v '^[[:space:]]*$' | sort -u > /tmp/ald-after.txt
+  | grep -v '^[[:space:]]*$' | sort > /tmp/ald-after.txt
+#   sort 에 -u 를 붙이지 않는다 — 중복 줄도 보존해 대조한다(comm 은 정렬만 요구)
 comm -23 /tmp/ald-orig.txt /tmp/ald-after.txt
 echo "missing_lines=$(comm -23 /tmp/ald-orig.txt /tmp/ald-after.txt | wc -l)"
 # PASS 조건: missing_lines=0
@@ -336,9 +341,16 @@ len=0
 ```bash
 f=.claude/rules/moai/workflow/cache-aware-execution-reference.md
 test -f "$f" || { echo "MISSING $f"; exit 1; }   # §A 함정 6
-grep -n -i 'quoted\|not re-measured\|source article' "$f"
-echo "labeled=$(grep -c -i 'quoted\|not re-measured\|source article' "$f")"
-# PASS 조건: labeled >= 1 이고, 0.1x / 5x / TTL 수치가 나오는 문단 안에 위치
+grep -n -i 'quoted\|not re-measured\|source article' "$f"   # 진단 출력
+echo "numeric_paragraphs=$(awk -v RS= 'tolower($0) ~ /0\.1x|5x|ttl/ { n++ } END { print n+0 }' "$f")"
+awk -v RS= '
+  tolower($0) ~ /0\.1x|5x|ttl/ && tolower($0) !~ /quoted|not re-measured|source article/ {
+    print "UNLABELED numeric paragraph:"; print; bad=1
+  }
+  END { exit bad ? 1 : 0 }
+' "$f"; echo "citation_exit=$?"
+# PASS 조건: numeric_paragraphs >= 1 (양성 대조, 함정 3) 그리고 citation_exit=0 —
+#   0.1x / 5x / TTL 을 담은 문단 각각이 같은 문단(빈 줄로 구분된 블록) 안에 인용 표기를 동반
 ```
 
 ### AC-ALD-014 — 재발 통제가 존재하고 비-호출 세션 비용을 다룸
@@ -349,14 +361,18 @@ echo "labeled=$(grep -c -i 'quoted\|not re-measured\|source article' "$f")"
 
 ```bash
 f=.claude/rules/moai/development/rule-authoring.md
-test -f "$f" && echo "exists=1" || echo "exists=0"
-sed -n '1,4p' "$f"
-printf 'scoped => %s\n' "$(sed -n '1,4p' "$f" | grep -c '^paths:')"
+test -f "$f" || { echo "MISSING $f"; exit 1; }   # §A 함정 6·7 — 존재 가드 + 줄 위치 추출 금지
+p=$(fm "$f" | grep '^paths:')
+echo "$p"
+for frag in 'rules' 'CLAUDE.md' 'output-styles' 'MEMORY.md'; do
+  printf 'slot_%s => %s\n' "$frag" "$(printf '%s' "$p" | grep -c "$frag")"
+done
 printf 'new_rule_case => %s\n' "$(grep -ci 'new always-loaded' "$f")"
 printf 'growth_case => %s\n' "$(grep -ci 'grow\|increase' "$f")"
 printf 'threshold => %s\n' "$(grep -cE '1,000 bytes|1000 bytes' "$f")"
 printf 'non_invoking_cost => %s\n' "$(grep -ci 'never invoke\|does not invoke\|sessions that never' "$f")"
-# PASS 조건: exists=1, scoped=1, 나머지 4개 전부 >= 1
+# PASS 조건: MISSING 없음, slot_ 4개(rules / CLAUDE.md / output-styles / MEMORY.md) 전부 >= 1
+#   (REQ-ALD-013·plan.md D1 글롭의 가드 슬롯 4개 — rules-only 글롭이면 FAIL), 나머지 4개 전부 >= 1
 ```
 
 `threshold` 가 판정하는 것은 값이 문서에 **적혔는지**뿐이다. 임계값 자체는 측정에서 유도한 값이 아니라 선택한 값이며(spec.md §5), 실제 발화 빈도는 이 AC의 판정 대상이 아니다.
@@ -445,4 +461,4 @@ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInte
 
 - `paths:` 부착은 Claude Code 런타임 소관이라 관측할 수 없다. AC-ALD-007/012는 **글롭 문자열의 형태**를 판정할 뿐 실제 부착을 판정하지 못한다. 최악의 실패 모드는 "컴패니언이 안 붙음"이고, 스텁이 모든 구속 절을 갖고 있으므로 안전 실패다.
 - 토큰 수치는 char/4 추정(±약 15%)이다. AC-ALD-001의 `headroom > 1239` 비교는 **같은 공식의 전후 비교**이므로 추정 오차가 상쇄되지만, 절대값을 실제 토큰 수로 읽어서는 안 된다.
-- AC-ALD-006의 `git show HEAD:` 는 분리 커밋 이전 HEAD 를 전제한다. 분리를 이미 커밋한 뒤라면 해당 SHA 를 명시해 다시 돌린다.
+- AC-ALD-006의 원본 판독은 `BASE_REF=be1958a4d`(분리 이전 plan-phase 커밋)로 고정한다. 구현 착지 이후 어느 시점에 재실행해도 HEAD 가 아니라 이 SHA 를 읽으므로 pre-split 원본이 나온다.
