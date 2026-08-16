@@ -524,6 +524,13 @@ templ fieldsetAgentFrontmatter(view pageView) {
 			<span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span>
 		</p>
 		<p class="panel__help" data-i18n="agentfm.llmnote">Per-agent model/effort here follows the performance tier above. GLM backend tiers are in the 3rd Party LLM section.</p>
+		// t66 web half: under a GLM backend the model axis is session-inherited,
+		// so the effort(reasoning) map is the per-agent routing surface — state
+		// that on the panel, gated on the backend signal (never rendered for a
+		// Claude session, where the GLM reading is noise).
+		if agentFMIsGLMBackend(view.LLM) {
+			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
+		}
 		<p class="panel__help">
 			<span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span>
 			<code class="key">.claude/rules/moai/workflow/dynamic-workflows.md</code>
@@ -628,6 +635,14 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 				// Muted note explaining the disabled effort — present in the DOM always
 				// so app.js can toggle it client-side; hidden until the model is haiku.
 				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
+				// t66: the GLM reading of this row's effort — the z.ai reasoning
+				// state it collapses to, rendered only under a GLM backend. The
+				// tooltip reuses the canonical option keys the 3rd Party LLM
+				// section serves, so the two surfaces share one vocabulary; the
+				// value itself is a technical identifier and stays untranslated.
+				if rs := agentGLMReasoning(llm, agent.Name); rs != "" {
+					<code class="key" data-glm-reasoning={ rs } data-i18n-title={ "f.llm.glm.effort.opt." + rs }>{ rs }</code>
+				}
 			</div>
 			@fieldErr(errs, "agentfm."+agent.Name+".model")
 			@fieldErr(errs, "agentfm."+agent.Name+".effort")

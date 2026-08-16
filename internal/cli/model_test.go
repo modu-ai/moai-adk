@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -35,8 +37,12 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 }
 
 // TestResolveModelProfileReport_GLMOverlay covers REQ-MPM-029/030/031 /
-// AC-MPM-019: under GLM, opus/fable both map to glm-5.2 and manager-develop's
-// effort collapses to reasoning-max (coding-max override), with a wire-honesty note.
+// AC-MPM-019 plus the t66 GLM session-model inheritance fold: under GLM the
+// per-agent glm_model column carries the explicit "inherit" sentinel (the
+// sub-agent model is session-inherited via llm.glm.models →
+// ANTHROPIC_DEFAULT_*_MODEL, so per-agent model cells carry no differentiation),
+// while manager-develop's effort still collapses to reasoning-max (coding-max
+// override), with a wire-honesty note.
 func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	llm := config.LLMConfig{
 		Profile:  "max",
@@ -57,22 +63,49 @@ func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	for _, e := range rpt.Agents {
 		got[e.Agent] = e
 	}
-	// manager-develop max = opus/high → glm-5.2 + coding-max override → reasoning-max.
-	md := got["manager-develop"]
-	if md.GLMModel != "glm-5.2" {
-		t.Errorf("manager-develop glm model: got %s, want glm-5.2", md.GLMModel)
+	// Every mapped agent's glm_model column states the explicit inherit
+	// sentinel — the GLM model is session-carried, never per-agent routed
+	// (measured 2026-08-16: all agents glm_model identical; only reasoning
+	// differs). The tier→model map above deliberately DIFFERS per tier, so a
+	// pass here proves the fold is unconditional, not an artifact of equal
+	// tier values.
+	for _, e := range rpt.Agents {
+		if e.GLMModel != "inherit" {
+			t.Errorf("%s glm model: got %q, want the explicit inherit sentinel", e.Agent, e.GLMModel)
+		}
 	}
+	// manager-develop = opus/max → coding-max override → reasoning-max.
+	md := got["manager-develop"]
 	if md.GLMReasoning != "reasoning-max" {
 		t.Errorf("manager-develop glm reasoning: got %s, want reasoning-max (coding-max override)", md.GLMReasoning)
 	}
-	// manager-git = sonnet/low → glm-4.7 + low collapses to thinking-off.
+	// manager-git = sonnet/low → low collapses to thinking-off.
 	mg := got["manager-git"]
-	if mg.GLMModel != "glm-4.7" || mg.GLMReasoning != "thinking-off" {
-		t.Errorf("manager-git glm: got %s/%s, want glm-4.7/thinking-off", mg.GLMModel, mg.GLMReasoning)
+	if mg.GLMReasoning != "thinking-off" {
+		t.Errorf("manager-git glm reasoning: got %s, want thinking-off", mg.GLMReasoning)
 	}
-	// Explore = sonnet/low → glm-4.7 + low collapses to thinking-off (now that
+	// Explore = sonnet/low → low collapses to thinking-off (now that
 	// Explore has an explicit group it IS GLM-injected).
-	if e := got["Explore"]; e.GLMModel != "glm-4.7" || e.GLMReasoning != "thinking-off" {
-		t.Errorf("Explore glm: got %s/%s, want glm-4.7/thinking-off", e.GLMModel, e.GLMReasoning)
+	if e := got["Explore"]; e.GLMReasoning != "thinking-off" {
+		t.Errorf("Explore glm reasoning: got %s, want thinking-off", e.GLMReasoning)
+	}
+}
+
+// TestResolveModelProfileReport_GLMModelExplicitInJSON pins the explicit
+// representation requirement of the t66 fold: the glm_model field survives JSON
+// serialization with the non-empty inherit sentinel (never a silent absence via
+// omitempty), so a JSON consumer can distinguish "states inheritance" from
+// "column dropped".
+func TestResolveModelProfileReport_GLMModelExplicitInJSON(t *testing.T) {
+	llm := config.LLMConfig{Profile: "medium", TeamMode: "glm"}
+	rpt := resolveModelProfileReport(llm)
+	for _, e := range rpt.Agents {
+		b, err := json.Marshal(e)
+		if err != nil {
+			t.Fatalf("marshal entry: %v", err)
+		}
+		if !strings.Contains(string(b), `"glm_model":"inherit"`) {
+			t.Errorf("%s: JSON %s lacks the explicit glm_model inherit field", e.Agent, b)
+		}
 	}
 }
