@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -167,4 +168,73 @@ func TestLookupProjectKey_DuplicateEntriesResolveDeterministically(t *testing.T)
 			t.Fatalf("iteration %d: got (%q, %v), want the stable (%q, true)", i, got, ok, first)
 		}
 	}
+}
+
+// TestLookupProjectKey_ConflictingDuplicatesWarn asserts the user is told when
+// one directory carries two entries naming different profiles. Sorting makes the
+// pick stable, but stability is not correctness — nothing in the ledger says
+// which entry was meant, so the ambiguity is surfaced instead of hidden.
+func TestLookupProjectKey_ConflictingDuplicatesWarn(t *testing.T) {
+	pmSandboxBase(t)
+
+	root := pmProjectDir(t)
+	variant, sameDir := caseVariantOf(t, root)
+	if !sameDir {
+		t.Skip("case-sensitive filesystem: a case-variant path names a different directory here")
+	}
+	lookup := filepath.Join(filepath.Dir(root), "MoAI-adk-go")
+	if _, err := os.Stat(lookup); err != nil {
+		t.Skipf("third case spelling does not resolve here: %v", err)
+	}
+
+	t.Run("conflicting values warn", func(t *testing.T) {
+		stderr := captureStderr(t, func() {
+			if _, found := lookupProjectKey(map[string]any{root: "profile-a", variant: "profile-b"}, lookup); !found {
+				t.Fatal("lookup found nothing")
+			}
+		})
+		for _, want := range []string{"profile-a", "profile-b", launchLedgerFile} {
+			if !strings.Contains(stderr, want) {
+				t.Errorf("warning missing %q; got: %s", want, stderr)
+			}
+		}
+	})
+
+	t.Run("agreeing values stay silent", func(t *testing.T) {
+		stderr := captureStderr(t, func() {
+			if _, found := lookupProjectKey(map[string]any{root: "profile-a", variant: "profile-a"}, lookup); !found {
+				t.Fatal("lookup found nothing")
+			}
+		})
+		if stderr != "" {
+			t.Errorf("duplicates naming ONE profile are unambiguous and must not warn; got: %s", stderr)
+		}
+	})
+}
+
+// captureStderr redirects os.Stderr for the duration of fn and returns what was
+// written. The pipe is drained on a goroutine so a warning larger than the pipe
+// buffer cannot deadlock the test.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stderr
+	os.Stderr = w
+	done := make(chan string, 1)
+	go func() {
+		var b strings.Builder
+		_, _ = io.Copy(&b, r)
+		done <- b.String()
+	}()
+
+	fn()
+
+	os.Stderr = orig
+	_ = w.Close()
+	out := <-done
+	_ = r.Close()
+	return out
 }

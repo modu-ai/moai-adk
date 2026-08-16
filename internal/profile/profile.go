@@ -319,16 +319,47 @@ func lookupProjectKey(projects map[string]any, key string) (string, bool) {
 	}
 	sort.Strings(candidates)
 
+	var matched string
+	var conflict string
 	for _, candidate := range candidates {
 		candidateInfo, err := os.Stat(candidate)
 		if err != nil {
 			continue
 		}
-		if os.SameFile(info, candidateInfo) {
-			return candidate, true
+		if !os.SameFile(info, candidateInfo) {
+			continue
+		}
+		if matched == "" {
+			matched = candidate
+			continue
+		}
+		// A second entry for the same directory. Sorting already fixed WHICH one
+		// wins, but when the two name different profiles the winner is stable and
+		// still possibly not the one the user meant — and nothing in the ledger
+		// records which was written last. Only the user can say, so say so once
+		// rather than routing them somewhere silently.
+		if asString(projects[candidate]) != asString(projects[matched]) && conflict == "" {
+			conflict = candidate
 		}
 	}
-	return "", false
+
+	if conflict != "" {
+		fmt.Fprintf(os.Stderr,
+			"Warning: %s records %q twice for one directory, under different profiles (%q vs %q).\n"+
+				"Using %q. Remove the stale entry from %s to silence this.\n",
+			launchLedgerFile, key,
+			asString(projects[matched]), asString(projects[conflict]),
+			asString(projects[matched]), filepath.Join(GetBaseDir(), launchLedgerFile))
+	}
+
+	return matched, matched != ""
+}
+
+// asString reads a ledger value as a string, yielding "" for a non-string entry
+// rather than panicking on a hand-edited or downgrade-written ledger.
+func asString(v any) string {
+	s, _ := v.(string)
+	return s
 }
 
 // loadLaunchLedger reads and decodes the ledger as a generic map so unknown and
