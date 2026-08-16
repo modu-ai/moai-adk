@@ -9,17 +9,19 @@ paths: "**/cache-aware-execution.md"
 
 ## Cited cache numbers
 
-All figures in this section are **quoted source values** — quoted from the source article, **not re-measured** in the session that authored directives 6-10, and never to be restated as measurements of this project.
+All figures in this section are **quoted source values** — quoted from the source article, **not re-measured** in the session that authored directives 6-10, and never to be restated as measurements of this project. Date context: quoted from the source article as current on 2026-08-16 (the authoring date) and cross-checked against Anthropic's prompt-caching documentation during the 2026-08-16 PR review — performance figures the provider may change; re-quote before relying on one.
 
 | Quantity | Quoted value |
 |---|---|
 | Cache read | 0.1x the base input price |
 | Cache write (worst case) | up to 2x |
-| Output tokens | roughly 5x the input price |
-| Cache TTL (subscription) | 1 hour |
-| Cache TTL (API key) | 5 minutes |
+| Output tokens | roughly 5x the input price — output pricing is separate from input pricing and model-dependent; not a cache-cost figure |
+| Cache TTL (subscription auth, default) | 1 hour |
+| Cache TTL (API-key auth, default) | 5 minutes |
 
-The parent rule's intro quotes different figures for the write multiplier and TTL (reads ~0.1x, writes 1.25x, 5-minute TTL) — both sets are quoted from their respective source passages; neither was measured here, and the difference is a scope-of-quote artifact, not a contradiction this file resolves.
+Both TTL rows are authentication-mode defaults, not fixed properties: each cache hit refreshes the window (sliding TTL), and at the API level the 5-minute TTL is the default while the 1-hour TTL is an explicit `cache_control` override (`ttl: "1h"`). A Claude Code session selects neither — the runtime places cache breakpoints itself (parent rule, Non-goals).
+
+The parent rule's intro quotes different figures for the write multiplier and TTL (reads ~0.1x, writes 1.25x, 5-minute TTL) — both sets are quoted from their respective source passages; neither was measured here, and the difference is a scope-of-quote artifact, not a contradiction this file resolves. Neither figure is universal: the write multiplier ranges up to 2x and the TTL follows the authentication default (see above), so the parent's 1.25x / 5-minute pairing holds only for the API-key-default passage it was quoted from.
 
 ## Directive rationale
 
@@ -37,7 +39,7 @@ Routine commands in their default form emit progress spinners, banners, tables, 
 
 ### Directive 9 — session length as a cost axis
 
-Every fresh session re-pays the always-loaded prefix at write price; a continuing session reads it from cache. For the same body of work, N short sessions multiply the write; one long session pays it once. This is the same axis directive 4 weighs for `/clear` — the paste-ready resume exists precisely so a context reset buys something.
+Every fresh session re-pays the always-loaded prefix at write price; a continuing session reads it from cache — but only while that cache is warm. A gap longer than the idle TTL (a blocking user gate, an unattended wait) or a prefix invalidation (a session-loaded file edited mid-session — directive 3) reverts the next request to write price, collapsing the cheaper-continuation claim. For the same body of work, N short sessions multiply the write; one long session pays it once. This is the same axis directive 4 weighs for `/clear` — the paste-ready resume exists precisely so a context reset buys something.
 
 ### Directive 10 — mid-session model or effort switch
 

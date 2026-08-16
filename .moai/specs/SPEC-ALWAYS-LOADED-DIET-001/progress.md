@@ -22,10 +22,10 @@
 
 ## §E.2 Run-phase Evidence
 
-### M1 — `kanban-dispatch.md` 분리 (2026-08-17)
+### M1 — `kanban-dispatch.md` 분리 (2026-08-16)
 
 - Phase 1 re-audit: **skipped as eligible** — plan-audit iter2 PASS 0.845 (Tier M threshold 0.80) + artifact content unchanged since the verdict (squash-merge of PR #1576 did not alter artifact bytes).
-- Implementation Kickoff Approval: granted orchestrator-side (run-phase M1 dispatch received 2026-08-17). The §E.1 "NOT been requested" line reflects plan-phase authoring time.
+- Implementation Kickoff Approval: granted orchestrator-side (run-phase M1 dispatch received 2026-08-16). The §E.1 "NOT been requested" line reflects plan-phase authoring time.
 - Tree: worktree `feat/spec-always-loaded-diet`, pre-M1 HEAD `062a995d9` (base origin/main).
 
 **Construction (verbatim move, no rewrite — REQ-ALD-005/AP-2):**
@@ -69,7 +69,7 @@ Note (AC-ALD-008a form): acceptance.md's `<(grep -A2 -B2 …)` process-substitut
 
 **Residual (recorded, deliberately not fixed):** the companion line "This is the same shape as the CodeRabbit section below." now reads stale inside the companion (the CodeRabbit section stayed in the stub). Rewording it would break AC-ALD-006's line-set preservation and violate AP-2 — the line must stay verbatim; the referenced section exists in the stub.
 
-### M2 — G3~G7 규율 편입 (2026-08-17)
+### M2 — G3~G7 규율 편입 (2026-08-16)
 
 - Tree: worktree `feat/spec-always-loaded-diet`, pre-M2 HEAD `a203a7c3a` (= the M1 commit; working tree clean at dispatch).
 - Construction: directives 6-10 appended to `cache-aware-execution.md` `## Directives` — same shape as 1-5 (numbered + bold title + zone prefix + one paragraph), prefix `[ZONE:Evolvable] [HARD]` per REQ-ALD-006..010. Per-directive bytes (wc-accurate): d6=339 / d7=360 / d8=313 / d9=337 / d10=437. Plus one Cross-references bullet for the companion (111 B) and footer version 1.0.0 → 1.1.0. Nothing else in the file touched — `git diff --stat`: 12 insertions, 1 deletion (the deletion is the old version line). New companion `cache-aware-execution-reference.md` (3,991 B): frontmatter `description:` + self-keyed `paths: "**/cache-aware-execution.md"` (plan M2 step 2 — rationale-store, no domain keying), ownership-declaration blockquote (goal-directive-detail.md shape), cited-numbers section, per-directive rationale for 6-10.
@@ -114,7 +114,7 @@ exit=0
 
 **Other verification:** `go build ./...` → exit 0 (no output). Subagent boundary: `grep -rn 'AskUserQuestion'` on the two rule files → 1 match, pre-existing intro text (line 3, present in the pre-edit file; original census unchanged), 0 new occurrences; companion 0. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
 
-### M3 — 재발 통제 (2026-08-17)
+### M3 — 재발 통제 (2026-08-16)
 
 - Tree: worktree `feat/spec-always-loaded-diet`, pre-M3 HEAD `6d701d26c` (= the M2 commit; working tree clean at dispatch).
 - Construction: new `.claude/rules/moai/development/rule-authoring.md` (4,062 B). Frontmatter: `description:` + the plan D1 expanded glob, verbatim — `paths: "**/.claude/rules/**,**/CLAUDE.md,**/.claude/output-styles/**,**/MEMORY.md"` (keys all four guard slots; AP-6 satisfied — the control itself is `paths:`-scoped and excluded from the surface it polices). Body: four-slot surface definition (no-`paths:` rules / `CLAUDE.md` / output styles / `MEMORY.md` head) with the all-slots binding rationale; recurrence grounding (~4x growth in three months, ~half in-place expansion → both modes covered); the statement duty as one `[ZONE:Evolvable] [HARD]` clause with four lettered parts — (a) new always-loaded file → bytes + cost justification in the change description, (b) single edit growing an existing file by more than 1,000 bytes → same statement sized to the growth, (c) the statement must address the cost paid by sessions that never need the file (grounded per plan M3 step 3: `session-handoff.md` closest cost-naming precedent; `native-idiom-and-register.md` "zero burden for English sessions" true for behavior, false for context bytes), (d) `paths:`-scope-first question before the duty fires; threshold calibration table (typo ~100 B / one-line ~200 B / paragraph ~800 B pass; new HARD clause ~1,200 B / new `##` section ~2,500 B fire); explicit no-cumulative-delta-secondary-trigger clause (accepted residual risk per plan D4-3); self-compliance note. Size calibration vs development-category siblings: branch-origin-protocol.md 4,180 B, karpathy-quickref.md 2,068 B.
@@ -147,7 +147,7 @@ exit=0
 
 **Other verification:** `go build ./...` → exit 0 (no output). `go test ./internal/config/ -count=1` (full package) → `ok  	github.com/modu-ai/moai-adk/internal/config	5.690s` exit=0. Subagent boundary: `grep -cn 'AskUserQuestion\|mcp__askuser'` on rule-authoring.md → 0. Neutrality pre-check (M4 mirrorability, local file): spec_id=0 req=0 sha=0 date=0 — no sanitization needed at mirror time. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
 
-### M4 — 미러 + 빌드 + 최종 계측 (2026-08-17)
+### M4 — 미러 + 빌드 + 최종 계측 (2026-08-16)
 
 - Tree: worktree `feat/spec-always-loaded-diet`, pre-M4 HEAD `fcc07d1bc` (= the M3 commit; working tree clean at dispatch — verified `git status --short` empty).
 - Mirror scope: the 5 created/modified rule files, copied to `internal/template/templates/` at the corresponding paths. Pre-mirror baseline established: the two MODIFIED files' pre-edit dev versions (`a203a7c3a~1` kanban-dispatch.md, `6d701d26c~1` cache-aware-execution.md) are **byte-identical to the template copies** (`diff` exit 0, 0 lines) — the mirror applies to a clean baseline, no foreign template divergence to preserve.
@@ -181,7 +181,7 @@ bytes=288975 tokens=72243 headroom=2757              # plan §C grep -rL form (i
 
 ```yaml
 run_status: audit-ready
-run_complete_at: 2026-08-17
+run_complete_at: 2026-08-16
 spec_id: SPEC-ALWAYS-LOADED-DIET-001
 branch: feat/spec-always-loaded-diet
 worktree: /tmp/wt-run-ald
@@ -196,7 +196,7 @@ ac_fail_count: 0
 final_headroom_tokens: 2757   # observed post-M4, both measurement forms agree; baseline 1239; D4-1 budget-ratchet card input
 always_loaded_files: 14   # unchanged pre/post diet (files split, not removed)
 bytes_pre: 295044
-bytes_post: 288975   # net -6069 B (-1515 tokens); M1 -7976, M2 +1907, M3 0, M4 0
+bytes_post: 288975   # net -6069 B (-1518 tokens); M1 -7976, M2 +1907, M3 0, M4 0
 preserve_list_post_run_count: 0   # no Go/config/hook surface touched; go_changed=0 across the run phase
 l44_pre_commit_fetch: true        # worktree branch only; primary checkout untouched; explicit-pathspec staging, no -A/-a
 l44_post_push_fetch: n/a          # not pushed — branch awaits orchestrator
