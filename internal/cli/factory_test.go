@@ -32,79 +32,123 @@ func clearFactoryTestEnv(t *testing.T) {
 	}
 }
 
-// TestParseFactoryFlag covers the four accepted forms, the required-count
-// error paths, and the `--` discipline shared with parseKanbanFlag.
-func TestParseFactoryFlag(t *testing.T) {
+// TestParseKanbanFlagUnifiedEntry is the v1.2.0 truth table: ONE -k token
+// selects either shape — bare/-k SPEC-ID is the kanban chain, a numeric
+// positional (or a worker-shape --name with no positional) is the factory.
+// The numeric discriminator is unambiguous: a SPEC identifier is never a bare
+// integer, and an invalid SUPPLIED count errors rather than silently becoming
+// a kanban SPEC identifier.
+func TestParseKanbanFlagUnifiedEntry(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		args      []string
-		wantN     int
-		wantOn    bool
-		wantRest  []string
-		wantErr   bool
-		errMarker string
+		name        string
+		args        []string
+		wantSpec    string
+		wantKanban  bool
+		wantFactory bool
+		wantWorkers int
+		wantRest    []string
+		wantErr     bool
+		errMarker   string
 	}{
-		{name: "short with value", args: []string{"-f", "4"}, wantN: 4, wantOn: true},
-		{name: "short equals", args: []string{"-f=3"}, wantN: 3, wantOn: true},
-		{name: "long with value", args: []string{"--factory", "12"}, wantN: 12, wantOn: true},
-		{name: "long equals", args: []string{"--factory=1"}, wantN: 1, wantOn: true},
-		{name: "absent", args: []string{"-p", "work"}, wantOn: false, wantRest: []string{"-p", "work"}},
-		{name: "name value survives", args: []string{"-f", "4", "--name", "worker-2"}, wantN: 4, wantOn: true, wantRest: []string{"--name", "worker-2"}},
-		{name: "other flags preserved", args: []string{"-b", "--factory", "2", "-w"}, wantN: 2, wantOn: true, wantRest: []string{"-b", "-w"}},
-		// The bare form (t85 lead loop): -f with no count takes the
-		// operator-decided default instead of erroring. A following flag or
-		// the pass-through marker belongs to someone else and reads as "no
-		// count supplied", not as a malformed count.
-		{name: "bare short takes the default", args: []string{"-f"}, wantN: 8, wantOn: true},
-		{name: "bare long takes the default", args: []string{"--factory"}, wantN: 8, wantOn: true},
-		{name: "count position is a flag", args: []string{"-f", "-b"}, wantN: 8, wantOn: true, wantRest: []string{"-b"}},
-		{name: "non-numeric count", args: []string{"--factory", "many"}, wantErr: true, errMarker: "requires a worker count"},
-		{name: "zero count", args: []string{"-f", "0"}, wantErr: true, errMarker: "requires a worker count"},
-		{name: "negative count", args: []string{"--factory=-2"}, wantErr: true, errMarker: "requires a worker count"},
+		{name: "absent", args: []string{"-p", "work"}, wantRest: []string{"-p", "work"}},
+		{name: "bare -k is kanban", args: []string{"-k"}, wantKanban: true},
+		{name: "long form is kanban", args: []string{"--kanban", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
+		{name: "-k SPEC is kanban", args: []string{"-k", "SPEC-X-001", "--print"}, wantSpec: "SPEC-X-001", wantKanban: true, wantRest: []string{"--print"}},
+		{name: "positional flag is not a value", args: []string{"-k", "-b"}, wantKanban: true, wantRest: []string{"-b"}},
+		{name: "-k N is factory lead", args: []string{"-k", "4"}, wantKanban: true, wantFactory: true, wantWorkers: 4},
+		{name: "-k=N", args: []string{"-k=3"}, wantKanban: true, wantFactory: true, wantWorkers: 3},
+		{name: "--kanban N", args: []string{"--kanban", "12"}, wantKanban: true, wantFactory: true, wantWorkers: 12},
+		{name: "--kanban=N", args: []string{"--kanban=1"}, wantKanban: true, wantFactory: true, wantWorkers: 1},
+		{name: "-k N with worker name is factory worker", args: []string{"-k", "4", "--name", "worker-2"}, wantKanban: true, wantFactory: true, wantWorkers: 4, wantRest: []string{"--name", "worker-2"}},
+		{
+			// The count-less factory entry: the worker-shape NAME selects the
+			// factory, so the operator default applies. A count-less FACTORY
+			// LEAD does not exist — a bare -k is the kanban lead.
+			name: "bare -k with worker name takes the default", args: []string{"-k", "--name", "worker-2"},
+			wantKanban: true, wantFactory: true, wantWorkers: config.DefaultFactoryWorkers, wantRest: []string{"--name", "worker-2"},
+		},
+		{name: "companion name stays kanban", args: []string{"-k", "--name", "plan"}, wantKanban: true, wantRest: []string{"--name", "plan"}},
+		{name: "zero count errors", args: []string{"-k", "0"}, wantErr: true, errMarker: "worker count of 1 or more"},
+		{name: "negative joined count errors", args: []string{"-k=-2"}, wantErr: true, errMarker: "worker count of 1 or more"},
+		{name: "joined non-numeric is not a spec form", args: []string{"-k=abc"}, wantErr: true, errMarker: "worker count of 1 or more"},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			gotN, gotOn, gotRest, err := parseFactoryFlag(c.args)
+			p, err := parseKanbanFlag(c.args)
 			if c.wantErr {
 				if err == nil || !strings.Contains(err.Error(), c.errMarker) {
-					t.Fatalf("parseFactoryFlag(%v) error = %v, want containing %q", c.args, err, c.errMarker)
+					t.Fatalf("parseKanbanFlag(%v) error = %v, want containing %q", c.args, err, c.errMarker)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("parseFactoryFlag(%v) unexpected error: %v", c.args, err)
+				t.Fatalf("parseKanbanFlag(%v) unexpected error: %v", c.args, err)
 			}
-			if gotN != c.wantN || gotOn != c.wantOn {
-				t.Errorf("parseFactoryFlag(%v) = (%d, %v), want (%d, %v)", c.args, gotN, gotOn, c.wantN, c.wantOn)
+			if p.Spec != c.wantSpec || p.KanbanEnabled != c.wantKanban ||
+				p.FactoryEnabled != c.wantFactory || p.FactoryWorkers != c.wantWorkers {
+				t.Errorf("parseKanbanFlag(%v) = (spec %q, kanban %v, factory %v, workers %d), want (%q, %v, %v, %d)",
+					c.args, p.Spec, p.KanbanEnabled, p.FactoryEnabled, p.FactoryWorkers,
+					c.wantSpec, c.wantKanban, c.wantFactory, c.wantWorkers)
 			}
 			wantRest := c.wantRest
 			if wantRest == nil {
 				wantRest = []string{}
 			}
-			if !slices.Equal(gotRest, wantRest) {
-				t.Errorf("parseFactoryFlag(%v) rest = %v, want %v", c.args, gotRest, wantRest)
+			if !slices.Equal(p.Rest, wantRest) {
+				t.Errorf("parseKanbanFlag(%v) rest = %v, want %v", c.args, p.Rest, wantRest)
 			}
 		})
 	}
 }
 
-// TestParseFactoryFlagStopsAtPassThroughMarker asserts the shared `--`
-// discipline: nothing past the marker is read, and the marker plus everything
-// after it is forwarded verbatim.
-func TestParseFactoryFlagStopsAtPassThroughMarker(t *testing.T) {
+// TestParseKanbanFlagPassThroughBoundary asserts the shared `--` discipline on
+// the unified parse: nothing past the marker is read (a worker name there
+// never selects the factory), and the marker plus everything after it is
+// forwarded verbatim.
+func TestParseKanbanFlagPassThroughBoundary(t *testing.T) {
 	t.Parallel()
 
-	args := []string{"--", "-f", "4"}
-	n, on, rest, err := parseFactoryFlag(args)
-	if err != nil || on || n != 0 {
-		t.Fatalf("read past the pass-through marker: (%d, %v, %v)", n, on, err)
+	args := []string{"--", "-k", "4", "--name", "worker-1"}
+	p, err := parseKanbanFlag(args)
+	if err != nil || p.KanbanEnabled || p.FactoryEnabled {
+		t.Fatalf("read past the pass-through marker: (%v, %v, %v)", err, p.KanbanEnabled, p.FactoryEnabled)
 	}
-	if !slices.Equal(rest, args) {
-		t.Errorf("rest = %v, want %v verbatim", rest, args)
+	if !slices.Equal(p.Rest, args) {
+		t.Errorf("rest = %v, want %v verbatim", p.Rest, args)
+	}
+}
+
+// TestRejectRetiredFactoryFlag asserts the retired entry token errors with
+// the redirect to the unified -k surface — on every launcher that reads it —
+// and that lookalike tokens (-foo, --factory-reset) are not stolen.
+func TestRejectRetiredFactoryFlag(t *testing.T) {
+	t.Parallel()
+
+	for _, args := range [][]string{
+		{"-f"},
+		{"-f", "4"},
+		{"--factory"},
+		{"--factory=4"},
+		{"-f=4"},
+		{"cc", "-f"},
+	} {
+		if err := rejectRetiredFactoryFlag(args); err == nil || !strings.Contains(err.Error(), "retired") {
+			t.Errorf("rejectRetiredFactoryFlag(%v) = %v, want the retirement error", args, err)
+		}
+	}
+	for _, args := range [][]string{
+		{"-p", "work"},
+		{"-foo"},
+		{"--factory-reset"},
+		{"--", "-f"}, // past the marker belongs to the child process
+	} {
+		if err := rejectRetiredFactoryFlag(args); err != nil {
+			t.Errorf("rejectRetiredFactoryFlag(%v) = %v, want nil (not a retired token)", args, err)
+		}
 	}
 }
 
@@ -363,166 +407,86 @@ func TestReplaceNamedLabel(t *testing.T) {
 	})
 }
 
-// TestRejectConflictingModes asserts -k and -f cannot both seed a session.
-func TestRejectConflictingModes(t *testing.T) {
-	t.Parallel()
-
-	if err := rejectConflictingModes(true, true); err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("both tokens must be rejected as mutually exclusive, got %v", err)
-	}
-	if err := rejectConflictingModes(true, false); err != nil {
-		t.Errorf("kanban alone must pass, got %v", err)
-	}
-	if err := rejectConflictingModes(false, true); err != nil {
-		t.Errorf("factory alone must pass, got %v", err)
-	}
-	if err := rejectConflictingModes(false, false); err != nil {
-		t.Errorf("neither token must pass, got %v", err)
-	}
-}
-
-// TestRejectFactoryOnCG mirrors the kanban cg rejection: the sentinel error
-// on a factory token, nil without one, and the parse error for a malformed
-// count.
+// TestRejectFactoryOnCG asserts the FACTORY forms of the unified -k surface
+// are rejected on cg with the factory sentinel, while the plain kanban forms
+// fall through to the kanban rejection (rejectKanbanOnCG), and an invalid
+// count surfaces the parse error.
 func TestRejectFactoryOnCG(t *testing.T) {
 	t.Parallel()
 
-	err := rejectFactoryOnCG([]string{"-f", "4"})
+	err := rejectFactoryOnCG([]string{"-k", "4"})
 	if err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
-		t.Errorf("factory token on cg must carry the sentinel, got %v", err)
+		t.Errorf("factory count on cg must carry the sentinel, got %v", err)
+	}
+	if err := rejectFactoryOnCG([]string{"-k", "--name", "worker-1"}); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
+		t.Errorf("worker-name factory form on cg must carry the sentinel, got %v", err)
 	}
 	if err := rejectFactoryOnCG([]string{"-p", "work"}); err != nil {
-		t.Errorf("no factory token must pass, got %v", err)
+		t.Errorf("no -k token must pass, got %v", err)
 	}
-	// A bare -f now ENABLES factory mode (default 8), so the cg rejection for
-	// it is the sentinel below; the malformed-count probe needs a SUPPLIED
-	// invalid count.
-	if err := rejectFactoryOnCG([]string{"-f"}); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
-		t.Errorf("bare factory token on cg must carry the sentinel, got %v", err)
+	if err := rejectFactoryOnCG([]string{"-k", "0"}); err == nil || !strings.Contains(err.Error(), "worker count of 1 or more") {
+		t.Errorf("invalid factory count must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "x"}); err == nil || !strings.Contains(err.Error(), "requires a worker count") {
-		t.Errorf("malformed factory token must surface the parse error, got %v", err)
+	// The plain kanban forms belong to the kanban rejection, not this one.
+	if err := rejectFactoryOnCG([]string{"-k"}); err != nil {
+		t.Errorf("bare -k is kanban's to reject, got %v", err)
+	}
+	if err := rejectFactoryOnCG([]string{"-k", "SPEC-X-001"}); err != nil {
+		t.Errorf("-k SPEC is kanban's to reject, got %v", err)
 	}
 }
 
-// TestFactoryGenealogyInHelp is the binding genealogy AC: both launchers'
-// help must state that the pre-3.1 factory flag was renamed to -k in #1513
-// (7f61332ef) and that today's -f is a different feature. A user hunting
-// "what happened to -f" reads this text first.
+// TestRejectKanbanOnCGLeavesFactoryForms is the other half of the cg split:
+// rejectKanbanOnCG fires for the kanban forms and deliberately passes the
+// factory forms through to rejectFactoryOnCG.
+func TestRejectKanbanOnCGLeavesFactoryForms(t *testing.T) {
+	t.Parallel()
+
+	if err := rejectKanbanOnCG([]string{"-k"}); err == nil || !strings.Contains(err.Error(), kanbanUnsupportedBackendSentinel) {
+		t.Errorf("bare -k on cg must carry the kanban sentinel, got %v", err)
+	}
+	if err := rejectKanbanOnCG([]string{"-k", "SPEC-X-001"}); err == nil {
+		t.Errorf("-k SPEC on cg must carry the kanban sentinel, got %v", err)
+	}
+	for _, args := range [][]string{
+		{"-k", "4"},
+		{"-k", "--name", "worker-2"},
+	} {
+		if err := rejectKanbanOnCG(args); err != nil {
+			t.Errorf("factory form %v is the factory rejection's, not kanban's, got %v", args, err)
+		}
+	}
+}
+
+// TestFactoryGenealogyInHelp is the binding genealogy AC (v1.2.0): both
+// launchers' help must state that the pre-3.1 factory flag was renamed to -k
+// in #1513 (7f61332ef), that -f briefly returned and was RETIRED, and that
+// the factory is entered on -k today. A user hunting "what happened to -f"
+// reads this text first.
 func TestFactoryGenealogyInHelp(t *testing.T) {
 	t.Parallel()
 
 	for _, cmd := range []string{ccCmd.Long, glmCmd.Long} {
-		for _, marker := range []string{"--factory", "#1513", "7f61332ef", "RENAMED"} {
+		for _, marker := range []string{"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED", "-k <N>"} {
 			if !strings.Contains(cmd, marker) {
 				t.Errorf("help text missing genealogy marker %q", marker)
 			}
+		}
+		// The retired flag must not survive as a documented entry form.
+		if strings.Contains(cmd, "-f, --factory") || strings.Contains(cmd, "-f <N>") {
+			t.Error("help text still documents the retired -f entry form")
 		}
 	}
 }
 
 // TestFactoryDefaultWorkersConstant pins the operator-decided default fan-out
-// (t85): a bare -f means THIS count, so the number is asserted where it lives
-// rather than re-derived at each call site.
+// (t85): the count-less factory entry (a worker-shape --name with no N) means
+// THIS count, so the number is asserted where it lives rather than re-derived
+// at each call site.
 func TestFactoryDefaultWorkersConstant(t *testing.T) {
 	t.Parallel()
 
 	if config.DefaultFactoryWorkers != 8 {
 		t.Errorf("DefaultFactoryWorkers = %d, want the operator-decided 8", config.DefaultFactoryWorkers)
 	}
-}
-
-// TestParseFactoryFlagErrorNamesDefault extends the error-string pins without
-// weakening them: an INVALID supplied count still errors naming the expected
-// forms, and the message now also names the bare-form default so the fix for
-// `-f many` is discoverable from the error alone.
-func TestParseFactoryFlagErrorNamesDefault(t *testing.T) {
-	t.Parallel()
-
-	_, _, _, err := parseFactoryFlag([]string{"--factory", "many"})
-	if err == nil {
-		t.Fatal("an invalid supplied count must still error")
-	}
-	for _, want := range []string{"requires a worker count", "default"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q must name %q", err.Error(), want)
-		}
-	}
-}
-
-// TestFactoryFreeSlots covers the lead loop's slot picker: an empty registry
-// reads as all-free (fail-open), a live claim makes its slot busy, and a dead
-// claim is pruned so its slot reads free again.
-func TestFactoryFreeSlots(t *testing.T) {
-	t.Run("empty registry means all N free", func(t *testing.T) {
-		root := t.TempDir()
-		got := factoryFreeSlots(root, 4)
-		if !slices.Equal(got, []int{1, 2, 3, 4}) {
-			t.Errorf("factoryFreeSlots(empty, 4) = %v, want 1..4", got)
-		}
-	})
-
-	t.Run("live claim makes its slot busy", func(t *testing.T) {
-		root := t.TempDir()
-		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
-		}); err != nil {
-			t.Fatalf("seed registry: %v", err)
-		}
-		probe := factoryProcessAlive
-		factoryProcessAlive = func(pid int) bool { return pid == 11100 }
-		defer func() { factoryProcessAlive = probe }()
-
-		got := factoryFreeSlots(root, 4)
-		if !slices.Equal(got, []int{1, 3, 4}) {
-			t.Errorf("factoryFreeSlots with live worker-2 = %v, want [1 3 4]", got)
-		}
-	})
-
-	t.Run("dead claim is pruned and reads free", func(t *testing.T) {
-		root := t.TempDir()
-		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
-			"worker-3": {PID: 11100},
-		}); err != nil {
-			t.Fatalf("seed registry: %v", err)
-		}
-		probe := factoryProcessAlive
-		factoryProcessAlive = func(int) bool { return false }
-		defer func() { factoryProcessAlive = probe }()
-
-		got := factoryFreeSlots(root, 3)
-		if !slices.Equal(got, []int{1, 2, 3}) {
-			t.Errorf("factoryFreeSlots with dead worker-3 = %v, want [1 2 3]", got)
-		}
-	})
-}
-
-// TestFactoryQueuedCards covers the lead loop's queue read: a missing backlog
-// file reads as 0, and only state "queued" counts — picked and dropped cards
-// are not waiting.
-func TestFactoryQueuedCards(t *testing.T) {
-	t.Run("missing backlog file reads as zero", func(t *testing.T) {
-		if got := factoryQueuedCards(t.TempDir()); got != 0 {
-			t.Errorf("factoryQueuedCards(missing) = %d, want 0", got)
-		}
-	})
-
-	t.Run("only queued items count", func(t *testing.T) {
-		root := t.TempDir()
-		store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
-		if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-			rec.Items = []kanban.BacklogItem{
-				{ID: "t1", State: kanban.BacklogStateQueued},
-				{ID: "t2", State: kanban.BacklogStatePicked},
-				{ID: "t3", State: kanban.BacklogStateQueued},
-				{ID: "t4", State: kanban.BacklogStateDropped},
-			}
-			return nil
-		}); err != nil {
-			t.Fatalf("seed backlog: %v", err)
-		}
-		if got := factoryQueuedCards(root); got != 2 {
-			t.Errorf("factoryQueuedCards = %d, want 2 (queued only)", got)
-		}
-	})
 }

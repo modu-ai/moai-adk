@@ -33,10 +33,10 @@ func TestFactoryLeadNoticeCarriesWorkerLinesSocketAndGLMSubstitute(t *testing.T)
 	for _, want := range []string{
 		"run abc123",
 		"lead-abc123",
-		"moai cc -f 3 --name worker-1",
-		"moai cc -f 3 --name worker-2",
-		"moai cc -f 3 --name worker-3",
-		"moai glm -f 3 --name",
+		"moai cc -k 3 --name worker-1",
+		"moai cc -k 3 --name worker-2",
+		"moai cc -k 3 --name worker-3",
+		"moai glm -k 3 --name",
 		"/tmp/moai-kanban-abc123",
 	} {
 		if !strings.Contains(notice, want) {
@@ -44,7 +44,7 @@ func TestFactoryLeadNoticeCarriesWorkerLinesSocketAndGLMSubstitute(t *testing.T)
 		}
 	}
 	// The count must be exact — an off-by-one fan-out misaddresses workers.
-	if got := strings.Count(notice, "moai cc -f 3 --name worker-"); got != 3 {
+	if got := strings.Count(notice, "moai cc -k 3 --name worker-"); got != 3 {
 		t.Errorf("launch line count = %d, want 3:\n%s", got, notice)
 	}
 }
@@ -57,7 +57,7 @@ func TestFactoryLeadNoticeWorkerCountDrivesLineCount(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "xyz9")
 
-	if got := strings.Count(factoryBootstrapNotice("", langEnglish), "moai cc -f 1 --name worker-"); got != 1 {
+	if got := strings.Count(factoryBootstrapNotice("", langEnglish), "moai cc -k 1 --name worker-"); got != 1 {
 		t.Errorf("N=1 launch line count = %d, want 1", got)
 	}
 }
@@ -149,29 +149,17 @@ func TestFactoryMessagesLocaleFallback(t *testing.T) {
 	}
 }
 
-// TestFactoryLeadNoticeCarriesLoopDiscipline is the t85 codification AC: the
-// lead notice must carry the loop instruction (poll the backlog queue, pick a
-// card when a slot is free, dispatch, repeat), the stagger-spawn discipline,
-// and the no-model-override rule — with the protocol tokens (queue path,
-// command, env names) verbatim in every locale's copy — plus the LIVE data
-// lines: the queued-card count read from the backlog and the free-slot list
-// read from the worker registry under root.
-func TestFactoryLeadNoticeCarriesLoopDiscipline(t *testing.T) {
+// TestFactoryLeadNoticeCarriesDispatchDiscipline is the t85 codification AC
+// (v1.2.0): the lead notice carries the FACTORY-specific dispatch discipline —
+// card-class routing (A/B wholesale, C serial 3-stage), the foreman handoff
+// line, the fan-out-only stagger rule (workflow auto-stagger explicitly
+// excluded), and the no-model-override rule — plus the live free-slot line.
+// It deliberately does NOT teach queue polling: that loop is the kanban
+// foreman's (t96), and a second polling protocol here would conflict.
+func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 	clearKanbanEnv(t)
 
 	root := t.TempDir()
-	// Two queued cards (plus one picked, one dropped — neither counts).
-	if err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items = []kanban.BacklogItem{
-			{ID: "t1", State: kanban.BacklogStateQueued},
-			{ID: "t2", State: kanban.BacklogStatePicked},
-			{ID: "t3", State: kanban.BacklogStateQueued},
-			{ID: "t4", State: kanban.BacklogStateDropped},
-		}
-		return nil
-	}); err != nil {
-		t.Fatalf("seed backlog: %v", err)
-	}
 	// worker-2 claimed by THIS test process — a pid that is genuinely alive,
 	// so slot 2 reads busy without a probe seam.
 	if err := kanban.SaveFactoryRegistry(kanban.FactoryRegistryPath(root), map[string]kanban.FactoryWorkerEntry{
@@ -185,50 +173,52 @@ func TestFactoryLeadNoticeCarriesLoopDiscipline(t *testing.T) {
 
 	notice := factoryBootstrapNotice(root, langEnglish)
 	for _, want := range []string{
-		".moai/state/kanban/backlog.json",
-		"moai todo list",
-		"SendMessage",
+		"A-class and B-class cards are fanned out WHOLESALE",
+		"serial 3-stage path",
+		"plan -> run -> sync",
+		"kanban foreman loop (bare `/loop`)",
 		"started producing output",
 		"cache-aware-execution directive 2",
+		"FACTORY fan-out only",
+		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
 		"No model override",
 		"ANTHROPIC_DEFAULT_*_MODEL",
-		"Factory backlog: 2 waiting",
 		"Free worker slots right now: worker-1, worker-3.",
 	} {
 		if !strings.Contains(notice, want) {
-			t.Errorf("lead notice missing loop-discipline token %q:\n%s", want, notice)
+			t.Errorf("lead notice missing dispatch-discipline token %q:\n%s", want, notice)
+		}
+	}
+	// The t96-absorbed content must NOT come back: no queue-polling protocol.
+	for _, gone := range []string{"moai todo list", ".moai/state/kanban/backlog.json", "poll the backlog queue"} {
+		if strings.Contains(notice, gone) {
+			t.Errorf("lead notice re-teaches foreman-owned polling (%q) — t96 absorbs it:\n%s", gone, notice)
 		}
 	}
 }
 
-// TestFactoryLeadNoticeLoopDisciplineKorean asserts the ko locale carries the
-// same codification — localized prose around the same verbatim protocol
-// tokens, and the same live data lines.
-func TestFactoryLeadNoticeLoopDisciplineKorean(t *testing.T) {
+// TestFactoryLeadNoticeDispatchDisciplineKorean asserts the ko locale carries
+// the same codification — localized prose around the same verbatim protocol
+// tokens, and the same free-slot line.
+func TestFactoryLeadNoticeDispatchDisciplineKorean(t *testing.T) {
 	clearKanbanEnv(t)
 
 	root := t.TempDir()
-	store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
-	if _, _, err := store.Add("card one"); err != nil {
-		t.Fatalf("seed backlog: %v", err)
-	}
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
 	notice := factoryBootstrapNotice(root, "ko")
 	for _, want := range []string{
-		".moai/state/kanban/backlog.json",
-		"moai todo list",
-		"SendMessage",
-		"ANTHROPIC_DEFAULT_*_MODEL",
-		"cache-aware-execution directive 2",
+		"`/loop`",
+		"plan -> run -> sync",
+		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
 		"모델 오버라이드 금지",
-		"팩토리 백로그: 1장 대기 중",
+		"ANTHROPIC_DEFAULT_*_MODEL",
 		"현재 빈 워커 슬롯: worker-1, worker-2.",
 	} {
 		if !strings.Contains(notice, want) {
-			t.Errorf("ko lead notice missing loop-discipline token %q:\n%s", want, notice)
+			t.Errorf("ko lead notice missing dispatch-discipline token %q:\n%s", want, notice)
 		}
 	}
 }

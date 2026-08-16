@@ -168,7 +168,7 @@ When a Mode 6 Workflow agent or a goal-loop turn agent lacks a required input, t
 
 ### §C.4 Factory workers (default 8) are not Mode 4 fan-out
 
-`moai glm -f` factory mode runs a fleet of independent worker sessions (tmux panes), default **8** workers — an operator-side fleet size, not subagent fan-out. The count sits under the factory's own workers-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under Mode 4's advisory band: 8 is a legal fleet size precisely because these workers are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory lead (or any worker session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for Mode 4 (§C.2).
+`moai glm -k <N>` factory mode runs a fleet of independent worker sessions (tmux panes) — N is an operator-side fleet size (the count-less worker entry, a bare `-k --name worker-<i>`, defaults to 8), not subagent fan-out. The count sits under the factory's own workers-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under Mode 4's advisory band: 8 is a legal fleet size precisely because these workers are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory lead (or any worker session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for Mode 4 (§C.2).
 
 ---
 

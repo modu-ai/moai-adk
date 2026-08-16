@@ -36,7 +36,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f <N>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -k <N>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -71,22 +71,25 @@ Kanban Mode:
                                 held by a live session is bumped to the next
                                 free number (plan-1, plan-2, ...).
 
-Factory Mode:
-  -f, --factory [N]             Enter as the LEAD of a factory run with N
-                                numbered workers. N is optional and defaults
-                                to 8 when omitted. The lead polls the backlog
-                                queue and dispatches cards to free workers over
-                                cross-session messages; the workers are
-                                launched by hand, one per terminal,
-                                each as: moai glm -f <N> --name worker-<i>
-  -f [N] --name worker-<i>      Enter as WORKER <i> of an existing factory run.
+Factory Mode (the same -k token, with a worker count):
+  -k <N>                       Enter as the LEAD of a factory run with N
+                                numbered workers. The lead routes operator-
+                                picked cards to free workers over cross-session
+                                messages — A/B-class cards wholesale to one
+                                worker, C-class cards a serial 3-stage path.
+                                The workers are launched by hand, one per
+                                terminal, each as: moai glm -k <N> --name worker-<i>
+  -k <N> --name worker-<i>     Enter as WORKER <i> of an existing factory run.
                                 A worker number whose label is held by a live
                                 session is bumped to the next free number.
+                                A bare -k --name worker-<i> (no N) takes the
+                                default of 8 workers.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban chain
-  above. Today's -f is a NEW feature — a numbered worker fan-out — and shares
-  nothing with that predecessor beyond the recycled letter.
+  -k/--kanban in #1513 (7f61332ef) and now drives the kanban chain above.
+  -f briefly returned as the factory fan-out flag and was RETIRED again:
+  the factory is entered with 'moai glm -k <N>' — the same -k, carrying a
+  worker count. Any -f/--factory token is an error today.
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
@@ -103,9 +106,8 @@ Examples:
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
   moai glm -k --name sync-abc123   # Kanban companion on GLM
-  moai glm -f              # Factory lead on GLM: default 8 workers
-  moai glm -f 4            # Factory lead on GLM: announces worker-1..worker-4
-  moai glm -f 4 --name worker-2    # Factory worker 2 of a 4-worker run
+  moai glm -k 4            # Factory lead on GLM: announces worker-1..worker-4
+  moai glm -k 4 --name worker-2    # Factory worker 2 of a 4-worker run
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -196,29 +198,32 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-BOOTSTRAP-001: -k is kanban membership whose role is
-	// disambiguated by --name. See cc.go for the full rationale and truth
-	// table; glm mirrors cc exactly except for the backend constant.
-	specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs)
-	filteredArgs = kanbanArgs
-	// SPEC-FACTORY-WORKER-FANOUT-001: -f <N> is factory membership. See cc.go
-	// for the full rationale; glm mirrors cc exactly except for the backend
-	// constant, including the -k/-f mutual exclusion.
-	factoryWorkers, factoryEnabled, factoryArgs, err := parseFactoryFlag(filteredArgs)
+	// SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0: the -f/--factory entry flag was
+	// RETIRED — the factory is entered with the same -k carrying a worker
+	// count. A retired token errors here rather than falling through to the
+	// backend. See cc.go for the full rationale; glm mirrors cc exactly
+	// except for the backend constant.
+	if err := rejectRetiredFactoryFlag(filteredArgs); err != nil {
+		return err
+	}
+	// SPEC-FACTORY-BOOTSTRAP-001 + SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0:
+	// ONE -k token, two shapes — the four-role kanban chain (bare -k or
+	// -k SPEC-ID, role disambiguated by --name) and the numbered factory
+	// fan-out (-k N, or -k plus a worker-shape --name with the default
+	// count). See cc.go for the truth table; glm mirrors cc exactly except
+	// for the backend constant.
+	entry, err := parseKanbanFlag(filteredArgs)
 	if err != nil {
 		return err
 	}
-	filteredArgs = factoryArgs
-	if err := rejectConflictingModes(kanbanEnabled, factoryEnabled); err != nil {
-		return err
-	}
+	filteredArgs = entry.Rest
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryWorker := parseFactoryWorkerLabel(filteredArgs)
-	switch resolveFactoryBranch(factoryEnabled, isFactoryWorker) {
+	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryWorker) {
 	case factoryBranchLead:
 		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterFactoryLeadMode(factoryWorkers, leadLabel)()
-		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
+		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
+		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
 		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
@@ -230,21 +235,21 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// must reach the backend argv.
 		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, factoryWorkers)()
-		recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleWorker)
+		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
+		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleWorker)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
 	}
-	if !factoryEnabled {
-		switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
+	if !entry.FactoryEnabled {
+		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
 		case kanbanBranchLead:
 			// See cc.go: the operator's lead run id is adopted rather than replaced.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(specID, leadLabel)()
-			recordKanbanSession(specID, kanban.BackendGLM, kanban.RoleLead)
+			defer enterKanbanMode(entry.Spec, leadLabel)()
+			recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
 			// See cc.go: glm mirrors the lead branch exactly.
 			filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
@@ -258,7 +263,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
-			recordKanbanSession(specID, kanban.BackendGLM, companionRole(finalLabel))
+			recordKanbanSession(entry.Spec, kanban.BackendGLM, companionRole(finalLabel))
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)

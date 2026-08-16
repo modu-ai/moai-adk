@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,49 +32,117 @@ const (
 	kanbanFlagShort = "-k"
 )
 
+// kanbanFlagUsageError names every accepted -k shape. It is the error text for
+// an invalid SUPPLIED value and the reference the help texts paraphrase.
+const kanbanFlagUsageError = "-k/--kanban takes a SPEC identifier (e.g. -k SPEC-X-001), " +
+	"a worker count of 1 or more (e.g. -k 4) for Factory Mode, " +
+	"or no argument for the plain kanban lead"
+
 // kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
 // `moai cg` rejection. A mixed leader/teammate backend contradicts the
 // one-session / one-backend / one-chain premise, so the invocation is rejected
 // rather than adapted.
 const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 
-// parseKanbanFlag extracts --kanban / -k and its optional SPEC identifier
-// from args, returning the identifier, whether Kanban Mode was requested, and
-// the remaining args with the consumed tokens removed.
+// kanbanEntryParse is the unified -k/--kanban entry parse (v1.2.0): ONE flag
+// token selects one of two session shapes —
+//
+//	-k                  → the four-role kanban chain (lead branch)
+//	-k SPEC-ID          → the kanban chain tied to a SPEC
+//	-k N (N ≥ 1)        → Factory Mode with N numbered workers
+//	-k --name worker-<n> → Factory Mode as worker n; the count defaults to
+//	                       config.DefaultFactoryWorkers because the
+//	                       worker-shape name selected the factory with no
+//	                       count supplied (a bare -k alone is the kanban lead,
+//	                       so a count-less FACTORY lead does not exist)
+//
+// The numeric-positional discriminator is unambiguous in both directions: a
+// SPEC identifier is never a bare integer, and a bare integer is never a
+// meaningful SPEC identifier. FactoryEnabled implies KanbanEnabled (the -k
+// token was present); the launcher branches on FactoryEnabled first.
+type kanbanEntryParse struct {
+	Spec           string   // non-numeric positional — the kanban SPEC identifier
+	KanbanEnabled  bool     // -k present (any shape)
+	FactoryEnabled bool     // -k selected the factory (numeric count or worker-shape name)
+	FactoryWorkers int      // the factory count (explicit or the default)
+	Rest           []string // args with -k and its consumed value removed
+}
+
+// parseKanbanFlag extracts --kanban / -k and its optional value from args.
 //
 // The SPEC identifier is optional: its absence means the chain begins at
 // plan-phase from the operator's first prompt, which is a valid entry, not an
 // error. A token that looks like a flag is never consumed as the identifier.
+// A SUPPLIED value that is numeric but invalid (zero/negative) is an error —
+// it names a count the operator clearly intended, and silently treating it as
+// a kanban SPEC identifier would hide the typo.
 //
 // The `--` discipline matches stripSpawnFlag, parseProfileFlag, and
 // normalizeWorktreeFlag exactly: iterate, break at the pass-through marker, and
 // forward everything from that marker onward verbatim. Both commands set
 // DisableFlagParsing, so a cobra flag registration would be silently inert —
 // this manual parser is the only mechanism available.
-func parseKanbanFlag(args []string) (spec string, enabled bool, rest []string) {
-	filtered := make([]string, 0, len(args))
+func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
+	p.Rest = make([]string, 0, len(args))
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
-			filtered = append(filtered, args[i:]...)
+			p.Rest = append(p.Rest, args[i:]...)
 			break
 		}
-		if arg != kanbanFlagLong && arg != kanbanFlagShort {
-			filtered = append(filtered, arg)
+
+		var value string
+		hasValue := false
+		joined := false
+		switch {
+		case arg == kanbanFlagLong || arg == kanbanFlagShort:
+			// Consume a following positional token as the value. A flag or
+			// the pass-through marker belongs to someone else.
+			if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
+				value, hasValue = args[next], true
+				i = next
+			}
+		case strings.HasPrefix(arg, kanbanFlagLong+"="), strings.HasPrefix(arg, kanbanFlagShort+"="):
+			// The `=`-joined form exists for the FACTORY COUNT only (v1.2.0);
+			// the kanban SPEC identifier never had one.
+			value = strings.TrimPrefix(strings.TrimPrefix(arg, kanbanFlagShort+"="), kanbanFlagLong+"=")
+			hasValue, joined = true, true
+		default:
+			p.Rest = append(p.Rest, arg)
 			continue
 		}
 
-		enabled = true
-		// Consume a following positional token as the SPEC identifier. A flag
-		// or the pass-through marker belongs to someone else.
-		if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
-			spec = args[next]
-			i = next
+		p.KanbanEnabled = true
+		if !hasValue {
+			continue
+		}
+		if n, perr := strconv.Atoi(value); perr == nil {
+			if n < 1 {
+				return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
+			}
+			p.FactoryEnabled = true
+			p.FactoryWorkers = n
+			continue
+		}
+		if joined {
+			return p, fmt.Errorf("%s, got %q", kanbanFlagUsageError, value)
+		}
+		p.Spec = value
+	}
+
+	// A bare -k plus a worker-shape --name selected the factory with no count
+	// supplied — the count-less factory entry, resolved to the default here.
+	// parseFactoryWorkerLabel stops at the pass-through marker like this
+	// parser does, so a `-- --name worker-1` passthrough never selects it.
+	if p.KanbanEnabled && !p.FactoryEnabled {
+		if _, isWorker := parseFactoryWorkerLabel(args); isWorker {
+			p.FactoryEnabled = true
+			p.FactoryWorkers = config.DefaultFactoryWorkers
 		}
 	}
 
-	return spec, enabled, filtered
+	return p, nil
 }
 
 // @MX:ANCHOR: [AUTO] the deferred restore is a correctness requirement, not hygiene
@@ -453,7 +522,15 @@ func leadNameArgs(args []string) []string {
 // rejectKanbanOnCG returns the sentinel-bearing error when a kanban token
 // appears in a `moai cg` invocation, and nil otherwise.
 func rejectKanbanOnCG(args []string) error {
-	if _, enabled, _ := parseKanbanFlag(args); !enabled {
+	p, err := parseKanbanFlag(args)
+	if err != nil {
+		return err
+	}
+	// v1.2.0: the FACTORY shapes of -k (a numeric count, or a worker-shape
+	// name) are the factory rejection's to answer (rejectFactoryOnCG fires
+	// right after this one); only the plain kanban shapes carry the kanban
+	// sentinel here.
+	if !p.KanbanEnabled || p.FactoryEnabled {
 		return nil
 	}
 	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+

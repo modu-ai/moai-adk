@@ -81,22 +81,26 @@ func factoryWorkersEnv() int {
 // (a) the run id and the session name that must accompany it; (b) why
 // bootstrap is manual and how worker names are assigned; (c) the N worker
 // launch lines; (d) the GLM substitute guidance and the leader socket path;
-// (e) the lead loop — the codified discipline (t85): poll the backlog queue,
-// pick a card only when a slot is free, stagger the worker activation, and
-// carry no model override; (f) the standing data (queued count, free-slot
-// list) plus the inbound-automation notice. There is no SPEC line — the
-// factory flag carries a worker count, not a SPEC identifier.
+// (e) the dispatch discipline — card-class routing (A/B wholesale, C serial
+// 3-stage), the fan-out-only stagger rule, and the no-model-override rule;
+// (f) the free-slot line plus the inbound-automation notice. There is no SPEC
+// line — the factory entry carries a worker count, not a SPEC identifier.
 //
-// The worker launch lines each carry -f <N> (the count travels in the worker
-// command so the worker knows the run's size) and a worker-<i> name — the
-// lead's addressing vocabulary, printed here so the operator's paste and the
-// lead's dispatch target are the same string by construction.
+// The worker launch lines each carry -k <N> (the unified entry token; the
+// count travels in the worker command so the worker knows the run's size) and
+// a worker-<i> name — the lead's addressing vocabulary, printed here so the
+// operator's paste and the lead's dispatch target are the same string by
+// construction.
 //
-// The loop block is the codification the launcher cannot provide any other
-// way: the launcher syscall.Exec's in place, so the lead loop is a
-// SESSION-side loop driven by this injected context — Go supplies the data
-// (queue count, free slots via internal/kanban) and the discipline text, and
-// the lead session executes it.
+// QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
+// loop over the backlog queue is the kanban foreman's (the bare /loop driver
+// + moai-kanban-foreman skill, t96): re-teaching it here would hand the
+// factory lead a second, conflicting polling protocol. This notice carries
+// only what is factory-specific — how a PICKED card is routed to lanes, how
+// lanes are activated, and what a dispatch must never carry. The free-slot
+// line stays because the stagger rule names free-slot workers; the
+// queued-count line went with the polling instruction (the foreman reads the
+// queue itself).
 func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	if runID == "" || workers < 1 {
 		return ""
@@ -118,7 +122,7 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	// (c) the worker launch lines, one per worker.
 	launch := make([]string, 0, workers)
 	for i := 1; i <= workers; i++ {
-		launch = append(launch, fmt.Sprintf("moai cc -f %d --name %s", workers, kanban.FactoryWorkerLabel(i)))
+		launch = append(launch, fmt.Sprintf("moai cc -k %d --name %s", workers, kanban.FactoryWorkerLabel(i)))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
@@ -130,17 +134,15 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(backend, "\n"))
 
-	// (e) the lead loop — localized prose with verbatim protocol tokens
-	// (queue path, command, env names); see factoryMessages for why the
-	// tokens are not translated.
-	blocks = append(blocks, m.leadLoop)
+	// (e) the dispatch discipline — localized prose with verbatim protocol
+	// tokens; see factoryMessages for why the tokens are not translated.
+	blocks = append(blocks, strings.Join([]string{m.leadClasses, m.leadStagger, m.leadNoOverride}, "\n"))
 
-	// (f) the standing data and the inbound-automation notice, on the same
-	// injected-settings discriminator as the kanban lead. The queue count
-	// and the free-slot list are computed HERE from root so the lead's
-	// opening screen names the work and the capacity the run actually has —
-	// the same standing-context line shape the kanban lead's backlog summary
-	// established. Both reads are fail-open (0 / all-free) on any error.
+	// (f) the free-slot line and the inbound-automation notice, on the same
+	// injected-settings discriminator as the kanban lead. The slot list is
+	// computed HERE from root (fail-open to all-free on any error) because
+	// the stagger rule above names free-slot workers — the operator's
+	// opening screen names the capacity the run actually has.
 	slots := kanban.FactoryFreeSlots(root, workers, kanban.FactoryProcessAlive)
 	slotLine := m.leadSlotsNone
 	if len(slots) > 0 {
@@ -151,7 +153,6 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 		slotLine = strings.Join(labels, ", ")
 	}
 	var context []string
-	context = append(context, fmt.Sprintf(m.leadQueueSummary, kanban.QueuedBacklogCountForRoot(root)))
 	context = append(context, fmt.Sprintf(m.leadFreeSlots, slotLine))
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)
