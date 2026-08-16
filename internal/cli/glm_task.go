@@ -5,8 +5,10 @@
 // hands the call to a background goroutine and returns a job id (background
 // form). It mirrors the codex task surface (codex_task.go) — the structural
 // SSOT for the delegation-family task layer — and sits ON TOP of the z.ai
-// plumbing in mcp_glm.go (glmHTTPClient seam, glmMessagesRequest type, endpoint
-// constants); it opens no second HTTP client.
+// plumbing in mcp_glm.go (glmMessagesRequest type, endpoint + header
+// constants, the glmHTTPDoer abstraction). Its HTTP CLIENT seam is
+// deliberately its own (glmTaskHTTPClient, no client Timeout) so the task
+// bound is not shadowed by the audit client's ceiling.
 //
 // Two properties are load-bearing (mirrored from the codex surface):
 //
@@ -14,6 +16,13 @@
 //     detached subprocess. Every in-flight job is lost when the server exits,
 //     and a record found running with no glmLiveJobs entry is stale by
 //     construction — the cancel path refuses it rather than acting on it.
+//
+//   - the wall-clock bound is DefaultGLMTaskTimeout, enforced on BOTH arms via
+//     context.WithTimeout. The task path deliberately uses its own HTTP client
+//     with NO client Timeout (glmTaskHTTPClient below): http.Client.Timeout
+//     caps the ENTIRE request including the body read, so reusing the audit
+//     path's 120s client would silently re-cap the configured task bound —
+//     exactly the shadowing this seam exists to prevent.
 //
 //   - fail-open. GLM is OPTIONAL: a missing key, an unauthenticated endpoint,
 //     a transport failure, and a malformed response are all structured failed
@@ -63,6 +72,24 @@ const (
 // with no entry here is stale (a previous server lifetime), which is exactly
 // the case the cancel path refuses rather than acts on.
 var glmLiveJobs sync.Map // job id (string) → context.CancelFunc
+
+// glmTaskHTTPClient is the task-path HTTP seam. It deliberately carries NO
+// client Timeout (Timeout 0 = unbounded): DefaultGLMTaskTimeout is the sole
+// wall-clock bound on a glm_task call and is enforced through the request
+// context in BOTH arms (sync and background), so the configured bound is the
+// one that actually fires. A client Timeout here would shadow it the way the
+// shared audit client's 120s ceiling (glmAuditHTTPTimeout) otherwise would.
+// The audit path keeps glmHTTPClient and its 120s ceiling untouched — the two
+// surfaces bound different callers and stay deliberately separate.
+var glmTaskHTTPClient glmHTTPDoer = &http.Client{}
+
+// glmTaskTimeoutMessage names the bound that ended a call. It reads the
+// duration at call time rather than baking it in, so a shortened bound
+// reports the value that actually fired (mirrors codexTaskTimeoutMessage).
+func glmTaskTimeoutMessage() string {
+	return "glm_task timed out after " + config.DefaultGLMTaskTimeout.String() +
+		" (the bound glm_task imposes on its own calls); the request was abandoned"
+}
 
 // GLMTaskResult is the structured result glm_task returns. It mirrors
 // CodexTaskResult's shape minus the fields with no GLM counterpart
@@ -141,6 +168,12 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	}
 
 	if !background {
+		// The task bound applies to the sync form too (the codex mirror's
+		// runCodexTaskTurn bounds both forms): DefaultGLMTaskTimeout is the
+		// sole wall-clock cap, enforced here because the caller's context may
+		// carry no deadline at all and the task-path HTTP client carries none.
+		ctx, cancel := context.WithTimeout(ctx, config.DefaultGLMTaskTimeout)
+		defer cancel()
 		output, err := callGLMTask(ctx, key, model, prompt, system, maxTokens, token)
 		if err != nil {
 			result.Status = glmJobStatusFailed
@@ -195,8 +228,9 @@ func runGLMBackgroundJob(ctx context.Context, cancel context.CancelFunc, registr
 		cancel() // release the WithCancel context; idempotent once fired
 	}()
 
-	// The bound the tool imposes on its own calls: the HTTP client's 120s
-	// ceiling bounds one connection, not the job as a whole.
+	// The bound the tool imposes on its own calls — same constant, same
+	// enforcement, as the sync arm above. It is REAL: glmTaskHTTPClient
+	// carries no client Timeout, so nothing shadows it.
 	ctx, cancelTimeout := context.WithTimeout(ctx, config.DefaultGLMTaskTimeout)
 	defer cancelTimeout()
 
@@ -224,14 +258,18 @@ func runGLMBackgroundJob(ctx context.Context, cancel context.CancelFunc, registr
 // callGLMTask posts the prompt to z.ai and returns the model's first text
 // content block as-is — a task produces plain text, not a ReviewOutput, so no
 // JSON-schema parsing or fence-stripping applies. Every failure is a named
-// error the caller renders into a structured failed result (fail-open).
+// error the caller renders into a structured failed result (fail-open); a
+// deadline expiry is reported by name via glmTaskTimeoutMessage.
 //
-// It is the task-layer sibling of callGLMAudit: the z.ai plumbing (glmHTTPClient
-// seam, glmMessagesRequest type, endpoint + header constants) is REUSED, not
-// forked — the two differ in what they do with the response (audit parses a
-// ReviewOutput and fails open to VerdictInconclusive; task returns raw text
-// and reports errors upward), which is why the send cores are siblings rather
-// than one shared function.
+// It is the task-layer sibling of callGLMAudit: the z.ai plumbing
+// (glmMessagesRequest type, endpoint + header constants, the glmHTTPDoer
+// abstraction) is REUSED, not forked — but the CLIENT seam is deliberately
+// separate (glmTaskHTTPClient, no client Timeout) so DefaultGLMTaskTimeout
+// is the bound that governs, not the audit client's 120s ceiling. The two
+// paths differ in what they do with the response (audit parses a ReviewOutput
+// and fails open to VerdictInconclusive; task returns raw text and reports
+// errors upward), which is why the send cores are siblings rather than one
+// shared function.
 func callGLMTask(ctx context.Context, key, model, prompt, system string, maxTokens int, token mcp.ProgressToken) (string, error) {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
@@ -253,8 +291,13 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
 	notifyMCPProgress(ctx, token, 0.1, "z.ai에 태스크 요청 전송 중...")
-	resp, err := glmHTTPClient.Do(httpReq)
+	resp, err := glmTaskHTTPClient.Do(httpReq)
 	if err != nil {
+		// The task bound firing is a named, structured failure — never a raw
+		// "Client.Timeout exceeded" and never a Go error escaping the handler.
+		if errors.Is(err, context.DeadlineExceeded) {
+			return "", errors.New(glmTaskTimeoutMessage())
+		}
 		return "", fmt.Errorf("z.ai request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()

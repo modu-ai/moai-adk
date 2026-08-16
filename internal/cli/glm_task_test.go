@@ -68,6 +68,36 @@ func (s *blockingGLMDoer) Do(req *http.Request) (*http.Response, error) {
 // unblock releases the blocked Do so a job goroutine waiting on it can finish.
 func (s *blockingGLMDoer) unblock() { s.once.Do(func() { close(s.release) }) }
 
+// withGLMTaskSeams swaps the key loader + the TASK-path HTTP client and
+// restores them on cleanup. Mirrors withGLMSeams, but for the dedicated task
+// seam: callGLMTask reads glmTaskHTTPClient (unbounded client — the bound is
+// ctx-only), NOT the audit path's glmHTTPClient, so a task test that swaps
+// only the audit seam would let the REAL client hit the network.
+func withGLMTaskSeams(t *testing.T, key string, doer glmHTTPDoer) {
+	t.Helper()
+	oldKey, oldHTTP := glmKeyLoader, glmTaskHTTPClient
+	glmKeyLoader = func() string { return key }
+	if doer != nil {
+		glmTaskHTTPClient = doer
+	}
+	t.Cleanup(func() {
+		glmKeyLoader = oldKey
+		glmTaskHTTPClient = oldHTTP
+	})
+}
+
+// withShortGLMTaskTimeout shortens the task wall-clock bound so a deadline
+// test does not wait the distributed 600s. This is the seam that proves the
+// CONSTANT governs: with the bound well under the old audit-client ceiling
+// (120s), a call that ends at the shortened bound demonstrates
+// DefaultGLMTaskTimeout is the effective cap, not a hidden client Timeout.
+func withShortGLMTaskTimeout(t *testing.T, d time.Duration) {
+	t.Helper()
+	prev := config.DefaultGLMTaskTimeout
+	config.DefaultGLMTaskTimeout = d
+	t.Cleanup(func() { config.DefaultGLMTaskTimeout = prev })
+}
+
 // callGLMTaskTool invokes the handler with the given arguments. Named for the
 // TOOL (the codex sibling is callCodexTask) so it cannot collide with the
 // production HTTP core callGLMTask.
@@ -115,7 +145,7 @@ func startHangingGLMJob(t *testing.T, root string) (string, *glmJobRegistry) {
 	// family; withCodexProjectDir swaps exactly that seam.
 	withCodexProjectDir(t, root)
 	doer := newBlockingGLMDoer()
-	withGLMSeams(t, "test-glm-key", doer)
+	withGLMTaskSeams(t, "test-glm-key", doer)
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "summarize the queue", "background": true})
 	if res.IsError {
@@ -151,7 +181,7 @@ func startHangingGLMJob(t *testing.T, root string) (string, *glmJobRegistry) {
 // token bound.
 func TestGLMTask_SyncReturnsOutput(t *testing.T) {
 	stub := &stubGLMDoer{body: glmTextResp("the answer is 42")}
-	withGLMSeams(t, "test-glm-key", stub)
+	withGLMTaskSeams(t, "test-glm-key", stub)
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "what is the answer"})
 	if res.IsError {
@@ -197,7 +227,7 @@ func TestGLMTask_SyncReturnsOutput(t *testing.T) {
 // dropped or overridden by the resolver.
 func TestGLMTask_ForwardsSystemModelAndMaxTokens(t *testing.T) {
 	stub := &stubGLMDoer{body: glmTextResp("ok")}
-	withGLMSeams(t, "k", stub)
+	withGLMTaskSeams(t, "k", stub)
 
 	res := callGLMTaskTool(t, map[string]any{
 		"prompt":     "do the thing",
@@ -230,7 +260,7 @@ func TestGLMTask_ForwardsSystemModelAndMaxTokens(t *testing.T) {
 // TestGLMTask_MissingPromptIsStructuredError proves a missing prompt is the
 // one caller-actionable fault that sets IsError (mirroring codex_task).
 func TestGLMTask_MissingPromptIsStructuredError(t *testing.T) {
-	withGLMSeams(t, "k", &stubGLMDoer{body: glmTextResp("x")})
+	withGLMTaskSeams(t, "k", &stubGLMDoer{body: glmTextResp("x")})
 
 	res := callGLMTaskTool(t, map[string]any{})
 	if !res.IsError {
@@ -245,7 +275,7 @@ func TestGLMTask_MissingPromptIsStructuredError(t *testing.T) {
 // key check short-circuits before z.ai.
 func TestGLMTask_FailOpenOnMissingKey(t *testing.T) {
 	stub := &stubGLMDoer{body: glmTextResp("x")}
-	withGLMSeams(t, "", stub)
+	withGLMTaskSeams(t, "", stub)
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "p"})
 	if res.IsError {
@@ -266,7 +296,7 @@ func TestGLMTask_FailOpenOnMissingKey(t *testing.T) {
 // TestGLMTask_FailOpenOnHTTPError proves a transport failure is a structured
 // failed result, not a hard error.
 func TestGLMTask_FailOpenOnHTTPError(t *testing.T) {
-	withGLMSeams(t, "k", &stubGLMDoer{err: errBoom})
+	withGLMTaskSeams(t, "k", &stubGLMDoer{err: errBoom})
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "p"})
 	if res.IsError {
@@ -284,7 +314,7 @@ func TestGLMTask_FailOpenOnHTTPError(t *testing.T) {
 // TestGLMTask_FailOpenOnUnauthenticatedStatus proves a 401 from z.ai is a
 // structured failed result (an unauthenticated GLM is an unavailable GLM).
 func TestGLMTask_FailOpenOnUnauthenticatedStatus(t *testing.T) {
-	withGLMSeams(t, "k", &stubGLMDoer{status: http.StatusUnauthorized, body: "{}"})
+	withGLMTaskSeams(t, "k", &stubGLMDoer{status: http.StatusUnauthorized, body: "{}"})
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "p"})
 	if res.IsError {
@@ -309,7 +339,7 @@ func TestGLMTask_FailOpenOnMalformedResponse(t *testing.T) {
 		"empty text block": glmTextResp(""),
 	} {
 		t.Run(name, func(t *testing.T) {
-			withGLMSeams(t, "k", &stubGLMDoer{body: body})
+			withGLMTaskSeams(t, "k", &stubGLMDoer{body: body})
 
 			res := callGLMTaskTool(t, map[string]any{"prompt": "p"})
 			if res.IsError {
@@ -334,7 +364,7 @@ func TestGLMTask_FailOpenOnMalformedResponse(t *testing.T) {
 func TestGLMTask_BackgroundLifecycle(t *testing.T) {
 	root := t.TempDir()
 	withCodexProjectDir(t, root)
-	withGLMSeams(t, "k", &stubGLMDoer{body: glmTextResp("background done")})
+	withGLMTaskSeams(t, "k", &stubGLMDoer{body: glmTextResp("background done")})
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "long task", "background": true})
 	if res.IsError {
@@ -377,7 +407,7 @@ func TestGLMTask_BackgroundLifecycle(t *testing.T) {
 func TestGLMTask_BackgroundRecordRedactsSecrets(t *testing.T) {
 	root := t.TempDir()
 	withCodexProjectDir(t, root)
-	withGLMSeams(t, "k", &stubGLMDoer{body: glmTextResp("ok")})
+	withGLMTaskSeams(t, "k", &stubGLMDoer{body: glmTextResp("ok")})
 
 	res := callGLMTaskTool(t, map[string]any{
 		"prompt":     "use api_key=supersecret123 then summarize the queue",
@@ -408,6 +438,72 @@ func TestGLMTask_BackgroundRecordRedactsSecrets(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	t.Fatalf("job %s never reached completed", jobID)
+}
+
+// ─── the task wall-clock bound (F1 regression) ───
+
+// TestGLMTask_SyncDeadlineGovernsCall proves DefaultGLMTaskTimeout is the
+// EFFECTIVE bound on the SYNC arm: with the constant shortened to 100ms (well
+// under the audit client's old 120s ceiling) and a doer that blocks until its
+// request context is revoked, the call must return the deadline failure AT the
+// shortened bound — naming the bound that fired and coming back in seconds,
+// not minutes. Against the defect this guards, the sync arm carried no
+// WithTimeout at all and the shared 120s client was the only cap.
+func TestGLMTask_SyncDeadlineGovernsCall(t *testing.T) {
+	withShortGLMTaskTimeout(t, 100*time.Millisecond)
+	withGLMTaskSeams(t, "k", newBlockingGLMDoer())
+
+	start := time.Now()
+	res := callGLMTaskTool(t, map[string]any{"prompt": "slow task"})
+	elapsed := time.Since(start)
+
+	if res.IsError {
+		t.Fatalf("a deadline expiry must be a structured failed result, not IsError: %+v", res)
+	}
+	if elapsed >= 2*time.Second {
+		t.Errorf("the call took %s; the shortened task bound (100ms) must govern, not a client ceiling", elapsed)
+	}
+	got := structuredMap(t, res)
+	if st, _ := got["status"].(string); st != glmJobStatusFailed {
+		t.Errorf("status = %q, want %q (deadline ⇒ fail-open)", st, glmJobStatusFailed)
+	}
+	if errText, _ := got["error"].(string); !strings.Contains(errText, "timed out after 100ms") {
+		t.Errorf("error = %q, want it to name the bound that fired (timed out after 100ms)", errText)
+	}
+}
+
+// TestGLMTask_BackgroundDeadlineRecordsFailed is the background-arm
+// equivalent: the shortened bound ends the job's in-flight call and the
+// goroutine records the failure with the bound named.
+func TestGLMTask_BackgroundDeadlineRecordsFailed(t *testing.T) {
+	root := t.TempDir()
+	withCodexProjectDir(t, root)
+	withShortGLMTaskTimeout(t, 100*time.Millisecond)
+	withGLMTaskSeams(t, "k", newBlockingGLMDoer())
+
+	res := callGLMTaskTool(t, map[string]any{"prompt": "slow background task", "background": true})
+	if res.IsError {
+		t.Fatalf("background glm_task IsError: %+v", res)
+	}
+	jobID, _ := structuredMap(t, res)["job_id"].(string)
+	if jobID == "" {
+		t.Fatal("background glm_task returned no job id")
+	}
+	t.Cleanup(func() { waitForGLMJobToStop(t, jobID) })
+
+	reg := newGLMJobRegistry(root)
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		rec, err := reg.load(jobID)
+		if err == nil && rec.Status == glmJobStatusFailed {
+			if !strings.Contains(rec.Error, "timed out after 100ms") {
+				t.Errorf("recorded error = %q, want it to name the bound that fired", rec.Error)
+			}
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("job %s never reached failed within the shortened bound", jobID)
 }
 
 // ─── model resolution ───

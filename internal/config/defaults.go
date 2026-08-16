@@ -349,13 +349,14 @@ const DefaultCodexJobCancelGrace = 5 * time.Second
 // long enough not to spin.
 const DefaultCodexJobCancelPoll = 25 * time.Millisecond
 
-// DefaultGLMTaskTimeout bounds ONE glm_task call — sync or background. It
-// mirrors DefaultCodexTaskTimeout for the GLM (z.ai) delegation family: the
-// per-request HTTP ceiling (glmAuditHTTPTimeout) bounds a single connection,
-// but a background job's outer context carries no bound of its own otherwise,
-// and the MCP host's context is whatever it supplied. Deliberately distinct
-// from the audit path's timeout so a change tuned for one family cannot
-// silently move the other.
+// DefaultGLMTaskTimeout is the sole wall-clock bound on ONE glm_task call —
+// BOTH the sync and the background arm enforce it via context.WithTimeout on
+// the request context (mirroring DefaultCodexTaskTimeout, which codex_task
+// also applies in both forms). The task-path HTTP client (glmTaskHTTPClient)
+// deliberately carries NO client Timeout, so this constant — not a hidden
+// http.Client ceiling — is what actually bounds a call; reusing the audit
+// path's 120s client (glmAuditHTTPTimeout) here would silently shadow it. The
+// audit surface keeps its own ceiling and stays untouched.
 //
 // Not a compile-time const, for the same reason DefaultCodexTaskTimeout is
 // not — and so a test can shorten it.
