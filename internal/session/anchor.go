@@ -8,22 +8,29 @@
 package session
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // LiveAnchoredSessions returns registry entries that describe LIVE sessions
-// anchored inside treePath: registered in the tree-LOCAL registry at
-// <treePath>/.moai/state/active-sessions.json with a working directory at
-// or below treePath, on this host, whose owning process is still running.
+// anchored inside treePath: a working directory at or below treePath, on
+// this host, whose owning process is still running.
 //
-// Why the tree-LOCAL registry: hooks resolve the registry path from the
-// session's own project dir (CLAUDE_PROJECT_DIR), so a lane launched via
-// `moai cc -w <name>` registers inside the worktree, not in the primary
-// checkout. A disposal invoked from the primary therefore only sees the
-// lane when it reads the target tree's registry.
+// TWO registries are consulted, because the two lane launch shapes register
+// in different places (measured 2026-08-17):
+//
+//  1. the tree-LOCAL registry (<treePath>/.moai/state/active-sessions.json)
+//     — sessions whose own project root IS the tree;
+//  2. the CALLER's project registry (CLAUDE_PROJECT_DIR, else CWD) — where
+//     `moai cc -w` lanes actually register: the launcher pins the session's
+//     project to the checkout it launched from, so the entry carrying
+//     cwd=<tree> lives in that checkout's registry while the worktree
+//     itself carries no local registry at all.
 //
 // Liveness is judged from the PID probe, with a heartbeat-freshness floor
 // (DefaultStaleMinutes) as the conservative fallback for platforms where
@@ -32,38 +39,90 @@ import (
 // carries a heartbeat hours old — the PID is what distinguishes it from a
 // zombie.
 //
-// Fail-open: an absent or unreadable registry returns nil (disposal must
-// not wedge on a corrupt registry file).
+// Fail-open: absent or unreadable registries contribute nothing (disposal
+// must not wedge on a corrupt registry file).
 //
-// Known limitation: a session that started elsewhere and entered the tree
-// mid-session (Claude Code's EnterWorktree) keeps its original registry
-// entry — its CWD field never updates on CwdChanged — so it is invisible
-// here. Only sessions that STARTED inside the tree are detected.
+// Sessions that entered the tree mid-session (Claude Code's EnterWorktree)
+// are covered once the CwdChanged hook relocates their entry CWD
+// (RelocateSession); before that relocation runs they keep their
+// launch-time CWD and stay invisible here.
 func LiveAnchoredSessions(treePath string, now time.Time) []Entry {
 	if treePath == "" {
 		return nil
 	}
-	reg := NewRegistry(filepath.Join(treePath, DefaultRegistryPath), nil)
-	entries, err := reg.Query("")
-	if err != nil {
-		return nil
-	}
+	roots := []string{treePath, callerProjectRoot()}
 	host, _ := os.Hostname()
 	stale := DefaultStaleMinutes * time.Minute
+	seen := make(map[string]bool)
 	var anchored []Entry
-	for _, e := range entries {
-		if e.Host != "" && e.Host != host {
+	for i, root := range roots {
+		if root == "" {
 			continue
 		}
-		if !pathWithinTree(e.CWD, treePath) {
+		if i > 0 && root == roots[0] {
+			continue // same tree as the tree-local source
+		}
+		reg := NewRegistry(filepath.Join(root, DefaultRegistryPath), nil)
+		entries, err := reg.Query("")
+		if err != nil {
 			continue
 		}
-		alive := e.PID > 0 && isProcessAlive(e.PID)
-		if alive || now.Sub(e.LastHeartbeat) < stale {
-			anchored = append(anchored, e)
+		for _, e := range entries {
+			if seen[e.SessionID] {
+				continue
+			}
+			if e.Host != "" && e.Host != host {
+				continue
+			}
+			if !pathWithinTree(e.CWD, treePath) {
+				continue
+			}
+			alive := e.PID > 0 && isProcessAlive(e.PID)
+			if alive || now.Sub(e.LastHeartbeat) < stale {
+				seen[e.SessionID] = true
+				anchored = append(anchored, e)
+			}
 		}
 	}
 	return anchored
+}
+
+// callerProjectRoot resolves the project root of the process asking about
+// anchors: CLAUDE_PROJECT_DIR when the runtime set it, else the working
+// directory. This is where a `moai cc -w` lane's entry lives when the
+// disposal command runs from the launching checkout.
+func callerProjectRoot() string {
+	if v := os.Getenv(config.EnvClaudeProjectDir); v != "" {
+		return v
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return wd
+}
+
+// RelocateSession updates the CWD field of the matching entry. It backs the
+// CwdChanged hook (t74): a session that enters a worktree mid-session keeps
+// its launch-time CWD otherwise, which makes it invisible to anchor
+// detection. Idempotent on a missing entry — mirrors Heartbeat
+// (REQ-COORD-004): no error when the session is not registered anywhere.
+func (r *Registry) RelocateSession(sessionID, newCwd string) error {
+	if sessionID == "" {
+		return errors.New("session registry: sessionID cannot be empty")
+	}
+	if newCwd == "" {
+		return errors.New("session registry: newCwd cannot be empty")
+	}
+	return r.withLock(func(entries []Entry) ([]Entry, error) {
+		for i := range entries {
+			if entries[i].SessionID == sessionID {
+				entries[i].CWD = newCwd
+				return entries, nil
+			}
+		}
+		return entries, nil
+	})
 }
 
 // pathWithinTree reports whether the recorded working directory child lies
