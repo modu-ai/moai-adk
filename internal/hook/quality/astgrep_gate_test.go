@@ -12,8 +12,12 @@ func TestDefaultAstGrepGateConfig(t *testing.T) {
 	if !cfg.Enabled {
 		t.Error("Enabled: want true, got false")
 	}
-	if cfg.RulesDir != ".moai/config/astgrep-rules" {
-		t.Errorf("RulesDir: want .moai/config/astgrep-rules, got %q", cfg.RulesDir)
+	// t50: RulesDir carries no code-level default. Where rules live is
+	// per-project configuration (gate.yaml ast_grep_gate.rules_dir); the
+	// template ships that key with an explicit value, so an empty RulesDir
+	// here means "unconfigured", not "fall back to a guessed path".
+	if cfg.RulesDir != "" {
+		t.Errorf("RulesDir: want empty (gate.yaml is the SSOT), got %q", cfg.RulesDir)
 	}
 	if !cfg.BlockOnError {
 		t.Error("BlockOnError: want true, got false")
@@ -34,7 +38,7 @@ func TestAstGrepGate_GateConfigIntegration(t *testing.T) {
 	if !cfg.AstGrepGate.Enabled {
 		t.Error("AstGrepGate.Enabled should be true by default")
 	}
-	if cfg.AstGrepGate.RulesDir != ".moai/config/astgrep-rules" {
-		t.Errorf("AstGrepGate.RulesDir: want .moai/config/astgrep-rules, got %q", cfg.AstGrepGate.RulesDir)
+	if cfg.AstGrepGate.RulesDir != "" {
+		t.Errorf("AstGrepGate.RulesDir: want empty (gate.yaml is the SSOT), got %q", cfg.AstGrepGate.RulesDir)
 	}
 }

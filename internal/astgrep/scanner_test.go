@@ -538,8 +538,13 @@ func TestDefaultScannerConfig_Fields(t *testing.T) {
 	if cfg.SGBinary != "sg" {
 		t.Errorf("DefaultScannerConfig().SGBinary = %q, want sg", cfg.SGBinary)
 	}
-	if cfg.RulesDir == "" {
-		t.Error("DefaultScannerConfig().RulesDir is empty")
+	// RulesDir is deliberately empty by default (t50): where a project keeps its
+	// rules is project configuration (gate.yaml ast_grep_gate.rules_dir), not a
+	// scanner-package opinion. The previous hardcoded default
+	// (".moai/config/astgrep-rules") pointed at a path that does not exist in
+	// this repository and silently produced 0-rule scans.
+	if cfg.RulesDir != "" {
+		t.Errorf("DefaultScannerConfig().RulesDir = %q, want empty (resolved by callers from gate.yaml)", cfg.RulesDir)
 	}
 	if cfg.Timeout == 0 {
 		t.Error("DefaultScannerConfig().Timeout is zero")

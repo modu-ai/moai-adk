@@ -75,6 +75,11 @@ func runCG(cmd *cobra.Command, args []string) error {
 	if err := rejectKanbanOnCG(args); err != nil {
 		return err
 	}
+	// SPEC-FACTORY-WORKER-FANOUT-001: Factory Mode is unavailable on cg for
+	// the same premise and at the same placement.
+	if err := rejectFactoryOnCG(args); err != nil {
+		return err
+	}
 
 	// --spawn: open a GLM teammate in a new tmux window and keep this session.
 	// See cc.go for the ordering rationale.

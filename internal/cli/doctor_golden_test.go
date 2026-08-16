@@ -71,6 +71,12 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// Disable the config cache so ConfigManager.Load (if reached during the
 	// doctor run) does not create .moai/state/ as a write side effect.
 	t.Setenv(config.EnvConfigCacheDisabled, "1")
+	// Pin HOME (and scrub MOAI_HOME) so the Home Disk Usage check walks an
+	// isolated empty home instead of the runner's real ~/.moai — its sizes
+	// would otherwise differ per machine and break the golden snapshots
+	// (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-008 hermeticity discipline).
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("MOAI_HOME", "")
 	// Run the doctor command from an empty temp dir so every workspace
 	// filesystem check sees a clean baseline matching the golden snapshots.
 	t.Chdir(t.TempDir())

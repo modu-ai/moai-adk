@@ -165,6 +165,34 @@ After perspective analysis, check @MX tag compliance for changed files:
 
 Report missing or outdated @MX tags as findings.
 
+## Phase 3.5: Cross-Model Convergence (audit_multi)
+
+Gating: this phase runs ONLY when the project's `audit_model` selects cross-backend convergence. The convergence call is the `mcp__moai__audit_multi` MCP tool — the codex and GLM backends review in parallel, and their verdicts fuse with the in-session Claude verdict. The mode table and the full call contract are owned by the cross-model audit usage SSOT — this section cross-references that skill and does not restate its tables. Under `audit_model` single-model or none, the phase is skipped entirely and the existing single-model path is unchanged.
+
+Owner: the Phase 2-3 reviewer (sync-auditor subagent) performs the convergence call — verdict ownership stays with the reviewer (mirrors the Phase 2 HARD rule: fan-out changes execution shape only, never verdict ownership). The orchestrator injects into the reviewer spawn (skill-routing.md §1 pattern), gated on the same audit_model condition: `At start, invoke Skill("moai-ref-cross-model-audit") for the audit_multi call contract and the independence rule.`
+
+Call contract (compact form; the skill is the SSOT):
+
+| Parameter | Value |
+|---|---|
+| `claude_verdict` | The reviewer's consolidated verdict object: `{verdict, summary, findings, next_steps}` |
+| `target` | Mapped from review scope — `--staged` / `--file` / no flag → `uncommittedChanges`; `--branch B` → `baseBranch` |
+| `focus` | A short area name only (independence rule: NEVER paste the reviewer's analysis into focus) |
+| `session_id` | Current session id — persists the result so the Stop-hook gate reads it instead of re-invoking convergence |
+
+Folding the convergence result into the review verdict:
+
+- `overall_verdict: fail` (a required backend failed, or the required gate split) → the review verdict FAILs, naming the failing required backend(s) from `per_backend_verdicts`.
+- `disagreement_flag: true` with overall pass → an advisory residual-risk row; the disagreement never blocks on its own.
+- Surface `residual_risk_note` verbatim; name any `fail_open_backends` in the report.
+
+Fail-open fallback: unavailable, unauthenticated, or erroring backends return `inconclusive` and never block — when ALL non-Claude backends are inconclusive, convergence falls open to the in-session Claude verdict, which IS the pre-existing single-model path. When the `moai` MCP server or the `audit_multi` tool itself is absent, skip this phase and label the report single-model. This fail-open contract adds no hard dependency.
+
+Mode carve-outs:
+
+- `--lean` short-circuits this phase — the lean audit is advisory-only and renders no verdict, so there is nothing to converge.
+- `--deep` keeps its own adversarial 3-voter verification panel unchanged; this phase is the standard-path verdict convergence, not a deep-scan layer.
+
 ## Phase 4: Report Consolidation
 
 Produce a consolidated review report organized by severity:
@@ -190,6 +218,12 @@ Produce a consolidated review report organized by severity:
 - Outdated tags: N
 - Compliant files: N/M
 
+### Cross-Model Convergence (when audit_model selects it)
+- Overall: PASS/FAIL + disagreement flag
+- Per-backend verdicts: claude=..., codex=..., glm=... (verdict + gate)
+- Residual risk note: (verbatim from the convergence result, when present)
+- Fail-open backends: (named, when present)
+
 ### Overall Assessment
 - Security: PASS/FAIL
 - Performance: PASS/WARN
@@ -197,6 +231,8 @@ Produce a consolidated review report organized by severity:
 - UX: PASS/WARN
 - TRUST 5 Score: N/5
 ```
+
+The Cross-Model Convergence block above is omitted entirely when the convergence phase did not run (single-model path) — its absence reflects mode selection, not a skipped check.
 
 ## Phase 6: Next Steps
 
@@ -450,7 +486,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (change identification via git)
-- Phase 2-3: sync-auditor subagent (multi-perspective analysis; the Security perspective receives deeper focus when --security is set) — the dependency vulnerability sub-scan additionally delegates to a per-spawn `Agent(general-purpose)` security reviewer
+- Phase 2-3: sync-auditor subagent (multi-perspective analysis; the Security perspective receives deeper focus when --security is set) — the dependency vulnerability sub-scan additionally delegates to a per-spawn `Agent(general-purpose)` security reviewer; when the audit_model gate fires, the reviewer additionally folds its verdict through `mcp__moai__audit_multi` (cross-model convergence; fail-open) per Phase 3.5
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
 - Phase 5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
 
@@ -461,9 +497,10 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to the sync-auditor subagent
 5. Check @MX tag compliance for changed files
-6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist per the frontend whitelist)
-7. Consolidate findings by severity
-8. Present report with next step options
+6. If the audit_model gate fires: reviewer folds the verdict through the audit_multi convergence step (Phase 3.5; fail-open)
+7. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist per the frontend whitelist)
+8. Consolidate findings by severity
+9. Present report with next step options
 
 ---
 

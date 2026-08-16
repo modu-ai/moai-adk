@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -179,9 +181,16 @@ func (r *migrateAgencyRunner) errorf(format string, args ...any) {
 	_, _ = fmt.Fprintf(r.getStderr(), format+"\n", args...)
 }
 
-// checkpointPath returns the path for a transaction checkpoint file.
+// checkpointPath returns the path for a transaction checkpoint file. A
+// non-empty absolute MOAI_HOME replaces the ~/.moai root so the checkpoint
+// follows the override (REQ-MHP-001); otherwise the injected homeDir seam
+// resolves (REQ-MHP-010 — tests construct the runner with a temp home).
 func (r *migrateAgencyRunner) checkpointPath(txID string) string {
-	return filepath.Join(r.homeDir, ".moai", ".migrate-tx-"+txID+".json")
+	name := ".migrate-tx-" + txID + ".json"
+	if v := os.Getenv(paths.EnvHome); v != "" && filepath.IsAbs(v) {
+		return filepath.Join(v, name)
+	}
+	return filepath.Join(r.homeDir, defs.MoAIDir, name)
 }
 
 // Run executes the migration and returns a result summary on success.
@@ -708,7 +717,7 @@ func runMigrateAgency(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := paths.Home()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}

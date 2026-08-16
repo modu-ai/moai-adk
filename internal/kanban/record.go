@@ -61,8 +61,10 @@ type Record struct {
 	SpecID string `json:"spec_id"`
 
 	// Role is the chain role this session occupies: lead | plan | run | review
-	// | sync. It is derived from the companion label (`<role>-<run-id>`) at
-	// launch, or "lead" for the session that elected the run.
+	// | sync, or "worker" for a factory run's numbered lane. It is derived
+	// from the companion label (`<role>-<run-id>`) or the factory worker
+	// label (`worker-<n>`) at launch, or "lead" for the session that elected
+	// the run.
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
 	// existed, or a launch whose label could not be parsed, leaves it blank —
@@ -113,13 +115,15 @@ func NewRecord(sessionID, specID, backend string) *Record {
 
 // WithRole returns rec with the chain role attached. A role outside the known
 // set is discarded rather than stored, so a consumer never has to defend
-// against an arbitrary string arriving from a launch label.
+// against an arbitrary string arriving from a launch label. The known set is
+// the kanban roles (lead + the four companions) plus RoleWorker, which a
+// factory run's numbered workers record (SPEC-FACTORY-WORKER-FANOUT-001).
 func (r *Record) WithRole(role string) *Record {
 	if r == nil {
 		return nil
 	}
 	role = strings.ToLower(strings.TrimSpace(role))
-	if role == RoleLead || isCompanionRole(role) {
+	if role == RoleLead || role == RoleWorker || isCompanionRole(role) {
 		r.Role = role
 	}
 	return r

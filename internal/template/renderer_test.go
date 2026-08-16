@@ -182,6 +182,18 @@ func TestRendererPassthroughTokens(t *testing.T) {
 			data:     map[string]string{"Name": "test"},
 			want:     "$HOME",
 		},
+		{
+			name:     "PWD passthrough",
+			template: `ACTION_GUARD="${CLAUDE_PROJECT_DIR:-$PWD}" {{.Name}}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$PWD",
+		},
+		{
+			name:     "hook wrapper shell-local variables passthrough",
+			template: `ACTION="$1"; INPUT=$(cat); SESSION_ID="s"; PROJECT_ROOT="r"; STATE_FILE="g"; AUTONOMY_TIER_DORMANT="$ACTION"; echo "$INPUT$SESSION_ID$PROJECT_ROOT$STATE_FILE$AUTONOMY_TIER_DORMANT"; {{.Name}}`,
+			data:     map[string]string{"Name": "test"},
+			want:     "$AUTONOMY_TIER_DORMANT",
+		},
 	}
 
 	for _, tt := range tests {
@@ -421,6 +433,15 @@ func TestPassthroughTokensCompleteness(t *testing.T) {
 		"$CLAUDE_SKILL_DIR":   true,
 		"$ARGUMENTS":          true,
 		"$HOME":               true,
+		// Hook wrapper shell-local variables (lifecycle dormant guards and the
+		// stop-goal shell-layer precondition) plus the shell builtin PWD.
+		"$PWD":                   true,
+		"$ACTION":                true,
+		"$AUTONOMY_TIER_DORMANT": true,
+		"$INPUT":                 true,
+		"$PROJECT_ROOT":          true,
+		"$SESSION_ID":            true,
+		"$STATE_FILE":            true,
 	}
 
 	passthroughSet := make(map[string]bool)

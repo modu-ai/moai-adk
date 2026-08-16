@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // LocalConfig holds configuration for local file-based updates.
@@ -45,12 +48,13 @@ type localChecker struct {
 //	}
 func NewLocalChecker(config LocalConfig) Checker {
 	if config.ReleasesDir == "" {
-		homeDir, err := os.UserHomeDir()
-		// If home dir cannot be determined, use current directory
+		releases, err := paths.ReleasesDir()
+		// If home cannot be determined, preserve the pre-migration
+		// cwd-relative degradation.
 		if err != nil {
-			homeDir = "."
+			releases = filepath.Join(".", defs.MoAIDir, defs.ReleasesSubdir)
 		}
-		config.ReleasesDir = filepath.Join(homeDir, ".moai", "releases")
+		config.ReleasesDir = releases
 	}
 	return &localChecker{config: config}
 }
