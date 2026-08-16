@@ -1,6 +1,7 @@
 package worktree
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -29,7 +31,7 @@ Note: Merging to base branch should be done separately via git merge or PR.`,
 	}
 	cmd.Flags().Bool("force", false, "Force removal even with uncommitted changes")
 	cmd.Flags().Bool("delete-branch", false, "Delete the branch after removing worktree")
-	cmd.Flags().Bool("auto", false, "Auto mode: silent execution for automation (e.g., after PR merge)")
+	cmd.Flags().Bool("auto", false, "Auto mode: no success output for automation (e.g., after PR merge); failures still exit non-zero")
 	return cmd
 }
 
@@ -37,27 +39,23 @@ Note: Merging to base branch should be done separately via git merge or PR.`,
 // Used by sync workflow to trigger cleanup after PR merge.
 const AutoCleanupFlag = "auto"
 
-// runDoneWithAutoMode is the internal function that supports auto-cleanup mode.
-// When autoMode is true, it suppresses output and handles errors gracefully.
+// runDoneWorktreeCleanup is the shared removal core for the done command.
+// Auto mode (--auto) suppresses the SUCCESS output only: a failed removal
+// returns an error so automation sees a non-zero exit instead of a silent
+// rc=0 (t41 c, 2026-08-15). The two intentional non-error exits are the
+// no-worktree case (nothing left to clean is a completed cleanup,
+// SPEC-WORKTREE-002 R2) and the anchored-session skip (t46).
 //
 // @MX:NOTE: SPEC-WORKTREE-002 R2 implementation - auto-cleanup for PR merge workflow
 // @MX:SPEC: SPEC-WORKTREE-002
-func runDoneWithAutoMode(branchName string, force, deleteBranch, autoMode bool) (success bool, err error) {
+func runDoneWorktreeCleanup(branchName string, force, deleteBranch bool) (success bool, err error) {
 	if WorktreeProvider == nil {
-		if autoMode {
-			// In auto mode, return gracefully instead of error
-			return false, nil
-		}
 		return false, fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
 
 	// Find the worktree for the given branch.
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {
-		if autoMode {
-			// Graceful degradation: log and continue
-			return false, nil
-		}
 		return false, fmt.Errorf("list worktrees: %w", err)
 	}
 
@@ -84,25 +82,39 @@ func runDoneWithAutoMode(branchName string, force, deleteBranch, autoMode bool) 
 
 	// Remove the worktree.
 	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
-		if autoMode {
-			// Graceful degradation: log and continue
-			return false, nil
-		}
-		return false, fmt.Errorf("remove worktree: %w", err)
+		return false, doneRemoveError(err, targetPath)
 	}
 
 	// Optionally delete the branch
 	if deleteBranch {
 		if err := WorktreeProvider.DeleteBranch(branchName); err != nil {
-			if autoMode {
-				// Graceful degradation: log and continue
-				return false, nil
-			}
 			return false, fmt.Errorf("delete branch: %w", err)
 		}
 	}
 
 	return true, nil
+}
+
+// doneRemoveError wraps a worktree-removal failure for the done command.
+// When the tree was locked it appends the actionable remedy; done never
+// escalates its own --force to git's double force, because a lock usually
+// means a live session still uses the tree (t41 b).
+func doneRemoveError(err error, path string) error {
+	if errors.Is(err, git.ErrWorktreeLocked) {
+		return fmt.Errorf("remove worktree: %w%s", err, lockGuidance(path))
+	}
+	return fmt.Errorf("remove worktree: %w", err)
+}
+
+// lockGuidance renders the two exits a locked worktree leaves the user:
+// unlock and retry, or remove with git's double force. Named after the tree
+// so the command lines are copy-pasteable.
+func lockGuidance(path string) string {
+	return fmt.Sprintf("\n\nThe worktree is locked — usually a live session is still using it:\n"+
+		"  unlock and retry:  git worktree unlock %s\n"+
+		"  remove anyway:     git worktree remove -f -f %s\n"+
+		"moai does not force a locked tree on its own",
+		path, path)
 }
 
 func runDone(cmd *cobra.Command, args []string) error {
@@ -124,9 +136,10 @@ func runDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get auto flag: %w", err)
 	}
 
-	// Handle auto mode (silent execution for automation)
+	// Handle auto mode: success stays output-silent; failures propagate so
+	// the process exits non-zero instead of swallowing the error (t41 c).
 	if autoMode {
-		_, err := runDoneWithAutoMode(branchName, force, deleteBranch, true)
+		_, err := runDoneWorktreeCleanup(branchName, force, deleteBranch)
 		return err
 	}
 
@@ -167,7 +180,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 
 	// Remove the worktree.
 	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
-		return fmt.Errorf("remove worktree: %w", err)
+		return doneRemoveError(err, targetPath)
 	}
 
 	details := []string{

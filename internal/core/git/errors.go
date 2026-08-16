@@ -35,6 +35,12 @@ var (
 	// ErrWorktreeNotFound indicates the specified worktree was not found.
 	ErrWorktreeNotFound = errors.New("git: worktree not found")
 
+	// ErrWorktreeLocked indicates the worktree is locked (git worktree lock,
+	// usually a live session holding the tree). A locked tree survives even
+	// a single `git worktree remove --force`; it needs an unlock or a double
+	// force (-f -f).
+	ErrWorktreeLocked = errors.New("git: worktree is locked")
+
 	// ErrSystemGitNotFound indicates the git binary is not in PATH.
 	ErrSystemGitNotFound = errors.New("git: system git binary not found")
 

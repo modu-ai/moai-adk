@@ -67,7 +67,7 @@ func TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive(t *testing.T) {
 	WorktreeProvider = mock
 	defer func() { WorktreeProvider = origProvider }()
 
-	success, err := runDoneWithAutoMode("feature/SPEC-ANCHOR-001", false, false, true)
+	success, err := runDoneWorktreeCleanup("feature/SPEC-ANCHOR-001", false, false)
 	if err != nil {
 		t.Fatalf("auto mode must degrade gracefully, got error: %v", err)
 	}
