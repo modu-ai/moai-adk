@@ -18,7 +18,7 @@ func TestDeepMerge3WayTo_ScalarRoot(t *testing.T) {
 	newN := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "new-scalar", Style: yaml.DoubleQuotedStyle}
 	oldN := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "user-scalar", Style: yaml.DoubleQuotedStyle}
 	var buf bytes.Buffer
-	res, err := deepMerge3WayTo(newN, oldN, nil, &buf)
+	res, err := deepMerge3WayTo(newN, oldN, nil, newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatalf("deepMerge3WayTo scalar root: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestDeepMerge3WayTo_NullOldRoot(t *testing.T) {
 	newN := mustDecodeDoc(t, "a: 1\n")
 	oldNull := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null"}
 	var buf bytes.Buffer
-	res, err := deepMerge3WayTo(newN, oldNull, nil, &buf)
+	res, err := deepMerge3WayTo(newN, oldNull, nil, newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatalf("deepMerge3WayTo null old: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestMerge_NonScalarKeySkipped(t *testing.T) {
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ok"},
 	}}
 	var buf bytes.Buffer
-	if _, err := mergeMappingNode3Way(newN, newN, newN, "", &buf); err != nil {
+	if _, err := mergeMappingNode3Way(newN, newN, newN, "", newRetainedKeyNotes(&buf)); err != nil {
 		t.Fatalf("mergeMappingNode3Way non-scalar key: %v", err)
 	}
 	if _, err := deepMergeMapsTo(newN, newN); err != nil {

@@ -447,13 +447,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				plRestore := tui.ProgressLine(out, "Restoring user settings...", nil)
-				if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+				// t63: RestoreMoaiConfigRetained collects the retained-key refs
+				// instead of letting the merge append raw per-key "advisory:"
+				// lines to stderr mid-redraw; the advisory renders through the
+				// same stdout channel as the progress line below.
+				retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 					// Bridge to the noise-suppression ledger (recordMergeFallback +
 					// updateVerboseMode), which stays in package cli. The closure
 					// captures updateVerboseMode so the backup subpackage does not
 					// need a cross-package mutable-state seam.
 					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-				}); restoreErr != nil {
+				})
+				if restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {
 						reporter.StepError(restoreErr)
@@ -461,6 +466,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// t63: one summary line by default; the key list expands only
+				// under --verbose (the same verbose ledger recordMergeFallback
+				// reads), never interleaving with the progress redraw.
+				renderRetainedKeyAdvisory(out, retainedKeys, updateVerboseMode, th)
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)

@@ -174,7 +174,7 @@ func runGoldenMerge(t *testing.T, src []byte) (srcBytes, out []byte, source, mer
 	if err != nil {
 		t.Fatalf("decode source: %v", err)
 	}
-	merged, err = deepMerge3WayTo(source, source, source, &sink)
+	merged, err = deepMerge3WayTo(source, source, source, newRetainedKeyNotes(&sink))
 	if err != nil {
 		t.Fatalf("merge: %v", err)
 	}
