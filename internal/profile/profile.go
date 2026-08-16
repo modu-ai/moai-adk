@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -275,6 +276,92 @@ func normalizeProjectKey(projectRoot string) string {
 	return cleaned
 }
 
+// lookupProjectKey finds the ledger key that names the SAME directory as key,
+// returning the stored key and whether one was found.
+//
+// An exact string match wins. When it misses, the map is scanned and each
+// candidate is compared with os.SameFile — the filesystem itself decides
+// whether two spellings name one directory, rather than this code guessing a
+// per-OS case rule.
+//
+// The case-variant miss is the failure this exists for. On macOS and Windows
+// the filesystem is case-insensitive, so `cd /Users/x/moai/repo` and
+// `cd /Users/x/MoAI/repo` open the same directory, but os.Getwd reports back
+// whichever spelling the shell used and filepath.EvalSymlinks does NOT
+// canonicalize case. The two spellings therefore hash to different ledger keys,
+// the lookup misses, and the launch silently falls back to the default profile
+// — which stores its transcripts elsewhere, so `--continue` / `--resume` find
+// no prior session. os.SameFile keeps the lookup correct on case-sensitive
+// filesystems too, where two same-spelled-but-differently-cased directories can
+// genuinely both exist and must NOT be conflated.
+func lookupProjectKey(projects map[string]any, key string) (string, bool) {
+	if key == "" || projects == nil {
+		return "", false
+	}
+	if _, ok := projects[key]; ok {
+		return key, true
+	}
+
+	info, err := os.Stat(key)
+	if err != nil {
+		return "", false
+	}
+
+	// Sorted, not map order. A ledger written before this fix can already hold
+	// two spellings of one directory, and Go randomizes map iteration — scanning
+	// unordered would hand back either entry from run to run, so a project with
+	// duplicates would resolve to a different profile (and a different
+	// transcript store) on each launch. Sorting makes the winner the same every
+	// time, and the write side collapses the duplicate on the next launch.
+	candidates := make([]string, 0, len(projects))
+	for candidate := range projects {
+		candidates = append(candidates, candidate)
+	}
+	sort.Strings(candidates)
+
+	var matched string
+	var conflict string
+	for _, candidate := range candidates {
+		candidateInfo, err := os.Stat(candidate)
+		if err != nil {
+			continue
+		}
+		if !os.SameFile(info, candidateInfo) {
+			continue
+		}
+		if matched == "" {
+			matched = candidate
+			continue
+		}
+		// A second entry for the same directory. Sorting already fixed WHICH one
+		// wins, but when the two name different profiles the winner is stable and
+		// still possibly not the one the user meant — and nothing in the ledger
+		// records which was written last. Only the user can say, so say so once
+		// rather than routing them somewhere silently.
+		if asString(projects[candidate]) != asString(projects[matched]) && conflict == "" {
+			conflict = candidate
+		}
+	}
+
+	if conflict != "" {
+		fmt.Fprintf(os.Stderr,
+			"Warning: %s records %q twice for one directory, under different profiles (%q vs %q).\n"+
+				"Using %q. Remove the stale entry from %s to silence this.\n",
+			launchLedgerFile, key,
+			asString(projects[matched]), asString(projects[conflict]),
+			asString(projects[matched]), filepath.Join(GetBaseDir(), launchLedgerFile))
+	}
+
+	return matched, matched != ""
+}
+
+// asString reads a ledger value as a string, yielding "" for a non-string entry
+// rather than panicking on a hand-edited or downgrade-written ledger.
+func asString(v any) string {
+	s, _ := v.(string)
+	return s
+}
+
 // loadLaunchLedger reads and decodes the ledger as a generic map so unknown and
 // legacy keys are tolerated rather than rejected. A missing or corrupt file
 // yields an error the callers translate into "no fallback".
@@ -339,8 +426,10 @@ func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 
 	if key := normalizeProjectKey(projectRoot); key != "" {
 		if projects, ok := ledger[projectsKey].(map[string]any); ok {
-			if name, ok := projects[key].(string); ok && launchCandidateIsUsable(baseDir, name) {
-				return name
+			if stored, found := lookupProjectKey(projects, key); found {
+				if name, ok := projects[stored].(string); ok && launchCandidateIsUsable(baseDir, name) {
+					return name
+				}
 			}
 		}
 	}
@@ -435,6 +524,13 @@ func RecordLastUsedProfileForProject(projectRoot, name string) error {
 		projects, ok := existing[projectsKey].(map[string]any)
 		if !ok {
 			projects = make(map[string]any)
+		}
+		// Reuse the key already recorded for this directory when one exists.
+		// Writing the caller's spelling instead would leave two entries naming
+		// one project, and the pair drifts apart on the next launch from the
+		// other spelling.
+		if stored, found := lookupProjectKey(projects, key); found {
+			key = stored
 		}
 		projects[key] = name
 		existing[projectsKey] = projects
