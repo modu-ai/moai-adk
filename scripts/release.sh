@@ -159,8 +159,18 @@ log_ok "Tag $VERSION does not exist yet"
 CHANGELOG_VERSION="${VERSION#v}" # v2.14.0 → 2.14.0
 CHANGELOG_HEADER="## [$CHANGELOG_VERSION]"
 
+# CHANGELOG heading convention is split by release family: formal sections are
+# bare ('## [3.1.0]'), while pre-release (rc) sections carry the v prefix
+# ('## [v3.0.0-rc12]'). Accept both forms: when the bare heading is absent,
+# fall back to the v-prefixed one. CHANGELOG_HEADER must point at the form
+# that actually matched because the tag-annotation extraction below matches
+# it literally.
 if ! grep -q "^## \[$CHANGELOG_VERSION\]" CHANGELOG.md; then
-    die "CHANGELOG.md missing section '$CHANGELOG_HEADER'. Add release notes first."
+    if grep -q "^## \[v$CHANGELOG_VERSION\]" CHANGELOG.md; then
+        CHANGELOG_HEADER="## [v$CHANGELOG_VERSION]"
+    else
+        die "CHANGELOG.md missing section '## [$CHANGELOG_VERSION]' (or '## [v$CHANGELOG_VERSION]'). Add release notes first."
+    fi
 fi
 log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
 
