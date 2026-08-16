@@ -500,6 +500,17 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Section("Post-sync steps", tui.SectionOpts{Theme: &th}))
 
+	// Profile-memory advisory. Reports only — the merge itself is an explicit
+	// `moai migrate profiles`, because moving hundreds of files inside a home
+	// directory as a side effect of an update is the accident this project has
+	// already had once. A failure here is silent: an advisory that cannot be
+	// computed must not interrupt an update that otherwise succeeded.
+	if cwd, err := os.Getwd(); err == nil {
+		if notice := migrateProfileAdvisory(cwd); notice != "" {
+			_, _ = fmt.Fprintln(out, notice)
+		}
+	}
+
 	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
 	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
