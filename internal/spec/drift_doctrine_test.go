@@ -38,7 +38,9 @@ func TestCloseSubjectDoctrineAmendment(t *testing.T) {
 	root := findRepoRoot(t)
 
 	files := []string{
-		filepath.Join(root, ".claude", "rules", "moai", "workflow", "lifecycle-sync-gate.md"),
+		// lifecycle-sync-gate.md moved out of .claude/rules/moai/ in #1557:
+		// `moai update` wipes that root wholesale, deleting local-only rules.
+		filepath.Join(root, ".claude", "rules", "local", "lifecycle-sync-gate.md"),
 		filepath.Join(root, ".claude", "rules", "moai", "development", "spec-frontmatter-schema.md"),
 	}
 
