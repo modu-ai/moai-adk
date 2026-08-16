@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -655,5 +656,82 @@ func TestChecker_IsUpdateAvailable_Error(t *testing.T) {
 	}
 	if info != nil {
 		t.Error("expected nil info on error")
+	}
+}
+
+func TestChecker_CheckLatest_RateLimitContextInErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-RateLimit-Limit", "60")
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.Header().Set("X-RateLimit-Reset", "1786889899")
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Fatal("expected error for 403 response")
+	}
+	msg := err.Error()
+	for _, want := range []string{"403", "0/60 requests remaining", "resets "} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error %q missing %q", msg, want)
+		}
+	}
+}
+
+func TestChecker_CheckLatest_ErrorWithoutRateLimitHeadersStaysPlain(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+
+	checker := NewChecker(ts.URL, http.DefaultClient)
+	_, err := checker.CheckLatest(context.Background())
+	if err == nil {
+		t.Fatal("expected error for 503 response")
+	}
+	if want := "checker: unexpected status 503"; err.Error() != want {
+		t.Errorf("error = %q, want exactly %q", err, want)
+	}
+}
+
+// TestChecker_CheckLatest_AuthorizationHeaderFromEnv pins the bearer-token
+// resolution order. Non-parallel on purpose: t.Setenv panics inside
+// t.Parallel tests and the environment is process-global.
+func TestChecker_CheckLatest_AuthorizationHeaderFromEnv(t *testing.T) {
+	tests := []struct {
+		name     string
+		ghToken  string
+		github   string
+		wantAuth string
+	}{
+		{"GH_TOKEN wins over GITHUB_TOKEN", "gh-token", "github-token", "Bearer gh-token"},
+		{"GITHUB_TOKEN when GH_TOKEN empty", "", "github-token", "Bearer github-token"},
+		{"no header when both empty", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("GH_TOKEN", tt.ghToken)
+			t.Setenv("GITHUB_TOKEN", tt.github)
+
+			var got string
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got = r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusServiceUnavailable)
+			}))
+			defer ts.Close()
+
+			checker := NewChecker(ts.URL, http.DefaultClient)
+			_, _ = checker.CheckLatest(context.Background())
+			if got != tt.wantAuth {
+				t.Errorf("Authorization = %q, want %q", got, tt.wantAuth)
+			}
+		})
 	}
 }
