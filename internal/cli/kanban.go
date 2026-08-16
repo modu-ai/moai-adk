@@ -47,7 +47,7 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 // kanbanEntryParse is the unified -k/--kanban entry parse (v1.2.0): ONE flag
 // token selects one of two session shapes —
 //
-//	-k                  → the four-role kanban chain (lead branch)
+//	-k                  → the three-role kanban chain (lead branch)
 //	-k SPEC-ID          → the kanban chain tied to a SPEC
 //	-k N (N ≥ 1)        → Factory Mode with N numbered workers
 //	-k --name worker-<n> → Factory Mode as worker n; the count defaults to

@@ -207,7 +207,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// SPEC-FACTORY-BOOTSTRAP-001 + SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0:
-	// ONE -k token, two shapes — the four-role kanban chain (bare -k or
+	// ONE -k token, two shapes — the three-role kanban chain (bare -k or
 	// -k SPEC-ID, role disambiguated by --name) and the numbered factory
 	// fan-out (-k N, or -k plus a worker-shape --name with the default
 	// count). See cc.go for the truth table; glm mirrors cc exactly except

@@ -22,7 +22,7 @@ func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
 	}{
 		{"long form", []string{"--name", "plan-tjlgt1"}, "plan-tjlgt1"},
 		{"short form", []string{"-n", "run-tjlgt1"}, "run-tjlgt1"},
-		{"long equals form", []string{"--name=review-tjlgt1"}, "review-tjlgt1"},
+		{"long equals form", []string{"--name=plan-tjlgt1"}, "plan-tjlgt1"},
 		{"short equals form", []string{"-n=sync-tjlgt1"}, "sync-tjlgt1"},
 		{"among other flags", []string{"-p", "dev", "--name", "sync-abc123", "--verbose"}, "sync-abc123"},
 
