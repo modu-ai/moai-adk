@@ -160,9 +160,13 @@ The lead's own session is cleared the same way, between cards rather than betwee
 | Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
 | Re-enter one from the current session | `EnterWorktree(<path>)` |
 | Leave it | `ExitWorktree` |
-| Dispose it once the card's pull requests have merged | `moai worktree done` |
+| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
 `moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close, and orphaned trees accumulate until someone reconciles them by hand.
+
+[HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
+
+[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the lead has integrated the branch and the remote merge has landed; disposal before that destroys the only copy.
 
 The lead dispatches this rather than assuming it. Each instruction names the worktree the companion is to work in and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command changes the directory for that invocation only, so the next command silently reads the wrong tree.
 
