@@ -62,15 +62,19 @@ func TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome(t *testing.T) {
 //
 // Each such site is a potential silent leak: it combines a real home with a
 // project-derived name, so any test that isolates only the project half writes
-// into the developer's actual home. The two known sites each carry a behavioural
-// guard — this test in internal/hook, and TestDecayScan_DoesNotWriteToRealHome in
-// internal/cli/preference. A third site added without one would reintroduce the
-// class with nothing to report it, which is what this count exists to prevent.
+// into the developer's actual home. The known sites each carry a behavioural
+// guard — TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome in internal/hook,
+// TestDecayScan_DoesNotWriteToRealHome in internal/cli/preference, and, for the
+// `moai memory` / `moai migrate profiles` derivations,
+// TestMemoryCandidateStores_DoNotEscapeToRealHome and
+// TestDefaultMemoryStore_DoesNotEscapeToRealHome in internal/cli. A further site
+// added without one would reintroduce the class with nothing to report it, which
+// is what this count exists to prevent.
 //
 // This is a count, not an allowlist of paths, so it stays readable; the failure
 // message carries the located sites so the reader sees which one is new.
 func TestHomeJoinSiteCountIsPinned(t *testing.T) {
-	const wantSites = 2
+	const wantSites = 4
 
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

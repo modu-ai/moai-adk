@@ -180,3 +180,40 @@ func TestDoctorReportsBothStores(t *testing.T) {
 		}
 	}
 }
+
+// TestMemoryCandidateStores_DoNotEscapeToRealHome guards one of the sites
+// pinned by TestHomeJoinSiteCountIsPinned (internal/hook).
+//
+// memoryCandidateStores joins the real home with a project-derived slug and
+// reads the home inside the function, so a caller cannot inject an isolated
+// one — the isolation has to come from the environment. A test that isolates
+// only the project half deposits a fresh permanent directory in the
+// developer's own ~/.claude/projects on every run, which is the shape that
+// once leaked half a million of them.
+//
+// Falsifiability: delete the t.Setenv("HOME", tmp) line and this test fails,
+// because the derivation then points inside the real home.
+func TestMemoryCandidateStores_DoNotEscapeToRealHome(t *testing.T) {
+	// Cannot run in parallel: t.Setenv mutates process-wide state.
+	realHome, err := os.UserHomeDir() // captured BEFORE HOME is overridden
+	if err != nil {
+		t.Fatalf("os.UserHomeDir(): %v", err)
+	}
+
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(tmp, "cfg"))
+
+	stores, err := memoryCandidateStores(t.TempDir())
+	if err != nil {
+		t.Fatalf("memoryCandidateStores: %v", err)
+	}
+	if len(stores) == 0 {
+		t.Fatal("no store resolved; the guard would pass vacuously")
+	}
+	for _, s := range stores {
+		if strings.HasPrefix(s.Dir, realHome+string(os.PathSeparator)) {
+			t.Errorf("store escaped into the real home: %s", s.Dir)
+		}
+	}
+}

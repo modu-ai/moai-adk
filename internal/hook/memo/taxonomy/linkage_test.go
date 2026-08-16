@@ -130,10 +130,7 @@ func TestAuditLinkageIgnoresArchive(t *testing.T) {
 // which had no checker at all.
 func TestAuditTopicCountOverCap(t *testing.T) {
 	t.Parallel()
-	names := make([]string, 0, 4)
-	for _, n := range []string{"feedback_a.md", "feedback_b.md", "feedback_c.md", "feedback_d.md"} {
-		names = append(names, n)
-	}
+	names := []string{"feedback_a.md", "feedback_b.md", "feedback_c.md", "feedback_d.md"}
 	dir := writeMemoryFixture(t, names, names)
 
 	findings, err := AuditTopicCount(dir, 3)
