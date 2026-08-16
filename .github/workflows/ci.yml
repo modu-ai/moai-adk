@@ -174,11 +174,17 @@ jobs:
   # Release PR Multi-OS Gate) — those stay green-mergeable regardless of this
   # job's result. (continue-on-error:true would HIDE race failures by forcing
   # success — the opposite of advisory+visible.)
+  # Skipped on release/* PRs: those already run the same ubuntu race detector
+  # (`go test -race ./...`) through release-pr-multi-os.yml's ubuntu leg, whose
+  # `Release PR Multi-OS Gate` IS required — so this advisory job would only
+  # duplicate ~9 min of an identical run (PR #1564 follow-up). push events to
+  # main carry no head_ref, so !startsWith() is true there and they keep this
+  # job as their only race run.
   # ---------------------------------------------------------------------------
   test-race:
     name: Race Test
     needs: detect
-    if: needs.detect.outputs.go_code == 'true'
+    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
