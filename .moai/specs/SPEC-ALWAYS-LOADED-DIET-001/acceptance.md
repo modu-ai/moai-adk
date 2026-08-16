@@ -172,7 +172,14 @@ done
 c=.claude/rules/moai/workflow/kanban-dispatch-detail.md
 test -f "$c" || { echo "MISSING $c"; exit 1; }   # §A 함정 6 — 가드가 없으면 분리 이전에도
                                                   # missing_lines=0 으로 통과한다(감사 iter2 D2)
-BASE_REF=be1958a4d   # 분리 이전(plan-phase) 커밋 — HEAD 는 구현 착지 후 post-split 상태다
+BASE_REF=be1958a4d374654998dd3b502111a3081d5dd03b   # 분리 이전(plan-phase) 커밋 — HEAD 는 구현 착지 후 post-split 상태다
+# fail-closed 가드(2차 리뷰): git show 가 실패해도 파이프라인은 sort 까지 status 0 으로
+#   끝나 빈 baseline 를 남기고 missing_lines=0 거짓 PASS 를 낸다 — 커밋과 baseline 경로를
+#   cat-file -e 로 먼저 확인하고, 하나라도 없으면 즉시 FAIL 한다
+git cat-file -e "${BASE_REF}^{commit}" \
+  || { echo "BAD_BASE_REF ${BASE_REF}"; exit 1; }
+git cat-file -e "${BASE_REF}:.claude/rules/moai/workflow/kanban-dispatch.md" \
+  || { echo "MISSING baseline path in ${BASE_REF}"; exit 1; }
 git show "${BASE_REF}:.claude/rules/moai/workflow/kanban-dispatch.md" \
   | grep -v '^[[:space:]]*$' | sort > /tmp/ald-orig.txt
 cat .claude/rules/moai/workflow/kanban-dispatch.md \
@@ -342,15 +349,16 @@ len=0
 f=.claude/rules/moai/workflow/cache-aware-execution-reference.md
 test -f "$f" || { echo "MISSING $f"; exit 1; }   # §A 함정 6
 grep -n -i 'quoted\|not re-measured\|source article' "$f"   # 진단 출력
-echo "numeric_paragraphs=$(awk -v RS= 'tolower($0) ~ /0\.1x|5x|ttl/ { n++ } END { print n+0 }' "$f")"
+echo "numeric_paragraphs=$(awk -v RS= 'tolower($0) ~ /(^|[^0-9a-z])(0\.1x|5x|ttl)([^0-9a-z]|$)/ { n++ } END { print n+0 }' "$f")"
 awk -v RS= '
-  tolower($0) ~ /0\.1x|5x|ttl/ && tolower($0) !~ /quoted|not re-measured|source article/ {
+  tolower($0) ~ /(^|[^0-9a-z])(0\.1x|5x|ttl)([^0-9a-z]|$)/ && tolower($0) !~ /quoted|not re-measured|source article/ {
     print "UNLABELED numeric paragraph:"; print; bad=1
   }
   END { exit bad ? 1 : 0 }
 ' "$f"; echo "citation_exit=$?"
 # PASS 조건: numeric_paragraphs >= 1 (양성 대조, 함정 3) 그리고 citation_exit=0 —
 #   0.1x / 5x / TTL 을 담은 문단 각각이 같은 문단(빈 줄로 구분된 블록) 안에 인용 표기를 동반
+#   경계 클래스 [^0-9a-z] 로 15x·settle 같은 부분 문자열은 세지 않는다(2차 리뷰)
 ```
 
 ### AC-ALD-014 — 재발 통제가 존재하고 비-호출 세션 비용을 다룸
@@ -364,8 +372,10 @@ f=.claude/rules/moai/development/rule-authoring.md
 test -f "$f" || { echo "MISSING $f"; exit 1; }   # §A 함정 6·7 — 존재 가드 + 줄 위치 추출 금지
 p=$(fm "$f" | grep '^paths:')
 echo "$p"
+# grep -F -- (2차 리뷰): 점을 와일드카드가 아닌 리터럴로 취급 — CLAUDEXmd 같은 오탈자 경로가
+#   CLAUDE.md 슬롯을 채우지 못한다. -- 는 frag 가 - 로 시작할 때 옵션으로 읽히는 것을 막는다
 for frag in 'rules' 'CLAUDE.md' 'output-styles' 'MEMORY.md'; do
-  printf 'slot_%s => %s\n' "$frag" "$(printf '%s' "$p" | grep -c "$frag")"
+  printf 'slot_%s => %s\n' "$frag" "$(printf '%s' "$p" | grep -F -c -- "$frag")"
 done
 printf 'new_rule_case => %s\n' "$(grep -ci 'new always-loaded' "$f")"
 printf 'growth_case => %s\n' "$(grep -ci 'grow\|increase' "$f")"
