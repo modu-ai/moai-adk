@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 const (
@@ -63,6 +66,12 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("User-Agent", updateUserAgent)
+	// Authenticated requests draw from a 5,000 req/h budget instead of the
+	// 60 req/h anonymous pool shared per IP. The token, when present, is
+	// never logged or embedded in error messages.
+	if token := githubAuthToken(); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -74,7 +83,7 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("checker: release not found (status 404) - repository may not exist or have no releases")
 		}
-		return nil, fmt.Errorf("checker: unexpected status %d", resp.StatusCode)
+		return nil, fmt.Errorf("checker: unexpected status %d%s", resp.StatusCode, rateLimitContext(resp.Header))
 	}
 
 	// Check if the response is an array (releases list) or single object (latest release)
@@ -113,6 +122,51 @@ func (c *checker) CheckLatest(ctx context.Context) (*VersionInfo, error) {
 	}
 
 	return c.buildVersionInfo(release)
+}
+
+// githubAuthToken resolves the GitHub API bearer token from the environment.
+// GH_TOKEN takes precedence over GITHUB_TOKEN, matching the GitHub CLI's own
+// order between the two equivalent variables. Empty when neither is set: the
+// request then proceeds unauthenticated against the 60 req/h anonymous pool.
+func githubAuthToken() string {
+	if t := os.Getenv(config.EnvGHToken); t != "" {
+		return t
+	}
+	return os.Getenv(config.EnvGitHubToken)
+}
+
+// rateLimitContext renders GitHub's rate-limit response headers as an
+// error-message suffix, so a 403/429 explains itself (budget, reset time)
+// instead of surfacing as a bare "unexpected status 403". Returns "" when the
+// response carries none of the headers, keeping messages from non-GitHub
+// servers (and test stubs) byte-identical to the previous format.
+func rateLimitContext(h http.Header) string {
+	limit := h.Get("X-RateLimit-Limit")
+	remaining := h.Get("X-RateLimit-Remaining")
+	if limit == "" && remaining == "" {
+		if after := h.Get("Retry-After"); after != "" {
+			return fmt.Sprintf(" (rate limited, retry after %ss)", after)
+		}
+		return ""
+	}
+	var parts []string
+	switch {
+	case remaining != "" && limit != "":
+		parts = append(parts, fmt.Sprintf("%s/%s requests remaining", remaining, limit))
+	case remaining != "":
+		parts = append(parts, remaining+" requests remaining")
+	default:
+		parts = append(parts, "limit "+limit+" requests/h")
+	}
+	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
+		if n, err := strconv.ParseInt(reset, 10, 64); err == nil {
+			parts = append(parts, "resets "+time.Unix(n, 0).Format(time.RFC3339))
+		}
+	}
+	if after := h.Get("Retry-After"); after != "" {
+		parts = append(parts, "retry after "+after+"s")
+	}
+	return " (api rate limit: " + strings.Join(parts, ", ") + ")"
 }
 
 // buildVersionInfo constructs a VersionInfo from a releaseResponse.

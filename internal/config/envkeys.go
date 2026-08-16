@@ -327,3 +327,16 @@ const (
 	// down to the Anthropic namespace, and must never be read with os.Getenv.
 	EnvAnthropicPrefix = "ANTHROPIC_"
 )
+
+// GitHub API environment variables.
+const (
+	// EnvGitHubToken provides a GitHub API token for authenticated requests
+	// (the update checker's release lookups), lifting the shared-IP 60 req/h
+	// anonymous budget to 5,000 req/h. Standard GitHub Actions / gh-tooling
+	// variable — MoAI reads it but never sets it.
+	EnvGitHubToken = "GITHUB_TOKEN"
+
+	// EnvGHToken is the GitHub CLI's equivalent of GITHUB_TOKEN and takes
+	// precedence over it, matching gh's own resolution order.
+	EnvGHToken = "GH_TOKEN"
+)
