@@ -348,18 +348,26 @@ len=0
 ```bash
 f=.claude/rules/moai/workflow/cache-aware-execution-reference.md
 test -f "$f" || { echo "MISSING $f"; exit 1; }   # §A 함정 6
-grep -n -i 'quoted\|not re-measured\|source article' "$f"   # 진단 출력
-echo "numeric_paragraphs=$(awk -v RS= 'tolower($0) ~ /(^|[^0-9a-z])(0\.1x|5x|ttl)([^0-9a-z]|$)/ { n++ } END { print n+0 }' "$f")"
+grep -n -iE '(^|[^a-zA-Z])quoted|not re-measured|source article' "$f"   # 진단 출력 — unquoted 를 quoted 로 오계상하지 않는다(3차)
+echo "numeric_paragraphs=$(awk -v RS= 'tolower($0) ~ /(^|[^0-9a-z._])(0\.1x|5x|ttl)([^0-9a-z_]|$)/ { n++ } END { print n+0 }' "$f")"
 awk -v RS= '
-  tolower($0) ~ /(^|[^0-9a-z])(0\.1x|5x|ttl)([^0-9a-z]|$)/ && tolower($0) !~ /quoted|not re-measured|source article/ {
+  tolower($0) ~ /(^|[^0-9a-z._])(0\.1x|5x|ttl)([^0-9a-z_]|$)/ && tolower($0) !~ /(^|[^a-z])quoted|not re-measured|source article/ {
     print "UNLABELED numeric paragraph:"; print; bad=1
   }
   END { exit bad ? 1 : 0 }
 ' "$f"; echo "citation_exit=$?"
-# PASS 조건: numeric_paragraphs >= 1 (양성 대조, 함정 3) 그리고 citation_exit=0 —
+printf 'growth was 15.5x this quarter\n\nthe cache_TTL setting is unquoted\n\ngain 5x is unquoted here\n\ncosts 0.1x (quoted, source article)\n\n' | awk -v RS= '
+  tolower($0) ~ /(^|[^0-9a-z._])(0\.1x|5x|ttl)([^0-9a-z_]|$)/ && tolower($0) !~ /(^|[^a-z])quoted|not re-measured|source article/ { n++ }
+  END { print "selftest_unlabeled=" n+0 }'
+# PASS 조건: numeric_paragraphs >= 1 (양성 대조, 함정 3), citation_exit=0, selftest_unlabeled=1 —
 #   0.1x / 5x / TTL 을 담은 문단 각각이 같은 문단(빈 줄로 구분된 블록) 안에 인용 표기를 동반
-#   경계 클래스 [^0-9a-z] 로 15x·settle 같은 부분 문자열은 세지 않는다(2차 리뷰)
+#   좌측 경계 [^0-9a-z._]: 점·밑줄은 토큰 경계가 아니므로 15.5x 의 5x·cache_TTL 의 TTL 을 세지 않는다(3차 리뷰)
+#   우측 경계 [^0-9a-z_]: 밑줄 연결(ttl_upper) 만 막고, 마침표는 문장 끝(0.1x.) 이므로 허용한다
+#   인용 표기 (^|[^a-z])quoted: unquoted 는 인용 표기로 치지 않는다(3차 리뷰)
+#   selftest_unlabeled=1 — 음성 대조(함정 3): 네 합성 문단 중 "gain 5x is unquoted" 만 UNLABELED 로 잡혀야 한다
 ```
+
+**경계 클래스가 좌우 비대칭인 이유**(3차 리뷰): `.` 를 양쪽 경계에서 모두 빼면 `15.5x` 는 막히지만 문장 끝의 `0.1x.` 까지 놓치고, 그 누락은 라벨 없는 수치 문단을 조용히 통과시키는 공허 GREEN 이 된다. 좌측에서만 `.` 와 `_` 를 빼면 유입은 차단되면서 문장 끝 마침표는 허용된다. 수정 전 패턴 실측(2026-08-17): `15.5x`·`cache_TTL` 문단 2개가 수치로 잘못 계상되고 `unquoted` 문단이 인용 표기 보유로 잘못 판정됐다 — 수정 후 각각 0건.
 
 ### AC-ALD-014 — 재발 통제가 존재하고 비-호출 세션 비용을 다룸
 
