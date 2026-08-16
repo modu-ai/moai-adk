@@ -44,6 +44,24 @@ jobs:
       go_code: ${{ steps.f.outputs.go_code }}
     steps:
       - uses: actions/checkout@v7
+      # go_code covers BOTH Go sources AND the non-Go repo inputs the Go test
+      # suite reads (`go test ./...` in the `test` job). A PR that moves or
+      # edits any of the non-Go roots below can turn the suite red with zero
+      # .go files changed; without them in the filter the skip-marker stub
+      # satisfies the required check over a broken tree — exactly what #1557
+      # did (moved .moai/config/astgrep-rules/ → .moai/astgrep-rules/, three
+      # internal/astgrep tests went FAIL, filter read "no Go changes", stub
+      # reported green). Evidence per root — the test file that reads it:
+      #   .moai/**                        internal/astgrep/gar_rule_test.go (shipped rule file, fail-loud)
+      #   internal/template/templates/**  internal/spec/catalog_hash_test.go + internal/template parity tests
+      #   internal/template/catalog.yaml  internal/spec/catalog_hash_test.go (fail-loud)
+      #   .claude/agents/**               internal/template/agent_askuser_audit_test.go (walks .claude/agents/**)
+      #                                    + manager_kanban_depth_test.go + haiku_effort_guard_test.go
+      #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
+      #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
+      #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
+      # dorny/paths-filter matches with picomatch {dot: true}, so `**` also
+      # traverses the dot-directories inside templates/ (.claude/, .moai/).
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: f
         with:
@@ -55,6 +73,13 @@ jobs:
               - 'Makefile'
               - '.github/workflows/ci.yml'
               - '.github/workflows/codeql.yml'
+              - '.moai/**'
+              - 'internal/template/templates/**'
+              - 'internal/template/catalog.yaml'
+              - '.claude/agents/**'
+              - '.claude/rules/moai/**'
+              - '.claude/output-styles/moai/**'
+              - 'CLAUDE.md'
 
   # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
@@ -238,8 +263,30 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - name: Skip (no Go changes)
-        run: echo "No Go-code changes per paths-filter — Go test matrix skipped; required check satisfied."
+      # Observability for the stub path: the skip reason goes to the run
+      # summary ($GITHUB_STEP_SUMMARY), not only a step log line, so a reviewer
+      # opening the run sees WHY no Go test executed on this change. The
+      # #1557 class of failure — stub green over a broken tree — was invisible
+      # precisely because the skip carried no visible explanation. The filter
+      # list is referenced by pointer (detect job), never duplicated here, so
+      # the two surfaces cannot drift apart.
+      - name: Skip (no Go-code inputs changed)
+        shell: bash
+        run: |
+          echo "No Go-code changes per paths-filter — Go test matrix skipped; required check satisfied."
+          {
+            echo "### Test (ubuntu-latest): skipped by paths-filter"
+            echo ""
+            echo "The \`detect\` job classified this change as containing no \`go_code\`"
+            echo "inputs, so the Go test matrix did not run and this stub job"
+            echo "satisfies the required check."
+            echo ""
+            echo "- Filter definition: \`.github/workflows/ci.yml\` — job \`detect\`, step \`f\` (\`go_code\`)"
+            echo "- If this change moved or edited a file the Go tests read (see the"
+            echo "  non-Go input roots listed in that filter) and the suite should"
+            echo "  have run, add the path to the filter — a skip here means NO Go"
+            echo "  test ran on this change."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Integration Tests: Harness Learning Subsystem (SPEC-V3R3-HARNESS-LEARNING-001)
