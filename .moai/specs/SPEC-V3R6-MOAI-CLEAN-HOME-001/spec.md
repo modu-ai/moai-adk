@@ -2,7 +2,7 @@
 id: SPEC-V3R6-MOAI-CLEAN-HOME-001
 title: "moai doctor disk check + moai clean --home (safe ~/.moai cleanup with carve-outs)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-16
 updated: 2026-08-17
 author: MoAI orchestrator

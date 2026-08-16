@@ -97,3 +97,21 @@ Justification: Tier M coding-heavy feature (doctor disk check + clean --home wit
 - 2026-08-16: research.md (disk measurements + surface survey, orchestrator-direct in-session investigation), spec.md (8 REQs), plan.md (4 milestones), acceptance.md (11 ACs) authored orchestrator-direct per user directive "제안대로 진행" — continuing the session's approved degradation pattern (subagent spawns dead pre-PR-#1574; see SPEC-V3R6-MOAI-HOME-PATHS-001 progress.md Authoring Record).
 - depends_on SPEC-V3R6-MOAI-HOME-PATHS-001 declared: run phase ordering is HOME-PATHS first (paths.MoaiHome() foundation), this SPEC second.
 - Pending: user review (Decision Point 1).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-08-17T04:10:00+09:00
+sync_commit_sha: pending-backfill-SPEC-V3R6-MOAI-CLEAN-HOME-001
+sync_status: audit-ready
+b12_self_test_a: "pre-emission grep -c 'SPEC-V3R6-MOAI-CLEAN-HOME-001' CHANGELOG.md → 0 (exit 1, duplicate guard PASS — entry appended to the existing [Unreleased] > Added section, directly below the SPEC-V3R6-MOAI-HOME-PATHS-001 entry)"
+b12_self_test_b: "AC count match: acceptance.md SSOT = 12 (canonical grep returns exactly 12 distinct tokens AC-MCH-001..012); CHANGELOG entry cites 12"
+b12_self_test_c: "all 9 paths named in the entry verified via ls (doctor_disk.go, clean_home.go, clean.go, doctor.go, defaults.go, clean_home_carveout_test.go, clean_home_test.go, doctor_disk_test.go, SPEC spec.md) — all exist"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added — second entry, below SPEC-V3R6-MOAI-HOME-PATHS-001; no separate doc-check ACs exist (the CHANGELOG entry itself is the docs surface; the only report-only stance the implementation genuinely surfaces is the ~/.claude line — the .env.glm split belongs to the HOME-PATHS entry, not invented here)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (this sync commit; updated: already 2026-08-17 — no date change needed)"
+  acceptance_plan: "markdown-header convention — no frontmatter status to transition"
+mx_debt_check: "moai mx query --kind DEBT --json → empty output (no dangling DEBT markers; clean_home.go carries @MX:WARN ×2 + @MX:REASON, doctor_disk.go @MX:NOTE ×1 — the R4 isCarvedOut doc comment is present and is a comment, fine)"
+lane_routing: "release/v3.1.1 integration lane per user directive — run-phase landed in-lane (M1 051a2fa94 / M2 6ec0ad212 / M3 a42941195 / M4 46ed09a66 + backfill 1b9440595); sync commits on this branch, no per-phase PR, no push (lane push owned by another session)"
+close_summary: "3-phase close complete — CHANGELOG [Unreleased] entry emitted, spec.md frontmatter in-progress → completed, §E.4 recorded; AC 12/12 discharged in run phase (12/12 PASS per §E.2; orchestrator independently re-verified builds, scoped tests, predicates, lint 0)"
+```
