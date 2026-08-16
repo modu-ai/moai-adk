@@ -102,6 +102,25 @@ t53 통합 직후 `test-install.yml`을 release ref에 dispatch했다 (run
 - CRLF 변환 후 버전 해석 페이로드는 바이트 동일함을 확인
   (`cmp` — 589바이트 일치)
 
+## 최종 판정 (2차 run 31960881976 — 전량 통과)
+
+CRLF 수정 통합(`bcde9e570`) 후 재dispatch. **10개 잡 전부 success.**
+엔드투엔드 단계 로그 (windows-latest, cmd.exe + Windows PowerShell 5.1):
+
+```
+[INFO] Detected platform: windows_amd64
+[SUCCESS] Latest Go edition version: 3.1.0
+[INFO] Downloading from: https://github.com/modu-ai/moai-adk/releases/download/v3.1.0/moai-adk_3.1.0_windows_amd64.zip
+[SUCCESS] Checksum verified
+[SUCCESS] Installed to: D:\a\_temp\moai-install-test\moai.exe
+PASS: install.bat resolved, downloaded, and installed end-to-end
+```
+
+`3.1.0` 해석은 로컬 pwsh 7(`RequestMessage` 분기)과 CI PS 5.1
+(`ResponseUri` 분기) 양쪽에서 각각 실측됐다. 1차 실패(31960480175)는 위에
+기록한 LF 결함 — 엔드투엔드 단계가 노린 "검증 불가능한 표면의 기계 판정"이
+설계대로 작동한 사례다. 정식 판정은 릴리즈 PR 시점의 전량 매트릭스.
+
 ## 프로세스 편차 (기록)
 
 디스패치는 `EnterWorktree(t53)` 후 `git merge release/v3.1.1`을 지시했으나,
