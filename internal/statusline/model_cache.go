@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // ReadModelCache reads the last used model name from cache file.
@@ -18,7 +20,7 @@ func ReadModelCache(homeDir string) (string, error) {
 		return "", nil
 	}
 
-	cachePath := filepath.Join(homeDir, ".moai", "state", "last-model.txt")
+	cachePath := filepath.Join(homeDir, defs.MoAIDir, defs.StateSubdir, "last-model.txt")
 
 	content, err := os.ReadFile(cachePath)
 	if err != nil {
@@ -47,7 +49,7 @@ func WriteModelCache(homeDir, modelName string) error {
 		return nil
 	}
 
-	stateDir := filepath.Join(homeDir, ".moai", "state")
+	stateDir := filepath.Join(homeDir, defs.MoAIDir, defs.StateSubdir)
 
 	// Create directory if it doesn't exist (AC-SF-005)
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {

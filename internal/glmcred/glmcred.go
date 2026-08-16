@@ -4,10 +4,12 @@
 // @MX:ANCHOR: [AUTO] GLM credential SSOT — exactly one writer implementation
 // @MX:REASON: two writers would mean two file-mode policies and two escaping rules; both internal/cli (moai glm) and internal/web (settings console) MUST delegate here (SPEC-GLM-KEY-INPUT-001 D-1 / C-2)
 //
-// The package is stdlib-only so it cannot participate in any import cycle. It
-// is imported by both internal/cli (the interactive `moai glm` flow) and
-// internal/web (the settings console key field), which together require the
-// one-way dependency internal/cli → internal/web to stay acyclic.
+// The package depends only on the standard library and stdlib-only internal
+// leaf packages (internal/paths, internal/defs) so it cannot participate in
+// any import cycle. It is imported by both internal/cli (the interactive
+// `moai glm` flow) and internal/web (the settings console key field), which
+// together require the one-way dependency internal/cli → internal/web to stay
+// acyclic.
 package glmcred
 
 import (
@@ -16,6 +18,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // EnvTestGLMKey is the env-var test seam honoured by Load. A non-empty value
@@ -32,13 +37,23 @@ const EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
 var HomeDirFn = os.UserHomeDir
 
 // Path returns the absolute path to the GLM credential file (~/.moai/.env.glm).
-// It returns the empty string when the home directory cannot be resolved.
+// A non-empty absolute MOAI_HOME redirects the file under the overridden root
+// (REQ-MHP-001, resolved through internal/paths); otherwise the preserved
+// HomeDirFn seam resolves the home and the join consumes defs segments
+// (REQ-MHP-010). It returns the empty string when resolution fails.
 func Path() string {
+	if v := os.Getenv(paths.EnvHome); v != "" && filepath.IsAbs(v) {
+		p, err := paths.GlmEnvFile()
+		if err != nil {
+			return ""
+		}
+		return p
+	}
 	home, err := HomeDirFn()
 	if err != nil || home == "" {
 		return ""
 	}
-	return filepath.Join(home, ".moai", ".env.glm")
+	return filepath.Join(home, defs.MoAIDir, defs.GlmEnvFileName)
 }
 
 // Save writes the GLM API key to ~/.moai/.env.glm at file mode 0600, in the
