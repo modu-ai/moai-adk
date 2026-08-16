@@ -66,6 +66,75 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 	}
 }
 
+// TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow is the PR #1574
+// review regression: with credentials already present (the steady state), the
+// hook must still ensure the context-window envs — settings written by an
+// older binary or `moai glm setup` carry neither window key, and without the
+// declaration Claude Code assumes a 200K window for the custom GLM model ID.
+func TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	_ = os.MkdirAll(claudeDir, 0o755)
+	settings := `{"env":{"ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5.3","ANTHROPIC_AUTH_TOKEN":"existing-key"},"other":"preserved"}`
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	_ = os.WriteFile(settingsPath, []byte(settings), 0o644)
+
+	msg := ensureGLMCredentials(dir)
+	if msg != "" {
+		t.Errorf("expected empty msg when AUTH_TOKEN exists, got %q", msg)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	var raw struct {
+		Env   map[string]string `json:"env"`
+		Other string            `json:"other"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("parse settings: %v", err)
+	}
+	if got := raw.Env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"]; got != "1000000" {
+		t.Errorf("CLAUDE_CODE_MAX_CONTEXT_TOKENS = %q, want %q", got, "1000000")
+	}
+	if got := raw.Env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"]; got != "1000000" {
+		t.Errorf("CLAUDE_CODE_AUTO_COMPACT_WINDOW = %q, want %q", got, "1000000")
+	}
+	if raw.Other != "preserved" {
+		t.Errorf("non-env key lost on rewrite: other = %q", raw.Other)
+	}
+}
+
+// TestEnsureGLMCredentials_ExistingTokenNoChurnWhenKeysPresent asserts the
+// steady state does not rewrite settings.local.json when both window keys are
+// already present — avoiding per-session churn against concurrent sessions
+// that mutate the same file.
+func TestEnsureGLMCredentials_ExistingTokenNoChurnWhenKeysPresent(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	_ = os.MkdirAll(claudeDir, 0o755)
+	settings := `{"env":{"ANTHROPIC_DEFAULT_OPUS_MODEL":"glm-5.3","ANTHROPIC_AUTH_TOKEN":"existing-key","CLAUDE_CODE_AUTO_COMPACT_WINDOW":"1000000","CLAUDE_CODE_MAX_CONTEXT_TOKENS":"1000000"}}`
+	settingsPath := filepath.Join(claudeDir, "settings.local.json")
+	_ = os.WriteFile(settingsPath, []byte(settings), 0o644)
+
+	if msg := ensureGLMCredentials(dir); msg != "" {
+		t.Errorf("expected empty msg, got %q", msg)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	if string(data) != settings {
+		t.Error("settings.local.json rewritten although window keys were already present")
+	}
+}
+
 func TestSessionStartHandler_EventType(t *testing.T) {
 	t.Parallel()
 
