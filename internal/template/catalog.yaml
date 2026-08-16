@@ -33,6 +33,11 @@ catalog:
               path: templates/.claude/skills/moai-harness-learner/
               hash: fd82c49101e9a85057c765c0a3e81a7c643dbd8f039e1f5d860b20af988da1c0
               version: 1.0.0
+            - name: moai-kanban-foreman
+              tier: core
+              path: templates/.claude/skills/moai-kanban-foreman/
+              hash: fdae87cb7228172ebc29e289f8d6c71c2fd6d70a1a9ed6a14560c6de21e4c6a6
+              version: 1.0.0
             - name: moai-meta-harness
               tier: core
               path: templates/.claude/skills/moai-meta-harness/
