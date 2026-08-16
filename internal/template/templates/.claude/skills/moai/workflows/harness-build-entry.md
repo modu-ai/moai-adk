@@ -42,7 +42,7 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 - AskUserQuestion contract: `.claude/rules/moai/core/askuser-protocol.md` (canonical reference — preload procedure, Socratic interview structure, option-description standards, bias prevention)
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
 - Context-First Discovery: CLAUDE.md §7 Rule 5 (trigger conditions + Socratic interview)
-- Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`harness-*` user-owned vs `moai-harness-*` template-builder)
+- Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`hns-*` user-owned vs `moai-harness-*` template-builder)
 - Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A — reserved verbs)
 - Builder module (orchestrator-direct 4 phases): `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 8 below transitions into)
 
@@ -106,7 +106,7 @@ Derive the harness `<name>` from the confirmed profile (Phase 2 + 1.5). The name
 
 - Lowercase, hyphen-separated, ≤32 characters.
 - Reflects the domain (e.g., domain "CLI template development" → name `cli-template-dev`; domain "research" → name `research`).
-- MUST use the `harness-` prefix ONLY if it will live under the user-owned `.claude/skills/harness-*/` namespace. If it is a project-level harness without the `harness-` skill prefix, omit the prefix (the `/harness:<name>` command namespace is separate from the skill namespace).
+- MUST use the `hns-` prefix ONLY if it will live under the user-owned `.claude/skills/hns-*/` namespace. If it is a project-level harness without the `harness-` skill prefix, omit the prefix (the `/harness:<name>` command namespace is separate from the skill namespace).
 - MUST NOT collide with an existing harness name. Check `.claude/commands/harness/<name>.md` existence before confirming.
 
 Surface the derived name to the user as part of the Phase 7 approval gate. If the user rejects the derived name via the "Modify" option, re-derive from the refined profile (do NOT ask the user to type a name statically — re-derivation keeps the name semantically tied to the request).
@@ -159,7 +159,7 @@ After the Builder's ACTIVATE phase completes, render a one-paragraph summary in 
 
 ## Cross-references
 
-- Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`harness-*` user-owned)
+- Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`hns-*` user-owned)
 - Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A)
 - moai SKILL.md § harness (dispatcher — argument-branching routing rule)
 - AskUserQuestion canonical: `.claude/rules/moai/core/askuser-protocol.md`

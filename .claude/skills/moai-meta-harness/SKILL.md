@@ -109,7 +109,7 @@ See `harness-builder.md` (companion workflow under `moai/workflows/`) for the fu
 > revfactory 7-Phase residual grep excludes this body because it IS the legacy
 > source being redirected away from.
 
-Meta-factory skill that architects and generates project-specific agent teams. Adapts the [revfactory/harness](https://github.com/revfactory/harness) 7-Phase workflow to MoAI's agent ecosystem. Produces `harness-*` skills and agent definitions tailored to each project's domain.
+Meta-factory skill that architects and generates project-specific agent teams. Adapts the [revfactory/harness](https://github.com/revfactory/harness) 7-Phase workflow to MoAI's agent ecosystem. Produces `hns-*` skills and agent definitions tailored to each project's domain.
 
 **Upstream**: revfactory/harness (Apache-2.0) — "A meta-skill that designs domain-specific agent teams, defines specialized agents, and generates the skills they use." (2905 stars, 420 forks, created 2026-03-26)
 
@@ -131,9 +131,9 @@ Meta-factory skill that architects and generates project-specific agent teams. A
 |----------|----------|-------|
 | Harness config | `.moai/harness/main.md` + extension files | this skill |
 | Agent definitions | `.claude/agents/harness/*.md` | this skill |
-| Domain skills | `.claude/skills/harness-*/SKILL.md` | this skill |
+| Domain skills | `.claude/skills/hns-*/SKILL.md` | this skill |
 
-All generated artifacts use the `harness-*` prefix — never `moai-*` (which is template-managed). The `moai-harness-*` prefix specifically denotes template-managed harness builders (`moai-meta-harness`, `moai-harness-learner`) and is NOT used by this generator's emissions.
+All generated artifacts use the `hns-*` prefix — never `moai-*` (which is template-managed). The `moai-harness-*` prefix specifically denotes template-managed harness builders (`moai-meta-harness`, `moai-harness-learner`) and is NOT used by this generator's emissions.
 
 ### 6 Architectural Patterns (upstream)
 
@@ -155,7 +155,7 @@ Each MoAI phase maps to upstream revfactory/harness phases (ref: https://github.
 | 2. Analysis | Phase 1 domain analysis (codebase scan) | manager-spec | `answers.yaml` + repo state | Analysis report |
 | 3. Synthesis | Phase 2 team architecture design | manager-spec | Analysis report | SPEC doc with EARS |
 | 4. Skeleton | Phase 3 agent definition generation | meta-harness (this skill) | SPEC doc | `.moai/harness/main.md` + extensions |
-| 5. Customization | Phase 4 skill generation | meta-harness (this skill) | Skeleton | `.claude/agents/harness/*.md` + `.claude/skills/harness-*/SKILL.md` |
+| 5. Customization | Phase 4 skill generation | meta-harness (this skill) | Skeleton | `.claude/agents/harness/*.md` + `.claude/skills/hns-*/SKILL.md` |
 | 6. Evaluation | Phase 5 integration + Phase 6 validation | sync-auditor | Generated artifacts | Sprint Contract score |
 | 7. Iteration | Harness Evolution Mechanism + Phase 7-5 ops | LEARNING-001 (separate SPEC) | Scoring deltas | Factory feedback (out of scope) |
 
@@ -179,7 +179,7 @@ See [agent cross-references full inventory](references/agent-cross-references.md
 
 ### Generated Harness Validation
 
-After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness automatically hands off to `sync-auditor` using the Sprint Contract protocol (design constitution §11.5).
+After Phase 5 (Customization) emits new `hns-*` skills, this meta-harness automatically hands off to `sync-auditor` using the Sprint Contract protocol (design constitution §11.5).
 
 **4-Dimension Sprint Contract Assessment**:
 
@@ -188,7 +188,7 @@ After Phase 5 (Customization) emits new `harness-*` skills, this meta-harness au
 | Functionality | Agent definitions execute their stated purpose; skills have valid trigger conditions |
 | Security | No credentials in generated files; tool permissions follow least-privilege |
 | Craft | YAML frontmatter valid (CSV allowed-tools, quoted metadata); progressive disclosure configured |
-| Consistency | Domain alignment with `answers.yaml`; naming follows `harness-*` convention |
+| Consistency | Domain alignment with `answers.yaml`; naming follows `hns-*` convention |
 
 **Scoring**:
 
@@ -216,7 +216,7 @@ For Phase 3b — HRN-003 Hierarchical Scoring (when `harness.yaml` sets `evaluat
 
 ### User-Generated (this meta-harness emits)
 
-**`harness-*` namespace and `.claude/agents/harness/` directory** are user-owned. Created by this meta-harness during `/moai project` Phase 5+ interview, tailored to the user's project domain.
+**`hns-*` skills namespace and `.claude/agents/harness/` directory** are user-owned. Created by this meta-harness during `/moai project` Phase 5+ interview, tailored to the user's project domain.
 
 User-generated artifacts:
 - `.claude/skills/harness-<domain>/SKILL.md` — domain-specific skill (e.g., `harness-trading`, `harness-llm-cascade`)
@@ -225,11 +225,11 @@ User-generated artifacts:
 
 ### Contract
 
-- [HARD] This meta-harness MUST emit user-generated skills with `harness-*` prefix ONLY. Emitting a `moai-*` (including `moai-harness-*`) prefixed file during Phase 4 or 5 is a **contract violation**.
-- [HARD] `moai update` MUST NOT delete, modify, or sync `harness-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
-- [HARD] Template (`internal/template/templates/`) MUST NOT contain `harness-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
-- [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용 (`*harness-*` substring 패턴은 false positive 위험으로 금지).
-- [HARD] Generator emits `harness-*` prefix ONLY. The build enforcement recognizes `harness-*` as user-owned, with the legacy prefixed form retained during a backward-compat deprecation window. SSOT: the harness namespace separation policy.
+- [HARD] This meta-harness MUST emit user-generated skills with `hns-*` prefix ONLY. Emitting a `moai-*` (including `moai-harness-*`) prefixed file during Phase 4 or 5 is a **contract violation**.
+- [HARD] `moai update` MUST NOT delete, modify, or sync `hns-*` skills or `.claude/agents/harness/*` files. Backup before update is mandatory.
+- [HARD] Template (`internal/template/templates/`) MUST NOT contain `hns-*` skills or `.claude/agents/harness/*-specialist.md` files. Leak detection triggers cleanup chore.
+- [HARD] `hns-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용 (`*harness-*` substring 패턴은 false positive 위험으로 금지).
+- [HARD] Generator emits `hns-*` prefix ONLY. The build enforcement recognizes `hns-*` as user-owned, with the legacy `harness-*` prefixed form retained during a backward-compat deprecation window. SSOT: the harness namespace separation policy.
 
 ### Generated-Agent Self-Activation Contract
 
@@ -238,14 +238,14 @@ User-generated artifacts:
 - A `skills:` frontmatter entry preloading the agent's companion `harness-<domain>-*` skill. This makes the domain skill load deterministically when the agent runs, rather than relying on auto-discovery which fails silently when the companion skill is absent from the agent's context.
 - A non-empty, trigger-shaped `description` frontmatter field naming the domain + the observable task-shape, so the orchestrator's `.moai/harness/main.md` Task-Shape Routing table can dispatch to it.
 
-Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `harness-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
+Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `hns-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
 
 ### Storage Roots
 
 | Namespace / Path | Location | Source | `moai update` 동작 |
 |------------------|----------|--------|---------------------|
 | `moai-*` skills (incl. `moai-harness-*` builders) | `.claude/skills/moai-*/` | template | 삭제 후 신규 설치 (overwrite) |
-| **`harness-*` skills** | `.claude/skills/harness-*/` | **user project (this meta-harness emits — intent declaration)** | **절대 삭제/modify 금지 + 백업 보존** |
+| **`hns-*` skills** | `.claude/skills/hns-*/` | **user project (this meta-harness emits — intent declaration)** | **절대 삭제/modify 금지 + 백업 보존** |
 | MoAI agents (retained 7, FLAT) | `.claude/agents/moai/` | template | 삭제 후 신규 설치 (overwrite) |
 | **Generated harness agents** | `.claude/agents/harness/` | **user project (this meta-harness emits)** | **절대 삭제/modify 금지 + 백업 보존** |
 | Harness config | `.moai/harness/` | user project | 절대 삭제 금지 + 백업 보존 |
@@ -289,7 +289,7 @@ The following capabilities are explicitly NOT implemented by this skill:
 - **5-layer integration mechanism** — owned by the project-harness generation policy. The integration with `/moai project` phases, hook installation, and CLAUDE.md marker management are all delegated to that SPEC.
 - **16-question Socratic interview** — owned by the project-harness generation policy. The `manager-spec` conducts the interview under that SPEC's control.
 - **Auto-evolution loop** — owned by the harness-learning policy. The learning feedback mechanism (Phase 7) and delta capture are separate work items outside Wave A.
-- **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `harness-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
+- **Modification of `.claude/agents/{moai,harness}/` or static `moai-*` skills** — this meta-harness generates only `hns-*` prefixed artifacts and has no write access to MoAI's own agent/skill directories.
 
 ---
 

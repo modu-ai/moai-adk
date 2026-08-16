@@ -119,7 +119,7 @@ Comments and key ordering are preserved (YAML round-trip).
 
 ## Works Well With
 
-- `moai-meta-harness` — generates the `harness-*` skills that are targets of auto-updates
+- `moai-meta-harness` — generates the `hns-*` skills that are targets of auto-updates
 - `moai-workflow-tdd` — TDD cycle generates events that feed into the observer
 - `moai-foundation-quality` — quality gates run after auto-updates to validate correctness
 
