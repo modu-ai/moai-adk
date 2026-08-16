@@ -136,3 +136,35 @@ func TestLookupProjectKey_MissingDirectoryDoesNotMatch(t *testing.T) {
 		t.Fatalf("live directory: got (%q, %v), want (%q, true)", got, found, live)
 	}
 }
+
+// TestLookupProjectKey_DuplicateEntriesResolveDeterministically covers the
+// ledger a pre-fix launcher could already have written: two spellings of one
+// directory, each naming a different profile. Go randomizes map iteration, so
+// an unordered scan would pick either one from run to run and the project would
+// alternate between two transcript stores — the very split this fix closes.
+func TestLookupProjectKey_DuplicateEntriesResolveDeterministically(t *testing.T) {
+	root := pmProjectDir(t)
+	variant, sameDir := caseVariantOf(t, root)
+	if !sameDir {
+		t.Skip("case-sensitive filesystem: a case-variant path names a different directory here")
+	}
+
+	// A lookup by a THIRD spelling so neither entry wins by exact match.
+	lookup := filepath.Join(filepath.Dir(root), "MoAI-adk-go")
+	if _, err := os.Stat(lookup); err != nil {
+		t.Skipf("third case spelling does not resolve here: %v", err)
+	}
+
+	projects := map[string]any{root: "profile-a", variant: "profile-b"}
+
+	first, found := lookupProjectKey(projects, lookup)
+	if !found {
+		t.Fatal("duplicate-entry lookup found nothing")
+	}
+	for i := range 50 {
+		got, ok := lookupProjectKey(projects, lookup)
+		if !ok || got != first {
+			t.Fatalf("iteration %d: got (%q, %v), want the stable (%q, true)", i, got, ok, first)
+		}
+	}
+}

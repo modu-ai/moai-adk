@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -305,7 +306,20 @@ func lookupProjectKey(projects map[string]any, key string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
+
+	// Sorted, not map order. A ledger written before this fix can already hold
+	// two spellings of one directory, and Go randomizes map iteration — scanning
+	// unordered would hand back either entry from run to run, so a project with
+	// duplicates would resolve to a different profile (and a different
+	// transcript store) on each launch. Sorting makes the winner the same every
+	// time, and the write side collapses the duplicate on the next launch.
+	candidates := make([]string, 0, len(projects))
 	for candidate := range projects {
+		candidates = append(candidates, candidate)
+	}
+	sort.Strings(candidates)
+
+	for _, candidate := range candidates {
 		candidateInfo, err := os.Stat(candidate)
 		if err != nil {
 			continue
