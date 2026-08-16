@@ -54,15 +54,25 @@ REM Get version
 if "%VERSION%"=="" (
     echo [INFO] Fetching latest Go edition version from GitHub...
 
-    REM Use PowerShell to get latest version (accept both v* and go-v* tags)
-    for /f "tokens=*" %%i in ('powershell -Command "$releases = Invoke-RestMethod -Uri https://api.github.com/repos/modu-ai/moai-adk/releases; $goRelease = $releases ^| Where-Object { $_.tag_name -like 'v*' -or $_.tag_name -like 'go-v*' } ^| Select-Object -First 1; if ($goRelease) { $goRelease.tag_name -replace '^go-v', '' -replace '^v', '' } else { '' }" 2^>nul') do (
+    REM Resolve the latest version from the /releases/latest redirect rather
+    REM than the REST API, matching get_latest_version in install.sh and
+    REM Get-LatestVersion in install.ps1. api.github.com allows 60
+    REM unauthenticated requests per hour per IP and answers rate-limited
+    REM calls with a JSON error carrying no tag_name, which the old code read
+    REM as "no releases exist". The redirect is not part of the API and is
+    REM not rate limited. The payload below deliberately contains no pipes
+    REM and no redirections, so nothing inside the quoted command needs cmd
+    REM caret escaping. The resolved URI is exposed as
+    REM RequestMessage.RequestUri on PowerShell 6+ and as ResponseUri on
+    REM Windows PowerShell 5.1; both are probed rather than assumed.
+    for /f "tokens=*" %%i in ('powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $u = ''; try { $r = Invoke-WebRequest -Uri 'https://github.com/modu-ai/moai-adk/releases/latest' -Method Head -MaximumRedirection 10 -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop; $b = $r.BaseResponse; if ($b.PSObject.Properties['RequestMessage']) { $u = [string]$b.RequestMessage.RequestUri.AbsoluteUri } elseif ($b.PSObject.Properties['ResponseUri']) { $u = [string]$b.ResponseUri.AbsoluteUri } } catch { $u = '' }; if ($u -match '/tag/([^/?#]+)') { $Matches[1] -replace '^go-', '' -replace '^v', '' }" 2^>nul') do (
         set "VERSION=%%i"
     )
 
     if "!VERSION!"=="" (
-        echo [ERROR] Failed to fetch latest version
-        echo [INFO] No releases found. You can:
-        echo   1. Install a specific version: install.bat --version 2.0.0
+        echo [ERROR] Could not determine the latest version from GitHub
+        echo [INFO] GitHub may be unreachable from this network. You can:
+        echo   1. Install a specific version: install.bat --version 3.1.0
         echo   2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest
         exit /b 1
     )
