@@ -387,7 +387,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// therefore re-emit — telling the operator to open four terminals they
 	// already opened, for a run already under way. Those three sources are
 	// skipped; an empty source is treated as startup (see the helper).
-	if notice := kanbanBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
+	// The notice reads the backlog queue under the project root so the lead's
+	// opening screen names the work the run actually moves. ProjectDir first,
+	// CWD as fallback — the same preference chainLineageBanner applies. An
+	// empty root degrades to a zero-count summary line inside the notice
+	// rather than failing here.
+	kanbanRoot := input.ProjectDir
+	if kanbanRoot == "" {
+		kanbanRoot = input.CWD
+	}
+	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -399,7 +408,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
 
-		operatorNotice := kanbanBootstrapNotice(operatorLang(h.cfg))
+		operatorNotice := kanbanBootstrapNotice(kanbanRoot, operatorLang(h.cfg))
 		if out.SystemMessage == "" {
 			out.SystemMessage = operatorNotice
 		} else {

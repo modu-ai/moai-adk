@@ -128,7 +128,7 @@ func TestKanbanNoticeSuppressedUnderFactoryEnv(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
-	if got := kanbanBootstrapNotice(langEnglish); got != "" {
+	if got := kanbanBootstrapNotice("", langEnglish); got != "" {
 		t.Errorf("kanban notice must yield to the factory notice, got:\n%s", got)
 	}
 }
