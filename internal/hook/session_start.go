@@ -338,6 +338,32 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Factory Mode bootstrap announcement — the kanban announcement's sibling
+	// (SPEC-FACTORY-WORKER-FANOUT-001), emitted ahead of it so the two modes'
+	// notices can never stack. Same dual-channel shape and the same
+	// startup-only gating, for the same reasons the kanban block below
+	// records; the operator copies N worker launch lines instead of four
+	// companion lines.
+	if notice := factoryBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = notice
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+
+		operatorNotice := factoryBootstrapNotice(operatorLang(h.cfg))
+		if out.SystemMessage == "" {
+			out.SystemMessage = operatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + operatorNotice
+		}
+	}
+
 	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
 	// takes the screen. Non-kanban sessions get "" and nothing is injected.

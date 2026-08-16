@@ -187,6 +187,26 @@ const (
 	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
+	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
+	// worker count from the launcher entry point to the block-cap inject and
+	// the SessionStart hook. It is set on BOTH the factory lead and every
+	// worker — the count travels in the worker's own `-f <N>` token, which is
+	// why the worker launch command carries it. A non-empty value is what
+	// marks a session a factory session; the value is the fan-out size N.
+	//
+	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
+	// lead (run id, leader socket) and deliberately does NOT set
+	// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban
+	// chain, which a factory run never drives.
+	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
+
+	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
+	// carries its `worker-<n>` label. It is the factory counterpart of
+	// EnvMoaiKanbanLabel: the worker needs the raised Stop-hook block cap
+	// (it fields long dispatch-driven turns) but must not be seeded with any
+	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
+	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
+
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
 	// EnterWorktree, Agent isolation:worktree) on the child environment before
