@@ -146,6 +146,20 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	var segs []string
 
+	// Session identity leads the line: name first, then the agent it runs as.
+	// It sits ahead of the model because it answers "which session am I looking
+	// at", which is what the operator scans for first when several are open.
+	// Both are omitted when absent, so an unnamed ordinary session renders
+	// exactly as before.
+	if r.isSegmentEnabled(SegmentSession) {
+		if data.SessionName != "" {
+			segs = append(segs, fmt.Sprintf("🏷️ %s", data.SessionName))
+		}
+		if data.AgentName != "" {
+			segs = append(segs, fmt.Sprintf("👤 %s", data.AgentName))
+		}
+	}
+
 	// Model
 	if r.isSegmentEnabled(SegmentModel) && data.Metrics.Available && data.Metrics.Model != "" {
 		segs = append(segs, fmt.Sprintf("🤖 %s", data.Metrics.Model))
@@ -325,18 +339,6 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 //   - PR segment last position with new format "💌 PR #N (⌥state)" (CH7, CH8)
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
-
-	// Session identity at the L3 head: name first, then the agent it runs as.
-	// Both are omitted when absent, so an unnamed ordinary session renders
-	// exactly as before.
-	if r.isSegmentEnabled(SegmentSession) {
-		if data.SessionName != "" {
-			segs = append(segs, fmt.Sprintf("🏷️ %s", data.SessionName))
-		}
-		if data.AgentName != "" {
-			segs = append(segs, fmt.Sprintf("👤 %s", data.AgentName))
-		}
-	}
 
 	// Directory (layout v3 amend: L3 head — placed before repo_branch)
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
