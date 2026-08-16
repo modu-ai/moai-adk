@@ -284,7 +284,7 @@ func TestResolveAgentModelEffort_Inherit(t *testing.T) {
 		if hasGroup {
 			t.Errorf("%s should have no group", agent)
 		}
-		if got.Model != modelInherit {
+		if got.Model != ModelInherit {
 			t.Errorf("%s should resolve to inherit, got %q", agent, got.Model)
 		}
 	}
