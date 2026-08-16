@@ -18,6 +18,10 @@ var claudeCodePassthroughTokens = []string{
     "$CLAUDE_SKILL_DIR",   // Set by Claude Code, points to skill directory
     "$ARGUMENTS",          // Set by Claude Code, command arguments
     "$HOME",               // Set by the shell, user home directory
+    // ... plus GitHub Actions vars, $LANG_COUNT, $MOAI_HOOK_STDERR_LOG,
+    // and the hook-wrapper shell-local set: $PWD, $ACTION,
+    // $AUTONOMY_TIER_DORMANT, $INPUT, $PROJECT_ROOT, $SESSION_ID,
+    // $STATE_FILE (lifecycle dormant guards + stop-goal shell precondition).
 }
 ```
 
