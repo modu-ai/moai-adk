@@ -654,7 +654,23 @@ func ensureGLMCredentials(projectDir string) string {
 
 	// GLM models configured — check if AUTH_TOKEN exists
 	if token := settings.Env[config.EnvAnthropicAuthToken]; token != "" {
-		return "" // Already has credentials
+		// Already has credentials — nothing to inject, but the context-window
+		// envs must still be ensured: settings written by an older binary (or
+		// by `moai glm setup`) carry neither window key, and without the
+		// CLAUDE_CODE_MAX_CONTEXT_TOKENS declaration Claude Code assumes a
+		// 200K window for the custom GLM model ID (Issue #653, PR #1574
+		// review). Persist only when a key was actually added so the steady
+		// state does not rewrite settings.local.json on every session start.
+		before := settings.Env[config.EnvClaudeCodeAutoCompactWindow] + "|" + settings.Env[config.EnvClaudeCodeMaxContextTokens]
+		maybeSet1MAutoCompactWindow(settings.Env)
+		maybeDeclareGLMContextWindow(settings.Env)
+		after := settings.Env[config.EnvClaudeCodeAutoCompactWindow] + "|" + settings.Env[config.EnvClaudeCodeMaxContextTokens]
+		if after != before {
+			if err := persistSettingsEnv(settings.Env, data, settingsPath); err != nil {
+				slog.Error("failed to write GLM context window env to settings.local.json", "error", err.Error())
+			}
+		}
+		return ""
 	}
 
 	// AUTH_TOKEN missing — try to load from ~/.moai/.env.glm
@@ -681,28 +697,12 @@ func ensureGLMCredentials(projectDir string) string {
 	// Mirrors internal/cli/glm.go glmAutoCompactWindow; the retired [1m] suffix
 	// path (z.ai rejects suffixed ids) is replaced by resolved-window detection.
 	maybeSet1MAutoCompactWindow(settings.Env)
+	// Declare the resolved GLM context window (Issue #653): Claude Code assumes
+	// 200K for unrecognized custom IDs and caps the auto-compact window above
+	// at that assumption. Mirrors internal/cli/glm.go glmMaxContextTokens.
+	maybeDeclareGLMContextWindow(settings.Env)
 
-	// Re-read original file to preserve all fields (not just env)
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return ""
-	}
-
-	envData, err := json.Marshal(settings.Env)
-	if err != nil {
-		return ""
-	}
-	raw["env"] = envData
-
-	newData, err := json.MarshalIndent(raw, "", " ")
-	if err != nil {
-		return ""
-	}
-
-	// @MX:ANCHOR: [AUTO] settings.local.json holds GLM ANTHROPIC_AUTH_TOKEN — write with 0o600 only
-	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-001 (CWE-732/552). Prior baseline 0o644
-	// allowed any local user to read the credential. Regression locked by TestEnsureGLMCredentialsFilePerm.
-	if err := writeSettingsSecure(settingsPath, newData); err != nil {
+	if err := persistSettingsEnv(settings.Env, data, settingsPath); err != nil {
 		slog.Error("failed to write GLM credentials to settings.local.json",
 			"error", err.Error(),
 		)
@@ -710,6 +710,37 @@ func ensureGLMCredentials(projectDir string) string {
 	}
 
 	return fmt.Sprintf("auto-injected GLM credentials from ~/.moai/.env.glm into %s", settingsPath)
+}
+
+// persistSettingsEnv writes env back to settings.local.json, preserving all
+// non-env top-level keys from rawOriginal. Extracted from the injection tail
+// so the already-credentialed path (PR #1574 review) reuses the identical
+// write seam.
+func persistSettingsEnv(env map[string]string, rawOriginal []byte, settingsPath string) error {
+	// Re-read original file to preserve all fields (not just env)
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(rawOriginal, &raw); err != nil {
+		return fmt.Errorf("unmarshal settings: %w", err)
+	}
+
+	envData, err := json.Marshal(env)
+	if err != nil {
+		return fmt.Errorf("marshal env: %w", err)
+	}
+	raw["env"] = envData
+
+	newData, err := json.MarshalIndent(raw, "", " ")
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+
+	// @MX:ANCHOR: [AUTO] settings.local.json holds GLM ANTHROPIC_AUTH_TOKEN — write with 0o600 only
+	// @MX:REASON: SPEC-V3R5-SECURITY-CRIT-001 AC-SEC-001 (CWE-732/552). Prior baseline 0o644
+	// allowed any local user to read the credential. Regression locked by TestEnsureGLMCredentialsFilePerm.
+	if err := writeSettingsSecure(settingsPath, newData); err != nil {
+		return fmt.Errorf("write settings: %w", err)
+	}
+	return nil
 }
 
 // maybeSet1MAutoCompactWindow sets CLAUDE_CODE_AUTO_COMPACT_WINDOW in env when
@@ -725,6 +756,23 @@ func maybeSet1MAutoCompactWindow(env map[string]string) {
 	}
 	if statusline.ResolveGLMContextWindow(env[config.EnvAnthropicDefaultOpusModel]) >= config.Default1MContextTokens {
 		env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
+	}
+}
+
+// maybeDeclareGLMContextWindow sets CLAUDE_CODE_MAX_CONTEXT_TOKENS in env when
+// the High (Opus) slot model resolves to a known GLM context window. Claude
+// Code assumes a 200K window for unrecognized custom model IDs and caps
+// CLAUDE_CODE_AUTO_COMPACT_WINDOW at that assumed window, so the 1M value set
+// by maybeSet1MAutoCompactWindow is ineffective without this declaration.
+// This is the SessionStart-hook analogue of internal/cli/glm.go
+// glmMaxContextTokens. Issue #653; ref: code.claude.com/docs/en/model-config
+// ("Correct the window for a gateway or custom model ID").
+func maybeDeclareGLMContextWindow(env map[string]string) {
+	if env[config.EnvClaudeCodeMaxContextTokens] != "" {
+		return
+	}
+	if size := statusline.ResolveGLMContextWindow(env[config.EnvAnthropicDefaultOpusModel]); size > 0 {
+		env[config.EnvClaudeCodeMaxContextTokens] = strconv.Itoa(size)
 	}
 }
 
