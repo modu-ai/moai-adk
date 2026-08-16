@@ -238,11 +238,16 @@ func ApplyPerformanceTier(projectRoot, tier string) error {
 	return nil
 }
 
-// modelInherit is the "inherit" model sentinel. Agents whose profile model is
-// inherit (user-added agents with no group membership) are never injected —
-// inherit is never written as a model: value. The built-in Explore now has an
-// explicit explore group cell (sonnet/low) and is no longer an inherit agent.
-const modelInherit = "inherit"
+// ModelInherit is the exported "inherit" model sentinel — the profile-matrix
+// vocabulary for "no per-agent model routing". Two surfaces use it: agents
+// whose profile model is inherit (user-added agents with no group membership)
+// are never injected, and under a GLM backend every mapped agent's model is
+// session-inherited (the t66 fold: the launcher maps llm.glm.models onto the
+// session-global ANTHROPIC_DEFAULT_*_MODEL env, so per-agent model cells carry
+// no differentiation there). Inherit is never written as a model: value. The
+// built-in Explore now has an explicit explore group cell (sonnet/low) and is
+// no longer an inherit agent.
+const ModelInherit = "inherit"
 
 // MapModelPolicyToTier translates a template.ModelPolicy value
 // ({high, medium, low}) to the canonical performance tier ({high, medium, low}).

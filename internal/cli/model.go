@@ -11,6 +11,15 @@ package cli
 // input / Workflow prompt steering) — NOT a per-spawn override for a named
 // subagent. The resolver reads the profile matrix, never a mutated frontmatter
 // pin.
+//
+// t66 (model-profile simplification): under a GLM backend the per-agent GLM
+// model column is folded to the explicit inherit sentinel. The GLM model
+// dimension is session-carried — the launcher maps llm.glm.models onto the
+// session-global ANTHROPIC_DEFAULT_*_MODEL env — so a per-agent GLM model
+// column carries no differentiation (measured 2026-08-16: every agent resolved
+// the same glm id; the rows differed only in reasoning). The column therefore
+// STATES inheritance ("inherit") instead of repeating the mapped id, and
+// glm_reasoning remains the only per-agent axis under GLM.
 
 import (
 	"encoding/json"
@@ -29,7 +38,11 @@ type modelProfileEntry struct {
 	Group  string `json:"group,omitempty"`
 	Model  string `json:"model"`  // per-spawn runtime arg (Claude alias or "inherit")
 	Effort string `json:"effort"` // documented intent (not a per-spawn override)
-	// GLM overlay fields — populated only under a GLM backend.
+	// GLM overlay fields — populated only under a GLM backend. GLMModel is the
+	// t66 fold: always the explicit inherit sentinel for mapped agents (the
+	// sub-agent model is session-inherited, never per-agent routed), kept as a
+	// non-empty field rather than a silent absence. GLMReasoning is the
+	// per-agent overlay state — the only differentiating axis under GLM.
 	GLMModel     string `json:"glm_model,omitempty"`
 	GLMReasoning string `json:"glm_reasoning,omitempty"`
 }
@@ -70,29 +83,6 @@ override for a named subagent.`,
 	return modelCmd
 }
 
-// glmModelForAlias maps a Claude model alias to the configured GLM model id via
-// llm.glm.models (REQ-MPM-029). The inherit sentinel and any unmapped alias pass
-// through unchanged.
-func glmModelForAlias(alias string, m config.GLMModels) string {
-	switch alias {
-	case "opus":
-		return firstNonEmpty(m.Opus, m.High)
-	case "sonnet":
-		return firstNonEmpty(m.Sonnet, m.Medium)
-	case "fable":
-		return firstNonEmpty(m.Fable, m.High)
-	default:
-		return alias // "inherit" or unknown — pass through
-	}
-}
-
-func firstNonEmpty(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
-}
-
 // resolveModelProfileReport builds the report from an LLM config (extracted for
 // unit testing without a project on disk).
 func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
@@ -103,7 +93,7 @@ func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 	}
 	if glm {
 		rpt.Backend = "glm"
-		rpt.WireNote = "GLM overlay implemented + wired; live z.ai wire-effectiveness pending"
+		rpt.WireNote = "GLM sub-agent models are session-inherited (llm.glm.models to ANTHROPIC_DEFAULT_*_MODEL); per-agent routing differs by reasoning only. Overlay implemented + wired; live z.ai wire-effectiveness pending"
 	}
 	for _, agent := range template.ProfileMatrixAgents() {
 		me, hasGroup := template.ResolveAgentModelEffort(llm, agent)
@@ -118,7 +108,10 @@ func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 			Effort: me.Effort,
 		}
 		if glm && hasGroup {
-			entry.GLMModel = glmModelForAlias(me.Model, llm.GLM.Models)
+			// t66 fold: state session inheritance explicitly instead of
+			// repeating the tier-mapped GLM model id per agent — the GLM model
+			// dimension is carried by the session env, not per-agent routing.
+			entry.GLMModel = template.ModelInherit
 			entry.GLMReasoning = template.ResolveGLMReasoning(agent, me.Effort).Name
 		}
 		rpt.Agents = append(rpt.Agents, entry)
