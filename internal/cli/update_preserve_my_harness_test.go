@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
@@ -116,7 +117,7 @@ func TestPreserveMyHarnessOnUpdate(t *testing.T) {
 
 	// --- Exercise cleanMoaiManagedPaths (the stale-file removal step) ---
 	// We discard output — we only care about side effects on the fixture.
-	if err := deploy.CleanMoaiManagedPaths(tmpDir, io.Discard); err != nil {
+	if err := deploy.CleanMoaiManagedPaths(tmpDir, io.Discard, fstest.MapFS{}); err != nil {
 		t.Fatalf("cleanMoaiManagedPaths: %v", err)
 	}
 

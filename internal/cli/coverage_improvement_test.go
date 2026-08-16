@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
@@ -944,7 +945,7 @@ func TestCleanMoaiManagedPaths_WithExistingPaths(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2007,7 +2008,7 @@ func TestCleanMoaiManagedPaths_WithFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2029,7 +2030,7 @@ func TestCleanMoaiManagedPaths_EmptyProject2(t *testing.T) {
 	// No .claude or .moai directories exist
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -3093,7 +3094,7 @@ func TestCleanMoaiManagedPaths_WithExistingFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4848,7 +4849,7 @@ func TestCleanMoaiManagedPaths_WithGlobMatches(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4869,7 +4870,7 @@ func TestCleanMoaiManagedPaths_NonExistentPaths(t *testing.T) {
 
 	// Don't create any paths - they should all be "not found"
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5554,7 +5555,7 @@ func TestCleanMoaiManagedPaths_WithGlobAndDirs(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -5577,7 +5578,7 @@ func TestCleanMoaiManagedPaths_AllPathsMissing(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

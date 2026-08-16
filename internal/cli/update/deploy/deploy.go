@@ -12,8 +12,10 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,6 +23,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
+
+// preCleanBackupSubdir is the name the unmanaged-file backup tree takes
+// inside the run-scoped backup directory — a sibling of the config backup's
+// own layout and of legacyMemoryBackupSubdir, so a single timestamped
+// directory holds everything one run preserved before it destroyed anything.
+const preCleanBackupSubdir = "pre-clean"
 
 // CleanTarget describes one path removed by CleanMoaiManagedPaths: what the
 // progress messages show, what gets deleted, and whether the path is a glob.
@@ -77,8 +85,26 @@ func ManagedCleanTargets(projectRoot string) []CleanTarget {
 // deployment. This ensures stale files are cleaned up during version upgrades.
 // The .moai/config/ directory is deleted entirely (backup was done by the Backup step).
 // Paths that do not exist are silently skipped.
-func CleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
+//
+// tmplFS is the embedded template filesystem — the same FS deployment reads
+// from, passed in by the caller so this package stays a leaf. Card t111:
+// BEFORE each root is removed, every regular file tmplFS does not carry at
+// the same relative path is copied into the run's pre-clean backup
+// (.moai-backups/<timestamp>/pre-clean/<root>/...). A backup failure aborts
+// before any removal — the REQ-UDS-008 rule generalized from
+// MigrateLegacyMemoryDir: a failed backup must never be followed by the
+// destruction it was taken to survive. Template-managed files are NOT backed
+// up: deployment rewrites them moments later, so their only copy is never at
+// stake, and skipping them keeps the backup to what would otherwise be lost
+// (measured 2026-08-15: 12 files vanished this way, among them
+// .moai/config/astgrep-rules and dev-only rules under .claude/rules/moai).
+func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) error {
 	targets := ManagedCleanTargets(projectRoot)
+
+	// One timestamp for the whole run, so every root's unmanaged files land
+	// under a single pre-clean directory and are restored together.
+	backupBase := filepath.Join(projectRoot, defs.BackupsDir,
+		time.Now().Format(defs.BackupTimestampFormat), preCleanBackupSubdir)
 
 	// Process standard targets (files and directories)
 	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
@@ -92,13 +118,21 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 				pl.Fail(fmt.Sprintf("Failed to glob %s: %v", t.DisplayPath, err))
 				return fmt.Errorf("glob %s: %w", t.DisplayPath, err)
 			}
+			backedUp := 0
 			for _, match := range matches {
-				if err := os.RemoveAll(match); err != nil {
-					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, err))
-					return fmt.Errorf("remove %s: %w", match, err)
+				rel, relErr := filepath.Rel(projectRoot, match)
+				if relErr != nil {
+					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, relErr))
+					return fmt.Errorf("rel %s: %w", match, relErr)
 				}
+				n, rmErr := backupThenRemove(match, rel, backupBase, tmplFS)
+				if rmErr != nil {
+					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, rmErr))
+					return fmt.Errorf("remove %s: %w", match, rmErr)
+				}
+				backedUp += n
 			}
-			pl.Done(fmt.Sprintf("Removed %s", t.DisplayPath))
+			pl.Done(removedMsg(t.DisplayPath, backedUp))
 			continue
 		}
 
@@ -115,11 +149,17 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 			return fmt.Errorf("stat %s: %w", t.DisplayPath, err)
 		}
 
-		if err := os.RemoveAll(t.FullPath); err != nil {
-			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, err))
-			return fmt.Errorf("remove %s: %w", t.DisplayPath, err)
+		rel, relErr := filepath.Rel(projectRoot, t.FullPath)
+		if relErr != nil {
+			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, relErr))
+			return fmt.Errorf("rel %s: %w", t.FullPath, relErr)
 		}
-		pl.Done(fmt.Sprintf("Removed %s", t.DisplayPath))
+		backedUp, err := backupThenRemove(t.FullPath, rel, backupBase, tmplFS)
+		if err != nil {
+			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, err))
+			return fmt.Errorf("remove %s: %w", t.FullPath, err)
+		}
+		pl.Done(removedMsg(t.DisplayPath, backedUp))
 	}
 
 	// Clean .moai/config/ entirely - backup was already done by the Backup step.
@@ -131,13 +171,15 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
 	// CR-plus-format pair (REQ-UPR-004).
 	plConfig := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", configDisplayPath), nil)
 
-	if err := os.RemoveAll(configDir); err != nil {
-		if !os.IsNotExist(err) {
-			plConfig.Fail(fmt.Sprintf("Failed to remove %s: %v", configDisplayPath, err))
-			return fmt.Errorf("remove %s: %w", configDisplayPath, err)
-		}
+	// Card t111: files the template does not carry (e.g. a user's
+	// astgrep-rules/ tree) reach the pre-clean backup here before the wipe.
+	configBackedUp, err := backupThenRemove(configDir,
+		filepath.Join(defs.MoAIDir, defs.ConfigSubdir), backupBase, tmplFS)
+	if err != nil {
+		plConfig.Fail(fmt.Sprintf("Failed to remove %s: %v", configDisplayPath, err))
+		return fmt.Errorf("remove %s: %w", configDisplayPath, err)
 	}
-	plConfig.Done(fmt.Sprintf("Removed %s", configDisplayPath))
+	plConfig.Done(removedMsg(configDisplayPath, configBackedUp))
 
 	// Migrate legacy .moai/memory/ to .moai/state/.
 	// Prior to v2.x, state files (checkpoints, coverage, diagnostics) lived under
@@ -299,6 +341,135 @@ func copyTree(src, dst string) error {
 		}
 		return os.WriteFile(target, data, defs.FilePerm)
 	})
+}
+
+// removedMsg renders the per-target removal result, naming the unmanaged
+// file count only when the backup actually carried something — a count of
+// zero would be noise on every clean upgrade.
+func removedMsg(displayPath string, backedUp int) string {
+	if backedUp == 0 {
+		return fmt.Sprintf("Removed %s", displayPath)
+	}
+	return fmt.Sprintf("Removed %s (backed up %d unmanaged file(s))", displayPath, backedUp)
+}
+
+// backupThenRemove backs up every regular file under diskPath that tmplFS
+// does not carry at the same relative path, then removes diskPath, and
+// returns how many files the backup carried.
+//
+// The abort ordering is the contract: backup FIRST, removal SECOND, and a
+// backup failure returns before os.RemoveAll runs. Paths that do not exist
+// are a successful no-op (the caller's not-found skip and the config root's
+// historic IsNotExist tolerance both land here).
+//
+// A FILE target (settings.json) is backed up unless the template carries the
+// exact path; a DIRECTORY target is walked and compared against the template
+// set collected under the same relative root. Directory entries that are not
+// regular files (symlinks, fifos) are skipped by the copy — the same rule
+// copyTree applies: a preservation copy must not follow a link out of the
+// backup tree.
+func backupThenRemove(diskPath, relTarget, backupBase string, tmplFS fs.FS) (int, error) {
+	info, err := os.Stat(diskPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("stat %s: %w", relTarget, err)
+	}
+
+	if !info.IsDir() {
+		if templateCarries(tmplFS, relTarget) {
+			return 0, os.RemoveAll(diskPath)
+		}
+		if err := copyRegularFile(diskPath, filepath.Join(backupBase, relTarget)); err != nil {
+			return 0, fmt.Errorf("back up %s: %w", relTarget, err)
+		}
+		return 1, os.RemoveAll(diskPath)
+	}
+
+	managed, err := templateManagedPaths(tmplFS, relTarget)
+	if err != nil {
+		return 0, fmt.Errorf("collect template paths under %s: %w", relTarget, err)
+	}
+	backedUp, err := backupUnmanagedTree(diskPath, relTarget, managed, backupBase)
+	if err != nil {
+		return 0, fmt.Errorf("back up %s: %w", relTarget, err)
+	}
+	return backedUp, os.RemoveAll(diskPath)
+}
+
+// templateManagedPaths returns the set of slash-separated file paths tmplFS
+// carries under prefix — the paths this update is about to redeploy at the
+// same relative locations. A prefix the template does not carry at all yields
+// an empty set: every file under the disk root is then unmanaged and every
+// one of them is backed up.
+func templateManagedPaths(tmplFS fs.FS, prefix string) (map[string]bool, error) {
+	managed := make(map[string]bool)
+	err := fs.WalkDir(tmplFS, filepath.ToSlash(prefix), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				// The template carries nothing under this root.
+				return nil
+			}
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		managed[path] = true
+		return nil
+	})
+	return managed, err
+}
+
+// templateCarries reports whether tmplFS holds a regular file at rel.
+func templateCarries(tmplFS fs.FS, rel string) bool {
+	info, err := fs.Stat(tmplFS, filepath.ToSlash(rel))
+	return err == nil && !info.IsDir()
+}
+
+// backupUnmanagedTree copies every regular file under diskRoot whose
+// slash-relative path (joined onto relRoot) is absent from managed into
+// backupBase/relRoot/..., preserving the directory layout, and returns the
+// number of files copied.
+func backupUnmanagedTree(diskRoot, relRoot string, managed map[string]bool, backupBase string) (int, error) {
+	count := 0
+	err := filepath.WalkDir(diskRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !d.Type().IsRegular() {
+			return nil
+		}
+		rel, err := filepath.Rel(diskRoot, path)
+		if err != nil {
+			return err
+		}
+		key := filepath.ToSlash(filepath.Join(relRoot, rel))
+		if managed[key] {
+			return nil
+		}
+		if err := copyRegularFile(path, filepath.Join(backupBase, relRoot, rel)); err != nil {
+			return fmt.Errorf("copy %s: %w", path, err)
+		}
+		count++
+		return nil
+	})
+	return count, err
+}
+
+// copyRegularFile copies one regular file into dst, creating parent
+// directories as needed. Same read-into-memory shape as copyTree's file
+// branch — these are configuration-sized files, not bulk data.
+func copyRegularFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), defs.DirPerm); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, defs.FilePerm)
 }
 
 // ScaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.
