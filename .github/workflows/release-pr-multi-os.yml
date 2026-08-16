@@ -35,16 +35,43 @@ jobs:
     if: startsWith(github.head_ref, 'release/') || github.event_name == 'workflow_dispatch'
     outputs:
       proceed: ${{ steps.gate.outputs.proceed }}
+      go_code: ${{ steps.f.outputs.go_code }}
     steps:
+      - uses: actions/checkout@v7
+      # Paths-filter mirrors ci.yml's detect idiom: a docs-only release PR
+      # (e.g. a CHANGELOG-only re-push) skips the 13-min 3-OS matrix below
+      # while the required gate still reports success. Measured on release PR
+      # #1555: 26/40 files were .go, so a real release PR runs the matrix.
+      # continue-on-error plus full-matrix-test's `!= 'false'` comparison keep
+      # the failure direction safe: if the filter cannot evaluate, go_code is
+      # empty, the matrix RUNS — an abnormal filter can never silently skip
+      # a required-gate verification. The matrix is skipped only on a
+      # positively observed docs-only diff.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: f
+        continue-on-error: true
+        with:
+          filters: |
+            go_code:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - '.github/workflows/release-pr-multi-os.yml'
       - id: gate
         run: echo "proceed=true" >> $GITHUB_OUTPUT
 
   # ---------------------------------------------------------------------------
   # Full 3-OS matrix test. Only runs for release/* branch PRs or manual
-  # workflow_dispatch.
+  # workflow_dispatch — and, on PRs, only when the diff is not docs-only
+  # (detect-release's paths-filter output). A docs-only release PR skips the
+  # matrix; the required gate below still reports success via `if: always()`.
+  # workflow_dispatch keeps its run-anytime semantics and always runs.
   #
   # ubuntu-latest stays in the matrix even though ci.yml also runs the race
-  # detector on ubuntu. ci.yml's `Race Test` job is advisory by construction —
+  # detector on ubuntu on regular PRs — ci.yml skips its Race Test on
+  # release/* PRs precisely because this leg supersedes it. ci.yml's
+  # `Race Test` job is advisory by construction —
   # its check name is deliberately absent from branch protection, so a race
   # failure there is visible but does not block a merge. This job reports
   # through `Release PR Multi-OS Gate`, which IS a required check, so the
@@ -55,7 +82,7 @@ jobs:
   full-matrix-test:
     name: Release Verify (${{ matrix.os }})
     needs: detect-release
-    if: needs.detect-release.outputs.proceed == 'true'
+    if: needs.detect-release.outputs.proceed == 'true' && (github.event_name == 'workflow_dispatch' || needs.detect-release.outputs.go_code != 'false')
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -129,8 +156,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Summary gate: ensures all OS legs passed (or were skipped for non-release
-  # PRs). This is the required check that branch protection gates a release PR
-  # on, so the OS matrix above is what actually blocks a bad release.
+  # or docs-only PRs). This is the required check that branch protection
+  # gates a release PR on, so the OS matrix above is what actually blocks a
+  # bad release.
   # ---------------------------------------------------------------------------
   release-pr-gate:
     name: Release PR Multi-OS Gate
@@ -145,4 +173,4 @@ jobs:
             echo "::error::Release PR multi-OS verification FAILED on at least one OS"
             exit 1
           fi
-          echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release PR)"
+          echo "✓ Release PR multi-OS verification PASSED (or skipped for non-release / docs-only PR)"
