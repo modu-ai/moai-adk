@@ -74,10 +74,10 @@ func TestNewRunIDMatchesCurrentSecond(t *testing.T) {
 	}
 }
 
-func TestCompanionRolesAreTheFourWorkers(t *testing.T) {
+func TestCompanionRolesAreTheThreeWorkers(t *testing.T) {
 	t.Parallel()
 
-	want := []string{"plan", "run", "review", "sync"}
+	want := []string{"plan", "run", "sync"}
 	if len(CompanionRoles) != len(want) {
 		t.Fatalf("CompanionRoles = %v, want %v", CompanionRoles, want)
 	}
@@ -90,6 +90,14 @@ func TestCompanionRolesAreTheFourWorkers(t *testing.T) {
 	// token, and listing it here would invite a second chain driver.
 	if isCompanionRole("lead") {
 		t.Error("lead must not be a companion role")
+	}
+	// The review role is retired (D1): a label carrying it no longer parses
+	// as companion-shaped, in the bare form, the bump form, or the legacy
+	// run-id form.
+	for _, label := range []string{"review", "review-1", "review-tjlgt1"} {
+		if isCompanionRole(label) {
+			t.Errorf("review must not be a companion role: %q", label)
+		}
 	}
 }
 
@@ -104,7 +112,6 @@ func TestSplitCompanionLabel(t *testing.T) {
 	}{
 		{"plan-tjlgt1", "plan", "tjlgt1", true},
 		{"run-tjlgt1", "run", "tjlgt1", true},
-		{"review-tjlgt1", "review", "tjlgt1", true},
 		{"sync-tjlgt1", "sync", "tjlgt1", true},
 		{"sync-0", "sync", "0", true},
 
@@ -112,7 +119,6 @@ func TestSplitCompanionLabel(t *testing.T) {
 		// one run — the run id no longer travels in companion names).
 		{"plan", "plan", "", true},
 		{"run", "run", "", true},
-		{"review", "review", "", true},
 		{"sync", "sync", "", true},
 
 		// A collision bump number parses back with the role intact.
@@ -130,6 +136,12 @@ func TestSplitCompanionLabel(t *testing.T) {
 		{"plan-TJLGT1", "", "", false},
 		{"plan-tj_gt1", "", "", false},
 		{"plan-tj gt1", "", "", false},
+
+		// The retired review role (D1) is no longer companion-shaped in any
+		// of its three historical forms — bare, bump, or legacy run id.
+		{"review", "", "", false},
+		{"review-1", "", "", false},
+		{"review-tjlgt1", "", "", false},
 	}
 	for _, c := range cases {
 		role, runID, ok := SplitCompanionLabel(c.label)

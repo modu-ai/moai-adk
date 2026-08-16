@@ -10,7 +10,7 @@
 // (session_start.go) emits it on both. The orchestrator reads
 // hookSpecificOutput.additionalContext and needs the labels, because it is what
 // will address the companions later. The operator reads systemMessage and needs
-// the launch lines, because a session cannot launch another session — those four
+// the launch lines, because a session cannot launch another session — those three
 // terminals are opened by hand. additionalContext alone is invisible to the
 // operator, which is the failure this dual emission exists to prevent.
 //
@@ -64,7 +64,7 @@ func kanbanBootstrapNotice(root, lang string) string {
 // SessionStart fires on five documented sources — startup, resume, clear,
 // compact, and fork — and the kanban environment survives all of them, so an
 // ungated notice re-announces the bootstrap every time a lead session comes
-// back: the operator is told to open four companion terminals that are already
+// back: the operator is told to open three companion terminals that are already
 // open, for a run already under way. Only startup is the moment that
 // instruction is actionable.
 //
@@ -78,7 +78,7 @@ func kanbanBootstrapNotice(root, lang string) string {
 // An empty source is the one exception, and it is treated as startup. Claude
 // Code always populates the field, so an empty value means a caller that
 // predates it or a test constructing the input by hand — and for a notice whose
-// whole purpose is to hand the operator four commands they cannot obtain
+// whole purpose is to hand the operator three commands they cannot obtain
 // elsewhere, failing to emit costs more than emitting twice. The same
 // safer-to-emit reasoning is recorded in SPEC-HOOK-SESSIONSTART-PROBE-001
 // (AC-HOOK-004), which gates on startup and treats an absent source the same
@@ -91,7 +91,7 @@ func kanbanBootstrapNoticeForSource(source, root, lang string) string {
 }
 
 // kanbanLeadNotice is the lead branch. It carries, in order: (a) the run id;
-// (b) the four companion launch lines, each carrying -k; (c) the leader socket
+// (b) the three companion launch lines, each carrying -k; (c) the leader socket
 // path; (d) an inbound-automation notice; (e) the SPEC identifier (only when
 // MOAI_KANBAN_SPEC is set) and the backlog queue summary.
 //
@@ -105,7 +105,7 @@ func kanbanBootstrapNoticeForSource(source, root, lang string) string {
 // SPEC-KANBAN-BOOTSTRAP-001 REQ-KS-006 (spec.md §A.6).
 // The notice is assembled as five blank-separated blocks so the launch commands
 // stand apart from the prose that frames them — the operator is scanning for the
-// four lines to copy, not reading top to bottom. Blocks are built here rather
+// three lines to copy, not reading top to bottom. Blocks are built here rather
 // than baked into the message table, so every locale lays out identically and a
 // missing terminator cannot weld two lines together.
 func kanbanLeadNotice(runID, root, lang string) string {
@@ -132,7 +132,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 		m.leadManual,
 	}
 
-	// (c) the four companion launch lines, each carrying -k (AC-FB-015) so the
+	// (c) the three companion launch lines, each carrying -k (AC-FB-015) so the
 	// operator copies a kanban-membership command, not the bare --name form the
 	// prior-art notice printed. The names are the bare roles — under the
 	// one-machine-one-run policy no run id travels in companion names, so a
@@ -144,9 +144,10 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
-	// (d) how to move a companion to the GLM backend, plus the leader socket
-	// path when the launcher captured one.
-	backend := []string{m.glmSubstitute}
+	// (d) the entry-point guide — which launcher is which backend and how to
+	// move a companion between them — plus the companion name options and the
+	// leader socket path when the launcher captured one.
+	backend := []string{m.glmSubstitute, m.nameChoices}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}
@@ -213,8 +214,8 @@ func queuedBacklogCount(root string) int {
 }
 
 // kanbanCompanionNotice is the companion branch: a single role-less line
-// acknowledging the join. It does NOT print the launch block (four sessions
-// each inviting four more is the failure this separation exists to prevent).
+// acknowledging the join. It does NOT print the launch block (three sessions
+// each inviting three more is the failure this separation exists to prevent).
 //
 // AC-FB-016 / AC-FB-016a: the notice is role-less prose and names the LABEL
 // the session launched under — which may be a bumped number, and is the

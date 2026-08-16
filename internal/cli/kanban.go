@@ -2,7 +2,7 @@ package cli
 
 // kanban.go is the Kanban Mode entry surface on the two single-backend
 // launchers. Kanban Mode adds no runtime: it seeds a session whose
-// orchestrator drives a plan -> run -> verify -> sync chain, and everything in
+// orchestrator drives a plan -> run -> sync chain, and everything in
 // this file exists to get that signal into the session.
 //
 // @MX:NOTE: [AUTO] the kanban signal travels through the PROCESS environment, not a threaded parameter

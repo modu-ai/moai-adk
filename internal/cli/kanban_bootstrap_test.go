@@ -99,7 +99,7 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 
 // TestEnterKanbanCompanionModeSetsLabelNotKanban is the separation this whole
 // change rests on: a companion takes the raised block cap but must NOT be seeded
-// with the chain, or four sessions each drive the whole chain. Under the
+// with the chain, or three sessions each drive the whole chain. Under the
 // bare-role naming policy it also publishes no run id — the id is lead-owned
 // state, and a companion-published one is the t21 mismatch root.
 func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
@@ -108,10 +108,10 @@ func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterKanbanCompanionMode("review")
+	restore := enterKanbanCompanionMode("sync")
 
-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "review" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "review")
+	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "sync" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "sync")
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
 		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state)",

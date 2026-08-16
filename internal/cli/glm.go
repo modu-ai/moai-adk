@@ -61,13 +61,13 @@ Flags:
 
 Kanban Mode:
   -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
-                                plan -> run -> verify -> sync chain in this
+                                plan -> run -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; four
+                                SPEC. The lead drives the whole chain; three
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
-                                Joins the run without seeding a chain. The four
-                                roles are: plan, run, review, sync. A role name
+                                Joins the run without seeding a chain. The three
+                                roles are: plan, run, sync. A role name
                                 held by a live session is bumped to the next
                                 free number (plan-1, plan-2, ...).
 
@@ -82,7 +82,7 @@ Factory Mode:
                                 session is bumped to the next free number.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
-  -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban chain
+  -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
   above. Today's -f is a NEW feature — a numbered worker fan-out — and shares
   nothing with that predecessor beyond the recycled letter.
 

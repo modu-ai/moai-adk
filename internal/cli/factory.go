@@ -8,7 +8,7 @@ package cli
 // signal into the session and to keep the worker names unique.
 //
 // GENEALOGY (binding): the pre-3.1 "factory" flag (-f/--factory) was RENAMED
-// to -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban
+// to -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban
 // chain. Today's -f is a NEW feature — a numbered worker fan-out — and shares
 // nothing with that predecessor beyond the recycled letter. Any surface that
 // documents one must not describe it as the other.
@@ -150,7 +150,7 @@ func parseFactoryWorkerLabel(args []string) (label string, ok bool) {
 // It reuses the kanban lead's run-id and leader-socket surfaces — the run id
 // names the run (and the injected `lead-<run-id>` session name), and the
 // socket path is the notice's address line — while deliberately NOT setting
-// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban chain,
+// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the three-role kanban chain,
 // which a factory lead never drives. The factory discriminator the hook and
 // the block-cap inject read is EnvMoaiFactoryWorkers.
 //
@@ -351,12 +351,12 @@ func rejectFactoryOnCG(args []string) error {
 }
 
 // rejectConflictingModes returns an error when -k and -f appear together: the
-// two tokens seed different session shapes (a four-role chain vs a numbered
+// two tokens seed different session shapes (a three-role chain vs a numbered
 // fan-out) and honoring both is not a meaningful launch.
 func rejectConflictingModes(kanbanEnabled, factoryEnabled bool) error {
 	if !kanbanEnabled || !factoryEnabled {
 		return nil
 	}
 	return errors.New("-k/--kanban and -f/--factory are mutually exclusive: " +
-		"-k seeds the four-role kanban chain, -f a numbered worker fan-out")
+		"-k seeds the three-role kanban chain, -f a numbered worker fan-out")
 }

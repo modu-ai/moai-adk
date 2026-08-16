@@ -116,7 +116,7 @@ func NewRecord(sessionID, specID, backend string) *Record {
 // WithRole returns rec with the chain role attached. A role outside the known
 // set is discarded rather than stored, so a consumer never has to defend
 // against an arbitrary string arriving from a launch label. The known set is
-// the kanban roles (lead + the four companions) plus RoleWorker, which a
+// the kanban roles (lead + the three companions) plus RoleWorker, which a
 // factory run's numbered workers record (SPEC-FACTORY-WORKER-FANOUT-001).
 func (r *Record) WithRole(role string) *Record {
 	if r == nil {
