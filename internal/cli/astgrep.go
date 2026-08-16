@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
 // astGrepFlags holds flag values for the ast-grep subcommand.
@@ -88,20 +88,10 @@ func resolveRulesDir(flagValue, projectDir string) string {
 	if cfg == nil || cfg.AstGrepGate == nil {
 		return ""
 	}
-	dir := cfg.AstGrepGate.RulesDir
-	if dir == "" {
-		return ""
-	}
-	// gate.yaml rules_dir is project-root relative — the quality gate
-	// resolves it the same way (RunAstGrepGateV2 joins projectDir), so the
-	// CLI must agree for one config value to mean one directory when the
-	// process cwd differs from the project root. An absolute value passes
-	// through untouched (filepath.Join would corrupt it: Join("/a", "/b")
-	// = "/a/b").
-	if !filepath.IsAbs(dir) {
-		dir = filepath.Join(projectDir, dir)
-	}
-	return dir
+	// Same resolution rule as the quality gate (RunAstGrepGateV2): empty
+	// stays empty, absolute passes through verbatim, relative joins onto the
+	// project root — see quality.ResolveRulesDirPath.
+	return quality.ResolveRulesDirPath(cfg.AstGrepGate.RulesDir, projectDir)
 }
 
 // runAstGrep runs the ast-grep scan and outputs the results.
