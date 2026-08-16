@@ -235,7 +235,7 @@ Gaps (E8): documentation/mirror milestone — no RED-state test-first artifact e
 ```yaml
 sync_complete_at: 2026-08-17
 run_commit_sha: 67466e997   # run-phase squash on main (PR #1577); per-milestone a203a7c3a/6d701d26c/fcc07d1bc/9269a5e56 inside
-sync_commit_sha: pending-backfill-k4v9x   # D3 self-referential-hazard placeholder; backfilled in the follow-up commit on this branch
+sync_commit_sha: 8c9006ace4d2958bca890ff8677872105e90378a   # backfilled from pending-backfill-k4v9x placeholder (commit cannot know its own SHA)
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] / Added
 ac_count_in_changelog: 16
