@@ -69,6 +69,51 @@ Note (AC-ALD-008a form): acceptance.md's `<(grep -A2 -B2 …)` process-substitut
 
 **Residual (recorded, deliberately not fixed):** the companion line "This is the same shape as the CodeRabbit section below." now reads stale inside the companion (the CodeRabbit section stayed in the stub). Rewording it would break AC-ALD-006's line-set preservation and violate AP-2 — the line must stay verbatim; the referenced section exists in the stub.
 
+### M2 — G3~G7 규율 편입 (2026-08-17)
+
+- Tree: worktree `feat/spec-always-loaded-diet`, pre-M2 HEAD `a203a7c3a` (= the M1 commit; working tree clean at dispatch).
+- Construction: directives 6-10 appended to `cache-aware-execution.md` `## Directives` — same shape as 1-5 (numbered + bold title + zone prefix + one paragraph), prefix `[ZONE:Evolvable] [HARD]` per REQ-ALD-006..010. Per-directive bytes (wc-accurate): d6=339 / d7=360 / d8=313 / d9=337 / d10=437. Plus one Cross-references bullet for the companion (111 B) and footer version 1.0.0 → 1.1.0. Nothing else in the file touched — `git diff --stat`: 12 insertions, 1 deletion (the deletion is the old version line). New companion `cache-aware-execution-reference.md` (3,991 B): frontmatter `description:` + self-keyed `paths: "**/cache-aware-execution.md"` (plan M2 step 2 — rationale-store, no domain keying), ownership-declaration blockquote (goal-directive-detail.md shape), cited-numbers section, per-directive rationale for 6-10.
+- G7 / D3 resolution: directive 10 carries the one-sentence axis distinction (main-session cache vs `agent-common-protocol.md` § Per-Spawn Model Injection subagent model-resolution) and names both SSOTs inline; neither SSOT body was revised (per plan D3 — the cross-reference is textual from d10 only, so `agent-common-protocol.md` is untouched).
+
+**Baseline (pre-edit, attribution: M1 evidence measured at HEAD a203a7c3a, unchanged until this edit):**
+
+```
+headroom (fm() form, at a203a7c3a per §E.2 M1): files=14 bytes=287068 tokens=71767 headroom=3233
+cache-aware-execution.md = 4,497 B
+```
+
+**AC-ALD-010 positive contrast (pre-edit, this run, this tree, HEAD a203a7c3a):** all six patterns 0 — `G3_at_mention=0 G3_context_audit=0 G4_output_len=0 G5_quiet=0 G6_session_length=0 G7_thinking=0`.
+
+**Post-M2 (this run, this tree, working tree):**
+
+```
+files=14 bytes=288975 tokens=72243 headroom=2757    # acceptance §A fm() form
+n=$(wc -c < .claude/rules/moai/workflow/cache-aware-execution.md)
+before=4497 after=6404 delta=1907
+```
+
+Delta: +1,907 bytes (= 5 directive paragraphs 1,786 B + 5×2 separator newlines + companion cross-reference bullet 111 B) → headroom 3,233 → 2,757 (−476 tokens). Byte identity: 287,068 + 1,907 = 288,975 exactly. AC-ALD-001 checkpoint holds: 2,757 > 1,239 (final gate is post-M4).
+
+**M2-decidable AC matrix (all PASS, commands run in this tree):**
+
+| AC | Command (form) | Observed | Verdict |
+|---|---|---|---|
+| AC-ALD-010 | 6-pattern `grep` on post-edit file (positive contrast above: pre-edit 6×0) | G3_at_mention=1 G3_context_audit=1 G4_output_len=1 G5_quiet=2 G6_session_length=1 G7_thinking=1 — all >= 1 | PASS |
+| AC-ALD-011 | `wc -c` before/after | before=4497 after=6404 delta=1907; 1000 <= 1907 <= 2000 | PASS |
+| AC-ALD-012 | `headroom` files= + `fm()` paths_key on companion | files=14 (unchanged — companion excluded by `paths:`), exists=1 paths_key=1 | PASS |
+| AC-ALD-013 | unlabeled-numeric-paragraph awk + negative selftest | numeric_paragraphs=2 (table block + reconciliation paragraph, both labeled), citation_exit=0, selftest_unlabeled=1 | PASS |
+| AC-ALD-002 (checkpoint) | guard + budget const + go diff | `ok  github.com/modu-ai/moai-adk/internal/config 0.494s` exit=0; budget_const=1; go_changed=0 | PASS |
+
+**Post-M2 guard re-run (verbatim):**
+
+```
+$ go test ./internal/config/ -run TestAlwaysLoaded -count=1; echo "exit=$?"
+ok  	github.com/modu-ai/moai-adk/internal/config	0.494s
+exit=0
+```
+
+**Other verification:** `go build ./...` → exit 0 (no output). Subagent boundary: `grep -rn 'AskUserQuestion'` on the two rule files → 1 match, pre-existing intro text (line 3, present in the pre-edit file; original census unchanged), 0 new occurrences; companion 0. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

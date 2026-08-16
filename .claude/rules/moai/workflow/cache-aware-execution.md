@@ -16,6 +16,16 @@ Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt
 
 5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. Omit model overrides unless the task genuinely requires a different tier (already the default per agent-authoring guidance); this directive records the caching cost of violating it.
 
+6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.
+
+7. **Keep command output bounded** [ZONE:Evolvable] [HARD] Every command must bound what it returns: quiet flags, targeted queries, or redirect-to-file with the exit code and a bounded tail. `BASH_MAX_OUTPUT_LENGTH` is the runtime backstop, not the target; the file-redirect contract in `agent-common-protocol.md` § Parallel Execution applies to all commands.
+
+8. **Prefer the quiet form of routine commands** [ZONE:Evolvable] [HARD] Call everyday commands in their quiet form — `--no-progress`, `-q`, machine-readable output with a targeted filter — not forms that emit spinners, banners, tables, or color noise: the same decision bytes, a fraction of the context cost.
+
+9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.
+
+10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch. Directive 5 and this one govern the main session's cache; `agent-common-protocol.md` § Per-Spawn Model Injection governs which model a subagent runs on — different axes, not a contradiction.
+
 ## Non-goals
 
 - These directives NEVER justify skipping, weakening, or reordering an approval gate's *semantics* — Implementation Kickoff Approval and all HUMAN GATEs remain mandatory where defined. Only the *placement and batching* of questions is governed here.
@@ -27,8 +37,9 @@ Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt
 - `.claude/rules/moai/workflow/context-window-management.md` — model-specific `/clear` thresholds (directive 4 is an additional, earlier trigger)
 - `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution — single-turn verification batching (already cache-optimal: incremental append)
 - `.claude/rules/moai/core/askuser-protocol.md` — gate mechanics (unchanged by this rule)
+- `.claude/rules/moai/workflow/cache-aware-execution-reference.md` — cited cache numbers for directives 6-10
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Classification: Evolvable operational rule — execution ordering only; gate semantics unchanged.
