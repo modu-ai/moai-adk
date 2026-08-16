@@ -41,6 +41,10 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		"new_cwd", newCwd,
 	)
 
+	// t74: keep the registry entry's CWD in step with the session, so anchor
+	// detection sees sessions that entered a worktree mid-session.
+	relocateSessionCwd(input, newCwd)
+
 	// Write project-specific environment to CLAUDE_ENV_FILE if available.
 	// This persists env vars into subsequent Bash tool calls.
 	if envFile := os.Getenv(config.EnvClaudeEnvFile); envFile != "" && newCwd != "" {

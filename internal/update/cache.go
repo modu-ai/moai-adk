@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // DefaultCacheTTL is the default time-to-live for cached update check results.
@@ -31,11 +34,12 @@ type Cache struct {
 // If ttl is zero, defaults to DefaultCacheTTL.
 func NewCache(path string, ttl time.Duration) *Cache {
 	if path == "" {
-		homeDir, err := os.UserHomeDir()
+		cacheDir, err := paths.CacheDir()
 		if err != nil {
-			homeDir = "."
+			// Preserve the pre-migration cwd-relative degradation.
+			cacheDir = filepath.Join(".", defs.MoAIDir, defs.CacheSubdir)
 		}
-		path = filepath.Join(homeDir, ".moai", "cache", "update_check.json")
+		path = filepath.Join(cacheDir, "update_check.json")
 	}
 	if ttl == 0 {
 		ttl = DefaultCacheTTL

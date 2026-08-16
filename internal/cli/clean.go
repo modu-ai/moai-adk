@@ -18,6 +18,7 @@ import (
 // newCleanCmd creates the clean subcommand.
 func newCleanCmd() *cobra.Command {
 	var force bool
+	var home bool
 
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -25,17 +26,28 @@ func newCleanCmd() *cobra.Command {
 		Long: `Clean up run artifacts in .moai/state/runs/ that are older than retention_days.
 Default: dry-run mode (no actual deletion). Use --force to actually delete.
 
-retention_days is read from .moai/config/sections/state.yaml.`,
+retention_days is read from .moai/config/sections/state.yaml.
+
+With --home, clean the ~/.moai home directory instead of the project scope:
+aged per-profile debug/ entries, releases/ binaries beyond the current
+version + the 3 newest, aged root logs/, and aged backups/removed-*
+directories. Only ~/.moai is touched — ~/.claude is never modified. Home
+retention comes from state.home_retention_days in ~/.moai/config/sections/
+state.yaml (default 30 days; explicit 0 disables).`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Status output routes through the Printer to stderr
 			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
 			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+			if home {
+				return runCleanHome(p, force)
+			}
 			return runClean(p, force)
 		},
 	}
 
 	cmd.Flags().BoolVar(&force, "force", false, "Actually delete files (default: dry-run)")
+	cmd.Flags().BoolVar(&home, "home", false, "Clean the ~/.moai home directory (allowlist-only; dry-run by default)")
 
 	return cmd
 }

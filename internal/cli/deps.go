@@ -16,12 +16,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/perf"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/loop"
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -115,11 +117,13 @@ func InitDependencies() {
 	// Initialize Ralph engine and loop controller.
 	ralphCfg := config.NewDefaultRalphConfig()
 	ralphEngine := ralph.NewRalphEngine(ralphCfg)
-	homeDir, err := os.UserHomeDir()
+	loopState, err := paths.StateDir()
 	if err != nil {
-		homeDir = os.TempDir()
+		// Preserve the pre-migration degradation: loop state falls back to
+		// the OS temp directory when the home cannot be resolved.
+		loopState = filepath.Join(os.TempDir(), defs.MoAIDir, defs.StateSubdir)
 	}
-	loopStorage := loop.NewFileStorage(filepath.Join(homeDir, ".moai", "state", "loop"))
+	loopStorage := loop.NewFileStorage(filepath.Join(loopState, "loop"))
 	// Use GoFeedbackGenerator for real test/lint feedback collection.
 	// Falls back gracefully: if go test/vet fail or timeout, feedback is partial.
 	cwd, _ := os.Getwd()
@@ -273,10 +277,12 @@ func InitDependencies() {
 //  1. os.Stat — the file-existence gate. Preserved unchanged so a missing
 //     observability.yaml still short-circuits (REQ-OEG-005) and the heavier
 //     IsObservabilityEnabled parse is skipped when the file is absent.
-//  2. hook.IsObservabilityEnabled() — the canonical observability.enabled
-//     reader (REQ-OEG-007 SSOT reuse). Consulted ONLY when the file exists.
-//     Returns false on absent key (safe-default), so file-present +
-//     enabled:false / key-absent → observability stays off (REQ-OEG-002/004).
+//  2. hook.IsObservabilityEnabledForCLI() — the canonical observability.enabled
+//     reader (REQ-OEG-007 SSOT reuse), CLI variant (t62): the cwd_fallback
+//     resolution logs at Debug so it does not top every subcommand's output.
+//     Consulted ONLY when the file exists. Returns false on absent key
+//     (safe-default), so file-present + enabled:false / key-absent →
+//     observability stays off (REQ-OEG-002/004).
 //
 // InitDependencies is the sole production caller and runs once at startup with
 // cwd = project root, matching IsObservabilityEnabled's cwd resolution
@@ -290,7 +296,7 @@ func enableObservabilityIfConfigured(reg hook.Registry, cwd string) {
 	// SPEC-OBS-ENABLED-GATE-001 REQ-OEG-007: delegate the enabled-key read to
 	// the single source of truth rather than introducing a 5th yaml-key reader.
 	// Safe-defaults to false on absent/falsey key, absent file, or parse error.
-	if !hook.IsObservabilityEnabled() {
+	if !hook.IsObservabilityEnabledForCLI() {
 		return
 	}
 	// Enable observability via type assertion; concrete registry supports it.

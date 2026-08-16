@@ -92,7 +92,7 @@ func TestMergeMappingNode_UserUnchangedTakesNew(t *testing.T) {
 	oldN := mustDecodeDoc(t, "k: base_value\n")
 	baseN := mustDecodeDoc(t, "k: base_value\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestMergeMappingNode_UserChangedPreservesUser(t *testing.T) {
 	oldN := mustDecodeDoc(t, "k: user_custom\n")
 	baseN := mustDecodeDoc(t, "k: base_value\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestMergeMappingNode_OldOnlyAbsentFromBasePreserved(t *testing.T) {
 	oldN := mustDecodeDoc(t, "shared: v\nuser_added: custom\n")
 	baseN := mustDecodeDoc(t, "shared: base\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestMergeMappingNode_TemplateRemovedKeyStillRetained(t *testing.T) {
 	oldN := mustDecodeDoc(t, "kept: v\nretired: gone\n")
 	baseN := mustDecodeDoc(t, "kept: v\nretired: gone\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestMergeMappingNode_KeyOrderPreserved(t *testing.T) {
 	oldN := mustDecodeDoc(t, "a: 1\nb: 2\nextra: 9\n")
 	baseN := mustDecodeDoc(t, "a: 1\nb: 2\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestNodeMerge_AliasNotExpanded(t *testing.T) {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, newN, newN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, newN, newN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestNodeMerge_MergeKeyNotResolved(t *testing.T) {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, newN, newN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, newN, newN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestNodeMerge_SequenceReplaced(t *testing.T) {
 	oldN := mustDecodeDoc(t, "items: [c]\n")
 	baseN := mustDecodeDoc(t, "items: [a, b]\n")
 	var buf bytes.Buffer
-	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", &buf)
+	merged, err := mergeMappingNode3Way(newN, oldN, baseN, "", newRetainedKeyNotes(&buf))
 	if err != nil {
 		t.Fatal(err)
 	}

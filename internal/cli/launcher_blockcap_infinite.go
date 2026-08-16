@@ -48,7 +48,14 @@ func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRo
 	// mid-session too — so it takes the same raise. It is signalled by the label
 	// variable rather than the kanban one because it must not be seeded with
 	// the chain, which only the lead drives.
-	if os.Getenv(config.EnvMoaiKanban) != "" || os.Getenv(config.EnvMoaiKanbanLabel) != "" {
+	//
+	// A FACTORY session (lead or worker, SPEC-FACTORY-WORKER-FANOUT-001) takes
+	// the same raise for the same reason: a factory turn chain is dispatch-
+	// driven and long, and the run is meant to survive unattended. It is
+	// signalled by EnvMoaiFactoryWorkers, which both branches set and which
+	// never implies a kanban chain.
+	if os.Getenv(config.EnvMoaiKanban) != "" || os.Getenv(config.EnvMoaiKanbanLabel) != "" ||
+		os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return setStopHookBlockCap(base, DefaultRaisedStopHookBlockCap)
 	}
 	if projectRoot == "" || sessionID == "" {

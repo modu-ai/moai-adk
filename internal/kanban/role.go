@@ -31,6 +31,13 @@ import (
 // a declaration may carry any role string the topology defines.
 const RoleLead = "lead"
 
+// RoleWorker names a factory run's numbered worker (the `worker-<n>` lanes of
+// `moai cc -f <N>`, SPEC-FACTORY-WORKER-FANOUT-001). It is deliberately NOT a
+// CompanionRoles member: factory workers are dispatched cards by their lead
+// over cross-session messages and never occupy the four-role kanban chain, so
+// the companion shape discriminators must not admit their labels.
+const RoleWorker = "worker"
+
 // RoleDeclaration is the persisted declaration artifact: the role a session
 // occupies, recorded by that session at launch.
 //

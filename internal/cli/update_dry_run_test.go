@@ -95,9 +95,9 @@ func TestDryRunArchive_NoSkills(t *testing.T) {
 	if !strings.Contains(output, "total:") {
 		t.Errorf("output missing summary line, got:\n%s", output)
 	}
-	// 0 skills archived
-	if !strings.Contains(output, "0 skills archived") {
-		t.Errorf("expected '0 skills archived' in output, got:\n%s", output)
+	// Honest zero prediction (t40): nothing present, nothing will be archived.
+	if !strings.Contains(output, "0 will be archived") {
+		t.Errorf("expected '0 will be archived' in output, got:\n%s", output)
 	}
 }
 
