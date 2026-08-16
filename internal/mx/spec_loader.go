@@ -12,8 +12,9 @@ import (
 
 // specFrontmatter holds the fields parsed from a spec.md YAML frontmatter.
 type specFrontmatter struct {
-	ID     string      `yaml:"id"`
-	Module interface{} `yaml:"module"`
+	ID        string      `yaml:"id"`
+	Module    interface{} `yaml:"module"`
+	DependsOn []string    `yaml:"depends_on"`
 }
 
 // LoadSpecModules walks projectRoot/.moai/specs/*/spec.md and returns a
@@ -58,6 +59,55 @@ func LoadSpecModules(projectRoot string) (map[string][]string, error) {
 		}
 
 		result[fm.ID] = parseModuleField(fm.Module)
+	}
+
+	return result, nil
+}
+
+// LoadSpecDependencies walks projectRoot/.moai/specs/*/spec.md and returns a
+// SPEC ID → depends_on SPEC-ID list map (the spec.md frontmatter edge list).
+// It mirrors LoadSpecModules: same glob, same parseFrontmatter, same
+// skip-on-error semantics — consumed by the graph writer (internal/graph) to
+// persist SPEC→SPEC edges that already exist in frontmatter but are never
+// aggregated.
+//
+// @MX:NOTE: [AUTO] LoadSpecDependencies — frontmatter depends_on edge-list loader for the graph writer
+func LoadSpecDependencies(projectRoot string) (map[string][]string, error) {
+	specsDir := filepath.Join(projectRoot, ".moai", "specs")
+
+	if _, err := os.Stat(specsDir); errors.Is(err, os.ErrNotExist) {
+		return map[string][]string{}, nil
+	}
+
+	pattern := filepath.Join(specsDir, "*", "spec.md")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Sort for deterministic ordering
+	sort.Strings(matches)
+
+	result := make(map[string][]string)
+
+	for _, path := range matches {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		fm, err := parseFrontmatter(data)
+		if err != nil || fm.ID == "" {
+			continue
+		}
+
+		deps := make([]string, 0, len(fm.DependsOn))
+		for _, d := range fm.DependsOn {
+			if d = strings.TrimSpace(d); d != "" {
+				deps = append(deps, d)
+			}
+		}
+		result[fm.ID] = deps
 	}
 
 	return result, nil

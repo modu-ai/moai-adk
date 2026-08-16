@@ -159,3 +159,69 @@ func TestSpecAssociator_PathBased_FromLoader(t *testing.T) {
 		t.Errorf("path-based 연결 실패: SPEC-X 없음 (got=%v, file=%s)", specs, tag.File)
 	}
 }
+
+// TestLoadSpecDependencies_FlowSequence verifies depends_on parsing when the
+// frontmatter carries a YAML flow sequence.
+func TestLoadSpecDependencies_FlowSequence(t *testing.T) {
+	dir := t.TempDir()
+	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-DEP-X")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "---\nid: SPEC-DEP-X\ntitle: \"t\"\ndepends_on: [SPEC-DEP-A, SPEC-DEP-B]\n---\n"
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadSpecDependencies(dir)
+	if err != nil {
+		t.Fatalf("LoadSpecDependencies error: %v", err)
+	}
+	deps, ok := got["SPEC-DEP-X"]
+	if !ok {
+		t.Fatalf("SPEC-DEP-X key missing (got=%v)", got)
+	}
+	if len(deps) != 2 || deps[0] != "SPEC-DEP-A" || deps[1] != "SPEC-DEP-B" {
+		t.Errorf("depends_on=%v; want [SPEC-DEP-A SPEC-DEP-B]", deps)
+	}
+}
+
+// TestLoadSpecDependencies_AbsentField verifies a spec without depends_on
+// yields an empty (non-nil) slice, not a missing key.
+func TestLoadSpecDependencies_AbsentField(t *testing.T) {
+	dir := t.TempDir()
+	specDir := filepath.Join(dir, ".moai", "specs", "SPEC-DEP-PLAIN")
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "---\nid: SPEC-DEP-PLAIN\ntitle: \"t\"\n---\n"
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadSpecDependencies(dir)
+	if err != nil {
+		t.Fatalf("LoadSpecDependencies error: %v", err)
+	}
+	deps, ok := got["SPEC-DEP-PLAIN"]
+	if !ok {
+		t.Fatalf("SPEC-DEP-PLAIN key missing (got=%v)", got)
+	}
+	if len(deps) != 0 {
+		t.Errorf("depends_on=%v; want empty", deps)
+	}
+}
+
+// TestLoadSpecDependencies_NoSpecsDir verifies the fail-open contract: a
+// project without .moai/specs/ returns an empty map without error.
+func TestLoadSpecDependencies_NoSpecsDir(t *testing.T) {
+	got, err := LoadSpecDependencies(t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadSpecDependencies error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("want empty map, got %v", got)
+	}
+}
