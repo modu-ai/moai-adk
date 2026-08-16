@@ -226,12 +226,12 @@ The same day supplied the reason contention and flakiness feed each other: a fai
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
 ```
 
-The `env -u VAR <command>` form is rejected. The guard doing the rejecting lives in the Claude Code binary rather than in MoAI, and the rejection is an argument-boundary misparse rather than a rule against `-u`: when `argv[0]` is `env`, the guard scans the whole remaining argv as env's own flags, so a flag belonging to the **inner** command — `-run`, `-count`, `-race` — is reported as an unmodelled `env` flag. `unset` is not in the guard's wrapper set, so no flag scan opens and the inner command's flags are never inspected.
+The `env -u VAR <command>` form is rejected. The guard doing the rejecting lives in the Claude Code binary rather than in MoAI, and this cannot be turned off: it rejects shell structures it cannot statically track, and `env` is one. The `unset … && <command>` form keeps the command visible to static analysis, which is why it is the prescribed form.
 
 Two properties of the form are load-bearing, and both are easy to "simplify" away:
 
 - **One invocation.** Each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command. The scrub and the command travel together or the scrub does nothing.
-- **No subshell.** Wrapping it as `( unset …; <command> )` trips the guard's "too complex to verify" refusal instead — a different rejection with the same effect.
+- **No subshell.** Wrapping it as `( unset …; <command> )` is another structure the guard cannot statically track, and is rejected the same way.
 
 Moving the command into a script file is not a workaround — not as a standing pattern and not as a one-off. The guard cannot read inside a script, so the entire check set is bypassed for that payload, including the git-redirect checks that are the guard's actual purpose and the part worth keeping.
 

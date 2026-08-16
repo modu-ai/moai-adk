@@ -1,0 +1,1 @@
+The `env -u VAR <command>` form is rejected. The guard doing the rejecting lives in the Claude Code binary rather than in MoAI, and this cannot be turned off: it rejects shell structures it cannot statically track, and `env` is one. The `unset … && <command>` form keeps the command visible to static analysis, which is why it is the prescribed form.
