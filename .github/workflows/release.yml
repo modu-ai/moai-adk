@@ -100,9 +100,11 @@ jobs:
           fi
 
           # Check 5 — CHANGELOG.md at the tagged commit has this version's section.
+          # Formal sections are bare ('## [3.1.0]'); pre-release (rc) sections
+          # carry the v prefix ('## [v3.0.0-rc12]'). 'v?' accepts both forms.
           VERSION_NO_V="${TAG#v}"
-          if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -E "^## \[${VERSION_NO_V}\]" >/dev/null; then
-            fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' section."
+          if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -E "^## \[v?${VERSION_NO_V}\]" >/dev/null; then
+            fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' or '## [v${VERSION_NO_V}]' section."
           fi
 
           # Check 6 — version SSOT (.moai/config/sections/system.yaml stores the
