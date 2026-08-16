@@ -47,7 +47,9 @@ $ golangci-lint run ./internal/cli/update/deploy/...
 
 ## 4. Gaps (미검증)
 
-- **운영자 요구 1(폴백 큐 adopt) 미이행 — 착수 전 조건 결과**: `git fetch`로 release 확인 → `origin/release/v3.1.1` = `5c3141372`(불변). `WT-t106` 브랜치가 base와 동일 SHA(미커밋 +88줄: `resolveTodoQueueRoot`/`fallbackTodoQueueRoot` ≈ `~/.moai/kanban/<project-key>/backlog.json`). adopt는 이 폴백 분기 위에서만 의미가 있어 base에 폴백이 없는 현재 구현 불가. **t106 착지 후 후속 지시 요청** (리드 보고에 포함). 참고: 디스패치의 폴백 경로 표기(`~/.moai/todo/...`)와 t106 실제(`~/.moai/kanban/...`)가 다름 — t106 착지 판 기준으로 후속 이행해야 함.
+- **운영자 요구 1(폴백 큐 adopt) — 리드 판정으로 잔여 없음 (양카드 분담)**: t106 재작업 커밋 `f5297037f`(작성 시점 기준 `WT-t106` 소유, release 미착지 — `git merge-base --is-ancestor` 부정, tip에서 `adoptLocalTodoQueue` 부재 실측)이 `adoptLocalTodoQueue` + 전용 테스트(`TestTodoQueue_FallbackAdoptsExistingLocalQueue`, 2 queued+1 picked+last_seq+spec_id 컷오버 동일)로 폴백 큐 adopt를 담당. 요구 1은 **t106(폴백 큐 adopt) + t111(선백업-후삭제로 update 경로 자료 손실 차단)의 양카드 분담으로 해소** — t111이 이중 구현하지 않는다. t106 착지 시점에 요구 1의 전체가 성립한다.
+  - 경로 정정(리드 회신 반영): t106 폴백은 `~/.moai/kanban/` → `~/.moai/todo/`로 재작업 완료(소유 커맨드가 `moai todo`라는 명명 근거).
+  - 스테일 정정: 본 카드 작성 시 fetch값 `5c3141372`는 낡았음 — 리뷰 시점 tip은 `5ed668566`(t85+t94 `162f74d99`, t95 `49697cfb4`, t85↔t97 정합 `5ed668566` 착지). 통합은 fetch 후 새 tip 기준.
 - **cli 전체 스위트 미실행** — 로컬 부하 규율(레인 타깃 테스트 → CI가 전수 판정). `-run "Update|Clean|Deploy"` 조각만.
 - **`moai update` 통합 실행 미검증** — dev 프로젝트에서 update 실행 금지 규율(CLAUDE.local.md §13 정신). 계약(백업 후 삭제·중단 순서)은 deploy 단위 테스트 5종이 커버.
 
