@@ -326,6 +326,18 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 func (r *Renderer) renderDirGitLine(data *StatusData) string {
 	var segs []string
 
+	// Session identity at the L3 head: name first, then the agent it runs as.
+	// Both are omitted when absent, so an unnamed ordinary session renders
+	// exactly as before.
+	if r.isSegmentEnabled(SegmentSession) {
+		if data.SessionName != "" {
+			segs = append(segs, fmt.Sprintf("🏷️ %s", data.SessionName))
+		}
+		if data.AgentName != "" {
+			segs = append(segs, fmt.Sprintf("👤 %s", data.AgentName))
+		}
+	}
+
 	// Directory (layout v3 amend: L3 head — placed before repo_branch)
 	if r.isSegmentEnabled(SegmentDirectory) && data.Directory != "" {
 		segs = append(segs, fmt.Sprintf("📁 %s", data.Directory))

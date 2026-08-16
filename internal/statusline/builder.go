@@ -217,6 +217,17 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		data.Directory = extractProjectDirectory(input)
 	}
 
+	// Session identity: explicit name, plus the agent the session runs as.
+	// Claude Code drops its own prompt-bar name chip after /clear even though
+	// the explicit name is retained, so the operator loses the only on-screen
+	// identity cue. Rendering it here keeps it visible for the session's life.
+	if input != nil {
+		data.SessionName = input.SessionName
+		if input.Agent != nil {
+			data.AgentName = input.Agent.Name
+		}
+	}
+
 	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for
 	// this session so the renderer can suppress the /clear directive markers
 	// while a goal is armed. Best-effort + fail-open + constant-cost (one small
