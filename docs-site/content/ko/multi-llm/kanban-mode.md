@@ -88,6 +88,27 @@ SessionStart 알림이 복사할 네 개의 명령을 정확히 출력합니다.
 `SendMessage`)을 사용합니다. `crossSessionInbound` 설정 필드가 인바운드
 메시지를 수락할지, 보류할지, 거부할지를 제어합니다.
 
+### 가용성 제약
+
+교차 세션 메시징은 모든 환경에서 쓸 수 있는 기능이 아닙니다. 칸반
+모드는 리드와 컴패니언이 오직 이 채널로 이어지므로, 채널이 없으면 모드
+자체가 성립하지 않습니다. 시작하기 전에 아래 제약을 확인하세요.
+
+{{< icon warning warn >}} **운영체제**: macOS와 Linux(WSL 2 안의 Linux 포함)에서만 사용할 수
+있습니다. 네이티브 Windows에서는 Claude Code가 교차 세션 메시징을
+제공하지 않습니다.
+{{< icon warning warn >}} **제공업체**: Amazon Bedrock, Claude Platform on AWS, Agent Platform
+on Google Cloud, Microsoft Foundry에서는 사용할 수 없습니다.
+{{< icon warning warn >}} **버전**: Claude Code v2.1.224 이상이 필요합니다. 기기 간 대화를
+먼저 시작하는 것은 v2.1.225 이상, @멘션과 /config 행 표시는 v2.1.232
+이상입니다.
+{{< icon warning warn >}} **플래그**: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`,
+`DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` 중 하나라도
+기능 플래그 평가를 끄면 메시징이 조용히 비활성화됩니다.
+
+빠른 진단: `/list-agents` 명령이 인식되면 이 기능이 있고, 인식되지
+않으면 없습니다.
+
 칸반 모드는 인바운드 메시지를 자동 수락합니다: 실행기가
 `{"crossSessionInbound": "accept"}`를 담은 임시 설정 파일을 작성하고
 `--settings`로 백엔드에 전달합니다. 파일은 세션 전용이며(종료 시

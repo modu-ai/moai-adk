@@ -26,8 +26,10 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // PRMergeCleanupNoticePrefix is the literal prefix of the PR-merge removal
@@ -157,6 +159,14 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 		}
 		if dirty {
 			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", e.path)
+			continue
+		}
+		// t73 anchor guard: never remove a worktree a live session is
+		// anchored in — the anchored session's shell dies with the tree
+		// (Claude Code blocks all its Bash once the tree is gone). Same
+		// immediately-before-removal position as the dirty guard (EC-11).
+		if anchored := session.LiveAnchoredSessions(e.path, time.Now()); len(anchored) > 0 {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (live session anchored, %d): worktree %s preserved\n", len(anchored), e.path)
 			continue
 		}
 		// Remove + unset safe.directory (R5, reused from M7). A removal failure

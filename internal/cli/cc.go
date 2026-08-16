@@ -17,7 +17,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id> | -f <N>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -51,6 +51,21 @@ Kanban Mode:
                                 roles are: plan, run, review, sync. The run-id
                                 is the identifier the lead announced at startup.
 
+Factory Mode:
+  -f, --factory <N>             Enter as the LEAD of a factory run with N
+                                numbered workers. The lead dispatches cards to
+                                the workers over cross-session messages; the
+                                workers are launched by hand, one per terminal,
+                                each as: moai cc -f <N> --name worker-<i>
+  -f <N> --name worker-<i>      Enter as WORKER <i> of an existing factory run.
+                                A worker number whose label is held by a live
+                                session is bumped to the next free number.
+
+  Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
+  -k/--kanban in #1513 (7f61332ef) and now drives the four-role kanban chain
+  above. Today's -f is a NEW feature — a numbered worker fan-out — and shares
+  nothing with that predecessor beyond the recycled letter.
+
 Permission Modes:
   default            Ask permissions for file edits and commands
   acceptEdits        Auto-accept file edits, ask for commands (project default)
@@ -69,7 +84,10 @@ Examples:
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
   moai cc -k                           # Kanban lead: seeds the plan->run->verify->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
-  moai cc -k --name run-abc123         # Kanban companion: joins run abc123 as the run worker`,
+  moai cc -k --name run-abc123         # Kanban companion: joins run abc123 as the run worker
+  moai cc -f 4                         # Factory lead: announces worker-1..worker-4
+  moai cc -f 4 --name worker-2         # Factory worker 2 of a 4-worker run
+  moai glm -f 4 --name worker-3        # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -112,33 +130,78 @@ func runCC(cmd *cobra.Command, args []string) error {
 	// path, including error.
 	specID, kanbanEnabled, kanbanArgs := parseKanbanFlag(filteredArgs)
 	filteredArgs = kanbanArgs
+	// SPEC-FACTORY-WORKER-FANOUT-001: -f <N> is factory membership, the
+	// kanban token's sibling, with the same parse placement and the same
+	// --name-shape disambiguation. The two modes are mutually exclusive — a
+	// session seeds either the four-role chain or the numbered fan-out, never
+	// both — and the conflict is rejected before any environment mutation.
+	factoryWorkers, factoryEnabled, factoryArgs, err := parseFactoryFlag(filteredArgs)
+	if err != nil {
+		return err
+	}
+	filteredArgs = factoryArgs
+	if err := rejectConflictingModes(kanbanEnabled, factoryEnabled); err != nil {
+		return err
+	}
 	label, isCompanion := parseCompanionLabel(filteredArgs)
-	switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
-	case kanbanBranchLead:
-		// An operator-supplied `lead-<run-id>` name carries the run id this
-		// session already belongs to — a relaunch of an existing lead, or a
-		// board whose companions are already open. Adopting it is what keeps
-		// the session name, MOAI_KANBAN_ID, the leader socket path, and the
-		// companion commands the SessionStart notice prints on one run.
+	factoryLabel, isFactoryWorker := parseFactoryWorkerLabel(filteredArgs)
+	switch resolveFactoryBranch(factoryEnabled, isFactoryWorker) {
+	case factoryBranchLead:
+		// The operator-supplied `lead-<run-id>` name is adopted on the same
+		// terms as the kanban lead (see kanban.go leadRunID) — the run id, the
+		// session name, and the worker commands the notice prints stay on one
+		// run.
 		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterKanbanMode(specID, leadLabel)()
+		defer enterFactoryLeadMode(factoryWorkers, leadLabel)()
 		recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleLead)
-		// A lead launched bare has only an AI-generated title, which claude
-		// discards on /clear; naming it explicitly is what survives.
 		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case kanbanBranchCompanion:
-		defer enterKanbanCompanionMode(label)()
-		recordKanbanSession(specID, kanban.BackendClaude, companionRole(label))
+	case factoryBranchWorker:
+		// A number held by a live session is bumped to the next free one, and
+		// the bumped value must reach the backend argv — the session name is
+		// the address the lead dispatches to.
+		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
+		defer enterFactoryWorkerMode(finalLabel, factoryWorkers)()
+		recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleWorker)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
+	}
+	if !factoryEnabled {
+		switch resolveKanbanBranch(kanbanEnabled, isCompanion) {
+		case kanbanBranchLead:
+			// An operator-supplied `lead-<run-id>` name carries the run id this
+			// session already belongs to — a relaunch of an existing lead, or a
+			// board whose companions are already open. Adopting it is what keeps
+			// the session name, MOAI_KANBAN_ID, the leader socket path, and the
+			// companion commands the SessionStart notice prints on one run.
+			leadLabel, _ := parseLeadLabel(filteredArgs)
+			defer enterKanbanMode(specID, leadLabel)()
+			recordKanbanSession(specID, kanban.BackendClaude, kanban.RoleLead)
+			// A lead launched bare has only an AI-generated title, which claude
+			// discards on /clear; naming it explicitly is what survives.
+			filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			defer settingsCleanup()
+		case kanbanBranchCompanion:
+			defer enterKanbanCompanionMode(label)()
+			recordKanbanSession(specID, kanban.BackendClaude, companionRole(label))
+			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			defer settingsCleanup()
+		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
 	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a

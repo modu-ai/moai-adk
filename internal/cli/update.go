@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
@@ -341,6 +342,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if archiveErr := dryRunArchiveLegacySkills(cwd, out); archiveErr != nil {
 			return archiveErr
 		}
+		// t40 defect 3: preview the managed-cleanup deletion list. A preview
+		// failure degrades to a warning — a dry run must not fail the command.
+		if previewErr := previewManagedCleanup(cwd, out); previewErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Cleanup preview", "failed", previewErr.Error(), &th))
+		}
 		// SPEC-UPDATE-REINSTALL-LOOP-002 REQ-RIL2-024/025 (M4): the v2
 		// fingerprint is computed HERE — inside the dry-run branch, above the
 		// deny-rule migration below — so the clean-reinstall and
@@ -471,6 +477,16 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// t40 defect 1: snapshot (read-only) which legacy skills exist BEFORE the
+	// template sync — the sync's managed cleanup removes .claude/skills/moai*
+	// before the archive step runs, and without this snapshot the resulting
+	// "total: 0 skills archived" is indistinguishable from "nothing to
+	// archive".
+	var preSyncLegacySkills []string
+	if cwd, err := os.Getwd(); err == nil {
+		preSyncLegacySkills = presentLegacySkillIDs(cwd)
+	}
+
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -521,9 +537,14 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory for archive: %w", err)
 		}
-		if _, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force")); archiveErr != nil {
+		archived, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force"))
+		if archiveErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
 		}
+		// t40 defect 1: make the shortfall loud — skills that existed before
+		// the sync but were not archived (their sources were removed by the
+		// managed cleanup before this step) are reported as a loss.
+		reportArchiveShortfall(preSyncLegacySkills, archived, out)
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects
@@ -824,7 +845,7 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 //     flag never reached. Treating it as already-migrated lets Step 4
 //     clear the residue and the fingerprint converge.
 func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Writer) error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := paths.Home()
 	if err != nil {
 		return fmt.Errorf("agency migration adapter: home dir: %w", err)
 	}

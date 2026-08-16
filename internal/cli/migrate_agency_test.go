@@ -696,6 +696,40 @@ func TestMigrateAgency_Checkpoint_WriteRead(t *testing.T) {
 	}
 }
 
+// TestMigrateAgency_Checkpoint_MoaiHomeOverride verifies site #17: a
+// non-empty absolute MOAI_HOME replaces the ~/.moai root, so the checkpoint
+// follows the override while the injected homeDir seam points elsewhere.
+// Non-parallel: t.Setenv mutates process-wide state
+// (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-011).
+func TestMigrateAgency_Checkpoint_MoaiHomeOverride(t *testing.T) {
+	dir := t.TempDir()
+	override := t.TempDir()
+	t.Setenv("MOAI_HOME", override)
+
+	m := &migrateAgencyRunner{projectRoot: dir, homeDir: dir}
+
+	got := m.checkpointPath("override-001")
+	want := filepath.Join(override, ".migrate-tx-override-001.json")
+	if got != want {
+		t.Fatalf("checkpointPath under MOAI_HOME = %q, want %q", got, want)
+	}
+}
+
+// TestMigrateAgency_Checkpoint_SeamedHome verifies the injected homeDir seam
+// still resolves the checkpoint when MOAI_HOME is not set (REQ-MHP-010).
+func TestMigrateAgency_Checkpoint_SeamedHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MOAI_HOME", "")
+
+	m := &migrateAgencyRunner{projectRoot: dir, homeDir: dir}
+
+	got := m.checkpointPath("seam-001")
+	want := filepath.Join(dir, ".moai", ".migrate-tx-seam-001.json")
+	if got != want {
+		t.Fatalf("checkpointPath via seam = %q, want %q", got, want)
+	}
+}
+
 // TestMigrateAgency_Resume_InvalidCheckpoint verifies corrupt checkpoint handling.
 // @MX:SPEC: SPEC-AGENCY-ABSORB-001:REQ-MIGRATE-013
 func TestMigrateAgency_Resume_InvalidCheckpoint(t *testing.T) {

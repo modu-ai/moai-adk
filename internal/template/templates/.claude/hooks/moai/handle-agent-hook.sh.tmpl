@@ -21,6 +21,27 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
+# SPEC-STOPCHAIN-TRIM-001 REQ-006 (A11 / AC-006b): at MOAI_AUTONOMY_TIER=
+# fully-autonomous the subagent-lifecycle (SubagentStop) hooks are DORMANT
+# (observe-only). This wrapper dispatches by action suffix; only actions ending
+# in `-completion` are SubagentStop lifecycle events (develop-completion,
+# spec-completion, docs-completion, evaluator-completion). The guard fires ONLY
+# for those, so non-lifecycle agent hooks (if any were re-added) are unaffected.
+# Runs BEFORE any moai-binary resolution. The deny/ask denylist in pre_tool.go
+# is tier-INVARIANT (REQ-007) and is NOT affected by this guard.
+ACTION="$1"
+case "$ACTION" in
+    *-completion)
+        AUTONOMY_TIER_DORMANT=$(printf '%s' "${MOAI_AUTONOMY_TIER:-}" | tr '[:upper:]' '[:lower:]')
+        if [ "$AUTONOMY_TIER_DORMANT" = "fully-autonomous" ]; then
+            mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs" 2>/dev/null || true
+            echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [agent:$ACTION] DORMANT (tier=fully-autonomous) — observe-only, no block" \
+                >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/lifecycle-dormant.log"
+            exit 0
+        fi
+        ;;
+esac
+
 # Try moai command in PATH
 if command -v moai &> /dev/null; then
     exec moai hook agent "$1" 2>>"$MOAI_HOOK_STDERR_LOG"

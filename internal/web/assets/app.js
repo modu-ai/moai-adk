@@ -226,6 +226,26 @@
     return LOCALES.indexOf(loc) >= 0 ? loc : "en";
   }
 
+  // i18nSubstParams fills {0},{1},… placeholders in a dictionary value from the
+  // comma-separated data-i18n-params attribute ("5,29" → {0}=5, {1}=29). It
+  // exists for server-composed counts a flat key cannot carry ("4
+  // in-progress", "registry 5", "Showing the 3 most recently updated of 29"):
+  // the element's English baseline keeps the composed text, the dictionary
+  // value keeps the sentence frame, and the numbers travel only through this
+  // attribute — so a count change is a re-render, never a dictionary edit. An
+  // absent/empty attribute or a placeholder-free value is a no-op.
+  function i18nSubstParams(el, str) {
+    var raw = el.getAttribute("data-i18n-params");
+    if (!raw) {
+      return str;
+    }
+    var parts = raw.split(",");
+    for (var p = 0; p < parts.length; p++) {
+      str = str.split("{" + p + "}").join(parts[p].trim());
+    }
+    return str;
+  }
+
   // applyI18n replaces the text of every [data-i18n] element with the active
   // locale's string and updates <html lang> (which activates the CJK font stack
   // for ja/zh). A key absent from the dictionary leaves the element's existing
@@ -257,7 +277,7 @@
       // elements that carry a baseline attribute are restored; the rest keep
       // their existing text (an element is never blanked).
       if (typeof str === "string" && str.length > 0) {
-        nodes[i].textContent = str;
+        nodes[i].textContent = i18nSubstParams(nodes[i], str);
       } else {
         var baseline = nodes[i].getAttribute("data-i18n-baseline");
         if (baseline !== null && baseline !== "") {

@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/mx"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -335,6 +336,32 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext = reminder
 		} else {
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + reminder
+		}
+	}
+
+	// Factory Mode bootstrap announcement — the kanban announcement's sibling
+	// (SPEC-FACTORY-WORKER-FANOUT-001), emitted ahead of it so the two modes'
+	// notices can never stack. Same dual-channel shape and the same
+	// startup-only gating, for the same reasons the kanban block below
+	// records; the operator copies N worker launch lines instead of four
+	// companion lines.
+	if notice := factoryBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = notice
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+
+		operatorNotice := factoryBootstrapNotice(operatorLang(h.cfg))
+		if out.SystemMessage == "" {
+			out.SystemMessage = operatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + operatorNotice
 		}
 	}
 
@@ -1147,12 +1174,10 @@ func injectCLAUDEEnvFile(projectRoot string) string {
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.
 func loadGLMKeyFromEnvFile() string {
-	home, err := os.UserHomeDir()
+	envPath, err := paths.GlmEnvFile()
 	if err != nil {
 		return ""
 	}
-
-	envPath := filepath.Join(home, ".moai", ".env.glm")
 	file, err := os.Open(envPath)
 	if err != nil {
 		return ""

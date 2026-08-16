@@ -176,10 +176,11 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		segs = append(segs, fmt.Sprintf("🔄 %d / ⤵️ %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// GitHub: 🐛 open issues, 📥 open pull requests. Served from cache, so this
-	// is a file read even when the network is down.
+	// GitHub: ⚠️ open issues, 🔀 open pull requests. Served from cache, so this
+	// is a file read even when the network is down. The 🔀 here is the PR icon —
+	// distinct from the repo indicator, which renders 📡 (see renderRepoBranchSegment).
 	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
-		segs = append(segs, fmt.Sprintf("🐛 %d / 📥 %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
+		segs = append(segs, fmt.Sprintf("⚠️ %d / 🔀 %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
 	}
 
 	return r.joinSegments(segs)
@@ -357,7 +358,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 }
 
 // renderDirGitLine renders the L3 line for layout v3.
-// Format: 🔀 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+// Format: 📡 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
 //
 // Layout v3 changes (CH3 + CH5):
 //   - directory moved to L1 end (CH5)
@@ -496,10 +497,11 @@ func (r *Renderer) isPREnabled() bool {
 }
 
 // renderRepoBranchSegment renders the combined repo + branch segment in the
-// form "🔀 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3.
+// form "📡 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3. The 📡 repo indicator
+// is distinct from the 🔀 PR icon rendered by renderSessionLine.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "🔀 owner/name | 🅱️ branch ↑N +N"
+//   - Workspace.Repo present + Branch present: "📡 owner/name | 🅱️ branch ↑N +N"
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
 //   - Ahead == 0:                              "↑N" portion omitted
@@ -545,7 +547,7 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	}
 
 	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
-	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
+	return fmt.Sprintf("📡 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff

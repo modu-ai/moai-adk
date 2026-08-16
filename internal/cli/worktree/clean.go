@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 func newCleanCmd() *cobra.Command {
@@ -21,7 +24,8 @@ whose branches have been merged into the base branch.
 
 --stale sweeps abandoned worktrees that hold nothing to lose: a clean working
 tree (no uncommitted or untracked files) AND no commits of its own beyond the
-base branch. Worktrees that would lose work are reported and kept. Branches are
+base branch. Worktrees that would lose work are reported and kept, and so are
+worktrees anchoring a live session (tree-local registry check). Branches are
 never deleted. --stale previews by default; pass --yes to actually remove.`,
 		RunE: runClean,
 	}
@@ -85,6 +89,13 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 			continue
 		}
 		if merged {
+			// Anchor guard (t73): --merged-only has no dirty guard of its
+			// own, so this is the only protection between the sweep and a
+			// live lane's tree.
+			if anchored := session.LiveAnchoredSessions(wt.Path, time.Now()); len(anchored) > 0 {
+				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: live session(s) anchored\n", wt.Path, wt.Branch)
+				continue
+			}
 			_, _ = fmt.Fprintf(out, "  Removing merged worktree: %s [%s]\n", wt.Path, wt.Branch)
 			if err := WorktreeProvider.Remove(wt.Path, false); err != nil {
 				_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", wt.Path, err)
@@ -149,6 +160,9 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 		case protected[filepath.Clean(wt.Path)]:
 			// Main checkout or the worktree this command is running in.
 			continue
+		case len(session.LiveAnchoredSessions(wt.Path, time.Now())) > 0:
+			// Anchor guard (t73): a live session's shell dies with its tree.
+			c.keepReason = "live session anchored in this worktree"
 		case wt.Branch == "":
 			c.keepReason = "detached HEAD (no branch to compare against base)"
 		case wt.Branch == base:

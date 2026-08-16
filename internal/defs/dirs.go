@@ -377,6 +377,31 @@ const (
 	// EvolutionSubdir is the subdirectory for the Reflective Learning system.
 	// It holds telemetry records, learning entries, and rate-limit state.
 	EvolutionSubdir = "evolution"
+
+	// CacheSubdir holds the statusline / update-check scratch data.
+	CacheSubdir = "cache"
+
+	// ReleasesSubdir holds downloaded moai release archives.
+	ReleasesSubdir = "releases"
+
+	// WorktreesSubdir holds MoAI-managed git worktrees.
+	WorktreesSubdir = "worktrees"
+
+	// ClaudeProfilesSubdir holds the isolated per-profile CLAUDE_CONFIG_DIR
+	// trees (internal/profile SSOT).
+	ClaudeProfilesSubdir = "claude-profiles"
+)
+
+// MoAI file segments (relative to MoAIDir). Canonical owners of the names
+// consumed by internal/paths accessors (SPEC-V3R6-MOAI-HOME-PATHS-001
+// REQ-MHP-007); internal/paths mirrors them as local aliases to stay
+// standard-library-only.
+const (
+	// GlmEnvFileName is the GLM API credential file (glmcred SSOT).
+	GlmEnvFileName = ".env.glm"
+
+	// UserSettingsFileName is the user-tier settings override.
+	UserSettingsFileName = "settings.json"
 )
 
 // Claude subdirectory segments (relative to ClaudeDir).
