@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -678,7 +679,7 @@ func TestCleanMoaiManagedPaths_AllTargetsAbsent(t *testing.T) {
 	tmpDir := t.TempDir()
 	var buf bytes.Buffer
 
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -698,7 +699,7 @@ func TestCleanMoaiManagedPaths_WithExistingTarget(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
@@ -94,7 +95,7 @@ func TestUpdateFailure_WritesRecoveryManifest(t *testing.T) {
 						t.Errorf("clause 3 pre: planted path %s absent before CleanMoaiManagedPaths", rel)
 					}
 				}
-				if cleanErr := deploy.CleanMoaiManagedPaths(projectRoot, io.Discard); cleanErr != nil {
+				if cleanErr := deploy.CleanMoaiManagedPaths(projectRoot, io.Discard, fstest.MapFS{}); cleanErr != nil {
 					return cleanErr
 				}
 				// Clause 3 (post): every planted path is gone immediately after

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
@@ -142,7 +143,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 				t.Fatalf("setup failed: %v", err)
 			}
 
-			err := CleanMoaiManagedPaths(root, &buf)
+			err := CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 			if tt.expectError {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -181,7 +182,7 @@ func TestCleanMoaiManagedPaths_Output(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := CleanMoaiManagedPaths(root, &buf); err != nil {
+	if err := CleanMoaiManagedPaths(root, &buf, fstest.MapFS{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -570,7 +571,7 @@ func TestCleanMoaiManagedPaths_CallsMigrate(t *testing.T) {
 	}
 
 	// Run CleanMoaiManagedPaths (which should call MigrateLegacyMemoryDir)
-	if err := CleanMoaiManagedPaths(root, &buf); err != nil {
+	if err := CleanMoaiManagedPaths(root, &buf, fstest.MapFS{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -592,7 +593,7 @@ func TestCleanMoaiManagedPaths_EmptyProject(t *testing.T) {
 	var buf bytes.Buffer
 
 	// No paths exist - should skip gracefully
-	if err := CleanMoaiManagedPaths(root, &buf); err != nil {
+	if err := CleanMoaiManagedPaths(root, &buf, fstest.MapFS{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

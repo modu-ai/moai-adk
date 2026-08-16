@@ -283,8 +283,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// in-memory-only files reach disk before this step removes
 				// anything. A backup-write failure aborts here, so the removal
 				// never runs while a file's only copy is in the heap.
+				// Card t111: the embedded FS rides along so the removal can
+				// back up every file the template does not carry before
+				// deleting the root it lives under.
 				return guardFirstDestructiveStep(projectRoot, configBackupPath, func() error {
-					return deploy.CleanMoaiManagedPaths(projectRoot, out)
+					tmplFS, tmplErr := template.EmbeddedTemplates()
+					if tmplErr != nil {
+						// Without the template FS the removal cannot tell
+						// managed from unmanaged files, so it cannot back
+						// anything up — abort rather than delete blind.
+						return fmt.Errorf("load embedded templates: %w", tmplErr)
+					}
+					return deploy.CleanMoaiManagedPaths(projectRoot, out, tmplFS)
 				})
 			},
 		},

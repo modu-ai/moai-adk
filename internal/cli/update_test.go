@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
@@ -2590,7 +2591,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := deploy.CleanMoaiManagedPaths(root, &buf)
+			err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 
 			if tt.wantErr {
 				if err == nil {
