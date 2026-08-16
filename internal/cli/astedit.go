@@ -68,7 +68,7 @@ Examples:
 	cmd.Flags().StringVar(&flags.pattern, "pattern", "", "ast-grep pattern to match (requires --rewrite)")
 	cmd.Flags().StringVar(&flags.rewrite, "rewrite", "", "Replacement pattern (requires --pattern)")
 	cmd.Flags().StringVar(&flags.lang, "lang", "", "Language of the target code (e.g. go, python, typescript)")
-	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", ".moai/config/astgrep-rules", "ast-grep rules directory path")
+	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", "", "ast-grep rules directory path (default: gate.yaml ast_grep_gate.rules_dir)")
 	cmd.Flags().StringVar(&flags.rule, "rule", "", "Apply only the rule with this ID (rule mode)")
 	cmd.Flags().StringVar(&flags.format, "format", "text", "Output format: text, json")
 
@@ -79,6 +79,14 @@ Examples:
 func runAstEdit(cmd *cobra.Command, flags *astEditFlags, path string) error {
 	if err := validateAstEditFlags(flags); err != nil {
 		return err
+	}
+
+	// t50: rule mode reads rules from --rules-dir; when the flag is omitted,
+	// resolve the directory from gate.yaml ast_grep_gate.rules_dir (the SSOT —
+	// no hardcoded path fallback; see resolveRulesDir in astgrep.go). Pattern
+	// mode does not consult a rules directory, so resolution is rule-mode only.
+	if flags.pattern == "" {
+		flags.rulesDir = resolveRulesDir(flags.rulesDir, resolveGateProjectDir())
 	}
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), astEditTimeout)

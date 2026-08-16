@@ -123,7 +123,10 @@ type AstGrepGateConfig struct {
 	// Enabled controls whether ast-grep scanning is performed.
 	Enabled bool
 	// RulesDir is the directory containing domain-specific ast-grep rule files.
-	// Default: ".moai/config/astgrep-rules"
+	// No code-level default: gate.yaml ast_grep_gate.rules_dir is the SSOT
+	// (the template ships the key with an explicit value). Empty means
+	// "unconfigured" — the scanner reports 0 findings for a nonexistent
+	// directory.
 	RulesDir string
 	// BlockOnError causes the gate to block a commit when error-severity matches are found.
 	BlockOnError bool
@@ -132,11 +135,15 @@ type AstGrepGateConfig struct {
 	WarnOnlyMode bool
 }
 
-// DefaultAstGrepGateConfig returns default configuration.
+// DefaultAstGrepGateConfig returns default configuration. RulesDir is empty
+// (t50): this default is the last resort when no config can be loaded at all,
+// and guessing a rules path the project never declared would silently point
+// the advisory gate at nothing (or at the wrong ruleset) — "unconfigured" is
+// the honest value and behaves identically for a project with no rules.
 func DefaultAstGrepGateConfig() *AstGrepGateConfig {
 	return &AstGrepGateConfig{
 		Enabled:      true,
-		RulesDir:     ".moai/config/astgrep-rules",
+		RulesDir:     "",
 		BlockOnError: true,
 		WarnOnlyMode: false,
 	}
