@@ -10,7 +10,7 @@ description: |
   second opinion before an irreversible delegation or escalation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
-tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend, mcp__moai__codex_task, mcp__moai__codex_setup, mcp__moai__codex_job_status, mcp__moai__codex_job_result, mcp__moai__codex_job_cancel
+tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend, mcp__moai__codex_task, mcp__moai__codex_setup, mcp__moai__codex_job_status, mcp__moai__codex_job_result, mcp__moai__codex_job_cancel, mcp__moai__glm_task, mcp__moai__glm_job_status, mcp__moai__glm_job_result, mcp__moai__glm_job_cancel
 model: inherit
 effort: high
 color: yellow
@@ -96,7 +96,7 @@ resulting decision.
 
 ## MCP Tools
 
-This agent carries SPEC, verification, and codex-delegation MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
+This agent carries SPEC, verification, codex-delegation, and GLM-delegation MCP tools in its `tools:` list (prefer MCP over the Bash CLI):
 
 - `mcp__moai__spec_audit` — SPEC lifecycle audit (era + drift). Call to ground a prescription in the SPEC's actual lifecycle state.
 - `mcp__moai__verify_trend` — per-key verification check history. Call to see whether a verification dimension is improving or regressing.
@@ -112,6 +112,17 @@ This agent is the natural consumer of the codex delegation family — background
 - `mcp__moai__codex_job_cancel` — stop a running background codex job (turn/interrupt, then terminate if needed).
 
 codex is OPTIONAL and fail-open: when unavailable, `codex_setup` reports absent and `codex_task` yields `inconclusive` (never a Go error). Never block a prescription on codex availability.
+
+### GLM delegation (background second opinion)
+
+This agent is also the natural consumer of the GLM delegation family — the z.ai counterpart of the codex delegation tools above:
+
+- `mcp__moai__glm_task` — delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background). Sync returns the completed text; background returns a job id.
+- `mcp__moai__glm_job_status` — read a background GLM job's status/record. Poll until terminal.
+- `mcp__moai__glm_job_result` — read a background GLM job's completed output.
+- `mcp__moai__glm_job_cancel` — stop a running background GLM job (records the cancellation and revokes the in-flight request).
+
+GLM is OPTIONAL and fail-open: a missing key (no `~/.moai/.env.glm`) or an unreachable z.ai yields a structured failed result from `glm_task` itself (never a Go error — there is no `glm_setup` counterpart; availability is learned from `glm_task` directly). Never block a prescription on GLM availability.
 
 ## Conditional Skill Loading
 
