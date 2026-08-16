@@ -246,11 +246,31 @@ func containsPermissionMode(args []string, mode string) bool {
 // the High slot model resolves to the 1M context tier (e.g. glm-5.2), which
 // activates Claude Code's 1M context mode — auto-compact must then scale to the
 // enlarged window. The trigger is the model's resolved context window (via
-// statusline.ResolveGLMContextWindow), not a model-id suffix: z.ai rejects a
-// suffixed id such as glm-5.2[1m], so the suffix is no longer used.
+// statusline.ResolveGLMContextWindow), not a model-id suffix: the suffix was
+// retired after z.ai rejected a suffixed id such as glm-5.2[1m] (current
+// Claude Code strips "[1m]" before sending the ID to the provider, but the
+// resolved-window trigger also covers non-1M tiers). Note the value only takes
+// effect together with glmMaxContextTokens: Claude Code caps the auto-compact
+// window at the model's assumed window — 200K for unrecognized custom IDs
+// unless CLAUDE_CODE_MAX_CONTEXT_TOKENS declares otherwise.
 func glmAutoCompactWindow(highModel string) (string, bool) {
 	if statusline.ResolveGLMContextWindow(highModel) >= config.Default1MContextTokens {
 		return strconv.Itoa(config.Default1MContextTokens), true
+	}
+	return "", false
+}
+
+// glmMaxContextTokens returns the CLAUDE_CODE_MAX_CONTEXT_TOKENS value and a
+// flag indicating whether it should be injected. Claude Code assumes a 200K
+// window for any model ID it cannot resolve (no "claude-" prefix, no "[1m]"),
+// which both mislabels the context telemetry and caps
+// CLAUDE_CODE_AUTO_COMPACT_WINDOW at 200K. Declaring the resolved window —
+// for every GLM tier, not just 1M — lifts both.
+// Ref: code.claude.com/docs/en/model-config ("Correct the window for a gateway
+// or custom model ID"); Issue #653.
+func glmMaxContextTokens(highModel string) (string, bool) {
+	if size := statusline.ResolveGLMContextWindow(highModel); size > 0 {
+		return strconv.Itoa(size), true
 	}
 	return "", false
 }
@@ -269,6 +289,12 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	// tier, scale the auto-compact window to the full 1M context.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
 		_ = os.Setenv(config.EnvClaudeCodeAutoCompactWindow, window) //nolint:errcheck
+	}
+	// Declare the model's real context window (Issue #653): Claude Code
+	// assumes 200K for the unrecognized custom ID and caps the auto-compact
+	// window above at that assumption.
+	if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
+		_ = os.Setenv(config.EnvClaudeCodeMaxContextTokens, tokens) //nolint:errcheck
 	}
 	// Z.AI proxy compatibility: strip Anthropic beta headers
 	_ = os.Setenv(config.EnvClaudeCodeDisableExperimentalBetas, "1") //nolint:errcheck
@@ -414,6 +440,13 @@ func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string
 		vars[config.EnvClaudeCodeAutoCompactWindow] = window
 	}
 
+	// Issue #653: declare the same window to Claude Code itself — without the
+	// declaration, CC assumes 200K for the unrecognized custom ID and caps the
+	// auto-compact window above at 200K regardless of its configured value.
+	if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
+		vars[config.EnvClaudeCodeMaxContextTokens] = tokens
+	}
+
 	return vars
 }
 
@@ -494,6 +527,8 @@ func buildTmuxClearVars() []string {
 		// Clear 1M auto-compact window when leaving GLM mode (Claude slot scales
 		// auto-compact itself).
 		config.EnvClaudeCodeAutoCompactWindow,
+		// Issue #653: clear the declared GLM context window (inject↔clear parity).
+		config.EnvClaudeCodeMaxContextTokens,
 	}
 }
 
@@ -781,6 +816,14 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 			env[config.EnvClaudeCodeAutoCompactWindow] = window
 		} else {
 			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		}
+		// Issue #653: declare the model's real context window (Claude Code
+		// assumes 200K for unrecognized custom IDs and caps the auto-compact
+		// window at it); otherwise clean up any stale value.
+		if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
+			env[config.EnvClaudeCodeMaxContextTokens] = tokens
+		} else {
+			delete(env, config.EnvClaudeCodeMaxContextTokens)
 		}
 		if len(env) == 0 {
 			delete(m, "env")

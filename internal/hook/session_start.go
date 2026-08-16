@@ -681,6 +681,10 @@ func ensureGLMCredentials(projectDir string) string {
 	// Mirrors internal/cli/glm.go glmAutoCompactWindow; the retired [1m] suffix
 	// path (z.ai rejects suffixed ids) is replaced by resolved-window detection.
 	maybeSet1MAutoCompactWindow(settings.Env)
+	// Declare the resolved GLM context window (Issue #653): Claude Code assumes
+	// 200K for unrecognized custom IDs and caps the auto-compact window above
+	// at that assumption. Mirrors internal/cli/glm.go glmMaxContextTokens.
+	maybeDeclareGLMContextWindow(settings.Env)
 
 	// Re-read original file to preserve all fields (not just env)
 	var raw map[string]json.RawMessage
@@ -725,6 +729,23 @@ func maybeSet1MAutoCompactWindow(env map[string]string) {
 	}
 	if statusline.ResolveGLMContextWindow(env[config.EnvAnthropicDefaultOpusModel]) >= config.Default1MContextTokens {
 		env[config.EnvClaudeCodeAutoCompactWindow] = strconv.Itoa(config.Default1MContextTokens)
+	}
+}
+
+// maybeDeclareGLMContextWindow sets CLAUDE_CODE_MAX_CONTEXT_TOKENS in env when
+// the High (Opus) slot model resolves to a known GLM context window. Claude
+// Code assumes a 200K window for unrecognized custom model IDs and caps
+// CLAUDE_CODE_AUTO_COMPACT_WINDOW at that assumed window, so the 1M value set
+// by maybeSet1MAutoCompactWindow is ineffective without this declaration.
+// This is the SessionStart-hook analogue of internal/cli/glm.go
+// glmMaxContextTokens. Issue #653; ref: code.claude.com/docs/en/model-config
+// ("Correct the window for a gateway or custom model ID").
+func maybeDeclareGLMContextWindow(env map[string]string) {
+	if env[config.EnvClaudeCodeMaxContextTokens] != "" {
+		return
+	}
+	if size := statusline.ResolveGLMContextWindow(env[config.EnvAnthropicDefaultOpusModel]); size > 0 {
+		env[config.EnvClaudeCodeMaxContextTokens] = strconv.Itoa(size)
 	}
 }
 

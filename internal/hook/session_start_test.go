@@ -41,6 +41,31 @@ func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 	}
 }
 
+func TestMaybeDeclareGLMContextWindow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		env      map[string]string
+		wantDecl string // "" means expect the key unset
+	}{
+		{name: "glm-5.3 resolves to 1M → declares 1000000", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantDecl: "1000000"},
+		{name: "glm-4.5-air resolves to 128K (non-1M tier still declared)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: "128000"},
+		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantDecl: ""},
+		{name: "declaration already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3", config.EnvClaudeCodeMaxContextTokens: "500000"}, wantDecl: "500000"},
+		{name: "empty opus model → unset", env: map[string]string{}, wantDecl: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			maybeDeclareGLMContextWindow(tt.env)
+			if got := tt.env[config.EnvClaudeCodeMaxContextTokens]; got != tt.wantDecl {
+				t.Errorf("CLAUDE_CODE_MAX_CONTEXT_TOKENS = %q, want %q", got, tt.wantDecl)
+			}
+		})
+	}
+}
+
 func TestSessionStartHandler_EventType(t *testing.T) {
 	t.Parallel()
 

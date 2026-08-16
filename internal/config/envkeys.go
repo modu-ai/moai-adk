@@ -262,6 +262,15 @@ const (
 	// the enlarged window rather than the default ceiling.
 	EnvClaudeCodeAutoCompactWindow = "CLAUDE_CODE_AUTO_COMPACT_WINDOW"
 
+	// EnvClaudeCodeMaxContextTokens declares the context window Claude Code
+	// should assume for a custom (non-Claude) model ID routed through
+	// ANTHROPIC_BASE_URL. Claude Code assumes 200K for unrecognized IDs and
+	// caps CLAUDE_CODE_AUTO_COMPACT_WINDOW at that assumed window, so GLM
+	// tiers (128K/200K/1M) must be declared explicitly.
+	// Ref: https://code.claude.com/docs/en/model-config ("Correct the window
+	// for a gateway or custom model ID"); Issue #653.
+	EnvClaudeCodeMaxContextTokens = "CLAUDE_CODE_MAX_CONTEXT_TOKENS"
+
 	// EnvClaudeCodeEffortLevel sets the session effort level for Claude Code.
 	// Valid values: "low", "medium", "high", "xhigh", "max".
 	// "xhigh" and "max" are supported on Opus 4.7+.
