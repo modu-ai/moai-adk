@@ -39,7 +39,7 @@ Run phase executed 2026-08-17 (manager-develop, cycle_type=tdd, worktree `.claud
 
 ```yaml
 run_complete_at: 2026-08-17T03:05:00+09:00
-run_commit_sha: pending-backfill-m4
+run_commit_sha: 46ed09a66
 run_status: green
 ac_pass_count: 12
 ac_fail_count: 0
