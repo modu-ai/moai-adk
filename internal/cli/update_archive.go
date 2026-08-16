@@ -368,20 +368,60 @@ func archiveLegacySkills(projectRoot string, out io.Writer, force bool) (int, er
 
 // dryRunArchiveLegacySkills runs in --dry-run mode and prints the planned
 // work without making any filesystem changes.
+//
+// The prediction is honest about what the real run does: the template sync's
+// managed-path cleanup removes .claude/skills/moai* BEFORE the archive step
+// runs, so on the v3 sync path nothing is ever archived. Announcing "N skills
+// archived" here while the real run reports 0 is exactly the
+// announcement/result mismatch t40 fixes — the plan states the removal.
 func dryRunArchiveLegacySkills(projectRoot string, out io.Writer) error {
 	th := resolveTheme()
-	planned := 0
+	present := 0
 	for _, id := range legacySkillIDs {
 		srcDir := filepath.Join(projectRoot, ".claude", "skills", id)
 		if _, err := os.Stat(srcDir); err != nil {
 			continue
 		}
-		archiveDst := filepath.Join(".moai", "archive", "skills", archiveVersion, id)
-		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "[dry-run] archive: "+id, "→ "+archiveDst, "", &th))
-		planned++
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "[dry-run] archive: "+id, "will NOT be archived",
+			"managed cleanup removes .claude/skills/moai* before the archive step runs — the real run deletes this skill without archival", &th))
+		present++
 	}
-	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: fmt.Sprintf("[dry-run] total: %d skills archived, 0 user customizations modified", planned), Theme: &th}))
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{
+		Kind:  tui.PillInfo,
+		Solid: false,
+		Label: fmt.Sprintf("[dry-run] total: %d legacy skills present, 0 will be archived (removed by managed cleanup first)", present),
+		Theme: &th,
+	}))
 	return nil
+}
+
+// presentLegacySkillIDs returns the legacy skill IDs whose source directories
+// still exist under .claude/skills/. Read-only; callers snapshot it BEFORE the
+// template sync so the post-sync archive report can distinguish "nothing to
+// archive" from "the cleanup already deleted the sources".
+func presentLegacySkillIDs(projectRoot string) []string {
+	var present []string
+	for _, id := range legacySkillIDs {
+		if _, err := os.Stat(filepath.Join(projectRoot, ".claude", "skills", id)); err == nil {
+			present = append(present, id)
+		}
+	}
+	return present
+}
+
+// reportArchiveShortfall makes the archive step's quiet failure loud: when
+// skills that existed before the sync were not archived (managed cleanup
+// removes their sources before the archive step runs), the user is told what
+// was lost instead of reading an unexplained "total: 0 skills archived".
+// Silent when nothing was present or everything present was archived.
+func reportArchiveShortfall(preSyncIDs []string, archived int, out io.Writer) {
+	if len(preSyncIDs) == 0 || archived >= len(preSyncIDs) {
+		return
+	}
+	th := resolveTheme()
+	_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive",
+		fmt.Sprintf("archived %d of %d skills present before sync", archived, len(preSyncIDs)),
+		"managed-path cleanup removed the sources before the archive step ran — the rest were deleted without archival", &th))
 }
 
 // copyFile copies a single file from src to dst, preserving the source's

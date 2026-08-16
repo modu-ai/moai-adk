@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"gopkg.in/yaml.v3"
 )
 
@@ -310,13 +311,15 @@ func (r *resolver) loadPolicyTier() (map[string]any, string, error) {
 
 // loadUserTier loads from ~/.moai/settings.json and ~/.moai/config/sections/*.yaml.
 func (r *resolver) loadUserTier() (map[string]any, string, error) {
-	homeDir, err := os.UserHomeDir()
+	settingsPath, err := paths.UserSettingsFile()
 	if err != nil {
 		return nil, "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
 
-	settingsPath := filepath.Join(homeDir, ".moai", "settings.json")
-	sectionsPath := filepath.Join(homeDir, ".moai", "config", "sections")
+	sectionsPath, err := paths.UserConfigSectionsDir()
+	if err != nil {
+		return nil, "", fmt.Errorf("cannot determine home directory: %w", err)
+	}
 
 	data := make(map[string]any)
 

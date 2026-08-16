@@ -48,12 +48,24 @@ var ChainRoles = []string{"lead", "plan", "run", "review", "sync"}
 // KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
 type KanbanRecord = kanban.Record
 
-type StatVM struct{ Label, Value, Note string }
+// StatVM 의 Note 는 영어 baseline("4 in-progress")이고 NoteKey 가 실제 표시
+// 언어를 바꾼다. 개수가 문장 안에 박힌 부제는 평평한 키 하나로 담을 수 없어
+// NoteParams 가 {0} 자리에 숫자를 공급한다 — 키는 개수와 무관하게 하나다.
+type StatVM struct {
+	Label, Value, Note string
+	NoteKey            string
+	NoteParams         string
+}
 
 type AttentionVM struct {
 	Icon      string // alert | clock
 	Source    string
 	Text      string
+	// Role 는 이 행이 칸반 미기동 역할 알림일 때 그 역할 이름이다. 비어 있으면
+	// Text 를 그대로 렌더하고, 차 있으면 Text 대신 Role + i18n 키 조각으로
+	// 렌더한다 — 같은 안내가 체인 띠와 여기 두 경로로 나오는데 번역 키를
+	// 공유해야 한쪽만 한국어가 되는 일이 없다.
+	Role      string
 	Badge     string
 	BadgeKind string // danger | outline
 	Href      string
@@ -587,10 +599,10 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 
 	vm := OverviewVM{
 		Stats: []StatVM{
-			{Label: "SPEC", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress"},
-			{Label: "drift", Value: itoa(mustFix), Note: "MUST-FIX"},
-			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry"},
-			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys"},
+			{Label: "SPEC", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress", NoteKey: "statNote.in-progress", NoteParams: itoa(len(inProgress))},
+			{Label: "drift", Value: itoa(mustFix), Note: "MUST-FIX", NoteKey: "statNote.must-fix"},
+			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
+			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},
 		Chain:    buildChain(records, byID, chainCardID(records)),
 		Sessions: sessions,
@@ -612,6 +624,7 @@ func buildAttention(rows []SpecRowVM, findings map[string][]FindingVM, chain Cha
 			Icon:      "alert",
 			Source:    "kanban",
 			Text:      chain.IdleRole + " session not started — the chain stops here",
+			Role:      chain.IdleRole,
 			Badge:     "idle",
 			BadgeKind: "danger",
 			Href:      "/kanban",

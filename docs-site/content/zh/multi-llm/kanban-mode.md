@@ -84,6 +84,17 @@ moai cc -k                 moai cc -k --name plan-<run-id>
 会话间通信使用 Claude Code 的跨会话消息（`ListAgents` / `SendMessage`）。
 `crossSessionInbound` 设置字段控制入站消息是被接受、保留还是拒绝。
 
+### 可用性限制
+
+跨会话消息并非在所有环境中都可用。看板模式的主导与同伴只通过这一条通道相连，通道不存在时模式本身无法成立。开始前请确认以下限制。
+
+{{< icon warning warn >}} **操作系统**：仅在 macOS 和 Linux（包括 WSL 2 内的 Linux）上可用。Claude Code 不在原生 Windows 上提供跨会话消息。
+{{< icon warning warn >}} **提供商**：在 Amazon Bedrock、Claude Platform on AWS、Agent Platform on Google Cloud、Microsoft Foundry 上不可用。
+{{< icon warning warn >}} **版本**：需要 Claude Code v2.1.224 或更高。主动发起跨机器对话需要 v2.1.225+，@提及和 /config 行需要 v2.1.232+。
+{{< icon warning warn >}} **标志**：`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`、`DISABLE_TELEMETRY`、`DO_NOT_TRACK`、`DISABLE_GROWTHBOOK` 中任意一个关闭功能开关求值，消息就会静默失效。
+
+快速诊断：`/list-agents` 命令能被识别说明功能存在，不能被识别说明不存在。
+
 看板模式自动接受入站消息：启动器写入一个包含
 `{"crossSessionInbound": "accept"}` 的临时设置文件，并通过 `--settings`
 传给后端。该文件是会话私有的（退出时清理），不修改你的持久设置。

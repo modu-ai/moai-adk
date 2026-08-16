@@ -29,9 +29,9 @@ const langEnglish = "en"
 
 // kanbanMessages is the operator-facing prose of one locale.
 //
-// Fields carrying a %s are format strings. No field carries a trailing newline;
-// leadManual carries one internal newline because it is two sentences the
-// operator reads as separate lines.
+// Fields carrying a %s or %d are format strings. No field carries a trailing
+// newline; leadManual carries one internal newline because it is two sentences
+// the operator reads as separate lines.
 type kanbanMessages struct {
 	leadHeader     string // run id
 	leadIdentity   string // lead label
@@ -41,7 +41,7 @@ type kanbanMessages struct {
 	settingsAuto   string
 	settingsVerify string
 	specLine       string // SPEC identifier
-	epicPointer    string
+	backlogSummary string // queued card count
 	companionJoin  string // run id
 }
 
@@ -63,7 +63,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.",
 		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic context: run `moai epic status <prefix>` for a disk-grounded milestone progress view.",
+		backlogSummary: "Kanban backlog: %d waiting — run `moai todo` to view the queue.",
 		companionJoin:  "Kanban Mode: joined run %s.",
 	},
 	"ko": {
@@ -76,7 +76,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
 		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
 		specLine:       "SPEC: %s",
-		epicPointer:    "에픽 맥락: `moai epic status <prefix>` 를 실행하면 디스크 기반 마일스톤 진행 상태를 볼 수 있습니다.",
+		backlogSummary: "칸반 백로그: %d장 대기 중 — `moai todo` 를 실행하면 큐를 볼 수 있습니다.",
 		companionJoin:  "칸반 모드: run %s 에 합류했습니다.",
 	},
 	"ja": {
@@ -89,7 +89,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。",
 		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic の文脈: `moai epic status <prefix>` を実行すると、ディスク上の情報に基づくマイルストーンの進捗が得られます。",
+		backlogSummary: "かんばんバックログ: %d件が待機中 — `moai todo` を実行するとキューを確認できます。",
 		companionJoin:  "かんばんモード: run %s に参加しました。",
 	},
 	"zh": {
@@ -102,7 +102,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。",
 		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
 		specLine:       "SPEC: %s",
-		epicPointer:    "Epic 上下文：运行 `moai epic status <prefix>` 可查看基于磁盘的里程碑进展。",
+		backlogSummary: "看板待办队列：%d 张卡片在等待 — 运行 `moai todo` 可查看队列。",
 		companionJoin:  "看板模式：已加入 run %s。",
 	},
 }

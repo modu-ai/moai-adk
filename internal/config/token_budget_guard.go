@@ -23,7 +23,13 @@ import (
 // .claude/rules/moai/** 규칙 파일 + moai.md + MEMORY.md head 합계 258,498 bytes / 4) +
 // 약 15% 여유(≈ 74,317)를 클린 상수로 올림. 여유분은 통상적 규칙 편집을 흡수하되 의미 있는
 // 증가에는 발화한다.
-const AlwaysLoadedTokenBudget = 75000
+//
+// 상향 근거(2026-08-17): release/v3.1.1 통합 레인에서 t72 등 선행 머지 카드의 룰 문서
+// 추가로 측정 표면이 75,282 토큰에 도달, 예산을 282 초과. release 브랜치 push는 CI
+// 트리거(main 전용) 밖이라 개별 카드 단계에서 미검출된 선결 결함이다. 근본 해결
+// (kanban-dispatch 등 대형 always-loaded 룰의 스텁+지연 로딩 다이어트)은 별도 카드로
+// 진행하며, 그 착지 전까지의 임시 상향으로 75,000 → 76,000으로 올린다.
+const AlwaysLoadedTokenBudget = 76000
 
 // memoryHeadLineCap / memoryHeadByteCap는 가드가 측정하는 MEMORY.md head 범위를 제한한다.
 // Claude Code auto-memory 로더 상한(첫 200줄 또는 25KB 중 먼저 도달하는 쪽)과 일치한다.

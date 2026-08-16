@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // TaskData holds active task information from the session state.
@@ -43,8 +45,8 @@ type taskCollector struct {
 
 // newTaskCollector creates a task collector with the given TTL.
 func newTaskCollector(ttl time.Duration) *taskCollector {
-	homeDir, err := os.UserHomeDir()
-	// If home directory cannot be determined, use empty path
+	stateDir, err := paths.StateDir()
+	// If the state directory cannot be resolved, use empty path
 	// (the collector will simply return empty task data)
 	if err != nil {
 		return &taskCollector{
@@ -54,7 +56,7 @@ func newTaskCollector(ttl time.Duration) *taskCollector {
 	}
 	return &taskCollector{
 		ttl:       ttl,
-		statePath: filepath.Join(homeDir, ".moai", "state", "last-session-state.json"),
+		statePath: filepath.Join(stateDir, "last-session-state.json"),
 	}
 }
 

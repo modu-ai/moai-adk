@@ -65,6 +65,8 @@ func clearKanbanLauncherEnv(t *testing.T) {
 		config.EnvMoaiKanbanLabel,
 		config.EnvMoaiKanbanSettingsInjected,
 		config.EnvMoaiKanbanLeadAddr,
+		config.EnvMoaiFactoryWorkers,
+		config.EnvMoaiFactoryWorker,
 		config.EnvClaudeCodeStopHookBlockCap,
 	} {
 		t.Setenv(key, "")
@@ -212,6 +214,32 @@ func TestKanbanCompanionRaisesBlockCap(t *testing.T) {
 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
 	if !slices.Contains(got, want) {
 		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)
+	}
+}
+
+// TestFactoryRaisesBlockCap asserts the factory branch of the unconditional
+// raise (SPEC-FACTORY-WORKER-FANOUT-001): a session signalled by
+// MOAI_FACTORY_WORKERS — lead or worker, both branches set it — takes the
+// same raised cap, because a factory run's dispatch-driven turn chains are
+// long and meant to survive unattended.
+func TestFactoryRaisesBlockCap(t *testing.T) {
+	clearKanbanLauncherEnv(t)
+	tmp := t.TempDir()
+	ctx := context.Background()
+	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
+	want := config.EnvClaudeCodeStopHookBlockCap + "=" + strconv.Itoa(DefaultRaisedStopHookBlockCap)
+
+	// Negative control: the factory variable alone must gate the branch (the
+	// worker-label variable deliberately does not).
+	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
+	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
+		t.Errorf("negative control: MOAI_FACTORY_WORKER alone must not raise the cap, got %v", got)
+	}
+
+	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
+	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
+	if !slices.Contains(got, want) {
+		t.Errorf("expected %q in the launch env for a factory session, got %v", want, got)
 	}
 }
 

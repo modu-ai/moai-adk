@@ -184,6 +184,8 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
 		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
+		// SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-001: advisory home disk check.
+		{"Home Disk Usage", checkHomeDisk},
 	}
 
 	workspaceChecks := []checkFunc{

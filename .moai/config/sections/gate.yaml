@@ -19,15 +19,17 @@ gate:
     test: 120
   ast_grep_gate:
     enabled: true
-    # rules_dir defaults to .moai/config/astgrep-rules when empty
-    # (internal/cli/gate.go). This checkout keeps its dogfood ruleset outside
-    # .moai/config/, which `moai update` wipes wholesale, so the path is set
-    # explicitly — leaving it empty would fall back to a directory that no
-    # longer holds any rules and the scan would silently find nothing.
+    # rules_dir is the single source of truth for where this checkout's
+    # ast-grep rules live (t50): the code carries NO fallback default — the
+    # gate loaders and the `moai ast-grep`/`moai ast-edit` CLIs resolve this
+    # key and treat empty as "unconfigured" (0 rules). This checkout keeps
+    # its dogfood ruleset at .moai/astgrep-rules, outside .moai/config/,
+    # which `moai update` wipes wholesale.
     #
     # This file is itself under .moai/config/ and template-mirrored, so an
-    # update restores the template's empty value and re-breaks the link. The
-    # durable fix belongs elsewhere and is not attempted here.
+    # update restores the template's value (.moai/config/astgrep-rules —
+    # where the template deploys the bundled ruleset, a working default).
+    # To re-link the dogfood ruleset after an update, restore this value.
     rules_dir: ".moai/astgrep-rules"
     block_on_error: false
     warn_only_mode: true

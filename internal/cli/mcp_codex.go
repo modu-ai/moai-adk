@@ -688,7 +688,17 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 		return inconclusiveReview("codex " + method + " rejected: " + err.Error()), err
 	}
 
-	reviewText := awaitCodexTurnReview(h.conn, h.threadID, ctx, h.noteTurnStarted)
+	reviewText, turnErr := awaitCodexTurnReview(h.conn, h.threadID, ctx, h.noteTurnStarted)
+	if turnErr != nil {
+		// The turn ENDED in a non-completed terminal state (failed / interrupted
+		// — quota exhaustion, stream error, interruption). Whatever review text
+		// was collected is codex's PLACEHOLDER ("Reviewer failed to output a
+		// response."), not a verdict, so it must never reach the synthesizer: a
+		// bullet-less placeholder there synthesizes "pass" and launders a review
+		// that never happened into a clean one (card t52 / the exact hazard the
+		// fail-open comment in HandleCodexReviewGate names).
+		return inconclusiveReview(turnErr.Error()), turnErr
+	}
 	if reviewText == "" {
 		return inconclusiveReview("codex review produced no verdict text"), errors.New("codex review produced no verdict text")
 	}
@@ -876,19 +886,30 @@ func coerceCodexReviewTarget(v any) map[string]any {
 // collecting the review prose from the exitedReviewMode item (preferred) or the
 // final agentMessage text (fallback). Returns "" on EOF / deadline (fail-open).
 //
+// The second return value is the TURN FAILURE: non-nil exactly when the
+// turn/completed terminal state is anything other than "completed" (the
+// TurnStatus enum is completed | interrupted | failed | inProgress, and
+// turn.error is documented as populated only when status is failed — codex-cli
+// app-server generate-json-schema, verified on 0.147.0). A failed or
+// interrupted turn never produced a verdict, so the caller must treat the
+// collected text as a placeholder and fail open WITH the error surfaced rather
+// than synthesize a verdict from it. Only the turn/completed state is
+// authoritative: a bare `error` notification with willRetry semantics whose
+// turn later completes is a REAL review (the error was transient).
+//
 // onTurnStarted, when non-nil, is invoked with the turn id carried by the
 // turn/started notification — the ONLY source of the turnId that turn/interrupt
 // requires (REQ-CX2-003). It fires mid-loop, so a background job persists the
 // id while the turn is still running rather than after it completes.
-func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) string {
+func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, onTurnStarted func(string)) (string, error) {
 	reviewText, agentText := "", ""
 	for {
 		if err := ctx.Err(); err != nil {
-			return bestCodexReviewText(reviewText, agentText)
+			return bestCodexReviewText(reviewText, agentText), nil
 		}
 		line, ok := conn.recv()
 		if !ok {
-			return bestCodexReviewText(reviewText, agentText)
+			return bestCodexReviewText(reviewText, agentText), nil
 		}
 		var msg rpcMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
@@ -930,9 +951,46 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, 
 				agentText = p.Item.Text
 			}
 		case "turn/completed":
-			return bestCodexReviewText(reviewText, agentText)
+			if failure := codexTurnFailure(msg.Params); failure != "" {
+				return bestCodexReviewText(reviewText, agentText),
+					fmt.Errorf("codex review turn %s", failure)
+			}
+			return bestCodexReviewText(reviewText, agentText), nil
 		}
 	}
+}
+
+// codexTurnFailure reads the terminal turn state from a turn/completed
+// notification's params and returns "" when the turn COMPLETED (a real verdict
+// exists), otherwise a short human description carrying codex's own error
+// message when one is present. Keys off turn.status (and turn.error) — the
+// authoritative terminal signal — so transient `error` notifications that
+// codex retried internally do not poison a review that did complete.
+func codexTurnFailure(params json.RawMessage) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var p struct {
+		Turn struct {
+			Status string `json:"status"`
+			Error  *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		} `json:"turn"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return ""
+	}
+	switch p.Turn.Status {
+	case "completed", "":
+		return "" // completed turn ("" = malformed/absent status — not our call)
+	case "inProgress":
+		return "" // a non-terminal state on a terminal notification — trust the notification
+	}
+	if p.Turn.Error != nil && strings.TrimSpace(p.Turn.Error.Message) != "" {
+		return p.Turn.Status + ": " + p.Turn.Error.Message
+	}
+	return p.Turn.Status
 }
 
 // codexIsClientRequest reports whether a decoded line is a server→client
