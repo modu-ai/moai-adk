@@ -39,9 +39,15 @@ func newTodoCmd() *cobra.Command {
 
 The backlog is the operator's queue: entry into the board is the operator's
 act (add), and picking the next card is the operator's act too (next <n>).
-Mutations serialize on a sibling cross-process lock; reads are lock-free.`,
+Mutations serialize on a sibling cross-process lock; reads are lock-free.
+
+A bare invocation renders the queue, which is the form the skill surface and
+workflows/todo.md both document; ` + "`moai todo list`" + ` remains valid and prints the
+same thing. NoArgs keeps a mistyped verb an error rather than letting it fall
+through to the listing.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+			return runTodoList(cmd, false)
 		},
 		GroupID: "tools",
 	}
@@ -73,6 +79,35 @@ func newTodoAddCmd() *cobra.Command {
 	}
 }
 
+// runTodoList renders the backlog lock-free. It backs both entry points —
+// the bare `moai todo` and the explicit `moai todo list` — so the two cannot
+// drift apart in output.
+func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
+	store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
+	rec, err := store.Load()
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return err
+	}
+	out := cmd.OutOrStdout()
+	if jsonOutput {
+		data, err := json.Marshal(rec)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(out, string(data))
+		return nil
+	}
+	if len(rec.Items) == 0 {
+		_, _ = fmt.Fprintln(out, "queue is empty")
+		return nil
+	}
+	for _, it := range rec.Items {
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
+	}
+	return nil
+}
+
 // newTodoListCmd — `moai todo list [--json]` (REQ-TODO-003): render the
 // queue lock-free; --json emits the structured records.
 func newTodoListCmd() *cobra.Command {
@@ -82,29 +117,7 @@ func newTodoListCmd() *cobra.Command {
 		Short: "Render the backlog queue (lock-free)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store := kanban.NewBacklogStore(todoBacklogPath(resolveProjectDir()))
-			rec, err := store.Load()
-			if err != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
-				return err
-			}
-			out := cmd.OutOrStdout()
-			if jsonOutput {
-				data, err := json.Marshal(rec)
-				if err != nil {
-					return err
-				}
-				_, _ = fmt.Fprintln(out, string(data))
-				return nil
-			}
-			if len(rec.Items) == 0 {
-				_, _ = fmt.Fprintln(out, "queue is empty")
-				return nil
-			}
-			for _, it := range rec.Items {
-				_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
-			}
-			return nil
+			return runTodoList(cmd, jsonOutput)
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false,

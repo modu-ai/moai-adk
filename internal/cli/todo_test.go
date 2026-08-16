@@ -452,3 +452,50 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 	}
 	return "", false
 }
+
+// TestTodoBareInvocationLists pins the documented contract that a bare
+// `moai todo` renders the queue. The skill surface (.claude/skills/moai)
+// and workflows/todo.md both describe the bare form as the list surface;
+// the command used to answer it with cobra's help text instead, so the
+// documented entry point never reached the backlog it names.
+//
+// The subcommand `moai todo list` stays valid — this widens the surface
+// rather than moving it.
+func TestTodoBareInvocationLists(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	if _, _, err := runTodo(t, "add", "first card"); err != nil {
+		t.Fatalf("seed add: %v", err)
+	}
+
+	bare, _, err := runTodo(t)
+	if err != nil {
+		t.Fatalf("bare todo: %v", err)
+	}
+	if strings.Contains(bare, "USAGE") || strings.Contains(bare, "Usage:") {
+		t.Errorf("bare todo printed help, want the queue:\n%s", bare)
+	}
+	if !strings.Contains(bare, "first card") {
+		t.Errorf("bare todo did not render the seeded card:\n%s", bare)
+	}
+
+	listed, _, err := runTodo(t, "list")
+	if err != nil {
+		t.Fatalf("todo list: %v", err)
+	}
+	if bare != listed {
+		t.Errorf("bare todo and `todo list` diverged:\nbare=%q\nlist=%q", bare, listed)
+	}
+}
+
+// TestTodoUnknownSubcommandStillErrors guards the widening above: making
+// the bare form do work must not turn a mistyped verb into a silent list.
+func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	if _, _, err := runTodo(t, "lsit"); err == nil {
+		t.Error("mistyped subcommand was accepted, want an error")
+	}
+}

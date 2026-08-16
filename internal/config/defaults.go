@@ -189,6 +189,7 @@ const (
 	DefaultMemoryStalenessHours          = 24  // files older than this are wrapped in staleness caveat
 	DefaultMemoryIndexLineCap            = 200 // MEMORY.md lines beyond this trigger MEMORY_INDEX_OVERFLOW
 	DefaultMemoryStaleAggregateThreshold = 10  // stale files >= this count emit one aggregated warning
+	DefaultMemoryTopicFileCap            = 50  // topic files beyond this trigger MEMORY_TOPIC_COUNT_OVER_CAP
 
 	// DefaultFeedbackRepository is the default target repository for the /moai
 	// feedback workflow (SPEC-INVOCATION-MODEL-001). Feedback targets the remote
