@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
 // astGrepFlags holds flag values for the ast-grep subcommand.
@@ -65,15 +66,46 @@ Examples:
 	cmd.Flags().StringVar(&flags.lang, "lang", "", "Scan only the specified language (e.g. go, python, typescript)")
 	cmd.Flags().StringVar(&flags.severity, "severity", "", "Minimum severity to display (error, warning, info)")
 	cmd.Flags().BoolVar(&flags.dry, "dry", false, "Print only the list of rules that would be applied without running the actual scan")
-	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", ".moai/config/astgrep-rules", "ast-grep rules directory path")
+	cmd.Flags().StringVar(&flags.rulesDir, "rules-dir", "", "ast-grep rules directory path (default: gate.yaml ast_grep_gate.rules_dir)")
 
 	return cmd
 }
 
+// resolveRulesDir returns the ast-grep rules directory for the ast-grep
+// family of CLI commands (moai ast-grep, moai ast-edit): an explicit
+// --rules-dir flag wins; otherwise the gate.yaml ast_grep_gate.rules_dir
+// value from projectDir; empty when unconfigured. There is deliberately NO
+// hardcoded path fallback (t50): a code-level default cannot serve both the
+// template deployment path (.moai/config/astgrep-rules, where distributed
+// users' rules live) and per-project overrides (this repository tracks its
+// ruleset at .moai/astgrep-rules), so gate.yaml is the SSOT and the code
+// stops guessing.
+func resolveRulesDir(flagValue, projectDir string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	cfg := loadGateCfgForCLI(projectDir)
+	if cfg == nil || cfg.AstGrepGate == nil {
+		return ""
+	}
+	// Same resolution rule as the quality gate (RunAstGrepGateV2): empty
+	// stays empty, absolute passes through verbatim, relative joins onto the
+	// project root — see quality.ResolveRulesDirPath.
+	return quality.ResolveRulesDirPath(cfg.AstGrepGate.RulesDir, projectDir)
+}
+
 // runAstGrep runs the ast-grep scan and outputs the results.
 func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
+	rulesDir := resolveRulesDir(flags.rulesDir, resolveGateProjectDir())
+	if rulesDir == "" {
+		// Loud, not silent: this command is used as a CI detector, and a scan
+		// that ran with zero rules is not a clean scan. Say so on stderr
+		// (stdout stays reserved for --format=json/sarif payloads).
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+			"ast-grep: no rules directory configured — set ast_grep_gate.rules_dir in .moai/config/sections/gate.yaml or pass --rules-dir; scanning with 0 rules.")
+	}
 	cfg := &astgrep.ScannerConfig{
-		RulesDir:     flags.rulesDir,
+		RulesDir:     rulesDir,
 		SGBinary:     "sg",
 		WarnOnlyMode: false,
 	}

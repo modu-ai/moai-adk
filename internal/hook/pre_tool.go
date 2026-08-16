@@ -716,10 +716,12 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 				BlockOnError: ag.BlockOnError,
 				WarnOnlyMode: ag.WarnOnlyMode,
 			}
-			// Apply defaults when RulesDir is empty (not set in YAML).
-			if qcfg.AstGrepGate.RulesDir == "" {
-				qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-			}
+			// t50: an empty RulesDir maps through as empty — no hardcoded path
+			// fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where
+			// a project keeps its ast-grep rules; the template ships the key
+			// with an explicit value, so template users are covered by config
+			// rather than by a code guess. Mirrors mapConfigGateToQuality in
+			// internal/cli/gate.go.
 		}
 	}
 
