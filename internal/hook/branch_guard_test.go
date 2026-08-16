@@ -660,3 +660,38 @@ func TestBranchGuard_BranchInquiryFormsInPrimary(t *testing.T) {
 		}
 	})
 }
+
+// TestBranchGuard_DenyReasonRemediationContract pins the deny reason's
+// remediation wording (kanban card t43). The deny reason is the only guidance
+// the orchestrator sees when a branch-state command is refused, so it must not
+// suggest a route that cannot work from where the deny was observed:
+// delegating to a manager-git SUBAGENT reproduces the same deny, because both
+// exemption axes (AgentType identity, MOAI_BRANCH_GUARD_EXEMPT sentinel) are
+// unreachable from tool-spawned subagents — only main-thread launches can
+// carry them. The measured incident: two orchestrator sessions read the old
+// "(use a worktree or invoke via manager-git)" wording, delegated to
+// manager-git, and burned a turn on the identical deny.
+//
+// Non-parallel: t.Setenv mutates the process-global exemption env var.
+func TestBranchGuard_DenyReasonRemediationContract(t *testing.T) {
+	requireGit(t)
+	repo := newBranchGuardRepoFixture(t)
+	t.Setenv(branchGuardExemptEnv, "")
+
+	input := &HookInput{
+		ToolName:  "Bash",
+		CWD:       repo,
+		ToolInput: json.RawMessage(`{"command": "git switch main"}`),
+	}
+	_, reason := checkBranchState(input, repo)
+
+	if !strings.Contains(reason, "use a worktree") {
+		t.Fatalf("deny reason lacks the worktree remediation: %q", reason)
+	}
+	if strings.Contains(reason, "invoke via manager-git") {
+		t.Fatalf("deny reason still suggests the subagent-unreachable manager-git route: %q", reason)
+	}
+	if !strings.Contains(reason, branchGuardExemptEnv) || !strings.Contains(reason, "tool-spawned subagents") {
+		t.Fatalf("deny reason lacks the exemption reachability qualifier (main-thread-only): %q", reason)
+	}
+}
