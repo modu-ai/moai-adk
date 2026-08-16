@@ -147,9 +147,88 @@ exit=0
 
 **Other verification:** `go build ./...` → exit 0 (no output). `go test ./internal/config/ -count=1` (full package) → `ok  	github.com/modu-ai/moai-adk/internal/config	5.690s` exit=0. Subagent boundary: `grep -cn 'AskUserQuestion\|mcp__askuser'` on rule-authoring.md → 0. Neutrality pre-check (M4 mirrorability, local file): spec_id=0 req=0 sha=0 date=0 — no sanitization needed at mirror time. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
 
+### M4 — 미러 + 빌드 + 최종 계측 (2026-08-17)
+
+- Tree: worktree `feat/spec-always-loaded-diet`, pre-M4 HEAD `fcc07d1bc` (= the M3 commit; working tree clean at dispatch — verified `git status --short` empty).
+- Mirror scope: the 5 created/modified rule files, copied to `internal/template/templates/` at the corresponding paths. Pre-mirror baseline established: the two MODIFIED files' pre-edit dev versions (`a203a7c3a~1` kanban-dispatch.md, `6d701d26c~1` cache-aware-execution.md) are **byte-identical to the template copies** (`diff` exit 0, 0 lines) — the mirror applies to a clean baseline, no foreign template divergence to preserve.
+- Neutrality of the sources (pre-copy, this run, this tree): all 5 dev files scanned 0 across `SPEC-ALWAYS` / `REQ-ALD|AC-ALD` / generic `SPEC-…` / generic `REQ/AC-…-NNN` / `[0-9a-f]{40}` / `[0-9a-f]{7,8}+punct` / `2026-` / `/Users/goos` / `CLAUDE.local` / `Audit N Finding` — the rule bodies were authored neutral from M1 on (provenance lives in this file, not the rules). **Sanitization applied: none** — the byte-identical copy IS the sanitized form; plan §F's "no wholesale cp" guards against dirty sources, and the scan is the evidence this source is clean.
+- `make build`: exit 0. `catalog.yaml` regeneration ran (12407 bytes) with **zero hash change** (rule files are not catalog entries — `grep -c 'rules/moai' catalog.yaml` = 0), so no build artifacts enter the commit; `//go:embed all:templates` compiles the FS into the binary with no generated files. `git status` shows exactly the 5 mirror paths.
+
+**Post-M4 final measurement (acceptance §A `headroom` form + plan §C `grep -rL` form, this run, this tree, working tree with mirrors):**
+
+```
+files=14 bytes=288975 tokens=72243 headroom=2757    # acceptance §A fm() form
+bytes=288975 tokens=72243 headroom=2757              # plan §C grep -rL form (identical)
+```
+
+**Final gate: headroom 2,757 > 1,239 (strictly greater).** Byte-identical to post-M3 (288,975 / 2,757) — M4 touches only `internal/template/templates/`, which the guard does not measure; the measurement chain M1(3,233) → M2(2,757) → M3(2,757) → M4(2,757) is monotone above baseline at every checkpoint and lands above the plan's worst-corner projection (2,597). Observed headroom recorded for the budget-ratchet backlog card per plan D4-1: **2,757 tokens** (input to the separate card; `AlwaysLoadedTokenBudget` unchanged at 75,000 — D4-1).
+
+**M4-decidable AC matrix (all PASS, commands run in this tree):**
+
+| AC | Command (form) | Observed | Verdict |
+|---|---|---|---|
+| AC-ALD-001 (FINAL) | `headroom` | headroom=2757 > 1239 | PASS |
+| AC-ALD-015 | acceptance §B verbatim loop + `make build` | 5×MIRRORED, MISSING 0, build_exit=0 | PASS |
+| AC-ALD-016 | acceptance §B verbatim `test -f` + 4-pattern `grep -cE` + strict leak test | 5 rows `spec_id=0 req=0 sha=0 date=0`; `MOAI_TEMPLATE_LEAK_STRICT=1 go test … -run TestTemplateNoInternalContentLeak` → ok, exit=0; positive contrast live (same SPEC pattern on local spec.md = 3 matches — not a false-pass machine) | PASS |
+| AC-ALD-002 (final) | guard + budget const + go diff (`origin/main...HEAD`) | `ok … 0.281s` exit=0; budget_const=1; go_changed=0 | PASS |
+| AC-ALD-007 (mirror re-check) | `fm()` paths keys on mirrored companion | mirror carries the same domain-keyed `paths:` line (byte-identical copy) | PASS |
+
+**Other verification:** `go build ./...` → exit 0. `GOOS=windows go build ./...` → exit 0; `GOOS=linux go build ./...` → exit 0 (embed compiles cross-platform; markdown-only change). `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1` (FULL package, includes `TestSanitizedPairParity` + `TestRuleTemplateMirrorDrift` + `TestTemplateNeutralityAudit`) → `ok … 37.769s` exit=0. The 3 CI `template-neutrality-check.yaml` targets run in isolation exactly as CI runs them: `TestTemplateNeutralityAudit` → PASS, `TestTemplateNoInternalContentLeak` (narrow) → PASS, strict tier → PASS (all exit 0). `go test ./internal/config/ -count=1` (full package) → `ok … 1.924s` exit=0. Subagent boundary: `grep -c 'AskUserQuestion\|mcp__askuser'` on the 5 mirrors → kanban stub 1 + kanban companion 1 + cache parent 1 + cache reference 0 + rule-authoring 0; sum 3 = original census sum 3 (kanban original 2 — 1 stayed in stub `Boundaries`, 1 moved verbatim to companion; cache original 1 — pre-existing intro line); 0 new occurrences, all doctrine-text mentions, none a subagent invocation. golangci-lint: n/a — 0 Go files changed (`git diff --name-only origin/main...HEAD -- '*.go'` = 0); markdown has no lint gate. RED-state evidence: n/a — documentation+mirror milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
+
+**Residual (recorded, deliberately not fixed):** the 5 mirrored files are enrolled in NO parity registry (`workflowOptMirroredPaths`, `sanitizedPairPaths`) — enrollment would be a Go test-file edit outside this SPEC's §F scope envelope (plan §A: "편집 대상 파일 4개 + 미러 4개 + M3 신설 1개(+미러) = 최대 10개 파일"). Consequence: a future single-tree edit to these 5 rules is not caught by `TestRuleTemplateMirrorDrift`; the byte-parity enrollment is a natural candidate for a follow-up card alongside the D4-1 budget ratchet.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-17
+spec_id: SPEC-ALWAYS-LOADED-DIET-001
+branch: feat/spec-always-loaded-diet
+worktree: /tmp/wt-run-ald
+base: 062a995d9   # origin/main at M1 dispatch; plan artifacts squash-merged via PR #1576 as be1958a4d
+run_phase_commits:
+  - a203a7c3a   # M1 kanban-dispatch.md split (stub + domain-keyed detail companion)
+  - 6d701d26c   # M2 cache-aware-execution.md directives 6-10 + self-keyed reference companion
+  - fcc07d1bc   # M3 rule-authoring.md recurrence control (paths-scoped, 4-slot)
+  - PENDING-M4-BACKFILL   # M4 template mirror (5 files) + rebuild + final measurement
+ac_pass_count: 16
+ac_fail_count: 0
+final_headroom_tokens: 2757   # observed post-M4, both measurement forms agree; baseline 1239; D4-1 budget-ratchet card input
+always_loaded_files: 14   # unchanged pre/post diet (files split, not removed)
+bytes_pre: 295044
+bytes_post: 288975   # net -6069 B (-1515 tokens); M1 -7976, M2 +1907, M3 0, M4 0
+preserve_list_post_run_count: 0   # no Go/config/hook surface touched; go_changed=0 across the run phase
+l44_pre_commit_fetch: true        # worktree branch only; primary checkout untouched; explicit-pathspec staging, no -A/-a
+l44_post_push_fetch: n/a          # not pushed — branch awaits orchestrator
+new_warnings_or_lints_introduced: 0   # 0 Go files changed; golangci-lint n/a; template package green incl. strict tier
+cross_platform_build:
+  darwin_arm64: pass   # go build ./... exit 0
+  windows_amd64: pass  # GOOS=windows go build ./... exit 0 (embed compiles)
+  linux_amd64: pass    # GOOS=linux go build ./... exit 0
+total_run_phase_files: 10   # 5 dev-surface files (M1-M3) + 5 template mirrors (M4); + progress.md evidence
+m1_to_mN_commit_strategy: one-commit-per-milestone (M1/M2/M3) + M4 commit + sha backfill commit
+mirror_status:
+  mirrored: 5
+  sanitization_applied: none   # sources authored neutral; byte-identical copy is the sanitized form (scan evidence in §E.2 M4)
+  parity_registries_enrolled: 0   # residual, recorded for follow-up card
+ci_neutrality_targets_local:
+  test_template_neutrality_audit: pass
+  test_template_no_internal_content_leak_narrow: pass
+  test_template_no_internal_content_leak_strict: pass
+```
+
+AC matrix summary for the run phase (detail per milestone in §E.2 above):
+
+| AC | Decided at | Verdict |
+|---|---|---|
+| AC-ALD-001 | M4 (final gate) | PASS — headroom 2757 > 1239 |
+| AC-ALD-002 | M1/M2/M3 checkpoints + M4 final | PASS — guard ok, budget_const=1, go_changed=0 |
+| AC-ALD-003 ~ AC-ALD-009 | M1 | PASS — see §E.2 M1 matrix |
+| AC-ALD-010 ~ AC-ALD-013 | M2/M3 | PASS — see §E.2 M2/M3 matrices |
+| AC-ALD-014 | M3 | PASS — see §E.2 M3 matrix |
+| AC-ALD-015, AC-ALD-016 | M4 | PASS — 5×MIRRORED, build exit 0; 4-token scan 5×0 + strict leak exit 0 |
+
+Gaps (E8): documentation/mirror milestone — no RED-state test-first artifact exists for any of M1-M4 (stated, not fabricated). Coverage: n/a — 0 Go files changed in the run phase; `internal/config` and `internal/template` packages both green (runs cited above).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
