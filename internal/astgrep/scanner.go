@@ -18,7 +18,11 @@ import (
 // REQ-ASTG-UPG-010, REQ-ASTG-UPG-011, REQ-ASTG-UPG-012
 type ScannerConfig struct {
 	// RulesDir is the ast-grep rules directory path (recursive search).
-	// Default: ".moai/config/astgrep-rules"
+	// No code-level default: where a project keeps its rules is project
+	// configuration (gate.yaml ast_grep_gate.rules_dir), resolved by callers
+	// (CLI commands, gate loaders). Empty means "no rules configured" — the
+	// scanner reports 0 findings for a nonexistent directory
+	// (REQ-ASTG-UPG-012).
 	RulesDir string
 	// SGBinary is the sg CLI binary name or path.
 	// Default: "sg"
@@ -31,9 +35,14 @@ type ScannerConfig struct {
 }
 
 // DefaultScannerConfig returns a ScannerConfig with built-in default values.
+// RulesDir is deliberately empty: a hardcoded path cannot serve both the
+// template deployment path (.moai/config/astgrep-rules, where distributed
+// users' rules live) and per-project overrides (this repository tracks its
+// ruleset at .moai/astgrep-rules), so rules-dir resolution belongs to the
+// config layer (gate.yaml ast_grep_gate.rules_dir), not the scanner package.
 func DefaultScannerConfig() *ScannerConfig {
 	return &ScannerConfig{
-		RulesDir: ".moai/config/astgrep-rules",
+		RulesDir: "",
 		SGBinary: "sg",
 		Timeout:  30 * time.Second,
 	}

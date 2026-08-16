@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 const (
@@ -74,7 +76,7 @@ type usageCollector struct {
 // NewUsageCollector creates a new UsageProvider.
 // Cache is stored at ~/.moai/cache/usage.json (REQ-V3-API-002).
 func NewUsageCollector(homeDir string) UsageProvider {
-	cacheDir := filepath.Join(homeDir, ".moai", "cache")
+	cacheDir := filepath.Join(homeDir, defs.MoAIDir, defs.CacheSubdir)
 	cachePath := filepath.Join(cacheDir, "usage.json")
 
 	return &usageCollector{

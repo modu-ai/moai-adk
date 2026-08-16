@@ -88,6 +88,28 @@ Inter-session communication uses Claude Code's cross-session messaging
 (`ListAgents` / `SendMessage`). The `crossSessionInbound` settings field
 controls whether an inbound message is accepted, held, or refused.
 
+### Availability constraints
+
+Cross-session messaging is not available in every environment. Kanban Mode
+connects the lead and companions through this channel alone, so where the
+channel is absent the mode itself cannot form. Check these constraints
+before you start.
+
+{{< icon warning warn >}} **Operating system**: available on macOS and Linux (including Linux
+inside WSL 2) only. Claude Code does not provide cross-session messaging
+on native Windows.
+{{< icon warning warn >}} **Providers**: unavailable on Amazon Bedrock, Claude Platform on AWS,
+Agent Platform on Google Cloud, and Microsoft Foundry.
+{{< icon warning warn >}} **Versions**: requires Claude Code v2.1.224 or later. Initiating a
+cross-machine conversation requires v2.1.225+, and @mentions plus the
+/config rows require v2.1.232+.
+{{< icon warning warn >}} **Flags**: any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`,
+`DISABLE_TELEMETRY`, `DO_NOT_TRACK`, or `DISABLE_GROWTHBOOK` disables
+feature-flag evaluation, which silently turns messaging off.
+
+Quick diagnosis: if the `/list-agents` command is recognized, the feature
+is present; if it is not recognized, it is absent.
+
 Kanban Mode auto-accepts inbound messages: the launcher writes a transient
 settings file carrying `{"crossSessionInbound": "accept"}` and passes it to
 the backend via `--settings`. The file is session-private (cleaned up on

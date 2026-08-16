@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +62,7 @@ func profileMemoryStores(projectRoot string) (map[string]string, error) {
 	}
 	slug := memoryProjectSlug(abs)
 
-	profilesRoot := filepath.Join(home, ".moai", "claude-profiles")
+	profilesRoot := filepath.Join(home, defs.MoAIDir, defs.ClaudeProfilesSubdir)
 	entries, err := os.ReadDir(profilesRoot)
 	if err != nil {
 		if os.IsNotExist(err) {

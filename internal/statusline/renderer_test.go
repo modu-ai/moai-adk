@@ -282,16 +282,16 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3 (2026-05-22 fix): repo info present -> "🔀 owner/name | 🅱️ branch" form.
+	// Layout v3 CH3 (2026-05-22 fix): repo info present -> "📡 owner/name | 🅱️ branch" form.
 	// clean -> no dirty suffix.
-	if !strings.Contains(got, "🔀 modu-ai/moai-adk | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '🔀 modu-ai/moai-adk | 🅱️ main' or '📭 main +0', got %q", got)
+	if !strings.Contains(got, "📡 modu-ai/moai-adk | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
+		t.Errorf("should show clean branch as '📡 modu-ai/moai-adk | 🅱️ main' or '📭 main +0', got %q", got)
 	}
 }
 
-// TestRender_GitOnlyBranch_NoRepo verifies the 🔀 segment is hidden entirely
+// TestRender_GitOnlyBranch_NoRepo verifies the 📡 segment is hidden entirely
 // when Workspace.Repo is nil (git not initialized or no remote configured).
-// User policy 2026-05-22: hide segment to avoid "🔀 (🅱️ main)" partial display.
+// User policy 2026-05-22: hide segment to avoid "📡 (🅱️ main)" partial display.
 func TestRender_GitOnlyBranch_NoRepo(t *testing.T) {
 	r := newTestRenderer()
 	data := &StatusData{
@@ -301,8 +301,8 @@ func TestRender_GitOnlyBranch_NoRepo(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if strings.Contains(got, "🔀") {
-		t.Errorf("repo info absent → 🔀 segment must be hidden, got %q", got)
+	if strings.Contains(got, "📡") {
+		t.Errorf("repo info absent → 📡 segment must be hidden, got %q", got)
 	}
 }
 
@@ -554,12 +554,12 @@ func TestRender_SegmentFiltering(t *testing.T) {
 		{
 			name:          "nil config shows all segments",
 			segmentConfig: nil,
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📡", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name:          "empty config shows all segments",
 			segmentConfig: map[string]bool{},
-			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "🔀", "v1.0.80", "🗿 v2.3.1", "main"},
+			wantContain:   []string{"🤖 Opus 4.5", "🔋", "💬 MoAI", "📁 moai-adk-go", "📡", "v1.0.80", "🗿 v2.3.1", "main"},
 		},
 		{
 			name: "model disabled hides model",
@@ -578,7 +578,7 @@ func TestRender_SegmentFiltering(t *testing.T) {
 				SegmentDirectory: false, SegmentGitStatus: true, SegmentClaudeVersion: false,
 				SegmentMoaiVersion: false, SegmentGitBranch: true,
 			},
-			wantContain:    []string{"🤖 Opus 4.5", "🔋", "🔀", "main"},
+			wantContain:    []string{"🤖 Opus 4.5", "🔋", "📡", "main"},
 			wantNotContain: []string{"💬", "📁", "🔅", "🗿"},
 		},
 		{
@@ -913,9 +913,9 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
 	// Layout v3 CH3 (2026-05-22 fix): combined repo+branch segment.
-	// "🔀 owner/name | 🅱️ branch ↑N ↓N +N" (pipe separator, repo prefix required).
+	// "📡 owner/name | 🅱️ branch ↑N ↓N +N" (pipe separator, repo prefix required).
 	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l3, "🔀 modu-ai/moai-adk | 🅱️ feat/auth ↑2 ↓1 +6") {
+	if !strings.Contains(l3, "📡 modu-ai/moai-adk | 🅱️ feat/auth ↑2 ↓1 +6") {
 		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
@@ -1618,7 +1618,7 @@ func TestRenderDirGitLine_PRSegment(t *testing.T) {
 				SegmentGitBranch: true,
 				SegmentPR:        false,
 			},
-			wantContains: []string{"🔀"},
+			wantContains: []string{"📡"},
 			wantAbsent:   []string{"#1023", "⌥"},
 		},
 		{
@@ -1629,7 +1629,7 @@ func TestRenderDirGitLine_PRSegment(t *testing.T) {
 				SegmentGitBranch: true,
 				SegmentPR:        true,
 			},
-			wantContains: []string{"🔀"},
+			wantContains: []string{"📡"},
 			wantAbsent:   []string{"#", "⌥"},
 		},
 	}

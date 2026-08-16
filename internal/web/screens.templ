@@ -14,10 +14,10 @@ templ Overview(vm ShellVM, o OverviewVM) {
 				<div class="stat">
 					<span class="stat__l" data-i18n={ "stat." + i18nSlug(s.Label) }>{ s.Label }</span>
 					<span class="stat__v">{ s.Value }</span>
-					// The note is left untranslated on purpose where it composes a
-					// count with a word ("4 in-progress"): a flat key cannot carry
-					// the number, and splitting it is a larger change than this one.
-					<span class="stat__n" data-i18n={ "statNote." + i18nSlug(s.Note) }>{ s.Note }</span>
+					// Note 이 개수를 품은 합성문("4 in-progress")이어도 키는 평평하게
+					// 하나다 — {0} 자리에 NoteParams 의 숫자가 들어가므로 개수가
+					// 바뀌어도 사전은 그대로다.
+					<span class="stat__n" data-i18n={ s.NoteKey } data-i18n-params={ s.NoteParams }>{ s.Note }</span>
 				</div>
 			}
 		</div>
@@ -52,20 +52,32 @@ templ Overview(vm ShellVM, o OverviewVM) {
 		}
 		<div class="two">
 			<div class="col">
-				@panel("In-progress SPECs", itoa(len(o.InProgress)), "", "roomy") {
+				@panel("In-progress SPECs", itoa(len(o.InProgress)), "", "", "", "roomy") {
 					<div class="rows" data-live="spec">
 						for _, s := range o.InProgress {
 							@specRowLink(s)
 						}
 					</div>
 				}
-				@panel("Needs attention", itoa(len(o.Attention)), "MUST-FIX drift · failed verification · stalled goals · idle roles only.", "roomy") {
+				@panel("Needs attention", itoa(len(o.Attention)), "", "", "MUST-FIX drift · failed verification · stalled goals · idle roles only.", "roomy") {
 					<div class="rows">
 						for _, a := range o.Attention {
 							<a class="row-link" href={ templ.SafeURL(a.Href) }>
 								@iconAt(a.Icon, 14)
 								<span class="mono" style="flex:0 0 190px">{ a.Source }</span>
-								<span style="flex:1 1 auto;min-width:0">{ a.Text }</span>
+								// 칸반 미기동 행은 체인 띠와 같은 안내다 — 키를 공유해야
+								// 한쪽만 번역되는 일이 없다. Role 이 비어 있는 일반 행은
+								// 서버가 준 Text 를 그대로 둔다.
+								if a.Role != "" {
+									<span style="flex:1 1 auto;min-width:0">
+										{ a.Role + " " }
+										<span data-i18n="chain.sessionNotStarted">session not started</span>
+										{" "}
+										<span data-i18n="chain.stopped">— the chain stops here</span>
+									</span>
+								} else {
+									<span style="flex:1 1 auto;min-width:0">{ a.Text }</span>
+								}
 								@badge(a.BadgeKind, a.Badge)
 							</a>
 						}
@@ -73,8 +85,8 @@ templ Overview(vm ShellVM, o OverviewVM) {
 				}
 			</div>
 			<aside class="rail2">
-				@panel("Sessions", "registry "+itoa(len(o.Sessions)), "", "roomy") {
-					@noteBanner("info", "The registry can hold entries whose process has exited. Only PID-confirmed sessions are marked active.")
+				@panel("Sessions", "registry "+itoa(len(o.Sessions)), "panelMeta.registry", itoa(len(o.Sessions)), "", "roomy") {
+					@noteBanner("info", "The registry can hold entries whose process has exited. Only PID-confirmed sessions are marked active.", "banner.registry")
 					<div class="rows" data-live="session">
 						for _, s := range o.Sessions {
 							<div class="sess">
@@ -177,7 +189,7 @@ templ Kanban(vm ShellVM, k KanbanVM) {
 					}
 				}
 			</div>
-			@noteBanner("info", "Stage is estimated from heartbeat. Model, effort and context usage are not recorded yet, so they are left blank — they fill in once kanban.Record is extended.")
+			@noteBanner("info", "Stage is estimated from heartbeat. Model, effort and context usage are not recorded yet, so they are left blank — they fill in once kanban.Record is extended.", "")
 		</section>
 		<section data-live="spec">
 			<div class="panel__head" style="border-bottom-color:var(--line)">
@@ -228,7 +240,15 @@ templ Specs(vm ShellVM, l SpecListVM) {
 			</form>
 			<div class="chips" role="group" aria-label="Status filter">
 				for _, f := range l.Filters {
-					<a class="chip" href={ templ.SafeURL(f.Href) } aria-pressed={ attrBool(f.Active) }>{ f.Label + " " + itoa(f.Count) }</a>
+					// 칩의 개수는 {0} 자리로 주입한다 — 라벨과 개수의 어순은 사전
+					// 값이 정한다("all {0}" / "전체 {0}").
+					<a
+						class="chip"
+						href={ templ.SafeURL(f.Href) }
+						aria-pressed={ attrBool(f.Active) }
+						data-i18n={ "specs.filter." + i18nSlug(f.Label) }
+						data-i18n-params={ itoa(f.Count) }
+					>{ f.Label + " " + itoa(f.Count) }</a>
 				}
 			</div>
 		</div>
@@ -286,7 +306,7 @@ templ Specs(vm ShellVM, l SpecListVM) {
 // 읽힌다. 반대로 길면 앞의 몇 건만 보이고, 잘랐다는 사실과 전체 수를 함께
 // 적는다: 조용히 자르면 "이게 전부"로 읽힌다.
 templ closeDebtPanel(rows []SpecRowVM) {
-	@panel("Close debt", itoa(len(rows)), "Implementation landed; the lifecycle was never closed to completed.", "roomy") {
+	@panel("Close debt", itoa(len(rows)), "", "", "Implementation landed; the lifecycle was never closed to completed.", "roomy") {
 		if len(rows) == 0 {
 			<p class="panel__meta" data-i18n="board.closedebt.empty">No close-debt SPECs.</p>
 		} else {
@@ -297,7 +317,11 @@ templ closeDebtPanel(rows []SpecRowVM) {
 			</div>
 			if len(rows) > closeDebtShown {
 				<p class="panel__meta">
-					{ "Showing the " + itoa(closeDebtShown) + " most recently updated of " + itoa(len(rows)) + ". " }
+					// 잘라낸 사실을 밝히는 문장 — 개수 둘({0} 표시 수, {1} 전체 수)은
+					// params 로 주입하고 문장 틀만 사전이 번역한다.
+					<span data-i18n="board.closedebt.showing" data-i18n-params={ itoa(closeDebtShown) + "," + itoa(len(rows)) }>
+						Showing the { itoa(closeDebtShown) } most recently updated of { itoa(len(rows)) + ". " }
+					</span>
 					<a href="/specs?status=implemented" data-i18n="board.closedebt.all">See all</a>
 				</p>
 			}
@@ -308,7 +332,7 @@ templ closeDebtPanel(rows []SpecRowVM) {
 // mustFixPanel — 조치 명령을 동반한 MUST-FIX drift. 명령은 복사만 한다.
 // 콘솔은 서버에서 아무 명령도 실행하지 않는다 (REQ-WC11-043/044).
 templ mustFixPanel(findings []MustFixVM) {
-	@panel("Must-fix drift", itoa(len(findings)), "Copy the command and run it in your own terminal — the console never executes it.", "roomy") {
+	@panel("Must-fix drift", itoa(len(findings)), "", "", "Copy the command and run it in your own terminal — the console never executes it.", "roomy") {
 		if len(findings) == 0 {
 			<p class="panel__meta" data-i18n="board.mustfix.empty">No must-fix drift.</p>
 		} else {
@@ -376,7 +400,7 @@ templ specDetail(d SpecDetailVM) {
 templ Monitor(vm ShellVM, m MonitorVM) {
 	@Shell(vm) {
 		<div class="quad">
-			@panel("Sessions", "registry "+itoa(len(m.Sessions)), "Only PID-confirmed entries are marked active.", "roomy") {
+			@panel("Sessions", "registry "+itoa(len(m.Sessions)), "", "", "Only PID-confirmed entries are marked active.", "roomy") {
 				<div class="tbl" data-live="session">
 					<div class="tr tr--head" style="grid-template-columns:110px minmax(0,1fr) 86px 130px">
 						<span data-i18n="monitor.session">Session</span><span>SPEC</span>
@@ -396,7 +420,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 				</div>
 				<p class="panel__help">{ "cwd " + m.Cwd }</p>
 			}
-			@panel("Goals", "armed "+itoa(len(m.Goals)), ".moai/state/goal/<session>.json", "roomy") {
+			@panel("Goals", "armed "+itoa(len(m.Goals)), "", "", ".moai/state/goal/<session>.json", "roomy") {
 				<div data-live="goal">
 					for _, g := range m.Goals {
 						<div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
@@ -417,7 +441,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
-			@panel("Verification", itoa(m.VerifyKeys)+" keys", "", "roomy") {
+			@panel("Verification", itoa(m.VerifyKeys)+" keys", "", "", "", "roomy") {
 				<div class="vlist" data-live="verify">
 					for _, v := range m.Verify {
 						<div class="vrow">
@@ -433,7 +457,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
-			@panel("Epics", "moai epic status", "", "roomy") {
+			@panel("Epics", "moai epic status", "", "", "", "roomy") {
 				<div class="vlist">
 					for _, e := range m.Epics {
 						<div class="vrow">

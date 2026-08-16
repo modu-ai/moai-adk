@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
@@ -128,6 +129,23 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
 	deployer := template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 
+	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
+	// carries only the merged/added files. Count the managed re-deployments
+	// the deploy writes anyway (and keep the rendered-target set for the
+	// removal accounting) so the outcome summary reports the real total.
+	templateFiles := deployer.ListTemplates()
+	managedRedeployed := 0
+	restoredSet := make(map[string]bool, len(templateFiles))
+	for _, tmpl := range templateFiles {
+		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
+			tmpl = before
+		}
+		restoredSet[filepath.ToSlash(tmpl)] = true
+		if plan.IsMoaiManaged(tmpl) {
+			managedRedeployed++
+		}
+	}
+
 	// Analyze merge changes. The "Analyzing merge changes" header + the
 	// classification card are shown only when this function owns the
 	// confirmation flow (skipConfirm=false). When skipConfirm=true the caller
@@ -192,6 +210,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// run-scoped directory before anything is removed.
 	var configBackupPath string
 
+	// t40 defect 2: read-only snapshot of the managed roots, taken inside the
+	// Clean step immediately before the removal, so the outcome summary can
+	// account for what was deleted (and what the templates do not restore).
+	var preCleanFiles []string
+
 	// Define deployment steps
 	steps := []struct {
 		name    string
@@ -252,6 +275,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    cleanManagedPathsStage,
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
+				// t40 defect 2: snapshot what exists under the managed roots
+				// BEFORE the removal (read-only; the deletion below is
+				// unchanged).
+				preCleanFiles = deploy.InventoryManagedPaths(projectRoot)
 				// SPEC-UPDATE-DATA-SURVIVAL-001 REQ-UDS-001/003/005: the three
 				// in-memory-only files reach disk before this step removes
 				// anything. A backup-write failure aborts here, so the removal
@@ -420,13 +447,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				plRestore := tui.ProgressLine(out, "Restoring user settings...", nil)
-				if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+				// t63: RestoreMoaiConfigRetained collects the retained-key refs
+				// instead of letting the merge append raw per-key "advisory:"
+				// lines to stderr mid-redraw; the advisory renders through the
+				// same stdout channel as the progress line below.
+				retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 					// Bridge to the noise-suppression ledger (recordMergeFallback +
 					// updateVerboseMode), which stays in package cli. The closure
 					// captures updateVerboseMode so the backup subpackage does not
 					// need a cross-package mutable-state seam.
 					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-				}); restoreErr != nil {
+				})
+				if restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {
 						reporter.StepError(restoreErr)
@@ -434,6 +466,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// t63: one summary line by default; the key list expands only
+				// under --verbose (the same verbose ledger recordMergeFallback
+				// reads), never interleaving with the progress redraw.
+				renderRetainedKeyAdvisory(out, retainedKeys, updateVerboseMode, th)
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
@@ -482,7 +518,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintln(out)
 	// Outcome banner (REQ-TUXIU-016): solid success pill + dim detail note.
-	renderUpdateOutcome(out, len(analysis.Files), configBackupPath, th)
+	// t40 defect 2: the pill total includes the managed re-deployments and
+	// the note carries the removal accounting (local-only losses named by
+	// count).
+	detail := updateOutcomeDetail{ManagedRedeployed: managedRedeployed}
+	for _, f := range preCleanFiles {
+		detail.RemovedManaged++
+		if !restoredSet[f] {
+			detail.RemovedLocalOnly++
+		}
+	}
+	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
