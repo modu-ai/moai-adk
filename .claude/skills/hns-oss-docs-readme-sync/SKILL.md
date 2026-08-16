@@ -1,8 +1,8 @@
 ---
 name: hns-oss-docs-readme-sync
 description: >
-  README 4-file synchronization procedure for the oss-docs harness: English
-  README.md as primary source, ko/ja/zh derivation, the shared
+  README 4-file synchronization procedure for the oss-docs harness: Korean
+  README.ko.md as primary source, en/ja/zh derivation, the shared
   language-switcher header contract, section-order parity checklist, and the
   manual verification recipe (no linter exists for READMEs). Loaded by the
   content-author and locale-translator specialists for any README work.
@@ -22,10 +22,14 @@ The GitHub-facing README set is 4 files at the repo root, ~1100 lines each:
 
 | File | Locale | Role |
 |------|--------|------|
-| `README.md` | en | **canonical / primary** — author here first |
-| `README.ko.md` | ko | derived |
+| `README.ko.md` | ko | **canonical / primary** — author here first |
+| `README.md` | en | derived |
 | `README.ja.md` | ja | derived |
 | `README.zh.md` | zh | derived |
+
+The chain was en-canonical until the v3.1 rewrite. Deriving into English rather
+than out of it carries one hazard the old direction did not: Korean sentence
+shape surviving into `README.md`. Derive for meaning, not for clause order.
 
 SSOT design reference for redesign work:
 `.moai/reports/readme-docs-redesign-20260713.md` (README full redesign draft
@@ -33,9 +37,9 @@ SSOT design reference for redesign work:
 
 ## Procedure
 
-1. **Author** the change in `README.md` (English) only. Respect the section
+1. **Author** the change in `README.ko.md` (Korean) only. Respect the section
    design from the SSOT report; keep the ~1100-line budget in mind.
-2. **Derive** ko, ja, zh — same PR, one derived file per translator worker.
+2. **Derive** en, ja, zh — same PR, one derived file per translator worker.
    Translate the changed sections minimally; do not rewrite untouched prose.
 3. **Preserve verbatim** across all 4 files: code blocks, command names,
    badges, version strings, file paths, tables' structure, Mermaid direction,
@@ -78,7 +82,8 @@ checks are the greps above.
 
 | Anti-pattern | Correct approach |
 |--------------|------------------|
-| Editing README.ko.md first "because the user speaks Korean" | README canonical is en — author `README.md`, then derive |
+| Editing `README.md` first "because English is the default for OSS" | README canonical is ko — author `README.ko.md`, then derive |
+| English prose that reads as translated Korean (clause order, `~에 대한` → "regarding the", noun-stacking) | Derive for meaning; write the sentence an English technical writer would write |
 | Re-authoring an entire derived file for a 3-line canonical change | Minimal-diff derivation of the changed sections |
 | "Improving" facts/figures during translation | Report the discrepancy; amend canonical first |
 | Dropping the switcher header in a redesign | The 4-entry header is a HARD shared contract |

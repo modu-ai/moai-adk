@@ -6,7 +6,7 @@
   "specialists": [
     {
       "role": "content-author",
-      "description": "Author/rewrite canonical-locale source content (ko for docs-site pages, en for README): README section redesign per SSOT report, new docs pages, heading hierarchy, TD-only Mermaid, icon shortcodes over body emoji. Produces the single source of truth; does not translate.",
+      "description": "Author/rewrite canonical-locale source content (ko for both docs-site pages and README): README section redesign per SSOT report, new docs pages, heading hierarchy, TD-only Mermaid, icon shortcodes over body emoji. Produces the single source of truth; does not translate.",
       "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
       "primitive": "sub-agent",
       "isolation": "none",
@@ -15,7 +15,7 @@
     },
     {
       "role": "locale-translator",
-      "description": "Derive the 3 non-canonical locales in the same PR (ko->en->ja/zh for docs, en->ko/ja/zh for README), preserving facts/figures/code/icon-shortcodes/Mermaid direction, applying per-locale emphasis-marker spacing and URL-blacklist compliance. One parallel worker per derived locale.",
+      "description": "Derive the 3 non-canonical locales in the same PR (ko->en->ja/zh for both docs and README), preserving facts/figures/code/icon-shortcodes/Mermaid direction, applying per-locale emphasis-marker spacing and URL-blacklist compliance. One parallel worker per derived locale.",
       "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
       "primitive": "adversarial-fan-out",
       "isolation": "none",

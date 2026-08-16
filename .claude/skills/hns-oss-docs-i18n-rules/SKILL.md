@@ -28,7 +28,14 @@ wins — EXCEPT the two stale items in § Known-Stale below, where reality wins.
 | Surface | Canonical | Derivation chain | Derived files |
 |---------|-----------|------------------|---------------|
 | docs-site | **ko** | ko → en → ja/zh, same PR | `docs-site/content/{en,ja,zh}/` |
-| README | **en** (`README.md`) | en → ko/ja/zh, same PR | `README.ko.md`, `README.ja.md`, `README.zh.md` |
+| README | **ko** (`README.ko.md`) | ko → en → ja/zh, same PR | `README.md`, `README.ja.md`, `README.zh.md` |
+
+Both surfaces are ko-canonical. The README chain was en-canonical until the
+v3.1 rewrite; it was flipped because `README.ko.md` had already diverged into a
+fork rather than a derivation (11 H2 sections against 14 in the other three),
+and because docs-site was ko-canonical already — one canonical locale across
+both public surfaces removes the class of drift where the two disagree about
+which language states a fact first.
 
 - Author in the canonical locale only; derive the rest. Never "fix" canonical
   content inside a translation — report the discrepancy back instead.
