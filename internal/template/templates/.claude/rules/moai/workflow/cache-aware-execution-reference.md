@@ -9,7 +9,7 @@ paths: "**/cache-aware-execution.md"
 
 ## Cited cache numbers
 
-All figures in this section are **quoted source values** — quoted from the source article, **not re-measured** in the session that authored directives 6-10, and never to be restated as measurements of this project. Date context: quoted from the source article as current on 2026-08-16 (the authoring date) and cross-checked against Anthropic's prompt-caching documentation during the 2026-08-16 PR review — performance figures the provider may change; re-quote before relying on one.
+All figures in this section are **quoted source values** — quoted from the source article, **not re-measured** in the session that authored directives 6-10, and never to be restated as measurements of this project. Date context: quoted from the source article as current at this file's authoring and cross-checked against Anthropic's prompt-caching documentation at the same time — performance figures the provider may change; re-quote before relying on one.
 
 | Quantity | Quoted value |
 |---|---|
