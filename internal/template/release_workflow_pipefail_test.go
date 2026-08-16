@@ -47,6 +47,7 @@
 package template_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -56,16 +57,71 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // releaseWorkflowRelPath is the repo-relative path of the release workflow
 // whose provenance gate carries the seven checks.
 const releaseWorkflowRelPath = ".github/workflows/release.yml"
 
-// quietGrepAfterPipe matches a pipe feeding a grep that carries -q in any flag
-// cluster (-q, -qE, -qxF, ...). The pipe is the load-bearing part: without an
-// upstream producer there is nothing for grep's early exit to kill.
-var quietGrepAfterPipe = regexp.MustCompile(`\|\s*grep\s+-[A-Za-z]*q`)
+// pipeIntoGrep finds a pipe feeding a grep and captures everything after it.
+// The pipe is the load-bearing part: without an upstream producer there is
+// nothing for grep's early exit to kill, so `grep -q file` is safe.
+var pipeIntoGrep = regexp.MustCompile(`\|\s*grep\s+(\S.*)$`)
+
+// shortOptsTakingValue are grep's single-letter options whose value follows,
+// either glued to the option or as the next token. Anything after one of them
+// in the same cluster is that value, not another option.
+const shortOptsTakingValue = "efmABCD"
+
+// longOptsTakingValue are the --name forms whose value follows as a separate
+// token when not given as --name=value.
+var longOptsTakingValue = map[string]bool{
+	"regexp": true, "file": true, "max-count": true,
+	"after-context": true, "before-context": true, "context": true,
+}
+
+// isQuietGrep reports whether a grep invocation suppresses output, which is
+// what makes it exit early and kill its producer. It walks the option tokens
+// rather than pattern-matching the line, because quiet has three spellings
+// (`-q`, a cluster containing q, `--quiet`/`--silent`) and because an option's
+// own value must not be read as more options — `grep -e -q` searches for the
+// literal string "-q" and is NOT quiet.
+func isQuietGrep(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		tok := args[i]
+
+		switch {
+		case tok == "--":
+			return false // everything after this is the pattern
+		case strings.HasPrefix(tok, "--"):
+			name := tok[2:]
+			if eq := strings.IndexByte(name, '='); eq >= 0 {
+				name = name[:eq]
+			} else if longOptsTakingValue[name] {
+				i++ // its value is the next token
+			}
+			if name == "quiet" || name == "silent" {
+				return true
+			}
+		case strings.HasPrefix(tok, "-") && len(tok) > 1:
+			for j := 1; j < len(tok); j++ {
+				if tok[j] == 'q' {
+					return true
+				}
+				if strings.IndexByte(shortOptsTakingValue, tok[j]) >= 0 {
+					if j == len(tok)-1 {
+						i++ // the value is the next token
+					}
+					break // the rest of this cluster is the value
+				}
+			}
+		default:
+			return false // the pattern; options are done
+		}
+	}
+	return false
+}
 
 func TestReleaseWorkflowNoQuietGrepUnderPipefail(t *testing.T) {
 	t.Parallel()
@@ -80,7 +136,8 @@ func TestReleaseWorkflowNoQuietGrepUnderPipefail(t *testing.T) {
 
 	var offenders []string
 	for i, line := range strings.Split(string(data), "\n") {
-		if quietGrepAfterPipe.MatchString(line) {
+		m := pipeIntoGrep.FindStringSubmatch(line)
+		if m != nil && isQuietGrep(strings.Fields(m[1])) {
 			offenders = append(offenders, strings.TrimSpace(line)+"  ("+releaseWorkflowRelPath+":"+strconv.Itoa(i+1)+")")
 		}
 	}
@@ -91,6 +148,47 @@ func TestReleaseWorkflowNoQuietGrepUnderPipefail(t *testing.T) {
 			"so pipefail reports 141 for a pipeline whose match SUCCEEDED and the check fails on a passing release.\n"+
 			"Fix: drop -q and redirect instead (`| grep -E 'pat' >/dev/null`) so grep consumes all input.\n"+
 			"Offending lines:\n  %s", releaseWorkflowRelPath, strings.Join(offenders, "\n  "))
+	}
+}
+
+// TestIsQuietGrep pins the detector itself. A guard that silently misses a
+// spelling is worse than no guard, because the green run reads as coverage.
+func TestIsQuietGrep(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		args string
+		want bool
+		why  string
+	}{
+		{"-q 'pat'", true, "the plain form"},
+		{"-qE 'pat'", true, "q in a cluster"},
+		{"-qxF 'pat'", true, "q first in a longer cluster"},
+		{"-Eq 'pat'", true, "q last in a cluster"},
+		{"-E -q 'pat'", true, "q as its own token after another option"},
+		{"--quiet 'pat'", true, "the long form"},
+		{"--silent 'pat'", true, "the long form's synonym"},
+		{"-i --quiet 'pat'", true, "long form after a short one"},
+
+		{"-E 'pat'", false, "no quiet anywhere"},
+		{"-c 'pat'", false, "-c counts, it does not suppress early"},
+		{"-e -q", false, "-q is -e's pattern, not an option"},
+		{"-e 'pat' -q", true, "-e consumed its value, so this -q is an option"},
+		{"-f patterns.txt -q", true, "-f consumed its value"},
+		{"-m 1 -q", true, "-m consumed its numeric value"},
+		{"-- -q", false, "-- ends options; -q is the pattern"},
+		{"'q' file", false, "a pattern that happens to be q"},
+		{"--regexp -q", false, "--regexp consumed -q as its value"},
+		{"--regexp=-q --quiet", true, "--regexp took its value inline, so --quiet still counts"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.args, func(t *testing.T) {
+			t.Parallel()
+			if got := isQuietGrep(strings.Fields(tc.args)); got != tc.want {
+				t.Errorf("isQuietGrep(%q) = %v, want %v — %s", tc.args, got, tc.want, tc.why)
+			}
+		})
 	}
 }
 
@@ -156,12 +254,25 @@ func TestPipefailSigpipeMechanism(t *testing.T) {
 	}
 }
 
+// bashDeadline bounds each shell so a wedged pipe cannot hold the job open
+// until the 30-minute CI timeout. The scripts here finish in well under a
+// second, so this is a backstop rather than a budget: it is set generously
+// because these tests run alongside the rest of the suite, and a deadline
+// tight enough to trip under load would report contention as a defect.
+const bashDeadline = 60 * time.Second
+
 // runBashExitCode runs script under bash and returns its exit code. A failure
 // to start bash at all is fatal; a non-zero exit is a result, not an error.
 func runBashExitCode(t *testing.T, script string) int {
 	t.Helper()
 
-	err := exec.Command("bash", "-c", script).Run()
+	ctx, cancel := context.WithTimeout(context.Background(), bashDeadline)
+	defer cancel()
+
+	err := exec.CommandContext(ctx, "bash", "-c", script).Run()
+	if ctx.Err() != nil {
+		t.Fatalf("script exceeded %s and was killed — treat as a hang, not a verdict: %s", bashDeadline, script)
+	}
 	if err == nil {
 		return 0
 	}
