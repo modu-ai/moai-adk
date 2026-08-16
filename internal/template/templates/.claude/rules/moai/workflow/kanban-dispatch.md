@@ -10,6 +10,8 @@ This rule binds a session whose SessionStart context declares **Kanban Mode** wi
 
 Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one lead and prints one launch command per companion role. Companion sessions are launched **by hand, one per terminal** — a session cannot launch another session, and no mechanism to spawn a peer exists or is wanted.
 
+One boundary on the mode itself: the dispatch cycle rides entirely on cross-session messaging, which does not exist on native Windows and is off under some providers, versions, and flag settings — see `cross-session-messaging.md` § Availability constraints. An absent channel fails quietly, so the lead surfaces it to the operator instead of dispatching into silence.
+
 ## The board
 
 Six columns, fixed and ordered:
@@ -90,6 +92,25 @@ The carve-out is narrow, and the boundary is **who reads it**. An `Agent()` suba
 
 What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. Those are addresses rather than prose, and a translated address does not resolve.
 
+### Dispatch format
+
+[HARD] A dispatch is a fixed-field address block, not prose. The fields:
+
+```
+card: <id>
+spec: <SPEC-ID>
+cmd: /moai run <SPEC-ID>
+wt: .claude/worktrees/<name>
+evidence: .moai/specs/<SPEC-ID>/progress.md
+lens: --security --deep
+```
+
+- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `review` dispatch — the lenses from the table above, where the choice itself is the reason, stated as an address instead of a sentence.
+- **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts this block points at; a dispatch that restates them makes the operator read the same thing twice. If something does not fit a field, it belongs in the card, not around the block.
+- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
+
+The format is the "pointer, not a copy" rule above made mechanical: every field is an address the companion resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the lead's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
+
 ## Completion is read, never trusted
 
 [HARD] The lead advances a card on **evidence it read**, not on a companion's reply. Reply routing between sessions is not guaranteed to arrive, and a reply is a claim rather than an observation.
@@ -160,9 +181,17 @@ The lead's own session is cleared the same way, between cards rather than betwee
 | Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
 | Re-enter one from the current session | `EnterWorktree(<path>)` |
 | Leave it | `ExitWorktree` |
-| Dispose it once the card's pull requests have merged | `moai worktree done` |
+| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
 `moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close, and orphaned trees accumulate until someone reconciles them by hand.
+
+[HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
+
+[HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the lead has integrated the branch and the remote merge has landed; disposal before that destroys the only copy.
+
+[HARD] **A new card starts in a new worktree.** A companion session taking a new card creates a fresh worktree with `EnterWorktree(<card-id>)` (based on the remote default branch) rather than reusing the previous card's tree — reuse without a `/clear` in between carries the previous card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, the dependency is pulled in inside the new worktree with `git merge <prior-branch>`; a dependency is a reason to merge, never a reason to reuse the tree.
+
+[HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`, which grows unwieldy for long names and is invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>` — renaming the checked-out branch inside a worktree is safe (the tree, its lock, and the session anchoring are unaffected), and `moai cc -w <name>` re-entry resolves by tree name, not branch name. The rename also switches the worktree's eventual disposal path — see `worktree-integration.md` § Terminology Glossary (WT- naming rule). Dispatches, merges, and completion evidence reference the `WT-` name.
 
 The lead dispatches this rather than assuming it. Each instruction names the worktree the companion is to work in and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command changes the directory for that invocation only, so the next command silently reads the wrong tree.
 
@@ -207,6 +236,21 @@ Two properties of the form are load-bearing, and both are easy to "simplify" awa
 Moving the command into a script file is not a workaround — not as a standing pattern and not as a one-off. The guard cannot read inside a script, so the entire check set is bypassed for that payload, including the git-redirect checks that are the guard's actual purpose and the part worth keeping.
 
 Reading the script first does not restore them. A human read is not the guard running: the checks stay bypassed however carefully the file was reviewed, and a review performed once says nothing about what the file contains the next time it is invoked. Where a verification cannot be expressed as one compound invocation, that is a signal to reduce the verification, not to route it around the guard.
+
+## Integration into the release branch is self-served
+
+[HARD] A lane whose card has passed verification does not wait for the lead to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The lead provisions the release branch and its worktree at batch start; from then on, every integration is lane work.
+
+The mechanism respects two measured constraints: git checks one branch out in exactly one worktree, and the worktree-session guard refuses a `git -C` that redirects an isolated session's git into another tree. The lane therefore enters the release worktree rather than driving it remotely:
+
+- **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned. A lane never checks the release branch out in its own tree; git would refuse the second checkout anyway.
+- **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` — the canonical current-session re-entry — and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
+- **Return the same way.** `ExitWorktree` returns the session to the primary checkout, not to the lane's own worktree — after the merge, the lane re-enters its card worktree with `EnterWorktree(<own-path>)` before continuing card work.
+- **One integrating session at a time.** The release worktree is the serialization point. On entry, confirm no merge is in progress — `git rev-parse -q --verify MERGE_HEAD` must print nothing; a lane that finds a merge in progress exits, waits, and retries. Two lanes finishing concurrently serialize on this check rather than racing; git's own `index.lock` refusal backstops a truly concurrent attempt.
+- **Conflicts belong to the lane that owns the change.** The integrating lane resolves the conflicts its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's already-merged change — is a blocker report to the lead, not a forced merge.
+- **Push the release branch; the batch pull request stays with the lead.** After its merge, the lane pushes the release branch (`git push origin release/vX.Y.Z`). A rejected push means another lane pushed first — fetch, integrate the fetched release branch, and push again; never force. The batch pull request and release ceremony remain the lead's, and until the pushed release branch's batch PR merges, the disposal rule above still binds.
+
+After the merge, the lane verifies the merge commit landed (`git log --oneline -1`), pushes the release branch, and reports the branch name, merge SHA, and evidence path as its completion signal.
 
 ## Boundaries — what this protocol does not do
 

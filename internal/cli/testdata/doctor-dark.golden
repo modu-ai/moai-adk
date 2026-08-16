@@ -21,7 +21,8 @@
 │    ok      Harness 5-Layer        .moai/harness/ not present (no harness configured)                                                                 │
 │    ok      Migration              current version 0                                                                                                  │
 │    ok      Plugin Deployment      no plugin marker (binary-managed)                                                                                  │
-│    6 ok, 3 warn, 0 fail                                                                                                                              │
+│    ok      Home Disk Usage        no ~/.moai home found — nothing to report                                                                          │
+│    7 ok, 3 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  Workspace ---                                                                                                                                       │
 │    STATUS  CHECK             MESSAGE                                                                                                                 │
@@ -36,6 +37,6 @@
 │    warn    Glamour Cache     glamour not integrated                                                                                                  │
 │    1 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│   Pass 12    Warn 11    Fail 0                                                                                                                       │
+│   Pass 13    Warn 11    Fail 0                                                                                                                       │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

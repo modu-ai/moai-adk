@@ -90,13 +90,21 @@ func (w *worktreeManager) List() ([]Worktree, error) {
 	return worktrees, nil
 }
 
+// removeTimeout bounds `git worktree remove`. Two minutes, not the 10s this
+// operation used to carry: a large tree can exceed 10s while the raw
+// `git worktree remove` the user runs afterwards has no deadline and
+// succeeds — the structural divergence that made `moai worktree done` fail
+// on trees the raw command handled (t41 b2, 2026-08-15). The bound stays
+// finite so a wedged git cannot hang the CLI forever.
+var removeTimeout = 2 * time.Minute
+
 // Remove deletes a worktree at the given path.
 // If force is true, the worktree is removed even with uncommitted changes.
 func (w *worktreeManager) Remove(path string, force bool) error {
 	w.logger.Debug("system git fallback", "operation", "worktree remove", "reason", "go-git lacks worktree support")
 	w.logger.Debug("removing worktree", "path", path, "force", force)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), removeTimeout)
 	defer cancel()
 
 	args := []string{"worktree", "remove"}
@@ -112,6 +120,11 @@ func (w *worktreeManager) Remove(path string, force bool) error {
 			return fmt.Errorf("remove worktree at %q: %w", path, ErrWorktreeNotFound)
 		case strings.Contains(errStr, "contains modified or untracked files"):
 			return fmt.Errorf("remove worktree at %q: %w", path, ErrWorktreeDirty)
+		case strings.Contains(errStr, "cannot remove a locked working tree"):
+			// The wrapped execGit error text (git's stderr, lock reason
+			// included) rides along so the caller can both branch on the
+			// sentinel and show the user why the tree is locked.
+			return fmt.Errorf("remove worktree at %q: %w (%s)", path, ErrWorktreeLocked, errStr)
 		default:
 			return fmt.Errorf("remove worktree at %q: %w", path, err)
 		}

@@ -181,6 +181,18 @@ const (
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
 
+	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
+	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
+	// check and `moai clean --home`: DefaultHomeDiskWarnBytes is the cleanable-
+	// bytes estimate above which the doctor check emits WARN (advisory only);
+	// DefaultHomeCleanRetentionDays is the fallback for the home-tier
+	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
+	// DefaultReleaseKeep is how many non-current release binaries beyond the
+	// current version survive `clean --home`.
+	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays = 30
+	DefaultReleaseKeep            = 3
+
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
 	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던

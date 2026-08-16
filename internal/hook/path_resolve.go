@@ -29,6 +29,7 @@
 package hook
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"sync"
@@ -66,6 +67,15 @@ func (r *projectRootResolver) resolve(dir *string) string {
 // without the .moai/ existence guard. Emits slog.Warn with key
 // "cwd_fallback":true when os.Getwd() is used (REQ-HCWA-008).
 func resolveProjectRootFromEnv(caller string) string {
+	return resolveProjectRootFromEnvAt(caller, slog.LevelWarn)
+}
+
+// resolveProjectRootFromEnvAt is resolveProjectRootFromEnv with an explicit
+// fallback-log level (t62). Operator CLI paths resolve with slog.LevelDebug:
+// there CLAUDE_PROJECT_DIR is legitimately unset and cwd is the right answer
+// rather than a degraded one, so the fallback must not reach the operator's
+// terminal at the default Warn level. Hook runtime keeps the plain WARN form.
+func resolveProjectRootFromEnvAt(caller string, fallbackLevel slog.Level) string {
 	if root := os.Getenv(config.EnvClaudeProjectDir); root != "" {
 		return root
 	}
@@ -74,7 +84,7 @@ func resolveProjectRootFromEnv(caller string) string {
 		slog.Debug("cwd fallback failed", "caller", caller, "error", err)
 		return ""
 	}
-	slog.Warn("cwd fallback used (CLAUDE_PROJECT_DIR not set)",
+	slog.Log(context.Background(), fallbackLevel, "cwd fallback used (CLAUDE_PROJECT_DIR not set)",
 		"cwd_fallback", true,
 		"caller", caller,
 		"resolved_cwd", cwd,

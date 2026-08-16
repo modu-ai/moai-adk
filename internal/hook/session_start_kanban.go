@@ -24,6 +24,7 @@ package hook
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -31,20 +32,29 @@ import (
 )
 
 // kanbanBootstrapNotice returns the announcement for this session in lang, or
-// "" when the session is not part of a kanban run.
+// "" when the session is not part of a kanban run. root is the project root the
+// lead branch reads the backlog queue under; it may be empty, which the queue
+// summary degrades from rather than failing.
 //
 // Fail-open throughout, matching the surrounding hook code: an unresolvable run
 // id or a label that does not parse degrades to emitting nothing rather than
 // emitting something wrong or failing the session start. An unknown lang
 // degrades to English (kanbanMessagesFor), never to an empty notice.
-func kanbanBootstrapNotice(lang string) string {
+func kanbanBootstrapNotice(root, lang string) string {
+	// A factory session reads the factory notice, never this one. The
+	// launcher never sets the kanban variables on a factory branch, so this
+	// guard is insurance against a hand-exported environment, not a branch the
+	// normal launch path can reach.
+	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+		return ""
+	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
 		return kanbanCompanionNotice(label, lang)
 	}
 	if os.Getenv(config.EnvMoaiKanban) == "" {
 		return ""
 	}
-	return kanbanLeadNotice(os.Getenv(config.EnvMoaiKanbanID), lang)
+	return kanbanLeadNotice(os.Getenv(config.EnvMoaiKanbanID), root, lang)
 }
 
 // kanbanBootstrapNoticeForSource returns the announcement only for a genuinely
@@ -73,17 +83,17 @@ func kanbanBootstrapNotice(lang string) string {
 // safer-to-emit reasoning is recorded in SPEC-HOOK-SESSIONSTART-PROBE-001
 // (AC-HOOK-004), which gates on startup and treats an absent source the same
 // way.
-func kanbanBootstrapNoticeForSource(source, lang string) string {
+func kanbanBootstrapNoticeForSource(source, root, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return kanbanBootstrapNotice(lang)
+	return kanbanBootstrapNotice(root, lang)
 }
 
 // kanbanLeadNotice is the lead branch. It carries, in order: (a) the run id;
 // (b) the four companion launch lines, each carrying -k; (c) the leader socket
 // path; (d) an inbound-automation notice; (e) the SPEC identifier (only when
-// MOAI_KANBAN_SPEC is set).
+// MOAI_KANBAN_SPEC is set) and the backlog queue summary.
 //
 // Bootstrap is manual because a session cannot launch another session, and the
 // notice says so rather than leaving the operator to discover it.
@@ -98,7 +108,7 @@ func kanbanBootstrapNoticeForSource(source, lang string) string {
 // four lines to copy, not reading top to bottom. Blocks are built here rather
 // than baked into the message table, so every locale lays out identically and a
 // missing terminator cannot weld two lines together.
-func kanbanLeadNotice(runID, lang string) string {
+func kanbanLeadNotice(runID, root, lang string) string {
 	if runID == "" {
 		return ""
 	}
@@ -139,17 +149,18 @@ func kanbanLeadNotice(runID, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(backend, "\n"))
 
-	// (e) the inbound-automation notice, the SPEC identifier, and the Epic Status
-	// pointer — the run's standing context.
+	// (e) the inbound-automation notice, the SPEC identifier, and the backlog
+	// queue summary — the run's standing context.
 	//
 	// The automation line printed depends on whether the launcher injected a
 	// transient settings file (auto-accept is active) or whether the operator
 	// supplied their own --settings / a write failure degraded to fail-open (the
 	// operator must verify the field themselves). The SPEC line appears ONLY when
-	// MOAI_KANBAN_SPEC is set. The Epic Status pointer (SPEC-EPIC-STATUS-001
-	// REQ-ES-012) lets a kanban session surface epic context without leaving its
-	// current turn; it is informational only — full kanban orchestration is owned
-	// by the Kanban/Kanban Bootstrap SPEC family.
+	// MOAI_KANBAN_SPEC is set. The queue summary replaced the former Epic Status
+	// pointer (SPEC-EPIC-STATUS-001 REQ-ES-012): the lead's working unit is the
+	// backlog queue and the six-column board, not epic milestones, so the
+	// standing-context line now names what the run actually moves — N queued
+	// cards and the command that lists them.
 	var context []string
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)
@@ -159,10 +170,43 @@ func kanbanLeadNotice(runID, lang string) string {
 	if spec := os.Getenv(config.EnvMoaiKanbanSpec); spec != "" {
 		context = append(context, fmt.Sprintf(m.specLine, spec))
 	}
-	context = append(context, m.epicPointer)
+	context = append(context, fmt.Sprintf(m.backlogSummary, queuedBacklogCount(root)))
 	blocks = append(blocks, strings.Join(context, "\n"))
 
 	return strings.Join(blocks, "\n\n") + "\n"
+}
+
+// queuedBacklogCount returns the number of cards waiting in the backlog queue
+// under root — the same .moai/state/kanban/backlog.json the `moai todo` CLI
+// operates (internal/cli/todo.go todoBacklogPath), read here through the same
+// BacklogStore.Load the CLI renders from, so the notice and the command cannot
+// disagree about the file's shape. One small lock-free file read; no subprocess.
+//
+// Waiting means state "queued" and nothing else: a picked card is already in
+// flight on another lane, a dropped card was discarded by the operator, and a
+// finished card is removed from the file outright (`moai todo done` deletes the
+// row), so none of the three is honestly "waiting".
+//
+// Fail-open, like the rest of the notice: the store already reads a missing
+// file as an empty queue (REQ-TODO-012), and everything else unreadable — an
+// empty root, an I/O failure, a malformed file — degrades to 0 here rather than
+// failing the session start. The line is informational; an empty-looking queue
+// costs less than a session that cannot boot.
+func queuedBacklogCount(root string) int {
+	if root == "" {
+		return 0
+	}
+	rec, err := kanban.NewBacklogStore(filepath.Join(root, ".moai", "state", "kanban", "backlog.json")).Load()
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, it := range rec.Items {
+		if it.State == kanban.BacklogStateQueued {
+			n++
+		}
+	}
+	return n
 }
 
 // kanbanCompanionNotice is the companion branch: a single role-less line

@@ -199,7 +199,7 @@ func TestRenderDeployProgress_AllDone(t *testing.T) {
 func TestRenderUpdateOutcome(t *testing.T) {
 	th := tui.LightTheme()
 	var buf bytes.Buffer
-	renderUpdateOutcome(&buf, 24, ".moai-backups/20260725_020747", th)
+	renderUpdateOutcome(&buf, 24, updateOutcomeDetail{}, ".moai-backups/20260725_020747", th)
 	out := stripSGR(buf.String())
 	if !strings.Contains(out, "Updated 24 files") {
 		t.Errorf("outcome must state 'Updated 24 files', got:\n%q", out)
@@ -214,7 +214,7 @@ func TestRenderUpdateOutcome(t *testing.T) {
 
 func TestRenderUpdateOutcome_SingularFile(t *testing.T) {
 	var buf bytes.Buffer
-	renderUpdateOutcome(&buf, 1, "", tui.LightTheme())
+	renderUpdateOutcome(&buf, 1, updateOutcomeDetail{}, "", tui.LightTheme())
 	out := stripSGR(buf.String())
 	if !strings.Contains(out, "Updated 1 file") {
 		t.Errorf("singular outcome must state 'Updated 1 file', got:\n%q", out)
@@ -227,7 +227,7 @@ func TestRenderUpdateOutcome_SingularFile(t *testing.T) {
 
 func TestRenderUpdateOutcome_NoColor(t *testing.T) {
 	var buf bytes.Buffer
-	renderUpdateOutcome(&buf, 24, ".moai-backups/x", tui.MonochromeTheme())
+	renderUpdateOutcome(&buf, 24, updateOutcomeDetail{}, ".moai-backups/x", tui.MonochromeTheme())
 	out := buf.String()
 	if n := len(sgrColor.FindAllString(out, -1)); n != 0 {
 		t.Errorf("NO_COLOR outcome must emit zero SGR, got %d in:\n%q", n, out)

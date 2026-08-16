@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // @MX:ANCHOR: [AUTO] Core function for project root discovery. All .moai operations are anchored to the project root.
@@ -33,7 +35,11 @@ func FindProjectRoot() (string, error) {
 	}
 
 	// Resolve home directory to prevent ~/.moai/ being treated as a project root.
-	homeDir, _ := os.UserHomeDir()
+	// Resolved through internal/paths in lockstep with every other MoAI-home
+	// consumer (REQ-MHP-009): HOME-first, MOAI_HOME-aware on the sibling
+	// accessors, so the traversal guard cannot drift from the resolution the
+	// rest of the binary uses.
+	homeDir, _ := paths.Home()
 	if homeDir != "" {
 		if resolved, err := filepath.EvalSymlinks(homeDir); err == nil {
 			homeDir = resolved
