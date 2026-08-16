@@ -26,6 +26,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -62,7 +63,7 @@ func todoBacklogPath(root string) string {
 // Fail-open direction: an unresolvable git context (no git binary, not a
 // repository) keeps the queue usable via the home-based fallback rather
 // than erroring — a project without git metadata still gets exactly one
-// queue, keyed under ~/.moai/kanban/ so two such projects cannot collide.
+// queue, keyed under ~/.moai/todo/ so two such projects cannot collide.
 func resolveTodoQueueRoot() string {
 	base := resolveProjectDir()
 	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
@@ -75,6 +76,17 @@ func resolveTodoQueueRoot() string {
 // context git could not resolve to a primary checkout. userHomeDirFn is the
 // package's existing test-injection seam, so tests override the home
 // lookup instead of mutating the real HOME.
+//
+// The directory is named for the command that owns the queue (`moai todo` —
+// no `moai kanban` command exists), deliberately NOT "kanban": the
+// .moai/state/kanban/ directory also holds per-session kanban records
+// (<uuid>.json) owned by internal/kanban, and a "kanban" fallback name would
+// read as moving those too — a scope this queue never touches.
+//
+// Before the fallback's queue is created, adoptLocalTodoQueue carries an
+// existing project-local queue over (adopt-not-shadow): the fallback's first
+// run must present the cards the project already has, never an empty queue
+// shadowing them.
 func fallbackTodoQueueRoot(base string) string {
 	if base == "" {
 		base = "."
@@ -85,7 +97,47 @@ func fallbackTodoQueueRoot(base string) string {
 		// directory rather than failing the command outright.
 		return filepath.Join(base, ".moai", "state", "kanban")
 	}
-	return filepath.Join(home, ".moai", "kanban", todoQueueProjectKey(base))
+	root := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(base))
+	adoptLocalTodoQueue(base, root)
+	return root
+}
+
+// adoptLocalTodoQueue moves a pre-existing project-local queue into a fresh
+// fallback root, so the fallback's first run adopts the project's cards
+// instead of shadowing them behind an empty queue (the lossless-migration
+// requirement: item count and states must survive the cutover).
+//
+// Best-effort throughout — a failure leaves the local queue exactly where it
+// was and the fallback simply starts empty THIS run; the data is never
+// destroyed, so a later run can adopt it again once the obstruction clears.
+// When the fallback already has a queue file the local one is left untouched
+// (adopted on an earlier run; a local file reappearing after that is a
+// downgrade-era snapshot the populated fallback deliberately ignores).
+func adoptLocalTodoQueue(base, fallbackRoot string) {
+	local := todoBacklogPath(base)
+	target := filepath.Join(fallbackRoot, "backlog.json")
+	if _, err := os.Stat(target); err == nil {
+		return
+	}
+	if _, err := os.Stat(local); err != nil {
+		return
+	}
+	if err := os.MkdirAll(fallbackRoot, 0o755); err != nil {
+		return
+	}
+	// Same-volume rename is atomic and leaves no duplicate behind.
+	if err := os.Rename(local, target); err == nil {
+		return
+	}
+	// Cross-volume (EXDEV) or rename-refusing filesystem: copy the bytes and
+	// KEEP the original — deletion is the one outcome the lossless
+	// requirement forbids, and a leftover original is inert (the populated
+	// fallback wins on every later run).
+	data, err := os.ReadFile(local)
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(target, data, 0o600)
 }
 
 // todoQueueProjectKey derives the fallback queue's directory name from the
@@ -117,7 +169,7 @@ func newTodoCmd() *cobra.Command {
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
 to and reads the same file the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/kanban/<project-key>/backlog.json
+without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.json
 instead.
 
 The backlog is the operator's queue: entry into the board is the operator's

@@ -529,3 +529,32 @@ func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {
 		t.Fatal("backlog write hit the board's sole-writer refusal")
 	}
 }
+
+// TestNewBacklogStore_SweepsLegacyLockArtifact (t106): constructing a store
+// removes a superseded legacy lock artifact (backlog.json.lock) sitting
+// beside the queue file, while the live lock name (backlog.lock) is left to
+// the lock machinery. Installs that lived through the lock rename carry the
+// stale zero-byte twin; the sweep settles the directory on one name.
+func TestNewBacklogStore_SweepsLegacyLockArtifact(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, legacyBacklogLockFileName)
+	live := filepath.Join(dir, backlogLockFileName)
+	if err := os.WriteFile(legacy, nil, 0o600); err != nil {
+		t.Fatalf("seed legacy lock: %v", err)
+	}
+	if err := os.WriteFile(live, []byte("holder"), 0o600); err != nil {
+		t.Fatalf("seed live lock: %v", err)
+	}
+
+	store := NewBacklogStore(filepath.Join(dir, "backlog.json"))
+
+	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("legacy lock artifact survived store construction (stat err = %v)", err)
+	}
+	if _, err := os.Stat(live); err != nil {
+		t.Fatalf("live lock artifact disturbed by the sweep: %v", err)
+	}
+	if store == nil {
+		t.Fatal("store is nil")
+	}
+}

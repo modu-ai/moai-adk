@@ -18,8 +18,9 @@ State lives at `.moai/state/kanban/backlog.json` of the PRIMARY checkout
 (project-local, not committed). A linked worktree resolves to the same
 primary queue — one repository, one queue: a card worktree's `moai todo`
 adds to and reads the file the lead and the foreman loop see. A project
-without git metadata keeps its queue at `~/.moai/kanban/<project-key>/backlog.json`
-instead.
+without git metadata keeps its queue at `~/.moai/todo/<project-key>/backlog.json`
+instead — the first run there adopts an existing project-local queue (same
+items, same states) rather than starting an empty one.
 Do not read or write that file directly — run the `moai todo` commands: they
 hold a cross-process lock across every mutation, so concurrent sessions cannot
 lose cards or collide ids.

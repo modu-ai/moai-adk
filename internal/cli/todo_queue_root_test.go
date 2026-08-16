@@ -112,7 +112,7 @@ func TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot(t *testing.T) {
 
 // TestResolveTodoQueueRoot_FallbackNoGit covers the home-based fallback: a
 // launch context with no git metadata keeps one queue under
-// ~/.moai/kanban/<project-key>/, keyed deterministically from the directory.
+// ~/.moai/todo/<project-key>/, keyed deterministically from the directory.
 func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	dir := t.TempDir() // deliberately NOT a git repository
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
@@ -123,7 +123,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	t.Cleanup(func() { userHomeDirFn = orig })
 
 	got := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "kanban", todoQueueProjectKey(dir))
+	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
 	if got != want {
 		t.Fatalf("fallback queue root = %q, want %q", got, want)
 	}
@@ -145,6 +145,73 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	}
 }
 
+// TestTodoQueue_FallbackAdoptsExistingLocalQueue is [HARD] verification 3 in
+// code form: a project-local queue that predates the fallback cutover must be
+// ADOPTED — same items, same states — never shadowed behind an empty
+// home-based queue.
+func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
+	dir := t.TempDir() // deliberately NOT a git repository
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	home := t.TempDir()
+	orig := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { userHomeDirFn = orig })
+
+	// Seed a pre-fallback local queue: 2 queued + 1 picked, ids from an
+	// earlier high-water mark — the shape a v3.1.0-era project carries.
+	spec := "SPEC-EXAMPLE-001"
+	localDir := filepath.Join(dir, ".moai", "state", "kanban")
+	if err := os.MkdirAll(localDir, 0o755); err != nil {
+		t.Fatalf("mkdir local queue dir: %v", err)
+	}
+	seed := `{"version":1,"last_seq":7,"items":[` +
+		`{"id":"t6","text":"queued one","added_at":"2026-08-14T00:00:00Z","spec_id":null,"state":"queued"},` +
+		`{"id":"t7","text":"queued two","added_at":"2026-08-14T00:01:00Z","spec_id":null,"state":"queued"},` +
+		`{"id":"t5","text":"picked one","added_at":"2026-08-14T00:02:00Z","spec_id":"` + spec + `","state":"picked"}]}`
+	if err := os.WriteFile(filepath.Join(localDir, "backlog.json"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed local queue: %v", err)
+	}
+
+	// First fallback-resolution run: the root computation itself adopts.
+	root := resolveTodoQueueRoot()
+	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
+	if root != want {
+		t.Fatalf("fallback queue root = %q, want %q", root, want)
+	}
+
+	rec, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	if err != nil {
+		t.Fatalf("load adopted queue: %v", err)
+	}
+	if len(rec.Items) != 3 {
+		t.Fatalf("adopted queue holds %d items, want 3 (items: %+v)", len(rec.Items), rec.Items)
+	}
+	states := map[string]string{}
+	for _, it := range rec.Items {
+		states[it.ID] = string(it.State)
+	}
+	if states["t6"] != "queued" || states["t7"] != "queued" || states["t5"] != "picked" {
+		t.Fatalf("adopted states altered: %+v", states)
+	}
+	if rec.LastSeq != 7 {
+		t.Fatalf("adopted last_seq = %d, want 7", rec.LastSeq)
+	}
+
+	// A re-run must not duplicate or re-adopt: the populated fallback wins and
+	// the local path (renamed away on the same volume, or an inert leftover
+	// after a cross-volume copy) is never allowed to shadow it.
+	if again := resolveTodoQueueRoot(); again != want {
+		t.Fatalf("second fallback resolution = %q, want %q", again, want)
+	}
+	rec2, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	if err != nil {
+		t.Fatalf("reload adopted queue: %v", err)
+	}
+	if len(rec2.Items) != 3 {
+		t.Fatalf("second adoption run changed item count: %d, want 3", len(rec2.Items))
+	}
+}
 // TestTodoQueue_WorktreeSeesPrimaryQueue is the [HARD] acceptance pair in
 // code form: (1) a list from the worktree reports the primary's item count,
 // and (2) an add issued from the worktree lands in the primary's queue file.
