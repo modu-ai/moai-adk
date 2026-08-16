@@ -57,6 +57,7 @@ func NormalizeMode(mode StatuslineMode) StatuslineMode {
 type StdinData struct {
 	HookEventName  string             `json:"hook_event_name"`
 	SessionID      string             `json:"session_id"`
+	SessionName    string             `json:"session_name"` // Explicit name from --name / /rename. Survives /clear; an AI-generated title does not, and is not reported here.
 	TranscriptPath string             `json:"transcript_path"`
 	CWD            string             `json:"cwd"` // Legacy field, prefer Workspace.CurrentDir
 	Model          *ModelInfo         `json:"model"`
@@ -69,7 +70,31 @@ type StdinData struct {
 	Thinking       *ThinkingInfo      `json:"thinking"`            // Claude Code v2.1.139+ thinking flag (nil if absent)
 	Version        string             `json:"version"`             // Claude Code version (e.g., "1.0.80")
 	PR             *PRInfo            `json:"pr,omitempty"`        // Claude Code v2.1.145+ active PR info (nil if no PR detected)
+	Agent          *AgentInfo         `json:"agent,omitempty"`     // Active agent identity when the session runs as one (claude --agent); nil otherwise
+	Worktree       *WorktreeInfo      `json:"worktree,omitempty"`  // Worktree session details; nil when the session is in the primary checkout
 	ExceedsLong    bool               `json:"exceeds_200k_tokens"` // long-context overflow boolean (false if absent)
+}
+
+// WorktreeInfo describes a worktree session, from the statusline stdin
+// `worktree` object. OriginalCwd is the load-bearing field: it names the
+// primary checkout, which is where gitignored project state such as the kanban
+// backlog actually lives. Without it a worktree session would have to shell out
+// to git to find that directory, on every render.
+type WorktreeInfo struct {
+	Name           string `json:"name"`
+	Path           string `json:"path"`
+	Branch         string `json:"branch"`
+	OriginalCwd    string `json:"original_cwd"`
+	OriginalBranch string `json:"original_branch"`
+}
+
+// AgentInfo carries the agent identity a session runs under, from the
+// statusline stdin `agent` object. Present only when the session was launched
+// with `claude --agent <name>` or the `agent` setting; nil for an ordinary
+// session. Paired with StdinData.SessionName, it answers "which session is
+// this, and what is it acting as" without the operator having to remember.
+type AgentInfo struct {
+	Name string `json:"name"`
 }
 
 // PRInfo represents GitHub Pull Request metadata from Claude Code v2.1.145+
@@ -222,6 +247,10 @@ type StatusData struct {
 	Metrics           MetricsData
 	Version           VersionData    // MoAI-ADK version from config
 	ClaudeCodeVersion string         // Claude Code version from JSON input (e.g., "1.0.80")
+	SessionName       string         // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
+	AgentName         string         // Agent identity the session runs as (e.g., "manager-kanban"); empty when none
+	Backlog           BacklogCounts  // Kanban backlog in-flight/waiting counts (Available=false when unreadable)
+	GitHub            GitHubCounts   // Cached open issue/PR counts (Available=false when never fetched)
 	Directory         string         // Project directory name (e.g., "modu-saju")
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")
 	Task              TaskData       // Current active task (rendering enabled in Phase 4)
@@ -316,6 +345,9 @@ const (
 	SegmentClaudeVersion = "claude_version"
 	SegmentMoaiVersion   = "moai_version"
 	SegmentGitBranch     = "git_branch"
+	SegmentSession       = "session" // Session name + agent identity (session line head)
+	SegmentBacklog       = "backlog" // Kanban backlog in-flight/waiting counts
+	SegmentGitHub        = "github"  // Cached open issue / PR counts
 
 	// v3 new segment constants (REQ-V3-TIME-003, enabled in Phase 4)
 	SegmentSessionTime = "session_time" // Session duration

@@ -112,6 +112,15 @@ func (r *Renderer) joinSegments(segments []string) string {
 func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	var lines []string
 
+	// L0: who this session is and what work is on the board. Kept apart from
+	// the model line because it answers a different question — identity and
+	// workload, not capability — and because the operator scans for it first
+	// when several sessions are open. Renders nothing when there is no
+	// identity and no backlog, so an ordinary session keeps the old layout.
+	if l0 := r.renderSessionLine(data); l0 != "" {
+		lines = append(lines, l0)
+	}
+
 	// L1: model, Claude version, MoAI version, session time, output style
 	l1 := r.renderInfoLine(data, false)
 	if l1 != "" {
@@ -143,6 +152,39 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 // renderInfoLine renders the L1 info line (shared by default/full).
 // withPrefix=true: full mode format ("Claude v...", "MoAI v...")
 // withPrefix=false: default mode format ("v...")
+// renderSessionLine renders the identity/workload line: which session this is,
+// what agent it acts as, and how much work is in flight versus waiting.
+//
+// Every segment is omitted when its source is absent, so a session with no
+// name, no agent and no readable backlog produces an empty line, which the
+// caller then drops entirely.
+func (r *Renderer) renderSessionLine(data *StatusData) string {
+	var segs []string
+
+	if r.isSegmentEnabled(SegmentSession) {
+		if data.SessionName != "" {
+			segs = append(segs, fmt.Sprintf("🏷️ %s", data.SessionName))
+		}
+		if data.AgentName != "" {
+			segs = append(segs, fmt.Sprintf("👤 %s", data.AgentName))
+		}
+	}
+
+	// Backlog: 🔄 in flight, ⤵️ waiting in the queue. Symbols rather than words
+	// because this binary ships to users of every supported language.
+	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
+		segs = append(segs, fmt.Sprintf("🔄 %d / ⤵️ %d", data.Backlog.Picked, data.Backlog.Queued))
+	}
+
+	// GitHub: 🐛 open issues, 📥 open pull requests. Served from cache, so this
+	// is a file read even when the network is down.
+	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
+		segs = append(segs, fmt.Sprintf("🐛 %d / 📥 %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
+	}
+
+	return r.joinSegments(segs)
+}
+
 func (r *Renderer) renderInfoLine(data *StatusData, withPrefix bool) string {
 	var segs []string
 

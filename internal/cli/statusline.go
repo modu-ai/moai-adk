@@ -18,6 +18,15 @@ import (
 // render budget so a slow or rate-limited collector cannot stall the status bar.
 const statuslineRenderBudget = 800 * time.Millisecond
 
+// statuslineRefreshGitHub and statuslineBoardRoot back the detached refresh
+// entry point. The statusline render path never calls the network; when its
+// GitHub cache ages out it re-invokes this binary with these flags and returns
+// immediately, so the fetch happens in a child that nothing waits on.
+var (
+	statuslineRefreshGitHub bool
+	statuslineBoardRoot     string
+)
+
 // StatuslineCmd is the statusline command.
 var StatuslineCmd = &cobra.Command{
 	Use:    "statusline",
@@ -27,12 +36,29 @@ var StatuslineCmd = &cobra.Command{
 	RunE:   runStatusline,
 }
 
+func init() {
+	StatuslineCmd.Flags().BoolVar(&statuslineRefreshGitHub, "refresh-github", false,
+		"Refresh the cached GitHub issue/PR counts and exit (internal; spawned by the render path)")
+	StatuslineCmd.Flags().StringVar(&statuslineBoardRoot, "board-root", "",
+		"Project root holding .moai/state (internal; used with --refresh-github)")
+	_ = StatuslineCmd.Flags().MarkHidden("refresh-github")
+	_ = StatuslineCmd.Flags().MarkHidden("board-root")
+}
+
 // runStatusline renders a statusline string suitable for Claude Code's status bar.
 //
 // @MX:ANCHOR: statusline CLI entry point (fan_in >= 3: shell wrapper, direct CLI, tests)
 // @MX:REASON: public entry point for statusline rendering — cwd guard is critical for stability
 // @MX:SPEC: SPEC-V3R3-STATUSLINE-FALLBACK-001
 func runStatusline(cmd *cobra.Command, _ []string) error {
+	// Detached refresh entry point: fetch the GitHub counts, write the cache,
+	// and exit without rendering. Errors are swallowed — a failed refresh must
+	// leave the status bar showing the previous value, not a failure.
+	if statuslineRefreshGitHub {
+		_ = statusline.RefreshGitHubCounts(cmd.Context(), statuslineBoardRoot)
+		return nil
+	}
+
 	// AC-SF-006: cwd guard — deleted directory fallback
 	// os.Getwd() may succeed on macOS even with deleted cwd, so also check with os.Stat()
 	if wd, err := os.Getwd(); err != nil || !dirExists(wd) {

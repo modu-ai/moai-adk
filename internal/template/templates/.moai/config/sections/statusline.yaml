@@ -2,6 +2,15 @@ statusline:
   # Theme — exactly 2 themes exist: catppuccin-mocha (seeded) | catppuccin-latte
   theme: "catppuccin-mocha"
 
+  # Which hosting service the `github` segment counts open work against.
+  # Leave unset to decide from the origin remote's host: github.com selects
+  # `gh`, gitlab.com selects `glab`. A self-hosted instance carries no signal
+  # in its name, so set this explicitly there.
+  #   github | gitlab | none
+  # An unrecognised value renders nothing rather than falling back to
+  # detection, so a typo shows as an absent segment instead of a wrong count.
+  # forge: gitlab
+
   # Individual segment toggles — the only runtime lever.
   # All 16 segments default-on; graceful no-output handles inactive states.
   segments:
