@@ -135,30 +135,69 @@ function Get-Platform {
 }
 
 # Get latest Go edition version
+#
+# Resolved from the /releases/latest redirect rather than the REST API, matching
+# get_latest_version in install.sh. Two reasons, both of which bit real installs:
+#
+#   1. api.github.com allows 60 unauthenticated requests per hour per IP. Behind
+#      a shared address — an office, a CI runner, a developer who has been
+#      working with `gh` — that budget is routinely spent, and the API then
+#      answers with a JSON error object carrying no tag_name. The old code read
+#      the empty result as "no releases exist" and told the user the project had
+#      never shipped. The redirect is not part of the API and is not rate
+#      limited.
+#
+#   2. The old code asked for /releases (the list) and took the first entry,
+#      which is the most recently *created* release — a draft or a release
+#      candidate, if one exists. /releases/latest is the endpoint that actually
+#      means "latest stable": GitHub excludes drafts and prereleases from it.
 function Get-LatestVersion {
-    $versionUrl = "https://api.github.com/repos/modu-ai/moai-adk/releases"
+    $latestUrl = "https://github.com/modu-ai/moai-adk/releases/latest"
+    $resolved = ""
 
     try {
-        $response = Invoke-RestMethod -Uri $versionUrl -Method Get
-        # Find the latest release (accept both v* and go-v* tags)
-        $goRelease = $response | Where-Object { $_.tag_name -like "v*" -or $_.tag_name -like "go-v*" } | Select-Object -First 1
+        # Bounded: a lookup that hangs is indistinguishable to the user from an
+        # installer that has crashed, and this step only reads a redirect header.
+        $response = Invoke-WebRequest -Uri $latestUrl -Method Head `
+            -MaximumRedirection 10 -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
 
-        if (-not $goRelease) {
-            Print-Error "No releases found"
-            Print-Info "You can:"
-            Write-Host "  1. Install a specific version: .\install.ps1 -version 2.0.0"
-            Write-Host "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
-            exit 1
+        # The resolved URI is exposed in a different place per edition, and the
+        # script supports 5.1 upward: Windows PowerShell 5.1 returns a
+        # System.Net.HttpWebResponse (ResponseUri), PowerShell 6+ returns a
+        # System.Net.Http.HttpResponseMessage (RequestMessage.RequestUri).
+        # Probed rather than assumed so neither edition throws on the other's
+        # property name.
+        $base = $response.BaseResponse
+        if ($base.PSObject.Properties['RequestMessage']) {
+            $resolved = [string]$base.RequestMessage.RequestUri.AbsoluteUri
         }
-
-        $version = $goRelease.tag_name -replace '^go-v', '' -replace '^v', ''
-        Print-Success "Latest Go edition version: $version"
-        return $version
+        elseif ($base.PSObject.Properties['ResponseUri']) {
+            $resolved = [string]$base.ResponseUri.AbsoluteUri
+        }
     }
     catch {
-        Print-Error "Failed to fetch latest Go edition version from GitHub: $_"
+        # Leave $resolved empty and fall through to the shared failure message,
+        # so an unreachable host and an unparseable redirect are reported the
+        # same way rather than one of them surfacing a raw exception.
+        $resolved = ""
+    }
+
+    # .../releases/tag/v3.1.0 -> 3.1.0
+    $version = ""
+    if ($resolved -match '/tag/(?<tag>[^/?#]+)') {
+        $version = $Matches['tag'] -replace '^go-', '' -replace '^v', ''
+    }
+
+    if ([string]::IsNullOrEmpty($version)) {
+        Print-Error "Could not determine the latest version from GitHub"
+        Print-Info "GitHub may be unreachable from this network. You can:"
+        Write-Host "  1. Install a specific version: .\install.ps1 -version 3.1.0"
+        Write-Host "  2. Install from source: go install github.com/modu-ai/moai-adk/cmd/moai@latest"
         exit 1
     }
+
+    Print-Success "Latest Go edition version: $version"
+    return $version
 }
 
 # Download binary

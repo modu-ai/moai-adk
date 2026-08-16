@@ -214,8 +214,6 @@ plan → run → sync。Tier S/M/Lサイズ分類が検証深度とPRルーテ�
 
 **worktree隔離**. SPEC ごとに独立した作業ツリーを用意する。`moai cc -w <名前>` で入り、`--spawn` を付けると現在のセッションを保ったまま新しいウィンドウで開く。
 
-**トレンドMCPツール**. 配布用 `.mcp.json` テンプレートは、シークレット不要で動く3つのサーバー(`context7` ライブラリドキュメント · `chrome-devtools` ブラウザ自動化 · `playwright` エンドツーエンドテスト)を既定で同梱し、`moai mcp add|remove|list` CLI で追加サーバー(Semgrep, GitHub, Postgres, Sentry, Codecov)をオプトインする際はリテラルのシークレットではなく `${VAR}` 環境変数参照トークンを使う。オプトインレシピの一覧は `.moai/docs/mcp-recipes.md` にある。
-
 ---
 
 ## インフラが3つすべてを支える
@@ -287,7 +285,7 @@ claude        # launch Claude Code inside the project
 
 ## リファレンス
 
-### /moai スラッシュコマンド（15）
+### /moai スラッシュコマンド（16）
 
 | サブコマンド | 役割 |
 |------------|------|
@@ -296,7 +294,7 @@ claude        # launch Claude Code inside the project
 | `goal` / `loop` / `fix` | 宣言的 goal ループ · 反復修正 · シングルパス修正 |
 | `review` / `gate` / `clean` | コードレビュー（`--deep`でマルチエージェントの敵対的脆弱性スキャン） · pre-commit 品質ゲート · デッドコード削除 |
 | `mx` / `codemaps` / `feedback` | @MX アノテーション · アーキテクチャ docs · GitHub issue 報告 |
-| `e2e` | マルチプラットフォーム E2E テスト（Web/モバイル/デスクトップ、CLI 優先） |
+| `e2e` / `todo` | マルチプラットフォーム E2E テスト（Web/モバイル/デスクトップ、CLI 優先） · カンバンのバックログキュー |
 | *(自然言語)* | Analyze-First ルーティング: 自律的な plan → run → sync パイプライン |
 
 > **退役した 4 サブコマンド**: `design` · `brain` · `coverage` · `security`（SPEC-SUBCOMMAND-RETIRE-001、status: completed）。`security` は `moai-ref-owasp-checklist` + `moai-ref-llm-security` スキルに置き換わり、`e2e` は E2E-REVIVAL で復活して現在アクティブである。
@@ -321,7 +319,7 @@ claude        # launch Claude Code inside the project
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai web` | Web Console — 5 画面（Overview · Kanban · Specs · Monitor · Settings）、10 タブ設定 |
 
-> 全 36 コマンド: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
+> コマンド全一覧: [CLI Reference](https://adk.mo.ai.kr/ja/cli-reference)
 
 ### MCP サーバー
 
@@ -395,7 +393,7 @@ flowchart TD
 | CWD 衝突解決 | `(worktree_path, session_id)` の組が再利用パスを区別 |
 | 深さ上限（depth ceiling） | ネスト複雑度を制限 |
 
-> **現在の状態**: Origin-Trail Chain は **Phase 1**（`internal/chain/` — append-only ストア層）です。`--kanban`/`-k` ランチャースイッチ、`moai chain` CLI、マルチセッションボードカラムは後続フェーズで計画されています。
+> **現在利用可能**: `moai cc -k`（または `moai glm -k`）がリードを起動し、`-k --name <role>-<run-id>` で同伴セッションを1つずつ参加させます — ターミナルごとに1つ、手で起動します。`moai chain <status|lineage|back|list|prune>` が系譜を読み、`moai todo <add|list|next|done>` が `backlog` カラムを操作します。起動手順は上の「v3.1 の新機能 — カンバンモード」節にあります。
 
 > 詳細: [カンバンモードガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 

@@ -312,3 +312,4 @@ e2e/web/
 # Local-only sibling checkout + prompt-theme dir (never committed)
 main-fork/
 .omp/
+.vercel

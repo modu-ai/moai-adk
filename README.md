@@ -289,7 +289,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 ## Reference
 
-### /moai Slash Commands (15)
+### /moai Slash Commands (16)
 
 | Subcommand | Role |
 |------------|------|
@@ -298,7 +298,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `goal` / `loop` / `fix` | Declarative goal loops · iterative fixes · single-pass fixes |
 | `review` / `gate` / `clean` | Code review (`--deep` for multi-agent adversarial vulnerability scan) · pre-commit quality gates · dead code removal |
 | `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
-| `e2e` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) |
+| `e2e` / `todo` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) · Kanban backlog queue |
 | *(natural language)* | Analyze-First routing: autonomous plan → run → sync pipeline |
 
 > **4 Retired Subcommands**: `design` · `brain` · `coverage` · `security` (SPEC-SUBCOMMAND-RETIRE-001, status: completed). `security` was replaced by the `moai-ref-owasp-checklist` + `moai-ref-llm-security` skills; `e2e` was revived by E2E-REVIVAL and is currently active.
@@ -323,7 +323,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai web` | Web Console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 10-tab settings |
 
-> Full 36 commands: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
+> Full command list: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
 
 ### MCP Server
 
@@ -397,7 +397,7 @@ flowchart TD
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Current status**: Origin-Trail Chain is at **Phase 1** (`internal/chain/` — append-only store layer). The `--kanban`/`-k` launcher switch, `moai chain` CLI, and multi-session board columns are planned for later phases.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>-<run-id>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 

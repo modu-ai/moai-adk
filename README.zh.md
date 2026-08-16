@@ -220,8 +220,6 @@ plan → run → sync。Tier S/M/L 大小分类决定验证深度和 PR 路由�
 
 **worktree 隔离**. 为每个 SPEC 准备独立的工作树。用 `moai cc -w <名称>` 进入，加上 `--spawn` 则在保留当前会话的同时于新窗口中打开。
 
-**趋势 MCP 工具**. 分发的 `.mcp.json` 模板默认内置三个无需密钥即可运行的服务器(`context7` 库文档 · `chrome-devtools` 浏览器自动化 · `playwright` 端到端测试)，使用 `moai mcp add|remove|list` CLI 添加可选服务器(Semgrep、GitHub、Postgres、Sentry、Codecov)时使用 `${VAR}` 环境变量引用令牌而非字面密钥。完整的可选配方见 `.moai/docs/mcp-recipes.md`。
-
 ---
 
 ## 基础设施支撑这三者
@@ -293,7 +291,7 @@ claude        # launch Claude Code inside the project
 
 ## 参考
 
-### /moai 斜杠命令（15 个）
+### /moai 斜杠命令（16 个）
 
 | 子命令 | 职责 |
 |------------|------|
@@ -302,7 +300,7 @@ claude        # launch Claude Code inside the project
 | `goal` / `loop` / `fix` | 声明式 goal 循环 · 迭代修复 · 单次修复 |
 | `review` / `gate` / `clean` | 代码审查（`--deep` 多智能体对抗式漏洞扫描） · pre-commit 质量门控 · 死代码移除 |
 | `mx` / `codemaps` / `feedback` | @MX 注解 · 架构文档 · GitHub issue 报告 |
-| `e2e` | 多平台 E2E 测试（Web/移动/桌面，CLI 优先） |
+| `e2e` / `todo` | 多平台 E2E 测试（Web/移动/桌面，CLI 优先） · 看板 backlog 队列 |
 | *（自然语言）* | Analyze-First 路由：自主 plan → run → sync 流水线 |
 
 > **已退役（Retired）的 4 个子命令**：`design` · `brain` · `coverage` · `security`（SPEC-SUBCOMMAND-RETIRE-001，status: completed）。`security` 由 `moai-ref-owasp-checklist` + `moai-ref-llm-security` 技能替代，`e2e` 经 E2E-REVIVAL 复活为现役。
@@ -327,7 +325,7 @@ claude        # launch Claude Code inside the project
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai web` | Web 控制台 —— 5 个页面（Overview · Kanban · Specs · Monitor · Settings）、10 个设置标签 |
 
-> 全部 36 个命令：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)
+> 完整命令列表：[CLI Reference](https://adk.mo.ai.kr/zh/cli-reference)
 
 ### MCP 服务器
 
@@ -401,7 +399,7 @@ flowchart TD
 | CWD 冲突解决 | `(worktree_path, session_id)` 对消除复用路径的歧义 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **当前状态**：Origin-Trail Chain 处于 **Phase 1**（`internal/chain/` — append-only 存储层）。`--kanban`/`-k` 启动器开关、`moai chain` CLI 和多会话看板列计划在后续阶段实现。
+> **现已可用**：`moai cc -k`（或 `moai glm -k`）启动主导会话，`-k --name <role>-<run-id>` 逐个加入伴随会话 —— 每个终端一个，由人手动启动。`moai chain <status|lineage|back|list|prune>` 读取谱系，`moai todo <add|list|next|done>` 操作 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详情：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
