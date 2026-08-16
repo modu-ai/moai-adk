@@ -112,7 +112,7 @@ incomplete — covering:
   `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
 - a generated `.claude/agents/harness/*.md` agent has an empty `description`.
 - a generated agent's `skills:` preload references a `hns-*` (or legacy
-  `harness-*`) skill directory that does not exist on disk (dangling skill
+  `hns-*`) skill directory that does not exist on disk (dangling skill
   reference).
 - a generated agent OMITS the `skills:` frontmatter key entirely (the runtime
   enforcement of the `skills:` preload emission contract — a `skills:`-less agent
