@@ -1,6 +1,6 @@
 //go:build windows
 
-package cli
+package kanban
 
 // factory_alive_windows.go — the Windows liveness probe behind the factory
 // worker-name registry (SPEC-FACTORY-WORKER-FANOUT-001). It is the
@@ -14,18 +14,18 @@ package cli
 // what would let two sessions share one worker name. The one positively-dead
 // signal is ERROR_INVALID_PARAMETER from OpenProcess (no such process);
 // access-denied and every other open failure mean the process MAY be alive.
+//
+// Moved from internal/cli (t85 lead loop) unchanged in behavior; the cli
+// package keeps a package var seam over it.
 
 import (
 	"golang.org/x/sys/windows"
 )
 
-// stillActiveExitCode is Windows' STILL_ACTIVE sentinel: the exit code a
-// handle reports while the process has not terminated.
-const stillActiveExitCode = 259
-
-// defaultFactoryProcessAlive reports whether pid names a live process on
-// Windows. pid <= 0 is never live.
-func defaultFactoryProcessAlive(pid int) bool {
+// FactoryProcessAlive reports whether pid names a live process on Windows.
+// pid <= 0 is never live. The STILL_ACTIVE sentinel is lock_alive_windows.go's
+// stillActiveExitCode, shared rather than restated.
+func FactoryProcessAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}

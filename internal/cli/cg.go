@@ -69,6 +69,13 @@ func runCG(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0: the retired -f/--factory token
+	// errors on cg too — before the kanban rejection, so the operator who
+	// reaches for the retired flag gets the retirement message, not a
+	// backend-mismatch one that does not name their typo.
+	if err := rejectRetiredFactoryFlag(args); err != nil {
+		return err
+	}
 	// SPEC-FACTORY-MODE-001 REQ-FM-004: Kanban Mode is unavailable on cg. The
 	// rejection precedes --spawn so `moai cg --kanban --spawn` fails here
 	// rather than in the spawned window, where the operator would not see it.

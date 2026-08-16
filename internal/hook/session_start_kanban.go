@@ -24,7 +24,6 @@ package hook
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -182,9 +181,11 @@ func kanbanLeadNotice(runID, root, lang string) string {
 
 // queuedBacklogCount returns the number of cards waiting in the backlog queue
 // under root — the same .moai/state/kanban/backlog.json the `moai todo` CLI
-// operates (internal/cli/todo.go todoBacklogPath), read here through the same
-// BacklogStore.Load the CLI renders from, so the notice and the command cannot
-// disagree about the file's shape. One small lock-free file read; no subprocess.
+// operates (internal/cli/todo.go todoBacklogPath). Since the t85 factory lead
+// loop reads the same count, the path shape and the queued-only counting live
+// in ONE shared place — kanban.QueuedBacklogCountForRoot (BacklogStore.
+// QueuedCount) — so the kanban notice, the factory notice, and the todo CLI
+// cannot disagree about what "waiting" means.
 //
 // Waiting means state "queued" and nothing else: a picked card is already in
 // flight on another lane, a dropped card was discarded by the operator, and a
@@ -197,20 +198,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 // failing the session start. The line is informational; an empty-looking queue
 // costs less than a session that cannot boot.
 func queuedBacklogCount(root string) int {
-	if root == "" {
-		return 0
-	}
-	rec, err := kanban.NewBacklogStore(filepath.Join(root, ".moai", "state", "kanban", "backlog.json")).Load()
-	if err != nil {
-		return 0
-	}
-	n := 0
-	for _, it := range rec.Items {
-		if it.State == kanban.BacklogStateQueued {
-			n++
-		}
-	}
-	return n
+	return kanban.QueuedBacklogCountForRoot(root)
 }
 
 // kanbanCompanionNotice is the companion branch: a single role-less line

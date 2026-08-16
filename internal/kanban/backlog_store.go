@@ -82,6 +82,45 @@ func NewBacklogStore(path string) *BacklogStore {
 	return &BacklogStore{path: path}
 }
 
+// BacklogPathForRoot returns the backlog file's canonical location under a
+// project root — the one path shape every root-relative consumer (the kanban
+// SessionStart notice, the factory lead loop's queue poll) builds the store
+// from, so no two surfaces hand-roll their own join.
+func BacklogPathForRoot(root string) string {
+	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+}
+
+// QueuedCount returns the number of items in state "queued", failing open to
+// 0 (the store already reads a missing file as an empty queue). It is the
+// shared count shape both the kanban notice and the factory lead loop render
+// from, so the notice and the queue command cannot disagree about what
+// "waiting" means: state queued and nothing else — a picked card is in
+// flight on another lane, a dropped card was discarded, and a finished card
+// is removed outright.
+func (s *BacklogStore) QueuedCount() int {
+	rec, err := s.load()
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, it := range rec.Items {
+		if it.State == BacklogStateQueued {
+			n++
+		}
+	}
+	return n
+}
+
+// QueuedBacklogCountForRoot is the one-call form of QueuedCount under a
+// project root. An empty root reads as 0 (no project, no queue) — the
+// fail-open posture the notice builders already hold.
+func QueuedBacklogCountForRoot(root string) int {
+	if root == "" {
+		return 0
+	}
+	return NewBacklogStore(BacklogPathForRoot(root)).QueuedCount()
+}
+
 // Path returns the backlog file's path.
 func (s *BacklogStore) Path() string { return s.path }
 

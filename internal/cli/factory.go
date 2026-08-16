@@ -1,17 +1,21 @@
 package cli
 
-// factory.go is the Factory Mode entry surface on the two single-backend
-// launchers (`moai cc -f <N>` / `moai glm -f <N>`), the kanban entry's sibling
-// (SPEC-FACTORY-WORKER-FANOUT-001). A factory run is a lead session plus N
-// numbered workers: the lead dispatches cards to the workers over
-// cross-session messages, and everything in this file exists to get that
-// signal into the session and to keep the worker names unique.
+// factory.go is the Factory Mode machinery behind the unified -k entry surface
+// (`moai cc -k <N>` / `moai glm -k <N>`, SPEC-FACTORY-WORKER-FANOUT-001
+// v1.2.0). A factory run is a lead session plus N numbered workers: the lead
+// routes cards to the workers over cross-session messages, and everything in
+// this file exists to get that signal into the session and to keep the worker
+// names unique. The ENTRY PARSE itself lives in parseKanbanFlag (kanban.go) —
+// one -k token selects either shape there; this file owns what happens after
+// the factory shape is selected.
 //
 // GENEALOGY (binding): the pre-3.1 "factory" flag (-f/--factory) was RENAMED
 // to -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban
-// chain. Today's -f is a NEW feature — a numbered worker fan-out — and shares
-// nothing with that predecessor beyond the recycled letter. Any surface that
-// documents one must not describe it as the other.
+// chain. -f briefly returned as the factory worker fan-out flag (v1.0.0,
+// 2026-08-17) and was RETIRED the same day (v1.2.0): the factory is entered
+// with the same -k carrying a worker count. Any -f/--factory token is an
+// explicit error today (rejectRetiredFactoryFlag), never a silent pass-
+// through.
 //
 // Like the kanban signal, the factory signal travels through the PROCESS
 // environment rather than a threaded parameter, for the same reason: the
@@ -20,26 +24,14 @@ package cli
 // anyway.
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
-)
-
-// The entry tokens. `-f` is unbound on cc / glm; the long form exists because
-// a bare `-f` reads as "force" to terminal convention and the confusion is
-// cheaper to prevent than to debug.
-const (
-	factoryFlagLong  = "--factory"
-	factoryFlagShort = "-f"
 )
 
 // factoryUnsupportedBackendSentinel is the machine-greppable marker on the
@@ -48,58 +40,23 @@ const (
 // one-backend premise, so the invocation is rejected rather than adapted.
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
-// parseFactoryFlag extracts --factory / -f and its REQUIRED worker count from
-// args, returning the count, whether Factory Mode was requested, and the
-// remaining args with the consumed tokens removed.
-//
-// Unlike the kanban SPEC identifier, the count N is not optional — a factory
-// run without a fan-out size is a typo, not an entry. `-f 4`, `-f=4`,
-// `--factory 4`, and `--factory=4` are accepted; a missing, non-numeric, or
-// zero/negative value is an error. There is deliberately no upper bound (v1):
-// the runtime's own concurrency cap governs how many workers are useful.
-//
-// The `--` discipline matches parseKanbanFlag, stripSpawnFlag, parseProfileFlag,
-// and normalizeWorktreeFlag exactly: iterate, break at the pass-through marker,
-// and forward everything from that marker onward verbatim.
-func parseFactoryFlag(args []string) (workers int, enabled bool, rest []string, err error) {
-	filtered := make([]string, 0, len(args))
-
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
+// rejectRetiredFactoryFlag errors on any -f / --factory token (v1.2.0): the
+// flag was retired when the factory entry unified on -k <N>, and a retired
+// flag that silently falls through to the backend would either misfire there
+// or — worse — look like it worked. The error names where the entry went.
+// Exact-token matching only: `-foo` and `--factory-reset` belong to whoever
+// reads them, and a prefix match would steal those tokens.
+func rejectRetiredFactoryFlag(args []string) error {
+	for _, arg := range args {
 		if arg == "--" {
-			filtered = append(filtered, args[i:]...)
-			break
+			return nil
 		}
-
-		var value string
-		hasValue := false
-		switch {
-		case arg == factoryFlagLong || arg == factoryFlagShort:
-			// Consume a following positional token as N. A flag or the
-			// pass-through marker belongs to someone else, and reads as a
-			// missing count below.
-			if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
-				value, hasValue = args[next], true
-				i = next
-			}
-		case strings.HasPrefix(arg, factoryFlagLong+"="):
-			value, hasValue = strings.TrimPrefix(arg, factoryFlagLong+"="), true
-		case strings.HasPrefix(arg, factoryFlagShort+"="):
-			value, hasValue = strings.TrimPrefix(arg, factoryFlagShort+"="), true
-		default:
-			filtered = append(filtered, arg)
-			continue
+		if arg == "-f" || arg == "--factory" ||
+			strings.HasPrefix(arg, "-f=") || strings.HasPrefix(arg, "--factory=") {
+			return fmt.Errorf("the -f/--factory flag was retired; enter Factory Mode with -k <N> (e.g. moai cc -k 4), or use -k [SPEC-ID] for the kanban chain")
 		}
-
-		enabled = true
-		n, perr := strconv.Atoi(value)
-		if !hasValue || perr != nil || n < 1 {
-			return 0, false, nil, fmt.Errorf("%s requires a worker count of 1 or more (e.g. %s 4)", factoryFlagLong, factoryFlagLong)
-		}
-		workers = n
 	}
-
-	return workers, enabled, filtered, nil
+	return nil
 }
 
 // factoryBranch enumerates the dispatch outcomes, mirroring kanbanBranch.
@@ -205,26 +162,29 @@ func enterFactoryWorkerMode(label string, workers int) func() {
 }
 
 // factoryWorkerEntry is one registered worker: the pid of the process that
-// claimed the label. Because the launcher exec's into the backend without
-// forking, the recorded pid IS the session's pid for the process's whole
-// lifetime, which is what makes kill -0 a valid liveness probe for it.
-type factoryWorkerEntry struct {
-	PID          int    `json:"pid"`
-	RegisteredAt string `json:"registered_at"`
+// claimed the label. The type lives in internal/kanban (factory_slots.go)
+// since the t85 lead loop — the alias keeps this package's call sites and
+// tests on their historical name.
+type factoryWorkerEntry = kanban.FactoryWorkerEntry
+
+// factoryRegistryPath / loadFactoryRegistry / saveFactoryRegistry delegate to
+// the kanban registry cluster (factory_slots.go). The cluster moved out of
+// this file because the SessionStart hook needs the same reads and cannot
+// import this package; these delegates keep the cli surface stable.
+func factoryRegistryPath(root string) string { return kanban.FactoryRegistryPath(root) }
+
+func loadFactoryRegistry(path string) map[string]factoryWorkerEntry {
+	return kanban.LoadFactoryRegistry(path)
 }
 
-// factoryRegistryPath returns the liveness-checked worker-name registry's
-// home. It lives under .moai/state/ beside the goal and kanban state, keyed
-// by project root — separate projects keep separate registries, and one
-// project's concurrent factory runs share one (which is the point: the bump
-// exists to keep session names addressable).
-func factoryRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "factory", "workers.json")
+func saveFactoryRegistry(path string, reg map[string]factoryWorkerEntry) error {
+	return kanban.SaveFactoryRegistry(path, reg)
 }
 
 // factoryProcessAlive is the liveness seam; tests override it to simulate
-// live and dead claims without spawning processes.
-var factoryProcessAlive = defaultFactoryProcessAlive
+// live and dead claims without spawning processes. The default probe itself
+// lives in internal/kanban (factory_alive_*.go) since the same move.
+var factoryProcessAlive = kanban.FactoryProcessAlive
 
 // resolveFactoryWorkerName returns the label this worker session should
 // launch under: label itself when its number is free, or the next incremented
@@ -243,14 +203,7 @@ var factoryProcessAlive = defaultFactoryProcessAlive
 // notes, when non-nil, receives the operator-visible bump line.
 func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
 	path := factoryRegistryPath(root)
-	reg := loadFactoryRegistry(path)
-
-	// Prune dead claims first so they neither block a number nor accumulate.
-	for l, e := range reg {
-		if e.PID <= 0 || !factoryProcessAlive(e.PID) {
-			delete(reg, l)
-		}
-	}
+	reg := kanban.PruneFactoryDeadClaims(loadFactoryRegistry(path), factoryProcessAlive)
 
 	final := label
 	if n, ok := kanban.SplitFactoryWorkerLabel(label); ok {
@@ -269,37 +222,9 @@ func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
 		}
 	}
 
-	reg[final] = factoryWorkerEntry{
-		PID:          os.Getpid(),
-		RegisteredAt: time.Now().UTC().Format(time.RFC3339),
-	}
+	reg[final] = kanban.NewFactoryWorkerEntry()
 	_ = saveFactoryRegistry(path, reg)
 	return final
-}
-
-// loadFactoryRegistry reads the worker registry, returning an empty map on
-// any failure (missing file, unwritable dir, malformed JSON) — fail-open.
-func loadFactoryRegistry(path string) map[string]factoryWorkerEntry {
-	reg := make(map[string]factoryWorkerEntry)
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return reg
-	}
-	_ = json.Unmarshal(raw, &reg)
-	return reg
-}
-
-// saveFactoryRegistry writes the worker registry, creating its directory as
-// needed. Best-effort: the error is returned for the caller to ignore.
-func saveFactoryRegistry(path string, reg map[string]factoryWorkerEntry) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	encoded, err := json.MarshalIndent(reg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(encoded, '\n'), 0o600)
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal
@@ -334,29 +259,20 @@ func replaceNamedLabel(args []string, oldLabel, newLabel string) []string {
 	return out
 }
 
-// rejectFactoryOnCG returns the sentinel-bearing error when a factory token
-// appears in a `moai cg` invocation (and the parse error when the token is
-// malformed), and nil otherwise. Same premise as rejectKanbanOnCG.
+// rejectFactoryOnCG returns the sentinel-bearing error when a FACTORY shape
+// of the unified -k surface appears in a `moai cg` invocation (and the parse
+// error when the count is malformed), and nil otherwise. The plain kanban
+// shapes of -k are rejectKanbanOnCG's to answer — the two rejections split
+// the unified flag's shapes between them.
 func rejectFactoryOnCG(args []string) error {
-	_, enabled, _, err := parseFactoryFlag(args)
+	p, err := parseKanbanFlag(args)
 	if err != nil {
 		return err
 	}
-	if !enabled {
+	if !p.FactoryEnabled {
 		return nil
 	}
 	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+
 		"which contradicts Factory Mode's one-session / one-backend premise; "+
-		"use 'moai cc --factory <N>' or 'moai glm --factory <N>' instead", factoryUnsupportedBackendSentinel)
-}
-
-// rejectConflictingModes returns an error when -k and -f appear together: the
-// two tokens seed different session shapes (a three-role chain vs a numbered
-// fan-out) and honoring both is not a meaningful launch.
-func rejectConflictingModes(kanbanEnabled, factoryEnabled bool) error {
-	if !kanbanEnabled || !factoryEnabled {
-		return nil
-	}
-	return errors.New("-k/--kanban and -f/--factory are mutually exclusive: " +
-		"-k seeds the three-role kanban chain, -f a numbered worker fan-out")
+		"use 'moai cc -k <N>' or 'moai glm -k <N>' instead", factoryUnsupportedBackendSentinel)
 }

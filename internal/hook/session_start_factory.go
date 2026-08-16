@@ -7,6 +7,13 @@
 // (internal/cli/launch_exec_posix.go), so anything it writes to stdout is
 // overwritten the moment the TUI takes the screen.
 //
+// The t85 lead loop is also injected here for the same reason: the launcher
+// cannot run a loop (it exec's in place and is gone), so the loop is a
+// SESSION-side behavior codified into the lead notice — the discipline text
+// (queue polling, free-slot pick, staggered activation, no model override)
+// plus the live data (queued count, free slots) the lead session executes
+// against.
+//
 // The same two-audience split applies. The orchestrator reads
 // hookSpecificOutput.additionalContext and needs the worker labels, because
 // it is what will address the workers when dispatching cards. The operator
@@ -29,20 +36,22 @@ import (
 )
 
 // factoryBootstrapNotice returns the factory announcement for this session in
-// lang, or "" when the session is not part of a factory run.
+// lang, or "" when the session is not part of a factory run. root is the
+// project root the lead's loop data (queue count, free slots) is read under;
+// an empty root degrades to zero-count/all-free summaries inside the notice.
 //
 // Fail-open throughout, matching kanbanBootstrapNotice: an unparseable worker
 // count degrades to omitting the count-dependent copy rather than failing the
 // session start, and an unknown lang degrades to English, never to an empty
 // notice.
-func factoryBootstrapNotice(lang string) string {
+func factoryBootstrapNotice(root, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		return factoryWorkerNotice(label, factoryWorkersEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	return factoryLeadNotice(os.Getenv(config.EnvMoaiKanbanID), factoryWorkersEnv(), lang)
+	return factoryLeadNotice(os.Getenv(config.EnvMoaiKanbanID), factoryWorkersEnv(), root, lang)
 }
 
 // factoryBootstrapNoticeForSource returns the announcement only for a
@@ -50,11 +59,11 @@ func factoryBootstrapNotice(lang string) string {
 // reason as kanbanBootstrapNoticeForSource: the factory environment survives
 // resume / clear / compact / fork, and re-announcing the bootstrap would tell
 // the operator to open worker terminals that are already open.
-func factoryBootstrapNoticeForSource(source, lang string) string {
+func factoryBootstrapNoticeForSource(source, root, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return factoryBootstrapNotice(lang)
+	return factoryBootstrapNotice(root, lang)
 }
 
 // factoryWorkersEnv reads the run's fan-out size from the environment the
@@ -72,14 +81,27 @@ func factoryWorkersEnv() int {
 // (a) the run id and the session name that must accompany it; (b) why
 // bootstrap is manual and how worker names are assigned; (c) the N worker
 // launch lines; (d) the GLM substitute guidance and the leader socket path;
-// (e) the inbound-automation notice. There is no SPEC line — the factory flag
-// carries a worker count, not a SPEC identifier.
+// (e) the dispatch discipline — card-class routing (A/B wholesale, C serial
+// 3-stage), the fan-out-only stagger rule, and the no-model-override rule;
+// (f) the free-slot line plus the inbound-automation notice. There is no SPEC
+// line — the factory entry carries a worker count, not a SPEC identifier.
 //
-// The worker launch lines each carry -f <N> (the count travels in the worker
-// command so the worker knows the run's size) and a worker-<i> name — the
-// lead's addressing vocabulary, printed here so the operator's paste and the
-// lead's dispatch target are the same string by construction.
-func factoryLeadNotice(runID string, workers int, lang string) string {
+// The worker launch lines each carry -k <N> (the unified entry token; the
+// count travels in the worker command so the worker knows the run's size) and
+// a worker-<i> name — the lead's addressing vocabulary, printed here so the
+// operator's paste and the lead's dispatch target are the same string by
+// construction.
+//
+// QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
+// loop over the backlog queue is the kanban foreman's (the bare /loop driver
+// + moai-kanban-foreman skill, t96): re-teaching it here would hand the
+// factory lead a second, conflicting polling protocol. This notice carries
+// only what is factory-specific — how a PICKED card is routed to lanes, how
+// lanes are activated, and what a dispatch must never carry. The free-slot
+// line stays because the stagger rule names free-slot workers; the
+// queued-count line went with the polling instruction (the foreman reads the
+// queue itself).
+func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	if runID == "" || workers < 1 {
 		return ""
 	}
@@ -100,7 +122,7 @@ func factoryLeadNotice(runID string, workers int, lang string) string {
 	// (c) the worker launch lines, one per worker.
 	launch := make([]string, 0, workers)
 	for i := 1; i <= workers; i++ {
-		launch = append(launch, fmt.Sprintf("moai cc -f %d --name %s", workers, kanban.FactoryWorkerLabel(i)))
+		launch = append(launch, fmt.Sprintf("moai cc -k %d --name %s", workers, kanban.FactoryWorkerLabel(i)))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
@@ -112,9 +134,26 @@ func factoryLeadNotice(runID string, workers int, lang string) string {
 	}
 	blocks = append(blocks, strings.Join(backend, "\n"))
 
-	// (e) the inbound-automation notice, on the same injected-settings
-	// discriminator as the kanban lead.
+	// (e) the dispatch discipline — localized prose with verbatim protocol
+	// tokens; see factoryMessages for why the tokens are not translated.
+	blocks = append(blocks, strings.Join([]string{m.leadClasses, m.leadStagger, m.leadNoOverride}, "\n"))
+
+	// (f) the free-slot line and the inbound-automation notice, on the same
+	// injected-settings discriminator as the kanban lead. The slot list is
+	// computed HERE from root (fail-open to all-free on any error) because
+	// the stagger rule above names free-slot workers — the operator's
+	// opening screen names the capacity the run actually has.
+	slots := kanban.FactoryFreeSlots(root, workers, kanban.FactoryProcessAlive)
+	slotLine := m.leadSlotsNone
+	if len(slots) > 0 {
+		labels := make([]string, 0, len(slots))
+		for _, n := range slots {
+			labels = append(labels, kanban.FactoryWorkerLabel(n))
+		}
+		slotLine = strings.Join(labels, ", ")
+	}
 	var context []string
+	context = append(context, fmt.Sprintf(m.leadFreeSlots, slotLine))
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)
 	} else {
