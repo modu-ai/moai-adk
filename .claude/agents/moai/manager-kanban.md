@@ -6,7 +6,7 @@ description: |
   Role B (cross-session dispatch): the kanban-lead role — moves a card across the six-column board by instructing the operator-launched companion sessions (plan / run / review / sync), reading each phase's evidence before advancing, and asking the operator to `/clear` between phases. See `.claude/rules/moai/workflow/kanban-dispatch.md`.
   Use PROACTIVELY when a SPEC crosses the Tier L coordination threshold and the orchestrator delegates Mode-5-shaped fan-out rather than driving milestones serially itself, or when a Kanban Mode lead session needs the dispatch cycle driven.
   Match intent language-independently — do not require literal keyword matches.
-  NOT for: writing code itself (delegated to leaf workers), Tier S/M single-milestone runs (orchestrator-direct Mode 5 is simpler), reviving the retired Agent Teams static layer (Mode 3 tombstone stays; `MODE_TEAM_UNAVAILABLE` unchanged), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
+  NOT for: writing code itself (delegated to leaf workers), Tier S/M single-milestone runs (orchestrator-direct Mode 5 is simpler), acting as the Agent Teams static layer (Mode 3 is a separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is retained as documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status
 model: inherit
 effort: xhigh
@@ -39,7 +39,7 @@ Role B adds no spawning capability. In Kanban Mode the sessions already exist an
 
 Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers (per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-kanban NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.
 
-This is a Mode-5-shaped delegation target (sequential sub-agent per milestone, fanned out to leaf workers under the lead's supervision). It is NOT a Mode 7 — the Phase 4 mode catalog (Modes 1-6 in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) is unchanged. It is NOT a revival of the Agent Teams static layer — Mode 3 stays RETIRED, `MODE_TEAM_UNAVAILABLE` stays unchanged, and the native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected.
+This is a Mode-5-shaped delegation target (sequential sub-agent per milestone, fanned out to leaf workers under the lead's supervision). It is NOT a Mode 7 — the Phase 4 mode catalog (Modes 1-6 in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) is unchanged. It is NOT the Agent Teams static layer — Mode 3 is a separate explicit-request experimental surface (the Tier L auto-route still targets this agent), and the native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected.
 
 ## Condition-Triggered Entry (Role A)
 
@@ -204,7 +204,7 @@ OUT OF SCOPE:
 - Writing implementation code (delegated to leaf workers)
 - Authoring SPEC body content (`spec.md` / `plan.md` / `acceptance.md` — delegated to `manager-spec`)
 - Invoking the orchestrator-exclusive user-question tool (the orchestrator owns the user channel)
-- Reviving the retired Agent Teams static layer (Mode 3 stays RETIRED; `MODE_TEAM_UNAVAILABLE` unchanged)
+- Acting as the Agent Teams static layer (Mode 3 is a separate explicit-request experimental surface)
 - Modifying the Phase 4 mode catalog (Modes 1-6 unchanged; manager-kanban is Mode-5-shaped, NOT a Mode 7)
 - Touching sibling SPEC directories (B10 Untouched Paths PRESERVE)
 

@@ -252,7 +252,7 @@ Detection Steps:
 4b. Map each domain touched (step 2) to its skill set from the delegation map (`.moai/config/sections/delegation.yaml` domain_skills), per skill-routing.md §1: backend → moai-ref-api-patterns; frontend → moai-ref-react-patterns; database → moai-domain-database; security → moai-ref-owasp-checklist; tests → moai-ref-testing-pyramid. At each manager-develop spawn, inject the cycle_type skill (moai-workflow-tdd | moai-workflow-ddd) plus 0-3 matched domain `moai-ref-*` skills as `At start, invoke Skill("<name>") for <reason>` lines.
 5. Write the `progress.md` § Phase 4 Mode Selection log entry per `orchestration-mode-selection.md` §D HARD logging contract BEFORE spawning the first run-phase `Agent()` call — the Input parameters block (tier, scope, domain count, file language mix, concurrency benefit), the mode evaluation table across all 6 catalog modes, a single-line Decision (e.g. "Scale-based mode: {mode} (files: {N}, domains: {N})"), a short Justification paragraph, and — when the selection resolves to Mode 6 (workflow) — the Implementation Kickoff Approval-passed + preferences-collected confirmation
 
-This phase auto-selects and does NOT require user approval. The user can override with the --solo flag (a forced --team is retired → emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode).
+This phase auto-selects and does NOT require user approval. The user can override with the --solo flag (a forced --team selects the experimental Agent Teams layer per `orchestration-mode-selection.md` §C.1).
 
 ### Operational Entries (Mode 4 / Mode 6)
 

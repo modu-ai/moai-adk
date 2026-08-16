@@ -85,7 +85,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 **Mode dispatch** (`--mode` flag):
 - `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/2B 실행
 - `loop`: Ralph engine 위임 (see `loop.md`)
-- `team`: RETIRED — `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` (Agent Teams static layer retired)
+- `team`: experimental — `--mode team` selects the Agent Teams layer (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
 
 **Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor
@@ -122,7 +122,7 @@ Read .claude/skills/moai/workflows/run/mode-orchestration.md
 
 ## Sentinel Error Keys
 
-A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body (shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`.
+A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body (shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`. `MODE_TEAM_UNAVAILABLE` is retained as the historical retired-era fallback marker (the `team` mode is now experimental-live; see the Mode dispatch list above).
 
 Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
 

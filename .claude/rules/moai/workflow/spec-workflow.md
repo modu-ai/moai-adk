@@ -104,7 +104,7 @@ Mode precedence (hard-coded):
 Auto-selection rules:
 
 - Harness `minimal` or `standard` → default mode = `autopilot`
-- Harness `thorough` → default mode = `autopilot` (the former `team` auto-select is retired with the Agent Teams static layer; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` with a `[mode-auto-downgrade]` info log).
+- Harness `thorough` → default mode = `autopilot` (the former `team` auto-select is retired; `team` is now an explicit-request experimental mode — a forced `--mode team` selects the Agent Teams layer per `orchestration-mode-selection.md` §C.1. The retired era emitted `MODE_TEAM_UNAVAILABLE` with an `autopilot` fallback and a `[mode-auto-downgrade]` info log — retained as genealogy).
 
 See `.claude/skills/moai/workflows/run.md` § Mode Dispatch for the per-skill dispatch rules.
 
@@ -236,9 +236,9 @@ Before marking implementation complete: review full diff against SPEC acceptance
 
 After each methodology cycle, compare planned files against actual modifications. Warns at <= 30% drift. Triggers re-planning (Phase 14) above 30%.
 
-### Methodology delegation (team mode retired)
+### Methodology delegation (team mode experimental)
 
-The Agent Teams static layer is retired; the run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (Mode 5), with multi-domain research fanned out via Mode 4 (parallel read-only `Agent()`) where warranted. See § Agent Teams Variant — RETIRED. The native `moai cg` teammate runtime is unaffected.
+The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (Mode 5), with multi-domain research fanned out via Mode 4 (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
 
 ### MX Tag Integration
 
@@ -438,21 +438,18 @@ Sync to Cleanup (Route B only):
 - Action (only if L2 worktree was created): `moai worktree done SPEC-XXX` (executed from host checkout, not from inside the worktree)
 - See § SPEC Phase Discipline (Step 4). Route A has no PR and no worktree cleanup step.
 
-## Agent Teams Variant — RETIRED
+## Agent Teams Variant — Re-allowed (experimental)
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`)
-of the Phase 4 catalog is a tombstone (`.claude/rules/moai/workflow/orchestration-mode-selection.md`
-§C.1), and the `--team` / `--mode team` dispatch value emits `MODE_TEAM_UNAVAILABLE`
-and falls back to sub-agent mode. The former team-mode plan/run/fix/review skill
-files and the `workflow.yaml` team-config block were removed.
+Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and Mode 3 (`agent-team`) is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
 
-The practical multi-agent surface is covered without the static team layer:
+Genealogy: Mode 3 was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
+
+The default multi-agent surface remains:
 - Multi-domain research/review → Mode 4 (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn).
 - Coding-heavy implementation → Mode 5 (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
 - High-volume mechanical transformation → Mode 6 (workflow / dynamic-workflow fan-out).
 
-The native Claude Code teammate runtime is UNAFFECTED: `moai cg` GLM teammate
+The native Claude Code teammate runtime is UNAFFECTED and sanctioned: `moai cg` GLM teammate
 panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and
 `teammateMode` launcher handling remain supported (see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode). Only MoAI's static
-team-orchestration layer built on top of that runtime is retired.
+`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
