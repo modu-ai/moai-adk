@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // TestDecayScan_DoesNotWriteToRealHome guards against the memory-dir leak.
@@ -61,7 +63,10 @@ func TestDecayScan_DoesNotWriteToRealHome(t *testing.T) {
 	}
 }
 
-// TestUserHomeDir_PrefersHOME pins the helper's resolution order.
+// TestUserHomeDir_PrefersHOME pins the resolution order the memory-dir
+// derivation relies on. The verbatim duplicate of internal/cli/homedir.go was
+// deleted (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-010 / AC-MHP-009); this
+// contract test now pins paths.Home(), the single remaining implementation.
 //
 // This is a contract test, NOT a leak guard: on Unix os.UserHomeDir also reads
 // $HOME, so this cannot distinguish the two spellings there. The order is pinned
@@ -72,11 +77,11 @@ func TestUserHomeDir_PrefersHOME(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	got, err := userHomeDir()
+	got, err := paths.Home()
 	if err != nil {
-		t.Fatalf("userHomeDir(): %v", err)
+		t.Fatalf("paths.Home(): %v", err)
 	}
 	if got != tmp {
-		t.Errorf("userHomeDir() = %q, want %q (HOME must win over os.UserHomeDir)", got, tmp)
+		t.Errorf("paths.Home() = %q, want %q (HOME must win over os.UserHomeDir)", got, tmp)
 	}
 }

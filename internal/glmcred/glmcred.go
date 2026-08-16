@@ -34,7 +34,10 @@ const EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
 // HomeDirFn resolves the operator's home directory. It is a function variable
 // (mirroring the userHomeDirFn pattern in internal/cli) so tests can redirect
 // it at a t.TempDir() and never touch the developer's real home directory.
-var HomeDirFn = os.UserHomeDir
+// The default resolves HOME-first through internal/paths
+// (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-010), aligning web consumers with
+// the single home-resolution contract.
+var HomeDirFn = paths.Home
 
 // Path returns the absolute path to the GLM credential file (~/.moai/.env.glm).
 // A non-empty absolute MOAI_HOME redirects the file under the overridden root
