@@ -2,7 +2,7 @@
 description: "Phase 4 Mode Selection — 6-mode autonomous decision tree for the MoAI orchestrator (trivial / background / agent-team / parallel / sub-agent / workflow). Read at every /moai run entry."
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/plan.md,.claude/rules/moai/workflow/spec-workflow.md"
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   status: "active"
   tags: "orchestration, mode-selection, agent-teams, workflow, phase-0.95"
 ---
@@ -28,7 +28,7 @@ The orchestrator selects exactly one of the following modes per Phase 4 invocati
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
 | 3 | `agent-team` — **experimental (re-allowed)** | 3-5 named teammates (one team per session, shared TaskList) | `Agent(name: "...", ...)` spawns forming an implicit team; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on | **Mode 3 — re-allowed as experimental** (operator decision). Selectable ONLY via explicit `--team` / `--mode team` / `--team` scale label — the decision tree still never auto-selects it (Tier L auto-route remains `manager-kanban`; multi-domain research → Mode 4; coding-heavy → Mode 5; mechanical → Mode 6). Genealogy: retired era used the `MODE_TEAM_UNAVAILABLE` sentinel + sub-agent fallback (documented as history in `run.md`); live counterevidence — 5 named workers completed normally. Constraints: §C.1 |
-| 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
+| 4 | `parallel` | 3-5 concurrent sub-agents ADVISORY (hard bound: runtime subagent cap, default 20 — §C.2); single message, multiple `Agent()` calls | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
 
@@ -57,7 +57,7 @@ START (Phase 4 Mode Selection)
   │
   ├── Is the task multi-domain (≥3 domains) AND research-heavy
   │   (NOT coding-heavy per Anthropic's coding-task parallelism caveat)?
-  │   ├── YES → Mode 4: PARALLEL (3-5 concurrent Agent() in single message)
+  │   ├── YES → Mode 4: PARALLEL (3-5-advisory concurrent Agent() in single message; hard bound is the runtime subagent cap — §C.2)
   │   └── NO  → continue
   │
   ├── Is the task ≥ ~30 files AND mechanical (one uniform transform rule)
@@ -124,13 +124,21 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 - GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
 - Background subagents (the non-teammate path) have the Task tool family stripped from their schema (measured: TaskCreate/TaskUpdate/TaskList/TaskGet and ToolSearch absent from an unnamed background subagent; SendMessage present) — teammates reportedly regain the Task tool, so Task-based coordination is a teammate-path capability
 
-### §C.2 Mode 4 (Parallel) Compound preference
+### §C.2 Mode 4 (Parallel) Compound preference — three concurrency limits (SSOT)
 
 Mode 4 is preferred via the unified compound clause:
 
-> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 4]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). Mode 4 remains the default multi-domain parallel mode; Mode 3 (Agent Teams) is the explicit-request experimental alternative (§C.1).
+> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 4]`, the orchestrator shall use parallel multi-spawn of retained agents (concurrent `Agent()` calls in a single message, within the fan-out bounds below). Mode 4 remains the default multi-domain parallel mode; Mode 3 (Agent Teams) is the explicit-request experimental alternative (§C.1).
 
-The 3-5 ceiling applies to Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
+**Three concurrency limits exist. They are distinct numbers grounding distinct surfaces — never quote one as the cap for another:**
+
+| # | Limit | Binds | Value | Grounding |
+|---|-------|-------|-------|-----------|
+| 1 | Subagent fan-out — **HARD bound** | Concurrent subagents per turn: every `Agent()` spawn surface, incl. Mode 4 and any fan-out from a team lead or factory lead | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default **20** per turn (env-tunable; per-session total cap removed) | Claude Code runtime default, recorded in `CLAUDE.md` §14 and `moai-constitution.md` § Parallel Execution |
+| 2 | Workflow agent concurrency | Agents within ONE dynamic workflow (Mode 6 only) | **16** concurrent per workflow — runtime-documented as `min(16, available CPUs − 2)`; repo-recorded as "up to 16 concurrent agents (fewer on machines with limited CPU cores)" — plus the 1,000-total per-run backstop | `.claude/rules/moai/workflow/dynamic-workflows.md` |
+| 3 | Team size — **ADVISORY** | Named teammates in ONE Agent Team (Mode 3, experimental) | **3-5** teammates | Anthropic Agent Teams guidance: *"Start with 3-5 teammates for most workflows."* — team-composition advice, not a subagent cap |
+
+**Mode 4's own 3-5 is an advisory band, not a hard cap — and not the team-size quote.** The fan-out band is grounded in cache/prefix economics (concurrent spawns of the same agent definition cannot read a cache entry still being written: spawn ONE first and let the remaining N−1 read its cache — `.claude/rules/moai/workflow/cache-aware-execution.md` directive 2, stagger-spawn) and in coordination overhead (every fan-out result lands back in the orchestrator's context to reconcile). Its numeric coincidence with limit 3 is just that — a coincidence; the derivations are independent, and the former text that quoted "Start with 3-5 teammates" as a Mode 4 cap conflated the two. The hard bound for fan-out is limit 1 (runtime cap, default 20): exceeding the 3-5 band violates no cap — it degrades cache economics and reconciliation quality. Write fan-out is bounded separately and more strictly (never two write-capable agents concurrently, `agent-common-protocol.md` § Background Agent Execution), regardless of count.
 
 ### §C.3 Mode 6 (Workflow) capability gate
 
@@ -157,6 +165,10 @@ The official Claude Code documentation does not document a typed named-script Wo
 #### Mode 6 / goal-loop agents return blocker reports, never prompt the user
 
 When a Mode 6 Workflow agent or a goal-loop turn agent lacks a required input, that agent returns a structured blocker report; the orchestrator runs an `AskUserQuestion` round and re-delegates with the answers injected. Agents never prompt the user directly — this is the asymmetric orchestrator-subagent boundary (`.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary). The run-phase `ac_converge` wiring point and its semantic-failure escalation live in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (ac_converge).
+
+### §C.4 Factory workers (default 8) are not Mode 4 fan-out
+
+`moai glm -f` factory mode runs a fleet of independent worker sessions (tmux panes), default **8** workers — an operator-side fleet size, not subagent fan-out. The count sits under the factory's own workers-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under Mode 4's advisory band: 8 is a legal fleet size precisely because these workers are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory lead (or any worker session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for Mode 4 (§C.2).
 
 ---
 
@@ -196,7 +208,7 @@ When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3
 The following patterns violate the orchestration mode selection contract:
 
 - **Auto-selecting Mode 3 (Agent Teams)** — Mode 3 is experimental and explicit-request-only; the orchestrator MUST NOT auto-select it. It is entered only via an explicit operator `--team` / `--mode team` / `Team` scale label (§C.1)
-- **Spawning > 5 concurrent agents in Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
+- **Quoting the team-size advisory as a Mode 4 fan-out cap, or treating Mode 4's 3-5 band as a hard cap** — "3-5 teammates" is Anthropic's TEAM SIZE guidance for Mode 3; Mode 4's 3-5 is an independent cache/coordination advisory under the runtime subagent cap (default 20) as the hard bound (§C.2). Exceeding the band degrades cache economics and reconciliation quality, and same-type fan-out that skips the stagger-spawn discipline (cache-aware-execution directive 2) forfeits the cache reads the band is grounded in
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Anthropic's coding-task parallelism caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
 - **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Anthropic's coding-task parallelism caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
 - **Launching a Mode 6 Workflow before Implementation Kickoff Approval has passed** — violates the Implementation Kickoff Approval mandatory-restoration policy; the orchestrator MUST NOT launch the Workflow before Implementation Kickoff Approval user approval and MUST return control to the Implementation Kickoff Approval `AskUserQuestion` gate. Mode 6 is strictly downstream of Implementation Kickoff Approval
@@ -218,8 +230,8 @@ The following patterns violate the orchestration mode selection contract:
 - `.claude/rules/moai/workflow/goal-directive.md` — `/moai goal` autonomous-continuation semantics (the run-phase `ac_converge` condition wiring lives in `run.md` § Run-phase Autonomy (ac_converge))
 - `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (ac_converge) — co-located Implementation Kickoff Approval ordering reference + `ac_converge` arming
 - The canonical agent catalog design — design-time decision tree from which this rule was derived
-- Anthropic Sub-agents and Agent Teams documentation — verbatim citations grounding the Mode 3 ceiling and Mode 4-vs-Mode-5 coding-task caveat
-- Anthropic Agent Teams documentation — *"Start with 3-5 teammates for most workflows."*
+- Anthropic Sub-agents and Agent Teams documentation — verbatim citations grounding the Mode 3 team-size advisory and Mode 4-vs-Mode-5 coding-task caveat
+- Anthropic Agent Teams documentation — *"Start with 3-5 teammates for most workflows."* (team-size advisory binding Mode 3 only — never a subagent fan-out cap; see §C.2)
 - Anthropic multi-agent research engineering note — *"most coding tasks involve fewer truly parallelizable tasks than research, and LLM agents are not yet great at coordinating and delegating to other agents in real time."*
 
 ---
@@ -268,6 +280,6 @@ Every `--mode` value and every scale label corresponds to exactly one catalog mo
 
 ---
 
-Version: 1.3.1 (§G.2 added — `manager-kanban` non-regression note per the hierarchical-team SPEC; §A mode catalog, §B decision tree, §C capability gates, and the `--mode` dispatch-axis values all unchanged)
+Version: 1.4.0 (§C.2 rebuilt — three distinct concurrency limits: runtime subagent cap 20 as the hard fan-out bound, workflow 16-concurrent scoped to Mode 6, 3-5 re-scoped to the Mode 3 team-size advisory while Mode 4 keeps 3-5 as a cache/coordination advisory; §C.4 factory-workers reconciliation added; §A/§B/§E/§F aligned. Prior: §G.2 added — `manager-kanban` non-regression note per the hierarchical-team SPEC; §A mode catalog, §B decision tree, §C capability gates, and the `--mode` dispatch-axis values all unchanged)
 Origin: derived from the canonical agent catalog and IGGDA policies.
 Status: Active — applies to all `/moai run` Phase 4 invocations

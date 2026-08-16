@@ -12,7 +12,7 @@ Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. E
 | Template | Catalog mode | Shape |
 |----------|--------------|-------|
 | Sub-orchestrator | Mode 5 (`sub-agent`) | Sequential handoff, one agent per milestone — **the default** |
-| Fan-out orchestrator | Mode 4 (`parallel`) | 3-5 concurrent `Agent()` calls in one turn, results return to the orchestrator |
+| Fan-out orchestrator | Mode 4 (`parallel`) | 3-5 concurrent `Agent()` calls in one turn (advisory — hard bound is the runtime subagent cap, default 20), results return to the orchestrator |
 | Hybrid orchestrator | Mode 4 + Mode 5 | Sequential stages with a parallel stage in the middle |
 | Workflow orchestrator | Mode 6 (`workflow`) | Script-held plan, dozens of agents — see `.claude/rules/moai/workflow/dynamic-workflows.md` |
 | Team-orchestrator | Mode 3 — **experimental (re-allowed)** | See § Team-orchestrator — experimental below |
@@ -89,7 +89,7 @@ MoAI: "Here are the results from the pipeline..."
 - Multi-perspective review where each reviewer should form its own judgment
 - Any place where parallel wall-clock speed matters and the agents do NOT need to talk to each other
 
-**Ceiling**: 3-5 concurrent `Agent()` calls in a single turn. Beyond that, coordination and token cost outrun the benefit.
+**Advisory band**: 3-5 concurrent `Agent()` calls in a single turn — a cache/coordination advisory (stagger same-type spawns so N−1 read the first spawn's cache), not a hard cap and not the Agent-Teams team-size number; the hard bound is the runtime subagent cap (default 20). Beyond the band, coordination and token cost outrun the benefit.
 
 **Structure**:
 ```
