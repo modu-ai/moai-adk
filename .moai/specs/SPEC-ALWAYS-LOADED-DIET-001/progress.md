@@ -114,6 +114,39 @@ exit=0
 
 **Other verification:** `go build ./...` → exit 0 (no output). Subagent boundary: `grep -rn 'AskUserQuestion'` on the two rule files → 1 match, pre-existing intro text (line 3, present in the pre-edit file; original census unchanged), 0 new occurrences; companion 0. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
 
+### M3 — 재발 통제 (2026-08-17)
+
+- Tree: worktree `feat/spec-always-loaded-diet`, pre-M3 HEAD `6d701d26c` (= the M2 commit; working tree clean at dispatch).
+- Construction: new `.claude/rules/moai/development/rule-authoring.md` (4,062 B). Frontmatter: `description:` + the plan D1 expanded glob, verbatim — `paths: "**/.claude/rules/**,**/CLAUDE.md,**/.claude/output-styles/**,**/MEMORY.md"` (keys all four guard slots; AP-6 satisfied — the control itself is `paths:`-scoped and excluded from the surface it polices). Body: four-slot surface definition (no-`paths:` rules / `CLAUDE.md` / output styles / `MEMORY.md` head) with the all-slots binding rationale; recurrence grounding (~4x growth in three months, ~half in-place expansion → both modes covered); the statement duty as one `[ZONE:Evolvable] [HARD]` clause with four lettered parts — (a) new always-loaded file → bytes + cost justification in the change description, (b) single edit growing an existing file by more than 1,000 bytes → same statement sized to the growth, (c) the statement must address the cost paid by sessions that never need the file (grounded per plan M3 step 3: `session-handoff.md` closest cost-naming precedent; `native-idiom-and-register.md` "zero burden for English sessions" true for behavior, false for context bytes), (d) `paths:`-scope-first question before the duty fires; threshold calibration table (typo ~100 B / one-line ~200 B / paragraph ~800 B pass; new HARD clause ~1,200 B / new `##` section ~2,500 B fire); explicit no-cumulative-delta-secondary-trigger clause (accepted residual risk per plan D4-3); self-compliance note. Size calibration vs development-category siblings: branch-origin-protocol.md 4,180 B, karpathy-quickref.md 2,068 B.
+- Zero Go changes (plan M3 step 5 / D4-2): one file added; `internal/` untouched.
+
+**Post-M3 instrumentation (acceptance §A `fm()`/`headroom` forms, this run, this tree, HEAD `6d701d26c` + working-tree rule-authoring.md):**
+
+```
+paths_key=1
+files=14 bytes=288975 tokens=72243 headroom=2757
+```
+
+Surface delta: **0 bytes** — rule-authoring.md carries top-level `paths:` so the guard excludes it; files stays 14, bytes/headroom byte-identical to post-M2 (288,975 / 2,757). AC-ALD-001 checkpoint holds: 2,757 > 1,239 (final gate is post-M4).
+
+**M3-decidable AC matrix (all PASS, commands run in this tree):**
+
+| AC | Command (form) | Observed | Verdict |
+|---|---|---|---|
+| AC-ALD-014 | acceptance §B verbatim form (`test -f` guard, `fm()` paths line, 4 slot fragments via `grep -F`, 4 body patterns) | paths line exact; slot_rules=1 slot_CLAUDE.md=1 slot_output-styles=1 slot_MEMORY.md=1; new_rule_case=1 growth_case=5 threshold=3 non_invoking_cost=1 | PASS |
+| AC-ALD-001 (checkpoint) | `headroom` | files=14 bytes=288975 tokens=72243 headroom=2757 (> 1,239) | PASS |
+| AC-ALD-002 (checkpoint) | guard + budget const + go diff | `ok  github.com/modu-ai/moai-adk/internal/config 0.457s` exit=0; budget_const=1; go_changed=0 | PASS |
+
+**Post-M3 guard re-run (verbatim):**
+
+```
+$ go test ./internal/config/ -run TestAlwaysLoaded -count=1; echo "exit=$?"
+ok  	github.com/modu-ai/moai-adk/internal/config	0.457s
+exit=0
+```
+
+**Other verification:** `go build ./...` → exit 0 (no output). `go test ./internal/config/ -count=1` (full package) → `ok  	github.com/modu-ai/moai-adk/internal/config	5.690s` exit=0. Subagent boundary: `grep -cn 'AskUserQuestion\|mcp__askuser'` on rule-authoring.md → 0. Neutrality pre-check (M4 mirrorability, local file): spec_id=0 req=0 sha=0 date=0 — no sanitization needed at mirror time. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated; E8 docs-milestone gap).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
