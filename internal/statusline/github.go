@@ -115,13 +115,25 @@ func maybeRefreshGitHubCounts(boardRoot string) {
 	_ = cmd.Process.Release()
 }
 
-// RefreshGitHubCounts fetches open issue and PR counts with `gh` and writes the
-// cache under boardRoot. It is the detached child's entry point, never called
-// on the render path.
+// RefreshGitHubCounts fetches open issue and change-request counts from the
+// checkout's forge and writes the cache under boardRoot. It is the detached
+// child's entry point, never called on the render path.
 //
 // The timestamp is written BEFORE the fetch so concurrent renders stop spawning
 // refreshes immediately, and the previous counts are preserved so a failed
 // fetch degrades to a stale number rather than a blank segment.
+//
+// Forge resolution happens here rather than in the caller because it costs a
+// `git remote` call, and the render path is the one place that must stay a
+// single file read.
+//
+// @MX:DEBT: this entry point, its cache path, and GitHubCounts still say
+// "github" now that GitLab is served by the same code
+// @MX:CEILING: two forges — the shape is identical, so the name misleads a
+// reader without misleading the code
+// @MX:UPGRADE: rename to Forge* when a third forge lands, or when the cache
+// file is next versioned for another reason (renaming it alone would orphan
+// every existing cache to buy nothing)
 func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 	if boardRoot == "" {
 		return nil
@@ -136,8 +148,16 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 	ctx, cancel := context.WithTimeout(ctx, githubFetchBudget)
 	defer cancel()
 
-	issues, errIssues := ghCount(ctx, boardRoot, "issue")
-	prs, errPRs := ghCount(ctx, boardRoot, "pr")
+	forge, ok := resolveForge(originRemoteURL(ctx, boardRoot), forgeOverride(boardRoot))
+	if !ok {
+		return nil // no forge for this checkout; the segment stays absent
+	}
+	if _, err := exec.LookPath(forge.bin); err != nil {
+		return nil // the forge's CLI is not installed; keep rendering the stale count
+	}
+
+	issues, errIssues := forgeCount(ctx, boardRoot, forge, "issue")
+	prs, errPRs := forgeCount(ctx, boardRoot, forge, "pr")
 	if errIssues != nil || errPRs != nil {
 		return nil // keep the stale-but-timestamped cache; try again next TTL
 	}
@@ -149,10 +169,11 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 	})
 }
 
-// ghCount runs `gh <kind> list` and returns how many open items it reported.
-func ghCount(ctx context.Context, boardRoot, kind string) (int, error) {
-	cmd := exec.CommandContext(ctx, "gh", kind, "list",
-		"--state", "open", "--limit", githubListLimit, "--json", "number", "--jq", "length")
+// forgeCount runs one listing and returns how many open items it reported.
+// Every forge's argument list ends in a filter that collapses the listing to a
+// bare integer, so this parses one number without knowing which CLI answered.
+func forgeCount(ctx context.Context, boardRoot string, forge forgeSpec, kind string) (int, error) {
+	cmd := exec.CommandContext(ctx, forge.bin, forge.argsFor(kind)...)
 	cmd.Dir = boardRoot
 	out, err := cmd.Output()
 	if err != nil {
