@@ -18,6 +18,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/merge"
 	"github.com/modu-ai/moai-adk/internal/tui"
@@ -184,5 +186,35 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 	if backupPath != "" {
 		note := "Backup: " + backupPath + "\nRecover: moai update --restore-config " + backupPath
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
+	}
+}
+
+// renderRetainedKeyAdvisory renders the retained-key advisory — keys preserved
+// from the user's config because they are absent from the new template
+// (REQ-UYP-007) — through the update output channel. This is the t63
+// stream-merge fix: before it, each retained key appended a raw "advisory:"
+// line to stderr while the tui.ProgressLine redraw loop was mid-rewrite on
+// stdout, interleaving N stray lines into the cursor-controlled progress
+// output (measured: 49 lines carrying one line of real information).
+//
+// Default: ONE summary line (the count) plus a --verbose discovery hint —
+// matching the substance of what the N lines carried. verbose (the same
+// updateVerboseMode ledger recordMergeFallback reads): the summary plus one
+// dim line per key, so the full list never interleaves with the progress
+// redraw and stays expandable without a second run.
+func renderRetainedKeyAdvisory(w io.Writer, refs []backup.RetainedKeyRef, verbose bool, th tui.Theme) {
+	if len(refs) == 0 {
+		return
+	}
+	hint := " (run with --verbose to list)"
+	if verbose {
+		hint = ""
+	}
+	_, _ = fmt.Fprintf(w, "  %s %d user settings key(s) preserved%s\n", uikit.SymSuccess(), len(refs), hint)
+	if !verbose {
+		return
+	}
+	for _, ref := range refs {
+		_, _ = fmt.Fprintln(w, paintToken(fmt.Sprintf("    · %s: %s", ref.Section, ref.Key), th.Dim, false))
 	}
 }
