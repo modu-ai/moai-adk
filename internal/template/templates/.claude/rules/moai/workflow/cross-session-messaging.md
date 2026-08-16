@@ -21,7 +21,7 @@ Three properties bound everything below:
 - **Operating system** — macOS and Linux (including Linux inside WSL 2) only. Claude Code does not provide cross-session messaging on native Windows.
 - **Providers** — unavailable on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
 - **Versions** — v2.1.224+ for the channel itself; v2.1.225+ to open a cross-machine conversation first; v2.1.232+ for @mentions and the /config rows.
-- **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation the channel depends on, turning messaging off silently. Diagnostic: `/list-agents` recognized → present; unrecognized → absent.
+- **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation the channel depends on, turning messaging off silently. Diagnostic: `/list-agents` (alias `/peers`) recognized → present; unrecognized → absent.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 
@@ -90,6 +90,8 @@ An arriving message carries **both** the sender's name and a reply address — n
 
 The two ways a message is held do not expire alike. A message the inbound **default** holds waits on `dialogExpiry` and is then dropped, and the sender is told it expired; a message held by an explicit `crossSessionInbound: hold` does not expire at all, and is delivered only when an `accept` later applies. A non-interactive worker cannot show an approval dialog, but a default-held message there still runs the same deadline rather than waiting indefinitely — so a worker meant to take messages unattended needs `accept` in its own settings. One asymmetry is worth knowing: while a background session has no terminal attached, the default-held dialog stays open past its deadline, and the countdown only runs properly once you attach.
 
+Two further facts bear on unattended workers. A `claude -p` session binds an inbox socket like an interactive one, but a session started in **bare mode** binds none — it neither receives messages nor appears in listings. And the `/config` row that selects `crossSessionInbound` (v2.1.232+) does not appear while `--settings` or managed settings set the key — a companion session launched with an injected inbound value cannot change it from its own `/config`, only from the settings source that injected it.
+
 **Availability trap**: a session where the peer-listing command is unrecognized does not have the feature — see § Availability constraints for the OS, provider, version, and flag reasons; a session where listing works but a send never arrives is being blocked by something narrower — a deny rule, the receiver's inbound control, or, for a target beyond this machine, the version and listing conditions above.
 
 ## Anti-patterns
@@ -110,5 +112,5 @@ The two ways a message is held do not expire alike. A message the inbound **defa
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Classification: Evolvable operational rule — peer-session communication; changes no gate semantics.

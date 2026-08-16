@@ -10,6 +10,8 @@ This rule binds a session whose SessionStart context declares **Kanban Mode** wi
 
 Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one lead and prints one launch command per companion role. Companion sessions are launched **by hand, one per terminal** — a session cannot launch another session, and no mechanism to spawn a peer exists or is wanted.
 
+One boundary on the mode itself: the dispatch cycle rides entirely on cross-session messaging, which does not exist on native Windows and is off under some providers, versions, and flag settings — see `cross-session-messaging.md` § Availability constraints. An absent channel fails quietly, so the lead surfaces it to the operator instead of dispatching into silence.
+
 ## The board
 
 Six columns, fixed and ordered:
@@ -89,6 +91,25 @@ This is a classification, not an exemption from the language rules, and it needs
 The carve-out is narrow, and the boundary is **who reads it**. An `Agent()` subagent prompt reaches no human and stays English.
 
 What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. Those are addresses rather than prose, and a translated address does not resolve.
+
+### Dispatch format
+
+[HARD] A dispatch is a fixed-field address block, not prose. The fields:
+
+```
+card: <id>
+spec: <SPEC-ID>
+cmd: /moai run <SPEC-ID>
+wt: .claude/worktrees/<name>
+evidence: .moai/specs/<SPEC-ID>/progress.md
+lens: --security --deep
+```
+
+- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `review` dispatch — the lenses from the table above, where the choice itself is the reason, stated as an address instead of a sentence.
+- **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts this block points at; a dispatch that restates them makes the operator read the same thing twice. If something does not fit a field, it belongs in the card, not around the block.
+- **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
+
+The format is the "pointer, not a copy" rule above made mechanical: every field is an address the companion resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the lead's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
 
 ## Completion is read, never trusted
 
