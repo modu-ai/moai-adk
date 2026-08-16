@@ -41,6 +41,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -158,6 +159,18 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	model := req.GetString("model", "")
 	if model == "" {
 		model = resolveGLMTaskModel() // SSOT, keyed on glmTaskAgentKey
+	} else if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
+		// Factory-mode guard (t85 lead loop): this server process was spawned
+		// from a factory session and inherited MOAI_FACTORY_WORKERS, so the
+		// caller is a factory lead or worker. Factory dispatches carry NO
+		// model override — the GLM tier mapping rides the
+		// ANTHROPIC_DEFAULT_*_MODEL slot env the launcher established, and a
+		// per-call override splits the session's caches and can bypass the
+		// slot-to-GLM mapping. The override is ignored in favor of the SSOT
+		// default and the result says so.
+		resolved := resolveGLMTaskModel()
+		result.Note = fmt.Sprintf("model override %q ignored in factory mode (MOAI_FACTORY_WORKERS is set); running on the resolved default %q — factory dispatches carry no model override", model, resolved)
+		model = resolved
 	}
 	result.Model = model
 

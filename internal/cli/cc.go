@@ -53,12 +53,14 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode:
-  -f, --factory <N>             Enter as the LEAD of a factory run with N
-                                numbered workers. The lead dispatches cards to
-                                the workers over cross-session messages; the
-                                workers are launched by hand, one per terminal,
+  -f, --factory [N]             Enter as the LEAD of a factory run with N
+                                numbered workers. N is optional and defaults
+                                to 8 when omitted. The lead polls the backlog
+                                queue and dispatches cards to free workers over
+                                cross-session messages; the workers are
+                                launched by hand, one per terminal,
                                 each as: moai cc -f <N> --name worker-<i>
-  -f <N> --name worker-<i>      Enter as WORKER <i> of an existing factory run.
+  -f [N] --name worker-<i>      Enter as WORKER <i> of an existing factory run.
                                 A worker number whose label is held by a live
                                 session is bumped to the next free number.
 
@@ -86,6 +88,7 @@ Examples:
   moai cc -k                           # Kanban lead: seeds the plan->run->verify->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
   moai cc -k --name run               # Kanban companion: joins as the run worker
+  moai cc -f                           # Factory lead: default 8 workers
   moai cc -f 4                         # Factory lead: announces worker-1..worker-4
   moai cc -f 4 --name worker-2         # Factory worker 2 of a 4-worker run
   moai glm -f 4 --name worker-3        # Same lane on the GLM backend`,

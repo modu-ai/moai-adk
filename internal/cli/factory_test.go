@@ -53,8 +53,13 @@ func TestParseFactoryFlag(t *testing.T) {
 		{name: "absent", args: []string{"-p", "work"}, wantOn: false, wantRest: []string{"-p", "work"}},
 		{name: "name value survives", args: []string{"-f", "4", "--name", "worker-2"}, wantN: 4, wantOn: true, wantRest: []string{"--name", "worker-2"}},
 		{name: "other flags preserved", args: []string{"-b", "--factory", "2", "-w"}, wantN: 2, wantOn: true, wantRest: []string{"-b", "-w"}},
-		{name: "missing count", args: []string{"-f"}, wantErr: true, errMarker: "requires a worker count"},
-		{name: "count is a flag", args: []string{"-f", "-b"}, wantErr: true, errMarker: "requires a worker count"},
+		// The bare form (t85 lead loop): -f with no count takes the
+		// operator-decided default instead of erroring. A following flag or
+		// the pass-through marker belongs to someone else and reads as "no
+		// count supplied", not as a malformed count.
+		{name: "bare short takes the default", args: []string{"-f"}, wantN: 8, wantOn: true},
+		{name: "bare long takes the default", args: []string{"--factory"}, wantN: 8, wantOn: true},
+		{name: "count position is a flag", args: []string{"-f", "-b"}, wantN: 8, wantOn: true, wantRest: []string{"-b"}},
 		{name: "non-numeric count", args: []string{"--factory", "many"}, wantErr: true, errMarker: "requires a worker count"},
 		{name: "zero count", args: []string{"-f", "0"}, wantErr: true, errMarker: "requires a worker count"},
 		{name: "negative count", args: []string{"--factory=-2"}, wantErr: true, errMarker: "requires a worker count"},
@@ -389,7 +394,13 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-p", "work"}); err != nil {
 		t.Errorf("no factory token must pass, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f"}); err == nil || !strings.Contains(err.Error(), "requires a worker count") {
+	// A bare -f now ENABLES factory mode (default 8), so the cg rejection for
+	// it is the sentinel below; the malformed-count probe needs a SUPPLIED
+	// invalid count.
+	if err := rejectFactoryOnCG([]string{"-f"}); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
+		t.Errorf("bare factory token on cg must carry the sentinel, got %v", err)
+	}
+	if err := rejectFactoryOnCG([]string{"-f", "x"}); err == nil || !strings.Contains(err.Error(), "requires a worker count") {
 		t.Errorf("malformed factory token must surface the parse error, got %v", err)
 	}
 }
@@ -408,4 +419,110 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestFactoryDefaultWorkersConstant pins the operator-decided default fan-out
+// (t85): a bare -f means THIS count, so the number is asserted where it lives
+// rather than re-derived at each call site.
+func TestFactoryDefaultWorkersConstant(t *testing.T) {
+	t.Parallel()
+
+	if config.DefaultFactoryWorkers != 8 {
+		t.Errorf("DefaultFactoryWorkers = %d, want the operator-decided 8", config.DefaultFactoryWorkers)
+	}
+}
+
+// TestParseFactoryFlagErrorNamesDefault extends the error-string pins without
+// weakening them: an INVALID supplied count still errors naming the expected
+// forms, and the message now also names the bare-form default so the fix for
+// `-f many` is discoverable from the error alone.
+func TestParseFactoryFlagErrorNamesDefault(t *testing.T) {
+	t.Parallel()
+
+	_, _, _, err := parseFactoryFlag([]string{"--factory", "many"})
+	if err == nil {
+		t.Fatal("an invalid supplied count must still error")
+	}
+	for _, want := range []string{"requires a worker count", "default"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q must name %q", err.Error(), want)
+		}
+	}
+}
+
+// TestFactoryFreeSlots covers the lead loop's slot picker: an empty registry
+// reads as all-free (fail-open), a live claim makes its slot busy, and a dead
+// claim is pruned so its slot reads free again.
+func TestFactoryFreeSlots(t *testing.T) {
+	t.Run("empty registry means all N free", func(t *testing.T) {
+		root := t.TempDir()
+		got := factoryFreeSlots(root, 4)
+		if !slices.Equal(got, []int{1, 2, 3, 4}) {
+			t.Errorf("factoryFreeSlots(empty, 4) = %v, want 1..4", got)
+		}
+	})
+
+	t.Run("live claim makes its slot busy", func(t *testing.T) {
+		root := t.TempDir()
+		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
+			"worker-2": {PID: 11100},
+		}); err != nil {
+			t.Fatalf("seed registry: %v", err)
+		}
+		probe := factoryProcessAlive
+		factoryProcessAlive = func(pid int) bool { return pid == 11100 }
+		defer func() { factoryProcessAlive = probe }()
+
+		got := factoryFreeSlots(root, 4)
+		if !slices.Equal(got, []int{1, 3, 4}) {
+			t.Errorf("factoryFreeSlots with live worker-2 = %v, want [1 3 4]", got)
+		}
+	})
+
+	t.Run("dead claim is pruned and reads free", func(t *testing.T) {
+		root := t.TempDir()
+		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
+			"worker-3": {PID: 11100},
+		}); err != nil {
+			t.Fatalf("seed registry: %v", err)
+		}
+		probe := factoryProcessAlive
+		factoryProcessAlive = func(int) bool { return false }
+		defer func() { factoryProcessAlive = probe }()
+
+		got := factoryFreeSlots(root, 3)
+		if !slices.Equal(got, []int{1, 2, 3}) {
+			t.Errorf("factoryFreeSlots with dead worker-3 = %v, want [1 2 3]", got)
+		}
+	})
+}
+
+// TestFactoryQueuedCards covers the lead loop's queue read: a missing backlog
+// file reads as 0, and only state "queued" counts — picked and dropped cards
+// are not waiting.
+func TestFactoryQueuedCards(t *testing.T) {
+	t.Run("missing backlog file reads as zero", func(t *testing.T) {
+		if got := factoryQueuedCards(t.TempDir()); got != 0 {
+			t.Errorf("factoryQueuedCards(missing) = %d, want 0", got)
+		}
+	})
+
+	t.Run("only queued items count", func(t *testing.T) {
+		root := t.TempDir()
+		store := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+		if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+			rec.Items = []kanban.BacklogItem{
+				{ID: "t1", State: kanban.BacklogStateQueued},
+				{ID: "t2", State: kanban.BacklogStatePicked},
+				{ID: "t3", State: kanban.BacklogStateQueued},
+				{ID: "t4", State: kanban.BacklogStateDropped},
+			}
+			return nil
+		}); err != nil {
+			t.Fatalf("seed backlog: %v", err)
+		}
+		if got := factoryQueuedCards(root); got != 2 {
+			t.Errorf("factoryQueuedCards = %d, want 2 (queued only)", got)
+		}
+	})
 }

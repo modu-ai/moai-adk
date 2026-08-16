@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-WORKER-FANOUT-001
 title: "Factory Mode -f <N>: numbered worker fan-out on cc/glm"
-version: "1.0.0"
+version: "1.1.0"
 status: implemented
 created: 2026-08-17
 updated: 2026-08-17
@@ -48,9 +48,12 @@ A factory run is one LEAD session plus N numbered WORKERS:
 
 ## Requirements
 
-- **REQ-FF-001 (parse)**: `-f`/`--factory` accepts a REQUIRED count N ≥ 1 in
-  the forms `-f N`, `-f=N`, `--factory N`, `--factory=N`; anything else is an
-  error naming the expected form. No upper bound (v1): runtime concurrency
+- **REQ-FF-001 (parse)**: `-f`/`--factory` accepts a count N ≥ 1 in the forms
+  `-f N`, `-f=N`, `--factory N`, `--factory=N`. A bare `-f` / `--factory`
+  (no count supplied — v1.1.0 amendment, t85 lead loop) takes the
+  operator-decided default fan-out `config.DefaultFactoryWorkers` (8); a
+  SUPPLIED count that is non-numeric or < 1 is an error naming the expected
+  forms and the bare-form default. No upper bound (v1): runtime concurrency
   caps govern. The `--` pass-through discipline matches every other launcher
   parser.
 - **REQ-FF-002 (branch truth table)**: `-f N` + worker-shape `--name` →

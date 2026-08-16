@@ -72,12 +72,14 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode:
-  -f, --factory <N>             Enter as the LEAD of a factory run with N
-                                numbered workers. The lead dispatches cards to
-                                the workers over cross-session messages; the
-                                workers are launched by hand, one per terminal,
+  -f, --factory [N]             Enter as the LEAD of a factory run with N
+                                numbered workers. N is optional and defaults
+                                to 8 when omitted. The lead polls the backlog
+                                queue and dispatches cards to free workers over
+                                cross-session messages; the workers are
+                                launched by hand, one per terminal,
                                 each as: moai glm -f <N> --name worker-<i>
-  -f <N> --name worker-<i>      Enter as WORKER <i> of an existing factory run.
+  -f [N] --name worker-<i>      Enter as WORKER <i> of an existing factory run.
                                 A worker number whose label is held by a live
                                 session is bumped to the next free number.
 
@@ -101,6 +103,7 @@ Examples:
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
   moai glm -k --name sync-abc123   # Kanban companion on GLM
+  moai glm -f              # Factory lead on GLM: default 8 workers
   moai glm -f 4            # Factory lead on GLM: announces worker-1..worker-4
   moai glm -f 4 --name worker-2    # Factory worker 2 of a 4-worker run
 

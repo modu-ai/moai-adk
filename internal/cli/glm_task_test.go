@@ -528,3 +528,47 @@ func TestResolveGLMTaskModel_SSOT(t *testing.T) {
 		t.Errorf("resolveGLMTaskModel = %q; a Claude id cannot be a GLM default", m)
 	}
 }
+
+// TestGLMTaskFactoryModeIgnoresModelOverride is the Go half of the factory
+// no-model-override discipline (t85 lead loop): when the MCP server process
+// runs inside a factory session (MOAI_FACTORY_WORKERS inherited from the
+// session env), a caller-supplied model is IGNORED in favor of the SSOT
+// default and the result says so — a per-call override would split the
+// session's caches and can bypass the ANTHROPIC_DEFAULT_*_MODEL slot-to-GLM
+// tier mapping the launcher established. Outside factory mode the override
+// is honored exactly as before.
+func TestGLMTaskFactoryModeIgnoresModelOverride(t *testing.T) {
+	stub := &stubGLMDoer{body: glmTextResp("ok")}
+	withGLMTaskSeams(t, "test-glm-key", stub)
+
+	t.Run("factory mode ignores the override", func(t *testing.T) {
+		t.Setenv(config.EnvMoaiFactoryWorkers, "8")
+
+		got := structuredMap(t, callGLMTaskTool(t, map[string]any{
+			"prompt": "do the thing",
+			"model":  "caller-picked-model",
+		}))
+		if m, _ := got["model"].(string); m != resolveGLMTaskModel() {
+			t.Errorf("model = %q, want the resolved SSOT default %q", m, resolveGLMTaskModel())
+		}
+		note, _ := got["note"].(string)
+		if !strings.Contains(note, "factory mode") || !strings.Contains(note, "caller-picked-model") {
+			t.Errorf("note = %q, want it to name the ignored override and factory mode", note)
+		}
+	})
+
+	t.Run("outside factory mode the override is honored", func(t *testing.T) {
+		clearFactoryTestEnv(t)
+
+		got := structuredMap(t, callGLMTaskTool(t, map[string]any{
+			"prompt": "do the thing",
+			"model":  "caller-picked-model",
+		}))
+		if m, _ := got["model"].(string); m != "caller-picked-model" {
+			t.Errorf("model = %q, want the caller's override honored outside factory mode", m)
+		}
+		if note, _ := got["note"].(string); note != "" {
+			t.Errorf("note = %q, want none outside factory mode", note)
+		}
+	})
+}

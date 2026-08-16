@@ -368,6 +368,13 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 // runaway generation cannot consume the job's whole budget.
 const DefaultGLMTaskMaxTokens = 8192
 
+// DefaultFactoryWorkers is the fan-out size a bare `-f` / `--factory` takes
+// when the operator supplies no count (SPEC-FACTORY-WORKER-FANOUT-001
+// REQ-FF-001, t85 lead loop). The value 8 is the operator-decided factory
+// default — large enough to keep a card queue draining, small enough to sit
+// under the session-count a single operator hand-launches comfortably.
+const DefaultFactoryWorkers = 8
+
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
 // DefaultCodexJobCancelGrace rather than restated: both windows bound the same

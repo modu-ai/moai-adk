@@ -20,15 +20,12 @@ package cli
 // anyway.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
@@ -48,15 +45,18 @@ const (
 // one-backend premise, so the invocation is rejected rather than adapted.
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
-// parseFactoryFlag extracts --factory / -f and its REQUIRED worker count from
+// parseFactoryFlag extracts --factory / -f and its OPTIONAL worker count from
 // args, returning the count, whether Factory Mode was requested, and the
 // remaining args with the consumed tokens removed.
 //
-// Unlike the kanban SPEC identifier, the count N is not optional — a factory
-// run without a fan-out size is a typo, not an entry. `-f 4`, `-f=4`,
-// `--factory 4`, and `--factory=4` are accepted; a missing, non-numeric, or
-// zero/negative value is an error. There is deliberately no upper bound (v1):
-// the runtime's own concurrency cap governs how many workers are useful.
+// The count is optional (t85 lead loop, REQ-FF-001 amendment): a bare `-f` /
+// `--factory` takes the operator-decided default fan-out
+// (config.DefaultFactoryWorkers, 8), because "spin up the usual factory" is
+// an entry, not a typo. `-f 4`, `-f=4`, `--factory 4`, and `--factory=4` are
+// accepted as before; a SUPPLIED count that is non-numeric or zero/negative
+// is an error naming the expected forms and the bare-form default. There is
+// deliberately no upper bound (v1): the runtime's own concurrency cap governs
+// how many workers are useful.
 //
 // The `--` discipline matches parseKanbanFlag, stripSpawnFlag, parseProfileFlag,
 // and normalizeWorktreeFlag exactly: iterate, break at the pass-through marker,
@@ -76,8 +76,8 @@ func parseFactoryFlag(args []string) (workers int, enabled bool, rest []string, 
 		switch {
 		case arg == factoryFlagLong || arg == factoryFlagShort:
 			// Consume a following positional token as N. A flag or the
-			// pass-through marker belongs to someone else, and reads as a
-			// missing count below.
+			// pass-through marker belongs to someone else, and reads as the
+			// bare form (default count) below — not as a malformed count.
 			if next := i + 1; next < len(args) && args[next] != "--" && !strings.HasPrefix(args[next], "-") {
 				value, hasValue = args[next], true
 				i = next
@@ -92,9 +92,14 @@ func parseFactoryFlag(args []string) (workers int, enabled bool, rest []string, 
 		}
 
 		enabled = true
+		if !hasValue {
+			workers = config.DefaultFactoryWorkers
+			continue
+		}
 		n, perr := strconv.Atoi(value)
-		if !hasValue || perr != nil || n < 1 {
-			return 0, false, nil, fmt.Errorf("%s requires a worker count of 1 or more (e.g. %s 4)", factoryFlagLong, factoryFlagLong)
+		if perr != nil || n < 1 {
+			return 0, false, nil, fmt.Errorf("%s requires a worker count of 1 or more (e.g. %s 4), or no count at all to use the default of %d workers",
+				factoryFlagLong, factoryFlagLong, config.DefaultFactoryWorkers)
 		}
 		workers = n
 	}
@@ -205,26 +210,29 @@ func enterFactoryWorkerMode(label string, workers int) func() {
 }
 
 // factoryWorkerEntry is one registered worker: the pid of the process that
-// claimed the label. Because the launcher exec's into the backend without
-// forking, the recorded pid IS the session's pid for the process's whole
-// lifetime, which is what makes kill -0 a valid liveness probe for it.
-type factoryWorkerEntry struct {
-	PID          int    `json:"pid"`
-	RegisteredAt string `json:"registered_at"`
+// claimed the label. The type lives in internal/kanban (factory_slots.go)
+// since the t85 lead loop — the alias keeps this package's call sites and
+// tests on their historical name.
+type factoryWorkerEntry = kanban.FactoryWorkerEntry
+
+// factoryRegistryPath / loadFactoryRegistry / saveFactoryRegistry delegate to
+// the kanban registry cluster (factory_slots.go). The cluster moved out of
+// this file because the SessionStart hook needs the same reads and cannot
+// import this package; these delegates keep the cli surface stable.
+func factoryRegistryPath(root string) string { return kanban.FactoryRegistryPath(root) }
+
+func loadFactoryRegistry(path string) map[string]factoryWorkerEntry {
+	return kanban.LoadFactoryRegistry(path)
 }
 
-// factoryRegistryPath returns the liveness-checked worker-name registry's
-// home. It lives under .moai/state/ beside the goal and kanban state, keyed
-// by project root — separate projects keep separate registries, and one
-// project's concurrent factory runs share one (which is the point: the bump
-// exists to keep session names addressable).
-func factoryRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "factory", "workers.json")
+func saveFactoryRegistry(path string, reg map[string]factoryWorkerEntry) error {
+	return kanban.SaveFactoryRegistry(path, reg)
 }
 
 // factoryProcessAlive is the liveness seam; tests override it to simulate
-// live and dead claims without spawning processes.
-var factoryProcessAlive = defaultFactoryProcessAlive
+// live and dead claims without spawning processes. The default probe itself
+// lives in internal/kanban (factory_alive_*.go) since the same move.
+var factoryProcessAlive = kanban.FactoryProcessAlive
 
 // resolveFactoryWorkerName returns the label this worker session should
 // launch under: label itself when its number is free, or the next incremented
@@ -243,14 +251,7 @@ var factoryProcessAlive = defaultFactoryProcessAlive
 // notes, when non-nil, receives the operator-visible bump line.
 func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
 	path := factoryRegistryPath(root)
-	reg := loadFactoryRegistry(path)
-
-	// Prune dead claims first so they neither block a number nor accumulate.
-	for l, e := range reg {
-		if e.PID <= 0 || !factoryProcessAlive(e.PID) {
-			delete(reg, l)
-		}
-	}
+	reg := kanban.PruneFactoryDeadClaims(loadFactoryRegistry(path), factoryProcessAlive)
 
 	final := label
 	if n, ok := kanban.SplitFactoryWorkerLabel(label); ok {
@@ -269,37 +270,27 @@ func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
 		}
 	}
 
-	reg[final] = factoryWorkerEntry{
-		PID:          os.Getpid(),
-		RegisteredAt: time.Now().UTC().Format(time.RFC3339),
-	}
+	reg[final] = kanban.NewFactoryWorkerEntry()
 	_ = saveFactoryRegistry(path, reg)
 	return final
 }
 
-// loadFactoryRegistry reads the worker registry, returning an empty map on
-// any failure (missing file, unwritable dir, malformed JSON) — fail-open.
-func loadFactoryRegistry(path string) map[string]factoryWorkerEntry {
-	reg := make(map[string]factoryWorkerEntry)
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return reg
-	}
-	_ = json.Unmarshal(raw, &reg)
-	return reg
+// factoryFreeSlots returns the FREE slot numbers among 1..workers — the lead
+// loop's picker input (t85). A slot is free when its worker-<n> label carries
+// no live claim; dead claims are pruned on the way through, and every
+// registry failure fails open to "all free". The hook's lead notice renders
+// the same list through kanban.FactoryFreeSlots directly.
+func factoryFreeSlots(root string, workers int) []int {
+	return kanban.FactoryFreeSlots(root, workers, factoryProcessAlive)
 }
 
-// saveFactoryRegistry writes the worker registry, creating its directory as
-// needed. Best-effort: the error is returned for the caller to ignore.
-func saveFactoryRegistry(path string, reg map[string]factoryWorkerEntry) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	encoded, err := json.MarshalIndent(reg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(encoded, '\n'), 0o600)
+// factoryQueuedCards returns the number of cards waiting in the backlog queue
+// under root — the lead loop's poll input. The count goes through the shared
+// kanban shape (BacklogStore.QueuedCount via
+// kanban.QueuedBacklogCountForRoot) so the lead notice, the kanban notice,
+// and `moai todo` cannot disagree about what "waiting" means.
+func factoryQueuedCards(root string) int {
+	return kanban.QueuedBacklogCountForRoot(root)
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal

@@ -344,8 +344,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// notices can never stack. Same dual-channel shape and the same
 	// startup-only gating, for the same reasons the kanban block below
 	// records; the operator copies N worker launch lines instead of four
-	// companion lines.
-	if notice := factoryBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
+	// companion lines. The notice reads the lead loop's data (backlog queue,
+	// worker registry) under the project root on the same ProjectDir-then-CWD
+	// preference chain the kanban notice uses; an empty root degrades to
+	// fail-open summary lines inside the notice rather than failing here.
+	factoryRoot := input.ProjectDir
+	if factoryRoot == "" {
+		factoryRoot = input.CWD
+	}
+	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -357,7 +364,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
 
-		operatorNotice := factoryBootstrapNotice(operatorLang(h.cfg))
+		operatorNotice := factoryBootstrapNotice(factoryRoot, operatorLang(h.cfg))
 		if out.SystemMessage == "" {
 			out.SystemMessage = operatorNotice
 		} else {
