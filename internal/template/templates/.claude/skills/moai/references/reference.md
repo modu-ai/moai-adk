@@ -39,7 +39,7 @@ For development mode details, see: .claude/rules/moai/workflow/spec-workflow.md 
 
 ### Parallel Execution Pattern
 
-When multiple operations are independent, invoke them in a single response. Claude Code runs multiple Agent() calls in parallel, up to the MoAI ceiling of 3-5 concurrent (Mode 4).
+When multiple operations are independent, invoke them in a single response. Claude Code automatically runs multiple Agent() calls in parallel (up to 10 concurrent).
 
 Use Cases:
 
@@ -52,7 +52,7 @@ Implementation:
 - Include multiple Agent() calls in the same response message
 - Each Agent() targets a different subagent or a different scope within the same agent
 - Results are collected when all parallel tasks complete
-- Maximum 3-5 concurrent Agent() calls per the Mode 4 ceiling
+- Maximum 10 concurrent Agent() calls for optimal throughput
 
 ### Sequential Execution Pattern
 
@@ -147,7 +147,7 @@ Propagation Method:
 - (retired) --worktree: plan no longer creates a workspace — enter one first with `moai cc -w <name>`
 - --branch: Create a feature branch for the SPEC (default branch naming: feature/SPEC-XXX)
 - --resume SPEC-XXX: Resume an interrupted plan session
-- --team: RETIRED — Agent Teams Mode 3 is a tombstone; a forced --team falls back to sub-agent mode. Use parallel Agent(general-purpose) fan-out for exploration.
+- --team: experimental — selects Agent Teams Mode 3 (re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Parallel Agent(general-purpose) fan-out remains the default exploration pattern.
 
 ### Run Flags
 
@@ -172,7 +172,7 @@ Propagation Method:
 
 ### Loop Flags
 
-- --max N: Maximum iteration count (default: ralph.yaml loop.max_iterations, shipped 10)
+- --max N: Maximum iteration count (default: 100)
 - --auto-fix: Enable automatic fix application for Level 1-2 issues
 - --seq: Force sequential diagnostics
 

@@ -39,7 +39,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --branch: Auto-create feature branch
 - --pr: Auto-create pull request after completion
 - --resume SPEC-XXX: Resume previous work from existing SPEC
-- --team: RETIRED — Agent Teams static layer retired; emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode
+- --team: experimental — selects the Agent Teams layer (re-allowed; constraints per `orchestration-mode-selection.md` §C.1; the retired era emitted `MODE_TEAM_UNAVAILABLE` with a sub-agent fallback)
 - --solo: Force sub-agent mode (single agent per phase)
 - --sequential: Run Phase 1 exploration agents sequentially instead of in parallel
 - --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
@@ -206,14 +206,12 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 - `factory` contract (Factory Mode, the `--factory` / `-f` entry switch on the session launchers): **extends** `full-pipeline` and defines no second chaining mechanism. It inherits the run→sync auto-chain verbatim, including the clause above that `gate-sync-1` and `gate-sync-2` still fire unchanged inside the chained sync phase, and adds exactly two deltas — a plan-phase chain head, and a verify exit gate at run-phase exit. Everything else about how phases chain is the inherited contract, unmodified. See `workflows/run/mode-orchestration.md` § Verify Exit Gate and `workflows/factory.md`.
 - Failing gates halt the chain: when the sync-audit gate returns FAIL/INCONCLUSIVE or the sync-phase quality gate blocks, the chain halts and escalates — the loop never auto-completes past a failing gate.
 
-## Mode Selection (team dispatch retired)
+## Mode Selection (team experimental)
 
-The `--team` flag and Mode 3 (`agent-team`) are RETIRED with the Agent Teams
-static layer. A forced `--team` emits `MODE_TEAM_UNAVAILABLE` and falls back to
-sub-agent mode; the native `moai cg` GLM teammate runtime is unaffected.
+The `--team` flag and Mode 3 (`agent-team`) are experimental (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). A `--team` request selects the Agent Teams layer subject to the §C.1 constraints; the native `moai cg` GLM teammate runtime is unaffected. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode — the sentinel is retained as documented history.
 
 Mode selection:
-- `--team`: RETIRED — emits `MODE_TEAM_UNAVAILABLE`, falls back to Mode 5 (sub-agent).
+- `--team`: experimental — selects Mode 3 (Agent Teams; constraints per `orchestration-mode-selection.md` §C.1).
 - `--solo`: Force Mode 5 (sub-agent).
 - No flag (default): Auto-select per the Phase 4 6-mode catalog; thresholds stated once in `orchestration-mode-selection.md` §B.1.
 
@@ -223,7 +221,7 @@ Mode selection:
 2. If --resume with SPEC ID: Load existing SPEC and continue from last state
 3. Detect development_mode from quality.yaml (ddd/tdd)
 4. **Mode decision**: determine execution mode
-   - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE` and fall back to sub-agent mode (Agent Teams static layer retired)
+   - If `--team` flag: experimental — select the Agent Teams layer (constraints per `orchestration-mode-selection.md` §C.1)
    - If `--solo` flag: Force sub-agent mode
    - If no flag (default): Auto-select per the Phase 4 6-mode catalog (thresholds per `orchestration-mode-selection.md` §B.1)
 5. Execute Phase 1 (parallel or sequential exploration)
@@ -231,13 +229,13 @@ Mode selection:
 7. TaskCreate for discovered tasks
 8. User confirmation via AskUserQuestion
 9. **Phase 1 (Research)**: Save research.md from Phase 1 Explore findings to SPEC directory
-10. **Phase 2 (Plan)**: manager-spec sub-agent (team orchestration retired)
+10. **Phase 2 (Plan)**: manager-spec sub-agent
 10.5. **Phase 2 (Issue)**: Create GitHub Issue linked to SPEC (only when the `--issue` opt-in flag is set; default skips per the late-branch opt-in policy). See plan.md Phase 13.
 11. **Phase 3 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
 11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2). Merged round: presented in a single AskUserQuestion call carrying both this Kickoff question AND the Step 11.5 execution-shape question (multi-question, ≤4 questions per call). The Kickoff question offers run-phase entry (Recommended) / additional review / abort; merging co-locates the two questions into one blocking round-trip and never removes, weakens, or auto-bypasses the Kickoff gate — declining Kickoff halts run-phase entry exactly as a standalone round would
 11.5. **Execution Mode Selection Gate**: co-located with Step 11.3 in the same single AskUserQuestion call (see 11.3) — shape preferences collected here feed Phase 4 mode selection (6-mode catalog, Pipeline Gates #3)
-   - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE`, fall back to execution_mode="sub-agent"
+   - If `--team` flag: experimental — select execution_mode="agent-team" (Agent Teams layer; constraints per `orchestration-mode-selection.md` §C.1)
    - If `--solo` flag: Skip the execution-shape question (auto-select execution_mode="sub-agent"); the Kickoff question still rides its own round
    - Otherwise (no flag):
      - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
@@ -274,4 +272,4 @@ Mode selection:
 ---
 
 Version: 3.0.1
-Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).
+Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).

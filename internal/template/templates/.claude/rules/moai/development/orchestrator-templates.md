@@ -15,7 +15,7 @@ Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. E
 | Fan-out orchestrator | Mode 4 (`parallel`) | 3-5 concurrent `Agent()` calls in one turn, results return to the orchestrator |
 | Hybrid orchestrator | Mode 4 + Mode 5 | Sequential stages with a parallel stage in the middle |
 | Workflow orchestrator | Mode 6 (`workflow`) | Script-held plan, dozens of agents — see `.claude/rules/moai/workflow/dynamic-workflows.md` |
-| ~~Team-orchestrator~~ | Mode 3 — **RETIRED** | See § Team-orchestrator — RETIRED below |
+| Team-orchestrator | Mode 3 — **experimental (re-allowed)** | See § Team-orchestrator — experimental below |
 
 ---
 
@@ -185,22 +185,22 @@ Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, 
 
 ---
 
-## Team-orchestrator — RETIRED
+## Team-orchestrator — experimental (re-allowed)
 
-**Mode 3 — RETIRED.** The MoAI Agent Teams static orchestration layer is retired; the Phase 4 decision tree never selects it. The former team template (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is no longer a MoAI orchestration pattern.
+**Mode 3 — experimental (re-allowed; operator decision).** The Agent Teams pattern (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is again a sanctioned MoAI orchestration pattern, entered ONLY by explicit `--team` request; the Phase 4 decision tree never auto-selects it (constraints and genealogy: `orchestration-mode-selection.md` §C.1).
 
-**Where its use cases went**:
+**Default routing while Mode 3 stays explicit-request-only**:
 
-| Old Team use case | Now |
+| Team use case | Default (auto) |
 |-------------------|-----|
 | Multi-domain research / multi-perspective review | Fan-out orchestrator (Mode 4) |
 | Coding work across layers | Sub-orchestrator (Mode 5) — sequential |
 | Competing-hypothesis debugging | Fan-out orchestrator (Mode 4), one hypothesis per agent; the orchestrator falsifies |
 | Decomposable bulk migration | Workflow orchestrator (Mode 6) |
 
-The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, and agents are not yet reliable at delegating to each other in real time.
+The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, which is why the auto-routes stay with Modes 4/5/6 and Mode 3 requires the explicit request.
 
-**Native runtime unaffected**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `moai cc -w <name> --spawn` teammate windows, the teammate registry) still works — only MoAI's static team-orchestration layer is retired. Do not read this section as a claim that the runtime primitive was removed.
+**Native runtime sanctioned**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `moai cc -w <name> --spawn` teammate windows, the teammate registry) works and is a sanctioned surface under the enabled flag — the retired era withdrew only MoAI's static orchestration layer, never the runtime primitive.
 
 ---
 

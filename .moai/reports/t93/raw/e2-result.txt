@@ -1,0 +1,23 @@
+E2 (unnamed background subagent probe) verbatim result — 2026-08-17
+
+Spawn: Agent(subagent_type: general-purpose, prompt: <diagnostic — same steps as E1, marker "t92-probe-sub", final line E2-DONE>) — no name parameter.
+
+Result (returned normally through the background-task completion notification):
+
+(1) ToolSearch invocation: NOT POSSIBLE — `ToolSearch` is not present in this subagent's available tool schema. The call could not be constructed or emitted, so there is no verbatim tool-level error text; the finding is tool absence itself (no such function offered to this agent).
+
+(2) Skipped — precondition failed (preload did not succeed; TaskCreate is likewise absent from the schema, so no marker task was created).
+
+(3) Tool availability from this agent's own context (of the enumerated list):
+- TaskCreate — NOT available
+- TaskUpdate — NOT available
+- TaskList — NOT available
+- TaskGet — NOT available
+- Task — NOT available (no tool named `Task`; the closest present tools are `Agent` (subagent launcher) and `TaskStop` (background-task stopper), neither of which is `Task`)
+- SendMessage — AVAILABLE (full function schema present; the session system-reminder also confirms addressability: `SendMessage({to: name, message})` with `main` and `t92-probe-named` listed as active peers)
+- ListAgents — NOT available
+- ToolSearch — NOT available
+
+E2-DONE
+
+Cross-check: session TaskList after the run contained no marker task (only pre-existing #1-#5) — consistent with TaskCreate absence.

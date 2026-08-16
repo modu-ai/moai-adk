@@ -51,7 +51,7 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: RETIRED — emits MODE_TEAM_UNAVAILABLE and falls back to Mode 5 (sub-agent)
+- `--team`: Force Mode 3 (agent-team) of the Phase 4 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
 - `--solo`: Force Mode 5 (sub-agent — single sequential agent per phase)
 - No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 4; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
 
@@ -129,7 +129,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Skills: moai-workflow-tdd, moai-workflow-ddd (per delegation.yaml; cycle_type-selected) + domain moai-ref-* injected per mission
-Flags: --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags)
+Flags: --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 ### sync - Documentation Sync and PR
@@ -159,7 +159,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 ### goal - Condition-Declared Agentic Loop
 
 Purpose: Arm a completion condition (mechanical commands + model claims); the `stop-goal` Stop-hook evaluator blocks each turn-end until the conditions hold or a turn ceiling (default 30) is reached.
-Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`.
+Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 
@@ -176,7 +176,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Skills: moai-workflow-ddd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --dry, --sequential, --level N, --resume, --team (RETIRED — see Execution Mode Flags)
+Flags: --dry, --sequential, --level N, --resume, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -191,7 +191,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
-Flags: --all, --dry, --priority P1-P4, --force, --team (RETIRED — see Execution Mode Flags)
+Flags: --all, --dry, --priority P1-P4, --force, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
@@ -199,7 +199,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
 Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Skills: moai-foundation-quality, moai-ref-owasp-checklist (per delegation.yaml; per-perspective ref skills injected per lens)
-Flags: --staged, --branch, --security, --team (RETIRED — see Execution Mode Flags)
+Flags: --staged, --branch, --security, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
 
 ### clean - Dead Code Removal
@@ -223,7 +223,7 @@ Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, plan-auditor (quality gate), manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Skills: moai-workflow-spec, moai-workflow-tdd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation
@@ -254,7 +254,7 @@ Purpose: Surface the harness learning subsystem (observer, 4-tier proposal ladde
 Skills: moai-harness-learner (Tier-4 surfacing companion). Project-specific harness generation is handled by the v4 Builder (`builder-harness` agent, Branch B).
 Verbs: status (tier distribution + telemetry) | apply (next Tier-4 proposal → AskUserQuestion → 5-layer pipeline → snapshot + write) | rollback &lt;YYYY-MM-DD&gt; (restore snapshot) | disable (set learning.enabled: false)
 Artifacts: `.moai/harness/usage-log.jsonl`, `.moai/harness/proposals/`, `.moai/harness/learning-history/snapshots/`, `.moai/harness/learning-history/applied/`, `.moai/harness/learning-history/frozen-guard-violations.jsonl`
-Authoritative contract: the harness foundation policy
+Authoritative SPEC: the harness foundation policy (supersedes V3R3-HARNESS-001, V3R3-HARNESS-LEARNING-001, V3R3-PROJECT-HARNESS-001)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
 
 #### Branch A.1 — harness-v4 lifecycle (reserved verbs: list / edit / remove / doctor)

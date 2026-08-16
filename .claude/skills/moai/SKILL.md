@@ -129,7 +129,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Skills: moai-workflow-tdd, moai-workflow-ddd (per delegation.yaml; cycle_type-selected) + domain moai-ref-* injected per mission
-Flags: --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags)
+Flags: --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 ### sync - Documentation Sync and PR
@@ -176,7 +176,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Skills: moai-workflow-ddd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --dry, --sequential, --level N, --resume, --team (RETIRED — see Execution Mode Flags)
+Flags: --dry, --sequential, --level N, --resume, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -191,7 +191,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
 
 Purpose: Scan codebase and add @MX code-level annotations for AI agent context.
 Agents: Explore (scan), Agent(general-purpose) with backend scope (annotation)
-Flags: --all, --dry, --priority P1-P4, --force, --team (RETIRED — see Execution Mode Flags)
+Flags: --all, --dry, --priority P1-P4, --force, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 
 ### review - Code Review
@@ -199,7 +199,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
 Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Skills: moai-foundation-quality, moai-ref-owasp-checklist (per delegation.yaml; per-perspective ref skills injected per lens)
-Flags: --staged, --branch, --security, --team (RETIRED — see Execution Mode Flags)
+Flags: --staged, --branch, --security, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
 
 ### clean - Dead Code Removal
@@ -223,7 +223,7 @@ Purpose: Full autonomous research -> plan -> annotate -> run -> sync pipeline.
 Phases: Parallel Exploration (research.md) -> SPEC Generation -> Annotation Cycle -> Implementation -> Sync
 Agents: Explore, manager-spec, plan-auditor (quality gate), manager-develop, manager-docs, manager-git, sync-auditor (quality gate)
 Skills: moai-workflow-spec, moai-workflow-tdd (per delegation.yaml) + domain moai-ref-* injected per mission
-Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (RETIRED — see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
+Flags: --loop, --max N, --branch, --pr, --resume SPEC-XXX, --team (experimental — Agent Teams re-allowed; see Execution Mode Flags), --solo, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
 
 ### project - Project Documentation

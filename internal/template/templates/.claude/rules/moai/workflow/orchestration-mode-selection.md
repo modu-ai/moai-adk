@@ -27,7 +27,7 @@ The orchestrator selects exactly one of the following modes per Phase 4 invocati
 |---|------|-------------|---------------|----------------|
 | 1 | `trivial` | None — direct execution by the orchestrator, no sub-agent spawn | n/a | Typo fix, single-line formatting, no semantic change |
 | 2 | `background` | 1 concurrent sub-agent | `Agent(run_in_background: true, ...)` | Read-only analysis that can complete asynchronously without blocking the conversation |
-| 3 | `agent-team` — **RETIRED** | n/a | n/a | **Mode 3 — RETIRED** (Agent Teams static layer retired). Never selected by the decision tree. Multi-domain research routes to Mode 4 (fanout); coding-heavy work to Mode 5 (sequential); high-volume mechanical work to Mode 6 (workflow). The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name> --spawn`) is unaffected — only MoAI's static team-orchestration layer is retired |
+| 3 | `agent-team` — **experimental (re-allowed)** | 3-5 named teammates (one team per session, shared TaskList) | `Agent(name: "...", ...)` spawns forming an implicit team; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on | **Mode 3 — re-allowed as experimental** (operator decision). Selectable ONLY via explicit `--team` / `--mode team` / `--team` scale label — the decision tree still never auto-selects it (Tier L auto-route remains `manager-kanban`; multi-domain research → Mode 4; coding-heavy → Mode 5; mechanical → Mode 6). Genealogy: retired era used the `MODE_TEAM_UNAVAILABLE` sentinel + sub-agent fallback (documented as history in `run.md`); live counterevidence — 5 named workers completed normally. Constraints: §C.1 |
 | 4 | `parallel` | 3-5 concurrent sub-agents (single message, multiple `Agent()` calls) | Multiple `Agent()` invocations in one assistant turn | Multi-domain research that does NOT meet Agent Teams prerequisites; or any case where Agent Teams session overhead exceeds benefit |
 | 5 | `sub-agent` | 1 sequential sub-agent per milestone | Sequential `Agent(...)` spawns, one milestone at a time | Coding-heavy work (per Anthropic's coding-task parallelism caveat), or any case where the simpler mode suffices |
 | 6 | `workflow` | Up to 16 concurrent workflow agents (1000-total per-run backstop, per `dynamic-workflows.md`) | Orchestrator-launched Workflow fan-out (a script the runtime executes to coordinate agents — NOT a subagent spawning subagents) | Genuinely-parallel, high-volume **mechanical** transformation (≥ ~30 files AND a single uniform transform rule AND no inter-file dependency) — call-site rename, import-path bulk change, signature-stable edits. Coding-heavy / multi-domain / new-code work stays Mode 5 (per Anthropic's coding-task parallelism caveat). |
@@ -50,9 +50,10 @@ START (Phase 4 Mode Selection)
   │   ├── YES → Mode 2: BACKGROUND (Agent run_in_background: true)
   │   └── NO  → continue
   │
-  ├── (Mode 3: AGENT-TEAM — RETIRED. The Agent Teams static layer is retired;
-  │    the orchestrator never selects Mode 3. Multi-domain work falls through to
-  │    the Mode 4 check below. This branch is a no-op tombstone.)
+  ├── (Mode 3: AGENT-TEAM — experimental, re-allowed. Entered ONLY by explicit
+  │    operator request (--team / --mode team / Team scale label); the tree never
+  │    auto-selects it. Unrequested multi-domain work falls through to the Mode 4
+  │    check below. See §C.1 for constraints and genealogy.)
   │
   ├── Is the task multi-domain (≥3 domains) AND research-heavy
   │   (NOT coding-heavy per Anthropic's coding-task parallelism caveat)?
@@ -104,17 +105,30 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 
 ## §C — Capability Gates
 
-### §C.1 Mode 3 (Agent Teams) — RETIRED
+### §C.1 Mode 3 (Agent Teams) — Re-allowed (experimental)
 
-**Mode 3 — RETIRED.** The Agent Teams static orchestration layer is retired; the Phase 4 decision tree never selects Mode 3. Multi-domain research-heavy work routes to Mode 4 (parallel fanout); coding-heavy work routes to Mode 5 (sequential sub-agent); high-volume mechanical transformation routes to Mode 6 (workflow).
+**Mode 3 — re-allowed as experimental** (operator decision). The flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, making the native teammate runtime a sanctioned orchestration surface: spawn teammates with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session), shared TaskList coordination, `moai cg` GLM teammate panes, `moai cc -w <name> --spawn` teammate windows, `~/.claude/teams/` registry.
 
-A forced `--mode team` request still resolves through the dispatch axis: it emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the orchestrator continues with the fallback mode plus a `[mode-auto-downgrade]` info log. The native Claude Code teammate runtime (`moai cg` GLM teammate panes, `moai cc -w <name> --spawn` teammate windows, `~/.claude/teams/` registry) is unaffected — only MoAI's static team-orchestration layer is retired.
+**Selection rule unchanged**: the Phase 4 decision tree never auto-selects Mode 3 — an explicit operator request (`--team` / `--mode team` / `Team` scale label) selects it; Tier L coordination auto-routing still targets `manager-kanban`; multi-domain research routes to Mode 4; coding-heavy work to Mode 5; high-volume mechanical transformation to Mode 6.
+
+**Genealogy**: Mode 3 was previously retired (tombstone; a forced `--team` emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` per `spec-workflow.md` § Mode Dispatch and fell back with a `[mode-auto-downgrade]` info log). The sentinel string survives as the documented historical fallback marker (`run.md`; CI sentinel audit). Evidence for the re-allow is two-sided on the same runtime version: one session observed 5 named workers (A–E) completing normally with result returns under the enabled flag, while another observed a named spawn converting to an in-process teammate that returned no result over ~1 hour and two status pokes (resolved only by TaskStop, which exposed its `in_process_teammate` type). The discrepancy is unresolved — treat teammate result-return reliability as unproven and verify per session before relying on it.
+
+**Constraints (conditional — apply and re-measure if the teammate conversion resurfaces on a future CC version)**:
+- No nested teams; one team per session; the lead is fixed
+- In-process teammates cannot spawn background subagents (request-time error)
+- `/resume` does not restore in-process teammates
+- Permissions are fixed at spawn time
+- `/model` is NOT inherited by teammates (a Default teammate model is needed; effort IS inherited)
+- Team state `~/.claude/teams/{name}` and `~/.claude/tasks/{name}` is runtime-managed — never hand-edit
+- Defining a subagent as a teammate skips `skills:` / `mcpServers:` frontmatter (loaded from project/user settings instead)
+- GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
+- Background subagents (the non-teammate path) have the Task tool family stripped from their schema (measured: TaskCreate/TaskUpdate/TaskList/TaskGet and ToolSearch absent from an unnamed background subagent; SendMessage present) — teammates reportedly regain the Task tool, so Task-based coordination is a teammate-path capability
 
 ### §C.2 Mode 4 (Parallel) Compound preference
 
 Mode 4 is preferred via the unified compound clause:
 
-> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 4]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). With Mode 3 (Agent Teams) retired, Mode 4 is the sole multi-domain parallel mode.
+> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 4]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). Mode 4 remains the default multi-domain parallel mode; Mode 3 (Agent Teams) is the explicit-request experimental alternative (§C.1).
 
 The 3-5 ceiling applies to Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
 
@@ -181,7 +195,7 @@ When the decision tree hit a boundary (e.g., scope = exactly 10 files, exactly 3
 
 The following patterns violate the orchestration mode selection contract:
 
-- **Selecting Mode 3 (Agent Teams)** — Mode 3 is RETIRED; the orchestrator MUST NOT select it. A forced `--mode team` resolves to `MODE_TEAM_UNAVAILABLE` and falls back per the dispatch axis (§C.1)
+- **Auto-selecting Mode 3 (Agent Teams)** — Mode 3 is experimental and explicit-request-only; the orchestrator MUST NOT auto-select it. It is entered only via an explicit operator `--team` / `--mode team` / `Team` scale label (§C.1)
 - **Spawning > 5 concurrent agents in Mode 4** — exceeds Anthropic-recommended 3-5 ceiling and incurs coordination overhead
 - **Selecting Mode 4 (Parallel) for coding-heavy work** — violates Anthropic's coding-task parallelism caveat; Mode 5 (Sub-Agent sequential) is the correct default for coding tasks
 - **Selecting Mode 6 (Workflow) for coding-heavy / multi-domain / new-code work** — violates Anthropic's coding-task parallelism caveat; Mode 6 admits ONLY genuinely-parallel high-volume mechanical work (one uniform transform rule, no inter-file dependency). Coding-heavy work belongs to Mode 5
@@ -231,7 +245,7 @@ The following patterns violate the orchestration mode selection contract:
 |----------------|------------------------------|-------|
 | `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 4 scale-based selection chooses the envelope (see scale-label rows below). |
 | `loop` | Mode 5 (`sub-agent`) | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the Mode 5 sequential sub-agent. |
-| `team` | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. The dispatch value is retained for backward-compat + the CI sentinel audit; it no longer resolves to a live team mode. |
+| `team` | Mode 3 (`agent-team`) — experimental (re-allowed) | `--mode team` selects the Agent Teams layer (operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back per the Mode Resolver — the sentinel string is retained in `run.md` for the CI audit and as genealogy. |
 | `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); the utility subcommands are intrinsically pipeline-class, so `pipeline` names their fixed sequential direct / sub-agent execution shape — the `--mode pipeline` flag itself is ignored there (`MODE_FLAG_IGNORED_FOR_UTILITY`), not honored. |
 
 ### Phase 4 scale-table labels → catalog modes
@@ -242,7 +256,7 @@ The following patterns violate the orchestration mode selection contract:
 | Focused | Mode 5 (`sub-agent`) | Focused envelope — single implementation agent with domain context injected. |
 | Standard | Mode 5 (`sub-agent`) | Standard envelope — planning + implementation + audit, sequential. |
 | Full Pipeline | Mode 5 (`sub-agent`) | Full envelope — full sequential agent chain (plan → implement → audit → docs). |
-| Team | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--team` flag emits `MODE_TEAM_UNAVAILABLE` and falls back per §C.1. The scale label is retained for backward-compat; it no longer resolves to a live team mode. |
+| Team | Mode 3 (`agent-team`) — experimental (re-allowed) | The `Team` scale label selects the Agent Teams layer (§C.1). Historical: the retired-era `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back; retained as genealogy. |
 
 Every `--mode` value and every scale label corresponds to exactly one catalog mode. Mode 1 (trivial), Mode 2 (background), Mode 4 (parallel), and Mode 6 (workflow) have NO dispatch-axis or scale-label counterpart — they are selectable only via the Phase 4 decision tree (§B). This asymmetry is expected and is further evidence the two axes are distinct.
 
@@ -250,7 +264,7 @@ Every `--mode` value and every scale label corresponds to exactly one catalog mo
 
 ## §G.2 — `manager-kanban` as a Mode-5-shaped delegation target (NOT a Mode 7)
 
-> **Non-regression note (the hierarchical-team SPEC).** Adding `manager-kanban` to the retained-agent catalog does NOT alter the Phase 4 execution-mode catalog in §A. `manager-kanban` is a Mode-5-shaped delegation target: the orchestrator spawns it sequentially (Mode 5 envelope), and `manager-kanban` in turn fans out write-capable leaf workers under the depth-2 seal (the sole Agent-carrier carve-out, depth-2 sealed). This is NOT a Mode 7 — no new mode is introduced. Mode 3 (`agent-team`) stays RETIRED, the `MODE_TEAM_UNAVAILABLE` sentinel is unchanged, and the `--mode` dispatch-axis values (`autopilot` / `loop` / `team` / `pipeline`) are unchanged. The entry predicate for `manager-kanban` (≥3 milestones AND ≥10 files AND cross-domain fan-out) is logged in `progress.md §F Mode Selection` before the spawn, exactly as any other Mode-5 delegation; `manager-kanban` does not modify the decision tree in §B — it is selectable once the orchestrator's Tier L coordination threshold is met.
+> **Non-regression note (the hierarchical-team SPEC).** Adding `manager-kanban` to the retained-agent catalog does NOT alter the Phase 4 execution-mode catalog in §A. `manager-kanban` is a Mode-5-shaped delegation target: the orchestrator spawns it sequentially (Mode 5 envelope), and `manager-kanban` in turn fans out write-capable leaf workers under the depth-2 seal (the sole Agent-carrier carve-out, depth-2 sealed). This is NOT a Mode 7 — no new mode is introduced. Mode 3 (`agent-team`) is experimental and explicit-request-only (§C.1; Tier L auto-routing still targets `manager-kanban`), the `MODE_TEAM_UNAVAILABLE` sentinel is retained as documented history, and the `--mode` dispatch-axis values (`autopilot` / `loop` / `team` / `pipeline`) are unchanged. The entry predicate for `manager-kanban` (≥3 milestones AND ≥10 files AND cross-domain fan-out) is logged in `progress.md §F Mode Selection` before the spawn, exactly as any other Mode-5 delegation; `manager-kanban` does not modify the decision tree in §B — it is selectable once the orchestrator's Tier L coordination threshold is met.
 
 ---
 
