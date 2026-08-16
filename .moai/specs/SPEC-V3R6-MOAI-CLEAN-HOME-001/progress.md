@@ -102,7 +102,7 @@ Justification: Tier M coding-heavy feature (doctor disk check + clean --home wit
 
 ```yaml
 sync_complete_at: 2026-08-17T04:10:00+09:00
-sync_commit_sha: pending-backfill-SPEC-V3R6-MOAI-CLEAN-HOME-001
+sync_commit_sha: 2d9fcf3cc
 sync_status: audit-ready
 b12_self_test_a: "pre-emission grep -c 'SPEC-V3R6-MOAI-CLEAN-HOME-001' CHANGELOG.md → 0 (exit 1, duplicate guard PASS — entry appended to the existing [Unreleased] > Added section, directly below the SPEC-V3R6-MOAI-HOME-PATHS-001 entry)"
 b12_self_test_b: "AC count match: acceptance.md SSOT = 12 (canonical grep returns exactly 12 distinct tokens AC-MCH-001..012); CHANGELOG entry cites 12"
