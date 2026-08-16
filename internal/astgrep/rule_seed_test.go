@@ -1,12 +1,35 @@
 package astgrep_test
 
-// rule_seed_test.go covers AC-UTIL-002-13..19 (5-language rule seeding).
-// Each language subtest verifies:
-//   (a) YAML files load without error
-//   (b) Rules declare note, metadata.owasp, and metadata.cwe
-//   (c) Fixture files exist on disk
-//   (d) When sg is available: violation fixture → ≥1 finding, valid fixture → 0 findings
-//   (e) When sg is available: at least one finding has non-empty Metadata["cwe"]
+// rule_seed_test.go verifies the seeding invariants of the ruleset this
+// repository actually ships: .moai/astgrep-rules/{go,security} (tracked, and
+// byte-identical to the template copy at
+// internal/template/templates/.moai/config/astgrep-rules/).
+//
+// History (t50): this test previously targeted the never-landed 5-language
+// seeding of SPEC-UTIL-002 (ruby/php/elixir/csharp/kotlin under the OLD
+// .moai/config/astgrep-rules path). Those directories were retired without ever
+// being populated, so every subtest silently skipped. The per-language cases
+// are gone; the invariants now pin the surviving surface:
+//
+//   (a) Every shipped rule loads without error; each directory holds ≥3 rules.
+//   (b) Every rule declares a non-empty note. Security rules additionally
+//       declare metadata.owasp and metadata.cwe. The go/ rules carry no
+//       metadata by current design — the SPEC-UTIL-002 metadata scheme landed
+//       only on the security family, and idioms/maintainability rules have no
+//       honest OWASP/CWE mapping — so no metadata assertion is made for them.
+//   (c) Shared Go fixtures (valid/violation/suppressed) exist on disk.
+//   (d) When sg is available: scanning via the shipped root sgconfig.yml finds
+//       ≥1 rule violation on the violation fixture, 0 on the valid fixture,
+//       and 0 on the suppressed fixture (ast-grep-ignore honored).
+//
+// Note on scan mechanics: every shipped rule expresses its matcher as a nested
+// `rule:` block, which the flat-pattern per-rule scan path
+// (Scanner.scanWithRules) cannot execute — only the sgconfig.yml config path
+// exercises the real matchers. Per-match metadata propagation is therefore NOT
+// asserted here (the config path does not propagate rule metadata onto
+// findings); the propagation mechanism itself is covered by
+// TestScanWithRules_MetadataPropagation below using a synthetic flat-pattern
+// rule.
 
 import (
 	"context"
@@ -38,157 +61,149 @@ func findProjectRoot(t *testing.T) string {
 	}
 }
 
-// TestRuleSeed verifies the 5-language rule directories introduced in SPEC-UTIL-002
-// (Ruby, PHP, Elixir, C#, Kotlin) satisfy all seeding invariants.
-// AC-UTIL-002-13..19
+// sgIsAvailable verifies sg is actually ast-grep, not newgrp (util-linux
+// symlink on Ubuntu). Ubuntu/Debian ships `/usr/bin/sg` as a newgrp
+// alternative which shadows ast-grep when ast-grep is not installed.
+// LookPath alone is insufficient.
+func sgIsAvailable() bool {
+	if _, err := exec.LookPath("sg"); err != nil {
+		return false
+	}
+	out, err := exec.Command("sg", "--version").CombinedOutput()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(out)), "ast-grep")
+}
+
+// TestRuleSeed verifies the tracked ruleset directories (go/, security/)
+// satisfy the seeding invariants described in the file header. The
+// directories are tracked repository content: a missing or shrunken
+// directory is a regression, not a skip condition.
 func TestRuleSeed(t *testing.T) {
 	t.Parallel()
 
-	// Verify sg is actually ast-grep, not newgrp (util-linux symlink on Ubuntu).
-	// Ubuntu/Debian ships `/usr/bin/sg` as newgrp alternative which shadows ast-grep
-	// when ast-grep is not installed. LookPath alone is insufficient.
-	sgAvailable := func() bool {
-		if _, err := exec.LookPath("sg"); err != nil {
-			return false
-		}
-		out, err := exec.Command("sg", "--version").CombinedOutput()
-		if err != nil {
-			return false
-		}
-		return strings.Contains(strings.ToLower(string(out)), "ast-grep")
-	}()
+	sgAvailable := sgIsAvailable()
 
-	type langCase struct {
-		lang     string
-		ext      string
-		rulesDir string
-		fixtDir  string
+	type dirCase struct {
+		name        string // subtest name and directory under .moai/astgrep-rules
+		requireMeta bool   // assert metadata.owasp + metadata.cwe on every rule
 	}
 
-	projectRoot := findProjectRoot(t)
-
-	cases := []langCase{
-		{
-			lang:     "ruby",
-			ext:      "rb",
-			rulesDir: ".moai/config/astgrep-rules/ruby",
-			fixtDir:  "internal/astgrep/testdata/fixtures/ruby",
-		},
-		{
-			lang:     "php",
-			ext:      "php",
-			rulesDir: ".moai/config/astgrep-rules/php",
-			fixtDir:  "internal/astgrep/testdata/fixtures/php",
-		},
-		{
-			lang:     "elixir",
-			ext:      "ex",
-			rulesDir: ".moai/config/astgrep-rules/elixir",
-			fixtDir:  "internal/astgrep/testdata/fixtures/elixir",
-		},
-		{
-			lang:     "csharp",
-			ext:      "cs",
-			rulesDir: ".moai/config/astgrep-rules/csharp",
-			fixtDir:  "internal/astgrep/testdata/fixtures/csharp",
-		},
-		{
-			lang:     "kotlin",
-			ext:      "kt",
-			rulesDir: ".moai/config/astgrep-rules/kotlin",
-			fixtDir:  "internal/astgrep/testdata/fixtures/kotlin",
-		},
+	cases := []dirCase{
+		{name: "go", requireMeta: false},
+		{name: "security", requireMeta: true},
 	}
 
 	for _, tc := range cases {
 		tc := tc
-		t.Run(tc.lang, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			rulesDir := filepath.Join(projectRoot, tc.rulesDir)
-			fixtureDir := filepath.Join(projectRoot, tc.fixtDir)
+			rulesDir := filepath.Join(findProjectRoot(t), ".moai", "astgrep-rules", tc.name)
 
-			// ── 1. Rules load without error ─────────────────────────────────
+			// 1. Rules load without error, >=3 rules (no skip: tracked content).
 			loader := astgrep.NewRuleLoader()
 			rules, err := loader.LoadFromDir(rulesDir)
 			if err != nil {
 				t.Fatalf("LoadFromDir(%s) error: %v", rulesDir, err)
 			}
-			if len(rules) == 0 {
-				// Interim skip: language rule dirs not yet populated.
-				// SPEC-UTIL-002 (5-language rule seeding) owns adding ≥3 rules + fixtures per
-				// language; remove this skip once those land so this becomes a real assertion again.
-				t.Skipf("rules dir %s not populated (expected ≥3 rules); skipped pending SPEC-UTIL-002 rule seeding", rulesDir)
+			if len(rules) < 3 {
+				t.Fatalf("rules dir %s holds %d rules, want >=3 (tracked ruleset shrank?)", rulesDir, len(rules))
 			}
 
-			// ── 2. Every rule has note, metadata.owasp, metadata.cwe ────────
+			// 2. Seeding invariants: identity fields + note (+ metadata for security).
 			for _, r := range rules {
+				if r.ID == "" {
+					t.Errorf("rule in %s is missing 'id' field", rulesDir)
+				}
+				if r.Language == "" {
+					t.Errorf("rule %q is missing 'language' field", r.ID)
+				}
+				if r.Severity == "" {
+					t.Errorf("rule %q is missing 'severity' field", r.ID)
+				}
+				if r.Message == "" {
+					t.Errorf("rule %q is missing 'message' field", r.ID)
+				}
 				if r.Note == "" {
-					t.Errorf("rule %q (lang=%s) is missing 'note' field", r.ID, tc.lang)
+					t.Errorf("rule %q is missing 'note' field", r.ID)
 				}
-				if r.Metadata == nil {
-					t.Errorf("rule %q (lang=%s) is missing 'metadata' field", r.ID, tc.lang)
-					continue
+				if tc.requireMeta {
+					if r.Metadata == nil {
+						t.Errorf("rule %q is missing 'metadata' field", r.ID)
+						continue
+					}
+					if r.Metadata["owasp"] == "" {
+						t.Errorf("rule %q metadata is missing 'owasp' key", r.ID)
+					}
+					if r.Metadata["cwe"] == "" {
+						t.Errorf("rule %q metadata is missing 'cwe' key", r.ID)
+					}
 				}
-				if r.Metadata["owasp"] == "" {
-					t.Errorf("rule %q (lang=%s) metadata is missing 'owasp' key", r.ID, tc.lang)
-				}
-				if r.Metadata["cwe"] == "" {
-					t.Errorf("rule %q (lang=%s) metadata is missing 'cwe' key", r.ID, tc.lang)
-				}
-			}
-
-			// ── 3. Fixture files exist on disk ───────────────────────────────
-			for _, fixture := range []string{"valid", "violation", "suppressed"} {
-				fp := filepath.Join(fixtureDir, fixture+"."+tc.ext)
-				if _, err := os.Stat(fp); err != nil {
-					t.Errorf("fixture file not found: %s", fp)
-				}
-			}
-
-			// ── 4+5. sg-dependent: scan violation/valid fixtures ─────────────
-			if !sgAvailable {
-				t.Skip("sg binary not available; skipping scan assertions")
-			}
-
-			scanner := astgrep.NewScanner(&astgrep.ScannerConfig{
-				RulesDir: rulesDir,
-				SGBinary: "sg",
-			})
-
-			// 4a. Violation fixture → ≥1 finding (AC-UTIL-002-19)
-			violationFile := filepath.Join(fixtureDir, "violation."+tc.ext)
-			vFindings, err := scanner.Scan(context.Background(), violationFile)
-			if err != nil {
-				t.Fatalf("Scan(violation.%s) error: %v", tc.ext, err)
-			}
-			if len(vFindings) == 0 {
-				t.Errorf("violation.%s should produce ≥1 finding, got 0", tc.ext)
-			}
-
-			// 4b. Valid fixture → 0 findings (AC-UTIL-002-19)
-			validFile := filepath.Join(fixtureDir, "valid."+tc.ext)
-			goodFindings, err := scanner.Scan(context.Background(), validFile)
-			if err != nil {
-				t.Fatalf("Scan(valid.%s) error: %v", tc.ext, err)
-			}
-			if len(goodFindings) != 0 {
-				t.Errorf("valid.%s should produce 0 findings, got %d", tc.ext, len(goodFindings))
-			}
-
-			// 5. At least one violation finding has non-empty Metadata["cwe"] (AC-UTIL-002-19)
-			hasCWE := false
-			for _, f := range vFindings {
-				if f.Metadata["cwe"] != "" {
-					hasCWE = true
-					break
-				}
-			}
-			if !hasCWE {
-				t.Errorf("violation.%s: no finding has non-empty Metadata[\"cwe\"]", tc.ext)
 			}
 		})
 	}
+
+	// 3+4. Shared Go fixtures scanned through the shipped root sgconfig.yml.
+	t.Run("fixtures-scan", func(t *testing.T) {
+		t.Parallel()
+
+		if !sgAvailable {
+			t.Skip("sg binary not available; skipping scan assertions")
+		}
+
+		projectRoot := findProjectRoot(t)
+		rulesRoot := filepath.Join(projectRoot, ".moai", "astgrep-rules")
+		fixtureDir := filepath.Join(projectRoot, "internal", "astgrep", "testdata", "fixtures", "go")
+
+		// 3. Fixture files exist on disk.
+		fixtures := map[string]string{
+			"valid":      filepath.Join(fixtureDir, "valid.go"),
+			"violation":  filepath.Join(fixtureDir, "violation.go"),
+			"suppressed": filepath.Join(fixtureDir, "suppressed.go"),
+		}
+		for name, fp := range fixtures {
+			if _, err := os.Stat(fp); err != nil {
+				t.Errorf("fixture file not found: %s (%s)", fp, name)
+			}
+		}
+
+		// The root ruleset carries sgconfig.yml, so Scanner takes the config
+		// path (sg scan --config) — the only path that executes the shipped
+		// nested-`rule:` matchers.
+		scanner := astgrep.NewScanner(&astgrep.ScannerConfig{
+			RulesDir: rulesRoot,
+			SGBinary: "sg",
+		})
+
+		// 4a. Violation fixture -> >=1 finding.
+		vFindings, err := scanner.Scan(context.Background(), fixtures["violation"])
+		if err != nil {
+			t.Fatalf("Scan(violation.go) error: %v", err)
+		}
+		if len(vFindings) == 0 {
+			t.Error("violation.go should produce >=1 finding, got 0")
+		}
+
+		// 4b. Valid fixture -> 0 findings.
+		gFindings, err := scanner.Scan(context.Background(), fixtures["valid"])
+		if err != nil {
+			t.Fatalf("Scan(valid.go) error: %v", err)
+		}
+		if len(gFindings) != 0 {
+			t.Errorf("valid.go should produce 0 findings, got %d: %v", len(gFindings), gFindings)
+		}
+
+		// 4c. Suppressed fixture -> 0 findings (ast-grep-ignore honored).
+		sFindings, err := scanner.Scan(context.Background(), fixtures["suppressed"])
+		if err != nil {
+			t.Fatalf("Scan(suppressed.go) error: %v", err)
+		}
+		if len(sFindings) != 0 {
+			t.Errorf("suppressed.go should produce 0 findings, got %d: %v", len(sFindings), sFindings)
+		}
+	})
 }
 
 // TestRuleStruct_NoteField verifies Rule struct has a Note field with correct YAML/JSON tags.
