@@ -2,7 +2,7 @@
 id: SPEC-ALWAYS-LOADED-DIET-001
 title: "always-loaded 컨텍스트 표면 다이어트 + 캐시 규율 편입 + 재발 통제"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-16
 updated: 2026-08-17
 author: manager-spec

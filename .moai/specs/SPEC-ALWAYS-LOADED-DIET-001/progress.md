@@ -22,7 +22,52 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — `kanban-dispatch.md` 분리 (2026-08-17)
+
+- Phase 1 re-audit: **skipped as eligible** — plan-audit iter2 PASS 0.845 (Tier M threshold 0.80) + artifact content unchanged since the verdict (squash-merge of PR #1576 did not alter artifact bytes).
+- Implementation Kickoff Approval: granted orchestrator-side (run-phase M1 dispatch received 2026-08-17). The §E.1 "NOT been requested" line reflects plan-phase authoring time.
+- Tree: worktree `feat/spec-always-loaded-diet`, pre-M1 HEAD `062a995d9` (base origin/main).
+
+**Construction (verbatim move, no rewrite — REQ-ALD-005/AP-2):**
+
+- `kanban-dispatch-detail.md` = frontmatter + ownership declaration + `sed -n '13,59p;62,92p;124,152p'` of the original. Line 61 dropped as the collapsed duplicate blank at the Class-B lift-out point (plan M1 step 3's 1-byte cleanup).
+- Stub = stay lines `1,6 / 7,12 / 93,98 / 60 / 99,123 / 153,230` + pointer line (after the Loading-scope quote) + one separator blank + footer version line. The Class B paragraph (original line 60, 495 B) relocated **whole-line** into `## Completion is read, never trusted`, between "Before moving a card…" and "This applies equally…".
+
+**Baseline (pre-edit, this run, this tree, HEAD 062a995d9):**
+
+```
+files=14 bytes=295044 tokens=73761 headroom=1239   # acceptance §A fm() form
+bytes=295044 tokens=73761 headroom=1239             # plan §C grep -rL form (identical)
+```
+
+**Post-split (this run, this tree, working tree):**
+
+```
+files=14 bytes=287068 tokens=71767 headroom=3233    # fm() form
+bytes=287068 tokens=71767 headroom=3233              # grep -rL form
+```
+
+Delta: −7,976 bytes → headroom 1,239 → 3,233 (+1,994). AC-ALD-001 checkpoint (final gate is post-M4) already holds: 3,233 > 1,239.
+
+**M1-decidable AC matrix (all PASS, commands run in this tree):**
+
+| AC | Command (form) | Observed | Verdict |
+|---|---|---|---|
+| AC-ALD-003 | 9 BINDING headings `grep -c` in stub; 6 LEAD-ONLY `grep -c` in stub; anchor `names that path in its completion report` both files | 9×1; 6×0; relocated_in_stub=1 relocated_in_companion=0 | PASS |
+| AC-ALD-004 | `grep -c '\[HARD\]'` stub / companion | stub=6 companion=3 (sum 9 = original census 9) | PASS |
+| AC-ALD-005 | 7 headings `grep -c` in companion | 7×1 | PASS |
+| AC-ALD-006 | `comm -23` orig(BASE_REF=be1958a4d) vs stub+companion, non-empty sorted | missing_lines=0; positive contrast vs /dev/null=140 | PASS |
+| AC-ALD-007 | `fm()` paths keys | manager-kanban_key=1 todo_key=1 (domain-keyed, plan D2) | PASS |
+| AC-ALD-008 | (a) names within ±2 lines of the `kanban-dispatch-detail.md` mention (pipe form), (b) ownership_decl, (c) footer | (a) 6×1, (b) ownership_decl=3, (c) version line present | PASS |
+| AC-ALD-009 | `wc -c` both files | stub=13027 companion=8866 sum=21893 (range 21003..21903; overhead 890 B, within the 600–900 estimate) | PASS |
+| AC-ALD-012 | `headroom` files= + `fm()` paths_key | files=14, exists=1 paths_key=1 (cache-aware-execution-reference.md is M2 — AC completes at M2) | PASS (M1 scope) |
+| AC-ALD-002 | guard + budget const + go diff | `ok github.com/modu-ai/moai-adk/internal/config 0.607s` exit=0; budget_const=1; go_changed=0 | PASS |
+
+Note (AC-ALD-008a form): acceptance.md's `<(grep -A2 -B2 …)` process-substitution form yields empty `grep -c` output under this environment's zsh; the pipe form `grep -A2 -B2 … | grep -c` is semantically identical and was used. Bash (sync-audit) runs the acceptance form directly.
+
+**Other verification:** `go build ./...` → exit 0. `go test ./internal/config/` (full package) → `ok github.com/modu-ai/moai-adk/internal/config 2.551s`. Subagent boundary: `grep -rn 'AskUserQuestion'` on the two rule files → 2 matches, both pre-existing doctrine-text mentions (original census 2: 1 stayed in stub `Boundaries`, 1 moved verbatim to companion `Entry into the board`); no new occurrences. golangci-lint: n/a — 0 Go files changed; markdown has no lint gate. RED-state evidence: n/a — documentation milestone, no test-first artifact (recorded as a gap, not fabricated).
+
+**Residual (recorded, deliberately not fixed):** the companion line "This is the same shape as the CodeRabbit section below." now reads stale inside the companion (the CodeRabbit section stayed in the stub). Rewording it would break AC-ALD-006's line-set preservation and violate AP-2 — the line must stay verbatim; the referenced section exists in the stub.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -31,3 +76,9 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- decision: `sub-agent` (Mode 5 — sequential per milestone)
+- rationale: coding-heavy documentation surgery on one always-loaded rule file per milestone; single-writer discipline protects the AC-ALD-009 byte-sum attribution and the shared §C measurement chain (M1→M4 ordering is load-bearing: M2 adds back bytes M1 removed, M3 adds the recurrence control, M4 mirrors and takes the final measurement)
+- autonomous progression: goal armed orchestrator-side (ac_converge family); milestones delegated one at a time
