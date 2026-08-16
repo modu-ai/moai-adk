@@ -33,6 +33,14 @@ import (
 // backlogLockFileName names the lock artifact sibling to the backlog file.
 const backlogLockFileName = "backlog.lock"
 
+// legacyBacklogLockFileName is the lock artifact name an earlier revision of
+// this store used. No code reads it anymore, but an install that lived
+// through the rename keeps a stale zero-byte artifact beside the live lock
+// (measured on the primary checkout: 0 B, three days older than backlog.lock).
+// NewBacklogStore sweeps it best-effort so the directory settles on one lock
+// name instead of carrying two.
+const legacyBacklogLockFileName = "backlog.json.lock"
+
 // backlogVersion is the record schema version. The schema is ADDITIVE within
 // version 1: `last_seq` was appended as a top-level field with no version
 // bump, and no per-item field may ever be added (spec.md §E out-of-scope).
@@ -77,8 +85,13 @@ type BacklogStore struct {
 	path string
 }
 
-// NewBacklogStore returns a store over the backlog file at path.
+// NewBacklogStore returns a store over the backlog file at path. As a
+// best-effort side effect it removes a superseded legacy lock artifact
+// sitting beside the file (see legacyBacklogLockFileName); a failed removal
+// — permissions, a race with another process — is ignored, because the live
+// lock name and the store's correctness do not depend on it.
 func NewBacklogStore(path string) *BacklogStore {
+	_ = os.Remove(filepath.Join(filepath.Dir(path), legacyBacklogLockFileName))
 	return &BacklogStore{path: path}
 }
 
