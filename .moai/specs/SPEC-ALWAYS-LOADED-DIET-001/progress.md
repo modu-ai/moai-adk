@@ -232,7 +232,32 @@ Gaps (E8): documentation/mirror milestone — no RED-state test-first artifact e
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-17
+run_commit_sha: 67466e997   # run-phase squash on main (PR #1577); per-milestone a203a7c3a/6d701d26c/fcc07d1bc/9269a5e56 inside
+sync_commit_sha: pending-backfill-k4v9x   # D3 self-referential-hazard placeholder; backfilled in the follow-up commit on this branch
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] / Added
+ac_count_in_changelog: 16
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed   # single sync-commit terminal close (3-phase close contract; no separate Mx chore commit)
+  plan_md: n/a (markdown-header convention, no frontmatter)
+  acceptance_md: n/a (markdown-header convention, no frontmatter)
+  progress_md: n/a (this file)
+canary_compliance_check:
+  spec_lint: pending (sync is markdown-only; spec body untouched)
+  changelog_single_entry: grep -c 'SPEC-ALWAYS-LOADED-DIET-001' CHANGELOG.md == 1   # observed 0 pre-emission, 1 post-write
+  ac_count_match: 16   # distinct-AC grep on acceptance.md == 16 == count referenced in CHANGELOG entry
+  mx_tag_validation: n/a   # zero source files touched by sync; run-phase carried no @MX surface (markdown-only SPEC)
+```
+
+### Sync-phase attribution
+
+- **Frontmatter transition carried by this sync commit**: single `in-progress -> completed` merged close on `spec.md` (sole YAML-frontmatter artifact — plan.md / acceptance.md / progress.md use the markdown-header convention, verified by grep before the transition set was claimed). `updated:` already reads 2026-08-17 (run-phase refresh), still current.
+- **CHANGELOG emission discipline (B12)**: pre-emission `grep -c 'SPEC-ALWAYS-LOADED-DIET-001' CHANGELOG.md` == 0 (no duplicate from a parallel session); distinct-AC grep on acceptance.md == 16, matching the AC count cited in the CHANGELOG entry; every file path cited in the entry (spec.md + 5 dev-surface rule files + 5 template mirrors) verified via `ls` before commit.
+- **README / docs-site: unchanged.** Internal rule architecture — no CLI, no config key, no documented user-facing behavior. The 5 template mirrors distribute rule files to user projects, but those are template-internal artifacts already covered by the M4 neutrality gates, not README/docs-site content. Scope discipline: nothing touched.
+- **Residual carried forward (from §E.2 M4)**: the 5 mirrored rule files are not enrolled in a byte-parity registry (`workflowOptMirroredPaths` / `sanitizedPairPaths`) — a Go test-file edit outside this SPEC's scope envelope; recorded as a follow-up card candidate alongside the D4-1 budget ratchet (headroom 2,757 tokens is the ratchet's new baseline input).
+- **`sync_commit_sha` backfill**: placeholder `pending-backfill-k4v9x` in this commit; commit 1's real SHA read after landing and substituted in the immediately-following `chore(SPEC-ALWAYS-LOADED-DIET-001): backfill sync_commit_sha` commit (amend is FORBIDDEN per the D3 exemption pattern).
 
 ## §F Phase 4 Mode Selection
 
