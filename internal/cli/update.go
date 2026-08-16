@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
@@ -824,7 +825,7 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 //     flag never reached. Treating it as already-migrated lets Step 4
 //     clear the residue and the fingerprint converge.
 func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Writer) error {
-	homeDir, err := os.UserHomeDir()
+	homeDir, err := paths.Home()
 	if err != nil {
 		return fmt.Errorf("agency migration adapter: home dir: %w", err)
 	}
