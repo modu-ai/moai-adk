@@ -36,7 +36,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role>-<run-id> | -f <N>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f <N>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -65,10 +65,11 @@ Kanban Mode:
                                 session. The optional SPEC-ID ties the run to a
                                 SPEC. The lead drives the whole chain; four
                                 companion sessions are launched by hand.
-  -k --name <role>-<run-id>     Enter as a COMPANION of an existing kanban run.
+  -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The four
-                                roles are: plan, run, review, sync. The run-id
-                                is the identifier the lead announced at startup.
+                                roles are: plan, run, review, sync. A role name
+                                held by a live session is bumped to the next
+                                free number (plan-1, plan-2, ...).
 
 Factory Mode:
   -f, --factory <N>             Enter as the LEAD of a factory run with N
@@ -249,8 +250,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			}
 			defer settingsCleanup()
 		case kanbanBranchCompanion:
-			defer enterKanbanCompanionMode(label)()
-			recordKanbanSession(specID, kanban.BackendGLM, companionRole(label))
+			// See cc.go: a live-held label is bumped, and the bumped value must
+			// reach the backend argv.
+			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
+			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
+			defer enterKanbanCompanionMode(finalLabel)()
+			recordKanbanSession(specID, kanban.BackendGLM, companionRole(finalLabel))
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)

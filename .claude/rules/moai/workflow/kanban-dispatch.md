@@ -73,7 +73,7 @@ Each arrow below is one dispatch from the lead to one companion session:
 [operator picks a card]  →  plan  →  run  →  review  →  sync  →  [lead marks done]
 ```
 
-Dispatch is addressed by session name. Companion sessions are named `<role>-<run-id>` at launch (for example `plan-a1b2c3`), and `ListAgents` reports the live set. Send with `SendMessage({to: "<name>", message: "…"})`; when a bare name is ambiguous, use the short reference the listing prints.
+Dispatch is addressed by session name. Companion sessions are named by their bare role; a name held by a live session is bumped to the next free number. No run id travels in companion names (one run per machine; the lead keeps the id), so a lead cannot announce a run id no live session carries. `ListAgents` reports the live set. Send with `SendMessage({to: "<name>", message: "…"})`; when a bare name is ambiguous, use the short reference the listing prints.
 
 Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 

@@ -134,10 +134,13 @@ func kanbanLeadNotice(runID, root, lang string) string {
 
 	// (c) the four companion launch lines, each carrying -k (AC-FB-015) so the
 	// operator copies a kanban-membership command, not the bare --name form the
-	// prior-art notice printed.
+	// prior-art notice printed. The names are the bare roles — under the
+	// one-machine-one-run policy no run id travels in companion names, so a
+	// copied command cannot address a run the lead is not on (the t21 class).
+	// A role already held by a live session is bumped by the launcher itself.
 	launch := make([]string, 0, len(kanban.CompanionRoles))
 	for _, role := range kanban.CompanionRoles {
-		launch = append(launch, "moai cc -k --name "+kanban.CompanionLabel(role, runID))
+		launch = append(launch, "moai cc -k --name "+kanban.CompanionLabel(role))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
@@ -213,13 +216,16 @@ func queuedBacklogCount(root string) int {
 // acknowledging the join. It does NOT print the launch block (four sessions
 // each inviting four more is the failure this separation exists to prevent).
 //
-// AC-FB-016 / AC-FB-016a: the notice names the run id and is role-less. When
-// the label does not parse (ok=false) the notice is the empty string
-// (fail-open, C8) — no notice emitted, no error raised, the launch proceeds.
+// AC-FB-016 / AC-FB-016a: the notice is role-less prose and names the LABEL
+// the session launched under — which may be a bumped number, and is the
+// address the lead dispatches to; the launch-time stderr note is gone by the
+// time the TUI takes the screen, so this line is where the operator reads the
+// final name. When the label does not parse (ok=false) the notice is the
+// empty string (fail-open, C8) — no notice emitted, no error raised, the
+// launch proceeds.
 func kanbanCompanionNotice(label, lang string) string {
-	_, runID, ok := kanban.SplitCompanionLabel(label)
-	if !ok {
+	if _, _, ok := kanban.SplitCompanionLabel(label); !ok {
 		return ""
 	}
-	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, runID)
+	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, label)
 }

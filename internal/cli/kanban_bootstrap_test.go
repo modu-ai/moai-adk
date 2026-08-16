@@ -82,8 +82,8 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 	if runID == "" {
 		t.Fatalf("%s not set by enterKanbanMode", config.EnvMoaiKanbanID)
 	}
-	if _, _, ok := kanban.SplitCompanionLabel(kanban.CompanionLabel("plan", runID)); !ok {
-		t.Errorf("run id %q does not produce a parseable companion label", runID)
+	if _, ok := kanban.SplitLeadLabel(kanban.LeadLabel(runID)); !ok {
+		t.Errorf("run id %q does not produce a parseable lead label", runID)
 	}
 	if os.Getenv(config.EnvMoaiKanban) != "1" {
 		t.Errorf("%s not set", config.EnvMoaiKanban)
@@ -99,21 +99,23 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 
 // TestEnterKanbanCompanionModeSetsLabelNotKanban is the separation this whole
 // change rests on: a companion takes the raised block cap but must NOT be seeded
-// with the chain, or four sessions each drive the whole chain.
+// with the chain, or four sessions each drive the whole chain. Under the
+// bare-role naming policy it also publishes no run id — the id is lead-owned
+// state, and a companion-published one is the t21 mismatch root.
 func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
 	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterKanbanCompanionMode("review-tjlgt1")
+	restore := enterKanbanCompanionMode("review")
 
-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "review-tjlgt1" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "review-tjlgt1")
+	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "review" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "review")
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "tjlgt1" {
-		t.Errorf("%s = %q, want %q (derived from the label, never carried separately)",
-			config.EnvMoaiKanbanID, got, "tjlgt1")
+	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
+		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state)",
+			config.EnvMoaiKanbanID)
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
 		t.Errorf("%s must NOT be set on a companion (it seeds the chain)", config.EnvMoaiKanban)

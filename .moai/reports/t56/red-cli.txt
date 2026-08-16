@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/kanban_companion_name_test.go:24:12: undefined: resolveCompanionName
+internal/cli/kanban_companion_name_test.go:27:29: undefined: companionRegistryPath
+internal/cli/kanban_companion_name_test.go:39:32: undefined: companionRegistryPath
+internal/cli/kanban_companion_name_test.go:50:9: undefined: resolveCompanionName
+internal/cli/kanban_companion_name_test.go:57:29: undefined: companionRegistryPath
+internal/cli/kanban_companion_name_test.go:68:32: undefined: companionRegistryPath
+internal/cli/kanban_companion_name_test.go:77:12: undefined: resolveCompanionName
+internal/cli/kanban_companion_name_test.go:87:32: undefined: companionRegistryPath
+internal/cli/kanban_companion_name_test.go:96:9: undefined: resolveCompanionName
+internal/cli/kanban_companion_name_test.go:111:12: undefined: resolveCompanionName
+internal/cli/kanban_companion_name_test.go:111:12: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

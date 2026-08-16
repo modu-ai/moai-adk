@@ -1,0 +1,6 @@
+# github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+internal/hook/session_start_kanban_test.go:87:62: not enough arguments in call to kanban.CompanionLabel
+	have (string)
+	want (string, string)
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+FAIL

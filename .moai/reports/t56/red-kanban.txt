@@ -1,0 +1,7 @@
+# github.com/modu-ai/moai-adk/internal/kanban [github.com/modu-ai/moai-adk/internal/kanban.test]
+internal/kanban/bootstrap_test.go:153:27: not enough arguments in call to CompanionLabel
+	have (string)
+	want (string, string)
+internal/kanban/bootstrap_test.go:169:13: undefined: CompanionNumberLabel
+FAIL	github.com/modu-ai/moai-adk/internal/kanban [build failed]
+FAIL

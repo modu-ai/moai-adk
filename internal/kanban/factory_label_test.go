@@ -46,8 +46,11 @@ func TestFactoryWorkerLabelNeverKanbanShape(t *testing.T) {
 	if _, ok := SplitLeadLabel(FactoryWorkerLabel(3)); ok {
 		t.Error("a worker label must not satisfy the lead shape")
 	}
-	if _, ok := SplitFactoryWorkerLabel(CompanionLabel("run", "tjlgt1")); ok {
+	if _, ok := SplitFactoryWorkerLabel(CompanionLabel("run")); ok {
 		t.Error("a companion label must not satisfy the worker shape")
+	}
+	if _, ok := SplitFactoryWorkerLabel(CompanionNumberLabel("run", 1)); ok {
+		t.Error("a bumped companion label must not satisfy the worker shape")
 	}
 	if _, ok := SplitFactoryWorkerLabel(LeadLabel("tjlgt1")); ok {
 		t.Error("a lead label must not satisfy the worker shape")

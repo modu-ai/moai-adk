@@ -1,14 +1,23 @@
 package kanban
 
 // bootstrap.go holds the vocabulary of a kanban run's multi-session bootstrap:
-// the run identifier, the companion roles, and the `<role>-<run-id>` label that
-// joins the two.
+// the run identifier, the companion roles, and the label that names a companion
+// session — the bare role name, with an optional numeric suffix the launcher
+// appends on collision.
 //
 // It lives here rather than in internal/cli because both sides of the bootstrap
 // need it and they cannot import each other: the launcher (internal/cli) mints
 // the id and recognizes the label, while the SessionStart hook (internal/hook)
 // announces them — and internal/cli already imports internal/hook, so the
 // dependency can only run in that direction.
+//
+// Naming policy (card t56, operator decision 2026-08-17): companion names
+// carry no run id. The run id remains the LEAD's identifier (its session name,
+// its leader socket path, its MOAI_KANBAN_ID); a companion is named by its
+// role alone, and a second live session claiming the same role takes the next
+// free number. The premise this accepts is one kanban run per machine — the
+// run id was the only distinguisher of two concurrent runs, and the operator
+// has decided that case out of scope.
 
 import (
 	"strconv"
@@ -59,14 +68,26 @@ func base36(n int64) string {
 	return string(b)
 }
 
-// CompanionLabel joins a role and a run id into the label a companion session
-// is launched under.
-func CompanionLabel(role, runID string) string {
-	return role + "-" + runID
+// CompanionLabel returns the label a companion session is launched under: the
+// bare role name. This is the form the lead announces and the form an
+// unobstructed launch keeps; a collision with a live claim appends a number
+// (CompanionNumberLabel), which the launcher — not this composer — resolves.
+func CompanionLabel(role string) string {
+	return role
+}
+
+// CompanionNumberLabel joins a role and a collision number into the bumped
+// label a companion launches under when its bare name is held by a live
+// session (`plan-1`, `plan-2`, ...). It is the companion sibling of
+// FactoryWorkerLabel's shape.
+func CompanionNumberLabel(role string, n int) string {
+	return role + "-" + strconv.Itoa(n)
 }
 
 // LeadLabel joins the lead role and a run id into the label a lead session is
-// launched under, in the same `<role>-<run-id>` form CompanionLabel produces.
+// launched under. The lead is the one session that keeps its run id in its
+// name — it survives /clear and anchors the leader socket — while companions
+// are named by their bare roles.
 //
 // The label deliberately never satisfies SplitCompanionLabel: RoleLead is
 // absent from CompanionRoles, so a session launched under this name is never
@@ -75,19 +96,35 @@ func LeadLabel(runID string) string {
 	return RoleLead + "-" + runID
 }
 
-// SplitCompanionLabel splits a `<role>-<run-id>` label into its parts and
-// reports whether the value has the companion shape at all.
+// SplitCompanionLabel splits a companion label into its role and optional
+// suffix and reports whether the value has the companion shape at all.
 //
 // The shape IS the discriminator for companion recognition, so this check is
 // load-bearing rather than cosmetic: matching every named session instead would
-// silently change launch behavior for unrelated work. A role name carries no
-// hyphen, so the first hyphen is the boundary.
-func SplitCompanionLabel(label string) (role, runID string, ok bool) {
-	role, runID, found := strings.Cut(label, "-")
-	if !found || !isCompanionRole(role) || !isRunIDShape(runID) {
+// silently change launch behavior for unrelated work.
+//
+// Two forms parse:
+//
+//   - the bare role (`plan`) — the form the lead announces and the common case
+//     under the one-machine-one-run policy;
+//   - `<role>-<suffix>` — the suffix is a collision number the launcher
+//     appended (`plan-1`), or a run id from a pre-policy launch (`plan-abc123`).
+//
+// The legacy run-id form is MIGRATED, not rejected: a rejected suffix would
+// fail the shape check, and `-k --name plan-abc123` then reroutes down the
+// LEAD branch of the launcher's truth table (a `-k` launch whose name is not
+// companion-shaped seeds a whole second chain) — a silent misroute far worse
+// than joining under a stale suffix. A role name carries no hyphen, so the
+// first hyphen is the boundary and a second hyphen never parses.
+func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
+	if isCompanionRole(label) {
+		return label, "", true
+	}
+	role, suffix, found := strings.Cut(label, "-")
+	if !found || !isCompanionRole(role) || !isRunIDShape(suffix) {
 		return "", "", false
 	}
-	return role, runID, true
+	return role, suffix, true
 }
 
 // SplitLeadLabel splits a `lead-<run-id>` label into its run id and reports
@@ -132,10 +169,10 @@ const factoryWorkerRole = "worker"
 // The label deliberately never satisfies SplitCompanionLabel or
 // SplitLeadLabel: factory workers neither occupy the four-role kanban chain
 // nor the lead position, so a factory name is never reclassified by the
-// kanban shape discriminators. Unlike the kanban labels it carries no run id
-// — a factory worker is addressed by name alone (the run's lead dispatches
-// cards over cross-session messages), which is why the launcher maintains a
-// separate liveness-checked registry to keep the numbered names unique.
+// kanban shape discriminators. Like the companion labels it carries no run id
+// — every lane is addressed by name alone (the run's lead dispatches cards
+// over cross-session messages), which is why the launcher maintains a
+// liveness-checked registry to keep the numbered names unique.
 func FactoryWorkerLabel(n int) string {
 	return factoryWorkerRole + "-" + strconv.Itoa(n)
 }
@@ -160,7 +197,8 @@ func SplitFactoryWorkerLabel(label string) (n int, ok bool) {
 }
 
 // isRunIDShape reports whether s is one or more lowercase alphanumerics — the
-// shape NewRunID produces.
+// shape NewRunID produces, and the shape a companion label's suffix admits
+// (a collision number, or a migrated legacy run id).
 func isRunIDShape(s string) bool {
 	if s == "" {
 		return false

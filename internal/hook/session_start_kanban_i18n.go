@@ -42,7 +42,7 @@ type kanbanMessages struct {
 	settingsVerify string
 	specLine       string // SPEC identifier
 	backlogSummary string // queued card count
-	companionJoin  string // run id
+	companionJoin  string // launch label
 }
 
 // kanbanLocales is the conversation-language table. Its four entries are the
@@ -64,7 +64,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		specLine:       "SPEC: %s",
 		backlogSummary: "Kanban backlog: %d waiting — run `moai todo` to view the queue.",
-		companionJoin:  "Kanban Mode: joined run %s.",
+		companionJoin:  "Kanban Mode: joined the kanban run as %s.",
 	},
 	"ko": {
 		leadHeader:   "칸반 모드: run %s, 리더 세션.",
@@ -77,7 +77,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
 		specLine:       "SPEC: %s",
 		backlogSummary: "칸반 백로그: %d장 대기 중 — `moai todo` 를 실행하면 큐를 볼 수 있습니다.",
-		companionJoin:  "칸반 모드: run %s 에 합류했습니다.",
+		companionJoin:  "칸반 모드: 칸반 run 에 %s 로 합류했습니다.",
 	},
 	"ja": {
 		leadHeader:   "かんばんモード: run %s、リーダーセッション。",
@@ -90,7 +90,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
 		specLine:       "SPEC: %s",
 		backlogSummary: "かんばんバックログ: %d件が待機中 — `moai todo` を実行するとキューを確認できます。",
-		companionJoin:  "かんばんモード: run %s に参加しました。",
+		companionJoin:  "かんばんモード: かんばん run に %s として参加しました。",
 	},
 	"zh": {
 		leadHeader:   "看板模式：run %s，主导会话。",
@@ -103,7 +103,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
 		specLine:       "SPEC: %s",
 		backlogSummary: "看板待办队列：%d 张卡片在等待 — 运行 `moai todo` 可查看队列。",
-		companionJoin:  "看板模式：已加入 run %s。",
+		companionJoin:  "看板模式：已以 %s 身份加入看板 run。",
 	},
 }
 
