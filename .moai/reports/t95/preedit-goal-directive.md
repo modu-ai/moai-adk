@@ -25,7 +25,7 @@ Availability: `/moai goal` needs hooks enabled (its evaluator IS a Stop hook); i
 ## Hard Preconditions for Every Recommendation
 
 - **Implementation Kickoff Approval comes first**: any run-phase goal-arming is downstream of the Implementation Kickoff Approval human gate (`AskUserQuestion`, plan→run) and never substitutes for or bypasses it. `run.md` § Run-phase Autonomy #1 owns the preferences-drained rationale.
-- **Arming is programmatic**: `/moai goal` is orchestrator-invocable, so the orchestrator arms the condition itself once the gate has passed. The native equivalent's evaluator makes no tool calls, so machine-verifiable condition judgment is impossible there — this MoAI subcommand is the only pipeline path.
+- **Arming is programmatic**: `/moai goal` is orchestrator-invocable, so the orchestrator arms the condition itself once the gate has passed. Where the nearest native equivalent is HUMAN-ONLY, this MoAI subcommand is the only pipeline path.
 - **Safety boundary unchanged**: an armed goal does not relax the "confirm before hard-to-reverse / shared-system actions" boundary.
 - **`run.md` "set" shorthand**: `run.md` § Run-phase Autonomy states the orchestrator MAY set the `ac_converge` goal — the orchestrator arms it via `/moai goal` after the gate passes.
 

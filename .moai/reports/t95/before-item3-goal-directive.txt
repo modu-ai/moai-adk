@@ -1,0 +1,1 @@
+- **Arming is programmatic**: `/moai goal` is orchestrator-invocable, so the orchestrator arms the condition itself once the gate has passed. Where the nearest native equivalent is HUMAN-ONLY, this MoAI subcommand is the only pipeline path.
