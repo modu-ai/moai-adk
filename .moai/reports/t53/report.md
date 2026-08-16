@@ -77,6 +77,31 @@ PowerShell one-liner로 호출했다.
   전제는 install.sh:74-83의 근거와 동일한 것에 기반. GH runner 공유 IP에서
   실제 동작은 dispatch 실행으로 확인 예정
 
+## 후속 발견: LF 줄바꿈 결함 (첫 CI run 31960480175 실패 → 진단 → 수정)
+
+t53 통합 직후 `test-install.yml`을 release ref에 dispatch했다 (run
+31960480175). 결과: test-bat만 실패, 나머지 8개 잡 전부 통과. 로그 패턴:
+
+- `'--install-dir' is not recognized` — :parse_args 괄호 블록 미파싱
+- 배너 박스 문자 토큰들이 명령로 실행 시도 — 줄 경계 desync
+- `[INFO] Fetching...` 누락 + `!VERSION!` 리터럴 — 버전 fetch 블록 통째로 스킵
+- 최종 `Download failed` — `!VERSION!` 리터럴이 URL에 박힘
+
+원인: `.gitattributes`의 전역 `* text=auto eol=lf`(11행)가 `*.bat` 예외 없이
+적용되어 install.bat가 **LF로 저장·배포**되고 있었다. cmd.exe는 다중 줄
+괄호 블록 파싱에 CRLF를 요구한다. 이전 CI는 정적 검사만 수행해 실제
+실행 경로를 한 번도 검증한 적이 없어 미적발이었다 — 즉 카드 변경 이전부터
+존재하던 결함이며, 엔드투엔드 단계가 설계대로 이를 적발했다.
+
+수정:
+
+- `.gitattributes`에 `*.bat -text` 예외 추가 (정규화 전면 비활성화)
+- install.bat를 **CRLF 바이트로 커밋** — 클론 체크아웃, actions/checkout,
+  raw.githubusercontent.com 다운로드까지 모든 배포 경로에서 CRLF가 전달된다
+  (`text eol=crlf`는 인덱스가 LF로 남아 raw URL 경로가 여전히 깨진다)
+- CRLF 변환 후 버전 해석 페이로드는 바이트 동일함을 확인
+  (`cmp` — 589바이트 일치)
+
 ## 프로세스 편차 (기록)
 
 디스패치는 `EnterWorktree(t53)` 후 `git merge release/v3.1.1`을 지시했으나,

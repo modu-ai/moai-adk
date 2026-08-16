@@ -19,6 +19,14 @@
 *.tmpl text eol=lf
 *.sh text eol=lf
 
+# Windows batch files are the exception: cmd.exe needs CRLF to parse
+# multi-line parenthesized blocks reliably, and install.bat is distributed
+# as raw bytes (clone checkout and raw.githubusercontent.com), so CRLF is
+# committed verbatim and normalization is disabled entirely. An LF-only
+# copy made cmd.exe desync on every block in the script — caught by the
+# end-to-end install.bat CI run added with the rate-limit fix.
+*.bat -text
+
 # Mark binary files explicitly.
 *.png binary
 *.jpg binary
