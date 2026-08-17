@@ -65,3 +65,29 @@ PNG 파이프라인 (소스 없음 → 재작성):
 - docs-site: advanced/kanban-mode ×4, core-concepts/kanban-board-terms ×4
 - 룰: `.claude/rules/moai/workflow/kanban-dispatch-detail.md` (+템플릿 미러, make build 반영)
 - 이미지: `assets/images/kanban-five-sessions.svg` (신규 소스) + `.png` (재생성) + docs-site static 사본
+
+---
+
+# 부록 — MUST-FIX 재작업 (허브 판정 반영, 커밋 a916c8137)
+
+허브 판정(MUST-FIX, review-verdict.md): 1차 갱신분은 전건 재측 일치했으나 **docs-site 홈 `content/<locale>/_index.md` ×4에 6컬럼 서술 잔존** — 1차 증거의 "잔존 스윕 전 표면 → 0건" 주장 기각. 원인: 1차 스윕이 파일 나열 방식이라 `_index.md`가 대상에 없었음(본인 분석, 판정문 R2와 일치).
+
+## 반영 내역
+
+- **R1 (판정문 MUST-FIX 본체)**: `_index.md` ×4 — 보드 문장 5컬럼화 + review-in-sync-gate 절, 터미널 블록 bare-role 3컴패니언, 히어로 alt "다섯 칸 보드 + 리드 + 세 동반", moai web 문장 "칸반 체인".
+- **R2 (교정 스윕 패턴 적발 추가 표면)**:
+  - `multi-llm/kanban-mode.md` ×4 — 세 컴패니언, 체인 `plan -> run -> sync`, bare-role 네이밍 + t56 run-id 설명, 부트스트랩 다이어그램 3명령, SessionStart 개수 서술.
+  - `advanced/moai-web-console.md` ×4 — 체인 바를 네 역할 `lead → plan → run → sync`로 (코드 실측 근거: `internal/web/viewmodel_ops.go:46` `ChainRoles = ["lead","plan","run","sync"]`, review 없음 — 낡은 문서가 코드와 어긋났던 것).
+
+## 재검증 (커밋 a916c8137 트리)
+
+```
+$ grep -rn 'six columns|six-column|여섯 칸|여섯칸|6列|六列|→ review →|review-<run-id>|review-abc123|<role>-<run-id>' \
+    README×4 + docs-site/content 전체 + kanban-dispatch 룰 2 + 템플릿 미러   → 0건
+$ cd docs-site && hugo --minify --gc → Total in 4301 ms, exit 0 (경고 0)
+```
+
+## 갱신 Gaps (추가)
+
+- **README의 `plan → run → verify → sync` 프리셋 단계 표기(×4)**: R2 패턴 불일치·판정문 미지적. 코드에 verify 스테이지 상수·프리셋 정의 없음(탐색했으나 원천 미발견) — 멋대로 범위 확장하지 않고 허브 판단으로 넘김. multi-llm의 동일 표기는 컴패니언 수 서술과 불가분이라 세 컴패니언 정합과 함께 수정했음(위 반영 내역).
+- 1차 증거의 스윕 클레임 기각 경위: 스윕 대상을 "건드린 파일 나열"로 한정한 설계 결함 — 재작업 스윕은 디렉터리 전체 대상 + `→ review →` 2차 안전망 패턴으로 교정.
