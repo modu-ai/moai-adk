@@ -10,7 +10,7 @@ This rule binds a session whose SessionStart context declares **Kanban Mode** wi
 
 Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one lead and prints one launch command per companion role. Companion sessions are launched **by hand, one per terminal** — a session cannot launch another session, and no mechanism to spawn a peer exists or is wanted.
 
-One boundary on the mode itself: the dispatch cycle rides entirely on cross-session messaging, which does not exist on native Windows and is off under some providers, versions, and flag settings — see `cross-session-messaging.md` § Availability constraints. An absent channel fails quietly, so the lead surfaces it to the operator instead of dispatching into silence.
+One boundary on the mode itself: nudge delivery rides on cross-session messaging, which does not exist on native Windows and is off under some providers, versions, and flag settings — see `cross-session-messaging.md` § Availability constraints. An absent channel fails quietly, so the lead surfaces it to the operator; the queue itself keeps working without it.
 
 ## The board
 
@@ -33,15 +33,11 @@ backlog → plan → run → review → sync → done
 
 ## Entry into the board is an operator act
 
-`backlog` has no owning session, so no completion report exists for the lead to react to, and a lead that admitted cards on its own initiative would be **generating** work rather than scheduling it. Entry is therefore always the operator's decision.
+`backlog` has no owning session, so no completion report exists for the lead to react to, and a lead that admitted cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is therefore the operator's request.
 
-The mechanism is `/moai todo`:
+[HARD] **The lead is the queue's sole producer.** The operator asks; the lead turns the request into a card with `moai todo add "<description>"` (`moai todo` alone lists the queue). Production is the one queue mutation the lead performs on its own authority — and it is translation, not invention: nothing enters the queue the operator did not ask for.
 
-- `/moai todo "<description>"` appends an item to the backlog queue.
-- `/moai todo` alone lists the queue.
-- After a `/clear`, the lead presents the queue through `AskUserQuestion` and the operator picks the next card. Only then does the lead dispatch to `plan`.
-
-The lead never picks for the operator, and never silently promotes a backlog item.
+[HARD] **Promotion is the operator's act, always.** After a `/clear`, the lead presents the queued cards through `AskUserQuestion` and the operator picks; only then does the lead dispatch to `plan`. The lead never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
 
 ## Card classes — not every card needs four columns
 
@@ -55,7 +51,7 @@ Most of what accumulates in the backlog is chores: a one-line fix, a stale refer
 
 [HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column.
 
-This is the same shape as the CodeRabbit section below. A class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
+The same unobserved-claim hazard the CodeRabbit section below names: writing the justification down is not the same as verifying it.
 
 The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
 
@@ -73,24 +69,23 @@ Each arrow below is one dispatch from the lead to one companion session:
 [operator picks a card]  →  plan  →  run  →  review  →  sync  →  [lead marks done]
 ```
 
-Dispatch is addressed by session name. Companion sessions are named by their bare role; a name held by a live session is bumped to the next free number. No run id travels in companion names (one run per machine; the lead keeps the id), so a lead cannot announce a run id no live session carries. `ListAgents` reports the live set. Send with `SendMessage({to: "<name>", message: "…"})`; when a bare name is ambiguous, use the short reference the listing prints.
+Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` reports the live set; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
 
 Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself.
 
+### The delegation channel is the queue
+
+[HARD] Work is delegated through the queue on disk, not through messages. The queue file resolves against the primary checkout from every linked worktree — one repository, one queue — so a card admitted from anywhere is visible everywhere, and that single-file visibility is what makes the queue a channel rather than a shared opinion.
+
+A cross-session message is a nudge, never the delegation itself: delivery is not guaranteed, and a delivered message consumes the recipient's quota like a typed prompt. No dispatch may depend on a message arriving. The disk record — card admitted, picked, done — is what moves the board; a message that goes unanswered changes nothing.
+
 ### Dispatch language
 
 [HARD] A dispatch is written in the operator's `conversation_language`. The operator watches it scroll past, which makes it user-facing output rather than internal agent traffic.
 
-This is a classification, not an exemption from the language rules, and it needs no change to either of them:
-
-- `agent-common-protocol.md` § Language Handling already opens with the opposite of an English default — agents receive and respond in the configured `conversation_language`. What it fixes to English is code, identifiers, and names. A dispatch is prose, so the rule was never against it; it simply did not name cross-session messages in its list.
-- `moai-constitution.md` § Response Language reserves English for internal agent communication, but the axis that clause sits on is stated one line above it: user-facing responses go in the operator's language. A message a human reads is user-facing by that rule's own criterion, so putting a dispatch in the operator's language applies the constitution rather than carving an exception out of it.
-
-The carve-out is narrow, and the boundary is **who reads it**. An `Agent()` subagent prompt reaches no human and stays English.
-
-What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. Those are addresses rather than prose, and a translated address does not resolve.
+This is a classification, not an exemption, and it needs no change to either rule. `agent-common-protocol.md` § Language Handling already has agents receive and respond in the configured `conversation_language` — what it fixes to English is code, identifiers, and names, and a dispatch is prose. `moai-constitution.md` § Response Language reserves English for internal agent communication on an axis it states one line above: user-facing responses go in the operator's language, and a message a human reads is user-facing by that rule's own criterion. The boundary is **who reads it** — an `Agent()` subagent prompt reaches no human and stays English. What stays verbatim in every language: SPEC IDs, commands and their flags, file paths, session names, and technical identifiers — addresses rather than prose, and a translated address does not resolve.
 
 ### Dispatch format
 
@@ -109,7 +104,7 @@ lens: --security --deep
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts this block points at; a dispatch that restates them makes the operator read the same thing twice. If something does not fit a field, it belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 
-The format is the "pointer, not a copy" rule above made mechanical: every field is an address the companion resolves by reading what it names. It also settles the Dispatch language rule by construction — a block of pure addresses has nothing to translate, while the lead's reports to the operator (progress notes, `/clear` requests) remain in the operator's `conversation_language`.
+The format is the "pointer, not a copy" rule made mechanical — every field an address the companion resolves by reading what it names — and it settles the language rule by construction: pure addresses have nothing to translate, while the lead's reports to the operator stay in the operator's `conversation_language`.
 
 ## Completion is read, never trusted
 
@@ -118,6 +113,8 @@ The format is the "pointer, not a copy" rule above made mechanical: every field 
 Before moving a card out of a working column, the lead reads the card's `progress.md` (and, where the phase declares one, the verification evidence path it cites) and confirms the phase actually closed. A missing, unreadable, or stale evidence file is a **gap** — the card stays where it is and the lead reports why. Absence of a failure signal is not a pass.
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
+
+**The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. The division is structural, not ceremonial: where the board's lanes run on a different backend than the lead, the lane sessions cannot commission judgment work onto the lead's backend, so the verdict has a home in the lead even when the execution has none.
 
 ### CodeRabbit is not read from `gh pr checks`
 
@@ -132,15 +129,15 @@ A CodeRabbit row counts as evidence only when BOTH of these hold:
       --jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .description'
     ```
 
-    Both halves are required, and neither is sufficient alone. `success` is not sufficient — that is this whole section's point, since it appears on unreviewed heads too. But it is still necessary: without the state filter a `failure` or `error` status carrying a `Review completed` description would read as a pass, which inverts the same mistake in the other direction.
+    Both halves are required: `success` alone appears on unreviewed heads too — that is this section's point — and without the state filter a `failure` or `error` status carrying a `Review completed` description would read as a pass.
 
-    This predicate assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
+    The predicate assumes the **combined** status endpoint, `/commits/{sha}/status` (the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head). Do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first — measured on one head: five entries from `Review queued` through `Review completed`, so a positional pick is wrong in either direction (`last` selects the oldest). Where history is wanted, select by maximum `created_at`.
 
 1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
 Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`.
 
-Branch protection is not the lever here. The status state is `success` in precisely the failing case, so adding CodeRabbit to the required contexts would admit the unreviewed pull request just as readily. The distinction lives in the description, and only a read of the description surfaces it — which is why an automated merge gate closing this hole does not close it on the path a human merges by hand.
+Branch protection is not the lever: the status is `success` in precisely the failing case, so a required context would admit the unreviewed pull request just as readily. The distinction lives in the description; only reading it surfaces it — an automated merge gate closing this hole does not close it on the path a human merges by hand.
 
 ## Review lens selection
 
@@ -167,9 +164,9 @@ The lead's message to the operator states three things, in this order:
 2. **Which session to `/clear`** — by name, so the operator clears the right terminal.
 3. **What happens next** — the column the card moves to, and which session will be instructed once the clear is done.
 
-Where the next phase reuses a session that has just been cleared, the lead re-sends the full pointer instruction after the clear rather than assuming the session remembers the card.
+Where the next phase reuses a just-cleared session, the lead re-sends the full pointer instruction rather than assuming the session remembers the card.
 
-The lead's own session is cleared the same way, between cards rather than between phases: once a card reaches `done`, the lead asks the operator to `/clear` the lead session, and the next turn begins by presenting the backlog queue again.
+The lead's own session is cleared the same way, between cards rather than phases: once a card reaches `done`, the operator is asked to `/clear` the lead session, and the next turn begins by presenting the queue again.
 
 ## Isolation is entered, never provisioned
 
@@ -183,7 +180,7 @@ The lead's own session is cleared the same way, between cards rather than betwee
 | Leave it | `ExitWorktree` |
 | Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
-`moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close, and orphaned trees accumulate until someone reconciles them by hand.
+`moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close and orphans accumulate until reconciled by hand.
 
 [HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
@@ -191,9 +188,9 @@ The lead's own session is cleared the same way, between cards rather than betwee
 
 [HARD] **A new card starts in a new worktree.** A companion session taking a new card creates a fresh worktree with `EnterWorktree(<card-id>)` (based on the remote default branch) rather than reusing the previous card's tree — reuse without a `/clear` in between carries the previous card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, the dependency is pulled in inside the new worktree with `git merge <prior-branch>`; a dependency is a reason to merge, never a reason to reuse the tree.
 
-[HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`, which grows unwieldy for long names and is invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>` — renaming the checked-out branch inside a worktree is safe (the tree, its lock, and the session anchoring are unaffected), and `moai cc -w <name>` re-entry resolves by tree name, not branch name. The rename also switches the worktree's eventual disposal path — see `worktree-integration.md` § Terminology Glossary (WT- naming rule). Dispatches, merges, and completion evidence reference the `WT-` name.
+[HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>` — unwieldy for long names, invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>`: safe inside a worktree (tree, lock, session anchoring unaffected), and `moai cc -w <name>` re-entry resolves by tree name, not branch name. The rename also switches the eventual disposal path (`worktree-integration.md` § Terminology Glossary). Dispatches, merges, and completion evidence reference the `WT-` name.
 
-The lead dispatches this rather than assuming it. Each instruction names the worktree the companion is to work in and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command changes the directory for that invocation only, so the next command silently reads the wrong tree.
+The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree.
 
 Two properties make the shared checkout the wrong place for a card:
 
@@ -204,7 +201,7 @@ Where a companion reports having worked in the shared checkout instead, that is 
 
 ## Verification load is lane-local
 
-Sessions share one machine as surely as they share one checkout, and verification is where that sharing goes wrong. Measured on a day when it did: load average reached 413, a neighbouring workspace's build took two and a half minutes, and its browser tests timed out — not because anything was wrong with them, but because four lanes were each running the full test suite at once and a full suite there takes five to ten minutes.
+Sessions share one machine as surely as they share one checkout, and verification is where that sharing goes wrong. Measured on a day when it did: load average 413, a neighbouring workspace's build at two and a half minutes and its browser tests timing out — four lanes were each running the full suite at once, and a full suite there takes five to ten minutes.
 
 [HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite.
 
@@ -216,7 +213,7 @@ Where a verification genuinely needs contention, the load must be cleanup-guaran
 
 **A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault above belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given — a lane executing an approved recipe is doing what it was told, and a rule that blames the executor teaches the wrong actor to be careful.
 
-The same day supplied the reason contention and flakiness feed each other: a failing test left an unbounded spin-loop goroutine running, which burned a core for the remainder of that package's run and slowed every test after it. Load makes tests fail; failing tests can generate load.
+Contention and flakiness also feed each other: that day, a failing test left an unbounded spin-loop goroutine burning a core for the rest of its package's run. Load makes tests fail; failing tests can generate load.
 
 ### The env-isolated verification form
 
@@ -241,7 +238,7 @@ Reading the script first does not restore them. A human read is not the guard ru
 
 [HARD] A lane whose card has passed verification does not wait for the lead to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The lead provisions the release branch and its worktree at batch start; from then on, every integration is lane work.
 
-The mechanism respects two measured constraints: git checks one branch out in exactly one worktree, and the worktree-session guard refuses a `git -C` that redirects an isolated session's git into another tree. The lane therefore enters the release worktree rather than driving it remotely:
+The mechanism respects two measured constraints — git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C` — so the lane enters the release worktree rather than driving it remotely:
 
 - **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned. A lane never checks the release branch out in its own tree; git would refuse the second checkout anyway.
 - **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` — the canonical current-session re-entry — and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
@@ -250,7 +247,7 @@ The mechanism respects two measured constraints: git checks one branch out in ex
 - **Conflicts belong to the lane that owns the change.** The integrating lane resolves the conflicts its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's already-merged change — is a blocker report to the lead, not a forced merge.
 - **Push the release branch; the batch pull request stays with the lead.** After its merge, the lane pushes the release branch (`git push origin release/vX.Y.Z`). A rejected push means another lane pushed first — fetch, integrate the fetched release branch, and push again; never force. The batch pull request and release ceremony remain the lead's, and until the pushed release branch's batch PR merges, the disposal rule above still binds.
 
-After the merge, the lane verifies the merge commit landed (`git log --oneline -1`), pushes the release branch, and reports the branch name, merge SHA, and evidence path as its completion signal.
+The completion signal is the branch name, merge SHA, and evidence path.
 
 ## Boundaries — what this protocol does not do
 
@@ -258,7 +255,7 @@ After the merge, the lane verifies the merge commit landed (`git log --oneline -
 - **No spawning.** The lead addresses sessions the operator launched. It never creates one.
 - **No gate bypass.** Kickoff approval before run-phase entry, and every other approval gate, is unchanged by being inside a dispatch cycle.
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the lead, through `AskUserQuestion`.
-- **A role with no live session is a fault, not a wait.** Where the role owning a dispatchable card's column has no occupant, the lead dispatches to nobody, and reports both the empty role and the waiting card. Silently holding the card presents as a hang, which is the most expensive failure shape to diagnose.
+- **A role with no live session is a fault, not a wait.** The lead reports the empty role and the waiting card; silently holding it presents as a hang, the most expensive failure shape to diagnose.
 
 ## Cross-references
 
