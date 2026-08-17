@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 880" width="1600" height="880" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+  <!-- kanban-five-sessions.svg — source for kanban-five-sessions.png (card t115)
+       Board: five columns backlog -> plan -> run -> sync -> done (t113; review
+       absorbed by the sync gate). Sessions: lead + three companions (t56/t97:
+       bare-role names, run-id is the lead's own identifier).
+       Layout table (M=42, W=1600, H=880, colW=284, G=24, colX(i)=42+i*308):
+         lead       x=42   y=42  w=1516 h=120
+         col-backlog x=42   y=220 w=284 h=340   op    x=42   y=620 w=284 h=200
+         col-plan    x=350  y=220 w=284 h=340   s-plan x=350  y=620 w=284 h=200
+         col-run     x=658  y=220 w=284 h=340   s-run  x=658  y=620 w=284 h=200
+         col-sync    x=966  y=220 w=284 h=340   s-sync x=966  y=620 w=284 h=200
+         col-done    x=1274 y=220 w=284 h=340   fin    x=1274 y=620 w=284 h=200 -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a4a44"/>
+    </marker>
+    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b3591e"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="880" fill="#fbfaf7"/>
+
+  <!-- lead band -->
+  <rect x="42" y="42" width="1516" height="120" rx="12" fill="#2f3a2f"/>
+  <text x="62" y="86" font-size="24" font-weight="700" fill="#ffffff">LEAD SESSION — moai cc -k</text>
+  <text x="62" y="114" font-size="16" fill="#d8ded4">owns the run-id · dispatches on evidence it read · never writes code · asks the operator to /clear companions between phases</text>
+  <text x="62" y="136" font-size="16" fill="#d8ded4">dispatches to the three companions: plan · run · sync — review is not a column; the sync gate runs the review lenses itself</text>
+
+  <!-- board columns -->
+  <rect x="42" y="220" width="284" height="340" rx="10" fill="#f1eee6" stroke="#d8d3c4" stroke-width="2"/>
+  <text x="60" y="260" font-size="22" font-weight="700" fill="#3a3a34">backlog</text>
+  <text x="60" y="288" font-size="14" fill="#5c5c54">operator entry</text>
+  <text x="60" y="308" font-size="14" fill="#5c5c54">/moai todo</text>
+  <text x="60" y="328" font-size="14" fill="#5c5c54">no owning session</text>
+
+  <rect x="350" y="220" width="284" height="340" rx="10" fill="#f1eee6" stroke="#d8d3c4" stroke-width="2"/>
+  <text x="368" y="260" font-size="22" font-weight="700" fill="#3a3a34">plan</text>
+  <text x="368" y="288" font-size="14" fill="#5c5c54">SPEC authoring</text>
+  <text x="368" y="308" font-size="14" fill="#5c5c54">+ plan-auditor</text>
+
+  <rect x="658" y="220" width="284" height="340" rx="10" fill="#f1eee6" stroke="#d8d3c4" stroke-width="2"/>
+  <text x="676" y="260" font-size="22" font-weight="700" fill="#3a3a34">run</text>
+  <text x="676" y="288" font-size="14" fill="#5c5c54">implementation cycle</text>
+  <text x="676" y="308" font-size="14" fill="#5c5c54">TDD · DDD</text>
+
+  <rect x="966" y="220" width="284" height="340" rx="10" fill="#fdf6ee" stroke="#b3591e" stroke-width="3"/>
+  <text x="984" y="260" font-size="22" font-weight="700" fill="#3a3a34">sync</text>
+  <text x="984" y="288" font-size="14" fill="#5c5c54">review lenses run here</text>
+  <text x="984" y="308" font-size="14" fill="#5c5c54">docs · changelog · PR</text>
+  <rect x="984" y="330" width="128" height="26" rx="13" fill="#b3591e"/>
+  <text x="1048" y="348" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">review gate</text>
+
+  <rect x="1274" y="220" width="284" height="340" rx="10" fill="#f1eee6" stroke="#d8d3c4" stroke-width="2"/>
+  <text x="1292" y="260" font-size="22" font-weight="700" fill="#3a3a34">done</text>
+  <text x="1292" y="288" font-size="14" fill="#5c5c54">terminal</text>
+  <text x="1292" y="308" font-size="14" fill="#5c5c54">no session here</text>
+
+  <!-- board flow arrows (y = column cy = 390) -->
+  <line x1="326" y1="390" x2="342" y2="390" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="634" y1="390" x2="650" y2="390" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="942" y1="390" x2="958" y2="390" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1250" y1="390" x2="1266" y2="390" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- operator / companion / terminal row (y=620, h=200) -->
+  <rect x="42" y="620" width="284" height="200" rx="10" fill="#ffffff" stroke="#9aa08e" stroke-width="2"/>
+  <text x="60" y="654" font-size="18" font-weight="700" fill="#3a3a34">OPERATOR</text>
+  <text x="60" y="678" font-size="14" fill="#5c5c54">/moai todo</text>
+  <text x="60" y="698" font-size="13" fill="#7a7a70">the only producer</text>
+  <text x="60" y="718" font-size="13" fill="#7a7a70">of new work</text>
+
+  <rect x="350" y="620" width="284" height="200" rx="10" fill="#ffffff" stroke="#9aa08e" stroke-width="2"/>
+  <text x="368" y="654" font-size="18" font-weight="700" fill="#3a3a34">COMPANION · plan</text>
+  <text x="368" y="678" font-size="14" fill="#5c5c54">moai cc -k --name plan</text>
+  <text x="368" y="698" font-size="13" fill="#7a7a70">own terminal,</text>
+  <text x="368" y="718" font-size="13" fill="#7a7a70">own context window</text>
+
+  <rect x="658" y="620" width="284" height="200" rx="10" fill="#ffffff" stroke="#9aa08e" stroke-width="2"/>
+  <text x="676" y="654" font-size="18" font-weight="700" fill="#3a3a34">COMPANION · run</text>
+  <text x="676" y="678" font-size="14" fill="#5c5c54">moai cc -k --name run</text>
+  <text x="676" y="698" font-size="13" fill="#7a7a70">worktree WT-&lt;card&gt;</text>
+  <text x="676" y="718" font-size="13" fill="#7a7a70">lane-local verification</text>
+
+  <rect x="966" y="620" width="284" height="200" rx="10" fill="#ffffff" stroke="#b3591e" stroke-width="2"/>
+  <text x="984" y="654" font-size="18" font-weight="700" fill="#3a3a34">COMPANION · sync</text>
+  <text x="984" y="678" font-size="14" fill="#5c5c54">moai cc -k --name sync</text>
+  <text x="984" y="698" font-size="13" fill="#7a7a70">the review gate</text>
+  <text x="984" y="718" font-size="13" fill="#7a7a70">runs inside this phase</text>
+
+  <rect x="1274" y="620" width="284" height="200" rx="10" fill="#f1eee6" stroke="#d8d3c4" stroke-width="2"/>
+  <text x="1292" y="654" font-size="18" font-weight="700" fill="#3a3a34">MERGED</text>
+  <text x="1292" y="678" font-size="14" fill="#5c5c54">PR lands</text>
+  <text x="1292" y="698" font-size="13" fill="#7a7a70">the card reaches</text>
+  <text x="1292" y="718" font-size="13" fill="#7a7a70">done</text>
+
+  <!-- vertical connectors: operator up into backlog; columns down to their row -->
+  <line x1="184" y1="620" x2="184" y2="568" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="492" y1="560" x2="492" y2="612" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="800" y1="560" x2="800" y2="612" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1108" y1="560" x2="1108" y2="612" stroke="#b3591e" stroke-width="2" marker-end="url(#arrowAccent)"/>
+  <line x1="1416" y1="560" x2="1416" y2="612" stroke="#4a4a44" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- footnote -->
+  <text x="42" y="856" font-size="13" fill="#8a8a80">Five columns, four sessions: the lead plus three companions (plan · run · sync) — companion names are bare role names; the run-id names the lead alone.</text>
+</svg>
