@@ -40,8 +40,8 @@
 설계 규칙(패키지 doc에 문서화): 기준 연산은 측정 대상과 **같은 비용 계층**(같은 syscall/스폰), 같은 프로세스·같은 파일시스템, 측정 직전에 측정. 비율은 median-vs-median(부하에서 함께 이동).
 
 적용:
-- `TestBranchGuard_Latency`: 기준 = ResolveGitDirs 주경로와 동일 인자의 `git rev-parse` spawn 1회(3 warmup + 10측정 중앙값). `MaxUnits=1.5`(건강 시 ~1.0배 — checkBranchState는 spawn 1회 + sub-ms 파싱, `checkout.go:59` 단일 rev-parse). 서브프로세스 1개 추가 회귀 = ≥2.0배 → 포착. 캘리브레이션 팔은 OS 균일(t2 원문의 Windows 헤드룸 우려 해소 — p95 팔의 Windows 50% 분율은 유지).
-- `TestRecordEvent100Sequential`: 기준 = 같은 TempDir 파일시스템에서 `open(O_APPEND|O_CREATE|O_WRONLY) + write(160B) + close` 1사이클(3 warmup + 20측정 중앙값). `MaxUnits=2.0`(건강 시 ~1.0배; fsync 회귀 5-50배, 전체 재작성 2-3배 → 포착). Windows skip 유지.
+- `TestBranchGuard_Latency`: 기준 = ResolveGitDirs 주경로와 동일 인자의 `git rev-parse` spawn 1회(3 warmup + 10측정 중앙값). `MaxUnits=1.5`(건강 시 ~1.0배 — checkBranchState는 spawn 1회 + sub-ms 파싱, `internal/core/git/checkout.go:54`의 ResolveGitDirs 주경로 단일 rev-parse). 서브프로세스 1개 추가 회귀 = ≥2.0배 → 포착. 캘리브레이션 팔은 OS 균일(t2 원문의 Windows 헤드룸 우려 해소 — p95 팔의 Windows 50% 분율은 유지).
+- `TestRecordEvent100Sequential`: 기준 = 같은 TempDir 파일시스템에서 `open(O_APPEND|O_CREATE|O_WRONLY) + write(160B) + close` 1사이클(3 warmup + 20측정 중앙값). `MaxUnits=2.0`(건강 시 ~1.0배; fsync 회귀 5-50배, 전체 재작성 2-3배 → 포착). Windows skip 유지. **건강 ratio 관측 범위 0.94x~1.49x**(저자 6회: 0.94/1.16/1.17/1.23/1.31/1.48 + 허브 리뷰 재실행 1.49 — µs 규모 쓰기는 상대 잡음이 커서 spawn 계층보다 분포가 넓음). MaxUnits 2.0의 마진 하한은 관측 최악 1.49x 대비 ~34%이며, CI에서 이 경계 근처 플레이크가 보이면 MaxUnits 2.5 상향(여전히 fsync 5-50x와 명확 분리) 또는 기준 표본 수 증가로 조정할 여지를 남긴다.
 - t2 원문의 POSIX 500ms 무지터 천장은 #1541에서 이미 제거됨(확인), 본 카드로 캘리브레이션 팔이 그 빈 자리의 회귀 검출을 가져옴.
 
 ## 3. 다섯 섹션 증거
