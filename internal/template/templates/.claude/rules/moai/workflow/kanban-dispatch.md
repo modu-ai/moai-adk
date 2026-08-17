@@ -8,7 +8,7 @@ How the **lead** session of Kanban Mode moves a card across the board: what admi
 
 ## Scope — when this rule is live
 
-This rule binds a session whose SessionStart context declares **Kanban Mode** with the `lead` role. In every other session it is inert: a companion session (`plan` / `run` / `review` / `sync`) receives instructions, it does not dispatch them, and a session outside Kanban Mode has no board to move.
+This rule binds a session whose SessionStart context declares **Kanban Mode** with the `lead` role. In every other session it is inert: a companion session (`plan` / `run` / `sync`) receives instructions, it does not dispatch them, and a session outside Kanban Mode has no board to move.
 
 Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one lead and prints one launch command per companion role. Companion sessions are launched **by hand, one per terminal** — a session cannot launch another session, and no mechanism to spawn a peer exists or is wanted.
 
@@ -16,7 +16,7 @@ One boundary on the mode itself: nudge delivery rides on cross-session messaging
 
 ## The board
 
-Six columns, fixed and ordered: `backlog → plan → run → review → sync → done`. `backlog` and `done` have no owning session; the four columns between them each map to exactly one companion role (`plan` / `run` / `review` / `sync`), which is what makes dispatch a lookup rather than a decision. Column-by-role table: `kanban-dispatch-detail.md` § The board.
+Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `backlog` and `done` have no owning session; the three working columns between them each map to exactly one companion role (`plan` / `run` / `sync`), which is what makes dispatch a lookup rather than a decision. There is no `review` column — the review verdict is absorbed by the sync gate, which runs the review lenses itself. Column-by-role table: `kanban-dispatch-detail.md` § The board.
 
 ## Entry into the board is an operator act
 
@@ -26,21 +26,25 @@ Six columns, fixed and ordered: `backlog → plan → run → review → sync �
 
 [HARD] **Promotion is the operator's act, always.** After a `/clear`, the lead presents the queued cards through `AskUserQuestion` and the operator picks; only then does the lead dispatch to `plan`. The lead never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
 
-## Card classes — not every card needs four columns
+## Report milestones ↔ queue cards
 
-The lead classifies each card as it leaves `backlog` and names the class in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; one session carries the card to a pull request, `plan` and `review` skipped), **B — defect, cause unknown** (`run → review → sync`; `plan` is skipped, so no SPEC exists), **C — design change** (a decision, or spans subsystems; all four columns). Full table and the ceremony-cost rationale: `kanban-dispatch-detail.md` § Card classes.
+[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai todo`), never remembered. Before the lead turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone whose card is missing or absent from the queue. Rationale and the mechanical check: `kanban-dispatch-detail.md` § Report milestones ↔ queue cards.
 
-[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column. (Same shape as the CodeRabbit section below: a class that skips review on a claim nobody checked is the unobserved-claim hazard.)
+## Card classes — not every card needs every column
+
+The lead classifies each card as it leaves `backlog` and names the class in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; one session carries the card to a pull request, `plan` skipped), **B — defect, cause unknown** (`run → sync`; `plan` is skipped, so no SPEC exists), **C — design change** (a decision, or spans subsystems; all three working columns). Full table and the ceremony-cost rationale: `kanban-dispatch-detail.md` § Card classes.
+
+[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. (Same shape as the CodeRabbit section below: a class that skips review on a claim nobody checked is the unobserved-claim hazard.)
 
 The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
 
-**Class B skips `plan`, not `review`** — an unestablished cause is precisely what review catches, so it is the last column to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the evidence that established the cause — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
+**Class B skips `plan`, not the sync gate's review** — an unestablished cause is precisely what a review catches, so the gate is the last thing to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the evidence that established the cause — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
 
 **Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch. (Where the parallelism comes from per class, and why research fan-out during `plan` is Class-C-only: `kanban-dispatch-detail.md` § Card classes.)
 
 ## The dispatch cycle
 
-`[operator picks a card] → plan → run → review → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session. Dispatch is addressed by session name via `SendMessage({to: "<name>", message: "…"})`; `ListAgents` reports the live set. Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
+`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session. Dispatch is addressed by session name via `SendMessage({to: "<name>", message: "…"})`; `ListAgents` reports the live set. Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself. Session-naming rules and the address-block walkthrough: `kanban-dispatch-detail.md` § The dispatch cycle.
 
@@ -69,7 +73,7 @@ evidence: .moai/specs/<SPEC-ID>/progress.md
 lens: --security --deep
 ```
 
-- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `review` dispatch — the lenses from the Review lens selection table, where the choice itself is the reason, stated as an address instead of a sentence.
+- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `sync` dispatch — the review lenses the sync gate will run, where the choice itself is the reason, stated as an address instead of a sentence.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts this block points at; a dispatch that restates them makes the operator read the same thing twice. If something does not fit a field, it belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 
@@ -100,11 +104,11 @@ A CodeRabbit row counts as evidence only when BOTH of these hold:
 
 1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
-Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`. Branch protection is not the lever here — the status state is `success` in precisely the failing case; only a read of the description surfaces it.
+Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `sync`. Branch protection is not the lever here — the status state is `success` in precisely the failing case; only a read of the description surfaces it.
 
 ## Review lens selection
 
-`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the reason in the dispatch so the review session does not re-derive it. Lens table (which lenses per touched surface): `kanban-dispatch-detail.md` § Review lens selection.
+`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the choice in the `sync` dispatch so the sync gate runs that review rather than re-deriving it. Lens table (which lenses per touched surface): `kanban-dispatch-detail.md` § Review lens selection.
 
 `--deep --patch` is opt-in twice over: `--patch` drafts a fix and is absent unless the operator asked for it. Do not add it on the lead's own initiative.
 
@@ -182,7 +186,7 @@ The completion signal is the branch name, merge SHA, and evidence path.
 
 ## Boundaries — what this protocol does not do
 
-- **No board state store.** The queue is a plain file; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent six-column state, per-card worktree lifecycle, WIP limits, and card/frontmatter consistency reconciliation are separate work and are not assumed here.
+- **No board state store.** The queue is a plain file; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent board state, per-card worktree lifecycle, WIP limits, and card/frontmatter consistency reconciliation are separate work and are not assumed here.
 - **No spawning.** The lead addresses sessions the operator launched. It never creates one.
 - **No gate bypass.** Kickoff approval before run-phase entry, and every other approval gate, is unchanged by being inside a dispatch cycle.
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the lead, through `AskUserQuestion`.

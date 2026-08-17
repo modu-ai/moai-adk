@@ -1,11 +1,11 @@
 ---
-description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, review-lens table, /clear message structure, isolation rationale, verification-load incident record"
+description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record"
 paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-kanban.md,**/.claude/skills/moai/workflows/todo.md"
 ---
 
 # Kanban Dispatch — Detail Companion
 
-> Detail companion of `kanban-dispatch.md` (the always-loaded stub). The stub keeps every [HARD] rule, prohibition, and cross-reference; this file owns the long tables, the dispatch-cycle walkthrough, incident narratives, and worked rationale. Load when moving a card between columns, classifying a card, or choosing review lenses.
+> Detail companion of `kanban-dispatch.md` (the always-loaded stub). The stub keeps every [HARD] rule, prohibition, and cross-reference; this file owns the long tables, the dispatch-cycle walkthrough, incident narratives, and worked rationale. Load when moving a card between columns, classifying a card, or choosing review lenses for a sync dispatch.
 
 ## Terminology — the board vocabulary
 
@@ -15,10 +15,10 @@ paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-kanban.md,**/.clau
 |---|---|---|
 | **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work so parallel streams never interleave, and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | The `run-a1b2c3` session working in worktree `WT-t0` is one lane. |
 | **card** | One unit of work on the board, entered by the operator via `/moai todo "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
-| **column** | One stage of the board, in fixed order `backlog → plan → run → review → sync → done`. The four middle columns each map to exactly one companion role. | `/moai run <SPEC-ID>` happens in the `run` column. |
+| **column** | One stage of the board, in fixed order `backlog → plan → run → sync → done`. The three working columns each map to exactly one companion role; the review verdict lives inside the sync gate. | `/moai run <SPEC-ID>` happens in the `run` column. |
 | **backlog** | The entry queue of the board. No session owns it by design — work enters only when the operator puts it there. | `/moai todo "rename hint is stale"` appends a card to the backlog. |
 | **lead** | The single coordinating session (`moai cc -k`). Moves cards between columns on evidence it read itself, asks the operator to `/clear` companions between phases, never writes code. | The session that dispatched a card with its worktree instruction. |
-| **companion** | A worker session launched by hand, one terminal at a time (`moai cc -k --name <role>-<run-id>`), owning one column's work at a time. | `plan-a1b2c3`, `run-a1b2c3`, `review-a1b2c3`, `sync-a1b2c3`. |
+| **companion** | A worker session launched by hand, one terminal at a time (`moai cc -k --name <role>-<run-id>`), owning one column's work at a time. | `plan-a1b2c3`, `run-a1b2c3`, `sync-a1b2c3`. |
 | **run-id** | The short identifier the lead prints at launch, shared by every companion name in that chain. Distinguishes concurrent chains on the same machine. | `a1b2c3` in `run-a1b2c3`. |
 | **worktree** | The isolated checkout where a card's work happens, entered through the launcher (`moai cc -w <name>` / `EnterWorktree`), never raw `git worktree add`. Branch named `WT-<card-id>`. A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-t0`. |
 | **dispatch** | The lead's instruction to one companion: a pointer (card id, SPEC id, phase command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
@@ -27,43 +27,54 @@ The pair most easily confused: a **column** names a phase of the work (`run`); a
 
 ## The board
 
-Six columns, fixed and ordered:
+Five columns, fixed and ordered:
 
 ```
-backlog → plan → run → review → sync → done
+backlog → plan → run → sync → done
 ```
 
-`backlog` and `done` have no owning session. The four columns between them each map to exactly one companion role, which is what makes dispatch a lookup rather than a decision.
+`backlog` and `done` have no owning session. The three working columns between them each map to exactly one companion role, which is what makes dispatch a lookup rather than a decision. There is no `review` column: the review verdict is absorbed by the sync gate, which runs the review lenses itself (§ Review lens selection).
 
 | Column | Owning role | What happens there |
 |---|---|---|
-| `backlog` | *none* — a queue | Work waits. Entry is an operator act (see below). |
+| `backlog` | *none* — a queue | Work waits. Entry is an operator act (see the stub). |
 | `plan` | `plan` | SPEC authored (`/moai plan`), then plan-audited. |
 | `run` | `run` | Implementation (`/moai run <SPEC-ID>`). |
-| `review` | `review` | Code review (`/moai review …`) with lenses chosen per card. |
-| `sync` | `sync` | Docs, CHANGELOG, PR (`/moai sync <SPEC-ID>`). |
+| `sync` | `sync` | Review verdict (lenses per card), docs, CHANGELOG, PR (`/moai sync <SPEC-ID>`). |
 | `done` | *none* — terminal | Card closed. Nothing is dispatched here. |
 
-## Card classes — not every card needs four columns
+## Report milestones ↔ queue cards
 
-Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → review → sync` costs more in ceremony than the change is worth. The lead classifies each card as it leaves `backlog` and names the class in the dispatch.
+The stub's [HARD] rule — a `## Card Cross-Check` section per milestone-bearing report, mapping claims verified against the queue — exists because report→card linkage used to live in one person's memory: a report declared milestones, cards were issued separately, and nothing reconciled the two. Milestones surfaced with no card, and cards claimed milestones that had already landed.
+
+The mechanical check runs the same comparison the lead states by hand:
+
+```
+moai graph build && moai graph query --milestones-no-card
+```
+
+It writes the report-milestone and milestone-card edges from each report's Card Cross-Check table and lists every milestone whose claimed card is missing from the live queue (queued/picked; dropped does not qualify). "Not in live queue" covers both completed and never-issued cards — resolve each flag with `git log --oneline --grep 'merge: <card-id>'` before issuing a new card.
+
+## Card classes — not every card needs every column
+
+Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → sync` costs more in ceremony than the change is worth. The lead classifies each card as it leaves `backlog` and names the class in the dispatch.
 
 | Class | Shape | Path |
 |---|---|---|
-| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` and `review` are skipped |
-| B — defect, cause unknown | Something is wrong and the cause has not been established | `run → review → sync`; `plan` is skipped, so no SPEC exists |
-| C — design change | The change contains a decision, or spans subsystems | All four columns |
+| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` is skipped |
+| B — defect, cause unknown | Something is wrong and the cause has not been established | `run → sync`; `plan` is skipped, so no SPEC exists |
+| C — design change | The change contains a decision, or spans subsystems | All three working columns |
 
 The Class-A evidence rule is the same shape as the CodeRabbit section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
 
-For Class A this inverts where the parallelism comes from. Handing four sessions a whole card each puts four cards in flight; pipelining one card through four columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason.
+For Class A this inverts where the parallelism comes from. Handing three sessions a whole card each puts three cards in flight; pipelining one card through three columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason.
 
 ## The dispatch cycle
 
 Each arrow below is one dispatch from the lead to one companion session:
 
 ```
-[operator picks a card]  →  plan  →  run  →  review  →  sync  →  [lead marks done]
+[operator picks a card]  →  plan  →  run  →  sync  →  [lead marks done]
 ```
 
 Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` reports the live set; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
@@ -91,7 +102,7 @@ Branch protection is not the lever here. The status state is `success` in precis
 
 ## Review lens selection
 
-`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the reason in the dispatch so the review session does not re-derive it:
+`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the choice in the `sync` dispatch so the sync gate runs that review rather than re-deriving it:
 
 | Card touched | Lenses to instruct |
 |---|---|

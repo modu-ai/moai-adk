@@ -144,7 +144,7 @@ func TestReconcileCard_CollisionsAreAmbiguousNotResolved(t *testing.T) {
 	}{
 		{StatusDraft, []Column{ColumnBacklog, ColumnPlan}},
 		{StatusPlanned, []Column{ColumnBacklog, ColumnPlan}},
-		{StatusInProgress, []Column{ColumnRun, ColumnReview}},
+		{StatusInProgress, []Column{ColumnRun, ColumnSync}},
 	}
 	for _, tc := range cases {
 		for _, col := range tc.cols {

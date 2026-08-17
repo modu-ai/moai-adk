@@ -43,7 +43,7 @@ const (
 )
 
 // ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다.
-var ChainRoles = []string{"lead", "plan", "run", "review", "sync"}
+var ChainRoles = []string{"lead", "plan", "run", "sync"}
 
 // KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
 type KanbanRecord = kanban.Record
@@ -275,7 +275,7 @@ func estimateStage(s SessionVM) (string, bool) {
 }
 
 // pipelineColumns — 뷰 B. SPEC status 가 정직하게 말해주는 4단계만 그린다.
-// backlog / review 는 대응 status 가 없어 만들지 않는다.
+// backlog 는 대응 status 가 없어 만들지 않는다.
 func pipelineColumns(specs []SpecRowVM) []PipeColumnVM {
 	cols := []PipeColumnVM{
 		{ID: "plan", Status: "draft"},
