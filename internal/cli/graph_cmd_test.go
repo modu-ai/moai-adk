@@ -102,3 +102,124 @@ func TestGraphCmd_NoAskUserQuestion(t *testing.T) {
 		}
 	}
 }
+
+// graphQueryFixture extends graphFixtureProject with a spec.md for the
+// depends_on target so the --specs-no-code universe has a known unreferenced
+// member, then builds edges.jsonl under the temp root.
+func graphQueryFixture(t *testing.T) string {
+	t.Helper()
+	root := graphFixtureProject(t)
+
+	depDir := filepath.Join(root, ".moai", "specs", "SPEC-GRAPH-CLI-DEP-001")
+	if err := os.MkdirAll(depDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	depBody := "---\nid: SPEC-GRAPH-CLI-DEP-001\ntitle: \"t\"\n---\n"
+	if err := os.WriteFile(filepath.Join(depDir, "spec.md"), []byte(depBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	build := newGraphCmd()
+	build.SetArgs([]string{"build", "--root", root})
+	out := &strings.Builder{}
+	build.SetOut(out)
+	build.SetErr(out)
+	if err := build.Execute(); err != nil {
+		t.Fatalf("graph build: %v\noutput: %s", err, out.String())
+	}
+	return root
+}
+
+// runGraphQuery executes 'moai graph query' with args and returns the output.
+func runGraphQuery(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := newGraphCmd()
+	cmd.SetArgs(append([]string{"query"}, args...))
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("graph query %v: %v\noutput: %s", args, err, out.String())
+	}
+	return out.String()
+}
+
+func TestGraphQueryCmd_Callers(t *testing.T) {
+	root := graphQueryFixture(t)
+	out := runGraphQuery(t, "--root", root, "--callers", "SPEC-GRAPH-CLI-001")
+	for _, want := range []string{"internal/demo/demo.go", "callers of SPEC-GRAPH-CLI-001: 1"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGraphQueryCmd_Blast(t *testing.T) {
+	root := graphQueryFixture(t)
+	// DEP <- 001 (depends_on) <- demo.go (mx-spec): the radius spans both kinds.
+	out := runGraphQuery(t, "--root", root, "--blast", "SPEC-GRAPH-CLI-DEP-001")
+	for _, want := range []string{"SPEC-GRAPH-CLI-001", "internal/demo/demo.go"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGraphQueryCmd_FanIn(t *testing.T) {
+	root := graphQueryFixture(t)
+	out := runGraphQuery(t, "--root", root, "--fanin", "--limit", "5")
+	if !strings.Contains(out, "1\tinternal/config") {
+		t.Errorf("output missing the ranked importer row:\n%s", out)
+	}
+}
+
+func TestGraphQueryCmd_SpecsNoCodeIncludesCaveat(t *testing.T) {
+	root := graphQueryFixture(t)
+	out := runGraphQuery(t, "--root", root, "--specs-no-code")
+
+	// The unreferenced member of the universe is the depends_on-only SPEC.
+	for _, want := range []string{
+		"SPECs with no code reference: 1 of 2",
+		"SPEC-GRAPH-CLI-DEP-001",
+		"미연결 ≠ 미구현", // [HARD] caveat must ride every --specs-no-code result
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGraphQueryCmd_RequiresExactlyOneSelector(t *testing.T) {
+	root := graphQueryFixture(t)
+
+	for _, args := range [][]string{
+		{"--root", root},
+		{"--root", root, "--fanin", "--specs-no-code"},
+	} {
+		cmd := newGraphCmd()
+		cmd.SetArgs(append([]string{"query"}, args...))
+		out := &strings.Builder{}
+		cmd.SetOut(out)
+		cmd.SetErr(out)
+		if err := cmd.Execute(); err == nil {
+			t.Errorf("args %v must fail (exactly one selector required), output:\n%s", args, out.String())
+		} else if !strings.Contains(err.Error(), "exactly one") {
+			t.Errorf("args %v: unexpected error: %v", args, err)
+		}
+	}
+}
+
+func TestGraphQueryCmd_MissingArtifact(t *testing.T) {
+	cmd := newGraphCmd()
+	cmd.SetArgs([]string{"query", "--root", t.TempDir(), "--callers", "x"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("missing artifact must fail, output:\n%s", out.String())
+	}
+	if !strings.Contains(err.Error(), "moai graph build") {
+		t.Errorf("error must point at 'moai graph build', got: %v", err)
+	}
+}

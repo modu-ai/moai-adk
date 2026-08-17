@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/graph"
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // newGraphCmd creates the 'moai graph' parent command — persisted codebase
@@ -18,13 +22,133 @@ func newGraphCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "graph",
 		Short:   "Codebase graph artifact tools",
-		Long:    `Build persisted graph artifacts that aggregate existing graph-producing layers.`,
+		Long:    `Build and query persisted codebase graph artifacts (edges.jsonl).`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
 	cmd.AddCommand(newGraphBuildCmd())
+	cmd.AddCommand(newGraphQueryCmd())
+	return cmd
+}
+
+// unreferencedSpecCaveat is printed with every --specs-no-code result: a
+// SPEC absent from edges.jsonl is NOT an unimplemented SPEC — most SPECs
+// deliver docs/rules/harness with no code by design.
+const unreferencedSpecCaveat = "NOTE: unreferenced != unimplemented (미연결 ≠ 미구현) — most SPECs deliver docs/rules/harness, so\nhaving no code reference is normal; treat this list as a coverage map, not a defect list."
+
+// newGraphQueryCmd 'moai graph query' answers reverse-dependency questions
+// from the persisted edges.jsonl without re-running extraction.
+//
+// @MX:NOTE: [AUTO] moai graph query — read-only consumer of edges.jsonl; agents use it instead of re-running go list -deps per question
+func newGraphQueryCmd() *cobra.Command {
+	var callersNode, blastNode, edgesPath, rootArg string
+	var fanin, specsNoCode bool
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:   "query",
+		Short: "Query edges.jsonl: callers / blast radius / import fan-in / SPECs with no code reference",
+		Long: `Answer reverse-dependency questions from the persisted edges.jsonl (run 'moai graph build' first). Exactly one selector per invocation:
+
+  --callers <node>    direct reverse neighbors: importers of a package, SPECs
+                      depending on a SPEC, code files tagged @MX:SPEC
+  --blast <node>      transitive blast radius of a change at <node> (BFS over
+                      reverse edges; mx-spec edges propagate both ways, so a
+                      code file reaches the SPECs it implements)
+  --fanin             import fan-in ranking (stand-in for an @MX:DEBT fan-in
+                      query — edges.jsonl carries no tag-kind edges yet)
+  --specs-no-code     SPEC ids (spec.md frontmatter universe) with zero
+                      mx-spec edges in the artifact
+
+Examples:
+  moai graph query --callers SPEC-FOO-001
+  moai graph query --blast internal/config
+  moai graph query --fanin --limit 20
+  moai graph query --specs-no-code`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			selectors := 0
+			for _, on := range []bool{callersNode != "", blastNode != "", fanin, specsNoCode} {
+				if on {
+					selectors++
+				}
+			}
+			if selectors != 1 {
+				return fmt.Errorf("exactly one of --callers, --blast, --fanin, --specs-no-code is required")
+			}
+
+			projectRoot, err := resolveGraphRoot(rootArg)
+			if err != nil {
+				return err
+			}
+
+			edgesFile := edgesPath
+			if edgesFile == "" {
+				edgesFile = filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl")
+			} else if abs, absErr := filepath.Abs(edgesFile); absErr == nil {
+				edgesFile = abs
+			}
+			edges, err := graph.LoadJSONL(edgesFile)
+			// errors.Is (not os.IsNotExist): LoadJSONL wraps the open error
+			// with %w, and os.IsNotExist does not follow wrap chains.
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("edges artifact not found at %s — run 'moai graph build' first", edgesFile)
+			}
+			if err != nil {
+				return fmt.Errorf("load edges: %w", err)
+			}
+
+			out := cmd.OutOrStdout()
+			switch {
+			case callersNode != "":
+				res := graph.FindCallers(edges, callersNode)
+				_, _ = fmt.Fprintf(out, "callers of %s: %d\n", callersNode, len(res))
+				for _, n := range res {
+					_, _ = fmt.Fprintln(out, n)
+				}
+			case blastNode != "":
+				res := graph.BlastRadius(edges, blastNode)
+				_, _ = fmt.Fprintf(out, "blast radius of %s: %d\n", blastNode, len(res))
+				for _, n := range res {
+					_, _ = fmt.Fprintln(out, n)
+				}
+			case fanin:
+				rows := graph.ImportFanIn(edges, limit)
+				_, _ = fmt.Fprintf(out, "import fan-in: top %d\n", len(rows))
+				for _, r := range rows {
+					_, _ = fmt.Fprintf(out, "%d\t%s\n", r.FanIn, r.Package)
+				}
+			default: // --specs-no-code
+				deps, err := mx.LoadSpecDependencies(projectRoot)
+				if err != nil {
+					return fmt.Errorf("load spec universe: %w", err)
+				}
+				universe := make([]string, 0, len(deps))
+				for id := range deps {
+					universe = append(universe, id)
+				}
+				sort.Strings(universe)
+
+				res := graph.UnreferencedSpecs(edges, universe)
+				_, _ = fmt.Fprintf(out, "SPECs with no code reference: %d of %d\n", len(res), len(universe))
+				for _, id := range res {
+					_, _ = fmt.Fprintln(out, id)
+				}
+				_, _ = fmt.Fprintln(out, unreferencedSpecCaveat)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&callersNode, "callers", "", "direct reverse neighbors of this node (package path, file path, or SPEC id)")
+	cmd.Flags().StringVar(&blastNode, "blast", "", "transitive blast radius of a change at this node")
+	cmd.Flags().BoolVar(&fanin, "fanin", false, "import fan-in ranking (default top 10, --limit 0 for all)")
+	cmd.Flags().BoolVar(&specsNoCode, "specs-no-code", false, "SPEC ids with zero mx-spec edges in the artifact")
+	cmd.Flags().IntVar(&limit, "limit", 10, "rows to show for --fanin (0 = all)")
+	cmd.Flags().StringVar(&edgesPath, "edges", "", "edges.jsonl path (defaults to <root>/.moai/project/graph/edges.jsonl)")
+	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
+
 	return cmd
 }
 
