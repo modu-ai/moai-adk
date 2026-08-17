@@ -34,7 +34,7 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 The lead classifies each card as it leaves `backlog` and names the class in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; one session carries the card to a pull request, `plan` skipped), **B — defect, cause unknown** (`run → sync`; `plan` is skipped, so no SPEC exists), **C — design change** (a decision, or spans subsystems; all three working columns). Full table and the ceremony-cost rationale: `kanban-dispatch-detail.md` § Card classes.
 
-[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A. (Same shape as the CodeRabbit section below: a class that skips review on a claim nobody checked is the unobserved-claim hazard.)
+[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A.
 
 The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
 
@@ -44,7 +44,7 @@ The justification is never "it is faster". Speed is the effect of skipping the c
 
 ## The dispatch cycle
 
-`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session. Dispatch is addressed by session name via `SendMessage({to: "<name>", message: "…"})`; `ListAgents` reports the live set. Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
+`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session, addressed by name (`SendMessage`; `ListAgents` reports the live set). Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself. Session-naming rules and the address-block walkthrough: `kanban-dispatch-detail.md` § The dispatch cycle.
 
@@ -85,7 +85,7 @@ Before moving a card out of a working column, the lead reads the card's `progres
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
 
-**The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. The division is structural, not ceremonial: where the board's lanes run on a different backend than the lead, the lane sessions cannot commission judgment work onto the lead's backend, so the verdict has a home in the lead even when the execution has none.
+**The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. Why the division is structural rather than ceremonial: `kanban-dispatch-detail.md` § The verdict's home.
 
 ### CodeRabbit is not read from `gh pr checks`
 
@@ -104,7 +104,7 @@ A CodeRabbit row counts as evidence only when BOTH of these hold:
 
 1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
-Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `sync`. Branch protection is not the lever here — the status state is `success` in precisely the failing case; only a read of the description surfaces it.
+Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `sync`.
 
 ## Review lens selection
 
@@ -150,7 +150,7 @@ The lead dispatches this rather than assuming it: each instruction names the wor
 
 [HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A trailing `kill` is not cleanup; it is a line the process may never reach, and every path that ends early leaves the load running.
 
-**A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given — a lane executing an approved recipe is doing what it was told, and a rule that blames the executor teaches the wrong actor to be careful.
+**A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given.
 
 ### The env-isolated verification form
 

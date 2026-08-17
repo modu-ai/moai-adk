@@ -61,3 +61,40 @@ func UnreferencedSpecs(edges []Edge, universe []string) []string {
 	sort.Strings(out)
 	return out
 }
+
+// MilestoneClaim is one cross-check row read back from the artifact: the
+// milestone node (report-stem qualified) and the queue cards its
+// milestone-card edges claim.
+type MilestoneClaim struct {
+	Milestone string
+	Cards     []string
+}
+
+// MilestoneClaims returns every milestone a report-milestone edge declares,
+// with the cards its milestone-card edges claim, sorted by milestone node.
+// The live-queue cross-check stays with the caller: the artifact records
+// what the report CLAIMS, the queue records what exists, and the gate is
+// the comparison between the two.
+//
+// @MX:NOTE: [AUTO] MilestoneClaims — claim-side half of the milestone↔card gate; the queue-side half lives in the CLI where the live backlog is readable
+func MilestoneClaims(edges []Edge) []MilestoneClaim {
+	cards := map[string][]string{}
+	declared := map[string]bool{}
+	for _, e := range edges {
+		switch e.Kind {
+		case KindReportMilestone:
+			declared[e.Target] = true
+		case KindMilestoneCard:
+			cards[e.Source] = append(cards[e.Source], e.Target)
+		}
+	}
+
+	out := make([]MilestoneClaim, 0, len(declared))
+	for milestone := range declared {
+		list := append([]string(nil), cards[milestone]...)
+		sort.Strings(list)
+		out = append(out, MilestoneClaim{Milestone: milestone, Cards: list})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Milestone < out[j].Milestone })
+	return out
+}
