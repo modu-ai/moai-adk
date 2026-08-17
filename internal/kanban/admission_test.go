@@ -25,7 +25,7 @@ func TestCardRecord_RoundTrip(t *testing.T) {
 
 	want := []Card{
 		{SpecID: "SPEC-RT-001", Column: ColumnRun, Holder: "run-sess-1", LastMovedAt: "2026-08-14T01:00:00Z"},
-		{SpecID: "SPEC-RT-002", Column: ColumnReview, Holder: "", LastMovedAt: "2026-08-14T02:00:00Z"},
+		{SpecID: "SPEC-RT-002", Column: ColumnSync, Holder: "", LastMovedAt: "2026-08-14T02:00:00Z"},
 		{SpecID: "SPEC-RT-003", Column: ColumnBacklog, Holder: "", LastMovedAt: "2026-08-14T03:00:00Z"},
 	}
 	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {

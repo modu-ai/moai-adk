@@ -10,10 +10,10 @@ description: >
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "harness"
   status: "active"
-  updated: "2026-07-13"
+  updated: "2026-08-17"
   tags: "oss-docs,i18n,4-locale,readme,docs-site,adk.mo.ai.kr"
 ---
 
@@ -28,7 +28,12 @@ wins — EXCEPT the two stale items in § Known-Stale below, where reality wins.
 | Surface | Canonical | Derivation chain | Derived files |
 |---------|-----------|------------------|---------------|
 | docs-site | **ko** | ko → en → ja/zh, same PR | `docs-site/content/{en,ja,zh}/` |
-| README | **en** (`README.md`) | en → ko/ja/zh, same PR | `README.ko.md`, `README.ja.md`, `README.zh.md` |
+| README | **ko** (`README.ko.md`) | ko → en/ja/zh, same PR | `README.md`, `README.ja.md`, `README.zh.md` |
+
+> README canonical flipped en → ko by card t47 (operator decision 2026-08-17):
+> the ko new-skeleton (12-section feature-oriented structure) was promoted to
+> canonical, and en/ja/zh are re-derived from it. Both surfaces are now
+> ko-canonical — the surface chains agree.
 
 - Author in the canonical locale only; derive the rest. Never "fix" canonical
   content inside a translation — report the discrepancy back instead.
