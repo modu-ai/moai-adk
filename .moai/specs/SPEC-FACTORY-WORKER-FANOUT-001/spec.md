@@ -134,6 +134,26 @@ launcher selects the backend, `-k` selects the role/shape):
   mechanically when `MOAI_FACTORY_WORKERS` is in the server env (the
   override is ignored with a note).
 
+## Out of Scope
+
+### Out of Scope — Documentation coverage
+
+- README and docs-site coverage of the factory entry — the t61 sync lane's
+  scope, not this card's (the Close plan names that split explicitly).
+
+### Out of Scope — Worker run-id namespace
+
+- The kanban-style run-id suffix for worker names — t56 territory for
+  `-k`, the named upgrade path under v1 ceilings; workers stay addressed
+  by name alone in v1.
+
+### Out of Scope — Queue polling and packing mechanics
+
+- Queue polling, free-slot picking, and fan-out mechanics — the kanban
+  foreman loop's (t96: `.claude/loop.md` + the moai-kanban-foreman skill);
+  this SPEC wires the entry surface, the name registry, and the routing
+  discipline only.
+
 ## v1 ceilings (deliberate, named)
 
 - Workers carry no run id (no `worker-<run-id>` form): a worker is addressed
