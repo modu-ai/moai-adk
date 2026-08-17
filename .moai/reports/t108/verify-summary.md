@@ -42,6 +42,25 @@
 
 WT-t108 (HEAD = release/v3.1.1 d169c4aec + base 병합 커밋), 위 커맨드는 본 세션 미커밋 작업 트리에서 실행.
 
+## 재심 패치 (d692adabe) — MUST-FIX 근명과 정정
+
+- **결함 확정**: ebf95526b에서 `internal/template/templates/CLAUDE.md` 미러 수정분이
+  워킹 트리에만 있고 커밋에 빠짐. 근원은 스테이징 pathspec 누락
+  (`templates/.claude/`가 트리 루트의 `templates/CLAUDE.md`를 덮지 않음).
+- **검증 방법론 정정**: 종전 증거는 워킹 트리 grep(=0, 그 트리에서 참)이었고 리뷰는
+  커밋 트리(=2, 그 트리에서 참) — 측정 대상 불일치. 정정 후 모든 grep 증거는
+  **`git grep <커밋>`** 로 재생성(아래 Evidence). 리뷰어의 grep-경로 지적과 별개로,
+  실제 근원은 측정-대상(워킹 vs 커밋)이었음 — 둘 다 교정.
+- **R1**: model_routing.go:7·types.go:451 주석 → "the Phase 4 mode-shape axis
+  (direct / serial / fanout / sweep)". R2: 정본 rename 노트에 enum 토큰 매핑 행
+  추가(+미러).
+- **추가 발견(재심 grep로)**: `.moai/docs/autonomous-workflow-strategy.md`의
+  구 참조 8건은 '전략 제안…제안 시점의 기록으로 보존' 명시된 시점별 기록 문서
+  (살아있는 표면 참조 0건 실측) — 불변 기록 예외군에 편입해 기재만.
+- HEAD 기준 살아있는 표면 `git grep 'Mode [1-6]|Mode 7'` = **0**
+  (grep-mode-refs.txt — .moai/specs·CHANGELOG·.moai/reports·.moai/research·
+  상기 전략 기록 문서 제외). 예산·템플릿 수트 재통과.
+
 ## Gaps (미검증 / 명시적 예외)
 
 1. **불변 역사 기록은 의도적으로 미수정**: `.moai/specs/*` (~800행)와 `CHANGELOG.md` (2개 항목)의
