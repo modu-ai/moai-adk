@@ -12,32 +12,31 @@ draft: false
 
 ## 看板的样子
 
-看板固定为六列：
+看板固定为五列：
 
 ```mermaid
 flowchart TD
     Backlog["backlog — 队列<br/>(没有归属会话)"]
     Plan["plan 列<br/>(plan 伴随会话)"]
     Run["run 列<br/>(run 伴随会话)"]
-    Review["review 列<br/>(review 伴随会话)"]
-    Sync["sync 列<br/>(sync 伴随会话)"]
+    Sync["sync 列<br/>(sync 伴随会话 + 评审判定)"]
     Done["done — 终点<br/>(不向这里派发任何东西)"]
-    Backlog --> Plan --> Run --> Review --> Sync --> Done
+    Backlog --> Plan --> Run --> Sync --> Done
 ```
 
-`backlog` 和 `done` 刻意不设归属会话。中间四列各自对应一个伴随角色，这让派发变成一次查表而不是一个决定 — 卡片在哪一列，就决定了它发给谁。
+`backlog` 和 `done` 刻意不设归属会话。中间三列各自对应一个伴随角色，这让派发变成一次查表而不是一个决定 — 卡片在哪一列，就决定了它发给谁。review 列并不存在：评审判定由 sync 关卡吸收，由 sync 阶段亲自运行评审视角。
 
 ## 九个词
 
 | 词 | 含义 | 示例 |
 |---|---|---|
-| **泳道** (lane) | 把一张卡片从头送到尾的一条并行工作流：一个会话配一个工作树。就像实体看板上的泳道一样，每条流各走各的车道，绝不共享工作树。"泳道内验证" (lane-local verification) 指该泳道只跑自己的改动可能影响的测试。 | `run-a1b2c3` 会话在工作树 `WT-t0` 里干活，这就是一条泳道 |
+| **泳道** (lane) | 把一张卡片从头送到尾的一条并行工作流：一个会话配一个工作树。就像实体看板上的泳道一样，每条流各走各的车道，绝不共享工作树。"泳道内验证" (lane-local verification) 指该泳道只跑自己的改动可能影响的测试。 | `run` 会话在工作树 `WT-t0` 里干活，这就是一条泳道 |
 | **卡片** (card) | 看板上的一个工作单元。运维者用 `/moai todo "<描述>"` 投入，以短ID相称。一张卡片拥有一个工作树、一份进度记录和它的完成证据。 | `t0` — 一行修复的卡片 |
-| **列** (column) | 看板上的一个阶段，顺序固定：`backlog → plan → run → review → sync → done`。中间四列各自对应一个伴随角色。 | `/moai run <SPEC-ID>` 发生在 `run` 列 |
+| **列** (column) | 看板上的一个阶段，顺序固定：`backlog → plan → run → sync → done`。中间三列各自对应一个伴随角色。 | `/moai run <SPEC-ID>` 发生在 `run` 列 |
 | **待办** (backlog) | 看板的入口队列。刻意不设归属会话 — 工作只有运维者亲手投入才会进入看板。 | `/moai todo "rename hint is stale"` 向待办追加一张卡片 |
 | **主导会话** (lead) | 唯一的协调会话 (`moai cc -k`)。只凭自己读到的证据把卡片移入下一列，在阶段之间请运维者对相应会话执行 `/clear`，并且从不亲自写代码。 | 把一张卡片连同工作树指示一起派发出去的那个会话 |
-| **伴随会话** (companion) | 由人亲手、一次一个终端启动的工作会话 (`moai cc -k --name <role>-<run-id>`)，一次承担一列的工作。 | `plan-a1b2c3`、`run-a1b2c3`、`review-a1b2c3`、`sync-a1b2c3` |
-| **运行ID** (run-id) | 主导会话启动时给出的短标识符，为该链所有伴随会话的名字所共享。用于区分同一台机器上并发的多条链。 | `run-a1b2c3` 里的 `a1b2c3` |
+| **伴随会话** (companion) | 由人亲手、一次一个终端启动的工作会话 (`moai cc -k --name <role>`)，一次承担一列的工作。名字只用角色名；同一个角色名已被占用时，下一个会话顺次拿编号。 | `plan`、`run`、`sync` |
+| **运行ID** (run-id) | 主导会话启动时给出的短标识符。它是主导会话自己的名字，伴随会话不携带它 —— 伴随会话以角色名相称。 | 主导会话的名字 `a1b2c3` |
 | **工作树** (worktree) | 卡片工作发生的隔离检出。通过启动器进入 (`moai cc -w <name>` / `EnterWorktree`) — 绝不用 raw `git worktree add` 创建。分支名为 `WT-<card-id>`。工作树比阶段活得久：一棵树从run贯穿到sync。 | 分支 `WT-t0` 上的 `.claude/worktrees/t0` |
 | **派发** (dispatch) | 主导会话发给某个伴随会话的指示。不是工作的副本而是指针 — 卡片ID、SPEC ID、阶段命令、完成信号。用运维者的对话语言书写。 | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/" |
 
@@ -47,10 +46,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph LaneA["泳道 — 卡片 t0: run-a1b2c3 会话 + WT-t0 工作树"]
+    subgraph LaneA["泳道 — 卡片 t0: run 会话 + WT-t0 工作树"]
         A0["卡片 t0"] --> A1["实现与验证<br/>只发生在 WT-t0 里"]
     end
-    subgraph LaneB["泳道 — 卡片 t1: run-a1b2c4 会话 + WT-t1 工作树"]
+    subgraph LaneB["泳道 — 卡片 t1: 第二个 run 会话 + WT-t1 工作树"]
         B0["卡片 t1"] --> B1["实现与验证<br/>只发生在 WT-t1 里"]
     end
 ```
@@ -63,9 +62,9 @@ flowchart TD
 
 1. 运维者用 `/moai todo "rename hint is stale"` 把**卡片** `t0` 放进**待办**。
 2. **主导会话**从队列里选出 `t0`，把它**派发**给 plan 伴随会话。
-3. `plan-a1b2c3` **伴随会话**写好SPEC后，主导会话亲自读证据，把卡片移入下一**列**。
-4. `run-a1b2c3` 在**工作树** `WT-t0` 里实现 — 这个会话与工作树的对子就是**泳道**，验证也在泳道内进行（只跑改动可能影响的测试）。所有会话名共享的 `a1b2c3` 就是**运行ID**。
-5. review 和 sync 两列照同样方式通过；sync 开出PR后，卡片抵达done。
+3. `plan` **伴随会话**写好SPEC后，主导会话亲自读证据，把卡片移入下一**列**。
+4. `run` 在**工作树** `WT-t0` 里实现 — 这个会话与工作树的对子就是**泳道**，验证也在泳道内进行（只跑改动可能影响的测试）。主导会话的名字 `a1b2c3` 就是**运行ID**。
+5. sync 列照同样方式通过 —— 期间 sync 关卡吸收评审判定 —— sync 开出PR后，卡片抵达done。
 
 在这整个过程中，卡片的工作只发生在 `WT-t0` 里，从头到尾不与并行泳道的工作树相混。
 

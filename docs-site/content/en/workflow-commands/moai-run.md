@@ -535,7 +535,7 @@ The quality issues are reported to the user, and you are asked whether to retry 
 
 ## Kanban Mode — run a SPEC all the way through (v3.1)
 
-`/moai run` drives a single phase. The verify and sync steps after it require the user to issue another command. **Kanban Mode** is the entry switch that automates this "chaining". Start the session launcher with `--kanban`, and the four phases — `plan → run → verify → sync` — are chained automatically on top of a single goal preset (`kanban_chain`).
+`/moai run` drives a single phase. The sync step after it requires the user to issue another command. **Kanban Mode** is the entry switch that automates this "chaining". Start the session launcher with `--kanban`, and the three phases — `plan → run → sync` — are chained automatically under the lead session's coordination.
 
 ```bash
 # Enter one SPEC in Kanban Mode — all the way through to completion

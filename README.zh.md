@@ -43,10 +43,10 @@
 
 一个会话占用一个上下文窗口。长 SPEC 会填满这个窗口，后面的工作背着前面的一切前进：已经不再需要的计划在评审时仍留在窗口里，评审在写文档时又还留着。常见的逃生口 `/clear` 会把来龙去脉连同负担一起扔掉。
 
-看板模式把一项工作**从一个终端拆到五个终端**。主控会话（lead）驾驶整条链，四个伴随会话各认领 `plan`、`run`、`review`、`sync` 中的一列，**只背自己那一列的上下文**。这不是解除上限 —— 每个会话的限额原样存在。改变的是：任何会话都不再背着四个阶段的历史，于是同样的预算能走得更远，结束的阶段可以清空而不丢失卡片。
+看板模式把一项工作**从一个终端拆到四个终端**。主控会话（lead）驾驶整条链，三个伴随会话各认领 `plan`、`run`、`sync` 中的一列，**只背自己那一列的上下文**。评审不是单独的列 —— sync 门禁把它吸收进来，由 sync 阶段亲自运行评审视角得出结论。这不是解除上限 —— 每个会话的限额原样存在。改变的是：任何会话都不再背着三个阶段的历史，于是同样的预算能走得更远，结束的阶段可以清空而不丢失卡片。
 
 <p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="看板模式的一次运行 —— 主控会话和四个伴随会话各自在自己的终端里，用各自的模型与推理强度运行" width="100%">
+  <img src="./assets/images/kanban-five-sessions.png" alt="看板模式的一次运行 —— 五列看板与主控、三个伴随会话各自在自己的终端里，用各自的模型与推理强度运行" width="100%">
 </p>
 
 每一列都可以用不同的后端和推理强度。上面的画面把 Plan 跑在 Opus 5 high、Run 跑在 GLM 5.2 xhigh、Sync 跑在 GLM 5.2 上 —— 因为每一列需要的推理深度并不相同。
@@ -54,16 +54,15 @@
 ### 开始使用
 
 ```bash
-moai cc -k                          # 主控 —— 告知 run-id 并铺设链条
-moai cc -k --name plan-<run-id>     # 伴随会话，各自在单独的终端里
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # 主控 —— 告知 run-id 并铺设链条
+moai cc -k --name plan        # 伴随会话，各自在单独的终端里
+moai cc -k --name run
+moai cc -k --name sync
 ```
 
-伴随会话**要由人手在新的终端里逐个启动**。会话不能替别的会话启动。任何一列把 `moai cc` 换成 `moai glm`，就只有那一列跑在 GLM 后端上。
+伴随会话**要由人手在新的终端里逐个启动**。名字只用角色名 —— run-id 是主控会话的标识符，伴随会话不携带它；同一个角色名已被占用时，下一个会话顺次拿编号。会话不能替别的会话启动。任何一列把 `moai cc` 换成 `moai glm`，就只有那一列跑在 GLM 后端上。
 
-看板是 `backlog → plan → run → review → sync → done` 六列。`backlog` 刻意不设归属会话，所以只有人把工作放进去，它才会进入看板：
+看板是 `backlog → plan → run → sync → done` 五列。`backlog` 刻意不设归属会话，所以只有人把工作放进去，它才会进入看板：
 
 ```text
 /moai todo "rename 提示过时了"   # 追加卡片
@@ -72,12 +71,12 @@ moai cc -k --name sync-<run-id>
 
 有两条规则让看板保持诚实。主控**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭伴随会话的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一个阶段结束后，主控会请你手动 `/clear` 对应会话 —— `/clear` 是用户亲手敲的命令，无法当作指令发送。
 
-### 五个会话共用的词汇
+### 四个会话共用的词汇
 
 把看板文档里反复出现的词汇收进一张图。**列** (column) 是看板的阶段；**泳道** (lane) 是把一张卡片一路送到终点的“会话 + 工作树”组合 —— 区别就像站点和线路。
 
 ```text
-操作者 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ review ─▶ sync ─▶ done
+操作者 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
                           (主控只凭读到的证据把卡片送入下一列)
 
 泳道 —— 卡片 t0:  run 会话 + 工作树 WT-t0   ┐ 两条流共用同一块看板，
@@ -87,12 +86,12 @@ moai cc -k --name sync-<run-id>
 | 词汇 | 一句话定义 |
 |---|---|
 | 卡片 (card) | 一个工作单元。经 `/moai todo` 进入，以短 ID 相称 |
-| 列 (column) | 看板的一个阶段 —— 六列顺序固定 |
+| 列 (column) | 看板的一个阶段 —— 五列顺序固定 |
 | 积压区 (backlog) | 入口等待队列。没有归属会话，只有人能投放 |
 | 泳道 (lane) | 把一张卡片送到终点的“会话+工作树”组合。一条并行工作流 |
 | 主控 (lead) | 协调者会话。只凭读到的证据推进卡片，自己不写代码 |
 | 伴随会话 (companion) | 坐镇某一列干活的会话。由人手逐终端启动 |
-| 运行 ID (run-id) | 主控启动时告知的短标识符。伴随会话的名字共享它 |
+| 运行 ID (run-id) | 主控启动时告知的短标识符。它是主控会话的名字，伴随会话不携带它 |
 | 工作树 (worktree) | 卡片专用的隔离检出（`WT-<卡片>` 分支）。从 run 到 sync 一棵贯通 |
 | 派单 (dispatch) | 主控发给伴随会话的指令 —— 是工作的指针，不是副本 |
 
@@ -100,7 +99,7 @@ moai cc -k --name sync-<run-id>
 
 ### 用眼睛看板
 
-`moai web` 会启动一个本地控制台。看板画面把五会话链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings 画面。
+`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings 画面。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 画面 —— SPEC 汇总、进行中的 SPEC 列表、会话注册表" width="90%">
@@ -299,7 +298,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### 看板模式
 
-`--kanban`（短写 `-k`）是会话启动器开关，武装 `kanban_chain` 目标预设 —— 把单个 SPEC 沿 `plan → run → verify → sync` 推进，并用多会话看板协调。看板的骨架是 **Origin-Trail Chain** —— 一棵 append-only 的 JSONL 谱系树，追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条）、并通过心跳陈旧度检出死掉的主控会话。
+`--kanban`（短写 `-k`）是会话启动器开关，在主控会话的指挥下把单个 SPEC 沿 `plan → run → sync` 推进，并用多会话看板协调。看板的骨架是 **Origin-Trail Chain** —— 一棵 append-only 的 JSONL 谱系树，追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条）、并通过心跳陈旧度检出死掉的主控会话。
 
 | 概念 | 作用 |
 |------|--------|
@@ -308,7 +307,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>-<run-id>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo <add|list|next|done>` 运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo <add|list|next|done>` 运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 

@@ -43,10 +43,10 @@
 
 세션 하나는 컨텍스트 창 하나를 쓴다. 긴 SPEC은 그 창을 채우고, 뒤에 오는 작업은 앞의 것을 전부 지고 간다. 계획은 이미 끝났는데도 리뷰하는 내내 창에 남아 있고, 그 리뷰는 문서를 쓰는 내내 또 남아 있다. 흔한 탈출구인 `/clear`는 짐과 함께 맥락까지 버린다.
 
-칸반 모드는 작업 하나를 **터미널 한 개가 아니라 다섯 개로** 나눈다. 리드 세션이 체인을 몰고, 네 개의 동반 세션이 `plan`·`run`·`review`·`sync` 한 칸씩을 맡아 **자기 칸의 맥락만** 진다. 무제한이 되는 것이 아니다 — 세션마다 한도는 그대로 있다. 달라지는 것은 어느 세션도 네 단계치 이력을 짊어지지 않는다는 점이고, 그래서 같은 예산이 훨씬 멀리 가며, 끝난 단계는 카드를 잃지 않고 비울 수 있다.
+칸반 모드는 작업 하나를 **터미널 한 개가 아니라 네 개로** 나눈다. 리드 세션이 체인을 몰고, 세 개의 동반 세션이 `plan`·`run`·`sync` 한 칸씩을 맡아 **자기 칸의 맥락만** 진다. 검토는 별도 칸이 아니라 sync 게이트가 흡수한다 — sync 단계가 리뷰 렌즈를 직접 돌려 판정을 낸다. 무제한이 되는 것이 아니다 — 세션마다 한도는 그대로 있다. 달라지는 것은 어느 세션도 세 단계치 이력을 짊어지지 않는다는 점이고, 그래서 같은 예산이 훨씬 멀리 가며, 끝난 단계는 카드를 잃지 않고 비울 수 있다.
 
 <p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="칸반 모드 한 런 — 리드 세션과 네 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다" width="100%">
+  <img src="./assets/images/kanban-five-sessions.png" alt="칸반 모드 한 런 — 다섯 칸 보드와 리드·세 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다" width="100%">
 </p>
 
 칸마다 백엔드와 추론 강도를 다르게 둘 수 있다. 위 화면은 Plan을 Opus 5 high로, Run을 GLM 5.2 xhigh로, Sync를 GLM 5.2로 돌린다. 칸마다 필요한 추론의 깊이가 같지 않기 때문이다.
@@ -54,16 +54,15 @@
 ### 시작하기
 
 ```bash
-moai cc -k                          # 리드 — run-id를 알려주고 체인을 깐다
-moai cc -k --name plan-<run-id>     # 동반 세션, 각자 별도 터미널에서
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # 리드 — run-id를 알려주고 체인을 깐다
+moai cc -k --name plan        # 동반 세션, 각자 별도 터미널에서
+moai cc -k --name run
+moai cc -k --name sync
 ```
 
-동반 세션은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. 어느 칸이든 `moai cc` 대신 `moai glm`을 쓰면 그 칸만 GLM 백엔드로 돈다.
+동반 세션은 **터미널을 하나씩 새로 열어 직접** 띄운다. 이름은 역할만으로 붙인다 — run-id는 리드 세션의 식별자이고 동반 세션이 물고 다니지 않는다. 같은 역할 이름이 이미 살아 있으면 다음 번호가 붙는다. 세션은 다른 세션을 대신 띄우지 못한다. 어느 칸이든 `moai cc` 대신 `moai glm`을 쓰면 그 칸만 GLM 백엔드로 돈다.
 
-보드는 `backlog → plan → run → review → sync → done` 여섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
+보드는 `backlog → plan → run → sync → done` 다섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
 
 ```text
 /moai todo "rename 힌트가 낡았다"   # 카드 추가
@@ -72,12 +71,12 @@ moai cc -k --name sync-<run-id>
 
 보드를 정직하게 유지하는 규칙이 둘 있다. 리드는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 단계가 끝나면 리드가 해당 세션을 `/clear` 해달라고 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다.
 
-### 다섯 세션이 쓰는 말
+### 네 세션이 쓰는 말
 
 칸반 문서가 되풀이하는 낱말을 그림 한 장으로 묶으면 이렇다. **칸** (column) 은 보드의 단계이고, **레인** (lane) 은 카드 한 장을 그 단계들 사이로 끝까지 나르는 세션과 워크트리의 짝이다 — 정류장과 노선의 차이다.
 
 ```text
-운영자 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ review ─▶ sync ─▶ done
+운영자 ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
                           (리드가 직접 읽은 증거로만 카드를 다음 칸으로)
 
 레인 — 카드 t0:  run 세션 + 워크트리 WT-t0   ┐ 두 흐름은 같은 보드를
@@ -87,12 +86,12 @@ moai cc -k --name sync-<run-id>
 | 낱말 | 한 줄 정의 |
 |---|---|
 | 카드 (card) | 작업 단위 하나. `/moai todo`로 들어오고 짧은 아이디로 불린다 |
-| 칸 (column) | 보드의 단계 하나 — 여섯 칸은 고정 순서 |
+| 칸 (column) | 보드의 단계 하나 — 다섯 칸은 고정 순서 |
 | 백로그 (backlog) | 입구 대기열. 주인 세션이 없어 사람만 넣을 수 있다 |
 | 레인 (lane) | 카드 한 장을 끝까지 나르는 세션+워크트리의 짝. 병렬 작업 흐름 하나 |
 | 리드 (lead) | 조율하는 세션. 읽은 증거로만 카드를 넘기고, 코드는 직접 쓰지 않는다 |
 | 동반 세션 (companion) | 칸마다 앉아 일하는 세션. 터미널 하나씩 사람이 직접 띄운다 |
-| 런 아이디 (run-id) | 리드가 시작할 때 알려주는 짧은 식별자. 동반 세션 이름이 공유한다 |
+| 런 아이디 (run-id) | 리드가 시작할 때 알려주는 짧은 식별자. 리드 세션의 이름이고 동반 세션은 물지 않는다 |
 | 워크트리 (worktree) | 카드 전용 격리 체크아웃 (`WT-<카드>` 브랜치). run부터 sync까지 하나가 관통한다 |
 | 배차 (dispatch) | 리드가 동반 세션에 보내는 지시 — 일의 포인터이지 복사물이 아니다 |
 
@@ -100,7 +99,7 @@ moai cc -k --name sync-<run-id>
 
 ### 보드를 눈으로 보기
 
-`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 다섯 세션 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings 화면이 함께 붙는다.
+`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings 화면이 함께 붙는다.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리" width="90%">
@@ -299,7 +298,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 
 ### 칸반 모드
 
-`--kanban`(짧게 `-k`)은 세션 런처 스위치로, `kanban_chain` 골 프리셋을 무장해 하나의 SPEC을 `plan → run → verify → sync`로 밀고 가며 다중 세션 보드로 조율한다. 보드의 뼈대가 **Origin-Trail Chain**이다 — append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트 부실로 죽은 리더 세션을 감지한다.
+`--kanban`(짧게 `-k`)은 세션 런처 스위치로, 리드 세션의 지휘 아래 하나의 SPEC을 `plan → run → sync`로 밀고 가며 다중 세션 보드로 조율한다. 보드의 뼈대가 **Origin-Trail Chain**이다 — append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트 부실로 죽은 리더 세션을 감지한다.
 
 | 개념 | 하는 일 |
 |------|--------|
@@ -308,7 +307,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>-<run-id>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo <add|list|next|done>`으로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo <add|list|next|done>`으로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 

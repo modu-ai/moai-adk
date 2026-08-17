@@ -43,10 +43,10 @@
 
 A session holds one context window, and a long SPEC fills it. Everything that comes after pays for everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
 
-Kanban Mode splits one unit of work across **five terminals instead of one**. A lead session drives the chain; four companion sessions each own a single column — `plan`, `run`, `review`, `sync` — and carry **only that column's context**. Nothing is uncapped: each session still has its own limit. What changes is that no session carries four phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
+Kanban Mode splits one unit of work across **four terminals instead of one**. A lead session drives the chain; three companion sessions each own a single column — `plan`, `run`, `sync` — and carry **only that column's context**. Review is not a separate column: the sync gate absorbs it, running the review lenses itself to reach the verdict. Nothing is uncapped: each session still has its own limit. What changes is that no session carries three phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
 
 <p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: a lead session and four companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
+  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
 </p>
 
 Each lane is also free to run a different backend and effort level — the run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2, because the reasoning a lane needs is not the same in every column.
@@ -54,16 +54,15 @@ Each lane is also free to run a different backend and effort level — the run a
 ### Getting started
 
 ```bash
-moai cc -k                          # lead — announces a run-id, seeds the chain
-moai cc -k --name plan-<run-id>     # companion, in its own terminal
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # lead — announces a run-id, seeds the chain
+moai cc -k --name plan        # companion, in its own terminal
+moai cc -k --name run
+moai cc -k --name sync
 ```
 
-Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
+Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the lead session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
 
-The board has six columns, `backlog → plan → run → review → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
+The board has five columns, `backlog → plan → run → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
 
 ```text
 /moai todo "fix the stale rename hint"   # append a card
@@ -72,12 +71,12 @@ The board has six columns, `backlog → plan → run → review → sync → don
 
 Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And between phases the lead asks you to `/clear` the named session, since `/clear` is user-typed and cannot be sent as an instruction.
 
-### Words the five sessions share
+### Words the four sessions share
 
 The recurring vocabulary of the kanban docs, gathered into one picture. A **column** is a stage of the board; a **lane** is the pair of a session and its worktree that carries one card through those stages to the end — the difference between a stop and a route.
 
 ```text
-Operator ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ review ─▶ sync ─▶ done
+Operator ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
                           (the lead advances a card only on evidence it read)
 
 Lane — card t0:  run session + worktree WT-t0   ┐ the two flows share one board,
@@ -87,12 +86,12 @@ Lane — card t1:  run session + worktree WT-t1   ┘ run side by side, never mi
 | Term | One-line definition |
 |---|---|
 | card | One unit of work. Enters via `/moai todo`, addressed by a short id |
-| column | One stage of the board — six columns in fixed order |
+| column | One stage of the board — five columns in fixed order |
 | backlog | The entrance queue. No owning session, so only a human can add work |
 | lane | The session+worktree pair that carries one card to the end. One parallel work stream |
 | lead | The coordinating session. Advances cards only on evidence it read; never writes code itself |
 | companion | The session seated in a column doing the work. Launched by hand, one per terminal |
-| run-id | Short identifier the lead announces at start. Companion session names share it |
+| run-id | Short identifier the lead announces at start. It names the lead session; companions never carry it |
 | worktree | The card's isolated checkout (`WT-<card>` branch). One carries the card from run through sync |
 | dispatch | The instruction the lead sends a companion — a pointer to the work, never a copy |
 
@@ -100,7 +99,7 @@ Full glossary with definitions and examples: [Kanban board terms](https://adk.mo
 
 ### Watching the board
 
-`moai web` serves a local console. The Kanban screen shows the five-session chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings screens.
+`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings screens.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
@@ -299,7 +298,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 
 ### Kanban mode
 
-`--kanban` (short `-k`) is a session-launcher switch that arms a `kanban_chain` goal preset — driving a single SPEC through `plan → run → verify → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
+`--kanban` (short `-k`) is a session-launcher switch — under the lead session's coordination it drives a single SPEC through `plan → run → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
 
 | Concept | What it does |
 |---------|-------------|
@@ -308,7 +307,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>-<run-id>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 

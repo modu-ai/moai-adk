@@ -119,7 +119,7 @@ At every turn end the evaluator runs the mechanical-condition command. So the co
 
 - **`/moai loop`** — a diagnostics-driven decisive loop. The difference is that the tooling decides what to fix. [`/moai loop`](/en/utility-commands/moai-loop) lives in the utility-commands section.
 - **`/moai run`** — the work-starting command. Written paired with goal. [`/moai run`](./moai-run).
-- **Kanban mode** — an entry switch that bundles `/moai goal`'s infinite-duration goal into a `plan → run → verify → sync` chain. Covered in [Kanban mode](/en/advanced/kanban-mode).
+- **Kanban mode** — an entry switch that bundles `/moai goal`'s infinite-duration goal into a `plan → run → sync` chain. Covered in [Kanban mode](/en/advanced/kanban-mode).
 
 ## What this command does not do (scope boundary)
 
@@ -131,6 +131,6 @@ At every turn end the evaluator runs the mechanical-condition command. So the co
 ## Related docs
 
 - [Autonomous continuation loop](/en/advanced/autonomous-loops) — the goal engine's stagnation guard and ceiling semantics
-- [Kanban mode](/en/advanced/kanban-mode) — the 4-stage chain tied by the `kanban_chain` goal preset
+- [Kanban mode](/en/advanced/kanban-mode) — the 3-stage chain driven by the lead session
 - [`/moai loop`](/en/utility-commands/moai-loop) — the diagnostics-driven decisive loop (sibling command)
 - [Harness engineering](/en/core-concepts/harness-engineering) — the path by which loops and observation flow into harness learning
