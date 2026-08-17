@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
+	"github.com/modu-ai/moai-adk/internal/timing"
 )
 
 // ---------------------------------------------------------------------------
@@ -115,39 +116,40 @@ func TestBranchGuard_QualityGateNotInvoked(t *testing.T) {
 // consecutive synthetic `git switch` PreToolUse events complete well under the
 // 5s PreToolUse budget. The internal for-loop is NOT a Benchmark and NOT
 // -benchtime — the test asserts latency bounds, not a throughput average. It
-// prints the p95 / worst / avg so the bounds are mechanically observable in
-// test output.
+// prints the median / p95 / worst / avg and the calibrated ratio so the bounds
+// are mechanically observable in test output.
 //
-// Both bounds are stated as a fraction of that 5s budget, because the budget —
-// not any absolute millisecond figure — is what the guard actually owes:
+// Three bounds, each answering a different question (enforced by
+// internal/timing.Assert):
 //
-//   - p95 <= 20% of budget (1s POSIX; 50% / 2.5s on Windows). The regression
-//     detector. A real regression — a network call, an unbounded scan, a full
-//     `git status` added to checkBranchState — makes EVERY invocation slow, so
-//     it moves the whole distribution and trips p95. Scheduler jitter moves ONE
-//     sample and does not.
+//   - p95 <= 20% of the 5s budget (1s POSIX; 50% / 2.5s on Windows). The
+//     distribution detector. A real regression — a network call, an unbounded
+//     scan, a full `git status` added to checkBranchState — makes EVERY
+//     invocation slow, so it moves the whole distribution and trips p95.
+//     Scheduler jitter moves ONE sample and does not.
 //   - worst < 100% of budget (5s). The contract itself: no single invocation
 //     may consume the whole PreToolUse budget, because one that does stalls the
 //     user's session.
+//   - median <= 1.5x ONE reference `git rev-parse` spawn, measured in this
+//     same run. The CALIBRATED arm — it measures code, not machine. Healthy
+//     checkBranchState performs exactly one spawn (ResolveGitDirs primary
+//     path) plus sub-millisecond parsing, so the ratio sits at ~1.0x on any
+//     machine under any load; a change that adds a second subprocess moves it
+//     to >= 2.0x and trips the bound even while every absolute figure stays
+//     inside the generous budget fractions. This closes the gap the earlier
+//     forms left: the 500ms absolute ceiling measured machine load (breached
+//     3-of-5 runs on unmodified code, avg 135-256ms / worst 308-724ms under
+//     multi-session load), and the budget fractions alone cannot see a 2x
+//     slowdown that stays under 1s. A persisted baseline cannot close it
+//     either — the verify snapshot store keys records to exact tree state
+//     (internal/verify/key.go), and a baseline recorded at another time
+//     measures another load state; the in-run reference is the only honest
+//     baseline (full rationale: internal/timing package doc).
 //
-// Two things were wrong with the earlier form. It asserted 500ms on every one
-// of the 100 samples, which is a max-of-100 assertion and amplifies tail risk
-// 100x. And 500ms was not the 10x headroom its comment claimed: checkBranchState
-// spawns `git rev-parse` subprocesses, so its cost is process-spawn dominated
-// and tracks machine load, not repository size. Measured on macOS under a
-// realistic multi-session load, four consecutive runs gave avg 135-188ms,
-// p95 240-440ms, worst 308-694ms — the old ceiling was breached in two of the
-// four, and p95 sat within ~1.1x of it in the worst. The bound was red on
-// healthy code.
-//
-// What 1s still catches: any change that moves typical cost past a second —
-// network I/O, a repository walk, an added `git status`. What it deliberately
-// does not catch: a 2x slowdown inside the existing spawn-bound cost, which is
-// indistinguishable from load on this measurement. Catching that needs a
-// baseline comparison, not a fixed ceiling.
-//
-// Windows keeps the higher 50% fraction: each git.exe spawn is far more
-// expensive there (issue #1225 observed 872ms against the old 500ms bound).
+// Windows keeps the higher 50% fraction for the p95 arm: each git.exe spawn is
+// far more expensive there (issue #1225 observed 872ms against the old 500ms
+// bound). The calibrated arm needs no OS-specific fraction — the ratio to a
+// same-class spawn is uniform across operating systems.
 //
 // The latency is measured at the checkBranchState layer (the new deny path
 // documented in REQ-WBG-010), NOT through the full Handle pipeline, because
@@ -168,9 +170,20 @@ func TestBranchGuard_Latency(t *testing.T) {
 		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/perf"}`),
 	}
 
-	const iterations = 100
+	// Reference unit: ONE `git rev-parse` spawn with the exact arguments
+	// ResolveGitDirs issues on its primary path — the machine-cost unit
+	// checkBranchState is dominated by. Spawned in this process, immediately
+	// before the measured loop, so the calibrated ratio measures spawn units
+	// per deny decision rather than machine speed.
+	refUnit := timing.Median(func() {
+		cmd := exec.Command("git", "-C", repo, "rev-parse",
+			"--path-format=absolute", "--git-dir", "--git-common-dir")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("reference rev-parse spawn failed: %v (%s)", err, out)
+		}
+	}, 3, 10)
 
-	// The PreToolUse budget the guard must fit inside. Both ceilings below are
+	// The PreToolUse budget the guard must fit inside. The ceilings below are
 	// fractions of it.
 	const hookBudget = 5 * time.Second
 
@@ -179,41 +192,24 @@ func TestBranchGuard_Latency(t *testing.T) {
 		steadyCeiling = hookBudget / 2 // 50% — 2.5s, per issue #1225 spawn cost
 	}
 
-	samples := make([]time.Duration, 0, iterations)
-	var total time.Duration
-	for i := 0; i < iterations; i++ {
-		start := time.Now()
+	// Healthy ratio is ~1.0x (one spawn + sub-ms parsing). MaxUnits 1.5 keeps
+	// wide headroom over healthy code while tripping on any change that adds
+	// a second subprocess (>= 2.0x) — the regression class invisible to the
+	// budget fractions when absolute figures stay generous.
+	timing.Assert(t, timing.Bound{
+		Name:          "checkBranchState",
+		Budget:        hookBudget,
+		SteadyCeiling: steadyCeiling,
+		MaxUnits:      1.5,
+		Iterations:    100,
+		Warmup:        3,
+	}, refUnit, func() {
 		decision, _ := checkBranchState(input, repo)
-		elapsed := time.Since(start)
-		samples = append(samples, elapsed)
-		total += elapsed
 		if decision != DecisionDeny {
-			t.Fatalf("iteration %d: checkBranchState decision = %q, want %q "+
-				"(latency measurement requires the deny to actually fire)", i, decision, DecisionDeny)
+			t.Fatalf("checkBranchState decision = %q, want %q "+
+				"(latency measurement requires the deny to actually fire)", decision, DecisionDeny)
 		}
-	}
-
-	sorted := slices.Clone(samples)
-	slices.Sort(sorted)
-	// p95 over 100 samples: the 95th-smallest, i.e. index 94.
-	p95 := sorted[(len(sorted)*95)/100-1]
-	worst := sorted[len(sorted)-1]
-	avg := total / iterations
-
-	t.Logf("per-invocation: p95=%v worst=%v avg=%v (over %d iterations, steady ceiling %v, budget %v)",
-		p95.Round(time.Microsecond), worst.Round(time.Microsecond), avg.Round(time.Microsecond),
-		iterations, steadyCeiling, hookBudget)
-
-	if p95 > steadyCeiling {
-		t.Fatalf("p95 per-invocation latency %v exceeds steady-state ceiling %v "+
-			"(REQ-WBG-010: a shifted distribution means checkBranchState itself got more expensive)",
-			p95, steadyCeiling)
-	}
-	if worst >= hookBudget {
-		t.Fatalf("worst per-invocation latency %v reaches the %v PreToolUse budget "+
-			"(REQ-WBG-010: no single deny decision may consume the whole hook budget)",
-			worst, hookBudget)
-	}
+	})
 }
 
 // TestBranchGuard_CheckBranchStateOrigin proves AC-WBG-010 arm 2 (deny-origin
