@@ -245,7 +245,7 @@ Activates ONLY when `--autofix` is set AND Phase 3 produced failures or improvem
 
 The orchestrator groups Phase 3 failures/improvement findings by blast radius:
 
-- **Independent group → parallel fan-out**: findings touching disjoint files/modules with zero overlap spawn as concurrent `manager-develop` delegations (Mode 4 ceiling: 3-5 concurrent).
+- **Independent group → parallel fan-out**: findings touching disjoint files/modules with zero overlap spawn as concurrent `manager-develop` delegations (fanout ceiling: 3-5 concurrent).
 - **Dependent group → sequential**: findings touching the same module/file (cascade risk) are bundled into ONE `manager-develop` delegation processed in order.
 
 [HARD] Write-capable agents never run concurrently on overlapping scope (`agent-common-protocol.md` § Background Agent Execution). Orchestrator work concurrent with a write-capable agent stays read-only.

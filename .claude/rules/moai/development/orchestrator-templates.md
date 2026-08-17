@@ -11,15 +11,15 @@ Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. E
 
 | Template | Catalog mode | Shape |
 |----------|--------------|-------|
-| Sub-orchestrator | Mode 5 (`sub-agent`) | Sequential handoff, one agent per milestone — **the default** |
-| Fan-out orchestrator | Mode 4 (`parallel`) | 3-5 concurrent `Agent()` calls in one turn (advisory — hard bound is the runtime subagent cap, default 20), results return to the orchestrator |
-| Hybrid orchestrator | Mode 4 + Mode 5 | Sequential stages with a parallel stage in the middle |
-| Workflow orchestrator | Mode 6 (`workflow`) | Script-held plan, dozens of agents — see `.claude/rules/moai/workflow/dynamic-workflows.md` |
-| Team-orchestrator | Mode 3 — **experimental (re-allowed)** | See § Team-orchestrator — experimental below |
+| Sub-orchestrator | serial (`sub-agent`) | Sequential handoff, one agent per milestone — **the default** |
+| Fan-out orchestrator | fanout (`parallel`) | 3-5 concurrent `Agent()` calls in one turn (advisory — hard bound is the runtime subagent cap, default 20), results return to the orchestrator |
+| Hybrid orchestrator | fanout + serial | Sequential stages with a parallel stage in the middle |
+| Workflow orchestrator | sweep (`workflow`) | Script-held plan, dozens of agents — see `.claude/rules/moai/workflow/dynamic-workflows.md` |
+| Team-orchestrator | agent-team — **experimental (re-allowed)** | See § Team-orchestrator — experimental below |
 
 ---
 
-## Sub-orchestrator (Mode 5 — default)
+## Sub-orchestrator (serial — default)
 
 **When to Use**:
 - Sequential task handoff (output A → input B)
@@ -82,7 +82,7 @@ MoAI: "Here are the results from the pipeline..."
 
 ---
 
-## Fan-out orchestrator (Mode 4 — parallel sub-agents)
+## Fan-out orchestrator (fanout — parallel sub-agents)
 
 **When to Use**:
 - Multi-domain, research-heavy work (≥3 domains) where each angle is independent
@@ -121,17 +121,17 @@ Agent(prompt: "Review for architectural drift: ...", subagent_type: "general-pur
 **Error Recovery**:
 - **One agent fails**: filter it out, reconcile the survivors, and name the missing lens in the report — never present partial coverage as complete
 - **Agents contradict each other**: surface the contradiction to the user; do not silently pick one
-- **All agents fail**: fall back to Mode 5 (sequential) with a narrowed scope
+- **All agents fail**: fall back to serial with a narrowed scope
 
 **Escalation Rules**:
 - If ≥2 agents report the same blocker → AskUserQuestion for guidance
-- If the work turns out to need cross-agent negotiation → it was not fan-out-shaped; re-run as Mode 5 sequential, or move it to a workflow (Mode 6) where the script holds the plan
+- If the work turns out to need cross-agent negotiation → it was not fan-out-shaped; re-run as serial, or move it to a sweep where the script holds the plan
 
-**Note**: write fan-out stays foreground and sequential (Mode 5). Parallel spawns are for read-only investigation, research, and review — concurrent writers race on the working tree.
+**Note**: write fan-out stays foreground and sequential (serial). Parallel spawns are for read-only investigation, research, and review — concurrent writers race on the working tree.
 
 ---
 
-## Hybrid orchestrator (Mode 4 + Mode 5)
+## Hybrid orchestrator (fanout + serial)
 
 **When to Use**:
 - Mix of sequential and parallel stages
@@ -139,13 +139,13 @@ Agent(prompt: "Review for architectural drift: ...", subagent_type: "general-pur
 
 **Structure**:
 ```
-Stage 1: Sequential (Mode 5)
+Stage 1: Sequential (serial)
   Research Agent → Analysis Agent
 
-Stage 2: Parallel fan-out (Mode 4, read-only)
+Stage 2: Parallel fan-out (fanout, read-only)
   Agent(security-lens), Agent(perf-lens), Agent(arch-lens)   ← one turn
 
-Stage 3: Sequential (Mode 5)
+Stage 3: Sequential (serial)
   Implementation Agent (writes; foreground, sequential)
 
 Stage 4: Consolidate
@@ -177,28 +177,28 @@ const impl = Agent(prompt: `Implement per the reconciled findings: ...`, subagen
 
 ---
 
-## Workflow orchestrator (Mode 6) — pointer
+## Workflow orchestrator (sweep) — pointer
 
 When the work fans out over dozens-to-hundreds of independent, mostly-mechanical items, the plan belongs in a script rather than in the orchestrator's context. That is the dynamic-workflow primitive, documented at `.claude/rules/moai/workflow/dynamic-workflows.md` (16 concurrent agents, 1,000-total backstop, intermediate results in script variables, no mid-run user input). It is NOT a template in this file — the script IS the template.
 
-Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, or new-code work stays Mode 5.
+Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, or new-code work stays serial.
 
 ---
 
 ## Team-orchestrator — experimental (re-allowed)
 
-**Mode 3 — experimental (re-allowed; operator decision).** The Agent Teams pattern (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is again a sanctioned MoAI orchestration pattern, entered ONLY by explicit `--team` request; the Phase 4 decision tree never auto-selects it (constraints and genealogy: `orchestration-mode-selection.md` §C.1).
+**agent-team — experimental (re-allowed; operator decision).** The Agent Teams pattern (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is again a sanctioned MoAI orchestration pattern, entered ONLY by explicit `--team` request; the Phase 4 decision tree never auto-selects it (constraints and genealogy: `orchestration-mode-selection.md` §C.1).
 
-**Default routing while Mode 3 stays explicit-request-only**:
+**Default routing while agent-team stays explicit-request-only**:
 
 | Team use case | Default (auto) |
 |-------------------|-----|
-| Multi-domain research / multi-perspective review | Fan-out orchestrator (Mode 4) |
-| Coding work across layers | Sub-orchestrator (Mode 5) — sequential |
-| Competing-hypothesis debugging | Fan-out orchestrator (Mode 4), one hypothesis per agent; the orchestrator falsifies |
-| Decomposable bulk migration | Workflow orchestrator (Mode 6) |
+| Multi-domain research / multi-perspective review | Fan-out orchestrator (fanout) |
+| Coding work across layers | Sub-orchestrator (serial) — sequential |
+| Competing-hypothesis debugging | Fan-out orchestrator (fanout), one hypothesis per agent; the orchestrator falsifies |
+| Decomposable bulk migration | Workflow orchestrator (sweep) |
 
-The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, which is why the auto-routes stay with Modes 4/5/6 and Mode 3 requires the explicit request.
+The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, which is why the auto-routes stay with fanout/serial/sweep and agent-team requires the explicit request.
 
 **Native runtime sanctioned**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `moai cc -w <name> --spawn` teammate windows, the teammate registry) works and is a sanctioned surface under the enabled flag — the retired era withdrew only MoAI's static orchestration layer, never the runtime primitive.
 
@@ -208,14 +208,14 @@ The rationale is coordination cost: fan-out plus sequential covers the practical
 
 | Scenario | Template | Why |
 |----------|----------|-----|
-| Single feature, clear handoff | Sub (Mode 5) | No coordination needed, simplest |
-| Simple change (style update) | Sub (Mode 5) | Anything more is overkill |
-| Coding across several layers | Sub (Mode 5) | Coding rarely decomposes into truly parallel subtasks |
-| Multi-domain research (≥3 domains) | Fan-out (Mode 4) | Independent angles, parallel speed pays off |
-| Multi-perspective review | Fan-out (Mode 4) | Each reviewer forms an independent judgment |
-| Bug investigation with rival hypotheses | Fan-out (Mode 4) | One hypothesis per agent; orchestrator falsifies |
+| Single feature, clear handoff | Sub (serial) | No coordination needed, simplest |
+| Simple change (style update) | Sub (serial) | Anything more is overkill |
+| Coding across several layers | Sub (serial) | Coding rarely decomposes into truly parallel subtasks |
+| Multi-domain research (≥3 domains) | Fan-out (fanout) | Independent angles, parallel speed pays off |
+| Multi-perspective review | Fan-out (fanout) | Each reviewer forms an independent judgment |
+| Bug investigation with rival hypotheses | Fan-out (fanout) | One hypothesis per agent; orchestrator falsifies |
 | Large feature: research then build | Hybrid | Fan-out the research, sequence the writes |
-| Bulk mechanical migration (dozens of sites) | Workflow (Mode 6) | The script should hold the plan |
+| Bulk mechanical migration (dozens of sites) | Workflow (sweep) | The script should hold the plan |
 
 ---
 
@@ -258,7 +258,7 @@ The rationale is coordination cost: fan-out plus sequential covers the practical
 2. **Fan-out → Sub**: agents keep needing each other's intermediate results
    - Action: it was not fan-out-shaped; sequence it
 3. **Fan-out → Workflow**: the item count grows past what one turn can coordinate
-   - Action: move the plan into a script (Mode 6)
+   - Action: move the plan into a script (sweep)
 4. **Hybrid → Simpler**: the parallel stage adds no wall-clock benefit
    - Action: collapse to sequential
 

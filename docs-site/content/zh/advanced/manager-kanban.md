@@ -32,7 +32,7 @@ added_in: "v3.1"
 
 ## 为什么需要它
 
-把 Tier L 规模的 SPEC 用顺序模式（Mode 5）实现时，编排器逐个里程碑调用 `manager-develop` 智能体。这条流大多数时候都很合适，但 SPEC 一变大就会出现两种现象。
+把 Tier L 规模的 SPEC 用顺序模式（serial）实现时，编排器逐个里程碑调用 `manager-develop` 智能体。这条流大多数时候都很合适，但 SPEC 一变大就会出现两种现象。
 
 先是上下文涨满。实现初期读过的文件、第一个里程碑写的测试、AC 验证命令的输出都一直留在同一个窗口里。到了第五个里程碑左右窗口几乎满了，最终要 `/clear` 再续，就得把前面的进度作为摘要交接。经由这些摘要，语境变模糊的成本累积起来。
 
@@ -61,7 +61,7 @@ flowchart TD
 
 ## Step 1 — 确认进场条件是否吻合
 
-`manager-kanban` 不是所有执行默认铺设的路径。编排器只在 SPEC **同时**满足下列三个条件时才把工作交给 `manager-kanban`。三个条件缺一个就以标准顺序模式（Mode 5）原样走。
+`manager-kanban` 不是所有执行默认铺设的路径。编排器只在 SPEC **同时**满足下列三个条件时才把工作交给 `manager-kanban`。三个条件缺一个就以标准顺序模式（serial）原样走。
 
 | 条件 | 标准 | 为什么需要 |
 |------|------|-------------|
@@ -97,7 +97,7 @@ manager-kanban:         [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUp
 
 这里 `manager-kanban` 的 `Write` 与 `Edit` 只用于协调目的。也就是只用来在 `progress.md` 的 §E.2 栏追加折叠行、或在 `.moai/state/verify/` 下写证据文件，不碰源代码。代码始终是叶末智能体的份内事。
 
-要强调的一点是 `manager-kanban` 不是新的执行模式。Phase 4 的六种模式（1 trivial、2 background、3 agent-team——已废除、4 parallel、5 sub-agent、6 workflow）照旧，`manager-kanban` 是 Mode 5（顺序调用）形状的委派对象。没有新增"Mode 7"，也没有复活已废除的 Mode 3。
+要强调的一点是 `manager-kanban` 不是新的执行模式。Phase 4 的四种模式（direct、serial、fanout、sweep）照旧，`manager-kanban` 是 serial（顺序调用）形状的委派对象。没有新增模式，实验性的 agent-team 表面（仅经显式 `--team` 请求选择）也没有变成目录模式。
 
 ## Step 3 — 每个里程碑结束时折叠上下文
 
@@ -154,7 +154,7 @@ Tier L 执行常常从跨多个领域的侦察开始。例如实现新认证系�
 
 两个侦察智能体对同一信号返回矛盾的发现时，`manager-kanban` 不偷偷挑一个，而是在显式的一栏里写下矛盾。矛盾显露则用户可判断，藏起来则一路走到最后才爆。
 
-同时调用的智能体数不超过 MoAI Mode 4 的 3–5 并发上限。需要超过五个侦察时，`manager-kanban` 把它们按顺序成组调用。
+同时调用的智能体数不超过 MoAI fanout 的 3–5 并发上限。需要超过五个侦察时，`manager-kanban` 把它们按顺序成组调用。
 
 ## 工作树隔离的重新挂接
 
@@ -164,15 +164,15 @@ v3.1 之前，这条隔离规则挂在"团队模式"这个已经废除的概念�
 
 只读智能体不隔离也可安全调用——只读所以不会弄脏工作树。
 
-## 不是 Mode 7（非回归保证）
+## 不是 new mode（非回归保证）
 
 `manager-kanban` 进来并不增加 Phase 4 的执行模式。这一点已成为显式的非回归承诺。
 
-- **执行模式清单**——1 trivial、2 background、3 agent-team（已废除）、4 parallel、5 sub-agent、6 workflow。照旧。
-- **新模式**——没有"Mode 7"。`manager-kanban` 是 Mode 5 形状的顺序委派对象。
-- **`--mode` 值**——`autopilot`、`loop`、`team`、`pipeline` 值照旧。没有新增值，已废除的 Mode 3 也没有复活。
+- **执行模式清单**——direct、serial、fanout、sweep。照旧（agent-team 仍是仅显式请求的实验性脚注，不会被自动选择）。
+- **新模式**——没有新模式。`manager-kanban` 是 serial 形状的顺序委派对象。
+- **`--mode` 值**——`autopilot`、`loop`、`team`、`pipeline` 值照旧。没有新增值，agent-team 仍是仅显式请求的实验性表面（`MODE_TEAM_UNAVAILABLE` 哨兵保留为已文档化的历史）。
 
-这份承诺是对"加了一个智能体，编排层会变复杂吗"这种自然担忧的回答。`manager-kanban` 只是装进既有 Mode 5 容器里的一个智能体，不造新容器。
+这份承诺是对"加了一个智能体，编排层会变复杂吗"这种自然担忧的回答。`manager-kanban` 只是装进既有 serial 容器里的一个智能体，不造新容器。
 
 ## 小结
 

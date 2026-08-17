@@ -127,11 +127,11 @@ flowchart TD
 
 `manager-kanban` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
 
-This delegation path is a variant of Mode 5 (sequential sub-agents), not a new execution mode. It is also unrelated to the retired Agent Teams static layer — the Mode 3 tombstone and the `MODE_TEAM_UNAVAILABLE` behavior are unchanged.
+This delegation path is a variant of serial (sequential sub-agents), not a new execution mode. It is also unrelated to the Agent Teams layer — now an experimental explicit-request surface; the `MODE_TEAM_UNAVAILABLE` sentinel remains documented history.
 
 ### Entry Conditions — All Three Must Hold
 
-The orchestrator spawns `manager-kanban` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in Mode 5. Attaching `manager-kanban` to work that does not meet the bar only adds coordination cost that is never recovered.
+The orchestrator spawns `manager-kanban` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in serial. Attaching `manager-kanban` to work that does not meet the bar only adds coordination cost that is never recovered.
 
 | Axis | Threshold |
 |------|-----------|
@@ -144,7 +144,7 @@ The three conditions are AND, not OR. The thresholds are deliberately narrow so 
 ```mermaid
 flowchart TD
     START["Run-phase delegation request"] --> Q1{"3 or more milestones?"}
-    Q1 -->|"No"| MODE5["Orchestrator handles Mode 5 directly<br>manager-develop sequentially"]
+    Q1 -->|"No"| MODE5["Orchestrator handles serial directly<br>manager-develop sequentially"]
     Q1 -->|"Yes"| Q2{"10 or more write-target files?"}
     Q2 -->|"No"| MODE5
     Q2 -->|"Yes"| Q3{"3 or more domains?"}
@@ -305,11 +305,11 @@ Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent 
 | No skill inheritance | Skills from the parent conversation are not inherited |
 | Independent context | Each agent has its own model-dependent independent context window (model-dependent) |
 
-## Agent Teams Static Layer — Retired in v3.0
+## Agent Teams Static Layer — Retired in v3.0, Re-allowed as Experimental
 
-The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0.
+The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0, then re-allowed later as an experimental explicit-request surface (selectable only via an explicit `--team` request; never auto-selected).
 
-- Forcing `--team` announces `MODE_TEAM_UNAVAILABLE` and automatically falls back to sub-agent mode.
+- Historical: during the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the sentinel string survives as documented history.
 - Research and review work that needs parallelism is handled with parallel sub-agent fan-out; sequential coding work is handled with a sub-agent chain.
 - The native Claude Code teammate runtime (the GLM panes of `moai cg`, `moai worktree --team`) continues to operate independently of this — from a tokenomics standpoint, CG mode's Claude-leader + GLM-worker division of labor takes over this role.
 

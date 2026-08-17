@@ -187,7 +187,7 @@ Key Configuration Fields:
 
 ---
 
-#### Mode 1: Manual (Local Git Only)
+#### Git strategy: Manual (Local Git Only)
 
 Configuration (default):
 ```json
@@ -230,7 +230,7 @@ Use Case: Personal projects, GitHub not used, local Git only
 
 ---
 
-#### Mode 2: Personal (GitHub Personal Project)
+#### Git strategy: Personal (GitHub Personal Project)
 
 Configuration (default - prompt each time):
 ```json
@@ -293,7 +293,7 @@ Use Case: Personal GitHub projects, fast development speed needed
 
 ---
 
-#### Mode 3: Team (GitHub Team Project)
+#### Git strategy: Team (GitHub Team Project)
 
 Configuration (default - prompt each time):
 ```json

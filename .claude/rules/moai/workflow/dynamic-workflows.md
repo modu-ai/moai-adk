@@ -170,7 +170,7 @@ Validated patterns from MoAI dynamic-workflow pilots — each entry records the 
 
 - https://code.claude.com/docs/en/workflows — canonical Claude Code workflows documentation
 - `.claude/rules/moai/core/moai-constitution.md` § Parallel Execution — orchestration primitive selection
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1 — Agent Teams layer (experimental, re-allowed; Mode 3 `agent-team`)
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1 — Agent Teams layer (experimental, re-allowed; agent-team `agent-team`)
 - `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary — AskUserQuestion asymmetry (applies to workflow agents)
 - `.claude/rules/moai/workflow/goal-directive.md` — `/moai goal` autonomous-continuation primitive (complementary)
 

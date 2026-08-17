@@ -37,7 +37,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 1. **의도 분석**: 사용자 요청의 의도를 분류 (입력 언어와 무관)
 2. **컨텍스트 충분성 확인**: 불충분하면 Socratic 인터뷰로 명확화
 3. **실행 계획 구성**: 스킬 / 에이전트 / 동적 워크플로우 체인 선택
-4. **오케스트레이션 모드 선택** (Phase 4): 6-모드 카탈로그 (trivial / background / agent-team(은퇴) / parallel / sub-agent / workflow) 중 자율 선택
+4. **오케스트레이션 모드 선택** (Phase 4): 4-모드 카탈로그 (direct / serial / fanout / sweep; agent-team은 명시적 요청 전용 실험적 각주) 중 자율 선택
 
 즉 `/moai "로그인 버그 고쳐줘"`처럼 서브커맨드 없이 자연어만 입력해도, 의도 분석을 거쳐 알맞은 워크플로우 (수정이면 fix 계열, 신규 기능이면 plan→run→sync 파이프라인)로 연결됩니다.
 
@@ -47,7 +47,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 
 1. **Plan-audit 게이트** (plan-auditor): SPEC 계획 산출물을 따로 감사하고, FAIL이나 INCONCLUSIVE면 중단
 2. **구현 착수 승인** (plan→run 휴먼 게이트): 파이프라인에 진입할 때마다 정확히 1회, 점수와 무관하게 항상 사용자 승인을 받음
-3. **Phase 4 모드 선택** (6-모드 카탈로그): 구현 착수 승인 이후 자율 선택, progress.md에 기록
+3. **Phase 4 모드 선택** (4-모드 카탈로그): 구현 착수 승인 이후 자율 선택, progress.md에 기록
 4. **Sync-audit 게이트** (sync-auditor): 동기화 결과를 4차원으로 평가하고, FAIL이나 INCONCLUSIVE면 체인 중단
 
 ## 사용법

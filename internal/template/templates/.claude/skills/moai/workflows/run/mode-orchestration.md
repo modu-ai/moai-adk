@@ -38,7 +38,7 @@ the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 # Mode Dispatch (team experimental)
 
 The `--mode team` dispatch value is experimental (re-allowed, operator decision):
-Mode 3 (`agent-team`) of the Phase
+`agent-team` of the Phase
 0.95 catalog is selectable by explicit request
 (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). Historical:
 the retired era emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per

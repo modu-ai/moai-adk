@@ -37,7 +37,7 @@ Routing proceeds in this order:
 1. **Intent analysis**: classify the intent of the user's request (regardless of input language)
 2. **Context-sufficiency check**: if insufficient, clarify through a Socratic interview
 3. **Execution-plan composition**: choose the skill / agent / dynamic-workflow chain
-4. **Orchestration mode selection** (Phase 4): autonomous selection from the 6-mode catalog (trivial / background / agent-team (retired) / parallel / sub-agent / workflow)
+4. **Orchestration mode selection** (Phase 4): autonomous selection from the 4-mode catalog (direct / serial / fanout / sweep; agent-team as an explicit-request experimental footnote)
 
 That is, even typing plain natural language without a subcommand, like `/moai "fix the login bug"`, is routed through intent analysis to the right workflow (the fix family for a fix, or the plan→run→sync pipeline for a new feature).
 
@@ -47,7 +47,7 @@ The default pipeline passes four named gates in order:
 
 1. **Plan-audit gate** (plan-auditor): independently audits the SPEC plan artifacts — aborts on FAIL/INCONCLUSIVE
 2. **Implementation Kickoff Approval** (plan→run human gate): exactly once per pipeline entry, always obtaining user approval regardless of score
-3. **Phase 4 mode selection** (6-mode catalog): autonomous selection after Implementation Kickoff Approval, recorded in progress.md
+3. **Phase 4 mode selection** (4-mode catalog): autonomous selection after Implementation Kickoff Approval, recorded in progress.md
 4. **Sync-audit gate** (sync-auditor): evaluates the synchronization result across 4 dimensions — aborts the chain on FAIL/INCONCLUSIVE
 
 ## Usage

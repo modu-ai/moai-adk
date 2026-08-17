@@ -26,17 +26,17 @@ draft: false
 | `--file PATH` | 특정 파일만 검토 | `/moai review --file src/auth.go` |
 
 {{< callout type="warning" >}}
-`--team` 병렬 리뷰 모드는 Agent Teams 정적 계층과 함께 **은퇴** (tombstone)했습니다. 병렬 리뷰는 Mode 4 서브에이전트 팬아웃으로 수행되며, 팀이 아닙니다.
+`--team` 모드는 Agent Teams 정적 계층과 함께 은퇴했다가 이후 실험적 표면(명시적 요청 시에만 선택)으로 재허용되었습니다. 병렬 리뷰 자체는 fanout 읽기 전용 서브에이전트 팬아웃으로 수행되며, 팀이 아닙니다.
 {{< /callout >}}
 
 ## 에이전트 체인
 
-네 관점은 **Mode 4 병렬 read-only 팬아웃**으로 돌아갑니다. 관점마다 하나씩, 최대 4개의 read-only 판정자(`Agent(general-purpose)`)를 한 턴에 띄우며 3-5 동시 실행 상한을 지킵니다. 각 판정자가 찾아낸 것은 **sync-auditor** 서브에이전트가 한데 모아 정리하고, 최종 판정은 sync-auditor가 내립니다. 팬아웃은 실행 형태만 바꿀 뿐 판정 권한을 옮기지 않습니다.
+네 관점은 **fanout 병렬 read-only 팬아웃**으로 돌아갑니다. 관점마다 하나씩, 최대 4개의 read-only 판정자(`Agent(general-purpose)`)를 한 턴에 띄우며 3-5 동시 실행 상한을 지킵니다. 각 판정자가 찾아낸 것은 **sync-auditor** 서브에이전트가 한데 모아 정리하고, 최종 판정은 sync-auditor가 내립니다. 팬아웃은 실행 형태만 바꿀 뿐 판정 권한을 옮기지 않습니다.
 
 ```mermaid
 flowchart TD
     Start["/moai review 실행"] --> Phase1["Phase 1: 변경분 식별<br/>(git diff)"]
-    Phase1 --> Phase2["Phase 2: 다관점 분석<br/>(Mode 4 병렬 판정자)"]
+    Phase1 --> Phase2["Phase 2: 다관점 분석<br/>(fanout 병렬 판정자)"]
 
     Phase2 --> Sec["Security 판정자<br/>moai-ref-owasp-checklist"]
     Phase2 --> Perf["Performance 판정자"]

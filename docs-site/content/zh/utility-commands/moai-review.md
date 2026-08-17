@@ -26,17 +26,17 @@ draft: false
 | `--file PATH` | 只审查特定文件 | `/moai review --file src/auth.go` |
 
 {{< callout type="warning" >}}
-`--team` 并行审查模式已随 Agent Teams 静态层一起**退役（tombstone）**。并行审查以 Mode 4 子代理扇出执行，而非团队。
+`--team` 模式曾随 Agent Teams 静态层一起退役，后作为实验性表面（仅显式请求时选择）重新允许。并行审查本身以 fanout 只读子代理扇出执行，而非团队。
 {{< /callout >}}
 
 ## 代理链
 
-四个视角以 **Mode 4 并行 read-only 扇出**执行——每个视角一个、最多 4 个 read-only 判定者（`Agent(general-purpose)`）在一轮中 spawn，并在 3-5 并发上限内运作。各判定者的发现汇入 **sync-auditor** 子代理的综合，由 sync-auditor 拥有最终判定——扇出只改变执行形态，不转移判定所有权。
+四个视角以 **fanout 并行 read-only 扇出**执行——每个视角一个、最多 4 个 read-only 判定者（`Agent(general-purpose)`）在一轮中 spawn，并在 3-5 并发上限内运作。各判定者的发现汇入 **sync-auditor** 子代理的综合，由 sync-auditor 拥有最终判定——扇出只改变执行形态，不转移判定所有权。
 
 ```mermaid
 flowchart TD
     Start["/moai review 执行"] --> Phase1["Phase 1: 识别变更分<br/>(git diff)"]
-    Phase1 --> Phase2["Phase 2: 多视角分析<br/>(Mode 4 并行判定者)"]
+    Phase1 --> Phase2["Phase 2: 多视角分析<br/>(fanout 并行判定者)"]
 
     Phase2 --> Sec["Security 判定者<br/>moai-ref-owasp-checklist"]
     Phase2 --> Perf["Performance 判定者"]
