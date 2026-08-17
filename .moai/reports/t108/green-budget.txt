@@ -1,1 +1,1 @@
-ok  	github.com/modu-ai/moai-adk/internal/config	0.384s
+ok  	github.com/modu-ai/moai-adk/internal/config	0.963s
