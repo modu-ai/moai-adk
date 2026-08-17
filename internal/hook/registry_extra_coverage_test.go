@@ -289,7 +289,13 @@ func TestGenerateSessionSummary_EmptyTraceDir(t *testing.T) {
 
 // --- WorktreeCreate / WorktreeRemove with CWD + WorktreePath set ---
 
-// TestWorktreeCreateHandler_Handle_WithWorktreePath exercises the registerWorktree branch.
+// TestWorktreeCreateHandler_Handle_WithWorktreePath verifies the payload
+// shape the OLD passthrough implementation assumed (worktree_path instead of
+// the official name field) now aborts with an error — per issue #1570 the
+// WorktreeCreate input carries the suggested slug in `name`, never a
+// worktree_path, so this input is malformed and must fail loudly rather than
+// return an empty success. Successful-creation registry coverage lives in
+// worktree_create_test.go (TestWorktreeCreateHandler_ActiveCreator).
 func TestWorktreeCreateHandler_Handle_WithWorktreePath(t *testing.T) {
 	t.Parallel()
 
@@ -302,12 +308,8 @@ func TestWorktreeCreateHandler_Handle_WithWorktreePath(t *testing.T) {
 		WorktreeBranch: "feature/test",
 		AgentName:      "test-agent",
 	}
-	out, err := h.Handle(context.Background(), input)
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil output")
+	if _, err := h.Handle(context.Background(), input); err == nil {
+		t.Fatal("Handle() with worktree_path but no name should return an error, got nil")
 	}
 }
 

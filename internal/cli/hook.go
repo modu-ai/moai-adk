@@ -345,17 +345,26 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 // writeHookOutput dispatches stdout writing per event-specific contract.
 //
 // WorktreeCreate / WorktreeRemove (Claude Code v2.1.49+): the runtime parses
-// stdout as the worktree directory path (not JSON). The hook MUST echo the
-// directory path as plain text — emitting an empty JSON object yields
-// "WorktreeCreate hook returned a path that is not a directory: {}". We echo
-// input.WorktreePath unchanged, treating the hook as a passthrough observer.
-// When input.WorktreePath is absent the stdout is left empty (fail-safe).
+// stdout as the worktree directory path (not JSON), and an empty stdout on
+// WorktreeCreate ABORTS the agent spawn ("hook succeeded but returned no
+// worktree path" — issue #1570). For WorktreeCreate we echo the absolute path
+// the handler created (output.WorktreePath, set by the active-creator
+// worktree_create.go), falling back to input.WorktreePath when the handler
+// did not set one. For WorktreeRemove we echo input.WorktreePath (the event
+// carries the path; no output is required by the contract).
 //
 // All other events use the JSON HookOutput protocol via HookProtocol.WriteOutput.
 func writeHookOutput(event hook.EventType, input *hook.HookInput, output *hook.HookOutput) error {
 	if event == hook.EventWorktreeCreate || event == hook.EventWorktreeRemove {
-		if input != nil && input.WorktreePath != "" {
-			if _, writeErr := fmt.Fprintln(os.Stdout, input.WorktreePath); writeErr != nil {
+		if input == nil {
+			return nil
+		}
+		echoPath := input.WorktreePath
+		if event == hook.EventWorktreeCreate && output != nil && output.WorktreePath != "" {
+			echoPath = output.WorktreePath
+		}
+		if echoPath != "" {
+			if _, writeErr := fmt.Fprintln(os.Stdout, echoPath); writeErr != nil {
 				return fmt.Errorf("write worktree path: %w", writeErr)
 			}
 		}
