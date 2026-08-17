@@ -58,6 +58,11 @@ func consoleTabs() []consoleTab {
 		// dedicated fieldsetMCP component (not the generic schemaSectionMeta path)
 		// so the write-capable badge can be sourced from the shared catalog.
 		{ID: "mcp", LabelKey: "sec.mcp.title", Baseline: "MCP"},
+		// crosssession — the cross-session messaging posture panel (inbound /
+		// isolate_machines / dialog_expiry). The launchers translate
+		// crosssession.yaml into a session --settings injection; this panel
+		// edits the same file through the yamlpatch seam.
+		{ID: "crosssession", LabelKey: "sec.crosssession.title", Baseline: "Cross-Session"},
 	}
 }
 
@@ -229,6 +234,18 @@ func schemaSectionMetas() []schemaSectionMeta {
 			Title: "Report", Desc: "Output format for the HTML report skill (report.format: html+md or md).",
 			Fields: settings.SectionFields(settings.SectionReport), Extras: true,
 		},
+		{
+			ID: settings.SectionCrossSession, PanelID: "crosssession", Icon: "messages-square",
+			TitleKey: "sec.crosssession.title", DescKey: "sec.crosssession.desc",
+			Title: "Cross-Session", Desc: "How sessions launched by moai treat messages from your other Claude Code sessions.",
+			Fields: settings.SectionFields(settings.SectionCrossSession), Extras: true,
+			// The honesty note: these settings take effect at the NEXT launch —
+			// the launchers read crosssession.yaml when moai cc/glm/cg starts a
+			// session and inject it as that session's --settings. A running
+			// session keeps the posture it was launched with.
+			NoteKey: "sec.crosssession.note",
+			Note:    "Applied at the next moai cc/glm/cg launch — running sessions keep the posture they were launched with.",
+		},
 	}
 }
 
@@ -251,7 +268,9 @@ func schemaEditableField(f settings.FieldDef) bool {
 }
 
 // parseSchemaForm은 제출 폼에서 확장 필드 값을 스키마 주도로 파싱한다.
-// empty=preserve(EC-1): 미제출/빈 값은 edits에 포함하지 않는다. bool은 hidden
+// empty=preserve(EC-1): 미제출/빈 값은 edits에 포함하지 않는다 — 단 EmptySubmits
+// 옵트인 필드(crosssession.inbound/dialog_expiry)의 ""는 실제 제출 값으로 취급해
+// 키를 중립 ""로 되돌린다. bool은 hidden
 // companion(name+"__present") 패턴으로 "unchecked → false"와 "미제출 → preserve"
 // 를 구분한다 (기존 nested-config 선례). 타입/옵션 위반은 per-field 오류로
 // 수집되어 atomic reject(EC-2)에 합류한다.
@@ -294,8 +313,20 @@ func parseSchemaForm(r *http.Request) (map[string]string, map[string]string) {
 			}
 			edits[f.Name] = raw
 		default: // TypeText / TypeSelect
-			raw := r.PostFormValue(f.Name)
-			if raw == "" {
+			// 미제출 → preserve (EC-1). 키 존재로 "미제출"과 "빈 값 제출"을
+			// 구분한다 — 브라우저 폼은 select를 항상 제출하므로 제출된 ""는
+			// 사용자의 선택이고, 키 없는 폼(비브라우저 게시)은 보존이다.
+			vals, submitted := r.PostForm[f.Name]
+			if !submitted {
+				continue
+			}
+			raw := ""
+			if len(vals) > 0 {
+				raw = vals[0]
+			}
+			// empty=preserve(EC-1) — 단, EmptySubmits 옵트인 필드는 ""가 실제
+			// 제출 값이다 (선택 해제 → 키를 중립 ""로 되돌린다).
+			if raw == "" && !f.EmptySubmits {
 				continue
 			}
 			if f.Validate != nil && !f.Validate(raw) {

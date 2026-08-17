@@ -1322,6 +1322,29 @@ type handoffFileWrapper struct {
 	Handoff HandoffConfig `yaml:"handoff"`
 }
 
+// CrossSessionConfig represents the cross-session messaging section
+// (crosssession.yaml). The moai launchers (cc/glm/cg) translate it into a
+// transient --settings file at launch; the web console edits it through the
+// settings seam. Values map onto Claude Code's crossSessionInbound /
+// isolatePeerMachines / dialogExpiry settings keys.
+//
+// The neutral defaults are load-bearing: inbound unset leaves Claude Code's
+// per-message permission-class ladder in charge, and isolate_machines false
+// keeps the documented no-approval default for cross-machine messages (a true
+// from any Claude Code scope applies and cannot be turned off from a lower
+// scope, so the launcher emits it only on the user's explicit opt-in).
+type CrossSessionConfig struct {
+	// Inbound is "" (unset), "accept", "hold", or "refuse" — the closed value
+	// set of Claude Code's crossSessionInbound.
+	Inbound string `yaml:"inbound"`
+	// IsolateMachines true requires explicit approval before any message
+	// leaves the machine (Claude Code isolatePeerMachines).
+	IsolateMachines bool `yaml:"isolate_machines"`
+	// DialogExpiry is "" (unset → Claude Code's 5m default), "60s", "5m",
+	// "10m", or "never" — the closed value set of Claude Code's dialogExpiry.
+	DialogExpiry string `yaml:"dialog_expiry"`
+}
+
 // archiveFileWrapper handles the archive.yaml section file.
 type archiveFileWrapper struct {
 	Archive ArchiveConfig `yaml:"archive"`

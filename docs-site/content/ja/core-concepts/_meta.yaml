@@ -9,6 +9,9 @@ ddd:
   title: "MoAI-ADK開発方法論"
 "trust-5":
   title: "TRUST 5品質"
+"kanban-board-terms":
+  title: "カンバンボード用語"
+  weight: 40
 "verification-claim-integrity":
   title: "検証クレーム完全性"
   weight: 50

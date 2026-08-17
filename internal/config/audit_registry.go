@@ -50,9 +50,10 @@ var yamlToStructRegistry = map[string]string{
 	// OUTSIDE the Loader.Load chain; the readers are named in
 	// audit_loader_wiring_test.go::partialLoaderExceptions.
 
-	"lsp":      "LSPQualityGates",
-	"mx":       "MXConfig",
-	"security": "SecurityConfig",
+	"lsp":          "LSPQualityGates",
+	"mx":           "MXConfig",
+	"security":     "SecurityConfig",
+	"crosssession": "CrossSessionConfig", // read on demand by the moai launchers (LoadCrossSessionConfig), not by Loader.Load
 	// NOTE: "runtime" removed — RuntimeConfig lives in internal/runtime and is
 	// loaded from its own path (LoadRuntime), not from a sections/runtime.yaml
 	// file; keeping it here made the orphan-struct check fail against the real tree.

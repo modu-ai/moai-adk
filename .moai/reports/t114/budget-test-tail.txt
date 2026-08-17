@@ -1,0 +1,4 @@
+=== RUN   TestAlwaysLoadedTokenBudget
+--- PASS: TestAlwaysLoadedTokenBudget (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.269s

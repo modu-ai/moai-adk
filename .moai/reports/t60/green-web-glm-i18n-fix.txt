@@ -1,0 +1,1 @@
+ok  	github.com/modu-ai/moai-adk/internal/web	3.656s

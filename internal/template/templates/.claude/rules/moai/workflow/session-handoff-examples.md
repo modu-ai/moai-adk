@@ -5,7 +5,7 @@ paths: "**/session-handoff.md"
 
 # Session Handoff — Examples and Full Localization Table
 
-> This is a path-scoped reference file for `session-handoff.md`. It holds illustrative Example sections and the full 4-locale Localization Table extracted from the always-loaded doctrine file to reduce context weight. The core doctrine (6-block skeleton, cut-line markers, the binding per-block summary, Pre-emit self-check, Auto-Memory Integration, Diet Constraints) remains in `session-handoff.md`; the full per-block detail was relocated here — see § Field-by-Field Specification (full).
+> Path-scoped reference file for `session-handoff.md`: illustrative examples, the full 4-locale Localization Table, and the per-block/anti-pattern detail relocated from the always-loaded doctrine file to reduce context weight. The core doctrine (6-block skeleton, cut-line markers, binding per-block summary, Pre-emit self-check, Auto-Memory Integration, Diet Constraints) remains in `session-handoff.md`.
 
 ## Localization Table (Full 4-Locale)
 
@@ -22,9 +22,9 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 | Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Memory heading | `## Next Session Entry Point` | `## 다음 세션 시작점` | `## 次セッション開始点` | `## 下一会话起点` |
 
-Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
+Read `conversation_language` at render time; substitute the localized text between the `✂────` decorators (`✂` / `─` verbatim) and the locale rendering for each Block 1/3/5/6 placeholder.
 
-**Fallback rule for locales not in the table.** The table above lists concrete renderings for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in this table (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
+**Fallback rule for locales not in the table** (binding text in `session-handoff.md` § Localization Table): en / ko / ja / zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
 
 ## Example (Illustrative; substitute project-specific values when adapting)
 
@@ -135,8 +135,6 @@ The injected Block 4 preconditions MUST be verified at the start of the resumed 
 
 > See also: § Diet Constraints / Anti-pattern catalogue (paste-ready budget violations AP-D-001..005) and § V0 Abort Gate Doctrine / Anti-pattern (abort-gate violations AP-V-001..004). This list covers general resume-hygiene patterns; the Diet and V0 lists cover their respective specialized domains.
 
-See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Gate Doctrine anti-pattern catalogues below for the full catalogue.
-
 - Free-form prose handoff — no executable context.
 - Resume without preconditions — next session cannot detect state drift.
 - Resume without `ultrathink.` — fails to activate xhigh effort.
@@ -196,7 +194,7 @@ For **current-session re-entry** into an L2 worktree (no `/clear`, same session 
 
 ### `/cd` cache-preserving alternative (CC 2.1.169+)
 
-The new-terminal Block 0 above is a cold-start path: it opens a fresh Claude Code session inside the L2 worktree, which re-reads skills/rules from scratch. Claude Code 2.1.169+ ships a `/cd` command that changes the session's working directory **while preserving the prompt cache** — so the in-flight reasoning context survives the cwd switch instead of being rebuilt. For an L2 worktree resume where you want to keep the current session's accumulated context (rather than cold-starting), `/cd <worktree-absolute-path>` is a cache-preserving complement to the new-terminal Block 0. This note does NOT replace Block 0 — the new-terminal path remains the default for clean isolation; `/cd` is the lower-friction option when cache preservation matters more than a fresh tree.
+The new-terminal Block 0 above is a cold-start path. Claude Code 2.1.169+ ships `/cd`, which changes the session's working directory **while preserving the prompt cache** — for an L2 worktree resume where keeping the current session's accumulated context matters more than a fresh tree, `/cd <worktree-absolute-path>` is a cache-preserving complement to Block 0. It does NOT replace Block 0: the new-terminal path remains the default for clean isolation.
 
 [ZONE:Evolvable] [HARD] Block 0 MUST surface the 3 primary launchers verbatim so the user can choose without consulting external docs:
 
@@ -224,7 +222,7 @@ Block 0 is REQUIRED only for worktree work. For `--branch` (or no flag — the d
 
 [ZONE:Evolvable] [HARD] If a worktree was used and the user is NOT comfortable with a multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` in the main checkout for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
-> **Example with Block 0**: see `session-handoff-examples.md` § Example with Block 0 (Illustrative).
+> **Example with Block 0**: see § Example with Block 0 (Illustrative) in this file.
 
 ## V0 Abort Gate Doctrine
 
@@ -256,7 +254,7 @@ When V0-b ≥ 1 OR V0-c ≥ 3 (regardless of whether the other preconditions V1/
 
 ### Cross-pollination history
 
-Cross-line provenance: retained in lesson memory; this section codifies the doctrine. (The iteration history that originally surfaced the V0 false-abort hazard is preserved in lesson memory, not in this rule body — per AP-D-002, history belongs in lessons, not in paste-ready-adjacent prose.)
+Retained in lesson memory, not in this rule body — per AP-D-002, history belongs in lessons, not in paste-ready-adjacent prose.
 
 ### Anti-pattern
 
@@ -309,7 +307,7 @@ Cross-line provenance: retained in lesson memory; this section codifies the doct
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
-> **Example**: see `session-handoff-examples.md` § Example (Illustrative; substitute project-specific values when adapting).
+> **Example**: see § Example (Illustrative; substitute project-specific values when adapting) in this file.
 
 ---
 

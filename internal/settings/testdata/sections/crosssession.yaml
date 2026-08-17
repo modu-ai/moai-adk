@@ -1,0 +1,5 @@
+# Cross-session messaging preferences (crosssession.yaml) — test fixture.
+crosssession:
+  inbound: ""
+  isolate_machines: false
+  dialog_expiry: ""

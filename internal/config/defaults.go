@@ -445,6 +445,20 @@ func NewDefaultHandoffConfig() HandoffConfig {
 	}
 }
 
+// NewDefaultCrossSessionConfig returns a CrossSessionConfig with the neutral
+// defaults: inbound unset (Claude Code's per-message permission-class ladder
+// decides), machine isolation off (no approval for cross-machine messages —
+// the documented default posture), dialog expiry unset (Claude Code's 5m
+// default). Matches the template-shipped crosssession.yaml byte-for-byte in
+// semantics.
+func NewDefaultCrossSessionConfig() CrossSessionConfig {
+	return CrossSessionConfig{
+		Inbound:         "",
+		IsolateMachines: false,
+		DialogExpiry:    "",
+	}
+}
+
 // NewDefaultArchiveConfig returns an ArchiveConfig with safe defaults.
 // SPEC-SESSIONSTART-PERF-001 REQ-SSP-012: an absent archive.yaml still resolves
 // to the 90-day grace window.

@@ -16,7 +16,7 @@ Three properties bound everything below:
 
 ## Availability constraints
 
-"On with nothing to enable" holds only where the platform provides the channel. Four constraints bound where it exists at all — and because Kanban Mode's lead–companion dispatch rides entirely on this channel, they bound where that mode can operate:
+"On with nothing to enable" holds only where the platform provides the channel. Four constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:
 
 - **Operating system** — macOS and Linux (including Linux inside WSL 2) only. Claude Code does not provide cross-session messaging on native Windows.
 - **Providers** — unavailable on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
@@ -51,7 +51,7 @@ Messaging complements the registry rather than replacing it: the registry says *
 
 [ZONE:Evolvable] **Do not let a dispatch depend on the reply arriving.** Because reply routing is not guaranteed, completion must also be observable in the shared source of truth — a progress record the coordinator can read — with the message serving as prompt notification rather than as the record. A coordinator that advances only on received replies stalls silently when one is lost.
 
-[ZONE:Evolvable] **Prefer a message over a stall when a peer holds the answer.** When the working tree shows a concurrent session and the orchestrator would otherwise stop and ask the user to mediate, asking the peer directly is usually faster and spares the user a mediation round-trip. It is not free: once delivered, a message counts toward usage in the receiving session exactly as a typed prompt does, so what is saved is the user's attention, not tokens. Ask the user when the decision is theirs; ask the peer when the fact is theirs.
+[ZONE:Evolvable] **Prefer a message over a stall when a peer holds the answer.** When the working tree shows a concurrent session and the orchestrator would otherwise stop and ask the user to mediate, asking the peer directly is usually faster and spares the user a mediation round-trip. It is not free: a delivered message counts toward the recipient's usage exactly as a typed prompt does — what is saved is the user's attention, not tokens. Ask the user when the decision is theirs; ask the peer when the fact is theirs.
 
 [ZONE:Evolvable] **Keep messages short and self-contained.** The recipient has none of this session's context. One or two sentences naming the artifact, the change, and the consequence beats a summary that assumes shared history.
 

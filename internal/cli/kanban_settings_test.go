@@ -20,6 +20,11 @@ func TestPrepareKanbanSettingsWritesTransientFile(t *testing.T) {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
+	// Hermetic config root: no crosssession.yaml, so the kanban payload is
+	// exactly the accept-only injection this test asserts.
+	orig := crossSessionConfigRootFn
+	crossSessionConfigRootFn = func() string { return t.TempDir() }
+	t.Cleanup(func() { crossSessionConfigRootFn = orig })
 
 	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
 	t.Cleanup(cleanup)
