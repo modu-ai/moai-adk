@@ -50,3 +50,42 @@ func TestUnreferencedSpecs(t *testing.T) {
 		t.Errorf("UnreferencedSpecs = %v, want %v", got, want)
 	}
 }
+
+func TestMilestoneClaims(t *testing.T) {
+	edges := []Edge{
+		{Kind: KindReportMilestone, Source: ".moai/reports/a.md", Target: "a#S1"},
+		{Kind: KindMilestoneCard, Source: "a#S1", Target: "t108"},
+		{Kind: KindReportMilestone, Source: ".moai/reports/a.md", Target: "a#S6"}, // no card claimed
+		{Kind: KindMilestoneCard, Source: "a#S7", Target: "t59"},
+		{Kind: KindMilestoneCard, Source: "a#S7", Target: "t58"},
+		// A milestone-card edge without its declaring report-milestone edge is
+		// dangling claim data, not a declared milestone: not in the output.
+		{Kind: KindMilestoneCard, Source: "a#S9", Target: "t77"},
+	}
+
+	got := MilestoneClaims(edges)
+	// Only S1 and S6 carry report-milestone edges; S7 and S9 appear in the
+	// input WITHOUT one, so they must be absent — the declaration, not the
+	// claim, admits a milestone into the output.
+	if len(got) != 2 {
+		t.Fatalf("MilestoneClaims = %+v, want 2 entries (declared milestones only)", got)
+	}
+	if got[0].Milestone != "a#S1" || !reflect.DeepEqual(got[0].Cards, []string{"t108"}) {
+		t.Errorf("first claim = %+v, want a#S1 with [t108]", got[0])
+	}
+	if got[1].Milestone != "a#S6" || len(got[1].Cards) != 0 {
+		t.Errorf("second claim = %+v, want a#S6 with no cards", got[1])
+	}
+}
+
+func TestMilestoneClaims_SortsCardsWithinClaim(t *testing.T) {
+	edges := []Edge{
+		{Kind: KindReportMilestone, Source: ".moai/reports/a.md", Target: "a#S7"},
+		{Kind: KindMilestoneCard, Source: "a#S7", Target: "t59"},
+		{Kind: KindMilestoneCard, Source: "a#S7", Target: "t58"},
+	}
+	got := MilestoneClaims(edges)
+	if want := []string{"t58", "t59"}; !reflect.DeepEqual(got[0].Cards, want) {
+		t.Errorf("cards = %v, want sorted %v", got[0].Cards, want)
+	}
+}

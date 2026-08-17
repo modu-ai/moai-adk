@@ -8,6 +8,9 @@
 //	                                          (via mx.Scanner SpecRef capture)
 //	kind "spec-depends" SPEC → SPEC         spec.md frontmatter depends_on
 //	                                          (via mx.LoadSpecDependencies)
+//	kind "report-milestone" report → milestone  .moai/reports/*.md Card
+//	                                          Cross-Check sections (report.go)
+//	kind "milestone-card"   milestone → card    same section, card column
 //
 // Output contract: one line = one edge, edges sorted by (kind, source,
 // target, line), no timestamps — two runs on the same tree produce
@@ -72,11 +75,16 @@ func Build(projectRoot string) ([]Edge, error) {
 	if err != nil {
 		return nil, err
 	}
+	reportLinks, err := reportEdges(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 
-	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(depends))
+	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(depends)+len(reportLinks))
 	edges = append(edges, imports...)
 	edges = append(edges, specLinks...)
 	edges = append(edges, depends...)
+	edges = append(edges, reportLinks...)
 	sort.Slice(edges, func(i, j int) bool { return EdgeLess(edges[i], edges[j]) })
 	return edges, nil
 }

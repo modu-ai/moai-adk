@@ -223,3 +223,109 @@ func TestGraphQueryCmd_MissingArtifact(t *testing.T) {
 		t.Errorf("error must point at 'moai graph build', got: %v", err)
 	}
 }
+
+// milestonesQueryFixture extends graphQueryFixture with a report whose Card
+// Cross-Check table claims four milestones (one live card, one absent card,
+// one dropped card, one new-card marker), rebuilds edges.jsonl, and points
+// the queue seam at a fixture backlog — hermetic: the real primary-checkout
+// queue is never read.
+func milestonesQueryFixture(t *testing.T) string {
+	t.Helper()
+	root := graphQueryFixture(t)
+
+	reports := filepath.Join(root, ".moai", "reports")
+	if err := os.MkdirAll(reports, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	report := `# Demo
+
+## Card Cross-Check (카드 대조표)
+
+| milestone | scope | card |
+|---|---|---|
+| S1 | rename modes | t108 |
+| S3 | session naming | t56 |
+| S4 | board from disk | t60 |
+| S6 | chief session | [신규 발행 필요] |
+`
+	if err := os.WriteFile(filepath.Join(reports, "demo-report.md"), []byte(report), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	build := newGraphCmd()
+	build.SetArgs([]string{"build", "--root", root})
+	bOut := &strings.Builder{}
+	build.SetOut(bOut)
+	build.SetErr(bOut)
+	if err := build.Execute(); err != nil {
+		t.Fatalf("graph build: %v\noutput: %s", err, bOut.String())
+	}
+
+	queueRoot := t.TempDir()
+	queueDir := filepath.Join(queueRoot, ".moai", "state", "kanban")
+	if err := os.MkdirAll(queueDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// t108 queued (live); t60 dropped (NOT live — a discarded card delivers
+	// nothing); t56 absent entirely (done or never issued).
+	queue := `{"version":1,"last_seq":110,"items":[
+ {"id":"t108","text":"rename modes","added_at":"2026-08-17T00:00:00Z","spec_id":null,"state":"queued"},
+ {"id":"t60","text":"cross-session settings","added_at":"2026-08-17T00:00:00Z","spec_id":null,"state":"dropped"}
+]}`
+	if err := os.WriteFile(filepath.Join(queueDir, "backlog.json"), []byte(queue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	prev := todoQueueRootFn
+	todoQueueRootFn = func() string { return queueRoot }
+	t.Cleanup(func() { todoQueueRootFn = prev })
+	return root
+}
+
+func TestGraphQueryCmd_MilestonesNoCard(t *testing.T) {
+	root := milestonesQueryFixture(t)
+	out := runGraphQuery(t, "--root", root, "--milestones-no-card")
+
+	for _, want := range []string{
+		"demo-report#S3  claimed t56 — not in live queue: t56 (done or never issued)",
+		"demo-report#S4  claimed t60 — not in live queue: t60 (done or never issued)", // dropped != live
+		"demo-report#S6  no card claimed ([new card needed])",
+		"milestones without a live card: 3 of 4", // S1/t108 live: clean, not listed
+		"git log --oneline --grep 'merge: tNN'",  // [HARD] caveat must ride the result
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "demo-report#S1") {
+		t.Errorf("S1 (live card t108) must not be flagged:\n%s", out)
+	}
+}
+
+func TestGraphQueryCmd_MilestonesNoCardQueueUnreadableSkipsComparison(t *testing.T) {
+	root := milestonesQueryFixture(t)
+
+	// Corrupt the queue the seam points at: only no-card milestones flag,
+	// and the skip is announced rather than silently passing every claim.
+	queueRoot := todoQueueRootFn()
+	if err := os.WriteFile(filepath.Join(queueRoot, ".moai", "state", "kanban", "backlog.json"), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out := runGraphQuery(t, "--root", root, "--milestones-no-card")
+	for _, want := range []string{
+		"demo-report#S6  no card claimed",
+		"backlog queue unreadable — card-vs-queue comparison skipped",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+	// The caveat text itself says "not in live queue", so assert on the
+	// per-milestone flag lines instead: S3/S4 carry claims and must not be
+	// flagged while the queue is unreadable.
+	for _, flagged := range []string{"demo-report#S3", "demo-report#S4"} {
+		if strings.Contains(out, flagged) {
+			t.Errorf("unreadable queue must not flag claimed milestones (%s):\n%s", flagged, out)
+		}
+	}
+}
