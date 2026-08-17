@@ -173,7 +173,7 @@ func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
 
 	got := NewRenderer("default", true, nil).renderSessionLine(d)
-	if !strings.Contains(got, "⚠️ 7 / 🔀 3") {
+	if !strings.Contains(got, "🔀 7 / 3") {
 		t.Errorf("github segment missing from %q", got)
 	}
 
@@ -209,8 +209,8 @@ func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 	if !strings.Contains(got, "📡 modu-ai/moai-adk | 🅱️ main") {
 		t.Errorf("repo indicator must render 📡, got %q", got)
 	}
-	if !strings.Contains(got, "⚠️ 7 / 🔀 3") {
-		t.Errorf("github segment must render ⚠️ issues / 🔀 PRs, got %q", got)
+	if !strings.Contains(got, "🔀 7 / 3") {
+		t.Errorf("github segment must render 🔀 issues / PRs, got %q", got)
 	}
 	if strings.Contains(got, "🔀 modu-ai") {
 		t.Errorf("repo prefix must not remain 🔀, got %q", got)
@@ -230,7 +230,7 @@ func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
 		t.Errorf("disabled github segment still rendered: %q", got)
 	}
-	if !strings.Contains(got, "🔄 12 / ⤵️ 26") {
+	if !strings.Contains(got, "🔄 TODO: 12/26") {
 		t.Errorf("backlog must survive disabling the github segment: %q", got)
 	}
 }
