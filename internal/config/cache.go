@@ -122,6 +122,19 @@ func (l *Loader) LoadWithCache(configDir string) (*Config, error) {
 		return nil, err
 	}
 
+	// Skip the cache write when the config directory itself does not exist
+	// (issue #1568): writeCache's MkdirAll would materialize
+	// <root>/.moai/state/ as a side effect, and `moai init` then fails its
+	// "project already initialized" validation against the directory this
+	// very command just created. The project is not initialized here, so
+	// there is nothing worth caching; caching resumes once the directory
+	// exists (after init or update).
+	if _, statErr := os.Stat(configDir); statErr != nil {
+		slog.Debug("config cache: skipping write (config directory does not exist)",
+			"config_dir", configDir)
+		return cfg, nil
+	}
+
 	// Write cache (fail-open: a write failure is logged and ignored — the
 	// cache is an optimization, not a correctness dependency; C-EDGE-003).
 	if writeErr := writeCache(cachePath, cfg, currentFP); writeErr != nil {

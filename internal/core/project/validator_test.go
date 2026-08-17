@@ -29,6 +29,39 @@ func TestValidate(t *testing.T) {
 			wantErrors: []string{"project already initialized"},
 		},
 		{
+			// Issue #1568: a pre-fix moai command left .moai/state/config-cache.json
+			// in an uninitialized directory; that litter must not block init.
+			name: "moai dir with only cache artifact is treated as uninitialized",
+			setup: func(t *testing.T, root string) {
+				t.Helper()
+				mkDir(t, root, ".moai/state")
+				writeFile(t, root, ".moai/state/config-cache.json", `{"schema_version":1}`)
+			},
+			wantValid:    true,
+			wantWarnings: []string{"treating the directory as uninitialized"},
+		},
+		{
+			name: "moai dir with cache artifact plus any real content stays invalid",
+			setup: func(t *testing.T, root string) {
+				t.Helper()
+				mkDir(t, root, ".moai/state")
+				writeFile(t, root, ".moai/state/config-cache.json", `{"schema_version":1}`)
+				writeFile(t, root, ".moai/manifest.json", `{"version":"1.0.0"}`)
+			},
+			wantValid:  false,
+			wantErrors: []string{"project already initialized"},
+		},
+		{
+			name: "moai dir with unexpected state content stays invalid",
+			setup: func(t *testing.T, root string) {
+				t.Helper()
+				mkDir(t, root, ".moai/state")
+				writeFile(t, root, ".moai/state/other.json", `{}`)
+			},
+			wantValid:  false,
+			wantErrors: []string{"project already initialized"},
+		},
+		{
 			name: "existing claude directory triggers warning",
 			setup: func(t *testing.T, root string) {
 				t.Helper()
