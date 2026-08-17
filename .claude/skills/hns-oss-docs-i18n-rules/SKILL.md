@@ -31,7 +31,7 @@ wins — EXCEPT the two stale items in § Known-Stale below, where reality wins.
 | README | **ko** (`README.ko.md`) | ko → en/ja/zh, same PR | `README.md`, `README.ja.md`, `README.zh.md` |
 
 > README canonical flipped en → ko by card t47 (operator decision 2026-08-17):
-> the ko new-skeleton (11-section feature-oriented structure) was promoted to
+> the ko new-skeleton (12-section feature-oriented structure) was promoted to
 > canonical, and en/ja/zh are re-derived from it. Both surfaces are now
 > ko-canonical — the surface chains agree.
 
