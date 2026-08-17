@@ -2,12 +2,14 @@
 package harness
 
 import (
+	"bytes"
 	"encoding/json"
-	"math"
+	"os"
 	"runtime"
-	"slices"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/timing"
 )
 
 // ─────────────────────────────────────────────
@@ -138,32 +140,35 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 // stay well inside the 5s hook budget. REQ-HL-001: observer must not block the
 // parent tool call. Internal for-loop, NOT a Benchmark — the test asserts
 // latency bounds over the steady-state samples, not a throughput average. It
-// logs p95 / worst / avg so the bounds are mechanically observable in output.
+// logs the median / p95 / worst / avg and the calibrated ratio so the bounds
+// are mechanically observable in output.
 //
-// Both bounds are stated as a fraction of the 5s hook budget, because the
-// budget — not any absolute millisecond figure — is what RecordEvent actually
-// owes (same rationale as TestBranchGuard_Latency in PR #1541):
+// Three bounds, each answering a different question (enforced by
+// internal/timing.Assert; same rationale as TestBranchGuard_Latency):
 //
-//   - p95 <= 20% of budget (1s POSIX). The regression detector. A real
-//     regression — an fsync per write, a whole-file rewrite per append, a
-//     network call — makes EVERY write slow, so it moves the whole
-//     distribution and trips p95. Scheduler jitter moves ONE sample and does
-//     not.
+//   - p95 <= 20% of the 5s hook budget (1s POSIX). The distribution
+//     detector. A real regression — an fsync per write, a whole-file rewrite
+//     per append, a network call — makes EVERY write slow, so it moves the
+//     whole distribution and trips p95. Scheduler jitter moves ONE sample
+//     and does not.
 //   - worst < 100% of budget (5s). The contract itself: no single write may
 //     consume the whole hook budget, because one that does stalls the user's
 //     tool call.
-//
-// What was wrong with the earlier form: it asserted <=100ms on EVERY one of
-// the 100 samples — a max-of-100 assertion that amplifies tail risk 100x and
-// measures machine load as much as the code (a loaded box breached it on
-// healthy code; see the load incidents of 2026-08-15).
-//
-// What p95 still catches: any change that moves typical write cost past a
-// second. What it deliberately does not catch: a 2x slowdown inside the
-// existing write cost, which is indistinguishable from load on this
-// measurement — catching that needs a recorded baseline, which the verify
-// snapshot store cannot honestly provide (keys bind to exact tree state, so
-// a previous-commit baseline is unreachable by construction).
+//   - median <= 2.0x ONE reference append cycle (open O_APPEND + write one
+//     JSONL-sized line + close), measured in this same run on the same
+//     filesystem. The CALIBRATED arm — it measures code, not machine.
+//     RecordEvent is one such cycle plus sub-millisecond marshal/mkdir, so
+//     the healthy ratio sits at ~1.0x on any machine under any load; an
+//     fsync per write lands at 5-50x, a whole-file rewrite at 2-3x, and both
+//     trip the bound even while absolute figures stay inside the generous
+//     budget fractions. This closes the gap the earlier forms left: the
+//     100ms-per-sample absolute ceiling measured machine load (a loaded box
+//     breached it on healthy code; see the load incidents of 2026-08-15),
+//     and the budget fractions alone cannot see a 2x slowdown under 1s. A
+//     persisted baseline cannot close it either — the verify snapshot store
+//     keys records to exact tree state, and a baseline recorded at another
+//     time measures another load state; the in-run reference is the only
+//     honest baseline (full rationale: internal/timing package doc).
 //
 // Windows keeps the existing skip: on GitHub-hosted Windows runners + race
 // detector + antivirus, file-write latency reliably exceeded even generous
@@ -178,57 +183,45 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	dir := t.TempDir()
 	obs := NewObserver(dir + "/usage-log.jsonl")
 
-	const count = 100
-	// Initial calls warm the OS file cache; bounds are verified only against
-	// the steady-state samples after warmup.
-	const warmup = 5
+	// Reference unit: ONE append cycle of the same cost class RecordEvent
+	// performs — open(O_APPEND|O_CREATE|O_WRONLY) + write one JSONL-sized
+	// line + close — on a sibling file in the same t.TempDir filesystem,
+	// measured immediately before the measured loop.
+	refPath := dir + "/reference-append.jsonl"
+	refLine := append(bytes.Repeat([]byte("x"), 159), '\n')
+	refUnit := timing.Median(func() {
+		f, err := os.OpenFile(refPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatalf("reference append open failed: %v", err)
+		}
+		if _, err := f.Write(refLine); err != nil {
+			_ = f.Close()
+			t.Fatalf("reference append write failed: %v", err)
+		}
+		if err := f.Close(); err != nil {
+			t.Fatalf("reference append close failed: %v", err)
+		}
+	}, 3, 20)
 
 	const hookBudget = 5 * time.Second
 	steadyCeiling := hookBudget / 5 // 20% — 1s on POSIX
 
-	samples := make([]time.Duration, 0, count-warmup)
-	for i := range count {
-		start := time.Now()
+	// Healthy ratio is ~1.0x (one append cycle + sub-ms marshal). MaxUnits
+	// 2.0 keeps headroom over healthy code while tripping on fsync-per-write
+	// (5-50x) and whole-file rewrite (2-3x) — regression classes invisible
+	// to the budget fractions when absolute figures stay generous.
+	timing.Assert(t, timing.Bound{
+		Name:          "RecordEvent",
+		Budget:        hookBudget,
+		SteadyCeiling: steadyCeiling,
+		MaxUnits:      2.0,
+		Iterations:    100,
+		Warmup:        5,
+	}, refUnit, func() {
 		if err := obs.RecordEvent(EventTypeMoaiSubcommand, "test-subject", "hash"); err != nil {
-			t.Fatalf("RecordEvent %d번째 실패: %v", i, err)
+			t.Fatalf("RecordEvent 실패: %v", err)
 		}
-		if i < warmup {
-			continue
-		}
-		samples = append(samples, time.Since(start))
-	}
-
-	p95 := percentileDuration(samples, 0.95)
-	var worst time.Duration
-	var total time.Duration
-	for _, s := range samples {
-		if s > worst {
-			worst = s
-		}
-		total += s
-	}
-	t.Logf("steady-state samples=%d p95=%v worst=%v avg=%v",
-		len(samples), p95, worst, total/time.Duration(len(samples)))
-
-	if p95 > steadyCeiling {
-		t.Errorf("p95 RecordEvent latency %v > %v (20%% of the 5s hook budget) — "+
-			"a whole-distribution slowdown; if this is red, typical writes got slower, "+
-			"not one unlucky sample", p95, steadyCeiling)
-	}
-	if worst >= hookBudget {
-		t.Errorf("worst RecordEvent latency %v >= %v (the full hook budget) — "+
-			"a single write can stall the parent tool call", worst, hookBudget)
-	}
-}
-
-// percentileDuration returns the p-th percentile of a non-empty sample set
-// (nearest-rank method: the ceil(p·n)-th smallest value). Panics on empty
-// input — callers must supply at least one sample.
-func percentileDuration(samples []time.Duration, p float64) time.Duration {
-	sorted := slices.Clone(samples)
-	slices.Sort(sorted)
-	rank := max(int(math.Ceil(p*float64(len(sorted)))), 1)
-	return sorted[rank-1]
+	})
 }
 
 // TestRecordEventAppends verifies that new events are appended to an existing file.
