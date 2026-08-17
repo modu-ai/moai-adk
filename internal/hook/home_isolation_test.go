@@ -3,6 +3,8 @@ package hook
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"testing"
 )
 
@@ -57,24 +59,37 @@ func TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome(t *testing.T) {
 	}
 }
 
-// TestHomeJoinSiteCountIsPinned pins how many places in the tree build a path of
-// the form <home>/.claude/projects/<slug>.
+// homeJoinSiteAllowlist pins exactly WHICH files build a path of the form
+// <home>/.claude/projects/<slug>. It is an explicit set, not a bare count:
+// a bare count told the reader that something moved but not whether the list
+// had followed the code — the release incident where internal/cli/tokens.go
+// became the fifth site and the pin still said 4 shipped a deterministic red
+// that nobody had context to close. Set equality turns red in BOTH sync-loss
+// directions: a site added to the code without a row here, and a row here
+// whose site was removed or renamed.
 //
-// Each such site is a potential silent leak: it combines a real home with a
-// project-derived name, so any test that isolates only the project half writes
-// into the developer's actual home. The known sites each carry a behavioural
-// guard — TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome in internal/hook,
-// TestDecayScan_DoesNotWriteToRealHome in internal/cli/preference, and, for the
-// `moai memory` / `moai migrate profiles` derivations,
+// Each site combines a real home with a project-derived name. The write-shaped
+// sites each carry a behavioural guard — TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome
+// in internal/hook, TestDecayScan_DoesNotWriteToRealHome in internal/cli/preference,
+// and, for the `moai memory` / `moai migrate profiles` derivations,
 // TestMemoryCandidateStores_DoNotEscapeToRealHome and
-// TestDefaultMemoryStore_DoesNotEscapeToRealHome in internal/cli. A further site
-// added without one would reintroduce the class with nothing to report it, which
-// is what this count exists to prevent.
-//
-// This is a count, not an allowlist of paths, so it stays readable; the failure
-// message carries the located sites so the reader sees which one is new.
+// TestDefaultMemoryStore_DoesNotEscapeToRealHome in internal/cli. The
+// tokens.go entry is a glob READ (transcript lookup), so the write-leak guard
+// class does not apply to it as written — it stays pinned anyway so that a
+// future edit turning the read into a write re-opens this decision instead of
+// passing silently.
+var homeJoinSiteAllowlist = []string{
+	"internal/cli/memory.go",
+	"internal/cli/migrate_profiles.go",
+	"internal/cli/preference/cmd.go",
+	"internal/cli/tokens.go", // glob READ of the real home (session transcript lookup)
+	"internal/hook/session_end.go",
+}
+
+// TestHomeJoinSiteCountIsPinned asserts the tree's home-join sites match
+// homeJoinSiteAllowlist exactly. See that allowlist's comment for the
+// per-site guard mapping and the count→set rationale.
 func TestHomeJoinSiteCountIsPinned(t *testing.T) {
-	const wantSites = 4
 
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -109,7 +124,9 @@ func TestHomeJoinSiteCountIsPinned(t *testing.T) {
 			if relErr != nil {
 				rel = path
 			}
-			sites = append(sites, rel)
+			// Normalize to slash form so the allowlist compares identically on
+			// every platform CI runs on (filepath.Rel yields OS separators).
+			sites = append(sites, filepath.ToSlash(rel))
 		}
 		return nil
 	})
@@ -117,14 +134,32 @@ func TestHomeJoinSiteCountIsPinned(t *testing.T) {
 		t.Fatalf("walk repo: %v", err)
 	}
 
-	if len(sites) != wantSites {
-		t.Errorf("found %d file(s) joining a home dir with .claude/projects, want %d:\n  %v\n\n"+
+	want := make(map[string]bool, len(homeJoinSiteAllowlist))
+	for _, s := range homeJoinSiteAllowlist {
+		want[s] = true
+	}
+	var stale, unlisted []string
+	for _, s := range homeJoinSiteAllowlist {
+		if !slices.Contains(sites, s) {
+			stale = append(stale, s)
+		}
+	}
+	for _, s := range sites {
+		if !want[s] {
+			unlisted = append(unlisted, s)
+		}
+	}
+	if len(stale) > 0 || len(unlisted) > 0 {
+		sort.Strings(stale)
+		sort.Strings(unlisted)
+		t.Errorf("home-join sites out of sync with homeJoinSiteAllowlist:\n"+
+			"  unlisted (code has them, allowlist does not — add a row, and a leak guard if the site writes): %v\n"+
+			"  stale (allowlist has them, code does not — update the allowlist): %v\n\n"+
 			"Each such site combines a REAL home with a project-derived slug, so a test that "+
 			"isolates only the project half deposits a permanent directory in the developer's "+
-			"own home on every run. If you added a site, add a leak guard for it (see "+
-			"TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome) and raise wantSites. If you "+
-			"removed one, lower wantSites.",
-			len(sites), wantSites, sites)
+			"own home on every run. See TestResolveCaptureMemoryDir_DoesNotEscapeToRealHome "+
+			"for the guard shape.",
+			unlisted, stale)
 	}
 }
 
