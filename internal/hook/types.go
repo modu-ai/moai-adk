@@ -278,7 +278,11 @@ type HookInput struct {
 	TaskDescription string `json:"task_description,omitempty"`
 
 	// WorktreeCreate and WorktreeRemove fields (v2.1.49+)
-	WorktreePath   string `json:"worktree_path,omitempty"`   // Absolute path to the worktree directory
+	// WorktreeCreate sends the official `name` field (the suggested worktree
+	// slug) and expects the hook to create the worktree itself; WorktreeRemove
+	// sends `worktree_path` (the absolute path of the worktree to remove).
+	WorktreeName   string `json:"name,omitempty"`            // WorktreeCreate: suggested worktree slug
+	WorktreePath   string `json:"worktree_path,omitempty"`   // WorktreeRemove: absolute path to the worktree directory
 	WorktreeBranch string `json:"worktree_branch,omitempty"` // Branch name for the worktree
 	AgentName      string `json:"agent_name,omitempty"`      // Name of the agent using the worktree
 
@@ -379,6 +383,12 @@ type HookOutput struct {
 	// ExitCode allows handlers to signal a specific process exit code.
 	// Not serialized to JSON. Used for exit code 2 protocol (TeammateIdle, TaskCompleted).
 	ExitCode int `json:"-"`
+
+	// WorktreePath carries the absolute path of the worktree the
+	// WorktreeCreate handler created. Not serialized to JSON — the CLI
+	// dispatcher echoes it to stdout as plain text per the WorktreeCreate
+	// contract (issue #1570).
+	WorktreePath string `json:"-"`
 
 	// Internal data (not serialized to JSON)
 	Data json.RawMessage `json:"-"`
