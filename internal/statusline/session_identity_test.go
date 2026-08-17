@@ -28,7 +28,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 
 	got := NewRenderer("default", true, nil).renderSessionLine(namedData())
 
-	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 12 / ⤵️ 26"} {
+	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 TODO: 12 / 26"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
 		}
@@ -90,6 +90,28 @@ func TestRenderSessionLine_SegmentsDisablable(t *testing.T) {
 	}
 	if !strings.Contains(got, "🏷️ Team-A-Lead") {
 		t.Errorf("identity must survive disabling the backlog segment: %q", got)
+	}
+}
+
+// Operator directive 2026-08-17: the session line closes the statusline —
+// after the project line, not before the model line. This pins the placement
+// so a future layout edit cannot silently move it back to the top.
+func TestRenderDefaultV3_SessionLineClosesTheStatusline(t *testing.T) {
+	t.Parallel()
+
+	r := NewRenderer("default", true, nil)
+	lines := strings.Split(r.Render(namedData(), ModeDefault), "\n")
+	if len(lines) < 2 {
+		t.Fatalf("expected the full layout, got %q", lines)
+	}
+	last := lines[len(lines)-1]
+	if !strings.Contains(last, "🏷️ Team-A-Lead") {
+		t.Errorf("session line must be the LAST line, got %q (all: %q)", last, lines)
+	}
+	for _, prior := range lines[:len(lines)-1] {
+		if strings.Contains(prior, "🏷️") || strings.Contains(prior, "🔄 TODO:") {
+			t.Errorf("session identity/workload must appear only on the last line, found on %q", prior)
+		}
 	}
 }
 
