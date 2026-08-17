@@ -1,1 +1,1 @@
-ok  	github.com/modu-ai/moai-adk/internal/template	29.676s
+ok  	github.com/modu-ai/moai-adk/internal/template	50.790s

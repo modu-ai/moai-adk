@@ -112,3 +112,93 @@ Removed/condensed: redundant self-references (2), duplicate anti-pattern pointer
 - Headroom is 974 tokens (~1.28%). The surface historically regrows (5→14 files in 3 months per the session-cost analysis); remaining v3.1.1 lanes (t60 settings/web, t99 internal/cli) are code-focused, but any late rule addition could consume headroom. If the budget trips again before the release PR merges, the next candidates are `askuser-protocol.md` (7,538 tok, sidecar exists) and `context-window-management.md` (3,252 tok, would need a new companion).
 - Content that moved to the kanban companion is now paths-gated: a lead session that never touches kanban rule/agent/todo files loads only the stub. The stub's summaries were written to keep every operational decision reachable via one hop (each moved block has an inline pointer). Risk: a lead following only the stub misses the `<role>-<run-id>` naming detail and the lens table without opening the companion — the stub's pointers name the exact companion section.
 - The A9 compression kept the (a)/(b) markers and all sentinel names; the full elaboration remains in `verification-batch-pattern.md` § Attributable diff-check pattern (unchanged).
+
+
+---
+
+## Finalization pass — t110 rebase resolution + channel rider (2026-08-17)
+
+Executed by the t114 finalizer agent. All content work and verification below ran
+against this worktree (WT-t114 @ d9600065e + the edits described here). Git
+bookkeeping (rebase / commit / release merge / push) is handed off verbatim via
+`resolved/HANDOFF.md` — this session was spawned with a cwd override into a
+different worktree and the worktree-session guard refuses cross-tree git, so the
+sequence was left staged rather than guessed around.
+
+### Rider (from hub review)
+
+`.claude/rules/moai/workflow/cross-session-messaging.md` (local + template
+mirror, byte-identical). The Availability-constraints opener said the kanban
+dispatch cycle "rides entirely on this channel", contradicting t110's principle ①
+(the queue on disk is the delegation channel; cross-session messages are nudge
+only). One-sentence rewrite + equal-or-greater trim in the same file:
+
+- Rewrite: `"Four constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:"` (+21 B)
+- Compensating trim (wording-only): `"It is not free: a delivered message counts toward the recipient's usage exactly as a typed prompt does — what is saved is the user's attention, not tokens."` (−19 B)
+- Net file delta +2 B → 14,286 B; token count unchanged at 3,571.
+
+### Rebase-conflict resolution (WT-t114 ← origin/release/v3.1.1 @ 6b44bdd2e)
+
+t110 (5c9a9715c) edited the full-size kanban-dispatch.md; t114 restructured it
+into stub + companion. Every t110 change survives; new [HARD] rules stay in the
+always-loaded stub, narrative in the stub only where t110 placed rule statements:
+
+| t110 change | Landed in | Form |
+|---|---|---|
+| Scope: "nudge delivery rides on cross-session messaging … the queue itself keeps working without it" | stub § Scope | verbatim |
+| [HARD] The lead is the queue's sole producer (with `moai todo add` mechanism) | stub § Entry | verbatim |
+| [HARD] Promotion is the operator's act, always | stub § Entry | verbatim |
+| § The delegation channel is the queue ([HARD] queue-on-disk + nudge paragraph) | stub, new § between The dispatch cycle and Dispatch language | verbatim |
+| The final PASS/FAIL verdict is the lead's (structural division) | stub § Completion is read, never trusted | verbatim |
+| Bare-role companion naming, no run id | companion § The dispatch cycle | verbatim — also fixes t114's stale `<role>-<run-id>` text (bare-role naming predates t110) |
+| Wording-only compressions (WT- prefix [HARD], /clear ×2, isolation narrative, dispatch-this, mechanism paragraph, integration completion signal, boundaries bullet) | stub | t110's compressed wording; normative content unchanged |
+
+Not taken from t110 (t114 stub/companion already equivalent or shorter): Class-A
+parenthetical, CodeRabbit condensed predicate, dispatch-language condensed
+rationale (companion keeps the two-bullet archive), verification-load pointer
+form, one-integration-surface bullet (already compressed), env-isolated section.
+
+### Budget impact (this pass)
+
+| File | Before pass | After pass | Delta |
+|---|---|---|---|
+| kanban-dispatch.md (stub) | 22,460 B / 5,615 tok | 23,544 B / 5,886 tok | +271 tok |
+| cross-session-messaging.md | 14,284 B / 3,571 tok | 14,286 B / 3,571 tok | 0 tok |
+| kanban-dispatch-detail.md (paths-gated, off-surface) | 9,400 B | 9,504 B | — |
+| **Always-loaded total** | **75,026 tok** | **75,297 tok** | **+271 tok** |
+
+Final headroom: 76,000 − 75,297 = **703 tokens** (≥ 200 required). [HARD] in the
+stub: 16 → 19 occurrences (18 rules + 1 companion-pointer mention); this file
+carries no [ZONE] tags before or after. agent-common-protocol.md (15 [HARD] /
+16 [ZONE]) untouched by this pass.
+
+### Verification (this pass, verbatim — fresh `-count=1` runs, artifacts under `resolved/artifacts/`)
+
+```
+$ go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v -count=1
+=== RUN   TestAlwaysLoadedTokenBudget
+--- PASS: TestAlwaysLoadedTokenBudget (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.269s
+
+$ go run .moai/reports/t114/measure_tool.go .
+TOTAL: 75297 tokens, 17 entries
+
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	50.790s
+
+$ diff local↔mirror × 3 (kanban-dispatch, kanban-dispatch-detail, cross-session-messaging) → identical
+$ make build → clean rebuild; internal/template/catalog.yaml byte-identical to d9600065e (no mirror-commit hazard)
+$ go vet ./internal/config/ ./internal/template/ → exit 0
+```
+
+### Gaps (this pass)
+
+- Rebase / rider commit / release merge / push NOT executed here (session
+  worktree-pinned; guard refuses cross-tree git). Exact sequence staged in
+  `resolved/HANDOFF.md`; all resolved content under `resolved/` (untracked).
+  Post-rebase the budget test must be re-run once by the finishing session
+  (release-side changes touch no surface file, so 75,297 is the expected value).
+- `golangci-lint` not run (no Go source changed; vet on both touched packages exit 0).
+- Full `go test ./...` not run locally (lane-local discipline; CI on the batch
+  release PR owns the full matrix).

@@ -1,10 +1,4 @@
 === RUN   TestAlwaysLoadedTokenBudget
 --- PASS: TestAlwaysLoadedTokenBudget (0.01s)
-=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails
-=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/over-budget
-=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/under-budget
---- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails (0.00s)
-    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/over-budget (0.00s)
-    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/under-budget (0.00s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/config	0.435s
+ok  	github.com/modu-ai/moai-adk/internal/config	0.269s
