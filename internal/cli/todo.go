@@ -178,11 +178,28 @@ Mutations serialize on a sibling cross-process lock; reads are lock-free.
 
 A bare invocation renders the queue, which is the form the skill surface and
 workflows/todo.md both document; ` + "`moai todo list`" + ` remains valid and prints the
-same thing. NoArgs keeps a mistyped verb an error rather than letting it fall
-through to the listing.`,
-		Args: cobra.NoArgs,
+same thing. A single unknown token stays an error (a mistyped verb must not
+become a card), while a phrase of two or more words falls through to add:
+` + "`moai todo fix the flaky gate`" + ` adds that card. A one-word card therefore
+needs the explicit add verb — the price of keeping typos loud.`,
+		Args: func(cmd *cobra.Command, args []string) error {
+			// t69 fallthrough: two or more words are natural language → add.
+			// Deliberate failure modes: a single token (the mistyped verb
+			// "lst", or a one-word card like "docs") stays an error — a
+			// mistyped verb must not silently become a card — so a one-word
+			// card needs the explicit add verb; conversely a mistyped verb
+			// followed by more words ("lst the queue") DOES become a card,
+			// the accepted cost of the fallthrough.
+			if len(args) > 1 {
+				return nil
+			}
+			return cobra.NoArgs(cmd, args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodoList(cmd, false)
+			if len(args) == 0 {
+				return runTodoList(cmd, false)
+			}
+			return runTodoAddAppend(cmd, strings.Join(args, " "))
 		},
 		GroupID: "tools",
 	}
@@ -204,22 +221,33 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
-			store := newTodoStore()
 			if pick {
-				return runTodoAddPick(cmd, store, text)
+				return runTodoAddPick(cmd, newTodoStore(), text)
 			}
-			item, pos, err := store.Add(text)
-			if err != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
-				return err
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
-			return nil
+			return runTodoAddAppend(cmd, text)
 		},
 	}
 	cmd.Flags().BoolVar(&pick, "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
 	return cmd
+}
+
+// runTodoAddAppend is the plain-add body shared by `todo add <text>` and the
+// parent's natural-language fallthrough (t69): non-empty guard, locked
+// append, "<id> <position>" stdout line. `--pick` stays add-only — the
+// fallthrough path has no flags.
+func runTodoAddAppend(cmd *cobra.Command, text string) error {
+	if strings.TrimSpace(text) == "" {
+		return fmt.Errorf("todo add: text must be non-empty")
+	}
+	store := newTodoStore()
+	item, pos, err := store.Add(text)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+		return err
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)
+	return nil
 }
 
 // runTodoAddPick — the `add --pick` body (t71): append AND mark picked as

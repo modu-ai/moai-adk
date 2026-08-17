@@ -522,6 +522,55 @@ func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
 	}
 }
 
+// TestTodoMultiWordFallthroughAdds — t69: `moai todo <phrase>` with two or
+// more words is the implicit add. The output must match the explicit add
+// form exactly (same "<id> <position>" line), so scripts cannot tell the
+// two entry points apart.
+func TestTodoMultiWordFallthroughAdds(t *testing.T) {
+	_, store := todoFixture(t)
+
+	out, _, err := runTodo(t, "fix", "the", "flaky", "gate")
+	if err != nil {
+		t.Fatalf("multi-word fallthrough: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "t1 1" {
+		t.Errorf("fallthrough output = %q, want %q", got, "t1 1")
+	}
+
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(rec.Items) != 1 || rec.Items[0].Text != "fix the flaky gate" {
+		t.Errorf("fallthrough card = %+v; want one card with the joined text", rec.Items)
+	}
+
+	// The explicit add must keep working and share the same output shape.
+	out, _, err = runTodo(t, "add", "second card")
+	if err != nil {
+		t.Fatalf("explicit add after fallthrough: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "t2 2" {
+		t.Errorf("explicit add output = %q, want %q", got, "t2 2")
+	}
+}
+
+// TestTodoSingleWordNaturalLanguageStillErrors — the fallthrough is
+// two-or-more words by design: a one-word argument (a would-be one-word
+// card, or a mistyped verb) stays an error, so a mistyped verb can never
+// silently become a card. One-word cards need the explicit add verb.
+func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	if _, _, err := runTodo(t, "버그"); err == nil {
+		t.Error("single-word natural language was accepted, want an error")
+	}
+	if _, _, err := runTodo(t, "lst"); err == nil {
+		t.Error("mistyped verb was accepted, want an error")
+	}
+}
+
 // --- t71: pick-marking race hardening ---
 //
 // Incident (2026-08-16, lead run tjv7iy): the lead ran `moai todo next t67`
