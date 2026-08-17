@@ -1365,8 +1365,11 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		if !cfg.AstGrepGate.BlockOnError {
 			t.Error("AstGrepGate.BlockOnError should map through from config")
 		}
-		if cfg.AstGrepGate.RulesDir != ".moai/config/astgrep-rules" {
-			t.Errorf("AstGrepGate.RulesDir default = %q, want .moai/config/astgrep-rules", cfg.AstGrepGate.RulesDir)
+		// t50: an empty gate.yaml rules_dir maps through as empty — the
+		// hook no longer substitutes a hardcoded path (gate.yaml is the SSOT
+		// for where a project keeps its ast-grep rules).
+		if cfg.AstGrepGate.RulesDir != "" {
+			t.Errorf("AstGrepGate.RulesDir default = %q, want empty", cfg.AstGrepGate.RulesDir)
 		}
 	})
 

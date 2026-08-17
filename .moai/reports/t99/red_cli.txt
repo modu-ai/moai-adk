@@ -1,0 +1,5 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/graph_cmd_test.go:48:9: undefined: newGraphCmd
+internal/cli/graph_cmd_test.go:78:9: undefined: newGraphCmd
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

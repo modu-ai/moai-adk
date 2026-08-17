@@ -107,8 +107,8 @@ func runGate(cmd *cobra.Command, _ []string) error {
 //
 // The config.GateConfig → quality.GateConfig mapping mirrors
 // pre_tool.go loadGateConfig verbatim, including the disabled_steps verbatim
-// copy (issue #1265: the runner reads FALSE as "skip") and the RulesDir
-// default (".moai/config/astgrep-rules" when empty).
+// copy (issue #1265: the runner reads FALSE as "skip"). An empty RulesDir
+// stays empty (t50): gate.yaml ast_grep_gate.rules_dir is the SSOT.
 func loadGateCfgForCLI(projectDir string) *quality.GateConfig {
 	qcfg := quality.DefaultGateConfig()
 
@@ -157,9 +157,11 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		BlockOnError: ag.BlockOnError,
 		WarnOnlyMode: ag.WarnOnlyMode,
 	}
-	if qcfg.AstGrepGate.RulesDir == "" {
-		qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-	}
+	// t50: an empty gate.yaml rules_dir maps through as empty — no hardcoded
+	// path fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where a
+	// project keeps its ast-grep rules; the template ships the key with an
+	// explicit value (.moai/config/astgrep-rules, where it deploys the rules),
+	// so template users are covered by config rather than by a code guess.
 	return qcfg
 }
 

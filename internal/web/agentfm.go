@@ -288,6 +288,30 @@ func agentResolvedEffort(llm config.LLMConfig, name string) string {
 	return me.Effort
 }
 
+// agentFMIsGLMBackend reports whether the live llm.yaml marks a GLM session
+// backend (team_mode glm/cg, or the dormant mode field). Thin reuse of the
+// config-level intent signal so the panel gate and the CLI resolver read the
+// same predicate (t66 web half).
+func agentFMIsGLMBackend(llm config.LLMConfig) bool {
+	return template.IsGLMBackend(llm)
+}
+
+// agentGLMReasoning returns the per-agent GLM reasoning state for the
+// effort(reasoning) map exposure (t66): under a GLM backend the sub-agent model
+// is session-inherited, so the per-agent axis is effort — and its GLM reading
+// is the z.ai reasoning state the effort collapses to. The value reuses the
+// SAME overlay the `moai model profile` GLM_REASONING column derives from
+// (template.ResolveGLMReasoning — no second derivation), keyed by the
+// profile-matrix-resolved effort so an override row shows its overridden state.
+// Returns "" under a Claude backend, where the GLM reading is noise.
+func agentGLMReasoning(llm config.LLMConfig, name string) string {
+	if !template.IsGLMBackend(llm) {
+		return ""
+	}
+	me, _ := template.ResolveAgentModelEffort(llm, name)
+	return template.ResolveGLMReasoning(name, me.Effort).Name
+}
+
 // agentSelectedModel returns the model the row's select should display as
 // selected — the profile-matrix-resolved value (G3-1).
 func agentSelectedModel(llm config.LLMConfig, info agentfm.AgentInfo) string {

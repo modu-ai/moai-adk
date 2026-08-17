@@ -12,6 +12,15 @@ package config
 
 // MoAI configuration environment variables.
 const (
+	// EnvHome overrides the ~/.moai root directory: when set to a non-empty
+	// absolute path, the entire MoAI state tree (state/, cache/, releases/,
+	// worktrees/, claude-profiles/, .env.glm, user-tier settings) resolves
+	// under it instead of the user's home. An empty value equals unset and
+	// relative values are disregarded (XDG semantics). Resolved exclusively
+	// via internal/paths (SPEC-V3R6-MOAI-HOME-PATHS-001 REQ-MHP-001/004);
+	// internal/paths mirrors this constant locally to stay stdlib-only.
+	EnvHome = "MOAI_HOME"
+
 	// EnvConfigDir overrides the MoAI configuration directory path.
 	EnvConfigDir = "MOAI_CONFIG_DIR"
 
@@ -157,12 +166,15 @@ const (
 
 	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
 	// run from another on the same machine. The lead session generates it once at
-	// launch; the SessionStart hook reads it to name the companion sessions the
-	// operator must bring up. A companion inherits the same id through its label.
+	// launch; the SessionStart hook reads it to name itself and the leader
+	// socket. It is lead-owned state: a companion neither carries nor publishes
+	// it (companion names are bare roles, so no companion surface holds a run id
+	// that could disagree with the lead's).
 	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
 
 	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
-	// carries its `<role>-<run-id>` label. It is deliberately distinct from
+	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
+	// collision produces. It is deliberately distinct from
 	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
 	// its own goal mid-session, exactly like the lead) but must NOT be seeded
 	// with the plan -> run -> verify -> sync chain, which only the lead drives.
@@ -186,6 +198,26 @@ const (
 	// Set by the launcher when enterKanbanMode classifies a lead, read by the
 	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
+
+	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
+	// worker count from the launcher entry point to the block-cap inject and
+	// the SessionStart hook. It is set on BOTH the factory lead and every
+	// worker — the count travels in the worker's own `-f <N>` token, which is
+	// why the worker launch command carries it. A non-empty value is what
+	// marks a session a factory session; the value is the fan-out size N.
+	//
+	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
+	// lead (run id, leader socket) and deliberately does NOT set
+	// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban
+	// chain, which a factory run never drives.
+	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
+
+	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
+	// carries its `worker-<n>` label. It is the factory counterpart of
+	// EnvMoaiKanbanLabel: the worker needs the raised Stop-hook block cap
+	// (it fields long dispatch-driven turns) but must not be seeded with any
+	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
+	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
 
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,

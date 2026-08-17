@@ -55,6 +55,13 @@ const (
 	// read one declaration. Default enabled (owner decision 2026-08-12).
 	SectionMCP SectionID = "mcp" // seam 전용 (per-tool enablement bools)
 
+	// crosssession 섹션 — 크로스세션 메시징 기본 태도 (seam 전용). moai cc/glm/cg
+	// 런처가 crosssession.yaml을 세션 --settings로 번역해 주입한다 (launcher 계층,
+	// internal/cli crosssession_settings.go). 웹은 inbound select / isolate_machines
+	// bool / dialog_expiry select 3필드를 편집한다. inbound와 dialog_expiry는
+	// EmptySubmits — "" 제출이 키를 중립 기본(claude code ladder / 5m)로 되돌린다.
+	SectionCrossSession SectionID = "crosssession"
+
 	// SPEC-WEB-CONSOLE-014 M4: mx는 편집 필드 0개의 raw-only 렌더 그룹이다 (mx는
 	// RouteExcluded — 쓰기 경로 없음). SchemaSectionIDs()에는 포함되지 않으며(편집
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
@@ -88,6 +95,7 @@ func AllSections() []SectionID {
 		SectionCache,
 		SectionReport,
 		SectionMCP,
+		SectionCrossSession,
 	}
 }
 
@@ -163,6 +171,7 @@ type FieldDef struct {
 	Validate      func(string) bool // 검증 술어 (nil이면 항상 유효)
 	Default       string            // 디스크 값 부재 시 위젯이 선택할 값 (빈 문자열이면 기존 동작 — 선택 없음)
 	StoreOnly     bool              // 값이 저장만 되고 런타임에 적용되지 않음 — 위젯이 저장 전용 배지를 렌더한다
+	EmptySubmits  bool              // select가 "" 제출을 실제 값으로 취급한다 (empty=preserve 예외 — 키를 중립 ""로 되돌리는 경로)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
 	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상

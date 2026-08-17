@@ -68,6 +68,12 @@ func TestRunAstGrepGateV2_NoSgCLI(t *testing.T) {
 	t.Setenv("PATH", "")
 
 	cfg := DefaultAstGrepGateConfig()
+	// DefaultAstGrepGateConfig leaves RulesDir empty (t50: gate.yaml is the
+	// SSOT), which now short-circuits to the unconfigured reason before the
+	// scanner is consulted. This test pins the scanner-unavailable branch, so
+	// it configures a rules dir explicitly — the value Default carried before
+	// t50 removed the code-level default.
+	cfg.RulesDir = ".moai/config/astgrep-rules"
 	passed, output := RunAstGrepGateV2(context.Background(), t.TempDir(), cfg)
 
 	if !passed {
@@ -112,6 +118,10 @@ func TestRunAstGrepGateV2_EmptyRulesDir(t *testing.T) {
 	}
 
 	cfg := DefaultAstGrepGateConfig()
+	// Point at the (existing, empty) directory explicitly: Default now leaves
+	// RulesDir empty, which means "not configured" rather than "the default
+	// path exists but holds no rules" — the scenario this test pins.
+	cfg.RulesDir = ".moai/config/astgrep-rules"
 	passed, output := RunAstGrepGateV2(context.Background(), projectDir, cfg)
 
 	if !passed {
@@ -288,6 +298,10 @@ func TestRunAstGrepGateV2_ProjectDirPathVariants(t *testing.T) {
 	}
 
 	cfg := DefaultAstGrepGateConfig()
+	// Explicit rules dir so these variants exercise the scanner step (and its
+	// unavailable reason) rather than short-circuiting on the now-empty
+	// default RulesDir (t50: empty means "not configured").
+	cfg.RulesDir = ".moai/config/astgrep-rules"
 
 	for _, tt := range tests {
 		tt := tt
@@ -315,6 +329,7 @@ func TestRunAstGrepGateV2_ContextCancellation(t *testing.T) {
 	cancel() // pre-cancel
 
 	cfg := DefaultAstGrepGateConfig()
+	cfg.RulesDir = ".moai/config/astgrep-rules"
 	passed, _ := RunAstGrepGateV2(ctx, t.TempDir(), cfg)
 
 	if !passed {
@@ -423,5 +438,116 @@ echo '[{"ruleId":"demo-rule","severity":"error","message":"demo finding","file":
 	}
 	if !strings.Contains(output, "demo-rule") {
 		t.Errorf("advisory output should contain the finding rule id, got: %q", output)
+	}
+}
+
+// TestRunAstGrepGateV2_UnconfiguredRulesDir pins the t50 rework F2 guard:
+// an empty gate.yaml ast_grep_gate.rules_dir must resolve to "not
+// configured" — the gate passes with the unconfigured reason and never
+// reaches the scanner. Before the guard, filepath.Join(projectDir, "")
+// collapsed to projectDir itself, so the gate recursively loaded every
+// .yml/.yaml in the project tree as incidental rules (a whole-tree walk on
+// every gate run, and — via the config-load-failure fallback whose
+// DefaultAstGrepGateConfig carries BlockOnError:true — a path for incidental
+// error-severity rules to block commits).
+//
+// The decoy YAML files under the project root are loadable rule documents:
+// under the old join-to-root behavior the walk would reach them (observable
+// as the gate proceeding to the scanner step, reported here as the
+// scanner-unavailable reason because PATH is stripped); with the guard the
+// unconfigured reason is returned before any of that.
+func TestRunAstGrepGateV2_UnconfiguredRulesDir(t *testing.T) {
+	// t.Setenv is incompatible with t.Parallel().
+	t.Setenv("PATH", "")
+
+	projectDir := t.TempDir()
+	// Decoys that a whole-tree walk would pick up as rule documents.
+	decoyDirs := []string{
+		filepath.Join(projectDir, ".moai", "config", "sections"),
+		filepath.Join(projectDir, ".github", "workflows"),
+	}
+	for _, d := range decoyDirs {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	decoyRule := "id: decoy-incidental-rule\nlanguage: go\nseverity: error\nmessage: decoy\npattern: fmt.Println($X)\n"
+	for _, fp := range []string{
+		filepath.Join(decoyDirs[0], "gate.yaml"),
+		filepath.Join(decoyDirs[1], "ci.yml"),
+	} {
+		if err := os.WriteFile(fp, []byte(decoyRule), 0o644); err != nil {
+			t.Fatalf("write decoy %s: %v", fp, err)
+		}
+	}
+
+	cfg := &AstGrepGateConfig{
+		Enabled:      true,
+		RulesDir:     "", // unconfigured (old template gate.yaml / empty explicit value)
+		BlockOnError: true,
+	}
+
+	passed, output := RunAstGrepGateV2(context.Background(), projectDir, cfg)
+
+	if !passed {
+		t.Errorf("an unconfigured optional gate must pass, got blocked with output: %q", output)
+	}
+	if output != astGrepReasonRulesDirUnconfigured {
+		t.Errorf("output should name the unconfigured rules dir, want %q, got %q",
+			astGrepReasonRulesDirUnconfigured, output)
+	}
+}
+
+// TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim pins the t50 rework F1
+// guard: an absolute ast_grep_gate.rules_dir must be used verbatim, not
+// joined onto the project root. Before the guard the gate computed
+// Join("/proj", "/abs/rules") — a polluted nonexistent path — and silently
+// scanned 0 rules while the CLI (which passes absolute values through)
+// worked, so one config value meant two different directories depending on
+// the consumer.
+//
+// The fake sg emits one error-severity finding, so a scan that actually used
+// the absolute rules dir reports it in the advisory output; a joined
+// (nonexistent) path yields a clean scan whose output is empty.
+func TestRunAstGrepGateV2_AbsoluteRulesDirUsedVerbatim(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake sg shell script requires a POSIX shell")
+	}
+
+	// Fake sg binary on PATH emitting one error-severity finding as sg JSON.
+	binDir := t.TempDir()
+	script := `#!/bin/sh
+echo '[{"ruleId":"demo-rule","severity":"error","message":"demo finding","file":"main.go","range":{"start":{"line":0,"column":0},"end":{"line":0,"column":1}}}]'
+`
+	if err := os.WriteFile(filepath.Join(binDir, "sg"), []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake sg: %v", err)
+	}
+	// t.Setenv is incompatible with t.Parallel().
+	t.Setenv("PATH", binDir)
+
+	// The rules dir lives OUTSIDE the project dir, addressed absolutely.
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(t.TempDir(), "shared-astgrep-rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir rules dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - .\n"), 0o644); err != nil {
+		t.Fatalf("write sgconfig.yml: %v", err)
+	}
+
+	cfg := &AstGrepGateConfig{
+		Enabled:      true,
+		RulesDir:     rulesDir, // absolute — must pass through unjoined
+		BlockOnError: true,
+		WarnOnlyMode: true, // advisory: report findings without blocking
+	}
+
+	passed, output := RunAstGrepGateV2(context.Background(), projectDir, cfg)
+
+	if !passed {
+		t.Errorf("advisory mode must never block, got blocked with output: %q", output)
+	}
+	if !strings.Contains(output, "demo-rule") {
+		t.Errorf("output should contain the finding from the absolute rules dir (used verbatim), got: %q", output)
 	}
 }

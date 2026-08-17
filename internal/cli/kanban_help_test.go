@@ -11,7 +11,7 @@ import (
 )
 
 // TestACFB018_HelpDocumentsLeadEntry verifies AC-FB-018: the cc and glm help
-// text contains -k / --kanban and states it seeds a plan->run->verify->sync chain.
+// text contains -k / --kanban and states it seeds a plan->run->sync chain.
 func TestACFB018_HelpDocumentsLeadEntry(t *testing.T) {
 	t.Parallel()
 	for _, cmd := range []struct {
@@ -28,15 +28,21 @@ func TestACFB018_HelpDocumentsLeadEntry(t *testing.T) {
 			}
 			lowered := strings.ToLower(cmd.long)
 			if !strings.Contains(lowered, "plan") || !strings.Contains(lowered, "run") ||
-				!strings.Contains(lowered, "verify") || !strings.Contains(lowered, "sync") {
-				t.Errorf("%s help does not state the plan->run->verify->sync chain", cmd.name)
+				!strings.Contains(lowered, "sync") {
+				t.Errorf("%s help does not state the plan->run->sync chain", cmd.name)
+			}
+			// The retired verify/review phase (D1) must not be announced as part
+			// of the chain the lead seeds.
+			if strings.Contains(lowered, "verify -> sync") || strings.Contains(lowered, "plan->run->verify") {
+				t.Errorf("%s help still states the retired four-phase chain", cmd.name)
 			}
 		})
 	}
 }
 
 // TestACFB019_HelpDocumentsCompanionEntry verifies AC-FB-019: the cc and glm
-// help text contains -k --name <role>-<run-id> and enumerates the four roles.
+// help text contains -k --name <role> and enumerates the three roles, plus the
+// collision-bump rule the bare-role naming policy (card t56) adds.
 func TestACFB019_HelpDocumentsCompanionEntry(t *testing.T) {
 	t.Parallel()
 	for _, cmd := range []struct {
@@ -51,10 +57,19 @@ func TestACFB019_HelpDocumentsCompanionEntry(t *testing.T) {
 			if !strings.Contains(cmd.long, "-k --name") {
 				t.Errorf("%s help does not document the companion entry form -k --name", cmd.name)
 			}
-			for _, role := range []string{"plan", "run", "review", "sync"} {
+			for _, role := range []string{"plan", "run", "sync"} {
 				if !strings.Contains(cmd.long, role) {
 					t.Errorf("%s help does not enumerate role %q", cmd.name, role)
 				}
+			}
+			// The bare-role form is the documented launch shape, and a live-held
+			// name bumping to the next free number is stated so the operator is
+			// not surprised by a session named plan-1.
+			if strings.Contains(cmd.long, "<role>-<run-id>") {
+				t.Errorf("%s help still documents the retired run-id companion form", cmd.name)
+			}
+			if !strings.Contains(cmd.long, "bumped to the next free number") {
+				t.Errorf("%s help does not state the companion name collision bump", cmd.name)
 			}
 		})
 	}

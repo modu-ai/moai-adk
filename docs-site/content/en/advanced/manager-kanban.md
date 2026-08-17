@@ -32,7 +32,7 @@ All five axes must come together for the work flow we call a "hierarchical team"
 
 ## Why It Is Needed
 
-When implementing a Tier-L-scale SPEC in sequential mode (Mode 5), the orchestrator calls the `manager-develop` agent milestone by milestone in turn. This flow works well in most cases, but as the SPEC grows, two phenomena appear.
+When implementing a Tier-L-scale SPEC in sequential mode (serial), the orchestrator calls the `manager-develop` agent milestone by milestone in turn. This flow works well in most cases, but as the SPEC grows, two phenomena appear.
 
 First, the context fills up. Files read early in implementation, tests written in the first milestone, and the output of AC verification commands all keep staying in one window. Around the fifth milestone the window is nearly full, so to continue after `/clear` you have to receive the prior progress as a summary. The cost of context blurring through these summaries accumulates.
 
@@ -61,7 +61,7 @@ What to watch carefully in the diagram is the direction of the arrows. The orche
 
 ## Step 1 — Check Whether Entry Conditions Hold
 
-`manager-kanban` is not the path laid down by default for every execution. The orchestrator hands work to `manager-kanban` only when the SPEC satisfies _all three_ conditions below. If even one is missing, it stays on the standard sequential mode (Mode 5).
+`manager-kanban` is not the path laid down by default for every execution. The orchestrator hands work to `manager-kanban` only when the SPEC satisfies _all three_ conditions below. If even one is missing, it stays on the standard sequential mode (serial).
 
 | Condition | Criterion | Why it is needed |
 |-----------|-----------|------------------|
@@ -97,7 +97,7 @@ leaf read-only verify: [Read, Grep, Glob, Bash]  ← no Write/Edit/Agent
 
 Here `manager-kanban`'s `Write` and `Edit` are used only for coordination. That is, they are used to add a fold line to the §E.2 cell of `progress.md` or to write evidence files under `.moai/state/verify/` — never to touch source code. Code is always the leaf agents' job.
 
-One point to emphasize is that `manager-kanban` is not a new execution mode. The six modes of Phase 4 (1 trivial, 2 background, 3 agent-team — retired, 4 parallel, 5 sub-agent, 6 workflow) stay as they are, and `manager-kanban` is a delegation target in the shape of Mode 5 (sequential calling). There is no new "Mode 7," and the retired Mode 3 has not been resurrected.
+One point to emphasize is that `manager-kanban` is not a new execution mode. The four Phase 4 modes (direct, serial, fanout, sweep) stay as they are, and `manager-kanban` is a delegation target in the shape of serial (sequential calling). There is no new mode, and the experimental agent-team surface (explicit `--team` request only) has not become a catalog mode.
 
 ## Step 3 — Fold Context at Every Milestone Boundary
 
@@ -154,7 +154,7 @@ If these recon agents return prose in arbitrary formats, `manager-kanban` has to
 
 If two recon agents return contradictory findings on the same signal, `manager-kanban` does not silently pick one; it writes the contradiction into an explicit cell. When a contradiction is visible, the user can judge; if it is hidden, it bursts only at the end.
 
-The number of agents called at once does not exceed the 3–5 concurrency limit of MoAI Mode 4. If more than five recon passes are needed, `manager-kanban` calls them in sequential batches.
+The number of agents called at once does not exceed the 3–5 concurrency limit of MoAI fanout. If more than five recon passes are needed, `manager-kanban` calls them in sequential batches.
 
 ## Re-anchoring Worktree Isolation
 
@@ -164,15 +164,15 @@ Before v3.1, this isolation rule was tied to "team mode," a now-retired concept.
 
 Read-only agents can be called without isolation — they only read, so they cannot dirty the working tree.
 
-## Not Mode 7 (Non-Regression Guarantee)
+## Not new mode (Non-Regression Guarantee)
 
 The arrival of `manager-kanban` does not increase the execution modes of Phase 4. This point is now an explicit non-regression promise.
 
-- **Execution mode list** — 1 trivial, 2 background, 3 agent-team (retired), 4 parallel, 5 sub-agent, 6 workflow. Unchanged.
-- **New mode** — there is no "Mode 7." `manager-kanban` is a sequential delegation target in the shape of Mode 5.
-- **`--mode` values** — `autopilot`, `loop`, `team`, `pipeline` values are unchanged. No new value was added, and the retired Mode 3 has not been resurrected.
+- **Execution mode list** — direct, serial, fanout, sweep. Unchanged (agent-team remains an explicit-request experimental footnote, never auto-selected).
+- **New mode** — there is no new mode. `manager-kanban` is a sequential delegation target in the shape of serial.
+- **`--mode` values** — `autopilot`, `loop`, `team`, `pipeline` values are unchanged. No new value was added, and agent-team stays explicit-request-only experimental (the `MODE_TEAM_UNAVAILABLE` sentinel remains documented history).
 
-This promise is the answer to the natural concern "does adding one more agent make the orchestration layer more complex?" `manager-kanban` is a single agent that fits inside the existing Mode 5 vessel; it does not create a new vessel.
+This promise is the answer to the natural concern "does adding one more agent make the orchestration layer more complex?" `manager-kanban` is a single agent that fits inside the existing serial vessel; it does not create a new vessel.
 
 ## Summary
 

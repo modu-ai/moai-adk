@@ -1,0 +1,18 @@
+WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:
+  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2)
+  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)
+If you want Claude as leader and GLM for teammates, use 'moai cg' instead.
+Launching Claude Code with GLM backend...
+Ignoring 111 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/private/tmp/t77t64-lab"].hasTrustDialogAccepted: true in /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.
+⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors
+[claude-code:unrecognized_model] {"model":"glm-4.7","query_source":"sdk"}
+사용자의 응답을 기다리고 있습니다. "-p" 입력에 대해 명확히 하기 위해 4가지 옵션을 제시했네요:
+
+1. **Plan 세션으로 이동** — 활성화된 plan 세션이 있다면 그 세션으로 작업을 전환합니다
+2. **현재 카드를 plan 단계로 되돌리기** — 카드의 진행 상태를 plan 단계로 변경합니다 (이는 lead 세션에서 처리)
+3. **새로운 SPEC 계획 시작** — `/moai plan` 명령어로 새로운 SPEC 문서를 생성합니다
+4. **그냥 확인** — 현재 상태를 확인하고 추후 작업을 준비합니다
+
+어떤 작업을 진행할까요? 선택해 주시면 바로 도와드리겠습니다! 😊
+
+[exited with code 0]

@@ -19,32 +19,34 @@ Proceed with standard sub-agent run phase in the current environment.
 No additional routing needed — CC/GLM/CG env is already configured by the Gate.
 
 **If execution_mode == "team":**
-The `team` execution mode is RETIRED (Agent Teams static layer). Emit the
-canonical sentinel `MODE_TEAM_UNAVAILABLE` and fall back to the standard
-sub-agent run phase (Phase 5 Strategy). The `active_mode` (cc / glm / cg) still
-selects the backend for the native `moai cg` teammate runtime, which is
-unaffected by this retirement.
+The `team` execution mode is experimental (Agent Teams layer, re-allowed; flag
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Run the team-orchestrated
+phase per `orchestration-mode-selection.md` §C.1 constraints (explicit-request
+only; one team per session; no nesting). The `active_mode` (cc / glm / cg) still
+selects the backend; the native `moai cg` teammate runtime is unaffected.
 
 **If execution_mode == "sub-agent":**
 Proceed directly to Phase 5 (Strategy).
 
 **If no execution_mode provided (direct `/moai run` invocation):**
-Standard sub-agent run phase. A forced `--mode team` emits
-`MODE_TEAM_UNAVAILABLE` and falls back to `autopilot`; `--solo` is the explicit
-sub-agent selector.
+Standard sub-agent run phase. A forced `--mode team` selects the Agent Teams
+layer (experimental); `--solo` is the explicit sub-agent selector. Historical:
+the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 
 ---
 
-# Mode Dispatch (team dispatch retired)
+# Mode Dispatch (team experimental)
 
-The `--mode team` dispatch value is RETIRED: Mode 3 (`agent-team`) of the Phase
-0.95 catalog was retired with the Agent Teams static layer
-(`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). A forced
-`--mode team` emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
-`.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the
-orchestrator falls back to `autopilot` with a `[mode-auto-downgrade]` info log.
+The `--mode team` dispatch value is experimental (re-allowed, operator decision):
+`agent-team` of the Phase
+0.95 catalog is selectable by explicit request
+(`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). Historical:
+the retired era emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
+`.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and fell
+back to `autopilot` with a `[mode-auto-downgrade]` info log — the sentinel is
+retained as documented history.
 The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name>
---spawn` teammate windows) is unaffected — only MoAI's static team-orchestration layer is retired.
+--spawn` teammate windows) is unaffected and sanctioned.
 
 All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All
 Modes)" continue to apply to every execution mode.

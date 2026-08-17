@@ -74,6 +74,14 @@ var sectionRoutes = map[string]SectionRoute{
 	// branch_guard.enabled and report.format are).
 	"mcp": RouteSeam,
 
+	// crosssession — seam-writable (cross-session messaging posture: inbound
+	// select / isolate_machines bool / dialog_expiry select). The moai launchers
+	// read crosssession.yaml at launch and translate it into a session --settings
+	// injection; the web console edits the same file through the yamlpatch seam.
+	// Not one of the SPEC-WEBCONF-SIMPLIFY-001 M3 reclassified sections — a new
+	// seam section admitted on its own card.
+	"crosssession": RouteSeam,
+
 	// workflow — seam-writable (restored, Issue 3 / SPEC-WEBCONF-SIMPLIFY-001 M3
 	// partial reversal). The worktree auto-create toggle + the workflow scalar
 	// fields persist through the yamlpatch seam. The other 7 former seam sections

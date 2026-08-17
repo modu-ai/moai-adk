@@ -33,7 +33,11 @@ var systemFields = map[string]bool{
 // retainedKeySink receives advisory notices for keys that DeepMerge3Way retains
 // because they are absent from the new template (REQ-UYP-007). It defaults to
 // os.Stderr (the production path through MergeYAML3Way); tests in this package
-// swap it for a bytes.Buffer to assert on the advisory text.
+// swap it for a bytes.Buffer to assert on the advisory text. The update
+// restore path no longer routes through this sink — it uses
+// MergeYAML3WayRetained, which collects the keys for the TUI render layer
+// instead (t63: the raw per-key stderr append interleaved with the
+// cursor-controlled progress redraw on stdout).
 var retainedKeySink io.Writer = os.Stderr
 
 // SetRetainedKeySinkForTest sets the writer that receives retained-key
@@ -47,6 +51,41 @@ func SetRetainedKeySinkForTest(w io.Writer) (restore func()) {
 	prev := retainedKeySink
 	retainedKeySink = w
 	return func() { retainedKeySink = prev }
+}
+
+// retainedKeyAdvisoryLine is the legacy per-key advisory text (REQ-UYP-007).
+// Extracted as a helper so the legacy RestoreMoaiConfig wrapper can re-emit
+// the identical line for callers not yet routed through the TUI renderer.
+func retainedKeyAdvisoryLine(path string) string {
+	return fmt.Sprintf("advisory: retained key %q absent from new template (preserved from user config)\n", path)
+}
+
+// retainedKeyNotes carries the retained-key advisory state through a 3-way
+// merge walk. emit records each retained key path and, when a text sink is
+// configured, writes the legacy advisory line to it (the REQ-UYP-007 contract
+// the MergeYAML3Way entry keeps for its existing callers and contract tests).
+// The production restore path constructs notes WITHOUT a sink
+// (MergeYAML3WayRetained) so the keys come back as data and the caller renders
+// them through its own output channel — one TUI summary line by default, the
+// full list under --verbose (t63 stream-merge fix).
+type retainedKeyNotes struct {
+	sink io.Writer // optional legacy text sink; nil = collect only
+	keys []string  // dotted key paths of retained keys, in walk order
+}
+
+// newRetainedKeyNotes builds advisory notes that mirror advisory text to sink
+// (pass nil to collect silently).
+func newRetainedKeyNotes(sink io.Writer) *retainedKeyNotes {
+	return &retainedKeyNotes{sink: sink}
+}
+
+// emit records one retained key path, writing the legacy advisory line to the
+// configured sink when one is present.
+func (n *retainedKeyNotes) emit(path string) {
+	n.keys = append(n.keys, path)
+	if n.sink != nil {
+		_, _ = fmt.Fprint(n.sink, retainedKeyAdvisoryLine(path))
+	}
 }
 
 // encodeNode serializes a node tree with the project's canonical 2-space block
@@ -201,18 +240,19 @@ func isNullNode(n *yaml.Node) bool {
 	return n.Kind == yaml.ScalarNode && (n.Tag == "!!null" || n.Tag == "")
 }
 
-// deepMerge3WayTo is the testable core of DeepMerge3Way. It writes retained-key
-// advisories (keys absent from the new template, REQ-UYP-007) to w. The public
-// DeepMerge3Way passes os.Stderr (via retainedKeySink); tests pass a buffer.
+// deepMerge3WayTo is the testable core of DeepMerge3Way. It records
+// retained-key advisories (keys absent from the new template, REQ-UYP-007) on
+// notes. The public DeepMerge3Way passes notes mirroring retainedKeySink
+// (os.Stderr in production); tests pass notes over a buffer.
 //
 // Config roots are mappings, so the value-level decision (old==base → new,
 // old!=base → user, no-base → user) is applied inside mergeMappingNode3Way for
 // each value. This top-level dispatch only handles the defensive non-mapping
 // root (e.g. a scalar-only document): a top-level scalar carries no structure
 // to merge, so the user value is preserved when present.
-func deepMerge3WayTo(newNode, oldNode, baseNode *yaml.Node, w io.Writer) (*yaml.Node, error) {
+func deepMerge3WayTo(newNode, oldNode, baseNode *yaml.Node, notes *retainedKeyNotes) (*yaml.Node, error) {
 	if isMappingNode(newNode) && isMappingNode(oldNode) {
-		return mergeMappingNode3Way(newNode, oldNode, baseNode, "", w)
+		return mergeMappingNode3Way(newNode, oldNode, baseNode, "", notes)
 	}
 	// Defensive: non-mapping root. Preserve the user value if present.
 	if oldNode != nil && !isNullNode(oldNode) {
@@ -225,7 +265,7 @@ func deepMerge3WayTo(newNode, oldNode, baseNode *yaml.Node, w io.Writer) (*yaml.
 // each against the old (user) and base (previous template) mappings, then
 // appends old-only keys at the end (REQ-UYP-006). Comments and key order come
 // from whichever document supplied each surviving node.
-func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, w io.Writer) (*yaml.Node, error) {
+func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, notes *retainedKeyNotes) (*yaml.Node, error) {
 	result := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	// Inherit the template's (newNode's) comment and style metadata so nested
 	// mappings — including flow mappings like `{ effort: max }` carrying a
@@ -273,7 +313,7 @@ func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, w 
 			if baseExists {
 				recBase = baseV
 			}
-			merged, err := mergeMappingNode3Way(newV, oldV, recBase, childPath, w)
+			merged, err := mergeMappingNode3Way(newV, oldV, recBase, childPath, notes)
 			if err != nil {
 				return nil, err
 			}
@@ -312,7 +352,7 @@ func mergeMappingNode3Way(newNode, oldNode, baseNode *yaml.Node, path string, w 
 		}
 		childPath := joinPath(path, key)
 		appendPairKeyed(result, keyNode, copyNode(oldV))
-		_, _ = fmt.Fprintf(w, "advisory: retained key %q absent from new template (preserved from user config)\n", childPath)
+		notes.emit(childPath)
 	}
 
 	return result, nil
@@ -409,4 +449,3 @@ func deepMergeMapsTo(newNode, oldNode *yaml.Node) (*yaml.Node, error) {
 
 	return result, nil
 }
-

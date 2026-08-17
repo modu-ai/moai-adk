@@ -26,17 +26,17 @@ Reviews code across four lenses — security, performance, quality, and UX — c
 | `--file PATH` | Review a specific file only | `/moai review --file src/auth.go` |
 
 {{< callout type="warning" >}}
-The `--team` parallel review mode was **retired (tombstone)** along with the Agent Teams static layer. Parallel review is performed as a Mode 4 subagent fan-out, not a team.
+The `--team` mode was retired along with the Agent Teams static layer, then re-allowed as an experimental explicit-request surface. Parallel review itself is performed as a fanout read-only subagent fan-out, not a team.
 {{< /callout >}}
 
 ## Agent chain
 
-The four lenses run as a **Mode 4 parallel read-only fan-out** — up to four read-only judges (`Agent(general-purpose)`), one per lens, are spawned in a single turn, operating within the 3-5 concurrent-execution cap. Each judge's findings flow into the synthesis of the **sync-auditor** subagent, and sync-auditor owns the final verdict — the fan-out only changes the execution shape, it does not transfer verdict ownership.
+The four lenses run as a **fanout parallel read-only fan-out** — up to four read-only judges (`Agent(general-purpose)`), one per lens, are spawned in a single turn, operating within the 3-5 concurrent-execution cap. Each judge's findings flow into the synthesis of the **sync-auditor** subagent, and sync-auditor owns the final verdict — the fan-out only changes the execution shape, it does not transfer verdict ownership.
 
 ```mermaid
 flowchart TD
     Start["Run /moai review"] --> Phase1["Phase 1: Identify changes<br/>(git diff)"]
-    Phase1 --> Phase2["Phase 2: Multi-lens analysis<br/>(Mode 4 parallel judges)"]
+    Phase1 --> Phase2["Phase 2: Multi-lens analysis<br/>(fanout parallel judges)"]
 
     Phase2 --> Sec["Security judge<br/>moai-ref-owasp-checklist"]
     Phase2 --> Perf["Performance judge"]

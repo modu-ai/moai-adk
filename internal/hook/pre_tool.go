@@ -13,8 +13,10 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -271,10 +273,15 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 	}
 
 	// Resolve allowed external paths that bypass the project-boundary check.
+	// The ~/.moai entry resolves through internal/paths in lockstep with
+	// every other MoAI-home consumer, so an overridden MOAI_HOME root is
+	// trusted by the boundary check too (REQ-MHP-009).
 	var allowedExternal []string
-	if home, err := os.UserHomeDir(); err == nil {
-		allowedExternal = append(allowedExternal, filepath.Join(home, ".claude"))
-		allowedExternal = append(allowedExternal, filepath.Join(home, ".moai"))
+	if home, err := paths.Home(); err == nil {
+		allowedExternal = append(allowedExternal, filepath.Join(home, defs.ClaudeDir))
+	}
+	if moaiRoot, err := paths.MoaiHome(); err == nil {
+		allowedExternal = append(allowedExternal, moaiRoot)
 	}
 
 	return &SecurityPolicy{
@@ -709,10 +716,12 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 				BlockOnError: ag.BlockOnError,
 				WarnOnlyMode: ag.WarnOnlyMode,
 			}
-			// Apply defaults when RulesDir is empty (not set in YAML).
-			if qcfg.AstGrepGate.RulesDir == "" {
-				qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-			}
+			// t50: an empty RulesDir maps through as empty — no hardcoded path
+			// fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where
+			// a project keeps its ast-grep rules; the template ships the key
+			// with an explicit value, so template users are covered by config
+			// rather than by a code guess. Mirrors mapConfigGateToQuality in
+			// internal/cli/gate.go.
 		}
 	}
 

@@ -163,20 +163,20 @@ turn where deferred tools may be needed. See
 
 ### Incident record (why the rule is binding)
 
-On 2026-08-15, five Claude sessions worked the same shared primary checkout simultaneously. 104 uncommitted files accumulated there; **73 of them existed on no branch at all** and had to be rescued into PR #1526 by hand. The destructive mechanism is ordinary: a concurrent `git add -A && commit` in one session sweeps another session's uncommitted work into a commit that was never meant to carry it; a branch switch or stash strands it outright. A rule without the incident attached gets skipped; this one has the receipts.
+In the recorded incident, five Claude sessions worked the same shared primary checkout simultaneously. 104 uncommitted files accumulated there; **73 of them existed on no branch at all** and had to be rescued into a pull request by hand. The destructive mechanism is ordinary: a concurrent `git add -A && commit` in one session sweeps another session's uncommitted work into a commit that was never meant to carry it; a branch switch or stash strands it outright. A rule without the incident attached gets skipped; this one has the receipts.
 
 ### Why the previous version of this check failed
 
 Two distinct failure modes — they need different fixes:
 
-1. **Nothing executed it.** The check was procedural prose in this rule file. No hook fires it, no tool result reminds the agent of it, and a "run three probes before your first edit" instruction competes with task momentum — and loses. This was the dominant failure on 2026-08-15: the procedure was directionally correct and was simply never run.
+1. **Nothing executed it.** The check was procedural prose in this rule file. No hook fires it, no tool result reminds the agent of it, and a "run three probes before your first edit" instruction competes with task momentum — and loses. This was the dominant failure in the recorded incident: the procedure was directionally correct and was simply never run.
 2. **It sampled at the wrong moment.** Even perfectly executed, a once-per-task check cannot see a session that starts mid-task, and the destruction mechanism is not the edit — it is the OTHER session's `git add -A` at commit time. The previous text placed all discipline on the editor and none on the sweeper.
 
 The rewrite addresses both: the decision procedure is compressed into a moment-of-edit gate an agent can actually run, and a sweep prohibition binds the commit-side primitive that does the damage.
 
 ### Enforcement assessment — why there is no PreToolUse-on-Edit/Write advisory hook
 
-A per-edit advisory hook was considered and declined (2026-08-15):
+A per-edit advisory hook was considered and declined:
 
 - **Measured cost**: the branch-guard PreToolUse hook — the closest comparable, it spawns git subprocesses — averages 135-256ms per invocation. `Edit`/`Write` is the most frequent mutation in a coding session; a per-edit advisory multiplies that tax across every edit of every concurrent session — the exact multi-session load pattern that pushed the box over during the incident day.
 - **Wrong sampling rate**: the probe's answer changes on the scale of minutes (sessions start and stop), not edits. Paying per-edit for a per-task answer taxes the wrong frequency.
@@ -184,3 +184,11 @@ A per-edit advisory hook was considered and declined (2026-08-15):
 - **Detection is already ambient**: the SessionStart signal carries foreign-session awareness to every session at zero per-edit cost; the procedure is the decision layer on top of it.
 
 If a per-edit nudge is ever re-proposed, the only defensible variant is stateful: fire the probe on the FIRST `Edit`/`Write` of a session (or serve it from a short-TTL cache), never per edit.
+
+## Pre-Spawn Sync Check rationale and incident record
+
+> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there.
+
+Rationale: when 2+ Claude Code sessions operate on the same project root + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both consume the same paste-ready resume and attempt the same `/moai <subcommand>` work. The git working tree is shared; the memory file is shared. Without a pre-spawn fetch, the second session works on a stale baseline and may produce duplicate commits, conflicting frontmatter edits, or CHANGELOG entry races.
+
+Origin: an earlier sync-phase race incident — a parallel session committed a spec.md frontmatter status update between manager-develop's final run-phase commit and manager-docs' sync commit. Detection occurred retrospectively when `git push` succeeded with an unexpected intermediate commit in the push range. The parallel-session-race-during-long-agent-runs lesson was reinforced and a pre-spawn-fetch-discipline lesson added.

@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
@@ -70,7 +71,7 @@ func TestCleanMoaiManagedPaths_StatPermissionError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := CleanMoaiManagedPaths(root, &out)
+	err := CleanMoaiManagedPaths(root, &out, fstest.MapFS{})
 	if err == nil {
 		t.Fatal("expected error from stat permission failure, got nil")
 	}
@@ -102,7 +103,7 @@ func TestCleanMoaiManagedPaths_RemoveAllError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := CleanMoaiManagedPaths(root, &out)
+	err := CleanMoaiManagedPaths(root, &out, fstest.MapFS{})
 	if err == nil {
 		t.Fatal("expected error from remove failure, got nil")
 	}
@@ -131,7 +132,7 @@ func TestCleanMoaiManagedPaths_GlobRemoveAllError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := CleanMoaiManagedPaths(root, &out)
+	err := CleanMoaiManagedPaths(root, &out, fstest.MapFS{})
 	if err == nil {
 		t.Fatal("expected error from glob match remove failure, got nil")
 	}
@@ -160,7 +161,7 @@ func TestCleanMoaiManagedPaths_ConfigDirRemoveAllError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := CleanMoaiManagedPaths(root, &out)
+	err := CleanMoaiManagedPaths(root, &out, fstest.MapFS{})
 	if err == nil {
 		t.Fatal("expected error from config dir remove failure, got nil")
 	}
@@ -190,7 +191,7 @@ func TestCleanMoaiManagedPaths_MigrateErrorPropagation(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := CleanMoaiManagedPaths(root, &out)
+	err := CleanMoaiManagedPaths(root, &out, fstest.MapFS{})
 	if err == nil {
 		t.Fatal("expected error from migrate failure propagation, got nil")
 	}

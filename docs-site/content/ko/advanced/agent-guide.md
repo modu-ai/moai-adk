@@ -229,9 +229,9 @@ MoAI-ADK 에이전트 구조의 바탕은 Claude Code 공식 하위 에이전트
 
 하위 에이전트는 사용자와 직접 대화하지 못합니다 — 필요한 입력이 모자라면 blocker 보고서를 반환하고, 오케스트레이터가 사용자에게 물어 다시 보냅니다. 이 경계가 "단일 창구" 규칙을 지킵니다.
 
-## Agent Teams 정적 계층 — 은퇴
+## Agent Teams 정적 계층 — v3.0 은퇴 후 실험적 재허용
 
-이전 버전의 Agent Teams 정적 오케스트레이션 계층(`workflow.team.*` 설정, `--team` 강제)은 은퇴했습니다. `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리고 하위 에이전트 모드로 폴백합니다.
+이전 버전의 Agent Teams 정적 오케스트레이션 계층(`workflow.team.*` 설정, `--team` 강제)은 v3.0.0에 은퇴했다가, 이후 실험적 표면(명시적 `--team` 요청으로만 선택, 자동 선택 없음)으로 재허용되었습니다. 은퇴 시절 `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리고 하위 에이전트 모드로 폴백했으며, 이 센티넬은 문서화된 역사로 남아 있습니다.
 
 병렬 조사·리뷰는 병렬 하위 에이전트 팬아웃으로, 순차 코딩은 하위 에이전트 체인으로 처리합니다. 네이티브 Claude Code teammate 런타임(`moai cg` GLM pane, `worktree --team`)은 별개로 계속 동작합니다 — CG 모드의 Claude 리더 + GLM 워커 분업이 병렬 역할을 대신합니다.
 

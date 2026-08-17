@@ -143,7 +143,7 @@ func ReconcileCard(card Card, cs *CardStatus) CardView {
 // pairingConsistent decides the compatibility table of spec.md §A.4:
 //
 //	backlog | plan : no spec.md, draft, planned
-//	run     | review: in-progress
+//	run     : in-progress
 //	sync    : in-progress, implemented, completed
 //	done    : completed
 //
@@ -158,7 +158,7 @@ func pairingConsistent(col Column, status string, specFilePresent bool) bool {
 	case StatusDraft, StatusPlanned:
 		return col == ColumnBacklog || col == ColumnPlan
 	case StatusInProgress:
-		return col == ColumnRun || col == ColumnReview || col == ColumnSync
+		return col == ColumnRun || col == ColumnSync
 	case StatusImplemented:
 		return col == ColumnSync
 	case StatusCompleted:
@@ -171,7 +171,7 @@ func pairingConsistent(col Column, status string, specFilePresent bool) bool {
 
 // statusDecidesMultipleColumns reports the collisions AC-KB-010 names:
 // draft does not by itself decide between backlog and plan, in-progress does
-// not decide between run and review. The board reports the ambiguity of its
+// not decide between run and sync. The board reports the ambiguity of its
 // status input; it never resolves a column from it (REQ-KB-006).
 func statusDecidesMultipleColumns(status string) bool {
 	switch status {

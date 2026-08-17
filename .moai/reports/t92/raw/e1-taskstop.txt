@@ -1,0 +1,17 @@
+E1 (named-spawn probe) termination record — 2026-08-17
+
+Spawn: Agent(subagent_type: general-purpose, name: "t92-probe-named", prompt: <diagnostic — ToolSearch select:TaskCreate,TaskList → TaskCreate marker → TaskList → tool inventory → E1-DONE>)
+
+Spawn-time response: "Spawned successfully. ... The agent is now running and will receive instructions via mailbox." (contrast: the unnamed E2 spawn returned "Async agent launched successfully ... working in the background" — a different path at spawn time already)
+
+Observations:
+- No result-channel return over ~1 hour.
+- No reply to 2 status-check SendMessage pokes ("E1 probe status check: ...").
+- No marker task in the session TaskList (checked via TaskList — only pre-existing tasks #1-#5 present).
+
+Termination (TaskStop):
+{"message":"Successfully stopped task: tzhv7ob5u (You are a diagnostic probe (experiment E1, named-s...)","task_id":"tzhv7ob5u","task_type":"in_process_teammate","command":"You are a diagnostic probe (experiment E1, named-s..."}
+
+Key line: "task_type":"in_process_teammate" — the named spawn converted to an in-process teammate on this runtime (Claude Code 2.1.233, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json:360).
+
+Counter-observation (lead session, 2026-08-17): 5 named workers (worker-a-t71 ~ worker-e-t66) completed normally WITH result returns under the same enabled flag. The discrepancy (same version, opposite result-return behavior) is unresolved.

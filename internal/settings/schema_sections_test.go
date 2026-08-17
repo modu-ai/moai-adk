@@ -459,8 +459,8 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"ralph.warn_as_instruction":                    "false",
 		"feedback.repository":                          "modu-ai/moai-adk",
 		"observability.retention_days":                 "30",
-		"security.permission.strict_mode": "false",
-		"git_strategy.mode":           "team",
+		"security.permission.strict_mode":              "false",
+		"git_strategy.mode":                            "team",
 		"llm.glm.models.high":                          "glm-5.2",
 		"quality.ddd_settings.characterization_tests":  "true",
 		"quality.ddd_settings.behavior_snapshots":      "true",
@@ -600,7 +600,7 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
 		"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
-		"handoff", "cache", "report", "mcp") // SPEC-WEB-CONSOLE-013 M2 + SPEC-MCP-CONSOLE-001 M1
+		"handoff", "cache", "report", "mcp", "crosssession") // SPEC-WEB-CONSOLE-013 M2 + SPEC-MCP-CONSOLE-001 M1 + crosssession
 
 	edits := map[string]string{}
 	for _, f := range AllFields() {
@@ -773,8 +773,8 @@ func TestHandoffCacheFields(t *testing.T) {
 	t.Parallel()
 
 	type want struct {
-		typ     FieldType
-		file    string
+		typ      FieldType
+		file     string
 		isSelopt bool
 	}
 	cases := map[string]want{
@@ -868,6 +868,124 @@ func TestSessionTTLClosedSetSymmetry(t *testing.T) {
 	// 검증기가 집합 밖 값을 거부한다.
 	if sttl.Validate != nil && sttl.Validate("2h") {
 		t.Error("session_ttl validator accepted out-of-set value 2h")
+	}
+}
+
+// TestCrossSessionFields는 crosssession 섹션의 FieldDef 구성을 파생 방식으로
+// 검증한다: 3필드(inbound select, isolate_machines bool, dialog_expiry select),
+// 전부 PersistSeam(crosssession.yaml)이고, 두 select는 EmptySubmits — "" 제출이
+// 키를 중립 ""로 되돌리는 "끄기" 경로다. 옵션 집합은 config.ValidCrossSession*
+// 공유 접근자와 정확히 대칭이며(러처 번역 internal/cli와 같은 단일 선언),
+// 검증기는 집합 밖 값을 거부하고 ""는 수용한다.
+func TestCrossSessionFields(t *testing.T) {
+	t.Parallel()
+
+	fields := SectionFields(SectionCrossSession)
+	if n := len(fields); n != 3 {
+		t.Fatalf("SectionCrossSession field count = %d, want 3", n)
+	}
+
+	type want struct {
+		typ           FieldType
+		emptySubmits  bool
+		emptyLabelSet bool
+	}
+	cases := map[string]want{
+		"crosssession.inbound":          {TypeSelect, true, true},
+		"crosssession.isolate_machines": {TypeBool, false, false},
+		"crosssession.dialog_expiry":    {TypeSelect, true, true},
+	}
+	got := map[string]FieldDef{}
+	for _, f := range fields {
+		got[f.Name] = f
+	}
+	for name, w := range cases {
+		f, ok := got[name]
+		if !ok {
+			t.Errorf("field %q missing from SectionCrossSession", name)
+			continue
+		}
+		if f.Type != w.typ {
+			t.Errorf("field %q type = %q, want %q", name, f.Type, w.typ)
+		}
+		if f.Persist.Kind != PersistSeam {
+			t.Errorf("field %q persist kind = %q, want PersistSeam", name, f.Persist.Kind)
+		}
+		if f.Persist.Section != "crosssession" {
+			t.Errorf("field %q seam section = %q, want crosssession", name, f.Persist.Section)
+		}
+		if f.EmptySubmits != w.emptySubmits {
+			t.Errorf("field %q EmptySubmits = %t, want %t", name, f.EmptySubmits, w.emptySubmits)
+		}
+		if w.emptyLabelSet && f.EmptyLabel == "" {
+			t.Errorf("EmptySubmits field %q has no EmptyLabel (empty option would be unlabeled)", name)
+		}
+	}
+
+	// closed-set symmetry: select options derive from the shared config accessors.
+	sym := []struct {
+		field string
+		want  []string
+	}{
+		{"crosssession.inbound", config.ValidCrossSessionInboundValues()},
+		{"crosssession.dialog_expiry", config.ValidCrossSessionDialogExpiryValues()},
+	}
+	for _, s := range sym {
+		f := got[s.field]
+		if len(f.Options) != len(s.want) {
+			t.Errorf("%s option count = %d, want %d (config accessor symmetry)", s.field, len(f.Options), len(s.want))
+		}
+		for _, v := range s.want {
+			if !f.Validate(v) {
+				t.Errorf("%s validator rejected in-set value %q", s.field, v)
+			}
+		}
+		if !f.Validate("") {
+			t.Errorf("%s validator rejected \"\" — EmptySubmits fields must accept the neutral value", s.field)
+		}
+		if f.Validate("maybe") {
+			t.Errorf("%s validator accepted out-of-set value %q", s.field, "maybe")
+		}
+	}
+}
+
+// TestCrossSessionEmptySubmitsRoundTrip은 "끄기" 경로의 seam 라운드트립을 검증한다:
+// inbound=hold 기록 후 "" 제출이 yaml 키를 중립 ""로 되돌린다 (empty=preserve가
+// 이 필드를 던지지 않는다). 값 확인은 로더 재구문분석으로 — setScalar가 기존
+// 인용 스타일을 보존하므로 문자열 매칭은 인코딩 형상에 결부된다. 주석 보존도
+// 함께 확인한다.
+func TestCrossSessionEmptySubmitsRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	seedSectionFixture(t, root, "crosssession")
+	sectionsDir := filepath.Join(root, ".moai", "config", "sections")
+
+	if err := ApplySchemaEdits(root, map[string]string{"crosssession.inbound": "hold"}); err != nil {
+		t.Fatalf("set inbound=hold: %v", err)
+	}
+	cfg, err := config.LoadCrossSessionConfig(sectionsDir)
+	if err != nil {
+		t.Fatalf("reload after set: %v", err)
+	}
+	if cfg.Inbound != "hold" {
+		t.Fatalf("after set, loader Inbound = %q, want hold", cfg.Inbound)
+	}
+
+	// The "off" direction: an explicit empty submission reverts the key.
+	if err := ApplySchemaEdits(root, map[string]string{"crosssession.inbound": ""}); err != nil {
+		t.Fatalf("revert inbound to empty: %v", err)
+	}
+	cfg, err = config.LoadCrossSessionConfig(sectionsDir)
+	if err != nil {
+		t.Fatalf("reload after revert: %v", err)
+	}
+	if cfg.Inbound != "" {
+		t.Errorf("after empty submission, loader Inbound = %q, want \"\" (neutral)", cfg.Inbound)
+	}
+	afterRevert := readSection(t, root, "crosssession")
+	if !strings.Contains(afterRevert, "# Cross-session messaging preferences") {
+		t.Errorf("seam write destroyed the file header comment:\n%s", afterRevert)
 	}
 }
 

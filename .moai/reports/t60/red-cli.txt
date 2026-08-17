@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/crosssession_settings_test.go:33:10: undefined: crossSessionConfigRootFn
+internal/cli/crosssession_settings_test.go:34:2: undefined: crossSessionConfigRootFn
+internal/cli/crosssession_settings_test.go:35:21: undefined: crossSessionConfigRootFn
+internal/cli/crosssession_settings_test.go:45:12: undefined: crossSessionSettingsPayload
+internal/cli/crosssession_settings_test.go:57:9: undefined: crossSessionSettingsPayload
+internal/cli/crosssession_settings_test.go:78:9: undefined: crossSessionSettingsPayload
+internal/cli/crosssession_settings_test.go:91:12: undefined: crossSessionSettingsPayload
+internal/cli/crosssession_settings_test.go:114:21: undefined: crossSessionSettingsPayload
+internal/cli/crosssession_settings_test.go:222:10: undefined: appendCrossSessionSettings
+internal/cli/crosssession_settings_test.go:229:10: undefined: appendCrossSessionSettings
+internal/cli/crosssession_settings_test.go:229:10: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

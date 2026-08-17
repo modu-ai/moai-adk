@@ -178,6 +178,11 @@ func TestParseDependenciesMarkdown_VariousShapes(t *testing.T) {
 			want: map[string][]string{"internal/p": {"internal/q"}, "internal/q": {}},
 		},
 		{
+			name: "mermaid dotted arrow",
+			in:   "internal/lsp -.-> internal/astgrep\n",
+			want: map[string][]string{"internal/lsp": {"internal/astgrep"}, "internal/astgrep": {}},
+		},
+		{
 			name: "noise-only",
 			in:   "subgraph P\nend\n한글 잡음\n",
 			want: map[string][]string{},
@@ -208,6 +213,35 @@ func TestParseDependenciesMarkdown_VariousShapes(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestParseDependenciesMarkdown_ExportedSeam covers the exported adjacency
+// seam consumed by the graph writer (internal/graph): it must return the
+// same adjacency parseDependenciesMarkdown produces, with a deterministic
+// ordering.
+func TestParseDependenciesMarkdown_ExportedSeam(t *testing.T) {
+	in := "internal/a depends on internal/b\ninternal/x -.-> internal/y\n"
+	mods := ParseDependenciesMarkdown(in)
+	if len(mods) != 4 {
+		t.Fatalf("module count=%d; want 4 (got %v)", len(mods), mods)
+	}
+	// Deterministic ordering: sorted by PackagePath.
+	for i := 1; i < len(mods); i++ {
+		if mods[i-1].PackagePath >= mods[i].PackagePath {
+			t.Errorf("modules not sorted by PackagePath: %v", mods)
+			break
+		}
+	}
+	byPath := map[string][]string{}
+	for _, m := range mods {
+		byPath[m.PackagePath] = m.DependsOn
+	}
+	if got := byPath["internal/a"]; len(got) != 1 || got[0] != "internal/b" {
+		t.Errorf("internal/a depends_on=%v; want [internal/b]", got)
+	}
+	if got := byPath["internal/x"]; len(got) != 1 || got[0] != "internal/y" {
+		t.Errorf("internal/x depends_on=%v; want [internal/y] (dotted arrow)", got)
 	}
 }
 

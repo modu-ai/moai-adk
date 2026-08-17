@@ -26,17 +26,17 @@ draft: false
 | `--file PATH` | 特定のファイルのみレビュー | `/moai review --file src/auth.go` |
 
 {{< callout type="warning" >}}
-`--team` 並列レビューモードは Agent Teams 静的階層とともに **引退 (tombstone)** しました。並列レビューは Mode 4 サブエージェントのファンアウトで行われ、チームではありません。
+`--team` モードは Agent Teams 静的階層とともに引退した後、実験的な面(明示要求時のみ選択)として再許可されました。並列レビュー自体は fanout 読み取り専用サブエージェントのファンアウトで行われ、チームではありません。
 {{< /callout >}}
 
 ## エージェントチェーン
 
-4 つの観点は **Mode 4 並列 read-only ファンアウト**で実行されます — 観点ごとに 1 つずつ、最大 4 個の read-only 判定者 (`Agent(general-purpose)`) を 1 ターンで spawn し、3-5 の同時実行上限の中で動作します。各判定者の発見は **sync-auditor** サブエージェントの総合に集められ、sync-auditor が最終判定を所有します — ファンアウトは実行形態を変えるだけで、判定の所有権を移しません。
+4 つの観点は **fanout 並列 read-only ファンアウト**で実行されます — 観点ごとに 1 つずつ、最大 4 個の read-only 判定者 (`Agent(general-purpose)`) を 1 ターンで spawn し、3-5 の同時実行上限の中で動作します。各判定者の発見は **sync-auditor** サブエージェントの総合に集められ、sync-auditor が最終判定を所有します — ファンアウトは実行形態を変えるだけで、判定の所有権を移しません。
 
 ```mermaid
 flowchart TD
     Start["/moai review 実行"] --> Phase1["Phase 1: 変更分の識別<br/>(git diff)"]
-    Phase1 --> Phase2["Phase 2: 多観点分析<br/>(Mode 4 並列判定者)"]
+    Phase1 --> Phase2["Phase 2: 多観点分析<br/>(fanout 並列判定者)"]
 
     Phase2 --> Sec["Security 判定者<br/>moai-ref-owasp-checklist"]
     Phase2 --> Perf["Performance 判定者"]

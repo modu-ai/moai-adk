@@ -1,0 +1,2 @@
+# go vet ./internal/graph/ ./internal/cli/ ./internal/mx/ ./internal/navigator/tiers/
+# exit 0, no output (clean)

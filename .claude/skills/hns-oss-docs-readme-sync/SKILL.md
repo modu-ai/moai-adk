@@ -1,41 +1,45 @@
 ---
 name: hns-oss-docs-readme-sync
 description: >
-  README 4-file synchronization procedure for the oss-docs harness: English
-  README.md as primary source, ko/ja/zh derivation, the shared
+  README 4-file synchronization procedure for the oss-docs harness: Korean
+  README.ko.md as primary source, en/ja/zh derivation, the shared
   language-switcher header contract, section-order parity checklist, and the
   manual verification recipe (no linter exists for READMEs). Loaded by the
   content-author and locale-translator specialists for any README work.
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
   category: "harness"
   status: "active"
-  updated: "2026-07-13"
+  updated: "2026-08-17"
   tags: "oss-docs,readme,4-locale,translation,parity"
 ---
 
 # README 4-File Sync Procedure
 
-The GitHub-facing README set is 4 files at the repo root, ~1100 lines each:
+The GitHub-facing README set is 4 files at the repo root:
 
 | File | Locale | Role |
 |------|--------|------|
-| `README.md` | en | **canonical / primary** — author here first |
-| `README.ko.md` | ko | derived |
+| `README.ko.md` | ko | **canonical / primary** — author here first |
+| `README.md` | en | derived |
 | `README.ja.md` | ja | derived |
 | `README.zh.md` | zh | derived |
 
-SSOT design reference for redesign work:
-`.moai/reports/readme-docs-redesign-20260713.md` (README full redesign draft
-+ docs-site 12→11 section restructure + 6 new docs × 4 locales).
+> **Chain history**: the canonical locale was English until 2026-08-17, when
+> card t47 promoted the ko new-skeleton (feature-oriented section structure)
+> to canonical per the operator decision — aligning the README chain with the
+> docs-site chain, which was already ko-canonical. The former en-skeleton
+> redesign reference (`.moai/reports/readme-docs-redesign-20260713.md`) is
+> superseded by the ko skeleton and kept as history only.
 
 ## Procedure
 
-1. **Author** the change in `README.md` (English) only. Respect the section
-   design from the SSOT report; keep the ~1100-line budget in mind.
-2. **Derive** ko, ja, zh — same PR, one derived file per translator worker.
+1. **Author** the change in `README.ko.md` (Korean) only. Respect the
+   canonical ko section skeleton; keep the file length in the range of the
+   current set.
+2. **Derive** en, ja, zh — same PR, one derived file per translator worker.
    Translate the changed sections minimally; do not rewrite untouched prose.
 3. **Preserve verbatim** across all 4 files: code blocks, command names,
    badges, version strings, file paths, tables' structure, Mermaid direction,
@@ -59,7 +63,7 @@ English · 한국어 · 日本語 · 中文
 
 - [ ] `grep -c '^## ' README.md README.ko.md README.ja.md README.zh.md` —
       identical H2 counts across the 4 files.
-- [ ] H2 section ORDER matches en (compare `grep '^## '` output order).
+- [ ] H2 section ORDER matches ko (compare `grep '^## '` output order).
 - [ ] H3 counts per section match for sections you touched.
 - [ ] Table row counts match in touched sections.
 - [ ] Code-block count matches (` ```` grep -c '^```' ```` ` is even and equal).
@@ -78,7 +82,7 @@ checks are the greps above.
 
 | Anti-pattern | Correct approach |
 |--------------|------------------|
-| Editing README.ko.md first "because the user speaks Korean" | README canonical is en — author `README.md`, then derive |
+| Editing `README.md` first "because GitHub is English-facing" | README canonical is ko — author `README.ko.md`, then derive |
 | Re-authoring an entire derived file for a 3-line canonical change | Minimal-diff derivation of the changed sections |
 | "Improving" facts/figures during translation | Report the discrepancy; amend canonical first |
 | Dropping the switcher header in a redesign | The 4-entry header is a HARD shared contract |

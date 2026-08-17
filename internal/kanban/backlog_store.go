@@ -33,6 +33,14 @@ import (
 // backlogLockFileName names the lock artifact sibling to the backlog file.
 const backlogLockFileName = "backlog.lock"
 
+// legacyBacklogLockFileName is the lock artifact name an earlier revision of
+// this store used. No code reads it anymore, but an install that lived
+// through the rename keeps a stale zero-byte artifact beside the live lock
+// (measured on the primary checkout: 0 B, three days older than backlog.lock).
+// NewBacklogStore sweeps it best-effort so the directory settles on one lock
+// name instead of carrying two.
+const legacyBacklogLockFileName = "backlog.json.lock"
+
 // backlogVersion is the record schema version. The schema is ADDITIVE within
 // version 1: `last_seq` was appended as a top-level field with no version
 // bump, and no per-item field may ever be added (spec.md §E out-of-scope).
@@ -77,9 +85,53 @@ type BacklogStore struct {
 	path string
 }
 
-// NewBacklogStore returns a store over the backlog file at path.
+// NewBacklogStore returns a store over the backlog file at path. As a
+// best-effort side effect it removes a superseded legacy lock artifact
+// sitting beside the file (see legacyBacklogLockFileName); a failed removal
+// — permissions, a race with another process — is ignored, because the live
+// lock name and the store's correctness do not depend on it.
 func NewBacklogStore(path string) *BacklogStore {
+	_ = os.Remove(filepath.Join(filepath.Dir(path), legacyBacklogLockFileName))
 	return &BacklogStore{path: path}
+}
+
+// BacklogPathForRoot returns the backlog file's canonical location under a
+// project root — the one path shape every root-relative consumer (the kanban
+// SessionStart notice, the factory lead loop's queue poll) builds the store
+// from, so no two surfaces hand-roll their own join.
+func BacklogPathForRoot(root string) string {
+	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+}
+
+// QueuedCount returns the number of items in state "queued", failing open to
+// 0 (the store already reads a missing file as an empty queue). It is the
+// shared count shape both the kanban notice and the factory lead loop render
+// from, so the notice and the queue command cannot disagree about what
+// "waiting" means: state queued and nothing else — a picked card is in
+// flight on another lane, a dropped card was discarded, and a finished card
+// is removed outright.
+func (s *BacklogStore) QueuedCount() int {
+	rec, err := s.load()
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, it := range rec.Items {
+		if it.State == BacklogStateQueued {
+			n++
+		}
+	}
+	return n
+}
+
+// QueuedBacklogCountForRoot is the one-call form of QueuedCount under a
+// project root. An empty root reads as 0 (no project, no queue) — the
+// fail-open posture the notice builders already hold.
+func QueuedBacklogCountForRoot(root string) int {
+	if root == "" {
+		return 0
+	}
+	return NewBacklogStore(BacklogPathForRoot(root)).QueuedCount()
 }
 
 // Path returns the backlog file's path.

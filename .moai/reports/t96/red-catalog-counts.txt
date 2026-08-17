@@ -1,0 +1,26 @@
+RED — observed verbatim failing tails (provenance note: each run's output file
+was overwritten by the next re-run; the lines below are the verbatim tails as
+observed in the tool output of those runs, reproduced here for the record).
+
+Run 1 — after adding the skill + catalog entry, before any count bump
+(command: unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL \
+MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && \
+MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ ; exit=1):
+
+    catalog_loader_test.go:72: AllEntries() returned 44 entries, want 43
+    catalog_loader_test.go:134: LoadCatalog: version=1.0.0, generated_at=2026-05-25T08:06:18Z, total_entries=44
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	39.061s
+FAIL
+
+Run 2 — after bumping catalog_loader_test.go 43->44, two more guards fired
+(same command; exit=1):
+
+--- FAIL: TestLoadEmbeddedCatalog_Success (0.01s)
+    embed_catalog_test.go:64: LoadEmbeddedCatalog() AllEntries() = 44, want 43
+--- FAIL: TestAllSkillsInCatalog (0.01s)
+    catalog_tier_audit_test.go:177: expected 32 skill directories on disk, found 33: [moai moai-domain-backend moai-domain-database moai-domain-frontend moai-domain-html-report moai-domain-humanize moai-domain-svg-infographic moai-foundation-cc moai-foundation-core moai-foundation-quality moai-foundation-thinking moai-harness-learner moai-kanban-foreman moai-meta-harness moai-ref-api-patterns moai-ref-cross-model-audit moai-ref-git-workflow moai-ref-llm-security moai-ref-owasp-checklist moai-ref-react-patterns moai-ref-secops moai-ref-seo moai-ref-supply-chain moai-ref-testing-pyramid moai-ref-ui-polish moai-workflow-ddd moai-workflow-docs-claim-check moai-workflow-loop moai-workflow-project moai-workflow-spec moai-workflow-tdd moai-workflow-testing moai-workflow-worktree]
+    catalog_tier_audit_test.go:186: audited 33 skills on disk against catalog
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	36.984s
+FAIL

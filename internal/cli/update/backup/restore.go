@@ -24,6 +24,18 @@ import (
 // update command wires the real recorder; tests pass nil to skip recording.
 type MergeFallbackRecorder func(projectRoot, relPath string, success bool, errOut io.Writer)
 
+// RetainedKeyRef names one config key preserved from the user's backup
+// because it is absent from the new template (REQ-UYP-007 posture:
+// delete-never, report through the caller's render surface).
+type RetainedKeyRef struct {
+	// Section is the config section file path relative to sections/
+	// (e.g. "design.yaml").
+	Section string
+	// Key is the dotted key path within the section document
+	// (e.g. "evolution.max_active_learnings").
+	Key string
+}
+
 // RestoreMoaiConfig restores the user's backed-up configuration sections into
 // the config directory, preferring a 3-way merge (user + template + template
 // defaults) and falling back to a 2-way merge when base data is unavailable.
@@ -32,12 +44,35 @@ type MergeFallbackRecorder func(projectRoot, relPath string, success bool, errOu
 // the caller's merge-history ledger stays consistent. Pass nil to skip
 // recording (test path).
 //
+// Legacy retained-key reporting: this entry re-emits the per-key advisory text
+// to retainedKeySink (os.Stderr in production) for callers not yet routed
+// through the TUI renderer (clean-reinstall, --restore-config). The update
+// template-sync path calls RestoreMoaiConfigRetained instead and renders the
+// advisory through its own output channel (t63).
+//
 // Moved from internal/cli/update.go during M3d-A decomposition
 // (SPEC-CLI-TUX-V3-003). Behavior is byte-identical to the pre-decomposition
 // implementation; only the package location and the recordFallback callback
 // seam (formerly a direct recordMergeFallback call reading the package-level
 // updateVerboseMode flag) changed.
 func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallbackRecorder) error {
+	refs, err := RestoreMoaiConfigRetained(projectRoot, backupDir, recordFallback)
+	if err != nil {
+		return err
+	}
+	for _, ref := range refs {
+		_, _ = fmt.Fprint(retainedKeySink, retainedKeyAdvisoryLine(ref.Key))
+	}
+	return nil
+}
+
+// RestoreMoaiConfigRetained performs the same restore as RestoreMoaiConfig
+// and additionally returns the retained-key refs collected across section
+// files. The 3-way merge inside collects the keys WITHOUT writing the legacy
+// per-key advisory text to the stderr sink — the caller owns rendering (one
+// TUI summary line by default, the full list under --verbose), so no raw
+// advisory line interleaves with a cursor-controlled progress redraw.
+func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback MergeFallbackRecorder) ([]RetainedKeyRef, error) {
 	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
 	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
 
@@ -51,10 +86,14 @@ func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallba
 	sectionsBackupDir := filepath.Join(backupDir, "sections")
 	if info, err := os.Stat(sectionsBackupDir); err != nil || !info.IsDir() {
 		// No sections in backup, try walking from backup root
-		return RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir)
+		return nil, RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir)
 	}
 
-	return filepath.Walk(sectionsBackupDir, func(backupPath string, info os.FileInfo, err error) error {
+	// retained accumulates the retained-key refs across every section file
+	// (t63): the caller renders them through its own output channel.
+	var retained []RetainedKeyRef
+
+	walkErr := filepath.Walk(sectionsBackupDir, func(backupPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -118,8 +157,11 @@ func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallba
 			basePath := filepath.Join(templateDefaultsDir, "sections", relPath)
 			baseData, err := os.ReadFile(basePath)
 			if err == nil {
-				merged, mergeErr := MergeYAML3Way(newData, oldData, baseData)
+				merged, retainedKeys, mergeErr := MergeYAML3WayRetained(newData, oldData, baseData)
 				if mergeErr == nil {
+					for _, key := range retainedKeys {
+						retained = append(retained, RetainedKeyRef{Section: relPath, Key: key})
+					}
 					// REQ-UN-009: reset the merge-history counter on success so the
 					// next failure starts a fresh 3-strike count.
 					if recordFallback != nil {
@@ -144,6 +186,10 @@ func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallba
 
 		return os.WriteFile(targetPath, merged, defs.FilePerm)
 	})
+	if walkErr != nil {
+		return nil, walkErr
+	}
+	return retained, nil
 }
 
 // RestoreMoaiConfigLegacy handles restore from legacy backup format

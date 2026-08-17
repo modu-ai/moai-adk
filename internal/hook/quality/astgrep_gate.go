@@ -31,7 +31,36 @@ const (
 	// astGrepReasonScanDegraded reports that the scanner was present but the
 	// scan itself failed, so its (empty) result is not a clean bill of health.
 	astGrepReasonScanDegraded = "ast-grep scan degraded: the scanner returned an error, so its findings are incomplete"
+
+	// astGrepReasonRulesDirUnconfigured reports that gate.yaml left
+	// ast_grep_gate.rules_dir empty, so the gate had no ruleset to scan and
+	// never consulted the scanner (t50 rework F2). The gate passes — an
+	// unconfigured optional step never blocks — but the pass says why,
+	// symmetric with the CLI's stderr notice for the same state. Distinct
+	// from the scanner-skip reasons above and from a clean scan ("").
+	astGrepReasonRulesDirUnconfigured = "ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); " +
+		"set it in .moai/config/sections/gate.yaml to enable the scan"
 )
+
+// ResolveRulesDirPath resolves a configured ast-grep rules directory against
+// the project root: empty stays empty ("not configured"), an absolute path
+// passes through verbatim, and a relative path is joined onto projectDir.
+// It is the single resolution rule shared by the quality gate
+// (RunAstGrepGateV2) and the CLI (internal/cli resolveRulesDir), so one
+// gate.yaml value means one directory on every consumer (t50 rework F1/F2:
+// the gate previously joined unconditionally — an empty value collapsed to
+// the project root itself, and an absolute value was polluted into a
+// nonexistent path the CLI would never compute). filepath.Join is
+// deliberately avoided for absolute values: Join("/a", "/b") == "/a/b".
+func ResolveRulesDirPath(dir, projectDir string) string {
+	if dir == "" {
+		return ""
+	}
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	return filepath.Join(projectDir, dir)
+}
 
 // RunAstGrepGateV2 runs the ast-grep quality gate using the unified Scanner.
 // REQ-ASTG-UPG-030: quality gate hook calls the unified Scanner
@@ -61,7 +90,16 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 	}
 
 	// ── 2. ast-grep scan (depends on sg CLI) ─────────────────────────────────
-	rulesDir := filepath.Join(projectDir, cfg.RulesDir)
+	// Resolve through the shared helper (same rule as the CLI): empty means
+	// "not configured" and absolute passes through verbatim (t50 rework
+	// F1/F2). The empty guard must fire before the scanner is built — the
+	// previous unconditional join turned an empty value into the project root
+	// itself, recursively loading every YAML in the tree as incidental rules
+	// on every gate run.
+	rulesDir := ResolveRulesDirPath(cfg.RulesDir, projectDir)
+	if rulesDir == "" {
+		return true, astGrepReasonRulesDirUnconfigured
+	}
 	scannerCfg := &astgrep.ScannerConfig{
 		RulesDir:     rulesDir,
 		SGBinary:     "sg",
@@ -123,7 +161,10 @@ type AstGrepGateConfig struct {
 	// Enabled controls whether ast-grep scanning is performed.
 	Enabled bool
 	// RulesDir is the directory containing domain-specific ast-grep rule files.
-	// Default: ".moai/config/astgrep-rules"
+	// No code-level default: gate.yaml ast_grep_gate.rules_dir is the SSOT
+	// (the template ships the key with an explicit value). Empty means
+	// "unconfigured" — the scanner reports 0 findings for a nonexistent
+	// directory.
 	RulesDir string
 	// BlockOnError causes the gate to block a commit when error-severity matches are found.
 	BlockOnError bool
@@ -132,11 +173,15 @@ type AstGrepGateConfig struct {
 	WarnOnlyMode bool
 }
 
-// DefaultAstGrepGateConfig returns default configuration.
+// DefaultAstGrepGateConfig returns default configuration. RulesDir is empty
+// (t50): this default is the last resort when no config can be loaded at all,
+// and guessing a rules path the project never declared would silently point
+// the advisory gate at nothing (or at the wrong ruleset) — "unconfigured" is
+// the honest value and behaves identically for a project with no rules.
 func DefaultAstGrepGateConfig() *AstGrepGateConfig {
 	return &AstGrepGateConfig{
 		Enabled:      true,
-		RulesDir:     ".moai/config/astgrep-rules",
+		RulesDir:     "",
 		BlockOnError: true,
 		WarnOnlyMode: false,
 	}

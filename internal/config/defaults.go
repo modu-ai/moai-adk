@@ -181,6 +181,18 @@ const (
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
 
+	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
+	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
+	// check and `moai clean --home`: DefaultHomeDiskWarnBytes is the cleanable-
+	// bytes estimate above which the doctor check emits WARN (advisory only);
+	// DefaultHomeCleanRetentionDays is the fallback for the home-tier
+	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
+	// DefaultReleaseKeep is how many non-current release binaries beyond the
+	// current version survive `clean --home`.
+	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays = 30
+	DefaultReleaseKeep            = 3
+
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
 	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던
@@ -337,6 +349,40 @@ const DefaultCodexJobCancelGrace = 5 * time.Second
 // long enough not to spin.
 const DefaultCodexJobCancelPoll = 25 * time.Millisecond
 
+// DefaultGLMTaskTimeout is the sole wall-clock bound on ONE glm_task call —
+// BOTH the sync and the background arm enforce it via context.WithTimeout on
+// the request context (mirroring DefaultCodexTaskTimeout, which codex_task
+// also applies in both forms). The task-path HTTP client (glmTaskHTTPClient)
+// deliberately carries NO client Timeout, so this constant — not a hidden
+// http.Client ceiling — is what actually bounds a call; reusing the audit
+// path's 120s client (glmAuditHTTPTimeout) here would silently shadow it. The
+// audit surface keeps its own ceiling and stays untouched.
+//
+// Not a compile-time const, for the same reason DefaultCodexTaskTimeout is
+// not — and so a test can shorten it.
+var DefaultGLMTaskTimeout = 600 * time.Second
+
+// DefaultGLMTaskMaxTokens bounds a single glm_task response. A task is an
+// open-ended generation (unlike the focused audit pass, which is bounded by
+// glmAuditMaxTokens), so the ceiling is wider — but still bounded, so a
+// runaway generation cannot consume the job's whole budget.
+const DefaultGLMTaskMaxTokens = 8192
+
+// DefaultFactoryWorkers is the fan-out size a bare `-f` / `--factory` takes
+// when the operator supplies no count (SPEC-FACTORY-WORKER-FANOUT-001
+// REQ-FF-001, t85 lead loop). The value 8 is the operator-decided factory
+// default — large enough to keep a card queue draining, small enough to sit
+// under the session-count a single operator hand-launches comfortably.
+const DefaultFactoryWorkers = 8
+
+// DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
+// job's in-flight HTTP call to end on its own. Derived from
+// DefaultCodexJobCancelGrace rather than restated: both windows bound the same
+// caller experience (how long a cancel call takes in the worst case), so a
+// retune of one should be a deliberate decision about both — restating the
+// literal would let them drift silently.
+const DefaultGLMJobCancelGrace = DefaultCodexJobCancelGrace
+
 // DefaultTierThresholds is the canonical 4-tier harness-learning cutoff vector
 // per V3R4-HARNESS-003 (count >= 1 → observation, >= 3 → heuristic,
 // >= 5 → rule, >= 10 → auto_update). SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-004:
@@ -396,6 +442,20 @@ func NewDefaultHandoffConfig() HandoffConfig {
 	return HandoffConfig{
 		Mode:  DefaultHandoffMode,
 		Guide: false,
+	}
+}
+
+// NewDefaultCrossSessionConfig returns a CrossSessionConfig with the neutral
+// defaults: inbound unset (Claude Code's per-message permission-class ladder
+// decides), machine isolation off (no approval for cross-machine messages —
+// the documented default posture), dialog expiry unset (Claude Code's 5m
+// default). Matches the template-shipped crosssession.yaml byte-for-byte in
+// semantics.
+func NewDefaultCrossSessionConfig() CrossSessionConfig {
+	return CrossSessionConfig{
+		Inbound:         "",
+		IsolateMachines: false,
+		DialogExpiry:    "",
 	}
 }
 

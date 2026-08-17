@@ -93,7 +93,7 @@ On receiving a blocker report, the orchestrator:
 
 ### Ledger Closure
 
-The **ledger-closure invariant** (externally grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环" — "只要系统向外承诺了一段执行，就要在中断时把账补平": whenever the system has promised an execution externally, it must close the ledger on interrupt) states that an aborted `Agent()` delegation MUST NOT leave a **dangling tool_use** — an open promise with no matching result — in the orchestrator's own context. The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions (a `/clear` boundary re-establishes verifiable preconditions before continuing); this subsection codifies the in-session interrupt case (no `/clear`). This is the orchestration-layer analogue of the model-API rule that every `tool_use` receives a `tool_result`.
+The **ledger-closure invariant** (externally grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环": whenever the system has promised an execution externally, it must close the ledger on interrupt) states that an aborted `Agent()` delegation MUST NOT leave a **dangling tool_use** — an open promise with no matching result — in the orchestrator's own context. The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions; this subsection codifies the in-session interrupt case (no `/clear`), the orchestration-layer analogue of the model-API rule that every `tool_use` receives a `tool_result`.
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind this obligation:
 
@@ -213,7 +213,7 @@ Full profile matrix, precedence order, and channel table:
 
 [ZONE:Evolvable] [HARD] As of Claude Code v2.1.198, subagents run in the background by **default**; Claude runs one in the foreground only when it needs the result before continuing. The default changes *where* a subagent runs, not *what it may do* — a background subagent still surfaces every permission prompt in the main session, and (since v2.1.186) that prompt names the asking subagent (Esc denies just that one call). MoAI **aligns with this runtime default** rather than forcing foreground for write-capable agents, and does not set the `background:` frontmatter field — the runtime's per-call heuristic chooses.
 
-The retained safeguard is **concurrency, not backgrounding**: MoAI does not run two write-capable agents concurrently, and orchestrator work performed concurrently with a write-capable agent is **read-only**. This binds specifically to the parallel write workers within a hierarchical team shape (e.g., `manager-kanban` fan-out) — the orchestrator (or `manager-kanban`) sequences write-capable leaf workers rather than running them concurrently, so a file-write race between agents is structurally prevented. This targets the actual hazard — a file-write race between agents — which forbidding background writes never addressed. The superseded restriction — a blanket ban on background Write/Edit — had its stated basis (background writes auto-denied) removed by v2.1.186 and no longer describes the runtime.
+The retained safeguard is **concurrency, not backgrounding**: MoAI does not run two write-capable agents concurrently, and orchestrator work performed concurrently with a write-capable agent is **read-only**. This binds specifically to the parallel write workers within a hierarchical team shape (e.g., `manager-kanban` fan-out) — the orchestrator (or `manager-kanban`) sequences write-capable leaf workers rather than running them concurrently, so a file-write race between agents is structurally prevented. It targets the actual hazard — a file-write race between agents; the earlier blanket ban on background Write/Edit had its stated basis (background writes auto-denied) removed by v2.1.186 and no longer describes the runtime.
 
 Rules for agent spawning:
 - **Read-only tasks** (research, analysis, review): safe in the background; while one is in flight the orchestrator continues independent read-only work.
@@ -348,9 +348,9 @@ Three obligations from that file bind here and are restated so they hold without
 
 ### Attributable diff-check doctrinal switch (SPEC-SYNC-PARALLEL-DOCS-001 A9)
 
-The canonical 7-command batch CONSUMES the attributable §E evidence by default (no re-execution) when the three-way attribution match holds; on any mismatch, the batch falls back to re-execution (the fallback-to-re-execution contract is preserved unchanged). SPEC-SYNC-PARALLEL-DOCS-001 A9 introduces this default-inversion switch in how the orchestrator COMPOSES that batch: the orchestrator SHALL first consult the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) and, on all-three attribution match, consume the §E evidence INSTEAD of re-executing. This is a composition-time doctrinal switch — there is NO mechanical "about to re-run command X" preamble token to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash). The switch binds the orchestrator's batch-composition discipline, not a runtime hook.
+Default-inversion switch in how the orchestrator COMPOSES the canonical batch: consult the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, consume the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
 
-**All-three attribution match → CONSUMES the attributable §E evidence (no re-execution) [DEFAULT].** When ALL THREE of the following hold for a verification dimension, the orchestrator SHALL consume the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command:
+**All-three attribution match → CONSUMES the attributable §E evidence (no re-execution) [DEFAULT].** When ALL THREE of the following hold for a verification dimension:
 1. **Snapshot key match** — the §E-cited HEAD SHA equals the current `moai verify check --key-current` snapshot key (no commit landed between §E recording and orchestrator batch);
 2. **Command match** — the §E-cited command (a) matches the snapshot's recorded command for that dimension;
 3. **Output match** — the §E-cited observed output (b) matches the snapshot's recorded output for that dimension.
@@ -410,19 +410,7 @@ coordination policy was deployed (no registry hook) emit no entries,
 so the 3rd command returns `[]` and the orchestrator proceeds normally
 without false positives.
 
-Rationale: When 2+ Claude Code sessions operate on the same project root
-+ same memory hash (`~/.claude/projects/{hash}/memory/`), they may both
-consume the same paste-ready resume and attempt the same `/moai <subcommand>`
-work. The git working tree is shared; the memory file is shared. Without
-a pre-spawn fetch, the second session works on a stale baseline and may
-produce duplicate commits, conflicting frontmatter edits, or CHANGELOG
-entry races.
-
-Origin: an earlier sync-phase race incident — a parallel session
-committed a spec.md frontmatter status update between manager-develop's
-final run-phase commit and manager-docs' sync commit. Detection occurred
-retrospectively when `git push` succeeded with an unexpected intermediate
-commit in the push range. Lesson (parallel-session race during long agent runs) reinforced; a new lesson (pre-spawn fetch discipline) added.
+Rationale (shared-tree/shared-memory stale-baseline mechanism) and the originating sync-phase race incident record: `agent-common-protocol-reference.md` § Pre-Spawn Sync Check rationale and incident record.
 
 Exemption: read-only agents (`Explore`, or a per-spawn `Agent(general-purpose)` scoped to read-only investigation) do not require pre-spawn fetch — they cannot trigger race conflicts.
 
