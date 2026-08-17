@@ -298,7 +298,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 
 ### Kanban mode
 
-`--kanban` (short `-k`) is a session-launcher switch that arms a `kanban_chain` goal preset — driving a single SPEC through `plan → run → verify → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
+`--kanban` (short `-k`) is a session-launcher switch — under the lead session's coordination it drives a single SPEC through `plan → run → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
 
 | Concept | What it does |
 |---------|-------------|

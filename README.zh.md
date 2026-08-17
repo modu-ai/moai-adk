@@ -298,7 +298,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### 看板模式
 
-`--kanban`（短写 `-k`）是会话启动器开关，武装 `kanban_chain` 目标预设 —— 把单个 SPEC 沿 `plan → run → verify → sync` 推进，并用多会话看板协调。看板的骨架是 **Origin-Trail Chain** —— 一棵 append-only 的 JSONL 谱系树，追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条）、并通过心跳陈旧度检出死掉的主控会话。
+`--kanban`（短写 `-k`）是会话启动器开关，在主控会话的指挥下把单个 SPEC 沿 `plan → run → sync` 推进，并用多会话看板协调。看板的骨架是 **Origin-Trail Chain** —— 一棵 append-only 的 JSONL 谱系树，追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条）、并通过心跳陈旧度检出死掉的主控会话。
 
 | 概念 | 作用 |
 |------|--------|

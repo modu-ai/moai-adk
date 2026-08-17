@@ -16,7 +16,7 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 ## New in v3.1 — Kanban Mode {{< new-badge v3.1 >}}
 
-A session holds one context window, and a long SPEC fills it — everything that follows carries everything that came before. Kanban Mode splits one unit of work across **five terminals**: a lead session drives the chain while four companion sessions each own a single column — `plan`, `run`, `review`, `sync` — and carry only that column's context. Limits do not disappear, but no session carries four phases' worth of history, so the same budget goes considerably further.
+A session holds one context window, and a long SPEC fills it — everything that follows carries everything that came before. Kanban Mode splits one unit of work across **four terminals**: a lead session drives the chain while three companion sessions each own a single column — `plan`, `run`, `sync` — and carry only that column's context. The review verdict is not a column: the sync gate absorbs it. Limits do not disappear, but no session carries three phases' worth of history, so the same budget goes considerably further.
 
 ![One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level](/images/profile/kanban-five-sessions.png)
 

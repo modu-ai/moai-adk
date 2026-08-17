@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 Kanban Mode replaces the old model — driving one SPEC at a time in a single session — with a **multi-session board**. One lead session conducts, companion sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
 
-You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract on which a goal preset of the chain (`kanban_chain`, a bundle that predeclares a completion condition) rides. The three phases of the chain (plan → run → sync — the review verdict is absorbed by the sync gate) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
+You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract under which the launcher arms the kanban-mode environment. The three phases of the chain (plan → run → sync — the review verdict is absorbed by the sync gate) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
 
 This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain design, the chain phases, and "what is _not_ automated." For a short introduction from the workflow-command viewpoint, see [`/moai` unified command](/en/workflow-commands/) first.
 
@@ -176,7 +176,7 @@ $ moai cc -k --name run
 $ moai cc -k --name sync
 ```
 
-On successful entry the launcher arms the `kanban_chain` goal preset inside the session (after Implementation Kickoff Approval passes). The goal preset is a completion condition that the `stop-goal` Stop-hook evaluator evaluates at every turn end — it is not a new runtime or hook, but one condition laid on top of existing machinery.
+On successful entry the launcher arms the kanban-mode environment (the `MOAI_KANBAN` chain seed) inside the session, and the lead's SessionStart notice announces the run id and the companion launch commands — not a new runtime or hook, but an entry contract riding on existing machinery.
 
 ## Running one chain across four terminals
 
