@@ -28,7 +28,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 
 	got := NewRenderer("default", true, nil).renderSessionLine(namedData())
 
-	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 TODO: 12/26"} {
+	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 TODO: 12 / 26"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
 		}

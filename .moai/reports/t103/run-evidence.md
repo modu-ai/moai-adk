@@ -44,3 +44,25 @@ $ golangci-lint run ./internal/statusline/...
 
 - **표기 변경은 사용자 가시적** — `🔄 TODO:` / `🔀` 단일 아이콘은 기존 사용자에게 익숙한 표기 교체. 운영자 지시 사항이므로 의도된 변경.
 - **세그먼트 비활성 검사의 ⚠️ 잔여** — github_test의 disabled 케이스가 여전히 `⚠️` 부재도 검사(이제 렌더에 ⚠️가 없어 항상 참인 조건). 오류는 아니나 다음 정리 때 🔀 단일 조건으로 좁힐 여지.
+
+## 6. 리뷰 PASS + 러더이더 2건 적용 (2026-08-17)
+
+허브 리뷰 PASS(판정문: release-v311 `.moai/reports/t103/review-verdict.md` — 리뷰 레인 워크트리 격리로 리드 트리 보관). 적용된 러더이더:
+
+1. **구분자 │(U+2502) → 반각 | (운영자 확정)** — `Renderer` 초기화의 `" │ "` → `" | "` (renderer.go separator 1곳이 유일한 동작 변경). 문서 주석 예시와 세그먼트 표기·구분자 단정(renderer_test 2곳, builder_test 파싱 `"│"` 포함) 전부 갱신. 근거 주석: 반각 전환은 repo 세그먼트 내부의 이미-ASCII `|`(renderRepoBranchSegment)와 폭이 어긋나던 리듬을 통일.
+2. **백로그 슬래시 공백 복원 (리뷰 확정)** — `"🔄 TODO: %d/%d"` → `"🔄 TODO: %d / %d"`, 기대값 2곳 갱신. 최종 표기: **`🔄 TODO: 12 / 26`**.
+
+재검증 (러더이더 적용 후):
+
+```
+$ go vet ./internal/statusline/
+(출력 없음 — 통과)
+
+$ go test ./internal/statusline/
+ok  github.com/modu-ai/moai-adk/internal/statusline  15.371s
+
+$ golangci-lint run ./internal/statusline/...
+0 issues.
+```
+
+최종 줄 모양: L1 `🤖 … | 🔅 …` · L2 `CW: … | 5H: …` · L3 `📁 … | 🅱️ …` · 마지막 `🏷️ 세션 | 👤 에이전트 | 🔄 TODO: P / Q | 🔀 이슈 / PR`.

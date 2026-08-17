@@ -26,8 +26,11 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 	theme := NewTheme(themeName)
 
 	r := &Renderer{
-		// v3 separator: U+2502 box drawing vertical line
-		separator:     " │ ",
+		// Segment separator: ASCII "|" — operator-confirmed 2026-08-17
+		// (replacing U+2502 "│", which rendered at a different width than
+		// the already-ASCII "|" inside renderRepoBranchSegment and the "/"
+		// separators, making the bar rhythm uneven across one line).
+		separator:     " | ",
 		noColor:       noColor,
 		segmentConfig: segmentConfig,
 		theme:         theme,
@@ -107,9 +110,9 @@ func (r *Renderer) joinSegments(segments []string) string {
 // renderDefaultV3 renders the default mode 3-line layout (4th, conditional
 // last line below).
 //
-// L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ██████████ 88% │ 5H: 🔋 ██████████ 45% │ 7D: 🪫 ██████████ 82%
-// L3: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L1: 🤖 Model | 🔅 v2.1.50 | 🗿 v2.8.0 | ⏳ 2h 34m | 💬 MoAI
+// L2: CW: 🪫 ██████████ 88% | 5H: 🔋 ██████████ 45% | 7D: 🪫 ██████████ 82%
+// L3: 📁 moai-adk-go | 🅱️ feat/auth ↑2↓1 | 📊 +3 M2 ?1
 // Last (conditional): 🏷️ session identity + workload — operator directive
 // 2026-08-17 places it after the project line, not before the model line.
 func (r *Renderer) renderDefaultV3(data *StatusData) string {
@@ -181,7 +184,7 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// above (words excluded for 16-language shipping) because TODO reads the
 	// same way in every supported language.
 	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
+		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
 	// GitHub: 🔀 open issues / open pull requests (first number issues, second
@@ -369,7 +372,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 }
 
 // renderDirGitLine renders the L3 line for layout v3.
-// Format: 📡 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+// Format: 📡 owner/name | 🅱️ branch ↑N +N | 📫 +0 M6 ?0 | [task] | 💌 PR #1023 (⌥approved)
 //
 // Layout v3 changes (CH3 + CH5):
 //   - directory moved to L1 end (CH5)

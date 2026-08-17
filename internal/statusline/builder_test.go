@@ -745,8 +745,8 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("Build error: %v", err)
 		}
 
-		// default L2: "CW: 🔋 ██████░░░░ 60% │ 5H: 🔋 ░░░░░░░░░░ 0% │ 7D: 🔋 ░░░░░░░░░░ 0%"
-		// Extract the CW segment only (substring between "CW:" and "│") for verification.
+		// default L2: "CW: 🔋 ██████░░░░ 60% | 5H: 🔋 ░░░░░░░░░░ 0% | 7D: 🔋 ░░░░░░░░░░ 0%"
+		// Extract the CW segment only (substring between "CW:" and "|") for verification.
 		lines := strings.Split(got, "\n")
 		var cwLine string
 		for _, l := range lines {
@@ -759,9 +759,9 @@ func TestIntegration_GradientBar(t *testing.T) {
 			t.Fatalf("AC-V3-07: CW bar must be in output\noutput:\n%s", got)
 		}
 
-		// Isolate CW segment (before first "│" separator)
+		// Isolate CW segment (before first "|" separator)
 		cwSeg := cwLine
-		if idx := strings.Index(cwLine, "│"); idx >= 0 {
+		if idx := strings.Index(cwLine, "|"); idx >= 0 {
 			cwSeg = cwLine[:idx]
 		}
 
@@ -917,8 +917,8 @@ func TestIntegration_BatteryIcon(t *testing.T) {
 		var cwPart string
 		for _, l := range lines {
 			if strings.Contains(l, "CW:") {
-				// Extract CW: part only (before │ separator)
-				parts := strings.Split(l, "│")
+				// Extract CW: part only (before | separator)
+				parts := strings.Split(l, "|")
 				for _, p := range parts {
 					if strings.Contains(p, "CW:") {
 						cwPart = p

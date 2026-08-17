@@ -316,9 +316,9 @@ func TestRender_Separator(t *testing.T) {
 
 	got := r.Render(data, ModeDefault) // default mode: multiple segments on one line
 
-	// v3 separator is " │ " (U+2502 box-drawing character)
-	if !strings.Contains(got, " │ ") {
-		t.Errorf("sections should be separated by ' │ ', got %q", got)
+	// v3 separator is " | " (U+2502 box-drawing character)
+	if !strings.Contains(got, " | ") {
+		t.Errorf("sections should be separated by ' | ', got %q", got)
 	}
 }
 
@@ -1112,7 +1112,7 @@ func TestRenderUsageBar(t *testing.T) {
 }
 
 func TestRender_V3Separator(t *testing.T) {
-	// v3 separator must be " │ " (U+2502 box-drawing character)
+	// v3 separator must be " | " (U+2502 box-drawing character)
 	r := newTestRenderer()
 	data := &StatusData{
 		Metrics:   MetricsData{Model: "Opus 4.6", Available: true},
@@ -1124,8 +1124,8 @@ func TestRender_V3Separator(t *testing.T) {
 	got := r.Render(data, ModeDefault)
 
 	// Verify v3 separator
-	if !strings.Contains(got, " │ ") {
-		t.Errorf("v3 separator ' │ ' must be present, got: %q", got)
+	if !strings.Contains(got, " | ") {
+		t.Errorf("v3 separator ' | ' must be present, got: %q", got)
 	}
 }
 

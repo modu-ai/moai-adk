@@ -230,7 +230,7 @@ func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
 		t.Errorf("disabled github segment still rendered: %q", got)
 	}
-	if !strings.Contains(got, "🔄 TODO: 12/26") {
+	if !strings.Contains(got, "🔄 TODO: 12 / 26") {
 		t.Errorf("backlog must survive disabling the github segment: %q", got)
 	}
 }
