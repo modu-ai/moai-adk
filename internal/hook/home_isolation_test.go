@@ -3,6 +3,7 @@ package hook
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -139,7 +140,7 @@ func TestHomeJoinSiteCountIsPinned(t *testing.T) {
 	}
 	var stale, unlisted []string
 	for _, s := range homeJoinSiteAllowlist {
-		if !containsSite(sites, s) {
+		if !slices.Contains(sites, s) {
 			stale = append(stale, s)
 		}
 	}
@@ -160,16 +161,6 @@ func TestHomeJoinSiteCountIsPinned(t *testing.T) {
 			"for the guard shape.",
 			unlisted, stale)
 	}
-}
-
-// containsSite reports whether sites contains s.
-func containsSite(sites []string, s string) bool {
-	for _, x := range sites {
-		if x == s {
-			return true
-		}
-	}
-	return false
 }
 
 // containsHomeProjectsJoin reports whether src builds a .claude/projects path
