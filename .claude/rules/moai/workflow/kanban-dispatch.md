@@ -4,6 +4,8 @@ How the **lead** session of Kanban Mode moves a card across the board: what admi
 
 > **Loading scope**: Intentionally always-loaded. A session learns it is the kanban lead from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach the session that needs it.
 
+> **Detail companion**: `kanban-dispatch-detail.md` carries this rule's long tables (board columns, card classes, review lenses), the dispatch-cycle walkthrough, incident narratives, and worked rationale. This stub keeps every [HARD] rule, every prohibition, and every cross-reference pointer. Load the companion when moving a card between columns, classifying a card, or choosing review lenses.
+
 ## Scope — when this rule is live
 
 This rule binds a session whose SessionStart context declares **Kanban Mode** with the `lead` role. In every other session it is inert: a companion session (`plan` / `run` / `review` / `sync`) receives instructions, it does not dispatch them, and a session outside Kanban Mode has no board to move.
@@ -14,22 +16,7 @@ One boundary on the mode itself: nudge delivery rides on cross-session messaging
 
 ## The board
 
-Six columns, fixed and ordered:
-
-```
-backlog → plan → run → review → sync → done
-```
-
-`backlog` and `done` have no owning session. The four columns between them each map to exactly one companion role, which is what makes dispatch a lookup rather than a decision.
-
-| Column | Owning role | What happens there |
-|---|---|---|
-| `backlog` | *none* — a queue | Work waits. Entry is an operator act (see below). |
-| `plan` | `plan` | SPEC authored (`/moai plan`), then plan-audited. |
-| `run` | `run` | Implementation (`/moai run <SPEC-ID>`). |
-| `review` | `review` | Code review (`/moai review …`) with lenses chosen per card. |
-| `sync` | `sync` | Docs, CHANGELOG, PR (`/moai sync <SPEC-ID>`). |
-| `done` | *none* — terminal | Card closed. Nothing is dispatched here. |
+Six columns, fixed and ordered: `backlog → plan → run → review → sync → done`. `backlog` and `done` have no owning session; the four columns between them each map to exactly one companion role (`plan` / `run` / `review` / `sync`), which is what makes dispatch a lookup rather than a decision. Column-by-role table: `kanban-dispatch-detail.md` § The board.
 
 ## Entry into the board is an operator act
 
@@ -41,39 +28,21 @@ backlog → plan → run → review → sync → done
 
 ## Card classes — not every card needs four columns
 
-Most of what accumulates in the backlog is chores: a one-line fix, a stale reference, a renamed flag. Sending those through `plan → run → review → sync` costs more in ceremony than the change is worth. The lead classifies each card as it leaves `backlog` and names the class in the dispatch.
+The lead classifies each card as it leaves `backlog` and names the class in the dispatch: **A — direct close** (one file, one line, no design judgement, CI catches the regression; one session carries the card to a pull request, `plan` and `review` skipped), **B — defect, cause unknown** (`run → review → sync`; `plan` is skipped, so no SPEC exists), **C — design change** (a decision, or spans subsystems; all four columns). Full table and the ceremony-cost rationale: `kanban-dispatch-detail.md` § Card classes.
 
-| Class | Shape | Path |
-|---|---|---|
-| A — direct close | The change is one file and one line, there is no design judgement in it, and CI catches the regression | One session carries the card through to a pull request; `plan` and `review` are skipped |
-| B — defect, cause unknown | Something is wrong and the cause has not been established | `run → review → sync`; `plan` is skipped, so no SPEC exists |
-| C — design change | The change contains a decision, or spans subsystems | All four columns |
-
-[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column.
-
-The same unobserved-claim hazard the CodeRabbit section below names: writing the justification down is not the same as verifying it.
+[HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, so they are checked and the check is cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is observed green **on the head that will merge**. The third — no design judgement in it — is a judgement rather than a measurement, so it is stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A, and it takes the `review` column. (Same shape as the CodeRabbit section below: a class that skips review on a claim nobody checked is the unobserved-claim hazard.)
 
 The justification is never "it is faster". Speed is the effect of skipping the columns, not the reason for it, and a card justified by speed alone is a Class C card being rushed.
 
 **Class B skips `plan`, not `review`** — an unestablished cause is precisely what review catches, so it is the last column to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the evidence that established the cause — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
 
-**Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch.
-
-For Class A this inverts where the parallelism comes from. Handing four sessions a whole card each puts four cards in flight; pipelining one card through four columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason.
+**Work in progress: one card per column, and only when each card occupies a different worktree.** Two cards sharing one worktree run serially whatever columns they sit in, because they share a working tree and a branch. (Where the parallelism comes from per class, and why research fan-out during `plan` is Class-C-only: `kanban-dispatch-detail.md` § Card classes.)
 
 ## The dispatch cycle
 
-Each arrow below is one dispatch from the lead to one companion session:
+`[operator picks a card] → plan → run → review → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session. Dispatch is addressed by session name via `SendMessage({to: "<name>", message: "…"})`; `ListAgents` reports the live set. Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
-```
-[operator picks a card]  →  plan  →  run  →  review  →  sync  →  [lead marks done]
-```
-
-Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` reports the live set; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
-
-Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
-
-**`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself.
+**`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself. Session-naming rules and the address-block walkthrough: `kanban-dispatch-detail.md` § The dispatch cycle.
 
 ### The delegation channel is the queue
 
@@ -83,9 +52,9 @@ A cross-session message is a nudge, never the delegation itself: delivery is not
 
 ### Dispatch language
 
-[HARD] A dispatch is written in the operator's `conversation_language`. The operator watches it scroll past, which makes it user-facing output rather than internal agent traffic.
+[HARD] A dispatch is written in the operator's `conversation_language`. The operator watches it scroll past, which makes it user-facing output rather than internal agent traffic. The carve-out is narrow, and the boundary is **who reads it** — an `Agent()` subagent prompt reaches no human and stays English. (Why this classifies the dispatch under the language rules rather than exempting it: `kanban-dispatch-detail.md` § Dispatch language.)
 
-This is a classification, not an exemption, and it needs no change to either rule. `agent-common-protocol.md` § Language Handling already has agents receive and respond in the configured `conversation_language` — what it fixes to English is code, identifiers, and names, and a dispatch is prose. `moai-constitution.md` § Response Language reserves English for internal agent communication on an axis it states one line above: user-facing responses go in the operator's language, and a message a human reads is user-facing by that rule's own criterion. The boundary is **who reads it** — an `Agent()` subagent prompt reaches no human and stays English. What stays verbatim in every language: SPEC IDs, commands and their flags, file paths, session names, and technical identifiers — addresses rather than prose, and a translated address does not resolve.
+What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. Those are addresses rather than prose, and a translated address does not resolve.
 
 ### Dispatch format
 
@@ -100,11 +69,9 @@ evidence: .moai/specs/<SPEC-ID>/progress.md
 lens: --security --deep
 ```
 
-- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `review` dispatch — the lenses from the table above, where the choice itself is the reason, stated as an address instead of a sentence.
+- `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `review` dispatch — the lenses from the Review lens selection table, where the choice itself is the reason, stated as an address instead of a sentence.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts this block points at; a dispatch that restates them makes the operator read the same thing twice. If something does not fit a field, it belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
-
-The format is the "pointer, not a copy" rule made mechanical — every field an address the companion resolves by reading what it names — and it settles the language rule by construction: pure addresses have nothing to translate, while the lead's reports to the operator stay in the operator's `conversation_language`.
 
 ## Completion is read, never trusted
 
@@ -129,40 +96,21 @@ A CodeRabbit row counts as evidence only when BOTH of these hold:
       --jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .description'
     ```
 
-    Both halves are required: `success` alone appears on unreviewed heads too — that is this section's point — and without the state filter a `failure` or `error` status carrying a `Review completed` description would read as a pass.
-
-    The predicate assumes the **combined** status endpoint, `/commits/{sha}/status` (the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head). Do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first — measured on one head: five entries from `Review queued` through `Review completed`, so a positional pick is wrong in either direction (`last` selects the oldest). Where history is wanted, select by maximum `created_at`.
+    Both halves are required, and neither is sufficient alone — without the state filter, a `failure`/`error` status carrying a `Review completed` description would read as a pass. The predicate assumes the **combined** status endpoint `/commits/{sha}/status` (most recent status per context); do NOT substitute the plural `/commits/{sha}/statuses` (full history newest-first — a positional pick selects the wrong entry). Measurement narrative: `kanban-dispatch-detail.md` § CodeRabbit endpoint measurement.
 
 1. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`, so the verdict covers the head being merged rather than an earlier commit.
 
-Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`.
-
-Branch protection is not the lever: the status is `success` in precisely the failing case, so a required context would admit the unreviewed pull request just as readily. The distinction lives in the description; only reading it surfaces it — an automated merge gate closing this hole does not close it on the path a human merges by hand.
+Anything else is a gap, not a pass. `Review rate limited` in particular means the review never started, and a card carrying it does not leave `review` or `sync`. Branch protection is not the lever here — the status state is `success` in precisely the failing case; only a read of the description surfaces it.
 
 ## Review lens selection
 
-`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the reason in the dispatch so the review session does not re-derive it:
-
-| Card touched | Lenses to instruct |
-|---|---|
-| Auth, session handling, input parsing, external calls, secrets, file/path handling | `--security` (add `--deep` when the surface is reachable by untrusted input) |
-| Non-trivial logic across several files | `--deep` (adversarially verified multi-phase scan) |
-| Whole-tree sweep rather than a diff | add `--repo` |
-| Suspected over-engineering | `--lean` (advisory only; applies no fixes) |
-| UI or design-system surface | `--design`, and `--critique` after the build |
-| Small, local, low-risk diff | no flag — the default 4-perspective pass is enough |
+`review` is not one thing. The lead picks the lenses from what the card actually changed, and states the reason in the dispatch so the review session does not re-derive it. Lens table (which lenses per touched surface): `kanban-dispatch-detail.md` § Review lens selection.
 
 `--deep --patch` is opt-in twice over: `--patch` drafts a fix and is absent unless the operator asked for it. Do not add it on the lead's own initiative.
 
 ## The `/clear` handoff between phases
 
-[HARD] A companion session does not carry one card's context into the next card. When a phase completes and the lead has read its evidence, the lead **asks the operator to `/clear` that session** — `/clear` is a user-typed command and cannot be sent as an instruction.
-
-The lead's message to the operator states three things, in this order:
-
-1. **What closed** — the card, the phase, and the evidence that was read.
-2. **Which session to `/clear`** — by name, so the operator clears the right terminal.
-3. **What happens next** — the column the card moves to, and which session will be instructed once the clear is done.
+[HARD] A companion session does not carry one card's context into the next card. When a phase completes and the lead has read its evidence, the lead **asks the operator to `/clear` that session** — `/clear` is a user-typed command and cannot be sent as an instruction. The lead's message states, in order: what closed (card, phase, evidence read), which session to `/clear` (by name), and what happens next (the column the card moves to, and which session is instructed once the clear is done).
 
 Where the next phase reuses a just-cleared session, the lead re-sends the full pointer instruction rather than assuming the session remembers the card.
 
@@ -180,7 +128,7 @@ The lead's own session is cleared the same way, between cards rather than phases
 | Leave it | `ExitWorktree` |
 | Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
-`moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about and MoAI does not, so `done`, `clean`, and `recover` have nothing to close and orphans accumulate until reconciled by hand.
+`moai worktree` deliberately carries no creation verb — its own help states that entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about but MoAI does not, so `done`, `clean`, and `recover` have nothing to close and orphans accumulate until reconciled by hand.
 
 [HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
@@ -190,30 +138,15 @@ The lead's own session is cleared the same way, between cards rather than phases
 
 [HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>` — unwieldy for long names, invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>`: safe inside a worktree (tree, lock, session anchoring unaffected), and `moai cc -w <name>` re-entry resolves by tree name, not branch name. The rename also switches the eventual disposal path (`worktree-integration.md` § Terminology Glossary). Dispatches, merges, and completion evidence reference the `WT-` name.
 
-The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree.
-
-Two properties make the shared checkout the wrong place for a card:
-
-- Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit that was never meant to carry it.
-- A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
-
-Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
+The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. Why the shared checkout is the wrong place for a card (concurrent readers, card-outlives-phase): `kanban-dispatch-detail.md` § Isolation rationale. Where a companion reports having worked in the shared checkout instead, that is a fault to report, not a detail to tidy up afterwards.
 
 ## Verification load is lane-local
 
-Sessions share one machine as surely as they share one checkout, and verification is where that sharing goes wrong. Measured on a day when it did: load average 413, a neighbouring workspace's build at two and a half minutes and its browser tests timing out — four lanes were each running the full suite at once, and a full suite there takes five to ten minutes.
+[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. CI is not the fallback here; it is the better evidence — it runs the full suite in a clean environment against the actual pull-request head. A full-suite run on a loaded developer machine measures the machine, not the code. (Incident record — load 413, orphaned spin loops, the contention↔flakiness loop: `kanban-dispatch-detail.md` § Verification load incident record.)
 
-[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite.
+[HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A trailing `kill` is not cleanup; it is a line the process may never reach, and every path that ends early leaves the load running.
 
-CI is not the fallback here; it is the better evidence. It runs the full suite in a clean environment against the actual pull-request head. A full-suite run on a loaded developer machine measures the machine — a test that fails in a crowded batch and passes alone has told you about contention, not about the code, and reading it as a code signal sends the lane chasing a defect that is not there.
-
-[HARD] **Never spawn background load.** The same incident had a second cause: a verification recipe started eight spin loops to test behaviour under CPU contention and placed its kill line *after* the long test command. The agent finished before reaching it, and twelve spinners ran orphaned for thirty-seven minutes.
-
-Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A trailing `kill` is not cleanup; it is a line the process may never reach, and every path that ends early leaves the load running.
-
-**A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault above belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given — a lane executing an approved recipe is doing what it was told, and a rule that blames the executor teaches the wrong actor to be careful.
-
-Contention and flakiness also feed each other: that day, a failing test left an unbounded spin-loop goroutine burning a core for the rest of its package's run. Load makes tests fail; failing tests can generate load.
+**A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given — a lane executing an approved recipe is doing what it was told, and a rule that blames the executor teaches the wrong actor to be careful.
 
 ### The env-isolated verification form
 
@@ -230,9 +163,7 @@ Two properties of the form are load-bearing, and both are easy to "simplify" awa
 - **One invocation.** Each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command. The scrub and the command travel together or the scrub does nothing.
 - **No subshell.** Wrapping it as `( unset …; <command> )` is another structure the guard cannot statically track, and is rejected the same way.
 
-Moving the command into a script file is not a workaround — not as a standing pattern and not as a one-off. The guard cannot read inside a script, so the entire check set is bypassed for that payload, including the git-redirect checks that are the guard's actual purpose and the part worth keeping.
-
-Reading the script first does not restore them. A human read is not the guard running: the checks stay bypassed however carefully the file was reviewed, and a review performed once says nothing about what the file contains the next time it is invoked. Where a verification cannot be expressed as one compound invocation, that is a signal to reduce the verification, not to route it around the guard.
+Moving the command into a script file is not a workaround — the guard cannot read inside a script, so the entire check set is bypassed for that payload. Reading the script first does not restore them; a human read is not the guard running. Where a verification cannot be expressed as one compound invocation, that is a signal to reduce the verification, not to route it around the guard.
 
 ## Integration into the release branch is self-served
 
@@ -240,12 +171,12 @@ Reading the script first does not restore them. A human read is not the guard ru
 
 The mechanism respects two measured constraints — git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C` — so the lane enters the release worktree rather than driving it remotely:
 
-- **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned. A lane never checks the release branch out in its own tree; git would refuse the second checkout anyway.
-- **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` — the canonical current-session re-entry — and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
+- **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned. A lane never checks the release branch out in its own tree.
+- **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
 - **Return the same way.** `ExitWorktree` returns the session to the primary checkout, not to the lane's own worktree — after the merge, the lane re-enters its card worktree with `EnterWorktree(<own-path>)` before continuing card work.
-- **One integrating session at a time.** The release worktree is the serialization point. On entry, confirm no merge is in progress — `git rev-parse -q --verify MERGE_HEAD` must print nothing; a lane that finds a merge in progress exits, waits, and retries. Two lanes finishing concurrently serialize on this check rather than racing; git's own `index.lock` refusal backstops a truly concurrent attempt.
+- **One integrating session at a time.** The release worktree is the serialization point. On entry, confirm no merge is in progress — `git rev-parse -q --verify MERGE_HEAD` must print nothing; a lane that finds a merge in progress exits, waits, and retries.
 - **Conflicts belong to the lane that owns the change.** The integrating lane resolves the conflicts its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's already-merged change — is a blocker report to the lead, not a forced merge.
-- **Push the release branch; the batch pull request stays with the lead.** After its merge, the lane pushes the release branch (`git push origin release/vX.Y.Z`). A rejected push means another lane pushed first — fetch, integrate the fetched release branch, and push again; never force. The batch pull request and release ceremony remain the lead's, and until the pushed release branch's batch PR merges, the disposal rule above still binds.
+- **Push the release branch; the batch pull request stays with the lead.** After its merge, the lane pushes the release branch (`git push origin release/vX.Y.Z`). A rejected push means another lane pushed first — fetch, integrate the fetched release branch, and push again; never force. Until the pushed release branch's batch PR merges, the disposal rule above still binds.
 
 The completion signal is the branch name, merge SHA, and evidence path.
 
@@ -268,4 +199,4 @@ The completion signal is the branch name, merge SHA, and evidence path.
 
 ---
 
-Classification: Evolvable operational rule — applies to the lead session of Kanban Mode.
+Classification: Evolvable operational rule — applies to the lead session of Kanban Mode. Detail companion: `kanban-dispatch-detail.md` (stub + lazy-companion split).

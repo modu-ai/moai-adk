@@ -1,0 +1,18 @@
+   9535 tokens     38140 bytes  .claude/rules/moai/core/agent-common-protocol.md
+   7538 tokens     30154 bytes  .claude/rules/moai/core/askuser-protocol.md
+   4740 tokens     18962 bytes  .claude/rules/moai/core/moai-constitution.md
+   1841 tokens      7365 bytes  .claude/rules/moai/core/moai-mcp-tools.md
+   1241 tokens      4967 bytes  .claude/rules/moai/core/native-idiom-and-register.md
+   3285 tokens     13140 bytes  .claude/rules/moai/core/verification-claim-integrity.md
+   1147 tokens      4589 bytes  .claude/rules/moai/workflow/cache-aware-execution.md
+   3252 tokens     13009 bytes  .claude/rules/moai/workflow/context-window-management.md
+   3571 tokens     14284 bytes  .claude/rules/moai/workflow/cross-session-messaging.md
+   1650 tokens      6600 bytes  .claude/rules/moai/workflow/goal-directive.md
+   5615 tokens     22460 bytes  .claude/rules/moai/workflow/kanban-dispatch.md
+   2966 tokens     11865 bytes  .claude/rules/moai/workflow/main-checkout-branch-guard.md
+   5834 tokens     23337 bytes  .claude/rules/moai/workflow/session-handoff.md
+   1406 tokens      5625 bytes  .claude/rules/moai/workflow/skill-routing.md
+   5093 tokens     20372 bytes  CLAUDE.md
+  16312 tokens     65251 bytes  .claude/output-styles/moai/moai.md
+      0 tokens         0 bytes  MEMORY.md
+TOTAL: 75026 tokens, 17 entries
