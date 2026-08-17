@@ -291,6 +291,7 @@ func TestGraphQueryCmd_MilestonesNoCard(t *testing.T) {
 		"demo-report#S6  no card claimed ([new card needed])",
 		"milestones without a live card: 3 of 4", // S1/t108 live: clean, not listed
 		"git log --oneline --grep 'merge: tNN'",  // [HARD] caveat must ride the result
+		"새 카드 발급 전에 계보를 확인",              // zero-hit grep != work never done; check re-issuance lineage (re-review M2)
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q:\n%s", want, out)

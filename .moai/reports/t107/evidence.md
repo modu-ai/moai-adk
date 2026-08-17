@@ -61,7 +61,7 @@ unified-board-design-20260817#S7
 대조표 근거 실측:
 
 - 큐(`moai todo`, 2026-08-17 15:1x·16:0x 재확인): live = t108·t113·t59 (queued). t55·t56·t58·t84·t85·t109 큐 부재.
-- git(`git log --oneline --grep`): t109=2c70e7aed, t56=400dde787, t55=1ea829c76, t85=162f74d99, t58=b8a25b62f 머지 확인. **t84 = 0건 (미발급)** — 카드가 지적한 갭의 잔존분.
+- git(`git log --oneline --grep`): t109=2c70e7aed, t56=400dde787, t55=1ea829c76, t85=162f74d99, t58=b8a25b62f 머지 확인. **t84 = 0건 (미발급)** — 카드가 지적한 갭의 잔존분. *(재심 M1′ 정정 2026-08-17: t84 미발급은 오판 — t84→t110 재발행 후 t110 머지 6b44bdd2e로 인도 완료. "grep 0건 ≠ 재발행 아님"이 재심 caveat 문구(M2)의 근거. 정본 대조표는 primary 보고서 § Card Cross-Check.)*
 - 원 카드 근거(S0·S1 미발행, S3·S4·S7 큐 부재)는 작성 시점엔 맞았으나 이후 t108·t113 발급으로 S1·S2는 해소 — 대조표가 현재 상태를 반영.
 
 ## Baseline-attribution (baseline 귀속)

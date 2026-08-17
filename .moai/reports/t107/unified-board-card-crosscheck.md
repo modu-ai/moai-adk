@@ -1,29 +1,28 @@
-# paste-ready: unified-board-design-20260817.md 소급 대조표 (t107)
+# unified-board-design-20260817 — Card Cross-Check 보관 사본 (t107)
 
-아래 블록을 primary 체크아웃의 `.moai/reports/unified-board-design-20260817.md`
-에서 `## 8. 리스크` 절 바로 앞(§7 표 다음)에 삽입한다. lane 세션이 워크트리
-격리로 primary 편집이 가드 차단되어 리드 적용으로 넘김 — 내용은 아래 실측 그대로.
+> **정본: primary 체크아웃 `.moai/reports/unified-board-design-20260817.md` § Card Cross-Check** (t113 러더이더 2 삽입, 2026-08-17). 이 파일은 paste 원천이 **아니며** 보관 목적의 사본이다 — 아래 내용은 정본 판을 그대로 옮긴 것이다.
+>
+> 재심 M1′ 정정(2026-08-17): 이전 판본은 S6를 `[신규 발행 필요]`·"t84 미발급(grep 0건)"로 오판했고 큐 메모도 낡았다(live t59 → 이후 머지). 실제로는 t84가 **t84→t110 재발행**되어 t110 머지 `6b44bdd2e`에서 S6 인도 완료 — 전 8/8 매핑. "grep 0건"은 재발행 가능성을 배제하지 않는다(발급 전 계보 확인).
 
-- 큐 실측: `moai todo` 2026-08-17 (live: t108·t113·t59)
-- git 실측: `git log --oneline --grep 'merge: tNN'` (t109=2c70e7aed, t56=400dde787, t55=1ea829c76, t85=162f74d99, t58=b8a25b62f / t84=0건)
-
----8<--- 여기부터 ---
+---8<--- 정본 판 (그대로 옮김) ---
 
 ## Card Cross-Check (카드 대조표)
 
-§7 마일스톤→카드 대조 (t107 소급 적용 — 연결 검증을 사람 기억에서 큐·git 실측으로). 실측 시각: 2026-08-17, 큐 조회 `moai todo` + git `merge:` grep. 기계 검출: `moai graph build && moai graph query --milestones-no-card`.
+§7 마일스톤→카드 대조 (t107 소급 적용 — 연결 검증을 사람 기억에서 큐·git 실측으로). 실측 시각: 2026-08-17 (본 표 삽입 시점 재측정), 큐 조회 `moai todo` + git `merge:` grep. 기계 검출: `moai graph build && moai graph query --milestones-no-card`.
 
 | milestone | 내용 | card | 실측 |
 |---|---|---|---|
-| S0 | 접점 실측 | t109 | 머지 — 2c70e7aed 실측 보고서 |
-| S1 | 모드 재명명 6→4 | t108 | 큐 queued ✓ |
-| S2 | review 폐지 → 3단계 | t113 | 큐 queued ✓ |
+| S0 | 접점 실측 | t109 | 머지 — 2c70e7aed |
+| S1 | 모드 재명명 6→4 | t108 | 큐 queued |
+| S2 | review 폐지 → 3단계 | t113 | 큐 queued · 진행 중 |
 | S3 | 세션 이름 역할 고정 | t56 | 머지 — 400dde787 |
-| S4 | 보드 상태 디스크 파생 | t55 | 머지 — 1ea829c76 · D2 커버리지 미확인 |
-| S5 | `-k N`에 `-f` 흡수 | t85 | 머지 — 162f74d99 · '확장' 범위 미확인 |
-| S6 | 공장장 세션 `--chief` | [신규 발행 필요] | 원 주장 t84 — 미발급 (git grep 0건) |
-| S7 | 메시지 포맷 + 용어집 | t58 + t59 | t58 머지 — b8a25b62f · t59 큐 queued ✓ |
+| S4 | 보드 상태 디스크 파생 | t55 | 머지 — 1ea829c76 |
+| S5 | `-k N`에 `-f` 흡수 | t85 | 머지 — 162f74d99 |
+| S6 | 공장장 세션 `--chief` | t110 | 재발행 t84→t110 — 머지 6b44bdd2e |
+| S7 | 메시지 포맷 + 용어집 | t58 + t59 | 머지 — b8a25b62f · d0f946d62 |
 
-마일스톤 8개 → 카드 8개 (S6 제외 7개 매핑, S6 신규 필요).
+마일스톤 8개 → 카드 8개, 전 매핑 완결 (신규 발행 필요 0건).
+
+**재발행 계보 주석** (리드 확정 2026-08-17): t84→t110 · t105→t106 · t38→t111 — 큐에서 사라지거나 미발급로 판정된 카드가 후속 번호로 재발행된 계보. **계보는 반드시 실측 칼럼에 기재한다** — card 칸에 `tNN→tNN` 형태로 쓰면 t107 파서(`moai graph query --milestones-no-card`)가 화살표 양쪽을 모두 매핑 카드로 읽어 미발급 오판을 낳는다(실측: 최초 판본의 S6행). "not in live queue" 판정은 완결과 미발급을 구분하지 못하므로(큐가 done 행을 삭제), 각 플래그는 `git log --grep 'merge: <카드>'`로 판정한 뒤 재발행 계보와 대조한다.
 
 ---8<--- 여기까지 ---

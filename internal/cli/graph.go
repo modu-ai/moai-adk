@@ -43,7 +43,10 @@ const unreferencedSpecCaveat = "NOTE: unreferenced != unimplemented (미연결 �
 // milestoneNoCardCaveat is printed with every --milestones-no-card result:
 // the queue drops rows on done, so "not in live queue" spans completed and
 // never-issued alike — the flag forces the question, git history answers it.
-const milestoneNoCardCaveat = "NOTE: 'not in live queue' covers completed AND never-issued cards — done removes queue rows.\nResolve each flag with: git log --oneline --grep 'merge: tNN' (완결이면 통과, 미발급이면 새 카드)."
+// The third line warns that a zero-hit grep does not mean the work never
+// happened: a card may have been re-issued under a new id, so the lineage is
+// checked before a new card is requested.
+const milestoneNoCardCaveat = "NOTE: 'not in live queue' covers completed AND never-issued cards — done removes queue rows.\nResolve each flag with: git log --oneline --grep 'merge: tNN' (완결이면 통과, 미발급이면 새 카드).\ngrep 0건 ≠ 작업 미완 — 카드가 재발행되었을 수 있으니 새 카드 발급 전에 계보를 확인."
 
 // todoQueueRootFn is the seam the --milestones-no-card tests use to point
 // the queue cross-check at a fixture backlog (same injection pattern as
