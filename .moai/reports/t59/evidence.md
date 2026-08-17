@@ -42,3 +42,15 @@ Baseline-attribution: 위 커맨드는 전부 본 워크트리(`.claude/worktree
 - `t113`(보드 review 칸 제거·3컬럼 통합)이 착지하면 "여섯 칸" 서술(용어집·README·docs-site 4로케일 전부)이 함께 갱신돼야 한다 — t113이 kanban-dispatch.md 템플릿 미러 동반을 이미 명시하므로, t59 산물의 column 서술도 t113 편성 시 동반 갱신 권장.
 - `t47`(README ko 신골격 승격 → en/ja/zh 재파생)이 진행되면 본 카드의 README ko 소절이 en/ja/zh 파생의 원천이 된다 — 소절 제목("다섯 세션이 쓰는 말")은 ko 골격 특유이므로 t47 파생 시 현지화 필요.
 - ko `_meta.yaml`과 `main.yaml`의 기존 항목 순서 어긋남(constitution 위치 등)은 기존 부채(t32 범위) — 본 카드는 신규 항목만 verification 직전으로 양쪽 정렬.
+
+## Rider (리드 판정 후 — zh 용어 통일)
+
+허브 리뷰 판정 PASS(2026-08-17)에 advisory 1건이 러더이더로 채택됨: zh 용어집이 기존 `kanban-mode.zh.md` 용어와 어긋났던 것. 치환 전 기존 용어를 직접 관측해 리뷰 주장을 검증 (`grep -n '主导会话\|伴随会话' …/kanban-mode.zh.md` → L18·34·106·127·128·131·142·170에서 해당 용어 확인).
+
+| 치환 | 발생 | 근거 |
+|---|---|---|
+| `主控` → `主导会话` | 5회 | kanban-mode.zh.md L18/L34/L106 등 기존 lead 역 번역 |
+| `同伴会话` → `伴随会话` | 9회 | kanban-mode.zh.md L18/L127/L128 등 기존 companion 번역 |
+| `同伴角色` → `伴随角色` | 2회 | 리드 지시 범위 밖이나 판정 원리(이중 용어 방치 불가)에 따라 같은 어근 통일 |
+
+재검증(치환 후 이번 실행 관측): 잔여 구 용어 `grep -c '主控\|同伴'` → `0`; `hugo -s docs-site --minify --gc` → exit 0, WARN/ERROR 0라인 (빌드 영향 없다는 리뷰 주장 재현).
