@@ -16,21 +16,20 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 一个会话只有一个上下文窗口，长 SPEC 会把它填满 —— 之后的每一步都背着前面的全部内容前进。看板模式把一项工作拆到**5 个终端**：主导会话推动整条链，4 个伴随会话各自负责 `plan`、`run`、`review`、`sync` 中的一列，只背自己那一列的上下文。上限并没有消失，但没有任何一个会话再扛四个阶段的历史，因此同样的预算能走得远得多。
 
-![看板模式的一次 run —— 主导会话与四个伴随会话各自在自己的终端中，使用各自的模型与推理强度运行](/images/profile/kanban-five-sessions.png)
+![看板模式的一次 run —— 五列看板与主导、三个伴随会话各自在自己的终端中，使用各自的模型与推理强度运行](/images/profile/kanban-five-sessions.png)
 
 每一列都可以用不同的后端和推理强度。上图中 Plan 跑在 Opus 5 high，Run 跑在 GLM 5.2 xhigh，Sync 跑在 GLM 5.2。
 
 {{< terminal title="kanban mode" raw="true" >}}
-moai cc -k                          # 主导 —— announce run-id 并铺好链
-moai cc -k --name plan-<run-id>     # 伴随会话，各开一个终端
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # 主导 —— announce run-id 并铺好链
+moai cc -k --name plan        # 伴随会话，各开一个终端
+moai cc -k --name run
+moai cc -k --name sync
 {{< /terminal >}}
 
-看板有 `backlog → plan → run → review → sync → done` 六列，`backlog` 刻意不设归属会话 —— 只有用 [`/moai todo`](/zh/utility-commands/moai-todo) 主动放入时，工作才会进入看板。主导只依据自己从卡片 `progress.md` 中读到的证据推进卡片，不依据伴随会话的回复。
+看板有 `backlog → plan → run → sync → done` 五列，`backlog` 刻意不设归属会话 —— 只有用 [`/moai todo`](/zh/utility-commands/moai-todo) 主动放入时，工作才会进入看板。review 列并不存在 —— 评审判定由 sync 关卡吸收。主导只依据自己从卡片 `progress.md` 中读到的证据推进卡片，不依据伴随会话的回复。
 
-启动 `moai web`，即可在看板页面并排查看 5 会话链与 SPEC 流水线。
+启动 `moai web`，即可在看板页面并排查看看板链与 SPEC 流水线。
 
 ![moai web 控制台 Overview 页面 —— SPEC 统计、进行中 SPEC 列表、会话注册表](/images/profile/web-console-v31-overview.png)
 

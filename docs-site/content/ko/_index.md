@@ -19,21 +19,20 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스�
 
 세션 하나는 컨텍스트 창 하나를 쓴다. 긴 SPEC은 그 창을 채우고, 뒤에 오는 작업은 앞의 것을 전부 지고 간다. 칸반 모드는 작업 하나를 **터미널 다섯 개**로 나눈다 — 리드 세션이 체인을 몰고, 네 개의 동반 세션이 `plan`·`run`·`review`·`sync` 한 칸씩을 맡아 자기 칸의 맥락만 진다. 한도가 사라지는 것은 아니지만, 어느 세션도 네 단계치 이력을 짊어지지 않으므로 같은 예산이 훨씬 멀리 간다.
 
-![칸반 모드 한 런 — 리드 세션과 네 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다](/images/profile/kanban-five-sessions.png)
+![칸반 모드 한 런 — 다섯 칸 보드와 리드·세 동반 세션이 각자의 터미널에서, 각자의 모델과 추론 강도로 돌고 있다](/images/profile/kanban-five-sessions.png)
 
 칸마다 백엔드와 추론 강도를 다르게 둘 수 있다. 위 화면은 Plan을 Opus 5 high로, Run을 GLM 5.2 xhigh로, Sync를 GLM 5.2로 돌린다.
 
 {{< terminal title="kanban mode" raw="true" >}}
-moai cc -k                          # 리드 — run-id를 알려주고 체인을 깐다
-moai cc -k --name plan-<run-id>     # 동반 세션, 각자 별도 터미널에서
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # 리드 — run-id를 알려주고 체인을 깐다
+moai cc -k --name plan        # 동반 세션, 각자 별도 터미널에서
+moai cc -k --name run
+moai cc -k --name sync
 {{< /terminal >}}
 
-보드는 `backlog → plan → run → review → sync → done` 여섯 칸이고, `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 [`/moai todo`](/ko/utility-commands/moai-todo)로 사람이 넣을 때만 보드에 들어온다. 리드는 카드의 `progress.md`에서 직접 읽은 증거로만 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다.
+보드는 `backlog → plan → run → sync → done` 다섯 칸이고, `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 [`/moai todo`](/ko/utility-commands/moai-todo)로 사람이 넣을 때만 보드에 들어온다. review 칸은 없다 — 검토 판정은 sync 게이트가 흡수한다. 리드는 카드의 `progress.md`에서 직접 읽은 증거로만 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다.
 
-`moai web`을 띄우면 칸반 화면에서 다섯 세션 체인과 SPEC 파이프라인을 함께 볼 수 있다.
+`moai web`을 띄우면 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 볼 수 있다.
 
 ![moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리](/images/profile/web-console-v31-overview.png)
 

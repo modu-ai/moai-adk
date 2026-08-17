@@ -10,14 +10,15 @@ draft: false
 
 ## 칸반 모드란?
 
-칸반 모드는 하나의 **리드** 세션이 `plan -> run -> verify -> sync` 체인을
-주도하고, 네 개의 **컴패니언** 세션이 같은 런에 합류해 작업을 병렬로
-분산합니다. 런의 모든 세션(리드와 컴패니언 모두)은 상향된 Stop-hook
+칸반 모드는 하나의 **리드** 세션이 `plan -> run -> sync` 체인을
+주도하고, 세 개의 **컴패니언** 세션이 같은 런에 합류해 작업을 병렬로
+분산합니다. 검토 판정은 별도 단계가 아니라 sync 게이트가 흡수합니다.
+런의 모든 세션(리드와 컴패니언 모두)은 상향된 Stop-hook
 블록 캡을 받아 세션 중반에 설정한 골이 기본 연속 블록 한계를 넘어
 계속 실행됩니다.
 
-리드가 체인을 시드하고, 컴패니언은 그렇지 않습니다. 각 컴패니언은
-칸반 멤버십 플래그(`-k`)와 역할 라벨(`--name <role>-<run-id>`)을
+리드가 체인을 시드하고, 컴파니언은 그렇지 않습니다. 각 컴파니언은
+칸반 멤버십 플래그(`-k`)와 역할 라벨(`--name <role>`)을
 함께 전달하므로 디스패처가 올바르게 분류하고 SessionStart 훅이
 멤버십을 안내합니다.
 
@@ -34,23 +35,24 @@ moai glm -k                    # GLM 백엔드 리드
 리드 세션은:
 
 {{< icon check-circle ok >}} `MOAI_KANBAN` + `MOAI_KANBAN_ID` 설정 (체인 시드).
-{{< icon check-circle ok >}} SessionStart에서 런 id와 네 개의 컴패니언 실행 명령을 출력.
-{{< icon x-circle danger >}} `MOAI_KANBAN_LABEL`은 설정하지 않음 (컴패니언 신호).
+{{< icon check-circle ok >}} SessionStart에서 런 id와 세 개의 컴패니언 실행 명령을 출력.
+{{< icon x-circle danger >}} `MOAI_KANBAN_LABEL`은 설정하지 않음 (컴파니언 신호).
 
-### 컴패니언 진입
+### 컴파니언 진입
 
 ```bash
-moai cc -k --name plan-abc123    # plan 컴패니언
-moai cc -k --name run-abc123     # run 컴패니언
-moai cc -k --name review-abc123  # review 컴패니언
-moai cc -k --name sync-abc123    # sync 컴패니언
-moai glm -k --name run-abc123    # GLM 백엔드에서 동일
+moai cc -k --name plan    # plan 컴파니언
+moai cc -k --name run     # run 컴파니언
+moai cc -k --name sync    # sync 컴파니언
+moai glm -k --name run    # GLM 백엔드에서 동일
 ```
 
-`<run-id>`는 리드가 시작 시 안내한 식별자이며, 네 가지 역할은
-`plan`, `run`, `review`, `sync` 입니다.
+컴파니언 이름은 역할만으로 붙으며 세 가지 역할은 `plan`, `run`,
+`sync` 입니다. `<run-id>`는 리드 세션의 식별자로 컴파니언 이름에는
+들어가지 않습니다 — 같은 역할 이름이 이미 살아 있으면 다음 번호가
+붙습니다.
 
-컴패니언 세션은:
+컴파니언 세션은:
 
 {{< icon check-circle ok >}} `MOAI_KANBAN_LABEL` 설정 (멤버십 + 역할 라벨).
 {{< icon check-circle ok >}} 리드와 동일한 상향된 Stop-hook 블록 캡.
@@ -60,7 +62,7 @@ moai glm -k --name run-abc123    # GLM 백엔드에서 동일
 
 ```bash
 moai cc --name mysession         # -k 없음, 칸반 멤버십 없음
-moai cc --name run-abc123        # 컴패니언 형태이나 -k 없음 → 무처리
+moai cc --name run               # 컴파니언 역할 이름이나 -k 없음 → 무처리
 ```
 
 `-k`가 없으면 `--name` 형태와 무관하게 디스패처는 아무 작업도 하지
@@ -69,17 +71,16 @@ moai cc --name run-abc123        # 컴패니언 형태이나 -k 없음 → 무�
 ## 다중 세션 부트스트랩 흐름
 
 ```
-터미널 1 (리드)            터미널 2-5 (컴패니언)
+터미널 1 (리드)            터미널 2-4 (컴파니언)
 ─────────────────          ────────────────────────
-moai cc -k                 moai cc -k --name plan-<run-id>
-                           moai cc -k --name run-<run-id>
-                           moai cc -k --name review-<run-id>
-                           moai cc -k --name sync-<run-id>
+moai cc -k                 moai cc -k --name plan
+                           moai cc -k --name run
+                           moai cc -k --name sync
 ```
 
 부트스트랩은 수동입니다: 세션은 다른 세션을 실행할 수 없습니다. 리드
-SessionStart 알림이 복사할 네 개의 명령을 정확히 출력합니다. 각
-컴패니언을 GLM 백엔드로 실행하려면 `moai cc`를 `moai glm`으로 바꾸면
+SessionStart 알림이 복사할 세 개의 명령을 정확히 출력합니다. 각
+컴파니언을 GLM 백엔드로 실행하려면 `moai cc`를 `moai glm`으로 바꾸면
 됩니다.
 
 ## 교차 세션 메시징
@@ -91,7 +92,7 @@ SessionStart 알림이 복사할 네 개의 명령을 정확히 출력합니다.
 ### 가용성 제약
 
 교차 세션 메시징은 모든 환경에서 쓸 수 있는 기능이 아닙니다. 칸반
-모드는 리드와 컴패니언이 오직 이 채널로 이어지므로, 채널이 없으면 모드
+모드는 리드와 컴파니언이 오직 이 채널로 이어지므로, 채널이 없으면 모드
 자체가 성립하지 않습니다. 시작하기 전에 아래 제약을 확인하세요.
 
 {{< icon warning warn >}} **운영체제**: macOS와 Linux(WSL 2 안의 Linux 포함)에서만 사용할 수
@@ -130,7 +131,7 @@ on Google Cloud, Microsoft Foundry에서는 사용할 수 없습니다.
 
 ## SessionStart 알림
 
-리드 알림은 런 id, 네 개의 컴패니언 실행 명령, 리더 소켓 경로,
-인바운드 자동화 상태를 안내합니다. 컴패니언 알림은 합류를 확인하는
+리드 알림은 런 id, 세 개의 컴파니언 실행 명령, 리더 소켓 경로,
+인바운드 자동화 상태를 안내합니다. 컴파니언 알림은 합류를 확인하는
 역할 없는 한 줄입니다. 두 알림 모두 프롬프트하지 않으며 정보 제공용
 stdout입니다.

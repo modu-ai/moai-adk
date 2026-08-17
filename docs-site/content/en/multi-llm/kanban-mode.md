@@ -10,14 +10,15 @@ For the full overview of Kanban Mode and the Origin-Trail Chain design direction
 
 ## What is Kanban Mode?
 
-Kanban Mode lets one **lead** session drive a `plan -> run -> verify -> sync`
-chain while four **companion** sessions join the same run to parallelize the
-work. Every session in the run — lead or companion — gets the raised
+Kanban Mode lets one **lead** session drive a `plan -> run -> sync`
+chain while three **companion** sessions join the same run to parallelize the
+work. The review verdict is not a separate stage — the sync gate absorbs it.
+Every session in the run — lead or companion — gets the raised
 Stop-hook block cap so a mid-session goal keeps running past the default
 consecutive-block ceiling.
 
 The lead seeds the chain; companions do not. Each companion carries a
-kanban-membership flag (`-k`) plus a role label (`--name <role>-<run-id>`)
+kanban-membership flag (`-k`) plus a role label (`--name <role>`)
 so the dispatcher classifies it correctly and the SessionStart hook
 announces its membership.
 
@@ -34,21 +35,22 @@ moai glm -k                    # lead on GLM backend
 The lead session:
 
 {{< icon check-circle ok >}} Sets `MOAI_KANBAN` + `MOAI_KANBAN_ID` (chain seed).
-{{< icon check-circle ok >}} Prints the run id and four companion launch lines at SessionStart.
+{{< icon check-circle ok >}} Prints the run id and three companion launch lines at SessionStart.
 {{< icon x-circle danger >}} Does NOT set `MOAI_KANBAN_LABEL` (that is the companion signal).
 
 ### Companion entry
 
 ```bash
-moai cc -k --name plan-abc123    # plan companion
-moai cc -k --name run-abc123     # run companion
-moai cc -k --name review-abc123  # review companion
-moai cc -k --name sync-abc123    # sync companion
-moai glm -k --name run-abc123    # same, on the GLM backend
+moai cc -k --name plan    # plan companion
+moai cc -k --name run     # run companion
+moai cc -k --name sync    # sync companion
+moai glm -k --name run    # same, on the GLM backend
 ```
 
-The `<run-id>` is the identifier the lead announced at startup; the four
-roles are `plan`, `run`, `review`, `sync`.
+Companions are named by their bare role; the three roles are `plan`, `run`,
+and `sync`. The `<run-id>` names the lead session alone and never appears in
+a companion name — a second live session claiming the same role takes the
+next free number.
 
 The companion session:
 
@@ -60,7 +62,7 @@ The companion session:
 
 ```bash
 moai cc --name mysession         # no -k, no kanban membership
-moai cc --name run-abc123        # companion-shape --name but no -k → no-op
+moai cc --name run               # companion role name but no -k → no-op
 ```
 
 Without `-k`, the launcher is a no-op regardless of `--name` shape. The
@@ -69,16 +71,15 @@ Without `-k`, the launcher is a no-op regardless of `--name` shape. The
 ## Multi-session bootstrap flow
 
 ```
-Terminal 1 (lead)          Terminal 2-5 (companions)
+Terminal 1 (lead)          Terminal 2-4 (companions)
 ─────────────────          ────────────────────────
-moai cc -k                 moai cc -k --name plan-<run-id>
-                           moai cc -k --name run-<run-id>
-                           moai cc -k --name review-<run-id>
-                           moai cc -k --name sync-<run-id>
+moai cc -k                 moai cc -k --name plan
+                           moai cc -k --name run
+                           moai cc -k --name sync
 ```
 
 Bootstrap is manual: a session cannot launch another session. The lead
-SessionStart notice prints the exact four commands to copy, one per new
+SessionStart notice prints the exact three commands to copy, one per new
 terminal. Substitute `moai glm` for `moai cc` on any companion to run it on
 the GLM backend.
 
@@ -131,7 +132,7 @@ the launcher did not inject.
 
 ## SessionStart notice
 
-The lead notice announces the run id, the four companion launch lines, the
+The lead notice announces the run id, the three companion launch lines, the
 leader socket path, and the inbound-automation status. A companion notice
 is a single role-less line acknowledging the join. Neither notice prompts;
 both are informational stdout only.
