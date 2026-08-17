@@ -203,6 +203,14 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		}
 	}
 
+	// 5.5. Translate the user's crosssession.yaml into an injected --settings
+	// file. Covers every launcher (cc / glm / cg all funnel through here).
+	// No-ops when the operator supplied --settings themselves — which also
+	// covers the kanban/factory branches, whose args already carry the injected
+	// flag by the time they reach this funnel. Fail-open: an unreadable config
+	// or a failed write launches without the injection.
+	extraArgs = appendCrossSessionSettings(root, extraArgs)
+
 	// 6. Launch claude
 	return launchClaude(profileName, extraArgs)
 }

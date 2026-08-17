@@ -480,6 +480,40 @@ func reportFields() []FieldDef {
 // 않는다. sub-agent frontmatter 편집(agentfm.*)은 별도 표면(agentfm.go)으로
 // 유지된다 — Agent Teams와 무관하다.
 
+// withEmptySubmits opts a closed-set select into treating "" as a real,
+// submittable value: the rendered empty option writes the yaml key back to its
+// neutral "" form (e.g. crosssession inbound ""). It widens the field's
+// membership Validate to accept "" alongside the closed set. Without this
+// opt-in, parseSchemaForm's empty=preserve contract (EC-1) silently drops the
+// empty submission and the previous value survives — the "off" direction of
+// the toggle would be a no-op.
+func withEmptySubmits(f FieldDef) FieldDef {
+	f.EmptySubmits = true
+	prev := f.Validate
+	f.Validate = func(v string) bool { return v == "" || (prev != nil && prev(v)) }
+	return f
+}
+
+// crossSessionFields는 crosssession 섹션의 편집 FieldDef를 반환한다:
+// inbound(select, EmptySubmits) + isolate_machines(bool) + dialog_expiry
+// (select, EmptySubmits). 옵션 집합은 config.ValidCrossSession* 공유 접근자에서
+// 파생한다 — 런처 번역(internal/cli crosssession_settings.go)과 같은 단일 선언.
+// isolate_machines는 bool이므로 hidden-companion 패턴이 false 제출을 이미 전달한다
+// (중립 false = 승인 없음 기본 태도).
+func crossSessionFields() []FieldDef {
+	return []FieldDef{
+		withEmptySubmits(withSelect(
+			seamField(SectionCrossSession, "crosssession", TypeSelect, "crosssession", "inbound"),
+			"f.crosssession.inbound.opt.", config.ValidCrossSessionInboundValues(),
+			"Unset (per-message default)", "f.crosssession.inbound.opt.empty")),
+		seamField(SectionCrossSession, "crosssession", TypeBool, "crosssession", "isolate_machines"),
+		withEmptySubmits(withSelect(
+			seamField(SectionCrossSession, "crosssession", TypeSelect, "crosssession", "dialog_expiry"),
+			"f.crosssession.dialog_expiry.opt.", config.ValidCrossSessionDialogExpiryValues(),
+			"Unset (5m default)", "f.crosssession.dialog_expiry.opt.empty")),
+	}
+}
+
 // sectionExtraFields는 M2b/M3 확장 필드 전체를 렌더 순서(AllSections 순서와
 // 일치)로 반환한다.
 func sectionExtraFields() []FieldDef {
@@ -492,6 +526,7 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, cacheFields()...)   // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
+	fields = append(fields, crossSessionFields()...)
 	return fields
 }
 

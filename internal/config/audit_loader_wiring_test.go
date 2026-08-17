@@ -40,6 +40,8 @@ var partialLoaderExceptions = map[string]string{
 	"lsp":      "16-language LSP config consumed by the quality-gate and initializer paths, not by Loader.Load",
 	"mx":       "MX thresholds read on demand by internal/cli mx_query/doctor, not by Loader.Load",
 	"security": "sandbox policy read on demand by internal/sandbox and internal/cli deps, not by Loader.Load",
+	"crosssession": "cross-session messaging preferences read on demand by the moai launchers " +
+		"(LoadCrossSessionConfig → transient --settings injection), not by Loader.Load",
 }
 
 // minimalSectionYAML returns parseable placeholder content for a section file.

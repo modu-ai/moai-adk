@@ -1,0 +1,7 @@
+# github.com/modu-ai/moai-adk/internal/config [github.com/modu-ai/moai-adk/internal/config.test]
+internal/config/loader_crosssession_test.go:26:14: undefined: LoadCrossSessionConfig
+internal/config/loader_crosssession_test.go:48:14: undefined: LoadCrossSessionConfig
+internal/config/loader_crosssession_test.go:68:14: undefined: LoadCrossSessionConfig
+internal/config/loader_crosssession_test.go:86:9: undefined: NewDefaultCrossSessionConfig
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+FAIL
