@@ -238,7 +238,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Methodology delegation (team mode experimental)
 
-The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (Mode 5), with multi-domain research fanned out via Mode 4 (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
+The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
 
 ### MX Tag Integration
 
@@ -440,14 +440,14 @@ Sync to Cleanup (Route B only):
 
 ## Agent Teams Variant — Re-allowed (experimental)
 
-Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and Mode 3 (`agent-team`) is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
+Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and `agent-team` is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
 
-Genealogy: Mode 3 was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
+Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
 
 The default multi-agent surface remains:
-- Multi-domain research/review → Mode 4 (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).
-- Coding-heavy implementation → Mode 5 (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
-- High-volume mechanical transformation → Mode 6 (workflow / dynamic-workflow fan-out).
+- Multi-domain research/review → fanout (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).
+- Coding-heavy implementation → serial (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
+- High-volume mechanical transformation → sweep (dynamic-workflow fan-out).
 
 The native Claude Code teammate runtime is UNAFFECTED and sanctioned: `moai cg` GLM teammate
 panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and

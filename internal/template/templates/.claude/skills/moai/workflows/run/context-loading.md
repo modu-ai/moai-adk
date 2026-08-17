@@ -42,7 +42,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml constitution.development_mode`. Behaves as today's default `/moai run` invocation.
 - **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
-- **`team` (experimental)**: The `--mode team` dispatch value selects the Agent Teams layer (Mode 3 `agent-team`, re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
+- **`team` (experimental)**: The `--mode team` dispatch value selects the Agent Teams layer (agent-team `agent-team`, re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
@@ -73,7 +73,7 @@ dispatch(mode)
 |---------------|--------------|
 | `minimal` | `autopilot` |
 | `standard` | `autopilot` |
-| `thorough` | `autopilot` (the former `team` default is not reinstated — Mode 3 stays explicit-request-only) |
+| `thorough` | `autopilot` (the former `team` default is not reinstated — agent-team stays explicit-request-only) |
 
 ### Sentinel Error Keys
 

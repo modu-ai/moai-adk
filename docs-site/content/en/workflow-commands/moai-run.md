@@ -62,7 +62,7 @@ On re-run, work continues from the last successful stage checkpoint.
 
 **The `--mode` dispatch axis:**
 
-`--mode` is a separate axis that selects a `/moai run` workflow variant (distinct from Phase 4's 6-mode execution catalog):
+`--mode` is a separate axis that selects a `/moai run` workflow variant (distinct from Phase 4's 4-mode execution catalog):
 
 - `autopilot` (default): scale-based selection in Phase 4, then run the implementation
 - `loop`: delegate to the Ralph engine's diagnostic loop (see `loop.md`)

@@ -102,7 +102,7 @@ enforce per-teammate quality:
 
 These are the teammate-runtime equivalents of the gate, applied per-teammate.
 They bind the **native Claude Code teammate runtime**, which is DISTINCT from
-the MoAI static Agent Teams layer (Mode 3 `agent-team` — experimental,
+the MoAI static Agent Teams layer (agent-team `agent-team` — experimental,
 re-allowed, explicit-request-only per `orchestration-mode-selection.md` §C.1;
 the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent
 mode). Do not conflate

@@ -447,9 +447,10 @@ type WorkflowConfig struct {
 
 	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
 	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
-	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to
-	// Phase 0.95's Mode 1-6 shape axis — B (this field) decides model/effort,
-	// Phase 0.95 decides spawn shape; they compose, never compete.
+	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to the
+	// Phase 4 mode-shape axis (direct / serial / fanout / sweep) — B (this
+	// field) decides model/effort, Phase 4 decides spawn shape; they compose,
+	// never compete.
 	// When the block is absent the map is nil and RouteModelFor falls back to
 	// the documented default entry with FallbackApplied=true.
 	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`

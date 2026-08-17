@@ -147,7 +147,7 @@ Propagation Method:
 - (retired) --worktree: plan no longer creates a workspace — enter one first with `moai cc -w <name>`
 - --branch: Create a feature branch for the SPEC (default branch naming: feature/SPEC-XXX)
 - --resume SPEC-XXX: Resume an interrupted plan session
-- --team: experimental — selects Agent Teams Mode 3 (re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Parallel Agent(general-purpose) fan-out remains the default exploration pattern.
+- --team: experimental — selects Agent Teams agent-team (re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Parallel Agent(general-purpose) fan-out remains the default exploration pattern.
 
 ### Run Flags
 

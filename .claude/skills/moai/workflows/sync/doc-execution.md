@@ -123,7 +123,7 @@ Input: Approved sync plan, project verification results, changed files list, div
 
 ##### Drafter / Applier Structure (read-only fan-out, single writer)
 
-**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the Mode 4 concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
+**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
 
 | Drafter | Draft scope |
 |---------|-------------|
