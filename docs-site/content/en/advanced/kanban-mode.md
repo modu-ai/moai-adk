@@ -222,6 +222,22 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
 
+## Card Classes — A/B/C
+
+Not every card needs to travel through all three working columns. Most of what piles up in the backlog is simple cleanup, and putting such a card through the full plan → run → sync procession costs more ceremony than the change is worth. When a card leaves `backlog`, the lead classifies it and states the class in the dispatch.
+
+| Class | Shape | Path it travels |
+|--------|------|---------------|
+| A — direct close | A one-file, one-line change with no design judgement in it, and CI catches the regression | One session carries the card all the way to a PR; `plan` skipped |
+| B — defect, cause not yet established | Something is broken but the cause has not been established yet | `run → sync`; `plan` is skipped, so no SPEC exists |
+| C — design change | Involves a decision or spans subsystems | All three working columns |
+
+Class A is admitted on verified evidence only — the diff is measured against the base to show it touches one file, and CI is confirmed green on the head that will merge. "It's faster" is never the justification. Speed is the effect of skipping the columns, not the reason for it, so a Class A justified by speed alone is a Class C being rushed.
+
+What Class B skips is `plan`, not the sync gate's review. A defect whose cause is unestablished is exactly what a review catches, so the gate stays to the end. Before the card leaves `run`, the evidence that established the cause — what was reproduced and what it printed — is written into the card's progress record.
+
+One card occupies one column at a time, and cards actually run in parallel only when each occupies a different worktree.
+
 ## When to use it, when not to
 
 {{< callout type="info" >}}
