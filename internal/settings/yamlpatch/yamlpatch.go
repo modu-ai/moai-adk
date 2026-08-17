@@ -46,7 +46,14 @@ func PatchFile(path string, edits []KeyEdit) error {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("yamlpatch: read %s: %w", path, err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("yamlpatch: read %s: %w", path, err)
+		}
+		// A missing section file starts from an empty mapping document. The
+		// section loaders treat an absent file as defaults (greenfield
+		// tolerance); the seam write mirrors that — the first edit creates
+		// the file rather than erroring.
+		data = []byte("{}\n")
 	}
 
 	var doc yaml.Node

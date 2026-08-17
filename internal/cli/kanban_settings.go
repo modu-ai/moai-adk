@@ -51,10 +51,12 @@ func operatorSuppliedSettings(args []string) bool {
 }
 
 // prepareKanbanSettings writes a transient settings file carrying
-// {"crossSessionInbound": "accept"} to a session-private path under
-// os.TempDir(), and returns the --settings flag pair to append to the backend's
-// argv, plus a cleanup function that removes the file and restores the signal
-// env var.
+// {"crossSessionInbound": "accept"} (plus the user's crosssession.yaml extras
+// — dialogExpiry and an isolatePeerMachines opt-in ride along, only the
+// inbound value is forced to accept, because kanban dispatch stalls without
+// it) to a session-private path under os.TempDir(), and returns the
+// --settings flag pair to append to the backend's argv, plus a cleanup
+// function that removes the file and restores the signal env var.
 //
 // When the operator supplied their own --settings (REQ-FB-007), OR when the
 // write fails (fail-open, C8/EC-4), no flag is returned and cleanup is a no-op.
@@ -69,7 +71,13 @@ func prepareKanbanSettings(args []string) (flag []string, cleanup func()) {
 		return nil, func() {}
 	}
 
-	path, err := writeTransientSettingsFile()
+	// The kanban payload: the user's cross-session preferences overlaid with
+	// the dispatch-required accept. An unreadable config degrades to the
+	// accept-only payload (fail-open — same as before the merge existed).
+	payload := crossSessionSettingsPayload(crossSessionConfigRootFn())
+	payload["crossSessionInbound"] = "accept"
+
+	path, err := writeTransientSettingsFile(payload, "moai-kanban")
 	if err != nil {
 		// Fail-open (C8/EC-4): launch without the injected --settings. The hook
 		// will print the verify advisory because EnvMoaiKanbanSettingsInjected
@@ -86,17 +94,18 @@ func prepareKanbanSettings(args []string) (flag []string, cleanup func()) {
 	}
 }
 
-// writeTransientSettingsFile writes {"crossSessionInbound": "accept"} to a
-// session-private file under os.TempDir() and returns its path.
-func writeTransientSettingsFile() (string, error) {
+// writeTransientSettingsFile writes the given settings payload to a
+// session-private file under os.TempDir() and returns its path. The prefix
+// names the injector ("moai-kanban" / "moai-crosssession") in the filename.
+func writeTransientSettingsFile(payload map[string]any, prefix string) (string, error) {
 	dir := os.TempDir()
 	// Session-private by PID + nanosecond; two concurrent launches in the same
 	// PID (impossible) and same nanosecond (implausible) is the only collision
 	// path, and the cost of a collision is a benign shared file.
-	name := fmt.Sprintf("moai-kanban-%d-%d.json", os.Getpid(), time.Now().UnixNano())
+	name := fmt.Sprintf("%s-%d-%d.json", prefix, os.Getpid(), time.Now().UnixNano())
 	path := filepath.Join(dir, name)
 
-	data, err := json.Marshal(map[string]string{"crossSessionInbound": "accept"})
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}

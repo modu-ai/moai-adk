@@ -24,8 +24,9 @@ import (
 )
 
 // ApplySchemaEdits는 제출된 확장 필드 값(FieldDef.Name → 문자열 값)을 영속화한다.
-// 빈 문자열 값은 호출자(웹 파서)가 이미 걸러낸다(empty=preserve, EC-1) — 여기서
-// 받는 모든 값은 명시 제출 값이다. 알 수 없는 필드명은 오류다.
+// 빈 문자열 값은 호출자(웹 파서)가 걸러낸다(empty=preserve, EC-1) — 단
+// EmptySubmits 옵트인 필드는 예외다: 그 필드의 ""는 명시 제출 값이며, seam 경로는
+// 키를 중립 ""(예: crosssession.inbound)로 기록한다. 알 수 없는 필드명은 오류다.
 func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 	if len(edits) == 0 {
 		return nil
