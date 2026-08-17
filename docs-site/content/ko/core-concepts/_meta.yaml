@@ -13,6 +13,9 @@ ddd:
   title: "TRUST 5 품질"
 "constitution":
   title: "Constitution 시스템"
+"kanban-board-terms":
+  title: "칸반 보드 용어"
+  weight: 40
 "verification-claim-integrity":
   title: "검증 경로 무결성"
   weight: 50

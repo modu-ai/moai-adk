@@ -1,11 +1,29 @@
 ---
-description: "Detail companion for kanban-dispatch.md — board table, card classes, dispatch-cycle naming, review-lens table, /clear message structure, isolation rationale, verification-load incident record"
+description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, review-lens table, /clear message structure, isolation rationale, verification-load incident record"
 paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-kanban.md,**/.claude/skills/moai/workflows/todo.md"
 ---
 
 # Kanban Dispatch — Detail Companion
 
 > Detail companion of `kanban-dispatch.md` (the always-loaded stub). The stub keeps every [HARD] rule, prohibition, and cross-reference; this file owns the long tables, the dispatch-cycle walkthrough, incident narratives, and worked rationale. Load when moving a card between columns, classifying a card, or choosing review lenses.
+
+## Terminology — the board vocabulary
+
+`kanban-dispatch.md`, `sprint-round-naming.md`, and the operating notes share a working vocabulary that previously had no definition anywhere. Each term gets one definition and one example; the sections below assume these meanings.
+
+| Term | Definition | Example |
+|---|---|---|
+| **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work so parallel streams never interleave, and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | The `run-a1b2c3` session working in worktree `WT-t0` is one lane. |
+| **card** | One unit of work on the board, entered by the operator via `/moai todo "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
+| **column** | One stage of the board, in fixed order `backlog → plan → run → review → sync → done`. The four middle columns each map to exactly one companion role. | `/moai run <SPEC-ID>` happens in the `run` column. |
+| **backlog** | The entry queue of the board. No session owns it by design — work enters only when the operator puts it there. | `/moai todo "rename hint is stale"` appends a card to the backlog. |
+| **lead** | The single coordinating session (`moai cc -k`). Moves cards between columns on evidence it read itself, asks the operator to `/clear` companions between phases, never writes code. | The session that dispatched a card with its worktree instruction. |
+| **companion** | A worker session launched by hand, one terminal at a time (`moai cc -k --name <role>-<run-id>`), owning one column's work at a time. | `plan-a1b2c3`, `run-a1b2c3`, `review-a1b2c3`, `sync-a1b2c3`. |
+| **run-id** | The short identifier the lead prints at launch, shared by every companion name in that chain. Distinguishes concurrent chains on the same machine. | `a1b2c3` in `run-a1b2c3`. |
+| **worktree** | The isolated checkout where a card's work happens, entered through the launcher (`moai cc -w <name>` / `EnterWorktree`), never raw `git worktree add`. Branch named `WT-<card-id>`. A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-t0`. |
+| **dispatch** | The lead's instruction to one companion: a pointer (card id, SPEC id, phase command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
+
+The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (`run-a1b2c3` in `WT-t0`). One is a stage on the board, the other is a stream through the stages.
 
 ## The board
 

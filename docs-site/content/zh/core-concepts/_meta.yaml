@@ -9,6 +9,9 @@ ddd:
   title: "MoAI-ADK 开发方法论"
 "trust-5":
   title: "TRUST 5 质量"
+"kanban-board-terms":
+  title: "看板术语"
+  weight: 40
 "verification-claim-integrity":
   title: "验证声明完整性"
   weight: 50
