@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 Kanban Mode replaces the old model — driving one SPEC at a time in a single session — with a **multi-session board**. One lead session conducts, companion sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
 
-You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract under which the launcher arms the kanban-mode environment. The three phases of the chain (plan → run → sync — the review verdict is absorbed by the sync gate) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
+You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract under which the launcher arms the kanban-mode environment. The three phases of the chain (plan → run → sync — the review verdict is absorbed by the sync gate) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is. The bulk shape — many cards carried at once by numbered lanes — is split off as **Factory Mode** (`-f`), covered in the "Factory Mode" section below.
 
 This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain design, the chain phases, and "what is _not_ automated." For a short introduction from the workflow-command viewpoint, see [`/moai` unified command](/en/workflow-commands/) first.
 
@@ -125,7 +125,8 @@ In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs 
 ### Reachable from the command line today
 
 - **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
-- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the three companion launch commands (`moai cc -k --name plan` and so on) in the user's language. The notice reaching a companion announces which run it joined and the session name. Names are bare role names (`plan`, `run`, `sync`); if a live session already claims the same role name, the next number is attached (`plan-1`, `plan-2`, …).
+- **`-f` / `--factory` launcher switch** — the dedicated Factory Mode entry. `moai cc -f N` announces the lead together with the launch commands for lanes `lane-1`…`lane-N`, and `moai cc -f lane-<n>` adds one lane at a time. Covered in the "Factory Mode" section below.
+- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the three companion launch commands (`moai cc -k --name plan` and so on) in the user's language. The notice reaching a companion announces which run it joined and the session name. Names are bare role names (`plan`, `run`, `sync`); if a live session already claims the same role name, the next number is attached (`plan-1`, `plan-2`, …). The notice also carries the recommended backend mix and the per-session concurrent-agent cap (10).
 - **Session record** — the entered session's role, backend, and target SPEC are recorded.
 - **`moai chain` CLI** — five subcommands work: `status` (current-node summary), `lineage` (root-to-leaf lineage), `back` (parent node's resume target and command), `list` (all nodes with freshness), `prune` (folding terminated old nodes into an archive). The `internal/chain/` storage layer below backs them.
 - **Dispatch** — the actor moving cards between columns is the lead session's orchestrator. The protocol lives in `.claude/rules/moai/workflow/kanban-dispatch.md`, and companion sessions are launched by hand, one per terminal. There is no path by which a session launches another session.
@@ -186,6 +187,8 @@ Opening the lead with `moai cc -k` prints one launch command per companion sessi
 
 Cards flow like this: the lead instructs the `plan` session to author, the `run` session implements from that plan, and the `sync` session reconciles the code with the SPEC and commits. The review verdict is not a separate column: the sync gate absorbs it, running the review lenses itself. Each dispatch happens only after the lead has read the phase's progress evidence.
 
+Each of the three companions can call sub-agents in parallel. The `plan` session in particular fans out SPEC authoring across cards — one parallel `Agent()` worker per card directory, so authoring does not wait its turn one card at a time. The concurrent-agent count is capped at 10 per session: the launcher injects a `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` cap into each companion, so even with all four sessions fanning out at once, the machine's capacity is divided by construction rather than by operator restraint.
+
 {{< callout type="info" >}}
 **Why this shape — a backend per role.** Design and leading run on Opus; implementation runs on GLM. When opening companions, `moai glm -k --name ...` instead of `moai cc -k --name ...` joins that session on the GLM backend. Keeping the expensive model where judgment is needed and routing the implementation load to the cheaper backend is what makes the token cost of a multi-session run sustainable. Sessions message each other, and cross-session messaging is auto-permitted through the injected `--settings`.
 {{< /callout >}}
@@ -201,38 +204,48 @@ moai glm -k --name run         # run — implementation-heavy work on GLM
 moai cc  -k --name sync        # sync — review and wrap-up on Claude
 ```
 
-The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
+The reasoning is the kind of thinking each role needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading sessions across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
 
 The model labels visible in the screenshot's statuslines reflect one operator's session at capture time, not the shipped default.
 
-## Numbered-workers run — same `-k`, attach a worker count
+## Factory Mode — many cards at once across N lanes
 
 {{< callout type="info" >}}
 {{< icon flash primary >}} **Value affiliation**: multi-session orchestration · tokenomics
 {{< /callout >}}
 
-If kanban is the shape where "three roles carry one card through the phases," the **numbered-workers run** — a second form of the same Kanban mode — is the shape where "N numbered workers carry several cards at once." Entry is nothing more than attaching a **number** to the same `-k` token — not a new flag, but a second reading of the same switch. (Its pre-rename name, from the `-f` era, was "factory mode.")
+If kanban is the shape where "three roles carry one card through the phases," **Factory Mode** is the shape where "N numbered lanes carry several cards at once." As of v3.1.1 the factory carries its own entry token `-f` — the kanban chain keeps `-k`, the factory takes `-f`.
 
 ```bash
-# Lead — a 4-worker kanban run (prints the launch commands for worker-1..worker-4)
-$ moai cc -k 4
+# Lead — a 4-lane factory run (prints the launch commands for lane-1..lane-4)
+$ moai cc -f 4
 
-# Workers — each in its own terminal; the number goes into the command
-$ moai cc -k 4 --name worker-1
-$ moai cc -k 4 --name worker-2
-$ moai cc -k 4 --name worker-3
-$ moai cc -k 4 --name worker-4
+# Lanes — each in its own terminal; the number goes into the command
+$ moai cc -f lane-1
+$ moai cc -f lane-2
+$ moai cc -f lane-3
+$ moai cc -f lane-4
 
-# GLM-backend workers take the same form
-$ moai glm -k 4 --name worker-3
+# GLM-backend lanes take the same form
+$ moai glm -f lane-3
 ```
 
-What the lead does differs from a role-kanban lead. Where a role-kanban lead coordinates the phases of a single card, the numbered-workers run's lead **polls the backlog queue** and **deals the operator-picked cards to free workers**. The dealing splits by card class — Class A/B (simple changes · defects whose cause is not yet established) go to one worker whole, while Class C (design changes) takes the serial `plan → run → sync` route. While the workers are busy, new cards are not woken needlessly; dealing is timed to the moment a slot frees up (staggered fan-out — deferred dealing that avoids simultaneous-start contention).
+Attach no count to `-f` and the run starts with one lane (`lane-1`) by default. As the queue piles up, add one lane at a time with `moai cc -f lane-<n>` (or the glm form). A number whose label is held by a live session is bumped to the next free number.
 
-Omit the worker count and use only the `-k --name worker-<i>` form, and the run resolves to **8 workers by default**. The mixed-backend launcher (`moai cg`) refuses it for the same reason as kanban (`FACTORY_MODE_UNSUPPORTED_BACKEND`).
+### Every card goes to one lane whole
 
-{{< callout type="warning" >}}
-{{< icon warning warn >}} **`-f`/`--factory` is retired.** The `-f` flag, once dedicated to factory entry, was retired when entry unified on `-k <N>`; it now raises an explicit error. It is not a silently ignored flag — the error tells you where to go instead.
+What the factory lead does differs from a kanban lead. Where a kanban lead coordinates the phases of a single card, the factory lead **polls the backlog queue** and **routes the cards picked by the operator** (or by the kanban foreman loop — a bare `/loop`) **to free lanes**. The unit of routing is always the whole card — every card goes to one lane in its entirety, and that lane carries it through the serial 3-stage path (`plan -> run -> sync`, one stage completing before the next begins) in-session. Each stage is spawned and run by the lane as an `Agent()` sub-agent; a card is never split across lanes.
+
+Every lane can run up to 10 agents concurrently in parallel — the launcher injects a `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` cap into each lane session, so N lanes fanning out simultaneously divide the machine's capacity by construction rather than by operator restraint.
+
+### Staggered activation and no model override
+
+Never activate every lane at once. Activate the first lane, wait for evidence that it has started producing output (first job or visible progress), then activate the remaining lanes — concurrent requests cannot read a cache entry still being written, so simultaneous activation breaks cache efficiency. Do not put a model override on dispatches either — the GLM tier mapping rides the `ANTHROPIC_DEFAULT_*_MODEL` slot environment, and a per-spawn override splits the caches and can bypass the slot-to-GLM mapping.
+
+The kanban lead's socket opens at `/tmp/moai-socket-kanban/<run-id>` and the factory lead's at `/tmp/moai-socket-factory/<run-id>`; the bootstrap notice carries the actual path. The mixed-backend launcher (`moai cg`) refuses it for the same reason as kanban (`FACTORY_MODE_UNSUPPORTED_BACKEND`).
+
+{{< callout type="info" >}}
+**The earlier shapes still work.** The v1.2.0 unified entry forms — `-k <N>` (lead) and `-k <N> --name lane-<i>` (lane) — remain valid compatibility forms (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). One entry token per launch, though: passing `-k` and `-f` together is an error.
 {{< /callout >}}
 
 ## Watching the board in a browser
@@ -265,29 +278,13 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
 
-## Card Classes — A/B/C
-
-Not every card needs to travel through all three working columns. Most of what piles up in the backlog is simple cleanup, and putting such a card through the full plan → run → sync procession costs more ceremony than the change is worth. When a card leaves `backlog`, the lead classifies it and states the class in the dispatch.
-
-| Class | Shape | Path it travels |
-|--------|------|---------------|
-| A — direct close | A one-file, one-line change with no design judgement in it, and CI catches the regression | One session carries the card all the way to a PR; `plan` skipped |
-| B — defect, cause not yet established | Something is broken but the cause has not been established yet | `run → sync`; `plan` is skipped, so no SPEC exists |
-| C — design change | Involves a decision or spans subsystems | All three working columns |
-
-Class A is admitted on verified evidence only — the diff is measured against the base to show it touches one file, and CI is confirmed green on the head that will merge. "It's faster" is never the justification. Speed is the effect of skipping the columns, not the reason for it, so a Class A justified by speed alone is a Class C being rushed.
-
-What Class B skips is `plan`, not the sync gate's review. A defect whose cause is unestablished is exactly what a review catches, so the gate stays to the end. Before the card leaves `run`, the evidence that established the cause — what was reproduced and what it printed — is written into the card's progress record.
-
-One card occupies one column at a time, and cards actually run in parallel only when each occupies a different worktree.
-
 ## When to use it, when not to
 
 {{< callout type="info" >}}
 **One lead, three companions.** Entry and dispatch work in v3.1. The board state store that would pin column positions to a file has no callers yet, so the current position of a card is held by the lead session and the SPEC status.
 {{< /callout >}}
 
-**When to use** — when advancing one SPEC (or several SPECs) simultaneously across multiple worktree sessions. When you need to track session lineage with the Origin-Trail Chain. When you want to drive one SPEC all the way to closure in one go.
+**When to use** — when advancing one SPEC (or several SPECs) simultaneously across multiple worktree sessions. When you need to track session lineage with the Origin-Trail Chain. When you want to drive one SPEC all the way to closure in one go. When many cards of the same shape have piled up and you want them split across parallel lanes, Factory Mode (`-f`) is that shape.
 
 **When not to use** — when you want a human to judge and review intermediate artifacts between phases (in this case, run the ordinary `plan → run → sync` turn by turn). Short work that finishes in a turn or two. When you need the mixed backend (`moai cg`).
 
@@ -303,8 +300,9 @@ This page states explicitly what it does not do:
 
 - [`/moai` unified command](/en/workflow-commands/) — a short introduction from the workflow-command viewpoint
 - [`/moai todo`](/en/utility-commands/moai-todo) — the backlog queue that admits cards onto the board
-- [`/moai loop`](/en/utility-commands/moai-loop) — the unattended foreman driven by a bare `/loop`: one session that watches the backlog queue, deals operator-picked cards to isolated workers, and collects evidence, on repeat
+- [`/moai loop`](/en/utility-commands/moai-loop) — the unattended foreman driven by a bare `/loop`: one session that watches the backlog queue, routes operator-picked cards to free lanes, and collects evidence, on repeat
 - [`/moai goal`](/en/workflow-commands/moai-goal) — the goal engine that drives the kanban chain
+- [manager-lead Lead Coordinator](/en/advanced/manager-lead) — the coordination agent that drives dispatch inside a kanban or factory lead session
 - [Autonomous continuation loop](/en/advanced/autonomous-loops) — ownership and guardrail comparison of `/moai goal`, `/moai loop`, and the native `/goal`
 - [`/moai run`](/en/workflow-commands/moai-run) — run-phase autonomy wiring, the rules the kanban chain's run phase inherits
 - [Harness engineering](/en/core-concepts/harness-engineering) — how phase chaining and observation sit on top of the harness design
