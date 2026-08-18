@@ -56,7 +56,7 @@ jobs:
       #   internal/template/templates/**  internal/spec/catalog_hash_test.go + internal/template parity tests
       #   internal/template/catalog.yaml  internal/spec/catalog_hash_test.go (fail-loud)
       #   .claude/agents/**               internal/template/agent_askuser_audit_test.go (walks .claude/agents/**)
-      #                                    + manager_kanban_depth_test.go + haiku_effort_guard_test.go
+      #                                    + manager_lead_depth_test.go + haiku_effort_guard_test.go
       #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
       #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
       #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)

@@ -248,7 +248,7 @@ type StatusData struct {
 	Version           VersionData    // MoAI-ADK version from config
 	ClaudeCodeVersion string         // Claude Code version from JSON input (e.g., "1.0.80")
 	SessionName       string         // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
-	AgentName         string         // Agent identity the session runs as (e.g., "manager-kanban"); empty when none
+	AgentName         string         // Agent identity the session runs as (e.g., "manager-lead"); empty when none
 	Backlog           BacklogCounts  // Kanban backlog in-flight/waiting counts (Available=false when unreadable)
 	GitHub            GitHubCounts   // Cached open issue/PR counts (Available=false when never fetched)
 	Directory         string         // Project directory name (e.g., "modu-saju")

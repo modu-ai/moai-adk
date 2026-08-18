@@ -21,7 +21,7 @@ import (
 var expectedAgentTiers = map[string]Tier{
 	// 🔴 — deep reasoning (×5)
 	"manager-spec":  TierRed,
-	"manager-kanban":  TierRed,
+	"manager-lead":  TierRed,
 	"plan-auditor":  TierRed,
 	"super-advisor": TierRed,
 	"sync-auditor":  TierRed,
