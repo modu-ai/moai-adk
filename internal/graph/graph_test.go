@@ -131,7 +131,11 @@ func TestBuild_AggregatesThreeLayers(t *testing.T) {
 		t.Fatalf("want 1 mx-spec edge, got %d: %v", len(mxSpecs), mxSpecs)
 	}
 	e := mxSpecs[0]
-	if e.Source != filepath.Join("internal", "demo", "demo.go") {
+	// The builder's output contract is slash-normalized (filepath.ToSlash in
+	// graph.go) so graph edges are platform-independent. Assert the literal
+	// path, not filepath.Join — Join emits backslashes on windows and can
+	// never match the normalized contract there.
+	if e.Source != "internal/demo/demo.go" {
 		t.Errorf("mx-spec source not repo-relative: %q", e.Source)
 	}
 	if e.Target != "SPEC-GRAPH-TEST-001" {
