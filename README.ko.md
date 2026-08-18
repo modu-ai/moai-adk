@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -61,6 +61,24 @@ moai cc -k --name sync
 ```
 
 동반 세션은 **터미널을 하나씩 새로 열어 직접** 띄운다. 이름은 역할만으로 붙인다 — run-id는 리드 세션의 식별자이고 동반 세션이 물고 다니지 않는다. 같은 역할 이름이 이미 살아 있으면 다음 번호가 붙는다. 세션은 다른 세션을 대신 띄우지 못한다. 어느 칸이든 `moai cc` 대신 `moai glm`을 쓰면 그 칸만 GLM 백엔드로 돈다.
+
+### 어느 백엔드로 나눌까
+
+칸반을 열 때 부트스트랩 안내가 기본 추천을 함께 알려 준다 — 토큰 가용성을 우선하면 리더는 `moai glm -k`, plan은 `moai cc -k --name plan`, run은 `moai glm -k --name run`, sync는 `moai cc -k --name sync`다. 그림의 이유는 레인마다 필요한 추론의 종류다. plan과 sync는 판단과 리뷰를 도는 칸이라 Claude에 두고, run은 구현 중심이라 GLM로 비용을 낮춘다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM이 어울린다. GLM 리더 아래에서 Claude 판정이 필요해지면 `judge`라는 이름의 세션으로 빠져나간다 — GLM 리더가 Claude를 쓰는 유일한 경로다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 기본 추천일 뿐 — 다른 조합이나 전 세션을 한 백엔드로 통일해도 무방하다.
+
+### 번호 붙은 워커 런 — 칸반의 두 번째 형태
+
+같은 `-k` 토큰에 **숫자를 붙이면** 칸반의 두 번째 형태인 번호 붙은 워커 런이 된다. 리드 하나가 백로그 큐를 폴링해 빈 워커에 카드를 나눠 주고, 번호 붙은 워커 N개가 각자의 터미널에서 카드를 처리한다.
+
+```bash
+moai cc -k 4                          # 리드 — 워커 4짜리 칸반 런
+moai cc -k 4 --name worker-1          # 워커 1, 각자 별도 터미널에서
+moai cc -k 4 --name worker-2          # 워커 2 …
+```
+
+리드는 카드 클래스에 따라 나눠 준다 — A/B클래스는 워커 하나에 통째로 맡기고, C클래스(설계 변경)는 `plan → run → sync` 직렬 경로로 보낸다. 워커 수를 생략하고 `-k --name worker-<i>`만 쓰면 기본 8로 잡힌다. 혼합 백엔드(`moai cg`)에서는 거부된다. 과거의 `-f`/`--factory` 플래그는 은퇴했고, 지금은 명시적 에러다.
+
+> 자세히: [칸반 모드 — 번호 붙은 워커 런](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
 보드는 `backlog → plan → run → sync → done` 다섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
 
@@ -274,7 +292,7 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 ### MCP 서버
 
-`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 다섯 그룹으로 묶인 17개 MoAI 도구를 Claude Code에 노출한다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
+`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 여섯 그룹으로 묶인 21개 MoAI 도구를 Claude Code에 노출한다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
 
 | 그룹 | 도구 | 목적 |
 |------|------|------|
@@ -283,6 +301,7 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 | 골 + 세션 | `goal_arm`, `goal_status`, `session_list` | 자율 루프 + 다중 세션 조율 |
 | 교차 모델 감사 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
 | codex 위임 | `codex_task`, `codex_setup`, `codex_job_*` | 백그라운드 교차 모델 작업 |
+| GLM 위임 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai) 백그라운드 작업 위임 |
 
 모든 백엔드는 fail-open이다 — GLM(`~/.moai/.env.glm`)과 codex(`~/.codex/auth.json`)는 선택적이며, 사용 불가 백엔드는 `inconclusive`를 반환할 뿐 hard error가 아니다.
 
@@ -307,7 +326,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo <add|list|next|done>`으로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -333,7 +352,7 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 
 ### Navigator — 살아 있는 코드베이스 지도
 
-`@NAV:DEC`, `@NAV:SYM`, `@MX:SPEC` 세 토큰族을 하나의 주소 가능 그래프(`nav-graph.json`)로 묶는다. 설계 결정·SPEC·코드 심볼이 양방향으로 이어져, 코드를 고칠 때 그 결정의 맥락이 따라온다.
+`@NAV:DEC`, `@NAV:SYM`, `@MX:SPEC` 세 토큰 계열을 하나의 주소 가능 그래프(`nav-graph.json`)로 묶는다. 설계 결정·SPEC·코드 심볼이 양방향으로 이어져, 코드를 고칠 때 그 결정의 맥락이 따라온다.
 
 ### 세션 핸드오프
 
@@ -357,7 +376,7 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
   <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 10개 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings 다섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP 열 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings 다섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP·Cross-Session 열한 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
@@ -440,9 +459,10 @@ flowchart TD
 ### 스테이터스라인 읽기
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.1 │ ⏳ 2h 34m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
 ```
 
 | 요소 | 의미 |
@@ -453,11 +473,12 @@ flowchart TD
 | CW: 컨텍스트 | 컨텍스트 창 사용률 + 2단계 `/clear` 마커 (⚠️ 소프트, 🛑 하드) |
 | 5H / 7D | 요금제 사용률 + 초기화 시각 |
 | 📁 디렉터리 | 프로젝트 디렉터리 이름 |
-| 🔀 리포 | GitHub 리포 `owner/name` |
+| 📡 리포 | GitHub 리포 `owner/name` (PR 아이콘 🔀와 구분) |
 | 🅱️ 브랜치 | 현재 브랜치 + `↑`앞섬 `↓`뒤짐 + `+`변경 수 |
-| 💾 git 상태 | 스테이지 / 수정 / 추적 안 됨 개수 |
+| 📫 git 상태 | 사서함 아이콘(📬 스테이지 / 📫 수정 / 📪 추적 안 됨 / 📭 깨끗) + 개수 |
 | 📋 작업 | 활성 SPEC 워크플로우 `[커맨드 SPEC-ID-페이즈]` |
 | 💌 PR | 활성 GitHub PR 번호 + 리뷰 상태 (`⌥상태`) |
+| 🏷️ 세션 라인 | 마지막 줄에 조건부 — 세션 이름 · 👤 에이전트 · 🔄 `TODO: 진행 중 / 대기` 백로그 · 🔀 열린 이슈/PR 수 |
 
 > 자세히: [스테이터스라인 가이드](https://adk.mo.ai.kr/ko/advanced/statusline)
 
@@ -580,7 +601,7 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 | Ruby | PHP | Elixir | C++ |
 | Scala | R | Flutter | Swift |
 
-각 언어를 프로젝트 마커로 자동 감지해서 그 언어의 표준 린트/포맷/테스트 툴체인을 돌린다. 설치되지 않은 도구는 조용히 건너뛴다. Dart/Flutter의 정식 이름은 "flutter"다. 어느 하나가 우대우를 받지 않는다.
+각 언어를 프로젝트 마커로 자동 감지해서 그 언어의 표준 린트/포맷/테스트 툴체인을 돌린다. 설치되지 않은 도구는 조용히 건너뛴다. Dart/Flutter의 정식 이름은 "flutter"다. 어느 하나가 우대를 받지 않는다.
 
 ### 4-로케일 문서
 
@@ -637,7 +658,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개 · 설치 · Windows 가이드 · init 마법사 · 퀵스타트 · CLI 개요 · FAQ |
 | [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | 정체성 · 컨스티튜션 · 하네스 엔지니어링 · SPEC 기반 개발 · DDD · TRUST 5 |
 | [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` — SPEC 파이프라인 주축 |
-| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 (전체 36개) |
 | [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초 · 컨텍스트/메모리 · 에이전틱 · 확장성 |
 | [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드와 모델 정책 |
@@ -651,14 +672,15 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 
 [**클로드 코드로 시작하는 실전 에이전틱 코딩**](https://adk.mo.ai.kr/book) — moai-adk 저자가 쓴 실전 하네스 엔지니어링 가이드. [book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI 명령표 (자주 쓰는 13개)
+### CLI 명령표 (자주 쓰는 14개)
 
 | 커맨드 | 설명 |
 |---|---|
 | `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
 | `moai doctor` | 시스템 상태 진단과 환경 검증 |
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
-| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
+| `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
+| `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 세션 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
@@ -667,7 +689,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
 | `moai handoff <save\|list>` | 세션 핸드오프 기록 |
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
-| `moai web` | 웹 콘솔 — 5개 화면(Overview · Kanban · Specs · Monitor · Settings), 10-탭 설정 |
+| `moai web` | 웹 콘솔 — 5개 화면(Overview · Kanban · Specs · Monitor · Settings), 11-탭 설정 |
 
 > 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 
@@ -696,7 +718,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 ### 스테이터스라인의 버전 표시는 무슨 뜻인가?
 
 ```
-🗿 v3.0.1 ⬆️ v3.0.2
+🗿 v3.1.0 ⬆️ v3.1.1
 ```
 
 앞의 값이 현재 설치된 moai-adk 버전이고, 화살표는 올릴 수 있는 업데이트가 있다는 뜻이다. `moai update`를 실행하면 사라진다.

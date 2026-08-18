@@ -31,6 +31,14 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
 | `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+| `-k, --kanban [SPEC-ID]` | 칸반 리드 진입 — `plan → run → sync` 체인을 이 세션에 시드. SPEC-ID를 붙이면 그 SPEC을 목표로 |
+| `-k --name <role>` | 열린 칸반 런에 동반 세션으로 합류. 역할은 `plan` · `run` · `sync`. 같은 역할 이름이 살아 있는 세션이면 다음 번호로 붙음 (`plan-1`, `plan-2`, …) |
+| `-k <N>` | **번호 붙은 워커 런** 리드 진입 — 번호 붙은 워커 N개(`worker-1`…`worker-N`)의 칸반 런. 리드가 백로그에서 카드를 빈 워커에 배분 |
+| `-k <N> --name worker-<i>` | 번호 붙은 워커 `<i>` 진입. 번호가 살아 있는 세션과 겹치면 다음 번호로. N 없이 `--name worker-<i>`만 쓰면 기본 8 |
+
+{{< callout type="info" >}}
+같은 `-k` 토큰 하나가 세 모양으로 해석됩니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 번호 붙은 워커 런입니다. 혼합 백엔드 런처 `moai cg`에서는 둘 다 거부됩니다. 개명 전 옛 이름인 `-f`/`--factory` 플래그는 은퇴했고 지금은 명시적 에러입니다 — 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)를 참고하세요.
+{{< /callout >}}
 
 권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사하며, Team 플랜과 Sonnet/Opus 4.6 이상이 필요합니다.
 

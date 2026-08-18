@@ -79,6 +79,17 @@ including link labels and translated prose):
 version surface. Never hardcode divergent version/date strings into pages,
 menus, or READMEs beyond what the release process syncs.
 
+**Release-sync obligation (operator decision 2026-08-18):** every release
+updates ALL version DISPLAYS to the release number in the same PR —
+`hugo.toml` `version` + `releaseDate` together (the file's own two-line
+contract), the README release badges (all 4 locales), and in-page example
+outputs that show the product version (statusline examples `🗿 vX.Y.Z`,
+update-prompt examples `X ⬆️ Y`, version-column example values). Historical
+citations ("introduced in vX.Y.Z", "retired in v3.0.0", "default-on since
+v3.0.0") are NOT displays and stay untouched. The verify recipe's
+version-string check (Skill "hns-oss-docs-verify" §6) enforces this at the
+exit gate.
+
 ## 8. Moved pages need redirects [HARD]
 
 Every docs-site page move/rename adds to `docs-site/vercel.json`:

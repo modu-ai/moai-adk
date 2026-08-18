@@ -418,6 +418,24 @@ main:
           ja: moai epic エピック進捗
           zh: moai epic 史诗进度
         ref: /cli-reference/epic
+      - name:
+          ko: moai graph 의존성 그래프
+          en: moai graph Dependency Graph
+          ja: moai graph 依存グラフ
+          zh: moai graph 依赖图
+        ref: /cli-reference/graph
+      - name:
+          ko: moai tokens 토큰 회계
+          en: moai tokens Token Accounting
+          ja: moai tokens トークン会計
+          zh: moai tokens 令牌记账
+        ref: /cli-reference/tokens
+      - name:
+          ko: moai memory 메모리 관리
+          en: moai memory Memory Maintenance
+          ja: moai memory メモリ管理
+          zh: moai memory 记忆维护
+        ref: /cli-reference/memory
 
   - name:
       ko: 멀티 LLM

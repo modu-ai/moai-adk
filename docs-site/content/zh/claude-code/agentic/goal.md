@@ -33,7 +33,7 @@ description: "说明 /goal 命令：设定完成条件后，Claude Code 会在�
 
 ```mermaid
 flowchart TD
-    A[/goal 设定条件<br>立即开始首回合/] --> B[Claude 执行一个回合的工作]
+    A["goal 设定条件<br>立即开始首回合"] --> B[Claude 执行一个回合的工作]
     B --> C{快速模型<br>评估条件满足}
     C -->|否 + 理由| D[把理由作为下一回合<br>的指引传递]
     D --> B

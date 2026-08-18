@@ -99,7 +99,7 @@ The lead distributes work through the task list, teammates talk to each other di
 
 ## Activation Requirements (v2.1.178+)
 
-Agent teams are an **experimental feature, disabled by default**. Claude Code v2.1.178 or later is required, and you activate it by setting the environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `1`.
+Agent teams are still an **experimental feature**. Claude Code v2.1.178 or later is required. Since MoAI-ADK v3.1.1, the distributed template ships the environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` on by default — projects set up with `moai init`/`moai update` have it enabled with no extra steps. To turn it off in a project you manage by hand, remove the variable from the shell environment or delete the entry from `settings.json`.
 
 ### What Changed in v2.1.178
 

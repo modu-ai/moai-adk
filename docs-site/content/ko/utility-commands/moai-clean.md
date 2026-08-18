@@ -205,6 +205,27 @@ Git으로 되돌리면 됩니다. MoAI는 의존성 역순으로 지운 뒤 테�
 
 `--safe-only` 모드에서는 "확실한 데드 코드"만 제거합니다. 리플렉션이나 동적 디스패치로 사용되는 코드는 "오탐"으로 분류되어 보존됩니다.
 
+## 다른 표면 — `moai clean --home` (홈 디렉터리 정리)
+
+{{< callout type="info" >}}
+이름이 같은 **터미널 CLI** `moai clean --home`은 위의 `/moai clean`(프로젝트 데드 코드)과 대상이 다릅니다 — 이쪽은 `~/.moai` 홈 디렉터리를 정리합니다. 슬래시 커맨드가 아니고, 데드 코드 분석도 하지 않습니다.
+{{< /callout >}}
+
+`~/.moai`에는 세션 상태, 캐시, 로그, 오래된 프로필이 쌓입니다. `moai clean --home`은 이 중 **허용 목록(allowlist)에 들어있는 정리 대상 디렉터리만** 정리합니다 — 목록에 없는 것은 묻지도 않고 남습니다. `~/.claude`는 절대 건드리지 않습니다.
+
+```bash
+# 정리 대화 — 기본은 dry-run(보고만 하고 지우지 않음)
+$ moai clean --home
+
+# 실제 삭제 — 가드된 force
+$ moai clean --home --force
+```
+
+- **dry-run이 기본**입니다. 삭제를 원하면 `--force`를 명시적으로 붙여야 하고, 그마저 허용 목록 안쪽에서만 작동합니다.
+- 보존 기간은 `~/.moai/config/sections/`의 `state.home_retention_days`로 정합니다.
+- 삭제 전에 얼마나 차 있는지는 `moai doctor`의 **Home Disk Usage** 진단이 먼저 알려 줍니다 — 권고(advisory) 성격의 체크이고, 임계값은 컴파일된 기본값을 따릅니다.
+- `~/.moai`의 위치 자체를 옮기고 싶다면 `MOAI_HOME` 환경변수로 홈 루트를 재지정할 수 있습니다(비어 있지 않은 절대 경로만 유효, 상대 경로는 무시).
+
 ## 관련 문서
 
 - [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)

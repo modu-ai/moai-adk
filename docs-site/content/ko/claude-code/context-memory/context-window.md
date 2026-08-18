@@ -114,7 +114,7 @@ flowchart TD
     B --> C{컨텍스트가<br>한계에 근접?}
     C -->|아니오| B
     C -->|이어서 작업| D[5단계 단계적 압축<br>Budget Reduction → Auto-Compact]
-    C -->|주제 전환| E[/clear<br>컨텍스트 전체 비우기/]
+    C -->|주제 전환| E["clear<br>컨텍스트 전체 비우기"]
     D --> F{사용량 95% 초과?}
     F -->|아니오| G[작업 계속<br>요약 + 자동 재주입 위에서]
     F -->|예, hard stop| E

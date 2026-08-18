@@ -43,3 +43,9 @@ github:
   title: "moai ast-grep / ast-edit 结构化搜索"
 epic:
   title: "moai epic 史诗进度"
+graph:
+  title: "moai graph 依赖图"
+tokens:
+  title: "moai tokens 令牌记账"
+memory:
+  title: "moai memory 记忆维护"

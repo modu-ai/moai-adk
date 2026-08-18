@@ -31,6 +31,14 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `-k, --kanban [SPEC-ID]` | Enter as the kanban lead — seeds the `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
+| `-k --name <role>` | Join an open kanban run as a companion session. Roles are `plan` · `run` · `sync`. If a live session already holds the role name, the next number is attached (`plan-1`, `plan-2`, …) |
+| `-k <N>` | Enter as the **numbered-workers run** lead — a kanban run of N numbered workers (`worker-1`…`worker-N`). The lead deals cards from the backlog to free workers |
+| `-k <N> --name worker-<i>` | Enter as numbered worker `<i>`. If the number collides with a live session, the next number is used. `--name worker-<i>` without N defaults to 8 |
+
+{{< callout type="info" >}}
+One `-k` token is read three ways — no argument or a SPEC-ID is the kanban lead, `--name <role>` is a kanban companion, and a number is the numbered-workers run. Both are refused by the mixed-backend launcher `moai cg`. The pre-rename flags `-f`/`--factory` are retired and now raise an explicit error — see [Kanban Mode](/en/advanced/kanban-mode) for the full contract.
+{{< /callout >}}
 
 The permission mode is one of `default`, `acceptEdits` (project default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions and requires a Team plan + Sonnet/Opus 4.6 or later.
 

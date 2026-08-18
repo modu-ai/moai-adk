@@ -547,9 +547,9 @@ moai worktree restore --snapshot .moai/state/snap.json --dry-run
 ```mermaid
 graph TD
     subgraph Planning["Planning Phase (Opus)"]
-        P1[/moai plan<br/>SPEC-001/]
-        P2[/moai plan<br/>SPEC-002/]
-        P3[/moai plan<br/>SPEC-003/]
+        P1["moai plan<br/>SPEC-001"]
+        P2["moai plan<br/>SPEC-002"]
+        P3["moai plan<br/>SPEC-003"]
     end
 
     subgraph Implementation["Implementation Phase (GLM)"]

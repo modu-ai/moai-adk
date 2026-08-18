@@ -129,9 +129,9 @@ $ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 ```mermaid
 graph TD
     subgraph T1["Terminal 1: Planning (Opus)"]
-        P1[/moai plan<br/>AUTH-001/]
-        P2[/moai plan<br/>LOG-002/]
-        P3[/moai plan<br/>API-003/]
+        P1["moai plan<br/>AUTH-001"]
+        P2["moai plan<br/>LOG-002"]
+        P3["moai plan<br/>API-003"]
     end
 
     subgraph T2["Terminal 2: Implement (GLM)"]

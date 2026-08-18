@@ -82,14 +82,14 @@ MoAI-ADK development with Worktree flows through three phases:
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Plan (Terminal 1, main checkout)"]
-        A1[/moai plan<br/>feature description/] --> A2[SPEC document created]
+        A1["moai plan<br/>feature description"] --> A2[SPEC document created]
         A2 --> A3[Implementation scope fixed]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
         B1["moai glm -w SPEC-AUTH-001"] --> B2[Worktree created and entered]
-        B2 --> B3[/moai run SPEC-ID]
-        B3 --> B4[/moai sync SPEC-ID]
+        B2 --> B3["moai run SPEC-ID"]
+        B3 --> B4["moai sync SPEC-ID"]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
@@ -299,7 +299,7 @@ the Tokenomics benefit that comes with it:
 ```mermaid
 graph TD
     subgraph Terminal1["Terminal 1: Planning"]
-        T1A[/moai plan/]
+        T1A["moai plan"]
         T1B[Claude Opus<br/>high cost / high quality]
         T1C[SPEC document created]
     end
@@ -307,19 +307,19 @@ graph TD
     subgraph Terminal2["Terminal 2: Implementing"]
         T2A["moai glm -w<br/>SPEC-AUTH-001"]
         T2B[low-cost backend]
-        T2C[/moai run<br/>DDD implementation]
+        T2C["moai run<br/>DDD implementation"]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
         T3A["moai glm -w<br/>SPEC-AUTH-002"]
         T3B[low-cost backend]
-        T3C[/moai run<br/>DDD implementation]
+        T3C["moai run<br/>DDD implementation"]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
         T4A["moai cc -w<br/>SPEC-AUTH-003"]
         T4B[Claude backend]
-        T4C[/moai sync<br/>documentation]
+        T4C["moai sync<br/>documentation"]
     end
 
     T1C --> T2A

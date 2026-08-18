@@ -133,6 +133,25 @@ grep -rnP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' docs-site/co
   branding emoji inside orchestrator-banner example code blocks are allowed —
   judge code-block context before flagging.
 
+## 6. Version-string sync (`version-sync`)
+
+Version displays must equal the release number. Extract the expected version
+from the SSOT and screen for stale displays:
+
+```bash
+grep -E 'version = ' docs-site/hugo.toml    # expected version, e.g. v3.1.1
+grep -rn 'Release-v[0-9]' README.md README.ko.md README.ja.md README.zh.md
+grep -rn '🗿 v[0-9]' docs-site/content README*.md | grep -v "$(grep -oE 'version = "v[0-9.]+"' docs-site/hugo.toml | grep -oE 'v[0-9.]+')"
+```
+
+- Expected: every `Release-v…` badge and every `🗿 v…` example equals the
+  `hugo.toml` version. Any stale display (badge, statusline example,
+  update-prompt example `X ⬆️ Y`, version-column example) = **FAIL**.
+- Historical citations ("introduced in vX.Y.Z", "since v3.0.0",
+  "retired in v3.0.0") are not displays — do not flag them.
+- `releaseDate` must be bumped together with `version` (hugo.toml's own
+  two-line contract).
+
 ## Scoring map (sprint contract)
 
 | Dimension | Checks | Threshold |
@@ -141,6 +160,7 @@ grep -rnP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' docs-site/co
 | `build-clean` | §1 (build warning-free + sitemap = 1.0) | 1.0 (must_pass) |
 | `style-compliance` | §3 + §5 (proportion of clean checks) | 0.95 |
 | `content-fidelity` | §2 + facts/figures preserved vs canonical | 0.9 |
+| `version-sync` | §6 (version displays == release number) | 1.0 (must_pass) |
 
 A must_pass dimension below threshold blocks the harness run result
 (`must_pass_ok: false`) — fix and re-verify before handing back to the

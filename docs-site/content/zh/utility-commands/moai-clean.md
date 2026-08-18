@@ -18,7 +18,7 @@ draft: false
 
 随着项目成长,不再使用的代码会不断堆积。未使用的 import、不被调用的函数、不被引用的类型等使代码库变得复杂。`/moai clean` 通过静态分析找出这些死代码,经测试验证后安全移除。
 
-从挽具工程的角度看,这条命令扮演 **垃圾回收** 的角色。死代码不仅是人的负担,也是智能体的负担 — 智能体读取的每一行代码都是上下文(令牌),因此移除死代码既是代码卫生,也是上下文瘦身,即令牌经济学。
+从挽具工程的角度看,这条命令扮演 **垃圾回收** 的角色。死代码不仅是人的负担,也是智能体的负担 — 智能体读取的每一行代码都是上下文(令牌),因此移除死代码既是代码卫生,同时也是缩减上下文、节省成本的工作。
 
 ## 使用方法
 
@@ -71,42 +71,45 @@ draft: false
 
 ## 执行过程
 
-`/moai clean` 分 6 步执行。
+`/moai clean` 分 7 步执行。
 
 ```mermaid
 flowchart TD
     Start["执行 /moai clean"] --> Phase1["第 1 步: 静态分析扫描"]
 
-    Phase1 --> Phase2["第 2 步: 使用图分析"]
-
-    Phase2 --> Phase3["第 3 步: 分类"]
-    Phase3 --> Classify{"分类结果"}
+    Phase1 --> Phase2["第 2 步: 使用图分析与分类"]
+    Phase2 --> Classify{"分类结果"}
     Classify --> Dead["确定的死代码"]
     Classify --> TestOnly["仅测试使用"]
     Classify --> Likely["可能的死代码"]
     Classify --> False["误报(实际使用中)"]
 
-    Dead --> Approval{"--dry?"}
-    Approval -->|是| Report["显示分析结果后结束"]
-    Approval -->|否| Phase4["第 4 步: 安全移除"]
+    Dead --> Phase3{"第 3 步: 移除计划批准<br/>(AskUserQuestion / --dry?)"}
+    Phase3 -->|--dry 或拒绝| Report["显示分析结果后结束"]
+    Phase3 -->|批准| Phase4["第 4 步: 安全移除"]
 
     Phase4 --> Phase5["第 5 步: 测试验证"]
     Phase5 --> Pass{"测试通过?"}
-    Pass -->|是| Phase6["第 6 步: 报告"]
     Pass -->|否| Rollback["回滚后重试"]
+    Pass -->|是| Phase6["第 6 步: MX 标签清理"]
     Rollback --> Phase6
+    Phase6 --> Phase7["第 7 步: 报告"]
 ```
+
+第 3 步 **移除计划批准** 是一道人工门禁: 编排器用 `AskUserQuestion` 展示待删清单并取得批准。第 6 步 **MX 标签清理** 会连同被删代码上的 `@MX` 注释一起收走,不让无处安放的注释留下来。
 
 ### 第 1 步: 静态分析扫描
 
-使用各语言的工具检测死代码候选:
+用项目标记 (project marker) 自动识别项目语言,再用各语言的标准死代码分析工具检测候选。**16 种支持语言同等对待**(go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift),未安装的工具自动跳过。识别不到语言标记的项目安静通过。下表只是代表性示例,不优待任何特定语言:
 
-| 语言 | 分析工具 | 检查对象 |
+| 语言(示例) | 分析工具(示例) | 检查对象 |
 |------|-----------|-----------|
-| **Go** | `go vet`, `staticcheck`, `deadcode` | 未使用变量、函数、类型 |
-| **Python** | `vulture`, `autoflake` | 死代码、未使用 import |
-| **TypeScript/JavaScript** | `ts-prune`, ESLint `no-unused-vars` | 未使用 export、变量 |
-| **Rust** | `cargo clippy`, `cargo udeps` | 死代码警告、未使用依赖 |
+| Go | `go vet`, `staticcheck`, `deadcode` | 未使用变量、函数、类型 |
+| Python | `vulture`, `autoflake` | 死代码、未使用 import |
+| TypeScript/JavaScript | `ts-prune`, ESLint `no-unused-vars` | 未使用 export、变量 |
+| Rust | `cargo clippy`, `cargo udeps` | 死代码警告、未使用依赖 |
+
+其余 12 种语言(java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift 等)也各自以标准工具链同样扫描。
 
 **扫描类别:**
 
@@ -201,6 +204,27 @@ flowchart TD
 ### Q: 通过反射使用的代码也会被移除吗?
 
 在 `--safe-only` 模式下只移除"确定的死代码"。通过反射或动态分发使用的代码被分类为"误报"并得到保留。
+
+## 另一个表面 — `moai clean --home`(主目录清理)
+
+{{< callout type="info" >}}
+同名的**终端 CLI** `moai clean --home` 与上面的 `/moai clean`(项目死代码)对象不同 —— 这边清理的是 `~/.moai` 主目录。它不是斜杠命令,也不做死代码分析。
+{{< /callout >}}
+
+`~/.moai` 里会堆积会话状态、缓存、日志和陈旧的配置档案。`moai clean --home` 只清理其中**列入允许名单 (allowlist) 的清理对象目录** —— 名单之外的东西连问都不问、原样保留。绝不触碰 `~/.claude`。
+
+```bash
+# 清理对话 —— 默认 dry-run(只报告、不删除)
+$ moai clean --home
+
+# 实际删除 —— 带守卫的 force
+$ moai clean --home --force
+```
+
+- **默认 dry-run**。想要删除必须显式加上 `--force`,而且它也只在允许名单之内生效。
+- 保留时长由 `~/.moai/config/sections/` 的 `state.home_retention_days` 决定。
+- 删除之前想看占用了多少,`moai doctor` 的 **Home Disk Usage** 诊断会先告诉你 —— 属于建议 (advisory) 性质的检查,阈值跟随编译时的默认值。
+- 想把 `~/.moai` 本身挪个位置,可以用 `MOAI_HOME` 环境变量重新指定主目录根(仅非空绝对路径有效,相对路径被忽略)。
 
 ## 相关文档
 
