@@ -86,7 +86,8 @@ the queue in order until it empties. That is still their pick, made once instead
 of one at a time, and the lead then admits those cards in the authorized order
 without asking again. It grants nothing else: no additions to the queue, no
 reordering, and no cover for a card that turns out to need a decision the
-authorization never covered. See `kanban-dispatch.md` § Batch admission.
+authorization never covered. See `kanban-dispatch.md` § Entry into the board is
+an operator act.
 
 Once picked:
 
@@ -117,4 +118,4 @@ Say this plainly when it applies rather than implying a board exists.
 
 - `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch cycle this feeds
 - `.claude/rules/moai/core/askuser-protocol.md` — the channel the pick runs through
-- `.claude/agents/moai/manager-kanban.md` — the coordination agent
+- `.claude/agents/moai/manager-lead.md` — the coordination agent
