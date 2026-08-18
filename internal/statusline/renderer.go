@@ -187,9 +187,10 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// The GitHub 🔀 counts no longer live here: after briefly riding the repo
-	// segment head (2026-08-18 layout merge), they were removed from the render
-	// entirely the same day — see renderRepoBranchSegment.
+	// The GitHub 🔀 counts do not render anywhere: the 2026-08-18 layout merge
+	// first moved them onto the repo segment's head, and the operator's
+	// same-day follow-up removed that prefix outright (see
+	// renderRepoBranchSegment).
 
 	return r.joinSegments(segs)
 }
@@ -504,15 +505,14 @@ func (r *Renderer) isPREnabled() bool {
 	return enabled
 }
 
-// renderRepoBranchSegment renders the combined GitHub + repo + branch segment
-// in the form "🔀 issues / PRs -> 📡 owner/name, ahead/behind | 🅱️ branch +N" —
-// layout v3 CH3 as merged per operator request 2026-08-18: the GitHub activity
-// (open issues / open PRs, 🔀) points at the repository (📡) whose local sync
-// state follows as a bare "ahead/behind" pair, and the branch rides behind.
+// renderRepoBranchSegment renders the combined repo + branch segment in the
+// form "📡 owner/name, ahead/behind | 🅱️ branch +N" — layout v3 CH3 as merged
+// per operator request 2026-08-18, minus the GitHub head the same operator
+// removed the same day: the "🔀 issues / PRs ->" prefix was cut because the
+// always-on "ahead/behind" pair added with the merge already occupies the
+// slot the arrow pointed at.
 //
 // Behavior:
-//   - GitHub available:                        "🔀 i / p -> " prefix prepended (SegmentGitHub gate applies)
-//   - GitHub unavailable or segment disabled:  prefix omitted — "📡 owner/name, a/b | …"
 //   - Workspace.Repo present + Branch present: "📡 owner/name, ahead/behind | 🅱️ branch +N"
 //   - ahead/behind:                            always shown, zeros included ("0/0")
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
@@ -523,6 +523,7 @@ func (r *Renderer) isPREnabled() bool {
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
 // @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
 // @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub 🔀 counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
+// @MX:NOTE: [AUTO] 2026-08-18 operator follow-up — the merged "🔀 i / p ->" prefix removed again (redundant beside the always-on a/b pair); GitHub counts no longer render anywhere.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -553,11 +554,14 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		dirtySuffix = fmt.Sprintf(" +%d", dirty)
 	}
 
-	// The GitHub 🔀 issue/PR counts were removed from the render per operator
-	// request 2026-08-18: the repo segment's "📡 owner/name, ahead/behind"
-	// form already anchors the line and the extra prefix added noise.
-	return fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind) +
-		" | " + branch + dirtySuffix
+	repoPart := fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind)
+
+	// The GitHub "🔀 i / p ->" head that rode in front of repoPart was removed
+	// per the operator's 2026-08-18 follow-up: the always-on ahead/behind pair
+	// already says what the arrow pointed at. data.GitHub is still resolved by
+	// the builder but has no render consumer.
+
+	return repoPart + " | " + branch + dirtySuffix
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff
