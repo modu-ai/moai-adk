@@ -117,7 +117,7 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 - In-process teammates cannot spawn background subagents (request-time error)
 - `/resume` does not restore in-process teammates
 - Permissions are fixed at spawn time
-- `/model` is NOT inherited by teammates (a Default teammate model is needed; effort IS inherited)
+- `/model` IS inherited from the leader by default since CC 2.1.234 (the former Default teammate model `/config` setting was removed; a spawn-named model overrides; effort inheritance unchanged since v2.1.186)
 - Team state `~/.claude/teams/{name}` and `~/.claude/tasks/{name}` is runtime-managed — never hand-edit
 - Defining a subagent as a teammate skips `skills:` / `mcpServers:` frontmatter (loaded from project/user settings instead)
 - GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
