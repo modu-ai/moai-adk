@@ -344,8 +344,8 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// notices can never stack. Same dual-channel shape and the same
 	// startup-only gating, for the same reasons the kanban block below
 	// records; the operator copies N worker launch lines instead of four
-	// companion lines. The notice reads the leader loop's data (backlog queue,
-	// worker registry) under the project root on the same ProjectDir-then-CWD
+	// companion lines. The notice reads the lead loop's data (backlog queue,
+	// lane registry) under the project root on the same ProjectDir-then-CWD
 	// preference chain the kanban notice uses; an empty root degrades to
 	// fail-open summary lines inside the notice rather than failing here.
 	factoryRoot := input.ProjectDir
@@ -394,7 +394,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// therefore re-emit — telling the operator to open four terminals they
 	// already opened, for a run already under way. Those three sources are
 	// skipped; an empty source is treated as startup (see the helper).
-	// The notice reads the backlog queue under the project root so the leader's
+	// The notice reads the backlog queue under the project root so the lead's
 	// opening screen names the work the run actually moves. ProjectDir first,
 	// CWD as fallback — the same preference chainLineageBanner applies. An
 	// empty root degrades to a zero-count summary line inside the notice

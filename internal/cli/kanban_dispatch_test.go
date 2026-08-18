@@ -96,11 +96,11 @@ func TestDispatchOutcome_CompanionEnvState(t *testing.T) {
 	if resolveKanbanBranch(true, true) != kanbanBranchCompanion {
 		t.Fatal("expected companion branch")
 	}
-	restore := enterKanbanCompanionMode("runner-abc123")
+	restore := enterKanbanCompanionMode("run-abc123")
 	defer restore()
 
-	if os.Getenv(config.EnvMoaiKanbanLabel) != "runner-abc123" {
-		t.Errorf("MOAI_KANBAN_LABEL = %q, want \"runner-abc123\"", os.Getenv(config.EnvMoaiKanbanLabel))
+	if os.Getenv(config.EnvMoaiKanbanLabel) != "run-abc123" {
+		t.Errorf("MOAI_KANBAN_LABEL = %q, want \"run-abc123\"", os.Getenv(config.EnvMoaiKanbanLabel))
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
 		t.Errorf("MOAI_KANBAN must NOT be set on a companion")

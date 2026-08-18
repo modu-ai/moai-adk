@@ -115,7 +115,7 @@ type transcriptLine struct {
 }
 
 type transcriptMessage struct {
-	Model string             `json:"model"`
+	Model string              `json:"model"`
 	Usage *transcriptUsageMsg `json:"usage"`
 }
 
@@ -451,7 +451,7 @@ func newTokensRecordCmd() *cobra.Command {
 	cmd.Flags().StringVar(&transcript, "transcript", "", "Path to a CC session transcript (.jsonl)")
 	cmd.Flags().StringVar(&session, "session", "", "Session UUID; resolves the transcript under ~/.claude/projects/")
 	cmd.Flags().StringVar(&card, "card", "", "Kanban card id label (e.g. t86)")
-	cmd.Flags().StringVar(&role, "role", "", "Lane role label (e.g. lead, run, review, sync)")
+	cmd.Flags().StringVar(&role, "role", "", "Lane role label (e.g. lead, plan, run, sync)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "Print the record JSON to stdout without writing the ledger")
 	cmd.MarkFlagsMutuallyExclusive("transcript", "session")
 	cmd.MarkFlagsOneRequired("transcript", "session")

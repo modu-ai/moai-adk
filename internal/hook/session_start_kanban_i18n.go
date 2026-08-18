@@ -67,13 +67,13 @@ var kanbanLocales = map[string]kanbanMessages{
 			"foreman — the launcher picks the backend, `-k` the kanban role. Substitute 'moai glm -k --name ...' " +
 			"for 'moai cc -k --name ...' on any companion to run it on the GLM backend.",
 		backendRecommend: "Recommended mix (token availability first — one GLM account, one Claude account):\n" +
-			"  leader    → GLM\n" +
-			"  planner   → Claude (Opus)\n" +
-			"  runner    → GLM\n" +
-			"  syncer    → Claude (Opus)\n" +
+			"  lead      → GLM\n" +
+			"  plan      → Claude (Opus)\n" +
+			"  run       → GLM\n" +
+			"  sync      → Claude (Opus)\n" +
 			"Any other mix, or one backend everywhere, works just as well.",
 		agentFanout:    "Every companion can run up to 10 agents concurrently in parallel.",
-		nameChoices:    "Name options: the default Agent worker / `judge` (Claude verdicts — the GLM foreman's only Claude path) / `worker-N` (numbered workers).",
+		nameChoices:    "Name options: the default Agent worker / `judge` (Claude verdicts — the GLM foreman's only Claude path) / `lane-N` (numbered lanes).",
 		leaderSocket:   "Leader socket: %s",
 		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.",
 		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
@@ -89,13 +89,13 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "진입점: `moai cc -k` 는 Claude 백엔드 공장장, `moai glm -k` 는 GLM 백엔드 공장장 — 런처가 백엔드를, `-k` 가 칸반 역할을 정합니다. " +
 			"동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
 		backendRecommend: "추천 조합 (토큰 가용성 우선 — GLM·Claude 계정은 각각 1개씩 사용 가능):\n" +
-			"  leader    → GLM\n" +
-			"  planner   → Claude (Opus)\n" +
-			"  runner    → GLM\n" +
-			"  syncer    → Claude (Opus)\n" +
+			"  lead      → GLM\n" +
+			"  plan      → Claude (Opus)\n" +
+			"  run       → GLM\n" +
+			"  sync      → Claude (Opus)\n" +
 			"다른 조합이나 전 세션 한 백엔드 통일도 무방합니다.",
 		agentFanout:    "각 동반 세션은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.",
-		nameChoices:    "이름 선택지: 기본 Agent 작업자 / `judge` (Claude 판정 — GLM 공장장이 Claude 를 쓰는 유일한 경로) / `worker-N` (번호 작업자).",
+		nameChoices:    "이름 선택지: 기본 Agent 작업자 / `judge` (Claude 판정 — GLM 공장장이 Claude 를 쓰는 유일한 경로) / `lane-N` (번호 레인).",
 		leaderSocket:   "리더 소켓: %s",
 		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
 		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
@@ -111,13 +111,13 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "入口: `moai cc -k` は Claude バックエンドの親方、`moai glm -k` は GLM バックエンドの親方 — ランチャーがバックエンドを、`-k` がかんばんの役割を決めます。 " +
 			"併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
 		backendRecommend: "推奨組み合わせ（トークン余裕優先 — GLM・Claude アカウントは各1つずつ使用可能）:\n" +
-			"  leader    → GLM\n" +
-			"  planner   → Claude (Opus)\n" +
-			"  runner    → GLM\n" +
-			"  syncer    → Claude (Opus)\n" +
+			"  lead      → GLM\n" +
+			"  plan      → Claude (Opus)\n" +
+			"  run       → GLM\n" +
+			"  sync      → Claude (Opus)\n" +
 			"他の組み合わせや、全セッションを同一バックエンドに統一しても問題ありません。",
 		agentFanout:    "各併走セッションは最大 10 個のエージェントを同時に並列実行できます。",
-		nameChoices:    "名前の選択肢: デフォルトの Agent 作業者 / `judge`（Claude による判定 — GLM 親方が Claude を使う唯一の経路） / `worker-N`（番号付き作業者）。",
+		nameChoices:    "名前の選択肢: デフォルトの Agent 作業者 / `judge`（Claude による判定 — GLM 親方が Claude を使う唯一の経路） / `lane-N`（番号付きレーン）。",
 		leaderSocket:   "リーダーソケット: %s",
 		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。",
 		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
@@ -133,13 +133,13 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "入口：`moai cc -k` 是 Claude 后端的工头，`moai glm -k` 是 GLM 后端的工头 —— 启动器决定后端，`-k` 决定看板角色。 " +
 			"如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",
 		backendRecommend: "推荐组合（优先考虑令牌余量 —— GLM·Claude 账号各有一个可用）:\n" +
-			"  leader    → GLM\n" +
-			"  planner   → Claude (Opus)\n" +
-			"  runner    → GLM\n" +
-			"  syncer    → Claude (Opus)\n" +
+			"  lead      → GLM\n" +
+			"  plan      → Claude (Opus)\n" +
+			"  run       → GLM\n" +
+			"  sync      → Claude (Opus)\n" +
 			"其他组合、或将全会话统一到同一后端同样可行。",
 		agentFanout:    "每个协同会话最多可同时并行运行 10 个代理。",
-		nameChoices:    "命名选项：默认 Agent 作业者 / `judge`（Claude 判定 —— GLM 工头使用 Claude 的唯一途径） / `worker-N`（编号作业者）。",
+		nameChoices:    "命名选项：默认 Agent 作业者 / `judge`（Claude 判定 —— GLM 工头使用 Claude 的唯一途径） / `lane-N`（编号泳道）。",
 		leaderSocket:   "主导会话套接字：%s",
 		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。",
 		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",

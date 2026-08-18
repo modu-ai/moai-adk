@@ -35,7 +35,7 @@ const (
 // kanbanFlagUsageError names every accepted -k shape. It is the error text for
 // an invalid SUPPLIED value and the reference the help texts paraphrase.
 const kanbanFlagUsageError = "-k/--kanban takes a SPEC identifier (e.g. -k SPEC-X-001), " +
-	"a worker count of 1 or more (e.g. -k 4) for Factory Mode, " +
+	"a lane count of 1 or more (e.g. -k 4) for Factory Mode, " +
 	"or no argument for the plain kanban lead"
 
 // kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
@@ -49,10 +49,10 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 //
 //	-k                  → the three-role kanban chain (lead branch)
 //	-k SPEC-ID          → the kanban chain tied to a SPEC
-//	-k N (N ≥ 1)        → Factory Mode with N numbered workers
-//	-k --name worker-<n> → Factory Mode as worker n; the count defaults to
+//	-k N (N ≥ 1)        → Factory Mode with N numbered lanes
+//	-k --name lane-<n>  → Factory Mode as lane n; the count defaults to
 //	                       config.DefaultFactoryWorkers because the
-//	                       worker-shape name selected the factory with no
+//	                       lane-shape name selected the factory with no
 //	                       count supplied (a bare -k alone is the kanban lead,
 //	                       so a count-less FACTORY lead does not exist)
 //
@@ -63,7 +63,7 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 type kanbanEntryParse struct {
 	Spec           string   // non-numeric positional — the kanban SPEC identifier
 	KanbanEnabled  bool     // -k present (any shape)
-	FactoryEnabled bool     // -k selected the factory (numeric count or worker-shape name)
+	FactoryEnabled bool     // -k selected the factory (numeric count or lane-shape name)
 	FactoryWorkers int      // the factory count (explicit or the default)
 	Rest           []string // args with -k and its consumed value removed
 }
@@ -131,12 +131,12 @@ func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
 		p.Spec = value
 	}
 
-	// A bare -k plus a worker-shape --name selected the factory with no count
+	// A bare -k plus a lane-shape --name selected the factory with no count
 	// supplied — the count-less factory entry, resolved to the default here.
-	// parseFactoryWorkerLabel stops at the pass-through marker like this
-	// parser does, so a `-- --name worker-1` passthrough never selects it.
+	// parseFactoryLaneLabel stops at the pass-through marker like this
+	// parser does, so a `-- --name lane-1` passthrough never selects it.
 	if p.KanbanEnabled && !p.FactoryEnabled {
-		if _, isWorker := parseFactoryWorkerLabel(args); isWorker {
+		if _, isLane := parseFactoryLaneLabel(args); isLane {
 			p.FactoryEnabled = true
 			p.FactoryWorkers = config.DefaultFactoryWorkers
 		}
@@ -158,7 +158,7 @@ func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
 //
 // Callers must defer the returned function so it also runs on the error path; a
 // restore that only runs on success is the same leak with a narrower trigger.
-// leadLabel is the operator-supplied `leader-<run-id>` name for this session when
+// leadLabel is the operator-supplied `lead-<run-id>` name for this session when
 // there is one, and "" otherwise. Its run id is ADOPTED rather than replaced —
 // see leadRunID.
 func enterKanbanMode(specID, leadLabel string) func() {
@@ -191,20 +191,20 @@ func enterKanbanMode(specID, leadLabel string) func() {
 }
 
 // leadRunID resolves the run id a lead session publishes: the one embedded in
-// an operator-supplied `leader-<run-id>` name when there is one, a fresh mint
+// an operator-supplied `lead-<run-id>` name when there is one, a fresh mint
 // otherwise.
 //
 // Adoption is what makes the lead branch symmetric with the companion branch,
 // which derives its id from its label for exactly this reason. Minting
 // unconditionally left the session's name and MOAI_KANBAN_ID free to disagree,
 // and the SessionStart notice reads only the latter — so a session the operator
-// named `leader-X` announced companion commands for a freshly minted run Y, and a
+// named `lead-X` announced companion commands for a freshly minted run Y, and a
 // copied command opened a companion that no lead was listening to.
 //
 // The shape guard is kanban.SplitLeadLabel and it admits exactly what the
-// companion side admits: a name like `leader-notarunid` is adopted, because
+// companion side admits: a name like `lead-notarunid` is adopted, because
 // `notarunid` is a well-shaped run id as far as the id grammar is concerned.
-// Anything that is not — `board-watch`, `leader-`, `leader-ABC`, `leader-a-b` — falls
+// Anything that is not — `board-watch`, `lead-`, `lead-ABC`, `lead-a-b` — falls
 // back to minting rather than publishing a malformed id. Tightening the lead
 // side alone would reintroduce an asymmetry of its own.
 func leadRunID(leadLabel string) string {
@@ -321,7 +321,7 @@ func companionRegistryPath(root string) string {
 // frees the name so a relaunch reuses it instead of counting up forever. Dead
 // entries are pruned on the way through. The bumped candidates are
 // `<role>-<n>` regardless of the label's own suffix shape, so a held legacy
-// `planner-abc123` bumps to `planner-1` (never a second hyphen). The final label is
+// `plan-abc123` bumps to `plan-1` (never a second hyphen). The final label is
 // registered to this process's pid before returning.
 //
 // label MUST have the companion shape (kanban.SplitCompanionLabel); the caller
@@ -437,7 +437,7 @@ func parseCompanionLabel(args []string) (label string, ok bool) {
 	})
 }
 
-// parseLeadLabel reports the `leader-<run-id>` label in args, if any.
+// parseLeadLabel reports the `lead-<run-id>` label in args, if any.
 //
 // It is parseCompanionLabel's counterpart and exists for the launcher to read
 // back a run id the operator embedded in the session name, so the lead branch
@@ -519,7 +519,7 @@ func operatorSuppliedName(args []string) bool {
 	return false
 }
 
-// leadNameArgs returns the `--name leader-<run-id>` pair to append to a lead
+// leadNameArgs returns the `--name lead-<run-id>` pair to append to a lead
 // session's argv, or nil when the lead should carry no injected name.
 //
 // The injection exists because claude keeps an EXPLICIT name across /clear and
@@ -533,7 +533,7 @@ func operatorSuppliedName(args []string) bool {
 // therefore invoke this AFTER entering kanban mode. Two self-gates make the
 // call site unconditional: an operator-supplied name wins (nothing is
 // injected), and an absent run id yields nothing rather than the nonsense name
-// `leader-`.
+// `lead-`.
 func leadNameArgs(args []string) []string {
 	if operatorSuppliedName(args) {
 		return nil

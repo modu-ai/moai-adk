@@ -57,14 +57,14 @@ func TestACFB019_HelpDocumentsCompanionEntry(t *testing.T) {
 			if !strings.Contains(cmd.long, "-k --name") {
 				t.Errorf("%s help does not document the companion entry form -k --name", cmd.name)
 			}
-			for _, role := range []string{"planner", "runner", "syncer"} {
+			for _, role := range []string{"plan", "run", "sync"} {
 				if !strings.Contains(cmd.long, role) {
 					t.Errorf("%s help does not enumerate role %q", cmd.name, role)
 				}
 			}
 			// The bare-role form is the documented launch shape, and a live-held
 			// name bumping to the next free number is stated so the operator is
-			// not surprised by a session named planner-1.
+			// not surprised by a session named plan-1.
 			if strings.Contains(cmd.long, "<role>-<run-id>") {
 				t.Errorf("%s help still documents the retired run-id companion form", cmd.name)
 			}

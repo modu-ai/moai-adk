@@ -37,9 +37,9 @@ func TestReadCardStatus_RejectsTraversalSpecID(t *testing.T) {
 func TestTransitionIntoRun_RejectsTraversalSpecID(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "leader-sess")
+	seedLead(t, root, "lead-sess")
 	for _, bad := range []string{"../sibling", "..", "a/../b", "a/b", `/etc/x`} {
-		err := TransitionIntoRun(root, "leader-sess", bad)
+		err := TransitionIntoRun(root, "lead-sess", bad)
 		if err == nil {
 			t.Errorf("TransitionIntoRun(%q) err = nil, want refusal — a traversal specID must not be persisted", bad)
 		}

@@ -17,7 +17,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f worker-<n>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -48,29 +48,28 @@ Kanban Mode:
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The three
-                                roles are: planner, runner, syncer. A role
-                                name held by a live session is bumped to
-                                the next free number (planner-1,
-                                planner-2, ...).
+                                roles are: plan, run, sync. A role name
+                                held by a live session is bumped to the next
+                                free number (plan-1, plan-2, ...).
 
 Factory Mode (dedicated -f entry):
   -f, --factory [N]            Enter as the LEAD of a factory run with N
-                                numbered workers; N omitted = one worker
-                                (worker-1), grown afterwards with the
+                                numbered lanes; N omitted = one lane
+                                (lane-1), grown afterwards with the
                                 incremental form below. The lead routes
-                                operator-picked cards to free workers over
-                                cross-session messages — A/B-class cards
-                                wholesale to one worker, C-class cards a
-                                serial 3-stage path.
-  -f worker-<n>                Launch exactly one additional worker — worker
-                                n — and connect it to the leader socket of the
+                                operator-picked cards to free lanes over
+                                cross-session messages — each card goes
+                                WHOLE to one lane, which carries it through
+                                plan -> run -> sync in-session.
+  -f lane-<n>                  Launch exactly one additional lane — lane
+                                n — and connect it to the lead socket of the
                                 running factory. A number whose label is held by a
                                 live session is bumped to the next free number.
-  -k <N> / -k <N> --name worker-<i>
+  -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-worker run,
-                                -k N --name worker-<i> is worker i of it (a
-                                bare -k --name worker-<i> defaults to 8).
+                                valid: -k N is the lead of an N-lane run,
+                                -k N --name lane-<i> is lane i of it (a
+                                bare -k --name lane-<i> defaults to 8).
                                 One entry token per launch: -k and -f
                                 together is an error.
 
@@ -98,11 +97,11 @@ Examples:
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
   moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
-  moai cc -k --name planner           # Kanban companion: joins as the planner
-  moai cc -f                           # Factory lead: one worker (worker-1)
-  moai cc -f 4                         # Factory lead: announces worker-1..worker-4
-  moai cc -f worker-2                  # Add worker 2 to the running factory
-  moai glm -f worker-3                 # Same lane on the GLM backend`,
+  moai cc -k --name plan               # Kanban companion: joins as the plan lane
+  moai cc -f                           # Factory lead: one lane (lane-1)
+  moai cc -f 4                         # Factory lead: announces lane-1..lane-4
+  moai cc -f lane-2                    # Add lane 2 to the running factory
+  moai glm -f lane-3                   # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -139,7 +138,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 	// tokens — the -k shapes of SPEC-FACTORY-BOOTSTRAP-001 (kanban membership,
 	// role disambiguated by --name, per the §A.2 truth table REQ-FB-001 /
 	// REQ-FB-002) plus the v1.2.0 factory shapes (-k N), and the revived
-	// dedicated -f surface (bare -f / -f N / -f worker-<n>). Parsed after
+	// dedicated -f surface (bare -f / -f N / -f lane-<n>). Parsed after
 	// --spawn is stripped (a spawned session re-issues this command and must
 	// carry the token through) and before worktree handling (so an entry token
 	// can never be mistaken for a -w value). The environment mutation is
@@ -150,12 +149,12 @@ func runCC(cmd *cobra.Command, args []string) error {
 	}
 	filteredArgs = entry.Rest
 	label, isCompanion := parseCompanionLabel(filteredArgs)
-	factoryLabel, isFactoryWorker := parseFactoryWorkerLabel(filteredArgs)
-	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryWorker) {
+	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
+	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLead:
-		// The operator-supplied `leader-<run-id>` name is adopted on the same
+		// The operator-supplied `lead-<run-id>` name is adopted on the same
 		// terms as the kanban lead (see kanban.go leadRunID) — the run id, the
-		// session name, and the worker commands the notice prints stay on one
+		// session name, and the lane commands the notice prints stay on one
 		// run.
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
@@ -173,7 +172,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleWorker)
+		recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLane)
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -183,10 +182,10 @@ func runCC(cmd *cobra.Command, args []string) error {
 	if !entry.FactoryEnabled {
 		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
 		case kanbanBranchLead:
-			// An operator-supplied `leader-<run-id>` name carries the run id this
+			// An operator-supplied `lead-<run-id>` name carries the run id this
 			// session already belongs to — a relaunch of an existing lead, or a
 			// board whose companions are already open. Adopting it is what keeps
-			// the session name, MOAI_KANBAN_ID, the leader socket path, and the
+			// the session name, MOAI_KANBAN_ID, the lead socket path, and the
 			// companion commands the SessionStart notice prints on one run.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
 			defer enterKanbanMode(entry.Spec, leadLabel)()

@@ -25,16 +25,16 @@ func TestRoleDeclaration_WorkersReadLead(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	if err := DeclareRole(root, "leader-sess-1", RoleLead, "planner-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole(lead): %v", err)
 	}
 
 	// Resolved by a session that is not the lead — the API takes no caller
 	// role, and the observation below runs it in a worker's context.
-	if err := DeclareRole(root, "worker-sess-1", "runner", "runner-alpha"); err != nil {
+	if err := DeclareRole(root, "worker-sess-1", "run", "run-alpha"); err != nil {
 		t.Fatalf("DeclareRole(run worker): %v", err)
 	}
-	role, err := ResolveDeclaredRole(root, "leader-sess-1")
+	role, err := ResolveDeclaredRole(root, "lead-sess-1")
 	if err != nil {
 		t.Fatalf("ResolveDeclaredRole(lead from worker context): %v", err)
 	}
@@ -51,10 +51,10 @@ func TestRoleDeclaration_LeadReadsWorkers(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	if err := DeclareRole(root, "leader-sess-1", RoleLead, "planner-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole(lead): %v", err)
 	}
-	if err := DeclareRole(root, "worker-sess-2", "runner", "runner-beta"); err != nil {
+	if err := DeclareRole(root, "worker-sess-2", "run", "run-beta"); err != nil {
 		t.Fatalf("DeclareRole(run worker): %v", err)
 	}
 
@@ -62,8 +62,8 @@ func TestRoleDeclaration_LeadReadsWorkers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDeclaredRole(worker from lead context): %v", err)
 	}
-	if role != "runner" {
-		t.Fatalf("resolved worker role = %q, want %q — a lead-only carrier cannot serve this direction", role, "runner")
+	if role != "run" {
+		t.Fatalf("resolved worker role = %q, want %q — a lead-only carrier cannot serve this direction", role, "run")
 	}
 }
 
@@ -72,13 +72,13 @@ func TestRoleDeclaration_LeadReadsWorkers(t *testing.T) {
 // the lead" means operationally: sessions are distinct processes.
 func TestRoleDeclaration_CrossProcessResolution(t *testing.T) {
 	root := t.TempDir()
-	if err := DeclareRole(root, "leader-sess-1", RoleLead, "planner-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole: %v", err)
 	}
 
 	got := runHelperProcess(t, "resolve-role", map[string]string{
 		"HELPER_ROOT":    root,
-		"HELPER_SESSION": "leader-sess-1",
+		"HELPER_SESSION": "lead-sess-1",
 	})
 	if strings.TrimSpace(got) != RoleLead {
 		t.Fatalf("subprocess resolved role = %q, want %q", strings.TrimSpace(got), RoleLead)
@@ -95,7 +95,7 @@ func TestRoleDeclaration_LabelDistinct(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	if err := DeclareRole(root, "sess-label-a", "runner", "runner-a1b2c3"); err != nil {
+	if err := DeclareRole(root, "sess-label-a", "run", "run-a1b2c3"); err != nil {
 		t.Fatalf("DeclareRole(label-a): %v", err)
 	}
 	roleA, err := ResolveDeclaredRole(root, "sess-label-a")
@@ -103,7 +103,7 @@ func TestRoleDeclaration_LabelDistinct(t *testing.T) {
 		t.Fatalf("ResolveDeclaredRole(label-a): %v", err)
 	}
 
-	if err := DeclareRole(root, "sess-label-b", "runner", "runner-totally-different"); err != nil {
+	if err := DeclareRole(root, "sess-label-b", "run", "run-totally-different"); err != nil {
 		t.Fatalf("DeclareRole(label-b): %v", err)
 	}
 	roleB, err := ResolveDeclaredRole(root, "sess-label-b")
@@ -121,10 +121,10 @@ func TestRoleDeclaration_LabelDistinct(t *testing.T) {
 		t.Fatalf("read declaration: %v", err)
 	}
 	body := string(raw)
-	if !strings.Contains(body, `"role": "runner"`) && !strings.Contains(body, `"role":"runner"`) {
+	if !strings.Contains(body, `"role": "run"`) && !strings.Contains(body, `"role":"run"`) {
 		t.Fatalf("declaration does not carry the role field: %s", body)
 	}
-	if !strings.Contains(body, "runner-a1b2c3") {
+	if !strings.Contains(body, "run-a1b2c3") {
 		t.Fatalf("declaration does not record the label as its own datum: %s", body)
 	}
 }
@@ -150,7 +150,7 @@ func TestResolveDeclaredRole_RejectsUnsafeSessionIDs(t *testing.T) {
 		if _, err := ResolveDeclaredRole(root, bad); err == nil {
 			t.Errorf("ResolveDeclaredRole(%q) err = nil, want non-nil", bad)
 		}
-		if err := DeclareRole(root, bad, "runner", "lbl"); err == nil {
+		if err := DeclareRole(root, bad, "run", "lbl"); err == nil {
 			t.Errorf("DeclareRole(%q) err = nil, want non-nil", bad)
 		}
 	}

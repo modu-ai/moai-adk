@@ -369,7 +369,7 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 const DefaultGLMTaskMaxTokens = 8192
 
 // DefaultFactoryWorkers is the fan-out size the count-less `-k --name
-// worker-<n>` form takes when the operator supplies no count
+// lane-<n>` form takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
@@ -378,14 +378,14 @@ const DefaultGLMTaskMaxTokens = 8192
 const DefaultFactoryWorkers = 8
 
 // DefaultFactoryLeadWorkers is the fan-out a bare `-f` / `--factory` (no
-// count) resolves to (t118 launcher axis, v3.1.1): one worker. The revived -f
-// entry starts the minimal factory — lead plus worker-1 — which the operator
-// then grows one lane at a time with `-f worker-<n>`, so the count-less
+// count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived -f
+// entry starts the minimal factory — lead plus lane-1 — which the operator
+// then grows one lane at a time with `-f lane-<n>`, so the count-less
 // default is 1, not the legacy form's 8 (DefaultFactoryWorkers).
 const DefaultFactoryLeadWorkers = 1
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
-// the launcher seeds on kanban companion and factory worker sessions (t118,
+// the launcher seeds on kanban companion and factory lane sessions (t118,
 // operator-confirmed architecture: each lane runs up to 10 agents in
 // parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
 // 20) so N lanes fanning out simultaneously divide the machine's capacity by

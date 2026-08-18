@@ -29,17 +29,17 @@ import (
 // The role SET and the election that occupies it are the bootstrap sibling's
 // (REQ-KS-004) — this constant names a role value, not an election rule, and
 // a declaration may carry any role string the topology defines. The value is
-// the personified session noun of the t118 naming axis (2026-08-18): the
-// lead session is named `leader-<run-id>`, and LeadLabel/SplitLeadLabel
-// compose and parse that shape from this constant.
-const RoleLead = "leader"
+// the operator final design's session noun (2026-08-18): the lead session is
+// named `lead-<run-id>` — the same value v3.1.0 shipped — and
+// LeadLabel/SplitLeadLabel compose and parse that shape from this constant.
+const RoleLead = "lead"
 
-// RoleWorker names a factory run's numbered worker (the `worker-<n>` lanes of
+// RoleLane names a factory run's numbered lane (the `lane-<n>` lanes of
 // `moai cc -f <N>`, SPEC-FACTORY-WORKER-FANOUT-001). It is deliberately NOT a
-// CompanionRoles member: factory workers are dispatched cards by their lead
+// CompanionRoles member: factory lanes are dispatched cards by their lead
 // over cross-session messages and never occupy the three-role kanban chain, so
 // the companion shape discriminators must not admit their labels.
-const RoleWorker = "worker"
+const RoleLane = "lane"
 
 // RoleDeclaration is the persisted declaration artifact: the role a session
 // occupies, recorded by that session at launch.

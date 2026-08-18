@@ -131,12 +131,12 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 
 			got := kanbanBootstrapNotice("", lang)
 			for _, want := range []string{
-				"moai cc -k --name planner",
-				"moai glm -k --name runner",
-				"moai cc -k --name syncer",
+				"moai cc -k --name plan",
+				"moai glm -k --name run",
+				"moai cc -k --name sync",
 				"moai glm -k --name",
 				"`judge`",
-				"`worker-N`",
+				"`lane-N`",
 				"/tmp/moai-socket-kanban/tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",
@@ -256,7 +256,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 	}
 
 	// Both channels carry the same launch lines.
-	for _, want := range []string{"moai cc -k --name planner", "moai cc -k --name syncer"} {
+	for _, want := range []string{"moai cc -k --name plan", "moai cc -k --name sync"} {
 		if !strings.Contains(out.SystemMessage, want) || !strings.Contains(ac, want) {
 			t.Errorf("launch line %q missing from one of the two channels", want)
 		}
@@ -269,7 +269,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 // table is prose, the lines are copyable commands, and a drift between the two
 // would hand the operator two different recommendations in one notice. The
 // lead appears ONLY in the table — it is launched by the operator's own entry
-// command, so the notice prints no `--name leader` line to copy.
+// command, so the notice prints no `--name lead` line to copy.
 func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 	backendFor := map[string]string{"cc": "Claude (Opus)", "glm": "GLM"}
 	for lang := range kanbanLocales {
@@ -294,10 +294,10 @@ func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 						lang, role, row[1], kanban.CompanionLauncher(role))
 				}
 			}
-			if !regexp.MustCompile(`(?m)^  leader\s+→ GLM$`).MatchString(got) {
-				t.Errorf("locale %q: recommendation table omits the leader → GLM row:\n%s", lang, got)
+			if !regexp.MustCompile(`(?m)^  lead\s+→ GLM$`).MatchString(got) {
+				t.Errorf("locale %q: recommendation table omits the lead → GLM row:\n%s", lang, got)
 			}
-			if strings.Contains(got, "--name leader") {
+			if strings.Contains(got, "--name lead") {
 				t.Errorf("locale %q: notice prints a lead launch line — the lead has none:\n%s", lang, got)
 			}
 		})

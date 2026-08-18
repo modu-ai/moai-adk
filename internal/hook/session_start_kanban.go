@@ -117,7 +117,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// together so a disagreement between them is visible HERE — at the moment
 	// the notice is emitted — rather than later, when a copied command opens a
 	// companion on a run no lead is listening to. The launcher now adopts an
-	// operator-supplied `leader-<run-id>` name (internal/cli/kanban.go
+	// operator-supplied `lead-<run-id>` name (internal/cli/kanban.go
 	// leadRunID) so the two agree by construction; this line is what makes a
 	// residual disagreement self-announcing instead of silent.
 	identity := []string{

@@ -165,19 +165,19 @@ const (
 	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
 
 	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
-	// run from another on the same machine. The leader session generates it once at
+	// run from another on the same machine. The lead session generates it once at
 	// launch; the SessionStart hook reads it to name itself and the leader
-	// socket. It is leader-owned state: a companion neither carries nor publishes
+	// socket. It is lead-owned state: a companion neither carries nor publishes
 	// it (companion names are bare roles, so no companion surface holds a run id
-	// that could disagree with the leader's).
+	// that could disagree with the lead's).
 	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
 
 	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
 	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
 	// collision produces. It is deliberately distinct from
 	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
-	// its own goal mid-session, exactly like the leader) but must NOT be seeded
-	// with the plan -> run -> verify -> sync chain, which only the leader drives.
+	// its own goal mid-session, exactly like the lead) but must NOT be seeded
+	// with the plan -> run -> verify -> sync chain, which only the lead drives.
 	// Setting EnvMoaiKanban on a companion would give every session the whole
 	// chain to drive.
 	EnvMoaiKanbanLabel = "MOAI_KANBAN_LABEL"
@@ -195,8 +195,8 @@ const (
 
 	// EnvMoaiKanbanLeadAddr carries the leader socket path — the address on
 	// the cross-session messaging substrate that companions send messages to.
-	// Set by the launcher when enterKanbanMode classifies a leader, read by the
-	// SessionStart hook to surface the address in the leader notice.
+	// Set by the launcher when enterKanbanMode classifies a lead, read by the
+	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
@@ -213,10 +213,10 @@ const (
 	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
 
 	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
-	// carries its `worker-<n>` label. It is the factory counterpart of
-	// EnvMoaiKanbanLabel: the worker needs the raised Stop-hook block cap
+	// carries its `lane-<n>` label. It is the factory counterpart of
+	// EnvMoaiKanbanLabel: the lane needs the raised Stop-hook block cap
 	// (it fields long dispatch-driven turns) but must not be seeded with any
-	// chain, and the leader is signalled by EnvMoaiFactoryWorkers instead.
+	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
 
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning

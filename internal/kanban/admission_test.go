@@ -21,14 +21,14 @@ import (
 func TestCardRecord_RoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "leader-sess")
+	seedLead(t, root, "lead-sess")
 
 	want := []Card{
-		{SpecID: "SPEC-RT-001", Column: ColumnRun, Holder: "runner-sess-1", LastMovedAt: "2026-08-14T01:00:00Z"},
+		{SpecID: "SPEC-RT-001", Column: ColumnRun, Holder: "run-sess-1", LastMovedAt: "2026-08-14T01:00:00Z"},
 		{SpecID: "SPEC-RT-002", Column: ColumnSync, Holder: "", LastMovedAt: "2026-08-14T02:00:00Z"},
 		{SpecID: "SPEC-RT-003", Column: ColumnBacklog, Holder: "", LastMovedAt: "2026-08-14T03:00:00Z"},
 	}
-	err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
+	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
 		st.Cards = append(st.Cards, want...)
 		return nil
 	})
@@ -65,13 +65,13 @@ func TestAdmission_WipKnobVaries(t *testing.T) {
 		t.Run(map[int]string{1: "wip1", 2: "wip2", 3: "wip3"}[limit], func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			seedLead(t, root, "leader-sess")
+			seedLead(t, root, "lead-sess")
 			opts := BoardOptions{RunWIPLimit: limit}
 
 			admitted := 0
 			for i := 0; i < limit+2; i++ {
 				spec := "SPEC-WIP-" + string(rune('0'+limit)) + "-" + string(rune('A'+i))
-				err := TransitionIntoRunOpts(root, "leader-sess", spec, opts)
+				err := TransitionIntoRunOpts(root, "lead-sess", spec, opts)
 				if err == nil {
 					admitted++
 					continue
@@ -92,15 +92,15 @@ func TestAdmission_WipKnobVaries(t *testing.T) {
 func TestAdmission_WipDefaultsToTwo(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "leader-sess")
+	seedLead(t, root, "lead-sess")
 
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-DEF-1"); err != nil {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-DEF-1"); err != nil {
 		t.Fatalf("first default admission: %v", err)
 	}
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-DEF-2"); err != nil {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-DEF-2"); err != nil {
 		t.Fatalf("second default admission: %v", err)
 	}
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-DEF-3"); !IsWipLimitExceeded(err) {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-DEF-3"); !IsWipLimitExceeded(err) {
 		t.Fatalf("third default admission: err = %v, want WIP refusal (default bound is 2)", err)
 	}
 }
@@ -113,18 +113,18 @@ func TestAdmission_WipDefaultsToTwo(t *testing.T) {
 func TestAdmission_UnheldInRunIsLegalSteadyState(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "leader-sess")
+	seedLead(t, root, "lead-sess")
 
 	// One card already held in run.
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-UNH-1"); err != nil {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-UNH-1"); err != nil {
 		t.Fatalf("first admission: %v", err)
 	}
 	// Assign its holder explicitly (the admission path itself never consults
 	// session availability — REQ-KB-011).
-	err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
+	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
 		for i := range st.Cards {
 			if st.Cards[i].SpecID == "SPEC-UNH-1" {
-				st.Cards[i].Holder = "runner-sess-only"
+				st.Cards[i].Holder = "run-sess-only"
 			}
 		}
 		return nil
@@ -135,7 +135,7 @@ func TestAdmission_UnheldInRunIsLegalSteadyState(t *testing.T) {
 
 	// No session is free; the second admission still succeeds and records
 	// an EMPTY holder — unheld, not refused, not synthesized.
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-UNH-2"); err != nil {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-UNH-2"); err != nil {
 		t.Fatalf("second admission with no session free refused: %v — admission is gated on WIP, not on session availability", err)
 	}
 	st, err := LoadBoard(root)
@@ -160,7 +160,7 @@ func TestAdmission_UnheldInRunIsLegalSteadyState(t *testing.T) {
 
 	// Positive control: the THIRD admission is refused — by WIP, proving the
 	// bound rather than session availability does the limiting.
-	if err := TransitionIntoRun(root, "leader-sess", "SPEC-UNH-3"); !IsWipLimitExceeded(err) {
+	if err := TransitionIntoRun(root, "lead-sess", "SPEC-UNH-3"); !IsWipLimitExceeded(err) {
 		t.Fatalf("third admission: err = %v, want WIP refusal", err)
 	}
 }

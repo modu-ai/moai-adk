@@ -210,7 +210,7 @@ func TestKanbanCompanionRaisesBlockCap(t *testing.T) {
 		t.Errorf("negative control: env must be unchanged with no kanban signal and no armed goal, got %v", got)
 	}
 
-	t.Setenv(config.EnvMoaiKanbanLabel, "runner-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLabel, "run-tjlgt1")
 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
 	if !slices.Contains(got, want) {
 		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)
@@ -231,7 +231,7 @@ func TestFactoryRaisesBlockCap(t *testing.T) {
 
 	// Negative control: the factory variable alone must gate the branch (the
 	// worker-label variable deliberately does not).
-	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 	if got := injectStopHookBlockCapForGoal(ctx, base, tmp, ""); !slices.Equal(got, base) {
 		t.Errorf("negative control: MOAI_FACTORY_WORKER alone must not raise the cap, got %v", got)
 	}

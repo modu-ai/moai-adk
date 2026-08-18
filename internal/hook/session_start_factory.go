@@ -15,12 +15,12 @@
 // against.
 //
 // The same two-audience split applies. The orchestrator reads
-// hookSpecificOutput.additionalContext and needs the worker labels, because
-// it is what will address the workers when dispatching cards. The operator
+// hookSpecificOutput.additionalContext and needs the lane labels, because
+// it is what will address the lanes when dispatching cards. The operator
 // reads systemMessage and needs the launch lines, because a session cannot
 // launch another session — those terminals are opened by hand. Each copy is
 // rendered in its own language (agent-facing English, operator-facing
-// conversation_language); the commands, run id, socket path, and worker
+// conversation_language); the commands, run id, socket path, and lane
 // labels are protocol tokens and are emitted verbatim in every locale so the
 // operator's paste keeps working.
 package hook
@@ -40,7 +40,7 @@ import (
 // project root the lead's loop data (queue count, free slots) is read under;
 // an empty root degrades to zero-count/all-free summaries inside the notice.
 //
-// Fail-open throughout, matching kanbanBootstrapNotice: an unparseable worker
+// Fail-open throughout, matching kanbanBootstrapNotice: an unparseable lane
 // count degrades to omitting the count-dependent copy rather than failing the
 // session start, and an unknown lang degrades to English, never to an empty
 // notice.
@@ -58,7 +58,7 @@ func factoryBootstrapNotice(root, lang string) string {
 // genuinely new session, on the same startup-only allowlist and for the same
 // reason as kanbanBootstrapNoticeForSource: the factory environment survives
 // resume / clear / compact / fork, and re-announcing the bootstrap would tell
-// the operator to open worker terminals that are already open.
+// the operator to open lane terminals that are already open.
 func factoryBootstrapNoticeForSource(source, root, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
@@ -79,19 +79,20 @@ func factoryWorkersEnv() int {
 
 // factoryLeadNotice is the factory lead branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) why
-// bootstrap is manual and how worker names are assigned; (c) the N worker
+// bootstrap is manual and how lane names are assigned; (c) the N lane
 // launch lines; (d) the entry-point guide — cc vs glm backend choice, the
-// -f N form, the incremental -f worker-<n> form, the per-lane fan-out — plus
-// the leader socket path; (e) the dispatch discipline — card-class routing
-// (A/B wholesale, C serial 3-stage), the fan-out-only stagger rule, and the
+// -f N form, the incremental -f lane-<n> form, the per-lane fan-out — plus
+// the leader socket path; (e) the dispatch discipline — whole-card routing
+// (each card to ONE lane, which runs the serial plan -> run -> sync path
+// in-session), the fan-out-only stagger rule, and the
 // no-model-override rule; (f) the free-slot line plus the inbound-automation
-// notice. There is no SPEC line — the factory entry carries a worker count,
+// notice. There is no SPEC line — the factory entry carries a lane count,
 // not a SPEC identifier.
 //
-// The worker launch lines each carry the t118 `-f worker-<i>` form — one
-// flag token that both selects the factory and names the worker, and that a
+// The lane launch lines each carry the t118 `-f lane-<i>` form — one
+// flag token that both selects the factory and names the lane, and that a
 // lead can also paste ONE line from to add a single lane later — with the
-// worker-<i> name the lead's addressing vocabulary uses, so the operator's
+// lane-<i> name the lead's addressing vocabulary uses, so the operator's
 // paste and the lead's dispatch target are the same string by construction.
 //
 // QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
@@ -100,7 +101,7 @@ func factoryWorkersEnv() int {
 // factory lead a second, conflicting polling protocol. This notice carries
 // only what is factory-specific — how a PICKED card is routed to lanes, how
 // lanes are activated, and what a dispatch must never carry. The free-slot
-// line stays because the stagger rule names free-slot workers; the
+// line stays because the stagger rule names free-slot lanes; the
 // queued-count line went with the polling instruction (the foreman reads the
 // queue itself).
 func factoryLeadNotice(runID string, workers int, root, lang string) string {
@@ -121,10 +122,10 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 		fmt.Sprintf(m.leadManual, workers, workers),
 	}
 
-	// (c) the worker launch lines, one per worker.
+	// (c) the lane launch lines, one per lane.
 	launch := make([]string, 0, workers)
 	for i := 1; i <= workers; i++ {
-		launch = append(launch, "moai cc -f "+kanban.FactoryWorkerLabel(i))
+		launch = append(launch, "moai cc -f "+kanban.FactoryLaneLabel(i))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
@@ -144,14 +145,14 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	// (f) the free-slot line and the inbound-automation notice, on the same
 	// injected-settings discriminator as the kanban lead. The slot list is
 	// computed HERE from root (fail-open to all-free on any error) because
-	// the stagger rule above names free-slot workers — the operator's
+	// the stagger rule above names free-slot lanes — the operator's
 	// opening screen names the capacity the run actually has.
 	slots := kanban.FactoryFreeSlots(root, workers, kanban.FactoryProcessAlive)
 	slotLine := m.leadSlotsNone
 	if len(slots) > 0 {
 		labels := make([]string, 0, len(slots))
 		for _, n := range slots {
-			labels = append(labels, kanban.FactoryWorkerLabel(n))
+			labels = append(labels, kanban.FactoryLaneLabel(n))
 		}
 		slotLine = strings.Join(labels, ", ")
 	}
@@ -167,21 +168,21 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
-// factoryWorkerNotice is the factory worker branch: a single line
+// factoryWorkerNotice is the factory lane branch: a single line
 // acknowledging the join, naming the label this session launched under (which
 // may be a bumped number — the registry note on stderr is gone by the time
 // the TUI takes the screen, so this line is where the operator reads the
 // final name). It does NOT print the launch block, for the same reason as
 // kanbanCompanionNotice.
 //
-// The incremental `-f worker-<n>` entry carries no run count (the launcher
+// The incremental `-f lane-<n>` entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
 // than fabricating a fan-out size. Both sentences take (label, workers);
 // the per-locale word order differs (en/ja/ko say the count first, zh the
 // label first), so the formats pin the argument order with explicit %[n]
 // indices rather than positional verbs.
 func factoryWorkerNotice(label string, workers int, lang string) string {
-	if _, ok := kanban.SplitFactoryWorkerLabel(label); !ok {
+	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
 	m := factoryMessagesFor(lang)
