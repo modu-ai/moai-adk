@@ -3,6 +3,7 @@ package paths
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -59,14 +60,43 @@ func TestHome_EmptyHOMEFallsBackToUserHomeDir(t *testing.T) {
 
 func TestMoaiHome_OverrideAbsolute(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("MOAI_HOME", "/tmp/moai-home-override")
+	// Platform-native absolute fixture: a unix "/tmp/..." literal is not
+	// filepath.IsAbs on Windows, so the override would be disregarded there
+	// and the assertion would compare against the fallback root instead.
+	override := filepath.Join(os.TempDir(), "moai-home-override")
+	t.Setenv("MOAI_HOME", override)
 
 	got, err := MoaiHome()
 	if err != nil {
 		t.Fatalf("MoaiHome() error = %v, want nil", err)
 	}
-	if got != "/tmp/moai-home-override" {
-		t.Errorf("MoaiHome() = %q, want %q (absolute MOAI_HOME honoured verbatim)", got, "/tmp/moai-home-override")
+	if got != override {
+		t.Errorf("MoaiHome() = %q, want %q (absolute MOAI_HOME honoured verbatim)", got, override)
+	}
+}
+
+func TestMoaiHome_WindowsVolumeAbsolute(t *testing.T) {
+	// Volume-letter absoluteness (D:\...) is only observable where
+	// filepath.IsAbs carries Windows semantics; elsewhere the stdlib
+	// predicate correctly reports it non-absolute, so the case is skipped
+	// rather than asserted against the wrong platform's semantics. The 8.3
+	// short-form variant pins that short paths pass through verbatim too —
+	// nothing in the resolution chain may canonicalize them (windows CI
+	// runners surface RUNNER~1-style temp roots).
+	if runtime.GOOS != "windows" {
+		t.Skip("windows volume-letter absoluteness is only observable on GOOS=windows")
+	}
+	for _, override := range []string{`D:\moai-home-override`, `C:\PROGRA~1\moai-home`} {
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("MOAI_HOME", override)
+
+		got, err := MoaiHome()
+		if err != nil {
+			t.Fatalf("MoaiHome() error = %v, want nil", err)
+		}
+		if got != override {
+			t.Errorf("MoaiHome() = %q, want %q (windows absolute MOAI_HOME honoured verbatim)", got, override)
+		}
 	}
 }
 
@@ -152,6 +182,9 @@ func TestMoaiHome_ErrorNeverDots(t *testing.T) {
 func TestSubAccessors_OverrideAndFallback(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// Platform-native absolute override root (a unix "/tmp/..." literal is
+	// not filepath.IsAbs on Windows — see TestMoaiHome_OverrideAbsolute).
+	overrideRoot := filepath.Join(os.TempDir(), "moai-home-override")
 
 	cases := []struct {
 		name     string
@@ -182,12 +215,12 @@ func TestSubAccessors_OverrideAndFallback(t *testing.T) {
 		})
 
 		t.Run(tc.name+"/override", func(t *testing.T) {
-			t.Setenv("MOAI_HOME", "/tmp/moai-home-override")
+			t.Setenv("MOAI_HOME", overrideRoot)
 			got, err := tc.call()
 			if err != nil {
 				t.Fatalf("%s() error = %v, want nil", tc.name, err)
 			}
-			want := filepath.Join("/tmp/moai-home-override", filepath.FromSlash(tc.segment))
+			want := filepath.Join(overrideRoot, filepath.FromSlash(tc.segment))
 			if got != want {
 				t.Errorf("%s() under MOAI_HOME = %q, want %q", tc.name, got, want)
 			}

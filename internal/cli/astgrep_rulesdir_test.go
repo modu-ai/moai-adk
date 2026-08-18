@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -20,8 +22,10 @@ import (
 // answers. The writeGateYAML helper is shared with gate_config_test.go.
 
 // gateYAMLWithRulesDir builds an ast_grep_gate body carrying rules_dir.
+// Single-quoted YAML: a Windows value like C:\Users\... read under double
+// quotes would have its backslashes parsed as escape sequences (\U, \t, ...).
 func gateYAMLWithRulesDir(rulesDir string) string {
-	return "    rules_dir: \"" + rulesDir + "\"\n"
+	return "    rules_dir: '" + rulesDir + "'\n"
 }
 
 func TestResolveRulesDir(t *testing.T) {
@@ -53,9 +57,32 @@ func TestResolveRulesDir(t *testing.T) {
 	t.Run("absolute gate.yaml value passes through unjoined", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		writeGateYAML(t, dir, gateYAMLWithRulesDir("/opt/shared/astgrep-rules"))
-		if got := resolveRulesDir("", dir); got != "/opt/shared/astgrep-rules" {
-			t.Errorf("resolveRulesDir(\"\", dir) = %q, want /opt/shared/astgrep-rules (absolute must not be joined)", got)
+		// Platform-native absolute fixture: a unix "/opt/..." literal is not
+		// filepath.IsAbs on Windows, so it would be joined onto the project
+		// root instead of passing through.
+		absRules := filepath.Join(os.TempDir(), "shared-astgrep-rules")
+		writeGateYAML(t, dir, gateYAMLWithRulesDir(absRules))
+		if got := resolveRulesDir("", dir); got != absRules {
+			t.Errorf("resolveRulesDir(\"\", dir) = %q, want %q (absolute must not be joined)", got, absRules)
+		}
+	})
+
+	t.Run("windows volume-letter gate.yaml value passes through unjoined", func(t *testing.T) {
+		t.Parallel()
+		// Volume-letter absoluteness (D:\...) is only observable where
+		// filepath.IsAbs carries Windows semantics; elsewhere the stdlib
+		// predicate correctly reports it non-absolute. The 8.3 short-form
+		// variant pins verbatim pass-through — nothing may canonicalize
+		// short paths (windows CI runners surface RUNNER~1-style roots).
+		if runtime.GOOS != "windows" {
+			t.Skip("windows volume-letter absoluteness is only observable on GOOS=windows")
+		}
+		for _, abs := range []string{`D:\sg\rules`, `C:\RUNNER~1\rules`} {
+			dir := t.TempDir()
+			writeGateYAML(t, dir, gateYAMLWithRulesDir(abs))
+			if got := resolveRulesDir("", dir); got != abs {
+				t.Errorf("resolveRulesDir(\"\", dir) = %q, want %q (windows absolute must not be joined)", got, abs)
+			}
 		}
 	})
 
