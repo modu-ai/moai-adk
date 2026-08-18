@@ -2,9 +2,9 @@
 package harness
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -154,21 +154,34 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 //   - worst < 100% of budget (5s). The contract itself: no single write may
 //     consume the whole hook budget, because one that does stalls the user's
 //     tool call.
-//   - median <= 2.0x ONE reference append cycle (open O_APPEND + write one
-//     JSONL-sized line + close), measured in this same run on the same
-//     filesystem. The CALIBRATED arm — it measures code, not machine.
-//     RecordEvent is one such cycle plus sub-millisecond marshal/mkdir, so
-//     the healthy ratio sits at ~1.0x on any machine under any load; an
-//     fsync per write lands at 5-50x, a whole-file rewrite at 2-3x, and both
-//     trip the bound even while absolute figures stay inside the generous
-//     budget fractions. This closes the gap the earlier forms left: the
-//     100ms-per-sample absolute ceiling measured machine load (a loaded box
-//     breached it on healthy code; see the load incidents of 2026-08-15),
-//     and the budget fractions alone cannot see a 2x slowdown under 1s. A
-//     persisted baseline cannot close it either — the verify snapshot store
-//     keys records to exact tree state, and a baseline recorded at another
-//     time measures another load state; the in-run reference is the only
-//     honest baseline (full rationale: internal/timing package doc).
+//   - median <= 2.0x ONE healthy RecordEvent-shaped reference cycle —
+//     timestamp + MkdirAll + json.Marshal of the same event shape + one
+//     append cycle (open O_APPEND + write one JSONL line + close) — measured
+//     in this same run on the same filesystem. The CALIBRATED arm — it
+//     measures code, not machine. The reference mirrors the measured
+//     operation's full cost MIX (CPU-side marshal/stat plus the syscall
+//     write), because VM CI runners inflate the CPU class and the syscall
+//     class by different factors: a write-cycle-only reference stayed flat
+//     while healthy RecordEvent measured 2.56x-3.61x on ubuntu Release
+//     Verify (job 95500006280, 2026-08-17) — the falsified form of this
+//     arm. With the mix mirrored, any class-specific inflation multiplies
+//     both sides equally and the healthy ratio sits at ~1.0x on any machine
+//     under any load; an ADDED cost unit — an fsync per write (5-50x), an
+//     extra subprocess — still trips the bound even while absolute figures
+//     stay inside the generous budget fractions. (A purely multiplicative
+//     regression such as a whole-file rewrite dilutes toward the ratio's
+//     noise floor on VM runners — it was already undetectable there under
+//     the write-only reference, whose healthy noise floor exceeded the
+//     signal; it remains visible on dev machines where the CPU-side share
+//     of the cycle is near zero.) This closes the gap the earlier forms
+//     left: the 100ms-per-sample absolute ceiling measured machine load (a
+//     loaded box breached it on healthy code; see the load incidents of
+//     2026-08-15), and the budget fractions alone cannot see a 2x slowdown
+//     under 1s. A persisted baseline cannot close it either — the verify
+//     snapshot store keys records to exact tree state, and a baseline
+//     recorded at another time measures another load state; the in-run
+//     reference is the only honest baseline (full rationale:
+//     internal/timing package doc).
 //
 // Windows keeps the existing skip: on GitHub-hosted Windows runners + race
 // detector + antivirus, file-write latency reliably exceeded even generous
@@ -183,18 +196,38 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	dir := t.TempDir()
 	obs := NewObserver(dir + "/usage-log.jsonl")
 
-	// Reference unit: ONE append cycle of the same cost class RecordEvent
-	// performs — open(O_APPEND|O_CREATE|O_WRONLY) + write one JSONL-sized
-	// line + close — on a sibling file in the same t.TempDir filesystem,
-	// measured immediately before the measured loop.
+	// Reference unit: one FULL RecordEvent-shaped cycle on a sibling file in
+	// the same t.TempDir filesystem, measured immediately before the measured
+	// loop. It mirrors the healthy RecordEvent cost MIX — the same timestamp
+	// call, the same MkdirAll stat, a json.Marshal of the same event shape,
+	// and one append cycle of the marshaled line — so VM runners' asymmetric
+	// CPU-vs-syscall inflation multiplies both sides of the ratio equally
+	// (a write-cycle-only reference decoupled: 2.56x-3.61x healthy, ubuntu
+	// job 95500006280). An added fsync or spawn in RecordEvent's real path
+	// still lands multiples above this reference.
 	refPath := dir + "/reference-append.jsonl"
-	refLine := append(bytes.Repeat([]byte("x"), 159), '\n')
 	refUnit := timing.Median(func() {
+		evt := Event{
+			Timestamp:     time.Now().UTC(),
+			EventType:     EventTypeMoaiSubcommand,
+			Subject:       "test-subject",
+			ContextHash:   "hash",
+			TierIncrement: 0,
+			SchemaVersion: LogSchemaVersion,
+		}
+		if err := os.MkdirAll(filepath.Dir(refPath), 0o755); err != nil {
+			t.Fatalf("reference mkdir failed: %v", err)
+		}
+		data, err := json.Marshal(evt)
+		if err != nil {
+			t.Fatalf("reference marshal failed: %v", err)
+		}
+		data = append(data, '\n')
 		f, err := os.OpenFile(refPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			t.Fatalf("reference append open failed: %v", err)
 		}
-		if _, err := f.Write(refLine); err != nil {
+		if _, err := f.Write(data); err != nil {
 			_ = f.Close()
 			t.Fatalf("reference append write failed: %v", err)
 		}
@@ -206,10 +239,12 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	const hookBudget = 5 * time.Second
 	steadyCeiling := hookBudget / 5 // 20% — 1s on POSIX
 
-	// Healthy ratio is ~1.0x (one append cycle + sub-ms marshal). MaxUnits
-	// 2.0 keeps headroom over healthy code while tripping on fsync-per-write
-	// (5-50x) and whole-file rewrite (2-3x) — regression classes invisible
-	// to the budget fractions when absolute figures stay generous.
+	// Healthy ratio is ~1.0x — the reference mirrors RecordEvent's full cost
+	// mix, so both sides move together under load and across machine classes.
+	// MaxUnits 2.0 keeps headroom over healthy code while tripping on ADDED
+	// cost units (fsync-per-write at 5-50x, an extra subprocess) — the
+	// regression classes invisible to the budget fractions when absolute
+	// figures stay generous.
 	timing.Assert(t, timing.Bound{
 		Name:          "RecordEvent",
 		Budget:        hookBudget,

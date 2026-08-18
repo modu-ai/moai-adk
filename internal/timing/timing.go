@@ -18,6 +18,16 @@
 // subprocess, an fsync per write) moves the ratio and trips the bound even
 // when every absolute figure still sits inside a generous ceiling.
 //
+// That inflation-cancellation holds only while the reference and the
+// measured operation carry the same cost MIX — the same weights of CPU work
+// and syscalls — not merely the same scale. On VM CI runners a µs-scale
+// mismatch decouples the two classes: the write-cycle reference stayed flat
+// while a marshal+mkdir+append operation inflated to 2.56x-3.61x on healthy
+// code (Release Verify ubuntu job 95500006280, 2026-08-17). A reference
+// that mirrors the measured operation's healthy mix cancels class-specific
+// inflation on both sides; an additive regression (a new fsync or spawn)
+// still lands far above the bound.
+//
 // # Why not a persisted baseline
 //
 // A recorded-previous-run baseline (as opposed to this in-run reference)
@@ -45,12 +55,22 @@
 //     (the same syscalls, the same spawn, the same filesystem): a spawn-bound
 //     operation is calibrated against one spawn, a write-bound operation
 //     against one append. A mismatched cost class decouples the two under
-//     load and the ratio stops being stable.
+//     load and the ratio stops being stable. For µs-scale operations the
+//     reference must further mirror the measured operation's MIX of CPU work
+//     and syscalls (timestamping, marshaling, stat, the write itself): VM
+//     runners inflate the CPU class and the syscall class by different
+//     factors, so a mix-mismatched reference moves the ratio on healthy
+//     code (observed 2.56x-3.61x, ubuntu job 95500006280).
 //   - Measure the reference immediately before the measured operation, in
 //     the same process.
 //   - Use the median of several reference runs; use the median of the
 //     measured samples for the ratio (medians move together under load;
 //     quantile mixes like p95-vs-median do not).
+//   - Keep the reference at or above one clock tick: on coarse monotonic
+//     clocks (GitHub Windows runners read interrupt time) a sub-tick
+//     reference legitimately measures as 0, which silently disables the
+//     calibrated arm. See TestMedianRunsWarmupPlusSamples for the
+//     tick-guaranteed unit pattern.
 package timing
 
 import (
