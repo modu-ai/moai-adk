@@ -146,7 +146,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// (d) the entry-point guide — which launcher is which backend and how to
 	// move a companion between them — plus the companion name options and the
 	// leader socket path when the launcher captured one.
-	backend := []string{m.glmSubstitute, m.nameChoices}
+	backend := []string{m.glmSubstitute, m.backendMix, m.nameChoices}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}

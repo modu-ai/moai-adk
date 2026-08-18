@@ -37,6 +37,7 @@ type kanbanMessages struct {
 	leadIdentity   string // lead label
 	leadManual     string
 	glmSubstitute  string
+	backendMix     string
 	nameChoices    string
 	leaderSocket   string // socket path
 	settingsAuto   string
@@ -62,6 +63,9 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "Entry points: `moai cc -k` is the Claude-backend foreman, `moai glm -k` the GLM-backend " +
 			"foreman — the launcher picks the backend, `-k` the kanban role. Substitute 'moai glm -k --name ...' " +
 			"for 'moai cc -k --name ...' on any companion to run it on the GLM backend.",
+		backendMix: "Recommended default (token availability first): lead `moai glm -k`, plan `moai cc -k --name plan`, " +
+			"run `moai glm -k --name run`, sync `moai cc -k --name sync` — Claude for judgment and review, " +
+			"GLM for implementation and the always-on lead. Any other mix, including one backend everywhere, works just as well.",
 		nameChoices:  "Name options: the default Agent worker / `judge` (Claude verdicts — the GLM foreman's only Claude path) / `worker-N` (numbered workers).",
 		leaderSocket:   "Leader socket: %s",
 		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.",
@@ -77,6 +81,9 @@ var kanbanLocales = map[string]kanbanMessages{
 			"아래 세 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
 		glmSubstitute: "진입점: `moai cc -k` 는 Claude 백엔드 공장장, `moai glm -k` 는 GLM 백엔드 공장장 — 런처가 백엔드를, `-k` 가 칸반 역할을 정합니다. " +
 			"동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
+		backendMix: "기본 추천(토큰 가용성 우선): 리더 `moai glm -k`, plan `moai cc -k --name plan`, " +
+			"run `moai glm -k --name run`, sync `moai cc -k --name sync` — 판단·리뷰는 Claude, 구현과 상시 대기하는 리더는 GLM. " +
+			"다른 조합이나 전 세션을 한 백엔드로 통일해도 무방합니다.",
 		nameChoices:  "이름 선택지: 기본 Agent 작업자 / `judge` (Claude 판정 — GLM 공장장이 Claude 를 쓰는 유일한 경로) / `worker-N` (번호 작업자).",
 		leaderSocket:   "리더 소켓: %s",
 		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
@@ -92,6 +99,9 @@ var kanbanLocales = map[string]kanbanMessages{
 			"以下の 3 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。",
 		glmSubstitute: "入口: `moai cc -k` は Claude バックエンドの親方、`moai glm -k` は GLM バックエンドの親方 — ランチャーがバックエンドを、`-k` がかんばんの役割を決めます。 " +
 			"併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
+		backendMix: "推奨デフォルト（トークン余裕優先）: リーダー `moai glm -k`、plan `moai cc -k --name plan`、" +
+			"run `moai glm -k --name run`、sync `moai cc -k --name sync` — 判定・レビューは Claude、実装と常駐のリーダーは GLM。" +
+			"他の組み合わせや、全セッションを同一バックエンドに統一しても問題ありません。",
 		nameChoices:  "名前の選択肢: デフォルトの Agent 作業者 / `judge`（Claude による判定 — GLM 親方が Claude を使う唯一の経路） / `worker-N`（番号付き作業者）。",
 		leaderSocket:   "リーダーソケット: %s",
 		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。",
@@ -107,6 +117,9 @@ var kanbanLocales = map[string]kanbanMessages{
 			"下面三个协同会话需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。",
 		glmSubstitute: "入口：`moai cc -k` 是 Claude 后端的工头，`moai glm -k` 是 GLM 后端的工头 —— 启动器决定后端，`-k` 决定看板角色。 " +
 			"如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",
+		backendMix: "推荐默认（优先考虑令牌余量）：主导 `moai glm -k`、plan `moai cc -k --name plan`、" +
+			"run `moai glm -k --name run`、sync `moai cc -k --name sync` —— 判定与评审用 Claude，实现与常驻的主导用 GLM。" +
+			"其他组合、或将全会话统一到同一后端同样可行。",
 		nameChoices:  "命名选项：默认 Agent 作业者 / `judge`（Claude 判定 —— GLM 工头使用 Claude 的唯一途径） / `worker-N`（编号作业者）。",
 		leaderSocket:   "主导会话套接字：%s",
 		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。",
