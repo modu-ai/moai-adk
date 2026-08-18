@@ -187,15 +187,9 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// GitHub: 🔀 open issues / open pull requests (first number issues, second
-	// PRs). Served from cache, so this is a file read even when the network is
-	// down. One icon over both counts (operator request 2026-08-17): the pair
-	// reads as one service's activity, and the former ⚠️/🔀 split spent two
-	// icons saying so. The 🔀 here is the PR icon — distinct from the repo
-	// indicator, which renders 📡 (see renderRepoBranchSegment).
-	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
-		segs = append(segs, fmt.Sprintf("🔀 %d / %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
-	}
+	// The GitHub 🔀 counts no longer live here: as of the 2026-08-18 layout they
+	// ride the head of the repo segment (see renderRepoBranchSegment) so the
+	// service activity and the repository it belongs to read as one unit.
 
 	return r.joinSegments(segs)
 }
@@ -510,21 +504,25 @@ func (r *Renderer) isPREnabled() bool {
 	return enabled
 }
 
-// renderRepoBranchSegment renders the combined repo + branch segment in the
-// form "📡 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3. The 📡 repo indicator
-// is distinct from the 🔀 PR icon rendered by renderSessionLine.
+// renderRepoBranchSegment renders the combined GitHub + repo + branch segment
+// in the form "🔀 issues / PRs -> 📡 owner/name, ahead/behind | 🅱️ branch +N" —
+// layout v3 CH3 as merged per operator request 2026-08-18: the GitHub activity
+// (open issues / open PRs, 🔀) points at the repository (📡) whose local sync
+// state follows as a bare "ahead/behind" pair, and the branch rides behind.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "📡 owner/name | 🅱️ branch ↑N +N"
+//   - GitHub available:                        "🔀 i / p -> " prefix prepended (SegmentGitHub gate applies)
+//   - GitHub unavailable or segment disabled:  prefix omitted — "📡 owner/name, a/b | …"
+//   - Workspace.Repo present + Branch present: "📡 owner/name, ahead/behind | 🅱️ branch +N"
+//   - ahead/behind:                            always shown, zeros included ("0/0")
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
-//   - Ahead == 0:                              "↑N" portion omitted
-//   - Behind > 0:                              " ↓N" appended after ahead
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
 // @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
+// @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub 🔀 counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -544,15 +542,6 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		branch = "[WT] " + branch
 	}
 
-	// Ahead/Behind suffix (0 values omitted)
-	var aheadBehind string
-	if data.Git.Ahead > 0 {
-		aheadBehind += fmt.Sprintf(" ↑%d", data.Git.Ahead)
-	}
-	if data.Git.Behind > 0 {
-		aheadBehind += fmt.Sprintf(" ↓%d", data.Git.Behind)
-	}
-
 	// Dirty count (omitted when 0)
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
 	var dirtySuffix string
@@ -560,8 +549,16 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		dirtySuffix = fmt.Sprintf(" +%d", dirty)
 	}
 
-	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
-	return fmt.Sprintf("📡 %s/%s | %s", repo.Owner, repo.Name, inner)
+	repoPart := fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind)
+
+	// GitHub activity prefix: open issues / open PRs pointing at the repo.
+	// Served from cache, so this is a file read even when the network is down.
+	prefix := ""
+	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
+		prefix = fmt.Sprintf("🔀 %d / %d -> ", data.GitHub.OpenIssues, data.GitHub.OpenPRs)
+	}
+
+	return prefix + repoPart + " | " + branch + dirtySuffix
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff

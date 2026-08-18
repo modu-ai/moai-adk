@@ -282,10 +282,10 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3 (2026-05-22 fix): repo info present -> "📡 owner/name | 🅱️ branch" form.
-	// clean -> no dirty suffix.
-	if !strings.Contains(got, "📡 modu-ai/moai-adk | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '📡 modu-ai/moai-adk | 🅱️ main' or '📭 main +0', got %q", got)
+	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge): repo info present ->
+	// "📡 owner/name, ahead/behind | 🅱️ branch" form. clean -> no dirty suffix.
+	if !strings.Contains(got, "📡 modu-ai/moai-adk, 0/0 | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
+		t.Errorf("should show clean branch as '📡 modu-ai/moai-adk, 0/0 | 🅱️ main' or '📭 main +0', got %q", got)
 	}
 }
 
@@ -912,10 +912,10 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
-	// Layout v3 CH3 (2026-05-22 fix): combined repo+branch segment.
-	// "📡 owner/name | 🅱️ branch ↑N ↓N +N" (pipe separator, repo prefix required).
-	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6
-	if !strings.Contains(l3, "📡 modu-ai/moai-adk | 🅱️ feat/auth ↑2 ↓1 +6") {
+	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge): combined repo+branch segment.
+	// "📡 owner/name, ahead/behind | 🅱️ branch +N" (pipe separator, repo prefix required).
+	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6; ahead/behind ride the repo part.
+	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 2/1 | 🅱️ feat/auth +6") {
 		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
@@ -1049,9 +1049,9 @@ func TestRender_ModeRouting(t *testing.T) {
 	}{
 		{ModeDefault, 1, 4},
 		{ModeFull, 1, 6},
-		{ModeCompact, 1, 4},  // deprecated → default
-		{ModeMinimal, 1, 4},  // deprecated → default
-		{ModeVerbose, 1, 6},  // deprecated → full
+		{ModeCompact, 1, 4}, // deprecated → default
+		{ModeMinimal, 1, 4}, // deprecated → default
+		{ModeVerbose, 1, 6}, // deprecated → full
 	}
 
 	for _, tt := range tests {

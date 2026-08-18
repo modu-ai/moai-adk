@@ -169,12 +169,15 @@ func TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp(t *testing.T) {
 func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	t.Parallel()
 
+	// Since the 2026-08-18 layout merge the GitHub 🔀 counts ride the repo
+	// segment (renderRepoBranchSegment), not the session line — the session
+	// line must stay free of the glyph in both the fetched and unfetched cases.
 	d := namedData()
 	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
 
 	got := NewRenderer("default", true, nil).renderSessionLine(d)
-	if !strings.Contains(got, "🔀 7 / 3") {
-		t.Errorf("github segment missing from %q", got)
+	if strings.Contains(got, "🔀") {
+		t.Errorf("github counts moved to the repo segment; session line must not render 🔀, got %q", got)
 	}
 
 	d.GitHub = GitHubCounts{} // never fetched
@@ -206,11 +209,8 @@ func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "📡 modu-ai/moai-adk | 🅱️ main") {
-		t.Errorf("repo indicator must render 📡, got %q", got)
-	}
-	if !strings.Contains(got, "🔀 7 / 3") {
-		t.Errorf("github segment must render 🔀 issues / PRs, got %q", got)
+	if !strings.Contains(got, "🔀 7 / 3 -> 📡 modu-ai/moai-adk, 0/0 | 🅱️ main") {
+		t.Errorf("repo segment must render the merged 🔀 -> 📡 form, got %q", got)
 	}
 	if strings.Contains(got, "🔀 modu-ai") {
 		t.Errorf("repo prefix must not remain 🔀, got %q", got)
@@ -223,14 +223,20 @@ func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 	t.Parallel()
 
-	d := namedData()
-	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
+	// The SegmentGitHub gate now governs the 🔀 prefix on the repo segment.
+	d := &StatusData{
+		Git:    GitStatusData{Branch: "main", Available: true},
+		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
+	}
 
-	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderSessionLine(d)
+	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderRepoBranchSegment(d)
 	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
 		t.Errorf("disabled github segment still rendered: %q", got)
 	}
-	if !strings.Contains(got, "🔄 TODO: 12 / 26") {
-		t.Errorf("backlog must survive disabling the github segment: %q", got)
+	if !strings.Contains(got, "📡 modu-ai/moai-adk") {
+		t.Errorf("repo part must survive the gate, got %q", got)
 	}
 }
