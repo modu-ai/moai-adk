@@ -127,7 +127,7 @@ catalog:
             - name: manager-kanban
               tier: core
               path: templates/.claude/agents/moai/manager-kanban.md
-              hash: 4349014e2db23345bebf5d76f3d5b60c8944c433569373eb3c8c78e58cf0e344
+              hash: 28853aa4de587e916179862393edb708a3365e819f1d1c38e0a5b94d45d27713
               version: 1.0.0
             - name: manager-spec
               tier: core

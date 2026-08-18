@@ -45,16 +45,16 @@ func TestBoardMutation_SerializedAcrossProcesses(t *testing.T) {
 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
 	}
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
-		{SpecID: "SPEC-KB-0030", Column: "run", Holder: "run-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
+		{SpecID: "SPEC-KB-0030", Column: "run", Holder: "runner-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
 	}})
 
 	// Fire both processes without waiting for the first — the lock, not the
 	// spawn order, must serialize the read-modify-write.
 	results := make(chan error, 2)
-	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0031") }()
-	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0032") }()
+	go func() { results <- runTransitionHelperUnfatal(t, root, "leader-sess", "SPEC-KB-0031") }()
+	go func() { results <- runTransitionHelperUnfatal(t, root, "leader-sess", "SPEC-KB-0032") }()
 	first := <-results
 	second := <-results
 
@@ -86,12 +86,12 @@ func TestBoardMutation_ConcurrencyPositiveControl(t *testing.T) {
 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
 	}
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{}})
 
 	results := make(chan error, 2)
-	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0041") }()
-	go func() { results <- runTransitionHelperUnfatal(t, root, "lead-sess", "SPEC-KB-0042") }()
+	go func() { results <- runTransitionHelperUnfatal(t, root, "leader-sess", "SPEC-KB-0041") }()
+	go func() { results <- runTransitionHelperUnfatal(t, root, "leader-sess", "SPEC-KB-0042") }()
 	if err := <-results; err != nil {
 		t.Fatalf("first zero-baseline transition failed: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestWriteBoardState_ConcurrentReaderSeparateProcess(t *testing.T) {
 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
 	}
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	// A prior well-formed board so the reader's first observations are whole.
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{}})
 
@@ -152,7 +152,7 @@ func TestWriteBoardState_ConcurrentReaderSeparateProcess(t *testing.T) {
 	i := 0
 	for time.Now().Before(deadline) {
 		spec := "SPEC-RD-" + string(rune('A'+i%26)) + time.Now().Format("150405.000000000")
-		if err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+		if err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 			st.Cards = append(st.Cards, Card{SpecID: spec, Column: ColumnPlan})
 			return nil
 		}); err != nil {

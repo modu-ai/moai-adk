@@ -36,7 +36,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -k <N>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f worker-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -67,29 +67,37 @@ Kanban Mode:
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The three
-                                roles are: plan, run, sync. A role name
-                                held by a live session is bumped to the next
-                                free number (plan-1, plan-2, ...).
+                                roles are: planner, runner, syncer. A role
+                                name held by a live session is bumped to
+                                the next free number (planner-1,
+                                planner-2, ...).
 
-Factory Mode (the same -k token, with a worker count):
-  -k <N>                       Enter as the LEAD of a factory run with N
-                                numbered workers. The lead routes operator-
-                                picked cards to free workers over cross-session
-                                messages — A/B-class cards wholesale to one
-                                worker, C-class cards a serial 3-stage path.
-                                The workers are launched by hand, one per
-                                terminal, each as: moai glm -k <N> --name worker-<i>
-  -k <N> --name worker-<i>     Enter as WORKER <i> of an existing factory run.
-                                A worker number whose label is held by a live
-                                session is bumped to the next free number.
-                                A bare -k --name worker-<i> (no N) takes the
-                                default of 8 workers.
+Factory Mode (dedicated -f entry):
+  -f, --factory [N]            Enter as the LEAD of a factory run with N
+                                numbered workers; N omitted = one worker
+                                (worker-1), grown afterwards with the
+                                incremental form below. The lead routes
+                                operator-picked cards to free workers over
+                                cross-session messages — A/B-class cards
+                                wholesale to one worker, C-class cards a
+                                serial 3-stage path.
+  -f worker-<n>                Launch exactly one additional worker — worker
+                                n — and connect it to the leader socket of the
+                                running factory. A number whose label is held by a
+                                live session is bumped to the next free number.
+  -k <N> / -k <N> --name worker-<i>
+                                The v1.2.0 unified -k factory shapes, still
+                                valid: -k N is the lead of an N-worker run,
+                                -k N --name worker-<i> is worker i of it (a
+                                bare -k --name worker-<i> defaults to 8).
+                                One entry token per launch: -k and -f
+                                together is an error.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
   above. -f briefly returned as the factory fan-out flag and was RETIRED
-  again: the factory is entered with 'moai glm -k <N>' — the same -k,
-  carrying a worker count. Any -f/--factory token is an error today.
+  (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the dedicated
+  factory entry — the kanban chain keeps -k, the factory gets -f.
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
@@ -105,9 +113,10 @@ Examples:
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
-  moai glm -k --name sync-abc123   # Kanban companion on GLM
-  moai glm -k 4            # Factory lead on GLM: announces worker-1..worker-4
-  moai glm -k 4 --name worker-2    # Factory worker 2 of a 4-worker run
+  moai glm -k --name runner        # Kanban companion on GLM (the GLM-recommended role)
+  moai glm -f              # Factory lead on GLM: one worker (worker-1)
+  moai glm -f 4            # Factory lead on GLM: announces worker-1..worker-4
+  moai glm -f worker-2     # Add worker 2 to the running factory (GLM lane)
 
 For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -198,21 +207,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0: the -f/--factory entry flag was
-	// RETIRED — the factory is entered with the same -k carrying a worker
-	// count. A retired token errors here rather than falling through to the
-	// backend. See cc.go for the full rationale; glm mirrors cc exactly
-	// except for the backend constant.
-	if err := rejectRetiredFactoryFlag(filteredArgs); err != nil {
-		return err
-	}
-	// SPEC-FACTORY-BOOTSTRAP-001 + SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0:
-	// ONE -k token, two shapes — the three-role kanban chain (bare -k or
-	// -k SPEC-ID, role disambiguated by --name) and the numbered factory
-	// fan-out (-k N, or -k plus a worker-shape --name with the default
-	// count). See cc.go for the truth table; glm mirrors cc exactly except
-	// for the backend constant.
-	entry, err := parseKanbanFlag(filteredArgs)
+	// t118 launcher axis: the unified entry parse — parseLauncherEntry covers
+	// the -k shapes (SPEC-FACTORY-BOOTSTRAP-001 + the v1.2.0 factory shapes)
+	// and the revived dedicated -f surface. See cc.go for the truth table;
+	// glm mirrors cc exactly except for the backend constant.
+	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
 		return err
 	}

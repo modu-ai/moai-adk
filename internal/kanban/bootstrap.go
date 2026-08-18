@@ -26,15 +26,41 @@ import (
 )
 
 // CompanionRoles are the three companion roles of a kanban run, in the order
-// the lead announces them. D1 (card t97) retired the review role: the chain
-// is the three phases plan -> run -> sync, and reviewing gates integration
-// from the hub instead of occupying a companion session.
+// the lead announces them. The values are personified session names (t118
+// naming axis, operator directive 2026-08-18): planner / runner / syncer, the
+// agent nouns of the three board phases. D1 (card t97) retired the review
+// role: the chain is the three phases plan -> run -> sync, and reviewing
+// gates integration from the hub instead of occupying a companion session.
 //
 // The lead is deliberately absent from this list. It is the only session that
 // carries the kanban token, because that token seeds a session whose
 // orchestrator drives the whole plan -> run -> sync chain; giving it
 // to a companion would produce three sessions each driving the whole chain.
-var CompanionRoles = []string{"plan", "run", "sync"}
+var CompanionRoles = []string{"planner", "runner", "syncer"}
+
+// companionLaunchers maps each companion role to the launcher verb the
+// bootstrap notice prints for it: "cc" runs the Claude backend, "glm" the GLM
+// backend. The mapping IS the recommended default — judgment and review work
+// (planner, syncer) on Claude, implementation (runner) on GLM, the always-on
+// lead on GLM — so the notice's copyable launch lines and its per-locale
+// recommendation table render one recommendation, not two that can drift.
+var companionLaunchers = map[string]string{
+	"planner": "cc",
+	"runner":  "glm",
+	"syncer":  "cc",
+}
+
+// CompanionLauncher returns the entry-point verb the bootstrap notice prints
+// for a companion role — "cc" or "glm". An unknown role falls back to "cc",
+// the pre-t118 shape of the launch lines (every companion on Claude), so a
+// display path degrades to the conservative default rather than printing a
+// malformed command.
+func CompanionLauncher(role string) string {
+	if verb, ok := companionLaunchers[role]; ok {
+		return verb
+	}
+	return "cc"
+}
 
 // base36Digits is the alphabet of NewRunID.
 const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -80,7 +106,7 @@ func CompanionLabel(role string) string {
 
 // CompanionNumberLabel joins a role and a collision number into the bumped
 // label a companion launches under when its bare name is held by a live
-// session (`plan-1`, `plan-2`, ...). It is the companion sibling of
+// session (`planner-1`, `planner-2`, ...). It is the companion sibling of
 // FactoryWorkerLabel's shape.
 func CompanionNumberLabel(role string, n int) string {
 	return role + "-" + strconv.Itoa(n)
@@ -107,13 +133,13 @@ func LeadLabel(runID string) string {
 //
 // Two forms parse:
 //
-//   - the bare role (`plan`) — the form the lead announces and the common case
-//     under the one-machine-one-run policy;
+//   - the bare role (`planner`) — the form the lead announces and the common
+//     case under the one-machine-one-run policy;
 //   - `<role>-<suffix>` — the suffix is a collision number the launcher
-//     appended (`plan-1`), or a run id from a pre-policy launch (`plan-abc123`).
+//     appended (`planner-1`), or any run-id-shaped value in that position.
 //
-// The legacy run-id form is MIGRATED, not rejected: a rejected suffix would
-// fail the shape check, and `-k --name plan-abc123` then reroutes down the
+// The suffixed form is MIGRATED, not rejected: a rejected suffix would fail
+// the shape check, and `-k --name planner-abc123` then reroutes down the
 // LEAD branch of the launcher's truth table (a `-k` launch whose name is not
 // companion-shaped seeds a whole second chain) — a silent misroute far worse
 // than joining under a stale suffix. A role name carries no hyphen, so the
@@ -129,7 +155,7 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 	return role, suffix, true
 }
 
-// SplitLeadLabel splits a `lead-<run-id>` label into its run id and reports
+// SplitLeadLabel splits a `leader-<run-id>` label into its run id and reports
 // whether the value has the lead shape at all. It is the lead-side counterpart
 // of SplitCompanionLabel, and admits exactly the same run-id shape.
 //
@@ -137,7 +163,7 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 // it was handed, rather than minting a second one beside it. A lead has two
 // id-bearing surfaces — the session name and MOAI_KANBAN_ID — and without this
 // splitter nothing joins them: the SessionStart notice composes its companion
-// launch commands from the environment id, so a session named `lead-X` can
+// launch commands from the environment id, so a session named `leader-X` can
 // print commands belonging to run Y, and anyone who copies one opens an orphan.
 // The companion branch already derives its id from its label and states that it
 // does so precisely so the two can never disagree; this restores the symmetry.
@@ -211,4 +237,33 @@ func isRunIDShape(s string) bool {
 		}
 	}
 	return true
+}
+
+// The leader-socket roots (t118 socket scheme, v3.1.1). The two modes keep
+// separate directories — `/tmp/moai-socket-kanban/<run-id>` and
+// `/tmp/moai-socket-factory/<run-id>` — replacing the pre-t118 flat
+// single-directory shape, which named one mode and left the other squatting
+// in it. The value is a conventional address line the SessionStart notice
+// prints (EnvMoaiKanbanLeadAddr), not a filesystem contract the messaging
+// substrate is bound to — the actual transport is runtime-owned — which is
+// why the /tmp literal is acceptable here rather than os.TempDir().
+const (
+	kanbanSocketDir  = "/tmp/moai-socket-kanban"
+	factorySocketDir = "/tmp/moai-socket-factory"
+)
+
+// LeaderSocketPath returns the conventional leader-socket address a KANBAN
+// lead publishes for runID: <kanbanSocketDir>/<run-id>. The launcher sets it
+// into EnvMoaiKanbanLeadAddr and the SessionStart notice prints it verbatim;
+// the factory lead uses FactoryLeaderSocketPath, its factory sibling.
+func LeaderSocketPath(runID string) string {
+	return kanbanSocketDir + "/" + runID
+}
+
+// FactoryLeaderSocketPath returns the conventional leader-socket address a
+// FACTORY lead publishes for runID: <factorySocketDir>/<run-id>. Same carrier
+// and same print surface as LeaderSocketPath; a separate directory so a kanban
+// run and a factory run sharing one machine never address the same line.
+func FactoryLeaderSocketPath(runID string) string {
+	return factorySocketDir + "/" + runID
 }

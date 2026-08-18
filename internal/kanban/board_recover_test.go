@@ -64,8 +64,8 @@ func TestRecoverBoard_ReadPathNeverRepairs(t *testing.T) {
 func TestRecoverBoard_BoundedRecovery(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
-	if err := DeclareRole(root, "worker-sess", "run", "run-alpha"); err != nil {
+	seedLead(t, root, "leader-sess")
+	if err := DeclareRole(root, "worker-sess", "runner", "runner-alpha"); err != nil {
 		t.Fatalf("DeclareRole(worker): %v", err)
 	}
 	lostRaw := corruptBoard(t, root)
@@ -74,7 +74,7 @@ func TestRecoverBoard_BoundedRecovery(t *testing.T) {
 		t.Fatalf("read worker declaration: %v", err)
 	}
 
-	res, err := RecoverBoard(root, "lead-sess")
+	res, err := RecoverBoard(root, "leader-sess")
 	if err != nil {
 		t.Fatalf("RecoverBoard(lead) error = %v", err)
 	}
@@ -112,7 +112,7 @@ func TestRecoverBoard_BoundedRecovery(t *testing.T) {
 	// Effect: one invocation, one definite verdict — invoking recovery again
 	// on the now-readable board yields the recovered verdict and modifies
 	// nothing.
-	res2, err := RecoverBoard(root, "lead-sess")
+	res2, err := RecoverBoard(root, "leader-sess")
 	if err != nil {
 		t.Fatalf("second RecoverBoard: %v", err)
 	}
@@ -127,13 +127,13 @@ func TestRecoverBoard_BoundedRecovery(t *testing.T) {
 func TestRecoverBoard_ReadableBoardRecoveredUnchanged(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
-		{SpecID: "SPEC-KB-0060", Column: "run", Holder: "run-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
+		{SpecID: "SPEC-KB-0060", Column: "run", Holder: "runner-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
 	}})
 	before := readBoardBytes(t, root)
 
-	res, err := RecoverBoard(root, "lead-sess")
+	res, err := RecoverBoard(root, "leader-sess")
 	if err != nil {
 		t.Fatalf("RecoverBoard(readable) error = %v", err)
 	}
@@ -154,8 +154,8 @@ func TestRecoverBoard_ReadableBoardRecoveredUnchanged(t *testing.T) {
 func TestRecoverBoard_NonLeadRefused(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
-	if err := DeclareRole(root, "worker-sess", "run", "run-alpha"); err != nil {
+	seedLead(t, root, "leader-sess")
+	if err := DeclareRole(root, "worker-sess", "runner", "runner-alpha"); err != nil {
 		t.Fatalf("DeclareRole(worker): %v", err)
 	}
 	before := string(corruptBoard(t, root))
@@ -181,9 +181,9 @@ func TestRecoverBoard_NonLeadRefused(t *testing.T) {
 func TestRecoverBoard_AbsentNeedsNoRecovery(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
-	res, err := RecoverBoard(root, "lead-sess")
+	res, err := RecoverBoard(root, "leader-sess")
 	if err != nil {
 		t.Fatalf("RecoverBoard(absent) error = %v", err)
 	}

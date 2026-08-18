@@ -307,7 +307,7 @@ func TestUnresolvedCard_OutcomeDistinctAndByteUnchanged(t *testing.T) {
 	}
 	root := specFixtureRepo(t)
 	bases := fixtureBases(t)
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
 	// Board record holding the card in run; the card's primary-side spec.md
 	// exists (completed on main).

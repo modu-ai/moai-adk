@@ -2,10 +2,12 @@ package hook
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -23,17 +25,19 @@ func configWithLang(lang string) ConfigProvider {
 func TestKanbanLocalesCoverEveryField(t *testing.T) {
 	for lang, m := range kanbanLocales {
 		fields := map[string]string{
-			"leadHeader":     m.leadHeader,
-			"leadIdentity":   m.leadIdentity,
-			"leadManual":     m.leadManual,
-			"glmSubstitute":  m.glmSubstitute,
-			"nameChoices":    m.nameChoices,
-			"leaderSocket":   m.leaderSocket,
-			"settingsAuto":   m.settingsAuto,
-			"settingsVerify": m.settingsVerify,
-			"specLine":       m.specLine,
-			"backlogSummary": m.backlogSummary,
-			"companionJoin":  m.companionJoin,
+			"leadHeader":       m.leadHeader,
+			"leadIdentity":     m.leadIdentity,
+			"leadManual":       m.leadManual,
+			"glmSubstitute":    m.glmSubstitute,
+			"backendRecommend": m.backendRecommend,
+			"agentFanout":      m.agentFanout,
+			"nameChoices":      m.nameChoices,
+			"leaderSocket":     m.leaderSocket,
+			"settingsAuto":     m.settingsAuto,
+			"settingsVerify":   m.settingsVerify,
+			"specLine":         m.specLine,
+			"backlogSummary":   m.backlogSummary,
+			"companionJoin":    m.companionJoin,
 		}
 		for name, value := range fields {
 			if strings.TrimSpace(value) == "" {
@@ -122,18 +126,18 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 			clearKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "tjpzpl")
-			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjpzpl")
+			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjpzpl")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
 			got := kanbanBootstrapNotice("", lang)
 			for _, want := range []string{
-				"moai cc -k --name plan",
-				"moai cc -k --name run",
-				"moai cc -k --name sync",
+				"moai cc -k --name planner",
+				"moai glm -k --name runner",
+				"moai cc -k --name syncer",
 				"moai glm -k --name",
 				"`judge`",
 				"`worker-N`",
-				"/tmp/moai-kanban-tjpzpl",
+				"/tmp/moai-socket-kanban/tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",
 			} {
@@ -155,20 +159,25 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 			clearKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
-			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjq2bd")
+			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
 			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", lang), "\n"), "\n\n")
 			if len(blocks) != 5 {
 				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
 			}
-			// Block 3 is the launch block: exactly the three commands, nothing else.
+			// Block 3 is the launch block: exactly the three commands — each
+			// role on its recommended launcher — and nothing else.
 			launch := strings.Split(blocks[2], "\n")
 			if len(launch) != 3 {
 				t.Errorf("launch block holds %d lines, want 3:\n%q", len(launch), launch)
 			}
+			commands := make(map[string]bool, len(kanban.CompanionRoles))
+			for _, role := range kanban.CompanionRoles {
+				commands["moai "+kanban.CompanionLauncher(role)+" -k --name "+role] = true
+			}
 			for _, line := range launch {
-				if !strings.HasPrefix(line, "moai cc -k --name ") {
+				if !commands[line] {
 					t.Errorf("launch block carries a non-command line: %q", line)
 				}
 			}
@@ -247,9 +256,50 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 	}
 
 	// Both channels carry the same launch lines.
-	for _, want := range []string{"moai cc -k --name plan", "moai cc -k --name sync"} {
+	for _, want := range []string{"moai cc -k --name planner", "moai cc -k --name syncer"} {
 		if !strings.Contains(out.SystemMessage, want) || !strings.Contains(ac, want) {
 			t.Errorf("launch line %q missing from one of the two channels", want)
 		}
+	}
+}
+
+// TestKanbanRecommendationTableMatchesLaunchLines pins the agreement the
+// recommendation redesign exists for: each locale's recommendation table names
+// the same backend for a role that the role's launch line launches with. The
+// table is prose, the lines are copyable commands, and a drift between the two
+// would hand the operator two different recommendations in one notice. The
+// lead appears ONLY in the table — it is launched by the operator's own entry
+// command, so the notice prints no `--name leader` line to copy.
+func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
+	backendFor := map[string]string{"cc": "Claude (Opus)", "glm": "GLM"}
+	for lang := range kanbanLocales {
+		t.Run(lang, func(t *testing.T) {
+			clearKanbanEnv(t)
+			t.Setenv(config.EnvMoaiKanban, "1")
+			t.Setenv(config.EnvMoaiKanbanID, "tjrec")
+
+			got := kanbanLeadNotice("tjrec", "", lang)
+			for _, role := range kanban.CompanionRoles {
+				line := "moai " + kanban.CompanionLauncher(role) + " -k --name " + role
+				if !strings.Contains(got, line) {
+					t.Errorf("locale %q: notice omits launch line %q:\n%s", lang, line, got)
+				}
+				row := regexp.MustCompile(`(?m)^  ` + role + `\s+→ (Claude \(Opus\)|GLM)$`).FindStringSubmatch(got)
+				if row == nil {
+					t.Errorf("locale %q: recommendation table has no row for %q:\n%s", lang, role, got)
+					continue
+				}
+				if want := backendFor[kanban.CompanionLauncher(role)]; row[1] != want {
+					t.Errorf("locale %q: role %q recommended as %s but its launch line uses %q",
+						lang, role, row[1], kanban.CompanionLauncher(role))
+				}
+			}
+			if !regexp.MustCompile(`(?m)^  leader\s+→ GLM$`).MatchString(got) {
+				t.Errorf("locale %q: recommendation table omits the leader → GLM row:\n%s", lang, got)
+			}
+			if strings.Contains(got, "--name leader") {
+				t.Errorf("locale %q: notice prints a lead launch line — the lead has none:\n%s", lang, got)
+			}
+		})
 	}
 }

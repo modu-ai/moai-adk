@@ -35,7 +35,7 @@ func seedBoardRaw(t *testing.T, root, body string) {
 func TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	seedBoardRaw(t, root, `{"cards":[{"spec_id":"","column":"backlog"}]}`)
 
 	// The board loads fine — it is readable, not unknown.
@@ -45,7 +45,7 @@ func TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard(t *testing.T) {
 	}
 
 	// An UNRELATED mutation must succeed.
-	err = WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+	err = WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 		st.Cards = append(st.Cards, Card{SpecID: "SPEC-UNREL-001", Column: ColumnPlan})
 		return nil
 	})
@@ -54,7 +54,7 @@ func TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard(t *testing.T) {
 	}
 
 	// And a mutation that REPAIRS the bad card must succeed too.
-	err = WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+	err = WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 		for i := range st.Cards {
 			if st.Cards[i].SpecID == "" {
 				st.Cards[i].SpecID = "SPEC-REPAIRED-001"
@@ -86,12 +86,12 @@ func TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard(t *testing.T) {
 func TestWriteBoardState_TraversalRenameInPlaceStillRefused(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
 		{SpecID: "SPEC-OK-100", Column: ColumnBacklog, LastMovedAt: "t0"},
 	}})
 
-	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+	err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 		st.Cards[0].SpecID = "../../../escape"
 		return nil
 	})

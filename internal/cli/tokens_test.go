@@ -252,7 +252,7 @@ func TestRunTokensRecordSessionResolver(t *testing.T) {
 	rec, err := runTokensRecord(tokensRecordOpts{
 		Session:  "aaaa-bbbb-cccc",
 		Card:     "t86",
-		Role:     "lead",
+		Role:     "leader",
 		Resolver: fake,
 	})
 	if err != nil {

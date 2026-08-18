@@ -20,8 +20,8 @@ func TestKanbanModeSeedsFullyAutonomousTier(t *testing.T) {
 		name  string
 		enter func() func()
 	}{
-		{"lead", func() func() { return enterKanbanMode("SPEC-KANBAN-001", "") }},
-		{"companion", func() func() { return enterKanbanCompanionMode("plan-tjlgt1") }},
+		{"leader", func() func() { return enterKanbanMode("SPEC-KANBAN-001", "") }},
+		{"companion", func() func() { return enterKanbanCompanionMode("planner-tjlgt1") }},
 	}
 
 	for _, c := range cases {

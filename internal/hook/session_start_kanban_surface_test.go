@@ -55,9 +55,9 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Kanban Mode: run tjpyre",
-		"moai cc -k --name plan",
-		"moai cc -k --name run",
-		"moai cc -k --name sync",
+		"moai cc -k --name planner",
+		"moai glm -k --name runner",
+		"moai cc -k --name syncer",
 	} {
 		if !strings.Contains(out.SystemMessage, want) {
 			t.Errorf("SystemMessage missing %q.\nGot: %q", want, out.SystemMessage)
@@ -75,7 +75,7 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 // branch, which carries a single join line rather than the launch block.
 func TestSessionStartKanbanCompanionNoticeReachesOperator(t *testing.T) {
 	clearKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "plan")
+	t.Setenv(config.EnvMoaiKanbanLabel, "planner")
 
 	projectDir := newKanbanProjectDir(t)
 	out, err := NewSessionStartHandler(nil).Handle(context.Background(), &HookInput{
@@ -86,7 +86,7 @@ func TestSessionStartKanbanCompanionNoticeReachesOperator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if !strings.Contains(out.SystemMessage, "Kanban Mode: joined the kanban run as plan") {
+	if !strings.Contains(out.SystemMessage, "Kanban Mode: joined the kanban run as planner") {
 		t.Errorf("companion join notice missing from SystemMessage.\nGot: %q", out.SystemMessage)
 	}
 }

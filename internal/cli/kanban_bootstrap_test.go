@@ -20,16 +20,16 @@ func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"long form", []string{"--name", "plan-tjlgt1"}, "plan-tjlgt1"},
-		{"short form", []string{"-n", "run-tjlgt1"}, "run-tjlgt1"},
-		{"long equals form", []string{"--name=plan-tjlgt1"}, "plan-tjlgt1"},
-		{"short equals form", []string{"-n=sync-tjlgt1"}, "sync-tjlgt1"},
-		{"among other flags", []string{"-p", "dev", "--name", "sync-abc123", "--verbose"}, "sync-abc123"},
+		{"long form", []string{"--name", "planner-tjlgt1"}, "planner-tjlgt1"},
+		{"short form", []string{"-n", "runner-tjlgt1"}, "runner-tjlgt1"},
+		{"long equals form", []string{"--name=planner-tjlgt1"}, "planner-tjlgt1"},
+		{"short equals form", []string{"-n=syncer-tjlgt1"}, "syncer-tjlgt1"},
+		{"among other flags", []string{"-p", "dev", "--name", "syncer-abc123", "--verbose"}, "syncer-abc123"},
 
 		{"absent", []string{"-p", "dev"}, ""},
 		{"no value", []string{"--name"}, ""},
 		{"non-companion name", []string{"--name", "oauth-migration"}, ""},
-		{"unknown role", []string{"--name", "lead-tjlgt1"}, ""},
+		{"lead shape is not a companion role", []string{"--name", "leader-tjlgt1"}, ""},
 		{"empty args", nil, ""},
 	}
 
@@ -56,12 +56,12 @@ func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
 func TestParseCompanionLabelStopsAtPassThroughMarker(t *testing.T) {
 	t.Parallel()
 
-	if got, ok := parseCompanionLabel([]string{"--", "--name", "plan-tjlgt1"}); ok {
+	if got, ok := parseCompanionLabel([]string{"--", "--name", "planner-tjlgt1"}); ok {
 		t.Errorf("read %q from beyond the pass-through marker", got)
 	}
 	// A label BEFORE the marker is still recognized.
-	if got, ok := parseCompanionLabel([]string{"--name", "plan-tjlgt1", "--", "-n", "run-zzz"}); !ok || got != "plan-tjlgt1" {
-		t.Errorf("parseCompanionLabel = (%q, %v), want (\"plan-tjlgt1\", true)", got, ok)
+	if got, ok := parseCompanionLabel([]string{"--name", "planner-tjlgt1", "--", "-n", "runner-zzz"}); !ok || got != "planner-tjlgt1" {
+		t.Errorf("parseCompanionLabel = (%q, %v), want (\"planner-tjlgt1\", true)", got, ok)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 // TestEnterKanbanCompanionModeSetsLabelNotKanban is the separation this whole
 // change rests on: a companion takes the raised block cap but must NOT be seeded
 // with the chain, or three sessions each drive the whole chain. Under the
-// bare-role naming policy it also publishes no run id — the id is lead-owned
+// bare-role naming policy it also publishes no run id — the id is leader-owned
 // state, and a companion-published one is the t21 mismatch root.
 func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
 	for _, key := range []string{config.EnvMoaiKanban, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLabel} {
@@ -108,13 +108,13 @@ func TestEnterKanbanCompanionModeSetsLabelNotKanban(t *testing.T) {
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterKanbanCompanionMode("sync")
+	restore := enterKanbanCompanionMode("syncer")
 
-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "sync" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "sync")
+	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "syncer" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "syncer")
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
-		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state)",
+		t.Errorf("%s must NOT be set on a companion (the run id is leader-owned state)",
 			config.EnvMoaiKanbanID)
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {

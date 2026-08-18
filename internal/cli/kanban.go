@@ -158,7 +158,7 @@ func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
 //
 // Callers must defer the returned function so it also runs on the error path; a
 // restore that only runs on success is the same leak with a narrower trigger.
-// leadLabel is the operator-supplied `lead-<run-id>` name for this session when
+// leadLabel is the operator-supplied `leader-<run-id>` name for this session when
 // there is one, and "" otherwise. Its run id is ADOPTED rather than replaced —
 // see leadRunID.
 func enterKanbanMode(specID, leadLabel string) func() {
@@ -177,8 +177,9 @@ func enterKanbanMode(specID, leadLabel string) func() {
 	// SPEC-FACTORY-BOOTSTRAP-001 M3: surface a leader socket path for the
 	// SessionStart hook to print. The actual messaging-substrate address is a
 	// run-phase concern; this conventional path-shaped value gives the notice
-	// a non-empty, grep-friendly address line.
-	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-"+runID)
+	// a non-empty, grep-friendly address line. t118 socket scheme: the kanban
+	// run's address lives under its own directory, never the factory's.
+	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, kanban.LeaderSocketPath(runID))
 
 	return func() {
 		restoreTier()
@@ -190,20 +191,20 @@ func enterKanbanMode(specID, leadLabel string) func() {
 }
 
 // leadRunID resolves the run id a lead session publishes: the one embedded in
-// an operator-supplied `lead-<run-id>` name when there is one, a fresh mint
+// an operator-supplied `leader-<run-id>` name when there is one, a fresh mint
 // otherwise.
 //
 // Adoption is what makes the lead branch symmetric with the companion branch,
 // which derives its id from its label for exactly this reason. Minting
 // unconditionally left the session's name and MOAI_KANBAN_ID free to disagree,
 // and the SessionStart notice reads only the latter — so a session the operator
-// named `lead-X` announced companion commands for a freshly minted run Y, and a
+// named `leader-X` announced companion commands for a freshly minted run Y, and a
 // copied command opened a companion that no lead was listening to.
 //
 // The shape guard is kanban.SplitLeadLabel and it admits exactly what the
-// companion side admits: a name like `lead-notarunid` is adopted, because
+// companion side admits: a name like `leader-notarunid` is adopted, because
 // `notarunid` is a well-shaped run id as far as the id grammar is concerned.
-// Anything that is not — `board-watch`, `lead-`, `lead-ABC`, `lead-a-b` — falls
+// Anything that is not — `board-watch`, `leader-`, `leader-ABC`, `leader-a-b` — falls
 // back to minting rather than publishing a malformed id. Tightening the lead
 // side alone would reintroduce an asymmetry of its own.
 func leadRunID(leadLabel string) string {
@@ -243,6 +244,28 @@ func seedAutonomyTier() func() {
 	return restore
 }
 
+// seedLaneAgentCap publishes the per-lane concurrent-subagent cap and returns
+// the function that puts it back, on the same prior-presence contract as
+// seedAutonomyTier (t118 launcher axis, operator-confirmed architecture: each
+// lane — kanban companion or factory worker — runs up to
+// DefaultLaneMaxConcurrentSubagents agents in parallel).
+//
+// A lane, not the lead: the cap is seeded on the companion / worker branches
+// only, where dispatched cards are implemented and fanned out to subagents.
+// The lead keeps the runtime default, which already bounds its own turns.
+//
+// An operator who set the variable themselves keeps it, on the same contract
+// as seedAutonomyTier: only an absent or blank value is filled, and blank
+// counts as absent because that is how the sibling seed reads it too.
+func seedLaneAgentCap() func() {
+	restore := captureEnvState(config.EnvClaudeCodeMaxConcurrentSubagents)
+	if strings.TrimSpace(os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents)) == "" {
+		_ = os.Setenv(config.EnvClaudeCodeMaxConcurrentSubagents,
+			strconv.Itoa(config.DefaultLaneMaxConcurrentSubagents))
+	}
+	return restore
+}
+
 // enterKanbanCompanionMode publishes the companion signal for a label — the
 // bare role under the naming policy, or a bumped `<role>-<n>` — and returns
 // the function that puts the environment back, on the same prior-presence
@@ -265,12 +288,15 @@ func enterKanbanCompanionMode(label string) func() {
 	// A companion is where the work actually lands — it plans, implements,
 	// reviews, and commits. Seeding the tier on the lead alone would leave every
 	// interruption exactly where it already was, because the lead does not
-	// commit code.
+	// commit code. The same reasoning seeds the per-lane agent cap: the
+	// companion's subagent fan-out is what the cap bounds.
 	restoreTier := seedAutonomyTier()
+	restoreCap := seedLaneAgentCap()
 
 	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
 
 	return func() {
+		restoreCap()
 		restoreTier()
 		restoreLabel()
 	}
@@ -295,7 +321,7 @@ func companionRegistryPath(root string) string {
 // frees the name so a relaunch reuses it instead of counting up forever. Dead
 // entries are pruned on the way through. The bumped candidates are
 // `<role>-<n>` regardless of the label's own suffix shape, so a held legacy
-// `plan-abc123` bumps to `plan-1` (never a second hyphen). The final label is
+// `planner-abc123` bumps to `planner-1` (never a second hyphen). The final label is
 // registered to this process's pid before returning.
 //
 // label MUST have the companion shape (kanban.SplitCompanionLabel); the caller
@@ -411,7 +437,7 @@ func parseCompanionLabel(args []string) (label string, ok bool) {
 	})
 }
 
-// parseLeadLabel reports the `lead-<run-id>` label in args, if any.
+// parseLeadLabel reports the `leader-<run-id>` label in args, if any.
 //
 // It is parseCompanionLabel's counterpart and exists for the launcher to read
 // back a run id the operator embedded in the session name, so the lead branch
@@ -493,7 +519,7 @@ func operatorSuppliedName(args []string) bool {
 	return false
 }
 
-// leadNameArgs returns the `--name lead-<run-id>` pair to append to a lead
+// leadNameArgs returns the `--name leader-<run-id>` pair to append to a lead
 // session's argv, or nil when the lead should carry no injected name.
 //
 // The injection exists because claude keeps an EXPLICIT name across /clear and
@@ -507,7 +533,7 @@ func operatorSuppliedName(args []string) bool {
 // therefore invoke this AFTER entering kanban mode. Two self-gates make the
 // call site unconditional: an operator-supplied name wins (nothing is
 // injected), and an absent run id yields nothing rather than the nonsense name
-// `lead-`.
+// `leader-`.
 func leadNameArgs(args []string) []string {
 	if operatorSuppliedName(args) {
 		return nil

@@ -255,7 +255,7 @@ func TestLoadBoard_ColumnRecordedNotDerived(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	writeBoardRaw(t, path, &BoardState{Cards: []Card{
-		{SpecID: "SPEC-KB-0001", Column: "review", Holder: "run-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
+		{SpecID: "SPEC-KB-0001", Column: "review", Holder: "runner-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
 	}})
 
 	st, err := LoadBoard(root)
@@ -289,7 +289,7 @@ func TestLoadBoard_RoundTrip(t *testing.T) {
 	}
 	want := &BoardState{Cards: []Card{
 		{SpecID: "SPEC-KB-0002", Column: "backlog", LastMovedAt: "2026-08-14T01:02:03Z"},
-		{SpecID: "SPEC-KB-0003", Column: "run", Holder: "run-sess-2", LastMovedAt: "2026-08-14T04:05:06Z"},
+		{SpecID: "SPEC-KB-0003", Column: "run", Holder: "runner-sess-2", LastMovedAt: "2026-08-14T04:05:06Z"},
 	}}
 	writeBoardRaw(t, path, want)
 

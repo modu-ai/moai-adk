@@ -77,7 +77,7 @@ func TestNewRunIDMatchesCurrentSecond(t *testing.T) {
 func TestCompanionRolesAreTheThreeWorkers(t *testing.T) {
 	t.Parallel()
 
-	want := []string{"plan", "run", "sync"}
+	want := []string{"planner", "runner", "syncer"}
 	if len(CompanionRoles) != len(want) {
 		t.Fatalf("CompanionRoles = %v, want %v", CompanionRoles, want)
 	}
@@ -88,8 +88,8 @@ func TestCompanionRolesAreTheThreeWorkers(t *testing.T) {
 	}
 	// The lead is not a companion: it is the only session carrying the kanban
 	// token, and listing it here would invite a second chain driver.
-	if isCompanionRole("lead") {
-		t.Error("lead must not be a companion role")
+	if isCompanionRole(RoleLead) {
+		t.Error(RoleLead + " must not be a companion role")
 	}
 	// The review role is retired (D1): a label carrying it no longer parses
 	// as companion-shaped, in the bare form, the bump form, or the legacy
@@ -110,32 +110,32 @@ func TestSplitCompanionLabel(t *testing.T) {
 		wantRunID string
 		wantOK    bool
 	}{
-		{"plan-tjlgt1", "plan", "tjlgt1", true},
-		{"run-tjlgt1", "run", "tjlgt1", true},
-		{"sync-tjlgt1", "sync", "tjlgt1", true},
-		{"sync-0", "sync", "0", true},
+		{"planner-tjlgt1", "planner", "tjlgt1", true},
+		{"runner-tjlgt1", "runner", "tjlgt1", true},
+		{"syncer-tjlgt1", "syncer", "tjlgt1", true},
+		{"syncer-0", "syncer", "0", true},
 
 		// The bare role is the launch form the lead announces (one machine,
 		// one run — the run id no longer travels in companion names).
-		{"plan", "plan", "", true},
-		{"run", "run", "", true},
-		{"sync", "sync", "", true},
+		{"planner", "planner", "", true},
+		{"runner", "runner", "", true},
+		{"syncer", "syncer", "", true},
 
 		// A collision bump number parses back with the role intact.
-		{"plan-1", "plan", "1", true},
-		{"sync-12", "sync", "12", true},
+		{"planner-1", "planner", "1", true},
+		{"syncer-12", "syncer", "12", true},
 
 		// Not companion-shaped: an unrelated named session must never be
 		// mistaken for one, or its Stop-hook block cap changes silently.
 		{"", "", "", false},
-		{"plan-", "", "", false},
+		{"planner-", "", "", false},
 		{"-tjlgt1", "", "", false},
-		{"lead-tjlgt1", "", "", false},
+		{"leader-tjlgt1", "", "", false},
 		{"planning-tjlgt1", "", "", false},
 		{"oauth-migration", "", "", false},
-		{"plan-TJLGT1", "", "", false},
-		{"plan-tj_gt1", "", "", false},
-		{"plan-tj gt1", "", "", false},
+		{"planner-TJLGT1", "", "", false},
+		{"planner-tj_gt1", "", "", false},
+		{"planner-tj gt1", "", "", false},
 
 		// The retired review role (D1) is no longer companion-shaped in any
 		// of its three historical forms — bare, bump, or legacy run id.
@@ -220,8 +220,8 @@ func TestSplitLeadLabelRoundTrip(t *testing.T) {
 
 // TestSplitLeadLabelRejectsNonLeadShapes covers what must NOT be adopted as a
 // lead run id. The admitted shape is deliberately identical to the companion
-// side's: `lead-notarunid` IS accepted, because `notarunid` is a well-formed
-// run id as far as the grammar is concerned, exactly as `run-notarunid` is
+// side's: `leader-notarunid` IS accepted, because `notarunid` is a well-formed
+// run id as far as the grammar is concerned, exactly as `runner-notarunid` is
 // accepted as a companion. Tightening one side alone is how the two branches
 // drift apart.
 func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
@@ -231,16 +231,18 @@ func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
 		label string
 		want  string // "" means reject
 	}{
-		{"lead-abc123", "abc123"},
-		{"lead-notarunid", "notarunid"},
+		{"leader-abc123", "abc123"},
+		{"leader-notarunid", "notarunid"},
 		{"", ""},
-		{"lead", ""},
-		{"lead-", ""},
-		{"lead-ABC123", ""},
-		{"lead-a-b", ""},
-		{"lead-a_b", ""},
-		{"leader-abc123", ""},
-		{"run-abc123", ""},
+		{"leader", ""},
+		{"leader-", ""},
+		{"leader-ABC123", ""},
+		{"leader-a-b", ""},
+		{"leader-a_b", ""},
+		// The retired `lead-` prefix (pre-t118 naming) is not the lead shape
+		// — adopting it would fork the run id off a name no new launch prints.
+		{"lead-abc123", ""},
+		{"runner-abc123", ""},
 		{"board-watch", ""},
 	} {
 		got, ok := SplitLeadLabel(c.label)

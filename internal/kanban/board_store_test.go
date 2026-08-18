@@ -20,7 +20,7 @@ import (
 // seedLead declares a lead session beneath root.
 func seedLead(t *testing.T, root, sessionID string) {
 	t.Helper()
-	if err := DeclareRole(root, sessionID, RoleLead, "plan-host"); err != nil {
+	if err := DeclareRole(root, sessionID, RoleLead, "planner-host"); err != nil {
 		t.Fatalf("DeclareRole(lead %s): %v", sessionID, err)
 	}
 }
@@ -31,8 +31,8 @@ func seedLead(t *testing.T, root, sessionID string) {
 func TestWriteBoardState_NonLeadRefused_BoardUnchanged(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
-	if err := DeclareRole(root, "worker-sess", "run", "run-alpha"); err != nil {
+	seedLead(t, root, "leader-sess")
+	if err := DeclareRole(root, "worker-sess", "runner", "runner-alpha"); err != nil {
 		t.Fatalf("DeclareRole(worker): %v", err)
 	}
 	// Prior board content, so byte-unchanged is observable.
@@ -63,9 +63,9 @@ func TestWriteBoardState_NonLeadRefused_BoardUnchanged(t *testing.T) {
 func TestWriteBoardState_LeadSucceeds(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
-	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+	err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 		st.Cards = append(st.Cards, Card{SpecID: "SPEC-KB-0011", Column: "backlog"})
 		return nil
 	})
@@ -106,9 +106,9 @@ func TestWriteBoardState_UndeclaredSessionRefused(t *testing.T) {
 func TestWriteBoardState_CreatesStateDirectory(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
-	if err := WriteBoardState(root, "lead-sess", func(st *BoardState) error { return nil }); err != nil {
+	if err := WriteBoardState(root, "leader-sess", func(st *BoardState) error { return nil }); err != nil {
 		t.Fatalf("WriteBoardState: %v", err)
 	}
 	if info, err := os.Stat(BoardDir(root)); err != nil || !info.IsDir() {
@@ -124,9 +124,9 @@ func TestWriteBoardState_CreatesStateDirectory(t *testing.T) {
 func TestWriteBoardState_NoLeftoverTempFiles(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
-	if err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+	if err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 		st.Cards = append(st.Cards, Card{SpecID: "SPEC-KB-0012", Column: "plan"})
 		return nil
 	}); err != nil {
@@ -158,7 +158,7 @@ func TestWriteBoardState_NoLeftoverTempFiles(t *testing.T) {
 func TestWriteBoardState_ConcurrentReaderSeesWholeBoards(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
 	const writes = 60
 	var wg sync.WaitGroup
@@ -169,7 +169,7 @@ func TestWriteBoardState_ConcurrentReaderSeesWholeBoards(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < writes; i++ {
 			spec := "SPEC-KB-00" + string(rune('A'+i%26)) + "-" + time.Now().Format("150405.000000000")
-			err := WriteBoardState(root, "lead-sess", func(st *BoardState) error {
+			err := WriteBoardState(root, "leader-sess", func(st *BoardState) error {
 				st.Cards = append(st.Cards, Card{SpecID: spec, Column: "plan"})
 				return nil
 			})
@@ -230,22 +230,22 @@ func TestWriteBoardState_ConcurrentReaderSeesWholeBoards(t *testing.T) {
 func TestTransitionIntoRun_WipBound(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
 	// One card already in run (positive control baseline).
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
-		{SpecID: "SPEC-KB-0020", Column: "run", Holder: "run-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
+		{SpecID: "SPEC-KB-0020", Column: "run", Holder: "runner-sess-1", LastMovedAt: "2026-08-14T00:00:00Z"},
 	}})
 
 	// Positive control: with one card in run, the second transition succeeds.
-	if err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0021"); err != nil {
+	if err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0021"); err != nil {
 		t.Fatalf("second transition into run refused: %v — the bound is 2, not 0", err)
 	}
 
 	before := readBoardBytes(t, root)
 
 	// The third is refused with the named WIP error, board unchanged.
-	err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0022")
+	err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0022")
 	if err == nil {
 		t.Fatal("third transition into run err = nil, want ErrWipLimitExceeded")
 	}

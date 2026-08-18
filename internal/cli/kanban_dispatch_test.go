@@ -22,6 +22,9 @@ func clearAllKanbanEnv(t *testing.T) {
 		config.EnvMoaiKanbanSpec,
 		config.EnvMoaiKanbanLabel,
 		config.EnvMoaiKanbanSettingsInjected,
+		// t118: the per-lane cap seed is fill-if-absent, so an ambient value
+		// would mask it in the assertions below.
+		config.EnvClaudeCodeMaxConcurrentSubagents,
 	} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
@@ -35,10 +38,10 @@ func TestResolveKanbanBranchTruthTable(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name           string
+		name          string
 		kanbanEnabled bool
-		isCompanion    bool
-		want           kanbanBranch
+		isCompanion   bool
+		want          kanbanBranch
 	}{
 		{"row1: -k alone → lead", true, false, kanbanBranchLead},
 		{"row2: -k --name <companion> → companion", true, true, kanbanBranchCompanion},
@@ -59,7 +62,7 @@ func TestResolveKanbanBranchTruthTable(t *testing.T) {
 }
 
 // TestDispatchOutcome_LeadEnvState is AC-FB-001 / AC-FB-006 / AC-FB-007: driving
-// the lead branch through the real enterKanbanMode produces the correct env
+// the lead branch (kanbanBranchLead) through the real enterKanbanMode produces the correct env
 // state (MOAI_KANBAN set, MOAI_KANBAN_ID set, MOAI_KANBAN_LABEL unset).
 func TestDispatchOutcome_LeadEnvState(t *testing.T) {
 	clearAllKanbanEnv(t)
@@ -85,20 +88,25 @@ func TestDispatchOutcome_LeadEnvState(t *testing.T) {
 
 // TestDispatchOutcome_CompanionEnvState is AC-FB-002 / AC-FB-006: driving the
 // companion branch through enterKanbanCompanionMode produces the correct env
-// state (MOAI_KANBAN_LABEL set, MOAI_KANBAN unset, MOAI_KANBAN_ID unset).
+// state (MOAI_KANBAN_LABEL set, MOAI_KANBAN unset, MOAI_KANBAN_ID unset), and
+// t118 seeds the per-lane agent cap — the companion's subagent fan-out is
+// what the cap bounds.
 func TestDispatchOutcome_CompanionEnvState(t *testing.T) {
 	clearAllKanbanEnv(t)
 	if resolveKanbanBranch(true, true) != kanbanBranchCompanion {
 		t.Fatal("expected companion branch")
 	}
-	restore := enterKanbanCompanionMode("run-abc123")
+	restore := enterKanbanCompanionMode("runner-abc123")
 	defer restore()
 
-	if os.Getenv(config.EnvMoaiKanbanLabel) != "run-abc123" {
-		t.Errorf("MOAI_KANBAN_LABEL = %q, want \"run-abc123\"", os.Getenv(config.EnvMoaiKanbanLabel))
+	if os.Getenv(config.EnvMoaiKanbanLabel) != "runner-abc123" {
+		t.Errorf("MOAI_KANBAN_LABEL = %q, want \"runner-abc123\"", os.Getenv(config.EnvMoaiKanbanLabel))
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
 		t.Errorf("MOAI_KANBAN must NOT be set on a companion")
+	}
+	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
+		t.Errorf("%s = %q, want 10 (the per-lane cap on a companion)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
 	}
 }
 

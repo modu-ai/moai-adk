@@ -52,7 +52,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjlgt1")
 
 	got := kanbanBootstrapNotice("", langEnglish)
 	if got == "" {
@@ -62,7 +62,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 		t.Errorf("notice omits the run id: %q", got)
 	}
 	for _, role := range kanban.CompanionRoles {
-		want := "moai cc -k --name " + role
+		want := "moai " + kanban.CompanionLauncher(role) + " -k --name " + role
 		if !strings.Contains(got, want) {
 			t.Errorf("notice omits %q:\n%s", want, got)
 		}
@@ -93,8 +93,9 @@ func TestKanbanBootstrapNoticeCompanion(t *testing.T) {
 				t.Errorf("companion notice = %q, want it to name label %q", got, role)
 			}
 			// AC-FB-016: the prior-art role clause ("as the X companion") and the
-			// word "companion" must NOT appear. (A role name like "run" can appear
-			// as part of "joined run <id>" — that is the allowed exception.)
+			// word "companion" must NOT appear. (A role name like "runner" can
+			// appear as part of "joined the kanban run as ..." — that is the
+			// allowed exception.)
 			if strings.Contains(got, "as the ") {
 				t.Errorf("companion notice carries the prior-art role clause:\n%s", got)
 			}
@@ -138,7 +139,7 @@ func TestKanbanBootstrapNoticeLabelWinsOverKanban(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
-	t.Setenv(config.EnvMoaiKanbanLabel, "plan-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLabel, "planner-tjlgt1")
 
 	got := kanbanBootstrapNotice("", langEnglish)
 	if strings.Contains(got, "--name") {
@@ -153,14 +154,15 @@ func TestKanbanBootstrapNoticeLabelWinsOverKanban(t *testing.T) {
 
 // TestKanbanLeadNoticeFullContent is AC-FB-013: the lead notice carries, in
 // order: (a) run id; (b) three companion lines each matching
-// `moai cc -k --name (plan|run|sync)`; (c) a non-empty leader
+// `moai (cc|glm) -k --name (planner|runner|syncer)` with each role on its
+// recommended launcher; (c) a non-empty leader
 // socket path line; (d) an inbound-automation notice; (e) the SPEC identifier.
 func TestKanbanLeadNoticeFullContent(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/abc123")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
 	got := kanbanLeadNotice("abc123", "", langEnglish)
@@ -170,15 +172,26 @@ func TestKanbanLeadNoticeFullContent(t *testing.T) {
 		t.Errorf("notice omits run id abc123:\n%s", got)
 	}
 
-	// (b) three companion lines carrying -k, named by the bare role
-	lineRe := regexp.MustCompile(`(?m)^moai cc -k --name (plan|run|sync)$`)
+	// (b) three companion lines carrying -k, named by the bare role, each on
+	// its recommended launcher — the exact line per role, so the launch block
+	// and the recommendation table cannot drift apart.
+	lineRe := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (planner|runner|syncer)$`)
 	matches := lineRe.FindAllString(got, -1)
 	if len(matches) != 3 {
 		t.Errorf("expected 3 companion lines matching the regex, got %d:\n%s", len(matches), got)
 	}
+	for _, want := range []string{
+		"moai cc -k --name planner",
+		"moai glm -k --name runner",
+		"moai cc -k --name syncer",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("notice omits the recommended launch line %q:\n%s", want, got)
+		}
+	}
 
 	// (c) leader socket path — a non-empty path-shaped line
-	if !strings.Contains(got, "/tmp/moai-kanban-abc123") {
+	if !strings.Contains(got, "/tmp/moai-socket-kanban/abc123") {
 		t.Errorf("notice omits the leader socket path:\n%s", got)
 	}
 
@@ -208,7 +221,7 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/abc123")
 
 	got := kanbanLeadNotice("abc123", "", langEnglish)
 	// No line should contain a SPEC- prefixed identifier.
@@ -218,28 +231,28 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 }
 
 // TestKanbanLeadNoticeCompanionLinesCarryF is AC-FB-015: each companion line
-// matches `^moai (cc|glm) -k --name (plan|run|sync)$` — the bare role,
+// matches `^moai (cc|glm) -k --name (planner|runner|syncer)$` — the bare role,
 // with no run-id suffix under the one-machine-one-run naming policy.
 func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "xyz789")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-xyz789")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/xyz789")
 
 	got := kanbanLeadNotice("xyz789", "", langEnglish)
-	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|sync)$`)
+	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (planner|runner|syncer)$`)
 	matches := re.FindAllString(got, -1)
 	if len(matches) < 3 {
 		t.Errorf("expected ≥3 lines matching the companion-launch regex, got %d:\n%s", len(matches), got)
 	}
 	// The bare --name form (no -k) must NOT appear.
-	bareRe := regexp.MustCompile(`(?m)^moai cc --name (plan|run|sync)$`)
+	bareRe := regexp.MustCompile(`(?m)^moai cc --name (planner|runner|syncer)$`)
 	if bareRe.FindString(got) != "" {
 		t.Errorf("bare --name companion line found (prior-art form; must carry -k):\n%s", got)
 	}
 	// No suffixed companion line either — a run id in a copyable command is
 	// the t21 mismatch surface this policy removes.
-	suffixedRe := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|sync)-`)
+	suffixedRe := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (planner|runner|syncer)-`)
 	if suffixedRe.FindString(got) != "" {
 		t.Errorf("suffixed companion line found (run-id form; the announced names are bare roles):\n%s", got)
 	}
@@ -251,7 +264,7 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 // the moment the notice appears — rather than discovering it later, when a
 // copied companion command opens a session no lead is listening to.
 //
-// The launcher now adopts an operator-supplied `lead-<run-id>` name, so the two
+// The launcher now adopts an operator-supplied `leader-<run-id>` name, so the two
 // agree by construction; this line is the residual backstop, and it is printed
 // in every locale because the label is a protocol token, not prose.
 func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
@@ -276,10 +289,10 @@ func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
 // addresses, not a role declaration.
 func TestKanbanCompanionNoticeRoleless(t *testing.T) {
 	clearKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "sync")
+	t.Setenv(config.EnvMoaiKanbanLabel, "syncer")
 
-	got := kanbanCompanionNotice("sync", langEnglish)
-	if !strings.Contains(got, "sync") {
+	got := kanbanCompanionNotice("syncer", langEnglish)
+	if !strings.Contains(got, "syncer") {
 		t.Errorf("companion notice does not name the label: %q", got)
 	}
 	if strings.Contains(got, "companion") {
@@ -290,7 +303,7 @@ func TestKanbanCompanionNoticeRoleless(t *testing.T) {
 	}
 	// A bumped label reaches the operator here — the launch-time stderr note
 	// is gone by the time the TUI takes the screen.
-	if got := kanbanCompanionNotice("sync-1", langEnglish); !strings.Contains(got, "sync-1") {
+	if got := kanbanCompanionNotice("syncer-1", langEnglish); !strings.Contains(got, "syncer-1") {
 		t.Errorf("companion notice does not name the bumped label: %q", got)
 	}
 }
@@ -307,7 +320,7 @@ func TestKanbanCompanionNoticeFailOpen(t *testing.T) {
 	})
 	t.Run("malformed label (empty run-id portion)", func(t *testing.T) {
 		clearKanbanEnv(t)
-		if got := kanbanCompanionNotice("run-", langEnglish); got != "" {
+		if got := kanbanCompanionNotice("runner-", langEnglish); got != "" {
 			t.Errorf("malformed label produced a notice: %q", got)
 		}
 	})
@@ -330,10 +343,10 @@ func TestKanbanCompanionNoticeFailOpen(t *testing.T) {
 // three-companion launch block.
 func TestKanbanCompanionNoticeJoinOnly(t *testing.T) {
 	clearKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
+	t.Setenv(config.EnvMoaiKanbanLabel, "runner-abc123")
 
-	got := kanbanCompanionNotice("run-abc123", langEnglish)
-	if !strings.Contains(got, "joined the kanban run as run-abc123") {
+	got := kanbanCompanionNotice("runner-abc123", langEnglish)
+	if !strings.Contains(got, "joined the kanban run as runner-abc123") {
 		t.Errorf("companion notice does not match \"joined the kanban run as <label>\": %q", got)
 	}
 	if strings.Contains(got, "--name") {
@@ -352,7 +365,7 @@ func TestKanbanLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjlgt1")
 	// EnvMoaiKanbanSettingsInjected is UNSET → the launcher did not inject.
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "")
 	_ = os.Unsetenv(config.EnvMoaiKanbanSettingsInjected)
@@ -375,7 +388,7 @@ func TestKanbanLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
 	got := kanbanLeadNotice("tjlgt1", "", langEnglish)

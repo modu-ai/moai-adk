@@ -23,9 +23,9 @@ func TestBoardRoot_NonGitDirFails(t *testing.T) {
 func TestTransitionIntoRun_Branches(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 
-	if err := TransitionIntoRun(root, "lead-sess", ""); err == nil {
+	if err := TransitionIntoRun(root, "leader-sess", ""); err == nil {
 		t.Fatal("TransitionIntoRun(empty spec) err = nil, want rejection")
 	}
 
@@ -37,18 +37,18 @@ func TestTransitionIntoRun_Branches(t *testing.T) {
 
 	// Idempotent re-entry: a card already in run does not refuse as a third
 	// occupancy and does not duplicate.
-	if err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0070"); err != nil {
+	if err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0070"); err != nil {
 		t.Fatalf("idempotent re-entry refused: %v", err)
 	}
 
 	// A third DISTINCT card is still refused (bound 2).
-	if err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0073"); !IsWipLimitExceeded(err) {
+	if err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0073"); !IsWipLimitExceeded(err) {
 		t.Fatalf("third distinct card: err = %v, want WIP refusal", err)
 	}
 
 	// Moving an existing plan card into an occupied run is likewise refused —
 	// it would be the third occupant.
-	if err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0072"); !IsWipLimitExceeded(err) {
+	if err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0072"); !IsWipLimitExceeded(err) {
 		t.Fatalf("move of a plan card into a full run: err = %v, want WIP refusal", err)
 	}
 
@@ -57,7 +57,7 @@ func TestTransitionIntoRun_Branches(t *testing.T) {
 		{SpecID: "SPEC-KB-0071", Column: "run", Holder: "s2", LastMovedAt: "t0"},
 		{SpecID: "SPEC-KB-0072", Column: "plan", LastMovedAt: "t0"},
 	}})
-	if err := TransitionIntoRun(root, "lead-sess", "SPEC-KB-0072"); err != nil {
+	if err := TransitionIntoRun(root, "leader-sess", "SPEC-KB-0072"); err != nil {
 		t.Fatalf("move into a free run slot refused: %v", err)
 	}
 	st, err := LoadBoard(root)
@@ -116,7 +116,7 @@ func TestWriteBoardState_UnwritableDirSurfacesError(t *testing.T) {
 	}
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	// DeclareRole has already created BoardDir via its roles/ subdirectory,
 	// so the permission must be forced explicitly rather than via MkdirAll's
 	// create-time perm.
@@ -125,7 +125,7 @@ func TestWriteBoardState_UnwritableDirSurfacesError(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(BoardDir(root), 0o755) })
 
-	err := WriteBoardState(root, "lead-sess", func(st *BoardState) error { return nil })
+	err := WriteBoardState(root, "leader-sess", func(st *BoardState) error { return nil })
 	if err == nil {
 		t.Fatal("WriteBoardState(read-only board dir) err = nil, want surfaced error")
 	}

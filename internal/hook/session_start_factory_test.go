@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,36 +19,48 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 	}
 }
 
-// TestFactoryLeadNoticeCarriesWorkerLinesSocketAndGLMSubstitute is the AC
-// bundle for the lead notice: N worker launch lines carrying -f <N>, the
-// leader socket path, the GLM substitute guidance naming `moai glm -f <N>`,
-// and the run id alongside the session name that must match it.
-func TestFactoryLeadNoticeCarriesWorkerLinesSocketAndGLMSubstitute(t *testing.T) {
+// TestFactoryLeadNoticeCarriesWorkerLinesSocketAndEntryGuide is the AC bundle
+// for the lead notice (t118): N worker launch lines carrying the incremental
+// `-f worker-<i>` form, the entry-point guidance naming `moai glm -f <N>` and
+// the `-f worker-<n>` form, the per-lane fan-out line, the leader socket
+// path, and the run id alongside the session name that must match it.
+func TestFactoryLeadNoticeCarriesWorkerLinesSocketAndEntryGuide(t *testing.T) {
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-abc123")
+	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-factory/abc123")
 
 	notice := factoryBootstrapNotice("", langEnglish)
 	for _, want := range []string{
 		"run abc123",
-		"lead-abc123",
-		"moai cc -k 3 --name worker-1",
-		"moai cc -k 3 --name worker-2",
-		"moai cc -k 3 --name worker-3",
-		"moai glm -k 3 --name",
-		"/tmp/moai-kanban-abc123",
+		"leader-abc123",
+		"moai cc -f worker-1",
+		"moai cc -f worker-2",
+		"moai cc -f worker-3",
+		"moai glm -f 3",
+		"moai cc -f worker-<n>",
+		"one-worker default",
+		"Every worker can run up to 10 agents concurrently in parallel.",
+		"/tmp/moai-socket-factory/abc123",
 	} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("lead notice missing %q:\n%s", want, notice)
 		}
 	}
 	// The count must be exact — an off-by-one fan-out misaddresses workers.
-	if got := strings.Count(notice, "moai cc -k 3 --name worker-"); got != 3 {
+	// The launch lines are NUMBERED; the entry guide's generic
+	// `moai cc -f worker-<n>` mention is not a launch line, so the count
+	// matches digits only.
+	if got := len(factoryLaunchLineRe.FindAllString(notice, -1)); got != 3 {
 		t.Errorf("launch line count = %d, want 3:\n%s", got, notice)
 	}
 }
+
+// factoryLaunchLineRe matches exactly the per-worker launch lines of the
+// factory lead notice (`moai cc -f worker-<i>`, i a number) — the entry
+// guide's `worker-<n>` placeholder is excluded by the digit class.
+var factoryLaunchLineRe = regexp.MustCompile(`moai cc -f worker-[0-9]+`)
 
 // TestFactoryLeadNoticeWorkerCountDrivesLineCount asserts N drives the line
 // count directly (the v1 no-upper-bound rule: any N >= 1 prints N lines).
@@ -57,7 +70,7 @@ func TestFactoryLeadNoticeWorkerCountDrivesLineCount(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "xyz9")
 
-	if got := strings.Count(factoryBootstrapNotice("", langEnglish), "moai cc -k 1 --name worker-"); got != 1 {
+	if got := len(factoryLaunchLineRe.FindAllString(factoryBootstrapNotice("", langEnglish), -1)); got != 1 {
 		t.Errorf("N=1 launch line count = %d, want 1", got)
 	}
 }
@@ -77,16 +90,29 @@ func TestFactoryLeadNoticeEmptyWithoutRunID(t *testing.T) {
 // TestFactoryWorkerNoticeNamesLabel asserts the join ack names the label the
 // session actually launched under — the reliable surface for a bumped number,
 // since the launcher's stderr note is gone by the time the TUI takes the
-// screen.
+// screen. The exact-sentence assertion also pins the (label, count) argument
+// order of the workerJoin format: the pre-t118 formats carried %d before %s
+// while the call passed the label first, rendering %!d(string=worker-4) —
+// a Contains("worker-4") assertion passed right through that garbage, so the
+// whole sentence is asserted here.
 func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-4")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 
-	notice := factoryBootstrapNotice("", langEnglish)
-	if !strings.Contains(notice, "worker-4") {
-		t.Errorf("worker notice must name the (possibly bumped) label:\n%s", notice)
+	if got, want := factoryBootstrapNotice("", langEnglish),
+		"Factory Mode: joined a 3-worker run as worker-4."; got != want {
+		t.Errorf("worker notice = %q, want %q", got, want)
+	}
+
+	// The incremental `-f worker-<n>` form carries no count (workers=0); the
+	// count-less sentence must render, not fabricate a fan-out size and not
+	// leak a bad verb.
+	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
+	if got, want := factoryBootstrapNotice("", langEnglish),
+		"Factory Mode: joined the factory run as worker-4."; got != want {
+		t.Errorf("count-less worker notice = %q, want %q", got, want)
 	}
 
 	// A malformed label emits nothing (fail-open, mirroring the companion
@@ -94,6 +120,26 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "not-a-worker-label")
 	if got := factoryBootstrapNotice("", langEnglish); got != "" {
 		t.Errorf("malformed worker label must emit nothing, got:\n%s", got)
+	}
+}
+
+// TestFactoryWorkerNoticeLocaleWordOrders pins the explicit-index contract on
+// the two sentence shapes across all four locales: every rendering must name
+// the label and the count (or just the label, count-less) with no %!verb
+// artifact, whatever order the locale's natural prose puts them in.
+func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
+	clearKanbanEnv(t)
+
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		got := factoryWorkerNotice("worker-2", 5, lang)
+		if !strings.Contains(got, "worker-2") || !strings.Contains(got, "5") ||
+			strings.Contains(got, "%!") {
+			t.Errorf("locale %q worker join rendered wrong: %q", lang, got)
+		}
+		gotNoCount := factoryWorkerNotice("worker-2", 0, lang)
+		if !strings.Contains(gotNoCount, "worker-2") || strings.Contains(gotNoCount, "%!") {
+			t.Errorf("locale %q count-less join rendered wrong: %q", lang, gotNoCount)
+		}
 	}
 }
 

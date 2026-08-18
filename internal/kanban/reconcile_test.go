@@ -83,7 +83,7 @@ func TestCompatibilityTable_EveryPairing(t *testing.T) {
 func TestCompatibilityTable_IllegalPairRepairsNothing(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	seedLead(t, root, "lead-sess")
+	seedLead(t, root, "leader-sess")
 	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
 		{SpecID: "SPEC-ILL-001", Column: ColumnDone, Holder: "s1", LastMovedAt: "t0"},
 	}})

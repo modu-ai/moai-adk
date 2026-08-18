@@ -25,7 +25,7 @@ func TestSplitFactoryWorkerLabelRejectsNonShapes(t *testing.T) {
 	for _, label := range []string{
 		"", "worker", "worker-", "worker-0", "worker--3", "worker-a",
 		"worker-3-extra", "Worker-3", "workers-3",
-		"plan-worker-3", // first hyphen is the boundary; role is "plan"
+		"planner-worker-3", // first hyphen is the boundary; role is "planner"
 	} {
 		if _, ok := SplitFactoryWorkerLabel(label); ok {
 			t.Errorf("SplitFactoryWorkerLabel(%q) admitted a non-worker shape", label)
@@ -46,10 +46,10 @@ func TestFactoryWorkerLabelNeverKanbanShape(t *testing.T) {
 	if _, ok := SplitLeadLabel(FactoryWorkerLabel(3)); ok {
 		t.Error("a worker label must not satisfy the lead shape")
 	}
-	if _, ok := SplitFactoryWorkerLabel(CompanionLabel("run")); ok {
+	if _, ok := SplitFactoryWorkerLabel(CompanionLabel("runner")); ok {
 		t.Error("a companion label must not satisfy the worker shape")
 	}
-	if _, ok := SplitFactoryWorkerLabel(CompanionNumberLabel("run", 1)); ok {
+	if _, ok := SplitFactoryWorkerLabel(CompanionNumberLabel("runner", 1)); ok {
 		t.Error("a bumped companion label must not satisfy the worker shape")
 	}
 	if _, ok := SplitFactoryWorkerLabel(LeadLabel("tjlgt1")); ok {

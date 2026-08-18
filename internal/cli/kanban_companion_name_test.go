@@ -21,12 +21,12 @@ import (
 // bumps.
 func TestResolveCompanionName_FreeLabelUnchanged(t *testing.T) {
 	root := t.TempDir()
-	if got := resolveCompanionName(root, "plan", nil); got != "plan" {
-		t.Fatalf("free label = %q, want plan", got)
+	if got := resolveCompanionName(root, "planner", nil); got != "planner" {
+		t.Fatalf("free label = %q, want planner", got)
 	}
 	reg := loadFactoryRegistry(companionRegistryPath(root))
-	if e, ok := reg["plan"]; !ok || e.PID != os.Getpid() {
-		t.Errorf("plan not registered to this pid: %+v", reg)
+	if e, ok := reg["planner"]; !ok || e.PID != os.Getpid() {
+		t.Errorf("planner not registered to this pid: %+v", reg)
 	}
 }
 
@@ -35,10 +35,10 @@ func TestResolveCompanionName_FreeLabelUnchanged(t *testing.T) {
 // notes writer the operator reads at launch.
 func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
 	root := t.TempDir()
-	// Simulate two live holders: plan and plan-1.
+	// Simulate two live holders: planner and planner-1.
 	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
-		"plan":   {PID: 11100},
-		"plan-1": {PID: 11101},
+		"planner":   {PID: 11100},
+		"planner-1": {PID: 11101},
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
@@ -47,16 +47,16 @@ func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
 	defer func() { factoryProcessAlive = probe }()
 
 	var notes bytes.Buffer
-	got := resolveCompanionName(root, "plan", &notes)
-	if got != "plan-2" {
-		t.Fatalf("bumped label = %q, want plan-2 (plan and plan-1 are live)", got)
+	got := resolveCompanionName(root, "planner", &notes)
+	if got != "planner-2" {
+		t.Fatalf("bumped label = %q, want planner-2 (planner and planner-1 are live)", got)
 	}
-	if !strings.Contains(notes.String(), "plan-2") {
+	if !strings.Contains(notes.String(), "planner-2") {
 		t.Errorf("operator note missing the final label: %q", notes.String())
 	}
 	reg := loadFactoryRegistry(companionRegistryPath(root))
-	if e, ok := reg["plan-2"]; !ok || e.PID != os.Getpid() {
-		t.Errorf("plan-2 not registered to this pid: %+v", reg)
+	if e, ok := reg["planner-2"]; !ok || e.PID != os.Getpid() {
+		t.Errorf("planner-2 not registered to this pid: %+v", reg)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
 func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
 	root := t.TempDir()
 	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
-		"plan": {PID: 11100},
+		"planner": {PID: 11100},
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
 	factoryProcessAlive = func(int) bool { return false }
 	defer func() { factoryProcessAlive = probe }()
 
-	if got := resolveCompanionName(root, "plan", nil); got != "plan" {
+	if got := resolveCompanionName(root, "planner", nil); got != "planner" {
 		t.Fatalf("dead claim should free the label, got %q", got)
 	}
 }
@@ -85,7 +85,7 @@ func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
 func TestResolveCompanionName_LegacySuffixHeldBumpsToNumbered(t *testing.T) {
 	root := t.TempDir()
 	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
-		"plan-abc123": {PID: 11100},
+		"planner-abc123": {PID: 11100},
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
@@ -93,9 +93,9 @@ func TestResolveCompanionName_LegacySuffixHeldBumpsToNumbered(t *testing.T) {
 	factoryProcessAlive = func(pid int) bool { return pid == 11100 }
 	defer func() { factoryProcessAlive = probe }()
 
-	got := resolveCompanionName(root, "plan-abc123", nil)
-	if got != "plan-1" {
-		t.Fatalf("bumped legacy label = %q, want plan-1", got)
+	got := resolveCompanionName(root, "planner-abc123", nil)
+	if got != "planner-1" {
+		t.Fatalf("bumped legacy label = %q, want planner-1", got)
 	}
 	if _, _, ok := kanban.SplitCompanionLabel(got); !ok {
 		t.Errorf("bumped label %q does not parse as a companion label", got)
@@ -124,14 +124,14 @@ func TestEnterKanbanCompanionModeDoesNotPublishRunID(t *testing.T) {
 		_ = os.Unsetenv(key)
 	}
 
-	restore := enterKanbanCompanionMode("plan")
+	restore := enterKanbanCompanionMode("planner")
 	defer restore()
 
-	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "plan" {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "plan")
+	if got := os.Getenv(config.EnvMoaiKanbanLabel); got != "planner" {
+		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLabel, got, "planner")
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanbanID); present {
-		t.Errorf("%s must NOT be set on a companion (the run id is lead-owned state; "+
+		t.Errorf("%s must NOT be set on a companion (the run id is leader-owned state; "+
 			"a companion-published id is the t21 mismatch root)", config.EnvMoaiKanbanID)
 	}
 	if _, present := os.LookupEnv(config.EnvMoaiKanban); present {
@@ -143,10 +143,10 @@ func TestEnterKanbanCompanionModeDoesNotPublishRunID(t *testing.T) {
 // from a bare label unchanged.
 func TestCompanionRoleBareLabel(t *testing.T) {
 	t.Parallel()
-	if got := companionRole("plan"); got != "plan" {
-		t.Errorf("companionRole(plan) = %q, want plan", got)
+	if got := companionRole("planner"); got != "planner" {
+		t.Errorf("companionRole(planner) = %q, want planner", got)
 	}
-	if got := companionRole("plan-2"); got != "plan" {
-		t.Errorf("companionRole(plan-2) = %q, want plan", got)
+	if got := companionRole("planner-2"); got != "planner" {
+		t.Errorf("companionRole(planner-2) = %q, want planner", got)
 	}
 }

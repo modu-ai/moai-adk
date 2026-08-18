@@ -210,7 +210,7 @@ func TestKanbanCompanionRaisesBlockCap(t *testing.T) {
 		t.Errorf("negative control: env must be unchanged with no kanban signal and no armed goal, got %v", got)
 	}
 
-	t.Setenv(config.EnvMoaiKanbanLabel, "run-tjlgt1")
+	t.Setenv(config.EnvMoaiKanbanLabel, "runner-tjlgt1")
 	got := injectStopHookBlockCapForGoal(ctx, base, tmp, "")
 	if !slices.Contains(got, want) {
 		t.Errorf("expected %q in the launch env for a companion session, got %v", want, got)

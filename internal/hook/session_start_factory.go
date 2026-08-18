@@ -80,17 +80,19 @@ func factoryWorkersEnv() int {
 // factoryLeadNotice is the factory lead branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) why
 // bootstrap is manual and how worker names are assigned; (c) the N worker
-// launch lines; (d) the GLM substitute guidance and the leader socket path;
-// (e) the dispatch discipline — card-class routing (A/B wholesale, C serial
-// 3-stage), the fan-out-only stagger rule, and the no-model-override rule;
-// (f) the free-slot line plus the inbound-automation notice. There is no SPEC
-// line — the factory entry carries a worker count, not a SPEC identifier.
+// launch lines; (d) the entry-point guide — cc vs glm backend choice, the
+// -f N form, the incremental -f worker-<n> form, the per-lane fan-out — plus
+// the leader socket path; (e) the dispatch discipline — card-class routing
+// (A/B wholesale, C serial 3-stage), the fan-out-only stagger rule, and the
+// no-model-override rule; (f) the free-slot line plus the inbound-automation
+// notice. There is no SPEC line — the factory entry carries a worker count,
+// not a SPEC identifier.
 //
-// The worker launch lines each carry -k <N> (the unified entry token; the
-// count travels in the worker command so the worker knows the run's size) and
-// a worker-<i> name — the lead's addressing vocabulary, printed here so the
-// operator's paste and the lead's dispatch target are the same string by
-// construction.
+// The worker launch lines each carry the t118 `-f worker-<i>` form — one
+// flag token that both selects the factory and names the worker, and that a
+// lead can also paste ONE line from to add a single lane later — with the
+// worker-<i> name the lead's addressing vocabulary uses, so the operator's
+// paste and the lead's dispatch target are the same string by construction.
 //
 // QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
 // loop over the backlog queue is the kanban foreman's (the bare /loop driver
@@ -122,13 +124,14 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	// (c) the worker launch lines, one per worker.
 	launch := make([]string, 0, workers)
 	for i := 1; i <= workers; i++ {
-		launch = append(launch, fmt.Sprintf("moai cc -k %d --name %s", workers, kanban.FactoryWorkerLabel(i)))
+		launch = append(launch, "moai cc -f "+kanban.FactoryWorkerLabel(i))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
-	// (d) how to move a worker to the GLM backend, plus the leader socket
-	// path when the launcher captured one.
-	backend := []string{fmt.Sprintf(m.glmSubstitute, workers, workers)}
+	// (d) the entry-point guide — the cc/glm backend choice, the -f forms,
+	// and the per-lane fan-out — plus the leader socket path when the
+	// launcher captured one.
+	backend := []string{fmt.Sprintf(m.entryGuide, workers, workers), m.agentFanout}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}
@@ -170,9 +173,20 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 // the TUI takes the screen, so this line is where the operator reads the
 // final name). It does NOT print the launch block, for the same reason as
 // kanbanCompanionNotice.
+//
+// The incremental `-f worker-<n>` entry carries no run count (the launcher
+// publishes 0), and the count-less sentence names the label alone rather
+// than fabricating a fan-out size. Both sentences take (label, workers);
+// the per-locale word order differs (en/ja/ko say the count first, zh the
+// label first), so the formats pin the argument order with explicit %[n]
+// indices rather than positional verbs.
 func factoryWorkerNotice(label string, workers int, lang string) string {
 	if _, ok := kanban.SplitFactoryWorkerLabel(label); !ok {
 		return ""
 	}
-	return fmt.Sprintf(factoryMessagesFor(lang).workerJoin, label, workers)
+	m := factoryMessagesFor(lang)
+	if workers < 1 {
+		return fmt.Sprintf(m.workerJoinNoCount, label)
+	}
+	return fmt.Sprintf(m.workerJoin, label, workers)
 }

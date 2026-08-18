@@ -117,9 +117,9 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// together so a disagreement between them is visible HERE — at the moment
 	// the notice is emitted — rather than later, when a copied command opens a
 	// companion on a run no lead is listening to. The launcher now adopts an
-	// operator-supplied `lead-<run-id>` name (internal/cli/kanban.go leadRunID)
-	// so the two agree by construction; this line is what makes a residual
-	// disagreement self-announcing instead of silent.
+	// operator-supplied `leader-<run-id>` name (internal/cli/kanban.go
+	// leadRunID) so the two agree by construction; this line is what makes a
+	// residual disagreement self-announcing instead of silent.
 	identity := []string{
 		fmt.Sprintf(m.leadHeader, runID),
 		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel(runID)),
@@ -136,17 +136,21 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// prior-art notice printed. The names are the bare roles — under the
 	// one-machine-one-run policy no run id travels in companion names, so a
 	// copied command cannot address a run the lead is not on (the t21 class).
-	// A role already held by a live session is bumped by the launcher itself.
+	// Each line carries its RECOMMENDED launcher (kanban.CompanionLauncher):
+	// the operator copies the line as printed and lands on the backend the
+	// recommendation table below explains. A role already held by a live
+	// session is bumped by the launcher itself.
 	launch := make([]string, 0, len(kanban.CompanionRoles))
 	for _, role := range kanban.CompanionRoles {
-		launch = append(launch, "moai cc -k --name "+kanban.CompanionLabel(role))
+		launch = append(launch, "moai "+kanban.CompanionLauncher(role)+" -k --name "+kanban.CompanionLabel(role))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
 	// (d) the entry-point guide — which launcher is which backend and how to
-	// move a companion between them — plus the companion name options and the
-	// leader socket path when the launcher captured one.
-	backend := []string{m.glmSubstitute, m.backendMix, m.agentFanout, m.nameChoices}
+	// move a companion between them — the recommended backend-per-role table,
+	// the per-lane fan-out, the companion name options, and the leader socket
+	// path when the launcher captured one.
+	backend := []string{m.glmSubstitute, m.backendRecommend, m.agentFanout, m.nameChoices}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}

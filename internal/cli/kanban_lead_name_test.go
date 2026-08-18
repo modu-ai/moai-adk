@@ -1,9 +1,9 @@
 package cli
 
-// kanban_lead_name_test.go pins the lead-session name injection: a lead
+// kanban_lead_name_test.go pins the leader-session name injection: a lead
 // launched as a bare `moai cc -k` carries only an AI-generated title, which
 // claude discards on /clear, so the launcher supplies an explicit
-// `--name lead-<run-id>` instead. The operator's own name always wins.
+// `--name leader-<run-id>` instead. The operator's own name always wins.
 
 import (
 	"os"
@@ -30,7 +30,7 @@ func TestOperatorSuppliedName(t *testing.T) {
 		{"--name=value", []string{"--name=board-watch"}, true},
 		{"-n value", []string{"-n", "board-watch"}, true},
 		{"-n=value", []string{"-n=board-watch"}, true},
-		{"companion-shape name still counts", []string{"--name", "run-abc123"}, true},
+		{"companion-shape name still counts", []string{"--name", "runner-abc123"}, true},
 		{"past the pass-through marker is not ours", []string{"--", "--name", "x"}, false},
 		{"before the marker still counts", []string{"--name", "x", "--", "--print"}, true},
 		// A bare `--name` with no following token is still an operator name
@@ -54,7 +54,7 @@ func TestLeadNameArgs_InjectsWhenUnnamed(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
 	got := leadNameArgs([]string{"-p", "work"})
-	want := []string{"--name", "lead-abc123"}
+	want := []string{"--name", "leader-abc123"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("leadNameArgs = %q, want %q", got, want)
 	}
@@ -79,7 +79,7 @@ func TestLeadNameArgs_NeverOverridesOperatorName(t *testing.T) {
 }
 
 // TestLeadNameArgs_NoRunIDNoName is the fail-open gate: without a run id the
-// injection is skipped rather than producing the nonsense name `lead-`.
+// injection is skipped rather than producing the nonsense name `leader-`.
 func TestLeadNameArgs_NoRunIDNoName(t *testing.T) {
 	clearAllKanbanEnv(t)
 
@@ -120,7 +120,7 @@ func TestLeadNameArgs_LabelIsNotCompanionShape(t *testing.T) {
 func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 
-	args := []string{"--name", "lead-abc123"}
+	args := []string{"--name", "leader-abc123"}
 	label, ok := parseLeadLabel(args)
 	if !ok {
 		t.Fatalf("parseLeadLabel(%q) did not recognize the lead name", args)
@@ -131,7 +131,7 @@ func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	if got := os.Getenv(config.EnvMoaiKanbanID); got != "abc123" {
 		t.Errorf("%s = %q, want %q (the id from the operator's name)", config.EnvMoaiKanbanID, got, "abc123")
 	}
-	if got, want := os.Getenv(config.EnvMoaiKanbanLeadAddr), "/tmp/moai-kanban-abc123"; got != want {
+	if got, want := os.Getenv(config.EnvMoaiKanbanLeadAddr), "/tmp/moai-socket-kanban/abc123"; got != want {
 		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLeadAddr, got, want)
 	}
 	// The operator's name still wins — adoption must not also inject a second
@@ -151,9 +151,9 @@ func TestEnterKanbanMode_MintsWithoutLeadName(t *testing.T) {
 	}{
 		{"no name at all", ""},
 		{"non-lead name", "board-watch"},
-		{"lead prefix with no id", "lead-"},
-		{"uppercase is not a run id shape", "lead-ABC123"},
-		{"a second hyphen is not a run id shape", "lead-a-b"},
+		{"lead prefix with no id", "leader-"},
+		{"uppercase is not a run id shape", "leader-ABC123"},
+		{"a second hyphen is not a run id shape", "leader-a-b"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			clearAllKanbanEnv(t)
@@ -177,14 +177,14 @@ func TestParseLeadLabel(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"--name value", []string{"--name", "lead-abc123"}, "lead-abc123"},
-		{"--name=value", []string{"--name=lead-abc123"}, "lead-abc123"},
-		{"-n value", []string{"-n", "lead-abc123"}, "lead-abc123"},
-		{"-n=value", []string{"-n=lead-abc123"}, "lead-abc123"},
+		{"--name value", []string{"--name", "leader-abc123"}, "leader-abc123"},
+		{"--name=value", []string{"--name=leader-abc123"}, "leader-abc123"},
+		{"-n value", []string{"-n", "leader-abc123"}, "leader-abc123"},
+		{"-n=value", []string{"-n=leader-abc123"}, "leader-abc123"},
 		{"absent", []string{"-p", "work"}, ""},
 		{"a non-lead name is not ours", []string{"--name", "board-watch"}, ""},
-		{"a companion name is not ours", []string{"--name", "run-abc123"}, ""},
-		{"past the pass-through marker is not ours", []string{"--", "--name", "lead-abc123"}, ""},
+		{"a companion name is not ours", []string{"--name", "runner-abc123"}, ""},
+		{"past the pass-through marker is not ours", []string{"--", "--name", "leader-abc123"}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -204,12 +204,12 @@ func TestParseLeadLabel(t *testing.T) {
 }
 
 // TestLeadLabelNeverReadsAsCompanion guards the branch that would be broken by
-// recognizing lead names: resolveKanbanBranch must still route a lead-named
+// recognizing lead names: resolveKanbanBranch must still route a leader-named
 // `-k` launch down the lead branch, not the companion one.
 func TestLeadLabelNeverReadsAsCompanion(t *testing.T) {
 	t.Parallel()
 
-	args := []string{"--name", "lead-abc123"}
+	args := []string{"--name", "leader-abc123"}
 	if _, isCompanion := parseCompanionLabel(args); isCompanion {
 		t.Fatalf("parseCompanionLabel(%q) matched a lead name", args)
 	}

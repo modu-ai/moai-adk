@@ -28,8 +28,11 @@ import (
 // RoleLead names the one role the board's write guard admits (REQ-KB-017).
 // The role SET and the election that occupies it are the bootstrap sibling's
 // (REQ-KS-004) — this constant names a role value, not an election rule, and
-// a declaration may carry any role string the topology defines.
-const RoleLead = "lead"
+// a declaration may carry any role string the topology defines. The value is
+// the personified session noun of the t118 naming axis (2026-08-18): the
+// lead session is named `leader-<run-id>`, and LeadLabel/SplitLeadLabel
+// compose and parse that shape from this constant.
+const RoleLead = "leader"
 
 // RoleWorker names a factory run's numbered worker (the `worker-<n>` lanes of
 // `moai cc -f <N>`, SPEC-FACTORY-WORKER-FANOUT-001). It is deliberately NOT a

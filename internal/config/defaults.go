@@ -368,12 +368,29 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 // runaway generation cannot consume the job's whole budget.
 const DefaultGLMTaskMaxTokens = 8192
 
-// DefaultFactoryWorkers is the fan-out size a bare `-f` / `--factory` takes
-// when the operator supplies no count (SPEC-FACTORY-WORKER-FANOUT-001
-// REQ-FF-001, t85 lead loop). The value 8 is the operator-decided factory
-// default — large enough to keep a card queue draining, small enough to sit
-// under the session-count a single operator hand-launches comfortably.
+// DefaultFactoryWorkers is the fan-out size the count-less `-k --name
+// worker-<n>` form takes when the operator supplies no count
+// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
+// the operator-decided factory default for that legacy entry — large enough to
+// keep a card queue draining, small enough to sit under the session-count a
+// single operator hand-launches comfortably. The t118 `-f` entry has its own,
+// smaller default (DefaultFactoryLeadWorkers).
 const DefaultFactoryWorkers = 8
+
+// DefaultFactoryLeadWorkers is the fan-out a bare `-f` / `--factory` (no
+// count) resolves to (t118 launcher axis, v3.1.1): one worker. The revived -f
+// entry starts the minimal factory — lead plus worker-1 — which the operator
+// then grows one lane at a time with `-f worker-<n>`, so the count-less
+// default is 1, not the legacy form's 8 (DefaultFactoryWorkers).
+const DefaultFactoryLeadWorkers = 1
+
+// DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
+// the launcher seeds on kanban companion and factory worker sessions (t118,
+// operator-confirmed architecture: each lane runs up to 10 agents in
+// parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
+// 20) so N lanes fanning out simultaneously divide the machine's capacity by
+// construction rather than by operator restraint.
+const DefaultLaneMaxConcurrentSubagents = 10
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from
