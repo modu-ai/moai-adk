@@ -144,9 +144,22 @@ func TestMeasureDiscardsWarmup(t *testing.T) {
 func TestMedianRunsWarmupPlusSamples(t *testing.T) {
 	t.Parallel()
 	calls := 0
-	// A real (if small) unit: an empty closure can complete below the
-	// monotonic clock's resolution and legitimately measure as 0.
-	got := Median(func() { calls++; cpuUnit(200_000) }, 3, 7)
+	// A real unit whose duration is guaranteed nonzero on ANY clock
+	// resolution: it spins until the monotonic clock has advanced at least
+	// one tick. A fixed-iteration cpuUnit can complete below a coarse
+	// clock's resolution — GitHub Windows runners read interrupt time, so a
+	// sub-tick unit legitimately measures 0 (Release Verify windows job
+	// 95500006316: "Median of a real call = 0s, want > 0"). The iteration
+	// bound only guards against a pathological never-ticking clock; on a
+	// healthy clock the loop exits within one tick.
+	tickUnit := func() {
+		calls++
+		start := time.Now()
+		for i := 0; time.Since(start) <= 0 && i < 5_000_000; i++ {
+			cpuUnit(1_000)
+		}
+	}
+	got := Median(tickUnit, 3, 7)
 	if calls != 10 {
 		t.Errorf("ref ran %d times, want 10 (3 warmup + 7 measured)", calls)
 	}
