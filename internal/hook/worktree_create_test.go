@@ -90,9 +90,13 @@ func TestWorktreeCreateHandler_ActiveCreator(t *testing.T) {
 	}
 
 	// The created directory must be a registered git worktree on the
-	// namespaced branch, not a plain directory.
+	// namespaced branch, not a plain directory. git worktree list emits
+	// forward-slash paths on every platform (verified on the windows
+	// runner: "worktree C:/Users/..."), so the join-produced path is
+	// compared in ToSlash form — a raw Contains on filepath.Join output
+	// never matches on windows, where Join produces backslashes.
 	listOut := runWorktreeTestGit(t, repo, "worktree", "list", "--porcelain")
-	if !strings.Contains(listOut, wantPath) {
+	if !strings.Contains(listOut, filepath.ToSlash(wantPath)) {
 		t.Errorf("git worktree list does not contain %q:\n%s", wantPath, listOut)
 	}
 	branchOut := runWorktreeTestGit(t, repo, "branch", "--list", "worktree-backend-impl")
@@ -100,14 +104,15 @@ func TestWorktreeCreateHandler_ActiveCreator(t *testing.T) {
 		t.Error("expected branch worktree-backend-impl to exist")
 	}
 
-	// The registry entry must be persisted under the input CWD.
-	registryData, err := os.ReadFile(filepath.Join(repo, ".moai", "state", "worktrees.json"))
-	if err != nil {
+	// The registry entry must be persisted under the input CWD. The check
+	// unmarshals the registry and compares the Path fields — a raw
+	// strings.Contains against the file bytes cannot work on windows,
+	// where JSON escaping doubles every backslash in the stored path.
+	stateFile := filepath.Join(repo, ".moai", "state", "worktrees.json")
+	if _, err := os.Stat(stateFile); err != nil {
 		t.Fatalf("worktree registry not written: %v", err)
 	}
-	if !strings.Contains(string(registryData), wantPath) {
-		t.Errorf("worktree registry does not reference %q:\n%s", wantPath, string(registryData))
-	}
+	registryHasPath(t, stateFile, wantPath)
 }
 
 // TestWorktreeCreateHandler_ReusesExistingDirectory verifies idempotency: an
@@ -135,7 +140,9 @@ func TestWorktreeCreateHandler_ReusesExistingDirectory(t *testing.T) {
 	}
 
 	// A second run re-registers idempotently: one registry entry per path,
-	// not one per invocation.
+	// not one per invocation. Counted on the unmarshaled Path fields —
+	// JSON escaping makes a byte-level strings.Count platform-dependent
+	// (windows backslashes double in the stored JSON).
 	if _, err := h.Handle(context.Background(), &HookInput{
 		SessionID:    "sess-wt-2b",
 		WorktreeName: "leftover",
@@ -143,13 +150,36 @@ func TestWorktreeCreateHandler_ReusesExistingDirectory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("second Handle: %v", err)
 	}
-	registryData, err := os.ReadFile(filepath.Join(repo, ".moai", "state", "worktrees.json"))
-	if err != nil {
+	stateFile := filepath.Join(repo, ".moai", "state", "worktrees.json")
+	if _, err := os.Stat(stateFile); err != nil {
 		t.Fatalf("worktree registry not written: %v", err)
 	}
-	if got := strings.Count(string(registryData), existing); got != 1 {
-		t.Errorf("registry references %q %d times, want exactly 1:\n%s", existing, got, string(registryData))
+	if got := registryCountPath(stateFile, existing); got != 1 {
+		t.Errorf("registry references %q %d times, want exactly 1:\n%s", existing, got, loadWorktreeEntries(stateFile))
 	}
+}
+
+// registryHasPath asserts the worktree registry at stateFile contains an
+// entry whose Path equals want exactly.
+func registryHasPath(t *testing.T, stateFile, want string) {
+	t.Helper()
+	for _, e := range loadWorktreeEntries(stateFile) {
+		if e.Path == want {
+			return
+		}
+	}
+	t.Errorf("worktree registry does not reference %q:\n%v", want, loadWorktreeEntries(stateFile))
+}
+
+// registryCountPath returns how many registry entries carry Path == want.
+func registryCountPath(stateFile, want string) int {
+	n := 0
+	for _, e := range loadWorktreeEntries(stateFile) {
+		if e.Path == want {
+			n++
+		}
+	}
+	return n
 }
 
 // TestWorktreeCreateHandler_MissingNameAborts verifies the contract-honest
