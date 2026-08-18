@@ -38,6 +38,7 @@ type kanbanMessages struct {
 	leadManual     string
 	glmSubstitute  string
 	backendMix     string
+	agentFanout    string
 	nameChoices    string
 	leaderSocket   string // socket path
 	settingsAuto   string
@@ -66,6 +67,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		backendMix: "Recommended default (token availability first): lead `moai glm -k`, plan `moai cc -k --name plan`, " +
 			"run `moai glm -k --name run`, sync `moai cc -k --name sync` — Claude for judgment and review, " +
 			"GLM for implementation and the always-on lead. Any other mix, including one backend everywhere, works just as well.",
+		agentFanout:  "Every companion can run up to 10 agents concurrently in parallel.",
 		nameChoices:  "Name options: the default Agent worker / `judge` (Claude verdicts — the GLM foreman's only Claude path) / `worker-N` (numbered workers).",
 		leaderSocket:   "Leader socket: %s",
 		settingsAuto:   "Cross-session messages are auto-accepted via the injected --settings.",
@@ -84,6 +86,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		backendMix: "기본 추천(토큰 가용성 우선): 리더 `moai glm -k`, plan `moai cc -k --name plan`, " +
 			"run `moai glm -k --name run`, sync `moai cc -k --name sync` — 판단·리뷰는 Claude, 구현과 상시 대기하는 리더는 GLM. " +
 			"다른 조합이나 전 세션을 한 백엔드로 통일해도 무방합니다.",
+		agentFanout:  "각 동반 세션은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.",
 		nameChoices:  "이름 선택지: 기본 Agent 작업자 / `judge` (Claude 판정 — GLM 공장장이 Claude 를 쓰는 유일한 경로) / `worker-N` (번호 작업자).",
 		leaderSocket:   "리더 소켓: %s",
 		settingsAuto:   "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
@@ -102,6 +105,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		backendMix: "推奨デフォルト（トークン余裕優先）: リーダー `moai glm -k`、plan `moai cc -k --name plan`、" +
 			"run `moai glm -k --name run`、sync `moai cc -k --name sync` — 判定・レビューは Claude、実装と常駐のリーダーは GLM。" +
 			"他の組み合わせや、全セッションを同一バックエンドに統一しても問題ありません。",
+		agentFanout:  "各併走セッションは最大 10 個のエージェントを同時に並列実行できます。",
 		nameChoices:  "名前の選択肢: デフォルトの Agent 作業者 / `judge`（Claude による判定 — GLM 親方が Claude を使う唯一の経路） / `worker-N`（番号付き作業者）。",
 		leaderSocket:   "リーダーソケット: %s",
 		settingsAuto:   "セッション間メッセージは、注入された --settings により自動的に受理されます。",
@@ -120,6 +124,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		backendMix: "推荐默认（优先考虑令牌余量）：主导 `moai glm -k`、plan `moai cc -k --name plan`、" +
 			"run `moai glm -k --name run`、sync `moai cc -k --name sync` —— 判定与评审用 Claude，实现与常驻的主导用 GLM。" +
 			"其他组合、或将全会话统一到同一后端同样可行。",
+		agentFanout:  "每个协同会话最多可同时并行运行 10 个代理。",
 		nameChoices:  "命名选项：默认 Agent 作业者 / `judge`（Claude 判定 —— GLM 工头使用 Claude 的唯一途径） / `worker-N`（编号作业者）。",
 		leaderSocket:   "主导会话套接字：%s",
 		settingsAuto:   "跨会话消息通过注入的 --settings 自动接受。",
