@@ -169,9 +169,10 @@ func TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp(t *testing.T) {
 func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	t.Parallel()
 
-	// Since the 2026-08-18 layout merge the GitHub 🔀 counts ride the repo
-	// segment (renderRepoBranchSegment), not the session line — the session
-	// line must stay free of the glyph in both the fetched and unfetched cases.
+	// Since the 2026-08-18 layout merge the GitHub 🔀 counts were first moved
+	// to the repo segment and then REMOVED from the render entirely (operator
+	// request, same day) — the session line and every other segment must stay
+	// free of the glyph in both the fetched and unfetched cases.
 	d := namedData()
 	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
 
@@ -187,13 +188,11 @@ func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	}
 }
 
-// TestRender_GitHubAndRepoIconDistinction pins the icon swap's contextual
-// split: the GitHub PR icon is 🔀 (the 📥 replacement) while the repo indicator
-// is 📡 (the old repo-segment 🔀 replacement). The two substitutions share the
-// 🔀 glyph on opposite sides, so a blanket substitution would either leave the
-// repo prefix as 🔀 or re-replace the fresh PR icon with 📡 — both bug
-// directions are asserted against here in a single render where both slots
-// are live.
+// TestRender_GitHubAndRepoIconDistinction pins the post-removal invariant:
+// the GitHub counts (issues/PRs) no longer render anywhere — the repo segment
+// is the bare "📡 owner/name, ahead/behind | 🅱️ branch" form even when the
+// counts are fetched and available. The test feeds live counts and asserts
+// neither the 🔀 glyph nor the counts leak into the line.
 func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 	t.Parallel()
 
@@ -209,21 +208,23 @@ func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "🔀 7 / 3 -> 📡 modu-ai/moai-adk, 0/0 | 🅱️ main") {
-		t.Errorf("repo segment must render the merged 🔀 -> 📡 form, got %q", got)
+	if !strings.Contains(got, "📡 modu-ai/moai-adk, 0/0 | 🅱️ main") {
+		t.Errorf("repo segment must render the bare 📡 form, got %q", got)
 	}
-	if strings.Contains(got, "🔀 modu-ai") {
-		t.Errorf("repo prefix must not remain 🔀, got %q", got)
+	if strings.Contains(got, "🔀") {
+		t.Errorf("github counts must not render after the 2026-08-18 removal, got %q", got)
 	}
-	if strings.Contains(got, "📡 3") {
-		t.Errorf("PR count must not inherit the repo indicator's 📡 (blanket-substitution bug), got %q", got)
+	if strings.Contains(got, "📡 3") || strings.Contains(got, "📡 7") {
+		t.Errorf("counts must not ride the repo indicator, got %q", got)
 	}
 }
 
 func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 	t.Parallel()
 
-	// The SegmentGitHub gate now governs the 🔀 prefix on the repo segment.
+	// The SegmentGitHub gate is now render-inert: the 🔀 counts were removed
+	// from the render entirely (2026-08-18), so both the enabled and disabled
+	// configurations produce the same bare repo segment.
 	d := &StatusData{
 		Git:    GitStatusData{Branch: "main", Available: true},
 		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
@@ -234,9 +235,9 @@ func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 
 	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderRepoBranchSegment(d)
 	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
-		t.Errorf("disabled github segment still rendered: %q", got)
+		t.Errorf("github counts must not render, got %q", got)
 	}
 	if !strings.Contains(got, "📡 modu-ai/moai-adk") {
-		t.Errorf("repo part must survive the gate, got %q", got)
+		t.Errorf("repo part must survive, got %q", got)
 	}
 }

@@ -187,9 +187,9 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// The GitHub 🔀 counts no longer live here: as of the 2026-08-18 layout they
-	// ride the head of the repo segment (see renderRepoBranchSegment) so the
-	// service activity and the repository it belongs to read as one unit.
+	// The GitHub 🔀 counts no longer live here: after briefly riding the repo
+	// segment head (2026-08-18 layout merge), they were removed from the render
+	// entirely the same day — see renderRepoBranchSegment.
 
 	return r.joinSegments(segs)
 }
@@ -537,10 +537,14 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		return ""
 	}
 
-	branch := "🅱️ " + data.Git.Branch
+	// Worktree marker rides between the branch glyph and the branch name
+	// (operator request 2026-08-18): "🅱️ [WT] release/v3.1.1", not a leading
+	// prefix that separates the glyph from the branch it marks.
+	branch := data.Git.Branch
 	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
 		branch = "[WT] " + branch
 	}
+	branch = "🅱️ " + branch
 
 	// Dirty count (omitted when 0)
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
@@ -549,16 +553,11 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		dirtySuffix = fmt.Sprintf(" +%d", dirty)
 	}
 
-	repoPart := fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind)
-
-	// GitHub activity prefix: open issues / open PRs pointing at the repo.
-	// Served from cache, so this is a file read even when the network is down.
-	prefix := ""
-	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
-		prefix = fmt.Sprintf("🔀 %d / %d -> ", data.GitHub.OpenIssues, data.GitHub.OpenPRs)
-	}
-
-	return prefix + repoPart + " | " + branch + dirtySuffix
+	// The GitHub 🔀 issue/PR counts were removed from the render per operator
+	// request 2026-08-18: the repo segment's "📡 owner/name, ahead/behind"
+	// form already anchors the line and the extra prefix added noise.
+	return fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind) +
+		" | " + branch + dirtySuffix
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff
