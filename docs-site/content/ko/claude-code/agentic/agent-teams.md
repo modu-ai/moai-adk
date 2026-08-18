@@ -165,7 +165,7 @@ flowchart TD
 
 split-pane 모드에는 외부 도구가 필요합니다. tmux는 시스템 패키지 매니저로 설치하고, iTerm2는 [`it2` CLI](https://github.com/mkusaka/it2)를 설치한 뒤 iTerm2 설정(Settings → General → Magic → Enable Python API)에서 Python API를 켜야 합니다.
 
-동료는 기본적으로 리더의 `/model` 선택을 물려받지 않습니다. 프롬프트에서 모델을 따로 지정하지 않았을 때 쓸 모델은 `/config`의 **Default teammate model**에서 정합니다. 단, v2.1.186부터 동료는 리더의 effort level을 상속합니다(split-pane 모드에서도 v2.1.186부터 적용되며, 그 이전 버전은 리더의 effort를 전달하지 않았습니다).
+Claude Code v2.1.234부터 동료는 기본적으로 리더의 `/model` 선택을 따라갑니다. 이전의 `/config` **Default teammate model** 설정은 제거되었습니다. 스폰 프롬프트에서 모델을 직접 지정하면 그 값이 우선합니다. effort level 상속은 v2.1.186부터 그대로 유지됩니다(split-pane 모드에서도 v2.1.186부터 적용).
 
 ## 품질 게이트 hook
 

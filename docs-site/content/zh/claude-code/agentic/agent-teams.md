@@ -144,7 +144,7 @@ flowchart TD
 
 把上面的值改成想要的模式，或用 `--teammate-mode in-process` 标志仅对单个会话强制。
 
-队员默认不继承队长的 `/model` 选择。提示词未指定模型时使用的模型在 `/config` 的 **Default teammate model** 中设置。
+自 Claude Code v2.1.234 起，队员默认继承队长的 `/model` 选择。`/config` 中原有的 **Default teammate model** 设置已被移除。若在生成提示词中指定模型，则以该指定为准。effort level 的继承自 v2.1.186 起保持不变（split-pane 模式同样自 v2.1.186 起生效）。
 
 ## 质量门禁 hook
 

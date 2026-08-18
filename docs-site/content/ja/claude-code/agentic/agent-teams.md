@@ -161,7 +161,7 @@ TODO コメントをコードベース全体で追跡する CLI ツールを設�
 
 split-pane モードには外部ツールが必要です。tmux はシステムパッケージマネージャーでインストールし、iTerm2 は [`it2` CLI](https://github.com/mkusaka/it2) をインストールした後 iTerm2 設定 (Settings → General → Magic → Enable Python API) で Python API を有効化する必要があります。
 
-チームメイトはデフォルトではリーダーの `/model` 選択を継承しません。プロンプトでモデルを指定しなかったときに使うモデルは `/config` の **Default teammate model** で設定します。ただし v2.1.186 からチームメイトはリーダーの effort level を継承します (split-pane モードでは v2.1.186 から適用、以前のバージョンはリーダーの effort を伝えません)。
+Claude Code v2.1.234 以降、チームメイトはデフォルトでリーダーの `/model` 選択を継承します。従来の `/config` の **Default teammate model** 設定は削除されました。スポーン時のプロンプトでモデルを指定すればその値が優先されます。effort level の継承は v2.1.186 から変わらず適用されます (split-pane モードでも v2.1.186 から適用)。
 
 ## 品質ゲート hook
 
