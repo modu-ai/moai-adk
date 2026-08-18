@@ -59,7 +59,7 @@ description: "여러 Claude Code 세션이 공유 작업 목록으로 협업하�
 
 이 "암시적 팀"(Implicit Teams) 모델은 Claude Code v2.1.178에 도입되었습니다. 그 이전에는 `TeamCreate` / `TeamDelete` 명령으로 팀을 직접 만들고 지워야 했지만, v2.1.178부터 이 명령들이 사라지고 첫 스폰으로 팀이 자동 형성되며 세션 종료 시 자동 정리됩니다(Hook payload의 `team_name` 필드는 레거시 호환용으로 남아 있지만 무시됩니다).
 
-다만 에이전트 팀은 아직 **실험적 기능이며 기본적으로 꺼져 있습니다**. Claude Code v2.1.178 이상에서 환경 변수 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`를 `1`로 설정해야 켤 수 있습니다. 셸 환경에 직접 지정하거나 `settings.json`에 등록합니다.
+다만 에이전트 팀은 아직 **실험적 기능**입니다. MoAI-ADK v3.1.1부터 배포 템플릿이 환경 변수 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`을 기본으로 싣고 있어 — `moai init`/`moai update`로 설정된 프로젝트에서는 별도 조작 없이 켜져 있습니다. 직접 만든 프로젝트에서 끄려면 셸 환경에서 변수를 제거하거나 `settings.json`에서 해당 항목을 지우면 됩니다.
 
 ```json
 {

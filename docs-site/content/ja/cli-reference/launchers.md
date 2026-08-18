@@ -4,7 +4,7 @@ weight: 15
 draft: false
 ---
 
-`moai cc`、`moai cg`、`moai glm` は Claude Code を異なるバックエンド構成で起動する 3 つのランチャーです。3 コマンドとも設定を調整したうえで `exec` で現在のプロセスを Claude Code に置き換えます。どのモデルがどの仕事をするかがそのままコストになるため、ランチャー選択はトークノミクスの最初の決定です。
+`moai cc`、`moai cg`、`moai glm` は Claude Code を異なるバックエンド構成で起動する 3 つのランチャーです。3 コマンドとも設定を調整したうえで `exec` で現在のプロセスを Claude Code に置き換えます。どのモデルがどの仕事を担うかがそのままコストを決めるため、ランチャー選択はコスト削減の最初の一手です。
 
 ## 3 ランチャーの比較
 
@@ -31,6 +31,14 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | モデル選択をオーバーライド |
 | `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
 | `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+| `-k, --kanban [SPEC-ID]` | カンバンリードとして進入 — `plan → run → sync` チェーンをこのセッションにシード。SPEC-ID を付けるとその SPEC を目標に |
+| `-k --name <role>` | 開いているカンバンランに同伴セッションとして合流。ロールは `plan` · `run` · `sync`。同じロール名の生存セッションがあれば次の番号が付く (`plan-1`, `plan-2`, …) |
+| `-k <N>` | **番号付きワーカーラン**のリード進入 — 番号付きワーカー N 個(`worker-1`…`worker-N`)のカンバンラン。リードがバックログからカードを空きワーカーに配分 |
+| `-k <N> --name worker-<i>` | 番号付きワーカー `<i>` として進入。番号が生存セッションと重なれば次の番号に。N なしで `--name worker-<i>` だけなら既定 8 |
+
+{{< callout type="info" >}}
+同じ `-k` トークンひとつが 3 つの形に解釈されます — 引数なし・SPEC-ID はカンバンリード、`--name <ロール>` はカンバン同伴、数値は番号付きワーカーランです。混合バックエンドランチャーの `moai cg` ではいずれも拒否されます。改称前の旧名である `-f`/`--factory` フラグは引退し、現在は明示的なエラーです — 詳細な契約は[カンバンモード](/ja/advanced/kanban-mode)を参照してください。
+{{< /callout >}}
 
 権限モードは `default`、`acceptEdits`(プロジェクトデフォルト)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードはバックグラウンド分類器が動作を検査するもので、Team プラン + Sonnet/Opus 4.6 以上が必要です。
 

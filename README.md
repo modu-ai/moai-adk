@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -33,7 +33,7 @@
 
 ---
 
-> **"The model is a stochastic worker moving token by token. It cannot remember, turn to turn, what it should cost, whether the work is good, or where the last session broke off. A harness enforces all three from the outside."**
+> **"The model is a stochastic worker moving token by token. It cannot remember, turn to turn, what it used this turn and how much, whether the result is good, or how far the last session got. A harness enforces all three from the outside."**
 
 ---
 
@@ -41,7 +41,7 @@
 
 > v3.1 ships on August 15, Liberation Day in Korea. The intent: release work from the old shape of a single session bound to one context limit. The limit itself does not disappear — what actually changes is written down below.
 
-A session holds one context window, and a long SPEC fills it. Everything that comes after pays for everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
+A session holds one context window, and a long SPEC fills it. Everything that comes after carries everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
 
 Kanban Mode splits one unit of work across **four terminals instead of one**. A lead session drives the chain; three companion sessions each own a single column — `plan`, `run`, `sync` — and carry **only that column's context**. Review is not a separate column: the sync gate absorbs it, running the review lenses itself to reach the verdict. Nothing is uncapped: each session still has its own limit. What changes is that no session carries three phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
 
@@ -49,7 +49,7 @@ Kanban Mode splits one unit of work across **four terminals instead of one**. A 
   <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
 </p>
 
-Each lane is also free to run a different backend and effort level — the run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2, because the reasoning a lane needs is not the same in every column.
+Each column can run a different backend and effort level. The run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2 — the depth of reasoning a column needs is not the same in every column.
 
 ### Getting started
 
@@ -60,7 +60,25 @@ moai cc -k --name run
 moai cc -k --name sync
 ```
 
-Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the lead session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
+Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the lead session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any column to put just that column on the GLM backend.
+
+### Which backend goes where
+
+When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: lead on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
+
+### Numbered-workers run — Kanban's second form
+
+Attach a **number** to the same `-k` token and it becomes Kanban's second form: the numbered-workers run. One lead polls the backlog queue and deals cards to free workers; N numbered workers process the cards, each in its own terminal.
+
+```bash
+moai cc -k 4                          # lead — a 4-worker kanban run
+moai cc -k 4 --name worker-1          # worker 1, each in its own terminal
+moai cc -k 4 --name worker-2          # worker 2 …
+```
+
+The lead deals by card class — Class A/B cards are handed to a single worker whole, while Class C cards (design changes) take the serial `plan → run → sync` route. Skip the worker count and use only `-k --name worker-<i>`, and the run defaults to 8 workers. Mixed-backend runs (`moai cg`) refuse it. The former `-f`/`--factory` flags are retired and now fail with an explicit error.
+
+> Details: [Kanban mode — numbered-workers run](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
 The board has five columns, `backlog → plan → run → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
 
@@ -69,7 +87,7 @@ The board has five columns, `backlog → plan → run → sync → done`. `backl
 /moai todo                               # list the queue
 ```
 
-Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And between phases the lead asks you to `/clear` the named session, since `/clear` is user-typed and cannot be sent as an instruction.
+Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And when a phase ends, the lead asks for that session to be `/clear`-ed, since `/clear` is user-typed and cannot be sent as an instruction.
 
 ### Words the four sessions share
 
@@ -274,7 +292,7 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 ### MCP server
 
-`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 17 MoAI-specific tools across five groups to Claude Code. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The generic `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
+`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 21 MoAI tools in six groups to Claude Code. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
 
 | Group | Tools | Purpose |
 |-------|-------|---------|
@@ -283,6 +301,7 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | Autonomous loop + multi-session coordination |
 | Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | Background cross-model jobs |
+| GLM delegation | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM (z.ai) background job delegation |
 
 All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
@@ -307,7 +326,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -357,7 +376,7 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
   <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 10 setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into ten tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
@@ -440,24 +459,26 @@ On the budget side, a token circuit breaker stands guard — it aborts at the ha
 ### Reading the statusline
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.1 │ ⏳ 2h 34m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
 ```
 
 | Element | Meaning |
 |------|------|
 | 🤖 Model | Current active model |
-| 🧠 effort | Reasoning effort level — `·t` suffix when extended reasoning active |
+| 🧠 effort | Reasoning effort — `·t` suffix when extended reasoning is active |
 | ♻️ Cache hit rate | Prompt cache hit rate |
-| CW: Context | Context window usage rate + 2-stage `/clear` markers (⚠️ soft, 🛑 hard) |
-| 5H / 7D | Pricing plan usage rate + reset time |
+| CW: Context | Context-window usage + 2-stage `/clear` markers (⚠️ soft, 🛑 hard) |
+| 5H / 7D | Plan usage rate + reset time |
 | 📁 Directory | Project directory name |
-| 🔀 Repo | GitHub repo identity `owner/name` |
+| 📡 Repo | GitHub repo `owner/name` (distinct from the PR icon 🔀) |
 | 🅱️ Branch | Current branch + `↑`ahead `↓`behind + `+`dirty count |
-| 💾 git status | staged / modified / untracked counts |
+| 📫 git status | Mailbox icons (📬 staged / 📫 modified / 📪 untracked / 📭 clean) + counts |
 | 📋 Task | Active SPEC workflow `[command SPEC-ID-phase]` |
 | 💌 PR | Active GitHub PR number + review state (`⌥state`) |
+| 🏷️ Session line | Conditional last line — session name · 👤 agent · 🔄 `TODO: in progress / queued` backlog · 🔀 open issues/PRs |
 
 > Details: [Statusline Guide](https://adk.mo.ai.kr/en/advanced/statusline)
 
@@ -637,7 +658,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI overview, FAQ |
 | [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | moai-adk identity, constitution, harness engineering, SPEC-based development, DDD, TRUST 5 |
 | [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan` · `run` · `sync` — SPEC pipeline backbone |
-| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
+| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (36 total) |
 | [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility |
 | [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode and model policy |
@@ -651,14 +672,15 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 
 [**Practical Agentic Coding with Claude Code**](https://adk.mo.ai.kr/book) — a hands-on harness engineering guide by the moai-adk author. [book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI command table (13 frequently used)
+### CLI command table (14 frequently used)
 
 | Command | Description |
 |---|---|
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
 | `moai doctor` | System state diagnosis and environment verification |
 | `moai status` | Project status summary (Git branch, quality metrics) |
-| `moai update` | Update to latest version (auto-rollback supported) |
+| `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
+| `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid sessions |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
@@ -667,7 +689,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
-| `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 10-tab settings |
+| `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 11-tab settings |
 
 > All 36 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 
@@ -696,7 +718,7 @@ That's normal. Tags mark high-fan-in, complex, or dangerous code only. In any pr
 ### What does the statusline version display mean?
 
 ```
-🗿 v3.0.1 ⬆️ v3.0.2
+🗿 v3.1.0 ⬆️ v3.1.1
 ```
 
 The first value is the currently installed moai-adk version; the arrow indicates an available update. It disappears after `moai update`.

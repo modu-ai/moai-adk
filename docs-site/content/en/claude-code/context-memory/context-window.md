@@ -102,7 +102,7 @@ flowchart TD
     B --> C{Context nearing<br>the limit?}
     C -->|No| B
     C -->|Continuing the work| D[Compaction<br>Replace conversation with a summary]
-    C -->|Changing topics| E[/clear<br>Empty the whole context/]
+    C -->|Changing topics| E["clear<br>Empty the whole context"]
     D --> F[Continue working<br>On the summary + auto re-injection]
     E --> F
 ```

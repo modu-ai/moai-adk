@@ -2,12 +2,12 @@
 title: MCP Server
 weight: 12
 draft: false
-description: "The provisioning, 17-tool catalog, authentication, and lazy-loading policy of the self-hosted moai mcp-server (a stdio local MCP server) provided by MoAI-ADK."
+description: "The provisioning, 21-tool catalog, authentication, and lazy-loading policy of the self-hosted moai mcp-server (a stdio local MCP server) provided by MoAI-ADK."
 ---
 
 # MCP Server
 
-MoAI-ADK rides on top of the Claude Code MCP ecosystem, then adds **its own MCP server** on top of that. A single binary (`moai mcp-server`) runs as a stdio local server, exposing 17 MoAI-ADK-specific tools — SPEC lifecycle audit, verification snapshots, the goal engine, cross-model audit, codex delegation — to the Claude Code runtime.
+MoAI-ADK rides on top of the Claude Code MCP ecosystem, then adds **its own MCP server** on top of that. A single binary (`moai mcp-server`) runs as a stdio local server, exposing 21 MoAI-ADK-specific tools — SPEC lifecycle audit, verification snapshots, the goal engine, cross-model audit, codex/GLM delegation — to the Claude Code runtime.
 
 {{< callout type="info" title="Relationship between the two MCP docs" >}}
 [**Claude Code generic MCP**](/en/claude-code/extensibility/mcp) covers the platform's own MCP (Model Context Protocol) integration — the USB-port analogy, server registration, transport types, the `/mcp` command, OAuth authentication, and the lazy-loading principle.
@@ -29,14 +29,14 @@ The Claude Code MCP ecosystem and MoAI's self-hosted MCP server are separate ser
 flowchart TD
     CC["Claude Code runtime<br/>(tool permission · lazy loading · approval)"]
     CMCP["Generic MCP server<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI self-hosted · 17 tools)"]
+    MMCP["moai mcp-server<br/>(MoAI self-hosted · 21 tools)"]
     CC --> CMCP
     CC --> MMCP
-    MMCP --> TOOLS["SPEC lifecycle · verification · goal · audit · codex delegation"]
+    MMCP --> TOOLS["SPEC lifecycle · verification · goal · audit · codex/GLM delegation"]
     CMCP --> EXT["External tools (library docs · browser automation · …)"]
 ```
 
-The key point is that "MoAI does not provision MCP" is a **half-truth**. It is true that external MCP servers (context7, playwright, etc.) are not provisioned by default. But the one MoAI self-hosted server is installed as default-on at `moai init` time. This server is the channel through which MoAI's 17-tool catalog reaches Claude Code.
+The key point is that "MoAI does not provision MCP" is a **half-truth**. It is true that external MCP servers (context7, playwright, etc.) are not provisioned by default. But the one MoAI self-hosted server is installed as default-on at `moai init` time. This server is the channel through which MoAI's 21-tool catalog reaches Claude Code.
 
 ## .mcp.json provisioning
 
@@ -93,9 +93,9 @@ The distribution default activates only the `moai` server. Four external servers
 
 Users never hand-edit `.mcp.json`. The `moai mcp add|remove|list` CLI manages the file, and this CLI operates through an atomic-RWM seam (flock file locking + compare-retry + backup-before-write + idempotent-skip). Even if two sessions edit simultaneously, one side's change does not overwrite the other.
 
-## 17-tool catalog
+## 21-tool catalog
 
-The 17 tools exposed by `moai mcp-server` divide into five groups. At call time they all carry the `mcp__moai__` prefix.
+The 21 tools exposed by `moai mcp-server` divide into six groups. At call time they all carry the `mcp__moai__` prefix.
 
 ### SPEC lifecycle
 
@@ -149,6 +149,17 @@ The single-backend audit mode is determined by the project's `audit_model` setti
 
 The codex delegation family is wired into super-advisor — because the on-demand high-reasoning consultation agent is the natural consumer of background cross-model delegation. It delegates a task with `codex_task`, polls completion with `codex_job_status` / `codex_job_result`, and cancels with `codex_job_cancel`. codex is optional — if it is missing or unavailable, it returns fail-open `inconclusive`, never a hard error.
 
+### GLM delegation (background jobs)
+
+| Tool | Purpose | Consumer agent | CLI equivalent |
+|------|---------|----------------|----------------|
+| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | super-advisor | — (no such CLI) |
+| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | super-advisor | — |
+| `mcp__moai__glm_job_result` | Read a background GLM job's output | super-advisor | — |
+| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
+
+The GLM delegation family is wired into super-advisor in the same shape as the codex delegation family. `glm_task` returns the completed text as-is when `background` is false, and returns a job ID immediately when true (observed and cancelled afterwards with `glm_job_status` · `glm_job_result` · `glm_job_cancel`). The response token ceiling can be overridden with `max_tokens`; a default ceiling is set on the server side. Background jobs live inside the server process, so they end with it. GLM is optional too — a missing key or an unreachable z.ai returns a structured fail-open result, never a tool error.
+
 ### MCP-over-CLI rule
 
 When the MCP tool is in the agent's `tools:` list, the MCP path is preferred over the CLI. The two paths run **the same implementation** underneath. The MCP path is advantageous for three reasons:
@@ -177,9 +188,9 @@ GLM, codex, and Claude — all three backends follow the fail-open principle. An
 
 ## Background job progress tracking
 
-Among the codex delegation tools, `codex_task` can start a background job with `background: true`. In this case it returns a job ID immediately without waiting for the job to finish.
+Among the codex and GLM delegation tools, `codex_task` and `glm_task` can start a background job with `background: true`. In this case they return a job ID immediately without waiting for the job to finish.
 
-Progress is polled with two tools:
+Progress is polled with two tools (below is the codex example — for GLM, `glm_job_*` plays the same role):
 
 ```text
 codex_task(background=true) ──▶ returns job ID

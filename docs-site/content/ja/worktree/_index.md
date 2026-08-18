@@ -78,14 +78,14 @@ Worktree を使う MoAI-ADK 開発は 3 つの段階で流れます:
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Plan (Terminal 1, メインチェックアウト)"]
-        A1[/moai plan<br/>機能の説明/] --> A2[SPEC ドキュメント生成]
+        A1["moai plan<br/>機能の説明"] --> A2[SPEC ドキュメント生成]
         A2 --> A3[実装範囲の確定]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
         B1["moai glm -w SPEC-AUTH-001"] --> B2[Worktree 生成および進入]
-        B2 --> B3[/moai run SPEC-ID]
-        B3 --> B4[/moai sync SPEC-ID]
+        B2 --> B3["moai run SPEC-ID"]
+        B3 --> B4["moai sync SPEC-ID"]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
@@ -293,7 +293,7 @@ flowchart TD
 ```mermaid
 graph TD
     subgraph Terminal1["Terminal 1: Planning"]
-        T1A[/moai plan/]
+        T1A["moai plan"]
         T1B[Claude Opus<br/>高コスト/高品質]
         T1C[SPEC ドキュメント生成]
     end
@@ -301,19 +301,19 @@ graph TD
     subgraph Terminal2["Terminal 2: Implementing"]
         T2A["moai glm -w<br/>SPEC-AUTH-001"]
         T2B[低コストバックエンド]
-        T2C[/moai run<br/>DDD 実装]
+        T2C["moai run<br/>DDD 実装"]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
         T3A["moai glm -w<br/>SPEC-AUTH-002"]
         T3B[低コストバックエンド]
-        T3C[/moai run<br/>DDD 実装]
+        T3C["moai run<br/>DDD 実装"]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
         T4A["moai cc -w<br/>SPEC-AUTH-003"]
         T4B[Claude バックエンド]
-        T4C[/moai sync<br/>ドキュメント化]
+        T4C["moai sync<br/>ドキュメント化"]
     end
 
     T1C --> T2A

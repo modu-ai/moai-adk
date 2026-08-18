@@ -18,7 +18,7 @@ The dead-code identification and safe-removal command. Through static analysis a
 
 As a project grows, code that is no longer used piles up. Unused imports, functions that are never called, and unreferenced types make the codebase complicated. `/moai clean` finds this dead code with static analysis and removes it safely, verified by tests.
 
-From the harness-engineering perspective, this command plays the role of **garbage collection**. Dead code is a burden not only for humans but also for agents — every line of code an agent reads is context (tokens), so dead-code removal is code hygiene and a context diet at the same time: tokenomics.
+From the harness-engineering perspective, this command plays the role of **garbage collection**. Dead code is a burden not only for humans but also for agents. Every line of code an agent reads is context (tokens), so removing dead code is code hygiene and, at the same time, a way to trim context and save cost.
 
 ## Usage
 
@@ -173,22 +173,23 @@ Codebase reduction:
 
 ## Agent Delegation Chain
 
+`/moai clean` runs by spawning an `Agent(general-purpose)` refactoring specialist twice (not a dedicated named agent — a general-purpose agent that receives the refactoring whitelist and ANALYZE-PRESERVE-IMPROVE instructions injected at spawn time). Steps 1–2 are one combined spawn, steps 4–5 another, and step 6 the orchestrator handles directly with no spawn.
+
 ```mermaid
 flowchart TD
     User["User request"] --> MoAI["MoAI orchestrator"]
-    MoAI --> Refactor1["manager-develop<br/>static analysis scan"]
-    Refactor1 --> Refactor2["manager-develop<br/>usage-graph analysis"]
-    Refactor2 --> MoAI2["MoAI orchestrator<br/>user approval"]
-    MoAI2 --> Refactor3["manager-develop<br/>safe removal"]
-    Refactor3 --> Testing["manager-develop<br/>test verification"]
-    Testing --> Complete["Done"]
+    MoAI --> Refactor1["Agent(general-purpose) refactoring specialist<br/>static analysis + usage graph (combined spawn 1)"]
+    Refactor1 --> MoAI2["MoAI orchestrator<br/>user approval"]
+    MoAI2 --> Refactor2["Agent(general-purpose) refactoring specialist<br/>safe removal + test verification (combined spawn 2)"]
+    Refactor2 --> MoAI3["MoAI orchestrator<br/>@MX tag cleanup (direct)"]
+    MoAI3 --> Complete["Done"]
 ```
 
 | Agent | Role | Main work |
 |----------|------|----------|
-| **manager-develop** | Analysis and removal | Static analysis, usage graph, safe removal |
-| **manager-develop** | Verification | Runs the test suite, checks for regressions |
-| **MoAI orchestrator** | Coordination | User approval, @MX tag cleanup |
+| **Agent(general-purpose) refactoring specialist** (spawn 1) | Analysis | Static analysis + usage graph (steps 1–2 combined) |
+| **Agent(general-purpose) refactoring specialist** (spawn 2) | Removal and verification | Safe removal + running the test suite and checking regressions (steps 4–5 combined) |
+| **MoAI orchestrator** | Coordination | User approval, @MX tag cleanup (step 6, direct) |
 
 ## Frequently Asked Questions
 
@@ -203,6 +204,27 @@ Use it when you want to include the case where a function has exactly 1 caller a
 ### Q: Is code used via reflection removed too?
 
 In `--safe-only` mode, only "certain dead code" is removed. Code used via reflection or dynamic dispatch is classified as a "false positive" and preserved.
+
+## A different surface — `moai clean --home` (home-directory cleanup)
+
+{{< callout type="info" >}}
+The **terminal CLI** `moai clean --home` shares the name but not the target — unlike `/moai clean` above (project dead code), this one tidies the `~/.moai` home directory. It is not a slash command and does no dead-code analysis.
+{{< /callout >}}
+
+Session state, caches, logs, and stale profiles pile up in `~/.moai`. `moai clean --home` tidies only the cleanup-target directories **listed in its allowlist** — anything not on the list stays, untouched and unasked. `~/.claude` is never touched.
+
+```bash
+# Cleanup conversation — dry-run by default (report only, no deletion)
+$ moai clean --home
+
+# Real deletion — guarded force
+$ moai clean --home --force
+```
+
+- **Dry-run is the default.** Deletion requires an explicit `--force`, and even that operates only inside the allowlist.
+- Retention periods are set by `state.home_retention_days` in `~/.moai/config/sections/`.
+- Before deleting, the **Home Disk Usage** check in `moai doctor` reports how full things are — an advisory check whose thresholds follow the compiled defaults.
+- To relocate `~/.moai` itself, point `MOAI_HOME` at a new home root (only a non-empty absolute path is honored; relative paths are ignored).
 
 ## Related Documents
 

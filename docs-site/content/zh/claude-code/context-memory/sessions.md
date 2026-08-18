@@ -39,7 +39,7 @@ flowchart TD
     A[会话开始] --> B[工作推进<br/>对话·文件·结果累积]
     B --> C{下一步动作}
     C -->|续接同一工作| D[--continue / --resume<br/>恢复上下文]
-    C -->|转换话题| E[/clear<br/>清空上下文/]
+    C -->|转换话题| E["clear<br/>清空上下文"]
     D --> B
     E --> B
 ```

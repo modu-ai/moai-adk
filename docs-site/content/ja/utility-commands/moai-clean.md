@@ -71,42 +71,45 @@ draft: false
 
 ## 実行プロセス
 
-`/moai clean` は 6 ステップで実行されます。
+`/moai clean` は 7 ステップで実行されます。
 
 ```mermaid
 flowchart TD
     Start["/moai clean 実行"] --> Phase1["ステップ 1: 静的分析スキャン"]
 
-    Phase1 --> Phase2["ステップ 2: 使用グラフ分析"]
-
-    Phase2 --> Phase3["ステップ 3: 分類"]
-    Phase3 --> Classify{"分類結果"}
+    Phase1 --> Phase2["ステップ 2: 使用グラフ分析と分類"]
+    Phase2 --> Classify{"分類結果"}
     Classify --> Dead["確実なデッドコード"]
     Classify --> TestOnly["テスト専用"]
     Classify --> Likely["可能性のあるデッドコード"]
     Classify --> False["誤検出 (実際に使用中)"]
 
-    Dead --> Approval{"--dry?"}
-    Approval -->|はい| Report["分析結果を表示して終了"]
-    Approval -->|いいえ| Phase4["ステップ 4: 安全な除去"]
+    Dead --> Phase3{"ステップ 3: 除去計画の承認<br/>(AskUserQuestion / --dry?)"}
+    Phase3 -->|--dry または却下| Report["分析結果を表示して終了"]
+    Phase3 -->|承認| Phase4["ステップ 4: 安全な除去"]
 
     Phase4 --> Phase5["ステップ 5: テスト検証"]
     Phase5 --> Pass{"テスト通過?"}
-    Pass -->|はい| Phase6["ステップ 6: 報告書"]
     Pass -->|いいえ| Rollback["ロールバック後に再試行"]
+    Pass -->|はい| Phase6["ステップ 6: MX タグ整理"]
     Rollback --> Phase6
+    Phase6 --> Phase7["ステップ 7: 報告書"]
 ```
+
+ステップ 3 の**除去計画承認**は、オーケストレーターが `AskUserQuestion` で削除対象の一覧を示して承認を受けるヒューマンゲートです。ステップ 6 の **MX タグ整理**では、消したコードに付いていた `@MX` 注記まで一緒に取り除き、行き場を失った注記が残らないようにします。
 
 ### ステップ 1: 静的分析スキャン
 
-言語別ツールを使ってデッドコード候補を検出します:
+プロジェクト言語を project marker で自動検出し、各言語の標準的なデッドコード分析ツールで候補を検出します。**16 の対応言語を同等に扱い** (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift)、インストールされていないツールは自動的にスキップします。認識できる言語マーカーのないプロジェクトは静かに通過します。以下は代表例であり、特定の言語を優遇するものではありません:
 
-| 言語 | 分析ツール | 検査対象 |
+| 言語 (例) | 分析ツール (例) | 検査対象 |
 |------|-----------|-----------|
-| **Go** | `go vet`, `staticcheck`, `deadcode` | 未使用の変数、関数、型 |
-| **Python** | `vulture`, `autoflake` | デッドコード、未使用 import |
-| **TypeScript/JavaScript** | `ts-prune`, ESLint `no-unused-vars` | 未使用 export、変数 |
-| **Rust** | `cargo clippy`, `cargo udeps` | デッドコード警告、未使用の依存性 |
+| Go | `go vet`, `staticcheck`, `deadcode` | 未使用の変数、関数、型 |
+| Python | `vulture`, `autoflake` | デッドコード、未使用 import |
+| TypeScript/JavaScript | `ts-prune`, ESLint `no-unused-vars` | 未使用 export、変数 |
+| Rust | `cargo clippy`, `cargo udeps` | デッドコード警告、未使用の依存性 |
+
+残りの 12 言語(java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift など)も、それぞれの標準ツールチェーンで同じようにスキャンされます。
 
 **スキャンカテゴリ:**
 
@@ -201,6 +204,27 @@ Git で元に戻せます。MoAI は依存性の逆順で除去してテスト�
 ### Q: リフレクションで使われるコードも除去されますか?
 
 `--safe-only` モードでは「確実なデッドコード」のみ除去します。リフレクションや動的ディスパッチで使われるコードは「誤検出」に分類され保存されます。
+
+## もうひとつの表面 — `moai clean --home` (ホームディレクトリ整理)
+
+{{< callout type="info" >}}
+同じ名前の**ターミナル CLI** `moai clean --home` は、上記の `/moai clean`(プロジェクトのデッドコード)とは対象が異なります — こちらは `~/.moai` ホームディレクトリを整理します。スラッシュコマンドではなく、デッドコード分析も行いません。
+{{< /callout >}}
+
+`~/.moai` にはセッション状態、キャッシュ、ログ、古いプロファイルが溜まっていきます。`moai clean --home` はこのうち**許可リスト(allowlist)に載っている整理対象ディレクトリだけ**を整理します — リストにないものは問わずに残します。`~/.claude` には決して触れません。
+
+```bash
+# 整理対話 — デフォルトは dry-run(報告だけで消さない)
+$ moai clean --home
+
+# 実際に削除 — ガードされた force
+$ moai clean --home --force
+```
+
+- **dry-run がデフォルト**です。削除したい場合は `--force` を明示的に付ける必要があり、それも許可リストの内側でのみ動作します。
+- 保持期間は `~/.moai/config/sections/` の `state.home_retention_days` で決まります。
+- 削除前にどれだけ占用しているかは、`moai doctor` の **Home Disk Usage** 診断が先に知らせます — 勧告(advisory)性質のチェックで、しきい値はコンパイル済みの既定値に従います。
+- `~/.moai` の場所自体を変えたい場合は、`MOAI_HOME` 環境変数でホームルートを再指定できます(空でない絶対パスのみ有効、相対パスは無視)。
 
 ## 関連ドキュメント
 

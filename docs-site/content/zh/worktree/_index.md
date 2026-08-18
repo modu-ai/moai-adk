@@ -87,14 +87,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Plan (Terminal 1, 主检出)"]
-        A1[/moai plan<br/>功能描述/] --> A2[生成 SPEC 文档]
+        A1["moai plan<br/>功能描述"] --> A2[生成 SPEC 文档]
         A2 --> A3[确定实现范围]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
         B1["moai glm -w SPEC-AUTH-001"] --> B2[创建并进入 Worktree]
-        B2 --> B3[/moai run SPEC-ID]
-        B3 --> B4[/moai sync SPEC-ID]
+        B2 --> B3["moai run SPEC-ID"]
+        B3 --> B4["moai sync SPEC-ID"]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
@@ -301,7 +301,7 @@ flowchart TD
 ```mermaid
 graph TD
     subgraph Terminal1["Terminal 1: Planning"]
-        T1A[/moai plan/]
+        T1A["moai plan"]
         T1B[Claude Opus<br/>高成本/高质量]
         T1C[生成 SPEC 文档]
     end
@@ -309,19 +309,19 @@ graph TD
     subgraph Terminal2["Terminal 2: Implementing"]
         T2A["moai glm -w<br/>SPEC-AUTH-001"]
         T2B[低成本后端]
-        T2C[/moai run<br/>DDD 实现]
+        T2C["moai run<br/>DDD 实现"]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
         T3A["moai glm -w<br/>SPEC-AUTH-002"]
         T3B[低成本后端]
-        T3C[/moai run<br/>DDD 实现]
+        T3C["moai run<br/>DDD 实现"]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
         T4A["moai cc -w<br/>SPEC-AUTH-003"]
         T4B[Claude 后端]
-        T4C[/moai sync<br/>文档化]
+        T4C["moai sync<br/>文档化"]
     end
 
     T1C --> T2A

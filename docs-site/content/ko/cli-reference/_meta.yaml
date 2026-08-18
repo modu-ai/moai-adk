@@ -43,3 +43,9 @@ github:
   title: "moai ast-grep / ast-edit 구조 검색·치환"
 epic:
   title: "moai epic 에픽 진행률"
+graph:
+  title: "moai graph 의존성 그래프"
+tokens:
+  title: "moai tokens 토큰 회계"
+memory:
+  title: "moai memory 메모리 관리"

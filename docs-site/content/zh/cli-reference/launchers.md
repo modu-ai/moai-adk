@@ -4,7 +4,7 @@ weight: 15
 draft: false
 ---
 
-`moai cc`、`moai cg`、`moai glm` 是以不同后端配置启动 Claude Code 的三个启动器。三个命令都会先调整设置,再用 `exec` 将当前进程替换为 Claude Code。哪个模型做哪种工作直接决定成本,因此启动器的选择是代币经济学的第一个决策。
+`moai cc`、`moai cg`、`moai glm` 是以不同后端配置启动 Claude Code 的三个启动器。三个命令都会先调整设置,再用 `exec` 将当前进程替换为 Claude Code。哪个模型承担哪种工作直接决定成本,因此启动器的选择是省下成本的第一步。
 
 ## 三个启动器对比
 
@@ -31,6 +31,14 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
 | `--chrome` / `--no-chrome` | 切换 Chrome MCP |
+| `-k, --kanban [SPEC-ID]` | 进入看板主控 —— 把 `plan → run → sync` 链种进本会话。附上 SPEC-ID 时以该 SPEC 为目标 |
+| `-k --name <role>` | 作为伴随会话加入已打开的看板 run。角色为 `plan` · `run` · `sync`。同一角色名已被活着的会话占用时取下一个编号 (`plan-1`, `plan-2`, …) |
+| `-k <N>` | 以**编号 worker 运行**的主控进入 —— N 个编号 worker（`worker-1`…`worker-N`）的看板 run。主控把积压区里的卡片分给空闲的 worker |
+| `-k <N> --name worker-<i>` | 以编号 worker `<i>` 进入。编号与活着的会话冲突时取下一个编号。不带 N 只用 `--name worker-<i>` 时默认 8 个 |
+
+{{< callout type="info" >}}
+同一个 `-k` 标记有三种解释 —— 不带参数 / 带 SPEC-ID 是看板主控，`--name <角色>` 是看板伴随会话，数字是编号 worker 运行。混合后端启动器 `moai cg` 下两者都被拒绝。改名前的旧名字 `-f`/`--factory` 旗标已退役，现在会得到明确的报错 —— 详细契约见[看板模式](/zh/advanced/kanban-mode)。
+{{< /callout >}}
 
 权限模式为 `default`、`acceptEdits`(项目默认)、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器检查动作,需要 Team 方案 + Sonnet/Opus 4.6 及以上。
 

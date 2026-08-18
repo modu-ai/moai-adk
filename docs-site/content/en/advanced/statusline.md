@@ -1,415 +1,166 @@
 ---
-title: Statusline System — Complete 3-line Layout Guide
+title: Statusline System — Complete 3+1-line Layout Guide
 weight: 78
 draft: false
 ---
 
-A **custom statusline system** for the Claude Code and moai-adk-go integration. Tokenomics starts with measurement — context usage (CW%), prompt cache hit rate, and rate-limit burn rates are displayed permanently at the bottom of the terminal, letting you read your token posture at a glance. From Claude Code v2.1.139 effort/thinking, and from v2.1.145 the workspace.repo + pr fields, are added to the stdin JSON, enabling a rich context display.
+You cannot control what you do not measure. An agentic development session spends hundreds of thousands of tokens, fills the context window (the total conversation a model can hold in mind at once) quickly, and runs several agents (AI assistants that work on their own) in parallel — all of which moves the prompt cache (a technique that reuses the same context to cut cost) hit rate. When none of this is visible in the terminal, the question "why did this session cost twice as much" has no answer. The **custom statusline system** starts exactly there. Tokenomics (spending tokens economically) begins with measurement, so the context usage rate, the cache hit rate, and the rate-limit depletion sit at the bottom of your terminal at all times.
 
-> The MoAI workflow is PR-centric. Every SPEC produces a plan-PR → run-PR → sync-PR cycle, so surfacing the current PR number + review state + context usage + handoff advice directly in the statusline greatly improves development efficiency.
+This document explains, at introductory depth, what the statusline shows, how the data flows, and what signals fire as the context fills. It explains "why you need this information and how to read it" before the fine detail of segment formats.
 
-## Overview
+## Why you need a statusline
 
-### Final Layout (3-line v3)
+Five variables decide cost and quality in agentic coding: which model you are on, at which reasoning depth it runs, how full the context window is, how much rate limit remains, and whether the prompt cache is actually hitting. These five are connected. A full context produces SSE stream stalls (streaming coming to a halt), a cold cache raises cost immediately, and an exhausted rate limit stops heavy work.
 
-```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
+The problem is that none of these variables is visible by default. Claude Code's own statusline is rich, but it does not carry the information MoAI workflows deal in — the active SPEC (a requirements specification document), the review state of the current PR, or when a handoff (the work of bridging one session to the next) is recommended. So MoAI raises its own statusline at the bottom of the terminal in three lines — appending a fourth in a multi-session run — so that "how tokens are being spent right now" and "where, and on what, you are working" read at a glance.
+
+## The lines at a glance
+
+The base layout is three lines; when a session name or backlog observation exists, a fourth line (the session line) is appended conditionally at the end. The example below is one instance of actual rendered output, copied verbatim down to the glyphs (small pictographic characters) each segment uses.
+
+```text
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 📫 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
 ```
 
-- **Line 1 (Info)**: model · effort/thinking · cache hit rate · Claude Code version · MoAI version · session time · output style
-- **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — each bar is emoji + label + bar + % + reset info
-- **Line 3 (Git/PR)**: directory · combined repository+branch · git status · active SPEC task · PR info
+- **Line 1 — how the session is running**: model, reasoning depth, cache hit rate, Claude Code version, MoAI version, session time, and output style in one line. It tells you at once which configuration the session is running under.
+- **Line 2 — how much budget remains**: context-window usage (CW) and two rolling rate limits (5-hour · 7-day) as gauge bars. This is the evidence for deciding whether a heavy job can run right now.
+- **Line 3 — where, and on what**: directory, repository and branch, git status, the active SPEC task, and the review state of the open PR, bundled together. This is the line you will see most often in a PR-centric workflow.
+- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), backlog state (🔄 `TODO: in progress / queued`), and open issue·PR counts (🔀). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role.
 
-### Data Flow
+## The path the data takes
 
-```
-Claude Code (passes stdin JSON)
-    ↓
-.moai/status_line.sh (shell wrapper — settings.json statusLine.command)
-    ↓
-moai statusline (Go binary)
-    ↓
-internal/statusline/types.go (StdinData parsing)
-    ↓
-internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
-    ↓
-internal/statusline/renderer.go (3-line v3 layout)
-    ↓
-terminal display
+The statusline is not a single program but a short pipeline. Every render cycle, Claude Code produces the session state as JSON and hands it over; MoAI receives it, shapes it into three lines, and returns it to the terminal.
+
+```mermaid
+flowchart TD
+    A["Claude Code<br/>(passes session state as stdin JSON)"] --> B[".moai/status_line.sh<br/>(shell wrapper — settings.json statusLine.command)"]
+    B --> C["moai statusline<br/>(single Go binary)"]
+    C --> D1["internal/statusline<br/>(stdin JSON parsing)"]
+    D1 --> D2["internal/statusline<br/>(memory·metrics·git collection)"]
+    D2 --> D3["internal/statusline<br/>(3-line render)"]
+    D3 --> E["three lines at the bottom of the terminal"]
 ```
 
-## Line 1 — Info (7 segments)
+Why does a shell wrapper sit in between? Claude Code's `statusLine.command` accepts a single command string. So `.moai/status_line.sh` acts as a minimal shell wrapper invoking the `moai statusline` binary, and all the heavy lifting (parsing, collection, rendering) happens fast inside the compiled Go binary. Every render then draws a generous amount of information at once, without spawning multiple processes.
 
-### Model
+The data-collection stage also supplements what stdin lacks. Git status is parsed directly from a local `git status --porcelain`, the MoAI version is read from local settings, and the active task comes from the session state file. This packs context Claude Code does not hand over into a single line.
 
-- **Format**: `🤖 <model display name>`
-- **Data source**: stdin `model.display_name` (or string shorthand)
-- **Examples**: `🤖 Opus 4.7`, `🤖 Sonnet 4.6`, `🤖 Haiku 4.5`
-- **Hidden when**: the `model` field is absent or `data.Metrics.Model == ""`
-- **Segment key**: `model`
+## Line 1 — how the session is running
 
-### Effort / Thinking
+Line 1 reads the session's configuration and state. Beyond the model name, the **effort/thinking** values added to stdin since Claude Code v2.1.139 show at which reasoning depth the session runs and whether extended thinking is on. A `·t` suffix after the level, as in `xhigh·t`, means extended thinking is active — with this display you can check at a glance whether the model policy is actually applied.
 
-- **Format**: `🧠 <level>[·t]`
-- **Data source**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
-- **Level values**: `low` / `medium` / `high` / `xhigh` / `max`
-- **The `·t` suffix**: added when `thinking.enabled == true` (extended reasoning active)
-- **Examples**:
-  - `🧠 xhigh·t` (xhigh effort + thinking active)
-  - `🧠 high` (high effort, no thinking)
-  - `·t` (effort absent + thinking only)
-- **Hidden when**: both `effort` and `thinking` are absent (including an empty effort.level string)
-- **Segment key**: `effort_thinking`
+Among these, the **cache hit rate** is the core tokenomics metric. It is `cache_read` tokens divided by `(cache_read + cache_creation)`; shrink the always-loaded instructions and this number rises immediately. Conversely, reading a large file fresh every turn, or a sudden change to the instruction tree, drags it down. A low hit rate is a clue for tracking which change is eating the cache.
 
-In always showing the reasoning depth the current session runs at, this segment is also a window for verifying that the model policy is actually being applied.
+When data is missing, values are not invented — the segment hides quietly (graceful degradation). If cache-creation tokens are 0, or both values are 0, the hit-rate segment is not shown at all. This humble omission is what prevents false confidence from numbers that do not exist.
 
-### Cache Hit Rate
+## Line 2 — how much budget remains
 
-- **Format**: `♻️ <N>%` (N = cache_read / (cache_read + cache_creation) × 100, truncated)
-- **Data source**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
-- **Example**: `♻️ 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
-- **Hidden when**: `current_usage` absent · `cache_creation == 0` (no fresh cache write) · both 0 — silently omitted rather than fabricating a value (graceful degradation)
-- **Toggle**: `cache_hit: false` in statusline.yaml → hidden (default-on)
-- **Segment key**: `cache_hit`
-- **Note**: the cache hit rate uses `♻️`, while Line 3 Git Status uses `💾` — the emojis are distinct. Prompt-cache reuse monitoring (SPEC-TOKEN-EFFICIENCY-001 P0-2)
+Line 2 consists of three gauge bars, each with a different meaning.
 
-The cache hit rate is the effect meter of the context diet — trim the always-loaded instructions and you immediately see this number rise.
+- **CW (context window)**: how full the current session's window is. The bar's color is a continuous gradient from green through yellow to red, and the battery glyph in front switches to a "weak battery" mark once the displayed percentage crosses 70%. A full window raises the risk of SSE stream stalls, so this gauge is the first signal for when to switch sessions.
+- **5H (5-hour rolling)**: rate-limit depletion over the last 5 hours. The reset time is shown alongside, telling you how long until the limit lifts.
+- **7D (7-day rolling)**: rate-limit depletion over the last 7 days. It lets you gauge how much of the weekly budget remains.
 
-### Claude Code Version
+For subscription-plan users, the 5H/7D bars are effectively budget gauges. Reading them lets you decide reasonably between running the heavy job now and handing it to GLM workers in CG mode to save cost. When the CW bar is full and the 5H bar is high too, stopping the session and continuing via a handoff favors both cost and stability.
 
-- **Format**: `🔅 v<version>` (the form actually rendered in the 3-line layout)
-- **Data source**: the stdin `version` string
-- **Example**: `🔅 v2.1.212`
-- **Note**: the named presets (full/compact/minimal) are retired — you turn segments on and off directly (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). The former full-mode `🔅 cc v<version>` prefix variant was retired together with the 5-line layout and is no longer rendered.
-- **Hidden when**: `version` is an empty string
-- **Segment key**: `claude_version`
+## Line 3 — where, and on what
 
-### MoAI Version
+Line 3 bundles the work's context. Directory, repository and branch (including ahead/behind and dirty-file counts), git status, the active SPEC task, and the review state of the open PR all sit in one line.
 
-- **Format**: `🗿 v<current>` or, when an update is available, `🗿 v<current> -> 🗿 v<latest>`
-- **Data source**: `.moai/config/sections/system.yaml` `moai.version` + the background update checker result
-- **Examples**:
-  - `🗿 v3.0.0` (up to date)
-  - `🗿 v2.18.0 -> 🗿 v3.0.0` (update advised)
-- **Segment key**: `moai_version`
+The repository and branch render as one merged segment. The `owner/name` part comes from `workspace.repo`, added to stdin since Claude Code v2.1.145, and the branch is read from local git. The repo display carries the 📡 glyph and joins the branch with an ASCII pipe (`|`); merged, "which repo's which branch am I working in" lands at a glance. When working in a worktree (a linked separate working directory), a `[WT]` mark precedes the branch to distinguish it from an ordinary checkout.
 
-### Session Time
+Git status leads with mailbox glyphs — 📬 staged, 📫 modified, 📪 untracked files present, 📭 clean — followed by the `+staged Mmodified ?untracked` counts. It uses both color and shape, so it reads in a black-and-white terminal too.
 
-- **Format**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
-- **Data source**: stdin `cost.total_duration_ms`
-- **Examples**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
-- **Segment key**: `session_time`
+The PR segment separates review states by color. `approved` renders green, `pending` yellow, `changes_requested` red, and `draft` gray, so the state of a review-awaiting PR is graspable by color alone. MoAI workflows produce a plan-PR → run-PR → sync-PR cycle for every SPEC, so keeping PR state always visible directly helps decide the next move.
 
-### Output Style
+## Handoff markers — when the context fills
 
-- **Format**: `💬 <style name>`
-- **Data source**: stdin `output_style.name`
-- **Examples**: `💬 MoAI`, `💬 R2-D2`, `💬 default`
-- **Hidden when**: `output_style.name` is an empty string
-- **Segment key**: `output_style`
+The marker attached beside the CW bar is the statusline's most important recommendation. When context usage crosses the per-model threshold, it turns on in two stages. The soft stage is a recommendation to switch sessions if you can; the hard stage is the top-level signal to switch right now.
 
-## Line 2 — Usage Bars (3 segments)
+```mermaid
+flowchart TD
+    A["measure context usage<br/>(by raw usage)"] --> B{"window size class"}
+    B -- "1M context<br/>(Opus 5, GLM-5.3)" --> C{"usage 50% or more?"}
+    B -- "200K / 256K standard<br/>(Sonnet, Haiku, Fable)" --> D{"usage 90% or more?"}
+    C -- "no" --> N["no marker<br/>(safe zone)"]
+    D -- "no" --> N
+    C -- "yes" --> S["soft marker (⚠️/clear)<br/>recommendation"]
+    D -- "yes" --> S
+    S --> H{"auto-compact-aware<br/>ceiling reached?"}
+    H -- "no" --> KEEP["stay soft"]
+    H -- "yes" --> HD["hard marker (🛑/clear!)<br/>top-level signal"]
+    HD --> CLR["save progress →<br/>paste-ready resume → /clear"]
+    S --> CLR
+```
 
-### CW (Context Window)
+The thresholds differ by model class because the larger the window, the more an early switch favors SSE-stall prevention. On 1M-context models the soft marker fires at half full (50%); on 200K/256K models at 90%. The hard marker is a ceiling that anticipates when auto-compact would fire. Since the runtime's auto-compact often pre-empts this ceiling first, the hard stage is in practice a top-level signal that fires rarely.
 
-- **Format**: `<icon> CW: <bar> <pct>% [(⚠️/clear) | (🛑/clear!)]`
-- **Data sources**:
-  - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
-  - percentage: `context_window.used_percentage` (precomputed) or the sum of `current_usage` tokens
-  - handoff-suffix activation: decided by `handoffGuideStage(data)` (see the two-stage table below)
-- **Battery emoji** (`BatteryIcon`, `internal/statusline/gradient.go`):
-  - `🔋` (displayed percentage ≤ 70%)
-  - `🪫` (displayed percentage > 70%)
-  - the bar itself is colored per block with a continuous green → yellow → red gradient (separate from the battery threshold)
-- **The `(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M-context models (Opus 5, GLM-5.3): used_percentage ≥50% (based on raw context_window_size)
-  - 200K-context models (Sonnet/Haiku): used_percentage ≥90%
-  - Meaning: recommend `/clear` before the next turn + use the paste-ready resume message
-- **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
-- **Segment key**: `context`
+When the marker turns on, follow the fixed order: save in-flight work to `progress.md`, receive the orchestrator's paste-ready resume message, `/clear` the session, and paste the message into the new session to continue. This flow matches the session handoff rules.
 
-### 5H (5-hour rolling rate limit)
+### GLM context gauge correction (Issue #653)
 
-- **Format**: `🔋 5H: <bar> <pct>% [(<reset>)]`
-- **Data source**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
-- **Reset formats**:
-  - <60 minutes: `(Nm)` (e.g. `(47m)`)
-  - <24 hours: `(Nh Nm)` (e.g. `(2h 15m)`)
-  - ≥24 hours: `(Mon DD)` (e.g. `(May 28)`)
-- **Example**: `🔋 5H: █████░░░░░ 56% (47m)`
-- **Data absent**: `rate_limits.five_hour == null` → bar 0%, reset `(rolling)`
-- **Segment key**: `usage_5h`
+One caveat. GLM-5.3 is a genuine 1M-context model, but Claude Code reports `context_window_size` by the Claude slot regardless of provider (Opus=1M, Sonnet/Haiku=200K). So in a GLM session the raw observation can misreport at about 180K. MoAI corrects the value at two points — the launcher declares the 1M window to the session via the `CLAUDE_CODE_MAX_CONTEXT_TOKENS` environment variable, and the statusline corrects the observation via `ResolveGLMContextWindow` in `internal/statusline/memory.go`. `glm-5.3` maps to 1,000,000, and you can override it directly with the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable or configure it through the `llm.glm.context_windows` table. In a GLM session, trust the MoAI statusline's CW%, not the raw value.
 
-### 7D (7-day rolling rate limit)
+## The context-usage snapshot — for the next session
 
-- **Format**: `🔋 7D: <bar> <pct>% [(<reset>)]`
-- **Data source**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
-- **Reset format**: `(Mon DD)` (absolute date)
-- **Example**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
-- **Segment key**: `usage_7d`
+The statusline also records its observation to `.moai/state/context-usage.json` on every render. The next session's start reads this snapshot as grounds for how full the window was just before. `raw_pct` (raw usage) and `stage` (none/soft/hard) are the key fields; `session_id`, `writer_pid`, and `captured_at` ride along so the writing session can be told apart.
 
-For subscription-plan users, the 5H/7D bars are effectively budget gauges — you can look at these two bars to decide whether to schedule heavy work before the rate limit runs out, or hand it off to GLM workers in CG mode.
+Why does the session need distinguishing? When several sessions share one working directory, one session must not inherit another's usage and misjudge the window as full. So the identity of the session that wrote the record is checked, and records that mismatch or are stale are ignored, falling back to raw observation. The goal is to act conservatively, not to draw false confidence from a value that is not yours.
 
-## Line 3 — Git / PR (5 segments)
+## Configuration — toggling on and off
 
-### Directory
-
-- **Format**: `📁 <directory name>`
-- **Data source**: stdin `workspace.project_dir` (basename) or `cwd`
-- **Examples**: `📁 moai-adk-go`, `📁 my-project`
-- **Hidden when**: `data.Directory` is an empty string
-- **Segment key**: `directory`
-
-### Repo + Branch (combined segment)
-
-- **Format**: `🔀 <owner>/<name> | 🅱️ <branch>[ ↑N][ ↓N][ +N]`
-- **Data sources**:
-  - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
-  - `🅱️ branch`: local git `branch --show-current`
-  - `↑N`: ahead count (relative to origin/<branch>)
-  - `↓N`: behind count
-  - `+N`: dirty count = Modified + Staged + Untracked
-- **Examples**:
-  - `🔀 modu-ai/moai-adk | 🅱️ main ↑3 +2` (repo + branch + ahead + dirty)
-  - `🔀 modu-ai/moai-adk | 🅱️ main` (clean branch, no ahead)
-- **Hidden when** (any one of the three hides the whole segment):
-  - branch is an empty string, or git is unavailable
-  - `workspace.repo` nil (git not initialized or no remote configured) — there is no fallback that shows the branch alone without the repo
-  - `repo.owner` or `repo.name` is an empty string
-- **Worktree mode**: with the `worktree` segment active and `workspace.git_worktree` present, the branch gets a `[WT] ` prefix
-- **Segment key**: `git_branch` (combined). The `🔀 owner/name` part (`repo`) renders inside this segment and is a 17th segment outside the 16-key config schema (no individual toggle).
-
-### Git Status
-
-- **Format**: `💾 +<staged> M<modified> ?<untracked>`
-- **Data source**: parsed from local git `git status --porcelain`
-- **Example**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
-- **Hidden when**: git is unavailable
-- **Note**: the previous 4-emoji mailbox set (`📬`/`📫`/`📪`/`📭`) is retired; the unified `💾` is used
-- **Segment key**: `git_status`
-
-### Task (active SPEC workflow)
-
-- **Format**: `📋 [<command> <SPEC-ID>-<stage>]`
-- **Data source**: the `active_task` field of `~/.moai/state/last-session-state.json` (shown only when that file is written)
-- **Example**: `📋 [run SPEC-AUTH-001-run]`
-- **Hidden when**: no active task (`active_task` nil or an empty command) → segment hidden
-- **Segment key**: `task` (default-on from v3.0.0 — an unset key is read as active)
-
-### PR (active GitHub Pull Request)
-
-- **Format**: `💌 PR #<number> (⌥<review_state>)` (with state) / `💌 PR #<number>` (state empty)
-- **Data source**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.145+)
-- **Review state values**: `approved` / `pending` / `changes_requested` / `draft` / other (raw passthrough)
-- **Color coding** (the review_state portion):
-  - `approved`: green (Success)
-  - `pending`: yellow (Warning)
-  - `changes_requested`: red (Error)
-  - `draft`: gray (Muted)
-  - other: no color (raw passthrough)
-- **Examples**:
-  - `💌 PR #1234 (⌥approved)` (green)
-  - `💌 PR #1023 (⌥pending)` (yellow)
-  - `💌 PR #7 (⌥changes_requested)` (red)
-  - `💌 PR #99 (⌥draft)` (gray)
-  - `💌 PR #100` (no state)
-- **Hidden when**:
-  - the `pr` field is absent (no PR, or v2.1.145 and below)
-  - `pr.number == 0`
-  - `SegmentPR` config explicitly false
-- **Segment key**: `pr` (default on per v3.0.0)
-
-## Configuration
-
-### Basic Structure
-
-Segment activation is managed in `.moai/config/sections/statusline.yaml`.
+Segments toggle in `.moai/config/sections/statusline.yaml`. Each key is one segment toggle.
 
 ```yaml
 statusline:
   theme: catppuccin-mocha    # color theme
   segments:
-    # Line 1
+    # line 1
     model: true
     effort_thinking: true
-    cache_hit: true        # cache hit rate ♻️
+    cache_hit: true
     claude_version: true
     moai_version: true
     session_time: true
     output_style: true
-
-    # Line 2
+    # line 2
     context: true
     usage_5h: true
     usage_7d: true
-
-    # Line 3
+    # line 3
     directory: true
-    git_branch: true       # combined repo+branch
+    git_branch: true         # repository + branch merged
     git_status: true
-    task: true             # default-on per v3.0.0
-    pr: true               # default on per v3.0.0
-    worktree: false
+    task: true
+    pr: true
+    worktree: false          # opt-in
+    # line 4 — session line (on by default; rendered even when unstated)
+    session: true            # 🏷️ session name + 👤 agent
+    backlog: true            # 🔄 TODO: in progress / queued
+    github: true             # 🔀 open issues / PRs
 ```
 
-### Refresh Interval
+Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The session line's three keys (`session` · `backlog` · `github`) are separate from this 16-key schema and render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, GitHub cache) are quietly omitted. The former named presets (full/compact/minimal) are deprecated, so toggle the combination you want per segment.
 
-The statusline's refresh interval is set via `statusLine.refreshInterval` in `settings.json` (unit: **seconds**, default `10`). This is a Claude Code runtime setting, not `.moai/config/sections/statusline.yaml`. Too low a value increases CPU usage; too high a value delays how quickly context-usage changes are reflected.
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
-    "refreshInterval": 10
-  }
-}
-```
-
-### Segment Activation Matrix
-
-| Segment | Line | Default on | stdin field |
-|---------|------|----------|-------------|
-| `model` | L1 | ✓ | `model.display_name` |
-| `effort_thinking` | L1 | ✓ | `effort.level` + `thinking.enabled` |
-| `cache_hit` | L1 | ✓ | `current_usage.cache_read_tokens` + `cache_creation_tokens` |
-| `claude_version` | L1 | ✓ | `version` |
-| `moai_version` | L1 | ✓ | (local config) |
-| `session_time` | L1 | ✓ | `cost.total_duration_ms` |
-| `output_style` | L1 | ✓ | `output_style.name` |
-| `context` | L2 | ✓ | `context_window.*` |
-| `usage_5h` | L2 | ✓ | `rate_limits.five_hour.*` |
-| `usage_7d` | L2 | ✓ | `rate_limits.seven_day.*` |
-| `directory` | L3 | ✓ | `workspace.project_dir` |
-| `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
-| `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v3.0.0+) | `active_task` in session state |
-| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
-| `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
-
-> The 16 above are the formal config-schema keys. `repo` (`🔀 owner/name`) is a 17th segment rendered inside the `git_branch` segment; being outside the config schema, it has no individual toggle.
-
-## Handoff Guide — the `(⚠️/clear)` Recommendation Criteria
-
-The handoff suffix on the CW bar activates when context usage crosses the model-specific threshold. It is a visual marker that preempts SSE-stall risk and encourages use of the paste-ready resume message, and it operates in **two stages**.
-
-- **soft stage** `(⚠️/clear)`: on reaching the band's soft threshold
-- **hard stage** `(🛑/clear!)`: on reaching the auto-compact-aware ceiling (`min(cap, auto-compact-threshold + margin)`) (`internal/statusline/renderer.go`). Because the runtime's auto-compact often pre-empts this ceiling, the hard stage is a rarely-fired upper signal in practice.
-
-| Model class | Context Window | Threshold | Recommended at |
-|------------|----------------|--------|----------|
-| **1M context** (Opus 5, GLM-5.3) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
-| **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K tokens used |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens used |
-| Other / unknown | — | Not shown | (safe default) |
-
-> The thresholds are enforced in the handoff-stage decision in `internal/statusline/renderer.go`. They match the HARD rule in `.claude/rules/moai/workflow/context-window-management.md`.
-
-### GLM Context Gauge Correction (Issue #653)
-
-GLM-5.3 is a genuine 1M-context model, but Claude Code reports `context_window_size` based on the Claude slot regardless of provider, so raw telemetry (`effectiveWindow`) can be misreported as ~180K in a GLM session. MoAI corrects this with `ResolveGLMContextWindow` (`internal/statusline/memory.go`) — resolving it from the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable (explicit override) or the `glm.context_windows` table in `llm.yaml` (glm-5.3 → 1,000,000). In a GLM session, trust the MoAI statusline's CW%, not the raw `effectiveWindow`.
-
-The user flow when activated is as follows.
-
-1. The `(⚠️/clear)` marker appears
-2. Save in-progress work to `progress.md` or the like
-3. The orchestrator generates a paste-ready resume message (the session-handoff.md 6-block format)
-4. Run `/clear` and paste the resume message
-5. Continue the work in the new session
-
-## stdin JSON Schema Reference
-
-For the full list of stdin JSON fields Claude Code passes to the statusline script, see [the official docs Available data](https://code.claude.com/docs/en/statusline#available-data). moai-adk-go uses the following fields.
-
-```json
-{
-  "session_id": "abc...",
-  "transcript_path": "/path/to/transcript.jsonl",
-  "cwd": "/path/to/cwd",
-  "model": {"id": "claude-opus-4-8", "display_name": "Opus"},
-  "workspace": {
-    "current_dir": "...",
-    "project_dir": "...",
-    "git_worktree": "feature-xyz",
-    "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
-  },
-  "version": "2.1.212",
-  "output_style": {"name": "MoAI"},
-  "cost": {
-    "total_cost_usd": 1.234,
-    "total_duration_ms": 17520000,
-    "total_lines_added": 156,
-    "total_lines_removed": 23
-  },
-  "context_window": {
-    "used_percentage": 62,
-    "context_window_size": 1000000,
-    "total_input_tokens": 620000,
-    "total_output_tokens": 0,
-    "current_usage": {
-      "input_tokens": 8500,
-      "output_tokens": 1200,
-      "cache_creation_input_tokens": 5000,
-      "cache_read_input_tokens": 605300
-    }
-  },
-  "exceeds_200k_tokens": true,
-  "effort": {"level": "xhigh"},
-  "thinking": {"enabled": true},
-  "rate_limits": {
-    "five_hour": {"used_percentage": 56, "resets_at": 1779286800},
-    "seven_day": {"used_percentage": 13, "resets_at": 1779832400}
-  },
-  "pr": {
-    "number": 1234,
-    "url": "https://github.com/modu-ai/moai-adk/pull/1234",
-    "review_state": "approved"
-  }
-}
-```
-
-## Version History
-
-- **v3.0.0 layout v3** (2026-05-22): 3-line layout redesign — combined repo+branch segment, directory at the L3 head, `🪫 CW:` emoji moved forward, `(⚠️/clear)` handoff suffix, unified `💾` git status, `💌 PR #N (⌥state)` format
-- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): added `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin field mappings, 1M-context handoff threshold 75% → 50%
-- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment added (v2.1.145+ stdin), 4-locale docs sync
-- **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` added to stdin JSON
-- **v2.1.145** (Claude Code): `workspace.repo` + `pr` added to stdin JSON
+The refresh interval is set by `statusLine.refreshInterval` in `settings.json` (unit: seconds, default 10). This is a Claude Code runtime setting, not a statusline configuration file. Too short an interval burdens the CPU; too long delays the reflection of context-usage changes. The default is usually enough.
 
 ## Troubleshooting
 
-### PR Not Appearing in the Statusline
+**If the PR does not show**, check three things. Claude Code must be v2.1.145 or later for the `pr` field to arrive on stdin. Confirm an open PR exists on the current branch with `gh pr view`. And check that the configuration does not explicitly say `pr: false`.
 
-- Check the Claude Code version: `🔅 v2.1.145` or later required (earlier versions do not include the `pr` field in stdin)
-- Confirm the current branch has an OPEN PR: `gh pr view`
-- Check whether `pr: false` is explicitly set in `statusline.yaml`
+**If the handoff marker does not show**, that is usually normal. Below 50% on a 1M model, or below 90% on a 200K/256K model, the threshold simply has not been reached. If it does not show even past the threshold, check that the model's window size is mapped correctly (especially the GLM correction).
 
-### `(⚠️/clear)` Not Showing
+**If colors do not show**, check that the terminal supports ANSI 256-color, that `NO_COLOR=1` is not set, and that the theme fits the environment.
 
-- 1M-context models: used_percentage under 50% → normal (threshold not yet reached)
-- 200K-context models: used_percentage under 90% → normal
-- Over threshold but not showing: check the `MemoryData.ContextWindowSize` mapping in the `shouldShowHandoffGuide` function (possible boundary defect)
+**To see the actual output**, pipe a sample stdin and render the statusline once. Feed the `moai statusline` command a JSON string carrying session state on standard input, and the three lines destined for the terminal come out as-is. This lets you inspect how a configuration change affects the render, without rendering.
 
-### Colors Not Displaying
+## Changing directory with `/cd` (CC 2.1.169+)
 
-- Check that the terminal supports ANSI 256 colors
-- Check that `theme: catppuccin-mocha` suits the environment
-- Check whether the `NO_COLOR=1` environment variable is set
+On Claude Code 2.1.169 or later, the `/cd <path>` command changes the session's working directory **while preserving the prompt cache**. The statusline's directory display updates to the new path, but the accumulated reasoning context is not rebuilt. Think of it as a way to keep the cache alive instead of opening a new terminal session. When you want to move only the working directory mid-session without losing context (for example, switching into a worktree mid-task), it is the least-effort choice. For how this ties into the resume pattern, see [Session handoff](/en/workflow-commands/moai-sync).
 
-### Verification Command
-
-```bash
-# Verify actual statusline output with a stdin fixture
-NOW=$(date +%s)
-echo '{"session_id":"test","model":{"display_name":"Opus"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.212","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
-```
-
-## `/cd` Cache-Preserving Directory Switch (CC 2.1.169+)
-
-Claude Code 2.1.169+ provides the `/cd <path>` command, which changes the session's working directory **while preserving the prompt cache** — the statusline's `cwd` field updates to reflect the new directory, but the in-flight reasoning context is not rebuilt. It is the cache-preserving alternative to opening a new terminal session: `/cd` keeps the accumulated context, while a new terminal cold-starts from scratch. When the statusline shows a `cwd` you want to leave without losing context (e.g. switching to an L2 worktree mid-session), `/cd` is the lower-friction path. For resume-pattern integration, see [Session Handoff](/en/workflow-commands/moai-sync).
-
-## Related Documents
+## Related docs
 
 - [Settings JSON](/en/advanced/settings-json) — configuring the Claude Code `statusLine` field

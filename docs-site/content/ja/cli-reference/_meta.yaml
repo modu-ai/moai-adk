@@ -43,3 +43,9 @@ github:
   title: "moai ast-grep / ast-edit 構造検索・置換"
 epic:
   title: "moai epic エピック進捗"
+graph:
+  title: "moai graph 依存グラフ"
+tokens:
+  title: "moai tokens トークン会計"
+memory:
+  title: "moai memory メモリ管理"

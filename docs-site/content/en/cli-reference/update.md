@@ -116,6 +116,12 @@ graph TD
     H --> I
 ```
 
+### Pre-clean backup
+
+Before redistributing templates, when MoAI cleans the roots it manages (the template-managed paths under `.claude/` and `.moai/`), files sitting inside them that **the templates do not deploy are backed up first**, and only then cleaned. The backup lands under a per-run timestamped directory `.moai-backups/<timestamp>/pre-clean/<root>/...` at its original relative path, and **if the backup fails, the cleanup itself aborts** — there is no path that deletes without a backup.
+
+This safety net keeps `moai update` from losing local-only files (personal rules, experimental skills, and the like) placed inside the managed roots. For what counts as a managed root and where local-only files should live, follow your project's local development guide. When a backup is created, its path is announced alongside the summary output.
+
 ## Flag reference
 
 | Flag | Description |
