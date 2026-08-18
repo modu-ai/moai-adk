@@ -152,6 +152,12 @@ flows. The hook applies the doctrine conditionally.
   as "the exemption is broken" is a misdiagnosis — the axes work; the values were
   never delivered.
 
+  The deny reason's remediation text aligns with this reachability caveat
+  (v1.3.1): it directs the caller to a worktree and states that the manager-git
+  identity and sentinel exemptions fire only for main-thread launches — it must
+  not suggest delegating to a `manager-git` subagent, which receives the same
+  deny again.
+
 - **Scan scope**: the pattern set is matched against the command with quoted
   spans collapsed to a placeholder word, so a match reflects the command being
   invoked rather than text carried as data. `moai todo add "… git switch …"` is
@@ -187,5 +193,5 @@ Discriminant directory correction: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
 
 ---
 
-Version: 1.3.0
+Version: 1.3.1
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

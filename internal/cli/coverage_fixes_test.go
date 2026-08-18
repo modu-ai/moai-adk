@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
@@ -251,7 +252,7 @@ func TestCleanLegacyHooks_AllHooksRemovedDeletesHooksKey(t *testing.T) {
 func TestCleanMoaiManagedPaths_EmptyProject(t *testing.T) {
 	root := t.TempDir()
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths on empty project should not error: %v", err)
 	}
@@ -281,7 +282,7 @@ func TestCleanMoaiManagedPaths_GlobTargets(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -313,7 +314,7 @@ func TestCleanMoaiManagedPaths_ConfigDirRemoved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -337,7 +338,7 @@ func TestCleanMoaiManagedPaths_OutputStylesRemoved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}

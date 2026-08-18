@@ -53,6 +53,43 @@ var requiredMoAIDirs = []string{
 	"logs",
 }
 
+// configCacheArtifactName is the fixed cache file name the config loader
+// writes under .moai/state/ (internal/config cache.go cacheFileName). It is
+// duplicated here as a local constant because the canonical one is unexported
+// and pulling the whole config package in would couple this validator to its
+// loader. Keep in sync with internal/config/cache.go.
+const configCacheArtifactName = "config-cache.json"
+
+// moaiDirIsOnlyCacheArtifact reports whether dir contains nothing but the
+// config cache artifact (.moai/state/config-cache.json) — the exact litter a
+// pre-fix moai command left in an uninitialized directory (issue #1568), and
+// therefore not evidence of an initialized project. Any other content
+// (config/, manifest.json, specs/, ...) marks a real project and MUST keep
+// failing validation as before.
+func moaiDirIsOnlyCacheArtifact(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.Name() != "state" {
+			return false
+		}
+	}
+
+	stateEntries, err := os.ReadDir(filepath.Join(dir, "state"))
+	if err != nil {
+		// .moai/ without a readable state/ is not this hazard's shape.
+		return false
+	}
+	for _, entry := range stateEntries {
+		if entry.Name() != configCacheArtifactName {
+			return false
+		}
+	}
+	return true
+}
+
 // requiredClaudeDirs lists the directories that must exist under .claude/.
 // Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: agents are split into 4 domain subfolders.
 var requiredClaudeDirs = []string{
@@ -79,8 +116,16 @@ func (v *projectValidator) Validate(root string) (*ValidationResult, error) {
 	// Check if .moai/ already exists
 	moaiDir := filepath.Join(root, defs.MoAIDir)
 	if dirExists(moaiDir) {
-		result.Valid = false
-		result.Errors = append(result.Errors, "project already initialized: .moai/ directory exists. Use --force to reinitialize.")
+		if moaiDirIsOnlyCacheArtifact(moaiDir) {
+			// The directory holds nothing but the config cache artifact a
+			// pre-fix moai command left behind (issue #1568): tool litter,
+			// not an initialized project. Treat the project as
+			// uninitialized so init succeeds without manual cleanup.
+			result.Warnings = append(result.Warnings, ".moai/ contains only the config cache artifact; treating the directory as uninitialized.")
+		} else {
+			result.Valid = false
+			result.Errors = append(result.Errors, "project already initialized: .moai/ directory exists. Use --force to reinitialize.")
+		}
 	}
 
 	// Check if .claude/ already exists

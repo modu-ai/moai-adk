@@ -1,0 +1,35 @@
+# Cross-session messaging preferences (crosssession.yaml).
+#
+# The moai launchers (moai cc / glm / cg) translate these values into a
+# transient --settings file at launch; the web console edits this file through
+# the settings seam. Sessions launched without moai (a bare `claude` command)
+# do not read this file.
+#
+# inbound — how this session treats messages from your other Claude Code
+#   sessions. "" (unset) lets Claude Code decide per message from the two
+#   sessions' permission-mode classes; "accept" delivers them, "hold" parks
+#   each one for approval, "refuse" drops them. While a --settings file
+#   carries this key, the /config row for it is hidden in the launched
+#   session.
+#
+# isolate_machines — approval for cross-machine messages. The default (false)
+#   means NO approval is required before a message goes to a session beyond
+#   this machine. Setting true requires your explicit approval before any
+#   message leaves the machine, even in bypassPermissions mode. A true from
+#   ANY Claude Code settings scope applies, so a checked-in project file can
+#   turn the requirement on but not off: once any scope sets true, a false
+#   here (or in user or project settings) cannot turn it back off — turning
+#   it off means removing the true from every scope that sets it. Messages
+#   between sessions on the same machine never leave the machine and never
+#   prompt, whatever this value is; a message to a session beyond this
+#   machine travels through Anthropic servers, with the exact path depending
+#   on where the target session runs.
+#
+# dialog_expiry — deadline for the held-message approval dialog. "" (unset)
+#   keeps Claude Code's five-minute default. Accepts "60s", "5m", "10m", or
+#   "never" (keep default-held messages until the session ends). A message
+#   held by an explicit inbound "hold" does not expire.
+crosssession:
+  inbound: ""
+  isolate_machines: false
+  dialog_expiry: ""

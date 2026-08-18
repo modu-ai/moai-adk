@@ -37,7 +37,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 1. **의도 분석**: 사용자 요청의 의도를 분류 (입력 언어와 무관)
 2. **컨텍스트 충분성 확인**: 불충분하면 Socratic 인터뷰로 명확화
 3. **실행 계획 구성**: 스킬 / 에이전트 / 동적 워크플로우 체인 선택
-4. **오케스트레이션 모드 선택** (Phase 4): 6-모드 카탈로그 (trivial / background / agent-team(은퇴) / parallel / sub-agent / workflow) 중 자율 선택
+4. **오케스트레이션 모드 선택** (Phase 4): 4-모드 카탈로그 (direct / serial / fanout / sweep; agent-team은 명시적 요청 전용 실험적 각주) 중 자율 선택
 
 즉 `/moai "로그인 버그 고쳐줘"`처럼 서브커맨드 없이 자연어만 입력해도, 의도 분석을 거쳐 알맞은 워크플로우 (수정이면 fix 계열, 신규 기능이면 plan→run→sync 파이프라인)로 연결됩니다.
 
@@ -47,7 +47,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 
 1. **Plan-audit 게이트** (plan-auditor): SPEC 계획 산출물을 따로 감사하고, FAIL이나 INCONCLUSIVE면 중단
 2. **구현 착수 승인** (plan→run 휴먼 게이트): 파이프라인에 진입할 때마다 정확히 1회, 점수와 무관하게 항상 사용자 승인을 받음
-3. **Phase 4 모드 선택** (6-모드 카탈로그): 구현 착수 승인 이후 자율 선택, progress.md에 기록
+3. **Phase 4 모드 선택** (4-모드 카탈로그): 구현 착수 승인 이후 자율 선택, progress.md에 기록
 4. **Sync-audit 게이트** (sync-auditor): 동기화 결과를 4차원으로 평가하고, FAIL이나 INCONCLUSIVE면 체인 중단
 
 ## 사용법
@@ -77,8 +77,8 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 | `--pr`              | 완료 후 자동 PR 생성             | `/moai "기능" --pr`            |
 | `--issue`           | SPEC 생성 (plan 단계) 후 GitHub 이슈 생성 opt-in (없으면 late-branch opt-in 정책에 따라 건너뜀) | `/moai "기능" --issue` |
 | `--resume SPEC-XXX` | 기존 SPEC 작업 재개              | `/moai --resume SPEC-AUTH-001` |
-| `--solo`            | 하위 에이전트 모드 강제 (순차 실행) | `/moai "기능" --solo`          |
-| `--team`            | (은퇴) `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백 | `/moai "기능" --team`          |
+| `--solo`            | serial 모드 강제 (순차 실행) | `/moai "기능" --solo`          |
+| `--team`            | Agent Teams 레이어 명시적 선택 (실험적, 자동 선택 없음) | `/moai "기능" --team`          |
 
 ### --loop 플래그
 
@@ -103,23 +103,30 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 
 ### --solo 플래그와 오케스트레이션 모드
 
-플래그 없이 실행하면 MoAI가 작업 규모를 보고 오케스트레이션 모드를 자동 선택합니다:
+플래그 없이 실행하면 MoAI가 작업 규모를 보고 오케스트레이션 모드를 자동 선택합니다. 모드는 동시 스폰 수를 축으로 하는 4개 카탈로그(direct / serial / fanout / sweep)입니다:
+
+| 모드 | 동시 스폰 | 쓰이는 곳 |
+| ---- | --------- | --------- |
+| `direct` | 0 — 오케스트레이터가 직접 처리 | 오타 수정, 한 줄 포맷 정도의 의미 변화 없는 작업 |
+| `serial` | 한 번에 1개 (순차) | **기본 폴백** — 코딩 중심 작업, 단순한 쪽이면 충분한 모든 경우 |
+| `fanout` | N개 동시 (권장 밴드 3-5) | 다중 도메인 조사 · 리뷰. 하드 상한은 런타임 캡 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (기본 20) |
+| `sweep` | 수십~수백 (동적 워크플로우) | 단일 균일 규칙의 대량 기계적 변환 (콜사이트 일괄 변경 등). 메인 세션 아래에서 스크립트가 에이전트를 조율하며, 워크플로우 서브에이전트는 사용자에게 질문할 수 없습니다 |
 
 **자동 선택 기준** (플래그 없을 때):
 
-- 영향 도메인 >= 3개 → 병렬 실행
-- 수정 파일 >= 10개 → 병렬 실행
-- 복잡도 점수 >= 7 → 병렬 실행
-- 그 외 → 하위 에이전트 모드 (순차 실행)
+- 영향 도메인 >= 3개 → fanout (병렬 실행)
+- 수정 파일 >= 10개 → fanout (병렬 실행)
+- 복잡도 점수 >= 7 → fanout (병렬 실행)
+- 그 외 → serial (순차 실행, 기본 폴백)
 
 | 플래그 | 동작 |
 | ------ | ---- |
-| `--solo` | 하위 에이전트 모드 강제 (순차 실행) |
-| `--team` | (은퇴) `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백 |
+| `--solo` | serial 모드 강제 (순차 실행) |
+| `--team` | Agent Teams 레이어 명시적 선택 (실험적, 자동 선택 없음) |
 | (없음) | 복잡도 기반 자동 선택 |
 
-{{< callout type="warning" >}}
-**v3.0.0 변경**: Agent Teams 정적 오케스트레이션 계층은 **은퇴**했습니다. `--team`을 강제해도 `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백합니다. 병렬 실행은 병렬 하위 에이전트 팬아웃과 동적 워크플로우 2종 (plan-phase 연구 병렬 팬아웃, sync-phase 4차원 품질 평가)이 담당하며, 네이티브 teammate 런타임 (`moai cg`의 tmux pane)은 그대로 유지됩니다.
+{{< callout type="info" >}}
+**Agent Teams — 실험적 재허용**: v3.0.0에 은퇴했던 Agent Teams는 실험적 표면으로 재허용되었습니다. 명시적 `--team` 요청이 네이티브 teammate 런타임을 선택하며, 자동 선택은 없습니다. 은퇴 시절 `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리며 하위 에이전트 모드로 폴백했고, 이 센티널은 문서화된 역사로 남아 있습니다. Tier L 조정은 `manager-kanban`이, 병렬 조사는 fanout과 sweep이 담당합니다.
 {{< /callout >}}
 
 병렬 실행은 에이전트마다 독립 컨텍스트 윈도우를 쓰므로 토큰을 그만큼 더 씁니다. 도메인 하나짜리 단순한 작업이라면 `--solo` (순차)가 더 경제적입니다. 규모를 보고 자동으로 고르는 방식이 기본값인 이유입니다.

@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 17 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 21 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -17,7 +17,7 @@ where Bash may be restricted. Use the Bash CLI only when the MCP tool is absent
 from the agent's `tools:` list, or when orchestrating from the main session and
 the CLI form reads more naturally inline.
 
-## Tool catalogue (17 tools)
+## Tool catalogue (21 tools)
 
 ### SPEC lifecycle
 
@@ -92,6 +92,24 @@ via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
 `codex_setup` probes whether codex is available before delegating. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
+
+### GLM delegation (background jobs)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | super-advisor | — (no `moai glm task` CLI exists) |
+| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | super-advisor | — |
+| `mcp__moai__glm_job_result` | Read a background GLM job's output | super-advisor | — |
+| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
+
+The GLM delegation family mirrors the codex delegation family against the z.ai
+HTTP backend and is wired into `super-advisor` the same way: it arms a GLM task
+via `glm_task` (sync returns the completed text, background returns a job id),
+polls completion via `glm_job_status`/`glm_job_result`, and cancels via
+`glm_job_cancel`. There is no `codex_setup` counterpart — availability is
+learned from `glm_task` itself, which reports a structured failed result when
+the key is missing or z.ai is unreachable. GLM is OPTIONAL: a missing or
+unavailable GLM yields a fail-open result, never a hard error.
 
 ## Unwired-by-design
 

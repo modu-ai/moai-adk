@@ -4,9 +4,9 @@ package config
 // (SPEC-TOKEN-ROUTING-001, Token-Economy Epic B).
 //
 // This file owns the per-spawn COST axis: Tier x Phase -> {model, effort}.
-// It is ORTHOGONAL to Phase 0.95's Mode 1-6 shape axis — this file decides
-// model/effort, Phase 0.95 decides spawn shape. The two compose; they never
-// compete (REQ-TR-011).
+// It is ORTHOGONAL to the Phase 4 mode-shape axis (direct / serial / fanout /
+// sweep) — this file decides model/effort, Phase 4 decides spawn shape. The
+// two compose; they never compete (REQ-TR-011).
 
 import (
 	"fmt"

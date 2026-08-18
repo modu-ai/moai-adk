@@ -43,14 +43,15 @@ export const SPRINT_CONTRACT = {
 
 // Canonical-locale chain per hns-oss-docs-i18n-rules:
 //   docs-site: ko canonical -> derive en, ja, zh (same PR)
-//   README:    en canonical (README.md) -> derive ko, ja, zh (same PR)
+//   README:    ko canonical (README.ko.md) -> derive en, ja, zh (same PR;
+//              ko promoted to canonical 2026-08-17, aligning with docs-site)
 export function derivedLocalesFor(scope) {
   const targets = [];
   if (scope === "readme-only" || scope === "both") {
     targets.push(
-      { surface: "readme", locale: "ko", canonical: "en", file: "README.ko.md" },
-      { surface: "readme", locale: "ja", canonical: "en", file: "README.ja.md" },
-      { surface: "readme", locale: "zh", canonical: "en", file: "README.zh.md" }
+      { surface: "readme", locale: "en", canonical: "ko", file: "README.md" },
+      { surface: "readme", locale: "ja", canonical: "ko", file: "README.ja.md" },
+      { surface: "readme", locale: "zh", canonical: "ko", file: "README.zh.md" }
     );
   }
   if (scope === "docs-only" || scope === "both") {
@@ -89,7 +90,7 @@ export function parseJsonBlock(text, fallback) {
 }
 
 export async function run({ agent, args }) {
-  const task = (args && args.task) ? String(args.task) : "Maintain README 4-locale set and docs-site per the SSOT redesign report.";
+  const task = (args && args.task) ? String(args.task) : "Maintain the README 4-locale set (ko-canonical) and the docs-site (ko-canonical).";
   const dry = Boolean(args && args.dry);
 
   // ---------------------------------------------------------------- Phase 1
@@ -101,8 +102,7 @@ export async function run({ agent, args }) {
     label: "oss-docs:scope",
     prompt:
       `Classify this oss-docs task and enumerate target files. Task: "${task}". ` +
-      `Read .moai/reports/readme-docs-redesign-20260713.md if it exists for context. ` +
-      `Surfaces: README 4-locale set (README.md en-canonical + README.ko.md/README.ja.md/README.zh.md) ` +
+      `Surfaces: README 4-locale set (README.ko.md ko-canonical + README.md/README.ja.md/README.zh.md derived) ` +
       `and the Hugo geekdoc docs-site at docs-site/ (config hugo.toml, content/{ko,en,ja,zh}, ko-canonical). ` +
       `Return ONLY a JSON object: {"scope": "readme-only"|"docs-only"|"both", "target_files": ["..."], "rationale": "..."}. ` +
       `Do NOT modify any file.`,
@@ -112,7 +112,7 @@ export async function run({ agent, args }) {
 
   // ---------------------------------------------------------------- Phase 2
   // Author — canonical-locale authoring (content-author specialist).
-  // Canonical: en for README (README.md), ko for docs-site pages.
+  // Canonical: ko for BOTH surfaces — README.ko.md and docs-site/content/ko/.
   const authorResult = await agent({
     agentType: "hns-oss-docs-content-author-specialist",
     effort: "high",
@@ -121,11 +121,11 @@ export async function run({ agent, args }) {
     prompt:
       `Author/rewrite the CANONICAL-locale source content only. Scope: ${scope}. ` +
       `Target files (from scope phase): ${JSON.stringify(scoped.target_files)}. ` +
-      `Canonical surfaces: README.md (English) when scope includes README; ` +
+      `Canonical surfaces: README.ko.md (Korean, ko-canonical skeleton) when scope includes README; ` +
       `docs-site/content/ko/ pages when scope includes docs. Do NOT translate — ` +
       `derived locales are produced by a later phase. ` +
       `At start, invoke Skill("hns-oss-docs-i18n-rules") and Skill("hns-oss-docs-readme-sync"). ` +
-      `Consume .moai/reports/readme-docs-redesign-20260713.md as the SSOT design reference. ` +
+      `The current README.ko.md section skeleton is the canonical structure reference. ` +
       `HARD: Mermaid TD-only; icon shortcodes over body emoji; URL blacklist ` +
       `(only adk.mo.ai.kr is valid); never run git commit/push/gh pr. ` +
       (dry ? `DRY RUN: report the planned edits as a diff summary, write NOTHING. ` : ``) +

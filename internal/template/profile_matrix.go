@@ -426,5 +426,5 @@ func ResolveAgentModelEffort(cfg config.LLMConfig, agent string) (me config.Mode
 	}
 
 	// (4) not in the retained catalog — inherit sentinel, never injected.
-	return config.ModelEffort{Model: modelInherit, Effort: ""}, false
+	return config.ModelEffort{Model: ModelInherit, Effort: ""}, false
 }

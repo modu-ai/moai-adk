@@ -127,11 +127,11 @@ flowchart TD
 
 `manager-kanban` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
 
-This delegation path is a variant of Mode 5 (sequential sub-agents), not a new execution mode. It is also unrelated to the retired Agent Teams static layer — the Mode 3 tombstone and the `MODE_TEAM_UNAVAILABLE` behavior are unchanged.
+This delegation path is a variant of serial (sequential sub-agents), not a new execution mode. It is also unrelated to the Agent Teams layer — now an experimental explicit-request surface; the `MODE_TEAM_UNAVAILABLE` sentinel remains documented history.
 
 ### Entry Conditions — All Three Must Hold
 
-The orchestrator spawns `manager-kanban` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in Mode 5. Attaching `manager-kanban` to work that does not meet the bar only adds coordination cost that is never recovered.
+The orchestrator spawns `manager-kanban` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in serial. Attaching `manager-kanban` to work that does not meet the bar only adds coordination cost that is never recovered.
 
 | Axis | Threshold |
 |------|-----------|
@@ -144,7 +144,7 @@ The three conditions are AND, not OR. The thresholds are deliberately narrow so 
 ```mermaid
 flowchart TD
     START["Run-phase delegation request"] --> Q1{"3 or more milestones?"}
-    Q1 -->|"No"| MODE5["Orchestrator handles Mode 5 directly<br>manager-develop sequentially"]
+    Q1 -->|"No"| MODE5["Orchestrator handles serial directly<br>manager-develop sequentially"]
     Q1 -->|"Yes"| Q2{"10 or more write-target files?"}
     Q2 -->|"No"| MODE5
     Q2 -->|"Yes"| Q3{"3 or more domains?"}
@@ -305,11 +305,28 @@ Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent 
 | No skill inheritance | Skills from the parent conversation are not inherited |
 | Independent context | Each agent has its own model-dependent independent context window (model-dependent) |
 
-## Agent Teams Static Layer — Retired in v3.0
+## Sub-agent Tool Filtering — Two Stages
 
-The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0.
+Which tools a sub-agent can use is not decided by a single setting but by a two-stage filter: a static allowlist applied at spawn time is stage 1, and runtime deferred loading is stage 2.
 
-- Forcing `--team` announces `MODE_TEAM_UNAVAILABLE` and automatically falls back to sub-agent mode.
+**Stage 1 — the spawn-time static filter.** Every agent definition carries a `tools:` allowlist in its frontmatter (a CSV string, e.g. `tools: Read, Write, Edit`), and tools outside the list cannot be invoked. Read-only roles earn their restriction by shrinking this very list — auditors and cross-verification workers drop the write tools (Write, Edit) from the list, cutting off the very path by which they could accidentally modify a file.
+
+**Stage 2 — runtime deferred loading.** Some tools do not have their schema loaded at spawn time. `AskUserQuestion` (the tool that presents options to the user) and the `Task*` family (task-list management) are like this. These deferred tools can be invoked only after their schema is explicitly loaded at the moment of need via a ToolSearch `select:` query, which makes this a second gate that narrows the field once more even among the tools that passed stage 1.
+
+Two rules emerge from these two stages combined:
+
+| Rule | Description |
+|------|------|
+| User questions are orchestrator-only | `AskUserQuestion` is used by the orchestrator alone, and the runtime enforces this boundary. A sub-agent that needs user input returns a structured blocker report instead of prompting, and the orchestrator asks the user and re-delegates with the answer attached |
+| Sweep sub-agents cannot ask either | Sub-agents of a dynamic workflow (sweep) run under the main session and cannot prompt the user. When a question is needed, it routes through the orchestrator's channel |
+
+The rule from the previous section — that sub-agents cannot interact with the user directly — is upheld at runtime by exactly this two-stage filter.
+
+## Agent Teams Static Layer — Retired in v3.0, Re-allowed as Experimental
+
+The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0, then re-allowed later as an experimental explicit-request surface (selectable only via an explicit `--team` request; never auto-selected).
+
+- Historical: during the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the sentinel string survives as documented history.
 - Research and review work that needs parallelism is handled with parallel sub-agent fan-out; sequential coding work is handled with a sub-agent chain.
 - The native Claude Code teammate runtime (the GLM panes of `moai cg`, `moai worktree --team`) continues to operate independently of this — from a tokenomics standpoint, CG mode's Claude-leader + GLM-worker division of labor takes over this role.
 

@@ -1,6 +1,6 @@
 # Shipped key inventory for SPEC-CONFIG-KEY-HONESTY-001 M1
 # Code baseline: ed70e4354
-# Total entries: 952
+# Total entries: 955
 # Classification: W=wire, P=prose-consumed, R=reserved, D=delete
 # Evidence: 'reader' = Go production reader; prose file path = P consumer; 'none' = R/D
 
@@ -92,6 +92,15 @@
   class: W
   evidence: reader
 - path: "context_search.token_budget.skip_if_usage_above"
+  class: W
+  evidence: reader
+- path: "crosssession.dialog_expiry"
+  class: W
+  evidence: reader
+- path: "crosssession.inbound"
+  class: W
+  evidence: reader
+- path: "crosssession.isolate_machines"
   class: W
   evidence: reader
 - path: "delegation.agents.e2e-tester"

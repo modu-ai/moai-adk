@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/mx"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/statusline"
@@ -338,6 +339,39 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Factory Mode bootstrap announcement — the kanban announcement's sibling
+	// (SPEC-FACTORY-WORKER-FANOUT-001), emitted ahead of it so the two modes'
+	// notices can never stack. Same dual-channel shape and the same
+	// startup-only gating, for the same reasons the kanban block below
+	// records; the operator copies N worker launch lines instead of four
+	// companion lines. The notice reads the lead loop's data (backlog queue,
+	// worker registry) under the project root on the same ProjectDir-then-CWD
+	// preference chain the kanban notice uses; an empty root degrades to
+	// fail-open summary lines inside the notice rather than failing here.
+	factoryRoot := input.ProjectDir
+	if factoryRoot == "" {
+		factoryRoot = input.CWD
+	}
+	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, langEnglish); notice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = notice
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
+		}
+
+		operatorNotice := factoryBootstrapNotice(factoryRoot, operatorLang(h.cfg))
+		if out.SystemMessage == "" {
+			out.SystemMessage = operatorNotice
+		} else {
+			out.SystemMessage += "\n\n" + operatorNotice
+		}
+	}
+
 	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
 	// takes the screen. Non-kanban sessions get "" and nothing is injected.
@@ -345,7 +379,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// The notice rides BOTH channels because it has two audiences and they read
 	// different surfaces. additionalContext reaches the orchestrator, which needs
 	// the companion labels to address them later; systemMessage reaches the
-	// operator, who must type the four launch lines by hand into new terminals.
+	// operator, who must type the three launch lines by hand into new terminals.
 	// Emitting only additionalContext delivered a human-addressed instruction to
 	// the model alone, so the operator saw nothing at all.
 	//
@@ -360,7 +394,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// therefore re-emit — telling the operator to open four terminals they
 	// already opened, for a run already under way. Those three sources are
 	// skipped; an empty source is treated as startup (see the helper).
-	if notice := kanbanBootstrapNoticeForSource(input.Source, langEnglish); notice != "" {
+	// The notice reads the backlog queue under the project root so the lead's
+	// opening screen names the work the run actually moves. ProjectDir first,
+	// CWD as fallback — the same preference chainLineageBanner applies. An
+	// empty root degrades to a zero-count summary line inside the notice
+	// rather than failing here.
+	kanbanRoot := input.ProjectDir
+	if kanbanRoot == "" {
+		kanbanRoot = input.CWD
+	}
+	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -372,7 +415,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
 
-		operatorNotice := kanbanBootstrapNotice(operatorLang(h.cfg))
+		operatorNotice := kanbanBootstrapNotice(kanbanRoot, operatorLang(h.cfg))
 		if out.SystemMessage == "" {
 			out.SystemMessage = operatorNotice
 		} else {
@@ -1147,12 +1190,10 @@ func injectCLAUDEEnvFile(projectRoot string) string {
 
 // loadGLMKeyFromEnvFile reads the GLM API key from ~/.moai/.env.glm.
 func loadGLMKeyFromEnvFile() string {
-	home, err := os.UserHomeDir()
+	envPath, err := paths.GlmEnvFile()
 	if err != nil {
 		return ""
 	}
-
-	envPath := filepath.Join(home, ".moai", ".env.glm")
 	file, err := os.Open(envPath)
 	if err != nil {
 		return ""

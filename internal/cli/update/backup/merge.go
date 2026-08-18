@@ -2,6 +2,7 @@ package backup
 
 import (
 	"fmt"
+	"io"
 
 	"gopkg.in/yaml.v3"
 )
@@ -23,23 +24,49 @@ import (
 // The wrapper signature ([]byte, ...) ([]byte, error) is unchanged so the
 // production call site in restore.go needs no edit (Decision D2 mitigation).
 func MergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
+	merged, _, err := mergeYAML3WayNotes(newData, oldData, baseData, retainedKeySink)
+	return merged, err
+}
+
+// MergeYAML3WayRetained performs the same 3-way merge as MergeYAML3Way but
+// COLLECTS the retained-key paths instead of writing the legacy per-key
+// advisory text to the sink. The update restore path uses this entry (t63)
+// so the advisory renders through the caller's output channel — one TUI
+// summary line by default, the full key list under --verbose — instead of
+// appending raw lines to stderr while the update progress line is mid-redraw
+// on stdout. The merge semantics are identical to MergeYAML3Way; only the
+// advisory's output routing differs.
+func MergeYAML3WayRetained(newData, oldData, baseData []byte) (merged []byte, retainedKeys []string, err error) {
+	return mergeYAML3WayNotes(newData, oldData, baseData, nil)
+}
+
+// mergeYAML3WayNotes is the shared decode-walk-encode core of the two
+// 3-way merge entries. textSink configures the legacy advisory text mirror:
+// non-nil keeps the REQ-UYP-007 advisory-text-on-sink contract (MergeYAML3Way);
+// nil collects silently (MergeYAML3WayRetained).
+func mergeYAML3WayNotes(newData, oldData, baseData []byte, textSink io.Writer) ([]byte, []string, error) {
 	newRoot, err := decodeDoc(newData, "new")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	oldRoot, err := decodeDoc(oldData, "old")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	baseRoot, err := decodeDoc(baseData, "base")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	merged, err := DeepMerge3Way(newRoot, oldRoot, baseRoot)
+	notes := newRetainedKeyNotes(textSink)
+	merged, err := deepMerge3WayTo(newRoot, oldRoot, baseRoot, notes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return encodeNode(merged)
+	out, err := encodeNode(merged)
+	if err != nil {
+		return nil, nil, err
+	}
+	return out, notes.keys, nil
 }
 
 // DeepMerge3Way recursively performs a 3-way merge of node trees.
@@ -53,9 +80,10 @@ func MergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
 // The signature is node-typed (Decision D2): the map[string]any representation
 // has nowhere to store comments or key order, so format preservation is only
 // possible when the merge operates on the node tree directly. Retained-key
-// advisories are written to retainedKeySink (os.Stderr in production).
+// advisories are recorded on advisory notes mirroring retainedKeySink
+// (os.Stderr in production).
 func DeepMerge3Way(newNode, oldNode, baseNode *yaml.Node) (*yaml.Node, error) {
-	return deepMerge3WayTo(newNode, oldNode, baseNode, retainedKeySink)
+	return deepMerge3WayTo(newNode, oldNode, baseNode, newRetainedKeyNotes(retainedKeySink))
 }
 
 // ValuesEqual compares two interface{} values for equality.

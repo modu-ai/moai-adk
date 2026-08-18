@@ -27,11 +27,12 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 			"leadIdentity":   m.leadIdentity,
 			"leadManual":     m.leadManual,
 			"glmSubstitute":  m.glmSubstitute,
+			"nameChoices":    m.nameChoices,
 			"leaderSocket":   m.leaderSocket,
 			"settingsAuto":   m.settingsAuto,
 			"settingsVerify": m.settingsVerify,
 			"specLine":       m.specLine,
-			"epicPointer":    m.epicPointer,
+			"backlogSummary": m.backlogSummary,
 			"companionJoin":  m.companionJoin,
 		}
 		for name, value := range fields {
@@ -52,6 +53,11 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 			if !strings.Contains(value, "%s") {
 				t.Errorf("locale %q: field %s lost its %%s verb: %q", lang, name, value)
 			}
+		}
+		// The backlog summary carries the queued-card count; a locale that
+		// loses the verb prints a literal %d instead of the number.
+		if !strings.Contains(m.backlogSummary, "%d") {
+			t.Errorf("locale %q: backlogSummary lost its %%d verb: %q", lang, m.backlogSummary)
 		}
 	}
 }
@@ -119,16 +125,17 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjpzpl")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			got := kanbanBootstrapNotice(lang)
+			got := kanbanBootstrapNotice("", lang)
 			for _, want := range []string{
-				"moai cc -k --name plan-tjpzpl",
-				"moai cc -k --name run-tjpzpl",
-				"moai cc -k --name review-tjpzpl",
-				"moai cc -k --name sync-tjpzpl",
+				"moai cc -k --name plan",
+				"moai cc -k --name run",
+				"moai cc -k --name sync",
 				"moai glm -k --name",
+				"`judge`",
+				"`worker-N`",
 				"/tmp/moai-kanban-tjpzpl",
 				"SPEC-FOO-001",
-				"moai epic status <prefix>",
+				"`moai todo`",
 			} {
 				if !strings.Contains(got, want) {
 					t.Errorf("locale %q dropped protocol token %q:\n%s", lang, want, got)
@@ -151,14 +158,14 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-kanban-tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice(lang), "\n"), "\n\n")
+			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", lang), "\n"), "\n\n")
 			if len(blocks) != 5 {
 				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
 			}
-			// Block 3 is the launch block: exactly the four commands, nothing else.
+			// Block 3 is the launch block: exactly the three commands, nothing else.
 			launch := strings.Split(blocks[2], "\n")
-			if len(launch) != 4 {
-				t.Errorf("launch block holds %d lines, want 4:\n%q", len(launch), launch)
+			if len(launch) != 3 {
+				t.Errorf("launch block holds %d lines, want 3:\n%q", len(launch), launch)
 			}
 			for _, line := range launch {
 				if !strings.HasPrefix(line, "moai cc -k --name ") {
@@ -177,8 +184,8 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 
 // TestKanbanLeadNoticeSPECKeepsItsOwnLine is the regression case for a defect the
 // message table's trailing-newline convention used to invite: the SPEC line had
-// no terminator, so with MOAI_KANBAN_SPEC set the Epic pointer welded itself onto
-// the same line ("SPEC: SPEC-FOO-001Epic context: run ..."). Layout now belongs
+// no terminator, so with MOAI_KANBAN_SPEC set the next context line welded
+// itself onto the same line ("SPEC: SPEC-FOO-001" + prose). Layout now belongs
 // to the builder, so the two cannot share a line.
 func TestKanbanLeadNoticeSPECKeepsItsOwnLine(t *testing.T) {
 	for lang := range kanbanLocales {
@@ -188,7 +195,7 @@ func TestKanbanLeadNoticeSPECKeepsItsOwnLine(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			for _, line := range strings.Split(kanbanBootstrapNotice(lang), "\n") {
+			for _, line := range strings.Split(kanbanBootstrapNotice("", lang), "\n") {
 				if !strings.Contains(line, "SPEC-FOO-001") {
 					continue
 				}
@@ -240,7 +247,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 	}
 
 	// Both channels carry the same launch lines.
-	for _, want := range []string{"moai cc -k --name plan-tjpzpl", "moai cc -k --name sync-tjpzpl"} {
+	for _, want := range []string{"moai cc -k --name plan", "moai cc -k --name sync"} {
 		if !strings.Contains(out.SystemMessage, want) || !strings.Contains(ac, want) {
 			t.Errorf("launch line %q missing from one of the two channels", want)
 		}

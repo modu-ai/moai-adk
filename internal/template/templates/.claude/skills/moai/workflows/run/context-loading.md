@@ -28,7 +28,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
-- --team: RETIRED — emits `MODE_TEAM_UNAVAILABLE` and falls back to autopilot (Agent Teams static layer retired)
+- --team: experimental — selects the Agent Teams layer (re-allowed; the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to autopilot)
 
 ## Mode Dispatch (Multi-Mode Router)
 
@@ -42,7 +42,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml constitution.development_mode`. Behaves as today's default `/moai run` invocation.
 - **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
-- **`team` (RETIRED)**: The `--mode team` dispatch value is retired (Agent Teams static layer — Mode 3 `agent-team` retired). A forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and the orchestrator falls back to `autopilot`.
+- **`team` (experimental)**: The `--mode team` dispatch value selects the Agent Teams layer (agent-team `agent-team`, re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
@@ -62,11 +62,8 @@ if mode not in {autopilot, loop, team, pipeline}:
     emit MODE_UNKNOWN listing 4 valid values; abort
 if mode == pipeline:
     emit MODE_PIPELINE_ONLY_UTILITY pointing to {fix, coverage, mx, codemaps, clean}; abort
-if mode == team:                                   # RETIRED — Agent Teams static layer
-    if cli_mode_flag == team:                      # explicit request
-        emit MODE_TEAM_UNAVAILABLE suggesting --mode autopilot; abort
-    else:                                          # config/harness selected team
-        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade
+if mode == team:                                   # experimental — Agent Teams layer (§C.1 constraints)
+    proceed as team-orchestrated run phase         # explicit or config/harness selected alike
 dispatch(mode)
 ```
 
@@ -76,14 +73,14 @@ dispatch(mode)
 |---------------|--------------|
 | `minimal` | `autopilot` |
 | `standard` | `autopilot` |
-| `thorough` | `autopilot` (the former `team` default is retired — Agent Teams static layer) |
+| `thorough` | `autopilot` (the former `team` default is not reinstated — agent-team stays explicit-request-only) |
 
 ### Sentinel Error Keys
 
 This skill emits the following sentinel error keys when mode dispatch fails. A CI audit verifies each literal sentinel remains present in this skill body.
 
 - **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
-- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request is made — the `team` dispatch value is RETIRED (Agent Teams static layer), so it can never be honored. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by config/harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
+- **`MODE_TEAM_UNAVAILABLE`** (historical sentinel — retained for the CI audit and genealogy): emitted by the retired-era resolver when an EXPLICIT `--mode team` request was made (the then-retired `team` dispatch value could not be honored; the message suggested `--mode autopilot`; a config/harness auto-selection silently downgraded with an info log). The current resolver honors `team` as the experimental Agent Teams mode; this key is no longer emitted at runtime and exists as the documented retired-era fallback marker.
 - **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
 See [Subcommand Classification matrix](../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the cross-skill mode dispatch contract.

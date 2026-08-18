@@ -37,7 +37,7 @@ draft: false
 1. **意图分析**: 对用户请求的意图分类(与输入语言无关)
 2. **上下文充分性检查**: 不充分时通过苏格拉底式访谈澄清
 3. **构建执行计划**: 选择技能 / 智能体 / 动态工作流链
-4. **选择编排模式** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
+4. **选择编排模式** (Phase 4): 从 4 模式目录（direct / serial / fanout / sweep；agent-team 为仅显式请求的实验性脚注）中自主选择
 
 也就是说,即使像 `/moai "帮我修复登录 bug"` 这样只输入自然语言而不带子命令,也会经过意图分析连接到合适的工作流(修复类走 fix 系列,新功能走 plan→run→sync 流水线)。
 
@@ -66,8 +66,8 @@ draft: false
 | `--branch`          | 自动创建 feature 分支         | `/moai "功能" --branch`        |
 | `--pr`              | 完成后自动创建 PR             | `/moai "功能" --pr`            |
 | `--resume SPEC-XXX` | 恢复既有 SPEC 工作              | `/moai --resume SPEC-AUTH-001` |
-| `--team`            | (已退役)伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式 | `/moai "功能" --team`          |
-| `--solo`            | 强制子智能体模式          | `/moai "功能" --solo`          |
+| `--team`            | 显式选择 Agent Teams 层(实验性,无自动选择) | `/moai "功能" --team`          |
+| `--solo`            | 强制 serial 模式(顺序执行) | `/moai "功能" --solo`          |
 
 ### --loop 标志
 
@@ -92,23 +92,30 @@ draft: false
 
 ### --team / --solo 标志与编排模式
 
-不带标志执行时,MoAI 会根据工作规模自动选择编排模式:
+不带标志执行时,MoAI 会根据工作规模自动选择编排模式。模式是以并发 spawn 数为轴的 4 模式目录(direct / serial / fanout / sweep):
+
+| 模式 | 并发 spawn | 适用场景 |
+| ---- | --------- | --------- |
+| `direct` | 0 — 编排器直接处理 | 修 typo、整理单行格式这类不改变语义的工作 |
+| `serial` | 一次 1 个(顺序) | **默认回退** — 以编码为主的工作,凡是简单一侧就够用的全部情况 |
+| `fanout` | N 个并发(建议区间 3-5) | 多域调查 · 评审。硬上限是运行时容量 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (默认 20) |
+| `sweep` | 数十~数百(动态工作流) | 单一统一规则的大批量机械转换(批量修改调用点等)。脚本在主会话之下协调智能体,工作流子智能体无法向用户提问 |
 
 **自动选择标准** (无标志时):
 
-- 影响域 >= 3 个 → 并行执行
-- 修改文件 >= 10 个 → 并行执行
-- 复杂度评分 >= 7 → 并行执行
-- 其他 → 子智能体模式(顺序执行)
+- 影响域 >= 3 个 → fanout (并行执行)
+- 修改文件 >= 10 个 → fanout (并行执行)
+- 复杂度评分 >= 7 → fanout (并行执行)
+- 其他 → serial (顺序执行,默认回退)
 
 | 标志 | 行为 |
 | ------ | ---- |
-| `--team` | (已退役)伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式 |
-| `--solo` | 强制子智能体模式(顺序执行) |
+| `--solo` | 强制 serial 模式(顺序执行) |
+| `--team` | 显式选择 Agent Teams 层(实验性,无自动选择) |
 | (无) | 基于复杂度自动选择 |
 
-{{< callout type="warning" >}}
-**v3.0.0 变更**: Agent Teams 静态编排层已 **退役**。即使强制 `--team`,也会伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式。并行执行由并行子智能体扇出与两种动态工作流(plan-phase 研究并行扇出、sync-phase 4 维质量评估)承担,原生 teammate 运行时(`moai cg` 的 tmux pane)保持不变。
+{{< callout type="info" >}}
+**Agent Teams — 实验性重新允许**: 曾在 v3.0.0 退役的 Agent Teams 已作为实验性表面重新允许。显式的 `--team` 请求选择原生 teammate 运行时,没有自动选择。退役时期强制 `--team` 会提示 `MODE_TEAM_UNAVAILABLE` 并回退到子智能体模式,该哨兵作为已文档化的历史保留。Tier L 协调由 `manager-kanban` 承担,并行调查由 fanout 与 sweep 承担。
 {{< /callout >}}
 
 并行执行中每个智能体使用独立的上下文窗口,令牌用量会增加。对于简单的单域工作,`--solo`(顺序)更经济 — 这就是基于规模的自动选择成为默认值的原因。

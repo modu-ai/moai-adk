@@ -11,16 +11,17 @@ import (
 	"testing"
 )
 
-// TestColumn_EnumerationExactlySixOrdered — AC-KB-007: six values, in the
-// fixed order backlog, plan, run, review, sync, done.
-func TestColumn_EnumerationExactlySixOrdered(t *testing.T) {
+// TestColumn_EnumerationExactlyFiveOrdered — AC-KB-007: five values, in the
+// fixed order backlog, plan, run, sync, done (review removed per t113 — the
+// sync gate absorbs the review verdict).
+func TestColumn_EnumerationExactlyFiveOrdered(t *testing.T) {
 	t.Parallel()
 	want := []Column{
-		ColumnBacklog, ColumnPlan, ColumnRun, ColumnReview, ColumnSync, ColumnDone,
+		ColumnBacklog, ColumnPlan, ColumnRun, ColumnSync, ColumnDone,
 	}
 	got := Columns()
 	if len(got) != len(want) {
-		t.Fatalf("column count = %d, want exactly 6 (no seventh value)", len(got))
+		t.Fatalf("column count = %d, want exactly 5 (no sixth value)", len(got))
 	}
 	for i := range want {
 		if got[i] != want[i] {
@@ -31,10 +32,11 @@ func TestColumn_EnumerationExactlySixOrdered(t *testing.T) {
 
 // TestColumn_ParseRejectsOutsideSet — AC-KB-007: no constructor accepts a
 // value outside the set — including the rejected `test` column, a
-// held/blocked pseudo-column, and arbitrary strings.
+// held/blocked pseudo-column, the retired `review` column, and arbitrary
+// strings.
 func TestColumn_ParseRejectsOutsideSet(t *testing.T) {
 	t.Parallel()
-	for _, bad := range []string{"", "test", "blocked", "held", "waiting", "wip", "RUN", "backlogs", "archived", "reviewed"} {
+	for _, bad := range []string{"", "test", "blocked", "held", "waiting", "wip", "RUN", "backlogs", "archived", "review", "reviewed"} {
 		if _, err := ParseColumn(bad); err == nil {
 			t.Errorf("ParseColumn(%q) err = nil, want rejection — the set is closed", bad)
 		}
@@ -67,7 +69,7 @@ func TestColumn_DispatchableColumnConditional(t *testing.T) {
 	if ColumnDone.HasOwningSession() {
 		t.Error("done has an owning session; it is terminal")
 	}
-	for _, c := range []Column{ColumnPlan, ColumnRun, ColumnReview, ColumnSync} {
+	for _, c := range []Column{ColumnPlan, ColumnRun, ColumnSync} {
 		if !c.HasOwningSession() {
 			t.Errorf("column %q has no owning session; only backlog and done are ownerless", c)
 		}

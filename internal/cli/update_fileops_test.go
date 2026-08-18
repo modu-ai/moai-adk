@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
@@ -993,7 +994,7 @@ func TestCleanMoaiManagedPaths_OnlyUserFilesPreserved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := deploy.CleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf, fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths failed: %v", err)
 	}

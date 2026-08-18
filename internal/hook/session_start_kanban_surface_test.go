@@ -22,7 +22,7 @@ func newKanbanProjectDir(t *testing.T) string {
 }
 
 // TestSessionStartKanbanNoticeReachesOperator is the regression case for the
-// defect this dual emission exists to prevent: the lead notice carries four
+// defect this dual emission exists to prevent: the lead notice carries three
 // launch commands the OPERATOR must type by hand into new terminals, but it was
 // emitted only on hookSpecificOutput.additionalContext — a model-facing channel.
 // The operator's terminal stayed empty, so the run appeared not to start at all.
@@ -55,10 +55,9 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Kanban Mode: run tjpyre",
-		"moai cc -k --name plan-tjpyre",
-		"moai cc -k --name run-tjpyre",
-		"moai cc -k --name review-tjpyre",
-		"moai cc -k --name sync-tjpyre",
+		"moai cc -k --name plan",
+		"moai cc -k --name run",
+		"moai cc -k --name sync",
 	} {
 		if !strings.Contains(out.SystemMessage, want) {
 			t.Errorf("SystemMessage missing %q.\nGot: %q", want, out.SystemMessage)
@@ -76,7 +75,7 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 // branch, which carries a single join line rather than the launch block.
 func TestSessionStartKanbanCompanionNoticeReachesOperator(t *testing.T) {
 	clearKanbanEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "plan-tjpyre")
+	t.Setenv(config.EnvMoaiKanbanLabel, "plan")
 
 	projectDir := newKanbanProjectDir(t)
 	out, err := NewSessionStartHandler(nil).Handle(context.Background(), &HookInput{
@@ -87,7 +86,7 @@ func TestSessionStartKanbanCompanionNoticeReachesOperator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if !strings.Contains(out.SystemMessage, "Kanban Mode: joined run tjpyre") {
+	if !strings.Contains(out.SystemMessage, "Kanban Mode: joined the kanban run as plan") {
 		t.Errorf("companion join notice missing from SystemMessage.\nGot: %q", out.SystemMessage)
 	}
 }
@@ -116,7 +115,7 @@ func TestSessionStartNonKanbanSystemMessageUnaffected(t *testing.T) {
 //
 // SessionStart fires on five documented sources, and the kanban environment
 // survives all of them, so an ungated notice re-announced the bootstrap every
-// time a lead session came back: the operator was told to open four companion
+// time a lead session came back: the operator was told to open three companion
 // terminals that were already open, for a run already under way. The
 // instruction is only actionable at startup.
 //

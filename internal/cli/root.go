@@ -167,6 +167,9 @@ func init() {
 	// SPEC-V3R2-RT-004: register state subcommand
 	rootCmd.AddCommand(newStateCmd())
 
+	// kanban t86: register tokens subcommand (per-pool token accounting seed)
+	rootCmd.AddCommand(newTokensCmd())
+
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
 
@@ -225,6 +228,14 @@ func init() {
 	// its .mcp.json provisioning ship opt-in / default-off (REQ-MCP-002 / C6);
 	// registering the subcommand does NOT provision any entry.
 	rootCmd.AddCommand(newMCPServerCmd())
+
+	// Register the `moai mcp` entry-management subtree (add / remove / list).
+	// Distinct from `mcp-server` above: that one RUNS the server, this one
+	// edits .mcp.json entries through the atomic-RMW seam. Both README and the
+	// docs-site tell users to activate the disabled entries with
+	// `moai mcp add <name>`, so leaving the factory unregistered made a
+	// documented surface unreachable. TestMCPCmdRegisteredOnRoot guards it.
+	rootCmd.AddCommand(newMCPCmd())
 
 	// SPEC-DIVECC-INVENTORY-VIEW-001: register inventory subcommand — a
 	// read-only unified view composing sessions / worktrees / harnesses.

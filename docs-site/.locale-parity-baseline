@@ -3,17 +3,14 @@
 # Regenerate ONLY to prune converged pages; adding a line is admitting new debt.
 # Blank lines and lines starting with # are ignored.
 advanced/agent-guide.md
-advanced/analyze-first-routing.md
 advanced/autonomous-loops.md
 advanced/builder-agents.md
 advanced/catalog-system.md
 advanced/claude-md-guide.md
 advanced/decision-memory.md
-advanced/harness-profiles.md
 advanced/harness-v4-builder.md
 advanced/hooks-guide.md
 advanced/hooks-reference.md
-advanced/no-haiku-3tier.md
 advanced/security-notes.md
 advanced/self-evolving.md
 advanced/settings-json.md
@@ -25,7 +22,6 @@ advanced/ultracode-workflows.md
 claude-code/agentic/_index.md
 claude-code/agentic/agent-teams.md
 claude-code/agentic/agent-view.md
-claude-code/agentic/best-practices.md
 claude-code/agentic/goal.md
 claude-code/agentic/large-codebases.md
 claude-code/agentic/scheduled-tasks.md
@@ -48,16 +44,12 @@ cli-reference/harness.md
 contributing/_index.md
 core-concepts/spec-based-dev.md
 cost-optimization/_index.md
-cost-optimization/prompt-caching.md
 getting-started/init-wizard.md
-getting-started/introduction.md
 getting-started/quickstart.md
 getting-started/windows-guide.md
 guides/ci-autonomy.md
 guides/github-integration.md
 multi-llm/_index.md
-multi-llm/cg-mode.md
-multi-llm/model-policy.md
 utility-commands/moai-codemaps.md
 utility-commands/moai.md
 workflow-commands/moai-design.md

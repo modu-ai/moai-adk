@@ -37,7 +37,7 @@ Routing proceeds in this order:
 1. **Intent analysis**: classify the intent of the user's request (regardless of input language)
 2. **Context-sufficiency check**: if insufficient, clarify through a Socratic interview
 3. **Execution-plan composition**: choose the skill / agent / dynamic-workflow chain
-4. **Orchestration mode selection** (Phase 4): autonomous selection from the 6-mode catalog (trivial / background / agent-team (retired) / parallel / sub-agent / workflow)
+4. **Orchestration mode selection** (Phase 4): autonomous selection from the 4-mode catalog (direct / serial / fanout / sweep; agent-team as an explicit-request experimental footnote)
 
 That is, even typing plain natural language without a subcommand, like `/moai "fix the login bug"`, is routed through intent analysis to the right workflow (the fix family for a fix, or the plan→run→sync pipeline for a new feature).
 
@@ -47,7 +47,7 @@ The default pipeline passes four named gates in order:
 
 1. **Plan-audit gate** (plan-auditor): independently audits the SPEC plan artifacts — aborts on FAIL/INCONCLUSIVE
 2. **Implementation Kickoff Approval** (plan→run human gate): exactly once per pipeline entry, always obtaining user approval regardless of score
-3. **Phase 4 mode selection** (6-mode catalog): autonomous selection after Implementation Kickoff Approval, recorded in progress.md
+3. **Phase 4 mode selection** (4-mode catalog): autonomous selection after Implementation Kickoff Approval, recorded in progress.md
 4. **Sync-audit gate** (sync-auditor): evaluates the synchronization result across 4 dimensions — aborts the chain on FAIL/INCONCLUSIVE
 
 ## Usage
@@ -77,8 +77,8 @@ The default pipeline passes four named gates in order:
 | `--pr`              | Auto-create a PR after completion        | `/moai "feature" --pr`         |
 | `--issue`           | Opt in to GitHub issue creation after SPEC creation (plan phase); skipped otherwise per the late-branch opt-in policy | `/moai "feature" --issue` |
 | `--resume SPEC-XXX` | Resume existing SPEC work                | `/moai --resume SPEC-AUTH-001` |
-| `--solo`            | Force sub-agent mode (sequential execution) | `/moai "feature" --solo`       |
-| `--team`            | (retired) falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE` | `/moai "feature" --team`       |
+| `--solo`            | Force serial mode (sequential execution) | `/moai "feature" --solo`       |
+| `--team`            | Explicitly select the Agent Teams layer (experimental, never auto-selected) | `/moai "feature" --team`       |
 
 ### The --loop Flag
 
@@ -103,23 +103,30 @@ When you use this option:
 
 ### The --solo Flag and Orchestration Modes
 
-Run without a flag and MoAI looks at the size of the work and auto-selects the orchestration mode:
+Run without a flag and MoAI looks at the size of the work and auto-selects the orchestration mode. The modes form a 4-entry catalog (direct / serial / fanout / sweep) ordered by how many agents run concurrently:
+
+| Mode | Concurrent spawns | Where it is used |
+| ---- | ---------------- | ---------------- |
+| `direct` | 0 — the orchestrator handles it directly | Semantics-free changes on the scale of a typo fix or a one-line reformat |
+| `serial` | 1 at a time (sequential) | **Default fallback** — coding-centric work, and every case where the simple side is enough |
+| `fanout` | N at once (advisory band 3-5) | Multi-domain investigation and review. The hard cap is the runtime cap `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20) |
+| `sweep` | Dozens to hundreds (dynamic workflow) | Bulk mechanical transformations under a single uniform rule (batch call-site changes and the like). A script orchestrates the agents under the main session, and workflow subagents cannot prompt the user |
 
 **Auto-selection criteria** (when no flag is given):
 
-- Affected domains >= 3 → parallel execution
-- Modified files >= 10 → parallel execution
-- Complexity score >= 7 → parallel execution
-- Otherwise → sub-agent mode (sequential execution)
+- Affected domains >= 3 → fanout (parallel execution)
+- Modified files >= 10 → fanout (parallel execution)
+- Complexity score >= 7 → fanout (parallel execution)
+- Otherwise → serial (sequential execution, default fallback)
 
 | Flag | Behavior |
 | ------ | ---- |
-| `--solo` | Force sub-agent mode (sequential execution) |
-| `--team` | (retired) falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE` |
+| `--solo` | Force serial mode (sequential execution) |
+| `--team` | Explicitly select the Agent Teams layer (experimental, never auto-selected) |
 | (none) | Complexity-based auto-selection |
 
-{{< callout type="warning" >}}
-**v3.0.0 change**: the Agent Teams static-orchestration layer is **retired**. Forcing `--team` falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE`. Parallel execution is handled by parallel sub-agent fan-out and 2 dynamic workflows (plan-phase parallel research fan-out, sync-phase 4-dimension quality evaluation), while the native teammate runtime (`moai cg` tmux panes) remains intact.
+{{< callout type="info" >}}
+**Agent Teams — re-allowed as experimental**: Agent Teams, retired in v3.0.0, has been re-allowed as an experimental surface. An explicit `--team` request selects the native teammate runtime — there is no auto-selection. During the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode, and that sentinel survives as documented history. Tier L coordination belongs to `manager-kanban`; parallel investigation belongs to fanout and sweep.
 {{< /callout >}}
 
 Parallel execution increases token usage because each agent uses an independent context window. For simple single-domain work, `--solo` (sequential) is more economical — which is why scale-based auto-selection is the default.

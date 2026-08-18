@@ -222,18 +222,14 @@ Language preferences in language.yaml:
 - agent_prompt_language: Internal communication
 - code_comments: Code comment language
 
-## Agent Teams Settings — RETIRED
+## Agent Teams Settings — Re-allowed (experimental)
 
-The MoAI Agent Teams static-orchestration layer is RETIRED. The former Teams-API
-experimental env-var gate, the `workflow.team` config block, and the team
-auto-selection thresholds were removed with it. A forced `--mode team` emits
-`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The Phase 4
-auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) now live as
-prose-only SSOT in
-`.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1.
+Agent Teams usage is ALLOWED as an experimental surface (operator decision): the env-var gate `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and a `--team` / `--mode team` request selects the Agent Teams layer (constraints per `orchestration-mode-selection.md` §C.1). Genealogy: the static layer was previously RETIRED (the former Teams-API gate, `workflow.team` config block, and team auto-selection thresholds were removed; a forced `--mode team` emitted `MODE_TEAM_UNAVAILABLE` and fell back — the sentinel is retained as documented history). The Phase 4
+auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) remain prose-only SSOT in
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1 (no team auto-selection was reinstated).
 
 The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
-`moai cc -w <name> --spawn` teammate windows) is unaffected — see
+`moai cc -w <name> --spawn` teammate windows) is unaffected and sanctioned — see
 `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 ## Output Style Configuration

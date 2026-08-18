@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+	"testing/fstest"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 )
@@ -126,7 +127,7 @@ func TestMoaiUpdate_PreservesUserArea(t *testing.T) {
 	}
 
 	// Drive the real production entry point (REQ-UDS-015).
-	if err := deploy.CleanMoaiManagedPaths(root, io.Discard); err != nil {
+	if err := deploy.CleanMoaiManagedPaths(root, io.Discard, fstest.MapFS{}); err != nil {
 		t.Fatalf("CleanMoaiManagedPaths: %v", err)
 	}
 

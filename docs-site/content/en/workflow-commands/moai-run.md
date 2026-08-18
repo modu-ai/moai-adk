@@ -62,7 +62,7 @@ On re-run, work continues from the last successful stage checkpoint.
 
 **The `--mode` dispatch axis:**
 
-`--mode` is a separate axis that selects a `/moai run` workflow variant (distinct from Phase 4's 6-mode execution catalog):
+`--mode` is a separate axis that selects a `/moai run` workflow variant (distinct from Phase 4's 4-mode execution catalog):
 
 - `autopilot` (default): scale-based selection in Phase 4, then run the implementation
 - `loop`: delegate to the Ralph engine's diagnostic loop (see `loop.md`)
@@ -535,7 +535,7 @@ The quality issues are reported to the user, and you are asked whether to retry 
 
 ## Kanban Mode — run a SPEC all the way through (v3.1)
 
-`/moai run` drives a single phase. The verify and sync steps after it require the user to issue another command. **Kanban Mode** is the entry switch that automates this "chaining". Start the session launcher with `--kanban`, and the four phases — `plan → run → verify → sync` — are chained automatically on top of a single goal preset (`kanban_chain`).
+`/moai run` drives a single phase. The sync step after it requires the user to issue another command. **Kanban Mode** is the entry switch that automates this "chaining". Start the session launcher with `--kanban`, and the three phases — `plan → run → sync` — are chained automatically under the lead session's coordination.
 
 ```bash
 # Enter one SPEC in Kanban Mode — all the way through to completion

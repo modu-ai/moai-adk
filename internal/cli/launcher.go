@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
@@ -201,6 +202,14 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 			_, _ = fmt.Fprintf(launcherStderr, "Warning: failed to record last-used profile: %v\n", err)
 		}
 	}
+
+	// 5.5. Translate the user's crosssession.yaml into an injected --settings
+	// file. Covers every launcher (cc / glm / cg all funnel through here).
+	// No-ops when the operator supplied --settings themselves — which also
+	// covers the kanban/factory branches, whose args already carry the injected
+	// flag by the time they reach this funnel. Fail-open: an unreadable config
+	// or a failed write launches without the injection.
+	extraArgs = appendCrossSessionSettings(root, extraArgs)
 
 	// 6. Launch claude
 	return launchClaude(profileName, extraArgs)
@@ -490,8 +499,7 @@ func cleanupMoaiWorktrees(projectRoot string) string {
 	}
 
 	// 2. Global ~/.moai/worktrees/*/ paths (MoAI worktree migration target).
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		globalBase := filepath.Join(homeDir, ".moai", "worktrees")
+	if globalBase, err := paths.WorktreesDir(); err == nil {
 		if entries, err := os.ReadDir(globalBase); err == nil {
 			for _, entry := range entries {
 				if entry.IsDir() {
@@ -920,8 +928,8 @@ func resolveWorktreeL2Path(args []string) error {
 
 	// Absolute path: must be under an accepted worktree prefix.
 	var acceptedPrefixes []string
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(homeDir, ".moai", "worktrees"))
+	if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
 	}
 	if root, err := findProjectRoot(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))

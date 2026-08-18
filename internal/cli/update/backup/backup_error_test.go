@@ -98,7 +98,7 @@ func TestDeepMerge3Way_BaseNotMap(t *testing.T) {
 	oldN := mustDecodeDoc(t, "nested:\n  b: 2\n")
 	baseN := mustDecodeDoc(t, "nested: not-a-map\n")
 
-	result, err := deepMerge3WayTo(newN, oldN, baseN, io.Discard)
+	result, err := deepMerge3WayTo(newN, oldN, baseN, newRetainedKeyNotes(io.Discard))
 	if err != nil {
 		t.Fatalf("DeepMerge3Way: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestDeepMerge3Way_BaseNotExists(t *testing.T) {
 	oldN := mustDecodeDoc(t, "key: old-value\n")
 	baseN := mustDecodeDoc(t, "{}\n") // empty base, no "key"
 
-	result, err := deepMerge3WayTo(newN, oldN, baseN, io.Discard)
+	result, err := deepMerge3WayTo(newN, oldN, baseN, newRetainedKeyNotes(io.Discard))
 	if err != nil {
 		t.Fatalf("DeepMerge3Way: %v", err)
 	}

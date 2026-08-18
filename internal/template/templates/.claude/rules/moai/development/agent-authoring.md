@@ -177,7 +177,7 @@ Role profiles were formerly defined in workflow.yaml under a `team.role_profiles
 | designer | sonnet | acceptEdits | worktree | UI/UX design with MCP tools |
 | reviewer | haiku | plan (read-only) | none | Code review, quality validation |
 
-The Agent Teams static layer that consumed these role profiles is RETIRED; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The native `moai cg` teammate runtime is unaffected (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
+The Agent Teams layer that consumed these role profiles is experimental (re-allowed; a `--mode team` request selects it per `orchestration-mode-selection.md` §C.1 — the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back). The native `moai cg` teammate runtime is unaffected (see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
 
 ## Frontmatter Format Rules
 

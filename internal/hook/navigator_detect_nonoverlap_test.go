@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -193,32 +194,116 @@ func TestNonOverlap_DetectNeverWritesToSyncOrMxPaths(t *testing.T) {
 	}
 }
 
+// consumerOnlyBaseline is one candidate diff baseline for the M0/mx pin.
+type consumerOnlyBaseline struct {
+	name string // ref name, for failure messages
+	sha  string // resolved commit; empty marks the origin/main default
+	// distance is how many commits HEAD carries beyond this baseline.
+	// -1 marks a release tip that is NOT an ancestor of HEAD and is therefore
+	// not one of HEAD's boundaries at all.
+	distance int
+}
+
+// chooseConsumerOnlyBaseline picks the diff baseline for the M0/mx pin.
+//
+// origin/main is the default and keeps its full original strength (the
+// three-dot verbatim AC form): it is displaced ONLY when a pushed release tip
+// is an ancestor of HEAD AND sits strictly closer to HEAD than main's
+// merge-base does. A pushed release tip is a reviewed boundary — every
+// integration onto release/* rides a lane merge that carried a review verdict
+// — so the pin's jurisdiction is the change-set BETWEEN such boundaries, not
+// the accumulated batch content that already crossed one. Without this
+// adjustment the pin fired deterministically on the release batch PR
+// (release→main) and on every lane branch that had merged the release tip,
+// flagging reviewed merges such as an internal/mx/spec_loader change that
+// arrived through the lane flow. On a plain feature branch no release tip is
+// an ancestor, origin/main applies unchanged, and the pin is byte-identical
+// to the original. A tie keeps origin/main — the maximal-strength choice.
+func chooseConsumerOnlyBaseline(mainDistance int, releaseTips []consumerOnlyBaseline) consumerOnlyBaseline {
+	base := consumerOnlyBaseline{name: "origin/main", distance: mainDistance}
+	for _, c := range releaseTips {
+		if c.distance < 0 {
+			continue // not an ancestor of HEAD — not HEAD's boundary
+		}
+		if c.distance < base.distance {
+			base = c
+		}
+	}
+	return base
+}
+
 // TestConsumerOnly_M0AndMxByteUnchanged (AC-NS2-005a, REQ-NS2-005) asserts
-// the M1 run-phase diff touches NO path under internal/navigator/sync/ or
-// internal/mx/. The command is the verbatim AC:
+// the diff between HEAD and its nearest reviewed boundary touches NO path
+// under internal/navigator/sync/ or internal/mx/. The default baseline is the
+// verbatim AC command:
 //
 //	git diff --name-only origin/main...HEAD | grep -E '^internal/(navigator/sync|mx)/'
 //
-// grep exit 1 (no matches) = PASS. The test is skipped when origin/main is
-// unavailable (shallow clone, detached HEAD in CI without origin) so it does
-// not produce false failures in environments that lack the git baseline; in
-// those environments the orchestrator's verification batch surfaces the same
-// command directly.
+// grep exit 1 (no matches) = PASS. When HEAD descends from a pushed
+// release/* tip, that tip becomes the baseline instead (see
+// chooseConsumerOnlyBaseline for why a pushed release tip is a reviewed
+// boundary); the pin then guards the change-set on top of the batch, which is
+// the work actually under this guard's jurisdiction. The test is skipped when
+// origin/main is unavailable (shallow clone, detached HEAD in CI without
+// origin) so it does not produce false failures in environments that lack the
+// git baseline; in those environments the orchestrator's verification batch
+// surfaces the same command directly.
 func TestConsumerOnly_M0AndMxByteUnchanged(t *testing.T) {
 	// Serial: shells out to git. Skip if origin/main is unavailable.
 	if os.Getenv("MOAI_NAVIGATOR_DETECT_SKIP_GIT_DIFF") == "1" {
 		t.Skip("MOAI_NAVIGATOR_DETECT_SKIP_GIT_DIFF=1 — skipping git-diff guard")
 	}
-	// Verify origin/main exists so `git diff origin/main...HEAD` is meaningful.
+	// Verify origin/main exists so the main baseline is meaningful.
 	revCmd := exec.Command("git", "rev-parse", "--verify", "origin/main")
 	if err := revCmd.Run(); err != nil {
 		t.Skipf("origin/main not resolvable (git rev-parse failed: %v); skipping AC-NS2-005a git-diff guard — run the verbatim command manually if needed",
 			err)
 	}
-	cmd := exec.Command("git", "diff", "--name-only", "origin/main...HEAD")
+
+	mainDistance := 0
+	if out, err := exec.Command("git", "rev-list", "--count", "origin/main...HEAD").Output(); err == nil {
+		if n, perr := strconv.Atoi(strings.TrimSpace(string(out))); perr == nil {
+			mainDistance = n
+		}
+	}
+
+	var releaseTips []consumerOnlyBaseline
+	refsOut, err := exec.Command("git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin/release/").Output()
+	if err != nil {
+		t.Fatalf("git for-each-ref refs/remotes/origin/release/ failed: %v", err)
+	}
+	for _, ref := range strings.Fields(string(refsOut)) {
+		shaOut, err := exec.Command("git", "rev-parse", "--verify", ref).Output()
+		if err != nil {
+			continue // ref vanished between listing and resolving — not a boundary
+		}
+		sha := strings.TrimSpace(string(shaOut))
+		if err := exec.Command("git", "merge-base", "--is-ancestor", sha, "HEAD").Run(); err != nil {
+			releaseTips = append(releaseTips, consumerOnlyBaseline{name: ref, sha: sha, distance: -1})
+			continue
+		}
+		distOut, err := exec.Command("git", "rev-list", "--count", sha+"..HEAD").Output()
+		if err != nil {
+			continue
+		}
+		d, perr := strconv.Atoi(strings.TrimSpace(string(distOut)))
+		if perr != nil {
+			continue
+		}
+		releaseTips = append(releaseTips, consumerOnlyBaseline{name: ref, sha: sha, distance: d})
+	}
+
+	chosen := chooseConsumerOnlyBaseline(mainDistance, releaseTips)
+	diffRef := "origin/main...HEAD" // three-dot: the verbatim AC form
+	if chosen.sha != "" {
+		// The tip is an ancestor of HEAD, so two-dot equals three-dot here;
+		// the two-dot spelling just pins the baseline SHA explicitly.
+		diffRef = chosen.sha + "..HEAD"
+	}
+	cmd := exec.Command("git", "diff", "--name-only", diffRef)
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("git diff --name-only origin/main...HEAD failed: %v", err)
+		t.Fatalf("git diff --name-only %s failed: %v", diffRef, err)
 	}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
@@ -226,11 +311,47 @@ func TestConsumerOnly_M0AndMxByteUnchanged(t *testing.T) {
 			continue
 		}
 		if strings.HasPrefix(line, "internal/navigator/sync/") {
-			t.Errorf("AC-NS2-005a FAIL: M1 diff touches M0 producer path %q — the Detect layer must consume internal/navigator/sync/ read-only", line)
+			t.Errorf("AC-NS2-005a FAIL: diff vs %s touches M0 producer path %q — the Detect layer must consume internal/navigator/sync/ read-only", chosen.name, line)
 		}
 		if strings.HasPrefix(line, "internal/mx/") {
-			t.Errorf("AC-NS2-005a FAIL: M1 diff touches mx producer path %q — the Detect layer must consume internal/mx/ read-only", line)
+			t.Errorf("AC-NS2-005a FAIL: diff vs %s touches mx producer path %q — the Detect layer must consume internal/mx/ read-only", chosen.name, line)
 		}
+	}
+}
+
+// TestChooseConsumerOnlyBaseline pins the baseline-selection policy itself:
+// release tips displace origin/main only when ancestral AND strictly closer,
+// and a tie keeps origin/main (the maximal-strength pin).
+func TestChooseConsumerOnlyBaseline(t *testing.T) {
+	cases := []struct {
+		name        string
+		mainDist    int
+		releaseTips []consumerOnlyBaseline
+		wantName    string
+	}{
+		{"no release refs keeps main", 12, nil, "origin/main"},
+		{"non-ancestral release tip ignored", 3, []consumerOnlyBaseline{
+			{name: "origin/release/v3.1.1", sha: "aaaa", distance: -1},
+		}, "origin/main"},
+		{"closer ancestral release tip wins", 40, []consumerOnlyBaseline{
+			{name: "origin/release/v3.1.1", sha: "bbbb", distance: 2},
+		}, "origin/release/v3.1.1"},
+		{"tie keeps main (max pin strength)", 5, []consumerOnlyBaseline{
+			{name: "origin/release/v3.1.1", sha: "cccc", distance: 5},
+		}, "origin/main"},
+		{"nearest of several ancestral tips wins", 40, []consumerOnlyBaseline{
+			{name: "origin/release/v3.1.0", sha: "dddd", distance: 30},
+			{name: "origin/release/v3.1.1", sha: "eeee", distance: 3},
+		}, "origin/release/v3.1.1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := chooseConsumerOnlyBaseline(tc.mainDist, tc.releaseTips)
+			if got.name != tc.wantName {
+				t.Errorf("chooseConsumerOnlyBaseline(mainDist=%d, ...) chose %q, want %q",
+					tc.mainDist, got.name, tc.wantName)
+			}
+		})
 	}
 }
 

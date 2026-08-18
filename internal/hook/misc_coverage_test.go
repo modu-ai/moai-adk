@@ -316,7 +316,10 @@ func TestIsCGMode_EmptyFile(t *testing.T) {
 
 // --- worktree_create.go: Handle ---
 
-// TestWorktreeCreateHandler_Handle_BasicPath verifies Handle returns output.
+// TestWorktreeCreateHandler_Handle_BasicPath verifies Handle without the
+// required `name` field aborts with an error (issue #1570: the active-creator
+// contract needs the suggested slug; the old passthrough returned an empty
+// success, which aborted the agent spawn with no diagnostics).
 func TestWorktreeCreateHandler_Handle_BasicPath(t *testing.T) {
 	t.Parallel()
 
@@ -330,12 +333,8 @@ func TestWorktreeCreateHandler_Handle_BasicPath(t *testing.T) {
 		ProjectDir: t.TempDir(),
 	}
 
-	out, err := h.Handle(context.Background(), input)
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle() returned nil output")
+	if _, err := h.Handle(context.Background(), input); err == nil {
+		t.Fatal("Handle() without name should return an error, got nil")
 	}
 }
 

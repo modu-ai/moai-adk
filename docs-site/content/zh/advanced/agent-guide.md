@@ -127,11 +127,11 @@ flowchart TD
 
 `manager-kanban` 是专门用于协调 Tier L 规模 run 阶段的智能体。它自己不写代码，而是把工作拆成若干里程碑交给叶子工作者（leaf worker），并在每个里程碑边界折叠上下文、执行交叉验证。叶子工作者通过 `Agent(general-purpose)` 按需创建，运行在 worktree 隔离的分支上，因此各自的写入面互不重叠。
 
-这条委派路径是 Mode 5（顺序子智能体）的一种变体，并非新的执行模式。它与已退役的 Agent Teams 静态层也没有关系 —— Mode 3 的墓碑标记与 `MODE_TEAM_UNAVAILABLE` 行为保持不变。
+这条委派路径是 serial（顺序子智能体）的一种变体，并非新的执行模式。它与已退役的 Agent Teams 静态层也没有关系 —— agent-team 的墓碑标记与 `MODE_TEAM_UNAVAILABLE` 行为保持不变。
 
 ### 进入条件 — 三项必须同时成立
 
-只有当下面三个条件**全部**成立时，编排器才会创建 `manager-kanban`。只要有一项不达标，编排器就以 Mode 5 自行顺序处理各里程碑。给达不到门槛的工作套上 `manager-kanban`，只会增加永远收不回来的协调成本。
+只有当下面三个条件**全部**成立时，编排器才会创建 `manager-kanban`。只要有一项不达标，编排器就以 serial 自行顺序处理各里程碑。给达不到门槛的工作套上 `manager-kanban`，只会增加永远收不回来的协调成本。
 
 | 维度 | 门槛 |
 |------|------|
@@ -144,7 +144,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     START["run 阶段委派请求"] --> Q1{"里程碑 3 个及以上?"}
-    Q1 -->|"否"| MODE5["编排器直接以 Mode 5 处理<br>manager-develop 顺序执行"]
+    Q1 -->|"否"| MODE5["编排器直接以 serial 处理<br>manager-develop 顺序执行"]
     Q1 -->|"是"| Q2{"写入目标文件 10 个及以上?"}
     Q2 -->|"否"| MODE5
     Q2 -->|"是"| Q3{"领域 3 个及以上?"}
@@ -305,11 +305,28 @@ Claude Code 官方的 Sub-agent 系统是 MoAI-ADK 智能体结构的基石。
 | 技能不继承 | 不继承父对话的技能 |
 | 独立上下文 | 每个智能体拥有独立的 200K 代币上下文 |
 
-## Agent Teams 静态层 — 在 v3.0 退役
+## 子智能体工具过滤 — 两级
 
-先前版本中的 Agent Teams 静态编排层（`workflow.team.*` 配置、`--team` 强制标志）在 v3.0.0 中 **退役**。
+子智能体能用哪些工具，不是由一次设置决定，而是由两级过滤决定：spawn 时的静态允许列表是第 1 级，运行时的延迟加载是第 2 级。
 
-- 强制 `--team` 时会提示 `MODE_TEAM_UNAVAILABLE` 并自动回退到 sub-agent 模式。
+**第 1 级 — spawn 时的静态过滤。** 所有智能体定义都在 frontmatter 中携带 `tools:` 允许列表（CSV 字符串，例：`tools: Read, Write, Edit`），列表之外的工具无法调用。只读角色靠缩减这份列表本身来构造权限——审计者与交叉验证工作者把写工具（Write、Edit）从列表中拿掉，从源头堵死误改文件的路径。
+
+**第 2 级 — 运行时延迟加载。** 部分工具在 spawn 时不会加载 schema。`AskUserQuestion`（向用户询问选项的工具）和 `Task*`（任务列表管理）系列就是如此。这类延迟（deferred）工具必须在需要的时刻用 ToolSearch 的 `select:` 查询显式加载 schema 之后才能调用，是在通过第 1 级的工具之上再收窄一道的第二道闸门。
+
+这两级合在一起造就了两条规则。
+
+| 规则 | 内容 |
+|------|------|
+| 用户提问仅限编排器 | `AskUserQuestion` 只有编排器使用，运行时强制这条边界。需要用户输入的子智能体不向用户发提示，而是返回结构化的 blocker 报告，由编排器询问用户后把答案捎回来重新派出 |
+| sweep 子智能体同样不能提问 | 动态工作流（sweep）的子智能体在主会话之下运行，无法向用户发出提示。需要提问时经由编排器的通道进行 |
+
+前文"子智能体不能直接与用户交互"这条规则，正是由这两级过滤在运行时支撑的。
+
+## Agent Teams 静态层 — v3.0 退役后实验性重新允许
+
+先前版本中的 Agent Teams 静态编排层（`workflow.team.*` 配置、`--team` 强制标志）在 v3.0.0 中 **退役**，之后作为实验性表面重新允许（仅经显式 `--team` 请求选择，不会被自动选择）。
+
+- 历史情况：退役时期强制 `--team` 会提示 `MODE_TEAM_UNAVAILABLE` 并回退到 sub-agent 模式；该哨兵字符串保留为已文档化的历史。
 - 需要并行性的调研、审查任务用并行 sub-agent 扇出处理；顺序编码任务用 sub-agent 链处理。
 - 原生 Claude Code teammate 运行时（`moai cg` 的 GLM pane、`moai worktree --team`）与此无关，继续正常工作 — 从代币经济学的角度看，CG 模式的 Claude 领队 + GLM 工作者分工承担了这一角色。
 

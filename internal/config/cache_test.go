@@ -297,6 +297,33 @@ func TestCache_LocationUnderStateDir(t *testing.T) {
 	}
 }
 
+// TestCache_DoesNotCreateConfigDir (issue #1568) verifies that a cache-miss
+// write does not materialize the config directory as a side effect. Before
+// this guard, running any non-trivial moai command in a fresh directory
+// created <dir>/.moai/state/config-cache.json via writeCache's MkdirAll, and
+// `moai init` then failed its "project already initialized" validation
+// against the directory the very same command had just created.
+func TestCache_DoesNotCreateConfigDir(t *testing.T) {
+	requireCacheEnabled(t)
+	base := t.TempDir()
+	// The config directory of an uninitialized project: <root>/.moai, absent.
+	configDir := filepath.Join(base, "fresh-project", ".moai")
+
+	cfg, err := NewLoader().LoadWithCache(configDir)
+	if err != nil {
+		t.Fatalf("LoadWithCache on uninitialized dir: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadWithCache returned nil config")
+	}
+
+	if _, statErr := os.Stat(configDir); statErr == nil {
+		t.Fatalf("LoadWithCache created %s as a side effect; the cache write must be skipped when the config directory does not exist", configDir)
+	} else if !os.IsNotExist(statErr) {
+		t.Fatalf("stat %s: %v", configDir, statErr)
+	}
+}
+
 // TestCache_SizeChangeInvalidates (AP-2 defense) verifies that a file whose
 // mtime did NOT change but whose size DID is treated as invalid.
 func TestCache_SizeChangeInvalidates(t *testing.T) {

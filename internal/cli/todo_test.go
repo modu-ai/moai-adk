@@ -5,6 +5,11 @@
 // + --json), AC-TODO-004 (done by id under lock), AC-TODO-005 (bare next
 // read-only), AC-TODO-006 (next <n> --spec one locked write), AC-TODO-014
 // (no-prompt static guard), plus the acceptance.md §C edge cases.
+//
+// The t71 block (pick-marking race hardening) covers: atomic `add --pick`
+// (one cross-process-locked write appends AND picks), `unpick <n>` (the
+// picked→queued recovery verb), and pick confirmations that carry the card
+// text prefix (+ optional `--expect <prefix>` refusal guard).
 package cli
 
 import (
@@ -37,10 +42,14 @@ func runTodo(t *testing.T, args ...string) (string, string, error) {
 
 // todoFixture prepares a project dir whose backlog the command resolves via
 // CLAUDE_PROJECT_DIR, and returns the store for seeding/verification.
+// The dir is a committed git repository (t106): queue-root resolution goes
+// through git, so the fixture must look like a real primary checkout for
+// the command's file and the verification store to be the same file.
 func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
 	t.Helper()
 	root = t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	initGitRepo(t, root)
 	store = kanban.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }
@@ -412,6 +421,19 @@ func TestTodoHelperProcess(t *testing.T) {
 			t.Logf("helper hold-lock: %v", err)
 			os.Exit(3)
 		}
+	case "add-pick":
+		// t71: run the FULL `add --pick` verb (not a direct store call) so
+		// the concurrency test exercises the same atomic code path the
+		// built binary serves.
+		cmd := newTodoCmd()
+		var out bytes.Buffer
+		cmd.SetOut(&out)
+		cmd.SetArgs([]string{"add", os.Getenv("MOAI_TODO_HELPER_TEXT"), "--pick"})
+		if err := cmd.Execute(); err != nil {
+			t.Logf("helper add --pick: %v", err)
+			os.Exit(3)
+		}
+		fmt.Print(out.String())
 	default:
 		os.Exit(4)
 	}
@@ -497,5 +519,312 @@ func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
 
 	if _, _, err := runTodo(t, "lsit"); err == nil {
 		t.Error("mistyped subcommand was accepted, want an error")
+	}
+}
+
+// TestTodoMultiWordFallthroughAdds — t69: `moai todo <phrase>` with two or
+// more words is the implicit add. The output must match the explicit add
+// form exactly (same "<id> <position>" line), so scripts cannot tell the
+// two entry points apart.
+func TestTodoMultiWordFallthroughAdds(t *testing.T) {
+	_, store := todoFixture(t)
+
+	out, _, err := runTodo(t, "fix", "the", "flaky", "gate")
+	if err != nil {
+		t.Fatalf("multi-word fallthrough: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "t1 1" {
+		t.Errorf("fallthrough output = %q, want %q", got, "t1 1")
+	}
+
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(rec.Items) != 1 || rec.Items[0].Text != "fix the flaky gate" {
+		t.Errorf("fallthrough card = %+v; want one card with the joined text", rec.Items)
+	}
+
+	// The explicit add must keep working and share the same output shape.
+	out, _, err = runTodo(t, "add", "second card")
+	if err != nil {
+		t.Fatalf("explicit add after fallthrough: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "t2 2" {
+		t.Errorf("explicit add output = %q, want %q", got, "t2 2")
+	}
+}
+
+// TestTodoSingleWordNaturalLanguageStillErrors — the fallthrough is
+// two-or-more words by design: a one-word argument (a would-be one-word
+// card, or a mistyped verb) stays an error, so a mistyped verb can never
+// silently become a card. One-word cards need the explicit add verb.
+func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	if _, _, err := runTodo(t, "버그"); err == nil {
+		t.Error("single-word natural language was accepted, want an error")
+	}
+	if _, _, err := runTodo(t, "lst"); err == nil {
+		t.Error("mistyped verb was accepted, want an error")
+	}
+}
+
+// --- t71: pick-marking race hardening ---
+//
+// Incident (2026-08-16, lead run tjv7iy): the lead ran `moai todo next t67`
+// on a guessed id before reading the `add` output, while a concurrent
+// session had just issued t67 to an unrelated card — so the wrong card was
+// marked picked. Recovery needed done+re-add (id churn, added_at loss)
+// because no unpick verb existed. Root causes: add→next was two separate
+// writes; `next <n>` printed only "picked t67" so the mis-pick was not
+// observable; no recovery verb.
+
+// TestTodoAddPick_OneLockedWrite — `add --pick` appends AND marks picked in
+// a single cross-process-locked write: no queued window exists between the
+// add and the pick for a guessed id to address, and the issued id is printed
+// (the add output the incident's `next` jumped ahead of).
+func TestTodoAddPick_OneLockedWrite(t *testing.T) {
+	_, store := todoFixture(t)
+
+	out, _, err := runTodo(t, "add", "fix the widget race", "--pick")
+	if err != nil {
+		t.Fatalf("add --pick: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "picked t1 fix the widget race" {
+		t.Errorf("add --pick output = %q, want %q", got, "picked t1 fix the widget race")
+	}
+
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(rec.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(rec.Items))
+	}
+	it := rec.Items[0]
+	if it.ID != "t1" || it.State != kanban.BacklogStatePicked {
+		t.Errorf("item = %s/%s, want t1/picked from the same write", it.ID, it.State)
+	}
+
+	// The high-water mark must advance inside the same locked write, so the
+	// next plain add cannot re-mint t1.
+	out, _, err = runTodo(t, "add", "follow-up card")
+	if err != nil {
+		t.Fatalf("post-pick add: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "t2 1" {
+		t.Errorf("post-pick add output = %q, want %q (high-water mark must clear t1)", got, "t2 1")
+	}
+}
+
+// TestTodoAddPick_ConcurrentProcesses — the incident's exact shape: a
+// concurrent add from another session must not interleave between an add
+// and its pick. 4 concurrent `add --pick` processes all land picked with
+// distinct ids; nothing is left stranded queued mid-flight.
+func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
+	if runtimeIsWindowsForTodo() {
+		t.Skip("helper re-exec exercised on unix; windows covered by GOOS=windows build/vet")
+	}
+	root, _ := todoFixture(t)
+
+	const n = 4
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	outputs := make([]string, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			cmd := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
+			cmd.Env = append(os.Environ(),
+				"MOAI_TODO_HELPER=add-pick",
+				"CLAUDE_PROJECT_DIR="+root,
+				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
+			)
+			out, err := cmd.CombinedOutput()
+			errs[i] = err
+			outputs[i] = string(out)
+		}(i)
+	}
+	wg.Wait()
+
+	seen := make(map[string]bool)
+	for i := 0; i < n; i++ {
+		if errs[i] != nil {
+			t.Fatalf("concurrent add --pick %d failed: %v: %s", i, errs[i], outputs[i])
+		}
+		for _, field := range strings.Fields(outputs[i]) {
+			if strings.HasPrefix(field, "t") && !seen[field] {
+				seen[field] = true
+			}
+		}
+	}
+	if len(seen) != n {
+		t.Errorf("distinct issued ids printed = %d, want %d (got %v)", len(seen), n, seen)
+	}
+
+	stdout, _, err := runTodo(t, "list", "--json")
+	if err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+	var rec kanban.BacklogRecord
+	if err := json.Unmarshal([]byte(stdout), &rec); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(rec.Items) != n {
+		t.Fatalf("items after %d concurrent add --pick = %d, want %d", n, len(rec.Items), n)
+	}
+	for _, it := range rec.Items {
+		if it.State != kanban.BacklogStatePicked {
+			t.Errorf("item %s state = %s, want picked (add+pick is one write; no queued window)", it.ID, it.State)
+		}
+	}
+}
+
+// TestTodoUnpick_RevertsPickedToQueued — the recovery verb the incident
+// lacked: picked→queued in one locked write, preserving the id and added_at
+// (no done+re-add churn) and clearing the spec_id attached at pick time so
+// the card returns to the shape `add` issued.
+func TestTodoUnpick_RevertsPickedToQueued(t *testing.T) {
+	_, store := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "mis-picked card"); err != nil {
+		t.Fatalf("seed add: %v", err)
+	}
+	before, err := store.Load()
+	if err != nil {
+		t.Fatalf("load before: %v", err)
+	}
+	addedAt := before.Items[0].AddedAt
+
+	if _, _, err := runTodo(t, "next", "1", "--spec", "SPEC-X-001"); err != nil {
+		t.Fatalf("seed pick: %v", err)
+	}
+
+	out, _, err := runTodo(t, "unpick", "1")
+	if err != nil {
+		t.Fatalf("unpick 1: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "unpicked t1 mis-picked card" {
+		t.Errorf("unpick output = %q, want %q", got, "unpicked t1 mis-picked card")
+	}
+
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load after: %v", err)
+	}
+	if len(rec.Items) != 1 {
+		t.Fatalf("items after unpick = %d, want 1 (no re-add churn)", len(rec.Items))
+	}
+	it := rec.Items[0]
+	if it.ID != "t1" || it.State != kanban.BacklogStateQueued {
+		t.Errorf("item = %s/%s, want t1/queued", it.ID, it.State)
+	}
+	if it.SpecID != nil {
+		t.Errorf("spec_id = %v, want nil (queued cards carry no spec)", *it.SpecID)
+	}
+	if it.AddedAt != addedAt {
+		t.Errorf("added_at = %s, want the original %s", it.AddedAt, addedAt)
+	}
+}
+
+// TestTodoUnpick_RefusalsLeaveFileUntouched — unpick refuses a card that is
+// not picked (nothing to revert) and a missing id, leaving the backlog
+// byte-identical in both cases (the done-miss contract).
+func TestTodoUnpick_RefusalsLeaveFileUntouched(t *testing.T) {
+	root, _ := todoFixture(t)
+	if _, _, err := runTodo(t, "add", "queued card"); err != nil {
+		t.Fatalf("seed add: %v", err)
+	}
+	real := todoBacklogPath(root)
+	before, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatalf("read before: %v", err)
+	}
+
+	if _, _, err := runTodo(t, "unpick", "1"); err == nil {
+		t.Error("unpick on a queued (not picked) card must fail")
+	}
+	after, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatalf("read after refused unpick: %v", err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Error("file changed on a refused unpick; must be byte-identical")
+	}
+
+	if _, _, err := runTodo(t, "unpick", "t9"); err == nil {
+		t.Error("unpick on a missing id must fail")
+	}
+	after2, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatalf("read after missed unpick: %v", err)
+	}
+	if !bytes.Equal(before, after2) {
+		t.Error("file changed on a missed unpick; must be byte-identical")
+	}
+}
+
+// TestTodoNextPick_ConfirmationShowsText — root cause 2 of the incident:
+// `next <n>` printed only "picked t67", so a mis-pick was not immediately
+// observable. The confirmation now carries a ~40-rune prefix of the card
+// text, truncated on rune boundaries so multi-byte card text cannot be
+// sliced mid-character.
+func TestTodoNextPick_ConfirmationShowsText(t *testing.T) {
+	_, _ = todoFixture(t)
+	long := strings.Repeat("카드", 30) // 60 runes > the 40-rune window
+	if _, _, err := runTodo(t, "add", long); err != nil {
+		t.Fatalf("seed add: %v", err)
+	}
+
+	out, _, err := runTodo(t, "next", "1")
+	if err != nil {
+		t.Fatalf("next 1: %v", err)
+	}
+	got := strings.TrimSpace(out)
+	want := "picked t1 " + strings.Repeat("카드", 20) + "..."
+	if got != want {
+		t.Errorf("pick confirmation = %q, want %q", got, want)
+	}
+	if strings.Contains(got, strings.Repeat("카드", 21)) {
+		t.Error("confirmation leaked card text past the 40-rune prefix")
+	}
+}
+
+// TestTodoNextPick_ExpectGuard — belt-and-braces for root cause 1: when the
+// caller knows which card it expects, `--expect <prefix>` refuses the pick
+// unless the addressed card's text starts with the prefix, leaving the file
+// byte-identical on the refusal.
+func TestTodoNextPick_ExpectGuard(t *testing.T) {
+	root, _ := todoFixture(t)
+	for _, text := range []string{"alpha widget", "beta widget"} {
+		if _, _, err := runTodo(t, "add", text); err != nil {
+			t.Fatalf("seed add: %v", err)
+		}
+	}
+	real := todoBacklogPath(root)
+	before, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatalf("read before: %v", err)
+	}
+
+	if _, _, err := runTodo(t, "next", "2", "--expect", "alpha"); err == nil {
+		t.Fatal("next --expect must refuse when the card text does not match")
+	}
+	after, err := os.ReadFile(real)
+	if err != nil {
+		t.Fatalf("read after refused pick: %v", err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Error("file changed on a refused --expect pick; must be byte-identical")
+	}
+
+	out, _, err := runTodo(t, "next", "2", "--expect", "beta")
+	if err != nil {
+		t.Fatalf("next 2 --expect beta: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != "picked t2 beta widget" {
+		t.Errorf("matching --expect pick output = %q, want %q", got, "picked t2 beta widget")
 	}
 }

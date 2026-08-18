@@ -21,9 +21,10 @@ on:
       - '.github/workflows/test-install.yml'
   workflow_dispatch:
 
-# Least-privilege: this workflow only validates install scripts locally on
-# the runner (bash/pwsh/cmd syntax checks, --help flags). No GITHUB_TOKEN
-# write is exercised.
+# Least-privilege: this workflow validates install scripts locally on the
+# runner (bash/pwsh/cmd syntax checks, --help flags, and a real end-to-end
+# install.bat run on windows). Every network endpoint it touches is
+# unauthenticated and not rate-limited; no GITHUB_TOKEN write is exercised.
 permissions:
   contents: read
 
@@ -234,6 +235,41 @@ jobs:
           find /c /v "" install.bat
           echo === First 20 lines ===
           powershell -Command "Get-Content install.bat | Select-Object -First 20"
+
+      - name: Verify version resolution targets the redirect (static)
+        # install.bat must resolve the latest version from the
+        # /releases/latest redirect, never from the unauthenticated REST
+        # API list endpoint (60 req/h per IP; rate-limited answers carry
+        # no tag_name and read as "no releases exist").
+        shell: powershell
+        run: |
+          $content = Get-Content install.bat -Raw
+          $redirect = 'https://github.com/modu-ai/moai-adk/releases/latest'
+          if ($content -notmatch [regex]::Escape($redirect)) {
+            Write-Host "FAIL: install.bat no longer contains the /releases/latest redirect URL"
+            exit 1
+          }
+          Write-Host "PASS: /releases/latest redirect present in install.bat"
+
+      - name: Run install.bat end-to-end (real version resolution + install)
+        # cmd.exe quoting and for /f escaping cannot be exercised on the
+        # maintainers' macOS machines, so this step is the judgment path
+        # for the batch surface: the real script, the real network. Version
+        # resolution goes through the redirect (not rate-limited) and the
+        # download through the release browser endpoints, so no token is
+        # involved and no shared API budget is spent.
+        shell: cmd
+        run: |
+          call install.bat --install-dir "%RUNNER_TEMP%\moai-install-test"
+          if errorlevel 1 (
+            echo FAIL: install.bat exited non-zero
+            exit /b 1
+          )
+          if not exist "%RUNNER_TEMP%\moai-install-test\moai.exe" (
+            echo FAIL: moai.exe was not installed
+            exit /b 1
+          )
+          echo PASS: install.bat resolved, downloaded, and installed end-to-end
 
   # Job 4: Cross-platform compatibility check
   compatibility-check:

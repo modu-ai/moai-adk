@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -178,6 +179,103 @@ func TestReviewGate_InconclusiveAllows(t *testing.T) {
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {
 		t.Errorf("inconclusive codex must ALLOW (fail-open), got %+v", out)
+	}
+}
+
+// TestReviewGate_FailedTurnSurfacesErrorNotPass pins the card-t52 contract: a
+// codex review turn that ends in a NON-completed terminal state (failed /
+// interrupted) must surface an error, never a synthesized pass. The real-world
+// shape this captures was observed live on codex-cli 0.147.0: a usage-limited
+// account fails the review turn BEFORE the diff is ever evaluated, and codex
+// emits a PLACEHOLDER exitedReviewMode review ("Reviewer failed to output a
+// response.") — which the gate used to launder into verdict "pass" because the
+// placeholder carries no finding bullets. A gate that cannot reach a verdict
+// must say so (fail-open ALLOW + error), not report a clean review.
+func TestReviewGate_FailedTurnSurfacesErrorNotPass(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		turnStatus string
+		turnErrMsg string // turn.error.message; empty ⇒ omit the error object
+	}{
+		{"failed with usage-limit error", "failed", "You've hit your usage limit. Try again later."},
+		{"interrupted without error object", "interrupted", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withChangeDetector(t, true)
+			turn := `{"id":"trn","status":` + jsonString(tc.turnStatus)
+			if tc.turnErrMsg != "" {
+				turn += `,"error":{"message":` + jsonString(tc.turnErrMsg) + `}`
+			}
+			turn += `}`
+			withCodexSession(t, []string{
+				`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+				`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+				`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+				// The placeholder codex emits when the reviewer itself died —
+				// indistinguishable from a real review by bullet-shape alone.
+				`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","item":{"type":"exitedReviewMode","id":"e1","review":"Reviewer failed to output a response."}}}`,
+				`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":` + turn + `}}`,
+			})
+
+			out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
+			if err == nil {
+				t.Fatalf("a %s turn MUST surface an error; got err=<nil> (the gate fabricated a pass)", tc.turnStatus)
+			}
+			if tc.turnErrMsg != "" && !strings.Contains(err.Error(), tc.turnErrMsg) {
+				t.Errorf("the surfaced error must carry codex's own message; got %q", err.Error())
+			}
+			if out == nil || out.Decision == hook.DecisionBlock {
+				t.Errorf("a %s turn must still ALLOW (fail-open), got %+v", tc.turnStatus, out)
+			}
+		})
+	}
+}
+
+// TestRunCodexReviewRPC_FailedTurnIsInconclusiveNotPass pins the same contract
+// one level down: the RPC layer's ReviewOutput for a failed turn must be the
+// inconclusive fail-open verdict — never "pass", which would read downstream
+// as "reviewed and found nothing wrong".
+func TestRunCodexReviewRPC_FailedTurnIsInconclusiveNotPass(t *testing.T) {
+	withCodexSession(t, []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","item":{"type":"exitedReviewMode","id":"e1","review":"Reviewer failed to output a response."}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"failed","error":{"message":"usage limit exceeded"}}}}`,
+	})
+
+	out, err := runCodexReviewRPC(context.Background(), "/fake/codex", codexMethodReviewStart, map[string]any{
+		"target": codexTargetUncommitted,
+	})
+	if err == nil {
+		t.Fatalf("failed turn must return an error; got nil with verdict=%q", out.Verdict)
+	}
+	if out.Verdict != VerdictInconclusive {
+		t.Errorf("failed turn must synthesize %q, got %q", VerdictInconclusive, out.Verdict)
+	}
+}
+
+// TestReviewGate_ErrorNotificationWithRetryingTurnStillReviews guards the
+// complementary direction: an `error` notification alone (willRetry semantics,
+// codex retries internally) whose turn LATER completes must NOT be treated as a
+// failed review — only the turn/completed terminal state is authoritative.
+func TestReviewGate_ErrorNotificationWithRetryingTurnStillReviews(t *testing.T) {
+	withChangeDetector(t, true)
+	withCodexSession(t, []string{
+		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
+		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
+		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
+		`{"method":"error","params":{"error":{"message":"transient stream error"},"willRetry":true,"threadId":"tid-fake","turnId":"trn"}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","item":{"type":"exitedReviewMode","id":"e1","review":"- [P1] injection sink found"}}}`,
+		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
+	})
+
+	out, err := HandleCodexReviewGate(gateInput(false), true, "/proj")
+	if err != nil {
+		t.Fatalf("a retried-then-completed turn is a real review; got err=%v", err)
+	}
+	if out == nil || out.Decision != hook.DecisionBlock {
+		t.Errorf("bullet-carrying review after a retried error must BLOCK, got %+v", out)
 	}
 }
 

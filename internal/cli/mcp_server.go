@@ -287,6 +287,60 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexJobCancel)
 
+	// --- GLM task delegation + job lifecycle ---
+	//
+	// Mirrors the codex task/job family above against the GLM (z.ai) backend:
+	// same job model (queued → running → terminal), same in-process background
+	// execution, same fail-open posture. GLM is reached over HTTPS through the
+	// mcp_glm.go plumbing — there is no spawned process, so cancel revokes the
+	// job's context instead of signalling a pid.
+	//
+	// The read-only hints are stated explicitly, including the `false` ones,
+	// for the same reason as the codex block above: a hint that is correct only
+	// by inheriting a library default is indistinguishable from one nobody
+	// considered.
+
+	// glm_task → handleGLMTask. Delegates a prompt to GLM. NOT read-only: it
+	// starts a model call and writes a job record under .moai/state/glm-jobs/.
+	// Fail-open on a missing key or an unavailable z.ai.
+	add("glm_task", mcp.NewTool(
+		"glm_task",
+		mcp.WithDescription("Delegate a task (arbitrary prompt) to GLM (z.ai). Returns the completed text output when background is false, or a job id (observable via glm_job_status / glm_job_result, stoppable via glm_job_cancel) when background is true. Background jobs live inside this server process and do not survive its exit. GLM is OPTIONAL; a missing key or an unavailable z.ai yields a structured fail-open result, never a tool error."),
+		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give GLM.")),
+		mcp.WithBoolean("background", mcp.Description("Run the task in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
+		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		mcp.WithString("system", mcp.Description("Optional system prompt for the task.")),
+		mcp.WithInteger("max_tokens", mcp.Description("Optional response token bound; defaults to the server-side glm_task ceiling.")),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleGLMTask)
+
+	// glm_job_status → handleGLMJobStatus. Reads one record.
+	add("glm_job_status", mcp.NewTool(
+		"glm_job_status",
+		mcp.WithDescription("Read a GLM job's record (status, timestamps, model, request summary). An unknown or unreadable job is a structured result, not a failed call."),
+		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGLMJobStatus)
+
+	// glm_job_result → handleGLMJobResult. Reads one record; never waits for
+	// the call.
+	add("glm_job_result", mcp.NewTool(
+		"glm_job_result",
+		mcp.WithDescription("Read a GLM job's output. A job in a terminal status returns its recorded output; a job still running returns its current status without blocking the caller."),
+		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGLMJobResult)
+
+	// glm_job_cancel → handleGLMJobCancel. NOT read-only: it cancels a running
+	// job and records the cancellation. A job this server lifetime did not
+	// start is refused rather than cancelled.
+	add("glm_job_cancel", mcp.NewTool(
+		"glm_job_cancel",
+		mcp.WithDescription("Stop a running GLM job: records the cancellation and revokes the context its in-flight z.ai request runs under, then waits a bounded grace window for the job to end. A job this server lifetime did not start is refused rather than cancelled; an already-terminal job returns its status and sends nothing."),
+		mcp.WithString(glmJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background glm_task.")),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleGLMJobCancel)
+
 	// --- M3 GLM backend (design.md §3 M3) ---
 
 	// glm_audit → z.ai GLM API direct call (REQ-MCP-009 / AC-MCP-011). Calls
@@ -356,7 +410,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 // write-capable distinction, which is a better failure mode than silent inert tools.
 // @MX:SPEC: SPEC-MCP-CONSOLE-001
 func readMCPToolEnablement(projectDir string) map[string]bool {
-	enabled := make(map[string]bool, 17)
+	enabled := make(map[string]bool, 21)
 	// Default: every catalog tool enabled. Keys absent from mcp.yaml stay true.
 	for _, name := range mcpcat.MoaiMCPToolNames() {
 		enabled[name] = true
@@ -559,8 +613,10 @@ func handleSpecDrift(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolRes
 // @MX:DEBT: single-process in-memory cache only
 // @MX:CEILING: single moai mcp-server process lifetime, sequential calls
 // @MX:UPGRADE: the plan-audit gate (audit_gate.go) runs in a separate /moai run
-//   process and does NOT populate this cache; true cross-process verdict reuse
-//   requires lookup to read the durable daily-report cache (AuditReporter).
+//
+//	process and does NOT populate this cache; true cross-process verdict reuse
+//	requires lookup to read the durable daily-report cache (AuditReporter).
+//
 // @MX:REASON: [AUTO] fan_in >= 3 (compute_hash/lookup/store ops + tests)
 var moaiAuditCache = runtime.NewInMemoryCache()
 

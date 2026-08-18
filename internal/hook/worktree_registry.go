@@ -21,9 +21,11 @@ type WorktreeEntry struct {
 // @MX:REASON: global state mutation — concurrent hook handlers (WorktreeCreate/WorktreeRemove) share this lock; missing lock acquisition causes data races on the JSON state file
 var worktreeMu sync.Mutex
 
-// registerWorktree appends a new WorktreeEntry to the persistent state file.
-// If the state directory or file does not exist it is created.
-// Non-blocking on error: failures are logged as warnings.
+// registerWorktree records a WorktreeEntry in the persistent state file,
+// replacing any existing entry with the same path (idempotent — the
+// WorktreeCreate handler re-registers when it reuses an existing worktree
+// directory, issue #1570). If the state directory or file does not exist it
+// is created. Non-blocking on error: failures are logged as warnings.
 func registerWorktree(projectDir, path, branch, agentName string) {
 	worktreeMu.Lock()
 	defer worktreeMu.Unlock()
@@ -31,12 +33,27 @@ func registerWorktree(projectDir, path, branch, agentName string) {
 	stateFile := worktreeStateFile(projectDir)
 	entries := loadWorktreeEntries(stateFile)
 
-	entries = append(entries, WorktreeEntry{
-		Path:      path,
-		Branch:    branch,
-		AgentName: agentName,
-		CreatedAt: time.Now(),
-	})
+	replaced := false
+	for i := range entries {
+		if entries[i].Path == path {
+			entries[i] = WorktreeEntry{
+				Path:      path,
+				Branch:    branch,
+				AgentName: agentName,
+				CreatedAt: time.Now(),
+			}
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		entries = append(entries, WorktreeEntry{
+			Path:      path,
+			Branch:    branch,
+			AgentName: agentName,
+			CreatedAt: time.Now(),
+		})
+	}
 
 	saveWorktreeEntries(stateFile, entries)
 }

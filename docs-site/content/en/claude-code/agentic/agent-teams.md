@@ -157,7 +157,7 @@ You can also override it for a single session with the `--teammate-mode auto` fl
 
 Split-pane mode requires external tools. Install tmux with your system package manager; for iTerm2, install the [`it2` CLI](https://github.com/mkusaka/it2) and then enable the Python API in iTerm2 settings (Settings → General → Magic → Enable Python API).
 
-Teammates do not inherit the lead's `/model` selection by default. The model used when the prompt does not specify one is set under **Default teammate model** in `/config`. However, since v2.1.186 teammates inherit the lead's effort level (applied in split-pane mode from v2.1.186; earlier versions do not pass the lead's effort).
+Since Claude Code v2.1.234, teammates use the lead's `/model` selection by default — the former **Default teammate model** setting in `/config` was removed. A model named in the spawn prompt still overrides the default. Teammates also inherit the lead's effort level since v2.1.186 (applied in split-pane mode from v2.1.186; earlier versions do not pass the lead's effort).
 
 ## Quality-Gate Hooks
 

@@ -119,7 +119,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 
 - **`/moai loop`** —— 诊断主导的确定性循环。区别在于由工具判定要修什么。[`/moai loop`](/zh/utility-commands/moai-loop) 位于 utility 命令一节。
 - **`/moai run`** —— 启动工作的命令。与 goal 配对使用。[`/moai run`](./moai-run)。
-- **看板模式** —— 把 `/moai goal` 的无限持续 goal 串成 `plan → run → verify → sync` 链的进入开关。详见 [看板模式](/zh/advanced/kanban-mode)。
+- **看板模式** —— 把 `/moai goal` 的无限持续 goal 串成 `plan → run → sync` 链的进入开关。详见 [看板模式](/zh/advanced/kanban-mode)。
 
 ## 这条命令不做的事（范围边界）
 
@@ -131,6 +131,6 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 ## 相关文档
 
 - [自治连续循环](/zh/advanced/autonomous-loops) —— goal 引擎的停滞 guard 与上限语义
-- [看板模式](/zh/advanced/kanban-mode) —— 由 `kanban_chain` goal 预设串起来的四阶段链
+- [看板模式](/zh/advanced/kanban-mode) —— 由主导会话驱动的三阶段链
 - [`/moai loop`](/zh/utility-commands/moai-loop) —— 诊断主导的确定性循环（兄弟命令）
 - [Harness 工程](/zh/core-concepts/harness-engineering) —— 循环与观察流向 harness 学习的路径

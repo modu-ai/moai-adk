@@ -8,7 +8,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt
 
 1. **Front-load user gates** [ZONE:Evolvable] While intent-drain gates can be asked early (Clarify stage, small context), ask them there rather than late in a large context. A blocking user wait late in a session risks expiring the cache over the entire accumulated prefix — the larger the context, the more expensive each gate-wait becomes. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry window is paid at most once, not per question.
 
-2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents that share the same agent definition (identical system prompt + rules prefix), spawn ONE first, and spawn the remaining N−1 after the first has started producing output. Concurrent requests cannot read a cache entry that is still being written — simultaneous fan-out makes all N pay the cold cache write for the shared prefix, while a staggered fan-out lets N−1 spawns read the first spawn's cache. This composes with (does not replace) the Mode 4 concurrency ceiling in `orchestration-mode-selection.md`.
+2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] When fanning out N parallel subagents that share the same agent definition (identical system prompt + rules prefix), spawn ONE first, and spawn the remaining N−1 after the first has started producing output. Concurrent requests cannot read a cache entry that is still being written — simultaneous fan-out makes all N pay the cold cache write for the shared prefix, while a staggered fan-out lets N−1 spawns read the first spawn's cache. This composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2 (the 3-5 advisory band this directive grounds; the hard bound is the runtime subagent cap).
 
 3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Files loaded into the session prefix at start (`.claude/rules/`, `CLAUDE.md`, output styles, always-loaded skills) invalidate the entire cache prefix when edited mid-session — every subsequent turn re-writes from the edit point. Batch such edits at the END of a task, or immediately before a `/clear` boundary. This aligns naturally with the Template-First cycle (edit → `make build` → commit → session boundary).
 
@@ -33,7 +33,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Anthropic prompt
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — Mode 4 parallel fan-out (stagger-spawn composes with its concurrency ceiling)
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — fanout parallel fan-out (stagger-spawn composes with its concurrency ceiling)
 - `.claude/rules/moai/workflow/context-window-management.md` — model-specific `/clear` thresholds (directive 4 is an additional, earlier trigger)
 - `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution — single-turn verification batching (already cache-optimal: incremental append)
 - `.claude/rules/moai/core/askuser-protocol.md` — gate mechanics (unchanged by this rule)

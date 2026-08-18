@@ -139,8 +139,11 @@ func parseDependenciesMarkdown(content string) []rawModule {
 			}
 			continue
 		}
-		// Recognize "<pkg> --> <pkg>" / "<pkg> -> <pkg>" / "<pkg> → <pkg>".
-		for _, sep := range []string{"-->", "->", "→"} {
+		// Recognize "<pkg> --> <pkg>" / "<pkg> -> <pkg>" / "<pkg> → <pkg>" /
+		// "<pkg> -.-> <pkg>" (mermaid dotted arrow). "-.->" MUST be probed
+		// before "->" — it contains "->" as a suffix, so a later probe would
+		// split mid-arrow and leave a "pkg -." source token.
+		for _, sep := range []string{"-.->", "-->", "->", "→"} {
 			if i := strings.Index(line, sep); i > 0 {
 				src := ensure(strings.TrimSpace(line[:i]))
 				dst := ensure(strings.TrimSpace(line[i+len(sep):]))
@@ -168,6 +171,33 @@ func parseDependenciesMarkdown(content string) []rawModule {
 
 // stripMid was a parser helper retained during scaffolding; the parser now
 // inlines its index lookup. The symbol is intentionally absent (deleted).
+
+// ModuleDependency is one module→module adjacency entry (who imports whom)
+// extracted from a /moai codemaps dependencies.md artifact.
+//
+// @MX:NOTE: [AUTO] ModuleDependency — exported adjacency seam so the graph writer (internal/graph) reuses the scaffold parser without a second markdown extractor
+type ModuleDependency struct {
+	PackagePath string
+	DependsOn   []string
+}
+
+// ParseDependenciesMarkdown extracts the module dependency adjacency from
+// /moai codemaps dependencies.md content. It is the exported seam over
+// parseDependenciesMarkdown (same parsing, same fail-open behavior:
+// unrecognized lines are skipped) so cross-package consumers — the graph
+// writer (internal/graph) — reuse one extractor instead of forking it.
+// Output ordering is deterministic (sorted by PackagePath, DependsOn sorted).
+func ParseDependenciesMarkdown(content string) []ModuleDependency {
+	mods := parseDependenciesMarkdown(content)
+	out := make([]ModuleDependency, 0, len(mods))
+	for _, m := range mods {
+		out = append(out, ModuleDependency{
+			PackagePath: m.PackagePath,
+			DependsOn:   m.DependsOn,
+		})
+	}
+	return out
+}
 
 // splitTopLevel splits a comma-separated dependency list, tolerant of "and".
 func splitTopLevel(rhs string) []string {

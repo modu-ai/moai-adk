@@ -143,6 +143,12 @@ main:
           zh: TRUST 5 质量框架
         ref: /core-concepts/trust-5
       - name:
+          ko: 칸반 보드 용어
+          en: Kanban Board Terms
+          ja: カンバンボード用語
+          zh: 看板术语
+        ref: /core-concepts/kanban-board-terms
+      - name:
           ko: 검증 경로 무결성
           en: Verification Claim Integrity
           ja: 検証クレーム完全性

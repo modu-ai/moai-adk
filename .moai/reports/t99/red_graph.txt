@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/graph [github.com/modu-ai/moai-adk/internal/graph.test]
+internal/graph/graph_test.go:92:16: undefined: Build
+internal/graph/graph_test.go:97:25: undefined: Edge
+internal/graph/graph_test.go:105:20: undefined: KindImport
+internal/graph/graph_test.go:129:20: undefined: KindMXSpec
+internal/graph/graph_test.go:145:17: undefined: KindSpecDepends
+internal/graph/graph_test.go:165:16: undefined: Build
+internal/graph/graph_test.go:176:16: undefined: Build
+internal/graph/graph_test.go:180:17: undefined: Build
+internal/graph/graph_test.go:202:16: undefined: Build
+internal/graph/graph_test.go:241:20: undefined: Edge
+internal/graph/graph_test.go:202:16: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/graph [build failed]
+FAIL

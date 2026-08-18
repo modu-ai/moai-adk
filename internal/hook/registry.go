@@ -201,6 +201,14 @@ func mergeHandlerOutput(merged, output *HookOutput) {
 		merged.Retry = true
 	}
 
+	// WorktreePath (WorktreeCreate active creator, issue #1570): the path the
+	// handler created must survive the merge so the CLI dispatcher can echo
+	// it to stdout — an empty path aborts the agent spawn. Last-non-empty
+	// wins; only one WorktreeCreate handler exists in-tree.
+	if output.WorktreePath != "" {
+		merged.WorktreePath = output.WorktreePath
+	}
+
 	if output.HookSpecificOutput == nil {
 		return
 	}

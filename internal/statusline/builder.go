@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -106,8 +107,8 @@ func New(opts Options) Builder {
 	homeDir := opts.HomeDir
 	if usageProvider == nil {
 		if homeDir == "" {
-			// Auto-detect home directory
-			if h, err := os.UserHomeDir(); err == nil {
+			// Auto-detect home directory (HOME-first via internal/paths)
+			if h, err := paths.Home(); err == nil {
 				homeDir = h
 			}
 		}

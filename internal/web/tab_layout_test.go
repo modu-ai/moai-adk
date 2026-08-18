@@ -13,10 +13,11 @@ import (
 
 // wantTabOrder is the canonical tab order. It is asserted as a SEQUENCE, not
 // a set — the tab nav and the tabpanel sequence must both follow it.
-// SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (10th tab).
+// SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (10th tab); the crosssession
+// posture panel is the 11th.
 var wantTabOrder = []string{
 	"identity", "language", "launch", "llm", "workflow",
-	"git-worktree", "audit", "agentfm", "report", "mcp",
+	"git-worktree", "audit", "agentfm", "report", "mcp", "crosssession",
 }
 
 // TestConsoleTabsOrder verifies AC-WCR-010.

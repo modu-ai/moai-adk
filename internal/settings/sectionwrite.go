@@ -43,6 +43,10 @@ var sectionRootKeys = map[string]map[string]bool{
 	"report": {"report": true},
 	// SPEC-MCP-CONSOLE-001 M1: mcp.yaml top-level key is `mcp`.
 	"mcp": {"mcp": true},
+	// crosssession — cross-session messaging posture (inbound / isolate_machines
+	// / dialog_expiry). The launchers translate this file into a session
+	// --settings injection; the web console edits it through the seam.
+	"crosssession": {"crosssession": true},
 }
 
 // WriteSectionViaSeam은 projectRoot의 .moai/config/sections/<section>.yaml에

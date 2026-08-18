@@ -26,8 +26,11 @@ func NewRenderer(themeName string, noColor bool, segmentConfig map[string]bool) 
 	theme := NewTheme(themeName)
 
 	r := &Renderer{
-		// v3 separator: U+2502 box drawing vertical line
-		separator:     " │ ",
+		// Segment separator: ASCII "|" — operator-confirmed 2026-08-17
+		// (replacing U+2502 "│", which rendered at a different width than
+		// the already-ASCII "|" inside renderRepoBranchSegment and the "/"
+		// separators, making the bar rhythm uneven across one line).
+		separator:     " | ",
 		noColor:       noColor,
 		segmentConfig: segmentConfig,
 		theme:         theme,
@@ -104,22 +107,16 @@ func (r *Renderer) joinSegments(segments []string) string {
 // v3 layout renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// renderDefaultV3 renders the default mode 3-line layout.
+// renderDefaultV3 renders the default mode 3-line layout (4th, conditional
+// last line below).
 //
-// L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ██████████ 88% │ 5H: 🔋 ██████████ 45% │ 7D: 🪫 ██████████ 82%
-// L3: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
+// L1: 🤖 Model | 🔅 v2.1.50 | 🗿 v2.8.0 | ⏳ 2h 34m | 💬 MoAI
+// L2: CW: 🪫 ██████████ 88% | 5H: 🔋 ██████████ 45% | 7D: 🪫 ██████████ 82%
+// L3: 📁 moai-adk-go | 🅱️ feat/auth ↑2↓1 | 📊 +3 M2 ?1
+// Last (conditional): 🏷️ session identity + workload — operator directive
+// 2026-08-17 places it after the project line, not before the model line.
 func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	var lines []string
-
-	// L0: who this session is and what work is on the board. Kept apart from
-	// the model line because it answers a different question — identity and
-	// workload, not capability — and because the operator scans for it first
-	// when several sessions are open. Renders nothing when there is no
-	// identity and no backlog, so an ordinary session keeps the old layout.
-	if l0 := r.renderSessionLine(data); l0 != "" {
-		lines = append(lines, l0)
-	}
 
 	// L1: model, Claude version, MoAI version, session time, output style
 	l1 := r.renderInfoLine(data, false)
@@ -137,6 +134,16 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	l3 := r.renderDirGitLine(data)
 	if l3 != "" {
 		lines = append(lines, l3)
+	}
+
+	// Last line: who this session is and what work is on the board. Kept
+	// apart from the model line because it answers a different question —
+	// identity and workload, not capability — and kept LAST by operator
+	// directive (2026-08-17): the project line heads the statusline and the
+	// session line closes it. Renders nothing when there is no identity and
+	// no backlog, so an ordinary session keeps the old layout.
+	if ls := r.renderSessionLine(data); ls != "" {
+		lines = append(lines, ls)
 	}
 
 	if len(lines) == 0 {
@@ -170,16 +177,24 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 		}
 	}
 
-	// Backlog: 🔄 in flight, ⤵️ waiting in the queue. Symbols rather than words
-	// because this binary ships to users of every supported language.
+	// Backlog: 🔄 TODO: picked/queued (first number picked — in flight, second
+	// queued — waiting in the queue). The word rides along by operator request
+	// (2026-08-17): two bare numbers under a bare icon did not read as the
+	// todo queue. It deliberately gives ground on the symbol-first rationale
+	// above (words excluded for 16-language shipping) because TODO reads the
+	// same way in every supported language.
 	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 %d / ⤵️ %d", data.Backlog.Picked, data.Backlog.Queued))
+		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// GitHub: 🐛 open issues, 📥 open pull requests. Served from cache, so this
-	// is a file read even when the network is down.
+	// GitHub: 🔀 open issues / open pull requests (first number issues, second
+	// PRs). Served from cache, so this is a file read even when the network is
+	// down. One icon over both counts (operator request 2026-08-17): the pair
+	// reads as one service's activity, and the former ⚠️/🔀 split spent two
+	// icons saying so. The 🔀 here is the PR icon — distinct from the repo
+	// indicator, which renders 📡 (see renderRepoBranchSegment).
 	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
-		segs = append(segs, fmt.Sprintf("🐛 %d / 📥 %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
+		segs = append(segs, fmt.Sprintf("🔀 %d / %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
 	}
 
 	return r.joinSegments(segs)
@@ -357,7 +372,7 @@ func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 }
 
 // renderDirGitLine renders the L3 line for layout v3.
-// Format: 🔀 owner/name | 🅱️ branch ↑N +N │ 📫 +0 M6 ?0 │ [task] │ 💌 PR #1023 (⌥approved)
+// Format: 📡 owner/name | 🅱️ branch ↑N +N | 📫 +0 M6 ?0 | [task] | 💌 PR #1023 (⌥approved)
 //
 // Layout v3 changes (CH3 + CH5):
 //   - directory moved to L1 end (CH5)
@@ -496,10 +511,11 @@ func (r *Renderer) isPREnabled() bool {
 }
 
 // renderRepoBranchSegment renders the combined repo + branch segment in the
-// form "🔀 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3.
+// form "📡 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3. The 📡 repo indicator
+// is distinct from the 🔀 PR icon rendered by renderSessionLine.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "🔀 owner/name | 🅱️ branch ↑N +N"
+//   - Workspace.Repo present + Branch present: "📡 owner/name | 🅱️ branch ↑N +N"
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
 //   - Ahead == 0:                              "↑N" portion omitted
@@ -545,7 +561,7 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	}
 
 	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
-	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
+	return fmt.Sprintf("📡 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff

@@ -52,7 +52,7 @@ flowchart TD
 
 Overview opens with four stat tiles: **SPEC** (total count and how many are in progress), **drift** (MUST-FIX count), **session** (PID-confirmed count / registry count), and **verify** (the last verification result and the number of keys).
 
-Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the five roles `lead → plan → run → review → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
+Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the four roles `lead → plan → run → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
 
 ## Kanban — two boards
 

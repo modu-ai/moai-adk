@@ -17,7 +17,7 @@ added_in: "v3.1"
 
 Kanban Mode replaces the old model — driving one SPEC at a time in a single session — with a **multi-session board**. One lead session conducts, companion sessions work simultaneously each in their own worktree, and completed cards flow across the board. The backbone of that board is the Origin-Trail Chain.
 
-You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract on which a goal preset of the chain (`kanban_chain`, a bundle that predeclares a completion condition) rides. The four phases of the chain (plan → run → review → sync) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
+You start it by attaching the `--kanban` (short `-k`) switch to the session launcher. It is neither a new subcommand nor a new runtime — it is merely an entry contract under which the launcher arms the kanban-mode environment. The three phases of the chain (plan → run → sync — the review verdict is absorbed by the sync gate) and the human gates inherit the existing `/moai goal` engine and `full-pipeline` chaining rules as-is.
 
 This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain design, the chain phases, and "what is _not_ automated." For a short introduction from the workflow-command viewpoint, see [`/moai` unified command](/en/workflow-commands/) first.
 
@@ -27,7 +27,7 @@ This page covers the entry conditions of Kanban Mode, the Origin-Trail Chain des
 **Analogy**: each card on a kanban board is one worktree session. As cards flow across the board, sessions flow along the chain.
 {{< /callout >}}
 
-In the old model, a single session owned one SPEC end to end — writing the plan, implementing in run, reviewing in review, and tidying docs in sync. As a SPEC grows large, one session struggles to handle it, and when it hits the context-window limit, the session must be split.
+In the old model, a single session owned one SPEC end to end — writing the plan, implementing in run, and tidying docs in sync. As a SPEC grows large, one session struggles to handle it, and when it hits the context-window limit, the session must be split.
 
 Kanban Mode reframes this structure from a **board viewpoint**:
 
@@ -124,8 +124,8 @@ In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs 
 
 ### Reachable from the command line today
 
-- **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>-<run-id>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
-- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the four companion launch commands (`moai cc -k --name plan-<run-id>` and so on) in the user's language. The notice a companion session receives identifies only the run it joined; the joined role is not in the notice — it is recorded separately in the session record.
+- **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
+- **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the three companion launch commands (`moai cc -k --name plan` and so on) in the user's language. The notice a companion session receives identifies only the run it joined; the joined role is not in the notice — it is recorded separately in the session record.
 - **Session record** — the entered session's role, backend, and target SPEC are recorded.
 - **`moai chain` CLI** — five subcommands work: `status` (current-node summary), `lineage` (root-to-leaf lineage), `back` (parent node's resume target and command), `list` (all nodes with freshness), `prune` (folding terminated old nodes into an archive). The `internal/chain/` storage layer below backs them.
 - **Dispatch** — the actor moving cards between columns is the lead session's orchestrator. The protocol lives in `.claude/rules/moai/workflow/kanban-dispatch.md`, and companion sessions are launched by hand, one per terminal. There is no path by which a session launches another session.
@@ -139,7 +139,7 @@ In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs 
 
 ### Not yet called by anyone
 
-The **board state store** in `internal/kanban/` is complete as code — a closed six-column enumeration (backlog → plan → run → review → sync → done), a single-origin state file converging on one primary checkout, file locking, corruption recovery, and reconciliation with SPEC frontmatter status (it marks mismatches rather than fixing them). But no production caller reads or writes it yet. That means column position is held by the lead session's memory and the SPEC status, not by a file, and no CLI verbs exist to view the board or move a card.
+The **board state store** in `internal/kanban/` is complete as code — a closed five-column enumeration (backlog → plan → run → sync → done), a single-origin state file converging on one primary checkout, file locking, corruption recovery, and reconciliation with SPEC frontmatter status (it marks mismatches rather than fixing them). But no production caller reads or writes it yet. That means column position is held by the lead session's memory and the SPEC status, not by a file, and no CLI verbs exist to view the board or move a card.
 
 {{< callout type="warning" >}}
 {{< icon warning warn >}} **There is no `moai kanban` command.** The CLI surface of Kanban Mode is the launcher switch `-k` and the lineage query command `moai chain`, nothing else.
@@ -167,25 +167,24 @@ $ moai cc -k
 $ moai glm -k SPEC-AUTH-001
 ```
 
-When the lead session opens, it prints the run identifier together with the four companion launch commands. A human runs each one **in a separate terminal** to populate the board.
+When the lead session opens, it prints the run identifier together with the three companion launch commands. A human runs each one **in a separate terminal** to populate the board.
 
 ```bash
-# Companion sessions — join with the run-id the lead reported
-$ moai cc -k --name plan-<run-id>
-$ moai cc -k --name run-<run-id>
-$ moai cc -k --name review-<run-id>
-$ moai cc -k --name sync-<run-id>
+# Companion sessions — join under their bare role name (the run-id is the lead's identifier)
+$ moai cc -k --name plan
+$ moai cc -k --name run
+$ moai cc -k --name sync
 ```
 
-On successful entry the launcher arms the `kanban_chain` goal preset inside the session (after Implementation Kickoff Approval passes). The goal preset is a completion condition that the `stop-goal` Stop-hook evaluator evaluates at every turn end — it is not a new runtime or hook, but one condition laid on top of existing machinery.
+On successful entry the launcher arms the kanban-mode environment (the `MOAI_KANBAN` chain seed) inside the session, and the lead's SessionStart notice announces the run id and the companion launch commands — not a new runtime or hook, but an entry contract riding on existing machinery.
 
-## Running one chain across five terminals
+## Running one chain across four terminals
 
-Opening the lead with `moai cc -k` prints one launch command per companion session alongside the run identifier. The operator opens each of them **in its own terminal** to complete the five-session run — the lead instructs, and plan · run · review · sync each work in their own worktree.
+Opening the lead with `moai cc -k` prints one launch command per companion session alongside the run identifier. The operator opens each of them **in its own terminal** to complete the four-session run — the lead instructs, and plan · run · sync each work in their own worktree.
 
-![One Kanban Mode run: a lead and four companion sessions open in their own terminals](/images/profile/kanban-five-sessions.png)
+![One Kanban Mode run: the five-column board with a lead and three companion sessions open in their own terminals](/images/profile/kanban-five-sessions.png)
 
-Cards flow like this: the lead instructs the `plan` session to author, the `run` session implements from that plan, the `review` session checks the implementation, and the `sync` session reconciles the code with the SPEC and commits. Each dispatch happens only after the lead has read the phase's progress evidence.
+Cards flow like this: the lead instructs the `plan` session to author, the `run` session implements from that plan, and the `sync` session reconciles the code with the SPEC and commits. The review verdict is not a separate column: the sync gate absorbs it, running the review lenses itself. Each dispatch happens only after the lead has read the phase's progress evidence.
 
 {{< callout type="info" >}}
 **Why this shape — a backend per role.** Design and leading run on Opus; implementation runs on GLM. When opening companions, `moai glm -k --name ...` instead of `moai cc -k --name ...` joins that session on the GLM backend. Keeping the expensive model where judgment is needed and routing the implementation load to the cheaper backend is what makes the token cost of a multi-session run sustainable. Sessions message each other, and cross-session messaging is auto-permitted through the injected `--settings`.
@@ -195,7 +194,7 @@ The model labels visible in the screenshot's statuslines reflect one operator's 
 
 ## Watching the board in a browser
 
-Rather than scanning five terminals by eye, `moai web` shows the same state on one screen. The Kanban screen carries the five-session chain board alongside the SPEC pipeline, with Overview, Specs, Monitor, and Settings screens beside it.
+Rather than scanning four terminals by eye, `moai web` shows the same state on one screen. The Kanban screen carries the kanban chain board alongside the SPEC pipeline, with Overview, Specs, Monitor, and Settings screens beside it.
 
 ![moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry](/images/profile/web-console-v31-overview.png)
 
@@ -203,7 +202,7 @@ The console binds to loopback only. See [moai web console](/en/advanced/moai-web
 
 ## Chain phases
 
-The kanban chain extends the `full-pipeline` contract (an agreement that auto-chains run → sync for one SPEC). Four phases proceed in order:
+The kanban chain extends the `full-pipeline` contract (an agreement that auto-chains run → sync for one SPEC). Three phases proceed in order:
 
 ```mermaid
 flowchart TD
@@ -211,8 +210,7 @@ flowchart TD
     Plan --> Gate1{"Implementation Kickoff Approval<br/>(human gate)"}
     Gate1 -->|"approved"| Run["run<br/>implementation cycle → AC convergence"]
     Gate1 -->|"declined"| Stop1["Stop"]
-    Run --> Review["review<br/>security review"]
-    Review --> Sync["sync<br/>docs · changelog · closure"]
+    Run --> Sync["sync<br/>review lenses + docs · changelog · closure"]
     Sync --> Done["Chain complete"]
 ```
 
@@ -220,15 +218,30 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 - **plan** — authors the SPEC document, and an independent audit (plan-auditor) verifies its contents. See [`/moai plan`](/en/workflow-commands/moai-plan).
 - **run** — the implementation cycle (TDD or DDD) implements code until it converges on the Acceptance Criteria (AC). See [`/moai run`](/en/workflow-commands/moai-run).
-- **review** — produces a security review result with `/moai review --security --deep --repo`. By severity it returns to run or proceeds to sync.
-- **sync** — updates docs, writes the changelog, and closes the phase. See [`/moai sync`](/en/workflow-commands/moai-sync).
+- **sync** — the sync gate runs the review lenses (matched to the surfaces the change touched) and reaches the review verdict itself, then updates docs, writes the changelog, and closes the phase. See [`/moai sync`](/en/workflow-commands/moai-sync).
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
+
+## Card Classes — A/B/C
+
+Not every card needs to travel through all three working columns. Most of what piles up in the backlog is simple cleanup, and putting such a card through the full plan → run → sync procession costs more ceremony than the change is worth. When a card leaves `backlog`, the lead classifies it and states the class in the dispatch.
+
+| Class | Shape | Path it travels |
+|--------|------|---------------|
+| A — direct close | A one-file, one-line change with no design judgement in it, and CI catches the regression | One session carries the card all the way to a PR; `plan` skipped |
+| B — defect, cause not yet established | Something is broken but the cause has not been established yet | `run → sync`; `plan` is skipped, so no SPEC exists |
+| C — design change | Involves a decision or spans subsystems | All three working columns |
+
+Class A is admitted on verified evidence only — the diff is measured against the base to show it touches one file, and CI is confirmed green on the head that will merge. "It's faster" is never the justification. Speed is the effect of skipping the columns, not the reason for it, so a Class A justified by speed alone is a Class C being rushed.
+
+What Class B skips is `plan`, not the sync gate's review. A defect whose cause is unestablished is exactly what a review catches, so the gate stays to the end. Before the card leaves `run`, the evidence that established the cause — what was reproduced and what it printed — is written into the card's progress record.
+
+One card occupies one column at a time, and cards actually run in parallel only when each occupies a different worktree.
 
 ## When to use it, when not to
 
 {{< callout type="info" >}}
-**One lead, four companions.** Entry and dispatch work in v3.1. The board state store that would pin column positions to a file has no callers yet, so the current position of a card is held by the lead session and the SPEC status.
+**One lead, three companions.** Entry and dispatch work in v3.1. The board state store that would pin column positions to a file has no callers yet, so the current position of a card is held by the lead session and the SPEC status.
 {{< /callout >}}
 
 **When to use** — when advancing one SPEC (or several SPECs) simultaneously across multiple worktree sessions. When you need to track session lineage with the Origin-Trail Chain. When you want to drive one SPEC all the way to closure in one go.

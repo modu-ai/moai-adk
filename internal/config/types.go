@@ -447,9 +447,10 @@ type WorkflowConfig struct {
 
 	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
 	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
-	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to
-	// Phase 0.95's Mode 1-6 shape axis — B (this field) decides model/effort,
-	// Phase 0.95 decides spawn shape; they compose, never compete.
+	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to the
+	// Phase 4 mode-shape axis (direct / serial / fanout / sweep) — B (this
+	// field) decides model/effort, Phase 4 decides spawn shape; they compose,
+	// never compete.
 	// When the block is absent the map is nil and RouteModelFor falls back to
 	// the documented default entry with FallbackApplied=true.
 	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
@@ -1320,6 +1321,29 @@ type feedbackFileWrapper struct {
 // handoffFileWrapper handles the handoff.yaml section file.
 type handoffFileWrapper struct {
 	Handoff HandoffConfig `yaml:"handoff"`
+}
+
+// CrossSessionConfig represents the cross-session messaging section
+// (crosssession.yaml). The moai launchers (cc/glm/cg) translate it into a
+// transient --settings file at launch; the web console edits it through the
+// settings seam. Values map onto Claude Code's crossSessionInbound /
+// isolatePeerMachines / dialogExpiry settings keys.
+//
+// The neutral defaults are load-bearing: inbound unset leaves Claude Code's
+// per-message permission-class ladder in charge, and isolate_machines false
+// keeps the documented no-approval default for cross-machine messages (a true
+// from any Claude Code scope applies and cannot be turned off from a lower
+// scope, so the launcher emits it only on the user's explicit opt-in).
+type CrossSessionConfig struct {
+	// Inbound is "" (unset), "accept", "hold", or "refuse" — the closed value
+	// set of Claude Code's crossSessionInbound.
+	Inbound string `yaml:"inbound"`
+	// IsolateMachines true requires explicit approval before any message
+	// leaves the machine (Claude Code isolatePeerMachines).
+	IsolateMachines bool `yaml:"isolate_machines"`
+	// DialogExpiry is "" (unset → Claude Code's 5m default), "60s", "5m",
+	// "10m", or "never" — the closed value set of Claude Code's dialogExpiry.
+	DialogExpiry string `yaml:"dialog_expiry"`
 }
 
 // archiveFileWrapper handles the archive.yaml section file.

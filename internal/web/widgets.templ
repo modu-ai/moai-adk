@@ -13,12 +13,18 @@
 package web
 
 // panel 은 화면 구획 하나. density 는 roomy | dense 로 필드 밀도를 정한다.
-templ panel(title, meta, help, density string) {
+// metaKey 는 meta 가 개수를 포함한 합성문("registry 5")일 때의 번역 키다 —
+// metaParams 가 {0} 자리에 숫자를 넣는다. 비어 있으면 meta 를 그대로 렌더한다.
+templ panel(title, meta, metaKey, metaParams, help, density string) {
 	<section class="panel" data-density={ density }>
 		<div class="panel__head">
 			<h2 class="panel__title" data-i18n={ "panel." + i18nSlug(title) }>{ title }</h2>
 			if meta != "" {
-				<span class="panel__meta">{ meta }</span>
+				if metaKey != "" {
+					<span class="panel__meta" data-i18n={ metaKey } data-i18n-params={ metaParams }>{ meta }</span>
+				} else {
+					<span class="panel__meta">{ meta }</span>
+				}
 			}
 		</div>
 		if help != "" {
@@ -29,14 +35,20 @@ templ panel(title, meta, help, density string) {
 }
 
 // noteBanner 는 화면 안내문. kind == "warn" 이면 주의 배너가 된다.
-templ noteBanner(kind, text string) {
+// key 는 text 의 번역 키다 — 비어 있으면 text 를 그대로 렌더한다(번역 안 된
+// 안내문과 번역된 안내문이 같은 위젯에서 나올 수 있어 선택적으로 둔다).
+templ noteBanner(kind, text, key string) {
 	<p class={ "banner", templ.KV("banner--warn", kind == "warn") } role={ bannerRole(kind) }>
 		if kind == "warn" {
 			@iconAt("alert", 14)
 		} else {
 			@iconAt("note", 14)
 		}
-		<span>{ text }</span>
+		if key != "" {
+			<span data-i18n={ key }>{ text }</span>
+		} else {
+			<span>{ text }</span>
+		}
 	</p>
 }
 

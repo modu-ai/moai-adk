@@ -5,7 +5,7 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>An Agentic Development Harness for Claude Code — wrapped along three axes: cost, self-improvement, and quality control</strong>
+  <strong>A verification-driven agent orchestration harness — the structure that makes Claude Code's code trustworthy</strong>
 </p>
 
 <p align="center">
@@ -13,11 +13,6 @@
   <a href="./README.ko.md">한국어</a> ·
   <a href="./README.ja.md">日本語</a> ·
   <a href="./README.zh.md">中文</a>
-</p>
-
-<p align="center">
-  <a href="https://book.mo.ai.kr" target="_blank"><strong>Official Book: Practical Agentic Coding with Claude Code</strong></a><br>
-  A hands-on harness engineering guide by the MoAI-ADK author — <a href="https://book.mo.ai.kr" target="_blank">book.mo.ai.kr</a>
 </p>
 
 <p align="center">
@@ -32,7 +27,8 @@
 
 <p align="center">
   <a href="https://adk.mo.ai.kr"><strong>Official Documentation</strong></a> ·
-  <a href="https://adk.mo.ai.kr/book">Book: Practical Agentic Coding with Claude Code</a>
+  <a href="https://adk.mo.ai.kr/book">Book: Practical Agentic Coding with Claude Code</a> ·
+  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
 </p>
 
 ---
@@ -41,32 +37,16 @@
 
 ---
 
-## MoAI-ADK: A Three-Axis Agentic Harness
+## What's New in v3.1 — Kanban Mode
 
-MoAI-ADK (Agentic Development Kit) enables Claude Code to produce code — and then makes that code reliable at predictable cost, on a path that keeps improving. A harness wraps the model from the outside. The model is a stochastic worker moving token by token: it remembers neither budget, nor quality bar, nor where the last session broke off. Cost ceilings, passing test suites, a learning loop that compounds, and continuity that survives `/clear` — none of these can be re-seeded by a prompt every turn. The system must enforce them from the outside.
-
-Three properties, three axes. MoAI-ADK wraps Claude Code along all three, not just one:
-
-- **🪙 Cost** — Tokenomics: the same quality for fewer tokens, higher quality for the same tokens.
-- **🧠 Self-improvement** — Agentic loop engineering: the harness gets better as it runs, turning observation into rules.
-- **🛡️ Quality control** — Agentic harness: SPEC lifecycle, TRUST 5 gates, and isolation that prevents rework (the single biggest token waste).
-
-It does not replace Claude Code. It wraps, in structure, the parts Claude Code leaves to you — model routing, quality gates, cost control, learning loops, session continuity. A single binary written in Go, it runs on macOS, Linux, and Windows with no extra dependencies.
-
-<p align="center">
-  <img src="./assets/images/why-harness-infographic-en.png" alt="An Agentic Development Harness for Claude Code" width="85%">
-</p>
-
----
-
-## New in v3.1 — Kanban Mode
+> v3.1 ships on August 15, Liberation Day in Korea. The intent: release work from the old shape of a single session bound to one context limit. The limit itself does not disappear — what actually changes is written down below.
 
 A session holds one context window, and a long SPEC fills it. Everything that comes after pays for everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
 
-Kanban Mode splits one unit of work across **five terminals instead of one**. A lead session drives the chain; four companion sessions each own a single column — `plan`, `run`, `review`, `sync` — and carry only that column's context. Nothing is uncapped: each session still has its own limit. What changes is that no session carries four phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
+Kanban Mode splits one unit of work across **four terminals instead of one**. A lead session drives the chain; three companion sessions each own a single column — `plan`, `run`, `sync` — and carry **only that column's context**. Review is not a separate column: the sync gate absorbs it, running the review lenses itself to reach the verdict. Nothing is uncapped: each session still has its own limit. What changes is that no session carries three phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
 
 <p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: a lead session and four companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
+  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
 </p>
 
 Each lane is also free to run a different backend and effort level — the run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2, because the reasoning a lane needs is not the same in every column.
@@ -74,16 +54,15 @@ Each lane is also free to run a different backend and effort level — the run a
 ### Getting started
 
 ```bash
-moai cc -k                          # lead — announces a run-id, seeds the chain
-moai cc -k --name plan-<run-id>     # companion, in its own terminal
-moai cc -k --name run-<run-id>
-moai cc -k --name review-<run-id>
-moai cc -k --name sync-<run-id>
+moai cc -k                    # lead — announces a run-id, seeds the chain
+moai cc -k --name plan        # companion, in its own terminal
+moai cc -k --name run
+moai cc -k --name sync
 ```
 
-Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
+Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the lead session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any lane to put it on the GLM backend.
 
-The board has six columns, `backlog → plan → run → review → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
+The board has five columns, `backlog → plan → run → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
 
 ```text
 /moai todo "fix the stale rename hint"   # append a card
@@ -92,9 +71,35 @@ The board has six columns, `backlog → plan → run → review → sync → don
 
 Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And between phases the lead asks you to `/clear` the named session, since `/clear` is user-typed and cannot be sent as an instruction.
 
+### Words the four sessions share
+
+The recurring vocabulary of the kanban docs, gathered into one picture. A **column** is a stage of the board; a **lane** is the pair of a session and its worktree that carries one card through those stages to the end — the difference between a stop and a route.
+
+```text
+Operator ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
+                          (the lead advances a card only on evidence it read)
+
+Lane — card t0:  run session + worktree WT-t0   ┐ the two flows share one board,
+Lane — card t1:  run session + worktree WT-t1   ┘ run side by side, never mix
+```
+
+| Term | One-line definition |
+|---|---|
+| card | One unit of work. Enters via `/moai todo`, addressed by a short id |
+| column | One stage of the board — five columns in fixed order |
+| backlog | The entrance queue. No owning session, so only a human can add work |
+| lane | The session+worktree pair that carries one card to the end. One parallel work stream |
+| lead | The coordinating session. Advances cards only on evidence it read; never writes code itself |
+| companion | The session seated in a column doing the work. Launched by hand, one per terminal |
+| run-id | Short identifier the lead announces at start. It names the lead session; companions never carry it |
+| worktree | The card's isolated checkout (`WT-<card>` branch). One carries the card from run through sync |
+| dispatch | The instruction the lead sends a companion — a pointer to the work, never a copy |
+
+Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
+
 ### Watching the board
 
-`moai web` serves a local console with a live Kanban screen — the five-session chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings.
+`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings screens.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
@@ -104,65 +109,78 @@ Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [`/mo
 
 ---
 
-## Why Three Axes
+## Why moai-adk?
 
-Optimizing only cost is a trap. Push the cost axis alone and quality silently erodes — rework and debug loops follow, and rework is the most expensive token spend of all. Build quality gates with no learning loop and the same mistakes recur every session. Run an autonomous loop with no cost ceiling and a single runaway task drains the quota. The three axes hold each other up: **cost stays economical because quality prevents rework, quality stays enforceable because the loop captures what worked, and the loop stays affordable because cost gates stop it before overage.**
+The age of agents writing code has arrived, but you cannot take an agent's output on faith. Whether "the tests passed" is the result of actually running the tests or just the agent's guess has been the central problem from the start. moai-adk begins exactly there — it **bans unverified completion claims at the system level** and binds every completion claim to the command actually run and its output as evidence.
 
-Every design decision in MoAI-ADK serves one of these three axes. Which model to use, how deeply to reason, how to spend context — none of it is left to chance turn by turn; the system decides, and records the decision so the next run is smarter.
+moai-adk is a harness that wraps Claude Code from the outside. It does not replace Claude Code; it takes over, in structure, the parts you used to manage by hand — which model to use, how deeply to reason, how to verify results, how to resume when a session breaks, how to keep parallel runs from stepping on each other. Verification integrity, the SPEC lifecycle, autonomous execution with real boundaries, a living codebase navigator, a self-improvement loop, and parallel-safe structure. These six form the identity of moai-adk.
 
 <p align="center">
-  <img src="./assets/images/three-axes-infographic-en.png" alt="Three Axes of MoAI-ADK — Tokenomics · Agentic Loop · Agentic Harness" width="90%">
+  <img src="./assets/images/why-harness-infographic-en.png" alt="An agentic development harness wrapping Claude Code" width="85%">
 </p>
 
----
+This identity organizes into three keys: **cost** (tokenomics — the same quality for fewer tokens), **self-improvement** (agentic loop engineering — turning observation into rules so the harness gets better as it runs), and **quality control** (the SPEC lifecycle, TRUST 5 gates, and isolation that prevents rework). No one of them suffices alone — below, why each needs the others.
 
-## 🪙 The Cost Axis — Tokenomics
+### Eight differentiators
+
+| Differentiator | What it means |
+|---|---|
+| **No false verification** | A claim that "tests pass" is always bound to the command actually run and its output. The system forbids presenting an unrun check as a success — verification-claim integrity is bound into every agent and orchestrator surface. |
+| **Autonomy with real boundaries** | Declare a completion condition with `/moai goal` and the session works on its own until it holds. Four hard boundaries are attached — a turn limit (default 30), a stagnation guard, a wall-clock budget, and pre-approval gates — so it cannot fall into an infinite loop. |
+| **Parallel-safe** | Every SPEC gets its own working tree, a branch-state guard blocks accidental branch switches in the primary checkout, and the gap against the remote is checked before spawning write agents. Two write-capable agents never run at the same time. |
+| **Long-horizon continuity** | Work survives `/clear`. Progress stays in `progress.md`, handoff messages in memory, routing decisions in decision memory. The next session starts from what the last one learned, not from bare ground. |
+| **Cost-efficient** | Models and reasoning depth are assigned declaratively, matched to work phase and SPEC size. CG mode (Claude leader + GLM workers) cuts 60–70% of cost on implementation-heavy work. Prompt caches are reused and long output is spilled to disk to keep the context light. |
+| **Equal support for 16 programming languages** | Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift — sixteen programming languages handled as one set via marker-based auto-detection. None receives preferential treatment. |
+| **Self-improving** | Recurring failure patterns observed in the wild rise as proposed rule changes. Nothing is applied silently — approval comes first. Routing decisions and gate evidence accumulate in decision memory as material for the next run. |
+| **Native-language friendly** | Korean, Japanese, Chinese, and English locales are maintained in the same PR, translationese is banned, and each language gets its own native prose. Users are never forced into English. |
+
+### What's different
+
+| | Claude Code alone | Typical harness | **moai-adk** |
+|---|---|---|---|
+| Evidence binding of completion claims | You check by hand | Usually absent | Enforced by the system (5-section evidence report format) |
+| SPEC lifecycle | None | Limited | plan→run→sync 3-phase + Tier S/M/L |
+| Hard boundaries on autonomous loops | N/A | Usually a turn cap only | Turn limit + stagnation guard + wall clock + approval gate |
+| Parallel work isolation | Manual | Limited | worktree + branch guard + pre-spawn sync check |
+| Session continuity | Broken by `/clear` | Limited | handoff + memory + progress files |
+| Equal treatment of 16 programming languages | N/A | N/A | marker auto-detection + per-language toolchains |
+| Self-improvement loop | None | Limited | failure observation → rule promotion (approval-gated) |
+
+```mermaid
+flowchart TD
+    User["User request"] --> Analyze["Intent analysis<br/>Analyze-First routing"]
+    Analyze --> Plan["plan — SPEC authoring"]
+    Plan --> Audit["Independent audit<br/>plan-auditor"]
+    Audit --> Run["run — TDD/DDD implementation"]
+    Run --> Verify["trust-but-verify<br/>verification batch"]
+    Verify --> Sync["sync — docs + PR"]
+    Sync --> Learn["Decision memory + lessons"]
+    Learn -.next session.-> Analyze
+```
+
+### The three keys hold each other up
+
+Push the cost key alone and quality silently erodes — rework and debug loops follow, and rework is the most expensive token spend of all. Build quality gates with no learning loop and the same mistakes recur every session. Run an autonomous loop with no cost ceiling and a single runaway task drains the quota. The three keys hold each other up — **cost stays economical because quality prevents rework, quality stays enforceable because the loop captures what worked, and the loop stays affordable because cost gates stop it before overage.**
+
+Every design decision serves one of these three keys. Which model to use, how deeply to reason, how to spend context — none of it is left to chance turn by turn. The system decides, and records the decision so the next run is smarter.
+
+<p align="center">
+  <img src="./assets/images/three-axes-infographic-en.png" alt="The three keys of moai-adk — Tokenomics · Agentic Loop · Agentic Harness" width="90%">
+</p>
+
+### Cost is determined by assignment, not unit price
 
 Token prices fell **98% over three years** (Linux Foundation), yet enterprise AI spend rose **320%** in the same window. Volume growth overwhelmed the price drop. Agents spin through dozens to hundreds of steps to solve a single task, burning tokens proportionally. In usage-based pricing this becomes the invoice; in subscription, it eats the weekly quota shared by every model.
 
 Uber deployed Claude Code to 5,000 engineers and **burned through a year of coding budget in four months**, then imposed monthly token limits. Meta, Amazon, and Microsoft each walked back unlimited-AI policies. **Tokenomics** — matching the model to the task to raise token efficiency — became the tech industry's new baseline.
 
-Traditional cost control was built for rising unit prices, so it is helpless against this paradox: prices falling while total spend climbs. The bottleneck is not unit price but volume, more precisely the step count an agent spins before finishing.
+Traditional cost control was built for rising unit prices, so it is helpless against this paradox: prices falling while total spend climbs. The bottleneck is not unit price but volume — more precisely, the step count an agent spins before finishing.
 
-**Cost is determined by assignment, not unit price.** The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within the same Claude family, per-task cost tracks how efficiently a model *finishes* — not what a token costs.
-
-| Model [effort] | Pass@1 | Per-task cost | Output tokens | Steps |
-|---|---|---|---|---|
-| claude-opus-5 [low] | 58% | **$1.66** | 20k | 36 |
-| claude-opus-5 [medium] | 69% | $3.29 | 37k | 52 |
-| claude-opus-5 [high] | 73% | $6.08 | 64k | 73 |
-| claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
-| claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
-
-Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
-
-#### Four stages: measurement → routing → diet → defense
-
-<p align="center">
-  <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, cost up 320%" width="80%">
-</p>
-
-### Routing — the right model and reasoning depth per task
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-en.png" alt="Agent Model Routing — 11 agents routed to the right model and effort" width="85%">
-</p>
-
-**Routing — assign the right model and reasoning depth to each task.** Declaratively assign models and reasoning effort (low / medium / high / max) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition.
-
-- **No-Haiku 3-Tier Policy** — excludes Haiku from the routing set; Sonnet at low effort takes single-shot, input-dominated work, Opus carries every multi-turn agentic row.
-- **Profile Matrix** — 12 agents × 3 profiles = 36 cells. `moai model profile` resolves each agent's `{model, effort}` pair.
-- **CG Mode** — `moai cg` combines a Claude leader (strategy, planning, audits) with GLM workers (bulk implementation). **60-70% cost savings** on implementation-heavy workloads.
-
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-en.png" alt="CG Mode — Claude leader + GLM worker hybrid" width="85%">
-</p>
-
-### DeepSWE Benchmark — where the value-for-money knee sits
+The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within the same Claude family, per-task cost tracks how efficiently a model *finishes* — not what a token costs.
 
 | Model [effort] | Score | Per-task cost | Note |
 |---|---|---|---|
-| opus-5 [low] | 58%±2 | $1.66 | |
+| opus-5 [low] | 58%±2 | **$1.66** | |
 | opus-5 [medium] | **69%±1** | **$3.29** | **value-for-money knee** |
 | opus-5 [high] | 73%±2 | $6.08 | +4pt score, 1.8× cost |
 | opus-5 [xhigh] | 73%±3 | $9.07 | **net loss** — ties high, +49% cost only |
@@ -170,59 +188,15 @@ Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (
 | glm-5.2 [max] | 44%±2 | $3.92 | API-metered disadvantage · valuable under z.ai flat-fee |
 | sonnet-5 [max] | 54%±4 | $26.40 | Pareto-dominated by opus-5 [low] |
 
+Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
+
+<p align="center">
+  <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, spend up 320%. The response: measure → route → diet → stop" width="80%">
+</p>
+
 ![DeepSWE benchmark — model×effort score and per-task cost](./assets/images/deepswe-benchmark-2.png)
 
 > Source: [DeepSWE v1.1 leaderboard](https://deepswe.datacurve.ai) (datacurve.ai, 113 tasks, 2026-07-25)
-
-### Verification Economy · Budget Defense — diet context, stop before overage
-
-**Verification Economy — diet context, persist evidence to disk.** Redirect verbose verification output to disk files, leaving only exit code and bounded tail (max 50 lines) in context. Prompt-cache reuse (cached reads cost 0.1×) and a context-diet `/clear` strategy (auto-recommendations at 1M 50% / 200K 90% thresholds) keep the window light.
-
-**Budget Defense — stop before overage, resume in the next session.** A Token Circuit Breaker aborts at the hard limit (default 90%), saves progress to `progress.md`, and issues a paste-ready resume message. The statusline keeps context usage, cache hit rate, and rate-limit depletion visible at all times.
-
----
-
-## 🧠 The Self-Improvement Axis — Agentic Loop Engineering
-
-The cheapest session is the one that does not repeat last session's mistakes. The self-improvement axis turns each run into material for the next: routing decisions and gate evidence are recorded, recurring patterns become rules, and a declared goal keeps the session working until the condition holds.
-
-**`/moai goal` · `/moai loop`**. Declare a completion condition and the session works until it is satisfied or the turn limit (default 30) is reached. `--max-turns 0` arms an infinite (auto-compact-driven) goal, bounded by `--max-duration` and the stagnation guard. `/moai loop` scans LSP diagnostics · AST-grep · linter in parallel, buckets issues by level, and runs until the queue drains.
-
-**Decision memory.** Routing decisions, gate evidence, and recurring corrections are recorded so the next session starts from what the last one learned — not from zero.
-
-**Harness self-evolution.** Observed failure patterns become proposed rule changes, surfaced for approval rather than applied silently.
-
----
-
-## 🛡️ The Quality-Control Axis — Agentic Harness
-
-Rework is the worst token waste — a bug that ships and comes back costs more than every routing optimization combined. The quality-control axis makes "done" mean *verified done*, and isolates work so parallel agents never trample each other.
-
-### SPEC 3-Phase Lifecycle
-
-plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS format requirements + acceptance criteria judge completion by evidence.
-
-<p align="center">
-  <img src="./assets/images/spec-3phase-infographic-en.png" alt="SPEC 3-Phase Workflow — plan → run → sync" width="80%">
-</p>
-
-**TRUST 5 Quality Gates**. Tested (85%+ coverage) · Readable · Unified · Secured · Trackable, applied to every change. Gates judge verification, not agents.
-
-**12-Agent Catalog**. MoAI custom 11 + built-in Explore. Separate planning and auditing from the start so the authoring side cannot grade its own work.
-
-### Extension Points — duplicate proven patterns for project-specific reuse
-
-**Harness v4 Builder**. Natural language request → domain·goal·constraint extraction → approval gate → project-specific agents·skills·commands·hooks scaffolding.
-
-**@MX Tags**. Inline code annotations where AI agents exchange context, invariants, and danger zones.
-
-**worktree isolation**. Give each SPEC its own working tree. Enter one with `moai cc -w <name>`, or add `--spawn` to open it in a new window while keeping the current session.
-
----
-
-## Infrastructure Sustains All Three Axes
-
-A single Go binary with no extra dependencies, running on macOS, Linux, and Windows, is the substrate beneath all three axes — not beneath tokenomics alone. The hook system enforces gates mechanically, the statusline surfaces cost and context in real time, and the SPEC lifecycle keeps work resumable across `/clear`. Every axis rides on the same binary; none is an afterthought.
 
 ---
 
@@ -249,18 +223,23 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-### Project Initialization
+Already installed? Run `moai update` to move to the latest version.
+
+> 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
+
+### Project initialization
 
 ```bash
 moai init my-project
+cd my-project
 ```
 
-Interactive wizard auto-detects language, framework, and methodology, selects model policy, and generates Claude Code integration files.
+The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
 
-### First Workflow
+### First workflow
 
 ```bash
-claude        # launch Claude Code inside the project
+claude        # or moai cc — run Claude Code inside the project
 ```
 
 ```text
@@ -273,61 +252,29 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 ### Requirements
 
-| Platform | Supported Environments | Notes |
-|----------|----------------------|-------|
+| Platform | Supported environments | Notes |
+|---|---|---|
 | macOS | Terminal, iTerm2 | Full support |
 | Linux | Bash, Zsh | Full support |
 | Windows | **WSL (recommended)**, PowerShell 7.x+ | Native cmd.exe unsupported |
 
-**Prerequisites**
-
-- **Git** required on all platforms
-- **Claude Code** — MoAI-ADK is a harness for Claude Code
-- **Recommended**: `gh` CLI (PR automation) · `tmux` (CG mode) · language linter/test toolchain (e.g., `golangci-lint`)
+- **Git** — required on all platforms
+- **Claude Code** — moai-adk is a harness for Claude Code
+- **Recommended**: `gh` CLI (PR automation), `tmux` (CG mode), your language's lint/test toolchain (e.g. `golangci-lint`)
 
 ---
 
-## Reference
+## Core Capabilities
 
-### /moai Slash Commands (16)
+### One entry point: `/moai`
 
-| Subcommand | Role |
-|------------|------|
-| `plan` / `run` / `sync` | SPEC 3-phase pipeline |
-| `project` / `harness` | Project docs+harness generation · harness lifecycle |
-| `goal` / `loop` / `fix` | Declarative goal loops · iterative fixes · single-pass fixes |
-| `review` / `gate` / `clean` | Code review (`--deep` for multi-agent adversarial vulnerability scan) · pre-commit quality gates · dead code removal |
-| `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
-| `e2e` / `todo` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) · Kanban backlog queue |
-| *(natural language)* | Analyze-First routing: autonomous plan → run → sync pipeline |
+Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai run`, `/moai sync` are the backbone of the SPEC pipeline; `goal`, `loop`, `fix`, `review`, `gate`, `clean`, `codemaps`, `e2e`, `mx`, `feedback`, `project`, `harness`, and `todo` fill out the surroundings.
 
-> **4 Retired Subcommands**: `design` · `brain` · `coverage` · `security` (SPEC-SUBCOMMAND-RETIRE-001, status: completed). `security` was replaced by the `moai-ref-owasp-checklist` + `moai-ref-llm-security` skills; `e2e` was revived by E2E-REVIVAL and is currently active.
+> Four retired subcommands — `design` · `brain` · `coverage` · `security`. What `security` did is now covered by the `moai-ref-owasp-checklist` + `moai-ref-llm-security` skills.
 
-> → Details: [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) · [Utility Commands](https://adk.mo.ai.kr/en/utility-commands)
+### MCP server
 
-### CLI Commands (13 frequently used)
-
-| Command | Description |
-|---------|-------------|
-| `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
-| `moai doctor` | System state diagnosis and environment verification |
-| `moai status` | Project status summary (Git branch, quality metrics) |
-| `moai update` | Update to latest version (auto-rollback supported) |
-| `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid Claude leader + GLM worker sessions |
-| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
-| `moai session <list\|register\|current>` | Multi-session coordination |
-| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
-| `moai goal <arm\|status\|clear>` | Goal engine CLI |
-| `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
-| `moai handoff <save\|list>` | Session handoff records |
-| `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
-| `moai web` | Web Console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 10-tab settings |
-
-> Full command list: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
-
-### MCP Server
-
-`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 17 MoAI-specific tools across five groups. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The generic `moai mcp add|remove|list` CLI manages entries via an atomic-RMW seam — users never hand-edit `.mcp.json`.
+`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 17 MoAI-specific tools across five groups to Claude Code. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The generic `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
 
 | Group | Tools | Purpose |
 |-------|-------|---------|
@@ -337,11 +284,129 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | Background cross-model jobs |
 
-All backends are fail-open: GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional — an unavailable backend returns `inconclusive`, never a hard error.
+All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
 > Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
 
-### 12-Agent Catalog
+### Goal engine — an autonomous loop with real boundaries
+
+Declare a completion condition and the session works on its own until it holds. A turn limit, a stagnation guard, a wall-clock budget, and pre-approval gates are attached, so it cannot fall into an infinite loop. Mechanical conditions (a command's exit code) and model conditions (a claim in the transcript) are both supported. `--max-turns 0` arms an auto-compact-driven infinite goal — in that case `--max-duration` and the stagnation guard provide the boundary.
+
+### Parallel worktrees
+
+Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spawn` to open it in a new window while keeping the current session. A branch-state guard blocks accidental branch switches in the primary checkout.
+
+### Kanban mode
+
+`--kanban` (short `-k`) is a session-launcher switch — under the lead session's coordination it drives a single SPEC through `plan → run → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
+
+| Concept | What it does |
+|---------|-------------|
+| Origin-Trail Chain | Append-only JSONL event stream at `.moai/state/chain/events.jsonl` |
+| WorktreeNode (13 fields) | Per-session state: ID, parent, depth, origin chain, milestone, resume target |
+| CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
+| Depth ceiling | Caps nesting complexity |
+
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+
+> Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
+
+### CG mode — Claude leader + GLM workers
+
+Claude owns strategy, planning, and audits; GLM carries bulk implementation. The two are wired through tmux session-level environment isolation, cutting 60–70% of cost on implementation-heavy work.
+
+<p align="center">
+  <img src="./assets/images/cg-mode-infographic-en.png" alt="CG Mode — Claude leader + GLM worker hybrid" width="85%">
+</p>
+
+### Equal support for 16 programming languages
+
+Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift. Marker-based auto-detection runs each language's standard lint/format/test toolchain.
+
+### Automated quality gates
+
+TRUST 5 (Tested · Readable · Unified · Secured · Trackable) applies to every change. `/moai gate` runs lint + format + type + tests in one pass, and sync-auditor scores across four dimensions: functionality, security, craft, and consistency.
+
+### @MX tags
+
+Inline code annotations that let AI agents exchange context, invariants, and danger zones. Only high-fan-in, complex, or dangerous code gets marked.
+
+### Navigator — a living codebase map
+
+`@NAV:DEC`, `@NAV:SYM`, and `@MX:SPEC` bind into one addressable graph (`nav-graph.json`). Design decisions, SPECs, and code symbols link in both directions — fix the code and the decision's context follows.
+
+### Session handoff
+
+Work survives `/clear`. A 6-block paste-ready resume message carries progress into the next session; in auto-inject mode, one message resumes the session.
+
+### loop / fix — error-driven development
+
+`/moai loop` sweeps LSP diagnostics, AST-grep, and linters in parallel, buckets issues by level, and runs until the queue drains. `/moai fix` is the single-pass variant.
+
+### review --deep
+
+`/moai review --deep` runs a multi-agent adversarial vulnerability scan, backed by OWASP · LLM-security · supply-chain · DevSecOps reference skills.
+
+### 4-locale documentation
+
+Korean, Japanese, Chinese, and English docs are maintained in the same PR. Translationese is banned, each language gets native prose, and a 4-locale parity check is bound into the build gate.
+
+### moai web console
+
+<p align="center">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 10 setting tabs" width="90%">
+</p>
+
+`moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into ten tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP. Profile create/rename/delete lives on the same screen.
+
+### ref / domain skills
+
+`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow` and `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux` inject field knowledge into agents.
+
+### Cross-platform
+
+A single Go binary with no extra dependencies, running on macOS, Linux, and Windows. The hook system enforces gates mechanically, and the statusline surfaces cost and context in real time.
+
+---
+
+## How It Works
+
+### The SPEC 3-phase lifecycle
+
+All work flows through plan → run → sync. Tier S/M/L size classification determines verification depth and PR routing. GEARS-format requirements and acceptance criteria judge completion by evidence.
+
+```mermaid
+flowchart TD
+    P["plan — SPEC authoring<br/>GEARS requirements + acceptance criteria"] --> PA["plan-auditor<br/>independent audit (bias prevention)"]
+    PA -->|PASS| R["run — TDD / DDD implementation<br/>cycle_type auto-selected"]
+    PA -->|DEBT| P
+    R --> SA["sync-auditor<br/>4-dimension quality scoring"]
+    SA -->|PASS| S["sync — doc sync + PR"]
+    SA -->|DEBT| R
+    S --> MX["@MX tags + Navigator update"]
+```
+
+<p align="center">
+  <img src="./assets/images/spec-3phase-infographic-en.png" alt="SPEC 3-Phase Workflow — plan → run → sync" width="80%">
+</p>
+
+Project state picks the methodology. `moai init` reads coverage and chooses automatically.
+
+```mermaid
+flowchart TD
+    A["Project analysis"] --> B{"New project or<br/>10%+ coverage?"}
+    B -->|"Yes"| C["TDD (default)"]
+    B -->|"No"| D["DDD"]
+    C --> F["RED → GREEN → REFACTOR"]
+    D --> G["ANALYZE → PRESERVE → IMPROVE"]
+```
+
+| Methodology | Cycle | Target |
+|-------------|-------|-----|
+| **TDD** (default) | RED → GREEN → REFACTOR | New projects and feature work |
+| **DDD** | ANALYZE → PRESERVE → IMPROVE | Existing code under 10% coverage |
+
+### The 12-agent catalog
 
 | Category | Agent | Cost | Role |
 |----------|-------|------|------|
@@ -358,52 +423,21 @@ All backends are fail-open: GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.j
 | **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Progress of long-running delegations is recorded on the Task channel and relayed by the orchestrator as an icon Progress Board.
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Authoring and auditing are separated from the start, so the writing side never grades its own work.
 
-### TRUST 5 Quality Gates
+### trust-but-verify — binding evidence to completion claims
 
-| Criterion | Meaning | Verification |
-|-----------|---------|------------|
-| **T**ested | Tested | 85%+ coverage, characterization tests, unit tests pass |
-| **R**eadable | Readable | Clear naming, consistent style, lint errors 0 |
-| **U**nified | Unified | Consistent formatting, import order, project structure compliance |
-| **S**ecured | Secured | OWASP compliance, input validation, security warnings 0 |
-| **T**rackable | Trackable | Conventional commits, issue references, structured logging |
+When an agent reports "tests passed", the orchestrator does not take the claim at face value; it runs its own verification batch. Seven read-only verifications (tests, coverage, subagent boundaries, sentinel scans, CLI smoke, benchmarks, lint) run in parallel in a single turn, leaving each one's exit code and output as evidence.
 
-### Methodology Selection (TDD vs DDD)
+The verification-claim integrity rule backs this flow — you must not present an unrun check as a success, must not pass off a previously measured value as a fresh measurement, and must not wave through what was never observed. The 5-section report format (Claim · Evidence · Baseline attribution · Gaps · Residual risk) binds every completion report from every agent and orchestrator.
 
-```mermaid
-flowchart TD
-    A["Project analysis"] --> B{"New project or<br/>10%+ test coverage?"}
-    B -->|"Yes"| C["TDD (default)"]
-    B -->|"No"| D["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    D --> G["ANALYZE → PRESERVE → IMPROVE"]
-```
+### Trim verification cost, stop before overage
 
-| Methodology | Cycle | Target |
-|-------------|-------|-----|
-| **TDD** (default) | RED → GREEN → REFACTOR | New projects and feature work |
-| **DDD** | ANALYZE → PRESERVE → IMPROVE | Existing code with <10% coverage |
+Verification is necessary; verification output sitting in context is not. Verbose output spills to disk files, leaving only the exit code and a bounded tail (max 50 lines) in context. Prompt-cache reuse (cached reads cost 0.1×) keeps the window light, and a context-diet `/clear` strategy issues recommendations at the thresholds (1M 50% / 200K 90%).
 
-### Kanban Mode
+On the budget side, a token circuit breaker stands guard — it aborts at the hard limit (default 90%), saves progress to `progress.md`, and issues a paste-ready resume message. The statusline keeps context usage, cache hit rate, and rate-limit depletion visible at all times, so an overage never passes unnoticed.
 
-`--kanban` (short `-k`) is a session-launcher switch that arms a `kanban_chain` goal preset — driving a single SPEC through `plan → run → verify → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
-
-| Concept | What it does |
-|---------|-------------|
-| Origin-Trail Chain | Append-only JSONL event stream at `.moai/state/chain/events.jsonl` |
-| WorktreeNode (13 fields) | Per-session state: ID, parent, depth, origin chain, milestone, resume target |
-| CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
-| Depth ceiling | Caps nesting complexity |
-
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>-<run-id>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo <add|list|next|done>` operates the `backlog` column. The launch sequence is in the "New in v3.1 — Kanban Mode" section above.
-
-> Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
-
----
-
-## Reading the Statusline
+### Reading the statusline
 
 ```
 🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.1 │ ⏳ 2h 34m │ 💬 MoAI
@@ -429,32 +463,155 @@ flowchart TD
 
 ---
 
-## Claude × GLM Multi-LLM
+## Workflow Examples
 
-MoAI-ADK supports **z.ai GLM** as an alternative backend for Claude Code. Switching is environment-variable only — no code changes, and the harness, SPEC workflow, and quality gates behave identically on every backend.
+### Build a new feature (TDD)
 
-| Item | Details |
-|---|---|
-| GLM Coding Plan | From **$10**/month ([sign-up](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| Compatibility | Drop-in with Claude Code — no code changes |
-| Models | glm-5.3, glm-4.7, glm-4.5-air, plus free models |
+```text
+/moai plan "Add user profile image upload"
+/moai run SPEC-PROFILE-001
+/moai sync SPEC-PROFILE-001
+```
 
-### Three execution modes
+New code, or code with sufficient coverage, gets TDD (RED → GREEN → REFACTOR). `moai init` detects project state and picks between TDD and DDD.
 
-| Command | Leader | Workers | tmux | Cost saving | Use for |
-|---|---|---|---|---|---|
-| `moai cc` | Claude | Claude | not required | — | Highest quality, complex work |
-| `moai glm` | GLM | GLM | recommended | ~70% | Cost optimization |
-| `moai cg` | Claude | GLM | **required** | ~60% | Quality + cost balance |
+### Run long jobs (goal)
 
-**CG mode** is the hybrid: a Claude leader owns strategy, planning, and audits while GLM workers carry bulk implementation, wired through tmux session-level environment isolation.
+```text
+/moai plan "Refactor the payment module"
+/moai run SPEC-PAY-001
+/moai goal "go test ./... exits 0 && lint clean, or stop after 20 turns"
+```
+
+Declare the completion condition and the session works on its own until it holds. The turn limit defaults to 30 and the stagnation guard is attached. When context reaches the threshold (1M 50% / 200K 90%), it recommends `/clear` and saves progress to `progress.md`.
+
+### Run in parallel (worktree)
+
+```bash
+moai cc -w feature-auth        # open the auth working tree
+moai cc -w feature-billing --spawn   # billing in a new window, current session kept
+```
+
+```text
+# inside the auth tree
+/moai run SPEC-AUTH-001
+
+# inside the billing tree
+/moai run SPEC-BILL-001
+```
+
+Each SPEC gets its own working tree so two agents never step on each other. The branch-state guard blocks accidental branch switches in the primary checkout.
+
+### Cut costs (CG mode)
 
 ```bash
 moai glm sk-your-glm-api-key   # save the key once
 moai cg                        # enter CG mode (Claude leader + GLM workers)
 ```
 
-### Default model mapping
+```text
+/moai run SPEC-DATA-001        # implementation-heavy work → GLM workers carry the bulk
+```
+
+CG mode puts a Claude leader over strategy, planning, and audits while GLM workers carry bulk implementation — a 60–70% cost cut on implementation-heavy work. The harness, SPEC workflow, and quality gates behave identically across all three modes.
+
+### Auto-fix bugs (loop)
+
+```text
+/moai loop
+```
+
+Sweeps LSP diagnostics, AST-grep, and linters in parallel, buckets issues by level, and runs until the queue drains. Single issues end in one `/moai fix` pass.
+
+---
+
+## Configuration and Profiles
+
+### `.moai/config/sections/`
+
+Project configuration splits into YAML section files.
+
+| Section | Role |
+|---|---|
+| `language.yaml` | User name · conversation language · code-comment language · commit-message language |
+| `quality.yaml` | Quality gates · dev mode (TDD/DDD) · coverage |
+| `harness.yaml` | Harness depth (minimal · standard · thorough) · auto-detection |
+| `workflow.yaml` | Workflow behavior |
+| `lsp.yaml` | LSP gate thresholds (SSOT) |
+| `user.yaml` | User information |
+
+Environment variables override file values. For precedence details and the full section list, see the [CLI reference](https://adk.mo.ai.kr/en/cli-reference).
+
+### Model profiles — high / medium / low
+
+`moai model profile` resolves 11 agents × 3 profiles = 33 cells of `{model, effort}` pairs.
+
+<p align="center">
+  <img src="./assets/images/model-routing-infographic-en.png" alt="Agent model routing — each agent gets the right model and reasoning effort" width="85%">
+</p>
+
+| Profile | Character | When |
+|---|---|---|
+| **high** | Opus-heavy, deep reasoning | Complex planning · security audits · hard debugging |
+| **medium** (default) | Balanced | Typical SPECs |
+| **low** | Sonnet + low effort | Mechanical repetition · docs · one-shot work |
+
+Assignment follows work phase (plan / run / sync) and SPEC size (Tier S / M / L) — deep-reasoning models for planning phases that need inference, lighter models for mechanical implementation phases. Under the No-Haiku 3-tier policy, single-shot input-dominated work goes to Sonnet low, and every multi-turn agentic task goes to Opus.
+
+### settings.json / settings.local.json separation
+
+| File | Role | Template |
+|---|---|---|
+| `.claude/settings.json` | Rendered from template — project-shared settings | Included |
+| `.claude/settings.local.json` | Runtime-managed — per-machine values (tmux pane IDs · API tokens · absolute paths) | **Never included** |
+
+`settings.local.json` is modified at runtime by `moai glm`, `moai cc`, and `moai cg`, and the SessionStart hook fills the environment. If accidentally committed, remove it with `git rm --cached .claude/settings.local.json`.
+
+---
+
+## Runs Anywhere
+
+### Equal support for 16 programming languages
+
+| | | | |
+|---|---|---|---|
+| Go | Python | TypeScript | JavaScript |
+| Rust | Java | Kotlin | C# |
+| Ruby | PHP | Elixir | C++ |
+| Scala | R | Flutter | Swift |
+
+Each language is auto-detected via project markers, and its standard lint/format/test toolchain runs. Missing tools are skipped quietly. The canonical Dart/Flutter name is "flutter". None receives preferential treatment.
+
+### 4-locale documentation
+
+| Locale | Site |
+|---|---|
+| 한국어 | adk.mo.ai.kr/ko |
+| English | adk.mo.ai.kr/en |
+| 日本語 | adk.mo.ai.kr/ja |
+| 中文 | adk.mo.ai.kr/zh |
+
+All four locales are maintained in the same PR, with a 4-locale parity check bound into the build gate. Translationese is banned; each language gets native prose.
+
+### Operating systems
+
+| Platform | Status |
+|---|---|
+| macOS | Full support (Terminal, iTerm2) |
+| Linux | Full support (Bash, Zsh) |
+| Windows | WSL recommended, PowerShell 7.x+ supported, native cmd.exe unsupported |
+
+### Claude + GLM
+
+z.ai GLM serves as an alternative backend for Claude Code. Switching is environment-variable only — the code stays the same. Three execution modes exist.
+
+| Command | Leader | Workers | tmux | Cost saving |
+|---|---|---|---|---|
+| `moai cc` | Claude | Claude | not required | — |
+| `moai glm` | GLM | GLM | recommended | ~70% |
+| `moai cg` | Claude | GLM | **required** | ~60% |
+
+The GLM Coding Plan starts at $10/month. glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
 
 Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
 
@@ -465,83 +622,121 @@ Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` env
 | Haiku | glm-5.3 | 1M |
 | Fable | glm-5.3 | 1M |
 
-> Free models are also available (GLM-4.7-Flash, GLM-4.5-Flash). See [z.ai pricing](https://docs.z.ai/guides/overview/pricing) for the full table.
->
-> → Details: [Multi-LLM guide](https://adk.mo.ai.kr/en/multi-llm)
+> Details: [Multi-LLM guide](https://adk.mo.ai.kr/en/multi-llm) · [z.ai pricing](https://docs.z.ai/guides/overview/pricing)
+
+---
+
+## Documentation and Learning
+
+### Official documentation — adk.mo.ai.kr
+
+The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 12 sections.
+
+| Section | Description |
+|---|---|
+| [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI overview, FAQ |
+| [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | moai-adk identity, constitution, harness engineering, SPEC-based development, DDD, TRUST 5 |
+| [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan` · `run` · `sync` — SPEC pipeline backbone |
+| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
+| [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (36 total) |
+| [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility |
+| [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode and model policy |
+| [Cost Optimization](https://adk.mo.ai.kr/en/cost-optimization) | Prompt caching strategies and token cost reduction |
+| [Guides](https://adk.mo.ai.kr/en/guides) | CI automation, multi-LLM CI, and other operational recipes |
+| [Git Worktree](https://adk.mo.ai.kr/en/worktree) | Worktree guide for parallel SPEC development |
+| [Advanced](https://adk.mo.ai.kr/en/advanced) | Tokenomics, token budget, statusline, settings.json, hooks, @MX tags, skill guide, Harness v4 Builder, self-evolution, decision memory |
+| [Contributing](https://adk.mo.ai.kr/en/contributing) | Open-source contribution guide |
+
+### Book
+
+[**Practical Agentic Coding with Claude Code**](https://adk.mo.ai.kr/book) — a hands-on harness engineering guide by the moai-adk author. [book.mo.ai.kr](https://book.mo.ai.kr)
+
+### CLI command table (13 frequently used)
+
+| Command | Description |
+|---|---|
+| `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
+| `moai doctor` | System state diagnosis and environment verification |
+| `moai status` | Project status summary (Git branch, quality metrics) |
+| `moai update` | Update to latest version (auto-rollback supported) |
+| `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid sessions |
+| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
+| `moai session <list\|register\|current>` | Multi-session coordination |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
+| `moai goal <arm\|status\|clear>` | Goal engine CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
+| `moai handoff <save\|list>` | Session handoff records |
+| `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
+| `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 10-tab settings |
+
+> All 36 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
+
+### ref / domain skills
+
+**ref (field knowledge)**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`
+
+**domain (specialist domains)**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+
+### CHANGELOG
+
+Recent changes live in [CHANGELOG.md](./CHANGELOG.md).
+
+### Code quality requirements
+
+Every contribution passes the TRUST 5 gate — 85%+ coverage · lint errors 0 · type errors 0 · Conventional commits. Existing code is fixed in behavior by characterization tests then improved incrementally (DDD); new code follows RED → GREEN → REFACTOR (TDD).
 
 ---
 
 ## FAQ
 
-### Q: Why doesn't every function have an @MX tag?
+### Why doesn't every function have an @MX tag?
 
-Normal. Tags mark high-fan-in, complex, or dangerous code. Most code in any project won't hit any tag threshold, and a file without tags is not a defect.
+That's normal. Tags mark high-fan-in, complex, or dangerous code only. In any project, most code never crosses a tag threshold — a file without tags is not a defect.
 
-### Q: What does the statusline version display mean?
+### What does the statusline version display mean?
 
 ```
 🗿 v3.0.1 ⬆️ v3.0.2
 ```
 
-The first value is the currently installed MoAI-ADK version; the arrow indicates an available update. Disappears after running `moai update`.
+The first value is the currently installed moai-adk version; the arrow indicates an available update. It disappears after `moai update`.
 
-### Q: Can I use Claude only without GLM?
+### Can I use Claude only, without GLM?
 
-Yes. `moai cc` launches a Claude-only session. CG mode (`moai cg`, Claude leader + GLM workers) and GLM-only (`moai glm`) are cost-saving options; the harness·SPEC workflow·quality gates work identically across all three modes.
+Yes. `moai cc` launches a Claude-only session. CG mode (`moai cg`, Claude leader + GLM workers) and GLM-only (`moai glm`) are cost-saving options; the harness, SPEC workflow, and quality gates behave identically across all three modes.
 
-### Q: Does it work on existing projects?
+### Does it work on existing projects?
 
-Yes. `moai init` detects project state and selects methodology — DDD (characterization tests fix behavior, then incremental improvement) for existing code with <10% coverage, TDD for new/well-tested code.
+Yes. `moai init` detects project state and selects the methodology — DDD (characterization tests fix behavior, then incremental improvement) for existing code under 10% coverage, TDD for new or well-tested code.
 
 ---
 
-## Community and Documentation
+## Contribute
 
 ### Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed procedures.
+Contributions are welcome anytime. Detailed procedures live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Write tests (TDD for new code, characterization tests for existing code)
+3. Write tests — TDD for new code, characterization tests for existing code
 4. Verify tests, lint, format pass: `make test` · `make lint` · `make fmt`
-5. Commit with Conventional commit message and open pull request
+5. Commit with a Conventional commit message and open a pull request
 
 **Code quality requirements**: 85%+ coverage · lint errors 0 · type errors 0 · Conventional commits
 
+### Feedback
+
+Inside Claude Code, `/moai feedback` files bug reports and feature requests straight to GitHub issues. From the terminal, use [GitHub Issues](https://github.com/modu-ai/moai-adk/issues).
+
 ### Community
 
-- [Issues](https://github.com/modu-ai/moai-adk/issues) — Bug reports, feature requests (use `/moai feedback` in Claude Code)
+- [Discord](https://discord.gg/Z7E7Mdc5aN) — live discussion and tips
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — bug reports · feature requests
 
 ### License
 
-[Apache License 2.0](./LICENSE) — see LICENSE file for details.
-
-### Documentation Guide
-
-[adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 12 sections.
-
-| Section | Description |
-|---------|-------------|
-| [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI overview, FAQ |
-| [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | MoAI-ADK identity, constitution, harness engineering, SPEC-based development, DDD, TRUST 5 |
-| [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan` · `run` · `sync` — SPEC pipeline backbone |
-| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
-| [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | All `moai` binary commands — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree`, etc. |
-| [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility (skills·hooks·plugins) |
-| [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode and model policy |
-| [Cost Optimization](https://adk.mo.ai.kr/en/cost-optimization) | Prompt caching strategies and token cost reduction |
-| [Guides](https://adk.mo.ai.kr/en/guides) | CI automation, multi-LLM CI, and other operational recipes |
-| [Git Worktree](https://adk.mo.ai.kr/en/worktree) | Worktree guide for parallel SPEC development, examples, FAQ |
-| [Advanced](https://adk.mo.ai.kr/en/advanced) | Tokenomics overview, token budget, statusline, settings.json, hooks, @MX tags, skill guide, Harness v4 Builder, self-evolution, decision memory, catalog system, security notes, CLAUDE.md/agent guide |
-| [Contributing](https://adk.mo.ai.kr/en/contributing) | Open-source contribution guide |
-
-### Links
-
-- [Official Documentation](https://adk.mo.ai.kr)
-- [Book: Practical Agentic Coding with Claude Code](https://adk.mo.ai.kr/book)
-- [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://code.claude.com/docs/en)
+[Apache License 2.0](./LICENSE) — see the LICENSE file for details.
 
 ---
 

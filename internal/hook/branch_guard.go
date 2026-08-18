@@ -87,6 +87,24 @@ type branchStatePattern struct {
 //     trailing token is not in the mutating set and the bare-prefix branch is
 //     anchored to end-of-string. AC-REQ-2a/2b/2d.
 //
+// Branch-form completion (kanban card t42, 2026-08-15 measurement): the
+// `git branch` pattern above already discriminates subcommands via the
+// optional mutating-flag group + the "non-flag token" rule, so every read-only
+// inquiry passes (`git branch --list develop -v`, `-v`/`-vv`/`-a`/`-r`, bare
+// `git branch`, `--show-current`, `--contains`). The card's measured incident
+// — `git branch --list develop -v` denied in the primary checkout — does NOT
+// reproduce against any committed state of this file (pickaxe across history:
+// no revision ever carried an undiscriminating `git branch` pattern), so the
+// binary that produced it predates or diverged from this source; the
+// read-only test pins keep every inquiry form excluded regardless. What WAS
+// live here: the copy flags `-c`/`-C` (git 2.23+, branch copy — a mutating
+// form that creates a ref) were missing from the flag class, so
+// `git branch -c foo` slipped through as an under-match. They are added to
+// the class, completing the mutating set
+// create(bare-name)/-d/-D/-m/-M/-c/-C. Residual (accepted): exotic combined
+// short flags (`git branch -vD foo`) do not match — under-matching an
+// obfuscated form is the documented correct direction for a fail-open guard.
+//
 // Patterns are case-insensitive (compiled with the (?i) prefix, matching the
 // existing compilePatterns convention in pre_tool.go).
 //
@@ -99,7 +117,7 @@ var branchStatePatterns = func() []branchStatePattern {
 	}{
 		{`\bgit\s+switch\b`, "git switch"},
 		{`\bgit\s+checkout\s+(-b\s+)?[^\s-]`, "git checkout <branch/-b>"},
-		{`\bgit\s+branch\s+(-[dDmM]\s+)?[^\s-]`, "git branch"},
+		{`\bgit\s+branch\s+(-[dDmMcC]\s+)?[^\s-]`, "git branch"},
 		{`\bgit\s+reset\s+--hard\b`, "git reset --hard"},
 		// `git stash` followed by EITHER a mutating subcommand (push/pop/apply/
 		// drop), end-of-input, OR a command separator/operator boundary ([;&|]).
@@ -225,6 +243,14 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 //
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
+// The deny reason's remediation directs the caller to a worktree and
+// deliberately does NOT suggest delegating to a manager-git subagent: both
+// exemption axes are unreachable from tool-spawned subagents (see the
+// branchGuardExemptEnv reachability note above), so such a delegation
+// reproduces the same deny. Kanban card t43: the old "(use a worktree or
+// invoke via manager-git)" wording sent orchestrator sessions down that dead
+// end — one wasted turn per session, observed in two sessions.
+//
 // The projectDir argument is the AUDIT-LOG project directory — resolved by the
 // caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
 // primary checkout for central logging (REQ-WBG-D-004). It is NOT the
@@ -269,8 +295,8 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if !isPrimary {
 		return "", ""
 	}
-	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree or invoke via manager-git)",
-		branchGuardViolationPrefix, suffix)
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; the manager-git identity and %s exemptions fire only for main-thread launches, not for tool-spawned subagents)",
+		branchGuardViolationPrefix, suffix, branchGuardExemptEnv)
 	return DecisionDeny, reason
 }
 

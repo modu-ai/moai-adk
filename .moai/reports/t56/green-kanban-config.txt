@@ -1,0 +1,20 @@
+ok  	github.com/modu-ai/moai-adk/internal/kanban	26.176s
+2026/08/17 04:26:28 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a66650c94c57df3f8/internal/template/templates/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "podman" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "firecracker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "e2b" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "devcontainer" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "kata" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "sandbox-runtime" accepted as attestation (host GOOS=darwin); boundary not independently verified
+2026/08/17 04:26:28 WARN cache.yaml malformed, using safe default (disabled) path=testdata/cache-malformed/cache.yaml error="yaml: line 3: found unexpected end of stream"
+2026/08/17 04:26:28 WARN cache.yaml invalid, using safe default (disabled) path=testdata/cache-invalid-ttl/cache.yaml error="cacheStrategy.session_ttl \"2h\" invalid: want one of 1h|5m|off"
+2026/08/17 04:26:28 WARN HRN_SCHEMA_DRIFT: unknown keys in harness.yaml: [unknown_top_field] (path: testdata/harness-drift-strict/harness.yaml) unknown_keys=[unknown_top_field] path=testdata/harness-drift-strict/harness.yaml
+--- FAIL: TestAlwaysLoadedTokenBudget (0.02s)
+    token_budget_guard_test.go:67: always-loaded surface = 76069 tokens, exceeds budget 76000 (overflow 69); surface has 17 entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	6.499s
+FAIL

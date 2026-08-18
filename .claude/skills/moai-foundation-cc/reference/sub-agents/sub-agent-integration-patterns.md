@@ -114,7 +114,7 @@ def parallel_workflow(project_requirements):
  cap is `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20;Claude
  Code v2.1.217+), NOT 10 — the earlier "up to 10" figure was stale.
  MoAI's own orchestrator ceiling is 3-5 concurrent `Agent()` calls
- (Mode 4) regardless of the runtime cap.
+ (fanout) regardless of the runtime cap.
  No need for asyncio.gather or Promise.all.
  """
 
