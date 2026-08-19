@@ -98,8 +98,8 @@ The recurring vocabulary of the kanban docs, gathered into one picture. A **colu
 Operator ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
                           (the lead advances a card only on evidence it read)
 
-Lane — card t0:  run session + worktree WT-t0   ┐ the two flows share one board,
-Lane — card t1:  run session + worktree WT-t1   ┘ run side by side, never mix
+Lane — card t0:  run session + worktree t0      ┐ the two flows share one board,
+Lane — card t1:  run session + worktree t1      ┘ run side by side, never mix
 ```
 
 | Term | One-line definition |
@@ -111,7 +111,7 @@ Lane — card t1:  run session + worktree WT-t1   ┘ run side by side, never mi
 | lead | The coordinating session. Advances cards only on evidence it read; never writes code itself |
 | companion | The session seated in a column doing the work. Launched by hand, one per terminal |
 | run-id | Short identifier the lead announces at start. It names the lead session; companions never carry it |
-| worktree | The card's isolated checkout (`WT-<card>` branch). One carries the card from run through sync |
+| worktree | The card's isolated checkout. The directory carries the card id; the branch carries what the card did (`WT-<slug>`). One carries the card from run through sync |
 | dispatch | The instruction the lead sends a companion — a pointer to the work, never a copy |
 
 Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
