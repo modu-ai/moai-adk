@@ -66,19 +66,20 @@ Companion sessions are launched **by hand, one per terminal** — a session neve
 
 When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: lead on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
 
-### Numbered-workers run — Kanban's second form
+### Factory Mode — many cards at once across N lanes
 
-Attach a **number** to the same `-k` token and it becomes Kanban's second form: the numbered-workers run. One lead polls the backlog queue and deals cards to free workers; N numbered workers process the cards, each in its own terminal.
+`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one lane**, and that lane carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Lanes are labelled `lane-1` … `lane-N`.
 
 ```bash
-moai cc -k 4                          # lead — a 4-worker kanban run
-moai cc -k 4 --name worker-1          # worker 1, each in its own terminal
-moai cc -k 4 --name worker-2          # worker 2 …
+moai cc -f                    # lead — one lane (lane-1) by default
+moai cc -f 4                  # lead — four lanes
+moai cc -f lane-1             # a lane, in its own terminal
+moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-The lead deals by card class — Class A/B cards are handed to a single worker whole, while Class C cards (design changes) take the serial `plan → run → sync` route. Skip the worker count and use only `-k --name worker-<i>`, and the run defaults to 8 workers. Mixed-backend runs (`moai cg`) refuse it. The former `-f`/`--factory` flags are retired and now fail with an explicit error.
+Grow a run one lane at a time with `moai cc -f lane-<n>`; a label already held by a live session bumps to the next free number. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
 
-> Details: [Kanban mode — numbered-workers run](https://adk.mo.ai.kr/en/advanced/kanban-mode)
+> Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
 The board has five columns, `backlog → plan → run → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
 
@@ -123,7 +124,7 @@ Full glossary with definitions and examples: [Kanban board terms](https://adk.mo
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
 </p>
 
-Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
+Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [manager-lead Lead Coordinator](https://adk.mo.ai.kr/en/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
 
 ---
 

@@ -66,19 +66,20 @@ moai cc -k --name sync
 
 カンバンを開くとき、ブートストラップ案内が既定の推奨も一緒に知らせます — トークンの空きを優先するなら、リードは `moai glm -k`、plan は `moai cc -k --name plan`、run は `moai glm -k --name run`、sync は `moai cc -k --name sync`。理由はレーンごとに必要な推論の種類です。plan と sync は判断とレビューを回す列なので Claude に置き、run は実装中心なので GLM でコストを下げます。リードは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待ち続けても安い GLM が合います。GLM リードの下で Claude の判定が必要になったら、`judge` という名前のセッションから抜け道を作ります — GLM リードが Claude を使う唯一の経路です。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効きます。この組み合わせはあくまで既定の推奨 — 別の組み合わせも、全セッションをひとつのバックエンドに統一しても構いません。
 
-### 番号付きワーカーラン — カンバンの 2 つ目の形態
+### ファクトリーモード — レーン N 本で複数のカードを同時に
 
-同じ `-k` トークンに**数値を付ける**と、カンバンの 2 つ目の形態である番号付きワーカーランになる。リードがひとりバックログキューをポーリングして空きワーカーにカードを配り、番号付きワーカー N 台がそれぞれのターミナルでカードを処理する。
+`-f` はファクトリーリードを開く。これがカンバンの 2 つ目の形態だ。カンバンのカードが列を渡り歩くのに対し、ファクトリーのカードは**丸ごと 1 本のレーン**へ入り、そのレーンがセッション内で `plan → run → sync` を直列に運ぶ。各段階は `Agent()` サブエージェントとしてスポーンされる。レーンのラベルは `lane-1` … `lane-N`。
 
 ```bash
-moai cc -k 4                          # リード — ワーカー 4 台のカンバンラン
-moai cc -k 4 --name worker-1          # ワーカー 1、各自別ターミナルで
-moai cc -k 4 --name worker-2          # ワーカー 2 …
+moai cc -f                    # リード — 既定はレーン 1 本 (lane-1)
+moai cc -f 4                  # リード — レーン 4 本
+moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
+moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
 ```
 
-リードはカードクラスに応じて配分する — A/B クラスはワーカー 1 台に丸ごと任せ、C クラス(設計変更)は `plan → run → sync` の直列経路へ送る。ワーカー数を省略して `-k --name worker-<i>` だけを使うと既定の 8 と解釈される。混合バックエンド(`moai cg`)では拒否される。かつての `-f`/`--factory` フラグは引退し、現在は明示的なエラーだ。
+レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。生きているセッションが使っているラベルは次の空き番号へ繰り上がる。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
 
-> 詳しくは: [カンバンモード — 番号付きワーカーラン](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+> 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
 ボードは `backlog → plan → run → sync → done` の 5 列である。`backlog` には意図的に担当セッションを置かない。だから仕事は人が入れたときだけボードに入る。
 
@@ -123,7 +124,7 @@ moai cc -k 4 --name worker-2          # ワーカー 2 …
   <img src="./assets/images/moai-web-overview.png" alt="moai web コンソール Overview 画面 — SPEC 集計、進行中 SPEC 一覧、セッション・レジストリ" width="90%">
 </p>
 
-詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
+詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](https://adk.mo.ai.kr/ja/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
 
 ---
 

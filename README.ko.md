@@ -66,19 +66,20 @@ moai cc -k --name sync
 
 칸반을 열 때 부트스트랩 안내가 기본 추천을 함께 알려 준다 — 토큰 가용성을 우선하면 리더는 `moai glm -k`, plan은 `moai cc -k --name plan`, run은 `moai glm -k --name run`, sync는 `moai cc -k --name sync`다. 그림의 이유는 레인마다 필요한 추론의 종류다. plan과 sync는 판단과 리뷰를 도는 칸이라 Claude에 두고, run은 구현 중심이라 GLM로 비용을 낮춘다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM이 어울린다. GLM 리더 아래에서 Claude 판정이 필요해지면 `judge`라는 이름의 세션으로 빠져나간다 — GLM 리더가 Claude를 쓰는 유일한 경로다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 기본 추천일 뿐 — 다른 조합이나 전 세션을 한 백엔드로 통일해도 무방하다.
 
-### 번호 붙은 워커 런 — 칸반의 두 번째 형태
+### 팩토리 모드 (Factory Mode) — 레인 N개에 카드를 한꺼번에
 
-같은 `-k` 토큰에 **숫자를 붙이면** 칸반의 두 번째 형태인 번호 붙은 워커 런이 된다. 리드 하나가 백로그 큐를 폴링해 빈 워커에 카드를 나눠 주고, 번호 붙은 워커 N개가 각자의 터미널에서 카드를 처리한다.
+`-f`는 칸반의 두 번째 형태인 팩토리 리드를 연다. 칸반 카드가 칸을 옮겨 다니는 것과 달리, 팩토리 카드는 **통째로 레인 하나**에 들어가 그 레인이 세션 안에서 `plan → run → sync`를 순서대로 지나간다. 단계마다 `Agent()` 서브에이전트로 띄운다. 레인 이름은 `lane-1` … `lane-N`이다.
 
 ```bash
-moai cc -k 4                          # 리드 — 워커 4짜리 칸반 런
-moai cc -k 4 --name worker-1          # 워커 1, 각자 별도 터미널에서
-moai cc -k 4 --name worker-2          # 워커 2 …
+moai cc -f                    # 리드 — 기본은 레인 하나(lane-1)
+moai cc -f 4                  # 리드 — 레인 4개
+moai cc -f lane-1             # 레인 하나, 각자 별도 터미널에서
+moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 ```
 
-리드는 카드 클래스에 따라 나눠 준다 — A/B클래스는 워커 하나에 통째로 맡기고, C클래스(설계 변경)는 `plan → run → sync` 직렬 경로로 보낸다. 워커 수를 생략하고 `-k --name worker-<i>`만 쓰면 기본 8로 잡힌다. 혼합 백엔드(`moai cg`)에서는 거부된다. 과거의 `-f`/`--factory` 플래그는 은퇴했고, 지금은 명시적 에러다.
+레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이미 살아 있는 세션이 쥔 이름이면 다음 빈 번호로 붙는다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
 
-> 자세히: [칸반 모드 — 번호 붙은 워커 런](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+> 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
 보드는 `backlog → plan → run → sync → done` 다섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
 
@@ -123,7 +124,7 @@ moai cc -k 4 --name worker-2          # 워커 2 …
   <img src="./assets/images/moai-web-overview.png" alt="moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리" width="90%">
 </p>
 
-자세한 안내: [칸반 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
+자세한 안내: [칸반 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode) · [manager-lead 리드 코디네이터](https://adk.mo.ai.kr/ko/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
 
 ---
 
