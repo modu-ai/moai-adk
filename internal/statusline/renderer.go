@@ -184,7 +184,7 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// above (words excluded for 16-language shipping) because TODO reads the
 	// same way in every supported language.
 	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
+		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
 	// The GitHub 🔀 counts do not render anywhere: the 2026-08-18 layout merge
