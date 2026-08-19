@@ -15,6 +15,15 @@ import (
 // replacing the current process we spawn-and-exit — mirroring the reexecNewBinary
 // pattern in update.go:461.
 //
+// Unlike the POSIX companion, this path does NOT stamp MOAI_SESSION_PID into
+// the child environment. Here the session is the spawned child, not this
+// process, and a child's PID does not exist until after its environment is
+// fixed — so this process has no session PID to declare. Stamping os.Getpid()
+// would name the launcher that exits as soon as the child does, which is
+// precisely the dead-PID record the resolver exists to avoid. The registry
+// falls back to the ancestry walk (and, where the platform cannot report
+// ancestry, to os.Getpid()) instead.
+//
 // REQ-CGH-001: this Windows path makes `moai cc` / `moai glm` launch correctly on
 // Windows rather than failing with EWINDOWS at the unguarded syscall.Exec call.
 func execOrSpawnClaude(claudeBin string, args, env []string) error {
