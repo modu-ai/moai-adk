@@ -12,9 +12,9 @@ This rule binds a session whose SessionStart context declares **Kanban Mode** wi
 
 Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one lead and prints one launch command per companion role. Companion sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.
 
-The lead session works through the `manager-lead` agent: it holds the operator dialogue (blocker reports upward; the session's `AskUserQuestion` stays the user channel) while dispatching parallel work in the background — neither blocks the other. Lead and lane sessions orchestrate only; real work runs in sub-agents (design intent + spawn rules: `kanban-dispatch-detail.md` § Design intent, § The lead works through manager-lead).
+The lead session works through the `manager-lead` agent: it holds the operator dialogue (the session's `AskUserQuestion` stays the user channel) while dispatching parallel work in the background — neither blocks the other. Lead and lane sessions orchestrate only; real work runs in sub-agents (design intent + spawn rules: `kanban-dispatch-detail.md` § Design intent, § The lead works through manager-lead).
 
-One boundary: nudge delivery rides on cross-session messaging, absent on native Windows and off under some providers, versions, and flags (`cross-session-messaging.md` § Availability constraints). An absent channel fails quietly — the lead surfaces it; the queue keeps working without it.
+One boundary: nudge delivery rides on cross-session messaging, absent on native Windows and off under some providers, versions, and flags (`cross-session-messaging.md` § Availability constraints) — an absent channel fails quietly; the lead surfaces it, and the queue keeps working without it.
 
 ## The board
 
@@ -40,7 +40,7 @@ The lead classifies each card as it leaves `backlog` and names the class in the 
 
 The justification is never "it is faster": speed is the effect of skipping the columns, not the reason for it — a card justified by speed alone is a Class C card being rushed.
 
-**Class B skips `plan`, not the sync gate's review** — an unestablished cause is precisely what a review catches, so the gate is the last thing to drop. The `run` session owns both the investigation and the fix. Before the card leaves `run`, the cause-establishing evidence — the command that reproduced the defect and what it printed — is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
+**Class B skips `plan`, not the sync gate's review** — an unestablished cause is precisely what a review catches. The `run` session owns both the investigation and the fix; before the card leaves `run`, the cause-establishing evidence (the reproducing command + what it printed) is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
 
 **Work in progress: one card per worktree — two cards sharing a worktree run serially whatever columns they sit in, because they share a working tree and a branch.** A lane holding several cards in one column does it by per-card fan-out: parallel `Agent()` workers whose writes each stay inside their own card directory (`kanban-dispatch-detail.md` § Per-card fan-out; parallelism per class: § Card classes).
 
@@ -104,7 +104,7 @@ This applies equally to the operator: when the lead reports a column advanced, i
 
 2. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`.
 
-Anything else is a gap, not a pass. `Review rate limited` means the review never started; a card carrying it does not leave `sync`. (Why the combined endpoint and not the plural, and why branch protection is not the lever: `kanban-dispatch-detail.md` § CodeRabbit endpoint measurement.)
+Anything else is a gap, not a pass. `Review rate limited` means the review never started; a card carrying it does not leave `sync`. (Endpoint choice + why branch protection is not the lever: `kanban-dispatch-detail.md` § CodeRabbit endpoint measurement.)
 
 ## Review lens selection
 
@@ -132,7 +132,7 @@ The lead's own session is cleared the same way, between cards rather than phases
 | Leave it | `ExitWorktree` |
 | Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
-`moai worktree` deliberately carries no creation verb — entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about but MoAI does not, so `done`, `clean`, and `recover` have nothing to close and orphans accumulate until reconciled by hand.
+`moai worktree` deliberately carries no creation verb — entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about but MoAI does not: `done`, `clean`, and `recover` have nothing to close, and orphans accumulate until reconciled by hand.
 
 [HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
@@ -142,7 +142,7 @@ The lead's own session is cleared the same way, between cards rather than phases
 
 [HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>` — unwieldy for long names, invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary). Dispatches, merges, and evidence reference the `WT-` name.
 
-The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. Why the shared checkout is the wrong place for a card: `kanban-dispatch-detail.md` § Isolation rationale. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up.
+The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
 ## Verification load is lane-local
 
@@ -160,15 +160,15 @@ The lead dispatches this rather than assuming it: each instruction names the wor
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
 ```
 
-The `env -u VAR <command>` form is rejected — the guard in the Claude Code binary rejects shell structures it cannot statically track, `env` among them; `unset … && <command>` stays visible to static analysis, which is why it is prescribed. Two load-bearing properties, easy to "simplify" away: **one invocation** (each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command — the scrub and the command travel together or the scrub does nothing) and **no subshell** (`( unset …; <command> )` is rejected the same way).
+The `env -u VAR <command>` form is rejected — the Claude Code guard rejects shell structures it cannot statically track, `env` among them; `unset … && <command>` stays visible to static analysis. Two load-bearing properties, easy to "simplify" away: **one invocation** (each Bash call is a fresh process — an `unset` issued as its own call does not carry into the next command; the scrub and the command travel together or the scrub does nothing) and **no subshell** (`( unset …; <command> )` is rejected the same way).
 
-Moving the command into a script file is not a workaround — the guard cannot read inside a script, so every check is bypassed for that payload; a human read of the script is not the guard running. Where a verification cannot be expressed as one compound invocation, reduce the verification rather than route it around the guard.
+Moving the command into a script file is not a workaround — the guard cannot read inside a script, so every check is bypassed for that payload. Where a verification cannot be expressed as one compound invocation, reduce the verification rather than route it around the guard.
 
 ## Integration into the release branch is self-served
 
 [HARD] A lane whose card has passed verification does not wait for the lead to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The lead provisions the release branch and its worktree at batch start; from then on, every integration is lane work.
 
-Two measured constraints — git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C` — make the lane enter the release worktree rather than drive it remotely:
+Two measured constraints — git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C` — make the lane enter the release worktree rather than drive it remotely.
 
 - **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned; a lane never checks it out in its own tree.
 - **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
@@ -181,7 +181,7 @@ The completion signal is the branch name, merge SHA, and evidence path.
 
 ## Factory Mode — the card travels whole
 
-`moai cc -f <N>` launches one lead plus lane sessions `lane-1..lane-N` ("lane" is the user-facing term). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane: the class still names which ceremonies are skipped (`plan` for A and B), but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
+`moai cc -f <N>` launches one lead plus lane sessions `lane-1..lane-N` ("lane" is the user-facing term). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane (the class still names which ceremonies are skipped — `plan` for A and B — but no card changes sessions). Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
 
 ## Boundaries — what this protocol does not do
 
