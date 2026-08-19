@@ -1,0 +1,48 @@
+=== RUN   TestPRMergeCleanup_AnchoredSessionSkipsRemoval
+--- PASS: TestPRMergeCleanup_AnchoredSessionSkipsRemoval (0.00s)
+=== RUN   TestPRMergeCleanup_ToggleOffNoOp
+--- PASS: TestPRMergeCleanup_ToggleOffNoOp (0.00s)
+=== RUN   TestPRMergeCleanup_NilCfgNoOp
+--- PASS: TestPRMergeCleanup_NilCfgNoOp (0.00s)
+=== RUN   TestPRMergeCleanup_GhPresentMergedRemoves
+--- PASS: TestPRMergeCleanup_GhPresentMergedRemoves (0.10s)
+=== RUN   TestPRMergeCleanup_GhPresentOpenDoesNotRemove
+--- PASS: TestPRMergeCleanup_GhPresentOpenDoesNotRemove (0.00s)
+=== RUN   TestPRMergeCleanup_GhPresentSeesSquashMerge
+--- PASS: TestPRMergeCleanup_GhPresentSeesSquashMerge (0.11s)
+=== RUN   TestPRMergeCleanup_GhAbsentBranchMergedRemoves
+--- PASS: TestPRMergeCleanup_GhAbsentBranchMergedRemoves (0.10s)
+=== RUN   TestPRMergeCleanup_SquashBlindFallbackPreserves
+--- PASS: TestPRMergeCleanup_SquashBlindFallbackPreserves (0.00s)
+=== RUN   TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce
+--- PASS: TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce (0.00s)
+=== RUN   TestPRMergeCleanup_DirtyPreserves
+--- PASS: TestPRMergeCleanup_DirtyPreserves (0.00s)
+=== RUN   TestPRMergeCleanup_DirtyCheckErrorPreserves
+--- PASS: TestPRMergeCleanup_DirtyCheckErrorPreserves (0.00s)
+=== RUN   TestPRMergeCleanup_WorktreeListErrorFailOpen
+--- PASS: TestPRMergeCleanup_WorktreeListErrorFailOpen (0.00s)
+=== RUN   TestPRMergeCleanup_OnlyWTBranchesConsidered
+--- PASS: TestPRMergeCleanup_OnlyWTBranchesConsidered (0.10s)
+=== RUN   TestPRMergeCleanup_DetachedWorktreeIgnored
+--- PASS: TestPRMergeCleanup_DetachedWorktreeIgnored (0.00s)
+=== RUN   TestPRMergeCleanup_RemovalFailureFailOpen
+--- PASS: TestPRMergeCleanup_RemovalFailureFailOpen (0.00s)
+=== RUN   TestPRMergeCleanup_FallbackBranchMergedErrorPreserves
+--- PASS: TestPRMergeCleanup_FallbackBranchMergedErrorPreserves (0.00s)
+=== RUN   TestPRMergeCleanup_NoticeDistinguishableFromSessionExit
+--- PASS: TestPRMergeCleanup_NoticeDistinguishableFromSessionExit (0.00s)
+=== RUN   TestPRMergeCleanup_OnTouchFiresAtSessionRegister
+OK session_id=sessid spec_id=SPEC-X phase=run action=register
+--- PASS: TestPRMergeCleanup_OnTouchFiresAtSessionRegister (0.00s)
+=== RUN   TestPRMergeCleanup_OnTouchFiresAtSessionList
+(no active sessions)
+--- PASS: TestPRMergeCleanup_OnTouchFiresAtSessionList (0.00s)
+=== RUN   TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister
+2026/08/17 00:43:06 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister1652920506/001/.moai/config/sections
+OK phase=run action=register session_id=sessid spec_id=SPEC-X
+--- PASS: TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister (0.00s)
+=== RUN   TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire
+--- PASS: TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.881s

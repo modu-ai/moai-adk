@@ -1,0 +1,28 @@
+=== RUN   TestCleanStale_KeepsAnchoredWorktree
+--- PASS: TestCleanStale_KeepsAnchoredWorktree (0.00s)
+=== RUN   TestCleanMergedOnly_KeepsAnchoredWorktree
+--- PASS: TestCleanMergedOnly_KeepsAnchoredWorktree (0.00s)
+=== RUN   TestCleanStale_KeepsDirtyWorktree
+--- PASS: TestCleanStale_KeepsDirtyWorktree (0.00s)
+=== RUN   TestCleanStale_KeepsUnmergedWorktree
+--- PASS: TestCleanStale_KeepsUnmergedWorktree (0.00s)
+=== RUN   TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive
+moai: worktree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive2900752271/001 kept: 1 live anchored session(s):
+  - session 11111111 pid=55138 spec=SPEC-ANCHOR-001 cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive2900752271/001
+--- PASS: TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive (0.00s)
+=== RUN   TestRunDone_RefusesWhenAnchoredSessionLive
+--- PASS: TestRunDone_RefusesWhenAnchoredSessionLive (0.00s)
+=== RUN   TestRunDone_RemovesWhenNoAnchoredSession
+--- PASS: TestRunDone_RemovesWhenNoAnchoredSession (0.00s)
+=== RUN   TestRunRemove_RefusesWhenAnchoredSessionLive
+--- PASS: TestRunRemove_RefusesWhenAnchoredSessionLive (0.00s)
+=== RUN   TestRunRemove_ForceOverridesAnchorWarning
+--- PASS: TestRunRemove_ForceOverridesAnchorWarning (0.00s)
+=== RUN   TestRunRemove_RemovesWhenNoAnchoredSession
+--- PASS: TestRunRemove_RemovesWhenNoAnchoredSession (0.00s)
+=== RUN   TestRunRemove_Success
+--- PASS: TestRunRemove_Success (0.00s)
+=== RUN   TestRunRemove_Error
+--- PASS: TestRunRemove_Error (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.578s

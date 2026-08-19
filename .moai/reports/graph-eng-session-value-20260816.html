@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그래프 엔지니어링 + 세션 비용 규율 — moai-adk 적용 계획</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Pretendard",system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px;
+  --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+  font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 20px 96px}
+h1{font-family:var(--serif);font-size:31px;line-height:1.35;margin:0 0 8px;letter-spacing:-.02em}
+h2{font-family:var(--serif);font-size:22px;margin:56px 0 4px;padding-top:20px;border-top:var(--border);letter-spacing:-.01em}
+h3{font-size:17px;margin:32px 0 8px;font-weight:700}
+h4{font-size:15px;margin:22px 0 6px;font-weight:700;color:var(--g700)}
+p{margin:12px 0}
+a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(217,119,87,.35)}
+a:hover{color:var(--clay-d)}
+code{font-family:var(--mono);font-size:.87em;background:var(--g100);
+  padding:2px 6px;border-radius:4px;word-break:break-word}
+.meta{color:var(--g500);font-size:14px;margin:0 0 4px}
+.lead{font-size:17px;color:var(--g700);background:var(--g100);
+  border-left:3px solid var(--clay);padding:14px 18px;border-radius:var(--radius-row);margin:16px 0 24px}
+.lead strong{color:var(--slate)}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:28px 0}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 18px}
+.kpi .k{font-size:12px;color:var(--g500);letter-spacing:.02em;margin-bottom:6px}
+.kpi .v{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1.15}
+.kpi .s{font-size:12px;color:var(--g500);margin-top:6px}
+.kpi.warn .v{color:var(--clay-d)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14.5px;background:var(--paper);
+  border:var(--border);border-radius:var(--radius-panel);overflow:hidden}
+th{background:var(--g100);text-align:left;padding:11px 13px;font-weight:700;font-size:13px;
+  color:var(--g700);border-bottom:var(--border)}
+td{padding:11px 13px;border-bottom:1px solid var(--g300);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono);white-space:nowrap}
+
+/* milestone timeline */
+.tl{margin:24px 0;padding-left:26px;border-left:2px solid var(--oat)}
+.tl .item{position:relative;margin-bottom:26px}
+.tl .item::before{content:"";position:absolute;left:-33px;top:6px;width:12px;height:12px;
+  border-radius:50%;background:var(--clay);border:3px solid var(--ivory)}
+.tl .item.done::before{background:var(--olive)}
+.tl .t{font-weight:700;font-size:15.5px}
+.tl .d{color:var(--g700);font-size:14.5px;margin-top:2px}
+
+/* risk grid */
+.risks{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:18px 0}
+.risk{background:var(--paper);border:var(--border);border-left:4px solid var(--clay);
+  border-radius:var(--radius-row);padding:14px 16px}
+.risk.low{border-left-color:var(--olive)}
+.risk .rt{font-weight:700;font-size:14.5px;margin-bottom:4px}
+.risk .rb{font-size:13.5px;color:var(--g700)}
+
+.badge{display:inline-block;font-size:11px;font-family:var(--mono);padding:2px 7px;
+  border-radius:20px;background:var(--oat);color:var(--g700);vertical-align:middle}
+.badge.hi{background:var(--clay);color:#fff}
+.badge.mid{background:var(--oat)}
+.badge.ok{background:var(--olive);color:#fff}
+
+.callout{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:16px 20px;margin:20px 0}
+.callout.term{border-left:4px solid var(--olive)}
+.callout .ct{font-weight:700;font-size:14px;margin-bottom:6px;color:var(--g700)}
+.callout dl{margin:0}
+.callout dt{font-weight:700;font-size:14.5px;margin-top:10px}
+.callout dt:first-child{margin-top:0}
+.callout dd{margin:2px 0 0;font-size:14.5px;color:var(--g700)}
+
+.ex{background:var(--g100);border-radius:var(--radius-row);padding:14px 18px;margin:16px 0;font-size:14.5px}
+.ex .exh{font-size:12px;font-weight:700;color:var(--clay-d);letter-spacing:.04em;margin-bottom:6px}
+
+pre.mermaid{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:18px;margin:22px 0;text-align:center;font-family:var(--mono);font-size:13px;overflow-x:auto}
+figure{margin:24px 0}
+figcaption{font-size:13px;color:var(--g500);text-align:center;margin-top:8px}
+svg{max-width:100%;height:auto}
+ul,ol{padding-left:22px;margin:12px 0}
+li{margin:6px 0}
+.foot{margin-top:56px;padding-top:20px;border-top:var(--border);font-size:13px;color:var(--g500)}
+@media print{body{background:#fff}.wrap{padding:0}pre.mermaid{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="meta">moai-adk 적용 계획 · 2026-08-16 · plan 모드 · basic 티어(MoAI-Easy)</p>
+<h1>그래프 엔지니어링 + 세션 비용 규율<br>moai-adk에 무엇을 적용할까</h1>
+
+<p class="lead">
+문서 두 편을 읽었습니다. 하나는 <strong>여러 AI 에이전트를 어떻게 엮을 것인가</strong>(구조 이야기),
+다른 하나는 <strong>한 세션에서 어떻게 돈과 컨텍스트를 아낄 것인가</strong>(비용 이야기)예요.
+결론부터 말하면 — moai-adk는 <em>구조</em> 쪽은 이미 상당히 갖췄고, <em>비용</em> 쪽에 실제 구멍이 있습니다.
+가장 큰 구멍은 세션 시작마다 내는 <strong>264KB의 고정 비용</strong>이고, 이건 추측이 아니라 방금 잰 값입니다.
+</p>
+
+<!-- ============ KPI STRIP ============ -->
+<div class="kpis">
+  <div class="kpi warn">
+    <div class="k">항상 로드되는 룰</div>
+    <div class="v">210,753</div>
+    <div class="s">바이트 · 14개 파일</div>
+  </div>
+  <div class="kpi">
+    <div class="k">CLAUDE.md + local</div>
+    <div class="v">53,483</div>
+    <div class="s">바이트 · 2개 파일</div>
+  </div>
+  <div class="kpi warn">
+    <div class="k">세션 시작 고정비 (추정)</div>
+    <div class="v">~66K</div>
+    <div class="s">토큰 · <code>/context</code> 실측 아님</div>
+  </div>
+  <div class="kpi">
+    <div class="k">도출 항목</div>
+    <div class="v">7 / 7</div>
+    <div class="s">적용 필요 / 이미 보유</div>
+  </div>
+</div>
+
+<div class="callout term">
+  <div class="ct">먼저 용어 세 개만 풀고 갈게요</div>
+  <dl>
+    <dt>컨텍스트 (context)</dt>
+    <dd>AI가 지금 "보고 있는" 글 전부. 규칙 파일, 지금까지의 대화, 읽은 파일이 다 여기 들어갑니다. 매 턴마다 통째로 다시 보내지기 때문에 <strong>길수록 매 턴이 비싸져요</strong>.</dd>
+    <dt>프롬프트 캐시 (prompt cache)</dt>
+    <dd>앞부분이 지난번과 똑같으면 다시 계산하지 않고 재활용하는 장치. 재활용하면 1/10 값, 새로 쓰면 최대 2배 값입니다. 다만 <strong>앞부분이 한 글자라도 바뀌면 그 뒤로 전부 무효</strong>가 돼요.</dd>
+    <dt>always-loaded 룰</dt>
+    <dd>moai-adk의 규칙 파일 중 <code>paths:</code> 제한이 없어서 <strong>모든 세션에 무조건 실리는</strong> 것들. 지금 14개, 총 210KB입니다.</dd>
+  </dl>
+</div>
+
+<!-- ============ 1. 실측 ============ -->
+<h2>1. 먼저 실측 — 지금 얼마를 내고 있나</h2>
+<p>
+문서를 읽고 "이걸 적용하면 좋겠다"고 말하기 전에, 이 프로젝트가 <em>실제로</em> 어떤 상태인지부터 쟀습니다.
+추측으로 결함을 주장하면 안 된다는 게 이 프로젝트의 규칙이기도 하고요.
+</p>
+
+<table>
+<thead><tr><th>항목</th><th>실측값</th><th>어떻게 쟀나</th></tr></thead>
+<tbody>
+<tr><td>always-loaded 룰</td><td class="num">210,753 B<br><span style="color:var(--g500)">14개 파일</span></td><td><code>paths:</code> 없는 core+workflow 룰만 골라 <code>wc -c</code></td></tr>
+<tr><td>CLAUDE.md</td><td class="num">19,040 B</td><td><code>wc -c CLAUDE.md</code></td></tr>
+<tr><td>CLAUDE.local.md</td><td class="num">34,443 B</td><td><code>wc -c CLAUDE.local.md</code></td></tr>
+<tr><td><strong>합계</strong></td><td class="num"><strong>264,236 B</strong></td><td>위 3건 합</td></tr>
+<tr><td>토큰 환산</td><td class="num">~66,000</td><td>4바이트/토큰 가정 — <strong>추정치</strong></td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+  <div class="exh">이 숫자가 무슨 뜻이냐면</div>
+  <code>/clear</code>를 한 번 할 때마다 이 66,000 토큰을 <strong>처음부터 다시</strong> 냅니다.
+  칸반 모드처럼 카드마다·페이즈마다 <code>/clear</code>를 요구하는 워크플로에서는,
+  카드 4장을 4페이즈로 돌리면 그것만으로 <strong>16번</strong> 재지불하는 셈이에요.
+  (실제로는 캐시가 일부 흡수하지만, <code>/clear</code>는 그 캐시를 버리는 동작입니다.)
+</div>
+
+<h4>덩치 큰 순서 상위 5개</h4>
+<table>
+<thead><tr><th>파일</th><th>크기</th><th>정말 모든 세션에 필요한가</th></tr></thead>
+<tbody>
+<tr><td><code>agent-common-protocol.md</code></td><td class="num">39,455 B</td><td>대체로 그렇다 — 에이전트 스폰·검증 배치 공통</td></tr>
+<tr><td><code>askuser-protocol.md</code></td><td class="num">30,154 B</td><td>그렇다 — 질문 채널은 매 턴 발생 가능</td></tr>
+<tr><td><code>session-handoff.md</code></td><td class="num">23,251 B</td><td>대체로 — 세션 종료는 어디서든 발생</td></tr>
+<tr><td><code>kanban-dispatch.md</code></td><td class="num">21,003 B</td><td><span class="badge hi">의심</span> 칸반 <em>리드</em> 세션에서만 쓰임</td></tr>
+<tr><td><code>moai-constitution.md</code></td><td class="num">18,777 B</td><td>그렇다 — 헌법</td></tr>
+</tbody>
+</table>
+
+<!-- ============ 2. 두 문서 ============ -->
+<h2>2. 두 문서는 각각 무슨 말을 하나</h2>
+<p class="lead">
+한 편은 <strong>"에이전트를 여러 개 엮을 때 뭘 조심하나"</strong>, 다른 한 편은
+<strong>"세션 하나를 어떻게 싸게 쓰나"</strong>입니다. 축이 완전히 다르고, 그래서 겹치지 않아요.
+</p>
+
+<pre class="mermaid">
+flowchart TD
+  A["문서 1<br/>Graph Engineering"] --> A1["병렬 분기 · 검증자<br/>핸드오프 · 정지 조건"]
+  A --> A2["핵심 경고<br/>organized nonsense"]
+  A2 --> A3["증거는 시스템 밖에서<br/>실제 돌아간 테스트"]
+
+  B["문서 2<br/>세션 가치 극대화"] --> B1["비용 순위<br/>모델 &gt; 세션길이 &gt; effort &gt; 출력"]
+  B --> B2["캐시를 깨지 마라<br/>모델·effort는 시작 시 한 번"]
+  B --> B3["CLAUDE.md 다이어트<br/>워크플로는 skill로"]
+
+  A1 --> C{"moai-adk<br/>대조"}
+  A3 --> C
+  B1 --> C
+  B2 --> C
+  B3 --> C
+
+  C --> D["이미 보유 7건<br/>주로 구조 축"]
+  C --> E["갭 7건<br/>주로 비용 축"]
+</pre>
+<noscript>
+<p><em>(다이어그램 대신 글로:)</em> 문서 1은 구조 축 — 병렬 분기·검증자·핸드오프·정지 조건, 그리고 "organized nonsense"라는 경고와 "증거는 시스템 밖에서 와야 한다"는 처방. 문서 2는 비용 축 — 비용 순위(모델 &gt; 세션 길이 &gt; effort &gt; 출력량), 캐시를 깨지 말 것, CLAUDE.md 다이어트. 두 축을 moai-adk와 대조하면 이미 보유 7건(주로 구조 축)과 갭 7건(주로 비용 축)이 나옵니다.</p>
+</noscript>
+
+<h3>문서 1 — 그래프 엔지니어링</h3>
+<p>
+<strong>그래프 엔지니어링 (graph engineering)</strong>이란, AI 에이전트 하나가 혼자 도는 반복 작업으로는
+감당이 안 될 때 <em>여러 에이전트를 하나의 흐름도로 엮는 것</em>을 말합니다.
+저자의 표현으로는 "병렬 분기, 검증자, 핸드오프, 정지 조건을 갖춘 하나의 오케스트레이션".
+</p>
+<p>
+저자가 솔직하게 짚는 점 하나 — 이건 새 개념이 아닙니다. Apache Airflow 같은 워크플로 엔진이
+10년 넘게 해온 구조예요. 채팅창이 그 질문(어디를 병렬로? 상태는 어떻게 공유? 누가 거부권을?)을
+<em>미루기 쉽게</em> 만들었을 뿐이라는 겁니다.
+</p>
+
+<div class="callout">
+  <div class="ct">이 글에서 가장 값진 한 문장 — "organized nonsense"</div>
+  <p style="margin-top:6px">
+  같은 모델을 쓰는 에이전트 여러 개가 <em>같은 결함 있는 컨텍스트</em>를 읽으면,
+  서로 다른 답이 아니라 <strong>사이좋게 똑같이 틀린 답</strong>을 냅니다.
+  다수결로 검증하면 통과해버려요. 저자의 처방은 하나입니다 —
+  <strong>"증거 일부는 에이전트 시스템 바깥에서 와야 한다. 실제로 돌아간 테스트. 실제로 입금된 돈."</strong>
+  </p>
+</div>
+
+<div class="ex">
+  <div class="exh">이 프로젝트에 대입하면</div>
+  Mode 4 fan-out으로 Opus 워커 4개를 동시에 띄웠다고 해봅시다. 넷 다 같은 210KB 룰 프리픽스를 읽고,
+  같은 모델이고, 같은 코드를 봅니다. 넷이 같은 결론을 냈다고 해서 그게 <em>독립적인 4표</em>가 아니에요.
+  사실상 <strong>1표를 4번 센 것</strong>에 가깝습니다. 반면 <code>go test ./...</code>의 exit code는
+  모델이 몇 개든 상관없이 바깥에서 오는 진짜 증거고요.
+</div>
+
+<h3>문서 2 — Claude Code 세션 가치 극대화</h3>
+<p>Anthropic이 꼽은 <strong>비용을 좌우하는 순서</strong>는 이렇습니다.</p>
+<ol>
+  <li><strong>모델</strong> — 큰 모델일수록 토큰당 비쌈</li>
+  <li><strong>세션 길이</strong> — 누적된 대화를 매 턴 다시 보냄</li>
+  <li><strong>effort</strong> — 생각(thinking) 토큰 양</li>
+  <li><strong>명령 출력량</strong> — 시끄러운 명령이 대화를 부풀림</li>
+</ol>
+<p>2번에 붙은 설명이 특히 아픕니다 — <em>"40번째 턴은 앞의 39턴을 다시 읽고 있다."</em>
+그래서 긴 세션 하나가 같은 일을 나눈 짧은 세션 여러 개보다 비싸고, 생각보다 훨씬 비싸다는 거예요.</p>
+
+<h4>구체 권고 요약</h4>
+<table>
+<thead><tr><th>권고</th><th>내용</th><th>moai-adk엔?</th></tr></thead>
+<tbody>
+<tr><td><code>/clear</code></td><td>작업 사이마다</td><td><span class="badge ok">있음</span></td></tr>
+<tr><td><code>/rewind</code> vs <code>/compact</code></td><td>되감기는 캐시 보존 + 무료, 압축은 항상 요약 비용</td><td><span class="badge ok">있음</span> Reduction Ladder</td></tr>
+<tr><td><code>/compact</code> 타이밍</td><td>긴 휴식 <em>전에</em> — 캐시 살아있을 때가 쌈</td><td><span class="badge ok">있음</span></td></tr>
+<tr><td><code>@-mention</code></td><td>파일명 말하지 말고 첨부 → Read 호출 절약</td><td><span class="badge hi">없음</span></td></tr>
+<tr><td><code>/context</code></td><td>새 세션에서 1회 — 뭐가 실렸는지 확인</td><td><span class="badge hi">없음</span></td></tr>
+<tr><td>모델·effort</td><td><strong>시작 시 한 번.</strong> 중간 변경 = 캐시 파괴</td><td><span class="badge mid">부분</span></td></tr>
+<tr><td>quiet flag</td><td>명령 출력은 파일처럼 세션 끝까지 남는다</td><td><span class="badge mid">부분</span></td></tr>
+<tr><td><code>BASH_MAX_OUTPUT_LENGTH</code></td><td>30,000자 넘으면 파일로, 대화엔 미리보기만</td><td><span class="badge hi">없음</span></td></tr>
+<tr><td>서브에이전트</td><td>출력 많고 안 남겨도 되는 일에. 반복이면 <code>model: haiku</code></td><td><span class="badge mid">부분</span></td></tr>
+<tr><td><code>/loop</code></td><td><strong>설정 세션의 전체 대화를 매번 끌고 간다</strong></td><td><span class="badge mid">§6 참조</span></td></tr>
+<tr><td>CLAUDE.md 다이어트</td><td>구체 지시만, 워크플로성은 skill로</td><td><span class="badge hi">없음</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:14.5px;color:var(--g700)">
+정량 수치(원문 인용): 캐시 읽기 0.1배 · 쓰기 최대 2배 / 출력 토큰은 입력의 약 5배 /
+캐시 유효시간은 구독 1시간, API 키 5분(<code>ENABLE_PROMPT_CACHING_1H=1</code>로 연장).
+</p>
+
+<!-- ============ 3. 이미 있는 것 ============ -->
+<h2>3. 이미 갖춘 것 — 새로 만들 필요 없는 7가지</h2>
+<p class="lead">
+정직하게 말하면, <strong>문서 1이 권하는 것은 moai-adk가 이미 대부분 하고 있습니다.</strong>
+없는 걸 있다고 하지 않는 것만큼, 있는 걸 또 만드는 것도 낭비니까 먼저 확인했어요.
+</p>
+
+<table>
+<thead><tr><th>문서가 말하는 것</th><th>이 프로젝트의 대응 표면</th></tr></thead>
+<tbody>
+<tr><td>증거는 시스템 밖에서 와야</td><td><code>verification-claim-integrity.md</code> §1 — 관측하지 않은 주장 금지, 4개 표면 구속</td></tr>
+<tr><td>하드 정지 조건</td><td>goal 턴 상한(30) + Stop hook 블록 상한(8) + 정체 감지 + loop 반복 상한</td></tr>
+<tr><td>리뷰 체인에 다른 모델 섞기</td><td><code>audit_multi</code> (codex + GLM 수렴) + plan-auditor / sync-auditor</td></tr>
+<tr><td>결정론 코드 / 확률 에이전트 분리</td><td>hook(셸 스크립트, 결정론) vs agent(확률) 이원 구조</td></tr>
+<tr><td>들여다볼 수 있는 상태</td><td>칸반의 <code>progress.md</code> — 대화가 아니라 <em>파일</em>에 상태가 남음</td></tr>
+<tr><td><code>/rewind</code> vs <code>/compact</code> 비용 사다리</td><td><code>context-window-management.md</code> § Reduction Ladder</td></tr>
+<tr><td>스케줄 루프의 안전 범위</td><td><code>cadence-bridge.md</code> — 읽기 전용 레시피 4종, "스케줄 실행은 절대 커밋·푸시·run 진입 금지"가 [HARD]</td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+  <div class="exh">재미있는 관찰</div>
+  문서 1이 "이상적"이라고 말하는 형태 — <em>들여다볼 수 있는 상태, 명시적 핸드오프, 노드마다 정지 조건</em> —
+  는 사실 <strong>칸반 모드가 이미 구현한 것</strong>입니다.
+  카드가 <code>backlog → plan → run → review → sync → done</code>을 지나고,
+  상태는 대화가 아니라 <code>progress.md</code>에 남고, 리드는 그 파일을 <em>읽고</em> 전진하죠.
+  칸반은 채팅 기반 오케스트레이션이 아니라 이미 그래프예요.
+</div>
+
+<!-- ============ 4. 갭 ============ -->
+<h2>4. 갭 — 실제로 적용할 7건</h2>
+<p class="lead">
+아래가 실제 작업 목록입니다. 우선순위는 <strong>비용 절감 크기 × 위험도</strong>로 매겼어요.
+</p>
+
+<div class="tl">
+  <div class="item">
+    <div class="t">G1 · always-loaded 룰 다이어트 <span class="badge hi">High</span></div>
+    <div class="d">
+      210KB가 모든 세션에 실리고 <code>/clear</code>마다 재지불됩니다.
+      <code>cache-aware-execution.md</code>가 스스로 "룰 트리가 자랄수록 <code>/clear</code>가 비싸진다"고
+      인정하지만 <strong>수치 근거는 없었습니다</strong> — 이번에 쟀습니다.
+    </div>
+  </div>
+  <div class="item">
+    <div class="t">G2 · fan-out에 크로스모델 검증 없음 <span class="badge hi">High</span></div>
+    <div class="d">
+      <code>audit_multi</code>는 <em>감사관 전용</em>입니다. Mode 4로 동시에 띄우는 워커 3~5개는
+      같은 모델·같은 룰 프리픽스라, organized nonsense 조건과 정확히 일치합니다.
+    </div>
+  </div>
+  <div class="item">
+    <div class="t">G3 · <code>@-mention</code> / <code>/context</code> 규율 부재 <span class="badge mid">Medium</span></div>
+    <div class="d">전 룰 grep 0건. 둘 다 비용이 0에 가까운 습관인데 어디에도 안 적혀 있습니다.</div>
+  </div>
+  <div class="item">
+    <div class="t">G4 · 명령 출력 관리가 파편적 <span class="badge mid">Medium</span></div>
+    <div class="d">
+      <code>agent-common-protocol</code>의 파일 리다이렉트(50줄/2KB)는 <em>검증 배치 한정</em>입니다.
+      일반 Bash 노이즈와 <code>BASH_MAX_OUTPUT_LENGTH</code>(30,000자) 규율이 없어요.
+    </div>
+  </div>
+  <div class="item">
+    <div class="t">G5 · 상용 명령이 quiet 형태로 안 적혀 있음 <span class="badge mid">Medium</span></div>
+    <div class="d">
+      <code>make build</code>, <code>go test ./internal/&lt;pkg&gt;/...</code> 같은 매일 쓰는 명령을
+      <strong>실제로 타이핑하는 형태 그대로 + 조용한 플래그 포함</strong>으로 기록하면
+      세션마다 한 턴과 수백 줄 출력을 아낍니다.
+    </div>
+  </div>
+  <div class="item">
+    <div class="t">G6 · "세션 길이 = 비용" 축이 doctrine에 없음 <span class="badge mid">Medium</span></div>
+    <div class="d">
+      현재 <code>/clear</code> 트리거는 <em>스트림 스톨 위험</em>으로만 정당화됩니다.
+      비용으로는 정당화되지 않아, 위험이 없으면 세션을 늘려도 된다고 읽힐 여지가 있어요.
+    </div>
+  </div>
+  <div class="item done">
+    <div class="t">G7 · 모델/effort 캐시 파괴 명시 <span class="badge">Low · 문서화</span></div>
+    <div class="d">
+      <code>agent-common-protocol</code>의 "스폰마다 model 명시"와 <code>cache-aware-execution</code>의
+      "세션 모델 상속"이 <strong>겉보기에 충돌</strong>합니다. 실제로는 축이 달라요 —
+      전자는 서브에이전트(별도 컨텍스트), 후자는 메인 세션. 한 줄 주석으로 해소됩니다.
+    </div>
+  </div>
+</div>
+
+<h3>G1 자세히 — 가장 비싼 항목</h3>
+<p>
+<code>kanban-dispatch.md</code>는 21,003바이트인데 <strong>칸반 리드 세션에서만</strong> 쓰입니다.
+파일 스스로 "세션은 SessionStart 컨텍스트에서 자기가 리드인 걸 알게 되므로
+<code>paths:</code> 제한으로는 도달할 수 없다"고 정당화해요. 그 논거 자체는 맞습니다.
+다만 그 논거가 다루지 않는 게 하나 있어요 — <strong>리드가 아닌 세션이 21KB를 내는 비용</strong>입니다.
+</p>
+
+<table>
+<thead><tr><th>선택지</th><th>방법</th><th>평가</th></tr></thead>
+<tbody>
+<tr><td>① 훅 조건부 주입</td><td>SessionStart 훅이 <code>MOAI_KANBAN</code> 환경변수를 볼 때만 주입 (이 변수는 이미 존재)</td><td>깔끔하나 훅 코드 변경 필요</td></tr>
+<tr><td>② 스킬로 이전</td><td>리드가 <code>Skill()</code>로 명시 로드</td><td>리드가 로드를 잊으면 조용히 실패</td></tr>
+<tr><td>③ 스텁 + 지연 동반 파일 <span class="badge ok">권장</span></td><td>바인딩 절만 스텁에 남기고 상세는 <code>-detail.md</code>로</td><td><strong>선례 있음</strong> — <code>goal-directive.md</code> v2.1.0이 정확히 이 패턴</td></tr>
+</tbody>
+</table>
+<p>③은 이 프로젝트에서 이미 검증된 패턴이라 가장 안전합니다.</p>
+
+<!-- ============ 5. 칸반 루프 ============ -->
+<h2>5. 칸반 / 팀모드에 루프를 적용하면?</h2>
+<p class="lead">
+질문 주신 부분입니다. 결론부터 — <strong>리드에는 넣지 말고, 워커에 넣으세요.</strong>
+그리고 <em>시간 간격 루프</em>가 아니라 <em>조건 루프</em>여야 합니다. 이유를 하나씩 볼게요.
+</p>
+
+<h3>먼저, "루프"는 두 개의 다른 물건입니다</h3>
+<table>
+<thead><tr><th></th><th>네이티브 <code>/loop &lt;간격&gt;</code></th><th><code>/moai goal</code></th></tr></thead>
+<tbody>
+<tr><td>언제 발동</td><td>벽시계 간격 (5분마다 등)</td><td>직전 턴이 끝날 때 Stop hook이 평가</td></tr>
+<tr><td>컨텍스트</td><td><strong>설정한 세션의 전체 대화를 매번 재전송</strong></td><td>같은 세션 연속 턴 — 캐시가 따뜻함</td></tr>
+<tr><td>1시간 지나면</td><td>캐시 미스까지 추가</td><td>해당 없음(연속이라)</td></tr>
+<tr><td>어떻게 멈추나</td><td>사용자가 취소</td><td>조건 충족 / 상한 30턴 / 블록 상한 8 / 정체 감지</td></tr>
+<tr><td>승인 게이트</td><td>없음</td><td>Implementation Kickoff Approval 유지</td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+  <div class="exh">문서 2의 원문 경고</div>
+  <em>"<code>/loop</code>는 설정한 세션에서 하나의 온전한 턴으로 발동하며, 매번 그 대화 전체를 함께 끌고 간다.
+  마지막 턴으로부터 1시간이 지났다면 캐시 미스까지 얹힌다."</em>
+  → 그래서 Anthropic의 권고는 <strong>"루프는 새 세션에서 시작하라"</strong>입니다.
+</div>
+
+<h3>칸반 <em>리드</em>에 네이티브 <code>/loop</code>를 걸면 안 되는 이유 4가지</h3>
+<ol>
+  <li>
+    <strong><code>/clear</code> 요구와 정면충돌.</strong>
+    <code>kanban-dispatch.md</code>는 페이즈가 끝날 때마다 리드가 운영자에게 <code>/clear</code>를 요청하도록 [HARD]로 규정합니다.
+    그런데 <code>/clear</code>는 <em>사람이 직접 타이핑해야 하는</em> 명령이고, 루프는 세션이 살아 있어야 발동해요.
+    둘은 같이 못 삽니다.
+  </li>
+  <li>
+    <strong>비용이 가장 나쁜 지점에 걸립니다.</strong>
+    리드의 컨텍스트 = 210KB 룰 + 누적 대화 전부. tick마다 이걸 전액 재전송합니다.
+  </li>
+  <li>
+    <strong>백로그 진입 [HARD] 위반.</strong>
+    <code>backlog</code>는 소유 세션이 없고, 카드를 꺼내는 건 <em>운영자의 결정</em>이라고 규정돼 있습니다.
+    루프가 자동으로 카드를 승격하면 리드가 일을 <em>스케줄링</em>하는 게 아니라 <em>생성</em>하게 돼요 — 명시적으로 금지된 상태입니다.
+  </li>
+  <li>
+    <strong>판정 근거가 오히려 약해집니다.</strong>
+    리드는 companion이 남긴 <code>progress.md</code>와 증거를 <em>읽고</em> 카드를 전진시킵니다.
+    루프는 읽을 게 없어도 시간이 되면 발동하니, 의미 없는 tick이 쌓입니다.
+  </li>
+</ol>
+
+<h3>그럼 어디에 넣나 — 올바른 배치</h3>
+
+<figure>
+<svg viewBox="0 0 820 300" role="img" aria-label="칸반 루프 배치도">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#87867F"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="820" height="300" fill="#FFFFFF"/>
+
+  <!-- lead -->
+  <rect x="24" y="112" width="176" height="76" rx="10" fill="#F0EEE6" stroke="#D1CFC5" stroke-width="1.5"/>
+  <text x="112" y="140" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="14" font-weight="700" fill="#141413">리드 세션</text>
+  <text x="112" y="160" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="11.5" fill="#B85C3E">루프 금지</text>
+  <text x="112" y="177" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="11" fill="#87867F">증거 읽고 전진 · /clear 요청</text>
+
+  <!-- arrows to workers -->
+  <line x1="204" y1="132" x2="286" y2="70"  stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="204" y1="150" x2="286" y2="150" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+  <line x1="204" y1="168" x2="286" y2="230" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- workers -->
+  <rect x="292" y="38" width="212" height="64" rx="10" fill="#FFFFFF" stroke="#788C5D" stroke-width="2"/>
+  <text x="398" y="62" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="13.5" font-weight="700" fill="#141413">run companion</text>
+  <text x="398" y="82" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#788C5D">/moai goal (ac_converge)</text>
+
+  <rect x="292" y="118" width="212" height="64" rx="10" fill="#FFFFFF" stroke="#788C5D" stroke-width="2"/>
+  <text x="398" y="142" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="13.5" font-weight="700" fill="#141413">팀모드 fan-out</text>
+  <text x="398" y="162" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#788C5D">/moai goal — 같은 세션 연속</text>
+
+  <rect x="292" y="198" width="212" height="64" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+  <text x="398" y="222" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="13.5" font-weight="700" fill="#141413">review / sync</text>
+  <text x="398" y="242" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#87867F">루프 불필요 — 1회성</text>
+
+  <!-- watcher -->
+  <rect x="596" y="118" width="200" height="64" rx="10" fill="#FFFFFF" stroke="#D97757" stroke-width="2"/>
+  <text x="696" y="142" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="13.5" font-weight="700" fill="#141413">전용 감시 세션</text>
+  <text x="696" y="162" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="12" fill="#B85C3E">네이티브 /loop · 읽기 전용</text>
+
+  <line x1="508" y1="150" x2="590" y2="150" stroke="#87867F" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+  <text x="549" y="142" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="10.5" fill="#87867F">알림</text>
+
+  <text x="696" y="200" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="11" fill="#87867F">CI 워치 · 드리프트 탐지</text>
+  <text x="696" y="216" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="11" fill="#87867F">컨텍스트가 가벼워야 성립</text>
+</svg>
+<figcaption>루프는 리드가 아니라 워커 쪽에. 시간 간격 루프는 컨텍스트가 가벼운 전용 세션에만.</figcaption>
+</figure>
+
+<table>
+<thead><tr><th>자리</th><th>넣을 것</th><th>왜</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>companion <code>run</code> 세션</strong></td>
+  <td><code>/moai goal</code> (<code>ac_converge</code>)</td>
+  <td>캐시가 따뜻하고, 승인 게이트가 유지되고, 조건이 충족되면 스스로 끝납니다. <code>run.md</code> § Run-phase Autonomy가 <strong>이미 이 배선</strong>이에요.</td>
+</tr>
+<tr>
+  <td><strong>팀모드 in-session fan-out</strong></td>
+  <td><code>/moai goal</code></td>
+  <td>같은 세션 안에서 턴이 이어지므로 재전송 비용 자체가 발생하지 않습니다.</td>
+</tr>
+<tr>
+  <td>CI 감시 / 드리프트 탐지</td>
+  <td>네이티브 <code>/loop</code> — <strong>전용 얇은 세션에서</strong></td>
+  <td><code>cadence-bridge.md</code> 레시피와 정합. 컨텍스트가 가벼워 재전송이 싸고, 읽기 전용이라 HARD 불변식을 지킵니다.</td>
+</tr>
+<tr>
+  <td>리드 → companion 완료 감지</td>
+  <td>루프 아님 — <code>cross-session-messaging</code></td>
+  <td>이미 있는 기능입니다. 폴링보다 알림이 정확하고 쌉니다.</td>
+</tr>
+</tbody>
+</table>
+
+<div class="callout">
+  <div class="ct">주의 — goal을 배선할 때 걸리는 함정 하나</div>
+  <p style="margin-top:6px">
+  goal의 턴 상한은 기본 <strong>30</strong>인데, 런타임의 연속 블록 상한은 기본 <strong>8</strong>입니다.
+  무인 실행에서는 <em>8이 먼저 걸려서</em> 판정문(verdict) 없이 종료돼요.
+  <code>goal.md</code> §22가 이미 경고하고 있으니, 배선할 때
+  <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code>을 올리거나 ceiling을 8 이하로 낮춰야 합니다.
+  <strong>"판정문이 없다"를 "수렴했다"로 읽으면 안 됩니다.</strong>
+  </p>
+</div>
+
+<!-- ============ 6. 리스크 ============ -->
+<h2>6. 리스크</h2>
+<div class="risks">
+  <div class="risk">
+    <div class="rt">룰 다이어트가 규율 도달성을 깬다</div>
+    <div class="rb">잘라낸 규율이 필요한 순간에 로드되지 않으면 <strong>실패가 조용합니다</strong> — 규율이 없는 줄도 모른 채 진행돼요. 스텁+지연 분할로 바인딩 절은 인라인 유지, 그리고 held-in/held-out 검증 필수.</div>
+  </div>
+  <div class="risk">
+    <div class="rt">크로스모델 검증이 fan-out 이득을 상쇄</div>
+    <div class="rb">모든 워커에 붙이면 병렬화 이득이 사라집니다. <strong>결론이 갈리는 지점에만</strong> 적용해야 해요.</div>
+  </div>
+  <div class="risk">
+    <div class="rt">66K 토큰은 추정치</div>
+    <div class="rb">바이트/4 환산입니다. 우선순위를 잘못 매길 수 있으니 <code>/context</code> 실측으로 대체해야 합니다.</div>
+  </div>
+  <div class="risk low">
+    <div class="rt">goal 블록 상한 &lt; 턴 상한</div>
+    <div class="rb"><code>goal.md</code>가 이미 경고 중. 배선 시 상한 조정으로 해소.</div>
+  </div>
+</div>
+
+<!-- ============ 7. 판정 ============ -->
+<h2>7. 어떻게 됐는지 확인하는 법</h2>
+<table>
+<thead><tr><th>항목</th><th>판정 방법</th></tr></thead>
+<tbody>
+<tr><td>G1 룰 다이어트</td><td><code>/context</code> 값을 조치 전후로 새 세션 2회 실측 비교</td></tr>
+<tr><td>G2 크로스모델 검증</td><td>fan-out 결론 채택 경로에 다른 백엔드 검증이 1회 이상 개입 (<code>audit_multi</code> 호출 로그)</td></tr>
+<tr><td>G3~G5 규율</td><td>해당 규율이 룰 파일에 존재 + grep 검증</td></tr>
+<tr><td>G6 비용 축</td><td><code>context-window-management.md</code>에 비용 근거 문단 추가</td></tr>
+<tr><td>칸반 루프</td><td>리드 세션에 네이티브 <code>/loop</code> 미배선 유지 + companion goal 배선 존재</td></tr>
+</tbody>
+</table>
+
+<!-- ============ 8. 미검증 ============ -->
+<h2>8. 검증하지 않은 것 (Gaps)</h2>
+<p class="lead">
+이 프로젝트 규칙상, <strong>관측하지 않은 것을 관측한 척하면 안 됩니다.</strong>
+그래서 이번에 <em>재지 않은 것</em>을 그대로 적습니다.
+</p>
+<ul>
+  <li><strong>66K 토큰은 추정치입니다.</strong> 바이트÷4 환산이고 <code>/context</code> 실측이 아닙니다. 도구 스키마·스킬 목록·시스템 프롬프트·메모리가 빠져 있으므로 실제 baseline은 <strong>이보다 큽니다</strong>.</li>
+  <li><strong>문서 2의 정량 수치는 원문 인용</strong>입니다. 캐시 배수·유효시간·30,000자 임계를 이번 세션에서 재현 측정하지 않았습니다.</li>
+  <li><strong><code>audit_model</code> 기본값 미확인.</strong> 설정 파일에 키가 없다는 것만 확인했고(grep 0건), Go 기본값 코드는 열어보지 않았습니다.</li>
+  <li><strong>G2의 "fan-out에 크로스모델 검증 없음"</strong>은 <em>배선 부재 관측</em>(감사관 tools 목록에만 <code>audit_multi</code> 존재)에 근거합니다. Mode 4 실행 로그로 재확인이 필요합니다.</li>
+  <li><strong><code>stop-goal</code> 훅을 실행해보지 않았습니다.</strong> 파일 존재(<code>internal/cli/hook_stop_goal.go</code>, <code>handle-stop-goal.sh</code>)만 확인했습니다.</li>
+  <li><strong>이 보고서는 제안이며, 어떤 룰 파일도 수정하지 않았습니다.</strong></li>
+</ul>
+
+<h2>9. 남는 위험</h2>
+<ul>
+  <li>룰 다이어트는 always-loaded 규율의 <em>도달성</em>을 바꿉니다. 조용한 실패가 가장 비싼 실패 형태라, 잘라내기 전에 held-in(원래 문제가 해결되는지) / held-out(기존 가드가 여전히 통과하는지) 양쪽 검증이 필요합니다.</li>
+  <li>문서 2는 구독/API 과금 모델을 전제합니다. 이 프로젝트의 실제 과금 조건에서는 배수가 다를 수 있습니다.</li>
+</ul>
+
+<p class="foot">
+출처 · <a href="https://www.louisbouchard.ai/graph-engineering-explained/">Louis Bouchard, "Graph Engineering Explained"</a>
+&nbsp;·&nbsp;
+<a href="https://claude.com/blog/maximizing-the-value-of-your-claude-code-sessions">Anthropic, "Maximizing the value of your Claude Code sessions"</a><br>
+에이전트용 lean 마크다운 트윈: <code>.moai/reports/graph-eng-session-value-20260816.md</code>
+</p>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6",
+      fontFamily:"Pretendard, system-ui, sans-serif"
+    }
+  });
+</script>
+</body>
+</html>

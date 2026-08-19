@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@MX · codemaps · SPEC 통합 그래프</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root{
+      --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+      --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;
+      --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px;--radius-row:8px;--border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);
+         font-size:15px;line-height:1.65;padding:56px 32px 120px;-webkit-font-smoothing:antialiased}
+    .page{max-width:var(--max-width);margin:0 auto}
+    .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+             text-transform:uppercase;color:var(--g500);margin-bottom:10px}
+    h1{font-family:var(--serif);font-weight:700;font-size:31px;color:var(--slate);
+       letter-spacing:-.01em;line-height:1.25;margin-bottom:18px}
+    .goal-box{border:var(--border);border-left:3px solid var(--clay);border-radius:10px;
+              background:var(--paper);padding:18px 20px;margin-bottom:26px;font-size:14.5px;max-width:850px}
+    .goal-box b{color:var(--slate)}
+    .stamp{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+           background:var(--olive);color:#fff;padding:3px 9px;border-radius:5px;margin-bottom:10px}
+    .sec-head{font-family:var(--serif);font-weight:700;font-size:23px;color:var(--slate);
+              margin:48px 0 6px;padding-bottom:8px;border-bottom:2px solid var(--oat)}
+    .sec-intro{font-size:14.5px;margin:12px 0 18px;max-width:790px}
+    h3{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--slate);margin:26px 0 8px}
+    p{margin-bottom:12px;max-width:790px}
+    code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+    td code,th code,pre code{background:none;padding:0}
+    ul,ol{margin:0 0 12px 20px;max-width:790px}
+    li{margin-bottom:7px}
+    .lead{border-left:2px solid var(--oat);padding-left:14px;margin-bottom:16px;max-width:790px;font-size:14.5px}
+
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 8px}
+    @media(max-width:760px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
+    .sum-cell{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .sum-cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+                 text-transform:uppercase;color:var(--g500);margin-bottom:6px}
+    .sum-cell .v{font-family:var(--serif);font-weight:700;font-size:24px;color:var(--slate);line-height:1.15}
+    .sum-cell .v.accent{color:var(--clay)}
+    .sum-cell .v.good{color:var(--olive)}
+    .sum-cell .n{font-size:12px;color:var(--g500);margin-top:4px}
+
+    table{border-collapse:collapse;width:100%;margin:14px 0 20px;font-size:13.5px;
+          background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden}
+    th{background:var(--g100);color:var(--slate);text-align:left;font-weight:700;
+       padding:9px 12px;border-bottom:1px solid var(--g300);font-size:12.5px}
+    td{padding:9px 12px;border-bottom:1px solid var(--g300);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .ok{color:var(--olive);font-weight:700}
+    .part{color:var(--clay);font-weight:700}
+    .no{color:var(--clay-d);font-weight:700}
+    .dim{color:var(--g500)}
+
+    .callout{display:flex;gap:12px;border:var(--border);border-color:var(--oat);
+             background:rgba(227,218,204,.35);border-radius:10px;padding:14px 16px;
+             margin:18px 0;font-size:14px;max-width:850px}
+    .callout .ico{color:var(--clay);font-weight:600;flex-shrink:0}
+    .callout p:last-child{margin-bottom:0}
+    .callout.warn{border-color:var(--clay);background:rgba(217,119,87,.08)}
+
+    pre.mermaid{background:var(--paper);border:var(--border);border-radius:10px;padding:18px;
+                margin:18px 0;font-family:var(--mono);font-size:12px;color:var(--g500);
+                overflow-x:auto;text-align:center}
+    pre.code{background:var(--paper);border:var(--border);border-radius:10px;padding:15px 17px;
+             margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6;
+             color:var(--slate);overflow-x:auto}
+    pre.code .cm{color:var(--g500)}
+    pre.code .hl{color:var(--clay)}
+
+    .milestones{display:flex;flex-direction:column;margin-top:18px}
+    .milestone{display:grid;grid-template-columns:70px 28px 1fr;gap:0 18px}
+    .milestone .when{text-align:right;font-family:var(--mono);font-size:12px;color:var(--g500);padding-top:4px}
+    .milestone .dot-col{display:flex;flex-direction:column;align-items:center}
+    .milestone .dot{width:14px;height:14px;border-radius:50%;background:var(--paper);
+                    border:3px solid var(--clay);margin-top:5px;flex-shrink:0}
+    .milestone .line{width:2px;flex:1;background:var(--g300);margin:4px 0}
+    .milestone:last-child .line{display:none}
+    .milestone .body{padding-bottom:26px}
+    .milestone .body h3{font-size:16.5px;margin:0 0 4px}
+    .milestone .body p{font-size:13.8px;margin-bottom:8px}
+    .tag-row{display:flex;gap:7px;flex-wrap:wrap}
+    .tag{font-family:var(--mono);font-size:11px;background:var(--oat);color:var(--slate);
+         padding:2px 8px;border-radius:5px}
+
+    .risks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+    @media(max-width:760px){.risks{grid-template-columns:1fr}}
+    .risk{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .risk h4{font-size:15px;margin:0 0 6px;display:flex;align-items:center;gap:8px;
+             font-family:var(--serif);font-weight:700;color:var(--slate)}
+    .sev{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 7px;
+         border-radius:4px;text-transform:uppercase}
+    .sev.high{background:var(--clay);color:#fff}
+    .sev.mid{background:var(--oat);color:var(--slate)}
+    .sev.low{background:var(--g100);color:var(--g500)}
+    .risk p{font-size:13.4px;margin-bottom:6px}
+    .risk .mit{font-size:13px;color:var(--g500)}
+    .risk .mit b{color:var(--olive)}
+
+    footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);
+           font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.9}
+
+    @media print{
+      body{background:#fff;color:#000;padding:0;font-size:11pt}
+      .page{max-width:none}
+      .callout,.risk,.milestone{page-break-inside:avoid}
+      h1,h3,.sec-head{page-break-after:avoid}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 실행 설계 · 2026-08-17 · 배포 목표 v3.1.1</div>
+  <h1>@MX · codemaps · SPEC<br>통합 그래프 실행 설계</h1>
+
+  <div class="goal-box">
+    <span class="stamp">신규 코드 = writer 1 + reader 1</span>
+    <p><b>한 줄 결론</b> &mdash; 세 원천이 <b>이미 그래프를 생산하고 있고, 저장만 안 합니다.</b>
+    새로 만들 것은 세 원천을 한 파일로 쓰는 writer 하나와,
+    그 위를 걷는 <b>~50줄짜리 순수 Go BFS</b> 하나뿐이에요.</p>
+    <p><b>왜 지금인가</b> &mdash; 7/29 전략 문서가 "그래프의 70%는 이미 갖춰짐"이라 했는데,
+    오늘 실측해 보니 <b>남은 30%도 대부분 이미 있었습니다.</b>
+    <code>@MX</code> 태그가 코드에 <b>1,808개</b> 박혀 있고,
+    그중 <b>168개는 코드에서 SPEC으로 가는 엣지</b>예요.
+    <code>internal/mx</code>에는 파서·해석기·LSP fan-in이 전부 구현돼 있고,
+    <code>Callsite</code> 타입은 <b>이미 JSON 직렬화 태그를 달고 있습니다.</b></p>
+    <p style="margin-bottom:0">즉 <b>추출은 다 되는데 버리고 있습니다.</b></p>
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">코드의 @MX 태그</div>
+      <div class="v good">1,808</div>
+      <div class="n">전부 코드에 영구 보존 중</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">코드→SPEC 엣지</div>
+      <div class="v good">168</div>
+      <div class="n"><code>@MX:SPEC</code> · 고유 SPEC 39</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">신규 코드</div>
+      <div class="v accent">2</div>
+      <div class="n">writer 1 + BFS reader 1</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">필요한 서버·DB</div>
+      <div class="v good">0</div>
+      <div class="n">cgo도 0</div>
+    </div>
+  </div>
+
+  <div class="sec-head">1. 세 층이 이미 다 있습니다</div>
+
+  <p class="lead">
+    그래프를 만든다고 하면 밑바닥부터 짓는 일 같지만, 여기서는 <b>이미 나오고 있는 것을 한 곳에 모으는</b> 일입니다.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:90px">층</th><th style="width:270px">원천</th><th>현재 상태</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>코드</b></td>
+        <td><code>codemaps --format json</code> · <code>go list -deps -json</code> · LSP fan-in</td>
+        <td class="part">생산 중, <b>저장 안 함</b> &mdash; 매번 재계산</td>
+      </tr>
+      <tr>
+        <td><b>주석</b></td>
+        <td><code>@MX</code> 태그 1,808개</td>
+        <td class="ok"><b>코드에 영구 보존</b> &mdash; 리팩터링돼도 따라감</td>
+      </tr>
+      <tr>
+        <td><b>문서</b></td>
+        <td>SPEC <code>depends_on</code> / <code>related_specs</code></td>
+        <td class="ok"><b>이미 edge list</b></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>@MX 태그 분포 (실측)</h3>
+
+  <table>
+    <thead><tr><th style="width:190px">태그</th><th style="width:90px">개수</th><th>그래프에서의 역할</th></tr></thead>
+    <tbody>
+      <tr><td><code>@MX:REASON</code></td><td>563</td><td>노드 속성 &mdash; 왜 이렇게 되어 있는가</td></tr>
+      <tr><td><code>@MX:NOTE</code></td><td>473</td><td>노드 속성</td></tr>
+      <tr><td><code>@MX:ANCHOR</code></td><td>416</td><td><b>고 fan_in 노드</b> 표시</td></tr>
+      <tr><td class="ok"><b><code>@MX:SPEC</code></b></td><td class="ok"><b>168</b></td><td class="ok"><b>코드 → SPEC 엣지</b></td></tr>
+      <tr><td><code>@MX:WARN</code></td><td>115</td><td>위험 속성</td></tr>
+      <tr><td><code>TODO</code>/<code>UPGRADE</code>/<code>CEILING</code>/<code>DEBT</code>/<code>LEGACY</code></td><td>72</td><td>부채 속성</td></tr>
+      <tr><td style="background:var(--g100)"><b>합계</b></td><td style="background:var(--g100)"><b>1,808</b></td><td style="background:var(--g100)"></td></tr>
+    </tbody>
+  </table>
+
+  <h3>이미 구현된 코드 자산</h3>
+
+  <ul>
+    <li><code>internal/mx/</code> &mdash; <code>Tag</code>(File, Line) ·
+        <b><code>Callsite</code>(이미 <code>json:"file"</code>/<code>json:"line"</code> 태그 보유)</b> ·
+        <code>fanin_lsp.go</code>(LSP + textual fallback) ·
+        <code>resolver_query.go</code>(14KB) · <code>danger_category.go</code></li>
+    <li><code>internal/cli/mx_scan.go</code> · <code>mx_query.go</code> &mdash;
+        <b><code>moai mx</code> CLI가 이미 존재</b>합니다</li>
+    <li><code>codemaps.md</code> &mdash; <code>--format json</code>,
+        <b>"Dependency adjacency list (who imports whom)"</b> &mdash; 이미 인접 리스트</li>
+    <li><code>internal/spec/</code> &mdash; depends_on · lint_ownership · audit</li>
+    <li><code>internal/runtime/audit_cache.go</code> <code>ComputeHash</code> &mdash; 노드 식별자</li>
+  </ul>
+
+  <pre class="mermaid">
+flowchart LR
+  A["codemaps --format json<br/>import 인접 리스트"] --> E[("edges.jsonl<br/>신규 · writer 1개")]
+  B["@MX 1,808개<br/>internal/mx 파서 기존"] --> E
+  C["SPEC depends_on<br/>이미 edge list"] --> E
+  D["LSP fan-in<br/>Callsite 기존"] --> E
+  E --> F["~50줄 순수 Go BFS<br/>find_callers · blast_radius"]
+  F --> G["에이전트가 직접 읽음<br/>토큰 절약"]
+
+  style E fill:#E3DACC,stroke:#D97757
+  style F fill:#E3DACC,stroke:#D97757
+  </pre>
+
+  <noscript>
+    <p><b>구조 요약</b>: codemaps의 import 인접 리스트, @MX 태그 1,808개(internal/mx 파서 기존),
+    SPEC depends_on, LSP fan-in(Callsite 기존) 네 원천을 <code>edges.jsonl</code>(신규 writer 1개)로 모으고,
+    그 위를 ~50줄 순수 Go BFS(find_callers / blast_radius)가 걷습니다.
+    에이전트가 그 파일을 직접 읽어 토큰을 아낍니다.</p>
+  </noscript>
+
+  <div class="sec-head">2. @MX가 그래프의 앵커인 이유</div>
+
+  <p class="lead">
+    온톨로지의 최대 위험은 <b>"낡은 엣지가 자신 있게 틀린 답을 낸다"</b>입니다.
+    7/29 문서도 §위험에 "거짓 엣지 전파"로 적어뒀어요.
+    그런데 <b>@MX는 이 위험이 구조적으로 없습니다.</b>
+  </p>
+
+  <table>
+    <thead><tr><th style="width:200px"></th><th>외부 그래프</th><th>@MX 태그</th></tr></thead>
+    <tbody>
+      <tr><td>저장 위치</td><td><code>edges.jsonl</code> 등 별도 파일</td><td class="ok"><b>코드 주석 안</b></td></tr>
+      <tr><td>파일이 옮겨지면</td><td class="no">엣지가 끊어짐</td><td class="ok"><b>따라 이동</b></td></tr>
+      <tr><td>함수가 리팩터링되면</td><td class="no">경로가 어긋남</td><td class="ok"><b>같이 수정됨</b></td></tr>
+      <tr><td>갱신 주체</td><td class="part">별도 재생성 필요</td><td class="ok"><b>코드 편집자가 자연히</b></td></tr>
+      <tr><td>리뷰에 보이나</td><td class="no">안 보임</td><td class="ok"><b>diff에 그대로</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>그래서 외부 그래프가 흔들려도 @MX에서 다시 맞출 수 있습니다.</b>
+      태그 이름이 <code>@MX:ANCHOR</code>인 게 우연이 아닌 것 같아요.</p>
+      <p style="margin-bottom:0">이것이 Tier 0에 <b>@MX를 먼저 얹는 이유</b>입니다 &mdash;
+      가장 안 썩는 층부터 깔고, 잘 썩는 층(코드 구조 엣지)은 그 위에 <b>재생성 가능한 파생물</b>로 둡니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">3. codemaps는 생산자입니다</div>
+
+  <p>"codemaps를 온톨로지 기반으로 재구축하면 낫나"는 <b>방향이 반대</b>예요.
+  codemaps는 그래프를 <b>소비</b>하는 게 아니라 <b>생산</b>합니다.</p>
+
+  <p>이미 이렇게 내고 있어요 &mdash; <code>--format json</code>,
+  <code>go list -deps -json</code> + <code>go doc</code>,
+  그리고 문서에 적힌 <b>"Dependency adjacency list (who imports whom)"</b>.</p>
+
+  <p><b>바꿀 게 아니라 버리지 않는 것</b>이 답입니다. 다만 codemaps가 <b>소비자도 되면</b> 이득이 둘 생겨요:</p>
+
+  <ul>
+    <li><b>증분 갱신</b> &mdash; 전체 <code>go list -deps</code> 재계산 대신 바뀐 부분만</li>
+    <li><b>@MX 속성 얹기</b> &mdash; "이 모듈의 WARN 개수", "DEBT가 어디 몰려 있나"</li>
+  </ul>
+
+  <div class="sec-head">4. 가능해지는 질의 &mdash; 지금은 못 하는 것들</div>
+
+  <pre class="code"><span class="cm"># 요구사항에서 코드로</span>
+"REQ-X를 구현한 코드는?"       → SPEC ← <span class="hl">@MX:SPEC</span> 역방향 → 심볼
+
+<span class="cm"># 코드에서 요구사항으로 (임팩트 분석)</span>
+"이 함수 고치면 어느 SPEC이?"  → 심볼 → <span class="hl">fan_in</span> → @MX:SPEC → SPEC
+
+<span class="cm"># 부채 상환 우선순위 자동 도출</span>
+"@MX:DEBT 중 fan_in 높은 것"   → 영향 큰 부채부터
+
+<span class="cm"># 미연결 탐지</span>
+"코드 참조가 0인 SPEC"         → 관계를 확인할 수 없는 SPEC 목록</pre>
+
+  <div class="callout warn">
+    <span class="ico">⚠</span>
+    <div>
+      <p><b>마지막 질의의 결과를 오독하면 안 됩니다.</b> 실측하니
+      디스크의 SPEC 디렉터리가 <b>626개</b>인데 <code>@MX:SPEC</code>이 참조하는 고유 SPEC은 <b>39개</b>였어요.</p>
+      <p>이걸 <b>"94%가 미구현"으로 읽으면 틀립니다.</b> 626개 중 대부분은
+      문서·규칙·하네스 변경 SPEC이라 <b>코드가 없는 게 정상</b>이고, 완료돼 아카이브된 것도 많아요.</p>
+      <p style="margin-bottom:0">정확한 서술은 이겁니다 &mdash;
+      <b>"코드→SPEC 엣지가 39개뿐이라 나머지는 관계를 기계적으로 확인할 수 없다."</b>
+      미구현이 아니라 <b>미연결</b>입니다. 산출물에도 이 문구를 넣어야 커버리지 수치가
+      없는 결함으로 둔갑하지 않습니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">5. v3.1.1 범위</div>
+
+  <div class="milestones">
+    <div class="milestone">
+      <div class="when">M1</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3><code>edges.jsonl</code> writer</h3>
+        <p>codemaps json + @MX 추출 + SPEC <code>depends_on</code>을 <b>한 파일로</b> 씁니다.
+        추출기 3종이 <b>전부 기존 코드</b>라 신규는 writer 하나뿐이에요.</p>
+        <p>형식은 <b>한 줄 = 엣지 하나</b>. 서버 0 · DB 0 · cgo 0이고
+        <b>git이 diff를 낼 수 있습니다</b> &mdash; 이게 이 형식을 고른 이유예요.
+        성능이 아니라 운영 비용입니다.</p>
+        <div class="tag-row"><span class="tag">신규 writer 1</span><span class="tag">추출기 기존</span><span class="tag">git diff 가능</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M2</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>순수 Go BFS reader</h3>
+        <p><code>find_callers</code> / <code>blast_radius</code>를 <b>~50줄</b>로 노출합니다.
+        7/29 문서가 권한 Tier 0 그대로예요.</p>
+        <p>에이전트가 이 파일을 <b>직접 읽으므로</b> 매번 <code>go list -deps</code>를 돌릴 필요가 없고,
+        그만큼 토큰이 줄어듭니다.</p>
+        <div class="tag-row"><span class="tag">~50줄</span><span class="tag">읽기 전용</span><span class="tag">토큰 절감</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>CLI 표면 &mdash; 선택지 둘 (run 단계 판단)</h3>
+
+  <table>
+    <thead><tr><th style="width:56px"></th><th style="width:250px">형태</th><th>장단</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>a</b></td>
+        <td><code>moai graph build</code><br><code>moai graph query</code></td>
+        <td>범위가 MX를 넘으므로 <b>이름이 정확</b>. 다만 최상위 커맨드가 하나 늘어남</td>
+      </tr>
+      <tr>
+        <td><b>b</b></td>
+        <td><code>moai mx export --edges</code><br><code>moai mx query --graph</code></td>
+        <td class="ok"><b>기존 <code>moai mx</code> 재사용, 신규 커맨드 0.</b>
+            다만 이름이 실제 범위보다 좁음</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head">6. v3.1.1 이후</div>
+
+  <table>
+    <thead><tr><th style="width:90px">시기</th><th style="width:280px">내용</th><th>7/29 지점</th></tr></thead>
+    <tbody>
+      <tr><td>다음</td><td>컨텍스트 조립에 서브그래프 활용 &mdash; <b>같은 품질을 더 적은 토큰으로</b></td><td>IP-5</td></tr>
+      <tr><td>이후</td><td>에이전트 메모리를 그래프로 (관계형 회상)</td><td>IP-3</td></tr>
+      <tr><td>이후</td><td>SPEC 온톨로지 검증 (AC ≥ 1 REQ · ≥ 1 테스트 불변식)</td><td>IP-4</td></tr>
+      <tr><td>이후</td><td>에이전트 조정 칠판 (병렬 worktree 공유 상태)</td><td>IP-6</td></tr>
+      <tr><td class="part">별건</td><td>todo 백로그 필드 정규화 (<code>tier</code> / <code>depends_on</code>)<br>
+          <b>선행: <code>todo.md</code> [HARD] 규칙 개정</b></td><td class="dim">&mdash;</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head">7. 리스크</div>
+
+  <div class="risks">
+    <div class="risk">
+      <h4>마감 라운드에 신규 기능 <span class="sev high">높음</span></h4>
+      <p>v3.1.1은 마감 중입니다. 신규 기능은 회귀 위험을 새로 만들어요.</p>
+      <p class="mit"><b>완화</b> &mdash; 신규 코드가 writer + reader 둘뿐이고
+      <b>기존 경로를 건드리지 않습니다.</b> 읽기 전용 산출물이라 회귀 표면이 좁아요.
+      그래도 v3.1.1 CI 전량 통과가 게이트입니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>거짓 엣지 전파 <span class="sev high">높음</span></h4>
+      <p>틀린 관계 하나가 멀티홉 질의로 증폭됩니다. 7/29 §위험이 이미 지적한 것이에요.</p>
+      <p class="mit"><b>완화</b> &mdash; <b>@MX를 앵커로</b>. 외부 엣지는 스냅샷이 아니라
+      <b>재생성 가능한 파생물</b>로 유지해 언제든 다시 만들 수 있게 합니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>엔티티 해석 오류 <span class="sev mid">중간</span></h4>
+      <p>과잉 병합(다른 걸 같다고) · 과소 병합(같은 걸 다르다고).</p>
+      <p class="mit"><b>완화</b> &mdash; 심볼 식별자를 <code>file:line:symbol</code>로 고정하고
+      <b>추론 병합을 금지</b>합니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>커버리지 수치 오독 <span class="sev mid">중간</span></h4>
+      <p>626 대 39가 "94% 미구현"으로 읽히면 <b>없는 결함</b>을 만듭니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 산출물에 <b>"미연결 ≠ 미구현"</b>을 명시하고,
+      이 수치를 결함 주장의 근거로 쓰지 않습니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>과잉 엔지니어링 <span class="sev mid">중간</span></h4>
+      <p>Tier 0으로 충분한데 sqlite나 그래프 DB를 먼저 만드는 것.</p>
+      <p class="mit"><b>완화</b> &mdash; <b>Tier 0 고정.</b>
+      Tier 1(sqlite) · Tier 2(그래프DB)는 <b>한계 도달 전 금지</b>입니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>LLM 생성 질의 쓰기 권한 <span class="sev low">낮음</span></h4>
+      <p>모델이 만든 질의가 그래프를 수정하면 오염이 번집니다.</p>
+      <p class="mit"><b>완화</b> &mdash; <b>금지.</b> 읽기 전용 + 검증.
+      7/29 §위험의 조항을 그대로 승계합니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">8. 성공 지표</div>
+
+  <ul>
+    <li><code>edges.jsonl</code> 생성되고 <b>git diff가 읽힘</b></li>
+    <li><code>find_callers</code> / <code>blast_radius</code>가 심볼 1개 기준으로 응답</li>
+    <li>코드 참조 0인 SPEC 목록 산출 (<b>"미연결 ≠ 미구현" 문구 포함</b>)</li>
+    <li>@MX 1,808개가 엣지 또는 속성으로 <b>전부</b> 반영</li>
+    <li>기존 <code>moai mx scan</code> · codemaps 동작 <b>회귀 0</b></li>
+    <li>v3.1.1 CI 전량 통과</li>
+  </ul>
+
+  <div class="sec-head">9. 아직 재지 않은 것</div>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <ul style="margin-bottom:0">
+        <li><b><code>@MX:SPEC</code> 고유 39는 grep 패턴 기준입니다</b> &mdash;
+            실제 태그 형식이 다르면 누락이 있을 수 있어요.
+            M1 착수 시 <code>internal/mx</code> 파서로 <b>재측정</b>해야 합니다</li>
+        <li><b>codemaps <code>--format json</code>의 실제 스키마 미확인</b> &mdash;
+            문서 서술만 확인했습니다</li>
+        <li><b><code>edges.jsonl</code> 규모 미추정</b> &mdash;
+            태그 1,808 + import 엣지 + SPEC 엣지의 합계 크기를 재지 않았습니다</li>
+        <li><b>BFS ~50줄은 7/29 문서의 추정치</b>이지 구현 실측이 아닙니다</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    승계 · .moai/reports/kg-ontology-moai-strategy-20260729.md (IP-1 · IP-2 · Tier 0 · 위험 목록)
+    <br>
+    실측 · @MX 1,808개(REASON 563 / NOTE 473 / ANCHOR 416 / SPEC 168 / WARN 115 / 기타 72) ·
+    고유 SPEC 39 · SPEC 디렉터리 626 · internal/mx(Tag · Callsite · fanin_lsp · resolver_query 14KB) ·
+    internal/cli/mx_scan.go · mx_query.go · codemaps.md:38·123
+    &nbsp;&mdash;&nbsp; Generated: 2026-08-17 · 배포 목표 v3.1.1
+  </footer>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad:true, theme:"base",
+    themeVariables:{
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

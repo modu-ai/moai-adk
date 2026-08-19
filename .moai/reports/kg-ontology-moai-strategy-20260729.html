@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>지식 그래프·온톨로지 도입 전략</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root{
+      --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+      --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;
+      --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px;--radius-row:8px;--border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);
+         font-size:15px;line-height:1.65;padding:56px 32px 120px;-webkit-font-smoothing:antialiased}
+    .page{max-width:var(--max-width);margin:0 auto}
+    .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+             text-transform:uppercase;color:var(--g500);margin-bottom:10px}
+    h1{font-family:var(--serif);font-weight:700;font-size:31px;color:var(--slate);
+       letter-spacing:-.01em;line-height:1.25;margin-bottom:18px}
+    .goal-box{border:var(--border);border-left:3px solid var(--clay);border-radius:10px;
+              background:var(--paper);padding:18px 20px;margin-bottom:26px;font-size:14.5px;max-width:850px}
+    .goal-box b{color:var(--slate)}
+    .sec-head{font-family:var(--serif);font-weight:700;font-size:23px;color:var(--slate);
+              margin:48px 0 6px;padding-bottom:8px;border-bottom:2px solid var(--oat)}
+    .sec-intro{font-size:14.5px;margin:12px 0 18px;max-width:790px}
+    h3{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--slate);margin:26px 0 8px}
+    p{margin-bottom:12px;max-width:790px}
+    code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+    td code,th code,pre code{background:none;padding:0}
+    ul,ol{margin:0 0 12px 20px;max-width:790px}
+    li{margin-bottom:7px}
+    .lead{border-left:2px solid var(--oat);padding-left:14px;margin-bottom:16px;max-width:790px;font-size:14.5px}
+
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 8px}
+    @media(max-width:760px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
+    .sum-cell{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .sum-cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+                 text-transform:uppercase;color:var(--g500);margin-bottom:6px}
+    .sum-cell .v{font-family:var(--serif);font-weight:700;font-size:24px;color:var(--slate);line-height:1.15}
+    .sum-cell .v.accent{color:var(--clay)}
+    .sum-cell .v.good{color:var(--olive)}
+    .sum-cell .n{font-size:12px;color:var(--g500);margin-top:4px}
+
+    table{border-collapse:collapse;width:100%;margin:14px 0 20px;font-size:13.5px;
+          background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden}
+    th{background:var(--g100);color:var(--slate);text-align:left;font-weight:700;
+       padding:9px 12px;border-bottom:1px solid var(--g300);font-size:12.5px}
+    td{padding:9px 12px;border-bottom:1px solid var(--g300);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .ok{color:var(--olive);font-weight:700}
+    .part{color:var(--clay);font-weight:700}
+    .no{color:var(--clay-d);font-weight:700}
+    .dim{color:var(--g500)}
+    .rank{font-family:var(--mono);font-size:11px;background:var(--clay);color:#fff;
+          padding:2px 7px;border-radius:4px;white-space:nowrap}
+    .rank.later{background:var(--oat);color:var(--slate)}
+
+    .callout{display:flex;gap:12px;border:var(--border);border-color:var(--oat);
+             background:rgba(227,218,204,.35);border-radius:10px;padding:14px 16px;
+             margin:18px 0;font-size:14px;max-width:850px}
+    .callout .ico{color:var(--clay);font-weight:600;flex-shrink:0}
+    .callout p:last-child{margin-bottom:0}
+    .callout.note{border-color:var(--g300);background:var(--g100)}
+
+    pre.mermaid{background:var(--paper);border:var(--border);border-radius:10px;padding:18px;
+                margin:18px 0;font-family:var(--mono);font-size:12px;color:var(--g500);
+                overflow-x:auto;text-align:center}
+    pre.code{background:var(--paper);border:var(--border);border-radius:10px;padding:15px 17px;
+             margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6;
+             color:var(--slate);overflow-x:auto}
+    pre.code .cm{color:var(--g500)}
+    pre.code .hl{color:var(--clay)}
+
+    .tier-row{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 4px;
+              border-bottom:1px solid var(--g300);align-items:baseline}
+    .tier-row:last-child{border-bottom:none}
+    .tier-badge{font-family:var(--mono);font-size:11.5px;background:var(--g100);
+                color:var(--slate);padding:4px 9px;border-radius:5px;text-align:center}
+    .tier-badge.now{background:var(--olive);color:#fff}
+    .tier-row .t-body{font-size:13.8px}
+    .tier-row .t-body b{color:var(--slate)}
+
+    details.fold{border:var(--border);border-radius:10px;background:var(--paper);margin:12px 0;overflow:hidden}
+    details.fold>summary{list-style:none;cursor:pointer;padding:13px 16px;font-family:var(--serif);
+                         font-size:15.5px;color:var(--slate);display:flex;align-items:baseline;gap:10px}
+    details.fold>summary::-webkit-details-marker{display:none}
+    details.fold>summary::before{content:"▸";color:var(--clay);font-family:var(--sans);font-size:12px}
+    details.fold[open]>summary::before{content:"▾"}
+    details.fold .fold-body{padding:0 16px 16px}
+    details.fold .fold-body p{font-size:13.8px}
+
+    footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);
+           font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.9}
+
+    @media print{
+      body{background:#fff;color:#000;padding:0;font-size:11pt}
+      .page{max-width:none}
+      .callout,details.fold,.tier-row{page-break-inside:avoid}
+      details[open]{display:block}
+      h1,h3,.sec-head{page-break-after:avoid}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 전략 · 2026-07-29 (HTML 판 복원 2026-08-17)</div>
+  <h1>지식 그래프 · 온톨로지를<br>moai-adk에 도입하는 전략</h1>
+
+  <div class="goal-box">
+    <p><b>한 줄 결론</b> &mdash; <b>그래프의 70%는 이미 갖춰져 있습니다.</b>
+    부족한 건 <code>edges.jsonl</code> 하나로 저장하는 것과, 그 위를 걷는 도구 하나뿐이에요.
+    서버도 데이터베이스도 필요 없습니다.</p>
+    <p><b>왜 하나</b> &mdash; LLM은 정확성·일관성·설명가능성에 한계가 있습니다.
+    온톨로지와 지식그래프는 그걸 <b>대체하는 게 아니라 보완</b>해요.
+    역할이 갈립니다 &mdash; <b>LLM</b>은 추출·요약·자연어 인터페이스를 맡고,
+    <b>온톨로지/KG</b>는 논리·추론·정확성·근거를 맡습니다.</p>
+    <p style="margin-bottom:0"><b>진화 방향</b>: LLM + 온톨로지 + KG + GraphRAG.</p>
+  </div>
+
+  <div class="callout note">
+    <span class="ico">※</span>
+    <div>
+      <p>이 문서는 <b>2026-07-29에 작성된 전략</b>의 HTML 판입니다.
+      lean 트윈(<code>kg-ontology-moai-strategy-20260729.md</code>)만 남고 HTML이 유실되어 복원했어요.
+      본문은 원본을 그대로 따르고, <b>§6의 2026-08-17 실측만 새로 덧붙인 것</b>으로 명시했습니다.</p>
+    </div>
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">이미 갖춰진 비율</div>
+      <div class="v good">70%</div>
+      <div class="n">SPEC edge + codemaps json</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">첫 단계에 필요한 서버</div>
+      <div class="v good">0</div>
+      <div class="n">DB 0 · cgo 0</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">통합 지점</div>
+      <div class="v">6</div>
+      <div class="n">우선순위 순</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Tier 0 도구 규모</div>
+      <div class="v accent">~50줄</div>
+      <div class="n">순수 Go BFS</div>
+    </div>
+  </div>
+
+  <div class="sec-head">1. 세 가지 개념 &mdash; 먼저 말부터</div>
+
+  <p class="lead">
+    용어가 셋인데 자주 섞여 쓰입니다. 하는 일이 다르니 갈라서 봐야 해요.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:150px">용어</th><th>무엇인가</th><th style="width:200px">비유</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>온톨로지</b><br><span class="dim">(ontology)</span></td>
+        <td>개념·관계·규칙을 기계가 이해할 수 있게 적어둔 <b>스키마</b>.
+            TBox(클래스·속성) + ABox(인스턴스)로 나뉘고, RDF/OWL/SHACL로 표현합니다.
+            <b>"저장소가 아니라 의미 레이어"</b>예요</td>
+        <td>도서관의 <b>분류 규칙</b> &mdash; 책이 아니라 책을 어떻게 나눌지의 약속</td>
+      </tr>
+      <tr>
+        <td><b>지식그래프</b><br><span class="dim">(KG)</span></td>
+        <td>온톨로지를 실제 데이터로 채운 것. <b>엔티티(노드) + 관계(엣지)</b>.
+            Triple 기반이라 참·거짓 추론과 <b>근거 추적</b>이 됩니다</td>
+        <td>규칙대로 <b>실제로 꽂아둔 책들</b>과 그 사이의 상호참조</td>
+      </tr>
+      <tr>
+        <td><b>GraphRAG</b></td>
+        <td>KG + 문서 + LLM을 결합한 검색.
+            벡터 유사도가 못 잇는 <b>구조적 관계를 엣지로</b> 연결해
+            환각을 억제하고 근거를 제시합니다</td>
+        <td>"비슷한 책"이 아니라 <b>"이 책이 인용한 책"</b>을 따라가는 검색</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><b>핵심 차이 하나만 기억하면 됩니다.</b> 벡터 검색은 <b>닮은 것</b>을 찾고,
+  그래프는 <b>이어진 것</b>을 찾습니다. "이 함수를 고치면 어디가 깨지나"는
+  닮음으로는 답할 수 없어요 &mdash; 연결을 따라가야 합니다.</p>
+
+  <div class="sec-head">2. 기술 지형 4계층</div>
+
+  <p class="sec-intro">
+    도입한다고 하면 넷을 다 만들어야 할 것 같지만, 실제로는 <b>2계층에서 가장 가벼운 선택지</b>
+    하나만 고르면 시작됩니다.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:110px">계층</th><th>선택지</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>① 구축</b></td>
+        <td>LLM 추출: GraphRAG / LightRAG · 코드: <code>tree-sitter</code> · SCIP · CodeQL</td>
+      </tr>
+      <tr>
+        <td><b>② 저장·쿼리</b></td>
+        <td><b class="ok">기본 = <code>edges.jsonl</code></b> (서버 0 · cgo 0 · <b>git-diff 가능</b>)
+            → 순수 Go <code>modernc.org/sqlite</code>(recursive CTE)
+            → 옵션 Kùzu/LadybugDB · Neo4j(서버형)<br>
+            <span class="dim">Kùzu는 2025-10 archived, 후속 LadybugDB는 C++ 코어라 Go 바인딩에 cgo가 붙습니다. 가벼운 순서로 갑니다</span></td>
+      </tr>
+      <tr>
+        <td><b>③ 검색</b></td>
+        <td>엔티티 중심 서브그래프 · 멀티홉 · HippoRAG PageRank · GraphRAG 커뮤니티</td>
+      </tr>
+      <tr>
+        <td><b>④ 에이전트 통합</b></td>
+        <td>그래프를 <b>도구</b>(Cypher) · <b>메모리</b> · <b>작업분해 DAG</b> ·
+            <b>추적성/임팩트 그래프</b>로 노출</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b><code>edges.jsonl</code>이 기본인 이유</b>는 성능이 아니라 <b>운영 비용</b>입니다.
+      한 줄에 엣지 하나인 텍스트 파일이라 <b>git이 diff를 낼 수 있고</b>,
+      서버가 없으니 죽을 것도 없고, cgo가 없으니 크로스 컴파일이 깨지지 않아요.</p>
+      <p>그래프 DB는 <b>한계에 부딪힌 뒤에</b> 올라가면 됩니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">3. moai-adk의 현재 상태</div>
+
+  <p class="lead">
+    이 절이 이 문서의 핵심입니다. <b>없는 걸 만드는 게 아니라 흩어진 걸 잇는 일</b>이라는 근거예요.
+  </p>
+
+  <h3>이미 있는 것</h3>
+
+  <table>
+    <thead><tr><th style="width:230px">자산</th><th>위치</th><th style="width:150px">그래프에서의 역할</th></tr></thead>
+    <tbody>
+      <tr><td><b>SPEC↔SPEC 추적성</b></td>
+          <td><code>depends_on</code> / <code>related_specs</code> · <code>internal/spec/</code></td>
+          <td class="ok"><b>이미 edge list</b></td></tr>
+      <tr><td>아티팩트 해시</td>
+          <td><code>internal/runtime/audit_cache.go</code> <code>ComputeHash</code></td>
+          <td class="ok">노드 식별자</td></tr>
+      <tr><td>소유권 린트</td>
+          <td><code>internal/spec/lint_ownership.go</code></td>
+          <td class="ok">제약 검증의 원형</td></tr>
+      <tr><td>codemaps</td>
+          <td><code>codemaps.md</code>:38·123 &mdash; <code>--format json</code></td>
+          <td class="ok"><b>이미 기계 판독 그래프</b></td></tr>
+      <tr><td>코드 그래프 베이스라인</td>
+          <td><code>go list -deps -json</code></td>
+          <td class="ok">엣지 원천</td></tr>
+      <tr><td>일시적 코드 그래프</td>
+          <td><code>ast-grep</code> · <code>gopls</code></td>
+          <td class="part">매번 재계산 · <b>저장 안 됨</b></td></tr>
+    </tbody>
+  </table>
+
+  <h3>비어 있는 것 &mdash; 즉 기회</h3>
+
+  <ul>
+    <li><b>요구사항 → 코드/테스트/문서의 구조적 연결이 없습니다.</b>
+        SPEC끼리는 이어져 있는데, SPEC에서 실제 코드로 내려가는 다리가 없어요</li>
+    <li><b>영구 코드-KG 저장소가 없습니다.</b> 코드 그래프를 매번 다시 계산합니다</li>
+    <li><b>메모리가 평면 key-value입니다</b> (<code>internal/cli/preference/filestore.go</code>) &mdash;
+        관계로 회상할 수 없어요</li>
+    <li><b>중앙 컨텍스트 조립기가 없습니다.</b> 무엇을 컨텍스트에 넣을지 매번 사람이 정합니다</li>
+  </ul>
+
+  <pre class="mermaid">
+flowchart LR
+  subgraph HAVE["이미 있는 것"]
+    S1["SPEC depends_on<br/>related_specs"]
+    S2["codemaps --format json"]
+    S3["go list -deps -json"]
+    S4["아티팩트 해시"]
+  end
+
+  subgraph MISSING["비어 있는 것"]
+    M1["edges.jsonl<br/>영구 저장"]
+    M2["순회 도구<br/>find_callers · blast_radius"]
+  end
+
+  S1 -.->|"persist"| M1
+  S2 -.->|"persist"| M1
+  S3 -.->|"persist"| M1
+  S4 -.-> M1
+  M1 --> M2
+  M2 --> U["에이전트가 직접 읽음<br/>토큰 절약"]
+
+  style M1 fill:#E3DACC,stroke:#D97757
+  style M2 fill:#E3DACC,stroke:#D97757
+  </pre>
+
+  <noscript>
+    <p><b>구조 요약</b>: 이미 있는 것(SPEC의 depends_on/related_specs, codemaps --format json,
+    go list -deps -json, 아티팩트 해시)을 <code>edges.jsonl</code> 하나로 persist하고,
+    그 위를 걷는 순회 도구(find_callers / blast_radius)를 붙이면 에이전트가 직접 읽어 토큰을 아낍니다.
+    비어 있는 것은 그 두 개뿐입니다.</p>
+  </noscript>
+
+  <div class="sec-head">4. 통합 지점 6개 &mdash; 우선순위 순</div>
+
+  <table>
+    <thead><tr><th style="width:56px"></th><th style="width:190px">지점</th><th style="width:250px">확장 대상</th><th>가치</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="rank">1순위</span></td>
+        <td><b>IP-2</b><br>영구 코드-KG 도구</td>
+        <td><code>codemaps</code> + <code>internal/astgrep</code> +
+            <code>internal/lsp/gopls</code> + <code>internal/loop</code></td>
+        <td>의미 코드 검색 + <b>임팩트 분석</b>, Ralph 루프 토큰 절감</td>
+      </tr>
+      <tr>
+        <td><span class="rank">2</span></td>
+        <td><b>IP-1</b><br>SPEC 추적성 그래프</td>
+        <td><code>internal/spec/</code>(lint · audit · transitions) + <code>audit_cache.go</code></td>
+        <td>REQ ↔ 코드 ↔ 테스트 ↔ 문서 추적, <b>커버리지 누락 탐지</b></td>
+      </tr>
+      <tr>
+        <td><span class="rank">3</span></td>
+        <td><b>IP-5</b><br>엔티티 서브그래프<br>컨텍스트 조립</td>
+        <td>점진적 공개 + <code>delegation.yaml</code> +
+            <code>context-window-management.md</code></td>
+        <td><b>같은 품질을 더 적은 토큰으로</b> &mdash; 토크노믹스 논제의 직접 실천</td>
+      </tr>
+      <tr>
+        <td><span class="rank later">4</span></td>
+        <td><b>IP-3</b><br>에이전트 메모리 = 그래프</td>
+        <td><code>internal/cli/preference/filestore.go</code> + CC memory</td>
+        <td>Graphiti식 이중시간 팩트, <b>관계형 회상</b></td>
+      </tr>
+      <tr>
+        <td><span class="rank later">5</span></td>
+        <td><b>IP-4</b><br>SPEC 온톨로지 검증</td>
+        <td><code>internal/spec/lint.go</code> FrontmatterSchemaRule +
+            <code>spec-frontmatter-schema.md</code></td>
+        <td>교차 아티팩트 불변식(AC ≥ 1 REQ · ≥ 1 테스트), <b>스펙 부패 조기 탐지</b></td>
+      </tr>
+      <tr>
+        <td><span class="rank later">6</span></td>
+        <td><b>IP-6</b><br>에이전트 조정 칠판</td>
+        <td><code>internal/hook/handoff</code> +
+            <code>.moai/state/handoff/pending.json</code></td>
+        <td>병렬 worktree 공유 상태, <b>충돌·중복 탐색 감소</b></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head">5. 도입 방법 &mdash; 가장 가벼운 첫걸음</div>
+
+  <p class="sec-intro">
+    원칙은 다섯입니다 &mdash; <b>작게 시작 → 반복 → 하이브리드 → 스키마 제약 추출 → 지속 평가.</b>
+    하이브리드란 <b>사람이 스키마를, LLM이 인스턴스를</b> 맡고 SHACL/owlrl로 검증하는 분업이에요.
+  </p>
+
+  <h3>Tier 0 &mdash; 권장 첫 단계 (서버 없음)</h3>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>IP-2를 이렇게 시작합니다</b>:
+      <code>codemaps</code>의 출력(<code>go list -deps</code> · <code>--format json</code>)을
+      <code>edges.jsonl</code>로 <b>저장</b>하고,
+      <code>find_callers</code> / <code>blast_radius</code>를
+      <b>~50줄짜리 순수 Go BFS 도구</b>로 노출합니다.</p>
+      <p style="margin-bottom:0"><b>서버 0 · DB 0 · cgo 0.</b>
+      에이전트가 파일을 직접 읽으므로 토큰도 아낍니다.</p>
+    </div>
+  </div>
+
+  <div class="tier-row">
+    <div class="tier-badge now">Tier 0</div>
+    <div class="t-body"><b><code>edges.jsonl</code> + 순수 Go BFS</b> &mdash;
+      지금 시작할 수 있는 유일한 단계. 의존성이 하나도 늘지 않습니다</div>
+  </div>
+  <div class="tier-row">
+    <div class="tier-badge">Tier 1</div>
+    <div class="t-body"><b><code>modernc.org/sqlite</code></b> (순수 Go, recursive CTE) &mdash;
+      JSONL 순회가 느려지면 그때</div>
+  </div>
+  <div class="tier-row">
+    <div class="tier-badge">Tier 2</div>
+    <div class="t-body"><b>Kùzu / LadybugDB · Neo4j</b> &mdash;
+      서버형. Kùzu는 archived, 후속은 C++ 코어라 <b>cgo가 붙습니다</b>. 한계 도달 시에만</div>
+  </div>
+
+  <div class="sec-head">6. 2026-08-17 추가 실측 &mdash; todo 쪽 현황</div>
+
+  <div class="callout note">
+    <span class="ico">※</span>
+    <div>
+      <p>이 절만 <b>원본(7/29)에 없던 내용</b>입니다. 백로그를 실제로 세어본 결과예요.</p>
+    </div>
+  </div>
+
+  <p>원본은 SPEC과 코드 쪽을 다뤘는데, <b>todo 백로그도 같은 문제를 갖고 있습니다</b> &mdash;
+  다만 방향이 반대예요. SPEC은 구조가 <b>필드에</b> 있고, todo는 구조가 <b>산문에</b> 있습니다.</p>
+
+  <table>
+    <thead><tr><th style="width:230px">구조 어휘</th><th style="width:110px">카드 수</th><th style="width:90px">비율</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td><b>Tier (S/M/L)</b></td><td>27 / 34</td><td class="no"><b>79%</b></td><td>산문에만 존재</td></tr>
+      <tr><td>파일 경로</td><td>19 / 34</td><td>55%</td><td>산문에만 존재</td></tr>
+      <tr><td>실측·측정 언급</td><td>14 / 34</td><td>41%</td><td>산문에만 존재</td></tr>
+      <tr><td>버전 태그</td><td>14 / 34</td><td>41%</td><td>산문에만 존재</td></tr>
+      <tr><td><b>의존 / 선행</b></td><td>11 / 34</td><td class="no"><b>32%</b></td><td>산문에만 존재</td></tr>
+      <tr><td>카드 참조 (tNN)</td><td>7 / 34</td><td>20%</td><td>산문에만 존재</td></tr>
+      <tr><td colspan="4" style="background:var(--g100)">카드 길이 &mdash; 중앙값 <b>422자</b> · 최대 <b>1,661자</b> · 최소 88자</td></tr>
+    </tbody>
+  </table>
+
+  <p>그런데 <code>todo.md</code>는 [HARD]로 이렇게 적습니다 &mdash;
+  <b>"Not a task tracker. No priorities, no assignees, no due dates, no dependencies."</b>
+  그리고 <b>"An item is one line of intent."</b></p>
+
+  <p><b>규칙이 금지한 것을 운영이 79% 하고 있습니다.</b>
+  이건 온톨로지를 <i>도입</i>할지의 문제가 아니라,
+  <b>이미 쓰고 있는 어휘를 밖으로 꺼낼지</b>의 문제예요.</p>
+
+  <h3>산문이라서 지금 못 하는 것</h3>
+
+  <ul>
+    <li><b>"t85를 막는 게 뭐지?"를 물을 수 없습니다</b> &mdash; 34장을 사람이 다시 읽어야 해요</li>
+    <li><b>순서를 매번 다시 도출합니다</b> &mdash; 편성할 때마다 의존을 읽어 재구성</li>
+    <li><b>중복을 못 잡습니다</b> &mdash; t6·t7·t18이 "전제 반증" · "t20으로 흡수"로 DROPPED 됐는데
+        전부 수동 발견이었습니다</li>
+  </ul>
+
+  <h3>최소 개입 &mdash; 필드 2개</h3>
+
+  <pre class="code">{
+  "id": "t85",
+  "text": "...",
+  "spec_id": null,        <span class="cm">← 이미 있음</span>
+  "state": "queued",      <span class="cm">← 이미 있음</span>
+  <span class="hl">"tier": "M",</span>            <span class="cm">← 79%가 이미 산문에 적는 중</span>
+  <span class="hl">"depends_on": ["t79"]</span>   <span class="cm">← 32%가 이미 산문에 적는 중</span>
+}</pre>
+
+  <p>새 저장소도 새 도구도 필요 없습니다. <b>필드 2개</b>예요.
+  이건 IP-1(SPEC 추적성 그래프)의 todo 쪽 대응물이고,
+  <code>edges.jsonl</code>에 합류할 수 있는 형태입니다.</p>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>선행 조건 하나</b> &mdash; <code>todo.md</code>의 [HARD] 규칙을 먼저 고쳐야 합니다.
+      지금 필드를 추가하면 <b>규칙 위반이 명문화</b>됩니다.</p>
+      <p style="margin-bottom:0">이건 t94(동시성 상한 3-5 대 운영 8)와 <b>같은 성격</b>의 문제예요 &mdash;
+      규칙이 현실을 못 따라간 상태. 둘 다 "규칙을 고칠지 운영을 고칠지"가 먼저입니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">7. 위험</div>
+
+  <table>
+    <thead><tr><th style="width:210px">위험</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td><b>엔티티 해석 오류</b></td><td>과잉 병합(다른 것을 같다고) · 과소 병합(같은 것을 다르다고)</td></tr>
+      <tr><td><b>스키마 진화 비용</b></td><td>클래스·관계가 바뀌면 기존 인스턴스를 전부 손봐야 함</td></tr>
+      <tr><td><b>LLM 인덱싱 비용</b></td><td>추출을 LLM에 맡기면 그 자체가 토큰 비용</td></tr>
+      <tr><td><b>거짓 엣지 전파</b></td><td>틀린 관계 하나가 멀티홉 질의로 증폭됨</td></tr>
+      <tr><td class="no"><b>생성 Cypher 쓰기 권한</b></td>
+          <td><b>금지.</b> LLM이 만든 질의는 <b>읽기 전용 + 검증</b>을 거칩니다</td></tr>
+      <tr><td><b>과잉 엔지니어링</b></td><td>Tier 0으로 충분한데 Tier 2를 먼저 만드는 것</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>가장 조용한 위험은 "거짓 엣지 전파"입니다.</b>
+      그래프가 낡으면 <b>틀린 답을 자신 있게</b> 내놓아요.</p>
+      <p style="margin-bottom:0">저장소에 이미 증거가 있습니다 &mdash;
+      t6는 "전제 반증", t7은 "t3로 대체", t18은 "t20으로 흡수"로 <b>관계가 실제로 바뀌었습니다.</b>
+      자동 유지 수단이 없으면 <b>그래프가 카드보다 먼저 썩습니다.</b>
+      필드를 2개로 제한하는 게 그래서 중요해요 &mdash; 적을수록 틀릴 여지가 적습니다.</p>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>핵심 참고 문헌</summary>
+    <div class="fold-body">
+      <ul style="margin-bottom:0">
+        <li><b>GraphRAG</b> &mdash; arXiv 2404.16130</li>
+        <li><b>LightRAG</b> &mdash; arXiv 2410.05779</li>
+        <li><b>HippoRAG</b> &mdash; arXiv 2405.14831</li>
+        <li><b>KG 환각 서베이</b> &mdash; NAACL 2024</li>
+        <li><b>Graphiti</b> &mdash; getzep (이중시간 팩트 모델)</li>
+        <li><b>SCIP</b> &mdash; sourcegraph · <b>CodeQL</b></li>
+        <li>Anthropic context engineering</li>
+        <li>Awesome-Graph4LLM &mdash; CodexGraph · LocAgent</li>
+      </ul>
+    </div>
+  </details>
+
+  <footer>
+    원본 · .moai/reports/kg-ontology-moai-strategy-20260729.md (2026-07-29 작성, lean 트윈)
+    <br>
+    §6 추가 실측 · moai todo list --json (34장) · .claude/skills/moai/workflows/todo.md [HARD] 절
+    &nbsp;&mdash;&nbsp; HTML 판 복원: 2026-08-17
+  </footer>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad:true, theme:"base",
+    themeVariables:{
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

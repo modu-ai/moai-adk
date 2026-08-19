@@ -1,0 +1,16 @@
+=== RUN   TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive
+moai: worktree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive3733432382/001 kept: 1 live anchored session(s):
+  - session 11111111 pid=79010 spec=SPEC-ANCHOR-001 cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive3733432382/001
+--- PASS: TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive (0.00s)
+=== RUN   TestRunDone_RefusesWhenAnchoredSessionLive
+--- PASS: TestRunDone_RefusesWhenAnchoredSessionLive (0.03s)
+=== RUN   TestRunDone_ForceOverridesAnchorWarning
+--- PASS: TestRunDone_ForceOverridesAnchorWarning (0.01s)
+=== RUN   TestRunDone_RemovesWhenNoAnchoredSession
+--- PASS: TestRunDone_RemovesWhenNoAnchoredSession (0.01s)
+=== RUN   TestWorktreeCmd_RemoveHasForceFlag
+--- PASS: TestWorktreeCmd_RemoveHasForceFlag (0.00s)
+=== RUN   TestRunDone_HasForceFlag
+--- PASS: TestRunDone_HasForceFlag (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.633s

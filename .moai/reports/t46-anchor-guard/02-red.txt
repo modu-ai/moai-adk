@@ -1,0 +1,10 @@
+=== RUN   TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive
+    done_anchor_test.go:75: auto mode should report not-done while a live session is anchored in the worktree
+    done_anchor_test.go:78: Remove() must not be called while a live session is anchored in the worktree
+--- FAIL: TestRunDoneWithAutoMode_SkipsRemovalWhenAnchoredSessionLive (0.01s)
+=== RUN   TestRunDone_RefusesWhenAnchoredSessionLive
+    done_anchor_test.go:104: runDone must refuse (non-zero exit) while a live session is anchored in the worktree
+--- FAIL: TestRunDone_RefusesWhenAnchoredSessionLive (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.427s
+FAIL
