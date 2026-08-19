@@ -435,7 +435,7 @@ flowchart TD
 | | manager-docs | 🔵 | sync 阶段文档 |
 | | manager-git | 🩵 | PR 创建与路由 |
 | | manager-design | 🟠 | 设计阶段协作（Claude Design） |
-| | manager-kanban | 🔴 | 层级团队 Tier L 协调（唯一的 Agent 携带者，深度 2 封印） |
+| | manager-lead | 🔴 | 层级团队 Tier L 协调 + 看板·工厂领导会话派工（唯一的 Agent 携带者，深度 2 封印） |
 | **评审者** | plan-auditor | 🔴 | 独立 plan 审计（防偏） |
 | | sync-auditor | 🔴 | 4 维质量评分（功能性 40 · 安全 25 · 做工 20 · 一致性 15） |
 | **构建者** | builder-harness | 🟠 | 项目专用智能体、技能、命令、钩子的脚手架 |

@@ -435,7 +435,7 @@ flowchart TD
 | | manager-docs | 🔵 | sync 단계 문서화 |
 | | manager-git | 🩵 | PR 생성·라우팅 |
 | | manager-design | 🟠 | 디자인 단계 협업 (Claude Design) |
-| | manager-kanban | 🔴 | 계층 팀 Tier L 조율 (유일한 Agent 보유, 깊이 2 봉인) |
+| | manager-lead | 🔴 | 계층 팀 Tier L 조율 + 칸반·팩토리 리드 세션 배차 (유일한 Agent 보유, 깊이 2 봉인) |
 | **평가자** | plan-auditor | 🔴 | 독립 plan 감사 (편향 방지) |
 | | sync-auditor | 🔴 | 4차원 품질 채점 (기능성 40 · 보안 25 · 제작 20 · 일관성 15) |
 | **빌더** | builder-harness | 🟠 | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |
