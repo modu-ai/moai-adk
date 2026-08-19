@@ -66,8 +66,15 @@ func ValidWorkflowDefaultModes() []string {
 // the tree — the statusline context-window table keys on some of them too — but
 // they are the SSOT for "which model may a tier slot hold", which is what this
 // set answers.
+//
+// glm-5.2 was withdrawn from this set once glm-5.3 became the default for every
+// tier: offering the immediate predecessor of the default buys nothing a user
+// wants and costs a widget row. DefaultGLM52 itself is DELIBERATELY retained as
+// a constant — an existing llm.yaml may still name glm-5.2 in a tier slot, and
+// the statusline context-window table still resolves it, so the id stays
+// loadable even though it is no longer offered.
 func ValidGLMModels() []string {
-	return []string{DefaultGLMHigh, DefaultGLM52, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	return []string{DefaultGLMHigh, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived

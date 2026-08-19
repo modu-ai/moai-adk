@@ -138,10 +138,12 @@ const (
 	DefaultGLMMedium = "glm-5.3"
 	DefaultGLMLow    = "glm-5.3"
 	DefaultGLMFable  = "glm-5.3"
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.2,
-	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots;
-	// glm-4.5, glm-4.6, and glm-5-turbo are named constants with no config
-	// surface.
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
+	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
+	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
+	// surface. glm-5.2 left the offered set when glm-5.3 became every tier's
+	// default, but stays declared so an existing llm.yaml naming it still
+	// loads and still resolves a context window.
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
 	DefaultGLM47     = "glm-4.7"
