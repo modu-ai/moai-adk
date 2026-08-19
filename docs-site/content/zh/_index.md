@@ -33,7 +33,7 @@ moai cc -k --name sync
 
 ![moai web 控制台 Overview 页面 —— SPEC 统计、进行中 SPEC 列表、会话注册表](/images/profile/web-console-v31-overview.png)
 
-详见：[看板模式](/zh/advanced/kanban-mode) · [manager-kanban 智能体](/zh/advanced/manager-kanban) · [`/moai todo`](/zh/utility-commands/moai-todo) · [moai web 控制台](/zh/advanced/moai-web-console)
+详见：[看板模式](/zh/advanced/kanban-mode) · [manager-lead 领导协调者](/zh/advanced/manager-lead) · [`/moai todo`](/zh/utility-commands/moai-todo) · [moai web 控制台](/zh/advanced/moai-web-console)
 
 ## MoAI 3.1 的三大核心价值
 
