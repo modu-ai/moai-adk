@@ -4,6 +4,7 @@ package hook
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -145,9 +146,27 @@ func resolveWorktreeRepoRoot(dir string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	if runErr := cmd.Run(); runErr != nil {
+		stderrStr := strings.TrimSpace(stderr.String())
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			// Deliberately NOT %w-chained through *exec.ExitError. Its
+			// ExitCode() method structurally satisfies the CLI's ExitCoder
+			// interface, which both seams match with errors.As
+			// (cmd/moai/main.go for the process exit code, internal/cli/fang.go
+			// for whether the error is printed at all). A raw ExitError in the
+			// chain therefore silenced this failure completely and exited with
+			// the subprocess's own code: measured on a cwd outside any
+			// repository as rc 128 with zero bytes of stderr, which is the
+			// worst possible shape here because this hook gates every
+			// worktree-isolated agent spawn. CommandError keeps the stderr text
+			// printable and the exit status readable as data — the same
+			// treatment execGit already applies in internal/core/git.
+			return "", fmt.Errorf("worktree create: resolve repository root under %s: %w",
+				dir, &gitcore.CommandError{Op: "rev-parse", Stderr: stderrStr, ExitStatus: exitErr.ExitCode()})
+		}
 		return "", fmt.Errorf("worktree create: resolve repository root under %s: %w (%s)",
-			dir, err, strings.TrimSpace(stderr.String()))
+			dir, runErr, stderrStr)
 	}
 	root := strings.TrimSpace(stdout.String())
 	if root == "" || !filepath.IsAbs(root) {
