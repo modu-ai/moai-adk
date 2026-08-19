@@ -53,7 +53,7 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 
-	// Worktree advisory (SPEC-CLI-WORKTREE-ADVISORY-001). Mirrors the
+	// Worktree advisory. Mirrors the
 	// wizard.WorktreeAutoCreate selection; persisted to
 	// workflow.worktree.auto_create at init.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
