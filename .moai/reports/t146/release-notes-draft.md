@@ -177,18 +177,18 @@
 
 ### Fixed
 
-- **SPEC-HARNESS-GATE-TEST-001 — `moai gate` no longer hangs on
-  a watch-mode Node test script.** The Node toolchain's test step was hardcoded to `npm test --`, which never exits
-  for packages whose `test` script is a bare `vitest` or carries a `--watch` / `--watchAll` token; the step
-  therefore always died at `TestTimeout` with the suite at 0%, and consumer projects bypassed the gate via
-  `SKIP_MOAI_PRECOMMIT` for exactly this reason across three consecutive cards. `resolveNodeTestStep` now rewrites
-  the step immediately before execution, reading `package.json` scripts from the resolved project dir, per a
-  three-tier resolution: `scripts.test:run` present → `npm run test:run`; a watch-prone test script → the runner's
-  non-watch flag appended (`vitest --run`, `jest --ci`); anything else → `npm test` unchanged. Every `package.json`
-  parse failure falls back to the third tier, and non-Node toolchains are untouched. A follow-up correction drops
-  the appended flags from tier (i): on a turbo monorepo root, `npm run test:run -- --passWithNoTests` expands to
-  `turbo run test:run --passWithNoTests`, which turbo rejects at the argument parser before any test runs;
-  `--passWithNoTests` stays on tiers (ii) and (iii), where the runner is known to accept it.
+- **`moai gate` no longer hangs on a watch-mode Node test script.** The Node toolchain's test step was hardcoded to
+  `npm test --`, which never exits for packages whose `test` script is a bare `vitest` or carries a `--watch` /
+  `--watchAll` token; the step therefore always died at `TestTimeout` with the suite at 0%, and consumer projects
+  bypassed the gate via `SKIP_MOAI_PRECOMMIT` for exactly this reason across three consecutive cards.
+  `resolveNodeTestStep` now rewrites the step immediately before execution, reading `package.json` scripts from the
+  resolved project dir, per a three-tier resolution: `scripts.test:run` present → `npm run test:run`; a watch-prone
+  test script → the runner's non-watch flag appended (`vitest --run`, `jest --ci`); anything else → `npm test`
+  unchanged. Every `package.json` parse failure falls back to the third tier, and non-Node toolchains are untouched.
+  A follow-up correction drops the appended flags from tier (i): on a turbo monorepo root,
+  `npm run test:run -- --passWithNoTests` expands to `turbo run test:run --passWithNoTests`, which turbo rejects
+  at the argument parser before any test runs; `--passWithNoTests` stays on tiers (ii) and (iii), where the
+  runner is known to accept it.
   (`f1ebd634a`, `692d44586`)
 
 - **A raw `*exec.ExitError` at the CLI exit-code seam no longer silences a real failure.** `*exec.ExitError`
@@ -334,3 +334,8 @@ layer and an executable design-audit suite; and the documentation lands 13 pages
   (`git grep -ln "SPEC-HARNESS-GATE-TEST-001" 5798bdc2e`). 그래서 초안에서는 다른 SPEC 항목과 달리
   `.moai/specs/…/spec.md` 링크를 걸지 않고 ID만 남겼다 — 링크를 걸면 깨진다. SPEC 문서 자체가 누락된 것인지
   다른 리포에 있는 것인지는 이 카드 범위 밖이며, 별도 확인이 필요하다.
+  - **해소됨 (카드 t149).** 전 ref 이력 조사 결과 이 ID의 SPEC 디렉터리는 **한 번도 존재한 적이 없다**
+    (`git log --all -- ".moai/specs/*HARNESS-GATE-TEST*"` 0건). 브랜치 `spec-harness-gate-test-001`은 만들어졌으나
+    SPEC 문서는 작성되지 않았고, 이 변경을 흡수한 다른 SPEC도 없다 — 즉 커밋 시점에 ID만 지어낸 허수 참조다.
+    t149에서 코드 3곳(`gate.go` 2, `gate_node_resolution_test.go` 1)의 ID를 제거하고 위 릴리즈노트 항목의
+    ID 접두도 떼어냈다. 근거는 커밋 `f1ebd634a`/`692d44586` 메시지가 그대로 보존한다.
