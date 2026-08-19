@@ -88,7 +88,7 @@ flowchart TD
 调用 `manager-lead` 之前，编排器会把这次选择记进 `progress.md` 的 `§F Phase 4 Mode Selection` 字段。用户可以 grep 这条记录，确认本次实现走的是哪条通路。
 
 ```bash
-# Check in progress.md whether the current SPEC took the manager-lead path
+# 在 progress.md 里确认当前 SPEC 是否走了 manager-lead 路径
 grep -A 2 "Mode Selection" .moai/specs/SPEC-EXAMPLE-001/progress.md | grep -i "manager-lead"
 ```
 
@@ -103,10 +103,10 @@ grep -A 2 "Mode Selection" .moai/specs/SPEC-EXAMPLE-001/progress.md | grep -i "m
 这套分工最醒目的一点是：只有 `manager-lead` 带着 `Agent` 工具。十二个管理者智能体中，`manager-lead` 是唯一持有 `Agent` 的；其余管理者智能体的工具列表都省掉 `Agent`，以此守住扁平层级。作为在唯一一处打开扁平层级的代价，其下的叶子智能体被禁止再带 `Agent`，层级因此被封死在不超过两层。这就是"深度-2 封印"，由 CI 守卫（`manager_lead_depth_test.go`）强制执行。
 
 ```text
-# Tool lists when manager-lead calls leaf agents (conceptual example)
+# manager-lead 调用叶子智能体时的工具清单 (概念示例)
 manager-lead:        [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Agent, Skill]
-leaf manager-develop: [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill]  ← no Agent
-leaf read-only validation: [Read, Grep, Glob, Bash]  ← no Write/Edit/Agent
+叶子 manager-develop: [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill]  ← 没有 Agent
+叶子 read-only 验证:      [Read, Grep, Glob, Bash]  ← 没有 Write/Edit/Agent
 ```
 
 这里 `manager-lead` 的 `Write` 和 `Edit` 只用于协调。也就是说，它们用来往 `progress.md` 的 §E.2 字段添一行折叠记录，或者在 `.moai/state/verify/` 下写证据文件——绝不碰源代码。代码永远是叶子智能体的活。
@@ -119,12 +119,12 @@ leaf read-only validation: [Read, Grep, Glob, Bash]  ← no Write/Edit/Agent
 
 `manager-lead` 最有辨识度的习惯，是在里程碑边界把窗口折轻。这道流程叫 **Context-Folding**。一个里程碑内的每条 AC 都拿到通过判定后，`manager-lead` 依次走三步。
 
-1. **保存证据**——把该里程碑跑过的 AC 验证命令输出留成文件。路径遵循 `.moai/state/verify/<session>/M<milestone>.<AC-id>.{log,out}` 的形式。放在 `.moai/state/` 下而不是 `/tmp` 下，是因为操作系统一清 `/tmp`，引用的路径就断了。
+1. **保存证据**——把该里程碑跑过的 AC 验证命令输出留成文件。路径遵循 `.moai/state/verify/<会话>/M<里程碑>.<AC-id>.{log,out}` 的形式。放在 `.moai/state/` 下而不是 `/tmp` 下，是因为操作系统一清 `/tmp`，引用的路径就断了。
 2. **写下折叠行**——往 `progress.md` 的 §E.2 字段添一行摘要。这行遵循 "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/state/verify/.../M2.* | fold-at: 2026-08-12T..." 的形式。之后到审计阶段，这行上的证据路径必须指向一个真实存在的文件。
 3. **折叠窗口**——带上明确的保留指令调用 `/compact`，只留下当前里程碑的计划和到此为止的折叠行，其余清空。
 
 ```text
-# Example fold lines added to progress.md §E.2
+# 追加到 progress.md §E.2 的折叠行示例
 M1: AC-001=PASS, AC-002=PASS | evidence: .moai/state/verify/abc123/M1.* | fold-at: 2026-08-12T10:14:00Z
 M2: AC-003=PASS, AC-004=PASS | evidence: .moai/state/verify/abc123/M2.* | fold-at: 2026-08-12T11:42:00Z
 ```
@@ -132,7 +132,7 @@ M2: AC-003=PASS, AC-004=PASS | evidence: .moai/state/verify/abc123/M2.* | fold-a
 走完这道流程之后，`manager-lead` 的活跃上下文只与"当前里程碑的大小 + 到此为止的折叠行 + 规则中常驻加载的开头部分"成正比。哪怕前面还横着第五个里程碑，第一个里程碑的原始记录也不再占着窗口。6 个里程碑的 Tier L 实现能在一个窗口里走到最后，靠的就是这一点。
 
 ```bash
-# Check the evidence files left after milestone 2 (persisted under .moai/state/verify)
+# 里程碑 2 结束后查看留下的证据文件 (持久化在 .moai/state/verify 下)
 ls .moai/state/verify/"$(moai session current)"/M2.*
 ```
 
@@ -153,9 +153,9 @@ ls .moai/state/verify/"$(moai session current)"/M2.*
 - **FAIL**——命令跑不起来，或者与作者的通过声称相矛盾。这里同样发出阻塞报告。
 
 ```bash
-# Example verification command the peer agent reruns for AC-003 on the same tree
+# 同僚验证智能体在同一棵树上重跑 AC-003 的验证命令示例
 go test -run AC-003 ./internal/hierarchical/...
-# Exit code 0 means PASS, non-zero means FAIL — compare against the author's claim to decide PARTIAL vs FAIL
+# 退出码为 0 即 PASS，非 0 即 FAIL —— 与作者的通过主张对比，判定是 PARTIAL 还是 FAIL
 ```
 
 一旦回来的是 PARTIAL 或 FAIL，`manager-lead` 就不进入下一个里程碑。它会把 AC 标识符、作者拿出的通过证据、同事抓到的差异汇成一份阻塞报告，返回给编排器。向用户摆出选项是编排器的活——由它通过 `AskUserQuestion` 询问是再叫一次作者、把差异作为有记录的债务接受，还是中止该里程碑。`manager-lead` 绝不直接问用户。
