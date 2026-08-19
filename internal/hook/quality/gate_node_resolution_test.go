@@ -1,7 +1,6 @@
 package quality
 
-// gate_node_resolution_test.go — Node toolchain test-step run-form resolution
-// (SPEC-HARNESS-GATE-TEST-001).
+// gate_node_resolution_test.go — Node toolchain test-step run-form resolution.
 //
 // The gate's Node test step was hardcoded to `npm test -- --passWithNoTests`.
 // For a package whose `test` script is watch-prone (bare `vitest`, or a

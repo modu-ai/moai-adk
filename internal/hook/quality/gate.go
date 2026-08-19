@@ -305,9 +305,9 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 
 	// Step 3: test step (skippable)
 	if !g.config.SkipTests && tc.testStep != nil {
-		// SPEC-HARNESS-GATE-TEST-001: the Node test step is resolved to a
-		// self-terminating (run-form) command right before execution, reading
-		// the project's package.json scripts from the resolved project dir.
+		// The Node test step is resolved to a self-terminating (run-form)
+		// command right before execution, reading the project's package.json
+		// scripts from the resolved project dir.
 		// Every other toolchain's step passes through unchanged.
 		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
 		testStep := resolveNodeTestStep(*tc.testStep, resolveQualityProjectDir(*g.config, "QualityGate.Run.nodeTestStep"))
@@ -570,10 +570,10 @@ const nodeTestRunScript = "test:run"
 
 // resolveNodeTestStep rewrites the Node toolchain's test step into a
 // self-terminating (run-form) command when the project's package.json makes
-// that possible (SPEC-HARNESS-GATE-TEST-001). The hardcoded `npm test --` was
-// watch-prone for packages whose `test` script never exits (bare `vitest`, or
-// a `--watch`/`--watchAll` token), so the step always died at TestTimeout with
-// the suite at 0%. Resolution tiers, in priority order:
+// that possible. The hardcoded `npm test --` was watch-prone for packages
+// whose `test` script never exits (bare `vitest`, or a `--watch`/`--watchAll`
+// token), so the step always died at TestTimeout with the suite at 0%.
+// Resolution tiers, in priority order:
 //
 //	(i)   scripts.test:run present → `npm run test:run`
 //	(ii)  scripts.test watch-prone → the runner's non-watch flag appended to
