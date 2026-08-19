@@ -126,7 +126,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First**, 즉 언어에 얽매�
 | (없음) | 복잡도 기반 자동 선택 |
 
 {{< callout type="info" >}}
-**Agent Teams — 실험적 재허용**: v3.0.0에 은퇴했던 Agent Teams는 실험적 표면으로 재허용되었습니다. 명시적 `--team` 요청이 네이티브 teammate 런타임을 선택하며, 자동 선택은 없습니다. 은퇴 시절 `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리며 하위 에이전트 모드로 폴백했고, 이 센티널은 문서화된 역사로 남아 있습니다. Tier L 조정은 `manager-kanban`이, 병렬 조사는 fanout과 sweep이 담당합니다.
+**Agent Teams — 실험적 재허용**: v3.0.0에 은퇴했던 Agent Teams는 실험적 표면으로 재허용되었습니다. 명시적 `--team` 요청이 네이티브 teammate 런타임을 선택하며, 자동 선택은 없습니다. 은퇴 시절 `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리며 하위 에이전트 모드로 폴백했고, 이 센티널은 문서화된 역사로 남아 있습니다. Tier L 조정은 `manager-lead`이, 병렬 조사는 fanout과 sweep이 담당합니다.
 {{< /callout >}}
 
 병렬 실행은 에이전트마다 독립 컨텍스트 윈도우를 쓰므로 토큰을 그만큼 더 씁니다. 도메인 하나짜리 단순한 작업이라면 `--solo` (순차)가 더 경제적입니다. 규모를 보고 자동으로 고르는 방식이 기본값인 이유입니다.

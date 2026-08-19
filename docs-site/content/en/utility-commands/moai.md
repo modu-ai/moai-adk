@@ -126,7 +126,7 @@ Run without a flag and MoAI looks at the size of the work and auto-selects the o
 | (none) | Complexity-based auto-selection |
 
 {{< callout type="info" >}}
-**Agent Teams — re-allowed as experimental**: Agent Teams, retired in v3.0.0, has been re-allowed as an experimental surface. An explicit `--team` request selects the native teammate runtime — there is no auto-selection. During the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode, and that sentinel survives as documented history. Tier L coordination belongs to `manager-kanban`; parallel investigation belongs to fanout and sweep.
+**Agent Teams — re-allowed as experimental**: Agent Teams, retired in v3.0.0, has been re-allowed as an experimental surface. An explicit `--team` request selects the native teammate runtime — there is no auto-selection. During the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode, and that sentinel survives as documented history. Tier L coordination belongs to `manager-lead`; parallel investigation belongs to fanout and sweep.
 {{< /callout >}}
 
 Parallel execution increases token usage because each agent uses an independent context window. For simple single-domain work, `--solo` (sequential) is more economical — which is why scale-based auto-selection is the default.

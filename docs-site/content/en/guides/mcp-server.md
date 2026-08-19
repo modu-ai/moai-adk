@@ -121,10 +121,10 @@ Used by manager-develop during run-phase self-verification (attribution seam §E
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
 | `mcp__moai__goal_arm` | Arm a condition-declared goal | **orchestrator main session ONLY** (wired to no agent) | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-kanban | `moai goal status` |
-| `mcp__moai__session_list` | List active moai sessions | manager-kanban | `moai session list` |
+| `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-lead | `moai goal status` |
+| `mcp__moai__session_list` | List active moai sessions | manager-lead | `moai session list` |
 
-`goal_arm` is orchestrator-only — arming an autonomous loop is an orchestrator concern, so it is never called inside an agent. This is a design decision to preserve the flat-hierarchy arming surface. `goal_status` is the channel through which manager-develop / manager-kanban read the progress of the armed condition, and `session_list` is a race-mitigation tool for manager-kanban to detect concurrent sessions on the same checkout before fan-out.
+`goal_arm` is orchestrator-only — arming an autonomous loop is an orchestrator concern, so it is never called inside an agent. This is a design decision to preserve the flat-hierarchy arming surface. `goal_status` is the channel through which manager-develop / manager-lead read the progress of the armed condition, and `session_list` is a race-mitigation tool for manager-lead to detect concurrent sessions on the same checkout before fan-out.
 
 ### Cross-model audit (second opinion)
 

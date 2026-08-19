@@ -115,7 +115,7 @@ draft: false
 | (无) | 基于复杂度自动选择 |
 
 {{< callout type="info" >}}
-**Agent Teams — 实验性重新允许**: 曾在 v3.0.0 退役的 Agent Teams 已作为实验性表面重新允许。显式的 `--team` 请求选择原生 teammate 运行时,没有自动选择。退役时期强制 `--team` 会提示 `MODE_TEAM_UNAVAILABLE` 并回退到子智能体模式,该哨兵作为已文档化的历史保留。Tier L 协调由 `manager-kanban` 承担,并行调查由 fanout 与 sweep 承担。
+**Agent Teams — 实验性重新允许**: 曾在 v3.0.0 退役的 Agent Teams 已作为实验性表面重新允许。显式的 `--team` 请求选择原生 teammate 运行时,没有自动选择。退役时期强制 `--team` 会提示 `MODE_TEAM_UNAVAILABLE` 并回退到子智能体模式,该哨兵作为已文档化的历史保留。Tier L 协调由 `manager-lead` 承担,并行调查由 fanout 与 sweep 承担。
 {{< /callout >}}
 
 并行执行中每个智能体使用独立的上下文窗口,令牌用量会增加。对于简单的单域工作,`--solo`(顺序)更经济 — 这就是基于规模的自动选择成为默认值的原因。
