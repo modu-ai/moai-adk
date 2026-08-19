@@ -1,0 +1,102 @@
+### agent-a8b0420c635295c5a
+  [회수 필요]   .moai/reports/github-issues/MANIFEST.md
+  [회수 필요]   .moai/reports/github-issues/issue-1568/draft-ko-comment.md
+  [회수 필요]   .moai/reports/github-issues/issue-1568/draft-pr-body.md
+  [회수 필요]   .moai/reports/github-issues/issue-1568/evidence.md
+  [회수 필요]   .moai/reports/github-issues/issue-1568/files/internal/config/cache.go
+  [회수 필요]   .moai/reports/github-issues/issue-1568/files/internal/config/cache_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1568/files/internal/core/project/validator.go
+  [회수 필요]   .moai/reports/github-issues/issue-1568/files/internal/core/project/validator_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/draft-ko-comment.md
+  [회수 필요]   .moai/reports/github-issues/issue-1570/draft-pr-body.md
+  [회수 필요]   .moai/reports/github-issues/issue-1570/evidence.md
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/cli/hook.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/cli/hook_worktree_create_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/misc_coverage_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/registry.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/registry_extra_coverage_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/types.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/worktree_create.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/worktree_create_test.go
+  [회수 필요]   .moai/reports/github-issues/issue-1570/files/internal/hook/worktree_registry.go
+  [회수 필요]   .moai/reports/t100/checks-newhead-initial.txt
+  [회수 필요]   .moai/reports/t100/checks-newhead2-initial.txt
+  [회수 필요]   .moai/reports/t100/checks-snapshot1.txt
+  [회수 필요]   .moai/reports/t100/edges.jsonl
+  [회수 필요]   .moai/reports/t100/pr-body-v311.md
+  [회수 필요]   .moai/reports/t100/q1-callers.txt
+  [회수 필요]   .moai/reports/t100/q2a-blast-file.txt
+  [회수 필요]   .moai/reports/t100/q2b-blast-pkg.txt
+  [회수 필요]   .moai/reports/t100/q3-fanin.txt
+  [회수 필요]   .moai/reports/t100/q4-specs-no-code.txt
+  [회수 필요]   .moai/reports/t100/report.md
+### agent-a62468d0d1a7040cf
+  [회수 필요]   .moai/reports/t114/resolved/HANDOFF.md
+  [회수 필요]   .moai/reports/t114/resolved/artifacts/after-per-file.txt
+  [회수 필요]   .moai/reports/t114/resolved/artifacts/budget-test-tail.txt
+  [회수 필요]   .moai/reports/t114/resolved/artifacts/template-strict-tail.txt
+  [회수 필요]   .moai/reports/t114/resolved/core/kanban-dispatch-detail.md
+  [회수 필요]   .moai/reports/t114/resolved/core/kanban-dispatch.md
+  [회수 필요]   .moai/reports/t114/resolved/core/t-kanban-dispatch-detail.md
+  [회수 필요]   .moai/reports/t114/resolved/core/t-kanban-dispatch.md
+  [회수 필요]   .moai/reports/t114/resolved/evidence.md
+  [회수 필요]   .moai/reports/t114/resolved/rider/cross-session-messaging.md
+  [회수 필요]   .moai/reports/t114/resolved/rider/t-cross-session-messaging.md
+### agent-ad55b5fbe632611a7
+  [회수 필요]   .moai/reports/t66/green-cli-model-fold-verbose.txt
+  [회수 필요]   .moai/reports/t66/green-cli-model-fold.txt
+  [회수 필요]   .moai/reports/t66/green-postcommit-head.txt
+  [회수 필요]   .moai/reports/t66/green-web-full-package.txt
+  [회수 필요]   .moai/reports/t66/green-web-reasoning-map.txt
+  [회수 필요]   .moai/reports/t66/red-cli-model-fold.txt
+  [회수 필요]   .moai/reports/t66/red-web-reasoning-map.txt
+  [회수 필요]   .moai/reports/t66/runtime-glm-json-head.txt
+  [회수 필요]   .moai/reports/t66/runtime-glm-table.txt
+### t74
+  [회수 필요]   .moai/reports/t74/01-cwd-relocate.md
+  [회수 필요]   .moai/reports/t74/green-a.txt
+  [회수 필요]   .moai/reports/t74/green-b.txt
+  [회수 필요]   .moai/reports/t74/green-full.txt
+  [회수 필요]   .moai/reports/t74/green-hook-skip.txt
+  [회수 필요]   .moai/reports/t74/green-session.txt
+  [회수 필요]   .moai/reports/t74/red-a.txt
+  [회수 필요]   .moai/reports/t74/red-b.txt
+### t46-anchor-guard
+  [primary 존재] .moai/reports/t46-anchor-guard/01-root-cause.md
+  [primary 존재] .moai/reports/t46-anchor-guard/02-red.txt
+  [primary 존재] .moai/reports/t46-anchor-guard/03-green.txt
+  [primary 존재] .moai/reports/t46-anchor-guard/t73-01-extension.md
+  [primary 존재] .moai/reports/t46-anchor-guard/t73-02-red.txt
+  [primary 존재] .moai/reports/t46-anchor-guard/t73-02b-red.txt
+  [primary 존재] .moai/reports/t46-anchor-guard/t73-03-green.txt
+  [primary 존재] .moai/reports/t46-anchor-guard/t73-03b-green.txt
+### card-relnotes
+  [회수 필요]   .moai/specs/SPEC-CHANGELOG-BUDGET-001/acceptance.md
+  [회수 필요]   .moai/specs/SPEC-CHANGELOG-BUDGET-001/plan.md
+  [회수 필요]   .moai/specs/SPEC-CHANGELOG-BUDGET-001/progress.md
+  [회수 필요]   .moai/specs/SPEC-CHANGELOG-BUDGET-001/spec.md
+  [회수 필요]   .moai/specs/SPEC-RELEASE-NOTES-ASSEMBLY-001/acceptance.md
+  [회수 필요]   .moai/specs/SPEC-RELEASE-NOTES-ASSEMBLY-001/plan.md
+  [회수 필요]   .moai/specs/SPEC-RELEASE-NOTES-ASSEMBLY-001/progress.md
+  [회수 필요]   .moai/specs/SPEC-RELEASE-NOTES-ASSEMBLY-001/spec.md
+### t62
+  [회수 필요]   .moai/reports/t62/01-cwd-fallback-level-split.md
+  [회수 필요]   .moai/reports/t62/green-cli-pkg.txt
+  [회수 필요]   .moai/reports/t62/green-cli.txt
+  [회수 필요]   .moai/reports/t62/green-hook-skip.txt
+  [회수 필요]   .moai/reports/t62/green-unit.txt
+  [회수 필요]   .moai/reports/t62/red-cli.txt
+### t80
+  [회수 필요]   .moai/reports/t80/DRAFT-t80-m0-withdrawn.md
+  [회수 필요]   .moai/reports/t80/raw/codex-binary-strings-findings.txt
+  [회수 필요]   .moai/reports/t80/raw/codex-hooks-doc-excerpts.md
+### agent-a77cdfb3c00bf2557
+  [회수 필요]   .moai/reports/t71/02-red.txt
+  [회수 필요]   .moai/reports/t71/03-green.txt
+### agent-a20f1e50d08875998
+  [회수 필요]   .moai/reports/t42/02-red.txt
+  [회수 필요]   .moai/reports/t42/03-green.txt
+### card-provenance
+  [회수 필요]   .moai/reports/session-strategy.html
+### t140
+  [primary 존재] .moai/reports/t140/general-purpose-availability.md
