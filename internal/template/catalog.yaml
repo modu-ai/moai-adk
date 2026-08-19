@@ -245,7 +245,7 @@ catalog:
                 - name: moai-ref-ui-polish
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-ref-ui-polish/
-                  hash: dd64c0fcd3048b61d10b8f2208390c5214d467c7978cbe6aaad7613d3d683197
+                  hash: 1120b80b78a31e9ea9afb5f8addc7356ea039222ad291d8c994e58362970f2ce
                   version: 1.0.0
                 - name: moai-ref-seo
                   tier: optional-pack:frontend

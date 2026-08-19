@@ -108,10 +108,52 @@ The design-dna skill is shared publicly under the MIT License. MoAI-ADK has dist
 
 ---
 
+## motion-design — Vendor-Neutral Motion Principles
+
+The following reference material is derived from the motion-design open-source skill:
+
+**Source Repository**: https://github.com/LottieFiles/motion-design-skill
+**License**: MIT License — Copyright (c) 2025 LottieFiles
+
+### Imported Components
+
+The vendor-neutral motion-principles taxonomy (imported 2026-08-19) is incorporated into the `moai-ref-ui-polish` skill:
+
+1. The Three Pillars decision passes, the Three Motion Layers amplitude/offset model, the two 1/3 Rules, the attention budget, and the stagger-budget table -> `.claude/skills/moai-ref-ui-polish/references/motion-principles.md`
+2. The four motion-personality archetypes, the UI-adapted reading of Disney's 12 animation principles with their numeric ranges, and the emotion-to-motion / path-as-language maps -> the same reference file
+
+### Attribution
+
+The motion-design skill is shared publicly under the MIT License. The source contains no Lottie or LottieFiles tooling — it is purely implementation-agnostic motion principle. MoAI-ADK has distilled that principle layer into a single progressive-disclosure reference file, rewritten the prose for MoAI skill conventions, dropped the publisher's branding and install framing, and cross-referenced the overlapping implementation rules to their existing owner (`moai-ref-ui-polish/SKILL.md` § Motion) rather than restating them. The MIT copyright notice is retained per the license terms.
+
+---
+
+## gsap-skills — Reduced-Motion and Compositor-Cost Rules
+
+The following reference material is derived from the gsap-skills open-source skill set:
+
+**Source Repository**: https://github.com/greensock/gsap-skills
+**License**: MIT License — Copyright (c) 2026 GreenSock
+
+### Imported Components
+
+Two library-independent rules (imported 2026-08-19) are incorporated into the `moai-ref-ui-polish` skill:
+
+1. The `prefers-reduced-motion` accessibility branch as a required authoring step for every non-decorative animation -> `.claude/skills/moai-ref-ui-polish/SKILL.md` § Motion Accessibility and Cost
+2. The compositor-versus-layout framing for why `transform` and `opacity` outperform layout-triggering properties -> the same section
+
+### Attribution
+
+The gsap-skills set is shared publicly under the MIT License. MoAI-ADK imported only the two rules that hold independently of any animation library, restated in platform-neutral terms. No GSAP API surface, framework-lifecycle guidance, membership or licensing material, or vendor-recommendation trigger was carried over — `moai-ref-ui-polish` remains vendor-neutral and names no animation library as a default. The MIT copyright notice is retained per the license terms.
+
+---
+
 **Import Date (harness)**: 2026-04-26
 **Import Date (Karpathy)**: 2026-04-28
 **Import Date (im-not-ai)**: 2026-06-15
 **Import Date (design-dna)**: 2026-08-19
+**Import Date (motion-design)**: 2026-08-19
+**Import Date (gsap-skills)**: 2026-08-19
 **MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
 

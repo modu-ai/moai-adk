@@ -18,11 +18,11 @@ when_to_use: >
 
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   category: "domain"
   status: "active"
-  updated: "2026-07-28"
-  tags: "ui, polish, design, animation, typography, motion, frontend, reference"
+  updated: "2026-08-19"
+  tags: "ui, polish, design, animation, typography, motion, frontend, accessibility, reference"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -78,6 +78,18 @@ Before suggesting polish changes, identify the project's existing styling system
 | With motion library (Framer Motion et al.) | `transition: { type: "spring", duration: 0.3, bounce: 0 }` |
 | Without motion library (CSS) | `cubic-bezier(0.2, 0, 0, 1)` for the standard "decelerate" curve |
 | Never | `transition: all` — always specify exact properties (`transition-property: scale, opacity`) |
+
+### Motion Accessibility and Cost
+
+| Rule | Detail |
+|------|--------|
+| Reduced-motion branch (required) | Every non-decorative animation needs a `prefers-reduced-motion: reduce` path. Vestibular-disorder users are physically harmed by large-displacement and parallax motion. Reduce to an opacity cross-fade or remove the animation — never merely shorten it. The branch is authored at the same time as the animation, not retrofitted |
+| Animate the compositor, not the layout | `transform` and `opacity` are composited and skip layout and most paint. `width`, `height`, `top`, `left`, `margin`, and `padding` trigger layout on every frame (thrashing), which is why the same visual effect janks when driven by the wrong property. Move with `translate`, resize with `scale` |
+
+> Motion principles behind these rules — the three decision passes, motion layers, the
+> 1/3 rules, stagger budgets, personality archetypes, Disney-adapted ranges, and the
+> emotion-to-motion map — live in `references/motion-principles.md` (L3, load on demand
+> when motion is the substance of the work).
 
 ## Typography
 
@@ -165,13 +177,17 @@ Before suggesting polish changes, identify the project's existing styling system
 - Separate icon asset files per state instead of `currentColor` recoloring
 - Page-load enter animation fires without a skip (`initial={false}`)
 - `will-change: all`, or `will-change` set permanently instead of only on stutter
+- Animation with no `prefers-reduced-motion` branch (or a branch that only shortens the duration instead of removing the displacement)
+- Movement driven by `top`/`left`/`width`/`height` where a `transform` would do (layout thrashing every frame)
 
 <!-- moai:evolvable-end -->
 
 <!-- moai:evolvable-start id="verification" -->
 ## Verification
 
-- [ ] Enter/exit animations use `ease-out`; exits are softer than enters
+- [ ] Enter animations decelerate (`ease-out`); exit animations accelerate (`ease-in`), and entrances run longer than exits
+- [ ] Every non-decorative animation has a `prefers-reduced-motion: reduce` branch
+- [ ] Movement uses `transform`/`opacity`, not `width`/`height`/`top`/`left`
 - [ ] Nested elements follow `outerRadius = innerRadius + padding`
 - [ ] Depth uses semi-transparent shadow; structure uses border
 - [ ] Every `transition` specifies exact properties (no `transition: all`)
