@@ -225,7 +225,16 @@ func TestGLMTask_SyncReturnsOutput(t *testing.T) {
 // TestGLMTask_ForwardsSystemModelAndMaxTokens proves the optional arguments
 // reach the request body and the echoed model, rather than being silently
 // dropped or overridden by the resolver.
+//
+// It asserts the NON-factory path, so it must not inherit the ambient factory
+// signal: a developer running the suite from inside a factory session carries
+// MOAI_FACTORY_WORKERS in the environment, and the override-ignoring branch in
+// glm_task.go keys on its mere presence. Without this clear the test reports a
+// dropped override that the factory guard deliberately dropped — a false defect
+// whose factory-mode counterpart is pinned separately by
+// TestGLMTaskFactoryModeIgnoresModelOverride.
 func TestGLMTask_ForwardsSystemModelAndMaxTokens(t *testing.T) {
+	clearFactoryTestEnv(t)
 	stub := &stubGLMDoer{body: glmTextResp("ok")}
 	withGLMTaskSeams(t, "k", stub)
 
