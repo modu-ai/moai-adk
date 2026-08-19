@@ -104,6 +104,12 @@ Row 5 above archives the MoAI-custom `claude-code-guide` agent **file** (a forme
 
 ---
 
+### §C.4 `general-purpose` availability precondition
+
+Rows #7-#12 name `general-purpose`, which is guaranteed only in Claude Code's **default** built-in agent class — the `coordinator` and `none` classes omit it, and a spawn naming it there fails with `subagent_type is required`. Both of those classes are entered by an explicit environment-variable opt-in, and no MoAI-launched or MoAI-documented session shape enters either (measured against Claude Code 2.1.235); the class conditions and that measurement are recorded in `.moai/reports/general-purpose-agent-availability.md`.
+
+---
+
 ## §D — Orchestrator Recovery Flow
 
 When the orchestrator detects an `ARCHIVED_AGENT_REJECTED` condition, it follows this recovery flow:
