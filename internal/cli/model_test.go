@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // TestResolveModelProfileReport_MaxClaude covers REQ-MPM-025 / AC-MPM-016: the
@@ -41,7 +42,7 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 // per-agent glm_model column carries the explicit "inherit" sentinel (the
 // sub-agent model is session-inherited via llm.glm.models →
 // ANTHROPIC_DEFAULT_*_MODEL, so per-agent model cells carry no differentiation),
-// while manager-develop's effort still collapses to reasoning-max (coding-max
+// while manager-develop's effort still collapses to the max level (coding-max
 // override), with a wire-honesty note.
 func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	llm := config.LLMConfig{
@@ -74,20 +75,20 @@ func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 			t.Errorf("%s glm model: got %q, want the explicit inherit sentinel", e.Agent, e.GLMModel)
 		}
 	}
-	// manager-develop = opus/max → coding-max override → reasoning-max.
+	// manager-develop = opus/max → coding-max override → the max level.
 	md := got["manager-develop"]
-	if md.GLMReasoning != "reasoning-max" {
-		t.Errorf("manager-develop glm reasoning: got %s, want reasoning-max (coding-max override)", md.GLMReasoning)
+	if md.GLMReasoning != template.GLMStateMax {
+		t.Errorf("manager-develop glm reasoning: got %s, want %s (coding-max override)", md.GLMReasoning, template.GLMStateMax)
 	}
-	// manager-git = sonnet/low → low collapses to thinking-off.
+	// manager-git = sonnet/low → low collapses to the low level.
 	mg := got["manager-git"]
-	if mg.GLMReasoning != "thinking-off" {
-		t.Errorf("manager-git glm reasoning: got %s, want thinking-off", mg.GLMReasoning)
+	if mg.GLMReasoning != template.GLMStateLow {
+		t.Errorf("manager-git glm reasoning: got %s, want %s", mg.GLMReasoning, template.GLMStateLow)
 	}
-	// Explore = sonnet/low → low collapses to thinking-off (now that
+	// Explore = sonnet/low → low collapses to the low level (now that
 	// Explore has an explicit group it IS GLM-injected).
-	if e := got["Explore"]; e.GLMReasoning != "thinking-off" {
-		t.Errorf("Explore glm reasoning: got %s, want thinking-off", e.GLMReasoning)
+	if e := got["Explore"]; e.GLMReasoning != template.GLMStateLow {
+		t.Errorf("Explore glm reasoning: got %s, want %s", e.GLMReasoning, template.GLMStateLow)
 	}
 }
 

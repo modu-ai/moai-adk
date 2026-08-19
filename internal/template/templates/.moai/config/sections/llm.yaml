@@ -172,34 +172,35 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"         # 1M context — Opus slot (main session + inherit agents)
-      medium: "glm-4.7"       # 202K context — Sonnet slot (balanced)
-      low: "glm-4.5-air"      # 128K context — Haiku slot (lightweight)
-      fable: "glm-5.2"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
+      high: "glm-5.3"         # 1M context — Opus slot (main session + inherit agents)
+      medium: "glm-5.3"       # 1M context — Sonnet slot (balanced)
+      low: "glm-5.3"          # 1M context — Haiku slot (lightweight)
+      fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──
     #
-    # z.ai does NOT implement Claude's 5-level effort vocabulary. The overlay
-    # collapses Claude effort onto z.ai's 3 reachable reasoning states:
+    # z.ai does NOT implement Claude's 5-level effort vocabulary. GLM-5.3 reasons
+    # ALWAYS — disabling reasoning is no longer supported, and a request that
+    # asks for it fails — so the control is a single 3-level reasoning_effort:
     #
-    #   thinking-off    thinking=disabled, reasoning_effort moot   ← Claude low
-    #   reasoning-high  thinking=enabled,  reasoning_effort=high   ← Claude medium/high
-    #   reasoning-max   thinking=enabled,  reasoning_effort=max    ← Claude xhigh/max
+    #   low     thinking=enabled, reasoning_effort=low    ← Claude low
+    #   high    thinking=enabled, reasoning_effort=high   ← Claude medium/high
+    #   max     thinking=enabled, reasoning_effort=max    ← Claude xhigh/max
     #
-    # Collapse table (5 Claude levels → 3 GLM states):
-    #   low      → thinking-off
-    #   medium   → reasoning-high
-    #   high     → reasoning-high
-    #   xhigh    → reasoning-max
-    #   max      → reasoning-max
-    #   (unrecognized → reasoning-max; totality clause — never under-reason)
+    # Collapse table (5 Claude levels → 3 GLM levels):
+    #   low      → low
+    #   medium   → high
+    #   high     → high
+    #   xhigh    → max
+    #   max      → max
+    #   (unrecognized → max; totality clause — never under-reason)
     #
     # Coding-max override (z.ai "reasoning_effort: max for coding tasks"):
-    #   manager-develop forces reasoning-max regardless of its collapse result.
+    #   manager-develop forces max regardless of its collapse result.
     #
-    # manager-git occupies the thinking-off tier (its effort is low across all
-    # profile columns → CollapseClaudeEffortToGLM("low") = thinking-off).
+    # manager-git occupies the low tier (its effort is low across all profile
+    # columns → CollapseClaudeEffortToGLM("low") = low).
     #
     # Wire state: the overlay is implemented and wired; live validation of z.ai
     # wire-effectiveness is pending.
@@ -209,13 +210,13 @@ llm:
     # Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so
     # the statusline over-reports headroom in GLM mode.
     #
-    # Values are in tokens. Substring match: "glm-5.2" matches the high-slot id directly.
+    # Values are in tokens. Substring match: "glm-5.3" matches the high-slot id directly.
     # Set MOAI_STATUSLINE_CONTEXT_SIZE env for a one-shot override instead.
     # Reference (Z.AI official docs):
-    #   glm-5.2     : 1000000 context / 131072 max output
+    #   glm-5.3     : 1000000 context
     #   glm-4.7     : 202752 context (per OpenRouter mirror)
     #   glm-4.5-air : 128000 context
     # context_windows:
-    #   glm-5.2: 1000000
+    #   glm-5.3: 1000000
     #   glm-4.7: 202752
     #   glm-4.5-air: 128000

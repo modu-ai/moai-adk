@@ -173,14 +173,19 @@ func glmTiers() []string {
 // glmDefaultTierEffort는 티어별 추론 강도 기본 선택값이다. 값은 z.ai 정규
 // reasoning-state 이름이며 template 패키지 상수에서 파생한다 — 리터럴 재선언
 // 없음. 이 값들은 저장만 되고 런타임에 적용되지 않는다 (아래 주석 참조).
+//
+// GLM-5.3 기준 기본값: high=high, medium=high, low=low, fable=max. fable만 max인
+// 것은 z.ai가 코딩 과제에 max를 권고하기 때문이고, high/medium이 max가 아닌 것은
+// 세션 전역 값이 모든 spawn에 청구되기 때문이다(SessionGLMReasoningState의 근거와
+// 동일). low 티어는 5.3에서 thinking을 끌 수 없으므로 최저 단계인 low로 내려간다.
 func glmDefaultTierEffort(tier string) string {
 	switch tier {
-	case "medium":
-		return template.GLMStateReasoningHigh
+	case "high", "medium":
+		return template.GLMStateHigh
 	case "low":
-		return template.GLMStateThinkingOff
-	default: // high, fable
-		return template.GLMStateReasoningMax
+		return template.GLMStateLow
+	default: // fable
+		return template.GLMStateMax
 	}
 }
 
