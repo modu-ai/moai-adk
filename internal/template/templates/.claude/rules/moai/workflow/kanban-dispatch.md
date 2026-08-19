@@ -46,7 +46,7 @@ The justification is never "it is faster": speed is the effect of skipping the c
 
 ## The dispatch cycle
 
-`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session, addressed by name (`SendMessage`; `ListAgents` reports the live set). Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself.
+`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session, addressed by name (`SendMessage`; `ListAgents` lists live sessions and says when it could not check them all). Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself.
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself. Session-naming rules and the address-block walkthrough: `kanban-dispatch-detail.md` § The dispatch cycle.
 
@@ -138,7 +138,7 @@ The lead's own session is cleared the same way, between cards rather than phases
 
 [HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the lead has integrated the branch and the remote merge has landed; disposal before that destroys the only copy.
 
-[HARD] **A new card starts in a new worktree — exit any previous one first.** `EnterWorktree(<card-id>)` cannot run from inside a worktree session: a lane still anchored in the previous card's tree MUST `ExitWorktree` back to the primary checkout before creating the new one, or it does the new card's work on the old card's branch. The fresh worktree is created with `EnterWorktree(<card-id>)` (based on the remote default branch) rather than reusing the previous card's tree — reuse without a `/clear` in between carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
+[HARD] **A new card starts in a new worktree — exit any previous one first.** `EnterWorktree(<card-id>)` cannot run from inside a worktree session: a lane still anchored in the previous card's tree MUST `ExitWorktree` back to the primary checkout before creating the new one, or it does the new card's work on the old card's branch. The fresh tree is created from the remote default branch rather than reused — reuse without a `/clear` in between carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
 
 [HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>` — unwieldy for long names, invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary). Dispatches, merges, and evidence reference the `WT-` name.
 
@@ -160,7 +160,7 @@ The lead dispatches this rather than assuming it: each instruction names the wor
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
 ```
 
-The `env -u VAR <command>` form is rejected — the guard in the Claude Code binary rejects shell structures it cannot statically track, `env` among them; `unset … && <command>` stays visible to static analysis, which is why it is prescribed. Two load-bearing properties, easy to "simplify" away: **one invocation** (each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command — the scrub and the command travel together or the scrub does nothing) and **no subshell** (`( unset …; <command> )` is another structure the guard cannot statically track, rejected the same way).
+The `env -u VAR <command>` form is rejected — the guard in the Claude Code binary rejects shell structures it cannot statically track, `env` among them; `unset … && <command>` stays visible to static analysis, which is why it is prescribed. Two load-bearing properties, easy to "simplify" away: **one invocation** (each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command — the scrub and the command travel together or the scrub does nothing) and **no subshell** (`( unset …; <command> )` is rejected the same way).
 
 Moving the command into a script file is not a workaround — the guard cannot read inside a script, so every check is bypassed for that payload; a human read of the script is not the guard running. Where a verification cannot be expressed as one compound invocation, reduce the verification rather than route it around the guard.
 
@@ -189,7 +189,7 @@ The completion signal is the branch name, merge SHA, and evidence path.
 - **No session spawning.** The lead addresses sessions the operator launched — it never creates one (sub-agents are not sessions).
 - **No gate bypass.** Kickoff approval before run-phase entry, and every other approval gate, is unchanged by being inside a dispatch cycle.
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the lead, through `AskUserQuestion`.
-- **A role with no live session is a fault, not a wait.** The lead reports the empty role and the waiting card; silently holding it presents as a hang, the most expensive failure shape to diagnose.
+- **A role with no live session is a fault, not a wait.** The lead reports the empty role and the waiting card; silently holding it presents as a hang, the most expensive failure shape to diagnose. Empty means a complete listing showed none; an incomplete one is a gap, not an empty role (detail companion).
 
 ## Cross-references
 

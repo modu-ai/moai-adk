@@ -83,7 +83,7 @@ Each arrow below is one dispatch from the lead to one companion session:
 [operator picks a card]  →  plan  →  run  →  sync  →  [lead marks done]
 ```
 
-Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` reports the live set; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
+Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` lists live sessions and says when it could not check them all; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
 
 A bare name fails in two different ways, and only one of them announces itself. The refusal case is the harmless one: the runtime cannot pick between same-named sessions, says so, and the send is re-issued with the short reference the listing prints. The other case says nothing at all.
 
@@ -101,6 +101,9 @@ Detecting the collision is the second line of defence. The first is not creating
 **The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form, and bare-name dispatch is observed arriving normally in runs with no such teammate — so "always address by reference" would be a false rule, and the binding one is *read the result*. Companion names are role-shaped, and a spawned teammate can carry the same shape; where that overlap is plausible, address by `name [ref]` from the first send rather than after a lost one.
 
 This does not soften what moves the board. The queue on disk is still the delegation, evidence on disk is still what advances a card, and a dispatch that silently missed shows up as a card that never progressed — the message was only ever a nudge. Mechanism from the messaging side: `cross-session-messaging.md` § Addressing, sending, and replying.
+
+**A listing is not always complete, and an incomplete one cannot prove absence.** From Claude Code 2.1.234 the listing says when your account's session list was too long to check completely, rather than leaving unseen sessions to read as absent. That disclosure is what the stub's fault clause turns on: the lead concludes a role is empty from a listing that checked everywhere, and a listing that reports it could not is a **gap** — it re-checks and reports the gap, never a fault. Concluding otherwise reports a running companion as dead, which is the failure the upstream change exists to prevent, and is an unobserved absence claim under `verification-claim-integrity.md` §1 (the absence of a signal is not evidence of its subject's absence). This binds only the *absence* direction: a session the listing DOES show is present whatever else it could not reach.
+
 
 Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
