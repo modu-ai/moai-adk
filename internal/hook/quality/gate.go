@@ -3,6 +3,7 @@ package quality
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -304,7 +305,13 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 
 	// Step 3: test step (skippable)
 	if !g.config.SkipTests && tc.testStep != nil {
-		if ok, out := g.executeStep(ctx, *tc.testStep, g.config.TestTimeout); !ok {
+		// SPEC-HARNESS-GATE-TEST-001: the Node test step is resolved to a
+		// self-terminating (run-form) command right before execution, reading
+		// the project's package.json scripts from the resolved project dir.
+		// Every other toolchain's step passes through unchanged.
+		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+		testStep := resolveNodeTestStep(*tc.testStep, resolveQualityProjectDir(*g.config, "QualityGate.Run.nodeTestStep"))
+		if ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout); !ok {
 			return false, out
 		}
 	}
@@ -550,6 +557,129 @@ func hasFlutterSection(content string) bool {
 		}
 	}
 	return false
+}
+
+// nodeTestStepName identifies the Node toolchain's test step. The resolution
+// keys off this name, mirroring how resolvePythonRunner keys off
+// pytestStepName.
+const nodeTestStepName = "npm test"
+
+// nodeTestRunScript is the npm script name that denotes a self-terminating
+// test command (the strongest run-form signal, tier (i)).
+const nodeTestRunScript = "test:run"
+
+// resolveNodeTestStep rewrites the Node toolchain's test step into a
+// self-terminating (run-form) command when the project's package.json makes
+// that possible (SPEC-HARNESS-GATE-TEST-001). The hardcoded `npm test --` was
+// watch-prone for packages whose `test` script never exits (bare `vitest`, or
+// a `--watch`/`--watchAll` token), so the step always died at TestTimeout with
+// the suite at 0%. Resolution tiers, in priority order:
+//
+//	(i)   scripts.test:run present → `npm run test:run`
+//	(ii)  scripts.test watch-prone → the runner's non-watch flag appended to
+//	      `npm test` (vitest `--run`; jest `--ci`)
+//	(iii) anything else → `npm test` unchanged
+//
+// `--passWithNoTests` stays appended on every tier: a package with an empty
+// test suite must keep passing the gate rather than regress. Parse failures —
+// missing package.json, invalid JSON, absent scripts map — fall back to tier
+// (iii) so the gate never fails because it could not read the manifest.
+// Non-Node steps are returned unchanged (REQ-HGT-004).
+func resolveNodeTestStep(step gateStep, dir string) gateStep {
+	if step.name != nodeTestStepName || dir == "" {
+		return step
+	}
+	scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json"))
+	if !ok {
+		return step
+	}
+	if strings.TrimSpace(scripts[nodeTestRunScript]) != "" {
+		return gateStep{
+			name:   "npm run test:run",
+			binary: "npm",
+			args:   []string{"run", nodeTestRunScript, "--", "--passWithNoTests"},
+		}
+	}
+	if flag := nodeNonWatchFlag(scripts["test"]); flag != "" {
+		return gateStep{
+			name:   nodeTestStepName + " " + flag,
+			binary: "npm",
+			args:   append([]string{"test", "--", "--passWithNoTests"}, flag),
+		}
+	}
+	return step
+}
+
+// readPackageJSONScripts parses the scripts map out of the package.json at
+// path. ok is false when the file is missing, unreadable, not valid JSON, the
+// root is not an object, or scripts is absent/not a string map — every
+// failure routes the Node test-step resolution to the tier-(iii) fallback.
+func readPackageJSONScripts(path string) (map[string]string, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
+	}
+	var pkg struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil, false
+	}
+	if pkg.Scripts == nil {
+		return nil, false
+	}
+	return pkg.Scripts, true
+}
+
+// nodeNonWatchFlag returns the runner's non-watch flag for a watch-prone test
+// script: `--run` for vitest, `--ci` for jest. jest takes `--ci` rather than
+// `--watchAll=false` because `--ci` uniformly negates both `--watch` and
+// `--watchAll` (appending `--watchAll=false` would leave a `jest --watch`
+// script still watching). Empty when the script is not watch-prone or the
+// runner is unknown — for an unknown runner, guessing a flag risks breaking
+// the test command outright, so tier (iii) preserves current behavior.
+func nodeNonWatchFlag(script string) string {
+	if !nodeScriptWatchProne(script) {
+		return ""
+	}
+	for _, tok := range strings.Fields(script) {
+		if strings.Contains(tok, "vitest") {
+			return "--run"
+		}
+	}
+	for _, tok := range strings.Fields(script) {
+		if strings.Contains(tok, "jest") {
+			return "--ci"
+		}
+	}
+	return ""
+}
+
+// nodeScriptWatchProne reports whether a test script will not self-terminate:
+// (a) it carries a `--watch` or `--watchAll` token (exact match, so an already
+// negated `--watch=false` stays non-watch-prone), or (b) it is a bare vitest
+// invocation — first token `vitest` without a `run` subcommand, vitest's
+// default being watch mode. Bare jest runs once by default and is NOT
+// watch-prone (REQ-HGT-002 defines the predicate).
+func nodeScriptWatchProne(script string) bool {
+	fields := strings.Fields(script)
+	if len(fields) == 0 {
+		return false
+	}
+	for _, tok := range fields {
+		if tok == "--watch" || tok == "--watchAll" {
+			return true
+		}
+	}
+	if fields[0] != "vitest" {
+		return false
+	}
+	for _, tok := range fields[1:] {
+		if tok == "run" {
+			return false
+		}
+	}
+	return true
 }
 
 // executeStep runs a single gate step. Optional steps skip silently when the binary is missing.
