@@ -18,17 +18,17 @@ when_to_use: >
 
 user-invocable: false
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   category: "domain"
   status: "active"
   updated: "2026-08-19"
-  tags: "ui, polish, design, animation, typography, motion, frontend, accessibility, reference"
+  tags: "ui, polish, design, animation, typography, motion, frontend, accessibility, audit, reference"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
-  level2_tokens: 3000
+  level2_tokens: 5000
 ---
 
 # UI Polish Reference
@@ -116,6 +116,8 @@ Before suggesting polish changes, identify the project's existing styling system
 | Minimum hit area (touch/mobile) | 44 × 44 px |
 | Minimum hit area (dense desktop) | 40 × 40 px (extend with pseudo-element if the visual is smaller) |
 | Hit area overlap | Never let hit areas overlap |
+| Hover on touch (never load-bearing) | `:hover` does not exist on touch — anything reachable only by hover is simply gone on a phone. Keep affordances visible by default and gate hover styling behind `@media (hover: hover) and (pointer: fine)` |
+| Hover on pointer (always present) | The inverse rule: on a pointer device every clickable surface needs a distinct hover state, transitioning over ~100-200ms. A pointer resting on a target with no feedback reads as broken |
 | `will-change` | Only `transform`, `opacity`, `filter` — and only when first-frame stutter is observed; never `will-change: all` |
 
 ## Icons
@@ -149,6 +151,12 @@ Before suggesting polish changes, identify the project's existing styling system
 | Block | Any HIGH finding remains |
 | Needs changes | Only MEDIUM or LOW findings remain |
 | Approve | No actionable findings remain |
+
+> Auditing an existing codebase rather than reviewing a diff? `references/design-audit.md`
+> (L3, load on demand) carries the mechanical detection patterns behind the checklists
+> below — motion gaps, accessibility violations, layout-property animation, and the
+> duration/easing inventories that only surface across a whole codebase. It reports into
+> the severity scale and finding caps above, not a separate one.
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
