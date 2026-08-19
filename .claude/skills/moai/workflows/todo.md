@@ -40,10 +40,14 @@ When the operator says `/moai todo "<description>"`, run
 | `moai todo edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
 | `moai todo move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
 
-[HARD] `edit` and `move` are operator acts, exactly like `add` and the pick.
-Correct a card's wording, or move it, because the operator said to — never on
-inferred priority, never as tidy-up, and never to fold one card into another.
-The queue records the operator's intent; it does not curate it.
+| `moai todo drop <n> "<reason>" [--expect <prefix>]` | Move the addressed **queued** card to `dropped` under the lock, prefixing its text with `[DROPPED — <reason>] `. The card stays in the file — `done` removes a finished card, `drop` keeps a discarded one visible with its reason — and it is no longer a pick candidate. A picked card is unpicked first, so nothing `undrop` cannot restore is ever taken. |
+| `moai todo undrop <n> [--expect <prefix>]` | Return the addressed dropped card to `queued`, stripping the marker. The state is the authority, so a card marked dropped by hand (no marker in its text) undrops with its text untouched. `drop` + `undrop` returns the queue file to the same bytes. |
+
+[HARD] `edit`, `move`, `drop`, and `undrop` are operator acts, exactly like
+`add` and the pick. Correct a card's wording, move it, or discard it because
+the operator said to — never on inferred priority, never as tidy-up, never to
+fold one card into another, and never because a card looks stale. The queue
+records the operator's intent; it does not curate it.
 
 The queue is never mutated through any other surface. A missing backlog file is
 an empty queue, never an error; a malformed file is reported and left untouched.
@@ -74,7 +78,9 @@ an empty queue, never an error; a malformed file is reported and left untouched.
   is what distinguishes a backlog item from a card already on the board.
 - `state` — `queued` | `picked` | `dropped`. A picked item stays in the file so
   the operator can see what is in flight; it is removed when its card reaches
-  `done`.
+  `done`. A dropped item stays too, carrying its `[DROPPED — <reason>] ` marker
+  and recoverable with `undrop` — a discard is a decision on the record, not an
+  erasure.
 
 ## Picking the next card
 

@@ -204,7 +204,8 @@ needs the explicit add verb — the price of keeping typos loud.`,
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoNextCmd(),
-		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd())
+		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
+		newTodoDropCmd(), newTodoUndropCmd())
 	return cmd
 }
 
