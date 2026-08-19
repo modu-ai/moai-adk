@@ -17,9 +17,11 @@ package quality
 //	      (vitest `--run`, jest `--ci`)
 //	(iii) anything else → `npm test` unchanged
 //
-// `--passWithNoTests` must survive on every tier (an empty test suite must not
-// regress the gate), and every package.json parse failure must fall back to
-// tier (iii) rather than failing the commit.
+// `--passWithNoTests` must survive on tiers (ii)/(iii) (an empty test suite
+// must not regress the gate); tier (i) appends no flags because the test:run
+// script is author-owned run-form and a turbo-delegating script hard-errors
+// on unknown arguments (measured 2026-08-19). Every package.json parse
+// failure must fall back to tier (iii) rather than failing the commit.
 
 import (
 	"os"
@@ -78,7 +80,12 @@ func TestResolveNodeTestStep_DecisionTable(t *testing.T) {
 		if got.binary != "npm" {
 			t.Errorf("binary = %q, want %q", got.binary, "npm")
 		}
-		wantArgs := []string{"run", "test:run", "--", "--passWithNoTests"}
+		// No flags appended: the test:run script is author-owned run-form.
+		// Measurement (2026-08-19): appending `--passWithNoTests` via npm's
+		// `--` makes a turbo-delegating script (`turbo run test:run
+		// --passWithNoTests`) hard-error on the unknown argument, breaking
+		// the gate on monorepo roots entirely.
+		wantArgs := []string{"run", "test:run"}
 		if !reflect.DeepEqual(got.args, wantArgs) {
 			t.Errorf("args = %v, want %v", got.args, wantArgs)
 		}
@@ -258,7 +265,7 @@ func TestResolveNodeTestStep_RepoSurfaceFixtures(t *testing.T) {
 				t.Errorf("name = %q, want %q — this surface must self-terminate via tier (i)",
 					got.name, "npm run test:run")
 			}
-			wantArgs := []string{"run", "test:run", "--", "--passWithNoTests"}
+			wantArgs := []string{"run", "test:run"}
 			if !reflect.DeepEqual(got.args, wantArgs) {
 				t.Errorf("args = %v, want %v", got.args, wantArgs)
 			}

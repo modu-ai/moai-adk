@@ -580,11 +580,16 @@ const nodeTestRunScript = "test:run"
 //	      `npm test` (vitest `--run`; jest `--ci`)
 //	(iii) anything else → `npm test` unchanged
 //
-// `--passWithNoTests` stays appended on every tier: a package with an empty
-// test suite must keep passing the gate rather than regress. Parse failures —
-// missing package.json, invalid JSON, absent scripts map — fall back to tier
-// (iii) so the gate never fails because it could not read the manifest.
-// Non-Node steps are returned unchanged (REQ-HGT-004).
+// Tier (i) appends no flags: the test:run script is an author-owned run-form
+// command, and appending `--passWithNoTests` via npm's `--` makes a
+// turbo-delegating script (`turbo run test:run --passWithNoTests`) hard-error
+// on the unknown argument, breaking the gate on monorepo roots (measured
+// 2026-08-19). `--passWithNoTests` stays appended on tiers (ii)/(iii): a
+// package with an empty test suite must keep passing the gate rather than
+// regress. Parse failures — missing package.json, invalid JSON, absent
+// scripts map — fall back to tier (iii) so the gate never fails because it
+// could not read the manifest. Non-Node steps are returned unchanged
+// (REQ-HGT-004).
 func resolveNodeTestStep(step gateStep, dir string) gateStep {
 	if step.name != nodeTestStepName || dir == "" {
 		return step
@@ -597,7 +602,7 @@ func resolveNodeTestStep(step gateStep, dir string) gateStep {
 		return gateStep{
 			name:   "npm run test:run",
 			binary: "npm",
-			args:   []string{"run", nodeTestRunScript, "--", "--passWithNoTests"},
+			args:   []string{"run", nodeTestRunScript},
 		}
 	}
 	if flag := nodeNonWatchFlag(scripts["test"]); flag != "" {
