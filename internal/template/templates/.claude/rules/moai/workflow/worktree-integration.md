@@ -153,6 +153,16 @@ Use `"head"` when isolating subagents that must operate on in-progress work. To 
 
 This setting governs **Claude-native** worktrees only, which is now every worktree the launcher creates — `moai cc -w <name>` passes `-w` straight through to `claude`.
 
+**Creating a card worktree on a release branch.** Because the default is `origin/HEAD`, a worktree created while a release branch is the intended base starts behind it — measured on one such branch, 34 commits behind, with the reflog reading `branch: Created from origin/main`. Two ways out, and the difference between them is not convenience:
+
+- **Set the base after creation**, while the new tree still has no commits of its own: `git -C <tree> reset --hard <ref>`, then `git -C <tree> merge-base --is-ancestor <ref> HEAD` and read the exit code. Only for a tree that is empty and clean; once it carries a commit, this discards it.
+- **Set `baseRef` to `"head"`**, which makes creation inherit rather than default.
+
+`"head"` carries a trap worth stating plainly, because the name invites the wrong reading: it is **the HEAD of the tree the launcher ran in**, not the branch you had in mind. Run `moai cc -w <name>` from the primary checkout while intending a release branch and the new worktree inherits whatever the primary happens to be sitting on — wrong in a quieter direction than the default was, because the reflog now names a plausible commit instead of an obviously-unrelated one. Using it correctly therefore adds a procedural requirement of its own: the launcher must be run from inside a tree already on the intended base.
+
+That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
+
+
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 
 A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
