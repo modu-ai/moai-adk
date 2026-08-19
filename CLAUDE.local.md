@@ -352,7 +352,7 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 
 ### Go Test Execution Rules
 
-- [HARD] After fixing ANY test, run the FULL test suite (`go test ./...`) to catch cascading failures
+- [HARD] After fixing ANY test, run the AFFECTED packages (`go test ./internal/<pkg>/...`), then push and read CI for the full-suite verdict — see §4. Do NOT run `go test ./...` locally: parallel lanes doing so drove load to 413 and stalled the machine (2026-08-15)
 - Do not declare success after fixing only the initially failing tests
 - Run `go test -count=1 ./...` to disable test caching when debugging flaky tests
 - Run `go test -race ./...` for concurrency safety on any code touching goroutines or channels
