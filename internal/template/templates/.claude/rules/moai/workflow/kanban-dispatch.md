@@ -76,7 +76,7 @@ lens: --security --deep
 ```
 
 - `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `sync` dispatch — the review lenses the sync gate will run, the choice itself stated as an address rather than a sentence.
-- `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<card-id>`).
+- `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>`). The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 - **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block and it is lost; re-send to `name [ref]`. Conditional: `cross-session-messaging.md`.
@@ -140,7 +140,27 @@ The lead's own session is cleared the same way, between cards rather than phases
 
 [HARD] **A new card starts in a new worktree — exit any previous one first.** `EnterWorktree(<card-id>)` cannot run from inside a worktree session: a lane still anchored in the previous card's tree MUST `ExitWorktree` back to the primary checkout before creating the new one, or it does the new card's work on the old card's branch. The fresh tree is created from the remote default branch rather than reused — reuse without a `/clear` in between carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
 
-[HARD] **Card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>` — unwieldy for long names, invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<name>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary). Dispatches, merges, and evidence reference the `WT-` name.
+[HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`, which is unwieldy and invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<slug>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary).
+
+The slug is derived from what the card **does**, so a reader of `git branch` or a pull-request list learns the change without a lookup — `WT-t0` says nothing, `WT-branch-naming` says what landed. Its shape:
+
+| Property | Rule |
+|---|---|
+| Source | The card's title, not its id |
+| Tokens | At most 3, hyphen-separated |
+| Length | At most 24 characters (the slug alone; `WT-` brings the branch to at most 27) |
+| Alphabet | Lowercase `a-z`, `0-9`, and `-` |
+| Card id | MUST NOT appear — not as a prefix, a suffix, or a token |
+
+The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). Only the branch takes the slug; the tree path is what the disposal tooling and the evidence path key on.
+
+[HARD] **Dropping the id from the branch moves traceability onto three other carriers, and all three are mandatory.** The branch name no longer answers "which card was this?", so nothing may rely on reading it back:
+
+- The dispatch's `card:` field carries the card id — it is the address, and it is never omitted.
+- Every commit on the branch names the card id in its message, so `git log` recovers the card without the branch name.
+- The evidence path keeps the card id (`.moai/reports/<card-id>/verdict.md`).
+
+A lane that reports a branch name without also reporting its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the `card:` field it dispatched.
 
 The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
