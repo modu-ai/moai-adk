@@ -56,6 +56,8 @@ The justification is never "it is faster": speed is the effect of skipping the c
 
 A cross-session message is a nudge, never the delegation itself: delivery is not guaranteed, and a delivered message consumes the recipient's quota like a typed prompt. No dispatch depends on a message arriving. The disk record — card admitted, picked, done — moves the board; an unanswered message changes nothing.
 
+Two properties of that nudge channel bear on dispatch. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`, opt-in and one-shot), which spares the lead a polling loop — but [HARD] the notice is not the completion signal. A lane goes idle when it finishes, when it stops at a permission prompt, and when it dies; the notice cannot separate those, so it tells the lead *when to read the evidence* and nothing about what the evidence says. The card still advances on the evidence, per § Completion is read, never trusted. **And a nudge can be refused outright under fan-out**: nudging every lane inside one turn is a rapid burst, and the runtime refuses past the inbox's capacity rather than dropping silently (`cross-session-messaging.md` § Configuration surface). Read the send result; a refusal costs the board nothing, because the queue already carries the delegation.
+
 ### Dispatch language
 
 [HARD] A dispatch is written in the operator's `conversation_language` — the operator watches it scroll past, which makes it user-facing output rather than internal agent traffic. The boundary is **who reads it**: an `Agent()` subagent prompt reaches no human and stays English. (Why this classifies rather than exempts: `kanban-dispatch-detail.md` § Dispatch language.)
