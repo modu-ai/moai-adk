@@ -26,6 +26,7 @@ When no skill description matches the mission's domain, inject nothing — zero 
 | Render a report / markdown → HTML artifact | `moai-domain-html-report` (mode by report type — status/incident/plan/explainer/financial/pr; audience tier from active output style) |
 | Humanize / post-edit AI text (de-AI, 윤문) | `moai-domain-humanize` |
 | Generate an SVG infographic / architecture diagram | `moai-domain-svg-infographic` |
+| Reproduce or capture the look of an existing reference design (screenshot, image set, or URL) — extract it into a Design DNA profile, or generate an artifact from one | `moai-domain-design-dna` |
 | Render a data visualization (chart/dashboard) to HTML/SVG | `dataviz` |
 | Author a design artifact hosted as a claude.ai web page (visual identity, landing page) | `artifact-design` |
 

@@ -103,6 +103,11 @@ catalog:
               path: templates/.claude/skills/moai-domain-svg-infographic/
               hash: 04e15e8246939a28712efcf8969d58a483002e3d7f7e5efb458effd7c64e3b6b
               version: 1.0.0
+            - name: moai-domain-design-dna
+              tier: core
+              path: templates/.claude/skills/moai-domain-design-dna/
+              hash: ec96c86bbead5e69c2f68b53cec2b2bb3dd4a6ac5ffcfe4c61f72767a0d29750
+              version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core

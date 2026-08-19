@@ -88,9 +88,30 @@ The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has porte
 
 ---
 
+## design-dna — Reference-Design Deconstruction Taxonomy
+
+The following reference material is derived from the design-dna open-source skill:
+
+**Source Repository**: https://github.com/zanwei/design-dna
+**License**: MIT License — Copyright (c) 2026 the design-dna authors
+
+### Imported Components
+
+The three-dimension Design DNA taxonomy (imported 2026-08-19) is incorporated into the `moai-domain-design-dna` skill:
+
+1. The `design_system` / `design_style` / `visual_effects` dimension split and its field groups + enum vocabularies -> `.claude/skills/moai-domain-design-dna/references/dna-schema.md`
+2. The extraction rules (dominance-based colour roles, relative radius measurement, multi-reference conflict resolution, `enabled: false` non-invention gating) and the performance-tier technology map -> `.claude/skills/moai-domain-design-dna/SKILL.md` + `references/effects-implementation.md`
+
+### Attribution
+
+The design-dna skill is shared publicly under the MIT License. MoAI-ADK has distilled the taxonomy and its extraction/generation rules, rewritten the prose for MoAI skill conventions and progressive-disclosure layout, and cross-referenced overlapping material to its existing owners rather than restating it. The MIT copyright notice is retained per the license terms.
+
+---
+
 **Import Date (harness)**: 2026-04-26
 **Import Date (Karpathy)**: 2026-04-28
 **Import Date (im-not-ai)**: 2026-06-15
+**Import Date (design-dna)**: 2026-08-19
 **MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
 
