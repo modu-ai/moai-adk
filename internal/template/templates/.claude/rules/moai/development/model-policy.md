@@ -113,6 +113,24 @@ This supersedes the earlier approach of enumerating the GLM model ids in `availa
 
 Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
 
+### Three model-selection env axes (they are not interchangeable)
+
+Claude Code exposes three separate `ANTHROPIC_*` axes for choosing a model. They are frequently confused because the names are near-identical, and only the third is one MoAI writes.
+
+| Variable | What it selects | Lifetime |
+|---|---|---|
+| `ANTHROPIC_MODEL` | The model for **the session launched with it**. Documented as applying only to that session — a separate terminal needs its own value rather than a `/model` switch. | Session-scoped; does not persist |
+| `ANTHROPIC_DEFAULT_MODEL` | The model **new sessions start on**. A later `/model` pick overrides it, and that pick persists across restarts. | Starting value; overridable and the override persists |
+| `ANTHROPIC_DEFAULT_<TIER>_MODEL` (`OPUS` / `SONNET` / `HAIKU` / `FABLE`) | Which concrete model ID a **tier alias** resolves to. This is the alias→ID resolution layer, not a session-model choice. | Per-slot mapping, for as long as it is exported |
+
+**MoAI writes only the third axis.** The GLM activation path (`setGLMEnv` in `glm.go`) sets all four `ANTHROPIC_DEFAULT_<TIER>_MODEL` variables so each tier slot resolves to the configured GLM model. MoAI neither reads nor writes `ANTHROPIC_MODEL` or `ANTHROPIC_DEFAULT_MODEL`.
+
+**The layering to be aware of.** A user who exports `ANTHROPIC_DEFAULT_MODEL` globally sets a starting model for *every* session, a GLM session included. That value is a session-model choice and MoAI's writes are slot resolutions, so the two axes are orthogonal rather than in conflict — but they are both in play at once, and the resulting session can start on a model that is not what the tier mapping suggests. When a GLM session reports an unexpected starting model, check for a globally-exported `ANTHROPIC_DEFAULT_MODEL` before suspecting the slot mapping.
+
+**Observation scope (read this before relying on the row above).** `ANTHROPIC_DEFAULT_MODEL` was introduced in the Claude Code v2.1.236 changelog, and the changelog entry is the only source for it: a fetch of the official model-configuration page enumerates `ANTHROPIC_MODEL`, all four `ANTHROPIC_DEFAULT_<TIER>_MODEL` names, `ANTHROPIC_CUSTOM_MODEL_OPTION`, `ANTHROPIC_SMALL_FAST_MODEL`, and `ANTHROPIC_BASE_URL` — but zero occurrences of `ANTHROPIC_DEFAULT_MODEL`. This is upstream doc lag, the same situation the `CLAUDE_CODE_DISABLE_1M_CONTEXT` note above records, and the changelog is likewise the citable source here.
+
+Consequently the precedence between `ANTHROPIC_DEFAULT_MODEL` and the tier variables **has not been observed** — no behavioral test was run, and no documentation states it. The orthogonality claim above is an inference from the two variables' stated purposes (session-starting model vs alias resolution), not a measurement. Treat it as a working assumption until either the docs catch up or a session is run with both exported.
+
 ## Model Policy Tiers (3-tier — high/medium/low)
 
 Model policy is set via `moai init --model-policy <tier>`. The 3-tier system is `high` / `medium` / `low`. The top tier was formerly named `max`; that name is still READ as an alias for `high` so pre-rename configs keep resolving, but it is never written back. The rename unified three vocabularies that previously disagreed — `llm.profile`, the legacy `llm.performance_tier`, and the `ModelPolicy` CLI tokens are now all `{high, medium, low}`, so the former `high -> max` projection is an identity and no migration pass is required. Under the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) haiku is absent from every tier; the tier governs (a) where Fable and Opus are deployed and (b) how aggressively effort is lowered. The `model_routing_profiles.{high,medium,low}` matrices in `workflow.yaml` are the Tier×Phase config SSOT, and `llm.profiles.{high,medium,low}` is the per-agent SSOT.

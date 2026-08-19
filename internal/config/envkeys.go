@@ -352,6 +352,21 @@ const (
 	// API, but they are distinct variables with distinct client precedence.
 	EnvAnthropicAPIKey = "ANTHROPIC_API_KEY"
 
+	// EnvAnthropicDefaultModel names the model new sessions start on. Per the
+	// Claude Code v2.1.236 changelog it differs from ANTHROPIC_MODEL in that a
+	// later /model pick overrides it and persists across restarts. It is a
+	// SESSION-STARTING model, not a tier-slot override: the four
+	// EnvAnthropicDefault<Tier>Model names below resolve an alias to a concrete
+	// model ID, and this one does not participate in that resolution.
+	//
+	// MoAI neither reads nor writes this variable; the constant exists so the
+	// ANTHROPIC_* namespace stays completely enumerated (the package's stated
+	// SSOT contract) and so the name is available to any future consumer
+	// without a bare literal. Observation scope: the changelog entry. The
+	// official model-configuration page documents ANTHROPIC_MODEL and the four
+	// tier names but not this one, so the changelog is the citable source.
+	EnvAnthropicDefaultModel = "ANTHROPIC_DEFAULT_MODEL"
+
 	// EnvAnthropicDefaultHaikuModel overrides the default Haiku model ID.
 	EnvAnthropicDefaultHaikuModel = "ANTHROPIC_DEFAULT_HAIKU_MODEL"
 
