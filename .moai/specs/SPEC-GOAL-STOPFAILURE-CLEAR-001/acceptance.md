@@ -2,7 +2,7 @@
 id: SPEC-GOAL-STOPFAILURE-CLEAR-001
 artifact: acceptance
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 ---

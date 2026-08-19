@@ -136,3 +136,31 @@ func (g *Goal) HasModelConditions() bool {
 	}
 	return false
 }
+
+// IsUnrecoverableStopFailure reports whether a StopFailure `error_type` names a
+// condition a retry cannot clear, and therefore one that leaves an armed goal
+// with nothing running to advance it.
+//
+// The predicate lives here rather than beside the hook handler because the
+// question it answers is a goal-lifecycle one: not "was this turn an error"
+// but "can the work this goal is waiting on still resume". Three types say no
+// — a revoked or org-refused credential, and an exhausted balance. Everything
+// else says yes, INCLUDING the unknown and empty cases: an unrecognized type is
+// not evidence of unrecoverability, and treating it as such would destroy live
+// state on a condition nobody has classified.
+//
+// The recoverable side is the load-bearing half. `rate_limit`, `overloaded`,
+// and `server_error` resolve on their own, and the goal is exactly the state
+// that must survive to see it; `max_output_tokens` is classified
+// withheld-recoverable by runtime-recovery-doctrine.md §1, which obliges the
+// agent to recover rather than treat the turn as failed. Disarming on any of
+// these is the opposite failure from the one this predicate exists to prevent,
+// and a quieter one — the goal is simply gone, with no idle turns to notice.
+func IsUnrecoverableStopFailure(errorType string) bool {
+	switch errorType {
+	case "authentication_failed", "oauth_org_not_allowed", "billing_error":
+		return true
+	default:
+		return false
+	}
+}

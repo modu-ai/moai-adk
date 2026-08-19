@@ -2,7 +2,7 @@
 id: SPEC-GOAL-STOPFAILURE-CLEAR-001
 title: "Disarm an armed goal when a turn dies on an unrecoverable API error, so the loop stops spinning idle turns"
 version: "0.1.0"
-status: draft
+status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 author: manager-spec
