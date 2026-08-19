@@ -67,7 +67,9 @@ The goal loop already has three exits, and this is a fourth that does not overla
 
 All three existing bounds are counters over completed turns. They are the reason an armed goal eventually stops, and the reason it stops *late* — they need turns to burn before they fire, and the turns they burn are the idle ones this SPEC prevents. None of their semantics change here.
 
-## Out of scope
+## Scope
+
+### Out of Scope — adjacent mechanisms and the existing bounds
 
 - The 30-minute background-task check-in (the other 2.1.234 behavior). Deliberately not bundled: it is an unrelated mechanism on an unrelated trigger, and the card's own instruction is to route it to a separate card rather than grow this one.
 - Context-overflow disarm, which the `error_type` enum cannot express (see above).
