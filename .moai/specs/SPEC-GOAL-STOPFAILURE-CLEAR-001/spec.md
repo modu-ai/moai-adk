@@ -4,7 +4,7 @@ title: "Disarm an armed goal when a turn dies on an unrecoverable API error, so 
 version: "0.1.0"
 status: implemented
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-20
 author: manager-spec
 priority: P2
 phase: "v3.1.1"
