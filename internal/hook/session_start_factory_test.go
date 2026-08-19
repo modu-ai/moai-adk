@@ -229,8 +229,6 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 		"cache-aware-execution directive 2",
 		"FACTORY fan-out only",
 		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
-		"No model override",
-		"ANTHROPIC_DEFAULT_*_MODEL",
 		"Free lane slots right now: lane-1, lane-3.",
 	} {
 		if !strings.Contains(notice, want) {
@@ -238,7 +236,9 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 		}
 	}
 	// The t96-absorbed content must NOT come back: no queue-polling protocol.
-	for _, gone := range []string{"moai todo list", ".moai/state/kanban/backlog.json", "poll the backlog queue"} {
+	// The no-model-override discipline is likewise retired from the notice
+	// (operator request): the rule itself lives in the factory skill docs.
+	for _, gone := range []string{"moai todo list", ".moai/state/kanban/backlog.json", "poll the backlog queue", "No model override", "ANTHROPIC_DEFAULT_*_MODEL"} {
 		if strings.Contains(notice, gone) {
 			t.Errorf("lead notice re-teaches foreman-owned polling (%q) — t96 absorbs it:\n%s", gone, notice)
 		}
@@ -261,8 +261,6 @@ func TestFactoryLeadNoticeDispatchDisciplineKorean(t *testing.T) {
 		"`/loop`",
 		"plan -> run -> sync",
 		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
-		"모델 오버라이드 금지",
-		"ANTHROPIC_DEFAULT_*_MODEL",
 		"현재 빈 레인 슬롯: lane-1, lane-2.",
 	} {
 		if !strings.Contains(notice, want) {

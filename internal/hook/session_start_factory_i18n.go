@@ -27,9 +27,9 @@ package hook
 // differ (en/ja/ko say the count first, zh the label first) — see
 // factoryWorkerNotice.
 //
-// The discipline fields (leadClasses / leadStagger / leadNoOverride) embed
-// their protocol tokens — `/loop`, the stage names, ANTHROPIC_DEFAULT_*_MODEL,
-// CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS, and the cache-aware-execution
+// The discipline fields (leadClasses / leadStagger) embed
+// their protocol tokens — `/loop`, the stage names, and
+// CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS, plus the cache-aware-execution
 // directive citation — verbatim in every locale, following the entryGuide
 // precedent: those strings are addresses the operator and the lead must
 // resolve identically, not prose to translate.
@@ -42,7 +42,6 @@ type factoryMessages struct {
 	leaderSocket      string // socket path
 	leadClasses       string // whole-card routing: one lane runs the serial 3-stage path in-session
 	leadStagger       string // fan-out-only staggered activation
-	leadNoOverride    string // no model override on dispatches
 	leadFreeSlots     string // free-slot label list
 	leadSlotsNone     string // rendered when every slot is claimed
 	settingsAuto      string
@@ -77,9 +76,6 @@ var factoryLocales = map[string]factoryMessages{
 			"free-slot lanes. Concurrent requests cannot read a cache entry still being written " +
 			"(cache-aware-execution directive 2). This rule governs FACTORY fan-out only — the workflow " +
 			"runtime staggers itself (CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS) and is not governed here.",
-		leadNoOverride: "No model override — MUST: dispatches carry NO model override. The GLM tier mapping rides " +
-			"the ANTHROPIC_DEFAULT_*_MODEL slot env; a per-spawn override splits the caches and can bypass " +
-			"the slot-to-GLM mapping.",
 		leadFreeSlots:     "Free lane slots right now: %s.",
 		leadSlotsNone:     "none — every slot is held by a live session",
 		settingsAuto:      "Cross-session messages are auto-accepted via the injected --settings.",
@@ -105,9 +101,6 @@ var factoryLocales = map[string]factoryMessages{
 			"실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. " +
 			"동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). " +
 			"이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).",
-		leadNoOverride: "모델 오버라이드 금지 — 필수: 배분 메시지에 모델 오버라이드를 실어 보내지 마세요. " +
-			"GLM 티어 매핑은 ANTHROPIC_DEFAULT_*_MODEL 슬롯 환경변수를 타고 들어가며, 스폰마다 오버라이드를 붙이면 " +
-			"캐시가 쪼개지고 슬롯→GLM 매핑을 우회할 수 있습니다.",
 		leadFreeSlots:     "현재 빈 레인 슬롯: %s.",
 		leadSlotsNone:     "없음 — 모든 슬롯을 생존 세션이 사용 중입니다",
 		settingsAuto:      "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
@@ -133,9 +126,6 @@ var factoryLocales = map[string]factoryMessages{
 			"(最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 " +
 			"同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 " +
 			"このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
-		leadNoOverride: "モデルオーバーライド禁止 — 必須: 割り振りにモデルオーバーライドを含めないでください。 " +
-			"GLM のティアマッピングは ANTHROPIC_DEFAULT_*_MODEL スロット環境変数経由で渡り、スポーンごとのオーバーライドは " +
-			"キャッシュを分割し、スロット→GLM マッピングを迂回するおそれがあります。",
 		leadFreeSlots:     "現在の空きレーンスロット: %s。",
 		leadSlotsNone:     "なし — すべてのスロットを生存セッションが保持しています",
 		settingsAuto:      "セッション間メッセージは、注入された --settings により自動的に受理されます。",
@@ -160,8 +150,6 @@ var factoryLocales = map[string]factoryMessages{
 		leadStagger: "分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 " +
 			"(首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 " +
 			"(cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
-		leadNoOverride: "禁止模型覆盖 — 必须: 派发内容不携带模型覆盖。 GLM 档位映射依赖 ANTHROPIC_DEFAULT_*_MODEL 槽位环境变量； " +
-			"逐次覆盖会拆分缓存，并可能绕过槽位→GLM 映射。",
 		leadFreeSlots:     "当前空闲泳道：%s。",
 		leadSlotsNone:     "无 — 所有槽位均被存活会话占用",
 		settingsAuto:      "跨会话消息通过注入的 --settings 自动接受。",
