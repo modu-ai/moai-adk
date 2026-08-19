@@ -9,7 +9,7 @@
 
 A plain queue of things to work on next. An item is one line of intent — not a
 SPEC, not a plan, not an estimate. It becomes a SPEC only when the operator picks
-it and the leader dispatches it to the `planner` session.
+it and the lead dispatches it to the `plan` session.
 
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
@@ -92,7 +92,7 @@ an operator act.
 Once picked:
 
 1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
-2. Dispatch to the `planner` session per `kanban-dispatch.md` — the card enters
+2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters
    the `plan` column, and SPEC authoring happens there, not here.
 
 ## Outside Kanban Mode
