@@ -85,6 +85,23 @@ Each arrow below is one dispatch from the lead to one companion session:
 
 Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in companion names (one run per machine; the lead keeps the id). `ListAgents` reports the live set; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
 
+A bare name fails in two different ways, and only one of them announces itself. The refusal case is the harmless one: the runtime cannot pick between same-named sessions, says so, and the send is re-issued with the short reference the listing prints. The other case says nothing at all.
+
+**The silent case — an in-process mailbox takes the name.** While the team namespace is active (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, which ships enabled in settings and in the distributed template), a name carried by both a live companion session and an in-process teammate mailbox resolves to the **mailbox**. Nobody reads it, the companion never learns a dispatch existed, and the send reports success. The result's shape is the only separator:
+
+| Result shape | Where the dispatch went |
+|---|---|
+| no `routing` object — the result names the peer (`… (another Claude session on this machine)`) | the companion session — **delivered** |
+| a `routing` object, e.g. `routing: {sender: "team-lead", target: "@<name>"}` | an in-process team mailbox — **lost** |
+
+So read a `routing` object as a failure signal and re-send to the `name [ref]` the listing printed. The two rows are not equally measured, and the table should not be read as if they were: the absent-`routing` row is directly observed — dispatches arriving normally, repeatedly — while the present-`routing` row rests on a single reported contrast experiment that sent both forms in one turn. That is enough to act on, because the cost of re-sending a delivered message is one duplicate and the cost of missing a lost one is a stalled board, but it is one measurement rather than a pattern.
+
+Detecting the collision is the second line of defence. The first is not creating it: the lead spawns its coordination agent unnamed precisely so no in-process teammate ever carries a name a companion session also answers to (§ The lead works through manager-lead). Where that holds, this section never fires.
+
+**The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form, and bare-name dispatch is observed arriving normally in runs with no such teammate — so "always address by reference" would be a false rule, and the binding one is *read the result*. Companion names are role-shaped, and a spawned teammate can carry the same shape; where that overlap is plausible, address by `name [ref]` from the first send rather than after a lost one.
+
+This does not soften what moves the board. The queue on disk is still the delegation, evidence on disk is still what advances a card, and a dispatch that silently missed shows up as a card that never progressed — the message was only ever a nudge. Mechanism from the messaging side: `cross-session-messaging.md` § Addressing, sending, and replying.
+
 Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command to run, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself rather than receiving them inline.
 
 **`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself.
