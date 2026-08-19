@@ -37,6 +37,13 @@ When the operator says `/moai todo "<description>"`, run
 | `moai todo done <n>` | Remove the addressed row under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai todo done t3`) is the preferred form because positions move. |
 | `moai todo next` | Print the queued items oldest-first — read-only candidates. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
+| `moai todo edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
+| `moai todo move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
+
+[HARD] `edit` and `move` are operator acts, exactly like `add` and the pick.
+Correct a card's wording, or move it, because the operator said to — never on
+inferred priority, never as tidy-up, and never to fold one card into another.
+The queue records the operator's intent; it does not curate it.
 
 The queue is never mutated through any other surface. A missing backlog file is
 an empty queue, never an error; a malformed file is reported and left untouched.
