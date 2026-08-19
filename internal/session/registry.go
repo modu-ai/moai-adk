@@ -188,7 +188,11 @@ func (r *Registry) Register(sessionID, specID, phase string) error {
 			Phase:         phase,
 			StartedAt:     now,
 			LastHeartbeat: now,
-			PID:           os.Getpid(),
+			// The session PID, NOT os.Getpid(): Register runs inside a hook
+			// subprocess that exits immediately, so its own PID would be dead
+			// before any liveness probe reads the registry back. See
+			// session_pid.go.
+			PID:           resolveSessionPID(),
 			Host:          host,
 			CWD:           cwd,
 		})

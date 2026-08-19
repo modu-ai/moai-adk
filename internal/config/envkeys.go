@@ -219,6 +219,16 @@ const (
 	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
 
+	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
+	// the multi-session coordination registry. A hook subprocess exits within
+	// milliseconds of registering, so its own PID is worthless to the liveness
+	// probe that reads the registry back; the registry needs the PID of the
+	// long-lived session process instead. The resolver normally derives that
+	// PID by walking the process ancestry, and reads this variable first when
+	// a caller knows the session PID outright (the launcher path, or a test
+	// injecting a known-live PID).
+	EnvMoaiSessionPID = "MOAI_SESSION_PID"
+
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
 	// EnterWorktree, Agent isolation:worktree) on the child environment before
