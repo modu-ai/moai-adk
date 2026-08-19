@@ -190,28 +190,47 @@ func enterKanbanMode(specID, leadLabel string) func() {
 	}
 }
 
-// leadRunID resolves the run id a lead session publishes: the one embedded in
-// an operator-supplied `lead-<run-id>` name when there is one, a fresh mint
-// otherwise.
+// leadRunID resolves the run id a lead session publishes, in three steps: a
+// legacy `lead-<run-id>` name the operator is still pasting, then a run id
+// already standing in the environment, then a fresh mint.
 //
-// Adoption is what makes the lead branch symmetric with the companion branch,
-// which derives its id from its label for exactly this reason. Minting
-// unconditionally left the session's name and MOAI_KANBAN_ID free to disagree,
-// and the SessionStart notice reads only the latter — so a session the operator
-// named `lead-X` announced companion commands for a freshly minted run Y, and a
-// copied command opened a companion that no lead was listening to.
+// The name is no longer where a run id lives (kanban.LeadLabel is the bare
+// role now), so the first step is a MIGRATION path and nothing else: it keeps
+// an operator who copied an old launch line landing on the run they meant
+// rather than silently opening a second one. A bump number is not a run id and
+// must not be adopted as one, which is why an all-digit suffix is skipped —
+// `lead-1` is the second live lead on this machine, not run 1.
 //
-// The shape guard is kanban.SplitLeadLabel and it admits exactly what the
-// companion side admits: a name like `lead-notarunid` is adopted, because
-// `notarunid` is a well-shaped run id as far as the id grammar is concerned.
-// Anything that is not — `board-watch`, `lead-`, `lead-ABC`, `lead-a-b` — falls
-// back to minting rather than publishing a malformed id. Tightening the lead
-// side alone would reintroduce an asymmetry of its own.
+// The environment step is what replaces the name round-trip. Nothing
+// functional was ever downstream of that round-trip — the board and the
+// per-session records key on the Claude session id, and companion names stopped
+// carrying the run id at t56 — so the id now survives a relaunch exactly as far
+// as MOAI_KANBAN_ID does, and no new state file is introduced to carry a value
+// that is only ever displayed. It is read BEFORE enterKanbanMode publishes this
+// launch's id, so what it sees is the prior value or nothing.
 func leadRunID(leadLabel string) string {
-	if runID, ok := kanban.SplitLeadLabel(leadLabel); ok {
+	if suffix, ok := kanban.SplitLeadLabel(leadLabel); ok && suffix != "" && !allDigits(suffix) {
+		return suffix
+	}
+	if runID := os.Getenv(config.EnvMoaiKanbanID); runID != "" {
 		return runID
 	}
 	return kanban.NewRunID()
+}
+
+// allDigits reports whether s is a non-empty run of ASCII digits — the shape a
+// launcher-appended bump number has, and the one suffix leadRunID must not read
+// as a run id.
+func allDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // seedAutonomyTier publishes the autonomy tier Kanban Mode runs at, and returns
@@ -330,7 +349,66 @@ func companionRegistryPath(root string) string {
 // every other launch-path state write — the launch must never block on it.
 // notes, when non-nil, receives the operator-visible bump line.
 func resolveCompanionName(root, label string, notes io.Writer) string {
-	path := companionRegistryPath(root)
+	role, _, ok := kanban.SplitCompanionLabel(label)
+	if !ok {
+		return claimName(companionRegistryPath(root), label, nil, notes)
+	}
+	return claimName(companionRegistryPath(root), label, func(n int) string {
+		return kanban.CompanionNumberLabel(role, n)
+	}, notes)
+}
+
+// leadRegistryPath returns the liveness-checked lead-name registry's home.
+//
+// It is a SEPARATE file from the companion registry because the two namespaces
+// are separate: a lead named `lead` and a companion named `plan` can never
+// collide, and sharing one file would make each mode's launches contend on the
+// other's writes for no benefit. The shape and the machinery are identical.
+func leadRegistryPath(root string) string {
+	return filepath.Join(root, ".moai", "state", "kanban", "leads.json")
+}
+
+// resolveLeadName returns the label this lead session should launch under:
+// label itself when it is free, or the next free number (`lead-1`, `lead-2`,
+// ...) when a live session already holds it — the lead sibling of
+// resolveCompanionName, on the same registry machinery.
+//
+// The bump is what the one-machine-one-run policy costs and what makes it
+// survivable. Two runs on one machine both want the name `lead`, and the peer
+// listing distinguishes same-named sessions only by an opaque reference — so
+// without the bump a dispatch addressed to `lead` is ambiguous exactly when a
+// second run is what made it ambiguous. Numbering the second lead keeps every
+// session addressable by name alone, which is the property the whole naming
+// policy is for.
+//
+// Best-effort throughout, like its companion sibling: an unreadable or
+// unwritable registry degrades to using the label as supplied. The launch must
+// never block on a name claim.
+func resolveLeadName(root, label string, notes io.Writer) string {
+	return claimName(leadRegistryPath(root), label, kanban.LeadNumberLabel, notes)
+}
+
+// claimName returns the label to launch under after claiming it in the
+// liveness-checked registry at path: label itself when free, or the first
+// bump(n) that is, counting up from 1.
+//
+// A label is taken when the registry maps it to a pid that is alive right now
+// — a crashed or exited session leaves a dead pid behind, and a dead claim
+// frees the name so a relaunch reuses it instead of counting up forever. Dead
+// entries are pruned on the way through. The final label is registered to this
+// process's pid before returning.
+//
+// bump may be nil, which means this label has no numbered form to fall back to;
+// the label is then claimed as supplied whether or not it is held. That is the
+// pre-existing behavior for a label that fails its own shape check, preserved
+// rather than tightened: the launch path is not where a malformed name should
+// start failing.
+//
+// The loop is shared by the companion and lead resolvers because they differ
+// only in which registry they consult and how they render a number. Keeping one
+// copy is how the two avoid drifting apart — the same reasoning parseNamedLabel
+// records for its own side.
+func claimName(path, label string, bump func(int) string, notes io.Writer) string {
 	reg := loadFactoryRegistry(path)
 
 	// Prune dead claims first so they neither block a name nor accumulate.
@@ -341,17 +419,17 @@ func resolveCompanionName(root, label string, notes io.Writer) string {
 	}
 
 	final := label
-	if role, _, ok := kanban.SplitCompanionLabel(label); ok {
+	if bump != nil {
 		for n := 1; ; n++ {
 			claim, taken := reg[final]
 			if !taken || claim.PID <= 0 || !factoryProcessAlive(claim.PID) {
 				break
 			}
-			final = kanban.CompanionNumberLabel(role, n)
+			final = bump(n)
 		}
 		if final != label && notes != nil {
 			// The note is best-effort operator guidance; the SessionStart
-			// companion notice is the reliable surface for the final name.
+			// notice is the reliable surface for the final name.
 			_, _ = fmt.Fprintf(notes, "kanban: %s is held by a live session; launching as %s\n", label, final)
 		}
 	}
@@ -519,8 +597,8 @@ func operatorSuppliedName(args []string) bool {
 	return false
 }
 
-// leadNameArgs returns the `--name lead-<run-id>` pair to append to a lead
-// session's argv, or nil when the lead should carry no injected name.
+// leadNameArgs returns the `--name lead` pair to append to a lead session's
+// argv, or nil when the operator named the session themselves.
 //
 // The injection exists because claude keeps an EXPLICIT name across /clear and
 // discards an AI-generated title. A companion is already explicitly named — the
@@ -528,21 +606,41 @@ func operatorSuppliedName(args []string) bool {
 // only the lead, launched as a bare `moai cc -k`, loses its identity on every
 // clear and has to be renamed by hand.
 //
-// The run id is read from the environment enterKanbanMode has just published,
-// which is this file's established carrier for the kanban signal; callers
-// therefore invoke this AFTER entering kanban mode. Two self-gates make the
-// call site unconditional: an operator-supplied name wins (nothing is
-// injected), and an absent run id yields nothing rather than the nonsense name
-// `lead-`.
+// The name is the bare role (kanban.LeadLabel), so unlike its prior form this
+// needs nothing from the environment and has one self-gate rather than two: the
+// operator's own name wins. The absent-run-id gate is gone with the run id it
+// guarded — there is no longer a `lead-` degenerate form to avoid emitting.
+//
+// A name held by a live session is bumped by the CALLER (appendLeadName), not
+// here, so this stays a pure function of args and the bump can consult the
+// registry the launch path already owns.
 func leadNameArgs(args []string) []string {
 	if operatorSuppliedName(args) {
 		return nil
 	}
-	runID := os.Getenv(config.EnvMoaiKanbanID)
-	if runID == "" {
-		return nil
+	return []string{nameFlagLong, kanban.LeadLabel()}
+}
+
+// appendLeadName appends the lead session's `--name` pair to args, bumped past
+// any live claim, and returns the result unchanged when the operator supplied a
+// name of their own.
+//
+// It is the lead's counterpart to the companion branch's
+// resolveCompanionName + replaceNamedLabel pair, and exists as one helper
+// because all four lead branches (kanban and factory, on cc and on glm) need
+// exactly this and would otherwise carry four copies of it — the class of
+// drift the shared parseNamedLabel already exists to prevent.
+//
+// The bumped value must reach the backend argv: the session name is the address
+// the operator and the peers dispatch to, so a name resolved but not injected
+// leaves everyone addressing a session that answers to something else.
+func appendLeadName(args []string, root string, notes io.Writer) []string {
+	nameArgs := leadNameArgs(args)
+	if len(nameArgs) == 0 {
+		return args
 	}
-	return []string{nameFlagLong, kanban.LeadLabel(runID)}
+	nameArgs[1] = resolveLeadName(root, nameArgs[1], notes)
+	return append(args, nameArgs...)
 }
 
 // rejectKanbanOnCG returns the sentinel-bearing error when a kanban token

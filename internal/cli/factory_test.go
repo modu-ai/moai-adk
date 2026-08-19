@@ -420,7 +420,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 	if runID == "" {
 		t.Fatal("MOAI_KANBAN_ID empty for a bare factory lead; expected a minted run id")
 	}
-	if _, ok := kanban.SplitLeadLabel(kanban.LeadLabel(runID)); !ok {
+	if _, ok := kanban.SplitLeadLabel(kanban.RoleLead + "-" + runID); !ok {
 		t.Errorf("minted run id %q does not round-trip through the lead label shape", runID)
 	}
 }

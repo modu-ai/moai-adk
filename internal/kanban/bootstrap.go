@@ -11,13 +11,21 @@ package kanban
 // announces them — and internal/cli already imports internal/hook, so the
 // dependency can only run in that direction.
 //
-// Naming policy (card t56, operator decision 2026-08-17): companion names
-// carry no run id. The run id remains the LEAD's identifier (its session name,
-// its leader socket path, its MOAI_KANBAN_ID); a companion is named by its
-// role alone, and a second live session claiming the same role takes the next
-// free number. The premise this accepts is one kanban run per machine — the
-// run id was the only distinguisher of two concurrent runs, and the operator
-// has decided that case out of scope.
+// Naming policy (card t56, operator decision 2026-08-17; extended to the lead
+// by card t133): NO session name carries a run id. Every session — the lead
+// and its companions alike — is named by its role alone, and a second live
+// session claiming the same role takes the next free number. The premise this
+// accepts is one kanban run per machine: the run id was the only distinguisher
+// of two concurrent runs, and the operator has decided that case out of scope.
+//
+// t133 finished what t56 began. The lead kept its run id in its name one card
+// longer because the name looked like the only path by which a relaunched lead
+// could recover its own id. It is not: the board and the per-session records
+// are keyed by the Claude session id (board_store.go, record.go), and companion
+// names stopped carrying the run id at t56 — so the id survives only as the
+// notice header and the conventional lead-socket path, both display. The
+// launcher recovers it from a still-set MOAI_KANBAN_ID instead, and mints a
+// fresh one when there is none.
 
 import (
 	"strconv"
@@ -121,16 +129,34 @@ func CompanionNumberLabel(role string, n int) string {
 	return role + "-" + strconv.Itoa(n)
 }
 
-// LeadLabel joins the lead role and a run id into the label a lead session is
-// launched under. The lead is the one session that keeps its run id in its
-// name — it survives /clear and anchors the leader socket — while companions
-// are named by their bare roles.
+// LeadLabel returns the label a lead session is launched under: the bare role
+// name, the same shape companions already use. This is the form the notice
+// announces and the form an unobstructed launch keeps; a collision with a live
+// claim appends a number (LeadNumberLabel), which the launcher — not this
+// composer — resolves.
+//
+// The run id is deliberately NOT in the name any more. It was carried there so
+// a relaunched lead could read its own id back out, but nothing functional
+// depends on that continuity: companion names carry no run id under the
+// one-machine-one-run policy, and the board and session records are keyed by
+// the Claude session id rather than the run id. What remains — the notice
+// header and the conventional lead-socket path — is display, and the launcher
+// adopts a still-set MOAI_KANBAN_ID rather than reading the name (see
+// internal/cli/kanban.go leadRunID).
 //
 // The label deliberately never satisfies SplitCompanionLabel: RoleLead is
 // absent from CompanionRoles, so a session launched under this name is never
 // reclassified as a companion by the shape discriminator.
-func LeadLabel(runID string) string {
-	return RoleLead + "-" + runID
+func LeadLabel() string {
+	return RoleLead
+}
+
+// LeadNumberLabel joins the lead role and a collision number into the bumped
+// label a lead launches under when the bare name is held by a live session
+// (`lead-1`, `lead-2`, ...). It is the lead sibling of CompanionNumberLabel
+// and shares its shape.
+func LeadNumberLabel(n int) string {
+	return RoleLead + "-" + strconv.Itoa(n)
 }
 
 // SplitCompanionLabel splits a companion label into its role and optional
@@ -164,24 +190,35 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 	return role, suffix, true
 }
 
-// SplitLeadLabel splits a `lead-<run-id>` label into its run id and reports
+// SplitLeadLabel splits a lead label into its optional suffix and reports
 // whether the value has the lead shape at all. It is the lead-side counterpart
-// of SplitCompanionLabel, and admits exactly the same run-id shape.
+// of SplitCompanionLabel, and admits the same two forms:
 //
-// It exists so the launcher can ADOPT the run id an operator embedded in a name
-// it was handed, rather than minting a second one beside it. A lead has two
-// id-bearing surfaces — the session name and MOAI_KANBAN_ID — and without this
-// splitter nothing joins them: the SessionStart notice composes its companion
-// launch commands from the environment id, so a session named `lead-X` can
-// print commands belonging to run Y, and anyone who copies one opens an orphan.
-// The companion branch already derives its id from its label and states that it
-// does so precisely so the two can never disagree; this restores the symmetry.
-func SplitLeadLabel(label string) (runID string, ok bool) {
-	role, runID, found := strings.Cut(label, "-")
-	if !found || role != RoleLead || !isRunIDShape(runID) {
+//   - the bare role (`lead`) — the form the notice announces and the common
+//     case under the one-machine-one-run policy, returning an empty suffix;
+//   - `lead-<suffix>` — a collision number the launcher appended (`lead-1`),
+//     or a legacy run id an operator is still pasting (`lead-abc123`).
+//
+// The suffixed form is MIGRATED, not rejected, for the same reason the
+// companion side migrates its own: a rejected suffix fails the shape check,
+// and `-k --name lead-abc123` then falls through to the branch that treats an
+// unrecognized name as no lead name at all — a silent misroute worse than
+// joining under a stale suffix. A role name carries no hyphen, so the first
+// hyphen is the boundary and a second hyphen never parses.
+//
+// The suffix is returned for the caller to interpret; it is NOT itself a run
+// id. Whether a legacy suffix is adopted as one is the launcher's decision
+// (internal/cli/kanban.go leadRunID), which is where a bump number must not be
+// mistaken for an id.
+func SplitLeadLabel(label string) (suffix string, ok bool) {
+	if label == RoleLead {
+		return "", true
+	}
+	role, suffix, found := strings.Cut(label, "-")
+	if !found || role != RoleLead || !isRunIDShape(suffix) {
 		return "", false
 	}
-	return runID, true
+	return suffix, true
 }
 
 func isCompanionRole(role string) bool {

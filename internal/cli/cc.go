@@ -159,7 +159,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
 		recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLead)
-		filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
+		filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -192,7 +192,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 			recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLead)
 			// A lead launched bare has only an AI-generated title, which claude
 			// discards on /clear; naming it explicitly is what survives.
-			filteredArgs = append(filteredArgs, leadNameArgs(filteredArgs)...)
+			filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)

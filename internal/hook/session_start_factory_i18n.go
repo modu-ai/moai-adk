@@ -57,7 +57,7 @@ type factoryMessages struct {
 var factoryLocales = map[string]factoryMessages{
 	langEnglish: {
 		leadHeader:   "Factory Mode: run %s, lead session.",
-		leadIdentity: "This session should be named %s. If its name differs, the launch commands below belong to another run — relaunch with that name rather than copying them.",
+		leadIdentity: "This session is named %s. It carries no run id: a second lead launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under.",
 		leadManual: "This session dispatches cards to %d lanes over cross-session messages.\n" +
 			"The lanes below are launched by hand, one per new terminal, because a session cannot launch another session.\n" +
 			"Lanes are named lane-1..lane-%d; a number whose label is held by a live session is bumped to the next free number.",
@@ -85,7 +85,7 @@ var factoryLocales = map[string]factoryMessages{
 	},
 	"ko": {
 		leadHeader:   "팩토리 모드: run %s, 리더 세션.",
-		leadIdentity: "이 세션의 이름은 %s 여야 합니다. 이름이 다르면 아래 실행 명령은 다른 run 의 것이니, 복사하지 말고 해당 이름으로 다시 띄우세요.",
+		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리드를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다.",
 		leadManual: "이 세션이 세션 간 메시지로 카드를 레인 %d개에 배분합니다.\n" +
 			"아래 레인은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.\n" +
 			"레인 이름은 lane-1..lane-%d 이며, 생존 세션이 이미 쓰고 있는 번호는 다음 빈 번호로 늘어납니다.",
@@ -110,7 +110,7 @@ var factoryLocales = map[string]factoryMessages{
 	},
 	"ja": {
 		leadHeader:   "ファクトリーモード: run %s、リーダーセッション。",
-		leadIdentity: "このセッションの名前は %s である必要があります。名前が異なる場合、以下の起動コマンドは別の run のものなので、コピーせずにその名前で起動し直してください。",
+		leadIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。",
 		leadManual: "このセッションが、セッション間メッセージでカードをレーン %d 本に割り振ります。\n" +
 			"以下のレーンは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。\n" +
 			"レーン名は lane-1..lane-%d で、生存セッションが保持する番号は次の空き番号へ繰り上がります。",
@@ -135,7 +135,7 @@ var factoryLocales = map[string]factoryMessages{
 	},
 	"zh": {
 		leadHeader:   "工厂模式：run %s，主导会话。",
-		leadIdentity: "本会话的名称应为 %s。若名称不同，下面的启动命令属于另一个 run，请不要复制，改用该名称重新启动。",
+		leadIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。",
 		leadManual: "本会话通过跨会话消息把卡片分发给 %d 条泳道。\n" +
 			"下面的泳道需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。\n" +
 			"泳道命名为 lane-1..lane-%d；已被存活会话占用的编号会顺延到下一个空位。",
