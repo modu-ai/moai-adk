@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
 
@@ -81,7 +82,9 @@ func stripSpawnFlag(args []string) ([]string, bool) {
 func defaultTmuxSpawn(cwd, command string) (string, error) {
 	out, err := exec.Command("tmux", "new-window", "-d", "-P", "-F", "#{pane_id}", "-c", cwd, command).Output()
 	if err != nil {
-		return "", fmt.Errorf("tmux new-window: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("tmux new-window: %s", execerr.StatusDetail(err))
 	}
 	return parsePaneID(string(out))
 }

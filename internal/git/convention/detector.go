@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // Detect analyzes recent commits in the repository and returns the best
@@ -80,7 +82,9 @@ func getRecentCommitMessages(repoPath string, limit int) ([]string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "log", fmt.Sprintf("--max-count=%d", limit), "--format=%s")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git log: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return nil, fmt.Errorf("git log: %s", execerr.StatusDetail(err))
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")

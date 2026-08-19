@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // @MX:ANCHOR: Snapshot/Diff primitives are the public API contract for orchestrator
@@ -184,7 +186,9 @@ func runGit(ctx context.Context, dir string, args ...string) (string, error) {
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), execerr.StatusDetail(err))
 	}
 	return string(out), nil
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // SecretManager manages GitHub repository secrets.
@@ -55,9 +57,11 @@ func (r *realGHExecutor) RunGHWithStdin(ctx context.Context, stdinValue string, 
 	if err := cmd.Run(); err != nil {
 		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg == "" {
-			errMsg = err.Error()
+			errMsg = execerr.StatusDetail(err)
 		}
-		return fmt.Errorf("gh %s: %s: %w", args[0], errMsg, err)
+		// StatusDetail, not %w: a raw *exec.ExitError chain would be mistaken
+		// for an intentional ExitCoder at the cmd/moai seam (t130).
+		return fmt.Errorf("gh %s: %s (%s)", args[0], errMsg, execerr.StatusDetail(err))
 	}
 
 	return nil

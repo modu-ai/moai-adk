@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/spf13/cobra"
 )
@@ -239,7 +240,9 @@ func getSPECIDsFromGitLog(projectRoot string) ([]string, error) {
 
 	out, err := exec.Command("git", "-C", projectRoot, "log", branch, "--oneline", "--no-merges").Output()
 	if err != nil {
-		return nil, fmt.Errorf("git log failed: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return nil, fmt.Errorf("git log failed: %s", execerr.StatusDetail(err))
 	}
 
 	matches := specIDPattern.FindAllString(string(out), -1)

@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // ExecCommand is the package-level indirection over exec.Command. Tests inject
@@ -117,8 +119,10 @@ func runGitRevParse(dir string, args ...string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git rev-parse %s: %w (%s)",
-			strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("git rev-parse %s: %s (%s)",
+			strings.Join(args, " "), execerr.StatusDetail(err), strings.TrimSpace(stderr.String()))
 	}
 	return strings.TrimSpace(stdout.String()), nil
 }

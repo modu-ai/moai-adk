@@ -86,15 +86,15 @@ func TestFangExitCoderCharacterization(t *testing.T) {
 	})
 }
 
-// exitCodeForError mirrors cmd/moai/main.go's ExitCoder unwrapping verbatim:
-// nil → 0, an error implementing ExitCode() int → that code, any other → 1.
+// exitCodeForError mirrors cmd/moai/main.go's exit-code resolution verbatim:
+// nil → 0, an intentional ExitCoder → that code (ResolveExitCode rejects raw
+// *exec.ExitError so a wrapped subprocess failure falls through), any other → 1.
 func exitCodeForError(err error) int {
 	if err == nil {
 		return 0
 	}
-	var ec interface{ ExitCode() int }
-	if errors.As(err, &ec) {
-		return ec.ExitCode()
+	if code, ok := ResolveExitCode(err); ok {
+		return code
 	}
 	return 1
 }
