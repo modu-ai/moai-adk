@@ -115,7 +115,7 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	// emitted, not later when a dispatched card reaches the wrong run.
 	identity := []string{
 		fmt.Sprintf(m.leadHeader, runID),
-		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel(runID)),
+		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel()),
 	}
 	blocks := []string{
 		strings.Join(identity, "\n"),

@@ -122,7 +122,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// residual disagreement self-announcing instead of silent.
 	identity := []string{
 		fmt.Sprintf(m.leadHeader, runID),
-		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel(runID)),
+		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel()),
 	}
 
 	// (b) why bootstrap is manual — stated rather than left to be discovered.

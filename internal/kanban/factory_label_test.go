@@ -54,7 +54,7 @@ func TestFactoryLaneLabelNeverKanbanShape(t *testing.T) {
 	if _, ok := SplitFactoryLaneLabel(CompanionNumberLabel("run", 1)); ok {
 		t.Error("a bumped companion label must not satisfy the lane shape")
 	}
-	if _, ok := SplitFactoryLaneLabel(LeadLabel("tjlgt1")); ok {
+	if _, ok := SplitFactoryLaneLabel(LeadLabel()); ok {
 		t.Error("a lead label must not satisfy the lane shape")
 	}
 }

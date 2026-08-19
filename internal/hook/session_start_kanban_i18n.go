@@ -59,7 +59,7 @@ type kanbanMessages struct {
 var kanbanLocales = map[string]kanbanMessages{
 	langEnglish: {
 		leadHeader:   "Kanban Mode: run %s, lead session.",
-		leadIdentity: "This session should be named %s. If its name differs, the launch commands below belong to another run — relaunch with that name rather than copying them.",
+		leadIdentity: "This session is named %s. It carries no run id: a second lead launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under.",
 		leadManual: "This session drives the kanban chain.\n" +
 			"The three companions below are launched by hand, one per new terminal, " +
 			"because a session cannot launch another session.",
@@ -83,7 +83,7 @@ var kanbanLocales = map[string]kanbanMessages{
 	},
 	"ko": {
 		leadHeader:   "칸반 모드: run %s, 리더 세션.",
-		leadIdentity: "이 세션의 이름은 %s 여야 합니다. 이름이 다르면 아래 실행 명령은 다른 run 의 것이니, 복사하지 말고 해당 이름으로 다시 띄우세요.",
+		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리드를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다.",
 		leadManual: "이 세션이 칸반 체인을 주도합니다.\n" +
 			"아래 세 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
 		glmSubstitute: "진입점: `moai cc -k` 는 Claude 백엔드 공장장, `moai glm -k` 는 GLM 백엔드 공장장 — 런처가 백엔드를, `-k` 가 칸반 역할을 정합니다. " +
@@ -105,7 +105,7 @@ var kanbanLocales = map[string]kanbanMessages{
 	},
 	"ja": {
 		leadHeader:   "かんばんモード: run %s、リーダーセッション。",
-		leadIdentity: "このセッションの名前は %s である必要があります。名前が異なる場合、以下の起動コマンドは別の run のものなので、コピーせずにその名前で起動し直してください。",
+		leadIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。",
 		leadManual: "このセッションがかんばんチェーンを進行します。\n" +
 			"以下の 3 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。",
 		glmSubstitute: "入口: `moai cc -k` は Claude バックエンドの親方、`moai glm -k` は GLM バックエンドの親方 — ランチャーがバックエンドを、`-k` がかんばんの役割を決めます。 " +
@@ -127,7 +127,7 @@ var kanbanLocales = map[string]kanbanMessages{
 	},
 	"zh": {
 		leadHeader:   "看板模式：run %s，主导会话。",
-		leadIdentity: "本会话的名称应为 %s。若名称不同，下面的启动命令属于另一个 run，请不要复制，改用该名称重新启动。",
+		leadIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。",
 		leadManual: "本会话负责推进整条看板链路。\n" +
 			"下面三个协同会话需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。",
 		glmSubstitute: "入口：`moai cc -k` 是 Claude 后端的工头，`moai glm -k` 是 GLM 后端的工头 —— 启动器决定后端，`-k` 决定看板角色。 " +

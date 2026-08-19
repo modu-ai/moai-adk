@@ -36,7 +36,7 @@ flowchart TD
 | **backlog** | The entry queue of the board. No session owns it by design — work enters only when the operator puts it there. | `/moai todo "rename hint is stale"` appends a card to the backlog |
 | **lead** | The single coordinating session (`moai cc -k`). Moves cards between columns only on evidence it read itself, asks the operator to `/clear` companions between phases, and never writes code. | The session that dispatched a card with its worktree instruction |
 | **companion** | A worker session launched by hand, one terminal at a time (`moai cc -k --name <role>`), owning one column's work at a time. Named by its bare role; a second live session claiming the same role takes the next free number. | `plan`, `run`, `sync` |
-| **run-id** | The short identifier the lead prints at launch. It names the LEAD alone (its session name, leader socket, `MOAI_KANBAN_ID`) — companions are named by role and never carry it. | `a1b2c3` — the lead's own session name |
+| **run-id** | The short identifier the lead prints at launch. It lives in the leader socket path and `MOAI_KANBAN_ID` — no session name carries it, the lead's included: every session is named by its role. | `a1b2c3` — printed in the lead's notice; the session itself is named `lead` |
 | **worktree** | The isolated checkout where a card's work happens, entered through the launcher (`moai cc -w <name>` / `EnterWorktree`) — never created with raw `git worktree add`. Branch named `WT-<card-id>`. A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-t0` |
 | **dispatch** | The lead's instruction to one companion: a pointer — card id, SPEC id, phase command, completion signal — never a copy of the work. Written in the operator's conversation language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/" |
 
@@ -63,7 +63,7 @@ A real flow in which every term appears once:
 1. The operator enters **card** `t0` into the **backlog** via `/moai todo "rename hint is stale"`.
 2. The **lead** picks `t0` from the queue and **dispatches** it to the plan companion.
 3. The `plan` **companion** writes the SPEC; the lead reads the evidence itself and moves the card to the next **column**.
-4. `run` implements in **worktree** `WT-t0` — that session-worktree pair is the **lane**, and verification runs inside the lane too (only the tests the change can affect). The `a1b2c3` naming the lead session is the **run-id**.
+4. `run` implements in **worktree** `WT-t0` — that session-worktree pair is the **lane**, and verification runs inside the lane too (only the tests the change can affect). The `a1b2c3` the lead prints at launch is the **run-id**; the lead session itself is named `lead`.
 5. The sync column passes the same way — the sync gate absorbs the review verdict — and when sync opens the PR, the card reaches done.
 
 Throughout, the card's work happens in `WT-t0` alone. It never mixes with the working tree of a lane that ran in parallel.

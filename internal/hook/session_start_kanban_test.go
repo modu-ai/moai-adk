@@ -275,8 +275,16 @@ func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 
 			got := kanbanLeadNotice("xyz789", "", lang)
-			if want := kanban.LeadLabel("xyz789"); !strings.Contains(got, want) {
-				t.Errorf("lead notice does not name the lead session %q:\n%s", want, got)
+			// The bare label is the word "lead", which occurs throughout the
+			// notice — a plain substring check would pass on any of them and
+			// assert nothing. Anchor on the rendered identity line instead, so
+			// a regression that stops naming the session is actually caught.
+			want := fmt.Sprintf(kanbanMessagesFor(lang).leadIdentity, kanban.LeadLabel())
+			if !strings.Contains(got, want) {
+				t.Errorf("lead notice does not name the lead session:\nwant line: %s\ngot:\n%s", want, got)
+			}
+			if strings.Contains(got, kanban.LeadLabel()+"-xyz789") {
+				t.Errorf("lead notice still carries the run id in the session name:\n%s", got)
 			}
 		})
 	}

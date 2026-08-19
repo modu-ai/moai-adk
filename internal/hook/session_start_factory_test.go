@@ -34,7 +34,9 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 	notice := factoryBootstrapNotice("", langEnglish)
 	for _, want := range []string{
 		"run abc123",
-		"lead-abc123",
+		// The lead is named by its bare role (t133): the run id lives in the
+		// header line above, not in the session name.
+		"named lead.",
 		"moai cc -f lane-1",
 		"moai cc -f lane-2",
 		"moai cc -f lane-3",
