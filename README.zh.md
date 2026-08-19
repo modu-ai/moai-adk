@@ -66,19 +66,20 @@ moai cc -k --name sync
 
 打开看板时，引导信息会一并给出默认推荐 —— 若优先考虑 token 可用性：主控用 `moai glm -k`，plan 用 `moai cc -k --name plan`，run 用 `moai glm -k --name run`，sync 用 `moai cc -k --name sync`。这样安排的理由是每条泳道需要的推理种类不同：plan 和 sync 是做判断和评审的列，交给 Claude；run 以实现为主，用 GLM 压低成本。主控不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM。GLM 主控之下需要 Claude 判定时，会经名为 `judge` 的会话绕出去 —— 这是 GLM 主控使用 Claude 的唯一途径。一个账号开始被 429 限流时，把各条泳道分散到不同账号来安排是行之有效的做法。这个组合终究只是默认推荐 —— 换别的组合、或把全部会话统一到单一后端都没问题。
 
-### 编号 worker 运行 —— 看板的第二种形态
+### 工厂模式 —— N 条泳道同时搬运多张卡片
 
-在同一个 `-k` 标记后面**接一个数字**，就进入看板的第二种形态 —— 编号 worker 运行。一个主控轮询积压队列，把卡片分给空闲的 worker；N 个编号 worker 在各自的终端里处理卡片。
+`-f` 打开工厂主控，这是看板的第二种形态。看板里的卡片在各列之间跳，而工厂里的卡片**整张进一条泳道**，由那条泳道在会话内串行走完 `plan → run → sync`，每个阶段都以 `Agent()` 子智能体的形式启动。泳道名为 `lane-1` … `lane-N`。
 
 ```bash
-moai cc -k 4                          # 主控 —— 4 个 worker 的看板运行
-moai cc -k 4 --name worker-1          # worker 1，各自在单独的终端里
-moai cc -k 4 --name worker-2          # worker 2 …
+moai cc -f                    # 主控 —— 默认一条泳道 (lane-1)
+moai cc -f 4                  # 主控 —— 四条泳道
+moai cc -f lane-1             # 一条泳道，在自己的终端里
+moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-主控按卡片类别来分配 —— A/B 类整张交给一个 worker，C 类（设计变更）走 `plan → run → sync` 的串行路径。省略 worker 数量、只写 `-k --name worker-<i>` 时，默认按 8 个 worker 处理。混合后端（`moai cg`）下会被拒绝。过去的 `-f`/`--factory` 旗标已退役，现在会得到明确的报错。
+用 `moai cc -f lane-<n>` 一条一条地加泳道；编号已被活着的会话占用时顺延到下一个空号。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
 
-> 详见：[看板模式 —— 编号 worker 运行](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+> 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
 看板是 `backlog → plan → run → sync → done` 五列。`backlog` 刻意不设归属会话 —— 工作只有人放进去，才会进入看板。
 
@@ -123,7 +124,7 @@ moai cc -k 4 --name worker-2          # worker 2 …
   <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 画面 —— SPEC 汇总、进行中的 SPEC 列表、会话注册表" width="90%">
 </p>
 
-详细指引：[看板模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
+详细指引：[看板模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode) · [manager-lead 领导协调者](https://adk.mo.ai.kr/zh/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
 
 ---
 

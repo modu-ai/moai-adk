@@ -697,10 +697,10 @@ main:
           zh: 看板模式
         ref: /advanced/kanban-mode
       - name:
-          ko: manager-lead 계층형 팀
-          en: manager-lead Hierarchical Team
-          ja: manager-lead 階層型チーム
-          zh: manager-lead 层级团队
+          ko: manager-lead 리드 코디네이터
+          en: manager-lead Lead Coordinator
+          ja: manager-lead リードコーディネーター
+          zh: manager-lead 领导协调者
         ref: /advanced/manager-lead
       - name:
           ko: BAS Navigator 3단계 코드맵 동기화

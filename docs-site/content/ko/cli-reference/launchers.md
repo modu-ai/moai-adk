@@ -33,12 +33,17 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `--chrome` / `--no-chrome` | Chrome MCP 토글 |
 | `-k, --kanban [SPEC-ID]` | 칸반 리드 진입 — `plan → run → sync` 체인을 이 세션에 시드. SPEC-ID를 붙이면 그 SPEC을 목표로 |
 | `-k --name <role>` | 열린 칸반 런에 동반 세션으로 합류. 역할은 `plan` · `run` · `sync`. 같은 역할 이름이 살아 있는 세션이면 다음 번호로 붙음 (`plan-1`, `plan-2`, …) |
-| `-k <N>` | **번호 붙은 워커 런** 리드 진입 — 번호 붙은 워커 N개(`worker-1`…`worker-N`)의 칸반 런. 리드가 백로그에서 카드를 빈 워커에 배분 |
-| `-k <N> --name worker-<i>` | 번호 붙은 워커 `<i>` 진입. 번호가 살아 있는 세션과 겹치면 다음 번호로. N 없이 `--name worker-<i>`만 쓰면 기본 8 |
+| `-f, --factory [N]` | **팩토리 리드** 진입 — 레인 N개(`lane-1`…`lane-N`)를 여는 팩토리 런. N을 생략하면 레인 하나(`lane-1`)로 시작해 아래 증분 형태로 늘립니다. 리드는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 배분 |
+| `-f lane-<n>` | 레인 하나(`lane-<n>`)만 추가로 띄워 실행 중인 팩토리의 리드 소켓에 연결. 번호가 살아 있는 세션과 겹치면 다음 빈 번호로 붙음. `moai glm -f lane-<n>` 도 GLM 백엔드에서 같게 동작 |
+| `-k <N>` / `-k <N> --name lane-<i>` | v1.2.0 통합 형태로 지금도 유효 — `-k <N>` 은 레인 N개 런의 리드, `-k <N> --name lane-<i>` 는 그중 레인 `<i>`. N 없이 `-k --name lane-<i>` 만 쓰면 기본 8레인 |
 
 {{< callout type="info" >}}
-같은 `-k` 토큰 하나가 세 모양으로 해석됩니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 번호 붙은 워커 런입니다. 혼합 백엔드 런처 `moai cg`에서는 둘 다 거부됩니다. 개명 전 옛 이름인 `-f`/`--factory` 플래그는 은퇴했고 지금은 명시적 에러입니다 — 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)를 참고하세요.
+`-k` 는 칸반 체인 토큰이고, `-f` 는 **팩토리 모드** (Factory Mode) 전용 진입 토큰입니다. `-k` 하나가 세 모양으로 해석되는 것은 그대로입니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 레인 런. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k` 와 `-f` 를 함께 쓰면 에러입니다. 혼합 백엔드 런처 `moai cg` 는 두 모드를 모두 거부합니다(팩토리 쪽 거부 신호는 `FACTORY_MODE_UNSUPPORTED_BACKEND`). 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)와 [manager-lead 리드 코디네이터](/ko/advanced/manager-lead)를 참고하세요.
 {{< /callout >}}
+
+카드가 도는 방식은 칸반과 다릅니다. 칸반에서는 카드 하나가 `plan → run → sync` 열을 옮겨 다니지만, 팩토리에서는 카드 하나가 통째로 레인 하나에 들어가 그 레인 안에서 세 단계를 순서대로 지나갑니다. 단계마다 그 세션이 `Agent()` 서브에이전트를 띄우며, 쓰기 작업을 맡는 스폰은 `isolation: "worktree"` 로 격리합니다. 레인 하나가 동시에 띄울 수 있는 서브에이전트는 최대 10개이고, 런처가 레인·동반 세션에 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 로 이 값을 심어 두므로 레인 N개가 머신 용량을 나눠 쓰는 구조는 운영자의 자제가 아니라 설정으로 보장됩니다. 레인은 한꺼번에 켜지 마세요 — 첫 레인을 먼저 올리고, 실제로 출력이 나오기 시작한 것을 확인한 뒤에 나머지를 띄웁니다.
+
+백엔드 조합은 토큰 여력을 먼저 보고 정합니다. 한 가지 출발점은 리드는 GLM, plan은 Claude(Opus), run은 GLM, sync는 Claude(Opus) 로 두어 판단이 무거운 단계에만 Opus를 배치하는 방식입니다. 다른 조합을 쓰거나 한쪽 백엔드로 통일하는 것도 똑같이 괜찮습니다.
 
 권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사하며, Team 플랜과 Sonnet/Opus 4.6 이상이 필요합니다.
 
