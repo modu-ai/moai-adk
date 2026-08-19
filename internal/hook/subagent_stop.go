@@ -5,6 +5,7 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -158,7 +159,17 @@ func (h *subagentStopHandler) killTmuxPane(paneID string) error {
 	cmd := exec.Command("tmux", "kill-pane", "-t", paneID)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("tmux kill-pane failed: %w, output: %s", err, string(output))
+		// Deliberately NOT %w-chained through *exec.ExitError: its ExitCode()
+		// method structurally satisfies the CLI's ExitCoder interface, which
+		// would silence the error text and adopt tmux's raw exit code at the
+		// cmd/moai seam (card t130 — the rc=128 silent-failure recurrence).
+		// The exit status travels as data, matching the CommandError pattern
+		// in internal/core/git execGit.
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return fmt.Errorf("tmux kill-pane -t %s: exited with status %d, output: %s", paneID, exitErr.ExitCode(), string(output))
+		}
+		return fmt.Errorf("tmux kill-pane -t %s: %w, output: %s", paneID, err, string(output))
 	}
 	return nil
 }

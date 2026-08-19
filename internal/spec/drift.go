@@ -11,6 +11,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // DriftRecord represents a single SPEC status drift entry
@@ -305,7 +307,9 @@ func getGitImpliedStatus(specID string) (string, error) {
 		"--grep="+specID, fmt.Sprintf("-%d", gitLogWindowSize))
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git log failed: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("git log failed: %s", execerr.StatusDetail(err))
 	}
 
 	if len(output) == 0 {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // drift_index.go — single-pass commit index for drift detection
@@ -70,7 +72,9 @@ func gitLogAllFullMessage(branch string) ([]commitRecord, error) {
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("git log failed: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return nil, fmt.Errorf("git log failed: %s", execerr.StatusDetail(err))
 	}
 
 	return parseCommitRecords(string(output)), nil
@@ -116,7 +120,7 @@ func parseCommitRecords(output string) []commitRecord {
 func gitHeadSHA() (string, error) {
 	output, err := exec.Command("git", "rev-parse", "HEAD").Output()
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse HEAD failed: %w", err)
+		return "", fmt.Errorf("git rev-parse HEAD failed: %s", execerr.StatusDetail(err))
 	}
 
 	return strings.TrimSpace(string(output)), nil

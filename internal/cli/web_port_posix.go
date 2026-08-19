@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // findPortHolderImpl returns the PID of the process LISTENing on port and
@@ -29,8 +31,9 @@ import (
 func findPortHolderImpl(port int) (int, bool, error) {
 	out, err := exec.Command("lsof", "-nP", fmt.Sprintf("-iTCP:%d", port), "-sTCP:LISTEN", "-t").Output()
 	if err != nil {
-		// lsof exits 1 on no match → lands here.
-		return 0, false, fmt.Errorf("failed to look up holder for port %d (lsof): %w", port, err)
+		// lsof exits 1 on no match → lands here. StatusDetail, not %w, keeps
+		// the raw *exec.ExitError out of the chain (t130).
+		return 0, false, fmt.Errorf("failed to look up holder for port %d (lsof): %s", port, execerr.StatusDetail(err))
 	}
 	fields := strings.Fields(string(out))
 	if len(fields) == 0 {
@@ -43,7 +46,7 @@ func findPortHolderImpl(port int) (int, bool, error) {
 
 	comm, err := exec.Command("ps", "-o", "comm=", "-p", strconv.Itoa(pid)).Output()
 	if err != nil {
-		return pid, false, fmt.Errorf("failed to look up command name for PID %d (ps): %w", pid, err)
+		return pid, false, fmt.Errorf("failed to look up command name for PID %d (ps): %s", pid, execerr.StatusDetail(err))
 	}
 	isMoai := strings.Contains(string(comm), moaiProcessName)
 	return pid, isMoai, nil

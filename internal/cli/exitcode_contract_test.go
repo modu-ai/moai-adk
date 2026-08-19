@@ -19,7 +19,7 @@ import (
 // the ExitCoder boundary (cmd/moai/main.go errors.As mapping).
 func assertExitCode(t *testing.T, err error, want int) {
 	t.Helper()
-	var ec exitCoder
+	var ec ExitCoder
 	if !errors.As(err, &ec) {
 		t.Fatalf("error does not satisfy ExitCoder: got %T (%v); want ExitCode()==%d", err, err, want)
 	}
