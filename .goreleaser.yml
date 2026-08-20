@@ -37,18 +37,14 @@ checksum:
   name_template: "checksums.txt"
   algorithm: sha256
 
+# Release notes are composed by the release harness (harness:release Phase 7),
+# not auto-generated here. The auto-built commit list was a raw dump of every
+# commit subject with its SHA and author handle, which buried the user-facing
+# summary and published internal commit noise on a public page. GoReleaser now
+# publishes an empty body; the harness fills it via `gh release edit
+# --notes-file` immediately after this workflow completes.
 changelog:
-  sort: asc
-  use: github
-  groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
-      order: 0
-    - title: Bug Fixes
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
-      order: 1
-    - title: Others
-      order: 999
+  disable: true
 
 release:
   github:
