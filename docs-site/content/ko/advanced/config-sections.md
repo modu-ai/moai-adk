@@ -2,7 +2,7 @@
 title: config 섹션 레퍼런스
 weight: 71
 draft: false
-description: ".moai/config/sections/ 의 주요 설정 파일(handoff/delegation/llm/statusline/security) 키 레퍼런스."
+description: ".moai/config/sections/ 의 주요 설정 파일(handoff/delegation/llm/statusline/security/workflow/crosssession) 키 레퍼런스."
 ---
 
 MoAI-ADK의 프로젝트 설정은 `.moai/config/sections/` 아래 여러 YAML 파일로 나뉘어 있습니다. [settings.json 가이드](/ko/advanced/settings-json)가 Claude Code 런타임 설정을 다룬다면, 이 페이지는 MoAI-ADK 자체 동작을 제어하는 주요 섹션 파일의 키를 정리합니다.
@@ -96,11 +96,12 @@ llm:
 
 ## statusline.yaml — 상태 표시줄
 
-statusline 테마와 16개 세그먼트 토글을 제어합니다.
+statusline 테마, `github` 세그먼트가 셀 호스팅 서비스, 그리고 16개 세그먼트 토글을 제어합니다.
 
 ```yaml
 statusline:
   theme: "catppuccin-mocha"   # catppuccin-mocha | catppuccin-latte
+  # forge: gitlab             # github | gitlab | none (미지정이면 origin 호스트로 판별)
   segments:
     model: true
     context: true
@@ -112,6 +113,7 @@ statusline:
 | 키 | 설명 |
 |----|------|
 | `theme` | 테마는 딱 두 개: `catppuccin-mocha`(기본) 또는 `catppuccin-latte` |
+| `forge` | `github` · `gitlab` · `none` 중 하나. `github` 세그먼트가 열린 작업을 어느 호스팅 서비스에서 세는지 정합니다. 값을 비워 두면 origin 원격의 호스트로 판별합니다 — `github.com`이면 `gh`, `gitlab.com`이면 `glab`. 자체 호스팅 인스턴스는 이름에 단서가 없으므로 반드시 직접 적어야 합니다. 인식할 수 없는 값은 판별로 되돌아가지 않고 아무것도 렌더하지 않습니다 — 오타는 틀린 숫자가 아니라 세그먼트 부재로 드러납니다 |
 | `segments` | 16개 세그먼트를 하나씩 켜고 끄는 토글 (런타임에 조절할 수 있는 유일한 값). 모두 기본 on이며, 꺼진 세그먼트는 아무것도 출력하지 않고 조용히 빠짐 |
 
 세그먼트는 세 줄에 나눠 배치합니다 — 1행(모델·버전·세션 메타), 2행(컨텍스트 윈도우·API 사용량 바), 3행(디렉터리·git·워크플로우·PR).
@@ -173,6 +175,28 @@ workflow:
 **예외와 실패 방향.** 브랜치를 만들어야 하는 git 담당 에이전트는 신원으로 예외 처리되며, `MOAI_BRANCH_GUARD_EXEMPT=1` 환경변수로도 우회할 수 있습니다. 판정이 불확실할 때(저장소가 아님, git 실행 실패 등)는 막지 않고 통과시킨 뒤 감사 로그만 남깁니다 — 확실한 근거가 있을 때만 거부합니다.
 
 브랜치를 바꿔야 하는 작업은 막는 대신 워크트리로 옮기는 것이 정석입니다. 자세한 절차는 [moai worktree](/ko/cli-reference/worktree/) 를 참조하세요.
+
+## crosssession.yaml — 세션 간 메시지
+
+내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` · `moai cg` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
+
+```yaml
+crosssession:
+  inbound: ""             # "" | accept | hold | refuse
+  isolate_machines: false # 기본값 — 머신 밖으로 나가는 메시지에 승인을 요구하지 않음
+  dialog_expiry: ""       # "" | 60s | 5m | 10m | never
+```
+
+| 키 | 값 | 설명 |
+|----|-----|------|
+| `inbound` | `""`(기본) | Claude Code가 두 세션의 권한 모드 등급을 보고 메시지마다 스스로 판단합니다 |
+| `inbound` | `accept` | 메시지를 그대로 전달합니다. 사람이 지켜보지 않는 작업 세션에 메시지를 받게 하려면 이 값이 필요합니다 |
+| `inbound` | `hold` | 메시지마다 승인을 받도록 붙잡아 둡니다. 이렇게 붙잡힌 메시지는 만료되지 않고, `accept`가 적용될 때 전달됩니다 |
+| `inbound` | `refuse` | 메시지를 버립니다 |
+| `isolate_machines` | `false` (기본) | **이 머신 밖의 세션으로 메시지가 나갈 때 승인을 요구하지 않습니다.** 같은 머신 안의 세션끼리는 어떤 값이든 머신을 벗어나지 않지만, 머신 밖의 세션으로 가는 메시지는 Anthropic 서버를 거칩니다 — 그 경로를 승인 없이 허용한다는 뜻이므로 기본값을 그대로 둘지 판단해서 결정하세요 |
+| `isolate_machines` | `true` | 메시지가 머신을 벗어나기 전에 반드시 승인을 받습니다(`bypassPermissions` 모드에서도). 어느 설정 범위든 하나가 `true`면 적용되므로, 저장소에 체크인된 프로젝트 파일이 요구를 켤 수는 있어도 끌 수는 없습니다 — 끄려면 `true`를 적은 범위를 전부 지워야 합니다 |
+| `dialog_expiry` | `""`(기본) | Claude Code의 5분 기본값을 그대로 씁니다 |
+| `dialog_expiry` | `60s` · `5m` · `10m` · `never` | 기본 판단으로 붙잡힌 메시지의 승인 창 기한입니다. `never`는 세션이 끝날 때까지 붙잡아 둡니다. `inbound: hold`로 명시해 붙잡은 메시지에는 적용되지 않습니다 |
 
 ## 관련 문서
 

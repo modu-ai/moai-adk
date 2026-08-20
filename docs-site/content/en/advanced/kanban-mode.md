@@ -234,7 +234,7 @@ Attach no count to `-f` and the run starts with one lane (`lane-1`) by default. 
 
 ### Every card goes to one lane whole
 
-What the factory lead does differs from a kanban lead. Where a kanban lead coordinates the phases of a single card, the factory lead **polls the backlog queue** and **routes the cards picked by the operator** (or by the kanban foreman loop — a bare `/loop`) **to free lanes**. The unit of routing is always the whole card — every card goes to one lane in its entirety, and that lane carries it through the serial 3-stage path (`plan -> run -> sync`, one stage completing before the next begins) in-session. Each stage is spawned and run by the lane as an `Agent()` sub-agent; a card is never split across lanes.
+What the factory lead does differs from a kanban lead. Where a kanban lead coordinates the phases of a single card, the factory lead **routes already-picked cards to free lanes**. Reading the queue and picking a card is not the factory lead's job — the operator picks, or the kanban foreman loop (a bare `/loop`) picks, and the factory routes only those **picked** cards. The unit of routing is always the whole card — every card goes to one lane in its entirety, and that lane carries it through the serial 3-stage path (`plan -> run -> sync`, one stage completing before the next begins) in-session. Each stage is spawned and run by the lane as an `Agent()` sub-agent; a card is never split across lanes.
 
 Every lane can run up to 10 agents concurrently in parallel — the launcher injects a `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` cap into each lane session, so N lanes fanning out simultaneously divide the machine's capacity by construction rather than by operator restraint.
 

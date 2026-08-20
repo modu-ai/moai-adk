@@ -57,9 +57,9 @@ flowchart TD
 
 ## 技能分类
 
-MoAI-ADK 模板共提供 **32 个技能**。目录按安装范围分为随每个项目部署的 **核心技能 19 个**，以及按需部署的 **可选包技能 13 个**（backend 3 · design 1 · devops 5 · frontend 4）。按功能归类为 Foundation 4 + Workflow 8 + Domain 6 + Reference 11 + Meta/Harness 2 = 专业技能 31 个，再加上 1 个把请求路由到专业技能的 `moai` umbrella 技能，合计 32 个。在用户项目中还可以额外编写 `hns-*` 用户自定义 harness 技能。编程语言支持由 `rules/moai/languages/` 下的规则提供，不是独立技能。
+MoAI-ADK 模板共提供 **34 个技能**。目录按安装范围分为随每个项目部署的 **核心技能 21 个**，以及按需部署的 **可选包技能 13 个**（backend 3 · design 1 · devops 5 · frontend 4）。按功能归类为 Foundation 4 + Workflow 8 + Domain 7 + Reference 11 + Meta/Harness 3 = 专业技能 33 个，再加上 1 个把请求路由到专业技能的 `moai` umbrella 技能，合计 34 个。在用户项目中还可以额外编写 `hns-*` 用户自定义 harness 技能。编程语言支持由 `rules/moai/languages/` 下的规则提供，不是独立技能。
 
-这个数字也是瘦身的结果 — 技能目录在 v3 期间从 48 → 38 个精炼，包含可选包在内的当前数量为 32 个。
+这个数字也是瘦身的结果 — 技能目录在 v3 期间从 48 → 38 个精炼，包含可选包在内的当前数量为 34 个。
 
 ### Foundation（核心哲学）- 4 个
 
@@ -83,7 +83,7 @@ MoAI-ADK 模板共提供 **32 个技能**。目录按安装范围分为随每个
 | `moai-workflow-loop`     | Ralph Engine 自主循环、LSP 联动              |
 | `moai-workflow-docs-claim-check` | 公开文档（README·发布说明）主张校验，只读 |
 
-### Domain（领域专业性）- 6 个
+### Domain（领域专业性）- 7 个
 
 | 技能名称                   | 说明                                             |
 | --------------------------- | ------------------------------------------------ |
@@ -93,6 +93,7 @@ MoAI-ADK 模板共提供 **32 个技能**。目录按安装范围分为随每个
 | `moai-domain-html-report`   | Markdown → 单文件 HTML 报告渲染器（6 种模式，无外部依赖） |
 | `moai-domain-humanize`      | AI 文本人性化、润色（KO/EN/JA/ZH）    |
 | `moai-domain-svg-infographic` | 可编辑 SVG 技术信息图（架构·流程·对比），CJK 字体 |
+| `moai-domain-design-dna`    | 把参考设计（截图·图片·URL）逆向提取为 Design DNA JSON，并据此生成新的产物 |
 
 ### Reference（最佳实践）- 11 个
 
@@ -110,14 +111,15 @@ MoAI-ADK 模板共提供 **32 个技能**。目录按安装范围分为随每个
 | `moai-ref-ui-polish`       | UI 设计完成度、界面打磨参考 |
 | `moai-ref-cross-model-audit` | 跨模型审计收敛（codex·GLM 并行评审后判定收敛） |
 
-### Meta/Harness（系统扩展）- 2 个
+### Meta/Harness（系统扩展）- 3 个
 
 | 技能名称              | 说明                                        |
 | ---------------------- | ------------------------------------------- |
 | `moai-meta-harness`    | 动态生成项目特化的智能体团队         |
 | `moai-harness-learner` | Harness 学习子系统、自动更新提案 |
+| `moai-kanban-foreman`  | 无人值守看板工头的一轮 —— 监视积压队列，把已挑选的卡片分给隔离的工作者，并收集证据 |
 
-> 32 个技能包含在 MoAI-ADK 模板中（核心 19 个立即可用，13 个经由可选包），每个技能独立加载以节省代币。用户还可以额外编写按项目的 `hns-*` 用户自定义 harness 技能。
+> 34 个技能包含在 MoAI-ADK 模板中（核心 21 个立即可用，13 个经由可选包），每个技能独立加载以节省代币。用户还可以额外编写按项目的 `hns-*` 用户自定义 harness 技能。
 
 ## 渐进式披露系统
 
@@ -155,8 +157,8 @@ flowchart TD
 
 ### 代币节省效果
 
-- **传统方式**：加载全部 32 个技能 = 约 135,000 代币（不可行）
-- **渐进式披露**：只加载元数据 = 约 5,200 代币（节省 97%）
+- **传统方式**：加载全部 34 个技能 = 约 170,000 代币（不可行）
+- **渐进式披露**：只加载元数据 = 约 3,400 代币（节省 98%）
 - **按需加载**：只加载任务所需的 2~3 个技能 = 追加约 15,000 代币
 
 ## 技能触发机制

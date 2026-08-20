@@ -2,7 +2,7 @@
 title: 設定セクションリファレンス
 weight: 71
 draft: false
-description: ".moai/config/sections/ の主要設定ファイル(handoff/delegation/llm/statusline/security) キーリファレンス。"
+description: ".moai/config/sections/ の主要設定ファイル(handoff/delegation/llm/statusline/security/workflow/crosssession) キーリファレンス。"
 ---
 
 MoAI-ADKのプロジェクト設定は `.moai/config/sections/` 配下の複数のYAMLファイルに分割されています。[settings.jsonガイド](/ja/advanced/settings-json)がClaude Codeランタイム設定を扱うのに対し、このページはMoAI-ADK自身の動作を制御する主要セクションファイルのキーを整理します。
@@ -96,11 +96,12 @@ llm:
 
 ## statusline.yaml — ステータスライン
 
-ステータスラインテーマと16セグメントトグルを制御します。
+ステータスラインテーマ、`github` セグメントが数えるホスティングサービス、そして16セグメントトグルを制御します。
 
 ```yaml
 statusline:
   theme: "catppuccin-mocha"   # catppuccin-mocha | catppuccin-latte
+  # forge: gitlab             # github | gitlab | none (未指定なら origin のホストで判定)
   segments:
     model: true
     context: true
@@ -112,6 +113,7 @@ statusline:
 | キー | 説明 |
 |------|------|
 | `theme` | 正確に2つのテーマが存在: `catppuccin-mocha` (デフォルト) または `catppuccin-latte` |
+| `forge` | `github` · `gitlab` · `none` のいずれか。`github` セグメントが開いている作業をどのホスティングサービスで数えるかを決めます。未指定なら origin リモートのホストで判定します — `github.com` なら `gh`、`gitlab.com` なら `glab`。セルフホストのインスタンスは名前に手がかりが無いため、そこでは明示的に指定します。認識できない値は判定へ戻らず何もレンダリングしないので、打ち間違いは誤った件数ではなくセグメントの不在として現れます |
 | `segments` | 16セグメント個別トグル (唯一のランタイムレバー)。すべてデフォルトonで、非アクティブ状態はgraceful no-outputで処理 |
 
 セグメントは3行に配置されます — 行1(モデル・バージョン・セッションメタ)、行2(コンテキストウィンドウ・API使用量バー)、行3(ディレクトリ・git・ワークフロー・PR)。
@@ -173,6 +175,28 @@ workflow:
 **例外と失敗の向き。** ブランチを作る必要のある git 担当エージェントは識別子で例外扱いされ、`MOAI_BRANCH_GUARD_EXEMPT=1` 環境変数でも回避できます。判定が不確実なとき（リポジトリでない、`git rev-parse` の失敗など）は拒否せず通し、監査ログだけを残します — 確かな根拠があるときにのみ拒否します。
 
 ブランチを変える必要のある作業は、拒否させるのではなくワークツリーに移すのが定石です。手順は [moai worktree](/ja/cli-reference/worktree/) を参照してください。
+
+## crosssession.yaml — セッション間メッセージ
+
+自分の他の Claude Code セッションから届くメッセージを、このセッションがどう扱うかを決めます。`moai cc` · `moai glm` · `moai cg` のランチャーが起動時にこれらの値を一時的な `--settings` ファイルへ移し、ウェブコンソールは設定 seam を通じてこのファイルを編集します。ランチャーを経由せず素の `claude` で起動したセッションは、このファイルを読みません。
+
+```yaml
+crosssession:
+  inbound: ""             # "" | accept | hold | refuse
+  isolate_machines: false # デフォルト — マシン外へ出るメッセージに承認を求めない
+  dialog_expiry: ""       # "" | 60s | 5m | 10m | never
+```
+
+| キー | 値 | 説明 |
+|------|-----|------|
+| `inbound` | `""` (デフォルト) | 2つのセッションの権限モードの種別から、Claude Code がメッセージごとに判断します |
+| `inbound` | `accept` | メッセージをそのまま配送します。人が見ていないワーカーセッションにメッセージを受け取らせるにはこの値が必要です |
+| `inbound` | `hold` | メッセージごとに承認を待たせます。こうして保留したメッセージは期限切れにならず、後で `accept` が適用されたときに配送されます |
+| `inbound` | `refuse` | メッセージを破棄します |
+| `isolate_machines` | `false` (デフォルト) | **このマシンの外のセッションへメッセージが出るとき、承認を求めません。** 同じマシン内のセッション同士は値に関わらずマシンを離れませんが、マシンの外のセッションへ向かうメッセージは Anthropic のサーバーを経由します — その経路を無承認で許すという意味なので、デフォルトのままにするかどうかは判断して決めてください |
+| `isolate_machines` | `true` | メッセージがマシンを離れる前に必ず明示的な承認を求めます(`bypassPermissions` モードでも)。どの設定スコープであれ1つでも `true` があれば適用されるため、リポジトリにチェックインされたプロジェクトファイルは要求を有効化できても無効化はできません — 無効化するには `true` を書いたスコープをすべて取り除きます |
+| `dialog_expiry` | `""` (デフォルト) | Claude Code の5分のデフォルトをそのまま使います |
+| `dialog_expiry` | `60s` · `5m` · `10m` · `never` | **デフォルト判断で**保留されたメッセージの承認ダイアログの期限です。`never` はセッションが終わるまで保留します。明示的な `inbound: hold` で保留したメッセージには適用されません |
 
 ## 関連ドキュメント
 
