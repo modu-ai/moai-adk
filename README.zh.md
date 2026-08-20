@@ -77,7 +77,7 @@ moai cc -f lane-1             # 一条泳道，在自己的终端里
 moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道；编号已被活着的会话占用时顺延到下一个空号。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
+用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。哪个编号被谁占着，记在 `.moai/state/factory/workers.json` 里，残留的占用也从这里清掉。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -141,8 +141,6 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 <p align="center">
   <img src="./assets/images/cross-session-infographic-zh.png" alt="跨会话消息 —— inbound、isolate_machines、dialog_expiry 三个设置控制接收的一侧。消息只搬运事实，审批归用户" width="85%">
 </p>
-
-**提示缓存设置。** `cache.yaml` 管着会话起始上下文和 SPEC 正文上那些缓存断点的寿命。长会话在第一轮多付一点写入成本，换后面每一轮都更便宜；短会话反过来才划算。
 
 **状态栏支持 GitLab。** 用 `statusline.forge` 选择在 GitHub 还是 GitLab 上统计打开中的工作。留空就按 origin 远端的主机判断。
 
@@ -349,7 +347,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -591,7 +589,7 @@ v3.1.1 又多了四个值得一动的切面。
 | 切面 | 职责 |
 |---|---|
 | `crosssession.yaml` | 跨会话消息的处置。`inbound`（留空 · `accept` · `hold` · `refuse`）、`isolate_machines`（本机之外的消息是否要求审批）、`dialog_expiry`（被挂起的消息，其审批对话的期限） |
-| `cache.yaml` | 提示缓存策略。挂在会话起始上下文上的 `session_ttl`（`1h` · `5m` · `off`）与挂在 SPEC 正文上的 `spec_ttl`，以及值得缓存的最小片段大小 |
+| `cache.yaml` | 提示缓存的配置文件。存放 `session_ttl`（`1h` · `5m` · `off`）、`spec_ttl` 和值得缓存的最小片段大小，在 `moai web` 设置编辑器里原样往返。但目前没有代码读取这些值，改了也不会改变行为 |
 | `state.yaml` | `home_retention_days` —— `moai clean --home` 从几天前的东西开始清。只从 HOME 层（`~/.moai/config/sections/state.yaml`）读取，默认 30 天，填 `0` 就关掉主目录清理 |
 | `statusline.yaml` | 在原有的主题与段落开关之上多了 `forge` 键。取 `github` · `gitlab` · `none` 之一，决定状态栏在哪个托管平台上统计打开中的工作。留空则按 origin 远端的主机判断，所以自建实例上要自己写明 |
 

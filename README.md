@@ -77,7 +77,7 @@ moai cc -f lane-1             # a lane, in its own terminal
 moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`; a label already held by a live session bumps to the next free number. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
+Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Which numbers are held is recorded in `.moai/state/factory/workers.json`, and that is where stale claims get cleared. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -141,8 +141,6 @@ Kanban Mode aside, here is what else landed in v3.1.1. Each one is covered in fu
 <p align="center">
   <img src="./assets/images/cross-session-infographic-en.png" alt="Cross-session messaging — inbound, isolate_machines, and dialog_expiry control the receiving side. A message carries facts; approval stays with the user" width="85%">
 </p>
-
-**Prompt cache settings.** `cache.yaml` governs the lifetime of the cache breakpoints placed on session-start context and on SPEC bodies. A long session pays more on the first turn to write the cache and then rides cheaply after that; for a short session the opposite trade is the better one.
 
 **Statusline GitLab support.** `statusline.forge` picks whether open work is counted on GitHub or on GitLab. Left empty, it decides from the origin remote's host.
 
@@ -349,7 +347,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -591,7 +589,7 @@ v3.1.1 adds four more sections worth touching.
 | Section | Role |
 |---|---|
 | `crosssession.yaml` | How cross-session messages are handled. `inbound` (empty, `accept`, `hold`, `refuse`), `isolate_machines` (whether a message leaving this machine needs approval), `dialog_expiry` (the deadline on the approval dialog for a held message) |
-| `cache.yaml` | Prompt cache strategy. `session_ttl` (`1h`, `5m`, `off`) for session-start context, `spec_ttl` for SPEC bodies, and the smallest chunk worth caching |
+| `cache.yaml` | The prompt cache settings file. It holds `session_ttl` (`1h`, `5m`, `off`), `spec_ttl`, and the smallest chunk worth caching, and round-trips through the `moai web` settings editor. Nothing currently reads these values, so changing them does not change behavior |
 | `state.yaml` | `home_retention_days` — how old something has to be before `moai clean --home` sweeps it. Read from the HOME tier only (`~/.moai/config/sections/state.yaml`); 30 days by default, and `0` turns home cleanup off |
 | `statusline.yaml` | A `forge` key joins the existing theme and segment toggles. One of `github`, `gitlab`, or `none`, it decides which host the statusline counts open work on. Left empty it decides from the origin remote's host, so on a self-hosted instance write it in yourself |
 

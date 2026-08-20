@@ -77,7 +77,7 @@ moai cc -f lane-1             # 레인 하나, 각자 별도 터미널에서
 moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 ```
 
-레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이미 살아 있는 세션이 쥔 이름이면 다음 빈 번호로 붙는다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
+레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 어느 번호를 누가 쥐고 있는지는 `.moai/state/factory/workers.json`에 적히고, 남은 claim도 여기서 치운다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -141,8 +141,6 @@ moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 <p align="center">
   <img src="./assets/images/cross-session-infographic-ko.png" alt="세션 간 메시징 — inbound·isolate_machines·dialog_expiry 세 설정으로 받는 쪽을 통제한다. 메시지는 사실만 나르고 승인은 사용자 몫이다" width="85%">
 </p>
-
-**프롬프트 캐시 설정.** `cache.yaml`이 세션 시작 컨텍스트와 SPEC 본문에 거는 캐시 브레이크포인트의 수명을 다룬다. 긴 세션은 첫 턴에 쓰기 비용을 더 내는 대신 이후 턴을 싸게 가고, 짧은 세션은 그 반대가 유리하다.
 
 **스테이터스라인 GitLab 지원.** `statusline.forge`로 열린 작업을 GitHub과 GitLab 중 어느 쪽에서 셀지 고른다. 비워 두면 origin 리모트 호스트를 보고 판단한다.
 
@@ -349,7 +347,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -591,7 +589,7 @@ v3.1.1에서 손댈 만한 단면이 넷 늘었다.
 | 단면 | 역할 |
 |---|---|
 | `crosssession.yaml` | 세션 간 메시지 취급. `inbound`(빈 값·`accept`·`hold`·`refuse`), `isolate_machines`(이 머신 밖으로 나가는 메시지에 승인을 요구할지), `dialog_expiry`(보류된 메시지의 승인 대화 기한) |
-| `cache.yaml` | 프롬프트 캐시 전략. 세션 시작 컨텍스트에 거는 `session_ttl`(`1h`·`5m`·`off`)과 SPEC 본문에 거는 `spec_ttl`, 캐시할 가치가 있는 최소 조각 크기 |
+| `cache.yaml` | 프롬프트 캐시 설정 파일. `session_ttl`(`1h`·`5m`·`off`)과 `spec_ttl`, 캐시할 최소 조각 크기를 담고 `moai web` 설정 편집기를 그대로 오간다. 다만 지금은 이 값을 읽는 코드가 없어, 고쳐도 동작은 달라지지 않는다 |
 | `state.yaml` | `home_retention_days` — `moai clean --home`이 며칠 지난 것부터 치울지. HOME 티어(`~/.moai/config/sections/state.yaml`)에서만 읽고, 기본은 30일, `0`을 주면 홈 정리를 끈다 |
 | `statusline.yaml` | 기존 테마·세그먼트 토글에 `forge` 키가 붙었다. `github`·`gitlab`·`none` 중 하나로, 스테이터스라인이 열린 작업을 어느 호스팅에서 셀지 정한다. 비워 두면 origin 리모트 호스트로 판단하므로, 자체 호스팅 인스턴스에서는 직접 적어 준다 |
 
