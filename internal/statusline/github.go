@@ -178,10 +178,11 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 
 	prev := resolveGitHubCounts(boardRoot)
 	prev.FetchedAt = time.Now().Unix()
-	// This run re-decides suppression from scratch: a forge that appeared, or a
-	// CLI that was installed since the last refresh, must not stay hidden by a
-	// verdict reached before it existed.
-	prev.Suppressed = false
+	// The timestamp goes down first, but the suppression verdict rides through
+	// this write unchanged. Clearing it here would open a window the width of a
+	// `git remote` call in which a render reads "not suppressed" for a checkout
+	// that has no forge at all, and draws the stale counts underneath it. The
+	// verdict this run reaches is written below, once it has one.
 	if err := writeGitHubCache(boardRoot, prev); err != nil {
 		return err
 	}
@@ -201,9 +202,18 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 		// The forge exists but its CLI does not. Same verdict, same reason: the
 		// next refresh cannot succeed either, and "-/-" would keep offering an
 		// answer that will not arrive. Installing the CLI clears this on the
-		// next TTL, since the flag above is rewritten every run.
+		// next TTL, since every run re-decides the flag from these two checks.
 		prev.Suppressed = true
 		return writeGitHubCache(boardRoot, prev)
+	}
+
+	// Both checks answered: a forge serves this checkout and its CLI is
+	// installed. Any suppression verdict from an earlier run is stale now — a
+	// forge that appeared, or a CLI installed since, must not stay hidden — so
+	// clear it here, where the clearing is backed by evidence.
+	prev.Suppressed = false
+	if err := writeGitHubCache(boardRoot, prev); err != nil {
+		return err
 	}
 
 	if !forgeBudgetAllows(ctx, boardRoot, forge) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -212,5 +213,68 @@ func TestRefreshGitHubCounts_FailedFetchDoesNotSuppress(t *testing.T) {
 	}
 	if got.OpenIssues != 7 || got.OpenPRs != 3 {
 		t.Errorf("counts = %d/%d, want the stale 7/3 preserved", got.OpenIssues, got.OpenPRs)
+	}
+}
+
+// TestRefreshGitHubCounts_SuppressionHoldsUntilForgeIsValidated: the refresh
+// stamps the cache before it fetches, so concurrent renders stop spawning
+// children immediately. The suppression verdict has to ride through that early
+// write untouched.
+//
+// It once did not. Clearing it up front opened a window the width of an origin
+// lookup, and a render landing inside it read "not suppressed" for a checkout
+// no forge serves — then drew the stale counts underneath. The clearing now
+// happens after both the forge and its CLI have answered, which closes the
+// window structurally rather than narrowing it.
+//
+// The poll below therefore cannot observe an unsuppressed cache on the fixed
+// code at all; against the regression it observed one on nearly every run.
+func TestRefreshGitHubCounts_SuppressionHoldsUntilForgeIsValidated(t *testing.T) {
+	// No statusline.yaml is written: with no explicit forge value,
+	// resolveGitHubCounts reports whatever the cache says rather than deciding
+	// suppression itself, so the poll observes the refresh's own writes and not
+	// a config verdict. The temp dir is no git checkout either, so origin
+	// resolution fails and the seeded verdict must survive the refresh.
+	root := t.TempDir()
+	seeded := GitHubCounts{
+		OpenIssues: 7, OpenPRs: 3,
+		Available:  true,
+		Suppressed: true,
+		FetchedAt:  time.Now().Add(-time.Hour).Unix(),
+	}
+	if err := writeGitHubCache(root, seeded); err != nil {
+		t.Fatal(err)
+	}
+
+	var sawUnsuppressed atomic.Bool
+	stop := make(chan struct{})
+	polled := make(chan struct{})
+	go func() {
+		defer close(polled)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			if !resolveGitHubCounts(root).Suppressed {
+				sawUnsuppressed.Store(true)
+				return
+			}
+		}
+	}()
+
+	if err := RefreshGitHubCounts(context.Background(), root); err != nil {
+		t.Fatalf("RefreshGitHubCounts: %v", err)
+	}
+	close(stop)
+	<-polled
+
+	if sawUnsuppressed.Load() {
+		t.Error("a render during the refresh read an unsuppressed cache; " +
+			"suppression must hold until the forge and its CLI have answered")
+	}
+	if got := resolveGitHubCounts(root); !got.Suppressed {
+		t.Errorf("counts = %+v, want Suppressed: this checkout has no forge", got)
 	}
 }
