@@ -230,6 +230,15 @@ func TestRefreshGitHubCounts_FailedFetchDoesNotSuppress(t *testing.T) {
 // The poll below therefore cannot observe an unsuppressed cache on the fixed
 // code at all; against the regression it observed one on nearly every run.
 func TestRefreshGitHubCounts_SuppressionHoldsUntilForgeIsValidated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// The poll below holds counts.json open, and Windows refuses to rename
+		// over an open file — so the tight loop makes the cache write this test
+		// is watching fail with "Access is denied". The race being observed is
+		// in the ordering of two writes, not in the filesystem, so unix covers
+		// it; windows is covered by GOOS=windows build/vet.
+		t.Skip("the poll's open handle blocks the atomic cache rename on windows")
+	}
+
 	// No statusline.yaml is written: with no explicit forge value,
 	// resolveGitHubCounts reports whatever the cache says rather than deciding
 	// suppression itself, so the poll observes the refresh's own writes and not
