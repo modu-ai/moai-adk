@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -482,10 +482,10 @@ On the budget side, a token circuit breaker stands guard — it aborts at the ha
 ### Reading the statusline
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
-🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
-🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
 | Element | Meaning |
@@ -496,12 +496,12 @@ On the budget side, a token circuit breaker stands guard — it aborts at the ha
 | CW: Context | Context-window usage + 2-stage `/clear` markers (⚠️ soft, 🛑 hard) |
 | 5H / 7D | Plan usage rate + reset time |
 | 📁 Directory | Project directory name |
-| 📡 Repo | GitHub repo `owner/name` (distinct from the PR icon 🔀) |
-| 🅱️ Branch | Current branch + `↑`ahead `↓`behind + `+`dirty count |
-| 📫 git status | Mailbox icons (📬 staged / 📫 modified / 📪 untracked / 📭 clean) + counts |
+| 📡 Repo | GitHub repo `owner/name` + open issues/PRs pair (`, 7/3`, or `, -/-` when unreadable) |
+| 🅱️ Branch | Current branch — `[WT]` marks a worktree, `+` is the dirty count (modified+staged+untracked) |
+| 💾 git status | Staged `+` · modified `M` · untracked `?` counts — one 💾 icon in every state |
 | 📋 Task | Active SPEC workflow `[command SPEC-ID-phase]` |
 | 💌 PR | Active GitHub PR number + review state (`⌥state`) |
-| 🏷️ Session line | Conditional last line — session name · 👤 agent · 🔄 `TODO: in progress / queued` backlog · 🔀 open issues/PRs |
+| 🏷️ Session line | Conditional last line — session name · 👤 agent · 🔄 `TODO: in progress/queued` backlog |
 
 > Details: [Statusline Guide](https://adk.mo.ai.kr/en/advanced/statusline)
 
@@ -757,7 +757,7 @@ That's normal. Tags mark high-fan-in, complex, or dangerous code only. In any pr
 ### What does the statusline version display mean?
 
 ```
-🗿 v3.1.0 ⬆️ v3.1.1
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
 The first value is the currently installed moai-adk version; the arrow indicates an available update. It disappears after `moai update`.

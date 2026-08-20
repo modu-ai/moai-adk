@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -482,10 +482,10 @@ flowchart TD
 ### 读懂状态栏
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
-🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
-🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
 | 元素 | 含义 |
@@ -496,12 +496,12 @@ flowchart TD
 | CW: 上下文 | 上下文窗口使用率 + 两段式 `/clear` 标记（⚠️ 软性、🛑 硬性） |
 | 5H / 7D | 套餐使用率 + 重置时间 |
 | 📁 目录 | 项目目录名 |
-| 📡 仓库 | GitHub 仓库 `owner/name`（与 PR 图标 🔀 相区分） |
-| 🅱️ 分支 | 当前分支 + `↑`领先 `↓`落后 + `+`改动数 |
-| 📫 git 状态 | 信箱图标（📬 已暂存 / 📫 已修改 / 📪 未跟踪 / 📭 干净）+ 计数 |
+| 📡 仓库 | GitHub 仓库 `owner/name` + 打开的 issue/PR 数对（`, 7/3`；读不到则 `, -/-`） |
+| 🅱️ 分支 | 当前分支 —— 工作树会标 `[WT]`，`+` 是改动数（已修改+已暂存+未跟踪） |
+| 💾 git 状态 | 已暂存 `+` · 已修改 `M` · 未跟踪 `?` 计数 —— 任何状态下都只用 💾 一个图标 |
 | 📋 任务 | 活动 SPEC 工作流 `[命令 SPEC-ID-阶段]` |
 | 💌 PR | 活动 GitHub PR 编号 + 评审状态（`⌥状态`） |
-| 🏷️ 会话行 | 末行按条件显示 —— 会话名 · 👤 智能体 · 🔄 `TODO: 进行中 / 待办` 积压 · 🔀 打开的 issue/PR 数 |
+| 🏷️ 会话行 | 末行按条件显示 —— 会话名 · 👤 智能体 · 🔄 `TODO: 进行中/待办` 积压 |
 
 > 详见：[状态栏指南](https://adk.mo.ai.kr/zh/advanced/statusline)
 
@@ -757,7 +757,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 ### 状态栏里的版本显示是什么意思？
 
 ```
-🗿 v3.1.0 ⬆️ v3.1.1
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
 前一个值是当前安装的 moai-adk 版本，箭头表示有可用更新。运行 `moai update` 后消失。

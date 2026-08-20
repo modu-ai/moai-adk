@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -482,10 +482,10 @@ flowchart TD
 ### 스테이터스라인 읽기
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
-🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
-🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
 | 요소 | 의미 |
@@ -496,12 +496,12 @@ flowchart TD
 | CW: 컨텍스트 | 컨텍스트 창 사용률 + 2단계 `/clear` 마커 (⚠️ 소프트, 🛑 하드) |
 | 5H / 7D | 요금제 사용률 + 초기화 시각 |
 | 📁 디렉터리 | 프로젝트 디렉터리 이름 |
-| 📡 리포 | GitHub 리포 `owner/name` (PR 아이콘 🔀와 구분) |
-| 🅱️ 브랜치 | 현재 브랜치 + `↑`앞섬 `↓`뒤짐 + `+`변경 수 |
-| 📫 git 상태 | 사서함 아이콘(📬 스테이지 / 📫 수정 / 📪 추적 안 됨 / 📭 깨끗) + 개수 |
+| 📡 리포 | GitHub 리포 `owner/name` + 열린 이슈/PR 쌍 (`, 7/3`, 못 읽으면 `, -/-`) |
+| 🅱️ 브랜치 | 현재 브랜치 — 워크트리면 `[WT]` 표시, `+`는 변경 수(수정+스테이지+추적 안 됨) |
+| 💾 git 상태 | 스테이지 `+` · 수정 `M` · 추적 안 됨 `?` 개수 — 아이콘은 상태와 무관하게 💾 하나 |
 | 📋 작업 | 활성 SPEC 워크플로우 `[커맨드 SPEC-ID-페이즈]` |
 | 💌 PR | 활성 GitHub PR 번호 + 리뷰 상태 (`⌥상태`) |
-| 🏷️ 세션 라인 | 마지막 줄에 조건부 — 세션 이름 · 👤 에이전트 · 🔄 `TODO: 진행 중 / 대기` 백로그 · 🔀 열린 이슈/PR 수 |
+| 🏷️ 세션 라인 | 마지막 줄에 조건부 — 세션 이름 · 👤 에이전트 · 🔄 `TODO: 진행 중/대기` 백로그 |
 
 > 자세히: [스테이터스라인 가이드](https://adk.mo.ai.kr/ko/advanced/statusline)
 
@@ -757,7 +757,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 ### 스테이터스라인의 버전 표시는 무슨 뜻인가?
 
 ```
-🗿 v3.1.0 ⬆️ v3.1.1
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
 앞의 값이 현재 설치된 moai-adk 버전이고, 화살표는 올릴 수 있는 업데이트가 있다는 뜻이다. `moai update`를 실행하면 사라진다.

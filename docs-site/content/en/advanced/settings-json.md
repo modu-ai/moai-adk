@@ -857,7 +857,7 @@ MoAI-ADK statusline includes the following.
 
 - **Gradient colors**: dynamic color gradients based on context usage
 - **5H/7D usage monitoring**: 5-hour and 7-day API usage bars
-- **Multi-line layout**: Compact (3-line), default, and full display modes
+- **Single layout**: one 3-line layout, plus a conditional session line — the former display modes all collapse to it
 - **Themes** (defined in `internal/statusline/theme.go`):
   - **catppuccin-mocha** (default): a dark palette
   - **catppuccin-latte**: a light palette for bright environments
