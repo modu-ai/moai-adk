@@ -262,7 +262,7 @@ func runGLMToolsEnable(cmd *cobra.Command, args []string) error {
 
 	// (e) Enable after handling existing entry + force flag (REQ-GWR-C, REQ-GMC-006)
 	if force {
-		if err := runEnableMCPServerForTool(configPath, toolName, token); err != nil {
+		if err := forceEnableMCPServerForTool(configPath, toolName, token); err != nil {
 			return err
 		}
 	} else {
@@ -681,9 +681,11 @@ func runEnableMCPServer(configPath string, token string) error {
 	return runEnableMCPServerForTool(configPath, "vision", token)
 }
 
-// runEnableMCPServerForTool는 도구명에 맞는 서버 집합을 configPath 에 등록한다 (--force 경로, REQ-GWR-C1~C4).
-// vision npx 엔트리에 한해 토큰 불일치를 검사한다 (HTTP 엔트리는 토큰을 직접 보유하지 않음).
-// 변경 전 백업 (REQ-GMC-005), 다른 mcpServers 엔트리 무변경 (REQ-GMC-010).
+// runEnableMCPServerForTool는 도구명에 맞는 서버 집합을 configPath 에 등록한다 (REQ-GWR-C1~C4).
+// vision npx 엔트리에 한해 토큰 불일치를 검사하고 에러를 반환한다 (HTTP 엔트리는 토큰을
+// 직접 보유하지 않음). 변경 전 백업 (REQ-GMC-005), 다른 mcpServers 엔트리 무변경 (REQ-GMC-010).
+//
+// 이 함수는 토큰을 검사하는 경로다. --force 는 forceEnableMCPServerForTool 을 쓴다.
 //
 // SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-003: the RMW is guarded by
 // mutateClaudeJSONAtomic (flock + compare-retry) so concurrent writes from a
@@ -691,6 +693,25 @@ func runEnableMCPServer(configPath string, token string) error {
 // the token-mismatch check and mcpServers mutation are re-evaluated against
 // the fresh in-lock state on each retry.
 func runEnableMCPServerForTool(configPath, toolName, token string) error {
+	return enableMCPServersForTool(configPath, toolName, token, false)
+}
+
+// forceEnableMCPServerForTool는 --force 경로다: 기존 엔트리의 토큰이 달라도 덮어쓴다.
+//
+// 이것이 없던 동안 --force 는 runEnableMCPServerForTool 로 내려갔고, 그 함수의 토큰 검사가
+// 방금 --force 를 안내한 그 메시지를 그대로 다시 냈다 (issue #1587). 검사를 그 함수에서
+// 걷어내는 대신 진입점을 나눈 이유는, 검사 자체가 REQ-GMC-006 (b) 의 계약이고
+// TestGLMToolsEnable_DifferentTokenRefuse 가 그것을 고정하고 있기 때문이다.
+//
+// 넓어지는 것은 zai 엔트리에 한정된다: 다른 mcpServers 엔트리는 여기서도 손대지 않는다
+// (REQ-GMC-010).
+func forceEnableMCPServerForTool(configPath, toolName, token string) error {
+	return enableMCPServersForTool(configPath, toolName, token, true)
+}
+
+// enableMCPServersForTool는 위 두 진입점의 공통 구현이다. force 가 참이면 기존 vision 엔트리의
+// 토큰 불일치를 검사하지 않고 덮어쓴다.
+func enableMCPServersForTool(configPath, toolName, token string, force bool) error {
 	if token == "" {
 		return fmt.Errorf(
 			"GLM API 키가 설정되지 않았습니다\n" +
@@ -703,8 +724,9 @@ func runEnableMCPServerForTool(configPath, toolName, token string) error {
 	return mutateClaudeJSONAtomic(configPath, func(root map[string]any) (bool, error) {
 		mcpServers := getMCPServers(root)
 
-		// vision npx 엔트리에 한해 기존 토큰 불일치 검사 (REQ-GMC-006)
-		if _, want := entries[zaiMCPServerKey]; want {
+		// vision npx 엔트리에 한해 기존 토큰 불일치 검사 (REQ-GMC-006).
+		// --force 는 이 검사를 건너뛴다 — 그것이 --force 의 정의다 (issue #1587).
+		if _, want := entries[zaiMCPServerKey]; want && !force {
 			if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
 				existingToken := extractTokenFromEntry(existing)
 				if existingToken != token {

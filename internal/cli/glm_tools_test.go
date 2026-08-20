@@ -1724,3 +1724,70 @@ func TestToolSetNeedsNode(t *testing.T) {
 		})
 	}
 }
+
+// TestForceEnableMCPServer_OverwritesMismatchedToken — issue #1587.
+//
+// The token-mismatch refusal names --force as the way through it. The flag
+// parsed, and the enable command branched on it, but both branches ended up in
+// the same function — one whose token check is a deliberate contract with a
+// test of its own. So --force re-emitted the message that had just advised it,
+// and the only way to change the token was to edit ~/.claude.json by hand.
+//
+// The force entry point overwrites; the checking one still refuses, which is
+// what TestGLMToolsEnable_DifferentTokenRefuse pins.
+func TestForceEnableMCPServer_OverwritesMismatchedToken(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	newToken := "new-token-BBBBBBBBBBBB"
+	setupGLMToken(t, homeDir, newToken)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		zaiMCPServerKey: buildZAIMCPEntry("old-token-AAAAAAAAAAAA"),
+	})
+
+	if err := forceEnableMCPServerForTool(claudeJSONPath, "vision", newToken); err != nil {
+		t.Fatalf("--force가 토큰 불일치를 덮어쓰지 못함: %v", err)
+	}
+
+	entry := readMCPEntry(t, claudeJSONPath)
+	if entry == nil {
+		t.Fatal("zai-mcp-server 엔트리가 사라짐")
+	}
+	envMap, _ := entry["env"].(map[string]any)
+	if envMap == nil || envMap["Z_AI_API_KEY"] != newToken {
+		t.Errorf("토큰이 갱신되지 않음: %v", envMap)
+	}
+}
+
+// TestForceEnableMCPServer_LeavesOtherEntriesAlone — the force path widens what
+// may be overwritten to the zai entries alone (REQ-GMC-010). A neighbouring MCP
+// server keeps its own token through a forced overwrite.
+func TestForceEnableMCPServer_LeavesOtherEntriesAlone(t *testing.T) {
+	homeDir := setupToolsTestHome(t)
+	newToken := "new-token-BBBBBBBBBBBB"
+	setupGLMToken(t, homeDir, newToken)
+	claudeJSONPath := setupClaudeJSON(t, homeDir, map[string]any{
+		zaiMCPServerKey: buildZAIMCPEntry("old-token-AAAAAAAAAAAA"),
+		"unrelated-server": map[string]any{
+			"command": "other",
+			"env":     map[string]any{"OTHER_KEY": "untouched"},
+		},
+	})
+
+	if err := forceEnableMCPServerForTool(claudeJSONPath, "vision", newToken); err != nil {
+		t.Fatalf("forceEnableMCPServerForTool: %v", err)
+	}
+
+	raw, err := os.ReadFile(claudeJSONPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		t.Fatal(err)
+	}
+	servers, _ := root["mcpServers"].(map[string]any)
+	other, _ := servers["unrelated-server"].(map[string]any)
+	otherEnv, _ := other["env"].(map[string]any)
+	if otherEnv == nil || otherEnv["OTHER_KEY"] != "untouched" {
+		t.Errorf("무관한 MCP 엔트리가 변경됨: %v", other)
+	}
+}
