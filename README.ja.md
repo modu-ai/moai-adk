@@ -126,6 +126,28 @@ moai glm -f lane-3            # …GLM バックエンドのレーンも同じ�
 
 詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](https://adk.mo.ai.kr/ja/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
 
+### v3.1.1 で加わったもの
+
+カンバンモードのほかに v3.1.1 へ入ったものを挙げる。それぞれは後段の該当節で詳しく扱う。
+
+**ホーム・ディレクトリの整理。** 長く使うほど `~/.moai` には過去の実行成果物が積もる。`moai clean --home` が、許可リストの範囲に限ってそれを片付ける — 既定は dry-run なので何が消えるかを先に見せ、実際の削除には `--force` が要る。何日経ったものから片付けるかは `state.home_retention_days` (既定 30 日、`0` なら無効) で決める。いまどれだけ膨らんでいるかは `moai doctor` の Home Disk Usage 項目が知らせる。ホームのパス自体は `MOAI_HOME` 環境変数で移せる — 絶対パスしか受け取らない。
+
+<p align="center">
+  <img src="./assets/images/home-hygiene-infographic-ja.png" alt="~/.moai のホーム整理 — MOAI_HOME でパスを 1 か所にまとめ、moai doctor で使用量を見て、moai clean --home で許可リストの範囲だけを消す" width="85%">
+</p>
+
+**セッション間メッセージの設定。** ほかの Claude Code セッションが送ってくるメッセージを、そのまま受け取るか、承認を挟んで受け取るか、まったく遮るかを `crosssession.yaml` で決める。このマシンの外へ出ていくメッセージに承認を要求するスイッチもここにある。
+
+<p align="center">
+  <img src="./assets/images/cross-session-infographic-ja.png" alt="セッション間メッセージング — inbound・isolate_machines・dialog_expiry の 3 つの設定で受け取る側を制御する。メッセージは事実だけを運び、承認はユーザーの仕事だ" width="85%">
+</p>
+
+**プロンプト・キャッシュの設定。** `cache.yaml` が、セッション開始コンテキストと SPEC 本文に張るキャッシュ・ブレークポイントの寿命を扱う。長いセッションは最初のターンで書き込み費用を多めに払う代わりに以降のターンを安く進み、短いセッションはその逆が有利だ。
+
+**ステータスラインの GitLab 対応。** `statusline.forge` で、開いている作業を GitHub と GitLab のどちらで数えるかを選ぶ。空のままなら origin リモートのホストを見て判断する。
+
+**素の `/loop` がカンバンの職長になる。** 引数なしで `/loop` だけを打つと、バックログ・キューを見張って次のカードを隔離されたワーカーへ配車し、完了は主張ではなく読んだ証拠で確かめてから報告する、というサイクルが回る。人が見ていない席なので、キューにカードを入れることと選ぶことは相変わらずオペレーターの仕事であり、職長は運ぶだけだ。
+
 ---
 
 ## なぜ moai-adk なのか
@@ -242,7 +264,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-すでにインストール済みなら、`moai update` で最新版に上げる。
+すでにインストール済みなら、`moai update` で最新版に上げる。v3.1.1 から `moai update` は、テンプレート管理ディレクトリを消して敷き直す前に、その中にあった管理対象外のファイルを `.moai-backups/<タイムスタンプ>/pre-clean/` へ先に退避する。バックアップに失敗すれば削除へは進まずその場で止まる — 自分で置いたファイルが再配置で黙って流されることはない。
 
 > 💡 **コストを減らすには — z.ai GLM 推奨**: [このリンク](https://z.ai/subscribe?ic=1NDV03BGWU)から z.ai に登録すると一定トークンがボーナスでもらえる。このリンクは moai-adk オープンソース開発を支援する経路でもある。無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) もあるので、[z.ai 料金プラン](https://docs.z.ai/guides/overview/pricing)を参照のこと。
 
@@ -381,7 +403,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 
 ### ref / domain スキル
 
-`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow` と `moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-testing`、`moai-domain-uiux` がエージェントに現場の知識を注入する。
+ref スキル 11 個 (`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`) と domain スキル 7 個 (`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`) がエージェントに現場の知識を注入する。
 
 ### クロスプラットフォーム
 
@@ -444,6 +466,8 @@ flowchart TD
 | **内蔵** | Explore | ⚪ | 読み取り専用のコードベース探査 |
 
 コスト色はデフォルト `medium` プロファイルのモデル×推論セルに従う (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッション・モデル継承（ユーザー追加エージェント）。プロファイル (`high`/`low`) を切り替えると配属が変わる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。
+
+12 個のうち 11 個が moai-adk の作ったエージェントで、`Explore` は Claude Code に元からある内蔵エージェントだ。`Explore` は自前のモデルを持たずセッション・モデルをそのまま継承するので、プロファイルのセルを持たない。だからカタログは 12 個であり、後段のモデル・プロファイル節のセル数は 11 × 3 = 33 になる — 二つの数字は食い違っているのではなく、数えている対象が違う。
 
 ### trust-but-verify — 完了主張に証拠を結び付ける
 
@@ -551,7 +575,7 @@ LSP 診断・AST-grep・リンターを並行でさらって拾った問題を�
 
 ### `.moai/config/sections/`
 
-プロジェクト設定は YAML のセクション・ファイルに分かれる。
+プロジェクト設定は YAML のセクション・ファイルに分かれる。`moai init` が敷くセクションは全部で 33 個あり、そのうちよく手を入れるのは下の 6 つだ。
 
 | セクション | 役割 |
 |---|---|
@@ -561,6 +585,17 @@ LSP 診断・AST-grep・リンターを並行でさらって拾った問題を�
 | `workflow.yaml` | ワークフローの動作 |
 | `lsp.yaml` | LSP ゲートしきい値 (SSOT) |
 | `user.yaml` | ユーザー情報 |
+
+v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
+
+| セクション | 役割 |
+|---|---|
+| `crosssession.yaml` | セッション間メッセージの扱い。`inbound` (空・`accept`・`hold`・`refuse`)、`isolate_machines` (このマシンの外へ出ていくメッセージに承認を要求するか)、`dialog_expiry` (保留されたメッセージの承認ダイアログの期限) |
+| `cache.yaml` | プロンプト・キャッシュ戦略。セッション開始コンテキストに張る `session_ttl` (`1h`・`5m`・`off`) と SPEC 本文に張る `spec_ttl`、キャッシュする価値のある最小断片サイズ |
+| `state.yaml` | `home_retention_days` — `moai clean --home` が何日経ったものから片付けるか。HOME ティア (`~/.moai/config/sections/state.yaml`) からのみ読み、既定は 30 日、`0` を与えるとホーム整理を無効にする |
+| `statusline.yaml` | 既存のテーマ・セグメント切り替えに `forge` キーが加わった。`github`・`gitlab`・`none` のいずれかで、ステータスラインが開いている作業をどのホスティングで数えるかを決める。空のままなら origin リモートのホストで判断するので、自己ホスト・インスタンスでは自分で書き入れる |
+
+`gate.yaml` の `ast_grep_gate.rules_dir` は新しいキーではなく、**既定値が変わったキー** だ。空文字列だった既定値が `.moai/config/astgrep-rules` になり、`moai init`/`moai update` がその場所にバンドルのルールセットを敷く。コード側のフォールバック経路はなくなったので、いまやこのキーがルールセット位置の唯一の出処だ — ルールを別の場所へ移したなら、この値も一緒に直さないとゲートがルールを見つけられない。
 
 環境変数がファイルの値を上書きする。優先順位の詳細と全セクション一覧は [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)を参照のこと。
 
@@ -660,7 +695,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | [基本概念](https://adk.mo.ai.kr/ja/core-concepts) | アイデンティティ · 憲法 · ハーネス・エンジニアリング · SPEC ベース開発 · DDD · TRUST 5 |
 | [ワークフロー・コマンド](https://adk.mo.ai.kr/ja/workflow-commands) | `plan` · `run` · `sync` — SPEC パイプラインの主軸 |
 | [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
-| [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 36 個) |
+| [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 49 個) |
 | [Claude Code ガイド](https://adk.mo.ai.kr/ja/claude-code) | Claude Code 統合 — 基礎 · コンテキスト/メモリ · エージェンティック · 拡張性 |
 | [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG モードとモデル方針 |
 | [コスト最適化](https://adk.mo.ai.kr/ja/cost-optimization) | プロンプト・キャッシュ戦略とトークン費用の削減 |
@@ -673,12 +708,12 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 [**Claude Code ではじめる実践エージェンティック・コーディング**](https://adk.mo.ai.kr/book) — moai-adk 著者による実践ハーネス・エンジニアリング・ガイド。[book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI コマンド表 (よく使う 14 個)
+### CLI コマンド表 (よく使う 17 個)
 
 | コマンド | 説明 |
 |---|---|
 | `moai init` | 対話式プロジェクト設定 (言語/フレームワーク/方法論を自動検出) |
-| `moai doctor` | システム状態の診断と環境検証 |
+| `moai doctor` | システム状態の診断と環境検証 — Home Disk Usage 項目が `~/.moai` がどれだけ膨らんだかを勧告として知らせる |
 | `moai status` | プロジェクト状態の要約 (Git ブランチ、品質指標) |
 | `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
@@ -690,15 +725,20 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai harness <status\|apply\|rollback\|disable>` | ハーネス学習ライフサイクル |
 | `moai handoff <save\|list>` | セッション・ハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
+| `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
+| `moai tokens record` | プール別トークン使用の台帳記録 |
+| `moai clean [--home]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付ける。既定は dry-run で、`--force` を与えて初めて実際に消す |
 | `moai web` | Web コンソール — 5 画面 (Overview · Kanban · Specs · Monitor · Settings)、11 タブ設定 |
 
-> 全 36 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
+> 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 
 ### ref / domain スキル
 
-**ref (現場の知識)**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`
+**ref (現場の知識) 11 個**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`
 
-**domain (専門領域)**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+**domain (専門領域) 7 個**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+
+`moai-domain-design-dna` は v3.1.1 で新しく入った。スクリーンショットでも画像の束でも生きた URL でも、参考にするデザインを 1 つ受け取り、色・余白・角丸・タイポグラフィといった測れる値と、そのデザインの質感、特殊なレンダリング効果までを Design DNA JSON 一式へ逆抽出する。その JSON を再び入れれば、同じ質感を持つ新しい成果物を作る — 「この画面のように作って」を言葉ではなく値で運ぶ経路だ。
 
 ### CHANGELOG
 
