@@ -29,7 +29,7 @@ They are two completely different things. This is the most common confusion, so 
 
 The MoAI statusline shows version information together with an update notification:
 
-```
+```text
 🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
@@ -38,7 +38,7 @@ The MoAI statusline shows version information together with an update notificati
 
 When you are on the latest version, only the version number is shown:
 
-```
+```text
 🗿 v3.1.2
 ```
 

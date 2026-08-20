@@ -29,7 +29,7 @@ draft: false
 
 MoAI statusline 同时显示版本信息与更新提醒：
 
-```
+```text
 🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
@@ -38,7 +38,7 @@ MoAI statusline 同时显示版本信息与更新提醒：
 
 使用最新版本时只显示版本号：
 
-```
+```text
 🗿 v3.1.2
 ```
 

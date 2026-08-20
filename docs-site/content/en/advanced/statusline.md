@@ -124,7 +124,7 @@ That last row matters. On a typo, quietly counting against whatever the hostname
 
 A self-hosted instance carries no signal in its name: a company GitLab at `git.example.com` is indistinguishable in shape from a company GitHub Enterprise. Only the two public hosts are auto-detected; anything else waits for this key rather than being guessed at.
 
-When the CLI (`gh` or `glab`) is absent from PATH there are simply no counts, not an error — the last cached values stay, the pair is dropped entirely when no counts were ever fetched, and the rest of the line renders unchanged. Install the CLI later and the pair returns on the next refresh by itself. The GitHub path asks for totals in a single call; the GitLab path enumerates one page (up to 100 items), so a project with more open items than that reports the page rather than the true count.
+When the CLI (`gh` or `glab`) is absent from PATH there are simply no counts, not an error — the pair is dropped entirely from the line, the last cached values stay on disk for a later restore, and the rest of the line renders unchanged. Install the CLI later and the pair returns on the next refresh by itself. The GitHub path asks for totals in a single call; the GitLab path enumerates one page (up to 100 items), so a project with more open items than that reports the page rather than the true count.
 
 Git status carries the same 💾 glyph in every state, followed by the `+staged Mmodified ?untracked` counts. It used to lead with a different mailbox glyph per state, but the trailing numbers already convey the granular state, so the leading glyph was unified into one.
 
@@ -191,7 +191,7 @@ statusline:
     git_status: true
     task: true
     pr: true
-    worktree: false          # opt-in
+    worktree: false          # on by default — this line turns it off
     github: true             # open issues/change-requests pair (repo-segment suffix)
     # line 4 — session line (on by default; rendered even when unstated)
     session: true            # 🏷️ session name + 👤 agent
