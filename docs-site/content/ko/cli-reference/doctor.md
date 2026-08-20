@@ -36,6 +36,22 @@ moai doctor [OPTIONS]
 
 `moai doctor config` 는 다시 `dump`(병합 설정 덤프)와 `diff <tier-a> <tier-b>`(두 설정 티어 비교) 를 제공합니다.
 
+## Home Disk Usage 진단 {{< new-badge v3.1.1 >}}
+
+`moai doctor` 전체 진단에는 **Home Disk Usage** 항목이 함께 나옵니다. `~/.moai` 홈 디렉터리가 얼마나 찼는지를 보고하는 **권고(advisory)** 성격의 검사라, 임계값을 넘어도 다른 명령을 막지 않습니다.
+
+| 보고 항목 | 내용 |
+|-----------|------|
+| 전체 크기 | `~/.moai` 총 용량과 상위 3개 항목 |
+| 프로필별 내역 | `claude-profiles/<프로필>` 각각의 크기와 범주 분해 |
+| 릴리즈 개수 | `releases/`에 남아 있는 바이너리 수와 현재 버전 |
+| 정리 가능량 | `moai clean --home`이 실제로 지울 수 있는 추정 바이트 |
+| `~/.claude` | 크기만 보고 — 어떤 경로로도 정리 대상이 아님 |
+
+정리 가능량이 임계값(컴파일된 기본값 500 MB)을 넘으면 상태가 WARN으로 바뀌고 `moai clean --home`(기본 dry-run)을 권합니다. 그 아래면 OK로 남습니다. `~/.moai`가 아예 없으면 "보고할 것 없음"으로 OK 처리됩니다.
+
+이 추정치는 `moai clean --home`이 쓰는 것과 **같은 스캐너**를 호출하므로, doctor가 말하는 숫자와 clean이 실제로 지우는 목록이 어긋나지 않습니다. 자세한 내용은 [홈 디렉터리 위생](/ko/advanced/home-hygiene)에 있습니다.
+
 ## 예시
 
 ```bash

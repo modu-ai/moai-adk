@@ -278,6 +278,31 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
 
+## The unattended foreman — a bare `/loop` {{< new-badge v3.1.1 >}}
+
+In this project, typing **`/loop`** with no arguments makes that session repeat one **kanban foreman** cycle unattended. It is not the ordinary iterative-fix loop: it is a watch-dispatch-collect cycle over the backlog queue.
+
+What one iteration does is small and idempotent.
+
+```mermaid
+flowchart TD
+    Start["bare /loop — one iteration begins"] --> Skill["Load the moai-kanban-foreman skill"]
+    Skill --> Fail{"Skill missing or<br/>failed to load?"}
+    Fail -->|Yes| Stop["Stop the loop + one-line reason<br/>(never improvise a replacement protocol)"]
+    Fail -->|No| Watch["Arm the queue watch if it is not armed yet"]
+    Watch --> Check["Check the backlog queue"]
+    Check --> One["Dispatch or collect evidence for ONE card<br/>(at most one per iteration)"]
+    One --> Report["Close with a 2-6 line report, then reschedule"]
+```
+
+Three boundaries bind this loop.
+
+- **It cannot ask the operator.** While the skill is active, `AskUserQuestion` is removed from the tool pool. The loop runs with nobody watching, so there is no channel to ask through — anything needing judgement is reported in the iteration output instead.
+- **It schedules work, it never generates it.** Admitting a card to the backlog (`moai todo add`) and picking the next one remain the operator's acts. The foreman only moves an already-picked card into a free lane.
+- **It answers no approval gate on the operator's behalf.** Implementation Kickoff Approval and every other human gate still fire inside the unattended loop, and the foreman never passes one by proxy.
+
+Completion is always judged on **evidence it read** — the card advances on the progress record on disk, not on a lane's reply. To test a single cycle by hand, invoke the `moai-kanban-foreman` skill directly.
+
 ## When to use it, when not to
 
 {{< callout type="info" >}}
