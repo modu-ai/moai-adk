@@ -144,7 +144,7 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 // are mechanically observable in output.
 //
 // Three bounds, each answering a different question (enforced by
-// internal/timing.Assert; same rationale as TestBranchGuard_Latency):
+// internal/timing.AssertPaired; same rationale as TestBranchGuard_Latency):
 //
 //   - p95 <= 20% of the 5s hook budget (1s POSIX). The distribution
 //     detector. A real regression — an fsync per write, a whole-file rewrite
@@ -156,8 +156,9 @@ func TestRecordEventWritesJSONL(t *testing.T) {
 //     tool call.
 //   - median <= 2.0x ONE healthy RecordEvent-shaped reference cycle —
 //     timestamp + MkdirAll + json.Marshal of the same event shape + one
-//     append cycle (open O_APPEND + write one JSONL line + close) — measured
-//     in this same run on the same filesystem. The CALIBRATED arm — it
+//     append cycle (open O_APPEND + write one JSONL line + close) —
+//     interleaved with the measured runs (timing.AssertPaired) so both sides
+//     of the ratio see the same load. The CALIBRATED arm — it
 //     measures code, not machine. The reference mirrors the measured
 //     operation's full cost MIX (CPU-side marshal/stat plus the syscall
 //     write), because VM CI runners inflate the CPU class and the syscall
@@ -197,8 +198,10 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	obs := NewObserver(dir + "/usage-log.jsonl")
 
 	// Reference unit: one FULL RecordEvent-shaped cycle on a sibling file in
-	// the same t.TempDir filesystem, measured immediately before the measured
-	// loop. It mirrors the healthy RecordEvent cost MIX — the same timestamp
+	// the same t.TempDir filesystem. timing.AssertPaired interleaves it with
+	// the measured runs, so a load excursion lands on both sides of the ratio
+	// instead of only the numerator, and both medians rest on the same number
+	// of samples. It mirrors the healthy RecordEvent cost MIX — the same timestamp
 	// call, the same MkdirAll stat, a json.Marshal of the same event shape,
 	// and one append cycle of the marshaled line — so VM runners' asymmetric
 	// CPU-vs-syscall inflation multiplies both sides of the ratio equally
@@ -206,7 +209,7 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	// job 95500006280). An added fsync or spawn in RecordEvent's real path
 	// still lands multiples above this reference.
 	refPath := dir + "/reference-append.jsonl"
-	refUnit := timing.Median(func() {
+	refCycle := func() {
 		evt := Event{
 			Timestamp:     time.Now().UTC(),
 			EventType:     EventTypeMoaiSubcommand,
@@ -234,7 +237,7 @@ func TestRecordEvent100Sequential(t *testing.T) {
 		if err := f.Close(); err != nil {
 			t.Fatalf("reference append close failed: %v", err)
 		}
-	}, 3, 20)
+	}
 
 	const hookBudget = 5 * time.Second
 	steadyCeiling := hookBudget / 5 // 20% — 1s on POSIX
@@ -245,14 +248,14 @@ func TestRecordEvent100Sequential(t *testing.T) {
 	// cost units (fsync-per-write at 5-50x, an extra subprocess) — the
 	// regression classes invisible to the budget fractions when absolute
 	// figures stay generous.
-	timing.Assert(t, timing.Bound{
+	timing.AssertPaired(t, timing.Bound{
 		Name:          "RecordEvent",
 		Budget:        hookBudget,
 		SteadyCeiling: steadyCeiling,
 		MaxUnits:      2.0,
 		Iterations:    100,
 		Warmup:        5,
-	}, refUnit, func() {
+	}, refCycle, func() {
 		if err := obs.RecordEvent(EventTypeMoaiSubcommand, "test-subject", "hash"); err != nil {
 			t.Fatalf("RecordEvent 실패: %v", err)
 		}

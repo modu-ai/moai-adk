@@ -105,27 +105,41 @@ func TestCheckSteadyAndBudgetArms(t *testing.T) {
 // TestMeasureCalibratedRatioHealthy runs a real measurement: fn costs the
 // same CPU unit as the reference, so the calibrated arm must pass with
 // generous headroom.
+//
+// Both sides are measured through measurePaired so the ratio rests on
+// interleaved, equal-sized sample sets. Measuring the reference to
+// completion BEFORE the subject leaves the two halves of the ratio exposed
+// to different machine load, which is what a shared CI runner supplies: the
+// denominator can inflate (or deflate) several-fold on its own, and the
+// resulting ratio says more about the runner than about the code.
 func TestMeasureCalibratedRatioHealthy(t *testing.T) {
 	t.Parallel()
-	ref := Median(func() { cpuUnit(5_000_000) }, 2, 10)
-	st := measure(func() { cpuUnit(5_000_000) }, 30, 3)
+	unit := func() { cpuUnit(5_000_000) }
+	refSt, st := measurePaired(unit, unit, 30, 3)
 	b := Bound{Budget: 30 * time.Second, SteadyCeiling: 10 * time.Second, MaxUnits: 2.0, Name: "cpu-1x"}
-	if errs := Check(b, ref, st); len(errs) != 0 {
-		t.Errorf("healthy 1x ratio tripped a bound (ref=%v median=%v): %v", ref, st.Median, errs)
+	if errs := Check(b, refSt.Median, st); len(errs) != 0 {
+		t.Errorf("healthy 1x ratio tripped a bound (ref=%v median=%v): %v", refSt.Median, st.Median, errs)
 	}
 }
 
 // TestMeasureCalibratedRatioTripsAt4x verifies the calibrated arm catches a
 // genuine 4x cost growth through a real measurement — the property the
 // budget-fraction arms cannot provide when absolute figures stay generous.
+//
+// Paired for the same reason as the healthy case above, and this test is
+// where an unpaired reference was measured failing: on a GitHub ubuntu
+// runner the sequential reference took 4.18ms for its 2M-iteration unit
+// while the subject took 5.62ms for 8M — a per-iteration cost 3x higher on
+// the reference side alone, collapsing a true 4.0x ratio to 1.34x and
+// letting the growth through undetected. Interleaving the two units puts
+// both halves of the ratio under the same load.
 func TestMeasureCalibratedRatioTripsAt4x(t *testing.T) {
 	t.Parallel()
-	ref := Median(func() { cpuUnit(2_000_000) }, 2, 10)
-	st := measure(func() { cpuUnit(8_000_000) }, 30, 3)
+	refSt, st := measurePaired(func() { cpuUnit(2_000_000) }, func() { cpuUnit(8_000_000) }, 30, 3)
 	b := Bound{Budget: time.Hour, SteadyCeiling: time.Hour, MaxUnits: 1.5, Name: "cpu-4x"}
-	errs := Check(b, ref, st)
+	errs := Check(b, refSt.Median, st)
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "calibrated bound") {
-		t.Fatalf("4x cost growth not caught by the calibrated arm (ref=%v median=%v): %v", ref, st.Median, errs)
+		t.Fatalf("4x cost growth not caught by the calibrated arm (ref=%v median=%v): %v", refSt.Median, st.Median, errs)
 	}
 }
 
@@ -173,11 +187,20 @@ func TestAssertHealthyEndToEnd(t *testing.T) {
 	ref := Median(func() { cpuUnit(5_000_000) }, 2, 10)
 	// Generous bounds: this exercises the Assert wiring (measure + log +
 	// Check) on healthy code and must not fail.
+	//
+	// MaxUnits is deliberately non-binding here. Assert's signature takes a
+	// PRECOMPUTED refUnit, so the reference is necessarily priced in a burst
+	// before the measured loop — the very exposure AssertPaired exists to
+	// close, and one measured swinging the per-iteration reference cost by
+	// 3x on a shared runner. Pinning a tight ratio on top of that would test
+	// the machine; the calibrated arm's own semantics are pinned by
+	// TestCheckCalibratedArmTripsOnUnitGrowth (synthetic Stats) and by the
+	// paired real-measurement tests above.
 	Assert(t, Bound{
 		Name:          "cpu-e2e",
 		Budget:        30 * time.Second,
 		SteadyCeiling: 10 * time.Second,
-		MaxUnits:      2.0,
+		MaxUnits:      50.0,
 		Iterations:    20,
 		Warmup:        2,
 	}, ref, func() { cpuUnit(5_000_000) })
