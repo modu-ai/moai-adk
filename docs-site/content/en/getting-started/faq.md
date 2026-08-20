@@ -29,17 +29,17 @@ They are two completely different things. This is the most common confusion, so 
 
 The MoAI statusline shows version information together with an update notification:
 
-```
-🗿 v3.1.0 ⬆️ v3.1.1
+```text
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
-- **`v3.1.0`**: The currently installed version
-- **`⬆️ v3.1.1`**: A newer version available for update
+- **`🗿 v3.1.1`**: The currently installed version
+- **`-> 🗿 v3.1.2`**: A newer version available for update, joined by the ASCII arrow `->`
 
 When you are on the latest version, only the version number is shown:
 
-```
-🗿 v3.1.1
+```text
+🗿 v3.1.2
 ```
 
 **How to update**: Run `moai update` and the update notification disappears.
@@ -52,20 +52,12 @@ When you are on the latest version, only the version number is shown:
 
 ## Q: How do I customize the segments shown in the statusline?
 
-The statusline supports 4 display presets plus a custom configuration:
-
-| Preset | Description |
-|--------|------|
-| **Full** (default) | Shows all 8 segments |
-| **Compact** | Shows only Model + Context + Git Status + Branch |
-| **Minimal** | Shows only Model + Context |
-| **Custom** | Select individual segments |
+The statusline is toggled one segment at a time. Turn each segment on or off to keep only the information you want. There are no display presets — the configuration is just a theme and a set of segments.
 
 Configure it in the `moai init` or `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
-  preset: compact  # or full, minimal, custom
   segments:
     model: true
     context: true
@@ -76,6 +68,8 @@ statusline:
     moai_version: false
     git_branch: true
 ```
+
+With no `segments:` block, every segment is enabled by default.
 
 {{< callout type="info" >}}
 For details, see [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md).

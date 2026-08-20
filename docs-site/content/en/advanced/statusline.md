@@ -19,10 +19,10 @@ The problem is that none of these variables is visible by default. Claude Code's
 The base layout is three lines; when a session name or backlog observation exists, a fourth line (the session line) is appended conditionally at the end. The example below is one instance of actual rendered output, copied verbatim down to the glyphs (small pictographic characters) each segment uses.
 
 ```text
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 4h 52m │ 💬 MoAI
-🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk, 5/0 🐛12 🔀3 | 🅱️ main +2 │ 📫 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
-🏷️ run │ 👤 manager-develop │ 🔄 TODO: 1/3
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
+🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
 - **Line 1 — how the session is running**: model, reasoning depth, cache hit rate, Claude Code version, MoAI version, session time, and output style in one line. It tells you at once which configuration the session is running under.
@@ -68,15 +68,40 @@ For subscription-plan users, the 5H/7D bars are effectively budget gauges. Readi
 
 ## Line 3 — where, and on what
 
-Line 3 bundles the work's context. Directory, repository and branch (including ahead/behind and dirty-file counts), git status, the active SPEC task, and the review state of the open PR all sit in one line.
+Line 3 bundles the work's context. Directory, repository and branch (including the open-item counts and the dirty-file count), git status, the active SPEC task, and the review state of the open PR all sit in one line.
 
-The repository and branch render as one merged segment. The `owner/name` part comes from `workspace.repo`, added to stdin since Claude Code v2.1.145, followed by the ahead/behind commit pair against the remote, slash-joined as `5/0`. The branch is read from local git. The repo display carries the 📡 glyph and joins the branch with an ASCII pipe (`|`); merged, "which repo's which branch am I working in" lands at a glance. When working in a worktree (a linked separate working directory), a `[WT]` mark precedes the branch to distinguish it from an ordinary checkout.
+The repository and branch render as one merged segment. The `owner/name` part comes from `workspace.repo`, added to stdin since Claude Code v2.1.145, followed by this repository's open issue and open change-request counts, comma-and-slash-joined as `, 12/3`. The branch is read from local git. The repo display carries the 📡 glyph and joins the branch with an ASCII pipe (`|`); merged, "which repo's which branch am I working in" lands at a glance. When working in a worktree (a linked separate working directory), a `[WT]` mark precedes the branch to distinguish it from an ordinary checkout.
 
-### Open item counts — 🐛 issues, 🔀 change requests
+### Open item counts — the repo segment's `issues/change-requests` pair
 
-The repo segment is followed by the counts of **open issues (🐛) and open change requests (🔀)** for this repository. These used to sit on line 4; they now ride on the same segment as the repository they belong to, so position answers "which repo is this number about".
+Right after the repo name come this repository's **open issue count and open change-request count**, as a slash pair in the form `, 12/3`. The first number is open issues, the second open change requests. These used to sit on line 4; they now ride on the same segment as the repository they belong to, so position answers "which repo is this number about".
 
-Each number carries **its own glyph and no slash joins them**. The ahead/behind pair in front (`5/0`) is already a slash-joined pair, and putting a second slash-joined pair beside it made an operator read the branch's ahead/behind as "issues over PRs". So the pair is slashed and the counts are glyph-tagged — separated by shape rather than by position. A zero is omitted, and when both are zero the whole suffix disappears.
+Only one slash pair may appear on the line. This slot used to hold the ahead/behind commit counts against the remote, and once the open-item counts arrived beside them as a second pair, an operator really did read the branch's `59/0` as "issues over change requests". So the slot was handed to the values an operator actually reads off a status bar — open issues and open change requests — and **ahead/behind is no longer rendered anywhere**. The data is still collected; it simply has no slot on the bar.
+
+The pair reads in four states.
+
+| Display | Meaning |
+|---|---|
+| `, 12/3` | Counts were fetched — 12 open issues, 3 open change requests |
+| `, 0/0` | Counts were fetched, and nothing is genuinely open |
+| `, -/-` | There is a forge to ask, but the counts are unknown right now — the cache is absent or unreadable, or the CLI failed to answer (rate limit, auth, network). This state can resolve itself on the next refresh |
+| No pair and no comma | There is nothing to ask, or you asked for nothing — the five causes are right below |
+
+Five causes drop the pair entirely.
+
+1. `segments.github: false` — the segment is off.
+2. `statusline.forge: none` (or `off`) — you explicitly asked for no counting.
+3. `statusline.forge` carries a value nothing recognises (a typo). No warning is printed: **the absent pair is itself the symptom that traces back to what you typed**.
+4. The `origin` remote is not on a publicly detectable host — a self-hosted instance, or no origin at all. Setting the `forge` key below resolves it.
+5. The forge's CLI (`gh` or `glab`) is not on PATH.
+
+Printing the zeros, and refusing to print `0/0` when the data is missing, are both deliberate. Printed zeros keep the pair's shape fixed, so a quiet repository still shows that the counts are live. Printing `0/0` on a failed fetch, by contrast, would report a silent lookup failure as an empty backlog — the one reading that must never be possible — so "unknown" gets a shape of its own, `-/-`. **Absence of data is not evidence of zero.**
+
+And `-/-` is reserved for **states that can still resolve themselves**. The marker promises there is a forge to ask and an answer is on its way. Attaching the same marker to a state with no answer coming sends the operator hunting a fault that no amount of waiting will clear. Someone who opted out is not waiting for anything — so `statusline.forge: none` no longer shows `-/-` indefinitely, as it once did, and drops the pair instead. A disabled segment prints not even `-/-` for the same reason.
+
+This suppression does not latch. The refresh child re-derives it from scratch every run (a 10-minute TTL), so installing `gh` or correcting the `forge` value brings the pair back on its own — no config change, no restart.
+
+One timing difference is worth knowing. The missing-CLI and unrecognised-host cases are decided by the refresh child, so `-/-` can appear on renders before the first child has written a cache, and clears on the next render after it runs (seconds). The explicit `forge: none` opt-out has no such window: the pair goes on the very first render.
 
 ### `statusline.forge` — which hosting service to ask
 
@@ -92,16 +117,16 @@ statusline:
 | Unset (default) | Decided from the `origin` remote's host — `github.com` selects `gh`, `gitlab.com` selects `glab` |
 | `github` | Always counts via `gh` |
 | `gitlab` | Always counts via `glab` |
-| `none` (or `off`) | No counting — the suffix is not rendered |
-| Any other value | Renders nothing, and **does not fall back to detection** |
+| `none` (or `off`) | No counting — the pair is dropped entirely (not `-/-`) |
+| Any other value | No counting, and **no fall back to detection** — the pair is dropped entirely |
 
-That last row matters. On a typo, quietly counting against whatever the hostname suggested would make a wrong number look right. So an unrecognised value shows as a **missing** segment — a symptom that traces straight back to the value just typed.
+That last row matters. On a typo, quietly counting against whatever the hostname suggested would make a wrong number look right. So an unrecognised value surfaces neither as a number nor as `-/-`, but as **an absent pair**. No warning is printed; that absence is the symptom, and it traces straight back to the value just typed.
 
 A self-hosted instance carries no signal in its name: a company GitLab at `git.example.com` is indistinguishable in shape from a company GitHub Enterprise. Only the two public hosts are auto-detected; anything else waits for this key rather than being guessed at.
 
-When the CLI (`gh` or `glab`) is absent from PATH there are simply no counts, not an error — the suffix stays quietly empty and the rest of the line renders unchanged. The GitHub path asks for totals in a single call; the GitLab path enumerates one page (up to 100 items), so a project with more open items than that reports the page rather than the true count.
+When the CLI (`gh` or `glab`) is absent from PATH there are simply no counts, not an error — the pair is dropped entirely from the line, the last cached values stay on disk for a later restore, and the rest of the line renders unchanged. Install the CLI later and the pair returns on the next refresh by itself. The GitHub path asks for totals in a single call; the GitLab path enumerates one page (up to 100 items), so a project with more open items than that reports the page rather than the true count.
 
-Git status leads with mailbox glyphs — 📬 staged, 📫 modified, 📪 untracked files present, 📭 clean — followed by the `+staged Mmodified ?untracked` counts. It uses both color and shape, so it reads in a black-and-white terminal too.
+Git status carries the same 💾 glyph in every state, followed by the `+staged Mmodified ?untracked` counts. It used to lead with a different mailbox glyph per state, but the trailing numbers already convey the granular state, so the leading glyph was unified into one.
 
 The PR segment separates review states by color. `approved` renders green, `pending` yellow, `changes_requested` red, and `draft` gray, so the state of a review-awaiting PR is graspable by color alone. MoAI workflows produce a plan-PR → run-PR → sync-PR cycle for every SPEC, so keeping PR state always visible directly helps decide the next move.
 
@@ -166,14 +191,14 @@ statusline:
     git_status: true
     task: true
     pr: true
-    worktree: false          # opt-in
-    github: true             # 🐛/🔀 open item counts (repo-segment suffix)
+    worktree: false          # on by default — this line turns it off
+    github: true             # open issues/change-requests pair (repo-segment suffix)
     # line 4 — session line (on by default; rendered even when unstated)
     session: true            # 🏷️ session name + 👤 agent
     backlog: true            # 🔄 TODO: in progress/queued
 ```
 
-Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The `github` key keeps its name but now toggles the 🐛/🔀 suffix on the **line 3** repo segment, while the `forge` key above decides which hosting service is asked. Of the nineteen toggles written out above, sixteen are that schema; the remaining three (`github` · `session` · `backlog`) sit outside it. All three render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, forge cache) are quietly omitted. The former named presets (full/compact/minimal) are deprecated, so toggle the combination you want per segment.
+Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The `github` key keeps its name but now toggles the `issues/change-requests` pair on the **line 3** repo segment, while the `forge` key above decides which hosting service is asked. Of the nineteen toggles written out above, sixteen are that schema; the remaining three (`github` · `session` · `backlog`) sit outside it. All three render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, forge cache) are quietly omitted. The former named presets (full/compact/minimal) are retired, so toggle the combination you want per segment.
 
 The refresh interval is set by `statusLine.refreshInterval` in `settings.json` (unit: seconds, default 10). This is a Claude Code runtime setting, not a statusline configuration file. Too short an interval burdens the CPU; too long delays the reflection of context-usage changes. The default is usually enough.
 

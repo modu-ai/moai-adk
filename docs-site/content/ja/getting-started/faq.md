@@ -29,17 +29,17 @@ MoAI-ADK 使用中によくある質問と回答です。
 
 MoAI statusline はバージョン情報とアップデート通知を併せて表示します:
 
-```
-🗿 v2.2.2 ⬆️ v2.2.5
+```text
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
-- **`v2.2.2`**: 現在インストールされているバージョン
-- **`⬆️ v2.2.5`**: アップデート可能な新しいバージョン
+- **`🗿 v3.1.1`**: 現在インストールされているバージョン
+- **`-> 🗿 v3.1.2`**: アップデート可能な新しいバージョン (ASCII 矢印 `->` でつながれます)
 
 最新バージョンを使用中のときはバージョン番号だけが表示されます:
 
-```
-🗿 v2.2.5
+```text
+🗿 v3.1.2
 ```
 
 **アップデート方法**: `moai update` 実行時にアップデート通知が消えます。
@@ -52,20 +52,12 @@ MoAI statusline はバージョン情報とアップデート通知を併せて�
 
 ## Q: statusline に表示されるセグメントをカスタマイズするには?
 
-statusline は 4 つのディスプレイプリセットとカスタム設定をサポートします:
-
-| プリセット | 説明 |
-|--------|------|
-| **Full** (デフォルト値) | すべての 8 セグメントを表示 |
-| **Compact** | Model + Context + Git Status + Branch のみ表示 |
-| **Minimal** | Model + Context のみ表示 |
-| **Custom** | 個別セグメントを選択 |
+statusline はセグメント単位でオン・オフします。各セグメントを個別にトグルして、欲しい情報だけを残してください。ディスプレイプリセットはありません — 設定はテーマとセグメントの2つだけです。
 
 `moai init` または `moai update -c` ウィザードで設定するか、`.moai/config/sections/statusline.yaml` を直接編集します:
 
 ```yaml
 statusline:
-  preset: compact  # または full, minimal, custom
   segments:
     model: true
     context: true
@@ -76,6 +68,8 @@ statusline:
     moai_version: false
     git_branch: true
 ```
+
+`segments:` ブロックが無ければ、すべてのセグメントがデフォルトで有効になります。
 
 {{< callout type="info" >}}
 詳しい内容は [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md) を参照してください。

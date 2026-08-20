@@ -29,17 +29,17 @@ draft: false
 
 MoAI statusline 同时显示版本信息与更新提醒：
 
-```
-🗿 v2.2.2 ⬆️ v2.2.5
+```text
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
-- **`v2.2.2`**：当前已安装的版本
-- **`⬆️ v2.2.5`**：可更新的新版本
+- **`🗿 v3.1.1`**：当前已安装的版本
+- **`-> 🗿 v3.1.2`**：可更新的新版本（用 ASCII 箭头 `->` 相连）
 
 使用最新版本时只显示版本号：
 
-```
-🗿 v2.2.5
+```text
+🗿 v3.1.2
 ```
 
 **更新方法**：执行 `moai update` 后更新提醒会消失。
@@ -52,20 +52,12 @@ MoAI statusline 同时显示版本信息与更新提醒：
 
 ## Q: 如何自定义 statusline 显示的分段？
 
-statusline 支持 4 种显示预设与自定义设置：
-
-| 预设 | 说明 |
-|--------|------|
-| **Full**（默认值） | 显示全部 8 个分段 |
-| **Compact** | 仅显示 Model + Context + Git Status + Branch |
-| **Minimal** | 仅显示 Model + Context |
-| **Custom** | 逐个选择分段 |
+statusline 按段落逐个开关。把各个段落分别打开或关闭，只留下你想看的信息。没有显示预设 —— 配置只有主题和段落两样。
 
 可在 `moai init` 或 `moai update -c` 向导中设置，或直接编辑 `.moai/config/sections/statusline.yaml`：
 
 ```yaml
 statusline:
-  preset: compact  # 或 full, minimal, custom
   segments:
     model: true
     context: true
@@ -76,6 +68,8 @@ statusline:
     moai_version: false
     git_branch: true
 ```
+
+没有 `segments:` 块时，默认启用全部段落。
 
 {{< callout type="info" >}}
 详细内容请参考 [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md)。

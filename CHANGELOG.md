@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-08-21
+
+### Summary
+
+A statusline change and the documentation sweep it forced.
+
+The slash pair after the repo name used to be git ahead/behind. It now carries open issues over open change requests, and ahead/behind no longer renders. The counts had moved three times in four days — merged onto the repo head as an arrow-linked prefix, removed the same day because `59/0` read as issues/PRs when it was ahead/behind, then restored as a glyph-tagged `🐛N 🔀N` suffix specifically to avoid that misread. The misread recurred anyway. The pair is where a reader looks for issue and PR counts, so that is what it holds.
+
+The pair distinguishes four things a reader needs to tell apart: `1/1` fetched, `0/0` fetched and nothing open, `-/-` unknown but still coming, and an absent pair when no answer was ever going to arrive. That last case has five causes — the segment is off, `statusline.forge` names `none`, the forge value is unrecognised, no forge CLI is installed, or the remote is on no recognised host (a self-hosted GitLab or GitHub Enterprise checkout). Suppression does not latch: the refresh child re-derives it every run, so installing `gh` restores the pair within one TTL with no config change.
+
+Documentation across README and docs-site described a statusline several layouts out of date, in all four locales at once.
+
+### Changed
+
+- The statusline repo segment's slash pair is **open issues / open change requests**, not git ahead/behind. Ahead/behind no longer appears on the statusline; the data is still collected, it simply has no slot on the bar. Anyone reading `↑2` or `0/0` as sync state should know it is gone.
+- `statusline.forge: none` (and `off`) now removes the pair entirely instead of leaving `-/-` on the bar permanently. An unrecognised `statusline.forge` value does the same, so a typo surfaces as an absent pair rather than a marker suggesting a broken fetch.
+- A checkout with no forge CLI installed, or whose remote is on no recognised host, shows no pair rather than a permanent `-/-`.
+
+### Fixed
+
+- `-/-` is reserved for states that can resolve themselves. It previously appeared for opt-out, missing CLI, and unrecognised-host cases, telling operators an answer was coming when none ever would.
+- README and docs-site statusline descriptions corrected in all four locales: the ASCII `|` separator (documented as `│`), the removed branch arrows, the unified `💾` git-status glyph (documented as the retired `📬`/`📫`/`📪`/`📭` quartet), `🔅 v<version>` without the `cc` prefix, the unspaced `TODO: n/m` ratio, and the fourth line's forge counts which had not rendered there for days.
+- docs-site advertised four display presets and a `preset: compact` config key, both retired; `settings-json` described Compact/default/full display modes when every mode collapses to one layout. Both predate this release. The Korean pages were already correct — the drift was in the derived locales.
+- Stale comments in `internal/statusline`: two claiming the forge counts render nowhere, a format sketch with arrows and a glyph that appears nowhere in the code, two references to the retired mailbox quartet, and a header claiming a 5-line Full layout the same file records as retired. `renderGitBranch`, which had no non-test caller, is deleted — its doc comment was the likely source of the stale arrow prose in the READMEs.
+
 ## [3.1.1] - 2026-08-20
 
 ### Summary

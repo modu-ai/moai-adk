@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -482,10 +482,10 @@ flowchart TD
 ### ステータスラインの読み方
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
-🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
-🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
 | 要素 | 意味 |
@@ -496,12 +496,12 @@ flowchart TD
 | CW: コンテキスト | コンテキスト・ウィンドウ使用率 + 2 段階 `/clear` マーカー (⚠️ ソフト, 🛑 ハード) |
 | 5H / 7D | 料金プラン使用率 + リセット時刻 |
 | 📁 ディレクトリ | プロジェクト・ディレクトリ名 |
-| 📡 リポジトリ | GitHub リポジトリ `owner/name` (PR アイコン 🔀 と区別) |
-| 🅱️ ブランチ | 現在のブランチ + `↑`先行 `↓`遅行 + `+`変更数 |
-| 📫 git 状態 | メールボックス・アイコン（📬 ステージ / 📫 修正 / 📪 未追跡 / 📭 クリーン）+ 件数 |
+| 📡 リポジトリ | GitHub リポジトリ `owner/name` + 開いている issue/PR の対（`, 7/3`、読めなければ `, -/-`） |
+| 🅱️ ブランチ | 現在のブランチ — ワークツリーなら `[WT]`、`+` は変更数（修正+ステージ+未追跡） |
+| 💾 git 状態 | ステージ `+` · 修正 `M` · 未追跡 `?` の件数 — アイコンは状態によらず 💾 ひとつ |
 | 📋 タスク | アクティブな SPEC ワークフロー `[コマンド SPEC-ID-フェーズ]` |
 | 💌 PR | アクティブな GitHub PR 番号 + レビュー状態 (`⌥状態`) |
-| 🏷️ セッション行 | 最終行に条件付き — セッション名 · 👤 エージェント · 🔄 `TODO: 進行中 / 待機` バックログ · 🔀 開いている issue/PR 数 |
+| 🏷️ セッション行 | 最終行に条件付き — セッション名 · 👤 エージェント · 🔄 `TODO: 進行中/待機` バックログ |
 
 > 詳しくは: [ステータスライン・ガイド](https://adk.mo.ai.kr/ja/advanced/statusline)
 
@@ -757,7 +757,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 ### ステータスラインのバージョン表示は何を意味する?
 
 ```
-🗿 v3.1.0 ⬆️ v3.1.1
+🗿 v3.1.1 -> 🗿 v3.1.2
 ```
 
 前の値が現在インストールされている moai-adk のバージョンで、矢印は利用可能な更新があることを示す。`moai update` を実行すると消える。

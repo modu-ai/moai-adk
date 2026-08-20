@@ -834,10 +834,14 @@ func TestIntegration_NoCost(t *testing.T) {
 	}
 }
 
-// TestIntegration_GitAheadBehind verifies ahead/behind format (AC-V3-09).
-func TestIntegration_GitAheadBehind(t *testing.T) {
-	// AC-V3-09: Ahead=3, Behind=2 → "↑3↓2" format
-	t.Run("AC-V3-09: Ahead=3, Behind=2 → ↑3↓2", func(t *testing.T) {
+// TestIntegration_GitDirtyCount verifies the clean-state dirty count (AC-V3-09).
+//
+// Ahead/Behind are set on the fixture and deliberately not asserted on: they
+// are still collected from git, but since 2026-08-20 they render nowhere (the
+// repo segment's slash pair carries open issues / open PRs instead). What this
+// case still pins is the "+0" clean-state counter.
+func TestIntegration_GitDirtyCount(t *testing.T) {
+	t.Run("AC-V3-09: clean state → +0", func(t *testing.T) {
 		builder := New(Options{
 			GitProvider: &mockGitProvider{
 				data: &GitStatusData{

@@ -856,7 +856,7 @@ MoAI-ADK statusline 包含以下功能。
 
 - **渐变颜色**：随上下文使用率变化的动态颜色渐变
 - **5H/7D 用量监控**：显示 5 小时与 7 天 API 用量条
-- **多行布局**：Compact（3 行）、default、full 显示模式
+- **单一布局**：一个 3 行布局，外加一条条件性的会话行 —— 过去的各种显示模式全都收敛到它
 - **主题**（`internal/statusline/theme.go` 定义）：
   - **catppuccin-mocha**（默认）：深色调色板
   - **catppuccin-latte**：面向明亮环境的浅色调色板
