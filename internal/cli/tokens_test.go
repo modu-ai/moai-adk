@@ -169,6 +169,7 @@ func TestAggregateTranscriptUsageTruncatedTail(t *testing.T) {
 func TestRunTokensRecordAppendsLedger(t *testing.T) {
 	tmp := t.TempDir()
 	t.Chdir(tmp)
+	stateDir := filepath.Join(tmp, ".moai", "state")
 	path := writeTranscriptFixture(t, defaultFixtureLines())
 
 	for i := 0; i < 2; i++ {
@@ -176,6 +177,7 @@ func TestRunTokensRecordAppendsLedger(t *testing.T) {
 			Transcript: path,
 			Card:       "t86",
 			Role:       "run",
+			StateDir:   stateDir,
 		})
 		if err != nil {
 			t.Fatalf("runTokensRecord call %d: %v", i+1, err)
@@ -185,7 +187,7 @@ func TestRunTokensRecordAppendsLedger(t *testing.T) {
 		}
 	}
 
-	data, err := os.ReadFile(filepath.Join(tmp, ".moai", "state", "token-accounting.jsonl"))
+	data, err := os.ReadFile(filepath.Join(stateDir, tokensLedgerFilename))
 	if err != nil {
 		t.Fatalf("read ledger: %v", err)
 	}
@@ -213,6 +215,7 @@ func TestRunTokensRecordAppendsLedger(t *testing.T) {
 func TestRunTokensRecordJSONFlagNoLedger(t *testing.T) {
 	tmp := t.TempDir()
 	t.Chdir(tmp)
+	stateDir := filepath.Join(tmp, ".moai", "state")
 	path := writeTranscriptFixture(t, defaultFixtureLines())
 
 	var buf bytes.Buffer
@@ -220,6 +223,7 @@ func TestRunTokensRecordJSONFlagNoLedger(t *testing.T) {
 		Transcript: path,
 		AsJSON:     true,
 		Stdout:     &buf,
+		StateDir:   stateDir,
 	})
 	if err != nil {
 		t.Fatalf("runTokensRecord: %v", err)
@@ -232,7 +236,7 @@ func TestRunTokensRecordJSONFlagNoLedger(t *testing.T) {
 		t.Errorf("printed record differs from returned record")
 	}
 
-	if _, err := os.Stat(filepath.Join(tmp, ".moai", "state", "token-accounting.jsonl")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(stateDir, tokensLedgerFilename)); !os.IsNotExist(err) {
 		t.Errorf("--json must not create the ledger file; stat err = %v", err)
 	}
 }
@@ -281,7 +285,7 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 		t.Fatalf("write context fixture: %v", err)
 	}
 
-	rec, err := runTokensRecord(tokensRecordOpts{Transcript: path})
+	rec, err := runTokensRecord(tokensRecordOpts{Transcript: path, StateDir: stateDir})
 	if err != nil {
 		t.Fatalf("runTokensRecord: %v", err)
 	}
@@ -299,7 +303,10 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 	// Absent: context is nil and recording still succeeds.
 	tmp2 := t.TempDir()
 	t.Chdir(tmp2)
-	rec2, err := runTokensRecord(tokensRecordOpts{Transcript: path})
+	rec2, err := runTokensRecord(tokensRecordOpts{
+		Transcript: path,
+		StateDir:   filepath.Join(tmp2, ".moai", "state"),
+	})
 	if err != nil {
 		t.Fatalf("runTokensRecord without context snapshot: %v", err)
 	}
