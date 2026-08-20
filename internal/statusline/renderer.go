@@ -523,7 +523,8 @@ func (r *Renderer) isPREnabled() bool {
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
 // @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
 // @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub 🔀 counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
-// @MX:NOTE: [AUTO] 2026-08-18 operator follow-up — the merged "🔀 i / p ->" prefix removed again (redundant beside the always-on a/b pair); GitHub counts no longer render anywhere.
+// @MX:NOTE: [AUTO] 2026-08-18 operator follow-up — the merged "🔀 i / p ->" prefix removed again (redundant beside the always-on a/b pair); GitHub counts then rendered nowhere.
+// @MX:NOTE: [AUTO] 2026-08-20 — counts restored as a glyph-tagged suffix (renderForgeCounts). The 2026-08-18 removal fixed a misread of "59/0" as issues/PRs, so the restored form carries a glyph per number and no slash, which is the distinction the merged layout lacked.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -556,12 +557,38 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 
 	repoPart := fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind)
 
-	// The GitHub "🔀 i / p ->" head that rode in front of repoPart was removed
-	// per the operator's 2026-08-18 follow-up: the always-on ahead/behind pair
-	// already says what the arrow pointed at. data.GitHub is still resolved by
-	// the builder but has no render consumer.
+	return repoPart + r.renderForgeCounts(data) + " | " + branch + dirtySuffix
+}
 
-	return repoPart + " | " + branch + dirtySuffix
+// renderForgeCounts renders the cached open issue and change-request counts as
+// a suffix on the repo part, or "" when there is nothing to say.
+//
+// [HARD] The counts must not look like the ahead/behind pair they sit beside.
+// They were removed on 2026-08-18 precisely because the merged form put two
+// slash-joined pairs side by side and an operator read the branch's "59/0" as
+// issues over pull requests. So each number carries its OWN glyph and no
+// slash joins them: "📡 owner/name, 59/0 🐛12 🔀3" separates the pair (a/b,
+// slashed) from the counts (glyph-tagged, unslashed) by shape rather than by
+// position, which is what the earlier layout got wrong.
+//
+// A zero is omitted, matching the dirty count in the same segment: a bar that
+// says nothing about issues is a repository with no open issues, and printing
+// "🐛0" would spend width to say so. When both are zero the whole suffix is
+// absent, which is also what an unfetched cache renders — the counts are a
+// convenience, and distinguishing "none" from "not yet known" is not worth a
+// glyph on a status bar.
+func (r *Renderer) renderForgeCounts(data *StatusData) string {
+	if !r.isSegmentEnabled(SegmentGitHub) || !data.GitHub.Available {
+		return ""
+	}
+	var out string
+	if data.GitHub.OpenIssues > 0 {
+		out += fmt.Sprintf(" 🐛%d", data.GitHub.OpenIssues)
+	}
+	if data.GitHub.OpenPRs > 0 {
+		out += fmt.Sprintf(" 🔀%d", data.GitHub.OpenPRs)
+	}
+	return out
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff

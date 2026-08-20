@@ -3,6 +3,7 @@ package statusline
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -156,9 +157,12 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 		return nil // the forge's CLI is not installed; keep rendering the stale count
 	}
 
-	issues, errIssues := forgeCount(ctx, boardRoot, forge, "issue")
-	prs, errPRs := forgeCount(ctx, boardRoot, forge, "pr")
-	if errIssues != nil || errPRs != nil {
+	if !forgeBudgetAllows(ctx, boardRoot, forge) {
+		return nil // near the API ceiling; keep the stale count rather than spend the last of it
+	}
+
+	issues, prs, err := forgeCounts(ctx, boardRoot, forge)
+	if err != nil {
 		return nil // keep the stale-but-timestamped cache; try again next TTL
 	}
 
@@ -169,9 +173,90 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 	})
 }
 
+// forgeRateFloor is how much API budget must remain before a refresh is
+// allowed to spend any. A refresh costs a single point on the forge that
+// reports a budget at all, so this is not self-protection: it keeps a status
+// bar from being the thing that consumes the last of a budget the operator's
+// own tooling is about to need. Well below any level the TTL could reach on
+// its own — at ten minutes a repository spends about six points an hour
+// against a five-thousand ceiling.
+const forgeRateFloor = 100
+
+// forgeBudgetAllows reports whether the forge has enough API budget left for a
+// refresh.
+//
+// Fail-open in both directions that matter: a forge with no rateArgs (nothing
+// free to ask) and a query that errors or answers unparseably both return
+// true. An unanswerable question about the budget is not evidence the budget
+// is gone, and treating it as such would silence the segment on every forge
+// that cannot be asked.
+//
+// The query itself must be free — on GitHub `gh api rate_limit` consumes
+// neither the core nor the graphql bucket (measured 2026-08-20: three
+// consecutive reads, zero delta in both) — otherwise the guard would spend
+// exactly what it exists to conserve.
+func forgeBudgetAllows(ctx context.Context, boardRoot string, forge forgeSpec) bool {
+	if len(forge.rateArgs) == 0 {
+		return true
+	}
+	cmd := exec.CommandContext(ctx, forge.bin, forge.rateArgs...)
+	cmd.Dir = boardRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return true
+	}
+	remaining, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return true
+	}
+	return remaining >= forgeRateFloor
+}
+
+// forgeCounts returns the open issue and change-request counts, preferring the
+// forge's single totals call and falling back to counting two listings.
+//
+// The totals path parses two lines from one call — issues first — which is the
+// order forgeSpec.countArgs documents. A forge answering fewer than two lines
+// is treated as a failed fetch rather than as a zero, since a zero would
+// overwrite good cached numbers with a parse accident.
+func forgeCounts(ctx context.Context, boardRoot string, forge forgeSpec) (int, int, error) {
+	if len(forge.countArgs) == 0 {
+		issues, err := forgeCount(ctx, boardRoot, forge, "issue")
+		if err != nil {
+			return 0, 0, err
+		}
+		prs, err := forgeCount(ctx, boardRoot, forge, "pr")
+		if err != nil {
+			return 0, 0, err
+		}
+		return issues, prs, nil
+	}
+
+	cmd := exec.CommandContext(ctx, forge.bin, forge.countArgs...)
+	cmd.Dir = boardRoot
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	fields := strings.Fields(string(out))
+	if len(fields) < 2 {
+		return 0, 0, fmt.Errorf("forge totals: want two numbers, got %q", strings.TrimSpace(string(out)))
+	}
+	issues, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, 0, err
+	}
+	prs, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, 0, err
+	}
+	return issues, prs, nil
+}
+
 // forgeCount runs one listing and returns how many open items it reported.
 // Every forge's argument list ends in a filter that collapses the listing to a
 // bare integer, so this parses one number without knowing which CLI answered.
+// It is the enumerating fallback — see forgeCounts.
 func forgeCount(ctx context.Context, boardRoot string, forge forgeSpec, kind string) (int, error) {
 	cmd := exec.CommandContext(ctx, forge.bin, forge.argsFor(kind)...)
 	cmd.Dir = boardRoot
