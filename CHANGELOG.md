@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-08-20
+
+### Summary
+
+v3.1.1 is a maintenance release on top of v3.1.0, gathered from two integration batches on the `release/v3.1.1` lane. Four themes dominate it.
+
+**`~/.moai` gets a single source of truth, and a way to clean it.** Home-scope path construction — previously three incompatible styles scattered across seven packages — collapses into one stdlib-only `internal/paths` package honoring a new `MOAI_HOME` override, and all 17 home-scope join sites route through it. On top of that foundation, `moai doctor` gains a `Home Disk Usage` advisory check and `moai clean` gains a `--home` flag whose deletion candidates come from an explicit four-category allowlist guarded by a recursive carve-out predicate — unreadable means unverified, and unverified never deletes.
+
+**The always-loaded context surface goes on a measured diet.** 295,044 → 288,975 bytes, guard headroom 1,239 → 2,757 tokens, with the file count and the budget constant both left untouched — the mechanism is `paths:`-scoped companions rather than deletion. Two structural countermeasures land with it: five prompt-cache discipline directives folded into the always-loaded rule set, and a recurrence control that turns silent re-growth into a stated, sized cost.
+
+**Kanban and Factory terminology settles.** The v3.1.0 rename of `manager-lead` to `manager-kanban` is reversed — the agent is `manager-lead` again, now covering both the kanban lead and the factory lead session — and the board drops from six columns to five, with the sync gate absorbing the review verdict rather than a `review` column owning it. Factory Mode gets its own entry flag — `moai cc -f <N>` / `moai glm -f <N>` launches a lead plus N numbered lanes, each lane carrying a whole card through plan → run → sync in-session, while the kanban chain keeps `-k` — companion sessions are named by bare role, and the orchestration mode catalog is renamed onto the spawn-count axis (six modes to four: `direct` / `serial` / `fanout` / `sweep`).
+
+**Correctness fixes across the CLI, hooks, and the test harness.** `moai update` now backs up unmanaged files *before* removing managed roots, so a template redeploy no longer silently drops local-only files. A raw `*exec.ExitError` is rejected at the exit-code seam, where it had been structurally satisfying the `ExitCoder` interface and passing a subprocess's exit code through as the CLI's own. GLM-5.3 is recognized as a genuine 1M-context model on every surface that reports a context window. And the timing test harness pairs its calibration reference with the measured runs so both sides share one load window, removing a class of load-dependent false trips.
+
 ### Added
 
 - **[SPEC-V3R6-MOAI-HOME-PATHS-001](.moai/specs/SPEC-V3R6-MOAI-HOME-PATHS-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **`~/.moai` path construction now has a single source of truth: a new stdlib-only `internal/paths` package (`Home()` + `MoaiHome()` + 8 typed sub-path accessors) honors a new `MOAI_HOME` environment override, and all 17 home-scope `.moai` join sites across 7 packages route through it — collapsing the three previously incompatible home-resolution styles (inline `os.UserHomeDir()`, the HOME-first `homedir.go` wrapper, and injected seams) into one contract.** Before this, `~/.moai` path construction was scattered across seven packages with no override mechanism, so tests could only redirect home via `t.Setenv("HOME", ...)` and no way existed to relocate the state root. `MOAI_HOME` semantics: a non-empty absolute path is returned verbatim as the root; empty equals unset; relative values are disregarded (XDG semantics). The SPEC supersedes SPEC-V3R6-SESSION-HANDOFF-AUTO-001's recorded home-resolution position ("new code MUST reuse `os.UserHomeDir()` — no abstraction layer exists"; REQ-MHP-012): the abstraction layer now exists and is mandatory for `~/.moai` paths.
